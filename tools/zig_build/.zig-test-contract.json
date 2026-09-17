@@ -4,8 +4,10 @@
   ],
   "covered_sources": [
     "macos_host.zig",
+    "macho.zig",
     "tests/macos_host_test.zig",
+    "tests/macho_test.zig",
     "tests/root.zig"
   ],
-  "minimum_tests": 13
+  "minimum_tests": 29
 }

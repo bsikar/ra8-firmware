@@ -13,6 +13,7 @@ const std = @import("std");
 const builtin = @import("builtin");
 
 pub const macos_host = @import("macos_host.zig");
+pub const macho = @import("macho.zig");
 
 /// How the macOS libSystem stub is chosen. `auto` probes the host SDK (see
 /// `macos_host.decide`); the other two are escape hatches for a host whose SDK
@@ -219,6 +220,132 @@ pub fn allowForeignHostTests(
     test_step.dependOn(&tests.step);
 }
 
+/// Check what a host build actually produced, rather than trusting that a
+/// zero exit means the right thing was linked (#899).
+///
+/// The rule this package implements is a claim about the emitted Mach-O: on an
+/// arm64 Mac it must be a native arm64 image, stamped with the deployment
+/// target the build was configured for, linked against the system `libSystem`.
+/// `zig build` exiting zero says none of that. A build that silently took
+/// Zig's default macOS floor instead of the host's version still exits zero,
+/// and so would one that came out for the wrong architecture.
+///
+/// The expectations are read off the resolved target at configure time, so the
+/// step checks the binary against what this very build asked for. Off macOS it
+/// says so and passes: there is no Mach-O to read, and a cross-build from Linux
+/// should still be able to run the step without a special case at the call
+/// site.
+pub fn addVerifyHostArtifactStep(
+    b: *std.Build,
+    compile: *std.Build.Step.Compile,
+) *std.Build.Step {
+    const resolved = compile.rootModuleTarget();
+    const verify = b.allocator.create(VerifyHostArtifact) catch @panic("OOM");
+    verify.* = .{
+        .step = std.Build.Step.init(.{
+            .id = .custom,
+            .name = b.fmt("verify host artifact {s}", .{compile.name}),
+            .owner = b,
+            .makeFn = VerifyHostArtifact.make,
+        }),
+        .binary = compile.getEmittedBin(),
+        .name = compile.name,
+        .target_os = resolved.os.tag,
+        .target_arch = resolved.cpu.arch,
+        // `VersionRange` is an untagged union, so the os tag is what says
+        // which member is live; for macOS that is always the semver range.
+        .expected_minimum_os = switch (resolved.os.tag) {
+            .macos => resolved.os.version_range.semver.min,
+            else => null,
+        },
+    };
+    verify.step.dependOn(&compile.step);
+    return &verify.step;
+}
+
+const VerifyHostArtifact = struct {
+    step: std.Build.Step,
+    binary: std.Build.LazyPath,
+    name: []const u8,
+    target_os: std.Target.Os.Tag,
+    target_arch: std.Target.Cpu.Arch,
+    expected_minimum_os: ?std.SemanticVersion,
+
+    fn sameVersion(a: std.SemanticVersion, e: std.SemanticVersion) bool {
+        return a.major == e.major and a.minor == e.minor and a.patch == e.patch;
+    }
+
+    fn make(step: *std.Build.Step, options: std.Build.Step.MakeOptions) anyerror!void {
+        _ = options;
+        const self: *VerifyHostArtifact = @fieldParentPtr("step", step);
+        const b = step.owner;
+
+        if (self.target_os != .macos) {
+            std.debug.print(
+                "verify-host-artifact: {s} targets {s}-{s}; no Mach-O image to read\n",
+                .{ self.name, @tagName(self.target_arch), @tagName(self.target_os) },
+            );
+            return;
+        }
+
+        const path = self.binary.getPath2(b, step);
+        const bytes = std.fs.cwd().readFileAlloc(b.allocator, path, 64 * 1024 * 1024) catch |err|
+            return step.fail("cannot read the emitted binary {s}: {s}", .{ path, @errorName(err) });
+
+        const image = macho.read(bytes) catch |err|
+            return step.fail("{s} is not a readable single-architecture Mach-O image: {s}", .{ path, @errorName(err) });
+
+        const actual_arch = image.arch();
+        if (actual_arch == null or actual_arch.? != self.target_arch) {
+            return step.fail(
+                "{s} was built for {s} but the image is cpu type 0x{x:0>8}",
+                .{ path, @tagName(self.target_arch), @as(u32, @bitCast(image.cpu_type)) },
+            );
+        }
+
+        if (!image.isMacosPlatform()) {
+            return step.fail(
+                "{s} carries no macOS platform stamp (LC_BUILD_VERSION platform {?d})",
+                .{ path, image.platform },
+            );
+        }
+
+        if (self.expected_minimum_os) |expected| {
+            const actual = image.minimum_os orelse
+                return step.fail("{s} carries no minimum OS version, expected {d}.{d}.{d}", .{
+                    path, expected.major, expected.minor, expected.patch,
+                });
+            if (!sameVersion(actual, expected)) {
+                return step.fail(
+                    "{s} is stamped for macOS {d}.{d}.{d} but the build was configured for {d}.{d}.{d}; " ++
+                        "the pinned target and the emitted deployment target have drifted apart (#899)",
+                    .{
+                        path,           actual.major,   actual.minor,   actual.patch,
+                        expected.major, expected.minor, expected.patch,
+                    },
+                );
+            }
+        }
+
+        if (!image.links_system_libsystem) {
+            var buffer: [16][]const u8 = undefined;
+            const names = macho.dylibNames(bytes, &buffer) catch &.{};
+            var listed: std.ArrayListUnmanaged(u8) = .empty;
+            for (names) |dylib| listed.writer(b.allocator).print("\n    {s}", .{dylib}) catch {};
+            return step.fail(
+                "{s} does not link {s}; it links {d} dylib(s):{s}",
+                .{ path, macho.system_libsystem, image.dylib_count, listed.items },
+            );
+        }
+
+        const minimum = image.minimum_os.?;
+        std.debug.print(
+            "verify-host-artifact: {s} is a {s} macOS Mach-O for {d}.{d}.{d}, linking {s}\n",
+            .{ self.name, @tagName(actual_arch.?), minimum.major, minimum.minor, minimum.patch, macho.system_libsystem },
+        );
+    }
+};
+
 pub fn build(b: *std.Build) void {
     // This package's own test graph is a host build like any other, so it takes
     // the same macOS host target rule it hands to the apps (#899).
@@ -232,6 +359,11 @@ pub fn build(b: *std.Build) void {
     });
     test_module.addImport("macos_host", b.createModule(.{
         .root_source_file = b.path("macos_host.zig"),
+        .target = target,
+        .optimize = optimize,
+    }));
+    test_module.addImport("macho", b.createModule(.{
+        .root_source_file = b.path("macho.zig"),
         .target = target,
         .optimize = optimize,
     }));
