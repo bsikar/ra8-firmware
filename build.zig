@@ -44,6 +44,7 @@ pub const app_local = @import("tests/zig_build_graph/app_local.zig");
 pub const cpu1_image = @import("tests/zig_build_graph/cpu1_image.zig");
 pub const cross_sources = @import("tests/zig_build_graph/cross_sources.zig");
 pub const middleware = @import("tests/zig_build_graph/middleware.zig");
+pub const ns_image = @import("tests/zig_build_graph/ns_image.zig");
 
 /// One member of the migrated-library slice: the Zig archive, its public C
 /// header directory, and the C suite CMake links against that archive today.
@@ -358,6 +359,31 @@ fn middlewareToolchain(tools: ArmTools) middleware.Toolchain {
     };
 }
 
+/// The Non-Secure image's own context: the tools, the app it belongs to, the
+/// two global flag sets, and the warning profile at ITS frame budget rather
+/// than the app's. Named once so the `arm` step and the compile database
+/// cannot drift apart about what an NS translation unit is really given.
+fn nsContext(b: *std.Build, tools: ArmTools, app: CrossApp, image: ns_image.NsImage) ns_image.Context {
+    const mw = middleware.find(image.uses) orelse std.debug.panic(
+        "ra8: the NS image names middleware {s}, which the root build graph does not know yet",
+        .{image.uses},
+    );
+    return .{
+        .gcc = tools.gcc,
+        .objcopy = tools.objcopy,
+        .size = tools.size,
+        .app_name = app.name,
+        .app_dir = app.dir,
+        .image = image,
+        .middleware = mw,
+        .global_defines = &arm_global_defines,
+        .global_compile_flags = &arm_global_flags,
+        .warning_flags = arm_flags.warningFlagsForStack(b.allocator, image.stack_bytes),
+        .global_link_flags = &(arm_cpu_flags ++ arm_debug_flags ++ arm_link_flags),
+        .merge_script = "scripts/gen/merge_ihex.py",
+    };
+}
+
 /// Wire the cross-build into `arm_step`. Missing cross tools are a skip, not a
 /// failure: the host slice above has to keep working on a machine with no Arm
 /// GNU Toolchain installed.
@@ -538,11 +564,29 @@ fn addArmCrossApp(
     const bin = objcopyTo(b, tools.objcopy, "binary", elf, b.fmt("{s}.bin", .{app.name}));
 
     arm_step.dependOn(&b.addInstallFileWithDir(elf, .{ .custom = "arm" }, b.fmt("{s}.elf", .{app.name})).step);
-    arm_step.dependOn(&b.addInstallFileWithDir(hex, .{ .custom = "arm" }, b.fmt("{s}.hex", .{app.name})).step);
+    // Only when this app has no Non-Secure half. When it does, the hex a flash
+    // flow wants is the MERGED one, and CMake's own POST_BUILD writes it over
+    // the app's hex; ns_image.add installs that trio instead, so the two never
+    // race for the same output path.
+    if (app.ns == null) {
+        arm_step.dependOn(&b.addInstallFileWithDir(hex, .{ .custom = "arm" }, b.fmt("{s}.hex", .{app.name})).step);
+    }
     arm_step.dependOn(&b.addInstallFileWithDir(bin, .{ .custom = "arm" }, b.fmt("{s}.bin", .{app.name})).step);
     arm_step.dependOn(&b.addInstallFileWithDir(map, .{ .custom = "arm" }, b.fmt("{s}.map", .{app.name})).step);
     if (implib) |object| {
         arm_step.dependOn(&b.addInstallFileWithDir(object, .{ .custom = "arm" }, app.cmse_implib.?).step);
+    }
+
+    // The second, SEPARATE executable of a two-project TrustZone build. It
+    // consumes this link's own outputs: the import library binds its calls to
+    // the .gnu.sgstubs veneers, and the Secure ELF is an input of the hex
+    // merge. Both are declared outputs above rather than paths by convention.
+    if (app.ns) |image| {
+        var ctx = nsContext(b, tools, app, image);
+        ctx.middleware_archive = middleware.add(b, ctx.middleware, middlewareToolchain(tools));
+        ctx.implib = implib;
+        ctx.secure_elf = elf;
+        ns_image.add(b, arm_step, ctx);
     }
 
     // The size report CMake prints as a post-build command.
@@ -882,6 +926,14 @@ fn compileDbEntries(b: *std.Build) []const compile_db.Entry {
                 .global_compile_flags = &arm_global_flags,
                 .global_link_flags = &(arm_cpu_flags ++ arm_debug_flags ++ arm_link_flags),
             });
+            // And the Non-Secure image's, which are their own rows for the
+            // same reason: a different define set, a different include path,
+            // and per-set vendored suppressions the secure half never carries.
+            if (app.ns) |image| {
+                const ctx = nsContext(b, tools, app, image);
+                ns_image.appendCompileDbEntries(b, compile_db.Entry, &candidates, ctx);
+                middleware.appendCompileDbEntries(b, compile_db.Entry, &candidates, ctx.middleware, middlewareToolchain(tools));
+            }
         }
     }
 
