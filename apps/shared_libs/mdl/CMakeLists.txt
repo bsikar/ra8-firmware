@@ -4,6 +4,7 @@
 # mdl core -- the PORTABLE half of the comic/manga/manhwa/webtoon
 # downloader: fetch, state, cache, export, verify, report and pack, written
 # over the fw_if_fs filesystem interface and the injected ::mdl_net_iface_t
+link_libraries(ra8_zig::fw_if_fs)
 # vtable. This is the code the RA8 itself runs. It names no host library, no
 # libcurl, and no POSIX call those interfaces do not already provide.
 #
@@ -106,8 +107,6 @@ set_source_files_properties(
 set(FW ${MDL_REPO_ROOT}/libs)
 set(MDL_PUBLIC_INC ${MDL_CORE_INC} ${MDL_REPO_ROOT}/apps/shared_libs/mdl/inc)
 set(MDL_FS_SRC
-    ${FW}/if/src/fw_if_fs.c
-    ${FW}/if/src/fw_if_fs_dir.c
     ${MDL_REPO_ROOT}/port/posix/src/fw_if_fs_posix.c
     ${MDL_REPO_ROOT}/port/posix/src/fw_if_fs_posix_bind.c
     ${MDL_REPO_ROOT}/port/posix/src/fw_if_fs_posix_common.c
@@ -265,7 +264,7 @@ set_property(
            "-DSTBTT_malloc(x,u)=ra8_stbtt_malloc(x)"
            "-DSTBTT_free(x,u)=ra8_stbtt_free(x)"
 )
-target_link_libraries(mdl_rabook_runtime PUBLIC m)
+target_link_libraries(mdl_rabook_runtime PUBLIC m ra8_zig::fw_if_fs)
 
 # ---------------------------------------------------------------------------
 # The core, as one library target a form links instead of restating 40 source
@@ -340,7 +339,7 @@ target_include_directories(
 )
 target_compile_definitions(mdl_core PUBLIC _GNU_SOURCE MINIZ_NO_TIME RA8_OFF_TARGET)
 target_compile_options(mdl_core PRIVATE -Wall -Wextra -Werror)
-target_link_libraries(mdl_core PUBLIC mdl_rabook_runtime)
+target_link_libraries(mdl_core PUBLIC mdl_rabook_runtime ra8_zig::fw_if_fs)
 
 # The C6 backend is core production code -- it is the network backend the RA8
 # itself will use -- but no host form composes it, so it is not part of
@@ -396,7 +395,7 @@ function(mdl_add_core_test target source)
   )
   target_compile_definitions(${target} PRIVATE _GNU_SOURCE MINIZ_NO_TIME RA8_OFF_TARGET)
   target_compile_options(${target} PRIVATE -Wall -Wextra -Werror)
-  target_link_libraries(${target} PRIVATE mdl_rabook_runtime)
+  target_link_libraries(${target} PRIVATE mdl_rabook_runtime ra8_zig::fw_if_fs)
   ra8_webp_attach(${target} ${MDL_REPO_ROOT})
   add_test(NAME ${target} COMMAND ${target})
 endfunction()

@@ -12,8 +12,6 @@ set(ALPHABET_SOUP_REPO_ROOT ${CMAKE_CURRENT_SOURCE_DIR}/../../..)
 set(FW ${ALPHABET_SOUP_REPO_ROOT}/libs)
 
 set(ALPHABET_SOUP_PORT_SRC
-    ${FW}/if/src/fw_if_fs.c
-    ${FW}/if/src/fw_if_fs_dir.c
     ${FW}/ra8_io/src/ra8_io_stream.c
     ${FW}/ra8_io/src/ra8_io_stream_ram.c
     ${FW}/ra8_core/src/ra8_log.c
@@ -45,6 +43,7 @@ target_include_directories(
 )
 
 target_compile_definitions(alphabet_soup PRIVATE RA8_OFF_TARGET)
+target_link_libraries(alphabet_soup PRIVATE ra8_zig::fw_if_fs)
 
 target_compile_options(
   alphabet_soup
@@ -83,6 +82,7 @@ target_include_directories(
 )
 
 target_compile_definitions(test_alphabet_soup PRIVATE RA8_OFF_TARGET)
+target_link_libraries(test_alphabet_soup PRIVATE ra8_zig::fw_if_fs)
 
 target_compile_options(
   test_alphabet_soup

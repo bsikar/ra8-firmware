@@ -35,7 +35,14 @@ file(GLOB_RECURSE RA8_JPEG_SOURCES CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra8_jpeg/sr
 file(GLOB_RECURSE RA8_TLS_SOURCES CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra8_tls/src/*.c)
 # ra8_usb_pal is fully migrated to Zig; see tests/cmake/zig_libraries.cmake.
 file(GLOB_RECURSE RA8_FS_SOURCES CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra8_fs/src/*.c)
-file(GLOB_RECURSE RA8_IF_SOURCES CONFIGURE_DEPENDS ${FW_ROOT}/libs/if/src/*.c)
+# libs/if has no C sources left: the portable filesystem interface (path
+# syntax, workspace and alignment guards, backend-answer coherence, the
+# directory cursor and the staged-publication state machine) is Zig now
+# (libs/if/src/*.zig, built by libs/if/build.zig) behind the unchanged
+# inc/fw_if_fs.h, inc/fw_if_fs_types.h and inc/fw_if_fs_backend.h, and
+# tests/cmake/zig_libraries.cmake links that archive into ra8_core_hal.
+# Both .c files were the whole library and neither had a private header,
+# so libs/if/src is no longer an include directory anywhere.
 # if_ra8_vfs is fully migrated to Zig; see tests/cmake/zig_libraries.cmake.
 # Its private contracts header went with the .c, so libs/if_ra8_vfs/src is no
 # longer an include directory anywhere.

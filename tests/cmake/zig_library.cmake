@@ -43,7 +43,7 @@ function(ra8_add_zig_library)
     ${RA8_ZIG_NAME}_zig_library ALL
     COMMAND "${ZIG_EXECUTABLE}" build -Doptimize=Debug --prefix "${_ra8_output_dir}" --cache-dir
             "${_ra8_output_dir}/cache" --global-cache-dir "${_ra8_output_dir}/global-cache"
-    WORKING_DIRECTORY "${RA8_ZIG_ROOT}"
+    WORKING_DIRECTORY "${RA8_ZIG_ZIG_ROOT}"
     BYPRODUCTS "${_ra8_library}"
     COMMENT "Building migrated Zig library ${RA8_ZIG_NAME}"
     VERBATIM
@@ -52,7 +52,7 @@ function(ra8_add_zig_library)
   add_library(ra8_zig::${RA8_ZIG_NAME} STATIC IMPORTED GLOBAL)
   set_target_properties(
     ra8_zig::${RA8_ZIG_NAME} PROPERTIES IMPORTED_LOCATION "${_ra8_library}"
-                                        INTERFACE_INCLUDE_DIRECTORIES "${RA8_ZIG_ROOT}/inc"
+                                        INTERFACE_INCLUDE_DIRECTORIES "${RA8_ZIG_ZIG_ROOT}/inc"
   )
   add_dependencies(ra8_zig::${RA8_ZIG_NAME} ${RA8_ZIG_NAME}_zig_library)
 
@@ -62,6 +62,6 @@ function(ra8_add_zig_library)
     NAME ${RA8_ZIG_NAME}_zig_tests
     COMMAND "${ZIG_EXECUTABLE}" build test --cache-dir "${_ra8_output_dir}/cache"
             --global-cache-dir "${_ra8_output_dir}/global-cache"
-    WORKING_DIRECTORY "${RA8_ZIG_ROOT}"
+    WORKING_DIRECTORY "${RA8_ZIG_ZIG_ROOT}"
   )
 endfunction()
