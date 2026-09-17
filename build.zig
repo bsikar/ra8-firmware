@@ -290,112 +290,11 @@ pub fn build(b: *std.Build) void {
 
 const CrossApp = cross_sources.CrossApp;
 
-pub const cross_apps = [_]CrossApp{
-    .{
-        .name = "blink_hal",
-        .dir = "examples/ek_ra8d2/hw_validated/hil/blink_hal",
-        .board = "libs/ra8_board_ek_ra8d2",
-        // ra8_add_app() falls back to the board's canonical single-core map
-        // when the app has no linker_script.ld of its own, which this app
-        // does not.
-        .linker_script = "libs/ra8_board_ek_ra8d2/ld/linker_script.ld",
-        // blink_hal names no LIBS at all: it is the universal first-party set
-        // and nothing else, which is what made it the right FIRST app to
-        // cross-build here. The `zig_libraries` hook below is wired and
-        // exercised by an empty list; an app that links a migrated Zig ARCHIVE
-        // cannot be cross-built by either build system yet, see #948.
-        .libraries = &.{},
-        .zig_libraries = &.{},
-    },
-    .{
-        // The second app, and the reason there is a table here at all: one app
-        // cannot distinguish a rule that generalises from a constant that
-        // happens to be right. iic_b_facade_demo names two libraries in LIBS
-        // and so takes the OTHER arm of every source rule blink_hal takes --
-        // the board opt-in gate keeps `..._touch.c` instead of dropping it, a
-        // library with no directory of its own contributes six translation
-        // units, and the include path grows a directory. It links no migrated
-        // Zig archive, so #948 does not block it.
-        .name = "iic_b_facade_demo",
-        .dir = "examples/ek_ra8d2/hw_validated/hil/iic_b_facade_demo",
-        .board = "libs/ra8_board_ek_ra8d2",
-        .linker_script = "libs/ra8_board_ek_ra8d2/ld/linker_script.ld",
-        .libraries = &.{ "ra8_board_ek_ra8d2", "ra8_io_bus" },
-        .zig_libraries = &.{},
-    },
-    .{
-        // The third app, for the rule NEITHER of the first two can see: both
-        // of them keep exactly one translation unit under their own `src/`
-        // (main.c), so every app-local decision ra8_add_app() makes was
-        // unobservable. cpu1_pingpong keeps three, and each takes a different
-        // arm:
-        //
-        //   src/main.c            the primary entry point, added first.
-        //   src/trustzone_init.c  an app-local override of a BOOT unit, so the
-        //                         board's src/boot copy must NOT be linked --
-        //                         the other arm of the per-app boot resolver,
-        //                         which both earlier apps took the board side
-        //                         of, five times each.
-        //   src/cpu1_main.c       named in AUX_SRCS: the Cortex-M33 entry
-        //                         point for the SECOND image this app builds,
-        //                         which must be kept out of the M85 image
-        //                         entirely.
-        //
-        // It also ships an `inc/` of its own (the dual-core mailbox contract
-        // shared_pingpong.h), which is the first directory on CMake's include
-        // path and had never been exercised either.
-        //
-        // No LIBS, no USES, no migrated Zig archive, so #948 does not block it.
-        //
-        // The app's CMakeLists hand-rolls a SECOND executable for the M33
-        // (cpu1_pingpong_cpu1.elf, four TUs at -mcpu=cortex-m33, its own
-        // linker script) and objcopies it into the M85 image as a .cpu1_image
-        // blob. That is app-local CMake outside ra8_add_app(), and #1044 is
-        // the slice that brought it into the graph: see the .cpu1 field below.
-        .name = "cpu1_pingpong",
-        .dir = "examples/ek_ra8d2/hw_validated/hil/cpu1_pingpong",
-        .board = "libs/ra8_board_ek_ra8d2",
-        // The app ships its own linker_script.ld (it pins .cpu1_image at
-        // ORIGIN(MRAM_CPU1)), so ra8_add_app() takes that one over the board's.
-        .linker_script = "examples/ek_ra8d2/hw_validated/hil/cpu1_pingpong/linker_script.ld",
-        .libraries = &.{},
-        .zig_libraries = &.{},
-        .aux_srcs = &.{"src/cpu1_main.c"},
-        // The M33 half of this app (#1044). Its entry TU is the same file
-        // AUX_SRCS keeps out of the M85 set above: one file, two images.
-        .cpu1 = .{
-            .entry_source = "src/cpu1_main.c",
-            .shared_sources = &.{
-                "libs/ra8_hal/src/ra8_ipc.c",
-                "libs/ra8_core/src/ra8_log.c",
-                "libs/ra8_core/src/ra8_scb.c",
-            },
-            .linker_script = "linker_script_cpu1.ld",
-        },
-    },
-    .{
-        // The fourth app, for the whole dimension the first three cannot see:
-        // vendored MIDDLEWARE. None of them names `USES`, so the graph had
-        // never compiled a line of it, and all four things ra8_add_app() does
-        // with a middleware dependency were unobserved -- its own source set
-        // and flag bar, the include directories and defines it exports onto
-        // the app's TUs, the options it forces onto the link, and the fact
-        // that the app links an ARCHIVE rather than a bag of objects.
-        //
-        // threadx_blink is the smallest app that names one: `USES threadx`
-        // and nothing else, no LIBS, no EXTRA_SRCS, no migrated Zig archive,
-        // so #948 does not block it and its first-party set is byte-for-byte
-        // blink_hal's 200 TUs. Everything that differs between the two apps
-        // is the middleware, which is what makes it the right fourth app.
-        .name = "threadx_blink",
-        .dir = "examples/ek_ra8d2/hw_validated/hil/threadx_blink",
-        .board = "libs/ra8_board_ek_ra8d2",
-        .linker_script = "examples/ek_ra8d2/hw_validated/hil/threadx_blink/linker_script.ld",
-        .libraries = &.{},
-        .zig_libraries = &.{},
-        .uses = &.{"threadx"},
-    },
-};
+/// The apps this slice cross-builds. The table itself lives beside the
+/// source-set rules it exercises, in cross_sources.zig, because that is what
+/// each entry is FOR: an app is in here when it takes an arm of an
+/// ra8_add_app() rule no other app does.
+pub const cross_apps = cross_sources.cross_apps;
 
 /// The global CMAKE_C_FLAGS every translation unit in a cross configure
 /// inherits, app target or not. The M85 app adds the dialect and warning sets
@@ -477,9 +376,21 @@ const arm_warning_flags = [_][]const u8{
     "-Wformat-overflow=2",
     "-Wformat-truncation=2",
     "-Wlogical-op",
-    "-Wstack-usage=2200",
-    "-fstack-usage",
 };
+
+/// The two stack-budget flags, spelled at THIS app's budget. They are not part
+/// of the list above because the budget is per-app data, not a constant: see
+/// CrossApp.stack_bytes. -fstack-usage rides along with the gate because the
+/// same call in cmake/ra8_warnings.cmake adds both, and the `.su` files it
+/// writes are what scripts/checks/stack_usage_check.py aggregates.
+pub fn armWarningFlags(allocator: std.mem.Allocator, app: CrossApp) []const []const u8 {
+    var flags = std.ArrayList([]const u8).init(allocator);
+    flags.appendSlice(&arm_warning_flags) catch @panic("OOM");
+    const gate = std.fmt.allocPrint(allocator, "-Wstack-usage={d}", .{app.stack_bytes}) catch @panic("OOM");
+    flags.append(gate) catch @panic("OOM");
+    flags.append("-fstack-usage") catch @panic("OOM");
+    return flags.toOwnedSlice() catch @panic("OOM");
+}
 
 /// Link flags from the toolchain file: no hosted runtime, prune unused
 /// sections, and report the region usage the map file details.
@@ -592,7 +503,7 @@ fn addArmCrossApp(
         compile.addArgs(&arm_debug_flags);
         compile.addArgs(&arm_dialect_flags);
         compile.addArgs(middleware_defines);
-        compile.addArgs(&arm_warning_flags);
+        compile.addArgs(armWarningFlags(b.allocator, app));
         // Prefixed directory args, not bare -I strings: this both spells the
         // include flag and declares the directory as an input of the step, so
         // editing a header actually invalidates the cached object.
@@ -933,7 +844,7 @@ fn compileDbEntries(b: *std.Build) []const compile_db.Entry {
     // rather than failing the step, the same skip the `arm` step takes; the
     // count on `zig build parity` is what shows which of the two you got.
     if (findArmTools(b)) |tools| {
-        const arm_flags = arm_cpu_flags ++ arm_debug_flags ++ arm_dialect_flags ++ arm_warning_flags;
+        const arm_flags = arm_cpu_flags ++ arm_debug_flags ++ arm_dialect_flags;
         for (cross_apps) |app| {
             const middlewares = middleware.resolve(b.allocator, app.uses);
             // A middleware's exports change the app's OWN rows, so an analysis
@@ -943,6 +854,10 @@ fn compileDbEntries(b: *std.Build) []const compile_db.Entry {
             var app_flags = std.ArrayList([]const u8).init(b.allocator);
             app_flags.appendSlice(&arm_flags) catch @panic("OOM");
             app_flags.appendSlice(middleware.appDefines(b.allocator, middlewares)) catch @panic("OOM");
+            // At this app's own frame budget, in the position the compile step
+            // puts it: a database row whose -Wstack-usage disagrees with the
+            // build would hand clang-tidy a different bar than the compiler had.
+            app_flags.appendSlice(armWarningFlags(b.allocator, app)) catch @panic("OOM");
             var include_dirs = std.ArrayList([]const u8).init(b.allocator);
             include_dirs.appendSlice(cross_sources.crossIncludeDirs(b, app)) catch @panic("OOM");
             include_dirs.appendSlice(middleware.appIncludeDirs(b.allocator, middlewares)) catch @panic("OOM");
