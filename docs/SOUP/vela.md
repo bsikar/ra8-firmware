@@ -28,6 +28,15 @@ command streams it emits are a build input to the shipped firmware.
   uv-managed environment from committed `pyproject.toml` and `uv.lock`;
   run offline at build time. It is
   never cross-compiled or linked into the RA8P1 image.
+- **Supply-chain record**: registered in `scripts/gen/sbom_registry.py` as the
+  `ethos-u-vela` component with provenance `dependency-pinned-lockfile` and
+  purl `pkg:pypi/ethos-u-vela@5.1.0`, so it appears in
+  `docs/sbom/ra8-firmware.cdx.json` and the weekly SBOM-driven `osv-scan` gate
+  issues a PyPI advisory query against the pin. There are no vendored bytes to
+  hash, so `gen_sbom.py` checks the record the other way instead: it fails when
+  the requirement string `"ethos-u-vela==5.1.0"` is absent from
+  `pyproject.toml`, which is what keeps the published version and the installed
+  one from drifting apart.
 
 ## Use case in this firmware
 

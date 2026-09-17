@@ -285,6 +285,11 @@ the vendor process (owner requirement) and are recorded here:
   `tools/vela/README.md`; qualification in
   [`docs/SOUP/vela.md`](docs/SOUP/vela.md). Its output command stream is a build
   input consumed on-device by the vendored TFLite-micro `ethos-u` operator.
+  It carries an SBOM component of its own (`ethos-u-vela`,
+  `pkg:pypi/ethos-u-vela@5.1.0`, provenance `dependency-pinned-lockfile`), so
+  the SBOM-driven `osv-scan` gate queries the pin every week; `gen_sbom.py`
+  fails if the recorded version stops matching the requirement string in
+  `pyproject.toml`.
 
 ---
 
