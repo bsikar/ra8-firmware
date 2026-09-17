@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2026 Brighton Sikarskie
-"""Classify every Cortex-M33 (CPU1) translation unit and count the warning escape.
+"""Classify every Cortex-M33 (CPU1) C translation unit and count the warning escape.
 
 WHY THIS EXISTS
 ===============
@@ -24,9 +24,11 @@ deleted) must be removed from the inventory, so the list can only shrink.
 
 WHAT IT ENFORCES, PRECISELY
 ---------------------------
-  * Every first-party app-added CPU1 translation unit is an inventory row.
-    A new one that is not in the inventory FAILS: extend the profile, or add
-    the row deliberately and say why in review.
+  * Every first-party app-added CPU1 translation unit whose source token ends
+    in ``.c`` is an inventory row.  A new one that is not in the inventory
+    FAILS: extend the profile, or add the row deliberately and say why in
+    review.  A token with any other suffix is not judged at all; see SCOPE,
+    HONESTLY.
   * An inventory row that no longer escapes -- the source is now a helper
     ``SOURCES`` entry, routed through ``ra8_cpu1_add_first_party_sources()``,
     no longer attached to that image, or gone from disk -- FAILS as stale and
@@ -40,8 +42,11 @@ WHAT IT ENFORCES, PRECISELY
     deliberately outside the first-party bar (#843 forbids widening blanket
     warnings onto it).
   * A ``target_sources()`` token on a CPU1 image that this checker cannot
-    resolve to real paths FAILS.  A parse that stops seeing sources must say
-    so rather than report a clean tree.
+    resolve to real paths FAILS, where "cannot resolve" means an unexpanded
+    ``${VAR}`` this checker never bound or a path still carrying a ``$``.  A
+    parse that stops seeing sources that way must say so rather than report a
+    clean tree.  A token dropped for its SUFFIX is a different case and stays
+    silent; see SCOPE, HONESTLY.
   * A CPU1 executable an app HAND-ROLLS -- ``add_executable()`` plus a
     ``target_compile_options(... -mcpu=cortex-m33 ...)`` of its own, instead of
     calling ``ra8_add_cpu1_image()`` -- is scanned too, and every first-party
@@ -65,6 +70,20 @@ is not a compile-commands audit, so it cannot prove the flags survive to the
 compiler; #843's compile-commands and stack-usage-census criteria stay open
 and are unticked.  What it does buy is that the escape is now enumerated,
 bounded and shrink-only instead of a prose TODO.
+
+The judged set is C ONLY, and that is a hole rather than a convention.
+``resolve_source()`` returns the EMPTY list -- not the ``None`` that raises an
+unresolved-token finding -- for any source token whose suffix is not ``.c``,
+and ``glob_vars()`` keeps only glob words ending in ``.c``, ``.h`` or ``*``.
+So a first-party ``.cpp`` / ``.cc`` / ``.S`` / ``.s`` translation unit bolted
+onto a CPU1 image with ``target_sources()`` is neither profile-covered, nor an
+escape row, nor an unresolved-token finding: it is dropped, and the gate still
+prints "none new".  First-party C++ already exists in this tree
+(``apps/shared_libs/reflow/v2/src/reflow_v2.cpp``), so the shape is live even
+though all 33 inventory rows are ``.c`` today.  Closing the hole means giving
+the parser a translation-unit suffix vocabulary and failing on an unknown
+suffix; until that lands, this docstring rather than the parser is where the
+boundary is written down.
 
 Run with ``--selftest`` to prove both directions, ``--list`` to print the
 current classification.
