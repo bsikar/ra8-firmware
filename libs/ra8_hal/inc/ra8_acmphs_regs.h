@@ -3,6 +3,9 @@
  * @brief High-Speed Analog Comparator (ACMPHS) register layout for the RA8D2
  * @ingroup grp_hal_analog
  *
+ * @par Tag
+ * [Ring 3 / HAL] {World: NS}
+ *
  * @details
  * The RA8D2 exposes up to six high-speed analog comparator channels
  * (ACMPHS0..ACMPHS5). Each channel has a small independent register

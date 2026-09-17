@@ -3,6 +3,9 @@
  * @brief 12-bit DAC_B register layout for the Renesas RA8D2
  * @ingroup grp_hal_analog
  *
+ * @par Tag
+ * [Ring 3 / HAL] {World: NS}
+ *
  * @details
  * The RA8D2 has two separate DAC_B instances DAC_B0 / DAC_B1 at
  * base addresses 0x40233000 and 0x40233100 (stride 0x100). Each

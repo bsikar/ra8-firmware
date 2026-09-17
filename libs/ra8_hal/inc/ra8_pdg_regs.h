@@ -3,6 +3,9 @@
  * @brief PWM Delay Generation Circuit (PDG) register layout for the Renesas RA8D2
  * @ingroup grp_hal_system
  *
+ * @par Tag
+ * [Ring 3 / HAL] {World: NS}
+ *
  * @details
  * The PDG block (HUM Ch 23 "PWM Delay Generation Circuit (PDG)",
  * p 1152-1163) is the per-edge fine-delay engine that sits between

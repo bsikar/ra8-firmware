@@ -3,6 +3,9 @@
  * @brief MIPI D-PHY register layout for the RA8D2
  * @ingroup grp_hal_display
  *
+ * @par Tag
+ * [Ring 3 / HAL] {World: NS}
+ *
  * @details
  * The MIPI PHY block at MMIO base ``0x4034_6C00`` is the physical
  * layer shared by the MIPI DSI host (Ch 65) and the MIPI CSI

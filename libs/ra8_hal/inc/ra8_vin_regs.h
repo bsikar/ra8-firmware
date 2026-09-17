@@ -3,6 +3,9 @@
  * @brief Video Input Module (VIN) register layout for the RA8D2
  * @ingroup grp_hal_camera
  *
+ * @par Tag
+ * [Ring 3 / HAL] {World: NS}
+ *
  * @details
  * The Video Input Module sits at the AXI/PCLKA boundary between the
  * MIPI CSI-2 receiver and SDRAM. It receives image data from the
