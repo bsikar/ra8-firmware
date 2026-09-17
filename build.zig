@@ -42,6 +42,7 @@ pub const abi_contract = @import("tests/zig_build_graph/abi_contract.zig");
 pub const compile_db = @import("tests/zig_build_graph/compile_db.zig");
 pub const cpu1_image = @import("tests/zig_build_graph/cpu1_image.zig");
 pub const cross_sources = @import("tests/zig_build_graph/cross_sources.zig");
+pub const middleware = @import("tests/zig_build_graph/middleware.zig");
 
 /// One member of the migrated-library slice: the Zig archive, its public C
 /// header directory, and the C suite CMake links against that archive today.
@@ -372,6 +373,28 @@ pub const cross_apps = [_]CrossApp{
             .linker_script = "linker_script_cpu1.ld",
         },
     },
+    .{
+        // The fourth app, for the whole dimension the first three cannot see:
+        // vendored MIDDLEWARE. None of them names `USES`, so the graph had
+        // never compiled a line of it, and all four things ra8_add_app() does
+        // with a middleware dependency were unobserved -- its own source set
+        // and flag bar, the include directories and defines it exports onto
+        // the app's TUs, the options it forces onto the link, and the fact
+        // that the app links an ARCHIVE rather than a bag of objects.
+        //
+        // threadx_blink is the smallest app that names one: `USES threadx`
+        // and nothing else, no LIBS, no EXTRA_SRCS, no migrated Zig archive,
+        // so #948 does not block it and its first-party set is byte-for-byte
+        // blink_hal's 200 TUs. Everything that differs between the two apps
+        // is the middleware, which is what makes it the right fourth app.
+        .name = "threadx_blink",
+        .dir = "examples/ek_ra8d2/hw_validated/hil/threadx_blink",
+        .board = "libs/ra8_board_ek_ra8d2",
+        .linker_script = "examples/ek_ra8d2/hw_validated/hil/threadx_blink/linker_script.ld",
+        .libraries = &.{},
+        .zig_libraries = &.{},
+        .uses = &.{"threadx"},
+    },
 };
 
 /// The global CMAKE_C_FLAGS every translation unit in a cross configure
@@ -384,14 +407,33 @@ const arm_global_flags = arm_cpu_flags ++ arm_debug_flags ++ [_][]const u8{"-std
 /// single-precision, hence fpv5-sp-d16 with a hard float ABI; -mthumb because
 /// the M-profile cores are Thumb-only. These go on compile AND link: the link
 /// step picks its multilib from them.
-const arm_cpu_flags = [_][]const u8{
+const arm_cpu_flags = arm_cpu_select_flags ++ [_][]const u8{
+    "-fdata-sections",
+    "-ffunction-sections",
+};
+
+/// The CPU selection on its own. CMAKE_ASM_FLAGS carries only this and the
+/// configuration's `-g3`: the assembler is handed no section splitting, no
+/// optimisation level and no dialect, so a middleware's hand-written port
+/// assembly cannot be given the C bar. Measured from a real configure's own
+/// database, where all 14 assembly units differ from the C units in exactly
+/// these flags.
+const arm_cpu_select_flags = [_][]const u8{
     "-mcpu=cortex-m85",
     "-mthumb",
     "-mfloat-abi=hard",
     "-mfpu=fpv5-sp-d16",
-    "-fdata-sections",
-    "-ffunction-sections",
 };
+
+/// CMAKE_ASM_FLAGS plus CMAKE_ASM_FLAGS_DEBUG.
+const arm_asm_flags = arm_cpu_select_flags ++ [_][]const u8{"-g3"};
+
+/// Definitions cmake/toolchain-ra8d2.cmake adds at directory scope, so they
+/// reach every target in a cross configure and not just the app. The app's own
+/// bar repeats RA8_FREESTANDING through arm_dialect_flags, which is where it
+/// was first spelled (#936); this is the same define reaching a target that
+/// has no first-party profile at all.
+const arm_global_defines = [_][]const u8{"-DRA8_FREESTANDING"};
 
 /// The Debug configuration ra8_add_app() sets for a standalone app build.
 const arm_debug_flags = [_][]const u8{ "-O0", "-g3", "-DDEBUG" };
@@ -452,13 +494,31 @@ const ArmTools = struct {
     gcc: []const u8,
     objcopy: []const u8,
     size: []const u8,
+    /// The archiver, needed only since #1054: a middleware is handed to the
+    /// app as a static archive, and a static link pulls only the members
+    /// something references.
+    ar: []const u8,
 };
 
 fn findArmTools(b: *std.Build) ?ArmTools {
     const gcc = b.findProgram(&.{"arm-none-eabi-gcc"}, &.{}) catch return null;
     const objcopy = b.findProgram(&.{"arm-none-eabi-objcopy"}, &.{}) catch return null;
     const size = b.findProgram(&.{"arm-none-eabi-size"}, &.{}) catch return null;
-    return .{ .gcc = gcc, .objcopy = objcopy, .size = size };
+    const ar = b.findProgram(&.{"arm-none-eabi-ar"}, &.{}) catch return null;
+    return .{ .gcc = gcc, .objcopy = objcopy, .size = size, .ar = ar };
+}
+
+/// The two global flag sets a middleware archive is built with, and the tools
+/// that build it. Named once so `zig build arm` and `zig build compile-db`
+/// cannot drift apart about what a middleware TU is really given.
+fn middlewareToolchain(tools: ArmTools) middleware.Toolchain {
+    return .{
+        .gcc = tools.gcc,
+        .ar = tools.ar,
+        .global_defines = &arm_global_defines,
+        .c_flags = &arm_global_flags,
+        .asm_flags = &arm_asm_flags,
+    };
 }
 
 /// Wire the cross-build into `arm_step`. Missing cross tools are a skip, not a
@@ -507,19 +567,45 @@ fn addArmCrossApp(
         archives.append(dependency.artifact(lib_name).getEmittedBin()) catch @panic("OOM");
     }
 
-    const include_dirs = cross_sources.crossIncludeDirs(b, app);
+    // Everything the app names in USES. Each one is built as its own archive
+    // AND changes how the app's own translation units are compiled: the
+    // exported define and include directories below are not decoration, an
+    // app compiled without them gets a different kernel configuration and no
+    // diagnostic about it.
+    const middlewares = middleware.resolve(b.allocator, app.uses);
+    const middleware_archives = b.allocator.alloc(std.Build.LazyPath, middlewares.len) catch @panic("OOM");
+    for (middlewares, 0..) |mw, index| {
+        middleware_archives[index] = middleware.add(b, mw, middlewareToolchain(tools));
+    }
+    const middleware_defines = middleware.appDefines(b.allocator, middlewares);
+    const middleware_include_dirs = middleware.appIncludeDirs(b.allocator, middlewares);
+    const middleware_system_dirs = middleware.appSystemIncludeDirs(b.allocator, middlewares);
+
+    var include_dirs = std.ArrayList([]const u8).init(b.allocator);
+    include_dirs.appendSlice(cross_sources.crossIncludeDirs(b, app)) catch @panic("OOM");
+    include_dirs.appendSlice(middleware_include_dirs) catch @panic("OOM");
+
     var objects = std.ArrayList(std.Build.LazyPath).init(b.allocator);
     for (cross_sources.crossSources(b, app)) |source| {
         const compile = b.addSystemCommand(&.{tools.gcc});
         compile.addArgs(&arm_cpu_flags);
         compile.addArgs(&arm_debug_flags);
         compile.addArgs(&arm_dialect_flags);
+        compile.addArgs(middleware_defines);
         compile.addArgs(&arm_warning_flags);
         // Prefixed directory args, not bare -I strings: this both spells the
         // include flag and declares the directory as an input of the step, so
         // editing a header actually invalidates the cached object.
-        for (include_dirs) |include_dir| {
+        for (include_dirs.items) |include_dir| {
             compile.addPrefixedDirectoryArg("-I", b.path(include_dir));
+        }
+        // After every -I, and -isystem rather than -I: the vendor headers are
+        // not held to the app's -Werror bar, and putting them on the ordinary
+        // include path would fail the app's own compile on the middleware's
+        // diagnostics.
+        for (middleware_system_dirs) |include_dir| {
+            compile.addArg("-isystem");
+            compile.addDirectoryArg(b.path(include_dir));
         }
         compile.addArg("-c");
         compile.addFileArg(b.path(source));
@@ -545,6 +631,11 @@ fn addArmCrossApp(
     link.addArgs(&arm_cpu_flags);
     link.addArgs(&arm_debug_flags);
     link.addArgs(&arm_link_flags);
+    // The middleware's INTERFACE link options. Dropping these does not fail
+    // the link, it produces a firmware image whose kernel time base never
+    // advances (issue #8), which is the sharpest reason middleware belongs in
+    // the graph as data rather than as a pile of source paths.
+    link.addArgs(middleware.appLinkOptions(b.allocator, middlewares));
     link.addPrefixedFileArg("-T", b.path(app.linker_script));
     const map = link.addPrefixedOutputFileArg("-Wl,--Map=", b.fmt("{s}.map", .{app.name}));
     link.addArg("-o");
@@ -553,6 +644,7 @@ fn addArmCrossApp(
     for (objects.items) |object| link.addFileArg(object);
     // Archives after the objects that reference them, then libgcc last, the
     // order CMake's link line uses.
+    for (middleware_archives) |archive| link.addFileArg(archive);
     for (archives.items) |archive| link.addFileArg(archive);
     link.addArg("-lgcc");
 
@@ -843,15 +935,33 @@ fn compileDbEntries(b: *std.Build) []const compile_db.Entry {
     if (findArmTools(b)) |tools| {
         const arm_flags = arm_cpu_flags ++ arm_debug_flags ++ arm_dialect_flags ++ arm_warning_flags;
         for (cross_apps) |app| {
-            const include_dirs = cross_sources.crossIncludeDirs(b, app);
+            const middlewares = middleware.resolve(b.allocator, app.uses);
+            // A middleware's exports change the app's OWN rows, so an analysis
+            // gate reading this database sees the same preprocessor view the
+            // compiler had. Get this wrong and clang-tidy parses the app
+            // against a different tx_api.h than the build does.
+            var app_flags = std.ArrayList([]const u8).init(b.allocator);
+            app_flags.appendSlice(&arm_flags) catch @panic("OOM");
+            app_flags.appendSlice(middleware.appDefines(b.allocator, middlewares)) catch @panic("OOM");
+            var include_dirs = std.ArrayList([]const u8).init(b.allocator);
+            include_dirs.appendSlice(cross_sources.crossIncludeDirs(b, app)) catch @panic("OOM");
+            include_dirs.appendSlice(middleware.appIncludeDirs(b.allocator, middlewares)) catch @panic("OOM");
+            const system_dirs = middleware.appSystemIncludeDirs(b.allocator, middlewares);
             for (cross_sources.crossSources(b, app)) |source| {
                 candidates.append(.{
                     .file = source,
                     .driver = tools.gcc,
-                    .flags = &arm_flags,
-                    .include_dirs = include_dirs,
+                    .flags = app_flags.items,
+                    .include_dirs = include_dirs.items,
+                    .system_include_dirs = system_dirs,
                     .object = b.fmt("arm/{s}/{s}.o", .{ app.name, std.fs.path.basename(source) }),
                 }) catch @panic("OOM");
+            }
+            // The middleware's own TUs, at their own bar. They are shared
+            // across every app that names the same middleware, so the
+            // deduplicator collapses them to one set of rows.
+            for (middlewares) |mw| {
+                middleware.appendCompileDbEntries(b, compile_db.Entry, &candidates, mw, middlewareToolchain(tools));
             }
             // The second image's TUs are compiled at a different bar entirely
             // (no warning profile, -Os over -O0, an M33 -mcpu after the M85

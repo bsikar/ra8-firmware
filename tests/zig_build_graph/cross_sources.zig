@@ -38,6 +38,11 @@ pub const CrossApp = struct {
     /// has one. Null for a single-core app, which is every app whose whole
     /// CMakeLists is one ra8_add_app() call. See cpu1_image.zig.
     cpu1: ?cpu1_image.Cpu1Image = null,
+    /// Vendored middleware named in `USES`, in the order the app names it.
+    /// Each one compiles its own translation units at its own bar AND exports
+    /// include directories, defines, and link options onto this app. See
+    /// middleware.zig.
+    uses: []const []const u8 = &.{},
 };
 
 /// A name in `LIBS` that contributes translation units from somewhere other
