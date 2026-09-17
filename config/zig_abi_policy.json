@@ -28,6 +28,8 @@
     {"path":"libs/ra8_ui/tests/abi_test.zig","kind":"test-helper","symbols":["ra8_log_emit_error"]},
     {"path":"libs/ra8_wdt_supervisor/src/ra8_wdt_supervisor_abi.zig","kind":"library-adapter","symbols":["ra8_wdt_supervisor_init","ra8_wdt_supervisor_deinit","ra8_wdt_supervisor_register_thread","ra8_wdt_supervisor_checkin","ra8_wdt_supervisor_start","ra8_wdt_supervisor_tick","ra8_wdt_supervisor_set_now_hook","ra8_wdt_supervisor_set_refresh_hook","ra8_wdt_supervisor_thread_count"]},
     {"path":"libs/ra8_wdt_supervisor/tests/abi_test.zig","kind":"test-helper","symbols":["ra8_wdt_refresh_deferred"]},
+    {"path":"libs/ra8_mpu/src/ra8_mpu_abi.zig","kind":"library-adapter","symbols":["ra8_mpu_configure","ra8_mpu_enable","ra8_mpu_disable","ra8_mpu_set_region","ra8_mpu_boot_map","ra8_mpu_apply_boot_map","ra8_mpu_is_enabled"]},
+    {"path":"libs/ra8_mpu/tests/abi_test.zig","kind":"test-helper","symbols":["ra8_log_emit_error","ra8_hw_dsb","ra8_hw_isb"]},
     {"path":"tests/abi_chain_fixture/tests/chain_adapter.zig","kind":"library-adapter","symbols":["ra8_abi_chain_apply","ra8_abi_chain_create","ra8_abi_chain_destroy"]},
     {"path":"tests/zig_abi_fixture/src/ra8_abi_fixture_abi.zig","kind":"library-adapter","symbols":["ra8_abi_fixture_apply","ra8_abi_fixture_create","ra8_abi_fixture_test_fail_next_allocation","ra8_abi_fixture_destroy","ra8_abi_fixture_copy","ra8_abi_fixture_bytes_create","ra8_abi_fixture_bytes_release","ra8_abi_fixture_callback_register","ra8_abi_fixture_callback_invoke","ra8_abi_fixture_callback_unregister","ra8_abi_fixture_callback_cancel"]}
   ],
@@ -168,6 +170,32 @@
         {"name": "ra8_wdt_supervisor_set_now_hook", "calling_context": "boot-only", "ownership": "borrows callback pointer until replaced or deinitialized"},
         {"name": "ra8_wdt_supervisor_set_refresh_hook", "calling_context": "boot-only", "ownership": "borrows callback pointer until replaced or deinitialized"},
         {"name": "ra8_wdt_supervisor_thread_count", "calling_context": "task-safe-reentrant", "ownership": "reads registry and returns current registered thread count"}
+      ]
+    },
+    {
+      "name": "ra8_mpu",
+      "build_root": "libs/ra8_mpu",
+      "public_header": "libs/ra8_mpu/inc/ra8_mpu.h",
+      "adapter": "libs/ra8_mpu/src/ra8_mpu_abi.zig",
+      "library_name": "ra8_mpu",
+      "symbol_prefix": "ra8_mpu_",
+      "compatibility_sha256": "9bc1cd6482988e4854a22e726f3ed5a9c89983d61e5c5385d2d395275c205306",
+      "layout_assertions": ["@offsetOf(Regs, \"TYPE\") == 0x00", "@offsetOf(Regs, \"CTRL\") == 0x04", "@offsetOf(Regs, \"RNR\") == 0x08", "@offsetOf(Regs, \"RBAR\") == 0x0C", "@offsetOf(Regs, \"RLAR\") == 0x10", "@offsetOf(Regs, \"MAIR0\") == 0x30", "@offsetOf(Regs, \"MAIR1\") == 0x34", "@sizeOf(Regs) == 0x38"],
+      "target_class": "host-ra8",
+      "targets": {"host": [], "ra8": ["-Dtarget=thumb-freestanding-eabihf", "-Dcpu=cortex_m85+fp_armv8-d32-fp64"]},
+      "c_include_dirs": ["libs/ra8_mpu/inc", "libs/ra8_core/inc"],
+      "contract_tests": [
+        {"language": "c", "path": "tests/misc/src/test_ra8_mpu.c", "registration": "tests/cmake/unit_tests.cmake"},
+        {"language": "zig", "path": "libs/ra8_mpu/tests/abi_test.zig", "registration": "libs/ra8_mpu/.zig-test-contract.json"}
+      ],
+      "exports": [
+        {"name": "ra8_mpu_configure", "calling_context": "boot-only", "ownership": "borrows configuration and region table for the call"},
+        {"name": "ra8_mpu_enable", "calling_context": "task-only-non-reentrant", "ownership": "mutates the MPU control register"},
+        {"name": "ra8_mpu_disable", "calling_context": "task-only-non-reentrant", "ownership": "mutates the MPU control register"},
+        {"name": "ra8_mpu_set_region", "calling_context": "task-only-non-reentrant", "ownership": "borrows region descriptor for the call"},
+        {"name": "ra8_mpu_boot_map", "calling_context": "boot-only", "ownership": "writes region count to caller-owned output and returns static table"},
+        {"name": "ra8_mpu_apply_boot_map", "calling_context": "boot-only", "ownership": "applies the static boot memory map"},
+        {"name": "ra8_mpu_is_enabled", "calling_context": "task-safe-reentrant", "ownership": "reads the MPU control register"}
       ]
     }
   ]
