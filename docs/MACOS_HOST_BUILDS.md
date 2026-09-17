@@ -658,6 +658,73 @@ reported as another and that each refuses or informs the right way round, reads
 (without that, `option_gone` could only ever be reached by a real nightly), and
 reads the gate body to check it still calls `ra8_macos_sdk_link_run`.
 
+## The compiler the runner downloads is recorded per release
+
+The hosted `macos-14` runner ships no Zig, so `.github/workflows/macos-host.yml`
+provisions its own. That takes three values, and until recently only one of them
+had an owner:
+
+| value | where it lives | what held it |
+| --- | --- | --- |
+| `ZIG_VERSION` | workflow `env` | `.devcontainer/Dockerfile` (`ARG ZIG_VERSION`), enforced by `scripts/checks/check_workflow_toolchain_pins.py` |
+| `ZIG_SHA256_AARCH64_MACOS` | workflow `env` | nothing |
+| the archive name in the download URL | the install step | nothing |
+
+That check deliberately does not invent a Dockerfile owner for a workflow-only
+pin, which is right: the digest genuinely belongs to the workflow. The
+consequence was that bumping the Dockerfile moved `ZIG_VERSION` (the agreement
+rule insists on it) while the digest stayed where it was. The runner then
+fetched the new tarball and checked it against the old digest. Every Linux leg
+stayed green, because no Linux leg reads either value, and the Mac died at
+provisioning with `zig.tar.xz: FAILED`. That reads as a corrupted download or a
+tampered mirror, so the natural response is to re-run the job, and the re-run
+fails identically.
+
+The archive *name* has the same shape of problem. Zig renamed its release
+archives at 0.14.1: `zig-macos-aarch64-0.14.0.tar.xz` became
+`zig-aarch64-macos-0.14.1.tar.xz`, target before os. The workflow spells the
+newer shape out, so pinning any release at or before 0.14.0 404s at `curl`
+before the digest is ever consulted.
+
+`scripts/checks/check_zig_dist_pins.py` records, per release and target, the
+archive name Zig publishes and its sha256, transcribed from
+<https://ziglang.org/download/index.json> by whoever bumps the pin, in the same
+commit. The table is not a source of truth; it is a transcription. Its value is
+that the transcription is checkable from Linux, in `gate_toolchain_parity`,
+minutes after the bump, rather than one night later on the only machine in this
+suite nobody can re-run locally. Five rules:
+
+- **recorded** -- a workflow `ZIG_SHA256_<TARGET>` pin needs a row for that
+  workflow's `ZIG_VERSION` and that target.
+- **digest-agrees** -- the row's digest must equal the pin's value.
+- **owner-recorded** -- the Dockerfile's `ARG ZIG_VERSION` must appear in the
+  table, so bumping the owner pin alone refuses before any workflow is touched.
+- **tarball-name** -- the download URL, with `${ZIG_VERSION}` resolved, must
+  name exactly the archive recorded for that release, and each recorded name
+  must match the convention for its own release (target first from 0.14.1).
+- **record-shape** -- every recorded release parses as a dotted version and
+  every digest is 64 lowercase hex characters.
+
+`--roster` prints what is recorded and what each workflow would fetch:
+
+```console
+$ python3 scripts/checks/check_zig_dist_pins.py --roster
+0.14.1 aarch64-macos: zig-aarch64-macos-0.14.1.tar.xz sha256=39f3dc5e...
+.github/workflows/macos-host.yml:72 fetches zig 0.14.1 as zig-aarch64-macos-0.14.1.tar.xz
+```
+
+Bumping Zig is therefore a three-line change: `ARG ZIG_VERSION` in the
+Dockerfile, `ZIG_VERSION` and `ZIG_SHA256_AARCH64_MACOS` in the workflow, and a
+row here. Miss any of them and Linux says so by name, in
+`gate_toolchain_parity`, before the nightly runs at all.
+
+Still open: the install step's own `shasum` failure text. A mismatch on the
+runner still prints only `zig.tar.xz: FAILED`, which reads as a bad download
+rather than a forgotten digest. Saying the likelier cause out loud there means
+editing `.github/workflows/macos-host.yml`, which needs a token carrying the
+`workflow` scope; the check above is what makes that message unlikely to be
+needed.
+
 ## What runs on a clock
 
 `.github/workflows/macos-host.yml` runs the `macos-host-build` gate nightly on

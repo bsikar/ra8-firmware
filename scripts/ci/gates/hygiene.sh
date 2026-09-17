@@ -662,6 +662,15 @@ gate_toolchain_parity() (
   # bundled libSystem stub, which is the one thing #899 turns on.
   python3 scripts/checks/check_workflow_toolchain_pins.py --selftest
   python3 scripts/checks/check_workflow_toolchain_pins.py
+  # That check deliberately does not invent a Dockerfile owner for the macOS
+  # runner's ZIG_SHA256_AARCH64_MACOS, which left the digest tied to nothing:
+  # bump the pin and the agreement rule moves ZIG_VERSION while the digest
+  # stays, so the Mac fetches the new tarball, checks it against the old
+  # digest, and dies at `shasum -c` reading like a corrupted download (#899).
+  # Zig also renamed its archives at 0.14.1 (target before os), so a pin the
+  # other side of that boundary 404s at curl.
+  python3 scripts/checks/check_zig_dist_pins.py --selftest
+  python3 scripts/checks/check_zig_dist_pins.py
   /bin/bash -p scripts/hil/lib/bench_exit_traps_selftest.sh --selftest
   /bin/bash -p scripts/dev/setup_python.sh --selftest
   python3 scripts/checks/check_tool_versions.py --selftest
