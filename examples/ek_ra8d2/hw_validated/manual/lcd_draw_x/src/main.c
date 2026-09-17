@@ -67,23 +67,23 @@ typedef enum : uint32_t {
   k_ra8_board_fb_align_bytes)]] static uint16_t s_framebuffer[(uint32_t)k_fb_w * (uint32_t)k_fb_h];
 
 /**
- * @brief Display PAL config selecting the LCD backend.
+ * @brief Framebuffer this app owns, handed to the GLCDC bind helper.
  *
  * @details
- * To target a different backend in the future -- e.g. an
- * IT8951-compatible e-ink panel -- only the ``iface`` line below
- * changes (point it at ``k_display_backend_eink_it8951`` in
- * ``ra8_display_pal_eink.h``).  Everything else in this app
- * (painting, heartbeat, panic loop) stays untouched.
+ * Storage and geometry only.  Which backend runs, and which panel
+ * descriptor that backend needs, are supplied together by
+ * ``display_pal_bind_glcdc`` -- so this app cannot pair the GLCDC
+ * vtable with a panel descriptor meant for another controller.
+ * Targeting the IT8951 e-ink panel instead becomes a call to that
+ * backend's own bind helper; everything else in this app (painting,
+ * heartbeat, panic loop) stays untouched.
  */
-static const display_cfg_t k_lcd_draw_x_display_cfg = {
-  .iface             = &k_display_backend_lcd_ra8_glcdc,
-  .framebuffer       = s_framebuffer,
-  .framebuffer_bytes = sizeof(s_framebuffer),
-  .width_px          = (uint16_t)k_fb_w,
-  .height_px         = (uint16_t)k_fb_h,
-  .pixfmt            = k_display_pixfmt_rgb565,
-  .panel_timing      = &s_ra8_panel_ek_ra8d2_timing,
+static const display_fb_cfg_t k_lcd_draw_x_fb_cfg = {
+  .pixels    = s_framebuffer,
+  .bytes     = sizeof(s_framebuffer),
+  .width_px  = (uint16_t)k_fb_w,
+  .height_px = (uint16_t)k_fb_h,
+  .pixfmt    = k_display_pixfmt_rgb565,
 };
 
 static void lcd_panic_halt(void)
@@ -166,7 +166,9 @@ static void lcd_bringup_clocks(void)
  *
  * @details
  * Replaces the previous 6-step GLCDC bring-up sequence with a single
- * ``display_init`` call against ``k_lcd_draw_x_display_cfg``.  The
+ * ``display_pal_bind_glcdc`` call, which pairs this app's
+ * framebuffer with the board's panel timing and dispatches into the
+ * GLCDC backend without the app naming a vtable at all.  The
  * PAL's LCD backend folds panel power-on, GLCDC pin/clock setup,
  * settle delay, controller init, BG-clear, ``start(true)`` and
  * ``layer1_show`` into one call.  Any failure halts in the red-LED
@@ -183,7 +185,7 @@ static void lcd_bringup_clocks(void)
 static display_handle_t* lcd_bringup_panel(void)
 {
   display_handle_t* d = nullptr;
-  if (display_init(&k_lcd_draw_x_display_cfg, &d) != k_ra8_ok) {
+  if (display_pal_bind_glcdc(&d, &k_lcd_draw_x_fb_cfg, &s_ra8_panel_ek_ra8d2_timing) != k_ra8_ok) {
     lcd_panic_halt();
   }
   return d;

@@ -571,3 +571,29 @@ const display_backend_iface_t k_display_backend_lcd_ra8_glcdc = {
   .clear           = internal_lcd_clear,
   .deinit          = internal_lcd_deinit,
 };
+
+/* =============================================================================
+ * Public typed bind
+ * =============================================================================
+ */
+
+ra8_err_t display_pal_bind_glcdc(display_handle_t**        out,
+                                 const display_fb_cfg_t*   fb,
+                                 const ra8_glcdc_timing_t* timing)
+{
+  RA8_CHECK_NULL_PTR(out, s_tag, "out must not be nullptr");
+  RA8_CHECK_NULL_PTR(fb, s_tag, "fb must not be nullptr");
+  RA8_CHECK_NULL_PTR(fb->pixels, s_tag, "fb->pixels must not be nullptr");
+  RA8_CHECK_NULL_PTR(timing, s_tag, "timing must not be nullptr");
+
+  const display_cfg_t cfg = {
+    .iface             = &k_display_backend_lcd_ra8_glcdc,
+    .framebuffer       = fb->pixels,
+    .framebuffer_bytes = fb->bytes,
+    .width_px          = fb->width_px,
+    .height_px         = fb->height_px,
+    .pixfmt            = fb->pixfmt,
+    .panel_timing      = timing,
+  };
+  return display_init(&cfg, out);
+}
