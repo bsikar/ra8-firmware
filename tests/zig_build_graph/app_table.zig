@@ -577,4 +577,46 @@ pub const cross_apps = [_]CrossApp{
             .board_include_dir = false,
         },
     },
+    .{
+        // The eleventh app, and the first one in this table whose `LIBS`
+        // names a MIGRATED Zig library (ra8_power_profile). That makes it the
+        // arm of cmake/ra8_app/zig_libs.cmake -- the last piece of
+        // ra8_add_app() no entry here took -- and it was not a free choice
+        // before now: #948 held every such app out of the table, because the
+        // archive pulled libgcc's unwinder into a -nostdlib image and the
+        // link failed the same way under BOTH build systems. #1200 took the
+        // unwind tables off the three archives and #1209 gave the AEABI
+        // memory helpers a first-party home, so the link completes and the
+        // rule can finally be held to a real image.
+        //
+        // What the keyword actually is: a migrated library keeps its public
+        // inc/ header and drops src/*.c, so the LIBS glob in
+        // cmake/ra8_app/sources.cmake finds NOTHING to compile for it and the
+        // library contributes no translation unit at all. Its headers still
+        // go on the app's include path, in the same per-library position an
+        // unmigrated library's do, and the implementation arrives as a static
+        // ARCHIVE cross-built by the library's own build.zig for this app's
+        // core, float ABI and optimisation.
+        //
+        // The silent half is the OPTIMISATION, not the archive. Losing the
+        // archive itself fails closed: every one of the app's own units still
+        // compiles, because the C ABI lives in the unchanged header, and the
+        // link then reports the missing ra8_power_profile_* symbols by name.
+        // Building the archive at the WRONG optimisation fails nothing at
+        // all: zig_libs.cmake maps a Debug configure onto a Debug archive and
+        // every other configure onto ReleaseSmall, so a graph that picks one
+        // of the two and keeps it links a perfectly good image that is simply
+        // not the artifact CMake produces. See build_type.zig's zig_optimize.
+        //
+        // Otherwise it is blink_hal's shape: no USES, no EXTRA_SRCS, no
+        // app-local CMake, no AUX_SRCS, the default 2200-byte frame budget
+        // and the board's canonical single-core linker map, so everything
+        // that differs between the two apps IS this keyword.
+        .name = "power_profiler",
+        .dir = "examples/ek_ra8d2/hil_needs_revalidation/power_profiler",
+        .board = "libs/ra8_board_ek_ra8d2",
+        .linker_script = "libs/ra8_board_ek_ra8d2/ld/linker_script.ld",
+        .libraries = &.{ "ra8_power_profile", "ra8_board_ek_ra8d2" },
+        .zig_libraries = &.{"ra8_power_profile"},
+    },
 };
