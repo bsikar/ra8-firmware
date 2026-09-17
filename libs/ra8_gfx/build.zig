@@ -2,12 +2,12 @@
 //! Copyright (c) 2026 Brighton Sikarskie
 //!
 //! Build graph for the Zig implementation of the `ra8_gfx` rasteriser: the
-//! core draw entry points and the glyph/text stack alike.
+//! core draw entry points, the glyph/text stack and the blue-noise dither
+//! alike.
 //! CMake consumes the installed static library through the unchanged
-//! `inc/ra8_gfx.h` and `src/ra8_gfx_internal.h`; the two remaining C
-//! translation units of the library (the dither and the generated font table)
-//! link against this archive for `g_gfx_text_state` and the two promoted
-//! helpers.
+//! `inc/ra8_gfx.h` and `src/ra8_gfx_internal.h`; the one remaining C
+//! translation unit of the library (the generated font table) links against
+//! this archive for `g_gfx_text_state` and the two promoted helpers.
 //!
 //! No build options: nothing in this cluster is configured at compile time.
 

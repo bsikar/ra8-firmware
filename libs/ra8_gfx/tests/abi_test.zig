@@ -767,3 +767,245 @@ test "a face with no glyph table draws nothing and still succeeds" {
     );
     try std.testing.expectEqual(@as(usize, 0), s.nonZeroCount());
 }
+
+// --- blue-noise dither (#477) ----------------------------------------------
+
+/// The bulk packer's guards each carry their own message, so the test binary
+/// stands in for `ra8_core`'s logger the same way CMake links the real one.
+var dither_log_count: u32 = 0;
+var dither_log_tag: [*:0]const u8 = "";
+var dither_log_message: [*:0]const u8 = "";
+
+export fn ra8_log_emit_error(tag: [*:0]const u8, message: [*:0]const u8) void {
+    dither_log_count += 1;
+    dither_log_tag = tag;
+    dither_log_message = message;
+}
+
+fn resetDitherLog() void {
+    dither_log_count = 0;
+    dither_log_tag = "";
+    dither_log_message = "";
+}
+
+fn expectDitherLog(count: u32, message: []const u8) !void {
+    try std.testing.expectEqual(count, dither_log_count);
+    try std.testing.expectEqualStrings("ra8_gfx_dither", std.mem.span(dither_log_tag));
+    try std.testing.expectEqualStrings(message, std.mem.span(dither_log_message));
+}
+
+test "ra8_gfx_dither_gray4_level needs no framebuffer binding" {
+    abi.g_gfx_text_state = .{ .format = impl.format.rgb565 };
+    try std.testing.expectEqual(@as(u8, 0), abi.ra8_gfx_dither_gray4_level(0, 3, 4));
+    try std.testing.expectEqual(@as(u8, 15), abi.ra8_gfx_dither_gray4_level(255, 3, 4));
+    try std.testing.expectEqual(
+        impl.ditherLevel(200, 3, 4),
+        abi.ra8_gfx_dither_gray4_level(200, 3, 4),
+    );
+}
+
+test "the mask phase repeats every 64 pixels in both axes" {
+    try std.testing.expectEqual(
+        abi.ra8_gfx_dither_gray4_level(120, 2, 5),
+        abi.ra8_gfx_dither_gray4_level(120, 66, 69),
+    );
+    try std.testing.expectEqual(
+        abi.ra8_gfx_dither_gray4_level(120, 2, 5),
+        abi.ra8_gfx_dither_gray4_level(120, -62, -59),
+    );
+}
+
+test "the bulk packer rejects each null pointer with its own message" {
+    const src = [_]u8{0} ** 16;
+    var out: [8]u8 = undefined;
+    var out_size: u32 = 0xFFFF_FFFF;
+
+    resetDitherLog();
+    try std.testing.expectEqual(
+        impl.err.null_ptr,
+        abi.ra8_gfx_dither_gray8_to_gray4(null, 4, 4, 0, 0, &out, out.len, &out_size),
+    );
+    try expectDitherLog(1, "src must not be nullptr");
+
+    resetDitherLog();
+    try std.testing.expectEqual(
+        impl.err.null_ptr,
+        abi.ra8_gfx_dither_gray8_to_gray4(&src, 4, 4, 0, 0, null, out.len, &out_size),
+    );
+    try expectDitherLog(1, "out must not be nullptr");
+
+    resetDitherLog();
+    try std.testing.expectEqual(
+        impl.err.null_ptr,
+        abi.ra8_gfx_dither_gray8_to_gray4(&src, 4, 4, 0, 0, &out, out.len, null),
+    );
+    try expectDitherLog(1, "out_size must not be nullptr");
+    try std.testing.expectEqual(@as(u32, 0xFFFF_FFFF), out_size);
+}
+
+test "non-positive dimensions and a short buffer are distinct failures" {
+    const src = [_]u8{128} ** 16;
+    var out: [8]u8 = [_]u8{0} ** 8;
+    var out_size: u32 = 0;
+
+    resetDitherLog();
+    try std.testing.expectEqual(
+        impl.err.invalid_arg,
+        abi.ra8_gfx_dither_gray8_to_gray4(&src, 0, 4, 0, 0, &out, out.len, &out_size),
+    );
+    try expectDitherLog(1, "w or h is non-positive");
+
+    resetDitherLog();
+    try std.testing.expectEqual(
+        impl.err.invalid_arg,
+        abi.ra8_gfx_dither_gray8_to_gray4(&src, 4, -1, 0, 0, &out, out.len, &out_size),
+    );
+    try expectDitherLog(1, "w or h is non-positive");
+
+    resetDitherLog();
+    try std.testing.expectEqual(
+        impl.err.no_mem,
+        abi.ra8_gfx_dither_gray8_to_gray4(&src, 4, 4, 0, 0, &out, 7, &out_size),
+    );
+    try expectDitherLog(1, "output buffer too small");
+    try std.testing.expectEqual(@as(u32, 0), out_size);
+}
+
+test "a packed tile carries two levels per byte and reports its size" {
+    var src: [16]u8 = undefined;
+    for (&src, 0..) |*p, i| p.* = @intCast(i * 17);
+    var out: [8]u8 = [_]u8{0xFF} ** 8;
+    var out_size: u32 = 0;
+
+    resetDitherLog();
+    try std.testing.expectEqual(
+        impl.err.ok,
+        abi.ra8_gfx_dither_gray8_to_gray4(&src, 4, 4, 0, 0, &out, out.len, &out_size),
+    );
+    try std.testing.expectEqual(@as(u32, 8), out_size);
+    try std.testing.expectEqual(@as(u32, 0), dither_log_count);
+
+    for (0..16) |i| {
+        const want = impl.ditherLevel(src[i], @intCast(i % 4), @intCast(i / 4));
+        const byte = out[i / 2];
+        const got: u8 = if (i % 2 == 0) byte >> 4 else byte & 0x0F;
+        try std.testing.expectEqual(want, got);
+    }
+}
+
+test "an odd pixel count still needs no pre-zeroed buffer" {
+    const src = [_]u8{ 9, 200, 77 };
+    var out: [2]u8 = [_]u8{ 0xFF, 0xFF };
+    var out_size: u32 = 0;
+    try std.testing.expectEqual(
+        impl.err.ok,
+        abi.ra8_gfx_dither_gray8_to_gray4(&src, 3, 1, 0, 0, &out, out.len, &out_size),
+    );
+    try std.testing.expectEqual(@as(u32, 2), out_size);
+    try std.testing.expectEqual(impl.ditherLevel(9, 0, 0), out[0] >> 4);
+    try std.testing.expectEqual(impl.ditherLevel(200, 1, 0), out[0] & 0x0F);
+    try std.testing.expectEqual(impl.ditherLevel(77, 2, 0), out[1] >> 4);
+    // The trailing low nibble is whatever the even-index assign left: zero.
+    try std.testing.expectEqual(@as(u8, 0), out[1] & 0x0F);
+}
+
+test "a tile packs byte-for-byte the same as that region of the whole image" {
+    var whole: [8 * 4]u8 = undefined;
+    for (&whole, 0..) |*p, i| p.* = @intCast((i * 7) & 0xFF);
+    var whole_out: [16]u8 = undefined;
+    var whole_size: u32 = 0;
+    try std.testing.expectEqual(
+        impl.err.ok,
+        abi.ra8_gfx_dither_gray8_to_gray4(&whole, 8, 4, 0, 0, &whole_out, whole_out.len, &whole_size),
+    );
+
+    var tile: [4 * 4]u8 = undefined;
+    for (0..4) |row| {
+        for (0..4) |col| tile[(row * 4) + col] = whole[(row * 8) + col + 4];
+    }
+    var tile_out: [8]u8 = undefined;
+    var tile_size: u32 = 0;
+    try std.testing.expectEqual(
+        impl.err.ok,
+        abi.ra8_gfx_dither_gray8_to_gray4(&tile, 4, 4, 4, 0, &tile_out, tile_out.len, &tile_size),
+    );
+    try std.testing.expectEqual(@as(u32, 8), tile_size);
+
+    for (0..16) |i| {
+        const whole_i = ((i / 4) * 8) + (i % 4) + 4;
+        const from_whole: u8 = if (whole_i % 2 == 0)
+            whole_out[whole_i / 2] >> 4
+        else
+            whole_out[whole_i / 2] & 0x0F;
+        const from_tile: u8 = if (i % 2 == 0) tile_out[i / 2] >> 4 else tile_out[i / 2] & 0x0F;
+        try std.testing.expectEqual(from_whole, from_tile);
+    }
+}
+
+test "the dithered blit refuses a call with no binding" {
+    abi.g_gfx_text_state = .{ .format = impl.format.rgb565 };
+    const src = [_]u8{128} ** 4;
+    try std.testing.expectEqual(
+        impl.err.not_initialized,
+        abi.ra8_gfx_blit_gray8_dither(&src, 2, 2, 0, 0),
+    );
+}
+
+test "the dithered blit rejects a null tile and non-positive dimensions" {
+    var s = Surface{};
+    s.bind(8, 4, impl.format.rgb565);
+    const src = [_]u8{128} ** 16;
+    try std.testing.expectEqual(
+        impl.err.invalid_arg,
+        abi.ra8_gfx_blit_gray8_dither(null, 4, 4, 0, 0),
+    );
+    try std.testing.expectEqual(
+        impl.err.invalid_arg,
+        abi.ra8_gfx_blit_gray8_dither(&src, 0, 4, 0, 0),
+    );
+    try std.testing.expectEqual(
+        impl.err.invalid_arg,
+        abi.ra8_gfx_blit_gray8_dither(&src, 4, -2, 0, 0),
+    );
+}
+
+test "the dithered blit lays down exactly the per-level plot" {
+    var expected = Surface{};
+    expected.bind(8, 4, impl.format.rgb565);
+    var src: [8 * 4]u8 = undefined;
+    for (&src, 0..) |*p, i| p.* = @intCast((i * 11) & 0xFF);
+    for (0..4) |row| {
+        for (0..8) |col| {
+            const level = impl.ditherLevel(src[(row * 8) + col], @intCast(col), @intCast(row));
+            try std.testing.expectEqual(
+                impl.err.ok,
+                abi.ra8_gfx_pixel(@intCast(col), @intCast(row), impl.levelToColor(level)),
+            );
+        }
+    }
+
+    var got = Surface{};
+    got.bind(8, 4, impl.format.rgb565);
+    try std.testing.expectEqual(impl.err.ok, abi.ra8_gfx_blit_gray8_dither(&src, 8, 4, 0, 0));
+    try std.testing.expectEqualSlices(u8, &expected.bytes, &got.bytes);
+}
+
+test "the dithered blit draws only the part that lands on the surface" {
+    var s = Surface{};
+    s.bind(8, 4, impl.format.rgb565);
+    const src = [_]u8{200} ** 16;
+    try std.testing.expectEqual(impl.err.ok, abi.ra8_gfx_blit_gray8_dither(&src, 4, 4, 6, 2));
+    try std.testing.expect(s.at(6, 2) != 0);
+    try std.testing.expect(s.at(7, 3) != 0);
+    try std.testing.expectEqual(@as(u32, 0), s.at(5, 2));
+    try std.testing.expectEqual(@as(u32, 0), s.at(0, 0));
+}
+
+test "a negative destination clips and keeps the mask phase continuous" {
+    var s = Surface{};
+    s.bind(8, 4, impl.format.rgb565);
+    const src = [_]u8{140} ** 16;
+    try std.testing.expectEqual(impl.err.ok, abi.ra8_gfx_blit_gray8_dither(&src, 4, 4, -2, -1));
+    try std.testing.expect(s.at(0, 0) != 0);
+    try std.testing.expectEqual(@as(u32, 0), s.at(2, 0));
+}

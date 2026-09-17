@@ -1161,6 +1161,11 @@
           "layout_assertions": []
         },
         {
+          "path": "libs/ra8_gfx/inc/ra8_gfx_dither.h",
+          "compatibility_sha256": "19fa12aec82e19208b6291b00c3e63e547380c4076369448ab67bd157282724c",
+          "layout_assertions": []
+        },
+        {
           "path": "libs/ra8_gfx/src/ra8_gfx_internal.h",
           "compatibility_sha256": "87071bd07263d7692b2996155505ecdec1160aed49d95317a37f27b26ac8638a",
           "layout_assertions": [
@@ -1212,6 +1217,9 @@
         {"name": "ra8_gfx_pixel", "calling_context": "task-only-non-reentrant", "ownership": "mutates one in-bounds pixel in the caller-owned framebuffer"},
         {"name": "ra8_gfx_blit_gray8", "calling_context": "task-only-non-reentrant", "ownership": "borrows a grayscale source buffer and mutates the clipped destination"},
         {"name": "ra8_gfx_blit_gray4_zoom", "calling_context": "task-only-non-reentrant", "ownership": "Zig implementation borrows packed source bytes and mutates the clipped destination"},
+        {"name": "ra8_gfx_dither_gray4_level", "calling_context": "task-safe-reentrant", "ownership": "computes a deterministic level from value arguments and the immutable noise mask without retaining state"},
+        {"name": "ra8_gfx_dither_gray8_to_gray4", "calling_context": "task-safe-reentrant", "ownership": "borrows the source tile and writes caller-owned packed output without accessing singleton state"},
+        {"name": "ra8_gfx_blit_gray8_dither", "calling_context": "task-only-non-reentrant", "ownership": "borrows the grayscale source and mutates the clipped framebuffer using the shared dither mask"},
         {"name": "ra8_gfx_line", "calling_context": "task-only-non-reentrant", "ownership": "mutates the clipped pixels along the requested rasterized line"},
         {"name": "ra8_gfx_rect", "calling_context": "task-only-non-reentrant", "ownership": "mutates clipped framebuffer pixels within or around the requested rectangle"},
         {"name": "ra8_gfx_circle", "calling_context": "task-only-non-reentrant", "ownership": "mutates clipped framebuffer pixels along or within the requested circle"},
