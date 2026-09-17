@@ -17,6 +17,8 @@ default:
     @echo "  just docs::capi_check     Check the C ABI header manifest"
     @echo "  just docs::clean          Remove generated Doxygen HTML documentation"
     @echo "  just docs::push           Build and publish Doxygen to gh-pages"
+    @echo "  just docs::site           Assemble the whole documentation site"
+    @echo "  just docs::site_check     Check the documentation site slot manifest"
     @echo "  just docs::record_stats   Refresh historical HAL completion summary"
     @echo "  just docs::sizes          Summarize app .text/.data/.bss footprints"
     @echo "  just docs::audit_init     Audit peripheral init order across apps"
@@ -49,6 +51,14 @@ capi:
 # Fail when a library's public headers are missing from the C ABI reference
 capi_check:
     python3 scripts/checks/check_c_abi_doc_headers.py --check
+
+# Assemble every wired generator into build/docs/site/ (ADR-0005)
+site:
+    bash scripts/builders/docs_site.sh
+
+# Fail when a documentation site slot's state stops matching the tree
+site_check:
+    python3 scripts/checks/check_docs_site_slots.py --check
 
 # Build Doxygen docs and publish to the gh-pages branch
 push: build

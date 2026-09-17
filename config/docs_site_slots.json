@@ -1,0 +1,52 @@
+{
+  "$comment": [
+    "Layout of the assembled documentation site (#900, ADR-0005).",
+    "One slot per generator. scripts/builders/docs_site.sh mounts every wired",
+    "slot into one tree; scripts/checks/check_docs_site_slots.py fails when a",
+    "slot's state stops matching what is actually in the tree.",
+    "Generated output is never committed: everything below build/ is ignored."
+  ],
+  "site_root": "build/docs/site",
+  "slots": [
+    {
+      "id": "hub",
+      "title": "Markdown hub (MkDocs)",
+      "url_path": "/",
+      "mount": "",
+      "state": "pending",
+      "builder": "scripts/builders/docs_hub.sh",
+      "default_path": "build/docs/hub",
+      "reason": "docs_hub.sh arrives with the hub slice (PR #931, base dev). Flip this slot to wired in the commit that merges it."
+    },
+    {
+      "id": "capi",
+      "title": "C ABI reference (Doxygen)",
+      "url_path": "/api/c/",
+      "mount": "api/c",
+      "state": "wired",
+      "builder": "scripts/builders/docs_capi.sh",
+      "default_path": "build/docs/api/c",
+      "reason": null
+    },
+    {
+      "id": "zig",
+      "title": "Zig autodoc",
+      "url_path": "/api/zig/",
+      "mount": "api/zig",
+      "state": "pending",
+      "builder": "scripts/builders/docs_zig.sh",
+      "default_path": "build/docs/api/zig",
+      "reason": "docs_zig.sh arrives with the Zig autodoc slice (PR #943, base zig/dev). Flip this slot to wired in the commit that merges it."
+    },
+    {
+      "id": "rust",
+      "title": "Rust crates (rustdoc)",
+      "url_path": "/api/rust/",
+      "mount": "api/rust",
+      "state": "absent",
+      "builder": null,
+      "default_path": null,
+      "reason": "no Cargo.toml anywhere in the tree yet. ADR-0005 reserves the slot; the checker fails the moment a crate lands, so rustdoc cannot be forgotten."
+    }
+  ]
+}
