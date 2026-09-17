@@ -173,6 +173,32 @@ own body must still refuse a foreign host; the list's `--selftest`, run by the
 `ci-parity` gate, checks both, plus that every declared gate is really
 registered in `scripts/ci.sh`.
 
+### If the gate says your Mac is x86_64
+
+`uname -m` reports what the *process* is, not what the *machine* is. Rosetta 2
+translates a whole process tree, so a shell started from an x86_64 terminal
+app, an x86_64 Homebrew, an IDE shipped as x86_64, or plain `arch -x86_64 zsh`
+prints `x86_64` on an Apple silicon Mac. The gate used to read that as an
+Intel host and tell the owner to go and find an arm64 runner, on the very
+machine it needed.
+
+`scripts/ci/lib/host_arch.sh` separates the two facts. Darwin publishes both:
+`sysctl -n sysctl.proc_translated` is `1` when this process is translated, and
+`sysctl -n hw.optional.arm64` is `1` on Apple silicon whatever the process is.
+The gate still refuses under translation, because a translated `zig` links the
+x86_64 path and cannot observe the missing `arm64-macos` slice at all, but it
+now names Rosetta and prints the native re-run:
+
+    arch -arm64 /bin/zsh -lc "just quality::local::gate macos-host-build"
+
+A genuine Intel Mac answers neither sysctl and is still reported as
+`Darwin/x86_64`, and an unreadable `sysctl` fails closed to whatever `uname`
+said rather than promoting the host to arm64. Nothing changes on Linux, and a
+native arm64 Mac is decided from `uname` alone without asking `sysctl`. The
+matrix (Linux, native arm64, translated arm64, Intel, fallback signal, no
+`sysctl` at all) is proved by `host_arch.sh --selftest`, which the
+`toolchain-parity` gate runs.
+
 ## What a Linux checkout can and cannot show
 
 Cross-compiling from Linux exercises the graph, the target selection, and the
@@ -292,8 +318,15 @@ macho.zig` and its tests), including a universal archive, a 32-bit image, an
 ELF, a truncated load-command region and a dylib name pointing outside its own
 command.
 
-## Not yet automated
+## What runs on a clock
 
-No scheduled job runs these commands on macOS today; the checks above are
-manual. Automating them needs an arm64 macOS runner and a gate registered in
-`scripts/ci.sh`, tracked under #899.
+`.github/workflows/macos-host.yml` runs the `macos-host-build` gate nightly on
+a GitHub-hosted `macos-14` (arm64) runner, provisioning the pinned Zig itself,
+and can be started by hand with `workflow_dispatch`. The gate body lives in
+`scripts/ci/gates/manual.sh` and is registered in `scripts/ci.sh`, so the
+workflow schedules it rather than restating it.
+
+That nightly is the only observation of the real SDK stub anywhere in this
+repository: every other job runs on Linux, where an explicit `aarch64-macos`
+target makes the query non-native and Zig links its own bundled stub. Until it
+has run once, everything on this page about a real Mac is a prediction.
