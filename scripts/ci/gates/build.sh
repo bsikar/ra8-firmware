@@ -296,6 +296,17 @@ gate_sbom() (
   set -e
   python3 scripts/gen/gen_sbom.py --selftest
   python3 scripts/gen/gen_sbom.py --check
+  # The generator above owns docs/sbom/ra8-firmware.cdx.json and nothing else.
+  # The two markdown inventories (THIRD_PARTY_LICENSES.md, docs/SOUP/README.md)
+  # are hand-maintained, yet both claimed to be generated from the registry, so
+  # nothing noticed a component catalogued in one and missing from the other,
+  # an orphan inventory row, or a dangling docs/SOUP link (#631). This checker
+  # compares the registry against those two files -- two independently
+  # maintained artifacts, never a value with itself -- and refuses to pass a
+  # collapsed scan. --selftest runs FIRST and proves it fires on seeded drift
+  # and stays quiet on an agreeing tree.
+  python3 scripts/checks/check_soup_inventory.py --selftest
+  python3 scripts/checks/check_soup_inventory.py
 )
 
 # --- soup-upstream --------------------------------------------------------
