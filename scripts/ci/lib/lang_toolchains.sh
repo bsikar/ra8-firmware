@@ -72,7 +72,7 @@ if [ -z "${_RA8_LANG_TOOLCHAINS_SH:-}" ]; then
   }
 
   _ra8_lang_sha256_of() {
-    if command -v sha256sum > /dev/null 2>&1; then
+    if command -v sha256sum >/dev/null 2>&1; then
       sha256sum "$1" | awk '{print $1}'
     else
       shasum -a 256 "$1" | awk '{print $1}'
@@ -85,8 +85,8 @@ if [ -z "${_RA8_LANG_TOOLCHAINS_SH:-}" ]; then
     local dir="$1"
     [ -n "${dir}" ] && [ -d "${dir}" ] || return 1
     case ":${PATH}:" in
-      *":${dir}:"*) ;;
-      *) PATH="${dir}:${PATH}" ;;
+    *":${dir}:"*) ;;
+    *) PATH="${dir}:${PATH}" ;;
     esac
     export PATH
     return 0
@@ -99,7 +99,7 @@ if [ -z "${_RA8_LANG_TOOLCHAINS_SH:-}" ]; then
     local url="$1" want_sha="$2" dest="$3" strip="$4"
     local tools_dir tmp archive actual
     tools_dir="$(dirname "${dest}")"
-    mkdir -p "${tools_dir}" 2> /dev/null || return 1
+    mkdir -p "${tools_dir}" 2>/dev/null || return 1
     tmp="$(mktemp -d "${tools_dir}/lang-dl.XXXXXX")" || return 1
     archive="${tmp}/archive.tar.xz"
 
@@ -139,9 +139,9 @@ if [ -z "${_RA8_LANG_TOOLCHAINS_SH:-}" ]; then
   # The release archives name the host the same way for both toolchains.
   _ra8_lang_arch() {
     case "$(uname -m)" in
-      x86_64) printf 'x86_64\n' ;;
-      aarch64 | arm64) printf 'aarch64\n' ;;
-      *) return 1 ;;
+    x86_64) printf 'x86_64\n' ;;
+    aarch64 | arm64) printf 'aarch64\n' ;;
+    *) return 1 ;;
     esac
   }
 
@@ -152,8 +152,8 @@ if [ -z "${_RA8_LANG_TOOLCHAINS_SH:-}" ]; then
     want="$(_ra8_lang_pin ZIG_VERSION)"
     [ -n "${want}" ] || return 1
 
-    if command -v zig > /dev/null 2>&1 &&
-      [ "$(zig version 2> /dev/null)" = "${want}" ]; then
+    if command -v zig >/dev/null 2>&1 &&
+      [ "$(zig version 2>/dev/null)" = "${want}" ]; then
       return 0
     fi
 
@@ -161,10 +161,10 @@ if [ -z "${_RA8_LANG_TOOLCHAINS_SH:-}" ]; then
     tools_dir="$(_ra8_lang_tools_dir)"
     dest="${tools_dir}/zig-${want}"
 
-    if [ ! -x "${dest}/zig" ] || [ "$("${dest}/zig" version 2> /dev/null)" != "${want}" ]; then
+    if [ ! -x "${dest}/zig" ] || [ "$("${dest}/zig" version 2>/dev/null)" != "${want}" ]; then
       case "${arch}" in
-        x86_64) sha="$(_ra8_lang_pin ZIG_SHA256_X86_64)" ;;
-        aarch64) sha="$(_ra8_lang_pin ZIG_SHA256_AARCH64)" ;;
+      x86_64) sha="$(_ra8_lang_pin ZIG_SHA256_X86_64)" ;;
+      aarch64) sha="$(_ra8_lang_pin ZIG_SHA256_AARCH64)" ;;
       esac
       [ -n "${sha}" ] || return 1
       url="https://ziglang.org/download/${want}/zig-${arch}-linux-${want}.tar.xz"
@@ -172,7 +172,7 @@ if [ -z "${_RA8_LANG_TOOLCHAINS_SH:-}" ]; then
       _ra8_lang_fetch "${url}" "${sha}" "${dest}" 1 || return 1
     fi
 
-    if [ "$("${dest}/zig" version 2> /dev/null)" != "${want}" ]; then
+    if [ "$("${dest}/zig" version 2>/dev/null)" != "${want}" ]; then
       _ra8_lang_log "ERROR: provisioned zig at ${dest} is not ${want}"
       return 1
     fi
@@ -189,8 +189,8 @@ if [ -z "${_RA8_LANG_TOOLCHAINS_SH:-}" ]; then
     want="$(_ra8_lang_pin RUST_VERSION)"
     [ -n "${want}" ] || return 1
 
-    if command -v rustc > /dev/null 2>&1 && command -v cargo > /dev/null 2>&1 &&
-      [ "$(rustc --version 2> /dev/null | awk '{print $2}')" = "${want}" ]; then
+    if command -v rustc >/dev/null 2>&1 && command -v cargo >/dev/null 2>&1 &&
+      [ "$(rustc --version 2>/dev/null | awk '{print $2}')" = "${want}" ]; then
       return 0
     fi
 
@@ -200,8 +200,8 @@ if [ -z "${_RA8_LANG_TOOLCHAINS_SH:-}" ]; then
 
     if [ ! -x "${dest}/bin/rustc" ]; then
       case "${arch}" in
-        x86_64) sha="$(_ra8_lang_pin RUST_SHA256_X86_64)" ;;
-        aarch64) sha="$(_ra8_lang_pin RUST_SHA256_AARCH64)" ;;
+      x86_64) sha="$(_ra8_lang_pin RUST_SHA256_X86_64)" ;;
+      aarch64) sha="$(_ra8_lang_pin RUST_SHA256_AARCH64)" ;;
       esac
       [ -n "${sha}" ] || return 1
       url="https://static.rust-lang.org/dist/rust-${want}-${arch}-unknown-linux-gnu.tar.xz"
@@ -217,7 +217,7 @@ if [ -z "${_RA8_LANG_TOOLCHAINS_SH:-}" ]; then
       rm -rf "${unpack}"
     fi
 
-    if [ "$("${dest}/bin/rustc" --version 2> /dev/null | awk '{print $2}')" != "${want}" ]; then
+    if [ "$("${dest}/bin/rustc" --version 2>/dev/null | awk '{print $2}')" != "${want}" ]; then
       _ra8_lang_log "ERROR: provisioned rustc at ${dest} is not ${want}"
       return 1
     fi
