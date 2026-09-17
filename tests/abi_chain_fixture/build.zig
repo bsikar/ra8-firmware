@@ -2,9 +2,12 @@
 //! Copyright (c) 2026 Brighton Sikarskie
 
 const std = @import("std");
+const ra8_build = @import("ra8_zig_build");
 
 pub fn build(b: *std.Build) void {
-    const target = b.standardTargetOptions(.{});
+    // Default target comes from the shared host probe so a native arm64 macOS
+    // build links Zig's bundled libSystem stub instead of the SDK's (#899).
+    const target = b.standardTargetOptions(.{ .default_target = ra8_build.hostDefaultTargetQuery(b) });
     const optimize = b.standardOptimizeOption(.{});
     const module = b.createModule(.{
         .root_source_file = b.path("tests/chain_adapter.zig"),
@@ -34,10 +37,17 @@ pub fn build(b: *std.Build) void {
     test_module.addIncludePath(b.path("../../libs/ra8_core/inc"));
     const tests = b.addTest(.{ .root_module = test_module });
     tests.addObjectFile(.{ .cwd_relative = b.pathJoin(&.{ rust_lib_dir, "libra8_rust_abi_fixture.a" }) });
-    tests.linkSystemLibrary("gcc_s");
-    tests.linkSystemLibrary("pthread");
-    tests.linkSystemLibrary("dl");
-    tests.linkSystemLibrary("m");
+    switch (target.result.os.tag) {
+        .linux => {
+            tests.linkSystemLibrary("gcc_s");
+            tests.linkSystemLibrary("pthread");
+            tests.linkSystemLibrary("dl");
+            tests.linkSystemLibrary("m");
+        },
+        // libSystem carries libc, libm, pthreads and libdl on Darwin.
+        .macos => tests.linkSystemLibrary("System"),
+        else => @panic("host Zig build graphs support Linux and macOS hosts"),
+    }
     if (supplied_lib_dir == null) {
         const cargo = b.addSystemCommand(&.{ "cargo", "build", "--locked", "--manifest-path", b.pathFromRoot("../rust_abi_fixture/Cargo.toml") });
         cargo.setEnvironmentVariable("CARGO_TARGET_DIR", b.pathFromRoot("../rust_abi_fixture/target"));
