@@ -162,7 +162,6 @@ function(ra8_add_test name src_file)
             ${FW_ROOT}/libs/ra8_audio/src
             ${FW_ROOT}/libs/ra8_camera/src
             ${FW_ROOT}/libs/ra8_camera_io/src
-            ${FW_ROOT}/libs/ra8_ftl/src
             ${FW_ROOT}/libs/ra8_sdmmc_spi/src
             ${FW_ROOT}/libs/ra8_gfx/src
             ${FW_ROOT}/libs/ra8_nsc/src

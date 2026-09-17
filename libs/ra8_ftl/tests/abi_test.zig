@@ -15,16 +15,18 @@ const block = core.block_size_bytes;
 
 /// The log sink the archive calls: counts lines and records the last one.
 var log_count: usize = 0;
+var last_tag: []const u8 = "";
 var last_message: []const u8 = "";
 
 export fn ra8_log_emit_error(tag: [*:0]const u8, message: [*:0]const u8) void {
-    _ = tag;
     log_count += 1;
+    last_tag = std.mem.span(tag);
     last_message = std.mem.span(message);
 }
 
 fn resetLog() void {
     log_count = 0;
+    last_tag = "";
     last_message = "";
 }
 
@@ -488,4 +490,262 @@ test "zero-count transfers are accepted and touch nothing" {
     try expectEqual(core.ok, rig.bd.iface.?.erase.?(rig.bd.ctx, 0, 0));
     try expectEqual(@as(u32, 0), rig.fake.programs);
     try expectEqual(@as(u32, 0), rig.fake.erases);
+}
+
+// ---------------------------------------------------------------------------
+// Checkpoint persistence.
+// ---------------------------------------------------------------------------
+
+/// A rig plus the caller-owned checkpoint buffer the C suite uses.
+const CkRig = struct {
+    rig: Rig = .{},
+    buf: [128]u8 = undefined,
+    need: u32 = 0,
+
+    fn init(self: *CkRig) !void {
+        try expectEqual(core.ok, self.rig.init());
+        @memset(&self.buf, 0);
+        try expectEqual(core.ok, abi.ra8_ftl_checkpoint_size(&self.rig.ftl, &self.need));
+    }
+};
+
+test "checkpoint_size: NULL guards log under the checkpoint tag" {
+    var rig: Rig = .{};
+    var size: u32 = 0;
+
+    resetLog();
+    try expectEqual(core.err_null_ptr, abi.ra8_ftl_checkpoint_size(null, &size));
+    try expect(std.mem.eql(u8, last_tag, "ra8_ftl_checkpoint"));
+    try expect(std.mem.eql(u8, last_message, "ftl must not be nullptr"));
+
+    resetLog();
+    try expectEqual(core.err_null_ptr, abi.ra8_ftl_checkpoint_size(&rig.ftl, null));
+    try expect(std.mem.eql(u8, last_tag, "ra8_ftl_checkpoint"));
+    try expect(std.mem.eql(u8, last_message, "size_out must not be nullptr"));
+}
+
+test "checkpoint_size: an unbound handle is not_initialized, and never logged" {
+    var rig: Rig = .{};
+    var size: u32 = 0;
+    resetLog();
+    try expectEqual(core.err_not_initialized, abi.ra8_ftl_checkpoint_size(&rig.ftl, &size));
+    try expect(std.mem.eql(u8, last_message, ""));
+    try expectEqual(@as(u32, 0), size);
+}
+
+test "checkpoint_size: every bound span is required" {
+    var rig: Rig = .{};
+    try expectEqual(core.ok, rig.init());
+    var size: u32 = 0;
+
+    const saved_map = rig.ftl.map;
+    rig.ftl.map = null;
+    try expectEqual(core.err_not_initialized, abi.ra8_ftl_checkpoint_size(&rig.ftl, &size));
+    rig.ftl.map = saved_map;
+
+    const saved_pblocks = rig.ftl.pblocks;
+    rig.ftl.pblocks = null;
+    try expectEqual(core.err_not_initialized, abi.ra8_ftl_checkpoint_size(&rig.ftl, &size));
+    rig.ftl.pblocks = saved_pblocks;
+
+    const saved_scratch = rig.ftl.scratch;
+    rig.ftl.scratch = null;
+    try expectEqual(core.err_not_initialized, abi.ra8_ftl_checkpoint_size(&rig.ftl, &size));
+    rig.ftl.scratch = saved_scratch;
+
+    try expectEqual(core.ok, abi.ra8_ftl_checkpoint_size(&rig.ftl, &size));
+    try expectEqual(@as(u32, 24 + 4 * 2 + 6 * 5), size);
+}
+
+test "checkpoint_save: NULL guards, then the sizing status is propagated" {
+    var rig: Rig = .{};
+    var buf = [_]u8{0} ** 128;
+
+    resetLog();
+    try expectEqual(core.err_null_ptr, abi.ra8_ftl_checkpoint_save(null, &buf, buf.len));
+    try expect(std.mem.eql(u8, last_message, "ftl must not be nullptr"));
+
+    resetLog();
+    try expectEqual(core.err_null_ptr, abi.ra8_ftl_checkpoint_save(&rig.ftl, null, buf.len));
+    try expect(std.mem.eql(u8, last_message, "buf must not be nullptr"));
+
+    try expectEqual(core.err_not_initialized, abi.ra8_ftl_checkpoint_save(&rig.ftl, &buf, buf.len));
+}
+
+test "checkpoint_save: a buffer one byte short is invalid_size" {
+    var ck: CkRig = .{};
+    try ck.init();
+    try expectEqual(core.err_invalid_size, abi.ra8_ftl_checkpoint_save(&ck.rig.ftl, &ck.buf, ck.need - 1));
+    try expectEqual(core.ok, abi.ra8_ftl_checkpoint_save(&ck.rig.ftl, &ck.buf, ck.need));
+}
+
+test "checkpoint_save: a destination aliasing FTL state is invalid_arg" {
+    var ck: CkRig = .{};
+    try ck.init();
+
+    const over_map: [*]u8 = @ptrCast(&ck.rig.map);
+    try expectEqual(core.err_invalid_arg, abi.ra8_ftl_checkpoint_save(&ck.rig.ftl, over_map, ck.need));
+
+    const over_pblocks: [*]u8 = @ptrCast(&ck.rig.pblocks);
+    try expectEqual(
+        core.err_invalid_arg,
+        abi.ra8_ftl_checkpoint_save(&ck.rig.ftl, over_pblocks, ck.need),
+    );
+
+    const over_scratch: [*]u8 = @ptrCast(&ck.rig.scratch);
+    try expectEqual(
+        core.err_invalid_arg,
+        abi.ra8_ftl_checkpoint_save(&ck.rig.ftl, over_scratch, ck.need),
+    );
+}
+
+test "checkpoint_save: inconsistent live tables are invalid_state, nothing written" {
+    var ck: CkRig = .{};
+    try ck.init();
+    ck.rig.map[0] = 2; // mapped, but physical block 2 is still FREE
+    try expectEqual(core.err_invalid_state, abi.ra8_ftl_checkpoint_save(&ck.rig.ftl, &ck.buf, ck.need));
+    for (ck.buf) |byte| {
+        try expectEqual(@as(u8, 0), byte);
+    }
+}
+
+test "checkpoint_save: the encoded header is the canonical wire format" {
+    var ck: CkRig = .{};
+    try ck.init();
+    try expectEqual(core.ok, abi.ra8_ftl_checkpoint_save(&ck.rig.ftl, &ck.buf, @intCast(ck.buf.len)));
+
+    try expectEqual(@as(u8, 'R'), ck.buf[0]);
+    try expectEqual(@as(u8, 'F'), ck.buf[1]);
+    try expectEqual(@as(u8, 'T'), ck.buf[2]);
+    try expectEqual(@as(u8, 'L'), ck.buf[3]);
+    try expectEqual(core.ck_version, core.getLe16(ck.buf[core.ck_off_version..]));
+    try expectEqual(ck.need, core.getLe32(ck.buf[core.ck_off_total_bytes..]));
+    try expectEqual(@as(u32, 4), core.getLe32(ck.buf[core.ck_off_logical_blocks..]));
+    try expectEqual(@as(u32, 6), core.getLe32(ck.buf[core.ck_off_physical_blocks..]));
+    // Bytes past the checkpoint are never touched.
+    for (ck.buf[ck.need..]) |byte| {
+        try expectEqual(@as(u8, 0), byte);
+    }
+}
+
+test "checkpoint: a power cycle survives save, discard and load" {
+    var ck: CkRig = .{};
+    try ck.init();
+    try expectEqual(core.ok, ck.rig.bind());
+
+    var payload = [_]u8{0} ** block;
+    for (&payload, 0..) |*byte, i| {
+        byte.* = @truncate(i *% 17 +% 100);
+    }
+    try expectEqual(core.ok, abi.ftl_iface.write.?(&ck.rig.ftl, 1, 1, &payload));
+    const mapped = ck.rig.map[1];
+    try expect(mapped != core.unmapped);
+
+    try expectEqual(core.ok, abi.ra8_ftl_checkpoint_save(&ck.rig.ftl, &ck.buf, @intCast(ck.buf.len)));
+
+    // SRAM loss: the handle and both caller tables go, the medium stays.
+    const medium = ck.rig.fake.medium;
+    ck.rig.ftl = .{};
+    try expectEqual(core.ok, abi.ra8_ftl_init(
+        &ck.rig.ftl,
+        &ck.rig.raw,
+        &ck.rig.map,
+        4,
+        &ck.rig.pblocks,
+        6,
+        &ck.rig.scratch,
+    ));
+    ck.rig.fake.medium = medium;
+    try expectEqual(core.unmapped, ck.rig.map[1]);
+
+    try expectEqual(core.ok, abi.ra8_ftl_checkpoint_load(&ck.rig.ftl, &ck.buf, ck.need));
+    try expectEqual(mapped, ck.rig.map[1]);
+    try expectEqual(core.pstate_live, ck.rig.pblocks[mapped].state);
+
+    var read_back = [_]u8{0} ** block;
+    try expectEqual(core.ok, abi.ftl_iface.read.?(&ck.rig.ftl, 1, 1, &read_back));
+    try expect(std.mem.eql(u8, &payload, &read_back));
+}
+
+test "checkpoint_load: NULL guards and an unbound handle" {
+    var rig: Rig = .{};
+    var buf = [_]u8{0} ** 64;
+
+    resetLog();
+    try expectEqual(core.err_null_ptr, abi.ra8_ftl_checkpoint_load(null, &buf, buf.len));
+    try expect(std.mem.eql(u8, last_message, "ftl must not be nullptr"));
+
+    resetLog();
+    try expectEqual(core.err_null_ptr, abi.ra8_ftl_checkpoint_load(&rig.ftl, null, buf.len));
+    try expect(std.mem.eql(u8, last_message, "buf must not be nullptr"));
+
+    try expectEqual(core.err_not_initialized, abi.ra8_ftl_checkpoint_load(&rig.ftl, &buf, buf.len));
+}
+
+test "checkpoint_load: a source aliasing FTL state is invalid_arg" {
+    var ck: CkRig = .{};
+    try ck.init();
+    const over_map: [*]const u8 = @ptrCast(&ck.rig.map);
+    try expectEqual(core.err_invalid_arg, abi.ra8_ftl_checkpoint_load(&ck.rig.ftl, over_map, ck.need));
+}
+
+test "checkpoint_load: a rejected checkpoint leaves both live tables alone" {
+    var ck: CkRig = .{};
+    try ck.init();
+    try expectEqual(core.ok, abi.ra8_ftl_checkpoint_save(&ck.rig.ftl, &ck.buf, @intCast(ck.buf.len)));
+
+    // Make the live state differ from the saved one, then feed in damaged
+    // copies: every arm must refuse without touching map or pblocks.
+    ck.rig.map[3] = 4;
+    ck.rig.pblocks[4].state = core.pstate_live;
+    const map_before = ck.rig.map;
+    const pblocks_before = ck.rig.pblocks;
+
+    var edit = ck.buf;
+    edit[core.ck_header_bytes] ^= 0xFF; // payload edited, trailer stale
+    try expectEqual(core.err_crc_mismatch, abi.ra8_ftl_checkpoint_load(&ck.rig.ftl, &edit, ck.need));
+
+    edit = ck.buf;
+    core.putLe32(edit[0..], 0x11223344); // foreign magic
+    try expectEqual(core.err_invalid_state, abi.ra8_ftl_checkpoint_load(&ck.rig.ftl, &edit, ck.need));
+
+    edit = ck.buf;
+    core.putLe32(edit[0..], core.ck_legacy_magic_le); // legacy native layout
+    try expectEqual(core.err_not_supported, abi.ra8_ftl_checkpoint_load(&ck.rig.ftl, &edit, ck.need));
+
+    edit = ck.buf;
+    core.putLe32(edit[0..], core.ck_legacy_magic_swapped); // legacy, other order
+    try expectEqual(core.err_not_supported, abi.ra8_ftl_checkpoint_load(&ck.rig.ftl, &edit, ck.need));
+
+    // Short of the exact length for this geometry.
+    try expectEqual(core.err_invalid_size, abi.ra8_ftl_checkpoint_load(&ck.rig.ftl, &ck.buf, ck.need - 1));
+
+    try expectEqual(map_before, ck.rig.map);
+    for (pblocks_before, ck.rig.pblocks) |want, got| {
+        try expectEqual(want.erase_count, got.erase_count);
+        try expectEqual(want.state, got.state);
+    }
+}
+
+test "checkpoint_load: a checkpoint of another geometry is invalid_arg" {
+    var ck: CkRig = .{};
+    try ck.init();
+    try expectEqual(core.ok, abi.ra8_ftl_checkpoint_save(&ck.rig.ftl, &ck.buf, @intCast(ck.buf.len)));
+
+    var edit = ck.buf;
+    core.putLe32(edit[core.ck_off_logical_blocks..], 3);
+    core.putLe32(edit[ck.need - core.ck_crc_bytes ..], core.crc32(edit[0 .. ck.need - core.ck_crc_bytes]));
+    try expectEqual(core.err_invalid_arg, abi.ra8_ftl_checkpoint_load(&ck.rig.ftl, &edit, ck.need));
+}
+
+test "checkpoint_load: a payload whose mapping contradicts itself is invalid_state" {
+    var ck: CkRig = .{};
+    try ck.init();
+    try expectEqual(core.ok, abi.ra8_ftl_checkpoint_save(&ck.rig.ftl, &ck.buf, @intCast(ck.buf.len)));
+
+    // Map logical 0 onto a physical block the payload still calls FREE.
+    var edit = ck.buf;
+    core.putLe16(edit[core.ck_header_bytes..], 2);
+    core.putLe32(edit[ck.need - core.ck_crc_bytes ..], core.crc32(edit[0 .. ck.need - core.ck_crc_bytes]));
+    try expectEqual(core.err_invalid_state, abi.ra8_ftl_checkpoint_load(&ck.rig.ftl, &edit, ck.need));
 }

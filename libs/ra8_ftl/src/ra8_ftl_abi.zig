@@ -372,3 +372,159 @@ pub export fn ra8_ftl_phys_of(ftl: ?*const Ftl, lbn: u32, phys_out: ?*u16) callc
     out.* = mapSlice(handle)[lbn];
     return core.ok;
 }
+
+// ---------------------------------------------------------------------------
+// Checkpoint persistence (`ra8_ftl_checkpoint.c`).
+//
+// Note the DIFFERENT log tag: the checkpoint translation unit logs under
+// "ra8_ftl_checkpoint", not "ra8_ftl", and every message below is verbatim.
+// ---------------------------------------------------------------------------
+
+const checkpoint_tag: [*:0]const u8 = "ra8_ftl_checkpoint";
+
+fn scratchSlice(ftl: *const Ftl) []u8 {
+    return ftl.scratch.?[0..core.ck_scratch_bytes];
+}
+
+/// `internal_ready`: all four caller-owned spans must be bound.
+fn checkpointReady(ftl: *const Ftl) Err {
+    if (ftl.raw == null) {
+        return core.err_not_initialized;
+    }
+    if (ftl.map == null) {
+        return core.err_not_initialized;
+    }
+    if (ftl.pblocks == null) {
+        return core.err_not_initialized;
+    }
+    return if (ftl.scratch == null) core.err_not_initialized else core.ok;
+}
+
+/// `internal_disjoint`: scratch against both live tables (an FTL fault), then
+/// the caller's checkpoint span against all three (a caller fault).
+///
+/// The two byte counts use the C's wrapping `uint32_t` arithmetic; both are
+/// bounded anyway because the geometry was sized before this runs.
+fn checkpointDisjoint(ftl: *const Ftl, buffer: usize, buffer_bytes: u32) Err {
+    const map_bytes = ftl.logical_blocks *% @as(u32, @sizeOf(u16));
+    const pb_bytes = ftl.physical_blocks *% @as(u32, @sizeOf(core.Pblock));
+    const scratch = @intFromPtr(ftl.scratch.?);
+    const map = @intFromPtr(ftl.map.?);
+    const pblocks = @intFromPtr(ftl.pblocks.?);
+
+    if (core.rangesOverlap(scratch, core.ck_scratch_bytes, map, map_bytes)) {
+        return core.err_invalid_state;
+    }
+    if (core.rangesOverlap(scratch, core.ck_scratch_bytes, pblocks, pb_bytes)) {
+        return core.err_invalid_state;
+    }
+    if (core.rangesOverlap(buffer, buffer_bytes, map, map_bytes)) {
+        return core.err_invalid_arg;
+    }
+    if (core.rangesOverlap(buffer, buffer_bytes, pblocks, pb_bytes)) {
+        return core.err_invalid_arg;
+    }
+    return if (core.rangesOverlap(buffer, buffer_bytes, scratch, core.ck_scratch_bytes))
+        core.err_invalid_arg
+    else
+        core.ok;
+}
+
+pub export fn ra8_ftl_checkpoint_size(ftl: ?*const Ftl, size_out: ?*u32) callconv(.c) Err {
+    const handle = ftl orelse {
+        ra8_log_emit_error(checkpoint_tag, "ftl must not be nullptr");
+        return core.err_null_ptr;
+    };
+    const out = size_out orelse {
+        ra8_log_emit_error(checkpoint_tag, "size_out must not be nullptr");
+        return core.err_null_ptr;
+    };
+    const ready = checkpointReady(handle);
+    if (ready != core.ok) {
+        return ready;
+    }
+    switch (core.sizeValues(handle.logical_blocks, handle.physical_blocks)) {
+        .fault => |f| return f,
+        .value => |v| {
+            out.* = v;
+            return core.ok;
+        },
+    }
+}
+
+pub export fn ra8_ftl_checkpoint_save(ftl: ?*const Ftl, buf: ?[*]u8, buf_len: u32) callconv(.c) Err {
+    const handle = ftl orelse {
+        ra8_log_emit_error(checkpoint_tag, "ftl must not be nullptr");
+        return core.err_null_ptr;
+    };
+    const dst = buf orelse {
+        ra8_log_emit_error(checkpoint_tag, "buf must not be nullptr");
+        return core.err_null_ptr;
+    };
+    // The C calls the public sizing entry point, so an unbound handle answers
+    // not_initialized here and nothing is logged a second time.
+    var need: u32 = 0;
+    const sized = ra8_ftl_checkpoint_size(handle, &need);
+    if (sized != core.ok) {
+        return sized;
+    }
+    if (buf_len < need) {
+        return core.err_invalid_size;
+    }
+    // Save judges aliasing over the bytes it will WRITE, which is `need`.
+    const disjoint = checkpointDisjoint(handle, @intFromPtr(dst), need);
+    if (disjoint != core.ok) {
+        return disjoint;
+    }
+    const valid = core.validateNative(mapSlice(handle), pblockSlice(handle), scratchSlice(handle));
+    if (valid != core.ok) {
+        return valid;
+    }
+    core.encode(mapSlice(handle), pblockSlice(handle), dst[0..need], need);
+    return core.ok;
+}
+
+pub export fn ra8_ftl_checkpoint_load(ftl: ?*Ftl, buf: ?[*]const u8, buf_len: u32) callconv(.c) Err {
+    const handle = ftl orelse {
+        ra8_log_emit_error(checkpoint_tag, "ftl must not be nullptr");
+        return core.err_null_ptr;
+    };
+    const src = buf orelse {
+        ra8_log_emit_error(checkpoint_tag, "buf must not be nullptr");
+        return core.err_null_ptr;
+    };
+    var need: u32 = 0;
+    const sized = ra8_ftl_checkpoint_size(handle, &need);
+    if (sized != core.ok) {
+        return sized;
+    }
+    // Load judges aliasing over the bytes it will READ, which is the caller's
+    // `buf_len`, before the header has proven that length is the right one.
+    const disjoint = checkpointDisjoint(handle, @intFromPtr(src), buf_len);
+    if (disjoint != core.ok) {
+        return disjoint;
+    }
+    const bytes = src[0..buf_len];
+    const header = core.validateHeader(
+        bytes,
+        buf_len,
+        need,
+        handle.logical_blocks,
+        handle.physical_blocks,
+    );
+    if (header != core.ok) {
+        return header;
+    }
+    const valid = core.validateWire(
+        bytes,
+        handle.logical_blocks,
+        handle.physical_blocks,
+        scratchSlice(handle),
+    );
+    if (valid != core.ok) {
+        return valid;
+    }
+    // Transactional: both live tables are touched only now.
+    core.decodeCommit(mapSlice(handle), pblockSlice(handle), bytes);
+    return core.ok;
+}

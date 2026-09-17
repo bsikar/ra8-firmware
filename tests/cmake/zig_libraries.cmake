@@ -324,11 +324,11 @@ ra8_add_zig_library(
 
 # ra8_core_hal is the OBJECT library every host test links, so an INTERFACE
 # link here reaches each test executable that pulls in a migrated library.
-# Partially migrated: the FTL core (init, the presented free-overwrite vtable,
-# copy-on-write relocation, reclamation and wear-levelling) is Zig now, so
-# libs/ra8_ftl/src/ra8_ftl.c is gone and the RA8_FTL_SOURCES glob finds only
-# ra8_ftl_checkpoint.c, which stays C for now. The archive calls the
-# ra8_io_blockdev_* front door, which lives in ra8_core_hal's own objects.
+# Fully migrated: the FTL core (init, the presented free-overwrite vtable,
+# copy-on-write relocation, reclamation and wear-levelling) and the canonical
+# checkpoint codec are both Zig now, so libs/ra8_ftl/src holds no C at all and
+# the RA8_FTL_SOURCES glob is gone. The archive calls the ra8_io_blockdev_*
+# front door, which lives in ra8_core_hal's own objects.
 ra8_add_zig_library(
   NAME
   ra8_ftl
