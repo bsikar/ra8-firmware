@@ -255,7 +255,16 @@ def _block_delay_starts_when_capacity_is_lost(controller: ModuleType, failures: 
         failures.append(
             f"the drained producer's record did not start on the pass that drained it: {record}"
         )
-    if status not in {ORDINARY_FAILURE_STATUS, controller.CASCADE_STATUS}:
+    # By this pass the producer has held its durable maintenance park across
+    # ``PARK_ESCALATION_PASSES`` refused drains, so the park escalation is due
+    # and ``STRANDED_STATUS`` is the honest verdict for a host nothing has
+    # lifted off zero admission for that long.  What this case pins is the
+    # BLOCK DELAY, which the assertions above carry.
+    if status not in {
+        ORDINARY_FAILURE_STATUS,
+        controller.CASCADE_STATUS,
+        controller.STRANDED_STATUS,
+    }:
         failures.append(f"the pass that drained the producer earned {status}")
 
 
