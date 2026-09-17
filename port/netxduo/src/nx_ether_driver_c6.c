@@ -220,7 +220,6 @@ void nx_ether_driver_c6_bind(ra8_c6link_t* link)
  * lsw (octets 2..5); this splits them back into a byte array.
  * @param[in] iface Interface whose physical address is read; must be non-null.
  * @param[out] mac Six-octet buffer to fill; must be non-null.
- * @return Nothing.
  * @pre @p iface->nx_interface_physical_address_msw/lsw hold the address.
  * @pre @p mac has room for ::k_nx_c6_mac_len octets.
  * @post @p mac holds the interface address, most-significant octet first.
@@ -246,7 +245,6 @@ RA8_INTERNAL static void internal_unpack_mac(const NX_INTERFACE* iface, uint8_t*
  * address later (ARP, sender stamping) see the value INITIALIZE adopted.
  * @param[in,out] iface Interface to update; must be non-null.
  * @param[in] mac Six-octet address to install; must be non-null.
- * @return Nothing.
  * @pre @p mac points at ::k_nx_c6_mac_len readable octets.
  * @pre @p iface is the interface INITIALIZE is bringing up.
  * @post @p iface's physical-address words hold @p mac.
@@ -270,7 +268,6 @@ RA8_INTERNAL static void internal_stamp_iface_mac(NX_INTERFACE* iface, const uin
  * the packet to the matching deferred-receive path (IP, ARP or RARP). An
  * unknown EtherType or a runt frame is released rather than leaked.
  * @param[in,out] pkt Packet holding the raw Ethernet frame; must be non-null.
- * @return Nothing; @p pkt is consumed (queued to NetX) or released.
  * @pre ::s_rx_ip and ::s_rx_iface have been populated by INITIALIZE.
  * @pre @p pkt holds a frame whose length includes the Ethernet header.
  * @post A well-formed frame is owned by NetX; anything else is released.
@@ -398,11 +395,11 @@ void nx_ether_driver_c6_rx(void* ctx, const uint8_t* frame, uint16_t len)
  * from inside that poll. One transaction is clocked per wake and the worker
  * sleeps one tick between checks so an idle C6 never blocks outbound traffic.
  * @param[in] arg ThreadX entry argument; unused.
- * @return Never returns.
  * @pre The driver has been bound and the mutex created.
  * @pre INITIALIZE has populated ::s_rx_ip and set ::s_open.
  * @post Received frames are delivered to NetX whenever the link is open.
  * @post ::s_nx_c6_diag.poll_total counts every poll performed.
+ * @post Never returns; the poll loop runs for the lifetime of the thread.
  * @note Runs at ::k_nx_c6_worker_priority alongside the NetX IP thread.
  * @since 0.1.0
  */
@@ -445,7 +442,6 @@ RA8_INTERNAL static void internal_rx_worker_entry(ULONG arg)
  * path pushes frames into, then creates the worker; a second call is a no-op.
  * @param[in] ip NetX IP the worker pushes received frames into; non-null.
  * @param[in] iface NetX interface the worker tags frames with; non-null.
- * @return Nothing.
  * @pre The ThreadX kernel is running.
  * @pre @p ip and @p iface are the objects INITIALIZE is bringing up.
  * @post On first call the worker is running and its one-shot spawn guard is set.
@@ -563,7 +559,6 @@ internal_packet_to_buffer(const NX_PACKET* packet, uint8_t* dst, uint32_t cap, u
  * from ::internal_ethertype_for_cmd. The body is appended after this by the caller.
  * @param[in] req NetX driver request carrying the destination and command;
  *                must be non-null.
- * @return Nothing.
  * @pre ::s_local_mac holds the station address.
  * @pre The first ::k_nx_c6_hdr_bytes of ::s_tx_staging are writable.
  * @post ::s_tx_staging[0..13] holds a valid Ethernet II header.
@@ -601,11 +596,11 @@ RA8_INTERNAL static void internal_write_eth_header(const NX_IP_DRIVER* req)
  * link open and starts the RX poll worker. The C6 link is already open, so no
  * hardware is brought up here.
  * @param[in,out] req NetX driver request; must be non-null.
- * @return Nothing; the result is written to @p req->nx_ip_driver_status.
  * @pre ::nx_ether_driver_c6_bind has run with an open link.
  * @pre @p req->nx_ip_driver_interface names the interface being initialised.
  * @post On success ::s_open is set and the RX worker is running.
  * @post On failure @p req->nx_ip_driver_status is NX_NOT_SUCCESSFUL.
+ * @post On success @p req->nx_ip_driver_status is NX_SUCCESS.
  * @note Not thread-safe; NetX issues INITIALIZE once, on the IP thread.
  * @since 0.1.0
  */
@@ -672,7 +667,6 @@ RA8_INTERNAL static bool internal_send_blocked(const NX_PACKET* pkt)
  * zero-pads a runt to the 802.3 minimum, and forwards the whole frame to
  * ``ra8_c6link_eth_send`` under the wire mutex. The packet is always released.
  * @param[in,out] req NetX driver request carrying the packet; must be non-null.
- * @return Nothing; the result is written to @p req->nx_ip_driver_status.
  * @pre ::s_open and ::s_link_up are set and the mutex exists.
  * @pre @p req->nx_ip_driver_packet is a valid packet chain.
  * @post The packet is released exactly once via nx_packet_transmit_release.
@@ -725,10 +719,9 @@ RA8_INTERNAL static void internal_handle_send(NX_IP_DRIVER* req)
  * @details The C6 has no PHY status register to poll; association is reflected
  * through NX_LINK_ENABLE, so this returns the ::s_link_up mirror.
  * @param[in,out] req NetX driver request with a return pointer; must be non-null.
- * @return Nothing; the state is written through @p req->nx_ip_driver_return_ptr.
  * @pre @p req->nx_ip_driver_return_ptr is non-null for a meaningful answer.
  * @pre ::s_link_up reflects the most recent ENABLE / DISABLE.
- * @post The return pointer holds NX_TRUE or NX_FALSE.
+ * @post A non-null return pointer holds NX_TRUE or NX_FALSE; a null one is left untouched.
  * @post @p req->nx_ip_driver_status names success or the null-pointer failure.
  * @note Not thread-safe; NetX calls it on the IP thread.
  * @since 0.1.0
@@ -750,11 +743,11 @@ RA8_INTERNAL static void internal_handle_get_status(NX_IP_DRIVER* req)
  * with the driver about whether the link is up.
  * @param[in,out] req NetX driver request; must be non-null.
  * @param[in] link_up 1 to bring the link up, 0 to bring it down.
- * @return Nothing; @p req->nx_ip_driver_status is set to NX_SUCCESS.
  * @pre @p link_up is 0 or 1.
  * @pre @p req is the ENABLE or DISABLE request being handled.
  * @post ::s_link_up equals @p link_up.
  * @post Any NetX interface on @p req mirrors the new link state.
+ * @post @p req->nx_ip_driver_status is set to NX_SUCCESS; the handler has no failure path.
  * @note Not thread-safe; serialised on the NetX IP thread.
  * @since 0.1.0
  */

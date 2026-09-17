@@ -65,8 +65,6 @@ extern "C" {
  * @param[in,out] driver_req NetX Duo driver request block; NetX never passes
  *                           null, but a null is tolerated as a no-op.
  *
- * @return Nothing; the outcome is written to @p driver_req->nx_ip_driver_status.
- *
  * @pre ::nx_ether_driver_c6_bind has run with an open, associated link.
  * @pre The caller is NetX Duo's IP thread (the dispatch is not re-entrant).
  * @post @p driver_req->nx_ip_driver_status is set to NX_SUCCESS or an error.
@@ -91,8 +89,6 @@ void nx_ether_driver_c6(NX_IP_DRIVER* driver_req);
  * @param[in] link Open, associated C6 link handle; must be non-null and must
  *                 outlive every NetX operation on this interface.
  *
- * @return Nothing.
- *
  * @pre The ThreadX kernel is running (``tx_application_define`` has returned).
  * @pre @p link is open and its receive callback is ::nx_ether_driver_c6_rx.
  * @post The driver forwards transmit and receive through @p link.
@@ -116,8 +112,6 @@ void nx_ether_driver_c6_bind(ra8_c6link_t* link);
  * before ``nx_ip_create`` so INITIALIZE has the real value.
  *
  * @param[in] mac Six-octet station MAC; must be non-null.
- *
- * @return Nothing.
  *
  * @pre @p mac points at ::k_ra8_c6link_mac_bytes readable octets.
  * @pre Called before ``nx_ip_create`` for deterministic INITIALIZE framing.
@@ -146,8 +140,6 @@ void nx_ether_driver_c6_set_mac(const uint8_t mac[6]);
  * @param[in] frame Whole Ethernet II frame including the 14-byte header; must
  *                  be non-null when @p len is non-zero.
  * @param[in] len   Frame length in octets.
- *
- * @return Nothing; a frame that cannot be delivered is dropped and counted.
  *
  * @pre The driver has been bound and, for delivery, ``NX_LINK_INITIALIZE`` ran.
  * @pre @p len is at least the 14-byte Ethernet header for delivery.
