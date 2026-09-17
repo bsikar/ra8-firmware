@@ -553,6 +553,54 @@
         {"name": "ra8_audio_source_memory_init", "calling_context": "task-only-non-reentrant", "ownership": "copies frame metadata into caller state and borrows its payload until stop"},
         {"name": "ra8_audio_source_pdm_init", "calling_context": "task-only-non-reentrant", "ownership": "initializes caller-owned state and retains it until the source is stopped"}
       ]
+    },
+    {
+      "name": "ra8_wifi",
+      "build_root": "libs/ra8_wifi",
+      "public_header": "libs/ra8_wifi/inc/ra8_wifi.h",
+      "adapter": "libs/ra8_wifi/src/ra8_wifi_abi.zig",
+      "library_name": "ra8_wifi",
+      "symbol_prefix": "ra8_wifi_",
+      "compatibility_sha256": "ba037183509ac7bbb687c4dae57053d2b007052d6d8752290375111c4341afd8",
+      "layout_assertions": [
+        "@sizeOf(Backend) == ptr * 10",
+        "@sizeOf(Config) == ptr * 4",
+        "@offsetOf(Wifi, \"ip_bind\") == ptr * 2",
+        "@offsetOf(Wifi, \"lease\") == ptr * 4 + 8",
+        "@offsetOf(Wifi, \"state\") == ptr * 4 + 28",
+        "@offsetOf(Wifi, \"mac_valid\") == ptr * 4 + 32"
+      ],
+      "target_class": "host-ra8",
+      "targets": {
+        "host": [],
+        "ra8": ["-Dtarget=thumb-freestanding-eabihf", "-Dcpu=cortex_m85+fp_armv8-d32-fp64"]
+      },
+      "run_host_tests_in_all_modes": false,
+      "c_include_dirs": ["libs/ra8_wifi/inc", "libs/ra8_core/inc"],
+      "contract_tests": [
+        {
+          "language": "c",
+          "path": "tests/wireless/src/test_ra8_wifi.c",
+          "registration": "tests/cmake/unit_tests.cmake"
+        },
+        {
+          "language": "zig",
+          "path": "libs/ra8_wifi/tests/abi_test.zig",
+          "registration": "libs/ra8_wifi/.zig-test-contract.json"
+        }
+      ],
+      "exports": [
+        {"name": "ra8_wifi_init", "calling_context": "task-only-non-reentrant", "ownership": "borrows config, backend and contexts while initializing the caller-owned handle"},
+        {"name": "ra8_wifi_deinit", "calling_context": "task-only-non-reentrant", "ownership": "closes the backend and resets the caller-owned handle without freeing it"},
+        {"name": "ra8_wifi_connect", "calling_context": "task-only-non-reentrant", "ownership": "borrows SSID and PSK strings during join and association polling"},
+        {"name": "ra8_wifi_disconnect", "calling_context": "task-only-non-reentrant", "ownership": "calls backend leave and shutdown, then clears caller-owned state"},
+        {"name": "ra8_wifi_wait_ip", "calling_context": "task-only-non-reentrant", "ownership": "writes the caller-owned lease output when the provider succeeds"},
+        {"name": "ra8_wifi_get_ip", "calling_context": "task-only-non-reentrant", "ownership": "copies the current lease into caller-owned output storage"},
+        {"name": "ra8_wifi_status", "calling_context": "task-only-non-reentrant", "ownership": "copies current state into caller-owned snapshot storage"},
+        {"name": "ra8_wifi_poll", "calling_context": "task-only-non-reentrant", "ownership": "writes one link-state byte into caller-owned output storage"},
+        {"name": "ra8_wifi_get_mac", "calling_context": "task-only-non-reentrant", "ownership": "copies cached or freshly read station address into caller-owned output"},
+        {"name": "ra8_wifi_get_ap", "calling_context": "task-only-non-reentrant", "ownership": "copies current access-point data into caller-owned output storage"}
+      ]
     }
   ]
 }
