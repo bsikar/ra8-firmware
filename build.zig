@@ -307,6 +307,47 @@ pub const cross_apps = [_]CrossApp{
         .libraries = &.{ "ra8_board_ek_ra8d2", "ra8_io_bus" },
         .zig_libraries = &.{},
     },
+    .{
+        // The third app, for the rule NEITHER of the first two can see: both
+        // of them keep exactly one translation unit under their own `src/`
+        // (main.c), so every app-local decision ra8_add_app() makes was
+        // unobservable. cpu1_pingpong keeps three, and each takes a different
+        // arm:
+        //
+        //   src/main.c            the primary entry point, added first.
+        //   src/trustzone_init.c  an app-local override of a BOOT unit, so the
+        //                         board's src/boot copy must NOT be linked --
+        //                         the other arm of the per-app boot resolver,
+        //                         which both earlier apps took the board side
+        //                         of, five times each.
+        //   src/cpu1_main.c       named in AUX_SRCS: the Cortex-M33 entry
+        //                         point for the SECOND image this app builds,
+        //                         which must be kept out of the M85 image
+        //                         entirely.
+        //
+        // It also ships an `inc/` of its own (the dual-core mailbox contract
+        // shared_pingpong.h), which is the first directory on CMake's include
+        // path and had never been exercised either.
+        //
+        // No LIBS, no USES, no migrated Zig archive, so #948 does not block it.
+        //
+        // DELIBERATE SCOPE CUT: the app's CMakeLists hand-rolls a second
+        // executable for the M33 (cpu1_pingpong_cpu1.elf, four TUs at
+        // -mcpu=cortex-m33, its own linker script) and objcopies the result
+        // into the M85 image as a .cpu1_image blob. That is app-local CMake
+        // outside ra8_add_app(), and it is a slice of its own; what this graph
+        // claims parity on is the source set and include path ra8_add_app()
+        // decides, which is exactly what the 200-TU comparison measures.
+        .name = "cpu1_pingpong",
+        .dir = "examples/ek_ra8d2/hw_validated/hil/cpu1_pingpong",
+        .board = "libs/ra8_board_ek_ra8d2",
+        // The app ships its own linker_script.ld (it pins .cpu1_image at
+        // ORIGIN(MRAM_CPU1)), so ra8_add_app() takes that one over the board's.
+        .linker_script = "examples/ek_ra8d2/hw_validated/hil/cpu1_pingpong/linker_script.ld",
+        .libraries = &.{},
+        .zig_libraries = &.{},
+        .aux_srcs = &.{"src/cpu1_main.c"},
+    },
 };
 
 /// CPU flags from cmake/toolchain-ra8d2.cmake. The RA8D2 primary M85 is
