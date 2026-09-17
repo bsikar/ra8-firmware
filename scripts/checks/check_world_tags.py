@@ -38,9 +38,15 @@ Modes:
     --strict (onward) -- exit 1 on any finding
     --selftest -- prove the bans fire and the scope decision holds, then exit
 
-A finite LEGACY_RING3_EXEMPT_PREFIXES list grandfathers the pre-tag-system
-libs/ra8_hal/ and tests/ files: each leaves the exemption automatically the
-moment it grows either tag, so the exemption only ever shrinks.
+A finite EXACT-PATH inventory (.github/world-tag-legacy-inventory.txt)
+grandfathers the pre-tag-system libs/ra8_hal/ and tests/ files. It replaced an
+open-ended PREFIX exemption on those two roots, which let a brand-new untagged
+file under either of them pass the strict gate while the comment beside it said
+new code had no route into the exemption (#842). Membership is by exact path,
+so a file that did not exist when the rule landed cannot be exempt; an
+inventoried file also leaves the exemption the moment it grows either tag, and
+a row whose file is gone or is tagged now is reported as stale. The exemption
+therefore only ever shrinks.
 """
 
 from __future__ import annotations
@@ -101,20 +107,42 @@ def discover_app_dirs() -> tuple[str, ...]:
 
 APP_DIRS = discover_app_dirs()
 
-# Files that lived in the tree before the world-tag system was
-# introduced (baseline). They are exempt from world-tag
-# enforcement until the wave that retrofits them. As soon as a file
-# under one of these prefixes gains its [Ring N / NAME] +
-# {World: ...} tag pair, it leaves the exemption automatically:
-# the script enforces consistency on any file that already carries
-# at least one of the two tags.
+# Files that lived in the tree before the world-tag system was introduced
+# (baseline). They are exempt from world-tag enforcement until the wave that
+# retrofits them. As soon as an inventoried file gains its [Ring N / NAME] +
+# {World: ...} tag pair, it leaves the exemption automatically: the script
+# enforces consistency on any file that already carries at least one tag.
 #
-# Practical effect: starts with 0 findings; + adds tags
-# incrementally and the script catches any mismatches.
-LEGACY_RING3_EXEMPT_PREFIXES = (
-    "libs/ra8_hal/",
-    "tests/",
-)
+# The inventory is an EXACT-PATH list, not a prefix list (#842). Prefixes
+# ("libs/ra8_hal/", "tests/") exempted every FUTURE file under those roots too,
+# so a brand-new untagged HAL or test file passed the strict gate. An exact
+# list cannot grandfather a file that did not exist when the rule landed.
+LEGACY_INVENTORY_PATH = REPO_ROOT / ".github" / "world-tag-legacy-inventory.txt"
+
+
+def load_legacy_inventory(path: pathlib.Path = LEGACY_INVENTORY_PATH) -> frozenset[str]:
+    """Read the exact set of repo-relative paths grandfathered out of the tag rule.
+
+    A missing inventory yields an EMPTY set rather than an error, which fails
+    CLOSED: every Ring 3+ file is then required to carry its tags. The opposite
+    default would turn a deleted or unreadable inventory into a silently
+    tag-free tree, which is the failure mode this gate exists to prevent.
+
+    Blank lines and ``#`` comments are ignored so the file can explain itself.
+    """
+    try:
+        text = path.read_text(encoding="utf-8")
+    except OSError:
+        return frozenset()
+    entries = set()
+    for line in text.splitlines():
+        entry = line.strip()
+        if entry and not entry.startswith("#"):
+            entries.add(entry)
+    return frozenset(entries)
+
+
+LEGACY_RING3_EXEMPT_PATHS = load_legacy_inventory()
 
 # Header-window size for tag scanning. The tags must appear in the
 # first N lines of the file (just inside the file-level Doxygen
@@ -126,14 +154,45 @@ WORLD_RE = re.compile(r"\{\s*World\s*:\s*(S|NS|NSC|MIXED)\s*\}")
 NSC_ENTRY_RE = re.compile(r"__attribute__\s*\(\s*\(\s*cmse_nonsecure_entry\s*\)\s*\)")
 
 
-def is_legacy_exempt(rel_path: str) -> bool:
+def is_legacy_exempt(rel_path: str, inventory: frozenset[str] | None = None) -> bool:
     """Whether a path predates the World-tag requirement and is grandfathered.
 
-    A prefix list, deliberately finite and not extended: it records what was
-    already in the tree when the rule landed. New code has no route into it,
-    so the exemption shrinks as those files are tagged and never grows.
+    Exact membership of the finite inventory, deliberately not a prefix test:
+    the list records what was already in the tree when the rule landed. New
+    code has no route into it, so the exemption shrinks as those files are
+    tagged and never grows.
     """
-    return any(rel_path.startswith(p) for p in LEGACY_RING3_EXEMPT_PREFIXES)
+    inv = LEGACY_RING3_EXEMPT_PATHS if inventory is None else inventory
+    return rel_path in inv
+
+
+def stale_inventory_entries(inventory: frozenset[str] | None = None) -> list[str]:
+    """Report inventory rows that no longer describe an untagged file on disk.
+
+    Two ways a row goes stale: the file was deleted, or it was tagged and so
+    left the exemption on its own. Either way the row now grants nothing and
+    must come out, which is what keeps the inventory a burn-down list rather
+    than a place debt can hide. Reported as findings, so the shrink-only
+    ratchet is the gate itself and not a habit.
+    """
+    inv = LEGACY_RING3_EXEMPT_PATHS if inventory is None else inventory
+    findings: list[str] = []
+    for rel in sorted(inv):
+        path = REPO_ROOT / rel
+        if not path.is_file():
+            findings.append(
+                f"{rel}: stale world-tag legacy inventory entry -- file does not exist; "
+                f"remove the row from {LEGACY_INVENTORY_PATH.name}"
+            )
+            continue
+        text = path.read_text(encoding="utf-8", errors="replace")
+        head = "\n".join(text.splitlines()[:HEADER_LINE_WINDOW])
+        if RING_RE.search(head) is not None and WORLD_RE.search(head) is not None:
+            findings.append(
+                f"{rel}: stale world-tag legacy inventory entry -- file is tagged now; "
+                f"remove the row from {LEGACY_INVENTORY_PATH.name}"
+            )
+    return findings
 
 
 def file_is_in_ring1_or_ring2(rel_path: str) -> bool:
@@ -216,18 +275,24 @@ def _to_repo_relative(path: pathlib.Path) -> str:
         return str(path)
 
 
-def check_file(path: pathlib.Path) -> list[str]:
+def check_file(path: pathlib.Path, rel_override: str | None = None) -> list[str]:
     """Report a missing or malformed ``{World: ...}`` tag in one file.
 
     Ring membership decides whether the tag is required at all, so the ring
     tests run before the tag is looked for -- a Ring 2 file with no tag is
     correct, not a finding.
 
+    ``rel_override`` judges the bytes at ``path`` AS the named repo-relative
+    path. Only the selftest passes it: a must-fire fixture for a NEW untagged
+    file has to sit at a real in-tree location (``libs/ra8_hal/...``) without
+    writing one into the working tree, and every scope decision here keys on
+    that path.
+
     Returns one message per finding; an empty list means the file is fine or
     out of scope.
     """
     findings: list[str] = []
-    rel = _to_repo_relative(path)
+    rel = _to_repo_relative(path) if rel_override is None else rel_override
 
     try:
         text = path.read_text(encoding="utf-8", errors="replace")
@@ -318,7 +383,76 @@ def selftest() -> int:
         "tools/ is enumerated (the scan-dir list omitted it before #358)",
         failures,
     )
+    _selftest_legacy_inventory(failures)
     return report(failures)
+
+
+TAGGED_FIXTURE = "/* [Ring 3 / HAL] {World: S} */\nvoid f(void) { }\n"
+UNTAGGED_FIXTURE = "void f(void) { }\n"
+NSC_FIXTURE = "void f(void) __attribute__((cmse_nonsecure_entry));\n"
+
+# The two roots the old prefix exemption covered wholesale, and therefore the
+# two roots a brand-new untagged file could hide under.
+NEW_FILE_FIXTURES = (
+    "libs/ra8_hal/inc/ra8_world_tag_fixture.h",
+    "tests/hal/src/test_world_tag_fixture.c",
+)
+
+
+def _judge_as(tmp: pathlib.Path, rel: str, body: str) -> list[str]:
+    """Run the real check over ``body`` as if it were the in-tree file ``rel``.
+
+    The fixture is written outside the repository on purpose: a must-fire test
+    for a BRAND-NEW untagged file cannot create that file in the tree it is
+    guarding, or the sweep two lines later would report it.
+    """
+    fixture = tmp / "fixture.c"
+    fixture.write_text(body, encoding="utf-8")
+    return check_file(fixture, rel_override=rel)
+
+
+def _selftest_new_file_fixtures(tmpdir: pathlib.Path, failures: list[str]) -> None:
+    """Must-fire and must-stay-quiet fixtures for a new file under each legacy root."""
+    for rel in NEW_FILE_FIXTURES:
+        expect(
+            bool(_judge_as(tmpdir, rel, UNTAGGED_FIXTURE)),
+            f"a newly created untagged file at {rel} fires",
+            failures,
+        )
+        expect(
+            not _judge_as(tmpdir, rel, TAGGED_FIXTURE),
+            f"a newly created TAGGED file at {rel} stays quiet",
+            failures,
+        )
+
+
+def _selftest_legacy_inventory(failures: list[str]) -> None:
+    """Prove the exemption is exact: new files fire, inventoried ones stay quiet."""
+    inventory = load_legacy_inventory()
+    expect(
+        bool(inventory),
+        "legacy inventory is non-empty (an unreadable list must not read as clean)",
+        failures,
+    )
+    expect(
+        not is_legacy_exempt("libs/ra8_hal/inc/ra8_world_tag_fixture.h"),
+        "a NEW libs/ra8_hal/ path is not exempt (the prefix exemption was #842)",
+        failures,
+    )
+    with tempfile.TemporaryDirectory() as tmp:
+        tmpdir = pathlib.Path(tmp)
+        _selftest_new_file_fixtures(tmpdir, failures)
+        for rel in sorted(inventory)[:1]:
+            expect(
+                not _judge_as(tmpdir, rel, UNTAGGED_FIXTURE),
+                f"an inventoried legacy file ({rel}) keeps its exemption while untagged",
+                failures,
+            )
+            expect(
+                bool(_judge_as(tmpdir, rel, NSC_FIXTURE)),
+                "the NSC-location ban stays global, inventoried paths included",
+                failures,
+            )
 
 
 def _build_parser() -> argparse.ArgumentParser:
@@ -389,6 +523,11 @@ def main(argv: list[str]) -> int:
     for f in iter_source_files(targets):
         file_count += 1
         findings.extend(check_file(f))
+
+    # Full sweep only: a narrowed pre-commit run over three paths has no
+    # business ruling on the whole inventory.
+    if not args.paths:
+        findings.extend(stale_inventory_entries())
 
     if findings:
         for line in findings:

@@ -2,6 +2,9 @@
  * @file examples/ek_ra8d2/hw_pending/touch_cal_matrix_demo/src/main.c
  * @brief First consumer of ra8_touch_cal: run, solve, apply, serialise.
  *
+ * @par Tag
+ * [Ring 6 / APP] {World: S}
+ *
  * @details
  * `ra8_touch_cal` is pure math behind two caller-supplied shims, so the whole
  * library can be exercised without a panel or a touch controller. This app

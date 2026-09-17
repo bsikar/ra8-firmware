@@ -2,6 +2,9 @@
  * @file examples/ek_ra8d2/hw_pending/vfs_port_demo/src/main.c
  * @brief First consumer of if_ra8_vfs: the portable fw_if_fs facade on a volume.
  *
+ * @par Tag
+ * [Ring 6 / APP] {World: S}
+ *
  * @details
  * `libs/if_ra8_vfs` is the composition-root adapter that binds one live named
  * VFS mount into the backend-neutral `fw_if_fs` facade, so portable code sees

@@ -10,6 +10,60 @@ def _identities(value: str) -> tuple[str, ...]:
     return tuple(value.split())
 
 
+def _additional_non_authority_groups_gate_honesty() -> tuple[tuple[str, tuple[str, ...]], ...]:
+    """Constants proven not to select or exempt checker inputs (#842 / #1317 pass).
+
+    ``check_world_tags`` moved from a prefix exemption to a file-backed exact
+    inventory (#842): the authority is the inventory PATH, registered in
+    ``suppression_scope_registry``, and the frozenset below it is only what the
+    loader returns at import. ``check_docs_hub_nav`` (#1317) and
+    ``check_cpu1_warning_profile`` arrived with their constants unclassified,
+    so the checker-constant census was not exhaustive on ``dev``.
+    """
+    return (
+        (
+            "derived-runtime",
+            _identities(
+                """
+                    checks/check_docs_hub_nav.py:CONFIG
+                    checks/check_docs_hub_nav.py:ROOT
+                    checks/check_world_tags.py:LEGACY_RING3_EXEMPT_PATHS
+                    """
+            ),
+        ),
+        (
+            "parser-token",
+            _identities(
+                """
+                    checks/check_cpu1_warning_profile.py:EXE_KEYWORDS
+                    checks/check_cpu1_warning_profile.py:HELPER
+                    checks/check_cpu1_warning_profile.py:HELPER_APPENDED
+                    checks/check_cpu1_warning_profile.py:M33_FLAG
+                    """
+            ),
+        ),
+        (
+            "numeric-format",
+            ("checks/check_cpu1_warning_profile.py:ROW_FIELDS",),
+        ),
+        (
+            "selftest-fixture",
+            _identities(
+                """
+                    checks/check_cpu1_warning_profile.py:APP_REL
+                    checks/check_cpu1_warning_profile.py:FIXTURE_LISTFILE
+                    checks/check_cpu1_warning_profile.py:HANDROLLED_EXTRA
+                    checks/check_cpu1_warning_profile.py:ROLLED_ROW
+                    checks/check_world_tags.py:NEW_FILE_FIXTURES
+                    checks/check_world_tags.py:NSC_FIXTURE
+                    checks/check_world_tags.py:TAGGED_FIXTURE
+                    checks/check_world_tags.py:UNTAGGED_FIXTURE
+                    """
+            ),
+        ),
+    )
+
+
 def _additional_non_authority_groups_part1() -> tuple[tuple[str, tuple[str, ...]], ...]:
     """Constants proven not to select or exempt checker inputs (part 1 of 4)."""
     return (
@@ -496,6 +550,7 @@ def _additional_non_authority_groups_part8() -> tuple[tuple[str, tuple[str, ...]
 def additional_non_authority_groups() -> tuple[tuple[str, tuple[str, ...]], ...]:
     """Return constants proven not to select or exempt checker inputs."""
     return (
+        *_additional_non_authority_groups_gate_honesty(),
         *_additional_non_authority_groups_part1(),
         *_additional_non_authority_groups_part2(),
         *_additional_non_authority_groups_part3(),
