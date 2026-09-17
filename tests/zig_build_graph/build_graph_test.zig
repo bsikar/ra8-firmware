@@ -936,4 +936,5 @@ test "the app that excludes the NSC set names nothing else that could explain it
 // they still reach the graph through the `build_graph` import (#1146).
 test {
     _ = @import("cpu1_image_test.zig");
+    _ = @import("analysis_test.zig");
 }

@@ -45,13 +45,41 @@ def _find_compiler() -> str:
     return "cc"
 
 
-def _load_compile_db() -> dict[str, list[str]]:
-    commands: dict[str, list[str]] = {}
-    for db_path in (
+# The install path of the Zig build graph's analysis database, and the string
+# tests/zig_build_graph/analysis.zig holds as its side of the same contract.
+# _selftest_database_discovery asserts the two still agree, so moving either
+# one fails this gate instead of quietly emptying it.
+ZIG_ANALYSIS_DB = ("zig-out", "analysis", "compile_commands.json")
+
+
+def _compile_db_candidates() -> tuple[Path, ...]:
+    """Compile databases to resolve real commands from, best first.
+
+    The first three are CMake configure outputs. The fourth is the database the
+    Zig build graph emits (`zig build analysis`, #857/#1157), and it comes LAST
+    on purpose: while a CMake configure exists its database still decides, so
+    adding this changes nothing for a tree that has one.
+
+    It matters for a tree that does not. Every command here describes how a
+    file is REALLY built; without one, _compile_args_for_file falls back to a
+    derived host command with no -mcpu, no device define and no board layer,
+    check_file drops any file whose baseline compile fails, and this gate
+    reports those files clean having never analysed them. Measured on a
+    graph-built tree: three of five sampled firmware translation units cannot
+    be parsed with the fallback, including one whose #error names the toolchain
+    it requires.
+    """
+    return (
         _repo_root() / "compile_commands.json",
         _repo_root() / "build" / "tidy" / "compile_commands.json",
         _repo_root() / "build" / "compile_commands.json",
-    ):
+        _repo_root().joinpath(*ZIG_ANALYSIS_DB),
+    )
+
+
+def _load_compile_db() -> dict[str, list[str]]:
+    commands: dict[str, list[str]] = {}
+    for db_path in _compile_db_candidates():
         if not db_path.is_file():
             continue
         try:
@@ -412,6 +440,40 @@ static uint32_t compute(void) {
     return failures
 
 
+def _selftest_database_discovery() -> list[str]:
+    """Prove the graph's analysis database is probed, last, and still named.
+
+    Two halves have to agree for the lint gate to keep a real command set once
+    the CMake configures go (#857/#1157): this script has to look where the Zig
+    build graph writes, and the graph has to keep writing there. Asserting the
+    path STRING on both sides, rather than the file's presence, is what lets
+    this run in a tree that has never been built.
+    """
+    failures: list[str] = []
+    candidates = _compile_db_candidates()
+    expected = _repo_root().joinpath(*ZIG_ANALYSIS_DB)
+    if expected not in candidates:
+        failures.append("selftest: the Zig analysis database is not probed at all")
+    elif candidates[-1] != expected:
+        failures.append("selftest: the Zig analysis database must be probed last, after CMake's")
+
+    emitter = _repo_root() / "tests" / "zig_build_graph" / "analysis.zig"
+    if not emitter.is_file():
+        failures.append(f"selftest: {emitter} is missing, so nothing emits the database")
+        return failures
+    source = emitter.read_text(encoding="utf-8")
+    for declaration in (
+        f'pub const install_dir = "{ZIG_ANALYSIS_DB[1]}";',
+        f'pub const install_name = "{ZIG_ANALYSIS_DB[2]}";',
+    ):
+        if declaration not in source:
+            failures.append(
+                f"selftest: {emitter.name} no longer declares {declaration!r}; "
+                "the database moved and this probe would silently load nothing"
+            )
+    return failures
+
+
 def selftest() -> int:
     """Prove that unused includes are flagged while required includes are kept."""
     with tempfile.TemporaryDirectory(prefix="ra8-selftest-inc-") as tmp:
@@ -420,6 +482,7 @@ def selftest() -> int:
             _selftest_basic(test_dir)
             + _selftest_guarded(test_dir)
             + _selftest_keep_markers(test_dir)
+            + _selftest_database_discovery()
         )
     if failures:
         for failure in failures:
