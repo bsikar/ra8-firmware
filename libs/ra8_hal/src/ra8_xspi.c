@@ -273,7 +273,6 @@ static ra8_err_t internal_xspi_clock_block_init(void)
  * ``k_ra8_xspi_reset_spin`` to span the IS25LX512M tRLRH/tRHSL minima.
  * IS25LX512M datasheet Ch 9.2 "Hardware Reset".
  *
- * @return None.
  * @pre Called only from the single-threaded xSPI init path.
  * @pre No interrupt depends on this delay being preempted.
  * @post At least ``k_ra8_xspi_reset_spin`` iterations have elapsed.
@@ -305,7 +304,6 @@ static void internal_xspi_reset_spin(void)
  *
  * @param[in] reg xSPI register block (already gated open by the caller).
  *
- * @return None.
  * @pre ``reg != nullptr`` and the xSPI MSTP gate is open.
  * @pre The link-IO protocol/timing config has already been written.
  * @post The on-board flash has seen a RESET low->high pulse and RSTCS is
@@ -345,7 +343,6 @@ static void internal_xspi_reset_device(volatile r_xspi_regs_t* reg)
  * @param[in] reg  xSPI register block (already gated open by the caller).
  * @param[in] mode Link-IO protocol/latency word for ``LIOCFGCS``.
  *
- * @return None.
  * @pre ``reg != nullptr`` and the xSPI MSTP gate is open.
  * @pre OCTACLK is stable (clock-block handshake done).
  * @post ``LIOCFGCS[k_ra8_xspi_onboard_cs] == mode`` and ``CDCTL0.CSSEL``

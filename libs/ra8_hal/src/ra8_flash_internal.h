@@ -412,8 +412,6 @@ extern uint32_t g_ra8_flash_maci_cmd16_len;
  *          a subsequent driver call records a fresh stream. Defined in
  *          ``ra8_flash.c``; present only in the host unit-test binary.
  *
- * @return Nothing.
- *
  * @pre Called from a host (``RA8_OFF_TARGET`` + ``UNIT_TEST``) test binary.
  * @pre No driver MACI call is mid-flight (tests are single-threaded).
  * @post Both capture-log lengths read back as zero.

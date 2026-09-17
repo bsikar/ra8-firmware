@@ -112,8 +112,6 @@ RA8_INTERNAL static inline bool internal_port_ok(ra8_rmac_port_t port)
  * after the receiver has been gated. The per-VC error callback is left
  * untouched, mirroring the pre-split ``ra8_mipi_csi_deinit`` behaviour.
  *
- * @return Nothing.
- *
  * @pre The MIPI CSI-2 receiver is being torn down by ::ra8_mipi_csi_deinit.
  * @pre Caller serialises with the CSI IRQ sources.
  * @post All ten module/lane/VC/PM/short callback slots are ``nullptr``.

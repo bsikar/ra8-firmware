@@ -666,8 +666,6 @@ ra8_err_t ra8_flash_get_update_status(uint8_t* out_busy, uint8_t* out_done, uint
  * @param[in]  done  Byte offset of this config-set within @p src.
  * @param[out] words Receives the packed halfword payload.
  *
- * @return Nothing.
- *
  * @pre @p src and @p words are non-NULL.
  * @pre @p words holds ``k_ra8_mram_config_set_word_count`` entries.
  * @post @p words[i] holds src[done+2i] in its low byte (0xFF past @p len).

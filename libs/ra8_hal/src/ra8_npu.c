@@ -178,9 +178,6 @@ static volatile ra8_npu_irq_state_t s_npu_irq_state = k_ra8_npu_irq_idle;
  *          between latch checks. On the x86_64 unit-test host (`__ARM_ARCH`
  *          undefined) it compiles to nothing and the test drives the ISR by hand.
  *
- * @return None (void).
- * @retval None This function returns no value.
- *
  * @pre None (safe to call in any state).
  * @pre The caller is in a bounded wait loop.
  * @post On the target the core has slept until an interrupt (or returned at once).
@@ -239,9 +236,6 @@ static ra8_err_t internal_npu_apply_reset(void)
  *
  * @param[in] idx  Region index (0 .. `k_ra8_npu_region_count` - 1).
  * @param[in] base AXI base address of the tensor arena for this region.
- *
- * @return None (void).
- * @retval None This function returns no value.
  *
  * @pre `idx` is a valid region index (caller-validated).
  * @pre The NPU is out of module-stop and NPUCLK is running.

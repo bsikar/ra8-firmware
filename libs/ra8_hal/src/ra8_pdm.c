@@ -67,8 +67,6 @@ typedef enum : uint32_t {
  * @param[in,out] reg Channel register bank (non-NULL).
  * @param[in]     cfg Channel configuration (non-NULL).
  *
- * @return Nothing.
- *
  * @pre ``reg`` points at a valid PDM channel bank.
  * @pre ``cfg->sinc_order`` is in 1..4.
  * @post PDMDSR and PDSFCR hold the packed configuration.
@@ -106,8 +104,6 @@ RA8_INTERNAL static void internal_pdm_write_mode(volatile r_pdm_ch_regs_t*    re
  *
  * @param[in,out] reg Channel register bank (non-NULL).
  * @param[in]     cfg Channel configuration (non-NULL).
- *
- * @return Nothing.
  *
  * @pre ``reg`` points at a valid PDM channel bank.
  * @pre ``cfg`` carries a complete coefficient set.

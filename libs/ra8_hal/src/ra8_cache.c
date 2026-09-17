@@ -206,8 +206,6 @@ ra8_err_t ra8_cache_dcache_clean_invalidate_by_addr(const void* addr, uint32_t s
  * @param[in] op_reg Set/way maintenance register: ::k_ra8_cache_dcisw or
  *                   ::k_ra8_cache_dccisw.
  *
- * @return None.
- *
  * @pre @p op_reg is a set/way maintenance register address.
  * @pre Runs single-threaded with interrupts masked (boot / disable context).
  * @post Every set/way of the L1 D-cache has been written to @p op_reg (unless the

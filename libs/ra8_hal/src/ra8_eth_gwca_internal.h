@@ -147,7 +147,6 @@ extern volatile uint32_t g_ra8_eth_gwca_bring_up_step;
  * @param[in]     chain_head Address to encode into the 40-bit PTR field
  *                           (basic or extended descriptor array head).
  *
- * @return void This helper never fails.
  * @note Always returns normally.
  *
  * @pre entry is non-null and previously initialised by install_linkfix.
