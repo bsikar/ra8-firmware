@@ -233,5 +233,9 @@ int main(void)
   test_status_read_and_clear();
   test_attach_and_dispatch();
   test_power_transition();
+  test_describe_guards();
+  test_describe_counts();
+  test_describe_mr_encoding();
+  test_bind_activation_guards();
   return 0;
 }
