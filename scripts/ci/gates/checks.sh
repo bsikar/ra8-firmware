@@ -326,8 +326,8 @@ _pcc_source_form() (
   # No silent ra8_err_t discards at TrustZone boot boundaries. A C23
   # (void)-cast silences [[nodiscard]] by ISO rule, so -Werror can never catch
   # a discarded ra8_cgc_init() right before a BLXNS (#191).
-  python3 scripts/checks/check_tz_boundary_discard.py --selftest
-  python3 scripts/checks/check_tz_boundary_discard.py
+  scripts/builders/check_tz_boundary_discard.sh --selftest
+  scripts/builders/check_tz_boundary_discard.sh
   # Ban the numbered session-bookkeeping tags from comments and docs.
   # --selftest proves the detector fires and that the derived scope reaches the
   # roots a hardcoded list had dropped (#549).
