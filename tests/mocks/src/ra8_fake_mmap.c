@@ -303,7 +303,6 @@ RA8_INTERNAL static bool internal_region_mappable(bool asan_shadow_gap)
  * @param[in] image_lo Lowest byte of the loaded image (`__executable_start`).
  * @param[in] image_hi One past the current program break.
  *
- * @return None.
  * @pre @p image_lo <= @p image_hi.
  * @pre Every configured region has a non-overflowing half-open range.
  * @post Returns only if no mappable window overlaps [image_lo, image_hi).
@@ -329,7 +328,6 @@ RA8_INTERNAL static void internal_check_overlap(uintptr_t image_lo, uintptr_t im
  * @brief MAP_FIXED-map and zero every mappable backing window.
  * @details Creates each host register or memory window at its target address,
  * verifies the exact mapping result, and clears newly mapped storage.
- * @return None.
  * @pre The backing windows do not overlap the loaded image/heap.
  * @pre ::internal_check_overlap has accepted the current process layout.
  * @post Every mappable window is mapped read/write and zero-filled, or aborts.

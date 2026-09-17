@@ -40,7 +40,6 @@ extern "C" {
  * frequency that passes the reload check) and resets the tick
  * counter to zero.
  *
- * @return Nothing.
  * @pre Test is running under ``RA8_OFF_TARGET``.
  * @pre No time reader or tick update is executing concurrently.
  * @post ``ra8_time_ms()`` returns 0.
@@ -60,7 +59,6 @@ void ra8_fake_time_reset(void);
  *
  * @param[in] n Number of milliseconds to advance.
  *
- * @return Nothing.
  * @pre Test is running under ``RA8_OFF_TARGET``.
  * @pre Advancing by @p n does not exceed the test's intended tick horizon.
  * @post ``ra8_time_ms`` is increased by ``n`` relative to before.

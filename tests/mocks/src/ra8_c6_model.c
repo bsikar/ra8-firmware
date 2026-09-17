@@ -212,7 +212,6 @@ uint8_t* ra8_c6_model_slot(void)
 /**
  * @brief Frame an `Rpc` the way the co-processor would and queue it.
  * @param[in] msg Message to send; must be non-null.
- * @return Nothing.
  * @pre The queue has room, or the message is silently dropped.
  * @pre @p msg is fully populated including its payload case.
  * @post One frame is queued, envelope and payload header included.
@@ -248,7 +247,6 @@ RA8_INTERNAL static void internal_c6m_emit(Rpc* msg)
  * @details Generated rather than written out, so the octets are not six
  *        unexplained literals in two places.
  * @param[out] bssid Address to fill; must hold ::k_ra8_c6link_mac_bytes octets.
- * @return Nothing.
  * @pre @p bssid is non-null and long enough.
  * @pre The caller transmits it inside an announcement.
  * @post Every octet was written.
@@ -492,7 +490,6 @@ internal_c6m_bare(Rpc* out, uint32_t req_id, RpcRespWifiStart* body, int32_t res
 /**
  * @brief Record the credentials a `Req_WifiSetConfig` carried.
  * @param[in] body The decoded request body; must be non-null.
- * @return Nothing.
  * @pre @p body is still owned by the decoder.
  * @pre The model has been reset since the last configuration.
  * @post The recorded SSID and passphrase are NUL-terminated.
@@ -558,7 +555,6 @@ static c6m_rich_t s_rich;
  *        exercising at all.
  * @param[in,out] out Message being built; must be non-null.
  * @param[in] resp The result code to report.
- * @return Nothing.
  * @pre @p out has been initialised by `rpc__init()`.
  * @pre ::s_rich already holds the generated address and SSID octets.
  * @post @p out points at ::s_rich for both the answer and its nested record.
@@ -702,7 +698,6 @@ RA8_INTERNAL static bool internal_c6m_custom_answer(Rpc* out, const Rpc* req, in
 /**
  * @brief Build and queue the answer to one decoded request.
  * @param[in] req The decoded request; must be non-null.
- * @return Nothing.
  * @pre @p req is still owned by the decoder.
  * @pre The queue has room, or the answer is dropped.
  * @post The request id was recorded in arrival order.
@@ -755,7 +750,6 @@ RA8_INTERNAL static void internal_c6m_answer(const Rpc* req)
  * @brief Check the host's framing independently of the code that wrote it.
  * @param[in] tx The host's transmit transaction; must be non-null.
  * @param[in] hdr Its header, already copied out; must be non-null.
- * @return Nothing.
  * @pre @p hdr was copied from the first octets of @p tx.
  * @pre The frame carries a payload, so its checksum is defined.
  * @post The transmitted checksum was proven to cover header plus payload.
@@ -782,7 +776,6 @@ RA8_INTERNAL static void internal_c6m_verify_framing(const uint8_t*             
 /**
  * @brief Decode whatever the host just transmitted and react to it.
  * @param[in] tx The host's transmit transaction; must be non-null.
- * @return Nothing.
  * @pre The transaction is ::k_ra8_c6link_frame_bytes long.
  * @pre The model has been reset at least once.
  * @post A control request was answered, data was recorded, or idle filler
@@ -904,7 +897,6 @@ RA8_INTERNAL static bool internal_c6m_handshake(void* ctx)
  *        caller paced itself without any test paying the wall time for it.
  * @param[in] ctx Unused.
  * @param[in] ms Milliseconds the caller asked to wait for; recorded, not slept.
- * @return Nothing.
  * @pre The caller tolerates a delay that does not actually delay.
  * @pre The model has been reset.
  * @post ::ra8_c6_model_t::delays counted this call.

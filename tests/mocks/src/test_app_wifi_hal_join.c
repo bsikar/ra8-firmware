@@ -207,7 +207,6 @@ static void test_app_reaches_ip(void)
  * `wifi_hal_settle()` contains no compound boolean decisions after the status
  * error and association checks were separated. This zero-budget vector proves
  * the loop can be skipped while the required final status sample still runs.
- * @return Nothing.
  * @pre The successful mock backend and IP provider are reset.
  * @pre The run configuration owns an initialized facade object.
  * @post The join succeeds without issuing a continuation poll.
@@ -239,7 +238,6 @@ static void test_app_zero_settle_budget(void)
  * @par MC/DC:
  * Each status-error decision has one true vector here. Their false vectors are
  * exercised by the successful positive-budget and zero-budget tests.
- * @return Nothing.
  * @pre The mock backend invalidation target is reset before each vector.
  * @pre Each run configuration owns a distinct facade object.
  * @post Both join attempts fail closed before DHCP binding.

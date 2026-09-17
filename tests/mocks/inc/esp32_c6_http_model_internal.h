@@ -104,7 +104,6 @@ RA8_PRIV struct esp_http_client* priv_c6_http_client(void);
  * service's independently owned one-time client state.
  * @param[in] body Borrowed response bytes.
  * @param[in] body_bytes Readable bytes at @p body.
- * @return Nothing.
  * @pre @p body is non-NULL when @p body_bytes is nonzero.
  * @pre No public handler call executes concurrently.
  * @post The next URL/open/read sequence starts at body offset zero.

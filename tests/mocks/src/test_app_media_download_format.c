@@ -219,7 +219,6 @@ RA8_INTERNAL static media_download_format_workspace_t internal_workspace(ra8_img
  * @details Varies each required pointer independently, crosses both range
  *          boundaries, then proves successful writes extend logical length and
  *          successful reads copy the exact initialized span.
- * @return Nothing.
  * @pre Automatic source, destination, and spool storage are writable.
  * @pre The private formatter adapters are linked into this test target.
  * @post Rejected operations preserve logical length and report zero progress.
@@ -282,7 +281,6 @@ RA8_INTERNAL static void internal_test_memory_adapters(void)
  * @brief Verify required request pointers before conversion begins.
  * @details Starts from one complete request, removes each top-level pointer,
  *          and checks the canonical status plus failure-side size clearing.
- * @return Nothing.
  * @pre ::internal_workspace can bind every fixed fixture span.
  * @pre The representative BMP and valid formatter policy remain immutable.
  * @post Every isolated null pointer returns ::k_ra8_err_null_ptr.
@@ -333,7 +331,6 @@ RA8_INTERNAL static void internal_test_formatter_argument_guards(void)
  * @brief Verify required workspace storage before conversion begins.
  * @details Starts from a complete workspace, then removes one span or extent
  *          per call while retaining valid top-level request arguments.
- * @return Nothing.
  * @pre ::internal_workspace can bind every fixed fixture span.
  * @pre The representative BMP and valid formatter policy remain immutable.
  * @post Every isolated null span returns ::k_ra8_err_null_ptr.

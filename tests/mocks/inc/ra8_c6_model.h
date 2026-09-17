@@ -214,7 +214,6 @@ ra8_c6_model_t* ra8_c6_model(void);
  * @brief Clear the model and arm HANDSHAKE.
  * @details Restores deterministic transport defaults, rebinds the built-in
  * media artifact, and discards all queued frames and observations.
- * @return Nothing.
  * @pre No link is mid-transaction against the model.
  * @pre The caller re-opens its link afterwards if it held one.
  * @post Every scripted behaviour and every observation is cleared.
@@ -253,7 +252,6 @@ void ra8_c6_model_reset(void);
  * @details Connects transfer, handshake, and delay callbacks to the singleton
  * context without opening a production transport.
  * @param[out] out Seam to fill; must be non-null.
- * @return Nothing.
  * @pre ::ra8_c6_model_reset has run.
  * @pre @p out is otherwise unused.
  * @post All three rows and the context are set.
@@ -282,7 +280,6 @@ uint8_t* ra8_c6_model_slot(void);
  * @brief Queue the boot announcement the co-processor sends once per power-up.
  * @details Constructs the production ESP-init event shape and frames it through
  * the same encoder used by every other modelled announcement.
- * @return Nothing.
  * @pre The queue has room.
  * @pre ::ra8_c6_model_reset has run.
  * @post One `Event_ESPInit` frame is queued.
@@ -297,7 +294,6 @@ void ra8_c6_model_emit_boot(void);
  * @brief Queue a station-connected announcement naming the AP it reached.
  * @details Supplies deterministic SSID, BSSID, channel, authentication, and AP
  * identifier fields for decoder and state-update assertions.
- * @return Nothing.
  * @pre The queue has room.
  * @pre ::ra8_c6_model_reset has run.
  * @post One `Event_StaConnected` frame is queued.
@@ -312,7 +308,6 @@ void ra8_c6_model_emit_connected(void);
  * @brief Queue a bare Wi-Fi event, the kind that carries only its own id.
  * @details Exercises the no-payload Wi-Fi event arm with a deterministic event
  * identifier and the production serial framing path.
- * @return Nothing.
  * @pre The queue has room.
  * @pre ::ra8_c6_model_reset has run.
  * @post One `Event_WifiEventNoArgs` frame is queued.
@@ -328,7 +323,6 @@ void ra8_c6_model_emit_wifi_event(void);
  * @brief Queue a station-disconnected announcement with a reason code.
  * @details Builds the nested disconnect payload so the host must decode and
  * preserve its reason field rather than treating it as a bare event.
- * @return Nothing.
  * @pre The queue has room.
  * @pre ::ra8_c6_model_reset has run.
  * @post One `Event_StaDisconnected` frame is queued.
@@ -342,7 +336,6 @@ void ra8_c6_model_emit_disconnected(void);
  * @brief Queue an 802.3 frame as if the AP had forwarded one to the station.
  * @details Writes a recognizable bounded byte ramp behind the station-interface
  * frame header for data-plane delivery checks.
- * @return Nothing.
  * @pre The queue has room.
  * @pre ::ra8_c6_model_reset has run.
  * @post One station-interface data frame is queued.
@@ -356,7 +349,6 @@ void ra8_c6_model_emit_eth(void);
  * @brief Queue the two association announcements with their bodies absent.
  * @details Deliberately omits each optional nested protobuf message while
  * keeping the surrounding event envelopes well formed.
- * @return Nothing.
  * @pre The queue has room for two frames.
  * @pre ::ra8_c6_model_reset has run.
  * @post Two `Event_Sta*` frames are queued, each with a null inner message.
@@ -372,7 +364,6 @@ void ra8_c6_model_emit_hollow_events(void);
  * @brief Queue an announcement whose id this facade does not model.
  * @details Uses a valid protocol event identifier outside the facade's modeled
  * set to exercise its ignore-without-corruption path.
- * @return Nothing.
  * @pre The queue has room.
  * @pre ::ra8_c6_model_reset has run.
  * @post One `Event_Heartbeat` frame is queued, carrying no payload.
@@ -388,7 +379,6 @@ void ra8_c6_model_emit_unmodelled_event(void);
  * @brief Queue a REQUEST, which a host must never be sent.
  * @details Frames a syntactically valid inbound request so direction validation
  * is tested independently of protobuf and checksum validation.
- * @return Nothing.
  * @pre The queue has room.
  * @pre ::ra8_c6_model_reset has run.
  * @post One well-formed frame carrying `RPC_TYPE__Req` is queued.
@@ -405,7 +395,6 @@ void ra8_c6_model_emit_inbound_request(void);
  * @brief Queue an answer the host never asked for.
  * @details Builds a valid response with no matching outstanding UID to exercise
  * unsolicited-response accounting and rejection.
- * @return Nothing.
  * @pre The queue has room.
  * @pre ::ra8_c6_model_reset has run.
  * @post One unsolicited `Resp_GetCoprocessorFwVersion` frame is queued.

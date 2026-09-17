@@ -62,7 +62,6 @@ unsigned int lx_nor_fake_ram_init(struct LX_NOR_FLASH_STRUCT* nor_flash);
  *          format starts from a blank device. Not needed to simulate a crash
  *          (leave the backing intact and reopen a new control block).
  *
- * @return Nothing.
  * @pre The backing array is static host storage (always available).
  * @pre No LevelX operation is mid-flight against the backing.
  * @post Every backing word reads as the erased pattern.
@@ -79,7 +78,6 @@ void lx_nor_fake_ram_wipe(void);
  *          disables injection. Reset it after the test.
  *
  * @param[in] count Number of upcoming write callbacks to fail (0 disables).
- * @return Nothing.
  * @pre The backing array is static host storage (always available).
  * @pre The caller resets injection when the fault window is done.
  * @post The next @p count writes return an error, then writes succeed again.
