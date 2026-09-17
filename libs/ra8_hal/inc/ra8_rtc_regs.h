@@ -3,6 +3,9 @@
  * @brief Real-Time Clock (RTC) register layout for the Renesas RA8D2
  * @ingroup grp_hal_timers
  *
+ * @par Tag
+ * [Ring 3 / HAL] {World: S}
+ *
  * @details
  * RTC block at `0x40202000`. Layout re-derived against FSP
  * `R_RTC_Type` (BSP header `R7KA8D2KF_core0.h`, size 128 / 0x80) and
