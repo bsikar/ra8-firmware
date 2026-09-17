@@ -874,13 +874,19 @@ def _policy_fixture(root: Path, hooks_text: str) -> tuple[Path, dict[str, str]]:
         "check_hook_parity.py",
         "check_mcdc_block.py",
         "check_new_compound_has_mcdc.py",
-        "check_obsolete_standards.py",
     ):
         _write(
             root / f"scripts/checks/{name}",
             "#!/usr/bin/env python3\nraise SystemExit(0)\n",
             executable=True,
         )
+    # The obsolete-standards gate is the Zig tool tools/check_obsolete_standards
+    # behind a trusted launcher, so the fixture stubs the launcher instead.
+    _write(
+        root / "scripts/builders/check_obsolete_standards.sh",
+        "#!/bin/bash\nexit 0\n",
+        executable=True,
+    )
     _write(root / "sample.c", "int value;\n")
     _write(root / ".gitignore", ".venv/\n")
     _git(root, "add", ".")

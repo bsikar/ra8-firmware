@@ -39,7 +39,7 @@ pre_commit:
     # marker while unrelated worktree edits mask what is actually staged.
     python3 scripts/checks/check_mcdc_block.py --staged
     python3 scripts/checks/check_new_compound_has_mcdc.py --staged
-    python3 scripts/checks/check_obsolete_standards.py --staged
+    bash scripts/builders/check_obsolete_standards.sh --staged
 
     # Gate bodies remain defined exactly once in scripts/ci/gates/. This list
     # records only which existing, hardware-free gates protect a commit.

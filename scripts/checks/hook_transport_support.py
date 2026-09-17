@@ -70,13 +70,19 @@ gate name:
     for name in (
         "check_mcdc_block.py",
         "check_new_compound_has_mcdc.py",
-        "check_obsolete_standards.py",
     ):
         _write(
             root / f"scripts/checks/{name}",
             "#!/usr/bin/python3\nraise SystemExit(0)\n",
             executable=True,
         )
+    # The obsolete-standards gate is the Zig tool tools/check_obsolete_standards
+    # behind a trusted launcher, so the fixture stubs the launcher instead.
+    _write(
+        root / "scripts/builders/check_obsolete_standards.sh",
+        "#!/bin/bash\nexit 0\n",
+        executable=True,
+    )
 
 
 def install_venv_wrappers(root: Path, marker: Path) -> None:

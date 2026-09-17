@@ -38,7 +38,7 @@ The candidate bars considered:
 The pre-2011 revision of DO-178 was superseded by DO-178C in December
 2011 and is therefore deliberately excluded from this project's
 documentation and tests (see
-`scripts/checks/check_obsolete_standards.py`, which fails the
+`tools/check_obsolete_standards`, which fails the
 pre-commit hook on any new reference to the obsolete revision).
 
 ## Decision

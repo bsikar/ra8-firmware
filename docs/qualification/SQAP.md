@@ -82,7 +82,7 @@ tools, all of which run on every commit and every PR:
 | Coding-standard audit                | `clang-format`, `clang-tidy`, `cppcheck`                                         |
 | MISRA-C 2012 process audit           | `just quality::local::misra` quarterly + `docs/MISRA.md` baseline table          |
 | World-tag (architecture) audit       | `scripts/checks/check_world_tags.py`                                              |
-| Obsolete-standards audit             | `scripts/checks/check_obsolete_standards.py` (rejects superseded safety-standard references) |
+| Obsolete-standards audit             | `tools/check_obsolete_standards` (rejects superseded safety-standard references) |
 | MC/DC vector pattern audit on tests  | `scripts/checks/check_mcdc_block.py`                                              |
 | HUM citation audit                   | `scripts/checks/cite_check.py`                                                    |
 | Doxygen `@since` audit               | `tools/check_since_version`                                                       |

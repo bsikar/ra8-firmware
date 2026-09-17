@@ -451,8 +451,8 @@ _pcc_cross_references() (
   # is staged -- it enumerated 0 files, printed "0 findings" and passed, having
   # audited nothing for its whole life in this gate. Same defect class as
   # #325 / #355; a bare invocation is an error now rather than the vacuous mode.
-  python3 scripts/checks/check_obsolete_standards.py --selftest
-  python3 scripts/checks/check_obsolete_standards.py --all
+  bash scripts/builders/check_obsolete_standards.sh --selftest
+  bash scripts/builders/check_obsolete_standards.sh --all
 )
 
 # Documentation completeness, cross-reference integrity, and the test-side

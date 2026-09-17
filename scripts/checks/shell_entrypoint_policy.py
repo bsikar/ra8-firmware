@@ -209,6 +209,13 @@ _BASE_SHELL_POLICIES: dict[str, ShellPolicy] = {
         executable=True,
         source_requires_privileged_parent=False,
     ),
+    "scripts/builders/check_obsolete_standards.sh": ShellPolicy(
+        ShellSecurity.PORTABLE,
+        ShellUsage.ENTRY,
+        ShellDialect.BASH,
+        executable=True,
+        source_requires_privileged_parent=False,
+    ),
     "scripts/builders/ci_status.sh": ShellPolicy(
         ShellSecurity.PORTABLE,
         ShellUsage.ENTRY,

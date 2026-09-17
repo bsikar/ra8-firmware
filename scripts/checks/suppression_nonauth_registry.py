@@ -284,7 +284,6 @@ _GROUPS = (
             "checks/check_no_stdio_streams.py:BANNED_TOKENS",
             "checks/check_no_stdio_streams.py:TOKEN_RE",
             "checks/check_no_wave_references.py:WAVE_RE",
-            "checks/check_obsolete_standards.py:FORBIDDEN_PATTERNS",
             "checks/check_reserved_addresses.py:RESERVED_WINDOWS",
             "checks/check_runner_clock.py:K_OVERLAP_TOLERANCE_S",
             "checks/check_runner_image_deps.py:_DECL_RE",
