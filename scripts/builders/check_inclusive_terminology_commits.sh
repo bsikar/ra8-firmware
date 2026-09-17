@@ -7,8 +7,8 @@
 #
 # This is a minimal trusted launcher, not an implementation: the detector is
 # the Zig host tool tools/check_inclusive_terminology_commits (#858), which
-# replaced the Python scripts/checks/check_inclusive_terminology_commits.py
-# PATHREF-OK: the predecessor this names was deleted in the same change.
+# replaced scripts/checks/check_inclusive_terminology_commits.py  PATHREF-OK:
+# the Python predecessor this names was deleted in the same change.
 #
 # All this does is resolve zig, build the tool once, and hand over argv, stdin
 # and the exit status unchanged.

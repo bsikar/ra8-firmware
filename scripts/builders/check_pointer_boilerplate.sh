@@ -6,11 +6,11 @@
 # pointer-only definition comment in application and example sources.
 #
 # This is a minimal trusted launcher, not an implementation: the detector is
-# the Zig host tool tools/check_pointer_boilerplate (#858), which replaced the
-# Python scripts/checks/check_pointer_boilerplate.py
-# PATHREF-OK: the predecessor this names was deleted in the same change. All
-# this does is resolve zig, build the tool once, and hand over argv and the
-# exit status unchanged.
+# the Zig host tool tools/check_pointer_boilerplate (#858), which replaced
+# the Python scripts/checks/check_pointer_boilerplate.py  PATHREF-OK: the
+# predecessor this names was deleted in the same change. All this does is
+# resolve zig, build the tool once, and hand over argv and the exit status
+# unchanged.
 #
 #     bash scripts/builders/check_pointer_boilerplate.sh --selftest
 #     bash scripts/builders/check_pointer_boilerplate.sh
