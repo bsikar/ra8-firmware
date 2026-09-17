@@ -40,6 +40,7 @@ import fleet_reconcile_frozen_selftest as frfz
 import fleet_reconcile_interrupt_selftest as fri
 import fleet_reconcile_lift_selftest as frlt
 import fleet_reconcile_orphan_selftest as fro
+import fleet_reconcile_park_escalation_selftest as frpe
 import fleet_reconcile_parked_selftest as frpk
 import fleet_reconcile_process as frp
 import fleet_reconcile_prune_selftest as frpr
@@ -84,6 +85,17 @@ DRAIN_FAILED_STATUS = 3
 # an operator apart a fleet idling at zero from a pass that simply failed.
 STRANDED_ESCALATION_PASSES = 3
 STRANDED_STATUS = 4
+# A durable maintenance park is the OTHER way a host sits at zero admission,
+# and its record only ever warned.  The restore that lifts a park is issued for
+# a host whose own declaration verified THIS pass, so a parked host nothing
+# reconciles is never reached at all: one whose read-only check keeps failing,
+# the everyday shape of a host that is already down, or one held behind a
+# failed producer, simply ages its record for ever while every pass exits 1
+# exactly like a one-off failure.  That is the silence issue #888 went
+# unnoticed in five times, so a park hold the same clock as a stranding: a host
+# nothing has lifted off zero across this many consecutive passes needs an
+# operator, whichever of the two records knows about it.
+PARK_ESCALATION_PASSES = STRANDED_ESCALATION_PASSES
 # Holding every consumer back while the producer is drained protects them from
 # converging onto an image that is being republished underneath them.  A
 # DRAINED producer publishes nothing, so once it has held zero capacity across
@@ -1038,15 +1050,21 @@ def open_parked(
 
 
 def report_durable_park(parked: dict[str, dict[str, int]], now: int) -> list[str]:
-    """Name every host this controller is holding parked, in either mode.
+    """Name the hosts this controller holds parked but is not escalating yet, in either mode.
 
     The refused drain earns ``DRAIN_FAILED_STATUS`` on the pass it happens, and
     then nothing said anything at all: the host sits parked at zero admission
     while later passes report the declaration converged.  Saying it every pass
     is what separates a fleet that is fine from one this controller has left
-    parked, and a read-only dry run has to say it too.
+    parked, and a read-only dry run has to say it too.  Past
+    ``PARK_ESCALATION_PASSES`` the same host is named by
+    ``parked_escalations`` instead, which is louder and carries a verdict, so
+    this stays the below-threshold half exactly as ``report_recorded_zero`` is
+    for the stranded-at-zero record.
     """
-    held = sorted(parked)
+    held = [
+        host for host, entry in sorted(parked.items()) if entry["passes"] < PARK_ESCALATION_PASSES
+    ]
     for host in held:
         entry = parked[host]
         print(
@@ -1057,6 +1075,45 @@ def report_durable_park(parked: dict[str, dict[str, int]], now: int) -> list[str
             file=sys.stderr,
         )
     return held
+
+
+def parked_escalations(parked: dict[str, dict[str, int]], now: int) -> list[str]:
+    """Name every host a durable park keeps at zero that this controller cannot lift.
+
+    The park record was created to stop a refused drain from forging a
+    stranded-at-zero record, and it does claim less: only that the drain wrote
+    the host's durable maintenance marker before it was refused.  What it
+    claims is still that the host is pinned at ZERO admission, because
+    ``cmd_window`` refuses to raise admission while that marker is there and
+    ``capacity-restore`` is the only thing that removes it.
+
+    Nothing escalated it.  The restore that lifts a park is only issued for a
+    host whose own declaration verified this pass, which is deliberately narrow
+    and leaves the two everyday cases unreachable: a parked host whose
+    read-only check keeps failing is never applied, and a parked consumer
+    behind a failed producer is held before anything touches it.  Either way
+    the record aged, printed one WARNING, and the pass exited 1 like any
+    one-off failure, for as many passes as the fault lasted.  A fleet at zero
+    that reads like a transient failure is issue #888 itself, so a park this
+    controller has not been able to prove closed across
+    ``PARK_ESCALATION_PASSES`` consecutive passes earns the same CRITICAL and
+    ``STRANDED_STATUS`` a host held at zero by this controller's own drain does.
+    """
+    escalated: list[str] = []
+    for host, entry in sorted(parked.items()):
+        if entry["passes"] < PARK_ESCALATION_PASSES:
+            continue
+        escalated.append(host)
+        print(
+            f"fleet-reconcile: CRITICAL: {host} has held a durable maintenance park "
+            f"across {entry['passes']} consecutive reconcile passes "
+            f"({now - entry['since']}s since its drain was refused); its admission "
+            "cannot come back until a capacity restore clears that park, and nothing "
+            "this controller has done since has lifted it, so this fleet is not "
+            "recovering on its own and needs operator intervention",
+            file=sys.stderr,
+        )
+    return escalated
 
 
 def park_marker_absent(output: str) -> bool:
@@ -1487,7 +1544,7 @@ def pass_escalations(
     options: ReconcileOptions,
     parked: dict[str, dict[str, int]] | None = None,
 ) -> list[str]:
-    """Read the stranded-at-zero record out loud, whichever mode this pass ran in.
+    """Read both zero-capacity records out loud, whichever mode this pass ran in.
 
     The record was only ever read out by an apply pass, so ``--mode check``,
     the dry run an operator reaches for to ask what the fleet looks like,
@@ -1501,16 +1558,28 @@ def pass_escalations(
     persists nothing, so a check pass can say it and earn the same verdict an
     apply pass would.
 
-    Scoped to the hosts in this pass's declaration on purpose: pruning records
-    for hosts the fleet no longer manages is a write an apply pass makes, and a
-    check pass must not turn one retired host's stale record into a permanently
-    red dry run instead.
+    The durable park is the other way a host sits at zero, so it is read out
+    here too and escalates on the same clock: a park this controller has not
+    proven closed for ``PARK_ESCALATION_PASSES`` passes is a fleet that is not
+    recovering on its own, however ordinary each single pass's exit status
+    looked.
+
+    Scoped to the hosts in this pass's declaration on purpose, for both
+    records: pruning records for hosts the fleet no longer manages is a write
+    an apply pass makes, and a check pass must not turn one retired host's
+    stale record into a permanently red dry run instead.
     """
     managed = managed_stranding(stranding, order)
-    report_durable_park(managed_stranding(parked or {}, order), options.now)
+    held_parked = managed_stranding(parked or {}, order)
+    report_durable_park(held_parked, options.now)
     if options.mode != "apply":
         report_recorded_zero(managed, options.now)
-    return stranded_escalations(managed, options.now)
+    return sorted(
+        {
+            *stranded_escalations(managed, options.now),
+            *parked_escalations(held_parked, options.now),
+        }
+    )
 
 
 def consumers_released(
@@ -2446,6 +2515,7 @@ def selftest() -> int:
     failures.extend(frpu.run(sys.modules[__name__]))
     failures.extend(frpr.run(sys.modules[__name__]))
     failures.extend(fro.run(sys.modules[__name__]))
+    failures.extend(frpe.run(sys.modules[__name__]))
     failures.extend(frpk.run(sys.modules[__name__]))
     failures.extend(frlt.run(sys.modules[__name__]))
     failures.extend(frsv.run(sys.modules[__name__]))
