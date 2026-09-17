@@ -422,6 +422,75 @@ static void internal_test_chunked_workspace_and_reader_guards(void)
   TEST_END("strict chunked workspace and reader guards");
 }
 
+/**
+ * @test One ::ra8_vsource_read_fn callback drives both the paged virtual-source
+ *       registry and the strict RABOOK1 validator, with no per-library typedef.
+ * @details #770 collapsed @c book_stream_read_fn onto ::ra8_vsource_read_fn.
+ *          This vector is the anti-regression pin: the fixture's exact reader is
+ *          held in a variable of the shared seam type and then handed to
+ *          ra8_vsource_add_paged() and book_validate_stream_strict() in turn. A
+ *          re-introduced private typedef makes one of those two calls need a
+ *          cast, which -Wincompatible-pointer-types turns into a build failure.
+ * @par MC/DC: no compound decision under test; this vector fixes the seam type
+ *      and proves both consumers accept the identical callback value.
+ */
+RA8_INTERNAL
+static void internal_test_positioned_read_seam_is_shared(void)
+{
+  TEST_BEGIN("positioned-read seam is ra8_vsource_read_fn");
+  priv_book_fixture_setup();
+
+  /* The seam type, named once. Assigning the fixture reader here is the whole
+     point: it must be assignment-compatible without a cast. */
+  const ra8_vsource_read_fn seam = priv_book_fixture_read;
+  TEST_ASSERT_TRUE(seam != nullptr);
+
+  stream_mem_t mem = {
+    .data      = (uint8_t*)&g_book,
+    .len       = (uint64_t)priv_book_fixture_flat_len(),
+    .calls     = 0U,
+    .fail_call = 0U,
+  };
+
+  /* Consumer 1: the Ring 2 paged virtual-source registry. */
+  ra8_vsource_t     vs         = {};
+  ra8_vsource_obj_t objs[1]    = {};
+  uint32_t          object_id  = UINT32_MAX;
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_vsource_init(&vs, objs, 1U));
+  TEST_ASSERT_EQ(k_ra8_ok,
+                 ra8_vsource_add_paged(&vs, seam, &mem, 0U, mem.len, &object_id));
+  TEST_ASSERT_EQ(0U, object_id);
+
+  /* Consumer 2: the strict streamed validator, same callback value. */
+  const uint32_t calls_before = mem.calls;
+  book_header_t  hdr          = {};
+  TEST_ASSERT_EQ(k_ra8_ok,
+                 book_validate_stream_strict(seam,
+                                             &mem,
+                                             mem.len,
+                                             g_validate_work,
+                                             sizeof(g_validate_work),
+                                             &hdr));
+  TEST_ASSERT_EQ(priv_book_fixture_flat_len(), hdr.total_size);
+  TEST_ASSERT_TRUE(mem.calls > calls_before);
+
+  /* The error channel survives the collapse: a source fault still propagates
+     verbatim out of the validator rather than being flattened to a count. */
+  mem.calls      = 0U;
+  mem.fail_call  = 1U;
+  hdr            = (book_header_t){};
+  TEST_ASSERT_EQ(k_ra8_err_hw_timeout,
+                 book_validate_stream_strict(seam,
+                                             &mem,
+                                             mem.len,
+                                             g_validate_work,
+                                             sizeof(g_validate_work),
+                                             &hdr));
+  TEST_ASSERT_EQ(0U, hdr.total_size);
+
+  TEST_END("positioned-read seam is ra8_vsource_read_fn");
+}
+
 int main(void)
 {
   internal_test_flat_happy_and_args();
@@ -430,5 +499,6 @@ int main(void)
   internal_test_image_corruption();
   internal_test_production_rbkc_round_trip_and_chunk_corruption();
   internal_test_chunked_workspace_and_reader_guards();
+  internal_test_positioned_read_seam_is_shared();
   return 0;
 }
