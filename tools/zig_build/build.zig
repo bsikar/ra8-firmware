@@ -382,13 +382,72 @@ const VerifyHostArtifact = struct {
             );
         }
 
+        const signature = macho.readSignature(bytes) catch |err| {
+            if (!signatureRequired(self.target_arch)) {
+                const minimum_unsigned = image.minimum_os.?;
+                std.debug.print(
+                    "verify-host-artifact: {s} is a {s} macOS Mach-O for {d}.{d}.{d}, linking {s}; " ++
+                        "no readable code signature ({s}), which {s} does not require\n",
+                    .{
+                        self.name,              @tagName(actual_arch.?),    minimum_unsigned.major,
+                        minimum_unsigned.minor, minimum_unsigned.patch,     macho.system_libsystem,
+                        @errorName(err),        @tagName(self.target_arch),
+                    },
+                );
+                return;
+            }
+            return step.fail(
+                "{s} carries no usable code signature ({s}); arm64 macOS refuses to execute an " ++
+                    "unsigned image, so this binary links but cannot run on the host it was built for (#899)",
+                .{ path, @errorName(err) },
+            );
+        };
+
+        if (!signature.coversImage()) {
+            return step.fail(
+                "{s} has a code signature covering {d} bytes while the signature itself starts at {d}; " ++
+                    "the image was modified after the link, so macOS will reject the signature at exec (#899)",
+                .{ path, signature.code_limit, signature.region.data_offset },
+            );
+        }
+
+        if (signatureRequired(self.target_arch) and !signature.isAdhoc() and !signature.isLinkerSigned()) {
+            return step.fail(
+                "{s} carries a code signature with neither the ad-hoc nor the linker-signed flag " ++
+                    "(flags 0x{x:0>8}); nothing in this build signs with an identity, so this is not " ++
+                    "the signature the link should have produced (#899)",
+                .{ path, signature.flags },
+            );
+        }
+
         const minimum = image.minimum_os.?;
         std.debug.print(
-            "verify-host-artifact: {s} is a {s} macOS Mach-O for {d}.{d}.{d}, linking {s}\n",
-            .{ self.name, @tagName(actual_arch.?), minimum.major, minimum.minor, minimum.patch, macho.system_libsystem },
+            "verify-host-artifact: {s} is a {s} macOS Mach-O for {d}.{d}.{d}, linking {s}, " ++
+                "{s} signed as \"{s}\" over all {d} bytes\n",
+            .{
+                self.name,
+                @tagName(actual_arch.?),
+                minimum.major,
+                minimum.minor,
+                minimum.patch,
+                macho.system_libsystem,
+                if (signature.isLinkerSigned()) "linker ad-hoc" else "ad-hoc",
+                signature.identifier,
+                signature.code_limit,
+            },
         );
     }
 };
+
+/// Is a code signature mandatory for this target?
+///
+/// arm64 macOS is the case that matters: the kernel refuses to execute an
+/// unsigned image there, so an unsigned artifact is a build that cannot run.
+/// x86_64 macOS still runs unsigned binaries, so absence there is reported
+/// rather than failed.
+fn signatureRequired(arch: std.Target.Cpu.Arch) bool {
+    return arch == .aarch64;
+}
 
 /// Refuse a static archive that this build's target cannot link, and say why
 /// (#899).
