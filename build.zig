@@ -120,6 +120,21 @@ pub fn build(b: *std.Build) void {
     const target = b.standardTargetOptions(.{});
     const optimize = b.standardOptimizeOption(.{});
 
+    // CMAKE_BUILD_TYPE, by its CMake name. Debug by default so every existing
+    // invocation builds exactly what it did before #1179; an unrecognised name
+    // is refused rather than silently built as Debug, which is the whole
+    // failure this option exists to end.
+    const build_type_name = b.option(
+        []const u8,
+        "build-type",
+        b.fmt("CMAKE_BUILD_TYPE to build at: {s} (default Debug)", .{build_type.names(b.allocator)}),
+    ) orelse "Debug";
+    const selected = build_type.parse(build_type_name) orelse std.debug.panic(
+        "ra8: -Dbuild-type={s} is not a configuration this graph declares; it knows {s}",
+        .{ build_type_name, build_type.names(b.allocator) },
+    );
+    arm = build_type.globals(b.allocator, selected, armBase());
+
     const test_step = b.step("test", "Build and run the whole migrated-library slice");
     const c_test_step = b.step("test-c", "Run the unmodified C suites against the Zig archives");
     const zig_test_step = b.step("test-zig", "Run the Zig-native suites of the migrated libraries");
@@ -149,6 +164,11 @@ pub fn build(b: *std.Build) void {
     // This file and just/zig.just, so command_surface_test.zig can hold the
     // steps declared here to the recipes that expose them (#1165).
     command_surface.addSources(b, graph_test_module);
+    // The root CMakeLists, so build_type_test.zig can hold the three
+    // configurations against the listfile that declares them (#1179).
+    graph_test_module.addAnonymousImport("root_cmakelists_source", .{
+        .root_source_file = b.path("CMakeLists.txt"),
+    });
 
     const graph_tests = b.addTest(.{ .root_module = graph_test_module });
     zig_test_step.dependOn(&b.addRunArtifact(graph_tests).step);
@@ -326,85 +346,38 @@ pub const cross_apps = cross_sources.cross_apps;
 /// not wiring. Aliased here under their old names so every call site below
 /// still reads as the flag set it is.
 pub const arm_flags = @import("tests/zig_build_graph/arm_flags.zig");
+pub const build_type = @import("tests/zig_build_graph/build_type.zig");
+pub const cross_build = @import("tests/zig_build_graph/cross_build.zig");
 pub const device = @import("tests/zig_build_graph/device.zig");
 pub const off_target = @import("tests/zig_build_graph/off_target.zig");
-const arm_global_flags = arm_flags.global_flags;
 const arm_cpu_flags = arm_flags.cpu_flags;
-const arm_asm_flags = arm_flags.asm_flags;
 const arm_global_defines = arm_flags.global_defines;
-const arm_debug_flags = arm_flags.debug_flags;
 const arm_dialect_flags = arm_flags.dialect_flags;
 const arm_target_dialect_flags = arm_flags.target_dialect_flags;
 const arm_link_flags = arm_flags.link_flags;
 pub const armWarningFlags = arm_flags.warningFlags;
 
-/// The three cross tools this slice drives.
-const ArmTools = struct {
-    gcc: []const u8,
-    objcopy: []const u8,
-    size: []const u8,
-    /// The archiver, needed only since #1054: a middleware is handed to the
-    /// app as a static archive, and a static link pulls only the members
-    /// something references.
-    ar: []const u8,
-};
+/// The global flag sets at the configuration THIS invocation selected, and the
+/// one piece of build-wide state in this file. A configuration is a single
+/// choice for the whole graph the way CMAKE_BUILD_TYPE is for a configure, and
+/// threading it through ten signatures would say the same thing ten times.
+/// Assembled once at the top of build() from `-Dbuild-type=`, before anything
+/// below is called, so the `arm` step, both second images and every
+/// compile-database row cannot disagree about which configuration they are.
+var arm: build_type.Globals = undefined;
 
-fn findArmTools(b: *std.Build) ?ArmTools {
-    const gcc = b.findProgram(&.{"arm-none-eabi-gcc"}, &.{}) catch return null;
-    const objcopy = b.findProgram(&.{"arm-none-eabi-objcopy"}, &.{}) catch return null;
-    const size = b.findProgram(&.{"arm-none-eabi-size"}, &.{}) catch return null;
-    const ar = b.findProgram(&.{"arm-none-eabi-ar"}, &.{}) catch return null;
-    return .{ .gcc = gcc, .objcopy = objcopy, .size = size, .ar = ar };
-}
+/// The cross toolchain and the per-sub-target contexts, in their own module
+/// since #1179. Aliased here so the call sites below read as they did.
+const ArmTools = cross_build.Tools;
+const findArmTools = cross_build.findTools;
 
-/// The two global flag sets a middleware archive is built with, and the tools
-/// that build it. Named once so `zig build arm` and `zig build compile-db`
-/// cannot drift apart about what a middleware TU is really given.
-/// The same two global sets, handed to an app-local vendored library. It gets
-/// the toolchain's flags and the directory-scope defines, and none of the
-/// project warning profile: that profile is applied by ra8_add_app() to the
-/// app target, and a separately-declared library never passed through it.
-fn appLocalToolchain(tools: ArmTools) app_local.Toolchain {
+/// The sets that do not vary by configuration, as build_type.Base names them.
+fn armBase() build_type.Base {
     return .{
-        .gcc = tools.gcc,
-        .ar = tools.ar,
-        .global_flags = &arm_global_flags,
-        .global_defines = &arm_global_defines,
-    };
-}
-
-fn middlewareToolchain(tools: ArmTools) middleware.Toolchain {
-    return .{
-        .gcc = tools.gcc,
-        .ar = tools.ar,
-        .global_defines = &arm_global_defines,
-        .c_flags = &arm_global_flags,
-        .asm_flags = &arm_asm_flags,
-    };
-}
-
-/// The Non-Secure image's own context: the tools, the app it belongs to, the
-/// two global flag sets, and the warning profile at ITS frame budget rather
-/// than the app's. Named once so the `arm` step and the compile database
-/// cannot drift apart about what an NS translation unit is really given.
-fn nsContext(b: *std.Build, tools: ArmTools, app: CrossApp, image: ns_image.NsImage) ns_image.Context {
-    const mw = middleware.find(image.uses) orelse std.debug.panic(
-        "ra8: the NS image names middleware {s}, which the root build graph does not know yet",
-        .{image.uses},
-    );
-    return .{
-        .gcc = tools.gcc,
-        .objcopy = tools.objcopy,
-        .size = tools.size,
-        .app_name = app.name,
-        .app_dir = app.dir,
-        .image = image,
-        .middleware = mw,
-        .global_defines = &arm_global_defines,
-        .global_compile_flags = &arm_global_flags,
-        .warning_flags = arm_flags.warningFlagsForStack(b.allocator, image.stack_bytes),
-        .global_link_flags = &(arm_cpu_flags ++ arm_debug_flags ++ arm_link_flags),
-        .merge_script = "scripts/gen/merge_ihex.py",
+        .c_flags = &arm_cpu_flags,
+        .c_dialect = &.{"-std=gnu2x"},
+        .asm_flags = &arm_flags.cpu_select_flags,
+        .link_flags = &arm_link_flags,
     };
 }
 
@@ -462,7 +435,7 @@ fn addArmCrossApp(
     const middlewares = middleware.resolve(b.allocator, app.uses);
     const middleware_archives = b.allocator.alloc(std.Build.LazyPath, middlewares.len) catch @panic("OOM");
     for (middlewares, 0..) |mw, index| {
-        middleware_archives[index] = middleware.add(b, mw, middlewareToolchain(tools));
+        middleware_archives[index] = middleware.add(b, mw, cross_build.middlewareToolchain(tools, arm, &arm_global_defines));
     }
     const middleware_defines = middleware.appDefines(b.allocator, middlewares);
     const middleware_include_dirs = middleware.appIncludeDirs(b.allocator, middlewares);
@@ -472,7 +445,7 @@ fn addArmCrossApp(
     // defines and -isystem directories it exports onto the app's translation
     // units. Silent when missed, see app_local.zig.
     const local_archive: ?std.Build.LazyPath = if (app.local.vendored) |lib|
-        app_local.add(b, lib, appLocalToolchain(tools))
+        app_local.add(b, lib, cross_build.appLocalToolchain(tools, arm, &arm_global_defines))
     else
         null;
     const local_defines = app_local.appDefines(b.allocator, app.local);
@@ -490,7 +463,7 @@ fn addArmCrossApp(
         // after the shared CPU flags (so its -mfpu wins) and before the
         // configuration's own set. Empty for every ek_ra8d2 app (#1131).
         compile.addArgs(device.compileFlags(app.board));
-        compile.addArgs(&arm_debug_flags);
+        compile.addArgs(arm.config_flags);
         compile.addArgs(&arm_dialect_flags);
         if (app.trust_zone) compile.addArg(arm_flags.trust_zone.define);
         compile.addArgs(middleware_defines);
@@ -536,8 +509,8 @@ fn addArmCrossApp(
         .size = tools.size,
         .app = .{ .name = app.name, .dir = app.dir, .board = app.board },
         .image = image,
-        .global_compile_flags = &arm_global_flags,
-        .global_link_flags = &(arm_cpu_flags ++ arm_debug_flags ++ arm_link_flags),
+        .global_compile_flags = arm.c_flags,
+        .global_link_flags = arm.link_flags,
     }) else null;
 
     // An app that does not link in a Debug configure under EITHER build system
@@ -559,7 +532,7 @@ fn addArmCrossApp(
     const link = b.addSystemCommand(&.{tools.gcc});
     link.addArgs(&arm_cpu_flags);
     link.addArgs(device.linkFlags(app.board));
-    link.addArgs(&arm_debug_flags);
+    link.addArgs(arm.config_flags);
     link.addArgs(&arm_link_flags);
     // The middleware's INTERFACE link options. Dropping these does not fail
     // the link, it produces a firmware image whose kernel time base never
@@ -615,8 +588,8 @@ fn addArmCrossApp(
     // the .gnu.sgstubs veneers, and the Secure ELF is an input of the hex
     // merge. Both are declared outputs above rather than paths by convention.
     if (app.ns) |image| {
-        var ctx = nsContext(b, tools, app, image);
-        ctx.middleware_archive = middleware.add(b, ctx.middleware, middlewareToolchain(tools));
+        var ctx = cross_build.nsContext(b, tools, app, image, arm, &arm_global_defines);
+        ctx.middleware_archive = middleware.add(b, ctx.middleware, cross_build.middlewareToolchain(tools, arm, &arm_global_defines));
         ctx.implib = implib;
         ctx.secure_elf = elf;
         ns_image.add(b, arm_step, ctx);
@@ -908,7 +881,8 @@ fn compileDbEntries(b: *std.Build) []const compile_db.Entry {
             var app_flags = std.ArrayList([]const u8).init(b.allocator);
             app_flags.appendSlice(&arm_cpu_flags) catch @panic("OOM");
             app_flags.appendSlice(device.compileFlags(app.board)) catch @panic("OOM");
-            app_flags.appendSlice(&(arm_debug_flags ++ arm_dialect_flags)) catch @panic("OOM");
+            app_flags.appendSlice(arm.config_flags) catch @panic("OOM");
+            app_flags.appendSlice(&arm_dialect_flags) catch @panic("OOM");
             if (app.trust_zone) app_flags.append(arm_flags.trust_zone.define) catch @panic("OOM");
             app_flags.appendSlice(middleware.appDefines(b.allocator, middlewares)) catch @panic("OOM");
             // Same reason for the app's own CMakeLists: its vendored
@@ -953,12 +927,12 @@ fn compileDbEntries(b: *std.Build) []const compile_db.Entry {
             // across every app that names the same middleware, so the
             // deduplicator collapses them to one set of rows.
             for (middlewares) |mw| {
-                middleware.appendCompileDbEntries(b, compile_db.Entry, &candidates, mw, middlewareToolchain(tools));
+                middleware.appendCompileDbEntries(b, compile_db.Entry, &candidates, mw, cross_build.middlewareToolchain(tools, arm, &arm_global_defines));
             }
             // And the app-local vendored library's, at the bar a target with
             // no project profile really gets.
             if (app.local.vendored) |lib| {
-                app_local.appendCompileDbEntries(b, compile_db.Entry, &candidates, lib, appLocalToolchain(tools));
+                app_local.appendCompileDbEntries(b, compile_db.Entry, &candidates, lib, cross_build.appLocalToolchain(tools, arm, &arm_global_defines));
             }
             // The second image's TUs are compiled at a different bar entirely
             // (no warning profile, -Os over -O0, an M33 -mcpu after the M85
@@ -969,16 +943,16 @@ fn compileDbEntries(b: *std.Build) []const compile_db.Entry {
                 .size = tools.size,
                 .app = .{ .name = app.name, .dir = app.dir, .board = app.board },
                 .image = image,
-                .global_compile_flags = &arm_global_flags,
-                .global_link_flags = &(arm_cpu_flags ++ arm_debug_flags ++ arm_link_flags),
+                .global_compile_flags = arm.c_flags,
+                .global_link_flags = arm.link_flags,
             });
             // And the Non-Secure image's, which are their own rows for the
             // same reason: a different define set, a different include path,
             // and per-set vendored suppressions the secure half never carries.
             if (app.ns) |image| {
-                const ctx = nsContext(b, tools, app, image);
+                const ctx = cross_build.nsContext(b, tools, app, image, arm, &arm_global_defines);
                 ns_image.appendCompileDbEntries(b, compile_db.Entry, &candidates, ctx);
-                middleware.appendCompileDbEntries(b, compile_db.Entry, &candidates, ctx.middleware, middlewareToolchain(tools));
+                middleware.appendCompileDbEntries(b, compile_db.Entry, &candidates, ctx.middleware, cross_build.middlewareToolchain(tools, arm, &arm_global_defines));
             }
         }
     }
