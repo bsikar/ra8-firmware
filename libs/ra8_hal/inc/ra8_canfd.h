@@ -3,6 +3,9 @@
  * @brief CANFD Lite driver (bit-timing, TX, RX, error state)
  * @ingroup grp_hal_comms
  *
+ * @par Tag
+ * [Ring 3 / HAL] {World: NS}
+ *
  * @details
  * Minimal driver surface over the RA8D2 CANFD Lite controller --
  * enough to bring a channel up at a chosen nominal bit rate, queue a

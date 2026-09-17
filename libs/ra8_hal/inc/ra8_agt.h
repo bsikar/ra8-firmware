@@ -5,6 +5,9 @@
  * @details Declares bounded start, stop, counter, and reload operations for the RA8 asynchronous general-purpose timer channels.
  * @ingroup grp_hal_timers
  *
+ * @par Tag
+ * [Ring 3 / HAL] {World: NS}
+ *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
  */
