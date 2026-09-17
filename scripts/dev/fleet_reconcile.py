@@ -31,6 +31,7 @@ import fleet_reconcile_blocking_selftest as frbl
 import fleet_reconcile_drain_selftest as frd
 import fleet_reconcile_process as frp
 import fleet_reconcile_recovery_selftest as frr
+import fleet_reconcile_reopen_selftest as frre
 import fleet_reconcile_selftest as frs
 import fleet_wsl as fw
 
@@ -348,6 +349,36 @@ def wait_before_retry(seconds: float, sleep: Callable[[float], None] = time.slee
     return not frp.interrupted_status()
 
 
+def settle_exhausted_mutation(
+    host: str, run: CommandRunner, on_mutation_exhausted: Callable[[], bool] | None
+) -> None:
+    """Drain a host whose mutation is exhausted, then account for its capacity.
+
+    Drain first, always: that is the fail-closed reflex.  Raising on a refused
+    drain used to leave ``apply_host`` before the recovery hook could run, so a
+    host that was converged before its apply failed was reported as unaccounted
+    for while proving it still serves last-known-good capacity was right there
+    (issue #888).  Attempt the drain, then recover, then decide which verdict
+    the host has earned.
+    """
+    drain_failure: DrainFailedError | None = None
+    try:
+        quarantine(host, run)
+    except DrainFailedError as error:
+        drain_failure = error
+    accounted = on_mutation_exhausted() if on_mutation_exhausted is not None else False
+    if drain_failure is None:
+        return
+    if not accounted:
+        raise drain_failure
+    print(
+        f"fleet-reconcile: WARNING: {host}: drain was REFUSED "
+        f"(rc={drain_failure.status}); last-known-good capacity verified instead, "
+        "so the host is accounted for and this pass still fails",
+        file=sys.stderr,
+    )
+
+
 def apply_host(  # noqa: PLR0913  # transaction inputs plus its recovery hook
     data: dict[str, Any],
     host: str,
@@ -355,7 +386,7 @@ def apply_host(  # noqa: PLR0913  # transaction inputs plus its recovery hook
     *,
     expected_check_changes: int,
     apply_attempts: int = 1,
-    on_mutation_exhausted: Callable[[], None] | None = None,
+    on_mutation_exhausted: Callable[[], bool] | None = None,
     sleep: Callable[[float], None] = time.sleep,
 ) -> tuple[bool, int]:
     """Apply one host and prove the resulting declaration is idempotent."""
@@ -379,9 +410,7 @@ def apply_host(  # noqa: PLR0913  # transaction inputs plus its recovery hook
             if not wait_before_retry(delay, sleep):
                 break
     if not applied:
-        quarantine(host, run)
-        if on_mutation_exhausted is not None:
-            on_mutation_exhausted()
+        settle_exhausted_mutation(host, run, on_mutation_exhausted)
         return False, 0
     clean, changed = inspect_host(data, host, run, parked=True)
     if not clean or changed != expected_check_changes or frp.interrupted_status():
@@ -455,12 +484,18 @@ def reconcile_host(  # noqa: PLR0913  # transaction inputs plus injectable retry
     attempts = PRODUCER_APPLY_ATTEMPTS if producer else 1
     recovered = False
 
-    def reopen_last_known_good() -> None:
-        """Reopen capacity only when the failed apply followed a clean check."""
+    def reopen_last_known_good() -> bool:
+        """Reopen capacity only when the failed apply followed a clean check.
+
+        Returns whether this host's capacity ended up accounted for, which is
+        what lets a refused drain be downgraded from an unaccounted-for host to
+        a failed pass against verified last-known-good capacity.
+        """
         nonlocal recovered
         if actionable_changes or frp.interrupted_status():
-            return
+            return False
         recovered = recover_last_known_good(data, host, run, expected_changes)
+        return recovered
 
     applied, _ = apply_host(
         data,
@@ -1108,6 +1143,7 @@ def selftest() -> int:
     failures.extend(frb.run(sys.modules[__name__]))
     failures.extend(frbl.run(sys.modules[__name__]))
     failures.extend(frd.run(sys.modules[__name__]))
+    failures.extend(frre.run(sys.modules[__name__]))
     _selftest_state_safety(failures)
     failures.extend(fml.run_selftest())
     _selftest_timeout(failures)
