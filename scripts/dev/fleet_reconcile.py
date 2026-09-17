@@ -29,6 +29,7 @@ import fleet_reconcile_arc_selftest as fras
 import fleet_reconcile_backoff_selftest as frb
 import fleet_reconcile_blocking_selftest as frbl
 import fleet_reconcile_drain_selftest as frd
+import fleet_reconcile_freeze_selftest as frf
 import fleet_reconcile_interrupt_selftest as fri
 import fleet_reconcile_process as frp
 import fleet_reconcile_recovery_selftest as frr
@@ -76,6 +77,15 @@ STRANDED_STATUS = 4
 # everything: a consumer already sitting at zero is skipped every pass and can
 # never be repaired, which is how issue #888's fleet stayed at zero.
 PRODUCER_BLOCK_PASSES = 3
+# A receipt earned while the consumers are released was converged against the
+# producer's FROZEN last-known-good image, not against whatever the producer
+# serves once it recovers.  It still stamps full_applied_at, so an ordinary
+# receipt tells every later pass that this consumer needs nothing for a whole
+# interval: the producer's recovery never reaches it and the controller reports
+# a fully converged fleet while every consumer still runs the image from before
+# the outage (issue #888).  Mark them, so a producer proven to be serving again
+# expires them and the consumers converge onto what it now publishes.
+RELEASED_RECEIPT_KEY = "released_against"
 # Every verb that can move a host's capacity.  A failure that issued none of
 # them cannot have stranded the host, whatever else went wrong.
 CAPACITY_MUTATION_VERBS = frozenset({"parked-apply", "quarantine", "restore", "activate"})
@@ -649,14 +659,21 @@ def record_stranding(stranding: dict[str, dict[str, int]], host: str, now: int) 
     )
 
 
-def clear_stranding(stranding: dict[str, dict[str, int]], host: str) -> None:
-    """Forget a host's stranding once a pass has proven it serving again."""
-    if stranding.pop(host, None) is not None:
-        print(
-            f"fleet-reconcile: {host}: reconciled and serving again; clearing its "
-            "stranded-at-zero record",
-            file=sys.stderr,
-        )
+def clear_stranding(stranding: dict[str, dict[str, int]], host: str) -> bool:
+    """Forget a host's stranding, reporting whether it was held at zero before.
+
+    The answer is what tells one ordinary successful pass from a host climbing
+    back off zero capacity, which is the only evidence that a producer has
+    republished since its consumers were released onto a frozen image.
+    """
+    if stranding.pop(host, None) is None:
+        return False
+    print(
+        f"fleet-reconcile: {host}: reconciled and serving again; clearing its "
+        "stranded-at-zero record",
+        file=sys.stderr,
+    )
+    return True
 
 
 def invalidate_receipt(
@@ -671,6 +688,45 @@ def invalidate_receipt(
     receipts.pop(host, None)
     if stranded:
         record_stranding(stranding, host, now)
+
+
+def released_receipt(receipt: dict[str, Any], host: str, producer: str) -> dict[str, Any]:
+    """Mark a receipt converged against a frozen last-known-good image."""
+    print(
+        f"fleet-reconcile: WARNING: {host}: reconciled against {producer}'s FROZEN "
+        "last-known-good image; its receipt is provisional until that producer is "
+        "serving again",
+        file=sys.stderr,
+    )
+    return {**receipt, RELEASED_RECEIPT_KEY: producer}
+
+
+def expire_released_receipts(
+    receipts: dict[str, Any], hosts: Sequence[str], producer: str
+) -> list[str]:
+    """Make every consumer released onto a frozen image converge again.
+
+    Dropping the provisional receipt is what forces the full apply: the
+    consumer is reconciled later in this same pass, so the image the recovered
+    producer publishes reaches the fleet immediately instead of waiting out a
+    full interval the frozen-image receipt had already claimed.
+    """
+    expired = [
+        host
+        for host in hosts
+        if isinstance(receipts.get(host), dict)
+        and receipts[host].get(RELEASED_RECEIPT_KEY) == producer
+    ]
+    for host in expired:
+        receipts.pop(host, None)
+    if expired:
+        print(
+            f"fleet-reconcile: producer {producer} is serving again; expiring the "
+            "provisional receipt(s) earned against its frozen image so they converge "
+            f"onto what it publishes now: {', '.join(expired)}",
+            file=sys.stderr,
+        )
+    return expired
 
 
 def stranded_escalations(stranding: dict[str, dict[str, int]], now: int) -> list[str]:
@@ -723,16 +779,41 @@ def consumers_released(
 
 def producer_block_state(
     stranding: dict[str, dict[str, int]], host: str, *, stranded: bool, undrained: bool
-) -> bool:
-    """Return whether a failed producer still holds its consumers back."""
+) -> tuple[bool, bool]:
+    """Return whether a failed producer blocks its consumers, and whether it released them.
+
+    Released is not merely the opposite of blocking: a producer that failed
+    without losing capacity never blocked anyone and its image is not frozen,
+    so a consumer reconciling past it earns an ordinary receipt.  Only a
+    deliberate release onto a drained producer's frozen image makes one
+    provisional.
+    """
     if not stranded:
         print(
             f"fleet-reconcile: WARNING: producer {host} FAILED without "
             "losing capacity; consumers continue against last-known-good",
             file=sys.stderr,
         )
-        return False
-    return not consumers_released(stranding, host, undrained=undrained)
+        return False, False
+    released = consumers_released(stranding, host, undrained=undrained)
+    return not released, released
+
+
+def record_success(  # noqa: PLR0913  # the receipt plus every record one success settles
+    receipts: dict[str, Any],
+    stranding: dict[str, dict[str, int]],
+    order: Sequence[str],
+    host: str,
+    receipt: dict[str, Any],
+    *,
+    index: int,
+    released: bool,
+) -> None:
+    """Publish one reconciled host's receipt and settle the frozen-image records."""
+    producer = order[0]
+    receipts[host] = released_receipt(receipt, host, producer) if index and released else receipt
+    if clear_stranding(stranding, host) and not index:
+        expire_released_receipts(receipts, order[1:], producer)
 
 
 def report_uninspected(remaining: Sequence[str]) -> None:
@@ -770,6 +851,7 @@ def reconcile(
     stranding = load_stranding(document)
     failures = 0
     producer_blocking = False
+    producer_released = False
     undrained: list[str] = []
     order = runner_hosts(data)
     for index, host in enumerate(order):
@@ -809,8 +891,9 @@ def reconcile(
             # producer in this state still holds its consumers back.
             ok, stranded, receipt = False, True, {}
         if ok and options.mode == "apply":
-            receipts[host] = receipt
-            clear_stranding(stranding, host)
+            record_success(
+                receipts, stranding, order, host, receipt, index=index, released=producer_released
+            )
         if not ok:
             failures += 1
             if options.mode == "apply":
@@ -818,7 +901,7 @@ def reconcile(
                 invalidate_receipt(receipts, stranding, host, options.now, stranded=lost)
                 save_state(state_path, document)
             if index == 0 and options.mode == "apply":
-                producer_blocking = producer_block_state(
+                producer_blocking, producer_released = producer_block_state(
                     stranding, host, stranded=stranded, undrained=host in undrained
                 )
     escalated: list[str] = []
@@ -1389,6 +1472,7 @@ def selftest() -> int:
     failures.extend(frrl.run(sys.modules[__name__]))
     failures.extend(frse.run(sys.modules[__name__]))
     failures.extend(fri.run(sys.modules[__name__]))
+    failures.extend(frf.run(sys.modules[__name__]))
     _selftest_state_safety(failures)
     failures.extend(fml.run_selftest())
     _selftest_timeout(failures)
