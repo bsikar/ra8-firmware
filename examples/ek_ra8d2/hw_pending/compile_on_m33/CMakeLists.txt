@@ -105,6 +105,15 @@ if(TARGET compile_on_m33_cpu1.elf)
   #     -Os: all eight compile clean, and none of the parse or emit frames
   #     reaches -Wstack-usage=2048, so the emitter path now carries real stack
   #     evidence instead of none. Their rows are gone from the inventory.
+  #   - the epub front end: the ZIP reader, the XHTML/TOC shims and the image
+  #     import path cpu1_main.c drives through
+  #     rabook_compile_from_epub_to_buffer. The glob is still a glob, so a new
+  #     epub TU lands on the profile the day it is written instead of
+  #     escaping it. Measured on the profile at this image's -Os: all ten
+  #     compile clean and none reaches -Wstack-usage=2048, so the EPUB parse
+  #     path now carries real stack evidence. Their rows were the last ten in
+  #     the inventory, which is now empty.
+  file(GLOB _c1_epub_c CONFIGURE_DEPENDS ${RA8_REPO_ROOT}/apps/shared_libs/epub/src/*.c)
   ra8_cpu1_add_first_party_sources(
     compile_on_m33_cpu1.elf
     ${RA8_REPO_ROOT}/libs/ra8_core/src/ra8_decomp_limits.c
@@ -118,15 +127,14 @@ if(TARGET compile_on_m33_cpu1.elf)
     ${RA8_REPO_ROOT}/apps/shared_libs/xml/src/xml.c
     ${RA8_REPO_ROOT}/apps/shared_libs/xml/src/xml_decode.c
     ${RA8_REPO_ROOT}/apps/shared_libs/xml/src/xml_doctype.c
+    ${_c1_epub_c}
   )
-  file(GLOB _c1_epub_c CONFIGURE_DEPENDS ${RA8_REPO_ROOT}/apps/shared_libs/epub/src/*.c)
-  # Still plain target_sources(): the epub glob (10 first-party TUs, still
-  # inventory rows) and vendored miniz.c (SOUP, deliberately outside the
-  # first-party bar).
+  # Still plain target_sources(): vendored miniz.c only (SOUP, deliberately
+  # outside the first-party bar). Every first-party TU on this image now goes
+  # through the opt-in above, so the escape inventory holds no rows for it.
   target_sources(
     compile_on_m33_cpu1.elf
-    PRIVATE ${_c1_epub_c}
-            ${RA8_REPO_ROOT}/apps/shared_libs/third_party/miniz/miniz.c
+    PRIVATE ${RA8_REPO_ROOT}/apps/shared_libs/third_party/miniz/miniz.c
   )
   # MINIZ_NO_STDIO/NO_TIME on EVERY TU that includes miniz.h (miniz.c + epub)
   # so the header ABI matches and miniz.c's fopen/utime file path (absent on
