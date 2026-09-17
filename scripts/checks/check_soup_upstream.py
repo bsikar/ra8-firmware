@@ -71,6 +71,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "dev"))
 from git_environment import isolated_git_environment, trusted_git_executable
 from sbom_registry import (
     PROV_COMMIT_PINNED,
+    PROV_DEP_PINNED,
     PROV_NOT_VENDORED,
     REGISTRY,
     UPSTREAM_ARCHIVE,
@@ -125,8 +126,15 @@ class VacuousScanError(Exception):
 
 
 def vendored_components() -> tuple[Component, ...]:
-    """Return every registry entry that is actually vendored in this tree."""
-    return tuple(comp for comp in REGISTRY if comp.provenance != PROV_NOT_VENDORED)
+    """Return every registry entry that is actually vendored in this tree.
+
+    Two provenance classes have no vendored bytes and therefore no upstream
+    manifest to prove: ``PROV_NOT_VENDORED`` (absent from the tree) and
+    ``PROV_DEP_PINNED`` (an external build dependency pinned in a lockfile,
+    whose pin is checked by ``gen_sbom.py`` instead).
+    """
+    excluded = (PROV_NOT_VENDORED, PROV_DEP_PINNED)
+    return tuple(comp for comp in REGISTRY if comp.provenance not in excluded)
 
 
 def blob_id(data: bytes) -> str:

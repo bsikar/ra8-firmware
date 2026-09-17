@@ -93,6 +93,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "dev"))
 
 from git_environment import isolated_git_environment, trusted_git_executable
 from sbom_registry import (
+    PROV_DEP_PINNED,
     PROV_NOT_VENDORED,
     REGISTRY,
     Component,
@@ -114,6 +115,13 @@ GENERATOR_NAME = "gen_sbom.py"
 DIGEST_ALG = "SHA-256"
 GIT_MODE_SYMLINK = "120000"
 TOOL_VENDOR_ROOT_PARTS = 3
+
+# Provenance classes whose component has no vendored tree in this repository, so
+# no integrity digest and no file count can be derived for it.  Both are
+# self-proving rather than trusted: `cross_check` errors when a not-vendored
+# path exists on disk, and when a dependency-pinned component's declared
+# requirement string is absent from the lockfile authority it names.
+NON_VENDORED_PROVENANCE = (PROV_NOT_VENDORED, PROV_DEP_PINNED)
 
 # Vacuity floors.  A digest over an empty file list is a perfectly stable
 # hash of nothing, and would report a component as verified when its
@@ -250,11 +258,13 @@ def tree_digest(comp: Component) -> tuple[str, int]:
 def hashed_components() -> tuple[Component, ...]:
     """Return the registry entries that must carry a derived integrity digest.
 
-    Everything vendored qualifies.  ``PROV_NOT_VENDORED`` is the single
-    exclusion and it is self-proving: `cross_check` already errors when such a
-    path exists on disk, so the class cannot be used to hide a real tree.
+    Everything vendored qualifies.  ``NON_VENDORED_PROVENANCE`` is the only
+    exclusion and each class in it is self-proving: `cross_check` errors when a
+    not-vendored path exists on disk, and when a dependency-pinned component's
+    declared requirement string is missing from the lockfile authority it
+    names, so neither class can be used to hide a real tree.
     """
-    return tuple(comp for comp in REGISTRY if comp.provenance != PROV_NOT_VENDORED)
+    return tuple(comp for comp in REGISTRY if comp.provenance not in NON_VENDORED_PROVENANCE)
 
 
 def _read_source(comp: Component) -> str | None:
@@ -390,6 +400,9 @@ def cross_check() -> tuple[list[str], list[str]]:
             if comp_path.exists():
                 warnings.append(f"{comp.key}: marked not-vendored but present on disk")
             continue
+        if comp.provenance == PROV_DEP_PINNED:
+            errors.extend(_dep_pin_errors(comp))
+            continue
         if not comp_path.exists():
             errors.append(f"{comp.key}: recorded path '{comp.path}' does not exist")
             continue
@@ -398,6 +411,35 @@ def cross_check() -> tuple[list[str], list[str]]:
 
     _check_scan_not_vacuous(errors)
     return errors, warnings
+
+
+def _dep_pin_errors(comp: Component) -> list[str]:
+    """Return errors for a ``PROV_DEP_PINNED`` component's declared pin.
+
+    A dependency-pinned component is not vendored, so there are no bytes in the
+    tree to hash.  What can be checked is the thing the record actually claims:
+    that the requirement string it names is present, verbatim, in the lockfile
+    authority at ``comp.path``.  Without this, the registry version and the
+    real pin could drift apart silently and the SBOM would publish a version
+    the build never installs.
+
+    Args:
+        comp: The dependency-pinned registry component.
+
+    Returns:
+        Zero or more error strings, empty when the pin is intact.
+    """
+    if comp.dep_pin_spec is None:
+        return [f"{comp.key}: {PROV_DEP_PINNED} component declares no dep_pin_spec"]
+    path = REPO_ROOT / comp.path
+    if not path.is_file():
+        return [f"{comp.key}: pin authority '{comp.path}' does not exist"]
+    if comp.dep_pin_spec not in path.read_text(encoding="utf-8", errors="replace"):
+        return [
+            f"{comp.key}: pin {comp.dep_pin_spec} is absent from '{comp.path}' -- "
+            "the recorded version and the installed one have drifted"
+        ]
+    return []
 
 
 def _check_scan_not_vacuous(errors: list[str]) -> None:
@@ -479,7 +521,7 @@ def _properties_block(comp: Component, file_count: int) -> list[dict]:
         {"name": "ra8:provenance", "value": comp.provenance},
         {"name": "ra8:path", "value": comp.path},
     ]
-    if comp.provenance != PROV_NOT_VENDORED:
+    if comp.provenance not in NON_VENDORED_PROVENANCE:
         props.append({"name": "ra8:fileCount", "value": str(file_count)})
     if comp.upstream_commit is not None:
         props.append({"name": "ra8:upstreamCommit", "value": comp.upstream_commit})
@@ -520,7 +562,7 @@ def component_entry(comp: Component) -> dict:
         entry["copyright"] = comp.license_note if comp.copyright is None else comp.copyright
     if comp.purl is not None:
         entry["purl"] = comp.purl
-    if comp.provenance != PROV_NOT_VENDORED:
+    if comp.provenance not in NON_VENDORED_PROVENANCE:
         digest, count = tree_digest(comp)
         entry["hashes"] = [{"alg": DIGEST_ALG, "content": digest}]
     else:
@@ -833,7 +875,57 @@ def _selftest_registry_cases() -> list[tuple[str, bool]]:
     return [
         (
             "MUST FIRE: the live registry publishes a digest for every vendored component",
-            len(hashed_components()) == len(REGISTRY) - 1,
+            len(hashed_components())
+            == len(REGISTRY)
+            - sum(1 for comp in REGISTRY if comp.provenance in NON_VENDORED_PROVENANCE),
+        ),
+        (
+            "MUST NOT FIRE: no non-vendored component is asked for a tree digest",
+            not [c for c in hashed_components() if c.provenance in NON_VENDORED_PROVENANCE],
+        ),
+        (
+            "MUST FIRE: a dependency pin missing from its authority is detected",
+            bool(
+                _dep_pin_errors(
+                    Component(
+                        key="selftest-dep",
+                        name="selftest dep",
+                        version="9.9.9",
+                        ctype="application",
+                        url="https://example.invalid",
+                        path="pyproject.toml",
+                        provenance=PROV_DEP_PINNED,
+                        description="fixture",
+                        dep_pin_spec='"ra8-selftest-absent==9.9.9"',
+                    )
+                )
+            ),
+        ),
+        (
+            "MUST NOT FIRE: every live dependency pin is present in its authority",
+            not [
+                err
+                for comp in REGISTRY
+                if comp.provenance == PROV_DEP_PINNED
+                for err in _dep_pin_errors(comp)
+            ],
+        ),
+        (
+            "MUST FIRE: a dependency-pinned component with no declared pin is detected",
+            bool(
+                _dep_pin_errors(
+                    Component(
+                        key="selftest-dep-nopin",
+                        name="selftest dep, no pin",
+                        version="9.9.9",
+                        ctype="application",
+                        url="https://example.invalid",
+                        path="pyproject.toml",
+                        provenance=PROV_DEP_PINNED,
+                        description="fixture",
+                    )
+                )
+            ),
         ),
         (
             "MUST NOT FIRE: matching entries across all vendor-root shapes stay quiet",
