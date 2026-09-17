@@ -39,6 +39,9 @@ const extra_srcs_app = graph.cross_apps[5];
 /// NSC_SRCS and the only one whose standalone configure has
 /// RA8_TRUSTZONE_ENABLE ON.
 const trust_zone_app = graph.cross_apps[6];
+/// And the one that names OFF_TARGET_LIBS, the only app in the table whose own
+/// translation units are not all compiled at the same preprocessor view.
+const off_target_app = graph.cross_apps[8];
 
 test "board opt-in gate drops the two sources an app must ask for" {
     try std.testing.expect(
@@ -840,4 +843,70 @@ test "the NS image's own sources are exactly the AUX_SRCS the secure image exclu
     try std.testing.expectEqualStrings("threadx_ns", ns_image_of.uses);
     try std.testing.expectEqualStrings("ns_image.ld", ns_image_of.linker_script);
     try std.testing.expectEqualStrings("-nostartfiles", ns_image_of.link_flags[0]);
+}
+test "OFF_TARGET_LIBS carries the define on its own units and on nothing else" {
+    // Both arms, because the predicate is the only thing separating CMake's
+    // image from a wrong one. On this app the wrong arm fails closed (the
+    // library's on-target half includes psa/crypto.h, which this app's
+    // include path does not carry); on an app that carries the TF-PSA headers
+    // anyway both halves compile and the difference is silent. See
+    // cross_sources.off_target_define for the measurement of both.
+    try std.testing.expectEqual(@as(usize, 1), off_target_app.off_target_libs.len);
+    try std.testing.expectEqualStrings("ra8_psa_crypto", off_target_app.off_target_libs[0]);
+    try std.testing.expectEqualStrings("-DRA8_OFF_TARGET", sources.off_target_define);
+
+    try std.testing.expect(sources.isOffTargetSource(
+        off_target_app,
+        "libs/ra8_psa_crypto/src/ra8_psa_crypto.c",
+    ));
+    try std.testing.expect(sources.isOffTargetSource(
+        off_target_app,
+        "libs/ra8_psa_crypto/src/ra8_psa_crypto_fake.c",
+    ));
+    // Its own main.c, a universal unit and a unit of the board it names in
+    // LIBS all stay at the ordinary bar.
+    try std.testing.expect(!sources.isOffTargetSource(
+        off_target_app,
+        "examples/ek_ra8d2/hw_validated/hil/crypto_aes_demo/src/main.c",
+    ));
+    try std.testing.expect(!sources.isOffTargetSource(
+        off_target_app,
+        "libs/ra8_core/src/ra8_log.c",
+    ));
+    try std.testing.expect(!sources.isOffTargetSource(
+        off_target_app,
+        "libs/ra8_board_ek_ra8d2/src/ra8_board_ek_ra8d2_led.c",
+    ));
+    // And no other app in the table takes the define at all, which is what
+    // makes the predicate a rule rather than a constant: the same path under
+    // an app that does not name the library is an ordinary unit.
+    for (graph.cross_apps) |app| {
+        if (std.mem.eql(u8, app.name, off_target_app.name)) continue;
+        try std.testing.expect(!sources.isOffTargetSource(
+            app,
+            "libs/ra8_psa_crypto/src/ra8_psa_crypto.c",
+        ));
+    }
+}
+
+test "an off-target library is a LIBS name only in how its units are compiled" {
+    // The keyword is deliberately NOT spelled in LIBS: a library named there
+    // would get the same sources and the same include directory and no define,
+    // which is exactly the wrong image. Assert the two lists stay disjoint.
+    for (off_target_app.off_target_libs) |off_target| {
+        try std.testing.expect(!sources.declaresLibrary(off_target_app, off_target));
+    }
+    try std.testing.expectEqual(@as(usize, 1), off_target_app.libraries.len);
+    try std.testing.expectEqualStrings("ra8_board_ek_ra8d2", off_target_app.libraries[0]);
+    // It names no middleware, no EXTRA_SRCS, no second image and no vendored
+    // library of its own, so everything this app's rows differ from
+    // blink_hal's by IS the off-target keyword.
+    try std.testing.expectEqual(@as(usize, 0), off_target_app.uses.len);
+    try std.testing.expectEqual(@as(usize, 0), off_target_app.extra_srcs.len);
+    try std.testing.expectEqual(@as(usize, 0), off_target_app.aux_srcs.len);
+    try std.testing.expect(off_target_app.cpu1 == null);
+    try std.testing.expect(off_target_app.ns == null);
+    try std.testing.expect(off_target_app.local.vendored == null);
+    try std.testing.expect(!off_target_app.trust_zone);
+    try std.testing.expectEqual(@as(u32, 2200), off_target_app.stack_bytes);
 }

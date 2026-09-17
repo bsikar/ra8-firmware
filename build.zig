@@ -305,6 +305,7 @@ pub const cross_apps = cross_sources.cross_apps;
 /// still reads as the flag set it is.
 pub const arm_flags = @import("tests/zig_build_graph/arm_flags.zig");
 pub const device = @import("tests/zig_build_graph/device.zig");
+pub const off_target = @import("tests/zig_build_graph/off_target.zig");
 const arm_global_flags = arm_flags.global_flags;
 const arm_cpu_flags = arm_flags.cpu_flags;
 const arm_asm_flags = arm_flags.asm_flags;
@@ -472,6 +473,10 @@ fn addArmCrossApp(
         if (app.trust_zone) compile.addArg(arm_flags.trust_zone.define);
         compile.addArgs(middleware_defines);
         compile.addArgs(local_defines);
+        // A SOURCE-scope define, so it lands after every target-scope one and
+        // on these units alone: OFF_TARGET_LIBS is the only rule here that
+        // compiles one executable at two preprocessor views (#1133).
+        if (cross_sources.isOffTargetSource(app, source)) compile.addArg(cross_sources.off_target_define);
         compile.addArgs(armWarningFlags(b.allocator, app));
         compile.addArgs(&arm_target_dialect_flags);
         if (app.trust_zone) compile.addArg(arm_flags.trust_zone.cmse);
@@ -888,6 +893,11 @@ fn compileDbEntries(b: *std.Build) []const compile_db.Entry {
             // library's PUBLIC defines and its own PRIVATE ones are part of
             // the preprocessor view the compiler had.
             app_flags.appendSlice(app_local.appDefines(b.allocator, app.local)) catch @panic("OOM");
+            // Where a source-scope define belongs: after every target-scope
+            // one. The off-target rows are the same vector with it spliced in
+            // here, so an analysis gate reading this database preprocesses
+            // those two units the way the compiler did (#1133).
+            const defines_end = app_flags.items.len;
             // At this app's own frame budget, in the position the compile step
             // puts it: a database row whose -Wstack-usage disagrees with the
             // build would hand clang-tidy a different bar than the compiler had.
@@ -900,11 +910,18 @@ fn compileDbEntries(b: *std.Build) []const compile_db.Entry {
             var system_dirs = std.ArrayList([]const u8).init(b.allocator);
             system_dirs.appendSlice(middleware.appSystemIncludeDirs(b.allocator, middlewares)) catch @panic("OOM");
             system_dirs.appendSlice(app_local.appSystemIncludeDirs(app.local)) catch @panic("OOM");
+            var off_target_flags = std.ArrayList([]const u8).init(b.allocator);
+            off_target_flags.appendSlice(app_flags.items[0..defines_end]) catch @panic("OOM");
+            off_target_flags.append(cross_sources.off_target_define) catch @panic("OOM");
+            off_target_flags.appendSlice(app_flags.items[defines_end..]) catch @panic("OOM");
             for (cross_sources.crossSources(b, app)) |source| {
                 candidates.append(.{
                     .file = source,
                     .driver = tools.gcc,
-                    .flags = app_flags.items,
+                    .flags = if (cross_sources.isOffTargetSource(app, source))
+                        off_target_flags.items
+                    else
+                        app_flags.items,
                     .include_dirs = include_dirs.items,
                     .system_include_dirs = system_dirs.items,
                     .object = b.fmt("arm/{s}/{s}.o", .{ app.name, std.fs.path.basename(source) }),
