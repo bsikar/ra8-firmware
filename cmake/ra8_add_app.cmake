@@ -455,13 +455,26 @@ endmacro()
 # ra8_cpu1_add_first_party_sources() applies the SAME list to the first-party
 # translation units an app bolts onto a CPU1 image. Spelled as a list so no
 # line runs past the 100-column limit; COMPILE_OPTIONS takes the ;-separated
-# list set() builds from these arguments. Keep it in step with
-# cmake/ra8_warnings.cmake, which is the M85 equivalent.
+# list set() builds from these arguments.
+#
+# Parity with cmake/ra8_warnings.cmake (the M85 equivalent) is GATED, not
+# promised: scripts/checks/check_cpu1_warning_profile.py reads both lists and
+# fails when a flag in the M85 first-party set is absent here, when this list
+# loses -Wall / -Wextra / -Werror / -Wstack-usage / -fstack-usage, when the
+# frame budget stops being a positive integer literal, or when either caller
+# below spells its own flags instead of taking them from this one function.
+# A deliberate M33/M85 difference has to be declared with its reason in that
+# checker's DECLARED_DIVERGENCE table, where a reviewer reads it.
 function(ra8_cpu1_warning_profile _out_var)
   set(${_out_var}
       -Wall
       -Wextra
       -Werror
+      # Was the one flag the M85 first-party set carried and this list did not,
+      # while the comment above claimed the two were kept in step (#843). Every
+      # profiled CPU1 translation unit on both dual-core images compiles clean
+      # under it, so the bar moved up to the claim rather than the claim down.
+      -Wconversion
       -Wcast-qual
       -Wcast-align
       -Wdouble-promotion
