@@ -46,6 +46,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "dev"))
 
 from git_environment import trusted_git_executable
 from lint_targets import is_build_output_path
+from zig_build_roots import build_roots as _build_roots
+from zig_build_roots import owned_zig_sources
 from zig_test_contract import test_declarations as _test_declarations
 from zig_test_contract import without_zig_comments as _without_zig_comments
 
@@ -105,21 +107,6 @@ def _tracked_zig_files() -> list[str]:
     """Every candidate-worktree Zig file, minus build-output trees."""
     by_extension = _present_files(_git_ls_files("*.zig"))
     return sorted(rel for rel in by_extension if not is_build_output_path(rel))
-
-
-def _build_roots(files: list[str]) -> list[Path]:
-    """Distinct directories holding a build.zig above each of `files`."""
-    roots: set[Path] = set()
-    for rel in files:
-        directory = (_repo_root() / rel).parent
-        while directory != directory.parent:
-            if (directory / "build.zig").is_file():
-                roots.add(directory)
-                break
-            if directory == _repo_root():
-                break
-            directory = directory.parent
-    return sorted(roots)
 
 
 def _run_lint(zig: str, files: list[str]) -> tuple[list[str], list[str]]:
@@ -343,11 +330,7 @@ def _test_contract_errors(root: Path) -> tuple[list[str], int]:
         if source.resolve() not in declared_sources
     )
 
-    owned = {
-        path.resolve()
-        for path in root.rglob("*.zig")
-        if path.name != "build.zig" and not is_build_output_path(str(path.relative_to(root)))
-    }
+    owned = owned_zig_sources(root)
     orphaned = sorted(owned - declared_sources)
     errors.extend(
         f"orphan Zig source is not reachable from a declared test root: {source.relative_to(root)}"
@@ -716,6 +699,30 @@ def _selftest_production_coverage(
     orphan.unlink()
 
 
+def _selftest_nested_build_root(root: Path, failures: list[str]) -> None:
+    """Prove a nested build root's sources belong to it, not to its parent."""
+    nested = root / "nested"
+    (nested / "tests").mkdir(parents=True)
+    nested_source = nested / "tests/main.zig"
+    nested_source.write_text(
+        'test "nested" { try @import("std").testing.expect(true); }\n',
+        encoding="utf-8",
+    )
+
+    # Without a build.zig beside it the nested tree really is the parent's, and
+    # the orphan check must say so -- this is the non-vacuity half.
+    errors, _ = _test_contract_errors(root)
+    if not any("nested/tests/main.zig" in error for error in errors):
+        failures.append("  must-fire: source under no nested build root was not claimed by parent")
+
+    (nested / "build.zig").write_text("pub fn build(_: anytype) void {}\n", encoding="utf-8")
+    errors, _ = _test_contract_errors(root)
+    if any("nested/tests/main.zig" in error for error in errors):
+        failures.append("  must-stay-quiet: parent root claimed a nested build root's source")
+
+    shutil.rmtree(nested)
+
+
 def _selftest_test_contract(failures: list[str]) -> None:
     """Prove test wiring, floor, and orphan checks fire and stay quiet."""
     with tempfile.TemporaryDirectory() as tmp:
@@ -751,6 +758,7 @@ def _selftest_test_contract(failures: list[str]) -> None:
         (root / "src").mkdir()
         _selftest_test_declaration_grammar(root, passing_source, contract, raw_contract, failures)
         _selftest_production_coverage(root, contract, raw_contract, failures)
+        _selftest_nested_build_root(root, failures)
 
         (root / TEST_CONTRACT_NAME).write_text(
             json.dumps(
@@ -935,7 +943,7 @@ def _selftest_or_scope(zig: str, args: list[str]) -> int | None:
     if "--selftest-test" in args:
         return selftest_test(zig)
     tracked = _tracked_zig_files()
-    scope_error = _scope_or_error(tracked, _build_roots(tracked))
+    scope_error = _scope_or_error(tracked, _build_roots(tracked, _repo_root()))
     if scope_error is not None:
         return scope_error
     return None
@@ -982,7 +990,7 @@ def main(argv: list[str]) -> int:
     if early is not None:
         return early
     tracked = _tracked_zig_files()
-    return _execute_lint_or_test(zig, tracked, _build_roots(tracked), args)
+    return _execute_lint_or_test(zig, tracked, _build_roots(tracked, _repo_root()), args)
 
 
 if __name__ == "__main__":

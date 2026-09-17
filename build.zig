@@ -90,7 +90,7 @@ const support_c_sources = [_][]const u8{
 /// every host TU; without them `ra8_log.c` reaches for Cortex-M `mrs`.
 /// `-Werror` stays on: a suite that only compiles under a looser dialect here
 /// than it does under CMake would make the parity claim meaningless.
-const c_flags = [_][]const u8{
+pub const c_flags = [_][]const u8{
     "-std=c23",
     "-Wall",
     "-Wextra",
@@ -99,6 +99,10 @@ const c_flags = [_][]const u8{
     "-DRA8_OFF_TARGET",
     "-DUNIT_TEST",
 };
+
+/// The root graph's own Zig test root, declared in .zig-test-contract.json
+/// so `scripts/checks/check_zig.py --test` covers this build root too.
+const build_graph_test_source = "tests/zig_build_graph/build_graph_test.zig";
 
 pub fn build(b: *std.Build) void {
     const target = b.standardTargetOptions(.{});
@@ -109,6 +113,29 @@ pub fn build(b: *std.Build) void {
     const zig_test_step = b.step("test-zig", "Run the Zig-native suites of the migrated libraries");
     test_step.dependOn(c_test_step);
     test_step.dependOn(zig_test_step);
+
+    // The graph's own Zig tests. Everything this file encodes that a directory
+    // listing cannot tell you -- the board opt-in gate, the vendored
+    // suppression order, the database's JSON escaping -- is ordinary data and
+    // ordinary functions, so it is unit-tested directly rather than only being
+    // exercised the long way round through a build. It is also what makes the
+    // repository root a Zig build root the `check_zig` gate can contract: see
+    // .zig-test-contract.json beside this file.
+    const graph_test_module = b.createModule(.{
+        .root_source_file = b.path(build_graph_test_source),
+        .target = target,
+        .optimize = optimize,
+    });
+    // This file, imported as an ordinary module. A relative import would reach
+    // outside the test's module path, and duplicating the rules into the test
+    // would be testing a copy of them.
+    graph_test_module.addImport("build_graph", b.createModule(.{
+        .root_source_file = b.path("build.zig"),
+        .target = target,
+        .optimize = optimize,
+    }));
+    const graph_tests = b.addTest(.{ .root_module = graph_test_module });
+    zig_test_step.dependOn(&b.addRunArtifact(graph_tests).step);
 
     for (slice) |member| {
         const dependency = b.dependency(member.dependency_name, .{
@@ -277,12 +304,12 @@ const cross_app = CrossApp{
 /// the board's src/ and stopping there compiles `..._console_stream.c` into an
 /// app that never opted in, and it fails on a missing ra8_io_stream.h rather
 /// than on anything that names the gate.
-const BoardOptIn = struct {
+pub const BoardOptIn = struct {
     suffix: []const u8,
     satisfied_by: []const []const u8,
 };
 
-const board_opt_in_sources = [_]BoardOptIn{
+pub const board_opt_in_sources = [_]BoardOptIn{
     .{ .suffix = "_console_stream.c", .satisfied_by = &.{"ra8_io"} },
     .{ .suffix = "_touch.c", .satisfied_by = &.{ "ra8_io", "ra8_io_bus" } },
 };
@@ -463,7 +490,7 @@ fn crossSources(b: *std.Build) []const []const u8 {
 
 /// True when `source` is a board unit whose companion library is absent from
 /// the app's declared `LIBS`.
-fn isGatedOutBoardSource(source: []const u8) bool {
+pub fn isGatedOutBoardSource(source: []const u8) bool {
     if (!std.mem.startsWith(u8, source, cross_app.board)) return false;
     for (board_opt_in_sources) |gate| {
         if (!std.mem.endsWith(u8, source, gate.suffix)) continue;
@@ -656,14 +683,14 @@ const vendored_include_paths = [_][]const u8{
 /// the one class CMake's measurement found the vendored TUs trip. Without it
 /// on the first-party TUs the narrow suppression below would be suppressing
 /// nothing, and the parity claim would be empty.
-const vendored_first_party_flags = c_flags ++ [_][]const u8{"-Wconversion"};
+pub const vendored_first_party_flags = c_flags ++ [_][]const u8{"-Wconversion"};
 
 /// The vendored bar, from tests/cmake/core_hal.cmake: the first-party set with
 /// `-Wconversion` suppressed for the porting header's fixed-width narrowing,
 /// plus `-fno-strict-aliasing` because the decoder type-puns through byte
 /// buffers. -Werror stays in force for every other class, including the
 /// memory-safety ones, on an attacker-facing decoder.
-const vendored_soup_flags = vendored_first_party_flags ++ [_][]const u8{
+pub const vendored_soup_flags = vendored_first_party_flags ++ [_][]const u8{
     "-Wno-conversion",
     "-fno-strict-aliasing",
 };
@@ -905,7 +932,7 @@ fn compileDbEntries(b: *std.Build) []const CompileDbEntry {
     return entries.items;
 }
 
-fn appendJsonString(out: *std.ArrayList(u8), value: []const u8) void {
+pub fn appendJsonString(out: *std.ArrayList(u8), value: []const u8) void {
     out.append('"') catch @panic("OOM");
     for (value) |byte| switch (byte) {
         '"' => out.appendSlice("\\\"") catch @panic("OOM"),
