@@ -6,8 +6,10 @@
 # Top-level integration of the vendored LevelX wear-levelling library.
 # Exposes the `RA8_USE_LEVELX` option; when ON, this file:
 #
-#   1. Verifies that ThreadX is also enabled (LevelX's protection
-#      macros call `tx_mutex_*` unless `LX_STANDALONE_ENABLE` is on).
+#   1. Verifies that ThreadX is also enabled. `lx_api.h` includes
+#      `tx_api.h` whenever `LX_STANDALONE_ENABLE` is absent
+#      (`common/inc/lx_api.h:69-72`), so every LevelX TU in this mode
+#      needs the ThreadX headers, mutexes or not.
 #   2. Compiles `libs/third_party/levelx/common/src/lx_nor_*.c` into a
 #      single `levelx` interface library. NAND sources and the
 #      simulator drivers are excluded -- this firmware uses LevelX's
@@ -35,16 +37,22 @@ if(NOT RA8_USE_LEVELX)
   return()
 endif()
 
-# LevelX's protection macros call `tx_mutex_get` / `tx_mutex_put`
-# unless `LX_STANDALONE_ENABLE` is forced. We do not enable standalone
-# mode (the demo app runs ThreadX anyway), so the build must also
-# pull in ThreadX. Surface a clear error if it is not enabled.
+# This mode does not define `LX_STANDALONE_ENABLE`, so `lx_api.h`
+# includes `tx_api.h` (`common/inc/lx_api.h:69-72`) and every LevelX TU
+# compiled here needs ThreadX in the graph. That include is the whole
+# dependency: LevelX's `tx_mutex_get` / `tx_mutex_put` calls sit behind
+# `LX_THREAD_SAFE_ENABLE`, which nothing in this repository defines, so
+# no mutex code is compiled in either mode. Use
+# cmake/levelx_standalone.cmake for a LevelX build with no ThreadX.
+# Surface a clear error if ThreadX is not enabled.
 if(NOT RA8_USE_THREADX)
   message(
     FATAL_ERROR
-      "RA8_USE_LEVELX=ON requires RA8_USE_THREADX=ON. LevelX's protection "
-      "macros call tx_mutex_get / tx_mutex_put. Enable both options "
-      "(or include cmake/threadx.cmake before cmake/levelx.cmake)."
+      "RA8_USE_LEVELX=ON requires RA8_USE_THREADX=ON: without "
+      "LX_STANDALONE_ENABLE, lx_api.h includes tx_api.h, so the LevelX "
+      "sources will not compile. Enable both options (or include "
+      "cmake/threadx.cmake before cmake/levelx.cmake), or use "
+      "RA8_USE_LEVELX_STANDALONE=ON for a build with no ThreadX."
   )
 endif()
 
@@ -86,9 +94,10 @@ add_library(levelx_objs OBJECT ${_RA8_LEVELX_NOR_SOURCES})
 
 target_include_directories(levelx_objs PUBLIC ${_RA8_LEVELX_COMMON_INC})
 
-# `lx_api.h` pulls in `tx_api.h` (via `#include "tx_api.h"`), so
-# LevelX's own TU compile needs to see ThreadX's include dirs. Inherit
-# them from the `threadx` target rather than hard-coding paths.
+# `lx_api.h` pulls in `tx_api.h` (via `#include "tx_api.h"`, guarded
+# only by `#ifndef LX_STANDALONE_ENABLE`), so LevelX's own TU compile
+# needs to see ThreadX's include dirs. Inherit them from the `threadx`
+# target rather than hard-coding paths.
 target_link_libraries(levelx_objs PRIVATE threadx)
 
 # Vendor sources predate `-Wpedantic` / `-Werror` cleanliness. Drop
