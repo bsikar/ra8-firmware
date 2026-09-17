@@ -320,6 +320,82 @@ RA8_INTERNAL static uint32_t internal_build_admdr(bool scan_mode)
   return (admd0_code << (uint32_t)k_ra8_admdr_bit_admd0) & k_ra8_admdr_mask_admd0;
 }
 
+/**
+ * @brief Translate a descriptor-level trigger selector into a scan-group
+ *        trigger source.
+ *
+ * @details
+ * ``ra8_adc_cfg_t`` names the trigger with ::ra8_adc_trigger_t while the
+ * scan-group path speaks ::ra8_adc_trigger_src_t. This maps one onto the
+ * other so ``ra8_adc_init_configured`` can arm ADTRGENR from the
+ * descriptor instead of ignoring the field. External-pin and ELC both
+ * land on hardware sources; the only thing the silicon distinguishes is
+ * whether STTRGEN is set for the group.
+ *
+ * @param[in]  trigger Public descriptor-level trigger selector.
+ * @param[out] out_src Receives the scan-group trigger source on success.
+ * @return True when @p trigger is a known selector, false otherwise.
+ *
+ * @retval true  @p trigger is known; @p out_src holds the group source.
+ * @retval false @p trigger is out of range; @p out_src left untouched.
+ * @pre @p out_src is non-null.
+ * @pre @p trigger is sourced from ra8_adc_trigger_t.
+ * @post @p out_src is written only when the function returns true.
+ * @post No registers are accessed (pure translation).
+ * @note Re-entrant; touches no globals or MMIO.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static bool internal_trig_src_for_cfg(ra8_adc_trigger_t      trigger,
+                                                   ra8_adc_trigger_src_t* out_src)
+{
+  switch (trigger) {
+    case k_ra8_adc_trig_software:
+      *out_src = k_ra8_adc_trig_src_software;
+      return true;
+    case k_ra8_adc_trig_external:
+      *out_src = k_ra8_adc_trig_src_pin;
+      return true;
+    case k_ra8_adc_trig_elc:
+      *out_src = k_ra8_adc_trig_src_elc;
+      return true;
+    default:
+      return false;
+  }
+}
+
+/**
+ * @brief Arm or disarm the silicon edge-detector for one scan group.
+ *
+ * @details
+ * ADTRGENR.STTRGENn gates the hardware trigger path for a scan group
+ * (HUM Ch 53). A software-triggered group must leave its bit clear so a
+ * stray ELC or pin edge cannot kick a scan; every hardware source needs
+ * it set. This is the driver's single writer of ADTRGENR, shared by the
+ * init paths and ``ra8_adc_configure_scan_group``.
+ *
+ * @param[in] group   Scan-group index.
+ * @param[in] trigger Scan-group trigger source.
+ *
+ * @pre @p group indexes a modelled scan group.
+ * @pre The ADC clock is running (init has completed).
+ * @post ADTRGENR bit @p group is set for a hardware source, clear for a
+ *       software trigger.
+ * @post No other ADTRGENR bit is modified.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_apply_trigger_enable(uint8_t               group,
+                                                       ra8_adc_trigger_src_t trigger)
+{
+  const uint32_t group_bit = (uint32_t)(1UL << (uint32_t)group);
+  /* HUM Ch 53 "16-bit A/D Converter (ADC16H)" p 3308 */
+  if (trigger == k_ra8_adc_trig_src_software) {
+    *ra8_adc_b_adtrgenr() &= ~group_bit;
+  } else {
+    *ra8_adc_b_adtrgenr() |= group_bit;
+  }
+}
+
 ra8_err_t ra8_adc_init(void)
 {
   /* HUM Ch 11.2.9 "MSTPCRD : Module Stop Control Register D" p 449 */
@@ -334,6 +410,11 @@ ra8_err_t ra8_adc_init(void)
   *ra8_adc_b_admdr()   = internal_build_admdr(false);
   *ra8_adc_b_adintcr() = 0U;
   *ra8_adc_b_adsger()  = (uint32_t)(1UL << (uint32_t)k_ra8_adc_default_group);
+
+  /* The legacy entry point documents a software trigger, so clear this
+   * group's hardware edge-detector rather than inheriting whatever
+   * ADTRGENR held before. */
+  internal_apply_trigger_enable(k_ra8_adc_default_group, k_ra8_adc_trig_src_software);
 
   internal_zero_channel_table();
   internal_apply_resolution_code((uint32_t)k_ra8_addopcrc_adprc_14bit);
@@ -395,6 +476,20 @@ ra8_err_t ra8_adc_init_configured(const ra8_adc_cfg_t* cfg)
     return k_ra8_err_invalid_arg;
   }
 
+  /* ADDR[n].DATA is always right-aligned on the ADC16H: the per-channel
+   * data controls are ADDOPCRCn.ADPRC (precision) and SIGNSEL (sign), and
+   * the block has no alignment field at all (HUM Ch 53.2.3.4 p 3339). A
+   * descriptor asking for left-aligned data cannot be honoured, so say so
+   * instead of ignoring the request. */
+  if (!cfg->right_aligned) {
+    return k_ra8_err_not_supported;
+  }
+
+  ra8_adc_trigger_src_t trig_src = k_ra8_adc_trig_src_software;
+  if (!internal_trig_src_for_cfg(cfg->trigger, &trig_src)) {
+    return k_ra8_err_invalid_arg;
+  }
+
   const ra8_err_t mst_err = ra8_mstp_enable(k_ra8_mstp_adc16h);
   /* GCOVR_EXCL_BR_START -- MSTP HW readback */
   RA8_RETURN_ON_ERROR(mst_err, s_tag, "adc_init_cfg: mstp enable");
@@ -406,6 +501,11 @@ ra8_err_t ra8_adc_init_configured(const ra8_adc_cfg_t* cfg)
   *ra8_adc_b_admdr()   = internal_build_admdr(cfg->scan_mode);
   *ra8_adc_b_adintcr() = 0U;
   *ra8_adc_b_adsger()  = (uint32_t)(1UL << (uint32_t)k_ra8_adc_default_group);
+
+  /* Arm (or deliberately disarm) the group's hardware trigger path from
+   * the descriptor: the default scan group is the one this entry point
+   * configures. */
+  internal_apply_trigger_enable(k_ra8_adc_default_group, trig_src);
 
   internal_zero_channel_table();
   internal_apply_resolution_code(adprc);
@@ -681,11 +781,7 @@ RA8_INTERNAL static void internal_apply_group_enable(uint8_t group, ra8_adc_trig
   const uint32_t group_bit = (uint32_t)(1UL << (uint32_t)group);
   /* HUM Ch 53 "16-bit A/D Converter (ADC16H)" p 3308 */
   *ra8_adc_b_adsger() |= group_bit;
-  if (trigger == k_ra8_adc_trig_src_software) {
-    *ra8_adc_b_adtrgenr() &= ~group_bit;
-  } else {
-    *ra8_adc_b_adtrgenr() |= group_bit;
-  }
+  internal_apply_trigger_enable(group, trigger);
 }
 
 ra8_err_t ra8_adc_configure_scan_group(uint8_t group, const ra8_adc_scan_group_cfg_t* cfg)
