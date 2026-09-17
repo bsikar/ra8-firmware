@@ -19,9 +19,12 @@ pub const err = struct {
     pub const ok: u16 = 0;
     pub const invalid_arg: u16 = 0x103;
     pub const invalid_state: u16 = 0x104;
+    pub const not_supported: u16 = 0x107;
     pub const not_initialized: u16 = 0x10F;
     pub const hw_init_failed: u16 = 0x201;
     pub const hw_timeout: u16 = 0x203;
+    pub const out_of_range: u16 = 0x208;
+    pub const crc_mismatch: u16 = 0x405;
     pub const protocol_error: u16 = 0x406;
     pub const null_ptr: u16 = 0x504;
 };
@@ -295,4 +298,140 @@ pub fn validateTransport(transport: ?*const Transport) u16 {
 /// rounded up to whole bytes.
 pub fn wakeIdleBytes() u32 {
     return proto.init_dummy_clocks / 8;
+}
+
+// ---------------------------------------------------------------------------
+// Block I/O decisions (from `src/ra8_sdmmc_spi_io.c`)
+// ---------------------------------------------------------------------------
+
+/// `ra8_sdmmc_spi_sci_pins_t`: four `ra8_port_pin_t` (a `uint16_t` enum).
+pub const SciPins = extern struct {
+    sck: u16,
+    cipo: u16,
+    copi: u16,
+    cs: u16,
+};
+
+/// `ra8_sci_spi_cfg_t`, built by the transport factory's bring-up.
+pub const SciSpiCfg = extern struct {
+    baud_hz: u32,
+    pclk_hz: u32,
+    mode: u8,
+    lsb_first: bool,
+};
+
+/// `ra8_fs_backend_t`: the four operations in header order, then the cookie.
+pub const FsBackend = extern struct {
+    read_block: ?*const fn (?*anyopaque, u64, u32, ?[*]u8) callconv(.c) u16 = null,
+    write_block: ?*const fn (?*anyopaque, u64, u32, ?[*]const u8) callconv(.c) u16 = null,
+    get_capacity: ?*const fn (?*anyopaque, ?*u64, ?*u32) callconv(.c) u16 = null,
+    erase_blocks: ?*const fn (?*anyopaque, u64, u64) callconv(.c) u16 = null,
+    ctx: ?*anyopaque = null,
+};
+
+/// The bus context the SCI factory hands its own shims.
+pub const SciBusCtx = extern struct {
+    channel: u8 = 0,
+    pclka_hz: u32 = 0,
+    cs: u16 = 0,
+};
+
+comptime {
+    const ptr = @sizeOf(usize);
+    std.debug.assert(@sizeOf(SciPins) == 8);
+    std.debug.assert(@offsetOf(SciPins, "cs") == 6);
+
+    std.debug.assert(@sizeOf(SciSpiCfg) == 12);
+    std.debug.assert(@offsetOf(SciSpiCfg, "mode") == 8);
+    std.debug.assert(@offsetOf(SciSpiCfg, "lsb_first") == 9);
+
+    std.debug.assert(@sizeOf(FsBackend) == ptr * 5);
+    std.debug.assert(@offsetOf(FsBackend, "write_block") == ptr);
+    std.debug.assert(@offsetOf(FsBackend, "get_capacity") == ptr * 2);
+    std.debug.assert(@offsetOf(FsBackend, "erase_blocks") == ptr * 3);
+    std.debug.assert(@offsetOf(FsBackend, "ctx") == ptr * 4);
+}
+
+/// GPIO level encoding (`ra8_level_t`, a `uint8_t` enum).
+pub const level = struct {
+    pub const low: u8 = 0;
+    pub const high: u8 = 1;
+};
+
+/// `k_ra8_psel_sci_async`: the SCI async/Simple-SPI pin function.
+pub const psel_sci_async: u8 = 0x04;
+
+/// `k_ra8_spi_mode_0`: CPOL=0, CPHA=0, the mode SD SPI-mode requires.
+pub const spi_mode_0: u8 = 0;
+
+/// Factory argument gate: both pointers are judged by the caller in guard
+/// order, then a zero PCLKA rate is `invalid_arg` (it would divide by zero in
+/// the baud shim).
+pub fn factoryPclkOk(pclk_hz: u32) bool {
+    return pclk_hz != 0;
+}
+
+/// LBA to command argument: a block-addressed card (SDHC/SDXC) takes the
+/// block number, a byte-addressed one takes the byte offset. The C did the
+/// multiplication in `uint32_t`, so a huge LBA wraps rather than trapping;
+/// the bounds checks in the callers run first, so this is unreachable in
+/// practice and kept wrapping only to stay bit-identical.
+pub fn lbaToArg(card_type: u8, lba: u32) u32 {
+    if (card_type == @intFromEnum(CardType.sdhc)) return lba;
+    return lba *% block_size;
+}
+
+/// Last block of an erase range, as the C computed it: `(lba + count) - 1`
+/// in `uint32_t`.
+pub fn eraseEndLba(lba: u32, count: u32) u32 {
+    return (lba +% count) -% 1;
+}
+
+/// Single-block bounds gate: one block at `lba` must exist.
+pub fn singleBlockInRange(capacity_blocks: u32, lba: u32) bool {
+    return lba < capacity_blocks;
+}
+
+/// Multi-block bounds gate, written as the C wrote it: the subtraction stays
+/// on the capacity side so `lba + count` can never overflow.
+pub fn multiBlockInRange(capacity_blocks: u32, lba: u32, count: u32) bool {
+    if (lba >= capacity_blocks) return false;
+    return count <= (capacity_blocks - lba);
+}
+
+/// Data-response token verdict (spec 7.3.3.1): only `0b010` in the masked
+/// low bits is an accept; everything else (CRC error, write error, or a
+/// floating bus) is a protocol error.
+pub fn dataResponseAccepted(response: u8) bool {
+    return (response & data_response.mask) == data_response.accepted;
+}
+
+/// Split a block CRC16 into the two bytes the card expects, high first.
+pub fn crcBytes(crc: u16) [2]u8 {
+    return .{
+        @truncate((@as(u32, crc) >> 8) & mask_byte),
+        @truncate(@as(u32, crc) & mask_byte),
+    };
+}
+
+/// Recombine the two trailing CRC bytes of a read block, high first.
+pub fn crcFromBytes(hi: u8, lo: u8) u16 {
+    return (@as(u16, hi) << 8) | @as(u16, lo);
+}
+
+/// Erase probe verdict: the post-erase value is card-dependent, so the
+/// driver erases ONE block, reads it back, and only claims erase support
+/// when every byte came back zero.
+pub fn erasedToZero(block: []const u8) bool {
+    for (block) |byte| {
+        if (byte != 0) return false;
+    }
+    return true;
+}
+
+/// The `ra8_fs` backend interface is 64-bit addressed and this medium is
+/// not: SD block numbers are `uint32_t`, so anything past that reach is
+/// refused instead of truncated.
+pub fn fsLbaFits(lba: u64) bool {
+    return lba <= std.math.maxInt(u32);
 }
