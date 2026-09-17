@@ -182,6 +182,7 @@ EXCLUDE                = libs/third_party \
                          build \
                          docs/doxygen \
                          docs/doxygen_theme \
+                         docs/index.md \
                          port/mbedtls/inc/tf_psa_crypto_config_platform.h \
                          port/mbedtls/inc/tf_psa_crypto_config_drivers.h \
                          port/mbedtls/inc/tf_psa_crypto_config_mechanisms.h
