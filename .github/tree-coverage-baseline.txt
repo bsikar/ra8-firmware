@@ -13,7 +13,7 @@
 #            every run; gaining measurement is one-way.
 #
 # Columns are TAB-separated. Rows are sorted by path.
-# rows: 1064  measured: 523  unmeasured: 541
+# rows: 1065  measured: 523  unmeasured: 542
 apps/board/stand_alone/ereader/src/main.c	UNMEASURED	firmware-composition
 apps/board/stand_alone/ereader/src/ns_main.c	UNMEASURED	firmware-composition
 apps/board/stand_alone/ereader/src/secure_exception.c	UNMEASURED	firmware-composition
@@ -307,6 +307,7 @@ examples/ek_ra8d2/hw_pending/media_download/src/media_download_image.c	UNMEASURE
 examples/ek_ra8d2/hw_pending/modem_at_demo/src/main.c	UNMEASURED	firmware-composition
 examples/ek_ra8d2/hw_pending/mpu_boot_map_hal/src/main.c	UNMEASURED	firmware-composition
 examples/ek_ra8d2/hw_pending/mpu_boot_map_hal/src/system_init.c	UNMEASURED	firmware-composition
+examples/ek_ra8d2/hw_pending/net_pal_frame_demo/src/main.c	UNMEASURED	firmware-composition
 examples/ek_ra8d2/hw_pending/ota_ab_orchestration/src/main.c	UNMEASURED	firmware-composition
 examples/ek_ra8d2/hw_pending/power_profile_stats_demo/src/main.c	UNMEASURED	firmware-composition
 examples/ek_ra8d2/hw_pending/ra8_ftl_demo/src/main.c	UNMEASURED	firmware-composition
