@@ -2,6 +2,7 @@
 //! Copyright (c) 2026 Brighton Sikarskie
 
 const std = @import("std");
+const ra8_build = @import("ra8_zig_build");
 
 fn addCodec(module: *std.Build.Module, b: *std.Build) void {
     module.addIncludePath(b.path("../../../libs/ra8_jpeg/inc"));
@@ -30,7 +31,9 @@ fn addCodec(module: *std.Build.Module, b: *std.Build) void {
 }
 
 pub fn build(b: *std.Build) void {
-    const target = b.standardTargetOptions(.{});
+    // Default target comes from the shared host probe so a native arm64 macOS
+    // build links Zig's bundled libSystem stub instead of the SDK's (#899).
+    const target = b.standardTargetOptions(.{ .default_target = ra8_build.hostDefaultTargetQuery(b) });
     const optimize = b.standardOptimizeOption(.{});
     const app_module = b.createModule(.{
         .root_source_file = b.path("src/main.zig"),
