@@ -3,6 +3,8 @@
 //! Dedicated native Zig tests for the register generator.
 
 const std = @import("std");
+const build_options = @import("build_options");
+const c23_cc = @import("c23_cc.zig");
 const generator = @import("application").generator;
 const GeneratorError = generator.GeneratorError;
 const PeripheralDef = generator.PeripheralDef;
@@ -242,17 +244,20 @@ test "generateC23Header with padding holes and C23 static_assert" {
     try std.testing.expect(std.mem.indexOf(u8, output, "static inline volatile timer0_regs_t *timer0_get_regs(void)") != null);
 }
 
-fn expectC23HeaderCompiles(def: PeripheralDef) !void {
+fn expectC23HeaderCompiles(compiler: []const u8, def: PeripheralDef) !void {
     const allocator = std.testing.allocator;
     var header = std.ArrayList(u8).init(allocator);
     defer header.deinit();
 
     try generateC23Header(def, allocator, header.writer());
 
-    var child = std.process.Child.init(
-        &.{ "clang-18", "-std=c23", "-Wall", "-Wextra", "-Werror", "-fsyntax-only", "-x", "c-header", "-" },
-        allocator,
-    );
+    var argv = std.ArrayList([]const u8).init(allocator);
+    defer argv.deinit();
+    var words = std.mem.tokenizeAny(u8, compiler, " ");
+    while (words.next()) |word| try argv.append(word);
+    try argv.appendSlice(&c23_cc.compile_args);
+
+    var child = std.process.Child.init(argv.items, allocator);
     child.stdin_behavior = .Pipe;
     child.stdout_behavior = .Ignore;
     child.stderr_behavior = .Inherit;
@@ -288,8 +293,19 @@ test "generated headers compile under the pinned C23 compiler" {
         },
     };
 
-    try expectC23HeaderCompiles(timer);
-    try expectC23HeaderCompiles(pcie);
+    var arena = std.heap.ArenaAllocator.init(std.testing.allocator);
+    defer arena.deinit();
+    const allocator = arena.allocator();
+
+    const override = std.process.getEnvVarOwned(allocator, "RA8_C23_CC") catch null;
+    const argv = try c23_cc.resolve(allocator, .{
+        .override = override,
+        .zig_exe = build_options.zig_exe,
+    });
+    const compiler = try std.mem.join(allocator, " ", argv);
+
+    try expectC23HeaderCompiles(compiler, timer);
+    try expectC23HeaderCompiles(compiler, pcie);
 }
 
 test "generateC23Header with trailing padding for struct alignment" {

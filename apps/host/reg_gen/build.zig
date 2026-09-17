@@ -33,6 +33,12 @@ pub fn build(b: *std.Build) void {
         .optimize = optimize,
     });
     test_module.addImport("application", application_module);
+    // The C23 contract test resolves a front end at run time (#899). Handing it
+    // the zig that is running this build gives it a `zig cc` fallback on a host
+    // that has no clang-18, which is every arm64 macOS workstation.
+    const test_options = b.addOptions();
+    test_options.addOption([]const u8, "zig_exe", b.graph.zig_exe);
+    test_module.addOptions("build_options", test_options);
     const tests = b.addTest(.{ .root_module = test_module });
     const test_step = b.step("test", "Run reg_gen unit and C23 contract tests");
     const run_tests = b.addRunArtifact(tests);
