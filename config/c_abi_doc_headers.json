@@ -1,0 +1,206 @@
+{
+  "_comment": [
+    "Which first-party library public-header trees the C ABI Doxygen reference covers.",
+    "ADR-0005 puts that reference at /api/c/ of the docs hub. Doxyfile.capi carries no",
+    "INPUT of its own: scripts/builders/docs_capi.sh feeds it the roots emitted from this",
+    "file, so this manifest is the single place the covered surface is declared.",
+    "scripts/checks/check_c_abi_doc_headers.py fails when a library with public headers",
+    "under libs/<lib>/inc/ is in neither list, so a new library cannot silently miss the",
+    "API reference, and fails on stale or unexplained entries in either list."
+  ],
+  "header_glob": "libs/<lib>/inc/**/*.h",
+  "output_slot": "api/c",
+  "documented": [
+    {
+      "lib": "libs/if",
+      "include": "libs/if/inc"
+    },
+    {
+      "lib": "libs/if_ra8_vfs",
+      "include": "libs/if_ra8_vfs/inc"
+    },
+    {
+      "lib": "libs/ra8_app",
+      "include": "libs/ra8_app/inc"
+    },
+    {
+      "lib": "libs/ra8_audio",
+      "include": "libs/ra8_audio/inc"
+    },
+    {
+      "lib": "libs/ra8_batt",
+      "include": "libs/ra8_batt/inc"
+    },
+    {
+      "lib": "libs/ra8_board_ek_ra8d2",
+      "include": "libs/ra8_board_ek_ra8d2/inc"
+    },
+    {
+      "lib": "libs/ra8_board_ra8p1",
+      "include": "libs/ra8_board_ra8p1/inc"
+    },
+    {
+      "lib": "libs/ra8_box",
+      "include": "libs/ra8_box/inc"
+    },
+    {
+      "lib": "libs/ra8_c6link",
+      "include": "libs/ra8_c6link/inc"
+    },
+    {
+      "lib": "libs/ra8_cache_store",
+      "include": "libs/ra8_cache_store/inc"
+    },
+    {
+      "lib": "libs/ra8_camera",
+      "include": "libs/ra8_camera/inc"
+    },
+    {
+      "lib": "libs/ra8_camera_io",
+      "include": "libs/ra8_camera_io/inc"
+    },
+    {
+      "lib": "libs/ra8_core",
+      "include": "libs/ra8_core/inc"
+    },
+    {
+      "lib": "libs/ra8_devcfg",
+      "include": "libs/ra8_devcfg/inc"
+    },
+    {
+      "lib": "libs/ra8_dfu",
+      "include": "libs/ra8_dfu/inc"
+    },
+    {
+      "lib": "libs/ra8_display_pal",
+      "include": "libs/ra8_display_pal/inc"
+    },
+    {
+      "lib": "libs/ra8_epd_cal",
+      "include": "libs/ra8_epd_cal/inc"
+    },
+    {
+      "lib": "libs/ra8_fs",
+      "include": "libs/ra8_fs/inc"
+    },
+    {
+      "lib": "libs/ra8_ftl",
+      "include": "libs/ra8_ftl/inc"
+    },
+    {
+      "lib": "libs/ra8_gfx",
+      "include": "libs/ra8_gfx/inc"
+    },
+    {
+      "lib": "libs/ra8_hal",
+      "include": "libs/ra8_hal/inc"
+    },
+    {
+      "lib": "libs/ra8_io",
+      "include": "libs/ra8_io/inc"
+    },
+    {
+      "lib": "libs/ra8_jpeg",
+      "include": "libs/ra8_jpeg/inc"
+    },
+    {
+      "lib": "libs/ra8_keyboard",
+      "include": "libs/ra8_keyboard/inc"
+    },
+    {
+      "lib": "libs/ra8_lsm6dso",
+      "include": "libs/ra8_lsm6dso/inc"
+    },
+    {
+      "lib": "libs/ra8_mem",
+      "include": "libs/ra8_mem/inc"
+    },
+    {
+      "lib": "libs/ra8_modem_at",
+      "include": "libs/ra8_modem_at/inc"
+    },
+    {
+      "lib": "libs/ra8_mpu",
+      "include": "libs/ra8_mpu/inc"
+    },
+    {
+      "lib": "libs/ra8_net_pal",
+      "include": "libs/ra8_net_pal/inc"
+    },
+    {
+      "lib": "libs/ra8_nsc",
+      "include": "libs/ra8_nsc/inc"
+    },
+    {
+      "lib": "libs/ra8_ota",
+      "include": "libs/ra8_ota/inc"
+    },
+    {
+      "lib": "libs/ra8_ov5640",
+      "include": "libs/ra8_ov5640/inc"
+    },
+    {
+      "lib": "libs/ra8_power_profile",
+      "include": "libs/ra8_power_profile/inc"
+    },
+    {
+      "lib": "libs/ra8_psa_crypto",
+      "include": "libs/ra8_psa_crypto/inc"
+    },
+    {
+      "lib": "libs/ra8_sdfont",
+      "include": "libs/ra8_sdfont/inc"
+    },
+    {
+      "lib": "libs/ra8_sdmmc_spi",
+      "include": "libs/ra8_sdmmc_spi/inc"
+    },
+    {
+      "lib": "libs/ra8_secure_app",
+      "include": "libs/ra8_secure_app/inc"
+    },
+    {
+      "lib": "libs/ra8_tls",
+      "include": "libs/ra8_tls/inc"
+    },
+    {
+      "lib": "libs/ra8_touch_cal",
+      "include": "libs/ra8_touch_cal/inc"
+    },
+    {
+      "lib": "libs/ra8_tz_secure_boot",
+      "include": "libs/ra8_tz_secure_boot/inc"
+    },
+    {
+      "lib": "libs/ra8_ui",
+      "include": "libs/ra8_ui/inc"
+    },
+    {
+      "lib": "libs/ra8_usb_pal",
+      "include": "libs/ra8_usb_pal/inc"
+    },
+    {
+      "lib": "libs/ra8_wdt_supervisor",
+      "include": "libs/ra8_wdt_supervisor/inc"
+    },
+    {
+      "lib": "libs/ra8_widget",
+      "include": "libs/ra8_widget/inc"
+    },
+    {
+      "lib": "libs/ra8_wifi",
+      "include": "libs/ra8_wifi/inc"
+    }
+  ],
+  "excluded": [
+    {
+      "lib": "libs/third_party",
+      "reason": "Vendored SOUP (mbedtls, threadx, usbx, netxduo, nimble, tflite-micro and friends). Upstream ships its own reference and these headers are not part of the ra8 C ABI."
+    },
+    {
+      "lib": "libs/ra8_fonts",
+      "reason": "Generated font blobs and their build rules only. There is no libs/ra8_fonts/inc public header tree to document."
+    }
+  ],
+  "excluded_headers": []
+}
