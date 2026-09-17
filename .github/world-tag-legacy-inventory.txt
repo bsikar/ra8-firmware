@@ -13,10 +13,21 @@
 #   * tag a file and its row goes stale, and the gate says so
 #   * delete a file and its row goes stale, and the gate says so
 #
-# so the inventory shrinks and can never quietly grow. Burning it to zero
-# closes the second half of #842.
+# so the gate reports every row that stopped granting anything.
 #
-# No regeneration step: tag the file, drop its line.
+# Those two are the only shrink directions the gate can see on its own, so the
+# "can never quietly grow" half is declared here and checked: the counts below
+# are read by the gate, which reports any disagreement with the rows actually
+# present, in total and per root. Adding a path therefore cannot be a one-line
+# edit; the same diff has to raise a number that says the exemption got bigger.
+# A row naming neither root is a finding too, so no row sits outside a count.
+# Burning the list to zero closes the second half of #842.
+#
+# No regeneration step: tag the file, drop its line, lower the two counts it
+# was in.
+#! rows: 628
+#! rows libs/ra8_hal/: 11
+#! rows tests/: 617
 libs/ra8_hal/inc/ra8_drw_dlist.h
 libs/ra8_hal/inc/ra8_ether_regs.h
 libs/ra8_hal/inc/ra8_mpu_regs.h
