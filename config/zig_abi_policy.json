@@ -510,6 +510,56 @@
         {"name": "fw_fs_transaction_commit", "calling_context": "task-only-non-reentrant", "ownership": "publishes or retains active transaction according to backend result"},
         {"name": "fw_fs_transaction_abort", "calling_context": "task-only-non-reentrant", "ownership": "consumes active transaction and removes unpublished staging state"}
       ]
+    },
+    {
+      "name": "ra8_ftl",
+      "build_root": "libs/ra8_ftl",
+      "public_header": "libs/ra8_ftl/inc/ra8_ftl.h",
+      "adapter": "libs/ra8_ftl/src/ra8_ftl_abi.zig",
+      "library_name": "ra8_ftl",
+      "symbol_prefix": "ra8_ftl_",
+      "compatibility_sha256": "4e7de07aaca33aa85a301f57384d93d3ab2675b74cfc9aae9f0f129ead8c611e",
+      "layout_assertions": [
+        "@offsetOf(Blockdev, \"ctx\") == ptr",
+        "@sizeOf(Blockdev) == ptr * 2",
+        "@offsetOf(Ftl, \"logical_blocks\") == ptr * 4",
+        "@offsetOf(Ftl, \"physical_blocks\") == ptr * 4 + 4",
+        "@offsetOf(Ftl, \"erase_value\") == ptr * 4 + 8",
+        "@sizeOf(Ftl) == std.mem.alignForward(usize, ptr * 4 + 9, @alignOf(Ftl))"
+      ],
+      "target_class": "host-ra8",
+      "targets": {
+        "host": [],
+        "ra8": ["-Dtarget=thumb-freestanding-eabihf", "-Dcpu=cortex_m85+fp_armv8-d32-fp64"]
+      },
+      "run_host_tests_in_all_modes": false,
+      "c_include_dirs": [
+        "libs/ra8_ftl/inc",
+        "libs/ra8_io/inc",
+        "libs/ra8_core/inc",
+        "libs/ra8_fs/inc"
+      ],
+      "contract_tests": [
+        {"language": "c", "path": "tests/storage/src/test_ra8_ftl.c", "registration": "tests/cmake/unit_tests.cmake"},
+        {"language": "c", "path": "tests/storage/src/test_ra8_ftl_cov.c", "registration": "tests/cmake/unit_tests.cmake"},
+        {"language": "c", "path": "tests/storage/src/test_ra8_ftl_persist.c", "registration": "tests/cmake/unit_tests.cmake"},
+        {"language": "zig", "path": "libs/ra8_ftl/tests/abi_test.zig", "registration": "libs/ra8_ftl/.zig-test-contract.json"},
+        {"language": "zig", "path": "libs/ra8_ftl/tests/internal_test.zig", "registration": "libs/ra8_ftl/.zig-test-contract.json", "symbol_evidence": "libs/ra8_ftl/src/ra8_ftl_abi.zig"}
+      ],
+      "exports": [
+        {"name": "ra8_ftl_init", "calling_context": "task-only-non-reentrant", "ownership": "initializes caller-owned handle and tables while borrowing the raw device and scratch storage"},
+        {"name": "ra8_ftl_as_blockdev", "calling_context": "task-only-non-reentrant", "ownership": "binds caller-owned output to the borrowed FTL handle, which must outlive it"},
+        {"name": "ra8_ftl_wear_stats", "calling_context": "task-only-non-reentrant", "ownership": "reads the borrowed FTL metadata and writes caller-owned counters"},
+        {"name": "ra8_ftl_phys_of", "calling_context": "task-only-non-reentrant", "ownership": "reads the borrowed FTL map and writes the caller-owned physical index"},
+        {"name": "ra8_ftl_checkpoint_size", "calling_context": "task-only-non-reentrant", "ownership": "borrows the initialized FTL handle and writes the required byte count to caller-owned size_out"},
+        {"name": "ra8_ftl_checkpoint_save", "calling_context": "task-only-non-reentrant", "ownership": "borrows the initialized FTL handle and writes the checkpoint to caller-owned buf"},
+        {"name": "ra8_ftl_checkpoint_load", "calling_context": "task-only-non-reentrant", "ownership": "borrows the checkpoint buffer and mutates caller-owned FTL mapping tables only on success"}
+      ],
+      "retained_c_exports": [
+        {"name": "ra8_ftl_checkpoint_size", "source": "libs/ra8_ftl/src/ra8_ftl_checkpoint.c"},
+        {"name": "ra8_ftl_checkpoint_save", "source": "libs/ra8_ftl/src/ra8_ftl_checkpoint.c"},
+        {"name": "ra8_ftl_checkpoint_load", "source": "libs/ra8_ftl/src/ra8_ftl_checkpoint.c"}
+      ]
     }
     ,{
       "name": "ra8_keyboard",
