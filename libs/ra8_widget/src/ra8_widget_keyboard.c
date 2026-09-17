@@ -48,7 +48,6 @@ typedef enum : uint8_t {
  *          glyph nor a label draws just its face.
  * @param[in] kbd  The keyboard descriptor (non-NULL; `paint` non-NULL).
  * @param[in] info The key's geometry + glyph / label (non-NULL).
- * @return Nothing.
  * @pre @p kbd and @p info are non-NULL; @p kbd->paint is non-NULL.
  * @pre None.
  * @post At most a framed face plus one text draw are issued for the key.
@@ -87,7 +86,6 @@ static void internal_kbd_key(const ra8_widget_keyboard_t* kbd, const ra8_widget_
  *          it for each key and paints it via ::internal_kbd_key. An inert seam or
  *          a missing paint backend is a no-op beyond the background.
  * @param[in] w The keyboard widget (its `ctx` is a ::ra8_widget_keyboard_t).
- * @return Nothing.
  * @pre @p w is non-NULL (guaranteed by ::ra8_widget_render_dirty).
  * @pre @p w->ctx points at a valid keyboard descriptor or is NULL.
  * @post At most a background fill plus `count` key paints are issued.

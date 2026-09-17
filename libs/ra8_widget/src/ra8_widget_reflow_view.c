@@ -140,7 +140,6 @@ static bool internal_rv_turn(ra8_widget_reflow_view_t* v, int32_t px, int32_t mi
  *          `render_page` callback -- asks it to paint the current page inside the
  *          body rect (the widget rect inset by the margins).
  * @param[in] w The reflow-view widget (its `ctx` is a ::ra8_widget_reflow_view_t).
- * @return Nothing.
  * @pre @p w is non-NULL (guaranteed by ::ra8_widget_render_dirty).
  * @pre @p w->ctx points at a valid reflow-view descriptor or is NULL.
  * @post At most a background clear plus one page paint are issued.

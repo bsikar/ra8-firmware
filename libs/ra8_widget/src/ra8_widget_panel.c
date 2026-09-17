@@ -111,7 +111,6 @@ static ra8_err_t internal_compose_check(ra8_widget_t*               panel_w,
  *          A child that is itself a panel re-enters here, so the recursion is
  *          bounded by the caller's static tree depth (NASA Rule 1).
  * @param[in] w The panel widget (its `ctx` is a ::ra8_widget_panel_t).
- * @return Nothing.
  * @pre @p w is non-NULL (guaranteed by ::ra8_widget_render_dirty).
  * @pre @p w->ctx points at a valid panel descriptor.
  * @post Every visible child has been rendered for this subtree.

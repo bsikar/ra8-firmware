@@ -44,7 +44,6 @@ typedef enum : int16_t {
  *          it via ::priv_widget_text_pos and draws it. Each guard is a
  *          single condition so a missing backend / text is a safe no-op.
  * @param[in] w The label widget (its `ctx` is a ::ra8_widget_label_t).
- * @return Nothing.
  * @pre @p w is non-NULL (guaranteed by ::ra8_widget_render_dirty).
  * @pre @p w->ctx points at a valid label descriptor or is NULL.
  * @post At most the background fill plus one text draw are issued.

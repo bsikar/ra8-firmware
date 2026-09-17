@@ -60,7 +60,6 @@ static uint32_t internal_button_face(const ra8_widget_button_t* b)
  *          ::priv_widget_fill_box, then -- when there is text and a
  *          `draw_text` backend -- places and draws the label over the face.
  * @param[in] w The button widget (its `ctx` is a ::ra8_widget_button_t).
- * @return Nothing.
  * @pre @p w is non-NULL (guaranteed by ::ra8_widget_render_dirty).
  * @pre @p w->ctx points at a valid button descriptor or is NULL.
  * @post At most the face fill(s) plus one text draw are issued.

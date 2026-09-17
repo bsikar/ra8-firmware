@@ -43,7 +43,6 @@ typedef enum : int32_t {
  *          the leftmost ::internal_pb_fill_w pixels with `fill`. A missing paint
  *          backend / `fill_rect` callback is a safe no-op.
  * @param[in] w The progress-bar widget (its `ctx` is a ::ra8_widget_progress_bar_t).
- * @return Nothing.
  * @pre @p w is non-NULL (guaranteed by ::ra8_widget_render_dirty).
  * @pre @p w->ctx points at a valid bar descriptor or is NULL.
  * @post At most a track fill plus one proportional fill are issued.

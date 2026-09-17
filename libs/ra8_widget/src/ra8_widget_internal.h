@@ -53,8 +53,6 @@
  * @param[out] out_x Receives the pen X (left edge of the first glyph).
  * @param[out] out_y Receives the pen Y (top edge of the glyph row).
  *
- * @return Nothing.
- *
  * @pre @p paint, @p rect, @p text, @p out_x and @p out_y are non-NULL.
  * @pre @p paint->text_size, if set, fills both out dimensions.
  * @post `*out_x` / `*out_y` hold a pen position inside or at the rect inset.
@@ -93,8 +91,6 @@ RA8_PRIV void priv_widget_text_pos(const ra8_widget_paint_t* paint,
  * @param[in] fill     Interior fill colour, 0xRRGGBB.
  * @param[in] border   Border colour, 0xRRGGBB (used only when border_w > 0).
  * @param[in] border_w Border thickness in pixels; <= 0 means no border.
- *
- * @return Nothing.
  *
  * @pre @p paint and @p rect are non-NULL.
  * @pre @p border_w is the configured thickness (>= 0 by widget invariant).

@@ -119,7 +119,6 @@ static ra8_ui_rect_t internal_bg_cell(const ra8_ui_rect_t* content,
  * @param[in] text  Label text, or NULL to skip.
  * @param[in] fg    Text colour, 0xRRGGBB.
  * @param[in] bg    Background colour, 0xRRGGBB.
- * @return Nothing.
  * @pre @p paint, @p row non-NULL; @p paint->draw_text non-NULL.
  * @pre None.
  * @post At most one `draw_text` call is issued.
@@ -152,7 +151,6 @@ static void internal_bg_label(const ra8_widget_paint_t* paint,
  * @param[in] g    The book grid descriptor (non-NULL; `paint` non-NULL).
  * @param[in] book The card's data record (non-NULL).
  * @param[in] cell The card's cell rectangle (non-NULL).
- * @return Nothing.
  * @pre @p g, @p book, @p cell are non-NULL; @p g->paint is non-NULL.
  * @pre None.
  * @post At most a cover fill, two label draws, and two bar fills run.
@@ -219,7 +217,6 @@ static uint16_t internal_bg_rows(uint16_t count, uint16_t cols)
  *          via ::internal_bg_card. An empty grid or a missing paint backend /
  *          book array is a no-op.
  * @param[in] w The book-grid widget (its `ctx` is a ::ra8_widget_book_grid_t).
- * @return Nothing.
  * @pre @p w is non-NULL (guaranteed by ::ra8_widget_render_dirty).
  * @pre @p w->ctx points at a valid grid descriptor or is NULL.
  * @post At most a background fill plus `count` card paints are issued.

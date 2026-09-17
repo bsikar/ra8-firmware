@@ -47,7 +47,6 @@ typedef enum : int16_t {
  * @param[in] align Horizontal alignment (left / right).
  * @param[in] fg    Text colour, 0xRRGGBB.
  * @param[in] bg    Background colour drawn behind the glyphs, 0xRRGGBB.
- * @return Nothing.
  * @pre @p paint and @p rect are non-NULL.
  * @pre @p text is NUL-terminated or NULL.
  * @post At most one `draw_text` call is issued.
@@ -83,7 +82,6 @@ static void internal_sb_label(const ra8_widget_paint_t* paint,
  *          `rule_h > 0` -- fills a `rule` strip along the band's bottom edge. A
  *          missing paint backend / `fill_rect` callback keeps drawing safe.
  * @param[in] w The status-bar widget (its `ctx` is a ::ra8_widget_status_bar_t).
- * @return Nothing.
  * @pre @p w is non-NULL (guaranteed by ::ra8_widget_render_dirty).
  * @pre @p w->ctx points at a valid status-bar descriptor or is NULL.
  * @post At most a background fill, two text draws, and one rule fill are issued.

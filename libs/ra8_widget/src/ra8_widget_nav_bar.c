@@ -75,7 +75,6 @@ static ra8_ui_rect_t internal_nav_cell(const ra8_ui_rect_t* strip, uint16_t idx,
  * @param[in] text  Item label, or NULL to skip.
  * @param[in] fg    Text colour, 0xRRGGBB.
  * @param[in] bg    Background colour, 0xRRGGBB.
- * @return Nothing.
  * @pre @p paint, @p cell are non-NULL; @p paint->draw_text is non-NULL.
  * @pre None.
  * @post At most one `draw_text` call is issued.
@@ -106,7 +105,6 @@ static void internal_nav_item(const ra8_widget_paint_t* paint,
  *          `fg_active` for the `active` index and `fg_muted` for the rest. An
  *          empty strip (`count == 0`) or a missing paint backend is a no-op.
  * @param[in] w The nav-strip widget (its `ctx` is a ::ra8_widget_nav_bar_t).
- * @return Nothing.
  * @pre @p w is non-NULL (guaranteed by ::ra8_widget_render_dirty).
  * @pre @p w->ctx points at a valid nav-strip descriptor or is NULL.
  * @post At most a strip fill plus `count` label draws are issued.

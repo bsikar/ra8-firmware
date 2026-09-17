@@ -69,7 +69,6 @@ static ra8_ui_rect_t internal_tb_field_rect(const ra8_widget_toolbar_t* bar,
  *          `hint`, then the right-aligned `count` chip -- each through the paint
  *          backend and only when a `draw_text` callback is present.
  * @param[in] w The toolbar widget (its `ctx` is a ::ra8_widget_toolbar_t).
- * @return Nothing.
  * @pre @p w is non-NULL (guaranteed by ::ra8_widget_render_dirty).
  * @pre @p w->ctx points at a valid toolbar descriptor or is NULL.
  * @post At most a band fill, a framed field, a hint draw and a count draw run.
