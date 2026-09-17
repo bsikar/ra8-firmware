@@ -59,12 +59,12 @@ typedef enum : uint32_t {
  * @param[in] page Atlas (page) index.
  * @param[in] band Band (tile row) index.
  *
- * @return Nothing (asserts on failure).
- *
  * @pre `st` is bound to the volume; `band < k_mg_bands`.
  * @pre The atlas lies within the volume.
  * @post The raw stream equalled the reference on every sampled pixel.
  * @post No pin is leaked (the stream copies through the cache).
+ * @post A failing compare exits the test executable with status 1, so later sampled bytes are never
+ *       read.
  *
  * @note Not thread-safe.
  *
@@ -251,12 +251,12 @@ static uint32_t t_mg_run_manga_pattern(uint32_t           atlas_count,
  * @param[in] atlas_count Atlases in the modelled volume.
  * @param[in] target      The cited target size the volume must reach (bytes).
  *
- * @return Nothing (asserts on failure).
- *
  * @pre `atlas_count * atlas_size >= target`.
  * @pre The static cache arrays are idle (previous run finished).
  * @post Residency stayed bounded by the fixed budgets throughout.
  * @post Every band matched the reference; the 1-in-1-out law held on both caches.
+ * @post A failing check exits the test executable with status 1, so the remaining gate checks never
+ *       run.
  *
  * @note Not thread-safe.
  *

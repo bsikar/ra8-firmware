@@ -592,8 +592,6 @@ static uint32_t t_mg_tc_valid(void)
  *
  * @param[in,out] hw High-water marks to raise (never lowered).
  *
- * @return Nothing.
- *
  * @pre `hw` is a valid high-water accumulator.
  * @pre The caches are initialised.
  * @post `hw->pc_frames` / `hw->tc_cells` are >= the current residency.
@@ -632,12 +630,11 @@ static void t_mg_hw_sample(t_mg_hw_t* hw)
  * @param[in]     band Band (tile row) index.
  * @param[in,out] hw   Residency high-water accumulator.
  *
- * @return Nothing (asserts on failure).
- *
  * @pre `tc` is initialised; `band < k_mg_bands`.
  * @pre `page` indexes an atlas within the volume.
  * @post The band's pin count is unchanged on return (get then put).
  * @post The returned band matched the reference on every sampled pixel.
+ * @post A failing check exits the test executable with status 1, before the pin is released.
  *
  * @note Not thread-safe.
  *
@@ -671,12 +668,11 @@ static void t_mg_touch_band(ra8_tile_cache_t* tc, uint32_t page, uint32_t band, 
  * @param[in]  page Atlas (page) index.
  * @param[out] info Receives the parsed + validated geometry.
  *
- * @return Nothing (asserts on failure).
- *
  * @pre `st` is bound to the whole volume; `info` is writable.
  * @pre `page` indexes an atlas within the volume.
  * @post `*info` holds the uniform atlas geometry.
  * @post The parse read the atlas header + footer through the page cache.
+ * @post A failing geometry check exits the test executable with status 1; no later check runs.
  *
  * @note Not thread-safe.
  *

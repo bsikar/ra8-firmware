@@ -685,7 +685,6 @@ static void test_manga_status_text(void)
  *          first and final cached tiles straddle every viewport edge. This
  *          drives the production blitter's low-edge, in-range, and high-edge
  *          clipping outcomes independently on both axes.
- * @return Nothing.
  * @pre ::setup_reader can bind the production page atlas and cache.
  * @pre The page remains larger than one framebuffer on both axes.
  * @post Rendering succeeds without touching pixels outside the framebuffer.
@@ -716,7 +715,6 @@ static void test_manga_render_clips_partial_edge_tiles(void)
  *          then zeros one dimension at a time while holding every other input
  *          valid. The framebuffer-height vector uses the exact status-band
  *          boundary so it does not also vary framebuffer width.
- * @return Nothing.
  * @pre ::setup_reader has produced a valid gray8 atlas and cache.
  * @pre Automatic reader/config copies are writable.
  * @post Every isolated invalid dimension returns ::k_ra8_err_invalid_size.

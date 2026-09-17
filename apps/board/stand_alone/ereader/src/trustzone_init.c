@@ -531,7 +531,6 @@ static ra8_err_t tz_usb_route_pins(void)
  *          value confirms, then re-locks PRC4. The confirmed value is stored
  *          in ::g_tz_usb_psarb_readback for a bench halt to verify.
  *
- * @return void.
  * @pre Caller is in Secure state.
  * @pre The USB pins/PLL setup has run.
  * @post PSARB.PSARB11|PSARB12 = 1 (both USB controllers Non-secure).
@@ -577,7 +576,6 @@ static void tz_usb_mark_ns(void)
  *          latch holds host mode across the warm reset regardless. Outcomes are
  *          recorded in the @c g_tz_usb_* globals for the HIL gate to inspect.
  *
- * @return Nothing.
  * @pre Called from Secure state during boot, before the BLXNS into the NS image.
  * @pre The CGC clock tree (PLL1) is already up so the USBHS PLL can lock.
  * @post The USB pins are routed and the @c g_tz_usb_* status globals are set.

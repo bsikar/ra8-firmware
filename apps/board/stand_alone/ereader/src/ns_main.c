@@ -207,7 +207,6 @@ extern volatile uint32_t g_ra8_threadx_systick_ready;
  *          @c _tx_timer_interrupt to service timeouts and the time-slice. Before
  *          the kernel is ready the tick is ignored so an early SysTick cannot
  *          enter the scheduler.
- * @return Nothing.
  * @pre Installed as the SysTick vector in the NS vector table.
  * @pre @c g_ra8_threadx_systick_ready is set only after @c tx_kernel_enter.
  * @post When the kernel is ready, one ThreadX timer tick has been serviced.
@@ -251,11 +250,11 @@ RA8_INTERNAL [[noreturn]] static void internal_panic_halt(void)
  *          advances the frame counter, emits a heartbeat on the configured
  *          cadence, and yields so the other threads run. Never returns.
  * @param[in] thread_input ThreadX entry argument (unused; reserved by the API).
- * @return Nothing (runs for the lifetime of the system).
  * @pre Registered as the UI thread's entry in ::tx_application_define.
  * @pre @c ra8_nsc_periph_init has completed (Secure services available).
  * @post The UI loop runs continuously, yielding each iteration.
  * @post Heartbeat log lines are emitted on the configured cadence.
+ * @post Never returns; the frame loop runs for the lifetime of the system.
  * @note Runs on the NS UI thread; not thread-safe across threads.
  * @since 0.1.0
  */
@@ -285,11 +284,11 @@ RA8_INTERNAL static void internal_ui_thread_entry(ULONG thread_input)
  *          heartbeat and sleeping each iteration so the UI thread stays
  *          responsive. It never returns.
  * @param[in] thread_input ThreadX entry argument (unused; reserved by the API).
- * @return Nothing (runs for the lifetime of the system).
  * @pre Registered as the system thread's entry in ::tx_application_define.
  * @pre ThreadX is running (the scheduler invoked this entry).
  * @post The supervisor loop runs continuously, yielding each iteration.
  * @post Heartbeat log lines are emitted on the configured cadence.
+ * @post Never returns; the supervisor loop runs for the lifetime of the system.
  * @note Runs on the NS system thread; not thread-safe across threads.
  * @since 0.1.0
  */
@@ -321,7 +320,6 @@ RA8_INTERNAL static void internal_sys_thread_entry(ULONG thread_input)
  *          WDT directly, which faults in NS); register the UI and system
  *          workers with their deadlines; then start the supervisor thread. Any
  *          failure is unrecoverable this early, so it parks in ::internal_panic_halt.
- * @return Nothing.
  * @note Returns only on full success; otherwise never returns (halts).
  * @pre ::ra8_nsc_periph_init has completed (Secure clocks + substrate up).
  * @pre Called in single-threaded boot context before any worker is created.

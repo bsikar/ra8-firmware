@@ -13,27 +13,6 @@
 # grew fails as a regression; one that fires less often fails as stale, so
 # paying debt down is recorded here rather than silently absorbed.  Line
 # numbers are not part of the key, so edits above a block do not churn it.
-apps/board/stand_alone/ereader/src/ns_main.c	internal_sys_thread_entry	1
-apps/board/stand_alone/ereader/src/ns_main.c	internal_systick_handler	1
-apps/board/stand_alone/ereader/src/ns_main.c	internal_ui_thread_entry	1
-apps/board/stand_alone/ereader/src/ns_main.c	internal_wdt_setup	1
-apps/board/stand_alone/ereader/src/system_init.c	internal_disable_irq	1
-apps/board/stand_alone/ereader/src/system_init.c	internal_dsb	1
-apps/board/stand_alone/ereader/src/system_init.c	internal_enable_fpu	1
-apps/board/stand_alone/ereader/src/system_init.c	internal_enable_fpu_lazy_stack	1
-apps/board/stand_alone/ereader/src/system_init.c	internal_isb	1
-apps/board/stand_alone/ereader/src/system_init.c	internal_set_priority_grouping	1
-apps/board/stand_alone/ereader/src/system_init.c	internal_set_vtor	1
-apps/board/stand_alone/ereader/src/system_init.c	internal_write32	1
-apps/board/stand_alone/ereader/src/trustzone_init.c	tz_usb_handoff_prepare	1
-apps/board/stand_alone/ereader/src/trustzone_init.c	tz_usb_mark_ns	1
-apps/board/stand_alone/ereader/tests/inc/test_ra8_manga_stream.h	t_mg_hw_sample	1
-apps/board/stand_alone/ereader/tests/inc/test_ra8_manga_stream.h	t_mg_open_page	1
-apps/board/stand_alone/ereader/tests/inc/test_ra8_manga_stream.h	t_mg_touch_band	1
-apps/board/stand_alone/ereader/tests/src/test_app_ereader_manga.c	test_manga_init_rejects_each_geometry_bound	1
-apps/board/stand_alone/ereader/tests/src/test_app_ereader_manga.c	test_manga_render_clips_partial_edge_tiles	1
-apps/board/stand_alone/ereader/tests/src/test_ra8_manga_stream.c	t_mg_crosscheck_raw	1
-apps/board/stand_alone/ereader/tests/src/test_ra8_manga_stream.c	t_mg_gate_size	1
 apps/host/mdl/inc/mdl_cli.h	mdl_cli_parse	1
 apps/host/mdl/src/mdl_net_curl.c	internal_curl_destroy	1
 apps/host/mdl/src/mdl_net_curl.c	internal_header_value	1

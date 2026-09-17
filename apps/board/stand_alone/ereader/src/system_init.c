@@ -118,7 +118,6 @@ RA8_INTERNAL static inline uint32_t internal_read32(uintptr_t addr)
  *          the cache / FPU / MPU enable sequences below depend on.
  * @param[in] addr  32-bit-aligned MMIO / system-register address to write.
  * @param[in] value 32-bit value to store at @p addr.
- * @return Nothing.
  * @pre @p addr is a 32-bit-aligned, mapped system-register address.
  * @pre Called during single-threaded core bring-up.
  * @post The register at @p addr holds @p value.
@@ -137,7 +136,6 @@ RA8_INTERNAL static inline void internal_write32(uintptr_t addr, uint32_t value)
  *          write (e.g. a cache or MPU enable) is in effect before later
  *          instructions observe it. Compiled out under @c RA8_OFF_TARGET,
  *          where the host emulator has no pipeline to drain.
- * @return Nothing.
  * @pre Called from the single-threaded reset path.
  * @pre The memory accesses to be ordered have already been issued.
  * @post All prior memory accesses are complete before execution continues.
@@ -157,7 +155,6 @@ RA8_INTERNAL static inline void internal_dsb(void)
  * @details Flushes the pipeline so instructions after a context-altering
  *          register write (CPACR, CCR, ...) are re-fetched under the new
  *          context. Compiled out under @c RA8_OFF_TARGET.
- * @return Nothing.
  * @pre Called from the single-threaded reset path.
  * @pre A preceding context-altering write (e.g. CPACR) has been issued.
  * @post The instruction stream is synchronized to the updated context.
@@ -177,7 +174,6 @@ RA8_INTERNAL static inline void internal_isb(void)
  * @details Gives the rest of @c SystemInit a deterministic, interrupt-free
  *          bring-up window; @c main() re-enables IRQs once every handler is
  *          wired up. Compiled out under @c RA8_OFF_TARGET.
- * @return Nothing.
  * @pre Called from the single-threaded reset path before any IRQ source is on.
  * @pre PRIMASK is in its reset (interrupts-enabled) state.
  * @post Maskable interrupts cannot preempt the remaining init sequence.
@@ -202,7 +198,6 @@ RA8_INTERNAL static inline void internal_disable_irq(void)
  * @details Writes the absolute address of the @c .vectors section (pinned by the
  *          linker to the start of MRAM, @c 0x02000000) into the SCB VTOR
  *          register so exceptions vector to this image's handler table.
- * @return Nothing.
  * @pre Called from the single-threaded reset path before any exception can fire.
  * @pre The linker symbol @c g_ra8_vector_table_start resolves to the table base.
  * @post SCB->VTOR holds the physical vector-table base address.
@@ -224,7 +219,6 @@ RA8_INTERNAL static void internal_set_vtor(void)
  *          then issues a DSB + ISB so the FPU is usable before the first
  *          floating-point instruction is fetched. Without this, an FP access
  *          would raise a UsageFault (NOCP).
- * @return Nothing.
  * @pre Called from the single-threaded reset path before any FP instruction.
  * @pre The FPU is present on this core (Cortex-M85 with FP).
  * @post CPACR grants CP10/CP11 full access and the change is synchronized.
@@ -250,7 +244,6 @@ RA8_INTERNAL static void internal_enable_fpu(void)
  *          preservation) in FPCCR so exception entry reserves the FP stack
  *          frame but defers the costly FP register save until a handler actually
  *          uses the FPU -- cutting interrupt latency for non-FP handlers.
- * @return Nothing.
  * @pre Called from the single-threaded reset path after ::internal_enable_fpu.
  * @pre The FPU coprocessor access has already been granted (CPACR set).
  * @post FPCCR.LSPEN and FPCCR.ASPEN are set; FP context is lazily stacked.
@@ -349,7 +342,6 @@ RA8_INTERNAL static void internal_enable_branch_predictor(void)
  *          available priority bits select the preemption level and none are
  *          sub-priority. This gives every configured IRQ a distinct preemption
  *          priority, matching the driver layer's priority assignments.
- * @return Nothing.
  * @pre Called from the single-threaded reset path before IRQs are enabled.
  * @pre The VECTKEY (0x05FA) is included in the AIRCR write (else it is ignored).
  * @post AIRCR.PRIGROUP = 3 (4 preemption bits, 0 sub-priority bits).
