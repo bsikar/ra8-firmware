@@ -5,9 +5,12 @@
 //! library; the Zig test step verifies the private implementation and adapter.
 
 const std = @import("std");
+const ra8_build = @import("ra8_zig_build");
 
 pub fn build(b: *std.Build) void {
-    const target = b.standardTargetOptions(.{});
+    // Default target comes from the shared host probe so a native arm64 macOS
+    // build links Zig's bundled libSystem stub instead of the SDK's (#899).
+    const target = b.standardTargetOptions(.{ .default_target = ra8_build.hostDefaultTargetQuery(b) });
     const optimize = b.standardOptimizeOption(.{});
     const library = b.addLibrary(.{
         .name = "ra8_abi_fixture",
