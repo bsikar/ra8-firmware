@@ -85,8 +85,8 @@ if [ -z "${_RA8_LANG_TOOLCHAINS_SH:-}" ]; then
     local dir="$1"
     [ -n "${dir}" ] && [ -d "${dir}" ] || return 1
     case ":${PATH}:" in
-    *":${dir}:"*) ;;
-    *) PATH="${dir}:${PATH}" ;;
+      *":${dir}:"*) ;;
+      *) PATH="${dir}:${PATH}" ;;
     esac
     export PATH
     return 0
@@ -139,9 +139,9 @@ if [ -z "${_RA8_LANG_TOOLCHAINS_SH:-}" ]; then
   # The release archives name the host the same way for both toolchains.
   _ra8_lang_arch() {
     case "$(uname -m)" in
-    x86_64) printf 'x86_64\n' ;;
-    aarch64 | arm64) printf 'aarch64\n' ;;
-    *) return 1 ;;
+      x86_64) printf 'x86_64\n' ;;
+      aarch64 | arm64) printf 'aarch64\n' ;;
+      *) return 1 ;;
     esac
   }
 
@@ -163,8 +163,8 @@ if [ -z "${_RA8_LANG_TOOLCHAINS_SH:-}" ]; then
 
     if [ ! -x "${dest}/zig" ] || [ "$("${dest}/zig" version 2>/dev/null)" != "${want}" ]; then
       case "${arch}" in
-      x86_64) sha="$(_ra8_lang_pin ZIG_SHA256_X86_64)" ;;
-      aarch64) sha="$(_ra8_lang_pin ZIG_SHA256_AARCH64)" ;;
+        x86_64) sha="$(_ra8_lang_pin ZIG_SHA256_X86_64)" ;;
+        aarch64) sha="$(_ra8_lang_pin ZIG_SHA256_AARCH64)" ;;
       esac
       [ -n "${sha}" ] || return 1
       url="https://ziglang.org/download/${want}/zig-${arch}-linux-${want}.tar.xz"
@@ -200,8 +200,8 @@ if [ -z "${_RA8_LANG_TOOLCHAINS_SH:-}" ]; then
 
     if [ ! -x "${dest}/bin/rustc" ]; then
       case "${arch}" in
-      x86_64) sha="$(_ra8_lang_pin RUST_SHA256_X86_64)" ;;
-      aarch64) sha="$(_ra8_lang_pin RUST_SHA256_AARCH64)" ;;
+        x86_64) sha="$(_ra8_lang_pin RUST_SHA256_X86_64)" ;;
+        aarch64) sha="$(_ra8_lang_pin RUST_SHA256_AARCH64)" ;;
       esac
       [ -n "${sha}" ] || return 1
       url="https://static.rust-lang.org/dist/rust-${want}-${arch}-unknown-linux-gnu.tar.xz"
