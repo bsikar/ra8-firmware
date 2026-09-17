@@ -365,28 +365,6 @@ if [[ "$-" == *p* ]]; then
     bash scripts/checks/check_unicorn_version.sh
   }
 
-  # Fail with the real reason when the arm-gcc on PATH predates Cortex-M85.
-  #
-  # -mcpu=cortex-m85 needs arm-gcc 12.3+. An older distro package does not say
-  # "too old" -- it says `unrecognized -mcpu target: cortex-m85` followed by
-  # `missing argument to '-march='`, which reads like a broken build script and
-  # sent a previous run hunting the wrong bug. Name the actual problem instead.
-  require_arm_gcc_m85() {
-    require_cmd arm-none-eabi-gcc
-    local version
-    version="$(arm-none-eabi-gcc -dumpfullversion 2>/dev/null || echo 0)"
-    if ! arm-none-eabi-gcc -mcpu=cortex-m85 -E - </dev/null >/dev/null 2>&1; then
-      echo "ERROR: the arm-none-eabi-gcc on PATH ($version) does not know" >&2
-      echo "       -mcpu=cortex-m85; this gate cannot run. It needs the pinned" >&2
-      echo "       13.3 toolchain (12.3+ minimum)." >&2
-      echo "       Looked in: \$RA8_ARM_TOOLCHAIN_BIN," >&2
-      echo "                  /opt/arm-gnu-toolchain-13.3/bin," >&2
-      echo "                  \$HOME/opt/arm-gnu-toolchain-13.3/bin" >&2
-      echo "       Point RA8_ARM_TOOLCHAIN_BIN at its bin/ if it lives elsewhere." >&2
-      return 1
-    fi
-  }
-
   # The repository whose HISTORY the commit-message gates read.
   #
   # Normally the current directory -- but NOT under run_suite_on_snapshot, which
