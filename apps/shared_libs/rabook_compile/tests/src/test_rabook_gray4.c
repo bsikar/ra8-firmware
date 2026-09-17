@@ -62,9 +62,9 @@
  * @code
  *   clang -std=c2x -DRA8_OFF_TARGET \
  *     -I libs/ra8_core/inc -I apps/shared_libs/rabook_compile/inc \
- *     tests/src/test_rabook_gray4.c \
+ *     apps/shared_libs/rabook_compile/tests/src/test_rabook_gray4.c \
  *     apps/shared_libs/rabook_compile/src/ra8_rabook_gray4.c \
- *     libs/ra8_core/src/ra8_err.c libs/ra8_core/src/ra8_log.c \
+ *     libs/ra8_core/src/ra8_log.c \
  *     -o /tmp/test_ra8_rabook_gray4 && /tmp/test_ra8_rabook_gray4
  * @endcode
  *
