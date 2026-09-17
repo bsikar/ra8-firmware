@@ -38,6 +38,8 @@
 typedef enum : uint8_t {
   k_adc_resolution_invalid =
     9U, /**< A resolution outside the enumeration, which configuration must reject. */
+  k_adc_trigger_invalid =
+    7U, /**< A trigger outside the enumeration, which configuration must reject.    */
 } adc_fixture_t;
 
 /**
@@ -79,6 +81,8 @@ typedef enum : uint16_t {
 
 typedef enum : uint32_t {
   k_ra8_adc_test_default_group_mask = 0x00000001UL, /**< ADSGER bit for group 0.        */
+  k_ra8_adc_test_trgen_group_bit    = 0x00000001UL, /**< ADTRGENR.STTRGEN bit, group 0. */
+  k_ra8_adc_test_trgen_all          = 0xFFFFFFFFUL, /**< Every STTRGEN bit pre-set.     */
   k_ra8_adc_test_admd0_one_cycle    = 0x00000001UL, /**< Expected ADMDR.ADMD0 value.    */
   k_ra8_adc_test_admd0_continuous   = 0x00000002UL, /**< RA8 ADC test admd0 continuous. */
   k_ra8_adc_test_mdr1_sentinel      = 0x5A5A5A5AUL, /**< Live-window read-back proof.   */
@@ -555,6 +559,122 @@ static void test_power_transition(void)
 }
 
 /**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
+static void test_init_configured_sw_trigger_clears_trgen(void)
+{
+  TEST_BEGIN("adc init configured: software trigger clears STTRGEN");
+  ra8_fake_mmap_reset();
+
+  /* Pre-set every STTRGEN bit so a clear group bit can only come from the
+   * descriptor being read, never from the reset value. */
+  *ra8_adc_b_adtrgenr() = k_ra8_adc_test_trgen_all;
+
+  const ra8_adc_cfg_t cfg = make_cfg();
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_adc_init_configured(&cfg));
+  TEST_ASSERT_EQ(0, (*ra8_adc_b_adtrgenr() & k_ra8_adc_test_trgen_group_bit));
+  TEST_END("adc init configured: software trigger clears STTRGEN");
+}
+
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
+static void test_init_configured_pin_trigger_arms_trgen(void)
+{
+  TEST_BEGIN("adc init configured: external-pin trigger arms STTRGEN");
+  ra8_fake_mmap_reset();
+
+  ra8_adc_cfg_t cfg = make_cfg();
+  cfg.trigger       = k_ra8_adc_trig_external;
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_adc_init_configured(&cfg));
+  TEST_ASSERT_EQ(k_ra8_adc_test_trgen_group_bit,
+                 (*ra8_adc_b_adtrgenr() & k_ra8_adc_test_trgen_group_bit));
+  TEST_END("adc init configured: external-pin trigger arms STTRGEN");
+}
+
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
+static void test_init_configured_elc_trigger_arms_trgen(void)
+{
+  TEST_BEGIN("adc init configured: ELC trigger arms STTRGEN");
+  ra8_fake_mmap_reset();
+
+  ra8_adc_cfg_t cfg = make_cfg();
+  cfg.trigger       = k_ra8_adc_trig_elc;
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_adc_init_configured(&cfg));
+  TEST_ASSERT_EQ(k_ra8_adc_test_trgen_group_bit,
+                 (*ra8_adc_b_adtrgenr() & k_ra8_adc_test_trgen_group_bit));
+  TEST_END("adc init configured: ELC trigger arms STTRGEN");
+}
+
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
+static void test_init_configured_bad_trigger(void)
+{
+  TEST_BEGIN("adc init configured: unknown trigger rejected");
+  ra8_fake_mmap_reset();
+
+  ra8_adc_cfg_t cfg = make_cfg();
+  cfg.trigger       = (ra8_adc_trigger_t)k_adc_trigger_invalid;
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_adc_init_configured(&cfg));
+  /* Rejected before any hardware write: the mode register is untouched. */
+  TEST_ASSERT_EQ(0, *ra8_adc_b_admdr());
+  TEST_END("adc init configured: unknown trigger rejected");
+}
+
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
+static void test_init_configured_left_aligned_rejected(void)
+{
+  TEST_BEGIN("adc init configured: left-aligned rejected");
+  ra8_fake_mmap_reset();
+
+  ra8_adc_cfg_t cfg = make_cfg();
+  cfg.right_aligned = false;
+  TEST_ASSERT_EQ(k_ra8_err_not_supported, ra8_adc_init_configured(&cfg));
+  /* No register write and the clock stays gated. */
+  TEST_ASSERT_EQ(0, *ra8_adc_b_admdr());
+  TEST_ASSERT_EQ(0, (*ra8_adc_b_adclkenr() & k_ra8_adclkenr_mask_clken));
+  TEST_END("adc init configured: left-aligned rejected");
+}
+
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
+static void test_init_legacy_clears_trgen(void)
+{
+  TEST_BEGIN("adc init legacy: software trigger clears STTRGEN");
+  ra8_fake_mmap_reset();
+
+  *ra8_adc_b_adtrgenr() = k_ra8_adc_test_trgen_all;
+
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_adc_init());
+  TEST_ASSERT_EQ(0, (*ra8_adc_b_adtrgenr() & k_ra8_adc_test_trgen_group_bit));
+  TEST_END("adc init legacy: software trigger clears STTRGEN");
+}
+
+/**
  * @var s_test_roster
  * @brief Fixed-order roster of every test case in this translation unit.
  *
@@ -575,6 +695,12 @@ static void (*const s_test_roster[])(void) = {
   test_init_configured,
   test_init_configured_null,
   test_init_configured_scan,
+  test_init_configured_sw_trigger_clears_trgen,
+  test_init_configured_pin_trigger_arms_trgen,
+  test_init_configured_elc_trigger_arms_trgen,
+  test_init_configured_bad_trigger,
+  test_init_configured_left_aligned_rejected,
+  test_init_legacy_clears_trgen,
   test_deinit,
   test_set_resolution,
   test_set_resolution_bad,
