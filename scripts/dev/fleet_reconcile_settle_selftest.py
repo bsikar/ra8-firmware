@@ -199,7 +199,13 @@ def _both_refusals_survive(controller: ModuleType, failures: list[str]) -> None:
     run = _refusing_run(controller, data, calls, first=FIRST_DRAIN_REFUSAL)
 
     def reopen() -> bool:
-        controller.recover_last_known_good(data, "producer", run, controller.PRODUCER_CHECK_NOISE)
+        controller.recover_last_known_good(
+            data,
+            "producer",
+            run,
+            controller.PRODUCER_CHECK_NOISE,
+            held_check_changes=controller.PRODUCER_CHECK_NOISE,
+        )
         return False
 
     try:
@@ -230,7 +236,13 @@ def _recovery_refusal_after_a_landed_drain_raises_alone(
     run = _refusing_run(controller, data, calls, first=0)
 
     def reopen() -> bool:
-        controller.recover_last_known_good(data, "producer", run, controller.PRODUCER_CHECK_NOISE)
+        controller.recover_last_known_good(
+            data,
+            "producer",
+            run,
+            controller.PRODUCER_CHECK_NOISE,
+            held_check_changes=controller.PRODUCER_CHECK_NOISE,
+        )
         return False
 
     try:
