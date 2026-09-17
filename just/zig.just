@@ -32,6 +32,8 @@ default:
     @echo "  just zig::test_soup         Run the vendored xz-embedded suite"
     @echo "  just zig::arm               Cross-build one example app for the RA8D2"
     @echo "  just zig::compile_commands  Emit the graph's compile_commands.json"
+    @echo "  just zig::analysis          Prove every compile command still compiles"
+    @echo "  just zig::abi               Prove the Zig-to-C ABI contract"
     @echo "  just zig::parity            Print the slice manifest"
     @echo "  just zig::clean             Remove this graph's build outputs"
     @echo ""
@@ -79,6 +81,14 @@ arm: _zig
 # Emit zig-out/analysis/compile_commands.json for the TUs this graph compiles
 compile_commands: _zig
     "${RA8_ZIG}" build compile-db
+
+# Re-run every distinct compile command of that database against its own TU
+analysis: _zig
+    "${RA8_ZIG}" build analysis
+
+# Prove the Zig-to-C ABI contract of the migrated archives, negative controls included
+abi: _zig
+    "${RA8_ZIG}" build abi
 
 # Print the slice manifest the CMake-side parity check reads
 parity: _zig
