@@ -17,11 +17,25 @@
 # Format: <cpu1-target>  <repo-relative source path>
 #
 # scripts/checks/check_cpu1_warning_profile.py judges this file. The list is
-# SHRINK-ONLY: a first-party CPU1 source that is not here fails the gate, and a
-# row that stops escaping (profile-covered, detached from the image, or deleted)
-# fails as stale and must be removed. Never add a row to silence a new escape
-# without saying why in review. Vendored SOUP never belongs here: it is
+# SHRINK-ONLY: a first-party CPU1 .c source that is not here fails the gate, and
+# a row that stops escaping (profile-covered, detached from the image, or
+# deleted) fails as stale and must be removed. Never add a row to silence a new
+# escape without saying why in review. Vendored SOUP never belongs here: it is
 # deliberately outside the first-party bar and the gate rejects such a row.
+#
+# WHAT THIS INVENTORY DOES NOT COVER -- said plainly rather than implied by the
+# rule above. The checker resolves a source token only when it ends in ".c":
+# resolve_source() returns the empty list for every other suffix, and
+# glob_vars() skips a file(GLOB ...) pattern that does not end in ".c", ".h" or
+# "*". So a first-party .cpp / .cc / .S / .s translation unit bolted onto a CPU1
+# image is neither profile-covered nor an escape row: it is dropped with no
+# finding and the gate still prints a clean run. Whether the tree holds one
+# today is not a question this gate's output can answer, which is the gap
+# itself; every row below is .c because .c is all the parser can see. The repo
+# does compile first-party C++ elsewhere
+# (apps/shared_libs/reflow/v2/src/reflow_v2.cpp), so this is a live shape and
+# not a hypothetical. Read the SHRINK-ONLY rule as scoped to .c until the
+# parser measures the rest.
 #
 # A missing, unreadable or empty file yields the EMPTY set, so every escape
 # reports. The gate fails closed.
