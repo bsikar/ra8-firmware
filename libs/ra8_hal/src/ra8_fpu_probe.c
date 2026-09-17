@@ -2,6 +2,9 @@
  * @file ra8_fpu_probe.c
  * @brief Double-precision FPU probe implementation (see ra8_fpu_probe.h)
  *
+ * @par Tag
+ * [Ring 3 / HAL] {World: S}
+ *
  * @details
  * Holds the single `double` product-sum whose object-code lowering witnesses
  * the FPU width of the build target: hardware `.f64` opcodes on the RA8P1

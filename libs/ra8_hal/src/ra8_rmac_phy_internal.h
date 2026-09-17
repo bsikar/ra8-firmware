@@ -5,6 +5,9 @@
  * @details Declares module-private PHY decode predicates shared by the RMAC driver and focused host tests.
  * @ingroup grp_hal_net
  *
+ * @par Tag
+ * [Ring 3 / HAL] {World: NS}
+ *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
  */
