@@ -109,6 +109,19 @@ ra8_add_zig_library(
   ra8_wdt_supervisor
 )
 
+# Fully migrated: the descriptor validation, the AP / RBAR / RLAR encoding and
+# the canonical 5-region boot attribute map are Zig now, so libs/ra8_mpu/src
+# has no .c left and the RA8_MPU_SOURCES glob is gone from
+# library_sources.cmake and core_hal.cmake.
+ra8_add_zig_library(
+  NAME
+  ra8_mpu
+  ZIG_ROOT
+  ${FW_ROOT}/libs/ra8_mpu
+  LIBRARY_NAME
+  ra8_mpu
+)
+
 # ra8_core_hal is the OBJECT library every host test links, so an INTERFACE
 # link here reaches each test executable that pulls in a migrated library.
 target_link_libraries(
@@ -121,6 +134,7 @@ target_link_libraries(
          ra8_zig::ra8_batt
          ra8_zig::ra8_ui
          ra8_zig::ra8_wdt_supervisor
+         ra8_zig::ra8_mpu
 )
 
 link_libraries(ra8_zig::ra8_batt)
@@ -135,4 +149,5 @@ link_libraries(
   ra8_zig::ra8_devcfg
   ra8_zig::ra8_ui
   ra8_zig::ra8_wdt_supervisor
+  ra8_zig::ra8_mpu
 )
