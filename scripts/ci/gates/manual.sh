@@ -14,7 +14,7 @@
 # prevent.
 #
 # Gates in this file: mcdc-delta-base, osv-scan, fuzz-sweep, runner-clock,
-#                     hil-all, docs-publish
+#                     hil-all, docs-publish, macos-host-build
 
 # --- mcdc-delta-base (manual) ---------------------------------------------
 # Builds the BASE branch's MC/DC summary in a throwaway worktree so the PR
@@ -321,6 +321,84 @@ gate_docs_publish() (
   python3 scripts/checks/check_doc_diagrams.py --selftest
   python3 scripts/checks/check_doc_diagrams.py --html build/docs/html
   /bin/bash -p scripts/builders/publish_docs.sh
+)
+
+# --- macos-host-build (manual) --------------------------------------------
+# The native arm64 macOS half of #899, and the only job in this tree that runs
+# on a Mac.
+#
+# Every other gate runs on Linux, so the one property none of them can observe
+# is the one the issue is about: whether the host Zig roots link on a real
+# Apple Silicon machine, where the Command Line Tools libSystem.tbd lists
+# arm64e-macos but not arm64-macos. Cross-compiling for aarch64-macos from
+# Linux proves the target SELECTION and nothing more -- an explicit os_tag
+# makes the query non-native, so zig links its OWN bundled libSystem.tbd,
+# which does declare arm64-macos, and the SDK stub that omits it is never
+# touched. A cross-build therefore cannot fail the way an affected Mac fails.
+# This gate refuses on any other host rather than report a pass for a
+# measurement it did not take.
+#
+# It is `manual` on purpose: a fast/slow gate joins the Linux `--native`
+# sweep, where a macOS-only gate could only ever fail.
+#
+# Scope is the three build roots that need nothing but Zig. reg_gen's test
+# suite wants the pinned C23 host compiler, and firmware_pipeline/zig,
+# abi_chain_fixture and rust_abi_fixture/zig link Cargo-built archives; giving
+# a hosted Mac those toolchains is its own slice, so this gate covers what it
+# can actually prove today rather than claiming the whole Zig surface.
+gate_macos_host_build() (
+  set -e
+  local host_os host_arch
+  host_os="$(uname -s)"
+  host_arch="$(uname -m)"
+  if [[ "${host_os}" != "Darwin" || "${host_arch}" != "arm64" ]]; then
+    printf 'error: macos-host-build measures the native arm64 macOS link path; this host is %s/%s.\n' \
+      "${host_os}" "${host_arch}" >&2
+    printf 'error: run it on an arm64 macOS runner -- a cross-build from here links the bundled\n' >&2
+    printf 'error: libSystem stub and would pass without ever touching the SDK one (#899).\n' >&2
+    return 1
+  fi
+  require_cmd zig "the macos-host-build gate builds every host root with the pinned Zig"
+  require_tool_versions zig
+  require_cmd xcrun "the build graph probes the active SDK through xcrun"
+
+  # Diagnostics first and unconditionally: the SDK stub's target list is the
+  # single input that decides this whole gate, and a failure is unreadable
+  # without it.
+  local sdk tbd
+  sdk="$(xcrun --show-sdk-path)"
+  printf 'active SDK: %s\n' "${sdk}"
+  tbd="${sdk}/usr/lib/libSystem.tbd"
+  if [[ -r "${tbd}" ]]; then
+    printf 'libSystem.tbd targets line: '
+    grep -m1 -E '^targets:' "${tbd}" || printf '(none inline -- block or wrapped spelling)\n'
+  else
+    printf 'libSystem.tbd unreadable at %s -- the graph falls back to the bundled stub\n' "${tbd}"
+  fi
+
+  local root
+  for root in tools/zig_build apps/host/image_pyramid tests/zig_abi_fixture; do
+    printf '\n=== %s: zig build (default host target) ===\n' "${root}"
+    (cd "${root}" && zig build --summary all)
+    printf '\n=== %s: zig build test ===\n' "${root}"
+    (cd "${root}" && zig build test --summary all)
+  done
+
+  # The forced-bundled escape hatch is load-bearing on an affected Mac, so it
+  # is part of the verdict.
+  printf '\n=== apps/host/image_pyramid: -Dmacos-libsystem=bundled ===\n'
+  (cd apps/host/image_pyramid && zig build -Dmacos-libsystem=bundled)
+
+  # The forced-SDK leg is INFORMATIONAL and may legitimately fail: failing is
+  # precisely the bug #899 reports, and the default auto path above is what
+  # carries the verdict. It stays in the log so the day Apple ships an
+  # arm64-macos target in the stub is visible here instead of going unnoticed.
+  printf '\n=== apps/host/image_pyramid: -Dmacos-libsystem=sdk (informational) ===\n'
+  if (cd apps/host/image_pyramid && zig build -Dmacos-libsystem=sdk); then
+    printf 'informational: the SDK stub linked cleanly on this runner image\n'
+  else
+    printf 'informational: the SDK stub did NOT link here -- expected on an affected SDK (#899)\n'
+  fi
 )
 
 # ===========================================================================

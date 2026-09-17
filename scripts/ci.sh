@@ -242,6 +242,7 @@ if [[ "$-" == *p* ]]; then
     "hil-all|manual|hardware-in-the-loop suite on the bench EK-RA8D2"
     "bench-lock-selftest|manual|the bench lock proved against the real bench host"
     "docs-publish|manual|build + force-push the Doxygen site to gh-pages"
+    "macos-host-build|manual|Zig host build roots build and test natively on arm64 macOS"
   )
 
   # ===========================================================================
