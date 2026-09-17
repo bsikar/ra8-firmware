@@ -18,6 +18,10 @@ pub fn build(b: *std.Build) void {
         .linkage = .static,
         .root_module = adapter,
     });
+    // CMake and cargo link the installed archive with the system linker, which
+    // cannot see Zig's compiler_rt. Bundle it so stack-probe helpers such as
+    // __zig_probe_stack resolve without the consumer knowing about Zig.
+    library.bundle_compiler_rt = true;
     const install_library = b.addInstallArtifact(library, .{});
     b.getInstallStep().dependOn(&install_library.step);
     const library_step = b.step("library", "Build and install the Zig ABI library");
