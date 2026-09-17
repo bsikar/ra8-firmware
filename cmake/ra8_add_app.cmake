@@ -6,12 +6,18 @@
 # Each example app's CMakeLists.txt is reduced to a thin stub:
 #
 #     cmake_minimum_required(VERSION 3.20)
-#     set(_d "${CMAKE_CURRENT_SOURCE_DIR}")
-#     while(NOT EXISTS "${_d}/cmake/ra8_add_app.cmake" AND NOT "${_d}" STREQUAL "/")
-#         get_filename_component(_d "${_d}" DIRECTORY)
-#     endwhile()
-#     include("${_d}/cmake/ra8_add_app.cmake")
+#     get_directory_property(_ra8_has_parent PARENT_DIRECTORY)
+#     if(NOT _ra8_has_parent)
+#       project(blink LANGUAGES C ASM)
+#     endif()
+#     include(ra8_add_app)
 #     ra8_add_app(NAME blink STACK_BYTES 2200 DESCRIPTION "Bare-metal blink firmware")
+#
+# The bare include(ra8_add_app) works from any depth because
+# cmake/ra8_bootstrap.cmake -- included by the toolchain file and by the repo
+# root -- puts <repo>/cmake on CMAKE_MODULE_PATH (#779). Apps still carrying the
+# old open-coded walk up the directory tree keep working unchanged; both forms
+# resolve to this file.
 #
 # ra8_add_app() builds <NAME>.elf/.hex/.bin from:
 #   - src/main.c                     : always taken from the app dir
