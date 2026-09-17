@@ -102,7 +102,6 @@ pub fn build(b: *std.Build) void {
         tests.step.dependOn(&cargo.step);
         executable.step.dependOn(&cargo.step);
     }
-    const run_tests = b.addRunArtifact(tests);
     const test_step = b.step("test", "Run native Zig and Zig-to-Rust tests");
-    test_step.dependOn(&run_tests.step);
+    _ = ra8_build.addHostTestRun(b, test_step, tests);
 }
