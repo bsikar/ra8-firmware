@@ -88,7 +88,20 @@ typedef struct {
   mdl_net_bytes_t ca_pem;                    /**< Complete PEM CA bundle, or an empty view. */
 } mdl_net_policy_t;
 
-/** @brief Captured-response-field buffer sizes. */
+/**
+ * @brief Captured-response-field buffer sizes.
+ *
+ * @note These four capacities are coupled to the C6-side spelling in
+ *       `libs/ra8_c6link/inc/ra8_mdl_protocol.h` (::k_ra8_mdl_retry_after_max,
+ *       ::k_ra8_mdl_etag_max, ::k_ra8_mdl_http_date_max and
+ *       ::k_ra8_mdl_content_type_max): `mdl_net_c6link.c` bridges
+ *       ::ra8_mdl_http_response_t into ::mdl_net_resp_t with one `memcpy` per
+ *       field, so a capacity raised here and not there truncates. The pairing is
+ *       held by four `static_assert`s at the top of `src/mdl_net_c6link.c`, and
+ *       that file sits outside `MDL_CORE_SRC` on purpose, so only its own test
+ *       target compiles them. Edit both sides in one change. Issue #746 tracks
+ *       collapsing the two records into one so the coupling stops existing.
+ */
 typedef enum : uint16_t {
   k_mdl_retry_after_max  = 64U,  /**< Raw `Retry-After` header value buffer bytes.   */
   k_mdl_etag_max         = 128U, /**< Raw `ETag` header value buffer bytes.          */
@@ -113,6 +126,14 @@ typedef enum : uint16_t {
  *            exactly when the header was absent.
  * @invariant `status == 0` means no HTTP status was observed (transport error
  *            before a response, or an argument the dispatcher refused).
+ *
+ * @note `status` is a `long` rather than a fixed-width type because the host
+ *       libcurl backend reads it straight out of `CURLINFO_RESPONSE_CODE`
+ *       (`apps/host/mdl/src/mdl_net_curl.c`), and ::priv_mdl_net_classify_http
+ *       takes the same `long` so both backends share one classifier. The C6
+ *       twin ::ra8_mdl_http_response_t spells the field `int32_t`, so the
+ *       bridge widens. Unifying on the narrower type (issue #746) therefore
+ *       needs a range check where libcurl's value is read, not only a rename.
  * @see mdl_net_get_buf()
  * @see mdl_retry_after_parse()
  * @since 0.1.0
