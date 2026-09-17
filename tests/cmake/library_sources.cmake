@@ -179,7 +179,9 @@ file(GLOB_RECURSE RA8_SECURE_APP_SOURCES CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra8_s
 file(GLOB_RECURSE RA8_PSA_CRYPTO_SOURCES CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra8_psa_crypto/src/*.c)
 # ra8_wdt_supervisor has no C sources left: the registry, the deadline policy
 # and the ThreadX seam are Zig now, linked via tests/cmake/zig_libraries.cmake.
-file(GLOB_RECURSE RA8_MPU_SOURCES CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra8_mpu/src/*.c)
+# ra8_mpu has no C sources left: the descriptor validation, the RBAR/RLAR
+# encoding and the canonical boot attribute map are Zig now, linked via
+# tests/cmake/zig_libraries.cmake.
 file(GLOB RA8_BOARD_EK_RA8D2_SOURCES CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra8_board_ek_ra8d2/src/*.c)
 file(GLOB_RECURSE RA8_LSM6DSO_SOURCES CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra8_lsm6dso/src/*.c)
 file(GLOB_RECURSE RA8_OV5640_SOURCES CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra8_ov5640/src/*.c)
