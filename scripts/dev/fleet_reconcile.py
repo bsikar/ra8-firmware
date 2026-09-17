@@ -55,6 +55,7 @@ import fleet_reconcile_reopen_selftest as frre
 import fleet_reconcile_selftest as frs
 import fleet_reconcile_serving_selftest as frsv
 import fleet_reconcile_settle_selftest as frse
+import fleet_reconcile_stopped_selftest as frsp
 import fleet_reconcile_stranding_selftest as frst
 import fleet_reconcile_unaccounted_selftest as fru
 import fleet_wsl as fw
@@ -127,6 +128,17 @@ RELEASED_RECEIPT_KEY = "released_against"
 # leaves the rest serving.
 PASS_DRAIN_BUDGET_RATIO = 0.5
 CASCADE_STATUS = 5
+# The three verdicts that are about capacity this fleet is not serving: a host
+# nobody could drain, a host held at zero across consecutive passes, and a pass
+# that stopped mutating to keep the rest of the fleet up.  An administrative
+# stop (TERM from a unit restart, HUP, an operator's Ctrl-C, a systemd runtime
+# limit cutting a slow pass short) exits 128+signal, which reads exactly like a
+# clean `systemctl stop` and tells alerting to retry later.  Over a fleet this
+# controller has already taken to zero it hides the one verdict that mattered,
+# and a pass stopped at the same point every time hides it for ever: issue #888
+# went unnoticed about five times on silence of this shape.  These statuses
+# therefore outrank the stop status on the way out.
+ZERO_CAPACITY_STATUSES = (DRAIN_FAILED_STATUS, STRANDED_STATUS, CASCADE_STATUS)
 # Every verb that can move a host's capacity.  A failure that issued none of
 # them cannot have stranded the host, whatever else went wrong.
 CAPACITY_MUTATION_VERBS = frozenset({"parked-apply", "quarantine", "restore", "activate"})
@@ -1220,7 +1232,7 @@ def open_parked_capacity(
     return result
 
 
-def release_durable_park(  # noqa: PLR0913  # the host plus the fleet its opener comes from
+def release_durable_park(  # the host plus the fleet its opener comes from
     data: dict[str, Any],
     host: str,
     run: CommandRunner,
@@ -2035,6 +2047,37 @@ def locked_out_verdict(data: dict[str, Any], options: ReconcileOptions) -> int:
     return STRANDED_STATUS
 
 
+def stopped_verdict(status: int) -> int:
+    """Return what a pass cut short by an administrative stop has to report.
+
+    A stop is ordinary: a unit restart, an operator's Ctrl-C, a runtime limit
+    cutting a slow pass short, and ``128 + signal`` is the honest account of
+    one, so it stays the verdict for a pass that was merely interrupted.  It is
+    the WRONG account of a pass that has already found capacity at zero.  The
+    controller's fail-closed reflex drains the host it was working on when a
+    stop arrives, the per-host records are written before the pass ends and
+    ``settle_pass_records`` still reads them out, yet every zero-capacity
+    verdict those records earn was then thrown away for the signal status: a
+    pass stopped at the same point on every run (a systemd runtime limit, a
+    maintenance window, the locked dependency downloads in issue #888's own
+    evidence timing out) reported nothing but "killed by TERM" while the fleet
+    sat at zero, which is what a clean ``systemctl stop`` looks like.  The
+    louder verdict wins, and the stop is named alongside it so nothing about
+    why the pass ended is lost.
+    """
+    interrupted = frp.interrupted_status()
+    if not interrupted or status not in ZERO_CAPACITY_STATUSES:
+        return interrupted or status
+    print(
+        f"fleet-reconcile: CRITICAL: this pass was ended by an administrative stop "
+        f"(status {interrupted}) but it is reporting {status}: capacity in this fleet "
+        "is unaccounted for or held at zero, and a stop that keeps arriving at the "
+        "same point would otherwise report that as an ordinary shutdown for ever",
+        file=sys.stderr,
+    )
+    return status
+
+
 def reconcile(
     data: dict[str, Any],
     options: ReconcileOptions,
@@ -2701,7 +2744,7 @@ def selftest() -> int:
     failures.extend(frd.run(sys.modules[__name__]))
     failures.extend(frdr.run(sys.modules[__name__]))
     failures.extend(frre.run(sys.modules[__name__]))
-    failures.extend(frst.run(sys.modules[__name__]))
+    failures.extend(frst.run(sys.modules[__name__]) + frsp.run(sys.modules[__name__]))
     failures.extend(frrl.run(sys.modules[__name__]))
     failures.extend(frse.run(sys.modules[__name__]))
     failures.extend(fri.run(sys.modules[__name__]))
@@ -2789,7 +2832,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         if args.mode == "check":
             with frp.stop_handlers():
                 status = reconcile(data, options)
-                return frp.interrupted_status() or status
+                return stopped_verdict(status)
         with (
             fml.mutation_lock(data, installed_local=args.require_installed_authority),
             frp.stop_handlers(),
@@ -2799,7 +2842,7 @@ def main(argv: Sequence[str] | None = None) -> int:
                 return frp.command_runner(argv, guardian=True)
 
             status = reconcile(data, options, guarded_runner)
-            return frp.interrupted_status() or status
+            return stopped_verdict(status)
     except fml.MutationLockBusyError as error:
         print(f"fleet-reconcile: {error}", file=sys.stderr)
         return locked_out_verdict(data, options)
