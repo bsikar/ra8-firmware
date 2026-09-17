@@ -1,0 +1,131 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Brighton Sikarskie
+#
+# Doxyfile.capi -- the C ABI reference, /api/c/ of the docs hub (ADR-0005).
+#
+# The root Doxyfile builds the whole legacy site: README, every docs/ page and
+# every .c/.h/.py under libs, port, coprocessor, examples, scripts, tools and
+# apps. That build is what doxy_audit.py, the @since gate and
+# check_doc_diagrams.py all read, so it is left exactly as it is until the
+# assembler slice retires it.
+#
+# This config is the narrow one the hub links to: the public C headers of the
+# first-party libraries and nothing else. It is the slot Doxygen stays
+# authoritative for while the library bodies move to Zig behind those unchanged
+# headers, so what it documents is the contract, not the implementation.
+#
+# INPUT is deliberately EMPTY here. scripts/builders/docs_capi.sh supplies it on
+# stdin from config/c_abi_doc_headers.json, and
+# scripts/checks/check_c_abi_doc_headers.py fails the build if this file grows
+# an INPUT of its own, so there is exactly one declaration of what is covered.
+#
+# Build it with:  just docs::capi     (or bash scripts/builders/docs_capi.sh)
+
+PROJECT_NAME           = "ra8-firmware C ABI"
+PROJECT_NUMBER         = $(RA8_PROJECT_VERSION)
+PROJECT_BRIEF          = "Public C headers of the first-party ra8 libraries"
+OUTPUT_DIRECTORY       = build/docs
+CREATE_SUBDIRS         = NO
+ALLOW_UNICODE_NAMES    = NO
+OUTPUT_LANGUAGE        = English
+
+BRIEF_MEMBER_DESC      = YES
+REPEAT_BRIEF           = YES
+FULL_PATH_NAMES        = YES
+STRIP_FROM_PATH        = .
+JAVADOC_AUTOBRIEF      = YES
+TAB_SIZE               = 2
+OPTIMIZE_OUTPUT_FOR_C  = YES
+
+# The C ABI is what a consumer can call, so private and static implementation
+# detail stays out even where a header happens to carry it.
+EXTRACT_ALL            = YES
+EXTRACT_PRIVATE        = NO
+EXTRACT_STATIC         = NO
+EXTRACT_LOCAL_METHODS  = NO
+HIDE_UNDOC_MEMBERS     = NO
+HIDE_UNDOC_CLASSES     = NO
+CASE_SENSE_NAMES       = YES
+SHOW_INCLUDE_FILES     = YES
+SORT_MEMBER_DOCS       = YES
+SHOW_NAMESPACES        = NO
+
+QUIET                  = YES
+WARNINGS               = YES
+WARN_IF_UNDOCUMENTED   = NO
+WARN_IF_DOC_ERROR      = YES
+WARN_IF_INCOMPLETE_DOC = YES
+WARN_NO_PARAMDOC       = NO
+WARN_AS_ERROR          = NO
+WARN_FORMAT            = "$file:$line: $text"
+
+# Supplied by scripts/builders/docs_capi.sh from config/c_abi_doc_headers.json.
+INPUT                  =
+INPUT_ENCODING         = UTF-8
+# *.dox picks up libs/ra8_core/inc/ra8_doc_groups.dox, which DEFINES the @defgroup
+# tree every public header files itself under. Without it doxygen resolves none of
+# those @ingroup references and drops the members into a flat, ungrouped index.
+FILE_PATTERNS          = *.h *.dox
+RECURSIVE              = YES
+EXCLUDE_SYMLINKS       = YES
+EXCLUDE_PATTERNS       = */build/* \
+                         */build-*/* \
+                         */third_party/* \
+                         */tests/* \
+                         */src/*
+
+# No LAYOUT_FILE and no USE_MDFILE_AS_MAINPAGE on purpose: the root layout and
+# the generated nav describe the wide site, and the prose lives in the Markdown
+# hub. This slot is the header reference, reached from the hub's /api/c/ link.
+SOURCE_BROWSER         = NO
+VERBATIM_HEADERS       = YES
+ALPHABETICAL_INDEX     = YES
+
+GENERATE_HTML          = YES
+HTML_OUTPUT            = api/c
+HTML_FILE_EXTENSION    = .html
+HTML_HEADER            = docs/doxygen_theme/header.html
+HTML_EXTRA_STYLESHEET  = docs/doxygen_theme/doxygen-awesome.css \
+                         docs/doxygen_theme/doxygen-awesome-sidebar-only.css \
+                         docs/doxygen_theme/doxygen-awesome-sidebar-only-darkmode-toggle.css
+HTML_EXTRA_FILES       = docs/doxygen_theme/doxygen-awesome-darkmode-toggle.js \
+                         docs/doxygen_theme/doxygen-awesome-fragment-copy-button.js \
+                         docs/doxygen_theme/doxygen-awesome-paragraph-link.js
+HTML_COLORSTYLE        = LIGHT
+HTML_DYNAMIC_SECTIONS  = YES
+DISABLE_INDEX          = NO
+GENERATE_TREEVIEW      = YES
+FULL_SIDEBAR           = NO
+ENUM_VALUES_PER_LINE   = 1
+
+GENERATE_LATEX         = NO
+GENERATE_XML           = NO
+GENERATE_MAN           = NO
+GENERATE_RTF           = NO
+
+MACRO_EXPANSION        = YES
+EXPAND_ONLY_PREDEF     = NO
+SEARCH_INCLUDES        = YES
+INCLUDE_PATH           = libs/ra8_core/inc \
+                         libs/ra8_hal/inc \
+                         libs/ra8_net_pal/inc \
+                         libs/ra8_usb_pal/inc \
+                         libs/ra8_nsc/inc
+PREDEFINED             = __DOXYGEN__=1 \
+                         __attribute__(x)=
+
+# Header-only input: nothing to draw call graphs from, and the include graphs on
+# the hub headers blow past DOT_GRAPH_MAX_NODES. Authored diagram blocks still
+# render, which is why HAVE_DOT stays on when graphviz is present (the builder
+# turns it off when it is not).
+HAVE_DOT               = YES
+CALL_GRAPH             = NO
+CALLER_GRAPH           = NO
+INCLUDE_GRAPH          = NO
+INCLUDED_BY_GRAPH      = NO
+DOT_GRAPH_MAX_NODES    = 75
+DOT_IMAGE_FORMAT       = svg
+INTERACTIVE_SVG        = YES
+
+SEARCHENGINE           = YES
+SERVER_BASED_SEARCH    = NO
