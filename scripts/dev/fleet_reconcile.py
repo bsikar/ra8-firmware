@@ -26,6 +26,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 import fleet_model as fm
 import fleet_mutation_lock as fml
 import fleet_reconcile_arc_selftest as fras
+import fleet_reconcile_backoff_selftest as frb
 import fleet_reconcile_process as frp
 import fleet_reconcile_recovery_selftest as frr
 import fleet_reconcile_selftest as frs
@@ -46,6 +47,11 @@ PRODUCER_CHECK_NOISE = 2
 # the scale-set difference and only the context-restage check noise remains.
 PRODUCER_HELD_CHECK_NOISE = 1
 PRODUCER_APPLY_ATTEMPTS = 3
+# One mutation fault that lasts seconds rather than milliseconds must not burn
+# every attempt inside the same fault window and strand the fleet at zero.
+APPLY_RETRY_BACKOFF_SECONDS = 15
+APPLY_RETRY_BACKOFF_CAP_SECONDS = 120
+APPLY_RETRY_SLICE_SECONDS = 1.0
 SHA256_RE = re.compile(r"[0-9a-f]{64}")
 ANSI_RE = re.compile(r"\x1b\[[0-9;]*m")
 
@@ -299,6 +305,27 @@ def _activate_arc(
     return True, 0
 
 
+def retry_delay(attempt: int) -> int:
+    """Return the pause before one more parked apply, doubling per failed attempt."""
+    if attempt < 1:
+        msg = "mutation attempts are numbered from one"
+        raise ValueError(msg)
+    growth = APPLY_RETRY_BACKOFF_SECONDS * 2 ** (attempt - 1)
+    return min(growth, APPLY_RETRY_BACKOFF_CAP_SECONDS)
+
+
+def wait_before_retry(seconds: float, sleep: Callable[[float], None] = time.sleep) -> bool:
+    """Pause between mutation attempts in slices an administrative stop can cut."""
+    remaining = float(seconds)
+    while remaining > 0:
+        if frp.interrupted_status():
+            return False
+        taken = min(APPLY_RETRY_SLICE_SECONDS, remaining)
+        sleep(taken)
+        remaining -= taken
+    return not frp.interrupted_status()
+
+
 def apply_host(  # noqa: PLR0913  # transaction inputs plus its recovery hook
     data: dict[str, Any],
     host: str,
@@ -307,6 +334,7 @@ def apply_host(  # noqa: PLR0913  # transaction inputs plus its recovery hook
     expected_check_changes: int,
     apply_attempts: int = 1,
     on_mutation_exhausted: Callable[[], None] | None = None,
+    sleep: Callable[[float], None] = time.sleep,
 ) -> tuple[bool, int]:
     """Apply one host and prove the resulting declaration is idempotent."""
     applied = False
@@ -319,11 +347,15 @@ def apply_host(  # noqa: PLR0913  # transaction inputs plus its recovery hook
         if frp.interrupted_status():
             break
         if attempt < apply_attempts:
+            delay = retry_delay(attempt)
             print(
                 f"fleet-reconcile: {host}: parked apply failed "
-                f"(attempt {attempt}/{apply_attempts}); retrying while capacity stays zero",
+                f"(attempt {attempt}/{apply_attempts}); waiting {delay}s before "
+                "retrying while capacity stays zero",
                 file=sys.stderr,
             )
+            if not wait_before_retry(delay, sleep):
+                break
     if not applied:
         quarantine(host, run)
         if on_mutation_exhausted is not None:
@@ -353,12 +385,14 @@ def apply_host(  # noqa: PLR0913  # transaction inputs plus its recovery hook
     return True, 0
 
 
-def reconcile_host(
+def reconcile_host(  # noqa: PLR0913  # transaction inputs plus injectable retry pacing
     data: dict[str, Any],
     host: str,
     receipt: object,
     options: ReconcileOptions,
     run: CommandRunner,
+    *,
+    sleep: Callable[[float], None] = time.sleep,
 ) -> tuple[bool, bool, dict[str, Any]]:
     """Inspect and optionally converge one host, reporting whether it is drained."""
     clean, changed = inspect_host(data, host, run)
@@ -400,6 +434,7 @@ def reconcile_host(
         expected_check_changes=held_changes,
         apply_attempts=attempts,
         on_mutation_exhausted=reopen_last_known_good,
+        sleep=sleep,
     )
     if not applied:
         return False, not recovered, {}
@@ -415,7 +450,10 @@ def reconcile_host(
 
 
 def reconcile(
-    data: dict[str, Any], options: ReconcileOptions, run: CommandRunner = frp.command_runner
+    data: dict[str, Any],
+    options: ReconcileOptions,
+    run: CommandRunner = frp.command_runner,
+    sleep: Callable[[float], None] = time.sleep,
 ) -> int:
     """Reconcile producer then consumers, preserving dependency safety."""
     state_path = options.state_dir / STATE_FILE
@@ -443,7 +481,7 @@ def reconcile(
             return run(argv)
 
         ok, stranded, receipt = reconcile_host(
-            data, host, receipts.get(host), options, transaction_run
+            data, host, receipts.get(host), options, transaction_run, sleep=sleep
         )
         if ok and options.mode == "apply":
             receipts[host] = receipt
@@ -496,6 +534,10 @@ def prepare_state_dir(path: Path) -> None:
     if stat.S_IMODE(metadata.st_mode) != PRIVATE_DIRECTORY_MODE:
         msg = f"state directory is not mode 0700: {path}"
         raise ValueError(msg)
+
+
+def _no_wait(_seconds: float) -> None:
+    """Take retry pacing out of the controller selftests without skipping it."""
 
 
 def _recap(host: str, changed: int = 0, failed: int = 0, unreachable: int = 0) -> str:
@@ -727,7 +769,7 @@ def _selftest_failure_quarantine(failures: list[str]) -> None:
                 return _clean_check_result(data, host)
             return frp.CommandResult(1 if verb == "parked-apply" else 0, "", "")
 
-        if reconcile(data, options, fake_run) != 1:
+        if reconcile(data, options, fake_run, _no_wait) != 1:
             failures.append("producer mutation failure did not fail reconciliation")
         expected = [
             ("check", "producer"),
@@ -759,7 +801,7 @@ def _selftest_transient_producer_retry(failures: list[str]) -> None:
                 return frp.CommandResult(1 if producer_applies == 1 else 0, "", "")
             return frp.CommandResult(0, "", "")
 
-        if reconcile(data, options, fake_run):
+        if reconcile(data, options, fake_run, _no_wait):
             failures.append("transient producer mutation failure did not recover")
         if producer_applies < SELFTEST_RECOVERY_APPLIES:
             failures.append("transient producer mutation failure was not retried")
@@ -998,6 +1040,7 @@ def selftest() -> int:
     _selftest_restore_quarantine(failures)
     failures.extend(fras.run(apply_host))
     failures.extend(frr.run(sys.modules[__name__]))
+    failures.extend(frb.run(sys.modules[__name__]))
     _selftest_state_safety(failures)
     failures.extend(fml.run_selftest())
     _selftest_timeout(failures)
