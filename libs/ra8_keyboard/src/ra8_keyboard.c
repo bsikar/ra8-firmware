@@ -84,7 +84,6 @@ static const char s_punct[] = ".,?!'";
  * @param[in]     aux  Auxiliary data; for k_ra8_kbd_key_layer this is the target
  *                     layer index, otherwise 0.
  *
- * @return Nothing.
  *
  * @pre  kb is not nullptr.
  * @pre  kb->count <= k_ra8_kbd_max_keys on entry.
@@ -174,7 +173,6 @@ RA8_INTERNAL static int32_t internal_hx(const ra8_ui_rect_t* f, int32_t hu)
  * @param[in]     y    Top pixel coordinate of the key row.
  * @param[in]     rh   Row height in pixels.
  *
- * @return Nothing.
  *
  * @pre  kb and f are not nullptr.
  * @pre  lo points to a character array with at least @p n elements.
@@ -229,7 +227,6 @@ RA8_INTERNAL static void internal_place(ra8_kbd_layout_t*    kb,
  * @param[in]     aux  Auxiliary data; for k_ra8_kbd_key_layer this is the
  *                     target layer index, otherwise 0.
  *
- * @return Nothing.
  *
  * @pre  kb and f are not nullptr.
  * @pre  a < b and both are in [0, k_kbd_hu_div].
@@ -277,7 +274,6 @@ RA8_INTERNAL static void internal_span(ra8_kbd_layout_t*    kb,
  *                        aux field (k_ra8_kbd_layer_symbols or
  *                        k_ra8_kbd_layer_numbers).
  *
- * @return Nothing.
  *
  * @pre  kb and f are not nullptr.
  * @pre  tog_aux is a valid ra8_kbd_layer_t cast to uint8_t.
@@ -328,7 +324,6 @@ RA8_INTERNAL static void internal_row_punct(ra8_kbd_layout_t*    kb,
  * @param[in]     left_aux  Target layer index stored in the left layer-toggle
  *                          key's aux field.
  *
- * @return Nothing.
  *
  * @pre  kb and f are not nullptr.
  * @pre  left_aux is a valid ra8_kbd_layer_t cast to uint8_t.
@@ -381,7 +376,6 @@ RA8_INTERNAL static void internal_row_bottom(ra8_kbd_layout_t*    kb,
  * @param[in]     f   Bounding rectangle of the keyboard widget.
  * @param[in]     rh  Row height in pixels (f->h / k_ra8_kbd_rows).
  *
- * @return Nothing.
  *
  * @pre  kb and f are not nullptr.
  * @pre  rh > 0 (non-zero row height, guaranteed by ra8_kbd_layout_init).
@@ -443,7 +437,6 @@ internal_build_letters(ra8_kbd_layout_t* kb, const ra8_ui_rect_t* f, int32_t rh)
  * @param[in]     f   Bounding rectangle of the keyboard widget.
  * @param[in]     rh  Row height in pixels (f->h / k_ra8_kbd_rows).
  *
- * @return Nothing.
  *
  * @pre  kb and f are not nullptr.
  * @pre  rh > 0 (non-zero row height, guaranteed by ra8_kbd_layout_init).
@@ -482,7 +475,6 @@ internal_build_numbers(ra8_kbd_layout_t* kb, const ra8_ui_rect_t* f, int32_t rh)
  * @param[in]     f   Bounding rectangle of the keyboard widget.
  * @param[in]     rh  Row height in pixels (f->h / k_ra8_kbd_rows).
  *
- * @return Nothing.
  *
  * @pre  kb and f are not nullptr.
  * @pre  rh > 0 (non-zero row height, guaranteed by ra8_kbd_layout_init).
@@ -527,7 +519,6 @@ internal_build_symbols(ra8_kbd_layout_t* kb, const ra8_ui_rect_t* f, int32_t rh)
  * @param[in,out] kb  Layout to rebuild; kb->layer and kb->frame must be valid.
  *                    kb->count is reset to 0 and then repopulated.
  *
- * @return Nothing.
  *
  * @pre  kb is not nullptr.
  * @pre  kb->frame.h > 0 and kb->frame.w > 0 (ensured by ra8_kbd_layout_init).
@@ -616,7 +607,6 @@ RA8_INTERNAL static void internal_build_layer(ra8_kbd_layout_t* kb)
  *                    success.
  * @param[in]     ch  Character to append (must not be '\0').
  *
- * @return Nothing.
  *
  * @pre  t is not nullptr.
  * @pre  t->len <= k_ra8_kbd_text_max - 1 on entry (invariant maintained by

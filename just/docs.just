@@ -13,6 +13,7 @@ default:
     @echo "  just docs::capi           Generate the C ABI reference (/api/c/)"
     @echo "  just docs::capi_check     Check the C ABI header manifest"
     @echo "  just docs::capi_warnings  Check the C ABI Doxygen warning ledger"
+    @echo "  just docs::void_returns  Check the @return-on-void ledger (tree-wide)"
     @echo "  just docs::clean          Remove generated Doxygen HTML documentation"
     @echo "  just docs::push           Build and publish Doxygen to gh-pages"
     @echo "  just docs::site           Assemble the whole documentation site"
@@ -42,6 +43,11 @@ capi_check:
 capi_warnings:
     python3 scripts/checks/check_capi_doc_warnings.py --selftest
     python3 scripts/checks/check_capi_doc_warnings.py --check
+
+# Fail when a void function documents a @return tag anywhere first-party
+void_returns:
+    python3 scripts/checks/check_void_return_tags.py --selftest
+    python3 scripts/checks/check_void_return_tags.py --check
 
 # Assemble every wired generator into build/docs/site/ (ADR-0005)
 site:

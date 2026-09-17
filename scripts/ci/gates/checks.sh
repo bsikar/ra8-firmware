@@ -496,6 +496,15 @@ _pcc_docs_and_tests() (
   # read a @file tag. @details is ratcheted against .github/doxy-details-
   # baseline.txt; everything else is hard, with zero debt.
   python3 scripts/checks/doxy_audit.py --style
+  # ... and the one rule neither auditor states: a void function carries no
+  # @return. doxy_audit only EXEMPTS void from the required tags and
+  # check_doc_attachment's DOC003 tolerates a bare "@return Nothing.", so the
+  # only complaint was Doxygen's own warning, which reaches the 364 headers in
+  # the C ABI reference's input set and nothing else. This reads source text,
+  # so sources, tests, examples, tools and the emulator are in scope too, and
+  # freezes the existing debt in .github/void-return-tag-baseline.txt.
+  python3 scripts/checks/check_void_return_tags.py --selftest
+  python3 scripts/checks/check_void_return_tags.py --check
   # Every hw_validated/hil app must be instrumented (a probed counter +
   # HIL_MODE=jlink_memprobe) or explicitly HIL_FAULT_EXPECTED -- a bare
   # HIL_MODE=alive proves nothing.

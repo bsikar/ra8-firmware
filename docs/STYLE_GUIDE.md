@@ -162,6 +162,14 @@ belongs in `@post`, which the gate already requires two of. `doxy_audit.py`
 asks for `@return`/`@retval` only on non-`void` signatures, so the two gates
 agree: state the outcome, not the absence of a value.
 
+That Doxygen warning only reaches the 364 headers the C ABI reference reads
+(`libs/*/inc/**/*.h`), so `check_void_return_tags.py` enforces the same rule
+over the whole first-party C/C++ tree -- sources, tests, examples, tools and
+the emulator included -- against the frozen ledger in
+`.github/void-return-tag-baseline.txt`. New code carries no `@return` on a
+`void` function; the ledgered rows are existing debt and the ledger only
+shrinks.
+
 `@see` is a **review convention, not a gate**. It is worth writing where a
 reader would genuinely want the pointer, and nothing checks it: measured
 2026-07-28, 3014 of the 3162 documented function blocks in the tree have
