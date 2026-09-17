@@ -31,8 +31,25 @@ Provenance (SOUP).
   `tensorflow/compiler/mlir/lite/` error-reporter + schema helpers.
 - **Reference kernels** (the modest op set for the first Ethos-U models):
   `conv`, `depthwise_conv`, `fully_connected`, `add`, `mul`, `reshape`,
-  `softmax`, `pooling` (AVERAGE_POOL_2D), plus the shared `*_common.cc`,
-  `kernel_util.cc`, and `micro_tensor_utils.cc`.
+  `softmax`, `pooling` (AVERAGE_POOL_2D **and** MAX_POOL_2D), plus the shared
+  `*_common.cc`, `kernel_util.cc`, and `micro_tensor_utils.cc`.
+
+  That is **nine** registrable builtins, not eight. This list and the header
+  comment in `cmake/tflite_micro.cmake` both used to name AVERAGE_POOL_2D
+  alone, but the vendored `kernels/pooling.cc` defines
+  `Register_MAX_POOL_2D()` next to `Register_AVERAGE_POOL_2D()` and the build
+  globs whole files, so MAX_POOL_2D has been linkable since the subset was
+  vendored. Nothing was added to the vendor tree to make that true; the record
+  was short by one operator.
+
+  This set is the CPU-fallback surface: a Vela-lowered model reaches the NPU
+  through the single `ethos-u` custom operator, and every node Vela leaves on
+  the CPU has to resolve against these nine. It is therefore pinned by a host
+  test, `tests/misc/src/test_ra8_tflm_op_subset.cc`, which registers all nine,
+  asserts each resolves with a live `invoke`, and asserts that a builtin
+  outside the set (LOGISTIC, CONCATENATION, QUANTIZE) does not resolve at all.
+  Adding or dropping a kernel changes that test, so the subset cannot drift
+  away from this record again without a failure.
 - **Ethos-U custom operator**: the portable stub
   `tensorflow/lite/micro/kernels/ethosu.cc` (`Register_ETHOSU()` returns
   `nullptr`) is present in the vendored tree but **excluded from the build** by
@@ -126,6 +143,17 @@ and asserts the operator is registered via `ra8_ethosu_kernel_available()`; a fu
 Vela-model-driven inference additionally needs the offline Vela compiler
 (`tools/vela`) and silicon and remains a follow-up. Those unexecuted model and
 CPU-fallback paths are why issue #228 remains open.
+
+The half of that seam which needs neither Vela nor silicon is now checked off
+target: `tests/misc/src/test_ra8_tflm_op_subset.cc` compiles
+`ra8_ethosu_kernel.cc` for the host (where `RA8_HAS_NPU` is undefined) and
+asserts the documented no-NPU contract -- `tflite::Register_ETHOSU()` yields
+`nullptr` while `tflite::ethosu_custom_name()` still publishes the name -- then
+registers the custom operator in a `MicroMutableOpResolver` under that
+published name and asserts the resolver hands back that exact registration,
+refuses a second registration of the same name, and resolves no other custom
+name. That is why a resolver keys on the name and not on the registration: the
+registration does not exist on a device without an NPU, the name does.
 
 The real dispatch upstream lives at
 `tensorflow/lite/micro/kernels/ethos_u/ethosu.cc` and calls the Arm
