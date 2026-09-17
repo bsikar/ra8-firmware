@@ -30,9 +30,44 @@ as Software Of Unknown Provenance (SOUP).
 
 ## Use case in this firmware
 
-- HTML/CSS layout engine for rendering EPUB content inside
-  `apps/shared_libs/epub/`, used by the `apps/board/stand_alone/ereader` app.
+- HTML/CSS layout engine behind the **v2** reflow engine
+  (`apps/shared_libs/reflow/v2/src/reflow_v2.cpp`), a drop-in replacement
+  for the hand-rolled v1 sources behind the same public API in
+  `apps/shared_libs/reflow/inc/reflow.h`, which rasterises pages into a
+  caller-owned framebuffer in `libs/ra8_gfx/`.
+- v2 is compiled only when `REFLOW_USE_LITEHTML=ON`. That option is
+  declared `OFF` in `apps/shared_libs/reflow/CMakeLists.txt` and again in
+  `tests/cmake/library_sources.cmake`, so a default firmware or host-test
+  configure builds the v1 engine and no litehtml translation unit at all.
+  `docs/EPUB_CONFORMANCE.md` section 3 records that bench as a deliberate
+  decision (C++/STL plus `malloc`, against NASA P10 Rule 3).
+- With the option ON, the `litehtml` and `gumbo` targets are also linked
+  into host test binaries (`tests/cmake/tests_xml.cmake`,
+  `tests_npu.cmake`, `tests_crypto.cmake`, `core_hal.cmake` and
+  `unit_tests.cmake`), which is where `test_reflow_v2` runs.
+- `apps/shared_libs/epub/` does not reach litehtml: its container and
+  markup path is miniz for the ZIP layer plus the bounded first-party XML
+  pull reader in `apps/shared_libs/xml/`.
+- `apps/board/stand_alone/ereader` does not build it either. That app's
+  two-project TrustZone `CMakeLists.txt` names `ra8_tz_secure_boot` and
+  `threadx_ns`, and no reflow or litehtml source.
 - Integrity claim category: none (display-only EPUB rendering).
+
+## Nested component: gumbo (Apache-2.0)
+
+litehtml carries its own copy of the gumbo HTML5 parser at
+`apps/shared_libs/third_party/litehtml/src/gumbo/`, under a separate
+`LICENSE` (the canonical Apache-2.0 text, blob `d645695`) rather than
+litehtml's 3-clause BSD. It sits inside the vendored path this record
+pins, so the same commit pin and the same byte-for-byte upstream
+verification cover it, and the `gumbo` CMake target is linked wherever
+litehtml is, so it is never compiled on a default configure.
+
+Google's upstream `gumbo-parser` is archived, so fixes reach this tree
+only by re-vendoring litehtml, which is why the lineage is worth
+watching. As filed in #618, gumbo has no SBOM component and no
+licence-inventory row of its own today; it rides this record until that
+follow-up lands.
 
 ## Qualification basis
 
@@ -50,10 +85,13 @@ Accepted as-is per IEC 61508-3 Section 7.4.2.12 and DO-178C Section
 
 ## Risk mitigation
 
-- litehtml only renders untrusted local EPUB files staged on the file system; no
-  network input feeds it.
-- All access is through `apps/shared_libs/epub/`, which sandboxes the renderer
-  to a fixed framebuffer in `libs/ra8_gfx/`.
+- On a default configure the option above is OFF, so no litehtml or gumbo
+  code is compiled into any firmware image or host test binary.
+- Where it is enabled, litehtml renders untrusted local EPUB files staged
+  on the file system; no network input feeds it.
+- All access is through the v2 adapter in
+  `apps/shared_libs/reflow/v2/`, which sandboxes the renderer to a fixed
+  caller-owned framebuffer in `libs/ra8_gfx/`.
 
 ## Deviations / patches
 
@@ -71,4 +109,5 @@ HTML/CSS, prefer re-vendoring at a tagged release when one lands.
 ## Last review date
 
 - Reviewed: 2026-07-15 (commit pin recovered and recorded)
+- Integration point re-verified: 2026-09-17 (against `dev` `8e70a3d`)
 - Expected re-review by: 2027-05-02
