@@ -18,6 +18,7 @@
 
 const std = @import("std");
 const cpu1_image = @import("cpu1_image.zig");
+const app_local_mod = @import("app_local.zig");
 
 /// The app this slice cross-builds, spelled the way ra8_add_app() resolves it.
 pub const CrossApp = struct {
@@ -45,6 +46,30 @@ pub const CrossApp = struct {
     /// cmake/ra8_warnings.cmake falls back to: ra8_add_app() always passes the
     /// keyword, so its own default is the one an app gets by saying nothing.
     stack_bytes: u32 = 2200,
+    /// Shared helper translation units the app names in `EXTRA_SRCS`, in the
+    /// order it names them, spelled repo-relative. Each one is compiled INTO
+    /// this app (so it meets the full project warning profile, unlike a
+    /// library archive) and each one's PARENT DIRECTORY goes on the include
+    /// path, so a header sitting beside the helper resolves. The directory
+    /// half is the silent one: the sources alone link fine right up until a
+    /// helper includes its own co-located header.
+    extra_srcs: []const []const u8 = &.{},
+    /// False for an app that does not LINK in a Debug configure, measured on
+    /// BOTH build systems rather than assumed. secure_boot_hil is the first:
+    /// its 206 first-party TUs plus the referenced members of its 77-TU crypto
+    /// archive overflow the 128 KiB MRAM region by ~29.9 KB at -O0 -g3, and
+    /// CMake's own standalone configure of the same app fails the same way
+    /// with the same message (see the issue linked from the app's entry). The
+    /// graph still COMPILES every one of its translation units, which is what
+    /// the source and flag rules are about; only the final link is held back,
+    /// so `zig build arm` reports a known upstream-equal limit instead of
+    /// going red on a defect it did not introduce.
+    links_in_debug: bool = true,
+    /// What the app's own CMakeLists adds on top of its ra8_add_app() call:
+    /// extra defines, extra include directories, and a vendored static
+    /// library it declares and links. Null for an app that is one
+    /// ra8_add_app() call and nothing else. See app_local.zig.
+    local: app_local_mod.AppLocal = .{},
     /// Vendored middleware named in `USES`, in the order the app names it.
     /// Each one compiles its own translation units at its own bar AND exports
     /// include directories, defines, and link options onto this app. See
@@ -293,6 +318,87 @@ pub const cross_apps = [_]CrossApp{
         .zig_libraries = &.{},
         .stack_bytes = 4096,
     },
+    .{
+        // The sixth app, and the first whose own CMakeLists does real work of
+        // its own beyond one ra8_add_app() call plus a define. secure_boot_hil
+        // is the app for two rules nothing before it could see:
+        //
+        //   EXTRA_SRCS. Five shared helper TUs pulled in from two libraries
+        //   the app does NOT name in LIBS, each compiled into the app at the
+        //   full project profile, each contributing its own parent directory
+        //   to the include path. 8 app CMakeLists name EXTRA_SRCS; none of the
+        //   five apps before this one did, so the keyword was dead code in the
+        //   graph and the helper would have been missing from the image.
+        //
+        //   A vendored static library the app declares itself (tfpsa_sb: 77
+        //   tf-psa-crypto TUs) whose PUBLIC defines and SYSTEM include
+        //   directories land on the app's own translation units. See
+        //   app_local.zig for why three of those four effects are silent.
+        //
+        // No USES, so the first-party set is the same shape as blink_hal's and
+        // everything differing IS the two rules above. It names no migrated
+        // Zig archive, so #948 does not block it. STACK_BYTES 32768 is the
+        // second non-default frame budget in the table (#1068).
+        .name = "secure_boot_hil",
+        .dir = "examples/ek_ra8d2/hw_validated/hil/secure_boot_hil",
+        .board = "libs/ra8_board_ek_ra8d2",
+        // This app ships its own linker_script.ld, so no board fallback.
+        .linker_script = "examples/ek_ra8d2/hw_validated/hil/secure_boot_hil/linker_script.ld",
+        .libraries = &.{"ra8_board_ek_ra8d2"},
+        .zig_libraries = &.{},
+        .stack_bytes = 32768,
+        // Neither build system links this app in a Debug configure: measured
+        // 122.79% of MRAM under CMake (overflow 29868 bytes) and the same
+        // failure from the graph (overflow 29860 bytes), same linker, same
+        // message. Filed separately; every TU still compiles here.
+        .links_in_debug = false,
+        .extra_srcs = &.{
+            "libs/ra8_psa_crypto/src/ra8_psa_crypto.c",
+            "libs/ra8_dfu/src/ra8_rot.c",
+            "libs/ra8_dfu/src/ra8_dfu_antirollback.c",
+            "libs/ra8_dfu/src/ra8_dfu_boot.c",
+            "libs/ra8_dfu/src/ra8_dfu_launch.c",
+        },
+        .local = .{
+            .defines = &.{"-DRA8_ENABLE_ROOT_OF_TRUST"},
+            .include_dirs = &.{
+                "libs/ra8_psa_crypto/inc",
+                "libs/ra8_dfu/inc",
+            },
+            .vendored = .{
+                .name = "tfpsa_sb",
+                .source_dirs = &.{
+                    "libs/third_party/tf-psa-crypto/core",
+                    "libs/third_party/tf-psa-crypto/drivers/builtin/src",
+                    "libs/third_party/tf-psa-crypto/platform",
+                    "libs/third_party/tf-psa-crypto/utilities",
+                    "libs/third_party/tf-psa-crypto/extras",
+                },
+                .system_include_dirs = &.{
+                    "libs/third_party/tf-psa-crypto/include",
+                    "libs/third_party/tf-psa-crypto/drivers/builtin/include",
+                    "libs/third_party/tf-psa-crypto/core",
+                    "libs/third_party/tf-psa-crypto/dispatch",
+                    "libs/third_party/tf-psa-crypto/drivers/builtin/src",
+                    "libs/third_party/tf-psa-crypto/platform",
+                    "libs/third_party/tf-psa-crypto/utilities",
+                    "libs/third_party/tf-psa-crypto/extras",
+                    "libs/third_party/mbedtls/include",
+                    "port/mbedtls/inc",
+                },
+                .defines = &.{
+                    "-DMBEDTLS_CONFIG_FILE=\"mbedtls_config.h\"",
+                    "-DTF_PSA_CRYPTO_CONFIG_FILE=\"tf_psa_crypto_config.h\"",
+                    "-DMBEDTLS_PLATFORM_MEMORY",
+                    "-DMBEDTLS_MEMORY_BUFFER_ALLOC_C",
+                },
+                // Not a diagnostic switch: it changes code generation, which
+                // is why it is the one option left after the audit recorded in
+                // the app's CMakeLists deleted the two -Wno- flags beside it.
+                .compile_options = &.{"-fno-strict-aliasing"},
+            },
+        },
+    },
 };
 
 /// The universal first-party source set ra8_add_app() globs into every app,
@@ -461,6 +567,11 @@ pub fn crossSources(b: *std.Build, app: CrossApp) []const []const u8 {
         sources.append(source) catch @panic("OOM");
     }
 
+    // EXTRA_SRCS, appended in the order the app names them and BEFORE the
+    // library globs, which is the order cmake/ra8_app/sources.cmake builds the
+    // list in and therefore the order the objects reach the linker.
+    for (app.extra_srcs) |source| sources.append(source) catch @panic("OOM");
+
     for (cross_source_dirs) |dir_path| collectCSources(b, dir_path, &sources);
 
     // Named libraries. A library with a directory of its own contributes
@@ -549,6 +660,17 @@ pub fn crossIncludeDirs(b: *std.Build, app: CrossApp) []const []const u8 {
         }
         if (!superseded) dirs.append(alias.include_dir) catch @panic("OOM");
     }
+
+    // One directory per EXTRA_SRCS entry, deduplicated, added LAST of
+    // everything ra8_add_app() puts on the path (cmake/ra8_add_app.cmake
+    // spells `${_ra8_extra_inc}` after `${_ra8_lib_inc}` in the same
+    // target_include_directories call).
+    for (app.extra_srcs) |source| {
+        dirs.append(std.fs.path.dirname(source) orelse ".") catch @panic("OOM");
+    }
+    // Then whatever the app's own CMakeLists adds, which lands after
+    // ra8_add_app() has already run.
+    dirs.appendSlice(app.local.include_dirs) catch @panic("OOM");
 
     var kept = std.ArrayList([]const u8).init(b.allocator);
     var seen = std.StringHashMap(void).init(b.allocator);
