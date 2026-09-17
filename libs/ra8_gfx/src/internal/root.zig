@@ -15,6 +15,7 @@ const std = @import("std");
 /// `ra8_err_t` values this library can return.
 pub const err = struct {
     pub const ok: u16 = 0;
+    pub const no_mem: u16 = 0x102;
     pub const invalid_arg: u16 = 0x103;
     pub const not_initialized: u16 = 0x10F;
     pub const range_check_failed: u16 = 0x503;
@@ -570,5 +571,146 @@ pub fn textOutStatus(has_str: bool, has_font: bool, initialized: bool) u16 {
 /// framebuffer binding, so it measures a string before any init.
 pub fn textSizeStatus(has_str: bool, has_font: bool, has_w: bool, has_h: bool) u16 {
     if (!has_str or !has_font or !has_w or !has_h) return err.null_ptr;
+    return err.ok;
+}
+
+// --- blue-noise dither (#477) ----------------------------------------------
+
+/// The generated void-and-cluster threshold texture. Emitted by
+/// `scripts/gen/gen_bluenoise_mask.py`; this is the only committed copy.
+const dither_mask_table = @import("dither_mask.zig");
+
+/// `ra8_gfx_dither_const_t` and `ra8_gfx_dither_scale_t` from
+/// `inc/ra8_gfx_dither.h`.
+pub const dither = struct {
+    pub const levels: u8 = 16;
+    pub const step: u8 = 17;
+    pub const max_level: u8 = 15;
+    pub const nib_shift: u5 = 4;
+    pub const ppb: u32 = 2;
+    pub const mask_dim: u32 = 64;
+    pub const mask_index_mask: u32 = 63;
+    pub const rgb_g_shift: u5 = 8;
+    pub const rgb_r_shift: u5 = 16;
+    pub const byte_levels: u32 = 256;
+    pub const mask_len: u32 = 4096;
+};
+
+// The runtime index arithmetic assumes one `mask_dim` x `mask_dim` texture,
+// reduced with a bitmask rather than a modulo. The C asserted both; so do we,
+// so a regenerate that changed the geometry cannot silently mis-index.
+comptime {
+    std.debug.assert(dither_mask_table.mask.len == dither.mask_len);
+    std.debug.assert(dither.mask_index_mask == dither.mask_dim - 1);
+    std.debug.assert(@as(u32, dither.step) * @as(u32, dither.max_level) == 255);
+}
+
+/// Toroidal mask index for absolute panel coordinate (`x`, `y`).
+///
+/// AND with `dim - 1` is the mathematically-correct non-negative modulo for
+/// negative coordinates too (two's complement), so a window drawn at a negative
+/// offset still lands on the same continuous mask phase: seamless tiling.
+pub fn maskIndex(x: i32, y: i32) u32 {
+    const mx: u32 = @as(u32, @bitCast(x)) & dither.mask_index_mask;
+    const my: u32 = @as(u32, @bitCast(y)) & dither.mask_index_mask;
+    return (my * dither.mask_dim) + mx;
+}
+
+/// Blue-noise threshold for absolute panel coordinate (`x`, `y`).
+pub fn maskThreshold(x: i32, y: i32) u8 {
+    return dither_mask_table.mask[maskIndex(x, y)];
+}
+
+/// Quantise a gray8 sample to a 4-bit level given its blue-noise threshold.
+///
+/// The base level is `gray8 / step` and the fractional distance to the next
+/// level is `(gray8 % step) / step`; the pixel rounds up when the threshold
+/// falls below that fraction. Kept as the C's exact integer test
+/// `thr * step < rem * byte_levels`, so the round-up probability is exactly
+/// `rem / step` over a uniform mask: unbiased, no banding on a flat field.
+/// No clamp is needed and none is added: the base equals `max_level` only when
+/// `gray8 == 255`, which forces `rem == 0` and hence no round-up.
+pub fn quantise(gray8: u8, thr: u8) u8 {
+    const base: u8 = gray8 / dither.step;
+    const rem: u8 = gray8 -% (base *% dither.step);
+    const round_up = (@as(u32, thr) * @as(u32, dither.step)) <
+        (@as(u32, rem) * dither.byte_levels);
+    return if (round_up) base + 1 else base;
+}
+
+/// Quantise straight from the panel coordinate (`ra8_gfx_dither_gray4_level`).
+pub fn ditherLevel(gray8: u8, x: i32, y: i32) u8 {
+    return quantise(gray8, maskThreshold(x, y));
+}
+
+/// Expand a 4-bit panel level to a 0x00RRGGBB gray colour, byte-identical to
+/// what `ra8_gfx_blit_gray8` and the gray4 zoom blit produce for that level.
+pub fn levelToColor(level: u8) u32 {
+    return grayToColor(gray4ToGray8(level));
+}
+
+/// Packed-gray4 byte count for a `w` x `h` tile, in the C's `uint32_t`
+/// arithmetic: two pixels per byte, odd counts rounded up.
+pub fn packedBytes(w: i32, h: i32) u32 {
+    const n_pixels: u32 = @as(u32, @bitCast(w)) *% @as(u32, @bitCast(h));
+    return (n_pixels +% 1) / dither.ppb;
+}
+
+/// Output byte holding packed pixel `i`.
+pub fn packByteIndex(i: u32) u32 {
+    return i / dither.ppb;
+}
+
+/// Even flat indices take the high nibble, odd ones the low nibble.
+pub fn packIsHighNibble(i: u32) bool {
+    return (i & 1) == 0;
+}
+
+/// Fold `level` into the output byte for flat index `i`. An even index ASSIGNS
+/// the byte (clearing the low nibble) and an odd index ORs into it, so the
+/// caller never has to pre-zero the buffer, not even for an odd pixel count.
+pub fn packNibble(current: u8, level: u8, i: u32) u8 {
+    if (packIsHighNibble(i)) return level << dither.nib_shift;
+    return current | level;
+}
+
+/// `ra8_gfx_dither_gray8_to_gray4`'s guard order: the three pointers first,
+/// each with its own log line, then the dimensions, then the capacity.
+pub const PackGuard = enum { ok, no_src, no_out, no_out_size, bad_dims, too_small };
+
+/// Judge one bulk-pack call. `out_cap` is only reached once the dimensions are
+/// known good, so the byte count it is compared against is always well-formed.
+pub fn packGuard(
+    has_src: bool,
+    has_out: bool,
+    has_out_size: bool,
+    w: i32,
+    h: i32,
+    out_cap: u32,
+) PackGuard {
+    if (!has_src) return .no_src;
+    if (!has_out) return .no_out;
+    if (!has_out_size) return .no_out_size;
+    if ((w <= 0) or (h <= 0)) return .bad_dims;
+    if (out_cap < packedBytes(w, h)) return .too_small;
+    return .ok;
+}
+
+/// The `ra8_err_t` each bulk-pack verdict answers with.
+pub fn packStatus(guard: PackGuard) u16 {
+    return switch (guard) {
+        .ok => err.ok,
+        .no_src, .no_out, .no_out_size => err.null_ptr,
+        .bad_dims => err.invalid_arg,
+        .too_small => err.no_mem,
+    };
+}
+
+/// `ra8_gfx_blit_gray8_dither`'s guard order, and it is the opposite of the
+/// bulk packer's: the init check runs FIRST, so a pre-init call with a valid
+/// buffer answers `not_initialized`. Neither guard logs on this entry point.
+pub fn ditherBlitStatus(initialized: bool, has_src: bool, w: i32, h: i32) u16 {
+    if (!initialized) return err.not_initialized;
+    if (!has_src or (w <= 0) or (h <= 0)) return err.invalid_arg;
     return err.ok;
 }

@@ -561,3 +561,139 @@ test "textSizeStatus wants all four pointers and never the binding" {
 test "max_chars is the dimension ceiling both text loops were bounded by" {
     try std.testing.expectEqual(@as(u32, impl.dim.max), impl.max_chars);
 }
+
+// --- blue-noise dither (#477) ----------------------------------------------
+
+test "the dither constants carry the C palette geometry" {
+    try std.testing.expectEqual(@as(u8, 16), impl.dither.levels);
+    try std.testing.expectEqual(@as(u8, 17), impl.dither.step);
+    try std.testing.expectEqual(@as(u8, 15), impl.dither.max_level);
+    try std.testing.expectEqual(@as(u32, 4096), impl.dither.mask_len);
+    try std.testing.expectEqual(@as(u32, 64), impl.dither.mask_dim);
+    try std.testing.expectEqual(impl.dither.mask_dim - 1, impl.dither.mask_index_mask);
+}
+
+test "maskIndex reduces onto the mask edge toroidally" {
+    try std.testing.expectEqual(@as(u32, 0), impl.maskIndex(0, 0));
+    try std.testing.expectEqual(@as(u32, 63), impl.maskIndex(63, 0));
+    try std.testing.expectEqual(@as(u32, 64), impl.maskIndex(0, 1));
+    try std.testing.expectEqual(@as(u32, 0), impl.maskIndex(64, 64));
+    try std.testing.expectEqual(impl.maskIndex(0, 0), impl.maskIndex(-64, -64));
+    try std.testing.expectEqual(impl.maskIndex(63, 63), impl.maskIndex(-1, -1));
+}
+
+test "every mask index is a valid subscript, negative coordinates included" {
+    var y: i32 = -70;
+    while (y <= 70) : (y += 7) {
+        var x: i32 = -70;
+        while (x <= 70) : (x += 5) {
+            try std.testing.expect(impl.maskIndex(x, y) < impl.dither.mask_len);
+        }
+    }
+}
+
+test "quantise keeps the exact integer round-up rule" {
+    // A zero remainder can never round up, whatever the threshold.
+    try std.testing.expectEqual(@as(u8, 0), impl.quantise(0, 0));
+    try std.testing.expectEqual(@as(u8, 1), impl.quantise(17, 0));
+    try std.testing.expectEqual(@as(u8, 15), impl.quantise(255, 0));
+    try std.testing.expectEqual(@as(u8, 15), impl.quantise(255, 255));
+    // One step of 17 above a level: thr * 17 < 1 * 256 holds only below 16.
+    try std.testing.expectEqual(@as(u8, 2), impl.quantise(18, 15));
+    try std.testing.expectEqual(@as(u8, 1), impl.quantise(18, 16));
+    // Eight steps up: the cut sits at 8 * 256 / 17, i.e. thresholds 0..120.
+    try std.testing.expectEqual(@as(u8, 2), impl.quantise(25, 120));
+    try std.testing.expectEqual(@as(u8, 1), impl.quantise(25, 121));
+}
+
+test "quantise never leaves the 4-bit range, so no clamp is needed" {
+    var g: u32 = 0;
+    while (g <= 255) : (g += 1) {
+        var t: u32 = 0;
+        while (t <= 255) : (t += 1) {
+            const level = impl.quantise(@intCast(g), @intCast(t));
+            try std.testing.expect(level <= impl.dither.max_level);
+        }
+    }
+}
+
+test "the round-up frequency is exactly the fractional distance" {
+    // 25 sits 8/17 of the way from level 1 to level 2, so exactly the
+    // thresholds below 8 * 256 / 17 round up: an unbiased mask, no banding.
+    var ups: u32 = 0;
+    var t: u32 = 0;
+    while (t <= 255) : (t += 1) {
+        if (impl.quantise(25, @intCast(t)) == 2) ups += 1;
+    }
+    try std.testing.expectEqual(@as(u32, 121), ups);
+}
+
+test "ditherLevel is quantise against the mask threshold at that coordinate" {
+    try std.testing.expectEqual(
+        impl.quantise(129, impl.maskThreshold(5, 9)),
+        impl.ditherLevel(129, 5, 9),
+    );
+    try std.testing.expectEqual(impl.ditherLevel(129, 5, 9), impl.ditherLevel(129, 69, -55));
+}
+
+test "levelToColor matches the shared gray4 expansion" {
+    try std.testing.expectEqual(@as(u32, 0x00000000), impl.levelToColor(0));
+    try std.testing.expectEqual(@as(u32, 0x00FFFFFF), impl.levelToColor(15));
+    var n: u8 = 0;
+    while (n <= 15) : (n += 1) {
+        try std.testing.expectEqual(impl.grayToColor(impl.gray4ToGray8(n)), impl.levelToColor(n));
+    }
+}
+
+test "packedBytes rounds an odd pixel count up" {
+    try std.testing.expectEqual(@as(u32, 1), impl.packedBytes(1, 1));
+    try std.testing.expectEqual(@as(u32, 1), impl.packedBytes(2, 1));
+    try std.testing.expectEqual(@as(u32, 2), impl.packedBytes(3, 1));
+    try std.testing.expectEqual(@as(u32, 5), impl.packedBytes(3, 3));
+    try std.testing.expectEqual(@as(u32, 8), impl.packedBytes(4, 4));
+}
+
+test "nibble placement alternates by flat index" {
+    try std.testing.expectEqual(@as(u32, 0), impl.packByteIndex(0));
+    try std.testing.expectEqual(@as(u32, 0), impl.packByteIndex(1));
+    try std.testing.expectEqual(@as(u32, 1), impl.packByteIndex(2));
+    try std.testing.expect(impl.packIsHighNibble(0));
+    try std.testing.expect(!impl.packIsHighNibble(1));
+    try std.testing.expect(impl.packIsHighNibble(4));
+}
+
+test "an even index assigns the byte and an odd index ORs into it" {
+    try std.testing.expectEqual(@as(u8, 0xA0), impl.packNibble(0xFF, 0xA, 0));
+    try std.testing.expectEqual(@as(u8, 0xA5), impl.packNibble(0xA0, 0x5, 1));
+    // The assign on the even index is what lets the caller skip pre-zeroing.
+    try std.testing.expectEqual(@as(u8, 0x30), impl.packNibble(0x77, 0x3, 4));
+}
+
+test "packGuard judges the three pointers before the dimensions" {
+    try std.testing.expectEqual(impl.PackGuard.no_src, impl.packGuard(false, false, false, 0, 0, 0));
+    try std.testing.expectEqual(impl.PackGuard.no_out, impl.packGuard(true, false, false, 0, 0, 0));
+    try std.testing.expectEqual(impl.PackGuard.no_out_size, impl.packGuard(true, true, false, 0, 0, 0));
+    try std.testing.expectEqual(impl.PackGuard.bad_dims, impl.packGuard(true, true, true, 0, 4, 64));
+    try std.testing.expectEqual(impl.PackGuard.bad_dims, impl.packGuard(true, true, true, 4, -1, 64));
+    try std.testing.expectEqual(impl.PackGuard.too_small, impl.packGuard(true, true, true, 4, 4, 7));
+    try std.testing.expectEqual(impl.PackGuard.ok, impl.packGuard(true, true, true, 4, 4, 8));
+}
+
+test "packStatus answers each verdict with the C's code" {
+    try std.testing.expectEqual(impl.err.ok, impl.packStatus(.ok));
+    try std.testing.expectEqual(impl.err.null_ptr, impl.packStatus(.no_src));
+    try std.testing.expectEqual(impl.err.null_ptr, impl.packStatus(.no_out));
+    try std.testing.expectEqual(impl.err.null_ptr, impl.packStatus(.no_out_size));
+    try std.testing.expectEqual(impl.err.invalid_arg, impl.packStatus(.bad_dims));
+    try std.testing.expectEqual(impl.err.no_mem, impl.packStatus(.too_small));
+    try std.testing.expectEqual(@as(u16, 0x102), impl.err.no_mem);
+}
+
+test "ditherBlitStatus checks the binding before its arguments" {
+    try std.testing.expectEqual(impl.err.not_initialized, impl.ditherBlitStatus(false, true, 4, 4));
+    try std.testing.expectEqual(impl.err.not_initialized, impl.ditherBlitStatus(false, false, 0, 0));
+    try std.testing.expectEqual(impl.err.invalid_arg, impl.ditherBlitStatus(true, false, 4, 4));
+    try std.testing.expectEqual(impl.err.invalid_arg, impl.ditherBlitStatus(true, true, 0, 4));
+    try std.testing.expectEqual(impl.err.invalid_arg, impl.ditherBlitStatus(true, true, 4, -3));
+    try std.testing.expectEqual(impl.err.ok, impl.ditherBlitStatus(true, true, 1, 1));
+}
