@@ -35,5 +35,7 @@ pub fn build(b: *std.Build) void {
     test_module.addImport("application", application_module);
     const tests = b.addTest(.{ .root_module = test_module });
     const test_step = b.step("test", "Run reg_gen unit and C23 contract tests");
-    _ = ra8_build.addHostTestRun(b, test_step, tests);
+    const run_tests = b.addRunArtifact(tests);
+    test_step.dependOn(&run_tests.step);
+    ra8_build.allowForeignHostTests(test_step, tests, run_tests);
 }
