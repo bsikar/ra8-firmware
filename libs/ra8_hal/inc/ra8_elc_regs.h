@@ -3,6 +3,9 @@
  * @brief Event Link Controller (ELC) register layout for the Renesas RA8D2
  * @ingroup grp_hal_system
  *
+ * @par Tag
+ * [Ring 3 / HAL] {World: S}
+ *
  * @details
  * The ELC lets one peripheral's event directly trigger another
  * peripheral's input without CPU involvement. Register layout
