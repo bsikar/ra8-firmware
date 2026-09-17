@@ -126,6 +126,9 @@ class Component:
     probe_re: str | None = None  # single-capture version regex, group 1
     probe_prefix: str | None = None  # macro prefix for MAJOR/MINOR/PATCH triplet
     expected_version: str | None = None  # version the probe is expected to yield
+    release_basis: str | None = None  # newest upstream release tag the pin descends from
+    release_basis_commit: str | None = None  # commit that release tag points at
+    release_basis_distance: int | None = None  # commits from that tag to upstream_commit
     extra_notes: tuple[str, ...] = field(default_factory=tuple)  # extra properties
 
 
@@ -270,6 +273,9 @@ REGISTRY: tuple[Component, ...] = (
         probe_file="include/mbedtls/build_info.h",
         probe_re=r'MBEDTLS_VERSION_STRING_FULL\s+"Mbed TLS ([0-9.]+)"',
         expected_version="4.1.0",
+        release_basis="v4.1.0",
+        release_basis_commit="0fe989b6b514192783c469039edd325fd0989806",
+        release_basis_distance=72,
     ),
     Component(
         key="tf-psa-crypto",
@@ -315,6 +321,9 @@ REGISTRY: tuple[Component, ...] = (
         probe_file="include/tf-psa-crypto/build_info.h",
         probe_re=r'TF_PSA_CRYPTO_VERSION_STRING_FULL\s+"TF-PSA-Crypto ([0-9.]+)"',
         expected_version="1.1.0",
+        release_basis="v1.1.0",
+        release_basis_commit="29160dd877d29658279fd683b2ae57b320ddcf09",
+        release_basis_distance=76,
     ),
     Component(
         key="nimble",

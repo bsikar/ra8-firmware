@@ -485,6 +485,10 @@ def _properties_block(comp: Component, file_count: int) -> list[dict]:
         props.append({"name": "ra8:upstreamCommit", "value": comp.upstream_commit})
     if comp.upstream_ref is not None:
         props.append({"name": "ra8:upstreamRef", "value": comp.upstream_ref})
+    if comp.release_basis is not None:
+        props.append({"name": "ra8:releaseBasis", "value": comp.release_basis})
+        props.append({"name": "ra8:releaseBasisCommit", "value": str(comp.release_basis_commit)})
+        props.append({"name": "ra8:commitsAfterRelease", "value": str(comp.release_basis_distance)})
     if comp.upstream_archive_sha256 is not None:
         props.append({"name": "ra8:upstreamArchiveSha256", "value": comp.upstream_archive_sha256})
     if comp.license_original is not None:

@@ -35,6 +35,34 @@ as Software Of Unknown Provenance (SOUP).
     byte-identical to upstream at `d12fbb99` -- is exact; what the evidence
     does not establish is that no other commit would satisfy it too.
 
+- **Release basis**: `v4.1.0` (`0fe989b6b514`) plus 72 commits. The vendored
+  pin `d12fbb991c08` is a post-tag development snapshot, not the release.
+  `v4.1.0` is the newest named release the pin descends from: measured
+  2026-09-17 against upstream's tag graph, the pin is 72 commits ahead of that
+  tag and none behind it. Declared in `scripts/gen/sbom_registry.py`, published
+  in the SBOM as `ra8:releaseBasis` / `ra8:commitsAfterRelease`, and held to
+  this sentence by `scripts/checks/check_soup_upstream.py`, so the tag, the
+  distance and this prose cannot drift apart one edit at a time.
+
+## Upstream currency (measured 2026-09-17)
+
+Recorded here because #804's table reads as though this tree were behind
+4.1.0. It is not: it is 72 commits past it, and the 3.x to 4.x breaking
+migration that issue sizes as the risk has already happened. What is actually
+open is a move within the 4.x line, measured against upstream's tag graph on
+2026-09-17:
+
+- `v4.1.1` (released 2026-07-07) is the 4.1 LTS patch release, and it is
+  neither an ancestor nor a descendant of our pin. The comparison diverges:
+  260 commits on that branch our snapshot does not carry, 56 development
+  commits it does.
+- `v4.2.0` (released 2026-07-07) is a descendant of our pin, 211 commits
+  ahead, so moving to it is a fast-forward along the same line rather than a
+  branch change.
+- No advisory conclusion is drawn here. `osv-scan` was not run for this
+  record, so whether either release fixes anything that affects our build
+  options stays open on #804.
+
 ## Use case in this firmware
 
 - TLS record layer and X.509 handling, consumed via `libs/ra8_tls/` by
