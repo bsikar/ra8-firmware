@@ -114,6 +114,7 @@ nav:
       - "ADR-0012 C23 capability and ABI contract assertion": adr/0012-c23-capability-and-abi-contract-assertion.md
       - "ADR-0013 Reflow named character reference set": adr/0013-reflow-named-character-references.md
       - "ADR-0014 Approved C23 subset enforcement surfaces": adr/0014-c23-subset-enforcement-surfaces.md
+      - "ADR-0015 Panel tone-curve calibration record": adr/0015-panel-tone-curve-calibration-record.md
   - Toolchain and build:
       - Toolchain: TOOLCHAIN.md
       - IDE setup: IDE.md
