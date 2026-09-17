@@ -3,6 +3,9 @@
  * @brief External SDRAM controller register layout for the Renesas RA8D2
  * @ingroup grp_hal_memory
  *
+ * @par Tag
+ * [Ring 3 / HAL] {World: S}
+ *
  * @details
  * The RA8D2 has a built-in SDRAMC that drives the external SDRAM on
  * the EK-RA8D2 via the parallel bus. The board fits an ISSI

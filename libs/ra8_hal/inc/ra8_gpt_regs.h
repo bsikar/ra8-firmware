@@ -3,6 +3,9 @@
  * @brief General PWM Timer (GPT) register layout for the Renesas RA8D2
  * @ingroup grp_hal_timers
  *
+ * @par Tag
+ * [Ring 3 / HAL] {World: NS}
+ *
  * @details
  * RA8D2 exposes 14 GPT channels (GPT0..GPT13) at `0x40322000` with a
  * `0x100` stride per channel. Each channel is a 32-bit up/down

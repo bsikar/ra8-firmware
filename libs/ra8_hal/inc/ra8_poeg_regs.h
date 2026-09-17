@@ -3,6 +3,9 @@
  * @brief Port Output Enable for GPT (POEG) register layout for the RA8D2
  * @ingroup grp_hal_timers
  *
+ * @par Tag
+ * [Ring 3 / HAL] {World: NS}
+ *
  * @details
  * Four POEG groups (POEG0..POEG3) at `0x40212000` with `0x100`
  * stride. Each group monitors one external emergency-stop input
