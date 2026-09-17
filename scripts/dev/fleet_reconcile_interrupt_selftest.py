@@ -23,8 +23,9 @@ These tests pin the account a stop earns:
   keeps its fail-closed verdict;
 * three stopped passes in a row never escalate and never release the
   consumers, because nothing ever proved the image frozen;
-* a stop that arrives after the mutation started still counts, so the verdict
-  for a host nobody could drain is unchanged;
+* a stop that arrives after the mutation started and drained the host still
+  counts, while one whose drain was refused leaves the host unaccounted for
+  rather than recorded at zero;
 * every host the stop left uninspected is named, so a pass cut short can never
   read like a pass that looked at the whole fleet.
 """
@@ -44,6 +45,7 @@ import fleet_reconcile_process as frp
 
 APPLY_FAILURE_STATUS = 1
 DRAIN_REFUSAL_STATUS = 7
+ORDINARY_FAILURE_STATUS = 1
 STALE_APPLIED_AT = 900
 FRESH_APPLIED_AT = 950
 NOW = 1000
@@ -217,21 +219,20 @@ def _repeated_stops_never_release_consumers(controller: ModuleType, failures: li
         )
 
 
-def _stop_after_the_mutation_still_counts(controller: ModuleType, failures: list[str]) -> None:
-    """A stop that reaches a mutation still earns the fail-closed verdict."""
-    data = _data()
-    calls: list[tuple[str, str]] = []
+def _stopped_mutation_pass(
+    controller: ModuleType, data: dict[str, Any], *, drain_refused: bool
+) -> tuple[int, dict[str, Any]]:
+    """Run one pass whose apply is cut short by a stop, then drained."""
 
     def run(argv: Sequence[str]) -> frp.CommandResult:
         verb, host = _identity(argv)
-        calls.append((verb, host))
         if verb == "check":
             noise = controller.PRODUCER_CHECK_NOISE if host == "producer" else 0
             return _check(controller, data, host, noise)
         if verb == "parked-apply":
             frp.STOP_STATE.process_signal = signal.SIGTERM
             return frp.CommandResult(APPLY_FAILURE_STATUS, "", "registry timed out\n")
-        if verb == "quarantine":
+        if verb == "quarantine" and drain_refused:
             return frp.CommandResult(DRAIN_REFUSAL_STATUS, "", "capacity API refused\n")
         return frp.CommandResult(0, "", "")
 
@@ -241,13 +242,34 @@ def _stop_after_the_mutation_still_counts(controller: ModuleType, failures: list
         with contextlib.redirect_stderr(io.StringIO()):
             status = controller.reconcile(data, _options(controller, state_dir), run, _no_wait)
         document = controller.load_state(state_dir / controller.STATE_FILE)
-    if status != controller.DRAIN_FAILED_STATUS:
+    return status, document.get("stranded") or {}
+
+
+def _stop_after_the_mutation_still_counts(controller: ModuleType, failures: list[str]) -> None:
+    """A stop that reaches a mutation still earns the fail-closed verdict.
+
+    A stop that reached a mutation and then DRAINED the host really did take
+    capacity to zero, so it is recorded.  When the drain is refused instead,
+    the host is unaccounted for rather than at zero: it earns the louder
+    verdict and no zero-capacity record, because nothing proved it stopped
+    serving.
+    """
+    data = _data()
+    drained_status, drained_record = _stopped_mutation_pass(controller, data, drain_refused=False)
+    refused_status, refused_record = _stopped_mutation_pass(controller, data, drain_refused=True)
+    if "producer" not in drained_record:
+        failures.append("a stop that reached a mutation stopped counting as capacity lost")
+    if drained_status != ORDINARY_FAILURE_STATUS:
+        failures.append(f"a stop during a mutation that drained the host exited {drained_status}")
+    if refused_status != controller.DRAIN_FAILED_STATUS:
         failures.append(
-            f"a stop during a mutation nobody could drain exited {status} instead of "
+            f"a stop during a mutation nobody could drain exited {refused_status} instead of "
             "the undrained verdict"
         )
-    if "producer" not in (document.get("stranded") or {}):
-        failures.append("a stop that reached a mutation stopped counting as capacity lost")
+    if refused_record:
+        failures.append(
+            f"a stop during a mutation nobody could drain was recorded at zero: {refused_record}"
+        )
 
 
 def _only_a_mutation_can_lose_capacity(controller: ModuleType, failures: list[str]) -> None:

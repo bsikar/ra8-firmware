@@ -20,7 +20,8 @@ These tests pin the escalation:
 * a read-only check failure drains nothing and must never be counted as lost
   capacity, nor may a consumer blocked behind a failed producer;
 * a host that could not be drained at all keeps the louder unaccounted-for
-  verdict, which outranks this one;
+  verdict, which outranks this one, and earns no zero-capacity record, since
+  nothing proved it stopped serving;
 * state written by an older controller, or with a malformed record, still
   reconciles and simply starts counting from empty.
 """
@@ -269,8 +270,11 @@ def _undrained_hosts_keep_the_louder_verdict(controller: ModuleType, failures: l
             "a host that could not be drained lost its unaccounted-for verdict to the "
             "stranded-at-zero one"
         )
-    if record.get("producer", {}).get("passes") != total:
-        failures.append("a refused drain was not counted as a pass that cost capacity")
+    if record:
+        failures.append(
+            "a host nobody could drain was recorded as sitting at zero capacity, which is "
+            f"the weaker claim and not what this pass proved: {record}"
+        )
 
 
 def _older_state_starts_counting(controller: ModuleType, failures: list[str]) -> None:

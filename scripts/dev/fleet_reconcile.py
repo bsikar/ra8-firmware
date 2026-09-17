@@ -47,6 +47,7 @@ import fleet_reconcile_selftest as frs
 import fleet_reconcile_serving_selftest as frsv
 import fleet_reconcile_settle_selftest as frse
 import fleet_reconcile_stranding_selftest as frst
+import fleet_reconcile_unaccounted_selftest as fru
 import fleet_wsl as fw
 
 SOURCE_DIGEST_FILE = ".ra8-source-sha256"
@@ -851,11 +852,14 @@ def invalidate_receipt(  # noqa: PLR0913  # the receipt plus every record one fa
     capacity left to lose, so draining it again costs the fleet nothing: the
     producer the consumers were released past (``PRODUCER_BLOCK_PASSES``) is
     drained again every pass and would otherwise halt the pass that finally
-    repairs them.  And a host whose drain was REFUSED is unaccounted for rather
-    than at zero, since it may well still be serving, so it must not stop the
-    rest of the fleet reconciling either.  And a pass that ended by REOPENING
-    this host's capacity has proven it serving, so it clears the record instead
-    of counting another pass at zero against a host that is carrying work.
+    repairs them.  And a pass that ended by REOPENING this host's capacity has
+    proven it serving, so it clears the record instead of counting another pass
+    at zero against a host that is carrying work.
+
+    ``at_zero`` is false when the host's drain was REFUSED, and that host earns
+    no zero-capacity record at all: the controller could not take it out of
+    service, so nothing proved it left it.  Recording it forged exactly the
+    proof three later policies read off that record (issue #888).
     """
     receipts.pop(host, None)
     if not stranded:
@@ -863,10 +867,55 @@ def invalidate_receipt(  # noqa: PLR0913  # the receipt plus every record one fa
             return
         age_stranding(stranding, host, now, "this pass failed without taking capacity down")
         return
+    if not at_zero:
+        report_unaccounted_capacity(stranding, host)
+        return
     newly_drained = host not in stranding
     record_stranding(stranding, host, now)
-    if newly_drained and at_zero:
+    if newly_drained:
         drained.append(host)
+
+
+def report_unaccounted_capacity(stranding: dict[str, dict[str, int]], host: str) -> None:
+    """Refuse to record zero capacity for a host this pass could not drain.
+
+    Every failure path ends in a drain, and a drain the fleet entry point
+    REFUSES leaves the host unaccounted for: it may well still be serving work
+    against a mutation that stopped halfway, which is why it earns the loudest
+    verdict this controller has (``DRAIN_FAILED_STATUS``).  The stranded-at-zero
+    record makes the opposite claim, that this controller took the host to zero
+    and never reopened it, and writing it on a refused drain forged that proof
+    for three separate policies that later read it back with no idea where it
+    came from (issue #888):
+
+    * ``frozen_image_release`` reads a producer's record as proof that it
+      publishes nothing, so a producer nobody could drain released every
+      consumer onto its "frozen" image with a PROVISIONAL receipt, exactly the
+      host most likely to be mid-republish after a half-finished mutation;
+    * ``consumers_released`` spends ``PRODUCER_BLOCK_PASSES`` on those passes,
+      so the first pass that genuinely drained the producer released the
+      consumers immediately instead of holding them for the delay that exists
+      to keep them off an image in flight;
+    * ``serving_hosts`` and ``consumer_held`` treat a recorded host as having
+      no capacity left to lose, so the pass drain budget neither counted nor
+      protected a host that was still carrying work.
+
+    The record is neither created nor advanced here: this pass proved nothing
+    about what the host serves, and an existing record from a pass that really
+    did drain it stands exactly as it was.
+    """
+    entry = stranding.get(host)
+    standing = (
+        f"its earlier record of {entry['passes']} pass(es) at zero stands unchanged"
+        if entry
+        else "no zero-capacity record is written against it"
+    )
+    print(
+        f"fleet-reconcile: WARNING: {host}: this pass could not drain it, so nothing "
+        f"proved it stopped serving; {standing}, and the host stays unaccounted for "
+        f"(status {DRAIN_FAILED_STATUS}), which is louder than being known to sit at zero",
+        file=sys.stderr,
+    )
 
 
 def released_receipt(receipt: dict[str, Any], host: str, producer: str) -> dict[str, Any]:
@@ -1937,6 +1986,7 @@ def selftest() -> int:
     failures.extend(frpr.run(sys.modules[__name__]))
     failures.extend(fro.run(sys.modules[__name__]))
     failures.extend(frsv.run(sys.modules[__name__]))
+    failures.extend(fru.run(sys.modules[__name__]))
     _selftest_state_safety(failures)
     failures.extend(fml.run_selftest())
     _selftest_timeout(failures)
