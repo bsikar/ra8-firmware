@@ -193,9 +193,9 @@ file(GLOB RA8_BOARD_EK_RA8D2_SOURCES CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra8_board
 # little-endian sample decoders and the FIFO drain are Zig now, linked via
 # tests/cmake/zig_libraries.cmake.
 file(GLOB_RECURSE RA8_OV5640_SOURCES CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra8_ov5640/src/*.c)
-file(GLOB_RECURSE RA8_TZ_SECURE_BOOT_SOURCES CONFIGURE_DEPENDS
-     ${FW_ROOT}/libs/ra8_tz_secure_boot/src/*.c
-)
+# ra8_tz_secure_boot has no C sources left: the SAU partition, the PRCR_S /
+# IPCSAR unlock sequence, the NS RoT header read and the BLXNS arming are Zig
+# now, linked via tests/cmake/zig_libraries.cmake.
 file(GLOB_RECURSE RA8_DFU_SOURCES CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra8_dfu/src/*.c)
 # ra8_devcfg has no C sources left: both the record core and the production
 # extra-MRAM store binding are Zig now, linked via tests/cmake/zig_libraries.cmake.

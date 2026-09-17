@@ -201,6 +201,24 @@ set_property(
   PROPERTY INTERFACE_LINK_LIBRARIES ra8_zig::ra8_ui
 )
 
+# Fully migrated: the canonical five-region SAU partition, the PRCR_S unlock /
+# IPCSAR write / relock sequence, the NS root-of-trust header read and the
+# BLXNS arming are Zig now, so libs/ra8_tz_secure_boot/src has no .c left and
+# the RA8_TZ_SECURE_BOOT_SOURCES glob is gone from library_sources.cmake and
+# core_hal.cmake. The register writes stay behind the same RA8_OFF_TARGET
+# switch (the `off-target` build option, defaulted from the target), so the
+# host suite still inspects captures rather than touching memory. The
+# `enable-root-of-trust` option carries RA8_ENABLE_ROOT_OF_TRUST, which only a
+# target app build passes; see cmake/ra8_app/zig_libs.cmake.
+ra8_add_zig_library(
+  NAME
+  ra8_tz_secure_boot
+  ZIG_ROOT
+  ${FW_ROOT}/libs/ra8_tz_secure_boot
+  LIBRARY_NAME
+  ra8_tz_secure_boot
+)
+
 # ra8_core_hal is the OBJECT library every host test links, so an INTERFACE
 # link here reaches each test executable that pulls in a migrated library.
 target_link_libraries(
@@ -219,4 +237,5 @@ target_link_libraries(
          ra8_zig::ra8_lsm6dso
          ra8_zig::ra8_usb_pal
          ra8_zig::ra8_keyboard
+         ra8_zig::ra8_tz_secure_boot
 )
