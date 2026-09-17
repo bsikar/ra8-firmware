@@ -335,18 +335,41 @@ if [[ "$-" == *p* ]]; then
   # leave an already-set value untouched. A cache is an optimisation: an
   # unwritable location degrades to the per-build build/tools/ rather than
   # failing a gate.
+  #
+  # The canonical host directory is a MOUNT the deployed ARC runner image does
+  # not carry, so on those runners the first candidate is unwritable and every
+  # gate re-downloads the pinned doxygen, zig and rust into the per-build
+  # build/tools/ that the snapshot then destroys. Fall back to the runner's own
+  # tool cache and then to the user cache home before giving up: both survive a
+  # snapshot and are writable wherever the canonical mount is missing, which
+  # turns ~20 re-downloads per suite back into one. Resolution stops at the
+  # first candidate that exists and is writable; when none is, the degrade is
+  # unchanged.
+  ra8_tools_cache_candidates() {
+    printf '%s\n' "$(ra8_tools_cache_host_dir)"
+    [[ -n "${RUNNER_TOOL_CACHE:-}" ]] && printf '%s/ra8-tools\n' "${RUNNER_TOOL_CACHE}"
+    if [[ -n "${XDG_CACHE_HOME:-}" ]]; then
+      printf '%s/ra8-tools\n' "${XDG_CACHE_HOME}"
+    elif [[ -n "${HOME:-}" ]]; then
+      printf '%s/.cache/ra8-tools\n' "${HOME}"
+    fi
+    return 0
+  }
+
   export_tools_cache() {
     [[ -n "${RA8_TOOLS_CACHE:-}" ]] && return 0
     local dir
-    dir="$(ra8_tools_cache_host_dir)"
-    if ! mkdir -p "$dir" 2>/dev/null; then
-      echo "==> pinned-tool cache unavailable at $dir; continuing without it" >&2
-      return 0
-    fi
-    if [[ -d "$dir" && -w "$dir" ]]; then
-      export RA8_TOOLS_CACHE="$dir"
-      echo "==> pinned-tool cache: $dir (survives the snapshot; docs gate doxygen)" >&2
-    fi
+    while read -r dir; do
+      [[ -n "$dir" ]] || continue
+      mkdir -p "$dir" 2>/dev/null || continue
+      if [[ -d "$dir" && -w "$dir" ]]; then
+        export RA8_TOOLS_CACHE="$dir"
+        echo "==> pinned-tool cache: $dir (survives the snapshot; docs gate doxygen)" >&2
+        return 0
+      fi
+    done < <(ra8_tools_cache_candidates)
+    echo "==> pinned-tool cache unavailable at $(ra8_tools_cache_host_dir); continuing without it" >&2
+    return 0
   }
 
   # Refuse to run a ra8_emulator gate on an unpinned Unicorn.
