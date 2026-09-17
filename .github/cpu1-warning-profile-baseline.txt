@@ -45,17 +45,7 @@
 # legitimately reach zero rows when #843 is paid off: an intact inventory can
 # declare "#! rows: 0", while a truncated or hand-emptied one carries no
 # matching declaration and still fails closed.
-#! rows: 18
-compile_on_m33_cpu1.elf  apps/shared_libs/epub/src/epub_chapter.c
-compile_on_m33_cpu1.elf  apps/shared_libs/epub/src/epub_entry.c
-compile_on_m33_cpu1.elf  apps/shared_libs/epub/src/epub_fs.c
-compile_on_m33_cpu1.elf  apps/shared_libs/epub/src/epub_img_import.c
-compile_on_m33_cpu1.elf  apps/shared_libs/epub/src/epub_img_tiles.c
-compile_on_m33_cpu1.elf  apps/shared_libs/epub/src/epub_miniz_alloc.c
-compile_on_m33_cpu1.elf  apps/shared_libs/epub/src/epub_open.c
-compile_on_m33_cpu1.elf  apps/shared_libs/epub/src/epub_xml_shim.c
-compile_on_m33_cpu1.elf  apps/shared_libs/epub/src/epub_xml_toc.c
-compile_on_m33_cpu1.elf  apps/shared_libs/epub/src/epub_zip_guard.c
+#! rows: 8
 cpu1_pingpong_cpu1.elf  examples/ek_ra8d2/hw_validated/hil/cpu1_pingpong/src/cpu1_main.c
 cpu1_pingpong_cpu1.elf  libs/ra8_core/src/ra8_log.c
 cpu1_pingpong_cpu1.elf  libs/ra8_core/src/ra8_scb.c
