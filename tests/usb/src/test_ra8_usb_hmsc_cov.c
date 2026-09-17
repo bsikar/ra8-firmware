@@ -3,6 +3,9 @@
  * @brief Coverage-focused unit tests for the native USB host-side MSC
  *        (Bulk-Only-Transport) SCSI command path
  *
+ * @par Tag
+ * [Ring 3 / HAL] {World: NS}
+ *
  * @details
  * The base suite (`test_ra8_usb_hmsc.c`) exercises the pure protocol units
  * (CBW build / CSW decode) and the pre-init / pre-attach guards, but it

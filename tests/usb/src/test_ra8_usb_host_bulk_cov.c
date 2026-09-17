@@ -3,6 +3,9 @@
  * @brief Coverage unit tests for the USB host-mode bulk engine
  *        (libs/ra8_hal/src/ra8_usb_host_bulk.c).
  *
+ * @par Tag
+ * [Ring 3 / HAL] {World: NS}
+ *
  * @details
  * Drives the polled host-mode bulk-transfer engine through its public
  * entry points (``ra8_usb_host_set_target``, ``ra8_usb_host_pipe_setup``,

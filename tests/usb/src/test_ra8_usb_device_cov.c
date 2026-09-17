@@ -2,6 +2,9 @@
  * @file test_ra8_usb_device_cov.c
  * @brief Coverage top-up for the USB device-mode lifecycle (ra8_usb_device.c)
  *
+ * @par Tag
+ * [Ring 3 / HAL] {World: NS}
+ *
  * @details
  * Targets the residual uncovered lines in ``libs/ra8_hal/src/ra8_usb_device.c``
  * that the primary suite (``test_ra8_usb.c``) does not reach:

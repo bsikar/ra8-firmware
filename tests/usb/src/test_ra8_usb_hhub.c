@@ -1,6 +1,10 @@
 /**
  * @file test_ra8_usb_hhub.c
  * @brief Unit tests for the native USB host-side HUB class layer
+ *
+ * @par Tag
+ * [Ring 3 / HAL] {World: NS}
+ *
  * @details Covers hub enumeration, port status and feature requests, child lifecycle, bounds, and transfer failures.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie

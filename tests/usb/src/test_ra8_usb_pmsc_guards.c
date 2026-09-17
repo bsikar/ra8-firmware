@@ -3,6 +3,9 @@
  * @brief Argument- and state-guard rejection vectors for the device-MSC
  *        (USB Mass Storage Class) public API in `libs/ra8_hal/src/ra8_usb_pmsc.c`
  *
+ * @par Tag
+ * [Ring 3 / HAL] {World: NS}
+ *
  * @details
  * The sibling `test_ra8_usb_pmsc.c` drives the happy paths through the public
  * BOT (Bulk-Only Transport) dispatcher, and `test_ra8_usb_pmsc_scsi_cov.c`
