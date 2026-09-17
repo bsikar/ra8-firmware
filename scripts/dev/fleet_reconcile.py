@@ -32,6 +32,7 @@ import fleet_reconcile_blocking_selftest as frbl
 import fleet_reconcile_budget_selftest as frbu
 import fleet_reconcile_cascade_selftest as frc
 import fleet_reconcile_drain_selftest as frd
+import fleet_reconcile_dryrun_selftest as frdr
 import fleet_reconcile_freeze_selftest as frf
 import fleet_reconcile_frozen_selftest as frfz
 import fleet_reconcile_interrupt_selftest as fri
@@ -968,6 +969,68 @@ def stranded_escalations(stranding: dict[str, dict[str, int]], now: int) -> list
     return escalated
 
 
+def managed_stranding(
+    stranding: dict[str, dict[str, int]], hosts: Sequence[str]
+) -> dict[str, dict[str, int]]:
+    """Return the stranded-at-zero records for hosts this declaration still manages."""
+    managed = set(hosts)
+    return {host: entry for host, entry in stranding.items() if host in managed}
+
+
+def report_recorded_zero(stranding: dict[str, dict[str, int]], now: int) -> list[str]:
+    """Name the hosts this controller is holding at zero but not escalating yet.
+
+    An apply pass says this for every recorded host as it goes, because it is
+    the pass that records or ages the entry.  A read-only pass writes nothing,
+    so without this it said nothing at all about a host below the escalation
+    threshold: the record is the only state that tells a fleet that is fine
+    from one this controller has already taken to zero.
+    """
+    held = [
+        host
+        for host, entry in sorted(stranding.items())
+        if entry["passes"] < STRANDED_ESCALATION_PASSES
+    ]
+    for host in held:
+        entry = stranding[host]
+        print(
+            f"fleet-reconcile: WARNING: {host} is recorded at ZERO capacity by this "
+            f"controller ({entry['passes']} consecutive pass(es), "
+            f"{now - entry['since']}s since it was first drained); whatever this fleet "
+            "declares for it, that capacity is not in service",
+            file=sys.stderr,
+        )
+    return held
+
+
+def pass_escalations(
+    stranding: dict[str, dict[str, int]], order: Sequence[str], options: ReconcileOptions
+) -> list[str]:
+    """Read the stranded-at-zero record out loud, whichever mode this pass ran in.
+
+    The record was only ever read out by an apply pass, so ``--mode check``,
+    the dry run an operator reaches for to ask what the fleet looks like,
+    reported the declaration and nothing else: it never said that this
+    controller had been holding hosts at zero, and it exited 0 while they sat
+    there.  That is the diagnostic in issue #888's own evidence, where a later
+    dry run showed ARC still declared for six and TrueNAS for one while both
+    had been drained for days.  Draining a host is an override the declaration
+    knows nothing about, so a parked host's read-only check can come back
+    CURRENT and the record is the only thing that knows better.  Reporting it
+    persists nothing, so a check pass can say it and earn the same verdict an
+    apply pass would.
+
+    Scoped to the hosts in this pass's declaration on purpose: pruning records
+    for hosts the fleet no longer manages is a write an apply pass makes, and a
+    check pass must not turn one retired host's stale record into a permanently
+    red dry run instead.
+    """
+    managed = managed_stranding(stranding, order)
+    if options.mode != "apply":
+        report_recorded_zero(managed, options.now)
+    return stranded_escalations(managed, options.now)
+
+
 def consumers_released(
     stranding: dict[str, dict[str, int]], producer: str, *, undrained: bool
 ) -> bool:
@@ -1230,6 +1293,8 @@ def reconcile(
     ``STRANDED_STATUS`` when a host has been held at zero capacity for several
     consecutive passes, and ``DRAIN_FAILED_STATUS`` when a host could not be
     drained at all, which is louder still because that host is unaccounted for.
+    A read-only pass mutates nothing, but it reports the stranded-at-zero
+    record and earns ``STRANDED_STATUS`` off it exactly as an apply pass does.
     """
     state_path = options.state_dir / STATE_FILE
     document = load_state(state_path)
@@ -1304,10 +1369,9 @@ def reconcile(
                 producer_blocking, producer_released = producer_block_state(
                     stranding, host, stranded=stranded, undrained=host in undrained
                 )
-    escalated: list[str] = []
     if options.mode == "apply":
         save_state(state_path, document)
-        escalated = stranded_escalations(stranding, options.now)
+    escalated = pass_escalations(stranding, order, options)
     return pass_verdict(undrained, escalated, halted, failures)
 
 
@@ -1861,6 +1925,7 @@ def selftest() -> int:
     failures.extend(frbu.run(sys.modules[__name__]))
     failures.extend(frc.run(sys.modules[__name__]))
     failures.extend(frd.run(sys.modules[__name__]))
+    failures.extend(frdr.run(sys.modules[__name__]))
     failures.extend(frre.run(sys.modules[__name__]))
     failures.extend(frst.run(sys.modules[__name__]))
     failures.extend(frrl.run(sys.modules[__name__]))
