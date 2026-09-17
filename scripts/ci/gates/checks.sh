@@ -201,8 +201,8 @@ _pcc_layout_and_credentials() (
   # A header under a src/ directory is module-private and must be named
   # *_internal.h. A non-internal src/ header is a misfiled public interface
   # (belongs in inc/) or an unmarked private one.
-  python3 scripts/checks/check_header_file_placement.py --selftest
-  python3 scripts/checks/check_header_file_placement.py
+  bash scripts/builders/check_header_file_placement.sh --selftest
+  bash scripts/builders/check_header_file_placement.sh
 )
 
 # Board-fact ownership and library layering.
