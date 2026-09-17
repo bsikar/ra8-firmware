@@ -181,6 +181,13 @@ _BASE_SHELL_POLICIES: dict[str, ShellPolicy] = {
         executable=True,
         source_requires_privileged_parent=False,
     ),
+    "scripts/builders/check_no_legacy_make.sh": ShellPolicy(
+        ShellSecurity.PORTABLE,
+        ShellUsage.ENTRY,
+        ShellDialect.BASH,
+        executable=True,
+        source_requires_privileged_parent=False,
+    ),
     "scripts/builders/docs.sh": ShellPolicy(
         ShellSecurity.PORTABLE,
         ShellUsage.ENTRY,
