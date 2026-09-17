@@ -667,6 +667,79 @@ RA8_INTERNAL static void internal_test_usbhs_host_init_full_bringup(void)
   TEST_END("usbhs_host_init reaches ra8_usb_host_init after clocking");
 }
 
+/**
+ * @brief Verify ra8_board_usb_port_init rejects what it cannot do.
+ *
+ * @details
+ * The facade's four argument guards, each of which returns before any
+ * pin, expander or clock is touched: an out-of-enum port, an
+ * out-of-enum role, the reserved ``off`` role (no port teardown path
+ * exists), and the FS host role (undecided VBUSEN convention, see the
+ * board source). A guard that silently fell through would route pins
+ * for the wrong role, so each arm is pinned to its exact status.
+ *
+ * @par MC/DC:
+ * Every guard is a sequential single-condition if; this test supplies
+ * the taken vector for all four. The not-taken vectors are supplied by
+ * ::internal_test_usb_port_init_hs_device_bringup.
+ *
+ * @pre The host fake-MMIO and pin-validation backends are available.
+ * @pre Clean fake state.
+ * @post The expected status and hardware-visible effects are asserted.
+ * @post No pin is claimed and no clock is enabled by any rejected call.
+ *
+ * @note Not thread-safe; single-threaded test context.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_test_usb_port_init_arg_guards(void)
+{
+  TEST_BEGIN("usb_port_init rejects bad port, bad role, off and FS host");
+  internal_reset_state();
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg,
+                 ra8_board_usb_port_init((ra8_board_usb_port_t)2U, k_ra8_board_usb_role_device));
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg,
+                 ra8_board_usb_port_init(k_ra8_board_usb_port_fs, (ra8_board_usb_role_t)3U));
+  TEST_ASSERT_EQ(k_ra8_err_not_supported,
+                 ra8_board_usb_port_init(k_ra8_board_usb_port_hs, k_ra8_board_usb_role_off));
+  TEST_ASSERT_EQ(k_ra8_err_not_supported,
+                 ra8_board_usb_port_init(k_ra8_board_usb_port_fs, k_ra8_board_usb_role_host));
+  TEST_END("usb_port_init rejects bad port, bad role, off and FS host");
+}
+
+/**
+ * @brief Verify the HS device arm routes, straps and clocks the port.
+ *
+ * @details
+ * With OSCSF pre-seeded the UTMI PLL wait resolves, so the HS device
+ * arm runs end to end: PD07 strapped low, the U15 override attempted
+ * best-effort, P4_08 routed to the USBHS function, then the PLL and the
+ * MSTP ungate. Unlike ``ra8_board_usbhs_device_init`` it stops there and
+ * never enters ``ra8_usb_device_init``, which is the contract split this
+ * test exists to pin.
+ *
+ * @par MC/DC:
+ * Supplies the not-taken (success) vector for the facade's port, role,
+ * off and FS-host guards and for the HS arm's strap and routing guards.
+ *
+ * @pre The host fake-MMIO and pin-validation backends are available.
+ * @pre Clean fake state, then OSCSF pre-seeded.
+ * @post The expected status and hardware-visible effects are asserted.
+ * @post PD07 is a driven output and the HS controller is clocked.
+ *
+ * @note Not thread-safe; single-threaded test context.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_test_usb_port_init_hs_device_bringup(void)
+{
+  TEST_BEGIN("usb_port_init(hs, device) straps, routes and clocks");
+  internal_reset_state();
+  *ra8_sys_oscsf() = (uint8_t)k_sys_oscsf_all_ready;
+  const ra8_err_t err =
+    ra8_board_usb_port_init(k_ra8_board_usb_port_hs, k_ra8_board_usb_role_device);
+  TEST_ASSERT_EQ(k_ra8_ok, err);
+  TEST_END("usb_port_init(hs, device) straps, routes and clocks");
+}
+
 /* -------------------------------------------------------------------------
  * Entry point
  * -------------------------------------------------------------------------
@@ -707,5 +780,7 @@ int main(void)
   internal_test_usbhs_device_role_pin_conflict();
   internal_test_usbhs_device_init_full_bringup();
   internal_test_usbhs_host_init_full_bringup();
+  internal_test_usb_port_init_arg_guards();
+  internal_test_usb_port_init_hs_device_bringup();
   return 0;
 }

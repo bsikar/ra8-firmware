@@ -382,6 +382,104 @@ typedef enum : uint32_t {
  */
 [[nodiscard]] ra8_err_t ra8_board_usbhs_host_init(void);
 
+/**
+ * @enum ra8_board_usb_port_t
+ * @brief Which of the board's two USB connectors a request is about.
+ *
+ * @details
+ * FS is J11 (``ra8_board_usbfs_pin_t``, UM Table 22 p 30); HS is J7
+ * (``ra8_board_usbhs_pin_t``, UM Table 28 p 34).
+ *
+ * @since 0.1.0
+ */
+typedef enum : uint8_t {
+  k_ra8_board_usb_port_fs = 0U, /**< J11 full-speed port. */
+  k_ra8_board_usb_port_hs = 1U, /**< J7 high-speed port.  */
+} ra8_board_usb_port_t;
+
+/**
+ * @enum ra8_board_usb_role_t
+ * @brief Bus role a port is being strapped for.
+ *
+ * @since 0.1.0
+ */
+typedef enum : uint8_t {
+  k_ra8_board_usb_role_off    = 0U, /**< Reserved; see ra8_board_usb_port_init. */
+  k_ra8_board_usb_role_device = 1U, /**< Peripheral role.                       */
+  k_ra8_board_usb_role_host   = 2U, /**< Host role, board supplies VBUS.        */
+} ra8_board_usb_role_t;
+
+/**
+ * @brief Bring one USB port up in one role: pins, role strap, clock.
+ *
+ * @details
+ * The board-level choreography every USB application currently repeats
+ * by hand. In one call it routes the port's board pins to the
+ * controller's peripheral function, straps the role line, applies the
+ * U15 SW4 override where the role needs it, and brings the controller's
+ * clock (and, for HS, its module-stop ungate) up.
+ *
+ * Per port and role:
+ *
+ * - FS device (J11): P4_07 VBUS sense, then P5_00 VBUSEN driven LOW as
+ *   a GPIO, then P8_14/P8_15 data under ``k_ra8_psel_usb_fs``, then
+ *   ``ra8_cgc_usbfs_clock_enable``. The VBUSEN step is the board fact
+ *   this call exists to own: routing VBUSEN to the peripheral function
+ *   instead forces host VBUSEN and blocks device enumeration.
+ * - FS host (J11): answers ``k_ra8_err_not_supported``. The tree
+ *   disagrees about what P5_00 should be in that role (two apps route
+ *   it to the USBFS peripheral function, two drive it as a GPIO, none
+ *   drives it HIGH), and that is a bench decision rather than a
+ *   refactor, so the arm stays open instead of picking silently.
+ * - HS device (J7): PD07 LOW (UM Section 6.2 p 34 role select), U15
+ *   SW4-8 to Device best-effort, P4_08 VBUS sense under
+ *   ``k_ra8_psel_usb_hs``, then the UTMI PLL and the USBHS
+ *   module-stop ungate.
+ * - HS host (J7): U15 SW4-8 to Host, PD07 HIGH so U18 drives J7 VBUS,
+ *   the same P4_08 sense routing, then the same PLL and ungate.
+ *
+ * The U15 write is best-effort on the device arm and required on the
+ * host arm, which is the behaviour each path already had: PD07 LOW
+ * alone straps device, so a NACK from an expander whose I2C bus is
+ * jumpered elsewhere is not fatal there, while the host-mode callers
+ * all treat the expander write as a hard failure.
+ *
+ * This call stops at a clocked, correctly strapped port. It does not
+ * initialize a controller: ``ra8_board_usbhs_device_init`` /
+ * ``ra8_board_usbhs_host_init`` still own USBHS controller bring-up,
+ * and the FS controller stays the stack's own
+ * (``ra8_usb_device_init`` / ``ux_dcd_ra8_usb_initialize``).
+ *
+ * @param[in] port Which connector.
+ * @param[in] role Role to strap.
+ *
+ * @return ra8_err_t Error code.
+ * @retval k_ra8_ok                Port routed, strapped and clocked.
+ * @retval k_ra8_err_invalid_arg   @p port or @p role outside its enum.
+ * @retval k_ra8_err_not_supported @p role is ``k_ra8_board_usb_role_off``
+ *                                 (releasing a port is not implemented),
+ *                                 or the FS host role (see above).
+ * @retval k_ra8_err_gpio_conflict A pin is already owned elsewhere.
+ * @retval other                   Propagated routing, expander or clock error.
+ *
+ * @pre ``ra8_cgc_init`` has run.
+ * @pre ``ra8_mstp_init`` has run (boot path) for the HS arms.
+ * @post On k_ra8_ok the port's pins carry @p role and its controller is
+ *       clocked.
+ * @post On failure the pins routed before the failing step stay routed;
+ *       every current caller treats the failure as fatal.
+ *
+ * @note Not thread-safe; call once per port from the boot context.
+ * @note The individual steps stay public: an app deliberately probing
+ *       one leg keeps calling ``ra8_pfs_route_peripheral``,
+ *       ``ra8_gpio_output_init``, ``ra8_cgc_usbfs_clock_enable``,
+ *       ``ra8_cgc_usbhs_pll_enable`` and the ``ra8_board_io_expander_*``
+ *       helpers directly.
+ * @since 0.1.0
+ */
+[[nodiscard]] ra8_err_t ra8_board_usb_port_init(ra8_board_usb_port_t port,
+                                                ra8_board_usb_role_t role);
+
 /* =============================================================================
  * 8. Camera connector J35 (UM Section 8.3, Tables 35 + 36, p 48 + 49)
  * =============================================================================
