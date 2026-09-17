@@ -18,6 +18,7 @@ def _additional_non_authority_groups_part1() -> tuple[tuple[str, tuple[str, ...]
             _identities(
                 """
                     checks/check_chapter_map_freshness.py:REPO_ROOT
+                    checks/check_world_tags.py:RING_DECLARATION
                     checks/check_hil_privilege_boundary.py:REPO_ROOT
                     checks/check_hil_rig_contract.py:REPO_ROOT
                     checks/hil_convergence_safety_raw_digest_runtime.py:_LABEL_BY_PATH
@@ -37,6 +38,7 @@ def _additional_non_authority_groups_part1() -> tuple[tuple[str, tuple[str, ...]
         (
             "selftest-fixture",
             (
+                "checks/check_world_tags.py:_FIXTURE_TAGGED",
                 "checks/hil_convergence_safety_raw_digest_fixtures.py:INPUT_BY_PATH",
                 "checks/hil_convergence_safety_raw_digest_fixtures.py:PRE_CLOSE_FAILURE",
                 "checks/hil_convergence_safety_raw_digest_fixtures.py:ROOT_OPEN_FAILURE",
@@ -103,6 +105,7 @@ def _additional_non_authority_groups_part3() -> tuple[tuple[str, tuple[str, ...]
             "parser-token",
             _identities(
                 """
+                    checks/check_world_tags.py:_DIRECTIVE
                     checks/markdown_reference_policy.py:BARE_FILE_SUFFIXES
                     checks/markdown_reference_policy.py:REMOTE_SCHEMES
                     checks/markdown_reference_policy.py:TRAILING_PATH_JUNK

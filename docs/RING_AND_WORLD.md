@@ -63,12 +63,29 @@ Three concrete rules the linter enforces:
 1. **NSC veneers stay in `libs/ra8_nsc/`.** Any file outside that
    directory that declares a function with
    `__attribute__((cmse_nonsecure_entry))` is rejected.
-2. **Ring 1 / Ring 2 files never carry a World tag.** They have no
-   peripheral access and run identically in either world; tagging
-   them would lie about where the security boundary sits.
+2. **`libs/ra8_core/`, per-app boot files, and linker scripts never
+   carry a `{World: NS}` tag.** They have no peripheral access and run
+   identically in either world; tagging them NS would lie about where
+   the security boundary sits. This is the set `file_is_in_ring1_or_ring2`
+   actually recognises, and it is narrower than the Ring-1/Ring-2 rows in
+   the table above: the Ring-2 register headers under
+   `libs/ra8_hal/inc/ra8_*_regs.h` sit inside the World-tag scope with the
+   rest of `libs/ra8_hal/`, and they are tagged `[Ring 3 / HAL]` in the
+   tree, not `[Ring 2 / ...]`. The table is the architectural coordinate
+   system; the gate keys on the path.
 3. **Ring 3+ files require *both* tags.** A driver without a Ring tag
    cannot be placed in the build; a driver without a World tag cannot
    be linked into the secure / non-secure partition cleanly.
+4. **The ring value itself is checked where the tree is uniform.**
+   `.github/world-tag-ring-declaration.txt` declares, per path class,
+   which `[Ring N / LAYER]` value files there may carry. `libs/ra8_hal/`
+   is `Ring 3 / HAL`, `libs/ra8_nsc/` is `Ring 4 / NSC`,
+   `libs/ra8_secure_app/` is `Ring 5 / SECAPP`; a file in one of those
+   that declares anything else is a finding. Every other path class is
+   declared `unmeasured` in the same file, because its declared rings are
+   not uniform yet -- the gap is written down rather than implied. Before
+   this, only the *presence* of a ring tag was checked, so the number and
+   the layer name were never read at all.
 
 ## Examples
 

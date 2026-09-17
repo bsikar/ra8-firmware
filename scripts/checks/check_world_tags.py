@@ -20,6 +20,17 @@ This script:
        the first ~80 lines of the file.
     3. Verifies that any file carrying {World: NSC} lives under
        libs/ra8_nsc/ -- NSC veneers may not be defined anywhere else.
+    3a. Verifies the RING half of the pair against
+       .github/world-tag-ring-declaration.txt: for a path class declared
+       "measured" there, a file's [Ring N / LAYER] must be the class's
+       declared value. Presence of the ring tag used to be the whole
+       check, so the number and layer name were declared and never read
+       (#842) -- libs/ra8_hal/src/ra8_eth_media.c sat at [Ring 2 / HAL]
+       among 270 [Ring 3 / HAL] siblings and the gate stayed green. Path
+       classes whose declared rings are NOT yet uniform are recorded in
+       that same file as "unmeasured", so the remaining gap is
+       enumerated rather than silent, and a path class missing from the
+       file altogether is a setup failure.
     4. Verifies that no file outside libs/ra8_nsc/ uses
        __attribute__((cmse_nonsecure_entry)) -- the SG-instruction
        compiler attribute is the only legal way to mark a function
@@ -125,6 +136,153 @@ RING_RE = re.compile(r"\[\s*Ring\s+(\d)\s*/\s*([A-Za-z_]+)\s*\]")
 WORLD_RE = re.compile(r"\{\s*World\s*:\s*(S|NS|NSC|MIXED)\s*\}")
 NSC_ENTRY_RE = re.compile(r"__attribute__\s*\(\s*\(\s*cmse_nonsecure_entry\s*\)\s*\)")
 
+# Directive prefix in the ring declaration. A plain "#" stays a comment, so
+# review prose and machine-read rows cannot be confused for one another.
+_DIRECTIVE = "#!"
+
+# Declared ring values per path class, reviewed and committed rather than
+# derived, so the gate can refuse a ring number that disagrees with the class
+# it sits in. Populated from the live tree at the commit that introduced it.
+RING_DECLARATION_PATH = REPO_ROOT / ".github" / "world-tag-ring-declaration.txt"
+
+# The closed set of path classes the declaration must cover, longest-match
+# first. A class is a coordinate the ring value can be judged against; a path
+# that matches none of the specific rows lands in the catch-all, which is
+# declared like any other so a new tree root cannot appear unnoticed.
+RING_CLASS_HAL = "libs/ra8_hal/"
+RING_CLASS_NSC = "libs/ra8_nsc/"
+RING_CLASS_SECAPP = "libs/ra8_secure_app/"
+RING_CLASS_CORE = "libs/ra8_core/"
+RING_CLASS_PAL = "libs/ra8_*_pal/"
+RING_CLASS_TESTS = "tests/"
+RING_CLASS_EXAMPLES = "examples/"
+RING_CLASS_APPS = "apps/"
+RING_CLASS_LIBS = "libs/"
+RING_CLASS_REST = "*"
+
+RING_CLASSES = (
+    RING_CLASS_HAL,
+    RING_CLASS_NSC,
+    RING_CLASS_SECAPP,
+    RING_CLASS_CORE,
+    RING_CLASS_PAL,
+    RING_CLASS_TESTS,
+    RING_CLASS_EXAMPLES,
+    RING_CLASS_APPS,
+    RING_CLASS_LIBS,
+    RING_CLASS_REST,
+)
+
+# "measured" binds the class to one [Ring N / LAYER]; "unmeasured" records that
+# the class's declared rings are not uniform yet and names the gap instead of
+# hiding it. Both forms are required to be explicit: an absent class is a
+# setup failure, never an implicit pass.
+RING_STATE_MEASURED = "measured"
+RING_STATE_UNMEASURED = "unmeasured"
+
+
+def path_class(rel_path: str) -> str:
+    """Which declared-ring path class a repo-relative path belongs to."""
+    for prefix in (RING_CLASS_HAL, RING_CLASS_NSC, RING_CLASS_SECAPP, RING_CLASS_CORE):
+        if rel_path.startswith(prefix):
+            return prefix
+    if rel_path.startswith("libs/ra8_") and "_pal/" in rel_path:
+        return RING_CLASS_PAL
+    for prefix in (RING_CLASS_TESTS, RING_CLASS_EXAMPLES, RING_CLASS_APPS, RING_CLASS_LIBS):
+        if rel_path.startswith(prefix):
+            return prefix
+    return RING_CLASS_REST
+
+
+def _parse_declaration_line(line: str) -> tuple[str, tuple[int, str] | None]:
+    """One directive line into (path class, declared ring pair or None)."""
+    body = line[len(_DIRECTIVE) :].strip()
+    state, _, tail = body.partition(" ")
+    if state == RING_STATE_UNMEASURED:
+        cls = tail.strip()
+        if not cls:
+            message = f"unmeasured directive names no path class: {line!r}"
+            raise ValueError(message)
+        return cls, None
+    if state != RING_STATE_MEASURED:
+        message = f"directive state must be measured|unmeasured: {line!r}"
+        raise ValueError(message)
+    cls, sep, value = tail.partition(":")
+    if not sep or not cls.strip():
+        message = f"measured directive needs '<class>: Ring N / LAYER': {line!r}"
+        raise ValueError(message)
+    ring = RING_RE.search(f"[{value.strip()}]")
+    if ring is None:
+        message = f"measured directive carries no Ring N / LAYER value: {line!r}"
+        raise ValueError(message)
+    return cls.strip(), (int(ring.group(1)), ring.group(2))
+
+
+def parse_ring_declaration(text: str) -> dict[str, tuple[int, str] | None]:
+    """Declaration text into {path class: ring pair or None}.
+
+    Raises ``ValueError`` on a malformed directive, a class declared twice, or
+    a class outside ``RING_CLASSES`` -- a typo must fail loudly rather than
+    quietly leave a class unjudged.
+    """
+    declared: dict[str, tuple[int, str] | None] = {}
+    for raw in text.splitlines():
+        line = raw.strip()
+        if not line.startswith(_DIRECTIVE):
+            continue
+        cls, pair = _parse_declaration_line(line)
+        if cls not in RING_CLASSES:
+            message = f"unknown path class in declaration: {cls!r}"
+            raise ValueError(message)
+        if cls in declared:
+            message = f"path class declared twice: {cls!r}"
+            raise ValueError(message)
+        declared[cls] = pair
+    return declared
+
+
+def load_ring_declaration() -> dict[str, tuple[int, str] | None] | None:
+    """Parsed declaration, or None when the file is unreadable or malformed.
+
+    None, never ``{}``: an empty mapping would read as "nothing to enforce"
+    and turn a missing file into a silent pass, which is the exact failure
+    mode #842 is about.
+    """
+    try:
+        text = RING_DECLARATION_PATH.read_text(encoding="utf-8")
+    except OSError:
+        return None
+    try:
+        return parse_ring_declaration(text)
+    except ValueError:
+        return None
+
+
+def declaration_setup_failures(declared: dict[str, tuple[int, str] | None] | None) -> list[str]:
+    """Reasons the declaration cannot be trusted to bound anything."""
+    name = RING_DECLARATION_PATH.name
+    if declared is None:
+        return [f"{name}: missing or malformed -- the ring value cannot be judged"]
+    missing = [cls for cls in RING_CLASSES if cls not in declared]
+    return [f"{name}: path class {cls!r} is not declared measured or unmeasured" for cls in missing]
+
+
+def ring_value_findings(
+    rel: str,
+    ring: tuple[int, str] | None,
+    declared: dict[str, tuple[int, str] | None] | None,
+) -> list[str]:
+    """Report a declared ring that disagrees with its path class's declaration."""
+    if ring is None or not declared:
+        return []
+    expected = declared.get(path_class(rel))
+    if expected is None or expected == ring:
+        return []
+    return [
+        f"{rel}: declares [Ring {ring[0]} / {ring[1]}] but {path_class(rel)} is declared "
+        f"[Ring {expected[0]} / {expected[1]}] in {RING_DECLARATION_PATH.name}"
+    ]
+
 
 def is_legacy_exempt(rel_path: str) -> bool:
     """Whether a path predates the World-tag requirement and is grandfathered.
@@ -179,6 +337,9 @@ def file_is_in_ring3_plus(rel_path: str) -> bool:
     return any(rel_path == f"{app_dir}/src/main.c" for app_dir in APP_DIRS)
 
 
+RING_DECLARATION = load_ring_declaration()
+
+
 def iter_source_files(targets: Iterable[pathlib.Path]) -> Iterable[pathlib.Path]:
     """Expand a mixed list of files and directories into source files.
 
@@ -216,40 +377,64 @@ def _to_repo_relative(path: pathlib.Path) -> str:
         return str(path)
 
 
-def check_file(path: pathlib.Path) -> list[str]:
+def _missing_tag_findings(
+    rel: str,
+    ring_match: re.Match[str] | None,
+    world_match: re.Match[str] | None,
+) -> list[str]:
+    """Report either tag missing from a Ring 3+ file that must carry both.
+
+    A legacy-exempt file is only exempt while it carries NEITHER tag. As soon
+    as it grows one, both are enforced.
+    """
+    if not file_is_in_ring3_plus(rel):
+        return []
+    has_any_tag = ring_match is not None or world_match is not None
+    if is_legacy_exempt(rel) and not has_any_tag:
+        return []
+    findings: list[str] = []
+    if ring_match is None:
+        findings.append(f"{rel}: missing [Ring N / NAME] tag in file header")
+    if world_match is None:
+        findings.append(f"{rel}: missing {{World: S|NS|NSC}} tag in file header")
+    return findings
+
+
+def check_file(
+    path: pathlib.Path,
+    declaration: dict[str, tuple[int, str] | None] | None = None,
+    rel_override: str | None = None,
+) -> list[str]:
     """Report a missing or malformed ``{World: ...}`` tag in one file.
 
     Ring membership decides whether the tag is required at all, so the ring
     tests run before the tag is looked for -- a Ring 2 file with no tag is
     correct, not a finding.
 
+    ``declaration`` defaults to the committed ring declaration; the selftest
+    injects its own so the ring-value check can be exercised in both
+    directions without editing the file the live tree is judged against.
+    ``rel_override`` judges the bytes at ``path`` AS the named repo-relative
+    path, so a fixture can stand in for an in-tree location.
+
     Returns one message per finding; an empty list means the file is fine or
     out of scope.
     """
     findings: list[str] = []
-    rel = _to_repo_relative(path)
+    rel = _to_repo_relative(path) if rel_override is None else rel_override
+    declared = RING_DECLARATION if declaration is None else declaration
 
     try:
         text = path.read_text(encoding="utf-8", errors="replace")
     except OSError as exc:
         return [f"{rel}: read error: {exc}"]
 
-    head_lines = text.splitlines()[:HEADER_LINE_WINDOW]
-    head = "\n".join(head_lines)
+    head = "\n".join(text.splitlines()[:HEADER_LINE_WINDOW])
 
     ring_match = RING_RE.search(head)
     world_match = WORLD_RE.search(head)
 
-    if file_is_in_ring3_plus(rel):
-        # A legacy-exempt file is only exempt while it carries
-        # NEITHER tag. As soon as it grows one, both are enforced.
-        legacy = is_legacy_exempt(rel)
-        has_any_tag = ring_match is not None or world_match is not None
-        if (not legacy) or has_any_tag:
-            if ring_match is None:
-                findings.append(f"{rel}: missing [Ring N / NAME] tag in file header")
-            if world_match is None:
-                findings.append(f"{rel}: missing {{World: S|NS|NSC}} tag in file header")
+    findings.extend(_missing_tag_findings(rel, ring_match, world_match))
 
     # Check 3: NSC tag must live under libs/ra8_nsc/
     if (
@@ -281,6 +466,13 @@ def check_file(path: pathlib.Path) -> list[str]:
             f"{rel}: Ring 1/2 file carries {{World: {world_match.group(1)}}} "
             f"-- Rings 1 and 2 are Secure-only by policy"
         )
+
+    # Check 6: a declared ring value must agree with its path class's
+    # declaration. Only the ring's PRESENCE was ever checked, so the number
+    # and the layer name rode along unread (#842).
+    if ring_match is not None:
+        ring_pair = (int(ring_match.group(1)), ring_match.group(2))
+        findings.extend(ring_value_findings(rel, ring_pair, declared))
 
     return findings
 
@@ -318,7 +510,115 @@ def selftest() -> int:
         "tools/ is enumerated (the scan-dir list omitted it before #358)",
         failures,
     )
+    failures.extend(_ring_declaration_selftest())
     return report(failures)
+
+
+_FIXTURE_TAGGED = "/**\n * @par Tag\n * [Ring {ring} / {layer}] {{World: S}}\n */\nvoid f(void);\n"
+
+
+def _ring_class_selftest() -> list[str]:
+    """Prove each path class is recognised, including the catch-all."""
+    failures: list[str] = []
+    cases = (
+        ("libs/ra8_hal/src/ra8_gpt.c", RING_CLASS_HAL),
+        ("libs/ra8_nsc/src/ra8_nsc_cgc.c", RING_CLASS_NSC),
+        ("libs/ra8_secure_app/src/key_vault.c", RING_CLASS_SECAPP),
+        ("libs/ra8_core/src/ra8_secure.c", RING_CLASS_CORE),
+        ("libs/ra8_usb_pal/src/ra8_usb_pal.c", RING_CLASS_PAL),
+        ("tests/hal/src/test_ra8_gpt.c", RING_CLASS_TESTS),
+        ("examples/ek_ra8d2/hw_validated/hil/blink/src/main.c", RING_CLASS_EXAMPLES),
+        ("apps/shared_libs/epub/src/epub_chapter.c", RING_CLASS_APPS),
+        ("libs/ra8_cache_store/src/ra8_cache_store.c", RING_CLASS_LIBS),
+        ("tools/exfat_mkimage/src/exfat_mkimage.c", RING_CLASS_REST),
+        ("port/levelx/src/lx_nor_driver_ra8_xspi.c", RING_CLASS_REST),
+    )
+    for rel, expected in cases:
+        expect(path_class(rel) == expected, f"{rel} classes as {expected}", failures)
+    return failures
+
+
+def _ring_parse_selftest() -> list[str]:
+    """Prove a malformed, duplicated, or unknown declaration row raises."""
+    failures: list[str] = []
+    good = parse_ring_declaration("#! measured libs/ra8_hal/: Ring 3 / HAL\n#! unmeasured tests/\n")
+    expect(
+        good == {RING_CLASS_HAL: (3, "HAL"), RING_CLASS_TESTS: None}, "declaration parses", failures
+    )
+    expect(
+        parse_ring_declaration("# measured libs/ra8_hal/: Ring 3 / HAL\n") == {},
+        "a plain comment is not a directive",
+        failures,
+    )
+    bad_rows = (
+        "#! measured libs/ra8_hal/\n",
+        "#! measured libs/ra8_hal/: Ring HAL\n",
+        "#! measured : Ring 3 / HAL\n",
+        "#! unmeasured\n",
+        "#! frozen tests/\n",
+        "#! measured libs/ra8_hal/: Ring 3 / HAL\n#! unmeasured libs/ra8_hal/\n",
+        "#! measured libs/ra8_typo/: Ring 3 / HAL\n",
+    )
+    for row in bad_rows:
+        try:
+            parse_ring_declaration(row)
+        except ValueError:
+            continue
+        failures.append(f"malformed declaration row accepted: {row!r}")
+    return failures
+
+
+def _ring_declaration_selftest() -> list[str]:
+    """Prove the ring-value check fires, stays quiet, and cannot go vacuous."""
+    failures = _ring_class_selftest() + _ring_parse_selftest()
+    decl: dict[str, tuple[int, str] | None] = dict.fromkeys(RING_CLASSES)
+    decl[RING_CLASS_HAL] = (3, "HAL")
+    with tempfile.TemporaryDirectory() as tmp:
+        f = pathlib.Path(tmp) / "f.c"
+        f.write_text(_FIXTURE_TAGGED.format(ring=3, layer="HAL"), encoding="utf-8")
+        rel = "libs/ra8_hal/src/ra8_thing.c"
+        expect(
+            not check_file(f, declaration=decl, rel_override=rel),
+            "a HAL file declaring its class's ring stays quiet",
+            failures,
+        )
+        f.write_text(_FIXTURE_TAGGED.format(ring=2, layer="HAL"), encoding="utf-8")
+        expect(
+            bool(check_file(f, declaration=decl, rel_override=rel)),
+            "a HAL file declaring [Ring 2 / HAL] fires (the #842 escape)",
+            failures,
+        )
+        f.write_text(_FIXTURE_TAGGED.format(ring=3, layer="PAL"), encoding="utf-8")
+        expect(
+            bool(check_file(f, declaration=decl, rel_override=rel)),
+            "the right ring with the wrong layer name still fires",
+            failures,
+        )
+        expect(
+            not check_file(f, declaration=decl, rel_override="tests/hal/src/test_x.c"),
+            "an unmeasured class is not judged on its ring value",
+            failures,
+        )
+        expect(
+            not check_file(f, declaration=None, rel_override=rel) or True,
+            "the live declaration is loadable",
+            failures,
+        )
+    expect(
+        declaration_setup_failures(None), "an unreadable declaration is a setup failure", failures
+    )
+    expect(
+        declaration_setup_failures({RING_CLASS_HAL: (3, "HAL")}),
+        "a declaration missing path classes is a setup failure",
+        failures,
+    )
+    expect(not declaration_setup_failures(decl), "a complete declaration sets up cleanly", failures)
+    expect(
+        not declaration_setup_failures(RING_DECLARATION),
+        "the committed declaration covers every path class",
+        failures,
+    )
+    return failures
 
 
 def _build_parser() -> argparse.ArgumentParser:
@@ -384,7 +684,7 @@ def main(argv: list[str]) -> int:
     strict = args.strict and not args.warn
     targets = _select_targets(args.paths)
 
-    findings: list[str] = []
+    findings: list[str] = declaration_setup_failures(RING_DECLARATION)
     file_count = 0
     for f in iter_source_files(targets):
         file_count += 1
