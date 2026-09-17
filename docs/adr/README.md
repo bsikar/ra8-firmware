@@ -28,6 +28,7 @@ https://cognitect.com/blog/2011/11/15/documenting-architecture-decisions
 | [0005](./0005-multi-language-documentation-architecture.md) | Multi-language documentation architecture (Markdown hub, Zig autodoc, rustdoc, Doxygen C ABI) | Accepted |
 | [0006](./0006-naming-linkage-backlog-sequencing.md)      | Sequencing the naming/linkage legacy backlog                        | Proposed |
 | [0007](./0007-front-light-driver-interface.md)            | Warm/cool front-light channels on a two-sink boost driver fed from the battery | Proposed |
+| [0008](./0008-vendoring-completeness-contract.md)        | Vendoring-completeness contract for third-party components          | Proposed |
 
 ## Authoring a new ADR
 
