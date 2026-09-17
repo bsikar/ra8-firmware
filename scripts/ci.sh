@@ -240,6 +240,7 @@ if [[ "$-" == *p* ]]; then
     "runner-image-deps|manual|every require_cmd/require_python_mod tool exists in the runner image"
     "hil-all|manual|hardware-in-the-loop suite on the bench EK-RA8D2"
     "bench-lock-selftest|manual|the bench lock proved against the real bench host"
+    "macos-host-build|manual|Zig host build roots build and test natively on arm64 macOS"
   )
 
   # ===========================================================================
