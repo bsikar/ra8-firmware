@@ -28,7 +28,7 @@ gate flagged 27 candidates of which 24 were correct by design:
     headless stand-in for the Cocoa window layer on Linux CI; it reports
     failure honestly so callers take their headless branch);
   * the fail-closed ``#else`` half of the placeholder-crypto guard, which
-    ``check_stub_crypto_guarded.py`` *requires* to return a hard error;
+    ``check_stub_crypto_guarded`` *requires* to return a hard error;
   * callbacks matching a vtable / registry signature that genuinely have
     nothing to do (USBX activate / deactivate hooks, an empty ISR completion
     callback, a ra8_emulator MMIO write handler for a deliberately inert
@@ -262,7 +262,7 @@ def preceding_doc(text: str, start: int) -> str:
 def in_failclosed_crypto_guard(raw: str, offset: int) -> bool:
     """True if the offset sits in the #else half of the placeholder-crypto guard.
 
-    ``check_stub_crypto_guarded.py`` REQUIRES those bodies to return a hard
+    ``check_stub_crypto_guarded`` REQUIRES those bodies to return a hard
     error so a production image cannot ship fake crypto. Firing on them would
     pit one gate against another.
     """

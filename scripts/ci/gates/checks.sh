@@ -355,8 +355,8 @@ _pcc_security_invariants() (
   # must sit behind the RA8_INSECURE_STUB_CRYPTO / RA8_OFF_TARGET guard
   # with a fail-closed #else, so a release image that forgot to swap in real
   # crypto fails closed instead of shipping the stub (#180).
-  python3 scripts/checks/check_stub_crypto_guarded.py --selftest
-  python3 scripts/checks/check_stub_crypto_guarded.py
+  bash scripts/builders/check_stub_crypto_guarded.sh --selftest
+  bash scripts/builders/check_stub_crypto_guarded.sh
   # No function may exist only to satisfy the linker. Two narrowly-calibrated
   # rules: SHADOW (a do-nothing second definition of a symbol implemented for
   # real elsewhere -- the tools/*/webp_stub.c case, which made both host tools
