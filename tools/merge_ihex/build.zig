@@ -57,4 +57,16 @@ pub fn build(b: *std.Build) void {
     const test_step = b.step("test", "Run merge_ihex tests");
     test_step.dependOn(&b.addRunArtifact(internal_tests).step);
     test_step.dependOn(&b.addRunArtifact(cli_tests).step);
+
+    const docs_object = b.addObject(.{
+        .name = "merge_ihex_docs",
+        .root_module = executable.root_module,
+    });
+    const install_docs = b.addInstallDirectory(.{
+        .source_dir = docs_object.getEmittedDocs(),
+        .install_dir = .prefix,
+        .install_subdir = "merge_ihex",
+    });
+    const docs_step = b.step("docs", "Emit Zig autodoc HTML into <prefix>/merge_ihex");
+    docs_step.dependOn(&install_docs.step);
 }

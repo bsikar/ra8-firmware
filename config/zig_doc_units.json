@@ -1,0 +1,44 @@
+{
+  "schema_version": 1,
+  "output_subdir": "api/zig",
+  "documented": [
+    {
+      "name": "reg_gen",
+      "build_root": "apps/host/reg_gen",
+      "title": "reg_gen (host register generator)",
+      "summary": "Generates register accessor tables consumed by the firmware build."
+    },
+    {
+      "name": "image_pyramid",
+      "build_root": "apps/host/image_pyramid",
+      "title": "image_pyramid (host JPEG degradation tool)",
+      "summary": "Host tool that builds deliberately degraded JPEG levels over the ra8_jpeg C sources."
+    },
+    {
+      "name": "firmware_pipeline",
+      "build_root": "apps/host/firmware_pipeline/zig",
+      "title": "firmware_pipeline (Zig ABI adapter)",
+      "summary": "Zig side of the firmware_pipeline C ABI, plus the Zig-to-Rust adapter surface."
+    },
+    {
+      "name": "merge_ihex",
+      "build_root": "tools/merge_ihex",
+      "title": "merge_ihex (Intel HEX merge tool)",
+      "summary": "Merges a Secure and a Non-Secure image into one flashable Intel HEX file."
+    }
+  ],
+  "excluded": [
+    {
+      "build_root": "tests/zig_abi_fixture",
+      "reason": "ABI conformance fixture, not a first-party API surface"
+    },
+    {
+      "build_root": "tests/abi_chain_fixture",
+      "reason": "ABI chain fixture exercising the C-to-Zig call chain in tests only"
+    },
+    {
+      "build_root": "tests/rust_abi_fixture/zig",
+      "reason": "Rust-to-Zig ABI fixture, exercised by the rust-abi gate only"
+    }
+  ]
+}

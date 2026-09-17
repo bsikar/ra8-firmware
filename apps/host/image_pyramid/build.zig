@@ -56,4 +56,13 @@ pub fn build(b: *std.Build) void {
 
     const test_step = b.step("test", "Run image pyramid tests");
     test_step.dependOn(&b.addRunArtifact(tests).step);
+
+    const docs_object = b.addObject(.{ .name = "image_pyramid_docs", .root_module = app_module });
+    const install_docs = b.addInstallDirectory(.{
+        .source_dir = docs_object.getEmittedDocs(),
+        .install_dir = .prefix,
+        .install_subdir = "image_pyramid",
+    });
+    const docs_step = b.step("docs", "Emit Zig autodoc HTML into <prefix>/image_pyramid");
+    docs_step.dependOn(&install_docs.step);
 }
