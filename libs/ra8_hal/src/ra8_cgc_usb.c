@@ -18,9 +18,9 @@
  * `ra8_cgc_internal.h`; `priv_ra8_cgc_ensure_hoco_running_for_usb_ck` is defined
  * here and reused by `ra8_cgc_eswclk.c`.
  *
- * @par Tag ring/world:
- * Ring 1 (HAL), World S (secure-callable). Same ring/world as the parent
- * `ra8_cgc.c`.
+ * @par Tag
+ * [Ring 3 / HAL] {World: S}
+ * Secure-callable; same ring and world as the parent `ra8_cgc.c`.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
