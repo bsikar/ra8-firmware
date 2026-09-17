@@ -62,11 +62,10 @@ add_test(NAME test_ra8_fs_exfat COMMAND test_ra8_fs_exfat)
 # supplies ra8_log / ra8_err / ra8_vsource. LevelX is SOUP: compile it -w and it is
 # already outside the coverage filter (libs/third_party/).
 # ---------------------------------------------------------------------------
-# Partial migration (#201 / zig epic): the runtime path is a Zig archive
-# (ra8_zig::ra8_cache_store, registered in zig_libraries.cmake) and only the
-# mount / recovery TU is still C, so this glob now matches
-# ra8_cache_store_mount.c alone. Keep it until that TU moves too.
-file(GLOB RA8_CACHE_STORE_SOURCES CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra8_cache_store/src/*.c)
+# Fully migrated (#201 / zig epic): ra8_cache_store has no C sources left. Both
+# halves, the runtime path and the mount / recovery path, are the Zig archive
+# ra8_zig::ra8_cache_store registered in zig_libraries.cmake, so there is no
+# source glob for this library any more.
 file(GLOB RA8_LEVELX_NOR_STANDALONE CONFIGURE_DEPENDS
      ${FW_ROOT}/libs/third_party/levelx/common/src/lx_nor_*.c
 )
@@ -81,7 +80,6 @@ list(
 add_executable(
   test_ra8_cache_store
   ${CMAKE_CURRENT_SOURCE_DIR}/misc/src/test_ra8_cache_store.c
-  ${RA8_CACHE_STORE_SOURCES}
   ${RA8_LEVELX_NOR_STANDALONE}
   ${CMAKE_CURRENT_SOURCE_DIR}/mocks/src/lx_nor_fake_ram.c
   $<TARGET_OBJECTS:ra8_core_hal>
@@ -140,8 +138,8 @@ add_test(NAME test_lx_fs_backend COMMAND test_lx_fs_backend)
 # test_cache_store_demo (#257): the ra8_cache_store_demo example core on the host.
 # Compiles the SAME demo core (cache_store_demo.c) and RAM NOR driver
 # (lx_nor_ram.c) the ARM example runs, so the host test and the ra8_emulator gate
-# exercise byte-identical logic. Reuses the cache_store + LevelX-standalone
-# sources globbed for test_ra8_cache_store above; ra8_core_hal supplies ra8_log /
+# exercise byte-identical logic. Links the same Zig cache-store
+# archive and reuses the LevelX-standalone sources globbed above; ra8_core_hal supplies ra8_log /
 # ra8_err / ra8_check. The example sources live under examples/ (outside the
 # coverage filter), so they add no per-file coverage-floor obligation.
 # ---------------------------------------------------------------------------
@@ -151,7 +149,6 @@ add_executable(
   ${CMAKE_CURRENT_SOURCE_DIR}/misc/src/test_cache_store_demo.c
   ${RCS_DEMO_DIR}/src/cache_store_demo.c
   ${RCS_DEMO_DIR}/src/lx_nor_ram.c
-  ${RA8_CACHE_STORE_SOURCES}
   ${RA8_LEVELX_NOR_STANDALONE}
   $<TARGET_OBJECTS:ra8_core_hal>
 )

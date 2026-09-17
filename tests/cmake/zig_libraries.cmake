@@ -56,13 +56,12 @@ ra8_add_zig_library(
   ra8_devcfg
 )
 
-# Runtime path only so far: put / get / read / evict / pin / sync / close are
-# Zig, while the mount and recovery TU (ra8_cache_store_mount.c) is still C and
-# still defines the seven priv_cache_store_* helpers this archive calls. The
-# RA8_CACHE_STORE_SOURCES glob in tests_storage.cmake therefore stays, now
-# matching that one file. The cache-store targets consume ra8_core_hal through
-# $<TARGET_OBJECTS:>, which carries no link dependencies, so they link this
-# archive by name in tests_storage.cmake rather than through the list below.
+# Fully migrated: the runtime path (put / get / read / evict / pin / sync /
+# close) and the mount / recovery path both live in this archive, so
+# tests_storage.cmake no longer globs any C sources for the library. The
+# cache-store targets consume ra8_core_hal through $<TARGET_OBJECTS:>, which
+# carries no link dependencies, so they link this archive by name in
+# tests_storage.cmake rather than through the list below.
 ra8_add_zig_library(
   NAME
   ra8_cache_store
