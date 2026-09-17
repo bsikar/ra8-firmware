@@ -28,7 +28,7 @@ The build selects exactly one device through `libs/ra8_core/inc/ra8_device.h`:
 | Define | Set by | Meaning |
 |--------|--------|---------|
 | `RA8_DEVICE_RA8D2` | Default when no device flag is supplied | RA8D2 and the current default build. |
-| `RA8_DEVICE_RA8P1` | `cmake/toolchain-ra8p1.cmake` | RA8P1, including the NPU and double-precision FPU configuration. |
+| `RA8_DEVICE_RA8P1` | `cmake/toolchain-ra8p1.cmake` | RA8P1, including the NPU. Same `-mfpu` as the RA8D2 (FPU correction below). |
 
 Feature code uses the derived `RA8_HAS_NPU` and `RA8_HAS_NPUCLK` capability
 macros instead of testing the device name directly. `ra8_emulator` mirrors the
@@ -62,8 +62,8 @@ draft of this table listed one, but it does not exist (see "Correction" below).
 
 1. **+ Ethos-U55 NPU** (256 8x8 MACs, up to 500 MHz, ~256 GOPS, 8/16-bit CNN+RNN)
 2. **ADC 16-bit** (ADC16H x2, datasheet) vs 12-bit (FSP comment) -- base unchanged
-3. **M85 double-precision-capable FPU** (datasheet) vs FSP CMSIS `__FPU_DP=0`
-   -- we build `fpv5-sp-d16` (correctness-safe on both); DP is a perf follow-up
+3. ~~**M85 double-precision-capable FPU**~~ -- **not a delta**, resolved in
+   issue #225; both parts build `fpv5-sp-d16` (see the correction below)
 4. + DOC alias; + `IOPORT_PERIPHERAL_ESC` pin function; ADC-sensor sampling-time flag
 
 An earlier revision listed "- OFS3 / WDT1 option register" as delta 2. It is not
@@ -73,6 +73,55 @@ The host and emulator paths cover the device switch, OFS handling, FPU probe,
 NPU driver and Ethos-U adapter. On-silicon NPU clock, interrupt and
 Vela-compiled-model validation remain tracked by issue #229 because they
 require an RA8P1 evaluation kit.
+
+## Correction: the DP-FPU is not an RA8P1 delta (issue #225)
+
+Delta 3 above used to read "M85 double-precision-capable FPU (datasheet) vs FSP
+CMSIS `__FPU_DP=0`", resolved in the datasheet's favour, and
+`cmake/toolchain-ra8p1.cmake` acted on that by overriding `-mfpu` to
+`fpv5-d16` for every RA8P1 build, behind a live `[CONFIRM]` marker. Both sources
+have now been read directly, and neither supports an RA8P1-specific
+double-precision build.
+
+**FSP CMSIS declares no DP FPU anywhere on RA8.** The `Configuration_of_CMSIS`
+block of each device header:
+
+| Header | Core | `__FPU_PRESENT` | `__FPU_DP` |
+|---|---|---|---|
+| `R7KA8P1KF_core0.h` | RA8P1 primary Cortex-M85 (`__CM85_REV 0x0002`) | 1 | **0** |
+| `R7KA8P1KF_core1.h` | RA8P1 secondary Cortex-M33 (`__CM33_REV 0x0004`) | 1 | **0** |
+| `R7KA8D2KF_core0.h` | RA8D2 primary Cortex-M85 (`__CM85_REV 0x0002`) | 1 | **0** |
+
+The RA8P1 and RA8D2 primary-core headers are identical through that block, so
+the vendor's own device metadata draws no distinction to act on.
+
+**The datasheet sentence is family wording, not a part difference.** RA8P1
+datasheet R01DS0439EJ0130, Table 1.1 "Function Outline", Arm core row, says of
+the Cortex-M85 (r1p1-00rel0): "Floating Point Unit (FPU) compliant with the
+ANSI/IEEE Std 754-2008 / Scalar half, single, and double-precision
+floating-point operation". The **RA8D2** datasheet R01DS0493EJ says exactly the
+same sentence about **its** M85, and this tree builds the RA8D2
+single-precision. The wording describes the Cortex-M85 FPU the family licenses.
+It is not boilerplate per document either: both datasheets separately describe
+the secondary M33 as "single-precision" only, so the per-core wording is
+deliberate, it just does not differ between the two parts.
+
+**What changed in the tree.** The RA8P1 now inherits `-mfpu=fpv5-sp-d16` from
+`toolchain-ra8d2.cmake` like everything else, which is the correctness-safe
+option on a part whose vendor header declares no DP FPU: `.f64` opcodes are
+UNDEFINED on a single-precision FPU, i.e. a HardFault on first silicon. The DP
+build survives as an explicit bench switch for the #229 benchmark,
+`-DRA8P1_DP_FPU=ON`, which appends `-mfpu=fpv5-d16` and defines
+`RA8_FPU_DP_ENABLED`; `libs/ra8_hal/inc/ra8_fpu_probe.h` refuses any build where
+that define and the compiler's actual `__ARM_FP` disagree. Both newlib-nano
+multilibs ship in the pinned Arm GNU Toolchain 13.3.Rel1 (`fpv5-d16` selects
+`thumb/v8-m.main+dp/hard`, `fpv5-sp-d16` selects `thumb/v8-m.main+fp/hard`), so
+the switch links either way; what no host check can settle is whether this
+silicon executes `.f64` at all. That measurement is #229's, on an RA8P1 EK.
+
+**The other half of #225, the 16-bit ADC, was already done** by `ac5401343`
+(`k_ra8_adc_res_{16,14,12,10}bit` mapped to `ADDOPCRCn.ADPRC[1:0]`, HUM Ch 53.2.3.4
+p 3339) and is untouched here.
 
 ## Correction: no legacy ETHERC/EDMAC MAC on the RA8P1 (issue #224)
 
@@ -169,7 +218,8 @@ read directly and full-text searched -- see the two "Correction" sections above)
 > page, as the corrections do. FSP metadata is a lead, never a citation.
 
 FSP `github.com/renesas/fsp`
-(`R7KA8{P1,D2}KF_core0.h`, `bsp/mcu/ra8{p1,d2}/{bsp_elc,bsp_feature,bsp_peripheral}.h`,
+(`R7KA8{P1,D2}KF_core0.h` and `R7KA8P1KF_core1.h` read at commit
+`6e26753`, the source for the FPU correction above; `bsp/mcu/ra8{p1,d2}/{bsp_elc,bsp_feature,bsp_peripheral}.h`,
 `bsp/mcu/all/bsp_module_stop.h`, `ra/board/ra8p1_ek/board.h`); Zephyr
 `dts/arm/renesas/ra/ra8/r7ka8{p1,d2}kflcac*.dtsi`; Renesas part page
 `r7ka8p1kflcac-uc0`.
