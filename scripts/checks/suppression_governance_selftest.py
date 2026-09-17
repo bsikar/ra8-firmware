@@ -465,7 +465,6 @@ def _assert_scope_registry(root: Path, failures: list[str]) -> None:
     """Assert the census classifies every constant and new names fail closed."""
     representative = {
         "scripts/checks/annot_scope.py:SCAN_DIRS",
-        "scripts/checks/check_mcdc_floor.py:OUT_OF_SCOPE_PREFIXES",
         "scripts/checks/annot_clang.py:GENERATED_HEADERS",
         "scripts/checks/check_core_layering.py:HOSTED_HEADERS",
         "scripts/checks/check_magic_numbers.py:IGNORED_INT",
