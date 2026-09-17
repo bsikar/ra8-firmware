@@ -88,7 +88,7 @@ ascii:
 
 # Verify @since version tags
 version:
-    python3 scripts/checks/check-since-version.py --all
+    bash scripts/builders/check_since_version.sh --all
 
 # Run host unit tests
 test ubsan="0":

@@ -603,8 +603,8 @@ gate_copyright() (
 # @since values sat there unseen. --selftest proves both halves first.
 gate_since() (
   set -e
-  python3 scripts/checks/check-since-version.py --selftest
-  python3 scripts/checks/check-since-version.py --all
+  bash scripts/builders/check_since_version.sh --selftest
+  bash scripts/builders/check_since_version.sh --all
 )
 
 # --- toolchain-parity -----------------------------------------------------
