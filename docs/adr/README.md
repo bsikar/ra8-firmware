@@ -26,17 +26,6 @@ https://cognitect.com/blog/2011/11/15/documenting-architecture-decisions
 | [0003](./0003-test-only-internal-headers.md)             | Test-only access to internal symbols via `<module>_internal.h`      | Accepted |
 | [0004](./0004-deactivated-condition-policy.md)           | DO-178C 6.4.4.3 deactivated-condition policy with regen-script auto-classification | Accepted |
 | [0005](./0005-multi-language-documentation-architecture.md) | Multi-language documentation architecture (Markdown hub, Zig autodoc, rustdoc, Doxygen C ABI) | Accepted |
-| [0006](./0006-naming-linkage-backlog-sequencing.md)      | Sequencing the naming/linkage legacy backlog                        | Proposed |
-| [0007](./0007-front-light-driver-interface.md)            | Warm/cool front-light channels on a two-sink boost driver fed from the battery | Proposed |
-| [0008](./0008-vendoring-completeness-contract.md)        | Vendoring-completeness contract for third-party components          | Proposed |
-| [0009](./0009-ereader-input-and-service-interfaces.md)   | E-reader input, wake and service-access interfaces                  | Proposed |
-| [0010](./0010-sdram-interface-supply-domain.md)            | Bound the SDRAM interface supply domain (VCC, VCC2) separately from the main rail | Proposed |
-| [0011](./0011-chip-boot-duplication-across-board-libraries.md) | Chip-level boot code duplicated across the two board libraries      | Proposed |
-| [0012](./0012-c23-capability-and-abi-contract-assertion.md) | Where the C23 capability and ABI contract is asserted               | Proposed |
-| [0013](./0013-reflow-named-character-references.md)      | Named character reference set for the v1 reflow reader              | Proposed |
-| [0014](./0014-c23-subset-enforcement-surfaces.md)        | Where the approved C23 subset is enforced, and what an analyzer-coverage claim may rest on | Proposed |
-| [0015](./0015-panel-tone-curve-calibration-record.md)    | Per-panel tone-curve calibration record and bench procedure         | Proposed |
-| [0016](./0016-usb-cdc-example-duplication.md)            | One USBX CDC echo example, and the first-party CDC layer            | Proposed |
 
 ## Authoring a new ADR
 
