@@ -711,6 +711,109 @@ RA8_INTERNAL static void internal_test_vmem_stream_guards(void)
 }
 
 /* ---------------------------------------------------------------------------
+ * Test: ra8_vmem_stream_read_checked -- failure is not end-of-file (#764).
+ * ---------------------------------------------------------------------------
+ */
+
+/**
+ * @test internal_test_vmem_stream_checked_read
+ * @brief The checked read separates the three outcomes the byte count conflates:
+ *        a served span (ok, `*out_read == len`), a span clamped by the object end
+ *        (ok, `*out_read < len`), a read at/after the end (ok, `*out_read == 0`),
+ *        and a failed page-in (non-ok, with the bytes copied so far reported and
+ *        the failure parked on the binding for the legacy reader to find).
+ *
+ * @par MC/DC:
+ * (no compound decisions under test -- each guard is an independent single
+ * condition; the EOF, clamp and failure arms are separate single-condition
+ * branches inside the checked read.) @details Executes the checked-read outcome scenario over the real page cache with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_vmem_stream_checked_read(void)
+{
+  TEST_BEGIN("ra8_vmem_stream: checked read tells failure from EOF");
+  internal_build_big_epub();
+  s_fixture.storage_bytes = 0U;
+  (void)memset(s_fixture.meta, 0, sizeof(s_fixture.meta));
+
+  ra8_vsource_t     vs      = {};
+  ra8_vsource_obj_t objs[1] = {};
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_vsource_init(&vs, objs, 1U));
+  uint32_t obj = 0U;
+  TEST_ASSERT_EQ(k_ra8_ok,
+                 ra8_vsource_add_paged(&vs,
+                                       internal_storage_read,
+                                       nullptr,
+                                       0U,
+                                       (uint64_t)s_fixture.archive_size,
+                                       &obj));
+  ra8_vmem_t     vm  = {};
+  ra8_vmem_cfg_t cfg = internal_esb_vmem_cfg(&vs);
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_vmem_init(&vm, &cfg));
+  ra8_vmem_stream_t st = {};
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_vmem_stream_init(&st, &vm, obj, (uint64_t)s_fixture.archive_size));
+
+  /* A fresh binding carries no verdict. */
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_vmem_stream_last_err(&st));
+
+  /* Argument guards, each failing alone. */
+  uint8_t probe[k_span_probe] = {};
+  size_t  got                 = 0U;
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr,
+                 ra8_vmem_stream_read_checked(nullptr, 0U, probe, sizeof(probe), &got));
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr,
+                 ra8_vmem_stream_read_checked(&st, 0U, nullptr, sizeof(probe), &got));
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr,
+                 ra8_vmem_stream_read_checked(&st, 0U, probe, sizeof(probe), nullptr));
+  TEST_ASSERT_EQ(k_ra8_err_invalid_size,
+                 ra8_vmem_stream_read_checked(&st, 0U, probe, 0U, &got));
+  TEST_ASSERT_EQ(0U, got); /* the count out-param is cleared before any guard returns */
+
+  /* A span that crosses a frame boundary: ok, fully served, byte-correct. */
+  const uint64_t span_off = (uint64_t)k_frame_bytes - 10U;
+  TEST_ASSERT_EQ(k_ra8_ok,
+                 ra8_vmem_stream_read_checked(&st, span_off, probe, sizeof(probe), &got));
+  TEST_ASSERT_EQ((size_t)k_span_probe, got);
+  TEST_ASSERT_EQ(0, memcmp(probe, &s_fixture.archive[span_off], (size_t)k_span_probe));
+
+  /* A span straddling the object end is CLAMPED, not an error. */
+  const uint64_t tail_off = (uint64_t)s_fixture.archive_size - 4U;
+  TEST_ASSERT_EQ(k_ra8_ok,
+                 ra8_vmem_stream_read_checked(&st, tail_off, probe, sizeof(probe), &got));
+  TEST_ASSERT_EQ(4U, got);
+
+  /* At/after the end: zero bytes, and still not an error. */
+  TEST_ASSERT_EQ(
+    k_ra8_ok,
+    ra8_vmem_stream_read_checked(&st, (uint64_t)s_fixture.archive_size, probe, 4U, &got));
+  TEST_ASSERT_EQ(0U, got);
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_vmem_stream_last_err(&st)); /* EOF never parks a verdict */
+
+  /* A failed page-in: the object id is not registered, so ra8_vmem_get refuses.
+   * This is the case the byte count cannot express -- 0 bytes, exactly like EOF. */
+  ra8_vmem_stream_t bad = {};
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_vmem_stream_init(&bad, &vm, obj + 7U, k_epub_entry_bytes));
+  got = 0U;
+  TEST_ASSERT(k_ra8_ok != ra8_vmem_stream_read_checked(&bad, 0U, probe, 4U, &got));
+  TEST_ASSERT_EQ(0U, got);
+  const ra8_err_t parked = ra8_vmem_stream_last_err(&bad);
+  TEST_ASSERT(k_ra8_ok != parked);
+
+  /* The legacy reader over the same binding still returns 0 -- indistinguishable
+   * from EOF at the call site -- but the verdict is now retrievable, and the
+   * FIRST failure is the one kept. */
+  TEST_ASSERT_EQ(0U, ra8_vmem_stream_read(&bad, 0U, probe, 4U));
+  TEST_ASSERT_EQ(parked, ra8_vmem_stream_last_err(&bad));
+
+  /* Clearing resets the verdict without touching the binding. */
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_vmem_stream_clear_err(nullptr));
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_vmem_stream_last_err(nullptr));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_vmem_stream_clear_err(&bad));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_vmem_stream_last_err(&bad));
+  TEST_ASSERT_EQ(k_epub_entry_bytes, bad.size);
+
+  TEST_END("ra8_vmem_stream: checked read tells failure from EOF");
+}
+
+/* ---------------------------------------------------------------------------
  * main
  * ---------------------------------------------------------------------------
  */
@@ -731,5 +834,6 @@ int main(void)
   internal_test_stream_via_pagecache_bounded();
   internal_test_stream_open_arg_guards();
   internal_test_vmem_stream_guards();
+  internal_test_vmem_stream_checked_read();
   return 0;
 }

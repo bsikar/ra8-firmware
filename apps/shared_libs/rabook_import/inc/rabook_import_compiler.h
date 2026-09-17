@@ -53,7 +53,8 @@ extern "C" {
  *          `.epub` (#230): it opens the source file, registers it as a paged
  *          `ra8_vsource` object, re-initialises @p cache over the `cache_*`
  *          arrays (so no stale frame from a previous compile can be served),
- *          and streams every ZIP read through `ra8_vmem_stream_read`. The
+ *          and streams every ZIP read through `ra8_vmem_stream_read`, whose
+ *          sticky verdict the adapter checks before publishing the output. The
  *          fixed frame pool (`cache_frame_count * cache_frame_bytes` bytes)
  *          is therefore the compile front-end's entire source-side RAM
  *          high-water mark, independent of the book size. After a compile the
@@ -91,6 +92,13 @@ typedef struct {
  *          runs `rabook_compile_from_epub` to @p out_path, and closes the
  *          book and the source file on every path.
  *
+ *          The streamed reader's seam reports a short read only as a byte count,
+ *          so a card pulled or a CRC fault mid-compile would otherwise reach the
+ *          pipeline as end-of-file and yield a *truncated* `.rabook` reported as
+ *          success. After the compile the adapter asks the stream binding for its
+ *          sticky verdict (`ra8_vmem_stream_last_err`) and fails the import on a
+ *          real read failure instead of publishing the partial book (#764).
+ *
  * @param[in]     compile_ctx Pointer to a @ref rabook_import_compiler_ctx_t.
  * @param[in,out] mount       Mounted volume holding the source and the output.
  * @param[in]     epub_path   Root-level path of the source `.epub`.
@@ -100,11 +108,13 @@ typedef struct {
  * @return Error code.
  * @retval k_ra8_ok           Book compiled and written to @p out_path.
  * @retval k_ra8_err_null_ptr A required pointer (incl. a cookie field) is NULL.
- * @retval k_ra8_err_*        Propagated open / cache-bind / compile error.
+ * @retval k_ra8_err_*        Propagated open / cache-bind / compile error, or the
+ *                            source-read failure the streamed seam swallowed.
  *
  * @pre @p compile_ctx points at a fully-populated cookie.
  * @pre @p mount, @p epub_path, and @p out_path are non-NULL.
- * @post On `k_ra8_ok`, @p out_path holds a valid RABOOK1 blob and the book is closed.
+ * @post On `k_ra8_ok`, @p out_path holds a valid RABOOK1 blob compiled from a
+ *       fully-read source, and the book is closed.
  * @post The source file handle is closed on every return path.
  *
  * @note Not thread-safe.
