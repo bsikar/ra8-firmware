@@ -42,6 +42,7 @@ import fleet_reconcile_recovery_selftest as frr
 import fleet_reconcile_release_selftest as frrl
 import fleet_reconcile_reopen_selftest as frre
 import fleet_reconcile_selftest as frs
+import fleet_reconcile_serving_selftest as frsv
 import fleet_reconcile_settle_selftest as frse
 import fleet_reconcile_stranding_selftest as frst
 import fleet_wsl as fw
@@ -106,6 +107,11 @@ CASCADE_STATUS = 5
 # Every verb that can move a host's capacity.  A failure that issued none of
 # them cannot have stranded the host, whatever else went wrong.
 CAPACITY_MUTATION_VERBS = frozenset({"parked-apply", "quarantine", "restore", "activate"})
+# The verbs that put capacity back into service.  Both are followed by a
+# verifying check, and every path that fails one of those checks drains the
+# host afterwards, so a transaction whose LAST capacity verb reopened capacity
+# ended with the host serving and proven (issue #888).
+CAPACITY_REOPEN_VERBS = frozenset({"restore", "activate"})
 SHA256_RE = re.compile(r"[0-9a-f]{64}")
 ANSI_RE = re.compile(r"\x1b\[[0-9;]*m")
 
@@ -610,6 +616,11 @@ def capacity_mutation(verb: str) -> bool:
     return verb in CAPACITY_MUTATION_VERBS
 
 
+def capacity_reopened(verb: str) -> bool:
+    """Return whether the last capacity verb a transaction issued put the host in service."""
+    return verb in CAPACITY_REOPEN_VERBS
+
+
 def capacity_lost(host: str, *, stranded: bool, mutated: bool) -> bool:
     """Return whether this pass actually took a failed host's capacity down.
 
@@ -723,6 +734,38 @@ def clear_stranding(stranding: dict[str, dict[str, int]], host: str) -> bool:
     return True
 
 
+def clear_reopened_stranding(stranding: dict[str, dict[str, int]], host: str) -> bool:
+    """Forget a stranded-at-zero record for a host this pass put back into service.
+
+    A failed pass can still end with capacity REOPENED and verified: an apply
+    that fails with no prior drift leaves the host running the declaration it
+    was already converged on, so its last-known-good capacity is restored and
+    proven instead of held at zero.  That pass fails, and every failure that
+    cost no capacity aged the stranded-at-zero record, so a host drained once
+    and then restored on every pass after it kept counting passes it spent
+    SERVING.  Three of them and the controller escalated CRITICAL and
+    ``STRANDED_STATUS`` over a host carrying work, which spends the loudness
+    issue #888 exists to buy on a false alarm.  The stale record is also read
+    as proof of capacity nobody has: its consumers earn provisional receipts
+    against an image that is being served, and the pass drain budget treats a
+    serving host as having nothing left to lose, so the next pass may take it
+    to zero for free.  Only the record is cleared here: the pass still fails
+    and the receipt is still gone, so the host converges again next pass.
+    """
+    entry = stranding.get(host)
+    if entry is None:
+        return False
+    print(
+        f"fleet-reconcile: WARNING: {host}: capacity was REOPENED and verified by this "
+        f"pass after {entry['passes']} pass(es) recorded at ZERO; this pass still fails, "
+        "but the host is serving last-known-good capacity, so it is no longer recorded "
+        "at zero",
+        file=sys.stderr,
+    )
+    del stranding[host]
+    return True
+
+
 def prune_unmanaged_stranding(
     stranding: dict[str, dict[str, int]], hosts: Sequence[str], now: int
 ) -> list[str]:
@@ -793,6 +836,7 @@ def invalidate_receipt(  # noqa: PLR0913  # the receipt plus every record one fa
     *,
     stranded: bool,
     at_zero: bool = True,
+    reopened: bool = False,
 ) -> None:
     """Drop a failed host's receipt, counting a pass that left it at zero.
 
@@ -804,10 +848,14 @@ def invalidate_receipt(  # noqa: PLR0913  # the receipt plus every record one fa
     drained again every pass and would otherwise halt the pass that finally
     repairs them.  And a host whose drain was REFUSED is unaccounted for rather
     than at zero, since it may well still be serving, so it must not stop the
-    rest of the fleet reconciling either.
+    rest of the fleet reconciling either.  And a pass that ended by REOPENING
+    this host's capacity has proven it serving, so it clears the record instead
+    of counting another pass at zero against a host that is carrying work.
     """
     receipts.pop(host, None)
     if not stranded:
+        if reopened and clear_reopened_stranding(stranding, host):
+            return
         age_stranding(stranding, host, now, "this pass failed without taking capacity down")
         return
     newly_drained = host not in stranding
@@ -1188,12 +1236,12 @@ def reconcile(
             continue
 
         receipt_invalidated = False
-        mutated = False
+        last_mutation = ""
 
         def transaction_run(argv: Sequence[str], target: str = host) -> frp.CommandResult:
-            nonlocal receipt_invalidated, mutated
+            nonlocal receipt_invalidated, last_mutation
             verb, _command_host = _command_identity(argv)
-            mutated = mutated or capacity_mutation(verb)
+            last_mutation = verb if capacity_mutation(verb) else last_mutation
             if verb == "parked-apply" and not receipt_invalidated:
                 receipts.pop(target, None)
                 save_state(state_path, document)
@@ -1221,7 +1269,7 @@ def reconcile(
         if not ok:
             failures += 1
             if options.mode == "apply":
-                lost = capacity_lost(host, stranded=stranded, mutated=mutated)
+                lost = capacity_lost(host, stranded=stranded, mutated=bool(last_mutation))
                 invalidate_receipt(
                     receipts,
                     stranding,
@@ -1230,6 +1278,7 @@ def reconcile(
                     options.now,
                     stranded=lost,
                     at_zero=host not in undrained,
+                    reopened=capacity_reopened(last_mutation),
                 )
                 save_state(state_path, document)
             if index == 0 and options.mode == "apply":
@@ -1802,6 +1851,7 @@ def selftest() -> int:
     failures.extend(frfz.run(sys.modules[__name__]))
     failures.extend(frpr.run(sys.modules[__name__]))
     failures.extend(fro.run(sys.modules[__name__]))
+    failures.extend(frsv.run(sys.modules[__name__]))
     _selftest_state_safety(failures)
     failures.extend(fml.run_selftest())
     _selftest_timeout(failures)
