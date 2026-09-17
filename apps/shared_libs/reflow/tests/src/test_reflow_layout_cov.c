@@ -3,9 +3,9 @@
  * @brief Line-coverage (gcovr) tests for apps/shared_libs/reflow/src/reflow_layout.c.
  *
  * @details
- * The existing MC/DC suite (tests/src/test_reflow_layout.c) drives the layout
- * engine's compound decisions through `reflow_init()` with a *dummy* font, so
- * it never reaches the real line-break / page-break / table body. These tests
+ * The existing MC/DC suite (apps/shared_libs/reflow/tests/src/test_reflow_layout.c) drives the
+ * layout engine's compound decisions through `reflow_init()` with a *dummy* font, so it never
+ * reaches the real line-break / page-break / table body. These tests
  * internal_lay out real content with the fixed-metric Ahem face (the same fixture the
  * alignment tests use, so they never SKIP) to execute the per-element source
  * lines that the decision-only suite leaves cold:

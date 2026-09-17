@@ -5,7 +5,7 @@
  *
  * @details
  * Exposes the small, individually-MC/DC-able helpers of the no-heap XHTML
- * tokenizer so `tests/src/test_reflow_tokenize.c` can drive both arms of
+ * tokenizer so `apps/shared_libs/reflow/tests/src/test_reflow_tokenize.c` can drive both arms of
  * each decision directly (the tokenizer's main loop is otherwise reached
  * only through `priv_reflow_xml_walk`). Not part of the public API.
  *

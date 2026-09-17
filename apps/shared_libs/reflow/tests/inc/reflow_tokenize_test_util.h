@@ -53,9 +53,9 @@ typedef enum : uint32_t {
 /**
  * @brief Run the tokenizer over a NUL-terminated XHTML string.
  *
- * @details Resets the engine's token / text pools then invokes the production
- * single-pass walk, exactly as `tests/src/test_reflow_tokenize.c` does, so the
- * crafted markup drives the real dispatch chain.
+ * @details Resets the engine's token / text pools then invokes the production single-pass walk,
+ * exactly as `apps/shared_libs/reflow/tests/src/test_reflow_tokenize.c` does, so the crafted markup
+ * drives the real dispatch chain.
  *
  * @param[in] xhtml NUL-terminated XHTML source.
  * @return The walk result code.

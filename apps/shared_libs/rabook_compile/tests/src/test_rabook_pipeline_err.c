@@ -9,7 +9,7 @@
  * error-propagation / null-guard / bad-buffer tests; the compile happy
  * path and the byte-identical parity tests stay in
  * test_ra8_rabook_pipeline.c. The synthetic-EPUB builders live in
- * tests/inc/rabook_pipeline_fixture.h.
+ * apps/shared_libs/rabook_compile/tests/inc/rabook_pipeline_fixture.h.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
