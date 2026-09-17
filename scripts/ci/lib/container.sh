@@ -16,9 +16,13 @@
 # Everything here takes its inputs as ARGUMENTS rather than reading ci.sh's
 # globals. That is not style: a sourced file that reads variables it never
 # assigns is a file whose contract is invisible, and shellcheck says so (SC2154).
-# The one thing it does reach back for is ci.sh's own helper functions
-# (export_tools_cache, run_suite_on_snapshot, ra8_tools_cache_host_dir), which
-# are the fallback paths a missing runtime lands on.
+# The one thing it does reach back for is three helper functions from OTHER
+# sourced fragments, the fallback paths a missing runtime lands on:
+# export_tools_cache and ra8_tools_cache_host_dir from ci/lib/tool_env.sh, and
+# run_suite_on_snapshot from ci/lib/snapshot.sh. None of them lives in ci.sh.
+# That is safe because ci.sh sources both fragments before this one and every
+# call here happens inside a function, never at source time; it is written down
+# because "reaches back into ci.sh" sends the next reader to the wrong file.
 #
 # ci_host_mode_exec ends in `exec`, so control never returns to the caller. An
 # `exec` inside a sourced function replaces the same process it would have from
