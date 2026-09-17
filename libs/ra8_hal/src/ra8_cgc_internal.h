@@ -24,9 +24,9 @@
  * This header is internal to the CGC driver -- it is NOT a public API and
  * must not be included outside `libs/ra8_hal/src/ra8_cgc*.c`.
  *
- * @par Tag ring/world:
- * Ring 1 (HAL), World S (secure-callable). Same ring/world as the parent
- * `ra8_cgc.c`.
+ * @par Tag
+ * [Ring 3 / HAL] {World: S}
+ * Secure-callable; same ring and world as the parent `ra8_cgc.c`.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
