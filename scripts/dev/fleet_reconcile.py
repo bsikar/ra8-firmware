@@ -35,6 +35,7 @@ import fleet_reconcile_budget_selftest as frbu
 import fleet_reconcile_cascade_selftest as frc
 import fleet_reconcile_drain_selftest as frd
 import fleet_reconcile_dryrun_selftest as frdr
+import fleet_reconcile_forfeit_selftest as frfo
 import fleet_reconcile_freeze_selftest as frf
 import fleet_reconcile_frozen_selftest as frfz
 import fleet_reconcile_interrupt_selftest as fri
@@ -1727,12 +1728,53 @@ def drain_budget(total: int) -> int:
     return max(1, int(total * PASS_DRAIN_BUDGET_RATIO))
 
 
-def serving_hosts(order: Sequence[str], stranding: dict[str, dict[str, int]]) -> list[str]:
-    """Return the hosts this pass starts with capacity it could still lose."""
-    return [host for host in order if host not in stranding]
+def serving_hosts(
+    order: Sequence[str],
+    stranding: dict[str, dict[str, int]],
+    parked: dict[str, dict[str, int]] | None = None,
+) -> list[str]:
+    """Return the hosts this pass starts with capacity it could still lose.
+
+    A host recorded at zero has none.  Neither has one left holding a DURABLE
+    maintenance park: ``park_maintenance`` writes that marker BEFORE the drain
+    that was then refused, ``cmd_window`` refuses to raise the host's admission
+    while it is there, and only a capacity restore removes it, so that host's
+    admission is already forfeit and this controller is the only thing that can
+    give it back.
+    """
+    held = parked or {}
+    return [host for host in order if host not in stranding and host not in held]
 
 
-def open_drain_budget(order: Sequence[str], stranding: dict[str, dict[str, int]]) -> int:
+def report_forfeit_capacity(
+    order: Sequence[str],
+    serving: Sequence[str],
+    stranding: dict[str, dict[str, int]],
+    parked: dict[str, dict[str, int]],
+    budget: int,
+) -> None:
+    """Say how much capacity this pass starts without, and under which record."""
+    at_zero = [host for host in order if host in stranding]
+    held = [host for host in order if host not in stranding and host in parked]
+    accounts = []
+    if at_zero:
+        accounts.append(f"recorded at ZERO capacity: {', '.join(at_zero)}")
+    if held:
+        accounts.append(f"holding a durable maintenance park: {', '.join(held)}")
+    print(
+        f"fleet-reconcile: WARNING: {len(order) - len(serving)} of {len(order)} host(s) hold "
+        f"no capacity this budget can protect ({'; '.join(accounts)}), so this pass may take "
+        f"at most {budget} of the {len(serving)} still serving "
+        f"({', '.join(serving)}) to zero",
+        file=sys.stderr,
+    )
+
+
+def open_drain_budget(
+    order: Sequence[str],
+    stranding: dict[str, dict[str, int]],
+    parked: dict[str, dict[str, int]] | None = None,
+) -> int:
     """Return how much of the capacity STILL SERVING this pass may take to zero.
 
     The budget protects capacity, so it has to be measured against the capacity
@@ -1745,16 +1787,20 @@ def open_drain_budget(order: Sequence[str], stranding: dict[str, dict[str, int]]
     handed the next pass a budget big enough to empty everything that was left,
     which is issue #888 arriving one pass at a time instead of all at once: no
     single pass looks like an evacuation, and the fleet still ends at zero.
+
+    A DURABLE maintenance park is the other way a host holds no capacity, and
+    it was counted in that fleet size too.  ``consumer_held`` exempts a parked
+    host from the budget for exactly the reason a stranded one is exempt, so
+    the same asymmetry came back through the newer record: a fleet whose hosts
+    were parked one by one by refused drains kept handing every later pass a
+    budget derived from hosts whose admission their own window timer can no
+    longer raise, and the pass was allowed to drain everything still serving
+    behind them.
     """
-    serving = serving_hosts(order, stranding)
+    serving = serving_hosts(order, stranding, parked)
     budget = drain_budget(len(serving))
     if len(serving) != len(order):
-        print(
-            f"fleet-reconcile: WARNING: {len(order) - len(serving)} of {len(order)} host(s) "
-            "are already recorded at ZERO capacity, so this pass may take at most "
-            f"{budget} of the {len(serving)} still serving ({', '.join(serving)}) to zero",
-            file=sys.stderr,
-        )
+        report_forfeit_capacity(order, serving, stranding, parked or {}, budget)
     return budget
 
 
@@ -1863,7 +1909,7 @@ def reconcile(
     receipts = document["hosts"]
     order = runner_hosts(data)
     stranding, parked = open_pass_records(document, order, options)
-    budget = open_drain_budget(order, stranding)
+    budget = open_drain_budget(order, stranding, parked)
     failures = 0
     producer_blocking = False
     producer_released = False
@@ -2511,6 +2557,7 @@ def selftest() -> int:
     failures.extend(frse.run(sys.modules[__name__]))
     failures.extend(fri.run(sys.modules[__name__]))
     failures.extend(frf.run(sys.modules[__name__]))
+    failures.extend(frfo.run(sys.modules[__name__]))
     failures.extend(frfz.run(sys.modules[__name__]))
     failures.extend(frpu.run(sys.modules[__name__]))
     failures.extend(frpr.run(sys.modules[__name__]))
