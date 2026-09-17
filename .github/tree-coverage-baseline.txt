@@ -13,7 +13,7 @@
 #            every run; gaining measurement is one-way.
 #
 # Columns are TAB-separated. Rows are sorted by path.
-# rows: 1059  measured: 523  unmeasured: 536
+# rows: 1062  measured: 523  unmeasured: 539
 
 apps/board/stand_alone/ereader/src/main.c	UNMEASURED	firmware-composition
 apps/board/stand_alone/ereader/src/ns_main.c	UNMEASURED	firmware-composition
@@ -26,6 +26,9 @@ apps/host/alphabet_soup/src/alphabet_soup_cli.c	MEASURED	62	63	35	38
 apps/host/alphabet_soup/src/main.c	MEASURED	21	22	7	8
 apps/host/cbz2jof/src/jof_worker.c	UNMEASURED	hosted-no-coverage-build
 apps/host/cbz2jof/src/jof_worker_main.c	UNMEASURED	hosted-no-coverage-build
+apps/host/firmware_pipeline/src/firmware_pipeline_cli.c	UNMEASURED	hosted-no-coverage-build
+apps/host/firmware_pipeline/src/firmware_pipeline_io.c	UNMEASURED	hosted-no-coverage-build
+apps/host/firmware_report/src/firmware_report_cli.c	UNMEASURED	hosted-no-coverage-build
 apps/host/mdl/src/main.c	MEASURED	224	269	145	210
 apps/host/mdl/src/mdl_cli.c	MEASURED	294	305	197	220
 apps/host/mdl/src/mdl_cli_nums.c	MEASURED	105	123	59	86
