@@ -360,3 +360,17 @@ test "the floor and this source's own path are carried as constants" {
         implementation.self_source,
     );
 }
+
+test "a baseline path whose name ends in a newline is still selected" {
+    // `$` without re.MULTILINE matches before a single trailing newline, and
+    // `[^/]` matches one, so the predecessor selected and scanned this path.
+    try testing.expect(implementation.matchesBaseline(".github/tracked-baseline.txt\n"));
+    try testing.expect(implementation.isSelected(".github/tracked-baseline.txt\n"));
+    // Only one trailing newline, and the suffix still has to be the last
+    // thing before it.
+    try testing.expect(!implementation.matchesBaseline(".github/tracked-baseline.txt\n\n"));
+    try testing.expect(!implementation.matchesBaseline(".github/tracked-baseline.txt\nx"));
+    // A newline does not excuse the rest of the pattern.
+    try testing.expect(!implementation.matchesBaseline(".github/tracked.txt\n"));
+    try testing.expect(!implementation.matchesBaseline(".github/nested/tracked-baseline.txt\n"));
+}
