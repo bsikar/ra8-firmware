@@ -1,6 +1,10 @@
 /**
  * @file test_ra8_usb_hmsc_bot_cov.c
  * @brief Deterministic white-box coverage for the host-MSC BOT command tail.
+ *
+ * @par Tag
+ * [Ring 3 / HAL] {World: NS}
+ *
  * @details Compiles a private copy of the production BOT state machine and
  * redirects only its bulk transport calls to a bounded synchronous script.
  * This models SIE completions on the driver thread without timers, worker

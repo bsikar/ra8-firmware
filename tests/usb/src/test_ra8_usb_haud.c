@@ -1,6 +1,10 @@
 /**
  * @file test_ra8_usb_haud.c
  * @brief Unit tests for the native USB host-side Audio class layer
+ *
+ * @par Tag
+ * [Ring 3 / HAL] {World: NS}
+ *
  * @details Exercises host-audio enumeration, descriptors, transfer setup, attach state, and timeout/error handling against fake USB hardware.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie

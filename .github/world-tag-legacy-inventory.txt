@@ -25,9 +25,9 @@
 #
 # No regeneration step: tag the file, drop its line, lower the two counts it
 # was in.
-#! rows: 625
+#! rows: 594
 #! rows libs/ra8_hal/: 8
-#! rows tests/: 617
+#! rows tests/: 586
 libs/ra8_hal/inc/ra8_drw_dlist.h
 libs/ra8_hal/inc/ra8_ether_regs.h
 libs/ra8_hal/inc/ra8_mpu_regs.h
@@ -602,38 +602,7 @@ tests/support/inc/xspi_test_util.h
 tests/support/src/fw_if_fs_contract_test.c
 tests/support/src/fw_if_fs_cursor_test.c
 tests/support/src/ra8_c6link_model_test.c
-tests/usb/inc/test_ra8_usb_hmsc_enum_fixture.h
-tests/usb/src/test_ra8_usb.c
-tests/usb/src/test_ra8_usb_cdc.c
-tests/usb/src/test_ra8_usb_cdc_cov.c
-tests/usb/src/test_ra8_usb_cdc_data_stage_cov.c
-tests/usb/src/test_ra8_usb_composite.c
-tests/usb/src/test_ra8_usb_device_cov.c
-tests/usb/src/test_ra8_usb_haud.c
-tests/usb/src/test_ra8_usb_haud_pipe_cov.c
-tests/usb/src/test_ra8_usb_hcdc_ecm_pipe_cov.c
-tests/usb/src/test_ra8_usb_hcdc_pipe_cov.c
-tests/usb/src/test_ra8_usb_hhid.c
-tests/usb/src/test_ra8_usb_hhid_pipe_cov.c
-tests/usb/src/test_ra8_usb_hhub.c
-tests/usb/src/test_ra8_usb_hmsc.c
-tests/usb/src/test_ra8_usb_hmsc_bot_cov.c
-tests/usb/src/test_ra8_usb_hmsc_cov.c
-tests/usb/src/test_ra8_usb_hmsc_enum_cov.c
-tests/usb/src/test_ra8_usb_host_bulk_cov.c
-tests/usb/src/test_ra8_usb_mcdc.c
 tests/usb/src/test_ra8_usb_pal.c
-tests/usb/src/test_ra8_usb_paud.c
-tests/usb/src/test_ra8_usb_paud_cov.c
-tests/usb/src/test_ra8_usb_phid.c
-tests/usb/src/test_ra8_usb_pmsc.c
-tests/usb/src/test_ra8_usb_pmsc_guards.c
-tests/usb/src/test_ra8_usb_pmsc_scsi_cov.c
-tests/usb/src/test_ra8_usb_pprn.c
-tests/usb/src/test_ra8_usb_pprn_cov.c
-tests/usb/src/test_ra8_usb_pvnd.c
-tests/usb/src/test_ra8_usb_pvnd_cov.c
-tests/usb/src/test_ra8_usb_xfer_cov.c
 tests/wireless/inc/ra8_c6link_test_suites.h
 tests/wireless/inc/test_ra8_c6link_media_decoder_internal.h
 tests/wireless/inc/test_ra8_c6link_media_http_internal.h

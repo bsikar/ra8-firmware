@@ -1,6 +1,10 @@
 /**
  * @file test_ra8_usb_haud_pipe_cov.c
  * @brief White-box coverage for host-audio pipe setup error propagation.
+ *
+ * @par Tag
+ * [Ring 3 / HAL] {World: NS}
+ *
  * @details Compiles a private copy of the class driver with only the endpoint
  * configuration dependency replaced by a deterministic synchronous script.
  * The production control flow and state object remain unchanged.

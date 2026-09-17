@@ -2,6 +2,9 @@
  * @file test_ra8_usb_pmsc.c
  * @brief Unit tests for the native USB device-side MSC class layer
  *
+ * @par Tag
+ * [Ring 3 / HAL] {World: NS}
+ *
  * @details Exercises mass-storage BOT command validation, data phases, status emission, resets, and transport failures with bounded fixtures.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie

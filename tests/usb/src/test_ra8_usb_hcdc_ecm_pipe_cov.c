@@ -1,6 +1,10 @@
 /**
  * @file test_ra8_usb_hcdc_ecm_pipe_cov.c
  * @brief White-box coverage for host-CDC-ECM pipe error propagation.
+ *
+ * @par Tag
+ * [Ring 3 / HAL] {World: NS}
+ *
  * @details Uses a synchronous endpoint-configuration script while compiling
  * the production class control flow unchanged as a private test copy.
  *

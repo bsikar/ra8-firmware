@@ -2,6 +2,9 @@
  * @file test_ra8_usb_phid.c
  * @brief Unit tests for the native USB device-side HID class layer
  *
+ * @par Tag
+ * [Ring 3 / HAL] {World: NS}
+ *
  * @details Exercises HID descriptor, report, idle, protocol, endpoint, and unsupported-request behavior with bounded device fixtures.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie

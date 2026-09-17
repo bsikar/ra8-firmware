@@ -2,6 +2,9 @@
  * @file test_ra8_usb_pvnd_cov.c
  * @brief Coverage top-up for the native USB device-Vendor class layer
  *
+ * @par Tag
+ * [Ring 3 / HAL] {World: NS}
+ *
  * @details
  * Targets the residual uncovered lines in
  * ``libs/ra8_hal/src/ra8_usb_pvnd.c`` that the primary suite
