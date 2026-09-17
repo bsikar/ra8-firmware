@@ -111,6 +111,7 @@ nav:
       - "ADR-0009 E-reader input and service interfaces": adr/0009-ereader-input-and-service-interfaces.md
       - "ADR-0010 SDRAM interface supply domain": adr/0010-sdram-interface-supply-domain.md
       - "ADR-0011 Chip-boot duplication across board libraries": adr/0011-chip-boot-duplication-across-board-libraries.md
+      - "ADR-0012 C23 capability and ABI contract assertion": adr/0012-c23-capability-and-abi-contract-assertion.md
   - Toolchain and build:
       - Toolchain: TOOLCHAIN.md
       - IDE setup: IDE.md
