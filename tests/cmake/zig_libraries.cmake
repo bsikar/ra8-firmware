@@ -180,6 +180,27 @@ ra8_add_zig_library(
   ra8_usb_pal
 )
 
+# Fully migrated: the half-unit key grid, the letters / numbers / symbols
+# layers, the hit index and the typing model are Zig now, so
+# libs/ra8_keyboard/src has no .c left and the RA8_KEYBOARD_SOURCES glob is
+# gone from library_sources.cmake and core_hal.cmake. The rectangle test stays
+# owned by ra8_ui: this archive calls ra8_ui_rect_contains as an external
+# symbol, so the link dependency below is declared rather than left to the
+# order of the list further down.
+ra8_add_zig_library(
+  NAME
+  ra8_keyboard
+  ZIG_ROOT
+  ${FW_ROOT}/libs/ra8_keyboard
+  LIBRARY_NAME
+  ra8_keyboard
+)
+set_property(
+  TARGET ra8_zig::ra8_keyboard
+  APPEND
+  PROPERTY INTERFACE_LINK_LIBRARIES ra8_zig::ra8_ui
+)
+
 # ra8_core_hal is the OBJECT library every host test links, so an INTERFACE
 # link here reaches each test executable that pulls in a migrated library.
 target_link_libraries(
@@ -197,4 +218,5 @@ target_link_libraries(
          ra8_zig::ra8_net_pal
          ra8_zig::ra8_lsm6dso
          ra8_zig::ra8_usb_pal
+         ra8_zig::ra8_keyboard
 )
