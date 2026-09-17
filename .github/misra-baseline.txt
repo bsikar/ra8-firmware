@@ -16,7 +16,7 @@
 # (file, rule) buckets grew. Full ownership and compensating controls:
 # docs/qualification/MISRA_DEVIATIONS.md.
 # cppcheck: Cppcheck 2.13.0
-# total findings: 20014
+# total findings: 20080
 # columns: file<TAB>rule<TAB>count
 apps/board/stand_alone/ereader/src/main.c	misra-c2012-8.4	1
 apps/board/stand_alone/ereader/src/ns_main.c	misra-c2012-11.4	8
