@@ -18,7 +18,7 @@
  *
  * The read function's signature (opaque ctx, absolute offset, bytes-read return)
  * is deliberately generic so any streamed consumer can drive it. In particular it
- * is call-compatible with `ra8_epub_open_streamed()`'s `ra8_epub_stream_read_fn`,
+ * is call-compatible with `epub_open_streamed()`'s `epub_stream_read_fn`,
  * which is how a large `.epub` on the SD card is opened without whole-file
  * residency (#151): register the file as a ::ra8_vsource paged object, front it
  * with a fixed ::ra8_vmem pool (the asserted RAM budget), and hand the resulting
@@ -94,7 +94,7 @@ ra8_vmem_stream_init(ra8_vmem_stream_t* st, ra8_vmem_t* vm, uint32_t object_id, 
  *          copying each in-frame slice into @p buf, and clamps the request to the
  *          object end. A read fully past the end returns 0; a partial read (a
  *          cache/loader failure mid-span) returns the bytes copied so far, which a
- *          consumer like `ra8_epub_open_streamed()` treats as end-of-file.
+ *          consumer like `epub_open_streamed()` treats as end-of-file.
  *
  * @param[in]  ctx    The ::ra8_vmem_stream_t binding (as a void cookie).
  * @param[in]  offset Absolute byte offset within the object.
