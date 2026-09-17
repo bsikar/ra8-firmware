@@ -108,6 +108,7 @@ nav:
       - "ADR-0006 Sequencing naming/linkage legacy backlog": adr/0006-naming-linkage-backlog-sequencing.md
       - "ADR-0007 Front-light driver interface": adr/0007-front-light-driver-interface.md
       - "ADR-0008 Vendoring-completeness contract": adr/0008-vendoring-completeness-contract.md
+      - "ADR-0009 E-reader input and service interfaces": adr/0009-ereader-input-and-service-interfaces.md
   - Toolchain and build:
       - Toolchain: TOOLCHAIN.md
       - IDE setup: IDE.md
