@@ -229,6 +229,16 @@ _pcc_board_and_layering() (
   # do not leak across libraries, and hosted APIs stay behind port adapters.
   python3 scripts/checks/check_core_layering.py --selftest
   python3 scripts/checks/check_core_layering.py
+  # No first-party library may name an RTOS or middleware API symbol: the
+  # scheduler, the USB device stack and the FTL are reached through a seam
+  # bound under port/ (#695 workstream (c)). The tree does not satisfy that
+  # yet and #695 is design-only, so the ledger in the checker freezes the
+  # leak sites that exist today: a new symbol fails, and a symbol that has
+  # been burned down also fails until its ledger entry goes with it.
+  # --selftest proves the detector fires, stays quiet on lookalike
+  # identifiers (tx_len, tx_pool), and judges the ledger in both directions.
+  python3 scripts/checks/check_rtos_symbol_isolation.py --selftest
+  python3 scripts/checks/check_rtos_symbol_isolation.py
 )
 
 # Repository-wide structural contracts that are independent of C source
