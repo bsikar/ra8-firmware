@@ -39,6 +39,22 @@ other bit.
 - If the test network is isolated from the client network, reaching the page
   from a workstation needs a forwarded port.
 
+## Bench evidence
+
+Two runs on the physical rig, and the reason this app sits under
+`hw_validated/`:
+
+- 2026-08-13: the end-to-end verifier passed; both retained JPEGs decoded as
+  changing 320x240 room images without tearing.
+- 2026-08-14: the interrupt-driven MIC1 path passed with it. The run downloaded
+  a 16,000-frame, 16 kHz mono WAV with non-degenerate live samples while the
+  camera supplied eight complete multipart JPEG frames.
+
+Both runs predate the SPI rate change: they were taken with `k_c6_cam_sck_hz`
+at 5 MHz, and the shared server now clocks both camera apps at 10 MHz. Only
+`c6_camera_mjpeg` has a recorded run at that rate, so this app's next bench
+visit should re-take the pass at 10 MHz rather than assume it.
+
 The camera firmware and build artifacts contain no Wi-Fi credential. A freshly
 flashed image prints `ra8_net_provision: READY v1` and accepts one bounded
 ASCII-hex provisioning line over the debug UART. The camera app ignores the
