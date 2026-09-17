@@ -76,7 +76,6 @@ static const ra8_fs_backend_t s_inject_backend = {
  *
  * @param[in] reads_left Reads permitted before the next one fails.
  *
- * @return Nothing.
  *
  * @pre `s_disk` has been built.
  * @pre No mount is currently using ::s_inject.
@@ -98,7 +97,6 @@ RA8_INTERNAL static void internal_arm_inject(uint32_t reads_left)
 /**
  * @brief Format a FAT32 volume into the fixture's RAM disk.
  *
- * @return Nothing.
  *
  * @pre The heap can hold 40 MiB.
  * @pre Any previous volume has been freed.
@@ -154,7 +152,6 @@ RA8_INTERNAL static uint32_t internal_read_fsinfo_free(void)
  *
  * @param[in] h Mounted volume.
  *
- * @return Nothing.
  *
  * @pre @p h is mounted read-write with room for the file.
  * @pre The clock binding is irrelevant here.

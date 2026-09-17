@@ -221,7 +221,6 @@ static const ra8_fs_backend_t s_cnt_backend = {
 /**
  * @brief Zero both call counters.
  *
- * @return Nothing.
  *
  * @pre A measured span is about to begin.
  * @pre The previous span's numbers have been read.
@@ -245,7 +244,6 @@ RA8_INTERNAL static void internal_reset_counters(void)
 /**
  * @brief Format and allocate a FAT32 volume in the fixture's RAM disk.
  *
- * @return Nothing.
  *
  * @pre The heap can hold 40 MiB.
  * @pre Any previous volume has been freed.
@@ -303,7 +301,6 @@ RA8_INTERNAL static uint32_t internal_read_fsinfo(uint32_t off)
  * @param[in] off Byte offset within the sector.
  * @param[in] v   Value to store.
  *
- * @return Nothing.
  *
  * @pre `s_disk.bytes` holds a formatted FAT32 volume.
  * @pre No volume is mounted on that disk.
@@ -370,7 +367,6 @@ RA8_INTERNAL static uint32_t internal_true_free_count(const ra8_fs_mount_t* h)
  * @param[in] path     Name to create.
  * @param[in] clusters Cluster count (one 512-byte sector each at SPC=1).
  *
- * @return Nothing.
  *
  * @pre @p h is mounted read-write with room for the file.
  * @pre @p path is an 8.3 name.

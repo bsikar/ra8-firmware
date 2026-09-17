@@ -340,7 +340,6 @@ RA8_INTERNAL static void internal_test_long_named_directory(void)
  *
  * @param[in] tag Suffix distinguishing this dump from the others.
  *
- * @return Nothing.
  *
  * @pre @p tag is non-NULL; `s_disk.bytes` is allocated.
  * @pre The caller has finished mutating the volume.
@@ -379,7 +378,6 @@ RA8_INTERNAL static void internal_maybe_dump_image(const char* tag)
  *          use, because the images this one dumps are handed to a real
  *          `fsck.fat`, which wants a complete boot sector to work from.
  *
- * @return Nothing.
  *
  * @pre `s_disk.bytes` is either null or owned by the fixture.
  * @pre The caller will free_vol() afterwards.

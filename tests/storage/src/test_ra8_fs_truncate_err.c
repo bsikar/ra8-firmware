@@ -160,7 +160,6 @@ static const ra8_fs_backend_t s_backend = {
 
 /**
  * @brief Free the fault disk's store.
- * @return Nothing.
  * @pre None.
  * @pre ::s_disk is this binary's disk.
  * @post ::s_disk.bytes is NULL.

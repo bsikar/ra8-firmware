@@ -87,7 +87,6 @@ typedef enum : uint32_t {
  *
  * @param[in] h Mounted exFAT volume whose root slot 3 holds a File entry.
  *
- * @return Nothing.
  *
  * @pre @p h is mounted and exactly one user file exists.
  * @pre The set occupies root entries 3..5.

@@ -126,7 +126,6 @@ RA8_INTERNAL static uint32_t internal_disk_rd32(uint32_t off)
  * @param[in] base  Byte offset of the table's first word in the RAM disk.
  * @param[in] words Number of 16-bit words the table occupies.
  *
- * @return Nothing.
  *
  * @pre ::s_volume_upcase has been seeded with the identity.
  * @pre @p base addresses @p words readable words in `s_disk.bytes`.
@@ -249,7 +248,6 @@ RA8_INTERNAL static uint32_t internal_expected_name_hash(const uint16_t* units, 
  * @param[in] ctx  Pointer to a `const char*` holding the name looked for; the
  *                 pointer is set to nullptr once it has been seen.
  *
- * @return Nothing.
  *
  * @pre @p name and @p ctx are non-NULL.
  * @pre `*ctx` is the name being looked for, or already nullptr.

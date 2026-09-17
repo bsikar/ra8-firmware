@@ -186,7 +186,6 @@ RA8_INTERNAL static uint8_t internal_ftr_byte_at(uint32_t pos)
 
 /**
  * @brief Free the RAM disk.
- * @return Nothing.
  * @pre None.
  * @pre ::s_disk is this binary's disk.
  * @post ::s_disk.bytes is NULL.

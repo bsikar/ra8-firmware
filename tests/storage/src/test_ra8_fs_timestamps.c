@@ -208,7 +208,6 @@ RA8_INTERNAL static ra8_err_t internal_fake_now(void* ctx, ra8_fs_datetime_t* ou
  * @param[in] mi Minute.
  * @param[in] s  Second.
  *
- * @return Nothing.
  *
  * @pre The library is not mid-operation.
  * @pre The caller sets `s_now.centisecond` afterwards when it matters.
@@ -235,7 +234,6 @@ internal_set_fake_clock(uint32_t y, uint32_t mo, uint32_t d, uint32_t h, uint32_
 
 /**
  * @brief Install the fake clock at instant 1 ("created").
- * @return Nothing.
  * @pre The library is not mid-operation.
  * @pre ::k_ts_t1_date and ::k_ts_t1_time are the packed form of this instant.
  * @post Later stamps encode as ::k_ts_t1_date / ::k_ts_t1_time.
@@ -255,7 +253,6 @@ RA8_INTERNAL static void internal_use_instant_1(void)
 
 /**
  * @brief Install the fake clock at instant 2 ("written").
- * @return Nothing.
  * @pre The library is not mid-operation.
  * @pre ::k_ts_t2_date and ::k_ts_t2_time are the packed form of this instant.
  * @post Later stamps encode as ::k_ts_t2_date / ::k_ts_t2_time.
@@ -275,7 +272,6 @@ RA8_INTERNAL static void internal_use_instant_2(void)
 
 /**
  * @brief Install the fake clock at instant 3 ("closed").
- * @return Nothing.
  * @pre The library is not mid-operation.
  * @pre ::k_ts_t3_date and ::k_ts_t3_time are the packed form of this instant.
  * @post Later stamps encode as ::k_ts_t3_date / ::k_ts_t3_time.
@@ -295,7 +291,6 @@ RA8_INTERNAL static void internal_use_instant_3(void)
 
 /**
  * @brief Remove any installed clock, restoring the epoch default.
- * @return Nothing.
  * @pre The library is not mid-operation.
  * @pre A binding may or may not be installed.
  * @post No binding is installed.
@@ -422,7 +417,6 @@ RA8_INTERNAL static uint32_t internal_find_entry(const ra8_fs_mount_t* h, const 
  *
  * @param[in] packed The `DIR_*Date` word read off the disk.
  *
- * @return Nothing.
  *
  * @pre @p packed came from a directory entry the driver wrote.
  * @pre A test is in progress (this asserts).
@@ -453,7 +447,6 @@ RA8_INTERNAL static void internal_assert_legal_date(uint16_t packed)
  * @param[in] h    Mounted volume.
  * @param[in] path Path to create.
  *
- * @return Nothing.
  *
  * @pre @p h is mounted read-write.
  * @pre @p path is an 8.3 name that does not yet exist.

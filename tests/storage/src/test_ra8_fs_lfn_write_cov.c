@@ -83,7 +83,6 @@ typedef enum : uint32_t {
  *          directory, which is where ::priv_slot_advance() and the deleter's
  *          sector batching earn their keep.
  *
- * @return Nothing.
  *
  * @pre `s_disk.bytes` is either null or owned by the fixture.
  * @pre The caller will free_vol() afterwards.
@@ -124,7 +123,6 @@ RA8_INTERNAL static void internal_build_fat16_big_root(void)
  * @param[in]  off Byte offset of the low byte.
  * @param[in]  v   Value to store.
  *
- * @return Nothing.
  *
  * @pre @p p addresses at least `off + 4` writable bytes.
  * @pre @p off is a valid offset inside the buffer.
@@ -150,7 +148,6 @@ RA8_INTERNAL static void internal_put32(uint8_t* p, uint32_t off, uint32_t v)
  *          `is_root && !fat32` pair's second condition. One sector per cluster
  *          keeps the root at sixteen slots, so filling it is cheap.
  *
- * @return Nothing.
  *
  * @pre `s_disk.bytes` is either null or owned by the fixture.
  * @pre The caller will free_vol() afterwards.

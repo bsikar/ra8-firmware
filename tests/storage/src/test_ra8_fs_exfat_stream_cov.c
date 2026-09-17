@@ -118,7 +118,6 @@ RA8_INTERNAL static uint32_t internal_fat_at(uint32_t clus)
  * @param[in] off Absolute byte offset.
  * @param[in] val Value to store.
  *
- * @return Nothing.
  *
  * @pre The image is allocated and `off + 4` is inside it.
  * @pre The volume is not mid-operation.

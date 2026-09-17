@@ -179,7 +179,6 @@ RA8_INTERNAL static ra8_err_t internal_fake_now(void* ctx, ra8_fs_datetime_t* ou
  * @param[in] s      Second.
  * @param[in] offmin Offset of that civil time from UTC, in minutes.
  *
- * @return Nothing.
  *
  * @pre The library is not mid-operation.
  * @pre The caller sets `s_now.centisecond` afterwards when it matters.
@@ -300,7 +299,6 @@ RA8_INTERNAL static uint32_t internal_read_stamp(uint32_t entry_byte, uint32_t f
  *
  * @param[in] stamp The 32-bit stamp read off the disk.
  *
- * @return Nothing.
  *
  * @pre @p stamp came from an entry the driver wrote.
  * @pre A test is in progress (this asserts).
@@ -370,7 +368,6 @@ RA8_INTERNAL static uint16_t internal_recompute_set_checksum(uint32_t entry_byte
  * @param[out] out_h Receives the mounted volume.
  * @param[in]  name  File name to create.
  *
- * @return Nothing.
  *
  * @pre @p out_h is non-NULL.
  * @pre A clock binding is installed.

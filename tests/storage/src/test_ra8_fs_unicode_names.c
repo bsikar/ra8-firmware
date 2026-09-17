@@ -225,7 +225,6 @@ static const char s_emoji_name[] = {(char)(unsigned char)0xF0U,
  *          this suite dumps is handed to a real `fsck.fat`, which wants a
  *          complete boot sector to work from.
  *
- * @return Nothing.
  *
  * @pre `s_disk.bytes` is either null or owned by the fixture.
  * @pre The caller will release it afterwards.
@@ -255,7 +254,6 @@ RA8_INTERNAL static void internal_build_formatted_fat16(void)
 /**
  * @brief Release the fixture's RAM disk.
  *
- * @return Nothing.
  *
  * @pre No mount is still open on it.
  * @pre `s_disk.bytes` was allocated by ::internal_build_formatted_fat16().
@@ -282,7 +280,6 @@ RA8_INTERNAL static void internal_release_volume(void)
  *
  * @param[in] tag Suffix distinguishing this dump from the others.
  *
- * @return Nothing.
  *
  * @pre @p tag is non-NULL; `s_disk.bytes` is allocated.
  * @pre The caller has finished mutating the volume.
