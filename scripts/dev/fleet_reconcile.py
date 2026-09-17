@@ -27,6 +27,7 @@ import fleet_model as fm
 import fleet_mutation_lock as fml
 import fleet_reconcile_arc_selftest as fras
 import fleet_reconcile_backoff_selftest as frb
+import fleet_reconcile_blocking_selftest as frbl
 import fleet_reconcile_process as frp
 import fleet_reconcile_recovery_selftest as frr
 import fleet_reconcile_selftest as frs
@@ -396,8 +397,21 @@ def reconcile_host(  # noqa: PLR0913  # transaction inputs plus injectable retry
 ) -> tuple[bool, bool, dict[str, Any]]:
     """Inspect and optionally converge one host, reporting whether it is drained."""
     clean, changed = inspect_host(data, host, run)
-    if not clean or frp.interrupted_status():
+    if frp.interrupted_status():
         return False, True, {}
+    if not clean:
+        # A read-only check mutates nothing: the host keeps serving whatever
+        # capacity it already had, and no consumer's image dependency moved.
+        # Reporting this as stranded blocked every consumer for a fault that
+        # touched nothing, so a consumer already sitting at zero could never
+        # be repaired while the producer check kept failing (issue #888).
+        print(
+            f"fleet-reconcile: WARNING: {host}: read-only check FAILED; "
+            "capacity is untouched, so this pass fails without draining it "
+            "or holding back the rest of the fleet",
+            file=sys.stderr,
+        )
+        return False, False, {}
     producer = host == data["runner_image"]["source_host"]
     interval = options.producer_interval if producer else options.full_interval
     due = full_apply_due(receipt, options, interval)
@@ -408,7 +422,7 @@ def reconcile_host(  # noqa: PLR0913  # transaction inputs plus injectable retry
         if actionable_changes:
             state = "DRIFT"
         print(f"fleet-reconcile: {host}: {state} (changed={changed})")
-        return not actionable_changes, True, {}
+        return not actionable_changes, False, {}
     if not actionable_changes and not due:
         print(f"fleet-reconcile: {host}: current; no full converge due")
         previous = receipt if isinstance(receipt, dict) else {}
@@ -488,6 +502,12 @@ def reconcile(
         if not ok:
             failures += 1
             producer_failed = index == 0 and options.mode == "apply" and stranded
+            if index == 0 and options.mode == "apply" and not stranded:
+                print(
+                    f"fleet-reconcile: WARNING: producer {host} FAILED without "
+                    "losing capacity; consumers continue against last-known-good",
+                    file=sys.stderr,
+                )
             if options.mode == "apply":
                 receipts.pop(host, None)
                 save_state(state_path, document)
@@ -1041,6 +1061,7 @@ def selftest() -> int:
     failures.extend(fras.run(apply_host))
     failures.extend(frr.run(sys.modules[__name__]))
     failures.extend(frb.run(sys.modules[__name__]))
+    failures.extend(frbl.run(sys.modules[__name__]))
     _selftest_state_safety(failures)
     failures.extend(fml.run_selftest())
     _selftest_timeout(failures)
