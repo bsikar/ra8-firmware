@@ -3,7 +3,7 @@
  * @brief ESWM media mux: select a port's MII/RGMII mode and release its block.
  *
  * @par Tag
- * [Ring 2 / HAL] {World: S}
+ * [Ring 3 / HAL] {World: S}
  *
  * @details
  * The media half of the Ethernet HAL, kept apart from the frame-level NIC API
