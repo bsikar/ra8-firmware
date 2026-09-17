@@ -26,7 +26,7 @@
  *
  * Under ra8_emulator the native-SDHI host-controller model (`board_periph_sdhi.c`)
  * serves a card attached with `--sd-new 64:fat16`. On the bench a real microSD
- * is wired to the port-4 SDHI bus. THIS APP OVERWRITES ONE BLOCK of the card.
+ * is wired to the port-4 SDHI1_B bus. THIS APP OVERWRITES ONE BLOCK of the card.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -58,7 +58,8 @@
  */
 typedef enum : uint32_t {
   k_sdhi_card_uart_baud       = 115200U,      /**< J-Link OB CDC console baud.             */
-  k_sdhi_card_instance        = 0U,           /**< SDHI0 drives the micro-SD bus.          */
+  /** Native-SDHI instance, taken from the board contract, never re-encoded. */
+  k_sdhi_card_instance        = (uint32_t)k_ra8_board_sdhi_instance,
   k_sdhi_card_block_bytes     = 512U,         /**< One SD block.                           */
   k_sdhi_card_test_lba        = 64U,          /**< Block to round-trip (clear of the BPB). */
   k_sdhi_card_block_count     = 1U,           /**< Round-trip one block.                   */
@@ -154,7 +155,7 @@ static void sdhi_card_panic_halt(void)
  *
  * @details Initialises the clock generator, caches CPUCLK0, starts the SysTick
  *          time base, brings the J-Link OB VCOM console up at 115200 8N1 via the
- *          BSP, then routes the eight SDHI0 bus pins via
+ *          BSP, then routes the seven SDHI1_B bus pins via
  *          ``ra8_board_sdhi_pins_init``. Any failing step panic-halts.
  *
  * @return Nothing (panic-halts on failure).

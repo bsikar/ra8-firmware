@@ -729,19 +729,25 @@ ra8_err_t ra8_board_xspi_pins_init(void)
 }
 
 /* =============================================================================
- * 6d. Native SDHI bus pin routing (SDHI0, port 4 pins 0..7)
+ * 6d. Native SDHI bus pin routing (SDHI1_B, port 4 pins 0..6)
  * =============================================================================
  */
 
 /**
- * @brief Lookup table for the eight SDHI0 bus pins routed to PSEL=0x15.
+ * @brief Lookup table for the seven SDHI1_B bus pins routed to PSEL=0x15.
  *
  * @details
- * Bus order: CMD, CLK, DAT0..DAT3, WP, CD. The pin enums are uint16_t
+ * Bus order: CLK, CMD, DAT0..DAT3, CD. The pin enums are uint16_t
  * encodings of (port << 8) | pin -- compatible with the ``ra8_port_pin_t``
- * value space. Source: chip HUM Ch 20.6 "Multiplexed Pin Function
- * Selector" SDHI pin group (the EK-RA8D2 v1 board has no on-board
- * micro-SD socket -- see the @warning on ::ra8_board_sdhi_pin_t).
+ * value space. Source: RA8D2 datasheet Table 1.16 / RA8P1 datasheet
+ * Table 1.17, Rev.1.30, SDHI1_B function group, routed under the chip HUM
+ * Ch 20.6 "Multiplexed Pin Function Selector" SDHI PSEL (the EK-RA8D2 v1
+ * board has no on-board micro-SD socket -- see the @warning on
+ * ::ra8_board_sdhi_pin_t).
+ *
+ * No write-protect entry exists: SDHI1_B has no port-4 WP function and a
+ * microSD socket has no WP switch, so P407 is left untouched instead of
+ * carrying a fabricated WP/CD pair (issue #845).
  *
  * The ``ra8_port_pin_t`` enum only enumerates the convenience
  * ``k_ra8_pin_led*`` aliases; raw RA8_PIN()-derived values are valid
@@ -750,19 +756,18 @@ ra8_err_t ra8_board_xspi_pins_init(void)
  * convention used throughout this BSP.
  */
 static const ra8_port_pin_t s_sdhi_bus_pins[] = {
-  (ra8_port_pin_t)k_ra8_board_sdhi_cmd,  /**< SDHI0 CMD,  P400. */
-  (ra8_port_pin_t)k_ra8_board_sdhi_clk,  /**< SDHI0 CLK,  P401. */
-  (ra8_port_pin_t)k_ra8_board_sdhi_dat0, /**< SDHI0 DAT0, P402. */
-  (ra8_port_pin_t)k_ra8_board_sdhi_dat1, /**< SDHI0 DAT1, P403. */
-  (ra8_port_pin_t)k_ra8_board_sdhi_dat2, /**< SDHI0 DAT2, P404. */
-  (ra8_port_pin_t)k_ra8_board_sdhi_dat3, /**< SDHI0 DAT3, P405. */
-  (ra8_port_pin_t)k_ra8_board_sdhi_wp,   /**< SDHI0 WP,   P406. */
-  (ra8_port_pin_t)k_ra8_board_sdhi_cd,   /**< SDHI0 CD,   P407. */
+  (ra8_port_pin_t)k_ra8_board_sdhi_clk,  /**< SDHI1_B CLK,  P400. */
+  (ra8_port_pin_t)k_ra8_board_sdhi_cmd,  /**< SDHI1_B CMD,  P401. */
+  (ra8_port_pin_t)k_ra8_board_sdhi_dat0, /**< SDHI1_B DAT0, P402. */
+  (ra8_port_pin_t)k_ra8_board_sdhi_dat1, /**< SDHI1_B DAT1, P403. */
+  (ra8_port_pin_t)k_ra8_board_sdhi_dat2, /**< SDHI1_B DAT2, P404. */
+  (ra8_port_pin_t)k_ra8_board_sdhi_dat3, /**< SDHI1_B DAT3, P405. */
+  (ra8_port_pin_t)k_ra8_board_sdhi_cd,   /**< SDHI1_B CD,   P406. */
 };
 
 ra8_err_t ra8_board_sdhi_pins_init(void)
 {
-  /* Route the eight SDHI0 bus pins to PSEL=0x15. PSEL 0x15 is the SDHI
+  /* Route the seven SDHI1_B bus pins to PSEL=0x15. PSEL 0x15 is the SDHI
    * SD / MMC function per chip HUM Ch 20.6 "Multiplexed Pin Function
    * Selector"; the named constant is ``k_ra8_psel_sdhi``. */
   const uint32_t count = (uint32_t)(sizeof(s_sdhi_bus_pins) / sizeof(s_sdhi_bus_pins[0]));
