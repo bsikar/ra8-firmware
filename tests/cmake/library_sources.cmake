@@ -175,9 +175,8 @@ ra8_webp_vendor_sources(RA8_WEBP_THIRD_PARTY ${FW_ROOT})
 ra8_webp_facade_sources(RA8_WEBP_SOURCES ${FW_ROOT})
 file(GLOB_RECURSE RA8_SECURE_APP_SOURCES CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra8_secure_app/src/*.c)
 file(GLOB_RECURSE RA8_PSA_CRYPTO_SOURCES CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra8_psa_crypto/src/*.c)
-file(GLOB_RECURSE RA8_WDT_SUPERVISOR_SOURCES CONFIGURE_DEPENDS
-     ${FW_ROOT}/libs/ra8_wdt_supervisor/src/*.c
-)
+# ra8_wdt_supervisor has no C sources left: the registry, the deadline policy
+# and the ThreadX seam are Zig now, linked via tests/cmake/zig_libraries.cmake.
 file(GLOB_RECURSE RA8_MPU_SOURCES CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra8_mpu/src/*.c)
 file(GLOB RA8_BOARD_EK_RA8D2_SOURCES CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra8_board_ek_ra8d2/src/*.c)
 file(GLOB_RECURSE RA8_LSM6DSO_SOURCES CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra8_lsm6dso/src/*.c)
