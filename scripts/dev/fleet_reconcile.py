@@ -62,6 +62,7 @@ import fleet_reconcile_stranding_selftest as frst
 import fleet_reconcile_unaccounted_selftest as fru
 import fleet_reconcile_uninspected_selftest as frun
 import fleet_reconcile_unmutated_selftest as frum
+import fleet_reconcile_window_selftest as frw
 import fleet_wsl as fw
 
 SOURCE_DIGEST_FILE = ".ra8-source-sha256"
@@ -1224,6 +1225,45 @@ def report_park_release_refused(host: str, status: int, entry: dict[str, int], n
     )
 
 
+def report_park_release_without_capacity(host: str, entry: dict[str, int], now: int) -> None:
+    """Refuse to call a park release that put no capacity back in service a release.
+
+    ``capacity-restore`` converges live admission to the host's CURRENT window
+    target and prints the number it converged to, which is zero inside a
+    declared quiet-hours window and for a scale set declared at zero
+    instances.  Every other reopen in this controller already reads that
+    number and refuses to call a reopen to ZERO instances a recovery: both
+    recovery arms do, and ``TransactionCapacity.served`` does for the
+    transaction that succeeds.  This release read it for its warning alone and
+    threw it away, so a restore that landed cleanly while putting NOTHING back
+    in service still dropped the park record as lifted.
+
+    Dropping it is what makes the pass silent rather than merely wrong.  A
+    refused drain deliberately writes NO stranded-at-zero record, so the park
+    record is the only one this host has: once it is gone nothing escalates the
+    host, nothing counts its capacity as forfeit, the pass drain budget counts
+    it among the hosts still serving, and the receipt this pass published keeps
+    the next pass from looking again for a whole full-apply interval.  A fleet
+    declared for its runners and serving none of them, at exit 0, is issue
+    #888's own dry-run evidence.
+
+    The record is therefore held, exactly as a reopen to zero leaves a
+    recovered host recorded at zero, and the pass says so and carries the
+    verdict.  It cannot go permanently red on a host that is fine: this restore
+    did remove the durable marker, so the host's own window timer can raise
+    admission when the window ends, and the NEXT pass's restore reports the
+    marker absent and retires the record on that evidence.
+    """
+    print(
+        f"fleet-reconcile: CRITICAL: {host}: the capacity restore that lifts its durable "
+        "maintenance park converged live admission to its CURRENT window target of ZERO "
+        "instances, so this release put NO runner capacity back in service; the host "
+        "stays recorded at zero rather than reported as released "
+        f"({entry['passes']} pass(es), {now - entry['since']}s parked)",
+        file=sys.stderr,
+    )
+
+
 def park_release_changes(data: dict[str, Any], host: str) -> int:
     """Return the drift one parked host's held check reports while it is converged.
 
@@ -1334,7 +1374,9 @@ def release_durable_park(  # the host plus the fleet its opener comes from
         report_park_declaration_failed(host, entry, now)
         return False
     if not result.status:
-        restore_admission(host, result)
+        if restore_admission(host, result) == 0:
+            report_park_release_without_capacity(host, entry, now)
+            return False
         clear_park(parked, host)
         return True
     if park_marker_absent(f"{result.stdout}\n{result.stderr}"):
@@ -3042,7 +3084,7 @@ def selftest() -> int:
     failures.extend(fro.run(sys.modules[__name__]))
     failures.extend(frpe.run(sys.modules[__name__]))
     failures.extend(frpk.run(sys.modules[__name__]))
-    failures.extend(frlt.run(sys.modules[__name__]))
+    failures.extend(frlt.run(sys.modules[__name__]) + frw.run(sys.modules[__name__]))
     failures.extend(frlo.run(sys.modules[__name__]) + frab.run(sys.modules[__name__]))
     failures.extend(frsv.run(sys.modules[__name__]))
     failures.extend(
