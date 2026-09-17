@@ -115,9 +115,17 @@ pub const warning_flags = [_][]const u8{
 /// same call in cmake/ra8_warnings.cmake adds both, and the `.su` files it
 /// writes are what scripts/checks/stack_usage_check.py aggregates.
 pub fn warningFlags(allocator: std.mem.Allocator, app: CrossApp) []const []const u8 {
+    return warningFlagsForStack(allocator, app.stack_bytes);
+}
+
+/// The same profile at a budget given directly, for a target that is not an
+/// app: the Non-Secure image of a two-project TrustZone build is a raw
+/// add_executable() that calls ra8_target_enable_project_warnings() itself
+/// (#1111), so it has a frame budget without being a CrossApp.
+pub fn warningFlagsForStack(allocator: std.mem.Allocator, stack_bytes: u32) []const []const u8 {
     var flags = std.ArrayList([]const u8).init(allocator);
     flags.appendSlice(&warning_flags) catch @panic("OOM");
-    const gate = std.fmt.allocPrint(allocator, "-Wstack-usage={d}", .{app.stack_bytes}) catch @panic("OOM");
+    const gate = std.fmt.allocPrint(allocator, "-Wstack-usage={d}", .{stack_bytes}) catch @panic("OOM");
     flags.append(gate) catch @panic("OOM");
     flags.append("-fstack-usage") catch @panic("OOM");
     return flags.toOwnedSlice() catch @panic("OOM");

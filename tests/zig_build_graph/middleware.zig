@@ -64,6 +64,20 @@ pub const Middleware = struct {
 
     /// INTERFACE link options, forced onto the app's link line.
     link_options: []const []const u8,
+
+    /// True when this middleware's listfile declares its PUBLIC include
+    /// directory BEFORE its PRIVATE ones, so `-Iport/threadx/inc` lands ahead
+    /// of `-Ilibs/ra8_core/inc` on the middleware's own compile line.
+    ///
+    /// There is no universal rule here: CMake keeps a target's
+    /// INCLUDE_DIRECTORIES in the order of the `target_include_directories`
+    /// calls, and the two ThreadX listfiles happen to make those calls in
+    /// opposite orders (cmake/threadx.cmake: PRIVATE, then SYSTEM PUBLIC, then
+    /// PUBLIC; cmake/threadx_ns.cmake: SYSTEM PUBLIC, PUBLIC, then PRIVATE).
+    /// Measured from each configure's own database, because a private/public
+    /// convention is exactly the kind of assumption that reads fine and puts
+    /// the rows in the wrong order.
+    public_include_dirs_first: bool = false,
 };
 
 /// Eclipse ThreadX on the Cortex-M85, from cmake/threadx.cmake.
@@ -109,7 +123,58 @@ pub const threadx = Middleware{
     },
 };
 
-const known = [_]Middleware{threadx};
+/// The NON-SECURE variant of the same kernel, from cmake/threadx_ns.cmake. It
+/// is a separate archive rather than a flag on the one above, and the
+/// difference is not cosmetic:
+///
+///   * RA8_THREADX_NON_SECURE flips port/threadx/inc/tx_user.h from
+///     TX_SINGLE_MODE_SECURE to TX_SINGLE_MODE_NON_SECURE. Same 185 kernel
+///     sources, a different kernel, and nothing diagnoses the wrong one.
+///   * tx_systick_retune.c is NOT in this archive. It reprograms SysTick from
+///     the live CGC clock, which is a secure-world peripheral here, and its
+///     absence is why the private include path narrows to ra8_core alone: the
+///     secure variant needs libs/ra8_hal/inc only for that TU.
+///   * The three ra8_freestanding_* shims ARE in it. The Non-Secure image
+///     links no libgcc and no libc at all, so this archive is where its
+///     memcpy/memset/str/math come from. Leave them out and the NS link fails
+///     on symbols nothing in the tree appears to reference.
+///
+/// 206 TUs against the secure variant's 204, measured on a real configure.
+pub const threadx_ns = Middleware{
+    .name = "threadx_ns",
+    .soup_c_dirs = &.{
+        "libs/third_party/threadx/common/src",
+        "libs/third_party/threadx/ports/cortex_m85/gnu/src",
+    },
+    .soup_asm_dirs = &.{"libs/third_party/threadx/ports/cortex_m85/gnu/src"},
+    .replaced_basenames = &.{"tx_initialize_low_level.S"},
+    .project_sources = &.{
+        "port/threadx/src/cortex_m85/tx_initialize_low_level.S",
+        "port/threadx/src/cortex_m85/tx_systick_ready.c",
+        "libs/ra8_core/src/ra8_freestanding_mem.c",
+        "libs/ra8_core/src/ra8_freestanding_str.c",
+        "libs/ra8_core/src/ra8_freestanding_math.c",
+    },
+    .private_include_dirs = &.{"libs/ra8_core/inc"},
+    .public_include_dirs = &.{"port/threadx/inc"},
+    .public_system_include_dirs = &.{
+        "libs/third_party/threadx/common/inc",
+        "libs/third_party/threadx/ports/cortex_m85/gnu/inc",
+    },
+    // Both PUBLIC, so the app's own TUs see the same kernel-option view the
+    // archive was built with. Declared in the order CMake's generator emits
+    // them, which is lexicographic rather than declaration order.
+    .public_defines = &.{ "-DRA8_THREADX_NON_SECURE", "-DTX_INCLUDE_USER_DEFINE_FILE" },
+    .link_options = &.{
+        "-Wl,--undefined=_tx_timer_interrupt",
+        "-Wl,--undefined=g_ra8_threadx_systick_ready",
+    },
+    // cmake/threadx_ns.cmake declares its PUBLIC includes first and the
+    // PRIVATE ra8_core one last, the opposite of cmake/threadx.cmake.
+    .public_include_dirs_first = true,
+};
+
+const known = [_]Middleware{ threadx, threadx_ns };
 
 /// The middleware record for one `USES` entry, or null when the graph does not
 /// know it yet. An app naming an unknown middleware is a build error rather
@@ -170,8 +235,13 @@ pub fn appLinkOptions(allocator: std.mem.Allocator, mws: []const Middleware) []c
 /// (this one has no board, no app directory, no net/usb PAL).
 pub fn includeDirs(allocator: std.mem.Allocator, mw: Middleware) []const []const u8 {
     var out = std.ArrayList([]const u8).init(allocator);
-    out.appendSlice(mw.private_include_dirs) catch @panic("OOM");
-    out.appendSlice(mw.public_include_dirs) catch @panic("OOM");
+    if (mw.public_include_dirs_first) {
+        out.appendSlice(mw.public_include_dirs) catch @panic("OOM");
+        out.appendSlice(mw.private_include_dirs) catch @panic("OOM");
+    } else {
+        out.appendSlice(mw.private_include_dirs) catch @panic("OOM");
+        out.appendSlice(mw.public_include_dirs) catch @panic("OOM");
+    }
     return out.items;
 }
 
