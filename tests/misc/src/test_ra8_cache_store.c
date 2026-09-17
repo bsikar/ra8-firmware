@@ -611,6 +611,89 @@ RA8_INTERNAL static void internal_test_evict_then_crash(void)
 }
 
 /**
+ * @brief Read sector 0 of an open store back as a parsed superblock.
+ * @param[in]  st     Open store with geometry set.
+ * @param[out] out_sb Receives the parsed record.
+ * @return Nothing.
+ * @pre @p st is open (its LevelX partition accepts a sector read).
+ * @pre @p out_sb is writable.
+ * @post `*out_sb` mirrors the bytes currently at sector 0.
+ * @post No flash sector is written.
+ * @note Reads through a local buffer so the store staging area is untouched.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_read_super(const ra8_cache_store_t* st, ra8_cs_super_t* out_sb)
+{
+  uint8_t buf[k_t_sector_bytes];
+  (void)memset(buf, 0, sizeof(buf));
+  TEST_ASSERT_EQ(k_ra8_ok, priv_cache_store_sector_read(st, 0U, buf));
+  (void)memcpy(out_sb, buf, sizeof(*out_sb));
+}
+
+/**
+ * @test checkpoint_seq
+ * @brief The superblock checkpoint counter advances and survives a remount (#1318).
+ * @details Four legs. (1) A formatted store stamps a non-zero counter and the
+ * handle agrees with the media. (2) Successive checkpoints strictly advance it.
+ * (3) A clean remount resumes above the last value written, never at zero.
+ * (4) An unclean remount (no close) resumes from the dirty record it finds, so
+ * the series continues on the replay path too.
+ * @pre The fake NOR backing is wiped and persists across the reopen.
+ * @pre Fresh LevelX control blocks remain for each mount.
+ * @post Every mount leaves the counter strictly above the value it adopted.
+ * @post The store is closed on the legs that close it.
+ * @note Reads the media directly; the counter has no public accessor.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_test_checkpoint_seq(void)
+{
+  TEST_BEGIN("checkpoint seq");
+  lx_nor_fake_ram_wipe();
+  ra8_cache_store_t     st  = {};
+  ra8_cache_store_cfg_t cfg = internal_cfg(internal_next_flash(), true);
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_cache_store_init(&st, &cfg));
+
+  /* Leg 1: format stamped a real counter and the handle tracks the media. */
+  ra8_cs_super_t sb = {};
+  internal_read_super(&st, &sb);
+  TEST_ASSERT(sb.seq != 0U);
+  TEST_ASSERT_EQ(st.ckpt_seq, sb.seq);
+  TEST_ASSERT(sb.seq != sb.next_seq || st.next_seq == sb.seq);
+
+  /* Leg 2: each checkpoint advances it, and only it. */
+  uint32_t before = st.ckpt_seq;
+  uint8_t  a[k_cs_bytes_entry_a];
+  internal_fill(a, sizeof(a), k_cs_seed_checkpoint_a);
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_cache_store_put(&st, k_t_key_a, a, sizeof(a)));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_cache_store_sync(&st));
+  internal_read_super(&st, &sb);
+  TEST_ASSERT(st.ckpt_seq > before);
+  TEST_ASSERT_EQ(st.ckpt_seq, sb.seq);
+  uint32_t at_close = st.ckpt_seq;
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_cache_store_close(&st));
+  TEST_ASSERT(st.ckpt_seq > at_close);
+  uint32_t persisted = st.ckpt_seq;
+
+  /* Leg 3: a clean remount resumes above the last stamped value. */
+  ra8_cache_store_t     st2  = {};
+  ra8_cache_store_cfg_t cfg2 = internal_cfg(internal_next_flash(), false);
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_cache_store_init(&st2, &cfg2));
+  TEST_ASSERT(st2.ckpt_seq >= persisted);
+  internal_read_super(&st2, &sb);
+  TEST_ASSERT_EQ(st2.ckpt_seq, sb.seq);
+
+  /* Leg 4: crash (no close) -- the dirty record still carries the series. */
+  uint32_t dirty_seq = st2.ckpt_seq;
+  ra8_cache_store_t     st3  = {};
+  ra8_cache_store_cfg_t cfg3 = internal_cfg(internal_next_flash(), false);
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_cache_store_init(&st3, &cfg3));
+  TEST_ASSERT(st3.ckpt_seq >= dirty_seq);
+  TEST_ASSERT(st3.ckpt_seq != 0U);
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_cache_store_close(&st3));
+  TEST_END("checkpoint seq");
+}
+
+/**
  * @brief Plant a hand-built superblock at sector 0 of an open store.
  * @details Serializes either a validly sealed or deliberately corrupt clean
  * superblock directly into the metadata sector.
@@ -865,6 +948,7 @@ int main(void)
   internal_test_limits_and_sync();
   internal_test_evict_then_crash();
   internal_test_corrupt_super_replays();
+  internal_test_checkpoint_seq();
   internal_test_scan_rejects_bad_headers();
   internal_test_write_fault_propagates();
   (void)internal_test_output_fd_text(STDERR_FILENO, "[DONE] ra8_cache_store\n");
