@@ -5,6 +5,9 @@
  * @details Declares the RA8 CRC engine configuration and bounded byte-stream calculation interface for supported polynomials.
  * @ingroup grp_hal_analog
  *
+ * @par Tag
+ * [Ring 3 / HAL] {World: NS}
+ *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
  */

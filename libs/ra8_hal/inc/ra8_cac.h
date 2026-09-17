@@ -5,6 +5,9 @@
  * @details Declares configuration and status access for hardware clock-accuracy measurement against caller-supplied cycle limits.
  * @ingroup grp_hal_system
  *
+ * @par Tag
+ * [Ring 3 / HAL] {World: NS}
+ *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
  */
