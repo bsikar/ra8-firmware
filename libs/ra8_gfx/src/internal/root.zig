@@ -372,3 +372,78 @@ pub fn blitGray8ArgsOk(has_src: bool, w: i32, h: i32) bool {
 pub fn blitArgsOk(src_w: u16, src_h: u16, src_format: u8) bool {
     return (src_w != 0) and (src_h != 0) and formatOk(src_format);
 }
+
+// ---------------------------------------------------------------------------
+// Packed gray4 sampling for the reader-loupe zoom blit
+// ---------------------------------------------------------------------------
+
+/// Low-nibble mask of the packed gray4 format (`k_ra8_g4_nib_lo`).
+pub const gray4_nibble_mask: u8 = 0x0F;
+
+/// Nibble shift, which is also the 4-bit to 8-bit replicate (`k_ra8_g4_nib_sh`).
+const gray4_nibble_shift: u3 = 4;
+
+/// Flat nibble index of source pixel (`x`, `y`) in a `src_w`-wide packed image.
+///
+/// Two pixels share a byte, so the containing byte is `flat >> 1` and the
+/// parity of `flat` picks the half. Both coordinates are already clamped into
+/// the image by `gray4Window`, so the widening is in range.
+pub fn gray4FlatIndex(src_w: i32, x: i32, y: i32) usize {
+    return (@as(usize, @intCast(y)) * @as(usize, @intCast(src_w))) + @as(usize, @intCast(x));
+}
+
+/// Select the gray4 level at flat index `flat` out of its containing byte:
+/// the high nibble for an even index, the low nibble for an odd one.
+pub fn gray4Nibble(byte: u8, flat: usize) u8 {
+    return if ((flat & 1) != 0) (byte & gray4_nibble_mask) else (byte >> gray4_nibble_shift);
+}
+
+/// Replicate a 4-bit level into 8 bits, `(n << 4) | n`, the same expansion
+/// `ra8_gfx_blit_gray8` consumers and the dither packer use.
+///
+/// The mask is a no-op on every value `gray4Nibble` can return (both halves
+/// are already four bits); it is spelled out so the shift cannot overflow.
+pub fn gray4ToGray8(nibble: u8) u8 {
+    const n: u8 = nibble & gray4_nibble_mask;
+    return (n << gray4_nibble_shift) | n;
+}
+
+/// The source sub-rectangle a gray4 zoom blit actually samples, clamped to the
+/// image bounds. Half-open on both axes: `x0 <= x < x1`, `y0 <= y < y1`.
+pub const Gray4Window = struct {
+    x0: i32,
+    y0: i32,
+    x1: i32,
+    y1: i32,
+
+    /// True when the clamp collapsed the window, so nothing is drawn.
+    pub fn isEmpty(self: Gray4Window) bool {
+        return (self.x0 >= self.x1) or (self.y0 >= self.y1);
+    }
+};
+
+/// Clamp the requested sub-rectangle to the source image.
+///
+/// An off-image edge draws only its in-image portion, still at its natural
+/// `dst + offset * zoom` position, and a non-positive `sw`/`sh` collapses the
+/// range so nothing is drawn. The far edges are summed with wrapping
+/// arithmetic because the C's `sx + sw` was plain `int32_t` addition.
+pub fn gray4Window(sx: i32, sy: i32, sw: i32, sh: i32, src_w: i32, src_h: i32) Gray4Window {
+    const x_hi = sx +% sw;
+    const y_hi = sy +% sh;
+    return .{
+        .x0 = if (sx > 0) sx else 0,
+        .y0 = if (sy > 0) sy else 0,
+        .x1 = if (x_hi < src_w) x_hi else src_w,
+        .y1 = if (y_hi < src_h) y_hi else src_h,
+    };
+}
+
+/// The argument chain of `ra8_gfx_blit_gray4_zoom` after the init check: a
+/// buffer, a positive zoom, then a non-empty source. Every one of the C's
+/// three guards returned `invalid_arg`, so they collapse into one predicate.
+pub fn gray4ZoomArgsOk(has_src: bool, zoom: i32, src_w: i32, src_h: i32) bool {
+    if (!has_src) return false;
+    if (zoom <= 0) return false;
+    return (src_w > 0) and (src_h > 0);
+}

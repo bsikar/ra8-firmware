@@ -363,3 +363,74 @@ test "blitArgsOk demands a non-empty source in a known format" {
     try std.testing.expect(!impl.blitArgsOk(1, 0, impl.format.rgb565));
     try std.testing.expect(!impl.blitArgsOk(1, 1, 9));
 }
+
+test "gray4FlatIndex walks rows by the nibble stride" {
+    try std.testing.expectEqual(@as(usize, 0), impl.gray4FlatIndex(4, 0, 0));
+    try std.testing.expectEqual(@as(usize, 3), impl.gray4FlatIndex(4, 3, 0));
+    try std.testing.expectEqual(@as(usize, 4), impl.gray4FlatIndex(4, 0, 1));
+    try std.testing.expectEqual(@as(usize, 11), impl.gray4FlatIndex(3, 2, 3));
+}
+
+test "gray4Nibble picks the high half on an even index and the low half on an odd one" {
+    try std.testing.expectEqual(@as(u8, 0x0A), impl.gray4Nibble(0xAB, 0));
+    try std.testing.expectEqual(@as(u8, 0x0B), impl.gray4Nibble(0xAB, 1));
+    try std.testing.expectEqual(@as(u8, 0x0A), impl.gray4Nibble(0xAB, 2));
+    try std.testing.expectEqual(@as(u8, 0x0B), impl.gray4Nibble(0xAB, 3));
+}
+
+test "gray4ToGray8 replicates the level into both halves" {
+    try std.testing.expectEqual(@as(u8, 0x00), impl.gray4ToGray8(0x0));
+    try std.testing.expectEqual(@as(u8, 0x11), impl.gray4ToGray8(0x1));
+    try std.testing.expectEqual(@as(u8, 0x77), impl.gray4ToGray8(0x7));
+    try std.testing.expectEqual(@as(u8, 0xFF), impl.gray4ToGray8(0xF));
+}
+
+test "gray4ToGray8 masks a stray high half rather than overflowing the shift" {
+    try std.testing.expectEqual(@as(u8, 0x22), impl.gray4ToGray8(0xF2));
+}
+
+test "gray4Window keeps a wholly in-image request untouched" {
+    const w = impl.gray4Window(1, 1, 2, 2, 8, 8);
+    try std.testing.expectEqual(@as(i32, 1), w.x0);
+    try std.testing.expectEqual(@as(i32, 1), w.y0);
+    try std.testing.expectEqual(@as(i32, 3), w.x1);
+    try std.testing.expectEqual(@as(i32, 3), w.y1);
+    try std.testing.expect(!w.isEmpty());
+}
+
+test "gray4Window clamps a negative origin up and a far edge down" {
+    const w = impl.gray4Window(-2, -3, 10, 10, 4, 4);
+    try std.testing.expectEqual(@as(i32, 0), w.x0);
+    try std.testing.expectEqual(@as(i32, 0), w.y0);
+    try std.testing.expectEqual(@as(i32, 4), w.x1);
+    try std.testing.expectEqual(@as(i32, 4), w.y1);
+}
+
+test "gray4Window collapses a non-positive extent so nothing is drawn" {
+    try std.testing.expect(impl.gray4Window(0, 0, 0, 4, 4, 4).isEmpty());
+    try std.testing.expect(impl.gray4Window(0, 0, 4, 0, 4, 4).isEmpty());
+    try std.testing.expect(impl.gray4Window(0, 0, -1, -1, 4, 4).isEmpty());
+}
+
+test "gray4Window collapses a sub-rectangle that starts past the image" {
+    const w = impl.gray4Window(9, 9, 2, 2, 4, 4);
+    try std.testing.expectEqual(@as(i32, 9), w.x0);
+    try std.testing.expectEqual(@as(i32, 4), w.x1);
+    try std.testing.expect(w.isEmpty());
+}
+
+test "gray4Window wraps the far edge the way the C int32 addition did" {
+    const w = impl.gray4Window(std.math.maxInt(i32), 0, 1, 4, 4, 4);
+    try std.testing.expectEqual(std.math.minInt(i32), w.x1);
+    try std.testing.expect(w.isEmpty());
+}
+
+test "gray4ZoomArgsOk demands a buffer, a positive zoom, then a non-empty image" {
+    try std.testing.expect(impl.gray4ZoomArgsOk(true, 1, 4, 4));
+    try std.testing.expect(!impl.gray4ZoomArgsOk(false, 1, 4, 4));
+    try std.testing.expect(!impl.gray4ZoomArgsOk(true, 0, 4, 4));
+    try std.testing.expect(!impl.gray4ZoomArgsOk(true, -1, 4, 4));
+    try std.testing.expect(!impl.gray4ZoomArgsOk(true, 1, 0, 4));
+    try std.testing.expect(!impl.gray4ZoomArgsOk(true, 1, 4, 0));
+    try std.testing.expect(!impl.gray4ZoomArgsOk(true, 1, -1, -1));
+}
