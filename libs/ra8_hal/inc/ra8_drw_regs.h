@@ -3,6 +3,9 @@
  * @brief 2D Drawing Engine (DRW / D/AVE 2D) register layout for the RA8D2
  * @ingroup grp_hal_display
  *
+ * @par Tag
+ * [Ring 3 / HAL] {World: NS}
+ *
  * @details
  * The RA8D2 carries a Renesas D/AVE 2D vector / BitBLT drawing
  * engine at base ``0x40444000`` (Secure alias) / ``0x50444000``

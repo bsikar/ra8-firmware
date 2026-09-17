@@ -3,6 +3,9 @@
  * @brief Pulse Density Modulation Interface (PDM-IF) register layout
  * @ingroup grp_hal_audio
  *
+ * @par Tag
+ * [Ring 3 / HAL] {World: NS}
+ *
  * @details
  * Register map for the single RA8D2 PDM-IF block at 0x4025_6000. The
  * peripheral has one common register bank (channel start/stop/status
