@@ -13,7 +13,8 @@ const std = @import("std");
 const builtin = @import("builtin");
 
 pub const macos_host = @import("macos_host.zig");
-pub const macho = @import("macho.zig");
+pub const ar = @import("ar.zig");
+pub const macho = ar.macho;
 
 /// How the macOS libSystem stub is chosen. `auto` probes the host SDK (see
 /// `macos_host.decide`); the other two are escape hatches for a host whose SDK
@@ -389,6 +390,107 @@ const VerifyHostArtifact = struct {
     }
 };
 
+/// Refuse a static archive that this build's target cannot link, and say why
+/// (#899).
+///
+/// The three host roots that consume a Rust archive get it from a separate
+/// `cargo` invocation. `cargo` with no `--target` builds for the machine it
+/// runs on, so the archive matches the Zig target only while nobody pins a
+/// target and nobody reuses a target directory that a different host filled
+/// in. When they disagree the link fails inside the linker, naming a symbol or
+/// a "file was built for a different architecture" line rather than the
+/// mismatch itself, which is the reason those roots are still outside the
+/// macOS gate.
+///
+/// This step reads the archive before the link is attempted and fails with the
+/// target it was configured for, what the archive actually holds, and the
+/// option that fixes it. Expectations come off the resolved target at
+/// configure time, so it checks the archive against what this very build asked
+/// for rather than a hardcoded answer.
+pub fn addRequireArchiveForTargetStep(
+    b: *std.Build,
+    compile: *std.Build.Step.Compile,
+    archive_path: []const u8,
+    option_hint: []const u8,
+) *std.Build.Step {
+    const resolved = compile.rootModuleTarget();
+    const require = b.allocator.create(RequireArchiveForTarget) catch @panic("OOM");
+    require.* = .{
+        .step = std.Build.Step.init(.{
+            .id = .custom,
+            .name = b.fmt("require archive for {s}", .{compile.name}),
+            .owner = b,
+            .makeFn = RequireArchiveForTarget.make,
+        }),
+        .archive_path = archive_path,
+        .consumer = compile.name,
+        .target_os = resolved.os.tag,
+        .target_arch = resolved.cpu.arch,
+        .option_hint = option_hint,
+    };
+    return &require.step;
+}
+
+const RequireArchiveForTarget = struct {
+    step: std.Build.Step,
+    archive_path: []const u8,
+    consumer: []const u8,
+    target_os: std.Target.Os.Tag,
+    target_arch: std.Target.Cpu.Arch,
+    option_hint: []const u8,
+
+    fn make(step: *std.Build.Step, options: std.Build.Step.MakeOptions) anyerror!void {
+        _ = options;
+        const self: *RequireArchiveForTarget = @fieldParentPtr("step", step);
+        const b = step.owner;
+        const target = b.fmt("{s}-{s}", .{ @tagName(self.target_arch), @tagName(self.target_os) });
+
+        const bytes = std.fs.cwd().readFileAlloc(b.allocator, self.archive_path, 256 * 1024 * 1024) catch |err| {
+            if (err == error.FileNotFound) return step.fail(
+                "{s} links {s}, which does not exist. Build it for {s}, or point {s} at one that is.",
+                .{ self.consumer, self.archive_path, target, self.option_hint },
+            );
+            return step.fail("cannot read {s}: {s}", .{ self.archive_path, @errorName(err) });
+        };
+
+        const description = ar.describe(bytes) catch |err| return step.fail(
+            "{s} is not a readable static archive: {s}",
+            .{ self.archive_path, @errorName(err) },
+        );
+
+        if (!description.suits(self.target_arch, self.target_os)) {
+            const wanted = ar.expectedFormat(self.target_os);
+            return step.fail(
+                "{s} holds {s} {s} objects, but {s} is linked for {s}, which needs {s} {s} objects. " ++
+                    "The archive was built for a different host than this build targets; " ++
+                    "build it for {s}, or point {s} at one that is (#899).",
+                .{
+                    self.archive_path,
+                    description.format.label(),
+                    if (description.arch) |arch| @tagName(arch) else "unrecognised-architecture",
+                    self.consumer,
+                    target,
+                    wanted.label(),
+                    @tagName(self.target_arch),
+                    target,
+                    self.option_hint,
+                },
+            );
+        }
+
+        std.debug.print(
+            "require-archive: {s} holds {s} {s} objects, which {s} can link for {s}\n",
+            .{
+                self.archive_path,
+                description.format.label(),
+                @tagName(self.target_arch),
+                self.consumer,
+                target,
+            },
+        );
+    }
+};
+
 pub fn build(b: *std.Build) void {
     // This package's own test graph is a host build like any other, so it takes
     // the same macOS host target rule it hands to the apps (#899).
@@ -405,8 +507,11 @@ pub fn build(b: *std.Build) void {
         .target = target,
         .optimize = optimize,
     }));
-    test_module.addImport("macho", b.createModule(.{
-        .root_source_file = b.path("macho.zig"),
+    // `macho.zig` is reached through the `ar` module, not rooted separately:
+    // a file can belong to only one module in a compilation, and the archive
+    // reader imports it.
+    test_module.addImport("ar", b.createModule(.{
+        .root_source_file = b.path("ar.zig"),
         .target = target,
         .optimize = optimize,
     }));

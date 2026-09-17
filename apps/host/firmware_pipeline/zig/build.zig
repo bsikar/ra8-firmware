@@ -28,6 +28,7 @@ pub fn build(b: *std.Build) void {
 
     const supplied_rust_lib_dir = b.option([]const u8, "rust-lib-dir", "Rust archive directory");
     const rust_lib_dir = supplied_rust_lib_dir orelse b.pathFromRoot("../rust/target/debug");
+    const rust_archive = b.pathJoin(&.{ rust_lib_dir, "libfirmware_pipeline_rust.a" });
 
     const executable_module = b.createModule(.{
         .root_source_file = b.path("src/main.zig"),
@@ -50,7 +51,12 @@ pub fn build(b: *std.Build) void {
         },
         .flags = &.{ "-std=gnu2x", "-Wall", "-Wextra", "-Werror" },
     });
-    executable.addObjectFile(.{ .cwd_relative = b.pathJoin(&.{ rust_lib_dir, "libfirmware_pipeline_rust.a" }) });
+    executable.addObjectFile(.{ .cwd_relative = rust_archive });
+    // `cargo` builds for the machine it runs on, so read the archive before
+    // the link and refuse a mismatch by name rather than by linker error
+    // (#899).
+    const require_archive_for_executable = ra8_build.addRequireArchiveForTargetStep(b, executable, rust_archive, "-Drust-lib-dir=");
+    executable.step.dependOn(require_archive_for_executable);
     switch (target.result.os.tag) {
         .linux => {
             executable.linkSystemLibrary("gcc_s");
@@ -74,7 +80,9 @@ pub fn build(b: *std.Build) void {
     test_module.addImport("adapter", adapter);
     test_module.addIncludePath(b.path("../inc"));
     const tests = b.addTest(.{ .root_module = test_module });
-    tests.addObjectFile(.{ .cwd_relative = b.pathJoin(&.{ rust_lib_dir, "libfirmware_pipeline_rust.a" }) });
+    tests.addObjectFile(.{ .cwd_relative = rust_archive });
+    const require_archive_for_tests = ra8_build.addRequireArchiveForTargetStep(b, tests, rust_archive, "-Drust-lib-dir=");
+    tests.step.dependOn(require_archive_for_tests);
     switch (target.result.os.tag) {
         .linux => {
             tests.linkSystemLibrary("gcc_s");
@@ -95,8 +103,8 @@ pub fn build(b: *std.Build) void {
             b.pathFromRoot("../rust/Cargo.toml"),
         });
         cargo.setEnvironmentVariable("CARGO_TARGET_DIR", b.pathFromRoot("../rust/target"));
-        tests.step.dependOn(&cargo.step);
-        executable.step.dependOn(&cargo.step);
+        require_archive_for_tests.dependOn(&cargo.step);
+        require_archive_for_executable.dependOn(&cargo.step);
     }
     const test_step = b.step("test", "Run native Zig and Zig-to-Rust tests");
     const run_tests = b.addRunArtifact(tests);
