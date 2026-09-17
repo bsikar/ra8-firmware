@@ -1,13 +1,17 @@
 {
   "test_roots": [
     "tests/internal_test.zig",
-    "tests/abi_test.zig"
+    "tests/abi_test.zig",
+    "tests/mount_test.zig"
   ],
   "covered_sources": [
     "src/internal/root.zig",
     "src/ra8_cache_store_abi.zig",
+    "src/mount.zig",
+    "src/root.zig",
     "tests/internal_test.zig",
-    "tests/abi_test.zig"
+    "tests/abi_test.zig",
+    "tests/mount_test.zig"
   ],
   "minimum_tests": 10
 }
