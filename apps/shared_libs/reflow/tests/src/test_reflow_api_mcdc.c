@@ -9,7 +9,7 @@
  * reflow_layout_chapter() 3-condition null OR, the
  * reflow_get_page_count() null OR, the reflow_set_font_size() range
  * and state ORs, and the empty-layout guard. Loads the vendored Literata
- * font through the shared fixture in tests/inc/reflow_v1_test_util.h;
+ * font through the shared fixture in apps/shared_libs/reflow/tests/inc/reflow_v1_test_util.h;
  * like its sibling it is excluded from the build under
  * REFLOW_USE_LITEHTML (v2 does not populate the v1 glyph internals).
  *
