@@ -125,7 +125,7 @@ permitted to differ.
 | LevelX | tag `v6.5.0.202601_rel` `a46b74fb8aa133796ccbc13e7902cb8bb818e12f` | 89/90 | 1 patched (`.gitattributes`) |
 | Mbed TLS | `development` `d12fbb991c0822f347bbc569badef904629ce605` | 252/256 | 1 patched, 3 generated |
 | TF-PSA-Crypto | `development` `bbf1eaf5f4a72bcc3e0cfe854e0313c93b75cd77` | 217/222 | 5 generated |
-| Apache NimBLE | tag `nimble_1_10_0_tag` `a7a156f28954819e158b62dd613008f22f9cf73b` | 827/827 | none |
+| Apache NimBLE | tag `nimble_1_10_0_tag` `a7a156f28954819e158b62dd613008f22f9cf73b` | 615/615 | none |
 | litehtml | `8836bc1bc35ca0cfd71dc0386ef841d5cbc3bd5e` | 215/215 | none |
 | miniz | release artifact `miniz-3.0.2.zip`, SHA-256 `ada38db0...5332c5` | 3/3 | none |
 | XZ Embedded | tag `v2024-12-30` `ae63ae3a36ed01724674e8f3d750dc47bf125410` | 11/11 | none (8 relocated) |
@@ -139,8 +139,8 @@ permitted to differ.
 | protobuf-c (nested) | `abc67a11c6db271bedbb9f58be85d6f4e2ea8389` | 3/3 | none |
 | Literata | tag `3.103` `0c2761b727a1b3a7cffd313c37f0f5163dfc7a63` | 1/1 | none (1 relocated) |
 
-**Totals: 19 components, 9150 vendored files, 9133 byte-identical to their
-pinned upstream revision, 17 declared deviations.**
+**Totals: 19 components, 8938 vendored files, 8918 byte-identical to their
+pinned upstream revision, 20 declared deviations.**
 
 ### Why there are no hash values in this table
 
