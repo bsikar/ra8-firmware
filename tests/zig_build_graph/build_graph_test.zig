@@ -12,6 +12,7 @@
 
 const std = @import("std");
 const graph = @import("build_graph");
+const abi = graph.abi_contract;
 
 test "board opt-in gate drops the two sources an app must ask for" {
     try std.testing.expect(
@@ -88,4 +89,75 @@ test "compile database leaves an ordinary path untouched" {
     defer out.deinit();
     graph.appendJsonString(&out, "libs/ra8_core/src/ra8_log.c");
     try std.testing.expectEqualStrings("\"libs/ra8_core/src/ra8_log.c\"", out.items);
+}
+
+test "ABI negative control passes only on a failure that names its reason" {
+    const layout = abi.negative_fixtures[0];
+    try std.testing.expectEqual(abi.NegativeKind.layout, layout.kind);
+
+    // The whole point of a negative control: a compile that SUCCEEDS is the
+    // failure, not the pass.
+    try std.testing.expectEqual(
+        abi.NegativeOutcome.unexpected_success,
+        abi.classifyNegative(false, layout.expected_diagnostic, layout.expected_diagnostic),
+    );
+    // And a failure for an unrelated reason -- a missing header, a mistyped
+    // flag -- proves nothing about the boundary, so it is not a pass either.
+    try std.testing.expectEqual(
+        abi.NegativeOutcome.missing_diagnostic,
+        abi.classifyNegative(true, "fatal error: 'ra8_err.h' file not found", layout.expected_diagnostic),
+    );
+    try std.testing.expectEqual(
+        abi.NegativeOutcome.expected_failure,
+        abi.classifyNegative(
+            true,
+            "negative_layout.c:11:1: error: static assertion failed: \"ABI contract fixture deliberately requires an incompatible layout\"",
+            layout.expected_diagnostic,
+        ),
+    );
+}
+
+test "ABI layout control stops before the link, the symbol control does not" {
+    const allocator = std.testing.allocator;
+    for (abi.negative_fixtures) |fixture| {
+        const arguments = abi.negativeArguments(allocator, "zig", fixture, "/tmp/libfixture.a", "/tmp/out");
+        defer allocator.free(arguments);
+
+        var has_dialect = false;
+        var links_archive = false;
+        var compile_only = false;
+        for (arguments) |argument| {
+            if (std.mem.eql(u8, argument, abi.negative_dialect_flag)) has_dialect = true;
+            if (std.mem.eql(u8, argument, "/tmp/libfixture.a")) links_archive = true;
+            if (std.mem.eql(u8, argument, "-c")) compile_only = true;
+        }
+        try std.testing.expect(has_dialect);
+        switch (fixture.kind) {
+            // A missing export is only missing at the link, and only against
+            // the real archive.
+            .missing_symbol => {
+                try std.testing.expect(links_archive);
+                try std.testing.expect(!compile_only);
+            },
+            // Layout drift is a compile-time assertion; linking it would only
+            // add an unrelated undefined `main` to the diagnostics.
+            .layout => {
+                try std.testing.expect(!links_archive);
+                try std.testing.expect(compile_only);
+            },
+        }
+    }
+}
+
+test "ABI consumer keeps the warning bar CMake puts on its consumer" {
+    var has_werror = false;
+    for (abi.consumer_flags) |flag| {
+        if (std.mem.eql(u8, flag, "-Werror")) has_werror = true;
+        try std.testing.expect(!std.mem.eql(u8, flag, "-w"));
+    }
+    try std.testing.expect(has_werror);
+    // The fixture's own public header and the shared error vocabulary, in the
+    // order zig_abi_contract.cmake puts them on the include path.
+    try std.testing.expectEqualStrings("tests/zig_abi_fixture/inc", abi.include_paths[0]);
+    try std.testing.expectEqualStrings("libs/ra8_core/inc", abi.include_paths[1]);
 }
