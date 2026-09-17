@@ -237,7 +237,6 @@ RA8_INTERNAL static int internal_main_open_engine(uc_engine**             uc_out
  * it.
  *
  * @param[in] touch_seq_str The --touch-seq spec, or NULL when unset.
- * @return void
  * @pre board_periph_init has already run.
  * @pre @p touch_seq_str is a valid string or NULL.
  * @post With a spec, the GT911 FIFO holds the parsed points and a count
@@ -288,7 +287,6 @@ RA8_INTERNAL static void internal_main_arm_touch_seq(const char* touch_seq_str)
  * status.
  *
  * @param[in] args The parsed CLI args (button / battery fields).
- * @return void
  * @pre board_periph_init has already run.
  * @pre @p args is non-NULL.
  * @post Any requested switch hold / battery state is applied and announced.
@@ -325,7 +323,6 @@ RA8_INTERNAL static void internal_main_apply_button_battery(const emu_args_t* ar
  * (echoed back on bulk IN). Each decodes escape sequences first.
  *
  * @param[in] args The parsed CLI args (input string fields).
- * @return void
  * @pre board_periph_init has already run.
  * @pre @p args is non-NULL.
  * @post Each provided stream is queued to its endpoint and a count announced.
@@ -369,7 +366,6 @@ RA8_INTERNAL static void internal_main_feed_inputs(const emu_args_t* args)
  * battery / injected-input options -- all before the firmware boots.
  *
  * @param[in] args The parsed CLI args.
- * @return void
  * @pre The engine is open and mapped.
  * @pre @p args is non-NULL.
  * @post The peripheral models are reset and all pre-boot input state applied.
@@ -509,7 +505,6 @@ RA8_INTERNAL static int internal_main_load_ns(uc_engine*        uc,
  * @param[out] dump_sym_addrs Receives the resolved --dump-sym addresses.
  * @param[out] stop_sym_addr  Receives the resolved --stop-sym address (0 =
  * off).
- * @return void
  * @pre The requested ELF sources remain open and the out params are non-NULL.
  * @pre @p dump_sym_addrs has room for @p args->dump_sym_n entries.
  * @post Each probe holds its address, or 0 with a reported miss.
@@ -596,7 +591,6 @@ RA8_INTERNAL static uint32_t internal_main_reset_vector(uc_engine* uc)
  *
  * @param[in,out] uc  The engine.
  * @param[in]     elf The open primary ELF source (symbol tables).
- * @return void
  * @pre @p uc is a ready engine and @p elf remains open.
  * @pre The image has been loaded into Unicorn memory.
  * @post The core / exception / console / TZ / MPU hooks are installed.
@@ -633,7 +627,6 @@ RA8_INTERNAL static void internal_main_install_core_seams(uc_engine*            
  * @param[in]     elf  The open primary ELF source (symbol tables).
  * @param[in]     args The parsed CLI args (usbhs-loop / trace-sym).
  * @param[in,out] memory Open authoritative backing shared with CPU1.
- * @return void
  * @pre @p uc is a ready engine and @p elf remains open.
  * @pre ::internal_main_install_core_seams has already run.
  * @post The USB / trace / ISA / profiler / cpu1 seams are installed / armed.

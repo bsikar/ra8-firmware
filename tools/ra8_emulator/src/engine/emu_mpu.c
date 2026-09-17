@@ -76,7 +76,6 @@ static uint32_t     s_mpu_fault_addr;                 /**< Address written.     
  * @param[in]     size  Access width; unused.
  * @param[in]     value Value being written; unused.
  * @param[in]     user  Hook user pointer; unused.
- * @return Nothing.
  *
  * @pre The MPU is enabled and @p addr lies in a read-only region.
  * @pre The PPB CFSR / MMFAR words are mapped as RAM.
@@ -114,7 +113,6 @@ RA8_INTERNAL static void internal_on_mpu_ro_write(uc_engine*  uc,
  * range traps via ::internal_on_mpu_ro_write.
  *
  * @param[in,out] uc Unicorn engine.
- * @return Nothing.
  *
  * @pre The per-region shadow ::s_mpu_region has been captured at RLAR writes.
  * @pre No RO hooks are currently installed.
@@ -149,7 +147,6 @@ RA8_INTERNAL static void internal_mpu_install_ro_hooks(uc_engine* uc)
  *          read/write access to the formerly protected ranges.
  *
  * @param[in,out] uc Unicorn engine.
- * @return Nothing.
  *
  * @pre ::s_mpu_ro_hook[0 .. s_mpu_ro_hook_n) hold live hook handles.
  * @pre The engine is not mid-callback for one of those hooks.
@@ -182,7 +179,6 @@ RA8_INTERNAL static void internal_mpu_remove_ro_hooks(uc_engine* uc)
  * @param[in]     size  Access width; unused.
  * @param[in]     value The RLAR value being written.
  * @param[in]     user  Hook user pointer; unused.
- * @return Nothing.
  *
  * @pre RNR + RBAR for this region were written before this RLAR store.
  * @pre The PPB RNR / RBAR words are mapped as RAM.
@@ -225,7 +221,6 @@ RA8_INTERNAL static void internal_on_mpu_rlar_write(uc_engine*  uc,
  * @param[in]     size  Access width; unused.
  * @param[in]     value The CTRL value being written.
  * @param[in]     user  Hook user pointer; unused.
- * @return Nothing.
  *
  * @pre The per-region shadow has been captured for the regions in use.
  * @pre The engine permits uc_hook_add / uc_hook_del from a callback.
@@ -268,7 +263,6 @@ RA8_INTERNAL static void internal_on_mpu_ctrl_write(uc_engine*  uc,
  *
  * @param[in,out] uc        Unicorn engine.
  * @param[in]     vtor_base Fallback vector base if VTOR reads as 0.
- * @return Nothing.
  *
  * @pre ::s_mpu_fault_pc / ::s_mpu_fault_addr hold the trapped store.
  * @pre The PPB CFSR / MMFAR words and the vector table are mapped as RAM.

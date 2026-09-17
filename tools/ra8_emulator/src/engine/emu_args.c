@@ -32,7 +32,6 @@
  * @details The full option reference, printed when ra8_emulator is invoked
  * without a firmware path. Text is verbatim from the pre-split parser.
  *
- * @return void
  * @pre injected error sink is writable.
  * @pre The caller is about to return a parse failure.
  * @post The usage text has been written to injected error sink.
@@ -99,7 +98,6 @@ RA8_INTERNAL static void internal_args_print_usage(void)
  *
  * @param[in]  elf_path The firmware path from argv[1].
  * @param[out] out      The struct to seed.
- * @return void
  * @pre @p elf_path and @p out are non-NULL.
  * @pre The caller has verified argc >= 2.
  * @post @p out holds every field's documented default.

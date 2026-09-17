@@ -289,7 +289,6 @@ bool emulate_div0_patched(uc_engine* uc, uint32_t pc, const uint8_t code[4])
  * (see the run loop's reboot paths, which clear ::s_div0_armed).
  *
  * @param[in,out] uc Unicorn engine whose memory is patched.
- * @return Nothing.
  *
  * @pre ::s_div0_site[0 .. s_div0_site_n) hold valid divide-site addresses.
  * @pre @p uc permits uc_mem_write to the (host-side) code image.
@@ -398,7 +397,6 @@ RA8_INTERNAL static bool internal_div0_scan_segment(const elf_exec_segment_t* se
  * ever patched after opt-in, and ::emulate_div0_patched re-decodes before acting.
  *
  * @param[in] elf In-memory ELF image (still alive at call time).
- * @return Nothing.
  *
  * @pre @p elf is a 32-bit ARM ELF (already validated by load_elf).
  * @post ::s_div0_site holds up to ::k_div0_sites_max tracked divide sites.
@@ -434,7 +432,6 @@ void div0_seam_install(const emu_elf_source_t* elf)
  *
  * @param[in,out] uc        Unicorn engine.
  * @param[in]     vtor_base Fallback vector base if VTOR reads as 0.
- * @return Nothing.
  *
  * @pre ::s_div0_fault_pc holds the trapping divide's address.
  * @pre The PPB CFSR word and the vector table are mapped as RAM.

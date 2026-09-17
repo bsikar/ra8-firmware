@@ -60,7 +60,6 @@ static uint32_t s_uart_line_len;              /**< Chars buffered in the line. *
  * @param[in] size  Access width in bytes; unused.
  * @param[in] value The value being written; its low byte is the log character.
  * @param[in] user  Hook user pointer; unused.
- * @return Nothing.
  *
  * @pre The hook is registered for the 4-byte STIM0 word only.
  * @pre @p value holds the character ra8_log is emitting.
@@ -116,7 +115,6 @@ RA8_INTERNAL static void internal_on_itm_stim_write(uc_engine*  uc,
  *          persists for the run.
  *
  * @param[in] uc Initialised Unicorn engine with the PPB region mapped.
- * @return Nothing.
  *
  * @pre @p uc has the PPB region (0xE0000000) mapped as RAM.
  * @pre Called once before emulation starts.

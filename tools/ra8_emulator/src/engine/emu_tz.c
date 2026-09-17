@@ -74,7 +74,6 @@ typedef enum : uint32_t {
  * @param[in] address The BLXNS instruction address; unused.
  * @param[in] size    Instruction size in bytes; unused.
  * @param[in] user    Hook user pointer; unused.
- * @return Nothing.
  *
  * @pre The NS vectors are live at @ref s_ns_vector_base -- either copied to the
  *      RAM run alias by the Secure boot, or XIP-resident in the OSPI window.

@@ -406,7 +406,6 @@ RA8_INTERNAL static bool internal_long_shift_is_site(uint32_t addr)
  *
  * @param[in,out] uc      Unicorn engine to read the operands from.
  * @param[in]     address Address of the long-shift instruction.
- * @return Nothing.
  * @pre @p uc is a running engine positioned at @p address.
  * @post ::s_lsh_pending is armed, or left untouched on an unreadable /
  *       non-matching site (a scan false positive).
@@ -465,7 +464,6 @@ RA8_INTERNAL static void internal_long_shift_begin(uc_engine* uc, uint32_t addre
  *
  * @param[in,out] uc   Unicorn engine to write the registers of.
  * @param[in,out] slot The armed entry for the instruction now being entered.
- * @return Nothing.
  * @pre @p slot is a non-null, armed entry.
  * @post @p slot is disarmed and the register pair holds the result.
  * @note Not thread-safe.
@@ -666,7 +664,6 @@ RA8_INTERNAL static bool internal_long_shift_segment(const elf_exec_segment_t* s
  *
  * @param[in,out] uc  Unicorn engine to install the hooks on.
  * @param[in]     elf In-memory ELF image (still alive at call time).
- * @return Nothing.
  * @pre @p elf is a 32-bit ARM ELF (already validated by load_elf).
  * @post One UC_HOOK_CODE pair per long-shift site (up to ::k_lsh_sites_max) is armed.
  * @note Not thread-safe; call once during setup before the run loop.

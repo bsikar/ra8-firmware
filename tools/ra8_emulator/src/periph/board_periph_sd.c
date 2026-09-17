@@ -151,7 +151,6 @@ internal_board_sd_fill_block(const board_sd_state_t* c, uint64_t off, uint8_t* b
  * @param[in,out] c       Card state.
  * @param[in]      payload Source bytes.
  * @param[in]      len     Payload length (16 for CSD, 512 for a data block).
- * @return None.
  * @pre `c` and `payload` are non-null and `len + 4 <= k_sd_resp_cap`.
  * @pre None.
  * @post `c->resp` holds R1, token, payload, and the two CRC bytes.
@@ -196,7 +195,6 @@ internal_board_sd_stage_block(board_sd_state_t* c, const uint8_t* payload, uint3
  * @param[in,out] c   Card state.
  * @param[in]     idx Command index (CMD17 single or CMD18 multi).
  * @param[in]     arg Block address argument.
- * @return None.
  * @pre `c` is non-null and a card image is attached.
  * @pre `idx` is ::k_sd_idx_cmd17 or ::k_sd_idx_cmd18.
  * @post `c->resp` holds the first block reply; `c->rd_off` points past it.
@@ -229,7 +227,6 @@ internal_board_sd_begin_read(board_sd_state_t* c, uint8_t idx, uint32_t arg)
  * token. Advances the stream offset by one block.
  *
  * @param[in,out] c Card state with an open CMD18 stream.
- * @return None.
  * @pre `c->rd_multi` is true (a CMD18 stream is open).
  * @pre A card image is attached (reads past its end yield zeros).
  * @post `c->resp` holds token + payload + CRC with `c->resp_pos` at the token.
@@ -262,7 +259,6 @@ RA8_INTERNAL static void internal_board_sd_read_stream_next(board_sd_state_t* c)
  *
  * @param[in,out] c  Card state.
  * @param[in]     r1 R1 status byte to return (ready/idle).
- * @return None.
  * @pre `c` is non-null.
  * @pre `c->resp_pos` / `c->resp_len` were reset by the caller.
  * @post `c->rd_multi` is false (any open stream is closed).
@@ -292,7 +288,6 @@ RA8_INTERNAL static void internal_board_sd_stop_read(board_sd_state_t* c, uint8_
  * @param[in]     idx Command index (CMD24 single or CMD25 multi).
  * @param[in]     arg Block address argument.
  * @param[in]     r1  R1 status byte to return (ready/idle).
- * @return None.
  * @pre `c` is non-null and a writable image is attached.
  * @pre `idx` is ::k_sd_idx_cmd24 or ::k_sd_idx_cmd25.
  * @post `c->resp` holds R1; the write sub-state is armed.
@@ -465,7 +460,6 @@ RA8_INTERNAL static uint8_t internal_board_sd_write_byte(board_sd_state_t* c, ui
  * arm of `internal_board_sd_process_cmd()`.
  *
  * @param[in,out] c Card state whose response buffer receives the CSD block.
- * @return None.
  * @pre `c` is non-null with a staging response buffer.
  * @pre `c->image_len` reflects the attached card size.
  * @post `c->resp` / `c->resp_len` hold the staged 16-byte CSD block.
@@ -626,7 +620,6 @@ RA8_INTERNAL static void internal_board_sd_cmd_erase(board_sd_state_t* c, uint8_
  * @param[in]     idx 6-bit command index already masked from the frame.
  * @param[in]     arg 32-bit big-endian argument decoded from the frame.
  * @param[in]     r1  Pre-computed R1 status byte (idle vs ready).
- * @return None.
  * @pre `c` is non-null with a staging response buffer.
  * @pre `internal_board_sd_dispatch_ident()` already declined `idx`.
  * @post `c->resp` / `c->resp_len` (and any read/write stream state) describe the reply.
@@ -672,7 +665,6 @@ internal_board_sd_dispatch_data(board_sd_state_t* c, uint8_t idx, uint32_t arg, 
  * @brief Build the response for a completed 6-byte command frame.
  *
  * @param[in,out] c Card state holding the collected command.
- * @return None.
  * @pre `c` is non-null and `c->cmd` holds a full frame.
  * @pre A card image is attached.
  * @post `c->resp` / `c->resp_len` describe the reply; `c->resp_pos` reset.

@@ -253,7 +253,6 @@ RA8_INTERNAL static bool internal_mve_mem_decode(uint16_t hw1, uint16_t hw2, mve
  * @param[in,out] uc Unicorn engine.
  * @param[in]     op Decoded operation from ::internal_mve_mem_decode.
  *
- * @return Nothing.
  *
  * @pre @p op was produced by a successful ::internal_mve_mem_decode.
  * @pre @p uc is stopped inside the NoCP fault for this instruction.

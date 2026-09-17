@@ -52,7 +52,6 @@ static bool s_reboot_request;
  * @param[in]     size  Access width (unused).
  * @param[in]     value Value written.
  * @param[in]     user  Unused hook context.
- * @return Nothing.
  * @since 0.1.0
   * @pre Arguments satisfy the ranges documented for on SCB ctrl write. @pre The call executes on the emulator's single owning thread.
  * @post State changes remain confined to the emu exc scs model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
@@ -106,7 +105,6 @@ RA8_INTERNAL static void internal_on_scb_ctrl_write(uc_engine*  uc,
  * @param[in]     size  Access width in bytes; unused.
  * @param[in]     value The bit-mask the firmware is setting/clearing.
  * @param[in]     user  Hook user pointer; unused.
- * @return Nothing.
  * @since 0.1.0
   * @pre Arguments satisfy the ranges documented for on NVIC en write. @pre The call executes on the emulator's single owning thread.
  * @post State changes remain confined to the emu exc scs model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
@@ -178,7 +176,6 @@ typedef enum : uint64_t {
  *
  * @param[in,out] uc Active Unicorn engine (CYCCNT and its enables live in PPB
  *                   RAM, read/written through @p uc).
- * @return Nothing.
  *
  * @pre @p uc has stopped at an instruction boundary (outer-chunk cadence).
  * @pre The PPB (DEMCR / DWT_CTRL / DWT_CYCCNT) is mapped as RAM.

@@ -295,7 +295,6 @@ RA8_INTERNAL static uint32_t internal_console_tab_row_count(int32_t panel_w, uin
  * @param[in]  idx     Tab index (0 .. @p count - 1).
  * @param[in]  count   Total tab count (clamped to >= 1 internally).
  * @param[out] r       Receives the cell rect {x, y, w, h}; 4-int array.
- * @return Nothing.
  * @pre @p count is the live channel count (0 is treated as 1).
  * @pre @p r is a non-NULL array of at least 4 int32_t.
  * @post @p r[0]/r[1] are within the console panel band.
@@ -342,7 +341,6 @@ RA8_INTERNAL static void internal_console_tab_rect(int32_t  panel_x,
  * @param[in]  panel_x Console panel left edge.
  * @param[in]  panel_w Console panel width in pixels.
  * @param[in]  st      Live status snapshot (tab names / counts / active index).
- * @return Nothing.
  * @pre @p st is non-NULL.
  * @pre @p surface is valid for its declared composite geometry.
  * @post Up to ::k_overlay_console_tabs_max tab cells are painted.

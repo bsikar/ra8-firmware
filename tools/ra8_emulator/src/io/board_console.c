@@ -80,7 +80,6 @@ const char* board_console_name(board_console_ch_t ch)
  *
  * @param[out] dst Destination ring slot (::k_board_console_line_cap bytes).
  * @param[in]  src Source text (may be NULL).
- * @return Nothing.
  * @pre @p dst points at a ::k_board_console_line_cap-byte buffer.
  * @pre The copy is bounded by ::k_board_console_line_cap (no overrun possible).
  * @post @p dst is NUL-terminated within its capacity.
@@ -114,7 +113,6 @@ RA8_INTERNAL static void internal_slot_copy(char* dst, const char* src)
  *
  * @param[in,out] ring Ring to push into.
  * @param[in]     line Line text to copy (bounded; may be NULL -> empty).
- * @return Nothing.
  * @pre @p ring is a valid ::console_ring_t with @c head < ring depth.
  * @pre @p ring has space for the copy (a ring is never full -- it overwrites).
  * @post @p ring gains one line; @c count <= ::k_board_console_ring_depth.
@@ -147,7 +145,6 @@ RA8_INTERNAL static void internal_ring_push(console_ring_t* ring, const char* li
  * @param[in]  ch   Source channel whose name prefixes the line.
  * @param[in]  line Source line text (may be NULL -> name only).
  * @param[out] out  Destination buffer (::k_board_console_line_cap bytes).
- * @return Nothing.
  * @pre @p out points at a ::k_board_console_line_cap-byte buffer.
  * @pre @p ch is a source lane with a valid ::board_console_name.
  * @post @p out is NUL-terminated within its capacity.

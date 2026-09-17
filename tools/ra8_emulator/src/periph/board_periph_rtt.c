@@ -238,7 +238,6 @@ internal_rtt_match_stage(uc_engine* uc, uint64_t stage_addr, uint64_t len)
  * the fixed window span (64 sub-reads).
  *
  * @param[in,out] uc Unicorn engine (the SRAM bytes are read through it).
- * @return Nothing.
  * @pre @p uc is a live engine with the SRAM window mapped.
  * @pre @c s_rtt.cb_addr is 0 (the caller only scans while undiscovered).
  * @post On a validated match @c s_rtt.cb_addr holds the block address.
@@ -278,7 +277,6 @@ RA8_INTERNAL static void internal_rtt_scan(uc_engine* uc)
  * run loop's RA8_EMU_STOP_ON banner guard reads the newest line back.
  *
  * @param[in] byte The drained up-buffer byte.
- * @return Nothing.
  * @pre @c s_rtt.line_len < ::k_rtt_line_max (the flush below maintains it).
  * @pre board_console is initialised (static storage guarantees it).
  * @post On LF the completed line is surfaced and the buffer reset.
@@ -318,7 +316,6 @@ RA8_INTERNAL static void internal_rtt_line_feed(uint8_t byte)
  * once the firmware finishes touching it).
  *
  * @param[in,out] uc Unicorn engine (ring bytes + offsets live in guest RAM).
- * @return Nothing.
  * @pre @c s_rtt.cb_addr points at a previously validated control block.
  * @pre @p uc is a live engine with the SRAM window mapped.
  * @post The guest read offset equals the pre-drain write offset (or advanced
@@ -379,7 +376,6 @@ RA8_INTERNAL static void internal_rtt_drain(uc_engine* uc)
  * never back-pressures the target.
  *
  * @param[in,out] uc Unicorn engine (all block state lives in guest RAM).
- * @return Nothing.
  * @pre The block registry called ::internal_rtt_reset at init (state is coherent).
  * @pre @p uc is a live engine with the SRAM window mapped.
  * @post @c s_rtt.ticks advanced by one.
@@ -410,7 +406,6 @@ RA8_INTERNAL static void internal_rtt_tick(uc_engine* uc)
 /**
  * @brief Reset the RTT drain model to power-on state (warm reboot).
  *
- * @return Nothing.
  * @pre Called from the single-threaded reset path (board_periph_init).
  * @pre The block registry owns the call cadence (never re-entered).
  * @post The control block is forgotten and the scan cadence re-armed.
@@ -429,7 +424,6 @@ RA8_INTERNAL static void internal_rtt_reset(void)
 /**
  * @brief End-of-run RTT section: block address + drained totals.
  *
- * @return Nothing.
  * @pre The run loop has finished (report cadence owned by the registry).
  * @pre injected error sink is writable (the summary sink).
  * @post One summary line is printed iff a control block was discovered.
@@ -481,7 +475,6 @@ RA8_INTERNAL static uint64_t internal_rtt_mmio_read(uc_engine* uc, uint64_t addr
  * @param[in]     addr  Access address; unused.
  * @param[in]     size  Access width; unused.
  * @param[in]     value Written value; unused.
- * @return Nothing.
  * @pre None (the zero-length window means the core never routes here).
  * @pre The descriptor's span stays 0 (see ::s_k_rtt_block).
  * @post No state is touched.

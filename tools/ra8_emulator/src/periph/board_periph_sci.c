@@ -283,7 +283,6 @@ RA8_INTERNAL static uint64_t internal_sci_reg_read(uint32_t ch, uint64_t off)
  * tracks only the last completed line, independent of the optional TX sink.
  *
  * @param[in] byte The transmitted data byte.
- * @return Nothing.
  * @since 0.1.0
   * @pre Arguments satisfy the ranges documented for SCI capture tx line. @pre The call executes on the emulator's single owning thread.
  * @post State changes remain confined to the board periph SCI model and documented output objects. @post Ownership of caller-supplied storage is unchanged.

@@ -96,7 +96,6 @@ internal_guard_env_u32_headless(const char* name, uint32_t dflt, const board_vie
  *
  * @param[in,out] wall_s        In: default bound; out: override when > 0.
  * @param[in,out] wall_guard_on In: true; out: false on an explicit WALL_S=0.
- * @return void
  * @pre @p wall_s and @p wall_guard_on are non-NULL and pre-seeded to defaults.
  * @pre The environment is stable for the call.
  * @post @p wall_s holds the effective CPU-time bound in seconds.
@@ -129,7 +128,6 @@ RA8_INTERNAL static void internal_guard_read_wall(double* wall_s, bool* wall_gua
  * @param[in]     cfg        The run configuration (record dir / seconds).
  * @param[in]     view       The live window handle (NULL when headless).
  * @param[in,out] max_chunks In: current budget; out: record-secs bound when set.
- * @return void
  * @pre @p cfg and @p max_chunks are non-NULL.
  * @pre @p view is NULL or a valid window handle.
  * @post With headless --record-secs, @p max_chunks equals the recording window.
@@ -189,7 +187,6 @@ RA8_INTERNAL static const char* internal_guard_read_stop_on(const board_view_t* 
  * profile insn mode, via prof_insn_hook), letting the profiler cover exactly
  * the boot path. The supplied address has its Thumb bit cleared.
  *
- * @return void
  * @pre The environment is stable for the call.
  * @pre The profiler module is initialised.
  * @post With RA8_EMU_STOP_PC set, the profiler stop PC is armed.
@@ -219,7 +216,6 @@ RA8_INTERNAL static void internal_guard_apply_stop_pc(void)
  * @param[out] insns Per-chunk insn count below which a chunk is idle.
  * @param[out] need  Consecutive idle chunks that end the run.
  * @param[out] arm   Chunks to run before the stop is armed.
- * @return void
  * @pre @p insns, @p need and @p arm are non-NULL.
  * @pre The environment is stable for the call.
  * @post Each output holds its default or its env override.

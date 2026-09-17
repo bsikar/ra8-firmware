@@ -184,7 +184,6 @@ RA8_INTERNAL static uint64_t internal_eth_shadow_read(uint64_t off, unsigned siz
  * @param[in] off   Byte offset inside the window.
  * @param[in] size  Access width (1 / 2 / 4).
  * @param[in] value Value to store.
- * @return Nothing.
  * @pre @p off is inside @c [0, k_eth_win_span).
  * @pre @p size is 1, 2, or 4.
  * @post The shadow bytes reflect @p value.
@@ -307,7 +306,6 @@ RA8_INTERNAL static uint32_t internal_eth_desc_ptr(const uint8_t* d8)
  * @param[in,out] uc   Active engine.
  * @param[in]     addr Descriptor base in emulated memory.
  * @param[in]     dt   New descriptor-type nibble.
- * @return Nothing.
  * @pre @p addr points at a live GWCA descriptor.
  * @pre @p dt is a valid ra8_gwdcc_dt_t nibble.
  * @post Byte 2 of the descriptor carries @p dt in bits [7:4].
@@ -331,7 +329,6 @@ RA8_INTERNAL static void internal_eth_desc_set_dt(uc_engine* uc, uint32_t addr, 
  * @param[in,out] uc   Active engine.
  * @param[in]     addr Descriptor base in emulated memory.
  * @param[in]     ds   Frame length to store (0..4095).
- * @return Nothing.
  * @pre @p addr points at a live GWCA descriptor.
  * @pre @p ds fits in 12 bits.
  * @post Bytes 0..1 of the descriptor carry @p ds (byte-1 high nibble kept).
@@ -443,7 +440,6 @@ RA8_INTERNAL static uint16_t internal_eth_phy_read(uint32_t reg)
  *
  * @param[in] reg   PHY register index (0..31).
  * @param[in] value 16-bit value written over MDIO.
- * @return Nothing.
  * @pre @p reg addresses the modelled Clause-22 space.
  * @pre The caller has decoded a C22 write transaction.
  * @post BMCR.RESET / .AN_RESTART are dropped so the driver's poll sees them
@@ -476,7 +472,6 @@ RA8_INTERNAL static void internal_eth_phy_write(uint32_t reg, uint16_t value)
  *
  * @param[in] mpsm_off Window offset of the MPSM register.
  * @param[in] value    Value written to MPSM.
- * @return Nothing.
  * @pre @p mpsm_off addresses an RMAC MPSM register.
  * @pre @p value has PSME set (a live transaction).
  * @post The MPSM shadow reads back with PSME == 0 and PRD holding the result.
@@ -519,7 +514,6 @@ RA8_INTERNAL static void internal_eth_mpsm_exec(uint64_t mpsm_off, uint32_t valu
  *
  * @param[in,out] uc    Active engine (reads the rings from SRAM).
  * @param[in]     queue GWCA queue number that was kicked.
- * @return Nothing.
  * @pre The descriptor rings live in mapped emulated memory.
  * @pre @c s_eth.linkfix_base was captured from GWDCBAC1.
  * @post A single-fragment frame has been delivered and its slot freed.
@@ -638,7 +632,6 @@ internal_eth_rx_find_slot(uc_engine* uc, uint32_t chain, uint32_t* out_slot)
  *
  * @param[in,out] uc    Active engine.
  * @param[in]     chain RX ring chain-head address.
- * @return Nothing.
  * @pre The RX ring lives in mapped emulated memory.
  * @pre The GWCA is in OPERATION (checked by the caller).
  * @post Up to ::k_eth_rx_inject_max frames are staged FSINGLE in the ring.
@@ -776,7 +769,6 @@ RA8_INTERNAL static uint64_t internal_eth_read(uc_engine* uc, uint64_t addr, uns
  * @param[in]     addr  Absolute register address.
  * @param[in]     size  Access width.
  * @param[in]     value Value written.
- * @return Nothing.
  * @pre @p addr is inside the block window.
  * @pre @p size is 1, 2, or 4.
  * @post Config registers reflect @p value; action registers run their model.

@@ -72,7 +72,6 @@ typedef enum : uint8_t {
  *
  * @param[in]  cfg The run configuration (panel size + rotation).
  * @param[out] st  The run state whose geometry fields are filled.
- * @return void
  * @pre @p cfg and @p st are non-NULL.
  * @pre @p cfg holds a valid panel size and rotation.
  * @post @p st panel/disp/comp dimensions are set consistently.
@@ -100,7 +99,6 @@ RA8_INTERNAL static void internal_run_setup_geometry(const emu_run_cfg_t* cfg, r
  *
  * @param[in]     cfg The run configuration (output-mode flags + rotation).
  * @param[in,out] st  The run state (geometry read; view handle written).
- * @return void
  * @pre ::internal_run_setup_geometry has filled @p st geometry.
  * @pre @p cfg and @p st are non-NULL.
  * @post @p st->view is a window handle or NULL (headless).
@@ -128,7 +126,6 @@ RA8_INTERNAL static void internal_run_open_view(const emu_run_cfg_t* cfg, run_lo
  *
  * @param[in]     cfg The run configuration (--click coordinates + flag).
  * @param[in,out] st  The run state (click_was_tab / click_btn written).
- * @return void
  * @pre ::internal_run_setup_geometry has filled @p st->disp_w.
  * @pre @p cfg and @p st are non-NULL.
  * @post @p st->click_was_tab and @p st->click_btn reflect the click target.
@@ -166,7 +163,6 @@ RA8_INTERNAL static void internal_run_classify_click(const emu_run_cfg_t* cfg, r
  *
  * @param[in]  cfg The setup products (see ::emu_run_cfg_t).
  * @param[out] st  The run state to initialize.
- * @return void
  * @pre @p cfg is fully populated and @p st is non-NULL.
  * @pre The engine referenced by @p cfg is ready to run.
  * @post @p st is fully initialized for the first chunk.
@@ -266,7 +262,6 @@ RA8_INTERNAL static loop_action_t internal_run_loop_prologue(run_loop_t* st)
  * panel touch is re-injected until the firmware drains it).
  *
  * @param[in,out] st The run state.
- * @return void
  * @pre @p st is initialized and its engine is ready.
  * @pre The seams / exception hooks are installed.
  * @post The tick is armed and one tick-period of peripheral time has advanced.
@@ -373,7 +368,6 @@ RA8_INTERNAL static loop_action_t internal_run_loop_run_chunk(run_loop_t* st)
  * composites the panel + sidebar and writes the next numbered PPM.
  *
  * @param[in,out] st The run state.
- * @return void
  * @pre @p st is initialized and its engine is ready.
  * @pre With --record, @p st->presentation owns an open raw surface.
  * @post cpu1 has advanced one step.
@@ -416,7 +410,6 @@ RA8_INTERNAL static void internal_run_loop_record(run_loop_t* st)
  * core redrawing identical frames.
  *
  * @param[in,out] st The run state.
- * @return void
  * @pre @p st->view is live and its presentation surface is open.
  * @pre @p st->chunks is a multiple of k_view_present_every.
  * @post Either a frame was presented or the host CPU was yielded.
@@ -816,7 +809,6 @@ RA8_INTERNAL static loop_action_t internal_run_loop_present_and_stops(run_loop_t
  * back a ::loop_action_t the driver dispatches on.
  *
  * @param[in,out] st The run state.
- * @return void
  * @pre @p st is fully initialized by ::internal_run_loop_setup.
  * @pre The engine and seams are ready.
  * @post @p st holds the run's final PC, counters and stop-cause flags.

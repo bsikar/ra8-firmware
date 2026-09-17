@@ -295,7 +295,6 @@ RA8_INTERNAL static uint64_t internal_ipc_read(uc_engine* uc, uint64_t addr, uns
  * @param[in] ch    Channel index (0..::k_ipc_ch_count - 1).
  * @param[in] value The 32-bit message word to queue.
  *
- * @return Nothing.
  *
  * @pre @p ch is a decoded channel index (< ::k_ipc_ch_count).
  * @pre The model state ::s_ipc is initialised.
@@ -325,7 +324,6 @@ RA8_INTERNAL static void internal_ipc_fifo_push(uint32_t ch, uint32_t value)
  * @param[in] ch    Channel index (0..::k_ipc_ch_count - 1).
  * @param[in] value The written CLR word.
  *
- * @return Nothing.
  *
  * @pre @p ch is a decoded channel index (< ::k_ipc_ch_count).
  * @pre The model state ::s_ipc is initialised.

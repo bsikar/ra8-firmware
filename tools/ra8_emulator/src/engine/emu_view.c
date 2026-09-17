@@ -226,7 +226,6 @@ RA8_INTERNAL static void internal_fill_status_console(board_status_t* st)
  *
  * @param[out] st        Status struct to fill.
  * @param[in]  app_name  Window / app title to caption the sidebar with.
- * @return Nothing.
   * @pre Arguments satisfy the ranges documented for fill status. @pre The call executes on the emulator's single owning thread.
  * @post State changes remain confined to the emu view model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
  * @note The operation is synchronous and does not transfer heap ownership.

@@ -272,7 +272,6 @@ internal_gptp_decode_timer(uint64_t off, uint32_t* out_timer, uint64_t* out_inof
  * @param[in]  t        Timer unit index (< ::k_ra8_gptp_timer_count).
  * @param[out] out_sec  Receives the 48-bit seconds field.
  * @param[out] out_nsec Receives the 30-bit nanoseconds field.
- * @return Nothing.
  * @pre @p t is a valid unit index and both out-pointers are non-null.
  * @pre The caller holds no lock (single-threaded run loop).
  * @post @p *out_sec is below 2^48 and @p *out_nsec below one second.
@@ -310,7 +309,6 @@ RA8_INTERNAL static void internal_gptp_time_now(uint32_t t, uint64_t* out_sec, u
  * seconds out of the sub-second accumulator so it never overflows.
  *
  * @param[in] t Timer unit index (< ::k_ra8_gptp_timer_count).
- * @return Nothing.
  * @pre @p t is a valid unit index.
  * @pre The unit's PTPTIVCt lives in the config shadow.
  * @post A stopped or zero-increment unit is left unchanged.
@@ -417,7 +415,6 @@ RA8_INTERNAL static uint32_t internal_gptp_read_tmec(void)
  * @c {U[15:0], M[31:0]} seconds with @c L[29:0] nanoseconds.
  *
  * @param[in] t Timer unit index (< ::k_ra8_gptp_timer_count).
- * @return Nothing.
  * @pre @p t is a valid unit index.
  * @pre The three offset registers hold the intended value in the shadow.
  * @post @c off_sec is 48-bit and @c off_nsec below one second.
@@ -563,7 +560,6 @@ RA8_INTERNAL static uint64_t internal_gptp_read(uc_engine* uc, uint64_t addr, un
  * @param[in]     addr  Absolute register address inside the window.
  * @param[in]     size  Access width (1 / 2 / 4).
  * @param[in]     value Value written.
- * @return Nothing.
  * @pre @p addr is inside the block window.
  * @pre @p size is 1, 2, or 4.
  * @post PTPTMEC / PTPTMDC drive the enable state; a PTPTOVCtL write commits the

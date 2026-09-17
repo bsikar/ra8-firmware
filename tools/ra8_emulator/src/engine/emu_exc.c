@@ -197,7 +197,6 @@ RA8_INTERNAL static uint32_t internal_exc_return_value(bool in_thread, bool use_
  * @param[in,out] uc      Unicorn engine.
  * @param[in]     exc_num Exception number to take (11, 14, or 15).
  * @param[in]     handler Handler entry address (Thumb bit ignored).
- * @return Nothing.
  *
  * @pre @p uc has MSP/PSP/CONTROL/xPSR readable and the target stack mapped.
  * @pre Taking @p exc_num is permitted now (priority/PRIMASK already checked).
@@ -322,7 +321,6 @@ internal_exc_restore_mode(uc_engine* uc, uint32_t xpsr, bool to_thread, bool to_
  *
  * @param[in,out] uc      Unicorn engine.
  * @param[in]     exc_ret The EXC_RETURN value (prefix bits[31:7] set) returned to.
- * @return Nothing.
  *
  * @pre @p uc is in Handler mode with a valid basic frame on the indicated stack.
  * @pre @p exc_ret has the EXC_RETURN prefix (bits[31:7] all set).
@@ -738,7 +736,6 @@ RA8_INTERNAL static bool internal_on_intr_bkpt(uc_engine* uc, uint32_t pc, uint3
  * @param[in,out] uc        Unicorn engine.
  * @param[in]     int_no    Interrupt/exception number reported by Unicorn.
  * @param[in]     user_data Hook user pointer (unused; signature fixed by Unicorn).
- * @return Nothing.
  *
  * @pre @p uc has just executed an `svc` instruction or branched to EXC_RETURN.
  * @pre The vector table (at VTOR or the MRAM fallback) holds SVC_Handler.
@@ -832,7 +829,6 @@ RA8_INTERNAL static void internal_on_intr(uc_engine* uc, uint32_t int_no, void* 
  * @param[in]     size  Access width in bytes; unused.
  * @param[in]     value The value being written to ICSR.
  * @param[in]     user  Hook user pointer; unused.
- * @return Nothing.
  *
  * @pre @p uc is mid-chunk executing the store to ICSR.
  * @pre The hook is registered for the 4-byte ICSR word only.

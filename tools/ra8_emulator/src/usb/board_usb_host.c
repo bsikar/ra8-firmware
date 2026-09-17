@@ -293,7 +293,6 @@ RA8_INTERNAL static uint16_t internal_usbhs_dcp_mps(void)
  * SET_ADDRESS reports SIE-handled: the status stage needs no device CCPL.
  *
  * @param[in,out] uc Unicorn engine (loop delivery pends the device IRQ).
- * @return Nothing.
  * @pre The model is engaged (host mode + loop granted).
  * @pre The USBREQ..USBLENG shadows hold the request to deliver.
  * @post SACK or SIGN is latched in the INTSTS1 shadow.
@@ -341,7 +340,6 @@ RA8_INTERNAL static void internal_usbhs_do_setup(uc_engine* uc)
  * ::internal_usbhs_brdysts_value polls.
  *
  * @param[in,out] uc Unicorn engine (loop delivery pends the device IRQ).
- * @return Nothing.
  * @pre A SETUP for the active transfer completed (SACK observed).
  * @pre The model is engaged.
  * @post Read status: device advanced to read-status; host DCP BEMP latched.
@@ -499,7 +497,6 @@ RA8_INTERNAL static uint64_t internal_usbhs_cfifo_read(uc_engine* uc, unsigned s
  *
  * @param[in] value The written value (little-endian byte order).
  * @param[in] size  Access width in bytes (1 / 2 / 4).
- * @return Nothing.
  * @pre The model is engaged.
  * @pre The staging has room (bounded by ::k_usbhs_stage_cap).
  * @post Up to @p size bytes are appended to the staging.
@@ -530,7 +527,6 @@ RA8_INTERNAL static void internal_usbhs_cfifo_write(uint64_t value, unsigned siz
  *
  * @param[in,out] uc    Unicorn engine (loop delivery pends the device IRQ).
  * @param[in]     value The written CFIFOCTR value.
- * @return Nothing.
  * @pre The model is engaged and CFIFOSEL selects the transfer's pipe.
  * @pre Staged bytes (for BVAL) were pushed via the CFIFO port.
  * @post BCLR: the selected side's staging is empty.
@@ -580,7 +576,6 @@ RA8_INTERNAL static void internal_usbhs_cfifoctr_write(uc_engine* uc, uint16_t v
  *
  * @param[in,out] uc    Unicorn engine (loop delivery pends the device IRQ).
  * @param[in]     value The written DVSTCTR0 value.
- * @return Nothing.
  * @pre The model is engaged.
  * @pre The stored shadow holds the previous DVSTCTR0 control bits.
  * @post The shadow holds @p value minus RHST; RHST reflects the reset result.
@@ -615,7 +610,6 @@ RA8_INTERNAL static void internal_usbhs_dvstctr_write(uc_engine* uc, uint16_t va
  *
  * @param[in,out] uc    Unicorn engine (transactions pend the device IRQ).
  * @param[in]     value The written DCPCTR value.
- * @return Nothing.
  * @pre The model is engaged.
  * @pre For SUREQ, the USBREQ..USBLENG mirrors hold the request.
  * @post The shadow holds the persistent bits (PID / CCPL) of @p value.
@@ -711,7 +705,6 @@ RA8_INTERNAL static uint64_t internal_usbhs_reg_read(uc_engine* uc, uint64_t off
  * @param[in]     value64 The written value -- 64-bit wide so the CFIFO port's
  *                      32-bit MBW fills arrive untruncated (every other
  *                      register consumes its low 16 bits).
- * @return Nothing.
  * @pre The model is engaged.
  * @pre @p off < ::k_usbhs_span.
  * @post The write's semantics are applied (shadow / staging / transaction).

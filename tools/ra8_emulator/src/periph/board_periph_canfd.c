@@ -296,7 +296,6 @@ RA8_INTERNAL static bool internal_canfd_frame_accepted(const canfd_inst_t* c, ui
  * @param[in] tx_id   Transmitted identifier, already masked to 29 bits.
  * @param[in] dlc     4-bit data-length code from CFDTM.PTR[31:28] (0..15).
  * @param[in] outcome Borrowed NUL-terminated delivery note (e.g. "-> RXF0").
- * @return Nothing.
  * @pre @p outcome is a valid NUL-terminated string.
  * @pre @p inst is a valid CANFD instance index (< k_canfd_count).
  * @post Exactly one line is appended to the CAN console lane.

@@ -138,7 +138,6 @@ void board_periph_register_block(const board_periph_block_t* block)
  * of the constructor registration order (ties keep registration order). MMIO
  * dispatch does not use this -- blocks own disjoint address ranges.
  *
- * @return Nothing.
  * @since 0.1.0
   * @pre Arguments satisfy the ranges documented for board periph build order. @pre The call executes on the emulator's single owning thread.
  * @post State changes remain confined to the board periph model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
