@@ -15,6 +15,7 @@ const graph = @import("build_graph");
 const abi = graph.abi_contract;
 const db = graph.compile_db;
 const sources = graph.cross_sources;
+const cpu1 = graph.cpu1_image;
 
 /// The apps the cross slice builds, by the rules they exercise: one that names
 /// no libraries at all, one that names two, and one that keeps more than a
@@ -254,4 +255,89 @@ test "an app-local boot copy replaces the board copy, and only when it exists" {
     const bare_copy = sources.bootSourcePath(allocator, bare_app, "trustzone_init.c", false);
     defer allocator.free(bare_copy);
     try std.testing.expectEqualStrings("libs/ra8_board_ek_ra8d2/src/boot/trustzone_init.c", bare_copy);
+}
+
+test "the second image compiles exactly the four units its executable names" {
+    const allocator = std.testing.allocator;
+    const image = dual_core_app.cpu1 orelse return error.MissingCpu1Image;
+    const app = cpu1App(dual_core_app);
+
+    const units = cpu1.sources(allocator, app, image);
+    defer allocator.free(units);
+    defer allocator.free(units[0]);
+    try std.testing.expectEqual(@as(usize, 4), units.len);
+    try std.testing.expectEqualStrings(
+        "examples/ek_ra8d2/hw_validated/hil/cpu1_pingpong/src/cpu1_main.c",
+        units[0],
+    );
+    try std.testing.expectEqualStrings("libs/ra8_hal/src/ra8_ipc.c", units[1]);
+
+    // The entry unit is the same file AUX_SRCS keeps out of the M85 image: one
+    // file, two images, and each rule is the other's mirror.
+    try std.testing.expect(sources.isAuxSource(dual_core_app, image.entry_source));
+    try std.testing.expect(!sources.appLocalIsCompiled(dual_core_app, image.entry_source));
+
+    // A single-core app has no second image at all.
+    try std.testing.expect(bare_app.cpu1 == null);
+    try std.testing.expect(library_app.cpu1 == null);
+}
+
+test "the second image's flags override the inherited ones, in that order" {
+    const allocator = std.testing.allocator;
+    const global = [_][]const u8{ "-mcpu=cortex-m85", "-fdata-sections", "-O0", "-std=gnu2x" };
+    const flags = cpu1.compileFlags(allocator, &global);
+    defer allocator.free(flags);
+
+    // gcc takes the last -mcpu and the last -O, so the inherited M85 flags
+    // must come FIRST and the M33 target's own after them. Reversed, this
+    // builds the second core's image for the first core's core.
+    try std.testing.expect(indexOf(flags, "-mcpu=cortex-m85").? < indexOf(flags, "-mcpu=cortex-m33").?);
+    try std.testing.expect(indexOf(flags, "-O0").? < indexOf(flags, "-Os").?);
+
+    // And the inherited set survives: dropping it would change the image.
+    try std.testing.expect(indexOf(flags, "-fdata-sections") != null);
+    try std.testing.expect(indexOf(flags, "-std=gnu2x") != null);
+    try std.testing.expect(indexOf(flags, "-DRA8_BUILD_FOR_CPU1") != null);
+
+    // No first-party warning profile: those ride on ra8_add_app() targets, and
+    // this executable is hand-rolled in the app's own CMakeLists.
+    try std.testing.expect(indexOf(flags, "-Werror") == null);
+    try std.testing.expect(indexOf(flags, "-Wstack-usage=2200") == null);
+}
+
+test "the second image's include path is the narrow one, not the app's" {
+    const allocator = std.testing.allocator;
+    const app = cpu1App(dual_core_app);
+    const dirs = cpu1.includeDirs(allocator, app);
+    defer allocator.free(dirs);
+    defer for ([_]usize{ 0, 1, 4 }) |owned| allocator.free(dirs[owned]);
+
+    try std.testing.expectEqual(@as(usize, 5), dirs.len);
+    try std.testing.expectEqualStrings(
+        "examples/ek_ra8d2/hw_validated/hil/cpu1_pingpong/inc",
+        dirs[0],
+    );
+    try std.testing.expectEqualStrings("libs/ra8_board_ek_ra8d2/inc", dirs[4]);
+
+    // Only freestanding-clean headers may be reached from a Cortex-M33 TU, so
+    // the four library directories the M85 image carries are absent here.
+    for ([_][]const u8{
+        "libs/ra8_net_pal/inc",
+        "libs/ra8_usb_pal/inc",
+        "libs/ra8_nsc/inc",
+        "libs/ra8_secure_app/inc",
+    }) |absent| {
+        try std.testing.expect(indexOf(dirs, absent) == null);
+    }
+}
+
+fn cpu1App(app: @TypeOf(dual_core_app)) cpu1.App {
+    return .{ .name = app.name, .dir = app.dir, .board = app.board };
+}
+
+fn indexOf(haystack: []const []const u8, needle: []const u8) ?usize {
+    for (haystack, 0..) |item, index| {
+        if (std.mem.eql(u8, item, needle)) return index;
+    }
+    return null;
 }

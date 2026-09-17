@@ -17,6 +17,7 @@
 //! belongs to a second image and must be kept OUT of this one (#1029).
 
 const std = @import("std");
+const cpu1_image = @import("cpu1_image.zig");
 
 /// The app this slice cross-builds, spelled the way ra8_add_app() resolves it.
 pub const CrossApp = struct {
@@ -33,6 +34,10 @@ pub const CrossApp = struct {
     /// image and must stay out of this one, spelled relative to the app
     /// directory exactly as `AUX_SRCS` spells them. See aux_srcs below.
     aux_srcs: []const []const u8 = &.{},
+    /// The second (Cortex-M33) image this app embeds in its own ELF, when it
+    /// has one. Null for a single-core app, which is every app whose whole
+    /// CMakeLists is one ra8_add_app() call. See cpu1_image.zig.
+    cpu1: ?cpu1_image.Cpu1Image = null,
 };
 
 /// A name in `LIBS` that contributes translation units from somewhere other

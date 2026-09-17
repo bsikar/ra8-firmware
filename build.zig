@@ -40,6 +40,7 @@
 const std = @import("std");
 pub const abi_contract = @import("tests/zig_build_graph/abi_contract.zig");
 pub const compile_db = @import("tests/zig_build_graph/compile_db.zig");
+pub const cpu1_image = @import("tests/zig_build_graph/cpu1_image.zig");
 pub const cross_sources = @import("tests/zig_build_graph/cross_sources.zig");
 
 /// One member of the migrated-library slice: the Zig archive, its public C
@@ -224,6 +225,20 @@ pub fn build(b: *std.Build) void {
         print_app.addArg(app.linker_script);
         print_app.addArg(b.fmt("{d} TUs", .{cross_sources.crossSources(b, app).len}));
         parity_step.dependOn(&print_app.step);
+
+        // A dual-core app gets a second row: the embedded M33 image, the
+        // linker script that places it, and the units it compiles.
+        if (app.cpu1) |image| {
+            const app_ref = cpu1_image.App{ .name = app.name, .dir = app.dir, .board = app.board };
+            const print_cpu1 = b.addSystemCommand(&.{ "printf", "%s\t%s\t%s\n" });
+            print_cpu1.addArg(cpu1_image.imageName(b.allocator, app_ref));
+            print_cpu1.addArg(b.pathJoin(&.{ app.dir, image.linker_script }));
+            print_cpu1.addArg(b.fmt("{d} TUs -> {s}", .{
+                cpu1_image.sources(b.allocator, app_ref, image).len,
+                image.section,
+            }));
+            parity_step.dependOn(&print_cpu1.step);
+        }
     }
 
     // The vendored-C slice's own manifest row: the SOUP tree, the porting
@@ -331,13 +346,11 @@ pub const cross_apps = [_]CrossApp{
         //
         // No LIBS, no USES, no migrated Zig archive, so #948 does not block it.
         //
-        // DELIBERATE SCOPE CUT: the app's CMakeLists hand-rolls a second
-        // executable for the M33 (cpu1_pingpong_cpu1.elf, four TUs at
-        // -mcpu=cortex-m33, its own linker script) and objcopies the result
-        // into the M85 image as a .cpu1_image blob. That is app-local CMake
-        // outside ra8_add_app(), and it is a slice of its own; what this graph
-        // claims parity on is the source set and include path ra8_add_app()
-        // decides, which is exactly what the 200-TU comparison measures.
+        // The app's CMakeLists hand-rolls a SECOND executable for the M33
+        // (cpu1_pingpong_cpu1.elf, four TUs at -mcpu=cortex-m33, its own
+        // linker script) and objcopies it into the M85 image as a .cpu1_image
+        // blob. That is app-local CMake outside ra8_add_app(), and #1044 is
+        // the slice that brought it into the graph: see the .cpu1 field below.
         .name = "cpu1_pingpong",
         .dir = "examples/ek_ra8d2/hw_validated/hil/cpu1_pingpong",
         .board = "libs/ra8_board_ek_ra8d2",
@@ -347,8 +360,25 @@ pub const cross_apps = [_]CrossApp{
         .libraries = &.{},
         .zig_libraries = &.{},
         .aux_srcs = &.{"src/cpu1_main.c"},
+        // The M33 half of this app (#1044). Its entry TU is the same file
+        // AUX_SRCS keeps out of the M85 set above: one file, two images.
+        .cpu1 = .{
+            .entry_source = "src/cpu1_main.c",
+            .shared_sources = &.{
+                "libs/ra8_hal/src/ra8_ipc.c",
+                "libs/ra8_core/src/ra8_log.c",
+                "libs/ra8_core/src/ra8_scb.c",
+            },
+            .linker_script = "linker_script_cpu1.ld",
+        },
     },
 };
+
+/// The global CMAKE_C_FLAGS every translation unit in a cross configure
+/// inherits, app target or not. The M85 app adds the dialect and warning sets
+/// on top; the hand-rolled CPU1 target adds only its own options, which is why
+/// this set has to be named separately rather than folded into the app bar.
+const arm_global_flags = arm_cpu_flags ++ arm_debug_flags ++ [_][]const u8{"-std=gnu2x"};
 
 /// CPU flags from cmake/toolchain-ra8d2.cmake. The RA8D2 primary M85 is
 /// single-precision, hence fpv5-sp-d16 with a hard float ABI; -mthumb because
@@ -498,6 +528,19 @@ fn addArmCrossApp(
         objects.append(compile.addOutputFileArg(object_name)) catch @panic("OOM");
     }
 
+    // A dual-core app's second image is built first and linked in as an
+    // ordinary object: CMake adds the packed blob to the M85 target's sources,
+    // ahead of its own, and the app linker script pins the section.
+    const cpu1_blob: ?std.Build.LazyPath = if (app.cpu1) |image| cpu1_image.add(b, arm_step, .{
+        .gcc = tools.gcc,
+        .objcopy = tools.objcopy,
+        .size = tools.size,
+        .app = .{ .name = app.name, .dir = app.dir, .board = app.board },
+        .image = image,
+        .global_compile_flags = &arm_global_flags,
+        .global_link_flags = &(arm_cpu_flags ++ arm_debug_flags ++ arm_link_flags),
+    }) else null;
+
     const link = b.addSystemCommand(&.{tools.gcc});
     link.addArgs(&arm_cpu_flags);
     link.addArgs(&arm_debug_flags);
@@ -506,6 +549,7 @@ fn addArmCrossApp(
     const map = link.addPrefixedOutputFileArg("-Wl,--Map=", b.fmt("{s}.map", .{app.name}));
     link.addArg("-o");
     const elf = link.addOutputFileArg(b.fmt("{s}.elf", .{app.name}));
+    if (cpu1_blob) |blob| link.addFileArg(blob);
     for (objects.items) |object| link.addFileArg(object);
     // Archives after the objects that reference them, then libgcc last, the
     // order CMake's link line uses.
@@ -809,6 +853,18 @@ fn compileDbEntries(b: *std.Build) []const compile_db.Entry {
                     .object = b.fmt("arm/{s}/{s}.o", .{ app.name, std.fs.path.basename(source) }),
                 }) catch @panic("OOM");
             }
+            // The second image's TUs are compiled at a different bar entirely
+            // (no warning profile, -Os over -O0, an M33 -mcpu after the M85
+            // one), so they are their own rows rather than a repeat.
+            if (app.cpu1) |image| cpu1_image.appendCompileDbEntries(b, compile_db.Entry, &candidates, tools.gcc, .{
+                .gcc = tools.gcc,
+                .objcopy = tools.objcopy,
+                .size = tools.size,
+                .app = .{ .name = app.name, .dir = app.dir, .board = app.board },
+                .image = image,
+                .global_compile_flags = &arm_global_flags,
+                .global_link_flags = &(arm_cpu_flags ++ arm_debug_flags ++ arm_link_flags),
+            });
         }
     }
 
