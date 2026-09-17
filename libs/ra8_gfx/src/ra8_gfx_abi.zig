@@ -1,12 +1,14 @@
 //! SPDX-License-Identifier: MIT
 //! Copyright (c) 2026 Brighton Sikarskie
 //!
-//! C ABI membrane for the `ra8_gfx` software rasteriser core. Defines the one
+//! C ABI membrane for the `ra8_gfx` software rasteriser: the core draw entry
+//! points and the glyph/text stack alike. Defines the one
 //! module-wide framebuffer binding `g_gfx_text_state`, exports the two
 //! promoted helpers `priv_gfx_text_pack_565` and `priv_gfx_text_plot` that the
-//! remaining C translation units (dither, text/glyph, font table) reach
-//! through `src/ra8_gfx_internal.h`, and exports the eleven public entry points
-//! declared in `inc/ra8_gfx.h`, including the packed-gray4 loupe zoom blit.
+//! remaining C translation units (the dither and the generated font table)
+//! reach through `src/ra8_gfx_internal.h`, and exports the twelve public entry
+//! points declared in `inc/ra8_gfx.h`, including the packed-gray4 loupe zoom
+//! blit and both text entry points.
 //!
 //! Every decision lives in `internal/root.zig`; this file only moves bytes.
 
@@ -426,5 +428,121 @@ pub export fn ra8_gfx_blit_gray4_zoom(
             );
         }
     }
+    return impl.err.ok;
+}
+
+/// `internal_blit_glyph_565`: one glyph cell straight into an RGB565 surface.
+/// Both colours are packed once and every visible pixel stores the two
+/// pre-packed bytes, which is byte-identical to the per-pixel plot path over
+/// the same in-bounds set. The whole cell is painted: foreground for set bits,
+/// background for clear ones.
+fn blitGlyph565(
+    x: i32,
+    y: i32,
+    font: *const impl.Font,
+    gd: [*]const u8,
+    fg: u32,
+    bg: u32,
+) void {
+    const box = impl.glyphWindow(x, y, font.glyph_width, font.glyph_height, clip()) orelse return;
+    const fb = g_gfx_text_state.fb orelse return;
+
+    const row_bytes = impl.glyphRowBytes(font.glyph_width);
+    const vfg = impl.pack565(fg);
+    const vbg = impl.pack565(bg);
+    const flo: u8 = @intCast(vfg & 0xFF);
+    const fhi: u8 = @intCast((vfg >> 8) & 0xFF);
+    const blo: u8 = @intCast(vbg & 0xFF);
+    const bhi: u8 = @intCast((vbg >> 8) & 0xFF);
+    const bpp: usize = g_gfx_text_state.bpp;
+    const row_stride = stride();
+
+    var sy = box.y0;
+    while (sy < box.y1) : (sy += 1) {
+        const grow: u32 = @intCast(sy - y);
+        var p = fb + (@as(usize, @intCast(sy)) * row_stride) + (@as(usize, @intCast(box.x0)) * bpp);
+        var sx = box.x0;
+        while (sx < box.x1) : (sx += 1) {
+            const gcol: u32 = @intCast(sx - x);
+            const on = impl.glyphBitSet(gd, row_bytes, grow, gcol);
+            p[0] = if (on) flo else blo;
+            p[1] = if (on) fhi else bhi;
+            p += bpp;
+        }
+    }
+}
+
+/// `internal_render_glyph`: place one codepoint's cell at (`x`, `y`), through
+/// the RGB565 fast path when that format is bound and through the shared
+/// plotter otherwise.
+///
+/// A font with no glyph table draws nothing. The C dereferenced
+/// `font->glyph_data` unconditionally, so that case was undefined behaviour
+/// rather than a contract; refusing to read it is the one deliberate hardening.
+fn renderGlyph(x: i32, y: i32, font: *const impl.Font, cp: u8, fg: u32, bg: u32) void {
+    const table = font.glyph_data orelse return;
+    const idx = impl.glyphIndex(cp, font.first_codepoint, font.last_codepoint);
+    const gd = table + impl.glyphDataOffset(idx, font.bytes_per_glyph);
+
+    if (g_gfx_text_state.format == impl.format.rgb565) {
+        blitGlyph565(x, y, font, gd, fg, bg);
+        return;
+    }
+
+    const row_bytes = impl.glyphRowBytes(font.glyph_width);
+    var row: u32 = 0;
+    while (row < font.glyph_height) : (row += 1) {
+        var col: u32 = 0;
+        while (col < font.glyph_width) : (col += 1) {
+            const on = impl.glyphBitSet(gd, row_bytes, row, col);
+            priv_gfx_text_plot(
+                x +% @as(i32, @intCast(col)),
+                y +% @as(i32, @intCast(row)),
+                if (on) fg else bg,
+            );
+        }
+    }
+}
+
+/// `ra8_gfx_text_out`
+pub export fn ra8_gfx_text_out(
+    x: i32,
+    y: i32,
+    str: ?[*:0]const u8,
+    font: ?*const impl.Font,
+    fg_color: u32,
+    bg_color: u32,
+) callconv(.c) u16 {
+    const status = impl.textOutStatus(str != null, font != null, g_gfx_text_state.initialized);
+    if (status != impl.err.ok) return status;
+
+    const text = str.?;
+    const face = font.?;
+    const step_x: i32 = face.glyph_width;
+    var cur_x = x;
+    var i: u32 = 0;
+    while (i < impl.max_chars) : (i += 1) {
+        const c = text[i];
+        if (c == 0) break;
+        renderGlyph(cur_x, y, face, c, fg_color, bg_color);
+        cur_x +%= step_x;
+    }
+    return impl.err.ok;
+}
+
+/// `ra8_gfx_text_size`
+pub export fn ra8_gfx_text_size(
+    str: ?[*:0]const u8,
+    font: ?*const impl.Font,
+    out_w: ?*u32,
+    out_h: ?*u32,
+) callconv(.c) u16 {
+    const status = impl.textSizeStatus(str != null, font != null, out_w != null, out_h != null);
+    if (status != impl.err.ok) return status;
+
+    const face = font.?;
+    const extent = impl.textExtent(impl.textLength(str.?), face.glyph_width, face.glyph_height);
+    out_w.?.* = extent.w;
+    out_h.?.* = extent.h;
     return impl.err.ok;
 }

@@ -447,3 +447,128 @@ pub fn gray4ZoomArgsOk(has_src: bool, zoom: i32, src_w: i32, src_h: i32) bool {
     if (zoom <= 0) return false;
     return (src_w > 0) and (src_h > 0);
 }
+
+// ---------------------------------------------------------------------------
+// Monochrome glyph cells and text layout
+// ---------------------------------------------------------------------------
+
+/// Glyph bits per byte (`k_glyph_bits_per_byte`).
+pub const glyph_bits_per_byte: u32 = 8;
+
+/// Index of the leftmost bit inside a glyph byte (`k_glyph_msb_index`).
+pub const glyph_msb_index: u32 = 7;
+
+/// `ra8_gfx_font_t` from `inc/ra8_gfx_font.h`. Callers pass a pointer to one of
+/// these and the bundled 8x16 table is still a C object, so this layout is ABI
+/// and is pinned below. `-fshort-enums` cannot reach it: every field after the
+/// pointer is a plain `uint8_t`.
+pub const Font = extern struct {
+    glyph_data: ?[*]const u8 = null,
+    glyph_width: u8 = 0,
+    glyph_height: u8 = 0,
+    bytes_per_glyph: u8 = 0,
+    first_codepoint: u8 = 0,
+    last_codepoint: u8 = 0,
+};
+
+comptime {
+    const ptr = @sizeOf(usize);
+    // Alignment arithmetic rather than `ptr * N`, so the assert holds on the
+    // 8-byte-pointer host and on 32-bit Arm alike.
+    std.debug.assert(@offsetOf(Font, "glyph_data") == 0);
+    std.debug.assert(@offsetOf(Font, "glyph_width") == ptr);
+    std.debug.assert(@offsetOf(Font, "glyph_height") == ptr + 1);
+    std.debug.assert(@offsetOf(Font, "bytes_per_glyph") == ptr + 2);
+    std.debug.assert(@offsetOf(Font, "first_codepoint") == ptr + 3);
+    std.debug.assert(@offsetOf(Font, "last_codepoint") == ptr + 4);
+    std.debug.assert(@sizeOf(Font) == std.mem.alignForward(usize, ptr + 5, ptr));
+}
+
+/// Ceiling on the glyphs one text call walks. The C bounded both text loops by
+/// `k_ra8_gfx_max_dim` ("at most one glyph per pixel column we could ever
+/// cover") instead of trusting the string to terminate.
+pub const max_chars: u32 = dim.max;
+
+/// Bytes one glyph row occupies: `ceil(glyph_width / 8)`.
+pub fn glyphRowBytes(glyph_width: u8) u32 {
+    return (@as(u32, glyph_width) + (glyph_bits_per_byte - 1)) / glyph_bits_per_byte;
+}
+
+/// Glyph slot of a codepoint. A codepoint outside the stored range renders as
+/// slot 0, which is the space in every bundled font.
+pub fn glyphIndex(cp: u8, first: u8, last: u8) u8 {
+    if ((cp < first) or (cp > last)) return 0;
+    return cp - first;
+}
+
+/// Byte offset of glyph slot `idx` inside the packed glyph table.
+pub fn glyphDataOffset(idx: u8, bytes_per_glyph: u8) usize {
+    return @as(usize, idx) * @as(usize, bytes_per_glyph);
+}
+
+/// Byte index within one glyph cell of the pixel at (`col`, `row`). The C did
+/// this in `uint32_t`, so the wrap is kept; both inputs are bounded by the
+/// glyph geometry, which is `uint8_t`-derived.
+pub fn glyphByteIndex(row_bytes: u32, row: u32, col: u32) usize {
+    return @as(usize, (row *% row_bytes) +% (col / glyph_bits_per_byte));
+}
+
+/// True when the glyph bit at (`col`, `row`) is set. Bits are MSB-first within
+/// each byte, so column 0 is bit 7 and every row restarts on a byte boundary.
+pub fn glyphBitSet(gd: [*]const u8, row_bytes: u32, row: u32, col: u32) bool {
+    const bit: u3 = @intCast(glyph_msb_index - (col % glyph_bits_per_byte));
+    return ((gd[glyphByteIndex(row_bytes, row, col)] >> bit) & 0x01) != 0;
+}
+
+/// The on-screen span of one glyph cell: the cell intersected with the active
+/// clip box. Null is the C's "glyph fully outside the clip" early return.
+///
+/// The far edges are summed in 64-bit, exactly as the C widened them, so a cell
+/// pinned at the end of the coordinate space cannot wrap back into view.
+/// `gw`/`gh` are the font's `uint8_t` geometry, so neither sum can underflow.
+pub fn glyphWindow(x: i32, y: i32, gw: u8, gh: u8, clip: Box) ?Box {
+    const x0 = if (x >= clip.x0) x else clip.x0;
+    const y0 = if (y >= clip.y0) y else clip.y0;
+    const xr = @as(i64, x) + @as(i64, gw);
+    const yr = @as(i64, y) + @as(i64, gh);
+    const x1: i32 = if (xr < @as(i64, clip.x1)) @intCast(xr) else clip.x1;
+    const y1: i32 = if (yr < @as(i64, clip.y1)) @intCast(yr) else clip.y1;
+    const box = Box{ .x0 = x0, .y0 = y0, .x1 = x1, .y1 = y1 };
+    return if (box.isEmpty()) null else box;
+}
+
+/// Measured extent of a string (`ra8_gfx_text_size`).
+pub const TextExtent = struct {
+    w: u32,
+    h: u32,
+};
+
+/// Characters a text call walks: up to the NUL, capped at `max_chars`.
+pub fn textLength(str: [*]const u8) u32 {
+    var n: u32 = 0;
+    while (n < max_chars) : (n += 1) {
+        if (str[n] == 0) break;
+    }
+    return n;
+}
+
+/// `n` cells wide by one cell tall, in the C's `uint32_t` arithmetic.
+pub fn textExtent(n: u32, glyph_width: u8, glyph_height: u8) TextExtent {
+    return .{ .w = n *% @as(u32, glyph_width), .h = @as(u32, glyph_height) };
+}
+
+/// `ra8_gfx_text_out`'s guard order: the null pair is judged BEFORE the init
+/// check, so a pre-init call with a null string answers `null_ptr` while the
+/// same call with a real string and font answers `not_initialized`.
+pub fn textOutStatus(has_str: bool, has_font: bool, initialized: bool) u16 {
+    if (!has_str or !has_font) return err.null_ptr;
+    if (!initialized) return err.not_initialized;
+    return err.ok;
+}
+
+/// `ra8_gfx_text_size` judges only its four pointers. It never reads the
+/// framebuffer binding, so it measures a string before any init.
+pub fn textSizeStatus(has_str: bool, has_font: bool, has_w: bool, has_h: bool) u16 {
+    if (!has_str or !has_font or !has_w or !has_h) return err.null_ptr;
+    return err.ok;
+}

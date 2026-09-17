@@ -1,11 +1,13 @@
 //! SPDX-License-Identifier: MIT
 //! Copyright (c) 2026 Brighton Sikarskie
 //!
-//! Build graph for the Zig implementation of the `ra8_gfx` rasteriser core.
+//! Build graph for the Zig implementation of the `ra8_gfx` rasteriser: the
+//! core draw entry points and the glyph/text stack alike.
 //! CMake consumes the installed static library through the unchanged
-//! `inc/ra8_gfx.h` and `src/ra8_gfx_internal.h`; the three remaining C
-//! translation units of the library (dither, text/glyph, font table) link
-//! against this archive for `g_gfx_text_state` and the two promoted helpers.
+//! `inc/ra8_gfx.h` and `src/ra8_gfx_internal.h`; the two remaining C
+//! translation units of the library (the dither and the generated font table)
+//! link against this archive for `g_gfx_text_state` and the two promoted
+//! helpers.
 //!
 //! No build options: nothing in this cluster is configured at compile time.
 
