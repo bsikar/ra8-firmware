@@ -1,0 +1,205 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Brighton Sikarskie
+
+set working-directory := ".."
+
+default:
+    @echo "QUALITY & CI (LOCAL) - Formatters, Linters, Static Analysis & Testing"
+    @echo "These commands run NATIVELY on your host machine."
+    @echo ""
+    @echo "COMMANDS:"
+    @echo "  just quality::local::gate <name>                  Run a specific CI gate natively by name"
+    @echo "  just quality::local::format                       Auto-format source code in place"
+    @echo "  just quality::local::check                        Verify formatting without modifying files"
+    @echo "  just quality::local::tidy                         Run clang-tidy static analysis"
+    @echo "  just quality::local::cppcheck                     Run cppcheck static analysis"
+    @echo "  just quality::local::misra                        Run MISRA-C:2012 compliance audit"
+    @echo "  just quality::local::scan_build                   Run Clang Static Analyzer"
+    @echo "  just quality::local::test                         Run host unit test suite"
+    @echo "  just quality::local::coverage                     Run whole-tree coverage gate"
+    @echo "  just quality::local::mcdc                         Generate DO-178C MC/DC coverage report"
+    @echo "  just quality::local::fuzz [seconds] [runs]        Smoke-run every libFuzzer harness"
+    @echo "  just quality::local::stack_usage                  Build firmware and enforce stack budgets"
+    @echo "  just quality::local::sbom                         Regenerate the committed CycloneDX SBOM"
+    @echo "  just quality::local::sbom_check                   Verify the committed CycloneDX SBOM"
+    @echo "  just quality::local::misra_baseline               Freeze MISRA burn-down on the pinned toolchain"
+    @echo "  just quality::local::vela_check                   Verify the generated Vela model header"
+    @echo "  just quality::local::vela_regen                   Regenerate the fake Vela model header"
+    @echo "  just quality::local::vela_compile <tflite> [out]  Compile a TFLite model with Vela"
+    @echo "  just quality::local::bench                        Run host microbenchmarks"
+    @echo "  just quality::local::ascii                        Check ASCII encoding across files"
+    @echo "  just quality::local::version                      Verify @since version annotations"
+    @echo "  just quality::local::test_go                      Run Go tests through the CI gate"
+    @echo "  just quality::local::unused_includes              Check for unused C includes"
+    @echo "  just quality::local::auto_sync                    Run suppression auto-sync"
+    @echo "  just quality::local::review_suppressions          Review draft suppressions"
+    @echo "  just quality::local::review_scope_suppressions    Review draft checker-scope authorities"
+    @echo "  just quality::local::bless_scope                  Bless checker scope"
+
+# Run every first-party formatter in place: C (clang-format), Go (gofmt),
+# Python (ruff format), shell (shfmt), CMake (cmake-format), justfiles.
+# Each language's scope is the same seam its CI gate reads, so nothing is
+
+# formatted here that CI does not also check.
+format:
+    bash scripts/checks/format_tree.sh
+
+# Verify every language is formatted without modifying files
+check:
+    bash scripts/checks/format_tree.sh --check
+
+# Run clang-tidy through the registered gate with CI/ratchet return semantics
+tidy:
+    "{{ just_executable() }}" quality::local::gate tidy
+
+# Run cppcheck static analysis
+cppcheck:
+    /bin/bash -p scripts/checks/cppcheck.sh
+
+# Check for genuinely unused C includes via speculative compilation
+unused_includes:
+    "{{ just_executable() }}" quality::local::gate unused-includes
+
+# Check file encodings for non-ASCII characters
+ascii:
+    python3 scripts/fix/fix-encoding.py --selftest
+    python3 scripts/fix/fix-encoding.py --check --all
+
+# Verify @since version tags
+version:
+    python3 scripts/checks/check-since-version.py --all
+
+# Run host unit tests
+test ubsan="0":
+    #!/usr/bin/env bash
+    set -euo pipefail
+    if [ "{{ ubsan }}" = "1" ]; then
+        bash tests/build_tests.sh --ubsan
+        bash tests/run_tests.sh --ubsan
+    else
+        bash tests/build_tests.sh
+        bash tests/run_tests.sh
+    fi
+
+test_go:
+    "{{ just_executable() }}" quality::local::gate test-go
+
+# Generate DO-178C Level B MC/DC coverage report
+mcdc:
+    CC=clang-18 CXX=clang++-18 RA8_MCDC_THRESHOLD=0 bash scripts/report/mcdc_report.sh
+
+# Keep this welded to the registered gate so its self-tests and compiler pin
+# cannot drift from CI.
+
+# Measure and enforce the whole-tree line/branch coverage ratchet
+coverage:
+    /bin/bash -p scripts/ci.sh --gate coverage-tree
+
+# Smoke-run every registered libFuzzer harness with the former local defaults.
+fuzz seconds="30" runs="10000" cc="" cxx="":
+    #!/usr/bin/env bash
+    set -euo pipefail
+    bash scripts/checks/run_fuzz.sh --selftest
+    CC="{{ cc }}" CXX="{{ cxx }}" FUZZ_RUNS="{{ runs }}" \
+        bash scripts/checks/run_fuzz.sh --all "{{ seconds }}"
+
+# Build every firmware app before reading the emitted .su files. Keeping both
+
+# phases on registered gates preserves their toolchain and non-vacuity checks.
+stack_usage:
+    "{{ just_executable() }}" quality::local::gate build-cross
+    "{{ just_executable() }}" quality::local::gate stack-usage
+
+# Run MISRA-C:2012 audit
+misra check="0":
+    #!/usr/bin/env bash
+    set -euo pipefail
+    bash scripts/checks/misra_check_inner.sh
+    if [ "{{ check }}" = "1" ]; then
+        python3 scripts/checks/misra_ratchet.py --check
+    fi
+
+# Never use this to accept new findings; the recipe intentionally runs the
+# same producer first.
+
+# Regenerate the MISRA baseline after an audited burn-down
+misra_baseline:
+    bash scripts/checks/misra_check_inner.sh
+    python3 scripts/checks/misra_ratchet.py --update
+
+# Automatically update cryptographic hashes and append missing suppressions to the ledger
+auto_sync:
+    python3 scripts/dev/auto_sync.py
+
+# Interactively approve draft suppressions and generate a review batch
+review_suppressions:
+    python3 scripts/dev/review_suppressions.py
+
+# Retain only live, unreviewed checker-scope controls after the authenticated
+# scope census has been inspected. The inventory filter prevents this shortcut
+
+# from approving unrelated lint, coverage, or test suppressions.
+review_scope_suppressions:
+    #!/bin/bash
+    set -euo pipefail
+    declare -a review_args=()
+    while IFS= read -r site_id; do
+        [[ -n "$site_id" ]] && review_args+=(--site "$site_id")
+    done < <(
+        .venv/bin/python3 scripts/checks/check_suppressions.py --inventory --format json |
+            .venv/bin/python3 -c 'import json, sys; data = json.load(sys.stdin); print(*sorted(row["site_id"] for row in data["suppressions"] if row["family"] == "checker-scope-control" and row["disposition"] != "approved"), sep="\n")'
+    )
+    if ((${#review_args[@]} == 0)); then
+        echo "No unreviewed checker-scope authorities."
+        exit 0
+    fi
+    .venv/bin/python3 scripts/dev/review_suppressions.py retain \
+        --rationale reviewed-scope-authority \
+        --evidence "classification-batch census-digest; exact checker scope values classified and authenticated by suppression_checker_scope.py" \
+        "${review_args[@]}"
+
+# Bless new checker scope authorities (automatically updates the hardcoded cryptographic ledger)
+bless_scope:
+    python3 scripts/checks/suppression_checker_scope.py --update
+
+# Regenerate or verify the committed third-party CycloneDX inventory.
+sbom:
+    python3 scripts/gen/gen_sbom.py
+
+sbom_check:
+    /bin/bash -p scripts/ci.sh --gate sbom
+
+# Verify, regenerate, or compile an Arm Ethos-U Vela model artifact.
+vela_check:
+    python3 tools/vela/src/vela_gen.py check tools/vela/models/npu_addk_fake.json tools/vela/generated/ra8_npu_model_addk_fake.h
+
+vela_regen:
+    python3 tools/vela/src/vela_gen.py emit tools/vela/models/npu_addk_fake.json -o tools/vela/generated/ra8_npu_model_addk_fake.h
+
+vela_compile tflite out="build/vela":
+    python3 tools/vela/src/vela_gen.py compile "{{ tflite }}" -o "{{ out }}"
+
+# Run Clang Static Analyzer (scan-build)
+scan_build strict="0":
+    #!/usr/bin/env bash
+    set -euo pipefail
+    if [ "{{ strict }}" = "1" ]; then
+        bash scripts/checks/scan_build.sh --strict
+    else
+        bash scripts/checks/scan_build.sh
+    fi
+
+# Run host microbenchmarks
+bench:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    bash scripts/builders/host_cmake.sh --target ra8_bench_all tests tests/build-bench -DRA8_BENCH=ON
+    for benchmark in bench_ra8_crc bench_ra8_jpeg_sw bench_ra8_gfx_text; do
+        "tests/build-bench/${benchmark}"
+    done
+
+# Run a specific CI gate natively by name
+gate name:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    /bin/bash -p scripts/ci.sh --gate "{{ name }}"

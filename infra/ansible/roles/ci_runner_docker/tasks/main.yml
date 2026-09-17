@@ -1,0 +1,513 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Brighton Sikarskie
+---
+# Deploy ONE plain (non-ARC) self-hosted GitHub Actions runner as a Docker
+# container, on a host that is not the k3s node -- see defaults/main.yml for
+# why a second runner host exists at all.
+#
+# Idempotent: a re-run loads nothing it already has, re-registers nothing that
+# is already registered, and converges the container on the rendered compose
+# file. `-e ci_runner_docker_state=absent` is the removal path and is the same
+# single command.
+#
+# This role is AUTHORITATIVE for how the runner reaches the host.
+# infra/README.md describes the topology and the removal; if the two ever
+# disagree, this file is right and the README is stale.
+
+- name: Assert a lifecycle state this role implements
+  ansible.builtin.assert:
+    that:
+      - ci_runner_docker_state in ['present', 'absent']
+    fail_msg: >-
+      ci_runner_docker_state is '{{ ci_runner_docker_state }}'; this role
+      implements 'present' (deploy + converge) and 'absent' (remove) only.
+    success_msg: "state={{ ci_runner_docker_state }}"
+
+# Registration runs `config.sh --replace`, so a host deployed under another
+# host's runner name does not collide -- it silently TAKES that registration
+# over. The name therefore has no safe default and must be declared, which is
+# what the host's block in infra/fleet.yml does.
+- name: Assert this host was told which runner name to register
+  ansible.builtin.assert:
+    that:
+      - (ci_runner_docker_name | default('') | trim) | length > 0
+    fail_msg: >-
+      ci_runner_docker_name is empty. Declare this machine in infra/fleet.yml
+      and deploy it with `just infra::apply HOST=<name>`, which derives the
+      name (and every other tunable) from that block. Registering with an
+      inherited name would replace another host's runner.
+    success_msg: "runner base name: {{ ci_runner_docker_name }}"
+
+# --- Preflight: fail loud, never skip ---------------------------------------
+#
+# A missing dependency must FAIL the play. A role that quietly skips half its
+# tasks reports success on a host where nothing was deployed, which is the
+# failure mode this tree keeps finding in its own tooling.
+
+- name: Locate the container runtime
+  ansible.builtin.command:
+    cmd: docker version --format '{% raw %}{{.Server.Version}}{% endraw %}'
+  become: true
+  register: ci_runner_docker_version
+  changed_when: false
+  failed_when: false
+  check_mode: false
+
+- name: Fail loud when Docker is missing or not running
+  when: ci_runner_docker_version.rc != 0
+  ansible.builtin.fail:
+    msg: |
+      Docker is not usable on {{ inventory_hostname }}, so this role has
+      nothing to deploy into. It reported:
+
+        {{ ci_runner_docker_version.stderr | default(ci_runner_docker_version.stdout) | trim }}
+
+      This role deliberately does NOT install Docker. On a TrueNAS SCALE
+      appliance the Docker daemon is owned by the Apps subsystem and must be
+      brought up by configuring an apps pool in the UI (Apps -> Settings ->
+      Choose Pool), not by apt-installing a second copy that the appliance
+      will fight with on every upgrade. On a general-purpose Linux host,
+      install Docker with the distribution's supported method first.
+
+- name: Read the Docker Compose plugin version
+  # Compose as a docker plugin, not the retired standalone docker-compose:
+  # the `cpus:`/`mem_limit:`/`pids_limit:` keys the runner is capped with are
+  # Compose Spec keys that v1 silently ignores. An ignored cap is worse than a
+  # missing one -- the play would report a capped runner that is not capped.
+  ansible.builtin.command:
+    cmd: docker compose version --short
+  become: true
+  register: ci_runner_docker_compose_version
+  changed_when: false
+  failed_when: false
+  check_mode: false
+
+- name: Fail loud when the Docker Compose plugin is missing or pre-Spec (v1)
+  # Compared as a NUMBER, not matched against '^2\.'. The rule being enforced
+  # is "new enough to honour the Compose Spec cap keys", and the plugin has
+  # moved on: the Windows/WSL build host this role also serves ships Compose
+  # 5.3.1, which a '^2\.' match rejects as if it were the retired v1 -- failing
+  # the deploy on the one host with the most CPU to give. Anything >= 2 honours
+  # the keys; only v1 does not.
+  when:
+    - ci_runner_docker_compose_version.rc != 0
+      or ((ci_runner_docker_compose_version.stdout | trim
+           | regex_replace('^v', '') | split('.') | first | int) < 2)
+  ansible.builtin.fail:
+    msg: >-
+      `docker compose version --short` reported
+      '{{ ci_runner_docker_compose_version.stdout | default("") | trim }}'
+      (rc={{ ci_runner_docker_compose_version.rc }}), which is not a Compose
+      plugin of major version 2 or newer. The resource caps this role applies
+      are Compose Spec keys; the standalone v1 docker-compose accepts the file
+      and ignores them, producing an uncapped runner that the play would then
+      report as capped. Refusing to continue.
+
+- name: Read the cgroup version the daemon enforces limits with
+  ansible.builtin.shell:
+    cmd: >-
+      set -o pipefail;
+      docker info 2>/dev/null | awk -F': ' '/Cgroup Version/ {print $2}'
+    executable: /bin/bash
+  become: true
+  register: ci_runner_docker_cgroup
+  changed_when: false
+  check_mode: false
+
+- name: Assert cgroup v2, which is what actually enforces the caps
+  ansible.builtin.assert:
+    that:
+      - (ci_runner_docker_cgroup.stdout | trim) == '2'
+    fail_msg: >-
+      The daemon reports cgroup version
+      '{{ ci_runner_docker_cgroup.stdout | trim }}'. This role caps the runner
+      so a build cannot starve the host's primary job; under cgroup v1 the
+      cpu/memory caps are applied inconsistently and this host is not one this
+      role has been validated against.
+    success_msg: "cgroup v2 -- cpu/memory caps are enforced"
+
+# --- Instances --------------------------------------------------------------
+
+- name: Compose the per-instance runner list
+  # ONE runner per container, N containers per host.
+  #
+  # Concurrency, not per-job speed, is what this buys. A `firmware` run submits
+  # ~21 jobs; with every runner in the pool busy, queue depth is the ceiling
+  # and a second job starting now beats the first job finishing 20% sooner. So
+  # a host with cores to spare runs several independent runners rather than one
+  # runner building with a very wide `-j`.
+  #
+  # At instances == 1 every derived name is the unsuffixed original, so a
+  # single-runner host (the NAS) is completely unaffected by this existing.
+  ansible.builtin.set_fact:
+    ci_runner_docker_instance_list: "{{ (ci_runner_docker_instance_list | default([])) + [{
+      'idx': item,
+      'name': (ci_runner_docker_name if (ci_runner_docker_instances | int) == 1
+               else ci_runner_docker_name ~ '-' ~ item),
+      'home': (ci_runner_docker_home if (ci_runner_docker_instances | int) == 1
+               else ci_runner_docker_home ~ '-' ~ item),
+      'container': (ci_runner_docker_container if (ci_runner_docker_instances | int) == 1
+                    else ci_runner_docker_container ~ '-' ~ item),
+      'cpuset': ((((item - 1) * (ci_runner_docker_cpus | int)) ~ '-' ~
+                  ((item * (ci_runner_docker_cpus | int)) - 1))
+                 if (ci_runner_docker_pin_cpus | bool) else '')} ] }}"
+  loop: "{{ range(1, (ci_runner_docker_instances | int) + 1) | list }}"
+
+- name: Report the instance layout
+  ansible.builtin.debug:
+    msg: >-
+      {{ ci_runner_docker_instances }} runner instance(s):
+      {{ ci_runner_docker_instance_list
+         | map(attribute='name') | join(', ') }}{{
+         ' -- pinned to cpusets ' ~ (ci_runner_docker_instance_list
+         | map(attribute='cpuset') | join(', '))
+         if (ci_runner_docker_pin_cpus | bool) else '' }}
+
+# --- Storage: prove where the I/O lands before writing any of it ------------
+
+- name: Ensure the runner dataset exists (TrueNAS API when present)
+  # Created through midclt rather than `zfs create` on an appliance: the
+  # middleware config database is what a SCALE upgrade preserves and what the
+  # UI reads, so a dataset made behind its back is a dataset the appliance does
+  # not know it owns. On a plain Linux host there is no middleware and the
+  # directory task below is the whole job.
+  when: ci_runner_docker_state == 'present'
+  block:
+    - name: Check for the TrueNAS middleware client
+      ansible.builtin.stat:
+        path: /usr/bin/midclt
+      register: ci_runner_docker_midclt
+
+    - name: Check whether the runner root already exists
+      ansible.builtin.stat:
+        path: "{{ ci_runner_docker_root }}"
+      register: ci_runner_docker_root_stat
+
+    - name: Create the runner dataset through the TrueNAS middleware
+      when:
+        - ci_runner_docker_midclt.stat.exists
+        - not ci_runner_docker_root_stat.stat.exists
+      become: true
+      ansible.builtin.command:
+        # Built with to_json rather than hand-written JSON in a folded scalar.
+        # The folded form silently embedded newlines mid-string and midclt
+        # rejected the payload with "A dict was expected" -- and it went
+        # unnoticed because the first deployment had its dataset created by
+        # hand, so this task was skipped on every run that followed. Composing
+        # the dict and letting Jinja serialise it cannot produce that.
+        argv:
+          - midclt
+          - call
+          - pool.dataset.create
+          - "{{ {'name': ci_runner_docker_dataset,
+                 'comments': ci_runner_docker_dataset_comment} | to_json }}"
+      changed_when: true
+
+    - name: Create the runner root as a plain directory (non-appliance host)
+      when: not ci_runner_docker_midclt.stat.exists
+      become: true
+      ansible.builtin.file:
+        path: "{{ ci_runner_docker_root }}"
+        state: directory
+        mode: "0755"
+
+- name: Read the filesystem backing the Docker data root
+  # Not a constant: the daemon's data root holds every image layer and every
+  # container writable layer, so it is CI I/O even though this role never names
+  # a path under it. Ask the daemon where it actually is.
+  ansible.builtin.shell:
+    cmd: >-
+      set -o pipefail;
+      docker info 2>/dev/null | awk -F': ' '/Docker Root Dir/ {print $2}'
+    executable: /bin/bash
+  become: true
+  register: ci_runner_docker_data_root
+  changed_when: false
+  check_mode: false
+
+- name: Resolve the pool and mountpoint behind every path CI writes to
+  # findmnt --target walks up to the real mount, so this reports the filesystem
+  # that would receive the writes even when the path itself is a subdirectory
+  # of a mountpoint several levels up.
+  become: true
+  ansible.builtin.command:
+    argv:
+      - findmnt
+      - --noheadings
+      - --output
+      - SOURCE,FSTYPE,TARGET
+      - --target
+      - "{{ item }}"
+  loop:
+    - "{{ ci_runner_docker_root }}"
+    - "{{ ci_runner_docker_data_root.stdout | trim }}"
+  register: ci_runner_docker_backing
+  changed_when: false
+  check_mode: false
+
+- name: Refuse to place CI I/O on a forbidden pool or mountpoint
+  # THE carve-out, enforced rather than documented.
+  #
+  # The NAS this was written for has a DEGRADED 100T pool -- a known backplane
+  # fault flagging "too many slow I/Os" on 7 of 11 members, with zero
+  # read/write/checksum errors and no data errors. It is accepted, it is not
+  # this role's to repair, and build traffic has no business on it. A moved
+  # mountpoint or a re-pointed Docker data root must fail the play here, loudly,
+  # rather than quietly relocating every build onto degraded spindles.
+  ansible.builtin.assert:
+    that:
+      - (item.stdout.split() | first).split('/') | first
+        not in ci_runner_docker_forbidden_pools
+      - ci_runner_docker_forbidden_mounts
+        | select('in', item.stdout.split() | last) | list | length == 0
+    fail_msg: >-
+      {{ item.item }} resolves to '{{ item.stdout | trim }}', which is on a
+      pool or mountpoint this role refuses to write CI traffic to
+      (forbidden pools: {{ ci_runner_docker_forbidden_pools | join(', ') }};
+      forbidden mounts: {{ ci_runner_docker_forbidden_mounts | join(', ') }}).
+      Point ci_runner_docker_root -- or the Docker data root -- at a healthy
+      pool and re-run.
+    success_msg: "{{ item.item }} -> {{ item.stdout | trim }}"
+  loop: "{{ ci_runner_docker_backing.results }}"
+  loop_control:
+    label: "{{ item.item }}"
+
+# --- Removal ----------------------------------------------------------------
+#
+# Ordered so each step still works if the previous one had nothing to do:
+# stop the container first (a running runner would keep talking to GitHub),
+# then deregister, then drop the image, then the data.
+
+- name: Remove the runner
+  when: ci_runner_docker_state == 'absent'
+  block:
+    - name: Stop and remove the runner container
+      become: true
+      ansible.builtin.command:
+        argv:
+          - docker
+          - compose
+          - --project-name
+          - "{{ ci_runner_docker_container }}"
+          - --file
+          - "{{ ci_runner_docker_compose_file }}"
+          - down
+          - --remove-orphans
+      register: ci_runner_docker_down
+      changed_when: ci_runner_docker_down.rc == 0
+      # A removal re-run tolerates only the compose file already being gone
+      # (it lives under the runner root this same block destroys). Any other
+      # failure means a still-running runner was not stopped and must abort
+      # before deregistration and storage teardown.
+      failed_when: >-
+        ci_runner_docker_down.rc != 0
+        and 'no such file or directory' not in (ci_runner_docker_down.stderr | lower)
+        and 'no configuration file provided' not in (ci_runner_docker_down.stderr | lower)
+
+    - name: Look up the runner's id on GitHub
+      # Only when a PAT is available. A host given a short-lived registration
+      # token instead deregisters through config.sh below.
+      when: (ci_runner_docker_github_pat | default('') | trim) | length > 0
+      delegate_to: localhost
+      become: false
+      no_log: true
+      ansible.builtin.uri:
+        url: >-
+          {{ ci_runner_docker_api }}/runners?per_page=100
+        method: GET
+        headers:
+          Authorization: "Bearer {{ ci_runner_docker_github_pat }}"
+          Accept: "application/vnd.github+json"
+        status_code: [200]
+      register: ci_runner_docker_registry
+
+    - name: Deregister every runner instance from the repository
+      # Done over the REST API rather than `config.sh remove` so it still works
+      # when the container or the image is already gone -- which, during a
+      # removal, is exactly when it usually is.
+      when:
+        - (ci_runner_docker_github_pat | default('') | trim) | length > 0
+        - ci_runner_docker_registry.json.runners
+          | selectattr('name', 'equalto', item.name) | list | length > 0
+      delegate_to: localhost
+      become: false
+      no_log: true
+      ansible.builtin.uri:
+        url: >-
+          {{ ci_runner_docker_api }}/runners/{{
+          (ci_runner_docker_registry.json.runners
+           | selectattr('name', 'equalto', item.name)
+           | first).id }}
+        method: DELETE
+        headers:
+          Authorization: "Bearer {{ ci_runner_docker_github_pat }}"
+          Accept: "application/vnd.github+json"
+        status_code: [204]
+      loop: "{{ ci_runner_docker_instance_list }}"
+      loop_control:
+        label: "{{ item.name }}"
+
+    - name: Deregister every instance with a removal token (no PAT on this host)
+      # The PAT-free path, for hosts the PAT is deliberately never copied to.
+      # Mint the token on the control node, store it under the
+      # ci_runner_docker_removal_token key in a mode-0600 vars file, and pass
+      # only that file through the typed `just infra::remove` recipe.
+      #
+      # This one DOES need the runner home to still exist, which is why it runs
+      # before the dataset is destroyed.
+      when:
+        - (ci_runner_docker_github_pat | default('') | trim) | length == 0
+        - (ci_runner_docker_removal_token | default('') | trim) | length > 0
+      become: true
+      no_log: true
+      ansible.builtin.command:
+        argv:
+          - docker
+          - run
+          - --rm
+          - --volume
+          - "{{ item.home }}:/home/runner"
+          - --user
+          - "{{ ci_runner_docker_uid }}:{{ ci_runner_docker_gid }}"
+          - --workdir
+          - /home/runner
+          - --entrypoint
+          - /home/runner/config.sh
+          - "{{ ci_runner_docker_image }}"
+          - remove
+          - --token
+          - "{{ ci_runner_docker_removal_token }}"
+      register: ci_runner_docker_cfg_remove
+      changed_when: ci_runner_docker_cfg_remove.rc == 0
+      # Tolerate only an instance that is already unregistered or was never
+      # configured; a real deregistration failure (expired token, GitHub
+      # error) leaves a permanently offline runner and must abort, exactly as
+      # the fail-loud sibling below promises for the credential-less case.
+      failed_when: >-
+        ci_runner_docker_cfg_remove.rc != 0
+        and 'not configured' not in
+            ((ci_runner_docker_cfg_remove.stdout | default('')) | lower)
+        and 'does not exist' not in
+            ((ci_runner_docker_cfg_remove.stdout | default('')) | lower)
+      loop: "{{ ci_runner_docker_instance_list }}"
+      loop_control:
+        label: "{{ item.name }}"
+
+    - name: Fail loud when removal cannot deregister the runner
+      # A removal that tears down the container but leaves the runner
+      # registered gives the repository a permanently offline runner that jobs
+      # can still be queued against. Better to stop and say so.
+      when:
+        - (ci_runner_docker_github_pat | default('') | trim) | length == 0
+        - (ci_runner_docker_removal_token | default('') | trim) | length == 0
+      ansible.builtin.fail:
+        msg: >-
+          Removal needs a credential to deregister {{ ci_runner_docker_name }}
+          from GitHub, and neither ci_runner_docker_github_pat nor
+          ci_runner_docker_removal_token is set. Tearing down the container
+          without deregistering would leave a permanently offline runner
+          registered against the repository. Mint one with `gh api -X POST
+          {{ ci_runner_docker_repo_slug }}/actions/runners/remove-token` and
+          place it under ci_runner_docker_removal_token in the mode-0600 vars
+          file accepted by `just infra::remove`.
+
+    - name: Remove the runner image
+      become: true
+      ansible.builtin.command:
+        argv: [docker, image, rm, "{{ ci_runner_docker_image }}"]
+      register: ci_runner_docker_image_rm
+      changed_when: ci_runner_docker_image_rm.rc == 0
+      # Only an already-clean host is benign; an image still pinned by a
+      # container or a docker failure must abort instead of reporting the
+      # image dropped.
+      failed_when: >-
+        ci_runner_docker_image_rm.rc != 0
+        and 'no such image' not in (ci_runner_docker_image_rm.stderr | lower)
+
+    - name: Check for the TrueNAS middleware client before destroying
+      ansible.builtin.stat:
+        path: /usr/bin/midclt
+      register: ci_runner_docker_midclt_rm
+
+    # Destroyed the same way it was created. `zfs destroy` on an appliance
+    # removes the dataset but leaves the middleware config database still
+    # believing it owns one, so removal has to go back through the same API
+    # the create did or it is not symmetric with it.
+    - name: Destroy the runner dataset through the TrueNAS middleware
+      when:
+        - ci_runner_docker_destroy_dataset | bool
+        - ci_runner_docker_midclt_rm.stat.exists
+      become: true
+      ansible.builtin.command:
+        argv:
+          - midclt
+          - call
+          - pool.dataset.delete
+          - "{{ ci_runner_docker_dataset }}"
+          - '{"recursive": true, "force": true}'
+      register: ci_runner_docker_ds_delete
+      changed_when: ci_runner_docker_ds_delete.rc == 0
+      # A dataset already gone on a re-run is the only benign answer; a busy
+      # dataset or middleware error is a silently failed destructive cleanup
+      # and must abort.
+      failed_when: >-
+        ci_runner_docker_ds_delete.rc != 0
+        and 'not found' not in (ci_runner_docker_ds_delete.stderr | lower)
+        and 'does not exist' not in (ci_runner_docker_ds_delete.stderr | lower)
+
+    - name: Destroy the runner dataset with zfs (non-appliance host)
+      when:
+        - ci_runner_docker_destroy_dataset | bool
+        - not ci_runner_docker_midclt_rm.stat.exists
+      become: true
+      ansible.builtin.command:
+        argv: [zfs, destroy, -r, "{{ ci_runner_docker_dataset }}"]
+      register: ci_runner_docker_zfs_destroy
+      changed_when: ci_runner_docker_zfs_destroy.rc == 0
+      # zfs reports a missing dataset distinctly; only that idempotent re-run
+      # answer is tolerated. A busy or held dataset must abort.
+      failed_when: >-
+        ci_runner_docker_zfs_destroy.rc != 0
+        and 'does not exist' not in (ci_runner_docker_zfs_destroy.stderr | lower)
+
+    # Guarded, because an unguarded `state: absent` here is a recursive delete
+    # aimed at a path on a storage pool. If either destroy above had failed --
+    # a busy dataset, a middleware error -- this task would go on to delete the
+    # runner root's CONTENTS by hand, on a live filesystem, and report success.
+    # It runs only when nothing is mounted there any more, which is exactly the
+    # case it exists for: a non-ZFS host where the root was a plain directory.
+    - name: Check whether anything is still mounted at the runner root
+      when: ci_runner_docker_destroy_dataset | bool
+      become: true
+      ansible.builtin.command:
+        argv: [findmnt, --noheadings, --output, TARGET, --mountpoint,
+               "{{ ci_runner_docker_root }}"]
+      register: ci_runner_docker_still_mounted
+      changed_when: false
+      # findmnt answers only 0 (mounted) or 1 (nothing mounted); anything else
+      # is an execution failure that must never authorize the recursive
+      # delete below.
+      failed_when: ci_runner_docker_still_mounted.rc not in [0, 1]
+
+    - name: Remove the runner root if it was a plain directory
+      when:
+        - ci_runner_docker_destroy_dataset | bool
+        - ci_runner_docker_still_mounted.rc != 0
+      become: true
+      ansible.builtin.file:
+        path: "{{ ci_runner_docker_root }}"
+        state: absent
+
+    - name: Report what removal left behind
+      ansible.builtin.debug:
+        msg: >-
+          {{ ci_runner_docker_name }} removed: container down, runner
+          deregistered, image {{ ci_runner_docker_image }} dropped,
+          {{ 'dataset ' ~ ci_runner_docker_dataset ~ ' destroyed'
+             if ci_runner_docker_destroy_dataset | bool
+             else 'dataset ' ~ ci_runner_docker_dataset ~ ' KEPT (destroy_dataset=false)' }}.
+          Nothing was ever written outside {{ ci_runner_docker_root }} and the
+          Docker data root, so there is nothing else to clean up.
+
+- name: Load runner deployment tasks
+  ansible.builtin.import_tasks: deploy.yml

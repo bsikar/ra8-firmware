@@ -1,0 +1,19 @@
+diff --git a/miniz.h b/miniz.h
+index 9fcfffcc8c..840ab19262 100644
+--- a/miniz.h
++++ b/miniz.h
+@@ -579,7 +579,14 @@ typedef struct mz_dummy_time_t_tag
+ #define MZ_TIME_T time_t
+ #endif
+ 
++#ifndef MZ_ASSERT
++#if defined(RA8_FREESTANDING) || defined(__ARM_EABI__)
++#include "ra8_check.h"
++#define MZ_ASSERT(x) RA8_ASSERT(x, "miniz assertion")
++#else
+ #define MZ_ASSERT(x) assert(x)
++#endif
++#endif
+ 
+ #ifdef MINIZ_NO_MALLOC
+ #define MZ_MALLOC(x) NULL

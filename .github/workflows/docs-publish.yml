@@ -1,0 +1,50 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Brighton Sikarskie
+# SCHEDULING ONLY -- the body lives in scripts/ci.sh (gate: docs-publish).
+# See .github/workflows/firmware.yml for the design note.
+#
+# Build the Doxygen HTML and publish it to the gh-pages branch on every push
+# to main (and on manual dispatch). Generated HTML is never committed to a
+# source branch: the orphan gh-pages branch is force-updated with a single
+# fresh commit each run, so it never accumulates generated-HTML history.
+#
+# `just docs::build` builds with the project-pinned doxygen release, never the distro
+# one -- the in-tree HTML templates and theme are only valid for that exact
+# version. scripts/builders/provision_doxygen.sh resolves it from the pod's
+# persistent pinned-tool cache (the /var/cache/ra8-tools hostPath mount, #486),
+# and downloads it sha256-verified on a cold cache. An ARC pod is ephemeral --
+# one pod per job -- so that mount, not the workspace, is what makes the
+# second run offline. graphviz is REQUIRED, not optional: build_docs.sh falls
+# back to text-only output when `dot` is absent, which would publish a
+# diagram-free site over the live one. It is part of the Ansible-built runner
+# image (`.devcontainer/Dockerfile`); the docs-publish gate hard-requires `dot`
+# and verifies the built tree actually contains its diagrams before pushing.
+#
+# One-time repo setup (owner): Settings -> Pages -> Build and deployment ->
+# Source = "Deploy from a branch", Branch = gh-pages / (root).
+---
+name: docs-publish
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+# The publish step force-pushes to the gh-pages branch.
+permissions:
+  contents: write
+
+# Never let two publishes race the gh-pages force-push.
+concurrency:
+  group: docs-publish
+  cancel-in-progress: true
+
+jobs:
+  publish:
+    name: Build + publish Doxygen HTML
+    runs-on: ra8-ci
+    steps:
+      - uses: actions/checkout@v4
+      - env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: just quality::local::gate docs-publish

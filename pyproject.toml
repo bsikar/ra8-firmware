@@ -1,0 +1,377 @@
+# Python dependency metadata and the Ruff configuration for first-party Python.
+#
+# This repository is not a distributable Python package. Its Python code is a
+# set of host tools, CI checks, infrastructure drivers, and bench helpers. uv
+# gives those consumers one project file and one transitive lock instead of
+# several independently resolved requirements files.
+
+[project]
+name = "ra8-firmware-tools"
+version = "0.0.0"
+description = "Locked host tooling for the RA8 firmware repository"
+requires-python = ">=3.11,<3.15"
+dependencies = []
+
+[dependency-groups]
+runtime = [
+  { include-group = "hil" },
+  "PyYAML==6.0.3",
+]
+dev = [
+  { include-group = "runtime" },
+  "cmakelang==0.6.13",
+  "gcovr==7.0",
+  "libclang==18.1.1",
+  "ruff==0.15.19",
+  "yamllint==1.37.1",
+]
+ci = [
+  { include-group = "dev" },
+]
+hil = [
+  "Pillow==12.2.0",
+  "pyserial==3.5",
+  "pyusb==1.3.1",
+  "python-dotenv==1.2.2",
+  "python-kasa==0.10.2",
+]
+infra = [
+  "ansible-core==2.19.11",
+  "hvac==2.4.0",
+]
+k3s = [
+  "kubernetes==35.0.0",
+]
+vela = [
+  "ethos-u-vela==5.1.0",
+]
+
+[tool.uv]
+package = false
+default-groups = ["dev", "infra", "k3s", "vela"]
+
+# Ruff configuration for first-party Python (every tracked *.py in the tree).
+#
+# Lint + format are gated in CI via scripts/checks/check_ruff.py, which fails on
+# ANY finding. There is no baseline and no grandfathering; the tree must be
+# clean. #360 was a SCOPE defect, not a suppression one: the gate hardcoded its
+# target list and so never saw seven first-party files, while reporting a clean
+# tree. It derives the list from `git ls-files` now, so a new directory is
+# covered the day it appears.
+#
+# Every family below was MEASURED across the tree before being selected, and
+# every finding it produced was fixed rather than exempted. Families that are
+# deliberately NOT selected are listed at the bottom with the measurement that
+# justified dropping them -- "we did not get to it" is not one of the reasons.
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+# Vendored trees, plus the build output ruff would otherwise descend into on an
+# ad-hoc `ruff check .`. The gated path never relies on these: check_ruff.py
+# derives its file list from scripts/checks/lint_targets.py, whose
+# is_build_output() is the single definition of "this is build output" shared
+# with the other checkers and with .gitignore (#377).
+#
+# Note what is NOT here: a bare `build`. Ruff matches a slashless pattern
+# against every path COMPONENT, so `build` excluded any directory of that name
+# at any depth -- and because check_ruff.py passes --force-exclude, ruff drops
+# such a file even when it is named explicitly on the command line. A
+# first-party `scripts/build/foo.py` -- PATHREF-OK: #359 renamed it -- would have
+# been handed to ruff by the gate
+# and silently skipped. `_deps` and `__pycache__` stay slashless on purpose:
+# CMake and CPython reserve those names, so they cannot collide with source.
+extend-exclude = [
+  "libs/third_party", # vendored dependencies are linted by their owning upstreams
+  "libs/ra8_fonts", # generated font assets are checked by generation parity
+  "_deps", # CMake-fetched dependency worktrees are not first-party source
+  "__pycache__", # CPython bytecode caches are generated output
+  "/build", # repository-root CMake output is generated
+  "tests/build", # generated test build output
+  "tests/build-cov", # generated coverage build output
+  "tests/build-fuzz", # generated fuzz build output
+]
+
+[tool.ruff.lint]
+select = [
+  "E", "W",    # pycodestyle
+  "F",         # pyflakes (real bugs: undefined names, unused imports)
+  "I",         # isort (import ordering)
+  "N",         # pep8-naming
+  "UP",        # pyupgrade (modernize syntax)
+  "B",         # flake8-bugbear
+  "C4",        # flake8-comprehensions
+  "SIM",       # flake8-simplify
+  "PTH",       # flake8-use-pathlib
+  "RUF",       # ruff-specific (incl. RUF100: an unused noqa is a lie)
+  "PERF",      # perflint
+  "RET",       # flake8-return
+  "PIE",       # flake8-pie
+  "PL",        # pylint (R/C/W/E) -- includes PLR0915 too-many-statements
+  "S",         # flake8-bandit (security)
+  "ARG",       # flake8-unused-arguments
+  "TID",       # flake8-tidy-imports
+  "ICN",       # flake8-import-conventions
+  "EXE",       # flake8-executable
+  "ISC",       # flake8-implicit-str-concat
+  "FURB",      # refurb (modernization)
+  "TRY",       # tryceratops (exception hygiene)
+  "EM",         # flake8-errmsg
+  # --- added by #365 -------------------------------------------------------
+  # pydocstyle, google convention (see [tool.ruff.lint.pydocstyle] for why that
+  # convention and not the other two). Measured 366 at selection time; all 366
+  # were WRITTEN, not exempted, and there is no per-file-ignore for D anywhere
+  # in this file.
+  #
+  # The split from #360 was never about size. A docstring that restates the
+  # signature is worse than none, because it makes an unaudited function look
+  # audited -- the same defect CLAUDE.md rejects for C definition-site comments
+  # and docs/STYLE_GUIDE.md bans as the pointer-only form. So each of the 236
+  # missing docstrings had to say what its function's NAME does not already
+  # say: its contract, what its inputs constrain, how it fails.
+  #
+  # These files implement every CI gate in the repo, so the ones worth having
+  # are the ones a green run does not distinguish from a real pass -- the
+  # FATAL-on-empty-scan guards in check_file_size / check_function_size /
+  # check_lint_coverage / lint_targets, and, in the other direction,
+  # stack_usage_check exiting 0 both when it finds no .su files and when they
+  # parse to zero functions.
+  "D",
+  # --- added by #372 -------------------------------------------------------
+  # Type annotations. Measured 431 at selection time (ANN001 265, ANN201 106,
+  # ANN202 47, ANN204 9, ANN401 4) -- higher than the 377 #363 recorded,
+  # because #359's decomposition created new signatures. All 431 were
+  # annotated; none suppressed.
+  #
+  # The recorded reason for dropping this was scheduling, not merit, and the
+  # merit argument held: ANN is the family that catches a checker silently
+  # accepting the wrong type, and these checkers are what the tree's
+  # correctness rests on. It caught one here -- a producer helper returned a
+  # 3-tuple where its neighbours returned 2, which a docstring-led annotation
+  # got wrong until the runtime shapes were checked.
+  #
+  # ANN401 got real types rather than Any respelled: a JSON-RPC id is
+  # `str | int | None` per the 2.0 spec, and the MCP selftest's request-builder
+  # kwargs are `object` -- stored and serialised, never inspected.
+  "ANN",
+  # --- added by #363 -------------------------------------------------------
+  # Private-member access. The reason previously recorded here -- "this repo's
+  # own tests reaching into modules it owns" -- was simply wrong: all 15
+  # measured findings were scripts/hil/tapo_control.py reaching into the
+  # THIRD-PARTY python-kasa library's internals, which is the most upgrade-
+  # fragile coupling in the Python tree and exactly what SLF exists to surface.
+  # It is deliberate and unavoidable (see the per-file-ignore below), but it
+  # should be visible, and the rule now catches the next one.
+  "SLF",
+  # Boolean positional value at a CALL site. Only the call-site half of FBT is
+  # taken: FBT001/FBT002 are a definition-side API opinion that cannot tell a
+  # mode flag from a boolean SUBJECT -- `_require(cond, what)` and
+  # `_brace_delta(line, in_block_comment)` are correct as written. FBT003 is
+  # not an opinion: `_svg(True)` at a call site is unreadable regardless of how
+  # the callee is designed. Measured 12, all `_svg(True)`/`_svg(False)` in
+  # check_doc_diagrams.py; fixed by making the parameter keyword-only.
+  "FBT003",
+  # --- added by #373 -------------------------------------------------------
+  # mccabe cyclomatic complexity. Threshold and reasoning in
+  # [tool.ruff.lint.mccabe] below.
+  "C90",
+  # --- added by #360 -------------------------------------------------------
+  # A blind `except Exception` in a gate swallows the very failure the gate
+  # exists to report. Measured 9, all resolved: five were file-read catch-alls
+  # now narrowed to OSError (read_text(errors="replace") cannot raise anything
+  # else), and four are genuine thread/RPC boundaries carrying a reasoned
+  # per-line noqa.
+  "BLE",
+  # Families that measured ZERO findings across all 96 first-party files.
+  # Selecting them costs nothing today and closes the defect class for good.
+  # Nothing is hidden behind them -- a zero-finding rule suppresses nothing.
+  "A",         # builtin shadowing
+  "ASYNC",     # async correctness
+  "DTZ",       # naive datetime (silently timezone-dependent behaviour)
+  "FLY",       # static str.join that should be an f-string
+  "G",         # logging-format correctness
+  "LOG",       # logging misuse
+  "PGH",       # blanket `noqa` / blanket `type: ignore` -- see the note below
+  "PT",        # pytest style
+  "PYI",       # stub-file correctness
+  "RSE",       # raise with unnecessary parentheses
+  "SLOT",      # __slots__ correctness on subclassed builtins
+  "T10",       # a pdb/breakpoint import left in a committed file
+  "YTT",       # sys.version misuse
+]
+ignore = [
+  "ISC001",    # single-line implicit string concat -- conflicts with the formatter
+  "ISC004",    # multi-line implicit concat is the house idiom for wrapped prose;
+  #              preview-gated in the 0.15.19 pin, so inert until the next upgrade
+  "COM812",    # trailing comma -- owned by the formatter
+]
+
+# PGH is doing real work here: it bans BLANKET `# noqa` and `# type: ignore`.
+# Every suppression in this tree must therefore name its rule and carry an
+# inline reason (`# noqa: S603 -- fixed argv, trusted tool path`), and RUF100
+# deletes it again as soon as it stops being needed. That pair is what keeps a
+# targeted, justified suppression from decaying into a blanket one.
+
+[tool.ruff.lint.per-file-ignores]
+# The ONE place a private member of code this repo does not own is touched.
+# TPAP smart plugs are not discoverable, so every connection parameter has to
+# be pinned on the transport and the library's discovery step stubbed out;
+# python-kasa exposes no public API for either. This is recorded here rather
+# than as 15 inline noqa lines so the coupling reads as one documented fact
+# about the driver, and so the rule keeps firing everywhere else in the tree.
+# If python-kasa ever grows a public seam for this, delete the line.
+"scripts/hil/tapo_control.py" = ["SLF001"] # python-kasa exposes no public transport seam
+# These are intentionally stdlib unittest suites because the gate is runnable
+# without pytest. PT009 asks for bare asserts and PT027 asks for pytest.raises;
+# both would make the syntax disagree with the portable stdlib runner. Normal
+# TestCase assertions and assertRaises keep unittest's failure context and
+# avoid the custom Expectations mixin this suite previously used to evade it.
+"scripts/dev/work/tests/test_*.py" = ["PT009"] # unittest assertions retain failure context
+"scripts/dev/work/tests/test*.py" = ["PT027"] # unittest assertRaises is the stdlib seam
+
+[tool.ruff.lint.pydocstyle]
+# MEASURED across all 143 first-party Python files before choosing, the same
+# way every other family here was decided:
+#
+#     convention   findings
+#      google        366     <- selected
+#      pep257        408
+#      numpy         508
+#
+# The count is not the argument, though; three things decided it.
+#
+# 1. It is the convention the tree ALREADY uses. 17 files write Google-style
+#    `Args:` / `Returns:` sections; exactly one (gray4_kernel.py) uses Sphinx
+#    `:param:` field lists, and none uses numpy's `Parameters` blocks. Picking
+#    google ratifies the majority instead of relabelling it.
+#
+# 2. numpy is actively wrong here. It enables D406/D407, which demand a
+#    dashed underline under every section name -- 58 findings apiece, and
+#    every one of them would rewrite those 17 existing Google-style files into
+#    a layout nothing in this tree uses.
+#
+# 3. pep257 declines to have the opinion that matters. It disables BOTH D212
+#    and D213, so it says nothing about where a multi-line summary starts;
+#    google enables D212 and pins the summary to the opening line, which is
+#    what every docstring in the tree already does. Locking in existing
+#    consistency is worth more than a lower number.
+#
+# pep257 and numpy would additionally have added D401 (75 findings,
+# non-imperative mood). That is dropped WITH the convention rather than
+# separately: the rule is a first-word stem check, and it cannot tell a
+# deliberate descriptive summary ("Whether a directory is build output") from
+# a mood error. The house style here is descriptive, so 75 findings would have
+# bought rewording and no defect.
+convention = "google"
+
+[tool.ruff.lint.pylint]
+# Pinned explicitly rather than inherited, so a ruff default change cannot
+# silently move this project's limit.
+#
+# 50 statements is the ruff default and the tree is clean at it (measured:
+# 0 findings at 50, 18 at 40, 52 at 30). It is deliberately NOT tightened here:
+# tightening is a function-size decision, and #359 owns choosing the right size
+# cap for Python. Setting a second, competing number here is how two gates end
+# up disagreeing about the same rule.
+max-statements = 50
+max-branches = 12
+
+[tool.ruff.lint.mccabe]
+# Pinned explicitly rather than inherited, so a ruff default change cannot
+# silently move this project's limit.
+#
+# MEASURED against the decomposed tree, after #359 split the eight oversized
+# files and the over-cap functions inside them:
+#
+#     max-complexity   findings
+#          10            37
+#          12            20
+#          13             9
+#          15             0        <- selected
+#
+# For reference, the same sweep BEFORE that decomposition read 54 / 37 / 15 at
+# 10 / 12 / 15. Decomposing for the size cap removed most of the complexity by
+# itself, which is the whole reason #373 was sequenced behind #359: the two are
+# measures of one property and fixing either fixes the other.
+#
+# Why 15 and not ruff's default 10:
+#
+# `max-branches = 12` above already bounds BRANCH count, and this project keeps
+# it there. mccabe measures something PLR0912 cannot see -- it also counts the
+# boolean operators inside a condition, so `if a and b or c` costs three where
+# PLR0912 counts one branch. A function sitting exactly at the branch limit
+# with a few compound conditions therefore lands around 14-15 while being
+# perfectly within the rule that actually governs its branching.
+#
+# Setting C901 at 15 makes it COMPLEMENTARY to PLR0912: it catches functions
+# whose complexity comes from condition density rather than branch count, and
+# it does not quietly re-litigate a branch budget another rule already owns.
+# Choosing 10 or 12 would make C901 strictly tighter than max-branches and
+# effectively supersede it -- two rules limiting the same property at two
+# different numbers, which is exactly what #373 said not to do.
+#
+# The 9 findings between 13 and 15 are NOT grandfathered: nothing is exempted,
+# there is no per-file-ignore, and every function this gate reports must be
+# decomposed. They simply do not exist at the selected threshold.
+max-complexity = 15
+
+# ---------------------------------------------------------------------------
+# Deliberately NOT selected. Every count below was RE-MEASURED for #363 against
+# the current tree (124 first-party Python files, ruff 0.15.19), not carried
+# over from the previous pass -- a stale number is how a dropped family stops
+# being a decision and becomes an omission.
+#
+# Two families have LEFT this list rather than being re-justified: D (#365) and
+# ANN (#372) are both selected above, with their measurements recorded there.
+# D401 is the one rule that arrived with them and was dropped; its reasoning
+# lives in [tool.ruff.lint.pydocstyle], because it is a consequence of the
+# convention choice rather than an independent decision.
+#
+#   T20 (584) flake8-print, 89 files. Re-checked against the specific worry
+#             that LIBRARY code is printing where it should return or log:
+#             every first-party .py that contains a top-level `print(` is
+#             either an executable script or carries a `__main__` guard, and
+#             the three genuinely importable modules (hil_secrets.py,
+#             openbao_client.py, gray4_kernel.py) contain no print at all.
+#             There is no library-printing defect here to catch, so the
+#             remedy would be 87 per-file-ignores describing the tree as it
+#             already is. Printing IS the output mechanism of a CLI tool.
+#   FBT001/FBT002 (13) boolean-trap, definition side. FBT003 IS now selected
+#             (see above). The definition-side half is dropped on merit after
+#             reading all 12: the rule cannot distinguish a mode flag from a
+#             boolean SUBJECT, and most of these are the latter --
+#             `_require(cond, what)` in three files is an assert-style helper
+#             whose boolean is the thing being asserted, and
+#             `_brace_delta(line, in_block_comment)` threads parser state.
+#             Forcing those to keyword-only would make correct code worse.
+#   TC   (13) typing-only import blocks -- all 13 are the identical
+#             `from collections.abc import Iterable` in a gate script. These
+#             are executed, not imported as a typed library, so moving the
+#             import into an `if TYPE_CHECKING:` block buys no startup cost
+#             back (collections.abc is already loaded by the interpreter) and
+#             costs a conditional block in 13 files. Zero defect value.
+#   ERA   (9) commented-out code. Re-verified line by line: ALL NINE remain
+#             false positives on prose -- a documented `pyftsubset` invocation
+#             in font_to_c.py, a sample of mcdc.txt's column format, a
+#             deliberately-empty exemption tuple template in
+#             stack_usage_check.py, and a comment in check_line_citations.py
+#             that happens to parse as a call. A rule whose entire measured
+#             yield is false positives buys nothing and costs nine
+#             suppressions on correct code.
+#   INP   (3) implicit-namespace-package, down from 5. INP001 fires on a .py
+#             that is neither an executable script nor a package member --
+#             verified empirically: adding a shebang silences it. Two of the
+#             original five were therefore a REAL defect, CLI entry points
+#             with `__main__` guards and no shebang (rot_keystore.py, which
+#             rot_provision.sh documents as a direct command line, and
+#             rot_patch_pubkey.py); both now have one and the executable bit
+#             that EXE001 requires. The remaining three are genuine importable
+#             library modules (hil_secrets, openbao_client, gray4_kernel), and
+#             for those the only remedy is __init__.py, converting a flat CLI
+#             tree into a package. That is a structural change this repo does
+#             not want.
+#   Q, COM    quote and comma style -- owned by `ruff format`.
+# ---------------------------------------------------------------------------
+
+[tool.ruff.format]
+# Formatter defaults: double quotes, space indent, magic trailing comma honoured.

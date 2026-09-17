@@ -1,0 +1,42 @@
+# ra8-firmware SOUP upstream provenance manifest -- generated, do not hand-edit.
+# component: flatbuffers
+# upstream-url: https://github.com/google/flatbuffers
+# transport: git
+# ref: v25.9.23
+# commit: 187240970746d00bbd26b0f5873ed54d2477f9f3
+# upstream-files: 1890
+# vendored-files: 31
+# upstream-verified: 31
+# patched: 0
+# local: 0
+ok 100644 d645695673349e3947e8e5ae42332d0ac3164cd7 LICENSE
+ok 100644 d451818568a2aa77f6d95c0cfbabcc274b094b61 include/flatbuffers/allocator.h
+ok 100644 914f479aab7975034c3efb8a181117b9e15169a8 include/flatbuffers/array.h
+ok 100644 987dcbc40630a24ecbc309a8d0abc630bdf5d152 include/flatbuffers/base.h
+ok 100644 154d187ab755812bb763fc760b479f1a69264e9b include/flatbuffers/buffer.h
+ok 100644 746903eb972945dac98a265de7be77894921135d include/flatbuffers/buffer_ref.h
+ok 100644 cc4df7f1c8b6d41d3a8d3118cd87834862d2ccef include/flatbuffers/code_generator.h
+ok 100644 d284ac5a6835d7012b02c023ff10dc0b74d968dd include/flatbuffers/code_generators.h
+ok 100644 d1cab08d7431003c543d501b9c375698a2983cac include/flatbuffers/default_allocator.h
+ok 100644 0577a42d9692d79db03a233ef5921d4648ac7146 include/flatbuffers/detached_buffer.h
+ok 100644 0941faef66298525301726d9ba59f3dbd8026c8b include/flatbuffers/file_manager.h
+ok 100644 9eea6bab0c591aea5a94896185ba1281da176dee include/flatbuffers/flatbuffer_builder.h
+ok 100644 87b271e7c2e057f62b89eb88e335727662bae7ae include/flatbuffers/flatbuffers.h
+ok 100644 da24762c265e4f8267ef3f249f5ba1b95dca8594 include/flatbuffers/flatc.h
+ok 100644 c02e90fea1c37b419186dade500273fdca32f267 include/flatbuffers/flex_flat_util.h
+ok 100644 2784dafbfac5bccfd70c01ed7a456f26764af3d3 include/flatbuffers/flexbuffers.h
+ok 100644 74633fd67f2f91f13cb9f8142861a7d847406ba1 include/flatbuffers/grpc.h
+ok 100644 2e92c09a212a0dd3244f2393d93114cd79c316e7 include/flatbuffers/hash.h
+ok 100644 1c551e999db43f9854a18e1531ffc41de62f70f0 include/flatbuffers/idl.h
+ok 100644 77be5165111d413d21d6f042a4b1ce819e8a34c7 include/flatbuffers/minireflect.h
+ok 100644 371df72526137cff5bf7ee4b5c2f83b411b1becb include/flatbuffers/reflection.h
+ok 100644 5c2ab09b25656673ce00cf72f32d17b974f11730 include/flatbuffers/reflection_generated.h
+ok 100644 e70cfc33e41fbda645fbcf34c2089e5d454028d7 include/flatbuffers/registry.h
+ok 100644 67c6768cbf2d9d28a44b4344388ff0329c612cfe include/flatbuffers/stl_emulation.h
+ok 100644 d9c62f96c270d6a8b497b381a9eb656db2ae553f include/flatbuffers/string.h
+ok 100644 3aa434c0e57abc9b7ebf4a4dd6387917d6fde92b include/flatbuffers/struct.h
+ok 100644 defe084370b87b184cb18e4effd3969e624be2d8 include/flatbuffers/table.h
+ok 100644 0313e74d88cb07ee9f0ca2890b9c6e5357508cc8 include/flatbuffers/util.h
+ok 100644 e967e5344159a14c05ec9d84c9393ae9c0c19769 include/flatbuffers/vector.h
+ok 100644 3e6da8e9da78771718da1ba0d2ee3e9ac96fc83d include/flatbuffers/vector_downward.h
+ok 100644 a0b793597c80c364485463d0f91bb6d84564586f include/flatbuffers/verifier.h
