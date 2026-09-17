@@ -228,8 +228,25 @@ if [ -z "${_RA8_LANG_TOOLCHAINS_SH:-}" ]; then
   # and neither failure aborts: a gate that needs neither must still run on a
   # box that cannot reach either download host.
   use_pinned_lang_toolchains() {
-    use_pinned_zig || true
-    use_pinned_rust || true
+    local zig_rc rust_rc
+
+    # `|| true` would leave the callee running OUTSIDE errexit, so a failure
+    # part-way through its body would be swallowed instead of returning. Disable
+    # errexit around the CALL and read the status back, which is what
+    # scripts/checks/check_errexit_masking.py asks for.
+    set +e
+    use_pinned_zig
+    zig_rc=$?
+    use_pinned_rust
+    rust_rc=$?
+    set -e
+
+    if [ "${zig_rc}" -ne 0 ]; then
+      _ra8_lang_log "note: no pinned zig; gates needing it will fail with their own message"
+    fi
+    if [ "${rust_rc}" -ne 0 ]; then
+      _ra8_lang_log "note: no pinned rust; gates needing it will fail with their own message"
+    fi
     return 0
   }
 fi
