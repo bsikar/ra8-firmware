@@ -44,14 +44,46 @@ ${_fuzz_targets}
 EOF
 
 # -----------------------------------------------------------------------------
+# The JPEG seed generator is a Zig host tool (#858), built once here and reused
+# for every seed below. A missing zig is FATAL rather than a skipped corpus: a
+# harness whose corpus directory exists but holds no seed still runs, and it
+# runs from zero coverage, which looks like a passing fuzz sweep.
+# -----------------------------------------------------------------------------
+ZIG="${ZIG:-}"
+if [ -z "${ZIG}" ]; then
+  if command -v zig >/dev/null 2>&1; then
+    ZIG="$(command -v zig)"
+  elif [ -x "${HOME}/.local/zig/zig" ]; then
+    ZIG="${HOME}/.local/zig/zig"
+  fi
+fi
+if [ -z "${ZIG}" ]; then
+  echo "init_fuzz_corpora.sh: FATAL -- zig not found (set ZIG, or put it on PATH)." >&2
+  exit 1
+fi
+
+JPEG_TOOL_ROOT="${ROOT}/tools/gen_jpeg_fixture"
+JPEG_TOOL_PREFIX="${JPEG_TOOL_ROOT}/build/corpora"
+"${ZIG}" build \
+  --build-file "${JPEG_TOOL_ROOT}/build.zig" \
+  --cache-dir "${JPEG_TOOL_ROOT}/build/cache" \
+  --prefix "${JPEG_TOOL_PREFIX}" \
+  -Doptimize=ReleaseSafe
+GEN_JPEG_FIXTURE="${JPEG_TOOL_PREFIX}/bin/gen_jpeg_fixture"
+if [ ! -x "${GEN_JPEG_FIXTURE}" ]; then
+  echo "init_fuzz_corpora.sh: FATAL -- ${GEN_JPEG_FIXTURE} was not built." >&2
+  exit 1
+fi
+
+# -----------------------------------------------------------------------------
 # fuzz_ra8_jpeg_sw -- minimal baseline JPEGs at five sizes.
 # -----------------------------------------------------------------------------
 JPEG_DIR="${CORPUS_ROOT}/fuzz_ra8_jpeg_sw"
-python3 "${SCRIPT_DIR}/../gen/gen_jpeg_fixture.py" --width 8 --height 8 -o "${JPEG_DIR}/seed_8x8.jpg"
-python3 "${SCRIPT_DIR}/../gen/gen_jpeg_fixture.py" --width 16 --height 16 -o "${JPEG_DIR}/seed_16x16.jpg"
-python3 "${SCRIPT_DIR}/../gen/gen_jpeg_fixture.py" --width 32 --height 24 -o "${JPEG_DIR}/seed_32x24.jpg"
-python3 "${SCRIPT_DIR}/../gen/gen_jpeg_fixture.py" --width 64 --height 64 -o "${JPEG_DIR}/seed_64x64.jpg"
-python3 "${SCRIPT_DIR}/../gen/gen_jpeg_fixture.py" --width 1 --height 1 -o "${JPEG_DIR}/seed_1x1.jpg"
+"${GEN_JPEG_FIXTURE}" --width 8 --height 8 -o "${JPEG_DIR}/seed_8x8.jpg"
+"${GEN_JPEG_FIXTURE}" --width 16 --height 16 -o "${JPEG_DIR}/seed_16x16.jpg"
+"${GEN_JPEG_FIXTURE}" --width 32 --height 24 -o "${JPEG_DIR}/seed_32x24.jpg"
+"${GEN_JPEG_FIXTURE}" --width 64 --height 64 -o "${JPEG_DIR}/seed_64x64.jpg"
+"${GEN_JPEG_FIXTURE}" --width 1 --height 1 -o "${JPEG_DIR}/seed_1x1.jpg"
 
 # -----------------------------------------------------------------------------
 # fuzz_epub -- two minimal valid EPUB containers.
@@ -414,8 +446,7 @@ with open(os.path.join(OUTDIR, "seed_gray_16x16.png"), "wb") as fh:
 with open(os.path.join(OUTDIR, "seed_sig_only.bin"), "wb") as fh:
     fh.write(b"\x89PNG\r\n\x1a\n")
 PY
-python3 "${SCRIPT_DIR}/../gen/gen_jpeg_fixture.py" --width 16 --height 16 \
-  -o "${RTAP_DIR}/seed_16x16.jpg"
+"${GEN_JPEG_FIXTURE}" --width 16 --height 16 -o "${RTAP_DIR}/seed_16x16.jpg"
 
 # -----------------------------------------------------------------------------
 # fuzz_unarch_{xz,tar,gzip} + fuzz_ra8_decomp_limits -- one honest seed
