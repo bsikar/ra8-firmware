@@ -34,4 +34,16 @@ pub fn build(b: *std.Build) void {
     const run_tests = b.addRunArtifact(tests);
     const test_step = b.step("test", "Run reg_gen unit and C23 contract tests");
     test_step.dependOn(&run_tests.step);
+
+    const docs_object = b.addObject(.{
+        .name = "reg_gen_docs",
+        .root_module = executable.root_module,
+    });
+    const install_docs = b.addInstallDirectory(.{
+        .source_dir = docs_object.getEmittedDocs(),
+        .install_dir = .prefix,
+        .install_subdir = "reg_gen",
+    });
+    const docs_step = b.step("docs", "Emit Zig autodoc HTML into <prefix>/reg_gen");
+    docs_step.dependOn(&install_docs.step);
 }

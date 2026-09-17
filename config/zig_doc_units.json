@@ -1,0 +1,120 @@
+{
+  "schema_version": 1,
+  "output_subdir": "api/zig",
+  "documented": [
+    {
+      "name": "reg_gen",
+      "build_root": "apps/host/reg_gen",
+      "title": "reg_gen (host register generator)",
+      "summary": "Generates register accessor tables consumed by the firmware build."
+    },
+    {
+      "name": "image_pyramid",
+      "build_root": "apps/host/image_pyramid",
+      "title": "image_pyramid (host JPEG degradation tool)",
+      "summary": "Host tool that builds deliberately degraded JPEG levels over the ra8_jpeg C sources."
+    },
+    {
+      "name": "firmware_pipeline",
+      "build_root": "apps/host/firmware_pipeline/zig",
+      "title": "firmware_pipeline (Zig ABI adapter)",
+      "summary": "Zig side of the firmware_pipeline C ABI, plus the Zig-to-Rust adapter surface."
+    },
+    {
+      "name": "merge_ihex",
+      "build_root": "tools/merge_ihex",
+      "title": "merge_ihex (Intel HEX merge tool)",
+      "summary": "Merges a Secure and a Non-Secure image into one flashable Intel HEX file."
+    }
+  ],
+  "excluded": [
+    {
+      "build_root": "tests/zig_abi_fixture",
+      "reason": "ABI conformance fixture, not a first-party API surface"
+    },
+    {
+      "build_root": "tests/abi_chain_fixture",
+      "reason": "ABI chain fixture exercising the C-to-Zig call chain in tests only"
+    },
+    {
+      "build_root": "tests/rust_abi_fixture/zig",
+      "reason": "Rust-to-Zig ABI fixture, exercised by the rust-abi gate only"
+    },
+    {
+      "build_root": "tools/check_assert_casts",
+      "reason": "repository gate CLI driven by scripts/ci/gates/, not a first-party API surface; its contract is its own tests"
+    },
+    {
+      "build_root": "tools/check_build_shard_union",
+      "reason": "repository gate CLI driven by scripts/ci/gates/, not a first-party API surface; its contract is its own tests"
+    },
+    {
+      "build_root": "tools/check_example_board_pins",
+      "reason": "repository gate CLI driven by scripts/ci/gates/, not a first-party API surface; its contract is its own tests"
+    },
+    {
+      "build_root": "tools/check_final_newline",
+      "reason": "repository gate CLI driven by scripts/ci/gates/, not a first-party API surface; its contract is its own tests"
+    },
+    {
+      "build_root": "tools/check_host_build_entrypoints",
+      "reason": "repository gate CLI driven by scripts/ci/gates/, not a first-party API surface; its contract is its own tests"
+    },
+    {
+      "build_root": "tools/check_inclusive_terminology_commits",
+      "reason": "repository gate CLI driven by scripts/ci/gates/, not a first-party API surface; its contract is its own tests"
+    },
+    {
+      "build_root": "tools/check_no_driver_asm_guard",
+      "reason": "repository gate CLI driven by scripts/ci/gates/, not a first-party API surface; its contract is its own tests"
+    },
+    {
+      "build_root": "tools/check_no_gnu_attribute",
+      "reason": "repository gate CLI driven by scripts/ci/gates/, not a first-party API surface; its contract is its own tests"
+    },
+    {
+      "build_root": "tools/check_no_legacy_make",
+      "reason": "repository gate CLI driven by scripts/ci/gates/, not a first-party API surface; its contract is its own tests"
+    },
+    {
+      "build_root": "tools/check_no_unsafe_python_install",
+      "reason": "repository gate CLI driven by scripts/ci/gates/, not a first-party API surface; its contract is its own tests"
+    },
+    {
+      "build_root": "tools/check_nsc_veneer_defs",
+      "reason": "repository gate CLI driven by scripts/ci/gates/, not a first-party API surface; its contract is its own tests"
+    },
+    {
+      "build_root": "tools/check_pointer_boilerplate",
+      "reason": "repository gate CLI driven by scripts/ci/gates/, not a first-party API surface; its contract is its own tests"
+    },
+    {
+      "build_root": "tools/check_since_version",
+      "reason": "repository gate CLI driven by scripts/ci/gates/, not a first-party API surface; its contract is its own tests"
+    },
+    {
+      "build_root": "tools/check_stub_crypto_guarded",
+      "reason": "repository gate CLI driven by scripts/ci/gates/, not a first-party API surface; its contract is its own tests"
+    },
+    {
+      "build_root": "tools/doxygen_md_filter",
+      "reason": "Doxygen input filter invoked by scripts/builders/docs.sh, not a first-party API surface; its contract is its own tests"
+    },
+    {
+      "build_root": "tools/font_to_c",
+      "reason": "build-time generator CLI driven by the build graph, not a first-party API surface; its contract is its own tests"
+    },
+    {
+      "build_root": "tools/gen_jlink_w4",
+      "reason": "build-time generator CLI driven by the build graph, not a first-party API surface; its contract is its own tests"
+    },
+    {
+      "build_root": "tools/gen_jpeg_fixture",
+      "reason": "build-time generator CLI driven by the build graph, not a first-party API surface; its contract is its own tests"
+    },
+    {
+      "build_root": "tools/list_tests",
+      "reason": "test-census CLI driven by just/tests.just, not a first-party API surface; its contract is its own tests"
+    }
+  ]
+}

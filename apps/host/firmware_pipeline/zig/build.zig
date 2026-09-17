@@ -102,4 +102,13 @@ pub fn build(b: *std.Build) void {
     const run_tests = b.addRunArtifact(tests);
     const test_step = b.step("test", "Run native Zig and Zig-to-Rust tests");
     test_step.dependOn(&run_tests.step);
+
+    const docs_object = b.addObject(.{ .name = "firmware_pipeline_docs", .root_module = adapter });
+    const install_docs = b.addInstallDirectory(.{
+        .source_dir = docs_object.getEmittedDocs(),
+        .install_dir = .prefix,
+        .install_subdir = "firmware_pipeline",
+    });
+    const docs_step = b.step("docs", "Emit Zig autodoc HTML into <prefix>/firmware_pipeline");
+    docs_step.dependOn(&install_docs.step);
 }
