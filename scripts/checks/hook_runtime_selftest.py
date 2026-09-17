@@ -800,6 +800,13 @@ def _stub_ci_support(root: Path) -> None:
     _write(root / "scripts/ci/lib/arm_toolchain.sh", "#!/usr/bin/env bash\n")
     _write(root / "scripts/ci/lib/snapshot.sh", "#!/usr/bin/env bash\n")
     _write(root / "scripts/ci/lib/tool_env.sh", "use_pinned_tool_path() { :; }\n")
+    # run_one_gate calls use_pinned_lang_toolchains at the same choke point it
+    # calls use_pinned_tool_path, and scripts/ci.sh sources the fragment
+    # eagerly, so the fixture tree needs the file as well as the function.
+    _write(
+        root / "scripts/ci/lib/lang_toolchains.sh",
+        "use_pinned_lang_toolchains() { :; }\n",
+    )
     _write(
         root / "scripts/ci/lib/abort.sh",
         "RA8_CI_EXIT_ABORTED=3\nci_require_tree_intact() { :; }\nci_install_abort_traps() { :; }\n",
