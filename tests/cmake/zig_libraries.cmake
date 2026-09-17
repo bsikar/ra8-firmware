@@ -108,6 +108,20 @@ ra8_add_zig_library(
   ra8_app
 )
 
+# Fully migrated: the check-in registry, the deadline arithmetic, the refresh
+# verdict and the ThreadX seam are Zig now, so libs/ra8_wdt_supervisor/src has
+# no .c left (the host ThreadX shim header went with it) and the
+# RA8_WDT_SUPERVISOR_SOURCES glob is gone from library_sources.cmake and
+# core_hal.cmake.
+ra8_add_zig_library(
+  NAME
+  ra8_wdt_supervisor
+  ZIG_ROOT
+  ${FW_ROOT}/libs/ra8_wdt_supervisor
+  LIBRARY_NAME
+  ra8_wdt_supervisor
+)
+
 # ra8_core_hal is the OBJECT library every host test links, so an INTERFACE
 # link here reaches each test executable that pulls in a migrated library.
 target_link_libraries(
@@ -120,6 +134,7 @@ target_link_libraries(
          ra8_zig::ra8_batt
          ra8_zig::ra8_ui
          ra8_zig::ra8_app
+         ra8_zig::ra8_wdt_supervisor
 )
 
 link_libraries(ra8_zig::ra8_app)
@@ -134,4 +149,5 @@ link_libraries(
   ra8_zig::ra8_epd_cal
   ra8_zig::ra8_touch_cal
   ra8_zig::ra8_ui
+  ra8_zig::ra8_wdt_supervisor
 )
