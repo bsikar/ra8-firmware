@@ -234,3 +234,10 @@ pub export fn ra8_devcfg_reset() callconv(.c) void {
     s_state = .unloaded;
     s_record = .{};
 }
+
+comptime {
+    // The production extra-MRAM binding keeps its own file, as its own
+    // translation unit did. Reference it here so the archive still exports
+    // `ra8_devcfg_default_store` alongside the membrane above.
+    _ = @import("store_extra_mram.zig");
+}
