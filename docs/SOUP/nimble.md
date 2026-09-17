@@ -21,10 +21,36 @@ firmware as Software Of Unknown Provenance (SOUP).
 - **Origin**: Apache Software Foundation, Apache Mynewt project.
 - **License**: Apache-2.0 (`LICENSE` and `NOTICE`).
 - **How it entered our tree**: Vendored from the upstream release tag.
-  All 827 vendored files (826 regular files plus the one
+  All 615 vendored files (614 regular files plus the one
   `porting/npl/riot/include/npl_syscfg/npl_sycfg.h` symlink) are
-  byte-identical to `nimble_1_10_0_tag`. The vendored subset drops the
-  upstream `apps/` directory (163 files) and nothing else.
+  byte-identical to `nimble_1_10_0_tag`. The vendored subset is
+  `nimble/` (475 files), `porting/` (131) and nine repository-root files
+  (`LICENSE`, `NOTICE`, `README.md`, `RELEASE_NOTES.md`, `version.yml`,
+  `CODING_STANDARDS.md`, `.clang-format`, `.clang-format-ignore`,
+  `.gitignore`).
+- **What the subset drops, and why** (#622): the upstream `apps/`
+  directory (163 files) was never vendored, and 212 further files were
+  pruned because no RA8 build can reach them -- `babblesim/` (76, the
+  Zephyr BSIM shim, which carries its own `core_cm4.h`), `tools/` (41,
+  Python host utilities), `.github/` (40, upstream CI and Nordic nRF5x
+  Mynewt targets), `docs/` (26), `targets/` (19, Nordic nRF5340 Mynewt
+  targets and their linker scripts), `ext/` (4), `qualification/` (1),
+  and `.asf.yaml`, `.mailmap`, `.rat-excludes`, `Doxyfile`,
+  `repository.yml`. None of those paths lie under any include directory
+  `cmake/nimble.cmake` publishes, none is named by any file outside the
+  vendored tree, and none is reached by the `nimble/host` + `porting/` +
+  `nimble/transport` surface #493 will compile. Verified three ways
+  before deleting: no reference to any pruned path anywhere in the repo,
+  no pruned path under a published include dir, and no `NOLINT` or
+  `cppcheck-suppress` directive inside the pruned files (so no
+  suppression-ledger churn). `LICENSE` and `NOTICE` are kept because
+  Apache-2.0 redistribution requires them; `README.md`,
+  `RELEASE_NOTES.md` and `version.yml` because this document cites them
+  for the component's version identity. The prune shrinks the OSV, SBOM
+  and exemption surface by roughly a quarter with no build change: the
+  compiled surface from the vendored tree is still the single header
+  `nimble/nimble_npl.h`. A future re-vendor must re-apply this subset
+  rather than take the upstream tree whole.
 - **Previous pin**: `8b6f3e819118a1839e5f238bfe1797d64878dc3d`, a
   default-branch snapshot 42 commits past `nimble_1_9_0_tag`, recovered
   by tree fingerprinting rather than by tag. It was replaced because it
@@ -106,7 +132,10 @@ Accepted as-is per IEC 61508-3 Section 7.4.2.12 and DO-178C Section
 ## Deviations / patches
 
 None. The vendored tree is byte-identical to the pinned upstream release
-tag (`apps/` omitted), re-verified file-by-file at the 1.10.0 re-vendor.
+tag, re-verified file-by-file at the 1.10.0 re-vendor. Omission is not
+deviation: upstream `apps/` and the 212 unbuildable files listed under
+"Provenance" are absent, and every file that is present matches the tag
+byte for byte.
 
 One historical deviation is worth recording, because it was undocumented
 and because of how it arose. Under the previous 1.9.0+dev pin, a
@@ -123,7 +152,7 @@ re-vendor restored upstream content, so the claim holds again.
 
 That lesson is now a mechanism rather than a convention (#538).
 `scripts/gen/gen_sbom.py` re-derives a SHA-256 over this component's whole
-vendored tree on every run -- 827 files, by sorted component-relative path,
+vendored tree on every run -- 615 files, by sorted component-relative path,
 git mode and content -- and `gen_sbom.py --check` in the `sbom` gate fails
 naming the component the moment any of those bytes change. The drift above
 went unnoticed because the SBOM's `aggregate_sha256` was a hand-transcribed
@@ -136,10 +165,10 @@ A digest over our own tree would still not have caught the drift at
 vendor-in -- it would have hashed the rewritten URL faithfully and reported
 clean forever. So the claim above is also checked against upstream itself
 (#548): `docs/sbom/upstream/nimble.manifest` records the blob SHA-1 upstream
-publishes for each of the 827 vendored files at `nimble_1_10_0_tag`, fetched
+publishes for each of the 615 vendored files at `nimble_1_10_0_tag`, fetched
 from `apache/mynewt-nimble` rather than derived here, and the `soup-upstream`
 gate compares our index against it on every push. Under that check the tree
-is 827/827 byte-identical with zero declared deviations.
+is 615/615 byte-identical with zero declared deviations.
 
 ## CVE monitoring
 
