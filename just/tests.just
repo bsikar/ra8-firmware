@@ -44,22 +44,22 @@ mod devcontainer 'test_devcontainer.just'
 # --- Category Listings ---
 
 hal:
-    python3 scripts/dev/list_tests.py hal
+    bash scripts/builders/list_tests.sh hal
 
 storage:
-    python3 scripts/dev/list_tests.py storage
+    bash scripts/builders/list_tests.sh storage
 
 usb:
-    python3 scripts/dev/list_tests.py usb
+    bash scripts/builders/list_tests.sh usb
 
 wireless:
-    python3 scripts/dev/list_tests.py wireless
+    bash scripts/builders/list_tests.sh wireless
 
 security:
-    python3 scripts/dev/list_tests.py security
+    bash scripts/builders/list_tests.sh security
 
 net:
-    python3 scripts/dev/list_tests.py net
+    bash scripts/builders/list_tests.sh net
 
 # --- Host App Tests ---
 
@@ -79,13 +79,13 @@ integration:
     ctest --test-dir apps/host/mdl/build -R test_integration --output-on-failure
 
 shared:
-    python3 scripts/dev/list_tests.py shared
+    bash scripts/builders/list_tests.sh shared
 
 host:
-    python3 scripts/dev/list_tests.py host
+    bash scripts/builders/list_tests.sh host
 
 board:
-    python3 scripts/dev/list_tests.py board
+    bash scripts/builders/list_tests.sh board
 
 tools:
-    python3 scripts/dev/list_tests.py tools
+    bash scripts/builders/list_tests.sh tools
