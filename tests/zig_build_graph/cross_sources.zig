@@ -75,6 +75,27 @@ pub const CrossApp = struct {
     /// include directories, defines, and link options onto this app. See
     /// middleware.zig.
     uses: []const []const u8 = &.{},
+    /// The subset of `libs/ra8_nsc/src` this app compiles, named exactly as
+    /// `NSC_SRCS` names it (bare file names, no directory). Empty means the
+    /// app named none, and cmake/ra8_app/sources.cmake then globs the whole
+    /// directory -- which is what all six pre-#1096 apps get.
+    ///
+    /// The narrowing exists because the NSC veneers are not one set: an app
+    /// pulls the CGC veneers without dragging in ra8_nsc_comms/ra8_nsc_eth,
+    /// which do not compile under its secure configuration. Nothing in the
+    /// directory listing says so, and globbing anyway puts nine extra
+    /// secure-world translation units into an image CMake never put them in.
+    nsc_srcs: []const []const u8 = &.{},
+    /// True when a standalone configure of this app has RA8_TRUSTZONE_ENABLE
+    /// ON, which is an app-local `option(... ON)` in its own CMakeLists and
+    /// not the repo-root default (OFF). It adds a define and -mcmse to every
+    /// one of the app's translation units and to its link; see
+    /// arm_flags.trust_zone for what each of those actually buys.
+    trust_zone: bool = false,
+    /// The CMSE import library the app's own CMakeLists asks the link to
+    /// emit, named as the file name CMake gives it. Null for every app that
+    /// is not the secure half of a two-project TrustZone build.
+    cmse_implib: ?[]const u8 = null,
 };
 
 /// A name in `LIBS` that contributes translation units from somewhere other
@@ -399,6 +420,35 @@ pub const cross_apps = [_]CrossApp{
             },
         },
     },
+    .{
+        // The SEVENTH app, and the first TrustZone one. Everything above was
+        // built with RA8_TRUSTZONE_ENABLE OFF, so three rules had never been
+        // taken: NSC_SRCS narrowing the NSC set, the define and -mcmse the
+        // option adds to every app translation unit and to the link, and the
+        // CMSE import library the app's own CMakeLists asks for. It is the
+        // only app in the tree naming NSC_SRCS. Its first-party set is
+        // otherwise blink_hal's shape, so everything differing between the
+        // two images IS those rules: 200 - 9 NSC + 1 ra8_tz_secure_boot = 192.
+        //
+        // It also overrides TWO boot units (src/system_init.c and
+        // src/trustzone_init.c), where cpu1_pingpong overrode one, and its
+        // AUX_SRCS name the three ns_*.c files that belong to the SEPARATE
+        // Non-Secure executable, which this slice deliberately leaves out.
+        // It links no migrated Zig archive, so #948 does not block it.
+        .name = "tz_nsc_cgc_usb",
+        .dir = "examples/ek_ra8d2/hil_needs_revalidation/tz_nsc_cgc_usb",
+        .board = "libs/ra8_board_ek_ra8d2",
+        // This app ships its own script: the secure image is 512K of MRAM
+        // with the NS image's load home carved out of the rest, which the
+        // board's canonical single-core map has no notion of.
+        .linker_script = "examples/ek_ra8d2/hil_needs_revalidation/tz_nsc_cgc_usb/linker_script.ld",
+        .libraries = &.{"ra8_tz_secure_boot"},
+        .zig_libraries = &.{},
+        .aux_srcs = &.{ "src/ns_main.c", "src/ns_usb.c", "src/ns_usb_host.c" },
+        .nsc_srcs = &.{"ra8_nsc_cgc.c"},
+        .trust_zone = true,
+        .cmse_implib = "tz_nsc_cgc_usb_cmse_import.o",
+    },
 };
 
 /// The universal first-party source set ra8_add_app() globs into every app,
@@ -413,6 +463,25 @@ const cross_source_dirs = [_][]const u8{
     "libs/ra8_secure_app/src",
     "libs/ra8_board_ek_ra8d2/src",
 };
+
+/// The one directory in cross_source_dirs an app can narrow. Named so the
+/// glob loop and the NSC_SRCS rule cannot drift apart about which directory
+/// the subset applies to.
+pub const nsc_source_dir = "libs/ra8_nsc/src";
+
+/// Whether `relpath` is an NSC translation unit this app does NOT compile.
+/// Pure, so both arms assert directly in test-zig instead of only through a
+/// 192-TU cross-build: an app that names no NSC_SRCS compiles all ten, and an
+/// app that names a subset compiles exactly that subset.
+pub fn isGatedOutNscSource(app: CrossApp, relpath: []const u8) bool {
+    if (app.nsc_srcs.len == 0) return false;
+    if (!std.mem.startsWith(u8, relpath, nsc_source_dir ++ "/")) return false;
+    const name = std.fs.path.basename(relpath);
+    for (app.nsc_srcs) |named| {
+        if (std.mem.eql(u8, named, name)) return false;
+    }
+    return true;
+}
 
 /// Boot translation units resolved per app: the app's own copy under `src/`
 /// when it has one, otherwise the board layer's copy under `src/boot/`. This
@@ -572,7 +641,19 @@ pub fn crossSources(b: *std.Build, app: CrossApp) []const []const u8 {
     // list in and therefore the order the objects reach the linker.
     for (app.extra_srcs) |source| sources.append(source) catch @panic("OOM");
 
-    for (cross_source_dirs) |dir_path| collectCSources(b, dir_path, &sources);
+    for (cross_source_dirs) |dir_path| {
+        // NSC_SRCS replaces the glob of libs/ra8_nsc/src with exactly the
+        // files the app named, in the order it named them. See
+        // CrossApp.nsc_srcs: this is a subtraction no listing shows, and the
+        // build succeeds either way.
+        if (std.mem.eql(u8, dir_path, nsc_source_dir) and app.nsc_srcs.len > 0) {
+            for (app.nsc_srcs) |name| {
+                sources.append(b.fmt("{s}/{s}", .{ nsc_source_dir, name })) catch @panic("OOM");
+            }
+            continue;
+        }
+        collectCSources(b, dir_path, &sources);
+    }
 
     // Named libraries. A library with a directory of its own contributes
     // `libs/<name>/src/*.c`; a board named in LIBS contributes the same set the

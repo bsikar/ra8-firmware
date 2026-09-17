@@ -34,6 +34,10 @@ const deep_stack_app = graph.cross_apps[4];
 /// And the one whose own CMakeLists does work beyond ra8_add_app(): five
 /// EXTRA_SRCS helpers and a vendored static library it declares and links.
 const extra_srcs_app = graph.cross_apps[5];
+/// And the first TrustZone one, which is the only app in the tree naming
+/// NSC_SRCS and the only one whose standalone configure has
+/// RA8_TRUSTZONE_ENABLE ON.
+const trust_zone_app = graph.cross_apps[6];
 
 test "board opt-in gate drops the two sources an app must ask for" {
     try std.testing.expect(
@@ -622,4 +626,72 @@ test "a vendored library declared by the app carries no project warning profile"
     try std.testing.expect(indexOf(flags, "-DRA8_FREESTANDING") != null);
     // Its own PUBLIC defines are on its own TUs too, not only on the app's.
     try std.testing.expect(indexOf(flags, "-DMBEDTLS_PLATFORM_MEMORY") != null);
+}
+
+test "NSC_SRCS compiles the named veneer subset and drops the rest" {
+    // The app names exactly one of the ten translation units in
+    // libs/ra8_nsc/src. The other nine do not compile under its secure
+    // configuration, and a glob puts them in an image CMake never put them in.
+    try std.testing.expect(sources.isGatedOutNscSource(trust_zone_app, "libs/ra8_nsc/src/ra8_nsc_comms.c"));
+    try std.testing.expect(sources.isGatedOutNscSource(trust_zone_app, "libs/ra8_nsc/src/ra8_nsc_eth.c"));
+    try std.testing.expect(!sources.isGatedOutNscSource(trust_zone_app, "libs/ra8_nsc/src/ra8_nsc_cgc.c"));
+
+    // The other arm: an app naming no NSC_SRCS gets the whole directory, so
+    // the rule is a narrowing and not a filter every app pays.
+    try std.testing.expect(!sources.isGatedOutNscSource(bare_app, "libs/ra8_nsc/src/ra8_nsc_comms.c"));
+    try std.testing.expect(!sources.isGatedOutNscSource(bare_app, "libs/ra8_nsc/src/ra8_nsc_cgc.c"));
+
+    // And it is scoped to that one directory: a same-named file elsewhere is
+    // not swept up by an app that narrowed the NSC set.
+    try std.testing.expect(!sources.isGatedOutNscSource(trust_zone_app, "libs/ra8_core/src/ra8_nsc_comms.c"));
+}
+
+test "TrustZone is the two flags, on the app that declares it and no other" {
+    try std.testing.expect(trust_zone_app.trust_zone);
+    try std.testing.expect(!bare_app.trust_zone);
+    try std.testing.expect(!extra_srcs_app.trust_zone);
+
+    // -mcmse is what emits the Secure-Gateway veneers. Nothing fails without
+    // it: the same sources compile and the same image links, with an empty
+    // .gnu.sgstubs for the Non-Secure world to call into.
+    try std.testing.expectEqualStrings("-mcmse", graph.arm_flags.trust_zone.cmse);
+    try std.testing.expectEqualStrings("-DRA8_TRUSTZONE_ENABLE", graph.arm_flags.trust_zone.define);
+
+    // Neither flag is in a set every app gets: they are conditional on the
+    // app, which is what the six earlier apps prove by not having them.
+    for (graph.arm_flags.global_flags) |flag| {
+        try std.testing.expect(!std.mem.eql(u8, flag, "-mcmse"));
+    }
+    for (graph.arm_flags.target_dialect_flags) |flag| {
+        try std.testing.expect(!std.mem.eql(u8, flag, "-mcmse"));
+    }
+}
+
+test "the secure half names the CMSE import library, and only it does" {
+    // The import library is what the Non-Secure link binds veneer names
+    // against, so it is an output of the secure link rather than a by-product.
+    try std.testing.expectEqualStrings("tz_nsc_cgc_usb_cmse_import.o", trust_zone_app.cmse_implib.?);
+    try std.testing.expect(bare_app.cmse_implib == null);
+    try std.testing.expect(dual_core_app.cmse_implib == null);
+
+    // The three ns_*.c files under the app's own src/ belong to the SEPARATE
+    // Non-Secure executable. They are the app-local glob's sharpest case
+    // here: compiled into the secure image they would be a second world's
+    // code inside the secure one, and the link would not complain.
+    try std.testing.expect(sources.isAuxSource(trust_zone_app, "src/ns_main.c"));
+    try std.testing.expect(sources.isAuxSource(trust_zone_app, "src/ns_usb.c"));
+    try std.testing.expect(!sources.appLocalIsCompiled(trust_zone_app, "src/ns_usb_host.c"));
+    // While its own two boot overrides are compiled from the app's copy, not
+    // the board's. First app in the table to override more than one.
+    for ([_][]const u8{ "system_init.c", "trustzone_init.c" }) |boot| {
+        const own = sources.bootSourcePath(std.testing.allocator, trust_zone_app, boot, true);
+        defer std.testing.allocator.free(own);
+        const expected = try std.fmt.allocPrint(
+            std.testing.allocator,
+            "examples/ek_ra8d2/hil_needs_revalidation/tz_nsc_cgc_usb/src/{s}",
+            .{boot},
+        );
+        defer std.testing.allocator.free(expected);
+        try std.testing.expectEqualStrings(expected, own);
+    }
 }
