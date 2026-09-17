@@ -110,6 +110,7 @@ nav:
       - "ADR-0008 Vendoring-completeness contract": adr/0008-vendoring-completeness-contract.md
       - "ADR-0009 E-reader input and service interfaces": adr/0009-ereader-input-and-service-interfaces.md
       - "ADR-0010 SDRAM interface supply domain": adr/0010-sdram-interface-supply-domain.md
+      - "ADR-0011 Chip-boot duplication across board libraries": adr/0011-chip-boot-duplication-across-board-libraries.md
   - Toolchain and build:
       - Toolchain: TOOLCHAIN.md
       - IDE setup: IDE.md
