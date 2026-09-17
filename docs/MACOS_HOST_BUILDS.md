@@ -725,15 +725,61 @@ editing `.github/workflows/macos-host.yml`, which needs a token carrying the
 `workflow` scope; the check above is what makes that message unlikely to be
 needed.
 
-## What runs on a clock
+## What runs on a clock, and what does not
 
-`.github/workflows/macos-host.yml` runs the `macos-host-build` gate nightly on
-a GitHub-hosted `macos-14` (arm64) runner, provisioning the pinned Zig itself,
-and can be started by hand with `workflow_dispatch`. The gate body lives in
-`scripts/ci/gates/manual.sh` and is registered in `scripts/ci.sh`, so the
-workflow schedules it rather than restating it.
+`.github/workflows/macos-host.yml` asks a GitHub-hosted `macos-14` (arm64)
+runner for the `macos-host-build` gate at 07:41 UTC, `41 7 * * *`,
+provisioning the pinned Zig itself, and also declares `workflow_dispatch`. The
+gate body lives in `scripts/ci/gates/manual.sh` and is registered in
+`scripts/ci.sh`, so the workflow schedules it rather than restating it.
 
-That nightly is the only observation of the real SDK stub anywhere in this
+Neither trigger fires while that file is off the default branch. GitHub runs
+`schedule` from the latest commit on the default branch only, and offers
+`workflow_dispatch` only for workflows that exist there: the ref to run is
+chosen at dispatch time, but a workflow absent from the default branch is
+never listed, and `gh workflow run` answers "could not find any workflows
+named". This repository's default branch is `main`, and the workflow reaches
+`zig/dev` through the #899 stack. Merging that stack therefore starts no
+nightly and produces no Run workflow button; only `zig/dev` reaching `main`
+does.
+
+Until then the only way to get a real macOS reading is to run the gate by hand
+on an arm64 Mac:
+
+    just quality::local::gate macos-host-build
+
+That reading is the only observation of the real SDK stub anywhere in this
 repository: every other job runs on Linux, where an explicit `aarch64-macos`
-target makes the query non-native and Zig links its own bundled stub. Until it
-has run once, everything on this page about a real Mac is a prediction.
+target makes the query non-native and Zig links its own bundled stub. Until
+the gate has run once on a Mac, by hand or on a clock, everything on this page
+about a real Mac is a prediction, and this page says so rather than pointing
+at a nightly log that does not exist.
+
+## This page is held to the workflow it describes
+
+Everything the section above states about the workflow is a second copy of a
+fact that lives in `.github/workflows/macos-host.yml`, and a second copy goes
+stale in silence. `scripts/checks/check_macos_doc_workflow_parity.py`, run by
+`gate_toolchain_parity`, reads the workflow and refuses when this page
+disagrees with it:
+
+  * **runner** -- every `macos-<n>` label named here must be the label the job
+    actually takes. The Apple silicon advice on this page is only true for an
+    arm64 image, and the older hosted macOS images are x86_64; naming one of
+    those here is a finding, which is why this bullet describes them rather
+    than spelling a label out. A target triple or an archive name
+    (`zig-aarch64-macos-0.14.1.tar.xz`) is not a runner label and is ignored.
+  * **clock** -- every `HH:MM UTC` time and every quoted five-field cron here
+    must agree with the workflow's `schedule`.
+  * **caveat** -- while the workflow declares `schedule` or
+    `workflow_dispatch`, both the workflow and the clock section here must say
+    plainly that neither fires off the default branch. Deleting that sentence
+    is a finding, not a silent regression; it is the exact claim this page got
+    wrong before.
+  * **gate** -- the gate the workflow runs must be named here and registered
+    in `scripts/ci.sh`, so the manual runbook above cannot outlive a rename.
+
+The workflow is the source of truth and this page is the copy; the check never
+edits either, and asserts nothing about whether the nightly has run.
+`--roster` prints what it read from each side, and `--selftest`, run beside the
+check in the same gate, sabotages each rule in turn and asserts it fires alone.

@@ -671,6 +671,12 @@ gate_toolchain_parity() (
   # other side of that boundary 404s at curl.
   python3 scripts/checks/check_zig_dist_pins.py --selftest
   python3 scripts/checks/check_zig_dist_pins.py
+  # docs/MACOS_HOST_BUILDS.md restates the workflow's runner, clock, triggers
+  # and gate name; nothing compared them, so the page told readers to wait for
+  # a nightly that cannot fire while macos-host.yml is off the default branch
+  # (#899). The workflow is the source of truth, the page is the copy.
+  python3 scripts/checks/check_macos_doc_workflow_parity.py --selftest
+  python3 scripts/checks/check_macos_doc_workflow_parity.py
   /bin/bash -p scripts/hil/lib/bench_exit_traps_selftest.sh --selftest
   /bin/bash -p scripts/dev/setup_python.sh --selftest
   python3 scripts/checks/check_tool_versions.py --selftest
