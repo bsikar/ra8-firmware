@@ -299,6 +299,20 @@ ra8_add_zig_library(
   if_ra8_vfs
 )
 
+# Only the facade, the fixed-frame memory source, and both codecs are Zig.
+# libs/ra8_camera/src/ra8_camera_source_ceu.c is deliberately still C: two host
+# suites white-box it with `#include "ra8_camera_source_ceu.c"`, so it stays a
+# translation unit and binds the same private vtable from
+# src/ra8_camera_internal.h (which also stays).
+ra8_add_zig_library(
+  NAME
+  ra8_camera
+  ZIG_ROOT
+  ${FW_ROOT}/libs/ra8_camera
+  LIBRARY_NAME
+  ra8_camera
+)
+
 # ra8_core_hal is the OBJECT library every host test links, so an INTERFACE
 # link here reaches each test executable that pulls in a migrated library.
 target_link_libraries(
@@ -323,6 +337,7 @@ target_link_libraries(
          ra8_zig::ra8_ov5640
          ra8_zig::ra8_modem_at
          ra8_zig::if_ra8_vfs
+         ra8_zig::ra8_camera
 )
 
 link_libraries(
@@ -331,7 +346,7 @@ link_libraries(
   ra8_zig::ra8_ui ra8_zig::ra8_app ra8_zig::ra8_wdt_supervisor
   ra8_zig::ra8_mpu ra8_zig::ra8_net_pal ra8_zig::ra8_lsm6dso
   ra8_zig::ra8_usb_pal ra8_zig::ra8_keyboard ra8_zig::ra8_tz_secure_boot
-  ra8_zig::ra8_audio ra8_zig::ra8_wifi
+  ra8_zig::ra8_audio ra8_zig::ra8_wifi ra8_zig::ra8_camera
 )
 
 link_libraries(ra8_zig::ra8_audio ra8_zig::ra8_wifi ra8_zig::ra8_ov5640 ra8_zig::ra8_modem_at ra8_zig::if_ra8_vfs)
