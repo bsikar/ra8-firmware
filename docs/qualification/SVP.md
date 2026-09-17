@@ -260,7 +260,8 @@ current candidate's real-HIL result is pending until that hardware gate runs.
 
 - Tool: `gcovr` driven by `scripts/report/tree_coverage.sh`.
 - Gate: `scripts/checks/check_tree_coverage.py` -- one per-file row for every
-  first-party unit; frozen debt may not grow, a new unit enters at 90/80.
+  first-party unit; frozen debt may not grow, a new unit enters at 90% line /
+  80% branch.
 - CI job: `coverage.yml::coverage-tree`.
 - Artifact: `build/coverage/coverage/` HTML report uploaded per CI run
   with 14-day retention.

@@ -87,8 +87,9 @@ it.
 and the ratio may not fall, so a unit at 100% keeps 100% and a unit at 41%
 burns down toward the 90% line / 80% branch floor instead of sliding. An
 improvement is welcome and silent; `--update` is how it gets frozen in, and it
-only ever tightens. A unit with **no row at all** is new and must enter at the
-full 90/80 floor -- historical debt is not something a new file can inherit.
+only ever tightens. A unit with **no row at all** is new and must enter at
+the full 90% line / 80% branch floor -- historical debt is not something a new
+file can inherit.
 
 **UNMEASURED** is explicit, so nothing is silently absent. The reason is one of
 four machine-derived classes, re-derived from the tree on every run so a row

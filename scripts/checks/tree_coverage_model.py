@@ -421,3 +421,198 @@ def requirement_claim_failures(text: str, line_floor: int, branch_floor: int) ->
             "metric and its unit, which is the ambiguity that let the claim drift"
         )
     return out
+
+
+# ---------------------------------------------------------------------------
+# Every document that states these floors, not only the one requirement
+# ---------------------------------------------------------------------------
+#
+# ``requirement_claim_failures`` above ties ONE row in ONE document to the
+# enforced floors. It is not the only place the numbers are written down:
+# ``docs/COVERAGE.md`` states the entry floor twice and
+# ``docs/qualification/SVP.md`` 5.1 states it once, and neither was read by
+# anything. Lower ``LINE_FLOOR_PCT`` and both keep claiming the old number
+# with the gate green, which is the same defect #844 reported about the SRS
+# row, one document over.
+#
+# So the tie is a SITE LIST, not a single row, and each declared site must
+# state the floors in the one unambiguous form: every number with its metric
+# and its unit. A bare ``N/M`` beside the word floor is a finding wherever it
+# appears in these documents -- that shorthand is exactly what let "90/90"
+# mean a met universal floor in one reader's head and a 90% line / 80% branch
+# entry floor in another's.
+#
+# LIMIT, stated rather than implied: the scope is the declared list. A NEW
+# document that states a floor pair is not tied until its path is added here,
+# and nothing in this module sweeps the tree for one. A repo-wide sweep of
+# tracked markdown is the next slice; it needs a tracked-markdown enumerator
+# this module does not have and must not grow a second copy of.
+# ---------------------------------------------------------------------------
+
+#: Documents that state the coverage floors in prose. Each one is read on
+#: every gate run and must agree with the floors the checker enforces.
+FLOOR_CLAIM_DOCS: tuple[str, ...] = (
+    "docs/COVERAGE.md",
+    "docs/qualification/SRS.md",
+    "docs/qualification/SVP.md",
+)
+
+#: The one form a floor claim may take: each number with its metric and unit.
+FLOOR_CLAIM_RE = re.compile(r"(\d{1,3})%\s*line\s*/\s*(\d{1,3})%\s*branch")
+
+#: A line that is talking about the entry floor at all.
+FLOOR_SENTENCE_RE = re.compile(r"\bfloor\b|\benters? at\b")
+
+#: The ambiguous shorthand: a bare pair with neither metric nor unit.
+BARE_PAIR_RE = re.compile(r"(?<![\w.])(\d{1,3})/(\d{1,3})(?![\w.%])")
+
+
+def policy_doc_texts() -> dict[str, str | None]:
+    """Read every declared floor-claim document.
+
+    Returns:
+        One entry per :data:`FLOOR_CLAIM_DOCS` path, mapped to its text, or to
+        ``None`` when the file cannot be read -- a missing claim site is a
+        finding, not an absence of one.
+    """
+    out: dict[str, str | None] = {}
+    for rel in FLOOR_CLAIM_DOCS:
+        try:
+            out[rel] = (REPO_ROOT / rel).read_text(encoding="utf-8")
+        except OSError:
+            out[rel] = None
+    return out
+
+
+def _stated_pair_failures(rel: str, text: str, floors: tuple[int, int]) -> list[str]:
+    """Every floor pair a document states that is not the enforced pair.
+
+    Matched over the whole document, not line by line: these are wrapped prose
+    files, and ``docs/qualification/SVP.md`` 5.1 states its claim across a line
+    break. A tie that only reads single lines is a tie a re-wrap switches off.
+    """
+    out: list[str] = []
+    for match in FLOOR_CLAIM_RE.finditer(text):
+        stated = (int(match.group(1)), int(match.group(2)))
+        if stated == floors:
+            continue
+        number = text.count("\n", 0, match.start()) + 1
+        out.append(
+            f"{rel}:{number} states {stated[0]}% line / {stated[1]}% branch; "
+            f"the gate enforces {floors[0]}% line / {floors[1]}% branch"
+        )
+    return out
+
+
+def _bare_pair_failures(rel: str, text: str, floors: tuple[int, int]) -> list[str]:
+    """Every entry-floor sentence that states a bare ``N/M`` instead of the form.
+
+    Line by line on purpose: the anchor is the word ``floor`` (or ``enters
+    at``) in the same breath as the pair, which is what separates a floor claim
+    from the pass-count ratios (``689/689``, ``118/118``) these same documents
+    carry about something else entirely.
+    """
+    return [
+        f"{rel}:{number} states an entry floor as a bare N/M ratio: write each number "
+        f"with its metric and unit ({floors[0]}% line / {floors[1]}% branch), because "
+        "that shorthand is what let this claim drift"
+        for number, raw in enumerate(text.splitlines(), start=1)
+        if FLOOR_SENTENCE_RE.search(raw) and BARE_PAIR_RE.search(raw)
+    ]
+
+
+def _doc_claim_failures(rel: str, text: str, floors: tuple[int, int]) -> list[str]:
+    """Name every disagreement between one claim site and the enforced floors."""
+    out = _stated_pair_failures(rel, text, floors) + _bare_pair_failures(rel, text, floors)
+    if not FLOOR_CLAIM_RE.search(text):
+        out.append(
+            f"{rel} is declared to state the coverage floors and states none in the "
+            f"'{floors[0]}% line / {floors[1]}% branch' form: a claim site that stops "
+            "claiming stops being tied"
+        )
+    return out
+
+
+def floor_claim_failures(
+    docs: dict[str, str | None], line_floor: int, branch_floor: int
+) -> list[str]:
+    """Name every way a declared claim site and the enforced floors disagree.
+
+    Args:
+        docs: Claim-site text, from :func:`policy_doc_texts` or a fixture.
+        line_floor: The line floor the checker actually enforces.
+        branch_floor: The branch floor the checker actually enforces.
+
+    Returns:
+        One message per disagreement; empty when every declared document
+        states the floors this gate enforces, in the unambiguous form.
+    """
+    floors = (line_floor, branch_floor)
+    out: list[str] = []
+    for rel in FLOOR_CLAIM_DOCS:
+        text = docs.get(rel)
+        if text is None:
+            out.append(
+                f"{rel} is declared to state the coverage floors and could not be read: "
+                "the floors this gate enforces are claimed nowhere it can check"
+            )
+            continue
+        out += _doc_claim_failures(rel, text, floors)
+    return out
+
+
+def _claim_fixture(line_floor: int, branch_floor: int) -> dict[str, str | None]:
+    """A minimal claim-site set that states the floors correctly."""
+    claim = f"prose\nA new unit enters at the {line_floor}% line / {branch_floor}% branch floor.\n"
+    return dict.fromkeys(FLOOR_CLAIM_DOCS, claim)
+
+
+def floor_claim_selftest_failures(line_floor: int, branch_floor: int) -> list[str]:
+    """Prove the site tie holds on the committed documents and fires on drift.
+
+    The quiet case is every LIVE claim site, so a floor edited in the checker
+    without the documents (or a document edited without the checker) fails the
+    selftest that runs in every CI leg, not only the coverage leg, which needs
+    a measurement to reach a verdict at all.
+
+    Args:
+        line_floor: The enforced line floor.
+        branch_floor: The enforced branch floor.
+
+    Returns:
+        One message per assertion that did not hold; empty when all held.
+    """
+    live = policy_doc_texts()
+    good = _claim_fixture(line_floor, branch_floor)
+    out: list[str] = []
+    if floor_claim_failures(live, line_floor, branch_floor):
+        out.append("every committed claim site must state the floors this gate enforces")
+    if not floor_claim_failures(live, line_floor + 1, branch_floor):
+        out.append("a line floor no claim site states must fire")
+    if not floor_claim_failures(live, line_floor, branch_floor - 1):
+        out.append("a branch floor no claim site states must fire")
+    if floor_claim_failures(good, line_floor, branch_floor):
+        out.append("a claim site stating the enforced floors must stay quiet")
+    for rel in FLOOR_CLAIM_DOCS:
+        silent = dict(good)
+        silent[rel] = "prose with no floor claim at all\n"
+        if not floor_claim_failures(silent, line_floor, branch_floor):
+            out.append(f"{rel} dropping its floor claim must fire")
+        missing = dict(good)
+        missing[rel] = None
+        if not floor_claim_failures(missing, line_floor, branch_floor):
+            out.append(f"{rel} going missing must fire")
+    bare = dict(good)
+    bare[FLOOR_CLAIM_DOCS[0]] = (
+        f"A new unit enters at {line_floor}/{branch_floor}, the "
+        f"{line_floor}% line / {branch_floor}% branch floor.\n"
+    )
+    if not floor_claim_failures(bare, line_floor, branch_floor):
+        out.append("a bare N/M entry floor must fire even beside the explicit form")
+    counted = dict(good)
+    counted[FLOOR_CLAIM_DOCS[0]] = "The unit gate passed 689/689 in 8.66 s.\n" + str(
+        good[FLOOR_CLAIM_DOCS[0]]
+    )
+    if floor_claim_failures(counted, line_floor, branch_floor):
+        out.append("a pass-count ratio on a line about no floor must stay quiet")
+    return out
