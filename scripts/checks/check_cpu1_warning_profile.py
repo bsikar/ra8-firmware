@@ -57,6 +57,32 @@ WHAT IT ENFORCES, PRECISELY
   * A missing or unreadable inventory yields the EMPTY set, so every escape
     reports.  The gate fails closed.
 
+THE BAR ITSELF
+--------------
+The rules above answer WHICH sources the profile is attached to.  On their own
+they are worth nothing, because an emptied or quietly narrowed profile would
+still report every CPU1 source as covered.  So the bar is read too:
+
+  * ``ra8_cpu1_warning_profile()`` must still set ``-Wall``, ``-Wextra``,
+    ``-Werror``, ``-Wstack-usage`` and ``-fstack-usage``, and the frame budget
+    must be a positive integer literal (``-Wstack-usage=0`` is how the host
+    build turns the frame gate OFF, so a present flag is not enough).
+  * Every warning flag in the M85 canonical first-party set
+    (``ra8_target_enable_project_warnings()`` in ``cmake/ra8_warnings.cmake``,
+    read through its generator expressions) must be on the CPU1 bar.  That
+    parity used to be a prose "keep it in step with" comment with nothing
+    measuring it, and it was already false: ``-Wconversion`` was in the M85 set
+    and not on the M33 bar.  A deliberate difference must be declared in
+    ``DECLARED_DIVERGENCE`` with its reason, and a declaration that no longer
+    describes a real difference FAILS as stale.
+  * Both attachment sites -- ``ra8_add_cpu1_image()`` and
+    ``ra8_cpu1_add_first_party_sources()`` -- must take their flags from that
+    one function, and neither may spell a warning flag of its own: a second
+    copy of the bar is how the two paths drift apart while both still read
+    "covered".
+  * Either cmake file missing, the profile function gone, or either list
+    parsing to no flags at all is FATAL, not clean.
+
 NON-VACUITY FLOOR
 -----------------
 The scan must find at least one ``ra8_add_cpu1_image()`` call and at least one
@@ -74,11 +100,14 @@ never read as "no debt".
 
 SCOPE, HONESTLY
 ---------------
-This gate judges CMake INTENT: which sources the profile is attached to.  It
-is not a compile-commands audit, so it cannot prove the flags survive to the
-compiler; #843's compile-commands and stack-usage-census criteria stay open
-and are unticked.  What it does buy is that the escape is now enumerated,
-bounded and shrink-only instead of a prose TODO.
+This gate judges CMake INTENT: which sources the profile is attached to, and
+what that profile contains.  It still reads no ``compile_commands.json`` and
+no ``.su`` file, so it cannot prove the flags survive to the compiler on a
+real build; that evidence is produced per change by an ARM cross-build and
+recorded in review, so #843's compile-commands and stack-usage-census criteria
+are ticked on that basis and not on this checker's.  What this buys is an
+escape that is enumerated, bounded and shrink-only, measured against a bar
+that cannot be narrowed without a finding.
 
 The judged set is C ONLY, and that is a hole rather than a convention.
 ``resolve_source()`` returns the EMPTY list -- not the ``None`` that raises an
@@ -110,11 +139,29 @@ import tempfile
 import textwrap
 from pathlib import Path
 
-HELPER = "ra8_add_cpu1_image"
-# The T1-09 opt-in: an app bolts first-party TUs onto a CPU1 image THROUGH
-# this helper, which applies the same per-source profile, so its sources
-# count as covered.  Plain target_sources() does not.
-FIRST_PARTY_HELPER = "ra8_cpu1_add_first_party_sources"
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+
+from cpu1_warning_bar import (
+    ADD_APP_REL,
+    DECLARED_DIVERGENCE,
+    FIRST_PARTY_HELPER,
+    FIXTURE_ADD_APP,
+    FIXTURE_WARNINGS,
+    HELPER,
+    PROFILE_FUNCTION,
+    bar_cases,
+    build_bar_fixture,
+    profile_findings,
+    profile_flags,
+    profile_vacuity_error,
+    strip_comments,
+)
+
+# The T1-09 opt-in (FIRST_PARTY_HELPER): an app bolts first-party TUs onto a
+# CPU1 image THROUGH that helper, which applies the same per-source profile, so
+# its sources count as covered.  Plain target_sources() does not.  Both names
+# come from cpu1_warning_bar, which also reads what that profile CONTAINS, so
+# the two halves cannot end up naming different cmake functions.
 INVENTORY_REL = ".github/cpu1-warning-profile-baseline.txt"
 
 # The flag that makes a hand-rolled executable a CPU1 image.  An app that skips
@@ -171,15 +218,6 @@ def call_block(text: str, start: int) -> str:
             if depth == 0:
                 return text[open_paren + 1 : index]
     return ""
-
-
-def strip_comments(text: str) -> str:
-    """Drop ``#`` comments so commentary cannot register as a call or source."""
-    out = []
-    for line in text.splitlines():
-        hash_at = line.find("#")
-        out.append(line if hash_at < 0 else line[:hash_at])
-    return "\n".join(out)
 
 
 def parse_keyword_args(block: str, keywords: tuple[str, ...]) -> dict[str, list[str]]:
@@ -483,7 +521,7 @@ def vacuity_error(root: Path, images: list[Image]) -> str:
             f"{INVENTORY_REL} declares '#! rows: {declared}' but holds {len(rows)} "
             "row(s); the declaration does not match the file"
         )
-    return ""
+    return profile_vacuity_error(root)
 
 
 def print_listing(images: list[Image]) -> None:
@@ -524,8 +562,15 @@ FIXTURE_LISTFILE = """\
     """
 
 
-def build_fixture(base: Path, inventory: str, listfile: str = FIXTURE_LISTFILE) -> None:
+def build_fixture(
+    base: Path,
+    inventory: str,
+    listfile: str = FIXTURE_LISTFILE,
+    add_app: str = FIXTURE_ADD_APP,
+    warnings: str = FIXTURE_WARNINGS,
+) -> None:
     """A minimal tree with one CPU1 image: one covered, one escape, one SOUP."""
+    build_bar_fixture(base, add_app, warnings)
     write_fixture(base, APP_REL, listfile)
     write_fixture(base, "examples/board/demo/src/cpu1_main.c", "int main(void){return 0;}\n")
     write_fixture(base, "libs/ra8_hal/src/ra8_ipc.c", "void ipc(void){}\n")
@@ -611,19 +656,55 @@ def run_case(
     listfile: str = FIXTURE_LISTFILE,
     *,
     drop_inventory: bool = False,
+    bar: dict[str, object] | None = None,
 ) -> tuple[str, list[str]]:
     """Build a fixture tree, return (vacuity error, findings).
 
     ``drop_inventory`` deletes the inventory after the fixture is written, to
     prove a missing file is reported as missing rather than as zero debt.
+    ``bar`` carries the bar-rule knobs: ``add_app`` / ``warnings`` substitute
+    the two cmake fixtures, ``drop_cmake`` deletes one of them after writing,
+    and ``divergence`` substitutes the declared M33/M85 divergence table.
     """
+    knobs = bar or {}
+    add_app = str(knobs.get("add_app", FIXTURE_ADD_APP))
+    warnings = str(knobs.get("warnings", FIXTURE_WARNINGS))
+    drop_cmake = str(knobs.get("drop_cmake", ""))
+    divergence = knobs.get("divergence")
     with tempfile.TemporaryDirectory() as tmp:
         base = Path(tmp)
-        build_fixture(base, inventory, listfile)
+        build_fixture(base, inventory, listfile, add_app, warnings)
         if drop_inventory:
             (base / INVENTORY_REL).unlink()
+        if drop_cmake:
+            (base / drop_cmake).unlink()
         images = find_images(base)
-        return vacuity_error(base, images), inventory_findings(base, images)
+        findings = inventory_findings(base, images) + profile_findings(
+            base, divergence if isinstance(divergence, dict) else None
+        )
+        return vacuity_error(base, images), findings
+
+
+def bar_selftest_failures() -> list[str]:
+    """Prove each bar rule fires on its own fixture and on no other's."""
+    failures: list[str] = []
+    for name, kwargs, expect in bar_cases():
+        error, findings = run_case("#! rows: 0\n", OPT_IN_LISTFILE, bar=kwargs)
+        blob = " ".join([error, *findings])
+        if expect and expect not in blob:
+            failures.append(f"{name}: expected {expect!r} in {blob!r}")
+        if not expect and blob.strip():
+            failures.append(f"{name}: expected silence, got {blob!r}")
+    # The live tree, not a fixture: the committed bar must satisfy its own
+    # rules, so a green run here is not a fixture-only result.
+    root = Path(__file__).resolve().parents[2]
+    live = profile_vacuity_error(root)
+    if live:
+        failures.append(f"live tree: {live}")
+    live_findings = profile_findings(root)
+    if live_findings:
+        failures.append(f"live tree: {live_findings}")
+    return failures
 
 
 def selftest() -> int:
@@ -639,9 +720,7 @@ def selftest() -> int:
     unresolved_listfile = FIXTURE_LISTFILE.replace(
         "${RA8_REPO_ROOT}/libs/ra8_hal/src/ra8_ipc.c", "${SOME_APP_VAR}"
     )
-    error, findings = run_case(
-        "demo_cpu1.elf libs/ra8_hal/src/ra8_ipc.c\n", unresolved_listfile
-    )
+    error, findings = run_case("demo_cpu1.elf libs/ra8_hal/src/ra8_ipc.c\n", unresolved_listfile)
     if "does not resolve" not in " ".join([error, *findings]):
         failures.append("unresolved token: expected a finding")
     for name, inventory, expect in opt_in_cases():
@@ -664,6 +743,7 @@ def selftest() -> int:
     error, findings = run_case("#! rows: 0\n", OPT_IN_LISTFILE, drop_inventory=True)
     if "missing or unreadable" not in " ".join([error, *findings]):
         failures.append("missing inventory: expected the missing-file fatal, not zero debt")
+    failures += bar_selftest_failures()
     if failures:
         for failure in failures:
             print(f"check_cpu1_warning_profile.py: SELFTEST FAIL -- {failure}", file=sys.stderr)
@@ -688,12 +768,15 @@ def main(argv: list[str]) -> int:
     images = find_images(root)
     if args.list:
         print_listing(images)
+        print(f"\nCPU1 bar ({PROFILE_FUNCTION} in {ADD_APP_REL}):")
+        for flag in profile_flags(root) or []:
+            print(f"  {flag}")
         return 0
     error = vacuity_error(root, images)
     if error:
         print(f"check_cpu1_warning_profile.py: FATAL -- {error}", file=sys.stderr)
         return 2
-    findings = inventory_findings(root, images)
+    findings = inventory_findings(root, images) + profile_findings(root)
     if findings:
         print(f"\n{len(findings)} CPU1 warning-profile finding(s):\n", file=sys.stderr)
         for finding in findings:
@@ -709,7 +792,9 @@ def main(argv: list[str]) -> int:
     escapes = sum(len(image.escapes()) for image in images)
     print(
         f"check_cpu1_warning_profile.py: {len(images)} CPU1 image(s); "
-        f"{escapes} inventoried first-party escape(s), none new."
+        f"{escapes} inventoried first-party escape(s), none new; "
+        f"CPU1 bar holds {len(profile_flags(root) or [])} flag(s), "
+        f"{len(DECLARED_DIVERGENCE)} declared divergence(s) from the M85 set."
     )
     return 0
 
