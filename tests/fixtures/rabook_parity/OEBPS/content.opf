@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<package xmlns="http://www.idpf.org/2007/opf" version="3.0" unique-identifier="bookid">
+  <metadata xmlns:dc="http://purl.org/dc/elements/1.1/">
+    <dc:identifier id="bookid">urn:uuid:00000000-0000-0000-0000-000000000001</dc:identifier>
+    <dc:title>Seed Book</dc:title>
+    <dc:language>en</dc:language>
+    <meta name="cover" content="cover"/>
+  </metadata>
+  <manifest>
+    <!-- Cover is SVG (stored verbatim) so it is trivially byte-identical. A
+         raster image is deliberately NOT in this EPUB parity fixture: stb_image's
+         decode and PIL's decode + palette quantize diverge for real pixels, so a
+         full-path raster cannot be byte-identical here. The downscale KERNEL
+         itself is proven byte-identical separately by
+         rabook_downscale_parity_fixture.h (issue #213), which feeds both sides an
+         identical baked source. The image LOOP still handles raster; only this
+         fixture is pinned to SVG. -->
+    <item id="cover" href="cover.svg" media-type="image/svg+xml" properties="cover-image"/>
+    <item id="css1" href="style.css" media-type="text/css"/>
+    <item id="ch1" href="chapter1.xhtml" media-type="application/xhtml+xml"/>
+  </manifest>
+  <spine>
+    <itemref idref="ch1"/>
+  </spine>
+</package>

@@ -1,0 +1,100 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Brighton Sikarskie
+# SCHEDULING ONLY -- the gate bodies live in scripts/ci.sh. See
+# .github/workflows/firmware.yml for the design note. A fork contributor runs
+# the same gate functions the trusted path runs, just a cheaper subset of them.
+#
+# SECURITY (public-repo hardening): lightweight CI for FORK pull requests.
+#
+# Every self-hosted workflow (firmware.yml, coverage.yml, emulator-smoke.yml,
+# inclusive-terminology.yml, no-ai-attribution.yml) carries a job-level guard
+# that SKIPS the job for fork PRs, so untrusted fork code never runs on the
+# owner's self-hosted runners. That leaves an external contributor with zero CI
+# feedback. This workflow gives them the cheap, safe gates back -- but on
+# GitHub-HOSTED, ephemeral `ubuntu-latest` runners with a read-only token and no
+# secrets, so nothing here can touch the self-hosted infrastructure.
+#
+# It runs ONLY for fork PRs (the inverse of the self-hosted guard); on push and
+# on same-repo PRs the job is skipped, because those already run the full
+# self-hosted suite. A fork PR runs with a read-only GITHUB_TOKEN and no repo
+# secrets by default (GitHub's standard model for `pull_request` from a fork),
+# so executing the PR's own copy of these scripts is bounded to the throwaway
+# hosted VM. Do NOT convert this to `pull_request_target`: that would run with
+# the base repo's secrets in scope against fork-controlled code.
+---
+name: fork-pr-checks
+
+on:
+  pull_request:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+# Least privilege: a fork PR needs no write scopes for these read-only gates.
+permissions:
+  contents: read
+
+jobs:
+  fork-pr-checks:
+    name: Fork PR checks (hosted, no self-hosted infra)
+    runs-on: ubuntu-latest
+    # INVERSE of the self-hosted guard: run ONLY when this is a PR whose head
+    # branch lives in a DIFFERENT repo (a fork). Same-repo PRs and pushes are
+    # covered by the self-hosted suite and are skipped here.
+    if: >-
+      github.event_name == 'pull_request'
+      && github.event.pull_request.head.repo.full_name != github.repository
+    steps:
+      - uses: extractions/setup-just@v3
+        with:
+          just-version: 1.40.0
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - run: just quality::local::gate ascii
+      - run: just quality::local::gate no-ai-attribution
+      - run: just quality::local::gate inclusive-terminology
+
+      - name: Install clang-format-22 (matches the trusted-path pin)
+        run: |
+          # ci-parity: infra -- installs the pinned formatter on the hosted
+          # runner; runs no project check. clang-format is pinned to major 22
+          # project-wide, so installing the same major here gives a fork PR
+          # results identical to the trusted self-hosted path instead of
+          # misleading version-drift failures. An install failure affects only
+          # fork-PR feedback, never the owner's self-hosted CI -- and the format
+          # gate hard-fails when clang-format-22 is still absent afterwards.
+          set -euo pipefail
+          codename="$(lsb_release -cs)"
+          # signed-by, NOT /etc/apt/trusted.gpg.d: a key dropped in that
+          # directory is trusted for EVERY repository on the runner, so one
+          # mirror's key would authenticate packages from all of them. Both
+          # trusted-path installers of this same key (.devcontainer/Dockerfile
+          # and the dev_box role) already scope it to the LLVM suite; this
+          # hosted path is the only one that did not.
+          #
+          # This scopes the key's authority; it does NOT authenticate the key
+          # itself. No path in this tree pins the LLVM signing key by checksum
+          # or fingerprint, so trust here rests on TLS to apt.llvm.org alone --
+          # unlike every binary download in .devcontainer/Dockerfile, which is
+          # sha256sum -c verified. llvm-toolchain-<codename>-22 is also a
+          # rolling snapshot, so the clang-format patch version can drift --
+          # and nothing checks that: format_code.sh and check_tool_versions.py
+          # both compare the clang-format MAJOR only, so drift inside 22.x
+          # would surface as formatting diffs, not as a version failure.
+          curl --proto '=https' --proto-redir '=https' --tlsv1.2 -fsSL \
+            https://apt.llvm.org/llvm-snapshot.gpg.key \
+            | sudo gpg --batch --yes --dearmor \
+                -o /usr/share/keyrings/llvm-snapshot.gpg
+          echo "deb [signed-by=/usr/share/keyrings/llvm-snapshot.gpg]" \
+            "https://apt.llvm.org/${codename}/" \
+            "llvm-toolchain-${codename}-22 main" \
+            | sudo tee /etc/apt/sources.list.d/llvm-22.list >/dev/null
+          sudo apt-get update
+          sudo apt-get install -y clang-format-22
+
+      - run: just quality::local::gate format

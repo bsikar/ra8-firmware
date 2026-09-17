@@ -1,0 +1,207 @@
+#!/usr/bin/env python3
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Brighton Sikarskie
+"""Gate: a HAL driver shall not guard bare CPU asm on RA8_OFF_TARGET.
+
+Issue #293 (following #238) migrated every host-compatibility CPU primitive out
+of the HAL peripheral drivers and onto ONE shared seam:
+
+  - ``libs/ra8_hal/inc/ra8_hw_intrinsics.h``  (target inline asm / host decls)
+  - ``tests/mocks/src/ra8_host_asm_stub.c``       (the host-safe definitions)
+
+A driver that needs ``wfi`` / ``dsb`` / ``isb`` / ``nop`` / the ``cpsie i`` /
+``cpsid i`` gate / the post-reset spin now calls ``ra8_hw_wfi()`` and friends;
+it carries NO ``#ifdef RA8_OFF_TARGET`` of its own -- the seam owns the
+host/target divergence. That keeps coverage and MC/DC landing on the real
+shipping path instead of a compiled-out detour, exactly as #238 intended.
+
+This gate keeps a NEW guard class from creeping back in. It FAILS if any
+translation unit under ``libs/ra8_hal/src/`` contains an inline-asm statement
+(``__asm`` / ``__asm__``) inside a preprocessor conditional whose controlling
+expression references ``RA8_OFF_TARGET`` -- in EITHER branch. Comment text
+is stripped first, so prose that merely mentions ``__asm__`` never trips it.
+
+Scope note: this is deliberately limited to ``libs/ra8_hal/src/`` -- the HAL
+peripheral drivers. Boot code (``system_init.c``, ``vector_table.c``,
+``trustzone_init.c``), the core runtime (``ra8_core``), and the TrustZone /
+secure-boot flow legitimately host target-only asm (reset vectors, fault
+handlers, SAU bring-up, ``msr msp_ns``) that has no host code path to drive and
+is not a peripheral-driver short-circuit; those are out of scope by design.
+
+There is no allowlist: route the primitive through ``ra8_hw_intrinsics.h`` (add
+a new one there and to the host stub if it is genuinely missing), never behind a
+fresh in-driver ``#ifdef RA8_OFF_TARGET``.
+
+Run::
+
+    check_no_driver_asm_guard.py
+
+Exit status: 0 if every driver is clean, 1 otherwise.
+"""
+
+import re
+import sys
+import tempfile
+from pathlib import Path
+
+# Repo root: this file is scripts/checks/check_no_driver_asm_guard.py .
+REPO_ROOT = Path(__file__).resolve().parents[2]
+
+# The HAL peripheral drivers -- the only scope this gate governs.
+DRIVER_DIR = REPO_ROOT / "libs" / "ra8_hal" / "src"
+
+_RE_IF = re.compile(r"^\s*#\s*(if|ifdef|ifndef)\b(.*)$")
+_RE_ELIF = re.compile(r"^\s*#\s*elif\b(.*)$")
+_RE_ENDIF = re.compile(r"^\s*#\s*endif\b")
+_RE_ASM = re.compile(r"(?<![A-Za-z0-9_])__asm(__)?(?![A-Za-z0-9_])")
+_OFF_TARGET = "RA8_OFF_TARGET"
+
+
+def strip_comments(text: str) -> list[str]:
+    """Blank out C ``/* */`` and ``//`` comments, preserving line count.
+
+    Preprocessor directives never live inside comments, so a line-preserving
+    strip lets the conditional walk and the asm scan share one clean view
+    without a false positive from a doc block that mentions ``__asm__``.
+    """
+    out: list[str] = []
+    in_block = False
+    for line in text.splitlines():
+        buf: list[str] = []
+        i = 0
+        n = len(line)
+        while i < n:
+            two = line[i : i + 2]
+            if in_block:
+                if two == "*/":
+                    in_block = False
+                    i += 2
+                else:
+                    i += 1
+                continue
+            if two == "/*":
+                in_block = True
+                i += 2
+                continue
+            if two == "//":
+                break
+            buf.append(line[i])
+            i += 1
+        out.append("".join(buf))
+    return out
+
+
+def check_file(path: Path, repo_root: Path = REPO_ROOT) -> list[str]:
+    """Return violation strings for one driver TU (empty when clean)."""
+    rel = path.relative_to(repo_root).as_posix()
+    lines = strip_comments(path.read_text(encoding="utf-8"))
+
+    # Stack of booleans: does this open conditional's region reference the
+    # fake flag (in its #if / any #elif)? A True anywhere on the stack
+    # means the current line compiles under a off-target-conditioned region.
+    stack: list[bool] = []
+    problems: list[str] = []
+
+    for idx, line in enumerate(lines, start=1):
+        m_if = _RE_IF.match(line)
+        if m_if is not None:
+            stack.append(_OFF_TARGET in m_if.group(2))
+            continue
+        m_elif = _RE_ELIF.match(line)
+        if m_elif is not None:
+            if stack:
+                stack[-1] = stack[-1] or (_OFF_TARGET in m_elif.group(1))
+            continue
+        if _RE_ENDIF.match(line):
+            if stack:
+                stack.pop()
+            continue
+        # #else keeps the frame's off-target-reference flag: both branches of a
+        # `#ifdef RA8_OFF_TARGET` are off-target-conditioned regions.
+        if _RE_ASM.search(line) and any(stack):
+            problems.append(
+                f"{rel}:{idx}: inline asm '{line.strip()}' sits inside a "
+                f"{_OFF_TARGET} conditional -- route it through "
+                f"libs/ra8_hal/inc/ra8_hw_intrinsics.h instead"
+            )
+    return problems
+
+
+def selftest() -> int:
+    """Prove guarded asm fires while seam calls and comment lookalikes stay quiet."""
+    with tempfile.TemporaryDirectory(prefix="driver-asm-selftest-") as raw:
+        root = Path(raw)
+        bad = root / "libs/ra8_hal/src/bad.c"
+        good = root / "libs/ra8_hal/src/good.c"
+        bad.parent.mkdir(parents=True)
+        bad.write_text(
+            '#ifdef RA8_OFF_TARGET\nvoid f(void) { __asm("nop"); }\n#else\n'
+            'void g(void) { __asm__("wfi"); }\n#endif\n',
+            encoding="ascii",
+        )
+        good.write_text(
+            '// __asm__("nop") under RA8_OFF_TARGET is prose\nvoid f(void) { ra8_hw_wfi(); }\n',
+            encoding="ascii",
+        )
+        bad_findings = check_file(bad, root)
+        good_findings = check_file(good, root)
+    expected_bad_findings = 2
+    cases = (
+        (len(bad_findings) == expected_bad_findings, "asm in both off-target branches fires"),
+        (not good_findings, "shared seam calls and comment lookalikes stay quiet"),
+    )
+    failed = [label for passed, label in cases if not passed]
+    for passed, label in cases:
+        print(f"  [{'ok' if passed else 'FAIL'}] {label}")
+    if failed:
+        print(f"check_no_driver_asm_guard.py --selftest: {len(failed)} failure(s)")
+        return 1
+    print("check_no_driver_asm_guard.py --selftest: all cases pass (both directions).")
+    return 0
+
+
+def main() -> int:
+    """Fail any HAL driver that guards bare CPU asm on RA8_OFF_TARGET.
+
+    A missing driver directory exits 1 rather than 0. That is deliberate: this
+    gate has a single hardcoded scan root, so the directory vanishing means
+    the tree moved under it, and the one thing it must not do is report a
+    clean sweep of somewhere that does not exist.
+
+    Returns 0 when every driver routes its CPU primitives through
+    ra8_hw_intrinsics.h, 1 on a violation or a missing driver directory.
+    """
+    args = sys.argv[1:]
+    if args == ["--selftest"]:
+        return selftest()
+    if args:
+        print("usage: check_no_driver_asm_guard.py [--selftest]", file=sys.stderr)
+        return 2
+    if not DRIVER_DIR.is_dir():
+        print(f"check_no_driver_asm_guard.py: driver dir not found: {DRIVER_DIR}")
+        return 1
+
+    drivers = sorted(DRIVER_DIR.glob("*.c"))
+    all_problems: list[str] = []
+    for path in drivers:
+        all_problems.extend(check_file(path))
+
+    if all_problems:
+        print("check_no_driver_asm_guard.py: a HAL driver guards bare asm on RA8_OFF_TARGET:")
+        for p in all_problems:
+            print(f"  {p}")
+        print("Fix at the root -- call the ra8_hw_* primitive from")
+        print("  libs/ra8_hal/inc/ra8_hw_intrinsics.h")
+        print("(add a new one there plus its host body in")
+        print(" tests/mocks/src/ra8_host_asm_stub.c if it does not exist yet).")
+        return 1
+
+    print(
+        f"check_no_driver_asm_guard.py: PASS -- {len(drivers)} HAL driver TU(s) "
+        f"carry no RA8_OFF_TARGET-guarded asm."
+    )
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())
