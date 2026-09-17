@@ -108,8 +108,40 @@ jobs:
             --max-time 600 \
             -o "${RUNNER_TEMP}/zig.tar.xz" \
             "https://ziglang.org/download/${ZIG_VERSION}/zig-aarch64-macos-${ZIG_VERSION}.tar.xz"
-          printf '%s  %s\n' "${ZIG_SHA256_AARCH64_MACOS}" "${RUNNER_TEMP}/zig.tar.xz" \
-            | shasum -a 256 -c -
+          # A MISMATCH HERE IS ALMOST NEVER A CORRUPTED DOWNLOAD, but that is
+          # exactly what `shasum -c` alone sounds like: its whole output is
+          # FAILED and "computed checksum did NOT match", which invites a
+          # re-run, and the re-run fails the same way the next night. The far
+          # likelier cause is a bump -- ZIG_VERSION moved here and in
+          # .devcontainer/Dockerfile while ZIG_SHA256_AARCH64_MACOS stayed
+          # behind, so a perfectly good tarball for the NEW version is being
+          # held to the OLD version's digest. The two cases want opposite
+          # responses and the file itself tells them apart, so say which one
+          # this is rather than leaving a one-word FAILED to be guessed at.
+          # This is the one workflow nobody watches (nightly, hosted, and off
+          # the default branch), so a diagnosis absent from the log is nowhere.
+          if ! printf '%s  %s\n' "${ZIG_SHA256_AARCH64_MACOS}" "${RUNNER_TEMP}/zig.tar.xz" \
+            | shasum -a 256 -c -; then
+            echo "::error::Zig ${ZIG_VERSION} tarball does not match its pinned sha256"
+            {
+              echo "expected (ZIG_SHA256_AARCH64_MACOS): ${ZIG_SHA256_AARCH64_MACOS}"
+              echo "actual:   $(shasum -a 256 "${RUNNER_TEMP}/zig.tar.xz" | cut -d ' ' -f 1)"
+              echo "bytes:    $(wc -c < "${RUNNER_TEMP}/zig.tar.xz" | tr -d ' ')"
+              echo "type:     $(file -b "${RUNNER_TEMP}/zig.tar.xz")"
+              echo
+              echo "An XZ archive of a few tens of megabytes means THE PIN IS STALE:"
+              echo "set ZIG_SHA256_AARCH64_MACOS to the sha256 that ziglang.org's"
+              echo "download index publishes for zig-aarch64-macos-${ZIG_VERSION}.tar.xz,"
+              echo "in the same commit that moves ZIG_VERSION here and the matching"
+              echo "ARG ZIG_VERSION in .devcontainer/Dockerfile. Re-running will not"
+              echo "help; it will fail identically every night until the digest moves."
+              echo
+              echo "A short, empty or HTML body means THE DOWNLOAD FAILED -- a mirror"
+              echo "served an error page or the transfer was cut. Re-running is worth"
+              echo "a try, and a second identical failure means the mirror, not us."
+            } >&2
+            exit 1
+          fi
           sudo rm -rf /usr/local/zig
           sudo mkdir -p /usr/local/zig
           sudo tar -xf "${RUNNER_TEMP}/zig.tar.xz" --strip-components=1 -C /usr/local/zig
