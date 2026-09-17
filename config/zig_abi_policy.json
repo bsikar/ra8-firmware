@@ -1145,6 +1145,95 @@
         {"name": "ra8_camera_source_ceu_init", "calling_context": "task-only-non-reentrant", "ownership": "retained C backend initializes caller-owned CEU state and borrows its configuration"},
         {"name": "ra8_camera_source_ceu_get_last_events", "calling_context": "task-only-non-reentrant", "ownership": "retained C backend writes a diagnostic snapshot to caller-owned output"}
       ]
+    },
+    {
+      "name": "ra8_gfx",
+      "build_root": "libs/ra8_gfx",
+      "public_headers": [
+        {
+          "path": "libs/ra8_gfx/inc/ra8_gfx.h",
+          "compatibility_sha256": "1c00d1695e3d30818a45649b903f6506266f25f033ebc88d5392ad6189caa464",
+          "layout_assertions": []
+        },
+        {
+          "path": "libs/ra8_gfx/inc/ra8_gfx_font.h",
+          "compatibility_sha256": "06cc2028a903a2ff8edb7f67122845bff6fe09108eeda0e8c08411a50d35eafb",
+          "layout_assertions": []
+        },
+        {
+          "path": "libs/ra8_gfx/src/ra8_gfx_internal.h",
+          "compatibility_sha256": "87071bd07263d7692b2996155505ecdec1160aed49d95317a37f27b26ac8638a",
+          "layout_assertions": [
+            "@offsetOf(State, \"fb\") == 0",
+            "@offsetOf(State, \"width\") == ptr",
+            "@offsetOf(State, \"height\") == ptr + 2",
+            "@offsetOf(State, \"format\") == ptr + 4",
+            "@offsetOf(State, \"bpp\") == ptr + 5",
+            "@offsetOf(State, \"initialized\") == ptr + 6",
+            "@offsetOf(State, \"clip_x0\") == clip_at",
+            "@offsetOf(State, \"clip_y0\") == clip_at + 4",
+            "@offsetOf(State, \"clip_x1\") == clip_at + 8",
+            "@offsetOf(State, \"clip_y1\") == clip_at + 12",
+            "@sizeOf(State) == clip_at + 16"
+          ],
+          "symbol_prefix": "priv_gfx_text_"
+        }
+      ],
+      "adapters": [
+        {
+          "path": "libs/ra8_gfx/src/ra8_gfx_abi.zig",
+          "symbol_prefixes": ["ra8_gfx_", "priv_gfx_text_"]
+        }
+      ],
+      "layout_sources": ["libs/ra8_gfx/src/internal/root.zig"],
+      "library_name": "ra8_gfx",
+      "symbol_prefix": "ra8_gfx_",
+      "retained_c_exports": [
+        {"name": "ra8_gfx_blit_gray4_zoom", "source": "libs/ra8_gfx/src/ra8_gfx_blit_gray4.c"},
+        {"name": "ra8_gfx_text_out", "source": "libs/ra8_gfx/src/ra8_gfx_text_glyph.c"},
+        {"name": "ra8_gfx_text_size", "source": "libs/ra8_gfx/src/ra8_gfx_text_glyph.c"}
+      ],
+      "target_class": "host-ra8",
+      "targets": {
+        "host": [],
+        "ra8": ["-Dtarget=thumb-freestanding-eabihf", "-Dcpu=cortex_m85+fp_armv8-d32-fp64"]
+      },
+      "c_include_dirs": ["libs/ra8_gfx/inc", "libs/ra8_gfx/src", "libs/ra8_core/inc"],
+      "contract_tests": [
+        {"language": "c", "path": "tests/graphics/src/test_ra8_gfx.c", "symbol_evidence": "libs/ra8_gfx/src/ra8_gfx_abi.zig", "registration": "tests/cmake/unit_tests.cmake"},
+        {"language": "c", "path": "tests/graphics/src/test_ra8_gfx_text.c", "symbol_evidence": "libs/ra8_gfx/src/ra8_gfx_abi.zig", "registration": "tests/cmake/unit_tests.cmake"},
+        {"language": "c", "path": "tests/graphics/src/test_ra8_gfx_text_cov.c", "symbol_evidence": "libs/ra8_gfx/src/ra8_gfx_abi.zig", "registration": "tests/cmake/unit_tests.cmake"},
+        {"language": "c", "path": "tests/graphics/src/test_ra8_gfx_dither.c", "symbol_evidence": "libs/ra8_gfx/src/ra8_gfx_abi.zig", "registration": "tests/cmake/unit_tests.cmake"},
+        {"language": "c", "path": "tests/graphics/src/test_ra8_gfx_blit_gray4.c", "symbol_evidence": "libs/ra8_gfx/src/ra8_gfx_abi.zig", "registration": "tests/cmake/unit_tests.cmake"},
+        {"language": "zig", "path": "libs/ra8_gfx/tests/abi_test.zig", "symbol_evidence": "libs/ra8_gfx/src/ra8_gfx_abi.zig", "registration": "libs/ra8_gfx/.zig-test-contract.json"},
+        {"language": "zig", "path": "libs/ra8_gfx/tests/internal_test.zig", "symbol_evidence": "libs/ra8_gfx/src/ra8_gfx_abi.zig", "registration": "libs/ra8_gfx/.zig-test-contract.json"}
+      ],
+      "exports": [
+        {"name": "ra8_gfx_init", "calling_context": "task-only-non-reentrant", "ownership": "binds caller-owned framebuffer state for subsequent drawing calls"},
+        {"name": "ra8_gfx_clear", "calling_context": "task-only-non-reentrant", "ownership": "mutates the bound framebuffer within the current clip"},
+        {"name": "ra8_gfx_set_clip", "calling_context": "task-only-non-reentrant", "ownership": "updates the singleton clip rectangle used by later drawing calls"},
+        {"name": "ra8_gfx_reset_clip", "calling_context": "task-only-non-reentrant", "ownership": "updates the singleton clip rectangle to the framebuffer bounds"},
+        {"name": "ra8_gfx_pixel", "calling_context": "task-only-non-reentrant", "ownership": "mutates one in-bounds pixel in the caller-owned framebuffer"},
+        {"name": "ra8_gfx_blit_gray8", "calling_context": "task-only-non-reentrant", "ownership": "borrows a grayscale source buffer and mutates the clipped destination"},
+        {"name": "ra8_gfx_blit_gray4_zoom", "calling_context": "task-only-non-reentrant", "ownership": "retained C implementation borrows packed source bytes and mutates the clipped destination"},
+        {"name": "ra8_gfx_line", "calling_context": "task-only-non-reentrant", "ownership": "mutates the clipped pixels along the requested rasterized line"},
+        {"name": "ra8_gfx_rect", "calling_context": "task-only-non-reentrant", "ownership": "mutates clipped framebuffer pixels within or around the requested rectangle"},
+        {"name": "ra8_gfx_circle", "calling_context": "task-only-non-reentrant", "ownership": "mutates clipped framebuffer pixels along or within the requested circle"},
+        {"name": "ra8_gfx_text_out", "calling_context": "task-only-non-reentrant", "ownership": "retained C implementation borrows text and font data while drawing glyphs"},
+        {"name": "ra8_gfx_text_size", "calling_context": "task-safe-reentrant", "ownership": "retained C implementation borrows text and font data and writes caller-owned dimensions"},
+        {"name": "ra8_gfx_blit", "calling_context": "task-only-non-reentrant", "ownership": "borrows a source image buffer and mutates the clipped destination"},
+        {"name": "priv_gfx_text_pack_565", "calling_context": "task-safe-reentrant", "ownership": "converts one value argument without retaining state or caller storage"},
+        {"name": "priv_gfx_text_plot", "calling_context": "task-only-non-reentrant", "ownership": "mutates one clipped pixel through the shared framebuffer state"}
+      ],
+      "data_exports": [
+        {
+          "name": "g_gfx_text_state",
+          "header": "libs/ra8_gfx/src/ra8_gfx_internal.h",
+          "adapter": "libs/ra8_gfx/src/ra8_gfx_abi.zig",
+          "calling_context": "task-only-non-reentrant",
+          "ownership": "owns the shared framebuffer pointer, dimensions, format, and active clip state"
+        }
+      ]
     }
   ]
 }

@@ -420,6 +420,23 @@ ra8_add_zig_library(
   ra8_ota
 )
 
+# Partially migrated: the rasteriser core is Zig now -- the single shared
+# framebuffer binding g_gfx_text_state, the two promoted helpers
+# priv_gfx_text_pack_565 / priv_gfx_text_plot, and the ten public entry points
+# of inc/ra8_gfx.h. The four remaining C translation units of the library
+# (ra8_gfx_dither.c, ra8_gfx_blit_gray4.c, ra8_gfx_text_glyph.c and the
+# generated ra8_gfx_font_8x16.c) stay C and reach into this archive through the
+# unchanged src/ra8_gfx_internal.h, so that header and the libs/ra8_gfx/src
+# include dirs in core_hal.cmake and unit_tests.cmake all stay.
+ra8_add_zig_library(
+  NAME
+  ra8_gfx
+  ZIG_ROOT
+  ${FW_ROOT}/libs/ra8_gfx
+  LIBRARY_NAME
+  ra8_gfx
+)
+
 target_link_libraries(
   ra8_core_hal
   PUBLIC ra8_zig::ra8_box
@@ -446,6 +463,7 @@ target_link_libraries(
          ra8_zig::ra8_sdmmc_spi
          ra8_zig::ra8_display_pal
          ra8_zig::ra8_ota
+         ra8_zig::ra8_gfx
 )
 
 link_libraries(
@@ -459,6 +477,7 @@ link_libraries(
   ra8_zig::fw_if_fs ra8_zig::ra8_ftl ra8_zig::ra8_sdmmc_spi
   ra8_zig::ra8_display_pal
   ra8_zig::ra8_ota
+  ra8_zig::ra8_gfx
 )
 
 link_libraries(ra8_zig::ra8_batt)
