@@ -22,6 +22,10 @@ pub const Entry = struct {
     driver: []const u8,
     flags: []const []const u8,
     include_dirs: []const []const u8,
+    /// `-isystem` directories, which come after every `-I` on the command line
+    /// and suppress the vendor headers' own diagnostics. Empty for every TU
+    /// whose whole include path is first-party.
+    system_include_dirs: []const []const u8 = &.{},
     object: []const u8,
 };
 
@@ -34,6 +38,10 @@ pub fn arguments(b: *std.Build, entry: Entry) []const []const u8 {
     for (entry.flags) |flag| argv.append(flag) catch @panic("OOM");
     for (entry.include_dirs) |include_dir| {
         argv.append(b.fmt("-I{s}", .{b.pathFromRoot(include_dir)})) catch @panic("OOM");
+    }
+    for (entry.system_include_dirs) |include_dir| {
+        argv.append("-isystem") catch @panic("OOM");
+        argv.append(b.pathFromRoot(include_dir)) catch @panic("OOM");
     }
     argv.append("-c") catch @panic("OOM");
     argv.append(b.pathFromRoot(entry.file)) catch @panic("OOM");
@@ -60,6 +68,10 @@ pub fn signature(b: *std.Build, entry: Entry) []const u8 {
         out.appendSlice(flag) catch @panic("OOM");
     }
     for (entry.include_dirs) |include_dir| {
+        out.appendSlice("\x00") catch @panic("OOM");
+        out.appendSlice(include_dir) catch @panic("OOM");
+    }
+    for (entry.system_include_dirs) |include_dir| {
         out.appendSlice("\x00") catch @panic("OOM");
         out.appendSlice(include_dir) catch @panic("OOM");
     }
