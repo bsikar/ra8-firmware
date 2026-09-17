@@ -162,6 +162,117 @@ RA8_PRIV bool priv_reflow_internal_xhtml_invalid(const void* xhtml_buf, size_t x
  */
 RA8_PRIV bool priv_reflow_internal_final_page_needed(uint32_t page_count, uint32_t token_count);
 
+/**
+ * @struct priv_reflow_tofu_rect_t
+ * @brief Geometry of the missing-glyph (tofu) box, relative to the glyph pen.
+ *
+ * @details Produced by ::priv_reflow_render_tofu_rect and consumed by the
+ *          render pass, which adds the glyph's own baseline-left position and
+ *          the page origin before drawing. Offsets are relative so the
+ *          geometry stays a pure function of the font metrics.
+ *
+ * @since 0.1.0
+ */
+typedef struct {
+  int32_t x_off; /**< Left edge, pixels right of the glyph pen x.     */
+  int32_t y_off; /**< Top edge, pixels above the baseline (negative). */
+  int32_t w;     /**< Box width in pixels (>= k_priv_tofu_min_px).    */
+  int32_t h;     /**< Box height in pixels (>= k_priv_tofu_min_px).   */
+} priv_reflow_tofu_rect_t;
+
+/**
+ * @brief Return true iff @p cp is a code point that must draw nothing.
+ *
+ * @details
+ * Space and the zero-width format characters legitimately have no ink, so a
+ * face that maps them to glyph 0 must stay blank rather than gain a tofu box.
+ * Every other code point the face cannot draw is a missing glyph and is drawn
+ * as the box (see ::priv_reflow_render_needs_tofu).
+ *
+ * @param[in] cp Code point from the layout pass.
+ *
+ * @return Boolean blank-code-point predicate.
+ * @retval true  @p cp is whitespace or a zero-width format character.
+ * @retval false @p cp is expected to carry ink.
+ *
+ * @pre None.
+ * @pre None.
+ * @post No state mutated.
+ * @post Return value depends solely on @p cp.
+ *
+ * @note Test-access only. Pure function.
+ *
+ * @since 0.1.0
+ */
+RA8_PRIV bool priv_reflow_render_is_blank_cp(int32_t cp);
+
+/**
+ * @brief Decide whether a code point must be drawn as a missing-glyph box.
+ *
+ * @details
+ * Promoted from the guard in @c internal_blit_glyph so the
+ * ``glyph_index == 0 && !blank(cp)`` AND decision can be driven directly
+ * under @c -fcoverage-mcdc. @p glyph_index is what
+ * @c stbtt_FindGlyphIndex reported for @p cp in the resolved face; zero is
+ * stb's "this face has no glyph for that code point" answer.
+ *
+ * @param[in] glyph_index Glyph index the face reported for @p cp.
+ * @param[in] cp          Code point from the layout pass.
+ *
+ * @return Boolean tofu-needed predicate.
+ * @retval true  The face cannot draw @p cp and @p cp should carry ink.
+ * @retval false The face has a glyph, or @p cp is legitimately blank.
+ *
+ * @pre None.
+ * @pre None.
+ * @post No state mutated.
+ * @post Return value depends solely on the two arguments.
+ *
+ * @note Test-access only. Pure function.
+ *
+ * @par MC/DC:
+ * 2-condition AND; N+1 = 3 vectors:
+ *  - index!=0, cp inked  -> false
+ *  - index==0, cp inked  -> true
+ *  - index==0, cp blank  -> false
+ *
+ * @since 0.1.0
+ */
+RA8_PRIV bool priv_reflow_render_needs_tofu(int32_t glyph_index, int32_t cp);
+
+/**
+ * @brief Compute the missing-glyph box geometry from the face metrics.
+ *
+ * @details
+ * The box sits on the baseline (``y_off == -h``) and is inset inside the
+ * code point's own advance so consecutive tofu boxes stay separated. A face
+ * that reports no usable advance or ascent (a degenerate or unscaled metric)
+ * falls back to fractions of @p font_px, so the box is always drawable and
+ * the render pass never has to special-case a broken face.
+ *
+ * @param[in]  advance_px Scaled advance width for the code point, pixels.
+ * @param[in]  ascent_px  Scaled face ascent, pixels.
+ * @param[in]  font_px    Glyph size in pixels (the fallback basis).
+ * @param[out] out        Receives the box geometry.
+ *
+ * @return Boolean success flag.
+ * @retval true  @p out holds a drawable box.
+ * @retval false @p out was NULL, or @p font_px is not positive.
+ *
+ * @pre @p out addresses writable storage, or is NULL.
+ * @pre None.
+ * @post On true, ``out->w`` and ``out->h`` are at least the minimum box size.
+ * @post On false, @p out is untouched.
+ *
+ * @note Test-access only. Pure function.
+ *
+ * @since 0.1.0
+ */
+RA8_PRIV bool priv_reflow_render_tofu_rect(int32_t                  advance_px,
+                                           int32_t                  ascent_px,
+                                           int32_t                  font_px,
+                                           priv_reflow_tofu_rect_t* out);
+
 #ifdef __cplusplus
 }
 #endif
