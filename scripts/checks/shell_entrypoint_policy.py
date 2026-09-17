@@ -188,6 +188,13 @@ _BASE_SHELL_POLICIES: dict[str, ShellPolicy] = {
         executable=True,
         source_requires_privileged_parent=False,
     ),
+    "scripts/builders/gen_jlink_w4.sh": ShellPolicy(
+        ShellSecurity.PORTABLE,
+        ShellUsage.ENTRY,
+        ShellDialect.BASH,
+        executable=True,
+        source_requires_privileged_parent=False,
+    ),
     "scripts/builders/host_cmake.sh": ShellPolicy(
         ShellSecurity.PORTABLE,
         ShellUsage.ENTRY,
