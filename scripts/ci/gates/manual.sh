@@ -400,6 +400,15 @@ gate_macos_host_build() (
   printf '=== host target decision ===\n'
   (cd tools/zig_build && zig build explain-host-target)
 
+  # The decision above is only a fix while the stub it pins TO can link us.
+  # The runner installs its own pinned Zig, so the bundled libSystem stub is
+  # whatever that tarball shipped; a toolchain bump that dropped arm64-macos
+  # would make the pinned query fail exactly like the SDK one it replaced,
+  # and every root below would go red with an undefined-symbol wall instead
+  # of naming the cause.
+  printf '\n=== bundled libSystem stub ===\n'
+  (cd tools/zig_build && zig build verify-bundled-stub)
+
   # Which roots this gate builds is a declared list with a reason per root,
   # not three names inlined here: a host root added later takes its default
   # target from ra8_build.hostDefaultTargetQuery and so looks correct from

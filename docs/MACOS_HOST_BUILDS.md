@@ -350,6 +350,46 @@ skip, and the compile flags are unchanged (`-std=c23 -Wall -Wextra -Werror
 Nothing about Linux CI changes: `clang-18` is first, so wherever it exists it
 is still the compiler of record.
 
+## The stub the fix links to is checked too
+
+The whole workaround is "pin an explicit `aarch64-macos` target so Zig links
+its own `libSystem.tbd` instead of the SDK's". That is a fix for exactly as
+long as Zig's own stub declares `arm64-macos`. Nothing here ever read it, so
+that was an assumption rather than a check, and the day a toolchain bump ships
+a stub without our slice the pinned build fails with the same
+`undefined symbol: _abort` wall the issue is about, caused this time by the
+fix. The build graph would still have reported that it had worked around the
+problem.
+
+`zig build verify-bundled-stub` in `tools/zig_build` reads
+`<zig lib dir>/libc/darwin/libSystem.tbd` and refuses a toolchain whose stub
+cannot link the pinned target:
+
+```
+$ cd tools/zig_build && zig build verify-bundled-stub
+verify-bundled-stub: /usr/local/zig/lib/libc/darwin/libSystem.tbd declares arm64-macos,
+so the pinned host target links against it
+```
+
+Two things about where it runs. It runs on **every** host, not only on a Mac,
+because the thing it guards against arrives with a Zig upgrade rather than with
+a machine, and a Linux checkout cross-building `-Dtarget=aarch64-macos` links
+that very same file. Whoever bumps the pin sees it fail on their own box. And
+the classification goes through `macos_host.classifyTbd`, the same reader the
+SDK stub goes through, so the two stubs can never be judged by different rules.
+
+The states are kept apart the way the SDK ones are, because the fixes differ:
+the stub declares the target, it lists targets and ours is absent, it names no
+macOS target at all (some other platform's stub), it carries no target list in
+any spelling we read, the file could not be read, or the Zig lib directory is
+unknown to the build runner. `zig build explain-host-target` prints the finding
+on its own `bundled finding:` line beside the SDK one, so a single report says
+what both stubs can do.
+
+The macOS gate runs it immediately after the host-target decision, before any
+root is built. A red run then names the cause on one line instead of burying it
+under an undefined-symbol wall from three build roots at once.
+
 ## Checking what the link produced, not just that it succeeded
 
 `zig build` exiting zero says the link succeeded. It says nothing about what
