@@ -51,6 +51,25 @@ set_target_properties(
   tz_threadx_demo.elf PROPERTIES LINK_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/linker_script.ld"
 )
 
+# ---- Post-build: verify the NSC SG-veneer layout (T5-08) ------------------
+# tz_threadx_demo_ns.elf is bound to the Secure-Gateway stubs through the CMSE import
+# library emitted above (--out-implib), so the byte offset of each veneer
+# inside .gnu.sgstubs IS the S/NS ABI: a reorder redirects every NS->Secure
+# call with no diagnostic. This app's linker_script.ld already claims the
+# offsets are "verified AFTER the link ... by scripts/checks/check_sg_offsets.py,
+# run as a POST_BUILD step in this app's CMakeLists.txt" -- until now only
+# tz_nsc_cgc_usb actually ran it. The checker requires one veneer per 8-byte
+# slot across the whole region and self-skips a non-TrustZone link.
+# --nm pins the SAME cross nm as the link (CMAKE_NM from the toolchain file).
+add_custom_command(
+  TARGET tz_threadx_demo.elf
+  POST_BUILD
+  COMMAND ${RA8_REPO_ROOT}/scripts/checks/check_sg_offsets.py
+          $<TARGET_FILE:tz_threadx_demo.elf> --nm ${CMAKE_NM}
+  VERBATIM
+  COMMENT "check_sg_offsets: verifying NSC SG-veneer slot offsets (T5-08)"
+)
+
 # ---- Non-Secure Target ----------------------------------------------------
 include(${RA8_REPO_ROOT}/cmake/threadx_ns.cmake)
 
