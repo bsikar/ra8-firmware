@@ -48,6 +48,7 @@ pub const cpu1_image = @import("tests/zig_build_graph/cpu1_image.zig");
 pub const cross_sources = @import("tests/zig_build_graph/cross_sources.zig");
 pub const middleware = @import("tests/zig_build_graph/middleware.zig");
 pub const ns_image = @import("tests/zig_build_graph/ns_image.zig");
+pub const command_surface = @import("tests/zig_build_graph/command_surface.zig");
 
 /// One member of the migrated-library slice: the Zig archive, its public C
 /// header directory, and the C suite CMake links against that archive today.
@@ -145,6 +146,10 @@ pub fn build(b: *std.Build) void {
         .target = target,
         .optimize = optimize,
     }));
+    // This file and just/zig.just, so command_surface_test.zig can hold the
+    // steps declared here to the recipes that expose them (#1165).
+    command_surface.addSources(b, graph_test_module);
+
     const graph_tests = b.addTest(.{ .root_module = graph_test_module });
     zig_test_step.dependOn(&b.addRunArtifact(graph_tests).step);
 
