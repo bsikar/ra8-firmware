@@ -123,8 +123,8 @@ _pcc_migration_contracts() (
   python3 scripts/checks/check_shell_just_invocations.py
   # CI/checker user surfaces may depend on GNU Make as a build tool, but may
   # not resurrect it as the repository task runner.
-  python3 scripts/checks/check_no_legacy_make.py --selftest
-  python3 scripts/checks/check_no_legacy_make.py
+  bash scripts/builders/check_no_legacy_make.sh --selftest
+  bash scripts/builders/check_no_legacy_make.sh
   # Python-managed tools belong in venvs. Reject the system-pip override in
   # active automation and in copy-pasteable developer guidance.
   bash scripts/builders/check_no_unsafe_python_install.sh --selftest
