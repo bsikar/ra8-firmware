@@ -217,7 +217,14 @@ def _case_one_failure_still_drains(controller: ModuleType, failures: list[str]) 
 
 
 def _case_recovery_is_never_held(controller: ModuleType, failures: list[str]) -> None:
-    """A host already at zero is repaired even once the budget is spent."""
+    """A host already at zero is repaired even once the budget is spent.
+
+    The budget is measured against the capacity still SERVING, so a fleet that
+    starts a pass with one host already at zero only budgets the three that are
+    left: the second failing consumer is held and the pass earns the cascade
+    verdict.  What this case pins is the exemption, not the verdict: the host
+    already at zero is repaired regardless.
+    """
     with tempfile.TemporaryDirectory() as raw:
         state_dir = Path(raw)
         _seed(
@@ -236,8 +243,8 @@ def _case_recovery_is_never_held(controller: ModuleType, failures: list[str]) ->
         failures.append("cascade: the repaired host published no receipt")
     if document["stranded"].get("consumer-c") is not None:
         failures.append("cascade: the repaired host kept its stranded-at-zero record")
-    if status != APPLY_FAILURE_STATUS:
-        failures.append(f"cascade: pass exited {status}; nothing serving was held back")
+    if status != controller.CASCADE_STATUS:
+        failures.append(f"cascade: pass exited {status}, expected the budget hold on the second")
 
 
 def _case_release_survives_the_budget(controller: ModuleType, failures: list[str]) -> None:

@@ -28,6 +28,7 @@ import fleet_mutation_lock as fml
 import fleet_reconcile_arc_selftest as fras
 import fleet_reconcile_backoff_selftest as frb
 import fleet_reconcile_blocking_selftest as frbl
+import fleet_reconcile_budget_selftest as frbu
 import fleet_reconcile_cascade_selftest as frc
 import fleet_reconcile_drain_selftest as frd
 import fleet_reconcile_freeze_selftest as frf
@@ -914,6 +915,37 @@ def drain_budget(total: int) -> int:
     return max(1, int(total * PASS_DRAIN_BUDGET_RATIO))
 
 
+def serving_hosts(order: Sequence[str], stranding: dict[str, dict[str, int]]) -> list[str]:
+    """Return the hosts this pass starts with capacity it could still lose."""
+    return [host for host in order if host not in stranding]
+
+
+def open_drain_budget(order: Sequence[str], stranding: dict[str, dict[str, int]]) -> int:
+    """Return how much of the capacity STILL SERVING this pass may take to zero.
+
+    The budget protects capacity, so it has to be measured against the capacity
+    that exists, not against the declaration.  A host already recorded at zero
+    is deliberately exempt from the budget, because it has nothing left to lose
+    and repairing it is the recovery this controller exists for; but it was
+    still counted in the fleet size the budget was derived from, so every host
+    an earlier pass drained quietly raised the number of SERVING hosts this
+    pass was allowed to drain after it.  A fleet already half down therefore
+    handed the next pass a budget big enough to empty everything that was left,
+    which is issue #888 arriving one pass at a time instead of all at once: no
+    single pass looks like an evacuation, and the fleet still ends at zero.
+    """
+    serving = serving_hosts(order, stranding)
+    budget = drain_budget(len(serving))
+    if len(serving) != len(order):
+        print(
+            f"fleet-reconcile: WARNING: {len(order) - len(serving)} of {len(order)} host(s) "
+            "are already recorded at ZERO capacity, so this pass may take at most "
+            f"{budget} of the {len(serving)} still serving ({', '.join(serving)}) to zero",
+            file=sys.stderr,
+        )
+    return budget
+
+
 def report_cascade_halt(host: str, drained: Sequence[str], budget: int) -> None:
     """Say why a host was left serving instead of converged."""
     print(
@@ -995,7 +1027,7 @@ def reconcile(
     receipts = document["hosts"]
     order = runner_hosts(data)
     stranding = open_stranding(document, order, options)
-    budget = drain_budget(len(order))
+    budget = open_drain_budget(order, stranding)
     failures = 0
     producer_blocking = False
     producer_released = False
@@ -1614,6 +1646,7 @@ def selftest() -> int:
     failures.extend(frr.run(sys.modules[__name__]))
     failures.extend(frb.run(sys.modules[__name__]))
     failures.extend(frbl.run(sys.modules[__name__]))
+    failures.extend(frbu.run(sys.modules[__name__]))
     failures.extend(frc.run(sys.modules[__name__]))
     failures.extend(frd.run(sys.modules[__name__]))
     failures.extend(frre.run(sys.modules[__name__]))
