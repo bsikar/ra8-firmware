@@ -59,9 +59,18 @@ WHAT IT ENFORCES, PRECISELY
 
 NON-VACUITY FLOOR
 -----------------
-The scan must find at least one ``ra8_add_cpu1_image()`` call, at least one
-profile-covered translation unit, and a non-empty inventory.  If the helper is
-renamed or the parse collapses, this exits 2 (FATAL) instead of passing.
+The scan must find at least one ``ra8_add_cpu1_image()`` call and at least one
+profile-covered translation unit.  If the helper is renamed or the parse
+collapses, this exits 2 (FATAL) instead of passing.
+
+The inventory has its own floor, and it is a DECLARED one.  The file carries a
+``#! rows: <n>`` directive stating how many rows it holds, and the gate fails
+when the file is missing or unreadable, when the directive is absent, or when
+the declared count and the parsed count disagree.  That is what lets #843 end
+at ``#! rows: 0``: an inventory deliberately burned to zero still proves it is
+intact and read, while a truncated, emptied or half-written file has no
+matching declaration and still fails closed.  An undeclared empty file must
+never read as "no debt".
 
 SCOPE, HONESTLY
 ---------------
@@ -117,6 +126,11 @@ EXE_KEYWORDS = ("WIN32", "MACOSX_BUNDLE", "EXCLUDE_FROM_ALL", "IMPORTED", "ALIAS
 
 # An inventory row is exactly "<cpu1-target> <path>"; anything else is not a row.
 ROW_FIELDS = 2
+
+# The inventory declares its own length, so an intact file burned to zero rows
+# is distinguishable from a truncated or hand-emptied one.  Both parse to zero
+# rows; only the first carries a matching declaration.
+ROW_COUNT_RE = re.compile(r"^#!\s*rows:\s*(\d+)\s*$")
 
 # Sources ra8_add_cpu1_image() appends to every CPU1 image itself; they are
 # part of the helper's per-source profile, so they are covered by definition.
@@ -388,20 +402,35 @@ def find_images(root: Path) -> list[Image]:
     return images
 
 
-def read_inventory(root: Path) -> set[tuple[str, str]]:
-    """Inventory rows as (target, path).  Missing or unreadable means EMPTY."""
+def read_inventory_file(root: Path) -> tuple[bool, int | None, set[tuple[str, str]]]:
+    """Return (readable, declared row count, rows) for the inventory file.
+
+    ``declared`` is None when the ``#! rows: <n>`` directive is absent, which
+    is how a truncated or hand-emptied file stays distinguishable from one
+    deliberately burned to zero rows.
+    """
     path = root / INVENTORY_REL
     try:
         text = path.read_text(encoding="utf-8")
     except OSError:
-        return set()
+        return False, None, set()
+    declared: int | None = None
     rows: set[tuple[str, str]] = set()
     for raw in text.splitlines():
+        match = ROW_COUNT_RE.match(raw.strip())
+        if match is not None:
+            declared = int(match.group(1))
+            continue
         fields = raw.split("#", 1)[0].split()
         if len(fields) != ROW_FIELDS:
             continue
         rows.add((fields[0], fields[1]))
-    return rows
+    return True, declared, rows
+
+
+def read_inventory(root: Path) -> set[tuple[str, str]]:
+    """Inventory rows as (target, path).  Missing or unreadable means EMPTY."""
+    return read_inventory_file(root)[2]
 
 
 def inventory_findings(root: Path, images: list[Image]) -> list[str]:
@@ -440,8 +469,20 @@ def vacuity_error(root: Path, images: list[Image]) -> str:
         return f"no {HELPER}() call found under {', '.join(SEARCH_ROOTS)}"
     if not any(image.covered for image in images):
         return f"no profile-covered CPU1 source found; {HELPER}() parse collapsed"
-    if not read_inventory(root):
-        return f"{INVENTORY_REL} is missing, unreadable or empty"
+    readable, declared, rows = read_inventory_file(root)
+    if not readable:
+        return f"{INVENTORY_REL} is missing or unreadable"
+    if declared is None:
+        return (
+            f"{INVENTORY_REL} carries no '#! rows: <n>' declaration; an inventory "
+            "that cannot state its own length may have been truncated, so it must "
+            "not read as zero debt"
+        )
+    if declared != len(rows):
+        return (
+            f"{INVENTORY_REL} declares '#! rows: {declared}' but holds {len(rows)} "
+            "row(s); the declaration does not match the file"
+        )
     return ""
 
 
@@ -510,24 +551,24 @@ def selftest_cases() -> list[tuple[str, str, str, str]]:
     """(name, inventory text, substring the findings must contain, listfile) tuples."""
     ipc_row = "demo_cpu1.elf libs/ra8_hal/src/ra8_ipc.c\n"
     rolled = FIXTURE_LISTFILE + textwrap.dedent(HANDROLLED_EXTRA)
+    one = "#! rows: 1\n"
+    two = "#! rows: 2\n"
     return [
-        ("inventoried escape is quiet", ipc_row, "", FIXTURE_LISTFILE),
-        ("unlisted escape fires", "# nothing\n", "not in .github", FIXTURE_LISTFILE),
-        ("empty inventory fails closed", "", "missing, unreadable or empty", FIXTURE_LISTFILE),
-        (
-            "stale row fires",
-            ipc_row + "demo_cpu1.elf libs/ra8_core/src/gone.c\n",
-            "stale",
-            FIXTURE_LISTFILE,
-        ),
+        ("inventoried escape is quiet", one + ipc_row, "", FIXTURE_LISTFILE),
+        ("unlisted escape fires", "#! rows: 0\n# nothing\n", "not in .github", FIXTURE_LISTFILE),
+        ("undeclared empty inventory fails closed", "", "declaration", FIXTURE_LISTFILE),
+        ("undeclared inventory with rows fails closed", ipc_row, "declaration", FIXTURE_LISTFILE),
+        ("row count below the declaration fires", two + ipc_row, "does not match", FIXTURE_LISTFILE),
+        ("row count above the declaration fires", one + ipc_row + "demo_cpu1.elf a/b.c\n", "does not match", FIXTURE_LISTFILE),
+        ("stale row fires", two + ipc_row + "demo_cpu1.elf libs/ra8_core/src/gone.c\n", "stale", FIXTURE_LISTFILE),
         (
             "soup row fires",
-            ipc_row + "apps/shared_libs/third_party/miniz/miniz.c".join(("demo_cpu1.elf ", "\n")),
+            two + ipc_row + "apps/shared_libs/third_party/miniz/miniz.c".join(("demo_cpu1.elf ", "\n")),
             "must not sit in",
             FIXTURE_LISTFILE,
         ),
-        ("hand-rolled CPU1 escape fires", ipc_row, "not in .github", rolled),
-        ("hand-rolled CPU1 escape inventoried is quiet", ipc_row + ROLLED_ROW, "", rolled),
+        ("hand-rolled CPU1 escape fires", one + ipc_row, "not in .github", rolled),
+        ("hand-rolled CPU1 escape inventoried is quiet", two + ipc_row + ROLLED_ROW, "", rolled),
     ]
 
 
@@ -554,22 +595,33 @@ def opt_in_cases() -> list[tuple[str, str, str]]:
     return [
         (
             "row for an opt-in source is stale",
-            "demo_cpu1.elf libs/ra8_hal/src/ra8_ipc.c\n",
+            "#! rows: 1\ndemo_cpu1.elf libs/ra8_hal/src/ra8_ipc.c\n",
             "stale",
         ),
         (
             "row for a helper-appended source is stale",
-            "demo_cpu1.elf libs/ra8_core/src/ra8_freestanding_mem.c\n",
+            "#! rows: 1\ndemo_cpu1.elf libs/ra8_core/src/ra8_freestanding_mem.c\n",
             "stale",
         ),
     ]
 
 
-def run_case(inventory: str, listfile: str = FIXTURE_LISTFILE) -> tuple[str, list[str]]:
-    """Build a fixture tree, return (vacuity error, findings)."""
+def run_case(
+    inventory: str,
+    listfile: str = FIXTURE_LISTFILE,
+    *,
+    drop_inventory: bool = False,
+) -> tuple[str, list[str]]:
+    """Build a fixture tree, return (vacuity error, findings).
+
+    ``drop_inventory`` deletes the inventory after the fixture is written, to
+    prove a missing file is reported as missing rather than as zero debt.
+    """
     with tempfile.TemporaryDirectory() as tmp:
         base = Path(tmp)
         build_fixture(base, inventory, listfile)
+        if drop_inventory:
+            (base / INVENTORY_REL).unlink()
         images = find_images(base)
         return vacuity_error(base, images), inventory_findings(base, images)
 
@@ -600,16 +652,25 @@ def selftest() -> int:
         if "ra8_ipc.c: first-party CPU1 source" in blob:
             failures.append(f"{name}: opt-in source still counted as an escape: {blob!r}")
     blind = OPT_IN_LISTFILE.replace(_IPC_SRC, "${SOME_APP_VAR}")
-    error, findings = run_case("demo_cpu1.elf libs/ra8_hal/src/ra8_ipc.c\n", blind)
+    error, findings = run_case("#! rows: 1\ndemo_cpu1.elf libs/ra8_hal/src/ra8_ipc.c\n", blind)
     if "does not resolve" not in " ".join([error, *findings]):
         failures.append("opt-in unresolved token: expected a finding, not silent coverage")
+    # The #843 end state: every first-party source on the profile, the
+    # inventory intact and declaring zero rows.  This must be SILENT, and a
+    # missing file must not reach the same silence.
+    error, findings = run_case("#! rows: 0\n", OPT_IN_LISTFILE)
+    if " ".join([error, *findings]).strip():
+        failures.append(f"declared-zero inventory: expected silence, got {error} {findings}")
+    error, findings = run_case("#! rows: 0\n", OPT_IN_LISTFILE, drop_inventory=True)
+    if "missing or unreadable" not in " ".join([error, *findings]):
+        failures.append("missing inventory: expected the missing-file fatal, not zero debt")
     if failures:
         for failure in failures:
             print(f"check_cpu1_warning_profile.py: SELFTEST FAIL -- {failure}", file=sys.stderr)
         return 1
     print(
         "check_cpu1_warning_profile.py: selftest PASS "
-        f"({len(selftest_cases()) + len(opt_in_cases()) + 2} cases, both directions)"
+        f"({len(selftest_cases()) + len(opt_in_cases()) + 4} cases, both directions)"
     )
     return 0
 
