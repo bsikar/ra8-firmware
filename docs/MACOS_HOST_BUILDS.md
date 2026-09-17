@@ -27,8 +27,9 @@ the bundled stub.
 ## What the build graph does
 
 `tools/zig_build` is a path dependency shared by the Zig build roots. It
-probes the active SDK with `xcrun --show-sdk-path`, parses the `targets` list
-out of `usr/lib/libSystem.tbd`, and decides between two outcomes:
+probes the macOS SDK with `xcrun --sdk macosx --show-sdk-path`, parses the
+`targets` list out of `usr/lib/libSystem.tbd`, and decides between two
+outcomes:
 
 * the stub declares `arm64-macos`, so the native query is kept; or
 * it does not, so the root pins an explicit `aarch64-macos` query and Zig uses
@@ -67,6 +68,41 @@ applications under `apps/host`, `apps/host/firmware_pipeline/zig`,
 `tests/zig_abi_fixture`. The Zig check runs `zig build test` in every build
 root, so a single unwired root is enough to break the gate on a Mac.
 
+## Which SDK gets probed
+
+The probe names the SDK it wants: `xcrun --sdk macosx --show-sdk-path`. That is
+the same call Zig makes for a macOS target
+(`std.zig.system.darwin.getSdk` maps `.macos` to `macosx`), and matching it is
+the whole point. The bare `xcrun --show-sdk-path` asks a different question: it
+reports the *active* SDK, which `SDKROOT` in the environment redirects. Any
+shell spawned from an Xcode build phase carries one, and so does a developer
+who exported `SDKROOT=iphoneos` for cross work.
+
+With the bare form, such a shell had the graph read
+`iPhoneOS.sdk/usr/lib/libSystem.tbd`. Its targets are `arm64-ios` and friends,
+so `arm64-macos` came back absent and the finding printed was *the SDK stub
+lists its targets and `arm64-macos` is not among them (#899)*: a report about a
+file no macOS link would ever have opened, in the exact words of the bug this
+whole document is about. The pin that followed was harmless; the diagnosis was
+not.
+
+Two things now keep that apart. The probe asks for the macOS SDK by name, so it
+reads what the compiler reads. And a stub that declares no macOS target at all
+is reported as another platform's stub rather than as a macOS stub that omits
+us, so the two remain distinguishable even if some other route hands the probe
+a foreign SDK. `maccatalyst` does not count as a macOS target here, and neither
+does a bare `macos` word outside a triple.
+
+`zig build explain-host-target` prints the SDK it asked for on its own line:
+
+    sdk query: macosx
+    sdk:       /Library/Developer/CommandLineTools/SDKs/MacOSX.sdk
+
+`scripts/ci/lib/macos_sdk.sh` runs the same named call, so the gate's
+precondition and the graph resolve the same SDK. Its selftest asserts both
+sides, including that `tools/zig_build` still pins the same SDK name, so the
+two cannot drift apart quietly.
+
 ## Asking the graph what it decided, and why
 
 ```console
@@ -85,11 +121,13 @@ ra8 host target (#899)
 (The transcript above is the shape of the output, not a reading taken from a
 Mac: nothing in this tree has been run on Apple silicon yet.)
 
-Four different findings all end in a pinned target, and they need different
+Five different findings all end in a pinned target, and they need different
 fixes, so the graph names which one it saw rather than reporting them as one
 state:
 
 * the stub lists its targets and `arm64-macos` is absent -- this is #899 itself;
+* the stub lists targets and none of them is a macOS target at all, so what was
+  read is another Apple platform's stub (see below);
 * the stub was read but declares no target list in a spelling the parser knows;
 * an SDK was located but its `libSystem` stub could not be read;
 * no SDK could be located at all, so `xcrun` is missing or failing.
@@ -154,8 +192,8 @@ version on `PATH`. The first two commands report the environment the decision
 depends on:
 
     zig version
-    xcrun --show-sdk-path
-    grep -n 'targets:' "$(xcrun --show-sdk-path)/usr/lib/libSystem.tbd" | head
+    xcrun --sdk macosx --show-sdk-path
+    grep -n 'targets:' "$(xcrun --sdk macosx --show-sdk-path)/usr/lib/libSystem.tbd" | head
 
 Then build and test a representative root three ways:
 
@@ -499,7 +537,7 @@ failures apart, because each is a different morning:
 | `xcrun_absent` | no `xcrun` on `PATH` or at `/usr/bin/xcrun` | `xcode-select --install` |
 | `developer_dir_invalid` | `xcrun` ran, no developer directory is active | `xcode-select --install`, then `sudo xcode-select --reset` |
 | `license_unaccepted` | `xcrun` refuses until the licence is accepted | `sudo xcodebuild -license accept` |
-| `sdk_path_empty` | the probe succeeded and printed nothing | run `xcrun --show-sdk-path` and read the error |
+| `sdk_path_empty` | the probe succeeded and printed nothing | run `xcrun --sdk macosx --show-sdk-path` and read the error |
 | `sdk_path_missing` | the named SDK is not on this disk | `xcode-select -p`, then `--reset` |
 | `stub_missing` | the SDK ships no `libSystem.tbd` | reinstall the Command Line Tools |
 | `not_macos` | a Linux checkout | run the gate on an arm64 Mac |

@@ -79,6 +79,9 @@ pub const Reason = enum {
     /// The stub was read but declares no target list in a spelling we parse, so
     /// it cannot be trusted either way.
     sdk_stub_unrecognized,
+    /// The stub was read and parsed, and it declares no macOS target at all:
+    /// what was read is another Apple platform's `libSystem`, not this host's.
+    sdk_stub_foreign_platform,
     /// An SDK was located but its `libSystem` stub could not be read.
     sdk_stub_unreadable,
     /// No SDK could be located at all (no `xcrun`, or it failed).
@@ -96,6 +99,7 @@ pub const Reason = enum {
             .sdk_declares_target => "the SDK stub declares " ++ required_target ++ ", so the native query links against it",
             .sdk_omits_target => "the SDK stub lists its targets and " ++ required_target ++ " is not among them (#899)",
             .sdk_stub_unrecognized => "the SDK stub declares no target list in a recognised spelling, so it cannot be trusted to link " ++ required_target,
+            .sdk_stub_foreign_platform => "the stub read declares no macOS target at all, so it belongs to another Apple platform's SDK rather than this host's (check SDKROOT and xcrun --sdk " ++ host_sdk_name ++ ")",
             .sdk_stub_unreadable => "an SDK was located but its libSystem stub could not be read",
             .sdk_not_probed => "no macOS SDK could be located through xcrun",
             .forced_sdk_stub => "-Dmacos-libsystem=sdk forced the native query, whatever the SDK stub says",
@@ -142,10 +146,26 @@ pub const SdkProbe = struct {
     sdk_path: ?[]const u8 = null,
     libsystem_tbd_path: ?[]const u8 = null,
     libsystem_tbd: ?[]const u8 = null,
+    /// The `xcrun --sdk` name the probe asked for, when it ran `xcrun` at all.
+    /// Diagnostics only: which SDK was asked for is half of what a stub reading
+    /// means, and a log that omits it cannot be checked against the compiler's
+    /// own lookup.
+    queried_sdk: ?[]const u8 = null,
 };
 
 /// The stub target an arm64 Mac needs to see declared in `libSystem.tbd`.
 pub const required_target = "arm64-macos";
+
+/// The `xcrun --sdk` name for the SDK a macOS host build links against.
+///
+/// This is not a free choice. Zig 0.14.1 resolves its own sysroot with
+/// `xcrun --sdk <name> --show-sdk-path`, mapping a `.macos` target to `macosx`
+/// (`lib/std/zig/system/darwin.zig`, `getSdk`). A probe that asks the bare
+/// `xcrun --show-sdk-path` asks a DIFFERENT question: that form reports the
+/// *active* SDK, which `SDKROOT` in the environment can point at another
+/// platform entirely. Asking for the SDK by name is what makes the probe's
+/// answer and the compiler's answer the same SDK.
+pub const host_sdk_name = "macosx";
 
 /// Pick the stub source for a host running `host_arch`/`host_os` given `probe`.
 ///
@@ -166,6 +186,7 @@ pub fn decide(host_arch: std.Target.Cpu.Arch, host_os: std.Target.Os.Tag, probe:
         .declares => .{ .choice = .native, .reason = .sdk_declares_target },
         .omits => .{ .choice = .pinned_macos_arm64, .reason = .sdk_omits_target },
         .unrecognized => .{ .choice = .pinned_macos_arm64, .reason = .sdk_stub_unrecognized },
+        .foreign_platform => .{ .choice = .pinned_macos_arm64, .reason = .sdk_stub_foreign_platform },
     };
 }
 
@@ -213,10 +234,16 @@ pub fn resolve(
 pub const TbdVerdict = enum {
     /// A target list was found and it names the wanted triple.
     declares,
-    /// A target list was found and it does not name the wanted triple.
+    /// A target list was found, it names the wanted OS, and the wanted triple
+    /// is not among its entries. On an arm64 Mac reading the macOS stub, this
+    /// is #899 itself.
     omits,
     /// No target list was found in any spelling this parser knows.
     unrecognized,
+    /// A target list was found and it names no target for the wanted OS at all.
+    /// The file read is some other Apple platform's stub, so it says nothing
+    /// about whether this host's SDK can link the wanted triple.
+    foreign_platform,
 };
 
 /// The `platform:` spelling a tbd-v1..v3 stub uses for `macos`.
@@ -231,14 +258,28 @@ pub const v3_macos_platform = "macosx";
 /// the safe direction, but the DIAGNOSIS was wrong, and it is the diagnosis the
 /// gate prints.
 pub fn classifyTbd(tbd_text: []const u8, wanted: []const u8) TbdVerdict {
+    const dash = std.mem.indexOfScalar(u8, wanted, '-');
+    const os_name: ?[]const u8 = if (dash) |at| wanted[at + 1 ..] else null;
+
     if (targetsFieldDeclares(tbd_text, wanted)) |declared| {
-        return if (declared) .declares else .omits;
+        if (declared) return .declares;
+        if (os_name) |os| {
+            if (targetsFieldMentionsOs(tbd_text, os)) |mentions| {
+                if (!mentions) return .foreign_platform;
+            }
+        }
+        return .omits;
     }
-    const dash = std.mem.indexOfScalar(u8, wanted, '-') orelse return .unrecognized;
-    const arch = wanted[0..dash];
-    const os_name = wanted[dash + 1 ..];
-    if (archsFieldDeclares(tbd_text, arch, os_name)) |declared| {
-        return if (declared) .declares else .omits;
+
+    const at = dash orelse return .unrecognized;
+    const arch = wanted[0..at];
+    const os = wanted[at + 1 ..];
+    if (archsFieldDeclares(tbd_text, arch, os)) |declared| {
+        if (declared) return .declares;
+        if (platformFieldDeclares(tbd_text, os)) |names_os| {
+            if (!names_os) return .foreign_platform;
+        }
+        return .omits;
     }
     return .unrecognized;
 }
@@ -259,6 +300,44 @@ pub fn tbdDeclaresTarget(tbd_text: []const u8, wanted: []const u8) bool {
 /// Only the `targets:` field is read, because `uuids:` repeats target names and
 /// would otherwise answer for it.
 pub fn targetsFieldDeclares(tbd_text: []const u8, wanted: []const u8) ?bool {
+    return targetsFieldMatches(tbd_text, .{ .triple = wanted });
+}
+
+/// Does the `targets:` list name ANY target for `os_name`? Null when the file
+/// carries no `targets:` field at all.
+///
+/// This is what separates "the macOS stub omits us" (#899) from "that was not
+/// a macOS stub". An iOS `libSystem.tbd` lists `arm64-ios` and friends, so the
+/// triple question alone answers "absent" and reads exactly like #899 while
+/// saying nothing about the SDK a macOS link would actually use.
+pub fn targetsFieldMentionsOs(tbd_text: []const u8, os_name: []const u8) ?bool {
+    return targetsFieldMatches(tbd_text, .{ .os = os_name });
+}
+
+/// What one entry of a `targets:` list is being asked about.
+const TargetsQuery = union(enum) {
+    /// A whole triple, e.g. `arm64-macos`.
+    triple: []const u8,
+    /// Any triple whose OS part is this, e.g. `macos`.
+    os: []const u8,
+};
+
+fn chunkMatches(chunk: []const u8, query: TargetsQuery) bool {
+    return switch (query) {
+        .triple => |wanted| listContains(chunk, wanted),
+        .os => |os_name| mentionsOsSuffix(chunk, os_name),
+    };
+}
+
+/// Walk a TAPI v4 `targets:` field, answering `query`: null when the file has
+/// none.
+///
+/// Handles both TAPI spellings: the inline flow list
+/// (`targets: [ x86_64-macos, arm64e-macos ]`, possibly wrapped over lines) and
+/// the YAML block list (`targets:` followed by indented `- x86_64-macos` items).
+/// Only the `targets:` field is read, because `uuids:` repeats target names and
+/// would otherwise answer for it.
+fn targetsFieldMatches(tbd_text: []const u8, query: TargetsQuery) ?bool {
     var seen_field = false;
     var lines = std.mem.splitScalar(u8, tbd_text, '\n');
     while (lines.next()) |raw_line| {
@@ -272,7 +351,7 @@ pub fn targetsFieldDeclares(tbd_text: []const u8, wanted: []const u8) ?bool {
             // never split across a line break, so each line can be read on its own.
             var chunk = rest;
             while (true) {
-                if (listContains(chunk, wanted)) return true;
+                if (chunkMatches(chunk, query)) return true;
                 if (std.mem.indexOfScalar(u8, chunk, ']') != null) break;
                 chunk = lines.next() orelse break;
             }
@@ -280,7 +359,7 @@ pub fn targetsFieldDeclares(tbd_text: []const u8, wanted: []const u8) ?bool {
         }
 
         if (rest.len != 0) {
-            if (listContains(rest, wanted)) return true;
+            if (chunkMatches(rest, query)) return true;
             continue;
         }
 
@@ -288,7 +367,7 @@ pub fn targetsFieldDeclares(tbd_text: []const u8, wanted: []const u8) ?bool {
         while (lines.next()) |item_raw| {
             const item_line = std.mem.trim(u8, item_raw, " \t\r");
             if (!std.mem.startsWith(u8, item_line, "- ")) break;
-            if (listContains(item_line[2..], wanted)) return true;
+            if (chunkMatches(item_line[2..], query)) return true;
         }
     }
     return if (seen_field) false else null;
@@ -305,20 +384,26 @@ pub fn targetsFieldDeclares(tbd_text: []const u8, wanted: []const u8) ?bool {
 /// `arm64-macos`. `archs:` also appears inside each `exports:` entry, which is
 /// exactly the same question asked per-slice, so any occurrence counts.
 pub fn archsFieldDeclares(tbd_text: []const u8, arch: []const u8, os_name: []const u8) ?bool {
+    const arch_declared = archsFieldContains(tbd_text, arch) orelse return null;
+    const platform_declared = platformFieldDeclares(tbd_text, os_name) orelse return null;
+    return arch_declared and platform_declared;
+}
+
+/// Read a TAPI v1..v3 `platform:` (or `platforms:`) field on its own: null when
+/// the file carries neither.
+///
+/// Asked separately from `archs:` because the two answer different questions.
+/// `platform: iphoneos` means the file is not this host's stub at all, and
+/// reporting that as "arm64 is absent" points the reader at #899 instead of at
+/// the SDK they actually read.
+pub fn platformFieldDeclares(tbd_text: []const u8, os_name: []const u8) ?bool {
     const wanted_platform = if (std.mem.eql(u8, os_name, "macos")) v3_macos_platform else os_name;
-    var seen_archs = false;
     var seen_platform = false;
-    var arch_declared = false;
     var platform_declared = false;
 
     var lines = std.mem.splitScalar(u8, tbd_text, '\n');
     while (lines.next()) |raw_line| {
         const line = std.mem.trim(u8, raw_line, " \t\r-");
-        if (std.mem.startsWith(u8, line, "archs:")) {
-            seen_archs = true;
-            if (listContains(line["archs:".len..], arch)) arch_declared = true;
-            continue;
-        }
         if (std.mem.startsWith(u8, line, "platform:")) {
             seen_platform = true;
             if (listContains(line["platform:".len..], wanted_platform)) platform_declared = true;
@@ -329,8 +414,27 @@ pub fn archsFieldDeclares(tbd_text: []const u8, arch: []const u8, os_name: []con
             if (listContains(line["platforms:".len..], wanted_platform)) platform_declared = true;
         }
     }
-    if (!seen_archs or !seen_platform) return null;
-    return arch_declared and platform_declared;
+    if (!seen_platform) return null;
+    return platform_declared;
+}
+
+/// Read a TAPI v1..v3 `archs:` field on its own: null when the file has none.
+///
+/// `archs:` also appears inside each `exports:` entry, which is exactly the
+/// same question asked per-slice, so any occurrence counts.
+pub fn archsFieldContains(tbd_text: []const u8, arch: []const u8) ?bool {
+    var seen_archs = false;
+    var arch_declared = false;
+
+    var lines = std.mem.splitScalar(u8, tbd_text, '\n');
+    while (lines.next()) |raw_line| {
+        const line = std.mem.trim(u8, raw_line, " \t\r-");
+        if (!std.mem.startsWith(u8, line, "archs:")) continue;
+        seen_archs = true;
+        if (listContains(line["archs:".len..], arch)) arch_declared = true;
+    }
+    if (!seen_archs) return null;
+    return arch_declared;
 }
 
 /// Can the machine running this build execute a binary built for
@@ -376,6 +480,23 @@ fn listContains(haystack: []const u8, wanted: []const u8) bool {
         const after = found + wanted.len;
         const after_ok = after == haystack.len or !isTokenChar(haystack[after]);
         if (before_ok and after_ok) return true;
+    }
+    return false;
+}
+
+/// True when `haystack` holds a target triple whose OS part is `os_name`, i.e.
+/// `os_name` appears as a whole token immediately after a `-`.
+///
+/// The leading `-` is what keeps this from answering for a bare platform word
+/// somewhere else in the line, and the whole-token rule is what keeps `macos`
+/// from matching `maccatalyst` or `macosx`.
+fn mentionsOsSuffix(haystack: []const u8, os_name: []const u8) bool {
+    var index: usize = 0;
+    while (std.mem.indexOfPos(u8, haystack, index, os_name)) |found| {
+        index = found + os_name.len;
+        if (found == 0 or haystack[found - 1] != '-') continue;
+        const after = found + os_name.len;
+        if (after == haystack.len or !isTokenChar(haystack[after])) return true;
     }
     return false;
 }
