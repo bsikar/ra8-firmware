@@ -12,10 +12,12 @@
  * device and spreads wear by relocating each logical-block write to a fresh,
  * least-worn physical block (copy-on-write).
  *
- * The extra-MRAM window is 24 logical blocks (12 KiB). This demo hands the FTL
- * the first 23 physical blocks (presenting 8 logical blocks, so 15 spare for
- * relocation headroom) and reserves the last physical block as a non-volatile
- * slot for the FTL mapping checkpoint.
+ * The extra-MRAM window is 24 logical blocks (12 KiB). The demo declares one
+ * reserved tail block and ::ra8_ftl_mount derives the managed span from the
+ * device itself (24 - 1 = 23 physical blocks, presenting 8 logical blocks, so
+ * 15 spare for relocation headroom). The FTL owns that tail block and puts its
+ * mapping checkpoint there, so the app no longer partitions the medium or
+ * drives raw erase/program at a metadata LBA (#763).
  *
  * The run is three acts:
  *
@@ -23,14 +25,15 @@
  *      write, query ::ra8_ftl_phys_of to show the backing physical block index
  *      migrating while the logical address stays fixed. Each write is read back
  *      and byte-verified.
- *   2. **Checkpoint** -- serialise the FTL mapping (::ra8_ftl_checkpoint_save)
- *      and store the blob in the reserved MRAM block (the FTL keeps no on-media
- *      metadata of its own, so this is what lets the mapping survive a reset).
+ *   2. **Checkpoint** -- ::ra8_ftl_sync persists the mapping into the reserved
+ *      tail (the FTL keeps no on-media metadata of its own, so this is what
+ *      lets the mapping survive a reset).
  *   3. **Power-cycle survival** -- model a reset: discard the FTL handle and its
  *      caller tables (SRAM is volatile) while the MRAM retains its bytes. A
- *      naive re-init has lost the mapping (the logical block reads back the
- *      erase value), so ::ra8_ftl_checkpoint_load reloads the checkpoint from
- *      MRAM and the data -- and the exact physical mapping -- reappears.
+ *      naive ::ra8_ftl_init has lost the mapping (the logical block reads back
+ *      the erase value), so a second ::ra8_ftl_mount resumes the checkpoint
+ *      from the tail and the data -- and the exact physical mapping -- reappears.
+ *      ::ra8_ftl_unmount then closes the volume.
  *
  * ra8_emulator models the MACI program/erase sequence (board_periph_mram.c), so
  * the whole run is observable headless over the SCI8 console. A successful run
@@ -70,9 +73,9 @@ typedef enum : uint32_t {
   k_demo_uart_chan    = 8U,      /**< SCI8 J-Link OB console.                */
   k_demo_uart_baud    = 115200U, /**< Console baud.                          */
   k_demo_total_blocks = 24U,     /**< Whole extra MRAM (12 KiB).             */
-  k_demo_ftl_phys     = 23U,     /**< Physical blocks handed to the FTL.     */
+  k_demo_ftl_tail     = 1U,      /**< Tail blocks the FTL keeps for itself.  */
+  k_demo_ftl_phys     = 23U,     /**< Span mount derives (24 - 1); act 3a.   */
   k_demo_ftl_logical  = 8U,      /**< Logical blocks the FTL presents.       */
-  k_demo_meta_lba     = 23U,     /**< Reserved raw block for the checkpoint. */
   k_demo_one_block    = 1U,      /**< Single-block transfer count.           */
   k_demo_test_lbn     = 2U,      /**< Logical block written repeatedly.      */
   k_demo_writes       = 12U,     /**< Repeated overwrites of the test block. */
@@ -99,11 +102,23 @@ static ra8_io_blockdev_mram_state_t s_mstate;
 static ra8_ftl_t         s_ftl;
 static ra8_io_blockdev_t s_present;
 /** @brief FTL caller storage: map, per-physical metadata, copy scratch. */
-static uint16_t         s_map[(size_t)k_demo_ftl_logical];
-static ra8_ftl_pblock_t s_pblocks[(size_t)k_demo_ftl_phys];
+static uint16_t s_map[(size_t)k_demo_ftl_logical];
+/** One entry per managed physical block: `k_demo_total_blocks - k_demo_ftl_tail`. */
+static ra8_ftl_pblock_t s_pblocks[(size_t)k_demo_total_blocks - (size_t)k_demo_ftl_tail];
 static uint8_t          s_scratch[(size_t)k_demo_block];
-/** @brief One-block checkpoint buffer (the reserved MRAM slot holds this). */
+/** @brief Checkpoint staging buffer the FTL owns for the reserved tail block. */
 static uint8_t s_ckbuf[(size_t)k_demo_block];
+/** @brief Mount geometry: one reserved tail block, span derived from the device. */
+static const ra8_ftl_cfg_t k_demo_ftl_cfg = {
+  .raw                  = &s_bd,
+  .map                  = s_map,
+  .pblocks              = s_pblocks,
+  .scratch              = s_scratch,
+  .ckbuf                = s_ckbuf,
+  .ckbuf_len            = (uint32_t)k_demo_block,
+  .logical_blocks       = (uint32_t)k_demo_ftl_logical,
+  .reserved_tail_blocks = (uint32_t)k_demo_ftl_tail,
+};
 /** @brief UART output stream + its sink state. */
 static ra8_io_stream_t            s_uart;
 static ra8_io_stream_uart_state_t s_ust;
@@ -206,8 +221,8 @@ static void demo_setup_or_halt(void)
  *
  * @details Initialises the MRAM controller (`ra8_flash_init`) and binds an
  *          erase-before-write block device over the whole 24-block extra-MRAM
- *          window; the FTL manages the first 23 blocks and the demo owns block
- *          23 for the checkpoint.
+ *          window. ::ra8_ftl_mount reads that block count and keeps the last
+ *          block for its checkpoint, so the app hands over the whole window.
  *
  * @return ra8_err_t Error code.
  * @retval k_ra8_ok The raw MRAM block device ::s_bd is ready.
@@ -288,8 +303,9 @@ static ra8_err_t demo_write_verify(uint32_t lbn, uint32_t tag, uint16_t* out_phy
 /**
  * @brief Act 1: init the FTL and hammer one logical block to show migration.
  *
- * @details Initialises the FTL over the raw MRAM device (23 physical blocks,
- *          8 logical presented), binds the presented device, then overwrites
+ * @details Mounts the FTL over the raw MRAM device (one reserved tail block, so
+ *          23 managed and 8 logical presented), binds the presented device, then
+ *          overwrites
  *          ::k_demo_test_lbn ::k_demo_writes times. Each write is verified and
  *          its new physical index reported; the count of physical relocations
  *          and the final physical index are returned.
@@ -304,6 +320,7 @@ static ra8_err_t demo_write_verify(uint32_t lbn, uint32_t tag, uint16_t* out_phy
  *
  * @pre ::demo_open returned k_ra8_ok; ::s_bd is bound.
  * @pre @p migrations and @p last_phys are writable.
+ * @pre The reserved tail is blank, so the mount cold-starts.
  * @post On success ::s_present is bound and the test block is live.
  * @post `*migrations >= 1` whenever spare blocks allow relocation.
  *
@@ -314,15 +331,7 @@ static ra8_err_t demo_wear_phase(uint32_t* migrations, uint16_t* last_phys)
 {
   RA8_CHECK_NULL_PTR(migrations, s_tag, "migrations must not be nullptr");
   RA8_CHECK_NULL_PTR(last_phys, s_tag, "last_phys must not be nullptr");
-  RA8_RETURN_ON_ERROR(ra8_ftl_init(&s_ftl,
-                                   &s_bd,
-                                   s_map,
-                                   (uint32_t)k_demo_ftl_logical,
-                                   s_pblocks,
-                                   (uint32_t)k_demo_ftl_phys,
-                                   s_scratch),
-                      s_tag,
-                      "ftl init");
+  RA8_RETURN_ON_ERROR(ra8_ftl_mount(&s_ftl, &k_demo_ftl_cfg), s_tag, "ftl mount");
   RA8_RETURN_ON_ERROR(ra8_ftl_as_blockdev(&s_ftl, &s_present), s_tag, "ftl as blockdev");
   uint32_t moves = 0U;
   uint16_t prev  = (uint16_t)k_ra8_ftl_unmapped;
@@ -345,44 +354,28 @@ static ra8_err_t demo_wear_phase(uint32_t* migrations, uint16_t* last_phys)
 }
 
 /**
- * @brief Act 2: serialise the FTL mapping into the reserved MRAM block.
+ * @brief Act 2: persist the FTL mapping into the mount's reserved tail.
  *
- * @details Confirms the checkpoint fits one 512-byte block, serialises it with
- *          ::ra8_ftl_checkpoint_save, erases the reserved raw block, and
- *          programs the checkpoint into it -- the persistent metadata that lets
- *          the mapping outlive the volatile SRAM tables.
+ * @details One ::ra8_ftl_sync call: the FTL sizes the checkpoint, stages it,
+ *          erases its own reserved tail block and programs the checkpoint into
+ *          it -- the persistent metadata that lets the mapping outlive the
+ *          volatile SRAM tables. The app no longer computes the metadata LBA or
+ *          drives raw erase/program on the device the FTL is managing.
  *
  * @return ra8_err_t Error code.
- * @retval k_ra8_ok               The checkpoint is stored in MRAM.
- * @retval k_ra8_err_invalid_size The checkpoint does not fit one block.
- * @retval (other)               The first failing save / erase / write code.
+ * @retval k_ra8_ok The checkpoint is stored in the reserved tail.
+ * @retval (other) The ::ra8_ftl_sync failure code.
  *
- * @pre ::demo_wear_phase returned k_ra8_ok; ::s_ftl is initialised.
- * @pre ::k_demo_meta_lba is outside the FTL's physical range.
- * @post On success raw block ::k_demo_meta_lba holds a loadable checkpoint.
- * @post No FTL mapping state is mutated.
+ * @pre ::demo_wear_phase returned k_ra8_ok; ::s_ftl is mounted.
+ * @post On success the reserved tail holds a loadable checkpoint.
+ * @post No FTL mapping state and no data block is mutated.
  *
  * @note Not thread-safe; single-caller boot context.
  * @since 0.1.0
  */
 static ra8_err_t demo_checkpoint(void)
 {
-  uint32_t need = 0U;
-  RA8_RETURN_ON_ERROR(ra8_ftl_checkpoint_size(&s_ftl, &need), s_tag, "checkpoint size");
-  if (need > (uint32_t)k_demo_block) {
-    return k_ra8_err_invalid_size;
-  }
-  RA8_RETURN_ON_ERROR(ra8_ftl_checkpoint_save(&s_ftl, s_ckbuf, (uint32_t)k_demo_block),
-                      s_tag,
-                      "checkpoint save");
-  RA8_RETURN_ON_ERROR(
-    ra8_io_blockdev_erase(&s_bd, (uint32_t)k_demo_meta_lba, (uint32_t)k_demo_one_block),
-    s_tag,
-    "meta erase");
-  RA8_RETURN_ON_ERROR(
-    ra8_io_blockdev_write(&s_bd, (uint32_t)k_demo_meta_lba, (uint32_t)k_demo_one_block, s_ckbuf),
-    s_tag,
-    "meta write");
+  RA8_RETURN_ON_ERROR(ra8_ftl_sync(&s_ftl), s_tag, "ftl sync");
   return k_ra8_ok;
 }
 
@@ -390,10 +383,12 @@ static ra8_err_t demo_checkpoint(void)
  * @brief Act 3a: model a reset and prove the naive re-open lost the mapping.
  *
  * @details Zeroes the FTL handle and its caller tables (volatile SRAM lost)
- *          while the MRAM device state is retained, re-initialises the FTL over
- *          the retained backing store, and reads the test block back: with the
+ *          while the MRAM device state is retained, then deliberately uses the
+ *          low-level ::ra8_ftl_init -- which records a caller-derived span and
+ *          reads no checkpoint -- and reads the test block back: with the
  *          mapping gone it must read the erase value, confirming the checkpoint
- *          is required for survival.
+ *          is required for survival. This is the one place the app still spells
+ *          the physical span itself, because losing the mapping is the point.
  *
  * @return ra8_err_t Error code.
  * @retval k_ra8_ok                The mapping was lost as expected (all erase).
@@ -440,10 +435,11 @@ static ra8_err_t demo_reopen_naive(void)
 /**
  * @brief Act 3b: reload the checkpoint and prove data + mapping survived.
  *
- * @details Reads the checkpoint back from the reserved MRAM block, restores it
- *          with ::ra8_ftl_checkpoint_load, and verifies both that the test
- *          block's last generation reappears byte-for-byte and that its physical
- *          index matches the pre-reset value @p want_phys.
+ * @details Mounts the FTL again over the same device: the reserved tail is no
+ *          longer blank, so ::ra8_ftl_mount resumes the checkpoint instead of
+ *          cold-starting. Verifies both that the test block's last generation
+ *          reappears byte-for-byte and that its physical index matches the
+ *          pre-reset value @p want_phys.
  *
  * @param[in] want_tag  Generation tag of the last pre-reset write.
  * @param[in] want_phys Physical index the test block had before the reset.
@@ -452,11 +448,12 @@ static ra8_err_t demo_reopen_naive(void)
  * @retval k_ra8_ok                    Data and mapping were restored intact.
  * @retval k_ra8_err_checksum_mismatch The restored bytes differed.
  * @retval k_ra8_err_invalid_state     The restored physical index differed.
- * @retval (other)                    The first failing read / load call's code.
+ * @retval (other)                    The first failing mount / read call's code.
  *
  * @pre ::demo_reopen_naive returned k_ra8_ok; ::s_ftl is freshly initialised.
  * @pre @p want_phys is the physical index reported before the reset.
- * @post On success the test block reads back its pre-reset contents.
+ * @post On success ::s_ftl is mounted and the test block reads back its
+ *       pre-reset contents.
  * @post No MRAM data block is mutated.
  *
  * @note Not thread-safe; single-caller boot context.
@@ -464,13 +461,8 @@ static ra8_err_t demo_reopen_naive(void)
  */
 static ra8_err_t demo_restore(uint32_t want_tag, uint16_t want_phys)
 {
-  RA8_RETURN_ON_ERROR(
-    ra8_io_blockdev_read(&s_bd, (uint32_t)k_demo_meta_lba, (uint32_t)k_demo_one_block, s_ckbuf),
-    s_tag,
-    "meta read");
-  RA8_RETURN_ON_ERROR(ra8_ftl_checkpoint_load(&s_ftl, s_ckbuf, (uint32_t)k_demo_block),
-                      s_tag,
-                      "checkpoint load");
+  RA8_RETURN_ON_ERROR(ra8_ftl_mount(&s_ftl, &k_demo_ftl_cfg), s_tag, "ftl remount");
+  RA8_RETURN_ON_ERROR(ra8_ftl_as_blockdev(&s_ftl, &s_present), s_tag, "ftl rebind");
   uint8_t want[(size_t)k_demo_block] = {};
   for (uint32_t i = 0; i < (uint32_t)k_demo_block; ++i) {
     want[i] = (uint8_t)((i * (uint32_t)k_demo_seed_mul) +
@@ -529,9 +521,9 @@ static void demo_report_wear(void)
 /**
  * @brief Run the three acts and report a single PASS/FAIL verdict.
  *
- * @details Sequences wear-levelling, checkpoint, naive re-open, and restore,
- *          short-circuiting on the first failure so the verdict reflects the
- *          first failing act.
+ * @details Sequences wear-levelling, checkpoint, naive re-open, restore and the
+ *          closing unmount, short-circuiting on the first failure so the verdict
+ *          reflects the first failing act.
  *
  * @return ra8_err_t Error code (k_ra8_ok iff every act passed).
  * @retval k_ra8_ok The full wear-level + power-cycle-survive flow passed.
@@ -540,7 +532,7 @@ static void demo_report_wear(void)
  * @pre ::demo_open returned k_ra8_ok.
  * @pre The console + MRAM device are ready.
  * @post Diagnostic lines for each act are queued on the UART stream.
- * @post ::s_ftl reflects the restored mapping on success.
+ * @post On success ::s_ftl has been unmounted after a final sync.
  *
  * @note Not thread-safe; single-caller boot context.
  * @since 0.1.0
@@ -562,6 +554,8 @@ static ra8_err_t demo_run(void)
                  last_phys),
     s_tag,
     "restore");
+  demo_print("ra8_ftl_demo: checkpoint resumed by ra8_ftl_mount\r\n");
+  RA8_RETURN_ON_ERROR(ra8_ftl_unmount(&s_ftl), s_tag, "ftl unmount");
   return k_ra8_ok;
 }
 
