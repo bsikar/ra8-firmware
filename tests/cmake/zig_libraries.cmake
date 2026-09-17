@@ -83,6 +83,18 @@ ra8_add_zig_library(
   ra8_batt
 )
 
+# Fully migrated: hit-testing, the screen-id stack and the page cursor are Zig
+# now, so libs/ra8_ui/src has no .c left and the RA8_UI_SOURCES glob is gone
+# from library_sources.cmake and core_hal.cmake.
+ra8_add_zig_library(
+  NAME
+  ra8_ui
+  ZIG_ROOT
+  ${FW_ROOT}/libs/ra8_ui
+  LIBRARY_NAME
+  ra8_ui
+)
+
 # ra8_core_hal is the OBJECT library every host test links, so an INTERFACE
 # link here reaches each test executable that pulls in a migrated library.
 target_link_libraries(
@@ -93,6 +105,7 @@ target_link_libraries(
          ra8_zig::ra8_touch_cal
          ra8_zig::ra8_devcfg
          ra8_zig::ra8_batt
+         ra8_zig::ra8_ui
 )
 
 link_libraries(ra8_zig::ra8_batt)
@@ -105,4 +118,5 @@ link_libraries(
   ra8_zig::ra8_epd_cal
   ra8_zig::ra8_touch_cal
   ra8_zig::ra8_devcfg
+  ra8_zig::ra8_ui
 )
