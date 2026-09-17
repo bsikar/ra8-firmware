@@ -214,8 +214,8 @@ if [ -z "${_RA8_TOOL_ENV_SH:-}" ]; then
   # tool cache and then to the user cache home before giving up: both survive a
   # snapshot and are writable wherever the canonical mount is missing, which
   # turns ~20 re-downloads per suite back into one. Resolution stops at the
-  # first candidate that exists and is writable; when none is, the degrade is
-  # unchanged.
+  # first candidate whose per-platform subdirectory can actually be written;
+  # when none can, the degrade is unchanged.
   ra8_tools_cache_candidates() {
     printf '%s\n' "$(ra8_tools_cache_host_dir)"
     [[ -n "${RUNNER_TOOL_CACHE:-}" ]] && printf '%s/ra8-tools\n' "${RUNNER_TOOL_CACHE}"
@@ -227,13 +227,40 @@ if [ -z "${_RA8_TOOL_ENV_SH:-}" ]; then
     return 0
   }
 
+  # Every consumer of RA8_TOOLS_CACHE writes into a per-platform subdirectory of
+  # it, never into the cache root: provision_doxygen.sh builds
+  # "${RA8_TOOLS_CACHE}/$(uname -s)-$(uname -m)" and lang_toolchains.sh's
+  # _ra8_lang_tools_dir builds the same path, then mktemp -d's a scratch
+  # directory inside it. So THAT is the path whose writability decides whether a
+  # candidate works, and a candidate whose root is writable can still have a
+  # pre-seeded, root-owned platform directory underneath it. The hil runner is
+  # exactly that shape: /var/cache/ra8-tools is writable, its Linux-x86_64
+  # subdirectory is not, and probing only the root selected a cache the pinned
+  # zig and rust downloads then died in ("mktemp: failed to create directory ...
+  # Permission denied"), leaving no zig on PATH and failing every gate that
+  # configures a Zig build tool. Probe the real write target instead, and
+  # probe it by writing: -w on a directory does not account for a read-only
+  # mount, a full filesystem or a restrictive ACL.
+  ra8_tools_cache_platform_subdir() {
+    printf '%s/%s-%s\n' "$1" "$(uname -s)" "$(uname -m)"
+  }
+
+  _ra8_tools_cache_writable() {
+    local dir="$1" platform probe
+    platform="$(ra8_tools_cache_platform_subdir "$dir")"
+    mkdir -p "$platform" 2>/dev/null || return 1
+    probe="$(mktemp -d "${platform}/probe.XXXXXX" 2>/dev/null)" || return 1
+    rmdir "$probe" 2>/dev/null || true
+    return 0
+  }
+
   export_tools_cache() {
     [[ -n "${RA8_TOOLS_CACHE:-}" ]] && return 0
     local dir
     while read -r dir; do
       [[ -n "$dir" ]] || continue
       mkdir -p "$dir" 2>/dev/null || continue
-      if [[ -d "$dir" && -w "$dir" ]]; then
+      if [[ -d "$dir" ]] && _ra8_tools_cache_writable "$dir"; then
         export RA8_TOOLS_CACHE="$dir"
         echo "==> pinned-tool cache: $dir (survives the snapshot; docs gate doxygen)" >&2
         return 0
