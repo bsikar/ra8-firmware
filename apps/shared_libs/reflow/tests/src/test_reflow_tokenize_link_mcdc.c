@@ -13,7 +13,7 @@
  * register an embedded `@font-face` uses the public `reflow_init` /
  * `reflow_register_face` / `reflow_layout_chapter` API with the
  * baked Ahem face. The shared engine fixture lives in
- * tests/inc/reflow_tokenize_test_util.h.
+ * apps/shared_libs/reflow/tests/inc/reflow_tokenize_test_util.h.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT

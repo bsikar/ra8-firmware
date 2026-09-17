@@ -13,7 +13,7 @@
  * display:none begin, the tag-name delimiter classification, and the walk's
  * null guards. Every test drives the real tokenizer over crafted byte
  * strings; the shared engine fixture lives in
- * tests/inc/reflow_tokenize_test_util.h.
+ * apps/shared_libs/reflow/tests/inc/reflow_tokenize_test_util.h.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT

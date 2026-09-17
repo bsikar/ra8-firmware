@@ -3,8 +3,8 @@
  * @brief Line-coverage (gcovr) tests for apps/shared_libs/reflow/src/reflow_render.c.
  *
  * @details
- * The existing MC/DC render suite (tests/src/test_reflow_render.c) drives the
- * glyph-size, register-face and image-loader decisions, but leaves several whole
+ * The existing MC/DC render suite (apps/shared_libs/reflow/tests/src/test_reflow_render.c) drives
+ * the glyph-size, register-face and image-loader decisions, but leaves several whole
  * source paths cold. These end-to-end tests drive the real renderer through the
  * public `reflow_render_page()` / `reflow_render_page_at()` API against an
  * `ra8_gfx` framebuffer with the bundled Literata face (loaded from the
@@ -93,8 +93,8 @@ static uint8_t s_arena_buf[k_rc_arena_cap];
 
 /**
  * @brief A 2x2 RGB PNG: TL red, TR green, BL blue, BR white.
- * @details Same fixture as tests/src/test_reflow_image.c -- the smallest raster
- * the image loader can return so layout records an image box the render path
+ * @details Same fixture as apps/shared_libs/reflow/tests/src/test_reflow_image.c -- the smallest
+ * raster the image loader can return so layout records an image box the render path
  * decodes + blits.
  */
 static const uint8_t s_png_2x2[] = {
