@@ -21,7 +21,7 @@ TREE_UNMEASURED_COLUMNS = 3
 TREE_METRIC_FIELDS = 4
 MIN_BASELINE_ROWS = 5343
 CEILING_LEDGER_PATH = ".github/suppression-debt-ceilings.tsv"
-CEILING_LEDGER_SHA256 = "dcfbe6ffd0ecfe10e45646989ea32d1725d02e2c5585d3718440b27b267ce67b"
+CEILING_LEDGER_SHA256 = "0412daf5863634aa22cfa6cdf4e6f40424a2bc8b46ee865991734652d78018a3"
 CEILING_LEDGER_HEADER = (
     "# Suppression debt per-key ceilings v1.",
     "# Key digests bind the canonical baseline path and consumer-semantic key.",

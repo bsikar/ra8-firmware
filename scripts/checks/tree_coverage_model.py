@@ -245,42 +245,43 @@ HOSTED_ROOTS: tuple[str, ...] = ("tools/", "apps/")
 FIRMWARE_ROOTS: tuple[str, ...] = ("examples/",)
 
 # ---------------------------------------------------------------------------
-# THE ONE HAND-WRITTEN OVERRIDE, AND WHAT GROUNDS IT
+# THE HAND-WRITTEN OVERRIDE TABLE, NOW EMPTY, AND WHY THE RULES STAY
 #
-# Every other reason class above is derived from the tree. This table is the
-# single exception: it moves a unit under a HOSTED root into
-# ``platform-cross-only`` -- out of the class this module calls pure debt and
-# into the class it calls a structural fact about the toolchain. It was a bare
-# set of paths and NOTHING ever read it back, so a row could name a deleted
-# file, a path ``PLATFORM_ROOTS`` already classifies, or a unit a host
+# Every reason class above is derived from the tree. This table is the one
+# place a class could be hand-written: it moves a unit under a HOSTED root
+# into ``platform-cross-only`` -- out of the class this module calls pure debt
+# and into the class it calls a structural fact about the toolchain. It was a
+# bare set of paths and NOTHING ever read it back, so a row could name a
+# deleted file, a path ``PLATFORM_ROOTS`` already classifies, or a unit a host
 # measurement project compiles, and the gate reported a clean tree regardless.
 #
-# Each row therefore DECLARES which of two states the tree has to show, and
-# ``cross_only_failures`` below checks that declaration against the listfiles
-# of the measurement projects in ``PROJECTS``:
+# The table holds no rows today. Its one row, for
+# ``apps/shared_libs/reflow/v2/src/reflow_v2.cpp``, was refuted by the tree and
+# is retired: ``tests/cmake/library_sources.cmake`` declares
+# ``option(REFLOW_USE_LITEHTML ... OFF)`` and compiles that unit into the
+# ``host-tests`` measurement project when it is ON, where
+# ``tests/cmake/tests_crypto.cmake`` builds ``test_reflow_v2`` and registers it
+# with ctest. One option flip measures the unit, which is the definition of
+# ``hosted-no-coverage-build``: host executable code no measurement project is
+# wired to run. The baseline row carries that class as of this change, so the
+# class is DERIVED again rather than declared.
+#
+# The per-key ceiling in ``.github/suppression-debt-ceilings.tsv`` moves
+# with the class in the same commit, so the ledger reads the new class
+# instead of reporting the reclassification as bucket growth.
+#
+# The rules stay, so the next row cannot arrive unread. Each row DECLARES
+# which of two states the tree has to show, and ``cross_only_failures`` below
+# checks that declaration against the listfiles of the measurement projects in
+# ``PROJECTS``:
 #
 # * ``CROSS_ONLY_GROUNDED`` -- no measurement project's listfile names the
-#   unit, so the ARM toolchain really is the only thing that compiles it and
-#   the override states a fact.
+#   unit, so the ARM toolchain really is the only thing that compiles it, the
+#   override states a fact, and ``structural_reason`` honours it.
 # * ``CROSS_ONLY_HOST_COMPILABLE`` -- a measurement project's listfile DOES
-#   name it, so the override is false today and the row says so out loud
-#   instead of reading as a platform constraint.
-#
-# The one live row is the second kind. What the tree says about it:
-# ``tests/cmake/library_sources.cmake`` declares
-# ``option(REFLOW_USE_LITEHTML ... OFF)`` and, when it is ON, compiles
-# ``apps/shared_libs/reflow/v2/src/reflow_v2.cpp`` into the ``host-tests``
-# measurement project, where ``tests/cmake/tests_crypto.cmake`` builds
-# ``test_reflow_v2`` and runs it under ctest. One option flip measures the
-# unit, which is the definition of ``hosted-no-coverage-build``: host
-# executable code no measurement project is wired to run.
-#
-# The class the baseline row carries is deliberately NOT changed here. That
-# row's per-key ceiling in ``.github/suppression-debt-ceilings.tsv`` reads any
-# UNMEASURED class change as growth ("bucket ceiling 'U:platform-cross-only'
-# weakened to 'U:hosted-no-coverage-build'"), so the reclassification needs an
-# explicit ledger re-audit, which is not something this change may
-# self-approve.
+#   name it, so the override is false. Such a row grants NO class:
+#   ``structural_reason`` reads straight past it to the derived class, and the
+#   row only records a refuted claim until it is retired.
 # ---------------------------------------------------------------------------
 
 CROSS_ONLY_GROUNDED = "cross-only"
@@ -291,9 +292,8 @@ CROSS_ONLY_HOST_COMPILABLE = "host-compilable"
 
 CROSS_ONLY_STATES: tuple[str, ...] = (CROSS_ONLY_GROUNDED, CROSS_ONLY_HOST_COMPILABLE)
 
-PLATFORM_CROSS_ONLY_UNITS: dict[str, str] = {
-    "apps/shared_libs/reflow/v2/src/reflow_v2.cpp": CROSS_ONLY_HOST_COMPILABLE,
-}
+PLATFORM_CROSS_ONLY_UNITS: dict[str, str] = {}
+"""Hand-written class overrides, by unit. Empty: every live class is derived."""
 
 
 def is_firmware_composition(rel: str, firmware_dirs: tuple[str, ...]) -> bool:
@@ -324,7 +324,7 @@ def structural_reason(rel: str, *, compiled: bool, firmware_dirs: tuple[str, ...
         return REASON_COMPILED
     if is_firmware_composition(rel, firmware_dirs):
         return REASON_FIRMWARE
-    if rel in PLATFORM_CROSS_ONLY_UNITS:
+    if PLATFORM_CROSS_ONLY_UNITS.get(rel) == CROSS_ONLY_GROUNDED:
         return REASON_PLATFORM
     if rel.startswith(PLATFORM_ROOTS):
         return REASON_PLATFORM

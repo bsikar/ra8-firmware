@@ -157,7 +157,7 @@ apps/shared_libs/reflow/src/reflow_svg_xform.c	MEASURED	157	159	104	107
 apps/shared_libs/reflow/src/reflow_tokenize.c	MEASURED	264	286	200	228
 apps/shared_libs/reflow/src/reflow_tokenize_attr.c	MEASURED	96	97	78	80
 apps/shared_libs/reflow/src/reflow_tokenize_lex.c	MEASURED	178	183	116	124
-apps/shared_libs/reflow/v2/src/reflow_v2.cpp	UNMEASURED	platform-cross-only
+apps/shared_libs/reflow/v2/src/reflow_v2.cpp	UNMEASURED	hosted-no-coverage-build
 apps/shared_libs/unarch/src/unarch_gzip.c	MEASURED	165	172	98	106
 apps/shared_libs/unarch/src/unarch_io.c	MEASURED	16	16	10	10
 apps/shared_libs/unarch/src/unarch_tar.c	MEASURED	185	199	109	130
