@@ -16,9 +16,15 @@ as Software Of Unknown Provenance (SOUP).
   and would have queried an oid that is not one (#548).
 - **Upstream URL**: https://github.com/google/flatbuffers
 - **Local path**: `libs/third_party/flatbuffers/`
-  - Files in tree: `include/flatbuffers/*.h` (30 headers) and `LICENSE`.
-    Headers only -- the read/verify path. No `flatc` compiler, no codegen, no
-    library sources are vendored.
+  - Files in tree: `include/flatbuffers/*.h` (18 headers) and `LICENSE`.
+    Headers only, and only the read/verify path: no `flatc` compiler, no
+    codegen, no schema parser, no reflection or gRPC headers, and no library
+    sources are vendored. The snapshot was the complete upstream
+    `include/flatbuffers/` directory until #613; the twelve
+    flatc/codegen/schema-parser/reflection/gRPC headers it carried were
+    unreachable from any consumer and their implementations
+    (`idl_parser.cpp`, `reflection.cpp`, `util.cpp`, ...) were never
+    vendored, so an include of one compiled and then failed at link.
 
 ## Provenance
 
