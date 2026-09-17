@@ -189,8 +189,6 @@ typedef void (*ra8_exception_persist_fn)(const volatile ra8_exception_last_t* de
  *
  * @param[in] hook Persistence sink, or `nullptr` to disable.
  *
- * @return Nothing.
- *
  * @pre Called from single-threaded boot context.
  * @pre @p hook, if non-`nullptr`, is fault-context safe.
  * @post `ra8_exception_report()` invokes @p hook (or none if `nullptr`).
@@ -251,8 +249,6 @@ void ra8_exception_capture_diagnostics(ra8_exception_diagnostics_t* out);
  * @param[in] nmisr  Raw ICU NMISR value read by the caller. Any
  *                   uint32 is accepted; bits [31:21], [19] and [11:8]
  *                   are reserved-as-zero on RA8D2.
- *
- * @return Never returns.
  *
  * @pre Invoked from the NMI handler (or a host test standing in for it).
  * @pre `g_ra8_exception_last` is writable SRAM.

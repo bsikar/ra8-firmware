@@ -159,8 +159,6 @@ typedef struct {
  * pointer lives in `.bss` and is zeroed by every reset, so it has to be
  * re-armed before any code that might fault.
  *
- * @return Nothing.
- *
  * @pre Called from single-threaded boot context (before interrupts that
  *      could fault are enabled).
  * @pre The `.noinit` record is in writable, powered SRAM.
@@ -191,8 +189,6 @@ void ra8_crashlog_install(void);
  *
  * @param[in] decoded Decoded fault snapshot to persist. Must not be
  *                    `nullptr`; typically `&g_ra8_exception_last`.
- *
- * @return Nothing.
  *
  * @pre @p decoded points at a populated ::ra8_exception_last_t.
  * @pre The `.noinit` record is in writable SRAM.
@@ -245,8 +241,6 @@ bool ra8_crashlog_peek(ra8_crashlog_record_t* out);
  * reset-loop guard re-arms from a clean slate). Call it only after the
  * application has reached a known-good checkpoint -- claiming before the
  * risky work would defeat the loop guard. Idempotent.
- *
- * @return Nothing.
  *
  * @pre The `.noinit` record is in writable SRAM.
  * @pre The application has decided the prior record is handled.

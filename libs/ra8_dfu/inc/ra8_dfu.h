@@ -297,16 +297,13 @@ bool ra8_dfu_run_target_valid(uint32_t entry, uint32_t img_len);
  * @param[in] img_len Image body length in bytes; a non-zero 32-byte multiple.
  * @param[in] entry   The image's recorded run base; must equal ::k_ra8_dfu_run_base.
  *
- * @return void -- returns to the caller ONLY when the inputs fail validation
- *         (`src == 0`, or ::ra8_dfu_run_target_valid is false); on a valid image
- *         it does not return (control passes to the image).
- *
  * @pre `src` points at a readable image whose first two words are MSP + reset.
  * @pre The image was linked at ::k_ra8_dfu_run_base; the caller masks nothing
  *      special (this masks IRQs itself).
  * @post On a valid image, control is at the image's reset vector with VTOR / MSP
  *       pointing at the run base.
- * @post On invalid inputs, no copy or branch happens and control returns.
+ * @post On invalid inputs (`src == 0`, or ::ra8_dfu_run_target_valid false), no
+ *       copy or branch happens and control returns -- the only path that does.
  *
  * @note Firmware only (inline MSP/VTOR/branch); not thread-safe.
  * @see ra8_dfu_run_target_valid

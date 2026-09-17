@@ -77,8 +77,6 @@ extern "C" {
  * @param[out] ptr Buffer to zero. A NULL pointer is a no-op.
  * @param[in]  len Number of bytes to zero. Zero length is a no-op.
  *
- * @return void.
- *
  * @pre ``ptr`` is NULL or addresses at least ``len`` writable bytes.
  * @pre ``len`` is the size of the secret region, in bytes.
  * @post On return, the first ``len`` bytes at a non-NULL ``ptr`` are zero.

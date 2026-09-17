@@ -17,33 +17,15 @@
 # one fires on a machine that HAS the tool.
 #
 # Columns are TAB-separated.  Rows are sorted.
-# rows: 28  warnings: 28
+# rows: 10  warnings: 10
 
-libs/ra8_core/inc/ra8_crashlog.h	void-return	ra8_crashlog_claim	1
-libs/ra8_core/inc/ra8_crashlog.h	void-return	ra8_crashlog_install	1
-libs/ra8_core/inc/ra8_crashlog.h	void-return	ra8_crashlog_record_fault	1
-libs/ra8_core/inc/ra8_exception.h	void-return	ra8_exception_report_nmi	1
-libs/ra8_core/inc/ra8_exception.h	void-return	ra8_exception_set_persist_hook	1
-libs/ra8_core/inc/ra8_log.h	void-return	ra8_log_set_byte_sink	1
-libs/ra8_core/inc/ra8_secure.h	void-return	ra8_secure_memzero	1
-libs/ra8_devcfg/inc/ra8_devcfg.h	void-return	ra8_devcfg_reset	1
-libs/ra8_dfu/inc/ra8_dfu.h	void-return	ra8_dfu_launch	1
 libs/ra8_dfu/inc/ra8_rot.h	unresolved-ref	md_docs_2formats_2ROT1	1
 libs/ra8_gfx/inc/ra8_gfx_dither.h	unresolved-ref	ra8_gfx_dither_mask_internal.h	1
-libs/ra8_hal/inc/ra8_cache.h	void-return	ra8_cache_dcache_disable	1
-libs/ra8_hal/inc/ra8_cache.h	void-return	ra8_cache_dcache_enable	1
-libs/ra8_hal/inc/ra8_cache.h	void-return	ra8_cache_dcache_invalidate_all	1
-libs/ra8_hal/inc/ra8_cache.h	void-return	ra8_cache_enable	1
-libs/ra8_hal/inc/ra8_cache.h	void-return	ra8_cache_icache_disable	1
-libs/ra8_hal/inc/ra8_cache.h	void-return	ra8_cache_icache_enable	1
-libs/ra8_hal/inc/ra8_cache.h	void-return	ra8_cache_icache_invalidate_all	1
 libs/ra8_hal/inc/ra8_lvd.h	list-markup	Invalid list item found	1
 libs/ra8_hal/inc/ra8_lvd_api.h	list-markup	Invalid list item found	1
 libs/ra8_hal/inc/ra8_mipi_csi_ctrl.h	list-markup	Invalid list item found	1
-libs/ra8_hal/inc/ra8_npu.h	void-return	ra8_npu_irq_handler	1
 libs/ra8_hal/inc/ra8_npu_blob.h	unresolved-ref	md_docs_2formats_2NPU1	1
 libs/ra8_hal/inc/ra8_rsip_regs_fields.h	unresolved-ref	ra8_rsip_reg32	1
 libs/ra8_hal/inc/ra8_sdcard.h	list-markup	Invalid list item found	1
 libs/ra8_hal/inc/ra8_vin_types.h	list-markup	End of list marker found without any preceding list items	1
-libs/ra8_nsc/inc/ra8_nsc.h	void-return	ra8_nsc_wdt_refresh	1
 libs/ra8_tz_secure_boot/inc/ra8_tz_secure_boot.h	unresolved-ref	md_docs_2formats_2NSR1	1

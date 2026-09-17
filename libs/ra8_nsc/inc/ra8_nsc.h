@@ -316,7 +316,6 @@ extern "C" {
  * registered NS thread has checked in within its deadline. Returns ``void`` to
  * match the hook signature.
  *
- * @return Nothing.
  * @note This function does not return a value.
  *
  * @pre ``ra8_nsc_wdt_start`` has armed the WDT.

@@ -147,11 +147,20 @@ Gated by `doxy_audit.py --check` (the `pre-commit-checks` gate and the
 pre-commit hook), over every function -- including statics -- in `libs/`
 and `port/`:
 
-- `@brief`, `@details`, `@param` for every parameter, `@return`
+- `@brief`, `@details`, `@param` for every parameter
 - At least 2 `@pre` and 2 `@post` (NASA Power of 10 Rule 5)
-- `@retval` for every distinct return value, on any non-`void` function
+- `@return` plus a `@retval` for every distinct return value, on any
+  non-`void` function
 - `@note` mentioning thread safety
 - `@since` semantic version
+
+A `void` function carries **no** `@return` at all, not even `@return None.`:
+Doxygen warns "found documented return type for X that does not return
+anything" and the C ABI reference's warning ratchet
+(`check_capi_doc_warnings.py`) fails on a new one. What the call leaves behind
+belongs in `@post`, which the gate already requires two of. `doxy_audit.py`
+asks for `@return`/`@retval` only on non-`void` signatures, so the two gates
+agree: state the outcome, not the absence of a value.
 
 `@see` is a **review convention, not a gate**. It is worth writing where a
 reader would genuinely want the pointer, and nothing checks it: measured

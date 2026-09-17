@@ -169,8 +169,6 @@ ra8_err_t ra8_cache_dcache_clean_invalidate_by_addr(const void* addr, uint32_t s
  *          state. It does NOT clean -- any dirty lines are discarded, which is
  *          correct only when the cache has not yet been enabled.
  *
- * @return None.
- *
  * @pre The D-cache is currently DISABLED (this discards, it does not clean).
  * @pre Runs single-threaded with interrupts masked (boot context).
  * @post Every set/way of the L1 D-cache is invalid.
@@ -193,8 +191,6 @@ void ra8_cache_dcache_invalidate_all(void);
  *          overwriting instruction memory (e.g. a copy-to-run loader) so the core
  *          fetches the new code rather than a stale cached copy.
  *
- * @return None.
- *
  * @pre Runs single-threaded with interrupts masked (boot / self-modifying-code
  *      context).
  * @pre The instruction memory to be fetched next is already in place.
@@ -214,8 +210,6 @@ void ra8_cache_icache_invalidate_all(void);
  *          preserving the other CCR controls. This encodes the exact ICIALLU +
  *          CCR.IC sequence the boot `internal_enable_icache` helpers hand-rolled.
  *
- * @return None.
- *
  * @pre The I-cache is currently DISABLED (cold), typically at boot.
  * @pre Runs single-threaded with interrupts masked.
  * @post CCR.IC is set; instruction fetches are cached.
@@ -232,8 +226,6 @@ void ra8_cache_icache_enable(void);
  * @details Clears SCB.CCR bit IC (preserving the other CCR controls) then runs
  *          ICIALLU so no stale line survives a later re-enable. The I-cache holds
  *          no dirty state, so a plain invalidate (not clean) is correct here.
- *
- * @return None.
  *
  * @pre Runs single-threaded with interrupts masked.
  * @pre The caller no longer needs cached instruction fetches.
@@ -253,8 +245,6 @@ void ra8_cache_icache_disable(void);
  *          SCB.CCR to set bit DC, preserving the other CCR controls. This encodes
  *          the exact set/way-invalidate + CCR.DC sequence the boot
  *          `internal_enable_dcache` helper hand-rolled.
- *
- * @return None.
  *
  * @pre The D-cache is currently DISABLED (cold); calling with dirty lines present
  *      would lose them (the invalidate discards, it does not clean).
@@ -278,8 +268,6 @@ void ra8_cache_dcache_enable(void);
  *          disable path must not discard dirty data, hence clean+invalidate
  *          rather than a bare invalidate.
  *
- * @return None.
- *
  * @pre Runs single-threaded with interrupts masked.
  * @pre The D-cache may currently hold dirty lines (they are written back).
  * @post CCR.DC is clear; data accesses bypass the cache.
@@ -298,8 +286,6 @@ void ra8_cache_dcache_disable(void);
  *          boot copy uses. Each half runs its own architectural invalidate before
  *          setting its CCR enable bit, so this is the single call a cold-boot path
  *          needs to turn the L1 caches on through the HAL.
- *
- * @return None.
  *
  * @pre Both caches are currently DISABLED (cold-boot context).
  * @pre Runs single-threaded with interrupts masked.

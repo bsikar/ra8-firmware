@@ -486,8 +486,6 @@ typedef struct {
  * flow (write a new record, then reset and reload) and by host tests that need
  * a pristine cache between cases. Touches no backing store.
  *
- * @return void
- *
  * @pre None -- safe to call at any time, including before the first load.
  * @pre The boot / provisioning path is single-threaded.
  * @post ``ra8_devcfg_is_blank`` reports true and ``ra8_devcfg_get_vcom_mv``
