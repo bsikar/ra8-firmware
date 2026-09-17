@@ -45,6 +45,13 @@ gate_ci_parity() (
   suite_registry_selftest
   suite_build_lifecycle_selftest
   bash scripts/ci/lib/nofile.sh --selftest
+  # Gate metadata includes WHERE a gate may run. `just quality::gate::run` sent
+  # every gate on macOS into the Linux devcontainer, which cannot answer a gate
+  # whose subject is the host itself: macos-host-build saw Linux inside the
+  # container and refused, so the documented entry point could never run it
+  # (#899). The routing list is selftested here because a renamed gate would
+  # otherwise leave a dead row that routes nothing.
+  bash scripts/ci/lib/native_host_gates.sh --selftest
   # The runner must also be honest about runs that STOPPED. A SIGTERMed suite
   # once deleted its own snapshot and kept going, inventing a FAIL for every
   # gate that came after; a fabricated red costs a lane its time and teaches
