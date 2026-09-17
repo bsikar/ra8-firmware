@@ -3,6 +3,9 @@
  * @brief IOPORT (GPIO) register layout for the Renesas RA8D2
  * @ingroup grp_hal_system
  *
+ * @par Tag
+ * [Ring 3 / HAL] {World: MIXED}
+ *
  * @details
  * The RA8D2 IOPORT controls up to 15 16-bit ports (`PORT0..PORT14`).
  * Each port occupies a 32-byte window in memory starting at
