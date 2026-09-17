@@ -43,13 +43,26 @@ mechanically checkable about a linker script without linking it:
                                 section for each; and it may not place an
                                 `.option_setting_*` section outside that family.
   LD009  fits the silicon    -- no MEMORY region declared inside the on-chip
-                                SRAM window (0x22000000 .. 0x221A0000, i.e.
-                                k_ra8_mem_sram_size = 1664 KiB) may extend past
-                                that end. LD003/LD004 prove a region is declared
-                                and closed; only this proves it is real memory,
-                                the one enforcement a 0-byte placeholder no CI
-                                job links can have (an ASSERT there never fires,
-                                #544).
+                                SRAM window (k_ra8_mem_sram_base ..
+                                + k_ra8_mem_sram_size = 1664 KiB) may extend
+                                past that end. LD003/LD004 prove a region is
+                                declared and closed; only this proves it is real
+                                memory, the one enforcement a 0-byte placeholder
+                                no CI job links can have (an ASSERT there never
+                                fires, #544).
+  LD010  named region agrees -- a MEMORY region NAMED for a device memory
+                                region (MRAM, MRAM_CPU1, ITCM, DTCM, SRAM,
+                                SRAM_CPU1, SDRAM) must actually lie inside that
+                                region's window as libs/ra8_core/inc/ra8_device.h
+                                declares it. LD009 judges by ADDRESS (anything
+                                landing in the SRAM window), so it cannot see an
+                                ITCM region parked at 0x30000000, a "SRAM" at the
+                                MRAM base, or an ITCM twice the size of the TCM
+                                the silicon has. The bounds are READ from
+                                ra8_device.h, never restated here, which is the
+                                point: that header calls itself the single source
+                                of truth the linker scripts mirror, and until
+                                this rule existed nothing in the tree read it.
 
 The REVERSE direction (a script defines a g_ra8_ls_* nothing in C names) is
 deliberately NOT a finding, and that is a statement about what is enforceable
@@ -273,11 +286,73 @@ def _check_region_closure(path: pathlib.Path, code: str, regions: set[str]) -> l
     return findings
 
 
-# On-chip system SRAM extent, identical on RA8D2 and RA8P1 and mirrored by
-# k_ra8_mem_sram_size (libs/ra8_core/inc/ra8_device.h): 1664 KiB = SRAM0 1024 KiB
-# + SRAM1 640 KiB, so SRAM_WINDOW_END is the first address past the array.
-SRAM_WINDOW_BASE = 0x22000000
-SRAM_WINDOW_SIZE = 0x001A0000  # k_ra8_mem_sram_size: 1664 KiB, both parts.
+# The device memory map, READ from the header that declares itself its single
+# source of truth rather than restated here. Copying the numbers is what this
+# rule set is fixing: libs/ra8_core/inc/ra8_device.h says the enums below are
+# "the runtime mirror of the MEMORY { } block in every app's linker_script.ld;
+# keep the two in lock-step", and nothing in the tree read them, so nothing
+# enforced the lock-step either (issue #1048).
+DEVICE_HEADER = pathlib.Path(__file__).resolve().parents[2] / "libs/ra8_core/inc/ra8_device.h"
+
+# One enum row: `k_ra8_mem_sram_base = 0x22000000U, /**< ... */`. Only the
+# k_ra8_mem_* family is read; the device-id and feature enums are not a map.
+_DEVICE_MEM_ROW = re.compile(r"^\s*(k_ra8_mem_\w+)\s*=\s*(0x[0-9A-Fa-f_]+|\d+)U?\s*,", re.MULTILINE)
+
+# Every name LD009/LD010 resolve. Requiring the whole set (rather than reading
+# whatever happens to be there) is what makes a renamed or deleted enum a loud
+# failure instead of a rule that quietly stops judging that region.
+DEVICE_MEM_REQUIRED = (
+    "k_ra8_mem_mram_base",
+    "k_ra8_mem_mram_size",
+    "k_ra8_mem_itcm_base",
+    "k_ra8_mem_itcm_size",
+    "k_ra8_mem_dtcm_base",
+    "k_ra8_mem_dtcm_size",
+    "k_ra8_mem_sram_base",
+    "k_ra8_mem_sram_size",
+    "k_ra8_mem_sdram_base",
+)
+
+
+def parse_device_memory_map(text: str) -> dict[str, int]:
+    """Parse the `k_ra8_mem_*` enum rows of ra8_device.h into name -> value.
+
+    Takes the header TEXT (not a path) so the selftest can feed it a synthetic
+    header and prove both directions. Raises ValueError when any name in
+    ``DEVICE_MEM_REQUIRED`` is absent: a silently-empty map would disarm every
+    rule built on it, which is the failure mode this whole file exists to avoid.
+    """
+    found = {name: int(value.replace("_", ""), 0) for name, value in _DEVICE_MEM_ROW.findall(text)}
+    missing = [name for name in DEVICE_MEM_REQUIRED if name not in found]
+    if missing:
+        msg = f"ra8_device.h: memory-map enum(s) missing: {', '.join(missing)}"
+        raise ValueError(msg)
+    return found
+
+
+DEVICE_MEM = parse_device_memory_map(DEVICE_HEADER.read_text(encoding="utf-8"))
+
+# MEMORY-region name -> (base enum, size enum or None). A region named for a
+# device region is held to that region's extent by LD010. MRAM_CPU1 / SRAM_CPU1
+# are the second-core slices carved out of the same physical array, so they are
+# judged against the same window rather than given one of their own. SDRAM is
+# external and the header carries no size for it, so only its base is pinned.
+DEVICE_REGIONS = {
+    "MRAM": ("k_ra8_mem_mram_base", "k_ra8_mem_mram_size"),
+    "MRAM_CPU1": ("k_ra8_mem_mram_base", "k_ra8_mem_mram_size"),
+    "ITCM": ("k_ra8_mem_itcm_base", "k_ra8_mem_itcm_size"),
+    "DTCM": ("k_ra8_mem_dtcm_base", "k_ra8_mem_dtcm_size"),
+    "SRAM": ("k_ra8_mem_sram_base", "k_ra8_mem_sram_size"),
+    "SRAM_CPU1": ("k_ra8_mem_sram_base", "k_ra8_mem_sram_size"),
+    "SDRAM": ("k_ra8_mem_sdram_base", None),
+}
+
+# On-chip system SRAM extent, identical on RA8D2 and RA8P1: 1664 KiB = SRAM0
+# 1024 KiB + SRAM1 640 KiB, so SRAM_WINDOW_END is the first address past the
+# array. Both numbers come from DEVICE_MEM, so the array can only be resized in
+# one place.
+SRAM_WINDOW_BASE = DEVICE_MEM["k_ra8_mem_sram_base"]
+SRAM_WINDOW_SIZE = DEVICE_MEM["k_ra8_mem_sram_size"]
 SRAM_WINDOW_END = SRAM_WINDOW_BASE + SRAM_WINDOW_SIZE
 
 _SIZE_UNIT = {"": 1, "K": 1024, "M": 1024 * 1024}
@@ -303,6 +378,31 @@ def eval_size(expr: str) -> int | None:
     return total
 
 
+def region_extent(code: str, name: str) -> tuple[int, int, int] | None:
+    """Statically evaluated (origin, length, line) of one MEMORY region.
+
+    None when the region is absent, lacks ORIGIN/LENGTH (LD003 already reports
+    that), or spells either as an expression ``eval_size`` cannot evaluate --
+    a symbolic ``ORIGIN(SRAM)`` is skipped rather than guessed at.
+    """
+    decl = re.search(
+        rf"^\s*{re.escape(name)}\s*(\([rwxail!]+\))?\s*:([^\n]*)$",
+        code,
+        re.MULTILINE,
+    )
+    if not decl:
+        return None
+    om = re.search(r"ORIGIN\s*=\s*([^,\n]+)", decl.group(2))
+    lm = re.search(r"LENGTH\s*=\s*([^,\n]+)", decl.group(2))
+    if not (om and lm):
+        return None
+    origin = eval_size(om.group(1))
+    length = eval_size(lm.group(1))
+    if origin is None or length is None:
+        return None
+    return origin, length, code[: decl.start()].count("\n") + 1
+
+
 def _check_sram_fit(path: pathlib.Path, code: str, regions: set[str]) -> list[Finding]:
     """LD009 -- a region inside the SRAM window may not run past the array end.
 
@@ -313,35 +413,89 @@ def _check_sram_fit(path: pathlib.Path, code: str, regions: set[str]) -> list[Fi
     """
     findings: list[Finding] = []
     for name in sorted(regions):
-        decl = re.search(
-            rf"^\s*{re.escape(name)}\s*(\([rwxail!]+\))?\s*:([^\n]*)$",
-            code,
-            re.MULTILINE,
-        )
-        if not decl:
+        extent = region_extent(code, name)
+        if extent is None:
             continue
-        om = re.search(r"ORIGIN\s*=\s*([^,\n]+)", decl.group(2))
-        lm = re.search(r"LENGTH\s*=\s*([^,\n]+)", decl.group(2))
-        if not (om and lm):
-            continue  # LD003 already reports a region missing ORIGIN/LENGTH.
-        origin = eval_size(om.group(1))
-        length = eval_size(lm.group(1))
-        if origin is None or length is None:
-            continue
+        origin, length, decl_line = extent
         if not (SRAM_WINDOW_BASE <= origin < SRAM_WINDOW_END):
             continue
         end = origin + length
         if end > SRAM_WINDOW_END:
-            line = code[: decl.start()].count("\n") + 1
             findings.append(
                 Finding(
                     path,
-                    line,
+                    decl_line,
                     "LD009",
                     f"region '{name}' spans 0x{origin:08X}..0x{end:08X}, "
                     f"{end - SRAM_WINDOW_END} bytes past the end of on-chip SRAM "
                     f"(0x{SRAM_WINDOW_END:08X}); the array is 1664 KiB "
                     f"(k_ra8_mem_sram_size)",
+                )
+            )
+    return findings
+
+
+def _check_device_region_fit(path: pathlib.Path, code: str, regions: set[str]) -> list[Finding]:
+    """LD010 -- a region named for a device memory region must lie inside it.
+
+    LD009 judges by ADDRESS: it catches anything that lands in the SRAM window
+    and runs off the end. This rule judges by NAME, which is the direction
+    LD009 cannot see -- an ITCM parked at 0x30000000, a region called SRAM at
+    the MRAM base, an ITCM twice the size of the TCM the silicon has. Bounds
+    come from DEVICE_MEM (parsed from ra8_device.h), never from a literal here.
+
+    Overrun inside the SRAM window stays LD009's finding so one defect is not
+    reported twice; this rule reports overrun only for the windows LD009 does
+    not judge (MRAM and the two TCMs).
+    """
+    findings: list[Finding] = []
+    for name in sorted(regions):
+        window = DEVICE_REGIONS.get(name)
+        if window is None:
+            continue
+        extent = region_extent(code, name)
+        if extent is None:
+            continue
+        origin, length, decl_line = extent
+        base_key, size_key = window
+        base = DEVICE_MEM[base_key]
+        if size_key is None:
+            if origin != base:
+                findings.append(
+                    Finding(
+                        path,
+                        decl_line,
+                        "LD010",
+                        f"region '{name}' starts at 0x{origin:08X}, but {base_key} "
+                        f"(libs/ra8_core/inc/ra8_device.h) puts that window at "
+                        f"0x{base:08X}",
+                    )
+                )
+            continue
+        size = DEVICE_MEM[size_key]
+        end = base + size
+        if not (base <= origin < end):
+            findings.append(
+                Finding(
+                    path,
+                    decl_line,
+                    "LD010",
+                    f"region '{name}' starts at 0x{origin:08X}, outside the "
+                    f"0x{base:08X}..0x{end:08X} window {base_key} / {size_key} "
+                    f"declare (libs/ra8_core/inc/ra8_device.h)",
+                )
+            )
+            continue
+        if base != SRAM_WINDOW_BASE and origin + length > end:
+            findings.append(
+                Finding(
+                    path,
+                    decl_line,
+                    "LD010",
+                    f"region '{name}' spans 0x{origin:08X}..0x{origin + length:08X}, "
+                    f"{origin + length - end} bytes past the 0x{end:08X} end of the "
+                    f"window {base_key} / {size_key} declare "
+                    f"(libs/ra8_core/inc/ra8_device.h)",
                 )
             )
     return findings
@@ -511,8 +665,9 @@ def check_file(path: pathlib.Path, raw: bytes) -> list[Finding]:
     """Every linker-script rule, one function per finding code.
 
     The rule list is the call sequence below: LD005 formatting, LD001 licence,
-    LD002 ENTRY, LD003 MEMORY, LD004 region closure, LD009 SRAM fit, LD007
-    option-setting addresses, LD008 option-setting completeness.
+    LD002 ENTRY, LD003 MEMORY, LD004 region closure, LD009 SRAM fit, LD010
+    named-region agreement with ra8_device.h, LD007 option-setting addresses,
+    LD008 option-setting completeness.
     """
     findings, text = _check_formatting(path, raw)
     findings += _check_licence(path, text.splitlines())
@@ -522,6 +677,7 @@ def check_file(path: pathlib.Path, raw: bytes) -> list[Finding]:
     findings += memory_findings
     findings += _check_region_closure(path, code, regions)
     findings += _check_sram_fit(path, code, regions)
+    findings += _check_device_region_fit(path, code, regions)
     findings += _check_option_setting(path, code)
     findings += _check_option_completeness(path, code)
     return findings
@@ -866,12 +1022,118 @@ def _selftest_sram_fit() -> int:
     return rc
 
 
+def _device_fixture(itcm: str, sdram_origin: str = "0x68000000") -> str:
+    """A board-shaped script whose ITCM row and SDRAM origin are caller-chosen.
+
+    Everything else is the real EK layout, so a finding can only come from the
+    row under test rather than from a fixture that was never legal.
+    """
+    return (
+        "/*\n * Copyright (c) 2026 Brighton Sikarskie\n"
+        " * SPDX-License-Identifier: MIT\n */\n\n"
+        "ENTRY(Reset_Handler)\n\n"
+        "MEMORY\n{\n"
+        "    MRAM (rx) : ORIGIN = 0x02000000, LENGTH = 1024K\n"
+        f"    ITCM (rwx) : {itcm}\n"
+        "    DTCM (rwx) : ORIGIN = 0x20000000, LENGTH = 64K\n"
+        "    SRAM (rwx) : ORIGIN = 0x22000000, LENGTH = 1024K\n"
+        f"    SDRAM (rwx) : ORIGIN = {sdram_origin}, LENGTH = 64M\n"
+        "    NS_SRAM (rwx) : ORIGIN = 0x22100000, LENGTH = 640K\n}\n"
+    )
+
+
+def _selftest_device_map() -> int:
+    """The map is really READ from ra8_device.h, and rejects a broken header."""
+    rc = 0
+    # Anchor: prove DEVICE_MEM came from the header rather than from a default.
+    # A stubbed-out parser would fail here before any fixture below runs.
+    sram_size = DEVICE_MEM["k_ra8_mem_sram_size"]
+    sram_base = DEVICE_MEM["k_ra8_mem_sram_base"]
+    if sram_size != eval_size("1664K"):
+        print(f"SELFTEST FAIL: k_ra8_mem_sram_size parsed as {sram_size}")
+        return 1
+    if sram_size != SRAM_WINDOW_SIZE or sram_base != SRAM_WINDOW_BASE:
+        print("SELFTEST FAIL: the SRAM window constants are not the header's values")
+        return 1
+    print("selftest: SRAM window read from ra8_device.h OK")
+
+    synthetic = (
+        "typedef enum : uintptr_t {\n"
+        "  k_ra8_mem_mram_base  = 0x0A000000U, /**< moved. */\n"
+        "  k_ra8_mem_itcm_base  = 0x00000000U,\n"
+        "  k_ra8_mem_dtcm_base  = 0x20000000U,\n"
+        "  k_ra8_mem_sram_base  = 0x22000000U,\n"
+        "  k_ra8_mem_sdram_base = 0x68000000U,\n"
+        "} ra8_device_mem_base_t;\n"
+        "typedef enum : uint32_t {\n"
+        "  k_ra8_mem_mram_size = 0x00100000U,\n"
+        "  k_ra8_mem_itcm_size = 0x00010000U,\n"
+        "  k_ra8_mem_dtcm_size = 0x00010000U,\n"
+        "  k_ra8_mem_sram_size = 0x001A0000U,\n"
+        "} ra8_device_mem_size_t;\n"
+    )
+    parsed = parse_device_memory_map(synthetic)
+    moved_mram_base = 0x0A000000
+    if parsed["k_ra8_mem_mram_base"] != moved_mram_base:
+        print(f"SELFTEST FAIL: synthetic header parsed as {parsed}")
+        rc = 1
+    else:
+        print("selftest: synthetic header parses to its own values OK")
+
+    try:
+        parse_device_memory_map(synthetic.replace("k_ra8_mem_sram_size", "k_ra8_mem_sram_bytes"))
+    except ValueError as exc:
+        if "k_ra8_mem_sram_size" not in str(exc):
+            print(f"SELFTEST FAIL: rename raised the wrong ValueError: {exc}")
+            rc = 1
+        else:
+            print("selftest: a renamed memory-map enum is a loud failure OK")
+    else:
+        print("SELFTEST FAIL: a renamed memory-map enum was accepted")
+        rc = 1
+    return rc
+
+
+def _selftest_device_region_fit() -> int:
+    """LD010 fires on a mis-addressed / oversized named region, silent when legal."""
+    rc = 0
+    cases = (
+        # tag, ITCM row, SDRAM origin, expected LD010 count, region named in msg
+        ("legal.ld", "ORIGIN = 0x00000000, LENGTH = 64K", "0x68000000", 0, ""),
+        ("itcm_addr.ld", "ORIGIN = 0x30000000, LENGTH = 64K", "0x68000000", 1, "ITCM"),
+        ("itcm_size.ld", "ORIGIN = 0x00000000, LENGTH = 128K", "0x68000000", 1, "ITCM"),
+        ("sdram_addr.ld", "ORIGIN = 0x00000000, LENGTH = 64K", "0x60000000", 1, "SDRAM"),
+    )
+    with tempfile.TemporaryDirectory() as td:
+        for tag, itcm, sdram, want, region in cases:
+            path = pathlib.Path(td) / tag
+            path.write_bytes(_device_fixture(itcm, sdram).encode())
+            got = [f for f in check_file(path, path.read_bytes()) if f.code == "LD010"]
+            if len(got) != want or (region and region not in got[0].msg):
+                named = region or "nothing"
+                print(f"SELFTEST FAIL: {tag} expected {want} LD010 on {named}, got {got}")
+                rc = 1
+            else:
+                print(f"selftest: {tag} -> {want} LD010 OK")
+        # A 64K ITCM overrun is LD010's, not LD009's: the TCM window is nowhere
+        # near the SRAM array, so exactly one rule must own each defect.
+        path = pathlib.Path(td) / "itcm_size.ld"
+        if [f for f in check_file(path, path.read_bytes()) if f.code == "LD009"]:
+            print("SELFTEST FAIL: LD009 double-reported an ITCM overrun")
+            rc = 1
+        else:
+            print("selftest: ITCM overrun reported once, by LD010 only OK")
+    return rc
+
+
 def _selftest_body() -> int:
     """Assert every finding code fires, and that none of them over-fires."""
     rc = _selftest_fixtures()
     rc |= _selftest_option_setting()
     rc |= _selftest_option_completeness()
     rc |= _selftest_sram_fit()
+    rc |= _selftest_device_map()
+    rc |= _selftest_device_region_fit()
     scan_rc, got_def, got_ref = _selftest_symbol_scan()
     return rc | scan_rc | _selftest_closure(got_def, got_ref) | _selftest_worktree_inventory()
 
