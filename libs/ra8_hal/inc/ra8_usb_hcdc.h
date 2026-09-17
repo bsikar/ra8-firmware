@@ -4,6 +4,9 @@
  * @ingroup grp_hal_usb
  *        Abstract Control Model) class layer
  *
+ * @par Tag
+ * [Ring 3 / HAL] {World: NS}
+ *
  * @details
  * Glues the host-mode bring-up paths in `ra8_usb` to a CDC-ACM
  * peripheral attached on the EK-RA8D2's USB-host port. Mirrors FSP's

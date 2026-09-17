@@ -4,6 +4,9 @@
  * @ingroup grp_hal_usb
  *        Control Model) class layer
  *
+ * @par Tag
+ * [Ring 3 / HAL] {World: NS}
+ *
  * @details
  * Glues the device-mode `ra8_usb` controller driver to a USB CDC ACM
  * function so the host enumerates the board as a serial port

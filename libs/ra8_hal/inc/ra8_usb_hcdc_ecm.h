@@ -4,6 +4,9 @@
  * @ingroup grp_hal_usb
  *        Ethernet Networking Control Model) class layer
  *
+ * @par Tag
+ * [Ring 3 / HAL] {World: NS}
+ *
  * @details
  * Glues the host-mode bring-up paths in `ra8_usb` to a CDC-ECM USB
  * Ethernet adapter attached on the EK-RA8D2's USB-HS host port. Mirrors
