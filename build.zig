@@ -34,6 +34,8 @@
 //!   zig build analysis   prove every distinct command in that database still
 //!                        compiles a translation unit it names
 //!   zig build abi        the Zig-to-C ABI contract, negative controls included
+//!   zig build shapes     hold the committed app-shape ledger to the tree's own
+//!                        ra8_add_app() declarations
 //!
 //! The `arm` step is the cross-build slice (#936): it is the first target
 //! artifact this graph produces, and it is deliberately one app rather than
@@ -50,6 +52,7 @@ pub const middleware = @import("tests/zig_build_graph/middleware.zig");
 pub const ns_image = @import("tests/zig_build_graph/ns_image.zig");
 pub const command_surface = @import("tests/zig_build_graph/command_surface.zig");
 pub const zig_archive = @import("tests/zig_build_graph/zig_archive.zig");
+pub const app_shapes = @import("tests/zig_build_graph/app_shapes.zig");
 
 /// One member of the migrated-library slice: the Zig archive, its public C
 /// header directory, and the C suite CMake links against that archive today.
@@ -177,6 +180,15 @@ pub fn build(b: *std.Build) void {
     graph_test_module.addAnonymousImport("zig_libs_cmake_source", .{
         .root_source_file = b.path("cmake/ra8_app/zig_libs.cmake"),
     });
+    // The committed app-shape ledger and the listfile that declares
+    // ra8_add_app()'s keywords, so app_shapes_test.zig holds the cross-built
+    // table to every kind of app the tree actually has (#1322).
+    graph_test_module.addAnonymousImport("app_shape_ledger_source", .{
+        .root_source_file = b.path(app_shapes.ledger_path),
+    });
+    graph_test_module.addAnonymousImport("ra8_add_app_cmake_source", .{
+        .root_source_file = b.path("cmake/ra8_add_app.cmake"),
+    });
 
     const graph_tests = b.addTest(.{ .root_module = graph_test_module });
     zig_test_step.dependOn(&b.addRunArtifact(graph_tests).step);
@@ -255,6 +267,12 @@ pub fn build(b: *std.Build) void {
     const verified_commands = analysis.add(b, analysis_step, compileDbEntries(b));
     test_step.dependOn(analysis_step);
 
+    // The app tree's own shape ledger: every ra8_add_app() declaration under
+    // examples/ and apps/, reduced to its shape and diffed against the
+    // committed file, so a new KIND of app fails this step (#1322).
+    const shapes_step = b.step("shapes", app_shapes.step_description);
+    const shape_summary = app_shapes.add(b, shapes_step, test_step);
+
     const parity_step = b.step("parity", "Print the slice manifest the CMake parity check reads");
     for (slice) |member| {
         const print = b.addSystemCommand(&.{ "printf", "%s\t%s\t%s\n" });
@@ -315,6 +333,10 @@ pub fn build(b: *std.Build) void {
         verified_commands,
     }));
     parity_step.dependOn(&print_database.step);
+
+    // The app tree's row. Its third number is how many kinds of app the
+    // cross-build table has never built: the distance left to #859.
+    app_shapes.addParityRow(b, parity_step, shape_summary);
 }
 
 // ===========================================================================
