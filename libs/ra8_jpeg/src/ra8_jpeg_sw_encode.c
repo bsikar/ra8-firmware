@@ -741,8 +741,10 @@ internal_enc_run(ra8_jpeg_enc_ctx_t* e, const uint8_t* rgb, uint16_t w, uint16_t
 
   /* Convert source rows to YCbCr 16-row strips. Static buffers
    * keep the host stack small while still respecting NASA Rule 3
-   * (no heap). The encoder is single-threaded, so file-scope
-   * sharing is safe. */
+   * (no heap). Sharing them across calls is what makes
+   * `ra8_jpeg_sw_encode()` non-re-entrant; that is the documented
+   * contract (see the Concurrency section of ra8_jpeg_sw.h), and
+   * callers serialise. */
   uint16_t pad_w = (uint16_t)((w + k_jpeg_mcu_align) & ~k_jpeg_mcu_align);
   uint16_t pad_h = (uint16_t)((h + k_jpeg_mcu_align) & ~k_jpeg_mcu_align);
   if ((uint32_t)pad_w > (uint32_t)k_ra8_jpeg_enc_max_w) {
@@ -796,7 +798,10 @@ ra8_err_t ra8_jpeg_sw_encode(const uint8_t* rgb_buf,
   }
 
   /* Encoder context contains 2KiB of Huffman code/size LUTs; allocate
-   * static to avoid the project's stack-usage budget firing. */
+   * static to avoid the project's stack-usage budget firing. Zeroed
+   * on entry, so sequential reuse leaks no state between calls;
+   * overlapping calls are excluded by the documented contract (see
+   * the Concurrency section of ra8_jpeg_sw.h). */
   static ra8_jpeg_enc_ctx_t s_e;
   ra8_jpeg_enc_ctx_t*       e = &s_e;
   memset(e, 0, sizeof(*e));
