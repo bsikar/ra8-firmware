@@ -244,13 +244,56 @@ PLATFORM_ROOTS: tuple[str, ...] = ("libs/", "src/", "port/")
 HOSTED_ROOTS: tuple[str, ...] = ("tools/", "apps/")
 FIRMWARE_ROOTS: tuple[str, ...] = ("examples/",)
 
-# Exact production adapters whose host build cannot coexist with the default
-# implementation in one coverage image. Reflow v2 implements the same public
-# symbols as v1 and is selected only by the firmware composition option; moving
-# it from libs/ into apps/shared_libs must not change that platform constraint.
-PLATFORM_CROSS_ONLY_UNITS: frozenset[str] = frozenset(
-    {"apps/shared_libs/reflow/v2/src/reflow_v2.cpp"}
-)
+# ---------------------------------------------------------------------------
+# THE ONE HAND-WRITTEN OVERRIDE, AND WHAT GROUNDS IT
+#
+# Every other reason class above is derived from the tree. This table is the
+# single exception: it moves a unit under a HOSTED root into
+# ``platform-cross-only`` -- out of the class this module calls pure debt and
+# into the class it calls a structural fact about the toolchain. It was a bare
+# set of paths and NOTHING ever read it back, so a row could name a deleted
+# file, a path ``PLATFORM_ROOTS`` already classifies, or a unit a host
+# measurement project compiles, and the gate reported a clean tree regardless.
+#
+# Each row therefore DECLARES which of two states the tree has to show, and
+# ``cross_only_failures`` below checks that declaration against the listfiles
+# of the measurement projects in ``PROJECTS``:
+#
+# * ``CROSS_ONLY_GROUNDED`` -- no measurement project's listfile names the
+#   unit, so the ARM toolchain really is the only thing that compiles it and
+#   the override states a fact.
+# * ``CROSS_ONLY_HOST_COMPILABLE`` -- a measurement project's listfile DOES
+#   name it, so the override is false today and the row says so out loud
+#   instead of reading as a platform constraint.
+#
+# The one live row is the second kind. What the tree says about it:
+# ``tests/cmake/library_sources.cmake`` declares
+# ``option(REFLOW_USE_LITEHTML ... OFF)`` and, when it is ON, compiles
+# ``apps/shared_libs/reflow/v2/src/reflow_v2.cpp`` into the ``host-tests``
+# measurement project, where ``tests/cmake/tests_crypto.cmake`` builds
+# ``test_reflow_v2`` and runs it under ctest. One option flip measures the
+# unit, which is the definition of ``hosted-no-coverage-build``: host
+# executable code no measurement project is wired to run.
+#
+# The class the baseline row carries is deliberately NOT changed here. That
+# row's per-key ceiling in ``.github/suppression-debt-ceilings.tsv`` reads any
+# UNMEASURED class change as growth ("bucket ceiling 'U:platform-cross-only'
+# weakened to 'U:hosted-no-coverage-build'"), so the reclassification needs an
+# explicit ledger re-audit, which is not something this change may
+# self-approve.
+# ---------------------------------------------------------------------------
+
+CROSS_ONLY_GROUNDED = "cross-only"
+"""No measurement project's listfile names the unit: the override is a fact."""
+
+CROSS_ONLY_HOST_COMPILABLE = "host-compilable"
+"""A measurement project's listfile names the unit: the override is false."""
+
+CROSS_ONLY_STATES: tuple[str, ...] = (CROSS_ONLY_GROUNDED, CROSS_ONLY_HOST_COMPILABLE)
+
+PLATFORM_CROSS_ONLY_UNITS: dict[str, str] = {
+    "apps/shared_libs/reflow/v2/src/reflow_v2.cpp": CROSS_ONLY_HOST_COMPILABLE,
+}
 
 
 def is_firmware_composition(rel: str, firmware_dirs: tuple[str, ...]) -> bool:
@@ -286,6 +329,122 @@ def structural_reason(rel: str, *, compiled: bool, firmware_dirs: tuple[str, ...
     if rel.startswith(PLATFORM_ROOTS):
         return REASON_PLATFORM
     return REASON_HOSTED
+
+
+def measurement_listfiles(listfiles: dict[str, str]) -> dict[str, str]:
+    """Return only the listfiles that live inside a measurement project's tree.
+
+    Args:
+        listfiles: Repo-relative listfile path -> its text.
+
+    Returns:
+        The subset owned by a project in ``PROJECTS``. A firmware listfile
+        naming a unit says nothing about host measurability, so it is dropped.
+    """
+    owned = tuple(f"{directory}/" for project in PROJECTS for directory in project.claimed_dirs)
+    return {rel: text for rel, text in listfiles.items() if rel.startswith(owned)}
+
+
+def _cross_only_row_failures(
+    rel: str, state: str, enrolled: set[str], naming: list[str]
+) -> list[str]:
+    """Return the findings for one declared override row."""
+    if rel not in enrolled:
+        return [f"PLATFORM_CROSS_ONLY_UNITS names {rel}, which is not an enrolled census unit"]
+    if rel.startswith(PLATFORM_ROOTS):
+        return [
+            f"PLATFORM_CROSS_ONLY_UNITS names {rel}, which a platform root already "
+            f"classifies as {REASON_PLATFORM}: the override grants nothing"
+        ]
+    if state not in CROSS_ONLY_STATES:
+        return [
+            f"PLATFORM_CROSS_ONLY_UNITS declares {rel} as {state!r}, "
+            f"which is not one of {CROSS_ONLY_STATES}"
+        ]
+    if state == CROSS_ONLY_GROUNDED and naming:
+        return [
+            f"{rel} is declared {CROSS_ONLY_GROUNDED} but {naming[0]} compiles it into a "
+            f"measurement project, so its class is {REASON_HOSTED} debt, not "
+            f"{REASON_PLATFORM}"
+        ]
+    if state == CROSS_ONLY_HOST_COMPILABLE and not naming:
+        return [
+            f"{rel} is declared {CROSS_ONLY_HOST_COMPILABLE} but no measurement project's "
+            f"listfile names it: re-declare it {CROSS_ONLY_GROUNDED} or drop the row"
+        ]
+    return []
+
+
+def cross_only_failures(
+    census: list[str],
+    listfiles: dict[str, str],
+    units: dict[str, str] | None = None,
+) -> list[str]:
+    """Return one message per override row the tree refutes.
+
+    Args:
+        census: The enrolled units, from ``census_paths``.
+        listfiles: Repo-relative listfile path -> its text, for the whole tree.
+        units: The override table to judge. Defaults to the committed
+            ``PLATFORM_CROSS_ONLY_UNITS``; the parameter exists so a selftest
+            can drive the rules with fixtures.
+
+    Returns:
+        One message per refuted row, sorted by path. Empty when every row
+        states what the tree shows.
+    """
+    table = PLATFORM_CROSS_ONLY_UNITS if units is None else units
+    enrolled = set(census)
+    measurement = measurement_listfiles(listfiles)
+    out: list[str] = []
+    for rel, state in sorted(table.items()):
+        naming = sorted(name for name, text in measurement.items() if rel in text)
+        out.extend(_cross_only_row_failures(rel, state, enrolled, naming))
+    return out
+
+
+_CROSS_ONLY_UNIT = "apps/shared_libs/widget/v2/src/widget_v2.cpp"
+_CROSS_ONLY_PLATFORM_UNIT = "libs/ra8_widget/src/widget.c"
+_CROSS_ONLY_MEASUREMENT_LISTFILE = "tests/cmake/library_sources.cmake"
+_CROSS_ONLY_FIRMWARE_LISTFILE = "examples/ek_ra8d2/widget/CMakeLists.txt"
+
+
+def cross_only_selftest_failures() -> list[str]:
+    """Prove every override-grounding rule fires and stays quiet on fixtures."""
+    census = [_CROSS_ONLY_UNIT]
+    quiet = {_CROSS_ONLY_MEASUREMENT_LISTFILE: "set(SRC other.cpp)"}
+    names = {_CROSS_ONLY_MEASUREMENT_LISTFILE: f"set(SRC ${{FW_ROOT}}/{_CROSS_ONLY_UNIT})"}
+    firmware = {_CROSS_ONLY_FIRMWARE_LISTFILE: f"target_sources(app PRIVATE {_CROSS_ONLY_UNIT})"}
+    grounded = {_CROSS_ONLY_UNIT: CROSS_ONLY_GROUNDED}
+    hosted = {_CROSS_ONLY_UNIT: CROSS_ONLY_HOST_COMPILABLE}
+    platform_row = {_CROSS_ONLY_PLATFORM_UNIT: CROSS_ONLY_GROUNDED}
+    cases = (
+        ("a grounded row nothing names stays quiet", quiet, grounded, census, False),
+        ("a firmware listfile must not refute a grounded row", firmware, grounded, census, False),
+        ("a grounded row a measurement listfile names must fire", names, grounded, census, True),
+        (
+            "a host-compilable row a measurement listfile names stays quiet",
+            names,
+            hosted,
+            census,
+            False,
+        ),
+        ("a host-compilable row nothing names must fire as stale", quiet, hosted, census, True),
+        ("a row outside the census must fire", quiet, grounded, [], True),
+        ("an unknown declared state must fire", quiet, {_CROSS_ONLY_UNIT: "maybe"}, census, True),
+        (
+            "a row a platform root already classifies must fire",
+            quiet,
+            platform_row,
+            [_CROSS_ONLY_PLATFORM_UNIT],
+            True,
+        ),
+    )
+    return [
+        label
+        for label, listfiles, table, paths, want in cases
+        if bool(cross_only_failures(paths, listfiles, table)) != want
+    ]
 
 
 # ---------------------------------------------------------------------------
