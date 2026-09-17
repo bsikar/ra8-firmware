@@ -3,7 +3,7 @@
 # Copyright (c) 2026 Brighton Sikarskie
 """fix_wave_references.py -- conservative auto-fix for "Wave N" session refs.
 
-Companion to check_no_wave_references.py. Walks every tracked source/doc
+Companion to the check_no_wave_references gate. Walks every tracked source/doc
 file under the same scan roots and rewrites obvious session-bookkeeping
 patterns:
 
@@ -92,7 +92,7 @@ SCAN_BASENAMES = frozenset({"justfile", "Dockerfile", "CMakeLists.txt"})
 
 SELF_EXEMPT = frozenset(
     {
-        "scripts/checks/check_no_wave_references.py",
+        "scripts/builders/check_no_wave_references.sh",
         "scripts/fix/fix_wave_references.py",
         "docs/STYLE_GUIDE.md",
         "CLAUDE.md",
