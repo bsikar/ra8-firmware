@@ -32,6 +32,7 @@ https://cognitect.com/blog/2011/11/15/documenting-architecture-decisions
 | [0009](./0009-ereader-input-and-service-interfaces.md)   | E-reader input, wake and service-access interfaces                  | Proposed |
 | [0010](./0010-sdram-interface-supply-domain.md)            | Bound the SDRAM interface supply domain (VCC, VCC2) separately from the main rail | Proposed |
 | [0011](./0011-chip-boot-duplication-across-board-libraries.md) | Chip-level boot code duplicated across the two board libraries      | Proposed |
+| [0012](./0012-c23-capability-and-abi-contract-assertion.md) | Where the C23 capability and ABI contract is asserted               | Proposed |
 
 ## Authoring a new ADR
 
@@ -43,3 +44,4 @@ https://cognitect.com/blog/2011/11/15/documenting-architecture-decisions
    ADR should land before or with the first code change that
    relies on it, but as its own commit so the decision history
    is reviewable in isolation).
+
