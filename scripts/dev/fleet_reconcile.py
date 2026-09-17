@@ -40,6 +40,7 @@ import fleet_reconcile_freeze_selftest as frf
 import fleet_reconcile_frozen_selftest as frfz
 import fleet_reconcile_interrupt_selftest as fri
 import fleet_reconcile_lift_selftest as frlt
+import fleet_reconcile_opener_selftest as frop
 import fleet_reconcile_orphan_selftest as fro
 import fleet_reconcile_park_escalation_selftest as frpe
 import fleet_reconcile_parked_selftest as frpk
@@ -1142,8 +1143,88 @@ def report_park_release_refused(host: str, status: int, entry: dict[str, int], n
     )
 
 
-def release_durable_park(
-    host: str, run: CommandRunner, parked: dict[str, dict[str, int]], now: int
+def park_release_changes(data: dict[str, Any], host: str) -> int:
+    """Return the drift one parked host's held check reports while it is converged.
+
+    The ARC opener proves the declaration while admission is still held at
+    zero, and an ARC producer reports ``PRODUCER_HELD_CHECK_NOISE`` in that
+    state where every other host reports none: the same expectation
+    ``reconcile_host`` hands ``apply_host`` and the recovery hook.
+    """
+    producer = host == data["runner_image"]["source_host"]
+    if not producer:
+        return 0
+    if capacity_opener(data, host) == "k8s":
+        return PRODUCER_HELD_CHECK_NOISE
+    return PRODUCER_CHECK_NOISE
+
+
+def reopen_parked_arc(
+    data: dict[str, Any], host: str, run: CommandRunner
+) -> frp.CommandResult | None:
+    """Re-declare ARC authority before the restore that lifts a durable park.
+
+    Returns the restore's own result so the caller can read what it put back in
+    service, or ``None`` when the declaration itself never verified and no
+    restore was issued.  Unlike ``_activate_arc`` this never quarantines: the
+    host already holds zero admission behind its maintenance marker, so
+    draining it again buys nothing and a park is deliberately not drained on
+    the way out.
+    """
+    activation = run(fleet_command(host, "activate"))
+    emit_result(activation)
+    if activation.status or frp.interrupted_status():
+        return None
+    clean, changed = inspect_activation_host(data, host, run)
+    if not clean or changed != park_release_changes(data, host) or frp.interrupted_status():
+        return None
+    result = run(fleet_command(host, "restore"))
+    emit_result(result)
+    return result
+
+
+def report_park_declaration_failed(host: str, entry: dict[str, int], now: int) -> None:
+    """Name a parked ARC host whose authority would not re-declare."""
+    print(
+        f"fleet-reconcile: CRITICAL: {host}: its ARC authority did not re-declare, so the "
+        "capacity restore that lifts its durable maintenance park was never issued; the "
+        "host stays pinned at ZERO admission and this controller cannot reopen it by "
+        f"itself ({entry['passes']} pass(es), {now - entry['since']}s parked)",
+        file=sys.stderr,
+    )
+
+
+def open_parked_capacity(
+    data: dict[str, Any], host: str, run: CommandRunner
+) -> frp.CommandResult | None:
+    """Issue the park-lifting restore through the opener this host's class has.
+
+    A bare ``capacity-restore`` is the whole opener for a Docker host and only
+    the last step of one for an ARC scale set.  ``_activate_arc`` exists
+    because ARC capacity is opened by declaring its authority, proving that
+    declaration while admission is held at zero, and only then restoring; a
+    parked apply tears that declaration down, so a restore issued on its own
+    returns cleanly while the live ceiling stays at ZERO.  This release path
+    issued that bare restore for every class, so a parked ARC host had its park
+    record CLEARED on a clean return with nothing put back in service, and once
+    the record is gone nothing escalates the host, nothing counts its capacity
+    as forfeit, and the next pass budgets it as though it were serving: an ARC
+    scale set declared for all its runners with none of them in service, and
+    issue #888's own headline arriving through the newest record.
+    """
+    if capacity_opener(data, host) == "k8s":
+        return reopen_parked_arc(data, host, run)
+    result = run(fleet_command(host, "restore"))
+    emit_result(result)
+    return result
+
+
+def release_durable_park(  # noqa: PLR0913  # the host plus the fleet its opener comes from
+    data: dict[str, Any],
+    host: str,
+    run: CommandRunner,
+    parked: dict[str, dict[str, int]],
+    now: int,
 ) -> bool:
     """Issue the one verb that lifts a durable maintenance park, and prove it landed.
 
@@ -1167,8 +1248,10 @@ def release_durable_park(
         f"{now - entry['since']}s); issuing the capacity restore that lifts it",
         file=sys.stderr,
     )
-    result = run(fleet_command(host, "restore"))
-    emit_result(result)
+    result = open_parked_capacity(data, host, run)
+    if result is None:
+        report_park_declaration_failed(host, entry, now)
+        return False
     if not result.status:
         restore_admission(host, result)
         clear_park(parked, host)
@@ -1197,7 +1280,8 @@ def reconciled_this_pass(receipts: dict[str, Any], host: str, now: int) -> bool:
     return isinstance(receipt, dict) and receipt.get("checked_at") == now
 
 
-def release_durable_parks(
+def release_durable_parks(  # noqa: PLR0913  # the pass's records plus the fleet it reopens in
+    data: dict[str, Any],
     receipts: dict[str, Any],
     parked: dict[str, dict[str, int]],
     order: Sequence[str],
@@ -1221,11 +1305,12 @@ def release_durable_parks(
         for host in sorted(parked)
         if host in managed
         and reconciled_this_pass(receipts, host, options.now)
-        and not release_durable_park(host, run, parked, options.now)
+        and not release_durable_park(data, host, run, parked, options.now)
     ]
 
 
 def settle_pass_records(  # noqa: PLR0913  # the pass's records plus what it takes to settle them
+    data: dict[str, Any],
     document: dict[str, Any],
     state_path: Path,
     stranding: dict[str, dict[str, int]],
@@ -1244,7 +1329,7 @@ def settle_pass_records(  # noqa: PLR0913  # the pass's records plus what it tak
     proven it cannot reopen the host by itself must not report that as an
     ordinary one-off failure.
     """
-    refused = release_durable_parks(document["hosts"], parked, order, options, run)
+    refused = release_durable_parks(data, document["hosts"], parked, order, options, run)
     if options.mode == "apply":
         save_state(state_path, document)
     return sorted({*pass_escalations(stranding, order, options, parked), *refused})
@@ -1994,7 +2079,9 @@ def reconcile(
                 )
     if options.mode == "apply":
         save_state(state_path, document)
-    escalated = settle_pass_records(document, state_path, stranding, parked, order, options, run)
+    escalated = settle_pass_records(
+        data, document, state_path, stranding, parked, order, options, run
+    )
     return pass_verdict(undrained, escalated, halted, failures)
 
 
@@ -2561,6 +2648,7 @@ def selftest() -> int:
     failures.extend(frfz.run(sys.modules[__name__]))
     failures.extend(frpu.run(sys.modules[__name__]))
     failures.extend(frpr.run(sys.modules[__name__]))
+    failures.extend(frop.run(sys.modules[__name__]))
     failures.extend(fro.run(sys.modules[__name__]))
     failures.extend(frpe.run(sys.modules[__name__]))
     failures.extend(frpk.run(sys.modules[__name__]))
