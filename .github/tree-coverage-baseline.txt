@@ -268,6 +268,7 @@ examples/ek_ra8d2/hw_pending/cache_hal_enable_demo/src/main.c	UNMEASURED	firmwar
 examples/ek_ra8d2/hw_pending/compile_on_m33/src/cpu1_main.c	UNMEASURED	firmware-composition
 examples/ek_ra8d2/hw_pending/compile_on_m33/src/main.c	UNMEASURED	firmware-composition
 examples/ek_ra8d2/hw_pending/compile_on_m33/src/trustzone_init.c	UNMEASURED	firmware-composition
+examples/ek_ra8d2/hw_pending/devcfg_record_demo/src/main.c	UNMEASURED	firmware-composition
 examples/ek_ra8d2/hw_pending/dtc_isr_arm_demo/src/main.c	UNMEASURED	firmware-composition
 examples/ek_ra8d2/hw_pending/epaper_refresh/src/main.c	UNMEASURED	firmware-composition
 examples/ek_ra8d2/hw_pending/epub_stress/src/main.c	UNMEASURED	firmware-composition
