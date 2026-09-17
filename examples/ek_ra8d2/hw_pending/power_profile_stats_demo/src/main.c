@@ -2,6 +2,9 @@
  * @file examples/ek_ra8d2/hw_pending/power_profile_stats_demo/src/main.c
  * @brief First consumer of ra8_power_profile: region accounting end to end.
  *
+ * @par Tag
+ * [Ring 6 / APP] {World: S}
+ *
  * @details
  * `ra8_power_profile` keeps per-region enter/exit accounting behind two
  * caller-supplied hooks, a GPIO edge emitter and a microsecond time base, so

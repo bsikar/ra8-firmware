@@ -2,6 +2,9 @@
  * @file examples/ek_ra8d2/hw_pending/secure_app_vault_demo/src/main.c
  * @brief First consumer of ra8_secure_app: key vault plus OTA commit shadows.
  *
+ * @par Tag
+ * [Ring 6 / APP] {World: S}
+ *
  * @details
  * `libs/ra8_secure_app/` holds the Ring 5 secure substrate: an eight-slot
  * symmetric key vault with a SHA-256 challenge primitive, a provisioned
