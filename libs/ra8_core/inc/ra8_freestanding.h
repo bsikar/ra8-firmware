@@ -166,6 +166,217 @@ int memcmp(const void* a, const void* b, size_t n);
  */
 void* memchr(const void* s, int c, size_t n);
 
+#if defined(__arm__) || defined(RA8_TEST_FREESTANDING)
+
+/*
+ * Arm C Library ABI (AEABI) memory helpers, implemented in
+ * ra8_freestanding_mem.c. Compiler-generated aggregate copies and
+ * zero-initialisation call these entry points instead of the ISO C primitives
+ * above, and a -nostdlib application link has no newlib behind it to resolve
+ * them (issue #948). Declared here so the definitions are prototyped under
+ * -Wmissing-prototypes and so the host test can call them by name.
+ *
+ * Mind the argument orders: __aeabi_memset() takes the length SECOND and
+ * __aeabi_memclr() takes no value at all.
+ */
+
+/**
+ * @brief Copy memory between non-overlapping regions (unaligned AEABI helper).
+ * @details Copies @p n bytes from @p src to @p dst. This entry point
+ *          carries no alignment guarantee; the copy is byte-wise regardless.
+ * @param[out] dst Destination buffer pointer.
+ * @param[in]  src Source buffer pointer.
+ * @param[in]  n   Number of bytes to copy.
+ * @pre @p dst and @p src do not overlap.
+ * @pre @p dst and @p src point to at least @p n valid bytes if @p n > 0.
+ * @post The @p n bytes at @p dst match the @p n bytes at @p src.
+ * @post Source memory is unmodified.
+ * @note Compiler runtime helper; returns nothing, unlike memcpy(); never allocates; reentrant and thread-safe when memory regions are not concurrently modified.
+ * @since 0.1.0
+ */
+void __aeabi_memcpy(void* dst, const void* src, size_t n);
+
+/**
+ * @brief Copy memory between non-overlapping regions (4-byte aligned AEABI helper).
+ * @details Copies @p n bytes from @p src to @p dst. This entry point
+ *          declares 4-byte aligned operands; the copy is byte-wise regardless.
+ * @param[out] dst Destination buffer pointer.
+ * @param[in]  src Source buffer pointer.
+ * @param[in]  n   Number of bytes to copy.
+ * @pre @p dst and @p src do not overlap.
+ * @pre @p dst and @p src point to at least @p n valid bytes if @p n > 0.
+ * @post The @p n bytes at @p dst match the @p n bytes at @p src.
+ * @post Source memory is unmodified.
+ * @note Compiler runtime helper; returns nothing, unlike memcpy(); never allocates; reentrant and thread-safe when memory regions are not concurrently modified.
+ * @since 0.1.0
+ */
+void __aeabi_memcpy4(void* dst, const void* src, size_t n);
+
+/**
+ * @brief Copy memory between non-overlapping regions (8-byte aligned AEABI helper).
+ * @details Copies @p n bytes from @p src to @p dst. This entry point
+ *          declares 8-byte aligned operands; the copy is byte-wise regardless.
+ * @param[out] dst Destination buffer pointer.
+ * @param[in]  src Source buffer pointer.
+ * @param[in]  n   Number of bytes to copy.
+ * @pre @p dst and @p src do not overlap.
+ * @pre @p dst and @p src point to at least @p n valid bytes if @p n > 0.
+ * @post The @p n bytes at @p dst match the @p n bytes at @p src.
+ * @post Source memory is unmodified.
+ * @note Compiler runtime helper; returns nothing, unlike memcpy(); never allocates; reentrant and thread-safe when memory regions are not concurrently modified.
+ * @since 0.1.0
+ */
+void __aeabi_memcpy8(void* dst, const void* src, size_t n);
+
+/**
+ * @brief Copy memory between potentially overlapping regions (unaligned AEABI helper).
+ * @details Copies @p n bytes from @p src to @p dst with correct overlap
+ *          handling. This entry point carries no alignment guarantee.
+ * @param[out] dst Destination buffer pointer.
+ * @param[in]  src Source buffer pointer.
+ * @param[in]  n   Number of bytes to copy.
+ * @pre @p dst points to at least @p n writable bytes if @p n > 0.
+ * @pre @p src points to at least @p n readable bytes if @p n > 0.
+ * @post The @p n bytes at @p dst match the initial @p n bytes at @p src.
+ * @post Any overlap between @p dst and @p src is handled correctly.
+ * @note Compiler runtime helper; returns nothing, unlike memmove(); never allocates; reentrant and thread-safe when memory regions are not concurrently modified.
+ * @since 0.1.0
+ */
+void __aeabi_memmove(void* dst, const void* src, size_t n);
+
+/**
+ * @brief Copy memory between potentially overlapping regions (4-byte aligned AEABI helper).
+ * @details Copies @p n bytes from @p src to @p dst with correct overlap
+ *          handling. This entry point declares 4-byte aligned operands.
+ * @param[out] dst Destination buffer pointer.
+ * @param[in]  src Source buffer pointer.
+ * @param[in]  n   Number of bytes to copy.
+ * @pre @p dst points to at least @p n writable bytes if @p n > 0.
+ * @pre @p src points to at least @p n readable bytes if @p n > 0.
+ * @post The @p n bytes at @p dst match the initial @p n bytes at @p src.
+ * @post Any overlap between @p dst and @p src is handled correctly.
+ * @note Compiler runtime helper; returns nothing, unlike memmove(); never allocates; reentrant and thread-safe when memory regions are not concurrently modified.
+ * @since 0.1.0
+ */
+void __aeabi_memmove4(void* dst, const void* src, size_t n);
+
+/**
+ * @brief Copy memory between potentially overlapping regions (8-byte aligned AEABI helper).
+ * @details Copies @p n bytes from @p src to @p dst with correct overlap
+ *          handling. This entry point declares 8-byte aligned operands.
+ * @param[out] dst Destination buffer pointer.
+ * @param[in]  src Source buffer pointer.
+ * @param[in]  n   Number of bytes to copy.
+ * @pre @p dst points to at least @p n writable bytes if @p n > 0.
+ * @pre @p src points to at least @p n readable bytes if @p n > 0.
+ * @post The @p n bytes at @p dst match the initial @p n bytes at @p src.
+ * @post Any overlap between @p dst and @p src is handled correctly.
+ * @note Compiler runtime helper; returns nothing, unlike memmove(); never allocates; reentrant and thread-safe when memory regions are not concurrently modified.
+ * @since 0.1.0
+ */
+void __aeabi_memmove8(void* dst, const void* src, size_t n);
+
+/**
+ * @brief Fill memory with a constant byte value (unaligned AEABI helper).
+ * @details Writes (uint8_t)@p value to the first @p n bytes of @p dst. The
+ *          length is the SECOND parameter here and the third in memset().
+ *          This entry point carries no alignment guarantee.
+ * @param[out] dst   Destination buffer to fill.
+ * @param[in]  n     Number of bytes to write.
+ * @param[in]  value Byte value to write.
+ * @pre @p dst points to at least @p n writable bytes if @p n > 0.
+ * @pre The destination memory region is addressable and valid.
+ * @post The first @p n bytes of @p dst contain (uint8_t)@p value.
+ * @post Bytes beyond @p n are unmodified.
+ * @note Compiler runtime helper; takes (dst, n, value), never memset()'s (dst, value, n); never allocates; reentrant and thread-safe when destination memory is not concurrently modified.
+ * @since 0.1.0
+ */
+void __aeabi_memset(void* dst, size_t n, int value);
+
+/**
+ * @brief Fill memory with a constant byte value (4-byte aligned AEABI helper).
+ * @details Writes (uint8_t)@p value to the first @p n bytes of @p dst. The
+ *          length is the SECOND parameter here and the third in memset().
+ *          This entry point declares a 4-byte aligned destination.
+ * @param[out] dst   Destination buffer to fill.
+ * @param[in]  n     Number of bytes to write.
+ * @param[in]  value Byte value to write.
+ * @pre @p dst points to at least @p n writable bytes if @p n > 0.
+ * @pre The destination memory region is addressable and valid.
+ * @post The first @p n bytes of @p dst contain (uint8_t)@p value.
+ * @post Bytes beyond @p n are unmodified.
+ * @note Compiler runtime helper; takes (dst, n, value), never memset()'s (dst, value, n); never allocates; reentrant and thread-safe when destination memory is not concurrently modified.
+ * @since 0.1.0
+ */
+void __aeabi_memset4(void* dst, size_t n, int value);
+
+/**
+ * @brief Fill memory with a constant byte value (8-byte aligned AEABI helper).
+ * @details Writes (uint8_t)@p value to the first @p n bytes of @p dst. The
+ *          length is the SECOND parameter here and the third in memset().
+ *          This entry point declares an 8-byte aligned destination.
+ * @param[out] dst   Destination buffer to fill.
+ * @param[in]  n     Number of bytes to write.
+ * @param[in]  value Byte value to write.
+ * @pre @p dst points to at least @p n writable bytes if @p n > 0.
+ * @pre The destination memory region is addressable and valid.
+ * @post The first @p n bytes of @p dst contain (uint8_t)@p value.
+ * @post Bytes beyond @p n are unmodified.
+ * @note Compiler runtime helper; takes (dst, n, value), never memset()'s (dst, value, n); never allocates; reentrant and thread-safe when destination memory is not concurrently modified.
+ * @since 0.1.0
+ */
+void __aeabi_memset8(void* dst, size_t n, int value);
+
+/**
+ * @brief Clear memory to zero (unaligned AEABI helper).
+ * @details Writes zero to the first @p n bytes of @p dst. Takes no value
+ *          parameter at all, since zero is implied by the entry point.
+ *          This entry point carries no alignment guarantee.
+ * @param[out] dst Destination buffer to clear.
+ * @param[in]  n   Number of bytes to clear.
+ * @pre @p dst points to at least @p n writable bytes if @p n > 0.
+ * @pre The destination memory region is addressable and valid.
+ * @post The first @p n bytes of @p dst are zero.
+ * @post Bytes beyond @p n are unmodified.
+ * @note Compiler runtime helper; zero is implied by the entry point and never passed; never allocates; reentrant and thread-safe when destination memory is not concurrently modified.
+ * @since 0.1.0
+ */
+void __aeabi_memclr(void* dst, size_t n);
+
+/**
+ * @brief Clear memory to zero (4-byte aligned AEABI helper).
+ * @details Writes zero to the first @p n bytes of @p dst. Takes no value
+ *          parameter at all, since zero is implied by the entry point.
+ *          This entry point declares a 4-byte aligned destination.
+ * @param[out] dst Destination buffer to clear.
+ * @param[in]  n   Number of bytes to clear.
+ * @pre @p dst points to at least @p n writable bytes if @p n > 0.
+ * @pre The destination memory region is addressable and valid.
+ * @post The first @p n bytes of @p dst are zero.
+ * @post Bytes beyond @p n are unmodified.
+ * @note Compiler runtime helper; zero is implied by the entry point and never passed; never allocates; reentrant and thread-safe when destination memory is not concurrently modified.
+ * @since 0.1.0
+ */
+void __aeabi_memclr4(void* dst, size_t n);
+
+/**
+ * @brief Clear memory to zero (8-byte aligned AEABI helper).
+ * @details Writes zero to the first @p n bytes of @p dst. Takes no value
+ *          parameter at all, since zero is implied by the entry point.
+ *          This entry point declares an 8-byte aligned destination.
+ * @param[out] dst Destination buffer to clear.
+ * @param[in]  n   Number of bytes to clear.
+ * @pre @p dst points to at least @p n writable bytes if @p n > 0.
+ * @pre The destination memory region is addressable and valid.
+ * @post The first @p n bytes of @p dst are zero.
+ * @post Bytes beyond @p n are unmodified.
+ * @note Compiler runtime helper; zero is implied by the entry point and never passed; never allocates; reentrant and thread-safe when destination memory is not concurrently modified.
+ * @since 0.1.0
+ */
+void __aeabi_memclr8(void* dst, size_t n);
+
+#endif /* __arm__ || RA8_TEST_FREESTANDING */
+
 /**
  * @brief Calculate string length.
  * @details Computes the length of null-terminated string @p s.
