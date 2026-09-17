@@ -308,6 +308,20 @@ ra8_err_t ra8_ceu_init(const ra8_ceu_config_t* cfg)
     return k_ra8_err_invalid_arg;
   }
 
+  /* A pixel-format capture needs a destination stride: either the
+   * caller's dst_stride, or one derived from the scaled output width
+   * and bytes_per_pixel. With neither, CDWDR would be programmed zero
+   * and every captured line would land on top of the previous one, so
+   * reject the descriptor before the module clock is ungated (#1362).
+   * Data-enable fetch carries no pixel stride and is exempt. */
+  if (cfg->dst_stride == 0U) {
+    if (priv_ra8_ceu_min_stride_bytes(cfg) == 0U) {
+      if (cfg->capture_format != k_ra8_ceu_fmt_data_enable) {
+        return k_ra8_err_invalid_arg;
+      }
+    }
+  }
+
   /* HUM Ch 11.2.8 "MSTPCRC : Module Stop Control Register C" p 446 */
   const ra8_err_t mst_err = ra8_mstp_enable(k_ra8_mstp_ceu);
   /* GCOVR_EXCL_BR_START -- MSTP HW readback */

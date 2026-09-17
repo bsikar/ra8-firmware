@@ -66,6 +66,8 @@ typedef enum : uint16_t {
   k_test_ceu_width  = 1280U, /**< Test CEU width.  */
   k_test_ceu_height = 720U,  /**< Test CEU height. */
   k_test_ceu_stride = 2560U, /**< Test CEU stride. */
+  k_test_ceu_clip_width =
+    640U, /**< Scale-down filter output width, narrower than the capture window. */
 } test_ceu_dim_t;
 
 typedef enum : uint32_t {
@@ -868,6 +870,79 @@ static void test_board_camera_sccb_transfers(void)
   TEST_END("board camera: SCCB register transfers");
 }
 
+
+/**
+ * @brief Cover the CDWDR stride derivation and its rejection leg.
+ *
+ * @details
+ * Regression for #1362: `bytes_per_pixel` was published, documented
+ * as "used to derive scaled stride", and read by nothing, so a
+ * descriptor that left `dst_stride` at zero programmed CDWDR = 0 and
+ * stacked every captured line on the previous one. Four legs: an
+ * explicit stride still lands verbatim (no behaviour change for the
+ * existing callers), a zero stride derives width times
+ * `bytes_per_pixel`, `scale.h_output_clip` takes precedence over
+ * `x_capture_px` because the filter output is what reaches memory,
+ * and a pixel-format descriptor with nothing to derive from is
+ * rejected before the module clock is ungated while data-enable fetch
+ * (which carries no pixel pitch) is admitted.
+ *
+ * @pre `prep` has reset the fake MMIO/MMAP planes.
+ * @post CEU registers hold the last configuration written.
+ * @par MC/DC: Single-condition decisions only. The `dst_stride == 0`
+ * gate runs both ways (explicit and derived legs), the
+ * derived-is-zero gate runs both ways (derived and rejected legs),
+ * and the data-enable exemption runs both ways (rejected and
+ * admitted legs).
+ * @note Not thread-safe; single-threaded test binary only.
+ * @since Version 0.1.0
+ */
+static void test_dst_stride_derivation(void)
+{
+  TEST_BEGIN("ceu: destination stride derivation");
+  prep();
+
+  /* Explicit stride is programmed verbatim. */
+  ra8_ceu_config_t cfg = make_cfg();
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_ceu_init(&cfg));
+  /* HUM Ch 60.2.12 "CDWDR : Capture Destination Width Register" p 3654 */
+  TEST_ASSERT_EQ((uint32_t)k_test_ceu_stride, *ra8_ceu_reg32(k_ra8_ceu_off_cdwdr));
+
+  /* Zero stride derives width_px/x_capture_px times bytes_per_pixel. */
+  prep();
+  cfg             = make_cfg();
+  cfg.dst_stride  = 0U;
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_ceu_init(&cfg));
+  TEST_ASSERT_EQ((uint32_t)k_test_ceu_width * 2UL, *ra8_ceu_reg32(k_ra8_ceu_off_cdwdr));
+
+  /* A scale-down clip is the width that reaches memory, so it wins. */
+  prep();
+  cfg                     = make_cfg();
+  cfg.dst_stride          = 0U;
+  cfg.scale.h_output_clip = (uint16_t)k_test_ceu_clip_width;
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_ceu_init(&cfg));
+  TEST_ASSERT_EQ((uint32_t)k_test_ceu_clip_width * 2UL, *ra8_ceu_reg32(k_ra8_ceu_off_cdwdr));
+
+  /* Nothing to derive from: rejected before MSTP is touched. */
+  prep();
+  cfg                 = make_cfg();
+  cfg.dst_stride      = 0U;
+  cfg.bytes_per_pixel = 0U;
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_ceu_init(&cfg));
+  TEST_ASSERT_EQ(0UL, *ra8_ceu_reg32(k_ra8_ceu_off_cdwdr));
+
+  /* Data-enable fetch has no pixel pitch and stays admitted. */
+  prep();
+  cfg                 = make_cfg();
+  cfg.dst_stride      = 0U;
+  cfg.bytes_per_pixel = 0U;
+  cfg.capture_format  = k_ra8_ceu_fmt_data_enable;
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_ceu_init(&cfg));
+  TEST_ASSERT_EQ(0UL, *ra8_ceu_reg32(k_ra8_ceu_off_cdwdr));
+
+  TEST_END("ceu: destination stride derivation");
+}
+
 int main(void)
 {
   test_status_get_clear();
@@ -889,6 +964,7 @@ int main(void)
   test_low_pass_set();
   test_capture_mode_set();
   test_frame_drop_set();
+  test_dst_stride_derivation();
   test_board_camera_xclk_bounds_and_routing();
   test_board_camera_select_parallel();
   test_board_camera_routes_parallel_pins();
