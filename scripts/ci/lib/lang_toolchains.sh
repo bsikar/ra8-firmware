@@ -31,6 +31,16 @@
 #   2. a previously provisioned copy under the pinned-tool cache;
 #   3. download of the official release, sha256-verified against the pin.
 #
+# Step 3 is LINUX ONLY, and deliberately so. The pins live in
+# .devcontainer/Dockerfile, which describes a Linux image, so the only release
+# archives this file can name AND sha256-verify are the Linux ones. On a macOS
+# host (the arm64 runner #899 adds, and any developer Mac) the host binary must
+# already be the pin; the provisioner says that in one line and stops. It used
+# to fall through to the Linux URL, download ~50 MB of unrunnable ELF on every
+# gate, pass the sha check because the pin genuinely is that archive's, and
+# then report "provisioned zig at <path> is not 0.14.1" -- a version
+# complaint about a binary whose real problem was its operating system.
+#
 # Failure is deliberately NON-FATAL: the caller's require_cmd emits the real
 # diagnostic. A provisioner that exited the gate would replace a precise
 # "required tool 'zig' is not on PATH" with a curl error.
@@ -136,13 +146,39 @@ if [ -z "${_RA8_LANG_TOOLCHAINS_SH:-}" ]; then
     return 0
   }
 
+  # `uname` behind one seam so the selftest can prove every host row without
+  # needing that host, exactly as host_tool_path.sh does.
+  _ra8_lang_uname() {
+    uname "$@"
+  }
+
   # The release archives name the host the same way for both toolchains.
   _ra8_lang_arch() {
-    case "$(uname -m)" in
+    case "$(_ra8_lang_uname -m)" in
       x86_64) printf 'x86_64\n' ;;
       aarch64 | arm64) printf 'aarch64\n' ;;
       *) return 1 ;;
     esac
+  }
+
+  # Whether this host is one the pins can describe. Linux is; everything else
+  # is refused by name rather than sent down a Linux download path.
+  _ra8_lang_can_provision() {
+    [ "$(_ra8_lang_uname -s)" = "Linux" ]
+  }
+
+  # One shared refusal, so zig and rust say the same thing the same way.
+  _ra8_lang_refuse_foreign_host() {
+    local tool="$1" want="$2"
+    _ra8_lang_log \
+      "cannot provision ${tool} ${want} on $(_ra8_lang_uname -s)/$(_ra8_lang_uname -m):"
+    _ra8_lang_log \
+      "  .devcontainer/Dockerfile pins the Linux release archives only."
+    _ra8_lang_log \
+      "  Install ${tool} ${want} on the host and put it on PATH; the caller's"
+    _ra8_lang_log \
+      "  require_cmd reports the missing tool."
+    return 1
   }
 
   # use_pinned_zig -- put the pinned zig on PATH, provisioning it when the
@@ -156,6 +192,8 @@ if [ -z "${_RA8_LANG_TOOLCHAINS_SH:-}" ]; then
       [ "$(zig version 2>/dev/null)" = "${want}" ]; then
       return 0
     fi
+
+    _ra8_lang_can_provision || _ra8_lang_refuse_foreign_host zig "${want}" || return 1
 
     arch="$(_ra8_lang_arch)" || return 1
     tools_dir="$(_ra8_lang_tools_dir)"
@@ -193,6 +231,8 @@ if [ -z "${_RA8_LANG_TOOLCHAINS_SH:-}" ]; then
       [ "$(rustc --version 2>/dev/null | awk '{print $2}')" = "${want}" ]; then
       return 0
     fi
+
+    _ra8_lang_can_provision || _ra8_lang_refuse_foreign_host rust "${want}" || return 1
 
     arch="$(_ra8_lang_arch)" || return 1
     tools_dir="$(_ra8_lang_tools_dir)"
@@ -249,4 +289,225 @@ if [ -z "${_RA8_LANG_TOOLCHAINS_SH:-}" ]; then
     fi
     return 0
   }
+
+  # ==========================================================================
+  # SELFTEST -- proves BOTH directions of the host-OS rule.
+  #
+  # The rule is easy to regress and impossible to observe from the Linux boxes
+  # that run CI: a macOS host must never enter the download path, and a macOS
+  # host that already carries the pin must still succeed. Every external
+  # dependency is stubbed (uname, the Dockerfile pins, the cache directory,
+  # the fetch itself), so the whole host matrix runs on any host.
+  # ==========================================================================
+
+  _RA8_LANG_SELFTEST_PIN_ZIG="9.9.9"
+  _RA8_LANG_SELFTEST_PIN_RUST="9.9.9"
+  _RA8_LANG_SELFTEST_FETCH_LOG=""
+  _RA8_LANG_SELFTEST_OS="Linux"
+  _RA8_LANG_SELFTEST_MACHINE="x86_64"
+
+  # Replace the seams. Called only from lang_toolchains_selftest below.
+  _ra8_lang_selftest_install_stubs() {
+    local scratch="$1"
+    _RA8_LANG_SELFTEST_FETCH_LOG="${scratch}/fetch.log"
+    : >"${_RA8_LANG_SELFTEST_FETCH_LOG}"
+
+    _ra8_lang_uname() {
+      case "${1:-}" in
+        -s) printf '%s\n' "${_RA8_LANG_SELFTEST_OS}" ;;
+        -m) printf '%s\n' "${_RA8_LANG_SELFTEST_MACHINE}" ;;
+        *) return 1 ;;
+      esac
+    }
+
+    _ra8_lang_pin() {
+      case "$1" in
+        ZIG_VERSION) printf '%s\n' "${_RA8_LANG_SELFTEST_PIN_ZIG}" ;;
+        RUST_VERSION) printf '%s\n' "${_RA8_LANG_SELFTEST_PIN_RUST}" ;;
+        ZIG_SHA256_* | RUST_SHA256_*) printf 'deadbeef\n' ;;
+        *) return 0 ;;
+      esac
+    }
+
+    _ra8_lang_tools_dir() {
+      printf '%s/tools\n' "${scratch}"
+    }
+
+    # Records the URL instead of downloading, and fails the way an unreachable
+    # download does, so nothing can proceed on a stub.
+    _ra8_lang_fetch() {
+      printf '%s\n' "$1" >>"${_RA8_LANG_SELFTEST_FETCH_LOG}"
+      return 1
+    }
+  }
+
+  _ra8_lang_selftest_fetch_count() {
+    wc -l <"${_RA8_LANG_SELFTEST_FETCH_LOG}" | tr -d ' '
+  }
+
+  _ra8_lang_selftest_fail() {
+    echo "lang_toolchains.sh --selftest: $*" >&2
+    return 1
+  }
+
+  # Direction 1: a Linux host still reaches the pinned Linux archives.
+  _ra8_lang_selftest_linux_still_downloads() {
+    local scratch="$1" out
+    _RA8_LANG_SELFTEST_OS="Linux"
+    _RA8_LANG_SELFTEST_MACHINE="x86_64"
+    : >"${_RA8_LANG_SELFTEST_FETCH_LOG}"
+    if out="$(PATH="${scratch}/empty" use_pinned_zig 2>&1)"; then
+      _ra8_lang_selftest_fail "a failed zig download reported success"
+      return 1
+    fi
+    case "$(cat "${_RA8_LANG_SELFTEST_FETCH_LOG}")" in
+      *"zig-x86_64-linux-${_RA8_LANG_SELFTEST_PIN_ZIG}.tar.xz"*) ;;
+      *)
+        _ra8_lang_selftest_fail "Linux x86_64 did not request the pinned zig archive"
+        return 1
+        ;;
+    esac
+    case "${out}" in
+      *"provisioning zig"*) ;;
+      *)
+        _ra8_lang_selftest_fail "Linux provisioning said nothing: ${out}"
+        return 1
+        ;;
+    esac
+
+    : >"${_RA8_LANG_SELFTEST_FETCH_LOG}"
+    if PATH="${scratch}/empty" use_pinned_rust >/dev/null 2>&1; then
+      _ra8_lang_selftest_fail "a failed rust download reported success"
+      return 1
+    fi
+    case "$(cat "${_RA8_LANG_SELFTEST_FETCH_LOG}")" in
+      *"rust-${_RA8_LANG_SELFTEST_PIN_RUST}-x86_64-unknown-linux-gnu.tar.xz"*) ;;
+      *)
+        _ra8_lang_selftest_fail "Linux x86_64 did not request the pinned rust archive"
+        return 1
+        ;;
+    esac
+
+    _RA8_LANG_SELFTEST_MACHINE="aarch64"
+    : >"${_RA8_LANG_SELFTEST_FETCH_LOG}"
+    if PATH="${scratch}/empty" use_pinned_zig >/dev/null 2>&1; then
+      _ra8_lang_selftest_fail "a failed aarch64 zig download reported success"
+      return 1
+    fi
+    case "$(cat "${_RA8_LANG_SELFTEST_FETCH_LOG}")" in
+      *"zig-aarch64-linux-${_RA8_LANG_SELFTEST_PIN_ZIG}.tar.xz"*) ;;
+      *)
+        _ra8_lang_selftest_fail "Linux aarch64 did not request the aarch64 archive"
+        return 1
+        ;;
+    esac
+  }
+
+  # Direction 2: a macOS host refuses BEFORE any download, and says why.
+  _ra8_lang_selftest_macos_never_downloads() {
+    local scratch="$1" out
+    _RA8_LANG_SELFTEST_OS="Darwin"
+    _RA8_LANG_SELFTEST_MACHINE="arm64"
+    : >"${_RA8_LANG_SELFTEST_FETCH_LOG}"
+
+    if out="$(PATH="${scratch}/empty" use_pinned_zig 2>&1)"; then
+      _ra8_lang_selftest_fail "Darwin zig provisioning reported success"
+      return 1
+    fi
+    case "${out}" in
+      *"cannot provision zig ${_RA8_LANG_SELFTEST_PIN_ZIG} on Darwin/arm64"*) ;;
+      *)
+        _ra8_lang_selftest_fail "Darwin zig refusal gave no useful error: ${out}"
+        return 1
+        ;;
+    esac
+
+    if out="$(PATH="${scratch}/empty" use_pinned_rust 2>&1)"; then
+      _ra8_lang_selftest_fail "Darwin rust provisioning reported success"
+      return 1
+    fi
+    case "${out}" in
+      *"cannot provision rust ${_RA8_LANG_SELFTEST_PIN_RUST} on Darwin/arm64"*) ;;
+      *)
+        _ra8_lang_selftest_fail "Darwin rust refusal gave no useful error: ${out}"
+        return 1
+        ;;
+    esac
+
+    if [ "$(_ra8_lang_selftest_fetch_count)" != "0" ]; then
+      _ra8_lang_selftest_fail "Darwin reached the download path"
+      return 1
+    fi
+  }
+
+  # Direction 3: the Mac that IS set up correctly still passes, and the entry
+  # point stays non-fatal there. That is the #899 case: the arm64 macOS gate
+  # runs after its workflow installs the pin, and this file must not stop it.
+  _ra8_lang_selftest_macos_path_hit() {
+    local scratch="$1"
+    _RA8_LANG_SELFTEST_OS="Darwin"
+    _RA8_LANG_SELFTEST_MACHINE="arm64"
+    : >"${_RA8_LANG_SELFTEST_FETCH_LOG}"
+    if ! PATH="${scratch}/fake-bin:${scratch}/empty" use_pinned_zig >/dev/null 2>&1; then
+      _ra8_lang_selftest_fail "a Darwin host carrying the pinned zig was refused"
+      return 1
+    fi
+    if [ "$(_ra8_lang_selftest_fetch_count)" != "0" ]; then
+      _ra8_lang_selftest_fail "a satisfied Darwin host still downloaded"
+      return 1
+    fi
+    if ! PATH="${scratch}/empty" use_pinned_lang_toolchains >/dev/null 2>&1; then
+      _ra8_lang_selftest_fail "use_pinned_lang_toolchains became fatal on Darwin"
+      return 1
+    fi
+  }
+
+  # The arch mapping both callers share, including its closed default.
+  _ra8_lang_selftest_arch_matrix() {
+    local row got
+    _RA8_LANG_SELFTEST_OS="Linux"
+    for row in "x86_64:x86_64" "aarch64:aarch64" "arm64:aarch64"; do
+      _RA8_LANG_SELFTEST_MACHINE="${row%%:*}"
+      got="$(_ra8_lang_arch)" || got="none"
+      if [ "${got}" != "${row##*:}" ]; then
+        _ra8_lang_selftest_fail "arch ${row%%:*} mapped to '${got}'"
+        return 1
+      fi
+    done
+    _RA8_LANG_SELFTEST_MACHINE="riscv64"
+    if _ra8_lang_arch >/dev/null 2>&1; then
+      _ra8_lang_selftest_fail "an unknown architecture did not fail closed"
+      return 1
+    fi
+  }
+
+  lang_toolchains_selftest() {
+    set -euo pipefail
+    local scratch
+    scratch="$(mktemp -d "${TMPDIR:-/tmp}/ra8-lang-toolchains.XXXXXXXX")"
+    trap 'rm -rf "${scratch}"' RETURN
+    mkdir -p "${scratch}/empty" "${scratch}/fake-bin" "${scratch}/tools"
+    printf '#!/bin/sh\nprintf "%%s\\n" "%s"\n' "${_RA8_LANG_SELFTEST_PIN_ZIG}" \
+      >"${scratch}/fake-bin/zig"
+    chmod +x "${scratch}/fake-bin/zig"
+
+    _ra8_lang_selftest_install_stubs "${scratch}"
+    _ra8_lang_selftest_arch_matrix
+    _ra8_lang_selftest_linux_still_downloads "${scratch}"
+    _ra8_lang_selftest_macos_never_downloads "${scratch}"
+    _ra8_lang_selftest_macos_path_hit "${scratch}"
+
+    echo "lang_toolchains.sh --selftest: PASS (arch matrix, Linux downloads, macOS refuses, macOS pin honoured)"
+  }
+fi
+
+if [ "${BASH_SOURCE[0]}" = "$0" ]; then
+  case "${1:-}" in
+    --selftest) lang_toolchains_selftest ;;
+    *)
+      echo "Usage: scripts/ci/lib/lang_toolchains.sh --selftest" >&2
+      echo "       (the provisioner itself is sourced, never executed)" >&2
+      exit 2
+      ;;
+  esac
 fi
