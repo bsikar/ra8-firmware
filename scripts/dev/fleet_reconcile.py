@@ -31,6 +31,7 @@ import fleet_reconcile_blocking_selftest as frbl
 import fleet_reconcile_drain_selftest as frd
 import fleet_reconcile_process as frp
 import fleet_reconcile_recovery_selftest as frr
+import fleet_reconcile_release_selftest as frrl
 import fleet_reconcile_reopen_selftest as frre
 import fleet_reconcile_selftest as frs
 import fleet_reconcile_stranding_selftest as frst
@@ -65,6 +66,14 @@ DRAIN_FAILED_STATUS = 3
 # an operator apart a fleet idling at zero from a pass that simply failed.
 STRANDED_ESCALATION_PASSES = 3
 STRANDED_STATUS = 4
+# Holding every consumer back while the producer is drained protects them from
+# converging onto an image that is being republished underneath them.  A
+# DRAINED producer publishes nothing, so once it has held zero capacity across
+# this many consecutive passes its image has been frozen at last-known-good for
+# that whole time and the block protects nothing while costing the fleet
+# everything: a consumer already sitting at zero is skipped every pass and can
+# never be repaired, which is how issue #888's fleet stayed at zero.
+PRODUCER_BLOCK_PASSES = 3
 SHA256_RE = re.compile(r"[0-9a-f]{64}")
 ANSI_RE = re.compile(r"\x1b\[[0-9;]*m")
 
@@ -606,6 +615,51 @@ def stranded_escalations(stranding: dict[str, dict[str, int]], now: int) -> list
     return escalated
 
 
+def consumers_released(
+    stranding: dict[str, dict[str, int]], producer: str, *, undrained: bool
+) -> bool:
+    """Return whether consumers may reconcile while the producer sits at zero.
+
+    The block exists so a consumer cannot converge onto an image the producer
+    is republishing underneath it.  A producer that was DRAINED publishes
+    nothing, so a stranding that has survived ``PRODUCER_BLOCK_PASSES`` passes
+    has left the image frozen at last-known-good for that whole time: the
+    consumers would pull exactly what they already run.  Holding them back past
+    that point is the half of issue #888 where the fleet never climbs out, since
+    a consumer stranded at zero by an earlier pass is skipped every pass and
+    never repaired.  A producer that could not be drained is unaccounted for and
+    may still be publishing, so it keeps its consumers back however long it
+    stays that way.
+    """
+    if undrained:
+        return False
+    entry = stranding.get(producer)
+    if entry is None or entry["passes"] < PRODUCER_BLOCK_PASSES:
+        return False
+    print(
+        f"fleet-reconcile: CRITICAL: producer {producer} has held ZERO capacity "
+        f"across {entry['passes']} consecutive passes; its image is frozen at "
+        "last-known-good, so the consumers are released to reconcile against it "
+        "rather than sit at zero waiting for a producer that is not recovering",
+        file=sys.stderr,
+    )
+    return True
+
+
+def producer_block_state(
+    stranding: dict[str, dict[str, int]], host: str, *, stranded: bool, undrained: bool
+) -> bool:
+    """Return whether a failed producer still holds its consumers back."""
+    if not stranded:
+        print(
+            f"fleet-reconcile: WARNING: producer {host} FAILED without "
+            "losing capacity; consumers continue against last-known-good",
+            file=sys.stderr,
+        )
+        return False
+    return not consumers_released(stranding, host, undrained=undrained)
+
+
 def reconcile(
     data: dict[str, Any],
     options: ReconcileOptions,
@@ -624,12 +678,12 @@ def reconcile(
     receipts = document["hosts"]
     stranding = load_stranding(document)
     failures = 0
-    producer_failed = False
+    producer_blocking = False
     undrained: list[str] = []
     for index, host in enumerate(runner_hosts(data)):
         if frp.interrupted_status():
             break
-        if index and producer_failed:
+        if index and producer_blocking:
             print(f"fleet-reconcile: {host}: BLOCKED by producer failure", file=sys.stderr)
             failures += 1
             continue
@@ -664,16 +718,13 @@ def reconcile(
             clear_stranding(stranding, host)
         if not ok:
             failures += 1
-            producer_failed = index == 0 and options.mode == "apply" and stranded
-            if index == 0 and options.mode == "apply" and not stranded:
-                print(
-                    f"fleet-reconcile: WARNING: producer {host} FAILED without "
-                    "losing capacity; consumers continue against last-known-good",
-                    file=sys.stderr,
-                )
             if options.mode == "apply":
                 invalidate_receipt(receipts, stranding, host, options.now, stranded=stranded)
                 save_state(state_path, document)
+            if index == 0 and options.mode == "apply":
+                producer_blocking = producer_block_state(
+                    stranding, host, stranded=stranded, undrained=host in undrained
+                )
     escalated: list[str] = []
     if options.mode == "apply":
         save_state(state_path, document)
@@ -1239,6 +1290,7 @@ def selftest() -> int:
     failures.extend(frd.run(sys.modules[__name__]))
     failures.extend(frre.run(sys.modules[__name__]))
     failures.extend(frst.run(sys.modules[__name__]))
+    failures.extend(frrl.run(sys.modules[__name__]))
     _selftest_state_safety(failures)
     failures.extend(fml.run_selftest())
     _selftest_timeout(failures)
