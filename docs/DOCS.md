@@ -91,9 +91,12 @@ Doxygen. So is `docs/doxygen_theme/` (the vendored HTML theme itself).
 
 The repository is private while the docs site is public, so GitHub
 Actions status badges in Markdown would render as broken images for
-site visitors. `scripts/gen/doxygen_md_filter.py` (wired via
+site visitors. `tools/doxygen_md_filter` (a Zig host tool, wired via
 `FILTER_PATTERNS`) strips them from every Markdown page at
-docs-build time; they remain in the files on github.com.
+docs-build time; they remain in the files on github.com. It is built
+by `scripts/builders/docs.sh` and named to the Doxyfile through
+`$(RA8_MD_FILTER)`, so a docs build outside that script has no filter
+and fails rather than publishing unfiltered pages.
 
 ## How to read the generated HTML
 
