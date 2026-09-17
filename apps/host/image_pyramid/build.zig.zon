@@ -1,0 +1,16 @@
+.{
+    .name = .image_pyramid,
+    .version = "0.1.0",
+    .fingerprint = 0x765e0a95a16e11bc,
+    .minimum_zig_version = "0.14.1",
+    .dependencies = .{
+        // Shared host-target selection (see tools/zig_build/macos_host.zig, #899).
+        .ra8_zig_build = .{ .path = "../../../tools/zig_build" },
+    },
+    .paths = .{
+        "build.zig",
+        "build.zig.zon",
+        "src",
+        "tests",
+    },
+}
