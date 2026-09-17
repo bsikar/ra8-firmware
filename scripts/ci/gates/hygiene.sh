@@ -52,6 +52,14 @@ gate_ci_parity() (
   # (#899). The routing list is selftested here because a renamed gate would
   # otherwise leave a dead row that routes nothing.
   bash scripts/ci/lib/native_host_gates.sh --selftest
+  # Gate metadata also includes WHICH build roots a gate measures.
+  # macos-host-build carried three directory names inline, so a Zig host root
+  # added later sat outside it silently: the host-target rule keeps such a root
+  # looking correct from Linux while nothing ever builds it on a Mac (#899).
+  # The manifest's selftest fails when a build.zig exists that it does not
+  # declare, and proves the gate still reads the list rather than a hard-coded
+  # loop.
+  bash scripts/ci/lib/macos_host_roots.sh --selftest
   # The runner must also be honest about runs that STOPPED. A SIGTERMed suite
   # once deleted its own snapshot and kept going, inventing a FAIL for every
   # gate that came after; a fabricated red costs a lane its time and teaches
