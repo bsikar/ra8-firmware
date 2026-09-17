@@ -454,23 +454,31 @@ ra8_mipi_phy_compute_pll_freq(const ra8_mipi_phy_pll_t* pll, uint8_t mosc_mhz, u
 [[nodiscard]] ra8_err_t ra8_mipi_phy_get_status_decoded(ra8_mipi_phy_status_decoded_t* out);
 
 /**
- * @brief Read the cached lifecycle state.
+ * @brief Read the lifecycle state back off the hardware.
  *
  * @details
- * The state is updated by every public function that performs a
- * register write. Useful for higher-level stacks that need to assert
- * "PHY is in pll_run state before issuing a burst".
+ * Derived, not cached: the block publishes its own position in the
+ * HUM Ch 64.3.1 p 3837 start-up procedure, so this reads MSTPCRC
+ * (module stopped), then DPHYSFR.PWRSF / PLLSF, then DPHYOCR.DPHYEN
+ * and reports the furthest stage reached. Useful for higher-level
+ * stacks that need to assert "PHY is in pll_run state before issuing
+ * a burst" without the answer being able to go stale behind a shadow.
  *
- * @return Cached ``ra8_mipi_phy_state_t`` -- defaults to
- * ``k_ra8_mipi_phy_state_off`` after reset / first init.
- * @retval k_ra8_mipi_phy_state_off       PHY powered down.
- * @retval k_ra8_mipi_phy_state_ldo_ready LDO stabilised.
- * @retval k_ra8_mipi_phy_state_pll_run   PLL locked and running.
+ * ``k_ra8_mipi_phy_state_error`` is NOT derived here -- an LDO drop or
+ * a lost PLL lock is an edge, and edges are reported through
+ * ``ra8_mipi_phy_dispatch`` / the registered event callback.
+ *
+ * @return Live ``ra8_mipi_phy_state_t`` -- reads
+ * ``k_ra8_mipi_phy_state_off`` while the module-stop gate is closed.
+ * @retval k_ra8_mipi_phy_state_off     MSTPCRC bit set, regs unreachable.
+ * @retval k_ra8_mipi_phy_state_idle    Ungated, LDO not stable yet.
+ * @retval k_ra8_mipi_phy_state_ldo_up  PWRSF set, PLL not locked.
+ * @retval k_ra8_mipi_phy_state_pll_run PLL locked, D-PHY outputs off.
+ * @retval k_ra8_mipi_phy_state_run     DPHYEN set, transmitting.
  *
  * @pre -- (no preconditions; safe before ``init``).
  * @pre Caller has access to driver state (no IRQ guard required).
  * @post Hardware state is unchanged.
- * @post Cached lifecycle state is unchanged.
  *
  * @note Thread safety: read-only.
  * @since 0.1.0
@@ -478,22 +486,22 @@ ra8_mipi_phy_compute_pll_freq(const ra8_mipi_phy_pll_t* pll, uint8_t mosc_mhz, u
 ra8_mipi_phy_state_t ra8_mipi_phy_get_state(void);
 
 /**
- * @brief Read the most recently configured operating mode.
+ * @brief Read the operating mode back off DPHYMDC.
  *
  * @details
- * Returns the cached DPHYMDC.MASTEREN choice -- the bit is set during
- * ``ra8_mipi_phy_init`` and cleared when ``ra8_mipi_phy_deinit`` runs.
+ * Derived, not cached: DPHYMDC.MASTEREN is readable, so this reads the
+ * bit whenever the module-stop gate is open, and reports the register's
+ * reset value while it is closed.
  *
- * @return Cached ``ra8_mipi_phy_mode_t``. Defaults to
- * ``k_ra8_mipi_phy_mode_csi_device`` (matches DPHYMDC reset
- * value 0 -- HUM Ch 64.2.14 p 3837).
+ * @return Live ``ra8_mipi_phy_mode_t``. Reads
+ * ``k_ra8_mipi_phy_mode_csi_device`` while the module is stopped
+ * (matches DPHYMDC reset value 0 -- HUM Ch 64.2.14 p 3837).
  * @retval k_ra8_mipi_phy_mode_dsi_host DSI host -- TX path.
  * @retval k_ra8_mipi_phy_mode_csi_device  CSI sink -- RX path.
  *
  * @pre -- (no preconditions; safe before ``init``).
  * @pre Caller has access to driver state.
  * @post Hardware state is unchanged.
- * @post Cached active-mode value is unchanged.
  *
  * @note Thread safety: read-only.
  * @since 0.1.0
@@ -556,8 +564,10 @@ ra8_mipi_phy_dual_mode_t ra8_mipi_phy_get_dual_mode(void);
  *
  * - ``dual_off`` -- accept any request.
  * - ``dual_alternate`` -- accept any request (caller switches modes).
- * - ``dual_dsi_priority`` -- accept DSI; reject CSI when mode != CSI.
- * - ``dual_csi_priority`` -- accept CSI; reject DSI when mode != DSI.
+ * - ``dual_dsi_priority`` -- accept DSI, reject CSI.
+ * - ``dual_csi_priority`` -- accept CSI, reject DSI.
+ *
+ * A ``requestor`` outside the enum is rejected.
  *
  * @param[in] requestor Mode the caller wants to enter.
  *
