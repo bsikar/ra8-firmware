@@ -68,13 +68,13 @@ file(GLOB_RECURSE RA8_MEM_SOURCES CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra8_mem/src/
 # tests/cmake/zig_libraries.cmake links that archive into ra8_core_hal.
 # src/ra8_sdmmc_spi_internal.h stays: two host suites include it to reach
 # g_sdmmc_spi_state and the promoted priv_sdmmc_spi_* helpers.
-# ra8_gfx is partially migrated: the rasteriser core (the shared framebuffer
-# binding, both promoted helpers and the ten public entry points) is Zig
+# ra8_gfx is partially migrated: the rasteriser core and the glyph/text stack
+# (the shared framebuffer binding, both promoted helpers and the twelve public
+# entry points) are Zig
 # (libs/ra8_gfx/src/*.zig, built by libs/ra8_gfx/build.zig) behind the
 # unchanged C headers, and tests/cmake/zig_libraries.cmake links that archive
-# into ra8_core_hal. This glob now matches exactly the three C translation
-# units left: the dither, the text/glyph rasteriser and the generated 8x16
-# font table.
+# into ra8_core_hal. This glob now matches exactly the two C translation units
+# left: the dither and the generated 8x16 font table.
 file(GLOB_RECURSE RA8_GFX_SOURCES CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra8_gfx/src/*.c)
 # ra8_ui has no C sources: the interaction core (hit-testing, screen stack,
 # paging) is Zig (libs/ra8_ui/src/*.zig, built by libs/ra8_ui/build.zig)

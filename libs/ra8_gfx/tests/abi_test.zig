@@ -592,3 +592,173 @@ test "a gray4 blit reaches the RGB565 surface through the shared plotter" {
         s.at(0, 0),
     );
 }
+
+/// A two-slot 8x2 test face: slot 0 ('a') is blank, slot 1 ('b') is solid.
+const face_glyphs = [_]u8{ 0x00, 0x00, 0xFF, 0xFF };
+const test_face = impl.Font{
+    .glyph_data = &face_glyphs,
+    .glyph_width = 8,
+    .glyph_height = 2,
+    .bytes_per_glyph = 2,
+    .first_codepoint = 'a',
+    .last_codepoint = 'b',
+};
+
+const text_fg: u32 = 0x00FF0000;
+const text_bg: u32 = 0x000000FF;
+
+/// The colour a 565 surface actually holds after storing `color`.
+fn stored565(color: u32) u32 {
+    return impl.unpack565(impl.pack565(color));
+}
+
+test "text_out judges its pointers before the binding" {
+    unbind();
+    try std.testing.expectEqual(
+        impl.err.null_ptr,
+        abi.ra8_gfx_text_out(0, 0, null, &test_face, text_fg, text_bg),
+    );
+    try std.testing.expectEqual(
+        impl.err.null_ptr,
+        abi.ra8_gfx_text_out(0, 0, "b", null, text_fg, text_bg),
+    );
+    try std.testing.expectEqual(
+        impl.err.not_initialized,
+        abi.ra8_gfx_text_out(0, 0, "b", &test_face, text_fg, text_bg),
+    );
+}
+
+test "text_size measures a string with no binding at all" {
+    unbind();
+    var w: u32 = 0;
+    var h: u32 = 0;
+    try std.testing.expectEqual(impl.err.ok, abi.ra8_gfx_text_size("abc", &test_face, &w, &h));
+    try std.testing.expectEqual(@as(u32, 24), w);
+    try std.testing.expectEqual(@as(u32, 2), h);
+    try std.testing.expectEqual(impl.err.ok, abi.ra8_gfx_text_size("", &test_face, &w, &h));
+    try std.testing.expectEqual(@as(u32, 0), w);
+    try std.testing.expectEqual(@as(u32, 2), h);
+}
+
+test "text_size refuses any null argument" {
+    var w: u32 = 0;
+    var h: u32 = 0;
+    try std.testing.expectEqual(impl.err.null_ptr, abi.ra8_gfx_text_size(null, &test_face, &w, &h));
+    try std.testing.expectEqual(impl.err.null_ptr, abi.ra8_gfx_text_size("a", null, &w, &h));
+    try std.testing.expectEqual(impl.err.null_ptr, abi.ra8_gfx_text_size("a", &test_face, null, &h));
+    try std.testing.expectEqual(impl.err.null_ptr, abi.ra8_gfx_text_size("a", &test_face, &w, null));
+}
+
+test "a solid glyph paints fg across its whole cell in RGB565" {
+    var s = Surface{};
+    s.bind(16, 8, impl.format.rgb565);
+    try std.testing.expectEqual(
+        impl.err.ok,
+        abi.ra8_gfx_text_out(0, 0, "b", &test_face, text_fg, text_bg),
+    );
+    try std.testing.expectEqual(stored565(text_fg), s.at(0, 0));
+    try std.testing.expectEqual(stored565(text_fg), s.at(7, 1));
+    try std.testing.expectEqual(@as(u32, 0), s.at(8, 0));
+    try std.testing.expectEqual(@as(u32, 0), s.at(0, 2));
+}
+
+test "a blank glyph paints bg across its whole cell" {
+    var s = Surface{};
+    s.bind(16, 8, impl.format.rgb565);
+    try std.testing.expectEqual(
+        impl.err.ok,
+        abi.ra8_gfx_text_out(0, 0, "a", &test_face, text_fg, text_bg),
+    );
+    try std.testing.expectEqual(stored565(text_bg), s.at(0, 0));
+    try std.testing.expectEqual(stored565(text_bg), s.at(7, 1));
+    try std.testing.expectEqual(@as(u32, 0), s.at(8, 0));
+}
+
+test "a codepoint outside the face renders as the first slot" {
+    var s = Surface{};
+    s.bind(16, 8, impl.format.rgb565);
+    try std.testing.expectEqual(
+        impl.err.ok,
+        abi.ra8_gfx_text_out(0, 0, "z", &test_face, text_fg, text_bg),
+    );
+    try std.testing.expectEqual(stored565(text_bg), s.at(0, 0));
+    try std.testing.expectEqual(stored565(text_bg), s.at(7, 1));
+}
+
+test "each character advances the pen one cell width" {
+    var s = Surface{};
+    s.bind(16, 8, impl.format.rgb565);
+    try std.testing.expectEqual(
+        impl.err.ok,
+        abi.ra8_gfx_text_out(0, 0, "ab", &test_face, text_fg, text_bg),
+    );
+    try std.testing.expectEqual(stored565(text_bg), s.at(0, 0));
+    try std.testing.expectEqual(stored565(text_fg), s.at(8, 0));
+    try std.testing.expectEqual(stored565(text_fg), s.at(15, 1));
+}
+
+test "the clip box confines a glyph cell" {
+    var s = Surface{};
+    s.bind(16, 8, impl.format.rgb565);
+    try std.testing.expectEqual(impl.err.ok, abi.ra8_gfx_set_clip(4, 0, 4, 8));
+    try std.testing.expectEqual(
+        impl.err.ok,
+        abi.ra8_gfx_text_out(0, 0, "b", &test_face, text_fg, text_bg),
+    );
+    try std.testing.expectEqual(@as(u32, 0), s.at(3, 0));
+    try std.testing.expectEqual(stored565(text_fg), s.at(4, 0));
+    try std.testing.expectEqual(stored565(text_fg), s.at(7, 1));
+    try std.testing.expectEqual(@as(u32, 0), s.at(8, 0));
+    try std.testing.expectEqual(impl.err.ok, abi.ra8_gfx_reset_clip());
+}
+
+test "a glyph fully outside the clip draws nothing" {
+    var s = Surface{};
+    s.bind(16, 8, impl.format.rgb565);
+    try std.testing.expectEqual(impl.err.ok, abi.ra8_gfx_set_clip(12, 0, 4, 8));
+    try std.testing.expectEqual(
+        impl.err.ok,
+        abi.ra8_gfx_text_out(0, 0, "b", &test_face, text_fg, text_bg),
+    );
+    try std.testing.expectEqual(@as(usize, 0), s.nonZeroCount());
+    try std.testing.expectEqual(impl.err.ok, abi.ra8_gfx_reset_clip());
+}
+
+test "an empty string leaves the surface alone" {
+    var s = Surface{};
+    s.bind(16, 8, impl.format.rgb565);
+    try std.testing.expectEqual(
+        impl.err.ok,
+        abi.ra8_gfx_text_out(0, 0, "", &test_face, text_fg, text_bg),
+    );
+    try std.testing.expectEqual(@as(usize, 0), s.nonZeroCount());
+}
+
+test "a glyph reaches a non-RGB565 surface through the shared plotter" {
+    var s = Surface{};
+    s.bind(16, 8, impl.format.argb8888);
+    try std.testing.expectEqual(
+        impl.err.ok,
+        abi.ra8_gfx_text_out(0, 0, "b", &test_face, text_fg, text_bg),
+    );
+    try std.testing.expectEqual(text_fg, s.at(0, 0));
+    try std.testing.expectEqual(text_fg, s.at(7, 1));
+    try std.testing.expectEqual(@as(u32, 0), s.at(8, 0));
+}
+
+test "a face with no glyph table draws nothing and still succeeds" {
+    var s = Surface{};
+    s.bind(16, 8, impl.format.rgb565);
+    const bare = impl.Font{
+        .glyph_width = 8,
+        .glyph_height = 2,
+        .bytes_per_glyph = 2,
+        .first_codepoint = 'a',
+        .last_codepoint = 'b',
+    };
+    try std.testing.expectEqual(
+        impl.err.ok,
+        abi.ra8_gfx_text_out(0, 0, "b", &bare, text_fg, text_bg),
+    );
+    try std.testing.expectEqual(@as(usize, 0), s.nonZeroCount());
+}

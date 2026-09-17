@@ -57,9 +57,9 @@ ra8_add_app(
 # archive instead, cross-built for THIS image's core rather than the app's.
 # CPU1 is a Cortex-M33 while the parent M85 app is a cortex-m85, so the archive
 # has to be requested per-core -- see ra8_link_zig_library_for_cpu() in
-# cmake/ra8_app/zig_libs.cmake. The glyph/text TU and the generated font table
-# are still C and reference the archive, which is the safe direction (objects
-# reference the archive, never the reverse).
+# cmake/ra8_app/zig_libs.cmake. The generated font table is the only C TU left
+# and it references the archive, which is the safe direction (objects reference
+# the archive, never the reverse).
 #############################################################################
 ra8_add_cpu1_image(
   PARENT ereader_m33
@@ -72,16 +72,15 @@ ra8_add_cpu1_image(
 if(TARGET ereader_m33_cpu1.elf)
   target_sources(
     ereader_m33_cpu1.elf
-    PRIVATE ${RA8_REPO_ROOT}/libs/ra8_gfx/src/ra8_gfx_text_glyph.c
-            ${RA8_REPO_ROOT}/libs/ra8_gfx/src/ra8_gfx_font_8x16.c
+    PRIVATE ${RA8_REPO_ROOT}/libs/ra8_gfx/src/ra8_gfx_font_8x16.c
             ${RA8_REPO_ROOT}/libs/ra8_hal/src/ra8_ipc.c
   )
   target_include_directories(
     ereader_m33_cpu1.elf PRIVATE ${RA8_REPO_ROOT}/libs/ra8_gfx/src
   )
-  # g_gfx_text_state, both promoted helpers and the public draw entry points
-  # live in the Zig archive; the two C TUs above reach them through the
-  # unchanged src/ra8_gfx_internal.h.
+  # g_gfx_text_state, both promoted helpers and every public entry point, the
+  # glyph/text stack included, live in the Zig archive; the font table above is
+  # the only C TU left here and it needs nothing from that header.
   ra8_link_zig_library_for_cpu(
     TARGET ereader_m33_cpu1.elf
     LIB ra8_gfx
