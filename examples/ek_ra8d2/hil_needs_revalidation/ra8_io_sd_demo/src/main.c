@@ -163,7 +163,6 @@ RA8_INTERNAL static void internal_sd_demo_print(const uint8_t* msg, uint32_t len
  *          reported on the console; it parks the core so a debugger or the HIL
  *          runner can observe the final state.
  *
- * @return Never returns.
  *
  * @pre A fatal error has been reported to the console.
  * @pre The console output has been queued.
@@ -199,7 +198,6 @@ RA8_INTERNAL static void internal_sd_demo_panic_halt(void)
  *
  * @param[out] out_pclka_hz Cached PCLKA rate (Hz) handed to the transport factory.
  *
- * @return Nothing (panic-halts on failure).
  *
  * @pre Reset_Handler initialised .data/.bss.
  * @pre @p out_pclka_hz is writable.
@@ -242,7 +240,6 @@ RA8_INTERNAL static void internal_sd_demo_setup_or_halt(uint32_t* out_pclka_hz)
  *
  * @param[in] pclka_hz Live PCLKA rate (Hz) feeding the SCI baud divider.
  *
- * @return Nothing (panic-halts on failure).
  *
  * @pre `ra8_cgc_init` has run and the console SCI is up.
  * @pre @p pclka_hz is the live PCLKA rate.

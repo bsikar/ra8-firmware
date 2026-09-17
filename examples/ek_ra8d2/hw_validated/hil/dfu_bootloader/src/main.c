@@ -515,8 +515,6 @@ static ra8_dfu_action_t blc_decide(ra8_dfu_slot_t* out_target)
  *
  * @param[in] slot Slot to boot (A or B); already passed ::ra8_dfu_slot_valid.
  *
- * @return void -- returns to the caller ONLY when the run target is invalid
- *         (so `main` drops to DFU); on a valid image it does not return.
  *
  * @pre @p slot is A or B and passed CRC validation in ::blc_decide.
  * @pre The image was linked at ::k_ra8_dfu_run_base (its header `entry` records it).

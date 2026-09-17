@@ -254,7 +254,6 @@ RA8_INTERNAL static bool internal_wait_for_pong(const volatile cache_coherency_s
  * @param[in]     round    Zero-based round index; selects the payload values.
  * @param[in,out] next_seq Next ``ping_seq`` value to publish; advanced by one.
  *
- * @return Nothing (results land in the global counters).
  *
  * @pre shared != nullptr.
  * @pre next_seq != nullptr.

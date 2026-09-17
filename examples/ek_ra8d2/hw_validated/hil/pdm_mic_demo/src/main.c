@@ -157,7 +157,6 @@ static const uint8_t k_pdm_demo_banner_inactive[] = "pdm: verdict=FAIL active=N\
  *
  * @details Waits in a low-power spin; only a debugger or reset wakes it.
  *
- * @return Never returns.
  *
  * @pre Called only after a fatal init failure.
  * @pre The console banner (if any) has been flushed.

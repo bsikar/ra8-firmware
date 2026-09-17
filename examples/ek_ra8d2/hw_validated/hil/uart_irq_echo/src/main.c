@@ -234,7 +234,10 @@ static void uart_irq_rx_cb(void* ctx, uint8_t byte)
 /**
  * @brief Bring CGC + SysTick + SCI8 + LED1 + the SCI ISRs up, or panic-halt.
  *
- * @return Nothing (halts forever on any failure).
+ * @post On success CGC, SysTick, SCI8, LED1 and both SCI ISRs are up and the echo loop
+ *       may run.
+ * @post On any failing step ::uart_irq_panic_halt parks the CPU, so this call never
+ *       returns to the caller.
  * @since 0.1.0
  */
 static void uart_irq_setup_or_halt(void)

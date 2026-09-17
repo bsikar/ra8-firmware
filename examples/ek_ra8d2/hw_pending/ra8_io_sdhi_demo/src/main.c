@@ -132,7 +132,6 @@ static void sdhi_demo_print(const uint8_t* msg, uint32_t len)
  *          reported on the console; it parks the core so a debugger or the HIL
  *          runner can observe the final state.
  *
- * @return Never returns.
  *
  * @pre A fatal error has been reported to the console.
  * @pre The console output has been queued.
@@ -163,7 +162,6 @@ static void sdhi_demo_panic_halt(void)
  *          ``ra8_board_sdhi_pins_init``. Any failing step panic-halts so a
  *          misconfigured bus never reaches the SD bring-up.
  *
- * @return Nothing (panic-halts on failure).
  *
  * @pre Reset_Handler initialised .data/.bss.
  * @pre No other consumer owns the port-4 SDHI pins.
@@ -200,7 +198,6 @@ static void sdhi_demo_setup_or_halt(void)
  *          on SDHI0 (which itself brings up the SDHI block), printing `card ready`
  *          on success or a `FAIL init` diagnostic before parking on failure.
  *
- * @return Nothing (panic-halts on failure).
  *
  * @pre The eight SDHI bus pins are routed.
  * @pre A card is present in the SDHI slot.

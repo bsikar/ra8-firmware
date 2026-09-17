@@ -81,7 +81,6 @@ static const ra8_net_provision_uart_t s_provision_uart = {
  * @brief Halt the processor after an unrecoverable start-up failure.
  * @details Executes wait-for-interrupt forever so a failed kernel or platform
  *          initialization cannot fall through into partially configured code.
- * @return Never returns.
  * @pre A terminal start-up failure was detected.
  * @pre Interrupt state is safe for an indefinite wait.
  * @post No application operation executes after entry.
@@ -100,11 +99,12 @@ static void c6_join_panic_halt(void)
  * @brief Initialize platform services required by the join application.
  * @details Brings up clocks, records live rates, enables module-stop control,
  *          initializes delay timing, and opens the console in dependency order.
- * @return Nothing after successful initialization; failures halt permanently.
  * @pre Reset-time clock and board state is available.
  * @pre No worker or C6 transaction has started.
  * @post Live CPUCLK0 and PCLKA rates are cached.
  * @post Timing and board-console services are initialized on return.
+ * @post On any failing step ::c6_join_panic_halt parks the processor permanently, so
+ *       this call never returns to the caller.
  * @note Not thread-safe; call exactly once during boot.
  * @since 0.1.0
  */
@@ -387,7 +387,6 @@ static bool c6_join_phase_ip(const ra8_c6link_mac_t* mac)
  * @details Emits the immutable pass or fail line and sleeps for the fixed
  *          heartbeat period forever after the network journey completes.
  * @param[in] passed Final application verdict.
- * @return Never returns.
  * @pre The console and ThreadX scheduler are operational.
  * @pre No further network setup step is required.
  * @post The selected verdict is never changed.
@@ -409,11 +408,12 @@ static void c6_join_heartbeat(bool passed)
  *          only for synchronous association, erases it, completes DHCP, and
  *          enters the terminal heartbeat with the aggregate verdict.
  * @param[in] thread_input Unused ThreadX entry argument.
- * @return Nothing on provisioning failure; successful journeys enter heartbeat.
  * @pre ThreadX started this worker after ::tx_application_define.
  * @pre ::s_init_err contains the ESP-hosted initialization result.
  * @post The credential record is erased before DHCP or return.
  * @post No credential-bearing field is written to the console.
+ * @post Control never returns to ThreadX: a refused port, failed provisioning and a
+ *       completed journey all end in ::c6_join_heartbeat, which loops forever.
  * @note Not thread-safe; this is the application's sole worker thread.
  * @since 0.1.0
  */

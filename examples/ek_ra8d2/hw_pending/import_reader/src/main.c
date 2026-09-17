@@ -274,7 +274,6 @@ static void imp_print_uint(uint32_t value)
 /**
  * @brief Print the FAIL banner with a stage tag, then trap and park.
  * @param[in] stage NUL-terminated stage label (non-NULL).
- * @return Never returns.
  * @pre The console is initialised.
  * @pre @p stage is NUL-terminated.
  * @post The FAIL line is queued; the CPU traps then spins in WFI.
@@ -302,7 +301,6 @@ static void imp_panic(const char* stage)
 /**
  * @brief Bring up CGC + SysTick + console SCI; panic on failure.
  * @param[out] out_pclka_hz Cached PCLKA rate (Hz) for the SD transport factory.
- * @return Nothing (panic-halts on failure).
  * @pre Reset_Handler initialised .data/.bss.
  * @pre @p out_pclka_hz is writable.
  * @post On success the console prints and `*out_pclka_hz` holds the PCLKA rate.
@@ -335,7 +333,6 @@ static void imp_setup_or_halt(uint32_t* out_pclka_hz)
 /**
  * @brief Build the SCI-SPI transport, run SD identification; panic on failure.
  * @param[in] pclka_hz Live PCLKA rate (Hz) feeding the SCI baud divider.
- * @return Nothing (panic-halts on failure).
  * @pre `ra8_cgc_init` has run and the console SCI is up.
  * @pre @p pclka_hz is the live PCLKA rate.
  * @post On success the SD card is in SPI mode and `card ready` is printed.
@@ -365,7 +362,6 @@ static void imp_init_card_or_halt(uint32_t pclka_hz)
 /**
  * @brief Bind the SD-over-SPI block device into `ra8_fs` and mount the volume.
  * @param[out] out_mount Receives the mounted-volume handle on success.
- * @return Nothing (panic-halts on failure).
  * @pre The SD card is initialised (`ra8_sdmmc_spi_init` succeeded).
  * @pre @p out_mount is writable.
  * @post On success `*out_mount` is a live mount of the card's existing FAT
@@ -586,7 +582,6 @@ imp_read_cache(ra8_fs_mount_t* mount, const char* path, uint32_t* out_len)
 /**
  * @brief Run the import twice (miss then hit), confirm the cache, read + walk.
  * @param[in] mount Mounted volume carrying the source `.epub`.
- * @return Nothing (panic-halts on any failed stage).
  * @pre @p mount is mounted and carries @ref k_imp_epub_path.
  * @pre @ref imp_build_cookie and the SD bring-up have completed.
  * @post On success the PASS banner is printed; on failure the CPU is parked.

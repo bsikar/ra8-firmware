@@ -146,7 +146,6 @@ static uint32_t s_c6_wifi_events;
 
 /**
  * @brief Park the CPU forever after an unrecoverable bring-up failure.
- * @return Never returns.
  * @pre A bring-up step has failed and the application cannot proceed.
  * @pre The failure was already reported if the console was up.
  * @post The CPU is parked in a wait-for-interrupt loop.
@@ -163,12 +162,13 @@ static void c6_wifi_panic_halt(void)
 
 /**
  * @brief Bring clocks, module-stop state, SysTick and the console up.
- * @return Nothing; panic-halts instead of returning on any failure.
  * @pre ``Reset_Handler`` has copied ``.data`` and zeroed ``.bss``.
  * @pre ``SystemInit`` has completed and the console SCI is unclaimed.
  * @post ::s_c6_wifi_cpuclk_hz and ::s_c6_wifi_pclka_hz are non-zero and the
  *       console transmits at ::k_c6_wifi_uart_baud, 8N1.
  * @post SysTick runs and every peripheral this app uses is out of module-stop.
+ * @post On any failing step ::c6_wifi_panic_halt parks the CPU, so this call never
+ *       returns to the caller.
  * @note Never returns on error; a clock failure happens before the console
  *       exists, so it is visible only to a debugger.
  * @since 0.1.0
@@ -384,7 +384,6 @@ static ra8_err_t c6_wifi_open_link(void)
 /**
  * @brief Print a liveness line forever, never returning.
  * @param[in] passed Verdict the run reached, echoed on every beat.
- * @return Never returns.
  * @pre The console is up and ThreadX is scheduling.
  * @pre The verdict has already been printed once.
  * @post A line is emitted every ::k_c6_wifi_heartbeat_ms milliseconds.
@@ -458,12 +457,13 @@ static bool c6_wifi_phase_ready(ra8_c6link_fw_version_t* out)
 /**
  * @brief Worker thread: open the link, run both phases, judge, heartbeat.
  * @param[in] thread_input ThreadX entry argument; unused.
- * @return Never returns.
  * @pre ``tx_application_define`` has recorded ::s_c6_wifi_init_err.
  * @pre The console is up.
  * @post On a successful init both phases ran and exactly one verdict line was
  *       printed.
  * @post On a failed init no transaction was attempted and the error was named.
+ * @post Control never returns to ThreadX: a refused port, a failed readiness phase and
+ *       a completed run all end in ::c6_wifi_heartbeat, which loops forever.
  * @note The failure path deliberately does not continue: a port that did not
  *       come up has an unpopulated vtable, and calling through it would fault
  *       rather than report.
