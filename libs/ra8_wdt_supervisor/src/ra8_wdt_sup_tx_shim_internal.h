@@ -124,6 +124,113 @@ typedef struct {
   uint32_t magic; /**< Sentinel for "created".                              */
 } TX_THREAD;      /* NOLINT(readability-identifier-naming) -- ThreadX name. */
 
+/**
+ * @enum ra8_wdt_sup_tx_call_t
+ * @brief Names the ThreadX calls the host shim can be told to fail.
+ *
+ * @details
+ * The real ThreadX API fails these calls when a control block is reused,
+ * a stack is unaligned or the kernel is not running. The host stubs have
+ * no such states, so a test names the call it wants to fail and the stub
+ * returns a non-success status exactly once. Without this seam the
+ * supervisor's RTOS error paths are unreachable on the host build.
+ */
+typedef enum : uint32_t {
+  k_ra8_wdt_sup_tx_call_none          = 0U, /**< No forced failure armed.       */
+  k_ra8_wdt_sup_tx_call_mutex_create  = 1U, /**< Fail the next tx_mutex_create. */
+  k_ra8_wdt_sup_tx_call_mutex_get     = 2U, /**< Fail the next tx_mutex_get.    */
+  k_ra8_wdt_sup_tx_call_thread_create = 3U, /**< Fail the next tx_thread_create.*/
+} ra8_wdt_sup_tx_call_t;
+
+/**
+ * @enum ra8_wdt_sup_tx_shim_status_t
+ * @brief Non-success status the host stubs report for a forced failure.
+ *
+ * @details
+ * Any value other than ``TX_SUCCESS`` drives the caller's failure branch;
+ * the supervisor never inspects which one. Named rather than literal per
+ * the repository's no-magic-number rule.
+ */
+typedef enum : uint32_t {
+  k_ra8_wdt_sup_tx_shim_forced_error = 0xFFU, /**< Stand-in for a TX_* error. */
+} ra8_wdt_sup_tx_shim_status_t;
+
+/**
+ * @var s_ra8_wdt_sup_tx_forced_call
+ * @brief One-shot forced-failure slot, private to each including TU.
+ *
+ * @note Each translation unit that includes this header owns its own
+ *       copy, which is why the supervisor exposes
+ *       ``ra8_wdt_supervisor_test_force_rtos_failure`` to arm the copy
+ *       that ``ra8_wdt_supervisor.c`` compiles against.
+ */
+[[maybe_unused]] static ra8_wdt_sup_tx_call_t s_ra8_wdt_sup_tx_forced_call =
+  k_ra8_wdt_sup_tx_call_none;
+
+/**
+ * @brief Consume the armed forced failure when it names @p call.
+ *
+ * @details
+ * Returns ``TX_SUCCESS`` unless the slot names this call, in which case
+ * the slot is cleared and the forced error is reported. One-shot, so a
+ * test never leaks a forced failure into the next case.
+ *
+ * @param[in] call ThreadX call asking for its status.
+ *
+ * @return ThreadX-style status word.
+ * @retval TX_SUCCESS No forced failure was armed for @p call.
+ *
+ * @pre None.
+ * @post The forced-failure slot is cleared when it matched @p call.
+ * @note Not thread-safe; host unit-test context is single-threaded.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static inline UINT internal_tx_shim_status(ra8_wdt_sup_tx_call_t call)
+{
+  if (s_ra8_wdt_sup_tx_forced_call == call) {
+    s_ra8_wdt_sup_tx_forced_call = k_ra8_wdt_sup_tx_call_none;
+    return (UINT)k_ra8_wdt_sup_tx_shim_forced_error;
+  }
+  return TX_SUCCESS;
+}
+
+/**
+ * @brief Arm a one-shot forced failure in the including TU's shim.
+ *
+ * @param[in] call ThreadX call whose next invocation must fail, or
+ *                 ``k_ra8_wdt_sup_tx_call_none`` to disarm.
+ *
+ * @return Nothing.
+ *
+ * @pre None.
+ * @post The next matching stub call reports a non-success status once.
+ * @note Not thread-safe; host unit-test context is single-threaded.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static inline void internal_tx_shim_arm_failure(ra8_wdt_sup_tx_call_t call)
+{
+  s_ra8_wdt_sup_tx_forced_call = call;
+}
+
+/**
+ * @brief Arm a one-shot ThreadX failure inside ``ra8_wdt_supervisor.c``.
+ *
+ * @details
+ * Defined by the supervisor implementation on the host build so a test
+ * can reach the shim copy that the supervisor's own calls resolve to.
+ *
+ * @param[in] call ThreadX call whose next invocation must fail, or
+ *                 ``k_ra8_wdt_sup_tx_call_none`` to disarm.
+ *
+ * @return Nothing.
+ *
+ * @pre None.
+ * @post The supervisor's next matching ThreadX call fails once.
+ * @note Not thread-safe; host unit-test context is single-threaded.
+ * @since 0.1.0
+ */
+void ra8_wdt_supervisor_test_force_rtos_failure(ra8_wdt_sup_tx_call_t call);
+
 /* NOLINTBEGIN(readability-non-const-parameter) -- ThreadX pins CHAR* name non-const. */
 /**
  * @brief Host stub for tx_mutex_create.
@@ -145,6 +252,10 @@ RA8_INTERNAL static inline UINT internal_tx_mutex_create(TX_MUTEX* m, CHAR* name
 {
   (void)name;
   (void)inherit;
+  const UINT forced = internal_tx_shim_status(k_ra8_wdt_sup_tx_call_mutex_create);
+  if (forced != TX_SUCCESS) {
+    return forced;
+  }
   if (m != ((void*)0)) {
     m->magic = (uint32_t)k_ra8_wdt_sup_tx_shim_mutex_canary;
   }
@@ -171,7 +282,7 @@ RA8_INTERNAL static inline UINT internal_tx_mutex_get(TX_MUTEX* m, ULONG wait)
 {
   (void)m;
   (void)wait;
-  return TX_SUCCESS;
+  return internal_tx_shim_status(k_ra8_wdt_sup_tx_call_mutex_get);
 }
 
 /**
@@ -258,6 +369,10 @@ RA8_INTERNAL static inline UINT internal_tx_thread_create(TX_THREAD* t,
   (void)preempt_thresh;
   (void)slice;
   (void)autostart;
+  const UINT forced = internal_tx_shim_status(k_ra8_wdt_sup_tx_call_thread_create);
+  if (forced != TX_SUCCESS) {
+    return forced;
+  }
   if (t != ((void*)0)) {
     t->magic = (uint32_t)k_ra8_wdt_sup_tx_shim_thread_canary;
   }
