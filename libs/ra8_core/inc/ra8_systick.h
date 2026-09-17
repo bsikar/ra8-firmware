@@ -210,7 +210,8 @@ ra8_systick_configure(uint32_t reload, ra8_systick_clock_source_t src, bool tick
  * @brief Enable the DWT free-running cycle counter (DWT_CYCCNT).
  *
  * @details
- * Sets DEMCR.TRCENA to unlock the DWT unit, then sets DWT_CTRL.CYCCNTENA to
+ * Unlocks the DWT unit through ::ra8_scb_trace_enable (which sets DEMCR.TRCENA;
+ * ra8_scb is the single owner of that bit), then sets DWT_CTRL.CYCCNTENA to
  * start DWT_CYCCNT counting every CPU cycle. Both are read-modify-write so any
  * other trace/debug bits already set are preserved. The counter is PRIMASK-immune:
  * it keeps advancing even while interrupts are globally masked, which is what
@@ -223,6 +224,7 @@ ra8_systick_configure(uint32_t reload, ra8_systick_clock_source_t src, bool tick
  *
  * @note Not thread-safe (read-modify-write of two registers); call once at init.
  *
+ * @see ra8_scb_trace_enable
  * @see ra8_dwt_cyccnt_read
  * @see ra8_dwt_cyccnt_reset
  *
