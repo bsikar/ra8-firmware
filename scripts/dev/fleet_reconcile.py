@@ -28,6 +28,7 @@ import fleet_mutation_lock as fml
 import fleet_reconcile_arc_selftest as fras
 import fleet_reconcile_backoff_selftest as frb
 import fleet_reconcile_blocking_selftest as frbl
+import fleet_reconcile_cascade_selftest as frc
 import fleet_reconcile_drain_selftest as frd
 import fleet_reconcile_freeze_selftest as frf
 import fleet_reconcile_interrupt_selftest as fri
@@ -87,6 +88,17 @@ PRODUCER_BLOCK_PASSES = 3
 # the outage (issue #888).  Mark them, so a producer proven to be serving again
 # expires them and the consumers converge onto what it now publishes.
 RELEASED_RECEIPT_KEY = "released_against"
+# Draining after a failed mutation is the right fail-closed reflex for ONE
+# host.  Repeated across a pass it is not convergence, it is an evacuation: a
+# provision that is broken in the declaration fails on every host that carries
+# it, so the controller drains them one after another and empties the fleet in
+# a single pass, then does it again on the next one (issue #888).  A fault that
+# reproduces on host after host is in the snapshot, not in the fleet, and no
+# amount of further draining can fix it, so one pass may take at most this
+# share of the capacity-managed hosts to zero before it stops mutating and
+# leaves the rest serving.
+PASS_DRAIN_BUDGET_RATIO = 0.5
+CASCADE_STATUS = 5
 # Every verb that can move a host's capacity.  A failure that issued none of
 # them cannot have stranded the host, whatever else went wrong.
 CAPACITY_MUTATION_VERBS = frozenset({"parked-apply", "quarantine", "restore", "activate"})
@@ -724,18 +736,35 @@ def open_stranding(
     return stranding
 
 
-def invalidate_receipt(
+def invalidate_receipt(  # noqa: PLR0913  # the receipt plus every record one failure settles
     receipts: dict[str, Any],
     stranding: dict[str, dict[str, int]],
+    drained: list[str],
     host: str,
     now: int,
     *,
     stranded: bool,
+    at_zero: bool = True,
 ) -> None:
-    """Drop a failed host's receipt, counting a pass that left it at zero."""
+    """Drop a failed host's receipt, counting a pass that left it at zero.
+
+    ``drained`` collects only the hosts THIS pass took from serving to zero,
+    which is what the pass's drain budget is spent on.  Two failures record a
+    stranding without spending it.  A host already carrying a record had no
+    capacity left to lose, so draining it again costs the fleet nothing: the
+    producer the consumers were released past (``PRODUCER_BLOCK_PASSES``) is
+    drained again every pass and would otherwise halt the pass that finally
+    repairs them.  And a host whose drain was REFUSED is unaccounted for rather
+    than at zero, since it may well still be serving, so it must not stop the
+    rest of the fleet reconciling either.
+    """
     receipts.pop(host, None)
-    if stranded:
-        record_stranding(stranding, host, now)
+    if not stranded:
+        return
+    newly_drained = host not in stranding
+    record_stranding(stranding, host, now)
+    if newly_drained and at_zero:
+        drained.append(host)
 
 
 def released_receipt(receipt: dict[str, Any], host: str, producer: str) -> dict[str, Any]:
@@ -880,6 +909,73 @@ def report_uninspected(remaining: Sequence[str]) -> None:
     )
 
 
+def drain_budget(total: int) -> int:
+    """Return how many serving hosts one pass may take to zero."""
+    return max(1, int(total * PASS_DRAIN_BUDGET_RATIO))
+
+
+def report_cascade_halt(host: str, drained: Sequence[str], budget: int) -> None:
+    """Say why a host was left serving instead of converged."""
+    print(
+        f"fleet-reconcile: CRITICAL: {host}: NOT reconciled by this pass, which has "
+        f"already taken {len(drained)} serving host(s) to ZERO capacity "
+        f"({', '.join(drained)}) against a budget of {budget}. A fault reproducing on "
+        "host after host is in this snapshot, not in the fleet, so the capacity still "
+        "serving is left alone rather than drained after it; fix the declaration",
+        file=sys.stderr,
+    )
+
+
+def consumer_held(  # noqa: PLR0913  # one hold decision over the whole pass's state
+    host: str,
+    stranding: dict[str, dict[str, int]],
+    halted: list[str],
+    *,
+    blocking: bool,
+    drained: Sequence[str],
+    budget: int,
+) -> bool:
+    """Return whether a consumer is skipped before anything touches it.
+
+    Two holds, both leaving the host exactly as it is: the producer block, and
+    the pass's drain budget.  A host that is ALREADY recorded at zero is never
+    held by the budget, because it has no capacity left for the budget to
+    protect and repairing it is the recovery issue #888 is about; the budget
+    only stops a pass from emptying hosts that are still serving.
+    """
+    if blocking:
+        print(f"fleet-reconcile: {host}: BLOCKED by producer failure", file=sys.stderr)
+        return True
+    if len(drained) < budget or host in stranding:
+        return False
+    report_cascade_halt(host, drained, budget)
+    halted.append(host)
+    return True
+
+
+def pass_verdict(
+    undrained: Sequence[str], escalated: Sequence[str], halted: Sequence[str], failures: int
+) -> int:
+    """Rank what one pass has to report, the least accounted-for capacity first."""
+    if undrained:
+        print(
+            "fleet-reconcile: CRITICAL: pass finished with host(s) that failed to "
+            f"drain and may still be serving work: {', '.join(undrained)}",
+            file=sys.stderr,
+        )
+        return DRAIN_FAILED_STATUS
+    if escalated:
+        return STRANDED_STATUS
+    if halted:
+        print(
+            "fleet-reconcile: CRITICAL: pass STOPPED mutating to keep the rest of the "
+            f"fleet serving; host(s) deliberately left untouched: {', '.join(halted)}",
+            file=sys.stderr,
+        )
+        return CASCADE_STATUS
+    return 1 if failures else 0
+
+
 def reconcile(
     data: dict[str, Any],
     options: ReconcileOptions,
@@ -888,26 +984,31 @@ def reconcile(
 ) -> int:
     """Reconcile producer then consumers, preserving dependency safety.
 
-    Returns 0 for a clean pass, 1 for an ordinary failure, ``STRANDED_STATUS``
-    when a host has been held at zero capacity for several consecutive passes,
-    and ``DRAIN_FAILED_STATUS`` when a host could not be drained at all, which
-    is louder still because that host is unaccounted for.
+    Returns 0 for a clean pass, 1 for an ordinary failure, ``CASCADE_STATUS``
+    when the pass stopped mutating to keep the rest of the fleet serving,
+    ``STRANDED_STATUS`` when a host has been held at zero capacity for several
+    consecutive passes, and ``DRAIN_FAILED_STATUS`` when a host could not be
+    drained at all, which is louder still because that host is unaccounted for.
     """
     state_path = options.state_dir / STATE_FILE
     document = load_state(state_path)
     receipts = document["hosts"]
     order = runner_hosts(data)
     stranding = open_stranding(document, order, options)
+    budget = drain_budget(len(order))
     failures = 0
     producer_blocking = False
     producer_released = False
     undrained: list[str] = []
+    drained: list[str] = []
+    halted: list[str] = []
     for index, host in enumerate(order):
         if frp.interrupted_status():
             report_uninspected(order[index:])
             break
-        if index and producer_blocking:
-            print(f"fleet-reconcile: {host}: BLOCKED by producer failure", file=sys.stderr)
+        if index and consumer_held(
+            host, stranding, halted, blocking=producer_blocking, drained=drained, budget=budget
+        ):
             failures += 1
             continue
 
@@ -946,7 +1047,15 @@ def reconcile(
             failures += 1
             if options.mode == "apply":
                 lost = capacity_lost(host, stranded=stranded, mutated=mutated)
-                invalidate_receipt(receipts, stranding, host, options.now, stranded=lost)
+                invalidate_receipt(
+                    receipts,
+                    stranding,
+                    drained,
+                    host,
+                    options.now,
+                    stranded=lost,
+                    at_zero=host not in undrained,
+                )
                 save_state(state_path, document)
             if index == 0 and options.mode == "apply":
                 producer_blocking, producer_released = producer_block_state(
@@ -956,16 +1065,7 @@ def reconcile(
     if options.mode == "apply":
         save_state(state_path, document)
         escalated = stranded_escalations(stranding, options.now)
-    if undrained:
-        print(
-            "fleet-reconcile: CRITICAL: pass finished with host(s) that failed to "
-            f"drain and may still be serving work: {', '.join(undrained)}",
-            file=sys.stderr,
-        )
-        return DRAIN_FAILED_STATUS
-    if escalated:
-        return STRANDED_STATUS
-    return 1 if failures else 0
+    return pass_verdict(undrained, escalated, halted, failures)
 
 
 def validate_installed_authority(root: Path) -> str:
@@ -1514,6 +1614,7 @@ def selftest() -> int:
     failures.extend(frr.run(sys.modules[__name__]))
     failures.extend(frb.run(sys.modules[__name__]))
     failures.extend(frbl.run(sys.modules[__name__]))
+    failures.extend(frc.run(sys.modules[__name__]))
     failures.extend(frd.run(sys.modules[__name__]))
     failures.extend(frre.run(sys.modules[__name__]))
     failures.extend(frst.run(sys.modules[__name__]))
