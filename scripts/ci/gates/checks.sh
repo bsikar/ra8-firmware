@@ -505,8 +505,8 @@ _pcc_docs_and_tests() (
   # widens both args to int64_t, so an outer (int)/(uint32_t) cast is
   # redundant and latently buggy (a (int) cast on a uint32_t enum truncates
   # before the widening).
-  python3 scripts/checks/check_assert_casts.py --selftest
-  python3 scripts/checks/check_assert_casts.py --all
+  bash scripts/builders/check_assert_casts.sh --selftest
+  bash scripts/builders/check_assert_casts.sh --all
 )
 
 _pcc_run_all() {
