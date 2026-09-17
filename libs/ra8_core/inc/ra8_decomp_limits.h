@@ -52,10 +52,10 @@
  *       `k_ra8_err_decomp_*` code and the decoder must stop. Reject and
  *       continue; never crash.
  *
- * @see ra8_unarch_gzip.h  gzip member decoder built on this policy.
- * @see ra8_unarch_tar.h   tar walker built on this policy.
- * @see ra8_unarch_xz.h    XZ/LZMA2 decoder built on this policy.
- * @see ra8_comic.h        Comic facade whose CBZ/CBR/CBT backends charge it.
+ * @see apps/shared_libs/unarch/inc/unarch_gzip.h  gzip member decoder built on this policy.
+ * @see apps/shared_libs/unarch/inc/unarch_tar.h   tar walker built on this policy.
+ * @see apps/shared_libs/unarch/inc/unarch_xz.h    XZ/LZMA2 decoder built on this policy.
+ * @see apps/shared_libs/comic/inc/comic.h  Comic facade whose CBZ/CBR/CBT backends charge it.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
