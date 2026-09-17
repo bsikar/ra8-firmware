@@ -829,3 +829,13 @@ batches:
     partition: "selective retain of 2 ledger row(s): 26348c26aed7, 2ae44113af4e"
     evidence:
       - "toolchain-pin source-context: Zig ABI policy and cross-language symbol tests require these literal layout assertions to remain compatibility-digest exact"
+  - id: toolchain-provisioning-20260917
+    authority: repository-suppression-review
+    date: 2026-09-17
+    identity_schema: 2-durable-site-identity
+    assigned_rows: 2
+    rows_sha256: 1aba9c790750760df11e2904208453aefc363c1ea0352a6a5ec6aeb9c12aa709
+    partition: "language-toolchain provisioning fragment: the source= hint and the shell dialect declaration added with scripts/ci/lib/lang_toolchains.sh"
+    evidence:
+      - "source-context: both sites are resolution aids on a sourced-only fragment; neither can mask a finding"
+      - "tool-output: shellcheck 0.11.0 with the gate argv reports zero findings on scripts/ci.sh and scripts/ci/lib/lang_toolchains.sh"
