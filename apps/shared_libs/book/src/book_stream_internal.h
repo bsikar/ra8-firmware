@@ -118,7 +118,7 @@ RA8_INTERNAL static inline uint32_t internal_book_stream_le32(const uint8_t* p)
 
 /** @brief Immutable validation state shared by the bounded table passes. */
 typedef struct {
-  book_stream_read_fn read;        /**< Exact source callback.       */
+  ra8_vsource_read_fn read;        /**< Exact source callback.       */
   void*               read_ctx;    /**< Callback context.            */
   uint64_t            source_size; /**< Exact flat-source byte size. */
   uint8_t*            scratch;     /**< Caller transfer buffer.      */
