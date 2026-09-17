@@ -304,6 +304,7 @@ pub const cross_apps = cross_sources.cross_apps;
 /// not wiring. Aliased here under their old names so every call site below
 /// still reads as the flag set it is.
 pub const arm_flags = @import("tests/zig_build_graph/arm_flags.zig");
+pub const device = @import("tests/zig_build_graph/device.zig");
 const arm_global_flags = arm_flags.global_flags;
 const arm_cpu_flags = arm_flags.cpu_flags;
 const arm_asm_flags = arm_flags.asm_flags;
@@ -462,6 +463,10 @@ fn addArmCrossApp(
     for (cross_sources.crossSources(b, app)) |source| {
         const compile = b.addSystemCommand(&.{tools.gcc});
         compile.addArgs(&arm_cpu_flags);
+        // The device tail, where the toolchain file's *_INIT append puts it:
+        // after the shared CPU flags (so its -mfpu wins) and before the
+        // configuration's own set. Empty for every ek_ra8d2 app (#1131).
+        compile.addArgs(device.compileFlags(app.board));
         compile.addArgs(&arm_debug_flags);
         compile.addArgs(&arm_dialect_flags);
         if (app.trust_zone) compile.addArg(arm_flags.trust_zone.define);
@@ -526,6 +531,7 @@ fn addArmCrossApp(
 
     const link = b.addSystemCommand(&.{tools.gcc});
     link.addArgs(&arm_cpu_flags);
+    link.addArgs(device.linkFlags(app.board));
     link.addArgs(&arm_debug_flags);
     link.addArgs(&arm_link_flags);
     // The middleware's INTERFACE link options. Dropping these does not fail
@@ -866,7 +872,6 @@ fn compileDbEntries(b: *std.Build) []const compile_db.Entry {
     // rather than failing the step, the same skip the `arm` step takes; the
     // count on `zig build parity` is what shows which of the two you got.
     if (findArmTools(b)) |tools| {
-        const cross_flags = arm_cpu_flags ++ arm_debug_flags ++ arm_dialect_flags;
         for (cross_apps) |app| {
             const middlewares = middleware.resolve(b.allocator, app.uses);
             // A middleware's exports change the app's OWN rows, so an analysis
@@ -874,7 +879,9 @@ fn compileDbEntries(b: *std.Build) []const compile_db.Entry {
             // compiler had. Get this wrong and clang-tidy parses the app
             // against a different tx_api.h than the build does.
             var app_flags = std.ArrayList([]const u8).init(b.allocator);
-            app_flags.appendSlice(&cross_flags) catch @panic("OOM");
+            app_flags.appendSlice(&arm_cpu_flags) catch @panic("OOM");
+            app_flags.appendSlice(device.compileFlags(app.board)) catch @panic("OOM");
+            app_flags.appendSlice(&(arm_debug_flags ++ arm_dialect_flags)) catch @panic("OOM");
             if (app.trust_zone) app_flags.append(arm_flags.trust_zone.define) catch @panic("OOM");
             app_flags.appendSlice(middleware.appDefines(b.allocator, middlewares)) catch @panic("OOM");
             // Same reason for the app's own CMakeLists: its vendored

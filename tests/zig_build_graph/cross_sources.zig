@@ -533,6 +533,33 @@ pub const cross_apps = [_]CrossApp{
             .link_flags = &.{"-nostartfiles"},
         },
     },
+    .{
+        // The eighth app, and the first that is not an ek_ra8d2 app at all.
+        // `ra8_add_app(BOARD ra8p1)` is a keyword none of the seven above
+        // names, so everything keyed on the board was indistinguishable from a
+        // constant: the BSP source directory, the board include directory, the
+        // board's src/boot copies the per-app resolver falls back to, and the
+        // board linker script all read `libs/ra8_board_ek_ra8d2` off a literal.
+        // Two apps in the tree select the RA8P1 layer; this is the smaller.
+        //
+        // It also selects a different CMAKE TOOLCHAIN FILE, which is the half
+        // of the choice that is not visible in the app's CMakeLists at all:
+        // cmake/toolchain-ra8p1.cmake includes the RA8D2 body verbatim and
+        // appends the DP-FPU override and the device define. See device.zig
+        // for why both are silent when missed.
+        //
+        // No LIBS, no USES, no EXTRA_SRCS, no migrated Zig archive (so #948
+        // does not block it), and it ships its own linker_script.ld and its
+        // own src/vector_table.c -- the second app in the table to override a
+        // boot unit, and the first to override one on a board layer whose
+        // src/boot does not carry that file at all.
+        .name = "blink_ra8p1",
+        .dir = "examples/ra8p1_foundation/blink_ra8p1",
+        .board = "libs/ra8_board_ra8p1",
+        .linker_script = "examples/ra8p1_foundation/blink_ra8p1/linker_script.ld",
+        .libraries = &.{},
+        .zig_libraries = &.{},
+    },
 };
 
 /// The universal first-party source set ra8_add_app() globs into every app,
@@ -545,7 +572,12 @@ const cross_source_dirs = [_][]const u8{
     "libs/ra8_net_pal/src",
     "libs/ra8_usb_pal/src",
     "libs/ra8_secure_app/src",
-    "libs/ra8_board_ek_ra8d2/src",
+    // The board layer's own src/ is NOT listed here: it is `<app.board>/src`,
+    // appended per app by crossSources() below. Every app cross-built before
+    // #1131 is an ek_ra8d2 app, so the directory sat in this list looking like
+    // a constant; `ra8_add_app(BOARD ra8p1)` resolves it to a different layer
+    // entirely, and a hard-coded entry would compile the RA8D2 BSP into an
+    // RA8P1 image and omit the RA8P1 one.
 };
 
 /// The one directory in cross_source_dirs an app can narrow. Named so the
@@ -656,7 +688,10 @@ const cross_include_dirs = [_][]const u8{
     "libs/ra8_usb_pal/inc",
     "libs/ra8_nsc/inc",
     "libs/ra8_secure_app/inc",
-    "libs/ra8_board_ek_ra8d2/inc",
+    // `<app.board>/inc` closes this list, appended per app by
+    // crossIncludeDirs() below rather than spelled here: see the note on
+    // cross_source_dirs. It is LAST of the universal set and ahead of every
+    // library directory, so a board header shadows a library's same-named one.
 };
 
 /// Collect `*.c` from one directory, sorted, so the link order is stable
@@ -738,6 +773,9 @@ pub fn crossSources(b: *std.Build, app: CrossApp) []const []const u8 {
         }
         collectCSources(b, dir_path, &sources);
     }
+    // The board layer this app selected, last of the universal set and
+    // resolved per app rather than hard-coded (#1131).
+    collectCSources(b, b.fmt("{s}/src", .{app.board}), &sources);
 
     // Named libraries. A library with a directory of its own contributes
     // `libs/<name>/src/*.c`; a board named in LIBS contributes the same set the
@@ -803,6 +841,7 @@ pub fn crossIncludeDirs(b: *std.Build, app: CrossApp) []const []const u8 {
     dirs.append(b.fmt("{s}/inc", .{app.dir})) catch @panic("OOM");
     dirs.append(b.fmt("{s}/src", .{app.dir})) catch @panic("OOM");
     dirs.appendSlice(&cross_include_dirs) catch @panic("OOM");
+    dirs.append(b.fmt("{s}/inc", .{app.board})) catch @panic("OOM");
 
     for (app.libraries) |library| {
         const library_inc = b.fmt("libs/{s}/inc", .{library});
