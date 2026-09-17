@@ -3,6 +3,9 @@
  * @brief Test-access surface for ra8_lvd internal helpers (MC/DC).
  * @ingroup grp_hal_system
  *
+ * @par Tag
+ * [Ring 3 / HAL] {World: S}
+ *
  * @details
  * Not part of the public API. Tests under tests/ MAY include this
  * header to drive compound boolean decisions that sit in TU-private
