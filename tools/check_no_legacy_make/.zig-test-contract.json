@@ -11,5 +11,5 @@
     "tests/internal_test.zig",
     "tests/cli_test.zig"
   ],
-  "minimum_tests": 69
+  "minimum_tests": 73
 }

@@ -376,3 +376,24 @@ test "the gate's own source is scanned, and stays quiet" {
     const status = try runWith(&tree, &.{}, &.{}, .{ .floor = 1 }, &streams);
     try testing.expectEqual(@as(u8, 0), status);
 }
+
+test "a source far past any read ceiling is still scanned" {
+    var tree = try seededTree();
+    defer tree.deinit();
+    // Written sparse, so the case costs no real disk: the finding sits past
+    // any ceiling a read cap could impose, and the predecessor's read_text()
+    // had no cap at all.
+    try tree.dir.dir.makePath("scripts");
+    {
+        const file = try tree.dir.dir.createFile("scripts/big.sh", .{});
+        defer file.close();
+        try file.seekTo(17 * 1024 * 1024);
+        try file.writeAll("\nmake ci\n");
+    }
+    var streams = Streams.init();
+    defer streams.deinit();
+    const status = try runWith(&tree, &.{}, &.{"scripts/big.sh"}, .{ .floor = 1 }, &streams);
+    try testing.expectEqual(@as(u8, 1), status);
+    try testing.expect(std.mem.indexOf(u8, streams.err.items, "scripts/big.sh:2: legacy repository task: make ci") != null);
+    try testing.expect(std.mem.indexOf(u8, streams.err.items, "cannot read") == null);
+}

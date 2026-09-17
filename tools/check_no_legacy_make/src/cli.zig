@@ -23,9 +23,6 @@ const implementation = @import("internal/root.zig");
 /// Name the gate calls itself in diagnostics.
 pub const tool = "check_no_legacy_make";
 
-/// Ceiling on a single scanned source, far above anything in this tree.
-const max_file_bytes = 16 * 1024 * 1024;
-
 /// Ceiling on the census `git ls-files` may print.
 const max_census_bytes = 64 * 1024 * 1024;
 
@@ -178,7 +175,18 @@ pub fn run(
     for (rels) |rel| {
         defer _ = scratch_arena.reset(.retain_capacity);
         const path = try resolve(scratch, repo_root, rel);
-        const text = dir.readFileAlloc(scratch, path, max_file_bytes) catch |failure| {
+        // Read with no ceiling, as the predecessor's `read_text()` had none.
+        // `readFileAlloc` does not truncate at a cap: it fails with
+        // error.FileTooBig, and this caller turns any read failure into a
+        // diagnostic and an immediate return, so a source above a ceiling
+        // would lose its own findings and take every source sorted after it
+        // down with it while still being counted as scanned.
+        const file = dir.openFile(path, .{}) catch |failure| {
+            try err.print("{s}: cannot read {s}: {s}\n", .{ tool, rel, @errorName(failure) });
+            return 1;
+        };
+        defer file.close();
+        const text = file.readToEndAlloc(scratch, std.math.maxInt(usize)) catch |failure| {
             try err.print("{s}: cannot read {s}: {s}\n", .{ tool, rel, @errorName(failure) });
             return 1;
         };

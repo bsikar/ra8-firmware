@@ -517,11 +517,19 @@ pub fn isDocSuffix(suffix: []const u8) bool {
 }
 
 /// `^\.github/[^/]*baseline[^/]*\.txt$`
+///
+/// Without `re.MULTILINE`, `$` matches at the end of the string *or* just
+/// before a single trailing newline, and `[^/]` matches a newline, so a
+/// tracked path whose final byte is a line feed still selects. Dropping one
+/// trailing newline before the suffix test is what carries that: reading the
+/// anchor as end-of-string alone would leave such a surface unscanned, and a
+/// scope this gate never reads is a finding it can never report.
 pub fn matchesBaseline(rel: []const u8) bool {
     const head = ".github/";
     if (!std.mem.startsWith(u8, rel, head)) return false;
-    const name = rel[head.len..];
-    if (std.mem.indexOfScalar(u8, name, '/') != null) return false;
+    const raw = rel[head.len..];
+    if (std.mem.indexOfScalar(u8, raw, '/') != null) return false;
+    const name = if (std.mem.endsWith(u8, raw, "\n")) raw[0 .. raw.len - 1] else raw;
     if (!std.mem.endsWith(u8, name, ".txt")) return false;
     const body = name[0 .. name.len - ".txt".len];
     return std.mem.indexOf(u8, body, "baseline") != null;
