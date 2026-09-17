@@ -21,7 +21,7 @@ TREE_UNMEASURED_COLUMNS = 3
 TREE_METRIC_FIELDS = 4
 MIN_BASELINE_ROWS = 5343
 CEILING_LEDGER_PATH = ".github/suppression-debt-ceilings.tsv"
-CEILING_LEDGER_SHA256 = "dcfbe6ffd0ecfe10e45646989ea32d1725d02e2c5585d3718440b27b267ce67b"
+CEILING_LEDGER_SHA256 = "517ee5bcb2e5fbb60c47c1d9369dd8c974f0a77d874b53d91ce14b257e8fbf22"
 CEILING_LEDGER_HEADER = (
     "# Suppression debt per-key ceilings v1.",
     "# Key digests bind the canonical baseline path and consumer-semantic key.",
@@ -169,7 +169,7 @@ BASELINE_CEILINGS: dict[str, tuple[int, int]] = {
     ".github/hum-register-baseline.txt": (46, 451),
     ".github/mcdc-baseline.txt": (1, 1),
     ".github/mcdc-compound-baseline.txt": (957, 1693),
-    ".github/misra-baseline.txt": (2710, 20014),
+    ".github/misra-baseline.txt": (2737, 20080),
     ".github/tidy-baseline.txt": (96, 121),
     ".github/tree-coverage-baseline.txt": (1059, 9404),
 }
