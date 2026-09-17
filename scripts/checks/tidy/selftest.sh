@@ -14,7 +14,8 @@
 # files it should) AND the negative (a file that must NOT land in a bucket does
 # not), and fail loudly on either.
 #
-# Functions here: selftest_routing, selftest_scope, selftest_arm_includes,
+# Functions here: selftest_routing, selftest_negative_fixtures, selftest_scope,
+# selftest_arm_includes,
 # selftest_gcc_constant_macros, selftest_firmware_c23_mode,
 # selftest_included_header_diagnostics, selftest_tidy_tool_resolution,
 # run_selftest
@@ -340,6 +341,54 @@ selftest_generated_registry() {
   printf '%s\n' "$failures"
 }
 
+# ---------------------------------------------------------------------------
+# The deliberate compile-failure registry, in both directions.
+#
+# Positive: every registered fixture still exists, routes to the negative pass
+# instead of a lint pass, and is STILL CLAIMED by collect_source_files -- the
+# file stays owned by clang-tidy for check_lint_coverage.py, it is only never
+# analysed. An entry that silently dropped out of the collection would hand
+# the coverage gate an uncovered C file.
+#
+# Negative: the sibling that compiles cleanly and fails at LINK time must keep
+# its ordinary lint pass, so the carve-out cannot widen into a negative_*.c
+# wildcard and quietly un-lint files that parse perfectly well.
+#
+# $1  the collected listing
+#
+# Prints the number of failures.
+# ---------------------------------------------------------------------------
+selftest_negative_fixtures() {
+  local listing="$1"
+  local failures=0 rel linked
+  if [[ "${#TIDY_MUST_NOT_COMPILE_PATHS[@]}" -eq 0 ]]; then
+    print_error "selftest: the deliberate compile-failure registry is empty"
+    failures=$((failures + 1))
+  fi
+  for rel in ${TIDY_MUST_NOT_COMPILE_PATHS[@]+"${TIDY_MUST_NOT_COMPILE_PATHS[@]}"}; do
+    if [[ ! -f "$FIRMWARE_DIR/$rel" ]]; then
+      print_error "selftest: registered must-not-compile fixture $rel no longer exists"
+      failures=$((failures + 1))
+      continue
+    fi
+    if [[ "$(route_bucket "$FIRMWARE_DIR/$rel")" != "negative" ]]; then
+      print_error "selftest: must-not-compile fixture $rel did not route to negative"
+      failures=$((failures + 1))
+    fi
+    if ! grep -qxF "$FIRMWARE_DIR/$rel" <<<"$listing"; then
+      print_error "selftest: must-not-compile fixture $rel dropped out of the collection"
+      failures=$((failures + 1))
+    fi
+  done
+  linked="tests/zig_abi_fixture/src/negative_missing_symbol.c"
+  if [[ -f "$FIRMWARE_DIR/$linked" ]] &&
+    [[ "$(route_bucket "$FIRMWARE_DIR/$linked")" == "negative" ]]; then
+    print_error "selftest: the link-failure fixture lost its ordinary lint pass"
+    failures=$((failures + 1))
+  fi
+  printf '%s\n' "$failures"
+}
+
 selftest_scope() {
   local failures=0
   local listing
@@ -368,6 +417,7 @@ selftest_scope() {
   done
 
   failures=$((failures + $(selftest_generated_registry "$listing")))
+  failures=$((failures + $(selftest_negative_fixtures "$listing")))
 
   # C++ and Objective-C must be present in the collection at all. Before #370
   # the collection matched `*.c` and `*.h` only, so both languages were

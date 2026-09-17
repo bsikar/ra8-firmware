@@ -11,8 +11,8 @@
 # BODIES only: the option parsing, the pass orchestration and the selftest
 # entry stay in the driver, so there is still exactly one way to run this.
 #
-# Functions here: source_path_is_live, collect_source_files,
-# source_requires_firmware_headers, route_bucket
+# Functions here: path_must_not_compile, source_path_is_live,
+# collect_source_files, source_requires_firmware_headers, route_bucket
 
 # ---------------------------------------------------------------------------
 # Collect first-party source files (exclude vendor paths)
@@ -159,6 +159,39 @@ collect_source_files() {
 # so it stays in the normal passes. The test is a non-inline `static` FUNCTION
 # declaration, not merely the word `static`.
 # ---------------------------------------------------------------------------
+# ---------------------------------------------------------------------------
+# Sources that are REQUIRED to fail compilation, as EXACT repo-relative paths.
+#
+# tests/cmake/zig_abi_contract.cmake registers each of these through
+# expect_c_failure.cmake: the test passes only when the compiler REJECTS the
+# file. tests/zig_abi_fixture/src/negative_layout.c asserts
+# sizeof(ra8_abi_fixture_config_t) == 7U against a type the Zig side defines
+# as 8 bytes wide, and that static assertion firing is the whole fixture.
+#
+# clang-tidy analysing such a file reports the deliberate rejection as a
+# clang-diagnostic-error, which the ratchet reads as a NEW finding and the
+# gate goes red over a file doing exactly what it is supposed to do.
+# Baselining it would be worse: it would record the deliberate failure as debt
+# to burn down, and the day the fixture is repaired the ratchet would fire in
+# the other direction instead.
+#
+# EXACT paths, never a negative_*.c wildcard. The sibling
+# negative_missing_symbol.c COMPILES cleanly -- it is a LINK failure -- so it
+# stays a normal lint input, and a suffix rule would silently drop the next
+# negative-looking file out of the analysis. A new deliberate-failure fixture
+# has to be registered by hand, and until it is, it is linted as ordinary C.
+TIDY_MUST_NOT_COMPILE_PATHS=(
+  "tests/zig_abi_fixture/src/negative_layout.c"
+)
+
+path_must_not_compile() {
+  local rel="$1" registered
+  for registered in ${TIDY_MUST_NOT_COMPILE_PATHS[@]+"${TIDY_MUST_NOT_COMPILE_PATHS[@]}"}; do
+    [[ "$registered" == "$rel" ]] && return 0
+  done
+  return 1
+}
+
 # Headers that are include-FRAGMENTS, listed as mode|EXACT-repo-relative-path.
 #
 # A naming convention (`*_internal.h`, `*_fixture.h`) would be the wrong rule
@@ -269,6 +302,12 @@ header_is_include_fragment() {
 # ---------------------------------------------------------------------------
 route_bucket_by_language() {
   local f="$1"
+  # A source that must not compile cannot be a translation unit under any
+  # flags, so this is settled before the language rules below (see
+  # TIDY_MUST_NOT_COMPILE_PATHS).
+  if path_must_not_compile "${f#"$FIRMWARE_DIR"/}"; then
+    echo negative && return 0
+  fi
   case "$f" in
     # A header that is only ever textually included cannot be its own TU.
     # Checked before every path rule: this is a property of the FILE, and the

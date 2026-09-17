@@ -16,7 +16,7 @@
 # Functions here: assert_scope_covered, detect_sdk_args,
 # route_files_into_lists, run_pass_host, run_pass_firmware, run_pass_cxx,
 # run_pass_objc, run_pass_ra8p1, run_pass_tools, run_pass_included,
-# run_all_passes
+# run_pass_negative, run_all_passes
 
 # ---------------------------------------------------------------------------
 # State shared between run_clang_tidy and the per-pass functions below.
@@ -98,7 +98,7 @@ detect_sdk_args() {
 # ---------------------------------------------------------------------------
 route_files_into_lists() {
   local pass
-  for pass in host firmware cxx objc ra8p1 tools included; do
+  for pass in host firmware cxx objc ra8p1 tools included negative; do
     : >"$TIDY_LIST_DIR/$pass.files"
   done
   local f bucket
@@ -113,7 +113,7 @@ route_files_into_lists() {
     # reads, and those files would go unlinted in silence -- the failure mode
     # this whole script is written to prevent. Refuse instead.
     case "$bucket" in
-      host | firmware | cxx | objc | ra8p1 | tools | included) ;;
+      host | firmware | cxx | objc | ra8p1 | tools | included | negative) ;;
       *)
         print_error "route_bucket returned unknown bucket '$bucket' for $f."
         print_error "Every bucket needs a run_pass_* function, or its files go unlinted."
@@ -273,6 +273,22 @@ run_pass_included() {
   print_status "include-fragment headers: $count analysed via their includers, not directly"
 }
 
+# ---------------------------------------------------------------------------
+# Pass 8 -- the deliberate compile-failure fixtures, which are REQUIRED to be
+# rejected by the compiler and so cannot be analysed at all (see
+# TIDY_MUST_NOT_COMPILE_PATHS in collect.sh).
+#
+# Like pass 7 this runs no clang-tidy, and is written down for the same
+# reason: dropping the files silently out of route_files_into_lists is the
+# failure mode this script exists to prevent. The count is printed on every
+# run so the carve-out is visible in the log and a jump shows up in a diff.
+# ---------------------------------------------------------------------------
+run_pass_negative() {
+  local count
+  count="$(wc -l <"$TIDY_LIST_DIR/negative.files")"
+  print_status "deliberate compile-failure fixtures: $count claimed, not analysable"
+}
+
 run_all_passes() {
   local clang_tidy="$1"
   local exit_code=0
@@ -283,5 +299,6 @@ run_all_passes() {
   run_pass_ra8p1 "$clang_tidy" || exit_code=1
   run_pass_tools "$clang_tidy" || exit_code=1
   run_pass_included
+  run_pass_negative
   return "$exit_code"
 }
