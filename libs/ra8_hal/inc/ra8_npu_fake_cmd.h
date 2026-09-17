@@ -3,6 +3,9 @@
  * @brief ra8_emulator / host-test command-stream convention for the Ethos-U55 model
  * @ingroup grp_hal_system
  *
+ * @par Tag
+ * [Ring 3 / HAL] {World: S}
+ *
  * @details
  * This header defines a TINY, DETERMINISTIC, OFF-TARGET-ONLY command-stream layout that
  * stands in for a real Arm Vela-compiled Ethos-U55 command stream. It exists so

@@ -25,20 +25,17 @@
 #
 # No regeneration step: tag the file, drop its line, lower the two counts it
 # was in.
-#! rows: 628
-#! rows libs/ra8_hal/: 11
+#! rows: 625
+#! rows libs/ra8_hal/: 8
 #! rows tests/: 617
 libs/ra8_hal/inc/ra8_drw_dlist.h
 libs/ra8_hal/inc/ra8_ether_regs.h
 libs/ra8_hal/inc/ra8_mpu_regs.h
-libs/ra8_hal/inc/ra8_npu_blob.h
-libs/ra8_hal/inc/ra8_npu_fake_cmd.h
 libs/ra8_hal/inc/ra8_ospi_regs.h
 libs/ra8_hal/inc/ra8_register_protection.h
 libs/ra8_hal/inc/ra8_regs.h
 libs/ra8_hal/inc/ra8_system_regs.h
 libs/ra8_hal/src/gpio.c
-libs/ra8_hal/src/timer.c
 tests/bench/inc/ra8_bench.h
 tests/bench/src/bench_ra8_crc.c
 tests/bench/src/bench_ra8_gfx_text.c
