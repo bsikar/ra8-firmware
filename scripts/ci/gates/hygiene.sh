@@ -655,6 +655,13 @@ gate_toolchain_parity() (
   # Linux or not at all.
   python3 scripts/checks/check_macos_gate_bash32.py --selftest
   python3 scripts/checks/check_macos_gate_bash32.py
+  # The macos-14 runner ships no Zig, so .github/workflows/macos-host.yml
+  # carries its own ZIG_VERSION: a second copy of a pin .devcontainer/Dockerfile
+  # owns and every Linux gate reads. Bump the Dockerfile alone and both legs
+  # stay green while the Mac vets a different compiler -- and a different
+  # bundled libSystem stub, which is the one thing #899 turns on.
+  python3 scripts/checks/check_workflow_toolchain_pins.py --selftest
+  python3 scripts/checks/check_workflow_toolchain_pins.py
   /bin/bash -p scripts/hil/lib/bench_exit_traps_selftest.sh --selftest
   /bin/bash -p scripts/dev/setup_python.sh --selftest
   python3 scripts/checks/check_tool_versions.py --selftest
