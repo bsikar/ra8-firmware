@@ -385,7 +385,7 @@ RA8_NSC_VENEER void ra8_nsc_wdt_refresh(void);
  * ra8_nsc_trng_read) were declared here but never defined -- a phantom NS->S
  * entry point that misrepresents the trust-boundary surface. They are removed
  * until a real definition exists (enforced by
- * scripts/checks/check_nsc_veneer_defs.py). The secure-side backing code lives
+ * scripts/builders/check_nsc_veneer_defs.sh). The secure-side backing code lives
  * in libs/ra8_secure_app/src/{key_import,secure_trng}.c; re-add each
  * declaration in the
  * same change that adds its RA8_NSC_VENEER definition. */
