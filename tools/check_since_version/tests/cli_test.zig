@@ -505,3 +505,29 @@ test "the exit statuses are the three the Python had" {
     try testing.expectEqual(@as(u8, 1), cli.exit_problems);
     try testing.expectEqual(@as(u8, 2), cli.exit_usage);
 }
+
+test "a source far past any read ceiling still reports its wrong @since" {
+    var fixture = Fixture.init();
+    defer fixture.deinit();
+    try fixture.write("VERSION", "0.1.0\n");
+    {
+        // Written sparse: the tag sits on line 1, the hole carries the size
+        // past the 16 MiB ceiling this read used to carry, and the file
+        // costs neither disk nor runtime.
+        var file = try fixture.tmp.dir.createFile("big.c", .{});
+        defer file.close();
+        try file.writeAll("/** @since 9.9.9 */\n");
+        try file.seekTo(17 * 1024 * 1024);
+        try file.writeAll("\n");
+    }
+    var streams = Streams.init();
+    defer streams.deinit();
+
+    const status = try fixture.run(&[_][]const u8{ "check_since_version", "big.c" }, &streams);
+    try testing.expectEqual(@as(u8, 1), status);
+    try testing.expect(std.mem.indexOf(
+        u8,
+        streams.err.items,
+        ":1: @since 9.9.9 != project 0.1.0",
+    ) != null);
+}
