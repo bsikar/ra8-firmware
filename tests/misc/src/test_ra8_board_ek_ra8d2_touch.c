@@ -100,7 +100,6 @@ RA8_INTERNAL static void internal_publish_clocks(void)
  *
  * @brief Verify a null descriptor is refused before any bus is touched.
  *
- * @return Nothing.
  * @pre The board touch unit is linked into the test binary.
  * @post No peripheral or driver state is modified.
  * @note Single-threaded host test.
@@ -131,7 +130,6 @@ RA8_INTERNAL static void internal_test_rejects_null_cfg(void)
  * caller asking for six contacts on a five-contact controller has a bug the
  * clamp would hide.
  *
- * @return Nothing.
  * @pre The board touch unit is linked into the test binary.
  * @post No peripheral or driver state is modified.
  * @note Single-threaded host test.
@@ -164,7 +162,6 @@ RA8_INTERNAL static void internal_test_rejects_too_many_points(void)
  * reports a hardware timeout, which the board call must return unchanged
  * rather than continuing to open a driver over a dead bus.
  *
- * @return Nothing.
  * @pre ::internal_reset_state has been called; the clock tree is published.
  * @post The touch driver is left closed.
  * @note Single-threaded host test.
@@ -205,7 +202,6 @@ RA8_INTERNAL static void internal_test_propagates_bus_bringup_failure(void)
  * handed back the driver's own code. The two runs together drive both arms of
  * the default-selection expression.
  *
- * @return Nothing.
  * @pre ::internal_reset_state has been called; the clock tree is published.
  * @post The touch driver is left closed.
  * @note Single-threaded host test.

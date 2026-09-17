@@ -344,7 +344,6 @@ static void test_uart_console_init_pclka_below_minimum(void)
 
 /**
  * @brief Verify board clock bring-up rejects a null output pointer.
- * @return Nothing.
  * @pre The board clock API is linked into the test binary.
  * @post No clock-generator state changes.
  * @note Single-threaded host test.
@@ -364,7 +363,6 @@ static void test_board_clocks_init_rejects_null(void)
 
 /**
  * @brief Verify board clock bring-up propagates an oscillator timeout.
- * @return Nothing.
  * @pre The fake oscillator-stable register is clear.
  * @post The caller-owned output remains unchanged.
  * @note Single-threaded host test.
@@ -389,7 +387,6 @@ static void test_board_clocks_init_propagates_failure(void)
 
 /**
  * @brief Verify board clock bring-up publishes the qualified clock rates.
- * @return Nothing.
  * @pre The fake oscillator-stable register reports every source ready.
  * @post CPUCLK0 and PCLKA match the standard PLL1 clock tree.
  * @note Single-threaded host test.

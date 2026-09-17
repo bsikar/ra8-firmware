@@ -82,7 +82,6 @@ RA8_INTERNAL static ra8_cache_store_cfg_t internal_cfg(LX_NOR_FLASH* f, bool for
  * @param[out] buf  Destination buffer.
  * @param[in]  len  Byte count.
  * @param[in]  seed Pattern seed.
- * @return Nothing.
  * @pre @p buf covers @p len bytes.
  * @pre @p len is the intended pattern length.
  * @post `buf[i] == (seed + i) & 0xFF` for every i.
@@ -617,7 +616,6 @@ RA8_INTERNAL static void internal_test_evict_then_crash(void)
  * @param[in,out] st       Open store to write.
  * @param[in]     magic    Magic to stamp (valid or corrupt).
  * @param[in]     good_crc True to seal with a correct CRC, false to corrupt it.
- * @return Nothing.
  * @pre @p st is an open store with geometry set.
  * @pre `st->staging` is available (we use a local buffer instead).
  * @post Sector 0 holds the planted record.
@@ -700,7 +698,6 @@ RA8_INTERNAL static void internal_test_corrupt_super_replays(void)
  * @param[in]     count      Value to stamp in the header's `sector_count`.
  * @param[in]     good_crc   True to seal with a correct CRC, false to corrupt
  * it.
- * @return Nothing.
  * @pre @p st is an open store; @p at_sector is in the log region.
  * @pre @p self_field / @p count select which validation branch fires.
  * @post @p at_sector holds the planted header record.

@@ -230,8 +230,6 @@ RA8_INTERNAL static void internal_t_log_sink(void* ctx, uint8_t byte)
  * @param[in] row Row to drive; must be the bound table's entry, not a
  *                hand-named function.
  *
- * @return Nothing.
- *
  * @pre @p row is non-null, which the caller has already asserted.
  * @pre The row belongs to a transport this board does not carry.
  * @post Every assertion in the vector set has been made.
@@ -260,8 +258,6 @@ RA8_INTERNAL static void internal_t_drive_ctx_buffer_row(int (*row)(void*, uint8
  * pinning: varying them must not change the answer.
  *
  * @param[in] row Row to drive; must be the bound table's entry.
- *
- * @return Nothing.
  *
  * @pre @p row is non-null, which the caller has already asserted.
  * @pre The row belongs to a transport this board does not carry.

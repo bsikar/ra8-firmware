@@ -51,7 +51,6 @@ typedef enum : uint32_t {
  *
  * @brief Verify a null descriptor pointer is refused.
  *
- * @return Nothing.
  * @pre The board dual-core unit is linked into the test binary.
  * @post No caller-visible state is modified.
  * @note Single-threaded host test.
@@ -81,7 +80,6 @@ RA8_INTERNAL static void internal_test_rejects_null(void)
  * CPU0's allocation ends, and it stops exactly where CPU1's private bank
  * begins, so a buffer carved from it cannot reach the M33's stack.
  *
- * @return Nothing.
  * @pre The board dual-core unit is linked into the test binary.
  * @post The caller-owned descriptor is fully overwritten.
  * @note Single-threaded host test.
@@ -115,7 +113,6 @@ RA8_INTERNAL static void internal_test_publishes_the_window(void)
  * They are only correct as long as they match the two linker scripts, which
  * this test restates independently.
  *
- * @return Nothing.
  * @pre The board headers are on the include path.
  * @post Nothing is modified.
  * @note Single-threaded host test.

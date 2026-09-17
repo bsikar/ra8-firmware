@@ -63,7 +63,6 @@ RA8_BOARD_PANEL_FRAMEBUFFER(s_panel_fb);
  *
  * @brief Verify the exported alignment is the GLCDC's burst length.
  *
- * @return Nothing.
  * @pre The board panel header is on the include path.
  * @post Nothing is modified.
  * @note Single-threaded host test.
@@ -97,7 +96,6 @@ RA8_INTERNAL static void internal_test_exports_the_alignment(void)
  * compiles, and a mis-sized array only overruns once something draws into the
  * last scanline.
  *
- * @return Nothing.
  * @pre ::s_panel_fb was declared through the macro.
  * @post The framebuffer is not modified.
  * @note Single-threaded host test.

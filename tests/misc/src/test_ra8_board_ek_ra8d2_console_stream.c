@@ -109,7 +109,6 @@ RA8_INTERNAL static void internal_bring_console_up(void)
  *
  * @brief Verify a null stream handle is refused before anything is bound.
  *
- * @return Nothing.
  * @pre The console-stream unit is linked into the test binary.
  * @post No module state is modified.
  * @note Single-threaded host test.
@@ -140,7 +139,6 @@ RA8_INTERNAL static void internal_test_rejects_null_handle(void)
  * module state in the comms unit and is never cleared, so this is the only
  * point in the binary at which the false arm is reachable.
  *
- * @return Nothing.
  * @pre ``ra8_board_uart_console_init`` has not yet succeeded in this process.
  * @post The caller's handle is left unbound.
  * @note Single-threaded host test.
@@ -176,7 +174,6 @@ RA8_INTERNAL static void internal_test_requires_console_up(void)
  * SCI8's transmit data register. A binding aimed at any other channel would
  * leave SCI8's TDR at zero.
  *
- * @return Nothing.
  * @pre ::internal_test_requires_console_up has already run.
  * @post SCI8's transmit data register holds the payload's last byte.
  * @note Single-threaded host test.
