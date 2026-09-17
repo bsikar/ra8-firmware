@@ -26,9 +26,13 @@ a component, update that registry and run `just quality::local::sbom`.
 
 - **Covered here:** vendored Software Of Unknown Provenance (SOUP) under
   `libs/third_party/` and `apps/shared_libs/third_party/`, plus the one bundled
-  font data asset under `libs/ra8_fonts/`. The first vendor root contains
-  platform-wide dependencies; the second contains dependencies used only by
-  application products and their companion host tools.
+  font data asset under `libs/ra8_fonts/` and the one vendored
+  documentation-site asset under `docs/doxygen_theme/`. The first vendor root
+  contains platform-wide dependencies; the second contains dependencies used
+  only by application products and their companion host tools. The
+  documentation asset is compiled into nothing, but it is vendored third-party
+  source that this project redistributes with the generated documentation
+  site, so it is catalogued and pinned here like the rest (#629).
 - **NOT covered (first-party, MIT):** all hand-written code under `libs/`,
   `apps/`, `examples/`, `port/`, `tools/`, `tests/`, and `scripts/` is
   first-party and licensed under the root MIT `LICENSE.txt`. In particular
@@ -84,15 +88,21 @@ Mbed TLS and TF-PSA-Crypto carry no separate `NOTICE` beyond their `LICENSE`.
 | esp-hosted host driver | 2.12.11 (git `949bb30`) | Apache-2.0 | `libs/third_party/esp-hosted/` | <https://github.com/espressif/esp-hosted-mcu> |
 | protobuf-c (nested in esp-hosted) | 1.4.1 (git `abc67a11`) | BSD-2-Clause | `libs/third_party/esp-hosted/common/protobuf-c/` | <https://github.com/protobuf-c/protobuf-c> |
 | Literata (**bundled font**) | 3.103 | OFL-1.1 | `libs/ra8_fonts/Literata-Regular.ttf` | <https://github.com/googlefonts/literata> |
+| Doxygen Awesome (**docs-site asset**) | 2.4.2 (tag `v2.4.2`, git `d52eafe3`) | MIT | `docs/doxygen_theme/` | <https://github.com/jothepro/doxygen-awesome-css> |
 
-Counts: **18 vendored source components** + **1 bundled font asset**. One of
+Counts: **18 vendored source components** + **1 bundled font asset** +
+**1 vendored documentation-site asset** (the Doxygen Awesome theme, linked
+into nothing; see [`docs/SOUP/doxygen-awesome.md`](docs/SOUP/doxygen-awesome.md)).
+One of
 the eighteen (protobuf-c) is *nested*: upstream esp-hosted carries it as a git
 submodule, so it is pinned and licensed in its own right rather than folded
-into its parent. Eight of the nineteen carry a declared deviation from
-their upstream pin -- libwebp and stb each carry an in-tree code patch, the
-four Eclipse ThreadX-family trees a `.gitattributes` edit, and Mbed TLS /
-TF-PSA-Crypto their build-generated sources -- so those are *modified* SOUP;
-the other eleven are byte-identical to their pin. Every deviation is
+into its parent. Ten of the twenty carry a declared deviation from
+their upstream pin -- libwebp, stb, miniz and protobuf-c each carry an in-tree
+code patch, the four Eclipse ThreadX-family trees a `.gitattributes` edit, and
+Mbed TLS / TF-PSA-Crypto their build-generated sources -- so those are
+*modified* SOUP; the other ten are byte-identical to their pin. Doxygen
+Awesome's own vendored files are byte-identical; the local `header.html` beside
+them is first-party, not a patched upstream file. Every deviation is
 enumerated in the component's `docs/SOUP/*.md` and machine-checked (see
 "Provenance and integrity" below). Separately, **Arm Ethos-U
 Vela** is a build-time host tool (pinned by the `vela` dependency group
@@ -127,7 +137,7 @@ permitted to differ.
 | TF-PSA-Crypto | `development` `bbf1eaf5f4a72bcc3e0cfe854e0313c93b75cd77` | 217/222 | 5 generated |
 | Apache NimBLE | tag `nimble_1_10_0_tag` `a7a156f28954819e158b62dd613008f22f9cf73b` | 827/827 | none |
 | litehtml | `8836bc1bc35ca0cfd71dc0386ef841d5cbc3bd5e` | 215/215 | none |
-| miniz | release artifact `miniz-3.0.2.zip`, SHA-256 `ada38db0...5332c5` | 3/3 | none |
+| miniz | release artifact `miniz-3.0.2.zip`, SHA-256 `ada38db0...5332c5` | 2/3 | 1 patched |
 | XZ Embedded | tag `v2024-12-30` `ae63ae3a36ed01724674e8f3d750dc47bf125410` | 11/11 | none (8 relocated) |
 | stb | `31c1ad37456438565541f4919958214b6e762fb4` | 1/4 | 1 patched, 2 first-party |
 | libwebp (decode-only) | tag `v1.5.0` `a4d7a715337ded4451fec90ff8ce79728e04126c` | 101/102 | 1 patched (arena allocator) |
@@ -136,11 +146,19 @@ permitted to differ.
 | gemmlowp | `719139ce755a0f31cbf1c37f7f98adcc7fc9f425` | 7/7 | none |
 | ruy | `d37128311b445e758136b8602d1bbd2a755e115d` | 2/2 | none |
 | esp-hosted host driver | `949bb30612747a3bd9e402eda8d01fbfa1f8503e` | 77/77 | none |
-| protobuf-c (nested) | `abc67a11c6db271bedbb9f58be85d6f4e2ea8389` | 3/3 | none |
+| protobuf-c (nested) | `abc67a11c6db271bedbb9f58be85d6f4e2ea8389` | 1/3 | 2 patched |
 | Literata | tag `3.103` `0c2761b727a1b3a7cffd313c37f0f5163dfc7a63` | 1/1 | none (1 relocated) |
+| Doxygen Awesome | tag `v2.4.2` `d52eafe3e9303399fda15661f3d7bb8fe3d7eabc` | 7/8 | 1 first-party (`header.html`) |
 
-**Totals: 19 components, 9150 vendored files, 9133 byte-identical to their
-pinned upstream revision, 17 declared deviations.**
+**Totals: 20 components, 9158 vendored files, 9137 byte-identical to their
+pinned upstream revision, 21 declared deviations.**
+
+Every figure in the table above is read out of
+`docs/sbom/upstream/*.manifest`, which
+`scripts/checks/check_soup_upstream.py` re-derives against upstream; the
+totals line is that check's own summary. Three rows moved when this document
+was reconciled against those manifests under #629: Doxygen Awesome is new, and
+the miniz and protobuf-c rows had described declared patches as "none".
 
 ### Why there are no hash values in this table
 
@@ -243,6 +261,14 @@ below); this section reproduces the copyright line and points to that text.
   (https://github.com/googlefonts/literata)." Licensed under the SIL Open Font
   License, Version 1.1; the full license text ships at
   `libs/ra8_fonts/Literata-OFL.txt`.
+- **Doxygen Awesome** -- MIT. "Copyright (c) 2021 - 2023 jothepro." Text:
+  `docs/doxygen_theme/LICENSE`. Vendored documentation-site theme (CSS and
+  browser JavaScript) referenced by the repository `Doxyfile`; compiled and
+  linked into nothing, but redistributed verbatim with the generated
+  documentation site, which is what the MIT notice obligation attaches to.
+  `docs/doxygen_theme/header.html` beside it is first-party (root MIT
+  `LICENSE.txt`), not upstream. See
+  [`docs/SOUP/doxygen-awesome.md`](docs/SOUP/doxygen-awesome.md).
 
 ### Co-processor firmware (not linked into firmware)
 

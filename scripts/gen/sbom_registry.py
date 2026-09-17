@@ -787,4 +787,44 @@ REGISTRY: tuple[Component, ...] = (
             "(a redistribution blocker); see THIRD_PARTY_LICENSES.md.",
         ),
     ),
+    Component(
+        key="doxygen-awesome-css",
+        name="Doxygen Awesome",
+        version="2.4.2",
+        ctype="library",
+        group="jothepro",
+        url="https://github.com/jothepro/doxygen-awesome-css",
+        path="docs/doxygen_theme",
+        provenance=PROV_COMMIT_PINNED,
+        description=(
+            "Stylesheet and JS extension kit for the generated Doxygen HTML reference."
+        ),
+        purl="pkg:github/jothepro/doxygen-awesome-css@v2.4.2",
+        upstream_commit="d52eafe3e9303399fda15661f3d7bb8fe3d7eabc",
+        upstream_ref="v2.4.2",
+        spdx="MIT",
+        license_file="docs/doxygen_theme/LICENSE",
+        scope="excluded",
+        local_files=(
+            (
+                "header.html",
+                "First-party Doxygen HTML header: our doxygen 1.16.1 default "
+                "header with the theme's stylesheet, darkmode-toggle, "
+                "fragment-copy and paragraph-link hooks wired in. Upstream "
+                "ships only an example under doxygen-custom/, never this file.",
+            ),
+        ),
+        extra_notes=(
+            "Subset vendored: the six upstream files the Doxyfile consumes "
+            "(HTML_EXTRA_STYLESHEET / HTML_EXTRA_FILES, Doxyfile lines 208-214) "
+            "plus LICENSE. The interactive-toc and tabs extensions, upstream's "
+            "own docs/, img/ and packaging files are not vendored.",
+            "scope=excluded: a documentation-site asset, never compiled or "
+            "linked into any firmware image. It is, however, the one vendored "
+            "component REDISTRIBUTED publicly -- the CSS/JS ship verbatim on "
+            "the gh-pages docs site -- so its attribution is load-bearing.",
+            "The exact tag and commit are shared with "
+            "docs/sbom/upstream/doxygen-awesome-css.manifest.",
+        ),
+    ),
 )

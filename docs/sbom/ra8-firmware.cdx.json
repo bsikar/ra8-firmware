@@ -1,7 +1,7 @@
 {
   "bomFormat": "CycloneDX",
   "specVersion": "1.5",
-  "serialNumber": "urn:uuid:4970a9b0-f4b6-5aca-aaba-66d53a56766f",
+  "serialNumber": "urn:uuid:98b61e0d-2d36-553a-b6b4-d62c57d711af",
   "version": 1,
   "metadata": {
     "tools": [
@@ -1352,6 +1352,77 @@
         {
           "name": "ra8:note2",
           "value": "Replaces the previously bundled proprietary Adobe Arno Pro face (a redistribution blocker); see THIRD_PARTY_LICENSES.md."
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "doxygen-awesome-css",
+      "name": "Doxygen Awesome",
+      "group": "jothepro",
+      "version": "2.4.2",
+      "description": "Stylesheet and JS extension kit for the generated Doxygen HTML reference.",
+      "scope": "excluded",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ],
+      "purl": "pkg:github/jothepro/doxygen-awesome-css@v2.4.2",
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "f38ccde26d4641dd1e13cd64045b440a8743cdd6ffad86b0d55ec2129b28617b"
+        }
+      ],
+      "externalReferences": [
+        {
+          "type": "vcs",
+          "url": "https://github.com/jothepro/doxygen-awesome-css"
+        }
+      ],
+      "properties": [
+        {
+          "name": "ra8:provenance",
+          "value": "commit-pinned-sha256"
+        },
+        {
+          "name": "ra8:path",
+          "value": "docs/doxygen_theme"
+        },
+        {
+          "name": "ra8:fileCount",
+          "value": "8"
+        },
+        {
+          "name": "ra8:upstreamCommit",
+          "value": "d52eafe3e9303399fda15661f3d7bb8fe3d7eabc"
+        },
+        {
+          "name": "ra8:upstreamRef",
+          "value": "v2.4.2"
+        },
+        {
+          "name": "ra8:licenseFile",
+          "value": "docs/doxygen_theme/LICENSE"
+        },
+        {
+          "name": "ra8:modified",
+          "value": "false"
+        },
+        {
+          "name": "ra8:note0",
+          "value": "Subset vendored: the six upstream files the Doxyfile consumes (HTML_EXTRA_STYLESHEET / HTML_EXTRA_FILES, Doxyfile lines 208-214) plus LICENSE. The interactive-toc and tabs extensions, upstream's own docs/, img/ and packaging files are not vendored."
+        },
+        {
+          "name": "ra8:note1",
+          "value": "scope=excluded: a documentation-site asset, never compiled or linked into any firmware image. It is, however, the one vendored component REDISTRIBUTED publicly -- the CSS/JS ship verbatim on the gh-pages docs site -- so its attribution is load-bearing."
+        },
+        {
+          "name": "ra8:note2",
+          "value": "The exact tag and commit are shared with docs/sbom/upstream/doxygen-awesome-css.manifest."
         }
       ]
     }

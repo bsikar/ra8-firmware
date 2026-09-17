@@ -35,6 +35,12 @@ basis.
 | esp-hosted host driver | 2.12.11 git `949bb30` | Espressif Systems | [esp-hosted-host.md](esp-hosted-host.md) |
 | protobuf-c (nested in esp-hosted) | 1.4.1 git `abc67a11` | protobuf-c authors | [esp-hosted-host.md](esp-hosted-host.md) |
 
+Documentation-site asset (vendored source, not linked into firmware):
+**Doxygen Awesome** 2.4.2, tag `v2.4.2` git `d52eafe3` -- jothepro --
+[doxygen-awesome.md](doxygen-awesome.md). Vendored under
+`docs/doxygen_theme/` and referenced by the `Doxyfile`; redistributed with the
+generated documentation site, compiled into nothing (#629).
+
 Host build tool (not vendored source, not linked into firmware): **Arm Ethos-U
 Vela** -- [vela.md](vela.md) (pinned by the `vela` dependency group in
 `pyproject.toml` and resolved by `uv.lock`).

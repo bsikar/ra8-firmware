@@ -105,6 +105,16 @@ FIXED_VENDOR_ROOTS = (
 )
 SBOM_REL_PATH = Path("docs/sbom/ra8-firmware.cdx.json")
 
+# Vendored third party does not only arrive under a `third_party/` directory.
+# The documentation site carries an upstream CSS/JS theme under `docs/`, which
+# the vendor-root scan above cannot see, so it sat outside the catalogue and
+# outside this gate for as long as it had been in the tree (#629).  The scan
+# roots below are swept for direct-child directories that carry their own
+# standalone licence file: a vendored asset drop always brings one, and
+# first-party documentation directories do not have one.
+ASSET_SCAN_ROOTS = (Path("docs"),)
+ASSET_LICENSE_NAMES = ("LICENSE", "LICENSE.txt", "LICENSE.md", "LICENCE", "COPYING")
+
 PROJECT_NAME = "ra8-firmware"
 BOM_FORMAT = "CycloneDX"
 CYCLONEDX_SPEC = "1.5"
@@ -356,6 +366,44 @@ def _catalogued_top_dirs() -> set[str]:
     return dirs
 
 
+def _licensed_asset_dir(path: Path) -> bool:
+    """Return whether ``path`` is a directory carrying its own licence file."""
+    return path.is_dir() and any((path / name).is_file() for name in ASSET_LICENSE_NAMES)
+
+
+def _asset_dirs() -> set[str]:
+    """Return licensed vendored-asset directories under every asset scan root.
+
+    A directory is reported only when it carries its own standalone licence
+    file.  That is what separates an upstream drop (which always ships one)
+    from the first-party documentation directories beside it.
+    """
+    found: set[str] = set()
+    for rel_root in ASSET_SCAN_ROOTS:
+        base = REPO_ROOT / rel_root
+        if not base.is_dir():
+            continue
+        found.update(
+            (rel_root / path.name).as_posix() for path in base.iterdir() if _licensed_asset_dir(path)
+        )
+    return found
+
+
+def _catalogued_asset_dirs() -> set[str]:
+    """Return registry component paths that sit outside every vendor root.
+
+    These are catalogued by their own path rather than by a parent vendor
+    root, so they are compared against `_asset_dirs` directly.
+    """
+    return {
+        Path(comp.path).as_posix()
+        for comp in REGISTRY
+        if comp.provenance != PROV_NOT_VENDORED
+        and _vendor_root_for(Path(comp.path)) is None
+        and (REPO_ROOT / comp.path).is_dir()
+    }
+
+
 def _directory_drift(on_disk: set[str], catalogued: set[str]) -> list[str]:
     """Return both directions of vendor-root/registry drift."""
     errors = [
@@ -380,8 +428,8 @@ def cross_check() -> tuple[list[str], list[str]]:
     errors: list[str] = []
     warnings: list[str] = []
 
-    catalogued = _catalogued_top_dirs()
-    on_disk = _third_party_dirs()
+    catalogued = _catalogued_top_dirs() | _catalogued_asset_dirs()
+    on_disk = _third_party_dirs() | _asset_dirs()
     errors.extend(_directory_drift(on_disk, catalogued))
 
     for comp in REGISTRY:
@@ -873,6 +921,48 @@ def _selftest_registry_cases() -> list[tuple[str, bool]]:
             "MUST FIRE: a repository-wide tools vendor bucket is unsupported",
             _vendor_root_for(Path("tools/third_party/decoder")) is None,
         ),
+        (
+            "MUST FIRE: an uncatalogued licensed docs asset is detected",
+            bool(_directory_drift({"docs/vendor_theme"}, set())),
+        ),
+        (
+            "MUST NOT FIRE: a catalogued docs asset stays quiet",
+            not _directory_drift({"docs/doxygen_theme"}, {"docs/doxygen_theme"}),
+        ),
+        (
+            "MUST NOT FIRE: the live tree's docs assets are all catalogued",
+            not _directory_drift(_asset_dirs(), _catalogued_asset_dirs()),
+        ),
+    ]
+
+
+def _selftest_asset_root_cases(root: Path) -> list[tuple[str, bool]]:
+    """Prove the licence-file test that gates the asset scan, both directions.
+
+    The asset scan only reports a directory when it carries its own standalone
+    licence file.  Asserting only the quiet direction would pass against a
+    predicate that never fires, which is the shape the theme gap had (#629).
+    """
+    licensed = root / "assets" / "vendor_theme"
+    plain = root / "assets" / "handwritten"
+    licensed.mkdir(parents=True, exist_ok=True)
+    plain.mkdir(parents=True, exist_ok=True)
+    (licensed / "LICENSE").write_text("MIT\n", encoding="utf-8")
+    (licensed / "theme.css").write_text("/* css */\n", encoding="utf-8")
+    (plain / "notes.md").write_text("# notes\n", encoding="utf-8")
+    return [
+        (
+            "MUST FIRE: a directory carrying its own licence reads as a vendored asset",
+            _licensed_asset_dir(licensed),
+        ),
+        (
+            "MUST NOT FIRE: an unlicensed first-party docs directory is not an asset",
+            not _licensed_asset_dir(plain),
+        ),
+        (
+            "MUST NOT FIRE: a file is never an asset directory",
+            not _licensed_asset_dir(licensed / "LICENSE"),
+        ),
     ]
 
 
@@ -916,6 +1006,7 @@ def _selftest_cases(root: Path, entries: list[tuple[str, str]]) -> list[tuple[st
     cases.extend(_selftest_shape_cases(root, entries, base))
 
     cases.extend(_selftest_registry_cases())
+    cases.extend(_selftest_asset_root_cases(root))
     return cases
 
 

@@ -1,0 +1,19 @@
+# ra8-firmware SOUP upstream provenance manifest -- generated, do not hand-edit.
+# component: doxygen-awesome-css
+# upstream-url: https://github.com/jothepro/doxygen-awesome-css
+# transport: git
+# ref: v2.4.2
+# commit: d52eafe3e9303399fda15661f3d7bb8fe3d7eabc
+# upstream-files: 38
+# vendored-files: 8
+# upstream-verified: 7
+# patched: 0
+# local: 1
+ok 100644 8bf804a2a6098284e6342167b72500a67e317948 LICENSE
+ok 100644 440e4e08f8cb8d6e36c25f1ab684666b6f894a76 doxygen-awesome-darkmode-toggle.js
+ok 100644 e0994dcab523999d094c8aa49f52eb1360f5ea63 doxygen-awesome-fragment-copy-button.js
+ok 100644 1c4c227e766fe1247c0aea845b9b65171a60ee0c doxygen-awesome-paragraph-link.js
+ok 100644 2ab5c768a457f2b67eff5c970d96803956d31419 doxygen-awesome-sidebar-only-darkmode-toggle.css
+ok 100644 f7c644d6e26b579722fd330ef5f2a460e185fff2 doxygen-awesome-sidebar-only.css
+ok 100644 8093894ce9b2cae58490f796ede767f4c54032e9 doxygen-awesome.css
+local 100644 2bd46fa3dcdd0377328724eaa3b18541c6e3ccb3 header.html
