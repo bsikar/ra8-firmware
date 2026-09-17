@@ -18,6 +18,10 @@ pub fn build(b: *std.Build) void {
             .optimize = optimize,
         }),
     });
+    // CMake links the installed archive with the system linker, which cannot see
+    // Zig's compiler_rt. Bundle it into the archive so stack-probe helpers such
+    // as __zig_probe_stack resolve without the consumer knowing about Zig.
+    library.bundle_compiler_rt = true;
     b.installArtifact(library);
 
     const abi_module = b.createModule(.{
