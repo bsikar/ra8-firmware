@@ -367,7 +367,6 @@ internal_png_fill_raw(uint32_t w, uint32_t h, uint32_t ch, bool palette, bool us
  * @details Builds the deterministic three-entry RGB palette used by producer
  *          vectors and emits its bounded tRNS fixture when requested.
  * @param[in] with_trns Whether to append the transparency chunk.
- * @return Nothing; the chunks are appended to the shared PNG source buffer.
  * @pre The PNG signature and IHDR chunk have already been emitted.
  * @pre The shared source buffer has capacity for both bounded chunks.
  * @post A complete PLTE chunk is appended.

@@ -134,11 +134,11 @@ static const char* const s_series_dir = "/tmp/mdl_rp_series";
  * @details Binding fewer bytes than a rendering needs makes the sink fail there.
  * @param[in,out] capture Caller-owned capture fixture to rebind.
  * @param[in] limit Sink capacity in bytes, at most ::k_capture_bytes.
- * @return Nothing; a binding failure terminates the test process.
  * @pre @p capture points to one writable ::mdl_rp_capture_t.
  * @pre @p limit is nonzero and no larger than ::k_capture_bytes.
  * @post The capture reports zero used bytes.
  * @post The bound stream appends into @p capture's own bytes only.
+ * @post A binding failure terminates the test process.
  * @note Test-only helper; this process is single-threaded and serial.
  * @since 0.1.0
  */
@@ -155,11 +155,11 @@ RA8_INTERNAL static void internal_bind(mdl_rp_capture_t* capture, uint32_t limit
 /**
  * @brief Rebind both capture sinks at full capacity before one packaging call.
  * @details Both streams are asserted by every vector, so a leak between them fails.
- * @return Nothing; a binding failure terminates the test process.
  * @pre ::s_out and ::s_diag are file-scope capture fixtures.
  * @pre No packaging call is in flight.
  * @post Both sinks report zero used bytes.
  * @post Both sinks accept ::k_capture_bytes before reporting exhaustion.
+ * @post A binding failure terminates the test process.
  * @note Test-only helper; this process is single-threaded and serial.
  * @since 0.1.0
  */
@@ -174,7 +174,6 @@ RA8_INTERNAL static void internal_reset_streams(void)
  * @details Compares length first, so a merely-correct prefix still fails.
  * @param[in] capture Bound capture fixture holding the rendered bytes.
  * @param[in] expected NUL-terminated expected rendering (may be empty).
- * @return Nothing; a mismatch terminates the test process.
  * @pre @p capture was bound by ::internal_bind.
  * @pre @p expected is NUL-terminated and fits the sink capacity.
  * @post Normal return means the capture equals @p expected byte for byte.
@@ -197,7 +196,6 @@ RA8_INTERNAL static void internal_expect_text(const mdl_rp_capture_t* capture, c
  * @details Calls the presenter through the public ::mdl_progress_fn seam.
  * @param[in] event Progress event to render.
  * @param[in] expected Exact expected rendering.
- * @return Nothing; a mismatch terminates the test process.
  * @pre @p event is non-NULL and fully initialized.
  * @pre @p expected is NUL-terminated.
  * @post ::s_out holds exactly @p expected.
@@ -217,7 +215,6 @@ RA8_INTERNAL static void internal_line(const mdl_fetch_progress_t* event, const 
  * @details The asserted status also covers the bar's terminal flush.
  * @param[in] event Progress event to render.
  * @param[in] expected Exact expected rendering.
- * @return Nothing; a mismatch terminates the test process.
  * @pre @p event is non-NULL and fully initialized.
  * @pre @p expected is NUL-terminated.
  * @post ::s_out holds exactly @p expected.
@@ -237,11 +234,11 @@ RA8_INTERNAL static void internal_bar(const mdl_fetch_progress_t* event, const c
  * @details Unlinks the bounded set of leaf names this suite ever writes, so an
  * "empty chapter" really is empty without enumerating the directory.
  * @param[in] dir Absolute scratch directory path.
- * @return Nothing; a creation failure terminates the test process.
  * @pre @p dir is NUL-terminated and shorter than ::k_path_bytes.
  * @pre Any file in @p dir was written by this suite under a known leaf name.
  * @post @p dir exists and holds no entries.
  * @post No path outside @p dir is touched.
+ * @post A creation failure terminates the test process.
  * @note Test-only POSIX fixture helper.
  * @since 0.1.0
  */
@@ -266,11 +263,11 @@ RA8_INTERNAL static void internal_fresh_dir(const char* dir)
  * @param[in] leaf Page file name within @p dir.
  * @param[in] data Bytes to write.
  * @param[in] length Number of bytes at @p data.
- * @return Nothing; any write failure terminates the test process.
  * @pre @p dir exists and @p leaf contains no separator.
  * @pre @p data spans @p length readable bytes.
  * @post `dir/leaf` holds exactly @p length bytes.
  * @post No descriptor is leaked out of the call.
+ * @post A failed or short write terminates the test process.
  * @note Test-only POSIX fixture helper.
  * @since 0.1.0
  */
@@ -314,11 +311,11 @@ RA8_INTERNAL static bool internal_file_exists(const char* path)
  * @param[in] url Failing URL, shorter than the entry's URL field.
  * @param[in] status Observed HTTP status, or zero when none applies.
  * @param[in] err Classified transfer failure.
- * @return Nothing; an over-long URL terminates the test process.
  * @pre @p item points to one writable ::mdl_fetch_fail_t.
  * @pre @p url is NUL-terminated.
  * @post @p item carries a NUL-terminated copy of @p url.
  * @post @p item carries @p status and @p err unchanged.
+ * @post An over-long URL terminates the test process.
  * @note Test-only fixture helper.
  * @since 0.1.0
  */
@@ -405,11 +402,11 @@ RA8_INTERNAL static size_t internal_pack_folder(mdl_format_t             format,
  * @details Varies only bytes, interval and the reuse flag, so a changed line can
  *          only come from the arm the formatter chose. The reuse pair carries a
  *          nonzero size and interval both ways, so it cannot pass by accident.
- * @return Nothing; a mismatch terminates the test process.
  * @pre The report presenter and RAM stream backend are linked.
  * @pre ::s_out is a writable file-scope capture fixture.
  * @post Every vector rendered its exact documented line.
  * @post No filesystem or network activity occurred.
+ * @post A mismatch terminates the test process.
  * @note Host-only rendering test; runs serially in one process.
  * @since 0.1.0
  */
@@ -461,11 +458,11 @@ RA8_INTERNAL static void internal_test_report_units(void)
  * @details A NULL event must leave the sink untouched, asserted as a
  *          zero-length capture rather than a bare success code. The second
  *          vector ends the sink where the size fragment would start.
- * @return Nothing; a mismatch terminates the test process.
  * @pre The report presenter and RAM stream backend are linked.
  * @pre ::s_out is a writable file-scope capture fixture.
  * @post The NULL vector leaves the sink empty.
  * @post The truncated vector reports ::k_ra8_err_no_mem after 24 bytes.
+ * @post A mismatch terminates the test process.
  * @note Host-only rendering test; runs serially in one process.
  * @since 0.1.0
  */
@@ -494,11 +491,11 @@ RA8_INTERNAL static void internal_test_report_line_guards(void)
  * @brief Drive one, two and three digit percentages through the bar renderer.
  * @details The padding is only observable in the rendered string, so each vector
  *          asserts the whole bar; 9/100 and 10/100 sit on the digit-width edge.
- * @return Nothing; a mismatch terminates the test process.
  * @pre The report presenter and RAM stream backend are linked.
  * @pre ::s_out is a writable file-scope capture fixture.
  * @post Every vector rendered its exact documented bar.
  * @post Bars below the final page carry no trailing newline.
+ * @post A mismatch terminates the test process.
  * @note Host-only rendering test; runs serially in one process.
  * @since 0.1.0
  */
@@ -531,11 +528,11 @@ RA8_INTERNAL static void internal_test_bar_padding(void)
  * @details Without the clamp the unfilled run is `20 - 30`, an enormous `size_t`
  *          the bounded repeat helper refuses with ::k_ra8_err_invalid_size, so a
  *          successful status plus a twenty-cell bar proves the clamp is present.
- * @return Nothing; a mismatch terminates the test process.
  * @pre The report presenter and RAM stream backend are linked.
  * @pre ::s_out is a writable file-scope capture fixture.
  * @post Every terminal vector ends in a newline.
  * @post A NULL event writes nothing and a five-byte sink latches no-mem.
+ * @post A mismatch terminates the test process.
  * @note Host-only rendering test; runs serially in one process.
  * @since 0.1.0
  */
@@ -581,11 +578,11 @@ RA8_INTERNAL static void internal_test_bar_clamp(void)
  * @details Nothing to report must print nothing, asserted as a zero-length capture.
  *          The fixture mixes a status-bearing failure with a status-free one so
  *          both reason arms appear; the last vector proves the latch survives.
- * @return Nothing; a mismatch terminates the test process.
  * @pre The report presenter and RAM stream backend are linked.
  * @pre ::s_faillog is a writable file-scope failure log.
  * @post A zero-total log leaves the sink empty.
  * @post The truncated sink reports ::k_ra8_err_no_mem after three bytes.
+ * @post A mismatch terminates the test process.
  * @note Host-only rendering test; runs serially in one process.
  * @since 0.1.0
  */
@@ -631,11 +628,11 @@ RA8_INTERNAL static void internal_test_failure_summary(void)
  * @brief Reject a separator-bearing leaf, an over-long leaf, and a long parent.
  * @details All three count one failure, report only on the diagnostic stream,
  *          and leave the success stream untouched -- asserted every time.
- * @return Nothing; a mismatch terminates the test process.
  * @pre The packaging module and process-local storage binding are linked.
  * @pre ::s_ws was bound to ::s_arena.
  * @post Each vector returned exactly one counted failure.
  * @post The success stream stayed empty for every vector.
+ * @post A mismatch terminates the test process.
  * @note Host-only test; the rejected paths are never created on disk.
  * @par MC/DC:
  * Decision: `!internal_pack_snprintf_fit(ln, sizeof(leaf)) ||
@@ -685,11 +682,11 @@ RA8_INTERNAL static void internal_test_pack_one_path_guards(void)
  * @details ::mdl_pack_one delegates with absent metadata, so the on-disk loader
  *          runs; the archive is asserted absent first. An empty directory is the
  *          exporter's ::k_ra8_err_empty case, so the diagnostic uses that symbol.
- * @return Nothing; a mismatch terminates the test process.
  * @pre The exporter, packaging module and storage binding are linked.
  * @pre `/tmp` is writable by the test process.
  * @post The chapter archive exists beside its page directory.
  * @post The failing vector counts one failure and writes no success text.
+ * @post A mismatch terminates the test process.
  * @note Host-only test; leaves its scratch fixtures in `/tmp`.
  * @since 0.1.0
  */
@@ -735,11 +732,11 @@ RA8_INTERNAL static void internal_test_pack_one_container(void)
  * @brief Package one real JPEG into JOF siblings, then fail on an empty folder.
  * @details JOF writes one `.jof` beside each page instead of a container, so the
  *          success text names the directory glob and the sibling must exist.
- * @return Nothing; a mismatch terminates the test process.
  * @pre The JOF producer, exporter and storage binding are linked.
  * @pre `/tmp` is writable by the test process.
  * @post The successful vector leaves a `.jof` sibling inside the chapter.
  * @post The failing vector counts one failure and writes no success text.
+ * @post A mismatch terminates the test process.
  * @note Host-only test; leaves its scratch fixtures in `/tmp`.
  * @since 0.1.0
  */
@@ -775,11 +772,11 @@ RA8_INTERNAL static void internal_test_pack_one_dir_output(void)
  * @details The empty-run short circuit must write nothing at all, on BOTH streams.
  *          The refusal names the exact failed counts, and the permitted partial
  *          run must carry `INCOMPLETE` in its text and in its filename.
- * @return Nothing; a mismatch terminates the test process.
  * @pre The exporter, packaging module and storage binding are linked.
  * @pre `/tmp` is writable by the test process.
  * @post No vector counted a packaging failure.
  * @post Only the permitted partial run created an archive.
+ * @post A mismatch terminates the test process.
  * @note Host-only test; leaves its scratch fixtures in `/tmp`.
  * @since 0.1.0
  */
@@ -824,11 +821,11 @@ RA8_INTERNAL static void internal_test_pack_combined_policy(void)
  * @brief Drive the delegating combined entry point to a real container.
  * @details ::mdl_pack_combined only delegates with absent metadata, so this also
  *          drives the on-disk loader; the archive is asserted absent first.
- * @return Nothing; a mismatch terminates the test process.
  * @pre The exporter, packaging module and storage binding are linked.
  * @pre `/tmp` is writable by the test process.
  * @post The unmarked combined archive exists beside its page folder.
  * @post The success line names the composed output path exactly.
+ * @post A mismatch terminates the test process.
  * @note Host-only test; leaves its scratch fixtures in `/tmp`.
  * @since 0.1.0
  */
@@ -868,11 +865,11 @@ RA8_INTERNAL static void internal_test_pack_combined_container(void)
  * @details Success reports the folder glob and leaves a `.jof` sibling; an empty
  *          folder is diagnosed through the combine failure renderer, in both the
  *          directory-output and single-container arms of the combine path.
- * @return Nothing; a mismatch terminates the test process.
  * @pre The JOF producer, exporter and storage binding are linked.
  * @pre `/tmp` is writable by the test process.
  * @post The successful vector leaves a `.jof` sibling inside the folder.
  * @post Both failing vectors count one failure and write no success text.
+ * @post A mismatch terminates the test process.
  * @note Host-only test; leaves its scratch fixtures in `/tmp`.
  * @since 0.1.0
  */
@@ -913,11 +910,11 @@ RA8_INTERNAL static void internal_test_pack_combined_dir_output(void)
  * @brief Reject a separator-bearing leaf, an over-long leaf, and a long parent.
  * @details The combine path reports the series directory rather than the leaf, so
  *          the 1010-character parent proves the whole parent is carried.
- * @return Nothing; a mismatch terminates the test process.
  * @pre The packaging module and process-local storage binding are linked.
  * @pre ::s_ws was bound to ::s_arena.
  * @post Each vector returned exactly one counted failure.
  * @post The success stream stayed empty for every vector.
+ * @post A mismatch terminates the test process.
  * @note Host-only test; the rejected paths are never created on disk.
  *
  * @par MC/DC:

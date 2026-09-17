@@ -96,11 +96,11 @@ RA8_INTERNAL static ra8_err_t internal_epub_media_type_from_sniff(mdl_storage_t*
  *          the exporter must always publish some MIME for a manifest entry.
  * @param[in] name Bounded page leaf name.
  * @param[out] out Borrowed canonical MIME pointer.
- * @return Nothing; a MIME is always selected.
  * @pre @p name is NUL-terminated.
  * @pre @p out is non-NULL and addresses one writable pointer.
  * @post @p out addresses process-lifetime constant storage.
  * @post No file is opened and @p name is unchanged.
+ * @post @p out is always written, so no manifest entry lacks a MIME.
  * @note Pure and thread-safe.
  * @since 0.1.0
  */

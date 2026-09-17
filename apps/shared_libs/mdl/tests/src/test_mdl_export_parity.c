@@ -274,9 +274,9 @@ RA8_INTERNAL static void internal_bind_vfs(fw_fs_t* fs, fw_fs_ra8_vfs_state_t* s
  *          before the rejected attempt.
  * @param[in,out] vfs_storage Bound RAM/FAT/VFS export storage under test.
  * @param[in] preserved Archive hash captured before the rejected attempt.
- * @return Nothing; every check is asserted inside.
  * @pre @p vfs_storage is bound and `/book.cbz` already exists on it.
  * @post The archive at `/book.cbz` is unchanged.
+ * @post A failed check terminates the test process.
  * @note Not thread-safe; the fixture is single-threaded.
  * @since 0.1.0
  */

@@ -351,11 +351,11 @@ RA8_INTERNAL static void internal_character_classes(void)
  * @brief Prove one leading UTF-8 BOM composes with a valid declaration.
  * @details Prefixes the canonical declaration/DOCTYPE/document fixture with
  *          the three BOM octets and validates the complete bounded buffer.
- * @return Nothing; a failed validation terminates the current test executable.
  * @pre The XML workspace type is available to the host test.
  * @pre The local fixture capacity includes the BOM and terminating byte.
  * @post The prefixed document is accepted.
  * @post No state escapes the helper.
+ * @post A failed validation exits the test executable before returning.
  * @note Test-only and thread-safe because all state is automatic storage.
  * @since Version 0.1.0
  */

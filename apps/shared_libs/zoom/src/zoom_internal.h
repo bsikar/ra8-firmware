@@ -74,12 +74,10 @@ typedef struct {
  * @param[in]  src_dim Source extent on this axis, pixels (`>= 1`).
  * @param[out] out     Receives the resolved axis.
  *
- * @return Nothing; @p out is always fully populated.
- *
  * @pre  @p out is non-NULL (callers are inside this module and hold storage).
  * @pre  `scale >= 1` and `src_dim * scale` fits in int32 (guaranteed by
  *       ::k_zoom_dim_max and ::k_zoom_scale_max).
- * @post Every invariant of ::zoom_axis_t holds.
+ * @post @p out is always fully populated and every ::zoom_axis_t invariant holds.
  * @post No input is modified.
  *
  * @note Pure; thread-safe.

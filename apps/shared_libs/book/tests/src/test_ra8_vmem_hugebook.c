@@ -252,12 +252,11 @@ RA8_INTERNAL static uint32_t internal_t_count_valid(void)
  * @param[in] obj  Object id to page in.
  * @param[in] page Page index within the object.
  *
- * @return Nothing (asserts on failure).
- *
  * @pre `vm` was populated by ::ra8_vmem_init.
  * @pre `page` indexes a valid page of the object.
  * @post The frame's pin count is unchanged on return (get then put).
  * @post The returned page equalled the uncached reference byte-for-byte.
+ * @post A failed compare terminates the test process.
  * @note Not thread-safe.
  * @since 0.1.0
  */
@@ -324,12 +323,11 @@ internal_t_setup(ra8_vsource_t* vs, ra8_vsource_obj_t* objs, ra8_vmem_t* vm)
  * @param[in] obj  Object id.
  * @param[in] page Boundary page to cross-check.
  *
- * @return Nothing (asserts on failure).
- *
  * @pre `vm`/`vs` are initialised over the same object.
  * @pre `page` indexes a valid (possibly partial-tail) page.
  * @post The cached page equalled the uncached loader output and the reference.
  * @post No pin is leaked.
+ * @post A failed compare terminates the test process.
  * @note Not thread-safe.
  * @since 0.1.0
  */

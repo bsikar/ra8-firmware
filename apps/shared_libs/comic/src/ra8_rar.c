@@ -628,7 +628,6 @@ static ra8_err_t internal_rar5_block(const ra8_rar_t* rar,
  * @param[in]     hdr Leading header bytes read from the archive.
  * @param[in]     got Valid bytes in @p hdr (>= ::k_ra8_rar_sig4_len).
  * @param[in,out] rar Archive whose `version` / `first_off` are set on a match.
- * @return Nothing; the outcome is reported through @p rar.
  * @pre @p hdr holds @p got readable bytes; `got >= k_ra8_rar_sig4_len`.
  * @pre @p rar was zeroed (`version == k_ra8_rar_ver_none`) on entry.
  * @post On a match `rar->version` is RAR4/RAR5 and `rar->first_off` is its length.

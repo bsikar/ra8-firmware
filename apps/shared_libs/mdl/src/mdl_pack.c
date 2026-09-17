@@ -110,7 +110,6 @@ internal_pack_metadata(mdl_storage_t* storage, const mdl_export_meta_t* meta, co
  * @param[in] chap_id Chapter identifier.
  * @param[in] ext Format's canonical extension.
  * @param[in] rc The failure code being reported.
- * @return Nothing; the caller reports the packaging failure regardless.
  * @pre @p diagnostic, @p chap_id, and @p ext are non-NULL.
  * @pre @p rc is the non-success value the failed chapter export returned.
  * @post One diagnostic line was appended to @p diagnostic, or the stream's
@@ -240,7 +239,6 @@ size_t mdl_pack_one(mdl_storage_t*          storage,
  *          mid-message write failure is never masked.
  * @param[in,out] diagnostic Borrowed stream receiving the failure diagnostic.
  * @param[in] rc The failure code being reported.
- * @return Nothing; the caller reports the packaging failure regardless.
  * @pre @p diagnostic is non-NULL.
  * @pre @p rc is the non-success value the failed combine export returned.
  * @post One diagnostic line was appended to @p diagnostic, or the stream's

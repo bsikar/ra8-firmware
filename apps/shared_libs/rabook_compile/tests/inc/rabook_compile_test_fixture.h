@@ -114,11 +114,11 @@ ra8_rabook_buffers_t ra8_test_rabook_buffers(ra8_test_rabook_fixture_t* fixture)
  *          to accept it before returning to the test.
  * @param[in,out] fixture Caller-owned fixture storage.
  * @param[out] ctx Compiler context to initialize.
- * @return Nothing; a failed production initialization fails the active test.
  * @pre @p fixture and @p ctx are non-NULL.
  * @pre The minimal Unity test harness is active.
  * @post @p ctx is initialized over @p fixture.
  * @post The empty-string sentinel occupies string-pool offset zero.
+ * @post A failed production initialization exits the test executable.
  * @note Test-only and not thread-safe with shared fixture storage.
  * @par MC/DC:
  * No compound decisions; the production return value is asserted directly.
@@ -134,11 +134,11 @@ RA8_TEST_HELPER void ra8_test_rabook_init(ra8_test_rabook_fixture_t* fixture,
  * @param[in,out] ctx Initialized compiler context.
  * @param[out] roundtrip Receives the builder indices used by verification.
  * @param[in] external_image_pool Select external image reservation when true.
- * @return Nothing; unexpected production results fail the active test.
  * @pre All pointer arguments are non-NULL.
  * @pre @p ctx was initialized over @p fixture.
  * @post The builder is ready for memory or stream finalization.
  * @post @p roundtrip contains every index needed for read-back verification.
+ * @post An unexpected production result exits the test executable.
  * @note Test-only and not thread-safe with shared fixture storage.
  * @par MC/DC:
  * The pool selector receives both boolean values across the two test executables.
@@ -154,11 +154,11 @@ RA8_TEST_HELPER void ra8_test_rabook_populate(ra8_test_rabook_fixture_t*   fixtu
  * @details Reads the blob only through the production reader accessors and checks
  *          metadata, chapter, DOM, attribute, image, and stylesheet records.
  * @param[in] roundtrip Finalized blob and saved builder indices.
- * @return Nothing; any mismatch fails the active test.
  * @pre @p roundtrip is non-NULL and its blob passed validation.
  * @pre Saved indices came from @ref ra8_test_rabook_populate.
  * @post Every serialized fixture field matched its builder input.
  * @post The blob remains unmodified.
+ * @post Any mismatch exits the test executable before returning.
  * @note Test-only and read-only after finalization.
  * @par MC/DC:
  * No compound decisions; every production accessor result is asserted directly.

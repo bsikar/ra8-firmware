@@ -418,10 +418,10 @@ RA8_INTERNAL static ra8_err_t internal_run_audit(const uint8_t       atlas[k_tes
  * @param[in,out] ws Workspace passed to the audit call.
  * @param[in,out] result Result storage passed to the audit call.
  * @param[in] expected Expected status from ::jof_audit.
- * @return Nothing; failures are recorded through ::CHECK.
  * @pre Every pointer is non-null.
  * @pre @p store, @p ws, and @p result are consistent with the vector under test.
  * @post @p result carries whatever ::jof_audit left in it.
+ * @post A failed expectation was recorded through ::CHECK rather than aborting.
  * @note Test-local and allocation-free.
  * @since 0.1.0
  */
@@ -439,9 +439,9 @@ RA8_INTERNAL static void internal_expect_audit_status(test_store_t*          sto
  * @details Derives the requirements record through the public entry point
  * and checks every field against the fixture's known two-tile geometry.
  * @param[in,out] store Backing description passed to the injected reader.
- * @return Nothing; failures are recorded through ::CHECK.
  * @pre @p store addresses a parseable raw two-tile atlas.
  * @post No caller-visible state outside ::CHECK bookkeeping is modified.
+ * @post A failed expectation was recorded through ::CHECK rather than aborting.
  * @note Test-local and allocation-free.
  * @since 0.1.0
  */
@@ -513,11 +513,11 @@ static void internal_test_deflate_audit(void)
  * @param[in,out] records Two-entry record storage, pre-poisoned by the caller.
  * @param[in,out] tile Two-byte decoded tile storage, pre-poisoned by the caller.
  * @param[in,out] result Audit result storage.
- * @return Nothing; failures are recorded through ::CHECK.
  * @pre @p records and @p tile were poisoned before this call.
  * @pre @p atlas parses far enough to reach capacity validation.
  * @post Both vectors returned k_ra8_err_invalid_size.
  * @post @p records[0] carries the poison byte pattern, not a decoded value.
+ * @post A failed expectation was recorded through ::CHECK rather than aborting.
  * @note Test-local and allocation-free.
  * @since 0.1.0
  */
@@ -579,11 +579,11 @@ static void internal_test_workspace_guards(void)
  * @param[in] top First tile's raw content.
  * @param[in] bottom Second tile's raw content.
  * @param[in] expected_candidates Expected reported duplicate-candidate count.
- * @return Nothing; failures are recorded through ::CHECK.
  * @pre @p atlas holds ::k_test_atlas_size writable bytes.
  * @pre @p top and @p bottom each hold ::k_test_tile_bytes readable bytes.
  * @post The rebuilt atlas parses successfully.
  * @post @p result carries the freshly reported duplicate-candidate count.
+ * @post A failed expectation was recorded through ::CHECK rather than aborting.
  * @note Test-local and allocation-free.
  * @since 0.1.0
  */
@@ -694,9 +694,9 @@ internal_expect_overlap(test_store_t* store, jof_audit_workspace_t* ws, jof_audi
  * @param[in,out] store Backing description passed to the injected reader.
  * @param[in,out] workspace Workspace passed to the guarded calls.
  * @param[in,out] result Result storage passed to the guarded calls.
- * @return Nothing; failures are recorded through ::CHECK.
  * @pre Every pointer is non-null except the one operand under test.
  * @post Every call returned k_ra8_err_null_ptr.
+ * @post A failed expectation was recorded through ::CHECK rather than aborting.
  * @note Test-local and allocation-free.
  * @since 0.1.0
  */

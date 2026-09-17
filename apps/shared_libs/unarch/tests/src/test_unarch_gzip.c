@@ -126,11 +126,11 @@ static void internal_tg_fill(uint8_t* dst, size_t n)
  *          fixtures into the shared member buffer and advances the caller's cursor.
  * @param[in] flg Gzip optional-field flags to serialize.
  * @param[in,out] offset Current member cursor, advanced past emitted fields.
- * @return Nothing; @p offset reports the first byte after the optional fields.
  * @pre @p offset is non-null.
  * @pre @p *offset lies within the shared member buffer.
  * @post Only fields selected by @p flg are appended.
  * @post @p *offset never moves backward.
+ * @post @p *offset addresses the first byte after the emitted fields.
  * @note Test-only and not reentrant because it writes file-scope scratch storage.
  * @since Version 0.1.0
  */
