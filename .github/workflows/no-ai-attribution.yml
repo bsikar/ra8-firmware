@@ -1,0 +1,62 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Brighton Sikarskie
+# SCHEDULING ONLY -- the gate bodies live in scripts/ci.sh (gates:
+# no-ai-attribution, no-ai-attribution-commits). See
+# .github/workflows/firmware.yml for the design note.
+---
+name: no-ai-attribution
+
+on:
+  # dev is the working branch: essentially every commit lands there first, so
+  # the attribution gates must run where the commits actually land, not just on
+  # main (#357). Before this, a push to dev ran neither gate and the local
+  # pre-push hook was the only thing checking.
+  push:
+    branches: [main, dev]
+  pull_request:
+  workflow_dispatch:
+
+# Per-commit isolation on push (#366): key the group on the commit SHA for push
+# events so a burst of dev pushes never cancels an in-flight run. A cancelled
+# run marks its remaining steps skipped-not-failed, so an uncancelled run per
+# commit is what keeps a green here from meaning "the gate never executed".
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event_name == 'push' && github.sha || github.ref }}
+  cancel-in-progress: true
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+jobs:
+  no-ai-attribution:
+    name: Attribution policy (tracked files)
+    runs-on: ra8-ci
+    # SECURITY: self-hosted + pull_request trigger. Run on push / dispatch and
+    # on PRs ONLY from this same repo (never a fork). See SECURITY.md.
+    if: >-
+      github.event_name != 'pull_request'
+      || github.event.pull_request.head.repo.full_name == github.repository
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - run: just quality::local::gate no-ai-attribution
+
+  commit-messages:
+    name: Attribution policy (commit messages)
+    runs-on: ra8-ci
+    # SECURITY: self-hosted + pull_request trigger. Run on push / dispatch and
+    # on PRs ONLY from this same repo (never a fork). See SECURITY.md.
+    if: >-
+      github.event_name != 'pull_request'
+      || github.event.pull_request.head.repo.full_name == github.repository
+    steps:
+      # Secondary enforcement: the file scanner above cannot see commit
+      # messages (trailers live in git metadata, not tracked files). The gate
+      # runs the real scripts/git/commit-msg hook -- the single source of truth
+      # for the brand list -- over every commit in the push/PR range, which it
+      # derives from the event payload. fetch-depth: 0 so that range resolves.
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - run: just quality::local::gate no-ai-attribution-commits

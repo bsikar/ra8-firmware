@@ -1,0 +1,72 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Brighton Sikarskie
+---
+# Turn a Windows machine's WSL2 Ubuntu distro into a CI runner host, and deploy
+# the runner into it.
+#
+# Two roles, in order: `wsl_ci_host` does everything Windows- and WSL-specific
+# (VM caps, the mirrored-networking route fix, systemd, Docker Engine, the
+# Windows autostart task), then `ci_runner_docker` -- the same role the NAS
+# uses, unmodified -- deploys the runner container. See infra/README.md.
+#
+# WHERE THIS RUNS: on the target, inside the distro. WSL has no SSH daemon of
+# its own, and giving it one would mean opening an inbound port on somebody's
+# shared interactive workstation and opening its firewall so a
+# config management tool could reach it. The play is therefore copied in and
+# run with `--connection=local`, which costs nothing and asks nothing of their
+# network.
+#
+# That copy-in used to be a hand-run pipeline written out here. It is codified
+# now -- scripts/dev/fleet.py knows this host's transport from its block in
+# infra/fleet.yml -- so the whole operation is:
+#
+#   gh api -X POST repos/bsikar/ra8-firmware/actions/runners/registration-token
+#   just infra::register_runner win-ci /path/to/mode-0600-registration-vars.yml
+#
+#   # just the drain script and the quiet-hours timer, touching no container:
+#   just infra::apply win-ci "" capacity
+#
+#   # remove, with a removal token from .../actions/runners/remove-token:
+#   just infra::remove win-ci /path/to/mode-0600-removal-vars.yml
+#
+# The token is good for one hour and one use, so no long-lived credential ever
+# lands on the machine. See the ci_runner_docker credentials defaults, and
+# docs/CI_FLEET.md for the runbooks.
+- name: Configure a WSL2 host and deploy a CI runner into it
+  hosts: all
+  connection: local
+  gather_facts: true
+  # Loaded explicitly rather than by inventory host name: this play runs with
+  # `-i localhost,` (see above), so the host is called "localhost" and Ansible
+  # would never pick up inventory/host_vars/win-ci.yml on its own.
+  # scripts/dev/fleet.py passes -e wsl_ci_host_id=<fleet host name>; a second
+  # WSL machine is a second block in infra/fleet.yml and a second file there.
+  vars:
+    wsl_ci_host_id: "win-ci"
+  vars_files:
+    - "{{ playbook_dir }}/../inventory/host_vars/{{ wsl_ci_host_id }}.yml"
+  pre_tasks:
+    - name: Load local secrets if present (bootstrap writes private/secrets.yml)
+      ansible.builtin.include_vars: "{{ item }}"
+      vars:
+        item: "{{ playbook_dir }}/../private/secrets.yml"
+      when: item is exists
+  roles:
+    - wsl_ci_host
+    - ci_runner_docker
+    # After the runners, because the dev slice is sized around what they
+    # reserve and boots its gates from the image they loaded. Tagged so
+    # `--tags dev-slice` can retune it on its own: that path stops, starts and
+    # recreates no container, so it needs no drain and costs this host no
+    # runner time.
+    - role: dev_slice
+      tags: [dev-slice]
+    # Last: the capacity script has to name the instance containers the role
+    # above has just created, and its timer is what stands this host down
+    # during the owner's declared quiet hours.
+    #
+    # Tagged so `--tags capacity` can refresh the drain script and the timer on
+    # their own, without re-running the Windows-side setup or touching a single
+    # container.
+    - role: fleet_capacity
+      tags: [capacity]

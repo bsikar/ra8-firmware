@@ -1,0 +1,108 @@
+/***************************************************************************
+ * Copyright (c) 2024 Microsoft Corporation
+ * Copyright (c) 2025-present Eclipse ThreadX Contributors
+ *
+ * This program and the accompanying materials are made available under the
+ * terms of the MIT License which is available at
+ * https://opensource.org/licenses/MIT.
+ *
+ * SPDX-License-Identifier: MIT
+ **************************************************************************/
+
+
+/**************************************************************************/
+/**************************************************************************/
+/**                                                                       */
+/** NetX Secure Component                                                 */
+/**                                                                       */
+/**    Transport Layer Security (TLS)                                     */
+/**                                                                       */
+/**************************************************************************/
+/**************************************************************************/
+
+#define NX_SECURE_SOURCE_CODE
+
+
+#include "nx_secure_tls.h"
+
+/**************************************************************************/
+/*                                                                        */
+/*  FUNCTION                                               RELEASE        */
+/*                                                                        */
+/*    _nx_secure_tls_send_client_key_exchange             PORTABLE C      */
+/*                                                           6.4.3        */
+/*  AUTHOR                                                                */
+/*                                                                        */
+/*    Timothy Stapko, Microsoft Corporation                               */
+/*                                                                        */
+/*  DESCRIPTION                                                           */
+/*                                                                        */
+/*    This function encrypts the Pre-Master Secret (generated earlier)    */
+/*    and populates an NX_PACKET with the complete ClientKeyExchange      */
+/*    message (to be sent by the caller). It also will send ephemeral     */
+/*    keys for ciphersuites that require them.                            */
+/*                                                                        */
+/*  INPUT                                                                 */
+/*                                                                        */
+/*    tls_session                           TLS control block             */
+/*    send_packet                           Outgoing TLS packet           */
+/*                                                                        */
+/*  OUTPUT                                                                */
+/*                                                                        */
+/*    status                                Completion status             */
+/*                                                                        */
+/*  CALLS                                                                 */
+/*                                                                        */
+/*    [nx_secure_generate_client_key_exchange]                            */
+/*                                          Generate ClientKeyExchange    */
+/*    _nx_secure_tls_remote_certificate_free_all                          */
+/*                                          Free all remote certificates  */
+/*                                                                        */
+/*  CALLED BY                                                             */
+/*                                                                        */
+/*    _nx_secure_dtls_client_handshake      DTLS client state machine     */
+/*    _nx_secure_tls_client_handshake       TLS client state machine      */
+/*                                                                        */
+/**************************************************************************/
+UINT _nx_secure_tls_send_client_key_exchange(NX_SECURE_TLS_SESSION *tls_session,
+                                             NX_PACKET *send_packet)
+{
+#if !defined(NX_SECURE_TLS_CLIENT_DISABLED)
+UINT  status;
+ULONG data_size = 0;
+ULONG buffer_length;
+
+    if (tls_session -> nx_secure_tls_session_ciphersuite == NX_NULL)
+    {
+
+        /* Likely internal error since at this point ciphersuite negotiation was theoretically completed. */
+        return(NX_SECURE_TLS_UNKNOWN_CIPHERSUITE);
+    }
+
+    buffer_length = (ULONG)(send_packet -> nx_packet_data_end) - (ULONG)(send_packet -> nx_packet_append_ptr);
+
+    status = tls_session -> nx_secure_generate_client_key_exchange(tls_session -> nx_secure_tls_session_ciphersuite,
+                                                                   &tls_session -> nx_secure_tls_key_material, &tls_session -> nx_secure_tls_credentials,
+                                                                   send_packet -> nx_packet_append_ptr,
+                                                                   buffer_length,
+                                                                   &data_size, tls_session -> nx_secure_public_cipher_metadata_area,
+                                                                   tls_session -> nx_secure_public_cipher_metadata_size,
+                                                                   tls_session -> nx_secure_public_auth_metadata_area,
+                                                                   tls_session -> nx_secure_public_auth_metadata_size);
+    if (status)
+    {
+        _nx_secure_tls_remote_certificate_free_all(tls_session);
+        return(status);
+    }
+
+    send_packet -> nx_packet_append_ptr = send_packet -> nx_packet_append_ptr + data_size;
+    send_packet -> nx_packet_length = send_packet -> nx_packet_length + data_size;
+
+    return(NX_SECURE_TLS_SUCCESS);
+#else
+    NX_PARAMETER_NOT_USED(tls_session);
+    NX_PARAMETER_NOT_USED(send_packet);
+    return(NX_SECURE_TLS_INVALID_STATE);
+#endif
+}
+

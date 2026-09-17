@@ -1,0 +1,502 @@
+#!/usr/bin/env python3
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Brighton Sikarskie
+"""One definition of "which files are first-party code", for the size gates.
+
+Four checkers in this tree have now had the same defect: a hand-written
+``SCAN_ROOTS`` / ``SOURCE_SUFFIXES`` tuple that quietly stopped describing the
+repository.  ``check_file_size.py`` and ``check_function_size.py`` were the
+worst of them -- their roots omitted ``scripts/`` and their suffixes covered
+only C/C++, so the documented 1000-line file cap and the 60-line NASA Rule 4
+function cap had never once applied to a Python or shell file (#359).
+
+The failure mode is specific and worth naming: a hardcoded list does not fail
+when it goes stale.  It reports success over a shrinking slice of the tree, and
+the gate looks green precisely because it stopped looking.  So the enumeration
+is derived instead:
+
+* the file set comes from ``git ls-files`` -- whatever is in the repository is
+  in scope, and a new top-level directory is covered the day it is added;
+* language is decided per file by suffix, by well-known basename, or by
+  shebang, so an extensionless executable cannot escape by having no suffix;
+* the only subtractions are vendored SOUP and generated tables, which
+  CLAUDE.md already exempts by name.
+
+``check_lint_coverage.py`` asks a parallel question ("is every code file
+claimed by some linter?") and this module answers the size gates' half of it
+with the same enumeration, so the two cannot disagree about what code is.
+
+Run::
+
+    lint_targets.py                # every first-party code file
+    lint_targets.py c python       # only the named languages
+    lint_targets.py --list         # the language names this module knows
+
+Prints one repo-relative path per line, sorted.  Exits non-zero, printing
+nothing, when a requested language resolves to zero files: a gate must never
+mistake a broken enumeration for a clean tree.
+"""
+
+from __future__ import annotations
+
+import subprocess
+import sys
+import tempfile
+from pathlib import Path
+
+REPO_ROOT = Path(__file__).resolve().parents[2]
+
+# Vendored SOUP and generated tables. Matches the CLAUDE.md exemption list and
+# the sibling gates' EXCLUDE_FRAGMENTS.
+EXCLUDED_PREFIXES = (
+    "libs/third_party/",
+    "apps/shared_libs/third_party/",
+    "libs/ra8_fonts/",
+    "tools/vela/generated/",
+)
+
+# Prefixes excluded for SOME languages only. A vendored tree is SOUP for the
+# language whose sources it carries, but the build glue that compiles it is
+# ours and is linted like any other first-party listfile: port/threadx/ holds
+# vendored ThreadX C, and a CMakeLists.txt we wrote and hold to the cmake gate.
+# Excluding the directory wholesale -- which this module originally did -- would
+# have silently dropped that listfile out of the cmake scope.
+LANGUAGE_EXCLUDED_PREFIXES = {
+    "c": ("port/threadx/",),
+}
+
+# ---------------------------------------------------------------------------
+# BUILD OUTPUT -- the single definition, shared by every checker in this tree.
+#
+# This used to be thirteen copies of the substring ``"/build/"``, one per
+# checker, and the substring is the defect (#377). ``"/build/" in path`` cannot
+# tell ``tools/ra8_emulator/build/`` -- genuine CMake output -- from a first-party
+# source directory that happens to be called ``build``. When #359's
+# reorganisation created ``scripts/build/``, every file in it  # PATHREF-OK: #359
+# became invisible to shellcheck, shfmt and the rest, while every gate still
+# reported
+# a clean tree. The bare ``build/`` line in .gitignore did the same thing to
+# git, so a NEW file there would never have been added at all; the six that
+# survived did so only because ``git mv`` moves already-tracked files.
+#
+# The replacement is a repo-relative PATH check rather than a substring match.
+# A build directory counts as build output only where a build tree is actually
+# produced: at the repo root, or under one of the roots below. Anywhere else,
+# a directory named ``build`` is ordinary source and is linted like any other.
+#
+# .gitignore carries the matching anchored patterns, and
+# ``check_gitignore_scope.py`` fails on any new unanchored directory pattern,
+# so the two halves cannot drift back apart.
+# ---------------------------------------------------------------------------
+
+# Top-level directories beneath which a per-target build tree legitimately
+# appears, at any depth. Deliberately NOT "any directory anywhere": that is the
+# behaviour being removed. `scripts/`, `libs/` and friends are
+# absent because nothing builds into them, so a `build` directory appearing
+# there is source and must stay visible to the checkers.
+BUILD_TREE_ROOTS = frozenset(
+    {
+        "docs",  # docs/build/ -- generated Doxygen HTML
+        "examples",  # examples/**/<app>/build/ -- per-app CMake output
+        "local-poc",  # local-poc/**/build/ -- git-excluded PoC tree
+        "port",  # port/**/build/
+        "tests",  # tests/build/, tests/build-cov/, tests/build-fuzz/
+        "tools",  # tools/<tool>/build/ -- host tool output
+        "apps",  # apps/<category>/<product>/build/ -- product build output
+    }
+)
+
+# Directory names owned by a tool, which can never be a first-party source
+# directory and are therefore matched at ANY depth. This is the ONLY
+# depth-agnostic rule left, and every name in it is reserved by the tool that
+# creates it: CMake writes CMakeFiles/ and _deps/, CPython writes __pycache__/,
+# npm writes node_modules/. Nobody can legitimately author a source directory
+# with one of these names, so matching them anywhere cannot swallow source.
+TOOL_OUTPUT_DIR_NAMES = frozenset({"CMakeFiles", "_deps", "__pycache__", "node_modules"})
+
+
+def is_build_dir_name(name: str) -> bool:
+    """True when one path COMPONENT names a build tree.
+
+    Exact ``build``, or a ``build-`` / ``build_`` / ``cmake-build-`` prefix.
+    The separator is required: ``builders`` starts with ``build`` and is NOT a
+    build directory, which is precisely the collision a ``build*`` glob would
+    reintroduce.
+    """
+    return name == "build" or name.startswith(("build-", "build_", "cmake-build-"))
+
+
+def is_build_output(rel: str) -> bool:
+    """True when repo-relative `rel` lives inside a build tree.
+
+    Directory components only -- a FILE called ``build`` is not a build tree.
+    """
+    parts = rel.split("/")
+    for index, part in enumerate(parts[:-1]):
+        if part in TOOL_OUTPUT_DIR_NAMES:
+            return True
+        if is_build_dir_name(part) and (index == 0 or parts[0] in BUILD_TREE_ROOTS):
+            return True
+    return False
+
+
+# suffix -> language
+SUFFIX_LANG = {
+    ".c": "c",
+    ".h": "c",
+    ".cpp": "c",
+    ".hpp": "c",
+    ".cc": "c",
+    ".cxx": "c",
+    ".hh": "c",
+    ".hxx": "c",
+    ".py": "python",
+    ".sh": "shell",
+    ".bash": "shell",
+    ".cmake": "cmake",
+    ".yml": "yaml",
+    ".yaml": "yaml",
+    ".mk": "make",
+    ".just": "just",
+    ".ld": "ld",
+}
+
+# Exact basenames that carry no suffix but are unambiguously one language.
+BASENAME_LANG = {
+    "CMakeLists.txt": "cmake",
+    "justfile": "just",
+    "Justfile": "just",
+}
+
+# Directories whose extensionless executables are shell by construction. The
+# git hooks are the case that matters: scripts/git/pre-commit is 670 lines of
+# shell that no suffix-driven scope has ever seen.
+SHEBANG_LANG = {
+    "sh": "shell",
+    "bash": "shell",
+    "zsh": "shell",
+    "dash": "shell",
+    "python": "python",
+    "python3": "python",
+}
+
+LANGUAGES = ("c", "python", "shell", "cmake", "yaml", "just", "ld")
+
+
+def is_build_output_path(path: object) -> bool:
+    """``is_build_output`` for a str or Path that may be absolute.
+
+    The checkers hold a mix of absolute paths, repo-relative paths and
+    slash-wrapped forms. Normalising here keeps every call site a single
+    predicate instead of thirteen hand-rolled substring tuples (#377).
+    """
+    text = str(path).replace("\\", "/").strip("/")
+    root = str(REPO_ROOT).replace("\\", "/").strip("/")
+    if text.startswith(root + "/"):
+        text = text[len(root) + 1 :]
+    elif text.startswith("./"):
+        text = text[2:]
+    return is_build_output(text)
+
+
+def _tracked() -> list[str]:
+    """Existing tracked plus untracked-but-not-ignored paths, from git itself.
+
+    ``git ls-files --cached`` also prints tracked paths deleted in the working
+    tree.  Those are part of the index until the next commit, but they are not
+    lint targets: passing them to a formatter makes every local check fail with
+    ``ENOENT`` during an ordinary deletion.  Filter on filesystem existence so
+    working-tree checks describe the tree that is actually present; committed
+    CI snapshots are unchanged by this distinction.
+    """
+    proc = subprocess.run(
+        [  # noqa: S607 -- trusted: fixed git argv
+            "git",
+            "ls-files",
+            "-z",
+            "--cached",
+            "--others",
+            "--exclude-standard",
+        ],
+        cwd=REPO_ROOT,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    if proc.returncode != 0:
+        sys.stderr.write(proc.stderr)
+        sys.stderr.write("lint_targets.py: FATAL -- `git ls-files` failed\n")
+        sys.exit(2)
+    return [rel for rel in proc.stdout.split("\0") if rel and (REPO_ROOT / rel).is_file()]
+
+
+def _excluded(rel: str, lang: str | None = None) -> bool:
+    if rel.startswith(EXCLUDED_PREFIXES) or is_build_output(rel):
+        return True
+    extra = LANGUAGE_EXCLUDED_PREFIXES.get(lang or "", ())
+    return bool(extra) and rel.startswith(extra)
+
+
+def _shebang_lang(path: Path) -> str | None:
+    """Language named by a ``#!`` first line, or None.
+
+    This is the half of the enumeration a suffix list cannot do. An executable
+    with no extension is still code, and the git hooks are exactly that.
+    """
+    try:
+        with path.open("rb") as handle:
+            first = handle.readline(200).decode("utf-8", errors="replace")
+    except OSError:
+        return None
+    if not first.startswith("#!"):
+        return None
+    words = first[2:].replace("/usr/bin/env", " ").replace("/", " ").split()
+    for word in words:
+        base = word.split("-")[0]
+        if base in SHEBANG_LANG:
+            return SHEBANG_LANG[base]
+    return None
+
+
+def _raw_language(rel: str, root: Path) -> str | None:
+    """The language a path's name implies, before any exclusion is applied."""
+    path = Path(rel)
+    if path.name in BASENAME_LANG:
+        return BASENAME_LANG[path.name]
+    lang = SUFFIX_LANG.get(path.suffix)
+    if lang is not None:
+        return lang
+    if path.suffix:
+        return None  # a suffix we know is not code (.md, .json, .pdf, ...)
+    return _shebang_lang(root / rel)
+
+
+def language_of(rel: str, root: Path = REPO_ROOT) -> str | None:
+    """The language of one repo-relative path, or None if it is not code.
+
+    The language is resolved BEFORE exclusion, because exclusion is now
+    per-language: a vendored tree can be SOUP for its sources and still hold
+    first-party build glue.
+    """
+    if _excluded(rel):
+        return None
+    lang = _raw_language(rel, root)
+    if lang is None or _excluded(rel, lang):
+        return None
+    return lang
+
+
+def files_for(languages: tuple[str, ...] = LANGUAGES) -> dict[str, list[str]]:
+    """Map each requested language to its sorted first-party file list."""
+    out: dict[str, list[str]] = {lang: [] for lang in languages}
+    for rel in _tracked():
+        lang = language_of(rel)
+        if lang in out:
+            out[lang].append(rel)
+    return {lang: sorted(paths) for lang, paths in out.items()}
+
+
+# A tree this size cannot legitimately collapse to a handful of files. A checker
+# that enumerates almost nothing reports a clean tree because it looked at
+# almost nothing -- the exact failure this module exists to prevent. Same
+# trip-wire as check_ruff.py and check_lint_coverage.py.
+TRACKED_FLOOR = 1000
+
+
+def first_party_paths(
+    suffixes: tuple[str, ...], *, respect_language_excludes: bool = True
+) -> list[str]:
+    """Every tracked first-party path ending in one of ``suffixes``.
+
+    The derived-scope primitive the policy checkers share (#358). Enumeration
+    is ``git ls-files`` -- never a hardcoded directory list -- so a newly added
+    top-level directory (``tools/`` was the one that had been silently omitted
+    for the life of six checkers) is in scope the day it lands, with no
+    allowlist to forget. The only subtractions are the named SOUP / generated /
+    build-output exemptions this module already defines; with
+    ``respect_language_excludes`` also the per-language vendored trees
+    (``port/threadx/`` is C SOUP), which are not ours to police.
+
+    Args:
+        suffixes: Extensions to keep, e.g. ``(".c", ".h")``. Matched with
+            ``str.endswith``, so pass lower-case dotted forms.
+        respect_language_excludes: When true, also drop a path that is a
+            vendored tree for the language its own suffix implies. Callers
+            scanning text (docs, config) pass false, where it is a no-op.
+
+    Returns:
+        The matching repo-relative paths, sorted.
+
+    Raises:
+        SystemExit: When ``git ls-files`` returns fewer than ``TRACKED_FLOOR``
+            paths -- a collapsed enumeration must fail, never read as clean.
+    """
+    rels = _tracked()
+    if len(rels) < TRACKED_FLOOR:
+        sys.stderr.write(
+            f"lint_targets.py: FATAL -- only {len(rels)} tracked path(s), floor "
+            f"is {TRACKED_FLOOR}. A collapsed enumeration reports a clean tree "
+            "because it enumerated nothing.\n"
+        )
+        sys.exit(2)
+    out: list[str] = []
+    for rel in rels:
+        if not rel.endswith(suffixes):
+            continue
+        if _excluded(rel):
+            continue
+        if respect_language_excludes:
+            lang = _raw_language(rel, REPO_ROOT)
+            if lang is not None and _excluded(rel, lang):
+                continue
+        out.append(rel)
+    return sorted(out)
+
+
+# ---------------------------------------------------------------------------
+# FIRMWARE PRODUCTS -- the single definition, shared by every checker that has
+# to tell a cross-compiled image from a host program.
+#
+# Top-level roots used to classify build domain on their own: examples/ and
+# port/ were firmware, tests/ and tools/ were hosted. apps/ -- the products
+# tier -- breaks that, because it carries BOTH kinds. The mdl CLI is a
+# host program the C runtime starts and whose exit status something reads; the
+# e-reader is a two-image TrustZone composition reached from Reset_Handler,
+# with no process and no exit status. "It lives under apps/" answers nothing.
+#
+# The discriminator is what the build actually does with the directory: an app
+# directory holding BOTH a linker script and a vector table is LINKED INTO AN
+# IMAGE. Neither half alone is enough -- a host program could carry a stray
+# .ld for some other purpose, and a vector_table.c with nothing placing it is
+# not an image -- and no host program has ever needed both.
+#
+# Derived from ``git ls-files`` rather than listed, so a firmware product that
+# lands tomorrow is classified the day it lands, with no allowlist to forget.
+# ---------------------------------------------------------------------------
+
+#: Products tier root. Only this root is ambiguous; the others classify by name.
+PRODUCTS_ROOT = "apps/"
+
+#: Proof that a directory is linked into an image rather than started by a C
+#: runtime. Any ``.ld`` counts -- the e-reader carries three.
+_IMAGE_MARKER_SUFFIX = ".ld"
+
+#: Proof that a directory owns a reset path.
+_IMAGE_MARKER_NAME = "vector_table.c"
+
+
+def firmware_app_dirs(paths: list[str] | None = None) -> tuple[str, ...]:
+    """Every directory under ``apps/`` that builds a cross-compiled image.
+
+    Args:
+        paths: Repo-relative paths to classify. Defaults to the tracked tree,
+            which is what every caller wants; the parameter exists so a
+            selftest can drive the rule with a fixture instead of the live
+            tree.
+
+    Returns:
+        The matching repo-relative directories, sorted, with no trailing slash.
+    """
+    if paths is None:
+        paths = [rel for rel in _tracked() if not is_build_output(rel)]
+    scripts: set[str] = set()
+    vectors: set[str] = set()
+    for rel in paths:
+        if not rel.startswith(PRODUCTS_ROOT):
+            continue
+        head, _, name = rel.rpartition("/")
+        if not head:
+            continue
+        if name.endswith(_IMAGE_MARKER_SUFFIX):
+            scripts.add(head)
+        elif name == _IMAGE_MARKER_NAME:
+            app_dir, separator, leaf = head.rpartition("/")
+            if separator and leaf == "src":
+                vectors.add(app_dir)
+    return tuple(sorted(scripts & vectors))
+
+
+def selftest() -> int:
+    """Prove source classification includes tricky code and excludes real outputs/SOUP."""
+    with tempfile.TemporaryDirectory(prefix="lint-targets-selftest-") as raw:
+        root = Path(raw)
+        hook = root / "scripts/git/pre-commit"
+        hook.parent.mkdir(parents=True)
+        hook.write_text("#!/usr/bin/env bash\nexit 0\n", encoding="ascii")
+        cases = (
+            (language_of("scripts/git/pre-commit", root) == "shell", "shebang-only hook is shell"),
+            (
+                language_of("internal/build/helper.sh", root) == "shell",
+                "source build dir is visible",
+            ),
+            (is_build_output("tools/demo/build/object.o"), "tool build output is excluded"),
+            (
+                not is_build_output("internal/build/helper.sh"),
+                "non-product build directory is not output",
+            ),
+            (
+                language_of("port/threadx/src/vendor.c", root) is None,
+                "language-specific vendored C is excluded",
+            ),
+            (
+                firmware_app_dirs(
+                    [
+                        "apps/board/reader/linker.ld",
+                        "apps/board/reader/src/vector_table.c",
+                        "apps/host/tool/linker.ld",
+                    ]
+                )
+                == ("apps/board/reader",),
+                "firmware product needs linker and vector markers",
+            ),
+        )
+    failed = [label for passed, label in cases if not passed]
+    for passed, label in cases:
+        print(f"  [{'ok' if passed else 'FAIL'}] {label}")
+    if failed:
+        print(f"lint_targets.py --selftest: {len(failed)} failure(s)", file=sys.stderr)
+        return 1
+    print("lint_targets.py --selftest: all cases pass (both directions).")
+    return 0
+
+
+def main(argv: list[str]) -> int:
+    """Print the first-party file list, optionally filtered by language.
+
+    Exits non-zero printing NOTHING when a requested language resolves to zero
+    files. That is the contract the size gates depend on: an empty list must
+    be distinguishable from a clean tree, or a broken enumeration reads as
+    success.
+
+    Returns 0 with the paths on stdout, 1 on an unknown or empty language.
+    """
+    args = argv[1:]
+    if args == ["--selftest"]:
+        return selftest()
+    if args == ["--list"]:
+        print("\n".join(LANGUAGES))
+        return 0
+    if any(arg.startswith("-") for arg in args):
+        sys.stderr.write("usage: lint_targets.py [--list|--selftest|LANGUAGE ...]\n")
+        return 2
+    requested = tuple(args) or LANGUAGES
+    unknown = [lang for lang in requested if lang not in LANGUAGES]
+    if unknown:
+        sys.stderr.write(f"lint_targets.py: unknown language(s): {unknown}\n")
+        return 2
+    grouped = files_for(requested)
+    empty = [lang for lang, paths in grouped.items() if not paths]
+    if empty:
+        sys.stderr.write(
+            f"lint_targets.py: FATAL -- language(s) {empty} resolved to zero "
+            f"files. The enumeration is broken; refusing to report a clean scope.\n"
+        )
+        return 2
+    for lang in requested:
+        for rel in grouped[lang]:
+            print(rel)
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main(sys.argv))
