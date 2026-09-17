@@ -203,6 +203,11 @@ _pcc_layout_and_credentials() (
   # (belongs in inc/) or an unmarked private one.
   python3 scripts/checks/check_header_file_placement.py --selftest
   python3 scripts/checks/check_header_file_placement.py
+  # ra8_regs.h claims to be the one include that reaches every RA8D2 register
+  # block. No TU includes an umbrella, so nothing preprocesses it and the claim
+  # rots unobserved: by #1389 it re-exported 30 of 60 headers. Keep it complete.
+  python3 scripts/checks/check_umbrella_regs.py --selftest
+  python3 scripts/checks/check_umbrella_regs.py
 )
 
 # Board-fact ownership and library layering.

@@ -4,9 +4,26 @@
  * @ingroup grp_hal_system
  *
  * @details
- * This header is the single include point for every peripheral register
- * block on the RA8D2 (R7KA8D2KF). Drivers include this one file and get
- * access to every peripheral struct + accessor.
+ * This header re-exports every peripheral register header for the RA8D2
+ * (R7KA8D2KF), so one include gives access to every peripheral struct +
+ * accessor. Drivers are NOT expected to use it: a driver includes the one
+ * narrow `ra8_<peripheral>_regs.h` it actually drives, which keeps its
+ * dependency edge honest. The umbrella exists for the consumers that
+ * genuinely want the whole map (chip-wide tooling, and the test that
+ * compiles it), and `.clang-tidy` disables `-misc-include-cleaner` for
+ * exactly this pattern.
+ *
+ * ## Completeness
+ *
+ * Every `ra8_*_regs.h` in `libs/ra8_hal/inc/` is re-exported below except
+ * two, and `scripts/checks/check_umbrella_regs.py` fails the build if that
+ * stops being true (#1389, which found the list had drifted to 30 of 60):
+ *
+ *  - `ra8_npu_regs.h` is the Ethos-U55 window on the **RA8P1**, not this
+ *    part, and `#error`s out on a device without an NPU. It cannot be in
+ *    an RA8D2 umbrella.
+ *  - `ra8_touch_gt911_regs.h` maps an off-chip GoodIX GT911 touch
+ *    controller reached over I2C, not a block of this MCU.
  *
  * Each individual `ra8d2_<peripheral>_regs.h` file is a hand-written
  * translation of the relevant section of the Hardware User's Manual
@@ -47,13 +64,21 @@
 #pragma once
 
 /* Core system blocks. */
+#include "ra8_bkup_regs.h"
 #include "ra8_cac_regs.h"
 #include "ra8_cgc_regs.h"
 #include "ra8_lpm_regs.h"
 #include "ra8_lvd_regs.h"
 #include "ra8_mpu_regs.h"
+#include "ra8_mrms_regs.h"
 #include "ra8_mstp_regs.h"
+#include "ra8_reset_regs.h"
+#include "ra8_sram_regs.h"
 #include "ra8_system_regs.h"
+#include "ra8_vreg_regs.h"
+
+/* Debug and test access. */
+#include "ra8_bscan_regs.h"
 
 /* I/O and pin mux. */
 #include "ra8_pfs_regs.h"
@@ -63,6 +88,9 @@
 #include "ra8_elc_regs.h"
 #include "ra8_icu_regs.h"
 
+/* Inter-processor communication. */
+#include "ra8_ipc_regs.h"
+
 /* Data movement. */
 #include "ra8_dmac_regs.h"
 #include "ra8_dtc_regs.h"
@@ -71,25 +99,56 @@
 #include "ra8_agt_regs.h"
 #include "ra8_gpt_regs.h"
 #include "ra8_iwdt_regs.h"
+#include "ra8_pdg_regs.h"
 #include "ra8_poeg_regs.h"
+#include "ra8_ulpt_regs.h"
 #include "ra8_wdt_regs.h"
 
 /* Serial. */
+#include "ra8_i2c_regs.h"
 #include "ra8_i3c_i2c_regs.h"
+#include "ra8_i3c_regs.h"
 #include "ra8_sci_regs.h"
 #include "ra8_spi_regs.h"
 
+/* Audio. */
+#include "ra8_pdm_regs.h"
+#include "ra8_ssie_regs.h"
+
 /* Analog. */
+#include "ra8_acmphs_regs.h"
 #include "ra8_adc_b_regs.h"
+#include "ra8_dac_b_regs.h"
 #include "ra8_tsn_regs.h"
+
+/* Storage and external memory. */
+#include "ra8_sdhi_regs.h"
+#include "ra8_sdramc_regs.h"
+
+/* Security and crypto. */
+#include "ra8_dotf_regs.h"
+#include "ra8_rsip_regs.h"
+
+/* Connectivity. */
+#include "ra8_canfd_regs.h"
+#include "ra8_cnecc_regs.h"
+#include "ra8_etha_regs.h"
+#include "ra8_ether_regs.h"
+#include "ra8_rmac_regs.h"
+#include "ra8_usb_regs.h"
+
+/* Graphics, display and video. */
+#include "ra8_ceu_regs.h"
+#include "ra8_drw_regs.h"
+#include "ra8_glcdc_regs.h"
+#include "ra8_mipi_csi_regs.h"
+#include "ra8_mipi_dsi_regs.h"
+#include "ra8_mipi_phy_regs.h"
+#include "ra8_vin_regs.h"
 
 /* Misc. */
 #include "ra8_crc_regs.h"
+#include "ra8_doc_regs.h"
 #include "ra8_flash_regs.h"
-#include "ra8_rtc_regs.h"
-
-/* Connectivity / display. */
-#include "ra8_canfd_regs.h"
-#include "ra8_glcdc_regs.h"
 #include "ra8_ospi_regs.h"
-#include "ra8_usb_regs.h"
+#include "ra8_rtc_regs.h"
