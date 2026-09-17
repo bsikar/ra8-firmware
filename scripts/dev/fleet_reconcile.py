@@ -29,6 +29,7 @@ import fleet_reconcile_arc_selftest as fras
 import fleet_reconcile_backoff_selftest as frb
 import fleet_reconcile_blocking_selftest as frbl
 import fleet_reconcile_drain_selftest as frd
+import fleet_reconcile_interrupt_selftest as fri
 import fleet_reconcile_process as frp
 import fleet_reconcile_recovery_selftest as frr
 import fleet_reconcile_release_selftest as frrl
@@ -75,6 +76,9 @@ STRANDED_STATUS = 4
 # everything: a consumer already sitting at zero is skipped every pass and can
 # never be repaired, which is how issue #888's fleet stayed at zero.
 PRODUCER_BLOCK_PASSES = 3
+# Every verb that can move a host's capacity.  A failure that issued none of
+# them cannot have stranded the host, whatever else went wrong.
+CAPACITY_MUTATION_VERBS = frozenset({"parked-apply", "quarantine", "restore", "activate"})
 SHA256_RE = re.compile(r"[0-9a-f]{64}")
 ANSI_RE = re.compile(r"\x1b\[[0-9;]*m")
 
@@ -574,6 +578,38 @@ def reconcile_host(  # noqa: PLR0913  # transaction inputs plus injectable retry
     )
 
 
+def capacity_mutation(verb: str) -> bool:
+    """Return whether one issued fleet verb can move a host's capacity."""
+    return verb in CAPACITY_MUTATION_VERBS
+
+
+def capacity_lost(host: str, *, stranded: bool, mutated: bool) -> bool:
+    """Return whether this pass actually took a failed host's capacity down.
+
+    ``stranded`` is the fail-closed verdict a failure earns: it decides whether
+    a failed producer holds its consumers back for the rest of the pass, and it
+    is deliberately true for an administrative stop, which can arrive at any
+    point including one the controller cannot see past.  The stranded-at-zero
+    RECORD is a different claim, and a much stronger one: escalation counts it
+    and the consumer release reads it as proof the producer's image is frozen
+    because the producer was drained.  A stop that arrives while a host is only
+    being READ issues no mutation at all, so recording it forged exactly that
+    proof, and repeated stops would escalate a fleet that never left service
+    and release every consumer onto a producer that may be mid-republish
+    (issue #888).  Only a pass that actually issued a capacity mutation may
+    claim it lost capacity.
+    """
+    if not stranded or mutated:
+        return stranded
+    print(
+        f"fleet-reconcile: WARNING: {host}: this pass failed before it issued any "
+        "capacity mutation, so the host keeps whatever it was serving; not counted "
+        "as stranded at zero",
+        file=sys.stderr,
+    )
+    return False
+
+
 def load_stranding(document: dict[str, Any]) -> dict[str, dict[str, int]]:
     """Return the record of hosts this controller drained and never reopened.
 
@@ -699,6 +735,22 @@ def producer_block_state(
     return not consumers_released(stranding, host, undrained=undrained)
 
 
+def report_uninspected(remaining: Sequence[str]) -> None:
+    """Name every host an administrative stop left unexamined this pass.
+
+    A pass cut short printed nothing at all about the hosts it never reached,
+    so a fleet with a host already sitting at zero read exactly like a fleet
+    that had just been looked at end to end.  Issue #888 went unnoticed five
+    times on silence of this shape.
+    """
+    print(
+        "fleet-reconcile: WARNING: administrative stop ended this pass with host(s) "
+        f"never inspected: {', '.join(remaining)}; anything already at zero capacity "
+        "was not looked at, so this pass cannot have repaired it",
+        file=sys.stderr,
+    )
+
+
 def reconcile(
     data: dict[str, Any],
     options: ReconcileOptions,
@@ -719,8 +771,10 @@ def reconcile(
     failures = 0
     producer_blocking = False
     undrained: list[str] = []
-    for index, host in enumerate(runner_hosts(data)):
+    order = runner_hosts(data)
+    for index, host in enumerate(order):
         if frp.interrupted_status():
+            report_uninspected(order[index:])
             break
         if index and producer_blocking:
             print(f"fleet-reconcile: {host}: BLOCKED by producer failure", file=sys.stderr)
@@ -728,10 +782,12 @@ def reconcile(
             continue
 
         receipt_invalidated = False
+        mutated = False
 
         def transaction_run(argv: Sequence[str], target: str = host) -> frp.CommandResult:
-            nonlocal receipt_invalidated
+            nonlocal receipt_invalidated, mutated
             verb, _command_host = _command_identity(argv)
+            mutated = mutated or capacity_mutation(verb)
             if verb == "parked-apply" and not receipt_invalidated:
                 receipts.pop(target, None)
                 save_state(state_path, document)
@@ -758,7 +814,8 @@ def reconcile(
         if not ok:
             failures += 1
             if options.mode == "apply":
-                invalidate_receipt(receipts, stranding, host, options.now, stranded=stranded)
+                lost = capacity_lost(host, stranded=stranded, mutated=mutated)
+                invalidate_receipt(receipts, stranding, host, options.now, stranded=lost)
                 save_state(state_path, document)
             if index == 0 and options.mode == "apply":
                 producer_blocking = producer_block_state(
@@ -1331,6 +1388,7 @@ def selftest() -> int:
     failures.extend(frst.run(sys.modules[__name__]))
     failures.extend(frrl.run(sys.modules[__name__]))
     failures.extend(frse.run(sys.modules[__name__]))
+    failures.extend(fri.run(sys.modules[__name__]))
     _selftest_state_safety(failures)
     failures.extend(fml.run_selftest())
     _selftest_timeout(failures)
