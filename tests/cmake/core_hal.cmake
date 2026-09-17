@@ -58,7 +58,6 @@ add_library(
   ${RA8_BOARD_EK_RA8D2_SOURCES}
   ${RA8_OV5640_SOURCES}
   ${RA8_DFU_SOURCES}
-  ${RA8_WIFI_SOURCES}
   # ThreadX SysTick retune (issue #287). Lives under port/threadx (not
   # libs/), so it is not caught by the libs/ globs above -- add it by
   # hand. Its SYST_RVR/CVR writes compile out under RA8_OFF_TARGET,
