@@ -50,7 +50,6 @@ pub fn build(b: *std.Build) void {
         cargo.setEnvironmentVariable("CARGO_TARGET_DIR", b.pathFromRoot("../rust_abi_fixture/target"));
         tests.step.dependOn(&cargo.step);
     }
-    const run_tests = b.addRunArtifact(tests);
     const test_step = b.step("test", "Run Zig chain adapter tests");
-    test_step.dependOn(&run_tests.step);
+    _ = ra8_build.addHostTestRun(b, test_step, tests);
 }

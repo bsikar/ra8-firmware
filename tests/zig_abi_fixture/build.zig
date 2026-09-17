@@ -47,9 +47,7 @@ pub fn build(b: *std.Build) void {
     });
     internal_test_module.addImport("implementation", implementation_module);
     const internal_tests = b.addTest(.{ .root_module = internal_test_module });
-    const run_abi_tests = b.addRunArtifact(abi_tests);
-    const run_internal_tests = b.addRunArtifact(internal_tests);
     const test_step = b.step("test", "Run Zig ABI fixture tests");
-    test_step.dependOn(&run_abi_tests.step);
-    test_step.dependOn(&run_internal_tests.step);
+    _ = ra8_build.addHostTestRun(b, test_step, abi_tests);
+    _ = ra8_build.addHostTestRun(b, test_step, internal_tests);
 }
