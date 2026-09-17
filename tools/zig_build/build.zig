@@ -17,19 +17,28 @@ pub const macho = @import("macho.zig");
 
 /// How the macOS libSystem stub is chosen. `auto` probes the host SDK (see
 /// `macos_host.decide`); the other two are escape hatches for a host whose SDK
-/// the probe reads wrongly.
-pub const MacosLibSystem = enum { auto, sdk, bundled };
+/// the probe reads wrongly. The enum lives beside the rule it selects, so the
+/// unit tests can reason about a forced selection without a build graph.
+pub const MacosLibSystem = macos_host.Selection;
 
 /// Everything the #899 rule worked out about this host, kept together so the
 /// choice and the evidence for it can be printed as one story.
 pub const HostTarget = struct {
     forced: MacosLibSystem,
-    decision: macos_host.Decision,
+    /// What this build does, and what the probe read off the machine. Under
+    /// `-Dmacos-libsystem=` those are two different things, and both are worth
+    /// printing.
+    resolution: macos_host.Resolution,
     probe: macos_host.SdkProbe,
     host_macos_version: ?std.SemanticVersion,
 
+    /// The decision the build acts on.
+    pub fn decision(self: HostTarget) macos_host.Decision {
+        return self.resolution.effective;
+    }
+
     pub fn query(self: HostTarget) std.Target.Query {
-        return self.decision.choice.query(self.host_macos_version);
+        return self.resolution.effective.choice.query(self.host_macos_version);
     }
 };
 
@@ -52,16 +61,16 @@ pub fn hostTarget(b: *std.Build) HostTarget {
         "Which libSystem stub a native macOS host build links against (default: auto)",
     ) orelse .auto;
 
+    // The probe runs whatever the selection is. It costs one `xcrun` call, and
+    // a forced leg is precisely where its finding matters: the gate's
+    // `-Dmacos-libsystem=sdk` run exists to record what the SDK stub does on
+    // that runner, which is unreadable if the forced choice is reported as the
+    // probe's own conclusion.
     const probe = probeHostSdk(b.allocator);
-    const decision: macos_host.Decision = switch (forced) {
-        .sdk => .{ .choice = .native, .reason = .sdk_declares_target },
-        .bundled => .{ .choice = .pinned_macos_arm64, .reason = .sdk_omits_target },
-        .auto => macos_host.decide(builtin.cpu.arch, builtin.os.tag, probe),
-    };
 
     cached_host_target = .{
         .forced = forced,
-        .decision = decision,
+        .resolution = macos_host.resolve(forced, builtin.cpu.arch, builtin.os.tag, probe),
         .probe = probe,
         .host_macos_version = hostMacosVersion(),
     };
@@ -125,6 +134,14 @@ pub fn probeHostSdk(allocator: std.mem.Allocator) macos_host.SdkProbe {
     return .{ .sdk_path = sdk_path, .libsystem_tbd_path = tbd_path, .libsystem_tbd = tbd };
 }
 
+/// One phrase naming a `Choice`, for a sentence about a road not taken.
+fn describeChoice(choice: macos_host.Choice) []const u8 {
+    return switch (choice) {
+        .native => "the native target",
+        .pinned_macos_arm64 => "the pinned aarch64-macos target",
+    };
+}
+
 /// The host-target decision as a short report, for a build log or a gate.
 ///
 /// This is the one place the answer is spelled out for a human: which machine
@@ -144,13 +161,23 @@ pub fn describeHostTarget(b: *std.Build, host: HostTarget) []const u8 {
     out.print("  selection: -Dmacos-libsystem={s}\n", .{@tagName(host.forced)}) catch @panic("OOM");
     out.print("  sdk:       {s}\n", .{host.probe.sdk_path orelse "(none located)"}) catch @panic("OOM");
     out.print("  stub:      {s}\n", .{host.probe.libsystem_tbd_path orelse "(none read)"}) catch @panic("OOM");
-    if (host.forced == .auto) {
-        out.print("  finding:   {s}\n", .{host.decision.reason.explain()}) catch @panic("OOM");
-    } else {
-        out.print("  finding:   forced by -Dmacos-libsystem={s}; the SDK probe was not consulted\n", .{@tagName(host.forced)}) catch @panic("OOM");
+
+    // The finding is always what the machine said. A force changes what the
+    // build does, not what the SDK stub contains, and printing the forced
+    // choice as the finding is how an informational leg stops being evidence.
+    out.print("  finding:   {s}\n", .{host.resolution.observed.reason.explain()}) catch @panic("OOM");
+    if (host.forced != .auto) {
+        out.print("  override:  {s}\n", .{host.resolution.effective.reason.explain()}) catch @panic("OOM");
+        if (host.resolution.overridesProbe()) {
+            out.print("  note:      this overrides the probe, which would have chosen {s}\n", .{
+                describeChoice(host.resolution.observed.choice),
+            }) catch @panic("OOM");
+        } else {
+            out.print("  note:      this matches what the probe would have chosen anyway\n", .{}) catch @panic("OOM");
+        }
     }
 
-    switch (host.decision.choice) {
+    switch (host.decision().choice) {
         .native => out.print("  decision:  native target, linking whatever stub the host resolves\n", .{}) catch @panic("OOM"),
         .pinned_macos_arm64 => {
             out.print("  decision:  pinned aarch64-macos, linking Zig's bundled libSystem stub\n", .{}) catch @panic("OOM");

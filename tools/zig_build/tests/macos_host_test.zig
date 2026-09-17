@@ -17,6 +17,8 @@ const pinnedOsVersion = macos_host.pinnedOsVersion;
 const required_target = macos_host.required_target;
 const targetsFieldDeclares = macos_host.targetsFieldDeclares;
 const tbdDeclaresTarget = macos_host.tbdDeclaresTarget;
+const Selection = macos_host.Selection;
+const resolve = macos_host.resolve;
 
 const broken_clt_tbd =
     \\--- !tapi-tbd
@@ -227,4 +229,78 @@ test "only a plausible Apple silicon version is pinned" {
     try testing.expect(tagged.pre == null);
     try testing.expect(tagged.build == null);
     try testing.expectEqual(@as(u32, 3), tagged.minor);
+}
+
+test "auto resolves to exactly what the probe found" {
+    inline for (.{
+        .{ macos_host.SdkProbe{ .sdk_path = "/sdk", .libsystem_tbd = broken_clt_tbd }, Choice.pinned_macos_arm64, Reason.sdk_omits_target },
+        .{ macos_host.SdkProbe{ .sdk_path = "/sdk", .libsystem_tbd = healthy_tbd }, Choice.native, Reason.sdk_declares_target },
+        .{ macos_host.SdkProbe{}, Choice.pinned_macos_arm64, Reason.sdk_not_probed },
+    }) |case| {
+        const r = resolve(.auto, .aarch64, .macos, case[0]);
+        try testing.expectEqual(case[1], r.effective.choice);
+        try testing.expectEqual(case[2], r.effective.reason);
+
+        // Under auto the two halves are the same fact, so nothing is overridden.
+        try testing.expectEqual(r.observed.choice, r.effective.choice);
+        try testing.expectEqual(r.observed.reason, r.effective.reason);
+        try testing.expect(!r.overridesProbe());
+    }
+}
+
+test "a forced selection never borrows the probe's finding" {
+    // The bug this guards: -Dmacos-libsystem=sdk used to be recorded as
+    // `sdk_declares_target`, i.e. as though the stub had been read and had
+    // listed arm64-macos, on a machine whose stub does the opposite.
+    const broken: macos_host.SdkProbe = .{ .sdk_path = "/sdk", .libsystem_tbd = broken_clt_tbd };
+
+    const forced_sdk = resolve(.sdk, .aarch64, .macos, broken);
+    try testing.expectEqual(Choice.native, forced_sdk.effective.choice);
+    try testing.expectEqual(Reason.forced_sdk_stub, forced_sdk.effective.reason);
+    try testing.expectEqual(Reason.sdk_omits_target, forced_sdk.observed.reason);
+    try testing.expect(forced_sdk.overridesProbe());
+
+    const healthy: macos_host.SdkProbe = .{ .sdk_path = "/sdk", .libsystem_tbd = healthy_tbd };
+    const forced_bundled = resolve(.bundled, .aarch64, .macos, healthy);
+    try testing.expectEqual(Choice.pinned_macos_arm64, forced_bundled.effective.choice);
+    try testing.expectEqual(Reason.forced_bundled_stub, forced_bundled.effective.reason);
+    try testing.expectEqual(Reason.sdk_declares_target, forced_bundled.observed.reason);
+    try testing.expect(forced_bundled.overridesProbe());
+}
+
+test "a force that agrees with the probe is not reported as an override" {
+    const broken: macos_host.SdkProbe = .{ .sdk_path = "/sdk", .libsystem_tbd = broken_clt_tbd };
+    const forced = resolve(.bundled, .aarch64, .macos, broken);
+
+    try testing.expectEqual(Choice.pinned_macos_arm64, forced.effective.choice);
+    try testing.expect(!forced.overridesProbe());
+
+    // Agreeing on the choice is still not the same reason: the force is why.
+    try testing.expectEqual(Reason.forced_bundled_stub, forced.effective.reason);
+    try testing.expectEqual(Reason.sdk_omits_target, forced.observed.reason);
+}
+
+test "off macOS a force still resolves, and the observation stays honest" {
+    // A Linux checkout uses -Dmacos-libsystem=bundled to exercise the Mach-O
+    // link path, and the report must not claim anything about an SDK there.
+    const linux = resolve(.bundled, .x86_64, .linux, .{});
+    try testing.expectEqual(Choice.pinned_macos_arm64, linux.effective.choice);
+    try testing.expectEqual(Reason.forced_bundled_stub, linux.effective.reason);
+    try testing.expectEqual(Reason.not_arm64_macos_host, linux.observed.reason);
+    try testing.expect(linux.overridesProbe());
+
+    try testing.expectEqual(Choice.native, resolve(.auto, .x86_64, .linux, .{}).effective.choice);
+}
+
+test "every selection is handled and each maps to one effective choice" {
+    inline for (@typeInfo(Selection).@"enum".fields) |field| {
+        const selection: Selection = @enumFromInt(field.value);
+        const r = resolve(selection, .aarch64, .macos, .{ .sdk_path = "/sdk", .libsystem_tbd = healthy_tbd });
+        const expected: Choice = switch (selection) {
+            .auto, .sdk => .native,
+            .bundled => .pinned_macos_arm64,
+        };
+        try testing.expectEqual(expected, r.effective.choice);
+        try testing.expect(r.effective.reason.explain().len > 0);
+    }
 }
