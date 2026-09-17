@@ -65,7 +65,7 @@ mcp_server:
 
 # Emit a J-Link commander script to stdout; this recipe never executes J-Link.
 jlink_w4 binary base_address device="R7KA8D2KF_CPU0":
-    python3 scripts/gen/gen_jlink_w4.py \
+    bash scripts/builders/gen_jlink_w4.sh \
         {{ quote(binary) }} \
         {{ quote(base_address) }} \
         --device {{ quote(device) }}
