@@ -24,13 +24,31 @@
 #     simulator DCD / HCD (ux_dcd_sim_slave_*.c and
 #     ux_hcd_sim_host_*.c) -- our own DCD / HCD bridges live in
 #     port/usbx/ and replace those.
-#   - Compiles the CDC-ACM device class under
-#     usbx_device_classes/src/ux_device_class_cdc_acm_*.c.
+#   - Compiles four device-class families out of
+#     usbx_device_classes/src, one glob each: CDC-ACM
+#     (ux_device_class_cdc_acm_*.c, 15 TUs), HID
+#     (ux_device_class_hid_*.c, 21), Mass Storage
+#     (ux_device_class_storage_*.c, 30, less
+#     ux_device_class_storage_inquiry.c, which port/usbx/ overrides,
+#     so 29) and DFU (ux_device_class_dfu_*.c, 10). The MSC glob
+#     also carries a PIMA filter, but against this glob it removes
+#     nothing under this vendor pin: the three still-image TUs are
+#     named ux_device_class_pima_storage_*.c, which the storage glob
+#     never matched. 172 core sources plus those 75 class TUs are
+#     the 247 that reach usbx_objs.
 #   - Vendor headers + Cortex-M33/GNU port headers go on the public
 #     interface so the bridge + apps can `#include "ux_api.h"`.
-#   - Forces UX_INCLUDE_USER_DEFINE_FILE so a project-supplied
-#     ux_user.h (currently in port/usbx/) shapes USBX's compile-time
+#   - Sets exactly two compile definitions, on both usbx_objs and the
+#     usbx interface so the class TUs and the apps agree:
+#     UX_MAX_SLAVE_LUN (cache RA8_USBX_MAX_PERIPHERAL_LUN, 2) and
+#     UX_SLAVE_REQUEST_DATA_MAX_LENGTH (cache
+#     RA8_USBX_REQUEST_DATA_MAX_LENGTH, 4096). Everything else is the
+#     cortex_m33 port default: this file does NOT define
+#     UX_INCLUDE_USER_DEFINE_FILE, and no ux_user.h exists in the
+#     tree, so no user-define header reshapes USBX's compile-time
 #     options.
+#   - Links usbx_objs PRIVATE against threadx and the usbx interface
+#     against threadx, then add_subdirectory()s port/usbx/.
 #
 # Requires `RA8_USE_THREADX=ON` because USBX's tx_api.h dependency
 # (memory pools, semaphores, threads) cannot be satisfied otherwise.
