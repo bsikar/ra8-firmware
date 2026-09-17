@@ -43,6 +43,7 @@ import fleet_reconcile_frozen_selftest as frfz
 import fleet_reconcile_interrupt_selftest as fri
 import fleet_reconcile_lift_selftest as frlt
 import fleet_reconcile_locked_selftest as frlo
+import fleet_reconcile_marker_selftest as frmk
 import fleet_reconcile_opener_selftest as frop
 import fleet_reconcile_orphan_selftest as fro
 import fleet_reconcile_park_escalation_selftest as frpe
@@ -1102,6 +1103,61 @@ def clear_park(parked: dict[str, dict[str, int]] | None, host: str) -> bool:
     return True
 
 
+def report_park_held_by_zero_reopen(host: str) -> None:
+    """Refuse to call a reopen that put nothing in service proof the park is gone."""
+    print(
+        f"fleet-reconcile: WARNING: {host}: this pass issued a reopen verb, but its "
+        "capacity-restore reported converging live admission to ZERO instances, which "
+        "is what a durable maintenance park still in place looks like from here; the "
+        "parked record is KEPT rather than dropped as proof the park was lifted",
+        file=sys.stderr,
+    )
+
+
+def park_cleared_by_reopen(
+    parked: dict[str, dict[str, int]] | None, host: str, *, reopened: bool, served: bool
+) -> bool:
+    """Drop a durable park record only when the reopen it rests on put capacity back.
+
+    ``clear_park`` is right that a landed ``capacity-restore`` is what removes
+    the maintenance marker, and both per-host transactions dropped the record
+    on that verb ALONE.  The verb is not the evidence.  A restore converges
+    live admission to the host's CURRENT window target and prints it, and
+    ``cmd_window`` forces that target to zero for exactly as long as the
+    maintenance marker is there ("maintenance: forcing target 0"), so a reopen
+    on a PARKED host that reports ZERO instances is the one shape that cannot
+    tell a lifted park from a park still holding the host down.  The controller
+    read it as lifted.
+
+    Every other reopen in this controller already refuses that reading: both
+    recovery arms (``reopen_capacity``, ``_activate_arc`` under
+    ``require_admission``), the transaction that succeeds
+    (``TransactionCapacity.served``), and the park release that runs after the
+    per-host loop, which holds the record and says so rather than clearing it
+    (``report_park_release_without_capacity``).  The two per-host paths were
+    the last readers taking the verb on trust, and they are the ones that reach
+    a parked host FIRST: the release only ever runs for a host whose own
+    declaration verified this pass, and by then the record it would work from
+    has already been dropped here.
+
+    Dropping it is how the park stops being recoverable.  ``parked_escalations``
+    has nothing left to escalate, ``report_durable_park`` says nothing,
+    ``release_durable_parks`` never issues the one restore that lifts a park,
+    and ``serving_hosts`` counts the host among those still holding capacity,
+    so the next pass may take real capacity to zero on a budget that includes a
+    host serving none.  The host stays pinned at zero admission by a marker its
+    own window timer cannot raise, and no pass after this one knows (issue
+    #888).  A reopen that really did put capacity back clears the record
+    exactly as before.
+    """
+    if not reopened:
+        return False
+    if not served:
+        report_park_held_by_zero_reopen(host)
+        return False
+    return clear_park(parked, host)
+
+
 def open_parked(
     document: dict[str, Any], hosts: Sequence[str], options: ReconcileOptions
 ) -> dict[str, dict[str, int]]:
@@ -1530,6 +1586,7 @@ def invalidate_receipt(  # noqa: PLR0913  # the receipt plus every record one fa
     stranded: bool,
     at_zero: bool = True,
     reopened: bool = False,
+    served: bool = True,
     parked: dict[str, dict[str, int]] | None = None,
 ) -> None:
     """Drop a failed host's receipt, counting a pass that left it at zero.
@@ -1553,8 +1610,7 @@ def invalidate_receipt(  # noqa: PLR0913  # the receipt plus every record one fa
     it.  That goes in its own record, which claims only what this pass proved.
     """
     receipts.pop(host, None)
-    if reopened:
-        clear_park(parked, host)
+    park_cleared_by_reopen(parked, host, reopened=reopened, served=served)
     if not stranded:
         if reopened and clear_reopened_stranding(stranding, host):
             return
@@ -2012,8 +2068,7 @@ def record_success(  # noqa: PLR0913  # the receipt plus every record one succes
     """
     producer = order[0]
     receipts[host] = released_receipt(receipt, host, producer) if index and released else receipt
-    if reopened:
-        clear_park(parked, host)
+    park_cleared_by_reopen(parked, host, reopened=reopened, served=serving)
     if serving:
         clear_stranding(stranding, host)
     elif mutated:
@@ -2502,6 +2557,7 @@ def reconcile(
                     stranded=lost,
                     at_zero=host not in undrained,
                     reopened=capacity_reopened(capacity.verb),
+                    served=capacity.served(),
                     parked=parked,
                 )
                 save_state(state_path, document)
@@ -3085,7 +3141,11 @@ def selftest() -> int:
     failures.extend(frpe.run(sys.modules[__name__]))
     failures.extend(frpk.run(sys.modules[__name__]))
     failures.extend(frlt.run(sys.modules[__name__]) + frw.run(sys.modules[__name__]))
-    failures.extend(frlo.run(sys.modules[__name__]) + frab.run(sys.modules[__name__]))
+    failures.extend(
+        frlo.run(sys.modules[__name__])
+        + frab.run(sys.modules[__name__])
+        + frmk.run(sys.modules[__name__])
+    )
     failures.extend(frsv.run(sys.modules[__name__]))
     failures.extend(
         fru.run(sys.modules[__name__])
