@@ -89,21 +89,52 @@ print(f"{value:.4f}")
 PY
 }
 
+# Replay the lines that explain a failed build. cmake, gmake and the linker
+# state the cause as `error:`, `Error <n>`, `FAILED:` or an undefined
+# reference; everything else in the stream is progress and warnings.
+mcdc_print_build_diagnostics() {
+  local log_file="$1"
+  local -a diagnostic_lines=()
+  mapfile -t diagnostic_lines < <(
+    grep -n -E 'error:|Error [0-9]+|FAILED:|undefined reference to' "$log_file" |
+      head -40
+  )
+  if [[ "${#diagnostic_lines[@]}" -eq 0 ]]; then
+    echo "  no error line matched in the captured build log; see the tail above."
+    return 0
+  fi
+  echo "  first error line(s) from the captured build log:"
+  printf '    %s\n' "${diagnostic_lines[@]}"
+}
+
 # Preserve the last diagnostic lines while returning the producer's real
 # status. A plain `producer | tail` under pipefail was previously followed by
 # `|| continue`, which let a partial test-binary universe reach llvm-cov.
+# The tail alone cannot explain a failed build: `--keep-going` keeps compiling
+# after the first error, so the failing target's message scrolls out of the
+# last 40 lines and the gate log ends on warnings from a target that built
+# fine. Capture the whole stream instead and, on failure, replay the error
+# lines from it. The verdict is unchanged; only its evidence improves.
 mcdc_run_and_tail() {
-  local -a pipeline_status=()
+  local log_file=""
+  local producer_status=0
+  local tail_status=0
+  log_file="$(mktemp "${TMPDIR:-/tmp}/ra8-mcdc-build.XXXXXXXX")"
   set +e
-  "$@" 2>&1 | tail -40
-  pipeline_status=("${PIPESTATUS[@]}")
+  "$@" >"$log_file" 2>&1
+  producer_status=$?
+  tail -40 "$log_file"
+  tail_status=$?
   set -e
-  if [[ "${pipeline_status[0]}" -ne 0 ]]; then
-    echo "FAIL: command exited ${pipeline_status[0]} before the MC/DC matrix completed." >&2
+  if [[ "$producer_status" -ne 0 ]]; then
+    echo "FAIL: command exited ${producer_status} before the MC/DC matrix completed." >&2
+    mcdc_print_build_diagnostics "$log_file" >&2
+    rm -f -- "$log_file"
     return 1
   fi
-  if [[ "${pipeline_status[1]}" -ne 0 ]]; then
-    echo "FAIL: diagnostic tail exited ${pipeline_status[1]}." >&2
+  rm -f -- "$log_file"
+  if [[ "$tail_status" -ne 0 ]]; then
+    echo "FAIL: diagnostic tail exited ${tail_status}." >&2
     return 1
   fi
 }
