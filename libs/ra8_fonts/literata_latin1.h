@@ -7,7 +7,7 @@
  *
  * @details
  * One header per baked font (named after the font), declaring the `extern`
- * symbols that `scripts/gen/font_to_c.py` defines from
+ * symbols that `tools/font_to_c` defines from
  * `libs/ra8_fonts/literata_latin1.ttf`. The generator emits a build-only `.c`
  * (`const unsigned char g_ra8_font_literata_latin1[]` + `_len`) that `#include`s
  * this header; apps that consume the font include it too. The hex array is
@@ -35,7 +35,7 @@
  * @details A ~37 KB Latin-1 + common-typographic subset of
  * `libs/ra8_fonts/Literata-Regular.ttf` (SIL OFL 1.1), checked in at
  * `libs/ra8_fonts/literata_latin1.ttf` and turned into a `.rodata` array at build
- * time by `scripts/gen/font_to_c.py`. A valid TTF blob for `ra8_reflow_init`.
+ * time by `tools/font_to_c`. A valid TTF blob for `ra8_reflow_init`.
  * @note Generated, build-only definition; read-only.
  * @since 0.1.0
  */

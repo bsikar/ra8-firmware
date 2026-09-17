@@ -11,7 +11,7 @@ hands over raw `.ttf` bytes and gets glyphs back.
 
 For targets that cannot spend flash on the whole face there is a Latin-1 plus
 common-typographic subset, produced with `pyftsubset` and baked into `.rodata`
-at build time by `scripts/gen/font_to_c.py`. The generated hex array is not
+at build time by `tools/font_to_c`. The generated hex array is not
 committed: only the `.ttf` it is generated from, and the header declaring the
 symbols. Host reflow tests load these files straight off disk; on the target
 the bytes are either embedded or read from storage.
