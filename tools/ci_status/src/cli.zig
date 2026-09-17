@@ -27,11 +27,6 @@ const implementation = @import("internal/root.zig");
 
 pub const Value = implementation.Value;
 
-/// Largest state file read. The monitor writes one poll of workflow runs, so
-/// this is orders of magnitude above the real document and exists only so a
-/// corrupt path cannot ask for an unbounded allocation.
-pub const max_state_bytes: usize = 16 * 1024 * 1024;
-
 const usage = "ci_status: usage: ci_status <state-file> <mode> [arg]\n";
 
 fn shapeMessage(err: implementation.ShapeError) []const u8 {
@@ -59,7 +54,18 @@ pub fn run(
     const mode = argv[1];
     const arg: []const u8 = if (argv.len > 2) argv[2] else "";
 
-    const text = dir.readFileAlloc(allocator, path, max_state_bytes) catch |read_err| {
+    // No ceiling on this read. The Python opened the state file and handed it
+    // to `json.load` with no size limit, and `readFileAlloc` does not
+    // truncate at one: it fails `error.FileTooBig`, which this caller turns
+    // into "cannot read" and status 1. A document the monitor can still
+    // answer from must not become a read error here just because it grew, so
+    // the whole file is read and only a real read failure fails.
+    const file = dir.openFile(path, .{}) catch |open_err| {
+        try err.print("ci_status: cannot read {s}: {s}\n", .{ path, @errorName(open_err) });
+        return 1;
+    };
+    defer file.close();
+    const text = file.readToEndAlloc(allocator, std.math.maxInt(usize)) catch |read_err| {
         try err.print("ci_status: cannot read {s}: {s}\n", .{ path, @errorName(read_err) });
         return 1;
     };
