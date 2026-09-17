@@ -312,8 +312,8 @@ _pcc_source_form() (
   # C23 [[...]] attribute syntax tree-wide (GNU __attribute__((...)) is
   # rejected except for interrupt / cmse_nonsecure_entry / cmse_nonsecure_call,
   # which clang has no portable [[gnu::]] spelling for).
-  python3 scripts/checks/check_no_gnu_attribute.py --selftest
-  python3 scripts/checks/check_no_gnu_attribute.py
+  bash scripts/builders/check_no_gnu_attribute.sh --selftest
+  bash scripts/builders/check_no_gnu_attribute.sh
   # The four C23 source patterns (_Static_assert -> static_assert, = {0} ->
   # = {}, no <stdbool.h>, paren-wrapped numeric #define values). These lived
   # ONLY as inline grep loops in scripts/git/pre-commit and were never run by
