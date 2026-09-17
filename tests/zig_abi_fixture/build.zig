@@ -16,6 +16,10 @@ pub fn build(b: *std.Build) void {
             .root_source_file = b.path("src/ra8_abi_fixture_abi.zig"),
             .target = target,
             .optimize = optimize,
+            // The Rust and C consumers link position-independent executables,
+            // so every object in this archive, bundled compiler_rt included,
+            // has to be position-independent too.
+            .pic = true,
         }),
     });
     // CMake links the installed archive with the system linker, which cannot see
