@@ -32,6 +32,7 @@ import fleet_reconcile_drain_selftest as frd
 import fleet_reconcile_freeze_selftest as frf
 import fleet_reconcile_interrupt_selftest as fri
 import fleet_reconcile_process as frp
+import fleet_reconcile_prune_selftest as frpr
 import fleet_reconcile_recovery_selftest as frr
 import fleet_reconcile_release_selftest as frrl
 import fleet_reconcile_reopen_selftest as frre
@@ -676,6 +677,53 @@ def clear_stranding(stranding: dict[str, dict[str, int]], host: str) -> bool:
     return True
 
 
+def prune_unmanaged_stranding(
+    stranding: dict[str, dict[str, int]], hosts: Sequence[str], now: int
+) -> list[str]:
+    """Forget stranded-at-zero records for hosts this fleet no longer manages.
+
+    The record deliberately survives receipt invalidation, and nothing but the
+    host reconciling ever clears it.  A runner pulled from the declaration
+    while it was stranded, which is exactly what an operator does with a host
+    that has sat at zero for days, therefore keeps its record for good: every
+    later pass escalates it, prints CRITICAL and returns ``STRANDED_STATUS``
+    with the whole remaining fleet healthy.  A verdict that never goes back to
+    zero is how the loudness this controller gained for issue #888 turns into
+    noise nobody reads, and the next real stranding arrives on a timer that has
+    already been failing for weeks.  The controller cannot inspect, drain or
+    repair a host outside the declaration, so it says once that it has stopped
+    tracking the host and then stops claiming it.
+    """
+    managed = set(hosts)
+    pruned = [host for host in sorted(stranding) if host not in managed]
+    for host in pruned:
+        entry = stranding.pop(host)
+        print(
+            f"fleet-reconcile: WARNING: {host} is no longer a capacity-managed host in "
+            f"this fleet; dropping its stranded-at-zero record (consecutive passes="
+            f"{entry['passes']}, {now - entry['since']}s since it was first drained). "
+            "If that host is still deployed its capacity is now the operator's to "
+            "check: this controller has stopped tracking it",
+            file=sys.stderr,
+        )
+    return pruned
+
+
+def open_stranding(
+    document: dict[str, Any], hosts: Sequence[str], options: ReconcileOptions
+) -> dict[str, dict[str, int]]:
+    """Return the stranded-at-zero record this pass may reason about.
+
+    Pruning is a write, so a check pass, which persists nothing at all, reads
+    the record exactly as it stands rather than announcing a cleanup it is not
+    going to make.
+    """
+    stranding = load_stranding(document)
+    if options.mode == "apply":
+        prune_unmanaged_stranding(stranding, hosts, options.now)
+    return stranding
+
+
 def invalidate_receipt(
     receipts: dict[str, Any],
     stranding: dict[str, dict[str, int]],
@@ -848,12 +896,12 @@ def reconcile(
     state_path = options.state_dir / STATE_FILE
     document = load_state(state_path)
     receipts = document["hosts"]
-    stranding = load_stranding(document)
+    order = runner_hosts(data)
+    stranding = open_stranding(document, order, options)
     failures = 0
     producer_blocking = False
     producer_released = False
     undrained: list[str] = []
-    order = runner_hosts(data)
     for index, host in enumerate(order):
         if frp.interrupted_status():
             report_uninspected(order[index:])
@@ -1473,6 +1521,7 @@ def selftest() -> int:
     failures.extend(frse.run(sys.modules[__name__]))
     failures.extend(fri.run(sys.modules[__name__]))
     failures.extend(frf.run(sys.modules[__name__]))
+    failures.extend(frpr.run(sys.modules[__name__]))
     _selftest_state_safety(failures)
     failures.extend(fml.run_selftest())
     _selftest_timeout(failures)
