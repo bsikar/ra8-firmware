@@ -2,6 +2,9 @@
  * @file test_ra8_usb_pprn.c
  * @brief Unit tests for the native USB device-side Printer class layer
  *
+ * @par Tag
+ * [Ring 3 / HAL] {World: NS}
+ *
  * @details Exercises printer class descriptors, status requests, reset handling, endpoint I/O, and invalid requests with bounded fixtures.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
