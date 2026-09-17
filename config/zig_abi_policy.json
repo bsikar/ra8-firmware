@@ -554,11 +554,6 @@
         {"name": "ra8_ftl_checkpoint_size", "calling_context": "task-only-non-reentrant", "ownership": "borrows the initialized FTL handle and writes the required byte count to caller-owned size_out"},
         {"name": "ra8_ftl_checkpoint_save", "calling_context": "task-only-non-reentrant", "ownership": "borrows the initialized FTL handle and writes the checkpoint to caller-owned buf"},
         {"name": "ra8_ftl_checkpoint_load", "calling_context": "task-only-non-reentrant", "ownership": "borrows the checkpoint buffer and mutates caller-owned FTL mapping tables only on success"}
-      ],
-      "retained_c_exports": [
-        {"name": "ra8_ftl_checkpoint_size", "source": "libs/ra8_ftl/src/ra8_ftl_checkpoint.c"},
-        {"name": "ra8_ftl_checkpoint_save", "source": "libs/ra8_ftl/src/ra8_ftl_checkpoint.c"},
-        {"name": "ra8_ftl_checkpoint_load", "source": "libs/ra8_ftl/src/ra8_ftl_checkpoint.c"}
       ]
     }
     ,{
