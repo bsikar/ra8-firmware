@@ -33,6 +33,7 @@ import fleet_reconcile_budget_selftest as frbu
 import fleet_reconcile_cascade_selftest as frc
 import fleet_reconcile_drain_selftest as frd
 import fleet_reconcile_freeze_selftest as frf
+import fleet_reconcile_frozen_selftest as frfz
 import fleet_reconcile_interrupt_selftest as fri
 import fleet_reconcile_orphan_selftest as fro
 import fleet_reconcile_process as frp
@@ -946,16 +947,51 @@ def consumers_released(
     return True
 
 
+def frozen_image_release(
+    stranding: dict[str, dict[str, int]], host: str, *, undrained: bool
+) -> bool:
+    """Return whether a producer that lost no capacity this pass still has a frozen image.
+
+    A producer whose failure cost no capacity does not block its consumers:
+    nothing was mutated, so the image they depend on did not move and holding
+    them back would strand them for a fault that touched nothing (issue #888).
+    That is right, and it said nothing at all about whether the producer is
+    SERVING.  A producer an earlier pass drained carries a stranded-at-zero
+    record and publishes nothing, so a read-only check that fails against it,
+    the everyday shape of a host that is already down, released every consumer
+    onto its FROZEN last-known-good image with an ORDINARY receipt stamped
+    ``full_applied_at``.  Nothing then marked those consumers as provisional,
+    so the producer's eventual recovery expired nothing, ``full_apply_due``
+    skipped them for a whole interval and the pass exited 0 with the fleet
+    reported converged on the image the outage left behind.  That is the same
+    stale pinning the deliberate release is marked to avoid, reached without
+    ever crossing ``PRODUCER_BLOCK_PASSES``.  A drain that was REFUSED proves
+    nothing about what the host serves, so it never counts as frozen.
+    """
+    if undrained or host not in stranding:
+        return False
+    entry = stranding[host]
+    print(
+        f"fleet-reconcile: WARNING: producer {host} has been recorded at ZERO capacity "
+        f"for {entry['passes']} consecutive pass(es), so it publishes nothing; the "
+        "consumers reconciling past it earn PROVISIONAL receipts against its frozen "
+        "last-known-good image",
+        file=sys.stderr,
+    )
+    return True
+
+
 def producer_block_state(
     stranding: dict[str, dict[str, int]], host: str, *, stranded: bool, undrained: bool
 ) -> tuple[bool, bool]:
     """Return whether a failed producer blocks its consumers, and whether it released them.
 
     Released is not merely the opposite of blocking: a producer that failed
-    without losing capacity never blocked anyone and its image is not frozen,
-    so a consumer reconciling past it earns an ordinary receipt.  Only a
-    deliberate release onto a drained producer's frozen image makes one
-    provisional.
+    without losing capacity never blocked anyone, and while it is still serving
+    its image is not frozen, so a consumer reconciling past it earns an
+    ordinary receipt.  Convergence against an image no producer is publishing
+    is what makes a receipt provisional, whether a deliberate release or a
+    producer already sitting at zero let the consumer through.
     """
     if not stranded:
         print(
@@ -963,7 +999,7 @@ def producer_block_state(
             "losing capacity; consumers continue against last-known-good",
             file=sys.stderr,
         )
-        return False, False
+        return False, frozen_image_release(stranding, host, undrained=undrained)
     released = consumers_released(stranding, host, undrained=undrained)
     return not released, released
 
@@ -1763,6 +1799,7 @@ def selftest() -> int:
     failures.extend(frse.run(sys.modules[__name__]))
     failures.extend(fri.run(sys.modules[__name__]))
     failures.extend(frf.run(sys.modules[__name__]))
+    failures.extend(frfz.run(sys.modules[__name__]))
     failures.extend(frpr.run(sys.modules[__name__]))
     failures.extend(fro.run(sys.modules[__name__]))
     _selftest_state_safety(failures)
