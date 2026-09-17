@@ -213,6 +213,7 @@ ra8_add_test(test_ra8_lsm6dso ${CMAKE_CURRENT_SOURCE_DIR}/misc/src/test_ra8_lsm6
 # Dropping a new test_foo.c file is enough -- no
 # manual list edit required. (CONFIGURE_DEPENDS means CMake re-globs
 # on the next build if the directory contents changed.)
+# ABI contract test registration: test_ra8_ota_parse_cov.c is included by this glob.
 file(GLOB RA8_TEST_SOURCES CONFIGURE_DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/*/src/test_*.c)
 
 # Register the TZ secure-boot ABI consumer literally for ABI-policy checks;

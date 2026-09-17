@@ -94,6 +94,10 @@ file(GLOB_RECURSE RABOOK_IMPORT_SOURCES CONFIGURE_DEPENDS
 file(GLOB_RECURSE RA8_WIDGET_SOURCES CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra8_widget/src/*.c)
 file(GLOB_RECURSE RA8_APP_SOURCES CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra8_app/src/*.c)
 file(GLOB_RECURSE RA8_NSC_SOURCES CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra8_nsc/src/*.c)
+# The pure parsing/validation cluster is Zig now (ra8_zig::ra8_ota), so this
+# glob matches only the two TUs that stay C on this branch: the
+# orchestration TU ra8_ota.c, which owns every mutable module static, and
+# the verify cluster ra8_ota_verify.c, which reaches those statics.
 file(GLOB_RECURSE RA8_OTA_SOURCES CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra8_ota/src/*.c)
 # The dispatcher and the refresh-cadence policy are Zig now
 # (ra8_zig::ra8_display_pal), so this glob matches only the two panel
