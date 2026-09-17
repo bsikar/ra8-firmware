@@ -37,6 +37,9 @@ RA8_ZIG_ARGUMENTS = (
 RA8_C_ARGUMENTS = ("-mcpu=cortex_m85", "-mthumb", "-mfloat-abi=hard", "-mfpu=fpv5-sp-d16")
 GENERATED_PATH_PARTS = {".zig-cache", "zig-out"}
 REPOSITORY_EXCLUDED_PATH_PARTS = {*GENERATED_PATH_PARTS, "third_party"}
+# scripts/ci/lib/lang_toolchains.sh unpacks the pinned Zig release into
+# build/tools/, so the upstream standard library lands inside the worktree.
+PROVISIONED_TOOLCHAIN_PREFIX = ("build", "tools")
 PROHIBITED_ZIG_TYPES = (
     (re.compile(r"\[\](?:const\s+)?"), "slice"),
     (re.compile(r"(?<![=!])!(?!=)"), "error union"),
@@ -209,6 +212,9 @@ def _repository_inventory_findings(
     findings: list[str] = []
     for source in repository_root.rglob("*.zig"):
         if any(part in REPOSITORY_EXCLUDED_PATH_PARTS for part in source.parts):
+            continue
+        relative_parts = source.relative_to(repository_root).parts
+        if relative_parts[: len(PROVISIONED_TOOLCHAIN_PREFIX)] == PROVISIONED_TOOLCHAIN_PREFIX:
             continue
         text = source.read_text(encoding="utf-8")
         names, _ = _zig_exports(text)
