@@ -38,6 +38,7 @@ import fleet_reconcile_interrupt_selftest as fri
 import fleet_reconcile_orphan_selftest as fro
 import fleet_reconcile_process as frp
 import fleet_reconcile_prune_selftest as frpr
+import fleet_reconcile_publish_selftest as frpu
 import fleet_reconcile_recovery_selftest as frr
 import fleet_reconcile_release_selftest as frrl
 import fleet_reconcile_reopen_selftest as frre
@@ -720,9 +721,12 @@ def age_stranding(stranding: dict[str, dict[str, int]], host: str, now: int, rea
 def clear_stranding(stranding: dict[str, dict[str, int]], host: str) -> bool:
     """Forget a host's stranding, reporting whether it was held at zero before.
 
-    The answer is what tells one ordinary successful pass from a host climbing
-    back off zero capacity, which is the only evidence that a producer has
-    republished since its consumers were released onto a frozen image.
+    The answer tells one ordinary successful pass from a host climbing back off
+    zero capacity, which is worth saying out loud.  It deliberately no longer
+    decides whether the provisional receipts earned against this host's frozen
+    image expire: a record can also be dropped by a pass that merely REOPENED
+    last-known-good capacity, and gating the expiry on this answer meant the
+    producer's eventual republish expired nothing at all (issue #888).
     """
     if stranding.pop(host, None) is None:
         return False
@@ -1062,10 +1066,25 @@ def record_success(  # noqa: PLR0913  # the receipt plus every record one succes
     index: int,
     released: bool,
 ) -> None:
-    """Publish one reconciled host's receipt and settle the frozen-image records."""
+    """Publish one reconciled host's receipt and settle the frozen-image records.
+
+    A producer that reconciles has published, so every provisional receipt
+    earned against its FROZEN last-known-good image is now evidence about an
+    image nobody serves and has to expire.  That used to be gated on this pass
+    clearing the producer's stranded-at-zero record, on the reasoning that
+    climbing back off zero is what proves a republish.  A record is also
+    dropped by a pass that only REOPENED last-known-good capacity, and by one
+    that finds the host already serving, so a producer whose record went that
+    way republished with every release still marked against it: ``full_apply_due``
+    skipped those consumers for a whole interval and the pass exited 0 with the
+    fleet reported converged on the image the outage left behind (issue #888).
+    The receipts name the producer they were earned against, so the marks are
+    the evidence and no record has to survive for them to be found.
+    """
     producer = order[0]
     receipts[host] = released_receipt(receipt, host, producer) if index and released else receipt
-    if clear_stranding(stranding, host) and not index:
+    clear_stranding(stranding, host)
+    if not index:
         expire_released_receipts(receipts, order[1:], producer)
 
 
@@ -1849,6 +1868,7 @@ def selftest() -> int:
     failures.extend(fri.run(sys.modules[__name__]))
     failures.extend(frf.run(sys.modules[__name__]))
     failures.extend(frfz.run(sys.modules[__name__]))
+    failures.extend(frpu.run(sys.modules[__name__]))
     failures.extend(frpr.run(sys.modules[__name__]))
     failures.extend(fro.run(sys.modules[__name__]))
     failures.extend(frsv.run(sys.modules[__name__]))
