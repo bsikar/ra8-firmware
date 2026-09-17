@@ -5,8 +5,9 @@
 
 Why this exists
 ---------------
-``scripts/ci.sh`` and the fragments under ``scripts/ci/gates/`` declare their
-external dependencies with ``require_cmd`` / ``require_python_mod``, which fail
+``scripts/ci.sh`` and the fragments under ``scripts/ci/gates/`` and
+``scripts/ci/lib/`` declare their external dependencies with ``require_cmd`` /
+``require_python_mod``, which fail
 loudly when a tool is absent. That is the right behaviour at run time and it is
 far too late: the gate has already been scheduled, a runner has already been
 taken, and the verdict is a provisioning error rather than an answer about the
@@ -74,6 +75,13 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).resolve().parents[2]
 CI_SH = REPO_ROOT / "scripts" / "ci.sh"
 GATES_DIR = REPO_ROOT / "scripts" / "ci" / "gates"
+# The sourced library fragments declare dependencies too: ci.sh sources every
+# scripts/ci/lib/*.sh eagerly, so a require_cmd there runs in exactly the same
+# gate process as one written in ci.sh itself. Leaving them out of the scan let
+# a declaration vanish from this gate's subject just by being moved one file
+# over (require_arm_gcc_m85 moved from ci.sh into arm_toolchain.sh for the
+# file-size cap), which is the blind scan this checker exists to prevent.
+CI_LIB_DIR = REPO_ROOT / "scripts" / "ci" / "lib"
 
 EXIT_OK = 0
 EXIT_FAIL = 1
@@ -142,9 +150,15 @@ def gate_sources() -> list[Path]:
     """Return the shell files that declare gate dependencies, in scan order.
 
     Returns:
-        ``scripts/ci.sh`` followed by every ``scripts/ci/gates/*.sh`` fragment.
+        ``scripts/ci.sh``, then every ``scripts/ci/gates/*.sh`` fragment, then
+        every ``scripts/ci/lib/*.sh`` fragment ci.sh sources into the same
+        process.
     """
-    return [CI_SH, *sorted(GATES_DIR.glob("*.sh"))]
+    return [
+        CI_SH,
+        *sorted(GATES_DIR.glob("*.sh")),
+        *sorted(CI_LIB_DIR.glob("*.sh")),
+    ]
 
 
 def extract_dependencies(paths: list[Path]) -> tuple[list[Dependency], list[str]]:
