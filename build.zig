@@ -31,6 +31,8 @@
 //!                        unmodified first-party C suite against it
 //!   zig build compile-db emit compile_commands.json for every TU this graph
 //!                        compiles, the input the analysis gates parse against
+//!   zig build analysis   prove every distinct command in that database still
+//!                        compiles a translation unit it names
 //!   zig build abi        the Zig-to-C ABI contract, negative controls included
 //!
 //! The `arm` step is the cross-build slice (#936): it is the first target
@@ -38,6 +40,7 @@
 //! the app tree, so the diff stays reviewable.
 
 const std = @import("std");
+pub const analysis = @import("tests/zig_build_graph/analysis.zig");
 pub const abi_contract = @import("tests/zig_build_graph/abi_contract.zig");
 pub const compile_db = @import("tests/zig_build_graph/compile_db.zig");
 pub const app_local = @import("tests/zig_build_graph/app_local.zig");
@@ -208,6 +211,17 @@ pub fn build(b: *std.Build) void {
     );
     const database_entries = addCompileDb(b, compile_db_step);
 
+    // The database is only an analysis INPUT if its commands still compile the
+    // files they describe. compileDbEntries() is a separate code path from the
+    // compile steps above, so this is the step that keeps the two honest.
+    const analysis_step = b.step(
+        "analysis",
+        "Prove every distinct command in the analysis database compiles a TU it names",
+    );
+    analysis_step.dependOn(compile_db_step);
+    const verified_commands = analysis.add(b, analysis_step, compileDbEntries(b));
+    test_step.dependOn(analysis_step);
+
     const parity_step = b.step("parity", "Print the slice manifest the CMake parity check reads");
     for (slice) |member| {
         const print = b.addSystemCommand(&.{ "printf", "%s\t%s\t%s\n" });
@@ -262,8 +276,11 @@ pub fn build(b: *std.Build) void {
     // describing its own translation units.
     const print_database = b.addSystemCommand(&.{ "printf", "%s\t%s\t%s\n" });
     print_database.addArg("compile_db");
-    print_database.addArg("zig-out/analysis/compile_commands.json");
-    print_database.addArg(b.fmt("{d} commands", .{database_entries}));
+    print_database.addArg(analysis.install_path);
+    print_database.addArg(b.fmt("{d} commands, {d} verified", .{
+        database_entries,
+        verified_commands,
+    }));
     parity_step.dependOn(&print_database.step);
 }
 
