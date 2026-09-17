@@ -23,6 +23,12 @@ fn fail(message: []const u8) u8 {
     return 2;
 }
 
+/// Entry point: read the firmware image named on the command line through the
+/// host IO ops, hand it to `firmware_pipeline_analyze`, and print what the
+/// composed C, Zig and Rust pipeline made of it.
+///
+/// Returns the process exit status: 2 for a usage or input failure, and a
+/// non-zero status when the pipeline itself rejects the image.
 pub fn main() u8 {
     const allocator = std.heap.page_allocator;
     const arguments = std.process.argsAlloc(allocator) catch return fail("cannot read arguments");

@@ -3,6 +3,9 @@
 //!
 //! Zig validation and composition stage for the firmware pipeline.
 
+/// The firmware pipeline C ABI: the config, result and status types this
+/// stage validates against, plus the Rust summary entry point it calls.
+/// Public so a caller of this module names the same types the C header does.
 pub const c = @cImport({
     @cDefine("static_assert", "_Static_assert");
     @cDefine("alignof", "_Alignof");
@@ -19,6 +22,13 @@ fn xor8(data: []const u8) u8 {
     return result;
 }
 
+/// Analyse one firmware image: validate the caller's config and size, run the
+/// Rust summary stage, then fold in this stage's own xor8 and stage marker.
+///
+/// Rejects a null `config`, `data` or `out_result`, a config whose
+/// `abi_version` is not the header's or whose `reserved0` is non-zero, and an
+/// image larger than 16 MiB. A failing Rust stage is forwarded unchanged.
+/// `out_result` is written only on `k_firmware_pipeline_ok`.
 pub export fn firmware_pipeline_analyze(
     config: ?*const c.firmware_pipeline_config_t,
     data: ?[*]const u8,

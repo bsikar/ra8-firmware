@@ -13,6 +13,7 @@ default:
     @echo "  just docs::clean          Remove generated Doxygen HTML documentation"
     @echo "  just docs::zig            Generate Zig autodoc into build/docs/api/zig/"
     @echo "  just docs::zig_units      Gate: every Zig build root is documented or excluded"
+    @echo "  just docs::zig_prose      Gate: public Zig declarations carry doc comments"
     @echo "  just docs::push           Build and publish Doxygen to gh-pages"
     @echo "  just docs::record_stats   Refresh historical HAL completion summary"
     @echo "  just docs::sizes          Summarize app .text/.data/.bss footprints"
@@ -35,6 +36,11 @@ zig:
 zig_units:
     python3 scripts/checks/check_zig_doc_units.py --selftest
     python3 scripts/checks/check_zig_doc_units.py --check
+
+# Fail when a public Zig declaration in a documented unit has no /// doc comment
+zig_prose:
+    python3 scripts/checks/check_zig_doc_comments.py --selftest
+    python3 scripts/checks/check_zig_doc_comments.py --check
 
 # Build Doxygen docs and publish to the gh-pages branch
 push: build

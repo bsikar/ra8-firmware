@@ -1,0 +1,50 @@
+# Public Zig declarations that still have no /// doc comment (#900).
+#
+# Written by scripts/checks/check_zig_doc_comments.py --emit-baseline and
+# enforced by --check. This is a paydown ledger: document a declaration and
+# delete its row. A row that is documented again becomes a failure, so the
+# list can only shrink, and a new public declaration must arrive documented.
+#
+# <path>	<declaration>
+apps/host/image_pyramid/src/codec.zig	BytesResult
+apps/host/image_pyramid/src/codec.zig	CodecFailure
+apps/host/image_pyramid/src/codec.zig	DimensionsResult
+apps/host/image_pyramid/src/codec.zig	ImageResult
+apps/host/image_pyramid/src/codec.zig	checkedDecodedLength
+apps/host/image_pyramid/src/codec.zig	checkedEncodedLength
+apps/host/image_pyramid/src/codec.zig	decode
+apps/host/image_pyramid/src/codec.zig	dimensions
+apps/host/image_pyramid/src/codec.zig	encode
+apps/host/image_pyramid/src/codec.zig	validateDecodedOutput
+apps/host/image_pyramid/src/degrade.zig	Axis
+apps/host/image_pyramid/src/degrade.zig	Dimensions
+apps/host/image_pyramid/src/degrade.zig	Image
+apps/host/image_pyramid/src/degrade.zig	axisForLevel
+apps/host/image_pyramid/src/degrade.zig	discardStrips
+apps/host/image_pyramid/src/degrade.zig	nextDimensions
+apps/host/image_pyramid/src/degrade.zig	plan
+apps/host/image_pyramid/src/main.zig	codec
+apps/host/image_pyramid/src/main.zig	degrade
+apps/host/image_pyramid/src/main.zig	execute
+apps/host/image_pyramid/src/main.zig	main
+apps/host/reg_gen/src/generator.zig	GeneratorError
+apps/host/reg_gen/src/generator.zig	PeripheralDef
+apps/host/reg_gen/src/generator.zig	Register
+apps/host/reg_gen/src/generator.zig	RegisterSize
+apps/host/reg_gen/src/generator.zig	ValidatedPeripheral
+apps/host/reg_gen/src/generator.zig	ValidatedRegister
+apps/host/reg_gen/src/generator.zig	determineSmallestType
+apps/host/reg_gen/src/generator.zig	fmtLower
+apps/host/reg_gen/src/generator.zig	fmtUpper
+apps/host/reg_gen/src/generator.zig	generateC23Header
+apps/host/reg_gen/src/generator.zig	hexWidthForMax
+apps/host/reg_gen/src/generator.zig	isReservedKeyword
+apps/host/reg_gen/src/generator.zig	isValidIdentifier
+apps/host/reg_gen/src/generator.zig	parseDefinition
+apps/host/reg_gen/src/generator.zig	printHexLiteral
+apps/host/reg_gen/src/generator.zig	validateDefinition
+apps/host/reg_gen/src/main.zig	CliOptions
+apps/host/reg_gen/src/main.zig	generator
+apps/host/reg_gen/src/main.zig	main
+apps/host/reg_gen/src/main.zig	parseCliArgs
+apps/host/reg_gen/src/main.zig	printUsage
