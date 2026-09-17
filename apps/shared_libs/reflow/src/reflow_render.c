@@ -35,6 +35,7 @@
 #include "ra8_glyph_atlas.h"
 #include "reflow.h"
 #include "reflow_internal.h"
+#include "reflow_render_face.h"
 #include "reflow_svg.h"
 #include "stb_truetype.h"
 
@@ -827,7 +828,10 @@ static ra8_err_t internal_init_faces(const reflow_t* engine, stbtt_fontinfo* fac
  * `stbtt_fontinfo` array via `internal_init_faces()`. Iterates over every
  * glyph in `engine->pages[page_idx]`, extracts the face index from the
  * high bits of `g->style`, clamps any out-of-range index to 0 (the
- * default face), and calls `internal_blit_glyph()` with the resolved font.
+ * default face), re-resolves it by coverage through
+ * `priv_reflow_render_pick_face()` so a code point the run's face cannot
+ * draw is taken by another registered face, and calls
+ * `internal_blit_glyph()` with the resolved font.
  * After all glyphs are rendered, `internal_render_images()` blits any image
  * boxes that belong to the page. Both glyph and image positions are
  * shifted by the origin (@p ox, @p oy), allowing callers to composite
@@ -891,6 +895,9 @@ internal_render_page(const reflow_t* engine, uint32_t page_idx, int32_t ox, int3
     if (fi >= nfaces) {
       fi = 0U; /* defensive: out-of-range face index -> default */
     }
+    /* CSS picked the face by family and weight; coverage can still send this
+     * code point to another registered face (#687). */
+    fi = priv_reflow_render_face_for(s_faces, nfaces, fi, g->cp);
     internal_blit_glyph(atlas, fi, &s_faces[fi], g, ox, oy);
   }
   internal_render_images(engine, page_idx, ox, oy);

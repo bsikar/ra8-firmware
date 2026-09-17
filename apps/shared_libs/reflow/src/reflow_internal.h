@@ -273,6 +273,76 @@ RA8_PRIV bool priv_reflow_render_tofu_rect(int32_t                  advance_px,
                                            int32_t                  font_px,
                                            priv_reflow_tofu_rect_t* out);
 
+/**
+ * @brief Injected per-face coverage probe used to resolve a fallback face.
+ *
+ * @details
+ * The render pass answers this from ``stbtt_FindGlyphIndex`` over its
+ * per-render ``stbtt_fontinfo`` array; a test answers it from a table, so
+ * ::priv_reflow_render_pick_face can be driven without a font file. Index
+ * 0 is the engine's bound default face and 1.. are the registered
+ * ``@font-face`` blobs, the same numbering the glyph style field carries.
+ *
+ * @param[in] ctx       Opaque face set supplied by the caller.
+ * @param[in] face_idx  Face to probe, ``0 .. face_count - 1``.
+ * @param[in] cp        Code point to look for.
+ *
+ * @return Boolean coverage answer.
+ * @retval true  That face can draw @p cp.
+ * @retval false That face has no glyph for @p cp.
+ *
+ * @since 0.1.0
+ */
+typedef bool (*priv_reflow_face_has_glyph_fn)(const void* ctx, uint8_t face_idx, int32_t cp);
+
+/**
+ * @brief Resolve which face draws @p cp, falling back by coverage (#687).
+ *
+ * @details
+ * A run's face comes from CSS ``@font-face`` selection, which knows family,
+ * weight and style but nothing about coverage, so a book whose body face
+ * lacks a code point loses that character even when another registered face
+ * carries it. This picks, in order: the run's own face, then the engine's
+ * bound default face, then the registered faces by index. When no face
+ * covers @p cp the run's own face is returned unchanged, so the
+ * missing-glyph box is drawn at the metrics of the text around it.
+ *
+ * A blank code point is never hunted for: it must stay blank in its own
+ * face (see ::priv_reflow_render_is_blank_cp). A face set of one is
+ * returned immediately as well, so a book with no embedded faces pays no
+ * coverage probe at all.
+ *
+ * @param[in] has_glyph  Per-face coverage probe; NULL disables fallback.
+ * @param[in] ctx        Opaque face set handed to @p has_glyph.
+ * @param[in] face_count Number of usable faces (default plus registered).
+ * @param[in] primary    Face the layout pass selected for this run.
+ * @param[in] cp         Code point from the layout pass.
+ *
+ * @return Face index to render @p cp with.
+ * @retval primary The run's own face covers @p cp, nothing else does, the
+ *                 code point is blank, or the arguments disable fallback.
+ *
+ * @pre @p ctx stays valid for the duration of the call.
+ * @pre @p face_count counts the faces @p has_glyph will accept.
+ * @post No state mutated; only @p has_glyph is called, at most once per face.
+ * @post The returned index is always less than @p face_count when fallback
+ *       was possible, and @p primary otherwise.
+ *
+ * @note Test-access only. Pure apart from @p has_glyph.
+ *
+ * @par MC/DC:
+ * Guard is a 4-condition OR (``has_glyph == NULL``, ``face_count <= 1``,
+ * ``primary >= face_count``, blank code point); the scan carries a
+ * 2-condition AND (``k != primary && has_glyph(k)``), N+1 = 3 vectors.
+ *
+ * @since 0.1.0
+ */
+RA8_PRIV uint8_t priv_reflow_render_pick_face(priv_reflow_face_has_glyph_fn has_glyph,
+                                              const void*                   ctx,
+                                              uint8_t                       face_count,
+                                              uint8_t                       primary,
+                                              int32_t                       cp);
+
 #ifdef __cplusplus
 }
 #endif
