@@ -25,6 +25,7 @@ https://cognitect.com/blog/2011/11/15/documenting-architecture-decisions
 | [0002](./0002-cppcheck-only-misra-enforcement.md)        | cppcheck-only MISRA enforcement under a FOSS-only budget            | Accepted |
 | [0003](./0003-test-only-internal-headers.md)             | Test-only access to internal symbols via `<module>_internal.h`      | Accepted |
 | [0004](./0004-deactivated-condition-policy.md)           | DO-178C 6.4.4.3 deactivated-condition policy with regen-script auto-classification | Accepted |
+| [0005](./0005-multi-language-documentation-architecture.md) | Multi-language documentation architecture (Markdown hub, Zig autodoc, rustdoc, Doxygen C ABI) | Accepted |
 
 ## Authoring a new ADR
 
