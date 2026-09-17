@@ -105,16 +105,22 @@ cannot be hand-written into something friendlier:
 Gaining measurement is **one-way**: a unit that starts producing execution data
 must move to MEASURED and can never move back.
 
-Three of those classes are derived from the tree alone. `platform-cross-only`
-has one hand-written override, `tree_coverage_model.PLATFORM_CROSS_ONLY_UNITS`,
-for a unit under a hosted root that only the ARM toolchain compiles. Each row
-in it declares either `cross-only` or `host-compilable`, and the gate checks
-that declaration against the listfiles of the measurement projects: a row
-claiming `cross-only` fails when a measurement project's listfile names the
-unit, and a row claiming `host-compilable` fails when none does. The one live
-row is `apps/shared_libs/reflow/v2/src/reflow_v2.cpp`, declared
-`host-compilable`, because `tests/cmake/library_sources.cmake` compiles it into
-the host-tests project whenever `REFLOW_USE_LITEHTML` is ON.
+Every one of those classes is derived from the tree today.
+`platform-cross-only` has one place a class can be hand-written instead,
+`tree_coverage_model.PLATFORM_CROSS_ONLY_UNITS`, for a unit under a hosted root
+that only the ARM toolchain compiles, and that table is **empty**. Its one row,
+`apps/shared_libs/reflow/v2/src/reflow_v2.cpp`, is retired: the host-tests
+measurement project compiles and ctest-registers that unit whenever
+`REFLOW_USE_LITEHTML` is ON, so its honest class is `hosted-no-coverage-build`,
+and that is what its baseline row now carries.
+
+The grounding rules stay, so the next row cannot arrive unread. Each row
+declares either `cross-only` or `host-compilable`, and the gate checks that
+declaration against the listfiles of the measurement projects: a row claiming
+`cross-only` fails when a measurement project's listfile names the unit, and a
+row claiming `host-compilable` fails when none does. Only a `cross-only` row
+changes a class; a `host-compilable` row grants nothing and records a refuted
+claim until it is retired.
 
 ## Running locally
 
