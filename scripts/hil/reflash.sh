@@ -11,8 +11,16 @@
 #
 #   1. The TrustZone boundary (SAU/IDAU option bytes) can gate the debug AP, so
 #      J-Link cannot attach to reprogram code-MRAM.
-#   2. The RoT anti-rollback counter (extra-MRAM @0x27000000) persists across a
-#      normal flash, so a lower-versioned image is refused at boot.
+#   2. The RoT anti-rollback counter persists across a normal flash, so a
+#      lower-versioned image is refused at boot. It lives in the extra-MRAM
+#      option-setting window, NOT in a data-flash array -- this part has none,
+#      and the conventional RA-family data-flash base does not decode on it
+#      (#397). RA8_ENABLE_ROOT_OF_TRUST keeps its durable highest-accepted
+#      version at `k_ra8_flash_extra_start` (0x02E0_7600, the first legal MACI
+#      Program target; libs/ra8_dfu/src/ra8_dfu_antirollback.c), and the silicon
+#      ARC structures are ARCCS 0x02E1_7932, ARC_SEC 0x02F2_7E00 and ARC_NSEC
+#      0x02F2_7E08 (HUM Ch 7.2.21-7.2.23 pp 296-297; `k_ra8_flash_ofs_arccs_addr`
+#      and friends in libs/ra8_hal/inc/ra8_flash_regs.h).
 #
 # This does the full reset first -- `rfp-cli -erase-chip` (the boot-firmware
 # Initialize command: clears the TrustZone boundary, the anti-rollback counter,
