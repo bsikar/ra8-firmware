@@ -59,6 +59,7 @@ import fleet_reconcile_settle_selftest as frse
 import fleet_reconcile_stopped_selftest as frsp
 import fleet_reconcile_stranding_selftest as frst
 import fleet_reconcile_unaccounted_selftest as fru
+import fleet_reconcile_uninspected_selftest as frun
 import fleet_wsl as fw
 
 SOURCE_DIGEST_FILE = ".ra8-source-sha256"
@@ -1841,6 +1842,52 @@ def report_uninspected(remaining: Sequence[str]) -> None:
     )
 
 
+def hold_uninspected_at_zero(
+    stranding: dict[str, dict[str, int]],
+    remaining: Sequence[str],
+    options: ReconcileOptions,
+) -> list[str]:
+    """Age the stranded-at-zero record of every host a stop left unexamined.
+
+    ``report_uninspected`` names these hosts, and ``stopped_verdict`` now lets
+    the pass report the verdict it earned instead of the signal status, so an
+    interrupted pass is honest about what it saw.  The record it reports off
+    was still standing still.  ``open_stranding`` never ages, and the only two
+    places that do are reached by INSPECTING a host: ``invalidate_receipt`` for
+    one that failed, and ``hold_at_zero`` for one this pass deliberately held
+    back.  A host the loop broke before reaching passed through neither, so its
+    counter stayed exactly where the last pass that reached it left it.
+
+    A stop lands where the work is, so the same stop lands at the same point
+    run after run: a systemd runtime limit against a slow producer apply, a
+    maintenance window closing on the same long step, the locked dependency
+    downloads timing out in issue #888's own evidence.  Every one of those
+    passes ends with the hosts behind that point still at ZERO capacity and
+    their counters frozen below ``STRANDED_ESCALATION_PASSES``, so nothing ever
+    escalates however long it lasts.  That is silent stranding for good, which
+    is the shape issue #888 went unnoticed in about five times.
+
+    The claim being counted is the one ``age_stranding`` already makes: this
+    pass ended with an already-drained host still at zero and nothing this pass
+    did lifted it off zero.  Never inspecting the host is the strongest case of
+    that, not an exception to it.  Only an apply pass counts a pass it writes
+    down, exactly as ``hold_at_zero`` does, and a host with no record is given
+    none: an uninspected host is not a drained one, which is what the interrupt
+    suite pins from the other side.  The durable park record needs nothing here
+    because ``open_parked`` ages every park at pass open, before the first host
+    is touched.
+    """
+    if options.mode != "apply":
+        return []
+    return [
+        host
+        for host in remaining
+        if age_stranding(
+            stranding, host, options.now, "never inspected: this pass was cut short"
+        )
+    ]
+
+
 def drain_budget(total: int) -> int:
     """Return how many serving hosts one pass may take to zero."""
     return max(1, int(total * PASS_DRAIN_BUDGET_RATIO))
@@ -2185,6 +2232,7 @@ def reconcile(
     for index, host in enumerate(order):
         if frp.interrupted_status():
             report_uninspected(order[index:])
+            hold_uninspected_at_zero(stranding, order[index:], options)
             break
         if index and consumer_held(
             host,
@@ -2836,7 +2884,7 @@ def selftest() -> int:
     failures.extend(frlt.run(sys.modules[__name__]))
     failures.extend(frlo.run(sys.modules[__name__]) + frab.run(sys.modules[__name__]))
     failures.extend(frsv.run(sys.modules[__name__]))
-    failures.extend(fru.run(sys.modules[__name__]))
+    failures.extend(fru.run(sys.modules[__name__]) + frun.run(sys.modules[__name__]))
     failures.extend(frrc.run(sys.modules[__name__]))
     _selftest_state_safety(failures)
     failures.extend(fml.run_selftest())
