@@ -1,0 +1,12 @@
+{
+  "covered_sources": [
+    "src/lib.rs",
+    "src/provider.rs",
+    "src/foreign.rs",
+    "tests/native.rs",
+    "tests/zig_consumer.rs"
+  ],
+  "minimum_tests": 3,
+  "package_license": "MIT",
+  "allowed_dependencies": []
+}

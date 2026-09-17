@@ -1,0 +1,218 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Brighton Sikarskie
+---
+- name: Resolve the managed image lock numeric primary group
+  become: true
+  ansible.builtin.command:
+    argv:
+      - /usr/bin/id
+      - -g
+      - --
+      - "{{ dev_box_user }}"
+  register: dev_box_image_lock_gid
+  changed_when: false
+  check_mode: false
+
+- name: Refuse an unsafe managed image lock numeric primary group
+  ansible.builtin.assert:
+    that:
+      - dev_box_image_lock_gid.stdout is regex('^[0-9]+$')
+      - (dev_box_image_lock_gid.stdout | int) > 0
+    fail_msg: >-
+      {{ dev_box_user }} must resolve to one non-root numeric primary group for
+      the managed image lock authority
+
+- name: Inspect the managed image lock directory without following links
+  become: true
+  ansible.builtin.stat:
+    path: "{{ dev_box_image_lock_dir }}"
+    follow: false
+    get_attributes: false
+    get_checksum: false
+    get_mime: false
+  register: dev_box_image_lock_dir_before
+
+- name: Refuse an unsafe managed image lock directory
+  ansible.builtin.assert:
+    that:
+      - >-
+        not dev_box_image_lock_dir_before.stat.exists or
+        (dev_box_image_lock_dir_before.stat.isdir and
+         not dev_box_image_lock_dir_before.stat.islnk and
+         dev_box_image_lock_dir_before.stat.uid == 0 and
+         dev_box_image_lock_dir_before.stat.gid ==
+           (dev_box_image_lock_gid.stdout | int) and
+         dev_box_image_lock_dir_before.stat.mode == '0750')
+    fail_msg: >-
+      {{ dev_box_image_lock_dir }} must be absent or a non-symlink directory;
+      refusing to repair a different object in place
+
+- name: Inspect the managed image lock file without following links
+  become: true
+  ansible.builtin.stat:
+    path: "{{ dev_box_image_lock_dir }}/devcontainer-image.lock"
+    follow: false
+    get_attributes: false
+    get_checksum: false
+    get_mime: false
+  register: dev_box_image_lock_before
+
+- name: Refuse an unsafe managed image lock file
+  ansible.builtin.assert:
+    that:
+      - >-
+        not dev_box_image_lock_before.stat.exists or
+        (dev_box_image_lock_before.stat.isreg and
+         not dev_box_image_lock_before.stat.islnk and
+         dev_box_image_lock_before.stat.nlink == 1 and
+         dev_box_image_lock_before.stat.uid == 0 and
+         dev_box_image_lock_before.stat.gid ==
+           (dev_box_image_lock_gid.stdout | int) and
+         dev_box_image_lock_before.stat.mode == '0660')
+    fail_msg: >-
+      {{ dev_box_image_lock_dir }}/devcontainer-image.lock must be absent or a
+      non-symlink, single-link regular file; refusing to repair another object
+      in place
+
+- name: Inspect the managed image lock group marker without following links
+  become: true
+  ansible.builtin.stat:
+    path: "{{ dev_box_image_lock_dir }}/devcontainer-image.gid"
+    follow: false
+    get_attributes: false
+    get_checksum: true
+    checksum_algorithm: sha256
+    get_mime: false
+  register: dev_box_image_lock_gid_marker_before
+
+- name: Refuse an unsafe managed image lock group marker
+  ansible.builtin.assert:
+    that:
+      - >-
+        not dev_box_image_lock_gid_marker_before.stat.exists or
+        (dev_box_image_lock_gid_marker_before.stat.isreg and
+         not dev_box_image_lock_gid_marker_before.stat.islnk and
+         dev_box_image_lock_gid_marker_before.stat.nlink == 1 and
+         dev_box_image_lock_gid_marker_before.stat.uid == 0 and
+         dev_box_image_lock_gid_marker_before.stat.gid == 0 and
+         dev_box_image_lock_gid_marker_before.stat.mode == '0444' and
+         dev_box_image_lock_gid_marker_before.stat.checksum ==
+           ((dev_box_image_lock_gid.stdout ~ '\n') | hash('sha256')))
+    fail_msg: >-
+      {{ dev_box_image_lock_dir }}/devcontainer-image.gid must be absent or a
+      non-symlink, single-link regular file; refusing to repair another object
+      in place
+
+- name: Create the managed image lock directory
+  become: true
+  ansible.builtin.file:
+    path: "{{ dev_box_image_lock_dir }}"
+    state: directory
+    owner: root
+    group: "{{ dev_box_image_lock_gid.stdout }}"
+    mode: "0750"
+
+- name: Reinspect the converged managed image lock directory
+  become: true
+  ansible.builtin.stat:
+    path: "{{ dev_box_image_lock_dir }}"
+    follow: false
+    get_attributes: false
+    get_checksum: false
+    get_mime: false
+  register: dev_box_image_lock_dir_after
+  when: not ansible_check_mode
+
+- name: Prove the managed image lock directory identity and permissions
+  ansible.builtin.assert:
+    that:
+      - dev_box_image_lock_dir_after.stat.isdir
+      - not dev_box_image_lock_dir_after.stat.islnk
+      - dev_box_image_lock_dir_after.stat.uid == 0
+      - dev_box_image_lock_dir_after.stat.gid == (dev_box_image_lock_gid.stdout | int)
+      - dev_box_image_lock_dir_after.stat.mode == '0750'
+    fail_msg: >-
+      the managed image lock directory did not converge to the required
+      uid 0, gid {{ dev_box_image_lock_gid.stdout }}, mode 0750 authority
+  when: not ansible_check_mode
+
+- name: Create the stable managed image lock file
+  become: true
+  ansible.builtin.file:
+    path: "{{ dev_box_image_lock_dir }}/devcontainer-image.lock"
+    state: touch
+    follow: false
+    owner: root
+    group: "{{ dev_box_image_lock_gid.stdout }}"
+    mode: "0660"
+    access_time: preserve
+    modification_time: preserve
+
+- name: Reinspect the converged managed image lock
+  become: true
+  ansible.builtin.stat:
+    path: "{{ dev_box_image_lock_dir }}/devcontainer-image.lock"
+    follow: false
+    get_attributes: false
+    get_checksum: false
+    get_mime: false
+  register: dev_box_image_lock_after
+  when: not ansible_check_mode
+
+- name: Prove the managed image lock identity and permissions
+  ansible.builtin.assert:
+    that:
+      - dev_box_image_lock_after.stat.isreg
+      - not dev_box_image_lock_after.stat.islnk
+      - dev_box_image_lock_after.stat.nlink == 1
+      - dev_box_image_lock_after.stat.uid == 0
+      - dev_box_image_lock_after.stat.gid == (dev_box_image_lock_gid.stdout | int)
+      - dev_box_image_lock_after.stat.gid == dev_box_image_lock_dir_after.stat.gid
+      - dev_box_image_lock_after.stat.mode == '0660'
+    fail_msg: >-
+      the managed image lock did not converge to the required stable
+      uid 0, gid {{ dev_box_image_lock_gid.stdout }}, mode 0660 regular-file
+      authority
+  when: not ansible_check_mode
+
+- name: Create the managed image lock numeric group marker atomically
+  become: true
+  ansible.builtin.copy:
+    dest: "{{ dev_box_image_lock_dir }}/devcontainer-image.gid"
+    content: "{{ dev_box_image_lock_gid.stdout }}\n"
+    owner: root
+    group: root
+    mode: "0444"
+    unsafe_writes: false
+  when: not ansible_check_mode or dev_box_image_lock_dir_before.stat.exists
+
+- name: Reinspect the converged managed image lock group marker
+  become: true
+  ansible.builtin.stat:
+    path: "{{ dev_box_image_lock_dir }}/devcontainer-image.gid"
+    follow: false
+    get_attributes: false
+    get_checksum: true
+    checksum_algorithm: sha256
+    get_mime: false
+  register: dev_box_image_lock_gid_marker_after
+  when: not ansible_check_mode
+
+- name: Prove the managed image lock group marker identity and content
+  ansible.builtin.assert:
+    that:
+      - dev_box_image_lock_gid_marker_after.stat.isreg
+      - not dev_box_image_lock_gid_marker_after.stat.islnk
+      - dev_box_image_lock_gid_marker_after.stat.nlink == 1
+      - dev_box_image_lock_gid_marker_after.stat.uid == 0
+      - dev_box_image_lock_gid_marker_after.stat.gid == 0
+      - dev_box_image_lock_gid_marker_after.stat.mode == '0444'
+      - >-
+        dev_box_image_lock_gid_marker_after.stat.checksum ==
+        ((dev_box_image_lock_gid.stdout ~ '\n') | hash('sha256'))
+      - dev_box_image_lock_dir_after.stat.gid == (dev_box_image_lock_gid.stdout | int)
+      - dev_box_image_lock_after.stat.gid == (dev_box_image_lock_gid.stdout | int)
+    fail_msg: >-
+      the managed image lock group marker did not bind the directory and lock
+      to the expected non-root numeric primary group
+  when: not ansible_check_mode

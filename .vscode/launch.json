@@ -1,0 +1,59 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "RA8: local board (OpenOCD)",
+      "type": "cortex-debug",
+      "request": "launch",
+      "servertype": "openocd",
+      "cwd": "${workspaceFolder}",
+      "executable": "${command:cmake.launchTargetPath}",
+      "configFiles": ["${workspaceFolder}/scripts/dev/openocd/ek-ra8d2.cfg"],
+      "preLaunchTask": "RA8: prepare selected firmware",
+      "runToEntryPoint": "main",
+      "showDevDebugOutput": "none"
+    },
+    {
+      "name": "RA8: remote rig (J-Link)",
+      "type": "cortex-debug",
+      "request": "launch",
+      "servertype": "external",
+      "cwd": "${workspaceFolder}",
+      "executable": "${command:cmake.launchTargetPath}",
+      "gdbTarget": "127.0.0.1:2331",
+      "preLaunchTask": "RA8: remote rig GDB server",
+      "postDebugTask": "RA8: stop remote rig GDB server",
+      "overrideLaunchCommands": [
+        "monitor reset halt",
+        "load",
+        "monitor reset halt"
+      ],
+      "overrideResetCommands": ["monitor reset halt"],
+      "runToEntryPoint": "main",
+      "showDevDebugOutput": "none"
+    },
+    {
+      "name": "RA8: firmware in emulator (debug emulator host)",
+      "type": "lldb",
+      "request": "launch",
+      "program": "${workspaceFolder}/tools/ra8_emulator/build/ra8_emulator",
+      "args": [
+        "${command:cmake.launchTargetPath}",
+        "--panel",
+        "${workspaceFolder}/tools/ra8_emulator/panels/ek_ra8d2.toml",
+        "--view"
+      ],
+      "cwd": "${workspaceFolder}",
+      "preLaunchTask": "RA8: prepare emulator session"
+    },
+    {
+      "name": "RA8: native host target (LLDB)",
+      "type": "lldb",
+      "request": "launch",
+      "program": "${command:cmake.launchTargetPath}",
+      "args": [],
+      "cwd": "${workspaceFolder}",
+      "preLaunchTask": "RA8: build selected CMake target"
+    }
+  ]
+}

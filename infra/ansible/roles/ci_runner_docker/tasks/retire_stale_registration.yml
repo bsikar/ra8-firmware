@@ -1,0 +1,32 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Brighton Sikarskie
+---
+
+- name: Select runner homes that require registration
+  # config.sh refuses to configure a home that still carries local credentials,
+  # even with --replace. That stranded every runner after GitHub expired its
+  # server-side registration or a label-set change invalidated our marker.
+  # Admission is parked and a fresh short-lived token is present, so retire only
+  # registration metadata for the homes being reconfigured; preserve binaries,
+  # tool caches, and _work directories.
+  ansible.builtin.set_fact:
+    ci_runner_docker_reconfigure_instances: >-
+      {{ ci_runner_docker_labels_current.results
+         | rejectattr('stat.exists')
+         | map(attribute='item')
+         | list }}
+
+- name: Retire stale local registration metadata before replacement
+  become: true
+  ansible.builtin.file:
+    path: "{{ item.0.home }}/{{ item.1 }}"
+    state: absent
+  loop: >-
+    {{ ci_runner_docker_reconfigure_instances
+       | product([
+           '.runner',
+           '.runner_migrated',
+           '.credentials',
+           '.credentials_rsaparams'
+         ])
+       | list }}

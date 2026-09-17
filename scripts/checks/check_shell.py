@@ -1,0 +1,443 @@
+#!/usr/bin/env python3
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Brighton Sikarskie
+"""Gate: shellcheck for first-party shell scripts.
+
+ShellCheck (correctness, at ``--severity=style`` plus the opt-in checks listed
+in :data:`SHELLCHECK_ENABLE`) is the shell equivalent of ruff. Formatting
+(shfmt, 2-space case-indented) is enforced by the format gate
+(``format_tree.sh``), never here. This wrapper fails on any finding -- no
+grandfathering. ShellCheck must be on PATH (or named via ``SHELLCHECK``);
+without it the gate skips locally unless ``--require`` is passed, which CI
+uses to fail on a missing tool.
+
+``style`` is the tightest severity ShellCheck offers, so nothing is filtered by
+level.  The opt-in checks are the ones that are both *fixable in place* and map
+to a defect class this tree has actually shipped -- unquoted expansions, values
+that are read but never assigned, ``which`` instead of ``command -v``.  Five
+opt-in checks are deliberately NOT enabled; see ``docs/STYLE_GUIDE.md`` and the
+comment on :data:`SHELLCHECK_DISABLED_OPTIONAL` for the measurements behind
+that call.
+
+Run::
+
+    check_shell.py             # gate (fail on any finding)
+    check_shell.py --require   # fail (not skip) if a tool is absent
+    check_shell.py --selftest  # prove the gate fires and stays quiet
+
+Exit 0 if clean, exit 1 on findings, exit 2 on a tool error or a scope that
+collapsed below SCRIPT_FLOOR.
+"""
+
+from __future__ import annotations
+
+import json
+import os
+import shutil
+import subprocess
+import sys
+import tempfile
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+
+from lint_targets import is_build_output_path
+
+REPO_ROOT = Path(__file__).resolve().parents[2]
+
+# relative path -> {SC code: count}
+Findings = dict[str, dict[str, int]]
+
+
+# `style` is ShellCheck's tightest severity -- nothing is filtered out by level.
+SHELLCHECK_SEVERITY = "style"
+
+# Opt-in checks. ShellCheck ships these off by default, so no severity setting
+# reaches them; each has to be named. Every one below is fixable in place.
+SHELLCHECK_ENABLE = (
+    "avoid-negated-conditions",
+    "avoid-nullary-conditions",
+    "check-unassigned-uppercase",
+    "deprecate-which",
+    "quote-safe-variables",
+    "useless-use-of-cat",
+)
+
+# Deliberately NOT enabled. Re-measured for #363 on the first-party shell files
+# at ShellCheck 0.11.0, on top of the severity + opt-in set above:
+#
+#   check-set-e-suppressed (SC2310/SC2311) -- 90 findings / 24 files.
+#     Unsatisfiable by construction, and verified form by form: it fires on
+#     `fn || rc=$?`, on the rewrite its own help text recommends
+#     (`if fn; then rc=0; else rc=$?; fi`), on a bare one-line predicate, on
+#     `! fn` and on `fn && ...`. The only two forms it ACCEPTS are worse than
+#     the ones it rejects -- `set +e; fn; rc=$?; set -e` passes while a
+#     brace-bodied callee still runs past a mid-body failure, and
+#     `( fn ); rc=$?` passes while aborting the parent outright. Enabling it
+#     would mean ~90 inline disables and would push authors toward the form it
+#     cannot see. The signal is real, so it is covered instead by
+#     scripts/checks/check_errexit_masking.py, which fires only where a
+#     first-party function with two or more failable commands is invoked with
+#     its status masked. The runtime regression for the specific gate-suite
+#     failure remains asserted by suite_errexit_selftest in scripts/ci.sh.
+#   check-extra-masked-returns (SC2312) -- 163 findings / 34 files.
+#     Overwhelmingly command substitutions on commands that cannot meaningfully
+#     fail (uname, date -Iseconds, basename, id -un) or inside `< <(...)`
+#     process substitutions with no single-statement rewrite. Fixing them means
+#     hoisting each into a preceding assignment: some of that is worth doing and
+#     some is pure motion, and a blanket enable cannot tell the two apart. The
+#     subset that actually matters -- masking a FUNCTION's status -- is exactly
+#     what check_errexit_masking.py now covers.
+#   require-variable-braces (SC2250) -- 2901 findings / 60 files.
+#     Presentation. `$var` and `${var}` are identical outside the
+#     disambiguation cases, which ShellCheck already flags separately at the
+#     level of correctness.
+#   require-double-brackets (SC2292) -- 176 findings / 21 files.
+#     Presentation, and actively wrong here: `[` is correct in the POSIX-sh
+#     scripts in this tree, so this would push them toward bash-only for no
+#     behavioural gain.
+#   add-default-case (SC2249) -- 56 findings / 15 files.
+#     A default case is right for a dispatch on external input, which this tree
+#     already writes; it is noise on an exhaustive match over a fixed internal
+#     enum, and the check cannot distinguish them.
+SHELLCHECK_DISABLED_OPTIONAL = (
+    "check-set-e-suppressed",
+    "check-extra-masked-returns",
+    "require-variable-braces",
+    "require-double-brackets",
+    "add-default-case",
+)
+
+EXCLUDE_FRAGMENTS = (
+    "libs/third_party/",
+    "apps/shared_libs/third_party/",
+    "libs/ra8_fonts/",
+    "port/threadx/",
+)
+
+# A tree this size cannot legitimately collapse to a handful of scripts. If the
+# enumeration returns less than this, something broke (a failed `git ls-files`,
+# a runaway EXCLUDE_FRAGMENTS) and reporting "clean" would be a lie -- the old
+# `no shell scripts to scan` branch exited 0 on exactly that. Measured
+# 2026-07-28: 122 first-party shell scripts. Same trip-wire as check_ruff.py.
+SCRIPT_FLOOR = 95
+
+
+def _shellcheck_args() -> list[str]:
+    """The severity + opt-in flags every ShellCheck invocation here shares."""
+    return [
+        # -x follows `# shellcheck source=<path>` directives instead of only
+        # guessing the target from the sourcing script's own directory. Without
+        # it, a helper sourced across directories (`. "$SCRIPT_DIR/../builders/
+        # select_host_compiler.sh"`) is unresolvable, and every variable that
+        # helper exports is then reported as referenced-but-never-assigned --
+        # findings about the analysis, not about the code. Measured: -x adds
+        # zero new findings over this gate's file set and removes those.
+        "-x",
+        f"--severity={SHELLCHECK_SEVERITY}",
+        "--enable=" + ",".join(SHELLCHECK_ENABLE),
+    ]
+
+
+def _find(env_var: str, name: str) -> str | None:
+    env = os.environ.get(env_var)
+    if env and Path(env).exists():
+        return env
+    return shutil.which(name)
+
+
+def _git_ls(*pathspec: str) -> list[str]:
+    """Tracked plus untracked-but-not-ignored paths matching `pathspec`.
+
+    Enumerates via ``git ls-files`` instead of a filesystem walk so locally
+    present, git-excluded trees (``.git/info/exclude`` entries such as
+    ``recon/`` vendor drops) never enter the gate -- a raw ``rglob`` scanned
+    them and failed commits on third-party findings CI can never see.
+    """
+    git_tool = shutil.which("git") or "git"
+    proc = subprocess.run(  # noqa: S603 -- fixed argv, trusted tool path
+        [git_tool, "ls-files", "--cached", "--others", "--exclude-standard", "--", *pathspec],
+        cwd=REPO_ROOT,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    if proc.returncode != 0:
+        sys.stderr.write(proc.stderr)
+        sys.stderr.write(f"git ls-files failed (exit {proc.returncode})\n")
+        sys.exit(2)
+    return _existing_worktree_paths(proc.stdout.splitlines())
+
+
+def _existing_worktree_paths(paths: list[str], root: Path = REPO_ROOT) -> list[str]:
+    """Keep live worktree files, dropping deleted entries still present in the index."""
+    return [rel.strip() for rel in paths if rel.strip() and (root / rel.strip()).is_file()]
+
+
+def _has_shell_shebang(rel: str) -> bool:
+    """True when `rel` opens with a ``#!`` line naming sh, bash or zsh."""
+    try:
+        with (REPO_ROOT / rel).open("rb") as handle:
+            first = handle.readline(200)
+    except OSError:
+        return False
+    if not first.startswith(b"#!"):
+        return False
+    line = first.decode("utf-8", errors="replace")
+    return any(tok in line for tok in ("bash", "zsh", "/sh", "env sh"))
+
+
+def first_party_scripts() -> list[str]:
+    """First-party shell scripts: by ``*.sh`` suffix OR by shebang.
+
+    The shebang sweep is not hypothetical. Every git hook in ``scripts/git/``
+    -- pre-commit, pre-push, commit-msg, post-merge, post-commit,
+    post-checkout -- is an extensionless bash script, so a suffix-only scope
+    left the hooks that enforce this entire tree as the only shell in it that
+    nothing shellchecked. That is the #296/#332/#358/#359/#360
+    defect class exactly: a scope narrower than the thing it claims to cover,
+    reporting clean.
+    """
+    by_suffix = _git_ls("*.sh")
+    known = set(by_suffix)
+    by_shebang = [rel for rel in _git_ls() if rel not in known and _has_shell_shebang(rel)]
+    out = [
+        rel
+        for rel in known.union(by_shebang)
+        if not is_build_output_path(rel)
+        and not any(frag in f"/{rel}" for frag in EXCLUDE_FRAGMENTS)
+    ]
+    return sorted(out)
+
+
+def _run_shellcheck(tool: str, files: list[str], cwd: Path | None = None) -> Findings:
+    proc = subprocess.run(  # noqa: S603 -- fixed argv, trusted tool path
+        [tool, *_shellcheck_args(), "-f", "json", *files],
+        cwd=cwd or REPO_ROOT,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    if proc.returncode not in (0, 1):
+        sys.stderr.write(proc.stderr)
+        sys.stderr.write(f"shellcheck failed (exit {proc.returncode})\n")
+        sys.exit(2)
+    findings: Findings = {}
+    for item in json.loads(proc.stdout or "[]"):
+        rel = item["file"]
+        code = f"SC{item['code']}"
+        findings.setdefault(rel, {})
+        findings[rel][code] = findings[rel].get(code, 0) + 1
+    return findings
+
+
+# --------------------------------------------------------------------------
+# Self-test
+# --------------------------------------------------------------------------
+# Each case is (label, filename, body, must_fire). The "must fire" half proves
+# the gate still detects every class it claims to enforce -- a check silently
+# dropped from SHELLCHECK_ENABLE, or a severity quietly relaxed back to
+# `warning`, turns one of these green and fails the selftest. The "must stay
+# quiet" half proves the bar is survivable: the tricky-but-correct forms this
+# tree actually uses must not be flagged, or the gate becomes noise people
+# route around.
+SELFTEST_CASES: tuple[tuple[str, str, str, bool], ...] = (
+    # ---- must FIRE ------------------------------------------------------
+    (
+        "SC2086 unquoted expansion (info-level: invisible at the old warning bar)",
+        "fire_unquoted.sh",
+        "#!/usr/bin/env bash\nf=/a/b\nrm -f $f\n",
+        True,
+    ),
+    (
+        "SC2006 legacy backticks (style-level: needs severity=style)",
+        "fire_backtick.sh",
+        '#!/usr/bin/env bash\nd="`date`"\necho "$d"\n',
+        True,
+    ),
+    (
+        "SC2248 unquoted safe variable (opt-in: quote-safe-variables)",
+        "fire_quotesafe.sh",
+        "#!/usr/bin/env bash\nrc=0\nexit $rc\n",
+        True,
+    ),
+    (
+        "SC2154 referenced but never assigned (opt-in: check-unassigned-uppercase)",
+        "fire_unassigned.sh",
+        '#!/usr/bin/env bash\necho "${NEVER_SET_ANYWHERE}"\n',
+        True,
+    ),
+    (
+        "SC2230 which instead of command -v (opt-in: deprecate-which)",
+        "fire_which.sh",
+        "#!/usr/bin/env bash\nwhich gcc >/dev/null\n",
+        True,
+    ),
+    (
+        "SC2002 useless cat (opt-in: useless-use-of-cat)",
+        "fire_uuoc.sh",
+        "#!/usr/bin/env bash\ncat /etc/hosts | grep -q localhost\n",
+        True,
+    ),
+    (
+        "SC2244 nullary condition (opt-in: avoid-nullary-conditions)",
+        "fire_nullary.sh",
+        '#!/usr/bin/env bash\nv=x\nif [ "$v" ]; then echo hi; fi\n',
+        True,
+    ),
+    (
+        "SC2164 cd without a failure guard (warning-level baseline)",
+        "fire_cd.sh",
+        '#!/usr/bin/env bash\ncd /nonexistent-selftest-dir\necho "ran on regardless"\n',
+        True,
+    ),
+    # ---- must stay QUIET ------------------------------------------------
+    (
+        "empty-array guard for bash 3.2 set -u",
+        "quiet_array_guard.sh",
+        "#!/usr/bin/env bash\nset -euo pipefail\nargs=()\n"
+        'if [[ -n "${HOME:-}" ]]; then args+=(--home "$HOME"); fi\n'
+        "printf '%s\\n' ${args[@]+\"${args[@]}\"}\n",
+        False,
+    ),
+    (
+        "printf with a constant format and variable arguments",
+        "quiet_printf.sh",
+        "#!/usr/bin/env bash\nset -euo pipefail\ncolor=$'\\033[0;32m'\n"
+        'printf \'%sdone%s\\n\' "$color" "$color"\n',
+        False,
+    ),
+    (
+        "deliberate word-split routed through an array",
+        "quiet_array_split.sh",
+        "#!/usr/bin/env bash\nset -euo pipefail\nextra=()\n"
+        'read -r -a extra <<<"--flag value"\n'
+        "printf '<%s>' ${extra[@]+\"${extra[@]}\"}\n",
+        False,
+    ),
+    (
+        "command -v guard, quoted status variable, braced condition",
+        "quiet_idiomatic.sh",
+        "#!/usr/bin/env bash\nset -euo pipefail\nrc=0\n"
+        "if ! command -v gcc >/dev/null 2>&1; then rc=1; fi\n"
+        'exit "$rc"\n',
+        False,
+    ),
+)
+
+
+def selftest(tmp: Path) -> int:
+    """Assert the gate fires on every enforced class and stays quiet otherwise."""
+    sc_tool = _find("SHELLCHECK", "shellcheck")
+    if not sc_tool:
+        sys.stderr.write("check_shell.py --selftest: shellcheck not found\n")
+        return 2
+
+    failures: list[str] = []
+    live = tmp / "live.sh"
+    live.write_text("#!/bin/sh\nexit 0\n", encoding="ascii")
+    resolved = _existing_worktree_paths(["live.sh", "deleted.sh"], tmp)
+    if resolved != ["live.sh"]:
+        failures.append("  worktree scope did not retain a live file and drop a deleted index path")
+
+    for label, fname, body, must_fire in SELFTEST_CASES:
+        path = tmp / fname
+        path.write_text(body)
+        fired = bool(_run_shellcheck(sc_tool, [fname], cwd=tmp))
+        if fired != must_fire:
+            verb = "did not fire" if must_fire else "fired"
+            codes = _run_shellcheck(sc_tool, [fname], cwd=tmp).get(fname, {})
+            failures.append(f"  shellcheck {verb} (unexpected): {label} {codes or ''}")
+
+    fires = sum(1 for c in SELFTEST_CASES if c[3])
+    quiets = sum(1 for c in SELFTEST_CASES if not c[3])
+
+    if failures:
+        sys.stderr.write("check_shell.py --selftest: FAILED\n\n")
+        sys.stderr.write("\n".join(failures) + "\n")
+        return 1
+
+    fires = sum(1 for c in SELFTEST_CASES if c[3]) + 1
+    quiets = sum(1 for c in SELFTEST_CASES if not c[3]) + 1
+    print(
+        f"check_shell.py --selftest: PASS "
+        f"({fires + quiets} cases: {fires} must fire, {quiets} must stay quiet)"
+    )
+    return 0
+
+
+def _report(checks: Findings) -> None:
+    if checks:
+        sys.stderr.write("check_shell.py: shellcheck finding(s):\n")
+        for relfile in sorted(checks):
+            for code, count in sorted(checks[relfile].items()):
+                sys.stderr.write(f"  {relfile}: {code} x{count}\n")
+    sys.stderr.write(
+        "\nFix the finding. A `# shellcheck disable=SCxxxx` needs an\n"
+        "inline reason on the same line saying why the finding does not apply.\n"
+    )
+
+
+def main(argv: list[str]) -> int:
+    """Run shellcheck over every first-party worktree shell script.
+
+    ShellCheck is REQUIRED, not optional: a missing tool fails the gate rather
+    than reducing its scope, because a checker that quietly stops checking is
+    indistinguishable from a clean tree. Formatting (shfmt) is enforced by the
+    format gate, never here.
+
+    ``--list-files`` reports the covered scope for check_lint_coverage.py and
+    the format gate. It is deliberately independent of whether shellcheck is
+    installed -- the question is what this gate covers, and a missing binary
+    must not shrink the answer to nothing.
+
+    SCRIPT_FLOOR replaces the old ``no shell scripts to scan`` branch, which
+    exited 0 on an empty enumeration -- a result indistinguishable from a clean
+    tree and produced by having read nothing.
+
+    Returns 0 when clean, 1 on findings, 2 when the
+    scope collapsed below SCRIPT_FLOOR, and 1 on a missing tool under
+    ``--require``.
+    """
+    if "--selftest" in argv[1:]:
+        with tempfile.TemporaryDirectory() as td:
+            return selftest(Path(td))
+
+    # Scope introspection for check_lint_coverage.py and the format gate -- see
+    # the note in check_ruff.py's main(). Deliberately independent of whether
+    # tools are installed: the question is what this gate COVERS, and a missing
+    # tool must not silently shrink the answer to nothing.
+    if "--list-files" in argv[1:]:
+        print("\n".join(first_party_scripts()))
+        return 0
+
+    sc_tool = _find("SHELLCHECK", "shellcheck")
+    if not sc_tool:
+        msg = "check_shell.py: shellcheck not found"
+        if "--require" in argv[1:]:
+            sys.stderr.write(msg + " (--require set)\n")
+            sys.exit(1)
+        print(msg + " -- skipping (install to enforce locally).")
+        sys.exit(0)
+
+    files = first_party_scripts()
+    if len(files) < SCRIPT_FLOOR:
+        sys.stderr.write(
+            f"check_shell.py: FATAL -- only {len(files)} shell script(s) in scope, "
+            f"floor is {SCRIPT_FLOOR}.\n"
+            "  A collapsed scope reports a clean tree because it checked nothing.\n"
+        )
+        return 2
+    checks = _run_shellcheck(sc_tool, files)
+    if not checks:
+        print(
+            f"check_shell.py: clean ({len(files)} file(s), "
+            f"severity={SHELLCHECK_SEVERITY} + {len(SHELLCHECK_ENABLE)} opt-in check(s))."
+        )
+        return 0
+    _report(checks)
+    return 1
+
+
+if __name__ == "__main__":
+    sys.exit(main(sys.argv))

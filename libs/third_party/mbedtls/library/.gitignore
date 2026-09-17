@@ -1,0 +1,6 @@
+libmbed*
+*.sln
+*.vcxproj
+
+# Generated mbedtls config-check headers are vendored; we do NOT regenerate
+# during build. Keep them tracked in git.

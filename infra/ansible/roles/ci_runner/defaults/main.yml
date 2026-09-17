@@ -1,0 +1,181 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Brighton Sikarskie
+---
+# ci-runner role defaults. Override per deployment in group_vars / host_vars.
+#
+# Deploys GitHub's Actions Runner Controller (ARC, the gha-runner-scale-set
+# charts) into an existing k3s cluster and a runner scale set whose pods boot
+# from the devcontainer-toolchain image, so every CI job runs the exact
+# `just ci` toolchain.
+
+# The repository (or org) the runners register against.
+ci_runner_github_url: "https://github.com/bsikar/ra8-firmware"
+
+# ARC charts. gha-runner-scale-set(-controller) are OCI charts on ghcr.
+ci_runner_arc_chart_version: "0.14.2"
+ci_runner_controller_chart: >-
+  oci://ghcr.io/actions/actions-runner-controller-charts/gha-runner-scale-set-controller
+ci_runner_scaleset_chart: >-
+  oci://ghcr.io/actions/actions-runner-controller-charts/gha-runner-scale-set
+
+# Namespaces (isolated from other cluster workloads).
+ci_runner_controller_namespace: "arc-systems"
+ci_runner_namespace: "arc-runners"
+
+# The runner scale set. Its NAME is the `runs-on:` label the workflows target.
+#
+# #485: the node has 16 allocatable cores (kubectl describe node). Measured
+# alongside the CI pods, the rest of the homelab (auth/media/monitoring/...
+# namespaces) sits at ~6.8 requested cores steady-state, so a max that lets CI
+# request all the way up to 16 leaves the control plane and every other
+# workload no headroom at all -- exactly the state caught live: 9 pods running
+# + 1 Pending at 15800m/16000m (98%) requested, with the deployed scale set's
+# maxRunners drifted to 10 (this file said 8 the whole time; the live cluster
+# had been bumped by hand and never reconciled back through this role -- the
+# same class of drift #487 found in the sudoers line). ci_runner_max=6 leaves
+# ~3 cores of request headroom over that baseline instead of running the node
+# to its scheduling limit on every push.
+#
+# The CPU *limit* is the bigger honesty problem the timeouts trace to: it was
+# 8 (half the node) with no ceiling on how many pods run at once, so
+# `kubectl describe node` read cpu limits at 138250m -- 864% of the node's
+# 16000m. A pod's *request* only guarantees scheduling; nothing stopped
+# several pods from bursting toward 8 cores simultaneously and starving each
+# other, which is what turned a 30-minute emulator budget into 30m19s (twice)
+# under load. The heaviest workflows (coverage/emulator-smoke/firmware) already
+# cap their OWN internal parallelism at 4 via CMAKE_BUILD_PARALLEL_LEVEL (see
+# scripts/ci/lib/parallelism.sh), so an 8-core limit was never buying real
+# throughput, only overcommit. limit=4 matches that real ceiling: worst case
+# (all 6 pods bursting at once) is 24 cores of limit against 16 physical --
+# 150%, not 864%.
+#
+# Do NOT raise this back toward 10 just because the fleet grows -- read this
+# first. Two things changed the same night this was lowered, in opposite
+# directions, and both are correct:
+#
+#   1. This k3s node is not bare metal. It is a guest on a 10-core/16-thread
+#      i5-12600K, sharing that physical chip with the "dev" box guest (the
+#      shared verification box every agent's `just ci` runs on) at
+#      16 + 12 = 28 vCPU already committed to a 16-thread part before anything
+#      else on it. `uptime` on this node read load average 69-98 (1/5/15 min)
+#      against its own 16 vCPU while this fix was being verified here --
+#      `kubectl top` CPU% (87%) undersells it, since load average also counts
+#      threads runnable-but-starved, which is the oversubscribed-pods
+#      thrashing failure mode #485 exists to fix. That contention is
+#      physical-host-level; raising ci_runner_max does not relieve it, it
+#      adds to it.
+#   2. The fleet answering the `ra8-ci` label is no longer this node alone.
+#      `gh api repos/.../actions/runners` lists `truenas-ci-1` (a NAS box) and
+#      `win-ci-1`/`win-ci-2`/`win-ci-3` (three instances on a separate Ryzen 9
+#      7900X) carrying the same label GitHub schedules `runs-on: ra8-ci`
+#      against. Fleet-wide concurrency for that label is therefore roughly
+#      max=6 here + 1 NAS + 3 Windows = 10 -- the same total this node used to
+#      try to carry alone -- spread across four independent machines instead
+#      of piled onto the one that is already oversubscribed at the hypervisor
+#      level. Bumping this node's max back up does not add capacity the other
+#      three hosts have not already added; it only re-concentrates load onto
+#      the host least able to absorb it.
+#
+# If this node's own headroom genuinely improves later, the number to
+# re-check first is vCPU commitment on the physical host (this node's 16 plus
+# whatever "dev" and any other guest carry), not this value in isolation.
+ci_runner_scale_set_name: "ra8-ci"
+ci_runner_min: 0
+ci_runner_max: 6
+fleet_reconcile_activation_hold: false
+ci_runner_helm_bin: "/usr/local/bin/helm"
+ci_runner_helm_plugins_dir: "/var/lib/ra8-ci/helm-plugins"
+ci_runner_activation_post_renderer_name: "ra8-arc-hold"
+ci_runner_activation_post_renderer_dir: >-
+  {{ ci_runner_helm_plugins_dir }}/{{ ci_runner_activation_post_renderer_name }}
+ci_runner_activation_post_renderer: "{{ ci_runner_activation_post_renderer_dir }}/render.py"
+
+# Per-pod resources. Requests are sized to share the node with other workloads;
+# limits let heavy gates (compile / misra / tidy / mcdc) burst -- see the
+# ci_runner_max comment above for the arithmetic behind both numbers.
+ci_runner_cpu_request: "1"
+ci_runner_mem_request: "2Gi"
+ci_runner_cpu_limit: "4"
+ci_runner_mem_limit: "12Gi"
+
+# Images. The runner image is built from infra/images/runner/Dockerfile
+# (FROM the devcontainer image) and imported into the node's containerd; on a
+# single-node k3s there is no registry, so the pods pull nothing (Never).
+ci_runner_devcontainer_image: "localhost/ra8-devcontainer:latest"
+ci_runner_image: "localhost/ra8-ci-runner:v2"
+
+# Where the exported image archive LIVES on the node.
+#
+# k3s owns this directory: it imports every archive in it at agent start, and
+# an fsnotify watcher imports one again whenever it appears or changes (k3s
+# ADR "Easy way for auto adding images to k3s"). So an image the containerd
+# GC evicts comes back on its own instead of needing a human with a shell.
+# That is the whole point of #484: the archive used to sit in /tmp, which
+# nothing re-imports from and systemd-tmpfiles eventually clears, so a GC
+# sweep left every pod in ErrImageNeverPull for 16 hours.
+ci_runner_image_dir: "/var/lib/rancher/k3s/agent/images"
+ci_runner_image_archive: "{{ ci_runner_image_dir }}/ra8-ci-runner.tar"
+
+# ...and where it is WRITTEN before being renamed into place.
+#
+# The watcher fires on WRITE, so exporting a multi-GB archive directly into
+# the watched directory makes k3s import a half-written file: measured on the
+# live node, nine consecutive imports failed with "unexpected EOF" over the
+# four minutes the export took, each one re-reading gigabytes. A rename is
+# atomic and delivers a single event for a complete file. Keep this on the
+# same filesystem as ci_runner_image_dir or the rename degrades to a copy.
+ci_runner_image_stage_dir: "/var/lib/rancher/k3s/agent/ra8-image-staging"
+ci_runner_image_stage: "{{ ci_runner_image_stage_dir }}/ra8-ci-runner.tar"
+
+# Persistent, writable pinned-tool cache (#486). scripts/ci.sh's
+# RA8_TOOLS_CACHE_DIR defaults to /var/cache/ra8-tools INSIDE the pod, which
+# provision_doxygen.sh then caches a version-pinned doxygen under so the docs
+# gate does not download it on every run. That path's parent (/var/cache) is
+# root:root mode 0755 in the runner image, so the non-root "runner" user (uid
+# 1001, see infra/images/runner/Dockerfile) cannot even mkdir it -- the
+# directory is never created, RA8_TOOLS_CACHE never gets exported, and every
+# run degrades (silently; scripts/ci.sh treats an unwritable cache as an
+# optimization it can live without) to downloading into the ephemeral
+# checkout's build/tools/. A plain permission fix inside one pod's own
+# writable layer would not help either: the runner scale set is ephemeral
+# (one pod per job), so anything not backed by a hostPath volume dies with the
+# pod that created it. This directory is that backing store, chowned to the
+# runner uid/gid below so the mount is actually writable once mounted.
+ci_runner_tools_cache_node_dir: "/var/lib/ra8-ci/tools-cache"
+ci_runner_tools_cache_mount: "/var/cache/ra8-tools"
+ci_runner_uid: 1001
+ci_runner_gid: 1001
+
+# The k8s Secret ARC reads for the GitHub PAT (Administration: read/write).
+# The token value comes from OpenBao at run time (see group_vars example) and
+# is never written to this repo.
+ci_runner_github_secret_name: "ra8-arc-github"
+
+# Where the image build context is STAGED on the target, and where it comes
+# from on the control node.
+#
+# It used to be a path to "the repo checkout on the target host", defaulted to
+# ~/ra8-firmware -- a directory nothing in this tree ever creates, syncs or
+# checks, and which did not exist on the k3s node. So the role's own build step
+# could not run, every image the fleet has ever booted was built by hand from
+# whatever tree happened to be lying around, and that is precisely how the
+# deployed image came to predate .devcontainer/Dockerfile by two pinned-tool
+# changes (#513). A build input the tooling does not control is not a build
+# input, it is a rumour.
+#
+# The context now comes from the checkout the operator ran the command in --
+# the same tree whose gates then assert what the image contains -- and is
+# staged onto the node under the runner's own state directory. It is small
+# (the devcontainer context plus one Dockerfile), so it is copied on every
+# converge and the directory is emptied first: a file deleted from the tree
+# must disappear from the context too.
+ci_runner_context_src: "{{ playbook_dir }}/../../.."
+ci_runner_context_dir: "/var/lib/ra8-ci/build-context"
+
+# kubeconfig on the target (k3s default is root-owned).
+ci_runner_kubeconfig: "/etc/rancher/k3s/k3s.yaml"
+ci_runner_k3s_bin: "/usr/local/bin/k3s"
+
+# roles/k3s_node provisions the client here. Only kubernetes.core tasks select
+# this interpreter; package/file modules keep using the distribution Python.
+ci_runner_python_interpreter: "/opt/ra8-k8s-client/bin/python3"
