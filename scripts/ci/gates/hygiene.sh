@@ -638,6 +638,12 @@ gate_toolchain_parity() (
   bash scripts/ci/lib/tool_env.sh --selftest
   bash scripts/ci/lib/host_tool_path.sh --selftest
   bash scripts/ci/lib/host_arch.sh --selftest
+  # macOS ships bash 3.2 as /bin/bash, which justfile and scripts/ci.sh both
+  # pin. A bash 4 construct on the macOS gate's shell path reads as correct on
+  # every Linux box here and breaks only the Mac (#899), so it is caught from
+  # Linux or not at all.
+  python3 scripts/checks/check_macos_gate_bash32.py --selftest
+  python3 scripts/checks/check_macos_gate_bash32.py
   /bin/bash -p scripts/hil/lib/bench_exit_traps_selftest.sh --selftest
   /bin/bash -p scripts/dev/setup_python.sh --selftest
   python3 scripts/checks/check_tool_versions.py --selftest
