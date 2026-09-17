@@ -330,6 +330,39 @@ void ra8_log_emit_debug_val(const char* tag, const char* message, int32_t value)
  * =============================================================================
  */
 
+/**
+ * @brief Mark a disabled log call's arguments as used, without evaluating them.
+ *
+ * @details When a level is compiled out the call has to vanish from the object
+ *          code, but the arguments must still count as *used*: a tag that only
+ *          ever appears in a log call is otherwise an unused `static const`
+ *          variable, and a parameter that is only logged is otherwise an unused
+ *          parameter. Under `-Wall -Wextra -Werror` that turns a correct source
+ *          file into a build failure purely because logging is compiled out,
+ *          which is one reason first-party sources sat off the warning bar
+ *          (#843).
+ *
+ *          Each argument is placed in a `sizeof` operand. `sizeof` does not
+ *          evaluate its operand (C17 6.5.3.4p2), so side effects still do not
+ *          happen and no code is emitted, while the identifier still counts as
+ *          a use for `-Wunused-variable`, `-Wunused-const-variable` and
+ *          `-Wunused-parameter`. Arguments stay type-checked, so a typo in a
+ *          disabled log call is still a compile error rather than silence.
+ *
+ * @note Internal helper; call the `ra8_log_*` macros instead.
+ *
+ * @since 0.1.0
+ */
+#define RA8_LOG_UNUSED2(tag, message) ((void)sizeof(tag), (void)sizeof(message), (void)0)
+
+/**
+ * @brief Three-argument form of ::RA8_LOG_UNUSED2, for the `*_val` macros.
+ *
+ * @since 0.1.0
+ */
+#define RA8_LOG_UNUSED3(tag, message, value) \
+  ((void)sizeof(tag), (void)sizeof(message), (void)sizeof(value), (void)0)
+
 #if RA8_LOG_LEVEL >= RA8_LOG_LEVEL_ERROR
 /** @brief RA8 log error. */
 #define ra8_log_error(tag, message) ra8_log_emit_error((tag), (message))
@@ -337,9 +370,9 @@ void ra8_log_emit_debug_val(const char* tag, const char* message, int32_t value)
 #define ra8_log_error_val(tag, message, value) ra8_log_emit_error_val((tag), (message), (value))
 #else
 /** @brief RA8 log error. */
-#define ra8_log_error(tag, message)            ((void)0)
+#define ra8_log_error(tag, message)            RA8_LOG_UNUSED2((tag), (message))
 /** @brief RA8 log error val. */
-#define ra8_log_error_val(tag, message, value) ((void)0)
+#define ra8_log_error_val(tag, message, value) RA8_LOG_UNUSED3((tag), (message), (value))
 #endif
 
 #if RA8_LOG_LEVEL >= RA8_LOG_LEVEL_WARN
@@ -349,9 +382,9 @@ void ra8_log_emit_debug_val(const char* tag, const char* message, int32_t value)
 #define ra8_log_warn_val(tag, message, value) ra8_log_emit_warn_val((tag), (message), (value))
 #else
 /** @brief RA8 log warn. */
-#define ra8_log_warn(tag, message)            ((void)0)
+#define ra8_log_warn(tag, message)            RA8_LOG_UNUSED2((tag), (message))
 /** @brief RA8 log warn val. */
-#define ra8_log_warn_val(tag, message, value) ((void)0)
+#define ra8_log_warn_val(tag, message, value) RA8_LOG_UNUSED3((tag), (message), (value))
 #endif
 
 #if RA8_LOG_LEVEL >= RA8_LOG_LEVEL_INFO
@@ -361,9 +394,9 @@ void ra8_log_emit_debug_val(const char* tag, const char* message, int32_t value)
 #define ra8_log_info_val(tag, message, value) ra8_log_emit_info_val((tag), (message), (value))
 #else
 /** @brief RA8 log info. */
-#define ra8_log_info(tag, message)            ((void)0)
+#define ra8_log_info(tag, message)            RA8_LOG_UNUSED2((tag), (message))
 /** @brief RA8 log info val. */
-#define ra8_log_info_val(tag, message, value) ((void)0)
+#define ra8_log_info_val(tag, message, value) RA8_LOG_UNUSED3((tag), (message), (value))
 #endif
 
 #if RA8_LOG_LEVEL >= RA8_LOG_LEVEL_DEBUG
@@ -373,9 +406,9 @@ void ra8_log_emit_debug_val(const char* tag, const char* message, int32_t value)
 #define ra8_log_debug_val(tag, message, value) ra8_log_emit_debug_val((tag), (message), (value))
 #else
 /** @brief RA8 log debug. */
-#define ra8_log_debug(tag, message)            ((void)0)
+#define ra8_log_debug(tag, message)            RA8_LOG_UNUSED2((tag), (message))
 /** @brief RA8 log debug val. */
-#define ra8_log_debug_val(tag, message, value) ((void)0)
+#define ra8_log_debug_val(tag, message, value) RA8_LOG_UNUSED3((tag), (message), (value))
 #endif
 
 #ifdef __cplusplus
