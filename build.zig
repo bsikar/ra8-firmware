@@ -297,120 +297,21 @@ const CrossApp = cross_sources.CrossApp;
 /// ra8_add_app() rule no other app does.
 pub const cross_apps = cross_sources.cross_apps;
 
-/// The global CMAKE_C_FLAGS every translation unit in a cross configure
-/// inherits, app target or not. The M85 app adds the dialect and warning sets
-/// on top; the hand-rolled CPU1 target adds only its own options, which is why
-/// this set has to be named separately rather than folded into the app bar.
-const arm_global_flags = arm_cpu_flags ++ arm_debug_flags ++ [_][]const u8{"-std=gnu2x"};
-
-/// CPU flags from cmake/toolchain-ra8d2.cmake. The RA8D2 primary M85 is
-/// single-precision, hence fpv5-sp-d16 with a hard float ABI; -mthumb because
-/// the M-profile cores are Thumb-only. These go on compile AND link: the link
-/// step picks its multilib from them.
-const arm_cpu_flags = arm_cpu_select_flags ++ [_][]const u8{
-    "-fdata-sections",
-    "-ffunction-sections",
-};
-
-/// The CPU selection on its own. CMAKE_ASM_FLAGS carries only this and the
-/// configuration's `-g3`: the assembler is handed no section splitting, no
-/// optimisation level and no dialect, so a middleware's hand-written port
-/// assembly cannot be given the C bar. Measured from a real configure's own
-/// database, where all 14 assembly units differ from the C units in exactly
-/// these flags.
-const arm_cpu_select_flags = [_][]const u8{
-    "-mcpu=cortex-m85",
-    "-mthumb",
-    "-mfloat-abi=hard",
-    "-mfpu=fpv5-sp-d16",
-};
-
-/// CMAKE_ASM_FLAGS plus CMAKE_ASM_FLAGS_DEBUG.
-const arm_asm_flags = arm_cpu_select_flags ++ [_][]const u8{"-g3"};
-
-/// Definitions cmake/toolchain-ra8d2.cmake adds at directory scope, so they
-/// reach every target in a cross configure and not just the app. The app's own
-/// bar repeats RA8_FREESTANDING through arm_dialect_flags, which is where it
-/// was first spelled (#936); this is the same define reaching a target that
-/// has no first-party profile at all.
-const arm_global_defines = [_][]const u8{"-DRA8_FREESTANDING"};
-
-/// The Debug configuration ra8_add_app() sets for a standalone app build.
-const arm_debug_flags = [_][]const u8{ "-O0", "-g3", "-DDEBUG" };
-
-/// The dialect half CMake puts in CMAKE_C_FLAGS, so it reaches every target in
-/// a cross configure and lands AHEAD of the app's warning profile.
-const arm_dialect_flags = [_][]const u8{
-    "-std=gnu2x",
-    "-DRA8_FREESTANDING",
-};
-
-/// The bare-metal half, which ra8_add_app() sets as target options and which
-/// therefore lands AFTER the warning profile on the real compile line.
-/// Position is the only thing that changed here (#1084): both flags are
-/// order-insensitive against a -W list, but this list is also what
-/// `zig build compile-db` writes, and a row whose argv is a permutation of the
-/// compiler's is a row no consumer can diff against a real configure's.
-/// -ffreestanding is what lets a firmware entry point be `void main(void)`;
-/// drop it and every app main.c stops compiling.
-const arm_target_dialect_flags = [_][]const u8{
-    "-ffreestanding",
-    "-fshort-enums",
-};
-
-/// The first-party warning profile from cmake/ra8_warnings.cmake at this app's
-/// STACK_BYTES budget. -Werror stays on for the same reason it does on the host
-/// slice: a TU that only compiles here under a looser bar than CMake holds it to
-/// would make the parity claim meaningless.
-const arm_warning_flags = [_][]const u8{
-    "-Wall",
-    "-Wextra",
-    "-Werror",
-    "-Wconversion",
-    "-Wcast-qual",
-    "-Wcast-align",
-    "-Wdouble-promotion",
-    "-Wformat=2",
-    "-Wpointer-arith",
-    "-Wshadow",
-    "-Wundef",
-    "-Wvla",
-    "-Wwrite-strings",
-    "-Wbad-function-cast",
-    "-Wmissing-declarations",
-    "-Wmissing-prototypes",
-    "-Wnested-externs",
-    "-Wold-style-definition",
-    "-Wredundant-decls",
-    "-Wstrict-prototypes",
-    "-Wduplicated-branches",
-    "-Wduplicated-cond",
-    "-Wformat-overflow=2",
-    "-Wformat-truncation=2",
-    "-Wlogical-op",
-};
-
-/// The two stack-budget flags, spelled at THIS app's budget. They are not part
-/// of the list above because the budget is per-app data, not a constant: see
-/// CrossApp.stack_bytes. -fstack-usage rides along with the gate because the
-/// same call in cmake/ra8_warnings.cmake adds both, and the `.su` files it
-/// writes are what scripts/checks/stack_usage_check.py aggregates.
-pub fn armWarningFlags(allocator: std.mem.Allocator, app: CrossApp) []const []const u8 {
-    var flags = std.ArrayList([]const u8).init(allocator);
-    flags.appendSlice(&arm_warning_flags) catch @panic("OOM");
-    const gate = std.fmt.allocPrint(allocator, "-Wstack-usage={d}", .{app.stack_bytes}) catch @panic("OOM");
-    flags.append(gate) catch @panic("OOM");
-    flags.append("-fstack-usage") catch @panic("OOM");
-    return flags.toOwnedSlice() catch @panic("OOM");
-}
-
-/// Link flags from the toolchain file: no hosted runtime, prune unused
-/// sections, and report the region usage the map file details.
-const arm_link_flags = [_][]const u8{
-    "-nostdlib",
-    "-Wl,--gc-sections",
-    "-Wl,--print-memory-usage",
-};
+/// The flag sets a cross configure hands each kind of translation unit, and
+/// the two flags TrustZone adds. Data with tests, in its own module since
+/// #1096: build.zig is at the file-size ceiling and these are measurements,
+/// not wiring. Aliased here under their old names so every call site below
+/// still reads as the flag set it is.
+pub const arm_flags = @import("tests/zig_build_graph/arm_flags.zig");
+const arm_global_flags = arm_flags.global_flags;
+const arm_cpu_flags = arm_flags.cpu_flags;
+const arm_asm_flags = arm_flags.asm_flags;
+const arm_global_defines = arm_flags.global_defines;
+const arm_debug_flags = arm_flags.debug_flags;
+const arm_dialect_flags = arm_flags.dialect_flags;
+const arm_target_dialect_flags = arm_flags.target_dialect_flags;
+const arm_link_flags = arm_flags.link_flags;
+pub const armWarningFlags = arm_flags.warningFlags;
 
 /// The three cross tools this slice drives.
 const ArmTools = struct {
@@ -537,10 +438,12 @@ fn addArmCrossApp(
         compile.addArgs(&arm_cpu_flags);
         compile.addArgs(&arm_debug_flags);
         compile.addArgs(&arm_dialect_flags);
+        if (app.trust_zone) compile.addArg(arm_flags.trust_zone.define);
         compile.addArgs(middleware_defines);
         compile.addArgs(local_defines);
         compile.addArgs(armWarningFlags(b.allocator, app));
         compile.addArgs(&arm_target_dialect_flags);
+        if (app.trust_zone) compile.addArg(arm_flags.trust_zone.cmse);
         // Prefixed directory args, not bare -I strings: this both spells the
         // include flag and declares the directory as an input of the step, so
         // editing a header actually invalidates the cached object.
@@ -604,8 +507,18 @@ fn addArmCrossApp(
     // advances (issue #8), which is the sharpest reason middleware belongs in
     // the graph as data rather than as a pile of source paths.
     link.addArgs(middleware.appLinkOptions(b.allocator, middlewares));
+    // Before -T, where CMake puts it: the link picks its multilib and its
+    // secure-gateway handling from this flag.
+    if (app.trust_zone) link.addArg(arm_flags.trust_zone.cmse);
     link.addPrefixedFileArg("-T", b.path(app.linker_script));
     const map = link.addPrefixedOutputFileArg("-Wl,--Map=", b.fmt("{s}.map", .{app.name}));
+    // The import library the Non-Secure link binds veneer names against. It
+    // is an OUTPUT of the secure link, so it is declared as one: a follow-up
+    // slice building the NS half consumes this path rather than re-deriving it.
+    const implib: ?std.Build.LazyPath = if (app.cmse_implib) |name| blk: {
+        link.addArg(arm_flags.trust_zone.implib_flag);
+        break :blk link.addPrefixedOutputFileArg(arm_flags.trust_zone.out_implib_prefix, name);
+    } else null;
     link.addArg("-o");
     const elf = link.addOutputFileArg(b.fmt("{s}.elf", .{app.name}));
     if (cpu1_blob) |blob| link.addFileArg(blob);
@@ -628,6 +541,9 @@ fn addArmCrossApp(
     arm_step.dependOn(&b.addInstallFileWithDir(hex, .{ .custom = "arm" }, b.fmt("{s}.hex", .{app.name})).step);
     arm_step.dependOn(&b.addInstallFileWithDir(bin, .{ .custom = "arm" }, b.fmt("{s}.bin", .{app.name})).step);
     arm_step.dependOn(&b.addInstallFileWithDir(map, .{ .custom = "arm" }, b.fmt("{s}.map", .{app.name})).step);
+    if (implib) |object| {
+        arm_step.dependOn(&b.addInstallFileWithDir(object, .{ .custom = "arm" }, app.cmse_implib.?).step);
+    }
 
     // The size report CMake prints as a post-build command.
     const report_size = b.addSystemCommand(&.{tools.size});
@@ -906,7 +822,7 @@ fn compileDbEntries(b: *std.Build) []const compile_db.Entry {
     // rather than failing the step, the same skip the `arm` step takes; the
     // count on `zig build parity` is what shows which of the two you got.
     if (findArmTools(b)) |tools| {
-        const arm_flags = arm_cpu_flags ++ arm_debug_flags ++ arm_dialect_flags;
+        const cross_flags = arm_cpu_flags ++ arm_debug_flags ++ arm_dialect_flags;
         for (cross_apps) |app| {
             const middlewares = middleware.resolve(b.allocator, app.uses);
             // A middleware's exports change the app's OWN rows, so an analysis
@@ -914,7 +830,8 @@ fn compileDbEntries(b: *std.Build) []const compile_db.Entry {
             // compiler had. Get this wrong and clang-tidy parses the app
             // against a different tx_api.h than the build does.
             var app_flags = std.ArrayList([]const u8).init(b.allocator);
-            app_flags.appendSlice(&arm_flags) catch @panic("OOM");
+            app_flags.appendSlice(&cross_flags) catch @panic("OOM");
+            if (app.trust_zone) app_flags.append(arm_flags.trust_zone.define) catch @panic("OOM");
             app_flags.appendSlice(middleware.appDefines(b.allocator, middlewares)) catch @panic("OOM");
             // Same reason for the app's own CMakeLists: its vendored
             // library's PUBLIC defines and its own PRIVATE ones are part of
@@ -925,6 +842,7 @@ fn compileDbEntries(b: *std.Build) []const compile_db.Entry {
             // build would hand clang-tidy a different bar than the compiler had.
             app_flags.appendSlice(armWarningFlags(b.allocator, app)) catch @panic("OOM");
             app_flags.appendSlice(&arm_target_dialect_flags) catch @panic("OOM");
+            if (app.trust_zone) app_flags.append(arm_flags.trust_zone.cmse) catch @panic("OOM");
             var include_dirs = std.ArrayList([]const u8).init(b.allocator);
             include_dirs.appendSlice(cross_sources.crossIncludeDirs(b, app)) catch @panic("OOM");
             include_dirs.appendSlice(middleware.appIncludeDirs(b.allocator, middlewares)) catch @panic("OOM");
