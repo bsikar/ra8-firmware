@@ -491,6 +491,212 @@ static void internal_test_abs(void)
   TEST_END("abs");
 }
 
+/**
+ * @brief Test the AEABI copy helpers against the ISO C contract.
+ * @details Exercises __aeabi_memcpy, __aeabi_memcpy4 and __aeabi_memcpy8 at
+ *          zero length, at an odd length, and from an unaligned source, and
+ *          proves each writes exactly @p n bytes and nothing beyond them.
+ * @pre s_gb1 and s_gb2 are addressable.
+ * @pre Canaries are intact before the test.
+ * @post Destination bytes match the source bytes for every variant.
+ * @post Canaries remain intact and the byte past the region is untouched.
+ * @note The aligned variants are byte-wise here, so the alignment claim is not
+ *       a precondition of the implementation.
+ * @since 0.1.0
+ * @par MC/DC:
+ * (no compound decisions under test -- delegation to memcpy)
+ */
+static void internal_test_aeabi_memcpy_family(void)
+{
+  TEST_BEGIN("aeabi memcpy family");
+  for (size_t variant = 0U; variant < 3U; ++variant) {
+    internal_buf_init(&s_gb1);
+    internal_buf_init(&s_gb2);
+    for (size_t i = 0U; i < k_fs_buffer_size; ++i) {
+      s_gb2.data[i] = (uint8_t)(i + 1U);
+    }
+
+    /* Zero length writes nothing. */
+    if (variant == 0U) {
+      __aeabi_memcpy(&s_gb1.data[8], &s_gb2.data[0], 0U);
+    } else if (variant == 1U) {
+      __aeabi_memcpy4(&s_gb1.data[8], &s_gb2.data[0], 0U);
+    } else {
+      __aeabi_memcpy8(&s_gb1.data[8], &s_gb2.data[0], 0U);
+    }
+    TEST_ASSERT_EQ(0U, s_gb1.data[8]);
+
+    /* Odd length from an unaligned source. */
+    if (variant == 0U) {
+      __aeabi_memcpy(&s_gb1.data[8], &s_gb2.data[3], 17U);
+    } else if (variant == 1U) {
+      __aeabi_memcpy4(&s_gb1.data[8], &s_gb2.data[3], 17U);
+    } else {
+      __aeabi_memcpy8(&s_gb1.data[8], &s_gb2.data[3], 17U);
+    }
+    TEST_ASSERT_EQ(0U, s_gb1.data[7]);
+    for (size_t i = 0U; i < 17U; ++i) {
+      TEST_ASSERT_EQ(s_gb2.data[3U + i], s_gb1.data[8U + i]);
+    }
+    TEST_ASSERT_EQ(0U, s_gb1.data[25]);
+    internal_assert_canaries(&s_gb1);
+    internal_assert_canaries(&s_gb2);
+  }
+  TEST_END("aeabi memcpy family");
+}
+
+/**
+ * @brief Test the AEABI move helpers in both overlap directions.
+ * @details Exercises __aeabi_memmove, __aeabi_memmove4 and __aeabi_memmove8
+ *          with the destination below and above the source, the case a plain
+ *          forward copy gets wrong in one direction only.
+ * @pre s_gb1 is addressable.
+ * @pre Canaries are intact before the test.
+ * @post Moved bytes equal the pre-move source bytes in both directions.
+ * @post Canaries remain intact.
+ * @note Overlap handling is memmove()'s; this asserts the helpers reach it.
+ * @since 0.1.0
+ * @par MC/DC:
+ * (no compound decisions under test -- delegation to memmove)
+ */
+static void internal_test_aeabi_memmove_family(void)
+{
+  TEST_BEGIN("aeabi memmove family");
+  for (size_t variant = 0U; variant < 3U; ++variant) {
+    /* Forward overlap: destination below source. */
+    internal_buf_init(&s_gb1);
+    for (size_t i = 0U; i < 32U; ++i) {
+      s_gb1.data[i] = (uint8_t)(0x10U + i);
+    }
+    if (variant == 0U) {
+      __aeabi_memmove(&s_gb1.data[0], &s_gb1.data[4], 16U);
+    } else if (variant == 1U) {
+      __aeabi_memmove4(&s_gb1.data[0], &s_gb1.data[4], 16U);
+    } else {
+      __aeabi_memmove8(&s_gb1.data[0], &s_gb1.data[4], 16U);
+    }
+    for (size_t i = 0U; i < 16U; ++i) {
+      TEST_ASSERT_EQ((0x14U + i), s_gb1.data[i]);
+    }
+    internal_assert_canaries(&s_gb1);
+
+    /* Backward overlap: destination above source. */
+    internal_buf_init(&s_gb1);
+    for (size_t i = 0U; i < 32U; ++i) {
+      s_gb1.data[i] = (uint8_t)(0x10U + i);
+    }
+    if (variant == 0U) {
+      __aeabi_memmove(&s_gb1.data[4], &s_gb1.data[0], 16U);
+    } else if (variant == 1U) {
+      __aeabi_memmove4(&s_gb1.data[4], &s_gb1.data[0], 16U);
+    } else {
+      __aeabi_memmove8(&s_gb1.data[4], &s_gb1.data[0], 16U);
+    }
+    for (size_t i = 0U; i < 16U; ++i) {
+      TEST_ASSERT_EQ((0x10U + i), s_gb1.data[4U + i]);
+    }
+    internal_assert_canaries(&s_gb1);
+  }
+  TEST_END("aeabi memmove family");
+}
+
+/**
+ * @brief Test the AEABI fill helpers, argument order included.
+ * @details __aeabi_memset takes (dst, n, value) where memset takes
+ *          (dst, value, n). The lengths and values chosen here differ, so a
+ *          transposed implementation writes the wrong count of the wrong byte
+ *          and both the filled region and the byte past it disagree.
+ * @pre s_gb1 is addressable.
+ * @pre Canaries are intact before the test.
+ * @post Exactly @p n bytes hold the requested value for every variant.
+ * @post The byte past the region is unchanged and canaries are intact.
+ * @note This is the assertion that catches a transposed shim, which otherwise
+ *       links clean and corrupts memory.
+ * @since 0.1.0
+ * @par MC/DC:
+ * (no compound decisions under test -- delegation to memset)
+ */
+static void internal_test_aeabi_memset_family(void)
+{
+  TEST_BEGIN("aeabi memset family");
+  for (size_t variant = 0U; variant < 3U; ++variant) {
+    internal_buf_init(&s_gb1);
+
+    if (variant == 0U) {
+      __aeabi_memset(&s_gb1.data[8], 5U, 0xABU);
+    } else if (variant == 1U) {
+      __aeabi_memset4(&s_gb1.data[8], 5U, 0xABU);
+    } else {
+      __aeabi_memset8(&s_gb1.data[8], 5U, 0xABU);
+    }
+    TEST_ASSERT_EQ(0U, s_gb1.data[7]);
+    for (size_t i = 0U; i < 5U; ++i) {
+      TEST_ASSERT_EQ(0xABU, s_gb1.data[8U + i]);
+    }
+    TEST_ASSERT_EQ(0U, s_gb1.data[13]);
+
+    /* Zero length writes nothing, whichever way the arguments are read. */
+    if (variant == 0U) {
+      __aeabi_memset(&s_gb1.data[32], 0U, 0x7FU);
+    } else if (variant == 1U) {
+      __aeabi_memset4(&s_gb1.data[32], 0U, 0x7FU);
+    } else {
+      __aeabi_memset8(&s_gb1.data[32], 0U, 0x7FU);
+    }
+    TEST_ASSERT_EQ(0U, s_gb1.data[32]);
+    internal_assert_canaries(&s_gb1);
+  }
+  TEST_END("aeabi memset family");
+}
+
+/**
+ * @brief Test the AEABI clear helpers over a pre-filled buffer.
+ * @details __aeabi_memclr takes (dst, n) and passes no value at all. The
+ *          buffer is filled with a non-zero pattern first, so a helper that
+ *          cleared nothing, or cleared the wrong count, is visible.
+ * @pre s_gb1 is addressable.
+ * @pre Canaries are intact before the test.
+ * @post Exactly @p n bytes are zero and the neighbouring bytes keep the fill.
+ * @post Canaries remain intact.
+ * @note Zero length is asserted too, since the count is the only argument.
+ * @since 0.1.0
+ * @par MC/DC:
+ * (no compound decisions under test -- delegation to memset)
+ */
+static void internal_test_aeabi_memclr_family(void)
+{
+  TEST_BEGIN("aeabi memclr family");
+  for (size_t variant = 0U; variant < 3U; ++variant) {
+    internal_buf_init(&s_gb1);
+    (void)memset(s_gb1.data, 0x5AU, 64U);
+
+    if (variant == 0U) {
+      __aeabi_memclr(&s_gb1.data[8], 9U);
+    } else if (variant == 1U) {
+      __aeabi_memclr4(&s_gb1.data[8], 9U);
+    } else {
+      __aeabi_memclr8(&s_gb1.data[8], 9U);
+    }
+    TEST_ASSERT_EQ(0x5AU, s_gb1.data[7]);
+    for (size_t i = 0U; i < 9U; ++i) {
+      TEST_ASSERT_EQ(0U, s_gb1.data[8U + i]);
+    }
+    TEST_ASSERT_EQ(0x5AU, s_gb1.data[17]);
+
+    /* Zero length leaves the fill in place. */
+    if (variant == 0U) {
+      __aeabi_memclr(&s_gb1.data[32], 0U);
+    } else if (variant == 1U) {
+      __aeabi_memclr4(&s_gb1.data[32], 0U);
+    } else {
+      __aeabi_memclr8(&s_gb1.data[32], 0U);
+    }
+    TEST_ASSERT_EQ(0x5AU, s_gb1.data[32]);
+    internal_assert_canaries(&s_gb1);
+  }
+  TEST_END("aeabi memclr family");
+}
+
 int main(void)
 {
   internal_test_memset_basic();
@@ -505,5 +711,9 @@ int main(void)
   internal_test_strstr();
   internal_test_strcpy_strncpy();
   internal_test_abs();
+  internal_test_aeabi_memcpy_family();
+  internal_test_aeabi_memmove_family();
+  internal_test_aeabi_memset_family();
+  internal_test_aeabi_memclr_family();
   return 0;
 }
