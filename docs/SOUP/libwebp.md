@@ -50,8 +50,8 @@ into this firmware as Software Of Unknown Provenance (SOUP).
   #289 that landed before it closed on 2026-07-20. The other half did not: the
   `reflow` **inline small-image** path
   (`apps/shared_libs/reflow/src/reflow_image.c`) is still `stb_image`-only and
-  fails a WebP closed. That residual arm is tracked by #637, which also owns
-  the `TODO(#289)` seam comments left in `ra8_webp.c` / `ra8_webp.h`.
+  fails a WebP closed. That residual arm is tracked by #637, which the seam
+  comments in `ra8_webp.c` / `ra8_webp.h` now name directly (`TODO(#637)`).
 
 ## Qualification basis
 

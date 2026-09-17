@@ -16,13 +16,15 @@
  * book -- and are fuzzed by `tests/fuzz/src/fuzz_ra8_webp.c`.
  *
  * @par Integration (#290 normalize-on-import):
- * The JOF tile producer consumes this facade
- * (`ra8_jof_produce()` -> `priv_webp_transcode`): a WebP manifest image
- * is decoded whole-frame here and banded into the one normalized band-tile
- * format, so render time touches a single codec regardless of source. The
- * small-image (non-tiled) `ra8_reflow` / `ra8_img` inline raster dispatch does
- * not yet have a WebP arm -- that lands with the #289 longstrip render path; see
- * the `TODO(#289)` seam in ra8_webp.c.
+ * The JOF tile producer consumes this facade in its WebP arm
+ * (`priv_jof_webp_transcode()`, `apps/shared_libs/jof/src/jof_produce_webp.c`):
+ * a WebP manifest image is decoded whole-frame here and banded into the one
+ * normalized band-tile format, so render time touches a single codec regardless
+ * of source. The small-image (non-tiled) `reflow` / `ra8_img` inline raster
+ * dispatch does not yet have a WebP arm -- that residual arm is tracked by
+ * #637; #289, the longstrip render path this comment used to defer to, closed
+ * on 2026-07-20 with only the band-tile half landed. See the `TODO(#637)` seam
+ * in ra8_webp.c.
  *
  *
  * [Ring 4 / WebP] {World: NS}
