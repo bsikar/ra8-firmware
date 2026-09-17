@@ -42,8 +42,6 @@
  * @param[in] ap Argument list positioned at the first conversion argument.
  *               The caller owns starting and ending it.
  *
- * @return Nothing.
- *
  * @pre The caller has started ``ap`` and will end it.
  * @pre The variable arguments match the conversions in ``fmt``.
  * @post At most one line reaches the sink.

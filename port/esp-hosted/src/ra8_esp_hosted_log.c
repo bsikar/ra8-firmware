@@ -113,8 +113,6 @@ static const char* const s_ra8_esp_hosted_log_tag = "C6LINK";
  * @param[in] tag Tag to attribute the line to. Must be non-null.
  * @param[in] line Formatted text. Must be non-null.
  *
- * @return Nothing.
- *
  * @pre ``tag`` and ``line`` are non-null.
  * @pre The runtime threshold has already accepted this level.
  * @post Exactly one line is handed to the project logger.

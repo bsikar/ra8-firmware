@@ -367,8 +367,6 @@ typedef void (*ra8_esp_hosted_event_cb_t)(void*       ctx,
  *                  A null pointer is replaced with a fixed placeholder
  *                  rather than dereferenced.
  *
- * @return Nothing.
- *
  * @pre The port is initialised, or the call reports the pool as absent.
  * @pre Logging has been initialised, or the line is dropped.
  * @post No pool state is modified.
@@ -399,8 +397,6 @@ void ra8_esp_hosted_mem_dump(const char* label);
  * @param[in] func Name of the requesting function, normally ``__func__``.
  *                 A null pointer is replaced with a fixed placeholder.
  * @param[in] bytes Size that could not be served, in bytes.
- *
- * @return Nothing.
  *
  * @pre Logging has been initialised, or the line is dropped.
  * @pre The caller has already decided to abandon the operation.

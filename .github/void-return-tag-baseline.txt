@@ -45,17 +45,6 @@ libs/ra8_nsc/src/ra8_nsc_wdt.c	ra8_nsc_wdt_refresh	1
 libs/ra8_sdmmc_spi/src/ra8_sdmmc_spi.c	internal_recover_stuck_card	1
 libs/ra8_wifi/src/ra8_wifi_c6link.c	internal_c6link_on_event	1
 libs/ra8_wifi/src/ra8_wifi_c6link.c	internal_c6link_op_idle	1
-port/esp-hosted/inc/ra8_esp_hosted_port.h	ra8_esp_hosted_alloc_failed	1
-port/esp-hosted/inc/ra8_esp_hosted_port.h	ra8_esp_hosted_mem_dump	1
-port/esp-hosted/src/ra8_esp_hosted_c6link.c	internal_ra8_esp_hosted_c6link_delay	1
-port/esp-hosted/src/ra8_esp_hosted_fmt.c	internal_emit_conv	1
-port/esp-hosted/src/ra8_esp_hosted_fmt.c	internal_emit_token	1
-port/esp-hosted/src/ra8_esp_hosted_fmt.c	internal_pad	1
-port/esp-hosted/src/ra8_esp_hosted_fmt.c	internal_put	1
-port/esp-hosted/src/ra8_esp_hosted_log.c	internal_emit	1
-port/esp-hosted/src/ra8_esp_hosted_log_internal.h	priv_ra8_esp_hosted_log_vwrite	1
-port/esp-hosted/src/ra8_esp_hosted_osi.c	internal_init_hook	1
-port/esp-hosted/src/ra8_esp_hosted_osi_internal.h	priv_ra8_esp_hosted_osi_bind_absent	1
 port/usbx/src/ux_dcd_ra8_usb.c	ux_dcd_ra8_usb_auto_echo_enable	1
 port/usbx/src/ux_dcd_ra8_usb.c	ux_dcd_ra8_usb_irq_reenable	1
 port/usbx/src/ux_dcd_ra8_usb_dvst.c	internal_dvst_track_speed	1

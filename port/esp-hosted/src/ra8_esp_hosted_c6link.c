@@ -130,7 +130,6 @@ RA8_INTERNAL static bool internal_ra8_esp_hosted_c6link_handshake(void* ctx)
  *        what lets a host test bind one that costs no wall time.
  * @param[in] ctx Unused; the port is a singleton.
  * @param[in] ms Milliseconds to sleep.
- * @return Nothing.
  * @pre ::ra8_esp_hosted_port_init has succeeded, or the call is a no-op.
  * @pre The caller is a thread, not an interrupt handler.
  * @post At least @p ms milliseconds of ThreadX ticks have elapsed.

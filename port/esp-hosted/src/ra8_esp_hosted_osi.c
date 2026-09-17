@@ -311,8 +311,6 @@ internal_printf(int level, const char* tag, const char* format, ...)
  * that and reports the pool state -- which is exactly the moment a
  * budgeting mistake is cheapest to see.
  *
- * @return Nothing.
- *
  * @pre ``ra8_esp_hosted_port_init`` has completed.
  * @pre The ThreadX kernel is running.
  * @post No port state is modified.

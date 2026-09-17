@@ -173,8 +173,6 @@ static const char s_ra8_esp_hosted_fmt_digits_upper[] = "0123456789ABCDEF";
  * @param[in,out] cur Cursor to append through. Must be non-null.
  * @param[in] ch Character to append.
  *
- * @return Nothing.
- *
  * @pre ``cur`` is non-null and its buffer holds ``cap`` bytes.
  * @pre ``cur->len`` is less than ``cur->cap``.
  * @post ``cur->len`` grows by at most one.
@@ -203,8 +201,6 @@ static void internal_put(ra8_esp_hosted_fmt_cursor_t* cur, char ch)
  * @param[in,out] cur Cursor to append through. Must be non-null.
  * @param[in] pad Character to repeat.
  * @param[in] count Repeat count, already clamped by the caller.
- *
- * @return Nothing.
  *
  * @pre ``cur`` is non-null.
  * @pre ``count`` is at most ::k_ra8_esp_hosted_fmt_width_max.
@@ -540,8 +536,6 @@ static int64_t internal_next_signed(ra8_esp_hosted_fmt_args_t* args, ra8_esp_hos
  * @param[in] token NUL-terminated text to emit.
  * @param[in] token_len Length of ``token`` in characters.
  *
- * @return Nothing.
- *
  * @pre ``cur``, ``spec`` and ``token`` are non-null.
  * @pre ``token_len`` is the length of ``token``.
  * @post The field is at least ``spec->width`` characters wide, subject to
@@ -619,8 +613,6 @@ static uint16_t internal_bounded_len(const char* text)
  * @param[in,out] cur Cursor to append through.
  * @param[in] spec Parsed conversion specification.
  * @param[in,out] args Copied argument list to advance.
- *
- * @return Nothing.
  *
  * @pre ``cur`` and ``spec`` are non-null and ``spec->conv`` is supported.
  * @pre ``args`` is positioned at this conversion's argument.

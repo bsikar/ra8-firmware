@@ -86,8 +86,6 @@ RA8_PRIV
  * @param[out] out Table whose absent-transport rows are filled. Must be
  *                 non-null. Only those rows are written.
  *
- * @return Nothing.
- *
  * @pre ``out`` points at writable storage for one table.
  * @pre The caller zeroed the table, or accepts that other rows survive.
  * @post Every SDIO, half-duplex SPI and UART row is non-null.
