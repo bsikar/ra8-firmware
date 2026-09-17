@@ -18,6 +18,7 @@ const sources = graph.cross_sources;
 const cpu1 = graph.cpu1_image;
 const mw = graph.middleware;
 const local = graph.app_local;
+const ns = graph.ns_image;
 
 /// The apps the cross slice builds, by the rules they exercise: one that names
 /// no libraries at all, one that names two, and one that keeps more than a
@@ -694,4 +695,149 @@ test "the secure half names the CMSE import library, and only it does" {
         defer std.testing.allocator.free(expected);
         try std.testing.expectEqualStrings(expected, own);
     }
+}
+
+/// The Non-Secure image of the two-project TrustZone app (#1111). Its rules
+/// live on the app entry above, which is the only one in the tree that has a
+/// second, separate executable rather than an embedded blob.
+const ns_image_of = trust_zone_app.ns.?;
+
+test "the NS image's vendored globs take both arms of every filter" {
+    // The two simulators are excluded by the app's own list(FILTER EXCLUDE
+    // REGEX), and the exclusion is a PREFIX on the basename: the neighbouring
+    // real device-stack sources stay.
+    const core = ns_image_of.vendored[0];
+    try std.testing.expect(!ns.vendoredSelects(core, "ux_dcd_sim_slave_initialize.c"));
+    try std.testing.expect(!ns.vendoredSelects(core, "ux_hcd_sim_host_entry.c"));
+    try std.testing.expect(ns.vendoredSelects(core, "ux_device_stack_initialize.c"));
+    try std.testing.expect(ns.vendoredSelects(core, "ux_utility_memory_allocate.c"));
+    // Headers are never sources, whatever the prefix says.
+    try std.testing.expect(!ns.vendoredSelects(core, "ux_device_stack_initialize.h"));
+
+    // The class tree holds 225 drivers and this image wants the CDC-ACM ones,
+    // so the glob is a prefix rather than the directory.
+    const cdc = ns_image_of.vendored[1];
+    try std.testing.expect(ns.vendoredSelects(cdc, "ux_device_class_cdc_acm_read.c"));
+    try std.testing.expect(!ns.vendoredSelects(cdc, "ux_device_class_storage_read.c"));
+
+    // And the first-party bridge glob is ux_dcd_ra8_usb*, which is why the
+    // host-controller driver and the storage class TU sitting in the same
+    // directory do not join the NS image.
+    const bridge = ns_image_of.vendored[2];
+    try std.testing.expect(ns.vendoredSelects(bridge, "ux_dcd_ra8_usb_ep.c"));
+    try std.testing.expect(!ns.vendoredSelects(bridge, "ux_hcd_ra8_usb.c"));
+    try std.testing.expect(!ns.vendoredSelects(bridge, "ux_device_class_storage_inquiry.c"));
+}
+
+test "the NS suppressions are on the vendored sets and not on the bridge" {
+    try std.testing.expectEqual(@as(usize, 2), ns_image_of.vendored[0].suppressions.len);
+    try std.testing.expectEqualStrings("-Wno-discarded-qualifiers", ns_image_of.vendored[0].suppressions[0]);
+    try std.testing.expectEqualStrings("-Wno-cast-align", ns_image_of.vendored[0].suppressions[1]);
+    try std.testing.expectEqual(@as(usize, 2), ns_image_of.vendored[1].suppressions.len);
+    // The bridge is first-party: it keeps -Wcast-align, which is one of the
+    // two the vendor sources are excused from.
+    try std.testing.expectEqual(@as(usize, 0), ns_image_of.vendored[2].suppressions.len);
+
+    // A suppression rides at the END of the unit's flag list, after the
+    // warning profile it is excusing, or it suppresses nothing.
+    const warnings = [_][]const u8{ "-Wall", "-Werror", "-Wcast-align" };
+    // These helpers hand back an ArrayList's items, whose capacity need not
+    // equal its length, so the test owns an arena rather than freeing slices.
+    var arena = std.heap.ArenaAllocator.init(std.testing.allocator);
+    defer arena.deinit();
+    const flags = ns.compileFlags(
+        arena.allocator(),
+        &.{"-std=gnu2x"},
+        &warnings,
+        .{ .path = "x.c", .suppressions = ns_image_of.vendored[0].suppressions },
+    );
+    try std.testing.expectEqualStrings("-Wno-cast-align", flags[flags.len - 1]);
+    // And the raw target's dialect options land BEFORE the profile here, the
+    // reverse of what ra8_add_app() produces: this app's CMakeLists calls
+    // target_compile_options() before ra8_target_enable_project_warnings().
+    try std.testing.expectEqualStrings("-fshort-enums", flags[1]);
+    try std.testing.expectEqualStrings("-ffreestanding", flags[2]);
+    try std.testing.expectEqualStrings("-Wall", flags[3]);
+}
+
+test "the NS image's defines are sorted and deduplicated, not declaration order" {
+    var arena = std.heap.ArenaAllocator.init(std.testing.allocator);
+    defer arena.deinit();
+    const flags = ns.defines(
+        arena.allocator(),
+        ns_image_of,
+        mw.threadx_ns,
+        &.{"-DRA8_FREESTANDING"},
+    );
+    // The target declares RA8_TRUSTZONE_ENABLE first, yet CMake's generator
+    // keeps definitions in a set and emits them lexicographically. A graph
+    // that wrote declaration order would write database rows no consumer
+    // could diff against a real configure.
+    const expected = [_][]const u8{
+        "-DRA8_FREESTANDING",
+        "-DRA8_PERIPH_NS_ALIAS",
+        "-DRA8_THREADX_NON_SECURE",
+        "-DRA8_TRUSTZONE_ENABLE",
+        "-DRA8_USB_POLLED_ONLY",
+        "-DTX_INCLUDE_USER_DEFINE_FILE",
+    };
+    try std.testing.expectEqual(expected.len, flags.len);
+    for (expected, flags) |want, got| try std.testing.expectEqualStrings(want, got);
+}
+
+test "threadx_ns is a different archive from threadx, not the same one with a flag" {
+    // The define that flips tx_user.h from TX_SINGLE_MODE_SECURE to
+    // TX_SINGLE_MODE_NON_SECURE. Same kernel sources, different kernel.
+    var secure_has_ns_define = false;
+    for (mw.threadx.public_defines) |define| {
+        if (std.mem.eql(u8, define, "-DRA8_THREADX_NON_SECURE")) secure_has_ns_define = true;
+    }
+    try std.testing.expect(!secure_has_ns_define);
+    try std.testing.expectEqualStrings("-DRA8_THREADX_NON_SECURE", mw.threadx_ns.public_defines[0]);
+
+    // The NS archive drops the SysTick retune (it reprograms a secure-world
+    // peripheral) and carries the three freestanding shims instead, because
+    // the NS image links no libc and no libgcc at all.
+    var secure_has_retune = false;
+    for (mw.threadx.project_sources) |source| {
+        if (std.mem.endsWith(u8, source, "tx_systick_retune.c")) secure_has_retune = true;
+    }
+    try std.testing.expect(secure_has_retune);
+    var ns_shims: usize = 0;
+    for (mw.threadx_ns.project_sources) |source| {
+        try std.testing.expect(!std.mem.endsWith(u8, source, "tx_systick_retune.c"));
+        if (std.mem.indexOf(u8, source, "ra8_freestanding_") != null) ns_shims += 1;
+    }
+    try std.testing.expectEqual(@as(usize, 3), ns_shims);
+
+    // Dropping that TU is why the private include path narrows: ra8_hal was
+    // only ever there for it.
+    try std.testing.expectEqual(@as(usize, 1), mw.threadx_ns.private_include_dirs.len);
+    try std.testing.expectEqualStrings("libs/ra8_core/inc", mw.threadx_ns.private_include_dirs[0]);
+
+    // And the -I order is each listfile's own call order, not a convention:
+    // threadx_ns declares PUBLIC first, threadx declares PRIVATE first.
+    var arena = std.heap.ArenaAllocator.init(std.testing.allocator);
+    defer arena.deinit();
+    const ns_dirs = mw.includeDirs(arena.allocator(), mw.threadx_ns);
+    try std.testing.expectEqualStrings("port/threadx/inc", ns_dirs[0]);
+    try std.testing.expectEqualStrings("libs/ra8_core/inc", ns_dirs[1]);
+    const secure_dirs = mw.includeDirs(arena.allocator(), mw.threadx);
+    try std.testing.expectEqualStrings("libs/ra8_core/inc", secure_dirs[0]);
+    try std.testing.expectEqualStrings("port/threadx/inc", secure_dirs[secure_dirs.len - 1]);
+}
+
+test "the NS image's own sources are exactly the AUX_SRCS the secure image excludes" {
+    // One file set, two images. The only thing keeping ns_main.c out of the
+    // M85 secure image and inside the NS one is these two lists agreeing.
+    try std.testing.expectEqual(trust_zone_app.aux_srcs.len, ns_image_of.app_sources.len);
+    for (trust_zone_app.aux_srcs, ns_image_of.app_sources) |aux, own| {
+        try std.testing.expectEqualStrings(aux, own);
+    }
+    // The NS link has no -lgcc, so its libc comes from the archive: assert the
+    // image really does name the NS middleware variant rather than the secure
+    // one, which does not carry the shims.
+    try std.testing.expectEqualStrings("threadx_ns", ns_image_of.uses);
+    try std.testing.expectEqualStrings("ns_image.ld", ns_image_of.linker_script);
+    try std.testing.expectEqualStrings("-nostartfiles", ns_image_of.link_flags[0]);
 }

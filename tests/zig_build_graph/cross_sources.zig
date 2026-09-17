@@ -19,6 +19,7 @@
 const std = @import("std");
 const cpu1_image = @import("cpu1_image.zig");
 const app_local_mod = @import("app_local.zig");
+const ns_image_mod = @import("ns_image.zig");
 
 /// The app this slice cross-builds, spelled the way ra8_add_app() resolves it.
 pub const CrossApp = struct {
@@ -96,6 +97,12 @@ pub const CrossApp = struct {
     /// emit, named as the file name CMake gives it. Null for every app that
     /// is not the secure half of a two-project TrustZone build.
     cmse_implib: ?[]const u8 = null,
+    /// The SECOND executable of a two-project TrustZone build: the Non-Secure
+    /// image, declared by the app's own CMakeLists with a raw add_executable()
+    /// and linked against the import library the secure link above emits. Null
+    /// for every app that is not the secure half of such a build. See
+    /// ns_image.zig.
+    ns: ?ns_image_mod.NsImage = null,
 };
 
 /// A name in `LIBS` that contributes translation units from somewhere other
@@ -199,6 +206,17 @@ pub const board_opt_in_sources = [_]BoardOptIn{
 // ===========================================================================
 // The app table (#936, widened by #1021, #1036, #1044, #1054, #1068)
 // ===========================================================================
+
+/// The two warnings the app's own CMakeLists suppresses on the VENDORED USBX
+/// sources and nowhere else. Measured there one flag at a time over all 187
+/// USBX TUs this image compiles: both fire, and the third the audit started
+/// with (-Wno-redundant-decls) fired on none and was deleted. Named once here
+/// because two vendored sets carry the same pair and the first-party bridge
+/// beside them carries neither.
+const usbx_suppressions = [_][]const u8{
+    "-Wno-discarded-qualifiers",
+    "-Wno-cast-align",
+};
 
 pub const cross_apps = [_]CrossApp{
     .{
@@ -448,6 +466,72 @@ pub const cross_apps = [_]CrossApp{
         .nsc_srcs = &.{"ra8_nsc_cgc.c"},
         .trust_zone = true,
         .cmse_implib = "tz_nsc_cgc_usb_cmse_import.o",
+        // The Non-Secure half (#1111). The three ns_*.c files AUX_SRCS keeps
+        // out of the secure image above are this image's own sources, which is
+        // the same one-file-two-images shape cpu1_pingpong has (#1044) with a
+        // whole vendored USB stack and an RTOS variant on top.
+        .ns = .{
+            .name = "tz_nsc_cgc_usb_ns",
+            .app_sources = &.{ "src/ns_main.c", "src/ns_usb.c", "src/ns_usb_host.c" },
+            .vendored = &.{
+                .{
+                    .dir = "libs/third_party/usbx/common/core/src",
+                    .excluded_prefixes = &.{ "ux_dcd_sim_slave_", "ux_hcd_sim_host_" },
+                    .suppressions = &usbx_suppressions,
+                },
+                .{
+                    .dir = "libs/third_party/usbx/common/usbx_device_classes/src",
+                    .prefix = "ux_device_class_cdc_acm_",
+                    .suppressions = &usbx_suppressions,
+                },
+                // The first-party USBX<->ra8_usb bridge, globbed as the app
+                // globs it (ux_dcd_ra8_usb*.c, so neither ux_hcd_ra8_usb.c nor
+                // the storage class TU beside them joins) and WITHOUT the
+                // suppressions above: it is ours and keeps the full bar.
+                .{ .dir = "port/usbx/src", .prefix = "ux_dcd_ra8_usb" },
+            },
+            // Named one by one, in the app's order. ra8_time.c is deliberately
+            // absent: its ra8_time_init reprograms the SysTick ThreadX owns,
+            // and ns_usb.c supplies the ThreadX-backed ra8_delay_ms instead.
+            .private_sources = &.{
+                "libs/ra8_hal/src/ra8_usb.c",
+                "libs/ra8_hal/src/ra8_usb_phy.c",
+                "libs/ra8_hal/src/ra8_usb_device.c",
+                "libs/ra8_hal/src/ra8_usb_xfer.c",
+                "libs/ra8_hal/src/ra8_usb_irq.c",
+                "libs/ra8_hal/src/ra8_usb_host_ctrl.c",
+                "libs/ra8_hal/src/ra8_usb_host_bulk.c",
+                "libs/ra8_hal/src/ra8_mstp.c",
+                "libs/ra8_core/src/ra8_log.c",
+                "libs/ra8_core/src/ra8_scb.c",
+            },
+            // RA8_PERIPH_NS_ALIAS routes ra8_usb/ra8_mstp at the IDAU
+            // bit[28]=1 Non-secure alias; RA8_USB_POLLED_ONLY keeps the DCD
+            // off the Secure-attributed USB NVIC line.
+            .defines = &.{
+                "-DRA8_TRUSTZONE_ENABLE",
+                "-DRA8_PERIPH_NS_ALIAS",
+                "-DRA8_USB_POLLED_ONLY",
+            },
+            .app_include_dirs = &.{ "inc", "src" },
+            .include_dirs = &.{
+                "libs/ra8_core/inc",
+                "libs/ra8_hal/inc",
+                "libs/ra8_nsc/inc",
+                "port/usbx/inc",
+                "libs/ra8_usb_pal/inc",
+                "libs/ra8_board_ek_ra8d2/inc",
+            },
+            .system_include_dirs = &.{
+                "libs/third_party/usbx/common/core/inc",
+                "libs/third_party/usbx/common/usbx_device_classes/inc",
+                "libs/third_party/usbx/ports/cortex_m33/gnu/inc",
+            },
+            .uses = "threadx_ns",
+            .stack_bytes = 2200,
+            .linker_script = "ns_image.ld",
+            .link_flags = &.{"-nostartfiles"},
+        },
     },
 };
 
