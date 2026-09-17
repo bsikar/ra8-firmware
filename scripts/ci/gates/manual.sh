@@ -348,6 +348,13 @@ gate_docs_publish() (
 # can actually prove today rather than claiming the whole Zig surface.
 gate_macos_host_build() (
   set -e
+  # pipefail, because everything below is piped into `tee` and a pipeline's
+  # status is its LAST command's. Without it the gate's verdict would become
+  # tee's exit status -- zero whenever the file could be written -- so a Mac
+  # that failed every root would still report a pass. `set -e` alone does not
+  # cover this: a failing command inside the left-hand side of a pipeline is
+  # not an errexit trigger, the pipeline's status is.
+  set -o pipefail
   # `uname -m` describes this PROCESS, not this machine: under Rosetta 2 an
   # arm64 Mac reports x86_64, and the refusal below used to send the owner off
   # to find hardware they were already sitting at. host_arch.sh separates the
@@ -378,86 +385,109 @@ gate_macos_host_build() (
   require_cmd zig "the macos-host-build gate builds every host root with the pinned Zig"
   require_tool_versions zig
 
-  # An SDK precondition has to RUN the probe, not check that xcrun exists.
-  # macOS ships /usr/bin/xcrun as a stub on every install, so `require_cmd
-  # xcrun` passed on a Mac with no Command Line Tools at all; the graph then
-  # found no SDK, pinned the bundled libSystem stub, every root built, and this
-  # gate reported green for the native SDK link path it never took (#899).
-  # macos_sdk.sh runs `xcrun --show-sdk-path` and keeps the failures apart --
-  # no developer directory, an unaccepted licence, a moved SDK, an SDK with no
-  # libSystem stub -- because each needs a different fix.
-  printf '=== active macOS SDK ===\n'
-  # shellcheck source=scripts/ci/lib/macos_sdk.sh
-  . scripts/ci/lib/macos_sdk.sh
-  ra8_macos_sdk_require
 
-  # Diagnostics first and unconditionally: which stub the graph chose, and why,
-  # is the single input that decides this whole gate, and a failure is
-  # unreadable without it. This prints the build graph's OWN decision rather
-  # than re-deriving it here with grep, so the gate cannot disagree with the
-  # thing it is gating -- and it distinguishes "the stub omits arm64-macos"
-  # from "there was no stub to read", which need different fixes.
-  printf '=== host target decision ===\n'
-  (cd tools/zig_build && zig build explain-host-target)
-
-  # The decision above is only a fix while the stub it pins TO can link us.
-  # The runner installs its own pinned Zig, so the bundled libSystem stub is
-  # whatever that tarball shipped; a toolchain bump that dropped arm64-macos
-  # would make the pinned query fail exactly like the SDK one it replaced,
-  # and every root below would go red with an undefined-symbol wall instead
-  # of naming the cause.
-  printf '\n=== bundled libSystem stub ===\n'
-  (cd tools/zig_build && zig build verify-bundled-stub)
-
-  # Which roots this gate builds is a declared list with a reason per root,
-  # not three names inlined here: a host root added later takes its default
-  # target from ra8_build.hostDefaultTargetQuery and so looks correct from
-  # Linux, while nothing ever builds it on a Mac. macos_host_roots.sh --selftest
-  # fails when a build.zig exists that the manifest does not mention, and the
-  # coverage is printed so a GREEN run states what it did not measure.
-  printf '\n=== gate coverage ===\n'
-  ra8_macos_host_announce_coverage
-
-  local root
-  while IFS= read -r root; do
-    printf '\n=== %s: zig build (default host target) ===\n' "${root}"
-    (cd "${root}" && zig build --summary all)
-    printf '\n=== %s: zig build test ===\n' "${root}"
-    (cd "${root}" && zig build test --summary all)
-  done < <(ra8_macos_host_covered_roots)
-
-  # Linking is not the claim; what came out of the link is. Read the emitted
-  # Mach-O back and check it is a native arm64 image, stamped with the
-  # deployment target this build was configured for, linked against the system
-  # libSystem. A build that quietly took Zig's default macOS floor instead of
-  # the host's version also exits zero, and would otherwise pass here.
-  printf '\n=== apps/host/image_pyramid: verify-host-artifact ===\n'
-  (cd apps/host/image_pyramid && zig build verify-host-artifact --summary all)
-
-  # The forced-bundled escape hatch is load-bearing on an affected Mac, so it
-  # is part of the verdict.
-  printf '\n=== apps/host/image_pyramid: -Dmacos-libsystem=bundled ===\n'
-  (cd apps/host/image_pyramid && zig build -Dmacos-libsystem=bundled)
-
-  # The forced-SDK leg is INFORMATIONAL and may legitimately fail: failing is
-  # precisely the bug #899 reports, and the default auto path above is what
-  # carries the verdict. It stays in the log so the day Apple ships an
-  # arm64-macos target in the stub is visible here instead of going unnoticed.
+  # The transcript, and why the gate writes one rather than leaving it to the
+  # runner's log. This is the only gate in the suite that runs on hardware
+  # nobody here can log into, so its output IS the finding: which stub the
+  # graph pinned, what the SDK leg did, which root broke. A hosted-runner log
+  # is retained with its run and cannot be attached to an issue, diffed
+  # against last night's, or read at all once the run ages out -- and the
+  # workflow has no upload step to save one. A file on disk can be uploaded as
+  # an artifact, kept next to a bug report, or mailed to whoever owns the Mac.
   #
-  # It used to be a boolean, and a boolean cannot tell its expected failure
-  # from an unrelated one. `zig build -Dmacos-libsystem=sdk` also exits
-  # non-zero when the option has been renamed out of tools/zig_build (`error:
-  # invalid option: -Dmacos-libsystem`), and the old else-branch reported that
-  # as an affected SDK -- so the one leg that still touches Apple's own stub
-  # would have gone on printing the #899 shape every night while measuring
-  # nothing. A compile error or a cache failure read the same way.
-  # macos_sdk_link.sh classifies the outcome instead: the two real SDK
-  # findings stay informational, a dead option and an unrecognised failure
-  # refuse, because a leg that cannot ask its question must not answer it.
-  printf '\n=== apps/host/image_pyramid: -Dmacos-libsystem=sdk (informational) ===\n'
-  # shellcheck source=scripts/ci/lib/macos_sdk_link.sh
-  . scripts/ci/lib/macos_sdk_link.sh
-  ra8_macos_sdk_link_run apps/host/image_pyramid
+  # Root-relative and fixed, like gate_fuzz_nightly's fuzz-nightly.log above,
+  # so the upload step and a human running the gate by hand look in the same
+  # place. .gitignore carries it for the reason /mcdc-output.log is there: a
+  # transcript from a local run must not ride into a commit.
+  #
+  # The preconditions above stay OUTSIDE the transcript on purpose. They are
+  # refusals, not measurements -- wrong host, Rosetta, no Zig -- they belong on
+  # stderr where the caller sees them, and a `return` inside a pipeline would
+  # return from the pipeline's subshell rather than from the gate.
+  local transcript="macos-host.log"
+  printf 'transcript: %s\n' "${transcript}"
+  {
+    # An SDK precondition has to RUN the probe, not check that xcrun exists.
+    # macOS ships /usr/bin/xcrun as a stub on every install, so `require_cmd
+    # xcrun` passed on a Mac with no Command Line Tools at all; the graph then
+    # found no SDK, pinned the bundled libSystem stub, every root built, and this
+    # gate reported green for the native SDK link path it never took (#899).
+    # macos_sdk.sh runs `xcrun --show-sdk-path` and keeps the failures apart --
+    # no developer directory, an unaccepted licence, a moved SDK, an SDK with no
+    # libSystem stub -- because each needs a different fix.
+    printf '=== active macOS SDK ===\n'
+    # shellcheck source=scripts/ci/lib/macos_sdk.sh
+    . scripts/ci/lib/macos_sdk.sh
+    ra8_macos_sdk_require
+
+    # Diagnostics first and unconditionally: which stub the graph chose, and why,
+    # is the single input that decides this whole gate, and a failure is
+    # unreadable without it. This prints the build graph's OWN decision rather
+    # than re-deriving it here with grep, so the gate cannot disagree with the
+    # thing it is gating -- and it distinguishes "the stub omits arm64-macos"
+    # from "there was no stub to read", which need different fixes.
+    printf '=== host target decision ===\n'
+    (cd tools/zig_build && zig build explain-host-target)
+
+    # The decision above is only a fix while the stub it pins TO can link us.
+    # The runner installs its own pinned Zig, so the bundled libSystem stub is
+    # whatever that tarball shipped; a toolchain bump that dropped arm64-macos
+    # would make the pinned query fail exactly like the SDK one it replaced,
+    # and every root below would go red with an undefined-symbol wall instead
+    # of naming the cause.
+    printf '\n=== bundled libSystem stub ===\n'
+    (cd tools/zig_build && zig build verify-bundled-stub)
+
+    # Which roots this gate builds is a declared list with a reason per root,
+    # not three names inlined here: a host root added later takes its default
+    # target from ra8_build.hostDefaultTargetQuery and so looks correct from
+    # Linux, while nothing ever builds it on a Mac. macos_host_roots.sh --selftest
+    # fails when a build.zig exists that the manifest does not mention, and the
+    # coverage is printed so a GREEN run states what it did not measure.
+    printf '\n=== gate coverage ===\n'
+    ra8_macos_host_announce_coverage
+
+    local root
+    while IFS= read -r root; do
+      printf '\n=== %s: zig build (default host target) ===\n' "${root}"
+      (cd "${root}" && zig build --summary all)
+      printf '\n=== %s: zig build test ===\n' "${root}"
+      (cd "${root}" && zig build test --summary all)
+    done < <(ra8_macos_host_covered_roots)
+
+    # Linking is not the claim; what came out of the link is. Read the emitted
+    # Mach-O back and check it is a native arm64 image, stamped with the
+    # deployment target this build was configured for, linked against the system
+    # libSystem. A build that quietly took Zig's default macOS floor instead of
+    # the host's version also exits zero, and would otherwise pass here.
+    printf '\n=== apps/host/image_pyramid: verify-host-artifact ===\n'
+    (cd apps/host/image_pyramid && zig build verify-host-artifact --summary all)
+
+    # The forced-bundled escape hatch is load-bearing on an affected Mac, so it
+    # is part of the verdict.
+    printf '\n=== apps/host/image_pyramid: -Dmacos-libsystem=bundled ===\n'
+    (cd apps/host/image_pyramid && zig build -Dmacos-libsystem=bundled)
+
+    # The forced-SDK leg is INFORMATIONAL and may legitimately fail: failing is
+    # precisely the bug #899 reports, and the default auto path above is what
+    # carries the verdict. It stays in the log so the day Apple ships an
+    # arm64-macos target in the stub is visible here instead of going unnoticed.
+    #
+    # It used to be a boolean, and a boolean cannot tell its expected failure
+    # from an unrelated one. `zig build -Dmacos-libsystem=sdk` also exits
+    # non-zero when the option has been renamed out of tools/zig_build (`error:
+    # invalid option: -Dmacos-libsystem`), and the old else-branch reported that
+    # as an affected SDK -- so the one leg that still touches Apple's own stub
+    # would have gone on printing the #899 shape every night while measuring
+    # nothing. A compile error or a cache failure read the same way.
+    # macos_sdk_link.sh classifies the outcome instead: the two real SDK
+    # findings stay informational, a dead option and an unrecognised failure
+    # refuse, because a leg that cannot ask its question must not answer it.
+    printf '\n=== apps/host/image_pyramid: -Dmacos-libsystem=sdk (informational) ===\n'
+    # shellcheck source=scripts/ci/lib/macos_sdk_link.sh
+    . scripts/ci/lib/macos_sdk_link.sh
+    ra8_macos_sdk_link_run apps/host/image_pyramid
+  } 2>&1 | tee "${transcript}"
 )
 
 # ===========================================================================
