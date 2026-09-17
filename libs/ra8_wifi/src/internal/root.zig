@@ -97,6 +97,52 @@ comptime {
     std.debug.assert(@offsetOf(Status, "ip") == 4);
 }
 
+/// IP provider seam (`ra8_wifi_ip_bind_fn`).
+pub const IpBindFn = *const fn (
+    ip_ctx: ?*anyopaque,
+    mac: ?*const Mac,
+    out: ?*Lease,
+) callconv(.c) u16;
+
+/// The radio-operation vtable (`ra8_wifi_backend_t`). Every row is optional
+/// here because the C struct holds plain function pointers a caller may leave
+/// null, which is exactly what `ra8_wifi_init` rejects.
+///
+/// It lives in the pure core rather than in one membrane because both
+/// membranes need it: the facade validates a candidate table row by row, and
+/// the ESP32-C6 backend defines one.
+pub const Backend = extern struct {
+    open: ?*const fn (ctx: ?*anyopaque) callconv(.c) u16 = null,
+    close: ?*const fn (ctx: ?*anyopaque) callconv(.c) u16 = null,
+    radio_up: ?*const fn (ctx: ?*anyopaque) callconv(.c) u16 = null,
+    radio_down: ?*const fn (ctx: ?*anyopaque) callconv(.c) u16 = null,
+    join: ?*const fn (
+        ctx: ?*anyopaque,
+        ssid: ?[*:0]const u8,
+        psk: ?[*:0]const u8,
+    ) callconv(.c) u16 = null,
+    leave: ?*const fn (ctx: ?*anyopaque) callconv(.c) u16 = null,
+    service: ?*const fn (ctx: ?*anyopaque, out_link: ?*u8) callconv(.c) u16 = null,
+    get_mac: ?*const fn (ctx: ?*anyopaque, out: ?*Mac) callconv(.c) u16 = null,
+    get_ap: ?*const fn (ctx: ?*anyopaque, out: ?*Ap) callconv(.c) u16 = null,
+    idle: ?*const fn (ctx: ?*anyopaque, ms: u16) callconv(.c) void = null,
+};
+
+/// Selection a caller hands `ra8_wifi_init` (`ra8_wifi_cfg_t`).
+pub const Config = extern struct {
+    backend: ?*const Backend = null,
+    backend_ctx: ?*anyopaque = null,
+    ip_bind: ?IpBindFn = null,
+    ip_ctx: ?*anyopaque = null,
+};
+
+comptime {
+    const ptr = @sizeOf(usize);
+    std.debug.assert(@sizeOf(Backend) == ptr * 10);
+    std.debug.assert(@sizeOf(Config) == ptr * 4);
+    std.debug.assert(@offsetOf(Config, "ip_bind") == ptr * 2);
+}
+
 /// A provider that answered with address 0.0.0.0 has not bound anything.
 pub fn leaseBound(ip: u32) bool {
     return ip != 0;
@@ -199,4 +245,86 @@ pub fn missingRow(present: RowPresence) ?Row {
     if (!present.get_ap) return .get_ap;
     if (!present.idle) return .idle;
     return null;
+}
+
+// --- The ESP32-C6 backend's own core (`ra8_wifi_c6link.c`) -----------------
+//
+// The backend is one thin mapping per facade operation, so the only judgement
+// it owns is what an announcement does to its two latches and what those
+// latches then mean. That judgement lives here, testable with no radio, no
+// link and no transport.
+
+/// Octets in a link address on the `ra8_c6link` side (`k_ra8_c6link_mac_bytes`).
+pub const c6_mac_bytes: usize = 6;
+/// Longest SSID `ra8_c6link` carries (`k_ra8_c6link_ssid_max`).
+pub const c6_ssid_max: usize = 32;
+/// Longest WPA passphrase `ra8_c6link` carries (`k_ra8_c6link_pass_max`).
+pub const c6_pass_max: usize = 64;
+/// Smallest decode arena `ra8_c6link_open` accepts (`k_ra8_c6link_arena_min`).
+pub const c6_arena_min: u32 = 2048;
+/// Transactions one announcement pump is allowed (`k_ra8_c6link_announce_transfers`).
+pub const c6_announce_transfers: u16 = 8;
+
+/// Rejection code for an arena below the floor (`k_ra8_err_invalid_size`).
+pub const err_invalid_size: u16 = 0x0105;
+
+comptime {
+    // The straight copies in `get_mac` and `get_ap` depend on these, exactly
+    // as the C's two `static_assert`s did.
+    std.debug.assert(c6_mac_bytes == mac_bytes);
+    std.debug.assert(c6_ssid_max == ssid_max);
+}
+
+/// Which announcement arrived (`ra8_c6link_event_kind_t`).
+pub const EventKind = enum(u8) {
+    boot = 0,
+    sta_connected = 1,
+    sta_disconnected = 2,
+    wifi = 3,
+};
+
+/// The station state the backend's event callback latches for `service` to
+/// report. Boot and bare Wi-Fi announcements are informational, so they leave
+/// every field alone rather than clearing a latch a later poll still owes the
+/// facade.
+pub const Latches = struct {
+    connected: bool = false,
+    disconnected: bool = false,
+    reason: u16 = 0,
+
+    /// The cleared state `join` restores before asking for an association.
+    pub const clear: Latches = .{};
+
+    /// What one announcement does to the latches.
+    pub fn latch(self: Latches, kind: u8, reason: u16) Latches {
+        if (kind == @intFromEnum(EventKind.sta_connected)) {
+            return .{ .connected = true, .disconnected = self.disconnected, .reason = self.reason };
+        }
+        if (kind == @intFromEnum(EventKind.sta_disconnected)) {
+            return .{ .connected = self.connected, .disconnected = true, .reason = reason };
+        }
+        return self;
+    }
+};
+
+/// The association reading `service` reports from the latches.
+///
+/// Down unless a connect was seen, and a later disconnect wins outright. Two
+/// single-condition tests applied in that order, so the precedence lives in
+/// the sequence rather than in a compound decision that would then owe MC/DC
+/// vectors -- the C's own comment, and its own shape.
+pub fn linkForLatches(connected: bool, disconnected: bool) Link {
+    var link = Link.down;
+    if (connected) {
+        link = Link.up;
+    }
+    if (disconnected) {
+        link = Link.down;
+    }
+    return link;
+}
+
+/// `cfg->arena_bytes < (uint32_t)k_ra8_c6link_arena_min`.
+pub fn arenaTooSmall(bytes: u32) bool {
+    return bytes < c6_arena_min;
 }
