@@ -33,6 +33,7 @@ https://cognitect.com/blog/2011/11/15/documenting-architecture-decisions
 | [0010](./0010-sdram-interface-supply-domain.md)            | Bound the SDRAM interface supply domain (VCC, VCC2) separately from the main rail | Proposed |
 | [0011](./0011-chip-boot-duplication-across-board-libraries.md) | Chip-level boot code duplicated across the two board libraries      | Proposed |
 | [0012](./0012-c23-capability-and-abi-contract-assertion.md) | Where the C23 capability and ABI contract is asserted               | Proposed |
+| [0013](./0013-reflow-named-character-references.md)      | Named character reference set for the v1 reflow reader              | Proposed |
 
 ## Authoring a new ADR
 
