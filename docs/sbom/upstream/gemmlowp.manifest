@@ -1,0 +1,18 @@
+# ra8-firmware SOUP upstream provenance manifest -- generated, do not hand-edit.
+# component: gemmlowp
+# upstream-url: https://github.com/google/gemmlowp
+# transport: git
+# ref: 719139ce755a0f31cbf1c37f7f98adcc7fc9f425
+# commit: 719139ce755a0f31cbf1c37f7f98adcc7fc9f425
+# upstream-files: 142
+# vendored-files: 7
+# upstream-verified: 7
+# patched: 0
+# local: 0
+ok 100644 d645695673349e3947e8e5ae42332d0ac3164cd7 LICENSE
+ok 100644 51b5aff41cfd9863fe16a10c10dc84e5bf22e18f fixedpoint/fixedpoint.h
+ok 100644 2e2bc2cf14f74dd1911de37e99e1b2b685eed09d fixedpoint/fixedpoint_avx.h
+ok 100644 3df4bf2991ad0a8ada0b4ff56a4e446a92f2c0f8 fixedpoint/fixedpoint_msa.h
+ok 100644 646c5907badeb8536eca23f3cc97e018765031b5 fixedpoint/fixedpoint_neon.h
+ok 100644 a1fae32d1017310ae0d949bb76c08d48cf2e41b5 fixedpoint/fixedpoint_sse.h
+ok 100644 6f06d19f66aa66c17fd4ff14777cc2e992341baf internal/detect_platform.h

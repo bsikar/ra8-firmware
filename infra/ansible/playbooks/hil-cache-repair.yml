@@ -1,0 +1,100 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Brighton Sikarskie
+---
+# Intentionally standalone: the emergency repair must never parse the broad
+# dev_box role, where special tags or include inheritance could widen it.
+- name: Repair only the native HIL runner's private compiler cache
+  hosts: dev
+  gather_facts: false
+  any_errors_fatal: true
+  tasks:
+    - name: Require the existing isolated HIL runner identity
+      ansible.builtin.getent:
+        database: passwd
+        key: ra8-hil
+        fail_key: true
+
+    - name: Refuse a privileged HIL runner identity
+      ansible.builtin.assert:
+        that:
+          - ansible_facts.getent_passwd['ra8-hil'][1] | int > 0
+        fail_msg: The existing ra8-hil account must not have uid 0.
+        quiet: true
+
+    - name: Inspect the literal private compiler-cache root without following links
+      ansible.builtin.stat:
+        path: /var/cache/ccache-ra8-hil
+        follow: false
+      register: hil_cache_root
+      changed_when: false
+
+    - name: Refuse a linked or non-directory compiler-cache root
+      ansible.builtin.assert:
+        that:
+          - >-
+            not hil_cache_root.stat.exists or
+            (hil_cache_root.stat.isdir and not hil_cache_root.stat.islnk)
+        fail_msg: >-
+          /var/cache/ccache-ra8-hil exists but is not a real directory;
+          refusing to use it as the isolated HIL compiler cache.
+        quiet: true
+
+    - name: Converge the literal private compiler-cache root
+      become: true
+      ansible.builtin.file:
+        path: /var/cache/ccache-ra8-hil
+        state: directory
+        owner: ra8-hil
+        group: ra8-hil
+        mode: "0700"
+
+    - name: Configure the literal private compiler cache
+      when: not ansible_check_mode or hil_cache_root.stat.exists
+      become: true
+      ansible.builtin.copy:
+        dest: /var/cache/ccache-ra8-hil/ccache.conf
+        owner: ra8-hil
+        group: ra8-hil
+        mode: "0600"
+        content: |
+          # Private compiler cache for the native HIL runner.
+          # Managed by the standalone HIL cache repair playbook.
+          max_size = 10G
+          base_dir = /
+          hash_dir = false
+          sloppiness = include_file_mtime,include_file_ctime,locale,time_macros
+          umask = 077
+
+    - name: Prove ra8-hil can create and remove a private-cache temporary file
+      when: not ansible_check_mode
+      block:
+        - name: Create one private-cache throwaway file as ra8-hil
+          become: true
+          become_user: ra8-hil
+          ansible.builtin.tempfile:
+            path: /var/cache/ccache-ra8-hil
+            prefix: .ra8-hil-cache-probe.
+            state: file
+          register: hil_cache_probe
+          changed_when: false
+
+        - name: Remove the private-cache throwaway file as ra8-hil
+          become: true
+          become_user: ra8-hil
+          ansible.builtin.file:
+            path: "{{ hil_cache_probe.path }}"
+            state: absent
+          changed_when: false
+
+      always:
+        - name: Remove private-cache probe residue after a failed acceptance
+          when:
+            - hil_cache_probe is defined
+            - hil_cache_probe.path is defined
+            - hil_cache_probe.path | length > 0
+          become: true
+          become_user: ra8-hil
+          ansible.builtin.file:
+            path: "{{ hil_cache_probe.path }}"
+            state: absent
+          changed_when: false

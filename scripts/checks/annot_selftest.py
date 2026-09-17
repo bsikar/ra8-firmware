@@ -1,0 +1,841 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Brighton Sikarskie
+"""Regression tests for the annotation checker itself, on a synthetic tree.
+
+Every defect guarded here is one this gate has actually shipped, and they share
+a shape: the checker kept reporting a number, the number got smaller, and
+smaller read as better.  So each assertion below is made in BOTH directions --
+the rule fires on the broken fixture *and* stays quiet on the correct one --
+because a rule can be "fixed" by defanging it and no single-direction test can
+tell the difference.
+
+The fixtures are laid out like ``libs/<module>/`` and ``tools/<tool>/`` so
+``module_of()`` and ``is_first_party()`` resolve against them, with the
+annotations spelled the way ``ra8_attributes.h`` lowers them so no project
+header is needed.  Scope is pointed at the temporary tree through
+:func:`annot_scope.override_repo_root`, never by rebinding a module global:
+a rebinding is invisible to other modules' imports, which would leave this
+suite asserting against the real checkout and passing without proving anything.
+"""
+
+from __future__ import annotations
+
+import pathlib
+import re
+import sys
+import tempfile
+
+from annot_clang import _first_party_include_roots, cindex
+from annot_loopbound import run_loopbound_selftest
+from annot_model import AnnotatedSymbol, Violation, WalkState
+from annot_rules import enforce_rules
+from annot_scope import discover_translation_units, override_repo_root
+from annot_walk import walk_tu
+
+#: Synthetic TUs for run_selftest().
+#:
+#: Insertion order is load-bearing for the namesake case: it reproduces the
+#: walk order that once took dev red. The namesake `static` is walked first,
+#: so under a name-keyed table its USR was the one latched into the single
+#: merged entry while that entry's `file` was overwritten by the RA8_PRIV
+#: module's definition -- and a module's call to its own file-local helper
+#: was reported as a cross-module RA8_PRIV call.
+_SELFTEST_SOURCES: dict[str, str] = {
+    # --- ra8_priv namesake resolution -----------------------------------
+    # A namesake `static`, walked FIRST. Its call binds to its own
+    # file-local copy and must never be attributed to mod_priv's RA8_PRIV
+    # symbol. Three `internal_zero_bytes` and two `priv_byte_copy` have
+    # this exact shape in-tree.
+    "libs/mod_other/src/other.c": """
+[[clang::annotate("ra8_internal")]] static void shared_helper(unsigned char* p, unsigned short n)
+{
+  for (unsigned short i = 0U; i < n; ++i) {
+    p[i] = 0U;
+  }
+}
+
+[[clang::annotate("ra8_priv")]] void other_caller(unsigned char* p);
+
+void other_caller(unsigned char* p)
+{
+  shared_helper(p, 4U);
+}
+""",
+    # The RA8_PRIV owner: external linkage, tagged the way a *_internal.h
+    # does it. Clang propagates the attribute onto the definition in the
+    # same TU, which is how the merged entry used to pick up this path.
+    "libs/mod_priv/src/priv.c": """
+[[clang::annotate("ra8_priv")]] void shared_helper(unsigned char* p, unsigned int n);
+[[clang::annotate("ra8_priv")]] void priv_owner_caller(unsigned char* p);
+
+void shared_helper(unsigned char* p, unsigned int n)
+{
+  for (unsigned int i = 0U; i < n; ++i) {
+    p[i] = 0U;
+  }
+}
+
+void priv_owner_caller(unsigned char* p)
+{
+  shared_helper(p, 4U);
+}
+""",
+    # A genuine cross-module call to the external RA8_PRIV symbol. This one
+    # MUST still be reported, otherwise the namesake fix would have
+    # silenced the rule rather than made it accurate.
+    "libs/mod_stranger/src/stranger.c": """
+[[clang::annotate("ra8_priv")]] void stranger_caller(unsigned char* p);
+
+void shared_helper(unsigned char* p, unsigned int n);
+
+void stranger_caller(unsigned char* p)
+{
+  shared_helper(p, 4U);
+}
+""",
+    # --- linkage rule: the four ways a definition passes ------------------
+    "libs/mod_link/inc/mod_link.h": """
+#pragma once
+void link_public_api(void);
+""",
+    "libs/mod_link/src/mod_link_internal.h": """
+#pragma once
+void link_internal_declared(void);
+[[clang::annotate("ra8_priv")]] void link_internal_annotated(void);
+""",
+    "libs/mod_link/src/pass.c": """
+#include "mod_link.h"
+#include "mod_link_internal.h"
+
+/* Published by the library's public inc/ header: public API, no annotation. */
+void link_public_api(void) {}
+
+/* Declared in the *_internal.h AND tagged: the sanctioned cross-TU shape. */
+void link_internal_annotated(void) {}
+
+/* Tagged in place, declared nowhere: still fine, the tag is the statement. */
+[[clang::annotate("ra8_test_helper")]] void link_test_hook(void) {}
+
+/* static + RA8_INTERNAL: out of scope for the rule entirely. */
+[[clang::annotate("ra8_internal")]] static void link_file_local(void) {}
+
+int main(void)
+{
+  link_file_local();
+  return 0;
+}
+""",
+    # --- linkage rule: the two ways a definition fails --------------------
+    "libs/mod_link/src/fail.c": """
+#include "mod_link_internal.h"
+
+/* Declared library-private but never classified -> wants RA8_PRIV. */
+void link_internal_declared(void) {}
+
+/* Nothing declares it and no table names it -> wants static or a header. */
+void link_undeclared(void) {}
+""",
+    # --- linkage rule: the vector-table exemption -------------------------
+    # Two byte-identical handlers. One is named by the table, one is not.
+    # If the exemption were keyed on a name pattern instead of on table
+    # membership, both would pass and the rule would be blind to any
+    # handler-shaped symbol anyone chose to leave unwired.
+    "libs/mod_link/src/vectors.c": """
+void handler_tabled(void);
+void handler_untabled(void);
+
+void handler_tabled(void) {}
+void handler_untabled(void) {}
+
+void (*const g_vector_table[])(void) = {
+    handler_tabled,
+};
+""",
+    # --- NASA P10 Rule 3: firmware allocates -> reported ------------------
+    # Both helpers are `static` so the linkage rule has no opinion on them
+    # and the only thing under test is the allocation sweep.
+    "libs/mod_alloc/src/alloc.c": """
+void* malloc(unsigned long n);
+void free(void* p);
+
+/* Firmware, no waiver: both the malloc and the free must be reported. */
+[[clang::annotate("ra8_internal")]] static void fw_untagged_allocator(void)
+{
+  void* p = malloc(16UL);
+  free(p);
+}
+
+/* Firmware WITH the documented waiver: the sweep must leave it alone. */
+[[clang::annotate("ra8_nasa_rule_3_ok")]] static void fw_waived_allocator(void)
+{
+  void* p = malloc(16UL);
+  free(p);
+}
+""",
+    # --- RA8_EXPECTS_LOCK: the three caller shapes ------------------------
+    # The rule used to demand a preceding call to `RA8_TAKE_LOCK`, which does
+    # not exist in this tree in any form -- so it could not be satisfied and
+    # had zero uses. All three shapes below are asserted, because "made
+    # satisfiable" and "defanged" look identical from one direction.
+    "libs/mod_lock/src/lock.c": """
+[[clang::annotate("ra8_priv")]] void lock_take(void);
+[[clang::annotate("ra8_priv")]]
+[[clang::annotate("ra8_releases_resource:bus")]] void lock_drop(void);
+[[clang::annotate("ra8_priv")]]
+[[clang::annotate("ra8_expects_lock:bus")]] void lock_guarded_body(void);
+
+void lock_take(void) {}
+void lock_drop(void) {}
+void lock_guarded_body(void) {}
+
+[[clang::annotate("ra8_priv")]]
+[[clang::annotate("ra8_releases_resource:other")]] void lock_drop_other(void);
+
+void lock_drop_other(void) {}
+
+/* PASSES: takes the lock for its whole body and discharges it. */
+[[clang::annotate("ra8_priv")]]
+[[clang::annotate("ra8_owns_resource:bus")]] void lock_owner_caller(void);
+
+void lock_owner_caller(void)
+{
+  lock_take();
+  lock_guarded_body();
+  lock_drop();
+}
+
+/* PASSES: entered under the lock, propagating the contract upward. */
+[[clang::annotate("ra8_priv")]]
+[[clang::annotate("ra8_expects_lock:bus")]] void lock_nested_body(void);
+
+void lock_nested_body(void)
+{
+  lock_guarded_body();
+}
+
+/* FAILS: reaches the guarded body holding nothing. */
+[[clang::annotate("ra8_priv")]] void lock_bare_caller(void);
+
+void lock_bare_caller(void)
+{
+  lock_guarded_body();
+}
+
+/* FAILS: owns a DIFFERENT lock. The name has to match, or one mutex would
+   silently discharge another mutex's contract. */
+[[clang::annotate("ra8_priv")]]
+[[clang::annotate("ra8_owns_resource:other")]] void lock_wrong_name_caller(void);
+
+void lock_wrong_name_caller(void)
+{
+  lock_guarded_body();
+  lock_drop_other();
+}
+""",
+    # --- tools/ is in scope, and is host-only -----------------------------
+    # This fixture carries the whole point of widening SCAN_DIRS to tools/,
+    # in both directions at once. `host_unpublished` proves the linkage rule
+    # genuinely reaches into tools/ -- if tools/ fell back out of SCAN_DIRS,
+    # is_first_party() would drop it and the selftest fails. `host_allocator`
+    # proves the Rule 3 sweep does NOT fire there, so the widening cannot be
+    # "passed" by burying a host emulator under 216 unactionable findings.
+    "tools/mod_host/src/host_tool.c": """
+void* malloc(unsigned long n);
+void free(void* p);
+
+[[clang::annotate("ra8_internal")]] static void host_allocator(void)
+{
+  void* p = malloc(16UL);
+  free(p);
+}
+
+/* Non-static, no header declares it: in scope, and a genuine gap. */
+void host_unpublished(void)
+{
+  host_allocator();
+}
+
+/* RA8_PRIV inside tools/mod_host. Reaching this from another tool is the
+   same boundary violation as one library calling another's private helper. */
+[[clang::annotate("ra8_priv")]] void host_priv_helper(void);
+
+void host_priv_helper(void) {}
+""",
+    # --- apps/ host-only boundary after the products reorganization -------
+    # Only apps/host is exempt. The portable and board forms can reach a
+    # firmware image and must retain the Rule 3 allocation ban.
+    "apps/host/mod_alloc/src/host_alloc.c": """
+void* malloc(unsigned long n);
+
+[[clang::annotate("ra8_internal")]] static void host_product_allocator(void)
+{
+  (void)malloc(16UL);
+}
+""",
+    "apps/board/stand_alone/mod_alloc/src/board_alloc.c": """
+void* malloc(unsigned long n);
+
+[[clang::annotate("ra8_internal")]] static void board_product_allocator(void)
+{
+  (void)malloc(16UL);
+}
+""",
+    "apps/shared_libs/mod_alloc/src/shared_alloc.c": """
+void* malloc(unsigned long n);
+
+[[clang::annotate("ra8_internal")]] static void shared_product_allocator(void)
+{
+  (void)malloc(16UL);
+}
+""",
+    "apps/shared_libs/mod_alloc/tests/src/test_alloc.c": """
+void* malloc(unsigned long n);
+void free(void* p);
+
+[[clang::annotate("ra8_internal")]] static void host_test_wrapper_allocator(void)
+{
+  void* p = malloc(16UL);
+  free(p);
+}
+""",
+    # --- exact generated-source boundary ---------------------------------
+    # The reviewed protoc-c output is classified by lint coverage as generated
+    # and must never be judged as hand-authored naming/linkage.  A neighboring
+    # generated-looking file has no such classification and MUST remain in
+    # scope, preventing a broad suffix exemption.
+    "libs/ra8_c6link/src/ra8_media_download.pb-c.c": """
+void generated_unpublished(void) {}
+""",
+    "libs/ra8_c6link/src/future_generated.pb-c.c": """
+void future_generated_unpublished(void) {}
+""",
+    # --- apps/: a module is the PRODUCT, across its build forms -----------
+    # mod_product's portable core, under the shared category.
+    "apps/shared_libs/mod_product/src/product_core.c": """
+[[clang::annotate("ra8_priv")]] void product_priv_helper(void);
+
+void product_priv_helper(void) {}
+""",
+    # The SAME product's host composition root, in a different category. A
+    # build form driving its own core's promoted seam is what a composition
+    # root is for, so this must stay QUIET.
+    "apps/host/mod_product/src/product_form.c": """
+[[clang::annotate("ra8_priv")]] void product_form_caller(void);
+
+void product_priv_helper(void);
+
+void product_form_caller(void)
+{
+  product_priv_helper();
+}
+""",
+    # A DIFFERENT product in the same category reaching into mod_product's
+    # core. Same boundary violation as one library calling another's private
+    # helper, and it must still FIRE -- otherwise dropping the category from
+    # the key would have bought the quiet case by going blind.
+    "apps/host/mod_stranger/src/stranger_form.c": """
+[[clang::annotate("ra8_priv")]] void stranger_form_caller(void);
+
+void product_priv_helper(void);
+
+void stranger_form_caller(void)
+{
+  product_priv_helper();
+}
+""",
+    # A second tool calling the first one's RA8_PRIV symbol. module_of() has
+    # to resolve tools/<tool> as a module for this to be caught at all.
+    "tools/mod_other_host/src/other_host.c": """
+[[clang::annotate("ra8_priv")]] void other_host_caller(void);
+
+void host_priv_helper(void);
+
+void other_host_caller(void)
+{
+  host_priv_helper();
+}
+""",
+    # --- naming/linkage vocabulary: both failing and passing shapes ------
+    "libs/mod_name/inc/mod_name.h": """
+#pragma once
+void naming_public_entry(void);
+void internal_external_bad(void);
+void priv_public_bad(void);
+static void header_static_bad(void) {}
+static inline void naming_inline_public(void) {}
+""",
+    "libs/mod_name/src/mod_name_internal.h": """
+#pragma once
+[[clang::annotate("ra8_priv")]] void priv_naming_good(void);
+[[clang::annotate("ra8_priv")]] void bad_priv_name(void);
+""",
+    "libs/mod_name/src/naming.c": """
+#include "mod_name.h"
+#include "mod_name_internal.h"
+
+[[clang::annotate("ra8_internal")]] static void internal_naming_good(void) {}
+static void internal_missing_annotation(void) {}
+[[clang::annotate("ra8_internal")]] static void wrong_internal_name(void) {}
+[[clang::annotate("ra8_internal")]] static void s_bad_function(void) {}
+[[clang::annotate("ra8_internal")]] void internal_annotated_external_bad(void) {}
+[[clang::annotate("ra8_internal")]]
+[[clang::annotate("ra8_priv")]] static void internal_conflict_bad(void) {}
+[[clang::annotate("ra8_test_helper")]] static void internal_static_test_helper_bad(void) {}
+
+static int s_good_data;
+static int bad_static_data;
+
+void priv_naming_good(void) {}
+void bad_priv_name(void) {}
+[[clang::annotate("ra8_priv")]] void priv_missing_header(void) {}
+void internal_external_bad(void) {}
+void priv_public_bad(void) {}
+[[clang::annotate("ra8_test_helper")]] void naming_test_helper_good(void) {}
+
+void naming_public_entry(void)
+{
+  int s_bad_local = 0;
+  internal_naming_good();
+  internal_missing_annotation();
+  wrong_internal_name();
+  s_bad_function();
+  internal_annotated_external_bad();
+  internal_conflict_bad();
+  internal_static_test_helper_bad();
+  naming_test_helper_good();
+  naming_inline_public();
+  s_good_data = s_bad_local;
+  bad_static_data = s_good_data;
+}
+""",
+    "libs/mod_name/src/naming_cpp.cpp": """
+namespace {
+void anonymous_namespace_bad() {}
+[[clang::annotate("ra8_internal")]] static void internal_cpp_good() {}
+}
+""",
+    # --- recursive include-root discovery after the src/inc migration ---
+    "tests/mocks/inc/mock_contract.h": "#pragma once\n",
+    "tests/support/inc/support_contract.h": """
+#pragma once
+void support_public_entry(void);
+""",
+    "tests/consumer/src/test_support_include.c": """
+#include "support_contract.h"
+void support_public_entry(void) {}
+""",
+    "examples/board/state/demo/inc/demo_contract.h": "#pragma once\n",
+    "tests/mocks/src/mock_contract_internal.h": "#pragma once\n",
+    # A src/ directory containing only an ordinary header is deliberately
+    # not an include root. The placement gate rejects this shape; accepting it
+    # here would hide that defect and widen header-name shadowing.
+    "tests/plain/src/plain_header.h": "#pragma once\n",
+    "tests/build/generated/inc/ignored_contract.h": "#pragma once\n",
+}
+
+#: What run_selftest() expects the linkage rule to report, by symbol name.
+#: ``handler_untabled`` is here because it is byte-identical to a handler
+#: the table does name: table membership is the only thing separating them.
+#: ``host_unpublished`` lives under ``tools/`` and is the scope assertion:
+#: the linkage rule only judges files is_first_party() accepts, so this name
+#: goes missing the moment ``tools`` drops out of SCAN_DIRS.
+_SELFTEST_LINKAGE_EXPECTED = frozenset(
+    {
+        "future_generated_unpublished",
+        "handler_untabled",
+        "host_unpublished",
+        "link_internal_declared",
+        "link_undeclared",
+    }
+)
+
+#: What run_selftest() expects the RA8_EXPECTS_LOCK rule to report, by the
+#: CALLER's name -- the finding is located at the call site, not the callee.
+_SELFTEST_LOCK_EXPECTED = frozenset({"lock_bare_caller", "lock_wrong_name_caller"})
+
+#: Definitions the linkage rule must leave alone -- one per passing shape,
+#: plus the un-tabled handler's twin that proves the exemption is keyed on
+#: table membership rather than on what the function looks like.
+_SELFTEST_LINKAGE_CLEAN = (
+    "link_public_api",
+    "link_internal_annotated",
+    "link_test_hook",
+    "link_file_local",
+    "main",
+    "handler_tabled",
+    "lock_guarded_body",
+    "lock_owner_caller",
+    "lock_nested_body",
+    "support_public_entry",
+)
+
+
+#: What _selftest_parse() returns: the symbol table, the call list and the
+#: set of USRs a vector table names.
+def _selftest_parse(root: pathlib.Path) -> WalkState:
+    """Write the synthetic tree under ``root`` and walk every TU in it."""
+    for rel, body in _SELFTEST_SOURCES.items():
+        path = root / rel
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(body)
+
+    # Use the production discovery path.  Constructing this list from the
+    # fixture dictionary would bypass the exact generated-source exclusion and
+    # let that boundary regress while every rule-level assertion stayed green.
+    tu_paths = discover_translation_units()
+
+    include_args = [f"-I{path}" for path in _first_party_include_roots()]
+    state = WalkState()
+    index = cindex.Index.create()
+    for path in tu_paths:
+        language_args = (
+            ["-std=c++23", "-x", "c++"] if path.suffix == ".cpp" else ["-std=c23", "-x", "c"]
+        )
+        tu = index.parse(
+            str(path),
+            args=[*language_args, *include_args],
+            options=cindex.TranslationUnit.PARSE_DETAILED_PROCESSING_RECORD,
+        )
+        walk_tu(tu, state)
+    return state
+
+
+def _names_matching(violations: list[Violation], rule: str, pattern: str) -> set[str]:
+    """Pull the symbol names out of every ``rule`` finding matching ``pattern``."""
+    out: set[str] = set()
+    for v in violations:
+        if v.rule != rule:
+            continue
+        m = re.search(pattern, v.message)
+        if m:
+            out.add(m.group(1))
+    return out
+
+
+def _check_priv_namesakes(
+    violations: list[Violation], symbols: dict[str, AnnotatedSymbol]
+) -> list[str]:
+    """RA8_PRIV must separate namesakes by USR without going toothless."""
+    offenders = {
+        pathlib.Path(v.file).name
+        for v in violations
+        if v.rule == "ra8_priv" and "called from outside" in v.message
+    }
+    failures: list[str] = []
+    if "other.c" in offenders:
+        failures.append(
+            "namesake regression: a module's call to its own file-local static "
+            "'shared_helper' was reported as a cross-module RA8_PRIV call"
+        )
+    if "priv.c" in offenders:
+        failures.append(
+            "same-module regression: mod_priv calling its own RA8_PRIV symbol was reported"
+        )
+    if "stranger.c" not in offenders:
+        failures.append(
+            "ra8_priv went toothless: the genuine cross-module call to RA8_PRIV "
+            "'shared_helper' from mod_stranger was NOT reported"
+        )
+    if "other_host.c" not in offenders:
+        failures.append(
+            "ra8_priv is blind under tools/: mod_other_host calls mod_host's "
+            "RA8_PRIV 'host_priv_helper' across a module boundary and it was NOT "
+            "reported -- module_of() is not resolving tools/<tool> as a module, so "
+            "every RA8_PRIV tag under tools/ is decorative"
+        )
+    if "product_form.c" in offenders:
+        failures.append(
+            "build-form regression: apps/host/mod_product driving its own "
+            "core's RA8_PRIV 'product_priv_helper' was reported -- module_of() is "
+            "keying apps/ on the category, so a product split across build forms "
+            "reads as two libraries"
+        )
+    if "stranger_form.c" not in offenders:
+        failures.append(
+            "ra8_priv went toothless under apps/: mod_stranger reaches into "
+            "mod_product's core RA8_PRIV 'product_priv_helper' and it was NOT "
+            "reported -- dropping the category from the module key must not drop "
+            "the boundary between two products"
+        )
+
+    # The merged symbol table is the underlying defect, so assert its shape
+    # directly too: the namesakes must stay distinct entries.
+    namesakes = [s for s in symbols.values() if s.name == "shared_helper"]
+    expected_namesakes = 2  # one external (mod_priv) + one static (mod_other)
+    if len(namesakes) != expected_namesakes:
+        failures.append(
+            f"symbol table merged namesakes: expected {expected_namesakes} distinct "
+            f"'shared_helper' entries, found {len(namesakes)}"
+        )
+    return failures
+
+
+def _check_naming_contract(violations: list[Violation]) -> list[str]:
+    """Naming/linkage prefixes must agree with AST storage and scope."""
+    fixture = [v for v in violations if "mod_name" in pathlib.Path(v.file).parts]
+    # The generic helper returns only group 1; every naming message deliberately
+    # puts the subject in the first quoted field, so collect it directly here.
+    naming = {
+        match.group(1)
+        for finding in fixture
+        if finding.rule == "ra8_naming"
+        if (match := re.search(r"'([^']+)'", finding.message)) is not None
+    }
+    expected = {
+        "internal_missing_annotation",
+        "wrong_internal_name",
+        "s_bad_function",
+        "internal_annotated_external_bad",
+        "bad_static_data",
+        "s_bad_local",
+        "priv_missing_header",
+        "internal_external_bad",
+        "priv_public_bad",
+        "header_static_bad",
+        "internal_conflict_bad",
+        "internal_static_test_helper_bad",
+        "anonymous_namespace_bad",
+    }
+    clean = {
+        "internal_naming_good",
+        "s_good_data",
+        "priv_naming_good",
+        "naming_inline_public",
+        "internal_cpp_good",
+        "naming_test_helper_good",
+    }
+    failures = [
+        f"ra8_naming went toothless: broken fixture '{name}' was not reported"
+        for name in sorted(expected - naming)
+    ]
+    failures.extend(
+        f"ra8_naming false positive: conforming fixture '{name}' was reported"
+        for name in sorted(clean & naming)
+    )
+
+    priv = {
+        match.group(1)
+        for finding in fixture
+        if finding.rule == "ra8_naming" and "RA8_PRIV function" in finding.message
+        if (match := re.search(r"'([^']+)'", finding.message)) is not None
+    }
+    if "bad_priv_name" not in priv:
+        failures.append("ra8_priv accepted a module-private function without the priv_ prefix")
+    if "priv_naming_good" in priv:
+        failures.append("ra8_priv rejected the conforming non-static priv_ fixture")
+    return failures
+
+
+def _check_linkage(violations: list[Violation]) -> list[str]:
+    """The linkage rule must catch both gap shapes and exempt only tabled handlers."""
+    linkage = _names_matching(violations, "ra8_linkage", r"'([^']+)'")
+    failures = [
+        f"ra8_linkage went toothless: '{name}' has external linkage that "
+        f"nothing justifies, and the rule did not report it"
+        for name in sorted(_SELFTEST_LINKAGE_EXPECTED - linkage)
+    ]
+    failures.extend(
+        f"ra8_linkage false positive: '{name}' is a justified definition but the rule reported it"
+        for name in sorted(linkage - _SELFTEST_LINKAGE_EXPECTED)
+    )
+    if "handler_untabled" not in linkage:
+        failures.append(
+            "vector-table exemption over-matches: 'handler_untabled' is byte-identical "
+            "to a tabled handler but appears in no table, so it must still be reported"
+        )
+    return failures
+
+
+def _check_expects_lock(violations: list[Violation]) -> list[str]:
+    """RA8_EXPECTS_LOCK must fire on an unheld call and stay quiet on a held one.
+
+    The "quiet" direction is the one that matters here: the rule shipped for
+    the life of the tree keyed on a ``RA8_TAKE_LOCK`` call that no first-party
+    file could produce, so EVERY caller of an annotated function was a
+    violation and the annotation had to go unused to keep the gate green. A
+    rule nobody can satisfy and a rule nobody wrote are indistinguishable from
+    the gate's output.
+    """
+    callers = _names_matching(violations, "ra8_expects_lock", r"from '([^']+)'")
+    failures = [
+        f"ra8_expects_lock went toothless: '{name}' reaches a guarded body "
+        f"without holding the named lock and was not reported"
+        for name in sorted(_SELFTEST_LOCK_EXPECTED - callers)
+    ]
+    failures.extend(
+        f"ra8_expects_lock false positive: '{name}' holds the named lock "
+        f"(RA8_OWNS_RESOURCE) or was entered under it (RA8_EXPECTS_LOCK), "
+        f"which is exactly how the macro says the contract is met"
+        for name in sorted(callers - _SELFTEST_LOCK_EXPECTED)
+    )
+    return failures
+
+
+def _check_rule3(violations: list[Violation]) -> list[str]:
+    """NASA P10 Rule 3, both axes: the waiver and the firmware/host boundary."""
+    allocators = _names_matching(violations, "ra8_nasa_rule_3_ok", r"from '([^']+)'")
+    failures: list[str] = []
+    if "fw_untagged_allocator" not in allocators:
+        failures.append(
+            "ra8_nasa_rule_3_ok went toothless: firmware function "
+            "'fw_untagged_allocator' calls malloc/free with no waiver and was not reported"
+        )
+    if "fw_waived_allocator" in allocators:
+        failures.append(
+            "ra8_nasa_rule_3_ok false positive: 'fw_waived_allocator' carries "
+            "RA8_NASA_RULE_3_OK, which is exactly the documented waiver"
+        )
+    if "host_allocator" in allocators:
+        failures.append(
+            "ra8_nasa_rule_3_ok false positive: 'host_allocator' is under tools/, "
+            "which the host toolchain compiles and no firmware image contains -- "
+            "Rule 3 is a claim about firmware"
+        )
+    if "host_product_allocator" in allocators:
+        failures.append("ra8_nasa_rule_3_ok false positive: apps/host is a hosted product form")
+    if "host_test_wrapper_allocator" in allocators:
+        failures.append(
+            "ra8_nasa_rule_3_ok false positive: a host test wrapper under "
+            "apps/shared_libs/.../tests cannot enter a firmware image"
+        )
+    failures.extend(
+        "ra8_nasa_rule_3_ok scope regression: "
+        f"'{name}' can be linked into firmware but was treated as host-only"
+        for name in ("board_product_allocator", "shared_product_allocator")
+        if name not in allocators
+    )
+    return failures
+
+
+def _check_fixtures_parsed(symbols: dict[str, AnnotatedSymbol]) -> list[str]:
+    """Every fixture the clean-shape assertions rely on must have parsed."""
+    seen = {s.name for s in symbols.values()}
+    return [
+        f"selftest fixture did not parse: '{name}' is missing from the "
+        f"symbol table, so its linkage shape was never exercised"
+        for name in _SELFTEST_LINKAGE_CLEAN
+        if name not in seen
+    ]
+
+
+def _check_generated_scope(symbols: dict[str, AnnotatedSymbol]) -> list[str]:
+    """Exact generated files stay out while generated-looking neighbors stay in."""
+    seen = {symbol.name for symbol in symbols.values()}
+    failures: list[str] = []
+    if "generated_unpublished" in seen:
+        failures.append(
+            "generated-source exclusion failed: the exact protoc-c output was parsed as "
+            "hand-authored first-party code"
+        )
+    if "future_generated_unpublished" not in seen:
+        failures.append(
+            "generated-source exclusion over-matches: an unclassified neighboring pb-c.c "
+            "file disappeared from the annotation scope"
+        )
+    return failures
+
+
+def _check_include_root_discovery(root: pathlib.Path) -> list[str]:
+    """Public ``inc`` and sanctioned private ``src`` roots survive any depth."""
+    actual = {path.relative_to(root).as_posix() for path in _first_party_include_roots()}
+    expected = {
+        "examples/board/state/demo/inc",
+        "libs/mod_link/inc",
+        "libs/mod_link/src",
+        "libs/mod_name/inc",
+        "libs/mod_name/src",
+        "tests/mocks/inc",
+        "tests/mocks/src",
+        "tests/support/inc",
+    }
+    failures = [
+        f"include-root discovery missed conventional path '{path}'"
+        for path in sorted(expected - actual)
+    ]
+    forbidden = {"tests/build/generated/inc", "tests/plain/src"}
+    failures.extend(
+        f"include-root discovery accepted excluded or non-private path '{path}'"
+        for path in sorted(forbidden & actual)
+    )
+    return failures
+
+
+def run_selftest() -> int:
+    """Regression-test the checker itself. Returns a process exit code.
+
+    Four classes of defect are guarded, all of which this gate has shipped:
+
+    * **Namesake merging.** Keying the symbol table by bare name merged
+      distinct same-named functions into one entry, so a module calling its
+      own file-local ``static`` was reported for calling another module's
+      RA8_PRIV symbol.
+    * **A rule that cannot fire.** The linkage rule turns "nothing declares
+      this" into a failure, and a rule which reports nothing looks exactly
+      like a clean tree. The synthetic module contains one definition of
+      every passing shape and one of every failing shape.
+    * **A root silently out of scope.** ``tools/`` was absent from SCAN_DIRS,
+      so ra8_emulator, mdl and ra8_viewer were never checked and the gate
+      reported a clean tree over code it had not read. The ``tools/`` fixture
+      pins the scope from inside the rules rather than by reading the
+      constant: ``host_unpublished`` is only reachable if is_first_party()
+      accepts the root.
+    * **A rule that cannot be satisfied.** ``RA8_EXPECTS_LOCK`` demanded a
+      ``RA8_TAKE_LOCK`` call that exists nowhere in this tree and could not,
+      since callee names resolve after macro expansion -- so the annotation
+      was unusable and went unused, and the gate looked clean because nobody
+      could adopt the rule. The lock fixture asserts both directions.
+    * **NASA P10 Rule 3 scope and waiver.** Rule 3 is a claim about firmware,
+      so it is asserted along both axes -- untagged firmware allocation
+      fires, the documented waiver does not, and host-only code under
+      ``tools/`` does not. Getting the second axis wrong is what turns a real
+      gate into 216 findings nobody can act on.
+    * **Generated-source scope.** The exact reproducible protoc-c output is
+      excluded by the lint-coverage registry, while an unclassified neighboring
+      ``*.pb-c.c`` remains ordinary first-party C and must still be judged.
+    * **Include-root discovery.** Public ``inc/`` directories at multiple
+      product depths and sanctioned ``src/*_internal.h`` directories are found,
+      while build output and an ordinary misplaced ``src`` header stay out.
+    """
+    with tempfile.TemporaryDirectory() as td:
+        root = pathlib.Path(td).resolve()
+        with override_repo_root(root):
+            state = _selftest_parse(root)
+            include_root_failures = _check_include_root_discovery(root)
+            violations = enforce_rules(
+                state,
+                naming_contract=True,
+            )
+
+    failures = [
+        *_check_priv_namesakes(violations, state.symbols),
+        *_check_linkage(violations),
+        *_check_expects_lock(violations),
+        *_check_rule3(violations),
+        *_check_naming_contract(violations),
+        *_check_fixtures_parsed(state.symbols),
+        *_check_generated_scope(state.symbols),
+        *include_root_failures,
+        # The loop-bound scan is textual and libclang-free, so it self-tests on
+        # synthetic source strings rather than the parsed synthetic tree.
+        *run_loopbound_selftest(),
+    ]
+    if failures:
+        for f in failures:
+            sys.stderr.write(f"[FAIL] check_annotations selftest: {f}\n")
+        sys.stderr.write(f"check_annotations selftest: {len(failures)} failure(s)\n")
+        return 1
+    print(
+        "check_annotations selftest: OK (namesakes resolved by USR; linkage rule "
+        "catches both gap shapes, reaches tools/, and exempts only tabled handlers; "
+        "NASA rule 3 fires on untagged firmware allocation and stays quiet on the "
+        "documented waiver and on host-only code; RA8_EXPECTS_LOCK fires on an "
+        "unheld call and stays quiet on RA8_OWNS_RESOURCE / propagated holders; "
+        "the exact generated protoc-c source is excluded while an unclassified "
+        "pb-c.c neighbor remains in scope; "
+        "recursive inc/ and sanctioned private src/ include roots are discovered; "
+        "linkage prefixes agree with static/data scope and their annotations; "
+        "loop-bound scan fires on a "
+        "mis-attached marker and a stale RA8_BOUNDED_LOOP statement, stays quiet on "
+        "correct markers and on #define/comment/string mentions)"
+    )
+    return 0

@@ -1,0 +1,12 @@
+# ra8-firmware SOUP upstream provenance manifest -- generated, do not hand-edit.
+# component: fonts/Literata
+# upstream-url: https://github.com/googlefonts/literata
+# transport: git
+# ref: 3.103
+# commit: 0c2761b727a1b3a7cffd313c37f0f5163dfc7a63
+# upstream-files: 201
+# vendored-files: 1
+# upstream-verified: 1
+# patched: 0
+# local: 0
+moved 100644 b0e7f7accdf2304f19d561acd5f969eb62c9d4fb Literata-Regular.ttf fonts/ttf/Literata-Regular.ttf

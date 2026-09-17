@@ -1,0 +1,75 @@
+{
+  "version": 3,
+  "configurePresets": [
+    {
+      "name": "ra8d2-debug",
+      "displayName": "RA8D2 Debug",
+      "description": "Cross-compile for RA8D2 (Cortex-M85) in Debug mode",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/cmake-build-debug",
+      "toolchainFile": "${sourceDir}/cmake/toolchain-ra8d2.cmake",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "CMAKE_EXPORT_COMPILE_COMMANDS": "ON"
+      }
+    },
+    {
+      "name": "ra8d2-release",
+      "displayName": "RA8D2 Release",
+      "description": "Cross-compile for RA8D2 (Cortex-M85) in Release mode",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/cmake-build-release",
+      "toolchainFile": "${sourceDir}/cmake/toolchain-ra8d2.cmake",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "RelWithDebInfo",
+        "CMAKE_EXPORT_COMPILE_COMMANDS": "ON"
+      }
+    },
+    {
+      "name": "host-debug",
+      "displayName": "macOS/Linux Host Debug",
+      "description": "Natively compile host apps, tests, and tools in Debug mode",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/cmake-build-host-debug",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "CMAKE_EXPORT_COMPILE_COMMANDS": "ON",
+        "RA8_HOST_MODE": "ON"
+      }
+    },
+    {
+      "name": "host-release",
+      "displayName": "macOS/Linux Host Release",
+      "description": "Natively compile host apps, tests, and tools in Release mode",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/cmake-build-host-release",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "RelWithDebInfo",
+        "CMAKE_EXPORT_COMPILE_COMMANDS": "ON",
+        "RA8_HOST_MODE": "ON"
+      }
+    }
+  ],
+  "buildPresets": [
+    {
+      "name": "ra8d2-debug",
+      "displayName": "RA8D2 Debug",
+      "configurePreset": "ra8d2-debug"
+    },
+    {
+      "name": "ra8d2-release",
+      "displayName": "RA8D2 Release",
+      "configurePreset": "ra8d2-release"
+    },
+    {
+      "name": "host-debug",
+      "displayName": "Host Debug",
+      "configurePreset": "host-debug"
+    },
+    {
+      "name": "host-release",
+      "displayName": "Host Release",
+      "configurePreset": "host-release"
+    }
+  ]
+}

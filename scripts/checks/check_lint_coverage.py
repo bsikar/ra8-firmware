@@ -1,0 +1,833 @@
+#!/usr/bin/env python3
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Brighton Sikarskie
+"""Prove that EVERY code file in this repository is linted and formatted.
+
+WHY THIS EXISTS
+---------------
+"Is everything linted?" was, until this gate, answerable only by opening each
+checker and reading its scan list by hand. That audit was performed five times
+and was wrong five times -- #296, #332, #358, #359, #360. Every one of those
+was the same defect in a different checker: a hardcoded root list that stopped
+matching the tree, so the checker reported a clean run over a subset while
+files outside it sat unchecked for months. A gate that scans nothing reports
+success, and success is indistinguishable from having done the work.
+
+This gate answers the question mechanically:
+
+  1. Enumerate every file from ``git ls-files`` -- never a directory list.
+     A hardcoded directory list is the exact defect being killed here, so this
+     gate must not contain one.
+  2. Classify each file by exact name, then extension, then shebang.
+  3. Ask each checker, in its own "list what you would scan" mode, which files
+     it claims. The gate does NOT restate any checker's scope: a second copy of
+     the coverage map is a new instance of the original bug.
+  4. Assert every CODE file is claimed by at least one linter and at least one
+     formatter.
+  5. FAIL on any file whose type has no classification rule at all.
+
+Point 5 is the one that earns the gate its keep. The day someone commits a
+``.rs``, a ``.ts`` or a ``.proto``, this goes red and somebody has to decide
+how that language is checked -- rather than it entering the tree silently and
+being discovered by the sixth hand audit.
+
+LAYOUT AGNOSTICISM IS A DESIGN REQUIREMENT
+------------------------------------------
+Checkers are located by BASENAME through ``git ls-files``, not by a hardcoded
+path. ``scripts/`` was reorganised into subdirectories in #359 and every
+checker this gate resolves changed directory; the basename lookup carried that
+move without a single edit. A gate that hardcoded full paths would have broken
+on it and -- far worse -- could then have been "fixed" by dropping the
+provider, silently shrinking coverage. By name, a MOVE is invisible and a
+DELETION is loud.
+
+USAGE
+-----
+    check_lint_coverage.py --selftest    # assert the gate itself still fires
+    check_lint_coverage.py               # the real check
+    check_lint_coverage.py --matrix      # print the coverage matrix and exit 0
+"""
+
+from __future__ import annotations
+
+import argparse
+import shutil
+import subprocess
+import sys
+import tempfile
+from dataclasses import dataclass
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+
+from lint_coverage_rules import (
+    CLASSES,
+    EXT_CLASS,
+    FORMAT,
+    KNOWN_GAPS,
+    LINT,
+    NAME_CLASS,
+    PATH_CLASS,
+    SHEBANG_CLASS,
+    GapCtx,
+    exemption_reason,
+    validate_tables,
+)
+from selftest_assert import expect, report
+
+REPO_ROOT = Path(
+    subprocess.run(
+        ["git", "rev-parse", "--show-toplevel"],  # noqa: S607 -- trusted: fixed git argv
+        capture_output=True,
+        text=True,
+        check=True,
+    ).stdout.strip()
+)
+
+# A tree this size cannot legitimately collapse to a handful of files. If the
+# enumeration returns less than this, something broke (a bad cwd, a failed git)
+# and reporting "all covered" would be a lie. Same trip-wire as check_ruff.py.
+FILE_FLOOR = 2000
+
+# How many offending paths to print before truncating the list.
+MAX_SHOWN = 40
+
+# A checker basename must resolve to exactly one tracked path; zero means it
+# was deleted, more than one means the name is ambiguous. Both are failures.
+EXACTLY_ONE = 1
+
+# The selftest fixture below plants exactly three exempt paths.
+EXPECTED_FIXTURE_EXEMPT = 3
+
+# An uncovered file yields one pair per role: lint and format.
+BOTH_ROLES = 2
+
+
+# ---------------------------------------------------------------------------
+# Provider descriptors
+# ---------------------------------------------------------------------------
+@dataclass(frozen=True)
+class Provider:
+    """A checker, the roles it fills, and how to ask it what it scans.
+
+    ``script`` is a BASENAME resolved through git at run time -- see the module
+    docstring on layout agnosticism.
+    """
+
+    name: str
+    roles: tuple[str, ...]
+    classes: tuple[str, ...]
+    script: str
+    args: tuple[str, ...]
+    runner: str = "python3"
+
+
+PROVIDERS: tuple[Provider, ...] = (
+    Provider("clang-tidy", (LINT,), ("c-family",), "clang_tidy.sh", ("--list-files",), "bash"),
+    Provider("clang-format", (FORMAT,), ("c-family",), "format_code.sh", ("--list-files",), "bash"),
+    Provider("ruff", (LINT,), ("python",), "check_ruff.py", ("--list-files",)),
+    Provider(
+        "ruff-format", (FORMAT,), ("python",), "format_tree.sh", ("--list-files", "python"), "bash"
+    ),
+    Provider("vet+staticcheck", (LINT,), ("golang",), "check_go.py", ("--list-files",)),
+    Provider("gofmt", (FORMAT,), ("golang",), "format_tree.sh", ("--list-files", "go"), "bash"),
+    Provider("shellcheck", (LINT,), ("shell",), "check_shell.py", ("--list-files",)),
+    Provider("shfmt", (FORMAT,), ("shell",), "format_tree.sh", ("--list-files", "shell"), "bash"),
+    Provider("cmake-lint", (LINT,), ("cmake",), "lint_targets.py", ("cmake",)),
+    Provider(
+        "cmake-format", (FORMAT,), ("cmake",), "format_tree.sh", ("--list-files", "cmake"), "bash"
+    ),
+    Provider("check_justfiles", (LINT,), ("just",), "check_justfiles.py", ("--list-files",)),
+    Provider("just-fmt", (FORMAT,), ("just",), "format_tree.sh", ("--list-files", "just"), "bash"),
+    Provider("yamllint+actionlint", (LINT, FORMAT), ("yaml",), "lint_targets.py", ("yaml",)),
+    Provider(
+        "check_linker_scripts",
+        (LINT, FORMAT),
+        ("linker-script",),
+        "check_linker_scripts.py",
+        ("--list-files",),
+    ),
+    Provider("check_asm", (LINT, FORMAT), ("asm",), "check_asm.py", ("--list-files",)),
+    Provider(
+        "hadolint+zsh",
+        (LINT, FORMAT),
+        ("dockerfile", "zsh"),
+        "check_devcontainer.py",
+        ("--list-files",),
+    ),
+    Provider(
+        "fleet-ansible-template",
+        (LINT, FORMAT),
+        ("ansible-systemd-template",),
+        "check_fleet_declaration.py",
+        ("--list-files",),
+    ),
+)
+
+
+# ---------------------------------------------------------------------------
+# Enumeration and classification
+# ---------------------------------------------------------------------------
+def git_files() -> list[str]:
+    """Every tracked or untracked-but-not-ignored path, repo-relative."""
+    proc = subprocess.run(
+        [  # noqa: S607 -- trusted: fixed git argv
+            "git",
+            "ls-files",
+            "-z",
+            "--cached",
+            "--others",
+            "--exclude-standard",
+        ],
+        cwd=REPO_ROOT,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    if proc.returncode != 0:
+        sys.stderr.write(proc.stderr)
+        sys.stderr.write("check_lint_coverage.py: FATAL -- `git ls-files` failed\n")
+        sys.exit(2)
+    return sorted(_present_worktree_files(proc.stdout.split("\0")))
+
+
+def _present_worktree_files(paths: list[str], root: Path = REPO_ROOT) -> list[str]:
+    """Retain live candidate files and drop deleted paths left in the index."""
+    return [path for path in paths if path and (root / path).is_file()]
+
+
+def read_shebang(rel: str) -> str:
+    """First line of `rel` if it is a shebang, else the empty string."""
+    try:
+        with (REPO_ROOT / rel).open("rb") as handle:
+            first = handle.readline(200)
+    except OSError:
+        return ""
+    if not first.startswith(b"#!"):
+        return ""
+    return first.decode("utf-8", errors="replace").strip()
+
+
+def classify(rel: str) -> str | None:
+    """Return the class name for `rel`, or None when nothing claims it.
+
+    Order is exact path, exact name, extension, then shebang. Exact path keeps
+    one reproducible generated file from exempting every future file with the
+    same extension. Name beats extension so ``CMakeLists.txt`` is cmake rather
+    than text; shebang comes last so it only rescues files the tables genuinely
+    miss -- which is how an extensionless ``scripts/git/pre-commit`` is
+    recognised as shell.
+    """
+    if rel in PATH_CLASS:
+        return PATH_CLASS[rel]
+    name = rel.rsplit("/", 1)[-1]
+    if name in NAME_CLASS:
+        return NAME_CLASS[name]
+    suffix = ""
+    if "." in name[1:]:
+        suffix = "." + name.rsplit(".", 1)[-1]
+    if suffix.lower() in EXT_CLASS:
+        return EXT_CLASS[suffix.lower()]
+    line = read_shebang(rel)
+    if line:
+        for token, cls in SHEBANG_CLASS:
+            if token in line:
+                return cls
+    return None
+
+
+# ---------------------------------------------------------------------------
+# Asking the checkers what they scan
+# ---------------------------------------------------------------------------
+def resolve_script(basename: str, tracked: list[str]) -> str | None:
+    """Locate a checker by basename anywhere in the tree. None if absent."""
+    hits = [p for p in tracked if p.rsplit("/", 1)[-1] == basename]
+    if len(hits) != EXACTLY_ONE:
+        return None
+    return hits[0]
+
+
+def provider_files(prov: Provider, tracked: list[str]) -> tuple[set[str], str | None]:
+    """Run `prov` in list mode. Returns (files, error). Never swallows failure."""
+    path = resolve_script(prov.script, tracked)
+    if path is None:
+        return set(), f"cannot locate {prov.script} (moved, deleted or ambiguous)"
+    runner = shutil.which(prov.runner) or prov.runner
+    proc = subprocess.run(  # noqa: S603 -- argv built from the fixed table above
+        [runner, path, *prov.args],
+        cwd=REPO_ROOT,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    if proc.returncode != 0:
+        detail = proc.stderr.strip().splitlines()
+        tail = detail[-1] if detail else f"exit {proc.returncode}"
+        return set(), f"{prov.script} --list-files failed: {tail}"
+    files = {ln.strip() for ln in proc.stdout.splitlines() if ln.strip()}
+    foreign_code = sorted(
+        rel
+        for rel in files
+        if (cls := classify(rel)) is not None
+        and CLASSES[cls].kind == "code"
+        and cls not in prov.classes
+    )
+    if foreign_code:
+        return set(), (
+            f"{prov.script} --list-files claimed {foreign_code[0]!r} outside "
+            f"its declared classes {prov.classes!r}"
+        )
+    return files, None
+
+
+# ---------------------------------------------------------------------------
+# The pure evaluation core -- shared by the real run and by --selftest.
+# ---------------------------------------------------------------------------
+class Report:
+    """Outcome of one evaluation."""
+
+    def __init__(self) -> None:
+        """Start an empty report with every failure bucket distinct.
+
+        The buckets are kept separate rather than merged into one findings
+        list because they fail for different reasons and carry different
+        remedies -- an unclassified file type needs a rule, an uncovered file
+        needs a checker, and gap growth needs the gap closed.
+        """
+        self.unclassified: list[str] = []
+        self.uncovered: list[tuple[str, str, str]] = []
+        self.gap_growth: list[str] = []
+        self.gap_sizes: dict[str, int] = {}
+        self.counts: dict[str, int] = {}
+        self.exempt: int = 0
+
+    @property
+    def ok(self) -> bool:
+        """Whether the report is clean across every failing bucket.
+
+        Note ``gap_sizes`` and ``exempt`` are deliberately NOT consulted: a
+        recorded gap of unchanged size is the accepted state, and only its
+        GROWTH is a failure.
+        """
+        return not (self.unclassified or self.uncovered or self.gap_growth)
+
+
+def _read_text(rel: str) -> str:
+    """File contents for a gap predicate, empty when unreadable or binary."""
+    try:
+        return (REPO_ROOT / rel).read_text(errors="replace")
+    except OSError:
+        return ""
+
+
+def _bucket_gaps(raw: list[tuple[str, str, str]], report: Report) -> list[tuple[str, str, str]]:
+    """Split uncovered pairs into recorded gaps and genuine violations.
+
+    Also runs the ratchet: a gap that has grown past its recorded count is a
+    failure, because "carried deliberately while it is closed" and "quietly
+    becoming permanent" must not look the same.
+    """
+    hits: dict[str, set[str]] = {gap.name: set() for gap in KNOWN_GAPS}
+    violations: list[tuple[str, str, str]] = []
+    text_cache: dict[str, str] = {}
+    for rel, cls, role in raw:
+        if rel not in text_cache:
+            text_cache[rel] = _read_text(rel)
+        ctx = GapCtx(rel=rel, cls=cls, text=text_cache[rel])
+        for gap in KNOWN_GAPS:
+            if gap.match(ctx):
+                hits[gap.name].add(rel)
+                break
+        else:
+            violations.append((rel, cls, role))
+
+    for gap in KNOWN_GAPS:
+        got = len(hits[gap.name])
+        report.gap_sizes[gap.name] = got
+        if got > gap.count:
+            report.gap_growth.append(
+                f"known gap {gap.name!r} ({gap.issue}) grew from {gap.count} to {got} "
+                "file(s). Close it -- raising the recorded count needs a stated reason."
+            )
+    return violations
+
+
+def _provider_claims_class(prov: Provider, rel: str) -> bool:
+    """Whether a provider may satisfy coverage for this path's code class."""
+    cls = classify(rel)
+    return cls is not None and cls in prov.classes
+
+
+def evaluate(files: list[str], claimed: dict[str, set[str]]) -> Report:
+    """Decide coverage for `files` given each provider's claimed set.
+
+    `claimed` maps provider name -> the set of paths that provider scans. The
+    real run fills it from the checkers themselves; --selftest fills it by
+    hand, which is what makes both directions assertable without touching the
+    working tree.
+    """
+    report = Report()
+    lint_by: dict[str, set[str]] = {}
+    fmt_by: dict[str, set[str]] = {}
+    for prov in PROVIDERS:
+        # A semantic checker cannot accidentally become a universal linter by
+        # returning dependency/ownership files outside its declared class.
+        got = {rel for rel in claimed.get(prov.name, set()) if _provider_claims_class(prov, rel)}
+        if LINT in prov.roles:
+            lint_by[prov.name] = got
+        if FORMAT in prov.roles:
+            fmt_by[prov.name] = got
+
+    all_lint = set().union(*lint_by.values()) if lint_by else set()
+    all_fmt = set().union(*fmt_by.values()) if fmt_by else set()
+
+    raw: list[tuple[str, str, str]] = []
+    for rel in files:
+        if exemption_reason(rel) is not None:
+            report.exempt += 1
+            continue
+        cls = classify(rel)
+        if cls is None:
+            report.unclassified.append(rel)
+            continue
+        report.counts[cls] = report.counts.get(cls, 0) + 1
+        if CLASSES[cls].kind != "code":
+            continue
+        for role, pool in ((LINT, all_lint), (FORMAT, all_fmt)):
+            if rel not in pool:
+                raw.append((rel, cls, role))
+
+    report.uncovered = _bucket_gaps(raw, report)
+    return report
+
+
+# ---------------------------------------------------------------------------
+# Reporting
+# ---------------------------------------------------------------------------
+def print_matrix(report: Report, claimed: dict[str, set[str]]) -> None:
+    """Print the class-by-provider coverage matrix.
+
+    The human-readable answer to "which checker claims this file type?", which
+    is the question that goes unasked until a whole language turns out to have
+    had no checker at all.
+    """
+    by_class: dict[str, list[str]] = {}
+    for prov in PROVIDERS:
+        for cls in prov.classes:
+            by_class.setdefault(cls, []).append(prov.name)
+    print(f"{'CLASS':<18}{'COUNT':>7}  {'KIND':<6} PROVIDERS")
+    print("-" * 78)
+    for cls in sorted(report.counts):
+        spec = CLASSES[cls]
+        provs = ", ".join(by_class.get(cls, [])) or "-- none --"
+        n = report.counts[cls]
+        print(f"{cls:<18}{n:>7}  {spec.kind:<6} {provs}")
+    print("-" * 78)
+    total = sum(report.counts.values())
+    print(f"{'total classified':<18}{total:>7}")
+    print(f"{'exempt':<18}{report.exempt:>7}")
+    for prov in PROVIDERS:
+        print(f"  scanned by {prov.name:<22} {len(claimed.get(prov.name, set())):>6} file(s)")
+    if report.gap_sizes:
+        print("\nRECORDED GAPS -- code with no checker, held flat by the ratchet:")
+        for gap in KNOWN_GAPS:
+            got = report.gap_sizes.get(gap.name, 0)
+            print(f"  {gap.name:<28}{got:>4}/{gap.count:<4} {gap.issue}  {gap.reason[:60]}")
+
+
+def print_failures(report: Report) -> None:
+    """Print each failing bucket to stderr, capped per bucket.
+
+    Capped because a newly-added file type can produce hundreds of identical
+    findings, and the first few plus a count communicate the same thing
+    without burying the other buckets.
+    """
+    if report.unclassified:
+        print("\nUNCLASSIFIED FILE TYPES -- no rule says how these are checked:", file=sys.stderr)
+        for rel in report.unclassified[:MAX_SHOWN]:
+            print(f"  {rel}", file=sys.stderr)
+        extra = len(report.unclassified) - MAX_SHOWN
+        if extra > 0:
+            print(f"  ... and {extra} more", file=sys.stderr)
+        print(
+            "  Add the type to PATH_CLASS/EXT_CLASS/NAME_CLASS in lint_coverage_rules.py and,\n"
+            "  if it is code, wire a linter and a formatter for it.",
+            file=sys.stderr,
+        )
+    if report.uncovered:
+        print(
+            f"\nUNCOVERED CODE FILES -- {len(report.uncovered)} file/role pair(s) "
+            "that no checker claims:",
+            file=sys.stderr,
+        )
+        noun = {LINT: "linter", FORMAT: "formatter"}
+        for rel, cls, role in report.uncovered[:MAX_SHOWN]:
+            print(f"  {rel}  [{cls}] has no {noun[role]}", file=sys.stderr)
+        extra = len(report.uncovered) - MAX_SHOWN
+        if extra > 0:
+            print(f"  ... and {extra} more", file=sys.stderr)
+    for msg in report.gap_growth:
+        print(f"\nGAP RATCHET: {msg}", file=sys.stderr)
+
+
+# ---------------------------------------------------------------------------
+# Selftest -- both directions, run BEFORE the real check.
+# ---------------------------------------------------------------------------
+def _fixture() -> tuple[list[str], dict[str, set[str]]]:
+    """A miniature repo that is fully covered, used as the quiet baseline."""
+    files = [
+        "libs/ra8_core/src/ra8_err.c",
+        "libs/ra8_core/inc/ra8_err.h",
+        "scripts/checks/check_thing.py",  # PATHREF-OK: synthetic fixture
+        "scripts/git/pre-commit",
+        "CMakeLists.txt",
+        "examples/app/linker_script.ld",
+        "examples/app/boot.S",
+        ".devcontainer/Dockerfile",
+        ".devcontainer/zshrc",
+        ".github/workflows/firmware.yml",
+        "infra/ansible/roles/dev_box/templates/ra8-hil-runner.service.j2",
+        "README.md",
+        "apps/shared_libs/third_party/miniz/miniz.c",
+        "apps/board/stand_alone/ereader/content/library/book.epub",
+        "docs/reference/ra8d2-datasheet.pdf",
+    ]
+    claimed = {
+        "clang-tidy": {"libs/ra8_core/src/ra8_err.c", "libs/ra8_core/inc/ra8_err.h"},
+        "clang-format": {"libs/ra8_core/src/ra8_err.c", "libs/ra8_core/inc/ra8_err.h"},
+        "ruff": {"scripts/checks/check_thing.py"},  # PATHREF-OK: synthetic
+        "ruff-format": {"scripts/checks/check_thing.py"},  # PATHREF-OK: synthetic
+        "shellcheck": {"scripts/git/pre-commit"},
+        "shfmt": {"scripts/git/pre-commit"},
+        "cmake-lint": {"CMakeLists.txt"},
+        "cmake-format": {"CMakeLists.txt"},
+        "yamllint+actionlint": {".github/workflows/firmware.yml"},
+        "check_linker_scripts": {"examples/app/linker_script.ld"},
+        "check_asm": {"examples/app/boot.S"},
+        "hadolint+zsh": {".devcontainer/Dockerfile", ".devcontainer/zshrc"},
+        "fleet-ansible-template": {
+            "infra/ansible/roles/dev_box/templates/ra8-hil-runner.service.j2"
+        },
+    }
+    return files, claimed
+
+
+def _assert_quiet(files: list[str], claimed: dict[str, set[str]], failures: list[str]) -> None:
+    """Assert the model stays silent on trees that are genuinely covered.
+
+    Split out along the QUIET / MUST-FIRE boundary this suite already drew in
+    comments: the two directions share only the fixture, and a reader checking
+    "does a covered tree pass?" should not have to step over the fires cases.
+    """
+    base = evaluate(files, claimed)
+    expect(base.ok, "a fully-covered tree passes", failures)
+    expect(
+        base.exempt == EXPECTED_FIXTURE_EXEMPT,
+        f"exempt paths counted, not flagged (got {base.exempt})",
+        failures,
+    )
+
+    plus = [*files, "libs/ra8_core/src/ra8_new.c"]
+    claimed2 = {k: set(v) for k, v in claimed.items()}
+    claimed2["clang-tidy"].add("libs/ra8_core/src/ra8_new.c")
+    claimed2["clang-format"].add("libs/ra8_core/src/ra8_new.c")
+    expect(
+        evaluate(plus, claimed2).ok,
+        "a new file of a covered type in a covered dir stays quiet",
+        failures,
+    )
+
+
+def _assert_fires(files: list[str], claimed: dict[str, set[str]], failures: list[str]) -> None:
+    """Assert the model fires on each distinct way coverage can be lost."""
+    rust = evaluate([*files, "tools/agent/src/main.rs"], claimed)
+    expect(
+        rust.unclassified == ["tools/agent/src/main.rs"],
+        "an unclassified file type (.rs) fires",
+        failures,
+    )
+
+    orphan = evaluate([*files, "newdir/thing.c"], claimed)
+    expect(
+        sorted({r for r, _, _ in orphan.uncovered}) == ["newdir/thing.c"]
+        and len(orphan.uncovered) == BOTH_ROLES,
+        "a code file in a directory no checker enumerates fires (lint AND format)",
+        failures,
+    )
+
+    narrowed = {k: set(v) for k, v in claimed.items()}
+    narrowed["clang-format"].discard("libs/ra8_core/inc/ra8_err.h")
+    drop = evaluate(files, narrowed)
+    expect(
+        drop.uncovered == [("libs/ra8_core/inc/ra8_err.h", "c-family", FORMAT)],
+        "narrowing a checker's scan list fires on the file that dropped out",
+        failures,
+    )
+
+    missing_py = {k: set(v) for k, v in claimed.items()}
+    missing_py["ruff"] = set()
+    missing_py["ruff-format"] = set()
+    expect(
+        len(evaluate(files, missing_py).uncovered) == BOTH_ROLES,
+        "losing python lint and format ownership fires both roles",
+        failures,
+    )
+    missing_template = {k: set(v) for k, v in claimed.items()}
+    missing_template["fleet-ansible-template"] = set()
+    expect(
+        len(evaluate(files, missing_template).uncovered) == BOTH_ROLES,
+        "the HIL systemd template needs both semantic lint and format ownership",
+        failures,
+    )
+    leaked_census = {k: set(v) for k, v in claimed.items()}
+    leaked_census["ruff"] = set()
+    leaked_census["ruff-format"] = set()
+    leaked_census["fleet-ansible-template"].add(
+        "scripts/checks/check_thing.py"  # PATHREF-OK: synthetic lint-coverage fixture
+    )
+    expect(
+        len(evaluate(files, leaked_census).uncovered) == BOTH_ROLES,
+        "ownership-census files cannot inflate another class's lint/format coverage",
+        failures,
+    )
+
+
+def _assert_exact_classifications(failures: list[str]) -> None:
+    """Prove reviewed generated inputs do not exempt future files by suffix."""
+    expect(
+        classify("coprocessor/esp32c6/patches/0001-custom-rpc-sync-response-hook.patch")
+        == "validated-input",
+        "the pinned ESP32-C6 patch is an exact validated input",
+        failures,
+    )
+    expect(
+        classify("scripts/checks/patches/cppcheck-2.13/misra_9-c23-empty-initializer.patch")
+        == "validated-input",
+        "the pinned cppcheck MISRA patch is an exact selftested input",
+        failures,
+    )
+    expect(
+        classify("docs/sbom/patches/stb/0001-harden-font-parser-bounds.patch") == "validated-input"
+        and classify("docs/sbom/patches/stb/series") == "validated-input",
+        "the reviewed SOUP patch and series are exact replay-gated inputs",
+        failures,
+    )
+    expect(
+        classify("libs/ra8_c6link/proto/ra8_media_download.proto") == "validated-input",
+        "the pinned protobuf schema is an exact validated input",
+        failures,
+    )
+    expect(
+        classify("libs/ra8_c6link/src/ra8_media_download.pb-c.c") == "generated-source",
+        "the pinned protobuf-C output is exact generated source",
+        failures,
+    )
+    expect(
+        classify("infra/ansible/roles/dev_box/templates/ra8-hil-runner.service.j2")
+        == "ansible-systemd-template",
+        "the exact managed HIL systemd template has semantic ownership",
+        failures,
+    )
+    expect(
+        classify("infra/ansible/roles/dev_box/templates/ra8-hil-privileged-policy.json.j2")
+        == "validated-input"
+        and classify("scripts/hil/lib/ra8-hil-privileged.sha256") == "validated-input",
+        "the privilege checker owns its exact policy template and identity manifest",
+        failures,
+    )
+    _assert_future_classifications(failures)
+
+
+def _assert_future_classifications(failures: list[str]) -> None:
+    """Prove lookalike paths cannot inherit an exact reviewed classification."""
+    expect(
+        classify("coprocessor/esp32c6/patches/another.patch") is None,
+        "a future upstream patch remains unclassified",
+        failures,
+    )
+    expect(
+        classify(
+            "scripts/checks/patches/cppcheck-2.13/future.patch"  # PATHREF-OK: synthetic fixture
+        )
+        is None,
+        "a future cppcheck patch remains unclassified",
+        failures,
+    )
+    expect(
+        # PATHREF-OK: synthetic lint-coverage fixture
+        classify("infra/ansible/roles/other/templates/sudoers.j2") is None,
+        "a future Jinja template remains unclassified",
+        failures,
+    )
+    expect(
+        classify("docs/sbom/patches/future/series") is None,
+        "a future patch series remains unclassified",
+        failures,
+    )
+    expect(
+        classify("libs/new/proto/another.proto") is None,
+        "a future protobuf schema remains unclassified",
+        failures,
+    )
+    expect(
+        classify("libs/new/src/another.pb-c.c") == "c-family",
+        "a future generated-looking C file remains first-party C",
+        failures,
+    )
+    expect(
+        classify("infra/ansible/roles/dev_box/templates/future.service.j2") is None,
+        "a future Jinja template remains unclassified until it has a validator",
+        failures,
+    )
+    expect(
+        classify("infra/ansible/roles/dev_box/templates/future-policy.json.j2") is None
+        and classify(
+            "scripts/hil/lib/future.sha256"  # PATHREF-OK: absent-manifest fixture
+        )
+        is None,
+        "future policy and digest inputs remain unclassified without an exact checker",
+        failures,
+    )
+
+
+def _assert_ratchet(files: list[str], claimed: dict[str, set[str]], failures: list[str]) -> None:
+    """Assert the recorded-gap ratchet holds, and that closed gaps really closed.
+
+    Separate from the plain must-fire cases because these test a different
+    mechanism: not "is this file covered?" but "has a gap we agreed to tolerate
+    grown, and did the gaps we claim to have closed actually close?".
+    """
+    # 3 unclaimed .m files exceed the recorded 2 of objc-needs-macos-runner
+    # (#370); one does not.
+    many = [f"tools/ra8_x/src/v{n}.m" for n in range(3)]
+    grew = evaluate([*files, *many], claimed)
+    expect(bool(grew.gap_growth), "a known gap that grows fires the ratchet", failures)
+    expect(
+        not evaluate([*files, many[0]], claimed).gap_growth,
+        "a known gap at or under its recorded count stays quiet",
+        failures,
+    )
+    # C++ is no longer a recorded gap: #370's C++ half is closed by the C++
+    # pass in clang_tidy.sh, so an unclaimed .cpp is now a plain violation.
+    # This asserts that half really was closed rather than merely deleted from
+    # the table -- the same assertion shape #371 left behind for .S below.
+    orphan_cxx = evaluate([*files, "libs/ra8_x/src/orphan.cpp"], claimed)
+    expect(
+        sorted({r for r, _, _ in orphan_cxx.uncovered}) == ["libs/ra8_x/src/orphan.cpp"]
+        and not orphan_cxx.gap_growth,
+        "an unclaimed .cpp is a violation now, not a recorded gap",
+        failures,
+    )
+    # A .S file is no longer a recorded gap: #371 gave assembly a checker, so an
+    # unclaimed one is now a plain violation. This asserts the gap really was
+    # closed rather than merely deleted from the table.
+    orphan_asm = evaluate([*files, "newdir/boot.S"], claimed)
+    expect(
+        sorted({r for r, _, _ in orphan_asm.uncovered}) == ["newdir/boot.S"]
+        and not orphan_asm.gap_growth,
+        "an unclaimed .S is a violation now, not a recorded gap",
+        failures,
+    )
+
+
+def selftest() -> int:
+    """Prove the coverage model both fires and stays quiet, against fixtures.
+
+    Validates the classification tables first: a rule keyed on a class no
+    provider claims, or a provider claiming a class that does not exist,
+    makes every later answer meaningless.
+
+    Returns 0 when both directions hold, 1 otherwise.
+    """
+    print("check_lint_coverage.py --selftest")
+    failures: list[str] = []
+
+    problems = validate_tables()
+    expect(not problems, f"classification tables self-consistent ({problems})", failures)
+
+    with tempfile.TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        (root / "present.py").touch()
+        expect(
+            _present_worktree_files(["present.py", "deleted.py"], root) == ["present.py"],
+            "candidate inventory keeps live files and drops deleted index paths",
+            failures,
+        )
+
+    files, claimed = _fixture()
+    _assert_exact_classifications(failures)
+    _assert_quiet(files, claimed, failures)
+    _assert_fires(files, claimed, failures)
+    _assert_ratchet(files, claimed, failures)
+
+    return report(failures)
+
+
+def run_check(show_matrix: bool) -> int:
+    """Verify every tracked code file is claimed by at least one checker.
+
+    Enforces a FILE FLOOR before anything else and exits 2 below it. That is
+    the load-bearing part: if the enumeration collapses, every file is
+    trivially covered and the gate reports perfect coverage precisely because
+    it saw nothing -- the exact failure mode it exists to detect in others.
+
+    Returns 0 when every file is covered, 1 on a coverage failure, 2 when the
+    enumeration is too small to trust.
+    """
+    tracked = git_files()
+    if len(tracked) < FILE_FLOOR:
+        sys.stderr.write(
+            f"check_lint_coverage.py: FATAL -- only {len(tracked)} file(s) enumerated, "
+            f"floor is {FILE_FLOOR}.\n"
+            "  A collapsed enumeration reports full coverage because it saw nothing.\n"
+        )
+        return 2
+
+    claimed: dict[str, set[str]] = {}
+    errors: list[str] = []
+    for prov in PROVIDERS:
+        got, err = provider_files(prov, tracked)
+        if err:
+            errors.append(f"{prov.name}: {err}")
+        claimed[prov.name] = got
+    if errors:
+        sys.stderr.write("check_lint_coverage.py: FATAL -- provider enumeration failed.\n")
+        for err in errors:
+            sys.stderr.write(f"  {err}\n")
+        sys.stderr.write(
+            "  A provider that cannot report its scope leaves coverage unknown;\n"
+            "  unknown is a failure, never a pass.\n"
+        )
+        return 2
+
+    report = evaluate(tracked, claimed)
+    if show_matrix or report.ok:
+        print_matrix(report, claimed)
+    if report.ok:
+        held = sum(report.gap_sizes.values())
+        if held:
+            print(
+                f"\ncheck_lint_coverage.py: every code file is linted and formatted, "
+                f"except {held} file(s) in the recorded gaps above -- each tracked by "
+                "an issue and held flat by the ratchet."
+            )
+        else:
+            print("\ncheck_lint_coverage.py: every code file is linted and formatted.")
+        return 0
+    print_failures(report)
+    return 1
+
+
+def main(argv: list[str]) -> int:
+    """Run the lint-coverage gate, its selftest, or print the coverage matrix."""
+    ap = argparse.ArgumentParser(description=__doc__)
+    ap.add_argument("--selftest", action="store_true", help="assert both directions")
+    ap.add_argument("--matrix", action="store_true", help="print the coverage matrix")
+    args = ap.parse_args(argv[1:])
+    if args.selftest:
+        return selftest()
+    return run_check(args.matrix)
+
+
+if __name__ == "__main__":
+    sys.exit(main(sys.argv))
