@@ -70,6 +70,7 @@ typedef enum : uint32_t {
   k_lt_out_bytes     = 64U,   /**< Golden model output tensor length.     */
   k_lt_byte_mask     = 0xFFU, /**< 8-bit element wrap (matches the op).   */
   k_lt_word_bytes    = 4U,    /**< Bytes in one little-endian word.       */
+  k_lt_alias_bytes   = 32U,   /**< Region size used by the alias fixtures. */
 } ra8_loader_test_const_t;
 
 /** @brief Runtime arena the loader carves output activations from. */
@@ -113,9 +114,11 @@ static uint32_t lt_fnv(const uint8_t* buf, uint32_t start, uint32_t end)
 
 /** @brief One region spec for the in-C blob builder. */
 typedef struct {
-  uint32_t role;  /**< ra8_npu_blob_role_t value.       */
-  bool     baked; /**< True: bytes baked into the blob. */
-  uint32_t size;  /**< Region size in bytes.            */
+  uint32_t role;   /**< ra8_npu_blob_role_t value.                        */
+  bool     baked;  /**< True: bytes baked into the blob.                  */
+  uint32_t size;   /**< Region size in bytes.                             */
+  bool     alias;  /**< True: region aliases @ref lt_region_t::target.    */
+  uint32_t target; /**< Alias target region index (alias regions only).   */
 } lt_region_t;
 
 /**
@@ -144,9 +147,14 @@ static uint32_t lt_build(uint8_t* buf, const lt_region_t* regs, uint32_t nreg)
   lt_put_word(buf, coff + ((uint32_t)k_ra8_npu_fake_word_const * (uint32_t)k_lt_word_bytes), 0U);
 
   for (uint32_t r = 0U; r < nreg; r++) {
-    const uint32_t desc  = hdr + (r * rdb);
-    const uint32_t flags = regs[r].baked ? (uint32_t)k_ra8_npu_blob_rflag_baked : 0U;
-    const uint32_t doff  = regs[r].baked ? cursor : 0U;
+    const uint32_t desc = hdr + (r * rdb);
+    uint32_t       flags = regs[r].baked ? (uint32_t)k_ra8_npu_blob_rflag_baked : 0U;
+    uint32_t       doff  = regs[r].baked ? cursor : 0U;
+    if (regs[r].alias) {
+      /* An alias descriptor carries no payload: data_offset is a region index. */
+      flags |= (uint32_t)k_ra8_npu_blob_rflag_alias;
+      doff = regs[r].target;
+    }
     lt_put_word(buf,
                 desc + ((uint32_t)k_ra8_npu_blob_rdesc_role * (uint32_t)k_lt_word_bytes),
                 regs[r].role);
@@ -508,6 +516,86 @@ static void test_load_runtime_arena_limits(void)
   TEST_END("loader rejects when runtime regions do not fit");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- the alias path's three guards are
+ * separate single conditions and none of them fires here; the assertion is that
+ * an alias region resolves to its target's base and consumes no arena)
+ */
+static void test_load_alias_shares_base(void)
+{
+  TEST_BEGIN("loader resolves an alias region onto its target's base");
+  ra8_npu_arena_t arena = lt_arena((uint32_t)sizeof(s_arena));
+  ra8_npu_job_t   job   = {};
+
+  /* Region 1 aliases region 0: same size, no baked bytes, target index 0. */
+  const lt_region_t regs[] = {
+    {.role = (uint32_t)k_ra8_npu_blob_role_scratch, .size = k_lt_alias_bytes},
+    {.role  = (uint32_t)k_ra8_npu_blob_role_output,
+     .size  = k_lt_alias_bytes,
+     .alias = true,
+     .target = 0U},
+  };
+  const uint32_t total = lt_build(s_scratch, regs, 2U);
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_npu_load(s_scratch, total, &arena, &job));
+
+  /* The alias resolves to the same AXI base as its target ... */
+  TEST_ASSERT_EQ(job.region_base[k_ra8_npu_region_0], job.region_base[k_ra8_npu_region_1]);
+  /* ... which is the arena's first slot, so the alias took no extra arena. */
+  TEST_ASSERT_EQ((uint64_t)(uintptr_t)s_arena, job.region_base[k_ra8_npu_region_0]);
+  TEST_END("loader resolves an alias region onto its target's base");
+}
+
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- internal_npu_place_alias() holds three
+ * single-condition guards and this test trips each one in turn: baked+alias,
+ * a target that is not strictly earlier, and a size that differs from the
+ * target's)
+ */
+static void test_load_rejects_bad_alias(void)
+{
+  TEST_BEGIN("loader rejects malformed alias regions");
+  ra8_npu_job_t job = {};
+
+  /* Guard 1: a descriptor claiming both BAKED and ALIAS. */
+  const lt_region_t baked_alias[] = {
+    {.role = (uint32_t)k_ra8_npu_blob_role_scratch, .size = k_lt_alias_bytes},
+    {.role   = (uint32_t)k_ra8_npu_blob_role_output,
+     .baked  = true,
+     .size   = k_lt_alias_bytes,
+     .alias  = true,
+     .target = 0U},
+  };
+  const uint32_t  t1 = lt_build(s_scratch, baked_alias, 2U);
+  ra8_npu_arena_t a1 = lt_arena((uint32_t)sizeof(s_arena));
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_npu_load(s_scratch, t1, &a1, &job));
+
+  /* Guard 2: region 0 aliasing itself (target is not an earlier region). */
+  const lt_region_t self_alias[] = {
+    {.role   = (uint32_t)k_ra8_npu_blob_role_output,
+     .size   = k_lt_alias_bytes,
+     .alias  = true,
+     .target = 0U},
+  };
+  const uint32_t  t2 = lt_build(s_scratch, self_alias, 1U);
+  ra8_npu_arena_t a2 = lt_arena((uint32_t)sizeof(s_arena));
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_npu_load(s_scratch, t2, &a2, &job));
+
+  /* Guard 3: an alias whose size differs from its target's. */
+  const lt_region_t size_mismatch[] = {
+    {.role = (uint32_t)k_ra8_npu_blob_role_scratch, .size = k_lt_alias_bytes},
+    {.role   = (uint32_t)k_ra8_npu_blob_role_output,
+     .size   = k_lt_alias_bytes / 2U,
+     .alias  = true,
+     .target = 0U},
+  };
+  const uint32_t  t3 = lt_build(s_scratch, size_mismatch, 2U);
+  ra8_npu_arena_t a3 = lt_arena((uint32_t)sizeof(s_arena));
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_npu_load(s_scratch, t3, &a3, &job));
+  TEST_END("loader rejects malformed alias regions");
+}
+
 int main(void)
 {
   test_load_golden_maps_job();
@@ -516,5 +604,7 @@ int main(void)
   test_load_rejects_checksum();
   test_load_rejects_baked_oob();
   test_load_runtime_arena_limits();
+  test_load_alias_shares_base();
+  test_load_rejects_bad_alias();
   return 0;
 }

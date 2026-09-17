@@ -287,6 +287,74 @@ static ra8_err_t internal_npu_place_region(const uint8_t*         p,
 }
 
 /**
+ * @brief Resolve one ALIAS region descriptor to the base it repeats.
+ *
+ * @details An alias descriptor owns no bytes: its `data_offset` word holds the
+ *          INDEX of an earlier region, and the region resolves to that region's
+ *          already-computed base. Vela emits this shape whenever one BASEPn slot
+ *          repeats a buffer (in Shared_Sram mode `scratch_fast` aliases
+ *          `scratch`, so the same tensor appears twice in the custom operator's
+ *          input list); resolving it as a buffer of its own would claim the
+ *          arena twice and hand the command stream two different addresses for
+ *          one tensor. Three single-condition guards: the flag may not be
+ *          combined with ::k_ra8_npu_blob_rflag_baked, the target index must be
+ *          strictly lower than @p index so it is already resolved, and the two
+ *          declared sizes must agree.
+ *
+ * @param[in]  p        `.npub` byte buffer base.
+ * @param[in]  desc_off Byte offset of this region descriptor.
+ * @param[in]  index    Index of this region (its BASEPn slot).
+ * @param[in]  flags    This descriptor's already-read flags word.
+ * @param[in]  job      Job whose `region_base[0..index)` are resolved.
+ * @param[out] out_base Resolved base on success; untouched on failure.
+ *
+ * @return `ra8_err_t` error code.
+ * @retval k_ra8_ok Alias resolved; @p out_base holds the target's base.
+ * @retval k_ra8_err_invalid_arg Baked+alias, a forward or self target, or a size
+ *         that differs from the target's size.
+ *
+ * @pre @p job->region_base[0..index) hold resolved bases.
+ * @post On success @p out_base equals the target region's base.
+ *
+ * @note Re-entrant; reads the blob and already-resolved bases only.
+ * @since 0.1.0
+ */
+static ra8_err_t internal_npu_place_alias(const uint8_t*       p,
+                                          uint32_t             desc_off,
+                                          uint32_t             index,
+                                          uint32_t             flags,
+                                          const ra8_npu_job_t* job,
+                                          uint64_t*            out_base)
+{
+  if ((flags & (uint32_t)k_ra8_npu_blob_rflag_baked) != 0U) {
+    ra8_log_error(s_tag, "load: region is both baked and an alias");
+    return k_ra8_err_invalid_arg;
+  }
+  const uint32_t target =
+    ra8_npu_blob_read_word(p,
+                           desc_off + ((uint32_t)k_ra8_npu_blob_rdesc_data_offset *
+                                       (uint32_t)k_ra8_npu_blob_word_bytes));
+  if (target >= index) {
+    ra8_log_error(s_tag, "load: alias target is not an earlier region");
+    return k_ra8_err_invalid_arg;
+  }
+  const uint32_t size = ra8_npu_blob_read_word(
+    p,
+    desc_off + ((uint32_t)k_ra8_npu_blob_rdesc_size * (uint32_t)k_ra8_npu_blob_word_bytes));
+  const uint32_t target_off =
+    (uint32_t)k_ra8_npu_blob_header_bytes + (target * (uint32_t)k_ra8_npu_blob_region_desc_bytes);
+  const uint32_t target_size = ra8_npu_blob_read_word(
+    p,
+    target_off + ((uint32_t)k_ra8_npu_blob_rdesc_size * (uint32_t)k_ra8_npu_blob_word_bytes));
+  if (size != target_size) {
+    ra8_log_error(s_tag, "load: alias size differs from its target");
+    return k_ra8_err_invalid_arg;
+  }
+  *out_base = job->region_base[target];
+  return k_ra8_ok;
+}
+
+/**
  * @brief Resolve every region descriptor into @p job->region_base[].
  *
  * @details Walks the @p rcount region descriptors that follow the header and
@@ -304,6 +372,8 @@ static ra8_err_t internal_npu_place_region(const uint8_t*         p,
  * @retval k_ra8_ok Every region resolved; @p job->region_base populated.
  * @retval k_ra8_err_out_of_range A baked region's bytes fall outside the blob.
  * @retval k_ra8_err_no_mem A runtime region does not fit in @p arena.
+ * @retval k_ra8_err_invalid_arg An alias descriptor is malformed (see
+ *         internal_npu_place_alias()).
  *
  * @pre The region table lies within the blob (caller-checked).
  * @pre @p job and @p arena are non-NULL (caller-guaranteed).
@@ -323,8 +393,15 @@ static ra8_err_t internal_npu_place_all_regions(const uint8_t*         p,
   for (uint32_t r = 0U; r < rcount; r++) {
     const uint32_t desc_off =
       (uint32_t)k_ra8_npu_blob_header_bytes + (r * (uint32_t)k_ra8_npu_blob_region_desc_bytes);
-    const ra8_err_t rgn =
-      internal_npu_place_region(p, total, desc_off, arena, &used, &job->region_base[r]);
+    const uint32_t flags = ra8_npu_blob_read_word(
+      p,
+      desc_off + ((uint32_t)k_ra8_npu_blob_rdesc_flags * (uint32_t)k_ra8_npu_blob_word_bytes));
+    ra8_err_t rgn = k_ra8_ok;
+    if ((flags & (uint32_t)k_ra8_npu_blob_rflag_alias) != 0U) {
+      rgn = internal_npu_place_alias(p, desc_off, r, flags, job, &job->region_base[r]);
+    } else {
+      rgn = internal_npu_place_region(p, total, desc_off, arena, &used, &job->region_base[r]);
+    }
     RA8_RETURN_ON_ERROR(rgn, s_tag, "load: region");
   }
   return k_ra8_ok;
