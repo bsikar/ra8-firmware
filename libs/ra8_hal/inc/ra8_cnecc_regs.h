@@ -3,6 +3,9 @@
  * @brief CANFD ECC (CNECC) register layout for the RA8D2
  * @ingroup grp_hal_crypto
  *
+ * @par Tag
+ * [Ring 3 / HAL] {World: S}
+ *
  * @details
  * The RA8D2 ships two CANFD message-buffer SRAM (MBRAM) ECC blocks
  * (``ECCMB0`` and ``ECCMB1``). Each instance is a small 0x14-byte

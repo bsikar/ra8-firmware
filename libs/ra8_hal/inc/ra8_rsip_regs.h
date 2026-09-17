@@ -3,6 +3,9 @@
  * @brief Renesas Secure IP (RSIP-E50D) register layout for the RA8D2
  * @ingroup grp_hal_crypto
  *
+ * @par Tag
+ * [Ring 3 / HAL] {World: S}
+ *
  * @details
  * The RSIP-E50D engine on the RA8D2 is an isolated security
  * subsystem (HUM Ch 52 "Renesas Secure IP (RSIP-E50D)" p 3302). It
