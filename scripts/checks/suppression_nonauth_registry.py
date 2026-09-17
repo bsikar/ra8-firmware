@@ -488,6 +488,7 @@ _GROUPS = (
             "checks/check_no_dynamic_alloc.py:MIN_ARGC_WITH_ARG",
             "checks/check_runner_image_deps.py:K_PROBE_TIMEOUT_S",
             "checks/check_sg_offsets.py:NM_FIELD_COUNT",
+            "checks/check_sg_offsets.py:SG_STUB_BYTES",
             "checks/check_sg_offsets.py:THUMB_MASK",
             "checks/check_shell_just_invocations.py:MIN_LAUNCHER_ARGV",
             "checks/check_soup_upstream.py:FETCH_TIMEOUT_S",
