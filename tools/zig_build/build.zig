@@ -70,6 +70,36 @@ pub fn probeHostSdk(allocator: std.mem.Allocator) macos_host.SdkProbe {
     return .{ .sdk_path = sdk_path, .libsystem_tbd = tbd };
 }
 
+/// Wire a test binary into `test_step` so a cross-configured build root still
+/// proves what it can.
+///
+/// The host apps default to an explicit `aarch64-macos` query on Apple silicon
+/// (#899), and that same query is how a Linux checkout exercises the Mach-O
+/// link path. Compiling and linking works from anywhere; running the result
+/// does not, and a plain `b.addRunArtifact` turns that into a hard failure
+/// ("the host system (x86_64-linux) is unable to execute binaries from the
+/// target (aarch64-macos)"), which makes `zig build test -Dtarget=aarch64-macos`
+/// unusable as a check.
+///
+/// So the run is marked skippable on a foreign host, and `test_step` also
+/// depends on the compile directly: when the binary cannot run, it is still
+/// built and linked, and Zig's build summary reports the run as skipped rather
+/// than passed. On a real arm64 Mac the target is native and the tests run
+/// normally.
+pub fn addHostTestRun(
+    b: *std.Build,
+    test_step: *std.Build.Step,
+    tests: *std.Build.Step.Compile,
+) *std.Build.Step.Run {
+    const run = b.addRunArtifact(tests);
+    run.skip_foreign_checks = true;
+    // Linking is the property #899 is about, so it must happen even on a host
+    // that cannot execute the result.
+    test_step.dependOn(&tests.step);
+    test_step.dependOn(&run.step);
+    return run;
+}
+
 pub fn build(b: *std.Build) void {
     const target = b.standardTargetOptions(.{});
     const optimize = b.standardOptimizeOption(.{});
@@ -88,5 +118,5 @@ pub fn build(b: *std.Build) void {
 
     const tests = b.addTest(.{ .root_module = test_module });
     const test_step = b.step("test", "Run host-target selection tests");
-    test_step.dependOn(&b.addRunArtifact(tests).step);
+    _ = addHostTestRun(b, test_step, tests);
 }

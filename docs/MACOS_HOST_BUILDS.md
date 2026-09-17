@@ -89,9 +89,20 @@ Mach-O link path:
     zig build -Dtarget=aarch64-macos
     zig build test -Dmacos-libsystem=bundled
 
-Both compile and link `aarch64-macos` binaries. The test *run* steps then fail
-with "the host system (x86_64-linux) is unable to execute binaries from the
-target (aarch64-macos)", which is expected and is not a defect.
+Both compile and link `aarch64-macos` binaries. The test binaries are compiled
+and linked too, and their *run* steps are then reported as skipped, because a
+Linux host cannot execute a Mach-O arm64 binary:
+
+    Build Summary: 2/3 steps succeeded; 1 skipped
+    +- zig test Debug aarch64-macos success
+    +- run test skipped
+
+That is the intended outcome, and it is what makes the command usable as a
+link check off a Mac: the compile and link are real, the run is honestly
+reported as not having happened. A skipped run is never a passed test, so read
+the summary line rather than the exit status when the build root is
+cross-configured. On an arm64 Mac the pinned `aarch64-macos` target is native,
+nothing is skipped, and the tests run.
 
 A Linux checkout cannot exercise the `xcrun` probe, the SDK stub parse against
 a real `.tbd`, the `sdk` failure mode, or any behaviour of the produced
