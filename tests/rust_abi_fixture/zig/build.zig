@@ -44,5 +44,7 @@ pub fn build(b: *std.Build) void {
     }
 
     const test_step = b.step("test", "Run Zig consumer of the Rust C ABI fixture");
-    _ = ra8_build.addHostTestRun(b, test_step, tests);
+    const run_tests = b.addRunArtifact(tests);
+    test_step.dependOn(&run_tests.step);
+    ra8_build.allowForeignHostTests(test_step, tests, run_tests);
 }

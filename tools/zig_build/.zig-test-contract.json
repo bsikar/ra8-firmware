@@ -1,0 +1,11 @@
+{
+  "test_roots": [
+    "tests/root.zig"
+  ],
+  "covered_sources": [
+    "macos_host.zig",
+    "tests/macos_host_test.zig",
+    "tests/root.zig"
+  ],
+  "minimum_tests": 6
+}
