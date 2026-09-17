@@ -144,6 +144,7 @@ if(NOT TARGET test_ra8_c6link_mdl)
     ${FW_ROOT}/apps/shared_libs/mdl/tests/src/test_ra8_c6link_mdl.c
     ${FW_ROOT}/apps/shared_libs/mdl/tests/src/test_ra8_c6link_mdl_policy.c
     ${FW_ROOT}/apps/shared_libs/mdl/tests/src/test_ra8_c6link_mdl_guards.c
+    ${FW_ROOT}/apps/shared_libs/mdl/tests/src/test_ra8_c6link_mdl_contract.c
     ${FW_ROOT}/libs/ra8_c6link/src/ra8_c6link_mdl_service.c
     ${FW_ROOT}/libs/ra8_c6link/src/ra8_media_download.pb-c.c
     ${RA8_C6LINK_VENDOR_DIR}/common/protobuf-c/protobuf-c/protobuf-c.c
