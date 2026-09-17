@@ -153,6 +153,39 @@ extern "C" {
   } while (0)
 
 /**
+ * @brief Halt on a failed named boot step, preserving the diagnostic.
+ *
+ * @details
+ * The boot-path form of ::RA8_ERROR_CHECK. It keeps the `ra8_err_t` the
+ * caller just produced and names the step that failed, so a bench failure
+ * reports `BOOT <what> <code>` instead of an unlit LED and a silent
+ * console. On success it costs nothing beyond the comparison.
+ *
+ * Safe before the console is up: `ra8_fatal_error` masks interrupts,
+ * makes its log call best-effort, and halts regardless of whether any
+ * backend was listening.
+ *
+ * @param[in] expr `ra8_err_t` expression for one boot step.
+ * @param[in] what String literal naming that step, e.g. `"time_init"`.
+ *
+ * @note `expr` is evaluated exactly once via a local.
+ * @note Prefer this to a private `while (1) { wfi; }` helper: the error
+ *       code survives, and a product can still override the halt once by
+ *       replacing the weak `ra8_fatal_error`.
+ *
+ * @code{.c}
+ * RA8_BOOT_REQUIRE(ra8_time_init(cpuclk0_hz), "time_init");
+ * @endcode
+ */
+#define RA8_BOOT_REQUIRE(expr, what)                                                               \
+  do {                                                                                             \
+    ra8_err_t boot_rc_ = (expr);                                                                   \
+    if (ra8_err_is_error(boot_rc_)) {                                                              \
+      ra8_fatal_error("BOOT", (what), (uint32_t)boot_rc_);                                         \
+    }                                                                                              \
+  } while (0)
+
+/**
  * @brief Log and continue on non-fatal error.
  *
  * @details
