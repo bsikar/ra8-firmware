@@ -1,0 +1,86 @@
+# world-tag scope declaration -- which trees the [Ring N / NAME] + {World: ...}
+# requirement enforced by scripts/checks/check_world_tags.py actually reaches.
+#
+# The requirement's SCOPE lived only in file_is_in_ring3_plus(), a hand-written
+# set of path shapes, under a docstring saying the sole deliberate omissions
+# were host tooling and vendored code. They were not: apps/, port/ and 38
+# first-party libs/ roots sat outside the requirement, undocumented, and most
+# of them carry Ring/World tags the gate never reads. A whole library root was
+# a quieter exemption than any row of the legacy inventory (#842).
+#
+# One row per first-party root the sweep enumerates:
+#
+#   required  every file under the root is inside the requirement
+#   partial   some are, and the reason says which
+#   exempt    none are, deliberately, and the reason says why
+#   unscoped  none are, and that is debt, not a decision
+#
+# The gate measures every row against the tree on each run, so this file cannot
+# drift from the classifier in either direction: a root the tree has and this
+# file does not is a finding (nothing enters unjudged), a row whose root is
+# gone is a finding (the list only shrinks), a "required" root the classifier
+# only partly covers is a finding, and a root the classifier DOES cover while
+# this file calls it unscoped or exempt is a finding too. exempt and unscoped
+# measure the same, so what separates them is the reason written here.
+#
+# The counts below are read by the gate and must match the rows present, in
+# total and per state, so a root changing state shows up as a changed number
+# rather than a moved line. Widening the requirement means moving a root to
+# "required" and tagging what is under it; it is never an edit to this file
+# alone.
+#! roots: 51
+#! required: 7
+#! partial: 1
+#! exempt: 3
+#! unscoped: 40
+unscoped apps/: first-party app and shared-library code; tags present by convention, not required
+partial examples/: only <app>/src/main.c is inside (Ring 6); every other app TU, boot files included, is not
+unscoped libs/if/: first-party library; tags present by convention, not required or read
+unscoped libs/if_ra8_vfs/: first-party library; tags present by convention, not required or read
+unscoped libs/ra8_app/: first-party library; tags present by convention, not required or read
+unscoped libs/ra8_audio/: first-party library; tags present by convention, not required or read
+unscoped libs/ra8_batt/: first-party library; tags present by convention, not required or read
+unscoped libs/ra8_board_ek_ra8d2/: first-party library; tags present by convention, not required or read
+unscoped libs/ra8_board_ra8p1/: first-party library; tags present by convention, not required or read
+unscoped libs/ra8_box/: first-party library; tags present by convention, not required or read
+unscoped libs/ra8_c6link/: first-party library; tags present by convention, not required or read
+unscoped libs/ra8_cache_store/: first-party library; tags present by convention, not required or read
+unscoped libs/ra8_camera/: first-party library; tags present by convention, not required or read
+unscoped libs/ra8_camera_io/: first-party library; tags present by convention, not required or read
+exempt libs/ra8_core/: Ring 1 BSP and Ring 2 Core, Secure-only by policy, so a World tag would restate the ring
+unscoped libs/ra8_devcfg/: first-party library; tags present by convention, not required or read
+unscoped libs/ra8_dfu/: first-party library; tags present by convention, not required or read
+required libs/ra8_display_pal/
+unscoped libs/ra8_epd_cal/: first-party library; tags present by convention, not required or read
+unscoped libs/ra8_fs/: first-party library; no file carries a tag and nothing requires one
+unscoped libs/ra8_ftl/: first-party library; tags present by convention, not required or read
+unscoped libs/ra8_gfx/: first-party library; no file carries a tag and nothing requires one
+required libs/ra8_hal/
+unscoped libs/ra8_io/: first-party library; tags present by convention, not required or read
+unscoped libs/ra8_jpeg/: first-party library; tags present by convention, not required or read
+unscoped libs/ra8_keyboard/: first-party library; tags present by convention, not required or read
+unscoped libs/ra8_lsm6dso/: first-party library; tags present by convention, not required or read
+unscoped libs/ra8_mem/: first-party library; tags present by convention, not required or read
+unscoped libs/ra8_modem_at/: first-party library; tags present by convention, not required or read
+unscoped libs/ra8_mpu/: first-party library; no file carries a tag and nothing requires one
+required libs/ra8_net_pal/
+required libs/ra8_nsc/
+unscoped libs/ra8_ota/: first-party library; tags present by convention, not required or read
+unscoped libs/ra8_ov5640/: first-party library; tags present by convention, not required or read
+unscoped libs/ra8_power_profile/: first-party library; tags present by convention, not required or read
+unscoped libs/ra8_psa_crypto/: first-party library; tags present by convention, not required or read
+unscoped libs/ra8_sdfont/: first-party library; tags present by convention, not required or read
+unscoped libs/ra8_sdmmc_spi/: first-party library; tags present by convention, not required or read
+required libs/ra8_secure_app/
+unscoped libs/ra8_tls/: first-party library; tags present by convention, not required or read
+unscoped libs/ra8_touch_cal/: first-party library; tags present by convention, not required or read
+unscoped libs/ra8_tz_secure_boot/: first-party library; tags present by convention, not required or read
+unscoped libs/ra8_ui/: first-party library; tags present by convention, not required or read
+required libs/ra8_usb_pal/
+unscoped libs/ra8_wdt_supervisor/: first-party library; tags present by convention, not required or read
+unscoped libs/ra8_widget/: first-party library; tags present by convention, not required or read
+unscoped libs/ra8_wifi/: first-party library; tags present by convention, not required or read
+unscoped port/: first-party RTOS and stack ports (vendored subtrees are dropped by the sweep); tags by convention, not required
+exempt scripts/: host tooling, never cross-compiled into either TrustZone world
+required tests/
+exempt tools/: host tooling, never cross-compiled into either TrustZone world
