@@ -6,9 +6,10 @@
 //! sector arithmetic live in `internal/root.zig`; this file owns the store
 //! layout, the argument guards, the log lines and the `ra8_err_t` mapping.
 //!
-//! The mount and recovery half stays in `ra8_cache_store_mount.c` on this
-//! branch, so the seven `priv_cache_store_*` helpers it defines are declared
-//! here as externs. That is the whole seam: nothing in this file speaks to
+//! The mount and recovery half lives in `mount.zig`, so the seven
+//! `priv_cache_store_*` helpers it defines are declared here as externs. That
+//! link-time seam is what lets `tests/abi_test.zig` substitute a RAM medium,
+//! and it is the whole seam: nothing in this file speaks to
 //! LevelX except `lx_nor_flash_close` on the close path, which is what keeps
 //! the runtime path testable over a RAM medium.
 //!
@@ -91,8 +92,7 @@ comptime {
     std.debug.assert(@offsetOf(Reader, "byte_len") == word + 8);
 }
 
-// The mount / recovery translation unit owns these; they are the only way this
-// file reaches the medium.
+// `mount.zig` owns these; they are the only way this file reaches the medium.
 extern fn priv_cache_store_crc32(data: ?[*]const u8, len: u32) u32;
 extern fn priv_cache_store_sector_read(store: ?*const Store, sector: u32, out512: ?[*]u8) RawErr;
 extern fn priv_cache_store_sector_write(store: ?*Store, sector: u32, in512: ?[*]const u8) RawErr;
