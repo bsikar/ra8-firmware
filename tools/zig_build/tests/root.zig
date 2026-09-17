@@ -4,4 +4,5 @@
 test {
     _ = @import("macos_host_test.zig");
     _ = @import("macho_test.zig");
+    _ = @import("ar_test.zig");
 }

@@ -349,6 +349,60 @@ macho.zig` and its tests), including a universal archive, a 32-bit image, an
 ELF, a truncated load-command region and a dylib name pointing outside its own
 command.
 
+## The Rust archives are read before they are linked
+
+Three host roots link a static archive that a separate `cargo` invocation
+produced:
+
+| Root | Archive |
+| --- | --- |
+| `tests/rust_abi_fixture/zig` | `libra8_rust_abi_fixture.a` |
+| `tests/abi_chain_fixture` | `libra8_rust_abi_fixture.a` |
+| `apps/host/firmware_pipeline/zig` | `libfirmware_pipeline_rust.a` |
+
+`cargo build` with no `--target` builds for the machine it runs on, so the
+archive and the Zig target agree only while nobody pins a target and nobody
+reuses a target directory that a different host filled in. `-Drust-lib-dir=`
+hands the archive over without running `cargo` at all, and those directories
+live inside the checkout, which is shared between a Linux devcontainer and the
+Mac that opens it.
+
+When they disagree, the linker is the one that complains, and it complains
+about symbols:
+
+    error: undefined symbol: _ra8_rust_abi_fixture_create
+        note: referenced by .../test.o:_adapter.create
+
+which reads like a missing export rather than an archive for the wrong
+platform. That is the one reason these three roots are still outside the
+`macos-host-build` gate: a red run could not be told apart from a genuine ABI
+break.
+
+Each of them now depends on a step that reads the archive first
+(`ra8_build.addRequireArchiveForTargetStep`). It walks the `ar` members, skips
+the symbol and long-name tables, and reads the first real object's format and
+architecture, so the mismatch is named before any link is attempted:
+
+    error: .../libra8_rust_abi_fixture.a holds ELF aarch64 objects, but test is
+    linked for aarch64-macos, which needs Mach-O aarch64 objects. The archive
+    was built for a different host than this build targets; build it for
+    aarch64-macos, or point -Drust-lib-dir= at one that is (#899).
+
+A missing archive is its own message rather than a `FileNotFound` out of the
+linker. An archive that does match prints what it found and gets out of the
+way:
+
+    require-archive: .../libra8_rust_abi_fixture.a holds Mach-O aarch64
+    objects, which test can link for aarch64-macos
+
+The expectation comes off the resolved target at configure time, so the check
+is against what that build actually asked for. The step sits after the `cargo`
+step when the graph runs one, so it reads the archive `cargo` just wrote. The
+reader itself (`tools/zig_build/ar.zig`) is unit tested against archives
+synthesised byte by byte: System V and Apple symbol tables, BSD `#1/<len>` long
+names, a truncated member, a malformed size field, a text member, a universal
+Mach-O and a 32-bit ELF.
+
 ## What runs on a clock
 
 `.github/workflows/macos-host.yml` runs the `macos-host-build` gate nightly on
