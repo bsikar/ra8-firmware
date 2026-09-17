@@ -16,10 +16,12 @@ const abi = graph.abi_contract;
 const db = graph.compile_db;
 const sources = graph.cross_sources;
 
-/// The two apps the cross slice builds, by the rules they exercise: one that
-/// names no libraries at all, one that names two.
+/// The apps the cross slice builds, by the rules they exercise: one that names
+/// no libraries at all, one that names two, and one that keeps more than a
+/// single translation unit under its own `src/`.
 const bare_app = graph.cross_apps[0];
 const library_app = graph.cross_apps[1];
+const dual_core_app = graph.cross_apps[2];
 
 test "board opt-in gate drops the two sources an app must ask for" {
     try std.testing.expect(
@@ -199,4 +201,57 @@ test "ABI consumer keeps the warning bar CMake puts on its consumer" {
     // order zig_abi_contract.cmake puts them on the include path.
     try std.testing.expectEqualStrings("tests/zig_abi_fixture/inc", abi.include_paths[0]);
     try std.testing.expectEqualStrings("libs/ra8_core/inc", abi.include_paths[1]);
+}
+
+test "AUX_SRCS keeps the second image's entry point out of this image" {
+    // src/cpu1_main.c is an ordinary-looking app-local source that compiles
+    // cleanly into the WRONG image: it is the Cortex-M33 entry point, built by
+    // a second executable in the app's own CMakeLists. A graph that globs
+    // <app>/src/*.c and stops there links it into the M85 image.
+    try std.testing.expect(sources.isAuxSource(dual_core_app, "src/cpu1_main.c"));
+    try std.testing.expect(!sources.appLocalIsCompiled(dual_core_app, "src/cpu1_main.c"));
+
+    // Its sibling under the same directory is not aux and IS compiled.
+    try std.testing.expect(!sources.isAuxSource(dual_core_app, "src/board_helper.c"));
+    try std.testing.expect(sources.appLocalIsCompiled(dual_core_app, "src/board_helper.c"));
+
+    // The rule is per app, not per filename: an app that never declared it
+    // would compile a file of the same name.
+    try std.testing.expect(!sources.isAuxSource(bare_app, "src/cpu1_main.c"));
+    try std.testing.expect(sources.appLocalIsCompiled(bare_app, "src/cpu1_main.c"));
+    try std.testing.expectEqual(@as(usize, 0), bare_app.aux_srcs.len);
+    try std.testing.expectEqual(@as(usize, 0), library_app.aux_srcs.len);
+}
+
+test "the app-local glob does not re-add what is already in the link" {
+    // main.c is the first object in the link, placed before the glob runs.
+    try std.testing.expect(!sources.appLocalIsCompiled(dual_core_app, "src/main.c"));
+    // A boot unit belongs to the per-app resolver below, which already chose
+    // between this copy and the board's. Taking it again is a duplicate object.
+    try std.testing.expect(!sources.appLocalIsCompiled(dual_core_app, "src/trustzone_init.c"));
+    try std.testing.expect(!sources.appLocalIsCompiled(dual_core_app, "src/vector_table.c"));
+    try std.testing.expect(!sources.appLocalIsCompiled(bare_app, "src/system_init.c"));
+}
+
+test "an app-local boot copy replaces the board copy, and only when it exists" {
+    const allocator = std.testing.allocator;
+
+    // cpu1_pingpong ships src/trustzone_init.c, so that unit resolves to the
+    // app copy and the board's src/boot copy is not linked.
+    const app_copy = sources.bootSourcePath(allocator, dual_core_app, "trustzone_init.c", true);
+    defer allocator.free(app_copy);
+    try std.testing.expectEqualStrings(
+        "examples/ek_ra8d2/hw_validated/hil/cpu1_pingpong/src/trustzone_init.c",
+        app_copy,
+    );
+
+    // Its other four boot units, and all five of an app that ships none, come
+    // from the board layer instead.
+    const board_copy = sources.bootSourcePath(allocator, dual_core_app, "vector_table.c", false);
+    defer allocator.free(board_copy);
+    try std.testing.expectEqualStrings("libs/ra8_board_ek_ra8d2/src/boot/vector_table.c", board_copy);
+
+    const bare_copy = sources.bootSourcePath(allocator, bare_app, "trustzone_init.c", false);
+    defer allocator.free(bare_copy);
+    try std.testing.expectEqualStrings("libs/ra8_board_ek_ra8d2/src/boot/trustzone_init.c", bare_copy);
 }

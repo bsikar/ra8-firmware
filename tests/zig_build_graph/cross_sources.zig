@@ -12,8 +12,9 @@
 //!
 //! Every rule in here is one a directory listing cannot tell you, which is why
 //! it is data with tests rather than a glob: board boot files resolve per app,
-//! two board units are opt-in on a library the app must name, and one library
-//! name has no directory of its own at all.
+//! two board units are opt-in on a library the app must name, one library name
+//! has no directory of its own at all, and one app-local source under `src/`
+//! belongs to a second image and must be kept OUT of this one (#1029).
 
 const std = @import("std");
 
@@ -28,6 +29,10 @@ pub const CrossApp = struct {
     /// off what happens to be on disk.
     libraries: []const []const u8,
     zig_libraries: []const []const u8,
+    /// Translation units under the app's own `src/` that belong to a DIFFERENT
+    /// image and must stay out of this one, spelled relative to the app
+    /// directory exactly as `AUX_SRCS` spells them. See aux_srcs below.
+    aux_srcs: []const []const u8 = &.{},
 };
 
 /// A name in `LIBS` that contributes translation units from somewhere other
@@ -113,6 +118,71 @@ const cross_boot_sources = [_][]const u8{
     "trustzone_init.c",
 };
 
+/// True when `basename` is one of the boot units resolved per app above. The
+/// app-local glob below has to skip them, because the resolver already picked
+/// the app copy or the board copy and adding the app copy a second time is a
+/// duplicate object in the link.
+fn isBootSource(basename: []const u8) bool {
+    for (cross_boot_sources) |boot| {
+        if (std.mem.eql(u8, boot, basename)) return true;
+    }
+    return false;
+}
+
+/// True when `relative_path` (relative to the app directory) is named in this
+/// app's `AUX_SRCS`.
+///
+/// AUX_SRCS is the rule with the least presence on disk of any in this file:
+/// the file sits under the app's own `src/`, looks exactly like every other
+/// app-local helper, and compiles cleanly -- into the WRONG IMAGE. A dual-core
+/// app keeps its Cortex-M33 entry point beside its M85 one (`src/cpu1_main.c`),
+/// names it in AUX_SRCS, and ra8_add_app() then drops it from the primary
+/// image's source list; a second executable elsewhere in the app's CMakeLists
+/// compiles it for the M33. A graph that globs `<app>/src/*.c` and stops there
+/// links two `main`-shaped entry points and two copies of the shared state into
+/// the M85 image.
+pub fn isAuxSource(app: CrossApp, relative_path: []const u8) bool {
+    for (app.aux_srcs) |aux| {
+        if (std.mem.eql(u8, aux, relative_path)) return true;
+    }
+    return false;
+}
+
+/// Whether a source the app-local glob turned up is compiled into this image
+/// BY THAT GLOB. Three are not, each for its own reason, and the reasons are
+/// why this is a function with tests rather than an inline condition:
+///
+///   main.c          already added, as the first object in the link.
+///   a boot unit     already placed by the per-app boot resolver, which chose
+///                   between this copy and the board's; taking it again is a
+///                   duplicate object.
+///   an AUX_SRCS     belongs to another image entirely (see isAuxSource).
+///
+/// `relative_path` is spelled relative to the app directory ("src/main.c"),
+/// the way AUX_SRCS spells it in the app's CMakeLists.
+pub fn appLocalIsCompiled(app: CrossApp, relative_path: []const u8) bool {
+    const basename = std.fs.path.basename(relative_path);
+    if (std.mem.eql(u8, basename, "main.c")) return false;
+    if (isBootSource(basename)) return false;
+    if (isAuxSource(app, relative_path)) return false;
+    return true;
+}
+
+/// Which copy of one boot unit this app links: its own when it ships one,
+/// otherwise the board layer's. Pure so both arms can be asserted directly;
+/// the caller does the one filesystem probe and passes the answer in.
+pub fn bootSourcePath(
+    allocator: std.mem.Allocator,
+    app: CrossApp,
+    boot: []const u8,
+    app_has_copy: bool,
+) []const u8 {
+    return if (app_has_copy)
+        std.fmt.allocPrint(allocator, "{s}/src/{s}", .{ app.dir, boot }) catch @panic("OOM")
+    else
+        std.fmt.allocPrint(allocator, "{s}/src/boot/{s}", .{ app.board, boot }) catch @panic("OOM");
+}
+
 /// Include path, in the order ra8_add_app() adds it. Order is preserved
 /// because a header shadowed by an earlier directory resolves differently, and
 /// a parity claim that only holds for one ordering is not a parity claim.
@@ -171,9 +241,20 @@ pub fn crossSources(b: *std.Build, app: CrossApp) []const []const u8 {
 
     for (cross_boot_sources) |boot| {
         const app_copy = b.fmt("{s}/src/{s}", .{ app.dir, boot });
-        const board_copy = b.fmt("{s}/src/boot/{s}", .{ app.board, boot });
-        const exists = if (b.build_root.handle.access(app_copy, .{})) |_| true else |_| false;
-        sources.append(if (exists) app_copy else board_copy) catch @panic("OOM");
+        const app_has_copy = if (b.build_root.handle.access(app_copy, .{})) |_| true else |_| false;
+        sources.append(bootSourcePath(b.allocator, app, boot, app_has_copy)) catch @panic("OOM");
+    }
+
+    // Everything else the app keeps under `src/`: ra8_add_app() globs that
+    // directory and compiles what is left after main.c (added above), the boot
+    // units the resolver just placed, and the app's AUX_SRCS are taken out of
+    // it. Globbing without those three subtractions is not a smaller parity
+    // claim, it is a different image.
+    var app_local = std.ArrayList([]const u8).init(b.allocator);
+    collectCSources(b, b.fmt("{s}/src", .{app.dir}), &app_local);
+    for (app_local.items) |source| {
+        if (!appLocalIsCompiled(app, source[app.dir.len + 1 ..])) continue;
+        sources.append(source) catch @panic("OOM");
     }
 
     for (cross_source_dirs) |dir_path| collectCSources(b, dir_path, &sources);
@@ -225,9 +306,12 @@ pub fn crossSources(b: *std.Build, app: CrossApp) []const []const u8 {
 /// library that has headers.
 pub fn crossIncludeDirs(b: *std.Build, app: CrossApp) []const []const u8 {
     var dirs = std.ArrayList([]const u8).init(b.allocator);
-    // CMake adds `<app>/inc` unconditionally; neither app here ships one, and a
-    // directory argument has to exist to be declared as a step input, so it is
-    // added when it is there and skipped when it is not.
+    // CMake adds `<app>/inc` unconditionally, and it is FIRST, ahead of the
+    // app's own src/ and every library: an app-local header shadows a
+    // same-named one further down the path. cpu1_pingpong is the app that
+    // ships one (inc/shared_pingpong.h, the dual-core mailbox contract), so
+    // this arm is exercised rather than assumed. A directory argument has to
+    // exist to be declared as a step input, so it is skipped when absent.
     const app_inc = b.fmt("{s}/inc", .{app.dir});
     if (b.build_root.handle.access(app_inc, .{})) |_| {
         dirs.append(app_inc) catch @panic("OOM");
