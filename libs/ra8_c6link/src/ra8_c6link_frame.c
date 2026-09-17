@@ -72,6 +72,10 @@ typedef enum : uint8_t {
   k_ra8_c6link_hdr_seq     = 0U,    /**< Sequence number transmitted; see above. */
   k_ra8_c6link_hdr_csum_at = 6U,    /**< Offset of the checksum's low octet.     */
   k_ra8_c6link_hdr_csum_sz = 2U,    /**< Octets the checksum field occupies.     */
+  k_ra8_c6link_hdr_ifnum_shift = 4U,
+  /**< Bit position of `if_num` within the header's first octet, so the amount
+       a non-zero `if_num` contributes to the frame checksum can be
+       reconstructed. That contribution is the shape #529 is measured against. */
 } ra8_c6link_hdr_t;
 
 /* The public header restates these so consumers need no esp-hosted include
@@ -222,6 +226,37 @@ RA8_PRIV uint8_t priv_c6link_caps(uint8_t* out, uint8_t cap)
                                 (uint8_t)SLV_CONFIG_THROTTLE_LOW_THRESHOLD,
                                 (uint8_t)k_ra8_c6link_caps_throttle_low);
   return at;
+}
+
+RA8_PRIV bool priv_c6link_frame_csum_probe(const uint8_t* rx, ra8_c6link_csum_probe_t* probe)
+{
+  if ((rx == nullptr) || (probe == nullptr)) {
+    return false;
+  }
+  struct esp_payload_header hdr = {};
+  (void)memcpy(&hdr, rx, sizeof hdr);
+
+  uint16_t span = (uint16_t)(hdr.offset + hdr.len);
+  if (span > (uint16_t)k_ra8_c6link_frame_bytes) {
+    span = (uint16_t)k_ra8_c6link_frame_bytes;
+  }
+  uint16_t sum = 0U;
+  for (uint16_t i = 0U; i < span; i++) {
+    sum = (uint16_t)(sum + rx[i]);
+  }
+  for (uint8_t i = 0U; i < (uint8_t)k_ra8_c6link_hdr_csum_sz; i++) {
+    sum = (uint16_t)(sum - rx[(uint8_t)k_ra8_c6link_hdr_csum_at + i]);
+  }
+
+  probe->stated     = hdr.checksum;
+  probe->recomputed = sum;
+  probe->shortfall  = (uint16_t)(sum - hdr.checksum);
+  probe->if_num     = (uint8_t)hdr.if_num;
+
+  const uint16_t owed =
+    (uint16_t)((uint16_t)probe->if_num << (uint16_t)k_ra8_c6link_hdr_ifnum_shift);
+  probe->ifnum_consistent = (owed != 0U) && (probe->shortfall == owed);
+  return probe->ifnum_consistent;
 }
 
 RA8_PRIV ra8_c6link_frame_class_t priv_c6link_frame_classify(uint8_t*              rx,
