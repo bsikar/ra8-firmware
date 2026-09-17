@@ -323,6 +323,14 @@ fn intField(allocator: std.mem.Allocator, object: std.json.ObjectMap, key: []con
 /// The `file` field as the predecessor read it: a missing field is the empty
 /// string (which normalises to itself and falls out of scope), and a non-string
 /// field is the AttributeError `str.replace` raised on it.
+///
+/// `number_string` is a NUMBER, not a path. The parser only produces that
+/// variant for a numeric token too large for an i64, never for a quoted
+/// string, so it takes the same AttributeError branch every other number
+/// does: `json.load` handed the predecessor an `int` here and `path.replace`
+/// raised on it. Reading its text as a path instead put the entry out of
+/// scope and skipped it in silence, which is the one outcome this floor
+/// exists to prevent.
 pub fn fileField(entry: std.json.Value) FieldError![]const u8 {
     const object = switch (entry) {
         .object => |object| object,
@@ -330,7 +338,7 @@ pub fn fileField(entry: std.json.Value) FieldError![]const u8 {
     };
     const value = object.get("file") orelse return "";
     return switch (value) {
-        .string, .number_string => |text| text,
+        .string => |text| text,
         else => error.AttributeError,
     };
 }
