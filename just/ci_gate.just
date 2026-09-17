@@ -27,14 +27,19 @@ list:
             print(line)
 
 # Run one registered gate against the current working tree. macOS needs the
-# pinned Linux devcontainer for the CI toolchain and low-address host tests;
+# pinned Linux devcontainer for the CI toolchain and low-address host tests,
+# with one exception: a gate whose SUBJECT is the host cannot be answered by a
+# container, which would only report on the container. scripts/ci/lib/native_host_gates.sh
 
-# Linux can execute the exact gate natively.
+# owns that list. Linux can execute the exact gate natively.
 run name:
     #!/usr/bin/env bash
     set -euo pipefail
-    if [[ "$(uname -s)" == "Darwin" ]]; then
+    # shellcheck source=scripts/ci/lib/native_host_gates.sh
+    . scripts/ci/lib/native_host_gates.sh
+    if [[ "$(ra8_gate_host_route "{{ name }}" "$(uname -s)")" == "container" ]]; then
         "{{ just_executable() }}" quality::devcontainer::gate "{{ name }}"
     else
+        ra8_native_host_gate_announce "{{ name }}"
         "{{ just_executable() }}" quality::local::gate "{{ name }}"
     fi
