@@ -937,6 +937,30 @@
       "library_name": "ra8_wifi",
       "symbol_prefix": "ra8_wifi_",
       "compatibility_sha256": "ba037183509ac7bbb687c4dae57053d2b007052d6d8752290375111c4341afd8",
+      "additional_headers": [
+        {
+          "path": "libs/ra8_wifi/inc/ra8_wifi_c6link.h",
+          "role": "public",
+          "symbol_prefix": "ra8_wifi_",
+          "compatibility_sha256": "328e39b93cad345f5e7c852b326f451c29759a02c424906ca3ae48d26ba0e6b1"
+        }
+      ],
+      "additional_adapters": [
+        {
+          "path": "libs/ra8_wifi/src/ra8_wifi_c6link_abi.zig",
+          "role": "public",
+          "symbol_prefix": "ra8_wifi_"
+        }
+      ],
+      "data_exports": [
+        {
+          "name": "k_ra8_wifi_backend_c6link",
+          "header": "libs/ra8_wifi/inc/ra8_wifi_c6link.h",
+          "adapter": "libs/ra8_wifi/src/ra8_wifi_c6link_abi.zig",
+          "calling_context": "task-only-non-reentrant",
+          "ownership": "immutable backend vtable with static lifetime shared by every C6 setup call"
+        }
+      ],
       "layout_assertions": [
         "@sizeOf(Backend) == ptr * 10",
         "@sizeOf(Config) == ptr * 4",
@@ -951,7 +975,7 @@
         "ra8": ["-Dtarget=thumb-freestanding-eabihf", "-Dcpu=cortex_m85+fp_armv8-d32-fp64"]
       },
       "run_host_tests_in_all_modes": false,
-      "c_include_dirs": ["libs/ra8_wifi/inc", "libs/ra8_core/inc"],
+      "c_include_dirs": ["libs/ra8_wifi/inc", "libs/ra8_core/inc", "libs/ra8_c6link/inc"],
       "contract_tests": [
         {
           "language": "c",
@@ -961,6 +985,18 @@
         {
           "language": "zig",
           "path": "libs/ra8_wifi/tests/abi_test.zig",
+          "registration": "libs/ra8_wifi/.zig-test-contract.json"
+        },
+        {
+          "language": "c",
+          "path": "tests/wireless/src/test_ra8_wifi_c6link.c",
+          "symbol_evidence": "libs/ra8_wifi/src/ra8_wifi_c6link_abi.zig",
+          "registration": "tests/cmake/tests_wifi.cmake"
+        },
+        {
+          "language": "zig",
+          "path": "libs/ra8_wifi/tests/c6link_test.zig",
+          "symbol_evidence": "libs/ra8_wifi/src/ra8_wifi_c6link_abi.zig",
           "registration": "libs/ra8_wifi/.zig-test-contract.json"
         }
       ],
@@ -974,7 +1010,8 @@
         {"name": "ra8_wifi_status", "calling_context": "task-only-non-reentrant", "ownership": "copies current state into caller-owned snapshot storage"},
         {"name": "ra8_wifi_poll", "calling_context": "task-only-non-reentrant", "ownership": "writes one link-state byte into caller-owned output storage"},
         {"name": "ra8_wifi_get_mac", "calling_context": "task-only-non-reentrant", "ownership": "copies cached or freshly read station address into caller-owned output"},
-        {"name": "ra8_wifi_get_ap", "calling_context": "task-only-non-reentrant", "ownership": "copies current access-point data into caller-owned output storage"}
+        {"name": "ra8_wifi_get_ap", "calling_context": "task-only-non-reentrant", "ownership": "copies current access-point data into caller-owned output storage"},
+        {"name": "ra8_wifi_c6link_setup", "calling_context": "task-only-non-reentrant", "ownership": "binds caller-owned backend context and writes the C6 backend selection into caller-owned config"}
       ]
     },
     {

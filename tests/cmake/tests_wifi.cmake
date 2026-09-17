@@ -9,20 +9,20 @@
 # c6link tests cannot (tests_c6link.cmake): the backend rides ra8_c6link, which
 # encodes/decodes the vendored esp-hosted `Rpc` protobuf, so it needs the
 # generated codec + the protobuf-c runtime + the esp-hosted include path, none
-# of which ra8_core_hal carries. The pure facade (src/ra8_wifi.c) is a different
-# story -- it names no radio, so it is the Zig archive ra8_zig::ra8_wifi and its
-# mock-backed test (test_ra8_wifi.c) rides the auto-glob.
+# of which ra8_core_hal carries.
 #
-# ra8_core_hal is linked in for ra8_err / ra8_log / ra8_check; the facade is no
-# longer among its objects (it is the Zig archive ra8_zig::ra8_wifi, linked
-# below), so this target adds only the c6 backend TU.
+# libs/ra8_wifi has no C sources left at all: the facade AND the ESP32-C6
+# backend are both Zig now, and both arrive in the archive ra8_zig::ra8_wifi.
+# The backend is its own object inside that archive, so the two targets below
+# differ in whether they pull it: this one names k_ra8_wifi_backend_c6link and
+# therefore links the radio stack, while test_app_wifi_hal_join never mentions
+# it and so needs neither ra8_c6link nor the codec.
+#
+# ra8_core_hal is linked in for ra8_err / ra8_log / ra8_check.
 #
 # Included from tests/CMakeLists.txt. Depends on variables defined in
 # tests_c6link.cmake (RA8_C6LINK_SOUP / RA8_C6LINK_SOURCES / include dirs), so it
 # is included after it in the driver.
-
-# The ESP32-C6 backend translation unit, compiled alongside the model.
-set(RA8_WIFI_C6_BACKEND ${FW_ROOT}/libs/ra8_wifi/src/ra8_wifi_c6link.c)
 
 set(RA8_WIFI_INCLUDE_DIRS ${RA8_C6LINK_INCLUDE_DIRS} ${FW_ROOT}/libs/ra8_wifi/inc
                           ${FW_ROOT}/libs/ra8_wifi/src
@@ -37,14 +37,14 @@ add_executable(
   test_ra8_wifi_c6link
   ${CMAKE_CURRENT_SOURCE_DIR}/wireless/src/test_ra8_wifi_c6link.c
   ${RA8_C6LINK_TEST_MODEL}
-  ${RA8_WIFI_C6_BACKEND}
   ${RA8_C6LINK_SOURCES}
   ${RA8_C6LINK_SOUP}
   $<TARGET_OBJECTS:ra8_core_hal>
 )
 set_target_properties(test_ra8_wifi_c6link PROPERTIES LINKER_LANGUAGE CXX)
-# The facade is a Zig archive now and this target takes ra8_core_hal as bare
-# objects, which carry no link dependencies, so name the archive here.
+# The facade and the c6 backend are both in this archive now, and this target
+# takes ra8_core_hal as bare objects, which carry no link dependencies, so name
+# the archive here.
 target_link_libraries(test_ra8_wifi_c6link PRIVATE ra8_zig::ra8_wifi)
 target_compile_options(test_ra8_wifi_c6link PRIVATE -Wall -Wextra)
 target_include_directories(test_ra8_wifi_c6link PRIVATE ${RA8_WIFI_INCLUDE_DIRS})
