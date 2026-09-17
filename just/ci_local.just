@@ -189,12 +189,31 @@ scan_build strict="0":
         bash scripts/checks/scan_build.sh
     fi
 
-# Run host microbenchmarks
+# Run host microbenchmarks. RA8_BENCH_TARGETS in tests/bench/CMakeLists.txt is
+# the harness registry, so read it rather than restating it here: a harness
+# added to the registry must RUN, not just build (#1415).
 bench:
     #!/usr/bin/env bash
     set -euo pipefail
+    registry=tests/bench/CMakeLists.txt
+    mapfile -t benchmarks < <(
+        sed -n '/^set(RA8_BENCH_TARGETS/,/)/p' "${registry}" | grep -o 'bench_[a-z0-9_]*'
+    )
+    if [ "${#benchmarks[@]}" -eq 0 ]; then
+        echo "bench: parsed no RA8_BENCH_TARGETS out of ${registry}" >&2
+        exit 1
+    fi
+    # And the inverse, so an unregistered harness fails loudly instead of being
+    # silently skipped -- the same contract scripts/checks/run_fuzz.sh keeps.
+    for source in tests/bench/src/bench_*.c; do
+        name="$(basename "${source}" .c)"
+        if ! printf '%s\n' "${benchmarks[@]}" | grep -qx "${name}"; then
+            echo "bench: ${source} is missing from RA8_BENCH_TARGETS in ${registry}" >&2
+            exit 1
+        fi
+    done
     bash scripts/builders/host_cmake.sh --target ra8_bench_all tests tests/build-bench -DRA8_BENCH=ON
-    for benchmark in bench_ra8_crc bench_ra8_jpeg_sw bench_ra8_gfx_text; do
+    for benchmark in "${benchmarks[@]}"; do
         "tests/build-bench/${benchmark}"
     done
 
