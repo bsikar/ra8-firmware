@@ -27,6 +27,7 @@ pub fn build(b: *std.Build) void {
         .linkage = .static,
         .root_module = library_module,
     });
+    library.bundle_compiler_rt = true;
     b.installArtifact(library);
 
     const implementation_module = b.createModule(.{

@@ -338,13 +338,17 @@ ra8_add_zig_library(
   ra8_ftl
 )
 
-# Partially migrated: the protocol core (both CRC generators, command framing,
-# the R1/R3/R7 response readers, the bounded waits, the transport gate and the
-# CMD0..CMD16 identification sequence) is Zig now and owns the sole definition
-# of g_sdmmc_spi_state. libs/ra8_sdmmc_spi/src/ra8_sdmmc_spi_io.c is still C:
-# it calls straight into these symbols through the module-private
-# src/ra8_sdmmc_spi_internal.h, so that header and the RA8_SDMMC_SPI_SOURCES
-# glob (now matching only that one file) both stay.
+# Fully migrated: the protocol core (both CRC generators, command framing, the
+# R1/R3/R7 response readers, the bounded waits, the transport gate and the
+# CMD0..CMD16 identification sequence) and the block-I/O TU (init/deinit,
+# single- and multi-block read/write, erase, the capacity/type queries, the
+# ra8_fs backend adapter and the SCI Simple-SPI transport factory) are both
+# Zig, and the archive owns the sole definition of g_sdmmc_spi_state. The
+# archive references ra8_sci_spi_*, ra8_gpio_* and ra8_pfs_route_peripheral
+# from ra8_core_hal's own objects. src/ra8_sdmmc_spi_internal.h stays:
+# tests/storage/src/test_ra8_sdmmc_spi_cov.c and
+# tests/support/inc/sdmmc_spi_cov_test_util.h include it, so the
+# libs/ra8_sdmmc_spi/src include dirs stay too.
 ra8_add_zig_library(
   NAME
   ra8_sdmmc_spi
@@ -381,3 +385,5 @@ target_link_libraries(
          ra8_zig::ra8_ftl
          ra8_zig::ra8_sdmmc_spi
 )
+
+link_libraries(ra8_zig::ra8_sdmmc_spi)
