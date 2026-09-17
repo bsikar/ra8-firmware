@@ -2,7 +2,9 @@
 //! Copyright (c) 2026 Brighton Sikarskie
 
 const std = @import("std");
+/// JPEG decode and encode over the C `ra8_jpeg_sw` implementation.
 pub const codec = @import("codec.zig");
+/// The strip-discarding downsampler and its level planning.
 pub const degrade = @import("degrade.zig");
 
 const usage = "usage: image_pyramid <input.jpg> --out-dir <dir> [--levels <1..16>]\n";
@@ -104,6 +106,13 @@ fn publishWithoutReplace(dir: std.fs.Dir, temp: []const u8, final: []const u8) !
     try std.posix.linkat(dir.fd, temp, dir.fd, final, 0);
 }
 
+/// Runs the tool over `args` and returns its process exit status.
+///
+/// Takes the writers and the allocator as parameters so tests can drive the whole
+/// tool in-process. Returns 0 on success, 2 for a usage error, and 1 for a read,
+/// codec or filesystem failure, printing the reason to `stderr` in each case.
+/// Levels are published atomically: each is written to a temporary name and linked
+/// into place, so a partial run never leaves a half-written level behind.
 pub fn execute(allocator: std.mem.Allocator, args: []const []const u8, stdout: anytype, stderr: anytype) !u8 {
     if (args.len == 2 and std.mem.eql(u8, args[1], "--help")) {
         try stdout.writeAll(usage);
@@ -258,6 +267,7 @@ pub fn execute(allocator: std.mem.Allocator, args: []const []const u8, stdout: a
     return 0;
 }
 
+/// Process entry point: parses argv and exits with `execute`'s status.
 pub fn main() !void {
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
     defer _ = gpa.deinit();

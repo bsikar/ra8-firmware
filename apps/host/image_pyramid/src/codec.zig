@@ -12,15 +12,27 @@ const c = @cImport({
     @cInclude("ra8_jpeg_sw.h");
 });
 
+/// A refusal from the C JPEG codec, carrying the `ra8_status_t` code it returned.
+/// A failure is a normal codec outcome (an unsupported file, a buffer that is too
+/// small), distinct from a Zig error, which signals a defect or an allocation failure.
 pub const CodecFailure = struct { code: u32 };
+/// Either the dimensions read from a JPEG header, or the codec's refusal.
 pub const DimensionsResult = union(enum) { value: degrade.Dimensions, failure: CodecFailure };
+/// Either a decoded RGB image owning its pixel buffer, or the codec's refusal.
 pub const ImageResult = union(enum) { value: degrade.Image, failure: CodecFailure };
+/// Either an encoded JPEG buffer owned by the caller's allocator, or the codec's refusal.
 pub const BytesResult = union(enum) { value: []u8, failure: CodecFailure };
 
 fn checkedInputLength(length: usize) error{InputTooLarge}!u32 {
     return std.math.cast(u32, length) orelse error.InputTooLarge;
 }
 
+/// Checks that a decode wrote exactly the image the header promised.
+///
+/// The C decoder reports its own width and height alongside the buffer it filled;
+/// this rejects a zero dimension, a disagreement with `expected`, or a length that
+/// is not `width * height * 3`, so a short or mismatched write cannot reach the
+/// rest of the pipeline. Returns `error.InvalidCodecOutput` on any of those.
 pub fn validateDecodedOutput(expected: degrade.Dimensions, width: u16, height: u16, output_len: usize) error{InvalidCodecOutput}!void {
     const pixel_count = std.math.mul(usize, width, height) catch return error.InvalidCodecOutput;
     const actual_len = std.math.mul(usize, pixel_count, 3) catch return error.InvalidCodecOutput;
@@ -29,6 +41,10 @@ pub fn validateDecodedOutput(expected: degrade.Dimensions, width: u16, height: u
     }
 }
 
+/// Returns the RGB byte length `dims` decodes to, or `error.InvalidCodecOutput`.
+///
+/// Rejects a zero dimension and any overflow of `width * height * 3`, so the
+/// caller can size its allocation without trusting the header.
 pub fn checkedDecodedLength(dims: degrade.Dimensions) error{InvalidCodecOutput}!usize {
     if (dims.width == 0 or dims.height == 0) return error.InvalidCodecOutput;
     const pixel_count = std.math.mul(usize, dims.width, dims.height) catch return error.InvalidCodecOutput;
@@ -37,11 +53,19 @@ pub fn checkedDecodedLength(dims: degrade.Dimensions) error{InvalidCodecOutput}!
     return output_len;
 }
 
+/// Returns the encoded length the C encoder reported, validated against `capacity`.
+///
+/// Returns `error.InvalidCodecOutput` when the encoder claims zero bytes or more
+/// bytes than the buffer it was handed.
 pub fn checkedEncodedLength(capacity: usize, output_len: u32) error{InvalidCodecOutput}!usize {
     if (output_len == 0 or output_len > capacity) return error.InvalidCodecOutput;
     return output_len;
 }
 
+/// Reads the pixel dimensions from a JPEG header without decoding it.
+///
+/// Returns the codec's refusal as a value; errors only when `bytes` is longer than
+/// the C API's 32-bit length.
 pub fn dimensions(bytes: []const u8) !DimensionsResult {
     var width: u16 = 0;
     var height: u16 = 0;
@@ -50,6 +74,12 @@ pub fn dimensions(bytes: []const u8) !DimensionsResult {
     return .{ .value = .{ .width = width, .height = height } };
 }
 
+/// Decodes a JPEG into a newly allocated RGB image owned by `allocator`.
+///
+/// Reads the header first to size the buffer, then validates the decoder's own
+/// reported dimensions against it. The pixel buffer is freed before returning a
+/// failure or an error, so the caller only ever owns a fully validated image.
+/// Call `Image.deinit` on the returned value.
 pub fn decode(allocator: std.mem.Allocator, bytes: []const u8) !ImageResult {
     const input_len = try checkedInputLength(bytes.len);
     const dims = switch (try dimensions(bytes)) {
@@ -71,6 +101,12 @@ pub fn decode(allocator: std.mem.Allocator, bytes: []const u8) !ImageResult {
     return .{ .value = .{ .width = width, .height = height, .pixels = pixels, .allocator = allocator } };
 }
 
+/// Encodes an RGB image to JPEG in a buffer owned by `allocator`.
+///
+/// Starts at the RGB length plus 64 KiB and doubles on `k_ra8_err_invalid_size`
+/// until 16 MiB, since the C encoder cannot predict its own output size. The
+/// returned slice is reallocated down to the encoded length. Returns
+/// `error.InvalidImage` when `image` is not `width * height * 3` bytes.
 pub fn encode(allocator: std.mem.Allocator, image: degrade.Image) !BytesResult {
     if (image.width == 0 or image.height == 0) return error.InvalidImage;
     const pixel_count = std.math.mul(usize, image.width, image.height) catch return error.InvalidImage;

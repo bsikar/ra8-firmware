@@ -6,24 +6,3 @@
 # list can only shrink, and a new public declaration must arrive documented.
 #
 # <path>	<declaration>
-apps/host/image_pyramid/src/codec.zig	BytesResult
-apps/host/image_pyramid/src/codec.zig	CodecFailure
-apps/host/image_pyramid/src/codec.zig	DimensionsResult
-apps/host/image_pyramid/src/codec.zig	ImageResult
-apps/host/image_pyramid/src/codec.zig	checkedDecodedLength
-apps/host/image_pyramid/src/codec.zig	checkedEncodedLength
-apps/host/image_pyramid/src/codec.zig	decode
-apps/host/image_pyramid/src/codec.zig	dimensions
-apps/host/image_pyramid/src/codec.zig	encode
-apps/host/image_pyramid/src/codec.zig	validateDecodedOutput
-apps/host/image_pyramid/src/degrade.zig	Axis
-apps/host/image_pyramid/src/degrade.zig	Dimensions
-apps/host/image_pyramid/src/degrade.zig	Image
-apps/host/image_pyramid/src/degrade.zig	axisForLevel
-apps/host/image_pyramid/src/degrade.zig	discardStrips
-apps/host/image_pyramid/src/degrade.zig	nextDimensions
-apps/host/image_pyramid/src/degrade.zig	plan
-apps/host/image_pyramid/src/main.zig	codec
-apps/host/image_pyramid/src/main.zig	degrade
-apps/host/image_pyramid/src/main.zig	execute
-apps/host/image_pyramid/src/main.zig	main

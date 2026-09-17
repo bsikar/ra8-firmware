@@ -3,20 +3,24 @@
 
 const std = @import("std");
 
+/// An RGB image, three bytes per pixel, owning its pixel buffer.
 pub const Image = struct {
     width: u16,
     height: u16,
     pixels: []u8,
     allocator: std.mem.Allocator,
 
+    /// Frees the pixel buffer and poisons the image.
     pub fn deinit(self: *Image) void {
         self.allocator.free(self.pixels);
         self.* = undefined;
     }
 };
 
+/// A pixel size in the pyramid.
 pub const Dimensions = struct { width: u16, height: u16 };
 
+/// Which axis a downsampling step halves.
 pub const Axis = enum { columns, rows };
 
 fn validateImage(image: Image) error{InvalidImage}!void {
@@ -26,6 +30,9 @@ fn validateImage(image: Image) error{InvalidImage}!void {
     if (image.pixels.len != expected_len) return error.InvalidImage;
 }
 
+/// Returns the dimensions after halving `axis`, rounding up.
+///
+/// Returns `error.CannotDownsample` when the chosen axis is already one pixel.
 pub fn nextDimensions(width: u16, height: u16, axis: Axis) error{CannotDownsample}!Dimensions {
     return switch (axis) {
         .columns => if (width == 1) error.CannotDownsample else .{
@@ -39,10 +46,19 @@ pub fn nextDimensions(width: u16, height: u16, axis: Axis) error{CannotDownsampl
     };
 }
 
+/// Returns the axis level `level` halves: columns on odd levels, rows on even.
+///
+/// Alternating keeps the aspect ratio close to the source rather than squashing
+/// one axis away first.
 pub fn axisForLevel(level: usize) Axis {
     return if (level % 2 == 1) .columns else .rows;
 }
 
+/// Computes the dimensions of every pyramid level up to `levels`, alternating axes.
+///
+/// Returns a fixed 16-entry array of which only the first `levels` are meaningful.
+/// Returns `error.TooManyLevels` when `levels` exceeds 16 or when an axis runs out
+/// of pixels before the last level.
 pub fn plan(width: u16, height: u16, levels: u8) error{TooManyLevels}![16]Dimensions {
     if (levels > 16) return error.TooManyLevels;
     var result: [16]Dimensions = undefined;
@@ -54,6 +70,11 @@ pub fn plan(width: u16, height: u16, levels: u8) error{TooManyLevels}![16]Dimens
     return result;
 }
 
+/// Halves `source` along `axis` by keeping every other column or row.
+///
+/// Point sampling, not averaging: the device-side degradation this mirrors drops
+/// strips rather than filtering, so the host tool has to produce the same pixels.
+/// The returned image owns a fresh buffer from `allocator`.
 pub fn discardStrips(allocator: std.mem.Allocator, source: Image, axis: Axis) !Image {
     try validateImage(source);
     const dims = try nextDimensions(source.width, source.height, axis);
