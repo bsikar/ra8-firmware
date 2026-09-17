@@ -49,6 +49,7 @@ pub const cross_sources = @import("tests/zig_build_graph/cross_sources.zig");
 pub const middleware = @import("tests/zig_build_graph/middleware.zig");
 pub const ns_image = @import("tests/zig_build_graph/ns_image.zig");
 pub const command_surface = @import("tests/zig_build_graph/command_surface.zig");
+pub const zig_archive = @import("tests/zig_build_graph/zig_archive.zig");
 
 /// One member of the migrated-library slice: the Zig archive, its public C
 /// header directory, and the C suite CMake links against that archive today.
@@ -168,6 +169,13 @@ pub fn build(b: *std.Build) void {
     // configurations against the listfile that declares them (#1179).
     graph_test_module.addAnonymousImport("root_cmakelists_source", .{
         .root_source_file = b.path("CMakeLists.txt"),
+    });
+    // And cmake/ra8_app/zig_libs.cmake, so zig_archive_test.zig can hold the
+    // optimisation a migrated archive is cross-built at to the rule that
+    // decides it under CMake (#1244). build.zig itself already arrives above,
+    // through command_surface.addSources.
+    graph_test_module.addAnonymousImport("zig_libs_cmake_source", .{
+        .root_source_file = b.path("cmake/ra8_app/zig_libs.cmake"),
     });
 
     const graph_tests = b.addTest(.{ .root_module = graph_test_module });
@@ -414,15 +422,18 @@ fn addArmCrossApp(
         .cpu_model = .{ .explicit = &std.Target.arm.cpu.cortex_m85 },
     });
 
-    // Debug, matching the C flags above: zig_libs.cmake maps a Debug CMake
-    // configuration onto a Debug archive and everything else onto ReleaseSmall,
-    // so an archive built at a different optimisation than the objects beside
-    // it would not be the artifact CMake links.
+    // At the optimisation THIS configuration asks for, not a fixed Debug:
+    // zig_libs.cmake maps a Debug configure onto a Debug archive and every
+    // other configure onto ReleaseSmall, so an archive built at one of the two
+    // and kept there is not the artifact CMake links in the other. The hook
+    // was written when the graph only had Debug (#1179 gave it the other two)
+    // and nothing failed in between, because an archive at the wrong
+    // optimisation links perfectly well.
     var archives = std.ArrayList(std.Build.LazyPath).init(b.allocator);
     for (app.zig_libraries) |lib_name| {
         const dependency = b.dependency(lib_name, .{
             .target = arm_target,
-            .optimize = .Debug,
+            .optimize = arm.configuration.zig_optimize,
         });
         archives.append(dependency.artifact(lib_name).getEmittedBin()) catch @panic("OOM");
     }
