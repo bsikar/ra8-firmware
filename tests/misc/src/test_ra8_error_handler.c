@@ -20,6 +20,7 @@
 #include <stdint.h>
 
 #include "ra8_attributes.h"
+#include "ra8_check.h"
 #include "ra8_err.h"
 #include "ra8_error_handler.h"
 #include "ra8_fake_mmap.h"
@@ -171,10 +172,81 @@ RA8_INTERNAL static void internal_test_fatal_error_large_code(void)
   TEST_END("ra8_fatal_error with large err");
 }
 
+/**
+ * @brief Verify a succeeding boot step passes through ::RA8_BOOT_REQUIRE.
+ * @details Feeds ::k_ra8_ok through the macro and proves control continues
+ * past it without any trap delivery, so a healthy boot pays only the test.
+ * @pre Fake MMIO and the trap signal handlers are available.
+ * @pre The step expression evaluates to a success status.
+ * @post Execution reaches the statement after the macro.
+ * @post No trap delivery is recorded.
+ * @note The step expression is evaluated exactly once; the counter proves it.
+ * @since 0.1.0
+ *
+ * @par MC/DC:
+ * `ra8_err_is_error(boot_rc_)` false alone keeps the halt unreached; the
+ * paired failure vector below drives the same decision true.
+ */
+RA8_INTERNAL static void internal_test_boot_require_success_passes(void)
+{
+  TEST_BEGIN("RA8_BOOT_REQUIRE continues on success");
+  ra8_fake_mmap_reset();
+  s_trap_hit          = 0;
+  int32_t eval_count  = 0;
+  int32_t reached     = 0;
+  internal_install_sigill_handler();
+
+  if (sigsetjmp(s_trap_jmp, 1) == 0) {
+    RA8_BOOT_REQUIRE((eval_count += 1, k_ra8_ok), "healthy_step");
+    reached = 1;
+  }
+  TEST_ASSERT_EQ(0, s_trap_hit);
+  TEST_ASSERT_EQ(1, eval_count);
+  TEST_ASSERT_EQ(1, reached);
+
+  TEST_END("RA8_BOOT_REQUIRE continues on success");
+}
+
+/**
+ * @brief Verify a failing boot step halts through the fatal sink.
+ * @details Drives one non-success status into the macro and proves the
+ * statement after it is unreachable, which is the diagnostic a private
+ * `while (1) { wfi; }` helper discards.
+ * @pre Fake MMIO and the trap signal handlers are available.
+ * @pre The host fatal backend raises a handled trap signal.
+ * @post The statement after the macro is never executed.
+ * @post Exactly one trap delivery is recorded.
+ * @note The failing status is evaluated exactly once before the halt.
+ * @since 0.1.0
+ *
+ * @par MC/DC:
+ * `ra8_err_is_error(boot_rc_)` true alone reaches the halt; the success
+ * vector above drives the same decision false.
+ */
+RA8_INTERNAL static void internal_test_boot_require_failure_halts(void)
+{
+  TEST_BEGIN("RA8_BOOT_REQUIRE halts on error");
+  ra8_fake_mmap_reset();
+  s_trap_hit         = 0;
+  int32_t eval_count = 0;
+  internal_install_sigill_handler();
+
+  if (sigsetjmp(s_trap_jmp, 1) == 0) {
+    RA8_BOOT_REQUIRE((eval_count += 1, k_ra8_err_hw_error), "failing_step");
+    TEST_FAIL_FMT("%s", "RA8_BOOT_REQUIRE returned on error");
+  }
+  TEST_ASSERT_EQ(1, s_trap_hit);
+  TEST_ASSERT_EQ(1, eval_count);
+
+  TEST_END("RA8_BOOT_REQUIRE halts on error");
+}
+
 int main(void)
 {
   internal_test_fatal_error_path();
   internal_test_fatal_error_zero_code();
   internal_test_fatal_error_large_code();
+  internal_test_boot_require_success_passes();
+  internal_test_boot_require_failure_halts();
   return 0;
 }
