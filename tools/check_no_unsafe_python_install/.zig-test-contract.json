@@ -1,0 +1,14 @@
+{
+  "test_roots": [
+    "tests/internal_test.zig",
+    "tests/cli_test.zig"
+  ],
+  "covered_sources": [
+    "src/internal/root.zig",
+    "src/cli.zig",
+    "src/main.zig",
+    "tests/internal_test.zig",
+    "tests/cli_test.zig"
+  ],
+  "minimum_tests": 59
+}
