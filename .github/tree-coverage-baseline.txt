@@ -13,8 +13,7 @@
 #            every run; gaining measurement is one-way.
 #
 # Columns are TAB-separated. Rows are sorted by path.
-# rows: 1062  measured: 523  unmeasured: 539
-
+# rows: 1063  measured: 523  unmeasured: 540
 apps/board/stand_alone/ereader/src/main.c	UNMEASURED	firmware-composition
 apps/board/stand_alone/ereader/src/ns_main.c	UNMEASURED	firmware-composition
 apps/board/stand_alone/ereader/src/secure_exception.c	UNMEASURED	firmware-composition
@@ -330,6 +329,7 @@ examples/ek_ra8d2/hw_pending/tz_threadx_demo/src/ns_main.c	UNMEASURED	firmware-c
 examples/ek_ra8d2/hw_pending/tz_threadx_demo/src/system_init.c	UNMEASURED	firmware-composition
 examples/ek_ra8d2/hw_pending/tz_threadx_demo/src/trustzone_init.c	UNMEASURED	firmware-composition
 examples/ek_ra8d2/hw_pending/tz_threadx_demo/src/vector_table.c	UNMEASURED	firmware-composition
+examples/ek_ra8d2/hw_pending/vfs_port_demo/src/main.c	UNMEASURED	firmware-composition
 examples/ek_ra8d2/hw_pending/webp_decode_demo/src/main.c	UNMEASURED	firmware-composition
 examples/ek_ra8d2/hw_validated/c6/c6_camera_livestream/src/c6_cam_camera.c	UNMEASURED	firmware-composition
 examples/ek_ra8d2/hw_validated/c6/c6_camera_livestream/src/main.c	UNMEASURED	firmware-composition
