@@ -33,7 +33,7 @@ self-contained.
 | 11.x | `f4fb1a6`, `7551634`, `f272dc7`, `ce76aa4`, `87b606f` | closure: coverage gate, doxygen, ADC_B/OSPI/ACMPHS layout fixes |
 
 The archived closure counts are in the Summary block below, which
-`scripts/report/roadmap_stats.py` rewrites from the checkboxes in this
+`tools/roadmap_stats` rewrites from the checkboxes in this
 file to keep the committed historical record internally consistent.
 
 For the at-a-glance driver-vs-FSP-parity matrix see
@@ -50,7 +50,7 @@ Historical marker meanings:
 
 Sections under each peripheral preserve the driver-checklist template used during
 the completed program. The `Summary` block at the top is rewritten
-deterministically by `scripts/report/roadmap_stats.py` in
+deterministically by `tools/roadmap_stats` in
 pre-commit as a freshness check on this archived evidence; do not hand-edit it.
 
 ## Summary
@@ -127,7 +127,7 @@ driver-checklist template applies to drivers, not to documentation.
 - [x] `scripts/gen/build_chapter_map.sh` -- pdftotext-driven chapter extractor.
 - [x] `scripts/checks/cite_check.py --strict` -- fail-closed HUM citation gate.
 - [x] `scripts/checks/check_world_tags.py` -- `{World: ...}` tag validator.
-- [x] `scripts/report/roadmap_stats.py` -- summary block rewriter.
+- [x] `tools/roadmap_stats` -- summary block rewriter.
 - [x] `scripts/git/pre-commit` extended with cite_check + check_world_tags + roadmap_stats hooks.
 - [x] promoted to `[x]` DONE in the wave table (verify-gates pass succeeded: 41/41 ctests, 98.0% lines / 92.3% branches coverage, cross-build ELF in budget, 0 doxygen warnings).
 

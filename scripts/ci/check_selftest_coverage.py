@@ -545,7 +545,7 @@ def _taxonomy_cases() -> list[tuple[str, bool]]:
             is_detector("scripts/ci/check_ci_parity.py"),
         ),
         ("scripts/builders/ is NOT a detector", not is_detector("scripts/builders/docs.sh")),
-        ("scripts/report/ is NOT a detector", not is_detector("scripts/report/roadmap_stats.py")),
+        ("scripts/report/ is NOT a detector", not is_detector("scripts/report/app_sizes.py")),
         ("the flag selftest spelling is detected", has_selftest("scripts/checks/check_asm.py")),
         ("the subcommand selftest spelling is detected", has_selftest("scripts/ci/monitor.sh")),
     ]

@@ -427,7 +427,7 @@ Source: [`../../scripts/git/pre-commit`](../../scripts/git/pre-commit).
 | cppcheck (general)                               | `cppcheck --enable=warning,style,performance,portability`  |
 | HUM citations                                    | `scripts/checks/cite_check.py --strict`                     |
 | Ring/world tags                                  | `scripts/checks/check_world_tags.py --strict`               |
-| Roadmap stats freshness                          | `scripts/report/roadmap_stats.py --check`                   |
+| Roadmap stats freshness                          | `tools/roadmap_stats --check`                               |
 | Obsolete-standard references                     | `scripts/checks/check_obsolete_standards.py`                |
 | MC/DC-blocking pattern check                     | `scripts/checks/check_mcdc_block.py`                        |
 

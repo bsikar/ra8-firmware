@@ -31,7 +31,7 @@ push: build
 
 # Refresh the summary embedded in the historical HAL completion record
 record_stats:
-    python3 scripts/report/roadmap_stats.py
+    bash scripts/builders/roadmap_stats.sh
 
 # Summarize built app footprints into ignored build/reports/APP_SIZES.md
 sizes:

@@ -416,5 +416,5 @@ gate_roadmap_stats() (
     echo "       Restore the file, or delete this gate and its registry row." >&2
     return 1
   fi
-  python3 scripts/report/roadmap_stats.py --check
+  bash scripts/builders/roadmap_stats.sh --check
 )

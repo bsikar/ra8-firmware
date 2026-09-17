@@ -106,7 +106,7 @@ The canonical EK-RA8D2 defaults are under
 | `scripts/checks/check_mcdc_block.py`        | `@par MC/DC:` block enforcement on tests.            |
 | `tools/check_since_version`                 | Doxygen `@since` enforcement.                        |
 | `scripts/checks/check-copyright.py`         | Copyright + SPDX header enforcement.                 |
-| `scripts/report/roadmap_stats.py`           | `../ROADMAP.md` summary block freshness gate.        |
+| `tools/roadmap_stats`                       | `../ROADMAP.md` summary block freshness gate.        |
 | `scripts/report/tree_coverage.sh`                 | gcovr whole-tree coverage measurement.               |
 | `scripts/checks/format_code.sh`                   | clang-format wrapper.                                |
 | `scripts/checks/clang_tidy.sh`                    | clang-tidy wrapper.                                  |
@@ -211,7 +211,7 @@ every commit. Failure of any gate refuses the commit:
 8. Copyright + SPDX header enforcement.
 9. HUM citation validator (`cite_check.py --strict`).
 10. World-tag validator (`check_world_tags.py --strict`).
-11. ROADMAP summary freshness (`roadmap_stats.py --check`, strict).
+11. ROADMAP summary freshness (`roadmap_stats --check`, strict).
 12. Obsolete-standards reference scan (rejects superseded
     safety-standard references, strict).
 13. `@par MC/DC:` block on staged tests
