@@ -120,8 +120,8 @@ add_test(NAME test_ra8_npu_loader COMMAND test_ra8_npu_loader)
 # host MMIO backing store nor ra8_core_hal.
 #
 # The vendored runtime is compiled once into tflm_host_objs and shared by every
-# TFLite-micro host test (this one today, the MicroInterpreter model-driven
-# test #228 still needs next). The source list mirrors
+# TFLite-micro host test (this one and test_ra8_tflm_interpreter below). The
+# source list mirrors
 # cmake/tflite_micro.cmake exactly, INCLUDING its one deviation: the vendored
 # kernels/ethosu.cc stub is excluded so the first-party kernel is the only
 # Register_ETHOSU in the link, same as on target. Warnings are suppressed on
@@ -204,4 +204,52 @@ else()
     target_link_libraries(test_ra8_tflm_op_subset PRIVATE litehtml gumbo)
   endif()
   add_test(NAME test_ra8_tflm_op_subset COMMAND test_ra8_tflm_op_subset)
+  # -------------------------------------------------------------------------
+  # test_ra8_tflm_interpreter (issue #228): the model-driven MicroInterpreter
+  # path, which had never executed anywhere in this tree.
+  #
+  # test_ra8_tflm_op_subset above pins which operators RESOLVE. This one builds
+  # real .tflite FlatBuffers in memory with the vendored schema bindings, runs
+  # them through tflite::MicroInterpreter over a static arena, and checks the
+  # output tensors: an exact INT8 CONV_2D (the quantization is chosen so the
+  # requantization multiplier is exactly 1.0, so the expected bytes are integer
+  # arithmetic rather than a model of the kernel's rounding), a two-node
+  # conv+reshape graph, an undersized arena, an unregistered operator, and a
+  # Vela-shaped ethos-u graph that must be REFUSED off target rather than run
+  # as something else.
+  #
+  # Same shape as the op-subset target: the first-party
+  # libs/ra8_hal/src/ra8_ethosu_kernel.cc is compiled off target (RA8_HAS_NPU
+  # undefined), it shares tflm_host_objs, and it needs neither the host MMIO
+  # backing store nor ra8_core_hal because no NPU register is touched.
+  # -------------------------------------------------------------------------
+  add_executable(
+    test_ra8_tflm_interpreter ${CMAKE_CURRENT_SOURCE_DIR}/misc/src/test_ra8_tflm_interpreter.cc
+                              ${FW_ROOT}/libs/ra8_hal/src/ra8_ethosu_kernel.cc
+                              $<TARGET_OBJECTS:tflm_host_objs>
+  )
+  set_target_properties(
+    test_ra8_tflm_interpreter
+    PROPERTIES CXX_STANDARD 17
+               CXX_STANDARD_REQUIRED ON
+               LINKER_LANGUAGE CXX
+  )
+  target_compile_options(
+    test_ra8_tflm_interpreter PRIVATE -Wall -Wextra -Werror -fno-rtti -fno-exceptions
+  )
+  target_include_directories(
+    test_ra8_tflm_interpreter
+    PRIVATE ${RA8_TEST_SHARED_INCLUDE_DIRS} ${FW_ROOT}/libs/ra8_core/inc
+            ${FW_ROOT}/libs/ra8_hal/inc
+  )
+  target_include_directories(
+    test_ra8_tflm_interpreter SYSTEM
+    PRIVATE ${_ra8_tflm_host_dir} ${_ra8_flatb_host_dir}/include
+            ${FW_ROOT}/libs/third_party/gemmlowp ${FW_ROOT}/libs/third_party/ruy
+  )
+  target_compile_definitions(test_ra8_tflm_interpreter PRIVATE TF_LITE_STATIC_MEMORY)
+  if(REFLOW_USE_LITEHTML)
+    target_link_libraries(test_ra8_tflm_interpreter PRIVATE litehtml gumbo)
+  endif()
+  add_test(NAME test_ra8_tflm_interpreter COMMAND test_ra8_tflm_interpreter)
 endif()
