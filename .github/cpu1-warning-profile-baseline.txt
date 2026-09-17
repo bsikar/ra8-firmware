@@ -29,13 +29,34 @@
 # glob_vars() skips a file(GLOB ...) pattern that does not end in ".c", ".h" or
 # "*". So a first-party .cpp / .cc / .S / .s translation unit bolted onto a CPU1
 # image is neither profile-covered nor an escape row: it is dropped with no
-# finding and the gate still prints a clean run. Whether the tree holds one
-# today is not a question this gate's output can answer, which is the gap
-# itself; every row below is .c because .c is all the parser can see. The repo
-# does compile first-party C++ elsewhere
-# (apps/shared_libs/reflow/v2/src/reflow_v2.cpp), so this is a live shape and
-# not a hypothetical. Read the SHRINK-ONLY rule as scoped to .c until the
-# parser measures the rest.
+# finding and the gate still prints a clean run. Every row below is .c because
+# .c is all the parser can see, so this gate's own output can never tell you
+# whether the tree holds such a TU today.
+#
+# A hand census can, and one was taken on 2026-09-17: the tree has ten CPU1
+# images, every source token on every one of them is .c, and the uncovered
+# shape is therefore LATENT rather than live.
+#
+#   * Eight images are helper-built and pass only SOURCES src/cpu1_main.c,
+#     which the per-source profile does reach: blink_m33, blink_m33_hal,
+#     cache_coherency_hil, compile_on_m33, dualcore_background_m33,
+#     dualcore_mailbox, ereader_m33, lowpower_holdpage.
+#   * Exactly two of those bolt more on with target_sources(): compile_on_m33
+#     (21 first-party .c, counting the epub/src/*.c glob, plus vendored
+#     miniz.c, which is SOUP and correctly not a row) and ereader_m33 (4 .c).
+#     Established by reading both listfiles and by a repo-wide search for
+#     target_sources() on a *_cpu1.elf target, which returns those two alone.
+#   * The two hand-rolled images name four .c sources each in add_executable()
+#     (cpu1_pingpong, cpu1_pingpong_ipc), read in full.
+#
+# 21 + 4 + 4 + 4 is exactly the 33 rows below, so this inventory is currently
+# complete for the .c set as well as scoped to it. The census is a human read
+# of the listfiles rather than a gate run, so it decays the moment one of them
+# changes: that is the argument for teaching the parser the other suffixes
+# instead of trusting this paragraph. The repo does compile first-party C++
+# elsewhere (apps/shared_libs/reflow/v2/src/reflow_v2.cpp), so the shape stays
+# live. Read the SHRINK-ONLY rule as scoped to .c until the parser measures
+# the rest.
 #
 # A missing or unreadable file yields the EMPTY set, so every escape reports.
 # The gate fails closed.
