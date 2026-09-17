@@ -352,6 +352,39 @@ def census_floor_failures(paths: list[str]) -> list[str]:
 _DIRECTIVE = "#!"
 
 
+def parse_count_directives(text: str, *, what: str) -> dict[str, int]:
+    """Parse every ``#! <name>: <count>`` directive in `text`.
+
+    One parser for both declaration files, so the ceiling and the baseline's
+    own census cannot drift into two directive dialects.
+
+    Args:
+        text: The committed file's contents.
+        what: What the directives declare, for the error messages.
+
+    Returns:
+        Declared name -> its non-negative count.
+
+    Raises:
+        ValueError: On a malformed or duplicated directive. A declaration that
+            cannot be read is not a declaration of zero.
+    """
+    counts: dict[str, int] = {}
+    for raw in text.splitlines():
+        if not raw.startswith(_DIRECTIVE):
+            continue
+        name, _, count = raw[len(_DIRECTIVE) :].partition(":")
+        name, count = name.strip(), count.strip()
+        if not name or not count.isdigit():
+            message = f"malformed {what} directive: {raw!r}"
+            raise ValueError(message)
+        if name in counts:
+            message = f"the {what} declares {name!r} twice"
+            raise ValueError(message)
+        counts[name] = int(count)
+    return counts
+
+
 def parse_ceiling(text: str) -> dict[str, int]:
     """Parse ceiling text into the declared cap per reason class.
 
@@ -365,20 +398,7 @@ def parse_ceiling(text: str) -> dict[str, int]:
         ValueError: On a malformed or duplicated directive. A ceiling that
             cannot be read is not a ceiling of zero.
     """
-    caps: dict[str, int] = {}
-    for raw in text.splitlines():
-        if not raw.startswith(_DIRECTIVE):
-            continue
-        name, _, cap = raw[len(_DIRECTIVE) :].partition(":")
-        name, cap = name.strip(), cap.strip()
-        if not name or not cap.isdigit():
-            message = f"malformed ceiling directive: {raw!r}"
-            raise ValueError(message)
-        if name in caps:
-            message = f"reason class {name!r} is capped twice"
-            raise ValueError(message)
-        caps[name] = int(cap)
-    return caps
+    return parse_count_directives(text, what="ceiling")
 
 
 def reason_population(reasons: list[str]) -> dict[str, int]:
@@ -527,3 +547,176 @@ def _ceiling_parse_failures() -> list[str]:
 def ceiling_selftest_failures() -> list[str]:
     """Prove every ceiling rule fires and stays quiet in both directions."""
     return _ceiling_ratchet_failures() + _ceiling_parse_failures()
+
+
+# ---------------------------------------------------------------------------
+# THE BASELINE'S OWN CENSUS -- the file says how much it holds, and it is read.
+#
+# ``.github/tree-coverage-baseline.txt`` opens with "Never hand-edit: every
+# field is re-derived from the tree and the merged gcovr measurement, so an
+# edit is either a no-op or a lie the gate finds." That was not true of a
+# DELETED row. A missing row is not a field the gate re-derives and compares:
+# ``evaluate()`` sees no baseline entry, calls the unit new, and holds it to
+# the 90%/80% ENTRY floor instead of the tighter debt it was actually carrying.
+# So a unit frozen at 100% line could have its row cut, pass at 91%, and be
+# written back down by the next ``--update`` with nine points of regression
+# laundered -- while the file's own header said the gate would find it.
+#
+# The fix is to make that claim measurable rather than to soften it: the
+# baseline DECLARES its length in ``#!`` directives, one per count, and the
+# gate compares them with the rows it actually parsed. A hand-deleted row is
+# then a HARD finding, which ``--update`` refuses to absorb, and a truncated
+# file is a declaration mismatch rather than a shorter census that reads as
+# clean. ``--update`` rewrites rows and declaration together, so a legitimate
+# re-freeze is unaffected.
+#
+# What this does NOT claim: an edit that removes a row AND decrements the
+# declaration is self-consistent and passes this check. It is still not a free
+# regression -- the unit then reads as new and must enter at the 90%/80%
+# floor -- but the census is an integrity check on the file, not a signature.
+# ---------------------------------------------------------------------------
+
+#: The counts the baseline declares about itself, in emitted order. ``rows`` is
+#: the total, so a truncation is caught even when what it removed happens to
+#: keep the other two directives in proportion.
+BASELINE_CENSUS_KEYS: tuple[str, ...] = ("rows", "measured", "unmeasured")
+
+BASELINE_HEADER: tuple[str, ...] = (
+    "# ONE coverage baseline for every first-party translation unit.",
+    "#",
+    "# Emitted by `python3 scripts/checks/check_tree_coverage.py --update`.",
+    "# Never hand-edit: every field is re-derived from the tree and the merged",
+    "# gcovr measurement, so an edit is either a no-op or a lie the gate finds.",
+    "#",
+    "# MEASURED   <file> MEASURED <line-covered> <line-total> <branch-covered> <branch-total>",
+    "#            Frozen debt. Uncovered lines/branches may not grow and the",
+    "#            ratio may not fall; a NEW unit must enter at >=90% line and",
+    "#            >=80% branch.",
+    "# UNMEASURED <file> UNMEASURED <reason-class>",
+    "#            No host execution path reaches it. The class is re-derived",
+    "#            every run; gaining measurement is one-way. How many each",
+    "#            class may carry is capped by tree-coverage-unmeasured-ceiling.txt,",
+    "#            which the counts below describe but do not bound.",
+    "#",
+    "# Columns are TAB-separated. Rows are sorted by path.",
+    "#",
+    "# The `#!` census below is READ, not decoration: the gate counts the rows",
+    "# it parsed and fails hard when they differ from what this file says it",
+    "# holds, or when a directive is missing. That is what makes a hand-deleted",
+    "# row a regression rather than a unit that reads as new and re-enters at",
+    "# the entry floor with its frozen debt forgotten.",
+)
+
+
+def baseline_census(kinds: list[str], measured_kind: str) -> dict[str, int]:
+    """Return the census a baseline of these row kinds must declare.
+
+    Args:
+        kinds: One row kind per baseline row, in any order.
+        measured_kind: The kind string that means a measured row.
+
+    Returns:
+        A count per ``BASELINE_CENSUS_KEYS``.
+    """
+    measured = kinds.count(measured_kind)
+    return dict(
+        zip(BASELINE_CENSUS_KEYS, (len(kinds), measured, len(kinds) - measured), strict=True)
+    )
+
+
+def format_baseline_census(census: dict[str, int]) -> list[str]:
+    """Render the baseline's self-declaration, one directive per count."""
+    return [f"{_DIRECTIVE} {key}: {census.get(key, 0)}" for key in BASELINE_CENSUS_KEYS]
+
+
+def baseline_census_text_failures(text: str, census: dict[str, int]) -> list[str]:
+    """Judge a baseline file's declaration against the rows actually parsed.
+
+    Args:
+        text: The committed baseline's contents.
+        census: What its rows add up to, from ``baseline_census``.
+
+    Returns:
+        One message per way the file does not account for itself: an unreadable
+        declaration, a missing directive, a directive naming something that is
+        not a census count, or a declared count that differs from the rows
+        parsed.
+    """
+    try:
+        declared = parse_count_directives(text, what="baseline census")
+    except ValueError as error:
+        return [f"the coverage baseline's census is unreadable: {error}"]
+    missing = [
+        f"the coverage baseline declares no {key!r} count; that is not a census of zero"
+        for key in BASELINE_CENSUS_KEYS
+        if key not in declared
+    ]
+    unknown = [
+        f"the coverage baseline declares {name!r}, which is not one of its census counts"
+        for name in sorted(declared)
+        if name not in BASELINE_CENSUS_KEYS
+    ]
+    mismatched = [
+        f"the coverage baseline declares {declared[key]} {key} and holds "
+        f"{census.get(key, 0)}; a row is not edited away, it is re-derived"
+        for key in BASELINE_CENSUS_KEYS
+        if key in declared and declared[key] != census.get(key, 0)
+    ]
+    return missing + unknown + mismatched
+
+
+def baseline_census_failures(path: Path, census: dict[str, int]) -> list[str]:
+    """Read the committed baseline at `path` and judge its own declaration."""
+    try:
+        text = path.read_text(encoding="ascii")
+    except OSError:
+        return ["the coverage baseline is missing or unreadable; that is not a census of zero"]
+    return baseline_census_text_failures(text, census)
+
+
+def _baseline_census_count_failures() -> list[str]:
+    """Prove the census counts rows by kind and round-trips through its file form."""
+    kinds = ["MEASURED", "UNMEASURED", "MEASURED", "UNMEASURED", "UNMEASURED"]
+    census = baseline_census(kinds, "MEASURED")
+    out: list[str] = []
+    if census != {"rows": 5, "measured": 2, "unmeasured": 3}:
+        out.append("the baseline census must count total, measured and unmeasured rows")
+    if baseline_census([], "MEASURED") != dict.fromkeys(BASELINE_CENSUS_KEYS, 0):
+        out.append("an empty baseline must declare zero of every count")
+    rendered = "\n".join(format_baseline_census(census))
+    if parse_count_directives(rendered, what="baseline census") != census:
+        out.append("the baseline census must round-trip through format/parse unchanged")
+    if baseline_census_text_failures(rendered, census):
+        out.append("a rendered census must satisfy its own guard")
+    return out
+
+
+def _baseline_census_guard_failures() -> list[str]:
+    """Prove a hand-edited, truncated or undeclared baseline fails closed."""
+    census = {"rows": 5, "measured": 2, "unmeasured": 3}
+    rendered = "\n".join(format_baseline_census(census))
+    out: list[str] = []
+    for key in BASELINE_CENSUS_KEYS:
+        if not baseline_census_text_failures(rendered, {**census, key: census[key] - 1}):
+            out.append(f"one row fewer than the declared {key} must fire")
+        if not baseline_census_text_failures(rendered, {**census, key: census[key] + 1}):
+            out.append(f"one row more than the declared {key} must fire")
+        dropped = "\n".join(
+            line for line in rendered.splitlines() if not line.startswith(f"{_DIRECTIVE} {key}:")
+        )
+        if not baseline_census_text_failures(dropped, census):
+            out.append(f"a baseline that declares no {key} count must fire")
+    if not baseline_census_text_failures("", census):
+        out.append("a baseline with no census at all must fire, not read as clean")
+    if not baseline_census_text_failures(f"{rendered}\n{_DIRECTIVE} made-up: 1\n", census):
+        out.append("a census directive that is not a census count must fire")
+    if not baseline_census_text_failures(f"{_DIRECTIVE} rows: lots\n", census):
+        out.append("a malformed census directive must fire rather than be skipped")
+    if not baseline_census_failures(Path("/nonexistent/tree-coverage-baseline.txt"), census):
+        out.append("a missing baseline file must fail closed")
+    return out
+
+
+def baseline_census_selftest_failures() -> list[str]:
+    """Prove the baseline's self-declaration is read, in both directions."""
+    return _baseline_census_count_failures() + _baseline_census_guard_failures()
