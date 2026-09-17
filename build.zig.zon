@@ -9,6 +9,7 @@
         .ra8_box = .{ .path = "libs/ra8_box" },
         .ra8_power_profile = .{ .path = "libs/ra8_power_profile" },
         .ra8_epd_cal = .{ .path = "libs/ra8_epd_cal" },
+        .ra8_abi_fixture = .{ .path = "tests/zig_abi_fixture" },
     },
     .paths = .{
         "build.zig",

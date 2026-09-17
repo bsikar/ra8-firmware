@@ -31,12 +31,14 @@
 //!                        unmodified first-party C suite against it
 //!   zig build compile-db emit compile_commands.json for every TU this graph
 //!                        compiles, the input the analysis gates parse against
+//!   zig build abi        the Zig-to-C ABI contract, negative controls included
 //!
 //! The `arm` step is the cross-build slice (#936): it is the first target
 //! artifact this graph produces, and it is deliberately one app rather than
 //! the app tree, so the diff stays reviewable.
 
 const std = @import("std");
+pub const abi_contract = @import("tests/zig_build_graph/abi_contract.zig");
 
 /// One member of the migrated-library slice: the Zig archive, its public C
 /// header directory, and the C suite CMake links against that archive today.
@@ -227,6 +229,10 @@ pub fn build(b: *std.Build) void {
     print_soup.addArg(vendored_slice.porting_header);
     print_soup.addArg(vendored_slice.c_suite_path);
     parity_step.dependOn(&print_soup.step);
+
+    const abi_step = b.step("abi", "Prove the Zig-to-C ABI contract, negative controls included");
+    abi_contract.add(b, abi_step, parity_step, target, optimize);
+    test_step.dependOn(abi_step);
 
     // The analysis-input slice's own manifest row: the database, where it
     // lands, and how many compile commands it carries. A row that read "-"
@@ -898,6 +904,9 @@ fn compileDbEntries(b: *std.Build) []const CompileDbEntry {
         .include_dirs = &vendored_include_paths,
         .object = b.fmt("soup/{s}.o", .{std.fs.path.basename(vendored_slice.c_suite_path)}),
     }) catch @panic("OOM");
+
+    // --- the ABI-contract slice (#1007) ------------------------------------
+    abi_contract.appendCompileDbEntries(b, CompileDbEntry, &candidates, host_c_driver);
 
     // --- the ARM cross slice (#936) ---------------------------------------
     // The set a host database structurally cannot describe, and the reason

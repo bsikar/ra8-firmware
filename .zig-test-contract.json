@@ -3,7 +3,8 @@
     "tests/zig_build_graph/build_graph_test.zig"
   ],
   "covered_sources": [
+    "tests/zig_build_graph/abi_contract.zig",
     "tests/zig_build_graph/build_graph_test.zig"
   ],
-  "minimum_tests": 6
+  "minimum_tests": 9
 }
