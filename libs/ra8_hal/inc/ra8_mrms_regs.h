@@ -3,6 +3,9 @@
  * @brief MRAM Memory System (MRMS) wait-state register layout for the RA8D2
  * @ingroup grp_hal_system
  *
+ * @par Tag
+ * [Ring 3 / HAL] {World: S}
+ *
  * @details
  * The Renesas RA8 Gen2 family does not expose the legacy MEMWAIT /
  * FLDWAITR / FLWT registers (`bsp_feature.h` set
