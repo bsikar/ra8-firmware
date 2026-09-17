@@ -2,6 +2,9 @@
  * @file ra8_usb_cdc_internal.h
  * @brief Test-access surface for the USB CDC line-coding decoder.
  *
+ * @par Tag
+ * [Ring 3 / HAL] {World: NS}
+ *
  * @details Declares the line-coding decoder so host tests can exercise its
  * compound input guard without manufacturing an asynchronous EP0 OUT packet.
  * Production callers continue to reach it only through the CDC SETUP handler.

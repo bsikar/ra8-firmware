@@ -3,6 +3,9 @@
  * @brief Native USB device-side HID (Human Interface Device) class layer
  * @ingroup grp_hal_usb
  *
+ * @par Tag
+ * [Ring 3 / HAL] {World: NS}
+ *
  * @details
  * Glues the device-mode `ra8_usb` controller driver to a USB HID
  * function so the host enumerates the EK-RA8D2 board as a keyboard,
