@@ -43,6 +43,24 @@ bool priv_reflow_tok_is_xml_whitespace(char c)
   return (c == ' ') || (c == '\t') || (c == '\n') || (c == '\r') || (c == '\f') || (c == '\v');
 }
 
+bool priv_reflow_tok_is_xml_char(uint32_t cp)
+{
+  if ((cp == (uint32_t)k_priv_uc_tab) || (cp == (uint32_t)k_priv_uc_lf) ||
+      (cp == (uint32_t)k_priv_uc_cr)) {
+    return true;
+  }
+  if (cp < (uint32_t)k_priv_uc_space) {
+    return false; /* every other C0 control, NUL included */
+  }
+  if ((cp >= (uint32_t)k_priv_uc_surr_lo) && (cp <= (uint32_t)k_priv_uc_surr_hi)) {
+    return false; /* UTF-16 surrogate halves are not characters */
+  }
+  if ((cp >= (uint32_t)k_priv_uc_nonchar_lo) && (cp <= (uint32_t)k_priv_uc_nonchar_hi)) {
+    return false; /* U+FFFE / U+FFFF */
+  }
+  return cp <= (uint32_t)k_priv_uc_max;
+}
+
 size_t priv_reflow_tok_utf8_encode(uint32_t cp, uint8_t* dst)
 {
   uint32_t value = cp;
@@ -166,6 +184,18 @@ reflow_html_tag_t priv_reflow_tok_classify(const char* name, size_t len)
  * @details Assumes `src` begins with "&#". Reads an optional `x`/`X` for
  * hexadecimal, then base-appropriate digits up to a terminating ';'.
  *
+ * A reference whose value the XML 1.0 `Char` production excludes is not
+ * rejected: it is complete in shape, so it is consumed whole and decoded
+ * to U+FFFD. Failing open there would spill the markup itself into the
+ * page, and the walk would then rescan the digits as text. Malformed
+ * *shape* (no digits, a bad digit, no terminator) still fails open, so the
+ * caller emits the literal '&' as before.
+ *
+ * The digit accumulator saturates at k_priv_uc_over_max, which keeps the
+ * multiply free of unsigned wrap locally instead of relying on the
+ * `&...;` scan window to bound the digit count. The sentinel is outside
+ * the `Char` production, so a saturated value decodes to U+FFFD.
+ *
  * @param[in]  src      Buffer positioned at the '&' of "&#...".
  * @param[in]  avail    Bytes available from `src`.
  * @param[out] out_cp   Decoded code point on success.
@@ -176,6 +206,7 @@ reflow_html_tag_t priv_reflow_tok_classify(const char* name, size_t len)
  * @pre `src[0..1]` are "&#".
  * @post On false the output params are unspecified.
  * @post On true *out_used is the index just past ';'.
+ * @post On true `*out_cp` satisfies priv_reflow_tok_is_xml_char().
  * @note Pure aside from writing the output params.
  * @since 0.1.0
  */
@@ -204,7 +235,11 @@ internal_decode_numeric(const char* src, size_t avail, uint32_t* out_cp, size_t*
     } else {
       return false;
     }
-    cp = (cp * base) + d;
+    if (cp > (uint32_t)k_priv_uc_over_max) {
+      cp = (uint32_t)k_priv_uc_over_max; /* saturate: no wrap, still out of range */
+    } else {
+      cp = (cp * base) + d;
+    }
     ++digits;
     ++i;
   }
@@ -212,7 +247,7 @@ internal_decode_numeric(const char* src, size_t avail, uint32_t* out_cp, size_t*
   if ((digits == 0U) || (i >= avail) || (src[i] != ';')) {
     return false;
   }
-  *out_cp   = cp;
+  *out_cp   = priv_reflow_tok_is_xml_char(cp) ? cp : (uint32_t)k_priv_uc_replace;
   *out_used = i + 1U;
   return true;
 }
