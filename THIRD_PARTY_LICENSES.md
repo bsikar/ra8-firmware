@@ -10,9 +10,15 @@ companion to the machine-readable SBOM at
 [`docs/sbom/ra8-firmware.cdx.json`](docs/sbom/ra8-firmware.cdx.json) and to
 the per-component qualification catalog under [`docs/SOUP/`](docs/SOUP/).
 
-Both this file and the SBOM are generated/checked from one registry in
-[`scripts/gen/gen_sbom.py`](scripts/gen/gen_sbom.py); when you re-vendor
-a component, update that registry and run `just quality::local::sbom`.
+The SBOM is generated from one registry,
+[`scripts/gen/sbom_registry.py`](scripts/gen/sbom_registry.py), by
+[`scripts/gen/gen_sbom.py`](scripts/gen/gen_sbom.py). This file is
+hand-maintained against that same registry rather than generated from it, and
+[`scripts/checks/check_soup_inventory.py`](scripts/checks/check_soup_inventory.py)
+cross-checks the two so the registry and this inventory cannot drift apart
+unnoticed. When you re-vendor a component, update the registry, update the
+section below, and run `just quality::local::sbom`, which runs the generator
+and that cross-check (#631).
 
 > Closes the aggregation half of recon seed **T5-14** (SOUP-5). The
 > provenance-pinning half, **T5-09** (SOUP-1), is closed too: every vendored
