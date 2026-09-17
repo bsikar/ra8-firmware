@@ -183,7 +183,7 @@ hand-traced decisions, and so on.
 |                                 | configuration-managed via git.                                     |
 | Compensating verification       | (a) Server-side CI re-runs every gate. (b) Each helper script     |
 |                                 | carries its own host test under `scripts/checks/` where             |
-|                                 | applicable. (c) The `check_obsolete_standards.py` script is the   |
+|                                 | applicable. (c) The `check_obsolete_standards` tool is the        |
 |                                 | sole gatekeeper for the "no obsolete-standard names" rule and is  |
 |                                 | exercised by every commit that touches `docs/`.                    |
 | Re-qualification trigger        | Any change to a helper script or to the hook orchestrator.        |

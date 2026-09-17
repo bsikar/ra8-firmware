@@ -101,7 +101,7 @@ The canonical EK-RA8D2 defaults are under
 | `scripts/checks/stack_usage_check.py`       | Stack-bound aggregator.                              |
 | `scripts/checks/cite_check.py`              | HUM citation validator.                              |
 | `scripts/checks/check_world_tags.py`        | TrustZone world-tag enforcement.                     |
-| `scripts/checks/check_obsolete_standards.py`| Rejects superseded safety-standard references.       |
+| `tools/check_obsolete_standards`            | Rejects superseded safety-standard references.       |
 | `scripts/checks/check_no_dynamic_alloc.py`  | NASA P10 Rule 3 enforcement.                         |
 | `scripts/checks/check_mcdc_block.py`        | `@par MC/DC:` block enforcement on tests.            |
 | `tools/check_since_version`                 | Doxygen `@since` enforcement.                        |

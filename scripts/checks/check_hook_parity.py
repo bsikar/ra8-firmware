@@ -85,7 +85,7 @@ PRE_COMMIT_GATES = (
 STAGED_CHECKS = (
     "check_mcdc_block.py --staged",
     "check_new_compound_has_mcdc.py --staged",
-    "check_obsolete_standards.py --staged",
+    "check_obsolete_standards.sh --staged",
 )
 
 JUST_EXECUTABLE = '"{{ just_executable() }}"'

@@ -233,7 +233,7 @@ must pass:
   pre-commit policy).
 - `check_world_tags.py --strict` (ring/world tag discipline; fail-closed
   pre-commit policy).
-- `check_obsolete_standards.py` (rejects references to superseded
+- `check_obsolete_standards` (rejects references to superseded
   safety standards; pre-commit hook).
 - `check_mcdc_block.py` (MC/DC-blocking patterns; pre-commit hook).
 
@@ -428,7 +428,7 @@ Source: [`../../scripts/git/pre-commit`](../../scripts/git/pre-commit).
 | HUM citations                                    | `scripts/checks/cite_check.py --strict`                     |
 | Ring/world tags                                  | `scripts/checks/check_world_tags.py --strict`               |
 | Roadmap stats freshness                          | `tools/roadmap_stats --check`                               |
-| Obsolete-standard references                     | `scripts/checks/check_obsolete_standards.py`                |
+| Obsolete-standard references                     | `tools/check_obsolete_standards`                            |
 | MC/DC-blocking pattern check                     | `scripts/checks/check_mcdc_block.py`                        |
 
 ### 7.2 CI gates (GitHub Actions, mandatory)
