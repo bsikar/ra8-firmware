@@ -159,6 +159,7 @@ def _inventory_findings(
     header_names: set[str],
     zig_names: set[str],
     zig_heads: dict[str, str],
+    allow_c_bool: set[str] | None = None,
 ) -> list[str]:
     """Compare metadata, header, and Zig declarations and reject native-only types."""
     findings: list[str] = []
@@ -177,18 +178,22 @@ def _inventory_findings(
             f"{name}: prohibited Zig-only type {type_name}: {symbol}"
             for pattern, type_name in PROHIBITED_ZIG_TYPES
             if pattern.search(head)
+            and not (type_name == "bool" and symbol in (allow_c_bool or set()))
         )
     return findings
 
 
 def _adapter_scope_findings(
-    name: str, build_root: Path, adapter: Path, repository_root: Path = ROOT
+    name: str,
+    build_root: Path,
+    adapters: set[Path],
+    repository_root: Path = ROOT,
 ) -> list[str]:
-    """Reject exports declared outside the one registered adapter."""
+    """Reject exports outside the explicitly registered source inventory."""
     findings: list[str] = []
     for source in build_root.rglob("*.zig"):
         generated = any(part in GENERATED_PATH_PARTS for part in source.parts)
-        if source.resolve() == adapter or generated:
+        if source.resolve() in adapters or generated:
             continue
         other_names, _ = _zig_exports(source.read_text(encoding="utf-8"))
         if other_names:
@@ -200,16 +205,112 @@ def _adapter_scope_findings(
 
 
 def _repository_inventory_findings(
-    libraries: list[dict[str, Any]], repository_root: Path = ROOT
+    libraries: list[dict[str, Any]],
+    source_inventory: list[dict[str, Any]] | None = None,
+    repository_root: Path = ROOT,
 ) -> list[str]:
-    """Require every hand-written Zig export adapter in the repository inventory."""
+    """Require each hand-written Zig export source and symbol to be classified."""
     registered = {
         (repository_root / value).resolve()
         for library in libraries
         if isinstance(library, dict) and isinstance((value := library.get("adapter")), str)
     }
-    discovered: set[Path] = set()
     findings: list[str] = []
+    root = repository_root.resolve()
+    for row in source_inventory or []:
+        if not isinstance(row, dict) or not isinstance(row.get("path"), str):
+            findings.append("malformed Zig export source inventory entry")
+            continue
+        candidate = repository_root / row["path"]
+        path = candidate.resolve()
+        try:
+            relative_path = path.relative_to(root)
+        except ValueError:
+            findings.append(f"export source path escapes repository: {row['path']}")
+            continue
+        kind = row.get("kind")
+        symbols = row.get("symbols")
+        allowed_kinds = {"library-adapter", "library-support", "test-helper", "app-adapter"}
+        if kind not in allowed_kinds:
+            findings.append(f"{row['path']}: invalid export source kind: {kind}")
+        if not isinstance(symbols, list) or not all(isinstance(item, str) for item in symbols):
+            findings.append(f"{row['path']}: symbols must be an explicit string list")
+            symbols = []
+        if not path.is_file():
+            findings.append(f"registered Zig export source is missing: {row['path']}")
+            continue
+        owners = [
+            library
+            for library in libraries
+            if isinstance(library, dict)
+            and isinstance(library.get("build_root"), str)
+            and isinstance(library.get("name"), str)
+            and (root / library["build_root"]).resolve() in path.parents
+        ]
+        policy_bound = any(
+                isinstance(library.get("adapter"), str)
+                and (root / library["adapter"]).resolve() == path
+                for library in owners
+            )
+        inferred_lib = relative_path.parts[1] if len(relative_path.parts) > 2 and relative_path.parts[0] == "libs" else None
+        if kind in {"library-adapter", "app-adapter"} and not policy_bound:
+            if inferred_lib is None or relative_path.parts[2] != "src":
+                findings.append(
+                    f"{row['path']}: adapter must be bound to a policy row or a libs/<name>/src header"
+                )
+            else:
+                header_dir = root / "libs" / inferred_lib / "inc"
+                headers = list(header_dir.glob("*.h")) if header_dir.is_dir() else []
+                source_names, _ = _zig_exports(path.read_text(encoding="utf-8"))
+                header_symbols = set().union(
+                    *(
+                        _header_exports(header.read_text(encoding="utf-8"), f"{inferred_lib}_")
+                        for header in headers
+                    )
+                ) if headers else set()
+                if not headers or not source_names <= header_symbols:
+                    findings.append(
+                        f"{row['path']}: adapter exports are not declared by its public C header"
+                    )
+        elif kind in {"library-support", "test-helper"} and inferred_lib is None and len(owners) != 1:
+            findings.append(f"{row['path']}: source must belong to exactly one library build root")
+        if kind == "library-support" and (
+            len(relative_path.parts) < 4 or relative_path.parts[-2] != "src"
+        ):
+            findings.append(f"{row['path']}: library-support source must be under a library src/")
+        names, _ = _zig_exports(path.read_text(encoding="utf-8"))
+        if set(symbols) != names:
+            findings.append(
+                f"{row['path']}: declared symbol inventory differs: "
+                f"missing={', '.join(sorted(names - set(symbols)))}; "
+                f"unexpected={', '.join(sorted(set(symbols) - names))}"
+            )
+        if kind == "test-helper":
+            if "tests" not in relative_path.parts:
+                findings.append(f"{row['path']}: test-helper is outside tests/")
+            contract_roots = [
+                root / owner["build_root"]
+                for owner in owners
+                if isinstance(owner.get("build_root"), str)
+            ]
+            if inferred_lib is not None:
+                contract_roots.append(root / "libs" / inferred_lib)
+            contract_registered = False
+            for contract_root in contract_roots:
+                contract = contract_root / ".zig-test-contract.json"
+                try:
+                    data = json.loads(contract.read_text(encoding="utf-8"))
+                except (OSError, json.JSONDecodeError):
+                    continue
+                registered_paths = set(data.get("test_roots", [])) | set(
+                    data.get("covered_sources", [])
+                )
+                if path.relative_to(contract.parent).as_posix() in registered_paths:
+                    contract_registered = True
+            if not contract_registered:
+                findings.append(f"{row['path']}: test-helper is not declared by a Zig test contract")
+        registered.add(path.resolve())
+    discovered: set[Path] = set()
     for source in repository_root.rglob("*.zig"):
         if any(part in REPOSITORY_EXCLUDED_PATH_PARTS for part in source.parts):
             continue
@@ -234,6 +335,20 @@ def _repository_inventory_findings(
         for source in sorted(registered - discovered)
     )
     return findings
+
+
+def _source_inventory_for_library(
+    source_inventory: list[dict[str, Any]], library: dict[str, Any], repository_root: Path
+) -> set[Path]:
+    """Return the exact declared export sources within one library build root."""
+    build_root = (repository_root / library["build_root"]).resolve()
+    return {
+        (repository_root / row["path"]).resolve()
+        for row in source_inventory
+        if isinstance(row, dict)
+        and isinstance(row.get("path"), str)
+        and (repository_root / row["path"]).resolve().is_relative_to(build_root)
+    }
 
 
 def _compatibility_findings(
@@ -318,12 +433,41 @@ def _contract_test_findings(
         if registration is None or not registration.is_file():
             findings.append(f"{name}: missing {language} test registration: {registration_value}")
             continue
+        registration_source = registration.read_text(encoding="utf-8")
+        registration_text = (
+            _strip_comments(registration_source)
+            if registration.suffix == ".json"
+            else re.sub(r"(?m)#.*$", "", registration_source)
+        )
         if registration.suffix == ".json":
             findings.extend(
                 _json_registration_findings(name, language, path, symbol_path, registration)
             )
-        elif path.name not in _strip_comments(registration.read_text(encoding="utf-8")):
-            findings.append(f"{name}: C contract test is not registered: {path_value}")
+        else:
+            explicitly_registered = path.name in registration_text
+            path_parts = Path(path_value).parts
+            normalized_registration = " ".join(registration_text.split())
+            cmake_globs_test_sources = (
+                "file(GLOB RA8_TEST_SOURCES" in normalized_registration
+                and "${CMAKE_CURRENT_SOURCE_DIR}/*/src/test_*.c" in normalized_registration
+            )
+            removed_test_paths = re.findall(
+                r"list\s*\(\s*REMOVE_ITEM\s+RA8_TEST_SOURCES\b([^)]*)\)",
+                registration_text,
+                flags=re.DOTALL,
+            )
+            glob_registered = (
+                registration.name == "unit_tests.cmake"
+                and len(path_parts) == 4
+                and path_parts[0] == "tests"
+                and path_parts[2] == "src"
+                and path_parts[3].startswith("test_")
+                and path_parts[3].endswith(".c")
+                and cmake_globs_test_sources
+                and not any(path.name in command for command in removed_test_paths)
+            )
+            if not explicitly_registered and not glob_registered:
+                findings.append(f"{name}: C contract test is not registered: {path_value}")
     if "c" not in seen or "zig" not in seen:
         findings.append(f"{name}: contract tests must include C and Zig")
     return findings
@@ -354,7 +498,10 @@ def _target_findings(library: dict[str, Any], name: str, required_targets: set[s
 
 
 def _library_findings(
-    library: dict[str, Any], required_targets: set[str], repository_root: Path = ROOT
+    library: dict[str, Any],
+    required_targets: set[str],
+    repository_root: Path = ROOT,
+    source_inventory: list[dict[str, Any]] | None = None,
 ) -> list[str]:
     """Return source, metadata, test, and compatibility findings for one library."""
     findings: list[str] = []
@@ -378,12 +525,24 @@ def _library_findings(
     zig_names, zig_heads = _zig_exports(adapter_text)
     metadata_findings, declared = _metadata_findings(name, library.get("exports"))
     findings.extend(metadata_findings)
-    findings.extend(_inventory_findings(name, declared, header_names, zig_names, zig_heads))
+    allow_c_bool = {
+        row["name"]
+        for row in library.get("exports", [])
+        if isinstance(row, dict) and row.get("allow_c_bool") is True
+    }
+    if allow_c_bool and "bool" not in header_text:
+        findings.append(f"{name}: C bool exception lacks a bool declaration in the public header")
+    findings.extend(
+        _inventory_findings(name, declared, header_names, zig_names, zig_heads, allow_c_bool)
+    )
+    declared_sources = _source_inventory_for_library(
+        source_inventory or [], library, repository_root
+    ) | {paths["adapter"].resolve()}
     findings.extend(
         _adapter_scope_findings(
             name,
             paths["build_root"].resolve(),
-            paths["adapter"].resolve(),
+            declared_sources,
             repository_root,
         )
     )
@@ -457,21 +616,42 @@ def _matrix_jobs(
     ]
 
 
-def _archive_symbols(nm: str, archive: Path, name: str) -> tuple[list[str], set[str]]:
+def _archive_symbols(
+    nm: str, archive: Path, name: str, *, bundle_compiler_rt: bool = False
+) -> tuple[list[str], set[str]]:
     """Read one archive's global defined symbols with the resolved nm tool."""
     if not archive.is_file():
         return [f"{name} archive missing: {archive}"], set()
     proc = subprocess.run(  # noqa: S603 -- resolved tool; fresh archive
-        [nm, "-g", "--defined-only", str(archive)], capture_output=True, text=True, check=False
+        [nm, "-A", "-g", "--defined-only", str(archive)],
+        capture_output=True,
+        text=True,
+        check=False,
     )
     if proc.returncode != 0:
         return [f"{name} symbol scan failed: {proc.stderr.strip()}"], set()
-    actual = {
-        parts[-1].removeprefix("_")
-        for line in proc.stdout.splitlines()
-        if len(parts := line.split()) >= MIN_NM_SYMBOL_FIELDS
-    }
-    return [], actual
+    return [], _archive_symbol_names(proc.stdout, bundle_compiler_rt=bundle_compiler_rt)
+
+
+def _archive_symbol_names(output: str, *, bundle_compiler_rt: bool = False) -> set[str]:
+    """Parse GNU/LLVM nm -A output, excluding only bundled compiler runtime members."""
+    actual: set[str] = set()
+    for line in output.splitlines():
+        parts = line.split()
+        if len(parts) < MIN_NM_SYMBOL_FIELDS:
+            continue
+        # GNU nm -A emits archive(member): before the symbol fields. Ignore only
+        # the compiler runtime member supplied explicitly by Zig's build, never
+        # similarly named symbols from the library's own object files.
+        member_match = re.search(r"[\[(]([^\)\]]+)[\)\]]", parts[0])
+        member = member_match.group(1) if member_match else ""
+        if not member and parts[0].count(":") >= 2:
+            archive_and_member, _address = parts[0].rsplit(":", 1)
+            _archive, member = archive_and_member.split(":", 1)
+        if bundle_compiler_rt and Path(member).name == "compiler_rt.o":
+            continue
+        actual.add(parts[-1].removeprefix("_"))
+    return actual
 
 
 def _host_mode_test_findings(
@@ -530,7 +710,18 @@ def _compiled_findings(
                 findings.append(f"{name}: {target}/{mode} archive build failed: {detail}")
                 continue
             archive = output / "install" / "lib" / f"lib{library['library_name']}.a"
-            symbol_findings, actual = _archive_symbols(nm, archive, f"{name}: {target}/{mode}")
+            build_source = (repository_root / library["build_root"] / "build.zig").read_text(
+                encoding="utf-8"
+            )
+            bundle_compiler_rt = bool(
+                re.search(r"\blibrary\.bundle_compiler_rt\s*=\s*true\s*;", build_source)
+            )
+            symbol_findings, actual = _archive_symbols(
+                nm,
+                archive,
+                f"{name}: {target}/{mode}",
+                bundle_compiler_rt=bundle_compiler_rt,
+            )
             findings.extend(symbol_findings)
             if symbol_findings:
                 continue
@@ -641,7 +832,13 @@ def _validate(
         findings.append("compiled policy check requires zig and llvm-nm or nm")
     counts = _policy_counts(libraries, required_modes)
     typed_libraries = [library for library in libraries if isinstance(library, dict)]
-    findings.extend(_repository_inventory_findings(typed_libraries, repository_root))
+    source_inventory = policy.get("source_inventory", [])
+    if not isinstance(source_inventory, list):
+        findings.append("policy source_inventory must be a list")
+        source_inventory = []
+    findings.extend(
+        _repository_inventory_findings(typed_libraries, source_inventory, repository_root)
+    )
     findings.extend(_mode_test_policy_findings(policy, typed_libraries))
     target_classes = {
         target
@@ -658,7 +855,9 @@ def _validate(
         if not isinstance(library, dict):
             findings.append("policy library rows must be objects")
             continue
-        findings.extend(_library_findings(library, required_targets, repository_root))
+        findings.extend(
+            _library_findings(library, required_targets, repository_root, source_inventory)
+        )
         counts["headers"] += int(isinstance(library.get("public_header"), str))
         counts["adapters"] += int(isinstance(library.get("adapter"), str))
         counts["exports"] += len(library.get("exports", []))
@@ -757,7 +956,7 @@ def _selftest_target_policy(base: dict[str, Any], root: Path) -> str | None:
         return f"must-stay-quiet fixture failed: {findings}"
     if not any(
         "unregistered Zig export adapter" in item
-        for item in _repository_inventory_findings([], root)
+        for item in _repository_inventory_findings([], [], root)
     ):
         return "must-fire fixture was accepted: omitted adapter"
     host_only = json.loads(json.dumps(base))
@@ -919,6 +1118,70 @@ def _selftest_layout_assertions() -> str | None:
     return None
 
 
+def _selftest_source_inventory(root: Path, base: dict[str, Any]) -> str | None:
+    """Reject omitted sources and symbol drift while accepting exact registration."""
+    source = root / "libs/demo/src/adapter.zig"
+    source.parent.mkdir(parents=True)
+    source.write_text(
+        'pub export fn demo_run() callconv(.c) void {}\n', encoding="utf-8"
+    )
+    row = {"path": "libs/demo/src/adapter.zig", "kind": "library-adapter", "symbols": ["demo_run"]}
+    library = {"name": "demo", "build_root": "libs/demo", "adapter": row["path"]}
+    base_row = {
+        "path": base["adapter"],
+        "kind": "library-adapter",
+        "symbols": ["demo_run"],
+    }
+    if findings := _repository_inventory_findings([base, library], [base_row, row], root):
+        return f"must-stay-quiet fixture failed: exact export source inventory: {findings}"
+    wrong = {**row, "symbols": ["demo_other"]}
+    if not any(
+        "declared symbol inventory differs" in item
+        for item in _repository_inventory_findings([base, library], [base_row, wrong], root)
+    ):
+        return "must-fire fixture was accepted: unknown/mismatched export symbol"
+    if not any(
+        "unregistered Zig export adapter" in item
+        for item in _repository_inventory_findings([], [], root)
+    ):
+        return "must-fire fixture was accepted: unregistered exported source"
+    parsed = _archive_symbol_names(
+        "libdemo.a(adapter.o): 00000000 T demo_run\n"
+        "libdemo.a(compiler_rt.o): 00000000 T __zig_probe_stack\n",
+        bundle_compiler_rt=True,
+    )
+    if parsed != {"demo_run"}:
+        return f"compiler runtime member filtering was not exact: {sorted(parsed)}"
+    retained = _archive_symbol_names(
+        "libdemo.a(adapter.o): 00000000 T __zig_probe_stack\n"
+        "libdemo.a(compiler_rt.o): 00000000 T __zig_probe_stack\n",
+        bundle_compiler_rt=True,
+    )
+    if retained != {"_zig_probe_stack"}:
+        return "must-fire fixture was accepted: runtime-named symbol in non-runtime member"
+    bracket_member = _archive_symbol_names(
+        "libdemo.a[adapter.o]: 00000000 T demo_run\n"
+        "libdemo.a[compiler_rt.o]: 00000000 T __zig_probe_stack\n",
+        bundle_compiler_rt=True,
+    )
+    if bracket_member != {"demo_run"}:
+        return f"bracket-form nm archive members were not parsed: {sorted(bracket_member)}"
+    colon_member = _archive_symbol_names(
+        "libdemo.a:/opt/zig-cache/compiler_rt.o:00000000 W __zig_probe_stack\n"
+        "libdemo.a:/opt/zig-cache/adapter.o:00000000 T demo_run\n",
+        bundle_compiler_rt=True,
+    )
+    if colon_member != {"demo_run"}:
+        return f"colon-form nm archive members were not parsed: {sorted(colon_member)}"
+    unbundled = _archive_symbol_names(
+        "libdemo.a(compiler_rt.o): 00000000 T __zig_probe_stack\n",
+        bundle_compiler_rt=False,
+    )
+    if unbundled != {"_zig_probe_stack"}:
+        return "must-fire fixture was accepted: unconfigured compiler runtime member"
+    return None
+
+
 def _selftest() -> int:
     """Prove every advertised policy finding fires and compliant input stays quiet."""
     header = """typedef struct { unsigned value; } demo_config_t;
@@ -948,6 +1211,9 @@ static_assert(sizeof(demo_config_t) == 4U, "layout");
             print(error, file=sys.stderr)
             return 1
         if error := _selftest_layout_assertions():
+            print(error, file=sys.stderr)
+            return 1
+        if error := _selftest_source_inventory(root, base):
             print(error, file=sys.stderr)
             return 1
     print("check_zig_abi_policy.py --selftest: OK (quiet + all named failure classes).")

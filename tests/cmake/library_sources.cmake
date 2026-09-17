@@ -58,7 +58,9 @@ file(GLOB_RECURSE RABOOK_IMPORT_SOURCES CONFIGURE_DEPENDS
 )
 # ra8_batt is implemented in Zig (libs/ra8_batt/build.zig).
 file(GLOB_RECURSE RA8_WIDGET_SOURCES CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra8_widget/src/*.c)
-file(GLOB_RECURSE RA8_APP_SOURCES CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra8_app/src/*.c)
+# ra8_app is implemented in Zig (libs/ra8_app/build.zig). It is linked through
+# cmake/zig_libraries.cmake instead of being globbed as C sources here; the
+# unchanged C suite still covers it via the public header.
 file(GLOB_RECURSE RA8_NSC_SOURCES CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra8_nsc/src/*.c)
 file(GLOB_RECURSE RA8_OTA_SOURCES CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra8_ota/src/*.c)
 file(GLOB_RECURSE RA8_DISPLAY_PAL_SOURCES CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra8_display_pal/src/*.c)
