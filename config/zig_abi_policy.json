@@ -1189,7 +1189,6 @@
       "library_name": "ra8_gfx",
       "symbol_prefix": "ra8_gfx_",
       "retained_c_exports": [
-        {"name": "ra8_gfx_blit_gray4_zoom", "source": "libs/ra8_gfx/src/ra8_gfx_blit_gray4.c"},
         {"name": "ra8_gfx_text_out", "source": "libs/ra8_gfx/src/ra8_gfx_text_glyph.c"},
         {"name": "ra8_gfx_text_size", "source": "libs/ra8_gfx/src/ra8_gfx_text_glyph.c"}
       ],
@@ -1215,7 +1214,7 @@
         {"name": "ra8_gfx_reset_clip", "calling_context": "task-only-non-reentrant", "ownership": "updates the singleton clip rectangle to the framebuffer bounds"},
         {"name": "ra8_gfx_pixel", "calling_context": "task-only-non-reentrant", "ownership": "mutates one in-bounds pixel in the caller-owned framebuffer"},
         {"name": "ra8_gfx_blit_gray8", "calling_context": "task-only-non-reentrant", "ownership": "borrows a grayscale source buffer and mutates the clipped destination"},
-        {"name": "ra8_gfx_blit_gray4_zoom", "calling_context": "task-only-non-reentrant", "ownership": "retained C implementation borrows packed source bytes and mutates the clipped destination"},
+        {"name": "ra8_gfx_blit_gray4_zoom", "calling_context": "task-only-non-reentrant", "ownership": "Zig implementation borrows packed source bytes and mutates the clipped destination"},
         {"name": "ra8_gfx_line", "calling_context": "task-only-non-reentrant", "ownership": "mutates the clipped pixels along the requested rasterized line"},
         {"name": "ra8_gfx_rect", "calling_context": "task-only-non-reentrant", "ownership": "mutates clipped framebuffer pixels within or around the requested rectangle"},
         {"name": "ra8_gfx_circle", "calling_context": "task-only-non-reentrant", "ownership": "mutates clipped framebuffer pixels along or within the requested circle"},

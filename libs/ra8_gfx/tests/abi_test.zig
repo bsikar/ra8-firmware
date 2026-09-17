@@ -432,3 +432,168 @@ test "a failed re-init leaves the previous binding untouched" {
     try std.testing.expectEqual(@as(u16, 16), abi.g_gfx_text_state.width);
     try std.testing.expect(abi.g_gfx_text_state.initialized);
 }
+
+/// 4x4 packed gray4 ramp: the pixel at flat index f carries level f, so its
+/// expanded gray is `(f << 4) | f`. Mirrors `k_g4_ramp4x4` in the C suite.
+const gray4_ramp_4x4 = [_]u8{ 0x01, 0x23, 0x45, 0x67, 0x89, 0xAB, 0xCD, 0xEF };
+
+/// 3x2 packed gray4 image, pixels 0..5: an odd width, so the nibble parity
+/// staggers across rows. Mirrors `k_g4_odd3x2` in the C suite.
+const gray4_odd_3x2 = [_]u8{ 0x01, 0x23, 0x45 };
+
+/// The colour a gray4 level lands as, after the surface round trip.
+fn gray4Expected(level: u8) u32 {
+    return impl.grayToColor(@as(u32, impl.gray4ToGray8(level)));
+}
+
+test "blit_gray4_zoom judges init, then the source, then zoom, then the extent" {
+    unbind();
+    try std.testing.expectEqual(
+        impl.err.not_initialized,
+        abi.ra8_gfx_blit_gray4_zoom(&gray4_ramp_4x4, 4, 4, 0, 0, 4, 4, 1, 0, 0),
+    );
+    var s = Surface{};
+    s.bind(16, 8, impl.format.argb8888);
+    try std.testing.expectEqual(
+        impl.err.invalid_arg,
+        abi.ra8_gfx_blit_gray4_zoom(null, 4, 4, 0, 0, 4, 4, 1, 0, 0),
+    );
+    try std.testing.expectEqual(
+        impl.err.invalid_arg,
+        abi.ra8_gfx_blit_gray4_zoom(&gray4_ramp_4x4, 4, 4, 0, 0, 4, 4, 0, 0, 0),
+    );
+    try std.testing.expectEqual(
+        impl.err.invalid_arg,
+        abi.ra8_gfx_blit_gray4_zoom(&gray4_ramp_4x4, 0, 4, 0, 0, 4, 4, 1, 0, 0),
+    );
+    try std.testing.expectEqual(
+        impl.err.invalid_arg,
+        abi.ra8_gfx_blit_gray4_zoom(&gray4_ramp_4x4, 4, 0, 0, 0, 4, 4, 1, 0, 0),
+    );
+}
+
+test "a 1:1 gray4 blit reproduces every pixel of the ramp" {
+    var s = Surface{};
+    s.bind(16, 8, impl.format.argb8888);
+    try std.testing.expectEqual(
+        impl.err.ok,
+        abi.ra8_gfx_blit_gray4_zoom(&gray4_ramp_4x4, 4, 4, 0, 0, 4, 4, 1, 0, 0),
+    );
+    var y: u8 = 0;
+    while (y < 4) : (y += 1) {
+        var x: u8 = 0;
+        while (x < 4) : (x += 1) {
+            const flat = (y * 4) + x;
+            try std.testing.expectEqual(gray4Expected(flat), s.at(x, y));
+        }
+    }
+}
+
+test "a 2x gray4 blit replicates each source pixel into a 2x2 block" {
+    var s = Surface{};
+    s.bind(16, 8, impl.format.argb8888);
+    try std.testing.expectEqual(
+        impl.err.ok,
+        abi.ra8_gfx_blit_gray4_zoom(&gray4_ramp_4x4, 4, 4, 0, 0, 2, 2, 2, 0, 0),
+    );
+    const expected = [2][2]u8{ .{ 0x0, 0x1 }, .{ 0x4, 0x5 } };
+    var sy: usize = 0;
+    while (sy < 2) : (sy += 1) {
+        var sx: usize = 0;
+        while (sx < 2) : (sx += 1) {
+            const want = gray4Expected(expected[sy][sx]);
+            var dy: usize = 0;
+            while (dy < 2) : (dy += 1) {
+                var dx: usize = 0;
+                while (dx < 2) : (dx += 1) {
+                    try std.testing.expectEqual(want, s.at((sx * 2) + dx, (sy * 2) + dy));
+                }
+            }
+        }
+    }
+}
+
+test "an odd source width staggers the nibble parity across rows" {
+    var s = Surface{};
+    s.bind(16, 8, impl.format.argb8888);
+    try std.testing.expectEqual(
+        impl.err.ok,
+        abi.ra8_gfx_blit_gray4_zoom(&gray4_odd_3x2, 3, 2, 0, 0, 3, 2, 1, 0, 0),
+    );
+    var y: u8 = 0;
+    while (y < 2) : (y += 1) {
+        var x: u8 = 0;
+        while (x < 3) : (x += 1) {
+            try std.testing.expectEqual(gray4Expected((y * 3) + x), s.at(x, y));
+        }
+    }
+}
+
+test "a sub-rectangle running off the image edge draws only its in-image part" {
+    var s = Surface{};
+    s.bind(16, 8, impl.format.argb8888);
+    try std.testing.expectEqual(
+        impl.err.ok,
+        abi.ra8_gfx_blit_gray4_zoom(&gray4_ramp_4x4, 4, 4, 2, 0, 4, 1, 1, 0, 0),
+    );
+    try std.testing.expectEqual(gray4Expected(2), s.at(0, 0));
+    try std.testing.expectEqual(gray4Expected(3), s.at(1, 0));
+    try std.testing.expectEqual(@as(u32, 0), s.at(2, 0));
+    // Only source columns 2 and 3 exist, so exactly two pixels carry ink.
+    try std.testing.expectEqual(@as(usize, 2), s.nonZeroCount());
+}
+
+test "a gray4 blit running off the surface keeps only the visible columns" {
+    var s = Surface{};
+    s.bind(16, 8, impl.format.argb8888);
+    try std.testing.expectEqual(
+        impl.err.ok,
+        abi.ra8_gfx_blit_gray4_zoom(&gray4_ramp_4x4, 4, 4, 0, 0, 4, 1, 1, 14, 0),
+    );
+    try std.testing.expectEqual(@as(u32, 0), s.at(14, 0));
+    try std.testing.expectEqual(gray4Expected(1), s.at(15, 0));
+    try std.testing.expectEqual(@as(usize, 1), s.nonZeroCount());
+}
+
+test "a gray4 blit is clipped like every other draw" {
+    var s = Surface{};
+    s.bind(16, 8, impl.format.argb8888);
+    try std.testing.expectEqual(impl.err.ok, abi.ra8_gfx_set_clip(1, 1, 2, 2));
+    try std.testing.expectEqual(
+        impl.err.ok,
+        abi.ra8_gfx_blit_gray4_zoom(&gray4_ramp_4x4, 4, 4, 0, 0, 4, 4, 1, 0, 0),
+    );
+    try std.testing.expectEqual(gray4Expected(5), s.at(1, 1));
+    try std.testing.expectEqual(gray4Expected(6), s.at(2, 1));
+    try std.testing.expectEqual(gray4Expected(9), s.at(1, 2));
+    try std.testing.expectEqual(gray4Expected(10), s.at(2, 2));
+    try std.testing.expectEqual(@as(usize, 4), s.nonZeroCount());
+}
+
+test "a collapsed gray4 sub-rectangle is accepted and draws nothing" {
+    var s = Surface{};
+    s.bind(16, 8, impl.format.argb8888);
+    try std.testing.expectEqual(
+        impl.err.ok,
+        abi.ra8_gfx_blit_gray4_zoom(&gray4_ramp_4x4, 4, 4, 0, 0, 0, 0, 1, 0, 0),
+    );
+    try std.testing.expectEqual(@as(usize, 0), s.nonZeroCount());
+    try std.testing.expectEqual(
+        impl.err.ok,
+        abi.ra8_gfx_blit_gray4_zoom(&gray4_ramp_4x4, 4, 4, 9, 9, 2, 2, 1, 0, 0),
+    );
+    try std.testing.expectEqual(@as(usize, 0), s.nonZeroCount());
+}
+
+test "a gray4 blit reaches the RGB565 surface through the shared plotter" {
+    var s = Surface{};
+    s.bind(16, 8, impl.format.rgb565);
+    try std.testing.expectEqual(
+        impl.err.ok,
+        abi.ra8_gfx_blit_gray4_zoom(&gray4_ramp_4x4, 4, 4, 3, 3, 1, 1, 1, 0, 0),
+    );
+    try std.testing.expectEqual(
+        impl.unpack565(impl.pack565(gray4Expected(15))),
+        s.at(0, 0),
+    );
+}
