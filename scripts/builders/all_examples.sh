@@ -78,6 +78,11 @@ fi
 shelf_lib="examples/ek_ra8d2/hil_needs_revalidation/ereader_shelf/inc/library.h"
 if ((need_shelf)) && [ ! -f "$shelf_lib" ]; then
   echo "build_all: emitting a 0-book stub $shelf_lib (run 'just tools::books' for the full library)"
+  # @since is templated, not literal: this stub used to bake "Version 1.0.0"
+  # into a generated header, i.e. a version the project never released, and the
+  # @since gate never saw it because the gate read only C-family files until
+  # #900. VERSION is the single source of truth; substitute from it.
+  project_version="$(tr -d '[:space:]' <"$REPO_ROOT/VERSION")"
   cat >"$shelf_lib" <<'STUB'
 /**
  * @file library.h
@@ -90,7 +95,7 @@ if ((need_shelf)) && [ ! -f "$shelf_lib" ]; then
  *          app compile for the cross-build when the Git-LFS .epub sources and
  *          the book-compile tooling are unavailable; it loads books from the SD
  *          card at runtime instead.
- * @since Version 1.0.0
+ * @since Version @PROJECT_VERSION@
  */
 #pragma once
 
@@ -118,6 +123,7 @@ static const library_book_t k_library[k_library_count] = {
     {nullptr, 0U, nullptr, 0U, 0U, "", ""},
 };
 STUB
+  sed -i "s/@PROJECT_VERSION@/${project_version}/g" "$shelf_lib"
 fi
 
 apps=()
