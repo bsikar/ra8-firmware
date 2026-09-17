@@ -103,3 +103,105 @@ if(REFLOW_USE_LITEHTML)
   target_link_libraries(test_ra8_npu_loader PRIVATE litehtml gumbo)
 endif()
 add_test(NAME test_ra8_npu_loader COMMAND test_ra8_npu_loader)
+
+# ---------------------------------------------------------------------------
+# test_ra8_tflm_op_subset (issue #228): the vendored TFLite-micro operator
+# subset and the first-party Ethos-U custom-op registration seam.
+#
+# The only C++ host test in the suite, because the thing under test is a C++
+# template: tflite::MicroMutableOpResolver. It pins the nine registrable
+# builtins the vendored kernels provide -- the CPU-fallback surface for a
+# Vela-lowered graph -- and it compiles the first-party
+# libs/ra8_hal/src/ra8_ethosu_kernel.cc OFF TARGET (no RA8_DEVICE_RA8P1, so
+# RA8_HAS_NPU stays undefined) to check that kernel's documented no-NPU
+# contract: Register_ETHOSU() yields nullptr while ethosu_custom_name() still
+# publishes the name the resolver keys on. No NPU register is touched and no
+# inference runs, so unlike the three targets above this one needs neither the
+# host MMIO backing store nor ra8_core_hal.
+#
+# The vendored runtime is compiled once into tflm_host_objs and shared by every
+# TFLite-micro host test (this one today, the MicroInterpreter model-driven
+# test #228 still needs next). The source list mirrors
+# cmake/tflite_micro.cmake exactly, INCLUDING its one deviation: the vendored
+# kernels/ethosu.cc stub is excluded so the first-party kernel is the only
+# Register_ETHOSU in the link, same as on target. Warnings are suppressed on
+# the vendored TUs (-w) and -fno-strict-aliasing is applied for the same reason
+# the cross build applies it: the reference kernels type-pun through tensor
+# byte buffers. The first-party TUs keep the project warning profile.
+#
+# Guarded on the vendor trees being present: a partial checkout without
+# libs/third_party/tflite-micro configures without this target instead of
+# failing, and says so.
+# ---------------------------------------------------------------------------
+set(_ra8_tflm_host_dir "${FW_ROOT}/libs/third_party/tflite-micro")
+set(_ra8_flatb_host_dir "${FW_ROOT}/libs/third_party/flatbuffers")
+
+if(NOT EXISTS "${_ra8_tflm_host_dir}/tensorflow/lite/micro/micro_interpreter.h"
+   OR NOT EXISTS "${_ra8_flatb_host_dir}/include/flatbuffers/flatbuffers.h"
+)
+  message(
+    STATUS
+      "test_ra8_tflm_op_subset: skipped, the vendored TFLite-micro / FlatBuffers trees are absent"
+  )
+else()
+  enable_language(CXX)
+
+  file(GLOB_RECURSE _ra8_tflm_host_sources CONFIGURE_DEPENDS
+       "${_ra8_tflm_host_dir}/tensorflow/*.cc"
+  )
+  list(
+    FILTER
+    _ra8_tflm_host_sources
+    EXCLUDE
+    REGEX
+    "tensorflow/lite/micro/kernels/ethosu\\.cc$"
+  )
+
+  add_library(tflm_host_objs OBJECT ${_ra8_tflm_host_sources})
+  set_target_properties(
+    tflm_host_objs
+    PROPERTIES CXX_STANDARD 17
+               CXX_STANDARD_REQUIRED ON
+               CXX_EXTENSIONS OFF
+  )
+  target_include_directories(
+    tflm_host_objs SYSTEM PUBLIC ${_ra8_tflm_host_dir} ${_ra8_flatb_host_dir}/include
+                                 ${FW_ROOT}/libs/third_party/gemmlowp
+                                 ${FW_ROOT}/libs/third_party/ruy
+  )
+  target_compile_definitions(tflm_host_objs PUBLIC TF_LITE_STATIC_MEMORY)
+  target_compile_options(
+    tflm_host_objs PRIVATE -w -fno-rtti -fno-exceptions -fno-threadsafe-statics
+                           -fno-strict-aliasing
+  )
+
+  add_executable(
+    test_ra8_tflm_op_subset ${CMAKE_CURRENT_SOURCE_DIR}/misc/src/test_ra8_tflm_op_subset.cc
+                            ${FW_ROOT}/libs/ra8_hal/src/ra8_ethosu_kernel.cc
+                            $<TARGET_OBJECTS:tflm_host_objs>
+  )
+  set_target_properties(
+    test_ra8_tflm_op_subset
+    PROPERTIES CXX_STANDARD 17
+               CXX_STANDARD_REQUIRED ON
+               LINKER_LANGUAGE CXX
+  )
+  target_compile_options(
+    test_ra8_tflm_op_subset PRIVATE -Wall -Wextra -Werror -fno-rtti -fno-exceptions
+  )
+  target_include_directories(
+    test_ra8_tflm_op_subset
+    PRIVATE ${RA8_TEST_SHARED_INCLUDE_DIRS} ${FW_ROOT}/libs/ra8_core/inc
+            ${FW_ROOT}/libs/ra8_hal/inc
+  )
+  target_include_directories(
+    test_ra8_tflm_op_subset SYSTEM
+    PRIVATE ${_ra8_tflm_host_dir} ${_ra8_flatb_host_dir}/include
+            ${FW_ROOT}/libs/third_party/gemmlowp ${FW_ROOT}/libs/third_party/ruy
+  )
+  target_compile_definitions(test_ra8_tflm_op_subset PRIVATE TF_LITE_STATIC_MEMORY)
+  if(REFLOW_USE_LITEHTML)
+    target_link_libraries(test_ra8_tflm_op_subset PRIVATE litehtml gumbo)
+  endif()
+  add_test(NAME test_ra8_tflm_op_subset COMMAND test_ra8_tflm_op_subset)
+endif()
