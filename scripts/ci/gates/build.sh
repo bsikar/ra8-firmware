@@ -285,8 +285,8 @@ gate_build_cross() (
 # every discovered app reached the build.
 gate_build_cross_union() (
   set -e
-  python3 scripts/checks/check_build_shard_union.py --selftest
-  python3 scripts/checks/check_build_shard_union.py --shards "${RA8_BUILD_SHARDS:-1}"
+  bash scripts/builders/check_build_shard_union.sh --selftest
+  bash scripts/builders/check_build_shard_union.sh --shards "${RA8_BUILD_SHARDS:-1}"
 )
 
 # --- docs -----------------------------------------------------------------

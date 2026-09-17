@@ -168,7 +168,8 @@ mkdir -p "$LOG_DIR"
 # (threadx_*, usb_*, npu_*). A contiguous split would hand one shard most of
 # the expensive apps; a stride interleaves them.
 #
-# The manifests written here are what scripts/checks/check_build_shard_union.py
+# The manifests written here are what the Zig gate tools/check_build_shard_union
+# (#858, #1159), reached through scripts/builders/check_build_shard_union.sh,
 # reads to PROVE the shards covered every app exactly once. A shard that
 # silently built nothing leaves an empty manifest and fails that check rather
 # than passing quietly.
