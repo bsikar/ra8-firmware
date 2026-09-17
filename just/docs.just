@@ -9,7 +9,10 @@ default:
     @echo "DOCS - Documentation, Dashboards & Architecture Audits"
     @echo ""
     @echo "COMMANDS:"
-    @echo "  just docs::build          Generate Doxygen HTML documentation"
+    @echo "  just docs::hub            Build the Markdown documentation hub"
+    @echo "  just docs::hub_serve      Serve the hub locally with live reload"
+    @echo "  just docs::hub_check      Gate: every docs/ page is reachable"
+    @echo "  just docs::build          Generate the C ABI reference (Doxygen)"
     @echo "  just docs::clean          Remove generated Doxygen HTML documentation"
     @echo "  just docs::push           Build and publish Doxygen to gh-pages"
     @echo "  just docs::record_stats   Refresh historical HAL completion summary"
@@ -17,9 +20,21 @@ default:
     @echo "  just docs::audit_init     Audit peripheral init order across apps"
     @echo ""
 
-# Remove generated Doxygen HTML documentation
+# Remove generated documentation (Doxygen HTML and the hub)
 clean:
     rm -rf build/docs
+
+# Build the Markdown documentation hub into build/docs/hub/ (ADR-0005)
+hub:
+    bash scripts/builders/docs_hub.sh
+
+# Serve the documentation hub locally with live reload
+hub_serve:
+    bash scripts/builders/docs_hub.sh --serve
+
+# Fail when a docs/ Markdown page is in neither the hub nav nor exclude_docs
+hub_check:
+    python3 scripts/checks/check_docs_hub_nav.py
 
 # Generate Doxygen HTML documentation into build/docs/html/
 build:
