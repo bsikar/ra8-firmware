@@ -22,7 +22,10 @@ file(GLOB_RECURSE RA8_CORE_SOURCES CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra8_core/sr
 file(GLOB_RECURSE XML_SOURCES CONFIGURE_DEPENDS ${FW_ROOT}/apps/shared_libs/xml/src/*.c)
 file(GLOB_RECURSE RA8_HAL_SOURCES CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra8_hal/src/*.c)
 file(GLOB_RECURSE RA8_JPEG_SOURCES CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra8_jpeg/src/*.c)
-file(GLOB_RECURSE RA8_NET_PAL_SOURCES CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra8_net_pal/src/*.c)
+# ra8_net_pal has no C sources: the frame ring, the ra8_eth status
+# translation and the event fan-out are Zig (libs/ra8_net_pal/src/*.zig,
+# built by libs/ra8_net_pal/build.zig) behind the unchanged C header, and
+# tests/cmake/zig_libraries.cmake links that archive into ra8_core_hal.
 file(GLOB_RECURSE RA8_MODEM_AT_SOURCES CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra8_modem_at/src/*.c)
 file(GLOB_RECURSE RA8_TLS_SOURCES CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra8_tls/src/*.c)
 file(GLOB_RECURSE RA8_USB_PAL_SOURCES CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra8_usb_pal/src/*.c)
