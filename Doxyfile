@@ -201,9 +201,16 @@ IMAGE_PATH             =
 # to their docs-site equivalent at build time: GitHub Actions badges are
 # dropped (the repo is private, so badge URLs 404 for site visitors) and
 # <dir>/README.md links become @ref <dir> (same target page, without the
-# absolute-build-path tooltip doxygen emits for raw .md targets). See the
-# filter's docstring for details.
-FILTER_PATTERNS        = *.md="python3 scripts/gen/doxygen_md_filter.py"
+# absolute-build-path tooltip doxygen emits for raw .md targets). See
+# tools/doxygen_md_filter for details.
+#
+# RA8_MD_FILTER is the host build of that tool, exported by
+# scripts/builders/docs.sh; doxygen expands $(VAR) when it reads this file,
+# the same mechanism PROJECT_NUMBER already uses for the version. A docs
+# build that did not go through docs.sh leaves it empty and therefore has no
+# filter at all, so always build the site through `just docs::build`, which
+# is that script.
+FILTER_PATTERNS        = *.md="$(RA8_MD_FILTER)"
 
 USE_MDFILE_AS_MAINPAGE = README.md
 

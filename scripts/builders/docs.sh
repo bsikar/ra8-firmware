@@ -63,6 +63,43 @@ echo "build_docs.sh: using doxygen $("${DOXYGEN_BIN}" --version) (${DOXYGEN_BIN}
 RA8_PROJECT_VERSION="$(tr -d '[:space:]' <"${ROOT_DIR}/VERSION")"
 export RA8_PROJECT_VERSION
 
+# The Markdown input filter is the Zig tool tools/doxygen_md_filter (#858).
+# Build it for the host here and name it to the Doxyfile through
+# $(RA8_MD_FILTER); RA8_REPO_ROOT tells the filter which tree link targets are
+# resolved against, so it behaves the same whatever doxygen's cwd is.
+#
+# zig is resolved the way scripts/checks/check_zig.py resolves it -- $ZIG, then
+# PATH, then ~/.local/bin -- and its absence is FATAL here: a docs build with no
+# filter would publish every Actions badge as a broken image and leak build
+# paths into link tooltips, which is exactly what this gate exists to prevent.
+ZIG_BIN="${ZIG:-}"
+if [[ -z "${ZIG_BIN}" ]]; then
+  if command -v zig >/dev/null 2>&1; then
+    ZIG_BIN="$(command -v zig)"
+  elif [[ -x "${HOME}/.local/bin/zig" ]]; then
+    ZIG_BIN="${HOME}/.local/bin/zig"
+  fi
+fi
+if [[ -z "${ZIG_BIN}" || ! -x "${ZIG_BIN}" ]]; then
+  echo "build_docs.sh: zig not found; it builds the Markdown input filter" >&2
+  echo "build_docs.sh: (tools/doxygen_md_filter). Set ZIG or put zig on PATH." >&2
+  exit 1
+fi
+
+MD_FILTER_PREFIX="${ROOT_DIR}/build/docs-tools"
+echo "build_docs.sh: building the Markdown input filter (tools/doxygen_md_filter)."
+"${ZIG_BIN}" build \
+  --build-file "${ROOT_DIR}/tools/doxygen_md_filter/build.zig" \
+  --prefix "${MD_FILTER_PREFIX}" \
+  -Doptimize=ReleaseSafe
+RA8_MD_FILTER="${MD_FILTER_PREFIX}/bin/doxygen_md_filter"
+if [[ ! -x "${RA8_MD_FILTER}" ]]; then
+  echo "build_docs.sh: ERROR -- ${RA8_MD_FILTER} was not produced." >&2
+  exit 1
+fi
+RA8_REPO_ROOT="${ROOT_DIR}"
+export RA8_MD_FILTER RA8_REPO_ROOT
+
 OVERRIDES=""
 if command -v dot >/dev/null 2>&1; then
   echo "build_docs.sh: graphviz detected -- enabling call/caller graphs."
