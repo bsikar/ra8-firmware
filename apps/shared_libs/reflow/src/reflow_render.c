@@ -34,6 +34,7 @@
 #include "ra8_gfx.h"
 #include "ra8_glyph_atlas.h"
 #include "reflow.h"
+#include "reflow_internal.h"
 #include "reflow_svg.h"
 #include "stb_truetype.h"
 
@@ -54,7 +55,36 @@ typedef enum : uint16_t {
   k_priv_glyph_dim_max       = 192U, /**< Mask edge bound = 2 * k_reflow_max_font_px. */
   k_priv_svg_href_max        = 256U, /**< Max unwrapped SVG cover-image href length.  */
   k_priv_glyph_mode_aa       = 0U,   /**< Glyph-cache render mode: stb coverage AA.   */
+  k_priv_tofu_min_px         = 3U,   /**< Smallest drawable missing-glyph box edge.   */
+  k_priv_tofu_inset_den      = 8U,   /**< Side inset = advance / this.                */
+  k_priv_tofu_adv_den        = 2U,   /**< Fallback box width = font_px / this.        */
+  k_priv_tofu_asc_num        = 2U,   /**< Fallback box height numerator (of font_px). */
+  k_priv_tofu_asc_den        = 3U,   /**< Fallback box height denominator.            */
+  k_priv_tofu_h_num          = 3U,   /**< Box height numerator (of the face ascent).  */
+  k_priv_tofu_h_den          = 4U,   /**< Box height denominator.                     */
+  k_priv_tofu_edges          = 2U,   /**< Left + right (or top + bottom) box edges.   */
 } priv_render_consts_t;
+
+/**
+ * @enum priv_render_blank_cp_t
+ * @brief Code points that must draw nothing even when the face has no glyph.
+ *
+ * @details Space and the zero-width format characters carry no ink by
+ *          definition, so a face that maps them to glyph 0 must stay blank
+ *          rather than gain a missing-glyph box.
+ */
+typedef enum : uint32_t {
+  k_priv_cp_tab   = 0x09U,   /**< CHARACTER TABULATION.            */
+  k_priv_cp_lf    = 0x0AU,   /**< LINE FEED.                       */
+  k_priv_cp_cr    = 0x0DU,   /**< CARRIAGE RETURN.                 */
+  k_priv_cp_space = 0x20U,   /**< SPACE.                           */
+  k_priv_cp_nbsp  = 0xA0U,   /**< NO-BREAK SPACE.                  */
+  k_priv_cp_zwsp  = 0x200BU, /**< ZERO WIDTH SPACE.                */
+  k_priv_cp_zwnj  = 0x200CU, /**< ZERO WIDTH NON-JOINER.           */
+  k_priv_cp_zwj   = 0x200DU, /**< ZERO WIDTH JOINER.               */
+  k_priv_cp_wj    = 0x2060U, /**< WORD JOINER.                     */
+  k_priv_cp_bom   = 0xFEFFU, /**< ZERO WIDTH NO-BREAK SPACE (BOM). */
+} priv_render_blank_cp_t;
 
 /**
  * @struct priv_glyph_render_ctx_t
@@ -367,6 +397,145 @@ static bool internal_glyph_render_cached(ra8_glyph_atlas_t*    atlas,
   return true;
 }
 
+bool priv_reflow_render_is_blank_cp(int32_t cp)
+{
+  switch ((uint32_t)cp) {
+    case (uint32_t)k_priv_cp_tab:
+    case (uint32_t)k_priv_cp_lf:
+    case (uint32_t)k_priv_cp_cr:
+    case (uint32_t)k_priv_cp_space:
+    case (uint32_t)k_priv_cp_nbsp:
+    case (uint32_t)k_priv_cp_zwsp:
+    case (uint32_t)k_priv_cp_zwnj:
+    case (uint32_t)k_priv_cp_zwj:
+    case (uint32_t)k_priv_cp_wj:
+    case (uint32_t)k_priv_cp_bom:
+      return true;
+    default:
+      return false;
+  }
+}
+
+bool priv_reflow_render_needs_tofu(int32_t glyph_index, int32_t cp)
+{
+  return (glyph_index == 0) && (!priv_reflow_render_is_blank_cp(cp));
+}
+
+bool priv_reflow_render_tofu_rect(int32_t                  advance_px,
+                                  int32_t                  ascent_px,
+                                  int32_t                  font_px,
+                                  priv_reflow_tofu_rect_t* out)
+{
+  if ((out == nullptr) || (font_px <= 0)) {
+    return false;
+  }
+  int32_t width = advance_px;
+  if (width <= 0) {
+    width = font_px / (int32_t)k_priv_tofu_adv_den; /* Degenerate advance. */
+  }
+  int32_t height = (font_px * (int32_t)k_priv_tofu_asc_num) / (int32_t)k_priv_tofu_asc_den;
+  if (ascent_px > 0) {
+    height = (ascent_px * (int32_t)k_priv_tofu_h_num) / (int32_t)k_priv_tofu_h_den;
+  }
+  int32_t inset = width / (int32_t)k_priv_tofu_inset_den;
+  int32_t box_w = width - ((int32_t)k_priv_tofu_edges * inset);
+  if (box_w < (int32_t)k_priv_tofu_min_px) {
+    box_w = (int32_t)k_priv_tofu_min_px; /* Keep the box legible at any size. */
+    inset = 0;
+  }
+  if (height < (int32_t)k_priv_tofu_min_px) {
+    height = (int32_t)k_priv_tofu_min_px;
+  }
+  out->x_off = inset;
+  out->y_off = -height;
+  out->w     = box_w;
+  out->h     = height;
+  return true;
+}
+
+/**
+ * @brief Draw the outline of one rectangle, one pixel thick, in the glyph colour.
+ *
+ * @details The rectangle is expressed relative to the glyph pen (see
+ *          ::priv_reflow_tofu_rect_t); this adds the glyph's baseline-left
+ *          position and the page origin, then walks the four edges. Clipping
+ *          is left to `ra8_gfx_pixel`, exactly as ::internal_blit_alpha_mask
+ *          and ::internal_draw_underline do.
+ * @param[in] g    Positioned glyph the box stands in for.
+ * @param[in] r    Box geometry relative to the glyph pen.
+ * @param[in] ox   Pixel offset added to every x.
+ * @param[in] oy   Pixel offset added to every y.
+ * @pre @p g and @p r are non-NULL and @p r holds a drawable box.
+ * @pre `r->w` and `r->h` are at least @ref k_priv_tofu_min_px.
+ * @post The four edges of the box are blitted into the bound framebuffer.
+ * @post No engine, cache, or font state is mutated.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
+ */
+RA8_INTERNAL
+static void internal_draw_box_outline(const reflow_glyph_t*          g,
+                                      const priv_reflow_tofu_rect_t* r,
+                                      int32_t                        ox,
+                                      int32_t                        oy)
+{
+  const int32_t x = g->x + r->x_off + ox;
+  const int32_t y = g->y + r->y_off + oy;
+  for (int32_t i = 0; i < r->w; ++i) {
+    (void)ra8_gfx_pixel(x + i, y, g->color);
+    (void)ra8_gfx_pixel(x + i, (y + r->h) - 1, g->color);
+  }
+  for (int32_t j = 1; j < (r->h - 1); ++j) {
+    (void)ra8_gfx_pixel(x, y + j, g->color);
+    (void)ra8_gfx_pixel((x + r->w) - 1, y + j, g->color);
+  }
+}
+
+/**
+ * @brief Draw the missing-glyph (tofu) box for a code point the face cannot draw.
+ *
+ * @details The deliberate substitute for a glyph the resolved face has no cmap
+ *          entry for. stb falls back to glyph 0, whose outline is empty in a
+ *          subset face, so without this the character would be dropped with no
+ *          trace on the page. Metrics come from the face itself (the advance
+ *          stb reports for the code point and the face ascent) so the box
+ *          matches the surrounding text size; ::priv_reflow_render_tofu_rect
+ *          supplies fallbacks for a face that reports neither.
+ * @param[in] font  Initialised font resolved for this glyph.
+ * @param[in] g     Positioned glyph to stand in for.
+ * @param[in] scale stb pixel-height scale for @p g.
+ * @param[in] ox    Pixel offset added to every x.
+ * @param[in] oy    Pixel offset added to every y.
+ * @pre @p font is initialised and @p g is non-NULL.
+ * @pre The caller established that @p font has no glyph for `g->cp`.
+ * @post A one-pixel box outline is blitted at the glyph position.
+ * @post No engine, cache, or font state is mutated.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
+ */
+RA8_INTERNAL
+static void internal_draw_tofu(const stbtt_fontinfo* font,
+                               const reflow_glyph_t* g,
+                               float                 scale,
+                               int32_t               ox,
+                               int32_t               oy)
+{
+  int advance_units = 0;
+  int lsb           = 0;
+  stbtt_GetCodepointHMetrics(font, g->cp, &advance_units, &lsb);
+  int ascent_units  = 0;
+  int descent_units = 0;
+  int line_gap      = 0;
+  stbtt_GetFontVMetrics(font, &ascent_units, &descent_units, &line_gap);
+
+  priv_reflow_tofu_rect_t rect = {};
+  if (priv_reflow_render_tofu_rect((int32_t)((float)advance_units * scale),
+                                   (int32_t)((float)ascent_units * scale),
+                                   (int32_t)g->font_px,
+                                   &rect)) {
+    internal_draw_box_outline(g, &rect, ox, oy);
+  }
+}
+
 /**
  * @brief Rasterise one glyph at its baseline position into the bound framebuffer.
  *
@@ -400,10 +569,17 @@ static void internal_blit_glyph(ra8_glyph_atlas_t*    atlas,
                                 int32_t               oy)
 {
   const float scale = stbtt_ScaleForPixelHeight(font, (float)g->font_px);
-  int         x0    = 0;
-  int         y0    = 0;
-  int         x1    = 0;
-  int         y1    = 0;
+  if (priv_reflow_render_needs_tofu((int32_t)stbtt_FindGlyphIndex(font, g->cp), g->cp)) {
+    internal_draw_tofu(font, g, scale, ox, oy);
+    if ((g->style & k_reflow_style_underline) != 0U) {
+      internal_draw_underline(font, g, scale, ox, oy);
+    }
+    return; /* The face has no glyph: the box IS the rendering. */
+  }
+  int x0 = 0;
+  int y0 = 0;
+  int x1 = 0;
+  int y1 = 0;
   stbtt_GetCodepointBitmapBox(font, g->cp, scale, scale, &x0, &y0, &x1, &y1);
   const int w = x1 - x0;
   const int h = y1 - y0;
