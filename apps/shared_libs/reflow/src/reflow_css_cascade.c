@@ -517,7 +517,6 @@ static const ra8_css_style_t* internal_resolve(uint8_t                setbit,
  * @param[in]     inherited Style inherited from the parent element.
  * @param[in]     inl       Inline style from the element's `style` attribute.
  *
- * @return Nothing.
  *
  * @pre @p out, @p sheet, @p matched, @p inherited, and @p inl are non-NULL.
  * @pre @p matched has at least @p sheet->rule_count elements.
@@ -571,7 +570,6 @@ static void internal_cascade_emphasis(ra8_css_style_t*       out,
  * @param[in]     inherited Style inherited from the parent element.
  * @param[in]     inl       Inline style from the element's `style` attribute.
  *
- * @return Nothing.
  *
  * @pre @p out, @p sheet, @p matched, @p inherited, and @p inl are non-NULL.
  * @pre @p matched has at least @p sheet->rule_count elements.
@@ -634,7 +632,6 @@ static void internal_cascade_scalars(ra8_css_style_t*       out,
  * @param[in]     inherited Style inherited from the parent element.
  * @param[in]     inl       Inline style from the element's `style` attribute.
  *
- * @return Nothing.
  *
  * @pre @p out, @p sheet, @p matched, @p inherited, and @p inl are non-NULL.
  * @pre @p matched has at least @p sheet->rule_count elements.

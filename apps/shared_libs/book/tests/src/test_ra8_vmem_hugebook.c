@@ -199,7 +199,6 @@ internal_t_read(void* ctx, uint64_t offset, uint8_t* buf, uint32_t len)
  * @param[in]  aligned_off Frame-aligned byte offset of the page.
  * @param[out] out         Destination image (`k_h_frame_bytes` writable bytes).
  *
- * @return Nothing.
  *
  * @pre `out` is writable for `k_h_frame_bytes` bytes.
  * @pre `aligned_off` is a multiple of `k_h_frame_bytes`.

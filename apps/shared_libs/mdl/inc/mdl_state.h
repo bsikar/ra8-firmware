@@ -202,7 +202,6 @@ typedef struct {
  *
  * @param[out] st State to clear (never NULL).
  *
- * @return Nothing.
  *
  * @pre @p st is non-NULL and addresses a full ::mdl_state_t.
  * @pre The caller owns @p st for the duration (not thread-safe).
@@ -228,7 +227,6 @@ void mdl_state_init(mdl_state_t* st);
  * @param[in]     config_path Descriptor file path used (for update-all), or
  * NULL.
  *
- * @return Nothing.
  *
  * @pre @p st is non-NULL.
  * @pre Any non-NULL string argument is NUL-terminated.
@@ -647,7 +645,6 @@ bool mdl_state_note_page_response(mdl_state_t* st,
  * @param[out] buf Destination buffer for the NUL-terminated line (never NULL).
  * @param[in]  cap Capacity of @p buf in bytes (must be > 0).
  *
- * @return Nothing.
  *
  * @pre @p st and @p buf are non-NULL; @p cap > 0.
  * @pre The caller prints @p buf as one line.

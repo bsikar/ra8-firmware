@@ -94,7 +94,6 @@ typedef enum : uint8_t {
  * @param[in]  ax   Resolved horizontal axis for this frame.
  * @param[out] drow One destination strip row, at least `v->dst.w` bytes.
  *
- * @return Nothing.
  *
  * @pre  `v->scratch.row` holds source columns `[ax->s0, ax->s0 + ax->count)`.
  * @pre  @p drow addresses at least `v->dst.w` writable bytes.

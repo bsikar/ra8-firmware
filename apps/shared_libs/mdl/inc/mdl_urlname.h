@@ -36,7 +36,6 @@
  * @param[out] out Destination buffer for the sanitised segment (never NULL).
  * @param[in]  cap Capacity of @p out in bytes (must be >= 2).
  *
- * @return Nothing.
  *
  * @pre @p url and @p out are non-NULL; @p url is NUL-terminated.
  * @pre @p cap is at least 2 so a one-character name plus a NUL fits.
@@ -160,7 +159,6 @@ double mdl_urlname_chapter_value(const char* url);
  * @param[out] out Destination buffer for the NUL-terminated extension.
  * @param[in]  cap Capacity of @p out in bytes (must be >= 5 for "jpeg").
  *
- * @return Nothing.
  *
  * @pre @p url and @p out are non-NULL; @p url is NUL-terminated.
  * @pre @p cap is at least 5 so the longest accepted extension fits.

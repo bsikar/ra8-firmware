@@ -301,7 +301,6 @@ internal_group_selected(int target, bool wildcard_target, int grp_spec, bool grp
  * @param[in,out] out Parsed rule set.
  * @param[in] kind Allow or disallow classification.
  * @param[in] value NUL-terminated rule pattern.
- * @return Nothing.
  * @pre @p out and @p value are non-NULL.
  * @pre @p out owns writable fixed rule storage.
  * @post A fitting non-empty rule increments the count once.
@@ -334,7 +333,6 @@ internal_add_rule(mdl_robots_t* out, mdl_robots_rule_kind_t kind, const char* va
  * @details Parses a finite non-negative decimal and retains the largest bounded delay.
  * @param[in,out] out Parsed robots result.
  * @param[in] value NUL-terminated crawl-delay value.
- * @return Nothing.
  * @pre @p out and @p value are non-NULL.
  * @pre @p out contains writable result storage.
  * @post Valid input can only maintain or increase `crawl_delay_ms`.
@@ -364,7 +362,6 @@ RA8_INTERNAL static void internal_set_crawl(mdl_robots_t* out, const char* value
  * @param[in,out] out Parsed robots result.
  * @param[in] field Normalised directive name.
  * @param[in] value Trimmed directive value.
- * @return Nothing.
  * @pre All arguments are non-NULL and NUL-terminated.
  * @pre @p out owns writable fixed storage.
  * @post Recognised directives update only their policy field.
@@ -393,7 +390,6 @@ internal_apply_directive(mdl_robots_t* out, const char* field, const char* value
  * @param[in] target Selected specific score.
  * @param[in] wildcard_target Whether wildcard fallback was selected.
  * @param[in,out] out Result receiving directives.
- * @return Nothing.
  * @pre Pointer arguments are non-NULL and @p text is readable for @p len bytes.
  * @pre Selection inputs came from the first pass.
  * @post Only selected-group directives contribute to @p out.

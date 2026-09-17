@@ -94,7 +94,6 @@ RA8_INTERNAL static uint32_t internal_rd_le32(const uint8_t* p)
  * @details memcpy-based so the destination may sit at any alignment.
  * @param[out] p Pointer to four writable bytes (non-NULL).
  * @param[in]  v Value to store.
- * @return Nothing.
  * @pre @p p addresses at least four writable bytes.
  * @pre The host is little-endian.
  * @post `p[0..4)` holds @p v in little-endian order.
@@ -204,7 +203,6 @@ RA8_INTERNAL static uint32_t internal_adjust_length(uint32_t length, uint64_t di
  *          front, so a later remembered-distance symbol can reuse it.
  * @param[in,out] st   Decoder state (non-NULL).
  * @param[in]     dist Distance to remember.
- * @return Nothing.
  * @pre @p st is a bound decoder state.
  * @pre @p st::old_dist has ::k_ra8_rar5_old_dist entries.
  * @post `st->old_dist[0] == dist` and the older entries shift down.
@@ -352,7 +350,6 @@ RA8_INTERNAL static bool internal_x86_is_op(uint8_t op, bool e9)
  * @param[in]     len     Range length in bytes.
  * @param[in]     filepos Absolute output offset of `d[0]`.
  * @param[in]     e9      Whether 0xE9 JMP is transformed too.
- * @return Nothing.
  * @pre @p d holds @p len writable bytes.
  * @pre @p len fits an x86 instruction (>= 5) to transform anything.
  * @post Each transformed operand is relative-decoded in place.
@@ -386,7 +383,6 @@ RA8_INTERNAL static void internal_filter_x86(uint8_t* d, uint32_t len, uint64_t 
  * @param[in,out] d       Output range to transform (non-NULL).
  * @param[in]     len     Range length in bytes.
  * @param[in]     filepos Absolute output offset of `d[0]`.
- * @return Nothing.
  * @pre @p d holds @p len writable bytes.
  * @pre @p len >= 4 to transform anything.
  * @post Each BL offset is relative-decoded in place.
@@ -424,7 +420,6 @@ RA8_INTERNAL static void internal_filter_arm(uint8_t* d, uint32_t len, uint64_t 
  * @param[in,out] out Decoded output buffer (non-NULL).
  * @param[in]     unp Total unpacked length (range clamp).
  * @param[in]     f   Filter to apply (non-NULL).
- * @return Nothing.
  * @pre @p out holds @p unp writable bytes.
  * @pre @p f came from ::internal_read_filter.
  * @post The output range is transformed in place, or skipped if out of range.
@@ -464,7 +459,6 @@ RA8_INTERNAL static void internal_apply_one_filter(ra8_rar5_state_t*        st,
  * @param[in,out] st  Decoder state (non-NULL).
  * @param[in,out] out Decoded output buffer (non-NULL).
  * @param[in]     unp Total unpacked length.
- * @return Nothing.
  * @pre @p out holds @p unp writable bytes.
  * @pre @p st::filter_count <= ::k_ra8_rar5_max_filters.
  * @post Each queued filter has been applied.

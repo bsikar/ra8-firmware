@@ -158,7 +158,6 @@ mdl_gov_cfg_t mdl_config_gov_cfg(const mdl_site_t* site);
  *
  * @param[in,out] site Descriptor whose delay floors are raised in place.
  *
- * @return Nothing.
  *
  * @pre @p site is non-NULL and was populated by ::mdl_config_load.
  * @pre The caller applies this only when `--polite` was requested.

@@ -346,7 +346,6 @@ static ra8_err_t internal_open_attrs(tok_ctx_t*             ctx,
  * @param[in]     buf    Source buffer.
  * @param[in]     tag_lt Index of the tag's '<'.
  * @param[in]     end    One past the tag's '>'.
- * @return Nothing.
  * @pre `ctx`, `buf` non-null; `end >= tag_lt`.
  * @pre `ctx->engine` is non-null and its CSS sheet is initialised.
  * @post On a resolved stylesheet, its rules are appended to `ctx->engine->css`.

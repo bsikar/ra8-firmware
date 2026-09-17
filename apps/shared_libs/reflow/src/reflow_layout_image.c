@@ -102,7 +102,6 @@ static bool internal_page_has_content(const reflow_t* engine, const priv_cursor_
  * @param[in] avail_h See implementation.
  * @param[out] out_w See implementation.
  * @param[out] out_h See implementation.
- * @return None.
  * @pre `iw > 0` and `ih > 0`.
  * @pre `col_w > 0` and `avail_h > 0`.
  * @post `*out_w` in [1, col_w] and `*out_h` in [1, avail_h].
@@ -183,7 +182,6 @@ static bool internal_image_resolve_size(reflow_t*             engine,
  * @param[in] tok See implementation.
  * @param[in] bw See implementation.
  * @param[in] bh See implementation.
- * @return None.
  * @pre `engine->image_box_count < k_reflow_max_images`.
  * @pre `bw >= 1` and `bh >= 1`.
  * @post One image box appended; `image_box_count` incremented.

@@ -326,7 +326,6 @@ typedef struct mdl_net_provider {
  *
  * @param[in] net Interface to release, or NULL.
  *
- * @return Nothing.
  *
  * @pre `net`, when non-NULL, was initialised by a backend constructor.
  * @pre No dispatcher call on `net` is in progress.

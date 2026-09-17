@@ -291,7 +291,6 @@ bool priv_reflow_layout_finish_page(reflow_t* engine, priv_cursor_t* cur)
  * @param[in]     hi     One past the last glyph index.
  * @param[in]     slack  Total pixels to distribute (> 0).
  *
- * @return Nothing.
  *
  * @pre `hi > lo`; the run contains at least one space to justify against.
  * @pre `slack > 0`.
@@ -344,7 +343,6 @@ static void internal_justify_glyphs(reflow_t* engine, uint32_t lo, uint32_t hi, 
  * @param[in]     cur           Cursor (line range + alignment + pen x).
  * @param[in]     allow_justify True on a wrapped line, false on a paragraph end.
  *
- * @return Nothing.
  *
  * @pre `cur->line_first_glyph <= engine->glyph_count`.
  * @pre `cur->align` is a valid `reflow_align_t` value.
@@ -692,7 +690,6 @@ static bool internal_apply_rule(reflow_t* engine, priv_cursor_t* cur)
  * @param[in]     link   1-based link identifier; stored as `link - 1`.
  * @param[in]     page   Page index the rect belongs to.
  *
- * @return Nothing.
  *
  * @pre `hi > lo` and both indices are within `engine->glyphs[]`.
  * @pre `link > 0`.

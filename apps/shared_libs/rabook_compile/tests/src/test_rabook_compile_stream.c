@@ -510,7 +510,6 @@ static void internal_test_rabook_external_layout_overflow(void)
  * @details Installed before any test invokes a production error path.
  * @param[in] ctx Unused sink context.
  * @param[in] byte Unused log byte.
- * @return Nothing.
  * @pre Installed from main before the first test.
  * @pre The host test executes single-threaded.
  * @post The byte is discarded.

@@ -78,7 +78,6 @@ RA8_INTERNAL static uint8_t internal_fetch_byte(ra8_rar5_state_t* st)
  *          reaches @p n; past-end fetches contribute zero bits.
  * @param[in,out] st Decoder state (non-NULL).
  * @param[in]     n  Bits required (1..32).
- * @return Nothing.
  * @pre @p st is a bound decoder state.
  * @pre @p n <= 32.
  * @post `st->nbits >= n`.
@@ -123,7 +122,6 @@ RA8_INTERNAL static uint32_t internal_peek(ra8_rar5_state_t* st, uint32_t n)
  *          the accumulator masked to its remaining valid bits.
  * @param[in,out] st Decoder state (non-NULL).
  * @param[in]     n  Bits to consume (<= currently buffered).
- * @return Nothing.
  * @pre @p st is a bound decoder state.
  * @pre @p n <= @p st::nbits.
  * @post `st->nbits` decreased by @p n and `st->consumed` increased by @p n.
@@ -154,7 +152,6 @@ RA8_PRIV uint32_t priv_rar5_get(ra8_rar5_state_t* st, uint32_t n)
  * @details Drops the sub-byte residue so the following read starts on a whole
  *          packed byte, as each RAR5 block header requires.
  * @param[in,out] st Decoder state (non-NULL).
- * @return Nothing.
  * @pre @p st is a bound decoder state.
  * @pre The residue bits are already buffered (always true after a read).
  * @post `st->consumed` is a multiple of 8.
@@ -176,7 +173,6 @@ RA8_INTERNAL static void internal_align(ra8_rar5_state_t* st)
  *          (::ra8_rar5_dtab_t::pos) for each length, the canonical-Huffman prefix.
  * @param[out] d     Table to populate (non-NULL).
  * @param[in]  count Per-length code counts (index 1..15 used).
- * @return Nothing.
  * @pre @p count has at least 16 entries with `count[0] == 0`.
  * @pre @p d is writable.
  * @post `d->len[i]` is non-decreasing across the bit lengths.
@@ -205,7 +201,6 @@ RA8_INTERNAL static void internal_tab_limits(ra8_rar5_dtab_t* d, const uint32_t*
  * @param[out] d       Table to populate (non-NULL).
  * @param[in]  lengths Per-symbol bit lengths (@p size entries).
  * @param[in]  size    Alphabet size (<= ::k_ra8_rar5_nc).
- * @return Nothing.
  * @pre @p lengths holds @p size readable bytes.
  * @pre @p size <= ::k_ra8_rar5_nc.
  * @post `d->max == size` and populated slots hold their symbols.

@@ -95,7 +95,6 @@ typedef struct {
  * @param[in]  ua_token Our user-agent product token (e.g. `"mdl"`).
  * @param[out] out      Result; fully overwritten (zeroed first).
  *
- * @return Nothing.
  *
  * @pre `ua_token` and `out` are non-NULL; `text` is non-NULL when `len > 0`.
  * @pre `out` points to writable storage of `sizeof(mdl_robots_t)`.

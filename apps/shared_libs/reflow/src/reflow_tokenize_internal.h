@@ -377,7 +377,6 @@ RA8_PRIV bool priv_reflow_tok_find_attr(const uint8_t* tag,
  * @param[in]     name_len Length of @p name, bytes.
  * @param[out]    out_off  Receives the text-pool offset of the value (0 if none).
  * @param[out]    out_len  Receives the value byte length (0 if none).
- * @return Nothing.
  * @pre `engine`, `tag`, `name`, `out_off`, `out_len` are non-null.
  * @pre `engine->text_pool_used <= k_reflow_text_pool_bytes`.
  * @post `*out_len > 0` iff a quoted @p name value was stored in the pool.

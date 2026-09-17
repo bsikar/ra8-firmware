@@ -46,7 +46,6 @@ RA8_PRIV ra8_err_t priv_mdl_net_classify_http(long status)
  * @brief Zero a caller-supplied response block so early returns leave it clean.
  * @details Accepts NULL so dispatcher validation paths can reset unconditionally.
  * @param[out] resp Optional response metadata block.
- * @return Nothing.
  * @pre @p resp is NULL or points to writable ::mdl_net_resp_t storage.
  * @pre The caller no longer needs the prior metadata.
  * @post A non-NULL response contains only zero bytes.

@@ -43,7 +43,6 @@ typedef struct {
 /** @brief Scripted destroy: the handle is stack-owned, so nothing to release.
  * @details Implements this test-only seam with caller-owned fixtures and no allocation.
  * @param[in,out] ctx Opaque caller-owned fixture context.
- * @return Nothing.
  * @pre Pointer arguments satisfy their documented readable and writable extents.
  * @pre The caller retains ownership of every supplied fixture object.
  * @post Documented outputs reflect the processed fixture on success.
@@ -110,7 +109,6 @@ internal_script_open(void* ctx, const mdl_net_policy_t* policy, mdl_net_iface_t*
  * outcome; that is the minimal MC/DC set for a 3-condition OR.
  * @brief Exercise the injected transport-factory dispatcher.
  * @details Proves the dispatcher forwards the caller's policy object unchanged, refuses every unusable factory before entering it, and leaves a zeroed handle on every rejected path.
- * @return Nothing.
  * @pre The host test process exclusively owns its fixture state.
  * @pre Required fakes and bounded fixtures are initialized before use.
  * @post Normal return means every scenario assertion passed.

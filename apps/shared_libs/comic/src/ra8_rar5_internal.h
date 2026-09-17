@@ -304,7 +304,6 @@ priv_rar5_copy_match(uint8_t* out, size_t* out_pos, size_t unp, uint32_t length,
  * @param[in,out] d        Output range to transform (non-NULL).
  * @param[in]     len      Range length in bytes.
  * @param[in]     channels Delta channel count (1..32 from a stream; 0 rejected).
- * @return Nothing.
  * @pre @p d holds @p len writable bytes.
  * @pre @p st::delta holds ::k_ra8_rar5_delta_scratch bytes.
  * @post On a supported length, `d` holds the delta-decoded range.

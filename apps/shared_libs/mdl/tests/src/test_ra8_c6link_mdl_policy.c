@@ -177,7 +177,6 @@ RA8_PRIV ra8_err_t priv_test_mdl_backend_cancel(void* ctx)
  * @brief Rebind a fresh service and backend for one independent vector.
  * @details Every vector runs on its own job, so no injected fault or override
  * can survive into the next one.
- * @return Nothing.
  * @pre The shared backend callbacks are addressable.
  * @pre No dispatch is in progress on this service instance.
  * @post The backend serves the canonical six-byte artifact from offset zero.
@@ -239,7 +238,6 @@ internal_policy_next(uint32_t job, uint64_t offset, uint32_t max_bytes)
  * the only possible source of rejection.
  * @param[in] job Active job identifier.
  * @param[in] offset Acknowledged offset matching the service state.
- * @return Nothing.
  * @pre One job is active and the response override is configured.
  * @pre The response scratch buffer fits every canonical response.
  * @post Dispatch reports a protocol error and publishes no response bytes.
@@ -375,7 +373,6 @@ RA8_INTERNAL static uint32_t internal_expect_start_acceptance(Ra8__Mdl__StartReq
  * @details Carries vectors V7 through V12 of the Start field matrix: the
  * timeout bound, one CR or LF inside each of the four conditional-request
  * headers, and a cap-length User-Agent.
- * @return Nothing.
  * @pre The fixture was reset and no job is active.
  * @pre The declared header caps fit the fixed request scratch buffer.
  * @post Every candidate is rejected before the backend is begun.

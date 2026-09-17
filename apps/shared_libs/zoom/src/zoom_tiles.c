@@ -145,7 +145,6 @@ typedef struct {
  * @param[out] out   gray8 destination laid out at @p stride.
  * @param[in]  stride Bytes between successive output rows.
  *
- * @return Nothing.
  *
  * @pre  @p tile is pinned and holds `tile->width * tile->height` gray8 bytes.
  * @pre  @p out addresses at least `stride * span->h` writable bytes.

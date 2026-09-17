@@ -224,7 +224,6 @@ static uint32_t internal_table_columns(const reflow_t* engine, uint32_t start, u
  * @param[in,out] cy         Running pen baseline y; updated on line wrap.
  * @param[in,out] lines      Running line count; incremented on each wrap.
  *
- * @return Nothing.
  *
  * @pre `engine != nullptr`, `font != nullptr`, `tok != nullptr`.
  * @pre `cell_right > cell_x` and `cx != nullptr` and `cy != nullptr` and

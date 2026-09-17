@@ -414,7 +414,6 @@ static bool internal_parse_complex_selector(ra8_css_sheet_t* sheet,
  * @param[in,out] sheet Sheet that receives the appended rule.
  * @param[in]     rule  Fully-parsed rule to append; must not be NULL.
  *
- * @return Nothing.
  *
  * @pre @p sheet and @p rule are non-NULL.
  * @pre @p rule is fully populated (selector and declaration fields valid).
@@ -452,7 +451,6 @@ static void internal_push_rule(ra8_css_sheet_t* sheet, const ra8_css_rule_t* rul
  * @param[in]     sel_len Number of bytes in @p sel.
  * @param[in]     decl    Shared declaration applied to every generated rule.
  *
- * @return Nothing.
  *
  * @pre @p sheet is non-NULL.
  * @pre @p sel points to at least @p sel_len readable bytes (may be NULL when 0).
@@ -632,7 +630,6 @@ static bool internal_is_italic_kw(const char* val, size_t vlen)
  * @param[in]     vlen  Length of @p val in bytes.
  * @param[in,out] face  Font-face record being accumulated.
  *
- * @return Nothing.
  *
  * @pre @p sheet and @p face are non-NULL.
  * @pre @p prop points to at least @p plen readable bytes.
@@ -694,7 +691,6 @@ typedef void (
  * @param[in] cb  Callback invoked once per valid prop:value pair; must not be NULL.
  * @param[in] ctx Opaque context pointer forwarded to @p cb unchanged.
  *
- * @return Nothing.
  *
  * @pre @p s points to at least @p len readable bytes (may be NULL when len == 0).
  * @pre @p cb is non-NULL.
@@ -751,7 +747,6 @@ typedef struct {
  * @param[in] val  Property value span (not NUL-terminated).
  * @param[in] vlen Length of @p val in bytes.
  *
- * @return Nothing.
  *
  * @pre @p ctx is a non-NULL priv_face_ctx_t pointer with valid sheet and face fields.
  * @pre @p prop points to at least @p plen readable bytes.
@@ -782,7 +777,6 @@ static void internal_face_cb(void* ctx, const char* prop, size_t plen, const cha
  * @param[in]     block Declaration block text (no surrounding braces).
  * @param[in]     len   Number of bytes in @p block.
  *
- * @return Nothing.
  *
  * @pre @p sheet is non-NULL.
  * @pre @p block points to at least @p len readable bytes (may be NULL when len == 0).
@@ -830,7 +824,6 @@ typedef struct {
  * @param[in] val  Property value span (not NUL-terminated).
  * @param[in] vlen Length of @p val in bytes.
  *
- * @return Nothing.
  *
  * @pre @p ctx is a non-NULL priv_family_ctx_t with valid sheet and decl fields.
  * @pre @p prop points to at least @p plen readable bytes.
@@ -872,7 +865,6 @@ internal_family_cb(void* ctx, const char* prop, size_t plen, const char* val, si
  * @param[in]     len   Number of bytes in @p block.
  * @param[in,out] decl  Declaration to update with the font-family slice.
  *
- * @return Nothing.
  *
  * @pre @p sheet and @p decl are non-NULL.
  * @pre @p block points to at least @p len readable bytes (may be NULL when len == 0).
@@ -907,7 +899,6 @@ static void internal_extract_family(ra8_css_sheet_t* sheet,
  * @param[in]     block     Block body text (no surrounding braces).
  * @param[in]     block_len Number of bytes in @p block.
  *
- * @return Nothing.
  *
  * @pre @p sheet is non-NULL.
  * @pre @p sel points to at least @p sel_len readable bytes.
@@ -945,7 +936,6 @@ static void internal_parse_at_rule(ra8_css_sheet_t* sheet,
  * @param[in]     block     Declaration block body (no surrounding braces).
  * @param[in]     block_len Number of bytes in @p block.
  *
- * @return Nothing.
  *
  * @pre @p sheet is non-NULL.
  * @pre @p sel points to at least @p sel_len readable bytes.

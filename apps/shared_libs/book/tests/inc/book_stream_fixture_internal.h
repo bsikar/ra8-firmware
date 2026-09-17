@@ -91,7 +91,6 @@ RA8_PRIV uint32_t priv_book_fixture_flat_len(void);
  * @brief Recompute the fixture body CRC after one semantic corruption vector.
  * @details Vectors that corrupt a field the strict validator reaches only
  * after the CRC pass must restore the CRC, or the CRC decision masks them.
- * @return Nothing.
  * @pre ::g_book holds the mutated image to be re-sealed.
  * @pre The mutation left every segment offset canonical.
  * @post `g_book.hdr.crc32_val` matches the current body bytes.
@@ -106,7 +105,6 @@ RA8_PRIV void priv_book_fixture_refresh_crc(void);
  * @details Zeroes ::g_book, lays out the header, interns the string pool, and
  * writes the chapter, node, attribute, stylesheet and image records before
  * sealing the body CRC.
- * @return Nothing.
  * @pre The assertion process is initialized (interning asserts its bounds).
  * @pre No live reader borrows ::g_book.
  * @post ::g_book validates clean through the strict flat pass.
@@ -173,7 +171,6 @@ RA8_PRIV stream_validate_t priv_book_fixture_context(stream_mem_t* mem);
  * writer into the fixture's packed storage, and opens a chunked reader over
  * the result against ::g_reader_staging.
  * @param[out] fixture Receives the packed file view, chunk table and reader.
- * @return Nothing.
  * @pre @p fixture addresses one writable, zero-initialized fixture.
  * @pre No other live reader borrows ::g_reader_staging.
  * @post The container write and the reader open both succeeded.

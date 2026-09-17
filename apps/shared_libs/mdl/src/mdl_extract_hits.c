@@ -94,7 +94,6 @@ internal_decode_entity(const char* s, size_t len, size_t* i, char* out_ch, bool*
  * @param[in] cap Destination capacity including the trailing NUL.
  * @param[in,out] fits Cleared when a character could not be appended.
  * @param[in] ch Character to append.
- * @return Nothing.
  * @pre @p out addresses @p cap writable bytes.
  * @pre @p n and @p fits are non-NULL and already initialized.
  * @post `*n` always leaves room for a trailing NUL at `out[*n]`.

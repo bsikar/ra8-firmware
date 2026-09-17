@@ -179,7 +179,6 @@ RA8_PRIV bool priv_mdl_fetch_run_incomplete(const mdl_fetch_stats_t* stats);
  * @param[out] buf    Destination buffer for the NUL-terminated reason.
  * @param[in]  cap    Capacity of @p buf in bytes.
  *
- * @return Nothing.
  *
  * @pre @p buf is non-NULL and @p cap > 0 for output to be written.
  * @pre @p err comes from a finished transfer.

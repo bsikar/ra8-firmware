@@ -47,7 +47,6 @@
  *
  * @param[in,out] arena Arena to make active; reset to empty on entry. NULL
  *                      unbinds (equivalent to ra8_img_arena_unbind()).
- * @return None.
  * @pre @p arena, if non-NULL, has `base` pointing at `cap` writable bytes.
  * @pre Called single-threaded around one decode (decoding is not re-entrant).
  * @post The active arena is @p arena and, if non-NULL, it is empty.
@@ -63,7 +62,6 @@ void ra8_img_arena_bind(ra8_img_arena_t* arena);
  * @details Clears the file-static active-arena slot. Used to fence the stb hooks
  * outside a decode so a stray allocation cannot scribble on a stale buffer.
  *
- * @return None.
  * @pre None.
  * @pre Called single-threaded around one decode.
  * @post The active-arena slot is NULL.
@@ -102,7 +100,6 @@ void* ra8_img_arena_malloc(size_t n);
  * ignored.
  *
  * @param[in] p Pointer to release; nullptr is ignored.
- * @return None.
  * @pre @p p was returned by ra8_img_arena_malloc()/_realloc_sized(), or is nullptr.
  * @pre Called single-threaded from the decoder.
  * @post The live-block count is decremented (never below zero).

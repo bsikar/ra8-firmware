@@ -187,7 +187,6 @@ static int32_t internal_clamp_anchor(int32_t anchor, int32_t plane, int32_t exte
  *          clamp invariant is re-established in exactly one place instead of
  *          at every mutation site.
  * @param[in,out] v Open view whose anchors may be out of range.
- * @return Nothing.
  * @pre  @p v is non-NULL and open.
  * @pre  `v->scale` is already the scale the anchors should be clamped for.
  * @post Both anchors satisfy the clamp invariant of ::zoom_view_t.
@@ -212,7 +211,6 @@ static void internal_reclamp(zoom_view_t* v)
  *          arms nothing.
  * @param[in,out] v      Open view.
  * @param[in]     now_ms Current millisecond timestamp.
- * @return Nothing.
  * @pre  @p v is non-NULL and open.
  * @pre  @p now_ms comes from a monotonic millisecond source.
  * @post `v->pending` is true and `v->pending_kind` matches `v->policy`.
@@ -443,7 +441,6 @@ static ra8_err_t internal_cfg_ok(const zoom_view_cfg_t* cfg,
  * @param[in]  ceiling    Resolved ladder ceiling.
  * @param[in]  strip_rows Resolved composite strip height.
  *
- * @return Nothing.
  *
  * @pre  @p cfg passed every ::zoom_cfg_* check.
  * @pre  @p opening, @p ceiling and @p strip_rows are their resolved values.

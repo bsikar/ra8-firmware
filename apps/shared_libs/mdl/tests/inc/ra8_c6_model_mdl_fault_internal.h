@@ -26,7 +26,6 @@
  * @param[in,out] response Writable inner-response storage.
  * @param[in] response_cap Capacity of @p response.
  * @param[in,out] response_len Valid inner bytes before and after mutation.
- * @return Nothing.
  * @pre Every pointer is non-null and `*response_len <= response_cap`.
  * @pre @p body initially references @p response for `*response_len` bytes.
  * @post A compatible non-none fault is consumed exactly once.

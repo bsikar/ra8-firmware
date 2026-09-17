@@ -97,7 +97,6 @@ ra8_err_t ra8_img_probe_size(const uint8_t* bytes, size_t len, int32_t* out_w, i
  * @param[in]  box_h Box height, pixels (>= 1).
  * @param[out] fit_w Receives the scaled width, pixels (>= 1).
  * @param[out] fit_h Receives the scaled height, pixels (>= 1).
- * @return Nothing.
  *
  * @pre All four dimension arguments are greater than or equal to 1.
  * @pre @p fit_w and @p fit_h are valid, writable, non-NULL pointers.
@@ -200,7 +199,6 @@ static ra8_err_t internal_decode_fail(void)
  * @param[in] fit_h  Destination height, pixels (>= 1).
  * @param[in] dst_x  Destination left edge in framebuffer coordinates.
  * @param[in] dst_y  Destination top edge in framebuffer coordinates.
- * @return Nothing.
  *
  * @pre @p pixels is a valid pointer to `src_w * src_h * 3` readable bytes.
  * @pre All dimension arguments (@p src_w, @p src_h, @p fit_w, @p fit_h)
@@ -250,7 +248,6 @@ static void internal_blit_scaled(const uint8_t* pixels,
  * an error code. Internal helper for ra8_img_decode_blit().
  *
  * @param[in,out] arena Bump arena to unbind and reset; must not be NULL.
- * @return Nothing.
  *
  * @pre @p arena is a valid non-NULL pointer to a bound or partially-used
  *      `ra8_img_arena_t` that was previously passed to `ra8_img_arena_bind()`.

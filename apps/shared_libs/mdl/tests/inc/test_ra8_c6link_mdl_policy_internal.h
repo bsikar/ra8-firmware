@@ -167,7 +167,6 @@ RA8_PRIV ra8_err_t priv_test_mdl_backend_cancel(void* ctx);
  * @brief Run the service request-policy and response-metadata vectors.
  * @details Exercises every field operand of the decoded StartRequest and every
  * operand of the terminal response record the backend publishes.
- * @return Nothing.
  * @pre The unity-minimal assertion process is initialized.
  * @pre No other service instance is mid-dispatch.
  * @post Normal return means every malformed field was rejected.

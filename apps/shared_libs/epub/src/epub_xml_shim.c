@@ -340,7 +340,6 @@ internal_opf_status(ra8_err_t err, uint16_t manifest_depth, uint16_t spine_depth
  * @param[in,out] reader Reader whose frame stack names the enclosing element.
  * @param[in] unique_id Span naming the package unique-identifier attribute.
  * @param[in,out] book Book whose XML workspace receives the recorded values.
- * @return Nothing.
  * @pre @p event is a start event whose parent is the metadata element.
  * @pre @p book owns a live XML workspace.
  * @post Recognised Dublin Core elements are marked in the workspace.
@@ -382,7 +381,6 @@ RA8_INTERNAL static void internal_opf_metadata_child(const uint8_t*     source,
  * @param[in,out] spine_depth Depth of `<spine>`, or UINT16_MAX.
  * @param[in,out] unique_id Span naming the package unique-identifier.
  * @param[out] out_spine_toc Spine `toc` attribute span, set once seen.
- * @return Nothing.
  * @pre @p event->kind is `k_xml_event_start`.
  * @pre @p book owns a live XML workspace.
  * @post At most one tracked depth, the unique-id span, the spine toc

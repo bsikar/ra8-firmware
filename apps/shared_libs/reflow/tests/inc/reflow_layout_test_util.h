@@ -89,7 +89,6 @@ static loader_select_t s_loader_select = k_loader_tall;
  * @param[out] out_bytes Receives the fixture pointer.
  * @param[out] out_len   Receives the fixture length (54).
  *
- * @return Nothing.
  *
  * @pre Both out-pointers are non-NULL.
  * @pre The caller does not free or write through the returned pointer.
@@ -140,7 +139,6 @@ static inline void test_image_bmp_zero_width(const uint8_t** out_bytes, size_t* 
  * @param[out] out_bytes Receives the fixture pointer.
  * @param[out] out_len   Receives the fixture length (54).
  *
- * @return Nothing.
  *
  * @pre Both out-pointers are non-NULL.
  * @pre The caller does not free or write through the returned pointer.

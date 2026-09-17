@@ -297,7 +297,6 @@ RA8_INTERNAL static ra8_err_t internal_nav_has_list(const uint8_t*        source
  * resets the title so the following text event can fill it in.
  * @param[in,out] ctx Active nav-walk context (source, reader, book, flags).
  * @param[in] event Start-tag event being classified.
- * @return Nothing.
  * @pre @p ctx->active is true; the caller only reaches this dispatch once
  * the selected nav's subtree has been entered.
  * @pre @p event->kind is `k_xml_event_start`.

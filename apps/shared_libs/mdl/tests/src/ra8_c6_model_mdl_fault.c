@@ -233,7 +233,6 @@ RA8_INTERNAL static bool internal_mutate_chunk_metadata(Ra8__Mdl__Chunk*        
  * family, so exactly one mutation is applied per injected fault.
  * @param[in,out] chunk Decoded generated chunk to mutate in place.
  * @param[in] fault Malformed or terminal chunk shape to inject.
- * @return Nothing.
  * @pre @p chunk is non-null and caller-owned.
  * @pre @p fault selects a chunk response mutation.
  * @post Exactly the selected fields are malformed.
@@ -258,7 +257,6 @@ RA8_INTERNAL static void internal_mutate_chunk(Ra8__Mdl__Chunk*         chunk,
  * @param[in] response_cap Capacity of @p response.
  * @param[in,out] response_len Packed length before and after mutation.
  * @param[in] fault Chunk mutation to apply.
- * @return Nothing.
  * @pre All pointers are non-null and the packed Chunk is valid.
  * @pre `*response_len <= response_cap`.
  * @post The selected malformed Chunk is packed within the supplied capacity.
@@ -300,7 +298,6 @@ RA8_INTERNAL static void internal_repack_chunk(uint8_t*                 response
  * @param[in] response_cap Capacity of @p response.
  * @param[in,out] response_len Packed length before and after mutation.
  * @param[in] fault Accepted mutation to apply.
- * @return Nothing.
  * @pre All pointers are non-null and the packed Accepted response is valid.
  * @pre @p fault selects one Accepted field mutation.
  * @post The selected malformed Accepted response is packed within capacity.
@@ -347,7 +344,6 @@ RA8_INTERNAL static void internal_repack_accepted(uint8_t*                 respo
  * @param[in,out] response Writable packed response bytes.
  * @param[in] response_cap Capacity of @p response.
  * @param[in,out] response_len Packed length before and after append.
- * @return Nothing.
  * @pre Every pointer is non-null and `*response_len <= response_cap`.
  * @pre The remaining capacity holds ::s_mdl_unknown_field.
  * @post The original response is followed by exactly one unknown varint field.

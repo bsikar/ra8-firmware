@@ -95,7 +95,6 @@ const char* mdl_session_ua_token(void);
  * @param[in,out] diagnostic Borrowed stream receiving robots policy diagnostics.
  * @param[in]  honor_robots Whether robots.txt is consulted (false = ignore).
  *
- * @return Nothing.
  *
  * @pre `session`, `net`, and `user_agent` are non-NULL.
  * @pre `user_agent` outlives every call using `session`.

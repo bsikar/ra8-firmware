@@ -170,7 +170,6 @@ static bool internal_has_scheme(const char* href, uint32_t end)
  * @param[out] out_path_len Receives the byte length of the path part (before '#').
  * @param[out] out_frag_off Receives the byte offset of the fragment (after '#'); 0 if none.
  * @param[out] out_frag_len Receives the byte length of the fragment; 0 if none.
- * @return Nothing.
  *
  * @pre All pointer arguments are non-NULL.
  * @pre @p len is greater than 0 (callers must guard before invoking).

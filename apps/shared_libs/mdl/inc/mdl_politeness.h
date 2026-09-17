@@ -68,7 +68,6 @@ typedef struct {
  * @param[in,out] p    State to initialise (must be non-NULL).
  * @param[in]     seed Any value; 0 is remapped to a non-zero constant.
  *
- * @return Nothing.
  *
  * @pre `p`, when non-NULL, points to writable ::mdl_politeness_t storage.
  * @pre A NULL `p` is a tolerated no-op.
@@ -94,7 +93,6 @@ void mdl_politeness_init(mdl_politeness_t* p, uint64_t seed);
  * @param[in]     sleep_fn  Injected sleeper, or NULL for the host clock.
  * @param[in]     sleep_ctx Context forwarded to @p sleep_fn (may be NULL).
  *
- * @return Nothing.
  *
  * @pre `p`, when non-NULL, points to writable ::mdl_politeness_t storage.
  * @pre @p sleep_ctx outlives every ::mdl_politeness_wait call on `p`.
@@ -286,7 +284,6 @@ mdl_gov_cfg_t mdl_gov_cfg_default(void);
  * @param[in]  cfg  Tunables to copy, or NULL for ::mdl_gov_cfg_default.
  * @param[in]  seed Jitter seed; 0 is remapped to a non-zero constant.
  *
- * @return Nothing.
  *
  * @pre `g`, when non-NULL, points to writable ::mdl_governor_t storage.
  * @pre A NULL `g` is a tolerated no-op.
@@ -316,7 +313,6 @@ void mdl_governor_init(mdl_governor_t* g, const mdl_gov_cfg_t* cfg, uint64_t see
  * @param[in]  sleep_fn  Injected sleeper, or NULL for the host clock.
  * @param[in]  sleep_ctx Context forwarded to @p sleep_fn (may be NULL).
  *
- * @return Nothing.
  *
  * @pre `g`, when non-NULL, points to writable ::mdl_governor_t storage.
  * @pre @p now_ctx / @p sleep_ctx outlive every governor call on `g`.
@@ -383,7 +379,6 @@ ra8_err_t mdl_governor_acquire(mdl_governor_t* g,
  * @param[in,out] g    Governor, or NULL (no-op).
  * @param[in]     host Host key passed to the paired acquire; may be NULL.
  *
- * @return Nothing.
  *
  * @pre Called exactly once per ::k_ra8_ok from ::mdl_governor_acquire.
  * @pre `g`, when non-NULL, was initialised by a governor init function.
@@ -416,7 +411,6 @@ void mdl_governor_release(mdl_governor_t* g, const char* host);
  * @param[in]     status      HTTP status observed (0 if none / transport error).
  * @param[in]     retry_after Raw `Retry-After` header, or NULL/"" if absent.
  *
- * @return Nothing.
  *
  * @pre `g`, when non-NULL, was initialised by a governor init function.
  * @pre `status` and `retry_after` come from the just-finished request.
@@ -448,7 +442,6 @@ void mdl_governor_observe(mdl_governor_t* g,
  * @param[in]     retry_after Raw `Retry-After` header, or NULL/empty.
  * @param[in]     now_wall_s Current Unix wall-clock time in seconds.
  *
- * @return Nothing.
  *
  * @pre `g`, when non-NULL, was initialised by a governor init function.
  * @pre `status`, `retry_after`, and `now_wall_s` describe the same completed request.

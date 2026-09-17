@@ -563,7 +563,6 @@ static bool internal_parse_fontsize(const char* s, size_t len, uint16_t* out_val
  * @param[in]     stylebit Bit in @p out->style that carries the on/off value.
  * @param[in]     on       True to set @p stylebit, false to clear it.
  *
- * @return Nothing.
  *
  * @pre @p out is non-NULL.
  * @pre @p setbit and @p stylebit are single-bit masks valid for their fields.
@@ -659,7 +658,6 @@ static bool internal_apply_emphasis(const char*      prop,
  * @param[in]     vlen Length of @p val in bytes.
  * @param[in,out] out  Style record to update; must not be NULL.
  *
- * @return Nothing.
  *
  * @pre @p val points to at least @p vlen readable bytes.
  * @pre @p out is non-NULL.
@@ -702,7 +700,6 @@ static void internal_apply_align(const char* val, size_t vlen, ra8_css_style_t* 
  * @param[in]     vlen Length of @p val in bytes.
  * @param[in,out] out  Style record to update; must not be NULL.
  *
- * @return Nothing.
  *
  * @pre @p prop points to at least @p plen readable bytes.
  * @pre @p val points to at least @p vlen readable bytes.
@@ -761,7 +758,6 @@ static void internal_apply_decl(const char*      prop,
  * @param[in]     len Number of bytes in @p s.
  * @param[in,out] out Style record to accumulate parsed declarations into.
  *
- * @return Nothing.
  *
  * @pre @p s points to at least @p len readable bytes (may be NULL only when len == 0).
  * @pre @p out is non-NULL and zero-initialised or partially filled by the caller.

@@ -199,7 +199,6 @@ typedef struct {
  *
  * @param[in,out] ctx Caller-owned context, live until the next bind.
  *
- * @return Nothing.
  *
  * @pre @p ctx addresses writable storage for one complete context.
  * @pre No mode call is in progress on another thread.

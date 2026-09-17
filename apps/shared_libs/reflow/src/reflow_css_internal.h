@@ -141,7 +141,6 @@ RA8_PRIV const char* priv_reflow_css_trim(const char* s, size_t* len);
  * @param[in]     len Number of bytes in @p s.
  * @param[in,out] out Style record to accumulate parsed declarations into.
  *
- * @return Nothing.
  *
  * @pre @p s points to at least @p len readable bytes (may be NULL only when len == 0).
  * @pre @p out is non-NULL and zero-initialised or partially filled by the caller.
@@ -168,7 +167,6 @@ RA8_PRIV void priv_reflow_css_parse_decls(const char* s, size_t len, ra8_css_sty
  * @param[in]     block     Declaration block body (no surrounding braces).
  * @param[in]     block_len Number of bytes in @p block.
  *
- * @return Nothing.
  *
  * @pre @p sheet is non-NULL.
  * @pre @p sel points to at least @p sel_len readable bytes.

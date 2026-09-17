@@ -292,7 +292,6 @@ RA8_PRIV ra8_err_t priv_reflow_layout_apply_token(reflow_t*             engine,
  *                       link-rect pool grows.
  * @param[in]     font   Font metrics for last-glyph advance measurement.
  *
- * @return Nothing.
  *
  * @pre `engine->pages[]` and `engine->glyphs[]` are fully populated by the
  *      layout pass.

@@ -68,7 +68,6 @@ void* ra8_stbtt_malloc(size_t n);
  * the offset rewinds to the base. A nullptr argument is ignored.
  *
  * @param[in] p Pointer to release; nullptr is ignored.
- * @return None.
  * @pre `p` was returned by ra8_stbtt_malloc(), or is nullptr.
  * @pre Called single-threaded from the rasteriser.
  * @post The live-block count is decremented (never below zero).

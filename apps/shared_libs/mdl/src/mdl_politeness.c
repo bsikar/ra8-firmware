@@ -116,7 +116,6 @@ RA8_INTERNAL static uint32_t internal_draw_range(uint64_t* state, uint32_t min_m
  * @brief Block for `ms` milliseconds on the host clock.
  * @details Converts milliseconds to `timespec` and delegates to `nanosleep`.
  * @param[in] ms Requested duration in milliseconds.
- * @return Nothing.
  * @pre @p ms is a finite `uint32_t` duration.
  * @pre The caller permits the current thread to block.
  * @post One host sleep has been requested.
@@ -354,7 +353,6 @@ RA8_INTERNAL static int64_t internal_gov_now(const mdl_governor_t* g)
  * @details Ignores non-positive delays and saturates positive delays to `uint32_t`.
  * @param[in,out] g Initialised governor containing the optional sleeper seam.
  * @param[in] ms Requested signed delay in milliseconds.
- * @return Nothing.
  * @pre @p g is non-NULL and initialised.
  * @pre The caller permits a positive delay to block.
  * @post Non-positive input performs no sleep.
@@ -594,7 +592,6 @@ RA8_INTERNAL static int64_t internal_gov_backoff_window(const mdl_gov_cfg_t* cfg
  * @param[in,out] rec Matching host record.
  * @param[in] now Current monotonic time in milliseconds.
  * @param[in] retry_ms Parsed Retry-After delay, or zero.
- * @return Nothing.
  * @pre @p g and @p rec are non-NULL and associated.
  * @pre @p now is on the governor timeline.
  * @post The backoff level is raised at most to its ceiling.
@@ -623,7 +620,6 @@ internal_gov_on_throttle(mdl_governor_t* g, mdl_host_rec_t* rec, int64_t now, ui
  * @param[in] now Current monotonic time in milliseconds.
  * @param[in] has_retry Whether @p retry_ms came from a valid header.
  * @param[in] retry_ms Parsed Retry-After delay.
- * @return Nothing.
  * @pre @p g and @p rec are non-NULL and associated.
  * @pre @p now is on the governor timeline.
  * @post At most one backoff level is removed.

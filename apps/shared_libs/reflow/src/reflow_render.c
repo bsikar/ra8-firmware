@@ -454,7 +454,6 @@ static void internal_blit_glyph(ra8_glyph_atlas_t*    atlas,
  * @param[in] y       Top edge of the destination bounding box in pixels.
  * @param[in] w       Width of the destination bounding box in pixels.
  * @param[in] h       Height of the destination bounding box in pixels.
- * @return Nothing.
  * @pre @p engine is non-null and its `img_loader` field is set.
  * @pre @p svg is non-null and @p len bytes are readable.
  * @post If a valid cover-image href is found, the referenced raster is
@@ -511,7 +510,6 @@ static void internal_render_svg(const reflow_t* engine,
  * @param[in] box     Image layout descriptor for the box to render.
  * @param[in] ox      Horizontal page-origin offset in pixels.
  * @param[in] oy      Vertical page-origin offset in pixels.
- * @return Nothing.
  * @pre @p engine is non-null with a valid `img_loader` and `text_pool`.
  * @pre @p box is non-null and its `src_off` + `src_len` are within
  *      `engine->text_pool`.
@@ -561,7 +559,6 @@ static void internal_render_one_image(const reflow_t*           engine,
  * @param[in] page_idx Index of the page being rendered.
  * @param[in] ox       Horizontal page-origin offset in pixels.
  * @param[in] oy       Vertical page-origin offset in pixels.
- * @return Nothing.
  * @pre @p engine is non-null and fully initialized.
  * @pre A framebuffer is bound via `ra8_gfx_init()`.
  * @post Every decodable image on @p page_idx is blitted into the
