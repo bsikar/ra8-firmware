@@ -7,10 +7,9 @@
 #
 # This is a minimal trusted launcher, not an implementation: the detector is
 # the Zig host tool tools/check_no_unsafe_python_install (#858), which
-# replaced the Python scripts/checks/check_no_unsafe_python_install.py
-# PATHREF-OK: the predecessor this names was deleted in the same change. All
-# this does is resolve zig, build the tool once, and hand over argv and the
-# exit status unchanged.
+# replaced scripts/checks/check_no_unsafe_python_install.py. PATHREF-OK: history, not a live path.
+# The predecessor was deleted in the same change. All this does is resolve
+# zig, build the tool once, and hand over argv and the exit status unchanged.
 #
 #     bash scripts/builders/check_no_unsafe_python_install.sh --selftest
 #     bash scripts/builders/check_no_unsafe_python_install.sh
