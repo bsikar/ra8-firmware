@@ -45,6 +45,7 @@ happened to be compiled first.
 
 from __future__ import annotations
 
+import re
 import sys
 from dataclasses import dataclass
 from pathlib import Path
@@ -527,3 +528,93 @@ def _ceiling_parse_failures() -> list[str]:
 def ceiling_selftest_failures() -> list[str]:
     """Prove every ceiling rule fires and stays quiet in both directions."""
     return _ceiling_ratchet_failures() + _ceiling_parse_failures()
+# The requirement this gate is the executable form of
+#
+# REQ-SAFE-017 in ``docs/qualification/SRS.md`` carries NUMBERS, and a number
+# in a requirements document drifts from the gate the moment one of the two is
+# edited alone: the row claimed a universal 90/90 floor while the checker
+# enforced a shrink-only ratchet with a 90% line / 80% branch entry floor and
+# explicit UNMEASURED rows (#844). The tie below turns that drift into a gate
+# failure instead of a discovery. The requirement must STATE the floors the
+# checker enforces, name the baseline that carries the per-unit rows, and keep
+# the UNMEASURED disposition visible; change a floor on either side and the
+# other side fails until it says so too.
+# ---------------------------------------------------------------------------
+
+#: The requirement whose numbers ``check_tree_coverage.py`` enforces.
+REQUIREMENT_ID = "REQ-SAFE-017"
+
+
+def srs_text() -> str:
+    """Read the requirements document REQ-SAFE-017 lives in."""
+    return (REPO_ROOT / "docs" / "qualification" / "SRS.md").read_text(encoding="utf-8")
+
+
+def requirement_row(text: str) -> str:
+    """Return the REQ-SAFE-017 table row of an SRS document, or ``""``.
+
+    Args:
+        text: A whole SRS document.
+
+    Returns:
+        The single stripped table row, or the empty string when the document
+        states the requirement nowhere -- itself a finding, because floors no
+        requirement states are floors nobody agreed to.
+    """
+    for line in text.splitlines():
+        stripped = line.strip()
+        if stripped.startswith(f"| {REQUIREMENT_ID}"):
+            return stripped
+    return ""
+
+
+def _stated_floors(row: str) -> tuple[int, int] | None:
+    """The ``>= N% line / M% branch`` entry floor the requirement states."""
+    match = re.search(r">=\s*(\d+)%\s+line\s*/\s*(\d+)%\s+branch", row)
+    return (int(match.group(1)), int(match.group(2))) if match else None
+
+
+def requirement_claim_failures(text: str, line_floor: int, branch_floor: int) -> list[str]:
+    """Name every way REQ-SAFE-017 and the enforced contract disagree.
+
+    Args:
+        text: The SRS document, from ``srs_text()`` or a selftest fixture.
+        line_floor: The line floor the checker actually enforces.
+        branch_floor: The branch floor the checker actually enforces.
+
+    Returns:
+        One message per disagreement; empty when the stated requirement and
+        the executable gate are one policy.
+    """
+    row = requirement_row(text)
+    if not row:
+        return [
+            f"{REQUIREMENT_ID} has no row in docs/qualification/SRS.md: "
+            "the coverage floors state no requirement"
+        ]
+    out = [
+        f"{REQUIREMENT_ID} must name {token} so the claim points at the authority that holds it"
+        for token in (
+            "`.github/tree-coverage-baseline.txt`",
+            "`scripts/checks/check_tree_coverage.py`",
+            "UNMEASURED",
+        )
+        if token not in row
+    ]
+    stated = _stated_floors(row)
+    if stated is None:
+        out.append(
+            f"{REQUIREMENT_ID} states no '>= N% line / M% branch' entry floor; "
+            f"the gate enforces {line_floor}% line / {branch_floor}% branch"
+        )
+    elif stated != (line_floor, branch_floor):
+        out.append(
+            f"{REQUIREMENT_ID} states {stated[0]}% line / {stated[1]}% branch; "
+            f"the gate enforces {line_floor}% line / {branch_floor}% branch"
+        )
+    if re.search(r"\b\d{1,3}/\d{1,3}\b", row):
+        out.append(
+            f"{REQUIREMENT_ID} carries a bare N/M coverage ratio: state each floor with its "
+            "metric and its unit, which is the ambiguity that let the claim drift"
+        )
+    return out
