@@ -38,7 +38,10 @@ file(GLOB_RECURSE RA8_FTL_SOURCES CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra8_ftl/src/
 file(GLOB_RECURSE RA8_MEM_SOURCES CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra8_mem/src/*.c)
 file(GLOB_RECURSE RA8_SDMMC_SPI_SOURCES CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra8_sdmmc_spi/src/*.c)
 file(GLOB_RECURSE RA8_GFX_SOURCES CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra8_gfx/src/*.c)
-file(GLOB_RECURSE RA8_UI_SOURCES CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra8_ui/src/*.c)
+# ra8_ui has no C sources: the interaction core (hit-testing, screen stack,
+# paging) is Zig (libs/ra8_ui/src/*.zig, built by libs/ra8_ui/build.zig)
+# behind the unchanged C header, and tests/cmake/zig_libraries.cmake links
+# that archive into ra8_core_hal.
 file(GLOB_RECURSE RA8_KEYBOARD_SOURCES CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra8_keyboard/src/*.c)
 # ra8_box has no host C sources: its implementation is Zig (libs/ra8_box/src/
 # *.zig, built by libs/ra8_box/build.zig) behind the unchanged C header, and
