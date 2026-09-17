@@ -148,7 +148,6 @@ static bool internal_stat_fat_time_valid(const ra8_fs_datetime_t* v, uint8_t ten
  * @param[in]  have_tenth true when @p tenth belongs to the stamp.
  * @param[out] out        Decoded timestamp; invalid when the fields are illegal.
  *
- * @return Nothing.
  * @pre @p out is non-NULL.
  * @pre @p date and @p time are raw little-endian values already read as host integers.
  * @post `out->valid` is true exactly when every packed field is legal.
@@ -195,7 +194,6 @@ static void internal_stat_decode_fat(uint16_t            date,
  * @param[in]  utc        exFAT UtcOffset byte.
  * @param[out] out        Decoded timestamp.
  *
- * @return Nothing.
  * @pre @p out is non-NULL.
  * @pre @p packed, @p tenth, and @p utc are raw fields from one File entry.
  * @post Invalid calendar bytes produce an all-zero, invalid result.
@@ -243,7 +241,6 @@ static void internal_stat_decode_exfat(uint32_t            packed,
  * @param[in]  entry FAT directory entry of at least 32 bytes.
  * @param[out] out   Stat result receiving the three timestamps.
  *
- * @return Nothing.
  * @pre @p entry is non-NULL and readable for one directory entry.
  * @pre @p out is non-NULL and writable.
  * @post All three timestamp members have been assigned.
@@ -280,7 +277,6 @@ static void internal_stat_fat_times(const uint8_t* entry, ra8_fs_stat_t* out)
  * @param[in]  entry exFAT File entry of at least 32 bytes.
  * @param[out] out   Stat result receiving the three timestamps.
  *
- * @return Nothing.
  * @pre @p entry is non-NULL and readable for one File entry.
  * @pre @p out is non-NULL and writable.
  * @post All three timestamp members have been assigned.
@@ -319,7 +315,6 @@ static void internal_stat_exfat_times(const uint8_t* entry, ra8_fs_stat_t* out)
  * @param[in]  m   Mounted volume supplying the root cluster.
  * @param[out] out Receives the metadata of the root.
  *
- * @return Nothing.
  *
  * @pre @p m and @p out are non-NULL.
  * @pre @p m is in use.
@@ -353,7 +348,6 @@ static void internal_stat_root(const ra8_fs_mount_t* m, ra8_fs_stat_t* out)
  * @param[in]  entry 32 bytes of on-disk directory entry.
  * @param[out] out   Receives the decoded metadata.
  *
- * @return Nothing.
  *
  * @pre @p entry addresses 32 readable bytes.
  * @pre @p out is non-NULL.

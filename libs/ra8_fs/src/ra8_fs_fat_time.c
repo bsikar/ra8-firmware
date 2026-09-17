@@ -174,7 +174,6 @@ static uint32_t internal_clamp_u32(uint32_t v, uint32_t lo, uint32_t hi)
  *
  * @param[in,out] t Reading to constrain in place.
  *
- * @return Nothing.
  *
  * @pre @p t is non-NULL.
  * @pre Every field holds whatever the caller supplied, in range or not.
@@ -341,7 +340,6 @@ static uint8_t internal_utc_byte(int16_t minutes)
  * @param[in]  t   Reading to pack; already clamped into the on-disk ranges.
  * @param[out] out Receives the packed fields.
  *
- * @return Nothing.
  *
  * @pre @p t and @p out are non-NULL; @p t has been clamped.
  * @pre @p t->month and @p t->day are at least 1.
@@ -374,7 +372,6 @@ static void internal_fat_pack(const ra8_fs_datetime_t* t, fat_stamp_t* out)
  *
  * @param[out] out Receives the packed fields.
  *
- * @return Nothing.
  *
  * @pre @p out is non-NULL.
  * @pre ::ra8_fs_set_clock is not running concurrently.
@@ -408,7 +405,6 @@ static void internal_fat_stamp_now(fat_stamp_t* out)
  *                  false for the epoch placeholder (UtcOffset recorded unknown).
  * @param[out] out  Receives the packed stamp, 10 ms increment, and UtcOffset.
  *
- * @return Nothing.
  *
  * @pre @p t and @p out are non-NULL; @p t has been clamped.
  * @pre @p t->month and @p t->day are at least 1.
@@ -446,7 +442,6 @@ static void internal_exfat_pack(const ra8_fs_datetime_t* t, bool real, exfat_sta
  *
  * @param[out] out Receives the packed stamp, 10 ms increment, and UtcOffset.
  *
- * @return Nothing.
  *
  * @pre @p out is non-NULL.
  * @pre ::ra8_fs_set_clock is not running concurrently.

@@ -194,7 +194,6 @@ static ra8_err_t internal_exfat_geometry(uint64_t total_sectors, exfat_geom_t* g
  * @param[out] sec Caller-provided sector buffer to receive the VBR.
  * @param[in]  g   Resolved exFAT geometry from priv_exfat_geometry().
  *
- * @return Nothing.
  *
  * @pre @p sec is non-NULL and points to at least `g->bps` writable bytes.
  * @pre @p g is non-NULL and was filled by a successful priv_exfat_geometry() call.
@@ -285,7 +284,6 @@ static ra8_err_t internal_exfat_wr_dual(const ra8_fs_backend_t* b,
  * @param[in]     idx Zero-based 32-bit word index within @p buf.
  * @param[in]     val 32-bit value to store.
  *
- * @return Nothing.
  *
  * @pre @p buf is non-NULL and has at least (idx+1)*4 writable bytes.
  * @pre @p idx does not overflow the sector (caller verifies the range).
@@ -648,7 +646,6 @@ static ra8_err_t internal_exfat_write_root(const ra8_fs_backend_t* backend,
  * @param[in]  lba  Logical block address to encode.
  * @param[out] out3 Three-byte CHS field to fill.
  *
- * @return Nothing.
  *
  * @pre @p out3 points to at least 3 writable bytes.
  * @pre @p lba is the sector this CHS field should describe.

@@ -821,7 +821,6 @@ ra8_err_t priv_exfat_write_stream(ra8_fs_file_t* file, const uint8_t* buf, uint3
  * @param[in]     file File whose state the entry must describe.
  * @param[in,out] strm The 32-byte Stream-extension entry to patch in place.
  *
- * @return Nothing.
  *
  * @pre @p file and @p strm are non-NULL.
  * @pre @p strm was read back from the volume as part of this file's set.

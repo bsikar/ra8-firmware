@@ -314,7 +314,6 @@ uint32_t priv_fmt_reserved_for(ra8_fs_type_t type);
  * @param[out] dst   Destination 11-byte label field.
  * @param[in]  label Source label, or NULL / "" for the unlabelled sentinel.
  *
- * @return Nothing.
  *
  * @pre @p dst is non-NULL and addresses at least ::k_fmt_label_len bytes.
  * @pre @p label is NUL-terminated when non-NULL.
@@ -420,7 +419,6 @@ uint8_t priv_is_eoc(const ra8_fs_mount_t* m, uint32_t value);
  * @param[in,out] s   Reassembly state being accumulated.
  * @param[in]     ent 32-byte raw LFN directory entry (attribute byte == 0x0F).
  *
- * @return Nothing.
  *
  * @pre @p s is non-NULL and was initialised by priv_lfn_reset().
  * @pre @p ent is non-NULL and points to exactly 32 valid bytes.
@@ -479,7 +477,6 @@ priv_lfn_units_for(const lfn_state_t* s, const uint8_t* name83, uint32_t* out_un
  *
  * @param[in,out] s Reassembly state to reset.
  *
- * @return Nothing.
  *
  * @pre @p s is non-NULL.
  * @pre @p s was previously initialised (e.g. via zero-init or a prior reset).
@@ -504,7 +501,6 @@ void priv_lfn_reset(lfn_state_t* s);
  *          non-recursive mutex, and the `RA8_EXPECTS_LOCK("ra8_fs_lock")` tag
  *          on every guarded implementation is what enforces that.
  *
- * @return Nothing.
  *
  * @pre The calling thread does not already hold the lock.
  * @pre The installed binding (if any) is complete -- guaranteed by

@@ -39,7 +39,6 @@
  * @param[in]  dots    1 for ".", 2 for "..".
  * @param[in]  cluster Self cluster ("."), or parent cluster ("..", 0 if root).
  *
- * @return Nothing.
  *
  * @pre `ent` addresses 32 writable bytes.
  * @pre `dots` is 1 or 2.

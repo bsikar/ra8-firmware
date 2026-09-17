@@ -131,7 +131,6 @@ static uint32_t internal_exchk_popcount8(uint8_t b)
  * @param[in]     first First cluster of the run.
  * @param[in]     nclus Cluster count of the run.
  *
- * @return Nothing.
  *
  * @pre @p ctx and its bitmap are non-NULL.
  * @pre No filesystem operation runs concurrently on the mount (single-threaded by contract).
@@ -292,7 +291,6 @@ ra8_err_t ra8_fs_check_test_exfat_mark_dir_alloc(ra8_fs_check_ctx_t* ctx, uint32
  * @param[in,out] ctx The scan context.
  * @param[in]     e   The 32-byte system directory entry.
  *
- * @return Nothing.
  *
  * @pre @p ctx and its bitmap are non-NULL; @p e is a 0x81 or 0x82 entry.
  * @pre No filesystem operation runs concurrently on the mount (single-threaded by contract).
@@ -331,7 +329,6 @@ static void internal_exchk_system_run(ra8_fs_check_ctx_t* ctx, const uint8_t* e)
  * @param[in]  nlen  Name length in UTF-16 units (clamped to ::k_exfat_name_cap).
  * @param[out] units Receives @p nlen UTF-16 code units.
  *
- * @return Nothing.
  *
  * @pre @p set and @p units are non-NULL; @p nlen <= ::k_exfat_name_cap.
  * @pre @p set holds the File + Stream + Name entries.
@@ -369,7 +366,6 @@ static void internal_exchk_extract_name(const uint8_t* set, uint32_t nlen, uint1
  * @param[in]     lba   Volume-relative sector the File entry was read from.
  * @param[in]     off   Byte offset of the File entry in that sector.
  *
- * @return Nothing.
  *
  * @pre @p ctx and @p set are non-NULL; `2 <= count <= k_exfat_set_max_entries`.
  * @pre No filesystem operation runs concurrently on the mount (single-threaded by contract).
@@ -421,7 +417,6 @@ static void internal_exchk_verify_set(ra8_fs_check_ctx_t* ctx,
  * @param[in,out] ctx   The scan context (for the truncation fault).
  * @param[in,out] stack The directory worklist.
  * @param[in]     dir   The subdirectory to queue.
- * @return Nothing.
  * @pre @p ctx, @p stack are non-NULL.
  * @pre No filesystem operation runs concurrently on the mount (single-threaded by contract).
  * @post The subdirectory is queued, or dropped with a one-time truncation fault.
@@ -796,7 +791,6 @@ static ra8_err_t internal_exchk_tree(ra8_fs_check_ctx_t* ctx)
  * @param[in]     b    The (tail-masked) allocation-bitmap byte.
  * @param[in]     base Cluster index of bit 0 of @p b.
  *
- * @return Nothing.
  *
  * @pre @p ctx and its bitmap are non-NULL.
  * @pre No filesystem operation runs concurrently on the mount (single-threaded by contract).

@@ -55,7 +55,6 @@
  * @param[in]  count Entry count of the set (1 + SecondaryCount).
  * @param[in]  mode  Open mode to record.
  *
- * @return Nothing.
  *
  * @pre @p file, @p m and @p head are non-NULL.
  * @pre @p head came from ::priv_exfat_find_set or ::priv_exfat_link.

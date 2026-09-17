@@ -242,7 +242,6 @@ RA8_EXPECTS_LOCK("ra8_fs_lock")
  * @param[in] sector Bytes of the already-read directory sector.
  * @param[out] out Stable copied entry value.
  * @param[out] out_entry True when one entry was copied into @p out.
- * @return Nothing.
  * @pre @p sector holds `priv_bps(state->mount)` valid bytes.
  * @pre `state->fat_walk.entry_idx` indexes within @p sector.
  * @post One of: an entry was copied (`*out_entry` true), the directory's end

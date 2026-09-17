@@ -103,7 +103,6 @@ ra8_fs_name_kind_t priv_name_classify(const char* leaf,
  * @param[in]  tail  Sequence number, 1..::k_lfn_alias_tail_max.
  * @param[out] out11 Receives the packed, space-padded 11-byte alias.
  *
- * @return Nothing.
  *
  * @pre @p leaf and @p out11 are non-NULL; @p out11 holds ::k_max_8_3_name bytes.
  * @pre @p tail is at least 1 and at most ::k_lfn_alias_tail_max.
@@ -172,7 +171,6 @@ uint8_t priv_sfn_checksum(const uint8_t* name83);
  *                     physically FIRST slot and carries ::k_lfn_seq_last.
  * @param[in]  csum    ::priv_sfn_checksum() of the 8.3 entry closing the chain.
  *
- * @return Nothing.
  *
  * @pre @p ent and @p name are non-NULL; @p ent addresses 32 writable bytes.
  * @pre @p order is at least 1 and `(order - 1) * 13` is at most @p nlen.

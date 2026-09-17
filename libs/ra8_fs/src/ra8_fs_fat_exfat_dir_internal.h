@@ -48,7 +48,6 @@
  * @param[in]  m   Mounted exFAT volume.
  * @param[out] out Receives the root's location.
  *
- * @return Nothing.
  *
  * @pre @p m and @p out are non-NULL; `m->type` is exFAT.
  * @pre The mount carries a parsed VBR.
@@ -75,7 +74,6 @@ void priv_exfat_dir_root(const ra8_fs_mount_t* m, exfat_dir_t* out);
  * @param[in]  strm The entry set's 32-byte Stream-extension entry.
  * @param[out] out  Receives the directory location.
  *
- * @return Nothing.
  *
  * @pre @p m, @p strm and @p out are non-NULL.
  * @pre @p strm came from ::priv_exfat_find or ::priv_exfat_find_set.
@@ -99,7 +97,6 @@ void priv_exfat_dir_from_set(const ra8_fs_mount_t* m, const uint8_t* strm, exfat
  * @param[in]  dir Directory to walk.
  * @param[out] out Receives the initialised cursor.
  *
- * @return Nothing.
  *
  * @pre @p dir and @p out are non-NULL.
  * @pre @p dir was produced by ::priv_exfat_dir_root or ::priv_exfat_dir_from_set.

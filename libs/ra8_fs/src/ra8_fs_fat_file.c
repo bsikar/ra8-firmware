@@ -207,7 +207,6 @@ static ra8_err_t internal_open_existing(ra8_fs_mount_t* handle,
  * @param[in]  free_lba Sector of the file's directory entry.
  * @param[in]  free_off Byte offset of the directory entry within the sector.
  *
- * @return Nothing.
  *
  * @pre @p f and @p handle are non-NULL.
  * @pre @p free_lba and @p free_off identify an already-written directory entry slot.

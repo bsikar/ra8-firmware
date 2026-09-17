@@ -420,7 +420,6 @@ static uint32_t internal_utf8_len_of(uint32_t cp)
  * @param[in]  len  Total sequence length (2..4).
  * @param[in]  cp   Code point being written.
  *
- * @return Nothing.
  *
  * @pre @p out has at least @p from + @p len writable bytes.
  * @pre @p len is ::priv_utf8_len_of(@p cp) and is at least 2.

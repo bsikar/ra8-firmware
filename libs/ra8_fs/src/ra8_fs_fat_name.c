@@ -489,7 +489,6 @@ static uint8_t internal_name_is_83(const uint16_t* leaf, uint32_t n)
  * @param[in,out] seen Bit 0 set when an upper-case letter is seen, bit 1 when
  *                     a lower-case one is.
  *
- * @return Nothing.
  *
  * @pre @p leaf is non-NULL and holds at least @p to units.
  * @pre @p from is at most @p to and @p seen is non-NULL.

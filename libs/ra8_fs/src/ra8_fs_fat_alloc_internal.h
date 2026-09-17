@@ -99,7 +99,6 @@ typedef enum : uint64_t {
  *
  * @param[in] m Mount that has just been parsed.
  *
- * @return Nothing.
  *
  * @pre @p m is non-NULL and its geometry fields are populated.
  * @pre No allocator accessor is running concurrently.
@@ -122,7 +121,6 @@ void priv_alloc_state_bind(const ra8_fs_mount_t* m);
  *
  * @param[in] m Mount being unmounted.
  *
- * @return Nothing.
  *
  * @pre @p m is non-NULL.
  * @pre Any pending FSInfo writeback has already been flushed.
@@ -184,7 +182,6 @@ ra8_err_t priv_fat_sector_read(const ra8_fs_mount_t* m, uint64_t lba, uint8_t* b
  * @param[in] buf The bytes that were written.
  * @param[in] lba Volume-relative sector that was written.
  *
- * @return Nothing.
  *
  * @pre @p m and @p buf are non-NULL.
  * @pre The write of @p buf to @p lba already succeeded.
@@ -234,7 +231,6 @@ uint32_t priv_alloc_hint_get(const ra8_fs_mount_t* m);
  * @param[in] m       Mount to update.
  * @param[in] cluster Cluster the next scan should start at.
  *
- * @return Nothing.
  *
  * @pre @p m is non-NULL.
  * @pre @p cluster is the cluster after the one just allocated.
@@ -260,7 +256,6 @@ void priv_alloc_hint_set(const ra8_fs_mount_t* m, uint32_t cluster);
  * @param[in] m       Mount to update.
  * @param[in] cluster Cluster that has just become free.
  *
- * @return Nothing.
  *
  * @pre @p m is non-NULL.
  * @pre @p cluster's FAT entry (or bitmap bit) already reads as free.
@@ -285,7 +280,6 @@ void priv_alloc_hint_lower(const ra8_fs_mount_t* m, uint32_t cluster);
  * @param[in] m Mount to update.
  * @param[in] n Clusters allocated.
  *
- * @return Nothing.
  *
  * @pre @p m is non-NULL.
  * @pre @p n clusters have actually been marked used on disk.
@@ -310,7 +304,6 @@ void priv_free_count_took(const ra8_fs_mount_t* m, uint32_t n);
  * @param[in] m Mount to update.
  * @param[in] n Clusters freed.
  *
- * @return Nothing.
  *
  * @pre @p m is non-NULL.
  * @pre @p n clusters have actually been marked free on disk.
@@ -368,7 +361,6 @@ uint32_t priv_free_count_peek(const ra8_fs_mount_t* m);
  * @param[in] m Mount to update.
  * @param[in] n Free-cluster count just measured.
  *
- * @return Nothing.
  *
  * @pre @p m is non-NULL with a bound slot (else the call is a no-op).
  * @pre @p n was counted from the on-disk FAT or allocation bitmap.

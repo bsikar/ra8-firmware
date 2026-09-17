@@ -108,7 +108,6 @@ static ra8_err_t internal_exfat_locate_label(const ra8_fs_mount_t* m,
  * @param[out] out     Buffer receiving the NUL-terminated label.
  * @param[in]  out_len Capacity of @p out in bytes (at least 1).
  *
- * @return Nothing.
  *
  * @pre @p entry and @p out are non-NULL; `out_len >= 1`.
  * @pre @p entry is an in-use Volume Label entry.

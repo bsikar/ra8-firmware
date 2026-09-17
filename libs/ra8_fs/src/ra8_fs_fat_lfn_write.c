@@ -431,7 +431,6 @@ ra8_err_t priv_dir_commit(const ra8_fs_mount_t* m,
  * @param[in]     lba     Sector of the slot to record.
  * @param[in]     off     Byte offset of the slot within that sector.
  *
- * @return Nothing.
  *
  * @pre @p run and @p len_io are non-NULL; `*len_io` is at most the cap.
  * @pre @p off is a valid entry offset inside one sector.

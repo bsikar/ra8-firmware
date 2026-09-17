@@ -218,7 +218,6 @@ static uint32_t internal_fat_bad_marker(const ra8_fs_mount_t* m)
  * @param[in]     cluster The cluster whose entry @p value belongs to.
  * @param[in]     value   The FAT entry value read for @p cluster.
  *
- * @return Nothing.
  *
  * @pre @p ctx is non-NULL; the report's `clusters_total` is populated.
  * @pre @p value came from ::priv_fat_get for @p cluster.
@@ -349,7 +348,6 @@ static ra8_err_t internal_fat_mark_chain(ra8_fs_check_ctx_t* ctx, uint32_t first
  * @param[in,out] stack The directory worklist.
  * @param[in]     clus  The subdirectory's first cluster.
  *
- * @return Nothing.
  *
  * @pre @p ctx and @p stack are non-NULL; @p clus is in range.
  * @pre No filesystem operation runs concurrently on the mount (single-threaded by contract).

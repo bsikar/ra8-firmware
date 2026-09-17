@@ -157,7 +157,6 @@ typedef enum : int16_t {
  *
  * @param[in,out] entry 32-byte directory entry to stamp in place.
  *
- * @return Nothing.
  *
  * @pre @p entry is non-NULL and addresses 32 writable bytes.
  * @pre The other fields of @p entry (name, attribute, cluster) are already set
@@ -183,7 +182,6 @@ void priv_fat_entry_stamp_create(uint8_t* entry);
  *
  * @param[in,out] entry 32-byte directory entry to stamp in place.
  *
- * @return Nothing.
  *
  * @pre @p entry is non-NULL and addresses 32 writable bytes.
  * @pre @p entry was read back from the volume (or is being assembled for it).
@@ -210,7 +208,6 @@ void priv_fat_entry_stamp_write(uint8_t* entry);
  *
  * @param[in,out] entry 32-byte directory entry to stamp in place.
  *
- * @return Nothing.
  *
  * @pre @p entry is non-NULL and addresses 32 writable bytes.
  * @pre @p entry was read back from the volume.
@@ -237,7 +234,6 @@ void priv_fat_entry_stamp_access(uint8_t* entry);
  *
  * @param[in,out] file_entry 32-byte exFAT File (0x85) entry to stamp in place.
  *
- * @return Nothing.
  *
  * @pre @p file_entry is non-NULL and addresses 32 writable bytes.
  * @pre @p file_entry is a File entry; the caller recomputes SetChecksum after.
@@ -263,7 +259,6 @@ void priv_exfat_file_stamp_create(uint8_t* file_entry);
  *
  * @param[in,out] file_entry 32-byte exFAT File (0x85) entry to stamp in place.
  *
- * @return Nothing.
  *
  * @pre @p file_entry is non-NULL and addresses 32 writable bytes.
  * @pre @p file_entry was read back from the volume as part of an entry set.
@@ -297,7 +292,6 @@ void priv_exfat_file_stamp_access(uint8_t* file_entry);
  * @param[in]     modify Modify stamp to write, or NULL to leave it unchanged.
  * @param[in]     access Access stamp to write, or NULL to leave it unchanged.
  *
- * @return Nothing.
  *
  * @pre @p entry is non-NULL and addresses 32 writable bytes.
  * @pre A non-NULL reading argument points at a readable ::ra8_fs_datetime_t.
@@ -332,7 +326,6 @@ void priv_fat_entry_set_times(uint8_t*                 entry,
  * @param[in]     modify     Modify stamp, or NULL to leave it unchanged.
  * @param[in]     access     Access stamp, or NULL to leave it unchanged.
  *
- * @return Nothing.
  *
  * @pre @p file_entry is non-NULL and addresses 32 writable bytes.
  * @pre @p file_entry is a File entry; the caller recomputes SetChecksum after.
@@ -365,7 +358,6 @@ void priv_exfat_file_set_times(uint8_t*                 file_entry,
  *
  * @param[in,out] file_entry 32-byte exFAT File (0x85) entry to stamp in place.
  *
- * @return Nothing.
  *
  * @pre @p file_entry is non-NULL and addresses 32 writable bytes.
  * @pre @p file_entry was read back from the volume as part of an entry set.

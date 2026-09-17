@@ -91,7 +91,6 @@ typedef struct {
  * @param[in]     lba       Volume-relative sector of the entry (0 if n/a).
  * @param[in]     entry_off Byte offset of the entry in that sector (0 if n/a).
  *
- * @return Nothing.
  *
  * @pre @p ctx and `ctx->rep` are non-NULL.
  * @pre @p kind is not ::k_ra8_fs_check_fault_none.
@@ -204,7 +203,6 @@ bool priv_check_visit(ra8_fs_check_ctx_t*       ctx,
  *
  * @param[in,out] ctx The scan context (its bitmap is cleared).
  *
- * @return Nothing.
  *
  * @pre @p ctx and `ctx->bitmap` are non-NULL.
  * @pre `ctx->bitmap` is at least `(bitmap_bits + 7) / 8` bytes.
@@ -287,7 +285,6 @@ ra8_err_t ra8_fs_check_test_fat_scan_cluster_dir(ra8_fs_check_ctx_t* ctx, uint32
  * @param[in]     cluster           Cluster recorded for the dropped directory.
  * @param[in]     already_truncated Whether a prior overflow was already recorded.
  *
- * @return Nothing.
  *
  * @pre @p ctx is non-NULL.
  * @pre @p ctx owns a non-NULL, writable report.
@@ -316,7 +313,6 @@ void ra8_fs_check_test_fat_push_overflow(ra8_fs_check_ctx_t* ctx,
  * @param[in]     first First cluster of the contiguous run.
  * @param[in]     nclus Declared run length in clusters.
  *
- * @return Nothing.
  *
  * @pre @p ctx, its report and bitmap are non-NULL.
  * @pre `ctx->rep->clusters_total` and @p nclus are non-zero.
@@ -410,7 +406,6 @@ ra8_err_t ra8_fs_check_test_exfat_mark_dir_alloc(ra8_fs_check_ctx_t* ctx, uint32
  * @param[in]     cluster           Cluster recorded for the dropped directory.
  * @param[in]     already_truncated Whether a prior overflow was already recorded.
  *
- * @return Nothing.
  *
  * @pre @p ctx is non-NULL.
  * @pre @p ctx owns a non-NULL, writable report.

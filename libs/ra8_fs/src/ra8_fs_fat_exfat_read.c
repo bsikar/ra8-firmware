@@ -432,7 +432,6 @@ ra8_err_t priv_exfat_find(const ra8_fs_mount_t* m,
  * @param[in]  handle Owning mount.
  * @param[in]  strm   The file's 32-byte Stream-extension entry.
  *
- * @return Nothing.
  *
  * @pre All pointers are non-NULL and @p strm came from ::priv_exfat_find.
  * @pre The slot is not already in use.

@@ -987,7 +987,6 @@ uint32_t priv_exfat_upcase_checksum(void);
  * rather than failing to mount.
  *
  * @param[in,out] m Mount whose exFAT geometry is already populated.
- * @return Nothing.
  * @pre @p m is non-NULL and its exFAT region geometry is valid.
  * @pre The backend is bound and ``partition_base_lba`` is final.
  * @post ``m->exfat_upcase_ok`` is 0 or 1 and is never left unwritten.

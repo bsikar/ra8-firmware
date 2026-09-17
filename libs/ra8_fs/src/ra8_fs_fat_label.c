@@ -81,7 +81,6 @@ static uint32_t internal_fat_boot_label_off(const ra8_fs_mount_t* m)
  * @param[out] out     Buffer receiving the NUL-terminated label.
  * @param[in]  out_len Capacity of @p out in bytes (at least 1).
  *
- * @return Nothing.
  *
  * @pre @p raw11 and @p out are non-NULL; `out_len >= 1`.
  * @pre @p raw11 addresses 11 readable bytes.
