@@ -939,4 +939,5 @@ test {
     _ = @import("analysis_test.zig");
     _ = @import("command_surface_test.zig");
     _ = @import("zig_archive_test.zig");
+    _ = @import("app_shapes_test.zig");
 }
