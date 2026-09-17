@@ -195,6 +195,163 @@ def stale_inventory_entries(inventory: frozenset[str] | None = None) -> list[str
     return findings
 
 
+# ---------------------------------------------------------------------------
+# Inventory census (#842). The inventory header claimed the list "shrinks and
+# can never quietly grow", and nothing measured that claim: stale_inventory_
+# entries only reports rows that stopped granting anything (file deleted, file
+# tagged). A row HAND-ADDED for a brand-new untagged HAL or test file was
+# accepted in silence -- the retired prefix exemption, re-entered one path at a
+# time. The census below makes growth arithmetic the gate can check: the file
+# declares how many rows it holds, in total and per root, and a row that names
+# neither root is a finding, so no row can sit outside the counted set.
+# ---------------------------------------------------------------------------
+
+# Directive prefix. A plain "#" stays prose the gate ignores, so the header's
+# explanation and its machine-read rows cannot be mistaken for one another.
+INVENTORY_DIRECTIVE = "#!"
+
+# The two roots the retired prefix exemption covered wholesale, and therefore
+# the only roots an inventory row may name.
+INVENTORY_ROOTS = ("libs/ra8_hal/", "tests/")
+
+INVENTORY_ROWS_KEY = "rows"
+
+
+def inventory_census_keys() -> tuple[str, ...]:
+    """The census keys an inventory file must declare: the total, then each root."""
+    per_root = tuple(f"{INVENTORY_ROWS_KEY} {root}" for root in INVENTORY_ROOTS)
+    return (INVENTORY_ROWS_KEY, *per_root)
+
+
+def inventory_rows(text: str) -> list[str]:
+    """The membership rows of an inventory file, in file order.
+
+    Exactly what ``load_legacy_inventory`` treats as membership, so the census
+    cannot count a different set of lines than the exemption honours.
+    """
+    rows = []
+    for line in text.splitlines():
+        entry = line.strip()
+        if entry and not entry.startswith("#"):
+            rows.append(entry)
+    return rows
+
+
+def inventory_census(rows: Iterable[str]) -> dict[str, int]:
+    """Count rows in total and per declared root.
+
+    A row under no declared root is counted in the total and in no root, which
+    is what makes the sum check below catch it rather than letting it hide.
+    """
+    rows = list(rows)
+    census = {INVENTORY_ROWS_KEY: len(rows)}
+    for root in INVENTORY_ROOTS:
+        census[f"{INVENTORY_ROWS_KEY} {root}"] = sum(1 for r in rows if r.startswith(root))
+    return census
+
+
+def format_inventory_declaration(census: dict[str, int]) -> str:
+    """Render the census as the directive block the inventory file carries."""
+    rows = (f"{INVENTORY_DIRECTIVE} {key}: {census[key]}" for key in inventory_census_keys())
+    return "".join(f"{row}\n" for row in rows)
+
+
+def _parse_inventory_line(line: str) -> tuple[str, int]:
+    """Parse one ``#! <key>: <count>`` directive, raising on anything else."""
+    body = line[len(INVENTORY_DIRECTIVE) :].strip()
+    key, sep, value = body.partition(":")
+    key = key.strip()
+    if not sep or key not in inventory_census_keys():
+        message = f"unrecognised inventory directive: {line.strip()!r}"
+        raise ValueError(message)
+    try:
+        return key, int(value.strip())
+    except ValueError as exc:
+        message = f"inventory directive is not a count: {line.strip()!r}"
+        raise ValueError(message) from exc
+
+
+def parse_inventory_declaration(text: str) -> dict[str, int]:
+    """Read the declared census from an inventory file's directive block.
+
+    Raises ``ValueError`` on a malformed, duplicated or unknown directive: a
+    declaration the gate cannot read must not read as an absent declaration,
+    which would be a clean run over an unmeasured file.
+    """
+    declared: dict[str, int] = {}
+    for line in text.splitlines():
+        if not line.startswith(INVENTORY_DIRECTIVE):
+            continue
+        key, count = _parse_inventory_line(line)
+        if key in declared:
+            message = f"inventory declares {key!r} twice"
+            raise ValueError(message)
+        declared[key] = count
+    return declared
+
+
+def _inventory_count_failures(declared: dict[str, int], census: dict[str, int]) -> list[str]:
+    """Report a declared count that disagrees with the rows actually present."""
+    failures = []
+    for key in inventory_census_keys():
+        if key not in declared:
+            failures.append(
+                f"{LEGACY_INVENTORY_PATH.name}: missing "
+                f"'{INVENTORY_DIRECTIVE} {key}: N' declaration"
+            )
+            continue
+        if declared[key] != census[key]:
+            failures.append(
+                f"{LEGACY_INVENTORY_PATH.name}: declares {declared[key]} for {key!r} "
+                f"and holds {census[key]}"
+            )
+    return failures
+
+
+def _inventory_row_failures(rows: Iterable[str]) -> list[str]:
+    """Report a row naming no declared root, which no per-root count covers."""
+    roots = ", ".join(INVENTORY_ROOTS)
+    return [
+        f"{LEGACY_INVENTORY_PATH.name}: row {row!r} is under none of the declared "
+        f"roots ({roots}), so no per-root count measures it"
+        for row in rows
+        if not any(row.startswith(root) for root in INVENTORY_ROOTS)
+    ]
+
+
+def inventory_declaration_text_failures(text: str) -> list[str]:
+    """Report every way an inventory file's own census fails to hold."""
+    try:
+        declared = parse_inventory_declaration(text)
+    except ValueError as exc:
+        return [f"{LEGACY_INVENTORY_PATH.name}: {exc}"]
+    rows = inventory_rows(text)
+    census = inventory_census(rows)
+    failures = _inventory_count_failures(declared, census)
+    failures.extend(_inventory_row_failures(rows))
+    per_root = sum(census[f"{INVENTORY_ROWS_KEY} {root}"] for root in INVENTORY_ROOTS)
+    if per_root != census[INVENTORY_ROWS_KEY]:
+        failures.append(
+            f"{LEGACY_INVENTORY_PATH.name}: per-root counts sum to {per_root} "
+            f"but the file holds {census[INVENTORY_ROWS_KEY]} rows"
+        )
+    return failures
+
+
+def inventory_declaration_failures(path: pathlib.Path = LEGACY_INVENTORY_PATH) -> list[str]:
+    """Census findings for the inventory file on disk; a missing file is one.
+
+    Unlike ``load_legacy_inventory``, which fails closed by exempting nothing,
+    an unreadable inventory is reported here too: silence would leave the
+    burn-down list unmeasured while the sweep still passed.
+    """
+    try:
+        text = path.read_text(encoding="utf-8")
+    except OSError as exc:
+        return [f"{path.name}: unreadable world-tag legacy inventory: {exc}"]
+    return inventory_declaration_text_failures(text)
+
+
 def file_is_in_ring1_or_ring2(rel_path: str) -> bool:
     """Whether a file sits in Ring 1 (BSP) or Ring 2 (Core).
 
@@ -384,6 +541,7 @@ def selftest() -> int:
         failures,
     )
     _selftest_legacy_inventory(failures)
+    _selftest_inventory_census(failures)
     return report(failures)
 
 
@@ -455,6 +613,120 @@ def _selftest_legacy_inventory(failures: list[str]) -> None:
             )
 
 
+CENSUS_FIXTURE_ROWS = ("libs/ra8_hal/inc/ra8_fixture.h", "tests/hal/src/test_fixture.c")
+
+
+def _census_fixture(rows: tuple[str, ...] = CENSUS_FIXTURE_ROWS) -> str:
+    """A minimal inventory file text: prose, a correct declaration, then rows."""
+    census = inventory_census(rows)
+    body = "".join(f"{row}\n" for row in rows)
+    return "# fixture inventory\n" + format_inventory_declaration(census) + body
+
+
+def _selftest_census_counts(failures: list[str]) -> None:
+    """A declaration that disagrees with the rows present must fire, either way."""
+    rows = CENSUS_FIXTURE_ROWS
+    extra = _census_fixture(rows) + "tests/hal/src/test_extra.c\n"
+    expect(
+        bool(inventory_declaration_text_failures(extra)),
+        "one row MORE than declared fires (a hand-added exemption cannot hide)",
+        failures,
+    )
+    fewer = _census_fixture(rows).replace(f"{rows[0]}\n", "")
+    expect(
+        bool(inventory_declaration_text_failures(fewer)),
+        "one row FEWER than declared fires (a stale count is not a clean file)",
+        failures,
+    )
+    hal_swap = _census_fixture(rows).replace(rows[1], "tests/hal/src/test_other.c")
+    expect(
+        not inventory_declaration_text_failures(hal_swap),
+        "renaming a row within its root stays quiet (the census counts, not paths)",
+        failures,
+    )
+    moved = _census_fixture(rows).replace(rows[1], "libs/ra8_hal/src/moved.c")
+    expect(
+        bool(inventory_declaration_text_failures(moved)),
+        "moving a row between roots fires even though the total is unchanged",
+        failures,
+    )
+
+
+def _selftest_census_directives(failures: list[str]) -> None:
+    """Every unreadable or absent declaration must fire rather than read as clean."""
+    text = _census_fixture()
+    for key in inventory_census_keys():
+        dropped = "".join(
+            line + "\n"
+            for line in text.splitlines()
+            if not line.startswith(f"{INVENTORY_DIRECTIVE} {key}:")
+        )
+        expect(
+            bool(inventory_declaration_text_failures(dropped)),
+            f"omitting the '{key}' declaration fires",
+            failures,
+        )
+    expect(
+        bool(inventory_declaration_text_failures("# prose only\ntests/x/src/test_a.c\n")),
+        "an inventory with no declaration at all fires",
+        failures,
+    )
+    expect(
+        bool(
+            inventory_declaration_text_failures(
+                text + f"{INVENTORY_DIRECTIVE} {INVENTORY_ROWS_KEY}: 2\n"
+            )
+        ),
+        "a duplicated declaration fires rather than letting the last one win",
+        failures,
+    )
+    expect(
+        bool(inventory_declaration_text_failures(text + f"{INVENTORY_DIRECTIVE} rows: many\n")),
+        "a declaration that is not a count fires",
+        failures,
+    )
+    expect(
+        bool(inventory_declaration_text_failures(text + f"{INVENTORY_DIRECTIVE} ceiling: 2\n")),
+        "an unknown directive fires (a typo must not be skipped as prose)",
+        failures,
+    )
+
+
+def _selftest_inventory_census(failures: list[str]) -> None:
+    """Prove the census measures growth, and that the committed file satisfies it."""
+    census = inventory_census(CENSUS_FIXTURE_ROWS)
+    expect(
+        parse_inventory_declaration(format_inventory_declaration(census)) == census,
+        "a rendered declaration parses back to the same census (round trip)",
+        failures,
+    )
+    expect(
+        not inventory_declaration_text_failures(_census_fixture()),
+        "a self-consistent inventory fixture stays quiet",
+        failures,
+    )
+    _selftest_census_counts(failures)
+    _selftest_census_directives(failures)
+    stray = _census_fixture() + "libs/ra8_nsc/inc/ra8_nsc_x.h\n"
+    expect(
+        bool(inventory_declaration_text_failures(stray)),
+        "a row under no declared root fires (nothing else would measure it)",
+        failures,
+    )
+    with tempfile.TemporaryDirectory() as tmp:
+        absent = pathlib.Path(tmp) / "no-such-inventory.txt"
+        expect(
+            bool(inventory_declaration_failures(absent)),
+            "a missing inventory file fires (fail closed, not silently unmeasured)",
+            failures,
+        )
+    expect(
+        not inventory_declaration_failures(),
+        f"the committed {LEGACY_INVENTORY_PATH.name} satisfies its own census",
+        failures,
+    )
+
+
 def _build_parser() -> argparse.ArgumentParser:
     """Command-line parser for the world-tag gate."""
     parser = argparse.ArgumentParser(description=__doc__)
@@ -523,6 +795,11 @@ def main(argv: list[str]) -> int:
     for f in iter_source_files(targets):
         file_count += 1
         findings.extend(check_file(f))
+
+    # The census reads only the inventory file, so it runs on every invocation,
+    # narrowed pre-commit hook included: a row added by hand is exactly the edit
+    # a path-scoped run is looking at, and it must not wait for CI to be seen.
+    findings.extend(inventory_declaration_failures())
 
     # Full sweep only: a narrowed pre-commit run over three paths has no
     # business ruling on the whole inventory.
