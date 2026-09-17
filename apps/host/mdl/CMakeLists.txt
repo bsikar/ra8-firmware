@@ -81,6 +81,10 @@ enable_testing()
 # hand.
 add_subdirectory(${MDL_REPO_ROOT}/apps/shared_libs/mdl ${CMAKE_CURRENT_BINARY_DIR}/mdl_core)
 
+# Some form tests compile the POSIX filesystem adapter directly instead of
+# linking mdl_core; all such targets need the migrated facade archive.
+link_libraries(ra8_zig::fw_if_fs)
+
 # Per-source properties are DIRECTORY-scoped, so the SOUP flags the core sets on
 # miniz do not follow the file into this listfile. Every target below that
 # compiles miniz needs them restated here -- without them the vendored decoder

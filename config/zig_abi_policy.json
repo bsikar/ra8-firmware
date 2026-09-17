@@ -428,6 +428,88 @@
         {"name":"ra8_wdt_supervisor_set_refresh_hook","calling_context":"task-only-non-reentrant","ownership":"Retains the supplied callback until replaced or deinitialized."},
         {"name":"ra8_wdt_supervisor_thread_count","calling_context":"task-safe-reentrant","ownership":"Returns supervisor state and retains no caller resource."}
       ]
+    },
+    {
+      "name": "if",
+      "build_root": "libs/if",
+      "public_headers": [
+        {
+          "path": "libs/if/inc/fw_if_fs.h",
+          "compatibility_sha256": "41895eafc1d5f762a27b0225533f28783b1072c49bd9602ed0ea9b92a6e69c53",
+          "layout_assertions": []
+        },
+        {
+          "path": "libs/if/inc/fw_if_fs_types.h",
+          "compatibility_sha256": "a06f8690517b76f29c3e4568e0477c406a7775e3d05874d0c7ffbde0a3e3b586",
+          "layout_assertions": [
+            "@sizeOf(core.Caps) == 40",
+            "@offsetOf(core.Caps, \"path_max_bytes\") == 24",
+            "@offsetOf(core.Caps, \"file_workspace_align\") == 32",
+            "@sizeOf(core.Datetime) == 16",
+            "@sizeOf(core.Timestamp) == 20",
+            "@sizeOf(core.Stat) == 72",
+            "@offsetOf(core.Stat, \"created\") == 8",
+            "@offsetOf(core.Stat, \"node_type\") == 68",
+            "@offsetOf(core.DirentValue, \"size_bytes\") == 512",
+            "@sizeOf(core.DirentValue) == 528",
+            "@sizeOf(core.Space) == 24"
+          ]
+        },
+        {
+          "path": "libs/if/inc/fw_if_fs_backend.h",
+          "compatibility_sha256": "c383df93cd559d441f497852fa0c89f71d9249706f5ddcb337ca4a5dcccf75e2",
+          "layout_assertions": [
+            "@sizeOf(NamespaceIface) == ptr * 10",
+            "@sizeOf(StreamIface) == ptr * 8",
+            "@sizeOf(TransactionIface) == ptr * 6",
+            "@sizeOf(ValidateFn) == ptr"
+          ]
+        }
+      ],
+      "adapters": ["libs/if/src/fw_if_fs_abi.zig"],
+      "library_name": "fw_if_fs",
+      "symbol_prefix": "fw_fs_",
+      "target_class": "host-ra8",
+      "targets": {
+        "host": [],
+        "ra8": ["-Dtarget=thumb-freestanding-eabihf", "-Dcpu=cortex_m85+fp_armv8-d32-fp64"]
+      },
+      "run_host_tests_in_all_modes": false,
+      "c_include_dirs": ["libs/if/inc", "libs/ra8_core/inc"],
+      "contract_tests": [
+        {"language": "c", "path": "tests/misc/src/test_fw_if_fs.c", "registration": "tests/cmake/unit_tests.cmake"},
+        {"language": "c", "path": "tests/misc/src/test_fw_if_fs_posix_raw.c", "registration": "tests/cmake/unit_tests.cmake"},
+        {"language": "zig", "path": "libs/if/tests/abi_test.zig", "symbol_evidence": "libs/if/src/fw_if_fs_abi.zig", "registration": "libs/if/.zig-test-contract.json"}
+      ],
+      "exports": [
+        {"name": "fw_fs_path_validate", "calling_context": "task-safe-reentrant", "ownership": "reads caller-owned capability and path values without retaining them"},
+        {"name": "fw_fs_bind", "calling_context": "task-only-non-reentrant", "ownership": "binds caller-owned facade state to borrowed backend interfaces and context"},
+        {"name": "fw_fs_get_caps", "calling_context": "task-only-non-reentrant", "ownership": "copies an immutable capability snapshot to caller-owned output"},
+        {"name": "fw_fs_stat", "calling_context": "task-only-non-reentrant", "ownership": "borrows the namespace and path and writes caller-owned metadata"},
+        {"name": "fw_fs_listdir", "calling_context": "task-only-non-reentrant", "ownership": "borrows the namespace and callback for one bounded enumeration"},
+        {"name": "fw_fs_dir_open", "calling_context": "task-only-non-reentrant", "ownership": "initializes caller-owned cursor and workspace using a borrowed namespace"},
+        {"name": "fw_fs_dir_next", "calling_context": "task-only-non-reentrant", "ownership": "borrows an open cursor and writes one caller-owned directory entry"},
+        {"name": "fw_fs_dir_close", "calling_context": "task-only-non-reentrant", "ownership": "consumes caller-owned cursor state even when backend close reports an error"},
+        {"name": "fw_fs_mkdir", "calling_context": "task-only-non-reentrant", "ownership": "borrows namespace and path for one directory operation"},
+        {"name": "fw_fs_unlink", "calling_context": "task-only-non-reentrant", "ownership": "borrows namespace and path for one file operation"},
+        {"name": "fw_fs_rmdir", "calling_context": "task-only-non-reentrant", "ownership": "borrows namespace and path for one directory operation"},
+        {"name": "fw_fs_rename", "calling_context": "task-only-non-reentrant", "ownership": "borrows namespace and both paths for one rename operation"},
+        {"name": "fw_fs_space", "calling_context": "task-only-non-reentrant", "ownership": "borrows namespace and writes caller-owned capacity output"},
+        {"name": "fw_fs_open", "calling_context": "task-only-non-reentrant", "ownership": "initializes caller-owned handle using caller-supplied workspace"},
+        {"name": "fw_fs_read", "calling_context": "task-only-non-reentrant", "ownership": "borrows an open file and writes bytes/count into caller-owned buffers"},
+        {"name": "fw_fs_write", "calling_context": "task-only-non-reentrant", "ownership": "borrows an open file and input bytes and writes caller-owned count"},
+        {"name": "fw_fs_seek", "calling_context": "task-only-non-reentrant", "ownership": "borrows an open file and changes its current position"},
+        {"name": "fw_fs_tell", "calling_context": "task-only-non-reentrant", "ownership": "borrows an open file and writes caller-owned position output"},
+        {"name": "fw_fs_file_size", "calling_context": "task-only-non-reentrant", "ownership": "borrows an open file and writes caller-owned size output"},
+        {"name": "fw_fs_sync", "calling_context": "task-only-non-reentrant", "ownership": "borrows an open file for one backend sync operation"},
+        {"name": "fw_fs_close", "calling_context": "task-only-non-reentrant", "ownership": "consumes caller-owned file state even when backend close reports an error"},
+        {"name": "fw_fs_transaction_begin", "calling_context": "task-only-non-reentrant", "ownership": "initializes caller-owned transaction and workspace using a borrowed backend"},
+        {"name": "fw_fs_transaction_write", "calling_context": "task-only-non-reentrant", "ownership": "borrows active transaction and input bytes and writes caller-owned count"},
+        {"name": "fw_fs_transaction_seek", "calling_context": "task-only-non-reentrant", "ownership": "borrows active transaction and changes its staging position"},
+        {"name": "fw_fs_transaction_validate", "calling_context": "task-only-non-reentrant", "ownership": "borrows active transaction and validator for one validation operation"},
+        {"name": "fw_fs_transaction_commit", "calling_context": "task-only-non-reentrant", "ownership": "publishes or retains active transaction according to backend result"},
+        {"name": "fw_fs_transaction_abort", "calling_context": "task-only-non-reentrant", "ownership": "consumes active transaction and removes unpublished staging state"}
+      ]
     }
     ,{
       "name": "ra8_keyboard",
