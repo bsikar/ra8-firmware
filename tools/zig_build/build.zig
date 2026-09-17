@@ -99,7 +99,9 @@ pub fn allowForeignHostTests(
 }
 
 pub fn build(b: *std.Build) void {
-    const target = b.standardTargetOptions(.{});
+    // This package's own test graph is a host build like any other, so it takes
+    // the same macOS host target rule it hands to the apps (#899).
+    const target = b.standardTargetOptions(.{ .default_target = hostDefaultTargetQuery(b) });
     const optimize = b.standardOptimizeOption(.{});
 
     const test_module = b.createModule(.{
