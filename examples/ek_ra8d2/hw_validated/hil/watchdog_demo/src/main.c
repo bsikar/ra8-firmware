@@ -20,10 +20,12 @@
  *
  * The IWDT period itself is configured by the OFS0 option-setting
  * register at flash-write time (the chip cannot be reconfigured at
- * runtime); ``examples/ek_ra8d2/hw_validated/hil/uart_hello/linker_script.ld`` -- the
- * shared template -- sets a multi-second window so the
- * "stop refreshing" stage takes a visible amount of time before the
- * reset fires.
+ * runtime). The OFS0 word is ``BSP_CFG_OPTION_SETTING_OFS0`` in
+ * ``libs/ra8_hal/src/ra8_ofs.c``, section-placed at ``OFS0_ADDR``; this
+ * app carries no local map, so that placement comes from the board's
+ * canonical ``libs/ra8_board_ek_ra8d2/ld/linker_script.ld``. The demo
+ * assumes a multi-second window there, so the "stop refreshing" stage
+ * takes a visible amount of time before the reset fires.
  *
  * Note: in the fake (host-side test) ``ra8_reset_software_reset``
  * returns; on real silicon it never returns. The app's ``while`` loop
