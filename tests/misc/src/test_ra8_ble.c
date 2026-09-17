@@ -35,6 +35,7 @@ typedef enum : uint8_t {
   k_test_addr_byte_3       = 0x44U, /**< Test address byte 3.             */
   k_test_addr_byte_4       = 0x55U, /**< Test address byte 4.             */
   k_test_addr_byte_5       = 0x66U, /**< Test address byte 5.             */
+  k_test_cfg_flag_bad      = 2U,    /**< Out-of-range open config flag.   */
 } ble_test_bytes_t;
 
 typedef enum : uint16_t {
@@ -54,7 +55,9 @@ static void prep_open(void)
   ra8_fake_mmap_reset();
   /* If a previous test left the driver open, force-close. */
   (void)ra8_ble_close();
-  const ra8_ble_config_t cfg = {.use_external_osc = 1U, .deep_sleep_enable = 1U};
+  /* Both flags must be 0: they are C6-side knobs this transport
+   * refuses rather than silently swallows (issue #1348). */
+  const ra8_ble_config_t cfg = {.use_external_osc = 0U, .deep_sleep_enable = 0U};
   TEST_ASSERT_EQ(k_ra8_ok, ra8_ble_open(&cfg));
   ra8_ble_test_reset_capture();
 }
@@ -522,9 +525,63 @@ static void test_mcdc_ble_acl_inject_args(void)
   TEST_END("ble MC/DC: send_acl_data + inject_rx arg pairs");
 }
 
+/**
+ * @brief The open descriptor is validated, not ignored (issue #1348).
+ *
+ * @details
+ * ``use_external_osc`` and ``deep_sleep_enable`` are controller-side
+ * knobs owned by the ESP32-C6 companion, so ``ra8_ble_open`` refuses a
+ * set flag with ``k_ra8_err_not_supported`` and an out-of-range value
+ * with ``k_ra8_err_invalid_arg``, leaving the transport closed. Also
+ * pins the ordering: the descriptor is checked before the already-open
+ * test, so an open transport still reports the flag fault.
+ *
+ * @par MC/DC:
+ * (no compound decisions in the code under test -- each guard in
+ * ``ra8_ble_open`` is a single-condition ``if``, so one vector per
+ * guard outcome suffices; no `&&` or `||` is touched by this case)
+ */
+static void test_open_cfg_flags(void)
+{
+  TEST_BEGIN("ble open validates its descriptor");
+  ra8_fake_mmap_reset();
+  (void)ra8_ble_close();
+
+  /* Out of range: 0/1 booleans, so 2 is a caller bug. */
+  const ra8_ble_config_t bad_osc_range = {.use_external_osc  = k_test_cfg_flag_bad,
+                                          .deep_sleep_enable = 0U};
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_ble_open(&bad_osc_range));
+  const ra8_ble_config_t bad_sleep_range = {.use_external_osc  = 0U,
+                                            .deep_sleep_enable = k_test_cfg_flag_bad};
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_ble_open(&bad_sleep_range));
+
+  /* Set but unhonourable: refused, not swallowed. */
+  const ra8_ble_config_t osc_requested = {.use_external_osc = 1U, .deep_sleep_enable = 0U};
+  TEST_ASSERT_EQ(k_ra8_err_not_supported, ra8_ble_open(&osc_requested));
+  const ra8_ble_config_t sleep_requested = {.use_external_osc = 0U, .deep_sleep_enable = 1U};
+  TEST_ASSERT_EQ(k_ra8_err_not_supported, ra8_ble_open(&sleep_requested));
+
+  /* A refused open leaves the transport closed. */
+  TEST_ASSERT_EQ(k_ra8_err_not_initialized,
+                 ra8_ble_hci_send_command((uint16_t)k_test_op_le_set_adv_enable, nullptr, 0U));
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_ble_close());
+
+  /* Both clear is the only accepted descriptor. */
+  const ra8_ble_config_t good = {.use_external_osc = 0U, .deep_sleep_enable = 0U};
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_ble_open(&good));
+
+  /* Descriptor before state: an open transport still reports the flag. */
+  TEST_ASSERT_EQ(k_ra8_err_not_supported, ra8_ble_open(&osc_requested));
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_ble_open(&good));
+
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_ble_close());
+  TEST_END("ble open validates its descriptor");
+}
+
 int main(void)
 {
   test_open_close();
+  test_open_cfg_flags();
   test_open_null_cfg();
   test_send_command_before_open();
   test_hci_send_command_framing();

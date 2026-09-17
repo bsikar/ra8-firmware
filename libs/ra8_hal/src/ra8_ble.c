@@ -88,6 +88,10 @@ typedef enum : uint8_t {
   k_ra8_ble_byte_mask  = 0xFFU, /**< RA8 BLE byte mask.             */
 } ra8_ble_byte_const_t;
 
+typedef enum : uint8_t {
+  k_ra8_ble_cfg_flag_max = 1U, /**< Config flags are 0/1 booleans. */
+} ra8_ble_cfg_const_t;
+
 /**
  * @enum ra8_ble_hci_opcode_t
  * @brief HCI LE command opcodes used by the convenience wrappers
@@ -197,6 +201,24 @@ RA8_INTERNAL static uint8_t internal_rx_byte(uint8_t* out)
 ra8_err_t ra8_ble_open(const ra8_ble_config_t* cfg)
 {
   RA8_CHECK_NULL_PTR(cfg, s_tag, "cfg must not be NULL");
+  /* Descriptor first, so a flag this transport cannot programme is
+   * refused the same way whatever the open state (issue #1348). */
+  if (cfg->use_external_osc > k_ra8_ble_cfg_flag_max) {
+    return k_ra8_err_invalid_arg;
+  }
+  if (cfg->deep_sleep_enable > k_ra8_ble_cfg_flag_max) {
+    return k_ra8_err_invalid_arg;
+  }
+  /* The C6 companion is the controller: it owns the radio oscillator
+   * source and the controller sleep policy, and no HCI command or
+   * companion-link message here sets either. Refuse rather than
+   * accept a request this seam cannot honour. */
+  if (cfg->use_external_osc != 0U) {
+    return k_ra8_err_not_supported;
+  }
+  if (cfg->deep_sleep_enable != 0U) {
+    return k_ra8_err_not_supported;
+  }
   if (s_state.open != 0U) {
     return k_ra8_err_invalid_arg;
   }
