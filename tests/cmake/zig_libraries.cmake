@@ -43,3 +43,5 @@ target_link_libraries(
          ra8_zig::ra8_power_profile
          ra8_zig::ra8_epd_cal
 )
+
+link_libraries(ra8_zig::ra8_box ra8_zig::ra8_power_profile ra8_zig::ra8_epd_cal)

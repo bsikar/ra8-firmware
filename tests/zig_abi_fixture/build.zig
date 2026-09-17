@@ -18,6 +18,8 @@ pub fn build(b: *std.Build) void {
             .optimize = optimize,
         }),
     });
+    library.bundle_compiler_rt = true;
+    library.root_module.pic = true;
     b.installArtifact(library);
 
     const abi_module = b.createModule(.{
