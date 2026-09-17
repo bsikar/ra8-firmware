@@ -2,6 +2,9 @@
  * @file ra8_cgc.c
  * @brief Clock Generation Circuit driver -- RA8D2 PLL bring-up
  *
+ * @par Tag
+ * [Ring 3 / HAL] {World: S}
+ *
  * @details
  * Brings the RA8D2 clock tree from reset defaults (MOCO @ ~8 MHz) up
  * to the EK-RA8D2 quickstart target (CPUCLK0 = 1 GHz, ICLK = 250 MHz).
