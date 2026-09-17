@@ -32,6 +32,11 @@ list_tools() {
 build_one() {
   local dir="$1" name="${1##*/}" mode=()
   [ "$name" != ra8_emulator ] || mode=(--emulator)
+  if [ "$name" = ra8_emulator ] && [ ! -f "$dir/CMakeLists.txt" ]; then
+    echo "tools/ra8_emulator is a submodule (bsikar/ra8-emulator) and is not checked out." >&2
+    echo "Run 'git submodule update --init --recursive tools/ra8_emulator' and retry." >&2
+    return 1
+  fi
   echo "==> Building tools/$name"
   if ! "$SCRIPT_DIR/host_cmake.sh" "${mode[@]}" "$dir" "$dir/build"; then
     echo "tools/$name failed to build." >&2
