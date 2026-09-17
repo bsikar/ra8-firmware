@@ -289,6 +289,10 @@ if [[ "$-" == *p* ]]; then
   # GitHub Actions step), resolves the SAME pinned binaries; require_tool_versions
   # then makes the wrong version fail loudly. One home for the policy, sourced the
   # same way as parallelism.sh.
+  # export_tools_cache() lives there too: the persistent pinned-tool cache
+  # (#326) is part of the same "how a gate reaches its pinned tools"
+  # contract, and keeping it beside use_pinned_tool_path holds this file
+  # under the 1000-line maintainability cap check_file_size.py enforces.
   # shellcheck source=scripts/ci/lib/tool_env.sh
   . "${SCRIPT_DIR}/ci/lib/tool_env.sh"
 
@@ -316,61 +320,6 @@ if [[ "$-" == *p* ]]; then
   # runs it) resolve the SAME arm-none-eabi-gcc. Sourced like parallelism.sh.
   # shellcheck source=scripts/ci/lib/arm_toolchain.sh
   . "${SCRIPT_DIR}/ci/lib/arm_toolchain.sh"
-
-  # Persistent PINNED-TOOL cache (#326). The docs gate builds with a
-  # version-pinned doxygen that scripts/builders/provision_doxygen.sh downloads +
-  # sha256-verifies on first use. Every suite run builds in a fresh mktemp
-  # snapshot whose build/tools/ is destroyed on exit, so without a persistent
-  # location that download repeats every run and FAILS outright with no network.
-  # This is to pinned tools what the ccache mount is to compiled objects: one host
-  # directory, reused across runs and shared across agents at zero cost.
-  ra8_tools_cache_host_dir() {
-    printf '%s\n' "${RA8_TOOLS_CACHE_DIR:-/var/cache/ra8-tools}"
-  }
-
-  # Point provision_doxygen.sh (and any future pinned-tool provisioner) at that
-  # persistent directory by exporting RA8_TOOLS_CACHE, for the paths that run a
-  # gate DIRECTLY on the host (single-gate and native-suite modes). The container
-  # path sets RA8_TOOLS_CACHE via `-e` against the /toolcache mount instead, so
-  # leave an already-set value untouched. A cache is an optimisation: an
-  # unwritable location degrades to the per-build build/tools/ rather than
-  # failing a gate.
-  #
-  # The canonical host directory is a MOUNT the deployed ARC runner image does
-  # not carry, so on those runners the first candidate is unwritable and every
-  # gate re-downloads the pinned doxygen, zig and rust into the per-build
-  # build/tools/ that the snapshot then destroys. Fall back to the runner's own
-  # tool cache and then to the user cache home before giving up: both survive a
-  # snapshot and are writable wherever the canonical mount is missing, which
-  # turns ~20 re-downloads per suite back into one. Resolution stops at the
-  # first candidate that exists and is writable; when none is, the degrade is
-  # unchanged.
-  ra8_tools_cache_candidates() {
-    printf '%s\n' "$(ra8_tools_cache_host_dir)"
-    [[ -n "${RUNNER_TOOL_CACHE:-}" ]] && printf '%s/ra8-tools\n' "${RUNNER_TOOL_CACHE}"
-    if [[ -n "${XDG_CACHE_HOME:-}" ]]; then
-      printf '%s/ra8-tools\n' "${XDG_CACHE_HOME}"
-    elif [[ -n "${HOME:-}" ]]; then
-      printf '%s/.cache/ra8-tools\n' "${HOME}"
-    fi
-    return 0
-  }
-
-  export_tools_cache() {
-    [[ -n "${RA8_TOOLS_CACHE:-}" ]] && return 0
-    local dir
-    while read -r dir; do
-      [[ -n "$dir" ]] || continue
-      mkdir -p "$dir" 2>/dev/null || continue
-      if [[ -d "$dir" && -w "$dir" ]]; then
-        export RA8_TOOLS_CACHE="$dir"
-        echo "==> pinned-tool cache: $dir (survives the snapshot; docs gate doxygen)" >&2
-        return 0
-      fi
-    done < <(ra8_tools_cache_candidates)
-    echo "==> pinned-tool cache unavailable at $(ra8_tools_cache_host_dir); continuing without it" >&2
-    return 0
-  }
 
   # Refuse to run a ra8_emulator gate on an unpinned Unicorn.
   #
