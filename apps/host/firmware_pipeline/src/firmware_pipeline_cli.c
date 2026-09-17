@@ -9,8 +9,6 @@
  * SPDX-License-Identifier: MIT
  */
 
-#include <stddef.h>
-
 #include "firmware_pipeline_cli_internal.h"
 
 RA8_PRIV firmware_pipeline_cli_status_t priv_firmware_pipeline_parse_args(int          argc,

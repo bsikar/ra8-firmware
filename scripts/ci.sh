@@ -300,6 +300,16 @@ if [[ "$-" == *p* ]]; then
   # shellcheck source=scripts/ci/lib/abort.sh
   . "${SCRIPT_DIR}/ci/lib/abort.sh"
 
+  # use_pinned_lang_toolchains() -- resolve the pinned Zig and Rust toolchains
+  # the migrated libraries and the ABI fixtures build against. The deployed ARC
+  # runner image predates those .devcontainer/Dockerfile layers, so without this
+  # every gate that configures the tree dies on
+  # cmake/zig_abi_contract.cmake's "requires zig on PATH" instead of returning a
+  # verdict. Sourced like parallelism.sh; the pins come from the Dockerfile so
+  # there is no second copy to drift.
+  # shellcheck source=scripts/ci/lib/lang_toolchains.sh
+  . "${SCRIPT_DIR}/ci/lib/lang_toolchains.sh"
+
   # use_pinned_arm_toolchain() -- put the pinned Arm GNU Toolchain (cortex-m85
   # aware) on PATH. One home for the policy so ci.sh's cross-build gates and
   # scripts/checks/clang_tidy.sh (its firmware pass, and the pre-commit hook that
@@ -682,6 +692,11 @@ print((pr.get("base") or {}).get("sha") or ev.get("before") or "")
       echo "ci.sh: refusing to run '$name' without the declared tool environment." >&2
       return 1
     fi
+    # Same choke point for the language toolchains the Zig migration made
+    # load-bearing. Non-fatal by design: a gate that needs zig or cargo still
+    # fails through its own require_cmd diagnostic when provisioning could not
+    # reach the official download, rather than dying here with a curl error.
+    use_pinned_lang_toolchains
     fn="$(gate_fn_name "$name")"
     if ! declare -F "$fn" >/dev/null 2>&1; then
       echo "ci.sh: unknown gate '$name'. Registered gates:" >&2
