@@ -354,6 +354,8 @@ gate_macos_host_build() (
   # two so the diagnosis names Rosetta and the native re-run instead.
   # shellcheck source=scripts/ci/lib/host_arch.sh
   . scripts/ci/lib/host_arch.sh
+  # shellcheck source=scripts/ci/lib/macos_host_roots.sh
+  . scripts/ci/lib/macos_host_roots.sh
   local host_os host_proc_arch host_arch
   host_os="$(uname -s)"
   host_proc_arch="$(uname -m)"
@@ -386,13 +388,22 @@ gate_macos_host_build() (
   printf '=== host target decision ===\n'
   (cd tools/zig_build && zig build explain-host-target)
 
+  # Which roots this gate builds is a declared list with a reason per root,
+  # not three names inlined here: a host root added later takes its default
+  # target from ra8_build.hostDefaultTargetQuery and so looks correct from
+  # Linux, while nothing ever builds it on a Mac. macos_host_roots.sh --selftest
+  # fails when a build.zig exists that the manifest does not mention, and the
+  # coverage is printed so a GREEN run states what it did not measure.
+  printf '\n=== gate coverage ===\n'
+  ra8_macos_host_announce_coverage
+
   local root
-  for root in tools/zig_build apps/host/image_pyramid tests/zig_abi_fixture; do
+  while IFS= read -r root; do
     printf '\n=== %s: zig build (default host target) ===\n' "${root}"
     (cd "${root}" && zig build --summary all)
     printf '\n=== %s: zig build test ===\n' "${root}"
     (cd "${root}" && zig build test --summary all)
-  done
+  done < <(ra8_macos_host_covered_roots)
 
   # Linking is not the claim; what came out of the link is. Read the emitted
   # Mach-O back and check it is a native arm64 image, stamped with the
