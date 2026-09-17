@@ -54,7 +54,4 @@ cpu1_pingpong_ipc_cpu1.elf  examples/ek_ra8d2/hil_needs_revalidation/cpu1_pingpo
 cpu1_pingpong_ipc_cpu1.elf  libs/ra8_core/src/ra8_log.c
 cpu1_pingpong_ipc_cpu1.elf  libs/ra8_core/src/ra8_scb.c
 cpu1_pingpong_ipc_cpu1.elf  libs/ra8_hal/src/ra8_ipc.c
-ereader_m33_cpu1.elf  libs/ra8_gfx/src/ra8_gfx_font_8x16.c
-ereader_m33_cpu1.elf  libs/ra8_gfx/src/ra8_gfx_text.c
-ereader_m33_cpu1.elf  libs/ra8_gfx/src/ra8_gfx_text_glyph.c
 ereader_m33_cpu1.elf  libs/ra8_hal/src/ra8_ipc.c

@@ -28,8 +28,13 @@ WHAT IT ENFORCES, PRECISELY
     A new one that is not in the inventory FAILS: extend the profile, or add
     the row deliberately and say why in review.
   * An inventory row that no longer escapes -- the source is now a helper
-    ``SOURCES`` entry, no longer attached to that image, or gone from disk --
-    FAILS as stale and must be deleted.  Rows are never auto-rewritten.
+    ``SOURCES`` entry, routed through ``ra8_cpu1_add_first_party_sources()``,
+    no longer attached to that image, or gone from disk -- FAILS as stale and
+    must be deleted.  Rows are never auto-rewritten.
+  * ``ra8_cpu1_add_first_party_sources(<image> <files...>)`` is the way OFF
+    this inventory: it bolts the sources on AND applies the same per-source
+    profile, so this checker counts them as covered.  Plain
+    ``target_sources()`` does not, and never will.
   * Vendored SOUP (``third_party/``, generated ``libs/ra8_fonts/``) must NOT
     appear in the inventory: the inventory is first-party debt, and SOUP is
     deliberately outside the first-party bar (#843 forbids widening blanket
@@ -78,6 +83,10 @@ import textwrap
 from pathlib import Path
 
 HELPER = "ra8_add_cpu1_image"
+# The T1-09 opt-in: an app bolts first-party TUs onto a CPU1 image THROUGH
+# this helper, which applies the same per-source profile, so its sources
+# count as covered.  Plain target_sources() does not.
+FIRST_PARTY_HELPER = "ra8_cpu1_add_first_party_sources"
 INVENTORY_REL = ".github/cpu1-warning-profile-baseline.txt"
 
 # The flag that makes a hand-rolled executable a CPU1 image.  An app that skips
@@ -261,6 +270,7 @@ def parse_listfile(root: Path, rel: str) -> list[Image]:
         images.append(image)
     images += handrolled_images(text, app_dir, globs, setvars, rel, {i.target for i in images})
     for image in images:
+        collect_opt_in(text, app_dir, globs, image)
         collect_added(text, app_dir, globs, image)
     return images
 
@@ -308,6 +318,26 @@ def handrolled_images(
                 image.added += hits
         images.append(image)
     return images
+
+
+def collect_opt_in(text: str, app_dir: str, globs: dict[str, list[str]], image: Image) -> None:
+    """Attach ``ra8_cpu1_add_first_party_sources()`` tokens to ``image`` as COVERED.
+
+    That helper does the ``target_sources()`` AND puts the per-source warning
+    profile on the same files, so a source routed through it is on the bar.
+    An unresolvable token still fails: a blind parse must not read as coverage.
+    """
+    for match in re.finditer(rf"{FIRST_PARTY_HELPER}\s*\(", text):
+        block = call_block(text, match.start())
+        tokens = block.split()
+        if not tokens or tokens[0] != image.target:
+            continue
+        for token in tokens[1:]:
+            hits = resolve_source(token, app_dir, globs)
+            if hits is None:
+                image.unresolved.append(token)
+            else:
+                image.covered += hits
 
 
 def collect_added(text: str, app_dir: str, globs: dict[str, list[str]], image: Image) -> None:
@@ -482,6 +512,40 @@ def selftest_cases() -> list[tuple[str, str, str, str]]:
     ]
 
 
+# The same fixture with its one first-party app-added source routed through
+# the opt-in helper instead of plain target_sources(): the image then has no
+# escape left, and the SOUP source still sits outside the first-party bar.
+_IPC_SRC = "${RA8_REPO_ROOT}/libs/ra8_hal/src/ra8_ipc.c"
+OPT_IN_LISTFILE = FIXTURE_LISTFILE.replace(
+    f"      target_sources(\n        demo_cpu1.elf\n        PRIVATE {_IPC_SRC}\n",
+    "      ra8_cpu1_add_first_party_sources(\n"
+    f"        demo_cpu1.elf\n        {_IPC_SRC}\n      )\n"
+    "      target_sources(\n        demo_cpu1.elf\n        PRIVATE\n",
+)
+
+
+def opt_in_cases() -> list[tuple[str, str, str]]:
+    """(name, inventory, expected substring) for the opt-in coverage route.
+
+    In OPT_IN_LISTFILE the one first-party app-added source is routed through
+    ``ra8_cpu1_add_first_party_sources()``, so the image has NO escape left:
+    every inventory row is therefore stale, and none of these cases may report
+    that source as escaping.
+    """
+    return [
+        (
+            "row for an opt-in source is stale",
+            "demo_cpu1.elf libs/ra8_hal/src/ra8_ipc.c\n",
+            "stale",
+        ),
+        (
+            "row for a helper-appended source is stale",
+            "demo_cpu1.elf libs/ra8_core/src/ra8_freestanding_mem.c\n",
+            "stale",
+        ),
+    ]
+
+
 def run_case(inventory: str, listfile: str = FIXTURE_LISTFILE) -> tuple[str, list[str]]:
     """Build a fixture tree, return (vacuity error, findings)."""
     with tempfile.TemporaryDirectory() as tmp:
@@ -509,13 +573,24 @@ def selftest() -> int:
     )
     if "does not resolve" not in " ".join([error, *findings]):
         failures.append("unresolved token: expected a finding")
+    for name, inventory, expect in opt_in_cases():
+        error, findings = run_case(inventory, OPT_IN_LISTFILE)
+        blob = " ".join([error, *findings])
+        if expect not in blob:
+            failures.append(f"{name}: expected {expect!r} in {blob!r}")
+        if "ra8_ipc.c: first-party CPU1 source" in blob:
+            failures.append(f"{name}: opt-in source still counted as an escape: {blob!r}")
+    blind = OPT_IN_LISTFILE.replace(_IPC_SRC, "${SOME_APP_VAR}")
+    error, findings = run_case("demo_cpu1.elf libs/ra8_hal/src/ra8_ipc.c\n", blind)
+    if "does not resolve" not in " ".join([error, *findings]):
+        failures.append("opt-in unresolved token: expected a finding, not silent coverage")
     if failures:
         for failure in failures:
             print(f"check_cpu1_warning_profile.py: SELFTEST FAIL -- {failure}", file=sys.stderr)
         return 1
     print(
         "check_cpu1_warning_profile.py: selftest PASS "
-        f"({len(selftest_cases()) + 1} cases, both directions)"
+        f"({len(selftest_cases()) + len(opt_in_cases()) + 2} cases, both directions)"
     )
     return 0
 
