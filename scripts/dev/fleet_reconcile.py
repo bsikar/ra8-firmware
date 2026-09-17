@@ -38,6 +38,7 @@ import fleet_reconcile_dryrun_selftest as frdr
 import fleet_reconcile_freeze_selftest as frf
 import fleet_reconcile_frozen_selftest as frfz
 import fleet_reconcile_interrupt_selftest as fri
+import fleet_reconcile_lift_selftest as frlt
 import fleet_reconcile_orphan_selftest as fro
 import fleet_reconcile_parked_selftest as frpk
 import fleet_reconcile_process as frp
@@ -119,6 +120,10 @@ CAPACITY_MUTATION_VERBS = frozenset({"parked-apply", "quarantine", "restore", "a
 # host afterwards, so a transaction whose LAST capacity verb reopened capacity
 # ended with the host serving and proven (issue #888).
 CAPACITY_REOPEN_VERBS = frozenset({"restore", "activate"})
+# ``cmd_restore`` refuses outright when the durable maintenance marker is
+# absent, and that refusal is the one that means the park is no longer held:
+# somebody else already lifted it and this controller's record is stale.
+PARK_MARKER_ABSENT_RE = re.compile(r"cannot restore without a durable maintenance marker")
 SHA256_RE = re.compile(r"[0-9a-f]{64}")
 ANSI_RE = re.compile(r"\x1b\[[0-9;]*m")
 
@@ -1054,6 +1059,139 @@ def report_durable_park(parked: dict[str, dict[str, int]], now: int) -> list[str
     return held
 
 
+def park_marker_absent(output: str) -> bool:
+    """Report whether a refused restore says the durable park was already lifted.
+
+    ``cmd_restore`` refuses before it touches admission when the maintenance
+    marker is absent, so that one refusal is evidence ABOUT the park rather
+    than a failure to lift it: an operator who ran the restore themselves
+    removed the marker, and the record kept here is simply stale.  Reading it
+    is what keeps a park somebody else lifted from failing every later pass
+    over a host that is fine.
+    """
+    return bool(PARK_MARKER_ABSENT_RE.search(ANSI_RE.sub("", output)))
+
+
+def report_park_release_refused(host: str, status: int, entry: dict[str, int], now: int) -> None:
+    """Name a durable park this controller issued the restore for and could not lift."""
+    print(
+        f"fleet-reconcile: CRITICAL: {host}: the capacity restore that lifts its durable "
+        f"maintenance park was REFUSED (rc={status}); the host stays pinned at ZERO "
+        "admission, its own window timer cannot raise it, and this controller has now "
+        "proven it cannot reopen the host by itself "
+        f"({entry['passes']} pass(es), {now - entry['since']}s parked)",
+        file=sys.stderr,
+    )
+
+
+def release_durable_park(
+    host: str, run: CommandRunner, parked: dict[str, dict[str, int]], now: int
+) -> bool:
+    """Issue the one verb that lifts a durable maintenance park, and prove it landed.
+
+    A host this controller left parked is pinned at zero admission by its own
+    marker: ``cmd_window``, the host-local timer, refuses to raise admission
+    while it is there, and ``capacity-restore`` is the only thing that removes
+    it.  The parked record was report-only and NOTHING ever issued that
+    restore, so a later pass whose check came back CLEAN mutated nothing at
+    all: it published a receipt, cleared no park, and exited 0 with the host
+    held at zero for as long as that receipt stayed valid, which is a whole
+    full-apply interval (seven days in production).  A fleet that cannot climb
+    back out on its own is issue #888 itself, and this is it arriving through
+    the newest record.  Reopening a host whose declaration verified this pass
+    is exactly what ``recover_last_known_good`` already does after a failed
+    apply, one pass later and with the same evidence.
+    """
+    entry = parked[host]
+    print(
+        f"fleet-reconcile: {host}: its declaration reconciled this pass while it still "
+        f"holds a durable maintenance park ({entry['passes']} pass(es), "
+        f"{now - entry['since']}s); issuing the capacity restore that lifts it",
+        file=sys.stderr,
+    )
+    result = run(fleet_command(host, "restore"))
+    emit_result(result)
+    if not result.status:
+        restore_admission(host, result)
+        clear_park(parked, host)
+        return True
+    if park_marker_absent(f"{result.stdout}\n{result.stderr}"):
+        print(
+            f"fleet-reconcile: WARNING: {host}: the restore reports no durable maintenance "
+            "marker, so this park was lifted outside this controller; dropping the record",
+            file=sys.stderr,
+        )
+        clear_park(parked, host)
+        return True
+    report_park_release_refused(host, result.status, entry, now)
+    return False
+
+
+def reconciled_this_pass(receipts: dict[str, Any], host: str, now: int) -> bool:
+    """Report whether THIS pass published a receipt for one host.
+
+    ``invalidate_receipt`` drops a failed host's receipt and ``record_success``
+    stamps a published one with this pass's clock, so the receipt is the
+    evidence that this host's declaration verified just now.  Anything older
+    belongs to an earlier pass and proves nothing about this one.
+    """
+    receipt = receipts.get(host)
+    return isinstance(receipt, dict) and receipt.get("checked_at") == now
+
+
+def release_durable_parks(
+    receipts: dict[str, Any],
+    parked: dict[str, dict[str, int]],
+    order: Sequence[str],
+    options: ReconcileOptions,
+    run: CommandRunner,
+) -> list[str]:
+    """Lift the park on every host this pass reconciled, naming what stayed held.
+
+    Narrow on purpose.  Only a host whose own declaration verified THIS pass is
+    reopened, so nothing is put back in service while a mutation is in flight
+    or after an apply that failed; only hosts this fleet still manages are
+    touched, because this controller cannot restore what it does not declare;
+    and a read-only pass issues nothing at all, since the restore is a
+    mutation and check mode makes none.
+    """
+    if options.mode != "apply":
+        return []
+    managed = set(order)
+    return [
+        host
+        for host in sorted(parked)
+        if host in managed
+        and reconciled_this_pass(receipts, host, options.now)
+        and not release_durable_park(host, run, parked, options.now)
+    ]
+
+
+def settle_pass_records(  # noqa: PLR0913  # the pass's records plus what it takes to settle them
+    document: dict[str, Any],
+    state_path: Path,
+    stranding: dict[str, dict[str, int]],
+    parked: dict[str, dict[str, int]],
+    order: Sequence[str],
+    options: ReconcileOptions,
+    run: CommandRunner,
+) -> list[str]:
+    """Settle this pass's records after its hosts, then read them out loud.
+
+    The park release runs here, after the per-host loop, because it is the one
+    mutation a pass makes on behalf of a host it never had to touch, and
+    persisting it is this function's own job.  A park this controller issued
+    the restore for and could NOT lift escalates alongside the
+    stranded-at-zero records: the host is held at zero, and a pass that has
+    proven it cannot reopen the host by itself must not report that as an
+    ordinary one-off failure.
+    """
+    refused = release_durable_parks(document["hosts"], parked, order, options, run)
+    if options.mode == "apply":
+        save_state(state_path, document)
+    return sorted({*pass_escalations(stranding, order, options, parked), *refused})
+
+
 def prune_unmanaged_stranding(
     stranding: dict[str, dict[str, int]], hosts: Sequence[str], now: int
 ) -> list[str]:
@@ -1741,7 +1879,7 @@ def reconcile(
                 )
     if options.mode == "apply":
         save_state(state_path, document)
-    escalated = pass_escalations(stranding, order, options, parked)
+    escalated = settle_pass_records(document, state_path, stranding, parked, order, options, run)
     return pass_verdict(undrained, escalated, halted, failures)
 
 
@@ -2309,6 +2447,7 @@ def selftest() -> int:
     failures.extend(frpr.run(sys.modules[__name__]))
     failures.extend(fro.run(sys.modules[__name__]))
     failures.extend(frpk.run(sys.modules[__name__]))
+    failures.extend(frlt.run(sys.modules[__name__]))
     failures.extend(frsv.run(sys.modules[__name__]))
     failures.extend(fru.run(sys.modules[__name__]))
     failures.extend(frrc.run(sys.modules[__name__]))
