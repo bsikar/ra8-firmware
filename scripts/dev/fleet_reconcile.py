@@ -34,6 +34,7 @@ import fleet_reconcile_recovery_selftest as frr
 import fleet_reconcile_release_selftest as frrl
 import fleet_reconcile_reopen_selftest as frre
 import fleet_reconcile_selftest as frs
+import fleet_reconcile_settle_selftest as frse
 import fleet_reconcile_stranding_selftest as frst
 import fleet_wsl as fw
 
@@ -365,6 +366,38 @@ def wait_before_retry(seconds: float, sleep: Callable[[float], None] = time.slee
     return not frp.interrupted_status()
 
 
+def report_double_refusal(
+    host: str, drain_failure: DrainFailedError | None, recovery_failure: DrainFailedError
+) -> None:
+    """Name every refused drain when recovery's own drain is refused as well.
+
+    Recovering last-known-good capacity drains again when the reopen does not
+    verify, and that second drain can be refused too.  It raised straight out
+    of ``settle_exhausted_mutation``, so a first refusal recorded moments
+    earlier was dropped on the floor: the operator saw one status code for a
+    host the controller had failed to drain twice, with nothing tying the two
+    attempts together.  Issue #888 went unnoticed five times because a fleet
+    held at zero read like a one-off failure, so a host nobody can drain says
+    so in full.
+    """
+    if drain_failure is None:
+        print(
+            f"fleet-reconcile: CRITICAL: {host}: the drain that followed an "
+            f"unverified reopen was REFUSED (rc={recovery_failure.status}); the "
+            "first drain landed, but capacity was reopened after it, so this "
+            "host is unaccounted for",
+            file=sys.stderr,
+        )
+        return
+    print(
+        f"fleet-reconcile: CRITICAL: {host}: drain REFUSED twice "
+        f"(after the exhausted mutation rc={drain_failure.status}, after the "
+        f"unverified reopen rc={recovery_failure.status}); nothing proved what "
+        "this host is serving and nothing could take it out of service",
+        file=sys.stderr,
+    )
+
+
 def settle_exhausted_mutation(
     host: str, run: CommandRunner, on_mutation_exhausted: Callable[[], bool] | None
 ) -> None:
@@ -382,7 +415,13 @@ def settle_exhausted_mutation(
         quarantine(host, run)
     except DrainFailedError as error:
         drain_failure = error
-    accounted = on_mutation_exhausted() if on_mutation_exhausted is not None else False
+    try:
+        accounted = on_mutation_exhausted() if on_mutation_exhausted is not None else False
+    except DrainFailedError as recovery_failure:
+        report_double_refusal(host, drain_failure, recovery_failure)
+        if drain_failure is None:
+            raise
+        raise recovery_failure from drain_failure
     if drain_failure is None:
         return
     if not accounted:
@@ -1291,6 +1330,7 @@ def selftest() -> int:
     failures.extend(frre.run(sys.modules[__name__]))
     failures.extend(frst.run(sys.modules[__name__]))
     failures.extend(frrl.run(sys.modules[__name__]))
+    failures.extend(frse.run(sys.modules[__name__]))
     _selftest_state_safety(failures)
     failures.extend(fml.run_selftest())
     _selftest_timeout(failures)
