@@ -3,6 +3,9 @@
  * @brief Reduced-MAC (RMAC) PHY driver -- off-chip PHY for the GMAC-FPI
  * @ingroup grp_hal_net
  *
+ * @par Tag
+ * [Ring 3 / HAL] {World: NS}
+ *
  * @details
  * Mirrors the FSP `r_rmac_phy` API shape. The RMAC peripheral sits
  * inside the RA8D2 (HUM Ch 33) and talks to an off-chip PHY over

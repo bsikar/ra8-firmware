@@ -3,6 +3,9 @@
  * @brief BLE HCI transport seam (host-side)
  * @ingroup grp_hal_system
  *
+ * @par Tag
+ * [Ring 3 / HAL] {World: NS}
+ *
  * @details
  * The host-side HCI transport the NimBLE host stack (via ``port/nimble``)
  * sits on. It is deliberately the controller-agnostic seam:
