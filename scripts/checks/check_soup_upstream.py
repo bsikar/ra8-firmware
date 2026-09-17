@@ -96,16 +96,23 @@ EXIT_VACUOUS = 2
 # pronounce all of them clean, and a manifest made only of `patch`/`local` rows
 # would prove nothing about upstream at all -- it would record our opinion of
 # our own tree, which is exactly the defect this gate exists to remove.  All
-# three are MEASURED against the live tree. Re-measured 2026-08-22 after the
-# unused XML vendor was removed: 19 components, 9150 vendored files, 9133 of
-# them byte-identical to their pinned upstream revision. The file floors keep enough
-# slack that ordinary re-vendoring does not trip them while sitting far above
-# any plausible collapse; MIN_COMPONENTS has no component slack, so adding or
-# deleting a vendored component is meant to fail here until whoever
-# does it re-measures these three numbers deliberately.
+# three are MEASURED against the live tree. Re-measured 2026-09-17 after the
+# NimBLE prune (#622) dropped 212 never-buildable vendored files: 19 components,
+# 8938 vendored files, 8918 of them byte-identical to their pinned upstream
+# revision. The previous measurement, 2026-08-22 after the unused XML vendor was
+# removed, read 19 / 9150 / 9133 against floors of 9000 / 8900, and the prune put
+# the live tree under that entry floor. The floors move with a DELIBERATE change
+# to the vendored set and keep the same slack as before (roughly 1.5% on entries,
+# 2.5% on upstream-verified), so what they still catch is unchanged: an
+# enumeration that collapsed, not a subset someone chose on purpose and recorded
+# in docs/SOUP/. The file floors keep enough slack that ordinary re-vendoring
+# does not trip them while sitting far above any plausible collapse;
+# MIN_COMPONENTS has no component slack, so adding or deleting a vendored
+# component is meant to fail here until whoever does it re-measures these three
+# numbers deliberately.
 MIN_COMPONENTS = 19
-MIN_ENTRIES = 9000
-MIN_UPSTREAM_VERIFIED = 8900
+MIN_ENTRIES = 8800
+MIN_UPSTREAM_VERIFIED = 8700
 
 GIT_TIMEOUT_S = 900
 FETCH_TIMEOUT_S = 300
