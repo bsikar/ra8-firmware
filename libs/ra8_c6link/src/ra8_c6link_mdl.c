@@ -547,7 +547,6 @@ typedef struct {
  *
  * @param[in] http Caller-supplied optional headers; individual members may be null.
  * @param[out] out Zero-initialized staging storage to fill.
- * @return Nothing.
  * @pre @p http and @p out are non-null.
  * @pre Every non-null member of @p http fits its protocol maximum.
  * @post Every present member is copied and NUL-terminated in @p out.

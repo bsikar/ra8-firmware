@@ -156,8 +156,6 @@ RA8_PRIV void* priv_c6link_arena_alloc(void* ctx, size_t size);
  *                ignored.
  * @param[in] pointer Block to release; null is ignored.
  *
- * @return Nothing.
- *
  * @pre @p pointer came from ::priv_c6link_arena_alloc on the same link.
  * @pre No other reference to the block survives the call.
  * @post The bump offset is unchanged or rolled back to @p pointer.
@@ -184,8 +182,6 @@ RA8_PRIV void priv_c6link_arena_free(void* ctx, void* pointer);
  * bounds the arena requirement to one message rather than to a run.
  *
  * @param[in,out] link Link whose arena to empty; null is ignored.
- *
- * @return Nothing.
  *
  * @pre No block from the arena is still referenced.
  * @pre The link is open, or the call is a no-op.
@@ -215,8 +211,6 @@ RA8_PRIV void priv_c6link_arena_reset(ra8_c6link_t* link);
  *
  * @param[out] out Descriptor to fill; must be non-null.
  * @param[in] link Link whose arena backs it; must be non-null.
- *
- * @return Nothing.
  *
  * @pre @p link is open.
  * @pre @p out outlives every decode it is passed to.
@@ -253,8 +247,6 @@ RA8_PRIV void priv_c6link_arena_bind(ProtobufCAllocator* out, ra8_c6link_t* link
  * @param[out] tx Transmit transaction; must be non-null and
  *                ::k_ra8_c6link_frame_bytes long.
  *
- * @return Nothing.
- *
  * @pre No transfer is in flight on @p tx.
  * @pre @p tx covers a whole transaction.
  * @post Byte zero carries `ESP_MAX_IF`; every other byte is zero.
@@ -287,8 +279,6 @@ RA8_PRIV void priv_c6link_frame_filler(uint8_t* tx);
  * @param[in] if_num Interface number for the frame, 0..15.
  * @param[in] len Payload length already staged; at most
  *                ::k_ra8_c6link_max_payload.
- *
- * @return Nothing.
  *
  * @pre @p len bytes are staged at `tx + k_ra8_c6link_header_bytes`.
  * @pre @p len is within ::k_ra8_c6link_max_payload.
@@ -865,8 +855,6 @@ priv_c6link_rpc_consume(ra8_c6link_t* link, const uint8_t* payload, uint16_t len
  *
  * @param[in,out] link Open handle; must be non-null.
  * @param[in] ev Decoded announcement; must be non-null.
- *
- * @return Nothing.
  *
  * @pre @p ev is fully populated for its kind.
  * @pre The callback, if any, does not re-enter the link.

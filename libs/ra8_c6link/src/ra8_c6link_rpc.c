@@ -226,7 +226,6 @@ RA8_PRIV ra8_err_t priv_c6link_rpc_call(ra8_c6link_t*        link,
  *        channel and BSSID open.
  * @param[out] ev Record to fill; must be non-null and already cleared.
  * @param[in] body Decoded event body; null leaves @p ev with its kind only.
- * @return Nothing.
  * @pre @p ev has been zero-initialised by the caller.
  * @pre @p body belongs to a message still owned by the decoder.
  * @post @p ev names the AP the station reached.
@@ -251,7 +250,6 @@ RA8_INTERNAL static void internal_c6link_rpc_ev_connected(ra8_c6link_event_t*   
  *        which is how a vanished AP is told from a rejected passphrase.
  * @param[out] ev Record to fill; must be non-null and already cleared.
  * @param[in] body Decoded event body; null leaves @p ev with its kind only.
- * @return Nothing.
  * @pre @p ev has been zero-initialised by the caller.
  * @pre @p body belongs to a message still owned by the decoder.
  * @post @p ev carries the 802.11 reason code the AP or the radio supplied.
@@ -279,7 +277,6 @@ RA8_INTERNAL static void internal_c6link_rpc_ev_disconnected(ra8_c6link_event_t*
  *        built.
  * @param[in,out] link Open handle; must be non-null.
  * @param[in] msg Decoded message whose `msg_type` is `Event`; must be non-null.
- * @return Nothing.
  * @pre @p msg is still owned by the decoder and its arena is live.
  * @pre @p link is open.
  * @post Announcements this library models were delivered exactly once.

@@ -165,7 +165,6 @@ typedef struct ra8_c6link_sta_wire_buf {
  *        const-cast out of the caller's record.
  * @param[out] buf Staging storage; must be non-null and zero-initialised.
  * @param[in] cfg Station configuration; must be non-null and consistent.
- * @return Nothing.
  * @pre @p cfg's lengths are within the protocol maxima, which
  *      ::ra8_c6link_wifi_join has already checked.
  * @pre @p buf has been zero-initialised, so unused octets are zero.

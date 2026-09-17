@@ -91,7 +91,6 @@ static_assert((uint16_t)k_ra8_c6link_max_payload ==
  *        transaction survives, which is what lets the encoder write in place.
  * @param[out] frame Buffer to clear; must be non-null.
  * @param[in] from First byte to clear, so a staged payload can be preserved.
- * @return Nothing.
  * @pre @p frame is ::k_ra8_c6link_frame_bytes long.
  * @pre @p from is at most ::k_ra8_c6link_frame_bytes.
  * @post Every byte from @p from onwards is zero.
