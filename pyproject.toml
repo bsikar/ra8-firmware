@@ -20,6 +20,18 @@ runtime = [
 dev = [
   { include-group = "runtime" },
   "cmakelang==0.6.13",
+  # gcovr is the ONE pin here that is deliberate rather than merely current,
+  # so the reason lives next to it and an audit does not have to re-derive it
+  # (#802). Two upstream editions break the coverage data model between 7.0
+  # and today's 8.6: 8.0 (2024-10-07) dropped the function return count and
+  # renamed the data-model/JSON `name` key to `demangled_name`, and 8.4
+  # (2025-09-27) began retaining several coverage records per source line,
+  # which moves this tree's per-file line and branch counts. Both baselines
+  # gated off those counts (.github/tree-coverage-baseline.txt,
+  # .github/mcdc-baseline.txt) were frozen by 7.0, so a bump is a
+  # re-baseline, not an upgrade. See docs/TOOLCHAIN.md 3.7; the pin is
+  # asserted exact by scripts/checks/check_tool_versions.py and demanded by
+  # scripts/report/tree_coverage.sh and the coverage-tree gate.
   "gcovr==7.0",
   "libclang==18.1.1",
   "ruff==0.15.19",
