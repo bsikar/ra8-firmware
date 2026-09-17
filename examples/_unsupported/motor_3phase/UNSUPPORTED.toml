@@ -1,0 +1,16 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Brighton Sikarskie
+#
+# Machine-readable exclusion marker for examples/_unsupported/motor_3phase (#401).
+# The prose in this app's README says what it does; this file says, in a form a
+# gate can read, WHY it is excluded from hardware validation. Keys and the
+# `reason` taxonomy are enforced by scripts/checks/check_unsupported_exclusions.py.
+
+app = "motor_3phase"
+reason = "external-hardware"
+also = []
+needs_extra_hardware = true
+evidence = "examples/_unsupported/motor_3phase/README.md"
+detail = """
+Written for an external three-phase gate-driver IC this project does not own, and the GTIOC pin choice in src/main.c is an unconfirmed placeholder that must be checked against the board manual before anything is wired to it.
+"""

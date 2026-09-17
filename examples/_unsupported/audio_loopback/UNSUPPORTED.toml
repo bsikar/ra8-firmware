@@ -1,0 +1,16 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Brighton Sikarskie
+#
+# Machine-readable exclusion marker for examples/_unsupported/audio_loopback (#401).
+# The prose in this app's README says what it does; this file says, in a form a
+# gate can read, WHY it is excluded from hardware validation. Keys and the
+# `reason` taxonomy are enforced by scripts/checks/check_unsupported_exclusions.py.
+
+app = "audio_loopback"
+reason = "onboard-routing-conflict"
+also = ["human-observation"]
+needs_extra_hardware = false
+evidence = "examples/_unsupported/audio_loopback/README.md"
+detail = """
+J41 must be jumpered to the DA7212 CODEC: two of the CODEC's SSIE data pins are shared with the parallel-camera data lines, so the board wires them to one peripheral or the other, never both. With the camera fitted this app is mute by construction, and a pass can only be judged by hearing the AUDIO OUT jack.
+"""
