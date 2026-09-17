@@ -65,3 +65,20 @@ add_custom_command(
 )
 target_sources(ereader_ui.elf PRIVATE "${_ra8_baked_font_c}")
 target_include_directories(ereader_ui.elf PRIVATE "${_d}/libs/ra8_fonts")
+
+# ---- Optional Settings app (#146 "core uninstallable") --------------------
+# libs/ra8_app/inc/ra8_app.h documents RA8_APP_SETTINGS as the build-time knob
+# that keeps an app out of the registry entirely: the Settings screen, its nav
+# tap target and its registration are each guarded by `#ifdef RA8_APP_SETTINGS`
+# in src/main.c, src/ereader_ui_input.c and src/ereader_ui_screens.c. Nothing
+# declared the macro, so those blocks compiled in no configuration and the
+# documented knob was unreachable. OFF by default so the shipped chrome (and
+# `just apps::emulator::golden`) stays byte-identical; scripts/dev/ra8_apps.py
+# carries the ON build as the `@app-settings` configuration.
+option(RA8_APP_SETTINGS "Register the optional Settings app in the e-reader chrome" OFF)
+
+if(TARGET ereader_ui.elf)
+  target_compile_definitions(
+    ereader_ui.elf PRIVATE $<$<BOOL:${RA8_APP_SETTINGS}>:RA8_APP_SETTINGS>
+  )
+endif()

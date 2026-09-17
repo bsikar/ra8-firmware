@@ -53,6 +53,12 @@ SHARD_SUBDIR = Path("build") / "build_all_examples" / ".shard"
 #: The full execution matrix, written identically by every shard.
 ALL_CONFIGS_NAME = "all-configs.txt"
 
+#: Example app (relative to examples/) carrying an option-gated second build.
+EREADER_UI_REL_PATH = "ek_ra8d2/hw_validated/hil/ereader_ui"
+
+#: Variant suffix of that second build configuration.
+APP_SETTINGS_VARIANT = "app-settings"
+
 RC_OK = 0
 RC_VIOLATION = 1
 MIN_EXAMPLE_PATH_PARTS = 2
@@ -69,9 +75,10 @@ def discover_apps(repo_root: Path) -> list[str]:
     This structural walk deliberately does not import ``ra8_apps.py``, the
     execution authority. It scans both examples and standalone board products,
     then independently requires every app-option variant: the e-reader's normal
-    and Non-Secure XIP configurations, and media_download's normal and
-    source-image configurations. A defect in the execution enumerator therefore
-    cannot make this proof agree with the same omission.
+    and Non-Secure XIP configurations, media_download's normal and source-image
+    configurations, and the e-reader chrome's optional-Settings build. A defect
+    in the execution enumerator therefore cannot make this proof agree with the
+    same omission.
 
     :param repo_root: Repository root to discover under.
     :returns: Sorted app names.
@@ -92,6 +99,11 @@ def discover_apps(repo_root: Path) -> list[str]:
             configs.add(identifier)
             if rel.as_posix() == MEDIA_DOWNLOAD_REL_PATH:
                 configs.add(f"{identifier}@source-image")
+            if rel.as_posix() == EREADER_UI_REL_PATH:
+                # The e-reader chrome's optional Settings app (#146) only
+                # compiles with RA8_APP_SETTINGS=ON, so the ON build is a
+                # required configuration, not an extra one a shard may skip.
+                configs.add(f"{identifier}@{APP_SETTINGS_VARIANT}")
 
     board_root = repo_root / "apps" / "board" / "stand_alone"
     if board_root.is_dir():
@@ -188,14 +200,20 @@ def check_union(repo_root: Path, shards: int) -> tuple[int, list[str]]:
 
 
 def _write_tree(
-    root: Path, apps: list[str], *, ereader: bool = False, media_download: bool = False
+    root: Path,
+    apps: list[str],
+    *,
+    ereader: bool = False,
+    media_download: bool = False,
+    ereader_ui: bool = False,
 ) -> None:
     """Materialise a throwaway examples/ tree of buildable apps.
 
     :param root: Fake repo root.
     :param apps: App directory names to create.
-    :param ereader: Also create the standalone e-reader product.
+    :param ereader: Also create the standalone board e-reader product.
     :param media_download: Also create the media_download example.
+    :param ereader_ui: Also create the e-reader chrome example (option-gated).
     """
     for app in apps:
         d = root / "examples" / "tier" / app
@@ -217,6 +235,14 @@ def _write_tree(
         (d / "src" / "main.c").write_text("void main(void) {}\n", encoding="ascii")
         (d / "CMakeLists.txt").write_text(
             "add_executable(ereader src/main.c)\n",
+            encoding="ascii",
+        )
+    if ereader_ui:
+        d = root / "examples" / EREADER_UI_REL_PATH
+        (d / "src").mkdir(parents=True, exist_ok=True)
+        (d / "src" / "main.c").write_text("void main(void) {}\n", encoding="ascii")
+        (d / "CMakeLists.txt").write_text(
+            "add_executable(ereader_ui src/main.c)\n",
             encoding="ascii",
         )
 
@@ -241,12 +267,13 @@ def _shard_manifests(root: Path, shards: int, slices: list[list[str]]) -> None:
 
 def _selftest_cases() -> int:
     """Run the complete and malformed shard-manifest fixtures."""
-    cases: tuple[tuple[str, list[str], bool, int, list[list[str]], bool], ...] = (
-        # (label, example names, ereader, shards, slices, expect_pass)
+    cases: tuple[tuple[str, list[str], bool, bool, int, list[list[str]], bool], ...] = (
+        # (label, example names, ereader, ereader_ui, shards, slices, expect_pass)
         (
             "complete examples plus board variants",
             ["a", "b"],
             True,
+            False,
             2,
             [
                 ["board::stand_alone::ra8d2-ereader", "tier::a"],
@@ -254,13 +281,22 @@ def _selftest_cases() -> int:
             ],
             True,
         ),
-        ("complete 1-way", ["a", "b"], False, 1, [["tier::a", "tier::b"]], True),
-        ("a shard built nothing", ["a", "b"], False, 2, [["tier::a"], []], False),
-        ("an app fell through", ["a", "b"], False, 2, [["tier::a"], []], False),
-        ("an app built twice", ["a", "b"], False, 2, [["tier::a"], ["tier::a"]], False),
+        ("complete 1-way", ["a", "b"], False, False, 1, [["tier::a", "tier::b"]], True),
+        ("a shard built nothing", ["a", "b"], False, False, 2, [["tier::a"], []], False),
+        ("an app fell through", ["a", "b"], False, False, 2, [["tier::a"], []], False),
+        (
+            "an app built twice",
+            ["a", "b"],
+            False,
+            False,
+            2,
+            [["tier::a"], ["tier::a"]],
+            False,
+        ),
         (
             "an unknown app appeared",
             ["a", "b"],
+            False,
             False,
             2,
             [["tier::a"], ["tier::b", "ghost"]],
@@ -270,16 +306,38 @@ def _selftest_cases() -> int:
             "e-reader XIP configuration omitted",
             [],
             True,
+            False,
             1,
             [["board::stand_alone::ra8d2-ereader"]],
             False,
         ),
+        (
+            "e-reader chrome optional-Settings build covered",
+            [],
+            False,
+            True,
+            2,
+            [
+                ["ek_ra8d2::hw_validated::hil::ereader_ui"],
+                ["ek_ra8d2::hw_validated::hil::ereader_ui@app-settings"],
+            ],
+            True,
+        ),
+        (
+            "e-reader chrome optional-Settings build omitted",
+            [],
+            False,
+            True,
+            1,
+            [["ek_ra8d2::hw_validated::hil::ereader_ui"]],
+            False,
+        ),
     )
     failures = 0
-    for label, tree, ereader, shards, slices, expect_pass in cases:
+    for label, tree, ereader, ereader_ui, shards, slices, expect_pass in cases:
         with tempfile.TemporaryDirectory() as td:
             root = Path(td)
-            _write_tree(root, tree, ereader=ereader)
+            _write_tree(root, tree, ereader=ereader, ereader_ui=ereader_ui)
             _shard_manifests(root, shards, slices)
             rc, problems = check_union(root, shards)
             ok = (rc == RC_OK) if expect_pass else (rc == RC_VIOLATION)
