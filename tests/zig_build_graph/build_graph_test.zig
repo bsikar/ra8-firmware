@@ -16,6 +16,7 @@ const abi = graph.abi_contract;
 const db = graph.compile_db;
 const sources = graph.cross_sources;
 const cpu1 = graph.cpu1_image;
+const mw = graph.middleware;
 
 /// The apps the cross slice builds, by the rules they exercise: one that names
 /// no libraries at all, one that names two, and one that keeps more than a
@@ -23,6 +24,9 @@ const cpu1 = graph.cpu1_image;
 const bare_app = graph.cross_apps[0];
 const library_app = graph.cross_apps[1];
 const dual_core_app = graph.cross_apps[2];
+/// And one that names a vendored middleware in `USES`, which is the only way
+/// the middleware exports below are observable at all.
+const middleware_app = graph.cross_apps[3];
 
 test "board opt-in gate drops the two sources an app must ask for" {
     try std.testing.expect(
@@ -325,6 +329,120 @@ test "the second image's include path is the narrow one, not the app's" {
         "libs/ra8_net_pal/inc",
         "libs/ra8_usb_pal/inc",
         "libs/ra8_nsc/inc",
+        "libs/ra8_secure_app/inc",
+    }) |absent| {
+        try std.testing.expect(indexOf(dirs, absent) == null);
+    }
+}
+
+test "the replaced vendored unit is matched whole, not by prefix" {
+    // cmake/threadx.cmake drops exactly one upstream unit, because the project
+    // ships its own copy of it. Three files in that directory share the
+    // `tx_initialize_` prefix, and a prefix match would silently delete the
+    // kernel's entry and setup units along with it.
+    try std.testing.expect(mw.isReplaced(mw.threadx, "tx_initialize_low_level.S"));
+    try std.testing.expect(!mw.isReplaced(mw.threadx, "tx_initialize_kernel_enter.c"));
+    try std.testing.expect(!mw.isReplaced(mw.threadx, "tx_initialize_kernel_setup.c"));
+    // And the project copy that replaces it is compiled in its place, so the
+    // symbol is defined exactly once.
+    try std.testing.expect(indexOf(
+        mw.threadx.project_sources,
+        "port/threadx/src/cortex_m85/tx_initialize_low_level.S",
+    ) != null);
+}
+
+test "a middleware exports defines, include dirs and link options onto its app" {
+    // An arena: these builders hand back the ArrayList's own slice, whose
+    // capacity need not equal its length, so the set is freed in one go
+    // rather than slice by slice.
+    var arena = std.heap.ArenaAllocator.init(std.testing.allocator);
+    defer arena.deinit();
+    const allocator = arena.allocator();
+
+    const uses = mw.resolve(allocator, middleware_app.uses);
+    const none = mw.resolve(allocator, bare_app.uses);
+
+    // Each export is a separate mechanism, and three of the four fail
+    // SILENTLY when they are missing: the kernel reads its own defaults
+    // instead of port/threadx/inc/tx_user.h, the vendor headers land on the
+    // app's -Werror include path, and the link succeeds with a time base that
+    // never advances (issue #8).
+    const defines = mw.appDefines(allocator, uses);
+    try std.testing.expect(indexOf(defines, "-DTX_INCLUDE_USER_DEFINE_FILE") != null);
+
+    const include_dirs = mw.appIncludeDirs(allocator, uses);
+    try std.testing.expect(indexOf(include_dirs, "port/threadx/inc") != null);
+
+    const system_dirs = mw.appSystemIncludeDirs(allocator, uses);
+    try std.testing.expect(indexOf(system_dirs, "libs/third_party/threadx/common/inc") != null);
+    // The vendor headers are -isystem, never -I: on the ordinary include path
+    // their own diagnostics would fail the app's compile, not the vendor's.
+    try std.testing.expect(indexOf(include_dirs, "libs/third_party/threadx/common/inc") == null);
+
+    const link_options = mw.appLinkOptions(allocator, uses);
+    try std.testing.expect(indexOf(link_options, "-Wl,--undefined=_tx_timer_interrupt") != null);
+
+    // The other arm: an app that names no middleware gets none of it.
+    try std.testing.expectEqual(@as(usize, 0), mw.appDefines(allocator, none).len);
+    try std.testing.expectEqual(@as(usize, 0), mw.appIncludeDirs(allocator, none).len);
+    try std.testing.expectEqual(@as(usize, 0), mw.appSystemIncludeDirs(allocator, none).len);
+    try std.testing.expectEqual(@as(usize, 0), mw.appLinkOptions(allocator, none).len);
+}
+
+test "a middleware TU takes its own bar, and assembly is not the C bar" {
+    const toolchain = mw.Toolchain{
+        .gcc = "arm-none-eabi-gcc",
+        .ar = "arm-none-eabi-ar",
+        .global_defines = &.{"-DRA8_FREESTANDING"},
+        .c_flags = &.{ "-mcpu=cortex-m85", "-fdata-sections", "-O0", "-g3", "-std=gnu2x" },
+        .asm_flags = &.{ "-mcpu=cortex-m85", "-g3" },
+    };
+
+    const c_flags = mw.unitFlags(toolchain, mw.threadx, .{
+        .path = "libs/third_party/threadx/common/src/tx_block_allocate.c",
+        .language = .c,
+    });
+    const asm_flags = mw.unitFlags(toolchain, mw.threadx, .{
+        .path = "libs/third_party/threadx/ports/cortex_m85/gnu/src/tx_thread_schedule.S",
+        .language = .assembly,
+    });
+
+    // CMAKE_ASM_FLAGS is not CMAKE_C_FLAGS: the assembler is handed the CPU
+    // selection and the debug level, and nothing else. Handing it the C set
+    // is not a stricter build, it is a failed one.
+    try std.testing.expect(indexOf(c_flags, "-std=gnu2x") != null);
+    try std.testing.expect(indexOf(asm_flags, "-std=gnu2x") == null);
+    try std.testing.expect(indexOf(asm_flags, "-fdata-sections") == null);
+    try std.testing.expect(indexOf(asm_flags, "-mcpu=cortex-m85") != null);
+
+    // Neither set carries a warning flag. The vendored sources have their
+    // COMPILE_OPTIONS wiped, and the first-party SysTick glue compiled into
+    // the same target never had the project profile either, so an app TU and
+    // a middleware TU are held to genuinely different bars.
+    for ([_][]const []const u8{ c_flags, asm_flags }) |set| {
+        try std.testing.expect(indexOf(set, "-Werror") == null);
+        try std.testing.expect(indexOf(set, "-Wall") == null);
+        try std.testing.expect(indexOf(set, "-Wstack-usage=2200") == null);
+    }
+}
+
+test "a middleware's include path is its own, not the app's" {
+    var arena = std.heap.ArenaAllocator.init(std.testing.allocator);
+    defer arena.deinit();
+    const dirs = mw.includeDirs(arena.allocator(), mw.threadx);
+
+    // Private first (tx_systick_retune.c reprograms SysTick from the live CGC
+    // clock, so it needs the first-party headers), then the public one.
+    try std.testing.expectEqualStrings("libs/ra8_core/inc", dirs[0]);
+    try std.testing.expectEqualStrings("libs/ra8_hal/inc", dirs[1]);
+    try std.testing.expectEqualStrings("port/threadx/inc", dirs[dirs.len - 1]);
+
+    // No app directory, no board, no PAL: the middleware is built once and is
+    // independent of which app links it.
+    for ([_][]const u8{
+        "libs/ra8_board_ek_ra8d2/inc",
+        "libs/ra8_net_pal/inc",
+        "libs/ra8_usb_pal/inc",
         "libs/ra8_secure_app/inc",
     }) |absent| {
         try std.testing.expect(indexOf(dirs, absent) == null);
