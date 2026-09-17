@@ -49,14 +49,6 @@ compile_on_m33_cpu1.elf  apps/shared_libs/epub/src/epub_open.c
 compile_on_m33_cpu1.elf  apps/shared_libs/epub/src/epub_xml_shim.c
 compile_on_m33_cpu1.elf  apps/shared_libs/epub/src/epub_xml_toc.c
 compile_on_m33_cpu1.elf  apps/shared_libs/epub/src/epub_zip_guard.c
-compile_on_m33_cpu1.elf  apps/shared_libs/rabook_compile/src/ra8_rabook_finalize.c
-compile_on_m33_cpu1.elf  apps/shared_libs/rabook_compile/src/ra8_rabook_gray4.c
-compile_on_m33_cpu1.elf  apps/shared_libs/rabook_compile/src/ra8_rabook_pipeline.c
-compile_on_m33_cpu1.elf  apps/shared_libs/rabook_compile/src/ra8_rabook_xml_shim.c
-compile_on_m33_cpu1.elf  apps/shared_libs/rabook_compile/src/rabook_compile.c
-compile_on_m33_cpu1.elf  apps/shared_libs/xml/src/xml.c
-compile_on_m33_cpu1.elf  apps/shared_libs/xml/src/xml_decode.c
-compile_on_m33_cpu1.elf  apps/shared_libs/xml/src/xml_doctype.c
 cpu1_pingpong_cpu1.elf  examples/ek_ra8d2/hw_validated/hil/cpu1_pingpong/src/cpu1_main.c
 cpu1_pingpong_cpu1.elf  libs/ra8_core/src/ra8_log.c
 cpu1_pingpong_cpu1.elf  libs/ra8_core/src/ra8_scb.c

@@ -99,24 +99,33 @@ if(TARGET compile_on_m33_cpu1.elf)
   #   - ra8_ipc.c: the M33 side of the #150 mode-switch IPC path. It joins the
   #     bar here now that its channel-regs cast no longer trips
   #     -Wbad-function-cast; its inventory rows are gone.
+  #   - the rabook_compile emitter and the xml parser: this image's whole
+  #     reason to exist (cpu1_main.c calls rabook_compile_from_epub_to_buffer
+  #     over the parser and emitter). Measured on the profile at this image's
+  #     -Os: all eight compile clean, and none of the parse or emit frames
+  #     reaches -Wstack-usage=2048, so the emitter path now carries real stack
+  #     evidence instead of none. Their rows are gone from the inventory.
   ra8_cpu1_add_first_party_sources(
     compile_on_m33_cpu1.elf
     ${RA8_REPO_ROOT}/libs/ra8_core/src/ra8_decomp_limits.c
     ${RA8_REPO_ROOT}/libs/ra8_core/src/ra8_error_handler.c
     ${RA8_REPO_ROOT}/libs/ra8_hal/src/ra8_ipc.c
+    ${RA8_REPO_ROOT}/apps/shared_libs/rabook_compile/src/rabook_compile.c
+    ${RA8_REPO_ROOT}/apps/shared_libs/rabook_compile/src/ra8_rabook_finalize.c
+    ${RA8_REPO_ROOT}/apps/shared_libs/rabook_compile/src/ra8_rabook_gray4.c
+    ${RA8_REPO_ROOT}/apps/shared_libs/rabook_compile/src/ra8_rabook_xml_shim.c
+    ${RA8_REPO_ROOT}/apps/shared_libs/rabook_compile/src/ra8_rabook_pipeline.c
+    ${RA8_REPO_ROOT}/apps/shared_libs/xml/src/xml.c
+    ${RA8_REPO_ROOT}/apps/shared_libs/xml/src/xml_decode.c
+    ${RA8_REPO_ROOT}/apps/shared_libs/xml/src/xml_doctype.c
   )
   file(GLOB _c1_epub_c CONFIGURE_DEPENDS ${RA8_REPO_ROOT}/apps/shared_libs/epub/src/*.c)
+  # Still plain target_sources(): the epub glob (10 first-party TUs, still
+  # inventory rows) and vendored miniz.c (SOUP, deliberately outside the
+  # first-party bar).
   target_sources(
     compile_on_m33_cpu1.elf
-    PRIVATE ${RA8_REPO_ROOT}/apps/shared_libs/rabook_compile/src/rabook_compile.c
-            ${RA8_REPO_ROOT}/apps/shared_libs/rabook_compile/src/ra8_rabook_finalize.c
-            ${RA8_REPO_ROOT}/apps/shared_libs/rabook_compile/src/ra8_rabook_gray4.c
-            ${RA8_REPO_ROOT}/apps/shared_libs/rabook_compile/src/ra8_rabook_xml_shim.c
-            ${RA8_REPO_ROOT}/apps/shared_libs/rabook_compile/src/ra8_rabook_pipeline.c
-            ${RA8_REPO_ROOT}/apps/shared_libs/xml/src/xml.c
-            ${RA8_REPO_ROOT}/apps/shared_libs/xml/src/xml_decode.c
-            ${RA8_REPO_ROOT}/apps/shared_libs/xml/src/xml_doctype.c
-            ${_c1_epub_c}
+    PRIVATE ${_c1_epub_c}
             ${RA8_REPO_ROOT}/apps/shared_libs/third_party/miniz/miniz.c
   )
   # MINIZ_NO_STDIO/NO_TIME on EVERY TU that includes miniz.h (miniz.c + epub)
