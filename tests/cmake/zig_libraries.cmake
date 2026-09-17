@@ -290,6 +290,15 @@ ra8_add_zig_library(
   ra8_wifi
 )
 
+ra8_add_zig_library(
+  NAME
+  if_ra8_vfs
+  ZIG_ROOT
+  ${FW_ROOT}/libs/if_ra8_vfs
+  LIBRARY_NAME
+  if_ra8_vfs
+)
+
 # ra8_core_hal is the OBJECT library every host test links, so an INTERFACE
 # link here reaches each test executable that pulls in a migrated library.
 target_link_libraries(
@@ -313,6 +322,7 @@ target_link_libraries(
          ra8_zig::ra8_wifi
          ra8_zig::ra8_ov5640
          ra8_zig::ra8_modem_at
+         ra8_zig::if_ra8_vfs
 )
 
 link_libraries(
@@ -324,4 +334,4 @@ link_libraries(
   ra8_zig::ra8_audio ra8_zig::ra8_wifi
 )
 
-link_libraries(ra8_zig::ra8_audio ra8_zig::ra8_wifi ra8_zig::ra8_ov5640 ra8_zig::ra8_modem_at)
+link_libraries(ra8_zig::ra8_audio ra8_zig::ra8_wifi ra8_zig::ra8_ov5640 ra8_zig::ra8_modem_at ra8_zig::if_ra8_vfs)
