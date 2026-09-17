@@ -474,6 +474,55 @@ from Linux: it takes its default target from
 be built on a Mac at all. Adding a root is therefore a deliberate edit here:
 cover it, or write down why not.
 
+## The SDK precondition runs the probe
+
+`command -v xcrun` is not a question about the SDK. macOS ships `/usr/bin/xcrun`
+as a stub on every install, whether or not any developer tools sit behind it,
+and it fails only when run:
+
+    xcrun: error: invalid active developer path (/Library/Developer/CommandLineTools),
+           missing xcrun at: /Library/Developer/CommandLineTools/usr/bin/xcrun
+
+So the gate's old `require_cmd xcrun` passed on a Mac with no Command Line
+Tools at all. The graph then located no SDK, reported `sdk_not_probed`, pinned
+the bundled libSystem stub, and every root built and tested cleanly, so the
+gate reported **green for the native SDK link path it never took**. The
+forced-SDK informational leg, the one channel through which a real Mac reports
+the state of Apple's stub back to this repository, recorded nothing either.
+
+`scripts/ci/lib/macos_sdk.sh` runs the probe the graph runs and keeps the
+failures apart, because each is a different morning:
+
+| state | what it means | fix |
+| --- | --- | --- |
+| `ok` | an SDK is readable and carries `usr/lib/libSystem.tbd` | nothing |
+| `xcrun_absent` | no `xcrun` on `PATH` or at `/usr/bin/xcrun` | `xcode-select --install` |
+| `developer_dir_invalid` | `xcrun` ran, no developer directory is active | `xcode-select --install`, then `sudo xcode-select --reset` |
+| `license_unaccepted` | `xcrun` refuses until the licence is accepted | `sudo xcodebuild -license accept` |
+| `sdk_path_empty` | the probe succeeded and printed nothing | run `xcrun --show-sdk-path` and read the error |
+| `sdk_path_missing` | the named SDK is not on this disk | `xcode-select -p`, then `--reset` |
+| `stub_missing` | the SDK ships no `libSystem.tbd` | reinstall the Command Line Tools |
+| `not_macos` | a Linux checkout | run the gate on an arm64 Mac |
+
+Anything but `ok` is a refusal with that remedy printed, and the gate prints the
+state under `=== active macOS SDK ===` on the way past either way. To ask
+directly, on your own Mac:
+
+    bash scripts/ci/lib/macos_sdk.sh --report
+
+The build graph is deliberately left forgiving. A developer with no Command
+Line Tools can still build the host apps here: they are libc-only and the
+bundled stub serves them, so `sdk_not_probed` pinning the bundled stub is the
+right local behaviour. It is only the *gate* that must refuse, because a gate
+that cannot ask its question must not answer it.
+
+`bash scripts/ci/lib/macos_sdk.sh --selftest` runs inside `toolchain-parity`.
+It drives every state through a stubbed `xcrun` seam (the on-disk rows use real
+directories), proves the probe is executed exactly once at the resolved path
+and not at all off macOS, proves no two states share a diagnosis, and reads the
+gate body to check it still calls `ra8_macos_sdk_require` and no longer leans
+on `xcrun` merely being present.
+
 ## What runs on a clock
 
 `.github/workflows/macos-host.yml` runs the `macos-host-build` gate nightly on

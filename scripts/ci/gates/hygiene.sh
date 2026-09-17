@@ -638,6 +638,11 @@ gate_toolchain_parity() (
   bash scripts/ci/lib/tool_env.sh --selftest
   bash scripts/ci/lib/host_tool_path.sh --selftest
   bash scripts/ci/lib/host_arch.sh --selftest
+  # The macOS SDK precondition. `command -v xcrun` passes on a Mac with no
+  # Command Line Tools, which let the macos-host-build gate report green for a
+  # link path it never took (#899); this proves the probe is actually run and
+  # that every failure keeps its own remedy.
+  bash scripts/ci/lib/macos_sdk.sh --selftest
   # macOS ships bash 3.2 as /bin/bash, which justfile and scripts/ci.sh both
   # pin. A bash 4 construct on the macOS gate's shell path reads as correct on
   # every Linux box here and breaks only the Mac (#899), so it is caught from
