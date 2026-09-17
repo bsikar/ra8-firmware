@@ -33,5 +33,5 @@ ra8_add_app(
   NAME imu_lsm6dso_demo
   STACK_BYTES 2200
   DESCRIPTION "imu_lsm6dso_demo firmware for RA8D2"
-  LIBS ra8_lsm6dso ra8_board_ek_ra8d2
+  LIBS ra8_lsm6dso ra8_board_ek_ra8d2 ra8_io_bus
 )
