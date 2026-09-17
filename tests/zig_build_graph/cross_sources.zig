@@ -38,6 +38,13 @@ pub const CrossApp = struct {
     /// has one. Null for a single-core app, which is every app whose whole
     /// CMakeLists is one ra8_add_app() call. See cpu1_image.zig.
     cpu1: ?cpu1_image.Cpu1Image = null,
+    /// The per-function stack-frame budget this app names in `STACK_BYTES`,
+    /// which ra8_add_app() forwards to ra8_target_enable_project_warnings() as
+    /// `STACK_USAGE_BYTES` and which becomes `-Wstack-usage=<n>` on every one
+    /// of the app's own translation units. The default is 2200, not the 2048
+    /// cmake/ra8_warnings.cmake falls back to: ra8_add_app() always passes the
+    /// keyword, so its own default is the one an app gets by saying nothing.
+    stack_bytes: u32 = 2200,
     /// Vendored middleware named in `USES`, in the order the app names it.
     /// Each one compiles its own translation units at its own bar AND exports
     /// include directories, defines, and link options onto this app. See
@@ -78,6 +85,48 @@ pub const library_aliases = [_]LibraryAlias{
     },
 };
 
+/// A translation unit a named library globs in that ra8_add_app() then drops
+/// again unless the app ALSO names the library whose headers it reaches for.
+/// `libs/ra8_io/src/ra8_io_blockdev_vsource.c` is the case today: a bare
+/// `ra8_io` globs it in, but it includes ra8_vsource.h from ra8_mem, so
+/// cmake/ra8_app/sources.cmake keeps it (and puts `libs/ra8_mem/inc` on the
+/// include path) only for an app that declares `ra8_mem` as well.
+///
+/// Encoded for the same reason the board gate is: a directory-listing graph
+/// compiles the unit for every `ra8_io` consumer, and it does not fail on the
+/// missing header -- `libs/ra8_mem/inc` happens to be reachable through
+/// nothing at all, so what you get is an extra object in an image CMake never
+/// put it in. #1068 measured the drop arm on ra8_io_swap_demo (which names
+/// `ra8_io` and not `ra8_mem`): 261 units against CMake's 260, this one
+/// either-only. The KEEP arm is encoded from the listfile and is not yet
+/// measured -- no app in the table names `ra8_mem`.
+pub const LibrarySourceGate = struct {
+    /// The gated unit, repo-relative.
+    source: []const u8,
+    /// The library the app must also name in `LIBS` to keep it.
+    satisfied_by: []const u8,
+    /// The include directory that same declaration adds.
+    include_dir: []const u8,
+};
+
+pub const library_source_gates = [_]LibrarySourceGate{
+    .{
+        .source = "libs/ra8_io/src/ra8_io_blockdev_vsource.c",
+        .satisfied_by = "ra8_mem",
+        .include_dir = "libs/ra8_mem/inc",
+    },
+};
+
+/// True when `source` is a library unit whose companion library the app does
+/// not declare.
+pub fn isGatedOutLibrarySource(app: CrossApp, source: []const u8) bool {
+    for (library_source_gates) |gate| {
+        if (!std.mem.eql(u8, gate.source, source)) continue;
+        return !declaresLibrary(app, gate.satisfied_by);
+    }
+    return false;
+}
+
 /// Board translation units that are opt-in rather than universal, and the
 /// library an app must name in `LIBS` to get them. The rule lives in
 /// cmake/ra8_app/sources.cmake, NOT in the board directory: the board glob
@@ -99,6 +148,151 @@ pub const BoardOptIn = struct {
 pub const board_opt_in_sources = [_]BoardOptIn{
     .{ .suffix = "_console_stream.c", .satisfied_by = &.{"ra8_io"} },
     .{ .suffix = "_touch.c", .satisfied_by = &.{ "ra8_io", "ra8_io_bus" } },
+};
+
+// ===========================================================================
+// The app table (#936, widened by #1021, #1036, #1044, #1054, #1068)
+// ===========================================================================
+
+pub const cross_apps = [_]CrossApp{
+    .{
+        .name = "blink_hal",
+        .dir = "examples/ek_ra8d2/hw_validated/hil/blink_hal",
+        .board = "libs/ra8_board_ek_ra8d2",
+        // ra8_add_app() falls back to the board's canonical single-core map
+        // when the app has no linker_script.ld of its own, which this app
+        // does not.
+        .linker_script = "libs/ra8_board_ek_ra8d2/ld/linker_script.ld",
+        // blink_hal names no LIBS at all: it is the universal first-party set
+        // and nothing else, which is what made it the right FIRST app to
+        // cross-build here. The `zig_libraries` hook below is wired and
+        // exercised by an empty list; an app that links a migrated Zig ARCHIVE
+        // cannot be cross-built by either build system yet, see #948.
+        .libraries = &.{},
+        .zig_libraries = &.{},
+    },
+    .{
+        // The second app, and the reason there is a table here at all: one app
+        // cannot distinguish a rule that generalises from a constant that
+        // happens to be right. iic_b_facade_demo names two libraries in LIBS
+        // and so takes the OTHER arm of every source rule blink_hal takes --
+        // the board opt-in gate keeps `..._touch.c` instead of dropping it, a
+        // library with no directory of its own contributes six translation
+        // units, and the include path grows a directory. It links no migrated
+        // Zig archive, so #948 does not block it.
+        .name = "iic_b_facade_demo",
+        .dir = "examples/ek_ra8d2/hw_validated/hil/iic_b_facade_demo",
+        .board = "libs/ra8_board_ek_ra8d2",
+        .linker_script = "libs/ra8_board_ek_ra8d2/ld/linker_script.ld",
+        .libraries = &.{ "ra8_board_ek_ra8d2", "ra8_io_bus" },
+        .zig_libraries = &.{},
+    },
+    .{
+        // The third app, for the rule NEITHER of the first two can see: both
+        // of them keep exactly one translation unit under their own `src/`
+        // (main.c), so every app-local decision ra8_add_app() makes was
+        // unobservable. cpu1_pingpong keeps three, and each takes a different
+        // arm:
+        //
+        //   src/main.c            the primary entry point, added first.
+        //   src/trustzone_init.c  an app-local override of a BOOT unit, so the
+        //                         board's src/boot copy must NOT be linked --
+        //                         the other arm of the per-app boot resolver,
+        //                         which both earlier apps took the board side
+        //                         of, five times each.
+        //   src/cpu1_main.c       named in AUX_SRCS: the Cortex-M33 entry
+        //                         point for the SECOND image this app builds,
+        //                         which must be kept out of the M85 image
+        //                         entirely.
+        //
+        // It also ships an `inc/` of its own (the dual-core mailbox contract
+        // shared_pingpong.h), which is the first directory on CMake's include
+        // path and had never been exercised either.
+        //
+        // No LIBS, no USES, no migrated Zig archive, so #948 does not block it.
+        //
+        // The app's CMakeLists hand-rolls a SECOND executable for the M33
+        // (cpu1_pingpong_cpu1.elf, four TUs at -mcpu=cortex-m33, its own
+        // linker script) and objcopies it into the M85 image as a .cpu1_image
+        // blob. That is app-local CMake outside ra8_add_app(), and #1044 is
+        // the slice that brought it into the graph: see the .cpu1 field below.
+        .name = "cpu1_pingpong",
+        .dir = "examples/ek_ra8d2/hw_validated/hil/cpu1_pingpong",
+        .board = "libs/ra8_board_ek_ra8d2",
+        // The app ships its own linker_script.ld (it pins .cpu1_image at
+        // ORIGIN(MRAM_CPU1)), so ra8_add_app() takes that one over the board's.
+        .linker_script = "examples/ek_ra8d2/hw_validated/hil/cpu1_pingpong/linker_script.ld",
+        .libraries = &.{},
+        .zig_libraries = &.{},
+        .aux_srcs = &.{"src/cpu1_main.c"},
+        // The M33 half of this app (#1044). Its entry TU is the same file
+        // AUX_SRCS keeps out of the M85 set above: one file, two images.
+        .cpu1 = .{
+            .entry_source = "src/cpu1_main.c",
+            .shared_sources = &.{
+                "libs/ra8_hal/src/ra8_ipc.c",
+                "libs/ra8_core/src/ra8_log.c",
+                "libs/ra8_core/src/ra8_scb.c",
+            },
+            .linker_script = "linker_script_cpu1.ld",
+        },
+    },
+    .{
+        // The fourth app, for the whole dimension the first three cannot see:
+        // vendored MIDDLEWARE. None of them names `USES`, so the graph had
+        // never compiled a line of it, and all four things ra8_add_app() does
+        // with a middleware dependency were unobserved -- its own source set
+        // and flag bar, the include directories and defines it exports onto
+        // the app's TUs, the options it forces onto the link, and the fact
+        // that the app links an ARCHIVE rather than a bag of objects.
+        //
+        // threadx_blink is the smallest app that names one: `USES threadx`
+        // and nothing else, no LIBS, no EXTRA_SRCS, no migrated Zig archive,
+        // so #948 does not block it and its first-party set is byte-for-byte
+        // blink_hal's 200 TUs. Everything that differs between the two apps
+        // is the middleware, which is what makes it the right fourth app.
+        .name = "threadx_blink",
+        .dir = "examples/ek_ra8d2/hw_validated/hil/threadx_blink",
+        .board = "libs/ra8_board_ek_ra8d2",
+        .linker_script = "examples/ek_ra8d2/hw_validated/hil/threadx_blink/linker_script.ld",
+        .libraries = &.{},
+        .zig_libraries = &.{},
+        .uses = &.{"threadx"},
+    },
+    .{
+        // The fifth app, for a rule the graph has been treating as a CONSTANT.
+        // All four apps above take the default `STACK_BYTES` (2200), so the
+        // first-party warning profile hard-coded `-Wstack-usage=2200` as if
+        // every app shared one frame budget. 130 apps do; roughly ninety do
+        // not (27 at 4096, 19 at 4000, 13 at 16384, 12 at 32768, 11 at 8192,
+        // and a tail besides). Both directions of getting it wrong are quiet:
+        // a bigger budget means the graph holds the app to a TIGHTER bar than
+        // CMake and a legitimate frame fails only here, and a smaller one
+        // means the graph never rejects a frame CMake does.
+        //
+        // ra8_io_swap_demo names `STACK_BYTES 4096` and is otherwise the
+        // plainest app that can carry the rule: no USES, no EXTRA_SRCS, no
+        // AUX_SRCS, no app-local CMake, no migrated Zig archive, so #948 does
+        // not block it.
+        //
+        // It also opens the one arm of the board opt-in gate (#936) that no
+        // app in this table has opened. `..._console_stream.c` is gated on the
+        // app naming `ra8_io`, and until now every app here has been on the
+        // shut side of that gate, so only its DROP was ever observed. This app
+        // names `ra8_io` and keeps the unit. Its four libraries are also the
+        // first set where one of them (`ra8_usb_pal`) is already in the
+        // universal include set, so the include path has to deduplicate
+        // rather than repeat the directory.
+        .name = "ra8_io_swap_demo",
+        .dir = "examples/ek_ra8d2/hw_pending/ra8_io_swap_demo",
+        .board = "libs/ra8_board_ek_ra8d2",
+        // No linker_script.ld of its own, so the board's canonical single-core
+        // map, the same fallback blink_hal takes.
+        .linker_script = "libs/ra8_board_ek_ra8d2/ld/linker_script.ld",
+        .libraries = &.{ "ra8_io", "ra8_fs", "ra8_sdmmc_spi", "ra8_usb_pal" },
+        .zig_libraries = &.{},
+        .stack_bytes = 4096,
+    },
 };
 
 /// The universal first-party source set ra8_add_app() globs into every app,
@@ -304,6 +498,7 @@ pub fn crossSources(b: *std.Build, app: CrossApp) []const []const u8 {
     var seen = std.StringHashMap(void).init(b.allocator);
     for (sources.items) |source| {
         if (isGatedOutBoardSource(app, source)) continue;
+        if (isGatedOutLibrarySource(app, source)) continue;
         if (seen.contains(source)) continue;
         seen.put(source, {}) catch @panic("OOM");
         kept.append(source) catch @panic("OOM");
@@ -316,16 +511,20 @@ pub fn crossSources(b: *std.Build, app: CrossApp) []const []const u8 {
 /// library that has headers.
 pub fn crossIncludeDirs(b: *std.Build, app: CrossApp) []const []const u8 {
     var dirs = std.ArrayList([]const u8).init(b.allocator);
-    // CMake adds `<app>/inc` unconditionally, and it is FIRST, ahead of the
+    // CMake adds `<app>/inc` UNCONDITIONALLY, and it is FIRST, ahead of the
     // app's own src/ and every library: an app-local header shadows a
     // same-named one further down the path. cpu1_pingpong is the app that
-    // ships one (inc/shared_pingpong.h, the dual-core mailbox contract), so
-    // this arm is exercised rather than assumed. A directory argument has to
-    // exist to be declared as a step input, so it is skipped when absent.
-    const app_inc = b.fmt("{s}/inc", .{app.dir});
-    if (b.build_root.handle.access(app_inc, .{})) |_| {
-        dirs.append(app_inc) catch @panic("OOM");
-    } else |_| {}
+    // ships one (inc/shared_pingpong.h, the dual-core mailbox contract).
+    //
+    // It is emitted for an app that ships no inc/ too, which is a real
+    // difference and not a formality: this list is also what
+    // `zig build compile-db` writes, and a database row whose include path is
+    // one directory short of the compiler's is a row clang-tidy resolves
+    // differently than the build did. #1068 measured it on ra8_io_swap_demo,
+    // which ships no inc/; the step spells an absent directory as a plain -I
+    // string, because only an existing directory can be declared as a step
+    // input.
+    dirs.append(b.fmt("{s}/inc", .{app.dir})) catch @panic("OOM");
     dirs.append(b.fmt("{s}/src", .{app.dir})) catch @panic("OOM");
     dirs.appendSlice(&cross_include_dirs) catch @panic("OOM");
 
@@ -333,6 +532,14 @@ pub fn crossIncludeDirs(b: *std.Build, app: CrossApp) []const []const u8 {
         const library_inc = b.fmt("libs/{s}/inc", .{library});
         const exists = if (b.build_root.handle.access(library_inc, .{})) |_| true else |_| false;
         if (exists) dirs.append(library_inc) catch @panic("OOM");
+    }
+    // The include directory a gated library unit's companion brings with it,
+    // added where cmake/ra8_app/sources.cmake adds it: after the per-library
+    // directories, before the alias one.
+    for (library_source_gates) |gate| {
+        if (declaresLibrary(app, gate.satisfied_by)) {
+            dirs.append(gate.include_dir) catch @panic("OOM");
+        }
     }
     for (library_aliases) |alias| {
         if (!declaresLibrary(app, alias.name)) continue;

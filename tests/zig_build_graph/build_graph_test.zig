@@ -27,6 +27,9 @@ const dual_core_app = graph.cross_apps[2];
 /// And one that names a vendored middleware in `USES`, which is the only way
 /// the middleware exports below are observable at all.
 const middleware_app = graph.cross_apps[3];
+/// And one that names a non-default `STACK_BYTES` budget, without which the
+/// frame gate below reads as a constant that happens to be right.
+const deep_stack_app = graph.cross_apps[4];
 
 test "board opt-in gate drops the two sources an app must ask for" {
     try std.testing.expect(
@@ -451,6 +454,84 @@ test "a middleware's include path is its own, not the app's" {
 
 fn cpu1App(app: @TypeOf(dual_core_app)) cpu1.App {
     return .{ .name = app.name, .dir = app.dir, .board = app.board };
+}
+
+test "the frame gate is spelled at the app's own budget, not at one constant" {
+    const allocator = std.testing.allocator;
+
+    const bare = graph.armWarningFlags(allocator, bare_app);
+    defer allocator.free(bare);
+    defer for (bare) |flag| {
+        if (std.mem.startsWith(u8, flag, "-Wstack-usage=")) allocator.free(flag);
+    };
+    const deep = graph.armWarningFlags(allocator, deep_stack_app);
+    defer allocator.free(deep);
+    defer for (deep) |flag| {
+        if (std.mem.startsWith(u8, flag, "-Wstack-usage=")) allocator.free(flag);
+    };
+
+    // Both arms of the rule, which is the whole point of the fifth app: the
+    // default budget and a named one, from the same function.
+    try std.testing.expectEqual(@as(u32, 2200), bare_app.stack_bytes);
+    try std.testing.expectEqual(@as(u32, 4096), deep_stack_app.stack_bytes);
+    try std.testing.expect(indexOf(bare, "-Wstack-usage=2200") != null);
+    try std.testing.expect(indexOf(deep, "-Wstack-usage=4096") != null);
+    try std.testing.expect(indexOf(deep, "-Wstack-usage=2200") == null);
+
+    // -fstack-usage rides along with the gate, because the one call in
+    // cmake/ra8_warnings.cmake adds both and stack_usage_check.py reads the
+    // `.su` files it writes.
+    try std.testing.expect(indexOf(bare, "-fstack-usage") != null);
+    try std.testing.expect(indexOf(deep, "-fstack-usage") != null);
+
+    // And the rest of the profile is identical between the two apps: the
+    // budget is the ONLY thing an app's STACK_BYTES changes.
+    try std.testing.expectEqual(bare.len, deep.len);
+    for (bare, deep) |left, right| {
+        if (std.mem.startsWith(u8, left, "-Wstack-usage=")) continue;
+        try std.testing.expectEqualStrings(left, right);
+    }
+    try std.testing.expect(indexOf(deep, "-Werror") != null);
+}
+
+test "the console-stream gate opens only for the app that names ra8_io" {
+    const console = "libs/ra8_board_ek_ra8d2/src/ra8_board_ek_ra8d2_console_stream.c";
+
+    // The arm no app in the table had taken before ra8_io_swap_demo: the unit
+    // hands back an ra8_io_stream_t, so naming the full ra8_io keeps it.
+    try std.testing.expect(sources.declaresLibrary(deep_stack_app, "ra8_io"));
+    try std.testing.expect(!sources.isGatedOutBoardSource(deep_stack_app, console));
+
+    // The bus facade alone does NOT satisfy it, which is what makes this a
+    // second gate rather than a rewording of the touch one.
+    try std.testing.expect(sources.isGatedOutBoardSource(library_app, console));
+    try std.testing.expect(sources.isGatedOutBoardSource(bare_app, console));
+
+    // The touch unit is satisfied by either library, so it is kept for both.
+    const touch = "libs/ra8_board_ek_ra8d2/src/ra8_board_ek_ra8d2_touch.c";
+    try std.testing.expect(!sources.isGatedOutBoardSource(deep_stack_app, touch));
+    try std.testing.expect(!sources.isGatedOutBoardSource(library_app, touch));
+}
+
+test "a gated library unit is dropped unless its companion library is named" {
+    const vsource = "libs/ra8_io/src/ra8_io_blockdev_vsource.c";
+
+    // ra8_io globs it in; ra8_mem is what keeps it. ra8_io_swap_demo names
+    // the first and not the second, which is the arm CMake was measured on.
+    try std.testing.expect(sources.declaresLibrary(deep_stack_app, "ra8_io"));
+    try std.testing.expect(!sources.declaresLibrary(deep_stack_app, "ra8_mem"));
+    try std.testing.expect(sources.isGatedOutLibrarySource(deep_stack_app, vsource));
+
+    // Every other unit out of the same directory stays.
+    try std.testing.expect(
+        !sources.isGatedOutLibrarySource(deep_stack_app, "libs/ra8_io/src/ra8_io_stream.c"),
+    );
+
+    // And the gate is keyed on the whole path, not on a name fragment: an
+    // app-local file that merely ends the same way is untouched.
+    try std.testing.expect(
+        !sources.isGatedOutLibrarySource(deep_stack_app, "libs/ra8_mem/src/ra8_io_blockdev_vsource.c"),
+    );
 }
 
 fn indexOf(haystack: []const []const u8, needle: []const u8) ?usize {
