@@ -27,6 +27,7 @@ import fleet_model as fm
 import fleet_mutation_lock as fml
 import fleet_reconcile_arc_selftest as fras
 import fleet_reconcile_process as frp
+import fleet_reconcile_recovery_selftest as frr
 import fleet_reconcile_selftest as frs
 import fleet_wsl as fw
 
@@ -238,6 +239,45 @@ def quarantine(host: str, run: CommandRunner) -> None:
         )
 
 
+def recover_last_known_good(
+    data: dict[str, Any], host: str, run: CommandRunner, expected_check_changes: int
+) -> bool:
+    """Reopen a drained host that was already converged before its apply failed.
+
+    A periodic full verification that fails on a transient fault (a locked
+    dependency download timing out mid image build) leaves the host running the
+    declaration it was already converged on.  Draining it is the correct
+    fail-closed reflex, but leaving it drained removes healthy last-known-good
+    capacity for a fault that never touched the host.  Reopen it and prove it
+    serves, or hold it at zero.
+    """
+    print(
+        f"fleet-reconcile: {host}: apply failed with no prior drift; "
+        "reopening last-known-good capacity",
+        file=sys.stderr,
+    )
+    restore = run(fleet_command(host, "restore"))
+    emit_result(restore)
+    if restore.status or frp.interrupted_status():
+        quarantine(host, run)
+        return False
+    clean, changed = inspect_host(data, host, run)
+    if not clean or changed != expected_check_changes or frp.interrupted_status():
+        print(
+            f"fleet-reconcile: {host}: last-known-good capacity did not verify "
+            f"(remaining changed={changed}); holding at zero",
+            file=sys.stderr,
+        )
+        quarantine(host, run)
+        return False
+    print(
+        f"fleet-reconcile: WARNING: {host}: full verification FAILED while serving "
+        "last-known-good capacity; this pass fails and retries on the next one",
+        file=sys.stderr,
+    )
+    return True
+
+
 def _activate_arc(
     data: dict[str, Any], host: str, run: CommandRunner, expected_changes: int
 ) -> tuple[bool, int]:
@@ -259,13 +299,14 @@ def _activate_arc(
     return True, 0
 
 
-def apply_host(
+def apply_host(  # noqa: PLR0913  # transaction inputs plus its recovery hook
     data: dict[str, Any],
     host: str,
     run: CommandRunner,
     *,
     expected_check_changes: int,
     apply_attempts: int = 1,
+    on_mutation_exhausted: Callable[[], None] | None = None,
 ) -> tuple[bool, int]:
     """Apply one host and prove the resulting declaration is idempotent."""
     applied = False
@@ -285,6 +326,8 @@ def apply_host(
             )
     if not applied:
         quarantine(host, run)
+        if on_mutation_exhausted is not None:
+            on_mutation_exhausted()
         return False, 0
     clean, changed = inspect_host(data, host, run, parked=True)
     if not clean or changed != expected_check_changes or frp.interrupted_status():
@@ -316,11 +359,11 @@ def reconcile_host(
     receipt: object,
     options: ReconcileOptions,
     run: CommandRunner,
-) -> tuple[bool, dict[str, Any]]:
-    """Inspect and optionally converge one normal runner host."""
+) -> tuple[bool, bool, dict[str, Any]]:
+    """Inspect and optionally converge one host, reporting whether it is drained."""
     clean, changed = inspect_host(data, host, run)
     if not clean or frp.interrupted_status():
-        return False, {}
+        return False, True, {}
     producer = host == data["runner_image"]["source_host"]
     interval = options.producer_interval if producer else options.full_interval
     due = full_apply_due(receipt, options, interval)
@@ -331,30 +374,44 @@ def reconcile_host(
         if actionable_changes:
             state = "DRIFT"
         print(f"fleet-reconcile: {host}: {state} (changed={changed})")
-        return not actionable_changes, {}
+        return not actionable_changes, True, {}
     if not actionable_changes and not due:
         print(f"fleet-reconcile: {host}: current; no full converge due")
         previous = receipt if isinstance(receipt, dict) else {}
-        return True, {**previous, "checked_at": options.now}
+        return True, False, {**previous, "checked_at": options.now}
     why = "drift" if actionable_changes else "periodic full verification"
     print(f"fleet-reconcile: {host}: applying ({why}, changed={changed})")
     held_arc = producer and fm.CLASSES[data["hosts"][host]["class"]].capacity_kind == "k8s"
     held_changes = PRODUCER_HELD_CHECK_NOISE if held_arc else expected_changes
     attempts = PRODUCER_APPLY_ATTEMPTS if producer else 1
+    recovered = False
+
+    def reopen_last_known_good() -> None:
+        """Reopen capacity only when the failed apply followed a clean check."""
+        nonlocal recovered
+        if actionable_changes or frp.interrupted_status():
+            return
+        recovered = recover_last_known_good(data, host, run, expected_changes)
+
     applied, _ = apply_host(
         data,
         host,
         run,
         expected_check_changes=held_changes,
         apply_attempts=attempts,
+        on_mutation_exhausted=reopen_last_known_good,
     )
     if not applied:
-        return False, {}
-    return True, {
-        "checked_at": options.now,
-        "full_applied_at": options.now,
-        "source_digest": options.source_digest,
-    }
+        return False, not recovered, {}
+    return (
+        True,
+        False,
+        {
+            "checked_at": options.now,
+            "full_applied_at": options.now,
+            "source_digest": options.source_digest,
+        },
+    )
 
 
 def reconcile(
@@ -385,12 +442,14 @@ def reconcile(
                 receipt_invalidated = True
             return run(argv)
 
-        ok, receipt = reconcile_host(data, host, receipts.get(host), options, transaction_run)
+        ok, stranded, receipt = reconcile_host(
+            data, host, receipts.get(host), options, transaction_run
+        )
         if ok and options.mode == "apply":
             receipts[host] = receipt
         if not ok:
             failures += 1
-            producer_failed = index == 0 and options.mode == "apply"
+            producer_failed = index == 0 and options.mode == "apply" and stranded
             if options.mode == "apply":
                 receipts.pop(host, None)
                 save_state(state_path, document)
@@ -648,7 +707,12 @@ def _selftest_apply_and_receipt(failures: list[str]) -> None:
 
 
 def _selftest_failure_quarantine(failures: list[str]) -> None:
-    """Prove failed producer mutation drains it and blocks every consumer."""
+    """Prove a drifting producer that cannot apply drains and blocks consumers.
+
+    The producer must be genuinely drifting here.  A converged producer whose
+    periodic apply fails is reopened at last-known-good capacity instead, which
+    fleet_reconcile_recovery_selftest.py pins (issue #888).
+    """
     data = _selftest_data()
     with tempfile.TemporaryDirectory(prefix="ra8-fleet-reconcile-") as raw:
         options = _selftest_options(Path(raw))
@@ -657,6 +721,8 @@ def _selftest_failure_quarantine(failures: list[str]) -> None:
         def fake_run(argv: Sequence[str]) -> frp.CommandResult:
             verb, host = _command_identity(argv)
             calls.append((verb, host))
+            if verb == "check" and host == "producer":
+                return _check_result(data, host, PRODUCER_CHECK_NOISE + 1)
             if verb in {"check", "parked-check"}:
                 return _clean_check_result(data, host)
             return frp.CommandResult(1 if verb == "parked-apply" else 0, "", "")
@@ -931,6 +997,7 @@ def selftest() -> int:
     _selftest_postcheck_quarantine(failures)
     _selftest_restore_quarantine(failures)
     failures.extend(fras.run(apply_host))
+    failures.extend(frr.run(sys.modules[__name__]))
     _selftest_state_safety(failures)
     failures.extend(fml.run_selftest())
     _selftest_timeout(failures)
