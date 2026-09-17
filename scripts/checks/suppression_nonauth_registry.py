@@ -79,8 +79,6 @@ _GROUPS = (
             "checks/check_justfiles.py:REPO_ROOT",
             "checks/check_lint_coverage.py:REPO_ROOT",
             "checks/check_magic_numbers.py:REPO_ROOT",
-            "checks/check_mcdc_floor.py:MCDC_JSON",
-            "checks/check_mcdc_floor.py:REPO_ROOT",
             "checks/check_misra_deviations.py:REPO_ROOT",
             "checks/check_no_ai_attribution.py:REPO_ROOT",
             "checks/check_no_antirecovery.py:REPO_ROOT",

@@ -432,7 +432,7 @@ def write_gate_json(h: dict) -> None:
 
 
 def write_per_file_json(all_decisions: list, classified: list) -> None:
-    """Per-file decision roll-up for check_mcdc_floor.py."""
+    """Per-file decision roll-up for the check_mcdc_floor gate."""
     per_file: dict[str, dict[str, int]] = defaultdict(
         lambda: {"total": 0, "covered": 0, "deactivated": 0}
     )
