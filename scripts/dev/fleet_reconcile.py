@@ -25,6 +25,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 import fleet_model as fm
 import fleet_mutation_lock as fml
+import fleet_reconcile_activation_selftest as frac
 import fleet_reconcile_aging_selftest as fra
 import fleet_reconcile_arc_selftest as fras
 import fleet_reconcile_backoff_selftest as frb
@@ -293,9 +294,29 @@ def inspect_host(
 def inspect_activation_host(
     data: dict[str, Any], host: str, run: CommandRunner
 ) -> tuple[bool, int]:
-    """Check declared ARC authority while its rendered live ceiling stays zero."""
+    """Check declared ARC authority while its rendered live ceiling stays zero.
+
+    The activation check is a ``--check`` run, so the verifier reports work
+    still outstanding by exit status rather than by a recap row:
+    ``fw.APPLY_REQUIRED_STATUS`` means the check RAN and found one change, which
+    is why ``inspect_host`` counts it as a clean read of one drifted task.  Read
+    as a failed check instead, it made the sole ARC capacity opener unusable on
+    exactly the host that expects an outstanding change: an ARC producer is
+    checked against ``PRODUCER_HELD_CHECK_NOISE`` while admission is held at
+    zero, so the status that reports that one change quarantined the host, the
+    apply failed, and the pass recorded it at zero.  Every later pass repeated
+    it, and the recovery hook reopens through this same activation sequence, so
+    nothing could lift the host off zero: an ARC scale set still declared for
+    all its runners with none of them in service, drained again every pass and
+    escalating for ever, plus consumers released onto its frozen image once the
+    record crossed ``PRODUCER_BLOCK_PASSES`` (issue #888, and the dry-run
+    evidence in it).  Any other non-zero status is a genuine failure and still
+    holds the host at zero.
+    """
     result = run(fleet_command(host, "activation-check"))
     emit_result(result)
+    if result.status == fw.APPLY_REQUIRED_STATUS:
+        return True, 1
     if result.status:
         return False, 0
     try:
@@ -2014,6 +2035,7 @@ def selftest() -> int:
     _selftest_failed_repair_retries(failures)
     _selftest_postcheck_quarantine(failures)
     _selftest_restore_quarantine(failures)
+    failures.extend(frac.run(sys.modules[__name__]))
     failures.extend(fra.run(sys.modules[__name__]))
     failures.extend(fras.run(apply_host))
     failures.extend(frr.run(sys.modules[__name__]))
