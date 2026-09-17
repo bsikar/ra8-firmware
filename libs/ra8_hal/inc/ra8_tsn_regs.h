@@ -3,6 +3,9 @@
  * @brief Temperature Sensor (TSN) register layout for the Renesas RA8D2
  * @ingroup grp_hal_analog
  *
+ * @par Tag
+ * [Ring 3 / HAL] {World: NS}
+ *
  * @details
  * The RA8D2 temperature sensor has two halves:
  *

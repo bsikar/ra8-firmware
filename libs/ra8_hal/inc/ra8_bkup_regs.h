@@ -3,6 +3,9 @@
  * @brief Battery Backup Function (VBATT / BAT*) register layout for the RA8D2
  * @ingroup grp_hal_system
  *
+ * @par Tag
+ * [Ring 3 / HAL] {World: NS}
+ *
  * @details
  * The RA8D2 battery backup block lives inside the SYSC peripheral
  * window (base ``0x4001_E000``, non-secure alias ``0x5001_E000``).
