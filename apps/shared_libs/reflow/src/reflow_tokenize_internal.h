@@ -50,6 +50,16 @@ typedef enum : uint32_t {
   k_priv_uc_3byte        = 0x800U,    /**< Code points >= need >= 3 UTF-8 bytes.   */
   k_priv_uc_4byte        = 0x10000U,  /**< Code points >= need 4 UTF-8 bytes.      */
   k_priv_uc_max          = 0x10FFFFU, /**< Highest valid Unicode code point.       */
+  k_priv_uc_over_max     = 0x110000U, /**< One past the last code point (sentinel). */
+  k_priv_uc_replace      = 0xFFFDU,   /**< U+FFFD REPLACEMENT CHARACTER.         */
+  k_priv_uc_surr_lo      = 0xD800U,   /**< First UTF-16 surrogate code point.    */
+  k_priv_uc_surr_hi      = 0xDFFFU,   /**< Last UTF-16 surrogate code point.     */
+  k_priv_uc_nonchar_lo   = 0xFFFEU,   /**< First BMP non-character (U+FFFE).     */
+  k_priv_uc_nonchar_hi   = 0xFFFFU,   /**< Last BMP non-character (U+FFFF).      */
+  k_priv_uc_tab          = 0x09U,     /**< The one C0 control XML Char admits... */
+  k_priv_uc_lf           = 0x0AU,     /**< ...along with line feed...            */
+  k_priv_uc_cr           = 0x0DU,     /**< ...and carriage return.               */
+  k_priv_uc_space        = 0x20U,     /**< First printable; C0 ends below it.    */
   k_priv_utf8_lead2      = 0xC0U,     /**< 2-byte sequence lead-byte prefix.       */
   k_priv_utf8_lead3      = 0xE0U,     /**< 3-byte sequence lead-byte prefix.       */
   k_priv_utf8_lead4      = 0xF0U,     /**< 4-byte sequence lead-byte prefix.       */
@@ -111,6 +121,12 @@ RA8_PRIV reflow_html_tag_t priv_reflow_tok_classify(const char* name, size_t len
  * Unrecognised sequences are reported as "not an entity" so the caller
  * emits the literal `&`.
  *
+ * A numeric reference that is complete in shape but denotes a value the
+ * XML 1.0 `Char` production excludes (a C0 control other than tab, LF or
+ * CR, a UTF-16 surrogate, U+FFFE, U+FFFF, or anything above U+10FFFF) is
+ * consumed whole and yields U+FFFD, so an illegal value can never reach
+ * the text pool. Named references are table-bound and need no such check.
+ *
  * @param[in]  src      Buffer positioned so `src[0] == '&'`.
  * @param[in]  avail    Bytes available from `src` (>= 1).
  * @param[out] out_cp   Decoded Unicode code point on success.
@@ -121,11 +137,37 @@ RA8_PRIV reflow_html_tag_t priv_reflow_tok_classify(const char* name, size_t len
  * @pre `src[0] == '&'`.
  * @post On false, out params are unspecified and no input is consumed.
  * @post On true, *out_used is in [3, avail].
+ * @post On true, `*out_cp` satisfies priv_reflow_tok_is_xml_char().
  * @note Pure function.
  * @since 0.1.0
  */
 RA8_PRIV bool
 priv_reflow_tok_decode_entity(const char* src, size_t avail, uint32_t* out_cp, size_t* out_used);
+
+/**
+ * @brief Test whether a code point is admitted by the XML 1.0 `Char` rule.
+ *
+ * @details The production is
+ * `#x9 | #xA | #xD | [#x20-#xD7FF] | [#xE000-#xFFFD] | [#x10000-#x10FFFF]`,
+ * so tab, line feed and carriage return are the only C0 controls allowed,
+ * the UTF-16 surrogate block is excluded, U+FFFE and U+FFFF are excluded,
+ * and nothing above U+10FFFF exists. This is the rule a decoded numeric
+ * character reference is held to; it is exposed here so the tokenizer's
+ * sanitising behaviour is asserted against the production symbol rather
+ * than a mirror of it.
+ *
+ * @param[in] cp Candidate code point.
+ * @return true if `cp` is a character an XHTML document may contain.
+ * @retval false A C0 control other than tab/LF/CR, a surrogate, U+FFFE,
+ *         U+FFFF, or a value above U+10FFFF.
+ * @pre None.
+ * @pre None.
+ * @post No state is modified (pure).
+ * @post No state is modified (pure).
+ * @note Pure function.
+ * @since 0.1.0
+ */
+RA8_PRIV bool priv_reflow_tok_is_xml_char(uint32_t cp);
 
 /**
  * @brief Look one named character reference up in the XHTML 1.0 table.
