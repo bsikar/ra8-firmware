@@ -411,7 +411,11 @@ C23 `= {}` (empty initializer) is mandated by `CLAUDE.md` in place
 of the obsolete C99 `= {0}` form. The pinned cppcheck 2.13.0 MISRA addon reads
 `= {}` as "no brace around aggregate" because its parser does not
 recognize the C23 empty-initializer rule. The compiler accepts it
-correctly at every build.
+correctly at every build. No MISRA edition removes this: C:2012
+addresses C90/C99 and C:2023/C:2025 reach C11/C17-C18, so the gap is
+the audited language level rather than the edition audited against
+(`docs/MISRA.md` section "Which edition, and why it is not the current
+one").
 
 ### Alternative verification
 
