@@ -491,7 +491,6 @@ _SCHEMA_GROUPS = (
             "checks/check_hook_parity.py:ROOT_JUSTFILE",
             "checks/check_hook_parity.py:RUN_JUST",
             "checks/check_hook_parity.py:TRUSTED_RUNTIME",
-            "checks/check_host_build_entrypoints.py:COMPILED",
             "checks/check_hum_register_map.py:SOURCE_SUFFIXES",
             "checks/check_image_no_antirecovery.py:ANTI_RECOVERY_WINDOWS",
             "checks/check_inclusive_terminology.py:CONTINUATION_BASENAMES",

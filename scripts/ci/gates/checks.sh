@@ -144,8 +144,8 @@ _pcc_migration_contracts() (
   # falling outside `just tools::build`/clean. ARM toolchain configures remain
   # explicit and outside the host wrapper.
   bash scripts/builders/host_cmake.sh --selftest
-  python3 scripts/checks/check_host_build_entrypoints.py --selftest
-  python3 scripts/checks/check_host_build_entrypoints.py
+  bash scripts/builders/check_host_build_entrypoints.sh --selftest
+  bash scripts/builders/check_host_build_entrypoints.sh
 )
 
 # The Python project, bootstrap, exports, and managed environment boundaries.
