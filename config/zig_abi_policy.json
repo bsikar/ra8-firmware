@@ -717,6 +717,100 @@
       "exports": [
         {"name": "fw_fs_ra8_vfs_init", "calling_context": "task-only-non-reentrant", "ownership": "borrows the configuration and live mount while initializing caller-owned facade and adapter state"}
       ]
+    },
+    {
+      "name": "ra8_camera",
+      "build_root": "libs/ra8_camera",
+      "public_headers": [
+        {
+          "path": "libs/ra8_camera/inc/ra8_camera.h",
+          "compatibility_sha256": "d7d7a8af9c17750dd02777dac59cca00dda68c40d880cbc6da0256fce217ffad",
+          "layout_assertions": [
+            "@sizeOf(Buffer) == ptr_bytes * 2",
+            "@offsetOf(Frame, \"stride_bytes\") == ptr_bytes + 4",
+            "@offsetOf(Frame, \"width\") == ptr_bytes + 8",
+            "@offsetOf(Frame, \"height\") == ptr_bytes + 10",
+            "@offsetOf(Frame, \"format\") == ptr_bytes + 12",
+            "@sizeOf(Frame) == std.mem.alignForward(usize, ptr_bytes + 13, ptr_bytes)",
+            "@sizeOf(Info) == 16",
+            "@sizeOf(SourceIface) == ptr_bytes * 2",
+            "@sizeOf(CodecIface) == ptr_bytes",
+            "@sizeOf(Source) == ptr_bytes * 2",
+            "@sizeOf(Codec) == ptr_bytes * 2"
+          ]
+        },
+        {
+          "path": "libs/ra8_camera/inc/ra8_camera_source_memory.h",
+          "compatibility_sha256": "9eb2fdf3806958c561e9beeaac8b84515e46cebd3831c62d97c53dd23ef16b1e",
+          "layout_assertions": [
+            "@sizeOf(State) == @sizeOf(core.Frame)",
+            "@offsetOf(State, \"frame\") == 0"
+          ]
+        },
+        {
+          "path": "libs/ra8_camera/inc/ra8_camera_codec_passthrough.h",
+          "compatibility_sha256": "6a6d779b1fcbc2df0154bd11cfed2720861521a53bbf3de2c14cfc177c042eeb",
+          "layout_assertions": [
+            "@sizeOf(Codec) == ptr_bytes * 2"
+          ]
+        },
+        {
+          "path": "libs/ra8_camera/inc/ra8_camera_codec_jpeg_sw.h",
+          "compatibility_sha256": "ceecac3637bc5625522b8a6d6737a67c00f682ad088fd2f044ba831f98cfd20e",
+          "layout_assertions": [
+            "@offsetOf(Cfg, \"rgb_workspace_capacity\") == ptr_bytes",
+            "@offsetOf(Cfg, \"output_width\") == ptr_bytes + 4",
+            "@offsetOf(Cfg, \"quality\") == ptr_bytes + 8",
+            "@sizeOf(Cfg) == std.mem.alignForward(usize, ptr_bytes + 9, ptr_bytes)",
+            "@sizeOf(State) == @sizeOf(Cfg)"
+          ]
+        },
+        {
+          "path": "libs/ra8_camera/inc/ra8_camera_source_ceu.h",
+          "compatibility_sha256": "e261f6140b24c32171085a34731baa7a8bcc7503051157e6880eec7f53993560",
+          "layout_assertions": []
+        }
+      ],
+      "adapters": [
+        "libs/ra8_camera/src/ra8_camera_abi.zig",
+        "libs/ra8_camera/src/source_memory.zig",
+        "libs/ra8_camera/src/codec_passthrough.zig",
+        "libs/ra8_camera/src/codec_jpeg_sw.zig"
+      ],
+      "library_name": "ra8_camera",
+      "symbol_prefix": "ra8_camera_",
+      "retained_c_exports": [
+        {"name": "ra8_camera_source_ceu_init", "source": "libs/ra8_camera/src/ra8_camera_source_ceu.c"},
+        {"name": "ra8_camera_source_ceu_get_last_events", "source": "libs/ra8_camera/src/ra8_camera_source_ceu.c"}
+      ],
+      "target_class": "host-ra8",
+      "targets": {
+        "host": [],
+        "ra8": ["-Dtarget=thumb-freestanding-eabihf", "-Dcpu=cortex_m85+fp_armv8-d32-fp64"]
+      },
+      "run_host_tests_in_all_modes": false,
+      "c_include_dirs": [
+        "libs/ra8_camera/inc",
+        "libs/ra8_hal/inc",
+        "libs/ra8_core/inc"
+      ],
+      "contract_tests": [
+        {"language": "c", "path": "tests/misc/src/test_ra8_camera_contract.c", "registration": "tests/cmake/unit_tests.cmake"},
+        {"language": "c", "path": "tests/misc/src/test_ra8_camera_source_memory.c", "registration": "tests/cmake/unit_tests.cmake"},
+        {"language": "c", "path": "tests/misc/src/test_ra8_camera.c", "registration": "tests/cmake/unit_tests.cmake"},
+        {"language": "zig", "path": "libs/ra8_camera/tests/abi_test.zig", "registration": "libs/ra8_camera/.zig-test-contract.json"}
+      ],
+      "exports": [
+        {"name": "ra8_camera_frame_validate", "calling_context": "task-safe-reentrant", "ownership": "reads a borrowed frame and retains no caller pointer"},
+        {"name": "ra8_camera_source_get_info", "calling_context": "task-only-non-reentrant", "ownership": "borrows the source and writes caller-owned output"},
+        {"name": "ra8_camera_source_capture", "calling_context": "task-only-non-reentrant", "ownership": "borrows the source and capture buffer and publishes caller-owned frame metadata"},
+        {"name": "ra8_camera_codec_encode", "calling_context": "task-only-non-reentrant", "ownership": "borrows the codec, input frame, and output buffer and publishes caller-owned frame metadata"},
+        {"name": "ra8_camera_source_memory_init", "calling_context": "task-only-non-reentrant", "ownership": "initializes caller-owned state and borrows immutable frame bytes for the source lifetime"},
+        {"name": "ra8_camera_codec_passthrough_init", "calling_context": "task-only-non-reentrant", "ownership": "binds a stateless codec and retains no caller resource"},
+        {"name": "ra8_camera_codec_jpeg_sw_init", "calling_context": "task-only-non-reentrant", "ownership": "initializes caller-owned state and borrows workspace until codec use ends"},
+        {"name": "ra8_camera_source_ceu_init", "calling_context": "task-only-non-reentrant", "ownership": "retained C backend initializes caller-owned CEU state and borrows its configuration"},
+        {"name": "ra8_camera_source_ceu_get_last_events", "calling_context": "task-only-non-reentrant", "ownership": "retained C backend writes a diagnostic snapshot to caller-owned output"}
+      ]
     }
   ]
 }
