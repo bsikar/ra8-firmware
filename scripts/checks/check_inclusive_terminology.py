@@ -241,7 +241,6 @@ MAX_FINDINGS_SHOWN = 50
 SELF_EXEMPT_FILES: frozenset[str] = frozenset(
     {
         "scripts/checks/check_inclusive_terminology.py",
-        "scripts/checks/check_inclusive_terminology_commits.py",
         "scripts/fix/fix_inclusive_terminology.py",
         "docs/STYLE_GUIDE.md",
         "CLAUDE.md",
