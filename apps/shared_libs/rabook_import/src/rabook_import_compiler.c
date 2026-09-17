@@ -233,11 +233,23 @@ ra8_err_t rabook_import_compile_adapter(void*           compile_ctx,
     return err;
   }
 
-  err            = rabook_compile_from_epub(ctx->epub, ctx->bufs, ctx->scr, mount, out_path);
+  err = rabook_compile_from_epub(ctx->epub, ctx->bufs, ctx->scr, mount, out_path);
+
+  /* The EPUB reader's seam reports a short read only as a byte count, so a card
+   * pulled (or a CRC fault) mid-compile reaches the pipeline as end-of-file and
+   * the compile "succeeds" against a truncated archive. Ask the stream binding
+   * whether any read under that seam actually failed, and prefer that verdict
+   * over a clean compile of a partial book -- a truncated `.rabook` on the card
+   * is silent data loss, whereas an error here retries the import (#764). */
+  const ra8_err_t serr = ra8_vmem_stream_last_err(&ss.st);
+
   ra8_err_t cerr = epub_close(ctx->epub);
   (void)ra8_fs_close(ss.file); /* always release the source handle */
   if (err != k_ra8_ok) {
     return err;
+  }
+  if (serr != k_ra8_ok) {
+    return serr; /* a truncated .rabook would be silent data loss; fail the import */
   }
   return cerr;
 }
