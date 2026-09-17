@@ -32,16 +32,32 @@
  * ITU-T Recommendation T.81 (1992) | ISO/IEC 10918-1.
  *
  * @par Concurrency
- * This codec is single-instance and the caller serialises. The
- * whole-buffer decoder, the encoder and the stripe decoder each keep
- * their working state in module-static objects, so at most one call
- * into this header may be in flight at a time, and no entry point may
- * be re-entered from an interrupt or a second thread. The statics are
- * deliberate, not an oversight: the decoder context, the encoder
- * context and the three 16-row strip buffers are far larger than the
- * per-frame stack budget `-Wstack-usage` enforces. The one exception
- * is `ra8_jpeg_sw_get_dimensions()`, which touches no shared state and
- * is re-entrant.
+ * The codec keeps its large working state (Huffman and quantisation
+ * tables, the MCU strip buffers) in module-static objects rather than
+ * on the caller's stack, because the project budgets stack with
+ * `-Wstack-usage` and forbids the heap (NASA Rule 3). That is a
+ * deliberate trade, and it fixes the concurrency contract:
+ *
+ *   - `ra8_jpeg_sw_get_dimensions()` is re-entrant and thread-safe. It
+ *     reads only its arguments and touches no module state, so it may
+ *     be called concurrently with anything, including a decode already
+ *     in progress.
+ *   - `ra8_jpeg_sw_decode()`, `ra8_jpeg_sw_encode()` and
+ *     `ra8_jpeg_sw_decode_stripes()` are **not** thread-safe and **not**
+ *     re-entrant. Each owns module-static working state
+ *     (`ra8_jpeg_sw_decode.c:s_d`, `ra8_jpeg_sw_encode.c:s_e` plus the
+ *     `s_*_strip` / `s_tmp_rgb` buffers, `ra8_jpeg_sw_stream.c:s_js`),
+ *     so two calls that overlap in time corrupt each other. This
+ *     includes a nested call made from a `pull` / `on_geom` / `on_rows`
+ *     callback of `ra8_jpeg_sw_decode_stripes()`.
+ *   - Sequential reuse is safe: every entry point zeroes its context on
+ *     entry, so calls that do not overlap leak no state between them,
+ *     in any order.
+ *
+ * A caller that needs concurrent decode or encode must serialise the
+ * calls itself (one codec mutex, or a single dedicated codec thread).
+ * `tests/graphics/src/test_ra8_jpeg_sw_concurrency_contract.c` pins
+ * both halves of this contract.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -131,9 +147,9 @@ typedef enum : uint8_t {
  * @post On any error neither output is modified.
  *
  * @note Thread-safe and re-entrant: the function reads only its
- *       arguments and has no internal state. It is the only entry
- *       point in this header that may run concurrently with another
- *       call into this codec.
+ *       arguments and touches no module state, so it is safe to call
+ *       concurrently with a decode or encode already in progress. It
+ *       is the only entry point in this header with that guarantee.
  *
  * @par Example:
  * @code
@@ -195,12 +211,11 @@ typedef enum : uint8_t {
  * @post On any error `out_buf` contents are unspecified but the
  *       caller's stack is unaffected.
  *
- * @note Not thread-safe and not re-entrant: the decoder context is a
- *       single module-static object, sized out of the stack budget, so
- *       concurrent or nested decodes overwrite each other's tables and
- *       parse cursor. The caller serialises every decode, including
- *       against `ra8_jpeg_sw_decode_stripes()`. See the Concurrency
- *       paragraph in this file's brief.
+ * @note Not thread-safe and not re-entrant: the decoder context lives
+ *       in a module-static object (`s_d`) shared by every call, so
+ *       overlapping calls corrupt each other. Sequential reuse is
+ *       safe; concurrent use must be serialised by the caller. See
+ *       the Concurrency section in the file header.
  *
  * @warning The decoder does not stream -- the entire JPEG must be
  *          buffered in memory before the call. For typical RA8D2
@@ -264,11 +279,12 @@ typedef enum : uint8_t {
  *       JFIF 1.01 JPEG file.
  * @post On any error `*out_len` is set to 0.
  *
- * @note Not thread-safe and not re-entrant: the encoder context and
- *       the three 16-row colour strip buffers are module-static, sized
- *       out of the stack budget, so concurrent or nested encodes
- *       overwrite each other. The caller serialises every encode. See
- *       the Concurrency paragraph in this file's brief.
+ * @note Not thread-safe and not re-entrant: the encoder context
+ *       (`s_e`) and the YCbCr strip buffers are module-static and
+ *       shared by every call, so overlapping calls corrupt each
+ *       other. Sequential reuse is safe; concurrent use must be
+ *       serialised by the caller. See the Concurrency section in the
+ *       file header.
  *
  * @par Example:
  * @code
@@ -442,8 +458,13 @@ typedef enum : uint8_t {
  * @pre @p pull delivers the stream strictly in order, once.
  * @post On success every image row was emitted exactly once, in order.
  * @post On any error emission stops; already-emitted rows stay valid.
- * @note Not thread-safe (module-static decoder context, like
- *       `ra8_jpeg_sw_decode()`).
+ * @note Not thread-safe and not re-entrant: the streaming state
+ *       (`s_js`, which embeds its own decoder context) is
+ *       module-static, like `ra8_jpeg_sw_decode()`. A nested codec
+ *       call from @p pull, @p on_geom or @p on_rows breaks the
+ *       session in progress; only `ra8_jpeg_sw_get_dimensions()` is
+ *       safe to call from those callbacks. See the Concurrency
+ *       section in the file header.
  * @see ra8_jpeg_sw_decode()  Whole-buffer decode for small images.
  * @since 0.1.0
  */

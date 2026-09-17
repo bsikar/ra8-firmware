@@ -84,7 +84,9 @@ typedef struct {
   ra8_jpeg_dec_ctx_t dec; /**< Shared decoder tables + parse state. */
 } ra8_jpeg_stream_state_t;
 
-/** @brief Module-static streaming state (codec documented not thread-safe). */
+/** @brief Module-static streaming state; shared by every session, which is
+ *         why `ra8_jpeg_sw_decode_stripes()` is neither thread-safe nor
+ *         re-entrant. See the Concurrency section of ra8_jpeg_sw.h. */
 static ra8_jpeg_stream_state_t s_js;
 
 /**
