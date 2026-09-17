@@ -5,6 +5,8 @@
 
 const std = @import("std");
 
+/// Every failure `validateDefinition` can report for a peripheral definition,
+/// plus `OutOfMemory` from the validation allocation itself.
 pub const GeneratorError = error{
     EmptyRegisters,
     InvalidBaseAddress,
@@ -20,12 +22,18 @@ pub const GeneratorError = error{
     OutOfMemory,
 };
 
+/// Width of a single hardware register, in bits.
+///
+/// The tag value is the bit width, so `byteCount` doubles as the alignment
+/// `validateDefinition` requires of the register's offset.
 pub const RegisterSize = enum(u32) {
     b8 = 8,
     b16 = 16,
     b32 = 32,
     b64 = 64,
 
+    /// Maps a bit width onto a `RegisterSize`, or `null` when the width is not one
+    /// of the four widths the generator can emit.
     pub fn fromBits(bits: u32) ?RegisterSize {
         return switch (bits) {
             8 => .b8,
@@ -36,10 +44,12 @@ pub const RegisterSize = enum(u32) {
         };
     }
 
+    /// Size of the register in bytes, which is also its required alignment.
     pub fn byteCount(self: RegisterSize) u32 {
         return @intFromEnum(self) / 8;
     }
 
+    /// Name of the fixed-width C type used for this register in generated headers.
     pub fn cTypeName(self: RegisterSize) []const u8 {
         return switch (self) {
             .b8 => "uint8_t",
@@ -50,6 +60,10 @@ pub const RegisterSize = enum(u32) {
     }
 };
 
+/// One register exactly as written in the input JSON, before validation.
+///
+/// `offset` stays a string here so the JSON may use any base `std.fmt.parseInt`
+/// accepts with base 0.
 pub const Register = struct {
     name: []const u8,
     offset: []const u8,
@@ -57,12 +71,14 @@ pub const Register = struct {
     description: []const u8,
 };
 
+/// A whole peripheral as parsed from the input JSON, before validation.
 pub const PeripheralDef = struct {
     peripheral: []const u8,
     base_address: []const u8,
     registers: []const Register,
 };
 
+/// A register whose identifier, offset and size have passed `validateDefinition`.
 pub const ValidatedRegister = struct {
     name: []const u8,
     offset: u64,
@@ -70,6 +86,8 @@ pub const ValidatedRegister = struct {
     description: []const u8,
 };
 
+/// A peripheral whose base address and register list have passed
+/// `validateDefinition`. The `registers` slice is owned by the caller's allocator.
 pub const ValidatedPeripheral = struct {
     base_address: u64,
     registers: []ValidatedRegister,
@@ -87,6 +105,8 @@ const c_keywords = [_][]const u8{
     "_Atomic",  "_BitInt",       "_Generic",  "_Decimal32", "_Decimal64",   "_Decimal128",
 };
 
+/// Reports whether `name` collides with a C23 keyword. The comparison ignores
+/// case because the generator emits both spellings of every name.
 pub fn isReservedKeyword(name: []const u8) bool {
     for (c_keywords) |kw| {
         if (std.ascii.eqlIgnoreCase(name, kw)) return true;
@@ -94,6 +114,8 @@ pub fn isReservedKeyword(name: []const u8) bool {
     return false;
 }
 
+/// Reports whether `name` is usable as a C identifier: non-empty, not a reserved
+/// keyword, a leading letter or underscore, then alphanumerics or underscores.
 pub fn isValidIdentifier(name: []const u8) bool {
     if (name.len == 0 or isReservedKeyword(name)) return false;
     for (name, 0..) |c, i| {
@@ -106,7 +128,7 @@ pub fn isValidIdentifier(name: []const u8) bool {
     return true;
 }
 
-// Zero-allocation case transformation formatters
+/// Formatter that writes `bytes` lower-cased, without allocating.
 pub fn fmtLower(bytes: []const u8) std.fmt.Formatter(formatLower) {
     return .{ .data = bytes };
 }
@@ -119,6 +141,7 @@ fn formatLower(bytes: []const u8, comptime fmt: []const u8, options: std.fmt.For
     }
 }
 
+/// Formatter that writes `bytes` upper-cased, without allocating.
 pub fn fmtUpper(bytes: []const u8) std.fmt.Formatter(formatUpper) {
     return .{ .data = bytes };
 }
@@ -131,6 +154,8 @@ fn formatUpper(bytes: []const u8, comptime fmt: []const u8, options: std.fmt.For
     }
 }
 
+/// Smallest fixed-width C unsigned type that can hold `max_val`, used as the tag
+/// type of the generated register-offset enum.
 pub fn determineSmallestType(max_val: u64) []const u8 {
     if (max_val <= 0xFF) {
         return "uint8_t";
@@ -143,6 +168,8 @@ pub fn determineSmallestType(max_val: u64) []const u8 {
     }
 }
 
+/// Number of hex digits every offset literal in one header is padded to, so the
+/// generated table stays column-aligned: 2, 4, 8 or 16.
 pub fn hexWidthForMax(max_offset: u64) usize {
     if (max_offset <= 0xFF) return 2;
     if (max_offset <= 0xFFFF) return 4;
@@ -150,6 +177,8 @@ pub fn hexWidthForMax(max_offset: u64) usize {
     return 16;
 }
 
+/// Writes `val` to `writer` as a zero-padded, `U`-suffixed C hex literal of
+/// `width` digits.
 pub fn printHexLiteral(writer: anytype, val: u64, width: usize) !void {
     try writer.writeAll("0x");
     switch (width) {
@@ -161,6 +190,8 @@ pub fn printHexLiteral(writer: anytype, val: u64, width: usize) !void {
     try writer.writeByte('U');
 }
 
+/// Parses a peripheral definition from JSON, ignoring unknown fields. The
+/// returned `Parsed` owns the definition until the caller calls `deinit`.
 pub fn parseDefinition(allocator: std.mem.Allocator, json_bytes: []const u8) !std.json.Parsed(PeripheralDef) {
     return std.json.parseFromSlice(
         PeripheralDef,
@@ -170,6 +201,13 @@ pub fn parseDefinition(allocator: std.mem.Allocator, json_bytes: []const u8) !st
     );
 }
 
+/// Checks a parsed definition against the layout rules the generated header then
+/// asserts: valid identifiers, a 4-byte-aligned base address, at least one
+/// register, printable descriptions holding no comment terminator, no duplicate
+/// names or offsets, naturally aligned offsets, and registers sorted by ascending
+/// offset with no overlap.
+///
+/// On success the caller owns `registers` and frees it with `allocator`.
 pub fn validateDefinition(def: PeripheralDef, allocator: std.mem.Allocator) GeneratorError!ValidatedPeripheral {
     if (!isValidIdentifier(def.peripheral)) return GeneratorError.InvalidIdentifier;
     if (def.registers.len == 0) return GeneratorError.EmptyRegisters;
@@ -223,6 +261,10 @@ pub fn validateDefinition(def: PeripheralDef, allocator: std.mem.Allocator) Gene
     };
 }
 
+/// Validates `def` and writes its complete C23 register header to `writer`: the
+/// base-address and offset enums, the register block struct with explicit
+/// reserved padding, `static_assert`s pinning every offset and the total size,
+/// and an inline accessor returning the register block pointer.
 pub fn generateC23Header(def: PeripheralDef, allocator: std.mem.Allocator, writer: anytype) !void {
     const validated = try validateDefinition(def, allocator);
     defer allocator.free(validated.registers);

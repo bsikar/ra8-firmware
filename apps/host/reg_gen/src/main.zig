@@ -4,8 +4,11 @@
 //! reg_gen: Generates strict C23 register headers from JSON register definitions.
 
 const std = @import("std");
+/// The register-generation library behind this tool, re-exported so tests and
+/// generated documentation reach it through the module root.
 pub const generator = @import("generator.zig");
 
+/// Writes the command line usage text to `writer`.
 pub fn printUsage(writer: anytype) !void {
     try writer.print(
         \\reg_gen: C23 Register Header Generator
@@ -47,12 +50,19 @@ fn findJsonFile(buf: *[std.fs.max_path_bytes]u8) ![]const u8 {
     return error.FileNotFound;
 }
 
+/// Command line options after parsing, with the defaults used when reg_gen is
+/// invoked with no arguments.
 pub const CliOptions = struct {
     input_path: ?[]const u8 = null,
     output_path: ?[]const u8 = null,
     show_help: bool = false,
 };
 
+/// Parses `args` (argv, program name included at index 0) into `CliOptions`.
+///
+/// Reports the offending argument to `err_writer` and returns
+/// `error.InvalidArguments` for an unrecognized flag, a missing `--output`
+/// value, or a second positional path.
 pub fn parseCliArgs(args: []const []const u8, err_writer: anytype) !CliOptions {
     var opts = CliOptions{};
     var i: usize = 1;
@@ -133,6 +143,8 @@ fn run(allocator: std.mem.Allocator) !void {
     }
 }
 
+/// Entry point: runs the generator under a leak-checking allocator, returning 0
+/// on success and 1 after any failure already reported to stderr.
 pub fn main() u8 {
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
     defer {
