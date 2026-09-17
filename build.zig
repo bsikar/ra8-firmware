@@ -39,6 +39,8 @@
 
 const std = @import("std");
 pub const abi_contract = @import("tests/zig_build_graph/abi_contract.zig");
+pub const compile_db = @import("tests/zig_build_graph/compile_db.zig");
+pub const cross_sources = @import("tests/zig_build_graph/cross_sources.zig");
 
 /// One member of the migrated-library slice: the Zig archive, its public C
 /// header directory, and the C suite CMake links against that archive today.
@@ -191,8 +193,8 @@ pub fn build(b: *std.Build) void {
     test_step.dependOn(soup_step);
 
     const arm_step = b.step("arm", b.fmt(
-        "Cross-build the {s} example for the RA8D2 (Cortex-M85)",
-        .{cross_app.name},
+        "Cross-build {d} example apps for the RA8D2 (Cortex-M85)",
+        .{cross_apps.len},
     ));
     addArmCrossBuild(b, arm_step);
 
@@ -211,16 +213,18 @@ pub fn build(b: *std.Build) void {
         parity_step.dependOn(&print.step);
     }
 
-    // The cross-build slice's own manifest row: app, linker script, the
-    // migrated Zig libraries its ELF links.
-    const print_app = b.addSystemCommand(&.{ "printf", "%s\t%s\t%s\n" });
-    print_app.addArg(cross_app.name);
-    print_app.addArg(cross_app.linker_script);
-    print_app.addArg(if (cross_app.zig_libraries.len == 0)
-        "-"
-    else
-        b.fmt("{s}", .{cross_app.zig_libraries[0]}));
-    parity_step.dependOn(&print_app.step);
+    // One manifest row per cross-built app: app, linker script, and the count
+    // of translation units its ELF compiles. The TU count is the number the
+    // parity check compares against a real CMake configure of the same app,
+    // and it is what makes a second app worth having here -- two apps with
+    // different counts prove the source rules are rules.
+    for (cross_apps) |app| {
+        const print_app = b.addSystemCommand(&.{ "printf", "%s\t%s\t%s\n" });
+        print_app.addArg(app.name);
+        print_app.addArg(app.linker_script);
+        print_app.addArg(b.fmt("{d} TUs", .{cross_sources.crossSources(b, app).len}));
+        parity_step.dependOn(&print_app.step);
+    }
 
     // The vendored-C slice's own manifest row: the SOUP tree, the porting
     // header that configures it, and the C suite that exercises it.
@@ -268,97 +272,41 @@ pub fn build(b: *std.Build) void {
 //
 // Nothing in CMake is changed or deleted; CMake stays authoritative.
 
-/// The app this slice cross-builds, spelled the way ra8_add_app() resolves it.
-const CrossApp = struct {
-    name: []const u8,
-    dir: []const u8,
-    board: []const u8,
-    linker_script: []const u8,
-    /// Everything the app names in `LIBS`, migrated or not. Read by the
-    /// board opt-in gate below, which keys off the declared set rather than
-    /// off what happens to be on disk.
-    libraries: []const []const u8,
-    zig_libraries: []const []const u8,
-};
+const CrossApp = cross_sources.CrossApp;
 
-const cross_app = CrossApp{
-    .name = "blink_hal",
-    .dir = "examples/ek_ra8d2/hw_validated/hil/blink_hal",
-    .board = "libs/ra8_board_ek_ra8d2",
-    // ra8_add_app() falls back to the board's canonical single-core map when
-    // the app has no linker_script.ld of its own, which this app does not.
-    .linker_script = "libs/ra8_board_ek_ra8d2/ld/linker_script.ld",
-    // blink_hal names no LIBS at all: it is the universal first-party set and
-    // nothing else, which is what makes it the right first app to cross-build
-    // here. The `zig_libraries` hook below is wired and exercised by an empty
-    // list; an app that links a migrated Zig ARCHIVE cannot be cross-built by
-    // either build system yet, see #948.
-    .libraries = &.{},
-    .zig_libraries = &.{},
-};
-
-/// Board translation units that are opt-in rather than universal, and the
-/// library an app must name in `LIBS` to get them. The rule lives in
-/// cmake/ra8_app/sources.cmake, NOT in the board directory: the board glob
-/// compiles every BSP unit into every app, and these two are then filtered
-/// back out because they reach outside the unconditional include set
-/// (`..._console_stream.c` hands back an `ra8_io_stream_t` and needs the full
-/// `ra8_io`; `..._touch.c` binds GT911 through the ra8_io I2C facade, so
-/// either `ra8_io` or `ra8_io_bus` will do).
-///
-/// Encoded here because a directory listing cannot tell you about it: globbing
-/// the board's src/ and stopping there compiles `..._console_stream.c` into an
-/// app that never opted in, and it fails on a missing ra8_io_stream.h rather
-/// than on anything that names the gate.
-pub const BoardOptIn = struct {
-    suffix: []const u8,
-    satisfied_by: []const []const u8,
-};
-
-pub const board_opt_in_sources = [_]BoardOptIn{
-    .{ .suffix = "_console_stream.c", .satisfied_by = &.{"ra8_io"} },
-    .{ .suffix = "_touch.c", .satisfied_by = &.{ "ra8_io", "ra8_io_bus" } },
-};
-
-/// The universal first-party source set ra8_add_app() globs into every app,
-/// plus the board layer this app selects. Each entry is globbed for `*.c`
-/// non-recursively, exactly as the CMake `file(GLOB ...)` calls do.
-const cross_source_dirs = [_][]const u8{
-    "libs/ra8_core/src",
-    "libs/ra8_hal/src",
-    "libs/ra8_nsc/src",
-    "libs/ra8_net_pal/src",
-    "libs/ra8_usb_pal/src",
-    "libs/ra8_secure_app/src",
-    "libs/ra8_board_ek_ra8d2/src",
-};
-
-/// Boot translation units resolved per app: the app's own copy under `src/`
-/// when it has one, otherwise the board layer's copy under `src/boot/`. This
-/// is the per-app override rule in ra8_add_app(), and it is why
-/// `libs/ra8_board_ek_ra8d2/src/boot` is NOT in cross_source_dirs above -- a
-/// blind glob of that directory would link the board's vector table into an
-/// app that ships its own.
-const cross_boot_sources = [_][]const u8{
-    "vector_table.c",
-    "system_init.c",
-    "secure_exception.c",
-    "nmi_exception.c",
-    "trustzone_init.c",
-};
-
-/// Include path, in the order ra8_add_app() adds it. Order is preserved
-/// because a header shadowed by an earlier directory resolves differently, and
-/// a parity claim that only holds for one ordering is not a parity claim.
-const cross_include_dirs = [_][]const u8{
-    "libs/ra8_core/inc",
-    "libs/ra8_hal/inc",
-    "libs/ra8_net_pal/inc",
-    "libs/ra8_usb_pal/inc",
-    "libs/ra8_nsc/inc",
-    "libs/ra8_secure_app/inc",
-    "libs/ra8_board_ek_ra8d2/inc",
-    "libs/ra8_power_profile/inc",
+pub const cross_apps = [_]CrossApp{
+    .{
+        .name = "blink_hal",
+        .dir = "examples/ek_ra8d2/hw_validated/hil/blink_hal",
+        .board = "libs/ra8_board_ek_ra8d2",
+        // ra8_add_app() falls back to the board's canonical single-core map
+        // when the app has no linker_script.ld of its own, which this app
+        // does not.
+        .linker_script = "libs/ra8_board_ek_ra8d2/ld/linker_script.ld",
+        // blink_hal names no LIBS at all: it is the universal first-party set
+        // and nothing else, which is what made it the right FIRST app to
+        // cross-build here. The `zig_libraries` hook below is wired and
+        // exercised by an empty list; an app that links a migrated Zig ARCHIVE
+        // cannot be cross-built by either build system yet, see #948.
+        .libraries = &.{},
+        .zig_libraries = &.{},
+    },
+    .{
+        // The second app, and the reason there is a table here at all: one app
+        // cannot distinguish a rule that generalises from a constant that
+        // happens to be right. iic_b_facade_demo names two libraries in LIBS
+        // and so takes the OTHER arm of every source rule blink_hal takes --
+        // the board opt-in gate keeps `..._touch.c` instead of dropping it, a
+        // library with no directory of its own contributes six translation
+        // units, and the include path grows a directory. It links no migrated
+        // Zig archive, so #948 does not block it.
+        .name = "iic_b_facade_demo",
+        .dir = "examples/ek_ra8d2/hw_validated/hil/iic_b_facade_demo",
+        .board = "libs/ra8_board_ek_ra8d2",
+        .linker_script = "libs/ra8_board_ek_ra8d2/ld/linker_script.ld",
+        .libraries = &.{ "ra8_board_ek_ra8d2", "ra8_io_bus" },
+        .zig_libraries = &.{},
+    },
 };
 
 /// CPU flags from cmake/toolchain-ra8d2.cmake. The RA8D2 primary M85 is
@@ -442,74 +390,6 @@ fn findArmTools(b: *std.Build) ?ArmTools {
     return .{ .gcc = gcc, .objcopy = objcopy, .size = size };
 }
 
-/// Collect `*.c` from one directory, sorted, so the link order is stable
-/// across machines and two builds of the same tree produce the same ELF.
-fn collectCSources(b: *std.Build, dir_path: []const u8, out: *std.ArrayList([]const u8)) void {
-    var dir = b.build_root.handle.openDir(dir_path, .{ .iterate = true }) catch |err| {
-        std.debug.panic("ra8: cannot read source directory '{s}': {s}", .{ dir_path, @errorName(err) });
-    };
-    defer dir.close();
-
-    var names = std.ArrayList([]const u8).init(b.allocator);
-    var it = dir.iterate();
-    while (it.next() catch |err| {
-        std.debug.panic("ra8: cannot walk '{s}': {s}", .{ dir_path, @errorName(err) });
-    }) |entry| {
-        if (entry.kind != .file) continue;
-        if (!std.mem.endsWith(u8, entry.name, ".c")) continue;
-        names.append(b.dupe(entry.name)) catch @panic("OOM");
-    }
-    std.mem.sort([]const u8, names.items, {}, struct {
-        fn lessThan(_: void, a: []const u8, c: []const u8) bool {
-            return std.mem.lessThan(u8, a, c);
-        }
-    }.lessThan);
-    for (names.items) |name| {
-        out.append(b.fmt("{s}/{s}", .{ dir_path, name })) catch @panic("OOM");
-    }
-}
-
-/// Every C translation unit in the app's link, in ra8_add_app()'s own order:
-/// the app's main.c, the resolved boot files, then the globbed library set.
-fn crossSources(b: *std.Build) []const []const u8 {
-    var sources = std.ArrayList([]const u8).init(b.allocator);
-
-    sources.append(b.fmt("{s}/src/main.c", .{cross_app.dir})) catch @panic("OOM");
-
-    for (cross_boot_sources) |boot| {
-        const app_copy = b.fmt("{s}/src/{s}", .{ cross_app.dir, boot });
-        const board_copy = b.fmt("{s}/src/boot/{s}", .{ cross_app.board, boot });
-        const exists = if (b.build_root.handle.access(app_copy, .{})) |_| true else |_| false;
-        sources.append(if (exists) app_copy else board_copy) catch @panic("OOM");
-    }
-
-    for (cross_source_dirs) |dir_path| collectCSources(b, dir_path, &sources);
-
-    // Drop the opt-in board units this app did not opt into (see
-    // board_opt_in_sources).
-    var kept = std.ArrayList([]const u8).init(b.allocator);
-    for (sources.items) |source| {
-        if (!isGatedOutBoardSource(source)) kept.append(source) catch @panic("OOM");
-    }
-    return kept.items;
-}
-
-/// True when `source` is a board unit whose companion library is absent from
-/// the app's declared `LIBS`.
-pub fn isGatedOutBoardSource(source: []const u8) bool {
-    if (!std.mem.startsWith(u8, source, cross_app.board)) return false;
-    for (board_opt_in_sources) |gate| {
-        if (!std.mem.endsWith(u8, source, gate.suffix)) continue;
-        for (gate.satisfied_by) |required| {
-            for (cross_app.libraries) |declared| {
-                if (std.mem.eql(u8, declared, required)) return false;
-            }
-        }
-        return true;
-    }
-    return false;
-}
-
 /// Wire the cross-build into `arm_step`. Missing cross tools are a skip, not a
 /// failure: the host slice above has to keep working on a machine with no Arm
 /// GNU Toolchain installed.
@@ -522,6 +402,15 @@ fn addArmCrossBuild(b: *std.Build, arm_step: *std.Build.Step) void {
         arm_step.dependOn(&notice.step);
         return;
     };
+    for (cross_apps) |app| addArmCrossApp(b, arm_step, tools, app);
+}
+
+fn addArmCrossApp(
+    b: *std.Build,
+    arm_step: *std.Build.Step,
+    tools: ArmTools,
+    app: CrossApp,
+) void {
 
     // The target zig_libs.cmake derives from the toolchain's own -mcpu and
     // -mfloat-abi (cortex-m85 + hard float -> thumb-freestanding-eabihf,
@@ -539,7 +428,7 @@ fn addArmCrossBuild(b: *std.Build, arm_step: *std.Build.Step) void {
     // so an archive built at a different optimisation than the objects beside
     // it would not be the artifact CMake links.
     var archives = std.ArrayList(std.Build.LazyPath).init(b.allocator);
-    for (cross_app.zig_libraries) |lib_name| {
+    for (app.zig_libraries) |lib_name| {
         const dependency = b.dependency(lib_name, .{
             .target = arm_target,
             .optimize = .Debug,
@@ -547,8 +436,9 @@ fn addArmCrossBuild(b: *std.Build, arm_step: *std.Build.Step) void {
         archives.append(dependency.artifact(lib_name).getEmittedBin()) catch @panic("OOM");
     }
 
+    const include_dirs = cross_sources.crossIncludeDirs(b, app);
     var objects = std.ArrayList(std.Build.LazyPath).init(b.allocator);
-    for (crossSources(b)) |source| {
+    for (cross_sources.crossSources(b, app)) |source| {
         const compile = b.addSystemCommand(&.{tools.gcc});
         compile.addArgs(&arm_cpu_flags);
         compile.addArgs(&arm_debug_flags);
@@ -557,8 +447,7 @@ fn addArmCrossBuild(b: *std.Build, arm_step: *std.Build.Step) void {
         // Prefixed directory args, not bare -I strings: this both spells the
         // include flag and declares the directory as an input of the step, so
         // editing a header actually invalidates the cached object.
-        compile.addPrefixedDirectoryArg("-I", b.path(b.fmt("{s}/src", .{cross_app.dir})));
-        for (cross_include_dirs) |include_dir| {
+        for (include_dirs) |include_dir| {
             compile.addPrefixedDirectoryArg("-I", b.path(include_dir));
         }
         compile.addArg("-c");
@@ -572,23 +461,23 @@ fn addArmCrossBuild(b: *std.Build, arm_step: *std.Build.Step) void {
     link.addArgs(&arm_cpu_flags);
     link.addArgs(&arm_debug_flags);
     link.addArgs(&arm_link_flags);
-    link.addPrefixedFileArg("-T", b.path(cross_app.linker_script));
-    const map = link.addPrefixedOutputFileArg("-Wl,--Map=", b.fmt("{s}.map", .{cross_app.name}));
+    link.addPrefixedFileArg("-T", b.path(app.linker_script));
+    const map = link.addPrefixedOutputFileArg("-Wl,--Map=", b.fmt("{s}.map", .{app.name}));
     link.addArg("-o");
-    const elf = link.addOutputFileArg(b.fmt("{s}.elf", .{cross_app.name}));
+    const elf = link.addOutputFileArg(b.fmt("{s}.elf", .{app.name}));
     for (objects.items) |object| link.addFileArg(object);
     // Archives after the objects that reference them, then libgcc last, the
     // order CMake's link line uses.
     for (archives.items) |archive| link.addFileArg(archive);
     link.addArg("-lgcc");
 
-    const hex = objcopyTo(b, tools.objcopy, "ihex", elf, b.fmt("{s}.hex", .{cross_app.name}));
-    const bin = objcopyTo(b, tools.objcopy, "binary", elf, b.fmt("{s}.bin", .{cross_app.name}));
+    const hex = objcopyTo(b, tools.objcopy, "ihex", elf, b.fmt("{s}.hex", .{app.name}));
+    const bin = objcopyTo(b, tools.objcopy, "binary", elf, b.fmt("{s}.bin", .{app.name}));
 
-    arm_step.dependOn(&b.addInstallFileWithDir(elf, .{ .custom = "arm" }, b.fmt("{s}.elf", .{cross_app.name})).step);
-    arm_step.dependOn(&b.addInstallFileWithDir(hex, .{ .custom = "arm" }, b.fmt("{s}.hex", .{cross_app.name})).step);
-    arm_step.dependOn(&b.addInstallFileWithDir(bin, .{ .custom = "arm" }, b.fmt("{s}.bin", .{cross_app.name})).step);
-    arm_step.dependOn(&b.addInstallFileWithDir(map, .{ .custom = "arm" }, b.fmt("{s}.map", .{cross_app.name})).step);
+    arm_step.dependOn(&b.addInstallFileWithDir(elf, .{ .custom = "arm" }, b.fmt("{s}.elf", .{app.name})).step);
+    arm_step.dependOn(&b.addInstallFileWithDir(hex, .{ .custom = "arm" }, b.fmt("{s}.hex", .{app.name})).step);
+    arm_step.dependOn(&b.addInstallFileWithDir(bin, .{ .custom = "arm" }, b.fmt("{s}.bin", .{app.name})).step);
+    arm_step.dependOn(&b.addInstallFileWithDir(map, .{ .custom = "arm" }, b.fmt("{s}.map", .{app.name})).step);
 
     // The size report CMake prints as a post-build command.
     const report_size = b.addSystemCommand(&.{tools.size});
@@ -789,60 +678,13 @@ fn addVendoredCSuite(
 /// PATH, exactly as CMake's database needs the compiler it recorded.
 const host_c_driver = "clang";
 
-/// One compile command: the TU, the driver that compiles it, the flags it is
-/// really given, its include path in order, and where its object goes.
-const CompileDbEntry = struct {
-    file: []const u8,
-    driver: []const u8,
-    flags: []const []const u8,
-    include_dirs: []const []const u8,
-    object: []const u8,
-};
-
-/// The full argument vector for one entry, in compiler order: driver, flags,
-/// include path, then the TU and its output. Absolute paths, as CMake writes
-/// them, so a consumer that ignores the `directory` field still resolves.
-fn compileDbArguments(b: *std.Build, entry: CompileDbEntry) []const []const u8 {
-    var arguments = std.ArrayList([]const u8).init(b.allocator);
-    arguments.append(entry.driver) catch @panic("OOM");
-    for (entry.flags) |flag| arguments.append(flag) catch @panic("OOM");
-    for (entry.include_dirs) |include_dir| {
-        arguments.append(b.fmt("-I{s}", .{b.pathFromRoot(include_dir)})) catch @panic("OOM");
-    }
-    arguments.append("-c") catch @panic("OOM");
-    arguments.append(b.pathFromRoot(entry.file)) catch @panic("OOM");
-    arguments.append("-o") catch @panic("OOM");
-    arguments.append(entry.object) catch @panic("OOM");
-    return arguments.items;
-}
-
-/// Everything in an entry except its object path, joined. Two entries with the
-/// same signature are the same compile command written twice: `ra8_log.c` is
-/// compiled into each of the three host suite modules identically, and one
-/// command is what CMake's database would carry for it too. Two entries that
-/// differ are a real difference and both stay -- which is how the vendored
-/// slice's asymmetry survives into the database, `ra8_log.c` appearing once at
-/// the host bar and again at the stricter -Wconversion bar the SOUP drivers
-/// take.
-fn compileDbSignature(b: *std.Build, entry: CompileDbEntry) []const u8 {
-    var signature = std.ArrayList(u8).init(b.allocator);
-    signature.appendSlice(entry.driver) catch @panic("OOM");
-    signature.appendSlice("\x00") catch @panic("OOM");
-    signature.appendSlice(entry.file) catch @panic("OOM");
-    for (entry.flags) |flag| {
-        signature.appendSlice("\x00") catch @panic("OOM");
-        signature.appendSlice(flag) catch @panic("OOM");
-    }
-    for (entry.include_dirs) |include_dir| {
-        signature.appendSlice("\x00") catch @panic("OOM");
-        signature.appendSlice(include_dir) catch @panic("OOM");
-    }
-    return signature.items;
-}
-
-/// Every compile command this graph issues, deduplicated by signature.
-fn compileDbEntries(b: *std.Build) []const CompileDbEntry {
-    var candidates = std.ArrayList(CompileDbEntry).init(b.allocator);
+/// Every compile command this graph issues, before deduplication. The
+/// mechanics of the database itself -- the record, its argument vector, how two
+/// records are told apart, and how the set is rendered and installed -- live in
+/// tests/zig_build_graph/compile_db.zig; what stays here is the part that
+/// cannot move, which translation units this graph compiles and at which bars.
+fn compileDbEntries(b: *std.Build) []const compile_db.Entry {
+    var candidates = std.ArrayList(compile_db.Entry).init(b.allocator);
 
     // --- the host slice (#925) --------------------------------------------
     for (slice) |member| {
@@ -906,7 +748,7 @@ fn compileDbEntries(b: *std.Build) []const CompileDbEntry {
     }) catch @panic("OOM");
 
     // --- the ABI-contract slice (#1007) ------------------------------------
-    abi_contract.appendCompileDbEntries(b, CompileDbEntry, &candidates, host_c_driver);
+    abi_contract.appendCompileDbEntries(b, compile_db.Entry, &candidates, host_c_driver);
 
     // --- the ARM cross slice (#936) ---------------------------------------
     // The set a host database structurally cannot describe, and the reason
@@ -914,87 +756,26 @@ fn compileDbEntries(b: *std.Build) []const CompileDbEntry {
     // rather than failing the step, the same skip the `arm` step takes; the
     // count on `zig build parity` is what shows which of the two you got.
     if (findArmTools(b)) |tools| {
-        var include_dirs = std.ArrayList([]const u8).init(b.allocator);
-        include_dirs.append(b.fmt("{s}/src", .{cross_app.dir})) catch @panic("OOM");
-        include_dirs.appendSlice(&cross_include_dirs) catch @panic("OOM");
-
         const arm_flags = arm_cpu_flags ++ arm_debug_flags ++ arm_dialect_flags ++ arm_warning_flags;
-        for (crossSources(b)) |source| {
-            candidates.append(.{
-                .file = source,
-                .driver = tools.gcc,
-                .flags = &arm_flags,
-                .include_dirs = include_dirs.items,
-                .object = b.fmt("arm/{s}.o", .{std.fs.path.basename(source)}),
-            }) catch @panic("OOM");
+        for (cross_apps) |app| {
+            const include_dirs = cross_sources.crossIncludeDirs(b, app);
+            for (cross_sources.crossSources(b, app)) |source| {
+                candidates.append(.{
+                    .file = source,
+                    .driver = tools.gcc,
+                    .flags = &arm_flags,
+                    .include_dirs = include_dirs,
+                    .object = b.fmt("arm/{s}/{s}.o", .{ app.name, std.fs.path.basename(source) }),
+                }) catch @panic("OOM");
+            }
         }
     }
 
-    var entries = std.ArrayList(CompileDbEntry).init(b.allocator);
-    var seen = std.StringHashMap(void).init(b.allocator);
-    for (candidates.items) |entry| {
-        const signature = compileDbSignature(b, entry);
-        if (seen.contains(signature)) continue;
-        seen.put(signature, {}) catch @panic("OOM");
-        entries.append(entry) catch @panic("OOM");
-    }
-    return entries.items;
-}
-
-pub fn appendJsonString(out: *std.ArrayList(u8), value: []const u8) void {
-    out.append('"') catch @panic("OOM");
-    for (value) |byte| switch (byte) {
-        '"' => out.appendSlice("\\\"") catch @panic("OOM"),
-        '\\' => out.appendSlice("\\\\") catch @panic("OOM"),
-        '\n' => out.appendSlice("\\n") catch @panic("OOM"),
-        '\t' => out.appendSlice("\\t") catch @panic("OOM"),
-        else => out.append(byte) catch @panic("OOM"),
-    };
-    out.append('"') catch @panic("OOM");
+    return candidates.items;
 }
 
 /// Wire the database into `step` and hand back how many commands it carries,
 /// so `zig build parity` can print the count without rebuilding the list.
 fn addCompileDb(b: *std.Build, step: *std.Build.Step) usize {
-    const entries = compileDbEntries(b);
-    const directory = b.build_root.path orelse ".";
-
-    var json = std.ArrayList(u8).init(b.allocator);
-    json.appendSlice("[\n") catch @panic("OOM");
-    for (entries, 0..) |entry, index| {
-        json.appendSlice("  {\n    \"directory\": ") catch @panic("OOM");
-        appendJsonString(&json, directory);
-        json.appendSlice(",\n    \"file\": ") catch @panic("OOM");
-        appendJsonString(&json, b.pathFromRoot(entry.file));
-        json.appendSlice(",\n    \"output\": ") catch @panic("OOM");
-        appendJsonString(&json, entry.object);
-        json.appendSlice(",\n    \"arguments\": [") catch @panic("OOM");
-        for (compileDbArguments(b, entry), 0..) |argument, argument_index| {
-            if (argument_index != 0) json.appendSlice(", ") catch @panic("OOM");
-            appendJsonString(&json, argument);
-        }
-        json.appendSlice("]\n  }") catch @panic("OOM");
-        if (index + 1 != entries.len) json.append(',') catch @panic("OOM");
-        json.append('\n') catch @panic("OOM");
-    }
-    json.appendSlice("]\n") catch @panic("OOM");
-
-    const written = b.addWriteFiles();
-    const database = written.add("compile_commands.json", json.items);
-    const install = b.addInstallFileWithDir(
-        database,
-        .{ .custom = "analysis" },
-        "compile_commands.json",
-    );
-    step.dependOn(&install.step);
-
-    const report = b.addSystemCommand(&.{
-        "printf",
-        "compile-db: %s compile commands -> zig-out/analysis/compile_commands.json\n",
-        b.fmt("{d}", .{entries.len}),
-    });
-    report.step.dependOn(&install.step);
-    step.dependOn(&report.step);
-
-    return entries.len;
+    return compile_db.add(b, step, compileDbEntries(b));
 }
