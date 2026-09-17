@@ -10,6 +10,12 @@ one-second recording of MIC1 as a WAV, and a health line for automation.
 `c6_camera_mjpeg` is the same idea through the other camera backend --
 sensor-side JPEG with zero-copy passthrough -- behind the same facade.
 
+Both apps share one link-rate constant, `k_c6_cam_sck_hz` in
+`examples/ek_ra8d2/common/c6_camera_server/inc/c6_camera_server.h`. It is the
+highest SPI rate this jumper harness has qualified, and the numbers behind that
+ceiling are recorded in the `c6_camera_mjpeg` README. Changing it here changes
+it for both servers.
+
 ## Bench routing: two peripherals contending for one switch bank
 
 This is the only app that needs both the C6 link and the DVP camera, and the
