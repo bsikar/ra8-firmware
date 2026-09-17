@@ -230,26 +230,19 @@ bool priv_reflow_tok_decode_entity(const char* src,
   if (src[1] == '#') {
     return internal_decode_numeric(src, window, out_cp, out_used);
   }
-  static const struct {
-    const char* word; /**< Word. */
-    uint32_t    cp;   /**< Cp.   */
-  } k_named[] = {
-    {"amp", (uint32_t)'&'},
-    {"lt", (uint32_t)'<'},
-    {"gt", (uint32_t)'>'},
-    {"quot", (uint32_t)'"'},
-    {"apos", (uint32_t)'\''},
-  };
-  for (size_t e = 0U; e < (sizeof(k_named) / sizeof(k_named[0])); ++e) {
-    const size_t wlen = strlen(k_named[e].word);
-    if (((wlen + 2U) <= window) && (src[1U + wlen] == ';') &&
-        (strncmp(&src[1], k_named[e].word, wlen) == 0)) {
-      *out_cp   = k_named[e].cp;
-      *out_used = wlen + 2U;
-      return true;
-    }
+  size_t end = 1U;
+  while ((end < window) && (src[end] != ';')) {
+    ++end;
   }
-  return false;
+  if ((end >= window) || (src[end] != ';')) {
+    return false; /* no terminator inside the scan window */
+  }
+  const size_t nlen = end - 1U;
+  if (!priv_reflow_tok_lookup_entity(&src[1], nlen, out_cp)) {
+    return false;
+  }
+  *out_used = nlen + 2U;
+  return true;
 }
 
 /* ===========================================================================
