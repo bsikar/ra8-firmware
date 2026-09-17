@@ -643,6 +643,12 @@ gate_toolchain_parity() (
   # link path it never took (#899); this proves the probe is actually run and
   # that every failure keeps its own remedy.
   bash scripts/ci/lib/macos_sdk.sh --selftest
+  # The forced-SDK leg of macos-host-build is the only step that still touches
+  # Apple's own libSystem stub, and it was a boolean: every non-zero exit was
+  # reported as the expected #899 failure, including `invalid option:
+  # -Dmacos-libsystem` after a rename, which would have left the leg printing
+  # the finding nightly while measuring nothing (#899).
+  bash scripts/ci/lib/macos_sdk_link.sh --selftest
   # macOS ships bash 3.2 as /bin/bash, which justfile and scripts/ci.sh both
   # pin. A bash 4 construct on the macOS gate's shell path reads as correct on
   # every Linux box here and breaks only the Mac (#899), so it is caught from
