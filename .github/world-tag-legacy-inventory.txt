@@ -26,10 +26,6 @@ libs/ra8_hal/inc/ra8_mrms_regs.h
 libs/ra8_hal/inc/ra8_npu_blob.h
 libs/ra8_hal/inc/ra8_npu_fake_cmd.h
 libs/ra8_hal/inc/ra8_ospi_regs.h
-libs/ra8_hal/inc/ra8_pcntr.h
-libs/ra8_hal/inc/ra8_pfs_regs.h
-libs/ra8_hal/inc/ra8_port_regs.h
-libs/ra8_hal/inc/ra8_port_utils.h
 libs/ra8_hal/inc/ra8_register_protection.h
 libs/ra8_hal/inc/ra8_regs.h
 libs/ra8_hal/inc/ra8_system_regs.h

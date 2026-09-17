@@ -3,6 +3,9 @@
  * @brief High-level GPIO helpers on top of the PORT + PFS register layer
  * @ingroup grp_hal_system
  *
+ * @par Tag
+ * [Ring 3 / HAL] {World: MIXED}
+ *
  * @details
  * Thin convenience API that takes `ra8_port_pin_t` values and wraps the
  * PORT and PFS register writes with the correct PWPR unlock / lock
