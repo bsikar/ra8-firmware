@@ -150,7 +150,14 @@ static volatile r_ipc_channel_regs_t* internal_ra8_ipc_get_regs(uint8_t channel)
    * ra8_ipc_init BusFaults and CPU1 wedges in cpu1_fault_handler
    * (HUM Ch 3.2 p 205 + bench probe pinning PC at 0x020C0020). */
   const uintptr_t ns_offset = k_ipc_ns_alias_offset;
-  return (volatile r_ipc_channel_regs_t*)((uintptr_t)ra8_ipc_channel(channel) + ns_offset);
+  /* Hold the Secure-alias pointer in a local before the integer cast.
+   * Casting the ra8_ipc_channel() call expression itself is a cast of a
+   * function result to a different type, which -Wbad-function-cast reports
+   * and the CPU1 first-party warning profile promotes to an error (#843 /
+   * T1-09). The address computed and the generated code are unchanged; the
+   * bounds check above already rules the pointer out of being nullptr. */
+  volatile r_ipc_channel_regs_t* const secure_regs = ra8_ipc_channel(channel);
+  return (volatile r_ipc_channel_regs_t*)((uintptr_t)secure_regs + ns_offset);
 #else
   return ra8_ipc_channel(channel);
 #endif

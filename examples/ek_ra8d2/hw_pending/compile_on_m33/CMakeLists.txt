@@ -96,20 +96,19 @@ if(TARGET compile_on_m33_cpu1.elf)
   #     and this image hand-picks its sources, so the policy TU is explicit.
   #   - ra8_error_handler.c: assertion sink -- miniz MZ_ASSERT and core
   #     assertions route to ra8_fatal_error().
+  #   - ra8_ipc.c: the M33 side of the #150 mode-switch IPC path. It joins the
+  #     bar here now that its channel-regs cast no longer trips
+  #     -Wbad-function-cast; its inventory rows are gone.
   ra8_cpu1_add_first_party_sources(
     compile_on_m33_cpu1.elf
     ${RA8_REPO_ROOT}/libs/ra8_core/src/ra8_decomp_limits.c
     ${RA8_REPO_ROOT}/libs/ra8_core/src/ra8_error_handler.c
+    ${RA8_REPO_ROOT}/libs/ra8_hal/src/ra8_ipc.c
   )
   file(GLOB _c1_epub_c CONFIGURE_DEPENDS ${RA8_REPO_ROOT}/apps/shared_libs/epub/src/*.c)
   target_sources(
     compile_on_m33_cpu1.elf
-    # ra8_ipc.c does NOT come on yet, and its inventory row stays: on the
-    # profile it still trips -Wbad-function-cast on the channel-regs cast
-    # (ra8_ipc.c:153). That is a first-party defect for its own change, not
-    # something to silence here.
-    PRIVATE ${RA8_REPO_ROOT}/libs/ra8_hal/src/ra8_ipc.c
-            ${RA8_REPO_ROOT}/apps/shared_libs/rabook_compile/src/rabook_compile.c
+    PRIVATE ${RA8_REPO_ROOT}/apps/shared_libs/rabook_compile/src/rabook_compile.c
             ${RA8_REPO_ROOT}/apps/shared_libs/rabook_compile/src/ra8_rabook_finalize.c
             ${RA8_REPO_ROOT}/apps/shared_libs/rabook_compile/src/ra8_rabook_gray4.c
             ${RA8_REPO_ROOT}/apps/shared_libs/rabook_compile/src/ra8_rabook_xml_shim.c
