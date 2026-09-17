@@ -19,7 +19,19 @@
 #include "ra8_c6link.h"
 #include "ra8_err.h"
 
-/** @brief Application sizing, pacing and fixed network values. */
+/**
+ * @brief Application sizing, pacing and fixed network values.
+ *
+ * @note @c k_c6_cam_sck_hz is a bench-qualified ceiling, not a free parameter.
+ *       The jumper harness described in the C6 tier README qualified 10 MHz and
+ *       failed at the next step up: both control-RPC and raw-Ethernet
+ *       qualification timed out at 20 MHz on that wiring. Raising it was
+ *       measured, not assumed -- `c6_camera_mjpeg` served 21 complete frames in
+ *       a 10 s multipart transfer at 10 MHz (2.10 FPS, ~20 KiB per JPEG) against
+ *       1.50 FPS at the previous 5 MHz, recorded in that app's README. Both
+ *       camera servers share this constant, so a change here moves the
+ *       livestream app's link rate too and needs a fresh bench run for each.
+ */
 typedef enum : uint32_t {
   k_c6_cam_uart_baud       = 115200U,   /**< Diagnostic console baud rate.          */
   k_c6_cam_sck_hz          = 10000000U, /**< Camera-stream ESP-hosted SPI rate.     */
