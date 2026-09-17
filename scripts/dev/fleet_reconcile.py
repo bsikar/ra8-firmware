@@ -28,6 +28,7 @@ import fleet_mutation_lock as fml
 import fleet_reconcile_arc_selftest as fras
 import fleet_reconcile_backoff_selftest as frb
 import fleet_reconcile_blocking_selftest as frbl
+import fleet_reconcile_drain_selftest as frd
 import fleet_reconcile_process as frp
 import fleet_reconcile_recovery_selftest as frr
 import fleet_reconcile_selftest as frs
@@ -53,6 +54,9 @@ PRODUCER_APPLY_ATTEMPTS = 3
 APPLY_RETRY_BACKOFF_SECONDS = 15
 APPLY_RETRY_BACKOFF_CAP_SECONDS = 120
 APPLY_RETRY_SLICE_SECONDS = 1.0
+# A host whose drain fails is the inverse of stranding: the controller believes
+# it holds no capacity while it is still handing work to a failed mutation.
+DRAIN_FAILED_STATUS = 3
 SHA256_RE = re.compile(r"[0-9a-f]{64}")
 ANSI_RE = re.compile(r"\x1b\[[0-9;]*m")
 
@@ -62,6 +66,19 @@ RECAP_RE = re.compile(
     r"unreachable=(\d+)\s+failed=(\d+)\s+skipped=(\d+)\s+"
     r"rescued=(\d+)\s+ignored=(\d+)\s*$"
 )
+
+
+class DrainFailedError(RuntimeError):
+    """Raised when a host could not be drained after a failed mutation."""
+
+    def __init__(self, host: str, status: int) -> None:
+        """Name the host that stayed in service and the status it refused with."""
+        super().__init__(
+            f"{host}: capacity-quarantine failed (rc={status}); the host was NOT "
+            "drained and may still be accepting work after a failed mutation"
+        )
+        self.host = host
+        self.status = status
 
 
 @dataclass(frozen=True)
@@ -235,15 +252,19 @@ def inspect_activation_host(
 
 
 def quarantine(host: str, run: CommandRunner) -> None:
-    """Drain a host after failed mutation so it cannot accept new work."""
+    """Drain a host after failed mutation so it cannot accept new work.
+
+    A drain that fails was only logged as a warning, so every caller carried on
+    reporting the host as drained.  That is the inverse of the stranding in
+    issue #888 and the more dangerous half: the controller shows zero capacity
+    for a host that is still accepting jobs against a mutation that failed
+    halfway.  Refuse to return normally from a drain that did not land.
+    """
     print(f"fleet-reconcile: quarantining {host} at zero capacity", file=sys.stderr)
     result = run(fleet_command(host, "quarantine"))
     emit_result(result)
     if result.status:
-        print(
-            f"fleet-reconcile: WARNING: could not quarantine {host} (rc={result.status})",
-            file=sys.stderr,
-        )
+        raise DrainFailedError(host, result.status)
 
 
 def recover_last_known_good(
@@ -469,12 +490,18 @@ def reconcile(
     run: CommandRunner = frp.command_runner,
     sleep: Callable[[float], None] = time.sleep,
 ) -> int:
-    """Reconcile producer then consumers, preserving dependency safety."""
+    """Reconcile producer then consumers, preserving dependency safety.
+
+    Returns 0 for a clean pass, 1 for an ordinary failure, and
+    ``DRAIN_FAILED_STATUS`` when any host could not be drained, which is a
+    louder verdict than a failed pass because that host is unaccounted for.
+    """
     state_path = options.state_dir / STATE_FILE
     document = load_state(state_path)
     receipts = document["hosts"]
     failures = 0
     producer_failed = False
+    undrained: list[str] = []
     for index, host in enumerate(runner_hosts(data)):
         if frp.interrupted_status():
             break
@@ -494,9 +521,20 @@ def reconcile(
                 receipt_invalidated = True
             return run(argv)
 
-        ok, stranded, receipt = reconcile_host(
-            data, host, receipts.get(host), options, transaction_run, sleep=sleep
-        )
+        try:
+            ok, stranded, receipt = reconcile_host(
+                data, host, receipts.get(host), options, transaction_run, sleep=sleep
+            )
+        except DrainFailedError as error:
+            print(
+                f"fleet-reconcile: CRITICAL: {error}; operator intervention required "
+                "before this host is trusted again",
+                file=sys.stderr,
+            )
+            undrained.append(host)
+            # Unaccounted for, not proven safe: keep the fail-closed verdict so a
+            # producer in this state still holds its consumers back.
+            ok, stranded, receipt = False, True, {}
         if ok and options.mode == "apply":
             receipts[host] = receipt
         if not ok:
@@ -513,6 +551,13 @@ def reconcile(
                 save_state(state_path, document)
     if options.mode == "apply":
         save_state(state_path, document)
+    if undrained:
+        print(
+            "fleet-reconcile: CRITICAL: pass finished with host(s) that failed to "
+            f"drain and may still be serving work: {', '.join(undrained)}",
+            file=sys.stderr,
+        )
+        return DRAIN_FAILED_STATUS
     return 1 if failures else 0
 
 
@@ -1062,6 +1107,7 @@ def selftest() -> int:
     failures.extend(frr.run(sys.modules[__name__]))
     failures.extend(frb.run(sys.modules[__name__]))
     failures.extend(frbl.run(sys.modules[__name__]))
+    failures.extend(frd.run(sys.modules[__name__]))
     _selftest_state_safety(failures)
     failures.extend(fml.run_selftest())
     _selftest_timeout(failures)
