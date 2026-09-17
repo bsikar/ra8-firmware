@@ -201,13 +201,15 @@ target_include_directories(
 # lives at 0x0200_0000+ and the NS image's LMA at 0x0208_0000, so they do not
 # overlap. The merged hex overwrites the app hex so the existing flash flow
 # (hil_run_local / flash.sh) picks up BOTH halves.
+include("${RA8_REPO_ROOT}/cmake/ra8_zig_tool.cmake")
+ra8_use_merge_ihex(tz_nsc_cgc_usb_ns.elf)
 add_custom_command(
   TARGET tz_nsc_cgc_usb_ns.elf
   POST_BUILD
   COMMAND ${CMAKE_OBJCOPY} --remove-section=.option_setting* -O ihex
           $<TARGET_FILE:tz_nsc_cgc_usb.elf> tz_nsc_cgc_usb_secure.hex
   COMMAND ${CMAKE_OBJCOPY} -O ihex $<TARGET_FILE:tz_nsc_cgc_usb_ns.elf> tz_nsc_cgc_usb_ns.hex
-  COMMAND ${RA8_REPO_ROOT}/scripts/gen/merge_ihex.py tz_nsc_cgc_usb_secure.hex tz_nsc_cgc_usb_ns.hex
+  COMMAND $<TARGET_FILE:ra8_zig::merge_ihex> tz_nsc_cgc_usb_secure.hex tz_nsc_cgc_usb_ns.hex
           tz_nsc_cgc_usb.hex
   VERBATIM
   COMMENT "Merging Secure + Non-Secure images into tz_nsc_cgc_usb.hex"

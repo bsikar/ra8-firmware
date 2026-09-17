@@ -95,13 +95,15 @@ set_target_properties(
 add_dependencies(tz_threadx_demo_ns.elf tz_threadx_demo.elf)
 
 # Combine: Secure image + NS image -> one merged flashable hex
+include("${RA8_REPO_ROOT}/cmake/ra8_zig_tool.cmake")
+ra8_use_merge_ihex(tz_threadx_demo_ns.elf)
 add_custom_command(
   TARGET tz_threadx_demo_ns.elf
   POST_BUILD
   COMMAND ${CMAKE_OBJCOPY} --remove-section=.option_setting* -O ihex
           $<TARGET_FILE:tz_threadx_demo.elf> tz_threadx_demo_secure.hex
   COMMAND ${CMAKE_OBJCOPY} -O ihex $<TARGET_FILE:tz_threadx_demo_ns.elf> tz_threadx_demo_ns.hex
-  COMMAND ${RA8_REPO_ROOT}/scripts/gen/merge_ihex.py tz_threadx_demo_secure.hex
+  COMMAND $<TARGET_FILE:ra8_zig::merge_ihex> tz_threadx_demo_secure.hex
           tz_threadx_demo_ns.hex tz_threadx_demo.hex
   VERBATIM
   COMMENT "Merging Secure + Non-Secure images into tz_threadx_demo.hex"

@@ -136,13 +136,15 @@ set_target_properties(
 add_dependencies(ra8d2-ereader_ns.elf ra8d2-ereader.elf)
 
 # Combine: Secure image + NS image -> one merged flashable hex
+include("${RA8_REPO_ROOT}/cmake/ra8_zig_tool.cmake")
+ra8_use_merge_ihex(ra8d2-ereader_ns.elf)
 add_custom_command(
   TARGET ra8d2-ereader_ns.elf
   POST_BUILD
   COMMAND ${CMAKE_OBJCOPY} --remove-section=.option_setting* -O ihex
           $<TARGET_FILE:ra8d2-ereader.elf> ra8d2-ereader_secure.hex
   COMMAND ${CMAKE_OBJCOPY} -O ihex $<TARGET_FILE:ra8d2-ereader_ns.elf> ra8d2-ereader_ns.hex
-  COMMAND ${RA8_REPO_ROOT}/scripts/gen/merge_ihex.py ra8d2-ereader_secure.hex ra8d2-ereader_ns.hex
+  COMMAND $<TARGET_FILE:ra8_zig::merge_ihex> ra8d2-ereader_secure.hex ra8d2-ereader_ns.hex
           ra8d2-ereader.hex
   VERBATIM
   COMMENT "Merging Secure + Non-Secure images into ra8d2-ereader.hex"
