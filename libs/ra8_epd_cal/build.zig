@@ -35,6 +35,13 @@ pub fn build(b: *std.Build) void {
         .root_source_file = b.path("src/ra8_epd_cal_abi.zig"),
         .target = target,
         .optimize = optimize,
+        // Firmware never unwinds. An archive built with unwind tables
+        // references the ARM EHABI personality routines, those pull
+        // `unwind-arm.o` out of libgcc on the app link, and that object
+        // then wants `__exidx_start` / `__exidx_end` / `abort`, which a
+        // -nostdlib image with this board's linker script does not have
+        // (#948).
+        .unwind_tables = .none,
     });
     library_module.addOptions("build_config", build_config);
 
@@ -43,6 +50,8 @@ pub fn build(b: *std.Build) void {
         .linkage = .static,
         .root_module = library_module,
     });
+    library.bundle_compiler_rt = true;
+    library.root_module.pic = true;
     b.installArtifact(library);
 
     const implementation_module = b.createModule(.{
