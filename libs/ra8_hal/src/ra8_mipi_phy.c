@@ -74,24 +74,9 @@ typedef enum : uint16_t {
   k_ra8_mipi_phy_spin_budget   = 4096U, /**< Max poll iterations.        */
 } ra8_mipi_phy_limits_t;
 
-/**
- * @enum ra8_mipi_phy_mstpc_bit_t
- * @brief Direct-write fallback for the MIPI PHY module-stop bit.
- *
- * @details
- * The shared ``ra8_mstp_t`` enum in ``libs/ra8_hal/inc/ra8_mstp_regs.h``
- * does NOT yet have a ``k_ra8_mipi_phy`` entry. Per the agent brief
- * we must not extend that file from this driver. As a stop-gap, the
- * driver clears MSTPCRC bit 13 (the MIPI PHY slot in MSTPCRC -- HUM
- * Ch 64.4.2 p 3838 references MSTPCRC for the block) directly.
- *
- * TODO: When ``ra8_mstp_regs.h`` gains an explicit ``k_ra8_mstp_mipi_phy``
- * value (driven by HUM Ch 11.2.8 "MSTPCRC" p 446-447), replace the
- * direct register write below with ``ra8_mstp_enable(k_ra8_mstp_mipi_phy)``.
- */
-typedef enum : uint8_t {
-  k_ra8_mipi_phy_mstpc_bit = 13U, /**< Provisional MSTPC slot. */
-} ra8_mipi_phy_mstpc_bit_t;
+/* ``k_ra8_mipi_phy_mstpc_bit``, the provisional MSTPCRC slot this driver
+ * ungates, is declared in ``ra8_mipi_phy_internal.h`` because the lifecycle
+ * observers in ``ra8_mipi_phy_ops.c`` read the same bit. */
 
 /**
  * @enum ra8_mipi_phy_lane_bit_t
