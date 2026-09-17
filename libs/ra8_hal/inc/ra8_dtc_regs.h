@@ -3,6 +3,9 @@
  * @brief DTC (Data Transfer Controller) register layout for the RA8D2
  * @ingroup grp_hal_memory
  *
+ * @par Tag
+ * [Ring 3 / HAL] {World: S}
+ *
  * @details
  * The DTC is a lighter-weight alternative to the DMAC for moving
  * small amounts of data in response to peripheral interrupts. Its
