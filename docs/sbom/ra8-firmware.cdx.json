@@ -312,6 +312,18 @@
           "value": "d12fbb991c0822f347bbc569badef904629ce605"
         },
         {
+          "name": "ra8:releaseBasis",
+          "value": "v4.1.0"
+        },
+        {
+          "name": "ra8:releaseBasisCommit",
+          "value": "0fe989b6b514192783c469039edd325fd0989806"
+        },
+        {
+          "name": "ra8:commitsAfterRelease",
+          "value": "72"
+        },
+        {
           "name": "ra8:licenseOriginal",
           "value": "Apache-2.0 OR GPL-2.0-or-later"
         },
@@ -374,6 +386,18 @@
         {
           "name": "ra8:upstreamCommit",
           "value": "bbf1eaf5f4a72bcc3e0cfe854e0313c93b75cd77"
+        },
+        {
+          "name": "ra8:releaseBasis",
+          "value": "v1.1.0"
+        },
+        {
+          "name": "ra8:releaseBasisCommit",
+          "value": "29160dd877d29658279fd683b2ae57b320ddcf09"
+        },
+        {
+          "name": "ra8:commitsAfterRelease",
+          "value": "76"
         },
         {
           "name": "ra8:licenseOriginal",

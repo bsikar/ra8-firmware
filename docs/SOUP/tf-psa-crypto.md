@@ -33,6 +33,30 @@ firmware as Software Of Unknown Provenance (SOUP).
     upstream at `bbf1eaf5` -- is exact; what the evidence does not establish
     is that no other commit would satisfy it too.
 
+- **Release basis**: `v1.1.0` (`29160dd877d2`) plus 76 commits. The vendored
+  pin `bbf1eaf5f4a7` is a post-tag development snapshot, not the release.
+  `v1.1.0` is the newest named release the pin descends from: measured
+  2026-09-17 against upstream's tag graph, the pin is 76 commits ahead of that
+  tag and none behind it. Declared in `scripts/gen/sbom_registry.py`, published
+  in the SBOM as `ra8:releaseBasis` / `ra8:commitsAfterRelease`, and held to
+  this sentence by `scripts/checks/check_soup_upstream.py`, so the tag, the
+  distance and this prose cannot drift apart one edit at a time.
+
+## Upstream currency (measured 2026-09-17)
+
+The same correction as `docs/SOUP/mbedtls.md` records: this tree is not behind
+1.1.0, it is 76 commits past it, and the 1.0 API break has already been
+absorbed. Measured against upstream's tag graph on 2026-09-17:
+
+- `v1.1.1` (released 2026-07-07) is the 1.1 patch release and diverges from
+  our pin: 209 commits on that branch our snapshot does not carry, 71
+  development commits it does.
+- `v1.2.0` (released 2026-07-07) is a descendant of our pin, 189 commits
+  ahead, so moving to it is a fast-forward along the same line.
+- `osv-scan` was not run for this record; the advisory question stays on #804.
+  This component is the secure-boot signature verifier, so that question is
+  the one that matters most of the two.
+
 ## Use case in this firmware
 
 - **Primary consumer: the Root-of-Trust secure-boot chain.** The
