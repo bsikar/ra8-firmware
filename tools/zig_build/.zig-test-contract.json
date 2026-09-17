@@ -7,5 +7,5 @@
     "tests/macos_host_test.zig",
     "tests/root.zig"
   ],
-  "minimum_tests": 6
+  "minimum_tests": 8
 }

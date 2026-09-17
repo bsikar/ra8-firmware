@@ -9,6 +9,7 @@ const macos_host = @import("macos_host");
 const testing = std.testing;
 const Choice = macos_host.Choice;
 const decide = macos_host.decide;
+const pinnedOsVersion = macos_host.pinnedOsVersion;
 const required_target = macos_host.required_target;
 const tbdDeclaresTarget = macos_host.tbdDeclaresTarget;
 
@@ -86,9 +87,50 @@ test "an unreadable SDK falls back to the bundled stub on arm64 macOS" {
 }
 
 test "pinned choice is an explicit, non-native query" {
-    const q = Choice.pinned_macos_arm64.query();
+    const q = Choice.pinned_macos_arm64.query(null);
     try testing.expectEqual(std.Target.Cpu.Arch.aarch64, q.cpu_arch.?);
     try testing.expectEqual(std.Target.Os.Tag.macos, q.os_tag.?);
+    try testing.expect(q.os_version_min == null);
+    try testing.expect(q.os_version_max == null);
     try testing.expect(!q.isNativeOs());
-    try testing.expect(Choice.native.query().isNativeOs());
+    try testing.expect(Choice.native.query(null).isNativeOs());
+}
+
+test "a known host version is pinned as both ends of the range" {
+    const host: std.SemanticVersion = .{ .major = 26, .minor = 1, .patch = 2 };
+    const q = Choice.pinned_macos_arm64.query(host);
+
+    try testing.expectEqual(std.Target.Os.Tag.macos, q.os_tag.?);
+    try testing.expect(!q.isNativeOs());
+    try testing.expectEqual(@as(u32, 26), q.os_version_min.?.semver.major);
+    try testing.expectEqual(@as(u32, 1), q.os_version_min.?.semver.minor);
+    try testing.expectEqual(@as(u32, 2), q.os_version_min.?.semver.patch);
+    try testing.expect(q.os_version_min.?.semver.order(q.os_version_max.?.semver) == .eq);
+
+    // The native choice never carries a version: it has no explicit target at all.
+    const native = Choice.native.query(host);
+    try testing.expect(native.os_version_min == null);
+    try testing.expect(native.isNativeOs());
+}
+
+test "only a plausible Apple silicon version is pinned" {
+    try testing.expect(pinnedOsVersion(null) == null);
+
+    // No Apple silicon Mac runs macOS 10.x, so such a reading is not trusted.
+    try testing.expect(pinnedOsVersion(.{ .major = 10, .minor = 15, .patch = 7 }) == null);
+
+    const big_sur = pinnedOsVersion(.{ .major = 11, .minor = 0, .patch = 0 }).?;
+    try testing.expectEqual(@as(u32, 11), big_sur.major);
+
+    // Pre-release and build metadata have no meaning as a deployment target.
+    const tagged = pinnedOsVersion(.{
+        .major = 15,
+        .minor = 3,
+        .patch = 1,
+        .pre = "beta.2",
+        .build = "24D60",
+    }).?;
+    try testing.expect(tagged.pre == null);
+    try testing.expect(tagged.build == null);
+    try testing.expectEqual(@as(u32, 3), tagged.minor);
 }
