@@ -124,7 +124,7 @@ repository is:
 | Document review       | Diff review on `docs/**/*.md`                           | Per PR             |
 | Coding-standard check | `clang-format`, `clang-tidy`, `cppcheck` (pre-commit + CI) | Per commit + per PR |
 | Naming + complexity   | `.clang-tidy` LineThreshold = 60 (NASA P10 Rule 4)      | Per commit         |
-| Header hygiene        | `scripts/checks/check-since-version.py`, `scripts/checks/check-copyright.py` | Per commit |
+| Header hygiene        | `tools/check_since_version`, `scripts/checks/check-copyright.py` | Per commit |
 | World-tag review      | `scripts/checks/check_world_tags.py --strict` (fail closed) | Per commit       |
 | HUM citation review   | `scripts/checks/cite_check.py --strict` (fail closed)    | Per commit         |
 

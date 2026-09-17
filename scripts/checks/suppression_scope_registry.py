@@ -417,7 +417,6 @@ _SCHEMA_GROUPS = (
             "checks/check-copyright.py:_SUFFIX_STYLE",
             "checks/check_rust.py:CONTRACT",
             "checks/check_zig.py:TEST_CONTRACT_NAME",
-            "checks/check-since-version.py:SOURCE_SUFFIXES",
             "checks/check_agnostic_registers.py:POLICY_ROOTS",
             "checks/check_agnostic_registers.py:SOURCE_SUFFIXES",
             "checks/check_ansible_collections.py:ANSIBLE_ROOT",
