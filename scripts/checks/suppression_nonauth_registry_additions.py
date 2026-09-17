@@ -295,6 +295,7 @@ def _part5_supervisor_tokens() -> tuple[tuple[str, tuple[str, ...]], ...]:
         (
             "parser-token",
             (
+                "checks/tree_coverage_model.py:_DIRECTIVE",
                 "ci/devcontainer_image_selftest_supervisor.py:CASES_ARG",
                 "ci/devcontainer_image_selftest_supervisor.py:PROCESS_ARG",
                 "ci/devcontainer_image_selftest_supervisor.py:SUITE_ROOT_PREFIX",
