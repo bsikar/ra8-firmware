@@ -3,6 +3,9 @@
  * @brief White-box line-coverage tests for the polled host-MSC enumeration
  *        ladder (`ra8_usb_hmsc_enum.c`).
  *
+ * @par Tag
+ * [Ring 3 / HAL] {World: NS}
+ *
  * @details
  * The enumeration ladder in `ra8_usb_hmsc_enum.c` walks a device from attach
  * through address assignment, configuration parse, SET_CONFIGURATION,

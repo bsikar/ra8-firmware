@@ -1,6 +1,10 @@
 /**
  * @file test_ra8_usb_hhid.c
  * @brief Unit tests for the native USB host-side HID class layer
+ *
+ * @par Tag
+ * [Ring 3 / HAL] {World: NS}
+ *
  * @details Exercises host HID enumeration, report transfers, protocol requests, attachment state, and invalid inputs.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie

@@ -1,6 +1,10 @@
 /**
  * @file test_ra8_usb_hmsc_enum_fixture.h
  * @brief Protocol constants shared by the host-MSC enumeration coverage fixture.
+ *
+ * @par Tag
+ * [Ring 3 / HAL] {World: NS}
+ *
  * @details Holds descriptor constants and construction helpers used by the
  *          white-box enumeration tests without owning production behavior.
  * @copyright Copyright (c) 2026 Brighton Sikarskie
