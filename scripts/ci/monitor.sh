@@ -162,20 +162,22 @@ if [[ "$-" == *p* ]]; then
     }
   }
 
-  # Read the status file with python3, NOT jq.
+  # Read the status file with the repository's own compiled reader, NOT jq.
   #
-  # python3 is a hard dependency of this whole CI system -- every gate driver in
-  # scripts/checks is a python script -- so it is guaranteed present anywhere a
-  # gate runs. jq is not: it is in neither .devcontainer/Dockerfile nor the
-  # runner image built FROM it, and the ci-status-contract gate consequently
-  # failed on every dev head from the moment it landed, with a require_cmd hint
-  # that wrongly claimed "the CI runners ship it".
+  # jq is in neither .devcontainer/Dockerfile nor the runner image built FROM
+  # it, and the ci-status-contract gate consequently failed on every dev head
+  # from the moment it landed, with a require_cmd hint that wrongly claimed
+  # "the CI runners ship it".
   #
   # Adding jq to the image is the obvious fix and is also being done, but it only
   # takes effect after a rebuild and redeploy -- the image-vs-Dockerfile lag
-  # tracked in #513. Depending on the interpreter that is already guaranteed
-  # removes the failure mode instead of provisioning around it, and makes
+  # tracked in #513. Depending on a toolchain the tree provisions itself removes
+  # the failure mode instead of provisioning around it, and makes
   # `just quality::local::gate ci-status-contract` work on a bare machine with no jq at all.
+  # The reader was a python script until #1144 moved it to Zig under the #858
+  # migration; zig is provisioned by the same setup path that provisions the
+  # rest of the host tooling, and a missing zig is FATAL in the launcher rather
+  # than a silent fallback.
   #
   # SKIPPED IS NOT SUCCESS -- the `verdict` mode below depends on it. Every
   # self-hosted job carries the fork guard `if: github.event_name !=
@@ -198,10 +200,11 @@ if [[ "$-" == *p* ]]; then
   # a NON-result (unlike `in_progress`, which keeps the sha UNDECIDED).
   #
   # One reader, one place: every field and rendered view comes from here. The
-  # reader lives in scripts/ci/ci_status.py (a lintable, testable module) beside
-  # monitor.sh; the daemon never calls this path, so its stand-alone copy omits it.
+  # reader is the Zig host tool tools/ci_status (#858, #1144), reached through
+  # its trusted launcher scripts/builders/ci_status.sh; the daemon never calls
+  # this path, so its stand-alone copy omits it.
   _status_read() {
-    python3 "$(dirname "${BASH_SOURCE[0]}")/ci_status.py" "$RA8_CI_STATE" "$@"
+    bash "$(dirname "${BASH_SOURCE[0]}")/../builders/ci_status.sh" "$RA8_CI_STATE" "$@"
   }
 
   # Every network-bound gh call goes through here so none can hang the daemon.
