@@ -431,14 +431,22 @@ extern "C" {
  * @brief The function is callable from interrupt context.
  *
  * @details
- * ISR-context callers (functions defined in files matching `*_isr.c`
- * or themselves tagged `RA8_ISR_HANDLER`) may only invoke functions that
- * also carry `RA8_ISR_SAFE`. This catches accidental calls to logging,
- * blocking I/O, or non-reentrant helpers from within an interrupt.
+ * Records the author's claim that the function is reentrant and
+ * non-blocking, so an interrupt-context caller may invoke it. The closure
+ * the claim implies -- every callee reachable from an ISR entry point is
+ * itself `RA8_ISR_SAFE`, so logging, blocking I/O and non-reentrant
+ * helpers cannot be reached from an interrupt -- is the contract, and it
+ * is NOT checked today.
  *
  * @par Enforcement:
- * libclang call-graph walk: every callee reachable from an ISR-tagged
- * function must itself be `RA8_ISR_SAFE`.
+ * None. Nothing reads `ra8_isr_safe`, so the annotation is a marker; it
+ * is declared in `annot_rulekeys.MARKER_ONLY_RULES` and the gate fails if
+ * that declaration is removed without a rule appearing. This block
+ * previously promised a libclang call-graph walk, and named an
+ * `RA8_ISR_HANDLER` macro that has never existed. Issue #1247 carries the
+ * campaign: derive the ISR-entry set from the vector tables, rule on
+ * whether an inline MMIO accessor is ISR-safe by construction, close the
+ * remaining tagged-to-untagged call edges, then turn the rule on.
  *
  * @par Example:
  * @code
@@ -446,7 +454,7 @@ extern "C" {
  * void ra8_ringbuf_push_byte(ra8_ringbuf_t* rb, uint8_t b);
  * @endcode
  *
- * `ra8_ringbuf_push_byte` is safe to call from `ra8_uart0_rxi_handler`.
+ * `ra8_ringbuf_push_byte` is safe to call from an interrupt handler.
  */
 #define RA8_ISR_SAFE RA8_INTERNAL_ANNOTATE("ra8_isr_safe")
 
