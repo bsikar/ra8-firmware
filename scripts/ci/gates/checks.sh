@@ -213,8 +213,8 @@ _pcc_board_and_layering() (
   # #251 fixed (identical pins copy-pasted across 29 apps) cannot come back.
   # --selftest proves the detector fires AND that an in-source build under
   # examples/<app>/build/ is excluded from the scope (#549) before a clean run.
-  python3 scripts/checks/check_example_board_pins.py --selftest
-  python3 scripts/checks/check_example_board_pins.py
+  bash scripts/builders/check_example_board_pins.sh --selftest
+  bash scripts/builders/check_example_board_pins.sh
   # Library architecture: ra8_core stays foundational, module-private headers
   # do not leak across libraries, and hosted APIs stay behind port adapters.
   python3 scripts/checks/check_core_layering.py --selftest
