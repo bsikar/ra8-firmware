@@ -257,7 +257,6 @@ _GROUPS = (
             "checks/check_host_build_entrypoints.py:RAW_COMPILER",
             "checks/check_inclusive_terminology.py:IDENT_TERM_RE",
             "checks/check_inclusive_terminology.py:PATTERNS",
-            "checks/check_inclusive_terminology_commits.py:BANNED",
             "checks/check_just_references.py:DIRECT_RE",
             "checks/check_just_references.py:QUOTED_JUST_RE",
             "checks/check_justfiles.py:BARE_NESTED_JUST_RE",
