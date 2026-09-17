@@ -3,6 +3,9 @@
  * @brief SDHI (SD/MMC host interface) register layout for the Renesas RA8D2
  * @ingroup grp_hal_memory
  *
+ * @par Tag
+ * [Ring 3 / HAL] {World: NS}
+ *
  * @details
  * Two SDHI instances at `0x40252000` (SDHI0) and `0x40252400`
  * (SDHI1). The full register window covers command issue, response,

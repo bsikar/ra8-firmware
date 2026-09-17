@@ -3,6 +3,9 @@
  * @brief Serial Sound Interface Enhanced (SSIE) register layout for the RA8D2
  * @ingroup grp_hal_audio
  *
+ * @par Tag
+ * [Ring 3 / HAL] {World: NS}
+ *
  * @details
  * The RA8D2 exposes two SSIE channels (SSIE0 and SSIE1). Each
  * channel has an independent register window at base
