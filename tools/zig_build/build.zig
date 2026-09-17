@@ -5,7 +5,9 @@
 //! package by path and `@import("ra8_zig_build")` inside their own `build.zig`,
 //! so the target-selection rule lives in exactly one place and is unit tested.
 //!
-//! `zig build test` here runs those unit tests on any host.
+//! `zig build test` here runs those unit tests on any host, and
+//! `zig build explain-host-target` prints the decision this package made for
+//! the machine it is running on.
 
 const std = @import("std");
 const builtin = @import("builtin");
@@ -16,6 +18,55 @@ pub const macos_host = @import("macos_host.zig");
 /// `macos_host.decide`); the other two are escape hatches for a host whose SDK
 /// the probe reads wrongly.
 pub const MacosLibSystem = enum { auto, sdk, bundled };
+
+/// Everything the #899 rule worked out about this host, kept together so the
+/// choice and the evidence for it can be printed as one story.
+pub const HostTarget = struct {
+    forced: MacosLibSystem,
+    decision: macos_host.Decision,
+    probe: macos_host.SdkProbe,
+    host_macos_version: ?std.SemanticVersion,
+
+    pub fn query(self: HostTarget) std.Target.Query {
+        return self.decision.choice.query(self.host_macos_version);
+    }
+};
+
+// `b.option` panics if the same option name is declared twice, so the whole
+// decision is computed once per build graph and reused. That is what lets a
+// build root wire `hostDefaultTargetQuery` into `standardTargetOptions` and
+// still ask `hostTarget` for the reasoning afterwards.
+var cached_owner: ?*std.Build = null;
+var cached_host_target: HostTarget = undefined;
+
+/// The #899 decision for this host, with the evidence behind it.
+pub fn hostTarget(b: *std.Build) HostTarget {
+    if (cached_owner) |owner| {
+        if (owner == b) return cached_host_target;
+    }
+
+    const forced = b.option(
+        MacosLibSystem,
+        "macos-libsystem",
+        "Which libSystem stub a native macOS host build links against (default: auto)",
+    ) orelse .auto;
+
+    const probe = probeHostSdk(b.allocator);
+    const decision: macos_host.Decision = switch (forced) {
+        .sdk => .{ .choice = .native, .reason = .sdk_declares_target },
+        .bundled => .{ .choice = .pinned_macos_arm64, .reason = .sdk_omits_target },
+        .auto => macos_host.decide(builtin.cpu.arch, builtin.os.tag, probe),
+    };
+
+    cached_host_target = .{
+        .forced = forced,
+        .decision = decision,
+        .probe = probe,
+        .host_macos_version = hostMacosVersion(),
+    };
+    cached_owner = b;
+    return cached_host_target;
+}
 
 /// The default target query for a host application, as passed to
 /// `b.standardTargetOptions(.{ .default_target = ... })`.
@@ -28,22 +79,7 @@ pub const MacosLibSystem = enum { auto, sdk, bundled };
 /// `-Dtarget=...` still overrides it, and `-Dmacos-libsystem=sdk` forces the old
 /// native behaviour back.
 pub fn hostDefaultTargetQuery(b: *std.Build) std.Target.Query {
-    const forced = b.option(
-        MacosLibSystem,
-        "macos-libsystem",
-        "Which libSystem stub a native macOS host build links against (default: auto)",
-    ) orelse .auto;
-
-    const choice: macos_host.Choice = switch (forced) {
-        .sdk => .native,
-        .bundled => .pinned_macos_arm64,
-        .auto => macos_host.decide(
-            builtin.cpu.arch,
-            builtin.os.tag,
-            probeHostSdk(b.allocator),
-        ),
-    };
-    return choice.query(hostMacosVersion());
+    return hostTarget(b).query();
 }
 
 /// The macOS version this build is running on, or null off macOS.
@@ -63,8 +99,9 @@ pub fn hostMacosVersion() ?std.SemanticVersion {
 }
 
 /// Read the host SDK's `libSystem.tbd`, when there is one to read. Every failure
-/// is an empty probe: `macos_host.decide` treats "could not tell" as "do not
-/// trust the SDK", which is the safe direction for these libc-only host tools.
+/// is a partial probe, and `macos_host.decide` turns each one into its own named
+/// reason: "no SDK at all" and "an SDK whose stub I could not read" both pin the
+/// target, but they are different things to have found.
 pub fn probeHostSdk(allocator: std.mem.Allocator) macos_host.SdkProbe {
     if (builtin.os.tag != .macos) return .{};
 
@@ -81,12 +118,78 @@ pub fn probeHostSdk(allocator: std.mem.Allocator) macos_host.SdkProbe {
 
     const tbd_path = std.fs.path.join(allocator, &.{ sdk_path, "usr", "lib", "libSystem.tbd" }) catch
         return .{ .sdk_path = sdk_path };
-    defer allocator.free(tbd_path);
 
     const tbd = std.fs.cwd().readFileAlloc(allocator, tbd_path, 4 * 1024 * 1024) catch
-        return .{ .sdk_path = sdk_path };
-    return .{ .sdk_path = sdk_path, .libsystem_tbd = tbd };
+        return .{ .sdk_path = sdk_path, .libsystem_tbd_path = tbd_path };
+    return .{ .sdk_path = sdk_path, .libsystem_tbd_path = tbd_path, .libsystem_tbd = tbd };
 }
+
+/// The host-target decision as a short report, for a build log or a gate.
+///
+/// This is the one place the answer is spelled out for a human: which machine
+/// was read, which stub was read on it, what that stub said, and what the build
+/// therefore targets. A gate that only prints the stub's `targets:` line cannot
+/// distinguish "the stub omits us" from "there was no stub to read", and those
+/// need different fixes.
+pub fn describeHostTarget(b: *std.Build, host: HostTarget) []const u8 {
+    var text: std.ArrayListUnmanaged(u8) = .empty;
+    const out = text.writer(b.allocator);
+
+    out.print("ra8 host target (#899)\n", .{}) catch @panic("OOM");
+    out.print("  host:      {s}-{s}\n", .{ @tagName(builtin.cpu.arch), @tagName(builtin.os.tag) }) catch @panic("OOM");
+    if (host.host_macos_version) |version| {
+        out.print("  macos:     {d}.{d}.{d}\n", .{ version.major, version.minor, version.patch }) catch @panic("OOM");
+    }
+    out.print("  selection: -Dmacos-libsystem={s}\n", .{@tagName(host.forced)}) catch @panic("OOM");
+    out.print("  sdk:       {s}\n", .{host.probe.sdk_path orelse "(none located)"}) catch @panic("OOM");
+    out.print("  stub:      {s}\n", .{host.probe.libsystem_tbd_path orelse "(none read)"}) catch @panic("OOM");
+    if (host.forced == .auto) {
+        out.print("  finding:   {s}\n", .{host.decision.reason.explain()}) catch @panic("OOM");
+    } else {
+        out.print("  finding:   forced by -Dmacos-libsystem={s}; the SDK probe was not consulted\n", .{@tagName(host.forced)}) catch @panic("OOM");
+    }
+
+    switch (host.decision.choice) {
+        .native => out.print("  decision:  native target, linking whatever stub the host resolves\n", .{}) catch @panic("OOM"),
+        .pinned_macos_arm64 => {
+            out.print("  decision:  pinned aarch64-macos, linking Zig's bundled libSystem stub\n", .{}) catch @panic("OOM");
+            if (macos_host.pinnedOsVersion(host.host_macos_version)) |version| {
+                out.print("  deployment target: {d}.{d}.{d} (carried from the host)\n", .{ version.major, version.minor, version.patch }) catch @panic("OOM");
+            } else {
+                out.print("  deployment target: Zig's default macOS range (host version unknown)\n", .{}) catch @panic("OOM");
+            }
+        },
+    }
+    return text.items;
+}
+
+/// A step that prints `describeHostTarget`. Printing at configure time would
+/// put this in front of every `zig build` on every host; a step prints it when
+/// someone actually asks.
+pub fn addExplainHostTargetStep(b: *std.Build, host: HostTarget) *std.Build.Step {
+    const explain = b.allocator.create(ExplainHostTarget) catch @panic("OOM");
+    explain.* = .{
+        .step = std.Build.Step.init(.{
+            .id = .custom,
+            .name = "explain host target",
+            .owner = b,
+            .makeFn = ExplainHostTarget.make,
+        }),
+        .text = describeHostTarget(b, host),
+    };
+    return &explain.step;
+}
+
+const ExplainHostTarget = struct {
+    step: std.Build.Step,
+    text: []const u8,
+
+    fn make(step: *std.Build.Step, options: std.Build.Step.MakeOptions) anyerror!void {
+        _ = options;
+        const self: *ExplainHostTarget = @fieldParentPtr("step", step);
+        std.debug.print("{s}", .{self.text});
+    }
+};
 
 /// Keep a cross-configured build root's test step honest.
 ///
@@ -138,4 +241,10 @@ pub fn build(b: *std.Build) void {
     const run_tests = b.addRunArtifact(tests);
     test_step.dependOn(&run_tests.step);
     allowForeignHostTests(test_step, tests, run_tests);
+
+    const explain_step = b.step(
+        "explain-host-target",
+        "Print how the macOS host target was chosen on this machine (#899)",
+    );
+    explain_step.dependOn(addExplainHostTargetStep(b, hostTarget(b)));
 }
