@@ -82,6 +82,10 @@ def _clean(controller: ModuleType, data: dict[str, Any], host: str) -> frp.Comma
     return _check(controller, data, host, noise)
 
 
+def _no_wait(_seconds: float) -> None:
+    """Take retry pacing out of these recovery cases without skipping it."""
+
+
 def _run_case(
     controller: ModuleType,
     state_dir: Path,
@@ -130,7 +134,7 @@ def _run_case(
         producer_interval=PRODUCER_INTERVAL,
         now=NOW,
     )
-    status = controller.reconcile(data, options, fake_run)
+    status = controller.reconcile(data, options, fake_run, _no_wait)
     stored = controller.load_state(state_dir / controller.STATE_FILE)["hosts"]
     return status, calls, stored
 
