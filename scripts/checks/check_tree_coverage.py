@@ -88,6 +88,8 @@ from tree_coverage_model import (
     census_floor_failures,
     census_paths,
     coverage_capable_dirs,
+    cross_only_failures,
+    cross_only_selftest_failures,
     floor_claim_failures,
     floor_claim_selftest_failures,
     in_census,
@@ -595,14 +597,17 @@ def load_baseline(path: Path = BASELINE_FILE) -> dict[str, Row]:
 # ---------------------------------------------------------------------------
 
 
-def scope_failures() -> list[str]:
-    """Return one message per coverage-capable listfile no project claims.
+def scope_failures(paths: list[str]) -> list[str]:
+    """Return one message per uncollected project and per refuted override row.
 
     A CMake project that declares ``option(RA8_COVERAGE ...)`` can produce
     execution data. If no measurement project builds it, that data is never
     collected and every unit in it sits at UNMEASURED forever while the gate
     reports a clean tree -- the same shape as a scope list that quietly stopped
-    describing the repository.
+    describing the repository. The same listfiles ground
+    ``PLATFORM_CROSS_ONLY_UNITS``, the one hand-written reason-class override:
+    a row claiming the ARM toolchain is alone in compiling a unit is false the
+    moment a measurement project's listfile names it.
     """
     listfiles = {
         rel: (REPO_ROOT / rel).read_text(encoding="utf-8", errors="replace")
@@ -613,7 +618,7 @@ def scope_failures() -> list[str]:
         f"{directory}/ declares option(RA8_COVERAGE ...) but no measurement "
         f"project in tree_coverage_model.PROJECTS builds it"
         for directory in unclaimed
-    ]
+    ] + cross_only_failures(paths, listfiles)
 
 
 # ---------------------------------------------------------------------------
@@ -653,7 +658,7 @@ def _fail_setup(failures: list[str]) -> int:
 def _measure() -> tuple[list[str], dict[str, Row]] | int:
     """Return (census, fresh rows), or an exit code when the setup is broken."""
     paths = census_paths()
-    setup = census_floor_failures(paths) + scope_failures() + project_report_failures()
+    setup = census_floor_failures(paths) + scope_failures(paths) + project_report_failures()
     if setup:
         return _fail_setup(setup)
     fresh = derive_rows(paths, load_summary(MERGED_SUMMARY), compiled_sources())
@@ -886,15 +891,8 @@ def _scope_failures() -> list[str]:
         out.append("an unclaimed coverage project must be reported")
     if not in_census("libs/ra8_demo/src/a.c") or in_census("libs/ra8_demo/tests/a.c"):
         out.append("the census must take production units and reject test sources")
-    if (
-        structural_reason(
-            "apps/shared_libs/reflow/v2/src/reflow_v2.cpp",
-            compiled=False,
-            firmware_dirs=(),
-        )
-        != REASON_PLATFORM
-    ):
-        out.append("the mutually exclusive reflow v2 adapter must remain platform-cross-only")
+    if scope_failures(live):
+        out.append("the live tree must clear the project-claim and override-grounding guards")
     if (
         structural_reason("apps/shared_libs/demo/src/host.c", compiled=False, firmware_dirs=())
         != REASON_HOSTED
@@ -956,6 +954,7 @@ def selftest() -> int:
         + _format_failures()
         + _claim_failures()
         + floor_claim_selftest_failures(LINE_FLOOR_PCT, BRANCH_FLOOR_PCT)
+        + cross_only_selftest_failures()
     )
     if failures:
         for name in failures:
