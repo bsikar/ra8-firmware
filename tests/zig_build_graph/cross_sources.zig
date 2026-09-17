@@ -20,6 +20,7 @@ const std = @import("std");
 const cpu1_image = @import("cpu1_image.zig");
 const app_local_mod = @import("app_local.zig");
 const ns_image_mod = @import("ns_image.zig");
+const off_target_mod = @import("off_target.zig");
 
 /// The app this slice cross-builds, spelled the way ra8_add_app() resolves it.
 pub const CrossApp = struct {
@@ -103,6 +104,14 @@ pub const CrossApp = struct {
     /// for every app that is not the secure half of such a build. See
     /// ns_image.zig.
     ns: ?ns_image_mod.NsImage = null,
+    /// Libraries the app names in `OFF_TARGET_LIBS`, in the order it names
+    /// them. Their translation units are compiled INTO this app like any
+    /// `LIBS` unit, but with `RA8_OFF_TARGET` additionally defined on those
+    /// units alone (cmake/ra8_add_app.cmake does it with
+    /// set_source_files_properties, so it is a SOURCE-scope define, not a
+    /// target one). One executable, two preprocessor views. See
+    /// off_target_define for why forgetting it fails nothing at all.
+    off_target_libs: []const []const u8 = &.{},
 };
 
 /// A name in `LIBS` that contributes translation units from somewhere other
@@ -169,6 +178,15 @@ pub const library_source_gates = [_]LibrarySourceGate{
         .include_dir = "libs/ra8_mem/inc",
     },
 };
+
+/// The OFF_TARGET_LIBS rule, aliased so call sites read the same as before the
+/// extraction (#1133).
+pub const off_target_define = off_target_mod.off_target_define;
+
+/// True when `source` is one of this app's OFF_TARGET_LIBS units.
+pub fn isOffTargetSource(app: CrossApp, source: []const u8) bool {
+    return off_target_mod.isOffTargetSource(app.off_target_libs, source);
+}
 
 /// True when `source` is a library unit whose companion library the app does
 /// not declare.
@@ -560,6 +578,44 @@ pub const cross_apps = [_]CrossApp{
         .libraries = &.{},
         .zig_libraries = &.{},
     },
+    .{
+        // The ninth app, and the one that takes the last source-set keyword
+        // ra8_add_app() has that nothing in this table names: OFF_TARGET_LIBS.
+        //
+        // It is not LIBS under another name. cmake/ra8_app/sources.cmake
+        // collects those libraries into a list of their own and
+        // cmake/ra8_add_app.cmake then hangs COMPILE_DEFINITIONS
+        // "RA8_OFF_TARGET" on exactly those source files, so ONE executable
+        // compiles its translation units at TWO preprocessor views: 200 at the
+        // ordinary bar, and this library's 2 with the define on top. Every
+        // source rule the graph modelled before this one is uniform across the
+        // app.
+        //
+        // On THIS app both halves of the rule fail closed rather than
+        // silently, which was measured and not assumed: without the define
+        // both of the library's units stop compiling (its on-target arm
+        // includes psa/crypto.h, which this app's include path does not
+        // carry), and without `libs/ra8_psa_crypto/inc` the app's own main.c
+        // stops compiling. See off_target_define for the configuration where
+        // the same mistake IS silent. The include directory is the half worth
+        // spelling out either way: it goes on the path of EVERY unit in the
+        // app, not just the library's own, because the off-target loop feeds
+        // the same `_ra8_lib_inc` list the LIBS loop does.
+        //
+        // No USES, no EXTRA_SRCS, no app-local CMake, no migrated Zig archive
+        // (so #948 does not block it) and the default 2200-byte frame budget:
+        // the first-party set is blink_hal's 200 units, so everything that
+        // differs between the two apps IS this keyword (#1133).
+        .name = "crypto_aes_demo",
+        .dir = "examples/ek_ra8d2/hw_validated/hil/crypto_aes_demo",
+        .board = "libs/ra8_board_ek_ra8d2",
+        // No linker_script.ld of its own, so the board's canonical single-core
+        // map, the same fallback blink_hal takes.
+        .linker_script = "libs/ra8_board_ek_ra8d2/ld/linker_script.ld",
+        .libraries = &.{"ra8_board_ek_ra8d2"},
+        .zig_libraries = &.{},
+        .off_target_libs = &.{"ra8_psa_crypto"},
+    },
 };
 
 /// The universal first-party source set ra8_add_app() globs into every app,
@@ -806,6 +862,10 @@ pub fn crossSources(b: *std.Build, app: CrossApp) []const []const u8 {
         }
     }
 
+    // OFF_TARGET_LIBS, last of the whole list and at their own preprocessor
+    // view. See off_target.zig.
+    off_target_mod.appendSources(b, app.off_target_libs, &sources, collectCSources);
+
     // Drop the opt-in board units this app did not opt into (see
     // board_opt_in_sources), then the duplicates a named board produces.
     var kept = std.ArrayList([]const u8).init(b.allocator);
@@ -864,6 +924,10 @@ pub fn crossIncludeDirs(b: *std.Build, app: CrossApp) []const []const u8 {
         }
         if (!superseded) dirs.append(alias.include_dir) catch @panic("OOM");
     }
+
+    // Every OFF_TARGET_LIBS entry's `inc`, which lands on EVERY unit in the
+    // app and not only on the library's own. See off_target.zig.
+    off_target_mod.appendIncludeDirs(b, app.off_target_libs, &dirs);
 
     // One directory per EXTRA_SRCS entry, deduplicated, added LAST of
     // everything ra8_add_app() puts on the path (cmake/ra8_add_app.cmake
