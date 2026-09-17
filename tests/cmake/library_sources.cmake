@@ -34,7 +34,9 @@ file(GLOB_RECURSE RA8_IF_SOURCES CONFIGURE_DEPENDS ${FW_ROOT}/libs/if/src/*.c)
 file(GLOB_RECURSE RA8_IF_RA8_VFS_SOURCES CONFIGURE_DEPENDS ${FW_ROOT}/libs/if_ra8_vfs/src/*.c)
 file(GLOB_RECURSE RA8_IO_SOURCES CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra8_io/src/*.c)
 file(GLOB_RECURSE COMPRESS_SOURCES CONFIGURE_DEPENDS ${FW_ROOT}/apps/shared_libs/compress/src/*.c)
-file(GLOB_RECURSE RA8_AUDIO_SOURCES CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra8_audio/src/*.c)
+# ra8_audio is fully migrated to Zig (facade + memory and PDM backends);
+# see tests/cmake/zig_libraries.cmake. src/ra8_audio_internal.h stays: the
+# host suite includes it to build its own fake backend vtable.
 file(GLOB_RECURSE RA8_CAMERA_SOURCES CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra8_camera/src/*.c)
 file(GLOB_RECURSE RA8_CAMERA_IO_SOURCES CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra8_camera_io/src/*.c)
 file(GLOB_RECURSE RA8_FTL_SOURCES CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra8_ftl/src/*.c)

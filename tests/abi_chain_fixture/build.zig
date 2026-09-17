@@ -16,6 +16,8 @@ pub fn build(b: *std.Build) void {
     module.addIncludePath(b.path("../rust_abi_fixture/inc"));
     module.addIncludePath(b.path("../../libs/ra8_core/inc"));
     const library = b.addLibrary(.{ .name = "ra8_abi_chain", .linkage = .static, .root_module = module });
+    library.bundle_compiler_rt = true;
+    library.root_module.pic = true;
     b.installArtifact(library);
 
     const supplied_lib_dir = b.option([]const u8, "rust-lib-dir", "Directory containing the Rust ABI archive");
