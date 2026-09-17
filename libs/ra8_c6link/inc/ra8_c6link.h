@@ -367,6 +367,8 @@ typedef struct ra8_c6link_stats {
   uint16_t rpc_in;       /**< Control-plane frames decoded as `Rpc`.          */
   uint16_t events;       /**< Announcements delivered to the event callback.  */
   uint16_t eth_in;       /**< 802.3 frames delivered to the receive callback. */
+  uint16_t hci_in;       /**< HCI frames the co-processor's controller sent.  */
+  uint16_t hci_dropped;  /**< HCI frames refused before reaching the sink.   */
   uint16_t undecodable;  /**< Control-plane frames the codec would not parse. */
   uint16_t unrouted;     /**< Frames on an interface this link does not use.  */
   uint16_t hs_timeouts;  /**< Transactions abandoned waiting for HANDSHAKE.   */
@@ -550,10 +552,23 @@ typedef struct ra8_c6link {
        and finish before the next may begin, and a second concurrent request
        is refused with `k_ra8_err_busy` -- so sharing one buffer between them
        is the same exclusivity `tx` already assumes. */
-  uint16_t tx_len;    /**< Staged payload length, or zero.    */
-  uint8_t  tx_if;     /**< Interface the staged payload uses. */
-  bool     open;      /**< The handle is initialised.         */
-  bool     boot_seen; /**< An `Event_ESPInit` has arrived.    */
+  void*    hci_ctx;   /**< Context for `hci_cb`.              */
+  void (*hci_cb)(void* ctx, const uint8_t* packet, uint16_t len);
+  /**< HCI receive sink, or null. Declared structurally rather than through
+       `ra8_c6link_hci_cb_t` so `ra8_c6link_hci.h` can depend on this header
+       without this header depending on the channel. The two pointers sit
+       after the frame buffers, with the scalars below them, so `tx` keeps the
+       offset its alignment note documents. */
+  uint16_t tx_len;      /**< Staged payload length, or zero.    */
+  uint8_t  tx_if;       /**< Interface the staged payload uses. */
+  uint8_t  tx_pkt_type; /**< Header packet-type octet for the staged payload.
+                             Only `ESP_HCI_IF` gives it a meaning; every other
+                             interface type stages it as zero, which is what
+                             upstream transmits there. It is staged rather than
+                             patched in because the header it lands in is
+                             inside the checksummed span. */
+  bool     open;        /**< The handle is initialised.         */
+  bool     boot_seen;   /**< An `Event_ESPInit` has arrived.    */
 } ra8_c6link_t;
 
 /**

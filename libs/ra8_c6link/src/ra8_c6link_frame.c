@@ -145,7 +145,8 @@ RA8_PRIV void priv_c6link_frame_filler(uint8_t* tx)
   (void)memcpy(tx, &hdr, sizeof hdr);
 }
 
-RA8_PRIV void priv_c6link_frame_seal(uint8_t* tx, uint8_t if_type, uint8_t if_num, uint16_t len)
+RA8_PRIV void priv_c6link_frame_seal_typed(
+  uint8_t* tx, uint8_t if_type, uint8_t if_num, uint16_t len, uint8_t pkt_type)
 {
   if ((tx == nullptr) || (len > (uint16_t)k_ra8_c6link_max_payload)) {
     return;
@@ -158,11 +159,20 @@ RA8_PRIV void priv_c6link_frame_seal(uint8_t* tx, uint8_t if_type, uint8_t if_nu
   hdr.len                       = len;
   hdr.offset                    = (uint16_t)k_ra8_c6link_header_bytes;
   hdr.seq_num                   = (uint16_t)k_ra8_c6link_hdr_seq;
+  /* The union's other members alias this octet; upstream names it
+     `hci_pkt_type` on `ESP_HCI_IF` and `priv_pkt_type` on `ESP_PRIV_IF`, and
+     transmits zero everywhere else. */
+  hdr.hci_pkt_type = pkt_type;
 
   internal_c6link_frame_clear(tx, span);
   (void)memcpy(tx, &hdr, sizeof hdr);
   hdr.checksum = compute_checksum(tx, span);
   (void)memcpy(tx, &hdr, sizeof hdr);
+}
+
+RA8_PRIV void priv_c6link_frame_seal(uint8_t* tx, uint8_t if_type, uint8_t if_num, uint16_t len)
+{
+  priv_c6link_frame_seal_typed(tx, if_type, if_num, len, 0U);
 }
 
 /**
@@ -246,7 +256,8 @@ RA8_PRIV ra8_c6link_frame_class_t priv_c6link_frame_classify(uint8_t*           
 
   view->offset  = hdr.offset;
   view->len     = hdr.len;
-  view->if_type = (uint8_t)hdr.if_type;
-  view->if_num  = (uint8_t)hdr.if_num;
+  view->if_type  = (uint8_t)hdr.if_type;
+  view->if_num   = (uint8_t)hdr.if_num;
+  view->pkt_type = hdr.hci_pkt_type;
   return k_ra8_c6link_frame_data;
 }
