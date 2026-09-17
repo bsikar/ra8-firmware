@@ -31,6 +31,18 @@
  * Spec citations are formatted as `T.81 sec X.Y "..."` and refer to
  * ITU-T Recommendation T.81 (1992) | ISO/IEC 10918-1.
  *
+ * @par Concurrency
+ * This codec is single-instance and the caller serialises. The
+ * whole-buffer decoder, the encoder and the stripe decoder each keep
+ * their working state in module-static objects, so at most one call
+ * into this header may be in flight at a time, and no entry point may
+ * be re-entered from an interrupt or a second thread. The statics are
+ * deliberate, not an oversight: the decoder context, the encoder
+ * context and the three 16-row strip buffers are far larger than the
+ * per-frame stack budget `-Wstack-usage` enforces. The one exception
+ * is `ra8_jpeg_sw_get_dimensions()`, which touches no shared state and
+ * is re-entrant.
+ *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
  */
@@ -118,8 +130,10 @@ typedef enum : uint8_t {
  * @post On `k_ra8_ok` both `*out_w` and `*out_h` are non-zero.
  * @post On any error neither output is modified.
  *
- * @note Thread-safe: the function reads only its arguments and has
- *       no internal state.
+ * @note Thread-safe and re-entrant: the function reads only its
+ *       arguments and has no internal state. It is the only entry
+ *       point in this header that may run concurrently with another
+ *       call into this codec.
  *
  * @par Example:
  * @code
@@ -181,8 +195,12 @@ typedef enum : uint8_t {
  * @post On any error `out_buf` contents are unspecified but the
  *       caller's stack is unaffected.
  *
- * @note Thread-safe (re-entrant): all state lives on the caller's
- *       stack.
+ * @note Not thread-safe and not re-entrant: the decoder context is a
+ *       single module-static object, sized out of the stack budget, so
+ *       concurrent or nested decodes overwrite each other's tables and
+ *       parse cursor. The caller serialises every decode, including
+ *       against `ra8_jpeg_sw_decode_stripes()`. See the Concurrency
+ *       paragraph in this file's brief.
  *
  * @warning The decoder does not stream -- the entire JPEG must be
  *          buffered in memory before the call. For typical RA8D2
@@ -246,7 +264,11 @@ typedef enum : uint8_t {
  *       JFIF 1.01 JPEG file.
  * @post On any error `*out_len` is set to 0.
  *
- * @note Thread-safe.
+ * @note Not thread-safe and not re-entrant: the encoder context and
+ *       the three 16-row colour strip buffers are module-static, sized
+ *       out of the stack budget, so concurrent or nested encodes
+ *       overwrite each other. The caller serialises every encode. See
+ *       the Concurrency paragraph in this file's brief.
  *
  * @par Example:
  * @code
