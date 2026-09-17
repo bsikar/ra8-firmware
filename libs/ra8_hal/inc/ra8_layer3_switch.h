@@ -3,6 +3,9 @@
  * @brief Layer-3 Ethernet switch driver -- placeholder
  * @ingroup grp_hal_net
  *
+ * @par Tag
+ * [Ring 3 / HAL] {World: NS}
+ *
  * @details
  * Mirrors the FSP `r_layer3_switch` API shape (open / route-add /
  * route-delete / status / close). The Layer-3 switch is a forwarding
