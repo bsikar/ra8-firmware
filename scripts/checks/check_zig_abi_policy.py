@@ -247,7 +247,7 @@ def _retained_c_export_findings(
 def _adapter_scope_findings(
     name: str,
     build_root: Path,
-    adapter: Path,
+    adapter: Path | None,
     repository_root: Path = ROOT,
     additional_adapters: set[Path] | None = None,
 ) -> list[str]:
@@ -281,6 +281,12 @@ def _repository_inventory_findings(
         for library in libraries
         if isinstance(library, dict) and isinstance((value := library.get("adapter")), str)
     }
+    registered.update(
+        (repository_root / value).resolve()
+        for library in libraries
+        if isinstance(library, dict)
+        for value in _multi_adapter_paths(library)
+    )
     registered.update(
         (repository_root / row["path"]).resolve()
         for library in libraries
@@ -397,6 +403,115 @@ def _compatibility_findings(
         )
     )
     return findings
+
+
+def _multi_header_rows(library: dict[str, Any]) -> list[dict[str, Any]]:
+    """Return explicit multi-header metadata without weakening legacy rows."""
+    rows = library.get("public_headers")
+    if not isinstance(rows, list):
+        return []
+    return [
+        row
+        for row in rows
+        if isinstance(row, dict)
+        and set(row) == {"path", "compatibility_sha256", "layout_assertions"}
+        and isinstance(row.get("path"), str)
+        and isinstance(row.get("compatibility_sha256"), str)
+        and isinstance(row.get("layout_assertions"), list)
+    ]
+
+
+def _multi_adapter_paths(library: dict[str, Any]) -> list[str]:
+    """Return explicit production adapter paths for a multi-adapter row."""
+    rows = library.get("adapters")
+    if not isinstance(rows, list):
+        return []
+    return [value for value in rows if isinstance(value, str)]
+
+
+def _multi_boundary_findings(
+    library: dict[str, Any],
+    name: str,
+    prefix: str,
+    repository_root: Path,
+) -> tuple[list[str], set[str], set[str], dict[str, str], set[Path]]:
+    """Check exact, non-overlapping symbol unions across headers and adapters."""
+    findings: list[str] = []
+    raw_headers = library.get("public_headers")
+    raw_adapters = library.get("adapters")
+    if not isinstance(raw_headers, list) or not raw_headers:
+        findings.append(f"{name}: public_headers must be a nonempty list")
+    elif any(
+        not isinstance(row, dict)
+        or set(row) != {"path", "compatibility_sha256", "layout_assertions"}
+        or not isinstance(row.get("path"), str)
+        or not isinstance(row.get("compatibility_sha256"), str)
+        or not isinstance(row.get("layout_assertions"), list)
+        for row in raw_headers
+    ):
+        findings.append(f"{name}: malformed public header metadata")
+    elif len({row["path"] for row in raw_headers}) != len(raw_headers):
+        findings.append(f"{name}: duplicate public header path")
+    if not isinstance(raw_adapters, list) or not raw_adapters or not all(
+        isinstance(value, str) for value in raw_adapters
+    ):
+        findings.append(f"{name}: adapters must be a nonempty list of paths")
+    elif len(set(raw_adapters)) != len(raw_adapters):
+        findings.append(f"{name}: duplicate adapter path")
+
+    header_names: set[str] = set()
+    header_rows: list[tuple[dict[str, Any], Path]] = []
+    for row in _multi_header_rows(library):
+        path = repository_root / row["path"]
+        try:
+            path.resolve().relative_to((repository_root / library["build_root"]).resolve())
+        except (KeyError, TypeError, ValueError):
+            findings.append(f"{name}: public header is outside build root: {row['path']}")
+            continue
+        if not path.is_file():
+            findings.append(f"{name}: missing public header: {row['path']}")
+            continue
+        names = _header_exports(path.read_text(encoding="utf-8"), prefix)
+        overlap = header_names & names
+        if overlap:
+            findings.append(f"{name}: duplicate header export(s): {', '.join(sorted(overlap))}")
+        header_names.update(names)
+        header_rows.append((row, path))
+
+    adapter_names: set[str] = set()
+    adapter_heads: dict[str, str] = {}
+    adapter_paths: set[Path] = set()
+    for value in _multi_adapter_paths(library):
+        path = repository_root / value
+        try:
+            path.resolve().relative_to((repository_root / library["build_root"]).resolve())
+        except (KeyError, TypeError, ValueError):
+            findings.append(f"{name}: adapter is outside build root: {value}")
+            continue
+        if not path.is_file():
+            findings.append(f"{name}: missing adapter: {value}")
+            continue
+        names, heads = _zig_exports(path.read_text(encoding="utf-8"))
+        overlap = adapter_names & names
+        if overlap:
+            findings.append(f"{name}: duplicate adapter export(s): {', '.join(sorted(overlap))}")
+        adapter_names.update(names)
+        adapter_heads.update(heads)
+        adapter_paths.add(path.resolve())
+
+    adapter_text = "\n".join(path.read_text(encoding="utf-8") for path in sorted(adapter_paths))
+    for row, path in header_rows:
+        compatibility = {
+            "compatibility_sha256": row["compatibility_sha256"],
+            "layout_assertions": row["layout_assertions"],
+        }
+        findings.extend(
+            f"{name} ({row['path']}): {finding}"
+            for finding in _compatibility_findings(
+                compatibility, name, path.read_text(encoding="utf-8"), adapter_text
+            )
+        )
+    return findings, header_names, adapter_names, adapter_heads, adapter_paths
 
 
 def _json_registration_findings(
@@ -541,6 +656,41 @@ def _library_findings(
     prefix = library.get("symbol_prefix")
     if not isinstance(prefix, str) or not prefix:
         return [f"{name}: missing symbol_prefix"]
+    if "public_headers" in library or "adapters" in library:
+        build_root_value = library.get("build_root")
+        build_root = (
+            repository_root / build_root_value
+            if isinstance(build_root_value, str)
+            else repository_root / "<missing>"
+        )
+        if not build_root.is_dir():
+            return [f"{name}: missing build_root: {build_root_value}"]
+        (
+            boundary_findings,
+            header_names,
+            zig_names,
+            zig_heads,
+            adapter_paths,
+        ) = _multi_boundary_findings(library, name, prefix, repository_root)
+        findings.extend(boundary_findings)
+        metadata_findings, declared = _metadata_findings(name, library.get("exports"))
+        findings.extend(metadata_findings)
+        retained_findings, retained_c = _retained_c_export_findings(
+            library, name, declared, header_names, zig_names, repository_root
+        )
+        findings.extend(retained_findings)
+        findings.extend(
+            _inventory_findings(name, declared, declared - retained_c, header_names, zig_names, zig_heads)
+        )
+        findings.extend(
+            _adapter_scope_findings(
+                name, build_root.resolve(), None, repository_root,
+                adapter_paths,
+            )
+        )
+        findings.extend(_contract_test_findings(library, name, prefix, repository_root))
+        findings.extend(_target_findings(library, name, required_targets))
+        return findings
     paths: dict[str, Path] = {}
     for field in ("build_root", "public_header", "adapter"):
         value = library.get(field)
@@ -698,8 +848,14 @@ def _c_compile_findings(
         return [f"{library['name']}: malformed additional header metadata"]
     probe = output / "abi_header_probe.c"
     probe.parent.mkdir(parents=True, exist_ok=True)
-    headers = [library["public_header"]]
-    headers.extend(row["path"] for row in additional_headers)
+    headers = [row["path"] for row in _multi_header_rows(library)]
+    if not headers:
+        public_header = library.get("public_header")
+        if isinstance(public_header, str):
+            headers = [public_header]
+            headers.extend(row["path"] for row in additional_headers)
+        elif "public_headers" in library:
+            return [f"{library['name']}: malformed public header metadata"]
     probe.write_text(
         "".join(f'#include "{Path(header).name}"\n' for header in headers),
         encoding="utf-8",
@@ -988,8 +1144,28 @@ def _validate(
             findings.append("policy library rows must be objects")
             continue
         findings.extend(_library_findings(library, required_targets, repository_root))
-        counts["headers"] += int(isinstance(library.get("public_header"), str))
-        counts["adapters"] += int(isinstance(library.get("adapter"), str))
+        additional_headers = library.get("additional_headers", [])
+        if not isinstance(additional_headers, list):
+            additional_headers = []
+        additional_adapters = library.get("additional_adapters", [])
+        if not isinstance(additional_adapters, list):
+            additional_adapters = []
+        counts["headers"] += (
+            len(_multi_header_rows(library))
+            if "public_headers" in library
+            else int(isinstance(library.get("public_header"), str))
+            + len(additional_headers)
+        )
+        counts["adapters"] += (
+            len(_multi_adapter_paths(library))
+            if "adapters" in library
+            else int(isinstance(library.get("adapter"), str))
+            + sum(
+                1
+                for row in additional_adapters
+                if isinstance(row, dict) and row.get("role") in {"public", "test-only"}
+            )
+        )
         counts["exports"] += len(library.get("exports", []))
         counts["tests"] += len(library.get("contract_tests", []))
         if compile_archives and zig is not None and nm is not None:
@@ -1376,6 +1552,104 @@ def _selftest_retained_c_exports(base: dict[str, Any], root: Path) -> str | None
     return None
 
 
+def _selftest_multi_boundary_retained_c(_base: dict[str, Any], root: Path) -> str | None:
+    """Cover exact multi-file unions and a retained-C export from a secondary header."""
+    with tempfile.TemporaryDirectory(prefix="ra8-zig-abi-multi-selftest-") as tmp:
+        return _selftest_multi_boundary_fixture(Path(tmp).resolve())
+
+
+def _selftest_multi_boundary_fixture(fixture_root: Path) -> str | None:
+    """Exercise the isolated multi-boundary fixture outside the shared test root."""
+    row = _selftest_fixture(
+        fixture_root,
+        "typedef struct { unsigned value; } demo_config_t;\n"
+        "int demo_run(const demo_config_t *config, unsigned *output);\n"
+        'static_assert(sizeof(demo_config_t) == 4U, "layout");\n',
+        "const DemoConfig = extern struct { value: u32 };\n"
+        "pub export fn demo_run(config: ?*const DemoConfig, output: ?*u32) "
+        "callconv(.c) i32 { _ = config; _ = output; return 0; }\n",
+    )
+    additional_header = fixture_root / "inc/demo_backend.h"
+    additional_text = "int demo_retained(void);\nint demo_extra(void);\n"
+    additional_header.write_text(additional_text, encoding="utf-8")
+    extra_adapter = fixture_root / "build/extra.zig"
+    extra_text = (
+        "pub export fn demo_extra() callconv(.c) i32 { return 0; }\n"
+    )
+    extra_adapter.write_text(extra_text, encoding="utf-8")
+    (fixture_root / "build/retained.c").write_text(
+        "int demo_retained(void) { return 0; }\n", encoding="utf-8"
+    )
+
+    multi = json.loads(json.dumps(row))
+    multi["build_root"] = "."
+    for field in ("public_header", "adapter", "compatibility_sha256", "layout_assertions"):
+        multi.pop(field)
+    primary_header = fixture_root / "inc/demo.h"
+    multi["public_headers"] = [
+        {
+            "path": "inc/demo.h",
+            "compatibility_sha256": _normalized_header_digest(
+                primary_header.read_text(encoding="utf-8")
+            ),
+            "layout_assertions": ["sizeof(demo_config_t) == 4U"],
+        },
+        {
+            "path": "inc/demo_backend.h",
+            "compatibility_sha256": _normalized_header_digest(additional_text),
+            "layout_assertions": [],
+        },
+    ]
+    multi["adapters"] = ["build/adapter.zig", "build/extra.zig"]
+    multi["exports"].extend(
+        [
+            {
+                "name": "demo_extra",
+                "calling_context": "task-only-non-reentrant",
+                "ownership": "owns no retained caller resource",
+            },
+            {
+                "name": "demo_retained",
+                "calling_context": "task-only-non-reentrant",
+                "ownership": "uses no retained caller resource",
+            },
+        ]
+    )
+    multi["retained_c_exports"] = [
+        {"name": "demo_retained", "source": "build/retained.c"}
+    ]
+    if findings := _library_findings(multi, {"host", "ra8"}, fixture_root):
+        return f"multi-header retained-C fixture failed: {findings}"
+
+    unregistered_retained = json.loads(json.dumps(multi))
+    unregistered_retained.pop("retained_c_exports")
+    findings = _library_findings(unregistered_retained, {"host", "ra8"}, fixture_root)
+    if not any("Zig adapter missing export(s): demo_retained" in item for item in findings):
+        return "multi-header must-fire fixture accepted unregistered retained C export"
+
+    duplicate_adapter = json.loads(json.dumps(multi))
+    extra_adapter.write_text(
+        "pub export fn demo_run(config: ?*const DemoConfig, output: ?*u32) "
+        "callconv(.c) i32 { _ = config; _ = output; return 0; }\n",
+        encoding="utf-8",
+    )
+    findings = _library_findings(duplicate_adapter, {"host", "ra8"}, fixture_root)
+    extra_adapter.write_text(extra_text, encoding="utf-8")
+    if not any("duplicate adapter export(s): demo_run" in item for item in findings):
+        return "multi-adapter must-fire fixture accepted a duplicate export"
+
+    no_secondary_symbol = json.loads(json.dumps(multi))
+    changed_text = "int demo_else(void);\nint demo_extra(void);\n"
+    additional_header.write_text(changed_text, encoding="utf-8")
+    no_secondary_symbol["public_headers"][1]["compatibility_sha256"] = (
+        _normalized_header_digest(changed_text)
+    )
+    findings = _library_findings(no_secondary_symbol, {"host", "ra8"}, fixture_root)
+    if not any("header missing export(s): demo_retained" in item for item in findings):
+        return "multi-header must-fire fixture accepted missing secondary-header export"
+    return None
+
+
 def _selftest_additional_header_policy(base: dict[str, Any], root: Path) -> str | None:
     """Exercise typed public and test-only headers in the combined ABI inventory."""
     path = root / "build/inc/demo_internal.h"
@@ -1655,6 +1929,9 @@ static_assert(sizeof(demo_config_t) == 4U, "layout");
         if error := _selftest_retained_c_exports(base, root):
             print(error, file=sys.stderr)
             return 1
+        if error := _selftest_multi_boundary_retained_c(base, root):
+            print(error, file=sys.stderr)
+            return 1
         if error := _selftest_additional_header_policy(base, root):
             print(error, file=sys.stderr)
             return 1
@@ -1690,8 +1967,17 @@ def main() -> int:
         return 2
     if args.print_digests:
         for library in policy.get("libraries", []):
-            header = (ROOT / library["public_header"]).read_text(encoding="utf-8")
-            print(f"{library['name']} {_normalized_header_digest(header)}")
+            headers = [row["path"] for row in _multi_header_rows(library)]
+            if not headers:
+                headers = [library["public_header"]]
+                headers.extend(
+                    row["path"]
+                    for row in library.get("additional_headers", [])
+                    if isinstance(row, dict) and isinstance(row.get("path"), str)
+                )
+            for header_path in headers:
+                header = (ROOT / header_path).read_text(encoding="utf-8")
+                print(f"{library['name']}:{header_path} {_normalized_header_digest(header)}")
         return 0
     if not args.check:
         parser.error("choose --selftest, --check, or --print-digests")
