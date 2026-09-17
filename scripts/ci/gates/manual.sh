@@ -379,6 +379,14 @@ gate_macos_host_build() (
     (cd "${root}" && zig build test --summary all)
   done
 
+  # Linking is not the claim; what came out of the link is. Read the emitted
+  # Mach-O back and check it is a native arm64 image, stamped with the
+  # deployment target this build was configured for, linked against the system
+  # libSystem. A build that quietly took Zig's default macOS floor instead of
+  # the host's version also exits zero, and would otherwise pass here.
+  printf '\n=== apps/host/image_pyramid: verify-host-artifact ===\n'
+  (cd apps/host/image_pyramid && zig build verify-host-artifact --summary all)
+
   # The forced-bundled escape hatch is load-bearing on an affected Mac, so it
   # is part of the verdict.
   printf '\n=== apps/host/image_pyramid: -Dmacos-libsystem=bundled ===\n'
