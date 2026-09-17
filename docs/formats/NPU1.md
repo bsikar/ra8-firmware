@@ -212,6 +212,21 @@ to each runtime region's base within the caller's arena, because Ethos-U55
 tensor arenas are 16-byte aligned. A caller sizing an arena must therefore
 allow for per-region padding, not merely the sum of the `size` fields.
 
+A caller does not have to do that arithmetic itself. `ra8_npu_arena_bytes()`
+(`libs/ra8_hal/inc/ra8_npu_loader.h`) validates the container and returns the
+figure the loader will claim, so an arena is sized from the committed model
+rather than from a constant written beside it:
+
+```c
+uint32_t needed = 0U;
+if (ra8_npu_arena_bytes(blob, blob_bytes, &needed) != k_ra8_ok) { /* refuse */ }
+```
+
+The figure is exact, not an upper bound: `ra8_npu_load()` succeeds with an arena
+of precisely `needed` bytes and returns `k_ra8_err_no_mem` one byte below it.
+Both entry points share one validation front and one region walk, so the query
+cannot disagree with the load about either the verdict or the number.
+
 ---
 
 ## 4. Algorithms
@@ -243,18 +258,24 @@ file is emitted in one forward pass with the tables at the front.
   6. Command stream lies inside the blob:
      cmd_offset + cmd_bytes <= total_bytes, and cmd_bytes > 0.
   7. FNV-1a over the payload == checksum, else reject.
-  8. For each descriptor:
+  8. Plan the arena: walk the descriptors, and for each RUNTIME region align a
+     cursor to 16 and add its size (BAKED regions add nothing). Require the
+     caller's arena to be at least that total, else k_ra8_err_no_mem. Require
+     the total itself to fit in 32 bits, else k_ra8_err_invalid_size.
+  9. For each descriptor:
        BAKED   -> require data_offset + size <= total_bytes;
                   bind pointer = blob + data_offset (in place, no copy)
-       RUNTIME -> align the arena cursor to 16; require the region fits
-                  the remaining arena; bind pointer = arena + cursor
-  9. Point the NPU at cmd_offset with the bound BASEPn table.
+       RUNTIME -> align the arena cursor to 16; bind pointer = arena + cursor
+                  (the fit was already settled in step 8)
+ 10. Point the NPU at cmd_offset with the bound BASEPn table.
 ```
 
-Steps 5, 6 and 8 are the memory-safety checks: every offset read from the file
-is validated against `total_bytes` *before* it is turned into a pointer. Step 8's
-arena check is the one that stops a hostile `size` from running the runtime
-cursor past the caller's buffer.
+Steps 5, 6, 8 and 9 are the memory-safety checks: every offset read from the
+file is validated against `total_bytes` *before* it is turned into a pointer.
+Step 8 is the one that stops a hostile `size` from running the runtime cursor
+past the caller's buffer, and it decides that once for the whole table rather
+than per region, so the number the loader enforces is the same number
+`ra8_npu_arena_bytes()` reports.
 
 ---
 
@@ -363,7 +384,8 @@ side-loaded for evaluation.
 | `cmd_bytes` = 0 | NPU pointed at an empty stream | Must be `> 0` |
 | `cmd_offset + cmd_bytes` > `total_bytes` | NPU reads past the blob | Checked before the stream is bound |
 | BAKED `data_offset + size` > `total_bytes` | Weight pointer out of bounds | Checked per descriptor |
-| RUNTIME `size` larger than the arena | Arena overflow into other SRAM | Checked against remaining arena, after 16-byte alignment |
+| RUNTIME `size` larger than the arena | Arena overflow into other SRAM | The whole table's 16-byte-aligned requirement is checked against the arena before any base is bound |
+| RUNTIME sizes that sum past 2^32 | Requirement wraps to a small, passable number | Both additions are guarded; the blob is refused with `k_ra8_err_invalid_size` |
 | Bit rot in the payload | NPU executes corrupt commands | FNV-1a mismatch rejects the blob |
 | Deliberately modified payload with recomputed checksum | Attacker-chosen command stream | **Not defended** -- see below |
 | Unknown `role` | Loader mis-binds an arena | Harmless: `role` is informational; binding is by index |
