@@ -25,6 +25,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 import fleet_model as fm
 import fleet_mutation_lock as fml
+import fleet_reconcile_aging_selftest as fra
 import fleet_reconcile_arc_selftest as fras
 import fleet_reconcile_backoff_selftest as frb
 import fleet_reconcile_blocking_selftest as frbl
@@ -673,6 +674,36 @@ def record_stranding(stranding: dict[str, dict[str, int]], host: str, now: int) 
     )
 
 
+def age_stranding(stranding: dict[str, dict[str, int]], host: str, now: int, reason: str) -> bool:
+    """Count one more pass that ended with an already-drained host still at zero.
+
+    ``record_stranding`` only counts a pass that LOST capacity, which is the
+    right guard on the claim that this pass drained a host (issue #888, the
+    forged stranding record).  The record itself makes a longer-lived claim:
+    that a host has been held at zero for so many consecutive passes that this
+    fleet is not recovering on its own, which is what ``stranded_escalations``
+    turns into a CRITICAL and ``STRANDED_STATUS``.  A pass that reaches a host
+    already at zero and fails to lift it off zero without mutating anything
+    therefore still has to age the record: a read-only check that keeps failing
+    against a drained host, or a consumer skipped behind a failed producer,
+    otherwise froze the counter wherever the last capacity-losing pass left it.
+    Below the escalation threshold that is silent stranding for good, which is
+    exactly the shape issue #888 went unnoticed in five times: capacity at zero,
+    no recovery, and an exit status that reads like any one-off failure.
+    """
+    entry = stranding.get(host)
+    if entry is None:
+        return False
+    entry["passes"] += 1
+    print(
+        f"fleet-reconcile: WARNING: {host}: STILL at ZERO capacity after this pass "
+        f"({reason}); nothing this pass did lifted it off zero (consecutive "
+        f"passes={entry['passes']}, {now - entry['since']}s since it was first drained)",
+        file=sys.stderr,
+    )
+    return True
+
+
 def clear_stranding(stranding: dict[str, dict[str, int]], host: str) -> bool:
     """Forget a host's stranding, reporting whether it was held at zero before.
 
@@ -761,6 +792,7 @@ def invalidate_receipt(  # noqa: PLR0913  # the receipt plus every record one fa
     """
     receipts.pop(host, None)
     if not stranded:
+        age_stranding(stranding, host, now, "this pass failed without taking capacity down")
         return
     newly_drained = host not in stranding
     record_stranding(stranding, host, now)
@@ -958,6 +990,21 @@ def report_cascade_halt(host: str, drained: Sequence[str], budget: int) -> None:
     )
 
 
+def hold_at_zero(
+    stranding: dict[str, dict[str, int]], host: str, options: ReconcileOptions
+) -> bool:
+    """Age a skipped host's stranded-at-zero record, on a pass that persists it.
+
+    A held host is left exactly as it is, which for a host already at zero
+    means another whole pass at zero.  Check mode persists nothing, so it
+    reports the record as it stands rather than counting a pass it will not
+    write down.
+    """
+    if options.mode != "apply":
+        return False
+    return age_stranding(stranding, host, options.now, "held back by this pass, not inspected")
+
+
 def consumer_held(  # noqa: PLR0913  # one hold decision over the whole pass's state
     host: str,
     stranding: dict[str, dict[str, int]],
@@ -1042,6 +1089,7 @@ def reconcile(
             host, stranding, halted, blocking=producer_blocking, drained=drained, budget=budget
         ):
             failures += 1
+            hold_at_zero(stranding, host, options)
             continue
 
         receipt_invalidated = False
@@ -1642,6 +1690,7 @@ def selftest() -> int:
     _selftest_failed_repair_retries(failures)
     _selftest_postcheck_quarantine(failures)
     _selftest_restore_quarantine(failures)
+    failures.extend(fra.run(sys.modules[__name__]))
     failures.extend(fras.run(apply_host))
     failures.extend(frr.run(sys.modules[__name__]))
     failures.extend(frb.run(sys.modules[__name__]))
