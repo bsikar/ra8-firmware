@@ -272,3 +272,32 @@ test "lines-head prints every run when the document holds fewer than six" {
     try std.testing.expectEqual(@as(u8, 0), outcome.status);
     try std.testing.expectEqualStrings("  a: completed/success  aa1\n", outcome.out);
 }
+
+test "a state file past any plausible read ceiling is still answered" {
+    // The Python's `json.load` had no size limit, so a document that grew
+    // large stayed readable. A ceiling here would have turned it into
+    // "cannot read" and status 1 instead, losing the verdict the monitor
+    // branches on, so the whole file is read.
+    const allocator = std.testing.allocator;
+    const pad_bytes: usize = 17 * 1024 * 1024;
+    var text = std.ArrayList(u8).init(allocator);
+    defer text.deinit();
+    try text.appendSlice("{\"overall\":\"PASS\",\"pad\":\"");
+    try text.appendNTimes('x', pad_bytes);
+    try text.appendSlice("\",\"runs\":[{\"name\":\"firmware\",\"status\":\"completed\"," ++
+        "\"conclusion\":\"success\",\"sha\":\"aaaaaaaaa1\"}]}");
+
+    var tmp = std.testing.tmpDir(.{});
+    defer tmp.cleanup();
+    try tmp.dir.writeFile(.{ .sub_path = "status.json", .data = text.items });
+
+    const judged = try runWith(tmp.dir, &.{ "status.json", "verdict", "aaaaaaaaa1" });
+    defer judged.deinit(allocator);
+    try std.testing.expectEqual(@as(u8, 0), judged.status);
+    try std.testing.expectEqualStrings("PASS\n", judged.out);
+
+    const named = try runWith(tmp.dir, &.{ "status.json", "field", "overall" });
+    defer named.deinit(allocator);
+    try std.testing.expectEqual(@as(u8, 0), named.status);
+    try std.testing.expectEqualStrings("PASS\n", named.out);
+}
