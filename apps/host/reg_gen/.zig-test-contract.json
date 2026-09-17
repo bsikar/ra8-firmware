@@ -5,9 +5,11 @@
   "covered_sources": [
     "src/generator.zig",
     "src/main.zig",
+    "tests/c23_cc.zig",
+    "tests/c23_cc_test.zig",
     "tests/generator_test.zig",
     "tests/main_test.zig",
     "tests/root.zig"
   ],
-  "minimum_tests": 23
+  "minimum_tests": 32
 }

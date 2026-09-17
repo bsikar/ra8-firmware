@@ -161,6 +161,35 @@ An exemption is the right answer for a graph that never produces host
 binaries, such as a firmware-only cross-build root. It is the wrong answer for
 a host tool, which should carry the rule instead.
 
+## The reg_gen C23 contract test resolves its own compiler
+
+`apps/host/reg_gen` compiles every generated header with a real C23 front end
+before it accepts it. That test used to spawn the bare name `clang-18`, which
+is what the Linux CI image installs and what nothing else has. On an arm64 Mac
+`std.process.Child` then reported `FileNotFound`, so `zig build test` in that
+root failed before it reached a single header, and the root could not be part
+of the macOS story at all.
+
+The test now resolves a front end in a fixed order and proves it accepts C23
+before using it:
+
+1. `RA8_C23_CC`, if set. An explicit pin is the *only* candidate, and it may
+   carry arguments (`RA8_C23_CC="xcrun clang"`). A pin that does not work
+   fails; it never falls through to something else.
+2. `clang-18`, `clang-19`, `clang-20`, `clang`, `cc`.
+3. `zig cc`, using the absolute path of the zig running the build, handed to
+   the test module as a build option.
+
+Every candidate is probed with a translation unit that uses the C23
+`static_assert` keyword without including `<assert.h>`, so a C17 front end is
+rejected rather than silently accepted. A host with no C23 compiler at all is
+still a hard test failure that prints every candidate it tried; it is not a
+skip, and the compile flags are unchanged (`-std=c23 -Wall -Wextra -Werror
+-fsyntax-only`).
+
+Nothing about Linux CI changes: `clang-18` is first, so wherever it exists it
+is still the compiler of record.
+
 ## Not yet automated
 
 No scheduled job runs these commands on macOS today; the checks above are
