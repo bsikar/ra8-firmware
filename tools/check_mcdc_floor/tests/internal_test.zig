@@ -341,6 +341,23 @@ test "fileField reads the path, defaults to empty and rejects a non-string" {
     try std.testing.expectError(error.AttributeError, implementation.fileField(.{ .integer = 1 }));
 }
 
+test "a `file` field too large for an i64 is a number, not a path" {
+    // json.load hands the predecessor an int for this token, and
+    // `path.replace` raises AttributeError on it. The parser here answers
+    // `number_string` rather than `integer`, so the branch has to reject it
+    // explicitly: reading its text as a path puts the entry out of scope and
+    // skips it silently, which is the one outcome this floor forbids.
+    var arena = std.heap.ArenaAllocator.init(std.testing.allocator);
+    defer arena.deinit();
+    const allocator = arena.allocator();
+    try std.testing.expectError(error.AttributeError, implementation.fileField(try entryOf(allocator,
+        \\{"file":99999999999999999999999,"covered_decisions":0,"total_decisions":2}
+    )));
+    try std.testing.expectError(error.AttributeError, implementation.fileField(.{
+        .number_string = "99999999999999999999999",
+    }));
+}
+
 test "reachablePct divides in the predecessor's operation order" {
     try std.testing.expectEqual(@as(f64, 100.0), implementation.reachablePct(2, 2));
     try std.testing.expectEqual(@as(f64, 50.0), implementation.reachablePct(1, 2));
