@@ -36,7 +36,6 @@ extern "C" {
  * path.
  *
  * @param[in] ch Keystroke byte to enqueue.
- * @return Nothing.
  * @note Not thread-safe; single-threaded harness use.
  * @since 0.1.0
   * @pre Arguments satisfy the ranges documented for board input push key. @pre The call executes on the emulator's single owning thread.

@@ -156,7 +156,6 @@ uint32_t exc_vector(uc_engine* uc, uint32_t vtor_base, uint32_t exc_num);
  * @param[in,out] uc      Unicorn engine.
  * @param[in]     exc_num Exception number to take.
  * @param[in]     handler Handler entry address (Thumb bit ignored).
- * @return Nothing.
  * @pre Taking @p exc_num is permitted now (priority/PRIMASK already checked).
  * @pre The target stack is mapped.
  * @post The core is in Handler mode (IPSR == @p exc_num) running on MSP.
@@ -177,7 +176,6 @@ void exc_enter(uc_engine* uc, uint32_t exc_num, uint32_t handler);
  *
  * @param[in,out] uc      Unicorn engine.
  * @param[in]     exc_ret The EXC_RETURN value (prefix bits[31:7] set).
- * @return Nothing.
  * @pre @p uc is in Handler mode with a valid frame on the indicated stack.
  * @pre @p exc_ret carries the EXC_RETURN prefix.
  * @post The core has resumed the unstacked context (PC/SP/xPSR restored).
@@ -246,7 +244,6 @@ bool idle_spin_at(uc_engine* uc, uint32_t pc);
  * ra8_delay_ms (which spins on CYCCNT while PRIMASK is set) making progress.
  *
  * @param[in,out] uc Active Unicorn engine (CYCCNT lives in PPB RAM).
- * @return Nothing.
  * @pre @p uc has stopped at an instruction boundary (outer-chunk cadence).
  * @pre The PPB (DEMCR / DWT_CTRL / DWT_CYCCNT) is mapped as RAM.
  * @post CYCCNT advanced iff the trace subsystem and counter are enabled.
@@ -259,7 +256,6 @@ void dwt_cyccnt_advance(uc_engine* uc);
 /**
  * @brief Arm the core exception hooks (unmapped / INTR / ICSR watch).
  *
- * @return Nothing.
  * @pre @p uc is initialised (setup phase).
  * @pre Called once, at the same setup position the hooks were always added.
  * @post The unmapped-access, interrupt and ICSR write hooks are live.
@@ -275,7 +271,6 @@ void emu_exc_install_core(uc_engine* uc);
 /**
  * @brief Arm the SCB control-word and NVIC ISER/ICER write watchers.
  *
- * @return Nothing.
  * @pre emu_exc_install_core() ran (hook order is install order).
  * @pre Called once, at the same setup position the hooks were always added.
  * @post The AIRCR..CCR and ISER/ICER write hooks are live.
@@ -290,7 +285,6 @@ void emu_exc_install_scb_nvic(uc_engine* uc);
 /**
  * @brief Pend the periodic SysTick for this outer chunk.
  *
- * @return Nothing.
  * @pre The run loop is at an outer-chunk boundary (one tick per chunk).
  * @pre None otherwise.
  * @post The tick is armed; exc_take_pending() may take it when permitted.
@@ -320,7 +314,6 @@ bool emu_exc_take_exc_return(uint64_t* out_pc);
 /**
  * @brief Clear the PendSV context-switch stop marker (per relaunch).
  *
- * @return Nothing.
  * @pre The inner run loop is about to (re)launch the engine.
  * @pre None otherwise.
  * @post The marker is clear until the next PENDSVSET-triggered stop.
@@ -394,7 +387,6 @@ bool emu_exc_reboot_requested(void);
 /**
  * @brief Clear the latched warm-reboot request (after performing it).
  *
- * @return Nothing.
  * @pre The run loop just performed the warm reboot.
  * @pre None otherwise.
  * @post No reset request is pending.
@@ -458,7 +450,6 @@ uint32_t emu_exc_svc_takes(void);
  * counters -- exactly the state a fresh boot starts with. The reboot request
  * latch is owned by the SCB watcher and cleared separately.
  *
- * @return Nothing.
  * @pre A warm reboot just re-loaded the image.
  * @pre None otherwise.
  * @post The exception engine is in its boot state.

@@ -186,7 +186,6 @@ uint64_t emu_mve_emulated_count(void);
  *
  * @param[in,out] uc  Unicorn engine to install the hooks on.
  * @param[in]     elf Open immutable ELF source.
- * @return Nothing.
  * @pre @p elf is a 32-bit ARM ELF (already validated by load_elf).
  * @pre The M85 profile is selected (the caller gates on the primary core).
  * @post One UC_HOOK_CODE per long-shift site is armed (up to the site cap).
@@ -259,7 +258,6 @@ typedef enum : uint32_t {
  * emulate_div0_patched() re-decodes before acting.
  *
  * @param[in] elf Open immutable ELF source.
- * @return Nothing.
  * @pre @p elf is a 32-bit ARM ELF (already validated by load_elf).
  * @pre @p elf remains open throughout the bounded segment scan.
  * @post Up to the site cap of divide sites are tracked, none patched yet.
@@ -285,7 +283,6 @@ void div0_seam_install(const emu_elf_source_t* elf);
  * a warm reboot re-loads the image (the reboot path calls emu_div0_disarm()).
  *
  * @param[in,out] uc Unicorn engine whose memory is patched.
- * @return Nothing.
  * @pre The tracked divide sites hold valid addresses.
  * @pre @p uc permits uc_mem_write to the code image.
  * @post Every tracked site holds the UDF encoding and the seam is armed.
@@ -347,7 +344,6 @@ bool emu_div0_fault_pending(void);
  * UsageFault; the warm-reboot path clears it so a rebooted image starts
  * clean.
  *
- * @return Nothing.
  * @pre A fault was latched (or the call is a harmless reset).
  * @pre None otherwise.
  * @post No divide-by-zero is pending.
@@ -375,7 +371,6 @@ uint32_t emu_div0_fault_pc(void);
 /**
  * @brief Count one synthesised divide-by-zero UsageFault (telemetry).
  *
- * @return Nothing.
  * @pre A UsageFault is being synthesised for a latched div-0.
  * @pre None otherwise.
  * @post The run's div-0 trap count grew by one.
@@ -393,7 +388,6 @@ void emu_div0_count_trap(void);
  * seam must re-arm on the next CCR.DIV_0_TRP write; this clears the
  * idempotence latch.
  *
- * @return Nothing.
  * @pre A warm reboot just re-wrote the PT_LOAD segments.
  * @pre None otherwise.
  * @post The next div0_patch_sites() call patches again.
@@ -432,7 +426,6 @@ bool on_invalid_insn(uc_engine* uc, void* user);
 /**
  * @brief Arm the invalid-instruction dispatcher on the engine.
  *
- * @return Nothing.
  * @pre @p uc is initialised (no code has run yet).
  * @pre Called once during setup, before any other hook that relies on the
  *      dispatcher's seams.
@@ -473,7 +466,6 @@ uint64_t emu_lob_emulated_count(void);
  *
  * @param[in,out] uc        Unicorn engine.
  * @param[in]     vtor_base Fallback vector base if VTOR reads as 0.
- * @return Nothing.
  * @pre A divide-by-zero fault is latched (PC captured at the divide).
  * @pre The PPB CFSR word and the vector table are mapped as RAM.
  * @post On a valid vector, the core is in the UsageFault handler with the
@@ -487,7 +479,6 @@ void div0_synth_usagefault(uc_engine* uc, uint32_t vtor_base);
 /**
  * @brief Opt in to the --fast-sd block-serving seam for this run.
  *
- * @return Nothing.
  * @pre Called from the CLI parser before the seams are installed.
  * @pre None otherwise.
  * @post fast_sd_seam_install() will arm the block hook when possible.
@@ -503,7 +494,6 @@ void emu_fast_sd_enable(void);
  *
  * @param[in,out] uc  Active Unicorn engine.
  * @param[in]     elf Open ELF source used for symbol resolution.
- * @return Nothing.
  * @pre @p uc is initialised and @p elf remains open.
  * @pre The SD card model is attached when the fast path should serve blocks.
  * @post With the opt-in and the symbol present, a UC_HOOK_CODE serves whole

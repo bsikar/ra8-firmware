@@ -115,7 +115,6 @@ uint8_t board_eink_exchange(uint8_t tx);
  * target and read cursor; the armed / attached flag is preserved. Called from
  * the SPI_B block's power-on reset (``board_periph_spi.c``).
  *
- * @return None.
  * @pre None.
  * @pre None.
  * @post The byte state machine is back at "expect preamble".
@@ -137,7 +136,6 @@ void board_eink_reset(void);
  * survives the reset that would otherwise clear it. A no-op when no controller
  * is attached.
  *
- * @return None.
  * @pre The GPIO/PORT block model is registered.
  * @pre Called after the GPIO block cleared its ports.
  * @post When attached, the HRDY pin reads high.
@@ -156,7 +154,6 @@ void board_eink_apply_gpio_defaults(void);
  * so a run visibly exercised the image-load + display path. A no-op when no
  * controller is attached.
  *
- * @return None.
  * @pre None.
  * @pre None.
  * @post No model state is modified.

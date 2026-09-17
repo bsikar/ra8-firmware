@@ -79,7 +79,6 @@ double board_now_s(void);
  * With the variable unset the profiler stays off at zero cost.
  *
  * @param[in] elf Open ELF source; symbol names are retained as source offsets.
- * @return Nothing.
  * @pre @p elf is a validated ELF32 source.
  * @pre The source remains open through the run-end profiler report.
  * @post The symbol table is loaded and the mode is latched.
@@ -98,7 +97,6 @@ void prof_load(const emu_elf_source_t* elf);
  *
  * @param[in] pc Chunk-start program counter (bucketing key).
  * @param[in] dt Elapsed wall seconds to charge.
- * @return Nothing.
  * @pre prof_load() ran (the mode and symbol table are latched).
  * @pre @p dt is a non-negative wall-time delta.
  * @post In wall mode the owning function's total (and the run total) grew by
@@ -117,7 +115,6 @@ void prof_add(uint32_t pc, double dt);
  * and the inclusive/self table. A no-op when profiling was off or nothing
  * was sampled.
  *
- * @return Nothing.
  * @pre The run has ended (totals are final).
  * @pre injected error sink is writable.
  * @post The report (if any) has been written; per-symbol counters are
@@ -136,7 +133,6 @@ void prof_report(void);
  * nothing.
  *
  * @param[in,out] uc Unicorn engine to hook.
- * @return Nothing.
  * @pre prof_load() ran (the mode is latched).
  * @pre @p uc is initialised.
  * @post In insn mode the code hook is armed for the whole run.
@@ -188,7 +184,6 @@ uint64_t emu_prof_total_insns(void);
  * clears the Thumb bit before passing.
  *
  * @param[in] pc Stop address (Thumb bit already cleared), or 0 to disable.
- * @return Nothing.
  * @pre The address (when non-zero) is a code address of the loaded image.
  * @pre Called during setup, before the run loop.
  * @post The stop address is latched for the run.

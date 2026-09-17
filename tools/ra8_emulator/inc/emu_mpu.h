@@ -31,7 +31,6 @@ extern "C" {
 /**
  * @brief Arm the MPU register watchers (RLAR capture + CTRL edge hooks).
  *
- * @return Nothing.
  * @pre @p uc is initialised with the PPB mapped as RAM.
  * @pre Called once during single-threaded setup.
  * @post The MPU_RLAR and MPU_CTRL write hooks are installed.
@@ -64,7 +63,6 @@ bool emu_mpu_fault_pending(void);
  * @details The run loop clears the latch right before synthesising the
  * MemManage; the warm-reboot path clears it so a rebooted image starts clean.
  *
- * @return Nothing.
  * @pre A violation was latched (or the call is a harmless reset).
  * @pre None otherwise.
  * @post No MPU violation is pending.
@@ -88,7 +86,6 @@ void emu_mpu_clear_fault(void);
  *
  * @param[in,out] uc        Unicorn engine.
  * @param[in]     vtor_base Fallback vector base if VTOR reads as 0.
- * @return Nothing.
  * @pre A violation is latched (PC / address captured at the trapped store).
  * @pre The PPB CFSR / MMFAR words and the vector table are mapped as RAM.
  * @post On a valid vector, the core is in the MemManage handler with the

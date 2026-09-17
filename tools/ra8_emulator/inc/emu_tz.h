@@ -46,7 +46,6 @@ extern "C" {
  *
  * @param[in,out] uc      Active Unicorn engine.
  * @param[in]     elf Open Secure ELF source used for symbol resolution.
- * @return Nothing.
  * @pre @p uc is initialised and the image is loaded.
  * @pre The PPB is mapped as RAM (SAU_TYPE is seedable).
  * @post On a TZ image the SAU_TYPE seed + BLXNS hook are armed.
@@ -70,7 +69,6 @@ void emu_tz_install(uc_engine* uc, const emu_elf_source_t* elf);
  *
  * @param[in,out] uc      Active Unicorn engine.
  * @param[in]     elf Open Secure ELF source used for symbol resolution.
- * @return Nothing.
  * @pre The image is loaded into @p uc memory.
  * @pre @p elf remains open for symbol resolution.
  * @post A TZ image has its range-check entry patched; others are untouched.
@@ -84,7 +82,6 @@ void emu_tz_patch_cmse(uc_engine* uc, const emu_elf_source_t* elf);
  * @brief Track the NS image's actual vector base (--ns load path).
  *
  * @param[in] base Lowest executable PT_LOAD VMA of the loaded NS image.
- * @return Nothing.
  * @pre @p base came from elf_vector_base() on the NS image (non-zero).
  * @pre Called before the run loop starts.
  * @post The BLXNS world switch falls back to @p base when VTOR_NS is unset.

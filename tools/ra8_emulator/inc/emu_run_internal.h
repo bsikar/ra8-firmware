@@ -122,7 +122,6 @@ priv_run_inner(uc_engine* uc, uint32_t vtor_base, uint32_t* run_pc_io, uc_err* e
  * run loop returns.
  *
  * @param[in] st The run state (final counters + flags).
- * @return void
  * @pre The run loop has ended and @p st reflects its outcome.
  * @pre injected error sink is the report stream.
  * @post The report section has been written to injected error sink.
@@ -138,7 +137,6 @@ RA8_PRIV void priv_run_report(const run_loop_t* st);
  * @details Defined in emu_run_report.c; called by emu_run_and_report.
  *
  * @param[in] st The run state (presentation surface + output paths).
- * @return void
  * @pre The run loop has ended and @p st reflects its outcome.
  * @pre injected error sink is the report stream.
  * @post The --ppm file is written and/or the --record line printed as requested.
@@ -155,7 +153,6 @@ RA8_PRIV void priv_run_write_outputs(const run_loop_t* st);
  * headless mode.
  *
  * @param[in] st The run state (window + presentation surface).
- * @return void
  * @pre The run loop has ended and @p st reflects its outcome.
  * @pre @p st->view is a live window or NULL.
  * @post Any live window has been presented (if needed) and closed.

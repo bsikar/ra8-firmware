@@ -90,7 +90,6 @@ typedef enum : uint8_t {
  *
  * @param[in] device Device to emulate (::k_board_device_ra8d2 /
  *                   ::k_board_device_ra8p1); out-of-range clamps to RA8D2.
- * @return Nothing.
  * @pre The peripheral registry constructors have run (they always do, pre-main).
  * @pre Called once during single-threaded setup, before the run loop (not re-entrant).
  * @post ::board_periph_device reports the clamped selection.
@@ -133,7 +132,6 @@ board_device_t board_periph_device(void);
  * declared as a chip-internal self-loop.
  *
  * @param[in] on true to activate loop-only blocks for this run.
- * @return Nothing.
  * @post Loop-only blocks own their windows iff @p on; the dispatch cache is
  *       invalidated so the change takes effect immediately.
  * @note Not thread-safe; single-threaded setup use.
@@ -170,7 +168,6 @@ bool board_periph_usbhs_loop(void);
  *
  * @param[in] trace When true, each LED / GPIO transition and each taken IRQ is
  *                   logged to injected error sink as it happens (the --trace flag).
- * @return Nothing.
  * @post All counters read zero and every block is in its reset state.
  * @since 0.1.0
   * @pre Arguments satisfy the ranges documented for board periph init. @pre The call executes on the emulator's single owning thread.
@@ -195,7 +192,6 @@ void board_periph_init(bool trace);
  * @param[in] software true to latch RSTSR1.SWRF (software reset).
  * @param[in] watchdog true to latch RSTSR1.WDTRF (watchdog-0 reset).
  * @param[in] iwdt     true to latch RSTSR1.IWDTRF (independent-watchdog reset).
- * @return Nothing.
  * @since 0.1.0
   * @pre Arguments satisfy the ranges documented for board periph reset set cause. @pre The call executes on the emulator's single owning thread.
  * @post State changes remain confined to the board periph model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
@@ -214,7 +210,6 @@ void board_periph_reset_set_cause(bool power_on, bool software, bool watchdog, b
  *
  * @param[in] watchdog true for a watchdog-0 reset (RSTSR1.WDTRF).
  * @param[in] iwdt     true for an independent-watchdog reset (RSTSR1.IWDTRF).
- * @return Nothing.
  * @since 0.1.0
   * @pre Arguments satisfy the ranges documented for board periph reset request reboot. @pre The call executes on the emulator's single owning thread.
  * @post State changes remain confined to the board periph model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
@@ -253,7 +248,6 @@ bool board_periph_reset_take_request(bool* out_watchdog, bool* out_iwdt);
  *
  * @param[in] sink Callback invoked as @c sink(channel, byte) per TX byte, or
  *                 NULL to detach. The model owns no copy of @p byte.
- * @return Nothing.
  * @post Subsequent TDR writes are delivered to @p sink.
  * @since 0.1.0
  */
@@ -274,7 +268,6 @@ void board_periph_sci_set_tx_sink(void (*sink)(uint8_t channel, uint8_t byte));
  * @param[in] channel SCI channel index (0..9). Out-of-range is ignored.
  * @param[in] data    Source bytes (copied into the queue); ignored if NULL.
  * @param[in] len     Number of bytes to queue.
- * @return Nothing.
  * @post Up to the queue's free space of @p data is readable via RDR and RDRF
  *       reflects availability.
  * @since 0.1.0
@@ -301,7 +294,6 @@ void board_periph_sci_feed_rx(uint8_t channel, const uint8_t* data, uint32_t len
  *
  * @param[in] x Panel X coordinate of the contact (GT911-native units).
  * @param[in] y Panel Y coordinate of the contact.
- * @return Nothing.
  * @post The next GT911 status read reports a buffer-ready frame with one point.
  * @since 0.1.0
   * @pre Arguments satisfy the ranges documented for board periph touch inject. @pre The call executes on the emulator's single owning thread.
@@ -343,7 +335,6 @@ uint32_t board_periph_touch_reported(void);
  * raw taps that return through the genuine ``ra8_touch_read`` decode. Resetting
  * empties the queue and drops any point armed from it.
  *
- * @return Nothing.
  * @post The sequence FIFO is empty; the next status read reports "no frame".
  * @since 0.1.0
   * @pre Arguments satisfy the ranges documented for board periph touch seq reset. @pre The call executes on the emulator's single owning thread.
@@ -410,7 +401,6 @@ uint32_t board_periph_led_level(board_led_id_t led);
  * @param[in] port  PORT index (0-based; PORT0 == 0).
  * @param[in] pin   Pin number within the port (0..15).
  * @param[in] level Injected level: true = high, false = low.
- * @return Nothing.
  *
  * @pre The peripheral model has been initialised.
  * @pre @p port / @p pin are within range (out-of-range is ignored).
@@ -620,7 +610,6 @@ uint64_t board_periph_read(uc_engine* uc, uint64_t addr, unsigned size, bool* ha
  * @param[in]     size    Access width in bytes (1/2/4).
  * @param[in]     value   Value being written.
  * @param[out]    handled True iff a modelled block consumed the write.
- * @return Nothing.
  * @since 0.1.0
   * @details Dispatch an mmio write to the owning block, if any; this step is contained within the board periph model and uses bounded caller or module-owned storage.
  * @pre Arguments satisfy the ranges documented for board periph write. @pre The call executes on the emulator's single owning thread.
@@ -643,7 +632,6 @@ void board_periph_write(uc_engine* uc, uint64_t addr, unsigned size, uint64_t va
  * keeps streaming, and an enabled RXI pends while queued RX bytes remain.
  *
  * @param[in,out] uc Unicorn engine (the ICU reads IELSR / NVIC ISER from PPB).
- * @return Nothing.
  * @since 0.1.0
   * @pre Arguments satisfy the ranges documented for board periph tick. @pre The call executes on the emulator's single owning thread.
  * @post State changes remain confined to the board periph model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
@@ -666,7 +654,6 @@ void board_periph_tick(uc_engine* uc);
  *
  * @param[in] irq    NVIC line number (0-based).
  * @param[in] enable true to set the line's enable, false to clear it.
- * @return Nothing.
  * @since 0.1.0
   * @pre Arguments satisfy the ranges documented for board periph NVIC set enable. @pre The call executes on the emulator's single owning thread.
  * @post State changes remain confined to the board periph model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
@@ -698,7 +685,6 @@ bool board_periph_next_irq(uint32_t* out_irq);
  * @brief Record that NVIC IRQ @p irq was actually taken (for the summary).
  *
  * @param[in] irq IRQ number that the engine just vectored in.
- * @return Nothing.
  * @since 0.1.0
   * @details Record that nvic irq @p irq was actually taken (for the summary); this step is contained within the board periph model and uses bounded caller or module-owned storage.
  * @pre Arguments satisfy the ranges documented for board periph note interrupt taken. @pre The call executes on the emulator's single owning thread.
@@ -767,7 +753,6 @@ bool board_periph_glcdc_get_framebuffer(board_glcdc_fb_t* out);
  * prints.
  *
  * @param[in,out] uc Unicorn engine (read for any final register state).
- * @return Nothing.
  * @since 0.1.0
   * @pre Arguments satisfy the ranges documented for board periph report. @pre The call executes on the emulator's single owning thread.
  * @post State changes remain confined to the board periph model and documented output objects. @post Ownership of caller-supplied storage is unchanged.

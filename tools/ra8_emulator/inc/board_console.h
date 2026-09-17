@@ -102,7 +102,6 @@ const char* board_console_name(board_console_ch_t ch);
  *
  * @param[in] ch   Source lane (must not be ::k_board_console_ch_all).
  * @param[in] line Completed line text (no trailing newline); copied, not retained.
- * @return Nothing.
  * @pre @p ch is a source lane in (::k_board_console_ch_all, ::k_board_console_ch_count).
  * @pre @p line is a valid NUL-terminated string.
  * @post On a valid call the channel ring and the ALL ring each gain one line.
@@ -176,7 +175,6 @@ const char* board_console_line(board_console_ch_t ch, uint32_t back);
  * rebooted firmware starts with an empty console, matching the peripheral models'
  * reset hooks. The line storage itself is left as-is (count gates all reads).
  *
- * @return Nothing.
  * @pre Called from the single-threaded reset path (no concurrent push).
  * @pre The store has been zero-initialised at least once (static lifetime).
  * @post Every channel reports ::board_console_count and ::board_console_total 0.

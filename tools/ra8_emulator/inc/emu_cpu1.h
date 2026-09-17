@@ -43,7 +43,6 @@ extern "C" {
  *
  * @param[in] mmio_abs Absolute peripheral address being written.
  * @param[in] value    Value being written.
- * @return Nothing.
  * @pre The MMIO write model dispatches every peripheral write here.
  * @pre None otherwise.
  * @post The vector base / release latch reflect the observed write.
@@ -68,7 +67,8 @@ void emu_cpu1_notify_mmio_write(uint64_t mmio_abs, uint64_t value);
  *
  * @param[in] elf Open firmware source carrying cpu0 and optional cpu1 segments.
  * @param[in,out] memory Open caller-owned backing shared with cpu0.
- * @return Nothing (the engine handle stays module-private).
+ * @note The engine handle stays module-private; callers reach cpu1 only
+ *       through this module's entry points.
  * @pre emu_memmap_open() and the cpu0 attach succeeded.
  * @pre @p elf is valid and remains open for cpu1 detection and loading.
  * @post On a dual-core image a Cortex-M33 engine mirrors cpu0's map with
@@ -82,7 +82,6 @@ void emu_cpu1_init(const emu_elf_source_t* elf, emu_memmap_workspace_t* memory);
 /**
  * @brief Detach and close the optional cpu1 engine.
  * @param[in,out] memory Backing supplied to ::emu_cpu1_init.
- * @return Nothing.
  * @post The cpu1 binding no longer participates in publications.
  * @post Repeated calls are harmless.
  * @since 0.1.0
@@ -102,7 +101,6 @@ void emu_cpu1_close(emu_memmap_workspace_t* memory);
  * a cpu1 fault just halts cpu1 (cpu0 keeps running). A no-op without a cpu1
  * engine.
  *
- * @return Nothing.
  * @pre emu_cpu1_init() ran (engine present or absent as detected).
  * @pre The run loop is between cpu0 chunks.
  * @post cpu1 advanced up to one interleave chunk (or stayed idle/halted).

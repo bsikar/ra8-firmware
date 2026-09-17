@@ -76,7 +76,6 @@ typedef void (*board_usb_irq_raiser_t)(uc_engine* uc, uint16_t event);
  *
  * @param[in] trace When true, each enumeration step and raised USB interrupt is
  *                  logged to injected error sink as it happens (the --trace flag).
- * @return Nothing.
  * @post The model is in its power-on reset state; the host is idle, waiting for
  *       the firmware to assert SYSCFG.DPRPU.
  * @since 0.1.0
@@ -91,7 +90,6 @@ void board_usb_init(bool trace);
  *
  * @param[in] raise Callback board_periph supplies to assert an ELC event, or
  *                  NULL to detach (the host then cannot raise USB IRQs).
- * @return Nothing.
  * @post Subsequent host steps raise USBFS_INT through @p raise.
  * @since 0.1.0
   * @details Install the icu event-raise hook used to pend the usbfs interrupt; this step is contained within the board USB model and uses bounded caller or module-owned storage.
@@ -126,7 +124,6 @@ uint64_t board_usb_read(uc_engine* uc, uint64_t addr, unsigned size, bool* handl
  * @param[in]     size    Access width in bytes (1 / 2 / 4).
  * @param[in]     value   Value being written.
  * @param[out]    handled True iff @p addr is inside the USBFS window.
- * @return Nothing.
  * @since 0.1.0
   * @details Dispatch an mmio write inside the usbfs register window; this step is contained within the board USB model and uses bounded caller or module-owned storage.
  * @pre Arguments satisfy the ranges documented for board USB write. @pre The call executes on the emulator's single owning thread.
@@ -148,7 +145,6 @@ void board_usb_write(uc_engine* uc, uint64_t addr, unsigned size, uint64_t value
  * @param[in,out] uc Unicorn engine (the model reads back the device's CFIFO /
  *                   DCPCTR writes from its own state and pends the USB IRQ
  *                   through the installed raiser).
- * @return Nothing.
  * @since 0.1.0
   * @pre Arguments satisfy the ranges documented for board USB tick. @pre The call executes on the emulator's single owning thread.
  * @post State changes remain confined to the board USB model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
@@ -198,7 +194,6 @@ const char* board_usb_state_string(void);
  *
  * @param[in] data Source bytes (copied); ignored if NULL.
  * @param[in] len  Number of bytes to queue.
- * @return Nothing.
  * @post Up to the staging capacity of @p data is delivered after CONFIGURED.
  * @since 0.1.0
   * @pre Arguments satisfy the ranges documented for board USB feed bulk in. @pre The call executes on the emulator's single owning thread.
@@ -228,7 +223,6 @@ uint32_t board_usb_echo_received(void);
  * final device state and USB interrupt count, and -- when bulk echo was driven
  * -- the OUT / echoed-IN byte totals.
  *
- * @return Nothing.
  * @since 0.1.0
   * @pre Arguments satisfy the ranges documented for board USB report. @pre The call executes on the emulator's single owning thread.
  * @post State changes remain confined to the board USB model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
@@ -258,7 +252,6 @@ void board_usb_report(void);
  * through the bridge primitives below. Set once at startup for a self-loop app.
  *
  * @param[in] present true to hand the device over to the external host bridge.
- * @return Nothing.
  * @post ::board_usb_tick no longer advances the built-in virtual host.
  * @since 0.1.0
   * @pre Arguments satisfy the ranges documented for board USB set external host. @pre The call executes on the emulator's single owning thread.
@@ -290,7 +283,6 @@ bool board_usb_dev_attached(void);
  * phase does.
  *
  * @param[in,out] uc Unicorn engine (to pend the device USB interrupt).
- * @return Nothing.
  * @since 0.1.0
   * @pre Arguments satisfy the ranges documented for board USB bridge bus reset. @pre The call executes on the emulator's single owning thread.
  * @post State changes remain confined to the board USB model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
@@ -310,7 +302,6 @@ void board_usb_bridge_bus_reset(uc_engine* uc);
  * @param[in,out] uc    Unicorn engine (to pend the device USB interrupt).
  * @param[in]     setup Eight SETUP bytes (bmRequestType, bRequest, wValue,
  *                      wIndex, wLength, little-endian) to deliver.
- * @return Nothing.
  * @since 0.1.0
   * @pre Arguments satisfy the ranges documented for board USB bridge deliver setup. @pre The call executes on the emulator's single owning thread.
  * @post State changes remain confined to the board USB model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
@@ -355,7 +346,6 @@ uint16_t board_usb_bridge_dcp_in_take(uint8_t* buf, uint16_t cap);
  * so the device firmware closes its side of a completed control-read transfer.
  *
  * @param[in,out] uc Unicorn engine (to pend the device USB interrupt).
- * @return Nothing.
  * @since 0.1.0
   * @pre Arguments satisfy the ranges documented for board USB bridge ctrl status. @pre The call executes on the emulator's single owning thread.
  * @post State changes remain confined to the board USB model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
@@ -388,7 +378,6 @@ bool board_usb_bridge_dev_took_ccpl(void);
  * @brief Mark the device configured after a host SET_CONFIGURATION.
  *
  * @param[in,out] uc Unicorn engine (to pend the device USB interrupt).
- * @return Nothing.
  * @post The device DVSQ reaches Configured and DVST is raised.
  * @since 0.1.0
   * @details Mark the device configured after a host set_configuration; this step is contained within the board USB model and uses bounded caller or module-owned storage.
@@ -409,7 +398,6 @@ void board_usb_bridge_mark_configured(uc_engine* uc);
  * @param[in]     dev_pipe Device pipe number the endpoint maps to (1..9).
  * @param[in]     data     Payload bytes (host -> device).
  * @param[in]     len      Payload length in bytes.
- * @return Nothing.
  * @since 0.1.0
   * @pre Arguments satisfy the ranges documented for board USB bridge bulk out. @pre The call executes on the emulator's single owning thread.
  * @post State changes remain confined to the board USB model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
@@ -430,7 +418,6 @@ void board_usb_bridge_bulk_out(uc_engine* uc, uint8_t dev_pipe, const uint8_t* d
  * @param[in,out] uc   Unicorn engine (to pend the device USB interrupt).
  * @param[in]     data Payload bytes (host -> device); ignored if NULL.
  * @param[in]     len  Payload length in bytes.
- * @return Nothing.
  * @since 0.1.0
   * @pre Arguments satisfy the ranges documented for board USB bridge default control pipe out. @pre The call executes on the emulator's single owning thread.
  * @post State changes remain confined to the board USB model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
@@ -555,7 +542,6 @@ bool board_usb_roles_swapped(void);
  *
  * @param[in,out] uc Unicorn engine (unused today; kept for symmetry with the
  *                   other bridge mutators, which pend device IRQs through it).
- * @return Nothing.
  * @pre ::board_usb_set_external_host declared the self-loop bridge active.
  * @pre No USB traffic has crossed the loop yet (both roles still initializing).
  * @post ::board_usb_roles_swapped reports true.
@@ -602,7 +588,6 @@ uint64_t board_usb_dev_reg_read(uc_engine* uc, uint64_t off, unsigned size);
  *                      (0 .. 0xFE; the device model spans 0x100 bytes).
  * @param[in]     size  Access width in bytes (1 or 2).
  * @param[in]     value Value the firmware wrote.
- * @return Nothing.
  * @pre @p off is inside the modelled 0x100-byte device register span.
  * @pre ::board_usb_init has run (model state is live).
  * @post Write side effects (CFIFO staging, W0C status) match the device model's.
@@ -647,7 +632,6 @@ uint64_t board_usbhs_host_reg_read(uc_engine* uc, uint64_t off, unsigned size);
  * @param[in]     off   Byte offset inside the controller register window.
  * @param[in]     size  Access width in bytes (1, 2 or 4).
  * @param[in]     value Value the firmware wrote.
- * @return Nothing.
  * @pre @p off is inside the host model's 0x200-byte register span.
  * @pre The self-loop bridge is active (--usbhs-loop).
  * @post Write side effects (SETUP launch, FIFO commits) match the host model's.
@@ -700,7 +684,6 @@ uint32_t board_usbhs_host_shadow_handoff(uint16_t* dst_words, uint32_t word_capa
  * for the run; a later host deinit leaves the cable in place, exactly like the
  * physical bench.
  *
- * @return Nothing.
  * @post ::board_usb_tick is inert; the loop calls below drive the device.
  * @since 0.1.0
   * @pre Arguments satisfy the ranges documented for board USB loop latch. @pre The call executes on the emulator's single owning thread.
@@ -731,7 +714,6 @@ bool board_usb_loop_attached(void);
  * virtual host performs at the start of its enumeration.
  *
  * @param[in,out] uc Unicorn engine (to pend the device's USB interrupt).
- * @return Nothing.
  * @post Device DVSQ = Default; stale staging buffers are cleared.
  * @since 0.1.0
   * @pre Arguments satisfy the ranges documented for board USB loop bus reset. @pre The call executes on the emulator's single owning thread.
@@ -821,7 +803,6 @@ uint16_t board_usb_loop_ctrl_in_read(uint8_t* dst, uint16_t cap);
  * @details The host-side equivalent of a DCP read-window BCLR: any undrained
  * response bytes are discarded and the staging is released.
  *
- * @return Nothing.
  * @since 0.1.0
   * @pre Arguments satisfy the ranges documented for board USB loop ctrl in flush. @pre The call executes on the emulator's single owning thread.
  * @post State changes remain confined to the board USB model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
@@ -839,7 +820,6 @@ void board_usb_loop_ctrl_in_flush(void);
  * @param[in,out] uc   Unicorn engine (to pend the device's USB interrupt).
  * @param[in]     data Payload bytes (host to device).
  * @param[in]     len  Payload length in bytes (clamped to the staging size).
- * @return Nothing.
  * @since 0.1.0
   * @pre Arguments satisfy the ranges documented for board USB loop ctrl out. @pre The call executes on the emulator's single owning thread.
  * @post State changes remain confined to the board USB model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
@@ -855,7 +835,6 @@ void board_usb_loop_ctrl_out(uc_engine* uc, const uint8_t* data, uint16_t len);
  * host's zero-length status OUT causes on hardware.
  *
  * @param[in,out] uc Unicorn engine (to pend the device's USB interrupt).
- * @return Nothing.
  * @since 0.1.0
   * @pre Arguments satisfy the ranges documented for board USB loop status out zlp. @pre The call executes on the emulator's single owning thread.
  * @post State changes remain confined to the board USB model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
@@ -876,7 +855,6 @@ void board_usb_loop_status_out_zlp(uc_engine* uc);
  * @param[in]     ep   Device endpoint number (1..9).
  * @param[in]     data Packet bytes.
  * @param[in]     len  Packet length (clamped to the pipe staging size).
- * @return Nothing.
  * @since 0.1.0
   * @pre Arguments satisfy the ranges documented for board USB loop bulk out. @pre The call executes on the emulator's single owning thread.
  * @post State changes remain confined to the board USB model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
@@ -922,7 +900,6 @@ uint16_t board_usb_loop_bulk_in_read(uc_engine* uc, uint8_t ep, uint8_t* dst, ui
  * @brief Drop whatever remains of a device pipe's bulk-IN staging.
  *
  * @param[in] ep Device endpoint number (1..9).
- * @return Nothing.
  * @since 0.1.0
   * @details Drop whatever remains of a device pipe's bulk-in staging; this step is contained within the board USB model and uses bounded caller or module-owned storage.
  * @pre Arguments satisfy the ranges documented for board USB loop bulk in flush. @pre The call executes on the emulator's single owning thread.

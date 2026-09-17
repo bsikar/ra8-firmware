@@ -105,7 +105,6 @@ typedef enum : uint32_t {
  * only ever reads these registers, so the seed persists for the run.
  *
  * @param[in,out] uc Initialised Unicorn engine with the PPB region mapped.
- * @return Nothing.
  *
  * @pre @p uc has the PPB region (0xE0000000) mapped as RAM.
  * @pre Called once before emulation starts.
@@ -125,7 +124,6 @@ void emu_console_install(uc_engine* uc);
  * emitted without a trailing newline still surface.
  *
  * @param[in] channel SCI channel number used in the printed prefix.
- * @return Nothing.
  * @pre The console TX sink has been collecting bytes (or the buffer is empty).
  * @pre injected output sink is writable.
  * @post The line buffer is empty.
@@ -147,7 +145,6 @@ void console_flush_line(uint8_t channel);
  *
  * @param[in] channel SCI channel that transmitted the byte.
  * @param[in] byte    The transmitted data byte.
- * @return Nothing.
  * @pre The board_periph SCI model routes TX bytes here.
  * @pre injected output sink is writable.
  * @post The byte is buffered or the completed line has been printed.
@@ -188,7 +185,6 @@ uint32_t decode_escapes(const char* in, uint8_t* out, uint32_t cap);
  * starts with a clean stimulus stream; the multi-channel board_console store
  * is reset separately by the reboot path.
  *
- * @return Nothing.
  * @pre A warm reboot is re-initialising the console surfaces.
  * @post The pending ITM line buffer is empty.
  * @note Not thread-safe; the emulator is single-threaded host-side.

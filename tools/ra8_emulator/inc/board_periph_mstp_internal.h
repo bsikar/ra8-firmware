@@ -67,7 +67,6 @@ typedef enum : uint64_t {
  * MSTPCRA SRAM bits (0..3) are left running (0), mirroring the safe pattern
  * ``ra8_mstp_init`` writes (HUM Ch 11.2.6 p 443).
  *
- * @return Nothing.
  * @post Every application-peripheral module-stop bit reads 1 (stopped).
  * @post The dropped-access counters and the family-lookup cache are cleared.
  * @note Not thread-safe; ra8_emulator drives all blocks from one thread.
@@ -90,7 +89,6 @@ RA8_PRIV void priv_board_mstp_reset(void);
  * @param[in] off   Byte offset within the R_MSTP window (0..19).
  * @param[in] size  Access width in bytes (1/2/4).
  * @param[in] value Little-endian value being written.
- * @return Nothing.
  * @post Bytes of @p value inside the window replace the tracked bytes.
  * @note Not thread-safe; single-threaded run-loop use.
  * @since 0.1.0
@@ -157,7 +155,6 @@ RA8_PRIV bool priv_board_mstp_addr_stopped(uint64_t addr);
  *
  * @param[in] addr     Absolute address that was gated off.
  * @param[in] is_write @c true for a dropped write, @c false for a zeroed read.
- * @return Nothing.
  * @post The matching counter grows by one and the last-gated label is updated.
  * @note Not thread-safe; single-threaded run-loop use.
  * @since 0.1.0

@@ -205,7 +205,6 @@ RA8_PRIV [[nodiscard]] bool priv_board_sd_storage_zero(uint64_t offset, uint64_t
  *
  * @param[out] dst   Destination 11-byte label field.
  * @param[in]  label NUL-terminated label (truncated to 11 chars).
- * @return Nothing.
  * @pre @p dst holds at least 11 bytes.
  * @pre @p label is NUL-terminated.
  * @post @p dst is space-padded to the full field width.

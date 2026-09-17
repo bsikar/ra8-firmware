@@ -55,7 +55,6 @@ typedef enum : uint32_t {
  *
  * @param[in,out] uc Unicorn engine stopped at a hooked function entry.
  * @param[in]     r0 The value the shadowed function "returns".
- * @return Nothing.
  * @pre @p uc sits at a function entry (LR holds the return address).
  * @pre The caller is a UC_HOOK_CODE seam about to skip the real body.
  * @post R0/PC are set and the engine is stopped for relaunch.
@@ -78,7 +77,6 @@ void eth_hook_return(uc_engine* uc, uint32_t r0);
  * @param[in]     elf  Open ELF source used for symbol resolution.
  * @param[in]     name Symbol to hook.
  * @param[in]     cb   UC_HOOK_CODE callback to fire at the entry.
- * @return Nothing.
  * @pre @p elf remains open and valid for symbol resolution.
  * @pre @p cb matches the UC_HOOK_CODE ABI.
  * @post On a resolved symbol one more entry hook is armed (pool permitting).
@@ -95,7 +93,6 @@ void eth_seam_hook(uc_engine* uc, const emu_elf_source_t* elf, const char* name,
  * @param[in]     elf   Open ELF source used for symbol resolution.
  * @param[in]     names Symbol names from the CLI (stable for the run).
  * @param[in]     count Number of names in @p names.
- * @return Nothing.
  * @pre @p uc is initialised and @p elf remains open.
  * @pre @p names entries outlive the run (argv pointers).
  * @post A UC_HOOK_CODE logs each resolved symbol's entries (+LR).

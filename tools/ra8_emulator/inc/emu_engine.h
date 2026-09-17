@@ -80,7 +80,6 @@ static inline uint32_t rd32(uc_engine* uc, uint64_t addr)
  * @param[in,out] uc   Unicorn engine to write into.
  * @param[in]     addr Emulated address of the word.
  * @param[in]     v    Value to store.
- * @return Nothing.
  * @pre @p uc is an initialised engine.
  * @pre @p addr is intended to be a mapped 4-byte word.
  * @post On success the word at @p addr holds @p v.
@@ -126,7 +125,6 @@ static inline uint32_t reg_get(uc_engine* uc, int reg)
  * @param[in,out] uc  Unicorn engine.
  * @param[in]     reg UC_ARM_REG_* register id.
  * @param[in]     v   Value to store.
- * @return Nothing.
  * @pre @p uc is an initialised engine.
  * @pre @p reg names a 32-bit-writable register.
  * @post On success the register holds @p v.
@@ -148,7 +146,6 @@ static inline void reg_set(uc_engine* uc, int reg, uint32_t v)
  * charging an outer chunk. The seam sets this latch right before stopping the
  * engine; the run loop consumes it via emu_seam_take_relaunch().
  *
- * @return Nothing.
  * @pre A seam is about to stop the engine after editing PC.
  * @pre The run loop is mid-chunk (single-threaded).
  * @post The next engine stop is treated as a zero-time relaunch.

@@ -196,7 +196,6 @@ typedef enum : uint32_t {
  * registration order is irrelevant to behaviour.
  *
  * @param[in] block Static block descriptor to add (ignored if NULL).
- * @return Nothing.
  * @post Subsequent ::board_periph_read / _write / _tick / reset see @p block.
  * @since 0.1.0
   * @pre Arguments satisfy the ranges documented for board periph register block. @pre The call executes on the emulator's single owning thread.
@@ -217,7 +216,6 @@ void board_periph_register_block(const board_periph_block_t* block);
  *
  * @param[in,out] uc    Unicorn engine (the ICU reads IELSR / NVIC from PPB).
  * @param[in]     event ELC event number the block is asserting.
- * @return Nothing.
  * @since 0.1.0
   * @pre Arguments satisfy the ranges documented for board periph icu raise event. @pre The call executes on the emulator's single owning thread.
  * @post State changes remain confined to the board periph block model and documented output objects. @post Ownership of caller-supplied storage is unchanged.

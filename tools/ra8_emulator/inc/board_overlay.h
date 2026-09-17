@@ -231,7 +231,6 @@ uint16_t board_overlay_total_height(uint16_t panel_h);
  * @param[in]  panel_w Panel width in pixels.
  * @param[in]  panel_h Panel height in pixels.
  * @param[in]  st      Live peripheral snapshot to render (NULL draws no status).
- * @return Nothing.
  * @since 0.1.0
   * @pre Arguments satisfy the ranges documented for board overlay compose. @pre The call executes on the emulator's single owning thread.
  * @post State changes remain confined to the board overlay model and documented output objects. @post Ownership of caller-supplied storage is unchanged.

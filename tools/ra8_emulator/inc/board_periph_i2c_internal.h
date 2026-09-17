@@ -37,7 +37,6 @@ typedef enum : uint32_t {
  * @param[in] rd      Read-phase burst source.
  * @param[in] stop    STOP-condition notification.
  * @param[in] ctx     Device state handed back to every callback.
- * @return Nothing.
  * @pre The registry has a free slot (drops silently when full).
  * @pre The callbacks and @p ctx outlive the run.
  * @post The device answers address phases at @p addr_7b.
@@ -53,7 +52,6 @@ RA8_PRIV void priv_i2c_device_register(uint8_t addr_7b,
 /**
  * @brief Re-lay the IMU + fuel-gauge register files (block reset path).
  *
- * @return Nothing.
  * @pre The block reset is re-initialising the bus devices.
  * @pre The CLI battery state (if any) was already applied.
  * @post WHO_AM_I / VCELL / SOC / VERSION / CRATE read their seeded values.
@@ -67,7 +65,6 @@ RA8_PRIV void priv_board_i2c_imu_fuel_reset(void);
 /**
  * @brief Register the LSM6DSO + MAX17048 devices on the modelled bus.
  *
- * @return Nothing.
  * @pre The registry was just cleared by the block reset.
  * @pre priv_board_i2c_imu_fuel_reset() ran (register files are laid).
  * @post Both devices answer their 7-bit addresses.

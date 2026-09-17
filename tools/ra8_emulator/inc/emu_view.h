@@ -124,7 +124,6 @@ int write_ppm(const char* path, const emu_presentation_workspace_t* presentation
  * @param[in]  deg     Active display rotation (0/90/180/270).
  * @param[out] nx      Receives the native column.
  * @param[out] ny      Receives the native row.
- * @return Nothing.
  * @pre @p nx and @p ny are non-null.
  * @pre @p deg is one of the panel_rotate_t values.
  * @post The native coordinates are written.
@@ -151,7 +150,6 @@ void unrotate_click(uint16_t  cx,
  *
  * @param[in] btn     The overlay button hit (SW1 or SW2).
  * @param[in] pressed true while held down, false on release.
- * @return Nothing.
  * @pre @p btn is one of the switch buttons.
  * @pre The GPIO input model is initialised.
  * @post The switch pin level reflects @p pressed.
@@ -173,7 +171,6 @@ void set_switch(board_overlay_btn_t btn, bool pressed);
  * @param[in] btn    The POWER button hit (slider, CHG, or low-power).
  * @param[in] cx     Click column in composite pixels (for the slider map).
  * @param[in] disp_w Displayed panel width (the sidebar origin).
- * @return Nothing.
  * @pre @p btn is one of the POWER-section buttons.
  * @pre The battery model is initialised.
  * @post The battery / low-power state reflects the click.
@@ -267,7 +264,6 @@ bool load_panel(const char* path, board_panel_t* out);
  *
  * @param[in] pc     Current program counter.
  * @param[in] chunks Emulation-chunk counter.
- * @return Nothing.
  * @pre The run loop is at a chunk boundary.
  * @pre None otherwise.
  * @post The next present shows the new PC / chunk count.
@@ -282,7 +278,6 @@ void emu_view_publish(uint32_t pc, uint32_t chunks);
  * @brief Mark the run ended: the held frame shows "parked" at @p pc.
  *
  * @param[in] pc Final program counter.
- * @return Nothing.
  * @pre The run loop has exited.
  * @pre None otherwise.
  * @post The view telemetry reads not-running at @p pc.
@@ -302,7 +297,6 @@ void emu_view_mark_stopped(uint32_t pc);
  * holds the absolute position while paused.
  *
  * @param[in] notches Wheel notches (positive = up / older lines).
- * @return Nothing.
  * @pre The live window is polling wheel events.
  * @pre None otherwise.
  * @post The scrollback offset / autoscroll state reflect the wheel.
@@ -320,7 +314,6 @@ void emu_view_wheel(int32_t notches);
  * classification shares this path.
  *
  * @param[in] tab_idx The board_console channel index selected.
- * @return Nothing.
  * @pre @p tab_idx is a valid board_console channel.
  * @pre None otherwise.
  * @post The selected tab shows its live tail with autoscroll on.
@@ -333,7 +326,6 @@ void emu_view_select_console_tab(uint32_t tab_idx);
 /**
  * @brief Reset the console-scrollback view (warm-reboot support).
  *
- * @return Nothing.
  * @pre A warm reboot is re-initialising the console surfaces.
  * @pre None otherwise.
  * @post The view shows the ALL tab at the live tail with autoscroll on.
@@ -364,7 +356,6 @@ board_primary_core_t emu_primary_core(void);
  * @brief Select the primary core (CLI --primary-core).
  *
  * @param[in] core The core to model.
- * @return Nothing.
  * @pre Called during setup, before the seams install.
  * @pre None otherwise.
  * @post emu_primary_core() reports @p core.
@@ -394,7 +385,6 @@ bool emu_low_power(void);
  * @brief Set the low-power clock model (CLI --low-power / GUI toggle).
  *
  * @param[in] on true to shrink the chunk budget by the 4:1 clock ratio.
- * @return Nothing.
  * @pre None (safe to flip live).
  * @pre None.
  * @post emu_low_power() reports @p on.

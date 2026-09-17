@@ -53,7 +53,6 @@ extern "C" {
  * before the run loop, next to ::board_usb_init.
  *
  * @param[in] trace When true, each loop-cable transaction is logged to injected error sink.
- * @return Nothing.
  * @post The model is dormant; every window access falls through until the
  *       firmware engages host mode (and the loop is allowed).
  * @since 0.1.0
@@ -74,7 +73,6 @@ void board_usb_host_init(bool trace);
  * seam installer never scans) gets the register-level loop.
  *
  * @param[in] allowed true to allow engagement on a host-mode SYSCFG write.
- * @return Nothing.
  * @post With @p allowed false the model never claims the window this run.
  * @since 0.1.0
   * @pre Arguments satisfy the ranges documented for board USB host set allowed. @pre The call executes on the emulator's single owning thread.
@@ -114,7 +112,6 @@ uint64_t board_usb_host_read(uc_engine* uc, uint64_t addr, unsigned size, bool* 
  * @param[in]     size    Access width in bytes (1 / 2 / 4).
  * @param[in]     value   Value being written.
  * @param[out]    handled True iff the model is engaged and consumed the write.
- * @return Nothing.
  * @since 0.1.0
   * @pre Arguments satisfy the ranges documented for board USB host write. @pre The call executes on the emulator's single owning thread.
  * @post State changes remain confined to the board USB host model and documented output objects. @post Ownership of caller-supplied storage is unchanged.
@@ -132,7 +129,6 @@ void board_usb_host_write(uc_engine* uc,
  * @details Silent unless the model engaged; then reports the SETUP / bulk
  * transaction totals the firmware host drove over the loop.
  *
- * @return Nothing.
  * @since 0.1.0
   * @pre Arguments satisfy the ranges documented for board USB host report. @pre The call executes on the emulator's single owning thread.
  * @post State changes remain confined to the board USB host model and documented output objects. @post Ownership of caller-supplied storage is unchanged.

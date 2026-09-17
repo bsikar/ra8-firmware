@@ -188,7 +188,6 @@ bool board_sd_write_block(uint32_t lba, const uint8_t* src);
  * @details Clears the in-flight command collector and pending response;
  * the attached image and learned ready state are preserved.
  *
- * @return None.
  * @pre None.
  * @pre None.
  * @post Framing state is cleared; any attached image stays attached.

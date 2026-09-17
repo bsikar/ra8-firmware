@@ -94,7 +94,6 @@ uint64_t mmio_read(uc_engine* uc, uint64_t offset, unsigned size, void* user);
  * @param[in]     size   Access width in bytes.
  * @param[in]     value  Value being written.
  * @param[in]     user   Hook cookie (unused).
- * @return Nothing.
  * @pre The window was installed by emu_memmap_attach().
  * @pre @p offset lies inside the mapped window.
  * @post The write landed in a block model or the sparse shadow.
@@ -166,7 +165,6 @@ uint32_t emu_mmio_writes(void);
  * @details Emits the `MMIO reads : ... writes: ... distinct addrs: ...`
  * report line, exactly as the run-end report always printed it.
  *
- * @return Nothing.
  * @pre The run has ended (counters are final).
  * @pre injected error sink is writable.
  * @post One report line was written.
@@ -185,7 +183,6 @@ void emu_mmio_print_counts(void);
  * at the print maximum with a `... (N more)` trailer -- exactly as the
  * run-end report always printed them.
  *
- * @return Nothing.
  * @pre The run has ended (the shadow is final).
  * @pre injected error sink is writable.
  * @post The witness + table lines were written.
