@@ -443,6 +443,76 @@ endmacro()
 #     LINKER   linker_script_cpu1.ld  # optional; defaults to this name
 #     INCLUDES ${EXTRA_INC} ...     # optional extra include dirs
 #   )
+# The Cortex-M33 first-party warning / stack-usage profile, in ONE place.
+#
+# ra8_add_cpu1_image() applies it per-source to the sources it owns, and
+# ra8_cpu1_add_first_party_sources() applies the SAME list to the first-party
+# translation units an app bolts onto a CPU1 image. Spelled as a list so no
+# line runs past the 100-column limit; COMPILE_OPTIONS takes the ;-separated
+# list set() builds from these arguments. Keep it in step with
+# cmake/ra8_warnings.cmake, which is the M85 equivalent.
+function(ra8_cpu1_warning_profile _out_var)
+  set(${_out_var}
+      -Wall
+      -Wextra
+      -Werror
+      -Wcast-qual
+      -Wcast-align
+      -Wdouble-promotion
+      -Wformat=2
+      -Wpointer-arith
+      -Wshadow
+      -Wundef
+      -Wvla
+      -Wwrite-strings
+      -Wbad-function-cast
+      -Wmissing-declarations
+      -Wmissing-prototypes
+      -Wnested-externs
+      -Wold-style-definition
+      -Wredundant-decls
+      -Wstrict-prototypes
+      -Wduplicated-branches
+      -Wduplicated-cond
+      -Wformat-overflow=2
+      -Wformat-truncation=2
+      -Wlogical-op
+      -Wstack-usage=2048
+      -fstack-usage
+      PARENT_SCOPE
+  )
+endfunction()
+
+# Bolt first-party translation units onto a CPU1 image ON the warning bar.
+#
+#   ra8_cpu1_add_first_party_sources(ereader_m33_cpu1.elf
+#     ${RA8_REPO_ROOT}/libs/ra8_gfx/src/ra8_gfx_text.c
+#   )
+#
+# This is the T1-09 (#843) opt-in. A plain target_sources() on a CPU1 image
+# compiles the source at -mcpu=cortex-m33 ... -Os with NO warning flags and no
+# .su stack data; this call adds the same sources AND puts the per-source
+# profile on them, so an app-added first-party TU is held to exactly the bar
+# the helper's own SOURCES are. Vendored SOUP must NOT come through here: it
+# stays on plain target_sources(), outside the first-party bar, on purpose.
+#
+# scripts/checks/check_cpu1_warning_profile.py reads these calls: a source
+# added here counts as profile-covered, and a source still on plain
+# target_sources() must be an explicit row in
+# .github/cpu1-warning-profile-baseline.txt.
+function(ra8_cpu1_add_first_party_sources _target)
+  if(NOT TARGET ${_target})
+    message(FATAL_ERROR "ra8_cpu1_add_first_party_sources(): no such target ${_target}")
+  endif()
+  if(NOT ARGN)
+    message(FATAL_ERROR "ra8_cpu1_add_first_party_sources(${_target}): no sources given")
+  endif()
+  ra8_cpu1_warning_profile(_c1fp_warnings)
+  target_sources(${_target} PRIVATE ${ARGN})
+  # APPEND, so a source that already carries an app-specific flag keeps it.
+  set_property(SOURCE ${ARGN} APPEND PROPERTY COMPILE_OPTIONS ${_c1fp_warnings})
+endfunction()
+
 function(ra8_add_cpu1_image)
   cmake_parse_arguments(
     C1
@@ -532,34 +602,7 @@ function(ra8_add_cpu1_image)
   # The extended warning profile, spelled as a list so no single line runs
   # past the 100-column limit. COMPILE_OPTIONS takes a ;-separated list,
   # which is exactly what set() builds from these arguments.
-  set(_c1_warnings
-      -Wall
-      -Wextra
-      -Werror
-      -Wcast-qual
-      -Wcast-align
-      -Wdouble-promotion
-      -Wformat=2
-      -Wpointer-arith
-      -Wshadow
-      -Wundef
-      -Wvla
-      -Wwrite-strings
-      -Wbad-function-cast
-      -Wmissing-declarations
-      -Wmissing-prototypes
-      -Wnested-externs
-      -Wold-style-definition
-      -Wredundant-decls
-      -Wstrict-prototypes
-      -Wduplicated-branches
-      -Wduplicated-cond
-      -Wformat-overflow=2
-      -Wformat-truncation=2
-      -Wlogical-op
-      -Wstack-usage=2048
-      -fstack-usage
-  )
+  ra8_cpu1_warning_profile(_c1_warnings)
   set_source_files_properties(${_c1_srcs} PROPERTIES COMPILE_OPTIONS "${_c1_warnings}")
   target_link_options(
     ${C1_NAME}.elf
