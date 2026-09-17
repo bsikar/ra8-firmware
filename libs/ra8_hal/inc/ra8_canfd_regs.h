@@ -3,6 +3,9 @@
  * @brief CANFD controller register layout for the Renesas RA8D2
  * @ingroup grp_hal_comms
  *
+ * @par Tag
+ * [Ring 3 / HAL] {World: NS}
+ *
  * @details
  * Two CANFD instances live at `0x40380000` (CANFD0) and `0x40382000`
  * (CANFD1). Each instance is a full RA8 CANFD block (NOT the smaller
