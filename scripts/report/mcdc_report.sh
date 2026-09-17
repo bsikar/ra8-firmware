@@ -710,18 +710,16 @@ if [[ $HAVE_MCDC -eq 1 && -n "$LLVM_PROFDATA_BIN" && -n "$LLVM_COV_BIN" ]]; then
   # reachable-MC/DC bar -- a single rotted file can no longer hide
   # behind well-covered siblings. Mirrors the per-file wiring in
   # scripts/checks/check_tree_coverage.py. Reads the mcdc_per_file.json the
-  # regenerator just wrote.
+  # regenerator just wrote, through the Zig gate tools/check_mcdc_floor.
   # ------------------------------------------------------------
-  if command -v python3 >/dev/null 2>&1; then
-    echo ""
-    if ! python3 "$REPO_ROOT/scripts/checks/check_mcdc_floor.py" --selftest; then
-      echo "FAIL: per-file MC/DC floor self-test failed."
-      exit 1
-    fi
-    if ! python3 "$REPO_ROOT/scripts/checks/check_mcdc_floor.py"; then
-      echo "FAIL: per-file MC/DC floor failed (offenders above)."
-      exit 1
-    fi
+  echo ""
+  if ! bash "$REPO_ROOT/scripts/builders/check_mcdc_floor.sh" --selftest; then
+    echo "FAIL: per-file MC/DC floor self-test failed."
+    exit 1
+  fi
+  if ! bash "$REPO_ROOT/scripts/builders/check_mcdc_floor.sh"; then
+    echo "FAIL: per-file MC/DC floor failed (offenders above)."
+    exit 1
   fi
 
   GATE_JSON="$REPORT_DIR/gate.json"

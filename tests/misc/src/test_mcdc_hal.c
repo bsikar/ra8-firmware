@@ -5,7 +5,7 @@
  *
  * @details
  * Each test group closes a reachable MC/DC gap reported by the per-file floor
- * (scripts/checks/check_mcdc_floor.py) by driving the production decision to
+ * (tools/check_mcdc_floor) by driving the production decision to
  * full modified condition/decision coverage through the public API on the host
  * ra8_fake MMIO substrate. Every group is self-contained: it supplies the whole
  * N+1 vector set for its decision so the merged profile is complete regardless
