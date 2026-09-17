@@ -33,6 +33,7 @@ default:
     @echo "  just zig::arm               Cross-build one example app for the RA8D2"
     @echo "  just zig::compile_commands  Emit the graph's compile_commands.json"
     @echo "  just zig::analysis          Prove every compile command still compiles"
+    @echo "  just zig::shapes            Check the app-shape ledger against the tree"
     @echo "  just zig::abi               Prove the Zig-to-C ABI contract"
     @echo "  just zig::parity            Print the slice manifest"
     @echo "  just zig::clean             Remove this graph's build outputs"
@@ -85,6 +86,10 @@ compile_commands: _zig
 # Re-run every distinct compile command of that database against its own TU
 analysis: _zig
     "${RA8_ZIG}" build analysis
+
+# Hold the committed app-shape ledger to the tree's ra8_add_app() declarations
+shapes: _zig
+    "${RA8_ZIG}" build shapes
 
 # Prove the Zig-to-C ABI contract of the migrated archives, negative controls included
 abi: _zig
