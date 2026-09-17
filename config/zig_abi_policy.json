@@ -26,6 +26,8 @@
     {"path":"libs/ra8_touch_cal/src/ra8_touch_cal_abi.zig","kind":"library-adapter","symbols":["ra8_touch_cal_compute","ra8_touch_cal_run","ra8_touch_cal_apply","ra8_touch_cal_save","ra8_touch_cal_load"]},
     {"path":"libs/ra8_ui/src/ra8_ui_abi.zig","kind":"library-adapter","symbols":["ra8_ui_rect_contains","ra8_ui_hit_test","ra8_ui_nav_init","ra8_ui_nav_push","ra8_ui_nav_pop","ra8_ui_nav_replace","ra8_ui_nav_top","ra8_ui_pager_init","ra8_ui_pager_next","ra8_ui_pager_prev","ra8_ui_pager_goto"]},
     {"path":"libs/ra8_ui/tests/abi_test.zig","kind":"test-helper","symbols":["ra8_log_emit_error"]},
+    {"path":"libs/ra8_wdt_supervisor/src/ra8_wdt_supervisor_abi.zig","kind":"library-adapter","symbols":["ra8_wdt_supervisor_init","ra8_wdt_supervisor_deinit","ra8_wdt_supervisor_register_thread","ra8_wdt_supervisor_checkin","ra8_wdt_supervisor_start","ra8_wdt_supervisor_tick","ra8_wdt_supervisor_set_now_hook","ra8_wdt_supervisor_set_refresh_hook","ra8_wdt_supervisor_thread_count"]},
+    {"path":"libs/ra8_wdt_supervisor/tests/abi_test.zig","kind":"test-helper","symbols":["ra8_wdt_refresh_deferred"]},
     {"path":"tests/abi_chain_fixture/tests/chain_adapter.zig","kind":"library-adapter","symbols":["ra8_abi_chain_apply","ra8_abi_chain_create","ra8_abi_chain_destroy"]},
     {"path":"tests/zig_abi_fixture/src/ra8_abi_fixture_abi.zig","kind":"library-adapter","symbols":["ra8_abi_fixture_apply","ra8_abi_fixture_create","ra8_abi_fixture_test_fail_next_allocation","ra8_abi_fixture_destroy","ra8_abi_fixture_copy","ra8_abi_fixture_bytes_create","ra8_abi_fixture_bytes_release","ra8_abi_fixture_callback_register","ra8_abi_fixture_callback_invoke","ra8_abi_fixture_callback_unregister","ra8_abi_fixture_callback_cancel"]}
   ],
@@ -138,6 +140,34 @@
       ],
       "exports": [
         {"name": "firmware_pipeline_analyze", "calling_context": "task-safe-reentrant", "ownership": "borrows all inputs for the call and publishes caller-owned output only on success"}
+      ]
+    },
+    {
+      "name": "ra8_wdt_supervisor",
+      "build_root": "libs/ra8_wdt_supervisor",
+      "public_header": "libs/ra8_wdt_supervisor/inc/ra8_wdt_supervisor.h",
+      "adapter": "libs/ra8_wdt_supervisor/src/ra8_wdt_supervisor_abi.zig",
+      "library_name": "ra8_wdt_supervisor",
+      "symbol_prefix": "ra8_wdt_supervisor_",
+      "compatibility_sha256": "29b87967823494db14d792d0e2ef32ed6220bf4ebee46752ee6e54a80a98897b",
+      "layout_assertions": ["@offsetOf(Cfg, \"stack\") == 0", "@offsetOf(Cfg, \"stack_size_bytes\") == word", "@offsetOf(Cfg, \"priority\") == word + 4", "@offsetOf(Cfg, \"refresh_period_ms\") == word + 8", "@alignOf(Cfg) == word"],
+      "target_class": "host-ra8",
+      "targets": {"host": [], "ra8": ["-Dtarget=thumb-freestanding-eabihf", "-Dcpu=cortex_m85+fp_armv8-d32-fp64"]},
+      "c_include_dirs": ["libs/ra8_wdt_supervisor/inc", "libs/ra8_core/inc"],
+      "contract_tests": [
+        {"language": "c", "path": "tests/hal/src/test_ra8_wdt_supervisor.c", "registration": "tests/cmake/unit_tests.cmake"},
+        {"language": "zig", "path": "libs/ra8_wdt_supervisor/tests/abi_test.zig", "registration": "libs/ra8_wdt_supervisor/.zig-test-contract.json"}
+      ],
+      "exports": [
+        {"name": "ra8_wdt_supervisor_init", "calling_context": "boot-only", "ownership": "borrows caller config and stack until deinit"},
+        {"name": "ra8_wdt_supervisor_deinit", "calling_context": "task-only-non-reentrant", "ownership": "releases supervisor resources; caller retains stack"},
+        {"name": "ra8_wdt_supervisor_register_thread", "calling_context": "boot-only", "ownership": "copies bounded thread name and returns caller-owned handle"},
+        {"name": "ra8_wdt_supervisor_checkin", "calling_context": "task-safe-reentrant", "ownership": "borrows registry handle value; owns no caller resource"},
+        {"name": "ra8_wdt_supervisor_start", "calling_context": "boot-only", "ownership": "borrows configured stack for the supervisor thread"},
+        {"name": "ra8_wdt_supervisor_tick", "calling_context": "task-only-non-reentrant", "ownership": "writes refresh result to optional caller-owned output", "allow_c_bool": true},
+        {"name": "ra8_wdt_supervisor_set_now_hook", "calling_context": "boot-only", "ownership": "borrows callback pointer until replaced or deinitialized"},
+        {"name": "ra8_wdt_supervisor_set_refresh_hook", "calling_context": "boot-only", "ownership": "borrows callback pointer until replaced or deinitialized"},
+        {"name": "ra8_wdt_supervisor_thread_count", "calling_context": "task-safe-reentrant", "ownership": "reads registry and returns current registered thread count"}
       ]
     }
   ]
