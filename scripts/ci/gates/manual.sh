@@ -443,12 +443,21 @@ gate_macos_host_build() (
   # precisely the bug #899 reports, and the default auto path above is what
   # carries the verdict. It stays in the log so the day Apple ships an
   # arm64-macos target in the stub is visible here instead of going unnoticed.
+  #
+  # It used to be a boolean, and a boolean cannot tell its expected failure
+  # from an unrelated one. `zig build -Dmacos-libsystem=sdk` also exits
+  # non-zero when the option has been renamed out of tools/zig_build (`error:
+  # invalid option: -Dmacos-libsystem`), and the old else-branch reported that
+  # as an affected SDK -- so the one leg that still touches Apple's own stub
+  # would have gone on printing the #899 shape every night while measuring
+  # nothing. A compile error or a cache failure read the same way.
+  # macos_sdk_link.sh classifies the outcome instead: the two real SDK
+  # findings stay informational, a dead option and an unrecognised failure
+  # refuse, because a leg that cannot ask its question must not answer it.
   printf '\n=== apps/host/image_pyramid: -Dmacos-libsystem=sdk (informational) ===\n'
-  if (cd apps/host/image_pyramid && zig build -Dmacos-libsystem=sdk); then
-    printf 'informational: the SDK stub linked cleanly on this runner image\n'
-  else
-    printf 'informational: the SDK stub did NOT link here -- expected on an affected SDK (#899)\n'
-  fi
+  # shellcheck source=scripts/ci/lib/macos_sdk_link.sh
+  . scripts/ci/lib/macos_sdk_link.sh
+  ra8_macos_sdk_link_run apps/host/image_pyramid
 )
 
 # ===========================================================================

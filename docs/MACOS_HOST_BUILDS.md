@@ -601,6 +601,63 @@ and not at all off macOS, proves no two states share a diagnosis, and reads the
 gate body to check it still calls `ra8_macos_sdk_require` and no longer leans
 on `xcrun` merely being present.
 
+## The informational leg says what it found
+
+The gate ends with a leg that is allowed to fail:
+
+    === apps/host/image_pyramid: -Dmacos-libsystem=sdk (informational) ===
+
+Failing is the point. Forcing the SDK stub is the thing #899 reports, so the
+verdict comes from the pinned-target legs above it and this one only reports.
+It is also the *only* step anywhere in this repository that still touches
+Apple's own `libSystem` stub: every other step, on every other machine, builds
+against the bundled stub the workaround pins.
+
+It used to be a boolean, and that was the defect. `zig build
+-Dmacos-libsystem=sdk` exits non-zero for reasons that have nothing to do with
+the SDK, and the old else-branch called every one of them the expected #899
+failure. The worst of them is a rename: drop or rename the option in
+`tools/zig_build` and zig answers
+
+    error: invalid option: -Dmacos-libsystem
+    error:   access the help menu with 'zig build -h'
+
+which the old leg read as an affected SDK. The nightly would have gone on
+printing the finding every night while building nothing at all. A compile error
+in the app, an unwritable cache, or a broken toolchain read the same way.
+
+`scripts/ci/lib/macos_sdk_link.sh` classifies the outcome from the build output
+rather than the exit status alone. Six states, and the verdict is part of the
+state, not a guess made later:
+
+    linked               informational  the SDK stub linked cleanly here
+    symbols_unresolved   informational  the undefined-symbol wall, i.e. #899
+    stub_unusable        informational  the stub could not be resolved at all
+    option_gone          REFUSES        zig rejected -Dmacos-libsystem
+    unrelated_failure    REFUSES        a failure that says nothing about the SDK
+    log_unreadable       REFUSES        the output was not captured
+
+`option_gone` is checked before the symbol wall on purpose: a rejected option
+means nothing downstream ran, so any wall text in the same log is stale.
+`linked` is decided by the exit status alone, so a passing test whose name
+contains the wall text is not mistaken for a failure. The two informational
+findings stay apart because they need different mornings: an incomplete stub is
+a `arm64-macos` slice Apple did not ship, an unusable one is an SDK that is
+missing or broken, and `scripts/ci/lib/macos_sdk.sh --report` is what tells
+those apart on the machine.
+
+The state table is printable without running a build:
+
+    bash scripts/ci/lib/macos_sdk_link.sh --explain
+
+`bash scripts/ci/lib/macos_sdk_link.sh --selftest` runs inside
+`toolchain-parity`. It drives a fixture log through every state, asserts the
+ordering above holds when a log carries both shapes, asserts no state is
+reported as another and that each refuses or informs the right way round, reads
+`tools/zig_build/build.zig` to check the option this leg drives still exists
+(without that, `option_gone` could only ever be reached by a real nightly), and
+reads the gate body to check it still calls `ra8_macos_sdk_link_run`.
+
 ## What runs on a clock
 
 `.github/workflows/macos-host.yml` runs the `macos-host-build` gate nightly on
