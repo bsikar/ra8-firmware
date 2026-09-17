@@ -14,13 +14,16 @@ through :mod:`lint_targets`, matching every other provider.
 - **Test execution** (``--test``): runs the explicit ``zig build test`` target
   for every Zig build root. Every first-party Zig file must belong to such a
   root; a source file is never guessed to be an independent test
-  target.
+  target. Each root must also resolve its default target through
+  ``ra8_build.hostDefaultTargetQuery`` or declare an exemption in
+  ``.zig-host-target.json``, so a new root cannot silently reintroduce the
+  arm64 macOS link failure of #899 (see ``docs/MACOS_HOST_BUILDS.md``).
 - **List files** (``--list-files``): reports every tracked first-party ``*.zig``
   path for the lint-coverage matrix.
 
 ``--selftest-lint`` proves dirty/clean formatting, formatter fix mode, AST errors,
 and worktree-scope exclusion. ``--selftest-test`` separately proves passing and
-failing native build graphs plus test-contract enforcement. A collapsed or
+failing native build graphs plus test-contract and host-target enforcement. A collapsed or
 unmanaged scope trips the file floor instead of reporting a clean tree.
 
 Exit 0 if clean, exit 1 on findings or test failures, exit 2 on a tool error,
@@ -50,6 +53,8 @@ from zig_test_contract import test_declarations as _test_declarations
 from zig_test_contract import without_zig_comments as _without_zig_comments
 
 TEST_CONTRACT_NAME = ".zig-test-contract.json"
+HOST_TARGET_CONTRACT_NAME = ".zig-host-target.json"
+HOST_TARGET_HELPER = "hostDefaultTargetQuery"
 
 
 def _repo_root() -> Path:
@@ -385,12 +390,64 @@ def _test_contract_errors(root: Path) -> tuple[list[str], int]:
     return errors, declared_tests
 
 
+def _calls_host_default_target(root: Path) -> bool:
+    """True when `build.zig` takes its default target from the shared helper."""
+    build_text = _without_zig_comments((root / "build.zig").read_text(encoding="utf-8"))
+    pattern = rf"standardTargetOptions\s*\(\s*\.\{{[^}}]*{HOST_TARGET_HELPER}"
+    return re.search(pattern, build_text, re.S) is not None
+
+
+def _host_target_exemption(root: Path) -> tuple[bool, list[str]]:
+    """Load one build root's declaration about the macOS host target rule."""
+    path = root / HOST_TARGET_CONTRACT_NAME
+    if not path.is_file():
+        return False, []
+    try:
+        raw = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        return False, [f"invalid {HOST_TARGET_CONTRACT_NAME}: {exc}"]
+    if not isinstance(raw, dict):
+        return False, [f"{HOST_TARGET_CONTRACT_NAME} must be a JSON object"]
+    if raw.get("rule") not in {"host_default", "exempt"}:
+        return False, [f'{HOST_TARGET_CONTRACT_NAME} rule must be "host_default" or "exempt"']
+    if raw.get("rule") == "host_default":
+        return False, []
+    reason = raw.get("reason")
+    if not isinstance(reason, str) or not reason.strip():
+        return False, [f"{HOST_TARGET_CONTRACT_NAME} exemption needs a non-empty reason"]
+    return True, []
+
+
+def _host_target_errors(root: Path) -> list[str]:
+    """Require every Zig build root to resolve its host target through one rule.
+
+    A root that calls `b.standardTargetOptions` with a plain native default builds
+    against the Command Line Tools `libSystem.tbd` on an arm64 Mac, which omits
+    `arm64-macos` and fails to link (#899). The rule is therefore structural: take
+    the default target from `ra8_build.hostDefaultTargetQuery`, or say in
+    `.zig-host-target.json` why this root does not build host binaries. Comments are
+    stripped before the wiring is read, so a mention in prose cannot satisfy it.
+    """
+    exempt, errors = _host_target_exemption(root)
+    if errors:
+        return errors
+    if exempt or _calls_host_default_target(root):
+        return []
+    return [
+        f"build.zig does not take its default target from ra8_build.{HOST_TARGET_HELPER}"
+        " (#899): a native arm64 macOS build of this root links the Command Line Tools"
+        " libSystem stub and fails. Wire the helper, or declare"
+        f' {{"rule": "exempt", "reason": "..."}} in {HOST_TARGET_CONTRACT_NAME}.'
+    ]
+
+
 def _validate_test_contracts(roots: list[Path]) -> tuple[dict[str, list[str]], int]:
     """Validate every discovered first-party Zig build root."""
     findings: dict[str, list[str]] = {}
     total_tests = 0
     for root in roots:
         errors, count = _test_contract_errors(root)
+        errors.extend(_host_target_errors(root))
         total_tests += count
         if errors:
             rel = (
@@ -716,6 +773,63 @@ def _selftest_production_coverage(
     orphan.unlink()
 
 
+def _selftest_host_target_rule(failures: list[str]) -> None:
+    """Prove the macOS host target rule fires and stays quiet in both directions."""
+    with tempfile.TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        _write_build_fixture(
+            root,
+            'test "host target" {\n    try @import("std").testing.expect(true);\n}\n',
+        )
+        build_zig = root / "build.zig"
+        plain_text = build_zig.read_text(encoding="utf-8")
+
+        if not any("#899" in error for error in _host_target_errors(root)):
+            failures.append("  must-fire: build root with a plain native default was accepted")
+
+        commented = plain_text.replace(
+            "    const target = b.standardTargetOptions(.{});",
+            f"    // .default_target = ra8_build.{HOST_TARGET_HELPER}(b)\n"
+            "    const target = b.standardTargetOptions(.{});",
+        )
+        build_zig.write_text(commented, encoding="utf-8")
+        if not _host_target_errors(root):
+            failures.append("  must-fire: commented host-target wiring was accepted")
+
+        wired = plain_text.replace(
+            "b.standardTargetOptions(.{})",
+            f"b.standardTargetOptions(.{{ .default_target = ra8_build.{HOST_TARGET_HELPER}(b) }})",
+        )
+        build_zig.write_text(wired, encoding="utf-8")
+        if _host_target_errors(root):
+            failures.append("  must-stay-quiet: wired host-target build root was rejected")
+
+        build_zig.write_text(plain_text, encoding="utf-8")
+        contract = root / HOST_TARGET_CONTRACT_NAME
+        contract.write_text(
+            json.dumps({"rule": "exempt", "reason": "cross-compiles for ARM only"}) + "\n",
+            encoding="utf-8",
+        )
+        if _host_target_errors(root):
+            failures.append("  must-stay-quiet: declared host-target exemption was rejected")
+
+        contract.write_text(json.dumps({"rule": "exempt", "reason": "  "}) + "\n", encoding="utf-8")
+        if not any("non-empty reason" in error for error in _host_target_errors(root)):
+            failures.append("  must-fire: host-target exemption without a reason was accepted")
+
+        contract.write_text(json.dumps({"rule": "whatever"}) + "\n", encoding="utf-8")
+        if not any("must be" in error for error in _host_target_errors(root)):
+            failures.append("  must-fire: unknown host-target rule was accepted")
+
+        contract.write_text('{"rule":\n', encoding="utf-8")
+        if not any("invalid" in error for error in _host_target_errors(root)):
+            failures.append("  must-fire: malformed host-target declaration was accepted")
+
+        contract.write_text(json.dumps({"rule": "host_default"}) + "\n", encoding="utf-8")
+        if not any("#899" in error for error in _host_target_errors(root)):
+            failures.append('  must-fire: declared "host_default" without the wiring was accepted')
+
+
 def _selftest_test_contract(failures: list[str]) -> None:
     """Prove test wiring, floor, and orphan checks fire and stay quiet."""
     with tempfile.TemporaryDirectory() as tmp:
@@ -812,11 +926,15 @@ def selftest_test(zig: str) -> int:
     failures: list[str] = []
     _selftest_tests(zig, failures)
     _selftest_test_contract(failures)
+    _selftest_host_target_rule(failures)
     if failures:
         sys.stderr.write("check_zig.py --selftest-test: FAILED\n")
         sys.stderr.write("\n".join(failures) + "\n")
         return 1
-    print("check_zig.py --selftest-test: OK (build test, placement, contract, census).")
+    print(
+        "check_zig.py --selftest-test: OK "
+        "(build test, placement, contract, host target, census)."
+    )
     return 0
 
 
