@@ -20,6 +20,10 @@
 //! `aarch64-macos` query and let Zig link its own stub. The host apps here are
 //! libc-only, so nothing needs the SDK's frameworks; `-Dtarget=native` remains the
 //! escape hatch for anyone who does.
+//!
+//! The pinned query also carries the host's own macOS version, so that standing
+//! in for the native build does not silently change the deployment target (see
+//! `pinnedOsVersion`).
 
 const std = @import("std");
 
@@ -30,13 +34,51 @@ pub const Choice = enum {
     /// Explicit `aarch64-macos` query, which makes Zig link its bundled stub.
     pinned_macos_arm64,
 
-    pub fn query(self: Choice) std.Target.Query {
+    /// The target query for this choice.
+    ///
+    /// `host_macos_version` is the version the host is actually running, when
+    /// it is known. Pinning an explicit target otherwise drops the build onto
+    /// Zig's default macOS range, which is a much older floor than the machine
+    /// doing the build: see `pinnedOsVersion`.
+    pub fn query(self: Choice, host_macos_version: ?std.SemanticVersion) std.Target.Query {
         return switch (self) {
             .native => .{},
-            .pinned_macos_arm64 => .{ .cpu_arch = .aarch64, .os_tag = .macos },
+            .pinned_macos_arm64 => blk: {
+                var pinned: std.Target.Query = .{ .cpu_arch = .aarch64, .os_tag = .macos };
+                if (pinnedOsVersion(host_macos_version)) |version| {
+                    pinned.os_version_min = .{ .semver = version };
+                    pinned.os_version_max = .{ .semver = version };
+                }
+                break :blk pinned;
+            },
         };
     }
 };
+
+/// macOS 11 Big Sur is the first release that ran on Apple silicon, so an
+/// arm64 Mac cannot truthfully report anything older.
+pub const first_arm64_macos_major = 11;
+
+/// The macOS version to write into the pinned query, or null to leave Zig's
+/// own default range alone.
+///
+/// A native build stamps the host's own OS version as both the minimum and the
+/// maximum. Pinning `aarch64-macos` with no version instead takes Zig's default
+/// range, whose floor is several releases below any Apple silicon Mac, so the
+/// pinned build would quietly differ from the native one it stands in for: a
+/// lower `LC_BUILD_VERSION` minimum in the Mach-O, and `Target.Os.isAtLeast`
+/// answering against the wrong floor in conditionally compiled code. Carrying
+/// the host version across closes that gap.
+///
+/// A reading below `first_arm64_macos_major` cannot have come from the arm64
+/// Mac this rule is about, so it is discarded rather than pinned; the pre-release
+/// and build metadata fields are dropped for the same reason, as a deployment
+/// target has no use for them.
+pub fn pinnedOsVersion(host_macos_version: ?std.SemanticVersion) ?std.SemanticVersion {
+    const version = host_macos_version orelse return null;
+    if (version.major < first_arm64_macos_major) return null;
+    return .{ .major = version.major, .minor = version.minor, .patch = version.patch };
+}
 
 /// What we could learn about the host SDK. Both fields are null when the probe
 /// could not run at all (non-macOS host, no `xcrun`, unreadable SDK).

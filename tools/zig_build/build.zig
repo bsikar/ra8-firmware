@@ -23,8 +23,10 @@ pub const MacosLibSystem = enum { auto, sdk, bundled };
 /// Off macOS this is the plain native query and nothing else happens. On an
 /// arm64 Mac it may resolve to an explicit `aarch64-macos` query so that Zig
 /// links its own `libSystem.tbd` instead of the Command Line Tools stub that
-/// omits `arm64-macos` (#899). `-Dtarget=...` still overrides it, and
-/// `-Dmacos-libsystem=sdk` forces the old native behaviour back.
+/// omits `arm64-macos` (#899). That pinned query carries the host's own macOS
+/// version, so it keeps the deployment target a native build would have used.
+/// `-Dtarget=...` still overrides it, and `-Dmacos-libsystem=sdk` forces the old
+/// native behaviour back.
 pub fn hostDefaultTargetQuery(b: *std.Build) std.Target.Query {
     const forced = b.option(
         MacosLibSystem,
@@ -41,7 +43,23 @@ pub fn hostDefaultTargetQuery(b: *std.Build) std.Target.Query {
             probeHostSdk(b.allocator),
         ),
     };
-    return choice.query();
+    return choice.query(hostMacosVersion());
+}
+
+/// The macOS version this build is running on, or null off macOS.
+///
+/// The build runner is compiled for the native target, so Zig's own host
+/// detection has already read the running OS version and written it into
+/// `builtin.os.version_range`; a native target sets the minimum and the maximum
+/// to that one version. Reusing it keeps the pinned query in step with the
+/// machine instead of falling back to Zig's default macOS range, and costs no
+/// subprocess.
+pub fn hostMacosVersion() ?std.SemanticVersion {
+    if (builtin.os.tag != .macos) return null;
+    return switch (builtin.os.version_range) {
+        .semver => |range| range.min,
+        else => null,
+    };
 }
 
 /// Read the host SDK's `libSystem.tbd`, when there is one to read. Every failure

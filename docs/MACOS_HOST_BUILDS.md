@@ -52,6 +52,33 @@ applications under `apps/host`, `apps/host/firmware_pipeline/zig`,
 `tests/zig_abi_fixture`. The Zig check runs `zig build test` in every build
 root, so a single unwired root is enough to break the gate on a Mac.
 
+## The pinned target keeps the host's macOS version
+
+Pinning `aarch64-macos` is a stand-in for the native build, so it has to agree
+with the native build about more than the architecture. A target query that
+names an OS but no version takes Zig's default range for that OS, whose floor
+is several releases below any Apple silicon Mac. Cross-compiled from Linux with
+no version, the binary comes out with:
+
+    LC_BUILD_VERSION  minos 13.0.0
+
+A native build on the same Mac would have stamped the version the machine is
+running, and would have answered `Target.Os.isAtLeast` against it. So the
+pinned query carries the host version across: the build runner is compiled for
+the native target, `builtin.os.version_range` therefore already holds the
+detected running version, and `hostMacosVersion()` reads it back and pins it as
+both ends of the range. The same build with a version named comes out as:
+
+    LC_BUILD_VERSION  minos 26.0.0
+
+A reading below macOS 11 is discarded rather than pinned, because no Apple
+silicon Mac runs anything older, and pre-release and build metadata are dropped
+because a deployment target has no use for them. Off macOS there is no host
+version to carry and the query is unchanged, which is why an explicit
+`-Dtarget=aarch64-macos` from Linux still gets Zig's default floor. Name the
+version yourself (`-Dtarget=aarch64-macos.26.0`) to reproduce what a Mac would
+pin.
+
 ## Reproducing on an arm64 Mac
 
 Run these from a checkout on an Apple silicon machine with the pinned Zig
@@ -105,8 +132,8 @@ cross-configured. On an arm64 Mac the pinned `aarch64-macos` target is native,
 nothing is skipped, and the tests run.
 
 A Linux checkout cannot exercise the `xcrun` probe, the SDK stub parse against
-a real `.tbd`, the `sdk` failure mode, or any behaviour of the produced
-binaries. Those need a real Mac.
+a real `.tbd`, the `sdk` failure mode, the host version carry described above,
+or any behaviour of the produced binaries. Those need a real Mac.
 
 ## Keeping the rule applied to new build roots
 
