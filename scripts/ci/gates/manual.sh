@@ -377,7 +377,19 @@ gate_macos_host_build() (
   fi
   require_cmd zig "the macos-host-build gate builds every host root with the pinned Zig"
   require_tool_versions zig
-  require_cmd xcrun "the build graph probes the active SDK through xcrun"
+
+  # An SDK precondition has to RUN the probe, not check that xcrun exists.
+  # macOS ships /usr/bin/xcrun as a stub on every install, so `require_cmd
+  # xcrun` passed on a Mac with no Command Line Tools at all; the graph then
+  # found no SDK, pinned the bundled libSystem stub, every root built, and this
+  # gate reported green for the native SDK link path it never took (#899).
+  # macos_sdk.sh runs `xcrun --show-sdk-path` and keeps the failures apart --
+  # no developer directory, an unaccepted licence, a moved SDK, an SDK with no
+  # libSystem stub -- because each needs a different fix.
+  printf '=== active macOS SDK ===\n'
+  # shellcheck source=scripts/ci/lib/macos_sdk.sh
+  . scripts/ci/lib/macos_sdk.sh
+  ra8_macos_sdk_require
 
   # Diagnostics first and unconditionally: which stub the graph chose, and why,
   # is the single input that decides this whole gate, and a failure is
