@@ -434,8 +434,9 @@ target_link_libraries(test_mdl_rabook_verify PRIVATE mdl_rabook_runtime)
 ra8_webp_attach(test_mdl_rabook_verify ${MDL_REPO_ROOT})
 add_test(NAME test_mdl_rabook_verify COMMAND test_mdl_rabook_verify)
 add_executable(
-  test_mdl_verify_stream ${MDL_CORE_TEST_SRC_DIR}/test_mdl_verify_stream.c
-                         ${MDL_CORE_TEST_COMMON_SRC}
+  test_mdl_verify_stream
+  ${MDL_CORE_TEST_SRC_DIR}/test_mdl_verify_stream.c ${MDL_CORE_TEST_COMMON_SRC}
+  ${MDL_REPO_ROOT}/apps/shared_libs/mdl/tests/src/mdl_state_fs_fault.c
 )
 target_include_directories(
   test_mdl_verify_stream
