@@ -539,8 +539,6 @@ _GROUPS = (
             "checks/tidy/static_decl_scan.py:_MIN_USER_TYPE_DECL_TOKENS",
             "checks/tidy_ratchet.py:MAX_DETAIL_LINES",
             "ci/check_ci_parity.py:REGISTRY_MIN_FIELDS",
-            "ci/ci_status.py:HEAD_ROWS",
-            "ci/ci_status.py:SHA_ABBREV",
         ),
     ),
     (
@@ -743,7 +741,6 @@ _GROUPS = (
             "checks/tidy_ratchet.py:NOT_A_CHECK",
             "ci/check_gate_bodies.py:GATE_OPEN_RE",
             "ci/check_selftest_coverage.py:SHELL_CONTROL",
-            "ci/ci_status.py:FAIL_CONC",
         ),
     ),
     (

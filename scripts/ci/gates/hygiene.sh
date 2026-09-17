@@ -34,7 +34,11 @@
 # both directions before anyone can trust it again.
 gate_ci_status_contract() (
   set -e
-  require_cmd python3 "python3 is the interpreter every gate driver already needs"
+  # No require_cmd for the reader's toolchain: since #1144 the reader is the Zig
+  # tool tools/ci_status, and its launcher scripts/builders/ci_status.sh already
+  # fails closed with a FATAL and status 2 when zig cannot be resolved. A
+  # require_cmd here would instead fail on a host where zig is installed but off
+  # PATH, which the launcher resolves.
   /bin/bash -p scripts/ci/monitor.sh selftest
 )
 
