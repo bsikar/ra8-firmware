@@ -13,28 +13,67 @@
 const std = @import("std");
 const graph = @import("build_graph");
 const abi = graph.abi_contract;
+const db = graph.compile_db;
+const sources = graph.cross_sources;
+
+/// The two apps the cross slice builds, by the rules they exercise: one that
+/// names no libraries at all, one that names two.
+const bare_app = graph.cross_apps[0];
+const library_app = graph.cross_apps[1];
 
 test "board opt-in gate drops the two sources an app must ask for" {
     try std.testing.expect(
-        graph.isGatedOutBoardSource("libs/ra8_board_ek_ra8d2/src/ra8_board_console_stream.c"),
+        sources.isGatedOutBoardSource(bare_app, "libs/ra8_board_ek_ra8d2/src/ra8_board_console_stream.c"),
     );
     try std.testing.expect(
-        graph.isGatedOutBoardSource("libs/ra8_board_ek_ra8d2/src/ra8_board_touch.c"),
+        sources.isGatedOutBoardSource(bare_app, "libs/ra8_board_ek_ra8d2/src/ra8_board_touch.c"),
     );
 }
 
 test "board opt-in gate keeps the universal board sources" {
     try std.testing.expect(
-        !graph.isGatedOutBoardSource("libs/ra8_board_ek_ra8d2/src/ra8_board_clock.c"),
+        !sources.isGatedOutBoardSource(bare_app, "libs/ra8_board_ek_ra8d2/src/ra8_board_clock.c"),
     );
     try std.testing.expect(
-        !graph.isGatedOutBoardSource("libs/ra8_board_ek_ra8d2/src/ra8_board_pins.c"),
+        !sources.isGatedOutBoardSource(bare_app, "libs/ra8_board_ek_ra8d2/src/ra8_board_pins.c"),
     );
     // The gate matches a suffix, not a substring: a source that merely mentions
     // the gated name must still be compiled.
     try std.testing.expect(
-        !graph.isGatedOutBoardSource("libs/ra8_board_ek_ra8d2/src/ra8_board_touch_probe.c"),
+        !sources.isGatedOutBoardSource(bare_app, "libs/ra8_board_ek_ra8d2/src/ra8_board_touch_probe.c"),
     );
+}
+
+test "board opt-in gate opens for the app that names the library" {
+    // The other arm of the same rule, and the reason the cross slice builds two
+    // apps: iic_b_facade_demo names ra8_io_bus, which satisfies the touch gate,
+    // so the SAME source is kept here and dropped above.
+    try std.testing.expect(
+        !sources.isGatedOutBoardSource(library_app, "libs/ra8_board_ek_ra8d2/src/ra8_board_touch.c"),
+    );
+    // ra8_io_bus does NOT satisfy the console-stream gate: that one hands back
+    // an ra8_io_stream_t and needs the full ra8_io at link time.
+    try std.testing.expect(
+        sources.isGatedOutBoardSource(library_app, "libs/ra8_board_ek_ra8d2/src/ra8_board_console_stream.c"),
+    );
+}
+
+test "a library with no directory of its own still contributes sources" {
+    // ra8_io_bus has no libs/ra8_io_bus at all, so a graph built from the
+    // directory listing compiles nothing for it and the link fails 200 TUs
+    // later. The alias is what makes it six real translation units out of
+    // libs/ra8_io, plus that library's include directory.
+    const alias = sources.library_aliases[0];
+    try std.testing.expectEqualStrings("ra8_io_bus", alias.name);
+    try std.testing.expectEqualStrings("libs/ra8_io/src", alias.source_dir);
+    try std.testing.expectEqualStrings("libs/ra8_io/inc", alias.include_dir);
+    try std.testing.expect(sources.declaresLibrary(library_app, "ra8_io_bus"));
+    try std.testing.expect(!sources.declaresLibrary(bare_app, "ra8_io_bus"));
+
+    // And it is skipped for an app that names the fuller library, which
+    // already compiles the same TUs -- compiling them twice is a duplicate
+    // symbol at the link, not a warning.
+    try std.testing.expectEqualStrings("ra8_io", alias.superseded_by[0]);
 }
 
 test "host C bar keeps -Werror and both off-target definitions" {
@@ -80,14 +119,14 @@ test "vendored suppression is narrow and ordered" {
 test "compile database escapes the bytes JSON cannot carry raw" {
     var out = std.ArrayList(u8).init(std.testing.allocator);
     defer out.deinit();
-    graph.appendJsonString(&out, "a\"b\\c\nd\te");
+    db.appendJsonString(&out, "a\"b\\c\nd\te");
     try std.testing.expectEqualStrings("\"a\\\"b\\\\c\\nd\\te\"", out.items);
 }
 
 test "compile database leaves an ordinary path untouched" {
     var out = std.ArrayList(u8).init(std.testing.allocator);
     defer out.deinit();
-    graph.appendJsonString(&out, "libs/ra8_core/src/ra8_log.c");
+    db.appendJsonString(&out, "libs/ra8_core/src/ra8_log.c");
     try std.testing.expectEqualStrings("\"libs/ra8_core/src/ra8_log.c\"", out.items);
 }
 
