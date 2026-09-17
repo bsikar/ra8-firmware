@@ -84,8 +84,19 @@ if [[ "$-" == *p* ]]; then
   SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
   ROOT_DIR="$(cd "${SCRIPT_DIR}/../.." && pwd)"
 
-  # doxygen-awesome-css v2.4.2 supports doxygen up to 1.16.1, so that is the
-  # newest release the published theme is valid for.
+  # The ceiling here is the VENDORED THEME, not doxygen itself. docs/doxygen_theme/
+  # is doxygen-awesome-css v2.4.2 (Doxyfile:225), and its three extension scripts
+  # still drive jQuery -- $(document).ready in doxygen-awesome-darkmode-toggle.js,
+  # -fragment-copy-button.js and -paragraph-link.js. Doxygen stopped shipping
+  # jQuery in 1.17.0, so v2.4.2 is valid up to 1.16.1 and no further; that, not
+  # the header.html placeholder set, is what fixes this number.
+  #
+  # Upstream lifted the ceiling on 2026-09-12: doxygen-awesome-css v2.5.0 removes
+  # the jQuery dependency and supports doxygen >= 1.17.0 (doxygen 1.17.0 shipped
+  # 2026-04-30, 1.18.0 on 2026-08-13). So the pin is movable now, but moving it
+  # means re-vendoring the theme as a unit AND regenerating
+  # docs/doxygen_theme/header.html with the new binary (docs/DOCS.md), which is
+  # tracked as #801 rather than done here.
   PINNED_VERSION="1.16.1"
   RELEASE_TAG="Release_1_16_1"
   BASE_URL="https://github.com/doxygen/doxygen/releases/download/${RELEASE_TAG}"

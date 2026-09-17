@@ -88,6 +88,12 @@ ARG UNICORN_SHA256=ea8863f095a0136388694e5a6063afd9bb7650e30243dd6251af59c5ce560
 # resolves it directly and provision_doxygen.sh never touches the network.
 # Bump this value and DOXYGEN_SHA256_LINUX_X64 together with PINNED_VERSION /
 # SHA256_LINUX_X64 in provision_doxygen.sh -- one release, cited twice.
+#
+# What actually fixes the number is the vendored theme: doxygen-awesome-css
+# v2.4.2's extension scripts still use jQuery, which doxygen dropped in 1.17.0.
+# Upstream v2.5.0 (2026-09-12) removed that dependency and supports doxygen
+# >= 1.17.0, so the pin is movable once the theme is re-vendored and
+# docs/doxygen_theme/header.html regenerated. Tracked in #801.
 ARG DOXYGEN_VERSION=1.16.1
 ARG DOXYGEN_SHA256_LINUX_X64=a56f885d37e3aae08a99f638d17bbb381224c03a878d9e2dda4f9fa4baf1d8bd
 

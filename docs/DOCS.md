@@ -41,7 +41,12 @@ the `$placeholders` it knows; rendering the template with any other
 version leaves the unknown ones (e.g. `$mermaidjs`) as literal text
 on every published page and mangles the `<head>`. The vendored
 doxygen-awesome theme likewise supports a bounded range of doxygen
-releases. Building with the distro or Homebrew doxygen of the day is
+releases, and it is the tighter of the two constraints: the vendored
+v2.4.2 extension scripts still use jQuery, which doxygen dropped in
+1.17.0, so the published theme tops out at doxygen 1.16.1. Upstream
+doxygen-awesome-css v2.5.0 removed that dependency; #801 tracks the
+bump, which needs the theme re-vendored and `header.html` regenerated
+together. Building with the distro or Homebrew doxygen of the day is
 therefore not supported -- always go through `just docs::build` /
 `scripts/builders/docs.sh`, which enforce the pin.
 
