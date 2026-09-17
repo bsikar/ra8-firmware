@@ -19,6 +19,7 @@ const targetsFieldDeclares = macos_host.targetsFieldDeclares;
 const tbdDeclaresTarget = macos_host.tbdDeclaresTarget;
 const Selection = macos_host.Selection;
 const resolve = macos_host.resolve;
+const targetRunsOnBuildHost = macos_host.targetRunsOnBuildHost;
 
 const broken_clt_tbd =
     \\--- !tapi-tbd
@@ -303,4 +304,51 @@ test "every selection is handled and each maps to one effective choice" {
         try testing.expectEqual(expected, r.effective.choice);
         try testing.expect(r.effective.reason.explain().len > 0);
     }
+}
+
+test "a target matching the build host is not excused from running" {
+    // This is the case the macOS gate rests on: on an arm64 Mac the pinned
+    // aarch64-macos target IS the host, so a run that cannot happen must fail
+    // rather than be forgiven.
+    try testing.expect(targetRunsOnBuildHost(.aarch64, .macos, .aarch64, .macos));
+    try testing.expect(targetRunsOnBuildHost(.x86_64, .linux, .x86_64, .linux));
+    try testing.expect(targetRunsOnBuildHost(.aarch64, .linux, .aarch64, .linux));
+}
+
+test "a foreign target is excused, which is what a Linux link check needs" {
+    // `zig build test -Dtarget=aarch64-macos` from Linux compiles and links a
+    // Mach-O it cannot execute; excusing the run is what makes that a usable
+    // check off a Mac.
+    try testing.expect(!targetRunsOnBuildHost(.aarch64, .macos, .x86_64, .linux));
+    try testing.expect(!targetRunsOnBuildHost(.aarch64, .macos, .aarch64, .linux));
+}
+
+test "neither architecture nor operating system alone makes a host" {
+    // Same OS, other architecture.
+    try testing.expect(!targetRunsOnBuildHost(.x86_64, .macos, .aarch64, .macos));
+    // Same architecture, other OS.
+    try testing.expect(!targetRunsOnBuildHost(.aarch64, .linux, .aarch64, .macos));
+}
+
+test "Rosetta is not assumed while deciding to forgive a missing run" {
+    // An arm64 Mac really can execute x86_64-macos under translation, but
+    // assuming it here would forgive a run on the strength of a facility that
+    // may be absent. Assuming less makes an impossible run loud.
+    try testing.expect(!targetRunsOnBuildHost(.x86_64, .macos, .aarch64, .macos));
+}
+
+test "the pinned #899 target is the host on the machine the rule is for" {
+    // The selection rule and the run excuse have to agree: the choice the rule
+    // makes on an affected Mac must be one that machine can execute, or the
+    // gate measures nothing.
+    const decision = decide(.aarch64, .macos, .{ .sdk_path = "/sdk", .libsystem_tbd = broken_clt_tbd });
+    try testing.expectEqual(Choice.pinned_macos_arm64, decision.choice);
+
+    const pinned = decision.choice.query(null);
+    try testing.expect(targetRunsOnBuildHost(
+        pinned.cpu_arch.?,
+        pinned.os_tag.?,
+        .aarch64,
+        .macos,
+    ));
 }

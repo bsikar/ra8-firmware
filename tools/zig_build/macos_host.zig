@@ -333,6 +333,38 @@ pub fn archsFieldDeclares(tbd_text: []const u8, arch: []const u8, os_name: []con
     return arch_declared and platform_declared;
 }
 
+/// Can the machine running this build execute a binary built for
+/// `target_arch`/`target_os`?
+///
+/// This decides whether a test *run* may be excused when it cannot execute.
+/// Excusing it is right off the host: a Linux checkout cross-configures
+/// `aarch64-macos` precisely to exercise the Mach-O link path, and a run step
+/// that hard-fails there ("the host system is unable to execute binaries from
+/// the target") makes `zig build test -Dtarget=aarch64-macos` unusable as a
+/// check.
+///
+/// Excusing it ON the host is a different thing entirely, and it is what this
+/// exists to stop. The whole point of the arm64 macOS gate is that the host
+/// tests RUN natively on the Mac; a blanket excuse means a Mac on which they
+/// cannot run reports "0 skipped" nowhere and still exits zero, so the gate's
+/// verdict would rest on tests that never executed. Only the build host itself
+/// can tell those two situations apart, so the excuse is scoped to a target
+/// this host genuinely cannot run.
+///
+/// The rule is deliberately narrow: same architecture and same OS. An arm64
+/// Mac can in fact run `x86_64-macos` under Rosetta 2, and a Linux host may
+/// have an emulator registered, but neither is something to assume while
+/// deciding whether to forgive a missing run. Assuming less means a run that
+/// is genuinely impossible fails loudly instead of disappearing.
+pub fn targetRunsOnBuildHost(
+    target_arch: std.Target.Cpu.Arch,
+    target_os: std.Target.Os.Tag,
+    host_arch: std.Target.Cpu.Arch,
+    host_os: std.Target.Os.Tag,
+) bool {
+    return target_arch == host_arch and target_os == host_os;
+}
+
 /// True when `haystack` contains `wanted` as a whole token. Token characters are
 /// the ones Apple uses in a target triple, so `arm64e-macos` never answers for
 /// `arm64-macos`.
