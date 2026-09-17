@@ -53,14 +53,22 @@ ra8_add_app(
 # header libs/ra8_fonts/literata_latin1.h). The hex array is generated at build time
 # -- not committed -- so the ~37 KB of byte literals never reach the QC gates.
 # ${_d} is the repo root resolved above.
+# The font baker moved from Python to Zig (#940, epic #858); it is built for the
+# HOST with the pinned toolchain even in this Arm cross build, and a missing zig
+# is a configure-time error rather than a silently skipped bake.
+include("${_d}/cmake/ra8_zig_tool.cmake")
+ra8_add_zig_host_tool(NAME font_to_c ZIG_ROOT "${_d}/tools/font_to_c")
 set(_ra8_baked_font_c "${CMAKE_CURRENT_BINARY_DIR}/ra8_font_literata_latin1.c")
 add_custom_command(
   OUTPUT "${_ra8_baked_font_c}"
   COMMAND
-    ${CMAKE_COMMAND} -E env python3 "${_d}/scripts/gen/font_to_c.py"
-    "${_d}/libs/ra8_fonts/literata_latin1.ttf" "${_ra8_baked_font_c}" g_ra8_font_literata_latin1
-    literata_latin1.h
-  DEPENDS "${_d}/libs/ra8_fonts/literata_latin1.ttf" "${_d}/scripts/gen/font_to_c.py"
+    $<TARGET_FILE:ra8_zig::font_to_c> "${_d}/libs/ra8_fonts/literata_latin1.ttf"
+    "${_ra8_baked_font_c}" g_ra8_font_literata_latin1 literata_latin1.h
+  # The baker binary itself is a FILE input: a custom TARGET in DEPENDS is only
+  # order-only under Ninja, so without $<TARGET_FILE:...> a rebuilt font_to_c
+  # would leave the previously baked array in place.
+  DEPENDS "${_d}/libs/ra8_fonts/literata_latin1.ttf" "$<TARGET_FILE:ra8_zig::font_to_c>"
+          ra8_zig_tool_font_to_c
   COMMENT "Generating baked Latin-1 font array (ereader_ui)"
 )
 target_sources(ereader_ui.elf PRIVATE "${_ra8_baked_font_c}")
