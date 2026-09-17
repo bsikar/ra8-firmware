@@ -40,27 +40,29 @@
  * @since 0.1.0
  */
 typedef enum : uint32_t {
-  k_priv_max_depth     = 64U,       /**< Max element nesting (matches old shim). */
-  k_priv_tag_name_cap  = 16U,       /**< Lower-cased tag-name buffer size.       */
-  k_priv_entity_window = 12U,       /**< Max bytes scanned for one '&...;'.      */
-  k_priv_entity_min    = 4U,        /**< Shortest valid reference ("&lt;").      */
-  k_priv_uc_2byte      = 0x80U,     /**< Code points >= need >= 2 UTF-8 bytes.   */
-  k_priv_uc_3byte      = 0x800U,    /**< Code points >= need >= 3 UTF-8 bytes.   */
-  k_priv_uc_4byte      = 0x10000U,  /**< Code points >= need 4 UTF-8 bytes.      */
-  k_priv_uc_max        = 0x10FFFFU, /**< Highest valid Unicode code point.       */
-  k_priv_utf8_lead2    = 0xC0U,     /**< 2-byte sequence lead-byte prefix.       */
-  k_priv_utf8_lead3    = 0xE0U,     /**< 3-byte sequence lead-byte prefix.       */
-  k_priv_utf8_lead4    = 0xF0U,     /**< 4-byte sequence lead-byte prefix.       */
-  k_priv_utf8_cont     = 0x80U,     /**< Continuation-byte prefix.               */
-  k_priv_utf8_mask     = 0x3FU,     /**< Low 6 bits per continuation byte.       */
-  k_priv_utf8_sh6      = 6U,        /**< Shift for one continuation byte.        */
-  k_priv_utf8_sh12     = 12U,       /**< Shift for two continuation bytes.       */
-  k_priv_utf8_sh18     = 18U,       /**< Shift for three continuation bytes.     */
-  k_priv_base_dec      = 10U,       /**< Decimal numeric-entity base.            */
-  k_priv_base_hex      = 16U,       /**< Hexadecimal numeric-entity base.        */
-  k_priv_hex_offset    = 10U,       /**< Value of hex 'a'/'A' minus the letter.  */
-  k_priv_style_mask    = ((uint32_t)k_reflow_style_bold | (uint32_t)k_reflow_style_italic |
-                          (uint32_t)k_reflow_style_underline), /**< Run-style bits. */
+  k_priv_max_depth       = 64U,       /**< Max element nesting (matches old shim). */
+  k_priv_tag_name_cap    = 16U,       /**< Lower-cased tag-name buffer size.       */
+  k_priv_entity_window   = 12U,       /**< Max bytes scanned for one '&...;'.      */
+  k_priv_entity_min      = 4U,        /**< Shortest valid reference ("&lt;").      */
+  k_priv_entity_name_max = 10U,       /**< Longest name the window admits.         */
+  k_priv_entity_name_cap = 11U,       /**< Table name field size (max + NUL).      */
+  k_priv_uc_2byte        = 0x80U,     /**< Code points >= need >= 2 UTF-8 bytes.   */
+  k_priv_uc_3byte        = 0x800U,    /**< Code points >= need >= 3 UTF-8 bytes.   */
+  k_priv_uc_4byte        = 0x10000U,  /**< Code points >= need 4 UTF-8 bytes.      */
+  k_priv_uc_max          = 0x10FFFFU, /**< Highest valid Unicode code point.       */
+  k_priv_utf8_lead2      = 0xC0U,     /**< 2-byte sequence lead-byte prefix.       */
+  k_priv_utf8_lead3      = 0xE0U,     /**< 3-byte sequence lead-byte prefix.       */
+  k_priv_utf8_lead4      = 0xF0U,     /**< 4-byte sequence lead-byte prefix.       */
+  k_priv_utf8_cont       = 0x80U,     /**< Continuation-byte prefix.               */
+  k_priv_utf8_mask       = 0x3FU,     /**< Low 6 bits per continuation byte.       */
+  k_priv_utf8_sh6        = 6U,        /**< Shift for one continuation byte.        */
+  k_priv_utf8_sh12       = 12U,       /**< Shift for two continuation bytes.       */
+  k_priv_utf8_sh18       = 18U,       /**< Shift for three continuation bytes.     */
+  k_priv_base_dec        = 10U,       /**< Decimal numeric-entity base.            */
+  k_priv_base_hex        = 16U,       /**< Hexadecimal numeric-entity base.        */
+  k_priv_hex_offset      = 10U,       /**< Value of hex 'a'/'A' minus the letter.  */
+  k_priv_style_mask      = ((uint32_t)k_reflow_style_bold | (uint32_t)k_reflow_style_italic |
+                            (uint32_t)k_reflow_style_underline), /**< Run-style bits. */
 } priv_tok_consts_t;
 
 /**
@@ -103,9 +105,11 @@ RA8_PRIV reflow_html_tag_t priv_reflow_tok_classify(const char* name, size_t len
 /**
  * @brief Decode one XML entity reference beginning at `&`.
  *
- * @details Recognises the named entities amp/lt/gt/quot/apos and numeric
- * `&#dec;` / `&#xhex;` references. Unrecognised sequences are reported as
- * "not an entity" so the caller emits the literal `&`.
+ * @details Recognises every XHTML 1.0 named character reference (looked up
+ * in the sorted table in reflow_tokenize_entities.c) and numeric
+ * `&#dec;` / `&#xhex;` references. Matching is exact and case-sensitive.
+ * Unrecognised sequences are reported as "not an entity" so the caller
+ * emits the literal `&`.
  *
  * @param[in]  src      Buffer positioned so `src[0] == '&'`.
  * @param[in]  avail    Bytes available from `src` (>= 1).
@@ -122,6 +126,67 @@ RA8_PRIV reflow_html_tag_t priv_reflow_tok_classify(const char* name, size_t len
  */
 RA8_PRIV bool
 priv_reflow_tok_decode_entity(const char* src, size_t avail, uint32_t* out_cp, size_t* out_used);
+
+/**
+ * @brief Look one named character reference up in the XHTML 1.0 table.
+ *
+ * @details Binary search over the sorted table in
+ * reflow_tokenize_entities.c. `name` is the reference without its leading
+ * `&` and trailing `;`, and is not NUL-terminated. Matching is exact and
+ * case-sensitive, so `&Eacute;` and `&eacute;` are different references.
+ * A name longer than `k_priv_entity_name_max` cannot be in the table (the
+ * `&...;` scan window could not hold it) and is rejected without a search.
+ *
+ * @param[in]  name   Candidate reference name, not NUL-terminated.
+ * @param[in]  len    Length of `name` in bytes.
+ * @param[out] out_cp Code point of the reference on success.
+ * @return true if `name` is a known named character reference.
+ * @retval false Empty, over-long, or not in the table.
+ * @pre `name` and `out_cp` are non-null.
+ * @pre `len` is the exact byte length of `name`.
+ * @post On false `*out_cp` is unmodified.
+ * @post No other state is modified.
+ * @note Pure aside from writing `*out_cp`.
+ * @since 0.1.0
+ */
+RA8_PRIV bool priv_reflow_tok_lookup_entity(const char* name, size_t len, uint32_t* out_cp);
+
+/**
+ * @brief Number of rows in the named character reference table.
+ *
+ * @details Exposed so tests can walk the whole table and assert its sort
+ * order and name-length bound rather than sampling it.
+ *
+ * @return Row count of the table in reflow_tokenize_entities.c.
+ * @retval 0 Never; the table is non-empty by construction.
+ * @pre None.
+ * @pre None.
+ * @post No state is modified (pure).
+ * @post No state is modified (pure).
+ * @note Pure function.
+ * @since 0.1.0
+ */
+RA8_PRIV size_t priv_reflow_tok_entity_count(void);
+
+/**
+ * @brief Read one row of the named character reference table by index.
+ *
+ * @details Test-access companion to priv_reflow_tok_entity_count(), so the
+ * table's invariants can be checked over every row.
+ *
+ * @param[in]  idx      Row index in `[0, priv_reflow_tok_entity_count())`.
+ * @param[out] out_name NUL-terminated row name on success.
+ * @param[out] out_cp   Code point of that row on success.
+ * @return true if `idx` is in range.
+ * @retval false `idx` is past the end of the table.
+ * @pre `out_name` and `out_cp` are non-null.
+ * @pre None.
+ * @post On false the out params are unmodified.
+ * @post On true `*out_name` points into static storage that outlives the call.
+ * @note Pure aside from writing the output params.
+ * @since 0.1.0
+ */
+RA8_PRIV bool priv_reflow_tok_entity_at(size_t idx, const char** out_name, uint32_t* out_cp);
 
 /**
  * @brief UTF-8 encode a code point into `dst` (up to 4 bytes).
