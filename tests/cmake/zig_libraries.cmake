@@ -324,6 +324,20 @@ ra8_add_zig_library(
 
 # ra8_core_hal is the OBJECT library every host test links, so an INTERFACE
 # link here reaches each test executable that pulls in a migrated library.
+# Partially migrated: the FTL core (init, the presented free-overwrite vtable,
+# copy-on-write relocation, reclamation and wear-levelling) is Zig now, so
+# libs/ra8_ftl/src/ra8_ftl.c is gone and the RA8_FTL_SOURCES glob finds only
+# ra8_ftl_checkpoint.c, which stays C for now. The archive calls the
+# ra8_io_blockdev_* front door, which lives in ra8_core_hal's own objects.
+ra8_add_zig_library(
+  NAME
+  ra8_ftl
+  ZIG_ROOT
+  ${FW_ROOT}/libs/ra8_ftl
+  LIBRARY_NAME
+  ra8_ftl
+)
+
 target_link_libraries(
   ra8_core_hal
   PUBLIC ra8_zig::ra8_box
@@ -348,6 +362,7 @@ target_link_libraries(
          ra8_zig::if_ra8_vfs
          ra8_zig::ra8_camera
          ra8_zig::fw_if_fs
+         ra8_zig::ra8_ftl
 )
 
 link_libraries(
@@ -358,7 +373,7 @@ link_libraries(
   ra8_zig::ra8_usb_pal ra8_zig::ra8_keyboard ra8_zig::ra8_tz_secure_boot
   ra8_zig::ra8_audio ra8_zig::ra8_wifi ra8_zig::ra8_ov5640
   ra8_zig::ra8_modem_at ra8_zig::if_ra8_vfs ra8_zig::ra8_camera
-  ra8_zig::fw_if_fs
+  ra8_zig::fw_if_fs ra8_zig::ra8_ftl
 )
 
 link_libraries(
