@@ -30,9 +30,11 @@ pub const exit_ok: u8 = 0;
 pub const exit_problems: u8 = 1;
 pub const exit_usage: u8 = 2;
 
-/// Largest file read, far above anything first-party in this tree. The
-/// Python read whole files; a file past this is reported as unreadable
-/// rather than silently half-checked.
+/// Largest `VERSION` read. The file holds one semver line, so a ceiling
+/// here cannot lose a tag: `readFileAlloc` fails rather than truncating, and
+/// that failure propagates instead of being swallowed.
+///
+/// Scanned sources carry NO ceiling, deliberately: see `readFileIfRegular`.
 pub const max_file_bytes: usize = 16 * 1024 * 1024;
 
 /// Run the gate, returning the process exit status.
@@ -255,8 +257,14 @@ fn firstPartyPaths(
     return .{ .ok = owned };
 }
 
-/// Read one file, or null when the Python's `is_file()` / `read_text()`
-/// would have skipped it.
+/// Read one file whole, or null when the Python's `is_file()` /
+/// `read_text()` would have skipped it.
+///
+/// The read carries no size ceiling. `readFileAlloc` does not truncate at a
+/// cap, it fails with `error.FileTooBig`, and the caller turns a null into
+/// `continue`, so a ceiling here reported a file with a wrong `@since` as
+/// clean without ever reading it. The Python's `read_text()` had no limit,
+/// so the bound is the file itself.
 fn readFileIfRegular(
     allocator: std.mem.Allocator,
     dir: std.fs.Dir,
@@ -264,7 +272,9 @@ fn readFileIfRegular(
 ) ?[]const u8 {
     const stat = dir.statFile(path) catch return null;
     if (stat.kind != .file) return null;
-    return dir.readFileAlloc(allocator, path, max_file_bytes) catch null;
+    var file = dir.openFile(path, .{}) catch return null;
+    defer file.close();
+    return file.readToEndAlloc(allocator, std.math.maxInt(usize)) catch null;
 }
 
 /// `selftest()`: both directions on both halves, plus the two scope
