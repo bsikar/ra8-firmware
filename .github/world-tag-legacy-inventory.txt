@@ -17,15 +17,12 @@
 # closes the second half of #842.
 #
 # No regeneration step: tag the file, drop its line.
-libs/ra8_hal/inc/ra8_ble.h
 libs/ra8_hal/inc/ra8_cgc.h
 libs/ra8_hal/inc/ra8_cgc_regs.h
 libs/ra8_hal/inc/ra8_doc.h
 libs/ra8_hal/inc/ra8_doc_regs.h
 libs/ra8_hal/inc/ra8_drw_dlist.h
-libs/ra8_hal/inc/ra8_ether_phy.h
 libs/ra8_hal/inc/ra8_ether_regs.h
-libs/ra8_hal/inc/ra8_layer3_switch.h
 libs/ra8_hal/inc/ra8_mpu_regs.h
 libs/ra8_hal/inc/ra8_mrms_regs.h
 libs/ra8_hal/inc/ra8_npu_blob.h
@@ -37,18 +34,13 @@ libs/ra8_hal/inc/ra8_port_regs.h
 libs/ra8_hal/inc/ra8_port_utils.h
 libs/ra8_hal/inc/ra8_register_protection.h
 libs/ra8_hal/inc/ra8_regs.h
-libs/ra8_hal/inc/ra8_rmac_phy.h
 libs/ra8_hal/inc/ra8_system_regs.h
 libs/ra8_hal/src/gpio.c
-libs/ra8_hal/src/ra8_ble_internal.h
 libs/ra8_hal/src/ra8_cgc.c
 libs/ra8_hal/src/ra8_cgc_eswclk.c
 libs/ra8_hal/src/ra8_cgc_internal.h
 libs/ra8_hal/src/ra8_cgc_usb.c
 libs/ra8_hal/src/ra8_doc.c
-libs/ra8_hal/src/ra8_fpu_probe.c
-libs/ra8_hal/src/ra8_ofs.c
-libs/ra8_hal/src/ra8_rmac_phy_internal.h
 libs/ra8_hal/src/timer.c
 tests/bench/inc/ra8_bench.h
 tests/bench/src/bench_ra8_crc.c

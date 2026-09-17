@@ -2,6 +2,9 @@
  * @file ra8_ofs.c
  * @brief RA boot-ROM Option Function Select register defaults
  *
+ * @par Tag
+ * [Ring 3 / HAL] {World: S}
+ *
  * @details
  * Emits 32-bit constants into the `.option_setting_*` linker
  * sections defined in `src/linker_script.ld`. The RA8D2 boot ROM
