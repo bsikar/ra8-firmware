@@ -174,7 +174,6 @@ RA8_INTERNAL static inline flt_region_t internal_flt_region_of(uint32_t lba)
  *
  * @param[in] region Region to fault, or ::k_flt_region_none to disarm.
  *
- * @return Nothing.
  *
  * @pre The fixture is bound.
  * @pre No arm is already pending (an unfired arm would misfire later).
@@ -194,7 +193,6 @@ RA8_INTERNAL static inline void internal_flt_arm_read(flt_region_t region)
  *
  * @param[in] region Region to fault, or ::k_flt_region_none to disarm.
  *
- * @return Nothing.
  *
  * @pre The fixture is bound.
  * @pre No arm is already pending.
@@ -327,7 +325,6 @@ static const ra8_fs_backend_t s_flt_backend = {
 /**
  * @brief Release the fixture's heap buffer.
  *
- * @return Nothing.
  *
  * @pre Nothing is mounted on the fixture.
  * @pre Both arms are disarmed.
@@ -350,12 +347,12 @@ RA8_INTERNAL static inline void internal_flt_free_volume(void)
 /**
  * @brief Allocate a poisoned 64 MiB RAM disk and format it as exFAT.
  *
- * @return Nothing; a failure asserts inside.
  *
  * @pre No volume is mounted on the fixture.
  * @pre The host heap can supply 64 MiB.
  * @post `s_flt` holds a freshly formatted exFAT image.
  * @post Both arms are disarmed.
+ * @post A malloc or format failure exits the test executable with status 1.
  *
  * @note Not thread-safe; the fixture is single-threaded.
  * @since 0.1.0 @details Implements the bounded flt build volume fixture step using caller-owned state.
@@ -387,7 +384,6 @@ RA8_INTERNAL static inline void internal_flt_build_volume(void)
  *
  * @param[in] h Mounted exFAT volume.
  *
- * @return Nothing.
  *
  * @pre @p h is mounted on ::s_flt_backend.
  * @pre The formatter wrote the bitmap entry at root slot 0.
@@ -418,12 +414,12 @@ RA8_INTERNAL static inline void internal_flt_bind_geometry(const ra8_fs_mount_t*
  *
  * @param[out] out_h Receives the mount handle.
  *
- * @return Nothing; a failure asserts inside.
  *
  * @pre @p out_h is non-NULL and the volume is formatted.
  * @pre No other volume is mounted on the fixture.
  * @post `*out_h` is mounted and ::s_flt carries its regions.
  * @post Both arms are disarmed.
+ * @post A failed mount exits the test executable with status 1.
  *
  * @note Not thread-safe; the fixture is single-threaded.
  * @since 0.1.0 @details Implements the bounded flt mount fixture step using caller-owned state.
@@ -441,12 +437,12 @@ RA8_INTERNAL static inline void internal_flt_mount(ra8_fs_mount_t** out_h)
  * @param[in]     name File to create.
  * @param[in]     len  Bytes to write.
  *
- * @return Nothing; a failure asserts inside.
  *
  * @pre @p h is mounted and no handle is open on @p name.
  * @pre @p len is at most ::k_flt_payload.
  * @post @p name holds @p len bytes and is closed.
  * @post Both arms are still disarmed.
+ * @post A failed write exits the test executable with status 1.
  *
  * @note Not thread-safe; the fixture is single-threaded.
  * @since 0.1.0 @details Implements the bounded flt make file fixture step using caller-owned state.

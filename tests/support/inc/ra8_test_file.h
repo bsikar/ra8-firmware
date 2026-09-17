@@ -633,11 +633,11 @@ internal_ra8_test_file_verify_identity(const ra8_test_file_ops_t* ops,
  * @param[in,out] staging Distinct caller-owned read staging area.
  * @param[in,out] result In: `status == k_ra8_test_file_ok` and `supplied`
  * capacity. Out: `required`, staged bytes in @p staging, and terminal status.
- * @return Nothing; every outcome is reported through @p result.
  * @pre @p descriptor is open and owned by this call.
  * @pre @p result->status is `k_ra8_test_file_ok` on entry.
  * @post @p result->status names the first failing stage, if any.
  * @post Success leaves the read bytes staged in @p staging, not yet committed
+ * @post Every outcome is reported through @p result; the helper never asserts or exits.
  * to @p destination.
  * @note Test-only helper with no production ABI.
  * @since 0.1.0

@@ -194,7 +194,6 @@ typedef struct {
  * @param[in]  slots Number of 32-byte slots to inspect.
  * @param[out] out   Receives the tallies.
  *
- * @return Nothing.
  *
  * @pre @p base and @p out are non-NULL; the region holds @p slots entries.
  * @pre @p slots is at most ::k_lw_scan_slots.
@@ -251,7 +250,6 @@ internal_scan_root(const uint8_t* base, uint32_t slots, scan_result_t* out)
  * @param[in]  h   Mounted FAT12/16 volume.
  * @param[out] out Receives the tallies.
  *
- * @return Nothing.
  *
  * @pre @p h is mounted with a fixed root region; @p out is non-NULL.
  * @pre The fixture's RAM disk backs @p h.
@@ -315,7 +313,6 @@ typedef struct {
  * @param[in] size Unused.
  * @param[in] ctx  Pointer to a ::name_list_t.
  *
- * @return Nothing.
  *
  * @pre @p name and @p ctx are non-NULL.
  * @pre @p ctx points to a zero-initialised ::name_list_t.
@@ -378,7 +375,6 @@ internal_listdir_is_exactly(ra8_fs_mount_t* h, const char* path, const char* wan
  * @param[out] buf Destination buffer of at least @p len bytes.
  * @param[in]  len Number of bytes to write.
  *
- * @return Nothing.
  *
  * @pre @p buf is non-NULL and addresses @p len writable bytes.
  * @pre @p len is the exact buffer length.
@@ -405,12 +401,12 @@ RA8_INTERNAL static inline void internal_fill_payload(uint8_t* buf, uint32_t len
  * @param[in,out] h    Mounted volume.
  * @param[in]     path Full path of the file to create.
  *
- * @return Nothing; assertion failures are reported by the harness.
  *
  * @pre @p h is mounted and @p path is non-NULL.
  * @pre No file is currently open on @p h.
  * @post @p path exists and holds ::k_lw_payload bytes of the known pattern.
  * @post Every handle opened here is closed again.
+ * @post A failing step exits the test executable with status 1; there is no per-test path.
  *
  * @note Not thread-safe.
  * @since 0.1.0

@@ -125,7 +125,6 @@ RA8_INTERNAL static inline uint8_t internal_stream_byte_at(uint32_t pos, uint8_t
  * @param[in]  pos  File offset the first byte of @p buf corresponds to.
  * @param[in]  seed Generator seed.
  *
- * @return Nothing.
  *
  * @pre @p buf is non-NULL and addresses @p len writable bytes.
  * @pre @p pos + @p len does not overflow.
@@ -159,12 +158,12 @@ internal_stream_fill_at(uint8_t* buf, uint32_t len, uint32_t pos, uint8_t seed)
  * @param[in]     base  File offset the payload starts at.
  * @param[in]     seed  Generator seed.
  *
- * @return Nothing; every write is asserted inside.
  *
  * @pre @p f is open in a writing mode and positioned at @p base.
  * @pre @p chunk is at least 1 and at most ::k_xs_big_chunk.
  * @post @p total bytes of the @p seed stream are on the volume.
  * @post The handle's offset advanced by @p total.
+ * @post A failing write exits the test executable with status 1, so later chunks never run.
  *
  * @note Not thread-safe; the fixture is single-threaded.
  * @since 0.1.0
@@ -194,9 +193,8 @@ RA8_INTERNAL static inline void internal_stream_write_pattern(ra8_fs_file_t* f,
  *          internal control flow does not compound with the caller's loop
  *          nesting.
  * @param[in] at Absolute file offset of the mismatching byte.
- * @return Nothing; always fails the enclosing test.
  * @pre The enclosing test is still running.
- * @post The enclosing test is marked failed at this call site.
+ * @post Never returns; ::TEST_FAIL_FMT exits the test executable with status 1.
  * @note Not thread-safe; the fixture is single-threaded.
  * @since 0.1.0
  */
@@ -229,12 +227,12 @@ internal_stream_expect_span(const uint8_t* got, uint32_t len, uint32_t pos, uint
  * @param[in] total Expected length in bytes.
  * @param[in] seed  Generator seed the contents must match.
  *
- * @return Nothing; every check is asserted inside.
  *
  * @pre @p h is mounted and @p name exists.
  * @pre No handle is currently open on @p name.
  * @post The file is closed again.
  * @post No on-disk state is modified.
+ * @post A failing check exits the test executable with status 1; later offsets are skipped.
  *
  * @note Not thread-safe; the fixture is single-threaded.
  * @since 0.1.0
@@ -338,14 +336,14 @@ internal_stream_set_checksum(const ra8_fs_mount_t* h, uint32_t file_idx, uint32_
  * @param[in] tag Scenario name; becomes the file's basename.
  * @param[in] h   Mounted volume whose partition base starts the dump.
  *
- * @return Nothing. A dump that cannot be written fails the test, because a
- *         silently skipped dump is worse than no dump at all.
  *
  * @pre `s_disk.bytes` holds a formatted volume.
  * @pre @p tag contains no path separators.
  * @pre @p h is non-NULL and remains mounted.
  * @post With the variable set, the image is on disk and closed.
  * @post With it unset, nothing is written and no state changes.
+ * @post A dump that cannot be written exits the test executable with status 1.
+ * @post A dump is never skipped silently; only an unset variable skips it.
  *
  * @note Not thread-safe; the fixture is single-threaded.
  * @since 0.1.0

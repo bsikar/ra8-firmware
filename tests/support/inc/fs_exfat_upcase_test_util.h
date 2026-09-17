@@ -128,7 +128,6 @@ RA8_INTERNAL static inline uint32_t internal_upc_rd16(uint32_t off)
  *
  * @param[in] h Mounted exFAT volume.
  *
- * @return Nothing.
  *
  * @pre @p h is mounted, exFAT, and backed by the fixture's RAM disk.
  * @pre The caller runs this before hashing anything against the table.

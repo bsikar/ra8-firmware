@@ -223,13 +223,13 @@ RA8_INTERNAL static inline uint32_t internal_disk_rd16(uint32_t off)
  *                     on the mount handle. Captured before an unmount when the
  *                     caller dumps afterwards.
  *
- * @return Nothing. A dump that cannot be written fails the test, because a
- *         silently skipped dump is worse than no dump at all.
  *
  * @pre `s_disk.bytes` holds a formatted volume.
  * @pre @p tag contains no path separators.
  * @post With the variable set, the image is on disk and closed.
  * @post With it unset, nothing is written and no state changes.
+ * @post A dump that cannot be written exits the test executable with status 1.
+ * @post A dump is never skipped silently; only an unset variable skips it.
  *
  * @note Not thread-safe; the fixture is single-threaded.
  * @since 0.1.0
