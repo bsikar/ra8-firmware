@@ -146,6 +146,16 @@ _pcc_migration_contracts() (
   bash scripts/builders/host_cmake.sh --selftest
   python3 scripts/checks/check_host_build_entrypoints.py --selftest
   python3 scripts/checks/check_host_build_entrypoints.py
+  # The Cortex-M33 side of the dual-core product: ra8_add_cpu1_image() attaches
+  # the first-party warning + stack-usage profile PER-SOURCE to its own
+  # SOURCES, so app-added first-party M33 translation units compile with no
+  # -Wall/-Wextra/-Werror and emit no .su data (#843, TODO(T1-09)). That escape
+  # was prose only. Enumerate it instead: --selftest proves the classifier
+  # fires in both directions, then the tree check holds the escape to the
+  # shrink-only .github/cpu1-warning-profile-baseline.txt, so a NEW first-party
+  # M33 source outside the profile is red rather than invisible.
+  python3 scripts/checks/check_cpu1_warning_profile.py --selftest
+  python3 scripts/checks/check_cpu1_warning_profile.py
 )
 
 # The Python project, bootstrap, exports, and managed environment boundaries.

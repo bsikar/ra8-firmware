@@ -123,16 +123,24 @@ if(TARGET compile_on_m33_cpu1.elf)
   #
   # It carries NO -Wno flags, deliberately. It used to carry six, under the note
   # "vendored miniz.c cannot satisfy the first-party -Werror set". There is no
-  # -Werror set on this target to satisfy: ra8_add_cpu1_image() applies the
-  # project warning profile PER-SOURCE to the helper's own SOURCES only, and
-  # this app bolts its CPU1 translation units on with target_sources(), so the
-  # whole CPU1 compile line here is -mcpu=cortex-m33 ... -Os with no -Wall at
-  # all -- for cpu1_main.c too, which is first-party (the gap is the standing
-  # TODO(T1-09) in cmake/ra8_add_app.cmake). Compiling miniz.c with all six
-  # removed, under arm-none-eabi-gcc 13.3.1 at the -Os this image uses, emits
-  # nothing. Six flags that mask nothing are worse than none: they read as
-  # evidence that this image is warning-gated when it is not. When T1-09 lands,
-  # re-measure and re-add whatever actually fires.
+  # -Werror set reaching miniz.c to satisfy: ra8_add_cpu1_image() applies the
+  # project warning profile PER-SOURCE to the helper's own SOURCES, and this app
+  # bolts its CPU1 translation units on with target_sources(), so every bolted-on
+  # source -- miniz.c included -- compiles at -mcpu=cortex-m33 ... -Os with no
+  # -Wall at all (the gap is the standing TODO(T1-09) in
+  # cmake/ra8_add_app.cmake). src/cpu1_main.c is NOT in that gap: it is a helper
+  # SOURCES entry, so it does carry the full profile, which compile_commands.json
+  # confirms. Compiling miniz.c with all six removed, under arm-none-eabi-gcc
+  # 13.3.1 at the -Os this image uses, emits nothing. Six flags that mask nothing
+  # are worse than none: they read as evidence that this image is warning-gated
+  # when it is not. When T1-09 lands, re-measure and re-add whatever actually
+  # fires.
+  #
+  # The first-party TUs this app bolts on are enumerated in
+  # .github/cpu1-warning-profile-baseline.txt and held there by
+  # scripts/checks/check_cpu1_warning_profile.py (#843): adding another
+  # first-party M33 source here without bringing it onto the profile now fails
+  # that gate. miniz.c is classified as SOUP and is deliberately not a row.
   set_property(
     SOURCE ${RA8_REPO_ROOT}/apps/shared_libs/third_party/miniz/miniz.c
     APPEND
