@@ -17,9 +17,14 @@
  *     the integer ::ra8_img_decode_blit pipeline -- the same decoder the EPUB
  *     cover path uses, so "page-0-as-cover" and page N share one code path.
  *   - Pages by re-decoding on each turn (one page + one decode arena resident at
- *     a time). A future large-manga path can stream through the #231/#232 tile
- *     cache instead of a whole-page decode; the encoded-page buffer bounds the
- *     openable page size for now (TODO(#231): tile huge pages rather than cap).
+ *     a time), so the encoded-page buffer (::k_shc_pagebuf_cap) bounds the
+ *     openable page size. The band-tile alternative this used to defer to is no
+ *     longer future work: #231 landed the JOF tile-cache path for EPUB images
+ *     and #344 landed the CBZ/CBR half in ::comic_tiles (dev 5cdd3ab7b). This
+ *     reader keeps the whole-page decode deliberately -- the shelf's baked
+ *     fixtures fit the cap -- so adopting ::comic_tiles here is an open
+ *     product choice, not a tracked defect. Manga-scale streaming budgets and
+ *     eviction tuning remain #232.
  *
  * @par Right-to-left (manga) reading
  * Raw CBZ/CBR carry no reading-direction metadata, so direction is an app-level
