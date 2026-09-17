@@ -16,6 +16,9 @@ const decide = macos_host.decide;
 const pinnedOsVersion = macos_host.pinnedOsVersion;
 const required_target = macos_host.required_target;
 const targetsFieldDeclares = macos_host.targetsFieldDeclares;
+const targetsFieldMentionsOs = macos_host.targetsFieldMentionsOs;
+const platformFieldDeclares = macos_host.platformFieldDeclares;
+const archsFieldContains = macos_host.archsFieldContains;
 const tbdDeclaresTarget = macos_host.tbdDeclaresTarget;
 const Selection = macos_host.Selection;
 const resolve = macos_host.resolve;
@@ -85,6 +88,29 @@ const v3_ios_tbd =
     \\
 ;
 
+/// A TAPI v4 iPhoneOS stub. This is the file the probe reads when `xcrun` is
+/// asked for the *active* SDK in a shell carrying `SDKROOT=iphoneos`: every
+/// target is an iOS one, so the macOS triple is absent for a reason that has
+/// nothing to do with #899.
+const v4_ios_tbd =
+    \\--- !tapi-tbd
+    \\tbd-version: 4
+    \\targets: [ arm64-ios, arm64e-ios, arm64-ios-simulator ]
+    \\install-name: '/usr/lib/libSystem.B.dylib'
+    \\
+;
+
+/// A macOS stub that lists maccatalyst beside macos. `maccatalyst` must not be
+/// read as a macOS target, or an SDK that only ever declared catalyst slices
+/// would look like this host's own.
+const v4_catalyst_only_tbd =
+    \\--- !tapi-tbd
+    \\tbd-version: 4
+    \\targets: [ x86_64-maccatalyst, arm64-maccatalyst ]
+    \\install-name: '/usr/lib/libSystem.B.dylib'
+    \\
+;
+
 test "arm64e-macos does not answer for arm64-macos" {
     try testing.expect(!tbdDeclaresTarget(broken_clt_tbd, required_target));
     try testing.expect(tbdDeclaresTarget(broken_clt_tbd, "arm64e-macos"));
@@ -117,9 +143,93 @@ test "a tbd-v3 stub is read through archs plus platform, not targets" {
     try testing.expectEqual(TbdVerdict.declares, classifyTbd(v3_arm64_tbd, required_target));
     try testing.expectEqual(TbdVerdict.omits, classifyTbd(v3_intel_only_tbd, required_target));
 
-    // Right arch, wrong platform: the two halves have to agree.
-    try testing.expectEqual(TbdVerdict.omits, classifyTbd(v3_ios_tbd, required_target));
+    // Right arch, wrong platform: the two halves have to agree, and the
+    // disagreement is named for what it is rather than folded into #899.
+    try testing.expectEqual(TbdVerdict.foreign_platform, classifyTbd(v3_ios_tbd, required_target));
     try testing.expectEqual(@as(?bool, true), archsFieldDeclares(v3_ios_tbd, "arm64", "ios"));
+}
+
+test "an iOS stub is not read as a macOS SDK that omits us" {
+    // The distinction this draws: both files lack arm64-macos, and only one of
+    // them is #899. Reporting the iOS stub as `sdk_omits_target` sends the
+    // reader after Apple's macOS stub when the fault is in which SDK was read.
+    try testing.expectEqual(TbdVerdict.omits, classifyTbd(broken_clt_tbd, required_target));
+    try testing.expectEqual(TbdVerdict.foreign_platform, classifyTbd(v4_ios_tbd, required_target));
+
+    // Asking the iOS stub its own question still answers plainly.
+    try testing.expectEqual(@as(?bool, true), targetsFieldDeclares(v4_ios_tbd, "arm64-ios"));
+}
+
+test "maccatalyst is not a macOS target" {
+    try testing.expectEqual(TbdVerdict.foreign_platform, classifyTbd(v4_catalyst_only_tbd, required_target));
+    try testing.expectEqual(@as(?bool, false), targetsFieldMentionsOs(v4_catalyst_only_tbd, "macos"));
+
+    // The broken CLT stub carries maccatalyst too, but it also carries real
+    // macos targets, so it stays #899 rather than being excused as foreign.
+    try testing.expectEqual(@as(?bool, true), targetsFieldMentionsOs(broken_clt_tbd, "macos"));
+}
+
+test "the os question reads the targets list, and only the targets list" {
+    try testing.expect(targetsFieldMentionsOs("--- !tapi-tbd\ninstall-name: '/usr/lib/libSystem.B.dylib'\n", "macos") == null);
+    try testing.expectEqual(@as(?bool, true), targetsFieldMentionsOs(healthy_tbd, "macos"));
+    try testing.expectEqual(@as(?bool, true), targetsFieldMentionsOs(block_list_tbd, "macos"));
+    try testing.expectEqual(@as(?bool, true), targetsFieldMentionsOs(wrapped_flow_tbd, "macos"));
+
+    // `macos` must not be found inside a longer OS token, nor without the
+    // triple's separating dash in front of it.
+    const macosx_only =
+        \\--- !tapi-tbd
+        \\targets: [ arm64-macosx ]
+        \\
+    ;
+    try testing.expectEqual(@as(?bool, false), targetsFieldMentionsOs(macosx_only, "macos"));
+    const bare_word =
+        \\--- !tapi-tbd
+        \\targets: [ macos ]
+        \\
+    ;
+    try testing.expectEqual(@as(?bool, false), targetsFieldMentionsOs(bare_word, "macos"));
+}
+
+test "the v3 halves can be asked separately" {
+    try testing.expectEqual(@as(?bool, true), archsFieldContains(v3_arm64_tbd, "arm64"));
+    try testing.expectEqual(@as(?bool, false), archsFieldContains(v3_intel_only_tbd, "arm64"));
+    try testing.expect(archsFieldContains(healthy_tbd, "arm64") == null);
+
+    try testing.expectEqual(@as(?bool, true), platformFieldDeclares(v3_arm64_tbd, "macos"));
+    try testing.expectEqual(@as(?bool, false), platformFieldDeclares(v3_ios_tbd, "macos"));
+    try testing.expectEqual(@as(?bool, true), platformFieldDeclares(v3_ios_tbd, "ios"));
+    try testing.expect(platformFieldDeclares(healthy_tbd, "macos") == null);
+
+    // A v3 macOS stub that genuinely lacks arm64 is still #899, not foreign.
+    try testing.expectEqual(TbdVerdict.omits, classifyTbd(v3_intel_only_tbd, required_target));
+}
+
+test "a foreign stub pins the target and says so in its own words" {
+    const decision = decide(.aarch64, .macos, .{ .sdk_path = "/sdk", .libsystem_tbd = v4_ios_tbd });
+    try testing.expectEqual(Choice.pinned_macos_arm64, decision.choice);
+    try testing.expectEqual(Reason.sdk_stub_foreign_platform, decision.reason);
+
+    // The two neighbouring findings stay distinct from it.
+    try testing.expectEqual(
+        Reason.sdk_omits_target,
+        decide(.aarch64, .macos, .{ .sdk_path = "/sdk", .libsystem_tbd = broken_clt_tbd }).reason,
+    );
+    try testing.expectEqual(
+        Reason.sdk_stub_unrecognized,
+        decide(.aarch64, .macos, .{ .sdk_path = "/sdk", .libsystem_tbd = "--- !tapi-tbd\n" }).reason,
+    );
+
+    // And the explanation names the SDK the compiler would have asked for, so
+    // a reader can check which one was actually read.
+    try testing.expect(std.mem.indexOf(u8, Reason.sdk_stub_foreign_platform.explain(), macos_host.host_sdk_name) != null);
+}
+
+test "the host sdk name is the one zig itself asks xcrun for" {
+    // std.zig.system.darwin.getSdk maps a .macos target to this sdk name and
+    // runs `xcrun --sdk <name> --show-sdk-path`. The probe has to ask the same
+    // question or it can read an SDK the link never uses.
+    try testing.expectEqualStrings("macosx", macos_host.host_sdk_name);
 }
 
 test "a stub with no target list at all is unrecognised, not silently absent" {
