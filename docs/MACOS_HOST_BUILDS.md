@@ -155,6 +155,24 @@ artefact:
 
     file zig-out/bin/image_pyramid
 
+## Running the gate itself on your own Mac
+
+    just quality::gate::run macos-host-build
+
+`just quality::gate::run` sends a gate into the pinned Linux devcontainer on
+macOS, because that is where the CI toolchain lives. A gate whose subject is
+the host cannot be answered there: inside the container `macos-host-build`
+sees Linux and refuses, which is the correct answer to the wrong question.
+`scripts/ci/lib/native_host_gates.sh` lists the gates that must run natively
+wherever they run at all, and the recipe asks it before routing, printing on
+stderr why a gate skipped the container. Every other gate on macOS still goes
+into the devcontainer, and on Linux nothing changed.
+
+A gate added later that measures the host needs a row in that list, and its
+own body must still refuse a foreign host; the list's `--selftest`, run by the
+`ci-parity` gate, checks both, plus that every declared gate is really
+registered in `scripts/ci.sh`.
+
 ## What a Linux checkout can and cannot show
 
 Cross-compiling from Linux exercises the graph, the target selection, and the
