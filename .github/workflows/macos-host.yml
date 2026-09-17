@@ -1,0 +1,79 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Brighton Sikarskie
+# SCHEDULING ONLY -- the gate body lives in scripts/ci.sh (gate:
+# macos-host-build). See .github/workflows/firmware.yml for the design note.
+#
+# The only Mac in this CI suite (#899). Every other workflow runs on Linux, so
+# nothing else can observe whether the host Zig roots link against Apple's own
+# libSystem stub on Apple Silicon -- the exact failure the issue reports. A
+# cross-build for aarch64-macos from Linux cannot: an explicit target makes the
+# query non-native, zig links its bundled stub instead, and the SDK stub that
+# omits arm64-macos is never touched.
+#
+# GitHub-HOSTED, ephemeral macos-14 (arm64). It is not an Ansible-managed
+# runner, so it provisions its own pinned Zig, and untrusted fork code stays on
+# a throwaway VM that can reach none of the self-hosted infrastructure.
+#
+# On a clock rather than per push: the runner image and its Command Line Tools
+# move underneath us, which is the variable this gate exists to watch, and a
+# nightly signal is what catches an SDK change nobody in this repository made.
+---
+name: macos-host
+
+on:
+  schedule:
+    # Nightly, 07:41 UTC -- off the hour, clear of the other scheduled jobs.
+    - cron: "41 7 * * *"
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+  # Same pin as .devcontainer/Dockerfile (ARG ZIG_VERSION), with the sha256 of
+  # the macOS arm64 tarball published in ziglang.org's download index. Bump
+  # both together, and with the Dockerfile.
+  ZIG_VERSION: 0.14.1
+  ZIG_SHA256_AARCH64_MACOS: 39f3dc5e79c22088ce878edc821dedb4ca5a1cd9f5ef915e9b3cc3053e8faefa
+
+jobs:
+  macos-host-build:
+    name: macOS arm64 host build (Zig roots, native SDK link)
+    runs-on: macos-14
+    steps:
+      - uses: extractions/setup-just@v3
+        with:
+          # Must match .devcontainer/Dockerfile (ARG JUST_VERSION); the
+          # action's default floats.
+          just-version: 1.40.0
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install the pinned Zig toolchain
+        run: |
+          # ci-parity: infra -- installs the pinned Zig compiler on the hosted
+          # macOS runner and runs no project check. The runner image ships no
+          # Zig at all, and this is a disposable GitHub-hosted VM, not an
+          # Ansible-managed host, so provisioning belongs here. The download is
+          # version-pinned and sha256-verified like every binary in
+          # .devcontainer/Dockerfile, and it installs to /usr/local/zig so the
+          # layout matches the container the other gates run in.
+          set -euo pipefail
+          curl --proto '=https' --proto-redir '=https' --tlsv1.2 -fsSL \
+            -o "${RUNNER_TEMP}/zig.tar.xz" \
+            "https://ziglang.org/download/${ZIG_VERSION}/zig-aarch64-macos-${ZIG_VERSION}.tar.xz"
+          printf '%s  %s\n' "${ZIG_SHA256_AARCH64_MACOS}" "${RUNNER_TEMP}/zig.tar.xz" \
+            | shasum -a 256 -c -
+          sudo rm -rf /usr/local/zig
+          sudo mkdir -p /usr/local/zig
+          sudo tar -xf "${RUNNER_TEMP}/zig.tar.xz" --strip-components=1 -C /usr/local/zig
+          rm "${RUNNER_TEMP}/zig.tar.xz"
+          test "$(/usr/local/zig/zig version)" = "${ZIG_VERSION}"
+          echo /usr/local/zig >> "${GITHUB_PATH}"
+
+      - run: just quality::local::gate macos-host-build
