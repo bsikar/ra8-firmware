@@ -58,5 +58,5 @@ pub fn build(b: *std.Build) void {
     const tests = b.addTest(.{ .root_module = test_module });
 
     const test_step = b.step("test", "Run image pyramid tests");
-    test_step.dependOn(&b.addRunArtifact(tests).step);
+    _ = ra8_build.addHostTestRun(b, test_step, tests);
 }
