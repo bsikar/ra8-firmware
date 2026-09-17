@@ -3,6 +3,9 @@
  * @brief High-level Clock Generation Circuit driver
  * @ingroup grp_hal_system
  *
+ * @par Tag
+ * [Ring 3 / HAL] {World: S}
+ *
  * @details
  * Minimal clock-init surface for bring-up. The RA8D2 defaults to MOCO
  * (~8 MHz) out of reset, which is enough to blink an LED and exercise
