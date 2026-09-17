@@ -313,6 +313,15 @@ ra8_add_zig_library(
   ra8_camera
 )
 
+ra8_add_zig_library(
+  NAME
+  fw_if_fs
+  ZIG_ROOT
+  ${FW_ROOT}/libs/if
+  LIBRARY_NAME
+  fw_if_fs
+)
+
 # ra8_core_hal is the OBJECT library every host test links, so an INTERFACE
 # link here reaches each test executable that pulls in a migrated library.
 target_link_libraries(
@@ -338,4 +347,5 @@ target_link_libraries(
          ra8_zig::ra8_modem_at
          ra8_zig::if_ra8_vfs
          ra8_zig::ra8_camera
+         ra8_zig::fw_if_fs
 )
