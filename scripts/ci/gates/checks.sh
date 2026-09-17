@@ -116,6 +116,12 @@ _pcc_migration_contracts() (
   # to a wrapper while silently dropping most staged checks.
   python3 scripts/checks/check_hook_parity.py --selftest
   python3 scripts/checks/check_hook_parity.py
+  # The hook pins /usr/bin/python3, which is 3.9 on the declared macOS host,
+  # while pyproject requires 3.11. An evaluated `X | None` alias in a module
+  # the validator imports killed committing there once (#839) and CI stayed
+  # green, because CI runs the managed 3.11 interpreter.
+  python3 scripts/checks/check_hook_python_floor.py --selftest
+  python3 scripts/checks/check_hook_python_floor.py
   # Shell recursion must preserve the Just executable that entered the recipe;
   # a noninteractive SSH PATH need not contain that binary's directory.
   /bin/bash -p scripts/dev/run_just.sh --selftest
