@@ -77,7 +77,7 @@ tools, all of which run on every commit and every PR:
 
 | Audit                                | Tool / artifact                                                                  |
 |--------------------------------------|----------------------------------------------------------------------------------|
-| Roadmap progress audit               | `scripts/report/roadmap_stats.py --check` (refuses stale ROADMAP summaries)       |
+| Roadmap progress audit               | `tools/roadmap_stats --check` (refuses stale ROADMAP summaries)                   |
 | Pre-commit gate audit                | `scripts/git/pre-commit` exit status; CI mirror in `pre-commit-checks` job       |
 | Coding-standard audit                | `clang-format`, `clang-tidy`, `cppcheck`                                         |
 | MISRA-C 2012 process audit           | `just quality::local::misra` quarterly + `docs/MISRA.md` baseline table          |
@@ -179,7 +179,7 @@ sequence and refuses the commit on any failure:
 8. Copyright + SPDX header enforcement.
 9. HUM citation validator (`cite_check.py --strict`).
 10. World-tag validator (`check_world_tags.py --strict`).
-11. ROADMAP summary freshness (`roadmap_stats.py --check`, strict).
+11. ROADMAP summary freshness (`roadmap_stats --check`, strict).
 12. Obsolete-standards reference scan (rejects superseded
     safety-standard references, strict).
 13. `@par MC/DC:` block on staged tests
@@ -264,7 +264,7 @@ before the SAS is signed. For this project:
   log holds the diagnostic.
 - Refresh-cadence misses (a stale MISRA or MC/DC table): caught by
   the relevant `--check` mode of the audit script (e.g.
-  `roadmap_stats.py --check`) or, for tables not yet wired into the
+  `roadmap_stats --check`) or, for tables not yet wired into the
   hook, by the next per-quarter review.
 
 ### 5.3 Long-term storage
