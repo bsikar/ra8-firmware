@@ -77,6 +77,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from lint_targets import firmware_app_dirs, first_party_paths
 from tree_coverage_model import (
     CENSUS_SUFFIXES,
+    FLOOR_CLAIM_DOCS,
     MEASURED_FLOOR,
     PROJECTS,
     REASON_COMPILED,
@@ -87,7 +88,10 @@ from tree_coverage_model import (
     census_floor_failures,
     census_paths,
     coverage_capable_dirs,
+    floor_claim_failures,
+    floor_claim_selftest_failures,
     in_census,
+    policy_doc_texts,
     requirement_claim_failures,
     srs_text,
     structural_reason,
@@ -668,10 +672,9 @@ def run_gate(*, update: bool) -> int:
         return outcome
     _, fresh = outcome
     baseline = load_baseline()
-    findings = [
-        Finding(HARD, message)
-        for message in requirement_claim_failures(srs_text(), LINE_FLOOR_PCT, BRANCH_FLOOR_PCT)
-    ]
+    claims = requirement_claim_failures(srs_text(), LINE_FLOOR_PCT, BRANCH_FLOOR_PCT)
+    claims += floor_claim_failures(policy_doc_texts(), LINE_FLOOR_PCT, BRANCH_FLOOR_PCT)
+    findings = [Finding(HARD, message) for message in claims]
     findings += evaluate(fresh, baseline) if baseline else []
     if update:
         hard = [f for f in findings if f.severity == HARD]
@@ -952,6 +955,7 @@ def selftest() -> int:
         + _scope_failures()
         + _format_failures()
         + _claim_failures()
+        + floor_claim_selftest_failures(LINE_FLOOR_PCT, BRANCH_FLOOR_PCT)
     )
     if failures:
         for name in failures:
@@ -960,7 +964,8 @@ def selftest() -> int:
     print(
         f"check_tree_coverage.py --selftest: PASS "
         f"({cases} both-direction cases, 4 non-vacuity floors, "
-        f"REQ-SAFE-017 tied to {LINE_FLOOR_PCT}/{BRANCH_FLOOR_PCT})"
+        f"{LINE_FLOOR_PCT}% line / {BRANCH_FLOOR_PCT}% branch tied to "
+        f"REQ-SAFE-017 and {len(FLOOR_CLAIM_DOCS)} claim sites)"
     )
     return 0
 
