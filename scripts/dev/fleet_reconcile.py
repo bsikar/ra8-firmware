@@ -34,6 +34,7 @@ import fleet_reconcile_backoff_selftest as frb
 import fleet_reconcile_blocking_selftest as frbl
 import fleet_reconcile_budget_selftest as frbu
 import fleet_reconcile_cascade_selftest as frc
+import fleet_reconcile_claim_selftest as frcl
 import fleet_reconcile_drain_selftest as frd
 import fleet_reconcile_dryrun_selftest as frdr
 import fleet_reconcile_forfeit_selftest as frfo
@@ -837,6 +838,37 @@ def capacity_mutation(verb: str) -> bool:
 def capacity_reopened(verb: str) -> bool:
     """Return whether the last capacity verb a transaction issued put the host in service."""
     return verb in CAPACITY_REOPEN_VERBS
+
+
+@dataclass
+class TransactionCapacity:
+    """What one host's transaction did to its capacity, as its own verbs reported it.
+
+    ``verb`` is the last capacity verb the transaction issued, which is what
+    tells a failure that mutated nothing from one that took the host down, and
+    a pass that ended by reopening the host from one that left it at zero.
+
+    ``admission`` is the live window target the transaction's last
+    ``capacity-restore`` reported converging to, and it is the only evidence a
+    pass holds about what it actually put back in service.  Both RECOVERY arms
+    already read it through ``restore_admission`` and refuse to call a reopen to
+    ZERO instances a recovery.  The ordinary apply arm called that reader for
+    its warning alone and threw the number away, and the ARC apply arm never
+    asked at all, so the transaction that SUCCEEDS was the one place the answer
+    never reached the pass that has to record it (issue #888).  ``None`` is a
+    transaction whose restores said nothing about it, which is what an older
+    host-local copy of the capacity script does: nothing is claimed either way.
+    """
+
+    verb: str = ""
+    admission: int | None = None
+
+    def read(self, verb: str, result: frp.CommandResult) -> frp.CommandResult:
+        """Record what one issued verb did to this host's capacity, result unchanged."""
+        self.verb = verb if capacity_mutation(verb) else self.verb
+        if verb == "restore":
+            self.admission = restored_admission(result.stdout)
+        return result
 
 
 def capacity_lost(host: str, *, stranded: bool, mutated: bool) -> bool:
@@ -1790,6 +1822,54 @@ def producer_block_state(
     return not released, released
 
 
+def receipt_clock(receipt: dict[str, Any]) -> int:
+    """Return the pass clock stamped on the receipt one host's success publishes."""
+    stamped = receipt.get("checked_at")
+    return stamped if isinstance(stamped, int) else 0
+
+
+def hold_reconciled_at_zero(stranding: dict[str, dict[str, int]], host: str, now: int) -> bool:
+    """Keep a reconciled host's zero-capacity record when its restore put nothing in service.
+
+    ``restore_admission`` reads the window target a ``capacity-restore``
+    converged live admission to, and both recovery arms refuse to call a reopen
+    to ZERO instances a recovery: the host stays RECORDED at zero, or nothing
+    escalates however long it sits there.  An ordinary apply is deliberately
+    not failed by that target, because converging the declaration is what the
+    transaction claims and a quiet-hours window of zero instances is the
+    operator's own policy.  Publishing that success then CLEARED the host's
+    stranded-at-zero record as "reconciled and serving again", which is a claim
+    about capacity this pass had just been told it did not put back: the record
+    a real earlier drain wrote was dropped by the happy path, the next pass
+    found a fresh ``full_applied_at`` receipt with nothing due, and the fleet
+    sat DECLARED for its runners while serving none of them at exit 0 for as
+    long as the window lasted.  That is issue #888's own dry-run evidence,
+    reached through a pass that succeeds rather than one that fails.
+
+    Deliberately asymmetric, and the asymmetry is the point.  A host that
+    already carries a record keeps it and ages it, because the claim that
+    record makes, that this controller took the host to zero and has not put
+    capacity back, is exactly what the restore just confirmed.  A host with no
+    record is given none: a declared quiet-hours target is not this pass
+    draining anything, and a record written here would forge the proof three
+    later policies read straight back off it (``frozen_image_release``,
+    ``consumers_released`` and the pass drain budget).
+    """
+    entry = stranding.get(host)
+    if entry is None:
+        print(
+            f"fleet-reconcile: WARNING: {host}: reconciled, and its capacity-restore "
+            "converged live admission to ZERO instances; the declaration is converged "
+            "with NO runner capacity in service, and this pass drained nothing, so no "
+            "zero-capacity record is written against it",
+            file=sys.stderr,
+        )
+        return False
+    return age_stranding(
+        stranding, host, now, "its capacity-restore put ZERO instances back in service"
+    )
+
+
 def record_success(  # noqa: PLR0913  # the receipt plus every record one success settles
     receipts: dict[str, Any],
     stranding: dict[str, dict[str, int]],
@@ -1801,6 +1881,7 @@ def record_success(  # noqa: PLR0913  # the receipt plus every record one succes
     released: bool,
     reopened: bool = False,
     parked: dict[str, dict[str, int]] | None = None,
+    serving: bool = True,
 ) -> None:
     """Publish one reconciled host's receipt and settle the frozen-image records.
 
@@ -1816,12 +1897,23 @@ def record_success(  # noqa: PLR0913  # the receipt plus every record one succes
     fleet reported converged on the image the outage left behind (issue #888).
     The receipts name the producer they were earned against, so the marks are
     the evidence and no record has to survive for them to be found.
+
+    ``serving`` is false when this transaction's own ``capacity-restore``
+    reported that it converged live admission to ZERO instances, which is a
+    converged declaration and no capacity: the receipt is still published,
+    because the declaration really did converge, but the zero-capacity record
+    is held rather than cleared as serving.  It dates itself off the receipt
+    this pass publishes, whose ``checked_at`` is this pass's clock by the same
+    identity ``reconciled_this_pass`` reads it by.
     """
     producer = order[0]
     receipts[host] = released_receipt(receipt, host, producer) if index and released else receipt
     if reopened:
         clear_park(parked, host)
-    clear_stranding(stranding, host)
+    if serving:
+        clear_stranding(stranding, host)
+    else:
+        hold_reconciled_at_zero(stranding, host, receipt_clock(receipt))
     if not index:
         expire_released_receipts(receipts, order[1:], producer)
 
@@ -2248,17 +2340,20 @@ def reconcile(
             continue
 
         receipt_invalidated = False
-        last_mutation = ""
+        capacity = TransactionCapacity()
 
-        def transaction_run(argv: Sequence[str], target: str = host) -> frp.CommandResult:
-            nonlocal receipt_invalidated, last_mutation
+        def transaction_run(
+            argv: Sequence[str],
+            target: str = host,
+            record: TransactionCapacity = capacity,
+        ) -> frp.CommandResult:
+            nonlocal receipt_invalidated
             verb, _command_host = _command_identity(argv)
-            last_mutation = verb if capacity_mutation(verb) else last_mutation
             if verb == "parked-apply" and not receipt_invalidated:
                 receipts.pop(target, None)
                 save_state(state_path, document)
                 receipt_invalidated = True
-            return run(argv)
+            return record.read(verb, run(argv))
 
         try:
             ok, stranded, receipt = reconcile_host(
@@ -2283,13 +2378,14 @@ def reconcile(
                 receipt,
                 index=index,
                 released=producer_released,
-                reopened=capacity_reopened(last_mutation),
+                reopened=capacity_reopened(capacity.verb),
                 parked=parked,
+                serving=capacity.admission != 0,
             )
         if not ok:
             failures += 1
             if options.mode == "apply":
-                lost = capacity_lost(host, stranded=stranded, mutated=bool(last_mutation))
+                lost = capacity_lost(host, stranded=stranded, mutated=bool(capacity.verb))
                 invalidate_receipt(
                     receipts,
                     stranding,
@@ -2298,7 +2394,7 @@ def reconcile(
                     options.now,
                     stranded=lost,
                     at_zero=host not in undrained,
-                    reopened=capacity_reopened(last_mutation),
+                    reopened=capacity_reopened(capacity.verb),
                     parked=parked,
                 )
                 save_state(state_path, document)
@@ -2864,7 +2960,7 @@ def selftest() -> int:
     failures.extend(frb.run(sys.modules[__name__]))
     failures.extend(frbl.run(sys.modules[__name__]))
     failures.extend(frbu.run(sys.modules[__name__]))
-    failures.extend(frc.run(sys.modules[__name__]))
+    failures.extend(frc.run(sys.modules[__name__]) + frcl.run(sys.modules[__name__]))
     failures.extend(frd.run(sys.modules[__name__]))
     failures.extend(frdr.run(sys.modules[__name__]))
     failures.extend(frre.run(sys.modules[__name__]))
