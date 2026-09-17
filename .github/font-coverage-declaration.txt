@@ -1,0 +1,39 @@
+# Declared Unicode coverage of the baked font subsets in libs/ra8_fonts/.
+#
+# This file is the record of which characters the reader can draw with no SD
+# card present, and scripts/checks/check_font_coverage.py holds it against the
+# committed .ttf bytes in both directions: every declared codepoint must be in
+# the font's cmap, and every codepoint in that cmap must be declared here. So
+# widening or narrowing the baked coverage is an edit to this file plus a new
+# subset, reviewable as a diff, rather than a replaced 37 KB blob.
+#
+# Before this declaration existed, the only record of the set was the
+# pyftsubset recipe in the docstring of scripts/gen/font_to_c.py, and it did
+# not match the file: the recipe asks for 0020-00FF, while the committed
+# subset carries 0020-007E and 00A0-00FF, i.e. not the 33 unencoded C1
+# codepoints 007F-009F. `check_font_coverage.py --recipe` now prints the
+# arguments that actually reproduce each committed subset.
+#
+# Format, one block per baked font:
+#   font <subset path> source <face it was cut from, or - for a whole face>
+#   range <HEX> | <HEX>-<HEX>     inclusive, ascending, one row per gap
+# Rows are ordered and may not touch: two adjacent ranges are one range.
+# The #! directives restate the row counts and are re-derived by the checker.
+#
+# Scope note: this declares the BAKED subsets only. A font provisioned on the
+# microSD card (FONT.OTF, read by ra8_sdfont_load) carries whatever coverage
+# the card's owner put on it and cannot be gated from the tree.
+#
+#! fonts: 1
+#! ranges: 6
+#! codepoints: 198
+
+# The reading-body face: Literata Regular (SIL OFL 1.1), subset for targets
+# that cannot spend flash on all 1163 codepoints of the committed face.
+font libs/ra8_fonts/literata_latin1.ttf source libs/ra8_fonts/Literata-Regular.ttf
+range 0020-007E  Basic Latin, printable ASCII from space to tilde
+range 00A0-00FF  Latin-1 Supplement from no-break space; the C1 block is unencoded
+range 2013-2014  en dash, em dash
+range 2018-2019  single quotation marks, left and right
+range 201C-201D  double quotation marks, left and right
+range 2026       horizontal ellipsis

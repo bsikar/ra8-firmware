@@ -717,6 +717,26 @@ gate_pinout_freshness() (
   python3 scripts/gen/gen_pinouts.py --check
 )
 
+# --- font coverage --------------------------------------------------------
+# Which characters the reader can draw with no SD card present is decided by
+# the cmap of the subset checked in under libs/ra8_fonts/, and until #687 no
+# file in the tree declared that set: the only record was the pyftsubset recipe
+# in the docstring of scripts/gen/font_to_c.py, which nothing read the font
+# back against and which is 33 codepoints wider than the committed bytes.
+# .github/font-coverage-declaration.txt is now that record, held against the
+# .ttf in BOTH directions, so narrowing the baked coverage cannot land as a
+# replaced blob with a green build.
+#
+# --selftest FIRST, both directions: every rule is driven against synthetic
+# coverage that must fire it, and the committed declaration must be quiet, so
+# "0 findings" cannot mean a checker that stopped reading the font.
+gate_font_coverage() (
+  set -e
+  require_cmd python3 "the font-coverage gate parses the committed .ttf cmaps"
+  python3 scripts/checks/check_font_coverage.py --selftest
+  python3 scripts/checks/check_font_coverage.py
+)
+
 # --- bench-lock -----------------------------------------------------------
 # One EK-RA8D2, ~20 concurrent agents, a nightly CI job and two humans. Every
 # script that drives it must take the bench lock first (#497); this proves the
