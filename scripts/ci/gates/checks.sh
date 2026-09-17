@@ -244,8 +244,8 @@ _pcc_repository_structure() (
   # The adjacent offline gate protects the fetched-patch integration seams:
   # staged paths/basenames, ESP-IDF component identity, and the weak/strong ABI
   # symbol chain. These regressions otherwise surface only in a full C6 build.
-  python3 scripts/checks/check_c6_integration.py --selftest
-  python3 scripts/checks/check_c6_integration.py
+  bash scripts/builders/check_c6_integration.sh --selftest
+  bash scripts/builders/check_c6_integration.sh
   # infra/fleet.yml is the single registry of the machines CI runs on and how
   # much of each one it may use. The declaration has to hold together on its
   # own terms (capacity that fits the declared budget, per-instance floors, a
