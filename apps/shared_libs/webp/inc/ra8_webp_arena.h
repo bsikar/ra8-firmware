@@ -14,10 +14,11 @@
  * ::ra8_img_arena (see
  * `apps/shared_libs/third_party/stb/stb_image_impl.c`). This arena is
  * a deliberate sibling of ra8_img_arena rather than a reuse of it: keeping the
- * WebP decoder decoupled from `apps/shared_libs/reflow` until the #289 band-tile render
- * path lands avoids a premature cross-library dependency, and the WebP path
- * additionally needs a zeroing ::ra8_webp_arena_calloc that the stb hooks do
- * not expose.
+ * WebP decoder's scratch separate from ra8_img_arena keeps the two allocators
+ * independently auditable, and the WebP path additionally needs a zeroing
+ * ::ra8_webp_arena_calloc that the stb hooks do not expose. The reflow inline
+ * arm (#637) therefore does not reuse ra8_img_arena for the decode: it splits
+ * the caller's byte slab and hands the tail slice to this arena.
  *
  * The allocator is a bump arena with reference-counted auto-reset: each
  * ra8_webp_arena_malloc()/_calloc() bumps `offset` and increments `live`; each

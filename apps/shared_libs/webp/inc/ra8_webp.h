@@ -19,10 +19,14 @@
  * The JOF tile producer consumes this facade
  * (`ra8_jof_produce()` -> `priv_webp_transcode`): a WebP manifest image
  * is decoded whole-frame here and banded into the one normalized band-tile
- * format, so render time touches a single codec regardless of source. The
- * small-image (non-tiled) `ra8_reflow` / `ra8_img` inline raster dispatch does
- * not yet have a WebP arm -- that lands with the #289 longstrip render path; see
- * the `TODO(#289)` seam in ra8_webp.c.
+ * format, so render time touches a single codec regardless of source.
+ *
+ * @par Integration (#637 inline small images):
+ * The small-image (non-tiled) `ra8_reflow` / `ra8_img` inline raster dispatch
+ * calls `ra8_webp_get_info()` / `ra8_webp_decode_rgba()` directly from
+ * `apps/shared_libs/reflow/src/reflow_image.c`, carving both the decoded frame
+ * and this facade's scratch arena out of the caller's `ra8_img_arena_t`. That
+ * arm is compiled only when the build defines `RA8_REFLOW_WEBP`.
  *
  *
  * [Ring 4 / WebP] {World: NS}

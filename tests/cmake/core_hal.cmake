@@ -309,6 +309,13 @@ set_source_files_properties(
 # passed here.
 ra8_webp_apply_soup_flags(${RA8_WEBP_THIRD_PARTY})
 
+# The host test core links both the reflow sources and the ra8_webp facade, so
+# arm reflow's WebP dispatch here too (#637). The firmware equivalent is the
+# per-app _ra8_reflow_webp decision in cmake/ra8_app/sources.cmake; without
+# this the WebP arm and its unit test would compile out of the host build and
+# never be exercised.
+target_compile_definitions(ra8_core_hal PUBLIC RA8_REFLOW_WEBP)
+
 # Route stb_truetype's per-glyph scratch (vertices, rasteriser edge/point
 # lists) through the no-heap arena in apps/shared_libs/reflow/src/ra8_stbtt_alloc.c
 # instead of libc malloc, so the host test build exercises the exact

@@ -9,6 +9,19 @@
  * is an integer nearest-neighbour scale-to-fit into a layout box, emitting one
  * `ra8_gfx_pixel()` per destination pixel (which clips to the framebuffer).
  *
+ * @par WebP inline arm (#637):
+ * `stb_image` cannot decode WebP, so an EPUB whose inline illustrations are
+ * WebP rendered nothing on this path while the same bytes decoded fine as a
+ * comic tile through `jof_produce` -> ra8_webp. When `RA8_REFLOW_WEBP` is
+ * defined the probe and the decode dispatch a RIFF/WEBP buffer to the
+ * ra8_webp facade instead, carving the whole-frame RGBA8888 buffer and the
+ * decoder's scratch out of the caller's same ::ra8_img_arena_t backing store,
+ * so the WebP arm is as heap-free as the stb one. The macro is defined by the
+ * build for an app that already carries the vendored decoder (`LIBS` names
+ * webp, jof or rabook_compile) and by the host unit-test build; without it the
+ * arm compiles out entirely and a WebP buffer is rejected by stb exactly as
+ * before, so no app pays libwebp's footprint for a format it never sees.
+ *
  *
  * [Ring 4 / Reflow] {World: NS}
  *
@@ -32,6 +45,10 @@
 #include "reflow_svg.h"
 #include "stb_image.h"
 
+#if defined(RA8_REFLOW_WEBP)
+#include "ra8_webp.h"
+#endif
+
 /** @brief Log tag for the image decode/blit module. */
 static const char* const s_tag_img = "ra8_img";
 
@@ -45,6 +62,7 @@ typedef enum : uint8_t {
   k_ra8_img_ch_g     = 1, /**< Green byte offset within an RGB triple.         */
   k_ra8_img_ch_b     = 2, /**< Blue byte offset within an RGB triple.          */
   k_ra8_img_min_edge = 1, /**< Minimum scaled / box edge length, pixels.       */
+  k_ra8_img_rgba_bpp = 4, /**< Source bytes per pixel for a WebP RGBA8888 frame. */
 } ra8_img_pack_t;
 
 /**
@@ -56,6 +74,54 @@ typedef enum : uint8_t {
   k_ra8_img_shift_g = 8,  /**< Green channel shift into 0x00RRGGBB. */
 } ra8_img_shift_t;
 
+#if defined(RA8_REFLOW_WEBP)
+/**
+ * @enum ra8_img_webp_sig_t
+ * @brief Byte offsets and lengths of the RIFF/WEBP container signature.
+ *
+ * @details A WebP file starts with the 12-byte header `"RIFF" <u32 size>
+ * "WEBP"`. Both FourCCs must match: `"RIFF"` alone is also WAV, AVI and a
+ * dozen other containers, so the arm sniffs the pair.
+ */
+typedef enum : uint8_t {
+  k_ra8_img_riff_off    = 0,  /**< Offset of the "RIFF" FourCC.              */
+  k_ra8_img_webp_off    = 8,  /**< Offset of the "WEBP" FourCC.              */
+  k_ra8_img_fourcc_len  = 4,  /**< Length of a FourCC tag, bytes.            */
+  k_ra8_img_webp_sig_n  = 12, /**< Bytes needed before the sniff is decidable. */
+  k_ra8_img_webp_align  = 16, /**< Arena alignment for the decoded frame.    */
+} ra8_img_webp_sig_t;
+
+/**
+ * @brief Test whether a buffer is a RIFF/WEBP container.
+ *
+ * @details Compares the two FourCC tags of the 12-byte RIFF header. The
+ * intervening 4-byte chunk size is not checked: a truncated or corrupt
+ * payload is rejected later by ra8_webp_get_info(), which parses the real
+ * VP8/VP8L/VP8X chunk. Internal helper for the WebP arm of
+ * ra8_img_probe_size() and ra8_img_decode_blit().
+ *
+ * @param[in] bytes Candidate buffer; must not be NULL.
+ * @param[in] len   Length of @p bytes, bytes.
+ * @retval true  @p len is at least ::k_ra8_img_webp_sig_n and both FourCCs match.
+ * @retval false Too short, or either FourCC differs.
+ *
+ * @pre @p bytes points at @p len readable bytes.
+ * @post @p bytes is not modified.
+ *
+ * @note MC/DC for `(len >= sig_n) && riff && webp`: a WebP buffer takes all
+ *       three true; a 2-byte buffer flips the length term; a PNG buffer flips
+ *       the RIFF term; a RIFF/WAVE buffer flips the WEBP term. All four
+ *       vectors are exercised by internal_test_webp_probe_and_blit().
+ * @since 0.1.0
+ */
+RA8_INTERNAL static bool internal_is_webp(const uint8_t* bytes, size_t len)
+{
+  return (len >= (size_t)k_ra8_img_webp_sig_n) &&
+         (memcmp(&bytes[k_ra8_img_riff_off], "RIFF", (size_t)k_ra8_img_fourcc_len) == 0) &&
+         (memcmp(&bytes[k_ra8_img_webp_off], "WEBP", (size_t)k_ra8_img_fourcc_len) == 0);
+}
+#endif /* RA8_REFLOW_WEBP */
+
 ra8_err_t ra8_img_probe_size(const uint8_t* bytes, size_t len, int32_t* out_w, int32_t* out_h)
 {
   RA8_CHECK_NULL_PTR(bytes, s_tag_img, "probe: null bytes");
@@ -66,6 +132,22 @@ ra8_err_t ra8_img_probe_size(const uint8_t* bytes, size_t len, int32_t* out_w, i
   if (ra8_svg_is_svg(bytes, len)) {
     return ra8_svg_size(bytes, len, out_w, out_h);
   }
+
+#if defined(RA8_REFLOW_WEBP)
+  /* stb_image has no WebP decoder: hand the header to ra8_webp (#637). */
+  if (internal_is_webp(bytes, len)) {
+    uint32_t        webp_w = 0U;
+    uint32_t        webp_h = 0U;
+    const ra8_err_t info_err = ra8_webp_get_info(bytes, len, &webp_w, &webp_h);
+    if (info_err != k_ra8_ok) {
+      ra8_log_error(s_tag_img, "probe: ra8_webp rejected the header");
+      return info_err;
+    }
+    *out_w = (int32_t)webp_w;
+    *out_h = (int32_t)webp_h;
+    return k_ra8_ok;
+  }
+#endif /* RA8_REFLOW_WEBP */
 
   int x    = 0;
   int y    = 0;
@@ -192,19 +274,27 @@ static ra8_err_t internal_decode_fail(void)
  * every pixel in the destination rectangle once; no sub-pixel filtering is
  * applied. Internal helper for ra8_img_decode_blit().
  *
- * @param[in] pixels Decoded source buffer, row-major RGB triples, size
- *                   `src_w * src_h * 3` bytes; must not be NULL.
- * @param[in] src_w  Source width, pixels (>= 1).
- * @param[in] src_h  Source height, pixels (>= 1).
- * @param[in] fit_w  Destination width, pixels (>= 1).
- * @param[in] fit_h  Destination height, pixels (>= 1).
- * @param[in] dst_x  Destination left edge in framebuffer coordinates.
- * @param[in] dst_y  Destination top edge in framebuffer coordinates.
+ * @param[in] pixels   Decoded source buffer, row-major pixels of
+ *                     @p src_bpp bytes each, size `src_w * src_h * src_bpp`
+ *                     bytes; must not be NULL.
+ * @param[in] src_w    Source width, pixels (>= 1).
+ * @param[in] src_h    Source height, pixels (>= 1).
+ * @param[in] fit_w    Destination width, pixels (>= 1).
+ * @param[in] fit_h    Destination height, pixels (>= 1).
+ * @param[in] dst_x    Destination left edge in framebuffer coordinates.
+ * @param[in] dst_y    Destination top edge in framebuffer coordinates.
+ * @param[in] src_bpp  Source bytes per pixel: ::k_ra8_img_req_rgb for an
+ *                     stb_image RGB decode, ::k_ra8_img_rgba_bpp for a
+ *                     ra8_webp RGBA8888 frame. Only the leading R, G and B
+ *                     bytes are read, so a trailing alpha byte is skipped
+ *                     rather than composited (the reflow framebuffer is
+ *                     opaque RGB).
  * @return Nothing.
  *
- * @pre @p pixels is a valid pointer to `src_w * src_h * 3` readable bytes.
+ * @pre @p pixels is a valid pointer to `src_w * src_h * src_bpp` readable bytes.
  * @pre All dimension arguments (@p src_w, @p src_h, @p fit_w, @p fit_h)
  *      are >= 1 so neither loop bound is zero and no division by zero occurs.
+ * @pre @p src_bpp is >= ::k_ra8_img_req_rgb.
  * @post Exactly `fit_w * fit_h` calls to `ra8_gfx_pixel()` have been made.
  * @post The @p pixels buffer is not modified (read-only traversal).
  *
@@ -220,14 +310,15 @@ static void internal_blit_scaled(const uint8_t* pixels,
                                  int32_t        fit_w,
                                  int32_t        fit_h,
                                  int32_t        dst_x,
-                                 int32_t        dst_y)
+                                 int32_t        dst_y,
+                                 uint8_t        src_bpp)
 {
   for (int32_t dy = 0; dy < fit_h; dy++) {
     const int32_t map_y = (int32_t)(((int64_t)dy * (int64_t)src_h) / (int64_t)fit_h);
     for (int32_t dx = 0; dx < fit_w; dx++) {
       const int32_t map_x = (int32_t)(((int64_t)dx * (int64_t)src_w) / (int64_t)fit_w);
       const size_t  idx =
-        (((size_t)map_y * (size_t)src_w) + (size_t)map_x) * (size_t)k_ra8_img_req_rgb;
+        (((size_t)map_y * (size_t)src_w) + (size_t)map_x) * (size_t)src_bpp;
       const uint32_t color = ((uint32_t)pixels[idx + (size_t)k_ra8_img_ch_r] << k_ra8_img_shift_r) |
                              ((uint32_t)pixels[idx + (size_t)k_ra8_img_ch_g] << k_ra8_img_shift_g) |
                              (uint32_t)pixels[idx + (size_t)k_ra8_img_ch_b];
@@ -273,6 +364,116 @@ static void internal_arena_release(ra8_img_arena_t* arena)
   arena->live   = 0U;
 }
 
+#if defined(RA8_REFLOW_WEBP)
+/**
+ * @brief Decode a RIFF/WEBP buffer out of the caller's arena and blit it.
+ *
+ * @details Splits the caller's ::ra8_img_arena_t backing store into two
+ * slices, in the same shape `priv_jof_webp_transcode()` uses: the leading
+ * `w * h * ::k_ra8_img_rgba_bpp` bytes hold the decoded RGBA8888 frame, and
+ * whatever remains (::k_ra8_img_webp_align aligned) becomes the
+ * ::ra8_webp_arena_t scratch the decoder allocates from. Nothing is taken
+ * from the heap and the stb allocator hook is never bound on this path, so
+ * the arena's own `offset` / `live` bookkeeping stays at zero throughout.
+ * The decoded frame is then fitted with internal_fit_box() and drawn by
+ * internal_blit_scaled() at ::k_ra8_img_rgba_bpp, which reads the R, G and B
+ * bytes and skips the alpha. Internal helper for ra8_img_decode_blit().
+ *
+ * @param[in,out] arena Caller-owned bump arena, used purely as a byte slab.
+ * @param[in]     bytes WebP container; must not be NULL.
+ * @param[in]     len   Length of @p bytes, bytes.
+ * @param[in]     dst_x Destination left edge in framebuffer coordinates.
+ * @param[in]     dst_y Destination top edge in framebuffer coordinates.
+ * @param[in]     box_w Layout box width, pixels (>= 1).
+ * @param[in]     box_h Layout box height, pixels (>= 1).
+ * @param[out]    out_w Drawn width, pixels; ignored when NULL.
+ * @param[out]    out_h Drawn height, pixels; ignored when NULL.
+ * @retval k_ra8_ok                     Frame decoded and blitted.
+ * @retval k_ra8_err_no_mem             `arena->cap` cannot hold the frame plus
+ *                                      a non-empty scratch slice.
+ * @retval k_ra8_err_not_supported      Dimensions exceed ra8_webp's limits.
+ * @retval k_ra8_err_validation_failed  Corrupt or truncated bitstream, or the
+ *                                      scratch slice was exhausted mid-decode.
+ *
+ * @pre internal_is_webp(@p bytes, @p len) is true.
+ * @pre `arena->base` points at `arena->cap` writable bytes.
+ * @post `arena->offset == 0` and `arena->live == 0` on every return path.
+ *
+ * @note MC/DC for the capacity decision `(frame_n > cap) || (scratch_n == 0)`:
+ *       a 1 KiB arena against an 8x8 frame takes both false; a frame larger
+ *       than the arena flips the first; an arena sized to exactly the frame
+ *       flips the second. Vectors live in internal_test_webp_probe_and_blit().
+ * @note Not thread-safe; internal_blit_scaled() writes through the
+ *       module-static ra8_gfx target.
+ * @since 0.1.0
+ */
+RA8_INTERNAL
+static ra8_err_t internal_webp_decode_blit(ra8_img_arena_t* arena,
+                                           const uint8_t*   bytes,
+                                           size_t           len,
+                                           int32_t          dst_x,
+                                           int32_t          dst_y,
+                                           int32_t          box_w,
+                                           int32_t          box_h,
+                                           int32_t*         out_w,
+                                           int32_t*         out_h)
+{
+  uint32_t        webp_w   = 0U;
+  uint32_t        webp_h   = 0U;
+  const ra8_err_t info_err = ra8_webp_get_info(bytes, len, &webp_w, &webp_h);
+  if (info_err != k_ra8_ok) {
+    ra8_log_error(s_tag_img, "blit: ra8_webp rejected the header");
+    return info_err;
+  }
+
+  const size_t frame_n =
+    (size_t)webp_w * (size_t)webp_h * (size_t)k_ra8_img_rgba_bpp;
+  const size_t frame_pad =
+    (frame_n + (size_t)k_ra8_img_webp_align - 1U) & ~((size_t)k_ra8_img_webp_align - 1U);
+  const size_t scratch_n = (frame_pad < arena->cap) ? (arena->cap - frame_pad) : 0U;
+  if ((frame_pad > arena->cap) || (scratch_n == 0U)) {
+    ra8_log_error(s_tag_img, "blit: arena too small for the webp frame");
+    return k_ra8_err_no_mem;
+  }
+
+  uint8_t* const   frame = arena->base;
+  ra8_webp_arena_t scratch = {
+    .base   = &arena->base[frame_pad],
+    .cap    = scratch_n,
+    .offset = 0U,
+    .live   = 0U,
+  };
+
+  const size_t    row_stride = (size_t)webp_w * (size_t)k_ra8_img_rgba_bpp;
+  const ra8_err_t dec_err =
+    ra8_webp_decode_rgba(bytes, len, &scratch, frame, row_stride, frame_n, nullptr, nullptr);
+  if (dec_err != k_ra8_ok) {
+    ra8_log_error(s_tag_img, "blit: webp decode failed");
+    return dec_err;
+  }
+
+  int32_t fit_w = 0;
+  int32_t fit_h = 0;
+  internal_fit_box((int32_t)webp_w, (int32_t)webp_h, box_w, box_h, &fit_w, &fit_h);
+  internal_blit_scaled(frame,
+                       (int32_t)webp_w,
+                       (int32_t)webp_h,
+                       fit_w,
+                       fit_h,
+                       dst_x,
+                       dst_y,
+                       (uint8_t)k_ra8_img_rgba_bpp);
+
+  if (out_w != nullptr) {
+    *out_w = fit_w;
+  }
+  if (out_h != nullptr) {
+    *out_h = fit_h;
+  }
+  return k_ra8_ok;
+}
+#endif /* RA8_REFLOW_WEBP */
+
 /** @brief Implementation of `ra8_img_decode_blit()` -- nearest-neighbour scale. */
 ra8_err_t ra8_img_decode_blit(ra8_img_arena_t* arena,
                               const uint8_t*   bytes,
@@ -291,6 +492,17 @@ ra8_err_t ra8_img_decode_blit(ra8_img_arena_t* arena,
     ra8_log_error(s_tag_img, "blit: empty input or box");
     return k_ra8_err_invalid_arg;
   }
+
+#if defined(RA8_REFLOW_WEBP)
+  /* stb_image has no WebP decoder: route the whole frame via ra8_webp (#637). */
+  if (internal_is_webp(bytes, len)) {
+    const ra8_err_t webp_err =
+      internal_webp_decode_blit(arena, bytes, len, dst_x, dst_y, box_w, box_h, out_w, out_h);
+    arena->offset = 0U;
+    arena->live   = 0U;
+    return webp_err;
+  }
+#endif /* RA8_REFLOW_WEBP */
 
   ra8_img_arena_bind(arena); /* resets the arena to empty */
   int sx   = 0;
@@ -321,7 +533,14 @@ ra8_err_t ra8_img_decode_blit(ra8_img_arena_t* arena,
   int32_t fit_w = 0;
   int32_t fit_h = 0;
   internal_fit_box((int32_t)sx, (int32_t)sy, box_w, box_h, &fit_w, &fit_h);
-  internal_blit_scaled(pixels, (int32_t)sx, (int32_t)sy, fit_w, fit_h, dst_x, dst_y);
+  internal_blit_scaled(pixels,
+                       (int32_t)sx,
+                       (int32_t)sy,
+                       fit_w,
+                       fit_h,
+                       dst_x,
+                       dst_y,
+                       (uint8_t)k_ra8_img_req_rgb);
   // clang-format off: the allocation opt-out comment must stay on the flagged call line.
   stbi_image_free(pixels); /* alloc-allow: ra8_img_arena-backed (zero-heap), not malloc */
   // clang-format on

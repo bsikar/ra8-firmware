@@ -169,10 +169,10 @@ static ra8_err_t internal_webp_decode_impl(const uint8_t*    data,
    * normalize-on-import path consumes it in the JOF tile producer
    * (apps/shared_libs/jof/src/jof_produce.c: priv_webp_transcode), which
    * bands the decoded canvas into JOF tiles so render time touches one codec
-   * regardless of source. TODO(#289): the ra8_reflow / ra8_img inline raster
-   * dispatch (apps/shared_libs/reflow/src/reflow_image.c) does not yet have a WebP
-   * arm for the small-image (non-tiled) path -- that lands with the longstrip
-   * render work; large WebP pages already normalize through the producer above.
+   * regardless of source. The ra8_reflow / ra8_img inline raster dispatch
+   * (apps/shared_libs/reflow/src/reflow_image.c) calls this same facade for the
+   * small-image (non-tiled) path when the build defines RA8_REFLOW_WEBP (#637),
+   * so both entry points share one decoder and one arena discipline.
    */
 
   if (out_w != nullptr) {

@@ -387,6 +387,21 @@ macro(_ra8_app_collect_sources)
     list(APPEND _ra8_lib_inc ${RA8_REPO_ROOT}/apps/shared_libs/third_party/libwebp)
   endif()
 
+  # reflow's inline-image path (apps/shared_libs/reflow/src/reflow_image.c)
+  # decodes through stb_image, which has no WebP decoder, so a WebP
+  # illustration inside an EPUB rendered nothing while the same bytes
+  # decoded fine as a comic tile. Arm reflow's WebP branch only for an app
+  # that already carries the vendored decoder above, so no app pays
+  # libwebp's footprint for a format it never sees (#637).
+  set(_ra8_reflow_webp OFF)
+  if(("reflow" IN_LIST _RA8_APP_LIBS)
+     AND (("webp" IN_LIST _RA8_APP_LIBS)
+          OR ("jof" IN_LIST _RA8_APP_LIBS)
+          OR ("rabook_compile" IN_LIST _RA8_APP_LIBS))
+  )
+    set(_ra8_reflow_webp ON)
+  endif()
+
   # unarch decodes wrapped / container archive streams (tar for .cbt,
   # gzip, XZ) under the unified decompression-limits policy. Its XZ leg
   # drives the vendored xz-embedded decoder (SOUP), whose allocator and mode

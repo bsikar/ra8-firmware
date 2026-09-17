@@ -96,6 +96,13 @@ macro(_ra8_app_vendored_flags)
     ra8_webp_apply_soup_flags(${_ra8_webp_vendor})
   endif()
 
+  # Arm reflow's WebP dispatch (#637) only when both halves are present: the
+  # reflow lib itself and the vendored decoder wired just above. Set in
+  # cmake/ra8_app/sources.cmake alongside the _ra8_webp_vendor decision.
+  if(_ra8_reflow_webp)
+    target_compile_definitions(${_ra8_elf} PRIVATE RA8_REFLOW_WEBP)
+  endif()
+
   # The vendored xz-embedded decoder (SOUP): one measured -Wno plus
   # -fno-strict-aliasing, matching tests/cmake/core_hal.cmake. Its
   # attacker-facing memory-safety net is the ASan/UBSan libFuzzer harness

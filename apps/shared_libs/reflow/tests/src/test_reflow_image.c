@@ -465,6 +465,165 @@ RA8_INTERNAL static void internal_test_decode_fail_real_paths_mcdc(void)
   TEST_END("ra8_img_decode_blit decode-fail MC/DC: no_mem vs not_supported");
 }
 
+#if defined(RA8_REFLOW_WEBP)
+/**
+ * @brief An 8x8 lossless WebP, the same fixture tests/graphics/src/test_ra8_webp.c
+ *        embeds (tests/fixtures/webp/fixture_lossless.webp, #290).
+ * @details Pixel (x, y) is `((x * 32) % 256, (y * 32) % 256, ((x + y) * 16) % 256, 255)`,
+ * so the decoded frame proves channel order and row order survive the WebP arm
+ * exactly as s_png_2x2 does for the stb arm.
+ */
+static const uint8_t s_webp_lossless_8x8[] = {
+  0x52, 0x49, 0x46, 0x46, 0x2c, 0x00, 0x00, 0x00, 0x57, 0x45, 0x42, 0x50, 0x56, 0x50,
+  0x38, 0x4c, 0x20, 0x00, 0x00, 0x00, 0x2f, 0x07, 0xc0, 0x01, 0x00, 0x27, 0x74, 0x6d,
+  0xdb, 0x68, 0x24, 0x49, 0x92, 0x24, 0xc9, 0xff, 0xc1, 0x8d, 0x1b, 0x37, 0x6e, 0xdc,
+  0xb8, 0x71, 0xe3, 0xc6, 0x8d, 0x1b, 0x37, 0x6e, 0xfc, 0x07,
+};
+
+/** @brief A RIFF/WAVE header: RIFF matches, WEBP does not (MC/DC vector). */
+static const uint8_t s_riff_wave[] = {
+  0x52, 0x49, 0x46, 0x46, 0x24, 0x00, 0x00, 0x00, 0x57, 0x41, 0x56, 0x45, 0x66, 0x6d,
+  0x74, 0x20,
+};
+
+/**
+ * @enum t_webp_const_t
+ * @brief Fixture geometry and the generator steps of the lossless pattern.
+ */
+typedef enum : uint16_t {
+  k_t_webp_dim      = 8U,   /**< Fixture edge length, pixels. */
+  k_t_webp_step_r   = 32U,  /**< Red step per x.              */
+  k_t_webp_step_g   = 32U,  /**< Green step per y.            */
+  k_t_webp_step_b   = 16U,  /**< Blue step per (x + y).       */
+  k_t_webp_byte_mod = 256U, /**< Channel wrap modulus.        */
+} t_webp_const_t;
+
+/**
+ * @brief Expected 0x00RRGGBB colour of the lossless fixture at (x, y).
+ * @details Mirrors the generator in tests/fixtures/webp/README.md so the
+ * assertion does not restate baked numbers.
+ * @param[in] x Column, 0 .. ::k_t_webp_dim - 1.
+ * @param[in] y Row, 0 .. ::k_t_webp_dim - 1.
+ * @return The packed RGB888 colour the decoder must produce.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static uint32_t internal_webp_expected_px(uint32_t x, uint32_t y)
+{
+  const uint32_t r = (x * (uint32_t)k_t_webp_step_r) % (uint32_t)k_t_webp_byte_mod;
+  const uint32_t g = (y * (uint32_t)k_t_webp_step_g) % (uint32_t)k_t_webp_byte_mod;
+  const uint32_t b = ((x + y) * (uint32_t)k_t_webp_step_b) % (uint32_t)k_t_webp_byte_mod;
+  return (r << 16U) | (g << 8U) | b;
+}
+
+/**
+ * @brief The WebP arm: sniff MC/DC, probe, 1:1 blit, and the too-small arena.
+ *
+ * @details Covers the three conditions of internal_is_webp()'s decision
+ * `(len >= sig_n) && riff && webp` with four vectors -- the WebP fixture (all
+ * true), a two-byte prefix (length false), the 2x2 PNG (RIFF false) and a
+ * RIFF/WAVE header (WEBP false) -- observing each through the public API: a
+ * true sniff reaches ra8_webp, a false one falls through to stb_image, and the
+ * two differ observably (stb rejects the WebP bytes as not_supported when the
+ * arm is the one under test, and decodes the PNG when it is not). Then decodes
+ * the fixture 1:1 into an 8x8 framebuffer and reads every pixel back, and
+ * finally drives the capacity decision `(frame_pad > cap) || (scratch_n == 0)`
+ * with an arena sized to exactly the frame (scratch empty) and one far below
+ * it. The arena's offset/live must read zero after every call, including the
+ * WebP path, which never binds the stb allocator hook at all.
+ *
+ * @return Nothing.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_test_webp_arm(void)
+{
+  TEST_BEGIN("ra8_img WebP arm: sniff MC/DC, probe, blit, arena bounds");
+
+  static uint8_t  s_scratch[k_t_scratch_kib * k_t_kib];
+  ra8_img_arena_t big = {.base = s_scratch, .cap = sizeof s_scratch, .offset = 0U, .live = 0U};
+  int32_t         w   = 0;
+  int32_t         h   = 0;
+
+  /* V1: all three conditions true -> ra8_webp answers the probe. */
+  TEST_ASSERT_EQ(k_ra8_ok,
+                 ra8_img_probe_size(s_webp_lossless_8x8, sizeof s_webp_lossless_8x8, &w, &h));
+  TEST_ASSERT_EQ((int32_t)k_t_webp_dim, w);
+  TEST_ASSERT_EQ((int32_t)k_t_webp_dim, h);
+
+  /* V2: length false (same leading bytes, truncated below the 12-byte sig). */
+  TEST_ASSERT_EQ(k_ra8_err_not_supported,
+                 ra8_img_probe_size(s_webp_lossless_8x8, 2U, &w, &h));
+
+  /* V3: RIFF false -> falls through to stb, which reads the PNG header. */
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_img_probe_size(s_png_2x2, sizeof s_png_2x2, &w, &h));
+  TEST_ASSERT_EQ(2, w);
+  TEST_ASSERT_EQ(2, h);
+
+  /* V4: RIFF true, WEBP false -> falls through to stb, which rejects it. */
+  TEST_ASSERT_EQ(k_ra8_err_not_supported,
+                 ra8_img_probe_size(s_riff_wave, sizeof s_riff_wave, &w, &h));
+
+  /* Decode + blit 1:1 and read the framebuffer back pixel by pixel. */
+  static uint8_t s_fb[k_t_webp_dim * k_t_webp_dim * 3U];
+  TEST_ASSERT_EQ(k_ra8_ok,
+                 ra8_gfx_init(s_fb, k_t_webp_dim, k_t_webp_dim, k_ra8_gfx_format_rgb888));
+  TEST_ASSERT_EQ(k_ra8_ok,
+                 ra8_img_decode_blit(&big,
+                                     s_webp_lossless_8x8,
+                                     sizeof s_webp_lossless_8x8,
+                                     0,
+                                     0,
+                                     (int32_t)k_t_webp_dim,
+                                     (int32_t)k_t_webp_dim,
+                                     &w,
+                                     &h));
+  TEST_ASSERT_EQ((int32_t)k_t_webp_dim, w);
+  TEST_ASSERT_EQ((int32_t)k_t_webp_dim, h);
+  TEST_ASSERT_EQ(0, big.offset);
+  TEST_ASSERT_EQ(0, big.live);
+  for (uint32_t y = 0U; y < (uint32_t)k_t_webp_dim; y++) {
+    for (uint32_t x = 0U; x < (uint32_t)k_t_webp_dim; x++) {
+      TEST_ASSERT_EQ(internal_webp_expected_px(x, y),
+                     internal_fb_px(s_fb, (int32_t)k_t_webp_dim, (int32_t)x, (int32_t)y));
+    }
+  }
+
+  /* Capacity MC/DC V2: arena holds the frame exactly, so scratch_n == 0. */
+  static uint8_t  s_exact[k_t_webp_dim * k_t_webp_dim * 4U];
+  ra8_img_arena_t exact = {.base = s_exact, .cap = sizeof s_exact, .offset = 0U, .live = 0U};
+  TEST_ASSERT_EQ(k_ra8_err_no_mem,
+                 ra8_img_decode_blit(&exact,
+                                     s_webp_lossless_8x8,
+                                     sizeof s_webp_lossless_8x8,
+                                     0,
+                                     0,
+                                     (int32_t)k_t_webp_dim,
+                                     (int32_t)k_t_webp_dim,
+                                     NULL,
+                                     NULL));
+  TEST_ASSERT_EQ(0, exact.offset);
+  TEST_ASSERT_EQ(0, exact.live);
+
+  /* Capacity MC/DC V3: arena far below the frame, so frame_pad > cap. */
+  static uint8_t  s_tiny_webp[k_t_tiny_dst_cap];
+  ra8_img_arena_t tiny = {
+    .base = s_tiny_webp, .cap = sizeof s_tiny_webp, .offset = 0U, .live = 0U};
+  TEST_ASSERT_EQ(k_ra8_err_no_mem,
+                 ra8_img_decode_blit(&tiny,
+                                     s_webp_lossless_8x8,
+                                     sizeof s_webp_lossless_8x8,
+                                     0,
+                                     0,
+                                     (int32_t)k_t_webp_dim,
+                                     (int32_t)k_t_webp_dim,
+                                     NULL,
+                                     NULL));
+  TEST_ASSERT_EQ(0, tiny.offset);
+  TEST_ASSERT_EQ(0, tiny.live);
+
+  TEST_END("ra8_img WebP arm: sniff MC/DC, probe, blit, arena bounds");
+}
+#endif /* RA8_REFLOW_WEBP */
+
 /**
  * @brief Test entry point.
  * @return 0 on success; unity macros exit(1) on the first failure.
@@ -478,5 +637,8 @@ int main(void)
   internal_test_decode_fail_classify_mcdc();
   internal_test_decode_fail_real_paths_mcdc();
   internal_test_arena_drained_and_no_mem();
+#if defined(RA8_REFLOW_WEBP)
+  internal_test_webp_arm();
+#endif
   return 0;
 }

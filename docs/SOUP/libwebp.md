@@ -42,16 +42,23 @@ into this firmware as Software Of Unknown Provenance (SOUP).
 - Integrity claim category: data-handling. The decoder consumes fully
   attacker-controlled initial-access content (a WebP inside a downloaded
   book), so it cannot rely on trusted input.
-- **Scope note -- where the decoder is wired, and where it is not.** The
-  decoder is vendored, built, standalone-tested and fuzzed (that was #290).
-  Render-time decodes reach it through the band-tile producer:
-  `apps/shared_libs/jof/src/jof_produce_webp.c` normalises a decoded WebP into the
-  band-tile format, so comic and EPUB **tiles** take WebP. That is the half of
-  #289 that landed before it closed on 2026-07-20. The other half did not: the
-  `reflow` **inline small-image** path
-  (`apps/shared_libs/reflow/src/reflow_image.c`) is still `stb_image`-only and
-  fails a WebP closed. That residual arm is tracked by #637, which also owns
-  the `TODO(#289)` seam comments left in `ra8_webp.c` / `ra8_webp.h`.
+- **Scope note -- where the decoder is wired.** The decoder is vendored,
+  built, standalone-tested and fuzzed (that was #290). Render-time decodes
+  reach it through two entry points, both via the first-party facade:
+  - **Tiles.** `apps/shared_libs/jof/src/jof_produce_webp.c` normalises a decoded
+    WebP into the band-tile format, so comic and EPUB **tiles** take WebP. That
+    is the half of #289 that landed before it closed on 2026-07-20.
+  - **Inline small images.** `apps/shared_libs/reflow/src/reflow_image.c` sniffs
+    the RIFF/WEBP signature and dispatches to `ra8_webp_get_info()` /
+    `ra8_webp_decode_rgba()` instead of `stb_image`, carving both the decoded
+    frame and this decoder's scratch arena out of the caller's
+    `ra8_img_arena_t`. That was the residual arm tracked by #637; it is
+    compiled only when the build defines `RA8_REFLOW_WEBP` (set per app by
+    `cmake/ra8_app/sources.cmake` when an app carries `reflow` alongside
+    `webp` / `jof` / `rabook_compile`, and unconditionally for the host test
+    build in `tests/cmake/core_hal.cmake`), so an app that never sees a WebP
+    does not pay libwebp's footprint. The `TODO(#289)` seam comments in
+    `ra8_webp.c` / `ra8_webp.h` are retired with it.
 
 ## Qualification basis
 
