@@ -188,6 +188,61 @@ if [ -z "${_RA8_TOOL_ENV_SH:-}" ]; then
     printf '%s\n' "${count}"
   }
 
+  # Persistent PINNED-TOOL cache (#326). The docs gate builds with a
+  # version-pinned doxygen that scripts/builders/provision_doxygen.sh downloads +
+  # sha256-verifies on first use. Every suite run builds in a fresh mktemp
+  # snapshot whose build/tools/ is destroyed on exit, so without a persistent
+  # location that download repeats every run and FAILS outright with no network.
+  # This is to pinned tools what the ccache mount is to compiled objects: one host
+  # directory, reused across runs and shared across agents at zero cost.
+  ra8_tools_cache_host_dir() {
+    printf '%s\n' "${RA8_TOOLS_CACHE_DIR:-/var/cache/ra8-tools}"
+  }
+
+  # Point provision_doxygen.sh (and any future pinned-tool provisioner) at that
+  # persistent directory by exporting RA8_TOOLS_CACHE, for the paths that run a
+  # gate DIRECTLY on the host (single-gate and native-suite modes). The container
+  # path sets RA8_TOOLS_CACHE via `-e` against the /toolcache mount instead, so
+  # leave an already-set value untouched. A cache is an optimisation: an
+  # unwritable location degrades to the per-build build/tools/ rather than
+  # failing a gate.
+  #
+  # The canonical host directory is a MOUNT the deployed ARC runner image does
+  # not carry, so on those runners the first candidate is unwritable and every
+  # gate re-downloads the pinned doxygen, zig and rust into the per-build
+  # build/tools/ that the snapshot then destroys. Fall back to the runner's own
+  # tool cache and then to the user cache home before giving up: both survive a
+  # snapshot and are writable wherever the canonical mount is missing, which
+  # turns ~20 re-downloads per suite back into one. Resolution stops at the
+  # first candidate that exists and is writable; when none is, the degrade is
+  # unchanged.
+  ra8_tools_cache_candidates() {
+    printf '%s\n' "$(ra8_tools_cache_host_dir)"
+    [[ -n "${RUNNER_TOOL_CACHE:-}" ]] && printf '%s/ra8-tools\n' "${RUNNER_TOOL_CACHE}"
+    if [[ -n "${XDG_CACHE_HOME:-}" ]]; then
+      printf '%s/ra8-tools\n' "${XDG_CACHE_HOME}"
+    elif [[ -n "${HOME:-}" ]]; then
+      printf '%s/.cache/ra8-tools\n' "${HOME}"
+    fi
+    return 0
+  }
+
+  export_tools_cache() {
+    [[ -n "${RA8_TOOLS_CACHE:-}" ]] && return 0
+    local dir
+    while read -r dir; do
+      [[ -n "$dir" ]] || continue
+      mkdir -p "$dir" 2>/dev/null || continue
+      if [[ -d "$dir" && -w "$dir" ]]; then
+        export RA8_TOOLS_CACHE="$dir"
+        echo "==> pinned-tool cache: $dir (survives the snapshot; docs gate doxygen)" >&2
+        return 0
+      fi
+    done < <(ra8_tools_cache_candidates)
+    echo "==> pinned-tool cache unavailable at $(ra8_tools_cache_host_dir); continuing without it" >&2
+    return 0
+  }
+
   _ra8_tool_path_override_selftest() {
     local override_bin="$1" repo_bin="$2" first second resolved
     local RA8_TOOL_BIN="${override_bin}" PATH="${PATH}" RA8_TOOL_VENV
