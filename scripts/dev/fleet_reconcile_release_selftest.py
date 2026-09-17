@@ -257,10 +257,18 @@ def _release_policy_stays_conservative(controller: ModuleType, failures: list[st
     if not blocking or released:
         failures.append("a producer that could not be drained stopped holding its consumers back")
     blocking, released = controller.producer_block_state(
-        durable, "producer", stranded=False, undrained=False
+        {}, "producer", stranded=False, undrained=False
     )
     if blocking or released:
         failures.append("the producer block ignored what the pass actually did to capacity")
+    blocking, released = controller.producer_block_state(
+        durable, "producer", stranded=False, undrained=False
+    )
+    if blocking or not released:
+        failures.append(
+            "a producer already recorded at zero released its consumers onto a frozen image "
+            "without making their receipts provisional"
+        )
 
 
 def run(controller: ModuleType) -> list[str]:

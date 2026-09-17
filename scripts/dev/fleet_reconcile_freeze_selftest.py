@@ -282,7 +282,8 @@ def _expiry_policy_is_narrow(controller: ModuleType, failures: list[str]) -> Non
         "undrained": controller.producer_block_state(
             durable, "producer", stranded=True, undrained=True
         ),
-        "intact": controller.producer_block_state(
+        "intact": controller.producer_block_state({}, "producer", stranded=False, undrained=False),
+        "intact-at-zero": controller.producer_block_state(
             durable, "producer", stranded=False, undrained=False
         ),
     }
@@ -291,6 +292,7 @@ def _expiry_policy_is_narrow(controller: ModuleType, failures: list[str]) -> Non
         "early": (True, False),
         "undrained": (True, False),
         "intact": (False, False),
+        "intact-at-zero": (False, True),
     }
     for name, state in states.items():
         if state != expected[name]:
