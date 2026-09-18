@@ -186,7 +186,9 @@ file(GLOB_RECURSE RA8_PSA_CRYPTO_SOURCES CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra8_p
 # encoding and the canonical boot attribute map are Zig now, linked via
 # tests/cmake/zig_libraries.cmake.
 file(GLOB RA8_BOARD_EK_RA8D2_SOURCES CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra8_board_ek_ra8d2/src/*.c)
-file(GLOB_RECURSE RA8_LSM6DSO_SOURCES CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra8_lsm6dso/src/*.c)
+# ra8_lsm6dso has no C sources left: the CTRL1_XL / CTRL2_G encoders, the
+# little-endian sample decoders and the FIFO drain are Zig now, linked via
+# tests/cmake/zig_libraries.cmake.
 file(GLOB_RECURSE RA8_OV5640_SOURCES CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra8_ov5640/src/*.c)
 file(GLOB_RECURSE RA8_TZ_SECURE_BOOT_SOURCES CONFIGURE_DEPENDS
      ${FW_ROOT}/libs/ra8_tz_secure_boot/src/*.c

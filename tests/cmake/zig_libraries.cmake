@@ -149,6 +149,21 @@ ra8_add_zig_library(
   ra8_net_pal
 )
 
+# Fully migrated: the CTRL1_XL / CTRL2_G bit-field encoders, the little-endian
+# sample decoders, the temperature conversion and the FIFO drain are Zig now,
+# so libs/ra8_lsm6dso/src has no .c left and the RA8_LSM6DSO_SOURCES glob is
+# gone from library_sources.cmake and core_hal.cmake. The transport stays a
+# caller-supplied seam, so the host suite's canned-response mock substitutes
+# for the I2C / SPI bus exactly as before.
+ra8_add_zig_library(
+  NAME
+  ra8_lsm6dso
+  ZIG_ROOT
+  ${FW_ROOT}/libs/ra8_lsm6dso
+  LIBRARY_NAME
+  ra8_lsm6dso
+)
+
 # ra8_core_hal is the OBJECT library every host test links, so an INTERFACE
 # link here reaches each test executable that pulls in a migrated library.
 target_link_libraries(
@@ -164,4 +179,5 @@ target_link_libraries(
          ra8_zig::ra8_wdt_supervisor
          ra8_zig::ra8_mpu
          ra8_zig::ra8_net_pal
+         ra8_zig::ra8_lsm6dso
 )
