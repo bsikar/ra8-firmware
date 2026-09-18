@@ -260,6 +260,32 @@ typedef struct {
   const void* panel_timing;
 } display_cfg_t;
 
+/**
+ * @struct display_fb_cfg_t
+ * @brief Framebuffer storage and geometry the application owns.
+ *
+ * @details
+ * This is the half of ``display_cfg_t`` an application genuinely
+ * knows about: the buffer it allocated and the geometry it wants to
+ * paint. The other half -- which backend vtable to dispatch through
+ * and which panel descriptor that backend needs -- is supplied by
+ * the typed per-backend bind helper (``display_pal_bind_glcdc`` in
+ * ``ra8_display_pal_lcd.h``), so the two cannot be mismatched.
+ *
+ * @invariant ``pixels`` is non-NULL and alive for as long as the
+ *            display handle is bound.
+ * @invariant ``bytes >= width_px * height_px * bytes-per-pixel(pixfmt)``.
+ *
+ * @since 0.1.0
+ */
+typedef struct {
+  void*            pixels;    /**< Application framebuffer storage (caller owns). */
+  uint32_t         bytes;     /**< Size of ``pixels`` in bytes.                   */
+  uint16_t         width_px;  /**< Visible framebuffer width in pixels.           */
+  uint16_t         height_px; /**< Visible framebuffer height in pixels.          */
+  display_pixfmt_t pixfmt;    /**< Pixel format of ``pixels``.                    */
+} display_fb_cfg_t;
+
 /* =============================================================================
  * Public API
  * =============================================================================
@@ -341,7 +367,7 @@ typedef struct {
  *
  * @pre ``display_init`` has succeeded.
  * @pre ``out`` is writable.
- * @post On success the caller may write ``out->width_px *
+ * @post On success the caller may write ``out->height_px *
  *       out->stride_bytes`` bytes starting at ``out->pixels``.
  *
  * @note Thread-safe relative to other PAL calls; not safe to call
