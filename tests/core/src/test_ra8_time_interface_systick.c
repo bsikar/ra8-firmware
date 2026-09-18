@@ -26,10 +26,11 @@ typedef enum : uint8_t {
   k_time_if_ticks_short = 3U,  /**< Tick burst for the forwarding test.    */
   k_time_if_ticks_long  = 17U, /**< Second burst, different from the first.*/
   k_time_if_delay_zero  = 0U,  /**< Zero delay: must return immediately.   */
+  k_time_if_ctx_sentinel = 0xA5A5A5A5U, /**< Context sentinel.              */
 } time_if_test_const_t;
 
 /** @brief Sentinel the forwarders must ignore rather than dereference. */
-static uint32_t s_ctx_sentinel = 0xA5A5A5A5U;
+static uint32_t s_ctx_sentinel = k_time_if_ctx_sentinel;
 
 /**
  * @brief Advance the SysTick tick counter by `n` milliseconds.
@@ -144,7 +145,7 @@ static void test_time_if_systick_ignores_ctx(void)
   const uint32_t with_null = g_ra8_time_interface_systick.now_ms(nullptr);
   const uint32_t with_ptr  = g_ra8_time_interface_systick.now_ms(&s_ctx_sentinel);
   TEST_ASSERT_EQ(with_null, with_ptr);
-  TEST_ASSERT_EQ(0xA5A5A5A5U, s_ctx_sentinel);
+  TEST_ASSERT_EQ((uint32_t)k_time_if_ctx_sentinel, s_ctx_sentinel);
   TEST_END("forwarders ignore the ctx argument");
 }
 
@@ -152,9 +153,10 @@ static void test_time_if_systick_ignores_ctx(void)
  * @brief Verify a zero-millisecond delay returns and perturbs nothing.
  *
  * @details
- * ::ra8_delay_ms documents that zero returns immediately. Driven through
- * the vtable, the call must return and must leave the tick counter alone,
- * which also proves `delay_ms` does not secretly advance time itself.
+ * Driven through the vtable, the zero-delay call must be callable, return,
+ * and leave the host tick counter alone. The host implementation intentionally
+ * does not execute the target busy-wait body, so this test does not measure
+ * delay behavior for nonzero durations.
  *
  * @pre None.
  * @post The tick counter is unchanged.
