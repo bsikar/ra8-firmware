@@ -14,7 +14,7 @@
 # prevent.
 #
 # Gates in this file: mcdc-delta-base, osv-scan, fuzz-sweep, runner-clock,
-#                     hil-all, docs-publish
+#                     hil-all
 
 # --- mcdc-delta-base (manual) ---------------------------------------------
 # Builds the BASE branch's MC/DC summary in a throwaway worktree so the PR
@@ -300,27 +300,6 @@ gate_bench_lock_selftest() (
   set -e
   require_cmd ssh
   /bin/bash -p scripts/hil/bench.sh selftest --ssh-death
-)
-
-# --- docs-publish (manual) ------------------------------------------------
-# Builds the Doxygen HTML and force-pushes it to the orphan gh-pages branch.
-# Not a pass/fail quality gate -- registered so ci-parity can bind the publish
-# workflow's step and no unreviewed `run:` body hides inside it.
-gate_docs_publish() (
-  set -e
-  require_cmd just "the publish gate builds through the authoritative docs recipe"
-  # Same hard dependency as the docs gate, and it matters more here: without
-  # `dot`, build_docs.sh degrades to text-only output and this gate would
-  # force-push a diagram-free site over the live one, succeeding the whole way.
-  # The publish path is exactly where a silent degradation does the damage.
-  require_cmd dot
-  /bin/bash -p scripts/dev/run_just.sh docs::build
-  # Verify the site about to be published actually contains its diagrams,
-  # against the real output tree `just docs::build` just wrote. --selftest first, so
-  # the publish path never trusts an unproven detector (#531).
-  python3 scripts/checks/check_doc_diagrams.py --selftest
-  python3 scripts/checks/check_doc_diagrams.py --html build/docs/html
-  /bin/bash -p scripts/builders/publish_docs.sh
 )
 
 # ===========================================================================
