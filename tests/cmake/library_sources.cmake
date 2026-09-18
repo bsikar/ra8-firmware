@@ -44,6 +44,14 @@ file(GLOB_RECURSE COMPRESS_SOURCES CONFIGURE_DEPENDS ${FW_ROOT}/apps/shared_libs
 # ra8_audio is fully migrated to Zig (facade + memory and PDM backends);
 # see tests/cmake/zig_libraries.cmake. src/ra8_audio_internal.h stays: the
 # host suite includes it to build its own fake backend vtable.
+# ra8_camera is migrated to Zig apart from one file: the facade, the
+# fixed-frame memory source, the JPEG passthrough codec and the software-JPEG
+# codec are Zig (see tests/cmake/zig_libraries.cmake). The glob below therefore
+# finds only src/ra8_camera_source_ceu.c, which stays C because
+# tests/misc/src/test_ra8_camera.c and tests/misc/src/test_ra8_ceu_cov.c
+# white-box it with `#include "ra8_camera_source_ceu.c"`. src/
+# ra8_camera_internal.h stays too: four host suites include it to build their
+# own fake source and codec vtables.
 file(GLOB_RECURSE RA8_CAMERA_SOURCES CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra8_camera/src/*.c)
 file(GLOB_RECURSE RA8_CAMERA_IO_SOURCES CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra8_camera_io/src/*.c)
 file(GLOB_RECURSE RA8_FTL_SOURCES CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra8_ftl/src/*.c)
