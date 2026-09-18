@@ -84,6 +84,8 @@ _GROUPS = (
             "checks/check_just_references.py:REPO_ROOT",
             "checks/check_just_references.py:SELF",
             "checks/check_justfiles.py:REPO_ROOT",
+            "checks/check_linker_scripts.py:DEVICE_HEADER",
+            "checks/check_linker_scripts.py:DEVICE_MEM",
             "checks/check_lint_coverage.py:REPO_ROOT",
             "checks/check_magic_numbers.py:REPO_ROOT",
             "checks/check_mcdc_floor.py:MCDC_JSON",
