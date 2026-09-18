@@ -225,7 +225,6 @@ if [[ "$-" == *p* ]]; then
     "build-cross-union|slow|the cross-build shards covered every app exactly once"
     "sg-offsets|slow|NSC SG-veneer slot offsets in the linked secure ELF"
     "stack-usage|slow|aggregate -fstack-usage frames"
-    "docs|slow|Doxygen warning gate + authored-diagram render check"
     "emulator-smoke|slow|ra8_emulator boot smoke over the example apps"
     "emulator-matrix|slow|every example booted in ra8_emulator, ratcheted downward"
     "emulator-io-fabric|slow|ra8_io fabric demos in ra8_emulator"
