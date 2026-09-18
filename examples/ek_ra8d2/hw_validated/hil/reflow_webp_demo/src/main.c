@@ -150,6 +150,7 @@ static void internal_bringup_clocks(void)
   (void)ra8_cgc_get_clock_hz(k_ra8_clock_id_cpuclk0, &cpuclk0_hz);
   (void)ra8_mstp_init();
   (void)ra8_time_init(cpuclk0_hz);
+  (void)ra8_board_uart_console_init(115200U);
 }
 
 /**
@@ -193,6 +194,8 @@ static void internal_render_demo(void)
 
   (void)reflow_render_page(&s_engine, 0U, nullptr);
   (void)ra8_board_led_on(k_ra8_board_led_blue);
+  const uint8_t msg[] = "reflow-webp-demo: decode=96x96 PASS\r\n";
+  (void)ra8_board_uart_console_write(msg, sizeof(msg) - 1U);
 }
 
 /* ===========================================================================

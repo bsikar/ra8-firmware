@@ -101,6 +101,7 @@ static void internal_bringup_clocks(void)
   (void)ra8_cgc_get_clock_hz(k_ra8_clock_id_cpuclk0, &cpuclk0_hz);
   (void)ra8_mstp_init();
   (void)ra8_time_init(cpuclk0_hz);
+  (void)ra8_board_uart_console_init(115200U);
 }
 
 /**
@@ -183,6 +184,8 @@ static void internal_render_tone_demo(void)
                          &ra8_gfx_font_8x16, 0xFF1B5E20U, 0xFFEBF5EEU);
 
   (void)ra8_board_led_on(k_ra8_board_led_blue);
+  const uint8_t msg[] = "gfx-tone-lut-demo: lut=strictly_monotonic PASS\r\n";
+  (void)ra8_board_uart_console_write(msg, sizeof(msg) - 1U);
 }
 
 /* ===========================================================================

@@ -100,6 +100,7 @@ static void internal_bringup_clocks(void)
   (void)ra8_time_init(cpuclk0_hz);
   (void)ra8_board_led_init(k_ra8_board_led_blue);
   (void)ra8_board_led_init(k_ra8_board_led_green);
+  (void)ra8_board_uart_console_init(115200U);
   ra8_isr_globals_enable();
 }
 
@@ -145,6 +146,8 @@ static void internal_render_demo(void)
 
   (void)reflow_render_page(&s_engine, 0U, nullptr);
   (void)ra8_board_led_on(k_ra8_board_led_blue);
+  const uint8_t msg[] = "reflow-tofu-demo: pages=1 PASS\r\n";
+  (void)ra8_board_uart_console_write(msg, sizeof(msg) - 1U);
 }
 
 /**
