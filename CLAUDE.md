@@ -1109,7 +1109,7 @@ the generated HTML.
  * @see ra8_gpio_write()  Drive an already-configured output
  * @see ra8_gpio_input_init()  Configure as input instead
  *
- * @since Version 1.0.0
+ * @since Version 0.1.0
  *
  * @par NASA Power of 10 Compliance:
  * - Rule 5: 3 preconditions, 2 postconditions
