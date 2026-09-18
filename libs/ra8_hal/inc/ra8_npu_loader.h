@@ -126,6 +126,54 @@ typedef struct {
                                      const ra8_npu_arena_t* arena,
                                      ra8_npu_job_t*         out_job);
 
+/**
+ * @brief Report the runtime-arena bytes a `.npub` blob requires.
+ *
+ * @details
+ * Validates the container exactly as ra8_npu_load() does -- magic, version,
+ * declared sizes, region-table bounds, payload checksum -- then walks the region
+ * table and returns the arena the loader will claim: every RUNTIME region rounded
+ * up to `k_ra8_npu_blob_arena_align` in descriptor order, BAKED regions
+ * contributing nothing because their bytes stay in the blob. A model whose
+ * regions are all baked reports 0.
+ *
+ * The figure is EXACT, not an upper bound: ra8_npu_load() succeeds with an arena
+ * of precisely this many bytes and reports `k_ra8_err_no_mem` one byte below it,
+ * because the loader measures the caller's arena against this same walk. Ask the
+ * blob rather than hard-coding an arena constant beside it and discovering the
+ * shortfall as a run-time `k_ra8_err_no_mem`.
+ *
+ * @param[in]  blob       Base of the `.npub` container.
+ * @param[in]  blob_bytes Length of @p blob in bytes (>= the header size).
+ * @param[out] out_bytes  Required runtime-arena length on success.
+ *
+ * @return `ra8_err_t` error code.
+ * @retval k_ra8_ok The blob is valid and @p out_bytes holds the requirement.
+ * @retval k_ra8_err_null_ptr @p blob or @p out_bytes was nullptr.
+ * @retval k_ra8_err_invalid_size @p blob_bytes is below the header size, the
+ *         command stream length is zero, or the requirement would exceed 32 bits.
+ * @retval k_ra8_err_invalid_arg Bad magic, unsupported version, or a region count
+ *         above `k_ra8_npu_region_count`.
+ * @retval k_ra8_err_out_of_range A declared offset/size falls outside @p blob.
+ * @retval k_ra8_err_checksum_mismatch The payload checksum did not match.
+ *
+ * @pre @p blob and @p out_bytes are non-NULL.
+ * @pre @p blob addresses at least @p blob_bytes readable bytes.
+ * @post On k_ra8_ok @p out_bytes is the arena size ra8_npu_load() will claim.
+ * @post On any error @p out_bytes is left unmodified.
+ *
+ * @note Re-entrant; keeps no state, touches no NPU register, needs no arena.
+ * @see ra8_npu_load
+ * @see ra8_npu_arena_t
+ * @since 0.1.0
+ *
+ * @par NASA Power of 10 Compliance:
+ * - Rule 5: 2 preconditions, 2 postconditions
+ * - Rule 7: returns ra8_err_t, marked [[nodiscard]]
+ */
+[[nodiscard]] ra8_err_t
+ra8_npu_arena_bytes(const void* blob, uint32_t blob_bytes, uint32_t* out_bytes);
+
 #ifdef __cplusplus
 }
 #endif

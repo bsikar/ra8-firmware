@@ -22,6 +22,13 @@
  *     table past the end, a corrupted checksum, a baked region pointing outside
  *     the blob, and a runtime arena too small -- to prove every loader rejection.
  *
+ *  3. THE ARENA REQUIREMENT: `ra8_npu_arena_bytes()` is pinned against the same
+ *     blobs, including that the figure it reports is EXACT -- the golden model
+ *     loads with an arena of precisely that many bytes and fails with
+ *     `k_ra8_err_no_mem` one byte below it -- that baked-only models need no
+ *     arena at all, that per-region 16-byte padding is counted, and that a
+ *     requirement too large to express in 32 bits is refused rather than wrapped.
+ *
  * The NPU register window (`0x40140000`) sits inside the host MMIO backing
  * store, so `ra8_npu_submit()` writes land in RAM and the mirror reads QBASE /
  * BASEPn back exactly as the fake does.
@@ -63,13 +70,16 @@ typedef enum : uint32_t {
  * @brief Fixture sizes and expected constants for the loader tests.
  */
 typedef enum : uint32_t {
-  k_lt_arena_bytes   = 256U,  /**< Runtime arena length (bytes).          */
-  k_lt_scratch_bytes = 512U,  /**< Scratch buffer for hand-built blobs.   */
-  k_lt_addr_hi_shift = 32U,   /**< uint64 address -> high 32 bits.        */
-  k_lt_addk          = 17U,   /**< Add-constant the golden model applies. */
-  k_lt_out_bytes     = 64U,   /**< Golden model output tensor length.     */
-  k_lt_byte_mask     = 0xFFU, /**< 8-bit element wrap (matches the op).   */
-  k_lt_word_bytes    = 4U,    /**< Bytes in one little-endian word.       */
+  k_lt_arena_bytes   = 256U,        /**< Runtime arena length (bytes).            */
+  k_lt_scratch_bytes = 512U,        /**< Scratch buffer for hand-built blobs.     */
+  k_lt_addr_hi_shift = 32U,         /**< uint64 address -> high 32 bits.          */
+  k_lt_addk          = 17U,         /**< Add-constant the golden model applies.   */
+  k_lt_out_bytes     = 64U,         /**< Golden model output tensor length.       */
+  k_lt_byte_mask     = 0xFFU,       /**< 8-bit element wrap (matches the op).     */
+  k_lt_word_bytes    = 4U,          /**< Bytes in one little-endian word.         */
+  k_lt_pad_size      = 50U,         /**< Unaligned runtime size (forces padding). */
+  k_lt_pad_expect    = 114U,        /**< 50 + align(50 -> 64) + 50.               */
+  k_lt_huge_size     = 0xFFFFFFF0U, /**< Runtime size that overflows a sum.       */
 } ra8_loader_test_const_t;
 
 /** @brief Runtime arena the loader carves output activations from. */
@@ -479,16 +489,17 @@ static void test_load_rejects_baked_oob(void)
 
 /**
  * @par MC/DC:
- * (no compound decisions in this test -- the two runtime-fit guards are separate
- * single conditions; one case trips the aligned-overflow guard, one the
- * remaining-bytes guard)
+ * (no compound decisions in this test -- the fit is one single-condition check of
+ * the planned requirement against the arena, and both cases trip it: the first
+ * because the region itself does not fit, the second because the second region's
+ * 16-byte-aligned base pushes the requirement past the arena)
  */
 static void test_load_runtime_arena_limits(void)
 {
   TEST_BEGIN("loader rejects when runtime regions do not fit");
   ra8_npu_job_t job = {};
 
-  /* One 64-byte runtime region, arena of 0 bytes -> remaining-bytes guard. */
+  /* One 64-byte runtime region, arena of 0 bytes. */
   const lt_region_t one[] = {
     {.role = (uint32_t)k_ra8_npu_blob_role_output, .baked = false, .size = 64U},
   };
@@ -496,8 +507,8 @@ static void test_load_runtime_arena_limits(void)
   ra8_npu_arena_t empty = lt_arena(0U);
   TEST_ASSERT_EQ(k_ra8_err_no_mem, ra8_npu_load(s_scratch, t1, &empty, &job));
 
-  /* Two 50-byte runtime regions, arena of 50 bytes -> the second region's
-   * 16-byte-aligned base (64) overflows the arena (aligned-overflow guard). */
+  /* Two 50-byte runtime regions, arena of 50 bytes -> the requirement is 114
+   * (50, then the second base aligned up to 64, then 50 more). */
   const lt_region_t two[] = {
     {.role = (uint32_t)k_ra8_npu_blob_role_scratch, .baked = false, .size = 50U},
     {.role = (uint32_t)k_ra8_npu_blob_role_output, .baked = false, .size = 50U},
@@ -508,6 +519,131 @@ static void test_load_runtime_arena_limits(void)
   TEST_END("loader rejects when runtime regions do not fit");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- each assertion is one equality; the
+ * exactness claim is pinned by loading at the reported size and one byte below)
+ */
+static void test_arena_bytes_is_exact(void)
+{
+  TEST_BEGIN("arena query reports exactly what the golden model needs");
+  lt_prep();
+  uint32_t needed = 0U;
+  TEST_ASSERT_EQ(
+    k_ra8_ok,
+    ra8_npu_arena_bytes(ra8_npu_model_addk_fake_blob(), ra8_npu_model_addk_fake_bytes(), &needed));
+  /* The golden model's only runtime region is its output activation. */
+  TEST_ASSERT_EQ((uint32_t)k_lt_out_bytes, needed);
+  TEST_ASSERT(needed <= (uint32_t)sizeof(s_arena));
+
+  /* Exactly the reported size loads. */
+  ra8_npu_job_t   job   = {};
+  ra8_npu_arena_t exact = lt_arena(needed);
+  TEST_ASSERT_EQ(
+    k_ra8_ok,
+    ra8_npu_load(ra8_npu_model_addk_fake_blob(), ra8_npu_model_addk_fake_bytes(), &exact, &job));
+
+  /* One byte below it does not: the figure is a requirement, not an estimate. */
+  ra8_npu_arena_t short_by_one = lt_arena(needed - 1U);
+  TEST_ASSERT_EQ(k_ra8_err_no_mem,
+                 ra8_npu_load(ra8_npu_model_addk_fake_blob(),
+                              ra8_npu_model_addk_fake_bytes(),
+                              &short_by_one,
+                              &job));
+  TEST_END("arena query reports exactly what the golden model needs");
+}
+
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- the baked branch of the planner is
+ * selected by the flag, and the padding case exercises the runtime branch twice)
+ */
+static void test_arena_bytes_counts_padding(void)
+{
+  TEST_BEGIN("arena query skips baked regions and counts alignment padding");
+  uint32_t needed = 1U; /* non-zero, so a baked-only 0 is a real write */
+
+  /* All-baked model: the weights stay in the blob, so no arena is needed. */
+  const lt_region_t baked_only[] = {
+    {.role = (uint32_t)k_ra8_npu_blob_role_weights, .baked = true, .size = 32U},
+  };
+  const uint32_t t1 = lt_build(s_scratch, baked_only, 1U);
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_npu_arena_bytes(s_scratch, t1, &needed));
+  TEST_ASSERT_EQ(0U, needed);
+
+  /* A zero-size arena is legal for such a model, and the load must accept it. */
+  ra8_npu_job_t         job  = {};
+  const ra8_npu_arena_t none = {.base = nullptr, .bytes = 0U};
+  lt_prep();
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_npu_load(s_scratch, t1, &none, &job));
+
+  /* Two unaligned runtime regions: the sum of the sizes is 100, the arena is not. */
+  const lt_region_t padded[] = {
+    {.role  = (uint32_t)k_ra8_npu_blob_role_scratch,
+     .baked = false,
+     .size  = (uint32_t)k_lt_pad_size},
+    {.role = (uint32_t)k_ra8_npu_blob_role_output, .baked = false, .size = (uint32_t)k_lt_pad_size},
+  };
+  const uint32_t t2 = lt_build(s_scratch, padded, 2U);
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_npu_arena_bytes(s_scratch, t2, &needed));
+  TEST_ASSERT_EQ((uint32_t)k_lt_pad_expect, needed);
+
+  /* And that figure is exact here too. */
+  ra8_npu_arena_t fits = lt_arena(needed);
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_npu_load(s_scratch, t2, &fits, &job));
+  ra8_npu_arena_t one_short = lt_arena(needed - 1U);
+  TEST_ASSERT_EQ(k_ra8_err_no_mem, ra8_npu_load(s_scratch, t2, &one_short, &job));
+  TEST_END("arena query skips baked regions and counts alignment padding");
+}
+
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- the two null guards and the overflow
+ * guard are separate single conditions, one case each)
+ */
+static void test_arena_bytes_refusals(void)
+{
+  TEST_BEGIN("arena query refuses null arguments, bad containers, and overflow");
+  uint32_t needed = 0U;
+
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_npu_arena_bytes(nullptr, 64U, &needed));
+  TEST_ASSERT_EQ(
+    k_ra8_err_null_ptr,
+    ra8_npu_arena_bytes(ra8_npu_model_addk_fake_blob(), ra8_npu_model_addk_fake_bytes(), nullptr));
+
+  /* A container the loader rejects is rejected here with the same code, because
+   * both entry points share one validation front. */
+  const lt_region_t regs[] = {
+    {.role = (uint32_t)k_ra8_npu_blob_role_output, .baked = false, .size = 64U},
+  };
+  const uint32_t total = lt_build(s_scratch, regs, 1U);
+  lt_put_word(s_scratch,
+              (uint32_t)k_ra8_npu_blob_word_magic * (uint32_t)k_lt_word_bytes,
+              (uint32_t)k_t_bad_magic);
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_npu_arena_bytes(s_scratch, total, &needed));
+
+  /* Two near-UINT32_MAX runtime regions: the requirement cannot be expressed in
+   * 32 bits, so it is refused rather than wrapped into a small, passable sum.
+   * A RUNTIME size is bounded by nothing in the container, since the bytes are
+   * the caller's, so this is reachable from a hostile or broken producer. */
+  const lt_region_t huge[] = {
+    {.role  = (uint32_t)k_ra8_npu_blob_role_scratch,
+     .baked = false,
+     .size  = (uint32_t)k_lt_huge_size},
+    {.role  = (uint32_t)k_ra8_npu_blob_role_output,
+     .baked = false,
+     .size  = (uint32_t)k_lt_huge_size},
+  };
+  const uint32_t t2 = lt_build(s_scratch, huge, 2U);
+  TEST_ASSERT_EQ(k_ra8_err_invalid_size, ra8_npu_arena_bytes(s_scratch, t2, &needed));
+
+  /* The loader refuses it identically instead of carving a wrapped arena. */
+  ra8_npu_job_t   job   = {};
+  ra8_npu_arena_t arena = lt_arena((uint32_t)sizeof(s_arena));
+  TEST_ASSERT_EQ(k_ra8_err_invalid_size, ra8_npu_load(s_scratch, t2, &arena, &job));
+  TEST_END("arena query refuses null arguments, bad containers, and overflow");
+}
+
 int main(void)
 {
   test_load_golden_maps_job();
@@ -516,5 +652,8 @@ int main(void)
   test_load_rejects_checksum();
   test_load_rejects_baked_oob();
   test_load_runtime_arena_limits();
+  test_arena_bytes_is_exact();
+  test_arena_bytes_counts_padding();
+  test_arena_bytes_refusals();
   return 0;
 }
