@@ -26,6 +26,8 @@ extern "C" {
 #endif
 
 #include "ra8_display_pal.h"
+#include "ra8_err.h"
+#include "ra8_glcdc.h"
 
 /**
  * @var k_display_backend_lcd_ra8_glcdc
@@ -54,6 +56,50 @@ extern "C" {
  * @since 0.1.0
  */
 extern const display_backend_iface_t k_display_backend_lcd_ra8_glcdc;
+
+/**
+ * @brief Bind the GLCDC backend to a framebuffer and a panel timing,
+ *        with both halves typed.
+ *
+ * @details
+ * The typed counterpart to filling a ``display_cfg_t`` by hand. The
+ * caller supplies only what it owns -- its framebuffer and the panel
+ * timing its board BSP publishes (e.g.
+ * ``&s_ra8_panel_ek_ra8d2_timing``) -- and this helper supplies the
+ * backend vtable, so a GLCDC bind cannot be handed an e-ink panel
+ * descriptor through an untyped ``const void*``. The bring-up work
+ * is unchanged: this composes a ``display_cfg_t`` and calls
+ * ``display_init``, which dispatches into
+ * ``k_display_backend_lcd_ra8_glcdc``'s 7-step init.
+ *
+ * @param[out] out    Filled with the PAL handle on success.
+ * @param[in]  fb     Framebuffer storage and geometry.
+ * @param[in]  timing Panel RGB timing for the parallel-RGB bus.
+ *
+ * @return ra8_err_t Error code.
+ * @retval k_ra8_ok                Panel is up; ``*out`` populated.
+ * @retval k_ra8_err_null_ptr      ``out``, ``fb``, ``fb->pixels`` or
+ *                                ``timing`` was NULL.
+ * @retval k_ra8_err_invalid_arg   Geometry rejected, or ``fb->bytes``
+ *                                too small for the geometry.
+ * @retval k_ra8_err_busy          A display handle is already live.
+ * @retval k_ra8_err_not_supported ``fb->pixfmt`` is not RGB565.
+ *
+ * @pre Clocks, MSTP and the system tick are up (the GLCDC bring-up
+ *      delays and drives board GPIO).
+ * @pre ``fb->pixels`` is alive and 64-byte aligned for AXI bursts.
+ * @post On success the handle is valid until ``display_deinit``.
+ * @post On any non-ok return ``*out`` is untouched.
+ *
+ * @note Not thread-safe; single-shot startup helper.
+ * @note ``timing`` is read during the call only; the backend
+ *       snapshots what it needs, so it need not outlive the call.
+ *
+ * @since 0.1.0
+ */
+[[nodiscard]] ra8_err_t display_pal_bind_glcdc(display_handle_t**        out,
+                                               const display_fb_cfg_t*   fb,
+                                               const ra8_glcdc_timing_t* timing);
 
 #ifdef __cplusplus
 }
