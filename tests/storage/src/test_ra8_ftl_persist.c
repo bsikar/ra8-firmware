@@ -861,6 +861,307 @@ static void test_persist_power_cycle_roundtrip(void)
   TEST_END("ftl power-cycle survival");
 }
 
+/*
+ * =============================================================================
+ * Mount lifecycle: ra8_ftl_mount / _sync / _unmount (#763)
+ * =============================================================================
+ */
+
+/**
+ * @struct persist_mount_fixture_t
+ * @brief Every object one ::ra8_ftl_mount needs, in a single fixture.
+ *
+ * @details
+ * The mount seam takes its geometry from a ::ra8_ftl_cfg_t whose pointers must
+ * out-live the handle, so the fixture keeps the fake device, the handle, the
+ * caller tables, the staging buffer and the config together with one lifetime.
+ *
+ * @since 0.1.0
+ */
+typedef struct {
+  persist_fake_t    fake_st;                          /**< Backing store.        */
+  ra8_io_blockdev_t fake;                             /**< Underlying device.    */
+  ra8_ftl_t         ftl;                              /**< Handle under test.    */
+  ra8_io_blockdev_t bd;                               /**< Presented device.     */
+  uint16_t          map[(size_t)k_persist_logical];   /**< Logical map entries.  */
+  ra8_ftl_pblock_t  pb[(size_t)k_persist_phys];       /**< Physical block state. */
+  uint8_t           scratch[(size_t)k_persist_block]; /**< Copy-on-write buffer. */
+  uint8_t           ckbuf[(size_t)k_persist_ckbuf];   /**< Checkpoint staging.   */
+  ra8_ftl_cfg_t     cfg;                              /**< Mount configuration.  */
+} persist_mount_fixture_t;
+
+/**
+ * @brief Bring a fixture up over a blank medium with a stated geometry.
+ *
+ * @param[out] fix    Fixture to populate.
+ * @param[in]  blocks Physical blocks the fake device advertises.
+ * @param[in]  tail   Blocks at the end of the device reserved for the
+ *                    checkpoint.
+ *
+ * @pre `blocks` is at most ::k_persist_phys.
+ * @post The medium reads back entirely blank and `fix->cfg` is a valid mount
+ *       configuration.
+ *
+ * @note Thread-safe (operates only on caller storage).
+ * @since 0.1.0
+ */
+static void persist_mount_fixture_init(persist_mount_fixture_t* fix,
+                                       uint32_t                 blocks,
+                                       uint32_t                 tail)
+{
+  (void)memset(fix, 0, sizeof(*fix));
+  (void)memset(fix->fake_st.store, (int)k_persist_erase_byte, sizeof(fix->fake_st.store));
+  persist_bind(&fix->fake, &fix->fake_st, blocks);
+  fix->cfg.raw                  = &fix->fake;
+  fix->cfg.map                  = fix->map;
+  fix->cfg.pblocks              = fix->pb;
+  fix->cfg.scratch              = fix->scratch;
+  fix->cfg.ckbuf                = fix->ckbuf;
+  fix->cfg.ckbuf_len            = (uint32_t)sizeof(fix->ckbuf);
+  fix->cfg.logical_blocks       = (uint32_t)k_persist_logical;
+  fix->cfg.reserved_tail_blocks = tail;
+}
+
+/** @brief Byte offset of the first reserved-tail block of a full-size fake. */
+static size_t persist_tail_offset(void)
+{
+  return ((size_t)k_persist_phys - 1U) * (size_t)k_persist_block;
+}
+
+/**
+ * @test ra8_ftl_mount rejects every malformed configuration
+ *
+ * @par MC/DC:
+ * (each guard of the validation chain is made false alone -- five NULL
+ * pointers, a zero logical count, a zero reserved tail, a staging buffer below
+ * one tail block, and a tail no smaller than the device -- and the otherwise
+ * identical configuration then mounts, so no guard rejects a valid mount)
+ */
+static void test_mount_validation(void)
+{
+  TEST_BEGIN("ftl mount argument validation");
+  persist_mount_fixture_t fix;
+  persist_mount_fixture_init(&fix, (uint32_t)k_persist_phys, 1U);
+
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_ftl_mount(nullptr, &fix.cfg));
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_ftl_mount(&fix.ftl, nullptr));
+
+  ra8_ftl_cfg_t bad = fix.cfg;
+  bad.raw           = nullptr;
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_ftl_mount(&fix.ftl, &bad));
+  bad     = fix.cfg;
+  bad.map = nullptr;
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_ftl_mount(&fix.ftl, &bad));
+  bad         = fix.cfg;
+  bad.pblocks = nullptr;
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_ftl_mount(&fix.ftl, &bad));
+  bad         = fix.cfg;
+  bad.scratch = nullptr;
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_ftl_mount(&fix.ftl, &bad));
+  bad       = fix.cfg;
+  bad.ckbuf = nullptr;
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_ftl_mount(&fix.ftl, &bad));
+
+  bad                = fix.cfg;
+  bad.logical_blocks = 0U;
+  TEST_ASSERT_EQ(k_ra8_err_invalid_size, ra8_ftl_mount(&fix.ftl, &bad));
+  bad                      = fix.cfg;
+  bad.reserved_tail_blocks = 0U;
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_ftl_mount(&fix.ftl, &bad));
+  bad           = fix.cfg;
+  bad.ckbuf_len = (uint32_t)k_persist_block - 1U;
+  TEST_ASSERT_EQ(k_ra8_err_invalid_size, ra8_ftl_mount(&fix.ftl, &bad));
+
+  /* A device no larger than its own reserved tail leaves nothing to manage. */
+  persist_mount_fixture_t tiny;
+  persist_mount_fixture_init(&tiny, 1U, 1U);
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_ftl_mount(&tiny.ftl, &tiny.cfg));
+
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_ftl_mount(&fix.ftl, &fix.cfg));
+  TEST_END("ftl mount argument validation");
+}
+
+/**
+ * @test a blank tail mounts cold and the reserved tail stays out of the span
+ *
+ * @par MC/DC:
+ * (the blank-tail decision is taken true here and false in
+ * ::test_mount_sync_remount_roundtrip and
+ * ::test_mount_rejects_foreign_tail)
+ *
+ * @details
+ * Proves the derived span: the presented device offers exactly the configured
+ * logical count, an unmapped read returns the medium erase value, and writing
+ * every logical block never programs the reserved tail.
+ */
+static void test_mount_cold_start(void)
+{
+  TEST_BEGIN("ftl mount cold start on a blank tail");
+  persist_mount_fixture_t fix;
+  persist_mount_fixture_init(&fix, (uint32_t)k_persist_phys, 1U);
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_ftl_mount(&fix.ftl, &fix.cfg));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_ftl_as_blockdev(&fix.ftl, &fix.bd));
+
+  ra8_io_blockdev_caps_t caps = {};
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_io_blockdev_get_caps(&fix.bd, &caps));
+  TEST_ASSERT_EQ((uint32_t)k_persist_logical, caps.block_count);
+
+  uint8_t got[(size_t)k_persist_block];
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_io_blockdev_read(&fix.bd, 0U, 1U, got));
+  TEST_ASSERT(got[0] == (uint8_t)k_persist_erase_byte);
+
+  persist_write_all(&fix.bd);
+  const size_t tail = persist_tail_offset();
+  for (uint32_t i = 0; i < (uint32_t)k_persist_block; ++i) {
+    TEST_ASSERT(fix.fake_st.store[tail + (size_t)i] == (uint8_t)k_persist_erase_byte);
+  }
+  TEST_END("ftl mount cold start on a blank tail");
+}
+
+/**
+ * @test sync then mount resumes the mapping across a power cycle
+ *
+ * @par MC/DC:
+ * (no compound decision under test; the survival property is proven by
+ * byte-comparing every resumed logical block against a pre-teardown snapshot)
+ *
+ * @details
+ * The mount seam version of ::test_persist_power_cycle_roundtrip: no caller
+ * fences off a checkpoint block and no caller calls checkpoint_save or
+ * checkpoint_load. The medium is retained while the handle, the caller tables
+ * and the staging buffer are zeroed.
+ */
+static void test_mount_sync_remount_roundtrip(void)
+{
+  TEST_BEGIN("ftl mount/sync/mount power-cycle survival");
+  persist_mount_fixture_t fix;
+  persist_mount_fixture_init(&fix, (uint32_t)k_persist_phys, 1U);
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_ftl_mount(&fix.ftl, &fix.cfg));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_ftl_as_blockdev(&fix.ftl, &fix.bd));
+  persist_write_all(&fix.bd);
+
+  uint8_t expect[(size_t)k_persist_logical][(size_t)k_persist_block];
+  for (uint32_t lbn = 0; lbn < (uint32_t)k_persist_logical; ++lbn) {
+    TEST_ASSERT_EQ(k_ra8_ok, ra8_io_blockdev_read(&fix.bd, lbn, 1U, expect[lbn]));
+  }
+
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_ftl_sync(&fix.ftl));
+  TEST_ASSERT(fix.fake_st.store[persist_tail_offset()] != (uint8_t)k_persist_erase_byte);
+
+  /* Power cycle: SRAM (handle, tables, staging) lost, medium retained. */
+  (void)memset(&fix.ftl, 0, sizeof(fix.ftl));
+  (void)memset(fix.map, 0, sizeof(fix.map));
+  (void)memset(fix.pb, 0, sizeof(fix.pb));
+  (void)memset(fix.ckbuf, 0, sizeof(fix.ckbuf));
+  (void)memset(&fix.bd, 0, sizeof(fix.bd));
+
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_ftl_mount(&fix.ftl, &fix.cfg));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_ftl_as_blockdev(&fix.ftl, &fix.bd));
+  uint8_t got[(size_t)k_persist_block];
+  for (uint32_t lbn = 0; lbn < (uint32_t)k_persist_logical; ++lbn) {
+    TEST_ASSERT_EQ(k_ra8_ok, ra8_io_blockdev_read(&fix.bd, lbn, 1U, got));
+    TEST_ASSERT(memcmp(got, expect[lbn], sizeof(got)) == 0);
+  }
+
+  /* A second sync over an already programmed tail erases before programming. */
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_ftl_sync(&fix.ftl));
+  TEST_END("ftl mount/sync/mount power-cycle survival");
+}
+
+/**
+ * @test a tail that is neither blank nor a checkpoint fails the mount
+ *
+ * @par MC/DC:
+ * (blank-tail decision false with the load path rejecting; the failed mount is
+ * then proven unbound through both lifecycle entry points)
+ *
+ * @details
+ * A corrupt or foreign tail must not be silently reformatted over live data,
+ * and the handle must be left unbound so a failed mount cannot be mistaken for
+ * a cold-started one.
+ */
+static void test_mount_rejects_foreign_tail(void)
+{
+  TEST_BEGIN("ftl mount refuses a foreign tail");
+  persist_mount_fixture_t fix;
+  persist_mount_fixture_init(&fix, (uint32_t)k_persist_phys, 1U);
+  const size_t tail = persist_tail_offset();
+  (void)memset(&fix.fake_st.store[tail], (int)k_persist_padding_fill, (size_t)k_persist_block);
+
+  TEST_ASSERT(ra8_ftl_mount(&fix.ftl, &fix.cfg) != k_ra8_ok);
+  TEST_ASSERT_EQ(k_ra8_err_not_initialized, ra8_ftl_sync(&fix.ftl));
+  TEST_ASSERT_EQ(k_ra8_err_not_initialized, ra8_ftl_unmount(&fix.ftl));
+  TEST_ASSERT(fix.fake_st.store[tail] == (uint8_t)k_persist_padding_fill);
+  TEST_END("ftl mount refuses a foreign tail");
+}
+
+/**
+ * @test sync and unmount refuse a handle that owns no checkpoint home
+ *
+ * @par MC/DC:
+ * (null guard and the mounted-handle guard each taken alone; the init-only
+ * caller's own checkpoint path is then shown still to work)
+ */
+static void test_sync_requires_mount(void)
+{
+  TEST_BEGIN("ftl sync refuses an init-only handle");
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_ftl_sync(nullptr));
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_ftl_unmount(nullptr));
+
+  persist_mount_fixture_t fix;
+  persist_mount_fixture_init(&fix, (uint32_t)k_persist_phys, 1U);
+  TEST_ASSERT_EQ(k_ra8_ok,
+                 ra8_ftl_init(&fix.ftl,
+                              &fix.fake,
+                              fix.map,
+                              (uint32_t)k_persist_logical,
+                              fix.pb,
+                              (uint32_t)k_persist_phys,
+                              fix.scratch));
+  TEST_ASSERT_EQ(k_ra8_err_invalid_state, ra8_ftl_sync(&fix.ftl));
+  TEST_ASSERT_EQ(k_ra8_err_invalid_state, ra8_ftl_unmount(&fix.ftl));
+
+  /* The init-only contract is unchanged: the caller still drives its own save. */
+  TEST_ASSERT_EQ(k_ra8_ok,
+                 ra8_ftl_checkpoint_save(&fix.ftl, fix.ckbuf, (uint32_t)sizeof(fix.ckbuf)));
+  TEST_END("ftl sync refuses an init-only handle");
+}
+
+/**
+ * @test unmount persists the mapping and then releases the handle
+ *
+ * @par MC/DC:
+ * (sync-succeeds branch of unmount taken; the released handle is proven by a
+ * stale presented device refusing a transfer and by a second unmount finding
+ * nothing bound)
+ */
+static void test_unmount_syncs_and_releases(void)
+{
+  TEST_BEGIN("ftl unmount persists then releases");
+  persist_mount_fixture_t fix;
+  persist_mount_fixture_init(&fix, (uint32_t)k_persist_phys, 1U);
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_ftl_mount(&fix.ftl, &fix.cfg));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_ftl_as_blockdev(&fix.ftl, &fix.bd));
+  persist_write_all(&fix.bd);
+  uint8_t expect[(size_t)k_persist_block];
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_io_blockdev_read(&fix.bd, 0U, 1U, expect));
+
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_ftl_unmount(&fix.ftl));
+
+  uint8_t got[(size_t)k_persist_block];
+  TEST_ASSERT_EQ(k_ra8_err_out_of_range, ra8_io_blockdev_read(&fix.bd, 0U, 1U, got));
+  TEST_ASSERT_EQ(k_ra8_err_not_initialized, ra8_ftl_unmount(&fix.ftl));
+
+  /* What unmount persisted is what the next mount resumes. */
+  (void)memset(fix.map, 0, sizeof(fix.map));
+  (void)memset(fix.pb, 0, sizeof(fix.pb));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_ftl_mount(&fix.ftl, &fix.cfg));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_ftl_as_blockdev(&fix.ftl, &fix.bd));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_io_blockdev_read(&fix.bd, 0U, 1U, got));
+  TEST_ASSERT(memcmp(got, expect, sizeof(got)) == 0);
+  TEST_END("ftl unmount persists then releases");
+}
+
 int main(void)
 {
   ra8_log_set_byte_sink(internal_log_sink, nullptr);
@@ -870,5 +1171,11 @@ int main(void)
   test_persist_save_errors();
   test_persist_load_errors();
   test_persist_power_cycle_roundtrip();
+  test_mount_validation();
+  test_mount_cold_start();
+  test_mount_sync_remount_roundtrip();
+  test_mount_rejects_foreign_tail();
+  test_sync_requires_mount();
+  test_unmount_syncs_and_releases();
   return 0;
 }
