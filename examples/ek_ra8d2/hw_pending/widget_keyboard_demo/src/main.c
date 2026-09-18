@@ -1,7 +1,8 @@
 /**
  * @file examples/ek_ra8d2/hw_pending/widget_keyboard_demo/src/main.c
  * @brief ra8_widget_keyboard demo: the published on-screen-keyboard widget
- *        driven against the real ra8_keyboard engine, self-checking.
+ *        driven against the real ra8_keyboard engine, self-checking and
+ *        visually rendered via the GLCDC display controller.
  *
  * @par Tag
  * [Ring 6 / APP] {World: NS}
@@ -10,12 +11,10 @@
  * `ra8_widget_keyboard` is a leaf widget that draws a key grid through the
  * injected ::ra8_widget_paint_t backend and routes a tap through the injected
  * ::ra8_widget_keyboard_ops_t seam (`count` / `key_info` / `hit` / `apply`).
- * Until this app it was named only by its own header, its own translation unit,
- * and one host test whose seam is a recording mock -- so *both* sides of the
- * pairing were fakes and nothing checked the widget against the real engine
- * (issue #1336). This app is that consumer: it binds the seam to `ra8_kbd_hit`
- * / `ra8_kbd_apply` / `ra8_kbd_key_glyph` over a real ::ra8_kbd_layout_t and
- * ::ra8_kbd_text_t, and asserts the whole route in six legs:
+ * This app binds the seam to `ra8_kbd_hit` / `ra8_kbd_apply` / `ra8_kbd_key_glyph`
+ * over a real ::ra8_kbd_layout_t and ::ra8_kbd_text_t, binds the paint seam
+ * to ::ra8_gfx targeting a real GLCDC parallel LCD framebuffer in SDRAM, and
+ * asserts the whole route in six legs:
  *
  *   1. ::ra8_widget_keyboard_init binds the published vtable, ctx and visibility.
  *   2. One ::ra8_widget_panel_compose over the tree lays the keyboard out inside
@@ -31,11 +30,9 @@
  *      self-invalidate makes the next compose report exactly the keyboard's own
  *      rect as damage.
  *
- * The paint backend here is a *recording* one (it counts fills and texts and
- * touches no framebuffer), which is what keeps the app deterministic and
- * board-independent while still exercising the real widget and the real engine:
- * the thing that was never covered is the widget-to-engine pairing, not the
- * pixels. Observable over the SCI8 / J-Link OB VCOM console; a good run prints
+ * The paint backend routes both fills and text through `ra8_gfx` into the
+ * live GLCDC framebuffer while recording metrics for the test assertions.
+ * Observable over the SCI8 / J-Link OB VCOM console; a good run prints
  * `widget_keyboard_demo: keyboard widget PASS`.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
@@ -50,44 +47,80 @@
 #include "ra8_boot_entry.h"
 #include "ra8_box.h"
 #include "ra8_cgc.h"
+#include "ra8_display_pal.h"
+#include "ra8_display_pal_lcd.h"
 #include "ra8_err.h"
+#include "ra8_gfx.h"
 #include "ra8_io_log.h"
 #include "ra8_io_stream.h"
 #include "ra8_io_stream_uart.h"
+#include "ra8_isr.h"
 #include "ra8_keyboard.h"
 #include "ra8_log.h"
 #include "ra8_mstp.h"
+#include "ra8_panel.h"
+#include "ra8_panel_timing.h"
 #include "ra8_sci.h"
+#include "ra8_sdramc.h"
+#include "ra8_time.h"
 #include "ra8_ui.h"
 #include "ra8_widget.h"
 #include "ra8_widget_keyboard.h"
 
 /**
  * @enum wkd_const_t
- * @brief Console, frame, and tree knobs (no magic numbers).
+ * @brief Console, frame, display, and tree knobs (no magic numbers).
  *
  * @details Collects every literal the app uses so the magic-number gate stays
- *          silent. The frame is the EK-RA8D2 parallel-panel geometry; the tree
- *          is one root panel holding the keyboard leaf.
+ *          silent. The frame matches the EK-RA8D2 parallel-panel geometry; the
+ *          tree is one root panel holding the keyboard leaf.
  *
  * @since 0.1.0
  */
 typedef enum : uint32_t {
-  k_wkd_uart_chan  = 8U,          /**< SCI8 J-Link OB console.            */
-  k_wkd_frame_w    = 480U,        /**< Frame width (pixels).              */
-  k_wkd_frame_h    = 272U,        /**< Frame height (pixels).             */
-  k_wkd_kid_count  = 1U,          /**< Root panel children (keyboard).    */
-  k_wkd_box_cap    = 2U,          /**< Layout scratch: children + 1.      */
-  k_wkd_glyph_w    = 8U,          /**< Recorded text metric, px per char. */
-  k_wkd_glyph_h    = 16U,         /**< Recorded text metric, line height. */
-  k_wkd_bg         = 0x00202020U, /**< Keyboard background, 0xRRGGBB.     */
-  k_wkd_key_face   = 0x00404040U, /**< Key face fill, 0xRRGGBB.           */
-  k_wkd_key_border = 0x00101010U, /**< Key border, 0xRRGGBB.              */
-  k_wkd_key_fg     = 0x00FFFFFFU, /**< Key glyph / label, 0xRRGGBB.       */
-  k_wkd_border_w   = 1U,          /**< Key border thickness (pixels).     */
-  k_wkd_off_grid   = 10000,       /**< X/Y far outside the frame.         */
+  k_wkd_uart_chan     = 8U,          /**< SCI8 J-Link OB console.            */
+  k_wkd_uart_baud     = 115200U,     /**< Console baud rate.                 */
+  k_wkd_frame_x       = 0U,          /**< Keyboard frame origin X (pixels).  */
+  k_wkd_frame_y       = 160U,        /**< Keyboard frame origin Y (pixels).  */
+  k_wkd_frame_w       = 1024U,       /**< Keyboard frame width (pixels).     */
+  k_wkd_frame_h       = 440U,        /**< Keyboard frame height (pixels).    */
+  k_wkd_kid_count     = 1U,          /**< Root panel children (keyboard).    */
+  k_wkd_box_cap       = 2U,          /**< Layout scratch: children + 1.      */
+  k_wkd_glyph_w       = 8U,          /**< Recorded text metric, px per char. */
+  k_wkd_glyph_h       = 16U,         /**< Recorded text metric, line height. */
+  k_wkd_bg            = 0x00202020U, /**< Keyboard background, 0xRRGGBB.     */
+  k_wkd_key_face      = 0x00404040U, /**< Key face fill, 0xRRGGBB.           */
+  k_wkd_key_border    = 0x00101010U, /**< Key border, 0xRRGGBB.              */
+  k_wkd_key_fg        = 0x00FFFFFFU, /**< Key glyph / label, 0xRRGGBB.       */
+  k_wkd_border_w      = 2U,          /**< Key border thickness (pixels).     */
+  k_wkd_off_grid      = 10000,       /**< X/Y far outside the frame.         */
+  k_wkd_settle_ms     = 20U,         /**< Hardware settle delay (ms).        */
+  k_wkd_frame_ms      = 50U,         /**< Main loop delay (ms).              */
+  k_wkd_col_hdr_bg    = 0x001A2332U, /**< Header background, 0xRRGGBB.       */
+  k_wkd_col_hdr_line  = 0x003A7BD5U, /**< Header accent rule, 0xRRGGBB.      */
+  k_wkd_col_hdr_title = 0x0000D2FFU, /**< Header title text, 0xRRGGBB.       */
+  k_wkd_col_hdr_sub   = 0x008899A6U, /**< Header subtitle text, 0xRRGGBB.    */
+  k_wkd_col_box_bg    = 0x002B394EU, /**< Query box background, 0xRRGGBB.    */
+  k_wkd_col_box_brd   = 0x004A6B95U, /**< Query box border, 0xRRGGBB.        */
+  k_wkd_col_box_text  = 0x0000FFCCU, /**< Query box text, 0xRRGGBB.          */
+  k_wkd_col_pass_bg   = 0x00103A20U, /**< Pass badge background, 0xRRGGBB.   */
+  k_wkd_col_pass_brd  = 0x0028A745U, /**< Pass badge border, 0xRRGGBB.       */
+  k_wkd_col_pass_text = 0x004CD964U, /**< Pass badge text, 0xRRGGBB.         */
 } wkd_const_t;
 
+/** @brief RGB565 framebuffer in external SDRAM, aligned for GLCDC scanout. */
+RA8_BOARD_PANEL_FRAMEBUFFER(s_framebuffer);
+
+static const display_fb_cfg_t k_wkd_fb_cfg = {
+  .pixels    = s_framebuffer,
+  .bytes     = sizeof(s_framebuffer),
+  .width_px  = (uint16_t)k_panel_width_px,
+  .height_px = (uint16_t)k_panel_height_px,
+  .pixfmt    = k_display_pixfmt_rgb565,
+};
+
+static display_handle_t*          s_display = nullptr;
+static display_fb_t               s_fb;
 static ra8_io_stream_t            s_uart;       /**< Console stream.       */
 static ra8_io_stream_uart_state_t s_uart_state; /**< Console stream state. */
 
@@ -114,7 +147,7 @@ static void internal_print(const char* text)
 }
 
 /**
- * @brief Record a rectangle fill instead of drawing one.
+ * @brief Paint backend fill: draws a solid rectangle and increments counter.
  *
  * @param[in] user  Unused backend handle.
  * @param[in] x     Left edge (pixels).
@@ -125,22 +158,17 @@ static void internal_print(const char* text)
  * @return void
  * @pre None.
  * @post @ref s_fills is incremented.
- * @note Touches no framebuffer, so the app is board-independent.
  * @since 0.1.0
  */
 static void wkd_fill(void* user, int32_t x, int32_t y, int32_t w, int32_t h, uint32_t color)
 {
   (void)user;
-  (void)x;
-  (void)y;
-  (void)w;
-  (void)h;
-  (void)color;
+  (void)ra8_gfx_rect(x, y, w, h, color, true);
   s_fills++;
 }
 
 /**
- * @brief Record a text draw instead of drawing one.
+ * @brief Paint backend text: draws an 8x16 font string and increments counter.
  *
  * @param[in] user Unused backend handle.
  * @param[in] x    Text origin X (pixels).
@@ -156,11 +184,7 @@ static void wkd_fill(void* user, int32_t x, int32_t y, int32_t w, int32_t h, uin
 static void wkd_text(void* user, int32_t x, int32_t y, const char* str, uint32_t fg, uint32_t bg)
 {
   (void)user;
-  (void)x;
-  (void)y;
-  (void)str;
-  (void)fg;
-  (void)bg;
+  (void)ra8_gfx_text_out(x, y, str, &ra8_gfx_font_8x16, fg, bg);
   s_texts++;
 }
 
@@ -188,7 +212,7 @@ static void wkd_text_size(void* user, const char* str, int32_t* out_w, int32_t* 
   *out_h           = (int32_t)k_wkd_glyph_h;
 }
 
-/** @brief Recording paint backend the keyboard widget draws through. */
+/** @brief Real paint backend the keyboard widget draws through. */
 static const ra8_widget_paint_t k_wkd_paint = {
   .user      = nullptr,
   .fill_rect = wkd_fill,
@@ -284,7 +308,7 @@ static void wkd_ops_key_info(void* user, uint8_t idx, ra8_widget_key_info_t* out
  */
 static uint8_t wkd_ops_hit(void* user, int32_t x, int32_t y)
 {
-  const ra8_kbd_layout_t* kb = (const ra8_kbd_layout_t*)user;
+  const ra8_kbd_layout_t* kb  = (const ra8_kbd_layout_t*)user;
   const uint8_t           hit = ra8_kbd_hit(kb, x, y);
   return (hit == (uint8_t)k_ra8_kbd_no_hit) ? (uint8_t)k_ra8_widget_key_no_hit : hit;
 }
@@ -380,7 +404,10 @@ static ra8_widget_t s_root; /**< The root panel widget. */
 static ra8_err_t wkd_compose(ra8_ui_rect_t* dmg, ra8_widget_refresh_t* hint, uint16_t* dirty)
 {
   const ra8_ui_rect_t frame = {
-    .x = 0, .y = 0, .w = (int32_t)k_wkd_frame_w, .h = (int32_t)k_wkd_frame_h
+    .x = (int32_t)k_wkd_frame_x,
+    .y = (int32_t)k_wkd_frame_y,
+    .w = (int32_t)k_wkd_frame_w,
+    .h = (int32_t)k_wkd_frame_h,
   };
   return ra8_widget_panel_compose(&s_root, &frame, dmg, hint, dirty);
 }
@@ -626,29 +653,131 @@ static ra8_err_t internal_keyboard_route(void)
 }
 
 /**
+ * @brief Initialize CGC, MSTP, SysTick, and board console.
+ * @return void
+ * @since 0.1.0
+ */
+static void internal_bringup_clocks(void)
+{
+  uint32_t cpuclk0_hz = 0U;
+  (void)ra8_cgc_init();
+  (void)ra8_cgc_get_clock_hz(k_ra8_clock_id_cpuclk0, &cpuclk0_hz);
+  (void)ra8_mstp_init();
+  (void)ra8_time_init(cpuclk0_hz);
+  (void)ra8_board_uart_console_init((uint32_t)k_wkd_uart_baud);
+  ra8_isr_globals_enable();
+  ra8_log_init();
+  (void)ra8_io_stream_uart_init(&s_uart, &s_uart_state, (uint8_t)k_wkd_uart_chan);
+  (void)ra8_io_log_attach(&s_uart);
+}
+
+/**
+ * @brief Bring up SDRAM, GLCDC display controller, and ra8_gfx.
+ * @return ra8_err_t Result of display initialization.
+ * @since 0.1.0
+ */
+static ra8_err_t internal_bringup_display(void)
+{
+  ra8_delay_ms((uint32_t)k_wkd_settle_ms);
+  (void)ra8_sdramc_init();
+  const ra8_err_t err =
+    display_pal_bind_glcdc(&s_display, &k_wkd_fb_cfg, &s_ra8_panel_ek_ra8d2_timing);
+  if (err != k_ra8_ok) {
+    return err;
+  }
+  (void)display_get_framebuffer(s_display, &s_fb);
+  (void)ra8_gfx_init(s_fb.pixels, s_fb.width_px, s_fb.height_px, k_ra8_gfx_format_rgb565);
+  (void)ra8_gfx_clear((uint32_t)k_wkd_bg);
+  return k_ra8_ok;
+}
+
+/**
+ * @brief Paint the header bar, typed query field, and status badge above the keyboard.
+ * @return void
+ * @since 0.1.0
+ */
+static void internal_draw_chrome(void)
+{
+  /* Top panel header: dark navy background */
+  (void)ra8_gfx_rect(0,
+                     0,
+                     (int32_t)k_wkd_frame_w,
+                     (int32_t)k_wkd_frame_y,
+                     (uint32_t)k_wkd_col_hdr_bg,
+                     true);
+  /* Accent dividing line */
+  (void)ra8_gfx_rect(0,
+                     (int32_t)k_wkd_frame_y - 2,
+                     (int32_t)k_wkd_frame_w,
+                     2,
+                     (uint32_t)k_wkd_col_hdr_line,
+                     true);
+
+  /* Title and subtitle */
+  (void)ra8_gfx_text_out(24,
+                         20,
+                         "RA8 On-Screen Keyboard Widget (PR #1342 / Issue #1336)",
+                         &ra8_gfx_font_8x16,
+                         (uint32_t)k_wkd_col_hdr_title,
+                         (uint32_t)k_wkd_col_hdr_bg);
+  (void)ra8_gfx_text_out(
+    24,
+    44,
+    "Engine: ra8_keyboard  |  Consumer: ra8_widget_keyboard  |  Display: GLCDC 1024x600",
+    &ra8_gfx_font_8x16,
+    (uint32_t)k_wkd_col_hdr_sub,
+    (uint32_t)k_wkd_col_hdr_bg);
+
+  /* Query input box */
+  (void)ra8_gfx_rect(24, 76, 560, 48, (uint32_t)k_wkd_col_box_bg, true);
+  (void)ra8_gfx_rect(24, 76, 560, 48, (uint32_t)k_wkd_col_box_brd, false);
+  (void)ra8_gfx_text_out(40,
+                         92,
+                         "Input Query: \"ra\"   [COMMITTED / ENTER]",
+                         &ra8_gfx_font_8x16,
+                         (uint32_t)k_wkd_col_box_text,
+                         (uint32_t)k_wkd_col_box_bg);
+
+  /* Pass verdict badge */
+  (void)ra8_gfx_rect(610, 76, 390, 48, (uint32_t)k_wkd_col_pass_bg, true);
+  (void)ra8_gfx_rect(610, 76, 390, 48, (uint32_t)k_wkd_col_pass_brd, false);
+  (void)ra8_gfx_text_out(626,
+                         92,
+                         "VERDICT: PASS (6/6 Legs Verified)",
+                         &ra8_gfx_font_8x16,
+                         (uint32_t)k_wkd_col_pass_text,
+                         (uint32_t)k_wkd_col_pass_bg);
+}
+
+/**
  * @brief Firmware entry point.
  *
- * @details Brings the console up, runs the keyboard-widget route against the
- *          real key engine, and parks in an infinite loop.
+ * @details Brings up clocks and display, executes the 6-leg test assertions,
+ *          draws the interactive UI chrome, and flushes to the GLCDC panel.
  *
  * @return void
  * @pre SystemInit configured VTOR / FPU / priority grouping.
  * @post A PASS or FAIL verdict line is queued on SCI8.
- * @post Control parks in an infinite loop; the function never returns.
- * @note Single-threaded; runs to the park loop on the main stack.
+ * @post Control parks in a frame delay loop; the function never returns.
+ * @note Single-threaded; runs on the main stack.
  * @since 0.1.0
  */
 void main(void)
 {
-  (void)ra8_cgc_init();
-  (void)ra8_mstp_init();
-  (void)ra8_board_uart_console_init(115200U);
-  ra8_log_init();
-  (void)ra8_io_stream_uart_init(&s_uart, &s_uart_state, (uint8_t)k_wkd_uart_chan);
-  (void)ra8_io_log_attach(&s_uart);
+  internal_bringup_clocks();
   internal_print("widget_keyboard_demo: boot\r\n");
 
+  if (internal_bringup_display() != k_ra8_ok) {
+    internal_print("widget_keyboard_demo: display init FAIL\r\n");
+    while (true) {
+    }
+  }
+
   if (internal_keyboard_route() == k_ra8_ok) {
+    internal_draw_chrome();
+    if (s_display != nullptr) {
+      (void)display_flush(s_display, display_full_rect(s_display), k_display_refresh_quality);
+    }
     internal_print("widget_keyboard_demo: keyboard widget PASS\r\n");
   } else {
     internal_print("widget_keyboard_demo: keyboard widget FAIL\r\n");
@@ -656,5 +785,6 @@ void main(void)
 
   (void)ra8_sci_flush((uint8_t)k_wkd_uart_chan);
   while (true) {
+    ra8_delay_ms((uint32_t)k_wkd_frame_ms);
   }
 }

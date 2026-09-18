@@ -39,5 +39,5 @@ ra8_add_app(
   NAME widget_keyboard_demo
   STACK_BYTES 4096
   DESCRIPTION "ra8_widget_keyboard: the on-screen-keyboard widget routed against the real ra8_keyboard engine"
-  LIBS ra8_widget ra8_keyboard ra8_box ra8_ui ra8_io ra8_fs ra8_sdmmc_spi ra8_usb_pal ra8_board_ek_ra8d2
+  LIBS ra8_widget ra8_keyboard ra8_box ra8_ui ra8_display_pal ra8_gfx ra8_io ra8_fs ra8_sdmmc_spi ra8_usb_pal ra8_board_ek_ra8d2
 )
