@@ -179,7 +179,6 @@ function(ra8_add_test name src_file)
             ${FW_ROOT}/libs/ra8_wdt_supervisor/src
             ${FW_ROOT}/libs/ra8_board_ek_ra8d2/src
             ${FW_ROOT}/libs/ra8_lsm6dso/src
-            ${FW_ROOT}/libs/ra8_ov5640/src
             ${FW_ROOT}/apps/shared_libs/epub/src
             ${FW_ROOT}/apps/shared_libs/comic/src
             ${FW_ROOT}/apps/shared_libs/unarch/src
