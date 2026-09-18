@@ -71,6 +71,18 @@ ra8_add_zig_library(
   ra8_cache_store
 )
 
+# Fully migrated: the edge + hysteresis nag policy is Zig now, so
+# libs/ra8_batt/src has no .c left and the RA8_BATT_SOURCES glob is gone from
+# library_sources.cmake and core_hal.cmake.
+ra8_add_zig_library(
+  NAME
+  ra8_batt
+  ZIG_ROOT
+  ${FW_ROOT}/libs/ra8_batt
+  LIBRARY_NAME
+  ra8_batt
+)
+
 # ra8_core_hal is the OBJECT library every host test links, so an INTERFACE
 # link here reaches each test executable that pulls in a migrated library.
 target_link_libraries(
@@ -80,4 +92,5 @@ target_link_libraries(
          ra8_zig::ra8_epd_cal
          ra8_zig::ra8_touch_cal
          ra8_zig::ra8_devcfg
+         ra8_zig::ra8_batt
 )

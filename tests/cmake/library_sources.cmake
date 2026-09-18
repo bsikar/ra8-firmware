@@ -53,7 +53,7 @@ set(RABOOK_COMPILE_CPP_SOURCES "")
 file(GLOB_RECURSE RABOOK_IMPORT_SOURCES CONFIGURE_DEPENDS
      ${FW_ROOT}/apps/shared_libs/rabook_import/src/*.c
 )
-file(GLOB_RECURSE RA8_BATT_SOURCES CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra8_batt/src/*.c)
+# ra8_batt is implemented in Zig (libs/ra8_batt/build.zig).
 file(GLOB_RECURSE RA8_WIDGET_SOURCES CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra8_widget/src/*.c)
 file(GLOB_RECURSE RA8_APP_SOURCES CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra8_app/src/*.c)
 file(GLOB_RECURSE RA8_NSC_SOURCES CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra8_nsc/src/*.c)
