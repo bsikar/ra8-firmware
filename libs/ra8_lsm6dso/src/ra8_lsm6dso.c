@@ -9,7 +9,10 @@
  * Polling, transport-agnostic implementation. All register-level
  * citations point at LSM6DSO DS12140 Rev 4 (Sept 2019). The transport
  * is supplied by the caller (Dependency Inversion) so this TU does
- * not link against ``ra8_i3c_i2c`` or ``ra8_spi``.
+ * not link against ``ra8_i3c_i2c`` or ``ra8_spi``. The I2C binder at
+ * the bottom of this file consumes the house ``ra8_i2c_bus_ops_t``
+ * seam, which is a struct of function pointers and likewise names no
+ * peripheral.
  *
  * Algorithm style throughout this file:
  *   1. Validate ``dev`` / ``bus`` / output pointer.
@@ -266,6 +269,112 @@ ra8_err_t ra8_lsm6dso_init(ra8_lsm6dso_t* out_dev, const ra8_lsm6dso_bus_t* bus)
   out_dev->odr_code      = k_lsm6dso_odr_off;     /* DS12140 sec 9.12 reset default. */
   out_dev->initialized   = true;
   return k_ra8_ok;
+}
+
+/* =============================================================================
+ * Backend binders
+ * =============================================================================
+ */
+
+/**
+ * @brief I2C read trampoline: one write-RESTART-read transaction.
+ *
+ * @details
+ * The LSM6DSO applies register auto-increment inside a single
+ * transaction (DS12140 sec 6.1.2), so the register byte and the burst
+ * read must not be split by a STOP. ``ra8_i2c_bus_ops_t::transfer`` is
+ * exactly that shape, which is why the binder never needs the seam's
+ * plain ``read``.
+ *
+ * @param[in]  ctx Bound ``ra8_lsm6dso_i2c_ctx_t``.
+ * @param[in]  reg First register address.
+ * @param[out] buf Destination buffer.
+ * @param[in]  len Byte count.
+ *
+ * @return ``ra8_err_t`` forwarded from the bound seam.
+ * @retval k_ra8_err_null_ptr ``ctx`` is NULL.
+ *
+ * @pre ``ctx`` was filled by ``ra8_lsm6dso_bind_i2c``.
+ * @pre The seam behind ``ctx`` is still alive.
+ * @post The seam's ``transfer`` was called at most once.
+ * @post No state in this translation unit is mutated.
+ */
+static ra8_err_t internal_lsm6dso_i2c_read(void* ctx, uint8_t reg, uint8_t* buf, uint32_t len)
+{
+  RA8_CHECK_NULL_PTR(ctx, s_lsm6dso_tag, "i2c_read: ctx");
+  const ra8_lsm6dso_i2c_ctx_t* c = (const ra8_lsm6dso_i2c_ctx_t*)ctx;
+  return c->bus.transfer(c->bus.ctx, c->addr7, &reg, 1U, buf, len);
+}
+
+/**
+ * @brief I2C write trampoline: stage ``[reg][payload]``, one STOPped write.
+ *
+ * @details
+ * Bounded stack staging, capped at ``k_lsm6dso_i2c_write_payload_max``
+ * payload bytes. A longer write is refused rather than truncated, so a
+ * future multi-byte writer fails loudly instead of corrupting the part.
+ *
+ * @param[in] ctx Bound ``ra8_lsm6dso_i2c_ctx_t``.
+ * @param[in] reg First register address.
+ * @param[in] buf Source buffer (NULL only when ``len`` is 0).
+ * @param[in] len Payload byte count.
+ *
+ * @return ``ra8_err_t`` forwarded from the bound seam.
+ * @retval k_ra8_err_null_ptr    ``ctx`` is NULL, or ``buf`` is NULL with
+ *                              a non-zero ``len``.
+ * @retval k_ra8_err_invalid_arg ``len`` exceeds the staging cap.
+ *
+ * @pre ``ctx`` was filled by ``ra8_lsm6dso_bind_i2c``.
+ * @pre The seam behind ``ctx`` is still alive.
+ * @post The staged buffer never exceeds its declared capacity.
+ * @post The seam's ``write`` was called at most once.
+ */
+static ra8_err_t internal_lsm6dso_i2c_write(void*          ctx,
+                                            uint8_t        reg,
+                                            const uint8_t* buf,
+                                            uint32_t       len)
+{
+  RA8_CHECK_NULL_PTR(ctx, s_lsm6dso_tag, "i2c_write: ctx");
+  if (len > (uint32_t)k_lsm6dso_i2c_write_payload_max) {
+    ra8_log_error(s_lsm6dso_tag, "i2c_write: payload over staging cap");
+    return k_ra8_err_invalid_arg;
+  }
+  if (len > 0U) {
+    RA8_CHECK_NULL_PTR(buf, s_lsm6dso_tag, "i2c_write: buf");
+  }
+  uint8_t staged[(uint32_t)k_lsm6dso_i2c_write_payload_max + 1U] = {};
+  staged[0]                                                      = reg;
+  for (uint32_t i = 0U; i < len; ++i) {
+    staged[i + 1U] = buf[i];
+  }
+  const ra8_lsm6dso_i2c_ctx_t* c = (const ra8_lsm6dso_i2c_ctx_t*)ctx;
+  return c->bus.write(c->bus.ctx, c->addr7, staged, len + 1U, true);
+}
+
+ra8_err_t ra8_lsm6dso_bind_i2c(ra8_lsm6dso_t*           out_dev,
+                               ra8_lsm6dso_i2c_ctx_t*   ctx,
+                               const ra8_i2c_bus_ops_t* ops,
+                               uint8_t                  addr7)
+{
+  RA8_CHECK_NULL_PTR(out_dev, s_lsm6dso_tag, "bind_i2c: out_dev");
+  RA8_CHECK_NULL_PTR(ctx, s_lsm6dso_tag, "bind_i2c: ctx");
+  RA8_CHECK_NULL_PTR(ops, s_lsm6dso_tag, "bind_i2c: ops");
+  RA8_CHECK_NULL_PTR(ops->transfer, s_lsm6dso_tag, "bind_i2c: ops.transfer");
+  RA8_CHECK_NULL_PTR(ops->write, s_lsm6dso_tag, "bind_i2c: ops.write");
+  if (addr7 > (uint8_t)k_lsm6dso_i2c_addr_max) {
+    ra8_log_error(s_lsm6dso_tag, "bind_i2c: addr7 is not a 7-bit address");
+    return k_ra8_err_invalid_arg;
+  }
+
+  ctx->bus   = *ops;
+  ctx->addr7 = addr7;
+
+  const ra8_lsm6dso_bus_t bus = {
+    .read_regs  = internal_lsm6dso_i2c_read,
+    .write_regs = internal_lsm6dso_i2c_write,
+    .ctx        = ctx,
+  };
+  return ra8_lsm6dso_init(out_dev, &bus);
 }
 
 /* =============================================================================
