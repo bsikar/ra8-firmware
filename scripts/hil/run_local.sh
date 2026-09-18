@@ -17,6 +17,12 @@
 #
 #   uart_scrape    -- flash, scrape the VCOM for HIL_EXPECT within
 #                     HIL_TIMEOUT_S; fail if HIL_EXPECT_NEGATIVE matches.
+#   uart_sleep_scrape
+#                  -- for an app whose success condition IS being asleep:
+#                     flash, scrape the VCOM, then classify the capture with
+#                     lib/sleep_verdict.py. Silence after HIL_SLEEP_ENTER is
+#                     reported as SLEEPING_UNPROBED (rc 3), not as a failure,
+#                     because a UART cannot tell asleep from hung (#517).
 #   jlink_memprobe -- flash, double-halt mem32 read of HIL_PROBE_SYMBOL
 #                     (and optional HIL_PROBE_FAILURE_SYMBOL) across a
 #                     HIL_PROBE_SECONDS window; assert the advance bounds.
@@ -31,6 +37,11 @@
 #   0  PASS
 #   1  FAIL (gate failed, or flash failed)
 #   2  ERROR (usage / app not found / no probe / no VCOM)
+#   3  SLEEPING_UNPROBED (uart_sleep_scrape only: the core announced sleep and
+#      went quiet, which this bench cannot distinguish from hung -- needs a
+#      logic-level probe, see HIL_SLEEP_PROBE_REPORT)
+#   4  INCONCLUSIVE (uart_sleep_scrape only: it kept emitting after announcing
+#      sleep, so the run proved nothing about sleeping)
 
 if [[ "$-" == *p* ]]; then
   unset -v BASH_ENV ENV
@@ -389,6 +400,74 @@ EOF
     return 1
   }
 
+  # ===========================================================================
+  # Mode: uart_sleep_scrape (#517)
+  #
+  # Same capture as uart_scrape; a different question asked of it. uart_scrape
+  # asks "did the banner appear", and for an app whose success condition is
+  # being asleep the answer is no by definition -- which is why four lpm_* apps
+  # sit in hil_needs_revalidation as regressions they are not.
+  #
+  # This mode announces the sleep entry first (HIL_SLEEP_ENTER), then hands the
+  # raw capture to lib/sleep_verdict.py, which separates the three things
+  # silence can mean. It never turns silence into a pass: an unobserved sleep
+  # exits 3 (SLEEPING_UNPROBED) and the tier carries that verdict honestly
+  # until a logic-level probe supplies HIL_SLEEP_PROBE_REPORT.
+  # ===========================================================================
+  run_uart_sleep_scrape() {
+    need_uart
+    if [[ -z "${HIL_SLEEP_ENTER:-}" ]]; then
+      echo -e "${RED}[local]${NC} uart_sleep_scrape needs HIL_SLEEP_ENTER: without a" \
+        "marker for where sleep began, silence is not interpretable"
+      return 2
+    fi
+    local timeout_s="${HIL_TIMEOUT_S:-30}"
+    local log="/tmp/hil_local_${APP}.uart"
+    echo -e "${YELLOW}[local]${NC} uart_sleep_scrape on ${UART}" \
+      " enter='${HIL_SLEEP_ENTER}' wake='${HIL_SLEEP_WAKE:-(none)}' timeout=${timeout_s}s"
+    start_reader "$log" "$((timeout_s + 25))"
+    if ! flash_local; then
+      stop_reader
+      return 1
+    fi
+    # Scrape for the whole window even once the wake marker lands: a capture
+    # that keeps going after the announced sleep is itself the finding, and
+    # cutting the read short at the first match would hide it.
+    local deadline=$((SECONDS + timeout_s))
+    while ((SECONDS < deadline)); do
+      sleep 0.2
+    done
+    stop_reader
+    echo "--- captured UART ---"
+    LC_ALL=C tr -c '[:print:]\r\n\t' '.' <"$log" | sed 's/\r/\\r/g' | head -30 | sed 's/^/[uart] /' || true
+    echo "--- end ---"
+    local -a vargs=(
+      --capture "$log"
+      --enter "${HIL_SLEEP_ENTER}"
+      --app "${APP}"
+    )
+    [[ -n "${HIL_SLEEP_WAKE:-}" ]] && vargs+=(--wake "${HIL_SLEEP_WAKE}")
+    [[ -n "${HIL_EXPECT_NEGATIVE:-}" ]] && vargs+=(--negative "${HIL_EXPECT_NEGATIVE}")
+    if [[ -n "${HIL_SLEEP_PROBE_REPORT:-}" ]]; then
+      if [[ -f "${HIL_SLEEP_PROBE_REPORT}" ]]; then
+        vargs+=(--probe-report "${HIL_SLEEP_PROBE_REPORT}")
+      else
+        echo -e "${YELLOW}[local]${NC} HIL_SLEEP_PROBE_REPORT=${HIL_SLEEP_PROBE_REPORT}" \
+          "is not present on this host: the wake stays unobserved"
+      fi
+    fi
+    local rc=0
+    python3 "$ROOT/scripts/hil/lib/sleep_verdict.py" "${vargs[@]}" || rc=$?
+    case "$rc" in
+      0) echo -e "${GREEN}[local PASS]${NC} ${APP}: wake observed" ;;
+      3) echo -e "${YELLOW}[local NEEDS-PROBE]${NC} ${APP}: asleep as far as this bench" \
+        "can see, and that is not a failure" ;;
+      4) echo -e "${RED}[local FAIL]${NC} ${APP}: did not sleep (still emitting)" ;;
+      *) echo -e "${RED}[local FAIL]${NC} ${APP}: rc=${rc}" ;;
+    esac
+    return "$rc"
+  }
+
   # =============================================================================
   # Mode: jlink_memprobe
   # =============================================================================
@@ -645,6 +724,7 @@ q"
 
   case "$MODE" in
     uart_scrape) run_uart_scrape ;;
+    uart_sleep_scrape) run_uart_sleep_scrape ;;
     jlink_memprobe) run_memprobe ;;
     alive) run_alive ;;
     *)

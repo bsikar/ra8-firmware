@@ -35,6 +35,20 @@
 #                       compute-heavy app whose banner lands past the default cap
 #                       (e.g. a software-crypto KAT) so the global cap can stay
 #                       low and a genuinely-stuck app fails fast.
+#
+# Three knobs for HIL_MODE=uart_sleep_scrape (#517), where the app's success
+# condition IS being asleep and a UART therefore cannot distinguish "asleep"
+# from "hung":
+#   HIL_SLEEP_ENTER         banner the app emits immediately before the sleep
+#                           instruction. Required by the mode: it is what makes
+#                           silence afterwards interpretable at all.
+#   HIL_SLEEP_WAKE          banner that proves the core woke. Optional -- an app
+#                           that cannot print after waking leaves the verdict to
+#                           the rig probe.
+#   HIL_SLEEP_PROBE_REPORT  path to a JSON record from a logic-level probe
+#                           (infra/ansible/roles/ad2_tools). Only the rig can
+#                           produce it; without it the verdict is
+#                           SLEEPING_UNPROBED rather than a pass or a failure.
 if [[ "$-" == *p* ]]; then
   unset -v BASH_ENV ENV
   declare -a ra8_startup_env_unset=()
@@ -107,6 +121,7 @@ if [[ "$-" == *p* ]]; then
   HIL_RTT_BUF_SYMBOL HIL_RTT_BUF_BYTES
   HIL_SELF_BUILD HIL_FRAME_WIDTH HIL_FRAME_HEIGHT
   HIL_POST_INITIALIZE HIL_POST_POWER_CYCLE_HALT
+  HIL_SLEEP_ENTER HIL_SLEEP_WAKE HIL_SLEEP_PROBE_REPORT
 "
 
   # Declare every knob above with an empty default. hil_conf_load resets and
@@ -149,6 +164,9 @@ if [[ "$-" == *p* ]]; then
   HIL_FRAME_HEIGHT="${HIL_FRAME_HEIGHT:-}"
   HIL_POST_INITIALIZE="${HIL_POST_INITIALIZE:-}"
   HIL_POST_POWER_CYCLE_HALT="${HIL_POST_POWER_CYCLE_HALT:-}"
+  HIL_SLEEP_ENTER="${HIL_SLEEP_ENTER:-}"
+  HIL_SLEEP_WAKE="${HIL_SLEEP_WAKE:-}"
+  HIL_SLEEP_PROBE_REPORT="${HIL_SLEEP_PROBE_REPORT:-}"
 
   # hil_discover_apps <hil_dir>
   #
