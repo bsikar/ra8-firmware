@@ -90,9 +90,14 @@ RA8_INTERNAL static bool internal_c6link_pump_receive(ra8_c6link_t* link, ra8_c6
     case k_ra8_c6link_frame_malformed:
       stats->malformed++;
       return false;
-    case k_ra8_c6link_frame_bad_checksum:
+    case k_ra8_c6link_frame_bad_checksum: {
       stats->bad_checksum++;
+      ra8_c6link_csum_probe_t probe = {};
+      if (priv_c6link_frame_csum_probe(link->rx, &probe)) {
+        stats->ifnum_shortfall++;
+      }
       return false;
+    }
     case k_ra8_c6link_frame_data:
     default:
       break;

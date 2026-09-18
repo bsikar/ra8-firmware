@@ -103,6 +103,45 @@ typedef struct ra8_c6link_rx_view {
   uint8_t  if_num;  /**< Interface number from the header.                  */
 } ra8_c6link_rx_view_t;
 
+/**
+ * @struct ra8_c6link_csum_probe
+ * @brief What a failed integrity check actually disagreed by.
+ *
+ * @details
+ * A bare "checksum failed" cannot tell a corrupted wire from a co-processor
+ * that framed the bytes one way and checksummed them another. The frame
+ * checksum is a plain 16-bit sum, so the amount the two disagree by is itself
+ * a measurement, and without a bus capture it is the only evidence a host has.
+ *
+ * `shortfall` is deliberately `recomputed - stated`: the co-processor's bootup
+ * `ESP_PRIV_IF` frame (#529) states a checksum that falls short of its own
+ * bytes, and how far short is the part worth naming.
+ *
+ * @invariant `stated` and `recomputed` are the two values that disagreed.
+ * @invariant `shortfall` is their wrapping 16-bit difference, never clamped.
+ * @invariant `ifnum_consistent` is only ever true when `if_num` is non-zero.
+ *
+ * @par Example:
+ * @code
+ * ra8_c6link_csum_probe_t probe = {};
+ * if (priv_c6link_frame_csum_probe(rx, &probe)) { count_the_known_shape(); }
+ * @endcode
+ *
+ * @see priv_c6link_frame_csum_probe
+ * @since 0.1.0
+ */
+typedef struct ra8_c6link_csum_probe {
+  uint16_t stated;     /**< Checksum the sender put in the header.           */
+  uint16_t recomputed; /**< Checksum the received bytes actually add up to.  */
+  uint16_t shortfall;  /**< `recomputed - stated`, wrapping as the sum does. */
+  uint8_t  if_num;     /**< Interface number the received header carried.    */
+  bool     ifnum_consistent;
+  /**< True when `shortfall` equals `if_num << 4`, the one arithmetic shape
+       #529 records. Consistent with that cause, never proof of it: the sum
+       runs over every octet, so any other octet high by the same amount
+       produces an identical shortfall. */
+} ra8_c6link_csum_probe_t;
+
 /* ==========================================================================
  * ra8_c6link_arena.c -- the fixed decode arena behind the protobuf codec
  * ==========================================================================
@@ -348,6 +387,52 @@ RA8_PRIV void priv_c6link_frame_seal(uint8_t* tx, uint8_t if_type, uint8_t if_nu
  */
 [[nodiscard]] RA8_PRIV ra8_c6link_frame_class_t
 priv_c6link_frame_classify(uint8_t* rx, ra8_c6link_rx_view_t* view);
+
+/**
+ * @brief Measure how far a rejected frame's checksum missed by.
+ *
+ * @details
+ * Runs only on a frame the classifier has already called
+ * ::k_ra8_c6link_frame_bad_checksum. Recomputes the sum over the same span
+ * the classifier used, records both values and their wrapping difference, and
+ * answers the one question a bench needs: is this the arithmetic shape #529
+ * records against the co-processor's bootup `ESP_PRIV_IF` frame, or is it an
+ * unexplained mismatch that should be read as wire corruption?
+ *
+ * The answer is consistency, not causation. The checksum is a sum over every
+ * octet, so a shortfall of `if_num << 4` is produced just as exactly by any
+ * other octet arriving that much higher than it was summed. Upstream's own
+ * slave source stamps this frame's `if_num` to zero *before* it checksums
+ * (`slave/main/spi_slave_api.c:333` then `:410`, esp-hosted-mcu `949bb30`,
+ * firmware 2.12.11), so the nibble is a hypothesis this predicate keeps
+ * countable, not a mechanism it asserts.
+ *
+ * @param[in] rx Received transaction; must be non-null and is not modified.
+ * @param[out] probe Receives both checksums, their difference and the verdict;
+ *                   must be non-null.
+ *
+ * @return true when the shortfall is exactly a non-zero `if_num << 4`.
+ * @retval true The mismatch is consistent with the #529 shape.
+ * @retval false Something else, or an argument was null.
+ *
+ * @pre The transfer has completed and @p rx is stable.
+ * @pre The header's `offset` and `len` have already passed the sanity tests.
+ * @post @p rx holds exactly the bytes it held on entry.
+ * @post @p probe is fully written whenever @p rx and @p probe are non-null.
+ *
+ * @note Never accepts a frame. A diagnosed defect is still a dropped frame.
+ *
+ * @par Example:
+ * @code
+ * ra8_c6link_csum_probe_t probe = {};
+ * if (priv_c6link_frame_csum_probe(rx, &probe)) { stats->ifnum_shortfall++; }
+ * @endcode
+ *
+ * @see priv_c6link_frame_classify
+ * @since 0.1.0
+ */
+[[nodiscard]] RA8_PRIV bool priv_c6link_frame_csum_probe(const uint8_t*           rx,
+                                                         ra8_c6link_csum_probe_t* probe);
 
 /**
  * @enum ra8_c6link_caps_t
