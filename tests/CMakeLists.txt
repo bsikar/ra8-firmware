@@ -44,6 +44,8 @@ project(
 #   library_sources  the globs core_hal consumes
 #   core_hal         the object library every test links
 #   unit_tests       ra8_add_test() and the auto-glob, which needs core_hal
+#   zig_libraries    libraries whose implementation is now Zig, linked into
+#                    ra8_core_hal's consumers behind their unchanged C header
 #   tests_*          the targets that cannot come from the auto-glob, each
 #                    grouped by WHY: a real crypto backend, a device gate,
 #                    C++ XML shims, or a standalone storage subset
@@ -55,6 +57,7 @@ include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/host_config.cmake)
 include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/library_sources.cmake)
 include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/core_hal.cmake)
 include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/unit_tests.cmake)
+include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/zig_libraries.cmake)
 include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/tests_crypto.cmake)
 include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/tests_npu.cmake)
 include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/tests_xml.cmake)
