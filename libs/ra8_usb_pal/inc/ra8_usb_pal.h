@@ -134,19 +134,32 @@ typedef enum : uint8_t {
 /**
  * @enum ra8_usb_pal_event_t
  * @brief Event mask bits passed to ``ra8_usb_pal_event_fn_t``.
+ *
+ * @details
+ * Bits are ORed, so one INTSTS0 snapshot can raise several at once
+ * (a SOF sharing a tick with a buffer-empty reports both). Every bit
+ * below has a producer in the translation at
+ * libs/ra8_usb_pal/src/ra8_usb_pal.c; see
+ * ::priv_usb_pal_translate_event for the per-bit source.
+ *
+ * Two device states INTSTS0 reports have no bit here and raise
+ * nothing: DVSQ Address and DVSQ Configured. Endpoint direction is
+ * coarse -- BEMP is IN-side and becomes ``_ep_in``, while BRDY
+ * asserts for either direction and becomes ``_ep_out``; resolving it
+ * per pipe needs BRDYSTS, which the PAL is not given.
  */
 typedef enum : uint16_t {
-  k_ra8_usb_pal_event_none    = 0x0000U, /**< RA8 USB pal event none.   */
-  k_ra8_usb_pal_event_reset   = 0x0001U, /**< Bus reset.                */
-  k_ra8_usb_pal_event_suspend = 0x0002U, /**< Bus suspend (idle).       */
-  k_ra8_usb_pal_event_resume  = 0x0004U, /**< Bus resume.               */
-  k_ra8_usb_pal_event_setup   = 0x0008U, /**< SETUP packet on EP0.      */
-  k_ra8_usb_pal_event_ep_in   = 0x0010U, /**< IN endpoint complete.     */
-  k_ra8_usb_pal_event_ep_out  = 0x0020U, /**< OUT endpoint complete.    */
-  k_ra8_usb_pal_event_sof     = 0x0040U, /**< Start-of-Frame.           */
-  k_ra8_usb_pal_event_attach  = 0x0080U, /**< VBUS rose / cable in.     */
-  k_ra8_usb_pal_event_detach  = 0x0100U, /**< VBUS dropped / cable out. */
-  k_ra8_usb_pal_event_error   = 0x8000U, /**< Controller error.         */
+  k_ra8_usb_pal_event_none    = 0x0000U, /**< Nothing named fired.      */
+  k_ra8_usb_pal_event_reset   = 0x0001U, /**< Bus reset (DVST, DVSQ=Def).  */
+  k_ra8_usb_pal_event_suspend = 0x0002U, /**< Bus suspend (DVST, susp).    */
+  k_ra8_usb_pal_event_resume  = 0x0004U, /**< Bus resume (RSME).           */
+  k_ra8_usb_pal_event_setup   = 0x0008U, /**< SETUP on EP0 (CTRT+VALID).   */
+  k_ra8_usb_pal_event_ep_in   = 0x0010U, /**< IN buffer drained (BEMP).    */
+  k_ra8_usb_pal_event_ep_out  = 0x0020U, /**< Buffer ready (BRDY).         */
+  k_ra8_usb_pal_event_sof     = 0x0040U, /**< Start-of-Frame (SOFR).       */
+  k_ra8_usb_pal_event_attach  = 0x0080U, /**< VBSE with VBSTS set.         */
+  k_ra8_usb_pal_event_detach  = 0x0100U, /**< VBSE with VBSTS clear.       */
+  k_ra8_usb_pal_event_error   = 0x8000U, /**< NRDY, or CTSQ=SQER.          */
 } ra8_usb_pal_event_t;
 
 /**
@@ -355,8 +368,13 @@ typedef void (*ra8_usb_pal_event_fn_t)(void* ctx, ra8_usb_speed_t speed, uint16_
  *
  * @details
  * Replaces any previously installed handler. The PAL relays
- * ra8_usb ISR events into this callback after translating them
- * into the PAL-level ``k_ra8_usb_pal_event_*`` bit set.
+ * ra8_usb ISR events into this callback after translating the raw
+ * INTSTS0 snapshot into the PAL-level ``k_ra8_usb_pal_event_*`` bit
+ * set, one arm per source bit; ::ra8_usb_pal_event_t documents the
+ * mapping and the two states it deliberately does not name.
+ * Events whose snapshot maps to no named bit are dropped rather
+ * than reported, so the callback never fires with
+ * ``k_ra8_usb_pal_event_none``.
  *
  * @param[in] fn Callback. Pass NULL to detach.
  * @param[in] ctx Context passed to the callback.
