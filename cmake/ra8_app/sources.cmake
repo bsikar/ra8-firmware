@@ -122,6 +122,8 @@ macro(_ra8_app_collect_sources)
   # Extra first-party libraries (plain + off-target).
   set(_ra8_lib_extra "")
   set(_ra8_lib_extra_off_target "")
+  # Migrated (Zig) libraries named in LIBS, as "<lib>|<path>" entries.
+  set(_ra8_lib_zig "")
   set(_ra8_lib_inc "")
   foreach(_ra8_lib ${_RA8_APP_LIBS})
     if(EXISTS "${RA8_REPO_ROOT}/libs/${_ra8_lib}")
@@ -133,6 +135,12 @@ macro(_ra8_app_collect_sources)
     endif()
     if(_ra8_lib_path)
       file(GLOB_RECURSE _ra8_lib_one CONFIGURE_DEPENDS ${_ra8_lib_path}/src/*.c)
+      if(EXISTS "${_ra8_lib_path}/build.zig")
+        # A migrated library has no src/*.c left, so the glob above is empty
+        # and the link would silently lose its objects. Record it instead and
+        # let cmake/ra8_app/zig_libs.cmake cross-build and link the archive.
+        list(APPEND _ra8_lib_zig "${_ra8_lib}|${_ra8_lib_path}")
+      endif()
       if(_ra8_lib MATCHES "^ra8_board_")
         # Board boot sources are image-composition fallbacks selected above.
         # A board named explicitly in LIBS must not re-add src/boot after an
@@ -183,6 +191,9 @@ macro(_ra8_app_collect_sources)
     endif()
     if(_ra8_lib_path)
       file(GLOB_RECURSE _ra8_lib_one CONFIGURE_DEPENDS ${_ra8_lib_path}/src/*.c)
+      if(EXISTS "${_ra8_lib_path}/build.zig")
+        list(APPEND _ra8_lib_zig "${_ra8_lib}|${_ra8_lib_path}")
+      endif()
       if(_ra8_lib MATCHES "^ra8_board_")
         list(
           FILTER
