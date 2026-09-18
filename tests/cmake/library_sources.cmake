@@ -62,6 +62,11 @@ file(GLOB_RECURSE COMPRESS_SOURCES CONFIGURE_DEPENDS ${FW_ROOT}/apps/shared_libs
 file(GLOB_RECURSE RA8_CAMERA_SOURCES CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra8_camera/src/*.c)
 file(GLOB_RECURSE RA8_CAMERA_IO_SOURCES CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra8_camera_io/src/*.c)
 file(GLOB_RECURSE RA8_MEM_SOURCES CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra8_mem/src/*.c)
+# ra8_sdmmc_spi is partially migrated: the protocol core is Zig (see
+# tests/cmake/zig_libraries.cmake), so this glob now matches only
+# src/ra8_sdmmc_spi_io.c, the block-I/O TU that still calls the core's
+# priv_sdmmc_spi_* helpers through the module-private internal header. Do not
+# "fix" the glob away while that file is C.
 file(GLOB_RECURSE RA8_SDMMC_SPI_SOURCES CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra8_sdmmc_spi/src/*.c)
 file(GLOB_RECURSE RA8_GFX_SOURCES CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra8_gfx/src/*.c)
 # ra8_ui has no C sources: the interaction core (hit-testing, screen stack,

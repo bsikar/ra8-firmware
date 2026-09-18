@@ -338,6 +338,22 @@ ra8_add_zig_library(
   ra8_ftl
 )
 
+# Partially migrated: the protocol core (both CRC generators, command framing,
+# the R1/R3/R7 response readers, the bounded waits, the transport gate and the
+# CMD0..CMD16 identification sequence) is Zig now and owns the sole definition
+# of g_sdmmc_spi_state. libs/ra8_sdmmc_spi/src/ra8_sdmmc_spi_io.c is still C:
+# it calls straight into these symbols through the module-private
+# src/ra8_sdmmc_spi_internal.h, so that header and the RA8_SDMMC_SPI_SOURCES
+# glob (now matching only that one file) both stay.
+ra8_add_zig_library(
+  NAME
+  ra8_sdmmc_spi
+  ZIG_ROOT
+  ${FW_ROOT}/libs/ra8_sdmmc_spi
+  LIBRARY_NAME
+  ra8_sdmmc_spi
+)
+
 target_link_libraries(
   ra8_core_hal
   PUBLIC ra8_zig::ra8_box
@@ -363,4 +379,5 @@ target_link_libraries(
          ra8_zig::ra8_camera
          ra8_zig::fw_if_fs
          ra8_zig::ra8_ftl
+         ra8_zig::ra8_sdmmc_spi
 )
