@@ -244,7 +244,7 @@ ra8_err_t ra8_wdt_supervisor_init(const ra8_wdt_sup_cfg_t* cfg)
 
   const UINT mx = tx_mutex_create(&s_state.mutex, (CHAR*)(uintptr_t)"ra8_wdt_sup", TX_NO_INHERIT);
   if (mx != TX_SUCCESS) {
-    return k_ra8_err_rtos_error; /* GCOVR_EXCL_LINE -- shim always returns TX_SUCCESS */
+    return k_ra8_err_rtos_mutex;
   }
 
   s_state.initialized = true;
@@ -322,7 +322,7 @@ ra8_wdt_supervisor_register_thread(const char* name, uint32_t deadline_ms, uint8
 
   const UINT mx = tx_mutex_get(&s_state.mutex, TX_WAIT_FOREVER);
   if (mx != TX_SUCCESS) {
-    return k_ra8_err_rtos_error; /* GCOVR_EXCL_LINE -- shim always returns TX_SUCCESS */
+    return k_ra8_err_rtos_mutex;
   }
 
   ra8_err_t result = k_ra8_err_no_mem;
@@ -350,7 +350,7 @@ ra8_err_t ra8_wdt_supervisor_checkin(uint8_t handle)
 
   const UINT mx = tx_mutex_get(&s_state.mutex, TX_WAIT_FOREVER);
   if (mx != TX_SUCCESS) {
-    return k_ra8_err_rtos_error; /* GCOVR_EXCL_LINE -- shim always returns TX_SUCCESS */
+    return k_ra8_err_rtos_mutex;
   }
 
   ra8_err_t result = k_ra8_err_not_found;
@@ -383,7 +383,7 @@ ra8_err_t ra8_wdt_supervisor_start(void)
                                    TX_NO_TIME_SLICE,
                                    TX_AUTO_START);
   if (tx != TX_SUCCESS) {
-    return k_ra8_err_rtos_error; /* GCOVR_EXCL_LINE -- shim always returns TX_SUCCESS */
+    return k_ra8_err_rtos_thread_create;
   }
 
   s_state.started = true;
@@ -401,12 +401,10 @@ ra8_err_t ra8_wdt_supervisor_tick(bool* out_did_refresh)
 
   const UINT mx = tx_mutex_get(&s_state.mutex, TX_WAIT_FOREVER);
   if (mx != TX_SUCCESS) {
-    /* GCOVR_EXCL_START -- shim always returns TX_SUCCESS */
     if (out_did_refresh != nullptr) {
       *out_did_refresh = false;
     }
-    return k_ra8_err_rtos_error;
-    /* GCOVR_EXCL_STOP */
+    return k_ra8_err_rtos_mutex;
   }
 
   bool           all_alive   = true;
@@ -463,3 +461,30 @@ uint8_t ra8_wdt_supervisor_thread_count(void)
   }
   return count;
 }
+
+#ifdef RA8_OFF_TARGET
+/**
+ * @brief Arm a one-shot ThreadX failure inside this translation unit.
+ *
+ * @details
+ * The host shim's stubs are ``static inline``, so every including TU owns
+ * its own forced-failure slot. A unit test cannot reach the copy the
+ * supervisor's own ``tx_*`` calls resolve to without this seam, which is
+ * why the RTOS failure branches above were unreachable on the host build.
+ * Host build only; the target build links the real ThreadX.
+ *
+ * @param[in] call ThreadX call whose next invocation must fail, or
+ *                 ``k_ra8_wdt_sup_tx_call_none`` to disarm.
+ *
+ * @return Nothing.
+ *
+ * @pre None.
+ * @post The supervisor's next matching ThreadX call fails once.
+ * @note Not thread-safe; host unit-test context is single-threaded.
+ * @since 0.1.0
+ */
+void ra8_wdt_supervisor_test_force_rtos_failure(ra8_wdt_sup_tx_call_t call)
+{
+  internal_tx_shim_arm_failure(call);
+}
+#endif /* RA8_OFF_TARGET */
