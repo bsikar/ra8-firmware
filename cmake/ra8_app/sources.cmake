@@ -173,6 +173,15 @@ macro(_ra8_app_collect_sources)
       PROPERTIES COMPILE_OPTIONS "${_ra8_media_proto_warnings}"
     )
   endif()
+  if("mdl_storage_txn" IN_LIST _RA8_APP_LIBS)
+    # The bridge fills ra8_mdl_storage_iface_t, declared by ra8_c6link, and
+    # compiles nothing from it. Naming ra8_c6link in LIBS instead would drag in
+    # the whole hosted link (and its esp_hosted soup) for one typedef, so the
+    # declaration is added the same way ra8_c6link adds mdl's. (#762)
+    list(APPEND _ra8_lib_inc ${RA8_REPO_ROOT}/libs/ra8_c6link/inc
+         ${RA8_REPO_ROOT}/apps/shared_libs/mdl/inc
+    )
+  endif()
   foreach(_ra8_lib ${_RA8_APP_OFF_TARGET_LIBS})
     if(EXISTS "${RA8_REPO_ROOT}/libs/${_ra8_lib}")
       set(_ra8_lib_path "${RA8_REPO_ROOT}/libs/${_ra8_lib}")
