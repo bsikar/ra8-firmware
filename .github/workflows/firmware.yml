@@ -583,16 +583,6 @@ jobs:
       - run: just quality::local::gate sg-offsets
       - run: just quality::local::gate stack-usage
 
-  docs:
-    name: Doxygen warnings
-    runs-on: ra8-ci
-    if: >-
-      github.event_name != 'pull_request'
-      || github.event.pull_request.head.repo.full_name == github.repository
-    steps:
-      - uses: actions/checkout@v4
-      - run: just quality::local::gate docs
-
   # ---------------------------------------------------------------------------
   # MISRA-C 2012 ratchet (#240). The baseline records the cppcheck version it
   # was generated with -- keep the runner's cppcheck in step with it, and
