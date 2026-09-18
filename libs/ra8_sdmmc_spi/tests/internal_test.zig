@@ -310,3 +310,128 @@ test "data-response classes sit behind the five-bit mask" {
     try testing.expect(core.data_response.crc_err != core.data_response.accepted);
     try testing.expect(core.data_response.write_err != core.data_response.accepted);
 }
+
+// ---------------------------------------------------------------------------
+// Block I/O decisions (ported from `src/ra8_sdmmc_spi_io.c`)
+// ---------------------------------------------------------------------------
+
+test "lba_to_arg passes the block number through on a block-addressed card" {
+    const sdhc = @intFromEnum(core.CardType.sdhc);
+    try testing.expectEqual(@as(u32, 0), core.lbaToArg(sdhc, 0));
+    try testing.expectEqual(@as(u32, 1), core.lbaToArg(sdhc, 1));
+    try testing.expectEqual(@as(u32, 0x00FF_FFFF), core.lbaToArg(sdhc, 0x00FF_FFFF));
+}
+
+test "lba_to_arg converts to a byte offset on a byte-addressed card" {
+    for ([_]core.CardType{ .unknown, .sdv1, .sdv2 }) |kind| {
+        const t = @intFromEnum(kind);
+        try testing.expectEqual(@as(u32, 0), core.lbaToArg(t, 0));
+        try testing.expectEqual(@as(u32, 512), core.lbaToArg(t, 1));
+        try testing.expectEqual(@as(u32, 1024), core.lbaToArg(t, 2));
+    }
+}
+
+test "lba_to_arg keeps the C's wrapping multiplication" {
+    // Unreachable through the public API (the bounds checks run first), but
+    // the C wrapped here rather than trapping, so the port must too.
+    const t = @intFromEnum(core.CardType.sdv2);
+    try testing.expectEqual(@as(u32, 0), core.lbaToArg(t, 0x0080_0000));
+    try testing.expectEqual(@as(u32, 512), core.lbaToArg(t, 0x0080_0001));
+}
+
+test "erase_end_lba names the last block of the range" {
+    try testing.expectEqual(@as(u32, 0), core.eraseEndLba(0, 1));
+    try testing.expectEqual(@as(u32, 9), core.eraseEndLba(0, 10));
+    try testing.expectEqual(@as(u32, 109), core.eraseEndLba(100, 10));
+}
+
+test "erase_end_lba wraps exactly as the C's uint32 arithmetic did" {
+    try testing.expectEqual(@as(u32, 0xFFFF_FFFF), core.eraseEndLba(0, 0));
+    try testing.expectEqual(@as(u32, 0xFFFF_FFFE), core.eraseEndLba(0xFFFF_FFFF, 0));
+}
+
+test "single-block bounds admit only an existing block" {
+    try testing.expect(core.singleBlockInRange(10, 0));
+    try testing.expect(core.singleBlockInRange(10, 9));
+    try testing.expect(!core.singleBlockInRange(10, 10));
+    try testing.expect(!core.singleBlockInRange(0, 0));
+}
+
+test "multi-block bounds admit a run that ends inside the card" {
+    try testing.expect(core.multiBlockInRange(10, 0, 10));
+    try testing.expect(core.multiBlockInRange(10, 5, 5));
+    try testing.expect(!core.multiBlockInRange(10, 5, 6));
+    try testing.expect(!core.multiBlockInRange(10, 10, 1));
+    try testing.expect(!core.multiBlockInRange(0, 0, 1));
+}
+
+test "multi-block bounds cannot be defeated by an overflowing lba + count" {
+    // The C subtracted on the capacity side precisely so this stays refused
+    // instead of wrapping into a legal-looking range.
+    try testing.expect(!core.multiBlockInRange(1000, 900, 0xFFFF_FFFF));
+    try testing.expect(!core.multiBlockInRange(1000, 0xFFFF_FFF0, 0x20));
+}
+
+test "data-response token accepts only the spec's 0b010 verdict" {
+    try testing.expect(core.dataResponseAccepted(0x05));
+    // The three reserved high bits are don't-care, so a floating one still
+    // reads as an accept when the low five bits say so.
+    try testing.expect(core.dataResponseAccepted(0xE5));
+    try testing.expect(!core.dataResponseAccepted(0x0B)); // CRC error
+    try testing.expect(!core.dataResponseAccepted(0x0D)); // write error
+    try testing.expect(!core.dataResponseAccepted(0xFF)); // floating bus
+    try testing.expect(!core.dataResponseAccepted(0x00));
+}
+
+test "crc bytes go out high byte first and come back the same way" {
+    try testing.expectEqual([2]u8{ 0x31, 0xC3 }, core.crcBytes(0x31C3));
+    try testing.expectEqual([2]u8{ 0x00, 0x00 }, core.crcBytes(0));
+    try testing.expectEqual([2]u8{ 0xFF, 0xFF }, core.crcBytes(0xFFFF));
+    try testing.expectEqual(@as(u16, 0x31C3), core.crcFromBytes(0x31, 0xC3));
+    try testing.expectEqual(@as(u16, 0x00FF), core.crcFromBytes(0x00, 0xFF));
+}
+
+test "crc round-trips through the wire byte pair" {
+    var value: u32 = 0;
+    while (value <= 0xFFFF) : (value += 0x111) {
+        const crc: u16 = @truncate(value);
+        const pair = core.crcBytes(crc);
+        try testing.expectEqual(crc, core.crcFromBytes(pair[0], pair[1]));
+    }
+}
+
+test "erase probe only claims support when the block came back all zero" {
+    var block: [core.block_size]u8 = @splat(0);
+    try testing.expect(core.erasedToZero(&block));
+    block[core.block_size - 1] = 0xFF;
+    try testing.expect(!core.erasedToZero(&block));
+    block[core.block_size - 1] = 0;
+    block[0] = 0x01;
+    try testing.expect(!core.erasedToZero(&block));
+}
+
+test "erase probe treats an all-ones card as unsupported" {
+    const ones: [core.block_size]u8 = @splat(0xFF);
+    try testing.expect(!core.erasedToZero(&ones));
+}
+
+test "the fs backend refuses an lba past the 32-bit SD reach" {
+    try testing.expect(core.fsLbaFits(0));
+    try testing.expect(core.fsLbaFits(0xFFFF_FFFF));
+    try testing.expect(!core.fsLbaFits(0x1_0000_0000));
+    try testing.expect(!core.fsLbaFits(std.math.maxInt(u64)));
+}
+
+test "the transport factory refuses a zero PCLKA rate" {
+    try testing.expect(!core.factoryPclkOk(0));
+    try testing.expect(core.factoryPclkOk(1));
+    try testing.expect(core.factoryPclkOk(60_000_000));
+}
+
+test "the io layer's C struct layouts hold on this target" {
+    // The comptime asserts in the implementation do the real work; this
+    // pins the sizes a reader would otherwise have to take on trust.
+    try testing.expectEqual(@as(usize, 8), @sizeOf(core.SciPins));
+    try testing.expectEqual(@as(usize, 12), @sizeOf(core.SciSpiCfg));
+    try testing.expectEqual(@sizeOf(usize) * 5, @sizeOf(core.FsBackend));
+}
