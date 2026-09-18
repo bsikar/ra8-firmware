@@ -68,11 +68,19 @@ typedef enum : uint32_t {
   k_priv_utf8_sh6        = 6U,        /**< Shift for one continuation byte.        */
   k_priv_utf8_sh12       = 12U,       /**< Shift for two continuation bytes.       */
   k_priv_utf8_sh18       = 18U,       /**< Shift for three continuation bytes.     */
+  k_priv_utf8_lead2_msk = 0xE0U,    /**< Mask isolating a 2-byte lead marker.    */
+  k_priv_utf8_lead3_msk = 0xF0U,    /**< Mask isolating a 3-byte lead marker.    */
+  k_priv_utf8_lead4_msk = 0xF8U,    /**< Mask isolating a 4-byte lead marker.    */
+  k_priv_utf8_cont_msk  = 0xC0U,    /**< Mask isolating the continuation marker. */
+  k_priv_utf8_load2     = 0x1FU,     /**< Payload bits in a 2-byte lead byte.     */
+  k_priv_utf8_load3     = 0x0FU,     /**< Payload bits in a 3-byte lead byte.     */
+  k_priv_utf8_load4     = 0x07U,     /**< Payload bits in a 4-byte lead byte.     */
+  k_priv_utf8_max_len   = 4U,        /**< Longest valid UTF-8 sequence, in bytes. */
   k_priv_base_dec        = 10U,       /**< Decimal numeric-entity base.            */
   k_priv_base_hex        = 16U,       /**< Hexadecimal numeric-entity base.        */
   k_priv_hex_offset      = 10U,       /**< Value of hex 'a'/'A' minus the letter.  */
   k_priv_style_mask      = ((uint32_t)k_reflow_style_bold | (uint32_t)k_reflow_style_italic |
-                            (uint32_t)k_reflow_style_underline), /**< Run-style bits. */ (#686 fix(reflow): decode UTF-8 in the v1 layout text walk)
+                            (uint32_t)k_reflow_style_underline), /**< Run-style bits. */
 } priv_tok_consts_t;
 
 /**
