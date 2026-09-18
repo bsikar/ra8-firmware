@@ -31,8 +31,9 @@
 # facade to normalise WebP manifest images to the band-tile format on import, so
 # an app that lists jof in LIBS also compiles this facade + the
 # vendored libwebp (see the jof block in cmake/ra8_app/sources.cmake).
-# NOTE(#289): the small-image reflow / ra8_img inline raster dispatch does
-# not yet have a WebP arm; that lands with the longstrip render path.
+# INTEGRATION(#637): the small-image reflow / ra8_img inline raster dispatch
+# calls this facade too, so an app that lists reflow in LIBS compiles it as
+# well (see the reflow block in cmake/ra8_app/sources.cmake).
 #
 #
 
