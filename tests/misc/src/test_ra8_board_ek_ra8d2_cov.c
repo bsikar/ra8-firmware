@@ -20,6 +20,7 @@
  *   714  -- ra8_board_xspi_pins_init gpio conflict return
  *   733  -- ra8_board_xspi_pins_init pfs conflict return
  *   773-787 -- ra8_board_sdhi_pins_init (all lines)
+ *   plus the ra8_board_sdhi_pin_t role/port/instance contract (#845)
  *   798, 800, 802 -- ra8_board_arduino_pin_init valid modes
  *
  * Lines marked GCOVR_EXCL_LINE in the source (HW-only paths):
@@ -373,7 +374,7 @@ static void test_xspi_pins_init_pfs_conflict(void)
  */
 
 /**
- * @brief Verify that ra8_board_sdhi_pins_init routes all eight SDHI bus pins.
+ * @brief Verify that ra8_board_sdhi_pins_init routes all seven SDHI bus pins.
  *
  * @details
  * No existing test calls ra8_board_sdhi_pins_init, leaving the entire
@@ -388,7 +389,7 @@ static void test_xspi_pins_init_pfs_conflict(void)
  * Vectors A+B prove the single condition independently affects outcome.
  *
  * @pre Clean pin-validator state.
- * @post All eight SDHI bus pins remain claimed after the second call
+ * @post All seven SDHI bus pins remain claimed after the second call
  *       fails on the first pin.
  *
  * @note Not thread-safe; single-threaded test context.
@@ -398,12 +399,87 @@ static void test_sdhi_pins_init(void)
 {
   TEST_BEGIN("sdhi_pins_init happy path then conflict (lines 773-787)");
   reset_state();
-  /* First call: all eight SDHI0 bus pins routed. */
+  /* First call: all seven SDHI1_B bus pins routed. */
   TEST_ASSERT_EQ(k_ra8_ok, ra8_board_sdhi_pins_init());
   /* Second call: first bus pin already owned -> conflict (line 783). */
   const ra8_err_t err = ra8_board_sdhi_pins_init();
   TEST_ASSERT(err != k_ra8_ok);
   TEST_END("sdhi_pins_init happy path then conflict (lines 773-787)");
+}
+
+/* -------------------------------------------------------------------------
+ * 9b. ra8_board_sdhi_pin_t -- exact logical role / port / instance mapping
+ * -------------------------------------------------------------------------
+ */
+
+/**
+ * @brief Pin the native-SDHI board contract to the exact silicon mapping.
+ *
+ * @details
+ * Guards the defect fixed in #845: the contract used to label P400 as CMD
+ * and P401 as CLK (swapped), route a fabricated WP on P406, and put
+ * card-detect on P407, which carries no SDHI function at all. RA8D2
+ * datasheet Table 1.16 and RA8P1 datasheet Table 1.17 (both Rev.1.30,
+ * 2026-02-27) specify SDHI1_B as CLK=P400, CMD=P401, DAT0=P402,
+ * DAT1=P403, DAT2=P404, DAT3=P405, CD=P406.
+ *
+ * Each role is asserted against its exact ``(port << 8) | pin`` encoding,
+ * then the three old regressions are asserted away directly: CLK/CMD not
+ * swapped back, card-detect not on port-4 pin 7, and no role landing on
+ * port-4 pin 7. Every role is also asserted to live on port 4, which is
+ * the enum's documented invariant.
+ *
+ * @par MC/DC:
+ * No decision under test: this is a pure compile-time-value contract, so
+ * every assertion is a single unconditional equality on a constant.
+ *
+ * @pre None; the assertions read enum constants only.
+ * @post No pin ownership or register state is touched.
+ *
+ * @note Not thread-safe; single-threaded test context.
+ * @since 0.1.0
+ */
+static void test_sdhi_pin_map_roles(void)
+{
+  TEST_BEGIN("sdhi pin map is SDHI1_B per datasheet Table 1.16/1.17");
+
+  /* Exact logical role -> port/pin mapping (SDHI1_B). */
+  TEST_ASSERT_EQ(RA8_PIN(k_ra8_port_4, k_ra8_pin_0), (uint32_t)k_ra8_board_sdhi_clk);
+  TEST_ASSERT_EQ(RA8_PIN(k_ra8_port_4, k_ra8_pin_1), (uint32_t)k_ra8_board_sdhi_cmd);
+  TEST_ASSERT_EQ(RA8_PIN(k_ra8_port_4, k_ra8_pin_2), (uint32_t)k_ra8_board_sdhi_dat0);
+  TEST_ASSERT_EQ(RA8_PIN(k_ra8_port_4, k_ra8_pin_3), (uint32_t)k_ra8_board_sdhi_dat1);
+  TEST_ASSERT_EQ(RA8_PIN(k_ra8_port_4, k_ra8_pin_4), (uint32_t)k_ra8_board_sdhi_dat2);
+  TEST_ASSERT_EQ(RA8_PIN(k_ra8_port_4, k_ra8_pin_5), (uint32_t)k_ra8_board_sdhi_dat3);
+  TEST_ASSERT_EQ(RA8_PIN(k_ra8_port_4, k_ra8_pin_6), (uint32_t)k_ra8_board_sdhi_cd);
+
+  /* Old swap regression: P400 is CLK, P401 is CMD, never the reverse. */
+  TEST_ASSERT((uint32_t)k_ra8_board_sdhi_cmd != RA8_PIN(k_ra8_port_4, k_ra8_pin_0));
+  TEST_ASSERT((uint32_t)k_ra8_board_sdhi_clk != RA8_PIN(k_ra8_port_4, k_ra8_pin_1));
+
+  /* Old CD regression: P407 has no SDHI function, so no role may land there. */
+  TEST_ASSERT((uint32_t)k_ra8_board_sdhi_cd != RA8_PIN(k_ra8_port_4, k_ra8_pin_7));
+  TEST_ASSERT((uint32_t)k_ra8_board_sdhi_clk != RA8_PIN(k_ra8_port_4, k_ra8_pin_7));
+  TEST_ASSERT((uint32_t)k_ra8_board_sdhi_cmd != RA8_PIN(k_ra8_port_4, k_ra8_pin_7));
+  TEST_ASSERT((uint32_t)k_ra8_board_sdhi_dat0 != RA8_PIN(k_ra8_port_4, k_ra8_pin_7));
+  TEST_ASSERT((uint32_t)k_ra8_board_sdhi_dat1 != RA8_PIN(k_ra8_port_4, k_ra8_pin_7));
+  TEST_ASSERT((uint32_t)k_ra8_board_sdhi_dat2 != RA8_PIN(k_ra8_port_4, k_ra8_pin_7));
+  TEST_ASSERT((uint32_t)k_ra8_board_sdhi_dat3 != RA8_PIN(k_ra8_port_4, k_ra8_pin_7));
+
+  /* Documented invariant: every role sits on port 4. */
+  TEST_ASSERT_EQ((uint32_t)k_ra8_port_4, ((uint32_t)k_ra8_board_sdhi_clk >> 8U));
+  TEST_ASSERT_EQ((uint32_t)k_ra8_port_4, ((uint32_t)k_ra8_board_sdhi_cmd >> 8U));
+  TEST_ASSERT_EQ((uint32_t)k_ra8_port_4, ((uint32_t)k_ra8_board_sdhi_dat0 >> 8U));
+  TEST_ASSERT_EQ((uint32_t)k_ra8_port_4, ((uint32_t)k_ra8_board_sdhi_dat1 >> 8U));
+  TEST_ASSERT_EQ((uint32_t)k_ra8_port_4, ((uint32_t)k_ra8_board_sdhi_dat2 >> 8U));
+  TEST_ASSERT_EQ((uint32_t)k_ra8_port_4, ((uint32_t)k_ra8_board_sdhi_dat3 >> 8U));
+  TEST_ASSERT_EQ((uint32_t)k_ra8_port_4, ((uint32_t)k_ra8_board_sdhi_cd >> 8U));
+
+  /* Instance seam: consumers take the index from the board, and it is a
+   * valid SDHI instance (0 or 1) for ra8_sdhi / ra8_sdcard. #845 slice 2
+   * moves it to SDHI1 together with the emulator host-controller window. */
+  TEST_ASSERT((uint32_t)k_ra8_board_sdhi_instance < 2U);
+
+  TEST_END("sdhi pin map is SDHI1_B per datasheet Table 1.16/1.17");
 }
 
 /* -------------------------------------------------------------------------
@@ -621,6 +697,7 @@ int main(void)
   test_xspi_pins_init_gpio_conflict();
   test_xspi_pins_init_pfs_conflict();
   test_sdhi_pins_init();
+  test_sdhi_pin_map_roles();
   test_arduino_pin_init_valid_modes();
   test_pdm_mic_route();
   test_pdm_mic_get_config();

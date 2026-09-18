@@ -202,7 +202,7 @@ Source: `docs/reference/ek-ra8d2-v1-users-manual.pdf`.
 | GLCDC parallel   | `0x40342000` -> connector J1    | Parallel Graphics Expansion Port; 7.0" 1024x600 TFT via add-on board   |
 | MIPI DSI / CSI   | `0x40346000` / `0x40347000`     | Pads brought out via MIPI Graphics Expansion Board (separate add-on)   |
 | OV5640 camera    | CEU `0x40348000` or VIN `0x40347400` | Wired to parallel camera connector                                |
-| SDHI             | `0x40252000`                    | NOT POPULATED on EK-RA8D2 v1 -- no microSD socket on board             |
+| SDHI             | `0x40252000` (SDHI0) / `0x40252400` (SDHI1) | NOT POPULATED on EK-RA8D2 v1 -- no microSD socket on board. Chip-side bus is SDHI1_B: CLK P400, CMD P401, DAT0..3 P402..P405, CD P406; no port-4 WP function (#845) |
 | USB FS / HS      | `0x40250000` / `0x40351000`     | Both USB connectors populated                                          |
 | Ethernet         | ETHA + RMAC + GWCA              | RJ-45 populated                                                        |
 | BLE              | (no on-chip radio)              | RA8D2 has no BLE radio; controller is the ESP32-C6 companion over PMOD |

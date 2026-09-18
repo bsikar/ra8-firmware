@@ -8,12 +8,12 @@
  * @details
  * One ThreadX thread that exercises the full ``ra8_sdcard`` HAL stack:
  *
- *   1. Route the eight SDHI pins (CMD, CLK, DAT0..3, WP, CD) on port 4
+ *   1. Route the seven SDHI1_B pins (CLK, CMD, DAT0..3, CD) on port 4
  *      to the SDHI peripheral function via ``ra8_board_sdhi_pins_init``.
  *   2. Bring the J-Link OB VCOM console up at 115200 8N1 via
  *      ``ra8_board_uart_console_init``.
  *   3. ``ra8_sdcard_init`` runs the standard SD Physical Layer
- *      initialization sequence (CMD0 -> CMD7) on SDHI instance 0.
+ *      initialization sequence (CMD0 -> CMD7) on the board's SDHI instance.
  *   4. ``ra8_sdcard_read_blocks(0, ...)`` reads sector 0 (the MBR / boot
  *      sector) into a 512-byte SRAM buffer.
  *   5. The first 16 bytes are formatted as ASCII hex
@@ -21,7 +21,7 @@
  *      once per pass to make the activity visible.
  *
  * SDHI pin map is owned by the BSP (``ra8_board_sdhi_pins_init``): port 4,
- * pins 0..7 routed to the on-chip SDHI block.
+ * pins 0..6 routed to the on-chip SDHI block.
  *
  * @par Threads
  *
@@ -91,7 +91,8 @@ typedef enum : uint16_t {
  * @brief SDHI pin layout constants.
  */
 typedef enum : uint8_t {
-  k_sdcard_sdhi_instance = 0U,  /**< SDHI instance index.          */
+  k_sdcard_sdhi_instance =
+    (uint32_t)k_ra8_board_sdhi_instance, /**< SDHI instance, from the BSP. */
   k_sdcard_dump_bytes    = 16U, /**< Bytes from sector 0 to print. */
 } sdcard_layout_t;
 
