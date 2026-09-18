@@ -30,7 +30,7 @@ name: emulator-smoke
 
 on:
   push:
-    branches: [main, dev, zig/dev]
+    branches: [main, dev]
   pull_request:
   workflow_dispatch:
 

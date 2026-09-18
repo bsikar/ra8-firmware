@@ -12,7 +12,7 @@ on:
   # main (#357). Before this, a push to dev ran neither gate and the local
   # pre-push hook was the only thing checking.
   push:
-    branches: [main, dev, zig/dev]
+    branches: [main, dev]
   pull_request:
   workflow_dispatch:
 
