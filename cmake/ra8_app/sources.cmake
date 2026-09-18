@@ -363,6 +363,25 @@ macro(_ra8_app_collect_sources)
     endif()
   endif()
 
+  # #637 inline small-image WebP: reflow's ra8_img_decode_blit / ra8_img_probe_size
+  # dispatch a RIFF/WEBP buffer to the ra8_webp facade, because stb_image has no
+  # WebP decoder and an inline EPUB illustration would otherwise render as
+  # nothing. So reflow now pulls the facade the same way jof and rabook_compile
+  # do -- and only when no earlier block already added it, so the sources are
+  # never double-added.
+  if("reflow" IN_LIST _RA8_APP_LIBS)
+    list(APPEND _ra8_lib_inc ${RA8_REPO_ROOT}/apps/shared_libs/webp/inc)
+    if((NOT "webp" IN_LIST _RA8_APP_LIBS)
+       AND (NOT "jof" IN_LIST _RA8_APP_LIBS)
+       AND (NOT "rabook_compile" IN_LIST _RA8_APP_LIBS)
+    )
+      file(GLOB_RECURSE _ra8_reflow_webp_facade CONFIGURE_DEPENDS
+           ${RA8_REPO_ROOT}/apps/shared_libs/webp/src/*.c
+      )
+      list(APPEND _ra8_lib_extra ${_ra8_reflow_webp_facade})
+    endif()
+  endif()
+
   # The webp app library decodes WebP (VP8 / VP8L) through the vendored decoder
   # (apps/shared_libs/third_party/libwebp). The four-part recipe -- which TUs, which
   # include root, -DRA8_WEBP_USE_ARENA, the SOUP warning flags -- lives in
@@ -374,12 +393,14 @@ macro(_ra8_app_collect_sources)
   # Its ra8_webp facade/arena are globbed by the LIBS loop above (or by
   # the jof block); only the vendored TUs + include root are wired
   # here. Wired whenever webp is requested directly OR pulled in
-  # transitively by jof (#290), and only once so the two paths never
-  # double-add the libwebp sources.
+  # transitively by jof (#290), rabook_compile, or reflow (#637 inline
+  # small-image WebP), and only once so those paths never double-add the
+  # libwebp sources.
   set(_ra8_webp_vendor "")
   if(("webp" IN_LIST _RA8_APP_LIBS)
      OR ("jof" IN_LIST _RA8_APP_LIBS)
      OR ("rabook_compile" IN_LIST _RA8_APP_LIBS)
+     OR ("reflow" IN_LIST _RA8_APP_LIBS)
   )
     include(${RA8_REPO_ROOT}/cmake/ra8_webp_vendor.cmake)
     ra8_webp_vendor_sources(_ra8_webp_vendor ${RA8_REPO_ROOT})

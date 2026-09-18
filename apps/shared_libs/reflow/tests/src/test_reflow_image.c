@@ -13,6 +13,12 @@
  *  - MC/DC for the new compound decisions: the public argument-precondition
  *    (3-condition OR, driven through the real API) plus mirror helpers for the
  *    two TU-private decisions (fit-box branch, decode-failure classify).
+ *  - The WebP arm (#637): the committed 8x8 lossless fixture probes and blits
+ *    through the same public entry points, bit-exact against the fixture's
+ *    documented source pattern, and the two conditions of the RIFF/WEBP
+ *    signature test are driven independently (a non-RIFF buffer, and a RIFF
+ *    buffer whose form tag is not WEBP -- which must fall through to stb_image
+ *    and be rejected there, not mis-routed into the WebP facade).
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -52,6 +58,44 @@ static const uint8_t s_png_2x2[] = {
 
 /** @brief Eight bytes that are not any image format stb_image accepts. */
 static const uint8_t s_junk[8] = {1U, 2U, 3U, 4U, 5U, 6U, 7U, 8U};
+
+/**
+ * @brief The committed 8x8 VP8L (lossless) WebP, tests/fixtures/webp/fixture_lossless.webp.
+ * @details Embedded inline (52 bytes) so the test stays free of file I/O, the
+ * same convention tests/graphics/src/test_ra8_webp.c uses for the same file.
+ * Its pixel at `(x, y)` is `(r, g, b, a) = ((x*32) & 255, (y*32) & 255,
+ * ((x+y)*16) & 255, 255)`; being lossless, the decode is bit-exact, so the blit
+ * can be compared against that pattern rather than merely checked for success.
+ */
+static const uint8_t s_webp_lossless_8x8[] = {
+  0x52, 0x49, 0x46, 0x46, 0x2C, 0x00, 0x00, 0x00, 0x57, 0x45, 0x42, 0x50, 0x56,
+  0x50, 0x38, 0x4C, 0x1F, 0x00, 0x00, 0x00, 0x2F, 0x07, 0xC0, 0x01, 0x00, 0xCD,
+  0x65, 0x44, 0xFF, 0x63, 0x17, 0x85, 0x28, 0x78, 0xFF, 0x03, 0x42, 0x02, 0xC2,
+  0x14, 0xFF, 0x77, 0x6A, 0x0E, 0x0C, 0x48, 0xC4, 0x04, 0x80, 0xAD, 0x0D, 0x00,
+};
+
+/**
+ * @brief A RIFF container whose form tag is `WAVE`, not `WEBP`.
+ * @details The second condition of the signature test in isolation: the `RIFF`
+ * tag matches and the form tag does not, so this must NOT reach the WebP facade
+ * -- it falls through to stb_image, which rejects it as an unknown format.
+ */
+static const uint8_t s_riff_not_webp[16] = {
+  0x52, 0x49, 0x46, 0x46, 0x08, 0x00, 0x00, 0x00,
+  0x57, 0x41, 0x56, 0x45, 0x00, 0x00, 0x00, 0x00,
+};
+
+/**
+ * @enum t_webp_geom_t
+ * @brief Geometry of the 8x8 WebP fixture and its framebuffer (no magic numbers).
+ */
+typedef enum : uint16_t {
+  k_t_webp_dim      = 8U,  /**< Fixture width and height, pixels.          */
+  k_t_webp_r_step   = 32U, /**< Red step per source column in the pattern. */
+  k_t_webp_g_step   = 32U, /**< Green step per source row in the pattern.  */
+  k_t_webp_b_step   = 16U, /**< Blue step per (x + y) in the pattern.      */
+  k_t_webp_byte_max = 255U /**< Channel mask for the pattern arithmetic.   */
+} t_webp_geom_t;
 
 /* RGB565 colour helpers: ra8_gfx packs 0x00RRGGBB -> 565; reading back, compare
  * against the same quantisation the framebuffer stores. */
@@ -466,6 +510,197 @@ RA8_INTERNAL static void internal_test_decode_fail_real_paths_mcdc(void)
 }
 
 /**
+ * @test internal_test_probe_size_webp
+ * @brief ra8_img_probe_size reads an 8x8 WebP through the libwebp arm (#637).
+ *
+ * @par MC/DC:
+ * Signature test `(len >= 12) && (RIFF match) && (WEBP match)`: this vector
+ * passes all three, and internal_test_webp_signature_falls_through drives the
+ * false arms of the two tag conditions, so each independently decides whether
+ * the WebP facade or stb_image sees the bytes.
+ *
+ * @brief Verify the WebP probe arm reports the container's canvas size.
+ * @details Probes the committed lossless fixture and asserts the declared 8x8 canvas.
+ * @pre The referenced fixture inputs are valid for this scenario.
+ * @pre Fixed-capacity output buffers are initialized before the operation.
+ * @post All assertions for the scenario have passed before this function returns.
+ * @post Caller-owned fixture storage remains valid for subsequent vectors.
+ * @note Test helpers use caller-owned or fixed-capacity fixture storage.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_test_probe_size_webp(void)
+{
+  TEST_BEGIN("ra8_img_probe_size reads a WebP header");
+  int32_t w = 0;
+  int32_t h = 0;
+  TEST_ASSERT_EQ(k_ra8_ok,
+                 ra8_img_probe_size(s_webp_lossless_8x8, sizeof s_webp_lossless_8x8, &w, &h));
+  TEST_ASSERT_EQ((int32_t)k_t_webp_dim, w);
+  TEST_ASSERT_EQ((int32_t)k_t_webp_dim, h);
+  TEST_END("ra8_img_probe_size reads a WebP header");
+}
+
+/**
+ * @test internal_test_decode_blit_webp_pixels
+ * @brief A lossless WebP decodes and blits 1:1, bit-exact, and drains the arena.
+ *
+ * @par MC/DC:
+ * (no compound decision is uniquely proven here -- it blits the golden 8x8
+ * lossless fixture through the WebP arm and asserts every pixel plus a fully
+ * drained arena)
+ *
+ * @brief Verify the WebP blit arm draws the fixture's documented pattern.
+ * @details Blits the fixture at 1:1 into an 8x8 framebuffer and compares every pixel.
+ * @pre The referenced fixture inputs are valid for this scenario.
+ * @pre Fixed-capacity output buffers are initialized before the operation.
+ * @post All assertions for the scenario have passed before this function returns.
+ * @post Caller-owned fixture storage remains valid for subsequent vectors.
+ * @note Test helpers use caller-owned or fixed-capacity fixture storage.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_test_decode_blit_webp_pixels(void)
+{
+  TEST_BEGIN("ra8_img_decode_blit blits a WebP bit-exact");
+  static uint8_t s_fb[k_t_webp_dim * k_t_webp_dim * 3U];
+  TEST_ASSERT_EQ(k_ra8_ok,
+                 ra8_gfx_init(s_fb,
+                              (int32_t)k_t_webp_dim,
+                              (int32_t)k_t_webp_dim,
+                              k_ra8_gfx_format_rgb888));
+
+  static uint8_t  s_scratch[k_t_scratch_kib * k_t_kib];
+  ra8_img_arena_t arena = {.base = s_scratch, .cap = sizeof s_scratch, .offset = 0U, .live = 0U};
+  int32_t         out_w = 0;
+  int32_t         out_h = 0;
+  TEST_ASSERT_EQ(k_ra8_ok,
+                 ra8_img_decode_blit(&arena,
+                                     s_webp_lossless_8x8,
+                                     sizeof s_webp_lossless_8x8,
+                                     0,
+                                     0,
+                                     (int32_t)k_t_webp_dim,
+                                     (int32_t)k_t_webp_dim,
+                                     &out_w,
+                                     &out_h));
+  TEST_ASSERT_EQ((int32_t)k_t_webp_dim, out_w);
+  TEST_ASSERT_EQ((int32_t)k_t_webp_dim, out_h);
+
+  /* Lossless: every RGB channel must match the fixture's source pattern, so an
+     alpha byte read as colour or a 4-byte stride read as 3 would both fail. */
+  for (int32_t y = 0; y < (int32_t)k_t_webp_dim; y++) {
+    for (int32_t x = 0; x < (int32_t)k_t_webp_dim; x++) {
+      const uint32_t er = ((uint32_t)x * (uint32_t)k_t_webp_r_step) & (uint32_t)k_t_webp_byte_max;
+      const uint32_t eg = ((uint32_t)y * (uint32_t)k_t_webp_g_step) & (uint32_t)k_t_webp_byte_max;
+      const uint32_t eb = (((uint32_t)x + (uint32_t)y) * (uint32_t)k_t_webp_b_step) &
+                          (uint32_t)k_t_webp_byte_max;
+      const uint32_t want = (er << 16) | (eg << 8) | eb;
+      TEST_ASSERT_EQ(want, internal_fb_px(s_fb, (int32_t)k_t_webp_dim, x, y));
+    }
+  }
+
+  /* NASA P10 R3: the shared arena backed both the canvas and libwebp's own
+     scratch, and must be fully drained again on return. */
+  TEST_ASSERT_EQ(0, arena.offset);
+  TEST_ASSERT_EQ(0, arena.live);
+  TEST_END("ra8_img_decode_blit blits a WebP bit-exact");
+}
+
+/**
+ * @test internal_test_webp_signature_falls_through
+ * @brief Bytes that are not a WebP container never reach the WebP facade.
+ *
+ * @par MC/DC:
+ * Signature test `(len >= 12) && (RIFF match) && (WEBP match)`, false arms:
+ *  - V1: 8 junk bytes            -> C1 false (too short to hold both tags).
+ *  - V2: 16 bytes, `RIFF`+`WAVE` -> C1 true, C2 true, C3 false.
+ * Both must be rejected by stb_image as unsupported, which is the observable
+ * difference from the WebP arm (whose header rejection logs a WebP reason and
+ * would return the same code for a different reason). V1 and V2 together with
+ * the two passing vectors above give each condition independent influence.
+ *
+ * @brief Verify non-WebP bytes are not mis-routed into the WebP decoder.
+ * @details Drives a too-short buffer and a RIFF container with a non-WEBP form tag.
+ * @pre The referenced fixture inputs are valid for this scenario.
+ * @pre Fixed-capacity output buffers are initialized before the operation.
+ * @post All assertions for the scenario have passed before this function returns.
+ * @post Caller-owned fixture storage remains valid for subsequent vectors.
+ * @note Test helpers use caller-owned or fixed-capacity fixture storage.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_test_webp_signature_falls_through(void)
+{
+  TEST_BEGIN("WebP signature: non-WebP bytes fall through to stb_image");
+  int32_t w = 0;
+  int32_t h = 0;
+  TEST_ASSERT_EQ(k_ra8_err_not_supported, ra8_img_probe_size(s_junk, sizeof s_junk, &w, &h));
+  TEST_ASSERT_EQ(k_ra8_err_not_supported,
+                 ra8_img_probe_size(s_riff_not_webp, sizeof s_riff_not_webp, &w, &h));
+
+  static uint8_t s_fb[4 * 4 * 3];
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_gfx_init(s_fb, 4, 4, k_ra8_gfx_format_rgb888));
+  static uint8_t  s_scratch[k_t_scratch_kib * k_t_kib];
+  ra8_img_arena_t arena = {.base = s_scratch, .cap = sizeof s_scratch, .offset = 0U, .live = 0U};
+  TEST_ASSERT_EQ(k_ra8_err_not_supported,
+                 ra8_img_decode_blit(&arena,
+                                     s_riff_not_webp,
+                                     sizeof s_riff_not_webp,
+                                     0,
+                                     0,
+                                     4,
+                                     4,
+                                     NULL,
+                                     NULL));
+  TEST_ASSERT_EQ(0, arena.offset);
+  TEST_ASSERT_EQ(0, arena.live);
+  TEST_END("WebP signature: non-WebP bytes fall through to stb_image");
+}
+
+/**
+ * @test internal_test_webp_canvas_no_mem
+ * @brief An arena too small for the decoded WebP canvas reports no_mem, drained.
+ *
+ * @par MC/DC:
+ * (no compound decision is uniquely proven here -- it drives the canvas
+ * allocation's single-condition failure arm)
+ *
+ * @brief Verify the WebP arm reports a canvas that cannot fit the arena.
+ * @details Offers an arena far below the 8x8 RGBA canvas and asserts no_mem plus a drain.
+ * @pre The referenced fixture inputs are valid for this scenario.
+ * @pre Fixed-capacity output buffers are initialized before the operation.
+ * @post All assertions for the scenario have passed before this function returns.
+ * @post Caller-owned fixture storage remains valid for subsequent vectors.
+ * @note Test helpers use caller-owned or fixed-capacity fixture storage.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_test_webp_canvas_no_mem(void)
+{
+  TEST_BEGIN("ra8_img_decode_blit: WebP canvas larger than the arena -> no_mem");
+  static uint8_t s_fb[k_t_webp_dim * k_t_webp_dim * 3U];
+  TEST_ASSERT_EQ(k_ra8_ok,
+                 ra8_gfx_init(s_fb,
+                              (int32_t)k_t_webp_dim,
+                              (int32_t)k_t_webp_dim,
+                              k_ra8_gfx_format_rgb888));
+
+  /* The 8x8 RGBA canvas alone needs 256 bytes; this arena cannot hold it. */
+  static uint8_t  s_tiny[k_t_tiny_dst_cap];
+  ra8_img_arena_t arena = {.base = s_tiny, .cap = sizeof s_tiny, .offset = 0U, .live = 0U};
+  TEST_ASSERT_EQ(k_ra8_err_no_mem,
+                 ra8_img_decode_blit(&arena,
+                                     s_webp_lossless_8x8,
+                                     sizeof s_webp_lossless_8x8,
+                                     0,
+                                     0,
+                                     (int32_t)k_t_webp_dim,
+                                     (int32_t)k_t_webp_dim,
+                                     NULL,
+                                     NULL));
+  TEST_ASSERT_EQ(0, arena.offset);
+  TEST_ASSERT_EQ(0, arena.live);
+  TEST_END("ra8_img_decode_blit: WebP canvas larger than the arena -> no_mem");
+}
+
+/**
  * @brief Test entry point.
  * @return 0 on success; unity macros exit(1) on the first failure.
  */
@@ -478,5 +713,9 @@ int main(void)
   internal_test_decode_fail_classify_mcdc();
   internal_test_decode_fail_real_paths_mcdc();
   internal_test_arena_drained_and_no_mem();
+  internal_test_probe_size_webp();
+  internal_test_decode_blit_webp_pixels();
+  internal_test_webp_signature_falls_through();
+  internal_test_webp_canvas_no_mem();
   return 0;
 }
