@@ -172,6 +172,69 @@ void ra8_time_on_tick(void)
   s_tick_ms++;
 }
 
+/* =============================================================================
+ * Concrete DI interface instance (declared in ra8_time.h)
+ * =============================================================================
+ *
+ * `ra8_time.h` has carried the section banner "Concrete DI interface instance
+ * (defined in ra8_time.c)" and an `extern` for `g_ra8_time_interface_systick`
+ * since the DI seam was published, and `docs/ARCHITECTURE.md` names it as the
+ * production time source, but no definition existed anywhere in the tree
+ * (issue #1194): a driver that followed the documented pattern compiled and
+ * then failed to link. The two thunks below are the whole implementation --
+ * `ra8_time_interface.h` documents this instance as "wraps `ra8_time_ms` +
+ * `ra8_delay_ms`", so it forwards and adds no policy of its own.
+ *
+ * The vtable takes an opaque `ctx` on every call because a mock needs one to
+ * find its own state. The SysTick source keeps its state in this translation
+ * unit's file statics, so its `ctx` is NULL and both thunks discard it.
+ */
+
+/**
+ * @brief `ra8_time_interface_t::now_ms` thunk over ::ra8_time_ms.
+ *
+ * @param[in] ctx Unused -- the SysTick source keeps no per-instance state.
+ *
+ * @return Milliseconds since ::ra8_time_init, as ::ra8_time_ms reports them.
+ *
+ * @pre `ra8_time_init()` has been called (same as ::ra8_time_ms).
+ * @post No state modified.
+ *
+ * @note Thread-safe; a single volatile read.
+ *
+ * @since 0.1.0
+ */
+static uint32_t internal_time_if_now_ms(void* ctx)
+{
+  (void)ctx;
+  return ra8_time_ms();
+}
+
+/**
+ * @brief `ra8_time_interface_t::delay_ms` thunk over ::ra8_delay_ms.
+ *
+ * @param[in] ctx Unused -- the SysTick source keeps no per-instance state.
+ * @param[in] ms  Milliseconds to wait; zero returns immediately.
+ *
+ * @pre `ra8_time_init()` has been called (same as ::ra8_delay_ms).
+ * @post At least `ms` milliseconds have elapsed.
+ *
+ * @note Thread-safe.
+ *
+ * @since 0.1.0
+ */
+static void internal_time_if_delay_ms(void* ctx, uint32_t ms)
+{
+  (void)ctx;
+  ra8_delay_ms(ms);
+}
+
+const ra8_time_interface_t g_ra8_time_interface_systick = {
+    .now_ms   = internal_time_if_now_ms,
+    .delay_ms = internal_time_if_delay_ms,
+    .ctx      = nullptr,
+};
+
 /*
  * Per-subsystem tick callouts. These are declared as WEAK EXTERNS: if
  * the firmware image links a subsystem that defines the symbol, the
