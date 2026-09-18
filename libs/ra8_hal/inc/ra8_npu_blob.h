@@ -35,11 +35,13 @@
  *   +---------------------------------------------------------------+
  * @endcode
  *
- * A region descriptor is either BAKED (its bytes live in the blob at
- * `data_offset`, e.g. the read-only weight arena) or RUNTIME (allocated by the
- * caller in NPU-visible SRAM, e.g. scratch / output activations). The loader
- * turns BAKED regions into a pointer into the blob and RUNTIME regions into a
- * pointer inside a caller-provided arena; see `ra8_npu_loader.h`.
+ * A region descriptor is BAKED (its bytes live in the blob at `data_offset`,
+ * e.g. the read-only weight arena), RUNTIME (allocated by the caller in
+ * NPU-visible SRAM, e.g. scratch / output activations), or an ALIAS of an
+ * earlier region (`data_offset` holds that region's index). The loader turns
+ * BAKED regions into a pointer into the blob, RUNTIME regions into a pointer
+ * inside a caller-provided arena, and an ALIAS into the base it repeats; see
+ * `ra8_npu_loader.h`.
  *
  * ## Not guarded by `RA8_HAS_NPU`
  *
@@ -119,7 +121,8 @@ typedef enum : uint32_t {
  * @details Each descriptor is ::k_ra8_npu_blob_region_words little-endian words:
  *          `role` (::ra8_npu_blob_role_t), `flags` (::ra8_npu_blob_rflag_t),
  *          `size` in bytes, and `data_offset` -- the byte offset of the region's
- *          baked bytes when ::k_ra8_npu_blob_rflag_baked is set, else unused.
+ *          baked bytes when ::k_ra8_npu_blob_rflag_baked is set, the index of the
+ *          aliased region when ::k_ra8_npu_blob_rflag_alias is set, else unused.
  *
  * @invariant ::k_ra8_npu_blob_region_words equals the descriptor field count.
  * @see ra8_npu_blob_role_t
@@ -182,15 +185,30 @@ typedef enum : uint32_t {
  *
  * @details ::k_ra8_npu_blob_rflag_baked marks a region whose bytes are present
  *          IN the blob at the descriptor's `data_offset` (e.g. the weight arena);
- *          the loader points the region base at those bytes. A region without the
- *          flag is RUNTIME: the loader carves it out of the caller-provided arena.
+ *          the loader points the region base at those bytes. A region with
+ *          neither flag is RUNTIME: the loader carves it out of the
+ *          caller-provided arena.
+ *
+ *          ::k_ra8_npu_blob_rflag_alias marks a region that is NOT a buffer of
+ *          its own: it names an EARLIER region, by index in `data_offset`, and
+ *          resolves to that region's base. Vela needs this because one BASEPn
+ *          slot can legitimately repeat a buffer -- in Shared_Sram mode the
+ *          `scratch_fast` operand aliases `scratch`, so the same tensor appears
+ *          twice in the custom operator's input list and must appear twice in
+ *          the region table without being allocated twice. The alias index must
+ *          be strictly lower than the aliasing region (so the target is already
+ *          resolved when it is read), the two sizes must agree, and a descriptor
+ *          may not set ::k_ra8_npu_blob_rflag_alias together with
+ *          ::k_ra8_npu_blob_rflag_baked.
  *
  * @invariant ::k_ra8_npu_blob_rflag_baked is a single set bit.
+ * @invariant ::k_ra8_npu_blob_rflag_alias is a single set bit.
  * @see ra8_npu_blob_rdesc_t
  * @since 0.1.0
  */
 typedef enum : uint32_t {
-  k_ra8_npu_blob_rflag_baked = 0x1U, /**< Region bytes are baked into the blob. */
+  k_ra8_npu_blob_rflag_baked = 0x1U, /**< Region bytes are baked into the blob.  */
+  k_ra8_npu_blob_rflag_alias = 0x2U, /**< Region reuses an earlier region's base. */
 } ra8_npu_blob_rflag_t;
 
 /**
