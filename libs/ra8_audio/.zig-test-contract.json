@@ -1,0 +1,18 @@
+{
+  "test_roots": [
+    "tests/internal_test.zig",
+    "tests/abi_test.zig",
+    "tests/pdm_test.zig"
+  ],
+  "covered_sources": [
+    "src/internal/root.zig",
+    "src/ra8_audio_abi.zig",
+    "src/source_memory.zig",
+    "src/source_pdm.zig",
+    "src/root.zig",
+    "tests/internal_test.zig",
+    "tests/abi_test.zig",
+    "tests/pdm_test.zig"
+  ],
+  "minimum_tests": 10
+}
