@@ -96,6 +96,10 @@ file(GLOB_RECURSE RA8_WIDGET_SOURCES CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra8_widge
 # cmake/zig_libraries.cmake instead of being globbed as C sources here; the
 # unchanged C suite still covers it via the public header.
 file(GLOB_RECURSE RA8_NSC_SOURCES CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra8_nsc/src/*.c)
+# The pure parsing/validation cluster is Zig now (ra8_zig::ra8_ota), so this
+# glob matches only the two TUs that stay C on this branch: the
+# orchestration TU ra8_ota.c, which owns every mutable module static, and
+# the verify cluster ra8_ota_verify.c, which reaches those statics.
 file(GLOB_RECURSE RA8_OTA_SOURCES CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra8_ota/src/*.c)
 # The dispatcher and the refresh-cadence policy are Zig now
 # (ra8_zig::ra8_display_pal), so this glob matches only the two panel
