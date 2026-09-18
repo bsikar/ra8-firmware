@@ -61,11 +61,9 @@
  * =============================================================================
  */
 
-/** @brief USBHS_VBUS sense pin (P4_08, PSEL = 0x14). */
-static const ra8_port_pin_t k_fileops_pin_hs_vbus = (ra8_port_pin_t)k_ra8_board_usbhs_pin_vbus;
-
-/** @brief J7 host-power switch (PD07): HIGH = U18 supplies VBUS (UM 6.2). */
-static const ra8_port_pin_t k_fileops_pin_hs_pwr = (ra8_port_pin_t)k_ra8_board_usbhs_pin_pwr;
+/* The HS pins (P4_08 VBUS sense, PD07 host-power switch) are owned by
+ * ``ra8_board_usb_port_init`` now; ``ra8_board_usbhs_pin_t`` stays the
+ * public pinout for an app that needs one of them directly. */
 
 /** @brief USBFS VBUS sense pin (P4_07, PSEL = 0x13). */
 static const ra8_port_pin_t k_fileops_pin_fs_vbus = (ra8_port_pin_t)k_ra8_board_usbfs_pin_vbus;
@@ -123,14 +121,12 @@ static void fileops_panic_halt(void)
  */
 static void fileops_route_usb_or_halt(void)
 {
-  if (ra8_board_io_expander_set_usbhs_host_mode() != k_ra8_ok) {
-    fileops_panic_halt();
-  }
-  if (ra8_gpio_output_init(k_fileops_pin_hs_pwr, k_ra8_level_high) != k_ra8_ok) {
-    fileops_panic_halt();
-  }
-  if (ra8_pfs_route_peripheral(k_fileops_pin_hs_vbus, k_ra8_psel_usb_hs, "fileops.hs_vbus") !=
-      k_ra8_ok) {
+  /* HS host: the U15 SW4-8 override, the PD07 strap, the P4_08 VBUS
+   * sense routing and the UTMI PLL now live behind one board call.
+   * The FS half below stays here on purpose: what P5_00 should be for
+   * an FS *host* is still undecided in this tree, so the facade
+   * answers not-supported for that arm rather than change it. */
+  if (ra8_board_usb_port_init(k_ra8_board_usb_port_hs, k_ra8_board_usb_role_host) != k_ra8_ok) {
     fileops_panic_halt();
   }
   if (ra8_pfs_route_peripheral(k_fileops_pin_fs_vbus, k_ra8_psel_usb_fs, "fileops.fs_vbus") !=
@@ -155,9 +151,10 @@ static void fileops_route_usb_or_halt(void)
  * @brief Bring CGC + both USB clocks + SysTick + SCI8 + LEDs + pins up.
  *        Panic-halts on any failure.
  *
- * @details Enables the USBHS 60 MHz PLL and the USBFS 48 MHz PLL2 clock
- * (the latter must run before MSTPB11 is released or UACT never sticks),
- * then routes both ports' pins. The controller itself is brought up per
+ * @details Enables the USBFS 48 MHz PLL2 clock (it must run before
+ * MSTPB11 is released or UACT never sticks), then routes both ports'
+ * pins; the USBHS 60 MHz PLL now comes up with the HS port itself,
+ * inside ::fileops_route_usb_or_halt. The controller itself is brought up per
  * retry cycle by the ladder (`ra8_usb_hmsc_init`), since the app
  * alternates between the HS and FS ports.
  *
@@ -172,9 +169,6 @@ static void fileops_setup_or_halt(void)
 {
   uint32_t cpuclk0_hz = 0U;
   if (ra8_cgc_init() != k_ra8_ok) {
-    fileops_panic_halt();
-  }
-  if (ra8_cgc_usbhs_pll_enable() != k_ra8_ok) {
     fileops_panic_halt();
   }
   if (ra8_cgc_usbfs_clock_enable() != k_ra8_ok) {

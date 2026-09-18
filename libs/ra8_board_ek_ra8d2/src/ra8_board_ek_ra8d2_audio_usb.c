@@ -892,21 +892,40 @@ typedef enum : uint32_t {
  * @note Not thread-safe.
  * @since 0.1.0
  */
-RA8_INTERNAL static ra8_err_t internal_usbhs_role_select_device(void)
+RA8_INTERNAL static ra8_err_t internal_usbhs_role_strap(ra8_level_t level)
 {
   g_usbhs_role_pin_probe = (uint32_t)k_usbhs_role_probe_pre_init;
   /* PD07 (port 13, pin 7). The ra8_port_pin_t enum only pre-defines LED
    * pins, so any other packed value lands outside the enumerator set
    * and trips clang-analyzer EnumCastOutOfRange; suppress in the same
    * pattern used elsewhere in this file for board-specific pins. */
-  const ra8_port_pin_t pd07 = (ra8_port_pin_t)RA8_PIN(k_ra8_port_13, k_ra8_pin_7);
-  const ra8_err_t      err  = ra8_gpio_output_init(pd07, k_ra8_level_low);
+  const ra8_port_pin_t pd07 = (ra8_port_pin_t)k_ra8_board_usbhs_pin_pwr;
+  const ra8_err_t      err  = ra8_gpio_output_init(pd07, level);
   g_usbhs_role_pin_err      = (uint32_t)err;
   g_usbhs_role_pin_probe    = (uint32_t)k_usbhs_role_probe_post_init;
   if (err == k_ra8_ok) {
     g_usbhs_role_pin_probe = (uint32_t)k_usbhs_role_probe_success;
   }
   return err;
+}
+
+/**
+ * @brief Drive PD07 low to strap the J7 USB-HS role line to "Device".
+ *
+ * @details Thin name kept over ::internal_usbhs_role_strap so the
+ * device bring-up path reads the same as it did before the role
+ * argument existed.
+ *
+ * @return ra8_err_t Result of ra8_gpio_output_init.
+ * @retval k_ra8_ok PD07 owned and driven low.
+ * @pre IOPORT module clock is on (always-on after reset).
+ * @post On success, PD07 is GPIO-output low and owned by GPIO tag.
+ * @note Not thread-safe.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static ra8_err_t internal_usbhs_role_select_device(void)
+{
+  return internal_usbhs_role_strap(k_ra8_level_low);
 }
 
 ra8_err_t ra8_board_usbhs_device_init(void)
@@ -957,4 +976,177 @@ ra8_err_t ra8_board_usbhs_host_init(void)
     return err;
   }
   return ra8_usb_host_init(k_ra8_usb_speed_hs);
+}
+
+/* =============================================================================
+ * 7b. USB port role facade -- ra8_board_usb_port_init
+ * =============================================================================
+ */
+
+/**
+ * @brief Route the J11 full-speed pins and strap the VBUSEN role line.
+ *
+ * @details
+ * UM Table 22 p 30 order, kept exactly as the 19 application copies of
+ * this sequence had it: VBUS sense first, then VBUSEN as a plain GPIO,
+ * then the data pair. VBUSEN must stay a GPIO -- routing it to the
+ * peripheral function forces host VBUSEN and blocks device enumeration.
+ *
+ * @param[in] vbusen_level LOW for the device role, HIGH for host.
+ *
+ * @return ra8_err_t First non-OK result, or k_ra8_ok.
+ * @retval k_ra8_ok All four pins carry the requested role.
+ * @retval k_ra8_err_gpio_conflict A pin is already owned elsewhere.
+ * @pre Pin validator initialized.
+ * @post On k_ra8_ok, P4_07/P8_14/P8_15 are USBFS and P5_00 is a driven GPIO.
+ * @note Not thread-safe.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static ra8_err_t internal_usbfs_pins_route(ra8_level_t vbusen_level)
+{
+  const ra8_port_pin_t vbus   = (ra8_port_pin_t)k_ra8_board_usbfs_pin_vbus;
+  const ra8_port_pin_t vbusen = (ra8_port_pin_t)k_ra8_board_usbfs_pin_vbusen;
+  const ra8_port_pin_t dp     = (ra8_port_pin_t)k_ra8_board_usbfs_pin_dp;
+  const ra8_port_pin_t dm     = (ra8_port_pin_t)k_ra8_board_usbfs_pin_dm;
+
+  ra8_err_t err = ra8_pfs_route_peripheral(vbus, k_ra8_psel_usb_fs, "board.usbfs_vbus");
+  if (err != k_ra8_ok) {
+    return err;
+  }
+  err = ra8_gpio_output_init(vbusen, vbusen_level);
+  if (err != k_ra8_ok) {
+    return err;
+  }
+  err = ra8_pfs_route_peripheral(dp, k_ra8_psel_usb_fs, "board.usbfs_dp");
+  if (err != k_ra8_ok) {
+    return err;
+  }
+  return ra8_pfs_route_peripheral(dm, k_ra8_psel_usb_fs, "board.usbfs_dm");
+}
+
+/**
+ * @brief Route the one board-side J7 high-speed pin (P4_08 VBUS sense).
+ *
+ * @details
+ * UM Table 28 p 34: the HS D+/D- pair is internal to the chip, so the
+ * VBUS sense input is the only HS bus signal that needs a port mux.
+ * PD07 is handled by ::internal_usbhs_role_strap, not here.
+ *
+ * @return ra8_err_t Result of the single routing call.
+ * @retval k_ra8_ok P4_08 is routed to the USBHS function.
+ * @retval k_ra8_err_gpio_conflict P4_08 is already owned elsewhere.
+ * @pre Pin validator initialized.
+ * @post On k_ra8_ok, P4_08 carries USBHS_VBUS.
+ * @note Not thread-safe.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static ra8_err_t internal_usbhs_pins_route(void)
+{
+  const ra8_port_pin_t vbus = (ra8_port_pin_t)k_ra8_board_usbhs_pin_vbus;
+  return ra8_pfs_route_peripheral(vbus, k_ra8_psel_usb_hs, "board.usbhs_vbus");
+}
+
+/**
+ * @brief FS arm of ::ra8_board_usb_port_init.
+ *
+ * @param[in] role Device or host; ``off`` is rejected by the caller.
+ *
+ * @return ra8_err_t First non-OK result, or k_ra8_ok.
+ * @retval k_ra8_ok J11 is routed for @p role and USBFS is clocked.
+ * @retval other Propagated routing or clock error.
+ * @pre ``ra8_cgc_init`` has run.
+ * @post On k_ra8_ok the USBFS 48 MHz reference is running.
+ * @note Not thread-safe.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static ra8_err_t internal_usb_port_init_fs(ra8_board_usb_role_t role)
+{
+  if (role != k_ra8_board_usb_role_device) {
+    /* The FS host role is deliberately not decided here. The tree
+     * disagrees with itself about what VBUSEN should be in that role:
+     * usb_selftest_fs_host and dfu_selftest_fs_host route P5_00 to the
+     * USBFS peripheral function (controller-driven VBUSEN),
+     * usb_host_keyboard and usb_host_file_ops drive it as a GPIO, and
+     * nothing in the tree drives it HIGH. Picking one for every caller
+     * is a bench question, not a refactor, so this arm answers
+     * not-supported until it is settled rather than silently changing
+     * what a host port does to its VBUS switch. */
+    return k_ra8_err_not_supported;
+  }
+  const ra8_err_t err = internal_usbfs_pins_route(k_ra8_level_low);
+  if (err != k_ra8_ok) {
+    return err;
+  }
+  return ra8_cgc_usbfs_clock_enable();
+}
+
+/**
+ * @brief HS arm of ::ra8_board_usb_port_init.
+ *
+ * @details
+ * Device: PD07 LOW, then the U15 SW4-8 device override best-effort --
+ * PD07 alone straps the role, so an expander NACK on a board whose I2C
+ * bus is jumpered elsewhere is not fatal, which is the judgement
+ * ``ra8_board_usbhs_device_init`` already documents. Host: the U15
+ * write comes first and IS required, matching every current host-mode
+ * caller, then PD07 HIGH so U18 drives J7 VBUS.
+ *
+ * @param[in] role Device or host; ``off`` is rejected by the caller.
+ *
+ * @return ra8_err_t First non-OK result, or k_ra8_ok.
+ * @retval k_ra8_ok J7 is strapped for @p role, routed and clocked.
+ * @retval other Propagated expander, GPIO, routing or clock error.
+ * @pre ``ra8_cgc_init`` and ``ra8_mstp_init`` have run.
+ * @post On k_ra8_ok the UTMI PLL is armed and MSTPCRB.MSTPB12 is ungated.
+ * @note Not thread-safe.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static ra8_err_t internal_usb_port_init_hs(ra8_board_usb_role_t role)
+{
+  if (role == k_ra8_board_usb_role_host) {
+    ra8_err_t err = ra8_board_io_expander_set_usbhs_host_mode();
+    if (err != k_ra8_ok) {
+      return err;
+    }
+    err = internal_usbhs_role_strap(k_ra8_level_high);
+    if (err != k_ra8_ok) {
+      return err;
+    }
+  } else {
+    const ra8_err_t pd07_err = internal_usbhs_role_select_device();
+    if (pd07_err != k_ra8_ok) {
+      return pd07_err;
+    }
+    /* Best-effort, exactly as in ra8_board_usbhs_device_init. */
+    const ra8_err_t io_err = ra8_board_io_expander_set_usbhs_device_mode();
+    (void)io_err;
+  }
+  const ra8_err_t route_err = internal_usbhs_pins_route();
+  if (route_err != k_ra8_ok) {
+    return route_err;
+  }
+  return internal_usbhs_clock_and_mstp();
+}
+
+ra8_err_t ra8_board_usb_port_init(ra8_board_usb_port_t port, ra8_board_usb_role_t role)
+{
+  if ((port != k_ra8_board_usb_port_fs) && (port != k_ra8_board_usb_port_hs)) {
+    return k_ra8_err_invalid_arg;
+  }
+  if ((role != k_ra8_board_usb_role_off) && (role != k_ra8_board_usb_role_device) &&
+      (role != k_ra8_board_usb_role_host)) {
+    return k_ra8_err_invalid_arg;
+  }
+  if (role == k_ra8_board_usb_role_off) {
+    /* Releasing a port (un-route, drop the strap, re-gate the clock) is
+     * a separate slice: nothing in the tree tears a USB port down, and
+     * the pin validator has no release path to hand the pins back. The
+     * enumerator exists so callers can express the intent today and get
+     * a definite answer instead of a silent no-op. */
+    return k_ra8_err_not_supported;
+  }
+  if (port == k_ra8_board_usb_port_fs) {
+    return internal_usb_port_init_fs(role);
+  }
+  return internal_usb_port_init_hs(role);
 }
