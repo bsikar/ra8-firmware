@@ -381,13 +381,14 @@ ra8_add_zig_library(
   ra8_display_pal
 )
 
-# Partially migrated: the pure parsing/validation cluster (the config
-# validators, the minimal JSON scanners, the hex decoder and the two promoted
-# MC/DC predicates) is this archive. The orchestration TU ra8_ota.c and the
-# verify cluster ra8_ota_verify.c are deliberately still C: they own every
-# mutable module static, so they call into the archive and never the other way
-# round. src/ra8_ota_internal.h stays too -- three C suites include it -- so the
-# libs/ra8_ota/src include dirs stay in core_hal.cmake and unit_tests.cmake.
+# Fully migrated: the parsing/validation cluster, the orchestration state
+# machine (which owns g_ra8_ota_cfg, g_ra8_ota_state, g_ra8_ota_initialized and
+# g_ra8_ota_buf) and the verify cluster are all this archive, so
+# libs/ra8_ota/src carries no C at all. The weak ra8_ota_system_reset_hook
+# default is a separate archive member, so a strong definition in the image (or
+# in tests/misc/src/test_ra8_ota.c) still overrides it. src/ra8_ota_internal.h
+# stays -- three C suites include it -- so the libs/ra8_ota/src include dirs
+# stay in core_hal.cmake and unit_tests.cmake.
 ra8_add_zig_library(
   NAME
   ra8_ota

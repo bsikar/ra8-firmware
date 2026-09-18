@@ -1,13 +1,17 @@
 {
   "test_roots": [
     "tests/internal_test.zig",
-    "tests/abi_test.zig"
+    "tests/abi_test.zig",
+    "tests/orchestration_test.zig"
   ],
   "covered_sources": [
     "src/internal/root.zig",
     "src/ra8_ota_parse_abi.zig",
+    "src/ra8_ota_abi.zig",
+    "src/reset_hook.zig",
     "tests/internal_test.zig",
-    "tests/abi_test.zig"
+    "tests/abi_test.zig",
+    "tests/orchestration_test.zig"
   ],
   "minimum_tests": 10
 }
