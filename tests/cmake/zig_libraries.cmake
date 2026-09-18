@@ -44,9 +44,9 @@ ra8_add_zig_library(
   ra8_touch_cal
 )
 
-# Only the record core moved: the production extra-MRAM store binding is still
-# a C translation unit, so libs/ra8_devcfg/src keeps one .c file and the
-# RA8_DEVCFG_SOURCES glob in library_sources.cmake stays.
+# Fully migrated: the record core and the production extra-MRAM store binding
+# are both Zig now, so libs/ra8_devcfg/src has no .c left and the
+# RA8_DEVCFG_SOURCES glob is gone from library_sources.cmake and core_hal.cmake.
 ra8_add_zig_library(
   NAME
   ra8_devcfg

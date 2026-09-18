@@ -183,7 +183,8 @@ file(GLOB_RECURSE RA8_TZ_SECURE_BOOT_SOURCES CONFIGURE_DEPENDS
      ${FW_ROOT}/libs/ra8_tz_secure_boot/src/*.c
 )
 file(GLOB_RECURSE RA8_DFU_SOURCES CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra8_dfu/src/*.c)
-file(GLOB_RECURSE RA8_DEVCFG_SOURCES CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra8_devcfg/src/*.c)
+# ra8_devcfg has no C sources left: both the record core and the production
+# extra-MRAM store binding are Zig now, linked via tests/cmake/zig_libraries.cmake.
 # ra8_wifi: only the PURE facade goes into ra8_core_hal. The ESP32-C6 backend
 # (ra8_wifi_c6link.c) rides ra8_c6link + the vendored protobuf codec, which
 # ra8_core_hal does not carry, so it is built in tests/cmake/tests_wifi.cmake
