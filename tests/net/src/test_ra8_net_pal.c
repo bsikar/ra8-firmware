@@ -15,6 +15,7 @@
 #include "ra8_attributes.h"
 #include "ra8_err.h"
 #include "ra8_eth.h"
+#include "ra8_ether_regs.h"
 #include "ra8_fake_mmap.h"
 #include "ra8_mstp.h"
 #include "ra8_net_pal.h"
@@ -541,6 +542,155 @@ static void internal_test_mcdc_eth_event_dispatch(void)
   TEST_END("mcdc: eth_event dispatch (event_fn && pal_mask)");
 }
 
+/** @brief ESWM_STS probe word: any non-zero status must read as a fault. */
+typedef enum : uint32_t {
+  k_t_eswm_sts_probe = 0x00000002UL, /**< One arbitrary controller status bit. */
+} t_net_sts_t;
+
+/**
+ * @brief The ra8_eth event path ORs the ring half into the reported mask.
+ *
+ * @details Injects a controller status word and dispatches it twice, once with
+ *          the PAL ring empty and once with a frame queued, so the difference
+ *          isolates ``k_ra8_net_pal_event_rx_ready``.
+ *
+ * @pre Fake Ethernet registers are available to the host test.
+ * @pre No other test concurrently owns the singleton network PAL.
+ * @post Both reported masks matched the documented taxonomy.
+ * @post The PAL ring still owns the frame queued by this vector.
+ *
+ * @note The vectors execute synchronously against the host Ethernet fake.
+ * @since 0.1.0
+ *
+ * @par MC/DC:
+ * (no compound decisions in this test -- the decision under test,
+ * `if (s_state.count == 0U)` in internal_ring_event, is single-condition;
+ * both outcomes are exercised)
+ */
+RA8_INTERNAL
+static void internal_test_dispatch_fans_out_rx_ready(void)
+{
+  TEST_BEGIN("eth event: ring half fans out rx_ready");
+  internal_prep();
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_net_pal_init(&s_test_mac));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_net_pal_set_event_handler(internal_stub_event, nullptr));
+
+  /* Ring empty: controller half only. */
+  s_event_count          = 0;
+  s_event_last_mask      = 0U;
+  ra8_eswm()->ESWM_STS   = k_t_eswm_sts_probe;
+  ra8_eth_dispatch();
+  TEST_ASSERT_EQ(1, s_event_count);
+  TEST_ASSERT_EQ(k_ra8_net_pal_event_error, s_event_last_mask);
+
+  /* Queue one frame (send raises tx_done on its own), then dispatch again. */
+  uint8_t frame[k_t_frame_cap];
+  for (uint16_t i = 0U; i < (uint16_t)k_t_frame_cap; ++i) {
+    frame[i] = (uint8_t)(k_t_payload_base + i);
+  }
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_net_pal_send_frame(frame, (uint16_t)k_t_frame_cap));
+
+  s_event_count        = 0;
+  s_event_last_mask    = 0U;
+  ra8_eswm()->ESWM_STS = k_t_eswm_sts_probe;
+  ra8_eth_dispatch();
+  TEST_ASSERT_EQ(1, s_event_count);
+  TEST_ASSERT_EQ((uint32_t)k_ra8_net_pal_event_error | (uint32_t)k_ra8_net_pal_event_rx_ready,
+                 s_event_last_mask);
+
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_net_pal_set_event_handler(nullptr, nullptr));
+  TEST_END("eth event: ring half fans out rx_ready");
+}
+
+/**
+ * @brief A failed PHY read leaves the cached link state alone and is silent.
+ *
+ * @details The PAL never opens the NIC itself, so ``ra8_eth_link_status``
+ *          rejects the read until something else does. This vector pins that
+ *          fallback: the last observed state is returned and no link event is
+ *          raised on the handler.
+ *
+ * @pre Fake Ethernet registers are available to the host test.
+ * @pre No other test concurrently owns the singleton network PAL.
+ * @post The reported link state is still down and no event fired.
+ * @post No PAL state was mutated by the refresh attempt.
+ *
+ * @note The vectors execute synchronously against the host Ethernet fake.
+ * @since 0.1.0
+ *
+ * @par MC/DC:
+ * (no compound decisions in this test -- `if (err != k_ra8_ok)` in
+ * internal_refresh_link is single-condition)
+ */
+RA8_INTERNAL
+static void internal_test_link_status_refresh_unreadable(void)
+{
+  TEST_BEGIN("link_status: unreadable PHY keeps the cached state");
+  internal_prep();
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_net_pal_init(&s_test_mac));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_net_pal_set_event_handler(internal_stub_event, nullptr));
+
+  s_event_count                 = 0;
+  s_event_last_mask             = 0U;
+  ra8_net_pal_link_state_t link = k_ra8_net_pal_link_up;
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_net_pal_link_status(&link));
+  TEST_ASSERT_EQ(k_ra8_net_pal_link_down, link);
+  TEST_ASSERT_EQ(0, s_event_count);
+
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_net_pal_set_event_handler(nullptr, nullptr));
+  TEST_END("link_status: unreadable PHY keeps the cached state");
+}
+
+/**
+ * @brief A readable PHY that agrees with the cache raises no link edge.
+ *
+ * @details Opens the NIC so the MDIO read succeeds, leaves MPSM at its reset
+ *          value (PRD = 0, so BMSR reports link down) and checks that the
+ *          refresh reports the same state it already held without firing an
+ *          event. The up edge needs the MDIO fake to return a BMSR with the
+ *          link bit set, which the host Ethernet fixture cannot stage today.
+ *
+ * @pre Fake Ethernet registers are available to the host test.
+ * @pre No other test concurrently owns the singleton network PAL.
+ * @post The link state is down and no event fired.
+ * @post The NIC has been closed again.
+ *
+ * @note The vectors execute synchronously against the host Ethernet fake.
+ * @since 0.1.0
+ *
+ * @par MC/DC:
+ * (no compound decisions in this test -- `if (observed == s_state.link_state)`
+ * in internal_refresh_link is single-condition)
+ */
+RA8_INTERNAL
+static void internal_test_link_status_refresh_no_edge(void)
+{
+  TEST_BEGIN("link_status: readable PHY with no change is silent");
+  internal_prep();
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_net_pal_init(&s_test_mac));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_net_pal_set_event_handler(internal_stub_event, nullptr));
+
+  const ra8_eth_cfg_t cfg = {
+    .mac_address        = {0x02U, 0x11U, 0x22U, 0x33U, 0x44U, 0x55U},
+    .channel            = 0U,
+    .num_tx_descriptors = 0U,
+    .num_rx_descriptors = 0U,
+    .buffer_size        = 0U,
+  };
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_eth_open(&cfg));
+
+  s_event_count                 = 0;
+  s_event_last_mask             = 0U;
+  ra8_net_pal_link_state_t link = k_ra8_net_pal_link_up;
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_net_pal_link_status(&link));
+  TEST_ASSERT_EQ(k_ra8_net_pal_link_down, link);
+  TEST_ASSERT_EQ(0, s_event_count);
+
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_eth_close());
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_net_pal_set_event_handler(nullptr, nullptr));
+  TEST_END("link_status: readable PHY with no change is silent");
+}
+
 int main(void)
 {
   internal_test_init_with_mac();
@@ -553,5 +703,8 @@ int main(void)
   internal_test_calls_before_init_fail();
   internal_test_mcdc_send_frame_len();
   internal_test_mcdc_eth_event_dispatch();
+  internal_test_dispatch_fans_out_rx_ready();
+  internal_test_link_status_refresh_unreadable();
+  internal_test_link_status_refresh_no_edge();
   return 0;
 }
