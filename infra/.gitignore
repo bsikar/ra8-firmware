@@ -19,7 +19,6 @@ ansible/group_vars/*.yml
 **/*.tfstate.*
 **/*.tfvars
 !**/*.tfvars.example
-**/.terraform.lock.hcl
 
 # Any secret that slips through despite OpenBao being the intended store.
 *.pem
@@ -27,3 +26,10 @@ ansible/group_vars/*.yml
 *_token
 *.pat
 *.secret
+# Terraform state, provider caches, plans, and local lab variables.
+terraform/**/.terraform/
+terraform/**/*.tfstate
+terraform/**/*.tfstate.*
+terraform/**/*.tfplan
+terraform/**/terraform.tfvars
+terraform/**/terraform.tfvars.json
