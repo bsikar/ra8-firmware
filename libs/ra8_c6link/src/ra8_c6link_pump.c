@@ -125,8 +125,9 @@ RA8_PRIV ra8_err_t priv_c6link_pump(ra8_c6link_t*       link,
     misses = 0U;
 
     if (link->tx_len != 0U) {
-      priv_c6link_frame_seal(link->tx, link->tx_if, 0U, link->tx_len);
-      link->tx_len = 0U;
+      priv_c6link_frame_seal_typed(link->tx, link->tx_if, 0U, link->tx_len, link->tx_pkt_type);
+      link->tx_len      = 0U;
+      link->tx_pkt_type = 0U;
     } else {
       priv_c6link_frame_filler(link->tx);
     }

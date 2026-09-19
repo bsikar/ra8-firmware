@@ -103,6 +103,9 @@ RA8_PRIV bool priv_c6link_dispatch(ra8_c6link_t* link, const ra8_c6link_rx_view_
     }
     return false;
   }
+  if (view->if_type == (uint8_t)ESP_HCI_IF) {
+    return priv_c6link_hci_consume(link, view->pkt_type, payload, view->len);
+  }
   /* `ESP_PRIV_IF` lands here. Upstream reads peripheral-side capabilities from it, but
      this co-processor build transmits its only privileged frame with a
      checksum computed as if `if_num` were zero (#529), so a conformant host

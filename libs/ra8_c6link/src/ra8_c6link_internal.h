@@ -97,10 +97,13 @@ typedef enum : uint8_t {
  * @since 0.1.0
  */
 typedef struct ra8_c6link_rx_view {
-  uint16_t offset;  /**< Byte offset of the payload within the transaction. */
-  uint16_t len;     /**< Payload length in bytes.                           */
-  uint8_t  if_type; /**< Interface type from the header.                    */
-  uint8_t  if_num;  /**< Interface number from the header.                  */
+  uint16_t offset;   /**< Byte offset of the payload within the transaction. */
+  uint16_t len;      /**< Payload length in bytes.                           */
+  uint8_t  if_type;  /**< Interface type from the header.                    */
+  uint8_t  if_num;   /**< Interface number from the header.                  */
+  uint8_t  pkt_type; /**< The header's trailing union octet. Meaningful only
+                          on `ESP_HCI_IF`, where it carries the H4 packet
+                          indicator the sender lifted out of the payload. */
 } ra8_c6link_rx_view_t;
 
 /* ==========================================================================
@@ -306,6 +309,69 @@ RA8_PRIV void priv_c6link_frame_filler(uint8_t* tx);
  * @since 0.1.0
  */
 RA8_PRIV void priv_c6link_frame_seal(uint8_t* tx, uint8_t if_type, uint8_t if_num, uint16_t len);
+
+/**
+ * @brief Seal a transmit frame that also carries a header packet-type octet.
+ *
+ * @details
+ * ::priv_c6link_frame_seal with one more field written before the checksum is
+ * taken. `ESP_HCI_IF` frames carry the H4 packet indicator in the header's
+ * trailing union rather than in the payload, and that octet is inside the
+ * checksummed span, so it cannot be patched into a sealed frame.
+ * ::priv_c6link_frame_seal is this function with @p pkt_type zero, which is
+ * what every other interface type transmits there.
+ *
+ * @param[out] tx Transaction buffer of ::k_ra8_c6link_frame_bytes; must be
+ *                non-null.
+ * @param[in] if_type Interface type for the frame, 0..15.
+ * @param[in] if_num Interface number for the frame, 0..15.
+ * @param[in] len Payload octets already written after the header.
+ * @param[in] pkt_type Octet for the header's trailing union field.
+ * @pre @p tx addresses ::k_ra8_c6link_frame_bytes writable octets.
+ * @pre The payload is already written at ::k_ra8_c6link_header_bytes.
+ * @post A @p len above ::k_ra8_c6link_max_payload leaves @p tx unmodified.
+ * @post Otherwise the header, the packet-type octet and the checksum describe
+ *       the frame, and every octet past the payload is zero.
+ * @note Wraps the same 16-bit accumulator the vendored `compute_checksum()`
+ *       uses, so the slave's verification reproduces it.
+ * @since 0.1.0
+ */
+RA8_PRIV void priv_c6link_frame_seal_typed(
+  uint8_t* tx, uint8_t if_type, uint8_t if_num, uint16_t len, uint8_t pkt_type);
+
+/* ==========================================================================
+ * ra8_c6link_hci.c -- the HCI channel on `ESP_HCI_IF`
+ * ==========================================================================
+ */
+
+/**
+ * @brief Route one received HCI frame to the link's HCI sink.
+ *
+ * @details
+ * Counts the frame, reassembles the H4 packet from the header's indicator
+ * octet plus the payload, and calls the registered sink. A frame with no sink,
+ * an indicator this channel does not carry, or a payload too short for its own
+ * H4 header is counted and dropped: the link owns one receive transaction and
+ * the next transfer overwrites it, so a packet nobody consumes has nowhere to
+ * wait.
+ *
+ * @param[in,out] link Open handle; must be non-null.
+ * @param[in] pkt_type Indicator octet from the frame header.
+ * @param[in] payload Controller bytes after the header; must be non-null.
+ * @param[in] len Payload octets.
+ * @return false always, so the pump keeps clocking.
+ * @retval false HCI traffic never satisfies an outstanding RPC wait.
+ * @pre The frame verified its checksum, so the header is trustworthy.
+ * @pre @p payload addresses at least @p len readable octets.
+ * @post `stats->hci_in` advanced by one when a counter block is bound.
+ * @post A refused frame also advanced `stats->hci_dropped`.
+ * @note Delivers a pointer into module-owned storage, valid for the call.
+ * @since 0.1.0
+ */
+RA8_PRIV bool priv_c6link_hci_consume(ra8_c6link_t*  link,
+                                      uint8_t        pkt_type,
+                                      const uint8_t* payload,
+                                      uint16_t       len);
 
 /**
  * @brief Decide what a received transaction is, and where its payload lies.
