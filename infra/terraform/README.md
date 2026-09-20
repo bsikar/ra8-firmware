@@ -6,15 +6,36 @@ rules, production guests, or application services.
 
 The first environment is `environments/lab`. It is disabled by default and
 requires an explicit lab-only network bridge, template IDs, and resource
-values before it can create anything. The checked-in example contains no real
-endpoint, address, username, token, or private key.
+values before it can create anything. It has separate Linux and Windows
+paths: `lab_linux_vm` is the existing Linux amd64 path, while `lab_windows_vm` is a
+disabled-by-default Windows Server amd64 path. The checked-in example contains
+no real endpoint, address, username, token, password, or private key.
+
+The disposable CI lifecycle is exposed through the repository root:
+
+```text
+just infra::lab::setup [target]
+just infra::lab::check
+just infra::lab::ci linux
+just infra::lab::ci windows
+```
+
+The CI driver uses a run-local Terraform state file, a localhost-only API
+tunnel through the `pve` SSH alias, and a temporary SSH key. It creates only a
+run-marked Linux guest, invokes the dedicated lab Ansible playbook, runs the
+committed `HEAD` snapshot (including checked-out submodules) through `scripts/ci/devcontainer_run.sh -- just ci`,
+and removes the matching guest in an exit trap. `--keep` is an explicit
+debugging exception. Windows and `both` are intentionally rejected until the
+Windows template, WinRM boundary, and Windows CI command are reviewed.
 
 ## Safety contract
 
 - `lab_enabled` defaults to `false`.
-- Guests are created stopped and with `on_boot = false`.
-- Their network interface is also disconnected/disabled at creation. Do not
-  enable it until the bridge/VLAN and firewall path have been verified.
+- Terraform defaults guests to stopped and with `on_boot = false`.
+- Terraform defaults their network interface to disconnected/disabled. The
+  lifecycle driver can set `started` and `network_enabled` only after its two
+  explicit operator gates are present; it never creates DHCP/NAT or edits
+  `vmbr9`.
 - Guest protection is enabled in Proxmox and Terraform `prevent_destroy` is
   enabled.
 - Enabled guests must use `ra8-lab-*` names, reserved guest/template IDs in
@@ -44,6 +65,12 @@ endpoint, address, username, token, or private key.
   LXC module remains disabled by default and must receive a separate review
   because an LXC shares the Proxmox host kernel even when unprivileged. It
   additionally requires the explicit `allow_lxc = true` gate.
+- The Windows path clones only from a prebuilt Windows Server amd64 template
+  with VirtIO drivers, Cloudbase-Init, and a reviewed WinRM policy. Terraform
+  does not download Windows media, run Sysprep, inject a password, or enable a
+  Windows network interface.
+- Windows credentials belong in OpenBao and the later Ansible inventory path;
+  they must not be placed in Terraform variables, state, plans, or templates.
 - The Proxmox API credential is read from OpenBao through a dedicated,
   read-only AppRole and an ephemeral KV v2 value; it is not stored in this
   repository or Terraform state.
@@ -56,6 +83,10 @@ endpoint, address, username, token, or private key.
 - Terraform state is local and ignored by Git; keep it on encrypted storage
   and treat it as sensitive operational data. Git-ignored does not mean safe
   to share.
+- CI runs require `RA8_LAB_NETWORK_APPROVED=1` and
+  `RA8_LAB_EGRESS_APPROVED=1` in the protected operator environment. The
+  latter acknowledges controlled package/image egress; it is not permission
+  to bridge the guest onto a personal LAN.
 - There is no production environment configuration here.
 
 The provider is pinned to the 0.83 line for the initial Proxmox VE 8
@@ -108,9 +139,38 @@ use API-backed operations.
 6. Review the plan for guest IDs, storage, bridge, and resource limits.
 7. Apply only after an explicit operator decision.
 
+For the disposable CI path, use `just infra::lab::ci linux`. The driver first
+checks the reviewed Linux template marker `RA8_LAB_TEMPLATE=linux-ci-v1`,
+creates a 16-hex run marker, and saves Terraform state under a private
+temporary directory. Cleanup refuses to act unless the guest ID, name,
+description marker, run tag, pool, storage, and stopped state all match. The
+Linux template is inspected but never modified or deleted.
+
 Production guests are deliberately outside this first environment. A future
 production environment would require a separate review and a separate state
 file; it must not be added by copying the lab variables.
+
+## Supported Proxmox guest profiles
+
+The current Linux fixture is Debian 12 amd64 (`template_vm_id = 9001`, VM
+9000). Additional Linux distributions can use the same `lab_linux_vm` module after
+their templates are reviewed; keep each template and guest in the reserved
+9000-9099 range.
+
+The Windows profile expects a prebuilt Windows Server amd64 template. Before
+enabling `lab_windows_vm`, prepare and review a template with:
+
+- Windows Server with the selected Desktop Experience or Server Core choice.
+- VirtIO storage/network drivers installed and verified.
+- Cloudbase-Init configured for Proxmox metadata and the intended local
+  management account.
+- WinRM configured for the lab security boundary, with no broad LAN trust.
+- No production credentials, SSH keys, host mounts, passthrough devices, or
+  unknown startup tasks.
+
+The first Windows enablement should remain stopped and disconnected, just like
+the Linux fixture. Windows-specific Ansible bootstrap and credentials are a
+separate follow-up from the Terraform clone.
 
 ## Threat model
 

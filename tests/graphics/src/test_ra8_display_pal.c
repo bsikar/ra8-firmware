@@ -839,7 +839,7 @@ static void test_bind_glcdc_rejects_null_arguments(void)
                  display_pal_bind_glcdc(&d, &no_pixels, &s_ra8_panel_ek_ra8d2_timing));
 
   /* No handle was bound by any rejected call. */
-  TEST_ASSERT_EQ((intptr_t) nullptr, (intptr_t)d);
+  TEST_ASSERT_NULL(d);
 
   /* The accepted partner: all four satisfied. */
   TEST_ASSERT_EQ(k_ra8_ok, display_pal_bind_glcdc(&d, &fb, &s_ra8_panel_ek_ra8d2_timing));
@@ -895,7 +895,7 @@ static void test_bind_glcdc_matches_hand_filled_cfg(void)
   display_handle_t* d_again = nullptr;
   TEST_ASSERT_EQ(k_ra8_err_busy,
                  display_pal_bind_glcdc(&d_again, &fb_cfg, &s_ra8_panel_ek_ra8d2_timing));
-  TEST_ASSERT_EQ((intptr_t) nullptr, (intptr_t)d_again);
+  TEST_ASSERT_NULL(d_again);
   TEST_ASSERT_EQ(k_ra8_ok, display_deinit(d_bound));
 
   /* Backend validation still runs behind the typed bind: a pixel format
@@ -906,7 +906,7 @@ static void test_bind_glcdc_matches_hand_filled_cfg(void)
   display_handle_t* d_bad    = nullptr;
   TEST_ASSERT_EQ(k_ra8_err_not_supported,
                  display_pal_bind_glcdc(&d_bad, &wrong_fmt, &s_ra8_panel_ek_ra8d2_timing));
-  TEST_ASSERT_EQ((intptr_t) nullptr, (intptr_t)d_bad);
+  TEST_ASSERT_NULL(d_bad);
 
   TEST_END("display_pal_bind_glcdc binds the same state as a hand-filled cfg");
 }

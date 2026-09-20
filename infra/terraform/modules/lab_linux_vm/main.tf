@@ -3,10 +3,10 @@ resource "proxmox_virtual_environment_vm" "this" {
   node_name = var.node_name
   vm_id     = var.vm_id
 
-  description = "Disposable RA8 Terraform lab VM; managed by Terraform."
-  tags        = ["terraform", "ra8-lab"]
+  description = "Disposable RA8 Terraform lab VM; RA8_LAB_RUN=${var.run_id}"
+  tags        = ["terraform", "ra8-lab", "run-${var.run_id}"]
   pool_id     = var.pool_id
-  started     = false
+  started     = var.started
   on_boot     = false
   protection  = true
 
@@ -34,7 +34,7 @@ resource "proxmox_virtual_environment_vm" "this" {
   network_device {
     bridge       = var.bridge
     firewall     = true
-    disconnected = true
+    disconnected = !var.network_enabled
     # Keep an accidentally exposed lab guest from saturating the segment.
     rate_limit = 10
   }
@@ -52,9 +52,12 @@ resource "proxmox_virtual_environment_vm" "this" {
         gateway = var.ipv4_gateway
       }
 
-      ipv6 {
-        address = "manual"
-      }
+    }
+
+    dns {
+      # The host firewall permits DNS only to this public resolver. No guest
+      # can use the Proxmox host or the production LAN as a resolver.
+      servers = ["1.1.1.1"]
     }
 
     user_account {
@@ -67,8 +70,8 @@ resource "proxmox_virtual_environment_vm" "this" {
     prevent_destroy = true
 
     precondition {
-      condition     = lower(trimspace(var.bridge)) == "vmbr9"
-      error_message = "The lab VM must attach only to the exact pre-created vmbr9 lab bridge."
+      condition     = lower(trimspace(var.bridge)) == "vmbr8" || lower(trimspace(var.bridge)) == "vmbr9"
+      error_message = "The lab VM must attach only to the dedicated lab bridge (vmbr8 or vmbr9)."
     }
 
     precondition {
@@ -87,8 +90,21 @@ resource "proxmox_virtual_environment_vm" "this" {
     }
 
     precondition {
-      condition     = lower(trimspace(var.ipv4_address)) == "dhcp" && var.ipv4_gateway == null
-      error_message = "The lab VM must use DHCP with no configured gateway until the isolated lab network is reviewed."
+      condition     = can(regex("^[0-9a-f]{16}$", trimspace(var.run_id)))
+      error_message = "The lab VM run_id must be exactly 16 lowercase hexadecimal characters."
+    }
+
+    precondition {
+      condition     = !var.network_enabled || var.started
+      error_message = "The lab VM cannot enable its network while stopped."
+    }
+
+    precondition {
+      condition = (
+        (!var.network_enabled && lower(trimspace(var.ipv4_address)) == "dhcp" && var.ipv4_gateway == null) ||
+        (var.network_enabled && can(regex("^10\\.250\\.[89]\\.[0-9]{1,3}/24$", trimspace(var.ipv4_address))) && (var.ipv4_gateway == "10.250.8.1" || var.ipv4_gateway == "10.250.9.1"))
+      )
+      error_message = "A disconnected lab VM must use DHCP without a gateway; an enabled lab VM must use the exact lab network (10.250.8.0/24 or 10.250.9.0/24)."
     }
 
     precondition {

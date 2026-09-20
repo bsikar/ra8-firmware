@@ -529,7 +529,6 @@ ra8_err_t ux_hcd_ra8_usb_initialize(ra8_usb_speed_t speed)
   s_hcd.speed = speed;
   s_hcd.state = k_ux_hcd_ra8_usb_state_ready;
 
-  ra8_log_info(s_tag, "HCD bridge installed");
   return k_ra8_ok;
 }
 

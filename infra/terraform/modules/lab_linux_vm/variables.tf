@@ -2,6 +2,10 @@ variable "name" {
   type = string
 }
 
+variable "run_id" {
+  type = string
+}
+
 variable "vm_id" {
   type = number
 }
@@ -49,4 +53,12 @@ variable "ssh_public_keys" {
 
 variable "user_name" {
   type = string
+}
+
+variable "started" {
+  type = bool
+}
+
+variable "network_enabled" {
+  type = bool
 }

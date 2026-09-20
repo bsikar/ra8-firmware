@@ -1,0 +1,87 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Brighton Sikarskie
+---
+# Disposable Windows CI guest playbook. Deliberately separate from persistent
+# fleet playbooks: no inventory host group overlap, no production runner
+# registration, and strictly constrained to disposable lab guests on vmbr8.
+- name: Prepare and run CI on the disposable Proxmox Windows guest
+  hosts: lab_windows
+  gather_facts: false
+  vars:
+    lab_ci_user: "Administrator"
+    lab_ci_repo_dir: "C:\\ra8-lab-ci"
+  tasks:
+    - name: Verify connection to the disposable Windows guest
+      ansible.windows.win_ping:
+
+    - name: Ensure the disposable checkout directory is clean
+      ansible.windows.win_file:
+        path: "{{ lab_ci_repo_dir }}"
+        state: absent
+
+    - name: Create the disposable checkout root
+      ansible.windows.win_file:
+        path: "{{ lab_ci_repo_dir }}"
+        state: directory
+
+    - name: Stage source archive to Windows guest
+      ansible.windows.win_copy:
+        src: "{{ lab_ci_source_archive }}"
+        dest: "C:\\source_archive.tmp"
+
+    - name: Extract source tarball
+      ansible.windows.win_command:
+        cmd: "tar.exe -xf C:\\source_archive.tmp -C {{ lab_ci_repo_dir }}"
+      when: lab_ci_source_archive.endswith('.tar')
+
+    - name: Extract source zip archive
+      community.windows.win_unzip:
+        src: "C:\\source_archive.tmp"
+        dest: "{{ lab_ci_repo_dir }}"
+        delete_archive: false
+      when: lab_ci_source_archive.endswith('.zip')
+
+    - name: Remove staged archive
+      ansible.windows.win_file:
+        path: "C:\\source_archive.tmp"
+        state: absent
+
+    - name: Query Windows system info
+      ansible.windows.win_command:
+        cmd: powershell.exe -Command "[System.Environment]::OSVersion.VersionString"
+      register: win_os_version
+      changed_when: false
+
+    - name: Display Windows system version
+      ansible.builtin.debug:
+        var: win_os_version.stdout_lines
+
+    - name: Run Windows CI validation asynchronously
+      ansible.windows.win_command:
+        cmd: just ci
+      args:
+        chdir: "{{ lab_ci_repo_dir }}"
+      async: 7200
+      poll: 10
+      register: win_ci_status
+      failed_when: false
+
+    - name: Display CI execution message on failure
+      ansible.builtin.debug:
+        var: win_ci_status.msg
+      when: win_ci_status.rc != 0 and win_ci_status.msg is defined
+
+    - name: Display CI stdout on failure
+      ansible.builtin.debug:
+        var: win_ci_status.stdout_lines
+      when: win_ci_status.rc != 0
+
+    - name: Display CI stderr on failure
+      ansible.builtin.debug:
+        var: win_ci_status.stderr_lines
+      when: win_ci_status.rc != 0
+
+    - name: Return the canonical CI result to the lifecycle driver
+      ansible.builtin.assert:
+        that: [win_ci_status.rc == 0]
+        fail_msg: "The disposable Windows guest CI command failed with exit code {{ win_ci_status.rc }}."
