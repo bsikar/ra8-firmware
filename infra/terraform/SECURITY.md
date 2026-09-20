@@ -106,6 +106,9 @@ documentation](https://pve.proxmox.com/pve-docs/pve-admin-guide.pdf).
   a template containing credentials, private keys, host mounts, startup hooks,
   management agents, or unknown services.
 - Record the template ID and provenance in the local ignored variables file.
+- The disposable CI driver performs a read-only check for the Linux template
+  name/ID pair `ra8-lab-debian-template`/`9001` and the description marker
+  `RA8_LAB_TEMPLATE=linux-ci-v1`; it does not modify or delete that template.
 - Prefer the QEMU VM path. The LXC path requires `allow_lxc = true` because an
   unprivileged LXC still shares the Proxmox host kernel.
 
@@ -122,5 +125,38 @@ documentation](https://pve.proxmox.com/pve-docs/pve-admin-guide.pdf).
 6. Keep the NIC disconnected for the first boot. Enable it only after a
    separate network review and a second plan review.
 
+The disposable CI driver additionally requires both
+`RA8_LAB_NETWORK_APPROVED=1` and `RA8_LAB_EGRESS_APPROVED=1` before it
+requests a started/connected guest. Those variables do not create or alter
+the bridge, DHCP, NAT, firewall, or routing boundary.
+
 The first plan should be treated as a credential and infrastructure boundary
 test, not as a normal deployment.
+
+## Disposable CI cleanup gate
+
+`just infra::lab::ci linux` uses only guest ID `9000`. It never targets the
+template IDs `9001` or `9010`, production guests, LXCs, storage definitions,
+or the host network. Before clearing Proxmox protection and purging a guest,
+the cleanup trap verifies the exact run ID in the description and tag, the
+`ra8-lab-linux-*` name, the `ra8-tf-lab` pool/storage, non-template status, and
+stopped state. A mismatch leaves the object and its temporary state for manual
+review. The Windows profile currently refuses before Terraform apply.
+
+## Windows template gate
+
+The Windows Server path is not an ISO installer. It clones a reviewed amd64
+template and assumes that Cloudbase-Init and the intended WinRM policy were
+prepared before the template was sealed. Do not place a Windows password,
+certificate private key, WinRM secret, or unattested answer file in Terraform.
+Keep those values in OpenBao and have the later Ansible bootstrap retrieve them
+at runtime.
+
+Before enabling `lab_windows_vm`, verify that the template:
+
+- Has only the expected Windows Server installation and VirtIO drivers.
+- Has Cloudbase-Init configured to consume the Proxmox metadata disk on `ide2`.
+- Has WinRM restricted to the isolated lab network and uses the chosen secure
+  authentication mode.
+- Has no production domain membership, tokens, user profiles, or private keys.
+- Is stopped, protected, and assigned to the dedicated lab pool/storage.
