@@ -4,22 +4,54 @@
 set working-directory := ".."
 
 default:
-    @echo "INFRA (PROXMOX LAB)"
-    @echo "  just infra::lab::setup [target]              Bootstrap host packages, pool, and templates"
+    @echo "INFRA (PROXMOX LAB CI & MANAGEMENT)"
+    @echo "  just infra::lab::ci [profile]                Run CI on server & stream live logs (Ctrl+C detaches)"
+    @echo "  just infra::lab::start [profile]             Start CI in background on server and return immediately"
+    @echo "  just infra::lab::logs [profile]              Stream live CI logs from server (multi-machine / resume)"
+    @echo "  just infra::lab::status                      Show status of running background CI jobs on server"
+    @echo "  just infra::lab::stop [profile]              Stop and clean up active CI run(s) on server"
+    @echo "  just infra::lab::list                        List active lab VMs on Proxmox"
+    @echo "  just infra::lab::ssh [target] [cmd]          SSH into lab VM (interactive menu if multiple)"
+    @echo "  just infra::lab::destroy [target]            Tear down preserved lab guest & network"
     @echo "  just infra::lab::check                       Read-only lab/template preflight"
-    @echo "  just infra::lab::ci linux                   Provision, run Ansible/CI, clean up"
-    @echo "  just infra::lab::ci linux true              Keep one run for debugging"
-    @echo "  just infra::lab::list                       List all active lab VMs on Proxmox"
-    @echo "  just infra::lab::ssh [target] [cmd]         SSH into lab VM (interactive if multiple)"
-    @echo "  just infra::lab::destroy [target]           Tear down preserved lab guest & network"
+    @echo "  just infra::lab::setup [target]              Bootstrap host packages, pool, and templates"
 
-# Read-only checks: no Terraform apply, guest start, or Proxmox deletion.
+# Read-only checks: no VM creation or state modifications.
 check:
     scripts/dev/proxmox_lab_ci.sh check
 
-# The driver owns a saved Terraform plan and a run-marker-guarded cleanup trap.
-[confirm("Create a disposable Proxmox lab guest, run its CI, and remove it afterwards?")]
+# Run disposable CI on Proxmox and stream live logs. Ctrl+C detaches cleanly without killing the run.
 ci profile="linux" keep="false":
+    #!/bin/bash -p
+    keep_flag=""
+    if [[ {{ quote(keep) }} == "true" ]]; then
+        keep_flag="--keep"
+    fi
+    python3 scripts/dev/proxmox_lab_manage.py ci {{ quote(profile) }} $keep_flag
+
+# Start disposable CI in the background on Proxmox and exit immediately.
+start profile="linux" keep="false":
+    #!/bin/bash -p
+    keep_flag=""
+    if [[ {{ quote(keep) }} == "true" ]]; then
+        keep_flag="--keep"
+    fi
+    python3 scripts/dev/proxmox_lab_manage.py start {{ quote(profile) }} $keep_flag
+
+# Stream live logs from an active or recent Proxmox CI run. Ctrl+C only exits the log view.
+logs profile="linux":
+    python3 scripts/dev/proxmox_lab_manage.py logs {{ quote(profile) }}
+
+# Show status of running background CI jobs on Proxmox.
+status:
+    python3 scripts/dev/proxmox_lab_manage.py status
+
+# Stop and tear down an active CI run on Proxmox.
+stop profile="all":
+    python3 scripts/dev/proxmox_lab_manage.py stop {{ quote(profile) }}
+
+# Run CI via the local Terraform/Ansible driver (synchronous foreground lifecycle)
+ci-terraform profile="linux" keep="false":
     #!/bin/bash -p
     set -euo pipefail
     export RA8_LAB_NETWORK_APPROVED="${RA8_LAB_NETWORK_APPROVED:-1}"
