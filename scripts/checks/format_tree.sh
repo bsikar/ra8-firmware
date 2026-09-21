@@ -41,6 +41,14 @@ REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 
 CHECK_ONLY=0
 
+# Scope lists live in a private per-run directory, never at a fixed /tmp path.
+# Several worktrees of this repo format in parallel (one per agent/PR), and a
+# shared name meant run B truncated run A's list mid-read and the trailing
+# cleanup deleted a list another run was still using. mktemp -d gives each run
+# its own, and the trap removes it on every exit path.
+SCOPE_DIR="$(mktemp -d "${TMPDIR:-/tmp}/ra8-fmt.XXXXXXXX")"
+trap 'rm -rf -- "$SCOPE_DIR"' EXIT
+
 # require_tool fails loudly when a formatter is absent; the CI and recipe path
 # must never degrade to formatting a subset of the tree's languages.
 require_tool() {
@@ -74,7 +82,7 @@ run_scope() {
 # empty result: a collapsed scope must not read as a clean pass.
 language_scope() {
   local label="$1"
-  local out="/tmp/ra8-fmt-${label}.list"
+  local out="$SCOPE_DIR/${label}.list"
   if ! run_scope "$label" >"$out" 2>/dev/null; then
     echo "format_tree: ${label} scope command failed" >&2
     exit 1
@@ -217,7 +225,7 @@ fi
 require_tool gofmt
 language_scope go
 go_files=()
-while IFS= read -r line || [ -n "$line" ]; do [ -z "$line" ] || go_files+=("$line"); done </tmp/ra8-fmt-go.list
+while IFS= read -r line || [ -n "$line" ]; do [ -z "$line" ] || go_files+=("$line"); done <"$SCOPE_DIR/go.list"
 if [ "$CHECK_ONLY" -eq 1 ]; then
   run_check go list gofmt -l "${go_files[@]}" || exit 1
 else
@@ -226,7 +234,7 @@ fi
 require_tool ruff
 language_scope python
 python_files=()
-while IFS= read -r line || [ -n "$line" ]; do [ -z "$line" ] || python_files+=("$line"); done </tmp/ra8-fmt-python.list
+while IFS= read -r line || [ -n "$line" ]; do [ -z "$line" ] || python_files+=("$line"); done <"$SCOPE_DIR/python.list"
 if [ "$CHECK_ONLY" -eq 1 ]; then
   run_check python exitcode ruff format --check "${python_files[@]}" || exit 1
 else
@@ -235,7 +243,7 @@ fi
 require_tool shfmt
 language_scope shell
 shell_files=()
-while IFS= read -r line || [ -n "$line" ]; do [ -z "$line" ] || shell_files+=("$line"); done </tmp/ra8-fmt-shell.list
+while IFS= read -r line || [ -n "$line" ]; do [ -z "$line" ] || shell_files+=("$line"); done <"$SCOPE_DIR/shell.list"
 if [ "$CHECK_ONLY" -eq 1 ]; then
   run_check shell list shfmt -i 2 -ci -l "${shell_files[@]}" || exit 1
 else
@@ -246,7 +254,7 @@ fi
 require_tool cmake-format
 language_scope cmake
 cmake_files=()
-while IFS= read -r line || [ -n "$line" ]; do [ -z "$line" ] || cmake_files+=("$line"); done </tmp/ra8-fmt-cmake.list
+while IFS= read -r line || [ -n "$line" ]; do [ -z "$line" ] || cmake_files+=("$line"); done <"$SCOPE_DIR/cmake.list"
 if [ "$CHECK_ONLY" -eq 1 ]; then
   run_check cmake exitcode cmake-format --check "${cmake_files[@]}" || exit 1
 else
@@ -263,10 +271,8 @@ while IFS= read -r justfile; do
   else
     run_format "just:${justfile}" just --unstable --fmt --justfile "$REPO_ROOT/$justfile"
   fi
-done </tmp/ra8-fmt-just.list
+done <"$SCOPE_DIR/just.list"
 
-rm -f /tmp/ra8-fmt-go.list /tmp/ra8-fmt-python.list /tmp/ra8-fmt-shell.list \
-  /tmp/ra8-fmt-cmake.list /tmp/ra8-fmt-just.list
 if [ "$CHECK_ONLY" -eq 1 ]; then
   echo "format_tree: all languages formatted"
 else
