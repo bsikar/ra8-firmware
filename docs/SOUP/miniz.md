@@ -1,0 +1,116 @@
+# SOUP Justification: miniz
+
+Per IEC 61508-3 Section 7.4.2.12 and DO-178C Section 12.1.4, this document
+records the qualification basis for accepting miniz into this firmware as
+Software Of Unknown Provenance (SOUP).
+
+## Component identity
+
+- **Name**: miniz (single-file deflate / inflate / zip)
+- **Version**: 11.0.2 (per `miniz.h` MZ_VERSION = "11.0.2",
+  MZ_VER_MAJOR = 11, MZ_VER_MINOR = 2, MZ_VER_REVISION = 0). That is
+  upstream's INTERNAL version macro and it matches no upstream tag; the
+  release this tree is pinned to is the artifact `miniz-3.0.2.zip` (see
+  "Provenance"). The two numbering schemes are unrelated, which has already
+  misled one audit.
+- **Upstream URL**: https://github.com/richgel999/miniz
+- **Local path**: `apps/shared_libs/third_party/miniz/`
+
+## Provenance
+
+- **Origin**: Rich Geldreich and Tenacious Software / RAD Game Tools.
+- **License**: MIT (`LICENSE`, "Copyright 2013-2014 RAD Game Tools and
+  Valve Software / Copyright 2010-2014 Rich Geldreich and Tenacious
+  Software LLC").
+- **How it entered our tree**: Vendored amalgamation drop-in (`miniz.c`
+  + `miniz.h`). The amalgamation is published only as a RELEASE ARTIFACT
+  and never existed in the upstream git tree, so it is pinned by artifact
+  rather than by commit (#548): `miniz-3.0.2.zip`, SHA-256
+  `ada38db0b703a56d3dd6d57bf84a9c5d664921d870d8fea4db153979fb5332c5`.
+  `miniz.c` and `LICENSE` are byte-identical to members of that archive;
+  `miniz.h` carries the one reviewed target-runtime patch below.
+
+## Use case in this firmware
+
+Deflate / inflate / ZIP container support. Five first-party libraries decode
+through it, not one:
+
+- `apps/shared_libs/epub/` -- the EPUB unpacker (EPUB files are ZIP archives), via the
+  `mz_zip` reader.
+- `apps/shared_libs/comic/src/comic_cbz.c` -- CBZ comic archives, via the same
+  `mz_zip` reader.
+- `apps/shared_libs/jof/src/jof_png.c` -- PNG image data, via `tinfl`.
+- `apps/shared_libs/unarch/src/unarch_gzip.c` -- gzip streams, via `tinfl` plus
+  `mz_crc32`.
+- `apps/shared_libs/compress/src/ra8_compress.c` and
+  `ra8_vfs_compress.c` -- the
+  compress-on-write / decompress-on-read fabric seam that RBKC chunks ride.
+
+The mdl downloader core `apps/shared_libs/mdl` (`mz_zip_writer` +
+`tdefl`, the one COMPRESSION consumer, run on downloaded media),
+`tools/cache_bench`, and `tools/rabook_imagepack` also compile it. mdl's core
+is built by every form of that product, today only the host CLI at
+`apps/host/mdl`.
+
+- Integrity claim category: data-handling (decompression of locally staged,
+  attacker-authored book and archive payloads -- a book is authored by whoever
+  made it, so the bytes are hostile even though the transport is not).
+
+## Qualification basis
+
+Accepted as-is per IEC 61508-3 Section 7.4.2.12 and DO-178C Section
+12.1.4:
+
+- **Service history**: miniz has shipped as the single-file compression
+  drop-in in countless game and tool projects since 2010.
+- **Open-source community process**: Open GitHub project with public
+  issue tracker.
+- **Bug tracker review**: Issues at
+  https://github.com/richgel999/miniz/issues reviewed; no open
+  advisories at the 11.0.x release line affect the decode paths used here
+  (`mz_zip` reader, `tinfl`, `mz_crc32`).
+
+## Risk mitigation
+
+- Every firmware consumer decodes locally staged content (SD card, MRAM,
+  Octo-SPI); no network payload feeds a decoder on the target. The one
+  network-fed consumer, the mdl downloader core `apps/shared_libs/mdl`,
+  is built today only into a host tool and is not part of the firmware image.
+- Decompression limits are charged across the whole surface rather than in the
+  EPUB wrapper alone: `apps/shared_libs/epub/src/epub_zip_guard.c` is the
+  decompression-limits retrofit for every miniz ZIP consumer, and it plus
+  `comic_cbz.c` and `unarch_gzip.c` charge the unified policy in
+  `libs/ra8_core/inc/ra8_decomp_limits.h` -- per-unit output cap,
+  compression-ratio bound (decompression bombs), and a decode-loop iteration
+  budget.
+- Allocation is bounded and heap-free: miniz allocates from the 160 KiB static
+  pool declared in `apps/shared_libs/epub/inc/epub_miniz_alloc.h`
+  (`k_epub_miniz_pool_bytes`), because this firmware traps `_sbrk` (NASA
+  P10 Rule 3).
+- Fuzzed: `apps/shared_libs/epub/tests/src/fuzz_epub.c` and
+  `apps/shared_libs/unarch/tests/src/fuzz_unarch_gzip.c` drive hostile archives
+  through the first-party wrappers under ASan/UBSan.
+
+## Deviations / patches
+
+One functional patch is applied to `miniz.h`: when the target is built
+freestanding, `MZ_ASSERT` routes through the first-party `RA8_ASSERT` policy;
+host builds retain the upstream `assert` behavior. This removes the target's
+hosted assertion dependency without changing the decoder's assertion sites.
+The exact patch is
+`docs/sbom/patches/miniz/0001-use-ra8-assertion-policy.patch`, and the offline
+patch gate replays it against the pinned artifact bytes on every run.
+
+They were not, until #548. The vendor-in sweep (`75b635cc7`) ran the project
+formatter over the amalgamation, so `miniz.c` and `miniz.h` differed from the
+published bytes by macro-continuation and pointer-style re-spacing throughout
+-- semantically identical, and a complete break of the byte-identity claim this
+document makes. Both files were restored to the release artifact's bytes.
+
+## Last review date
+
+- Reviewed: 2026-05-02
+- Use case + risk mitigation re-verified against the tree and corrected
+  (#620): 2026-08-04. The qualification had been scoped to EPUB alone while
+  five first-party libraries decode through this component.
+- Expected re-review by: 2027-05-02

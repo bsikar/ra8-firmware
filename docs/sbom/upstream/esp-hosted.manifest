@@ -1,0 +1,88 @@
+# ra8-firmware SOUP upstream provenance manifest -- generated, do not hand-edit.
+# component: esp-hosted
+# upstream-url: https://github.com/espressif/esp-hosted-mcu
+# transport: git
+# ref: 949bb30612747a3bd9e402eda8d01fbfa1f8503e
+# commit: 949bb30612747a3bd9e402eda8d01fbfa1f8503e
+# upstream-files: 483
+# vendored-files: 77
+# upstream-verified: 77
+# patched: 0
+# local: 0
+ok 100644 d645695673349e3947e8e5ae42332d0ac3164cd7 LICENSE
+ok 100644 d2bfb1572e71c1f35ae34f3fabb9bb57e49272e9 README.md
+ok 100644 e9a846befe81558676500341b65500ef62c7745e common/esp_hosted_header.h
+ok 100644 68e0fd8d7bea1afcd2a8a50ab180aa3fecc5bfb7 common/esp_hosted_interface.h
+ok 100644 a11d294374c45d704dba4f36543ea1b1dc460b9c common/log/esp_hosted_log.h
+ok 100644 931861b014a7470439738e5813b14e468aa0721e common/mempool/include/mempool.h
+ok 100644 c550f23f2ff0704a24a05edf2e0d43cef8cae67a common/mempool/mempool.c
+ok 100644 41911d6a1069f183dca8ae4b0e3d2730765d488a common/mempool/mempool_ll.c
+ok 100644 b5cfe4a1df5794e344c7e3f89434c495b2a925d8 common/mempool/mempool_ll.h
+ok 100644 afd57d11af37d6ebb6a391c75d284036b7d0e74e common/proto/README.md
+ok 100644 5ab924f655dd158ffa58547ffcc93455368d1416 common/proto/esp_hosted_rpc.pb-c.c
+ok 100644 382fccfaab8c94c9e80c276e4a46452fc19fa95b common/proto/esp_hosted_rpc.pb-c.h
+ok 100644 4736a0a69c9385ab2761619f4554e7269a7fc69a common/proto/esp_hosted_rpc.proto
+ok 100644 ca2310e3819b94c148ab8de239fa02cae6e1fb44 common/rpc/esp_hosted_bitmasks.h
+ok 100644 30c37cdb3e9617f69ba94b7dfa1c39fc3d2993a7 common/rpc/esp_hosted_rpc.h
+ok 100644 b98e2ab0259f528b5fef0b9e26cdbaae910c3fd7 common/transport/esp_hosted_transport.h
+ok 100644 c8f7286f3612b279c2272972b2be3bf7b05604e4 common/transport/esp_hosted_transport_init.h
+ok 100644 2c414c1be98b94af06a07d184f7adf5d392454a4 common/transport/esp_hosted_transport_spi_hd.h
+ok 100644 072a38e17a02282b1e12e6c1bf568391ae450070 common/utils/esp_hosted_cli.c
+ok 100644 9c17443582b222785805f10e86b46e5a6ab0e49e common/utils/esp_hosted_cli.h
+ok 100644 7e607f1ca75513db0e354e24b4b531de237611f1 host/api/include/esp_hosted_api_types.h
+ok 100644 8d88e3557ae9c334662ab03caf581c2f88d079cc host/api/include/esp_hosted_cp_ext_coex.h
+ok 100644 8322d6809d84f8af8b64591340b41de423fc01ca host/api/include/esp_hosted_cp_gpio.h
+ok 100644 b11936a10f0facc0821e3f0e6edc8a7fb0704b37 host/api/include/esp_hosted_openthread.h
+ok 100644 a1ed1eab7531539c60440dfd780456326f649e28 host/api/include/esp_hosted_ota.h
+ok 100644 3ed07ec2c0dace6d55e460ae4b4596799cdff018 host/api/include/esp_hosted_power_save.h
+ok 100644 ccf80f14e7a3096260ec7d437e405f98a6a08915 host/api/include/esp_hosted_transport_config.h
+ok 100644 3de157af4bfbb99e9c5284c34fc2a0d7c01936a3 host/api/include/esp_hosted_wifi_remote_glue.h
+ok 100644 3bef7148a73f6886623f07130d9b480aac68ad55 host/api/priv/esp_hosted_api_priv.h
+ok 100644 8eba6ff9645ea0e60d1f6f2052c9416fc738e62e host/api/src/esp_hosted_api.c
+ok 100644 4aa6014eac0d804f00beb3d2d0b5b1775b664637 host/api/src/esp_hosted_ota_api.c
+ok 100644 18669c72e7a6ba72f6f8b67d09e3814bada3b158 host/api/src/esp_hosted_transport_config.c
+ok 100644 71dee619fa39fef2796b39a07ef0f21c7fc0ac73 host/api/src/esp_wifi_weak.c
+ok 100644 e02a765142f20c3711062538ecfc5892546a0c34 host/drivers/bt/hci_drv.h
+ok 100644 24be4a7bc430d3b5539600b0ef3f135ec5bb5a98 host/drivers/bt/hci_stub_drv.c
+ok 100644 56834fecce559afa3e4fda0abc2ed64bcc8ffcb5 host/drivers/bt/vhci_drv.c
+ok 100644 6c60a3fda96ed095352eccbae56096820801c923 host/drivers/power_save/power_save_drv.c
+ok 100644 5aaecb7cdad15a5ba5263a6d4f0cce041965019a host/drivers/power_save/power_save_drv.h
+ok 100644 b07d13fff26b1cc3dbe2f1e7637a4c859c90570c host/drivers/rpc/core/rpc_core.c
+ok 100644 80b463952d83c73dce87ddcc797e45da981e5091 host/drivers/rpc/core/rpc_core.h
+ok 100644 c28b0fb9ad436216dab7d7194f3c77a987b2e23e host/drivers/rpc/core/rpc_evt.c
+ok 100644 35873e24721213b2801a22ee69bd1cd912a14c04 host/drivers/rpc/core/rpc_req.c
+ok 100644 5505486c04425b7453253fcb8937cfbdc99596b0 host/drivers/rpc/core/rpc_rsp.c
+ok 100644 93237cf278b0b89438cdfb89636e0f30e50dcdc9 host/drivers/rpc/core/rpc_utils.c
+ok 100644 c50bf6a8b67d56e008567c2b3edc3126832bb974 host/drivers/rpc/core/rpc_utils.h
+ok 100644 a9f1b6569d8780e6d3b0041c2a21f62e34729905 host/drivers/rpc/slaveif/rpc_slave_if.c
+ok 100644 eabf6caaa39a50b3a1e91799de63565f2b291028 host/drivers/rpc/slaveif/rpc_slave_if.h
+ok 100644 0c191bc975c224f3e9db002f74da023cb6defd84 host/drivers/rpc/wrap/rpc_wrap.c
+ok 100644 afd751327283716d44be7f6596667eefcd692304 host/drivers/rpc/wrap/rpc_wrap.h
+ok 100644 d032d1bc077d9e972cf3d2cf0cc9401c576dc106 host/drivers/serial/serial_drv.c
+ok 100644 484bc6284e3f397298a55c873d5206de621b4c55 host/drivers/serial/serial_drv.h
+ok 100644 0e1c31406f832a2140acc6a8dc225854ffba9537 host/drivers/serial/serial_ll_if.c
+ok 100644 eb6c8e3a8e02a7d0be3f8ced8941d5ca99ac9877 host/drivers/serial/serial_ll_if.h
+ok 100644 2320e3a4342f37f91ac84a8ae107da8049de59c8 host/drivers/transport/sdio/sdio_drv.c
+ok 100644 58bed27bacef7c6474f20ce4990fbc4a5b259f76 host/drivers/transport/sdio/sdio_drv.h
+ok 100644 3fb8b7cf0d7dd285c6a1399f495d25aba2e983dc host/drivers/transport/sdio/sdio_reg.h
+ok 100644 66a5f0c53f18ef43a3c7c6925f3f49c242998b0f host/drivers/transport/spi/spi_drv.c
+ok 100644 29b6c1d085ea018c7d7d963a4a185ff3572f880b host/drivers/transport/spi/spi_drv.h
+ok 100644 e07c18d6e4935a5c7ffc6bb88e5ec3903fc5e2e7 host/drivers/transport/spi_hd/spi_hd_drv.c
+ok 100644 73a18afa18617d72646ab7486faece5d5281e801 host/drivers/transport/spi_hd/spi_hd_drv.h
+ok 100644 247a46c89952325f068a203ae0d78e9400f926fe host/drivers/transport/transport_drv.c
+ok 100644 b0b4f5d54c4d57f85d42d8b70b9d13ccb5023372 host/drivers/transport/transport_drv.h
+ok 100644 feb069cf8885b8694652e5781be1b3333bab7fae host/drivers/transport/transport_util.c
+ok 100644 b21b9771a446d5f91eeeaa104789378d4da87536 host/drivers/transport/transport_util.h
+ok 100644 ef209a3510dfa2d80cd4638593e2fbdd3a9fb398 host/drivers/transport/uart/uart_drv.c
+ok 100644 1be4ee38652e5c809f301e52b9b03110df9d7470 host/drivers/virtual_serial_if/serial_if.c
+ok 100644 8289f5e3d46e7f04e77f357caab2a70845e515e3 host/drivers/virtual_serial_if/serial_if.h
+ok 100644 2b5b5f381b7552221d011d513477ac03210dacac host/esp_hosted.h
+ok 100644 022fcbfcef3fc6b90521e43b69201602e18ab0ea host/esp_hosted_bluedroid.h
+ok 100644 c282d8c1ab9e485f304a3fcf979a3296c43dcd90 host/esp_hosted_bt.h
+ok 100644 bf7f42ab22c6462a7d7cc78d04ded7818c2a6f58 host/esp_hosted_event.h
+ok 100644 e7f924319ba8ea47ca49534d0ff952160bb75aa7 host/esp_hosted_host_fw_ver.h
+ok 100644 97884659882249e0b10dbb5e09575d6d3c5b0f3c host/esp_hosted_misc.h
+ok 100644 0cdb3dcaa4eb7f2169c89f223dc298ae9a739158 host/esp_hosted_misc_types.h
+ok 100644 1674a313085a84d9744db5b1a79a23cb43660d6b host/esp_hosted_os_abstraction.h
+ok 100644 0fe3f1791a32a52f33c3adf2ef514563a9b71bd7 host/utils/stats.c
+ok 100644 887b2ed97960e659f5c2b6f31197a9df3ac4f9e3 host/utils/stats.h

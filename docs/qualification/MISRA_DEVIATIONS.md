@@ -1,0 +1,1463 @@
+# MISRA-C 2012 Deviation Register
+
+**Last refreshed**: 2026-09-12 (D-001..D-015 active). That ID range, the
+index's `Findings`/`Files` columns, the "Derived population" section and
+every in-section population restatement are machine-checked against the
+committed baseline by `check_misra_deviations.py` in the `misra` gate (#632).
+
+This document records every formal deviation taken against MISRA-C 2012
+in the ra8-firmware codebase, following the deviation procedure in
+**MISRA-C:2012 section 5.2** (rationale, scope, alternative
+mitigation, reviewer sign-off).
+
+The audit policy and history live in [`docs/MISRA.md`](../MISRA.md);
+the committed per-file-per-rule authority is
+`.github/misra-baseline.txt` (per-line detail regenerates into
+`build/misra/results.txt` per run).
+
+## Cross-references
+
+- Project coding standard: [`docs/STYLE_GUIDE.md`](../STYLE_GUIDE.md);
+  ring + world tagging: [`docs/RING_AND_WORLD.md`](../RING_AND_WORLD.md).
+- Audit driver:
+  [`scripts/checks/misra_check_inner.sh`](../../scripts/checks/misra_check_inner.sh);
+  per-tool dossier:
+  [`docs/qualification/TOOL_QUALIFICATION.md`](TOOL_QUALIFICATION.md).
+- Governing clauses: IEC 61508-3:2010 section 7.4.4 ("Use of language
+  subset"), DO-178C section 11.8, ISO 26262-6:2018 table 1.
+
+## Tooling policy
+
+`cppcheck` (with the upstream `misra.py` addon) is the **sole** MISRA-C
+2012 enforcement tool for this project. Commercial MISRA checkers --
+LDRA Testbed, Perforce Helix QAC, MathWorks Polyspace Bug Finder /
+Code Prover, and PVS-Studio -- are explicitly **out of scope** and
+will never be procured.
+
+### Rationale
+
+`ra8-firmware` is an MIT-licensed, FOSS, $0-budget personal /
+research project. It will not ship as a regulated commercial product
+and it will not seek third-party certification (see
+`docs/CERTIFICATION_SCOPE.md`). Paying $5k-$30k per seat per year for
+a commercial MISRA checker -- on top of the $30k-$150k independent-
+assessor engagement that would also be required to convert that
+checker's output into qualified evidence -- is incompatible with the
+project's funding model and serves no qualification goal that the
+project actually pursues.
+
+### Coverage envelope
+
+The pinned `cppcheck` 2.13.0 `misra.py` addon implements approximately
+**60-70 %** of the MISRA-C 2012 mandatory + required + advisory rule
+set. The remaining ~30 % is **accepted as residual risk** under
+**IEC 61508-7 Annex D.7** ("achievable assurance with available
+tools"): any MISRA rule that no FOSS tool can statically check
+remains uncovered by automated analysis but is still in force as a
+coding-standard obligation enforced via code review.
+
+### Decision-finality
+
+This decision is **final**. Future agents and contributors should
+not raise the procurement question again, and should not insert
+"upgrade path to LDRA / Polyspace / QAC" wording into any audit
+artefact. If a downstream party adopts this codebase for a regulated
+product they are responsible for procuring their own commercial
+checker -- see `docs/CERTIFICATION_SCOPE.md`.
+
+### Cross-references
+
+`docs/CERTIFICATION_SCOPE.md` (the "no independent assessor" decision
+that makes the FOSS-only stance consistent),
+`docs/QUALIFICATION_ROADMAP.md` Section 6 (procurement, CLOSED), and
+`docs/qualification/TOOL_QUALIFICATION.md` (per-tool TQL).
+
+## Disposition classes
+
+Each entry in this register is one of three dispositions, per the
+gap-closure plan in `docs/MISRA.md`:
+
+1. **Project deviation (formal)** -- the project is intentionally
+   non-compliant with the rule; the deviation has rationale,
+   alternative mitigation, and reviewer sign-off. This is the only
+   class that consumes a deviation under MISRA-C:2012 sec. 5.2.
+2. **Tooling gap (false positive)** -- cppcheck-MISRA reports a
+   violation that is not actually present in the source code. These
+   are recorded for traceability so that the audit baseline can be
+   re-evaluated after the upstream tool fixes the parser bug; they
+   do *not* require a formal MISRA deviation because the source obeys
+   the rule.
+3. **Code change** -- the violation is real and will be fixed in
+   source; no deviation record is needed once the fix lands.
+
+Several entries have deliberately narrower scope than their rule-family
+population: D-004 accepts only its enumerated precedence idioms, D-011 accepts
+one XZ pool address-alignment conversion, D-012 accepts its enumerated XZ and
+freestanding compatibility names, and D-015 accepts six standard return
+conversions. Every finding outside those exact scopes remains Code change debt.
+
+## Deviation index
+
+| ID    | Rule            | Category | Class             | Status   | MAR        | Findings | Files |
+|-------|-----------------|----------|-------------------|----------|------------|---------:|------:|
+| D-001 | misra-c2012-15.5 | Advisory  | Project deviation | Active   | 2027-05-02 | 13516 | 686 |
+| D-002 | misra-c2012-17.3 | Mandatory | Tooling gap       | Active   | 2026-11-02 | 558 | 167 |
+| D-003 | misra-c2012-9.2  | Required  | Tooling gap       | Active   | 2026-11-02 | 5 | 3 |
+| D-004 | misra-c2012-12.1 | Advisory  | Partial deviation | Active   | 2027-05-02 | 365 | 112 |
+| D-005 | misra-c2012-8.4  | Required  | Tooling gap       | Active   | 2026-11-02 | 2092 | 389 |
+| D-006 | misra-c2012-20.5 | Advisory  | Project deviation | Active   | 2027-05-02 | 23 | 6 |
+| D-007 | misra-c2012-14.2 | Required  | Tooling gap       | Active   | 2026-11-02 | 87 | 40 |
+| D-008 | misra-c2012-17.1 | Required  | Project deviation | Active   | 2027-07-27 | 42 | 8 |
+| D-009 | misra-c2012-9.5  | Required  | Tooling gap       | Active   | 2026-11-02 | 10 | 6 |
+| D-010 | misra-c2012-11.5 | Advisory  | Project deviation | Active   | 2027-08-03 | 726 | 217 |
+| D-011 | misra-c2012-11.6 | Required  | Project deviation | Active   | 2027-08-21 | 52 | 29 |
+| D-012 | misra-c2012-21.1 | Required  | Project deviation | Active   | 2027-08-21 | 23 | 10 |
+| D-013 | misra-c2012-5.5  | Required  | Project deviation | Active   | 2027-09-12 | 15 | 3 |
+| D-014 | misra-c2012-21.2 | Required  | Project deviation | Active   | 2027-09-12 | 16 | 2 |
+| D-015 | misra-c2012-11.8 | Required  | Project deviation | Active   | 2027-09-12 | 109 | 25 |
+
+`MAR` = mandatory annual review date (or earlier review trigger when
+the underlying tooling assumption changes). `Findings` / `Files` are
+the rule family's population in the current committed baseline, not the
+number accepted by a scoped deviation. These columns are the reviewed final
+post-migration population and the machine checker requires them and the derived
+totals below to match the committed baseline.
+
+## Derived population (machine-checked)
+
+`scripts/checks/check_misra_deviations.py` re-derives, on every `misra`
+gate run: the ID range above, each index row's `Findings`/`Files`, the
+provenance and residual lines, every ownership bullet, the excerpt table
+and every in-section `N findings across M files` restatement. It does
+NOT check Category / Class / Status / MAR, free prose, or which rows sit
+behind an ownership bullet -- those stay review obligations. A count is
+a measurement; each deviation says what it actually accepts. Evidence:
+`misra_check_inner.sh` scans `libs/ port/ tools/ apps/` (`examples/`
+and the repo-root `tests/` out of scope; a product's own `tests/` under
+`apps/` is in scope with the rest of that root) with
+`.cppcheck-suppressions` applied -- cppcheck
+embeds them in the dumps handed to `misra.py`, so a suppressed finding
+never reaches the results (verified on the pinned binary, 2026-08-15) --
+then `misra_ratchet.py` freezes that population in the baseline below.
+
+Baseline: 20014 findings across 2710 file/rule rows (Cppcheck 2.13.0).
+Residual (no deviation record): 51 rules, 2375 findings, 1007 rows.
+The 2026-08-27 refresh removed 2,102 C23 Rule 9.2 false positives,
+four POSIX Rule 17.3 false positives, and 53 genuine findings through reviewed
+source fixes. The resulting 2,159-finding reduction had zero bucket growth
+against the prior 22,097-finding baseline.
+The residual population is implementation debt dispositioned **Code
+change** in aggregate: ratchet-held, burned down per `docs/MISRA.md`,
+never accepted.
+
+The count-preserving path map held 20,976 findings in 3,011 rows. Its initial
+comparison isolated 251 rows / 1,580 findings from 116 tests newly entering
+scope under `apps/**/tests`; three Rule 15.5 findings then burned down in
+`test_reflow_corpus.c`, `test_reflow_render.c`, and
+`test_reflow_render_cov.c`. The final C23-parser disposition then removed 77
+spurious findings / 3 rows from migrated app-local tests, so the final baseline
+retains 1,500 findings / 248 migration rows. The separate 23-row / 103-finding growth audit
+closed 9 rows / 10 findings by source change and 10 rows / 57 findings as
+documented pinned-checker false positives. Its remaining 4 rows / 36 findings
+are the new D-001/D-010 population, not migration debt. Final frozen refactors
+added seven more same-class C23 false-positive rows / 16 spurious findings;
+their exact suppressions also retired 84 already-baselined Rule 9.2 findings.
+Two real Rule 15.4 findings were fixed, and the Alphabet CLI split transferred
+nine D-001 findings between files without changing that population.
+
+### Suppression ownership
+
+Every `misra-c2012-*` row in `.cppcheck-suppressions` narrows the
+audit, so every rule family there is accounted for below (unlisted
+family or ghost bullet = gate failure); justifications live with the rows.
+
+- `misra-c2012-7.4` (4 rows, 4 paths): esp-hosted tooling gap, plus the
+  same char-array-initialiser gap on two mdl host tests.
+- `misra-c2012-8.4` (7 rows, 5 paths): the D-005 C23 declaration-parser gap
+  on the alphabet-soup implementations, four line-scoped POSIX cross-TU
+  helpers whose internal header carries all matching prototypes, and the
+  cbz2jof worker's `jof_produce()` call site (prototype in the included
+  `jof_produce.h`).
+- `misra-c2012-8.9` (5 rows, 4 paths): `ra8_wdt.c` parse artefact, the same
+  function-mention counting artefact on two mdl host tests whose objects are
+  shared by a file-scope table or several functions, and the cbz2jof worker
+  read-loop pointer operands.
+- `misra-c2012-9.2` (11 rows, 11 paths): D-003 C23 empty-initializer parser
+  false positives in the newly audited or changed host/test translation units.
+- `misra-c2012-9.5` (1 row, 1 path): D-009 enum-named array extent parser
+  false positive in the alphabet-soup direction table.
+- `misra-c2012-11.1` (1 row, 1 path): `tools/ra8_emulator` block.
+- `misra-c2012-11.2` (1 row, 1 path): `tools/ra8_emulator` block.
+- `misra-c2012-11.3` (1 row, 1 path): `tools/ra8_emulator` block.
+- `misra-c2012-11.5` (3 rows, 2 paths): `tools/ra8_emulator` block, plus the
+  cbz2jof worker's allocator `void*` -> typed-arena casts; the allocator
+  boundary is distinct from D-010's accepted construct and from the emulator
+  block.
+- `misra-c2012-11.6` (2 rows, 2 paths): `tools/ra8_emulator` block, plus the
+  caller-workspace alignment predicate in `ra8_io_vfs_namespace.c`, which has
+  no conforming alternative and is already accepted at two sibling sites.
+- `misra-c2012-11.8` (1 row, 1 path): `tools/ra8_emulator` block.
+- `misra-c2012-12.1` (50 rows, 8 paths): validated D-004 review anchors (see D-004).
+- `misra-c2012-15.5` (4 rows, 4 paths): emulator block,
+  `nx_ether_driver_c6.c`, and the cbz2jof worker + entry (D-001 idiom
+  throughout; file-scoped like the c6 row, since the whole-file idiom is
+  accepted house style).
+- `misra-c2012-17.3` (8 rows, 6 paths): `nx_ether_driver_c6.c`, the
+  alphabet-soup CLI translation units and test runner, two line-scoped POSIX
+  `fstat`/`stat` calls, and the cbz2jof worker's `jof_probe_dims()` /
+  `jof_produce()` call sites, all D-002-class parse artefacts with visible
+  declarations in included headers.
+- `misra-c2012-17.7` (2 rows, 2 paths): `tools/ra8_emulator` block + the
+  cbz2jof worker's intentionally-ignored read/close return values on the
+  error paths.
+- `misra-c2012-18.4` (4 rows, 2 paths): `nx_ether_driver_c6.c` header
+  assembly and the cbz2jof worker's byte-advance arithmetic (Advisory).
+- `misra-c2012-21.3` (11 rows, 2 paths): `tools/ra8_emulator` block + the
+  cbz2jof worker's designated-initializer and retry assignments.
+- `misra-c2012-21.6` (2 rows, 2 paths): `tools/ra8_emulator` block, plus the
+  host-CLI `<stdio.h>` in `mdl_export_epub_meta.c`, the split half of a file
+  whose own row is accepted in the baseline.
+- `misra-c2012-22.10` (4 rows, 3 paths): POSIX `read()`/`write()` set
+  `errno`, but cppcheck models only the C standard errno-setters, so the mdl
+  host tests' and the cbz2jof worker's EINTR retry loops read as testing
+  stale `errno`.
+- `misra-c2012-21.16` (1 row, 1 path): `char`-typed `memcmp` operand forced
+  by `mdl_net_get_buf()`'s `char*` contract, compared only against zero.
+
+---
+
+## D-001: Rule 15.5 -- single point of exit
+
+- **Rule ID**: misra-c2012-15.5.
+- **Rule text (paraphrased per MISRA licence)**: a function should
+  have a single point of exit at the end.
+- **Category**: Advisory.
+- **Disposition**: Project deviation (formal).
+- **Scope**: project-wide; the early-return idiom is house style in
+  every first-party translation unit. The audited population covers
+  the scan roots `libs/`, `port/`, `tools/`, `apps/`.
+- **Files affected**: 751 violations in the 2026-05-02 baseline,
+  spread across substantially every `.c` file in the firmware tree;
+  current population in the index above.
+
+### Rationale
+
+The project enforces **NASA Power-of-10 Rule 7** (check the return
+value of every fallible function call) via the
+`RA8_RETURN_ON_ERROR(err, tag, msg)` macro defined in
+`libs/ra8_core/inc/ra8_check.h` and the early-return idiom
+
+```c
+ra8_err_t err = some_call(...);
+if (err != k_ra8_ok) {
+  return err;
+}
+```
+
+A strict single-exit refactor would either:
+
+1. Introduce deeply nested `if (ok) { if (ok) { if (ok) { ... } } }`
+   ladders that violate NASA Power-of-10 Rule 4 (cyclomatic-bound /
+   60-line LineThreshold enforced by clang-tidy), or
+2. Replace early returns with `goto cleanup;` -- forbidden by
+   `docs/STYLE_GUIDE.md` and by NASA Power-of-10 Rule 1.
+
+Both alternatives are strictly worse for safety and for review
+ergonomics than the early-return idiom, which makes every error path
+**locally** visible at the call site.
+
+### Alternative mitigation
+
+The intent of Rule 15.5 -- "every exit path is reachable, reviewable,
+and reaches required cleanup" -- is met by the following independent
+controls:
+
+- **NASA Power-of-10 Rule 5** (>= 2 pre/post-condition checks per
+  function), enforced by code review against `docs/STYLE_GUIDE.md`.
+- **MC/DC structural-coverage obligation** (see
+  `docs/qualification/SVCP.md`). Its gate and ratchet expose untested
+  decisions and prevent measured coverage from regressing; the current
+  post-migration execution result must be restamped before it is claimed as
+  qualification evidence.
+- **clang-tidy LineThreshold = 60** keeps function bodies short
+  enough that all exit paths fit in a single screen, eliminating the
+  "hidden return" failure mode that motivates Rule 15.5 in larger
+  functions.
+- **No `goto` / `setjmp` / dynamic-allocation cleanup paths** (NASA
+  Power-of-10 Rules 1 and 3, enforced by the pre-commit hooks
+  `scripts/git/pre-commit` and `scripts/checks/check_no_dynamic_alloc.py`).
+  Early return therefore cannot leak resources because there are no
+  resources to leak.
+
+### Standards basis
+
+- **IEC 61508-3:2010 section 7.4.4** ("Use of language subset"):
+  permits a documented subset that consciously deviates from the
+  reference standard provided the deviation has rationale and a
+  compensating control. The compensating controls here are the structural
+  coverage obligation, bounded function size, and explicit local error-path
+  checks.
+- **DO-178C section 6.4.4.2 (b)** accepts coverage-based proof of
+  exit-path adequacy in lieu of a structural single-exit
+  constraint.
+
+### Risk assessment
+
+- **Likelihood of escape**: low. Structural coverage is ratchet-held and the
+  qualification result cannot be claimed until its post-migration execution
+  is restamped.
+- **Severity of escape**: low. Functions are <=60 lines; any escape
+  is locally visible at the early-return statement.
+- **Net residual risk**: acceptable for IEC 61508 SIL 3 / DO-178C
+  DAL B with the compensating MC/DC control.
+
+### Review
+
+- **Author**: Brighton Sikarskie.
+- **Approved**: 2026-05-02.
+- **Mandatory annual review**: 2027-05-02.
+- **Trigger for early review**: any change that weakens the MC/DC
+  coverage target, deletes the `RA8_RETURN_ON_ERROR` macro, or relaxes
+  the clang-tidy LineThreshold setting.
+
+---
+
+## D-002: Rule 17.3 -- function shall not be declared implicitly
+
+- **Rule ID**: misra-c2012-17.3.
+- **Rule text (paraphrased per MISRA licence)**: a function shall
+  not be declared implicitly.
+- **Category**: Mandatory.
+- **Disposition**: Tooling gap (false positive).
+- **Scope**: the cppcheck audit baseline only (using the version recorded in
+  the applicable baseline header). Source code does not
+  contain any implicit function declarations.
+- **Files affected**: 170 spurious violations in the 2026-05-02
+  baseline; current population in the index above.
+
+### Root cause
+
+The pinned cppcheck 2.13.0 does not implement `--std=c23`. The codebase uses
+
+- C23 typed enums: `typedef enum : uint8_t { ... } name_t;`,
+- C23 attributes: `[[nodiscard]]`, `[[maybe_unused]]`,
+- C23 `= {}` empty aggregate initializers,
+
+each of which raises `syntaxError` at the offending line. cppcheck's
+recovery strategy abandons the in-flight declaration and continues
+parsing the rest of the translation unit, so any function call to a
+prototype that lived on a C23-syntax line is reported as "implicit
+declaration". The actual source has the prototype; only the parser
+mis-reads it.
+
+### Why this is not a real defect
+
+- Every first-party header uses `#pragma once` and is included before
+  the matching definition; the C frontend used to build the firmware
+  (`arm-none-eabi-gcc -std=gnu23 -Wimplicit-function-declaration
+  -Werror`) treats any implicit declaration as a build-stopping error; a clean
+  cross-build gate is required before qualification evidence is restamped.
+- The host unit-test build compiles under host gcc / clang, which support C23
+  declarations natively and provide an independent
+  `-Wimplicit-function-declaration -Werror` check. The authoritative
+  Linux/devcontainer unit gate compiled and passed all 689 registered tests in
+  8.66 s on 2026-08-22; macOS execution is not claimed because the low-address
+  tests require Linux/container execution.
+
+### Alternative verification (audit pinned to C11)
+
+- The arm-none-eabi-gcc cross build with `-std=gnu23
+  -Wimplicit-function-declaration -Werror` is the authoritative
+  Mandatory-rule check for 17.3.
+- The host unit-test build provides a second independent compiler
+  pass.
+- `scripts/checks/check_world_tags.py` and the pre-commit
+  clang-tidy run additionally enforce header inclusion hygiene.
+
+### Standards basis
+
+Per IEC 61508-3:2010 section 7.4.4.4, an automated tool that fails
+to parse a source-language feature is not a substitute for a
+qualified compiler. The compiler is the authoritative checker; the
+audit tool is supplementary.
+
+### Review
+
+- **Author**: Brighton Sikarskie.
+- **Approved**: 2026-05-02.
+- **Mandatory annual review**: 2026-11-02 (six-month review tied to
+  cppcheck release cadence; see TOOL_QUALIFICATION.md).
+- **Trigger for early review**: **FIRED 2026-08-15** -- cppcheck 2.21.0
+  parses C23 attributes under `--std=c23`. The audit stays pinned until
+  that review lands; D-005 records what adopting it would cost.
+
+---
+
+## D-003: Rule 9.2 -- braced aggregate initializers
+
+- **Rule ID**: misra-c2012-9.2.
+- **Rule text (paraphrased per MISRA licence)**: the initializer
+  for an aggregate or union shall be enclosed in braces.
+- **Category**: Required.
+- **Disposition**: Tooling gap (false positive).
+- **Scope**: the cppcheck audit baseline only (using the version recorded in
+  the applicable baseline header).
+- **Files affected**: 35 spurious violations in the 2026-05-02
+  baseline; current population in the index above.
+
+### Root cause
+
+C23 `= {}` (empty initializer) is mandated by `CLAUDE.md` in place
+of the obsolete C99 `= {0}` form. The pinned cppcheck 2.13.0 MISRA addon reads
+`= {}` as "no brace around aggregate" because its parser does not
+recognize the C23 empty-initializer rule. The compiler accepts it
+correctly at every build.
+
+### Alternative verification
+
+- arm-none-eabi-gcc `-std=gnu23 -Wmissing-braces -Werror` (cross
+  build) and host gcc / clang in the unit-test build both validate
+  every aggregate initializer at compile time.
+- `scripts/git/pre-commit` actively
+  *forbids* the legacy `= {0}` form and *requires* C23 `= {}`,
+  giving an inverse check that complements the disabled cppcheck
+  rule.
+
+### Standards basis
+
+Same as D-002. The compiler frontend is the authoritative checker
+for syntactic initializer-form rules.
+
+### Review
+
+- **Author**: Brighton Sikarskie.
+- **Approved**: 2026-05-02.
+- **Mandatory annual review**: 2026-11-02.
+- **Trigger for early review**: **FIRED 2026-08-15** (see D-002/D-005).
+
+---
+
+## D-004: Rule 12.1 -- explicit operator precedence
+
+- **Rule ID**: misra-c2012-12.1.
+- **Rule text (paraphrased per MISRA licence)**: the precedence of
+  operators within expressions should be made explicit.
+- **Category**: Advisory.
+- **Disposition**: Partial deviation (formal). Project accepts
+  precedence implicit in the C standard for the well-known cases
+  enumerated below; all other Rule 12.1 hits are dispositioned as
+  **Code change** and burned down on the housekeeping cadence in
+  `docs/MISRA.md`.
+
+### Accepted-as-implicit cases (no parentheses required)
+
+The following precedences are sufficiently universal among C
+programmers that adding parentheses would *reduce* readability:
+
+1. `*` and `/` over `+` and `-`. Example: `a + b * c` is accepted
+   without parentheses.
+2. Unary operators (`-`, `!`, `~`, `++`, `--`, `&`, `*`) over any
+   binary operator.
+3. Member access (`.`, `->`) and array subscript (`[]`) over any
+   other operator. Example: `&s->field` is accepted.
+4. Postfix function-call `()` over any other operator.
+
+### Cases that require parentheses (Code change)
+
+All other Rule 12.1 hits -- mixing `&` with `==`, `<<` with `+`,
+`?:` with binary arithmetic, `||` with `&&`, etc. -- shall be fixed
+in source by adding redundant parentheses. clang-format is
+configured to leave redundant parentheses untouched.
+
+### Population, review record, and reconciliation
+
+Current population: 365 findings across 112 files (machine-checked
+index above; per-file inventory in the committed baseline). It
+partitions into three parts; only the first is formally accepted:
+
+1. **The 2026-05-02 review** (commit `ee5083f9e`) accepted the
+   original audit's 101 hits under the classes above, mirroring each
+   as a per-file:line suppression row. Rows have since left only with
+   their code: 10 with the BLE host facade (retired 2026-07-26), 21
+   with the lwIP port and hand-rolled TCP stack (deleted 2026-07-14),
+   leaving the 50 rows across 8 paths pinned above.
+2. **Anchor health.** At this refresh (2026-08-25), the 16 rows that
+   pointed past EOF (15 stranded by the `ra8_fs_fat.c` split) were
+   removed. The 50 remaining literal anchors all name existing source
+   lines, and suppression governance now rejects missing or past-EOF
+   anchors before they can become stale silently. Review decisions for
+   removed rows remain in repository history and the review ledger;
+   the measured Rule 12.1 population stays ratchet-frozen.
+3. **Unreviewed debt.** The remainder of the current 113-file population,
+   including everything under `libs/ra8_hal/` and the `tools/` population that
+   entered audit scope on 2026-08-13, has never been triaged against the
+   accepted-as-implicit classes. It is implementation debt, never accepted:
+   ratchet-held and burned down per `docs/MISRA.md`.
+
+Any future 12.1 hit must be re-triaged: parenthesise genuine ambiguity,
+or record the acceptance here (this register owns the accepted classes)
+and let the ratchet hold the count.
+
+### Standards basis
+
+- IEC 61508-3:2010 section 7.4.4.6 (b) permits accepting a coding
+  rule subject to "documented justification" of the cases that are
+  treated as obvious by domain practitioners. The four cases above
+  are taught in every introductory C course (Kernighan and Ritchie,
+  *The C Programming Language*, 2nd ed., section 2.12 and table on
+  p. 53) and are correctly understood by every static-analysis tool
+  the project uses.
+
+### Risk assessment
+
+- **Likelihood of misread**: low. The accepted cases are taught at
+  the level of introductory C texts.
+- **Severity of misread**: low. clang-tidy enforces braces around
+  every control statement, so any precedence misread is contained
+  inside the immediate expression.
+- **Net residual risk**: acceptable for IEC 61508 SIL 3 / DO-178C
+  DAL B.
+
+### Review
+
+- **Author**: Brighton Sikarskie.
+- **Approved**: 2026-05-02.
+- **Mandatory annual review**: 2027-05-02.
+
+---
+
+## D-005: Rule 8.4 -- compatible declaration before definition
+
+- **Rule ID**: misra-c2012-8.4.
+- **Rule text (paraphrased per MISRA licence)**: a compatible
+  declaration shall be visible when an object or function with
+  external linkage is defined.
+- **Category**: Required.
+- **Disposition**: Tooling gap (false positive).
+- **Scope**: the cppcheck audit baseline only (using the version recorded in
+  the applicable baseline header).
+- **Files affected**: 2092 findings across 389 files (machine-checked).
+  The 2026-05-02 audit recorded 196; the population scaled with the
+  tree -- the HAL build-out applies `[[nodiscard]]` to every fallible
+  public prototype, `tools/` entered audit scope on 2026-08-13, and
+  the 2.13.0-pinned ratchet baseline became the audit of record on
+  2026-07-15 -- so the baseline is the per-file authority.
+
+Highest-count files for misra-c2012-8.4 (top 6, derived):
+
+| File | Findings |
+|------|---------:|
+| `libs/ra8_hal/src/ra8_mipi_csi.c` | 33 |
+| `libs/ra8_hal/src/ra8_i3c.c` | 32 |
+| `port/nimble/src/nimble_npl_threadx.c` | 29 |
+| `libs/ra8_hal/src/ra8_ceu.c` | 26 |
+| `libs/ra8_hal/src/ra8_etha.c` | 26 |
+| `libs/ra8_hal/src/ra8_rsip_asym.c` | 26 |
+
+### Root cause
+
+The pinned cppcheck 2.13.0 cannot parse C23 attributes (`[[nodiscard]]`,
+`[[maybe_unused]]`) under the audit's `--std=c11` mode, and the
+project applies `[[nodiscard]]` to every fallible public API in
+`libs/<module>/inc/<module>.h` (NASA Power-of-10 Rule 7). When
+cppcheck encounters
+
+```c
+[[nodiscard]] ra8_err_t ra8_mpu_configure(const ra8_mpu_cfg_t* cfg);
+```
+
+it emits `syntaxError` and discards the prototype from its symbol
+table. The matching definition in `ra8_mpu.c` is therefore reported
+as having no prior declaration -- a Rule 8.4 false positive.
+
+A second class arises for `port/`: the prototypes for `ble_npl_*`
+(NimBLE) and the USBX / esp-hosted seams live in third-party headers
+under `libs/third_party/`, whose include roots `misra_check_inner.sh`
+deliberately skips when deriving the audit's `-I` set (SOUP is not
+audited). Those definitions have real prior declarations -- the
+auditor never resolves the header carrying them. The reproducer is
+recorded on purpose: a future maintainer who sees the 8.4 population
+collapse after a cppcheck upgrade that parses C23 attributes can
+confirm both root causes are gone.
+
+The two `UNIT_TEST` seams in
+`apps/shared_libs/rabook_compile/src/ra8_rabook_xml_shim.c` are the same
+first class. Their exact compatible declarations carry `[[nodiscard]]` in the
+directly included `ra8_rabook_xml_shim_test_internal.h`; Cppcheck 2.13 drops
+those declarations in C11 mode and reports the definitions at lines 542 and
+551. The central suppressions are line-scoped so the file's unrelated public
+API Rule 8.4 finding remains visible in the frozen baseline.
+
+### Why this is not a real defect
+
+- The project compiles every translation unit with arm-none-eabi-gcc
+  `-Wmissing-prototypes -Wstrict-prototypes -Wimplicit-function-
+  declaration -Werror` at IEC 61508 SIL 3 / DO-178C DAL B build
+  level. A real Rule 8.4 violation (definition without prior
+  matching prototype) would fail the cross build and would block
+  every commit at the pre-commit clang-tidy + CI build gate.
+- Every public function in the affected files is declared in the
+  matching `*/inc/*.h` header, included before the definitions.
+  Re-verified 2026-08-15 against the baseline: `libs/ra8_mpu/src/ra8_mpu.c`
+  defines 7 external functions, exactly the 6 with `[[nodiscard]]`
+  prototypes flagged (plain-pointer `ra8_mpu_boot_map()` is not);
+  `tools/rabook_imagepack/src/ra8_fmt_host_fd.c` likewise at 5-of-7 -- the
+  differentials isolate the attribute -- and `nimble_npl_threadx.c`
+  defines exactly 29 `ble_npl_*` functions matching its 29 findings.
+- Module-internal functions are marked `static` and are caught
+  separately by clang-tidy's `misc-unused-using-decls` and gcc's
+  `-Wmissing-declarations`.
+
+### Alternative verification (audit pinned to C11)
+
+- arm-none-eabi-gcc cross build with the warning flags listed above
+  is the authoritative Required-rule check for 8.4.
+- Host unit-test build (`just quality::local::test`) provides a second independent
+  compiler pass.
+- No commercial-tool re-audit will occur (see "Tooling policy" above);
+  the compiler passes are the permanent alternative evidence.
+
+### Standards basis
+
+Same as D-002. Per IEC 61508-3:2010 section 7.4.4.4, the qualified
+compiler is the authoritative checker for declaration-compatibility
+rules; the unqualified open-source audit tool is supplementary.
+
+### Risk assessment
+
+- **Likelihood of escape**: zero. The cross compiler rejects any
+  real Rule 8.4 violation as a build error.
+- **Severity of escape**: not applicable (likelihood is zero).
+- **Net residual risk**: acceptable for IEC 61508 SIL 3 / DO-178C
+  DAL B.
+
+### Review
+
+- **Author**: Brighton Sikarskie.
+- **Approved**: 2026-05-02.
+- **Mandatory annual review**: 2026-11-02 (tied to cppcheck release
+  cadence -- shared review window with D-002 and D-003).
+- **Trigger for early review**: **FIRED**. Measured 2026-08-15: cppcheck
+  2.21.0 parses C23 attributes under `--std=c23`; under the audit's
+  `--std=c11` it still `syntaxError`s and now loses the whole TU's MISRA
+  output. Adopting it means moving the pin AND a full rebaseline, so the
+  audit stays on 2.13.0/`--std=c11` and this record holds for it.
+
+---
+
+## D-006: Rule 20.5 -- #undef shall not be used
+
+- **Rule ID**: misra-c2012-20.5.
+- **Rule text (paraphrased per MISRA licence)**: `#undef` shall not
+  be used.
+- **Category**: Advisory.
+- **Disposition**: Project deviation (deliberate, safety-motivated).
+- **Scope**: the accepted sites are the single macro-authority reset in
+  `libs/ra8_nsc/inc/ra8_nsc_veneer.h` and the guarded test-only standard-name
+  reset block in `libs/ra8_core/inc/ra8_freestanding.h`. The rest of the
+  rule's population (index above) is the boot `vector_table.c` files'
+  IRQ-stub X-macro cleanup `#undef`s: undispositioned ratchet-held
+  debt, NOT accepted here.
+
+### Root cause
+
+`RA8_NSC_VENEER` must mean two different things in two different
+compilations of the same declaration. In a Secure-world translation
+unit (`-mcmse`) it must carry
+`__attribute__((cmse_nonsecure_entry))`, which is what makes the
+linker emit the secure-gateway (SG) veneer that the Non-Secure world
+branches through. Everywhere else -- Non-Secure images, single-world
+firmware and the host unit tests -- it must be a plain no-op, because
+gcc ignores the attribute without `-mcmse` and the resulting
+`-Wattributes` diagnostic is fatal under the project `-Werror`
+profile.
+
+`libs/ra8_core/inc/ra8_attributes.h` also defines `RA8_NSC_VENEER`,
+as an annotation-only marker, so that translation units which never
+touch the NSC boundary can still be scanned by the libclang
+annotation gate. Two headers therefore define the same macro, and
+before this deviation whichever header a translation unit included
+last silently won.
+
+That is not a stylistic concern. When `ra8_attributes.h` won inside
+an NSC translation unit -- as it did in `ra8_nsc_wdt.c` and
+`ra8_nsc_xspi.c` -- the CMSE attribute was dropped, the SG veneer was
+never emitted, and the Secure/Non-Secure boundary was broken with no
+diagnostic beyond a macro-redefinition warning.
+
+The freestanding test branch has a separate, compile-time reason to use the
+same construct. Standard headers may provide function-like definitions for
+the hosted names; the `RA8_TEST_FREESTANDING` build must clear those meanings
+before installing the project-owned ABI redirects. Without that reset, a test
+can silently call the host libc rather than exercise the target-compatible
+implementation. The block is guarded out of production target builds and is
+covered by the freestanding primitive tests.
+
+### Why `#undef` is the correct construct
+
+`ra8_nsc_veneer.h` is designated the single authority for the macro.
+It includes `ra8_attributes.h`, `#undef`s the generic marker, and
+re-defines `RA8_NSC_VENEER` to carry the annotation and the CMSE
+attribute together. The `#undef` is what makes the correct
+definition win **regardless of include order**, which is the whole
+safety property: a future edit that reorders includes in an NSC
+translation unit cannot silently disarm the boundary.
+
+### Alternatives considered and rejected
+
+1. **Include-order convention** (require `ra8_nsc_veneer.h` last).
+   Rejected: unenforceable by the compiler, and the failure mode is
+   silent and security-critical.
+2. **`#ifndef` guard in `ra8_attributes.h`**. Rejected: it makes the
+   winner depend on include order in the opposite direction, so the
+   same silent failure remains reachable.
+3. **Move the CMSE logic into `ra8_attributes.h`** so only one
+   definition exists. Rejected: `ra8_core` is the foundation library
+   and is included by host tests and by both worlds;
+   `check_core_layering.py` exists to keep TrustZone-specific
+   concerns out of it, and `<arm_cmse.h>` is not available on the
+   host.
+
+### Alternative mitigation
+
+The intent of Rule 20.5 -- that a macro's meaning be unambiguous at
+every use site -- is met more strongly here than by the rule itself:
+
+- `scripts/checks/check_nsc_cmse.sh` compiles every NSC translation
+  unit under `-mcmse` with `-Wall -Wextra -Werror`, so a macro clash
+  of this class fails the gate rather than warning past it.
+- `scripts/checks/check_sg_offsets.py` inspects the linked Secure ELF
+  and asserts the SG veneer slot offsets still match the `k_sg_off_*`
+  enum the Non-Secure image reaches them by. A dropped veneer fails
+  this gate at the object level, not merely at the source level.
+- `ra8_attributes.h` carries a Doxygen `@warning` naming the veneer
+  header as authoritative; `ra8_nsc_veneer.h` documents the same
+  relationship in its file-header comment.
+- The freestanding test configuration compiles and exercises every redirected
+  memory, string, and integer primitive, proving that the test-only macro
+  reset selects the project implementation rather than a hosted definition.
+
+### Standards basis
+
+Rule 20.5 is **Advisory**, the weakest MISRA category, and MISRA
+C:2012 permits a documented deviation for Advisory rules where the
+alternative carries greater risk. The alternative here is a silent
+TrustZone boundary break.
+
+### Risk assessment
+
+Low. Two tightly scoped sites, both guarded by independent automated checks
+(source-level and object-level); the freestanding reset is additionally
+confined to the test configuration.
+
+### Review
+
+- **MAR**: 2027-05-02.
+- **Earlier review trigger**: any change to the `RA8_NSC_VENEER`
+  definition in either header; any toolchain that provides a
+  portable `[[gnu::cmse_nonsecure_entry]]` spelling, which would
+  allow the annotation and the attribute to be composed without
+  redefinition.
+
+---
+
+## D-007: Rule 14.2 -- for loop shall be well formed
+
+- **Rule ID**: misra-c2012-14.2.
+- **Rule text (paraphrased per MISRA licence)**: a `for` loop shall
+  be well formed (the loop counter is initialised in the first clause,
+  tested in the second, modified only in the third, and not modified
+  in the body).
+- **Category**: Required.
+- **Disposition**: Tooling gap (false positive).
+- **Scope**: cppcheck audit baseline only. The `RA8_PROTECTED_WRITE`
+  scoped-unlock macro (`libs/ra8_hal/inc/ra8_register_protection.h`)
+  expands to a run-once `for` loop whose counter is initialised,
+  tested and modified only in the three loop-header clauses and never
+  in the body -- a well-formed loop.
+- **Files affected**: current population in the index above. The
+  individually diagnosed phantom sites are the `ra8_bkup*` family
+  (12 + 2 + 1 findings, baseline-exact at this refresh), which
+  appeared when the VBATT / tamper bring-up moved its register writes
+  inside `RA8_PROTECTED_WRITE` windows (issue #131); the `ra8_cgc*`
+  hits this record originally named have since been burned out of the
+  baseline. The rest is not attributed site-by-site: the reproducer
+  below isolates the mechanism wherever `RA8_PROTECTED_WRITE` sits in
+  a `[[nodiscard]]` function; a 14.2 finding outside that shape must
+  be triaged on its own.
+
+### Root cause
+
+Same C23-parse defect as D-002 and D-005. cppcheck (`--std=c11`,
+which the audit is pinned to because that checker rejects `--std=c23`)
+raises `syntaxError` on a `[[nodiscard]]` function definition and its
+recovery mis-reads the function body. When the body opens with the
+`for` loop `RA8_PROTECTED_WRITE` expands to, the damaged parse charges
+it Rule 14.2. The same macro in a plain (non-`[[nodiscard]]`)
+function -- for example a `static void` helper -- parses cleanly and
+draws no 14.2, which is the reproducer that isolates the cause: it is
+the attribute, not the loop.
+
+### Why this is not a real defect
+
+- `RA8_PROTECTED_WRITE` expands to
+  `for (uint32_t ra8_prot_once_ = ra8_prot_scope_begin(uv); ra8_prot_once_ != 0U; ra8_prot_once_ = ra8_prot_scope_end())`.
+  The loop counter `ra8_prot_once_` is initialised in clause 1, tested
+  in clause 2 and assigned in clause 3; the body never reads or writes
+  it. That is precisely a well-formed loop.
+- arm-none-eabi-gcc builds every affected translation unit with
+  `-Wall -Wextra -Werror`; a genuinely malformed loop would not survive
+  the cross build or the host unit-test build.
+
+### Alternative verification (audit pinned to C11)
+
+- arm-none-eabi-gcc cross build with the warning flags above.
+- Host unit-test build (`just quality::local::test`), a second independent compiler
+  pass over the same sources.
+- No commercial-tool re-audit will occur (see "Tooling policy" above);
+  the compiler passes are the permanent alternative evidence.
+
+### Standards basis
+
+Same as D-002. Per IEC 61508-3:2010 section 7.4.4.4, the qualified
+compiler is the authoritative checker; the unqualified open-source
+audit tool is supplementary.
+
+### Risk assessment
+
+- **Likelihood of escape**: zero. A real malformed loop is a cross
+  build error.
+- **Severity of escape**: not applicable (likelihood is zero).
+- **Net residual risk**: acceptable for IEC 61508 SIL 3 / DO-178C
+  DAL B.
+
+### Review
+
+- **Author**: Brighton Sikarskie.
+- **Approved**: 2026-07-22.
+- **Mandatory annual review**: 2026-11-02 (shared cppcheck-cadence
+  window with D-002, D-003 and D-005).
+- **Trigger for early review**: **FIRED 2026-08-15** (see D-005); or
+  any change that removes `[[nodiscard]]` from the affected functions
+  or reworks `RA8_PROTECTED_WRITE` away from a `for`-loop guard.
+
+---
+
+## D-008: Rule 17.1 -- the features of <stdarg.h> shall not be used
+
+- **Rule ID**: misra-c2012-17.1.
+- **Rule text (paraphrased per MISRA licence)**: the features of
+  `<stdarg.h>` shall not be used.
+- **Category**: Required.
+- **Disposition**: Project deviation (formal).
+- **Scope**: three bounded adapters: the five-file esp-hosted bridge
+  (`ra8_esp_hosted_fmt*`, `ra8_esp_hosted_log*`, `ra8_esp_hosted_osi.c`),
+  `tools/ra8_emulator/src/host/emu_host_io*`, and
+  `tools/cache_bench/src/cache_bench_io.c` plus
+  `tools/cache_bench/inc/cache_bench_io.h`. Any new user must extend this record.
+
+### Why the variadic interface is not a choice here
+
+The vendored esp-hosted host driver
+(`libs/third_party/esp-hosted/`, SOUP pinned at `949bb30`) logs through
+`printf`-style call sites -- `ESP_LOGI(TAG, "rx len %u if %d", len, if_type)`
+-- in 13 translation units. Those call sites are upstream's source and
+are not editable: the tree records the component as having zero
+deviations and verifies every file byte-identical to its upstream pin
+(`docs/SOUP/esp-hosted-host.md`). The OS-abstraction vtable the driver
+calls through likewise declares its log row as
+`void (*_h_printf)(int level, const char *tag, const char *format, ...)`,
+so the signature is fixed by the seam, not by this port.
+
+A port that refused variadic arguments could therefore only drop the
+driver's diagnostics entirely. On a link that has never been driven on
+hardware, the diagnostics are the bring-up instrument.
+
+The emulator and cache benchmark are hosted diagnostics. Each shares one
+bounded formatter for typed messages or CSV; removing it would duplicate
+formatting without removing the width-mismatch hazard.
+
+### Why this is bounded
+
+- **Three bounded adapters.** Every path funnels into
+  `ra8_esp_hosted_log_vwrite`, emulator `internal_vformat`, or
+  `cb_sink_vformat`. Each renders immediately into fixed-capacity,
+  caller-owned storage and retains no `va_list` state.
+- **The formatters are first-party and tested.** The concern behind
+  Rule 17.1 is that `va_arg` is unchecked: read at the wrong width and
+  every later argument misaligns. `ra8_esp_hosted_fmt.c` addresses that
+  directly -- it parses the length modifier explicitly and reads at
+  exactly the named width, refuses to consume an argument for a
+  conversion it does not implement (copying the specifier through
+  verbatim instead, so later arguments stay aligned), and bounds every
+  loop by a compile-time constant. Focused esp-hosted, emulator-output
+  and cache-bench tests pin success, truncation and write-fault paths.
+- **The compiler checks annotated call sites.** The esp-hosted and
+  emulator entry points carry `[[gnu::format(printf, ...)]]`, and the
+  project builds with `-Wformat=2`; cache-bench output is pinned by an
+  exact deterministic golden.
+- **No allocation, bounded output.** The formatter writes only into a
+  caller-supplied buffer and never calls the C library's `printf`
+  family, whose formatting paths this project cannot admit (NASA Power
+  of 10 Rule 3; this board has no heap and `_sbrk` fatal-errors).
+
+### Review
+
+- **Author**: Brighton Sikarskie.
+- **Approved**: 2026-07-27; host-tool scope reviewed 2026-08-16.
+- **Mandatory annual review**: 2027-07-27.
+- **Trigger for early review**: another first-party `stdarg` user appears,
+  an adapter loses its bounded formatter, or the vendored driver gains a
+  non-variadic logging seam. A retired adapter leaves this deviation; it
+  does not justify keeping unused scope.
+
+---
+
+## D-009: Rule 9.5 -- array size explicit under designated initializers
+
+- **Rule ID**: misra-c2012-9.5.
+- **Rule text (paraphrased per MISRA licence)**: where designated
+  initializers are used to initialize an array object, the size of
+  the array shall be specified explicitly.
+- **Category**: Required.
+- **Disposition**: Tooling gap (false positive).
+- **Scope**: cppcheck 2.13.0 audit baseline only.
+- **Files affected**: 10 spurious findings across 6 files (index
+  above), in
+  `libs/ra8_board_ek_ra8d2/src/ra8_board_ek_ra8d2.c` (3),
+  `libs/ra8_hal/src/ra8_lvd.c` (1), `libs/ra8_hal/src/ra8_ssie.c` (1),
+  `libs/ra8_mpu/src/ra8_mpu.c` (1),
+  `apps/host/mdl/tests/src/test_mdl_cli_matrix.c` (2), and
+  `apps/shared_libs/mdl_storage_vfs/tests/src/test_mdl_storage_vfs.c` (2).
+
+### Root cause
+
+Every affected array *does* specify its size explicitly -- but as a
+typed-enum constant rather than a numeric literal, e.g.
+
+```c
+static const ra8_mpu_region_t s_ra8_mpu_boot_regions[k_ra8_mpu_boot_region_count] = { ... };
+```
+
+cppcheck 2.13.0's MISRA addon resolves the size expression only when
+it is a literal token, so an enum-named extent reads to the addon as
+"no explicit size". The size is explicit, and the compiler resolves
+it at translation time; the auditor simply cannot see it.
+
+The construct is not incidental. `CLAUDE.md` makes typed enums
+**mandatory** for every integer constant and forbids `#define` for
+the purpose, so every fixed-size table in first-party code is
+declared exactly this way. The rule as implemented therefore fires
+on the house style rather than on a defect.
+
+### Negative control
+
+`libs/ra8_hal/src/ra8_ssie.c` proves the addon is not reacting to
+designated initializers at all:
+
+```c
+static const ra8_mstp_t s_ssie_mstp_table[k_ra8_ssie_channel_count] = {
+  k_ra8_mstp_ssie0,
+  k_ra8_mstp_ssie1,
+};
+```
+
+There is no designator anywhere in that initializer, so Rule 9.5
+cannot apply by its own wording -- yet the addon reports it. The
+common factor across all reported sites is the enum-named extent,
+not the initializer form.
+
+### Alternative verification
+
+- arm-none-eabi-gcc `-std=gnu23 -Wall -Wextra -Werror` (cross build)
+  and host gcc / clang in the unit-test build reject any array whose
+  initializer overruns its declared extent, which is the hazard Rule
+  9.5 exists to prevent.
+- `scripts/checks/check_magic_numbers.py` independently forbids a
+  numeric-literal extent, so the literal form the addon wants is not
+  reachable in this codebase.
+
+### Standards basis
+
+Same as D-002. Per IEC 61508-3:2010 section 7.4.4.4 the qualified
+compiler is the authoritative checker for declaration-form rules;
+the unqualified open-source audit tool is supplementary.
+
+### Risk assessment
+
+- **Likelihood of escape**: zero. An array whose declared extent
+  disagrees with its initializer is a cross-build error.
+- **Severity of escape**: not applicable (likelihood is zero).
+- **Net residual risk**: acceptable for IEC 61508 SIL 3 / DO-178C
+  DAL B.
+
+### Review
+
+- **Author**: Brighton Sikarskie.
+- **Approved**: 2026-08-03.
+- **Mandatory annual review**: 2026-11-02.
+- **Trigger for early review**: cppcheck's MISRA addon learns to
+  resolve enum-named array extents.
+
+---
+
+## D-010: Rule 11.5 -- conversion from pointer to void
+
+- **Rule ID**: misra-c2012-11.5.
+- **Rule text (paraphrased per MISRA licence)**: a conversion should
+  not be performed from pointer to void into pointer to object.
+- **Category**: Advisory.
+- **Disposition**: Project deviation (formal).
+- **Scope**: first-party code implementing a dependency-injection seam or a
+  compiler-required freestanding C runtime ABI; current population in the
+  index above.
+
+### Root cause
+
+This is the Dependency-Inversion seam the project is built on, not
+an accident. `CLAUDE.md` records NASA Power of 10 Rule 9 as an
+**intentional deviation** precisely so interfaces can be expressed
+as function-pointer tables, and a C vtable can only carry its
+instance as `void*`:
+
+```c
+RA8_INTERNAL static ra8_err_t ra8_wifi_c6link_op_close(void* ctx)
+{
+  ra8_wifi_c6link_t* self = (ra8_wifi_c6link_t*)ctx;
+  RA8_CHECK_NULL_PTR(self, RA8_WIFI_C6_TAG, "ctx");
+```
+
+Every backend row must share one signature or it cannot sit in the
+table, so the concrete type can only be recovered on entry. The
+alternative -- a distinct signature per implementation -- is exactly
+the coupling the seam exists to remove, and would forbid the mock
+backends that make these modules testable on the host.
+
+### Why this is not a real defect
+
+- The cast is always back to the type the *same* module handed to
+  the vtable when it built the table, so it is a round trip rather
+  than a reinterpretation. Ownership never crosses a module.
+- Every such entry point immediately null-checks the recovered
+  pointer (`RA8_CHECK_NULL_PTR`) before dereferencing it, so a
+  miswired table fails closed at the first call instead of
+  corrupting memory.
+- The seams are marked `RA8_DI_SLOT(role)` and checked by
+  `scripts/checks/check_annotations.py`, which fails a build where a
+  slot is called directly rather than through the pointer -- so the
+  indirection cannot silently decay.
+
+The freestanding runtime has a separate ABI boundary with the same controlled
+conversion shape. ISO C requires the memory primitives to expose `void*`
+interfaces, while their implementations must access bytes through a character
+pointer. The casts in `libs/ra8_core/src/ra8_freestanding_mem.c` are therefore
+the representation-preserving conversion at the standard ABI boundary, not a
+cross-module object reinterpretation. They are confined to the five primitive
+implementations and are exercised by the freestanding tests and target link.
+
+### Alternative verification
+
+- Host unit tests substitute a mock backend through the identical
+  table, which exercises the round trip on every run.
+- `-Wall -Wextra -Werror` on both the cross and host builds rejects
+  an incompatible function-pointer assignment into a table row,
+  which is the failure mode this rule guards against.
+- The freestanding ABI symbols are linked in the bare-metal build and every
+  redirected primitive is exercised by the host freestanding test suite; a
+  signature or conversion change therefore fails both compile-time and
+  behavioral checks.
+
+### Standards basis
+
+MISRA C:2012 Rule 11.5 is Advisory, and Directive 4.6 permits a
+documented project-wide deviation where a design idiom requires it.
+IEC 61508-3:2010 section 7.4.4 accepts a justified deviation
+supported by an alternative measure; the null-check and the
+annotation gate are those measures.
+
+### Risk assessment
+
+- **Likelihood of escape**: low. A wrong-type round trip requires
+  building a table with mismatched rows, which the compiler rejects.
+- **Severity of escape**: high in principle, but bounded by the
+  null-check at every entry point.
+- **Net residual risk**: acceptable for IEC 61508 SIL 3 / DO-178C
+  DAL B.
+
+### Review
+
+- **Author**: Brighton Sikarskie.
+- **Approved**: 2026-08-03.
+- **Mandatory annual review**: 2027-08-03.
+- **Trigger for early review**: the project abandons function-pointer
+  interfaces, or NASA Rule 9 stops being deviated.
+
+---
+
+## D-011: Rule 11.6 -- XZ pool address-alignment representation
+
+- **Rule ID**: misra-c2012-11.6.
+- **Rule text (paraphrased per MISRA licence)**: conversion shall not be
+  performed between a pointer to `void` and an arithmetic type.
+- **Category**: Required.
+- **Disposition**: Project deviation (formal).
+- **Exact scope**: only the conversion `(uintptr_t)base` assigned to
+  `base_address` in
+  `apps/shared_libs/unarch/src/unarch_xz_pool.c`, function
+  `unarch_xz_pool_install()`. The value is used only by the modulo alignment
+  predicate for the caller-provided XZ arena. No integer-to-pointer
+  conversion, other Rule 11.6 site, or later address arithmetic is approved by
+  this record. The separate `void*`-to-`uint8_t*` arena installation is owned
+  by D-010.
+
+### Rationale
+
+The API deliberately accepts a caller-owned `void*` workspace. Before the XZ
+decoder constructs structures containing `uint64_t` members in that workspace,
+the installer must reject an address that does not satisfy
+`k_unarch_xz_pool_align`. `_Alignof` can constrain an object declaration, but
+it cannot establish the alignment of an arbitrary address supplied through
+this API. Copying into a second internally aligned buffer would break the
+fixed, caller-budgeted, zero-heap arena design.
+
+`uintptr_t` is the standard optional unsigned integer type capable of carrying
+an object-pointer representation. The conversion exposes the address's low
+bits solely for modulo by the fixed alignment. The integer is neither
+dereferenced nor converted back into a pointer, and no ordering, subtraction,
+or offset is derived from it. Pointer arithmetic would require a pointer into
+an existing array object and therefore is not a conforming substitute for
+examining an arbitrary caller address.
+
+### Alternative mitigation and verification
+
+- `unarch_xz_pool_install()` rejects null, zero-length, and misaligned arenas
+  before storing the pointer, and fails closed with
+  `k_ra8_err_invalid_size` for the alignment case.
+- `internal_test_xz_pool_edges()` in
+  `apps/shared_libs/unarch/tests/src/test_unarch_xz.c` supplies both an
+  `alignas(8)` arena and the deliberately misaligned `&s_scratch[1]`; it also
+  exercises double install, exact exhaustion, rounding overflow, and
+  idempotent reset.
+- Host and RA8 cross builds compile this boundary with warnings as errors. A
+  platform without `uintptr_t`, or one on which the declared porting contract
+  cannot be expressed, fails at compile time instead of silently weakening the
+  check.
+- Any future reverse integer-to-pointer conversion remains prohibited and
+  requires its own review; this record cannot be used to justify it.
+
+### Standards basis
+
+MISRA-C:2012 section 5.2 permits a Required-rule deviation only with a
+bounded scope, rationale, alternative controls, and approval. The exact
+conversion above is the smallest implementation-defined boundary that can
+validate an arbitrary caller address while preserving the fixed-arena API;
+the reject-before-store predicate and two-direction alignment test are the
+alternative controls.
+
+### Risk assessment
+
+- **Hazard**: an implementation-defined pointer representation could cause an
+  aligned arena to be rejected or a misaligned arena to be accepted.
+- **Likelihood of escape**: low. The supported host and target ABIs provide
+  `uintptr_t`, both accepted and rejected branches are exercised, and the
+  expression performs no representation reconstruction.
+- **Severity of escape**: high if a misaligned arena reached the decoder, due
+  to potentially misaligned structure access; the pre-install rejection makes
+  that path fail closed.
+- **Net residual risk**: acceptable for the supported compiler/ABI set.
+
+### Review
+
+- **Author**: Brighton Sikarskie.
+- **Approved**: 2026-08-21.
+- **Mandatory annual review**: 2027-08-21.
+- **Trigger for early review**: any compiler or target-ABI change; a change to
+  the arena alignment, ownership, or storage model; or introduction of an
+  integer-to-pointer conversion.
+
+---
+
+## D-012: Rule 21.1 -- reserved ABI compatibility names
+
+- **Rule ID**: misra-c2012-21.1.
+- **Rule text (paraphrased per MISRA licence)**: a project shall not define or
+  undefine an identifier reserved by the implementation.
+- **Category**: Required.
+- **Disposition**: Project deviation (formal).
+- **Exact scope**: the guarded definition of `__always_inline` in
+  `apps/shared_libs/unarch/inc/xz_config.h`, plus the guarded standard-name
+  redirects in `libs/ra8_core/inc/ra8_freestanding.h`. The XZ definition
+  supplies the porting contract consumed by `rc_normalize()`, `rc_bit()`,
+  `rc_bittree()`, and `rc_bittree_reverse()` in the byte-identical upstream
+  file `apps/shared_libs/third_party/xz_embedded/xz_dec_lzma2.c`; the
+  freestanding definitions provide the target ABI names in the test build. No
+  other reserved identifier, Rule 21.1 finding, or project-defined
+  compatibility macro is approved by this record.
+
+### Rationale
+
+The upstream XZ Embedded userspace seam intentionally includes a platform
+`xz_config.h`, and its decoder spells the force-inline marker
+`__always_inline`. Renaming the marker requires modifying the vendored SOUP
+translation unit, breaking the project's byte-identical provenance and SBOM
+contract. The first-party adapter therefore preserves the exact upstream name
+and maps it to the supported compiler's force-inline attribute.
+
+The definition is guarded by `#ifndef __always_inline`, so an implementation
+that already owns the spelling takes precedence and is not overridden. The
+adapter never undefines the name. Its include path is confined to the XZ
+wrapper and the XZ Embedded userspace port: the vendored `xz_private.h`
+includes `xz_config.h`, and the first-party `unarch_xz.c` includes it for the
+same porting definitions.
+
+The freestanding test redirects preserve the standard function spellings while
+selecting the project-owned implementations. They are enabled only by
+`RA8_TEST_FREESTANDING`, after clearing any hosted macro definitions, so tests
+exercise the same ABI names that the target compiler may emit without
+introducing a hosted libc dependency.
+
+### Alternative mitigation and verification
+
+- `scripts/checks/check_soup_upstream.py` compares the vendored component with
+  its independently recorded upstream manifest. The XZ dossier
+  `docs/SOUP/xz_embedded.md` records all porting changes in the first-party
+  header rather than the vendored tree.
+- The preprocessor guard is a two-direction compatibility check: with a
+  toolchain-provided macro the project does not redefine it; without one the
+  controlled adapter supplies the exact upstream contract.
+- Host tests and RA8 cross builds compile the four consuming decoder helpers
+  with warnings as errors. A spelling or attribute incompatibility therefore
+  fails during compilation rather than changing the decoder interface at run
+  time.
+- The freestanding unit tests cover every redirected memory, string, and
+  integer primitive, and the target link verifies that the ABI symbols resolve
+  to the project-owned implementation.
+- The adjacent clang-tidy `NOLINT` is scoped to the same macro and documents
+  the independent reserved-identifier diagnostic; it does not suppress the
+  cppcheck-MISRA evidence or expand this deviation's scope.
+
+### Standards basis
+
+MISRA-C:2012 section 5.2 permits the documented deviation because the exact
+reserved spelling is imposed by unmodified SOUP and the alternative -- patching
+that SOUP -- would weaken independently checked provenance. The guard, confined
+header scope, warning-clean compilation, and byte-identity gate bound the
+implementation dependency.
+
+### Risk assessment
+
+- **Hazard**: the reserved name could collide with a compiler or system-header
+  definition, or its force-inline semantics could differ across toolchains.
+- **Likelihood of escape**: low. The guard defers to an existing definition,
+  the supported toolchains compile the consuming functions, and the macro is
+  not exported as a public application API.
+- **Severity of escape**: medium. A semantic mismatch can affect code
+  generation for four decoder helpers, but incompatible syntax or attributes
+  fail the warning-as-error builds.
+- **Net residual risk**: acceptable while the upstream source and controlled
+  compiler set retain this porting contract.
+
+### Review
+
+- **Author**: Brighton Sikarskie.
+- **Approved**: 2026-08-21.
+- **Mandatory annual review**: 2027-08-21.
+- **Trigger for early review**: an upstream XZ revision removes or renames the
+  marker; a compiler/toolchain change; the vendored tree ceases to be
+  byte-identical; or another source begins depending on the adapter name.
+
+---
+
+## D-013: Rule 5.5 -- freestanding ABI names and macro compatibility
+
+- **Rule ID**: misra-c2012-5.5.
+- **Rule text (paraphrased per MISRA licence)**: an identifier shall be
+  distinct from a macro name.
+- **Category**: Required.
+- **Disposition**: Project deviation (formal).
+- **Exact scope**: the standard memory, string, and integer ABI primitives in
+  `libs/ra8_core/src/ra8_freestanding_math.c`,
+  `libs/ra8_core/src/ra8_freestanding_mem.c`, and
+  `libs/ra8_core/src/ra8_freestanding_str.c`, together with their
+  test-configuration aliases in `libs/ra8_core/inc/ra8_freestanding.h`.
+  The current scope is 15 findings across 3 files. No unrelated identifier or
+  macro collision is accepted by this record.
+
+### Rationale
+
+The target must provide the ISO C runtime entry points with their exact names:
+the compiler emits calls to `memset`, `memcpy`, `memmove`, `memcmp`, `memchr`,
+`strlen`, `strnlen`, `strcmp`, `strncmp`, `strchr`, `strrchr`, `strstr`,
+`strcpy`, `strncpy`, and `abs` while lowering ordinary target code. Renaming
+those functions would either require a compiler-specific built-in mapping or
+leave a newlib/libnosys dependency in the image, which is the dependency this
+runtime layer exists to remove.
+
+The host freestanding tests additionally alias the standard names to the
+project implementations after clearing hosted macro definitions. That keeps
+the test calls source-compatible with the target ABI while ensuring they do
+not accidentally resolve to the host libc. The identifier/macro overlap is
+therefore a deliberate compatibility boundary, not an accidental naming
+collision.
+
+### Alternative mitigation and verification
+
+- The aliases are confined to `RA8_TEST_FREESTANDING`; production target
+  translation units link the exact ABI symbols directly and do not inherit the
+  test aliases.
+- The freestanding selftests exercise every memory, string, and integer
+  primitive through the aliases, while the bare-metal link verifies that the
+  compiler-required names resolve without newlib or libnosys.
+- The formatter, warning-as-error host build, and cross build keep the alias
+  definitions and declarations synchronized; a spelling drift fails at build
+  time rather than silently selecting a different implementation.
+
+### Standards basis and risk
+
+MISRA-C:2012 section 5.2 permits this bounded Required-rule deviation because
+the exact ABI spelling is imposed by the compiler/runtime contract. The scope
+is limited to the 15 listed primitive identifiers, has no application-facing
+aliases, and is covered by both behavioral tests and the target link. The
+residual risk is low while the supported compiler set continues to emit these
+standard calls.
+
+### Review
+
+- **Author**: Brighton Sikarskie.
+- **Approved**: 2026-09-12.
+- **Mandatory annual review**: 2027-09-12.
+- **Trigger for early review**: a compiler/toolchain change, a new ABI
+  primitive, or removal of the freestanding test selftests.
+
+---
+
+## D-014: Rule 21.2 -- freestanding standard-library declarations
+
+- **Rule ID**: misra-c2012-21.2.
+- **Rule text (paraphrased per MISRA licence)**: a reserved identifier or
+  macro name shall not be declared.
+- **Category**: Required.
+- **Disposition**: Project deviation (formal).
+- **Exact scope**: the 14 standard memory and string declarations in
+  `libs/ra8_core/inc/ra8_freestanding.h`. No other reserved identifier,
+  declaration, or standard-library rule finding is accepted by this record.
+
+### Rationale
+
+This header is the freestanding implementation's ABI declaration surface.
+Unlike a hosted translation unit, the target cannot include a libc header that
+owns these declarations: the image deliberately removes newlib and libnosys.
+The compiler and the rest of the project still require the standard names and
+signatures, so the project must declare the functions it supplies. Omitting
+the declarations would turn valid calls into implicit declarations or cause
+the compiler to select an unavailable hosted implementation.
+
+### Alternative mitigation and verification
+
+- The declarations are confined to one foundation header and match the ISO C
+  function signatures, including return types and pointer qualifiers where
+  applicable.
+- The freestanding implementation definitions are compiled with warnings as
+  errors, and the unit selftests call every declared primitive.
+- `check_script_references.py`, the Doxygen member audit, host tests, and the
+  RA8 cross build keep the declaration/definition surface complete and
+  reviewable. A new reserved declaration outside this exact header remains
+  ratchet-held code-change debt.
+
+### Standards basis and risk
+
+MISRA-C:2012 section 5.2 permits a documented deviation where a required
+implementation ABI cannot be expressed without the reserved standard names.
+The declarations do not invent an application API or alter the standard
+contracts; they make the project-owned freestanding implementation visible.
+The bounded header scope and warning-as-error definition checks keep the
+residual risk low.
+
+### Review
+
+- **Author**: Brighton Sikarskie.
+- **Approved**: 2026-09-12.
+- **Mandatory annual review**: 2027-09-12.
+- **Trigger for early review**: a toolchain that supplies a validated
+  freestanding declaration set, or any change to the ABI function signatures.
+
+---
+
+## D-015: Rule 11.8 -- standard ABI const removal
+
+- **Rule ID**: misra-c2012-11.8.
+- **Rule text (paraphrased per MISRA licence)**: a cast shall not remove
+  the `const` qualification from the referenced type.
+- **Category**: Required.
+- **Disposition**: Project deviation (formal).
+- **Exact scope**: the six standard-library return conversions in
+  `libs/ra8_core/src/ra8_freestanding_mem.c` and
+  `libs/ra8_core/src/ra8_freestanding_str.c`: `memchr` returns a writable
+  `void*` from its standard `const void*` input, while `strchr`, `strrchr`,
+  and `strstr` return writable `char*` from their standard `const char*`
+  inputs. No other cast that removes `const` is accepted by this record.
+
+### Rationale
+
+The ISO C ABI fixes these signatures. `memchr` returns `void*`, and the
+string-search functions return `char*`, even though their input parameters
+are `const`-qualified. The project-owned freestanding implementation must
+provide those exact symbols and signatures so compiler-generated calls link
+without newlib or libnosys. Returning a const-qualified pointer would change
+the ABI and make conforming callers fail to compile; renaming the functions
+would leave the target dependent on the hosted runtime this layer removes.
+
+The casts occur only after a successful match (or for the terminating null
+character), so the returned address is within the caller-provided object. The
+standard contracts make the writable result the caller's responsibility, just
+as they do for the hosted library implementation.
+
+### Alternative mitigation and verification
+
+- The six conversions are confined to the project-owned freestanding ABI
+  bodies; no application-facing helper uses this deviation as a general
+  const-removal escape hatch.
+- The functions never write through the returned pointer during the search,
+  and the freestanding selftests verify matching and not-found behavior for
+  every search primitive.
+- Host and RA8 cross builds compile the exact standard signatures with
+  warnings as errors. The target link and the freestanding unit tests verify
+  that the compiler-required symbols resolve to these implementations.
+
+### Standards basis and risk
+
+MISRA-C:2012 section 5.2 permits a bounded Required-rule deviation where the
+standard ABI requires a signature that the rule's const-preservation idiom
+cannot express. The scope is limited to six return conversions in two runtime
+files; no pointer is converted to a different object type, and no returned
+pointer is dereferenced by the implementation. Residual risk is low because
+the compiler-enforced signatures, bounded implementations, and behavioral
+selftests jointly constrain the boundary.
+
+### Review
+
+- **Author**: Brighton Sikarskie.
+- **Approved**: 2026-09-12.
+- **Mandatory annual review**: 2027-09-12.
+- **Trigger for early review**: a toolchain-provided freestanding ABI, a
+  change to any standard function signature, or any new const-removing cast.
+
+---
+
+## Change log
+
+| Date       | Author              | Change                              |
+|------------|---------------------|-------------------------------------|
+| 2026-05-02 | Brighton Sikarskie  | Initial population (D-001..D-005).  |
+| 2026-07-18 | Brighton Sikarskie  | Add D-006 (Rule 20.5, NSC veneer).  |
+| 2026-07-22 | Brighton Sikarskie  | Add D-007 (Rule 14.2, C23 attribute phantom). |
+| 2026-07-27 | Brighton Sikarskie  | Add D-008 (Rule 17.1, esp-hosted log bridge). |
+| 2026-08-03 | Brighton Sikarskie  | Add D-009 (Rule 9.5) and D-010 (Rule 11.5). |
+| 2026-08-16 | Brighton Sikarskie  | Re-derive the register after the integration sweep; expand D-008 to the two bounded host-tool formatters; retain the machine-checked inventory gate from issue #632. |
+| 2026-08-21 | Brighton Sikarskie  | Add narrowly scoped D-011 (XZ arena alignment representation) and D-012 (upstream XZ force-inline adapter); mark post-migration populations provisional pending the final pinned scan. |
+| 2026-08-21 | Brighton Sikarskie  | Record the authoritative Linux/devcontainer unit gate's 673/673 pass in 46.92 s; retain macOS as registration-only. |
+| 2026-08-22 | Brighton Sikarskie  | Record the expanded 689-case Linux/devcontainer unit gate's 689/689 pass in 8.66 s; retain macOS as registration-only. |
+| 2026-08-22 | Brighton Sikarskie  | Reconcile the `src/`/`inc/` migration: retain app-local tests in scope, prove the initial 251-row/1,580-finding expansion, retain its final 248-row/1,500-finding population after exact suppressions, and separately disposition all genuine growth. |
+| 2026-08-22 | Brighton Sikarskie  | Add two line-scoped D-005 suppressions for RABOOK XML test seams whose visible C23 `[[nodiscard]]` declarations are dropped by pinned Cppcheck 2.13. |
+| 2026-08-22 | Brighton Sikarskie  | Add line-scoped D-002/D-005 dispositions for POSIX declarations dropped by pinned Cppcheck 2.13 while retaining every unrelated finding. |
+| 2026-09-12 | Brighton Sikarskie  | Record D-013/D-014/D-015 for the bounded freestanding runtime ABI names, declarations, and standard return signatures; refresh the post-#847 audit population. |

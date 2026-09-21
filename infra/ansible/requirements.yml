@@ -1,0 +1,12 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Brighton Sikarskie
+---
+# Ansible Galaxy collections are not Python packages and cannot live in
+# uv.lock. Exact collection versions remain a separate, explicit authority.
+collections:
+  - name: ansible.posix
+    version: 2.2.0
+  - name: community.hashi_vault
+    version: 7.1.0
+  - name: kubernetes.core
+    version: 6.5.0

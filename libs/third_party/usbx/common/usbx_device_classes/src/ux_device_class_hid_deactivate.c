@@ -1,0 +1,108 @@
+/***************************************************************************
+ * Copyright (c) 2024 Microsoft Corporation
+ * Copyright (c) 2026-present Eclipse ThreadX contributors
+ *
+ * This program and the accompanying materials are made available under the
+ * terms of the MIT License which is available at
+ * https://opensource.org/licenses/MIT.
+ *
+ * SPDX-License-Identifier: MIT
+ **************************************************************************/
+
+
+/**************************************************************************/
+/**************************************************************************/
+/**                                                                       */
+/** USBX Component                                                        */
+/**                                                                       */
+/**   Device HID Class                                                    */
+/**                                                                       */
+/**************************************************************************/
+/**************************************************************************/
+
+#define UX_SOURCE_CODE
+
+
+/* Include necessary system files.  */
+
+#include "ux_api.h"
+#include "ux_device_class_hid.h"
+#include "ux_device_stack.h"
+
+
+/**************************************************************************/
+/*                                                                        */
+/*  FUNCTION                                               RELEASE        */
+/*                                                                        */
+/*    _ux_device_class_hid_deactivate                     PORTABLE C      */
+/*                                                           6.1.12       */
+/*  AUTHOR                                                                */
+/*                                                                        */
+/*    Chaoqiong Xiao, Microsoft Corporation                               */
+/*                                                                        */
+/*  DESCRIPTION                                                           */
+/*                                                                        */
+/*    This function deactivate an instance of the hid class.              */
+/*                                                                        */
+/*  INPUT                                                                 */
+/*                                                                        */
+/*    command                               Pointer to a class command    */
+/*                                                                        */
+/*  OUTPUT                                                                */
+/*                                                                        */
+/*    Completion Status                                                   */
+/*                                                                        */
+/*  CALLS                                                                 */
+/*                                                                        */
+/*    _ux_device_stack_transfer_all_request_abort Abort all transfers     */
+/*                                                                        */
+/*  CALLED BY                                                             */
+/*                                                                        */
+/*    HID Class                                                           */
+/*                                                                        */
+/**************************************************************************/
+UINT  _ux_device_class_hid_deactivate(UX_SLAVE_CLASS_COMMAND *command)
+{
+
+UX_SLAVE_CLASS_HID         *hid;
+UX_SLAVE_CLASS             *class_ptr;
+UX_SLAVE_ENDPOINT          *endpoint;
+
+    /* Get the class container.  */
+    class_ptr =  command -> ux_slave_class_command_class_ptr;
+
+    /* Get the class instance in the container.  */
+    hid = (UX_SLAVE_CLASS_HID *) class_ptr -> ux_slave_class_instance;
+
+    /* Locate the hid interrupt in endpoint.  */
+    endpoint = hid -> ux_device_class_hid_interrupt_endpoint;
+
+    /* Terminate the transactions pending on the endpoint.  */
+    if (endpoint)
+        _ux_device_stack_transfer_all_request_abort(endpoint, UX_TRANSFER_BUS_RESET);
+
+#if defined(UX_DEVICE_CLASS_HID_INTERRUPT_OUT_SUPPORT)
+    /* Locate the hid interrupt out endpoint.  */
+    endpoint = hid -> ux_device_class_hid_read_endpoint;
+
+    /* Terminate the transactions pending on the endpoint.  */
+    if (endpoint)
+        _ux_device_stack_transfer_all_request_abort(endpoint, UX_TRANSFER_BUS_RESET);
+#endif
+
+    /* If there is a deactivate function call it.  */
+    if (hid -> ux_slave_class_hid_instance_deactivate != UX_NULL)
+    {
+        /* Invoke the application.  */
+        hid -> ux_slave_class_hid_instance_deactivate(hid);
+    }
+    /* If trace is enabled, insert this event into the trace buffer.  */
+    UX_TRACE_IN_LINE_INSERT(UX_TRACE_DEVICE_CLASS_HID_DEACTIVATE, hid, 0, 0, 0, UX_TRACE_DEVICE_CLASS_EVENTS, 0, 0)
+
+    /* If trace is enabled, register this object.  */
+    UX_TRACE_OBJECT_UNREGISTER(hid);
+
+    /* Return completion status.  */
+    return(UX_SUCCESS);
+}
+

@@ -1,0 +1,592 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Brighton Sikarskie
+---
+# Provision from the candidate worktree that invoked Ansible, never from the
+# intentionally stale base checkout on the managed host. The archive helper
+# uses Git as a NUL-delimited census while reading current worktree bytes, so
+# dirty tracked files and non-ignored untracked files enter the context while
+# deleted and ignored paths cannot. Normalized tar metadata makes the archive
+# checksum stable across control hosts.
+
+- name: Build and converge the exact candidate provisioning context
+  block:
+    - name: Allocate a private controller-side context archive
+      delegate_to: localhost
+      become: false
+      ansible.builtin.tempfile:
+        state: file
+        suffix: .ra8-build-context.tar
+      register: dev_box_context_temp
+      changed_when: false
+      check_mode: false
+
+    - name: Archive only candidate files from the controller worktree
+      delegate_to: localhost
+      become: false
+      ansible.builtin.command:
+        argv: >-
+          {{ [ansible_playbook_python,
+              dev_box_context_src ~ '/scripts/dev/stage_worktree_context.py',
+              'create',
+              '--root', dev_box_context_src,
+              '--output', dev_box_context_temp.path]
+             + dev_box_context_paths }}
+      register: dev_box_context_create
+      changed_when: false
+      check_mode: false
+      environment:
+        PYTHONDONTWRITEBYTECODE: "1"
+
+    - name: Checksum the controller-side helper package sources
+      delegate_to: localhost
+      become: false
+      ansible.builtin.stat:
+        path: "{{ dev_box_context_src }}/scripts/dev/{{ item }}"
+        checksum_algorithm: sha256
+        get_checksum: true
+        follow: false
+      loop:
+        - "{{ dev_box_context_helper_entrypoint_name }}"
+        - "{{ dev_box_context_helper_support_name }}"
+      register: dev_box_context_helper_source_stats
+      check_mode: false
+
+    - name: Record the exact controller-side helper source digests
+      ansible.builtin.set_fact:
+        dev_box_context_helper_entrypoint_sha256: >-
+          {{ dev_box_context_helper_source_stats.results[0].stat.checksum }}
+        dev_box_context_helper_support_sha256: >-
+          {{ dev_box_context_helper_source_stats.results[1].stat.checksum }}
+
+    - name: Inspect helper publication parent directories
+      become: true
+      ansible.builtin.stat:
+        path: "{{ item }}"
+        follow: false
+      loop:
+        - "{{ dev_box_context_helper_release_parent }}"
+        - "{{ dev_box_context_helper_command | dirname }}"
+      register: dev_box_context_helper_parent_stats
+      check_mode: false
+
+    - name: Refuse to repair an unsafe publication parent in place
+      ansible.builtin.assert:
+        that:
+          - >-
+            not item.stat.exists
+            or (item.stat.isdir
+                and item.stat.uid == 0
+                and item.stat.gid == 0
+                and item.stat.mode == '0755')
+        fail_msg: >-
+          Refusing unsafe helper publication parent {{ item.item }}; an
+          existing path must be a root:root 0755 directory and is never
+          repaired in place.
+        quiet: true
+      loop: "{{ dev_box_context_helper_parent_stats.results }}"
+      loop_control:
+        label: "{{ item.item }}"
+
+    - name: Create a missing helper publication parent on apply
+      when:
+        - not ansible_check_mode
+        - not item.stat.exists
+      become: true
+      ansible.builtin.file:
+        path: "{{ item.item }}"
+        state: directory
+        owner: root
+        group: root
+        mode: "0755"
+      loop: "{{ dev_box_context_helper_parent_stats.results }}"
+      loop_control:
+        label: "{{ item.item }}"
+
+    - name: Inspect the published helper command without following it
+      become: true
+      ansible.builtin.stat:
+        path: "{{ dev_box_context_helper_command }}"
+        follow: false
+      register: dev_box_context_helper_command_before
+      check_mode: false
+
+    - name: Resolve only a structurally managed published target
+      ansible.builtin.set_fact:
+        dev_box_context_helper_current_entrypoint: >-
+          {{ dev_box_context_helper_command_before.stat.lnk_source
+             if (dev_box_context_helper_command_before.stat.islnk | default(false))
+             else '' }}
+        dev_box_context_helper_current_release_dir: >-
+          {{ (dev_box_context_helper_command_before.stat.lnk_source | dirname)
+             if (dev_box_context_helper_command_before.stat.islnk | default(false))
+             else '' }}
+
+    - name: Classify the published target before reading package contents
+      ansible.builtin.set_fact:
+        dev_box_context_helper_current_target_managed: >-
+          {{ (dev_box_context_helper_current_release_dir | dirname)
+               == dev_box_context_helper_release_parent
+             and (dev_box_context_helper_current_release_dir | basename).startswith(
+               dev_box_context_helper_release_prefix)
+             and dev_box_context_helper_current_entrypoint
+               == (dev_box_context_helper_current_release_dir
+                   ~ '/' ~ dev_box_context_helper_entrypoint_name) }}
+
+    - name: Inspect the managed current release directory
+      when: dev_box_context_helper_current_target_managed
+      become: true
+      ansible.builtin.stat:
+        path: "{{ dev_box_context_helper_current_release_dir }}"
+        follow: false
+      register: dev_box_context_helper_current_release_stat
+      check_mode: false
+
+    - name: Record whether current release metadata is safe to inspect
+      ansible.builtin.set_fact:
+        dev_box_context_helper_current_metadata_safe: >-
+          {{ dev_box_context_helper_current_target_managed
+             and (dev_box_context_helper_command_before.stat.uid | default(-1) == 0)
+             and (dev_box_context_helper_command_before.stat.gid | default(-1) == 0)
+             and (dev_box_context_helper_current_release_stat.stat.isdir | default(false))
+             and (dev_box_context_helper_current_release_stat.stat.uid | default(-1) == 0)
+             and (dev_box_context_helper_current_release_stat.stat.gid | default(-1) == 0)
+             and (dev_box_context_helper_current_release_stat.stat.mode
+                  | default('') == '0755') }}
+
+    - name: Census the exact current release contents
+      when: dev_box_context_helper_current_metadata_safe
+      become: true
+      ansible.builtin.find:
+        paths: "{{ dev_box_context_helper_current_release_dir }}"
+        recurse: true
+        hidden: true
+        file_type: any
+        follow: false
+      register: dev_box_context_helper_current_census
+      check_mode: false
+
+    - name: Inspect the current release files without following links
+      when: dev_box_context_helper_current_metadata_safe
+      become: true
+      ansible.builtin.stat:
+        path: "{{ dev_box_context_helper_current_release_dir }}/{{ item }}"
+        checksum_algorithm: sha256
+        get_checksum: true
+        follow: false
+      loop:
+        - "{{ dev_box_context_helper_entrypoint_name }}"
+        - "{{ dev_box_context_helper_support_name }}"
+      register: dev_box_context_helper_current_file_stats
+      check_mode: false
+
+    - name: Bind current-package usability to exact source bytes and link target
+      ansible.builtin.set_fact:
+        dev_box_context_helper_before_usable: >-
+          {{ dev_box_context_helper_current_metadata_safe
+             and (dev_box_context_helper_current_census.matched | default(-1) == 2)
+             and ((dev_box_context_helper_current_census.files | default([])
+                   | map(attribute='path') | sort | list)
+                  == ([dev_box_context_helper_current_entrypoint,
+                       dev_box_context_helper_current_release_dir ~ '/'
+                         ~ dev_box_context_helper_support_name] | sort | list))
+             and (dev_box_context_helper_current_file_stats.results[0].stat.isreg
+                  | default(false))
+             and (dev_box_context_helper_current_file_stats.results[0].stat.uid
+                  | default(-1) == 0)
+             and (dev_box_context_helper_current_file_stats.results[0].stat.gid
+                  | default(-1) == 0)
+             and (dev_box_context_helper_current_file_stats.results[0].stat.mode
+                  | default('') == '0755')
+             and (dev_box_context_helper_current_file_stats.results[0].stat.checksum
+                  | default('') == dev_box_context_helper_entrypoint_sha256)
+             and (dev_box_context_helper_current_file_stats.results[1].stat.isreg
+                  | default(false))
+             and (dev_box_context_helper_current_file_stats.results[1].stat.uid
+                  | default(-1) == 0)
+             and (dev_box_context_helper_current_file_stats.results[1].stat.gid
+                  | default(-1) == 0)
+             and (dev_box_context_helper_current_file_stats.results[1].stat.mode
+                  | default('') == '0644')
+             and (dev_box_context_helper_current_file_stats.results[1].stat.checksum
+                  | default('') == dev_box_context_helper_support_sha256) }}
+
+    - name: Report required helper replacement in check mode
+      when:
+        - ansible_check_mode
+        - not dev_box_context_helper_before_usable
+      ansible.builtin.debug:
+        msg: >-
+          The published context helper is absent or does not exactly match its
+          root-owned two-file source package; apply will privately assemble,
+          self-test, and atomically publish a replacement.
+      changed_when: true
+
+    - name: Reuse the exact published helper package
+      when: dev_box_context_helper_before_usable
+      ansible.builtin.set_fact:
+        dev_box_context_helper_active_entrypoint: >-
+          {{ dev_box_context_helper_current_entrypoint }}
+        dev_box_context_helper_active_release_dir: >-
+          {{ dev_box_context_helper_current_release_dir }}
+
+    - name: Assemble and coherently publish a new helper package
+      when:
+        - not ansible_check_mode
+        - not dev_box_context_helper_before_usable
+      block:
+        - name: Allocate a private root-owned candidate release
+          become: true
+          ansible.builtin.tempfile:
+            path: "{{ dev_box_context_helper_release_parent }}"
+            prefix: "{{ dev_box_context_helper_release_prefix }}"
+            state: directory
+          register: dev_box_context_helper_candidate
+
+        - name: Verify the candidate begins private and root-owned
+          become: true
+          ansible.builtin.stat:
+            path: "{{ dev_box_context_helper_candidate.path }}"
+            follow: false
+          register: dev_box_context_helper_candidate_private_stat
+
+        - name: Refuse a candidate that was not privately allocated
+          ansible.builtin.assert:
+            that:
+              - dev_box_context_helper_candidate_private_stat.stat.isdir
+              - dev_box_context_helper_candidate_private_stat.stat.uid == 0
+              - dev_box_context_helper_candidate_private_stat.stat.gid == 0
+              - dev_box_context_helper_candidate_private_stat.stat.mode == '0700'
+            quiet: true
+
+        - name: Copy the exact helper files into the private candidate
+          become: true
+          diff: false
+          ansible.builtin.copy:
+            src: "{{ dev_box_context_src }}/scripts/dev/{{ item.name }}"
+            dest: "{{ dev_box_context_helper_candidate.path }}/{{ item.name }}"
+            owner: root
+            group: root
+            mode: "{{ item.mode }}"
+          loop:
+            - name: "{{ dev_box_context_helper_entrypoint_name }}"
+              mode: "0755"
+            - name: "{{ dev_box_context_helper_support_name }}"
+              mode: "0644"
+          loop_control:
+            label: "{{ item.name }}"
+
+        - name: Census the private candidate before execution
+          become: true
+          ansible.builtin.find:
+            paths: "{{ dev_box_context_helper_candidate.path }}"
+            recurse: true
+            hidden: true
+            file_type: any
+            follow: false
+          register: dev_box_context_helper_candidate_census
+
+        - name: Checksum the private candidate files
+          become: true
+          ansible.builtin.stat:
+            path: "{{ dev_box_context_helper_candidate.path }}/{{ item }}"
+            checksum_algorithm: sha256
+            get_checksum: true
+            follow: false
+          loop:
+            - "{{ dev_box_context_helper_entrypoint_name }}"
+            - "{{ dev_box_context_helper_support_name }}"
+          register: dev_box_context_helper_candidate_file_stats
+
+        - name: Prove the private candidate is the exact controller package
+          ansible.builtin.assert:
+            that:
+              - dev_box_context_helper_candidate_census.matched == 2
+              - >-
+                (dev_box_context_helper_candidate_census.files
+                 | map(attribute='path') | sort | list)
+                == ([dev_box_context_helper_candidate.path ~ '/'
+                       ~ dev_box_context_helper_entrypoint_name,
+                     dev_box_context_helper_candidate.path ~ '/'
+                       ~ dev_box_context_helper_support_name] | sort | list)
+              - dev_box_context_helper_candidate_file_stats.results[0].stat.isreg
+              - dev_box_context_helper_candidate_file_stats.results[0].stat.uid == 0
+              - dev_box_context_helper_candidate_file_stats.results[0].stat.gid == 0
+              - dev_box_context_helper_candidate_file_stats.results[0].stat.mode == '0755'
+              - >-
+                dev_box_context_helper_candidate_file_stats.results[0].stat.checksum
+                == dev_box_context_helper_entrypoint_sha256
+              - dev_box_context_helper_candidate_file_stats.results[1].stat.isreg
+              - dev_box_context_helper_candidate_file_stats.results[1].stat.uid == 0
+              - dev_box_context_helper_candidate_file_stats.results[1].stat.gid == 0
+              - dev_box_context_helper_candidate_file_stats.results[1].stat.mode == '0644'
+              - >-
+                dev_box_context_helper_candidate_file_stats.results[1].stat.checksum
+                == dev_box_context_helper_support_sha256
+            quiet: true
+
+        - name: Functionally self-test the private helper candidate
+          become: true
+          ansible.builtin.command:
+            argv:
+              - /usr/bin/python3
+              - >-
+                {{ dev_box_context_helper_candidate.path
+                   ~ '/' ~ dev_box_context_helper_entrypoint_name }}
+              - --selftest
+          environment:
+            PYTHONDONTWRITEBYTECODE: "1"
+          changed_when: false
+
+        - name: Re-census the candidate after its import smoke test
+          become: true
+          ansible.builtin.find:
+            paths: "{{ dev_box_context_helper_candidate.path }}"
+            recurse: true
+            hidden: true
+            file_type: any
+            follow: false
+          register: dev_box_context_helper_candidate_after_smoke
+
+        - name: Refuse smoke-test residue before publication
+          ansible.builtin.assert:
+            that:
+              - dev_box_context_helper_candidate_after_smoke.matched == 2
+              - >-
+                (dev_box_context_helper_candidate_after_smoke.files
+                 | map(attribute='path') | sort | list)
+                == ([dev_box_context_helper_candidate.path ~ '/'
+                       ~ dev_box_context_helper_entrypoint_name,
+                     dev_box_context_helper_candidate.path ~ '/'
+                       ~ dev_box_context_helper_support_name] | sort | list)
+            quiet: true
+
+        - name: Finalize the validated candidate release
+          become: true
+          ansible.builtin.file:
+            path: "{{ dev_box_context_helper_candidate.path }}"
+            state: directory
+            owner: root
+            group: root
+            mode: "0755"
+
+        - name: Allocate a same-directory temporary command link
+          become: true
+          ansible.builtin.tempfile:
+            path: "{{ dev_box_context_helper_command | dirname }}"
+            prefix: .ra8-stage-worktree-context-command.
+            state: file
+          register: dev_box_context_helper_command_temp
+
+        - name: Replace the temporary file with the validated candidate link
+          become: true
+          ansible.builtin.file:
+            path: "{{ dev_box_context_helper_command_temp.path }}"
+            state: absent
+
+        - name: Prepare the unpublished helper command link
+          become: true
+          ansible.builtin.file:
+            src: >-
+              {{ dev_box_context_helper_candidate.path
+                 ~ '/' ~ dev_box_context_helper_entrypoint_name }}
+            dest: "{{ dev_box_context_helper_command_temp.path }}"
+            state: link
+            owner: root
+            group: root
+            follow: false
+
+        - name: Atomically publish the validated helper command
+          become: true
+          ansible.builtin.command:
+            argv:
+              - /usr/bin/mv
+              - --force
+              - --no-target-directory
+              - "{{ dev_box_context_helper_command_temp.path }}"
+              - "{{ dev_box_context_helper_command }}"
+          changed_when: true
+
+        - name: Select the newly published helper package
+          ansible.builtin.set_fact:
+            dev_box_context_helper_active_entrypoint: >-
+              {{ dev_box_context_helper_candidate.path
+                 ~ '/' ~ dev_box_context_helper_entrypoint_name }}
+            dev_box_context_helper_active_release_dir: >-
+              {{ dev_box_context_helper_candidate.path }}
+
+      always:
+        - name: Inspect the public command after a publication attempt
+          become: true
+          ansible.builtin.stat:
+            path: "{{ dev_box_context_helper_command }}"
+            follow: false
+          register: dev_box_context_helper_command_after
+          check_mode: false
+
+        - name: Remove an unpublished candidate release
+          when:
+            - dev_box_context_helper_candidate.path is defined
+            - >-
+              not (dev_box_context_helper_command_after.stat.islnk | default(false)
+                   and (dev_box_context_helper_command_after.stat.lnk_source
+                        | default(''))
+                     == (dev_box_context_helper_candidate.path ~ '/'
+                         ~ dev_box_context_helper_entrypoint_name))
+          become: true
+          ansible.builtin.file:
+            path: "{{ dev_box_context_helper_candidate.path }}"
+            state: absent
+
+        - name: Remove an unpublished temporary command link
+          when: dev_box_context_helper_command_temp.path is defined
+          become: true
+          ansible.builtin.file:
+            path: "{{ dev_box_context_helper_command_temp.path }}"
+            state: absent
+
+    - name: Find obsolete and interrupted helper releases
+      when: dev_box_context_helper_active_release_dir is defined
+      become: true
+      ansible.builtin.find:
+        paths: "{{ dev_box_context_helper_release_parent }}"
+        patterns: "{{ dev_box_context_helper_release_prefix }}*"
+        recurse: false
+        hidden: true
+        file_type: any
+        follow: false
+      register: dev_box_context_helper_obsolete_releases
+
+    - name: Remove only inactive managed helper releases
+      when:
+        - dev_box_context_helper_active_release_dir is defined
+        - item.path != dev_box_context_helper_active_release_dir
+      become: true
+      ansible.builtin.file:
+        path: "{{ item.path }}"
+        state: absent
+      loop: "{{ dev_box_context_helper_obsolete_releases.files | default([]) }}"
+      loop_control:
+        label: "{{ item.path }}"
+
+    - name: Remove the superseded in-place helper package
+      when: dev_box_context_helper_active_release_dir is defined
+      become: true
+      ansible.builtin.file:
+        path: "{{ dev_box_context_helper_legacy_package_dir }}"
+        state: absent
+
+    - name: Find interrupted temporary command links
+      when: dev_box_context_helper_active_release_dir is defined
+      become: true
+      ansible.builtin.find:
+        paths: "{{ dev_box_context_helper_command | dirname }}"
+        patterns: .ra8-stage-worktree-context-command.*
+        recurse: false
+        hidden: true
+        file_type: any
+        follow: false
+      register: dev_box_context_helper_interrupted_links
+
+    - name: Remove interrupted temporary command links
+      when: dev_box_context_helper_active_release_dir is defined
+      become: true
+      ansible.builtin.file:
+        path: "{{ item.path }}"
+        state: absent
+      loop: "{{ dev_box_context_helper_interrupted_links.files | default([]) }}"
+      loop_control:
+        label: "{{ item.path }}"
+
+    - name: Transfer the deterministic candidate archive
+      become: true
+      diff: false
+      ansible.builtin.copy:
+        src: "{{ dev_box_context_temp.path }}"
+        dest: "{{ dev_box_context_archive }}"
+        owner: root
+        group: root
+        mode: "0600"
+      register: dev_box_context_archive_copy
+
+    - name: Compare the installed context with its current archive
+      when: dev_box_context_helper_active_entrypoint is defined
+      become: true
+      ansible.builtin.command:
+        argv:
+          - /usr/bin/python3
+          - "{{ dev_box_context_helper_active_entrypoint }}"
+          - verify
+          - --archive
+          - "{{ dev_box_context_archive }}"
+          - --directory
+          - "{{ dev_box_context_dir }}"
+      environment:
+        PYTHONDONTWRITEBYTECODE: "1"
+      register: dev_box_context_verify
+      changed_when: false
+      failed_when: false
+      check_mode: false
+
+    - name: Decide whether the installed context must be replaced
+      ansible.builtin.set_fact:
+        dev_box_context_refresh_needed: >-
+          {{ (dev_box_context_archive_copy.changed | bool)
+             or (ansible_check_mode and not dev_box_context_helper_before_usable)
+             or (dev_box_context_verify.rc | default(2) != 0) }}
+
+    - name: Replace a stale context from the exact candidate archive
+      when:
+        - dev_box_context_refresh_needed
+        - not ansible_check_mode
+      block:
+        - name: Empty the stale provisioning context
+          # Extraction alone never removes paths. Replacing the directory is
+          # what guarantees ignored or deleted residue cannot survive.
+          become: true
+          ansible.builtin.file:
+            path: "{{ dev_box_context_dir }}"
+            state: absent
+
+        - name: Create the provisioning context root
+          become: true
+          ansible.builtin.file:
+            path: "{{ dev_box_context_dir }}"
+            state: directory
+            owner: root
+            group: root
+            mode: "0755"
+
+        - name: Extract the exact candidate provisioning context
+          become: true
+          ansible.builtin.unarchive:
+            src: "{{ dev_box_context_archive }}"
+            dest: "{{ dev_box_context_dir }}"
+            remote_src: true
+
+        - name: Prove the extracted context matches every archive member
+          become: true
+          ansible.builtin.command:
+            argv:
+              - /usr/bin/python3
+              - "{{ dev_box_context_helper_active_entrypoint }}"
+              - verify
+              - --archive
+              - "{{ dev_box_context_archive }}"
+              - --directory
+              - "{{ dev_box_context_dir }}"
+          environment:
+            PYTHONDONTWRITEBYTECODE: "1"
+          changed_when: false
+
+  always:
+    - name: Remove the controller-side context archive
+      when:
+        - dev_box_context_temp is defined
+        - dev_box_context_temp.path is defined
+      delegate_to: localhost
+      become: false
+      ansible.builtin.file:
+        path: "{{ dev_box_context_temp.path }}"
+        state: absent
+      changed_when: false
+      check_mode: false

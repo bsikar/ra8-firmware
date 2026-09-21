@@ -1,0 +1,24 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Brighton Sikarskie
+#
+# Libraries whose implementation now lives in Zig behind their unchanged C
+# header. Each one is built by `zig build` and linked into ra8_core_hal's
+# consumers, so the existing C unit tests exercise the Zig object code without
+# a single test edit.
+
+include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/zig_library.cmake)
+
+set(RA8_BOX_ZIG_ROOT "${CMAKE_CURRENT_LIST_DIR}/../../libs/ra8_box")
+
+ra8_add_zig_library(
+  NAME
+  ra8_box
+  ZIG_ROOT
+  ${RA8_BOX_ZIG_ROOT}
+  LIBRARY_NAME
+  ra8_box
+)
+
+# ra8_core_hal is the OBJECT library every host test links, so an INTERFACE
+# link here reaches each test executable that pulls in the chrome layout.
+target_link_libraries(ra8_core_hal PUBLIC ra8_zig::ra8_box)

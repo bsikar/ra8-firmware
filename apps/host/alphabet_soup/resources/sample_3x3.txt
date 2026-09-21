@@ -1,0 +1,6 @@
+3x3
+A B C
+D E F
+G H I
+ABC
+AEI

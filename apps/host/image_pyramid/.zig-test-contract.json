@@ -1,0 +1,15 @@
+{
+  "test_roots": [
+    "tests/root.zig"
+  ],
+  "covered_sources": [
+    "src/codec.zig",
+    "src/degrade.zig",
+    "src/main.zig",
+    "tests/codec_test.zig",
+    "tests/degrade_test.zig",
+    "tests/integration.zig",
+    "tests/root.zig"
+  ],
+  "minimum_tests": 14
+}

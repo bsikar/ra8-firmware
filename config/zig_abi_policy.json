@@ -1,0 +1,82 @@
+{
+  "schema_version": 1,
+  "required_targets": ["host", "ra8"],
+  "required_modes": ["Debug", "ReleaseSafe", "ReleaseSmall"],
+  "mode_test_library": "ra8_abi_fixture",
+  "libraries": [
+    {
+      "name": "ra8_abi_fixture",
+      "build_root": "tests/zig_abi_fixture",
+      "public_header": "tests/zig_abi_fixture/inc/ra8_abi_fixture.h",
+      "adapter": "tests/zig_abi_fixture/src/ra8_abi_fixture_abi.zig",
+      "library_name": "ra8_abi_fixture",
+      "symbol_prefix": "ra8_abi_fixture_",
+      "compatibility_sha256": "2e8ebf704396951f2f332935c44115c8f5bf83552c0754bed09fddf855d2c8f4",
+      "layout_assertions": ["sizeof(ra8_err_t) == 2U", "sizeof(ra8_abi_fixture_limit_t) == 4U", "sizeof(ra8_abi_fixture_config_t) == 8U", "@sizeOf(AbiError) != 2", "@sizeOf(AbiLimit) != 4", "@sizeOf(AbiConfig) != 8"],
+      "target_class": "host-ra8",
+      "targets": {"host": [], "ra8": ["-Dtarget=thumb-freestanding-eabihf", "-Dcpu=cortex_m85+fp_armv8-d32-fp64"]},
+      "run_host_tests_in_all_modes": true,
+      "c_include_dirs": ["tests/zig_abi_fixture/inc", "libs/ra8_core/inc"],
+      "contract_tests": [
+        {"language": "c", "path": "tests/zig_abi_fixture/src/test_abi_fixture.c", "registration": "tests/cmake/tests_zig_abi.cmake"},
+        {"language": "rust", "path": "tests/zig_abi_fixture/rust/tests/zig_provider.rs", "symbol_evidence": "tests/zig_abi_fixture/rust/src/foreign.rs", "registration": "tests/zig_abi_fixture/rust/.rust-test-contract.json"},
+        {"language": "zig", "path": "tests/zig_abi_fixture/tests/abi_test.zig", "registration": "tests/zig_abi_fixture/.zig-test-contract.json"}
+      ],
+      "exports": [
+        {"name": "ra8_abi_fixture_apply", "calling_context": "task-only-non-reentrant", "ownership": "borrows config for call; publishes caller-owned output only on success"},
+        {"name": "ra8_abi_fixture_create", "calling_context": "task-only-non-reentrant", "ownership": "transfers one opaque handle on success"},
+        {"name": "ra8_abi_fixture_test_fail_next_allocation", "calling_context": "serialized-test-control", "ownership": "owns no caller resource"},
+        {"name": "ra8_abi_fixture_destroy", "calling_context": "task-only-non-reentrant", "ownership": "releases and clears one live handle on success"},
+        {"name": "ra8_abi_fixture_copy", "calling_context": "task-only-non-reentrant", "ownership": "borrows input and handle; caller owns output"},
+        {"name": "ra8_abi_fixture_bytes_create", "calling_context": "task-only-non-reentrant", "ownership": "publishes library-owned bytes requiring named release"},
+        {"name": "ra8_abi_fixture_bytes_release", "calling_context": "task-only-non-reentrant", "ownership": "releases and clears library-owned bytes"},
+        {"name": "ra8_abi_fixture_callback_register", "calling_context": "task-only-non-reentrant", "ownership": "borrows callback and context until unregister, cancel, or destroy"},
+        {"name": "ra8_abi_fixture_callback_invoke", "calling_context": "task-only-reentrancy-guarded", "ownership": "borrows input and callback context for synchronous call"},
+        {"name": "ra8_abi_fixture_callback_unregister", "calling_context": "task-only-non-reentrant", "ownership": "ends callback and context retention"},
+        {"name": "ra8_abi_fixture_callback_cancel", "calling_context": "task-only-non-reentrant", "ownership": "ends callback and context retention"}
+      ]
+    },
+    {
+      "name": "ra8_abi_chain",
+      "build_root": "tests/abi_chain_fixture",
+      "public_header": "tests/abi_chain_fixture/inc/ra8_abi_chain.h",
+      "adapter": "tests/abi_chain_fixture/tests/chain_adapter.zig",
+      "library_name": "ra8_abi_chain",
+      "symbol_prefix": "ra8_abi_chain_",
+      "compatibility_sha256": "fd846738773b4aad1e9c0b8bfb0b213b4a0aacc8e19eef671b344676a005c983",
+      "layout_assertions": ["sizeof(ra8_abi_chain_config_t) == 16U", "alignof(ra8_abi_chain_config_t) == 4U", "offsetof(ra8_abi_chain_config_t, zig_tag) == 8U"],
+      "target_class": "host-ra8",
+      "targets": {"host": [], "ra8": ["-Dtarget=thumb-freestanding-eabihf", "-Dcpu=cortex_m85+fp_armv8-d32-fp64"]},
+      "c_include_dirs": ["tests/abi_chain_fixture/inc", "tests/rust_abi_fixture/inc", "libs/ra8_core/inc"],
+      "contract_tests": [
+        {"language": "c", "path": "tests/abi_chain_fixture/src/test_c_consumer.c", "registration": "tests/cmake/rust_abi_contract.cmake"},
+        {"language": "zig", "path": "tests/abi_chain_fixture/tests/chain_test.zig", "registration": "tests/abi_chain_fixture/.zig-test-contract.json"}
+      ],
+      "exports": [
+        {"name": "ra8_abi_chain_apply", "calling_context": "task-only-non-reentrant", "ownership": "borrows config and publishes caller-owned output on success"},
+        {"name": "ra8_abi_chain_create", "calling_context": "task-only-non-reentrant", "ownership": "relays one Rust-owned opaque handle to the caller"},
+        {"name": "ra8_abi_chain_destroy", "calling_context": "task-only-non-reentrant", "ownership": "releases and clears one Rust-owned opaque handle"}
+      ]
+    },
+    {
+      "name": "firmware_pipeline_zig",
+      "build_root": "apps/host/firmware_pipeline/zig",
+      "public_header": "apps/host/firmware_pipeline/inc/firmware_pipeline.h",
+      "adapter": "apps/host/firmware_pipeline/zig/src/adapter.zig",
+      "library_name": "firmware_pipeline_zig",
+      "symbol_prefix": "firmware_pipeline_",
+      "compatibility_sha256": "9c37e3b191b6f6b113999b8f7acef14023b6b2cea461c5a554cb4e1ca71ce6c1",
+      "layout_assertions": ["sizeof(firmware_pipeline_status_t) == 4U", "sizeof(firmware_pipeline_config_t) == 8U", "sizeof(firmware_pipeline_result_t) == 40U", "alignof(firmware_pipeline_result_t) == 8U"],
+      "target_class": "host-only",
+      "targets": {"host": []},
+      "c_include_dirs": ["apps/host/firmware_pipeline/inc"],
+      "contract_tests": [
+        {"language": "c", "path": "apps/host/firmware_pipeline/tests/src/test_abi.c", "registration": "apps/host/firmware_pipeline/CMakeLists.txt"},
+        {"language": "zig", "path": "apps/host/firmware_pipeline/zig/tests/native.zig", "registration": "apps/host/firmware_pipeline/zig/.zig-test-contract.json"}
+      ],
+      "exports": [
+        {"name": "firmware_pipeline_analyze", "calling_context": "task-safe-reentrant", "ownership": "borrows all inputs for the call and publishes caller-owned output only on success"}
+      ]
+    }
+  ]
+}

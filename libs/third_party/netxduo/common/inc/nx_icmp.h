@@ -1,0 +1,71 @@
+/***************************************************************************
+ * Copyright (c) 2024 Microsoft Corporation
+ * Copyright (c) 2025-present Eclipse ThreadX Contributors
+ *
+ * This program and the accompanying materials are made available under the
+ * terms of the MIT License which is available at
+ * https://opensource.org/licenses/MIT.
+ *
+ * SPDX-License-Identifier: MIT
+ **************************************************************************/
+
+
+/**************************************************************************/
+/**************************************************************************/
+/**                                                                       */
+/** NetX Component                                                        */
+/**                                                                       */
+/**   Internet Control Message Protocol (ICMP)                            */
+/**                                                                       */
+/**************************************************************************/
+/**************************************************************************/
+
+
+/**************************************************************************/
+/*                                                                        */
+/*  COMPONENT DEFINITION                                   RELEASE        */
+/*                                                                        */
+/*    nx_icmp.h                                           PORTABLE C      */
+/*                                                           6.4.3        */
+/*  AUTHOR                                                                */
+/*                                                                        */
+/*    Yuxin Zhou, Microsoft Corporation                                   */
+/*                                                                        */
+/*  DESCRIPTION                                                           */
+/*                                                                        */
+/*    This file defines the NetX Internet Control Message Protocol (ICMP) */
+/*    component, including all data types and external references.  It is */
+/*    assumed that nx_api.h and nx_port.h have already been included.     */
+/*                                                                        */
+/**************************************************************************/
+
+#ifndef NX_ICMP_H
+#define NX_ICMP_H
+
+#include "nx_api.h"
+
+VOID _nx_icmp_packet_receive(NX_IP *ip_ptr, NX_PACKET *packet_ptr);
+VOID _nx_icmp_cleanup(TX_THREAD *thread_ptr NX_CLEANUP_PARAMETER);
+
+UINT _nxd_icmp_ping(NX_IP *ip_ptr, NXD_ADDRESS *ip_address,
+                    CHAR *data_ptr, ULONG data_size,
+                    NX_PACKET **response_ptr, ULONG wait_option);
+UINT _nxd_icmp_source_ping(NX_IP *ip_ptr, NXD_ADDRESS *ip_address,
+                           UINT address_index, CHAR *data_ptr, ULONG data_size,
+                           NX_PACKET **response_ptr, ULONG wait_option);
+
+UINT _nxd_icmp_enable(NX_IP *ip_ptr);
+
+UINT _nxde_icmp_ping(NX_IP *ip_ptr, NXD_ADDRESS *ip_address,
+                     CHAR *data_ptr, ULONG data_size,
+                     NX_PACKET **response_ptr, ULONG wait_option);
+UINT _nxde_icmp_source_ping(NX_IP *ip_ptr, NXD_ADDRESS *ip_address,
+                            UINT address_index, CHAR *data_ptr, ULONG data_size,
+                            NX_PACKET **response_ptr, ULONG wait_option);
+UINT _nxde_icmp_enable(NX_IP *ip_ptr);
+
+#include "nx_icmpv4.h"
+#include "nx_icmpv6.h"
+
+#endif
+

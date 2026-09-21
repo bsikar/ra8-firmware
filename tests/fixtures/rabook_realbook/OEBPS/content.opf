@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<package xmlns="http://www.idpf.org/2007/opf" version="3.0" unique-identifier="bookid">
+  <metadata xmlns:dc="http://purl.org/dc/elements/1.1/">
+    <dc:identifier id="bookid">urn:uuid:00000000-0000-0000-0000-00000000walden</dc:identifier>
+    <dc:title>Walden</dc:title>
+    <dc:creator>Henry David Thoreau</dc:creator>
+    <dc:language>en-US</dc:language>
+  </metadata>
+  <manifest>
+    <!-- Real Standard Ebooks Walden CSS + chapters, vendored verbatim. Only the
+         two chapters carrying the significant `</abbr> <abbr>` inter-element
+         whitespace are kept (visitors, conclusion); this fixture is the real-
+         book byte-identity proof for #151. No image is declared: the gate runs
+         the skip-images (text/CSS-only) path, so a cover would never appear. -->
+    <item id="core.css" href="css/core.css" media-type="text/css"/>
+    <item id="local.css" href="css/local.css" media-type="text/css"/>
+    <item id="visitors.xhtml" href="text/visitors.xhtml" media-type="application/xhtml+xml"/>
+    <item id="conclusion.xhtml" href="text/conclusion.xhtml" media-type="application/xhtml+xml"/>
+  </manifest>
+  <spine>
+    <itemref idref="visitors.xhtml"/>
+    <itemref idref="conclusion.xhtml"/>
+  </spine>
+</package>

@@ -1,0 +1,24 @@
+[package]
+name = "firmware_report_provider"
+version = "0.1.0"
+edition = "2024"
+license = "MIT"
+publish = false
+build = "build.rs"
+
+[lib]
+crate-type = ["staticlib", "rlib"]
+
+[[bin]]
+name = "firmware_report"
+path = "src/main.rs"
+required-features = ["command"]
+
+[features]
+command = []
+
+[lints.rust]
+unsafe_code = "deny"
+
+[lints.clippy]
+pedantic = "deny"

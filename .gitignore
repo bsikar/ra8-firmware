@@ -1,0 +1,268 @@
+# CMake build artifacts.
+#
+# EVERY PATTERN HERE IS ANCHORED ON PURPOSE (#377). A bare `build/` has no
+# leading slash, so git matches it at EVERY depth -- a first-party directory
+# that happens to be named `build` becomes silently unaddable. #359's
+# reorganisation created `scripts/build/` -- PATHREF-OK: #359 renamed it.
+# Its six files were tracked only because `git mv` moves already-tracked
+# files; a seventh, newly created, would never have been added, and
+# `git add` would have reported nothing wrong.
+#
+# So each pattern below is rooted at a directory where a build tree is actually
+# produced. A `scripts/build/` -- PATHREF-OK: #359 renamed it -- or a
+# `libs/ra8_core/build/` outside these roots is ordinary tracked source.
+#
+# Note the deliberate absence of a `build*/` glob: it would match `builders/`,
+# which is the collision that made this worth fixing rather than renaming
+# around. The separator is always required.
+#
+# scripts/checks/lint_targets.py:is_build_output() is the matching definition
+# for the checkers -- one rule, two readers -- and check_gitignore_scope.py
+# fails on any new unanchored directory pattern, so the two cannot drift apart
+# again. CMakeFiles/ stays unanchored deliberately: CMake reserves the name and
+# nobody can author a source directory called that (the checker's
+# RESERVED_DIR_NAMES records that judgement).
+/build/
+# The mcdc gate's transcript. It is written under build/ now, so this line
+# is a second line of defence rather than the fix: a stale root-level copy
+# from an older tree once rode into a commit and failed the lint-coverage
+# gate, and an ignore rule stops any other producer repeating that.
+/mcdc-output.log
+/build-*/
+/build_*/
+/cmake-build-*/
+/docs/build/
+/examples/**/build/
+/examples/**/build-*/
+/local-poc/**/build/
+/local-poc/**/build-*/
+/port/**/build/
+/tools/**/build/
+CMakeFiles/
+.zig-cache/
+CMakeCache.txt
+cmake_install.cmake
+compile_commands.json
+
+# Downloaded media (comics/manga/manhwa fetched by apps/host/mdl). This is
+# third-party copyrighted content pulled for LOCAL testing only -- never commit
+# or publish it. Applies to the default `downloads/` root anywhere in the
+# tree, which is the one pattern here that genuinely cannot be anchored:
+# apps/host/mdl writes `downloads/` relative to whatever directory it is run
+# from, so there is no single root to anchor it to.
+# gitignore-scope-ok: mdl writes it relative to its own cwd
+downloads/
+
+# Real-world EPUB test fixtures (copyrighted books used for local pipeline
+# testing only -- never committed/published; see tests/fixtures/epub/README.md)
+tests/fixtures/epub/real/*.epub
+
+# Compiled firmware artifacts
+*.elf
+*.bin
+*.hex
+*.map
+*.lst
+*.su
+
+# Compiler intermediates (object files, archives)
+*.o
+*.obj
+*.a
+*.lo
+*.la
+
+# OS-level crash dumps (e.g. host-side test executables that segfault
+# in the Docker test container land at the repo root). Anchored to the
+# repo root so they don't shadow legitimate `core/` directories inside
+# vendored trees (libs/third_party/tf-psa-crypto/core, etc.).
+/core
+/core.*
+/vgcore.*
+
+# Test build artifacts (build-cov, build-fuzz, build-iwyu, build-scan,
+# build-ubsan). Anchored, and hyphen-separated so `tests/builders/` is safe.
+/tests/build/
+/tests/build-*/
+/tests/Unity/
+
+# GCC coverage instrumentation
+*.gcov
+*.gcda
+*.gcno
+*.gcov.json.gz
+
+# Coverage report outputs (already covered by build/ above; listed
+# explicitly so the directory is greppable)
+/build/tree-coverage/
+
+# Go coverage profiles
+coverage.out
+
+# GCC RTL dump files
+*.expand
+
+# Doxygen generated output (build/ is already ignored above; listed
+# explicitly here so a future change to the build-tree policy still
+# keeps the generated HTML out of git). docs/doxygen/ was the output
+# directory of the retired Doxyfile.main; kept ignored so stale local
+# builds never get committed.
+/build/docs/
+/build/docs-gate/
+/docs/doxygen/
+doxygen.log
+# Generated Doxygen navigation trees (scripts/gen/gen_doxygen_nav.py, run by
+# build_docs.sh). Regenerated on every `just docs`, so kept out of git.
+docs/generated/
+
+# Per-page PDF splits of the reference manuals (local browsing aid;
+# derived from the committed parent PDFs, 2+ GB if expanded).
+docs/reference/ra8d2-datasheet/
+docs/reference/ra8d2-hardware-user-manual/
+docs/reference/ra8d2-high-temperature-operation/
+docs/reference/ra8d2-technical-brief/
+
+# Renesas / vendor IDE artifacts (NOT used here, guarded in case they show
+# up). Anchored to the repo root for the same reason as the build trees above:
+# `output/` and `ra/` are both plausible source directory names.
+#
+# `ra/` had already drawn blood in exactly the way #377 describes -- unanchored,
+# it swallowed the vendored FSP blob trees, which is the only reason the two
+# negations that used to sit below it existed. Anchoring the pattern makes them
+# dead code, so they went with it.
+.metadata/
+.settings/
+/HardwareDebug/
+/output/
+.project
+.cproject
+*.launch
+ra8_cfg.txt
+/ra8_gen/
+/ra/
+/ra8_cfg/
+
+# ARM / Keil / IAR artifacts
+*.uvprojx
+*.uvoptx
+*.ewp
+*.eww
+*.ewd
+/Debug/
+/Release/
+/Objects/
+/Listings/
+
+# SEGGER
+*.jdebug
+*.jdebug.user
+*.jlink
+
+# Editors
+.vscode/*
+!.vscode/extensions.json
+!.vscode/launch.json
+!.vscode/settings.json
+!.vscode/tasks.json
+.idea/
+*.swp
+*~
+*.bak
+*.tmp
+.DS_Store
+._*
+
+# Python / tooling
+__pycache__/
+/.tools/
+/.ansible/
+*.pyc
+*.pyo
+.venv/
+venv/
+
+# Local environment
+.env
+.env.local
+.claude/*
+!.claude/agents/
+/.codex/
+doxy_run.txt
+.pi-connection
+
+# cppcheck writes its per-TU dump and cross-TU index NEXT TO the source, under
+# every first-party root, and misra_check_inner.sh sweeps both away when it
+# finishes. Only *.dump was ignored, so for the length of a MISRA run several
+# hundred *.ctu-info files sat untracked-and-unignored in libs/ apps/ --
+# and a `git add -A` in that window commits every one of them. Both halves of
+# the same artifact pair belong here.
+*.dump
+*.ctu-info
+
+# ra8_emulator profiler output (just profile-<app>)
+*.speedscope.json
+ra8_emulator_profile.*
+
+# Generated e-book artifacts -- build output, regenerated by `just tools::books` from
+# the apps/board/stand_alone/ereader/content/library/*.epub sources (the Git-LFS source of truth).
+apps/board/stand_alone/ereader/content/compiled/*.rabook
+apps/shared_libs/book/inc/book_library.h
+# NOTE: examples/.../ereader_shelf/inc/library.h is deliberately TRACKED (a
+# committed @generated fixture, like the epub/rabook parity fixtures): its
+# cover-thumbnail bytes are architecture-dependent to regenerate (libjpeg
+# SIMD decode rounding differs x86 vs arm64), so the EIL fb-hash golden pins
+# the committed bytes. Regenerate only deliberately (scripts/builders/books.sh)
+# and re-pin the golden in the same change.
+# Host SD-card images built by tools/mkbookimg (test fixtures).
+*.img
+
+# tools/reader_vmem host build artifacts (binary + dSYM + generated #147 traces)
+tools/reader_vmem/reader_vmem
+tools/reader_vmem/*.trace
+tools/reader_vmem/*.dSYM/
+
+# tools/glyph_bench host build artifacts (binary + dSYM)
+tools/glyph_bench/glyph_bench
+tools/glyph_bench/*.dSYM/
+
+# tools/cache_bench host build artifacts (binary + dSYM) -- were mistakenly tracked
+tools/cache_bench/cache_bench
+tools/cache_bench/*.dSYM/
+
+# Root-of-trust signing keys must never be committed (see scripts/secrets/rot_provision.sh).
+*rot-signing-key*.pem
+
+# ESP32-C6 co-processor firmware: the esp-hosted-mcu SOUP clone that
+# coprocessor/esp32c6/build.sh fetches at the pinned commit, plus everything it
+# builds underneath (slave/build, dependencies.lock, managed_components,
+# generated sdkconfig). None of it is first-party source. Anchored to the
+# repo root so it cannot match a directory of that name elsewhere (#377).
+/coprocessor/esp32c6/esp-hosted-mcu/
+# Bench Wi-Fi credentials the c6_wifi_join firmware compiles in at build time
+# (SSID + WPA passphrase). The .example template is committed; the real values
+# are a secret (the PSK lives in OpenBao) and must never be committed.
+/coprocessor/esp32c6/wifi.env
+# libFuzzer seed corpus: regenerated deterministically by
+# scripts/builders/init_fuzz_corpora.sh (invoked from `just quality::local::fuzz`), so the seeds
+# are a build product, not source. Committing them only lets them drift from
+# the generator. Crash reproducers the fuzzer discovers are NOT regenerable,
+# so those are carved back in below and must be committed by hand.
+#
+# NOTE: the corpus contents (not the directory) are ignored, and the
+# subdirectories are re-included, so the crash-/leak-/timeout- negations below
+# actually take effect. Git cannot re-include a file whose parent directory is
+# itself excluded, so `tests/fuzz/corpus/` (directory form) would silently
+# defeat the negations.
+tests/fuzz/corpus/**
+!tests/fuzz/corpus/**/
+!tests/fuzz/corpus/**/crash-*
+!tests/fuzz/corpus/**/leak-*
+!tests/fuzz/corpus/**/timeout-*
+/apps/**/build/
+/apps/**/build-*/
+# Cargo build output for first-party Rust crates.
+/apps/host/**/target/
+/tests/**/target/
+/.compile_commands_scratch/
+# Codegraph indexes are local workspace artifacts, not firmware source.
+/.codegraph/
