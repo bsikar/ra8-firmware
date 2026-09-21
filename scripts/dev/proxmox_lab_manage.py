@@ -157,7 +157,7 @@ def build_source_archive(output_path: str) -> int:
 
         # 5. Tar the staged directory into output_path
         subprocess.run(
-            ["tar", "--exclude=._*", "-cf", output_path, "-C", stage_dir, "."],
+            ["tar", "--format=ustar", "--exclude=._*", "-cf", output_path, "-C", stage_dir, "."],
             env=dict(os.environ, COPYFILE_DISABLE="1"),
             check=True,
         )
@@ -197,11 +197,14 @@ def cmd_start(args: argparse.Namespace) -> int:
     remote_dir = f"/var/lib/ra8-lab/{profile}"
     runner_script = os.path.join(SCRIPT_DIR, "proxmox_lab_server_runner.sh")
 
-    setup_cmd = f"sudo mkdir -p {remote_dir} /var/log/ra8-lab && sudo chown -R $(whoami) {remote_dir}"
+    setup_cmd = "sudo mkdir -p /var/lib/ra8-lab/linux /var/lib/ra8-lab/windows /var/log/ra8-lab && sudo chown -R $(whoami) /var/lib/ra8-lab /var/log/ra8-lab"
     subprocess.run(["ssh", "-o", "BatchMode=yes", SSH_ALIAS, setup_cmd], check=True)
 
-    subprocess.run(["scp", "-q", tar_path, f"{SSH_ALIAS}:{remote_dir}/source.tar"], check=True)
-    subprocess.run(["scp", "-q", runner_script, f"{SSH_ALIAS}:/var/lib/ra8-lab/runner.sh"], check=True)
+    # PVE's restricted SSH service intermittently stalls the SFTP-backed
+    # scp implementation during large uploads. Use the legacy SCP protocol
+    # for these two controller-to-host transfers instead.
+    subprocess.run(["scp", "-O", "-q", tar_path, f"{SSH_ALIAS}:{remote_dir}/source.tar"], check=True)
+    subprocess.run(["scp", "-O", "-q", runner_script, f"{SSH_ALIAS}:/var/lib/ra8-lab/runner.sh"], check=True)
     try:
         os.remove(tar_path)
     except OSError:
@@ -211,7 +214,7 @@ def cmd_start(args: argparse.Namespace) -> int:
     launch_cmd = (
         f"sudo chmod +x /var/lib/ra8-lab/runner.sh && "
         f"sudo nohup /bin/bash /var/lib/ra8-lab/runner.sh {profile} {run_id} {remote_dir}/source.tar {keep_str} "
-        f"> /dev/null 2>&1 &"
+        f"< /dev/null > /dev/null 2>&1 &"
     )
     subprocess.run(["ssh", "-o", "BatchMode=yes", SSH_ALIAS, launch_cmd], check=True)
 
@@ -311,8 +314,10 @@ def cmd_stop(args: argparse.Namespace) -> int:
         """
         subprocess.run(["ssh", "-o", "BatchMode=yes", SSH_ALIAS, f"sudo bash -c '{stop_script}'"])
 
-    # Destroy VMs and network
-    cmd_destroy(args)
+    # Destroy only the requested profile's VM(s). Passing the original
+    # namespace here would default cmd_destroy() to "all" because stop's
+    # argument is named `profile`, not `target`.
+    cmd_destroy(argparse.Namespace(target=target))
     print("==> Stopped and cleaned up.")
     return 0
 

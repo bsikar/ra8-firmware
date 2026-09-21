@@ -130,7 +130,8 @@ generate_autounattend() {
           <InstallFrom>
             <MetaData wcm:action="add">
               <Key>/IMAGE/INDEX</Key>
-              <Value>2</Value>
+              <!-- Windows Server 2025 Standard Evaluation, Server Core. -->
+              <Value>1</Value>
             </MetaData>
           </InstallFrom>
           <InstallTo>
@@ -173,31 +174,21 @@ generate_autounattend() {
       <FirstLogonCommands>
         <SynchronousCommand wcm:action="add">
           <Order>1</Order>
-          <Description>Install VirtIO Guest Tools</Description>
-          <CommandLine>cmd.exe /c for %d in (C D E F G) do if exist %d:\virtio-win-gt-x64.msi start /wait msiexec /i %d:\virtio-win-gt-x64.msi /qn /norestart</CommandLine>
+          <Description>Install and configure OpenSSH Server</Description>
+          <CommandLine>powershell.exe -ExecutionPolicy Bypass -Command "$cap = Get-WindowsCapability -Online -Name 'OpenSSH.Server~~~~0.0.1.0'; if ($cap.State -ne 'Installed') { Add-WindowsCapability -Online -Name 'OpenSSH.Server~~~~0.0.1.0' }; Set-Service -Name sshd -StartupType Automatic; Start-Service sshd; netsh advfirewall firewall add rule name=\"OpenSSH\" dir=in action=allow protocol=TCP localport=22"</CommandLine>
         </SynchronousCommand>
         <SynchronousCommand wcm:action="add">
           <Order>2</Order>
-          <Description>Configure WinRM</Description>
-          <CommandLine>powershell.exe -ExecutionPolicy Bypass -Command "winrm quickconfig -q; winrm set winrm/config/service '@{AllowUnencrypted=\"true\"}'; winrm set winrm/config/service/auth '@{Basic=\"true\"}'; netsh advfirewall firewall set rule group=\"Windows Remote Management\" new enable=yes"</CommandLine>
-        </SynchronousCommand>
-        <SynchronousCommand wcm:action="add">
-          <Order>3</Order>
-          <Description>Configure OpenSSH Server</Description>
-          <CommandLine>powershell.exe -ExecutionPolicy Bypass -Command "if (Get-Service -Name sshd -ErrorAction SilentlyContinue) { Set-Service -Name sshd -StartupType Automatic; Start-Service sshd } else { New-Service -Name sshd -BinaryPathName 'C:\Windows\System32\OpenSSH\sshd.exe' -DisplayName 'OpenSSH SSH Server' -StartupType Automatic; Start-Service sshd }; netsh advfirewall firewall add rule name=\"OpenSSH\" dir=in action=allow protocol=TCP localport=22"</CommandLine>
-        </SynchronousCommand>
-        <SynchronousCommand wcm:action="add">
-          <Order>4</Order>
           <Description>Copy Bootstrap Script</Description>
           <CommandLine>powershell.exe -ExecutionPolicy Bypass -Command "New-Item -ItemType Directory -Force -Path C:\setup; Get-PSDrive -PSProvider FileSystem | ForEach-Object { if (Test-Path ('{0}bootstrap.ps1' -f $_.Root)) { Copy-Item ('{0}bootstrap.ps1' -f $_.Root) -Destination C:\setup\bootstrap.ps1 -Force } }"</CommandLine>
         </SynchronousCommand>
         <SynchronousCommand wcm:action="add">
-          <Order>5</Order>
+          <Order>3</Order>
           <Description>Register Bootstrap Task</Description>
           <CommandLine>powershell.exe -ExecutionPolicy Bypass -Command "Register-ScheduledTask -TaskName 'RA8LabBootstrap' -Action (New-ScheduledTaskAction -Execute 'powershell.exe' -Argument '-ExecutionPolicy Bypass -File C:\setup\bootstrap.ps1') -Trigger (New-ScheduledTaskTrigger -AtStartup) -User 'SYSTEM' -RunLevel Highest -Force"</CommandLine>
         </SynchronousCommand>
         <SynchronousCommand wcm:action="add">
-          <Order>6</Order>
+          <Order>4</Order>
           <Description>Run bootstrap and shutdown</Description>
           <CommandLine>powershell.exe -ExecutionPolicy Bypass -Command "powershell.exe -ExecutionPolicy Bypass -File C:\setup\bootstrap.ps1; shutdown /s /t 10 /c 'Template preparation complete'"</CommandLine>
         </SynchronousCommand>

@@ -13,6 +13,8 @@ default:
     @echo "  just infra::lab::list                        List active lab VMs on Proxmox"
     @echo "  just infra::lab::ssh [target] [cmd]          SSH into lab VM (interactive menu if multiple)"
     @echo "  just infra::lab::destroy [target]            Tear down preserved lab guest & network"
+    @echo "  just infra::lab::setup-cache                 Setup apt-cacher-ng & artifact HTTP cache on Proxmox"
+    @echo "  just infra::lab::bake-template               Pre-bake ra8-ci container into VM 9001 (~5s CI startup)"
     @echo "  just infra::lab::check                       Read-only lab/template preflight"
     @echo "  just infra::lab::setup [target]              Bootstrap host packages, pool, and templates"
 
@@ -89,3 +91,12 @@ prepare-linux-template:
 [confirm("Configure Proxmox host prerequisites, pools, and provision lab CI templates?")]
 setup target="all":
     scripts/dev/setup_proxmox_lab_host.sh {{ quote(target) }}
+
+# Setup apt-cacher-ng (port 3142) and Nginx artifact cache (port 8080) on Proxmox
+setup-cache:
+    scripts/dev/setup_lab_cache.sh
+
+# Pre-bake the ra8-ci:latest devcontainer directly into template VM 9001 for ~5s startup
+[confirm("Bake ra8-ci:latest devcontainer image into Debian template VM 9001 on Proxmox?")]
+bake-template:
+    scripts/dev/bake_proxmox_lab_template.sh
