@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2026 Brighton Sikarskie
-"""Manage and connect to disposable Proxmox lab VMs.
+"""Manage, run, stream logs, and connect to disposable Proxmox lab VMs.
 
-Supports discovering multiple active lab VMs, interactive or direct selection,
-SSH execution through the pve tunnel, and teardown.
+Supports running detached server-side CI, live log streaming (with non-terminating
+Ctrl+C detachment), multi-machine observation, interactive/direct SSH selection,
+and comprehensive teardown.
 """
 
 from __future__ import annotations
@@ -14,6 +15,7 @@ import glob
 import json
 import os
 import re
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -21,9 +23,12 @@ from typing import Any, Dict, List, Optional
 
 SSH_ALIAS = "pve"
 DEFAULT_USER = "terraform-lab"
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+REPO_ROOT = os.path.dirname(os.path.dirname(SCRIPT_DIR))
+
 VM_IP_MAP = {
     9000: "10.250.9.10",
-    9010: "10.250.9.20",
+    9010: "10.250.8.20",
 }
 
 
@@ -88,9 +93,6 @@ def find_run_key(run_id: str) -> Optional[str]:
         key=os.path.getmtime,
         reverse=True,
     )
-    if not tmp_dirs:
-        return None
-
     if run_id:
         for d in tmp_dirs:
             pub_key = os.path.join(d, "id_ed25519.pub")
@@ -111,6 +113,208 @@ def find_run_key(run_id: str) -> Optional[str]:
             return priv_key
 
     return None
+
+
+def build_source_archive(output_path: str) -> int:
+    """Package working tree including tracked, submodules, and untracked files into tarball."""
+    temp_dir = tempfile.mkdtemp(prefix="ra8-lab-src-")
+    stage_dir = os.path.join(temp_dir, "stage")
+    os.makedirs(stage_dir, exist_ok=True)
+    try:
+        # 1. Archive committed HEAD
+        p1 = subprocess.Popen(["git", "-C", REPO_ROOT, "archive", "--format=tar", "HEAD"], stdout=subprocess.PIPE)
+        subprocess.run(["tar", "-xpf", "-", "-C", stage_dir], stdin=p1.stdout, check=True)
+        if p1.stdout:
+            p1.stdout.close()
+        p1.wait()
+
+        # 2. Submodules
+        sub_cmd = "git submodule foreach --recursive 'mkdir -p \"$stage_dir/$path\" && git archive --format=tar HEAD | tar -xpf - -C \"$stage_dir/$path\"'"
+        env = dict(os.environ, stage_dir=stage_dir)
+        subprocess.run(["bash", "-c", sub_cmd], cwd=REPO_ROOT, env=env, check=False)
+
+        # 3. Apply unstaged git diff
+        diff = subprocess.run(["git", "-C", REPO_ROOT, "diff", "--no-ext-diff", "--binary", "HEAD"], capture_output=True)
+        if diff.stdout:
+            p = subprocess.Popen(["git", "-C", stage_dir, "apply", "--binary", "--whitespace=nowarn"], stdin=subprocess.PIPE)
+            p.communicate(input=diff.stdout)
+
+        # 4. Copy untracked files
+        untracked = subprocess.run(
+            ["git", "-C", REPO_ROOT, "ls-files", "--others", "--exclude-standard", "-z"],
+            capture_output=True,
+            check=True,
+        )
+        for raw_path in untracked.stdout.split(b"\0"):
+            if not raw_path:
+                continue
+            path = raw_path.decode("utf-8", errors="replace")
+            src_file = os.path.join(REPO_ROOT, path)
+            dst_file = os.path.join(stage_dir, path)
+            os.makedirs(os.path.dirname(dst_file), exist_ok=True)
+            if os.path.isfile(src_file):
+                shutil.copy2(src_file, dst_file)
+
+        # 5. Tar the staged directory into output_path
+        subprocess.run(
+            ["tar", "--exclude=._*", "-cf", output_path, "-C", stage_dir, "."],
+            env=dict(os.environ, COPYFILE_DISABLE="1"),
+            check=True,
+        )
+        return os.path.getsize(output_path)
+    finally:
+        shutil.rmtree(temp_dir, ignore_errors=True)
+
+
+def cmd_start(args: argparse.Namespace) -> int:
+    """Start CI execution asynchronously on the Proxmox server."""
+    profile = args.profile.lower()
+    if profile not in ("linux", "windows"):
+        sys.stderr.write(f"error: profile must be 'linux' or 'windows', got '{profile}'\n")
+        return 1
+
+    # Preflight check: is this profile currently active on the server?
+    check_cmd = (
+        f"sudo test -f /var/log/ra8-lab/{profile}.pid && "
+        f"sudo kill -0 $(cat /var/log/ra8-lab/{profile}.pid 2>/dev/null) 2>/dev/null && "
+        f"echo BUSY || echo IDLE"
+    )
+    res = subprocess.run(["ssh", "-o", "BatchMode=yes", SSH_ALIAS, check_cmd], capture_output=True, text=True)
+    if "BUSY" in res.stdout:
+        sys.stderr.write(f"error: a {profile} CI job is already actively running on {SSH_ALIAS}!\n")
+        sys.stderr.write(f"  • View live logs:  just infra::lab::logs {profile}\n")
+        sys.stderr.write(f"  • Stop running job: just infra::lab::stop {profile}\n")
+        return 1
+
+    run_id = os.urandom(8).hex()
+    tar_path = os.path.join(tempfile.gettempdir(), f"ra8-lab-{profile}-{run_id}.tar")
+
+    print(f"==> Packaging local workspace for {profile} CI (including uncommitted changes)...")
+    size_bytes = build_source_archive(tar_path)
+    print(f"    Payload packaged: {size_bytes / (1024 * 1024):.1f} MB")
+
+    print(f"==> Uploading payload and runner to Proxmox host ({SSH_ALIAS})...")
+    remote_dir = f"/var/lib/ra8-lab/{profile}"
+    runner_script = os.path.join(SCRIPT_DIR, "proxmox_lab_server_runner.sh")
+
+    setup_cmd = f"sudo mkdir -p {remote_dir} /var/log/ra8-lab && sudo chown -R $(whoami) {remote_dir}"
+    subprocess.run(["ssh", "-o", "BatchMode=yes", SSH_ALIAS, setup_cmd], check=True)
+
+    subprocess.run(["scp", "-q", tar_path, f"{SSH_ALIAS}:{remote_dir}/source.tar"], check=True)
+    subprocess.run(["scp", "-q", runner_script, f"{SSH_ALIAS}:/var/lib/ra8-lab/runner.sh"], check=True)
+    try:
+        os.remove(tar_path)
+    except OSError:
+        pass
+
+    keep_str = "true" if getattr(args, "keep", False) else "false"
+    launch_cmd = (
+        f"sudo chmod +x /var/lib/ra8-lab/runner.sh && "
+        f"sudo nohup /bin/bash /var/lib/ra8-lab/runner.sh {profile} {run_id} {remote_dir}/source.tar {keep_str} "
+        f"> /dev/null 2>&1 &"
+    )
+    subprocess.run(["ssh", "-o", "BatchMode=yes", SSH_ALIAS, launch_cmd], check=True)
+
+    print(f"==> {profile.capitalize()} CI run started on {SSH_ALIAS} (run_id: {run_id})")
+    print(f"    • Stream live logs:    just infra::lab::logs {profile}")
+    print(f"    • Check status:        just infra::lab::status")
+    print(f"    • Stop/cancel:         just infra::lab::stop {profile}")
+    return 0
+
+
+def cmd_logs(args: argparse.Namespace) -> int:
+    """Stream live CI logs from the Proxmox server with safe non-killing Ctrl+C detach."""
+    profile = getattr(args, "profile", "linux").lower()
+    log_file = f"/var/log/ra8-lab/{profile}.log"
+    print(f"==> Attaching to {profile} CI log stream on {SSH_ALIAS}...")
+    print(f"    (Press Ctrl+C at any time to detach without stopping the CI run)\n")
+
+    tail_cmd = [
+        "ssh",
+        "-t",
+        "-o", "LogLevel=ERROR",
+        SSH_ALIAS,
+        f"sudo test -f {log_file} || {{ echo 'No log file found at {log_file}. Run has not started yet.'; exit 1; }}; sudo tail -n 50 -f {log_file}"
+    ]
+    try:
+        proc = subprocess.run(tail_cmd)
+        return proc.returncode
+    except KeyboardInterrupt:
+        print("\n^C\n==> Detached from log stream.")
+        print("    The CI run is still executing on the server!")
+        print(f"    • Re-attach logs:  just infra::lab::logs {profile}")
+        print(f"    • Check status:   just infra::lab::status")
+        print(f"    • Stop/cancel:    just infra::lab::stop {profile}")
+        return 0
+
+
+def cmd_ci(args: argparse.Namespace) -> int:
+    """Start CI execution on Proxmox and automatically attach to live logs."""
+    rc = cmd_start(args)
+    if rc != 0:
+        return rc
+    return cmd_logs(args)
+
+
+def cmd_status(args: argparse.Namespace) -> int:
+    """Show current status of background CI jobs on Proxmox."""
+    print(f"=== Proxmox Lab CI Status ({SSH_ALIAS}) ===")
+    status_script = """
+    for profile in linux windows; do
+      pid_file="/var/log/ra8-lab/${profile}.pid"
+      status_file="/var/log/ra8-lab/${profile}.status"
+      log_file="/var/log/ra8-lab/${profile}.log"
+      if [[ -f "$pid_file" ]] && kill -0 "$(cat "$pid_file" 2>/dev/null)" 2>/dev/null; then
+        pid=$(cat "$pid_file")
+        echo "${profile^^}: RUNNING (PID: $pid)"
+        if [[ -f "$log_file" ]]; then
+          echo "  Last output: $(tail -n 1 "$log_file")"
+        fi
+      elif [[ -f "$status_file" ]]; then
+        st=$(cat "$status_file")
+        echo "${profile^^}: COMPLETED (${st})"
+        if [[ -f "$log_file" ]]; then
+          echo "  Final message: $(tail -n 1 "$log_file")"
+        fi
+      else
+        echo "${profile^^}: IDLE (no active run)"
+      fi
+    done
+    """
+    subprocess.run(["ssh", "-o", "BatchMode=yes", SSH_ALIAS, f"sudo bash -c '{status_script}'"])
+    print()
+    cmd_list(args)
+    return 0
+
+
+def cmd_stop(args: argparse.Namespace) -> int:
+    """Stop running CI job(s) on Proxmox and tear down the environment."""
+    target = getattr(args, "profile", "all").lower()
+    profiles = ["linux", "windows"] if target in ("all", "") else [target]
+
+    for profile in profiles:
+        print(f"==> Stopping {profile} CI background runner on {SSH_ALIAS}...")
+        stop_script = f"""
+        pid_file="/var/log/ra8-lab/{profile}.pid"
+        if [[ -f "$pid_file" ]]; then
+          pid=$(cat "$pid_file" 2>/dev/null)
+          if [[ -n "$pid" ]] && kill -0 "$pid" 2>/dev/null; then
+            kill "$pid" 2>/dev/null || true
+            for _ in {{1..15}}; do
+              kill -0 "$pid" 2>/dev/null || break
+              sleep 1
+            done
+            kill -9 "$pid" 2>/dev/null || true
+          fi
+          rm -f "$pid_file"
+        fi
+        """
+        subprocess.run(["ssh", "-o", "BatchMode=yes", SSH_ALIAS, f"sudo bash -c '{stop_script}'"])
+
+    # Destroy VMs and network
+    cmd_destroy(args)
+    print("==> Stopped and cleaned up.")
+    return 0
 
 
 def cmd_list(args: argparse.Namespace) -> int:
@@ -143,7 +347,6 @@ def cmd_ssh(args: argparse.Namespace) -> int:
     selected_vm: Optional[Dict[str, Any]] = None
 
     if target:
-        # Check if target matches VMID
         try:
             target_vmid = int(target)
             for v in running_vms:
@@ -153,7 +356,6 @@ def cmd_ssh(args: argparse.Namespace) -> int:
         except ValueError:
             pass
 
-        # Check if target matches type or run_id
         if not selected_vm:
             target_lower = target.lower()
             for v in running_vms:
@@ -161,8 +363,6 @@ def cmd_ssh(args: argparse.Namespace) -> int:
                     selected_vm = v
                     break
 
-        # If target didn't match any VM, check if only 1 VM exists
-        # In that case, target was actually the command (e.g. `just ssh htop`)
         if not selected_vm:
             if len(running_vms) == 1:
                 selected_vm = running_vms[0]
@@ -199,13 +399,26 @@ def cmd_ssh(args: argparse.Namespace) -> int:
 
     key_path = find_run_key(selected_vm["run_id"])
     if not key_path:
+        # Check if key is available on pve server run directory
+        remote_key_check = f"sudo test -f /var/lib/ra8-lab/{selected_vm['type']}/id_ed25519"
+        if subprocess.run(["ssh", "-o", "BatchMode=yes", SSH_ALIAS, remote_key_check]).returncode == 0:
+            # Connect via SSH jumping through pve with remote key
+            ip = selected_vm["ip"]
+            user = "Administrator" if selected_vm["type"] == "windows" else DEFAULT_USER
+            ssh_cmd = f"ssh -i /var/lib/ra8-lab/{selected_vm['type']}/id_ed25519 -o StrictHostKeyChecking=no {user}@{ip}"
+            if remaining_cmd:
+                ssh_cmd += f" {' '.join(remaining_cmd)}"
+            os.execvp("ssh", ["ssh", "-t", SSH_ALIAS, f"sudo {ssh_cmd}"])
+            return 0
+
         sys.stderr.write(
-            f"error: could not find an SSH key for run '{selected_vm['run_id']}' in {tempfile.gettempdir()}.\n"
+            f"error: could not find an SSH key for run '{selected_vm['run_id']}'.\n"
         )
         return 1
 
     ip = selected_vm["ip"]
     vmid = selected_vm["vmid"]
+    user = "Administrator" if selected_vm["type"] == "windows" else DEFAULT_USER
     print(f"Connecting to VM {vmid} ({selected_vm['type']} @ {ip})...", file=sys.stderr)
 
     ssh_args = [
@@ -222,7 +435,7 @@ def cmd_ssh(args: argparse.Namespace) -> int:
         "LogLevel=ERROR",
         "-o",
         f"ProxyCommand=ssh -o BatchMode=yes {SSH_ALIAS} nc {ip} 22",
-        f"{DEFAULT_USER}@{ip}",
+        f"{user}@{ip}",
     ]
     if remaining_cmd:
         ssh_args.extend(remaining_cmd)
@@ -232,7 +445,7 @@ def cmd_ssh(args: argparse.Namespace) -> int:
 
 
 def cmd_destroy(args: argparse.Namespace) -> int:
-    target = args.target
+    target = getattr(args, "target", "all")
     all_vms = get_active_vms()
     target_vms: List[Dict[str, Any]] = []
 
@@ -303,7 +516,7 @@ def cmd_destroy(args: argparse.Namespace) -> int:
     # Clean matching local run dirs
     for d in glob.glob(os.path.join(tempfile.gettempdir(), "ra8-lab-ci.*")):
         try:
-            subprocess.run(["rm", "-rf", d], check=False)
+            shutil.rmtree(d, ignore_errors=True)
         except OSError:
             pass
 
@@ -318,17 +531,50 @@ def main() -> None:
         args = argparse.Namespace(subcommand="ssh", target=target, command=command)
         sys.exit(cmd_ssh(args))
 
-    parser = argparse.ArgumentParser(description="Proxmox Lab VM Management")
+    parser = argparse.ArgumentParser(description="Proxmox Lab CI & VM Management")
     subparsers = parser.add_subparsers(dest="subcommand", required=True)
 
+    # list
     subparsers.add_parser("list", help="List active or preserved lab VMs")
 
+    # ci
+    ci_parser = subparsers.add_parser("ci", help="Run CI on Proxmox and stream live logs (Ctrl+C detaches)")
+    ci_parser.add_argument("profile", nargs="?", default="linux", choices=["linux", "windows"], help="CI profile")
+    ci_parser.add_argument("--keep", action="store_true", help="Keep VM after run finishes")
+
+    # start
+    start_parser = subparsers.add_parser("start", help="Start CI in background on Proxmox and return immediately")
+    start_parser.add_argument("profile", nargs="?", default="linux", choices=["linux", "windows"], help="CI profile")
+    start_parser.add_argument("--keep", action="store_true", help="Keep VM after run finishes")
+
+    # logs
+    logs_parser = subparsers.add_parser("logs", help="Stream live CI logs from Proxmox")
+    logs_parser.add_argument("profile", nargs="?", default="linux", choices=["linux", "windows"], help="CI profile")
+
+    # status
+    subparsers.add_parser("status", help="Show status of running background CI jobs on Proxmox")
+
+    # stop
+    stop_parser = subparsers.add_parser("stop", help="Stop and cancel active CI run(s) on Proxmox")
+    stop_parser.add_argument("profile", nargs="?", default="all", help="Profile to stop (linux, windows, or all)")
+
+    # destroy
     destroy_parser = subparsers.add_parser("destroy", help="Tear down preserved lab VMs and network")
     destroy_parser.add_argument("target", nargs="?", default="all", help="VM ID, type, or 'all'")
 
     args = parser.parse_args()
     if args.subcommand == "list":
         sys.exit(cmd_list(args))
+    elif args.subcommand == "ci":
+        sys.exit(cmd_ci(args))
+    elif args.subcommand == "start":
+        sys.exit(cmd_start(args))
+    elif args.subcommand == "logs":
+        sys.exit(cmd_logs(args))
+    elif args.subcommand == "status":
+        sys.exit(cmd_status(args))
+    elif args.subcommand == "stop":
+        sys.exit(cmd_stop(args))
     elif args.subcommand == "ssh":
         sys.exit(cmd_ssh(args))
     elif args.subcommand == "destroy":
