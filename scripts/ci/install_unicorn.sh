@@ -161,7 +161,9 @@ EOF
   fi
 
   echo "[install_unicorn] downloading Unicorn $RA8_UNICORN_VERSION ..."
-  curl -fsSL "$RA8_UNICORN_TARBALL_URL" -o "$work/unicorn.tar.gz"
+  local alt_url="https://codeload.github.com/unicorn-engine/unicorn/tar.gz/refs/tags/${RA8_UNICORN_VERSION}"
+  curl -fsSL --retry 5 --retry-delay 2 "$RA8_UNICORN_TARBALL_URL" -o "$work/unicorn.tar.gz" || \
+    curl -fsSL --retry 5 --retry-delay 2 "$alt_url" -o "$work/unicorn.tar.gz"
   echo "${RA8_UNICORN_TARBALL_SHA256}  $work/unicorn.tar.gz" | "${checksum_cmd[@]}" -c -
 
   tar -xzf "$work/unicorn.tar.gz" -C "$work"

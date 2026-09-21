@@ -10,9 +10,86 @@
   vars:
     lab_ci_user: "Administrator"
     lab_ci_repo_dir: "C:\\ra8-lab-ci"
+    lab_ci_just_url: "https://github.com/casey/just/releases/download/1.40.0/just-1.40.0-x86_64-pc-windows-msvc.zip"
+    lab_ci_just_zip: "C:\\Windows\\Temp\\just-1.40.0.zip"
+    lab_ci_just_dir: "C:\\ProgramData\\ra8\\just"
+    lab_ci_windows_packages:
+      - 7zip
+      - cmake
+      - gcc-arm-embedded
+      - git
+      - git-lfs
+      - llvm
+      - make
+      - ninja
+      - python
   tasks:
     - name: Verify connection to the disposable Windows guest
       ansible.windows.win_ping:
+
+    - name: Install Chocolatey package manager
+      ansible.windows.win_shell: |
+        Set-StrictMode -Version Latest
+        $ErrorActionPreference = 'Stop'
+        [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
+        Set-ExecutionPolicy Bypass -Scope Process -Force
+        Invoke-Expression ((New-Object Net.WebClient).DownloadString('https://community.chocolatey.org/install.ps1'))
+      args:
+        executable: powershell.exe
+        creates: C:\\ProgramData\\chocolatey\\bin\\choco.exe
+
+    - name: Install Windows CI build and source dependencies
+      ansible.windows.win_shell: |
+        $package = '{{ item }}'
+        $installed = & choco.exe list --local-only --exact $package --limit-output 2>$null
+        if ($installed -notmatch "^$package\\|") {
+          & choco.exe install $package --yes --no-progress --limit-output
+          if ($LASTEXITCODE -ne 0) {
+            throw "Chocolatey failed to install $package (exit code $LASTEXITCODE)"
+          }
+        }
+      args:
+        executable: powershell.exe
+      loop: "{{ lab_ci_windows_packages }}"
+
+    - name: Download pinned just release
+      ansible.windows.win_get_url:
+        url: "{{ lab_ci_just_url }}"
+        dest: "{{ lab_ci_just_zip }}"
+        force: false
+
+    - name: Extract pinned just release
+      community.windows.win_unzip:
+        src: "{{ lab_ci_just_zip }}"
+        dest: "{{ lab_ci_just_dir }}"
+        creates: "{{ lab_ci_just_dir }}\\just.exe"
+        delete_archive: true
+
+    - name: Add just to the machine PATH
+      ansible.windows.win_path:
+        elements:
+          - "{{ lab_ci_just_dir }}"
+        scope: machine
+        state: present
+
+    - name: Refresh PATH for subsequent Ansible commands
+      ansible.windows.win_shell: |
+        $env:Path = [Environment]::GetEnvironmentVariable('Path', 'Machine') + ';' + [Environment]::GetEnvironmentVariable('Path', 'User')
+        [Environment]::SetEnvironmentVariable('Path', $env:Path, 'Process')
+      args:
+        executable: powershell.exe
+
+    - name: Verify required Windows CI tools
+      ansible.windows.win_command: "{{ item.command }}"
+      loop:
+        - {name: just, command: "{{ lab_ci_just_dir }}\\just.exe --version"}
+        - {name: git, command: "git --version"}
+        - {name: git-lfs, command: "git-lfs --version"}
+        - {name: python, command: "python --version"}
+        - {name: cmake, command: "cmake --version"}
+        - {name: ninja, command: "ninja --version"}
+        - {name: arm-none-eabi-gcc, command: "arm-none-eabi-gcc --version"}
+      changed_when: false
 
     - name: Ensure the disposable checkout directory is clean
       ansible.windows.win_file:

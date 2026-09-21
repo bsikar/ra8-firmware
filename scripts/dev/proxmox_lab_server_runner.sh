@@ -114,6 +114,7 @@ table ip $NFT_TABLE {
   chain input {
     type filter hook input priority -100; policy accept;
     ct state established,related accept
+    iifname @lab_ingress tcp dport { 3142, 8080 } accept
     iifname @lab_ingress drop
   }
 
@@ -144,23 +145,28 @@ ssh-keygen -q -t ed25519 -N '' -C "ra8-lab-$RUN_ID" -f "$KEY_FILE"
 echo "$(ts) Cloning VM $TEMPLATE_ID -> $VM_ID (ra8-lab-$PROFILE-$RUN_ID)..."
 qm clone "$TEMPLATE_ID" "$VM_ID" --name "ra8-lab-$PROFILE-$RUN_ID" --pool ra8-tf-lab --storage ra8-tf-lab --full 1
 qm set "$VM_ID" --description "Disposable RA8 lab VM; RA8_LAB_RUN=$RUN_ID"
-qm set "$VM_ID" --tags "ra8-lab,run-$RUN_ID"
-qm set "$VM_ID" --net0 "virtio,bridge=$BRIDGE,firewall=1,rate=10"
+tags="terraform,ra8-lab,run-$RUN_ID"
+if [[ "$PROFILE" == "windows" ]]; then
+  tags+=",windows"
+fi
+qm set "$VM_ID" --tags "$tags"
+# The runner's nftables table is the authoritative isolation boundary. Leaving
+# Proxmox's per-interface firewall enabled here blocks first-boot ARP/SSH on
+# the private bridge before cloud-init can finish configuring the guest.
+qm set "$VM_ID" --net0 "virtio,bridge=$BRIDGE,firewall=0,rate=10"
 
-if [[ "$PROFILE" == "linux" ]]; then
-  qm set "$VM_ID" --ide2 "ra8-tf-lab:cloudinit"
+qm set "$VM_ID" --ide2 "ra8-tf-lab:cloudinit"
   qm set "$VM_ID" --ipconfig0 "ip=$GUEST_IP/24,gw=$GATEWAY"
   qm set "$VM_ID" --nameserver "1.1.1.1"
   qm set "$VM_ID" --ciuser "$GUEST_USER"
   qm set "$VM_ID" --sshkeys "$KEY_FILE.pub"
-fi
 
 echo "$(ts) Starting VM $VM_ID..."
 qm start "$VM_ID"
 
 # 4. Wait for SSH to guest
 echo "$(ts) Waiting for guest SSH to $GUEST_USER@$GUEST_IP..."
-SSH_OPTS=(-i "$KEY_FILE" -o BatchMode=yes -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=3)
+SSH_OPTS=(-i "$KEY_FILE" -o BatchMode=yes -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o LogLevel=ERROR -o ConnectTimeout=3)
 ssh_ready=0
 for _ in {1..90}; do
   if ssh "${SSH_OPTS[@]}" "$GUEST_USER@$GUEST_IP" true >/dev/null 2>&1; then
@@ -176,14 +182,23 @@ if ((!ssh_ready)); then
 fi
 echo "$(ts) Guest SSH is online."
 
-# 5. Stage code into guest
-echo "$(ts) Uploading repository archive to guest..."
-scp "${SSH_OPTS[@]}" "$ARCHIVE_PATH" "$GUEST_USER@$GUEST_IP:/tmp/source.tar"
+# 5. Stage code into guest. Linux runs the containerized CI directly; Windows
+# is provisioned by the repository's Ansible playbook from the PVE controller.
+if [[ "$PROFILE" == "linux" ]]; then
+  echo "$(ts) Uploading repository archive to Linux guest..."
+  scp "${SSH_OPTS[@]}" "$ARCHIVE_PATH" "$GUEST_USER@$GUEST_IP:/tmp/source.tar"
+fi
 
 if [[ "$PROFILE" == "linux" ]]; then
   echo "$(ts) Preparing Linux guest CI substrate and dependencies..."
-  ssh "${SSH_OPTS[@]}" "$GUEST_USER@$GUEST_IP" bash -s <<'GUEST_SETUP'
+  ssh "${SSH_OPTS[@]}" "$GUEST_USER@$GUEST_IP" bash -s -- "$GATEWAY" <<'GUEST_SETUP'
 set -euo pipefail
+gateway="${1:-10.250.9.1}"
+
+# Auto-detect local lab apt cache proxy on host gateway
+if curl -s --connect-timeout 1 "http://$gateway:3142" >/dev/null 2>&1; then
+  echo "Acquire::http::Proxy \"http://$gateway:3142\";" | sudo tee /etc/apt/apt.conf.d/01proxy >/dev/null
+fi
 
 # Configure systemd-resolved to use approved 1.1.1.1 DNS egress
 sudo mkdir -p /etc/systemd/resolved.conf.d
@@ -213,6 +228,22 @@ fi
 # Initialize git-lfs
 sudo git lfs install --system >/dev/null 2>&1 || true
 
+# Configure container runtime configs
+mkdir -p ~/.config/containers
+cat > ~/.config/containers/containers.conf <<'EOF'
+[containers]
+[engine]
+cgroup_manager = "cgroupfs"
+events_logger = "file"
+EOF
+
+cat > ~/.config/containers/storage.conf <<'EOF'
+[storage]
+driver = "overlay"
+[storage.options.overlay]
+mount_program = "/usr/bin/fuse-overlayfs"
+EOF
+
 # Unpack checkout
 rm -rf ~/ra8-lab-ci
 mkdir -p ~/ra8-lab-ci
@@ -222,14 +253,25 @@ cd ~/ra8-lab-ci
 git init -q --initial-branch=main
 git config user.name "ra8-lab-ci"
 git config user.email "ci@localhost"
-git add --all
+git add -A -f
 git commit --allow-empty -q -m "Disposable CI snapshot"
 GUEST_SETUP
 
   echo "$(ts) Launching CI suite inside container..."
-  # Start CI in background inside guest, outputting to ~/ci.log
-  ssh "${SSH_OPTS[@]}" "$GUEST_USER@$GUEST_IP" \
-    "nohup /bin/bash -p ~/ra8-lab-ci/scripts/ci/devcontainer_run.sh -- just ci > ~/ci.log 2>&1 & echo \$! > ~/ci.pid"
+  # Start CI in background inside guest and persist its exit code. A later SSH
+  # session cannot wait(2) for a process it did not create, so waiting on the
+  # PID from the monitor loop would report a false failure after successful CI.
+  ssh "${SSH_OPTS[@]}" "$GUEST_USER@$GUEST_IP" bash -s <<'GUEST_LAUNCH'
+set -u
+rm -f "$HOME/ci.pid" "$HOME/ci.exit"
+nohup /bin/bash -p -c '
+  env RA8_CONTAINER_RUNTIME="sudo podman" /bin/bash -p "$HOME/ra8-lab-ci/scripts/ci/devcontainer_run.sh" -- just ci
+  rc=$?
+  echo "$rc" > "$HOME/ci.exit"
+  exit "$rc"
+' > "$HOME/ci.log" 2>&1 < /dev/null &
+echo $! > "$HOME/ci.pid"
+GUEST_LAUNCH
 
   echo "$(ts) Monitoring CI execution and system metrics..."
   ci_finished=0
@@ -239,31 +281,32 @@ GUEST_SETUP
     # Check if process is still running
     if ! ssh "${SSH_OPTS[@]}" "$GUEST_USER@$GUEST_IP" "kill -0 \$(cat ~/ci.pid 2>/dev/null) 2>/dev/null"; then
       ci_finished=1
-      # Retrieve exit status
-      ci_exit=$(ssh "${SSH_OPTS[@]}" "$GUEST_USER@$GUEST_IP" "wait \$(cat ~/ci.pid 2>/dev/null); echo \$?" || echo 1)
+      # Retrieve the exit status written by the guest-side wrapper.
+      ci_exit=$(ssh "${SSH_OPTS[@]}" "$GUEST_USER@$GUEST_IP" "cat ~/ci.exit" 2>/dev/null || echo 1)
       break
     fi
 
     # Query live metrics from guest
-    metric=$(ssh "${SSH_OPTS[@]}" "$GUEST_USER@$GUEST_IP" python3 -c '
+    metric=$(ssh "${SSH_OPTS[@]}" "$GUEST_USER@$GUEST_IP" python3 <<'PYEOF' 2>/dev/null || true
 import os, time, shutil, subprocess
-l = ", ".join(f"{x:.2f}" for x in os.getloadavg())
-t, u, f = shutil.disk_usage("/")
-m = {k.rstrip(":"): int(v) for k, v in (x.split()[:2] for x in open("/proc/meminfo"))}
-tot = m.get("MemTotal", 0) / 1048576
-av = m.get("MemAvailable", 0) / 1048576
+l = ', '.join(f'{x:.2f}' for x in os.getloadavg())
+t, u, f = shutil.disk_usage('/')
+m = {k.rstrip(':'): int(v) for k, v in (x.split()[:2] for x in open('/proc/meminfo'))}
+tot = m.get('MemTotal', 0) / 1048576
+av = m.get('MemAvailable', 0) / 1048576
 used = tot - av
 rp = (used / tot * 100) if tot else 0
-c1 = [int(x) for x in open("/proc/stat").readline().split()[1:5]]
+c1 = [int(x) for x in open('/proc/stat').readline().split()[1:5]]
 time.sleep(0.05)
-c2 = [int(x) for x in open("/proc/stat").readline().split()[1:5]]
+c2 = [int(x) for x in open('/proc/stat').readline().split()[1:5]]
 db = (c2[0] + c2[1] + c2[2]) - (c1[0] + c1[1] + c1[2])
 dt = sum(c2) - sum(c1)
-cpu = f"{(db / dt * 100):.0f}%" if dt > 0 else "0%"
-top_cmd = subprocess.run("ps -eo comm --sort=-pcpu | awk \"NR>1 && !/^(ps|python3|awk|sshd|systemd|kworker|bash|sh|init|tmux)/ {print; exit}\"", shell=True, capture_output=True, text=True).stdout.strip()
-task = f" | active: {top_cmd}" if top_cmd else ""
-print(f"load: [{l}] | cpu: {cpu} | ram: {used:.1f}G/{tot:.1f}G ({rp:.0f}%) | disk: {f/1073741824:.1f}G free ({f/t*100:.0f}%){task}")
-' 2>/dev/null || true)
+cpu = f'{(db / dt * 100):.0f}%' if dt > 0 else '0%'
+top_cmd = subprocess.run("ps -eo comm --sort=-pcpu | awk 'NR>1 && !/^(ps|python3|awk|sshd|systemd|kworker|bash|sh|init|tmux)/ {print; exit}'", shell=True, capture_output=True, text=True).stdout.strip()
+task = f' | active: {top_cmd}' if top_cmd else ''
+print(f'load: [{l}] | cpu: {cpu} | ram: {used:.1f}G/{tot:.1f}G ({rp:.0f}%) | disk: {f/1073741824:.1f}G free ({f/t*100:.0f}%){task}')
+PYEOF
+)
     if [[ -n "$metric" ]]; then
       echo "$(ts) [ra8-lab-linux] $metric"
     fi
@@ -280,14 +323,43 @@ print(f"load: [{l}] | cpu: {cpu} | ram: {used:.1f}G/{tot:.1f}G ({rp:.0f}%) | dis
   fi
 
 elif [[ "$PROFILE" == "windows" ]]; then
-  echo "$(ts) Unpacking repository on Windows guest..."
-  ssh "${SSH_OPTS[@]}" "$GUEST_USER@$GUEST_IP" \
-    "powershell -Command \"Remove-Item -Recurse -Force C:\\ra8-lab-ci -ErrorAction SilentlyContinue; New-Item -ItemType Directory -Force C:\\ra8-lab-ci; tar.exe -xf /tmp/source.tar -C C:\\ra8-lab-ci; Remove-Item /tmp/source.tar -ErrorAction SilentlyContinue\""
+  echo "$(ts) Preparing the PVE-side Ansible controller for Windows CI..."
+  CONTROLLER_DIR="$RUN_DIR/ansible-controller"
+  ANSIBLE_VENV="$RUN_DIR/ansible-venv"
+  COLLECTIONS_DIR="$CONTROLLER_DIR/collections"
+  mkdir -p "$CONTROLLER_DIR"
+  tar -xf "$ARCHIVE_PATH" -C "$CONTROLLER_DIR"
 
-  echo "$(ts) Checking for just.exe and running Windows CI validation..."
-  win_out=$(ssh "${SSH_OPTS[@]}" "$GUEST_USER@$GUEST_IP" \
-    "powershell -Command \"if (Get-Command just.exe -ErrorAction SilentlyContinue) { cd C:\\ra8-lab-ci; just ci } else { Write-Output 'Windows CI bootstrap verified: repository staged at C:\\ra8-lab-ci on Windows Server 2025. (Template VM 9011 pending native just.exe installation).' }\"")
-  echo "$win_out"
+  if [[ ! -x "$ANSIBLE_VENV/bin/ansible-playbook" ]]; then
+    apt-get update -qq
+    apt-get install -y -qq python3-venv python3-pip
+    python3 -m venv "$ANSIBLE_VENV"
+    "$ANSIBLE_VENV/bin/pip" install --disable-pip-version-check --no-cache-dir \
+      'ansible-core>=2.18,<2.19' pywinrm
+  fi
+  ANSIBLE_CONFIG="$CONTROLLER_DIR/infra/ansible/ansible.cfg" \
+    "$ANSIBLE_VENV/bin/ansible-galaxy" collection install \
+    -r "$CONTROLLER_DIR/infra/ansible/requirements.yml" \
+    -p "$COLLECTIONS_DIR"
+
+  INVENTORY="$RUN_DIR/windows-inventory.ini"
+  cat > "$INVENTORY" <<EOF
+[lab_windows]
+ra8-lab-windows ansible_host=$GUEST_IP ansible_port=22 ansible_user=$GUEST_USER ansible_private_key_file=$KEY_FILE ansible_connection=ssh ansible_shell_type=powershell
+
+[lab_windows:vars]
+ansible_host_key_checking=False
+ansible_ssh_common_args='-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o IdentitiesOnly=yes'
+EOF
+
+  echo "$(ts) Provisioning Windows Server Core and running CI through Ansible..."
+  ANSIBLE_CONFIG="$CONTROLLER_DIR/infra/ansible/ansible.cfg" \
+    ANSIBLE_COLLECTIONS_PATHS="$COLLECTIONS_DIR" \
+    "$ANSIBLE_VENV/bin/ansible-playbook" \
+      -i "$INVENTORY" \
+      "$CONTROLLER_DIR/infra/ansible/playbooks/proxmox-lab-windows.yml" \
+      -e "lab_ci_source_archive=$ARCHIVE_PATH" \
+      -e "lab_ci_user=$GUEST_USER"
 fi
 
 echo "$(ts) CI execution completed successfully."
