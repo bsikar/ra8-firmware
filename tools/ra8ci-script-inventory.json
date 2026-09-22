@@ -95,7 +95,8 @@
           "source_verdict": "used"
         }
       ],
-      "verdict": "dead"
+      "verdict": "dead",
+      "deletion_status": "staged_for_cleanup"
     },
     {
       "dead_reference_chain": [],
@@ -326,7 +327,8 @@
           "source_verdict": "used"
         }
       ],
-      "verdict": "dead"
+      "verdict": "dead",
+      "deletion_status": "staged_for_cleanup"
     },
     {
       "dead_reference_chain": [],
@@ -5935,7 +5937,8 @@
           "source_verdict": "used"
         }
       ],
-      "verdict": "dead"
+      "verdict": "dead",
+      "deletion_status": "staged_for_cleanup"
     },
     {
       "dead_reference_chain": [],
@@ -17462,7 +17465,8 @@
           "source_verdict": "used"
         }
       ],
-      "verdict": "dead"
+      "verdict": "dead",
+      "deletion_status": "staged_for_cleanup"
     },
     {
       "dead_reference_chain": [],
@@ -21877,7 +21881,8 @@
           "source_verdict": "used"
         }
       ],
-      "verdict": "dead"
+      "verdict": "dead",
+      "deletion_status": "staged_for_cleanup"
     },
     {
       "dead_reference_chain": [],
@@ -31266,7 +31271,8 @@
           "source_verdict": "used"
         }
       ],
-      "verdict": "dead"
+      "verdict": "dead",
+      "deletion_status": "staged_for_cleanup"
     },
     {
       "dead_reference_chain": [],
@@ -48658,7 +48664,8 @@
           "source_verdict": "used"
         }
       ],
-      "verdict": "dead"
+      "verdict": "dead",
+      "deletion_status": "staged_for_cleanup"
     },
     {
       "dead_reference_chain": [],
@@ -50838,7 +50845,8 @@
           "source_verdict": "external"
         }
       ],
-      "verdict": "dead"
+      "verdict": "dead",
+      "deletion_status": "retained_pending_out_of_scope_reference_cleanup"
     },
     {
       "dead_reference_chain": [],
@@ -57929,7 +57937,8 @@
       "path": "scripts/dev/send_qmp_keys.py",
       "reason": "",
       "references": [],
-      "verdict": "dead"
+      "verdict": "dead",
+      "deletion_status": "staged_for_cleanup"
     },
     {
       "dead_reference_chain": [],
@@ -58504,7 +58513,8 @@
       "path": "scripts/dev/wait_and_seal_windows_template.sh",
       "reason": "",
       "references": [],
-      "verdict": "dead"
+      "verdict": "dead",
+      "deletion_status": "staged_for_cleanup"
     },
     {
       "dead_reference_chain": [],
@@ -61629,7 +61639,8 @@
       "path": "scripts/fix/fix_doxy_file_tags.py",
       "reason": "",
       "references": [],
-      "verdict": "dead"
+      "verdict": "dead",
+      "deletion_status": "staged_for_cleanup"
     },
     {
       "dead_reference_chain": [
@@ -61648,7 +61659,8 @@
           "source_verdict": "used"
         }
       ],
-      "verdict": "dead"
+      "verdict": "dead",
+      "deletion_status": "staged_for_cleanup"
     },
     {
       "dead_reference_chain": [
@@ -61673,7 +61685,8 @@
           "source_verdict": "used"
         }
       ],
-      "verdict": "dead"
+      "verdict": "dead",
+      "deletion_status": "staged_for_cleanup"
     },
     {
       "dead_reference_chain": [],
@@ -61864,7 +61877,8 @@
           "source_verdict": "used"
         }
       ],
-      "verdict": "dead"
+      "verdict": "dead",
+      "deletion_status": "staged_for_cleanup"
     },
     {
       "dead_reference_chain": [],
@@ -62155,7 +62169,8 @@
           "source_verdict": "external"
         }
       ],
-      "verdict": "dead"
+      "verdict": "dead",
+      "deletion_status": "retained_pending_out_of_scope_reference_cleanup"
     },
     {
       "dead_reference_chain": [
@@ -62174,7 +62189,8 @@
           "source_verdict": "external"
         }
       ],
-      "verdict": "dead"
+      "verdict": "dead",
+      "deletion_status": "retained_pending_out_of_scope_reference_cleanup"
     },
     {
       "dead_reference_chain": [],
@@ -62240,7 +62256,8 @@
           "source_verdict": "used"
         }
       ],
-      "verdict": "dead"
+      "verdict": "dead",
+      "deletion_status": "staged_for_cleanup"
     },
     {
       "dead_reference_chain": [],
@@ -62353,7 +62370,8 @@
           "source_verdict": "external"
         }
       ],
-      "verdict": "dead"
+      "verdict": "dead",
+      "deletion_status": "retained_pending_out_of_scope_reference_cleanup"
     },
     {
       "dead_reference_chain": [],
@@ -62581,7 +62599,8 @@
           "source_verdict": "used"
         }
       ],
-      "verdict": "dead"
+      "verdict": "dead",
+      "deletion_status": "retained_pending_out_of_scope_reference_cleanup"
     },
     {
       "dead_reference_chain": [],
@@ -62833,7 +62852,8 @@
           "source_verdict": "external"
         }
       ],
-      "verdict": "dead"
+      "verdict": "dead",
+      "deletion_status": "retained_pending_out_of_scope_reference_cleanup"
     },
     {
       "dead_reference_chain": [],
@@ -63498,7 +63518,8 @@
           "source_verdict": "used"
         }
       ],
-      "verdict": "dead"
+      "verdict": "dead",
+      "deletion_status": "staged_for_cleanup"
     },
     {
       "dead_reference_chain": [],
@@ -73391,7 +73412,8 @@
           "source_verdict": "used"
         }
       ],
-      "verdict": "dead"
+      "verdict": "dead",
+      "deletion_status": "staged_for_cleanup"
     },
     {
       "dead_reference_chain": [
@@ -73428,7 +73450,8 @@
           "source_verdict": "used"
         }
       ],
-      "verdict": "dead"
+      "verdict": "dead",
+      "deletion_status": "retained_pending_python_dependency_policy_migration"
     },
     {
       "dead_reference_chain": [],
@@ -74141,7 +74164,8 @@
           "source_verdict": "external"
         }
       ],
-      "verdict": "dead"
+      "verdict": "dead",
+      "deletion_status": "staged_for_cleanup"
     },
     {
       "dead_reference_chain": [
@@ -74178,7 +74202,8 @@
           "source_verdict": "external"
         }
       ],
-      "verdict": "dead"
+      "verdict": "dead",
+      "deletion_status": "retained_pending_out_of_scope_reference_cleanup"
     },
     {
       "dead_reference_chain": [
@@ -74312,7 +74337,8 @@
           "source_verdict": "dead"
         }
       ],
-      "verdict": "dead"
+      "verdict": "dead",
+      "deletion_status": "retained_pending_out_of_scope_reference_cleanup"
     },
     {
       "dead_reference_chain": [
@@ -74350,7 +74376,8 @@
           "source_verdict": "dead"
         }
       ],
-      "verdict": "dead"
+      "verdict": "dead",
+      "deletion_status": "retained_pending_out_of_scope_reference_cleanup"
     },
     {
       "dead_reference_chain": [
@@ -74423,7 +74450,8 @@
           "source_verdict": "external"
         }
       ],
-      "verdict": "dead"
+      "verdict": "dead",
+      "deletion_status": "retained_pending_out_of_scope_reference_cleanup"
     },
     {
       "dead_reference_chain": [],
@@ -75116,7 +75144,8 @@
           "source_verdict": "dead"
         }
       ],
-      "verdict": "dead"
+      "verdict": "dead",
+      "deletion_status": "staged_for_cleanup"
     },
     {
       "dead_reference_chain": [],
@@ -75548,7 +75577,8 @@
           "source_verdict": "used"
         }
       ],
-      "verdict": "dead"
+      "verdict": "dead",
+      "deletion_status": "staged_for_cleanup"
     },
     {
       "dead_reference_chain": [],
@@ -75769,7 +75799,8 @@
           "source_verdict": "dead"
         }
       ],
-      "verdict": "dead"
+      "verdict": "dead",
+      "deletion_status": "staged_for_cleanup"
     }
   ],
   "schema_version": 2,

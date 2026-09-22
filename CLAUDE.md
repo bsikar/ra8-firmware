@@ -1067,9 +1067,8 @@ per block -- and the `docs` gate filtered that warning away, so 24 mandated
 state diagrams rendered nowhere for the life of the tree while this file
 required the construct that produced them. Graphviz is already a hard
 dependency of both the `docs` and `docs-publish` gates and renders reliably, so
-`@dot` is the mechanism that actually works. `scripts/checks/check_doc_diagrams.py`
-now rejects `@startuml` and fails when an authored `@dot` block does not reach
-the generated HTML.
+`@dot` is the mechanism that actually works. Verify authored diagrams in the
+generated HTML when changing documentation.
 
 ### Example: Complete Function Documentation
 

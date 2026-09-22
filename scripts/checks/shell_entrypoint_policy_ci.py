@@ -79,6 +79,5 @@ CI_POLICY_ROWS: tuple[ShellPolicyRow, ...] = (
     ("scripts/ci/lib/snapshot.sh", "portable", "sourced-only", "bash", False, False),
     ("scripts/ci/lib/tool_env.sh", "portable", "dual-use", "bash", False, False),
     ("scripts/ci/monitor.sh", "privileged", "entry", "bash", True, False),
-    ("scripts/ci/test-docker.sh", "portable", "entry", "bash", True, False),
     ("scripts/ci/unicorn_pin.sh", "portable", "sourced-only", "bash", False, False),
 )

@@ -159,7 +159,7 @@ def main() -> int:
     if all_violations:
         print(
             f"\n{len(all_violations)} redundant cast(s) in TEST_ASSERT_EQ.\n"
-            "Run scripts/fix/strip_assert_casts.py to fix automatically.",
+            "Remove the redundant casts before retrying.",
             file=sys.stderr,
         )
         return 1

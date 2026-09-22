@@ -519,6 +519,6 @@ def load(csv_path: Path = HUM_CSV) -> RegisterMap:
         HumExtractionError: the CSV is missing, malformed or vacuous.
     """
     if not csv_path.is_file():
-        msg = f"register map not found: {csv_path} (run scripts/gen/gen_hum_register_map.py)"
+        msg = f"register map not found: {csv_path} (regenerate the register map)"
         raise HumExtractionError(msg)
     return RegisterMap(from_csv(csv_path.read_text(encoding="utf-8")))
