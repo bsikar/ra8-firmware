@@ -48,6 +48,13 @@ typedef enum : uint16_t {
   k_t_big_len_lo  = 0x40U, /**< Low octet of 1600, a length no frame can carry.    */
   k_t_big_len_hi  = 0x06U, /**< Its high octet.                                    */
   k_t_mac_first   = 1U,    /**< First octet of the address the copy helper reads.  */
+
+  k_t_ifnum_eight   = 0x80U,   /**< Interface eight, in the header's high nibble. */
+  k_t_ifnum_value   = 8U,      /**< That same interface number as a plain value.  */
+  k_t_ifnum_weight  = 0x80U,   /**< What `if_num = 8` contributes to the sum.     */
+  k_t_nibble_mask   = 0x0FU,   /**< Mask isolating either half of the octet.      */
+  k_t_captured_len  = 29U,     /**< Payload length the captured INIT header set.  */
+  k_t_captured_csum = 0x026DU, /**< Checksum it stated; the bench got 0x02ED.     */
 } t_wire_const_t;
 
 /** @brief Arena backing the fixture link. */
@@ -611,6 +618,112 @@ RA8_INTERNAL static void internal_test_mcdc_caps_guard(void)
   TEST_END("c6link caps guard vectors");
 }
 
+/**
+ * @par MC/DC:
+ * Decision: `(owed != 0U) && (probe->shortfall == owed)` (2 conditions,
+ * ::priv_c6link_frame_csum_probe)
+ * - Vector 1: if_num 8, shortfall 0x80 -> true  (control: both true)
+ * - Vector 2: if_num 0, shortfall 0    -> false (varies the first condition)
+ * - Vector 3: if_num 8, shortfall 0x81 -> false (varies the second)
+ * N+1 = 3 vectors for N=2 conditions: minimal MC/DC.
+ * Decisions: libs/ra8_c6link/src/ra8_c6link_frame.c@priv_c6link_frame_csum_probe @brief Verify checksum shortfall probe behavior. @details Executes the checksum shortfall probe scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_csum_shortfall_probe(void)
+{
+  TEST_BEGIN("c6link checksum shortfall probe");
+  ra8_c6link_csum_probe_t probe = {};
+  ra8_c6link_rx_view_t    view  = {};
+
+  /* A frame that verifies is not a shortfall, and reports none. */
+  (void)memset(s_frame, 0, sizeof s_frame);
+  for (uint16_t i = 0U; i < (uint16_t)k_t_payload_len; i++) {
+    s_frame[(uint16_t)k_ra8_c6link_header_bytes + i] = (uint8_t)(i + 1U);
+  }
+  priv_c6link_frame_seal(s_frame, (uint8_t)ESP_SERIAL_IF, 0U, (uint16_t)k_t_payload_len);
+  TEST_ASSERT_EQ(false, priv_c6link_frame_csum_probe(s_frame, &probe));
+  TEST_ASSERT_EQ(0, probe.shortfall);
+  TEST_ASSERT_EQ(probe.stated, probe.recomputed);
+
+  /* The #529 shape, built the way the co-processor's frame arrives: the
+     checksum is sealed with `if_num` zero, then the nibble is written into the
+     header's first octet without re-checksumming. The sum is then high by
+     exactly `if_num << 4`, and nothing else about the frame changed. */
+  priv_c6link_frame_seal(s_frame, (uint8_t)ESP_PRIV_IF, 0U, (uint16_t)k_t_payload_len);
+  const uint16_t sealed_csum = (uint16_t)((uint16_t)s_frame[k_t_hdr_csum_lo] |
+                                          ((uint16_t)s_frame[k_t_hdr_csum_lo + 1U] << 8U));
+  s_frame[0] = (uint8_t)(s_frame[0] | (uint8_t)k_t_ifnum_eight);
+  TEST_ASSERT_EQ(k_ra8_c6link_frame_bad_checksum, priv_c6link_frame_classify(s_frame, &view));
+  TEST_ASSERT_EQ(true, priv_c6link_frame_csum_probe(s_frame, &probe));
+  TEST_ASSERT_EQ(k_t_ifnum_value, probe.if_num);
+  TEST_ASSERT_EQ(k_t_ifnum_weight, probe.shortfall);
+  TEST_ASSERT_EQ(sealed_csum, probe.stated);
+  TEST_ASSERT_EQ((uint16_t)(sealed_csum + (uint16_t)k_t_ifnum_weight), probe.recomputed);
+  TEST_ASSERT_EQ(true, probe.ifnum_consistent);
+
+  /* The shortfall is arithmetic, not attribution: a payload octet high by the
+     same amount, with `if_num` back at zero, is a mismatch of exactly the same
+     size that the predicate must NOT claim as the #529 shape. */
+  priv_c6link_frame_seal(s_frame, (uint8_t)ESP_PRIV_IF, 0U, (uint16_t)k_t_payload_len);
+  s_frame[(uint16_t)k_ra8_c6link_header_bytes] =
+    (uint8_t)(s_frame[(uint16_t)k_ra8_c6link_header_bytes] + (uint8_t)k_t_ifnum_weight);
+  TEST_ASSERT_EQ(k_ra8_c6link_frame_bad_checksum, priv_c6link_frame_classify(s_frame, &view));
+  TEST_ASSERT_EQ(false, priv_c6link_frame_csum_probe(s_frame, &probe));
+  TEST_ASSERT_EQ(k_t_ifnum_weight, probe.shortfall);
+  TEST_ASSERT_EQ(0, probe.if_num);
+  TEST_ASSERT_EQ(false, probe.ifnum_consistent);
+
+  /* Same non-zero `if_num`, a shortfall one larger: consistent in cause, not
+     in arithmetic, so the predicate refuses it. */
+  priv_c6link_frame_seal(s_frame, (uint8_t)ESP_PRIV_IF, 0U, (uint16_t)k_t_payload_len);
+  s_frame[0] = (uint8_t)(s_frame[0] | (uint8_t)k_t_ifnum_eight);
+  s_frame[(uint16_t)k_ra8_c6link_header_bytes]++;
+  TEST_ASSERT_EQ(false, priv_c6link_frame_csum_probe(s_frame, &probe));
+  TEST_ASSERT_EQ((uint16_t)((uint16_t)k_t_ifnum_weight + 1U), probe.shortfall);
+  TEST_ASSERT_EQ(false, probe.ifnum_consistent);
+
+  /* Null arguments are refused rather than faulted, both ways round. */
+  TEST_ASSERT_EQ(false, priv_c6link_frame_csum_probe(nullptr, &probe));
+  TEST_ASSERT_EQ(false, priv_c6link_frame_csum_probe(s_frame, nullptr));
+  TEST_END("c6link checksum shortfall probe");
+}
+
+/**
+ * @par MC/DC:
+ * (no compound decision under test -- the captured header is a fixed vector
+ * and every assertion is an equality against it)
+ * Decisions: libs/ra8_c6link/src/ra8_c6link_frame.c@priv_c6link_frame_csum_probe @brief Verify captured init event header behavior. @details Executes the captured init event header scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_captured_init_event_header(void)
+{
+  TEST_BEGIN("c6link #529 captured header");
+  /* The twelve header octets `c6_fw_version` logged on 2026-07-28, verbatim:
+     raw=85001d000c006d0200000033. The payload was never captured, so this
+     vector pins what the header alone can and cannot establish. */
+  static const uint8_t k_captured[(size_t)k_ra8_c6link_header_bytes] = {
+    0x85U, 0x00U, 0x1DU, 0x00U, 0x0CU, 0x00U, 0x6DU, 0x02U, 0x00U, 0x00U, 0x00U, 0x33U,
+  };
+  (void)memset(s_frame, 0, sizeof s_frame);
+  (void)memcpy(s_frame, k_captured, sizeof k_captured);
+
+  ra8_c6link_rx_view_t view = {};
+  /* if_type 5 (ESP_PRIV_IF) in the low nibble, if_num 8 in the high one. */
+  TEST_ASSERT_EQ(ESP_PRIV_IF, (uint8_t)(k_captured[0] & (uint8_t)k_t_nibble_mask));
+  TEST_ASSERT_EQ(k_t_ifnum_value, (uint8_t)(k_captured[0] >> 4U));
+  TEST_ASSERT_EQ(k_t_captured_len, (uint16_t)k_captured[k_t_hdr_len_lo]);
+  TEST_ASSERT_EQ(k_ra8_c6link_header_bytes, (uint16_t)k_captured[k_t_hdr_off_lo]);
+  TEST_ASSERT_EQ(ESP_PACKET_TYPE_EVENT, k_captured[k_t_pkt_type]);
+
+  /* The header passes every sanity test and fails only the checksum, which is
+     why a conformant host drops a frame that is otherwise well-formed. The
+     payload here is zeroed rather than the bytes the C6 sent, so the
+     recomputed value is this fixture's, not the bench's 0x02ED. */
+  TEST_ASSERT_EQ(k_ra8_c6link_frame_bad_checksum, priv_c6link_frame_classify(s_frame, &view));
+
+  ra8_c6link_csum_probe_t probe = {};
+  (void)priv_c6link_frame_csum_probe(s_frame, &probe);
+  TEST_ASSERT_EQ(k_t_captured_csum, probe.stated);
+  TEST_ASSERT_EQ(k_t_ifnum_value, probe.if_num);
+  TEST_END("c6link #529 captured header");
+}
+
 int main(void)
 {
   internal_test_arena_guards();
@@ -624,5 +737,7 @@ int main(void)
   internal_test_copy_helpers();
   internal_test_mcdc_wire_guards();
   internal_test_mcdc_caps_guard();
+  internal_test_csum_shortfall_probe();
+  internal_test_captured_init_event_header();
   return 0;
 }

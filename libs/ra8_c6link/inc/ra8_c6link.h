@@ -359,6 +359,8 @@ typedef struct ra8_c6link_fault {
  *
  * @invariant `data + idle + bad_checksum + malformed` never exceeds
  *            `transfers`: each counted frame came from one transaction.
+ * @invariant `ifnum_shortfall` never exceeds `bad_checksum`: it counts a
+ *            shape within those frames, not frames of its own.
  * @invariant `transfers` never exceeds the budget the caller passed.
  *
  * @par Example:
@@ -371,10 +373,15 @@ typedef struct ra8_c6link_fault {
  * @since 0.1.0
  */
 typedef struct ra8_c6link_stats {
-  uint16_t transfers;    /**< Full-duplex transactions clocked.               */
-  uint16_t data;         /**< Well-formed frames carrying a payload.          */
-  uint16_t idle;         /**< Filler frames the co-processor returned.        */
-  uint16_t bad_checksum; /**< Frames whose recomputed checksum disagreed.     */
+  uint16_t transfers;    /**< Full-duplex transactions clocked.           */
+  uint16_t data;         /**< Well-formed frames carrying a payload.      */
+  uint16_t idle;         /**< Filler frames the co-processor returned.    */
+  uint16_t bad_checksum; /**< Frames whose recomputed checksum disagreed. */
+  uint16_t ifnum_shortfall;
+  /**< Subset of `bad_checksum`: frames whose shortfall was exactly
+       `if_num << 4`, the arithmetic shape #529 records against the
+       co-processor's bootup `ESP_PRIV_IF` frame. Counted apart so a known
+       co-processor quirk cannot be mistaken for wire corruption. */
   uint16_t malformed;    /**< Frames whose offset or length was not credible. */
   uint16_t rpc_in;       /**< Control-plane frames decoded as `Rpc`.          */
   uint16_t events;       /**< Announcements delivered to the event callback.  */
