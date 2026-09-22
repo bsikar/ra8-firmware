@@ -184,6 +184,10 @@ typedef struct {
  * @invariant `logical_blocks < physical_blocks` (at least one spare block).
  * @invariant `map` has `logical_blocks` entries; `pblocks` has
  *            `physical_blocks` entries.
+ * @invariant `reserved_tail` is non-zero and `ckbuf` non-NULL exactly when the
+ *            handle was brought up by ::ra8_ftl_mount; ::ra8_ftl_init leaves
+ *            both clear, because a hand-initialised FTL owns no checkpoint
+ *            home.
  *
  * @since 0.1.0
  */
@@ -192,8 +196,11 @@ typedef struct {
   uint16_t*                map;             /**< logical->physical map (private).   */
   ra8_ftl_pblock_t*        pblocks;         /**< Per-physical metadata (private).   */
   uint8_t*                 scratch;         /**< 512-byte copy scratch (private).   */
+  uint8_t*                 ckbuf;           /**< Checkpoint staging buf (private).  */
+  uint32_t                 ckbuf_len;       /**< Bytes in `ckbuf` (private).        */
   uint32_t                 logical_blocks;  /**< Blocks presented to FAT (private). */
   uint32_t                 physical_blocks; /**< Blocks in the raw dev (private).   */
+  uint32_t                 reserved_tail;   /**< Checkpoint tail blocks (private).  */
   uint8_t                  erase_value;     /**< Raw medium erase byte (private).   */
 } ra8_ftl_t;
 
@@ -479,6 +486,201 @@ ra8_ftl_checkpoint_save(const ra8_ftl_t* ftl, uint8_t* buf, uint32_t buf_len);
  */
 [[nodiscard]] ra8_err_t
 ra8_ftl_checkpoint_load(ra8_ftl_t* ftl, const uint8_t* buf, uint32_t buf_len);
+
+/* =============================================================================
+ * Mount lifecycle
+ * =============================================================================
+ */
+
+/**
+ * @struct ra8_ftl_cfg_t
+ * @brief Declarative FTL geometry for ::ra8_ftl_mount.
+ *
+ * @details
+ * The house `init(handle, const cfg_t*)` form used by ::ra8_cache_store_init,
+ * ::ra8_keycache_init and ::ra8_vmem_init, and the shape that lets the FTL own
+ * the checkpoint home instead of asking the caller to fence it off by hand.
+ *
+ * The caller states how many blocks at the **end** of the underlying device
+ * belong to the FTL's own checkpoint (`reserved_tail_blocks`); the FTL reads
+ * `block_count` from ::ra8_io_blockdev_get_caps and derives its managed span as
+ * `block_count - reserved_tail_blocks`. That is the arithmetic a caller
+ * previously had to get right by deliberately under-reporting
+ * `physical_blocks` to ::ra8_ftl_init: understate it and the FTL relocates a
+ * block over its own checkpoint, overstate it and the checkpoint slot is
+ * unreachable.
+ *
+ * `ckbuf` is the staging buffer ::ra8_ftl_mount and ::ra8_ftl_sync use to move
+ * the checkpoint between the caller's tables and the reserved tail. It must be
+ * at least `reserved_tail_blocks * 512` bytes (a whole number of blocks, since
+ * the underlying device transfers blocks) and at least
+ * ::ra8_ftl_checkpoint_size bytes; mount checks both and refuses rather than
+ * discovering it at sync time. It must not overlap `map`, `pblocks` or
+ * `scratch`.
+ *
+ * @invariant `reserved_tail_blocks >= 1`.
+ * @invariant `ckbuf_len >= reserved_tail_blocks * 512`.
+ *
+ * @since 0.1.0
+ */
+typedef struct {
+  const ra8_io_blockdev_t* raw;                  /**< Underlying erase-before-write dev. */
+  uint16_t*                map;                  /**< `logical_blocks` map entries.      */
+  ra8_ftl_pblock_t*        pblocks;              /**< One entry per managed phys block.  */
+  uint8_t*                 scratch;              /**< 512-byte copy-on-write scratch.    */
+  uint8_t*                 ckbuf;                /**< Checkpoint staging buffer.         */
+  uint32_t                 ckbuf_len;            /**< Bytes available in `ckbuf`.        */
+  uint32_t                 logical_blocks;       /**< Blocks to present upward (>= 1).   */
+  uint32_t                 reserved_tail_blocks; /**< Tail blocks kept for the ckpt.     */
+} ra8_ftl_cfg_t;
+
+/**
+ * @brief Mount an FTL over a device, resuming a checkpoint if one is present.
+ *
+ * @details
+ * The lifecycle entry point: geometry in one struct, the checkpoint slot owned
+ * by the FTL, and cold start versus resume decided from the medium rather than
+ * by the caller.
+ *
+ * 1. Reads `block_count` from the underlying device and derives the managed
+ *    span as `block_count - cfg->reserved_tail_blocks`, so the caller cannot
+ *    hand the FTL a span that overlaps its own checkpoint.
+ * 2. Runs the same validation and cold-start table reset as ::ra8_ftl_init over
+ *    that derived span, and records the checkpoint home on the handle.
+ * 3. Reads the reserved tail. A tail that is **entirely the medium erase value**
+ *    is treated as "no checkpoint yet" and the mount completes cold: every
+ *    logical block unmapped, every physical block FREE. Otherwise the bytes are
+ *    handed to ::ra8_ftl_checkpoint_load and the mapping resumes exactly as it
+ *    stood at the last ::ra8_ftl_sync.
+ *
+ * A tail that is neither blank nor a loadable checkpoint fails the mount and is
+ * **not** silently reformatted: a corrupt or foreign checkpoint over live data
+ * is the caller's decision, not the FTL's. ::ra8_ftl_init plus one
+ * ::ra8_ftl_sync is the deliberate reformat path.
+ *
+ * Nothing is erased or programmed here, so mounting a device is read-only with
+ * respect to the medium.
+ *
+ * @param[out] ftl Handle to mount; caller zero-initialises it before use.
+ * @param[in]  cfg Geometry and caller storage (see ::ra8_ftl_cfg_t).
+ *
+ * @return ra8_err_t Error code.
+ * @retval k_ra8_ok                  Mounted; cold-started or resumed.
+ * @retval k_ra8_err_null_ptr        `ftl`, `cfg`, or a `cfg` pointer was NULL.
+ * @retval k_ra8_err_invalid_size    `logical_blocks` was zero, `ckbuf_len` is
+ *                                   below the reserved tail or the checkpoint,
+ *                                   or the checkpoint cannot fit the tail.
+ * @retval k_ra8_err_invalid_arg     `reserved_tail_blocks` was zero, the device
+ *                                   is no larger than the reserved tail, the
+ *                                   device is read-only, `erase_unit_blocks`
+ *                                   != 1, or no spare block remains.
+ * @retval k_ra8_err_not_initialized No backend is bound to `cfg->raw`.
+ * @retval k_ra8_err_invalid_state   The tail is neither blank nor a checkpoint.
+ * @retval k_ra8_err_not_supported   The tail holds a legacy checkpoint ABI.
+ * @retval k_ra8_err_crc_mismatch    The tail checkpoint fails its CRC trailer.
+ * @retval (other)                   Propagated underlying read error.
+ *
+ * @pre `cfg` and every pointer in it out-live every call through the FTL.
+ * @pre `cfg->pblocks` has one entry per managed physical block, which is
+ *      `block_count - cfg->reserved_tail_blocks`, and was zero-initialised.
+ * @pre `cfg->ckbuf` does not overlap `map`, `pblocks` or `scratch`.
+ * @post On success the handle is mounted and ::ra8_ftl_as_blockdev may bind it.
+ * @post On any non-ok return `ftl` is left unbound, so a failed mount cannot be
+ *       mistaken for a cold-started one.
+ * @post No block of the underlying device is erased or programmed.
+ *
+ * @note Not thread-safe with respect to the same FTL.
+ *
+ * @see ra8_ftl_sync
+ * @see ra8_ftl_unmount
+ * @see ra8_ftl_init
+ * @since 0.1.0
+ */
+[[nodiscard]] ra8_err_t ra8_ftl_mount(ra8_ftl_t* ftl, const ra8_ftl_cfg_t* cfg);
+
+/**
+ * @brief Persist the live mapping into the mount's reserved tail.
+ *
+ * @details
+ * Serialises the volatile `map` and `pblocks` tables with
+ * ::ra8_ftl_checkpoint_save into the staging buffer, erases the reserved tail,
+ * and programs the checkpoint into it. After a successful sync the mapping
+ * survives a power cycle: the next ::ra8_ftl_mount over the same device resumes
+ * it. The staging buffer is filled with the medium erase value first, so the
+ * bytes past the checkpoint are programmed as blank rather than as whatever the
+ * previous sync left in the buffer.
+ *
+ * Only the reserved tail is touched; no data block and no mapping state is
+ * mutated, so a sync is safe to repeat and safe to call when nothing changed.
+ *
+ * Requires a handle brought up by ::ra8_ftl_mount. A handle initialised by
+ * ::ra8_ftl_init owns no checkpoint home and is refused with
+ * ::k_ra8_err_invalid_state; that caller drives ::ra8_ftl_checkpoint_save and
+ * its own storage directly.
+ *
+ * @param[in,out] ftl Mounted FTL handle.
+ *
+ * @return ra8_err_t Error code.
+ * @retval k_ra8_ok                  Checkpoint programmed into the tail.
+ * @retval k_ra8_err_null_ptr        `ftl` was NULL.
+ * @retval k_ra8_err_not_initialized `ftl` is not initialised.
+ * @retval k_ra8_err_invalid_state   `ftl` was not brought up by
+ *                                   ::ra8_ftl_mount, or the live mapping
+ *                                   invariants are corrupt.
+ * @retval k_ra8_err_invalid_size    The checkpoint outgrew the staging buffer.
+ * @retval (other)                   Propagated underlying erase/program error.
+ *
+ * @pre `ftl` was mounted by ::ra8_ftl_mount.
+ * @pre The device is idle (no concurrent access).
+ * @post On success the reserved tail holds a checkpoint of the live mapping.
+ * @post On any non-ok return the mapping and every data block are unchanged;
+ *       the tail may hold a partially written checkpoint, which the next mount
+ *       rejects rather than loads.
+ *
+ * @note Not thread-safe with respect to the same FTL.
+ *
+ * @see ra8_ftl_mount
+ * @since 0.1.0
+ */
+[[nodiscard]] ra8_err_t ra8_ftl_sync(ra8_ftl_t* ftl);
+
+/**
+ * @brief Sync the mapping and release the mount.
+ *
+ * @details
+ * Runs ::ra8_ftl_sync and, only if that succeeds, unbinds the handle: the
+ * underlying device, the caller storage and the checkpoint home are forgotten
+ * and the presented capacity drops to zero, so a block device still bound by
+ * ::ra8_ftl_as_blockdev rejects every subsequent transfer with
+ * ::k_ra8_err_out_of_range instead of reaching a stale mapping. No caller
+ * storage is freed or cleared; nothing was allocated.
+ *
+ * A failing sync leaves the FTL mounted and returns the error, so the caller
+ * can retry rather than lose the mapping it was trying to persist.
+ *
+ * @param[in,out] ftl Mounted FTL handle.
+ *
+ * @return ra8_err_t Error code.
+ * @retval k_ra8_ok                  Mapping persisted and handle released.
+ * @retval k_ra8_err_null_ptr        `ftl` was NULL.
+ * @retval k_ra8_err_not_initialized `ftl` is not initialised.
+ * @retval k_ra8_err_invalid_state   `ftl` was not brought up by
+ *                                   ::ra8_ftl_mount.
+ * @retval (other)                   Propagated ::ra8_ftl_sync failure; the
+ *                                   handle stays mounted.
+ *
+ * @pre `ftl` was mounted by ::ra8_ftl_mount.
+ * @pre No transfer is in flight on the presented block device.
+ * @post On success `ftl` is unbound and ::ra8_ftl_as_blockdev refuses it.
+ * @post On any non-ok return `ftl` is still mounted and usable.
+ *
+ * @note Not thread-safe with respect to the same FTL.
+ *
+ * @see ra8_ftl_mount
+ * @see ra8_ftl_sync
+ * @since 0.1.0
+ */
+[[nodiscard]] ra8_err_t ra8_ftl_unmount(ra8_ftl_t* ftl);
 
 #ifdef __cplusplus
 }
