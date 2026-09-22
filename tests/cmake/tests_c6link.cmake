@@ -65,6 +65,21 @@ target_compile_options(test_ra8_c6link_wire PRIVATE -Wall -Wextra)
 target_include_directories(test_ra8_c6link_wire PRIVATE ${RA8_C6LINK_INCLUDE_DIRS})
 add_test(NAME test_ra8_c6link_wire COMMAND test_ra8_c6link_wire)
 
+# test_ra8_c6link_hci: the HCI channel on ESP_HCI_IF (#493). Its own executable
+# rather than more cases in test_ra8_c6link_wire.c, which is already near the
+# repository's per-file cap, and it needs strictly less than the facade suite:
+# no co-processor model, because every fact these vectors pin about the wire
+# shape (the indicator octet in the header, the declared length one short of
+# the packet, the checksum covering both) is decided on the host side.
+add_executable(
+  test_ra8_c6link_hci ${CMAKE_CURRENT_SOURCE_DIR}/wireless/src/test_ra8_c6link_hci.c
+                      ${RA8_C6LINK_SOURCES} ${RA8_C6LINK_SOUP} $<TARGET_OBJECTS:ra8_core_hal>
+)
+set_target_properties(test_ra8_c6link_hci PROPERTIES LINKER_LANGUAGE CXX)
+target_compile_options(test_ra8_c6link_hci PRIVATE -Wall -Wextra)
+target_include_directories(test_ra8_c6link_hci PRIVATE ${RA8_C6LINK_INCLUDE_DIRS})
+add_test(NAME test_ra8_c6link_hci COMMAND test_ra8_c6link_hci)
+
 # test_ra8_c6link: the whole facade against tests/mocks/src/ra8_c6_model.c, which
 # decodes what the host transmits with the same generated codec the ESP32-C6
 # runs and synthesises the answer the co-processor would send.
