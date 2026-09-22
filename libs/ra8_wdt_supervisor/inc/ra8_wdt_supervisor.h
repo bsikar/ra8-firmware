@@ -176,6 +176,7 @@ typedef void (*ra8_wdt_sup_refresh_fn_t)(void);
  * @retval k_ra8_err_null_ptr ``cfg`` was null or ``cfg->stack`` was null.
  * @retval k_ra8_err_invalid_arg Stack too small / period zero / bad priority.
  * @retval k_ra8_err_busy ``ra8_wdt_supervisor_init`` was already called.
+ * @retval k_ra8_err_rtos_mutex Underlying ``tx_mutex_create`` failed.
  *
  * @pre ``cfg`` is non-null and points to a populated block.
  * @pre Caller is in single-threaded init context.
@@ -243,6 +244,7 @@ typedef void (*ra8_wdt_sup_refresh_fn_t)(void);
  * @retval k_ra8_err_invalid_arg ``deadline_ms`` was zero.
  * @retval k_ra8_err_no_mem All slots are taken.
  * @retval k_ra8_err_not_initialized ``ra8_wdt_supervisor_init`` not called.
+ * @retval k_ra8_err_rtos_mutex Underlying ``tx_mutex_get`` failed.
  *
  * @pre ``name`` is NUL-terminated and non-null.
  * @pre ``deadline_ms`` > 0.
@@ -274,6 +276,7 @@ ra8_wdt_supervisor_register_thread(const char* name, uint32_t deadline_ms, uint8
  * @retval k_ra8_err_invalid_arg ``handle`` is out of range.
  * @retval k_ra8_err_not_found ``handle`` refers to a free slot.
  * @retval k_ra8_err_not_initialized ``ra8_wdt_supervisor_init`` not called.
+ * @retval k_ra8_err_rtos_mutex Underlying ``tx_mutex_get`` failed.
  *
  * @pre ``handle`` < ``k_ra8_wdt_sup_max_threads``.
  * @pre Slot was previously registered.
@@ -333,6 +336,8 @@ ra8_wdt_supervisor_register_thread(const char* name, uint32_t deadline_ms, uint8
  * @return ``ra8_err_t``
  * @retval k_ra8_ok Tick complete.
  * @retval k_ra8_err_not_initialized ``ra8_wdt_supervisor_init`` not called.
+ * @retval k_ra8_err_rtos_mutex Underlying ``tx_mutex_get`` failed;
+ *         ``*out_did_refresh`` is set to ``false``.
  *
  * @pre ``ra8_wdt_supervisor_init`` returned ``k_ra8_ok``.
  * @post ``*out_did_refresh`` reflects whether the refresh hook ran.
