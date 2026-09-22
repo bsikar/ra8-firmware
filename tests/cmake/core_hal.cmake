@@ -69,7 +69,6 @@ add_library(
   ${RA8_OV5640_SOURCES}
   ${RA8_TZ_SECURE_BOOT_SOURCES}
   ${RA8_DFU_SOURCES}
-  ${RA8_DEVCFG_SOURCES}
   ${RA8_WIFI_SOURCES}
   # ThreadX SysTick retune (issue #287). Lives under port/threadx (not
   # libs/), so it is not caught by the libs/ globs above -- add it by
