@@ -190,6 +190,25 @@ def _selftest_live_archive_fail_closed(
     if core.evaluate_against_baseline("new_app", project_live, mock_baseline):
         failures.append("approved project archive unexpectedly flagged")
 
+    migrated_live = dict(
+        clean_analysis,
+        live_archive_members={"libra8_power_profile.a": ["ra8_power_profile.a.o"]},
+        project_zig_archives=["libra8_power_profile.a"],
+    )
+    if core.evaluate_against_baseline("new_app", migrated_live, mock_baseline):
+        failures.append("approved migrated Zig archive unexpectedly flagged")
+
+    migrated_malloc = dict(migrated_live, live_forbidden_symbols=["malloc"])
+    if not core.evaluate_against_baseline("new_app", migrated_malloc, mock_baseline):
+        failures.append("migrated Zig archive bypassed forbidden malloc check")
+
+    migrated_libc = dict(
+        migrated_live,
+        runtime_primitive_providers={"memcpy": "libc.a(libc_a-memcpy.o)"},
+    )
+    if not core.evaluate_against_baseline("new_app", migrated_libc, mock_baseline):
+        failures.append("migrated Zig archive bypassed libc primitive check")
+
     project_prim = dict(
         clean_analysis,
         runtime_primitive_providers={"memset": "libra8_shared_ek_ra8d2.a(m.o)"},
@@ -209,6 +228,43 @@ def _selftest_live_archive_fail_closed(
     )
     if not core.evaluate_against_baseline("heavy_app", heavy_unknown, mock_baseline):
         failures.append("debt-baselined app with unknown live archive not flagged")
+    return failures
+
+
+def _selftest_migrated_zig_archive_provenance() -> list[str]:
+    """Require a live Zig archive to match the app output and a library recipe."""
+    failures: list[str] = []
+    with tempfile.TemporaryDirectory() as tmp:
+        root = pathlib.Path(tmp)
+        library = root / "libs" / "ra8_power_profile"
+        library.mkdir(parents=True)
+        recipe = library / "build.zig"
+        recipe.write_text("// first-party recipe\n", encoding="ascii")
+        build = root / "examples" / "demo" / "build"
+        archive = (
+            build / "zig" / "ra8_power_profile" / "cortex_m85" / "lib" / "libra8_power_profile.a"
+        )
+        archive.parent.mkdir(parents=True)
+        archive.write_bytes(b"archive")
+        member = (
+            "zig/ra8_power_profile/cortex_m85/lib/libra8_power_profile.a(ra8_power_profile.a.o)"
+        )
+        map_content = f"Memory Map\n .text.zig 0x02000000 0x10 {member}\n"
+        expected = {"libra8_power_profile.a"}
+        parsed = core.parse_map_file(map_content, map_dir=build, repo_root=root)
+        if parsed["project_zig_archives"] != expected:
+            failures.append("live first-party Zig archive provenance not recognized")
+
+        outside = root / "outside" / "libra8_power_profile.a"
+        outside.parent.mkdir(parents=True)
+        outside.write_bytes(b"archive")
+        mixed = map_content + f" .text.other 0x02000010 0x10 {outside}(other.o)\n"
+        if core.parse_map_file(mixed, map_dir=build, repo_root=root)["project_zig_archives"]:
+            failures.append("external same-name archive gained project approval")
+
+        recipe.unlink()
+        if core.parse_map_file(map_content, map_dir=build, repo_root=root)["project_zig_archives"]:
+            failures.append("Zig archive without a first-party recipe gained approval")
     return failures
 
 
@@ -485,6 +541,7 @@ def _selftest_db_flags() -> list[str]:
 def run_selftests(repo_root: pathlib.Path) -> list[str]:
     """Run every freestanding-runtime selftest; return failure strings."""
     failures = _selftest_nm_and_map() + _selftest_scripts_and_ratchet()
+    failures.extend(_selftest_migrated_zig_archive_provenance())
     failures.extend(_selftest_source_asserts(repo_root))
     failures.extend(_selftest_db_flags())
     mock_baseline: dict[str, Any] = {"apps": {}}
