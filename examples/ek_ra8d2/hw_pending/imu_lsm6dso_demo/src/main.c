@@ -28,7 +28,12 @@
  *   1. ``ra8_cgc_init`` -- bring CPUCLK0 and PCLKA up.
  *   2. PFS routing of MikroBUS SDA/SCL and the SCI8 console pins.
  *   3. ``ra8_i3c_init`` on the MikroBUS IIC_B channel at 100 kHz Sm.
- *   4. ``ra8_lsm6dso_init`` against the IIC_B-backed transport adapter.
+ *   4. ``ra8_lsm6dso_bind_i2c`` against the house ``ra8_i2c_bus_ops_t``
+ *      seam, filled from a ``ra8_io_i2c_bus_t`` bound to the I3C block
+ *      in I2C-compatibility mode. This app used to carry its own
+ *      transport adapter calling ``ra8_i3c_transfer`` / ``ra8_i3c_write``
+ *      directly, which hard-coded the peripheral in application code;
+ *      the binder is what removes that (issue #760).
  *   5. Read WHO_AM_I. On success print
  *      ``"lsm6dso: who_am_i=0x6c\r\n"`` (banner line for HIL scrape).
  *      On failure print ``"lsm6dso: I2C NAK\r\n"`` and latch LED2.
@@ -47,7 +52,10 @@
 #include "ra8_boot_entry.h"
 #include "ra8_cgc.h"
 #include "ra8_err.h"
+#include "ra8_i2c_bus_ops.h"
 #include "ra8_i3c.h"
+#include "ra8_io_i2c_bus.h"
+#include "ra8_io_i2c_bus_i3c_compat.h"
 #include "ra8_isr.h"
 #include "ra8_lsm6dso.h"
 #include "ra8_mstp.h"
@@ -71,6 +79,25 @@ typedef enum : uint32_t {
 /** @brief MikroBUS SDA/SCL routed through Arduino D14/D15 to SDA1/SCL1. */
 static const ra8_port_pin_t k_imu_demo_pin_scl = (ra8_port_pin_t)k_ra8_board_mikrobus_i2c_scl;
 static const ra8_port_pin_t k_imu_demo_pin_sda = (ra8_port_pin_t)k_ra8_board_mikrobus_i2c_sda;
+
+/**
+ * @brief Peripheral-agnostic I2C bus handle, bound once in ``main``.
+ *
+ * @details
+ * File scope on purpose: ``ra8_io_i2c_bus_as_ops`` points the filled
+ * seam's ``ctx`` at this object, and the driver keeps that seam by
+ * value, so this has to out-live the driver instance.
+ */
+static ra8_io_i2c_bus_t s_imu_demo_bus;
+
+/**
+ * @brief Binder cookie for the LSM6DSO instance (bus seam + address).
+ *
+ * @details
+ * File scope for the same lifetime reason as ``s_imu_demo_bus``: the
+ * bound ``ra8_lsm6dso_bus_t::ctx`` points here.
+ */
+static ra8_lsm6dso_i2c_ctx_t s_imu_demo_i2c_ctx;
 
 /* =============================================================================
  * Tiny printf-equivalents for HIL log scraping
@@ -160,72 +187,6 @@ static uint32_t imu_demo_i32_to_dec(int32_t value, uint8_t* out)
     out[n] = 0U;
   }
   return n;
-}
-
-/* =============================================================================
- * IIC_B bus adapter for the ra8_lsm6dso transport interface
- * =============================================================================
- */
-
-/** @brief Adapter context: holds channel + 7-bit address. */
-typedef struct {
-  uint8_t channel; /**< IIC_B channel (0 on RA8D2). */
-  uint8_t addr7;   /**< 7-bit peripheral address.   */
-} imu_demo_iic_ctx_t;
-
-/**
- * @brief Transport adapter: read N bytes starting at register ``reg``.
- *
- * @details
- * Uses ``ra8_i3c_transfer`` which does the write-RESTART-read in one
- * bus transaction -- this is the I2C pattern the LSM6DSO needs to
- * read an auto-incremented register block.
- *
- * @param[in]  ctx Adapter context (cast to ``imu_demo_iic_ctx_t*``).
- * @param[in]  reg First register address.
- * @param[out] buf Destination buffer.
- * @param[in]  len Byte count.
- *
- * @return Forwarded ``ra8_i3c_transfer`` return code.
- */
-static ra8_err_t imu_demo_iic_read(void* ctx, uint8_t reg, uint8_t* buf, uint32_t len)
-{
-  const imu_demo_iic_ctx_t* c = (const imu_demo_iic_ctx_t*)ctx;
-  return ra8_i3c_transfer(c->channel, c->addr7, &reg, 1U, buf, len);
-}
-
-/**
- * @brief Transport adapter: write N bytes starting at register ``reg``.
- *
- * @details
- * Stages ``[reg][buf[0..len-1]]`` on a small stack scratch and issues
- * a single ``ra8_i3c_write``. Capped at ``k_imu_demo_iic_tx_cap``
- * bytes payload because the LSM6DSO driver never writes more than
- * eight bytes at once.
- *
- * @param[in] ctx Adapter context.
- * @param[in] reg First register address.
- * @param[in] buf Source buffer.
- * @param[in] len Byte count.
- *
- * @return Forwarded ``ra8_i3c_write`` return code.
- */
-typedef enum : uint32_t {
-  k_imu_demo_iic_tx_cap = 16U, /**< Imu demo iic TX cap. */
-} imu_demo_iic_cap_t;
-
-static ra8_err_t imu_demo_iic_write(void* ctx, uint8_t reg, const uint8_t* buf, uint32_t len)
-{
-  if (len > (uint32_t)k_imu_demo_iic_tx_cap - 1U) {
-    return k_ra8_err_invalid_arg;
-  }
-  uint8_t scratch[k_imu_demo_iic_tx_cap] = {};
-  scratch[0]                             = reg;
-  for (uint32_t i = 0U; i < len; ++i) {
-    scratch[i + 1U] = buf[i];
-  }
-  const imu_demo_iic_ctx_t* c = (const imu_demo_iic_ctx_t*)ctx;
-  return ra8_i3c_write(c->channel, c->addr7, scratch, len + 1U, false);
 }
 
 /* =============================================================================
@@ -353,9 +314,9 @@ static void imu_demo_emit_kv(const uint8_t* label, uint32_t label_len, int32_t v
  * parks via ``imu_demo_panic_halt`` -- it never returns to the caller
  * in that case.
  *
- * @param[in,out] dev Driver instance bound by ``ra8_lsm6dso_init``.
+ * @param[in,out] dev Driver instance bound by ``ra8_lsm6dso_bind_i2c``.
  *
- * @pre ``dev`` was bound by a successful ``ra8_lsm6dso_init``.
+ * @pre ``dev`` was bound by a successful ``ra8_lsm6dso_bind_i2c``.
  * @pre SCI8 is initialized for banner emission.
  * @post On success the OK banner has been printed.
  * @post On failure the function never returns; LED2 is latched ON.
@@ -388,7 +349,7 @@ static void imu_demo_check_who_am_i(ra8_lsm6dso_t* dev)
  * Wraps the three configuration setters into a single panic-on-error
  * gate. Halts the CPU and latches LED2 if any setter returns non-OK.
  *
- * @param[in,out] dev Driver instance bound by ``ra8_lsm6dso_init``.
+ * @param[in,out] dev Driver instance bound by ``ra8_lsm6dso_bind_i2c``.
  *
  * @pre ``dev->initialized`` is true.
  * @pre The IIC bus is up and the LSM6DSO is ACKing.
@@ -424,7 +385,7 @@ static void imu_demo_configure(ra8_lsm6dso_t* dev)
  * HIL harness. On any single read failure the error banner is
  * printed and LED2 is latched ON for the rest of the run.
  *
- * @param[in,out] dev Driver instance bound by ``ra8_lsm6dso_init``.
+ * @param[in,out] dev Driver instance bound by ``ra8_lsm6dso_bind_i2c``.
  *
  * @pre ``dev->initialized`` is true.
  * @pre SCI8 has been initialized for banner emission.
@@ -488,17 +449,26 @@ void main(void)
   imu_demo_setup_or_halt();
   ra8_isr_globals_enable();
 
-  imu_demo_iic_ctx_t ctx = {
-    .channel = (uint8_t)k_imu_demo_iic_channel,
-    .addr7   = (uint8_t)k_lsm6dso_i2c_addr_sa0_high,
-  };
-  const ra8_lsm6dso_bus_t bus = {
-    .read_regs  = imu_demo_iic_read,
-    .write_regs = imu_demo_iic_write,
-    .ctx        = &ctx,
-  };
+  /* Which peripheral carries this bus is a bind-time decision made
+   * here and nowhere else: the driver never learns it (issue #760). */
+  ra8_i2c_bus_ops_t bus_ops = {};
+  if (ra8_io_i2c_bus_bind_i3c_compat(&s_imu_demo_bus, (uint8_t)k_imu_demo_iic_channel)
+      != k_ra8_ok) {
+    imu_demo_tx(k_imu_demo_banner_err, (uint32_t)(sizeof(k_imu_demo_banner_err) - 1U));
+    (void)ra8_board_led_on(k_ra8_board_led2);
+    imu_demo_panic_halt();
+  }
+  if (ra8_io_i2c_bus_as_ops(&s_imu_demo_bus, &bus_ops) != k_ra8_ok) {
+    imu_demo_tx(k_imu_demo_banner_err, (uint32_t)(sizeof(k_imu_demo_banner_err) - 1U));
+    (void)ra8_board_led_on(k_ra8_board_led2);
+    imu_demo_panic_halt();
+  }
   ra8_lsm6dso_t dev = {};
-  if (ra8_lsm6dso_init(&dev, &bus) != k_ra8_ok) {
+  if (ra8_lsm6dso_bind_i2c(&dev,
+                           &s_imu_demo_i2c_ctx,
+                           &bus_ops,
+                           (uint8_t)k_lsm6dso_i2c_addr_sa0_high)
+      != k_ra8_ok) {
     imu_demo_tx(k_imu_demo_banner_err, (uint32_t)(sizeof(k_imu_demo_banner_err) - 1U));
     (void)ra8_board_led_on(k_ra8_board_led2);
     imu_demo_panic_halt();

@@ -26,6 +26,11 @@
  *     centi-degC.
  *   - I2C NAK propagation: when the mock returns ``k_ra8_err_nack``,
  *     the driver returns it back unchanged.
+ *   - ``ra8_lsm6dso_bind_i2c`` -- argument guards, and an end-to-end
+ *     bind over a mock ``ra8_i2c_bus_ops_t`` seam proving the wire
+ *     framing the binder produces: a register read is one
+ *     write-RESTART-read transaction carrying the register byte, and a
+ *     register write is one STOPped write of ``[reg][payload]``.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -37,6 +42,7 @@
 
 #include "ra8_attributes.h"
 #include "ra8_err.h"
+#include "ra8_i2c_bus_ops.h"
 #include "ra8_lsm6dso.h"
 #include "unity_minimal.h"
 
@@ -826,6 +832,279 @@ static void internal_test_fifo_validates_inputs(void)
 }
 
 /* =============================================================================
+ * Mock ra8_i2c_bus_ops_t seam (for ra8_lsm6dso_bind_i2c)
+ * =============================================================================
+ */
+
+/** @brief Sizing for the seam mock's recorded transaction. */
+typedef enum : uint32_t {
+  k_seam_buf_cap  = 16U,   /**< Cap on recorded write / read-prefix bytes. */
+  k_seam_addr_bad = 0x80U, /**< First value that is not a 7-bit address.   */
+} seam_cap_t;
+
+/** @brief What the seam mock saw on its last call. */
+typedef struct {
+  uint8_t  addr;                    /**< Target address the binder passed.          */
+  uint8_t  wr[k_seam_buf_cap];      /**< Bytes of the last `write` call.            */
+  uint32_t wr_len;                  /**< Length of that write.                      */
+  bool     wr_stop;                 /**< `send_stop` flag of that write.            */
+  uint32_t write_calls;             /**< How many times `write` was called.         */
+  uint8_t  xfer_wr[k_seam_buf_cap]; /**< Write prefix of the last `transfer`.       */
+  uint32_t xfer_wr_len;             /**< Length of that prefix.                     */
+  uint32_t xfer_rd_len;             /**< Read length of the last `transfer`.        */
+  uint32_t transfer_calls;          /**< How many times `transfer` was called.      */
+  uint32_t read_calls;              /**< Stays 0: the binder never plain-reads.     */
+  uint8_t  reply;                   /**< Byte handed back by every `transfer`.      */
+} seam_mock_t;
+
+static seam_mock_t s_seam;
+
+/** @brief Reset the seam mock between vectors.
+ *
+ * @details Clears every recorded field so one vector cannot read another's transaction.
+ * @pre The mock fixture is exclusively owned by the current test vector.
+ * @pre Every supplied span satisfies the callback or helper capacity contract.
+ * @post All writes remain within the bounded mock register and transaction arrays.
+ * @post No heap allocation, host stream, or hardware access is performed.
+ * @note Test-only and not reentrant because the mock state has file scope.
+ * @since Version 0.1.0
+ */
+RA8_INTERNAL
+static void internal_seam_reset(void)
+{
+  memset(&s_seam, 0, sizeof(s_seam));
+}
+
+/** @brief Seam `write` trampoline: record the whole staged transaction.
+ *
+ * @details Captures address, bytes and the STOP flag so a vector can assert the exact wire framing.
+ * @param[in] ctx Opaque cookie; unused because the mock is file-scoped.
+ * @param[in] addr 7-bit target address.
+ * @param[in] data Staged bytes.
+ * @param[in] len Byte count.
+ * @param[in] send_stop Whether the binder asked for a STOP.
+ * @return Mock transport status.
+ * @retval k_ra8_ok The transaction was recorded.
+ * @pre The mock fixture is exclusively owned by the current test vector.
+ * @pre Every supplied span satisfies the callback or helper capacity contract.
+ * @post All writes remain within the bounded mock register and transaction arrays.
+ * @post No heap allocation, host stream, or hardware access is performed.
+ * @note Test-only and not reentrant because the mock state has file scope.
+ * @since Version 0.1.0
+ */
+RA8_INTERNAL
+static ra8_err_t
+internal_seam_write(void* ctx, uint8_t addr, const uint8_t* data, uint32_t len, bool send_stop)
+{
+  (void)ctx;
+  s_seam.write_calls++;
+  s_seam.addr    = addr;
+  s_seam.wr_stop = send_stop;
+  s_seam.wr_len  = (len < (uint32_t)k_seam_buf_cap) ? len : (uint32_t)k_seam_buf_cap;
+  for (uint32_t i = 0U; i < s_seam.wr_len; ++i) {
+    s_seam.wr[i] = data[i];
+  }
+  return k_ra8_ok;
+}
+
+/** @brief Seam `read` trampoline: must never be reached by the binder.
+ *
+ * @details Counts its own calls so a vector can prove the binder routes reads through `transfer`.
+ * @param[in] ctx Opaque cookie; unused because the mock is file-scoped.
+ * @param[in] addr 7-bit target address.
+ * @param[out] data Destination buffer.
+ * @param[in] len Byte count.
+ * @return Mock transport status.
+ * @retval k_ra8_ok The call was counted.
+ * @pre The mock fixture is exclusively owned by the current test vector.
+ * @pre Every supplied span satisfies the callback or helper capacity contract.
+ * @post All writes remain within the bounded mock register and transaction arrays.
+ * @post No heap allocation, host stream, or hardware access is performed.
+ * @note Test-only and not reentrant because the mock state has file scope.
+ * @since Version 0.1.0
+ */
+RA8_INTERNAL
+static ra8_err_t internal_seam_read(void* ctx, uint8_t addr, uint8_t* data, uint32_t len)
+{
+  (void)ctx;
+  (void)addr;
+  s_seam.read_calls++;
+  for (uint32_t i = 0U; i < len; ++i) {
+    data[i] = 0U;
+  }
+  return k_ra8_ok;
+}
+
+/** @brief Seam `transfer` trampoline: record the prefix, answer with `reply`.
+ *
+ * @details Captures the write-RESTART-read shape the LSM6DSO register auto-increment depends on.
+ * @param[in] ctx Opaque cookie; unused because the mock is file-scoped.
+ * @param[in] addr 7-bit target address.
+ * @param[in] wr Write prefix (the register byte).
+ * @param[in] wr_len Prefix length.
+ * @param[out] rd Destination buffer.
+ * @param[in] rd_len Read length.
+ * @return Mock transport status.
+ * @retval k_ra8_ok The transaction was recorded and answered.
+ * @pre The mock fixture is exclusively owned by the current test vector.
+ * @pre Every supplied span satisfies the callback or helper capacity contract.
+ * @post All writes remain within the bounded mock register and transaction arrays.
+ * @post No heap allocation, host stream, or hardware access is performed.
+ * @note Test-only and not reentrant because the mock state has file scope.
+ * @since Version 0.1.0
+ */
+RA8_INTERNAL
+static ra8_err_t internal_seam_transfer(void*          ctx,
+                                        uint8_t        addr,
+                                        const uint8_t* wr,
+                                        uint32_t       wr_len,
+                                        uint8_t*       rd,
+                                        uint32_t       rd_len)
+{
+  (void)ctx;
+  s_seam.transfer_calls++;
+  s_seam.addr        = addr;
+  s_seam.xfer_rd_len = rd_len;
+  s_seam.xfer_wr_len = (wr_len < (uint32_t)k_seam_buf_cap) ? wr_len : (uint32_t)k_seam_buf_cap;
+  for (uint32_t i = 0U; i < s_seam.xfer_wr_len; ++i) {
+    s_seam.xfer_wr[i] = wr[i];
+  }
+  for (uint32_t i = 0U; i < rd_len; ++i) {
+    rd[i] = s_seam.reply;
+  }
+  return k_ra8_ok;
+}
+
+/** @brief Build a fully-filled mock seam.
+ *
+ * @details Returns all three callbacks so a vector can prove `read` is the one the binder never calls.
+ * @return A filled ``ra8_i2c_bus_ops_t``.
+ * @pre The mock fixture is exclusively owned by the current test vector.
+ * @pre Every supplied span satisfies the callback or helper capacity contract.
+ * @post All writes remain within the bounded mock register and transaction arrays.
+ * @post No heap allocation, host stream, or hardware access is performed.
+ * @note Test-only and not reentrant because the mock state has file scope.
+ * @since Version 0.1.0
+ */
+RA8_INTERNAL
+static ra8_i2c_bus_ops_t internal_make_seam(void)
+{
+  const ra8_i2c_bus_ops_t ops = {
+    .write    = internal_seam_write,
+    .read     = internal_seam_read,
+    .transfer = internal_seam_transfer,
+    .ctx      = nullptr,
+  };
+  return ops;
+}
+
+/**
+ * @test ra8_lsm6dso_bind_i2c_validates_inputs
+ *
+ * @par MC/DC:
+ * Six guard conditions, each failed alone: out_dev / ctx / ops NULL,
+ * ops.transfer NULL, ops.write NULL, and an address wider than 7 bits.
+
+ * @brief Fails every argument guard of the I2C binder one at a time.
+ *
+ * @details Fails every argument guard of the I2C binder one at a time, so no single check can mask another.
+ * @pre The mock fixture is exclusively owned by the current test vector.
+ * @pre Every supplied span satisfies the callback or helper capacity contract.
+ * @post All writes remain within the bounded mock register and transaction arrays.
+ * @post No heap allocation, host stream, or hardware access is performed.
+ * @note Test-only and not reentrant because the mock state has file scope.
+ * @since Version 0.1.0
+ */
+RA8_INTERNAL
+static void internal_test_bind_i2c_validates_inputs(void)
+{
+  internal_seam_reset();
+  TEST_BEGIN("lsm6dso: bind_i2c validates inputs");
+  ra8_lsm6dso_t           dev  = {};
+  ra8_lsm6dso_i2c_ctx_t   bctx = {};
+  const ra8_i2c_bus_ops_t ops  = internal_make_seam();
+  const uint8_t           a7   = (uint8_t)k_lsm6dso_i2c_addr_sa0_high;
+
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_lsm6dso_bind_i2c(nullptr, &bctx, &ops, a7));
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_lsm6dso_bind_i2c(&dev, nullptr, &ops, a7));
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_lsm6dso_bind_i2c(&dev, &bctx, nullptr, a7));
+
+  ra8_i2c_bus_ops_t no_transfer = internal_make_seam();
+  no_transfer.transfer          = nullptr;
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_lsm6dso_bind_i2c(&dev, &bctx, &no_transfer, a7));
+
+  ra8_i2c_bus_ops_t no_write = internal_make_seam();
+  no_write.write             = nullptr;
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_lsm6dso_bind_i2c(&dev, &bctx, &no_write, a7));
+
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg,
+                 ra8_lsm6dso_bind_i2c(&dev, &bctx, &ops, (uint8_t)k_seam_addr_bad));
+
+  /* Every rejection leaves the instance unbound. */
+  TEST_ASSERT_EQ(false, dev.initialized);
+  TEST_END("lsm6dso: bind_i2c validates inputs");
+}
+
+/**
+ * @test ra8_lsm6dso_bind_i2c_wire_framing
+ *
+ * @par MC/DC:
+ * Both trampolines on their success arm: the read path must be one
+ * `transfer` carrying the register byte, the write path one STOPped
+ * `write` of ``[reg][payload]``, and the seam's plain `read` must stay
+ * untouched.
+
+ * @brief Proves the framing the binder puts on the wire for a read and a write.
+ *
+ * @details Binds over the mock seam, then drives one register read and one register write through the real driver entry points and asserts the exact transactions the seam saw.
+ * @pre The mock fixture is exclusively owned by the current test vector.
+ * @pre Every supplied span satisfies the callback or helper capacity contract.
+ * @post All writes remain within the bounded mock register and transaction arrays.
+ * @post No heap allocation, host stream, or hardware access is performed.
+ * @note Test-only and not reentrant because the mock state has file scope.
+ * @since Version 0.1.0
+ */
+RA8_INTERNAL
+static void internal_test_bind_i2c_wire_framing(void)
+{
+  internal_seam_reset();
+  TEST_BEGIN("lsm6dso: bind_i2c frames reads and writes");
+  ra8_lsm6dso_t           dev  = {};
+  ra8_lsm6dso_i2c_ctx_t   bctx = {};
+  const ra8_i2c_bus_ops_t ops  = internal_make_seam();
+  TEST_ASSERT_EQ(
+    k_ra8_ok,
+    ra8_lsm6dso_bind_i2c(&dev, &bctx, &ops, (uint8_t)k_lsm6dso_i2c_addr_sa0_high));
+  TEST_ASSERT_EQ(true, dev.initialized);
+  TEST_ASSERT_EQ((uint8_t)k_lsm6dso_i2c_addr_sa0_high, bctx.addr7);
+
+  /* Read path: WHO_AM_I is one write-RESTART-read of one byte. */
+  s_seam.reply = (uint8_t)k_lsm6dso_who_am_i_value;
+  uint8_t who  = 0U;
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_lsm6dso_who_am_i(&dev, &who));
+  TEST_ASSERT_EQ((uint8_t)k_lsm6dso_who_am_i_value, who);
+  TEST_ASSERT_EQ(1U, s_seam.transfer_calls);
+  TEST_ASSERT_EQ(1U, s_seam.xfer_wr_len);
+  TEST_ASSERT_EQ((uint8_t)k_lsm6dso_reg_who_am_i, s_seam.xfer_wr[0]);
+  TEST_ASSERT_EQ(1U, s_seam.xfer_rd_len);
+  TEST_ASSERT_EQ((uint8_t)k_lsm6dso_i2c_addr_sa0_high, s_seam.addr);
+  /* The seam's plain `read` is not part of this driver's path. */
+  TEST_ASSERT_EQ(0U, s_seam.read_calls);
+
+  /* Write path: a config setter is read-modify-write, so the write is
+   * one STOPped transaction of [reg][value]. */
+  s_seam.reply = 0U;
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_lsm6dso_set_accel_range(&dev, k_lsm6dso_xl_fs_8g));
+  TEST_ASSERT_EQ(1U, s_seam.write_calls);
+  TEST_ASSERT_EQ(2U, s_seam.wr_len);
+  TEST_ASSERT_EQ((uint8_t)k_lsm6dso_reg_ctrl1_xl, s_seam.wr[0]);
+  TEST_ASSERT_EQ(true, s_seam.wr_stop);
+  TEST_ASSERT_EQ(0U, s_seam.read_calls);
+
+  TEST_END("lsm6dso: bind_i2c frames reads and writes");
+}
+
+/* =============================================================================
  * main
  * =============================================================================
  */
@@ -847,5 +1126,7 @@ int main(void)
   internal_test_read_temp_converts();
   internal_test_fifo_drains_words();
   internal_test_fifo_validates_inputs();
+  internal_test_bind_i2c_validates_inputs();
+  internal_test_bind_i2c_wire_framing();
   return 0;
 }

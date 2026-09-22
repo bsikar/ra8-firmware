@@ -17,17 +17,33 @@
  * Transport abstraction (Dependency Inversion, see CLAUDE.md "SOLID
  * Principles for C"):
  *
- *   - The driver does not call ``ra8_iic_b_*`` or ``ra8_spi_*`` directly.
+ *   - The driver does not call ``ra8_i2c_*``, ``ra8_i3c_*`` or
+ *     ``ra8_spi_*`` directly.
  *   - Instead the caller hands a ``ra8_lsm6dso_bus_t`` interface whose
- *     ``read_regs`` / ``write_regs`` callbacks address the part. The
- *     production firmware wires these to ``ra8_iic_b_transfer`` /
- *     ``ra8_iic_b_write`` (I2C) or ``ra8_spi_xfer8`` (SPI); unit tests
- *     wire them to a software-mock transport in
- *     ``tests/misc/src/test_ra8_lsm6dso.c``.
+ *     ``read_regs`` / ``write_regs`` callbacks address the part at
+ *     register level. That register-level seam is kept because the
+ *     LSM6DSO runs on I2C *or* SPI (DS12140 sec 6.1), so the two wire
+ *     framings differ below it.
+ *   - Production code does not hand-write those two callbacks. For an
+ *     I2C-wired part it calls ``ra8_lsm6dso_bind_i2c`` and supplies the
+ *     house ``ra8_i2c_bus_ops_t`` seam (``ra8_i2c_bus_ops.h``), which the
+ *     app fills from a bound ``ra8_io_i2c_bus_t`` via
+ *     ``ra8_io_i2c_bus_as_ops``. Which physical peripheral carries the
+ *     bus, classic RIIC or the I3C block in I2C-compatibility mode, then
+ *     stays a bind-time decision the driver never sees.
+ *   - Unit tests keep wiring ``ra8_lsm6dso_init`` to a software-mock
+ *     transport in ``tests/misc/src/test_ra8_lsm6dso.c``; the binder is
+ *     additive and does not displace that path.
+ *
+ * The earlier revision of this header told production code to wire the
+ * callbacks to ``ra8_iic_b_transfer`` / ``ra8_iic_b_write``. No symbol of
+ * either name exists in the tree; that guidance is withdrawn here.
  *
  * Surface (mirrors the deliverables list in the task brief):
  *
  *   - ``ra8_lsm6dso_init``               Bind a bus + cache its handle.
+ *   - ``ra8_lsm6dso_bind_i2c``           Fill that bus from the house
+ *                                       ``ra8_i2c_bus_ops_t`` seam.
  *   - ``ra8_lsm6dso_who_am_i``           Returns ``0x6C`` if the part is
  *                                       alive (DS12140 sec 9.11 WHO_AM_I).
  *   - ``ra8_lsm6dso_set_accel_range``    Configure +-2 / +-4 / +-8 / +-16 g.
@@ -59,6 +75,7 @@ extern "C" {
 #include <stdint.h>
 
 #include "ra8_err.h"
+#include "ra8_i2c_bus_ops.h"
 
 /* =============================================================================
  * Public typed-enum constants
@@ -258,10 +275,22 @@ typedef ra8_err_t (*ra8_lsm6dso_write_fn_t)(void*          ctx,
  * @brief Transport interface bound at ``ra8_lsm6dso_init`` time.
  *
  * @details
- * Production code wires ``read_regs`` and ``write_regs`` to thin
- * adapters over ``ra8_iic_b_transfer`` / ``ra8_iic_b_write`` or
- * ``ra8_spi_xfer8``. Unit tests wire them to a canned-response mock.
  * The ``ctx`` field is passed through to both callbacks unchanged.
+ *
+ * Production code should not fill this struct by hand. An I2C-wired
+ * part goes through ``ra8_lsm6dso_bind_i2c``, which fills both
+ * callbacks with trampolines over the house ``ra8_i2c_bus_ops_t`` seam;
+ * filling this struct directly is the mock-injection path the unit
+ * tests use, and it stays supported for exactly that.
+ *
+ * An SPI binder is not here yet, and the reason is not oversight:
+ * ``ra8_spi_bus_ops_t`` (``ra8_spi_bus_ops.h``) is a bare ``xfer8``
+ * exchange with no chip-select control, while an LSM6DSO SPI
+ * transaction has to hold CS low across the register byte and the
+ * payload (DS12140 sec 6.2). Giving this part an SPI binder therefore
+ * needs a CS seam decided at the ``ra8_spi_bus_ops_t`` level, which is
+ * a change to a seam three other drivers share. Tracked as a follow-up
+ * slice on issue #760 rather than guessed at here.
  */
 typedef struct {
   ra8_lsm6dso_read_fn_t  read_regs;  /**< Read callback.  Non-NULL. */
@@ -321,6 +350,108 @@ typedef struct {
  * @since 0.1.0
  */
 [[nodiscard]] ra8_err_t ra8_lsm6dso_init(ra8_lsm6dso_t* out_dev, const ra8_lsm6dso_bus_t* bus);
+
+/* =============================================================================
+ * Backend binders
+ * =============================================================================
+ */
+
+/**
+ * @enum ra8_lsm6dso_i2c_limit_t
+ * @brief Payload ceiling of the I2C binder's register-write staging buffer.
+ *
+ * @details
+ * A register write on I2C is one transaction carrying ``[reg][payload]``,
+ * so the binder stages both on a bounded stack buffer (NASA Rule 3: no
+ * dynamic allocation). The driver itself never writes more than one
+ * payload byte at a time (every config setter goes through a single-byte
+ * read-modify-write), so eight is headroom, not a guess. A longer write
+ * is refused with ``k_ra8_err_invalid_arg`` rather than truncated.
+ */
+typedef enum : uint32_t {
+  k_lsm6dso_i2c_write_payload_max = 8U,    /**< Max payload bytes per register write. */
+  k_lsm6dso_i2c_addr_max          = 0x7FU, /**< Largest valid 7-bit target address.   */
+} ra8_lsm6dso_i2c_limit_t;
+
+/**
+ * @struct ra8_lsm6dso_i2c_ctx_t
+ * @brief Caller-owned cookie backing an I2C-bound driver instance.
+ *
+ * @details
+ * Filled by ``ra8_lsm6dso_bind_i2c`` and pointed at by the bound
+ * ``ra8_lsm6dso_bus_t::ctx``, so it must out-live the driver instance
+ * exactly as the ``ra8_i2c_bus_ops_t::ctx`` it carries must out-live it.
+ * A file-scope or ``main``-scope object is the intended shape; a
+ * block-scope one that dies before the driver is a use-after-scope.
+ *
+ * @invariant While the bound driver is in use, this object is alive and
+ *            is not re-bound to a different target.
+ */
+typedef struct {
+  ra8_i2c_bus_ops_t bus;   /**< House I2C seam, copied by value at bind time.  */
+  uint8_t           addr7; /**< 7-bit target address (0x6A / 0x6B, sec 6.1.1). */
+} ra8_lsm6dso_i2c_ctx_t;
+
+/**
+ * @brief Bind an I2C-wired LSM6DSO to the house ``ra8_i2c_bus_ops_t`` seam.
+ *
+ * @details
+ * Fills ``*ctx`` from ``ops`` plus ``addr7``, builds the register-level
+ * ``ra8_lsm6dso_bus_t`` over it, and hands that to ``ra8_lsm6dso_init``.
+ * The read trampoline issues one write-RESTART-read transaction
+ * (``ops->transfer``) so the part's register auto-increment applies
+ * (DS12140 sec 6.1.2); the write trampoline stages ``[reg][payload]``
+ * on a bounded stack buffer and issues one ``ops->write`` with STOP.
+ *
+ * This is the whole point of the seam: the app decides at bind time
+ * whether the bus is classic RIIC or the I3C block in I2C-compatibility
+ * mode, and neither this driver nor its callers name that peripheral.
+ *
+ * @param[out]    out_dev Driver state, populated on success.
+ * @param[in,out] ctx     Caller-owned cookie; must out-live @p out_dev.
+ * @param[in]     ops     Filled I2C seam; copied by value into @p ctx.
+ * @param[in]     addr7   7-bit target address.
+ *
+ * @return ``ra8_err_t`` Error code.
+ * @retval k_ra8_ok               Driver bound and initialized.
+ * @retval k_ra8_err_null_ptr     ``out_dev``, ``ctx`` or ``ops`` is NULL,
+ *                               or ``ops->write`` / ``ops->transfer`` is
+ *                               NULL.
+ * @retval k_ra8_err_invalid_arg  ``addr7`` exceeds 7 bits.
+ *
+ * @pre The bus behind @p ops is already brought up and running at a rate
+ *      the part supports; the seam is transfer-only by design and this
+ *      binder does not initialise a peripheral.
+ * @pre ``ops->ctx`` out-lives @p out_dev.
+ * @post On success ``out_dev->initialized == true`` and every driver
+ *       call routes through @p ops.
+ * @post On failure @p out_dev is untouched.
+ *
+ * @note ``ops->read`` is not required: the driver is register-oriented
+ *       and every read it issues is a write-then-read, so the binder
+ *       only ever calls ``transfer`` and ``write``. This matches how
+ *       ``ra8_touch_open`` validates the same seam.
+ * @note Not thread-safe. Call once per driver instance from init context.
+ *
+ * @par Example:
+ * @code
+ * static ra8_io_i2c_bus_t      s_bus;
+ * static ra8_lsm6dso_i2c_ctx_t s_ctx;
+ * ra8_i2c_bus_ops_t ops = {};
+ * (void)ra8_io_i2c_bus_bind_i3c_compat(&s_bus, 0U);
+ * (void)ra8_io_i2c_bus_as_ops(&s_bus, &ops);
+ * ra8_lsm6dso_t dev = {};
+ * (void)ra8_lsm6dso_bind_i2c(&dev, &s_ctx, &ops, k_lsm6dso_i2c_addr_sa0_high);
+ * @endcode
+ *
+ * @see ra8_i2c_bus_ops_t      The house seam this binder consumes.
+ * @see ra8_io_i2c_bus_as_ops  Ring-4 adapter that fills that seam.
+ * @since 0.1.0
+ */
+[[nodiscard]] ra8_err_t ra8_lsm6dso_bind_i2c(ra8_lsm6dso_t*           out_dev,
+                                             ra8_lsm6dso_i2c_ctx_t*   ctx,
+                                             const ra8_i2c_bus_ops_t* ops,
+                                             uint8_t                  addr7);
 
 /* =============================================================================
  * Identification
