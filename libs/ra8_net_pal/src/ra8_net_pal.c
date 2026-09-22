@@ -160,9 +160,16 @@ static void internal_ring_reset(void)
  * @brief Translate ra8_eth status bits into PAL event bits.
  *
  * @details
- * Today the mapping is "any non-zero ra8_eth status bit becomes an
- * error event"; future waves will fan the bits out into the
- * link/RX/TX event taxonomy.
+ * ``ra8_eth`` publishes the raw ESWM_STS word (HUM Ch 29 "Layer 3
+ * Ethernet Switch Module (ESWM)") and this tree carries no bit
+ * taxonomy for that register -- ::r_eswm_regs_t models STS as one
+ * opaque uint32_t -- so a controller status bit can only be
+ * reported as a fault. The link and RX halves of
+ * ::ra8_net_pal_event_t are therefore NOT derived here: link
+ * transitions come from the PHY in ::internal_refresh_link and
+ * ``rx_ready`` comes from the PAL's own ring in
+ * ::internal_ring_event, both of which the PAL can observe
+ * without guessing at register semantics.
  *
  * @param[in] eth_mask Raw status mask published by ``ra8_eth``.
  *
@@ -188,13 +195,118 @@ static uint32_t internal_translate_event(uint32_t eth_mask)
 }
 
 /**
+ * @brief Report ``rx_ready`` when the ring holds at least one frame.
+ *
+ * @details
+ * ``k_ra8_net_pal_event_rx_ready`` is documented as "RX descriptor
+ * has data". The PAL's descriptor equivalent is the software ring,
+ * so a non-empty ring is exactly that condition and needs no
+ * register read to observe.
+ *
+ * @return ``k_ra8_net_pal_event_rx_ready`` when a frame is queued,
+ *         ``k_ra8_net_pal_event_none`` otherwise.
+ *
+ * @pre ``s_state`` storage is mapped and readable.
+ * @post No state is modified.
+ *
+ * @note Pure read of the ring cursor; safe from ISR context.
+ * @since 0.1.0
+ */
+RA8_INTERNAL
+static uint32_t internal_ring_event(void)
+{
+  if (s_state.count == 0U) {
+    return (uint32_t)k_ra8_net_pal_event_none;
+  }
+  return (uint32_t)k_ra8_net_pal_event_rx_ready;
+}
+
+/**
+ * @brief Re-read the PHY and report a link transition, if any.
+ *
+ * @details
+ * Reads BMSR through ``ra8_eth_link_status`` and compares the
+ * result with the cached ::ra8_net_pal_state_t::link_state. On a
+ * change the cache is updated and the matching edge bit is
+ * returned; on a match nothing happens.
+ *
+ * A failed read leaves the cache untouched and reports no event.
+ * That is the common case today rather than an error path: the PAL
+ * never calls ``ra8_eth_open``, so until the stack opens the NIC
+ * ``ra8_eth_link_status`` answers ``k_ra8_err_not_initialized`` and
+ * the PAL keeps reporting the last state it actually observed.
+ *
+ * Sequential ifs (no compound boolean operators) so each gate stays
+ * MC/DC-clean without a paired vector matrix, matching
+ * ``ra8_eth_link_status`` itself.
+ *
+ * @return ``k_ra8_net_pal_event_link_up`` / ``_link_down`` on a
+ *         transition, ``k_ra8_net_pal_event_none`` otherwise.
+ *
+ * @pre PAL has been initialized.
+ * @pre Poller context, not ISR context: the read walks MDIO.
+ * @post ``s_state.link_state`` matches the PHY when the read
+ *       succeeded, and is unchanged when it did not.
+ *
+ * @note Not thread-safe.
+ * @since 0.1.0
+ */
+RA8_INTERNAL
+static uint32_t internal_refresh_link(void)
+{
+  ra8_eth_link_t  link = {.link_up = 0U, .speed_mbps = 0U, .full_duplex = 0U, .bmsr = 0U};
+  const ra8_err_t err  = ra8_eth_link_status(&link);
+  if (err != k_ra8_ok) {
+    return (uint32_t)k_ra8_net_pal_event_none;
+  }
+  ra8_net_pal_link_state_t observed = k_ra8_net_pal_link_down;
+  if (link.link_up != 0U) {
+    observed = k_ra8_net_pal_link_up;
+  }
+  if (observed == s_state.link_state) {
+    return (uint32_t)k_ra8_net_pal_event_none;
+  }
+  s_state.link_state = observed;
+  if (observed == k_ra8_net_pal_link_up) {
+    return (uint32_t)k_ra8_net_pal_event_link_up;
+  }
+  return (uint32_t)k_ra8_net_pal_event_link_down;
+}
+
+/**
+ * @brief Hand an event mask to the stack callback when one is installed.
+ *
+ * @param[in] event_mask OR of ``k_ra8_net_pal_event_*`` bits; never
+ *                       ``k_ra8_net_pal_event_none``.
+ *
+ * @pre PAL has been initialized.
+ * @post The callback has been invoked at most once.
+ * @post No PAL state is modified.
+ *
+ * @note Not thread-safe with respect to a concurrent detach.
+ * @since 0.1.0
+ */
+RA8_INTERNAL
+static void internal_raise(uint32_t event_mask)
+{
+  const ra8_net_pal_event_fn_t fn = s_state.event_fn;
+  if (fn == nullptr) {
+    return;
+  }
+  fn(s_state.event_ctx, event_mask);
+}
+
+/**
  * @brief ra8_eth event handler -- translate + forward to the PAL callback.
  *
  * @details
  * Installed via ``ra8_eth_attach_handler`` during ::ra8_net_pal_init.
- * Drops events while the PAL is uninitialized, then translates the
- * raw status mask via ::internal_translate_event and forwards
- * non-zero results to the stack-installed callback.
+ * Drops events while the PAL is uninitialized, then ORs the
+ * controller half (::internal_translate_event) with the ring half
+ * (::internal_ring_event) and forwards a non-zero result to the
+ * stack-installed callback. The link half is not read here: BMSR
+ * lives behind MDIO and this runs in ISR context, so link edges are
+ * reported from ::ra8_net_pal_link_status instead.
  *
  * @param[in] ctx         Opaque context (unused -- PAL is a singleton).
  * @param[in] status_mask Raw ``ra8_eth`` status bits.
@@ -215,7 +327,7 @@ static void internal_eth_event(void* ctx, uint32_t status_mask)
   if (!s_state.initialized) {
     return;
   }
-  const uint32_t pal_mask = internal_translate_event(status_mask);
+  const uint32_t pal_mask = internal_translate_event(status_mask) | internal_ring_event();
   // mcdc-deactivated: TU-local helper internal_eth_event dispatch gate; tests/net/src/test_ra8_net_pal.c covers each branch outcome but the MC/DC vector that flips event_fn while holding pal_mask non-empty (or vice-versa) is not reachable through the public-API surface -- callbacks are registered/unregistered before any event mask can become non-zero.
   if ((s_state.event_fn != nullptr) && (pal_mask != k_ra8_net_pal_event_none)) {
     s_state.event_fn(s_state.event_ctx, pal_mask);
@@ -482,11 +594,42 @@ ra8_err_t ra8_net_pal_recv_frame(uint8_t* out_buf, uint16_t* inout_len)
   return k_ra8_ok;
 }
 
+/**
+ * @brief Refresh the cached link state from the PHY and report it.
+ *
+ * @details
+ * Re-reads BMSR via ::internal_refresh_link. When the PHY disagrees
+ * with the cache the cache is updated and the matching
+ * ``k_ra8_net_pal_event_link_up`` / ``_link_down`` edge is raised on
+ * the stack callback, so a stack that only polls link state still
+ * sees the taxonomy's link bits. When the read fails (the NIC is not
+ * open yet) the last observed state is returned unchanged.
+ *
+ * @param[out] out_state Receives link up/down.
+ *
+ * @return ``ra8_err_t`` error code.
+ * @retval k_ra8_ok                 Link state copied.
+ * @retval k_ra8_err_null_ptr       ``out_state`` was NULL.
+ * @retval k_ra8_err_invalid_state  PAL not initialized.
+ *
+ * @pre ``out_state`` is non-NULL.
+ * @pre PAL has been initialized.
+ * @pre Poller context, not ISR context.
+ * @post ``*out_state`` holds the freshest link state the PAL could read.
+ * @post At most one link event has been raised.
+ *
+ * @note Not thread-safe.
+ * @since 0.1.0
+ */
 ra8_err_t ra8_net_pal_link_status(ra8_net_pal_link_state_t* out_state)
 {
   RA8_CHECK_NULL_PTR(out_state, s_tag, "link_status: out_state");
   if (!s_state.initialized) {
     return k_ra8_err_invalid_state;
+  }
+  const uint32_t edge = internal_refresh_link();
+  if (edge != (uint32_t)k_ra8_net_pal_event_none) {
+    internal_raise(edge);
   }
   *out_state = s_state.link_state;
   return k_ra8_ok;
