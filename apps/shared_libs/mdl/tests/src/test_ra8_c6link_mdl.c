@@ -15,6 +15,7 @@
 #include "ra8_c6link_mdl_msg.h"
 #include "ra8_c6link_mdl_service_internal.h"
 #include "ra8_media_download.pb-c.h"
+#include "test_ra8_c6link_mdl_contract_internal.h"
 #include "test_ra8_c6link_mdl_guards_internal.h"
 #include "test_ra8_c6link_mdl_policy_internal.h"
 #include "unity_minimal.h"
@@ -839,5 +840,6 @@ int main(void)
   internal_test_rejects_incoherent_terminal_total();
   priv_test_mdl_policy_run();
   priv_test_c6link_mdl_guards_run();
+  priv_test_c6link_mdl_contract_run();
   return 0;
 }
