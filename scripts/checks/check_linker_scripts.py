@@ -50,6 +50,17 @@ mechanically checkable about a linker script without linking it:
                                 the one enforcement a 0-byte placeholder no CI
                                 job links can have (an ASSERT there never fires,
                                 #544).
+  LD010  option producers    -- every option-setting word the HUM lists has a
+                                constant emitted into its section by
+                                libs/ra8_hal/src/ra8_ofs.c, and that file emits
+                                nothing outside the family. LD008 proves the
+                                scripts RESERVE all 26 sections; only this proves
+                                something FILLS them. Eight OTP SACC sections
+                                were reserved by all 74 owning scripts with no
+                                producer anywhere in the tree, so the erased
+                                words were absent rather than erased and no
+                                BSP_CFG_OPTION_SETTING_* override could reach
+                                them (#1263).
 
 The REVERSE direction (a script defines a g_ra8_ls_* nothing in C names) is
 deliberately NOT a finding, and that is a statement about what is enforceable
@@ -62,7 +73,7 @@ file. "Unused" for such a symbol is not decidable from the source tree, so a
 rule asserting it would be guessing -- it fired on 28 healthy symbols when
 tried. What IS decidable is the direction above, and that is what runs.
 
-LD006 is whole-tree, so it is reported once rather than per file.
+LD006 and LD010 are whole-tree, so they are reported once rather than per file.
 
 WHY LD008 IS ALL-OR-NOTHING RATHER THAN PER-DEVICE
 ==================================================
@@ -596,6 +607,80 @@ def check_symbol_closure(root: pathlib.Path) -> list[str]:
     return closure_problems(defined, referenced)
 
 
+# The single producer side of the option-setting family. LD008 is about what the
+# linker scripts RESERVE; this is about what fills those reservations, and the
+# two lists live in different files by necessity (one is C, 74 are ld), which is
+# exactly the shape that drifts.
+OFS_EMITTER_REL = "libs/ra8_hal/src/ra8_ofs.c"
+
+_C_COMMENT = re.compile(r"/\*.*?\*/|//[^\n]*", re.DOTALL)
+
+
+def strip_c_comments(text: str) -> str:
+    """Blank out C comment bodies, preserving newlines so line numbers hold."""
+
+    def blank(m: re.Match[str]) -> str:
+        return re.sub(r"[^\n]", " ", m.group(0))
+
+    return _C_COMMENT.sub(blank, text)
+
+
+def emitted_option_sections(code: str) -> set[str]:
+    """Every ``.option_setting_*`` section the emitter actually places a word in.
+
+    Runs on the comment-blanked view: ``ra8_ofs.c`` documents the mechanism with
+    a literal ``.option_setting_xxx`` placeholder in its file header, and prose
+    is not an emission.
+    """
+    return set(re.findall(r'RA8_SECTION\(\s*"(\.option_setting_\w+)"\s*\)', code))
+
+
+def emitter_problems(emitted: set[str]) -> list[str]:
+    """Pure half of LD010 so --selftest can drive it without a repo."""
+    known = {option_section(name) for name in OPTION_SETTING_ADDR}
+    problems: list[str] = []
+    for missing in sorted(known - emitted):
+        problems.append(
+            f"[LD010] '{missing}' is placed by every owning linker script but "
+            f"{OFS_EMITTER_REL} emits no constant into it -- the section links "
+            f"empty and no BSP_CFG_OPTION_SETTING_* override can reach that word"
+        )
+    for stray in sorted(emitted - known):
+        problems.append(
+            f"[LD010] {OFS_EMITTER_REL} emits '{stray}', which is not a word the "
+            f"HUM lists (OPTION_SETTING_ADDR) -- no script places it, so the "
+            f"constant lands wherever the default rules put it"
+        )
+    return problems
+
+
+def check_option_emitters(root: pathlib.Path) -> list[str]:
+    """LD010 -- cross-check the emitted option-setting words against the family.
+
+    Whole-tree by nature like LD006: the producer is one C file and the
+    reservations are in 74 linker scripts, so this cannot be answered from a
+    staged subset.
+
+    Returns one message per problem; an empty list means the family is filled.
+    """
+    path = root / OFS_EMITTER_REL
+    if not path.is_file():
+        return [
+            f"[LD010] {OFS_EMITTER_REL} is missing, so the option-setting "
+            f"producer side cannot be checked. Refusing to report success."
+        ]
+    emitted = emitted_option_sections(strip_c_comments(path.read_text(encoding="utf-8")))
+    if not emitted:
+        # Fails open otherwise: a renamed placement macro would leave this rule
+        # matching nothing and calling an unfilled family clean forever.
+        return [
+            f"[LD010] {OFS_EMITTER_REL} emits no .option_setting_* section at "
+            f"all. Either the placement macro was renamed (this rule now "
+            f"enforces nothing) or every option word was deleted."
+        ]
+    return emitter_problems(emitted)
+
+
 # ---------------------------------------------------------------------------
 # selftest
 # ---------------------------------------------------------------------------
@@ -790,6 +875,43 @@ def _selftest_closure(got_def: set[str], got_ref: set[str]) -> int:
     return rc
 
 
+def _selftest_option_emitters() -> int:
+    """LD010 both directions: fires on an unfilled word and on a stray section."""
+    rc = 0
+    known = {option_section(name) for name in OPTION_SETTING_ADDR}
+
+    if emitter_problems(known):
+        print("SELFTEST FAIL: LD010 fired on a fully-emitted family")
+        rc = 1
+    else:
+        print("selftest: LD010 quiet when every word is emitted OK")
+
+    gap = emitter_problems(known - {".option_setting_otp_sacc00"})
+    if len(gap) != 1 or ".option_setting_otp_sacc00" not in gap[0]:
+        print(f"SELFTEST FAIL: LD010 on a missing producer -> {gap}")
+        rc = 1
+    else:
+        print("selftest: LD010 fires on a placed word with no producer OK")
+
+    stray = emitter_problems(known | {".option_setting_ofs4"})
+    if len(stray) != 1 or ".option_setting_ofs4" not in stray[0]:
+        print(f"SELFTEST FAIL: LD010 on a stray emission -> {stray}")
+        rc = 1
+    else:
+        print("selftest: LD010 fires on an emission outside the family OK")
+
+    # A doc mention of the placement macro is not an emission.
+    prose = 'RA8_SECTION(".option_setting_ofs0") static const uint32_t s = 0U;\n'
+    doc = '/* Each entry uses RA8_SECTION(".option_setting_xxx") to place it. */\n'
+    got = emitted_option_sections(strip_c_comments(doc + prose))
+    if got != {".option_setting_ofs0"}:
+        print(f"SELFTEST FAIL: emitted_option_sections -> {sorted(got)}")
+        rc = 1
+    else:
+        print("selftest: emitted_option_sections ignores comment mentions OK")
+    return rc
+
+
 def _selftest_worktree_inventory() -> int:
     """Candidate scope includes an unstaged move target and drops its source."""
     with tempfile.TemporaryDirectory() as td:
@@ -872,6 +994,7 @@ def _selftest_body() -> int:
     rc |= _selftest_option_setting()
     rc |= _selftest_option_completeness()
     rc |= _selftest_sram_fit()
+    rc |= _selftest_option_emitters()
     scan_rc, got_def, got_ref = _selftest_symbol_scan()
     return rc | scan_rc | _selftest_closure(got_def, got_ref) | _selftest_worktree_inventory()
 
@@ -924,9 +1047,9 @@ def main() -> int:
     """Check every tracked linker script, or run the selftest / scope listing.
 
     Note the asymmetry: the per-file LD001-LD005 rules honour a positional
-    path list, but the LD006 symbol closure always scans the whole tree
-    because a definition and its use live in different files. Passing paths
-    therefore narrows part of this gate and not all of it.
+    path list, but the LD006 symbol closure and the LD010 producer check always
+    scan the whole tree because a definition and its use live in different
+    files. Passing paths therefore narrows part of this gate and not all of it.
 
     ``--list-files`` prints the scope and exits 0 for check_lint_coverage.py.
 
@@ -968,7 +1091,7 @@ def main() -> int:
     if not args.paths and option_floor_breached(complete):
         return 1
 
-    problems = check_symbol_closure(root) if not args.paths else []
+    problems = check_symbol_closure(root) + check_option_emitters(root) if not args.paths else []
 
     for f in findings:
         print(f)

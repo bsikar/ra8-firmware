@@ -23,7 +23,8 @@
  *    selectors.
  *  - `BPS`, `BPS_SEC`: block-protection configuration.
  *  - `OTP_*`: one-time-programmable anti-rollback and boot-secure
- *    fields.
+ *    fields, including the `SAMR` / `SACC00`..`SACC13` MRAM
+ *    secure-access-control words (#1263).
  *
  * Every entry here is defined as `0xFFFFFFFF` which is the
  * "erased / default / permissive" value -- exactly what a freshly
@@ -142,6 +143,38 @@
 /** @brief BSP CFG OPTION SETTING OTP SAMR. */
 #define BSP_CFG_OPTION_SETTING_OTP_SAMR (0xFFFFFFFFU)
 #endif
+#ifndef BSP_CFG_OPTION_SETTING_OTP_SACC00
+/** @brief BSP CFG OPTION SETTING OTP SACC00. */
+#define BSP_CFG_OPTION_SETTING_OTP_SACC00 (0xFFFFFFFFU)
+#endif
+#ifndef BSP_CFG_OPTION_SETTING_OTP_SACC10
+/** @brief BSP CFG OPTION SETTING OTP SACC10. */
+#define BSP_CFG_OPTION_SETTING_OTP_SACC10 (0xFFFFFFFFU)
+#endif
+#ifndef BSP_CFG_OPTION_SETTING_OTP_SACC01
+/** @brief BSP CFG OPTION SETTING OTP SACC01. */
+#define BSP_CFG_OPTION_SETTING_OTP_SACC01 (0xFFFFFFFFU)
+#endif
+#ifndef BSP_CFG_OPTION_SETTING_OTP_SACC11
+/** @brief BSP CFG OPTION SETTING OTP SACC11. */
+#define BSP_CFG_OPTION_SETTING_OTP_SACC11 (0xFFFFFFFFU)
+#endif
+#ifndef BSP_CFG_OPTION_SETTING_OTP_SACC02
+/** @brief BSP CFG OPTION SETTING OTP SACC02. */
+#define BSP_CFG_OPTION_SETTING_OTP_SACC02 (0xFFFFFFFFU)
+#endif
+#ifndef BSP_CFG_OPTION_SETTING_OTP_SACC12
+/** @brief BSP CFG OPTION SETTING OTP SACC12. */
+#define BSP_CFG_OPTION_SETTING_OTP_SACC12 (0xFFFFFFFFU)
+#endif
+#ifndef BSP_CFG_OPTION_SETTING_OTP_SACC03
+/** @brief BSP CFG OPTION SETTING OTP SACC03. */
+#define BSP_CFG_OPTION_SETTING_OTP_SACC03 (0xFFFFFFFFU)
+#endif
+#ifndef BSP_CFG_OPTION_SETTING_OTP_SACC13
+/** @brief BSP CFG OPTION SETTING OTP SACC13. */
+#define BSP_CFG_OPTION_SETTING_OTP_SACC13 (0xFFFFFFFFU)
+#endif
 #ifndef BSP_CFG_OPTION_SETTING_OTP_PBPS
 /** @brief BSP CFG OPTION SETTING OTP PBPS. */
 #define BSP_CFG_OPTION_SETTING_OTP_PBPS (0xFFFFFFFFU)
@@ -212,6 +245,36 @@ static const uint32_t s_ra8_otp_fsblctrl2 = BSP_CFG_OPTION_SETTING_OTP_FSBLCTRL2
 
 RA8_SECTION(".option_setting_otp_samr")
 static const uint32_t s_ra8_otp_samr = BSP_CFG_OPTION_SETTING_OTP_SAMR;
+
+/* SACC00..SACC13 are the MRAM secure-access-control words that sit alongside SAMR in the
+ * extra-MRAM OTP window (HUM Ch 7 Figure 7.1 p 279; addresses 0x02E07620..0x02E07690, the
+ * same cells every owning linker script places and check_linker_scripts.py pins). They are
+ * emitted here for the same reason as their neighbours: the erased word is the permissive
+ * default, and emitting it is what gives a deployment a `BSP_CFG_OPTION_SETTING_*` override
+ * to aim at. Programming any of them is irreversible -- see #1263. */
+RA8_SECTION(".option_setting_otp_sacc00")
+static const uint32_t s_ra8_otp_sacc00 = BSP_CFG_OPTION_SETTING_OTP_SACC00;
+
+RA8_SECTION(".option_setting_otp_sacc10")
+static const uint32_t s_ra8_otp_sacc10 = BSP_CFG_OPTION_SETTING_OTP_SACC10;
+
+RA8_SECTION(".option_setting_otp_sacc01")
+static const uint32_t s_ra8_otp_sacc01 = BSP_CFG_OPTION_SETTING_OTP_SACC01;
+
+RA8_SECTION(".option_setting_otp_sacc11")
+static const uint32_t s_ra8_otp_sacc11 = BSP_CFG_OPTION_SETTING_OTP_SACC11;
+
+RA8_SECTION(".option_setting_otp_sacc02")
+static const uint32_t s_ra8_otp_sacc02 = BSP_CFG_OPTION_SETTING_OTP_SACC02;
+
+RA8_SECTION(".option_setting_otp_sacc12")
+static const uint32_t s_ra8_otp_sacc12 = BSP_CFG_OPTION_SETTING_OTP_SACC12;
+
+RA8_SECTION(".option_setting_otp_sacc03")
+static const uint32_t s_ra8_otp_sacc03 = BSP_CFG_OPTION_SETTING_OTP_SACC03;
+
+RA8_SECTION(".option_setting_otp_sacc13")
+static const uint32_t s_ra8_otp_sacc13 = BSP_CFG_OPTION_SETTING_OTP_SACC13;
 
 RA8_SECTION(".option_setting_otp_pbps")
 static const uint32_t s_ra8_otp_pbps = BSP_CFG_OPTION_SETTING_OTP_PBPS;
