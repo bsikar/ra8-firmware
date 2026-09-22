@@ -12,7 +12,8 @@
 # zig binary the host tests use (tools/zig via PATH, checked by
 # scripts/checks/check_tool_versions.py). Target and CPU are derived from the
 # toolchain file's own flags, so the archive matches the C objects it links
-# beside: same core, same float ABI, same instruction set.
+# beside. EIL alone lowers Zig instruction selection to the Cortex-M33 model
+# used by ra8_emulator; the float ABI and normal hardware target stay unchanged.
 
 find_program(RA8_ZIG_EXECUTABLE zig)
 
@@ -40,6 +41,11 @@ function(_ra8_zig_target_for_toolchain _out_target _out_cpu)
       "('${CMAKE_C_FLAGS}'). A migrated Zig library cannot be cross-built "
       "for an unknown core."
     )
+  endif()
+  # Unicorn models the M85 board as M33 and cannot execute Zig's M85 cset/csel.
+  # Keep this override inside the EIL build command, never in a hardware build.
+  if("$ENV{RA8_ZIG_EIL_M33}" STREQUAL "1" AND _cpu STREQUAL "cortex-m85")
+    set(_cpu "cortex-m33")
   endif()
   string(REPLACE "-" "_" _zig_cpu "${_cpu}")
   if(_hard_float)
