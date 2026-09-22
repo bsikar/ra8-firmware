@@ -227,14 +227,46 @@ def _parse_map_discarded(
     return discarded
 
 
+def _migrated_zig_archive(
+    obj_path: str,
+    arch_member_re: re.Pattern[str],
+    map_dir: pathlib.Path | None,
+    repo_root: pathlib.Path | None,
+) -> str | None:
+    """Recognize an archive built at the app's first-party Zig output path."""
+    if map_dir is None or repo_root is None:
+        return None
+    match = arch_member_re.search(obj_path)
+    if match is None:
+        return None
+    try:
+        archive = pathlib.Path(match.group(1))
+        if not archive.is_absolute():
+            archive = map_dir / archive
+        archive = archive.resolve(strict=True)
+        relative = archive.relative_to(map_dir.resolve(strict=True)).as_posix()
+    except (OSError, ValueError):
+        return None
+    migrated = re.fullmatch(r"zig/([a-z0-9_]+)/([a-z0-9_]+)/lib/lib\1\.a", relative)
+    if migrated is None:
+        return None
+    library = migrated.group(1)
+    if not (repo_root / "libs" / library / "build.zig").is_file():
+        return None
+    return f"lib{library}.a"
+
+
 def _parse_map_memory_map(
     memory_map_text: str,
     arch_member_re: re.Pattern[str],
-) -> tuple[dict[str, set[str]], dict[str, str], set[str]]:
+    map_dir: pathlib.Path | None,
+    repo_root: pathlib.Path | None,
+) -> tuple[dict[str, set[str]], dict[str, str], set[str], set[str]]:
     """Parse the memory map for live members, providers, and system archives."""
     live_members: dict[str, set[str]] = {}
     providers: dict[str, str] = {}
     system_archives: set[str] = set()
+    project_archive_paths: dict[str, bool] = {}
     lines = memory_map_text.splitlines()
 
     for i, line in enumerate(lines):
@@ -256,6 +288,10 @@ def _parse_map_memory_map(
                     live_members.setdefault(arch_name, set()).add(member)
                     if is_system:
                         system_archives.add(arch_name)
+                    migrated = _migrated_zig_archive(parts[3], arch_member_re, map_dir, repo_root)
+                    project_archive_paths[arch_name] = (
+                        project_archive_paths.get(arch_name, True) and migrated == arch_name
+                    )
 
         if (
             len(parts) == _map_symbol_fields
@@ -273,16 +309,23 @@ def _parse_map_memory_map(
                     if obj_m:
                         providers[sym] = obj_m.group(1).replace("\\", "/").split("/")[-1]
 
-    return live_members, providers, system_archives
+    project_zig_archives = {arch for arch, valid in project_archive_paths.items() if valid}
+    return live_members, providers, system_archives, project_zig_archives
 
 
-def parse_map_file(map_content: str) -> dict[str, Any]:
+def parse_map_file(
+    map_content: str,
+    *,
+    map_dir: pathlib.Path | None = None,
+    repo_root: pathlib.Path | None = None,
+) -> dict[str, Any]:
     """Parse GNU ld map file to extract live archive members and symbol providers."""
     result: dict[str, Any] = {
         "live_archive_members": {},
         "discarded_archive_members": {},
         "symbol_providers": {},
         "system_archives": set(),
+        "project_zig_archives": set(),
         "has_heap_section": False,
     }
 
@@ -300,12 +343,13 @@ def parse_map_file(map_content: str) -> dict[str, Any]:
     arch_member_re = re.compile(r"([^\s()]+\.a)\(([^)]+\.o(?:bj)?)\)")
     result["discarded_archive_members"] = _parse_map_discarded(discarded_text, arch_member_re)
 
-    live_members, providers, system_archives = _parse_map_memory_map(
-        memory_map_text, arch_member_re
+    live_members, providers, system_archives, project_zig_archives = _parse_map_memory_map(
+        memory_map_text, arch_member_re, map_dir, repo_root
     )
     result["live_archive_members"] = live_members
     result["symbol_providers"] = providers
     result["system_archives"] = system_archives
+    result["project_zig_archives"] = project_zig_archives
     return result
 
 
@@ -445,7 +489,7 @@ def _load_map_info(map_path: pathlib.Path | None, has_heap: bool) -> tuple[dict[
     }
     if map_path and map_path.is_file():
         map_content = map_path.read_text(encoding="utf-8", errors="replace")
-        map_info = parse_map_file(map_content)
+        map_info = parse_map_file(map_content, map_dir=map_path.parent, repo_root=_repo_root())
         if map_info["has_heap_section"]:
             has_heap = True
     return map_info, has_heap
@@ -493,6 +537,7 @@ def analyze_image(
         "live_forbidden_symbols": live_forbidden_syms,
         "live_archive_members": {k: sorted(v) for k, v in map_info["live_archive_members"].items()},
         "system_archives": sorted(map_info.get("system_archives", set())),
+        "project_zig_archives": sorted(map_info.get("project_zig_archives", set())),
         "discarded_archive_members": {
             k: sorted(v) for k, v in map_info["discarded_archive_members"].items()
         },
@@ -510,7 +555,7 @@ def _check_live_archive_policy(app_name: str, analysis: dict[str, Any]) -> list[
     """Fail closed on live archives outside the explicit allowlists."""
     violations: list[str] = []
     allowed = _allowed_compiler_archives()
-    project = _allowed_project_archives()
+    project = _allowed_project_archives() | set(analysis.get("project_zig_archives", []))
     live = analysis.get("live_archive_members", {})
     for arch in sorted(live):
         if arch in allowed:
@@ -539,7 +584,11 @@ def _split_archive_provider(provider: str) -> tuple[str, str] | None:
 def _check_primitive_providers(app_name: str, analysis: dict[str, Any]) -> list[str]:
     """Reject runtime primitives resolved to unapproved archives."""
     violations: list[str] = []
-    allowed = _allowed_compiler_archives() | _allowed_project_archives()
+    allowed = (
+        _allowed_compiler_archives()
+        | _allowed_project_archives()
+        | set(analysis.get("project_zig_archives", []))
+    )
     for sym, provider in analysis.get("runtime_primitive_providers", {}).items():
         if any(arch in provider for arch in _forbidden_archives()):
             violations.append(
