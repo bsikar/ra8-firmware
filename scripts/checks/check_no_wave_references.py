@@ -103,7 +103,6 @@ OPTOUT_RE: re.Pattern[str] = re.compile(r"WAVE-OK\s*:")
 SELF_EXEMPT_FILES: frozenset[str] = frozenset(
     {
         "scripts/checks/check_no_wave_references.py",
-        "scripts/fix/fix_wave_references.py",
         "docs/STYLE_GUIDE.md",
         "CLAUDE.md",
     }
@@ -230,7 +229,6 @@ def main() -> int:
         print(f"  ... {len(findings) - MAX_FINDINGS_SHOWN} more (truncated)")
     print()
     print('Per-line opt-out: append "WAVE-OK: <reason>" on the offending line.')
-    print("Auto-fix helper: scripts/fix/fix_wave_references.py --apply")
     return 1
 
 

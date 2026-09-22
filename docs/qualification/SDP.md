@@ -383,8 +383,7 @@ project policy in [`../CERTIFICATION_SCOPE.md`](../CERTIFICATION_SCOPE.md)).
 
 ### 6.6 Stack-usage analysis
 
-`scripts/checks/check_stack_usage.sh` plus
-`scripts/checks/stack_usage_check.py` analyse the per-function
+`scripts/checks/stack_usage_check.py` analyses the per-function
 `.su` files emitted by `arm-none-eabi-gcc -fstack-usage`. Results
 roll up into [`../STACK_USAGE.md`](../STACK_USAGE.md). This satisfies
 IEC 61508-3 Annex B (control of coding-time error sources, stack

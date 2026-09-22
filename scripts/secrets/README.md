@@ -45,16 +45,9 @@ failure, and this is the routine follow-up.
 
 ### 3. Configure a secret path, its policy and its AppRole
 
-```sh
-/bin/bash -p scripts/secrets/openbao_configure.sh <secret-path> <policy-name> <role-name> \
-  < values.env > approle.env
-```
-
-Idempotent: it mounts KV v2 if absent, writes the secret from the `KEY=VALUE`
-lines on stdin, writes a read-only policy scoped to exactly that path, enables
-AppRole if absent, and binds a role to the policy. The emitted `ROLE_ID` /
-`SECRET_ID` go to **stdout** and every status line to **stderr**, so a redirect
-captures the credentials and nothing else.
+The retired local setup helper has no automated replacement. An OpenBao
+administrator must provision the KV v2 path, read-only policy, and AppRole
+before the rig uses those credentials.
 
 The consumer then reads them through `openbao_client.py` with a
 `~/.config/hil/openbao.env` (mode 0600) naming `BAO_ADDR`, `BAO_KV_MOUNT`,
@@ -63,8 +56,7 @@ The consumer then reads them through `openbao_client.py` with a
 Peer onboarding -- a `userpass` login plus a per-person AppRole scoped to a
 read-only policy -- is deliberately not here. It is a rare, interactive,
 one-person-at-a-time operation whose output is a password, so it stays a
-hand-run script on the vault node; the two above are the ones the rig cannot be
-rebuilt without.
+hand-run script on the vault node; the unseal operation remains necessary after restart.
 
 ## Root of Trust
 

@@ -65,8 +65,7 @@ the same MCU peripheral addresses via `mmap(MAP_FIXED, 0x40000000)`.
 macOS arm64 refuses MAP_FIXED below 4 GiB, so all host tests --
 including these fuzz harnesses -- run inside the project's Linux
 devcontainer. Use `just tests::devcontainer all` for host tests and
-`just quality::devcontainer::fuzz` for the fuzz smoke run; the legacy
-`scripts/ci/test-docker.sh` test spelling remains a thin delegate. The fuzz CMake file drops
+`just quality::devcontainer::fuzz` for the fuzz smoke run. The fuzz CMake file drops
 AddressSanitizer when configured on macOS so the build still succeeds
 for development, but a real fuzz session belongs in the container.
 

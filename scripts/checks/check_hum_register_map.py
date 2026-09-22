@@ -403,7 +403,7 @@ def freshness_error(rows: list[hum_regmap.HumRegister]) -> str | None:
     return (
         f"{hum_regmap.HUM_CSV.relative_to(REPO_ROOT)} does not match a fresh parse of "
         f"{hum_regmap.HUM_PDF.name} ({len(committed)} vs {len(fresh)} bytes); "
-        "run scripts/gen/gen_hum_register_map.py"
+        "regenerate the register map before retrying"
     )
 
 

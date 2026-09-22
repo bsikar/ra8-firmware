@@ -56,6 +56,3 @@ exempt automatically.
 
 - Gate: `scripts/checks/check_line_citations.py` -- pre-commit
   enforcement, and a whole-tree scan on demand.
-- Extractor: `scripts/checks/extract_line_citations.py` -- emits CSV
-  of every violation with the enclosing function and a suggested
-  `<file>::<func>` replacement. Used by cleanup agents.
