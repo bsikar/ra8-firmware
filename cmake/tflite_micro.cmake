@@ -14,9 +14,17 @@
 #
 #   * libs/third_party/tflite-micro  -- MicroInterpreter + MicroAllocator + the
 #     op resolver + a modest reference-kernel set (CONV_2D, DEPTHWISE_CONV_2D,
-#     FULLY_CONNECTED, ADD, MUL, RESHAPE, SOFTMAX, AVERAGE_POOL_2D) + the
-#     Ethos-U custom-op stub. Audio/FFT (signal/, kissfft), the CMSIS-NN /
-#     Xtensa / ARC optimized kernel ports, and every unused kernel are omitted.
+#     FULLY_CONNECTED, ADD, MUL, RESHAPE, SOFTMAX, AVERAGE_POOL_2D,
+#     MAX_POOL_2D) + the Ethos-U custom-op stub. Audio/FFT (signal/, kissfft),
+#     the CMSIS-NN / Xtensa / ARC optimized kernel ports, and every unused
+#     kernel are omitted.
+#
+#     Nine builtins, not eight: the glob below takes whole files, and the one
+#     vendored `kernels/pooling.cc` registers MAX_POOL_2D next to
+#     AVERAGE_POOL_2D, so both have been linkable since the subset was
+#     vendored. That set is the CPU-fallback surface for a Vela-lowered graph
+#     (issue #228), so it is pinned by a test rather than by this comment:
+#     tests/misc/src/test_ra8_tflm_op_subset.cc.
 #   * libs/third_party/flatbuffers   -- the FlatBuffer read-path headers the
 #     .tflite model format needs (headers only; no compiler/codegen).
 #   * libs/third_party/gemmlowp      -- fixed-point math headers the quantized
