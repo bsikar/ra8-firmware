@@ -860,54 +860,66 @@ typedef enum : uint8_t {
 } ra8_board_pi4ioe_project_t;
 
 /* =============================================================================
- * 6d. Native SDHI bus (SDHI0, port 4 pins 0..7)
+ * 6d. Native SDHI bus (SDHI1_B, port 4 pins 0..6)
  * =============================================================================
  */
 
 /**
  * @enum ra8_board_sdhi_pin_t
- * @brief Pin assignments for the native 4-bit SDHI0 micro-SD bus.
+ * @brief Pin assignments for the native 4-bit SDHI1_B micro-SD bus.
  *
  * @details
- * The RA8D2 routes the SDHI0 SD/MMC host-controller signals to port 4
- * pins 0..7 under ``PSEL = k_ra8_psel_sdhi`` (chip HUM Ch 20.6
- * "Multiplexed Pin Function Selector"). In bus order the eight pins are
- * CMD / CLK / DAT0 / DAT1 / DAT2 / DAT3 / WP (write-protect) /
- * CD (card-detect). The values are ``(port << 8) | pin`` encodings in
- * the ``ra8_port_pin_t`` value space, matching every other board-pin
- * enum in this header.
+ * Port 4 pins 0..6 carry the SDHI1 group-B (``SDHI1_B``) SD/MMC
+ * host-controller signals under ``PSEL = k_ra8_psel_sdhi`` (chip HUM
+ * Ch 20.6 "Multiplexed Pin Function Selector"). In bus order the seven
+ * pins are CLK / CMD / DAT0 / DAT1 / DAT2 / DAT3 / CD (card-detect).
+ * The values are ``(port << 8) | pin`` encodings in the
+ * ``ra8_port_pin_t`` value space, matching every other board-pin enum in
+ * this header.
+ *
+ * Exact silicon sources, both Rev.1.30 (2026-02-27): RA8D2 datasheet
+ * Table 1.16 and RA8P1 datasheet Table 1.17. CLK=P400, CMD=P401,
+ * DAT0=P402, DAT1=P403, DAT2=P404, DAT3=P405, CD=P406. The BGA289 ball
+ * coordinates for those pins are P17, N17, L14, H13, J13, G12, F14.
+ *
+ * @note NO WRITE-PROTECT PIN IS ROUTED. SDHI1_B has no port-4
+ * write-protect function, P407 carries no ``SD1CD``/``SD1WP`` function at
+ * all, and a microSD socket has no mechanical write-protect switch. If a
+ * full-size SD socket supplies one, write-protect is a caller-owned GPIO
+ * input; this contract deliberately does not fabricate a port-4 WP/CD
+ * pair (issue #845).
  *
  * @warning HARDWARE CAVEAT -- the EK-RA8D2 v1 board does NOT carry an
- * on-board micro-SD socket and the SDHI0 peripheral is not populated
+ * on-board micro-SD socket and the SDHI peripheral is not populated
  * (board UM has no SD-card table; see ``docs/MEMORY_MAP.md`` and
- * ``docs/HARDWARE_BRINGUP.md``). On EK-RA8D2 v1 these port-4 pads serve
- * CANFD / IIC functions, not SDHI. This enum and
- * ``ra8_board_sdhi_pins_init`` capture the chip-side SDHI0 pin map shared
- * by the SDHI / ra8_io demo apps; running them against real hardware
- * requires an external SDHI break-out wired to port 4. The apps that use
- * this map therefore live under ``hw_pending`` / ``_unsupported``.
+ * ``docs/HARDWARE_BRINGUP.md``). On stock EK-RA8D2 v1 these port-4 pads
+ * serve CANFD / IIC functions, not SDHI. This enum and
+ * ``ra8_board_sdhi_pins_init`` capture the chip-side SDHI1_B pin map
+ * shared by the SDHI / ra8_io demo apps; running them against real
+ * hardware requires an external SDHI break-out wired to port 4, and
+ * native-SDHI bench validation before any of those apps is promoted out
+ * of ``hw_pending``. The validated SCI0 Simple-SPI microSD path
+ * (``ra8_sdmmc_spi``) is separate and unaffected by this contract.
  *
- * @invariant All eight members carry port index 4 (high byte 0x04).
+ * @invariant All seven members carry port index 4 (high byte 0x04).
  * @see ra8_board_sdhi_pins_init
  * @since 0.1.0
  */
 typedef enum : uint16_t {
-  k_ra8_board_sdhi_cmd =
-    RA8_PIN(k_ra8_port_4, k_ra8_pin_0), /**< SDHI0 CMD,  P400. Chip HUM Ch 20.6. */
   k_ra8_board_sdhi_clk =
-    RA8_PIN(k_ra8_port_4, k_ra8_pin_1), /**< SDHI0 CLK,  P401. Chip HUM Ch 20.6. */
+    RA8_PIN(k_ra8_port_4, k_ra8_pin_0), /**< SDHI1_B CLK,  P400 / BGA289 P17. */
+  k_ra8_board_sdhi_cmd =
+    RA8_PIN(k_ra8_port_4, k_ra8_pin_1), /**< SDHI1_B CMD,  P401 / BGA289 N17. */
   k_ra8_board_sdhi_dat0 =
-    RA8_PIN(k_ra8_port_4, k_ra8_pin_2), /**< SDHI0 DAT0, P402. Chip HUM Ch 20.6. */
+    RA8_PIN(k_ra8_port_4, k_ra8_pin_2), /**< SDHI1_B DAT0, P402 / BGA289 L14. */
   k_ra8_board_sdhi_dat1 =
-    RA8_PIN(k_ra8_port_4, k_ra8_pin_3), /**< SDHI0 DAT1, P403. Chip HUM Ch 20.6. */
+    RA8_PIN(k_ra8_port_4, k_ra8_pin_3), /**< SDHI1_B DAT1, P403 / BGA289 H13. */
   k_ra8_board_sdhi_dat2 =
-    RA8_PIN(k_ra8_port_4, k_ra8_pin_4), /**< SDHI0 DAT2, P404. Chip HUM Ch 20.6. */
+    RA8_PIN(k_ra8_port_4, k_ra8_pin_4), /**< SDHI1_B DAT2, P404 / BGA289 J13. */
   k_ra8_board_sdhi_dat3 =
-    RA8_PIN(k_ra8_port_4, k_ra8_pin_5), /**< SDHI0 DAT3, P405. Chip HUM Ch 20.6. */
-  k_ra8_board_sdhi_wp =
-    RA8_PIN(k_ra8_port_4, k_ra8_pin_6), /**< SDHI0 WP,   P406. Chip HUM Ch 20.6. */
+    RA8_PIN(k_ra8_port_4, k_ra8_pin_5), /**< SDHI1_B DAT3, P405 / BGA289 G12. */
   k_ra8_board_sdhi_cd =
-    RA8_PIN(k_ra8_port_4, k_ra8_pin_7), /**< SDHI0 CD,   P407. Chip HUM Ch 20.6. */
+    RA8_PIN(k_ra8_port_4, k_ra8_pin_6), /**< SDHI1_B CD,   P406 / BGA289 F14. */
 } ra8_board_sdhi_pin_t;
 
 /**
@@ -916,23 +928,34 @@ typedef enum : uint16_t {
  * @details
  * Exposed as a typed enum (not a macro) so applications can pass the
  * instance index to ``ra8_sdcard_init`` / ``ra8_sdhi_init`` without
- * re-encoding the literal. The port-4 pin map above is the SDHI **0**
- * function group in the chip HUM I/O Ports chapter.
+ * re-encoding the literal. Every consumer takes the index from here, so
+ * the instance is changed in one place.
+ *
+ * @warning KNOWN REMAINING HALF OF #845: the port-4 pin map above is the
+ * SDHI **1** group-B function set, so the controller that owns those pads
+ * is SDHI1 (``k_ra8_sdhi1_base_addr``), not the SDHI0 selected here.
+ * Moving the index to 1 is the follow-up slice: it also has to move the
+ * ra8_emulator native host-controller window (``board_periph_sdhi.c``,
+ * modelled at the SDHI0 base) and its MSTP model entry, otherwise every
+ * emulator-backed native-SDHI app stops finding a controller. Nothing
+ * validated on hardware depends on this index today: the affected apps
+ * are all ``hw_pending`` / ``_unsupported``.
  */
 typedef enum : uint8_t {
-  k_ra8_board_sdhi_instance = 0U, /**< SDHI0 (chip HUM Ch 20.6 SDHI pin group). */
+  k_ra8_board_sdhi_instance = 0U, /**< SDHI0 today; SDHI1 per #845 slice 2. */
 } ra8_board_sdhi_instance_t;
 
 /**
- * @brief Route the eight SDHI0 bus pins to the SDHI peripheral function.
+ * @brief Route the seven SDHI1_B bus pins to the SDHI peripheral function.
  *
  * @details
- * Walks the ::ra8_board_sdhi_pin_t bus order (CMD / CLK / DAT0..3 / WP /
- * CD on port 4 pins 0..7) and calls ``ra8_pfs_route_peripheral`` for each
- * under ``PSEL = k_ra8_psel_sdhi`` (chip HUM Ch 20.6 "Multiplexed Pin
- * Function Selector"). It does NOT bring the SDHI block or the card up --
- * call ``ra8_sdcard_init`` / ``ra8_sdhi_init`` after this returns. Returns
- * on the first failing pin so the caller can panic-halt before SD
+ * Walks the ::ra8_board_sdhi_pin_t bus order (CLK / CMD / DAT0..3 / CD on
+ * port 4 pins 0..6) and calls ``ra8_pfs_route_peripheral`` for each under
+ * ``PSEL = k_ra8_psel_sdhi`` (chip HUM Ch 20.6 "Multiplexed Pin Function
+ * Selector"). No write-protect pin is routed -- see the @note on
+ * ::ra8_board_sdhi_pin_t. It does NOT bring the SDHI block or the card
+ * up -- call ``ra8_sdcard_init`` / ``ra8_sdhi_init`` after this returns.
+ * Returns on the first failing pin so the caller can panic-halt before SD
  * bring-up.
  *
  * See the @warning on ::ra8_board_sdhi_pin_t: EK-RA8D2 v1 has no on-board
@@ -940,14 +963,15 @@ typedef enum : uint8_t {
  * SDHI break-out wired to port 4.
  *
  * @return ra8_err_t Error code.
- * @retval k_ra8_ok                All eight SDHI0 pins routed.
+ * @retval k_ra8_ok                All seven SDHI1_B pins routed.
  * @retval k_ra8_err_invalid_arg   PFS programming rejected an entry.
  * @retval k_ra8_err_gpio_conflict At least one pin already owned.
  *
  * @pre IOPORT module powered (reset default).
  * @pre Single-threaded init context (no other consumer owns port-4 pins).
- * @post On success port-4 pins 0..7 are in the SDHI alternate function.
+ * @post On success port-4 pins 0..6 are in the SDHI alternate function.
  * @post On failure the affected pins are left in their prior state.
+ * @post Port-4 pin 7 (P407) is never touched by this routine.
  *
  * @note Not thread-safe; call once during board bring-up before SDHI init.
  * @since 0.1.0
