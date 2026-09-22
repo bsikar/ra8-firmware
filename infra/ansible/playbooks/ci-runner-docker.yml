@@ -1,0 +1,40 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Brighton Sikarskie
+---
+# Deploy (or remove) a plain self-hosted runner in Docker on a host that is not
+# the k3s node -- a second build host, so CI and the dev container stop
+# contending for one CPU.
+#
+# Operator entry points: `just infra::apply truenas` and
+# `just infra::remove truenas`. The fleet dispatcher supplies canonical image
+# metadata, inventory, capacity, and lifecycle state.
+#
+# The ARC-on-k3s pool is playbooks/ci-runner.yml; the two are independent and
+# both register against the same repository. See infra/README.md.
+- name: Deploy a Docker-hosted CI runner
+  hosts: ci_runners_docker
+  gather_facts: true
+  pre_tasks:
+    - name: Load local secrets if present (bootstrap writes private/secrets.yml)
+      ansible.builtin.include_vars: "{{ item }}"
+      vars:
+        item: "{{ playbook_dir }}/../private/secrets.yml"
+      when: item is exists
+  roles:
+    - ci_runner_docker
+    # The host's OTHER job, if it declares one: a low-priority cgroup that
+    # lends agents whatever CI is not using. Disabled unless the host declares
+    # a `dev_slice:` block, and the role then removes any slice a previous
+    # declaration left. Tagged so `--tags dev-slice` retunes it without
+    # touching a container.
+    - role: dev_slice
+      tags: [dev-slice]
+    # Then the capacity script, which has to name the instance
+    # containers the role above has just created.
+    #
+    # Tagged so `--tags capacity` can refresh the drain script and the
+    # quiet-hours timer on their own. That path touches no container, so it
+    # needs no drain and costs the host no runner time -- which is the whole
+    # reason it is separable.
+    - role: fleet_capacity
+      tags: [capacity]

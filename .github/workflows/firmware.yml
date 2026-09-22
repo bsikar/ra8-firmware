@@ -1,0 +1,715 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Brighton Sikarskie
+# SCHEDULING ONLY -- the gate bodies live in scripts/ci.sh.
+#
+# Every step below is a thin `just quality::local::gate <name>` driver. This
+# file decides WHICH gates run, on WHICH runner, and in parallel with WHAT; it
+# never decides what a gate DOES. That inversion is why "local green, CI red"
+# cannot happen any more: a developer running `just quality::native`
+# executes the exact same functions these jobs execute.
+#
+# Adding a check here as a raw `run:` block would re-create the drift this
+# design removed, so scripts/ci/check_ci_parity.py (the `ci-parity` gate)
+# rejects any step that is neither a registered gate nor tagged
+# `# ci-parity: infra -- <reason>`. Infra steps may not invoke project checks.
+#
+# SECURITY (public-repo hardening): every job below runs on SELF-HOSTED
+# runners and this workflow triggers on `pull_request`. To stop a fork PR
+# from executing untrusted code on the owner's runners, every job carries:
+#
+#   if: github.event_name != 'pull_request'
+#       || github.event.pull_request.head.repo.full_name == github.repository
+#
+# so a job runs on push / schedule / workflow_dispatch, and on PRs ONLY when
+# the PR head branch lives in THIS repo (a collaborator branch, never a fork).
+# Fork PRs skip every self-hosted job -- untrusted code never reaches the
+# runner, independent of any approval setting. Do NOT add `pull_request_target`
+# with a checkout of PR head code; that would re-open the hole with secrets in
+# scope. Workflow files alone cannot fully close this: see SECURITY.md for the
+# GitHub UI / runner-group / ephemeral-VM settings the owner MUST also set
+# before making the repo public.
+---
+name: firmware
+
+on:
+  push:
+    branches: [main, dev, zig/dev]
+  # PRs targeting dev run the same gate set as PRs targeting main (#357). dev
+  # is this repo's working branch, so the review path -- not just post-merge --
+  # must exercise every gate that decides branch health. A PR to dev was
+  # previously blind to copyright, format, tidy, cppcheck, misra, ci-parity,
+  # pre-commit-checks, unit-tests and all the lint-* gates.
+  pull_request:
+    branches: [main, dev, zig/dev]
+
+# Per-commit isolation on push (#366). Keying the group on the commit SHA for
+# push events means a burst of dev pushes never cancels an in-flight run:
+# every landed commit gets its own complete gate run, so a cancelled run can
+# no longer masquerade as a passing one when judging branch health, and each
+# commit is individually validated (bisectability). PR and dispatch events
+# still key on the ref, so a fresh push to a PR cancels its now-superseded run.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event_name == 'push' && github.sha || github.ref }}
+  cancel-in-progress: true
+
+env:
+  CMAKE_BUILD_PARALLEL_LEVEL: 4
+  MCDC_BASELINE_FILE: .github/mcdc-baseline.txt
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+jobs:
+  # ---------------------------------------------------------------------------
+  # The parity guard runs first and cheapest: if the workflows and the gate
+  # registry have drifted apart, every other job's result is suspect.
+  # ---------------------------------------------------------------------------
+  ci-parity:
+    name: CI parity (workflows <-> ci.sh)
+    runs-on: ra8-ci
+    if: >-
+      github.event_name != 'pull_request'
+      || github.event.pull_request.head.repo.full_name == github.repository
+    steps:
+      - uses: actions/checkout@v4
+      - run: just quality::local::gate ci-parity
+
+  ci-status-contract:
+    name: ci-status verdict contract
+    runs-on: ra8-ci
+    if: >-
+      github.event_name != 'pull_request'
+      || github.event.pull_request.head.repo.full_name == github.repository
+    steps:
+      - uses: actions/checkout@v4
+      - run: just quality::local::gate ci-status-contract
+
+  ascii:
+    name: ASCII-only source files
+    runs-on: ra8-ci
+    if: >-
+      github.event_name != 'pull_request'
+      || github.event.pull_request.head.repo.full_name == github.repository
+    steps:
+      - uses: actions/checkout@v4
+      - run: just quality::local::gate ascii
+
+  copyright:
+    name: Copyright header check
+    runs-on: ra8-ci
+    if: >-
+      github.event_name != 'pull_request'
+      || github.event.pull_request.head.repo.full_name == github.repository
+    steps:
+      - uses: actions/checkout@v4
+      - run: just quality::local::gate copyright
+
+  # The self-hosted listener already runs inside the Ansible-deployed runner
+  # image, so a workflow-level `container:` would only add a second environment.
+  # Audit that image's toolchain against the Dockerfile and uv project pins
+  # here -- this is the
+  # guard against dev-box/runner drift that once hid a red coverage gate.
+  toolchain-parity:
+    name: Toolchain pin parity
+    runs-on: ra8-ci
+    if: >-
+      github.event_name != 'pull_request'
+      || github.event.pull_request.head.repo.full_name == github.repository
+    steps:
+      - uses: actions/checkout@v4
+      - run: just quality::local::gate toolchain-parity
+
+  # The other half of the same question, and the half toolchain-parity is
+  # structurally unable to ask (#513): it compares the VERSION of tools that are
+  # present against the Dockerfile and uv project pins, so a dependency
+  # that is simply absent
+  # has no pin to disagree with. Two gates landed in one day declaring a tool
+  # the deployed image does not carry -- `gh`, then `jq` -- and both were caught
+  # by a person poking a pod, not by a check.
+  #
+  # Runs here rather than nightly because it is a few `command -v` calls and a
+  # broken image breaks everything downstream of it. On `ra8-ci` the listener
+  # itself is already inside the image this step is asking about.
+  runner-image-deps:
+    name: Runner image carries every declared dependency
+    runs-on: ra8-ci
+    if: >-
+      github.event_name != 'pull_request'
+      || github.event.pull_request.head.repo.full_name == github.repository
+    steps:
+      - uses: actions/checkout@v4
+      - run: just quality::local::gate runner-image-deps
+
+  since:
+    name: Doxygen @since tags
+    runs-on: ra8-ci
+    if: >-
+      github.event_name != 'pull_request'
+      || github.event.pull_request.head.repo.full_name == github.repository
+    steps:
+      - uses: actions/checkout@v4
+      - run: just quality::local::gate since
+
+  # ---------------------------------------------------------------------------
+  # EIL==HIL parity -- every HIL app is also exercised in the emulator (EIL).
+  # Cheap, hardware-free structural gate; guarantees an added HIL app cannot
+  # escape EIL coverage.
+  # ---------------------------------------------------------------------------
+  hil-eil-parity:
+    name: EIL==HIL parity
+    runs-on: ra8-ci
+    if: >-
+      github.event_name != 'pull_request'
+      || github.event.pull_request.head.repo.full_name == github.repository
+    steps:
+      - uses: actions/checkout@v4
+      - run: just quality::local::gate hil-eil-parity
+
+  format:
+    name: clang-format check
+    runs-on: ra8-ci
+    if: >-
+      github.event_name != 'pull_request'
+      || github.event.pull_request.head.repo.full_name == github.repository
+    steps:
+      - uses: actions/checkout@v4
+      - run: just quality::local::gate format
+
+  # ---------------------------------------------------------------------------
+  # clang-tidy over EVERY first-party root: libs/, examples/**/src/*.c,
+  # tests/, tools/ and apps/ (#296). Only vendored SOUP (libs/third_party/) and the
+  # generated font data (libs/ra8_fonts/) are exempt. scripts/checks/clang_tidy.sh owns
+  # the scope and hard-fails if any of those roots collects zero files, so a
+  # future narrowing cannot silently shrink what this job checks.
+  #
+  # The tools/ pass needs the Unicorn + Capstone headers that tools/ra8_emulator
+  # includes (libunicorn-dev + libcapstone-dev on the runner, and in
+  # .devcontainer/Dockerfile for `just ci`).
+  # ---------------------------------------------------------------------------
+  tidy:
+    name: clang-tidy
+    runs-on: ra8-ci
+    if: >-
+      github.event_name != 'pull_request'
+      || github.event.pull_request.head.repo.full_name == github.repository
+    steps:
+      - uses: actions/checkout@v4
+
+      - run: just quality::local::gate tidy
+
+  # ---------------------------------------------------------------------------
+  # NSC veneers must stay -mcmse-clean so the TrustZone HIL path keeps building
+  # (#54). No app links the comms/eth veneers yet, so only this gate would catch
+  # an over-4-arg cmse_nonsecure_entry veneer regression.
+  # ---------------------------------------------------------------------------
+  nsc-cmse:
+    name: NSC veneers (-mcmse)
+    runs-on: ra8-ci
+    if: >-
+      github.event_name != 'pull_request'
+      || github.event.pull_request.head.repo.full_name == github.repository
+    steps:
+      - uses: actions/checkout@v4
+      - run: just quality::local::gate nsc-cmse
+
+  unit-tests:
+    name: Unit tests (host)
+    runs-on: ra8-ci
+    if: >-
+      github.event_name != 'pull_request'
+      || github.event.pull_request.head.repo.full_name == github.repository
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - run: just quality::local::gate unit-tests
+      - run: just quality::local::gate test-go
+      - run: just quality::local::gate test-zig
+      - run: just quality::local::gate test-rust
+
+  # ---------------------------------------------------------------------------
+  # UBSan gate (#239) -- the whole host suite rebuilt under
+  # -fsanitize=undefined in its own tree, with UBSAN_OPTIONS=halt_on_error=1 so
+  # any undefined behaviour is a hard test failure. This was a local-only tool
+  # while ~8 tests injected register events via a SIGALRM/setitimer wall-clock
+  # race that flaked under sanitizer slowdown; the injection now goes through
+  # the deterministic ra8_fake_mmio poll-hook, so the suite is load-stable and
+  # the gate can block PRs.
+  # ---------------------------------------------------------------------------
+  ubsan:
+    name: UBSan (host tests)
+    runs-on: ra8-ci
+    if: >-
+      github.event_name != 'pull_request'
+      || github.event.pull_request.head.repo.full_name == github.repository
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - run: just quality::local::gate ubsan
+
+  # ---------------------------------------------------------------------------
+  # Cache-benchmark toolchain gate, re-confirming SLRU on the captured reader
+  # trace on every push.
+  # ---------------------------------------------------------------------------
+  cache-bench:
+    name: Cache benchmarks
+    runs-on: ra8-ci
+    if: >-
+      github.event_name != 'pull_request'
+      || github.event.pull_request.head.repo.full_name == github.repository
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - run: just quality::local::gate cache-bench
+
+  # ---------------------------------------------------------------------------
+  # #335/#309 host-tool build gate -- every tools/* and apps/*/* CMake project
+  # is compiled and linked here; mdl's CTest suite and the viewer's
+  # headless render also execute. A scope guard fails when a new CMake project
+  # is not represented, and every first-party TU is held to -Wall -Wextra
+  # -Werror.
+  #
+  # #356: the build runs under BOTH pinned compilers, clang-18 AND gcc-14, so
+  # the warning families each catches but the other misses are both held --
+  # gcc-14's -Wformat-truncation caught a silent path-join truncation clang-18
+  # did not. Both arms must be present (self-hosted runners provision gcc-14,
+  # the devcontainer installs it); a missing arm fails loudly, never skips.
+  # ---------------------------------------------------------------------------
+  tools-build:
+    name: Host tools (build + link + test, clang-18 + gcc-14)
+    runs-on: ra8-ci
+    if: >-
+      github.event_name != 'pull_request'
+      || github.event.pull_request.head.repo.full_name == github.repository
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - run: just quality::local::gate tools-build
+
+  # Statement + branch coverage is scheduled ONCE, in coverage.yml, by the
+  # coverage-tree gate. There is one census, one baseline and one policy for
+  # every first-party translation unit, so there is one job that applies it --
+  # the two jobs that used to sit here (an aggregate 90/80 over the host suite
+  # and a legacy product-named per-file ratchet) each built the same translation
+  # units and answered the same question differently.
+
+  # ---------------------------------------------------------------------------
+  # MC/DC report (clang-18 source-based coverage with -fcoverage-mcdc), gated
+  # against .github/mcdc-baseline.txt -- never let coverage regress.
+  # ---------------------------------------------------------------------------
+  mcdc:
+    name: MC/DC coverage gate
+    runs-on: ra8-ci
+    if: >-
+      github.event_name != 'pull_request'
+      || github.event.pull_request.head.repo.full_name == github.repository
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - run: just quality::local::gate mcdc
+      # Freshness of the committed MC/DC + doxygen gap docs (#380). Runs in THIS
+      # job because it reuses the mcdc step's build/mcdc-report/mcdc.txt instead
+      # of re-running the coverage build; the checker fails loudly if that report
+      # is absent, so it can never silently pass out of this job's context.
+      - run: just quality::local::gate artefact-freshness
+      - name: Upload MC/DC report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mcdc-report
+          path: build/mcdc-report/
+          retention-days: 14
+
+  # ---------------------------------------------------------------------------
+  # Pre-commit gate suite -- mirrors scripts/git/pre-commit so PRs surface what
+  # the local hook would have caught. The seconds-long check_*.py and lint-*
+  # gates stay grouped: a job apiece would cost more in runner scheduling than
+  # in checking.
+  #
+  # The two libclang AST gates do NOT stay here. Measured on a real run, this
+  # job took 16.8 min of which `annotations` was 8.8 and `doc-attachment` 5.0
+  # -- 82% of the job in two gates that ran back-to-back on one runner for no
+  # reason other than sharing an install step. They are independent of each
+  # other and of everything else here, so they are their own jobs below and the
+  # remainder of this suite now finishes in about 2.5 min.
+  # ---------------------------------------------------------------------------
+  pre-commit-checks:
+    name: Pre-commit gate suite
+    runs-on: ra8-ci
+    if: >-
+      github.event_name != 'pull_request'
+      || github.event.pull_request.head.repo.full_name == github.repository
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      # Run the complete suite after any individual failure. Failed steps still
+      # make the job red; always() only prevents later gates from being skipped.
+      - if: always()
+        run: just quality::local::gate work-harness
+      - if: always()
+        run: just quality::local::gate pre-commit-checks
+      - if: always()
+        run: just quality::local::gate suppressions
+      - if: always()
+        run: just quality::local::gate markdown-references
+      - if: always()
+        run: just quality::local::gate shebangs
+      - if: always()
+        run: just quality::local::gate entry-points
+      - if: always()
+        run: just quality::local::gate tier-imports
+      - if: always()
+        run: just quality::local::gate tests-readme
+      - if: always()
+        run: just quality::local::gate disambig-readmes
+      - if: always()
+        run: just quality::local::gate pinout-freshness
+      - if: always()
+        run: just quality::local::gate bench-lock
+      - if: always()
+        run: just quality::local::gate unused-includes
+      - if: always()
+        run: just quality::local::gate lint-py-shell
+      - if: always()
+        run: just quality::local::gate lint-go
+      - if: always()
+        run: just quality::local::gate lint-zig
+      - if: always()
+        run: just quality::local::gate zig-abi-policy
+      - if: always()
+        run: just quality::local::gate lint-rust
+      - if: always()
+        run: just quality::local::gate lint-cmake
+      - if: always()
+        run: just quality::local::gate lint-yaml
+      - if: always()
+        run: just quality::local::gate lint-just
+      - if: always()
+        run: just quality::local::gate lint-ld
+      - if: always()
+        run: just quality::local::gate lint-asm
+      - if: always()
+        run: just quality::local::gate lint-devcontainer
+      # Runs after every other lint gate in this job: it asks each of them what
+      # they scan and proves nothing in the tree falls between them.
+      - if: always()
+        run: just quality::local::gate lint-coverage
+      - if: always()
+        run: just quality::local::gate reserved-addrs
+      - if: always()
+        run: just quality::local::gate agnostic-registers
+      - if: always()
+        run: just quality::local::gate cite-check
+      - if: always()
+        run: just quality::local::gate hum-register-map
+      - if: always()
+        run: just quality::local::gate sbom
+      # Runs next to sbom because it answers the other half of the same
+      # question: sbom proves the vendored tree has not changed since we last
+      # looked, soup-upstream proves it is what upstream published. Offline --
+      # the upstream hashes are committed manifests, refreshed weekly by
+      # osv-scan.yml's soup-upstream-refresh job.
+      - if: always()
+        run: just quality::local::gate soup-upstream
+      - if: always()
+        run: just quality::local::gate roadmap-stats
+
+  # ---------------------------------------------------------------------------
+  # The libclang AST gates, split out of the pre-commit suite (the original two were
+  # 82% of its wall clock) and split from each other, because they share only
+  # an install step and nothing else -- 8.8 min and 5.0 min that used to run
+  # end-to-end on one runner now overlap on two.
+  #
+  # Each carries its own libclang install: the probe is idempotent and costs
+  # about a second on a warm pod, which is the correct trade for 5 min of
+  # serialisation. Every gate requires_python_mod the binding and FAILS when it
+  # is absent -- check_annotations.py exits 0 with no binding, so a missing
+  # install can never read as a silent pass in either job.
+  # ---------------------------------------------------------------------------
+  annotations:
+    name: RA8_* annotations (libclang)
+    runs-on: ra8-ci
+    if: >-
+      github.event_name != 'pull_request'
+      || github.event.pull_request.head.repo.full_name == github.repository
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - run: just quality::local::gate annotations
+
+  enum-underlying-casts:
+    name: Fixed-enum initializer cast safety (libclang)
+    runs-on: ra8-ci
+    if: >-
+      github.event_name != 'pull_request'
+      || github.event.pull_request.head.repo.full_name == github.repository
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - run: just quality::local::gate enum-underlying-casts
+
+  doc-attachment:
+    name: Doxygen block attachment (libclang)
+    runs-on: ra8-ci
+    if: >-
+      github.event_name != 'pull_request'
+      || github.event.pull_request.head.repo.full_name == github.repository
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - run: just quality::local::gate doc-attachment
+
+  # ---------------------------------------------------------------------------
+  # Cross-compile the canonical ra8_apps matrix, sharded four ways, then aggregate.
+  #
+  # This was the longest job in the workflow: 18.3-33.9 min measured across
+  # five runs, and the single term that set the floor on total wall clock
+  # (work/capacity was ~22 min, so a 34 min job genuinely bound the critical
+  # path). all_examples.sh now honours RA8_BUILD_SHARDS/RA8_BUILD_SHARD and
+  # builds a STRIDE slice -- interleaved, not contiguous, because the ~8
+  # shared-archive-ineligible apps (TrustZone, RA8P1) compile all ~180 library
+  # sources from source while an eligible app compiles ~16, and alphabetical
+  # order clusters the heavy ones together.
+  #
+  # WHY FOUR. Sized against the makespan floor, not picked for roundness.
+  # Capacity is ~13 concurrent ra8-ci runners (up to 8-9 ARC pods, the NAS
+  # host, and 3 Windows instances on the Ryzen box), and this workflow carries
+  # ~130 min of total work, so work/capacity is ~10 min. There is no point
+  # driving any single job below that floor -- and the MC/DC gate, which is one
+  # indivisible clang -fcoverage-mcdc rebuild, already sits at 10.4-13.8 min
+  # and is not shardable at all. Four shards land build-cross in the same band.
+  #
+  # Going wider costs more than it buys: every shard re-pays the unshardable
+  # serial prefix (the shared compile_commands configure plus the ~180-source
+  # universal archive), so a shard costs S + (T-S)/N. Past N=4 the (T-S)/N term
+  # is already under S, so each extra shard adds a whole S of duplicated work
+  # to the fleet while moving the makespan floor not at all -- and a matrix
+  # wider than the free-runner count simply re-queues, which is worse, since
+  # pushes key their concurrency group on the SHA (#366) and several full runs
+  # are legitimately in flight at once.
+  #
+  # RA8_MAX_JOBS is capped at 2 here on purpose. ra8_max_jobs would otherwise
+  # resolve to CMAKE_BUILD_PARALLEL_LEVEL=4 in every shard, and 4 shards x 4
+  # workers is 16 concurrent builds on an already-oversubscribed node (#485) --
+  # exactly the #328 blow-up that once made an unrelated gate time out and read
+  # as a code regression. 4 x 2 keeps the aggregate width where it was.
+  # ---------------------------------------------------------------------------
+  build-cross:
+    name: Cross-build apps (shard ${{ matrix.shard }}/4)
+    runs-on: ra8-ci
+    if: >-
+      github.event_name != 'pull_request'
+      || github.event.pull_request.head.repo.full_name == github.repository
+    strategy:
+      # Every shard reports independently: fail-fast would cancel the siblings
+      # of a broken shard and leave the union check unable to say whether the
+      # rest of the tree builds.
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3, 4]
+    env:
+      RA8_BUILD_SHARD: ${{ matrix.shard }}
+      RA8_BUILD_SHARDS: 4
+      RA8_MAX_JOBS: 2
+    steps:
+      - uses: actions/checkout@v4
+      - run: just quality::local::gate build-cross
+      - name: Pack this shard's stack-usage output
+        run: |
+          # ci-parity: infra -- collects build artefacts for the aggregate job;
+          # runs no project check. The .su files and the shard manifest are
+          # inputs to gates that run in build-cross-aggregate, not checks in
+          # themselves. Tarred rather than uploaded loose because a full build
+          # leaves ~7550 small .su files and the file COUNT, not the ~10 MB,
+          # is what makes an artifact upload slow.
+          set -euo pipefail
+          mkdir -p shard-out
+          # Build an explicit path list, then archive from it. Every path here
+          # is repo-relative and space-free (app names are bare directory
+          # names), so a newline-delimited list is safe.
+          find examples -name '*.su' >pack-list.txt
+          if [ -d build/shared_libs ]; then
+            find build/shared_libs -name '*.su' >>pack-list.txt
+          fi
+          echo build/build_all_examples/.shard >>pack-list.txt
+          tar czf "shard-out/su-${RA8_BUILD_SHARD}.tgz" -T pack-list.txt
+          # The Secure ELF the sg-offsets gate reads. Only the shard that owns
+          # tz_nsc_cgc_usb has one; the others legitimately ship none, so an
+          # empty find is not an error here.
+          find examples -type f -name 'tz_nsc_cgc_usb.elf' >sg-list.txt
+          if [ -s sg-list.txt ]; then
+            tar czf "shard-out/sgelf-${RA8_BUILD_SHARD}.tgz" -T sg-list.txt
+          fi
+      - name: Upload shard build output
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-cross-shard-${{ matrix.shard }}
+          path: shard-out/
+          retention-days: 3
+
+  # ---------------------------------------------------------------------------
+  # Re-unite the shards and run the three gates that read the whole build.
+  #
+  # build-cross-union runs FIRST and is the load-bearing one: it re-derives the
+  # app list itself and fails unless the four manifests cover it exactly once.
+  # Without it, sharding would silently weaken everything downstream -- a shard
+  # that never ran leaves fewer .su files, and stack-usage's 5000-function
+  # floor is a whole-tree calibration (~90k functions) that three of four
+  # shards clear on their own. The floor cannot detect a missing quarter; the
+  # union check can, so it is what proves completeness, not the floor.
+  # ---------------------------------------------------------------------------
+  build-cross-aggregate:
+    name: Cross-build aggregate (union, SG offsets, stack usage)
+    runs-on: ra8-ci
+    needs: build-cross
+    if: >-
+      github.event_name != 'pull_request'
+      || github.event.pull_request.head.repo.full_name == github.repository
+    env:
+      RA8_BUILD_SHARDS: 4
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download every shard's build output
+        uses: actions/download-artifact@v4
+        with:
+          pattern: build-cross-shard-*
+          path: shard-in
+      - name: Reassemble the sharded build tree
+        run: |
+          # ci-parity: infra -- unpacks the shard artefacts into the checkout;
+          # runs no project check. Paths inside the tarballs are repo-relative
+          # and must land back at their original depth: stack_usage_check.py
+          # attributes a .su to an app by the path component preceding the
+          # first build* segment, so a flattened restore would misattribute
+          # every frame.
+          set -euo pipefail
+          find shard-in -name '*.tgz' -print0 |
+            while IFS= read -r -d '' t; do tar xzf "$t"; done
+          echo "restored $(find examples -name '*.su' | wc -l) .su file(s) from examples/"
+          arch=$(find build/shared_libs -name '*.su' 2>/dev/null | wc -l)
+          echo "restored $arch .su file(s) from the shared archive"
+      - run: just quality::local::gate build-cross-union
+      - run: just quality::local::gate sg-offsets
+      - run: just quality::local::gate stack-usage
+
+  docs:
+    name: Doxygen warnings
+    runs-on: ra8-ci
+    if: >-
+      github.event_name != 'pull_request'
+      || github.event.pull_request.head.repo.full_name == github.repository
+    steps:
+      - uses: actions/checkout@v4
+      - run: just quality::local::gate docs
+
+  # ---------------------------------------------------------------------------
+  # MISRA-C 2012 ratchet (#240). The baseline records the cppcheck version it
+  # was generated with -- keep the runner's cppcheck in step with it, and
+  # regenerate via `just quality::local::misra` (never to absorb new findings; see
+  # docs/MISRA.md).
+  # ---------------------------------------------------------------------------
+  misra:
+    name: MISRA-C 2012 ratchet
+    runs-on: ra8-ci
+    if: >-
+      github.event_name != 'pull_request'
+      || github.event.pull_request.head.repo.full_name == github.repository
+    # The ratchet measured 20m15s on a contended managed runner; keep the
+    # verdict bounded without canceling a complete cppcheck analysis at 20m.
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - run: just quality::local::gate misra
+
+  cppcheck:
+    name: cppcheck
+    runs-on: ra8-ci
+    if: >-
+      github.event_name != 'pull_request'
+      || github.event.pull_request.head.repo.full_name == github.repository
+    steps:
+      - uses: actions/checkout@v4
+      - run: just quality::local::gate cppcheck
+
+  # ---------------------------------------------------------------------------
+  # Clang static analyzer (#532). docs/STATIC_ANALYSIS.md asserted that CI ran
+  # this for months while nothing did; this job is what makes that true. It
+  # analyses the host unit-test build plus every CMake tool, so it needs no
+  # cross-toolchain, and it is a full re-compile under the analyzer -- hence
+  # its own job rather than a step inside an existing one.
+  # ---------------------------------------------------------------------------
+  scan-build:
+    name: clang static analyzer
+    runs-on: ra8-ci
+    if: >-
+      github.event_name != 'pull_request'
+      || github.event.pull_request.head.repo.full_name == github.repository
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - run: just quality::local::gate scan-build
+
+  # ---------------------------------------------------------------------------
+  # PR-only: post a per-file MC/DC delta comment vs the base branch.
+  # Limited to the first 50 rows so the comment stays readable.
+  # ---------------------------------------------------------------------------
+  coverage-comment:
+    name: MC/DC delta comment
+    runs-on: ra8-ci
+    needs: mcdc
+    # PR-only job, and self-hosted: also require the PR head to live in THIS
+    # repo so a fork PR can never reach the runner (defence in depth -- `needs:
+    # mcdc` already skips it when the guarded mcdc job is skipped on a fork PR).
+    if: >-
+      github.event_name == 'pull_request'
+      && github.event.pull_request.head.repo.full_name == github.repository
+    permissions:
+      pull-requests: write
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Download PR MC/DC report
+        uses: actions/download-artifact@v4
+        with:
+          name: mcdc-report
+          path: pr-mcdc
+      - name: Build base-branch MC/DC report (best-effort)
+        env:
+          RA8_MCDC_BASE_REF: ${{ github.event.pull_request.base.ref }}
+        # This report is informational: the following renderer records an
+        # unavailable base measurement explicitly and still publishes the PR
+        # branch's measured coverage instead of hiding that useful evidence.
+        continue-on-error: true
+        run: just quality::local::gate mcdc-delta-base
+      - name: Render delta comment body
+        run: just quality::local::gate mcdc-delta-render
+      - name: Post delta comment
+        uses: actions/github-script@v7
+        with:
+          script: |
+            // Plumbing only -- no check logic. The body is rendered by
+            // scripts/report/mcdc_delta_comment.py under the
+            // mcdc-delta-render gate, so it is in scope for
+            // check_ci_parity.py and carries its own --selftest. The JS that
+            // used to live here computed the deltas itself and treated a
+            // missing base report as an empty one, which rendered a failed
+            // base build as a complete-looking table of n/a deltas (#536).
+            const fs = require('fs');
+            const body = fs.readFileSync('mcdc-delta-comment.md', 'utf8');
+            const { owner, repo } = context.repo;
+            const issue_number = context.payload.pull_request.number;
+            const marker = "<!-- mcdc-delta-comment -->";
+            const existing = await github.rest.issues.listComments({
+              owner, repo, issue_number, per_page: 100,
+            });
+            const prior = existing.data.find(c => c.body && c.body.includes(marker));
+            if (prior) {
+              await github.rest.issues.updateComment({
+                owner, repo, comment_id: prior.id, body,
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner, repo, issue_number, body,
+              });
+            }

@@ -1,0 +1,46 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Brighton Sikarskie
+# SCHEDULING ONLY -- the gate bodies live in scripts/ci.sh (gates:
+# inclusive-terminology, inclusive-terminology-commits). See
+# .github/workflows/firmware.yml for the design note.
+---
+name: inclusive-terminology
+
+on:
+  # dev is the working branch: essentially every commit lands there first, so
+  # the terminology gates must run where the commits actually land, not just on
+  # main (#357). Before this, a push to dev ran neither gate and the local
+  # pre-push hook was the only thing checking.
+  push:
+    branches: [main, dev, zig/dev]
+  pull_request:
+  workflow_dispatch:
+
+# Per-commit isolation on push (#366): key the group on the commit SHA for push
+# events so a burst of dev pushes never cancels an in-flight run. A cancelled
+# run marks its remaining steps skipped-not-failed, so an uncancelled run per
+# commit is what keeps a green here from meaning "the gate never executed".
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event_name == 'push' && github.sha || github.ref }}
+  cancel-in-progress: true
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+jobs:
+  inclusive-terminology:
+    name: Inclusive terminology
+    runs-on: ra8-ci
+    # SECURITY: self-hosted + pull_request trigger. Run on push / dispatch and
+    # on PRs ONLY from this same repo (never a fork). See SECURITY.md.
+    if: >-
+      github.event_name != 'pull_request'
+      || github.event.pull_request.head.repo.full_name == github.repository
+    steps:
+      # fetch-depth: 0 so the commit-message gate can walk the full push/PR
+      # range; ci.sh derives that range from the event payload itself.
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - run: just quality::local::gate inclusive-terminology
+      - run: just quality::local::gate inclusive-terminology-commits

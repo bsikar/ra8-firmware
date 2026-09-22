@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "ra8-firmware": {
+      "command": "/bin/bash",
+      "args": ["-p", "scripts/dev/run_just.sh", "tools::mcp_server"]
+    }
+  }
+}

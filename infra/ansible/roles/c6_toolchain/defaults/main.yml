@@ -1,0 +1,65 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Brighton Sikarskie
+---
+# c6_toolchain role defaults -- provisions the ESP-IDF build environment used to
+# build + flash the ESP32-C6 wireless co-processor firmware (esp-hosted-mcu).
+# Runs on the same host as the HIL bench (the Pi with the C6 on PMOD1), but is a
+# separate role so a HIL-only bench need not carry the ~2 GB IDF toolchain.
+# Codifies exactly what had to be hand-fixed during bring-up: a missing
+# python3-venv (IDF's installer creates a venv and hard-fails without it) and an
+# otherwise unmanaged, drift-prone IDF checkout. Override per deploy in
+# group_vars / host_vars.
+
+# Pinned ESP-IDF release. Must match ESP_IDF_VERSION in
+# coprocessor/esp32c6/pins.env -- that file is the source of truth the esp-hosted
+# build recipe reads, and build.sh refuses to run under any other v5.5.x, so the
+# bench builds the same C6 image as any other host.
+#
+# v5.4.1 does NOT build esp-hosted-mcu: the component-manager pull of
+# tf-psa-crypto fails to compile p256-m under that release. v5.5.4 is the
+# release the bench proved end to end (peripheral firmware 2.12.11 flashed and
+# alive), so provisioning must land on it and not on the older pin.
+c6_toolchain_idf_version: "v5.5.4"
+c6_toolchain_idf_repo: "https://github.com/espressif/esp-idf.git"
+c6_toolchain_idf_dir: "{{ ansible_env.HOME }}/esp/esp-idf"
+
+# Chip targets install.sh provisions toolchains for. C6 is a RISC-V part, so
+# this pulls riscv32-esp-elf-gcc (not the xtensa toolchain).
+c6_toolchain_targets: "esp32c6"
+
+# ESP-IDF's documented Linux prerequisites. python3-venv + python3-full are the
+# ones that were missing on the bench: install.sh runs `python3 -m venv` and
+# exits non-zero when the stdlib venv module is not installed as a package.
+c6_toolchain_apt_packages:
+  - git
+  - wget
+  - flex
+  - bison
+  - gperf
+  - python3
+  - python3-pip
+  - python3-venv
+  - python3-full
+  - cmake
+  - ninja-build
+  - ccache
+  - libffi-dev
+  - libssl-dev
+  - dfu-util
+  - libusb-1.0-0
+
+# Idempotency marker: install.sh creates this per-minor-version venv. Presence
+# means the toolchain download already ran, so the (slow) install is skipped.
+# The glob tolerates the host python minor version in the directory name.
+#
+# The idf<major>.<minor> prefix is part of the marker, so it MUST track
+# c6_toolchain_idf_version: an idf5.4_* glob against a v5.5.4 checkout matches
+# nothing on a re-run and re-downloads the whole toolchain every play, and a
+# stale idf5.4 venv left over from the old pin would satisfy a loose glob and
+# skip the install the new release needs.
+c6_toolchain_env_glob: "{{ ansible_env.HOME }}/.espressif/python_env/idf5.5_*_env"
+
+# Convenience shell helper dropped for interactive use: `get_idf` sources the
+# IDF export script into the current shell. Not used by the coprocessor/esp32c6 build
+# (which sources export.sh itself); this is purely for humans on the bench.
+c6_toolchain_helper_path: /etc/profile.d/ra8-esp-idf.sh

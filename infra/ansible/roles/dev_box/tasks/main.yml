@@ -1,0 +1,7 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Brighton Sikarskie
+---
+- name: Enter the authenticated dev-box transaction
+  ansible.builtin.include_tasks:
+    file: transaction.yml
+  tags: [always]

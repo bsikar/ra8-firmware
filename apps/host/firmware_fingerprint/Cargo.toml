@@ -1,0 +1,12 @@
+[package]
+name = "firmware_fingerprint"
+version = "0.1.0"
+edition = "2024"
+license = "MIT"
+publish = false
+
+[lints.rust]
+unsafe_code = "deny"
+
+[lints.clippy]
+pedantic = "deny"

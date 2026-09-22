@@ -1,0 +1,55 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Brighton Sikarskie
+#
+# mkfontimg -- build a FAT16 SD-card image carrying a font file, written
+# through the real ra8_fs so the firmware (sd_font_render / ra8_emulator --sd)
+# reads it back bit-for-bit.
+#
+#   cmake -B build -S . && cmake --build build
+#   ./build/mkfontimg ../../libs/ra8_fonts/Literata-Regular.ttf font.img FONT.OTF
+#
+# Standalone host dev tool under tools/, outside the firmware cross-build.
+#
+#
+cmake_minimum_required(VERSION 3.20)
+project(ra8d2_mkfontimg LANGUAGES C)
+
+set(CMAKE_C_STANDARD 23)
+set(CMAKE_C_STANDARD_REQUIRED ON)
+
+# Repo root from this tool dir (tools/mkfontimg -> repo).
+get_filename_component(_repo "${CMAKE_CURRENT_SOURCE_DIR}/../.." ABSOLUTE)
+
+# ra8_fs_fat.c was split into ra8_fs_fat*.c TUs for the 1000-line file-size cap
+# (ra8_fs_mount / ra8_fs_open / ra8_fs_write now live in sibling TUs), so glob them
+# all to link the whole FAT driver -- and only the FAT driver (no ra8_core_hal ->
+# no ra8_time weak-extern), so this standalone tool builds on macOS and Linux
+# alike. Matches the same glob in tests/CMakeLists.txt (test_ra8_fs_exfat).
+file(GLOB _ra8_fs_fat_tu_sources CONFIGURE_DEPENDS ${_repo}/libs/ra8_fs/src/ra8_fs_fat*.c)
+# The UTF codec is named for the encoding, not the ra8_fs_fat* family, so
+# the glob above misses it; the ra8_fs_fat*.c TUs call into it, so name it
+# explicitly -- the same append tests/cmake/tests_storage.cmake makes.
+list(APPEND _ra8_fs_fat_tu_sources ${_repo}/libs/ra8_fs/src/ra8_fs_utf.c)
+
+add_executable(
+  mkfontimg ${CMAKE_CURRENT_SOURCE_DIR}/src/mkfontimg.c
+            ${CMAKE_CURRENT_SOURCE_DIR}/src/mkfontimg_host.c ${_ra8_fs_fat_tu_sources}
+)
+
+target_include_directories(
+  mkfontimg PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/inc ${_repo}/libs/ra8_fs/inc
+                    ${_repo}/libs/ra8_core/inc
+)
+
+# First-party sources carry the project warning bar (NASA Power of 10
+# Rule 10) here exactly as they do in the ARM and host-test builds; only
+# vendored SOUP is compiled quietly.
+target_compile_options(mkfontimg PRIVATE -Wall -Wextra -Werror)
+
+include(CTest)
+if(BUILD_TESTING)
+  add_test(NAME mkfontimg_integration COMMAND bash ${CMAKE_CURRENT_SOURCE_DIR}/tests/integration.sh
+                                              $<TARGET_FILE:mkfontimg> ${CMAKE_COMMAND}
+  )
+  set_tests_properties(mkfontimg_integration PROPERTIES TIMEOUT 45)
+endif()
