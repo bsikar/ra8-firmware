@@ -263,7 +263,6 @@ an adopter who does is responsible for their own qualified-tool re-audit.
 | Asset | Purpose |
 |---|---|
 | `just quality::local::gate misra` | Registered CI entry point; runs the pinned audit, deviation-integrity checks, and ratchet comparison. |
-| `scripts/checks/misra_check.sh` | Developer front end for the pinned audit; `--check` also runs the committed ratchet. |
 | `scripts/checks/misra_check_inner.sh` | The audit itself. Writes `build/misra/` and prints a per-rule tally. Invoked by `just quality::local::misra`. |
 | `scripts/checks/misra_ratchet.py` | Ratchet comparator; `--update` regenerates the baseline. |
 | `scripts/checks/check_misra_deviations.py` | Re-derives the deviation register's machine-checked claims from the baseline and the suppression list. |

@@ -216,8 +216,21 @@ def _git_ls_files(root: Path) -> list[str]:
     return [rel for rel in proc.stdout.split("\0") if rel]
 
 
+HISTORICAL_DATA_FILES = frozenset(
+    {
+        ".github/suppression-review-ledger.tsv",
+        "tools/ra8ci-script-inventory.json",
+        "tools/ra8ci-work-units.json",
+    }
+)
+
+
 def _is_excluded(rel: str) -> bool:
-    return is_build_output_path(rel) or any(frag in f"/{rel}" for frag in EXCLUDE_FRAGMENTS)
+    return (
+        rel in HISTORICAL_DATA_FILES
+        or is_build_output_path(rel)
+        or any(frag in f"/{rel}" for frag in EXCLUDE_FRAGMENTS)
+    )
 
 
 def _scannable(rel: str) -> bool:

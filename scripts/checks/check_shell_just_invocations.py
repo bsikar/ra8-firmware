@@ -79,16 +79,6 @@ SENSITIVE_BOUNDARY_LINES = (
         ),
     ),
     (
-        "infra/network/verify_bench_wifi.sh",
-        (
-            (
-                'setsid /bin/bash -p -c "sleep ${RESTORE_AFTER}; ${RESTORE_CMD}" '
-                ">/dev/null 2>&1 </dev/null &",
-                1,
-            ),
-        ),
-    ),
-    (
         "scripts/builders/docs.sh",
         (('DOXYGEN_BIN="$(/bin/bash -p "${SCRIPT_DIR}/provision_doxygen.sh")"', 1),),
     ),
@@ -390,7 +380,11 @@ def caller_files(shell_rels: list[str]) -> list[str]:
     )
     callers = set(shell_rels)
     for rel in proc.stdout.decode("utf-8", errors="strict").split("\0"):
-        if not rel or rel.startswith(EXCLUDED_PREFIXES):
+        if (
+            not rel
+            or rel.startswith(EXCLUDED_PREFIXES)
+            or rel in {"tools/ra8ci-script-inventory.json", "tools/ra8ci-work-units.json"}
+        ):
             continue
         path = Path(rel)
         if (
