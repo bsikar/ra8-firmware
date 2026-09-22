@@ -5,9 +5,12 @@
 //! `zig build test`; CMake remains the host-tool integration boundary.
 
 const std = @import("std");
+const ra8_build = @import("ra8_zig_build");
 
 pub fn build(b: *std.Build) void {
-    const target = b.standardTargetOptions(.{});
+    // Default target comes from the shared host probe so a native arm64 macOS
+    // build links Zig's bundled libSystem stub instead of the SDK's (#899).
+    const target = b.standardTargetOptions(.{ .default_target = ra8_build.hostDefaultTargetQuery(b) });
     const optimize = b.standardOptimizeOption(.{});
     const executable = b.addExecutable(.{
         .name = "reg_gen",
