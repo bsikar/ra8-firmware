@@ -66,8 +66,11 @@
  * @brief Console baud, runtime-arena size, banner width, and word geometry.
  */
 typedef enum : uint32_t {
-  k_npu_vela_baud       = 115200U, /**< SCI8 J-Link OB console baud.         */
-  k_npu_vela_arena      = 128U,    /**< Runtime arena for output activation. */
+  k_npu_vela_baud       = 115200U, /**< SCI8 J-Link OB console baud. */
+  k_npu_vela_arena      = 128U,    /**< Runtime arena for output activation.
+                                        Not a guess: ra8_npu_arena_bytes() is
+                                        asked what the committed blob needs and
+                                        the run refuses if this is short.     */
   k_npu_vela_word_bytes = 4U,      /**< Bytes in one little-endian word.     */
   k_npu_vela_byte_mask  = 0xFFU,   /**< 8-bit element wrap (matches the op). */
   k_npu_vela_hex_digits = 8U,      /**< Fixed-width hexadecimal word digits. */
@@ -102,6 +105,16 @@ static uint8_t s_npu_vela_arena[k_npu_vela_arena];
  * @since 0.1.0
  */
 volatile uint32_t g_npu_vela_id = 0U;
+
+/**
+ * @var g_npu_vela_arena_need
+ * @brief Runtime-arena bytes the committed blob requires, per the loader.
+ * @details `volatile` + non-static so a debugger can compare the requirement
+ *          ra8_npu_arena_bytes() reported against ::k_npu_vela_arena.
+ * @note Read externally only.
+ * @since 0.1.0
+ */
+volatile uint32_t g_npu_vela_arena_need = 0U;
 
 /**
  * @var g_npu_vela_check
@@ -259,7 +272,8 @@ RA8_INTERNAL static bool internal_npu_vela_verify(const ra8_npu_job_t* job, uint
  * @param[out] out_job Filled with the loaded, run job descriptor on success.
  * @return `ra8_err_t` from the first failing loader / driver call, else k_ra8_ok.
  * @retval k_ra8_ok The container loaded and the NPU job completed.
- * @retval non-k_ra8_ok The loader, submission, run, or wait stage failed.
+ * @retval k_ra8_err_no_mem ::k_npu_vela_arena is below the blob's requirement.
+ * @retval non-k_ra8_ok The query, loader, submission, run, or wait stage failed.
  *
  * @pre out_job is non-NULL; ra8_npu_init() previously succeeded.
  * @pre The static Vela arena is not owned by another job.
@@ -270,6 +284,19 @@ RA8_INTERNAL static bool internal_npu_vela_verify(const ra8_npu_job_t* job, uint
  */
 RA8_INTERNAL static ra8_err_t internal_npu_vela_run_job(ra8_npu_job_t* out_job)
 {
+  /* Ask the blob how much arena it needs before handing it one. A static arena
+   * that has drifted below the model's requirement is then a named refusal here
+   * rather than a k_ra8_err_no_mem out of the middle of the loader. */
+  uint32_t        need = 0U;
+  const ra8_err_t wanted =
+    ra8_npu_arena_bytes(ra8_npu_model_addk_fake_blob(), ra8_npu_model_addk_fake_bytes(), &need);
+  if (wanted != k_ra8_ok) {
+    return wanted;
+  }
+  g_npu_vela_arena_need = need;
+  if (need > (uint32_t)k_npu_vela_arena) {
+    return k_ra8_err_no_mem;
+  }
   const ra8_npu_arena_t arena = {.base = s_npu_vela_arena, .bytes = (uint32_t)k_npu_vela_arena};
   const ra8_err_t       ld =
     ra8_npu_load(ra8_npu_model_addk_fake_blob(), ra8_npu_model_addk_fake_bytes(), &arena, out_job);
