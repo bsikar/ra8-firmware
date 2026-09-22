@@ -546,7 +546,8 @@ if [[ "$-" == *p* ]]; then
     esac
 
     if [ "${EIL_SKIP_BUILD:-0}" != "1" ]; then
-      if ! /bin/bash -p "$REPO_ROOT/scripts/dev/run_just.sh" apps::build "$app" \
+      # Only EIL lowers Zig codegen to Unicorn's M33 model; HIL stays M85.
+      if ! RA8_ZIG_EIL_M33=1 /bin/bash -p "$REPO_ROOT/scripts/dev/run_just.sh" apps::build "$app" \
         >"${EIL_RUN_DIR}/${app}.build.log" 2>&1; then
         eil_emit "$rf" FAIL "$app" "BUILD FAIL (see ${app}.build.log)"
         eil_progress "$app" FAIL
