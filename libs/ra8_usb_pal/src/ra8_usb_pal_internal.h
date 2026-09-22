@@ -86,6 +86,51 @@ bool priv_usb_pal_should_dispatch_event(const void* event_fn, uint16_t mask, uin
 RA8_PRIV
 bool priv_usb_pal_ep_out_of_range(uint8_t ep_addr, uint8_t ep_max);
 
+/**
+ * @brief Pure translation: INTSTS0 snapshot -> PAL event bit set.
+ *
+ * @details
+ * Promoted from @c internal_translate in
+ * libs/ra8_usb_pal/src/ra8_usb_pal.c so the mapping can be driven by
+ * host vectors without MMIO. ``ra8_usb_dispatch``
+ * (libs/ra8_hal/src/ra8_usb_irq.c) hands the PAL handler the raw
+ * INTSTS0 word, which carries both the edge bits and the CTSQ /
+ * VALID / DVSQ / VBSTS sub-state fields, so every bit the taxonomy
+ * can name is derivable from this one input.
+ *
+ * Mapping, one arm per source bit (HUM Ch 36.2.14):
+ *  - SOFR  -> @c k_ra8_usb_pal_event_sof
+ *  - RSME  -> @c k_ra8_usb_pal_event_resume
+ *  - VBSE  -> @c _attach when VBSTS is set, else @c _detach
+ *  - DVST  -> @c _suspend / @c _reset per DVSQ; Address, Configured
+ *             and Powered have no taxonomy bit and yield nothing
+ *  - CTRT  -> @c _setup while VALID is latched; @c _error on CTSQ=SQER
+ *  - BEMP  -> @c k_ra8_usb_pal_event_ep_in
+ *  - BRDY  -> @c k_ra8_usb_pal_event_ep_out
+ *  - NRDY  -> @c k_ra8_usb_pal_event_error
+ *
+ * BRDY is the one coarse arm: it asserts both for an OUT pipe holding
+ * data and for an IN pipe whose buffer is free again, and telling the
+ * two apart needs BRDYSTS, which the PAL never receives. A consumer
+ * that needs per-pipe truth must read BRDYSTS itself.
+ *
+ * @param[in] intsts0 Unmodified INTSTS0 snapshot from ``ra8_usb``.
+ *
+ * @return OR of @c k_ra8_usb_pal_event_* bits.
+ * @retval k_ra8_usb_pal_event_none No bit in @p intsts0 maps to a
+ *         named event (including a zero snapshot).
+ *
+ * @pre None.
+ * @pre No global state is read.
+ * @post No state mutated.
+ * @post Return depends solely on @p intsts0.
+ *
+ * @note Test-access only. Pure function; safe from ISR context.
+ * @since 0.1.0
+ */
+RA8_PRIV
+uint16_t priv_usb_pal_translate_event(uint16_t intsts0);
+
 #ifdef __cplusplus
 }
 #endif
