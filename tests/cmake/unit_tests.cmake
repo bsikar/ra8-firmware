@@ -195,6 +195,9 @@ function(ra8_add_test name src_file)
     # so the v2 adapter's symbols resolve.
     target_link_libraries(${name} PRIVATE litehtml gumbo)
   endif()
+  if(name STREQUAL "test_ra8_devcfg")
+    target_link_libraries(${name} PRIVATE ra8_zig::ra8_devcfg)
+  endif()
   add_test(NAME ${name} COMMAND ${name})
 endfunction()
 
