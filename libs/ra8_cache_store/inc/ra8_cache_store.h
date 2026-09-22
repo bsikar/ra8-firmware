@@ -164,6 +164,7 @@ typedef struct {
   uint32_t                    data_capacity;   /**< Overprovisioned live-sector budget.     */
   uint32_t                    live_sectors;    /**< Sectors currently held by live entries. */
   uint32_t                    next_seq;        /**< Monotonic append sequence number.       */
+  uint32_t                    ckpt_seq;        /**< Monotonic checkpoint sequence (#1318). */
   uint8_t                     flash_state;     /**< RAM shadow of sector 0 (dirty/clean).   */
   bool                        inited;          /**< True between init and close.            */
 } ra8_cache_store_t;

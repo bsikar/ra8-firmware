@@ -77,13 +77,20 @@ typedef enum : uint32_t {
  *          (or dirty) superblock and forces a safe replay. All fields are 4-byte
  *          and self-packing (no padding) for a deterministic CRC.
  *
+ *          `seq` and `next_seq` count different things and must not be conflated
+ *          (#1318). `seq` advances once per superblock write, i.e. once per
+ *          checkpoint transition, and is adopted back into
+ *          ::ra8_cache_store_t::ckpt_seq on mount so the counter survives a
+ *          remount on both the clean and the replay path. `next_seq` is the
+ *          append counter, advanced once per put.
+ *
  * @invariant `crc` == CRC-32 over the preceding fields for a valid superblock.
  * @since 0.1.0
  */
 typedef struct {
   uint32_t magic;           /**< ::k_ra8_cs_super_magic.               */
   uint32_t version;         /**< ::k_ra8_cs_format_version.            */
-  uint32_t seq;             /**< Checkpoint sequence (monotonic).      */
+  uint32_t seq;             /**< Checkpoint counter (see below).       */
   uint32_t clean;           /**< ::ra8_cs_clean_t shutdown marker.     */
   uint32_t entry_count;     /**< Directory entries in the checkpoint.  */
   uint32_t live_sectors;    /**< Live sector count at checkpoint time. */
