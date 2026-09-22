@@ -338,6 +338,26 @@ ra8_add_zig_library(
   ra8_ftl
 )
 
+# Part 1 of the migration: the protocol core (both CRC generators, command
+# framing, the R1/R3/R7 response readers, the bounded waits, the transport
+# gate and the CMD0..CMD16 identification sequence) is Zig. The block-I/O
+# TU (init/deinit, single- and multi-block read/write, erase, the capacity/
+# type queries, the ra8_fs backend adapter and the SCI Simple-SPI transport
+# factory) remains in src/ra8_sdmmc_spi_io.c and is compiled into
+# ra8_core_hal. The archive owns the sole definition of g_sdmmc_spi_state.
+# src/ra8_sdmmc_spi_internal.h stays:
+# tests/storage/src/test_ra8_sdmmc_spi_cov.c and
+# tests/support/inc/sdmmc_spi_cov_test_util.h include it, so the
+# libs/ra8_sdmmc_spi/src include dirs stay too.
+ra8_add_zig_library(
+  NAME
+  ra8_sdmmc_spi
+  ZIG_ROOT
+  ${FW_ROOT}/libs/ra8_sdmmc_spi
+  LIBRARY_NAME
+  ra8_sdmmc_spi
+)
+
 target_link_libraries(
   ra8_core_hal
   PUBLIC ra8_zig::ra8_box
@@ -363,6 +383,7 @@ target_link_libraries(
          ra8_zig::ra8_camera
          ra8_zig::fw_if_fs
          ra8_zig::ra8_ftl
+         ra8_zig::ra8_sdmmc_spi
 )
 
 link_libraries(
@@ -373,7 +394,7 @@ link_libraries(
   ra8_zig::ra8_usb_pal ra8_zig::ra8_keyboard ra8_zig::ra8_tz_secure_boot
   ra8_zig::ra8_audio ra8_zig::ra8_wifi ra8_zig::ra8_ov5640
   ra8_zig::ra8_modem_at ra8_zig::if_ra8_vfs ra8_zig::ra8_camera
-  ra8_zig::fw_if_fs ra8_zig::ra8_ftl
+  ra8_zig::fw_if_fs ra8_zig::ra8_ftl ra8_zig::ra8_sdmmc_spi
 )
 
 link_libraries(
