@@ -1,13 +1,31 @@
 {
   "test_roots": [
     "tests/internal_test.zig",
-    "tests/abi_test.zig"
+    "tests/abi_test.zig",
+    "tests/store_test.zig"
   ],
   "covered_sources": [
     "src/internal/root.zig",
+    "src/internal/standalone_build_config.zig",
     "src/ra8_devcfg_abi.zig",
+    "src/store_extra_mram.zig",
     "tests/internal_test.zig",
-    "tests/abi_test.zig"
+    "tests/abi_test.zig",
+    "tests/store_test.zig"
   ],
+  "standalone_source_args": {
+    "src/ra8_devcfg_abi.zig": [
+      "--dep",
+      "build_config",
+      "-Mroot=src/ra8_devcfg_abi.zig",
+      "-Mbuild_config=src/internal/standalone_build_config.zig"
+    ],
+    "src/store_extra_mram.zig": [
+      "--dep",
+      "build_config",
+      "-Mroot=src/store_extra_mram.zig",
+      "-Mbuild_config=src/internal/standalone_build_config.zig"
+    ]
+  },
   "minimum_tests": 10
 }

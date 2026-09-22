@@ -270,6 +270,30 @@ def _standalone_source_args(root: Path) -> tuple[dict[str, list[str]], list[str]
     return result, errors
 
 
+def _standalone_module_arg_errors(source: str, args: list[str]) -> list[str]:
+    """Require named-module invocations to name the source as their root."""
+    module_args = [arg for arg in args if arg == "--dep" or arg.startswith("-M")]
+    if not module_args:
+        return []
+    root_args = [arg for arg in args if arg.startswith("-Mroot=")]
+    expected = f"-Mroot={source}"
+    if root_args != [expected]:
+        return [
+            f"standalone arguments for {source} use module dependencies but must "
+            f"contain exactly '{expected}'"
+        ]
+    return []
+
+
+def _standalone_source_command(zig: str, source: Path, root: Path, args: list[str]) -> list[str]:
+    """Build one compile-only command, with optional explicit Zig modules."""
+    rel_source = str(source.relative_to(root))
+    compile_only = [] if "-fno-emit-bin" in args else ["-fno-emit-bin"]
+    if any(arg.startswith("-Mroot=") for arg in args):
+        return [zig, "test", *compile_only, *args]
+    return [zig, "test", *compile_only, rel_source, *args]
+
+
 def _declared_source_errors(root: Path, covered: list[Path]) -> tuple[list[str], set[Path]]:
     """Resolve covered sources and report missing or escaping paths."""
     errors: list[str] = []
@@ -367,6 +391,8 @@ def _test_contract_errors(root: Path) -> tuple[list[str], int]:
         f"standalone_source_args names no covered production source: {source}"
         for source in sorted(set(standalone_args) - production_paths)
     )
+    for source, args in sorted(standalone_args.items()):
+        errors.extend(_standalone_module_arg_errors(source, args))
 
     declared_tests = sum(len(_test_declarations(path)) for path in declared_sources)
     inline_production_tests = sorted(
@@ -415,7 +441,12 @@ def _run_covered_sources(zig: str, roots: list[Path]) -> dict[str, str]:
             if "tests" in rel_source.parts:
                 continue
             proc = subprocess.run(  # noqa: S603 -- fixed argv, trusted tool path
-                [zig, "test", str(rel_source), *standalone_args.get(str(rel_source), [])],
+                _standalone_source_command(
+                    zig,
+                    source,
+                    root,
+                    standalone_args.get(str(rel_source), []),
+                ),
                 cwd=root,
                 capture_output=True,
                 text=True,
@@ -686,8 +717,78 @@ def _selftest_standalone_args(
     if not any("non-empty string lists" in error for error in errors):
         failures.append("  must-fire: empty standalone source arguments were accepted")
 
+    raw_contract["standalone_source_args"] = {
+        "helper.zig": [
+            "--dep",
+            "build_config",
+            "-Mroot=wrong.zig",
+            "-Mbuild_config=helper.zig",
+        ]
+    }
+    contract.write_text(json.dumps(raw_contract) + "\n", encoding="utf-8")
+    errors, _ = _test_contract_errors(root)
+    if not any("must contain exactly '-Mroot=helper.zig'" in error for error in errors):
+        failures.append("  must-fire: mismatched standalone named root was accepted")
+
     raw_contract["standalone_source_args"] = {"helper.zig": ["-fno-emit-bin"]}
     contract.write_text(json.dumps(raw_contract) + "\n", encoding="utf-8")
+
+
+def _selftest_standalone_compilation(zig: str, failures: list[str]) -> None:
+    """Prove compile-only externs and named build-option modules both work."""
+    with tempfile.TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        (root / "src").mkdir()
+        (root / "tests").mkdir()
+        (root / "src/extern.zig").write_text(
+            "extern fn external_log() void;\n"
+            "pub export fn callExternalLog() void { external_log(); }\n",
+            encoding="utf-8",
+        )
+        (root / "src/configured.zig").write_text(
+            'const build_config = @import("build_config");\n'
+            "pub export fn offTarget() u8 { return @intFromBool(build_config.off_target); }\n",
+            encoding="utf-8",
+        )
+        (root / "src/standalone_build_config.zig").write_text(
+            "pub const off_target: bool = true;\n",
+            encoding="utf-8",
+        )
+        (root / "tests/main.zig").write_text(
+            'test "standalone fixture" { try @import("std").testing.expect(true); }\n',
+            encoding="utf-8",
+        )
+        contract = {
+            "test_roots": ["tests/main.zig"],
+            "covered_sources": [
+                "src/extern.zig",
+                "src/configured.zig",
+                "src/standalone_build_config.zig",
+                "tests/main.zig",
+            ],
+            "standalone_source_args": {
+                "src/configured.zig": [
+                    "--dep",
+                    "build_config",
+                    "-Mroot=src/configured.zig",
+                    "-Mbuild_config=src/standalone_build_config.zig",
+                ]
+            },
+            "minimum_tests": 1,
+        }
+        (root / TEST_CONTRACT_NAME).write_text(json.dumps(contract) + "\n", encoding="utf-8")
+        source_failures = _run_covered_sources(zig, [root])
+        if source_failures:
+            failures.append(
+                "  must-stay-quiet: standalone compile-only/module fixture failed: "
+                f"{source_failures}"
+            )
+
+        del contract["standalone_source_args"]
+        (root / TEST_CONTRACT_NAME).write_text(json.dumps(contract) + "\n", encoding="utf-8")
+        source_failures = _run_covered_sources(zig, [root])
+        if not any(key.endswith("src/configured.zig") for key in source_failures):
+            failures.append("  must-fire: missing standalone module dependency was accepted")
 
 
 def _selftest_production_coverage(
@@ -812,6 +913,7 @@ def selftest_test(zig: str) -> int:
     failures: list[str] = []
     _selftest_tests(zig, failures)
     _selftest_test_contract(failures)
+    _selftest_standalone_compilation(zig, failures)
     if failures:
         sys.stderr.write("check_zig.py --selftest-test: FAILED\n")
         sys.stderr.write("\n".join(failures) + "\n")
