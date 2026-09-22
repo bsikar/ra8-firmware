@@ -262,6 +262,25 @@ ra8_add_zig_library(
   ra8_ov5640
 )
 
+# Fully migrated: the AT line accumulator, the OK / ERROR / +CME ERROR /
+# +CMS ERROR / BUSY / NO CARRIER final-result table, the newline-separated
+# capture appender and the eight-slot URC dispatch table are all Zig now, so
+# libs/ra8_modem_at/src has no .c left and the RA8_MODEM_AT_SOURCES glob is
+# gone from library_sources.cmake and core_hal.cmake. The byte transport and
+# the millisecond timebase stay caller-injected seams, so the archive links
+# against no driver. The archive also exports the eight priv_modem_* helpers
+# declared in src/ra8_modem_at_internal.h, which the MC/DC suites drive
+# directly, so the libs/ra8_modem_at/src include dirs in core_hal.cmake and
+# unit_tests.cmake must stay.
+ra8_add_zig_library(
+  NAME
+  ra8_modem_at
+  ZIG_ROOT
+  ${FW_ROOT}/libs/ra8_modem_at
+  LIBRARY_NAME
+  ra8_modem_at
+)
+
 ra8_add_zig_library(
   NAME
   ra8_wifi
@@ -293,6 +312,7 @@ target_link_libraries(
          ra8_zig::ra8_audio
          ra8_zig::ra8_wifi
          ra8_zig::ra8_ov5640
+         ra8_zig::ra8_modem_at
 )
 
 link_libraries(
@@ -304,4 +324,4 @@ link_libraries(
   ra8_zig::ra8_audio ra8_zig::ra8_wifi
 )
 
-link_libraries(ra8_zig::ra8_audio ra8_zig::ra8_wifi ra8_zig::ra8_ov5640)
+link_libraries(ra8_zig::ra8_audio ra8_zig::ra8_wifi ra8_zig::ra8_ov5640 ra8_zig::ra8_modem_at)
