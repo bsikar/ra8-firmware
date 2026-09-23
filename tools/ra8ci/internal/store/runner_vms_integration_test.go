@@ -208,7 +208,7 @@ func TestIntegrationRunnerVMEarlyCompletionAndUnknownStart(t *testing.T) {
 	}
 }
 func TestIntegrationRunnerVMTerraformPlanEvidenceIsImmutableAndFenced(t *testing.T) {
-	s, _ := integrationStore(t)
+	s, pool := integrationStore(t)
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 	input := runnerVMTestInput(t)
@@ -300,11 +300,18 @@ func TestIntegrationRunnerVMTerraformPlanEvidenceIsImmutableAndFenced(t *testing
 	if err != nil || stored.TerraformApplyStartedAt == nil {
 		t.Fatalf("Terraform apply intent was not durable: %+v err=%v", stored, err)
 	}
+	stateSHA := strings.Repeat("4", 64)
+	if _, err := pool.Exec(ctx, `INSERT INTO runner_vm_terraform_states
+		(runner_vm_id,state_ciphertext,state_sha256,lineage,serial) VALUES ($1,$2,$3,$4,1)`,
+		vm.ID, []byte("test encrypted state"), stateSHA, mustID(t)); err != nil {
+		t.Fatalf("persist test Terraform state snapshot: %v", err)
+	}
 	proof := RunnerVMResolution{
 		Outcome: "succeeded", EvidenceID: mustID(t), Source: "terraform_state",
 		ObservedAt: time.Now().UTC(), PostStateVerified: true,
 		PlanSHA256: evidence.PlanSHA256, StateIdentitySHA256: evidence.StateIdentitySHA256,
-		ReconciliationSHA256: strings.Repeat("2", 64),
+		ReconciliationSHA256: stateSHA, TerraformStateHasVM: true,
+		TerraformVMStatus: "stopped",
 	}
 	badProof := proof
 	badProof.PlanSHA256 = strings.Repeat("3", 64)
@@ -316,6 +323,32 @@ func TestIntegrationRunnerVMTerraformPlanEvidenceIsImmutableAndFenced(t *testing
 	if _, err := s.ResolveRunnerVMOperation(ctx, "scaler", vm.ID, op.Generation, op.ID, badProof); !errors.Is(err, ErrDenied) {
 		t.Fatalf("Terraform reconciliation accepted another state identity: %v", err)
 	}
+	badProof = proof
+	badProof.ReconciliationSHA256 = strings.Repeat("5", 64)
+	if _, err := s.ResolveRunnerVMOperation(ctx, "scaler", vm.ID, op.Generation, op.ID, badProof); !errors.Is(err, ErrDenied) {
+		t.Fatalf("Terraform accepted a fabricated state digest: %v", err)
+	}
+	badProof = proof
+	badProof.TerraformVMStatus = "running"
+	if _, err := s.ResolveRunnerVMOperation(ctx, "scaler", vm.ID, op.Generation, op.ID, badProof); !errors.Is(err, ErrDenied) {
+		t.Fatalf("Terraform accepted state/VM observation mismatch: %v", err)
+	}
+	badProof = proof
+	badProof.Outcome = "failed"
+	if _, err := s.ResolveRunnerVMOperation(ctx, "scaler", vm.ID, op.Generation, op.ID, badProof); !errors.Is(err, ErrDenied) {
+		t.Fatalf("Terraform accepted failed outcome without verified no-effect: %v", err)
+	}
+	if _, err := pool.Exec(ctx, `UPDATE runner_vm_terraform_states SET lock_id=$2,
+		lock_info='{}'::jsonb,locked_at=clock_timestamp() WHERE runner_vm_id=$1`, vm.ID, mustID(t)); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := s.ResolveRunnerVMOperation(ctx, "scaler", vm.ID, op.Generation, op.ID, proof); !errors.Is(err, ErrDenied) {
+		t.Fatalf("Terraform resolution accepted a locked backend state: %v", err)
+	}
+	if _, err := pool.Exec(ctx, `UPDATE runner_vm_terraform_states SET lock_id=NULL,
+		lock_info=NULL,locked_at=NULL WHERE runner_vm_id=$1`, vm.ID); err != nil {
+		t.Fatal(err)
+	}
 	reconciled, err := s.ResolveRunnerVMOperation(ctx, "scaler", vm.ID, op.Generation, op.ID, proof)
 	if err != nil || reconciled.State != "stopped" || reconciled.UnknownOutcome {
 		t.Fatalf("Terraform state proof did not resolve the operation: %+v, %v", reconciled, err)
@@ -323,5 +356,26 @@ func TestIntegrationRunnerVMTerraformPlanEvidenceIsImmutableAndFenced(t *testing
 	resolved, err := s.GetRunnerVMOperation(ctx, op.ID)
 	if err != nil || resolved.Status != "succeeded" || resolved.ProviderKind != "terraform" || resolved.ReconciliationSHA256 != proof.ReconciliationSHA256 {
 		t.Fatalf("Terraform reconciliation evidence was not retained: %+v, %v", resolved, err)
+	}
+}
+func TestValidTerraformObservedStateAcceptsVerifiedNoEffectOutcomes(t *testing.T) {
+	// @par MC/DC: each expected observation below makes the operation/outcome valid;
+	// changing the state-presence, VM-absence, or status condition makes it invalid.
+	cases := []struct {
+		kind, outcome, status string
+		hasVM, absent         bool
+	}{
+		{"clone", "failed", "", false, true},
+		{"start", "failed", "stopped", true, false},
+		{"stop", "failed", "running", true, false},
+		{"destroy", "failed", "stopped", true, false},
+	}
+	for _, test := range cases {
+		if !validTerraformObservedState(test.kind, test.outcome, test.hasVM, test.absent, test.status) {
+			t.Errorf("valid verified no-effect evidence rejected: %+v", test)
+		}
+	}
+	if validTerraformObservedState("clone", "failed", true, true, "running") {
+		t.Fatal("inconsistent failed/no-effect evidence accepted")
 	}
 }
