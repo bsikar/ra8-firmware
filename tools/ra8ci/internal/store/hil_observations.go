@@ -195,6 +195,44 @@ func (s *Store) Observations(ctx context.Context, workload hilspec.Workload) ([]
 	return result, nil
 }
 
+// BoardHILObservations exposes only timing cohorts selected from a validated
+// server catalog task and the operator-approved profile for this board.
+func (s *Store) BoardHILObservations(ctx context.Context, actor BoardActor,
+	definition catalog.HILTask) ([]hilspec.HistoricalObservation, error) {
+	if s == nil || s.pool == nil || ctx == nil || actor.kind != "board_agent" ||
+		actor.role != "board_agent" || !validBoardID(actor.boardID) ||
+		catalog.ValidateHILTaskMetadata(definition) != nil || definition.BoardID != actor.boardID {
+		return nil, fmt.Errorf("%w: board HIL history arguments", ErrInvalid)
+	}
+	tx, err := s.pool.Begin(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("%w: begin board HIL history: %v", ErrUnavailable, err)
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+	if err := revalidateBoardActor(ctx, tx, actor); err != nil {
+		return nil, err
+	}
+	var fixtureRevision, profileSHA256 string
+	err = tx.QueryRow(ctx, `SELECT fixture_revision,profile_sha256
+		FROM board_fixture_profiles WHERE board_id=$1`, actor.boardID).Scan(&fixtureRevision, &profileSHA256)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil, ErrNotFound
+	}
+	if err != nil {
+		return nil, fmt.Errorf("%w: read approved HIL fixture profile: %v", ErrUnavailable, err)
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return nil, fmt.Errorf("%w: commit board HIL history identity: %v", ErrUnavailable, err)
+	}
+	workload := hilspec.Workload{ManifestPath: definition.ManifestPath, BoardModel: definition.BoardModel,
+		FixtureRevision: fixtureRevision, ProfileSHA256: profileSHA256,
+		ProgramFamily: definition.ProgramFamily, Mode: hilspec.Mode(definition.Mode)}
+	if !validHILWorkload(workload) {
+		return nil, fmt.Errorf("%w: approved HIL workload identity is invalid", ErrConflict)
+	}
+	return s.Observations(ctx, workload)
+}
+
 func validHILWorkload(workload hilspec.Workload) bool {
 	if workload.ManifestPath == "" || path.Clean(workload.ManifestPath) != workload.ManifestPath ||
 		path.Base(workload.ManifestPath) != "hil.conf" || !strings.HasPrefix(workload.ManifestPath, "examples/") ||
