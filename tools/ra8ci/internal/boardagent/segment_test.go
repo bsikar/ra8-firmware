@@ -17,7 +17,7 @@ type testSegmentControlClient struct {
 	begins       int
 	finishes     []string
 	lastSegment  store.BoardSegment
-	claimedTask  string
+	claimCount   int
 	claimedLease string
 }
 
@@ -30,9 +30,11 @@ func (c *testSegmentControlClient) BeginSegment(_ context.Context, token boardcl
 	return c.lastSegment, nil
 }
 
-func (c *testSegmentControlClient) StartHILAttempt(_ context.Context, boardID, taskID, leaseID, host string, cores int, ramBytes int64, load float64, facts json.RawMessage) (store.Attempt, error) {
-	c.claimedTask, c.claimedLease = taskID, leaseID
-	return store.Attempt{ID: "01996f90-3415-7cfe-8ff1-600058131aff", TaskID: taskID, AttemptNo: 1, State: "running"}, nil
+func (c *testSegmentControlClient) ClaimNextHILAttempt(_ context.Context, boardID, leaseID, host string, cores int, ramBytes int64, load float64, facts json.RawMessage) (*store.BoardHILAssignment, error) {
+	c.claimCount++
+	c.claimedLease = leaseID
+	return &store.BoardHILAssignment{Attempt: store.Attempt{ID: "01996f90-3415-7cfe-8ff1-600058131aff",
+		TaskID: "01996f90-3415-7cfe-8ff1-600058131b11", AttemptNo: 1, State: "running"}}, nil
 }
 
 func (c *testSegmentControlClient) FinishSegment(_ context.Context, _ boardclient.LeaseToken, attemptID, id, outcome string) error {
@@ -90,22 +92,21 @@ func TestRunSegmentRejectsInvalidAttemptBeforeContactingBoard(t *testing.T) {
 	}
 }
 
-func TestStartHILAttemptRequiresActiveFencedLease(t *testing.T) {
+func TestClaimNextHILAttemptRequiresActiveFencedLease(t *testing.T) {
 	agent, client, token := newActiveSegmentAgent(t)
-	taskID := "01996f90-3415-7cfe-8ff1-600058131b11"
-	attempt, err := agent.StartHILAttempt(context.Background(), token, taskID, "hil-runner", 8, 8<<30, 0.5,
+	assignment, err := agent.ClaimNextHILAttempt(context.Background(), token, "hil-runner", 8, 8<<30, 0.5,
 		json.RawMessage("{\"os\":\"linux\",\"arch\":\"amd64\"}"))
-	if err != nil || attempt.TaskID != taskID || attempt.State != "running" ||
-		client.claimedTask != taskID || client.claimedLease != token.LeaseID {
-		t.Fatalf("active board HIL attempt was not claimed under its lease: attempt=%+v claimed=%s/%s err=%v",
-			attempt, client.claimedTask, client.claimedLease, err)
+	if err != nil || assignment == nil || assignment.Attempt.State != "running" ||
+		client.claimCount != 1 || client.claimedLease != token.LeaseID {
+		t.Fatalf("active HIL task was not claimed under its lease: assignment=%+v claims=%d lease=%s err=%v",
+			assignment, client.claimCount, client.claimedLease, err)
 	}
 	client.state.Phase = board.YieldRequested
-	if _, err := agent.StartHILAttempt(context.Background(), token, taskID, "hil-runner", 8, 8<<30, 0.5,
+	if _, err := agent.ClaimNextHILAttempt(context.Background(), token, "hil-runner", 8, 8<<30, 0.5,
 		json.RawMessage("{\"os\":\"linux\"}")); err == nil {
-		t.Fatal("HIL attempt was started after the board entered cooperative yield")
+		t.Fatal("HIL task was claimed after the board entered cooperative yield")
 	}
-	if client.claimedTask != taskID {
+	if client.claimCount != 1 {
 		t.Fatal("yielded board made another HIL claim")
 	}
 }

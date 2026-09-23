@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/bsikar/ra8-firmware/tools/ra8ci/internal/board"
+	"github.com/bsikar/ra8-firmware/tools/ra8ci/internal/catalog"
 	"github.com/bsikar/ra8-firmware/tools/ra8ci/internal/store"
 )
 
@@ -27,19 +28,34 @@ type BoardStore interface {
 	AuditDenied(context.Context, string, string, string) error
 }
 
+type BoardHILPolicy struct {
+	Catalog       *catalog.Catalog
+	TrustedCommit string
+}
+
 type boardHTTP struct {
-	store      BoardStore
-	verifier   store.NeutralReceiptVerifier
-	repository string
+	store         BoardStore
+	catalog       *catalog.Catalog
+	trustedCommit string
+	verifier      store.NeutralReceiptVerifier
+	repository    string
 }
 
 // RegisterBoardRoutes adds authenticated board endpoints to the server mux.
 // A missing neutral verifier deliberately leaves release and recovery closed.
-func RegisterBoardRoutes(mux *http.ServeMux, st BoardStore, verifier store.NeutralReceiptVerifier, repository string) error {
+func RegisterBoardRoutes(mux *http.ServeMux, st BoardStore, verifier store.NeutralReceiptVerifier, repository string, hilPolicy ...BoardHILPolicy) error {
 	if mux == nil || st == nil || strings.TrimSpace(repository) != repository || repository == "" {
 		return store.ErrInvalid
 	}
-	h := &boardHTTP{store: st, verifier: verifier, repository: repository}
+	if len(hilPolicy) > 1 {
+		return store.ErrInvalid
+	}
+	var policy BoardHILPolicy
+	if len(hilPolicy) == 1 {
+		policy = hilPolicy[0]
+	}
+	h := &boardHTTP{store: st, verifier: verifier, repository: repository,
+		catalog: policy.Catalog, trustedCommit: policy.TrustedCommit}
 	mux.HandleFunc("GET /v1/boards/{board_id}", h.status)
 	mux.HandleFunc("POST /v1/boards/{board_id}/take", h.take)
 	mux.HandleFunc("POST /v1/boards/{board_id}/waiters/{waiter_id}/cancel", h.cancel)
@@ -52,7 +68,7 @@ func RegisterBoardRoutes(mux *http.ServeMux, st BoardStore, verifier store.Neutr
 	mux.HandleFunc("POST /v1/boards/{board_id}/agent/unavailable", h.agentUnavailable)
 	mux.HandleFunc("POST /v1/boards/{board_id}/recovery/start", h.recoveryStart)
 	mux.HandleFunc("POST /v1/boards/{board_id}/quarantine", h.quarantine)
-	mux.HandleFunc("POST /v1/boards/{board_id}/hil-attempts/start", h.startHILAttempt)
+	mux.HandleFunc("POST /v1/boards/{board_id}/hil-attempts/claim", h.claimNextHILAttempt)
 	mux.HandleFunc("POST /v1/boards/{board_id}/segments/begin", h.segmentBegin)
 	mux.HandleFunc("POST /v1/boards/{board_id}/segments/{segment_id}/finish", h.segmentFinish)
 	return nil
