@@ -10,6 +10,7 @@ import (
 // describe host-wide context and are not task-attributed CPU measurements.
 type SlowTask struct {
 	Name             string   `json:"name"`
+	Tier             string   `json:"tier"`
 	HostClass        string   `json:"host_class"`
 	Samples          int64    `json:"samples"`
 	MedianSeconds    float64  `json:"median_seconds"`
@@ -45,7 +46,7 @@ func (s *Store) SlowTasks(ctx context.Context, repository string, since time.Tim
 		FROM resource_samples WHERE host_os IS NOT NULL AND host_load_kind IS NOT NULL
 		GROUP BY attempt_id, host_os, host_load_kind
 	)
-	SELECT t.name, t.host_class, COUNT(DISTINCT a.id)::bigint,
+	SELECT t.name, t.tier, t.host_class, COUNT(DISTINCT a.id)::bigint,
 		percentile_cont(0.5) WITHIN GROUP (ORDER BY EXTRACT(EPOCH FROM (a.ended_at-a.started_at))::double precision),
 		percentile_cont(0.95) WITHIN GROUP (ORDER BY EXTRACT(EPOCH FROM (a.ended_at-a.started_at))::double precision),
 		MAX(EXTRACT(EPOCH FROM (a.ended_at-a.started_at)))::double precision,
@@ -66,7 +67,7 @@ func (s *Store) SlowTasks(ctx context.Context, repository string, since time.Tim
 		LEFT JOIN per_attempt_resources pr ON pr.attempt_id=a.id
 		WHERE r.repository=$1 AND r.created_at >= $2 AND a.ended_at IS NOT NULL
 		AND a.started_at IS NOT NULL AND a.evidence_complete=true
-		GROUP BY t.name, t.host_class, pr.host_os, pr.host_load_kind
+		GROUP BY t.name, t.tier, t.host_class, pr.host_os, pr.host_load_kind
 		ORDER BY 4 DESC, t.name ASC, t.host_class ASC, pr.host_os ASC LIMIT $3`, repository, since.UTC(), limit)
 	if err != nil {
 		return nil, fmt.Errorf("%w: query slow tasks: %v", ErrUnavailable, err)
@@ -75,7 +76,7 @@ func (s *Store) SlowTasks(ctx context.Context, repository string, since time.Tim
 	result := make([]SlowTask, 0)
 	for rows.Next() {
 		var item SlowTask
-		if err := rows.Scan(&item.Name, &item.HostClass, &item.Samples, &item.MedianSeconds, &item.P95Seconds, &item.MaximumSeconds, &item.MeanStartLoad,
+		if err := rows.Scan(&item.Name, &item.Tier, &item.HostClass, &item.Samples, &item.MedianSeconds, &item.P95Seconds, &item.MaximumSeconds, &item.MeanStartLoad,
 			&item.HostOS, &item.HostLoadKind, &item.ResourceSamples, &item.MeanHostLoad, &item.PeakHostLoad, &item.MeanRAMFreeBytes,
 			&item.MeanHostCores, &item.MeanCPUBusyPct, &item.MeanLoadPerCore, &item.MeanRAMUsedPct); err != nil {
 			return nil, fmt.Errorf("%w: scan slow task: %v", ErrUnavailable, err)

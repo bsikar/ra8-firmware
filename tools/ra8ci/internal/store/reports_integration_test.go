@@ -43,7 +43,8 @@ func TestIntegrationSlowTasksUsesCompletedEvidenceAndRepositoryScope(t *testing.
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(rows) != 2 || rows[0].Name != "format-check" || rows[0].Samples != 1 || rows[0].MedianSeconds < 0 {
+	if len(rows) != 2 || rows[0].Name != "format-check" || rows[0].Tier != "required" ||
+		rows[0].Samples != 1 || rows[0].MedianSeconds < 0 {
 		t.Fatalf("unexpected report: %+v", rows)
 	}
 	var linux, windows *SlowTask
