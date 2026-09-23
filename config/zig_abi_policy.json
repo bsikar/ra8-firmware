@@ -452,6 +452,33 @@
         {"name":"ra8_kbd_text_init","calling_context":"task-only-non-reentrant","ownership":"resets the caller-owned text buffer to empty and uncommitted"},
         {"name":"ra8_kbd_apply","calling_context":"task-only-non-reentrant","ownership":"mutates caller-owned text and keyboard layout state synchronously"}
       ]
+    },
+    {
+      "name": "ra8_tz_secure_boot",
+      "build_root": "libs/ra8_tz_secure_boot",
+      "public_header": "libs/ra8_tz_secure_boot/inc/ra8_tz_secure_boot.h",
+      "adapter": "libs/ra8_tz_secure_boot/src/ra8_tz_secure_boot_abi.zig",
+      "library_name": "ra8_tz_secure_boot",
+      "symbol_prefix": "ra8_tz_",
+      "compatibility_sha256": "8a8b6830d90bae572f02df460b2e42e455bc02bf9a40cb6d59fc45b4e4cf9db2",
+      "layout_assertions": ["@sizeOf(Step) == 1", "@sizeOf(implementation.NsRotHeader) == 8", "@offsetOf(implementation.NsRotHeader, \"magic\") == 0", "@offsetOf(implementation.NsRotHeader, \"body_len\") == 4"],
+      "target_class": "host-ra8",
+      "targets": {"host": [], "ra8": ["-Dtarget=thumb-freestanding-eabihf", "-Dcpu=cortex_m85+fp_armv8-d32-fp64"]},
+      "c_include_dirs": ["libs/ra8_tz_secure_boot/inc", "libs/ra8_core/inc"],
+      "contract_tests": [
+        {"language":"c","path":"tests/security/src/test_tz_secure_boot.c","registration":"tests/cmake/unit_tests.cmake"},
+        {"language":"zig","path":"libs/ra8_tz_secure_boot/tests/abi_test.zig","registration":"libs/ra8_tz_secure_boot/.zig-test-contract.json"}
+      ],
+      "exports": [
+        {"name":"ra8_tz_ns_signed_body_len","calling_context":"task-safe-reentrant","ownership":"reads the caller-owned Non-Secure image header and retains no resources"},
+        {"name":"ra8_tz_secure_boot_get_step","calling_context":"task-safe-reentrant","ownership":"returns the current boot progress marker without transferring resources"},
+        {"name":"ra8_tz_secure_boot_host_blxns_target","calling_context":"boot-only","ownership":"returns the captured host BLXNS target and retains no resources"},
+        {"name":"ra8_tz_secure_boot_host_reset","calling_context":"serialized-test-control","ownership":"resets internal host capture state and retains no caller resources"},
+        {"name":"ra8_tz_secure_boot_jump_ns","calling_context":"boot-only","ownership":"reads the caller-owned vector table and retains no resources; on hardware, successful transfer does not return"},
+        {"name":"ra8_tz_secure_boot_run","calling_context":"boot-only","ownership":"reads the caller-owned vector table and retains no resources; on hardware, successful transfer does not return"},
+        {"name":"ra8_tz_secure_boot_sau_init","calling_context":"boot-only","ownership":"programs secure SAU hardware and retains no caller resources"},
+        {"name":"ra8_tz_secure_boot_security_init","calling_context":"boot-only","ownership":"programs secure IPC attribution hardware and retains no caller resources"}
+      ]
     }
   ]
 }

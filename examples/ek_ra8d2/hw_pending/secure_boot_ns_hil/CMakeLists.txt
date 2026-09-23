@@ -37,8 +37,16 @@ if(NOT _ra8_p)
 endif()
 
 # ---- Secure ELF ----------------------------------------------------------
-# ra8_tz_secure_boot (LIBS, globbed in so RA8_ENABLE_ROOT_OF_TRUST reaches the
-# BLXNS gate internal_ns_verify_or_deny). ra8_rot + ra8_psa_crypto + the
+# ra8_tz_secure_boot's implementation is Zig now, so the
+# target_compile_definitions below no longer reaches its BLXNS gate: CMake does
+# not compile that source. Setting the variable here, before ra8_add_app, is
+# what forwards the switch as -Denable-root-of-trust=true to the library's own
+# build (cmake/ra8_app/zig_libs.cmake). Both remain: the define still reaches
+# this app's own C sources.
+set(RA8_ENABLE_ROOT_OF_TRUST ON)
+
+# ra8_tz_secure_boot (LIBS, cross-built from libs/ra8_tz_secure_boot/build.zig
+# with the root-of-trust gate switched on above). ra8_rot + ra8_psa_crypto + the
 # fail-closed RNG shim from this app's src/ directory; ra8_rsip (software SHA)
 # auto-globbed.
 ra8_add_app(

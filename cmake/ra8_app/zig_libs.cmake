@@ -74,6 +74,18 @@ function(_ra8_app_zig_library _lib _lib_path _out_archive _out_stamp)
     set(_zig_optimize ReleaseSmall)
   endif()
 
+  # RA8_ENABLE_ROOT_OF_TRUST used to reach ra8_tz_secure_boot as a
+  # target_compile_definitions on the app, because its implementation was a C
+  # translation unit CMake compiled. The Zig archive is built by its own
+  # build.zig, which no app define can reach, so the app opts in by setting
+  # RA8_ENABLE_ROOT_OF_TRUST before ra8_add_app and the switch is forwarded
+  # here as a build option. Only the library that declares the option gets it:
+  # zig build rejects an unknown -D.
+  set(_zig_options "")
+  if(RA8_ENABLE_ROOT_OF_TRUST AND _lib STREQUAL "ra8_tz_secure_boot")
+    list(APPEND _zig_options -Denable-root-of-trust=true)
+  endif()
+
   set(_prefix "${CMAKE_CURRENT_BINARY_DIR}/zig/${_lib}/${_zig_cpu}")
   set(_archive "${_prefix}/lib/lib${_lib}.a")
 
@@ -90,6 +102,7 @@ function(_ra8_app_zig_library _lib _lib_path _out_archive _out_stamp)
       -Dtarget=${_zig_target}
       -Dcpu=${_zig_cpu}
       -Doptimize=${_zig_optimize}
+      ${_zig_options}
     DEPENDS ${_zig_srcs}
     COMMENT
       "Building Zig library ${_lib} for ${_zig_target} ${_zig_cpu} (${_zig_optimize})"

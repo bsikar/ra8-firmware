@@ -217,6 +217,10 @@ ra8_add_test(test_ra8_lsm6dso ${CMAKE_CURRENT_SOURCE_DIR}/misc/src/test_ra8_lsm6
 # on the next build if the directory contents changed.)
 file(GLOB RA8_TEST_SOURCES CONFIGURE_DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/*/src/test_*.c)
 
+# Register the TZ secure-boot ABI consumer literally for ABI-policy checks;
+# the auto-glob below skips this already-declared target.
+ra8_add_test(test_tz_secure_boot ${CMAKE_CURRENT_SOURCE_DIR}/security/src/test_tz_secure_boot.c)
+
 # v1's test_reflow.c and its split sibling test_reflow_api_mcdc.c
 # assert on glyph-array internals that v2 deliberately does not populate
 # (shared fixture: apps/shared_libs/reflow/tests/inc/reflow_v1_test_util.h); drop them under
