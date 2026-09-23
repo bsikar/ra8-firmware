@@ -18,16 +18,16 @@ type testSegmentControlClient struct {
 	lastSegment store.BoardSegment
 }
 
-func (c *testSegmentControlClient) BeginSegment(_ context.Context, token boardclient.LeaseToken, key string, bound, margin time.Duration) (store.BoardSegment, error) {
+func (c *testSegmentControlClient) BeginSegment(_ context.Context, token boardclient.LeaseToken, attemptID, key string, bound, margin time.Duration) (store.BoardSegment, error) {
 	c.begins++
 	now := time.Now()
 	c.lastSegment = store.BoardSegment{ID: "01996f90-3415-7cfe-8ff1-600058131aff",
-		BoardID: token.BoardID, LeaseID: token.LeaseID, Generation: token.Generation,
+		BoardID: token.BoardID, LeaseID: token.LeaseID, Generation: token.Generation, AttemptID: attemptID,
 		Key: key, StartedAt: now, DeadlineAt: now.Add(bound), RecoveryMarginMS: uint64(margin.Milliseconds())}
 	return c.lastSegment, nil
 }
 
-func (c *testSegmentControlClient) FinishSegment(_ context.Context, _ boardclient.LeaseToken, id, outcome string) error {
+func (c *testSegmentControlClient) FinishSegment(_ context.Context, _ boardclient.LeaseToken, attemptID, id, outcome string) error {
 	if id != c.lastSegment.ID {
 		return boardclient.ErrStaleLease
 	}
@@ -72,7 +72,7 @@ func newActiveSegmentAgent(t *testing.T) (*Agent, *testSegmentControlClient, boa
 func TestRunSegmentLetsStartedWorkFinishThenStopsAtHumanCheckpoint(t *testing.T) {
 	agent, client, token := newActiveSegmentAgent(t)
 	started := false
-	segment, err := agent.RunSegment(context.Background(), token, "uart-observe", 3*time.Second, time.Second,
+	segment, err := agent.RunSegment(context.Background(), token, "01996f90-3415-7cfe-8ff1-600058131aff", "uart-observe", 3*time.Second, time.Second,
 		func(ctx context.Context) error {
 			if _, ok := ctx.Deadline(); !ok {
 				t.Fatal("board operation has no context deadline")
@@ -91,7 +91,7 @@ func TestRunSegmentLetsStartedWorkFinishThenStopsAtHumanCheckpoint(t *testing.T)
 	if client.state.Phase != board.YieldRequested {
 		t.Fatalf("human wait did not request cooperative yield: phase=%s", client.state.Phase)
 	}
-	_, err = agent.RunSegment(context.Background(), token, "must-not-start", time.Second, 0,
+	_, err = agent.RunSegment(context.Background(), token, "01996f90-3415-7cfe-8ff1-600058131aff", "must-not-start", time.Second, 0,
 		func(context.Context) error { t.Fatal("operation started after human wait"); return nil })
 	if err == nil || client.begins != 1 || len(client.finishes) != 1 {
 		t.Fatalf("a new segment crossed the human checkpoint: begins=%d finishes=%v err=%v", client.begins, client.finishes, err)
@@ -100,7 +100,7 @@ func TestRunSegmentLetsStartedWorkFinishThenStopsAtHumanCheckpoint(t *testing.T)
 
 func TestRunSegmentDeadlineCancelsAndClosesFailedSegment(t *testing.T) {
 	agent, client, token := newActiveSegmentAgent(t)
-	_, err := agent.RunSegment(context.Background(), token, "bounded-wait", 50*time.Millisecond, time.Second,
+	_, err := agent.RunSegment(context.Background(), token, "01996f90-3415-7cfe-8ff1-600058131aff", "bounded-wait", 50*time.Millisecond, time.Second,
 		func(ctx context.Context) error {
 			<-ctx.Done()
 			return ctx.Err()

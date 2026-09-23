@@ -31,8 +31,8 @@ type ControlClient interface {
 // SegmentClient is the authenticated server API used to atomically begin and
 // finish durable board operations under the current lease generation.
 type SegmentClient interface {
-	BeginSegment(context.Context, boardclient.LeaseToken, string, time.Duration, time.Duration) (store.BoardSegment, error)
-	FinishSegment(context.Context, boardclient.LeaseToken, string, string) error
+	BeginSegment(context.Context, boardclient.LeaseToken, string, string, time.Duration, time.Duration) (store.BoardSegment, error)
+	FinishSegment(context.Context, boardclient.LeaseToken, string, string, string) error
 }
 
 // Agent reconciles one persistent physical board agent identity.
@@ -162,7 +162,7 @@ func (a *Agent) CanStartSegment(ctx context.Context, token boardclient.LeaseToke
 // local gate serializes reconciliation and hardware work in this process; the
 // server transaction orders it against human waiters and other lease changes.
 // The operation must honor ctx and must not return while child processes remain.
-func (a *Agent) RunSegment(ctx context.Context, token boardclient.LeaseToken, key string,
+func (a *Agent) RunSegment(ctx context.Context, token boardclient.LeaseToken, attemptID, key string,
 	bound, recoveryMargin time.Duration, operation func(context.Context) error) (store.BoardSegment, error) {
 	if a == nil || ctx == nil || a.segmentGate == nil || operation == nil || token.BoardID != a.boardID ||
 		bound <= 0 || bound > maxBoardOperation || recoveryMargin < 0 || recoveryMargin > maxBoardOperation {
@@ -180,14 +180,14 @@ func (a *Agent) RunSegment(ctx context.Context, token boardclient.LeaseToken, ke
 		return store.BoardSegment{}, err
 	}
 	requestStarted := a.clock()
-	segment, err := client.BeginSegment(ctx, token, key, bound, recoveryMargin)
+	segment, err := client.BeginSegment(ctx, token, attemptID, key, bound, recoveryMargin)
 	if err != nil {
 		return store.BoardSegment{}, err
 	}
 	finish := func(outcome string) error {
 		finishCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
-		return client.FinishSegment(finishCtx, token, segment.ID, outcome)
+		return client.FinishSegment(finishCtx, token, attemptID, segment.ID, outcome)
 	}
 	remaining := bound - a.clock().Sub(requestStarted)
 	if remaining <= 0 {

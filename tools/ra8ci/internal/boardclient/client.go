@@ -552,8 +552,8 @@ func (c *Client) CanStartSegment(ctx context.Context, token LeaseToken, bound, r
 
 // BeginSegment atomically orders a bounded hardware operation against board
 // waiters using the server's per-board database lock and clock.
-func (c *Client) BeginSegment(ctx context.Context, token LeaseToken, key string, bound, recoveryMargin time.Duration) (store.BoardSegment, error) {
-	if key == "" || bound <= 0 || bound%time.Millisecond != 0 || recoveryMargin < 0 || recoveryMargin%time.Millisecond != 0 {
+func (c *Client) BeginSegment(ctx context.Context, token LeaseToken, attemptID, key string, bound, recoveryMargin time.Duration) (store.BoardSegment, error) {
+	if !store.ValidID(attemptID) || key == "" || bound <= 0 || bound%time.Millisecond != 0 || recoveryMargin < 0 || recoveryMargin%time.Millisecond != 0 {
 		return store.BoardSegment{}, ErrInvalidRequest
 	}
 	snapshot, err := c.leaseStatus(ctx, token)
@@ -565,25 +565,27 @@ func (c *Client) BeginSegment(ctx context.Context, token LeaseToken, key string,
 		ExpectedVersion   uint64 `json:"expected_version"`
 		LeaseID           string `json:"lease_id"`
 		Generation        uint64 `json:"generation"`
+		AttemptID         string `json:"attempt_id"`
 		Key               string `json:"key"`
 		BoundMilliseconds int64  `json:"bound_milliseconds"`
 		RecoveryMarginMS  int64  `json:"recovery_margin_ms"`
-	}{snapshot.Version, token.LeaseID, token.Generation, key, bound.Milliseconds(), recoveryMargin.Milliseconds()}, &result)
+	}{snapshot.Version, token.LeaseID, token.Generation, attemptID, key, bound.Milliseconds(), recoveryMargin.Milliseconds()}, &result)
 	return result, err
 }
 
 // FinishSegment records a bounded operation's outcome using the same exact
 // lease token used to begin it. It never grants authority to finish another
 // actor's segment.
-func (c *Client) FinishSegment(ctx context.Context, token LeaseToken, segmentID, outcome string) error {
-	if segmentID == "" || (outcome != "completed" && outcome != "failed" && outcome != "yielded") {
+func (c *Client) FinishSegment(ctx context.Context, token LeaseToken, attemptID, segmentID, outcome string) error {
+	if !store.ValidID(attemptID) || segmentID == "" || (outcome != "completed" && outcome != "failed" && outcome != "yielded") {
 		return ErrInvalidRequest
 	}
 	return c.request(ctx, http.MethodPost, boardPath(token.BoardID, "/segments/"+url.PathEscape(segmentID)+"/finish"), struct {
 		LeaseID    string `json:"lease_id"`
 		Generation uint64 `json:"generation"`
+		AttemptID  string `json:"attempt_id"`
 		Outcome    string `json:"outcome"`
-	}{token.LeaseID, token.Generation, outcome}, nil)
+	}{token.LeaseID, token.Generation, attemptID, outcome}, nil)
 }
 
 // Checkpoint cooperatively begins draining only after a yield request. It

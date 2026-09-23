@@ -296,8 +296,21 @@ func TestIntegrationBoardSegmentAndHumanWaiterSerialize(t *testing.T) {
 	if err != nil || active.Phase != board.Active {
 		t.Fatalf("agent did not install lease: phase=%s err=%v", active.Phase, err)
 	}
+	args := []byte(`{"argv":[],"hil":{"board_id":"` + boardID + `","board_model":"EK-RA8D2","manifest_path":"examples/ek_ra8d2/hw_validated/hil/demo/hil.conf","program_family":"uart-demo","mode":"uart_scrape","observation_step":"observe","flash_restore_seconds":10}}`)
+	run, err := s.CreateRun(ctx, CreateRunInput{Trigger: "integration", ActorID: agent.ID(), Repository: boardTestRepo,
+		CommitSHA: strings.Repeat("a", 40), SnapshotSHA256: strings.Repeat("b", 64), CatalogSHA256: strings.Repeat("c", 64),
+		Tasks: []TaskInput{{Key: "bounded-segment", Name: "hil-run", Arguments: args, Tier: "required", Scope: "hil", HostClass: "hil-lab", DeadlineSeconds: 30}}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	start := testStart(run.Tasks[0].ID)
+	start.ActorID, start.BoardLeaseID = agent.ID(), waiter.LeaseID
+	attempt, err := s.StartAttempt(ctx, start)
+	if err != nil {
+		t.Fatal(err)
+	}
 	token := board.Token{BoardID: boardID, LeaseID: waiter.LeaseID, Generation: active.Generation}
-	segment, err := s.BeginBoardSegment(ctx, boardAgent, active.Version, token, "flash", 20*time.Second, 3*time.Second)
+	segment, err := s.BeginBoardSegment(ctx, boardAgent, active.Version, token, attempt.ID, "flash", 20*time.Second, 3*time.Second)
 	if err != nil || segment.ID == "" || !segment.DeadlineAt.After(segment.StartedAt) {
 		t.Fatalf("bounded segment did not start: segment=%+v err=%v", segment, err)
 	}
@@ -307,10 +320,10 @@ func TestIntegrationBoardSegmentAndHumanWaiterSerialize(t *testing.T) {
 	if err != nil || yielding.Phase != board.YieldRequested {
 		t.Fatalf("human waiter did not request cooperative yield: phase=%s err=%v", yielding.Phase, err)
 	}
-	if _, err := s.BeginBoardSegment(ctx, agent, yielding.Version, token, "next", time.Second, 0); err == nil {
+	if _, err := s.BeginBoardSegment(ctx, agent, yielding.Version, token, attempt.ID, "next", time.Second, 0); err == nil {
 		t.Fatal("new segment started after human waiter queued")
 	}
-	if err := s.FinishBoardSegment(ctx, boardAgent, segment.ID, token, "yielded"); err != nil {
+	if err := s.FinishBoardSegment(ctx, boardAgent, segment.ID, token, attempt.ID, "yielded"); err != nil {
 		t.Fatalf("holder could not finish its already-started bounded segment: %v", err)
 	}
 	var outcome string
