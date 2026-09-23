@@ -22,6 +22,7 @@ import (
 
 	"github.com/bsikar/ra8-firmware/tools/ra8ci/internal/asciigate"
 	"github.com/bsikar/ra8-firmware/tools/ra8ci/internal/catalog"
+	"github.com/bsikar/ra8-firmware/tools/ra8ci/internal/newlinegate"
 	"github.com/bsikar/ra8-firmware/tools/ra8ci/internal/sincegate"
 )
 
@@ -174,13 +175,15 @@ func runStep(ctx context.Context, root string, env []string, step catalog.Step, 
 		result.EndedAt = end.UTC()
 		result.Duration = end.Sub(started)
 	}()
-	if step.Program == "ra8ci:ascii" || step.Program == "ra8ci:since" {
+	if step.Program == "ra8ci:ascii" || step.Program == "ra8ci:since" || step.Program == "ra8ci:final-newline" {
 		stdoutLog := newDigestWriter(stdout)
 		stderrLog := newDigestWriter(stderr)
 		if step.Program == "ra8ci:ascii" {
 			result.ExitCode = asciigate.Run(ctx, root, step.Args, stdoutLog, stderrLog)
-		} else {
+		} else if step.Program == "ra8ci:since" {
 			result.ExitCode = sincegate.Run(ctx, root, step.Args, stdoutLog, stderrLog)
+		} else {
+			result.ExitCode = newlinegate.Run(ctx, root, step.Args, stdoutLog, stderrLog)
 		}
 		if expiration := contextExpiration(ctx); expiration != nil {
 			result.TimedOut = errors.Is(expiration, context.DeadlineExceeded)

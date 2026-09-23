@@ -64,7 +64,6 @@ _GROUPS = (
             "checks/check_entry_points.py:REPO_ROOT",
             "checks/check_errexit_masking.py:REPO_ROOT",
             "checks/check_example_board_pins.py:REPO_ROOT",
-            "checks/check_final_newline.py:REPO_ROOT",
             "checks/check_fleet_declaration.py:REPO_ROOT",
             "checks/check_generated_artefacts.py:MCDC_TXT",
             "checks/check_generated_artefacts.py:REPO_ROOT",
