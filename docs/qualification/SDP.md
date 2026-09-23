@@ -225,7 +225,7 @@ must pass:
 - `clang-tidy --check` (pre-commit hook).
 - `cppcheck` general checks (pre-commit hook; MISRA addon is `just quality::local::misra`
   only -- see Section 6).
-- `check-since-version.py` (every public symbol carries a `@since`
+- `ra8ci since` (every public symbol carries a `@since`
   tag; pre-commit hook).
 - `check-copyright.py` (every source file carries the project header;
   pre-commit hook).
@@ -421,7 +421,7 @@ Source: [`../../scripts/git/pre-commit`](../../scripts/git/pre-commit).
 | Defensive macro paren                            | inline check in pre-commit hook                            |
 | clang-format                                     | `scripts/checks/format_code.sh --check`                           |
 | clang-tidy                                       | `scripts/checks/clang_tidy.sh --check`                            |
-| `@since` tag presence                            | `scripts/checks/check-since-version.py`                     |
+| `@since` tag presence                            | `ra8ci since`                     |
 | Copyright header presence                        | `scripts/checks/check-copyright.py`                         |
 | cppcheck (general)                               | `cppcheck --enable=warning,style,performance,portability`  |
 | HUM citations                                    | `scripts/checks/cite_check.py --strict`                     |
