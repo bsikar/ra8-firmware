@@ -74,6 +74,11 @@ func (s *FileHighWater) Load() (uint64, error) {
 	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
+	unlock, err := acquireStateLock(s.path + ".lock")
+	if err != nil {
+		return 0, err
+	}
+	defer unlock()
 	return s.loadLocked()
 }
 
@@ -129,6 +134,11 @@ func (s *FileHighWater) Advance(generation uint64) error {
 	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
+	unlock, err := acquireStateLock(s.path + ".lock")
+	if err != nil {
+		return err
+	}
+	defer unlock()
 	current, err := s.loadLocked()
 	if err != nil {
 		return err
