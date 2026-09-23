@@ -71,7 +71,7 @@ func integrationStore(t *testing.T) (*Store, *pgxpool.Pool) {
 		REVOKE INSERT,UPDATE,DELETE,TRUNCATE ON api_principals,api_grants,agents,
 			board_fixture_profiles,schema_migrations FROM ra8ci_runtime_test;
 		REVOKE DELETE,TRUNCATE ON runner_vms,runner_vm_operations FROM ra8ci_runtime_test;
-		REVOKE UPDATE ON audit,board_events,run_events,local_runs,local_run_steps FROM ra8ci_runtime_test`)
+		REVOKE UPDATE ON audit,board_events,run_events,local_runs,local_run_steps,hil_observations FROM ra8ci_runtime_test`)
 	if err != nil {
 		_ = roleTx.Rollback(ctx)
 		pool.Close()

@@ -60,7 +60,7 @@ func TestIntegrationOfflineHTTPIngestNeverQueuesCI(t *testing.T) {
 		GRANT SELECT,INSERT,UPDATE ON ALL TABLES IN SCHEMA public TO ra8ci_server_runtime_test;
 		REVOKE INSERT,UPDATE,DELETE,TRUNCATE ON api_principals,api_grants,agents,
 			board_fixture_profiles,schema_migrations FROM ra8ci_server_runtime_test;
-		REVOKE UPDATE ON audit,board_events,run_events,local_runs,local_run_steps FROM ra8ci_server_runtime_test`)
+		REVOKE UPDATE ON audit,board_events,run_events,local_runs,local_run_steps,hil_observations FROM ra8ci_server_runtime_test`)
 	if err != nil {
 		t.Fatal(err)
 	}

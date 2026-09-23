@@ -65,7 +65,7 @@ func (s *Store) CheckSchema(ctx context.Context) error {
 	if version != migrations.CurrentVersion() || count != version {
 		return fmt.Errorf("%w: incompatible schema version %d (rows %d, expected %d)", ErrUnavailable, version, count, migrations.CurrentVersion())
 	}
-	for _, relation := range []string{"audit", "board_events", "run_events", "local_runs", "local_run_steps"} {
+	for _, relation := range []string{"audit", "board_events", "run_events", "local_runs", "local_run_steps", "hil_observations"} {
 		var canUpdate, canDelete, canTruncate bool
 		err := s.pool.QueryRow(ctx, `SELECT has_table_privilege(current_user,$1,'UPDATE'),
 			has_table_privilege(current_user,$1,'DELETE'),
