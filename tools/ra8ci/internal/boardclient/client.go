@@ -21,6 +21,7 @@ import (
 
 	"github.com/bsikar/ra8-firmware/tools/ra8ci/internal/board"
 	"github.com/bsikar/ra8-firmware/tools/ra8ci/internal/catalog"
+	"github.com/bsikar/ra8-firmware/tools/ra8ci/internal/hilspec"
 	"github.com/bsikar/ra8-firmware/tools/ra8ci/internal/protocol"
 	"github.com/bsikar/ra8-firmware/tools/ra8ci/internal/source"
 	"github.com/bsikar/ra8-firmware/tools/ra8ci/internal/store"
@@ -779,4 +780,39 @@ func (c *Client) Free(ctx context.Context, token LeaseToken, producer NeutralRec
 			return board.Snapshot{}, err
 		}
 	}
+}
+
+// HILObservations retrieves historical timings for the server-approved task
+// and the board's current operator-approved fixture profile.
+func (c *Client) HILObservations(ctx context.Context, boardID string,
+	task catalog.Task) ([]hilspec.HistoricalObservation, error) {
+	if !validBoardID(boardID) || task.Scope != "hil" || task.HIL == nil ||
+		task.HIL.BoardID != boardID || catalog.ValidateTask(task) != nil {
+		return nil, ErrInvalidRequest
+	}
+	var response struct {
+		TaskName string                          `json:"task_name"`
+		Rows     []hilspec.HistoricalObservation `json:"observations"`
+	}
+	err := c.request(ctx, http.MethodPost, boardPath(boardID, "/hil-observations"),
+		struct {
+			TaskName string `json:"task_name"`
+		}{task.Name}, &response)
+	if err != nil {
+		return nil, err
+	}
+	if response.TaskName != task.Name || len(response.Rows) > 10000 {
+		return nil, errors.New("HIL history response does not match the catalog task")
+	}
+	for _, row := range response.Rows {
+		workload := row.Workload
+		profile, decodeErr := hex.DecodeString(workload.ProfileSHA256)
+		if workload.ManifestPath != task.HIL.ManifestPath || workload.BoardModel != task.HIL.BoardModel ||
+			workload.ProgramFamily != task.HIL.ProgramFamily || workload.Mode != hilspec.Mode(task.HIL.Mode) ||
+			workload.FixtureRevision == "" || len(profile) != 32 || strings.ToLower(workload.ProfileSHA256) != workload.ProfileSHA256 ||
+			decodeErr != nil || row.Duration <= 0 || row.Duration > time.Hour {
+			return nil, errors.New("HIL history contains a row outside the requested workload")
+		}
+	}
+	return response.Rows, nil
 }
