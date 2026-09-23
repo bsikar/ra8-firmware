@@ -19,7 +19,13 @@ import (
 )
 
 func hilCommand(ctx context.Context, args []string) error {
-	if len(args) == 0 || args[0] != "budget" {
+	if len(args) == 0 {
+		return errors.New("usage: ra8ci hil budget ...|verify-capture --manifest examples/.../hil.conf --capture FILE")
+	}
+	if args[0] == "verify-capture" {
+		return hilVerifyCaptureCommand(ctx, args[1:])
+	}
+	if args[0] != "budget" {
 		return errors.New("usage: ra8ci hil budget --board-id ID --manifest examples/.../hil.conf --board-model MODEL --program-family NAME --flash-restore-bound DURATION [--safety-maximum DURATION]")
 	}
 	flags := flag.NewFlagSet("hil budget", flag.ContinueOnError)
