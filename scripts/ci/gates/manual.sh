@@ -203,16 +203,10 @@ gate_fuzz_sweep() (
 # the shared user quota `just quality::local::gate ci-status-contract` exists to protect.
 gate_runner_clock() (
   set -e
-  # No require_cmd gh: the checker speaks the API over urllib, because the
-  # ra8-ci runner image does not ship the GitHub CLI and a gate that needed it
-  # would fail nightly with a provisioning error rather than a verdict. It
-  # takes GH_TOKEN / GITHUB_TOKEN, falling back to an authenticated gh on a
-  # developer box, and exits 2 -- not 0 -- when it has neither.
-  #
-  # Prove the detector before trusting its verdict: a clean scan from a
-  # detector that stopped detecting is indistinguishable from a healthy fleet.
-  python3 scripts/checks/check_runner_clock.py --selftest
-  python3 scripts/checks/check_runner_clock.py --runs "${RA8_CLOCK_SCAN_RUNS:-60}"
+  # The native task uses the workflow-scoped GH_TOKEN / GITHUB_TOKEN and the
+  # pinned public Actions API origin; no GitHub CLI or Python runtime is needed.
+  # Its first measured step self-tests the detector before the live scan.
+  (cd tools/ra8ci && GOWORK=off go run . runner-clock)
 )
 
 # --- runner-image-deps (manual) -------------------------------------------
