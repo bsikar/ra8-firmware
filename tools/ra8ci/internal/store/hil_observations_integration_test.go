@@ -118,13 +118,13 @@ func TestIntegrationHILObservationHistoryUsesExactEvidenceBackedCohort(t *testin
 		t.Fatal(err)
 	}
 	boardAgent := boardTestActor(t, ctx, st, pool, boardID, "board_agent", "board_agent")
-	history, err := st.BoardHILObservations(ctx, boardAgent, catalog.HILTask{
+	cohort, history, err := st.BoardHILObservations(ctx, boardAgent, catalog.HILTask{
 		BoardID: boardID, BoardModel: "EK-RA8D2",
 		ManifestPath:  "examples/ek_ra8d2/hw_validated/hil/demo/hil.conf",
 		ProgramFamily: "uart-demo", Mode: "uart_scrape", ObservationStep: "observe",
 		FlashRestoreSeconds: 10,
 	})
-	if err != nil || len(history) != 1 || history[0].Duration != duration || history[0].Workload != workload {
+	if err != nil || cohort != workload || len(history) != 1 || history[0].Duration != duration || history[0].Workload != workload {
 		t.Fatalf("board-agent HIL history lookup returned wrong cohort: rows=%+v err=%v", history, err)
 	}
 

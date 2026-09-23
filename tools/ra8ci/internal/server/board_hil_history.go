@@ -10,7 +10,7 @@ import (
 )
 
 type durableBoardHILHistory interface {
-	BoardHILObservations(context.Context, store.BoardActor, catalog.HILTask) ([]hilspec.HistoricalObservation, error)
+	BoardHILObservations(context.Context, store.BoardActor, catalog.HILTask) (hilspec.Workload, []hilspec.HistoricalObservation, error)
 }
 
 type hilHistoryRequest struct {
@@ -41,10 +41,10 @@ func (h *boardHTTP) hilObservationHistory(w http.ResponseWriter, r *http.Request
 		problem(w, http.StatusServiceUnavailable, "unavailable", "HIL history is not configured", true)
 		return
 	}
-	observations, err := st.BoardHILObservations(r.Context(), actor, *definition.HIL)
+	workload, observations, err := st.BoardHILObservations(r.Context(), actor, *definition.HIL)
 	if err != nil {
 		writeBoardError(w, err)
 		return
 	}
-	writeJSON(w, http.StatusOK, map[string]any{"task_name": definition.Name, "observations": observations})
+	writeJSON(w, http.StatusOK, map[string]any{"task_name": definition.Name, "workload": workload, "observations": observations})
 }
