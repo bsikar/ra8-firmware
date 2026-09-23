@@ -7,6 +7,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"sync"
 	"testing"
 )
 
@@ -95,5 +96,33 @@ func TestNewFileHighWaterRequiresPrivateDirectory(t *testing.T) {
 	}
 	if _, err := NewFileHighWater(filepath.Join(directory, "generation.state"), "ek-ra8d2"); !errors.Is(err, ErrUnsafeState) {
 		t.Fatalf("public state directory accepted: %v", err)
+	}
+}
+
+func TestIndependentStoresCannotRegressGeneration(t *testing.T) {
+	first, path := newTestHighWater(t)
+	second, err := NewFileHighWater(path, "ek-ra8d2")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var wait sync.WaitGroup
+	for generation := uint64(1); generation <= 50; generation++ {
+		generation := generation
+		wait.Add(1)
+		go func() {
+			defer wait.Done()
+			store := first
+			if generation%2 == 0 {
+				store = second
+			}
+			if err := store.Advance(generation); err != nil && !errors.Is(err, ErrGenerationRollback) {
+				t.Errorf("advance generation %d: %v", generation, err)
+			}
+		}()
+	}
+	wait.Wait()
+	value, err := first.Load()
+	if err != nil || value != 50 {
+		t.Fatalf("concurrent stores regressed to %d: %v", value, err)
 	}
 }
