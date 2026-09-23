@@ -98,7 +98,7 @@ func TestControllerRequiresAdmissionAndTimeout(t *testing.T) {
 
 func TestNewControllerSessionAcceptsPrecomposedHandler(t *testing.T) {
 	closed := false
-	session := &Session{Client: testClient(), close: func(context.Context) error { closed = true; return nil }}
+	session := &Session{Client: testClient(), close: func(context.Context) error { closed = true; return nil }, scaleSetID: 42}
 	controller, err := NewController(session.Client, &fakeInbox{}, &testHandler{}, testAdmission{}, 42, 1, time.Second)
 	if err != nil {
 		t.Fatal(err)
@@ -128,5 +128,51 @@ func TestNewControllerSessionRejectsIncompleteSession(t *testing.T) {
 	}
 	if _, err := NewControllerSession(&Session{close: func(context.Context) error { return nil }}, controller); err == nil {
 		t.Fatal("session without client accepted")
+	}
+	if _, err := NewControllerSession(&Session{Client: testClient(), close: func(context.Context) error { return nil }, scaleSetID: 43}, controller); err == nil {
+		t.Fatal("controller bound to a different scale set accepted")
+	}
+}
+
+func TestComposeControllerSessionBuildsHandlerFromExactGitHubSession(t *testing.T) {
+	closed := false
+	session := &Session{Client: testClient(), close: func(context.Context) error { closed = true; return nil }, scaleSetID: 42}
+	var received *Session
+	bound, err := ComposeControllerSession(session, &fakeInbox{}, testAdmission{}, 2, time.Second,
+		func(got *Session) (Handler, error) { received = got; return &testHandler{}, nil })
+	if err != nil {
+		t.Fatal(err)
+	}
+	if received != session {
+		t.Fatal("handler factory received a different GitHub session")
+	}
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	_ = bound.Run(ctx)
+	if !closed {
+		t.Fatal("composed controller did not close its GitHub session")
+	}
+}
+
+func TestComposeControllerSessionClosesAfterCompositionFailure(t *testing.T) {
+	tests := []struct {
+		name    string
+		timeout time.Duration
+		factory HandlerFactory
+	}{
+		{"handler failure", time.Second, func(*Session) (Handler, error) { return nil, errors.New("construction failed") }},
+		{"controller validation failure", 0, func(*Session) (Handler, error) { return &testHandler{}, nil }},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			closed := false
+			session := &Session{Client: testClient(), close: func(context.Context) error { closed = true; return nil }, scaleSetID: 42}
+			if _, err := ComposeControllerSession(session, &fakeInbox{}, testAdmission{}, 2, tt.timeout, tt.factory); err == nil {
+				t.Fatal("invalid controller composition succeeded")
+			}
+			if !closed {
+				t.Fatal("failed composition leaked the GitHub session")
+			}
+		})
 	}
 }
