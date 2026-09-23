@@ -57,13 +57,16 @@ type ResourceHints struct {
 // HILTask binds a HIL task to reviewed manifest and board identity. Fixture
 // revision and profile hash are captured from the granted board session.
 type HILTask struct {
-	BoardID             string `json:"board_id"`
-	BoardModel          string `json:"board_model"`
-	ManifestPath        string `json:"manifest_path"`
-	ProgramFamily       string `json:"program_family"`
-	Mode                string `json:"mode"`
-	ObservationStep     string `json:"observation_step"`
-	FlashRestoreSeconds int    `json:"flash_restore_seconds"`
+	BoardID              string `json:"board_id"`
+	BoardModel           string `json:"board_model"`
+	ManifestPath         string `json:"manifest_path"`
+	ProgramFamily        string `json:"program_family"`
+	Mode                 string `json:"mode"`
+	ObservationStep      string `json:"observation_step"`
+	FlashRestoreSeconds  int    `json:"flash_restore_seconds"`
+	TimeoutDeclared      bool   `json:"timeout_declared"`
+	TimeoutSeconds       int    `json:"timeout_seconds,omitempty"`
+	SafetyMaximumSeconds int    `json:"safety_maximum_seconds,omitempty"`
 }
 
 // Task is a versioned definition of one executable task.
@@ -328,7 +331,17 @@ func ValidateHILTaskMetadata(hil HILTask) error {
 	if !validName(hil.BoardID) || hil.BoardModel == "" || strings.TrimSpace(hil.BoardModel) != hil.BoardModel ||
 		len(hil.BoardModel) > 128 || !validHILManifestPath(hil.ManifestPath) ||
 		!validName(hil.ProgramFamily) || !validName(hil.ObservationStep) ||
-		hil.FlashRestoreSeconds < 1 || hil.FlashRestoreSeconds > 3600 {
+		hil.FlashRestoreSeconds < 1 || hil.FlashRestoreSeconds > 3600 ||
+		(hil.TimeoutDeclared && (hil.TimeoutSeconds < 1 || hil.TimeoutSeconds > 3600)) ||
+		(!hil.TimeoutDeclared && hil.TimeoutSeconds != 0) ||
+		hil.SafetyMaximumSeconds < 0 || hil.SafetyMaximumSeconds > 3600 {
+		return ErrInvalidCatalog
+	}
+	fallback := 30
+	if hil.TimeoutDeclared {
+		fallback = hil.TimeoutSeconds
+	}
+	if hil.SafetyMaximumSeconds > 0 && hil.SafetyMaximumSeconds < fallback {
 		return ErrInvalidCatalog
 	}
 	switch hil.Mode {

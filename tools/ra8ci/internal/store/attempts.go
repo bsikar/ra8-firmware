@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"time"
 
 	"github.com/bsikar/ra8-firmware/tools/ra8ci/internal/catalog"
 	"github.com/jackc/pgx/v5"
@@ -51,6 +52,7 @@ func (s *Store) StartAttempt(ctx context.Context, in StartAttemptInput) (Attempt
 		return Attempt{}, fmt.Errorf("%w: task is %s", ErrConflict, state)
 	}
 	var boardLeaseID any
+	attemptDeadlineSeconds := deadline
 	if scope == "hil" {
 		if !ValidID(in.BoardLeaseID) {
 			return Attempt{}, fmt.Errorf("%w: HIL attempt requires an active board lease", ErrInvalid)
@@ -65,13 +67,19 @@ func (s *Store) StartAttempt(ctx context.Context, in StartAttemptInput) (Attempt
 			catalog.ValidateHILTaskMetadata(*definition.HIL) != nil {
 			return Attempt{}, fmt.Errorf("%w: persisted HIL task contract is invalid", ErrConflict)
 		}
+		if in.HILTiming != nil {
+			if !validateHILTimingEvidence(*in.HILTiming, *definition.HIL, deadline) {
+				return Attempt{}, fmt.Errorf("%w: invalid server-derived HIL timing evidence", ErrInvalid)
+			}
+			attemptDeadlineSeconds = int(in.HILTiming.Decision.ValidityWindow / time.Second)
+		}
 		if err := validateActiveHILLease(ctx, tx, in.BoardLeaseID, in.ActorID,
-			definition.HIL.BoardID, deadline+definition.HIL.FlashRestoreSeconds); err != nil {
+			definition.HIL.BoardID, attemptDeadlineSeconds+definition.HIL.FlashRestoreSeconds); err != nil {
 			return Attempt{}, err
 		}
 		boardLeaseID = in.BoardLeaseID
-	} else if in.BoardLeaseID != "" {
-		return Attempt{}, fmt.Errorf("%w: non-HIL attempt cannot claim a board lease", ErrInvalid)
+	} else if in.BoardLeaseID != "" || in.HILTiming != nil {
+		return Attempt{}, fmt.Errorf("%w: non-HIL attempt cannot claim board timing or a board lease", ErrInvalid)
 	}
 	var blocked int
 	err = tx.QueryRow(ctx, `SELECT COUNT(*) FROM task_edges e
@@ -104,7 +112,7 @@ func (s *Store) StartAttempt(ctx context.Context, in StartAttemptInput) (Attempt
 		clock_timestamp()+($12 * interval '1 second'))
 		RETURNING id::text, task_id::text, attempt_no, state, started_at, deadline_at`,
 		id, in.TaskID, attemptNo, agent, boardLeaseID, in.Engine, in.Host, in.HostCores,
-		in.HostRAMBytes, in.HostLoad, facts, deadline).Scan(&attempt.ID, &attempt.TaskID,
+		in.HostRAMBytes, in.HostLoad, facts, attemptDeadlineSeconds).Scan(&attempt.ID, &attempt.TaskID,
 		&attempt.AttemptNo, &attempt.State, &attempt.StartedAt, &attempt.DeadlineAt)
 	if err != nil {
 		var postgresError *pgconn.PgError
@@ -138,6 +146,15 @@ func (s *Store) StartAttempt(ctx context.Context, in StartAttemptInput) (Attempt
 	}
 	if err := appendEvent(ctx, tx, runID, "attempt.started", map[string]any{"task_id": in.TaskID, "attempt_id": id}); err != nil {
 		return Attempt{}, fmt.Errorf("%w: event attempt start: %v", ErrUnavailable, err)
+	}
+	if in.HILTiming != nil {
+		actor := in.ClaimedBy
+		if actor == "" {
+			actor = in.ActorID
+		}
+		if err := appendAudit(ctx, tx, actor, "task.hil_timing_selected", "attempt", id, "ok", "", "selected", runID, in.HILTiming); err != nil {
+			return Attempt{}, fmt.Errorf("%w: audit HIL timing decision: %v", ErrUnavailable, err)
+		}
 	}
 	if in.ClaimedBy != "" {
 		if err := appendAudit(ctx, tx, in.ClaimedBy, "board.hil.attempt_claimed", "attempt", id,

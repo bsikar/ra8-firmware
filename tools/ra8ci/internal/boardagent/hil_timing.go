@@ -5,6 +5,7 @@ package boardagent
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/bsikar/ra8-firmware/tools/ra8ci/internal/catalog"
@@ -42,6 +43,10 @@ func (a *Agent) HILTimingDecision(ctx context.Context, checkoutRoot string, task
 	}
 	if spec.Mode != hilspec.Mode(task.HIL.Mode) {
 		return hilspec.Decision{}, hilspec.ErrInvalidManifest
+	}
+	if spec.TimeoutDeclared != task.HIL.TimeoutDeclared || spec.TimeoutSeconds != task.HIL.TimeoutSeconds ||
+		spec.SafetyMaximumSeconds != task.HIL.SafetyMaximumSeconds {
+		return hilspec.Decision{}, fmt.Errorf("%w: HIL catalog timing differs from the pinned manifest", catalog.ErrInvalidCatalog)
 	}
 	workload, rows, err := client.HILObservations(ctx, a.boardID, task)
 	if err != nil {

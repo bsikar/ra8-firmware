@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"errors"
 	"time"
+
+	"github.com/bsikar/ra8-firmware/tools/ra8ci/internal/hilspec"
 )
 
 var (
@@ -84,17 +86,25 @@ type Task struct {
 }
 
 type StartAttemptInput struct {
-	TaskID       string          `json:"task_id"`
-	ActorID      string          `json:"actor_id"`
-	ClaimedBy    string          `json:"-"`
-	AgentID      string          `json:"agent_id,omitempty"`
-	BoardLeaseID string          `json:"board_lease_id,omitempty"`
-	Engine       string          `json:"engine"`
-	Host         string          `json:"host"`
-	HostCores    int             `json:"host_cores"`
-	HostRAMBytes int64           `json:"host_ram_bytes"`
-	HostLoad     float64         `json:"host_load"`
-	HostFacts    json.RawMessage `json:"host_facts"`
+	TaskID       string             `json:"task_id"`
+	ActorID      string             `json:"actor_id"`
+	ClaimedBy    string             `json:"-"`
+	AgentID      string             `json:"agent_id,omitempty"`
+	BoardLeaseID string             `json:"board_lease_id,omitempty"`
+	Engine       string             `json:"engine"`
+	Host         string             `json:"host"`
+	HostCores    int                `json:"host_cores"`
+	HostRAMBytes int64              `json:"host_ram_bytes"`
+	HostLoad     float64            `json:"host_load"`
+	HostFacts    json.RawMessage    `json:"host_facts"`
+	HILTiming    *HILTimingEvidence `json:"-"`
+}
+
+// HILTimingEvidence is the server-derived, cohort-bound deadline decision
+// persisted with a HIL attempt and returned unchanged on claim replay.
+type HILTimingEvidence struct {
+	Workload hilspec.Workload `json:"workload"`
+	Decision hilspec.Decision `json:"decision"`
 }
 
 type Attempt struct {

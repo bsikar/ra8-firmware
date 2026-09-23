@@ -43,7 +43,7 @@ func TestHILTimingDecisionUsesManifestFallbackThenObservedCohort(t *testing.T) {
 		Steps: []catalog.Step{{Name: "observe", Program: "ra8ci:hil-observe"}, {Name: "post-observe-checkpoint", Program: "noop"}},
 		HIL: &catalog.HILTask{BoardID: "ek-ra8d2", BoardModel: workload.BoardModel,
 			ManifestPath: workload.ManifestPath, ProgramFamily: workload.ProgramFamily, Mode: string(workload.Mode),
-			ObservationStep: "observe", FlashRestoreSeconds: 10}}
+			ObservationStep: "observe", FlashRestoreSeconds: 10, TimeoutDeclared: true, TimeoutSeconds: 12}}
 	agent, segmentClient, token := newActiveSegmentAgent(t)
 	client := &timingHistoryClient{testSegmentControlClient: agent.client.(*testSegmentControlClient),
 		workload: workload}
@@ -71,7 +71,8 @@ func TestHILTimingDecisionUsesManifestFallbackThenObservedCohort(t *testing.T) {
 	assignment := store.BoardHILAssignment{Attempt: store.Attempt{ID: "01996f90-3415-7cfe-8ff1-600058131aff",
 		StartedAt: attemptStarted, DeadlineAt: attemptStarted.Add(time.Minute),
 		TaskID: "01996f90-3415-7cfe-8ff1-600058131b11", AttemptNo: 1, State: "running"},
-		Task: task, CatalogSHA256: "reviewed-catalog"}
+		Task: task, CatalogSHA256: "reviewed-catalog",
+		HILTiming: &store.HILTimingEvidence{Workload: workload, Decision: decision}}
 	stepsRun := 0
 	completion, err := agent.RunHILAttempt(context.Background(), token, root, assignment, 20*time.Second, 0,
 		func(context.Context, string, catalog.Task, catalog.Step) (int, error) {

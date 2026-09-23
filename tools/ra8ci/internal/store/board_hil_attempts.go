@@ -5,11 +5,19 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"time"
 
 	"github.com/bsikar/ra8-firmware/tools/ra8ci/internal/catalog"
+	"github.com/bsikar/ra8-firmware/tools/ra8ci/internal/hilspec"
 	"github.com/bsikar/ra8-firmware/tools/ra8ci/internal/source"
 	"github.com/jackc/pgx/v5"
 )
+
+type hilObservationRows []hilspec.HistoricalObservation
+
+func (rows hilObservationRows) Observations(context.Context, hilspec.Workload) ([]hilspec.HistoricalObservation, error) {
+	return rows, nil
+}
 
 // StartBoardHILAttempt lets only the authenticated board agent start a queued
 // HIL task for the principal that currently holds this board's lease. Host
@@ -31,9 +39,10 @@ func (s *Store) StartBoardHILAttempt(ctx context.Context, actor BoardActor, task
 		return Attempt{}, fmt.Errorf("%w: board HIL claim lock: %v", ErrUnavailable, err)
 	}
 	var holderID, scope, taskState string
+	var taskDeadline int
 	var cancelled bool
 	var rawArguments []byte
-	err = tx.QueryRow(ctx, `SELECT l.holder_id,t.scope,t.state,t.arguments,(r.cancel_requested_at IS NOT NULL)
+	err = tx.QueryRow(ctx, `SELECT l.holder_id,t.scope,t.state,t.arguments,(r.cancel_requested_at IS NOT NULL),t.deadline_seconds
         FROM board_leases l
         JOIN tasks t ON t.id=$2
         JOIN runs r ON r.id=t.run_id
@@ -42,7 +51,7 @@ func (s *Store) StartBoardHILAttempt(ctx context.Context, actor BoardActor, task
           AND s.ended_at IS NULL AND s.owner_id=l.holder_id
           AND r.actor_id=l.holder_id
         FOR SHARE OF l,s,t,r`, leaseID, taskID, actor.boardID).
-		Scan(&holderID, &scope, &taskState, &rawArguments, &cancelled)
+		Scan(&holderID, &scope, &taskState, &rawArguments, &cancelled, &taskDeadline)
 	if err != nil {
 		if err == pgx.ErrNoRows {
 			return Attempt{}, fmt.Errorf("%w: no scheduled HIL task for active lease", ErrConflict)
@@ -93,6 +102,23 @@ func (s *Store) StartBoardHILAttempt(ctx context.Context, actor BoardActor, task
 		return Attempt{}, fmt.Errorf("%w: close HIL claim check: %v", ErrUnavailable, err)
 	}
 
+	workload, history, err := s.BoardHILObservations(ctx, actor, *definition.HIL)
+	if err != nil {
+		return Attempt{}, err
+	}
+	spec := hilspec.Spec{Path: definition.HIL.ManifestPath, Mode: hilspec.Mode(definition.HIL.Mode),
+		TimeoutDeclared: definition.HIL.TimeoutDeclared, TimeoutSeconds: definition.HIL.TimeoutSeconds,
+		SafetyMaximumSeconds: definition.HIL.SafetyMaximumSeconds}
+	decision, err := hilspec.Decide(ctx, spec, workload, hilObservationRows(history), hilspec.Options{
+		FlashRestoreBound: time.Duration(definition.HIL.FlashRestoreSeconds) * time.Second})
+	if err != nil {
+		return Attempt{}, fmt.Errorf("derive server-side HIL deadline: %w", err)
+	}
+	if decision.ValidityWindow > time.Duration(taskDeadline)*time.Second {
+		return Attempt{}, fmt.Errorf("%w: HIL timing exceeds task maximum", ErrConflict)
+	}
+	timing := HILTimingEvidence{Workload: workload, Decision: decision}
+	facts.HILTiming = &timing
 	facts.TaskID = taskID
 	facts.ActorID = holderID
 	facts.AgentID = ""
@@ -117,16 +143,17 @@ func (s *Store) StartBoardHILAttempt(ctx context.Context, actor BoardActor, task
 // BoardHILAssignment is a server-selected, lease-bound HIL task and its pinned
 // source identity. It contains no caller-supplied command text.
 type BoardHILAssignment struct {
-	Attempt         Attempt      `json:"attempt"`
-	Task            catalog.Task `json:"task"`
-	Args            []string     `json:"args"`
-	RunID           string       `json:"run_id"`
-	Repository      string       `json:"repository"`
-	Branch          string       `json:"branch"`
-	CommitSHA       string       `json:"commit_sha"`
-	SnapshotSHA256  string       `json:"snapshot_sha256"`
-	SourceAlgorithm string       `json:"source_algorithm"`
-	CatalogSHA256   string       `json:"catalog_sha256"`
+	Attempt         Attempt            `json:"attempt"`
+	Task            catalog.Task       `json:"task"`
+	Args            []string           `json:"args"`
+	RunID           string             `json:"run_id"`
+	Repository      string             `json:"repository"`
+	Branch          string             `json:"branch"`
+	CommitSHA       string             `json:"commit_sha"`
+	SnapshotSHA256  string             `json:"snapshot_sha256"`
+	SourceAlgorithm string             `json:"source_algorithm"`
+	CatalogSHA256   string             `json:"catalog_sha256"`
+	HILTiming       *HILTimingEvidence `json:"hil_timing"`
 }
 
 // ClaimNextBoardHILAttempt selects the oldest eligible HIL task for the
@@ -162,14 +189,16 @@ func (s *Store) ClaimNextBoardHILAttempt(ctx context.Context, actor BoardActor, 
 	// Claims are idempotent across a lost HTTP response. A retry under the
 	// same live lease returns its already-running attempt instead of observing
 	// an empty scheduled queue and leaving the agent unable to continue.
-	var existingRaw []byte
+	var existingRaw, existingTimingRaw []byte
 	var existing TaskHILAttempt
 	var existingTaskName string
 	var existingDeadline int
 	var existingCommit, existingSnapshot, existingCatalog string
 	err = tx.QueryRow(ctx, `SELECT a.id::text,a.task_id::text,a.attempt_no,a.state,a.started_at,a.deadline_at,
 		t.name,t.deadline_seconds,t.arguments,r.id::text,r.repository,r.branch,r.commit_sha,
-		r.snapshot_sha256,r.catalog_sha256
+		r.snapshot_sha256,r.catalog_sha256,
+		(SELECT u.reason FROM audit u WHERE u.action='task.hil_timing_selected' AND u.target_type='attempt'
+		 AND u.target_id=a.id::text ORDER BY u.happened_at DESC LIMIT 1)
 		FROM task_attempts a JOIN tasks t ON t.id=a.task_id JOIN runs r ON r.id=t.run_id
 		WHERE a.board_lease_id=$1 AND a.state='running' AND t.scope='hil' AND r.actor_id=$2
 		  AND EXISTS (SELECT 1 FROM audit u WHERE u.actor_id=$3
@@ -179,7 +208,7 @@ func (s *Store) ClaimNextBoardHILAttempt(ctx context.Context, actor BoardActor, 
 		&existing.ID, &existing.TaskID, &existing.AttemptNo, &existing.State, &existing.StartedAt,
 		&existing.DeadlineAt, &existingTaskName, &existingDeadline,
 		&existingRaw, &existing.RunID, &existing.Repository, &existing.Branch, &existingCommit,
-		&existingSnapshot, &existingCatalog)
+		&existingSnapshot, &existingCatalog, &existingTimingRaw)
 	if err == nil {
 		definition, found := definitions.Task(existingTaskName)
 		if !found || definition.Scope != "hil" || definition.BoardPolicy != "exclusive" ||
@@ -199,10 +228,14 @@ func (s *Store) ClaimNextBoardHILAttempt(ctx context.Context, actor BoardActor, 
 			*persisted.HIL != *definition.HIL || definition.ValidateArguments(persisted.Args) != nil {
 			return nil, fmt.Errorf("%w: running HIL assignment no longer matches its catalog contract", ErrConflict)
 		}
+		var timing HILTimingEvidence
+		if json.Unmarshal(existingTimingRaw, &timing) != nil || !validateHILTimingEvidence(timing, *definition.HIL, definition.DeadlineSeconds) {
+			return nil, fmt.Errorf("%w: active HIL attempt has no valid pinned timing evidence", ErrConflict)
+		}
 		if err := tx.Commit(ctx); err != nil {
 			return nil, fmt.Errorf("%w: close idempotent HIL claim: %v", ErrUnavailable, err)
 		}
-		return &BoardHILAssignment{Attempt: existing.Attempt, Task: definition,
+		return &BoardHILAssignment{Attempt: existing.Attempt, Task: definition, HILTiming: &timing,
 			Args: append([]string(nil), persisted.Args...), RunID: existing.RunID,
 			Repository: existing.Repository, Branch: existing.Branch, CommitSHA: existingCommit,
 			SnapshotSHA256: existingSnapshot, SourceAlgorithm: source.Algorithm,
@@ -269,6 +302,7 @@ func (s *Store) ClaimNextBoardHILAttempt(ctx context.Context, actor BoardActor, 
 	selected.Task = definition
 	selected.Args = append([]string(nil), persisted.Args...)
 	selected.CatalogSHA256 = definitions.Digest()
+	selected.HILTiming = facts.HILTiming
 	return &selected, nil
 }
 
