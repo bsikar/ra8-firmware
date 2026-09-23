@@ -1,0 +1,233 @@
+// SPDX-License-Identifier: MIT
+// Copyright (c) 2026 Brighton Sikarskie
+
+package main
+
+import (
+	"context"
+	"encoding/json"
+	"errors"
+	"flag"
+	"fmt"
+	"io"
+	"os"
+	"os/exec"
+	"strings"
+
+	"github.com/bsikar/ra8-firmware/tools/ra8ci/internal/catalog"
+	"github.com/bsikar/ra8-firmware/tools/ra8ci/internal/runclient"
+	"github.com/bsikar/ra8-firmware/tools/ra8ci/internal/source"
+	"github.com/bsikar/ra8-firmware/tools/ra8ci/internal/store"
+)
+
+func runCommand(ctx context.Context, args []string) error {
+	if len(args) == 0 {
+		return errors.New("usage: ra8ci run submit|status|logs|events|cancel")
+	}
+	switch args[0] {
+	case "submit":
+		return submitRun(ctx, args[1:])
+	case "status":
+		return showRun(ctx, args[1:])
+	case "cancel":
+		return cancelRun(ctx, args[1:])
+	case "events":
+		return showRunEvents(ctx, args[1:])
+	case "logs":
+		return showRunLogs(ctx, args[1:])
+	default:
+		return errors.New("usage: ra8ci run submit|status|logs|events|cancel")
+	}
+}
+
+func showRunLogs(ctx context.Context, args []string) error {
+	flags := flag.NewFlagSet("run logs", flag.ContinueOnError)
+	flags.SetOutput(io.Discard)
+	after := flags.Int64("after", 0, "resume after this global log sequence")
+	limit := flags.Int("limit", store.MaxLogPageSize, "chunks per API page")
+	if err := flags.Parse(args); err != nil || flags.NArg() != 2 {
+		return errors.New("usage: ra8ci run logs [--after SEQ] [--limit 1..8] RUN_ID ATTEMPT_ID")
+	}
+	client, err := newRunClient()
+	if err != nil {
+		return err
+	}
+	defer client.Close()
+	cursor := *after
+	for {
+		page, err := client.Logs(ctx, flags.Arg(0), flags.Arg(1), cursor, *limit)
+		if err != nil {
+			return err
+		}
+		for _, chunk := range page.Chunks {
+			output := io.Writer(os.Stdout)
+			if chunk.Stream == "stderr" {
+				output = os.Stderr
+			}
+			written, writeErr := output.Write(chunk.Data)
+			if writeErr != nil {
+				return fmt.Errorf("write %s log chunk %d: %w", chunk.Stream, chunk.Sequence, writeErr)
+			}
+			if written != len(chunk.Data) {
+				return fmt.Errorf("write %s log chunk %d: %w", chunk.Stream, chunk.Sequence, io.ErrShortWrite)
+			}
+		}
+		if !page.HasMore {
+			return nil
+		}
+		if page.NextAfter <= cursor {
+			return errors.New("run log cursor did not advance")
+		}
+		cursor = page.NextAfter
+	}
+}
+
+func submitRun(ctx context.Context, args []string) error {
+	flags := flag.NewFlagSet("run submit", flag.ContinueOnError)
+	flags.SetOutput(io.Discard)
+	key := flags.String("idempotency-key", "", "stable caller-generated retry key")
+	if err := flags.Parse(args); err != nil {
+		return fmt.Errorf("usage: ra8ci run submit --idempotency-key KEY TASK [TASK...]: %w", err)
+	}
+	if *key == "" || flags.NArg() == 0 || flags.NArg() > 100 {
+		return errors.New("usage: ra8ci run submit --idempotency-key KEY TASK [TASK...]")
+	}
+	root, err := findCheckout()
+	if err != nil {
+		return err
+	}
+	snapshot, err := source.Snapshot(ctx, root)
+	if err != nil {
+		return fmt.Errorf("dispatch requires a clean pinned source snapshot: %w", err)
+	}
+	branch := ""
+	branchOutput, err := exec.CommandContext(ctx, "git", "-C", root, "symbolic-ref", "--short", "-q", "HEAD").Output()
+	if err == nil {
+		branch = strings.TrimSpace(string(branchOutput))
+	}
+	definitions, err := catalog.Load()
+	if err != nil {
+		return err
+	}
+	seen := make(map[string]bool, flags.NArg())
+	tasks := make([]runclient.Task, 0, flags.NArg())
+	for index, name := range flags.Args() {
+		definition, found := definitions.Task(name)
+		if !found {
+			return fmt.Errorf("unknown task %q", name)
+		}
+		if err := definition.ValidateArguments(nil); err != nil {
+			return fmt.Errorf("task %q requires arguments not supported by run submit: %w", name, err)
+		}
+		if definition.Scope != "safe-local-read-only" || definition.BoardPolicy != "none" {
+			return fmt.Errorf("task %q is not eligible for remote dispatch", name)
+		}
+		if seen[name] {
+			return fmt.Errorf("task %q appears more than once", name)
+		}
+		seen[name] = true
+		tasks = append(tasks, runclient.Task{Key: fmt.Sprintf("task-%03d", index+1), Name: name,
+			Args: []string{}, DependsOnKeys: []string{}})
+	}
+	repository := os.Getenv("RA8CI_REPOSITORY")
+	if repository == "" {
+		repository = "bsikar/ra8-firmware"
+	}
+	client, err := newRunClient()
+	if err != nil {
+		return err
+	}
+	defer client.Close()
+	receipt, err := client.Submit(ctx, *key, runclient.SubmitRequest{
+		Trigger: "cli", Source: runclient.Source{Repository: repository, Branch: branch,
+			CommitSHA: snapshot.RootCommit, SnapshotSHA256: snapshot.Digest},
+		CatalogDigest: definitions.Digest(), Tasks: tasks,
+	})
+	if err != nil {
+		return err
+	}
+	return writeJSON(os.Stdout, receipt)
+}
+
+func showRunEvents(ctx context.Context, args []string) error {
+	flags := flag.NewFlagSet("run events", flag.ContinueOnError)
+	flags.SetOutput(io.Discard)
+	after := flags.Int64("after", 0, "resume after this run event sequence")
+	limit := flags.Int("limit", store.MaxEventPageSize, "events per API page")
+	if err := flags.Parse(args); err != nil || flags.NArg() != 1 || !store.ValidID(flags.Arg(0)) {
+		return errors.New("usage: ra8ci run events [--after SEQ] [--limit 1..50] RUN_ID")
+	}
+	client, err := newRunClient()
+	if err != nil {
+		return err
+	}
+	defer client.Close()
+	cursor := *after
+	for {
+		page, err := client.Events(ctx, flags.Arg(0), cursor, *limit)
+		if err != nil {
+			return err
+		}
+		for _, event := range page.Events {
+			if err := writeJSON(os.Stdout, event); err != nil {
+				return err
+			}
+		}
+		if !page.HasMore {
+			return nil
+		}
+		if page.NextAfter <= cursor {
+			return errors.New("run event cursor did not advance")
+		}
+		cursor = page.NextAfter
+	}
+}
+
+func cancelRun(ctx context.Context, args []string) error {
+	if len(args) != 1 || !store.ValidID(args[0]) {
+		return errors.New("usage: ra8ci run cancel RUN_ID")
+	}
+	client, err := newRunClient()
+	if err != nil {
+		return err
+	}
+	defer client.Close()
+	run, err := client.Cancel(ctx, args[0])
+	if err != nil {
+		return err
+	}
+	return writeJSON(os.Stdout, run)
+}
+
+func showRun(ctx context.Context, args []string) error {
+	if len(args) != 1 {
+		return errors.New("usage: ra8ci run status RUN_ID")
+	}
+	client, err := newRunClient()
+	if err != nil {
+		return err
+	}
+	defer client.Close()
+	run, err := client.Get(ctx, args[0])
+	if err != nil {
+		return err
+	}
+	return writeJSON(os.Stdout, run)
+}
+
+func newRunClient() (*runclient.Client, error) {
+	config := runclient.Config{ServerURL: os.Getenv("RA8CI_SERVER_URL"),
+		CAFile: os.Getenv("RA8CI_SERVER_CA"), CertFile: os.Getenv("RA8CI_CLIENT_CERT"),
+		KeyFile: os.Getenv("RA8CI_CLIENT_KEY")}
+	if config.ServerURL == "" || config.CAFile == "" || config.CertFile == "" || config.KeyFile == "" {
+		return nil, errors.New("run command requires RA8CI_SERVER_URL, RA8CI_SERVER_CA, RA8CI_CLIENT_CERT, and RA8CI_CLIENT_KEY")
+	}
+	return runclient.New(config)
+}
+
+func writeJSON(writer io.Writer, value any) error {
+	if err := json.NewEncoder(writer).Encode(value); err != nil {
+		return fmt.Errorf("write JSON output: %w", err)
+	}
+	return nil
+}

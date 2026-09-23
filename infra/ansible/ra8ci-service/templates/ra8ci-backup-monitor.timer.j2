@@ -1,0 +1,13 @@
+[Unit]
+Description=Periodically refresh ra8ci backup readiness evidence
+
+[Timer]
+OnBootSec=2min
+OnUnitActiveSec=15min
+RandomizedDelaySec=30
+Persistent=true
+Unit=ra8ci-backup-monitor.service
+
+[Install]
+WantedBy=timers.target
+

@@ -220,7 +220,12 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - run: just quality::local::gate unit-tests
-      - run: just quality::local::gate test-go
+      - name: Build ra8ci task dispatcher
+        run: |
+          # ci-parity: infra -- build the reviewed ra8ci dispatcher binary used by the following task
+          CGO_ENABLED=0 go build -trimpath -o "$RUNNER_TEMP/ra8ci" ./tools/ra8ci
+      - name: Go quality task through ra8ci
+        run: '"$RUNNER_TEMP/ra8ci" test-go'
 
   # ---------------------------------------------------------------------------
   # UBSan gate (#239) -- the whole host suite rebuilt under

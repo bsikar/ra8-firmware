@@ -1,0 +1,15 @@
+[Unit]
+Description=Verify ra8ci WAL archive reaches the off-VM repository
+After=network-online.target postgresql@{{ ra8ci_postgres_major }}-ra8ci.service
+Requires=postgresql@{{ ra8ci_postgres_major }}-ra8ci.service
+RequiresMountsFor=/srv/ra8ci-data
+
+[Service]
+Type=oneshot
+User=postgres
+Group=postgres
+ExecStart=/usr/bin/pgbackrest --stanza=ra8ci check
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectHome=true
+UMask=0077

@@ -1,0 +1,32 @@
+[Unit]
+Description=Refresh signed ra8ci off-VM backup readiness evidence
+After=network-online.target postgresql@{{ ra8ci_postgres_major }}-ra8ci.service
+Requires=postgresql@{{ ra8ci_postgres_major }}-ra8ci.service
+RequiresMountsFor=/srv/ra8ci-data
+
+[Service]
+Type=oneshot
+User=postgres
+Group=ra8ci_service
+SupplementaryGroups=postgres
+EnvironmentFile=/etc/ra8ci/backup-monitor.env
+ExecStart=/usr/local/bin/ra8ci backup refresh
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+ProtectClock=true
+ProtectHostname=true
+LockPersonality=true
+RestrictSUIDSGID=true
+RestrictRealtime=true
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+CapabilityBoundingSet=
+AmbientCapabilities=
+ReadOnlyPaths=/etc/pgbackrest /etc/ra8ci/backup-signing.key /etc/ra8ci/restore-drill.json
+ReadWritePaths=/var/lib/ra8ci-backup
+UMask=0027
+
