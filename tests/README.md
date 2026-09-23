@@ -28,7 +28,7 @@ files are inputs or configuration rather than compiled source/header units.
 
 ## Subdirectories
 
-The `tests-readme` gate (`scripts/checks/check_tests_readme.py`) reads the first
+The `tests-readme` gate (`ra8ci tests-readme`) reads the first
 cell of each row below and fails if it drifts from the tree in either direction
 -- an undescribed subdirectory, or a row whose subdirectory is gone.
 

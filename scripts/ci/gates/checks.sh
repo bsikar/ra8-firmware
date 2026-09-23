@@ -823,11 +823,8 @@ gate_doc_attachment() (
 # that stopped detecting drift cannot pass as a clean tree.
 gate_tests_readme() (
   set -e
-  require_cmd python3 "the tests-readme gate reads tests/README.md against the tree"
-  python3 scripts/checks/check_tests_readme.py --selftest
-  python3 scripts/checks/check_tests_readme.py
+  (cd tools/ra8ci && GOWORK=off go run . tests-readme)
 )
-
 # --- disambig-readmes -----------------------------------------------------
 # Several pairs of things here can be picked wrongly -- two filesystems, two
 # firmware-update mechanisms, a facade and the driver under it -- and each pair
