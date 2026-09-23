@@ -249,6 +249,8 @@ The App receives only permissions needed to read workflow jobs, manage the repos
 
 Persist scale-set ID, session ID, message ID, and normalized nonsecret payload before acknowledging the message. A divergent replay is a conflict. Admission compares repository ID, workflow path and pinned ref, event class, job name, and labels against server-owned policy. Fork PRs and untrusted refs cannot obtain board or provisioner authority. Job text, labels, environment variables, and repository files never become Terraform, Ansible, Proxmox, or host shell arguments.
 
+Runner teardown is permitted only from the durably persisted terminal `JobCompleted` event whose job/request/run/repository/ref and runner ID/name exactly match the reservation, and which contains a nonempty result and finish time. That GitHub terminal event is the no-active-job proof; independently query the configured scale-set administration API, verify the exact runner identity, remove it, then query again and require absence. An already-absent exact runner is an idempotent success. API uncertainty, a mismatched runner, missing completion facts, or continued registration fails closed. VM stop and Terraform cleanup remain separately fenced by fresh drain evidence, distinct cleanup approval, stopped-state identity, and exact preserved Terraform state.
+
 `TARGET`: publish one separate ra8ci lifecycle check per GitHub run/attempt. It remains pending through guest creation, runner registration, execution, evidence, deregistration, and cleanup. Native job success cannot override failed or incomplete lifecycle evidence. An ambiguous Checks API write is reconciled by SHA, check name, App ID, and external ID.
 
 === JIT and guest correlation

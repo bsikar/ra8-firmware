@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/actions/scaleset"
 	"github.com/bsikar/ra8-firmware/tools/ra8ci/internal/github"
 	"github.com/bsikar/ra8-firmware/tools/ra8ci/internal/proxmox"
 	"github.com/bsikar/ra8-firmware/tools/ra8ci/internal/store"
@@ -147,6 +148,9 @@ func (h *Handler) started(ctx context.Context, job github.Job) error {
 }
 
 func (h *Handler) completed(ctx context.Context, job github.Job) error {
+	if job.Kind != scaleset.MessageTypeJobCompleted || job.Result == "" || job.FinishTime.IsZero() || job.FinishTime.After(time.Now().Add(time.Second)) {
+		return errors.New("completed event lacks terminal result or finish time")
+	}
 	vm, err := h.ledger.GetRunnerVMByJob(ctx, h.config.ScaleSetID, job.JobID)
 	if errors.Is(err, store.ErrNotFound) {
 		return nil // no VM was ever reserved for this job
@@ -179,7 +183,7 @@ func (h *Handler) completed(ctx context.Context, job github.Job) error {
 		return errors.New("never-created runner reservation requires operator absence attestation before abandonment")
 	}
 	if vm.State == "draining" {
-		proof, err := h.drainEvidence(ctx, vm, false)
+		proof, err := h.drainEvidence(ctx, vm, job, false)
 		if err != nil {
 			return err
 		}
@@ -191,7 +195,7 @@ func (h *Handler) completed(ctx context.Context, job github.Job) error {
 	if vm.State != "stopped" || !vm.CleanupRequested {
 		return fmt.Errorf("completed job has unexpected VM state %q", vm.State)
 	}
-	proof, err := h.drainEvidence(ctx, vm, true)
+	proof, err := h.drainEvidence(ctx, vm, job, true)
 	if err != nil {
 		return err
 	}
@@ -204,8 +208,8 @@ func fresh(observed time.Time, maxAge time.Duration) bool {
 	return !observed.IsZero() && !observed.After(now.Add(time.Second)) && now.Sub(observed) <= maxAge
 }
 
-func (h *Handler) drainEvidence(ctx context.Context, vm store.RunnerVM, destroy bool) (store.RunnerVMSafetyEvidence, error) {
-	evidence, err := h.runners.DrainAndDeregister(ctx, vm)
+func (h *Handler) drainEvidence(ctx context.Context, vm store.RunnerVM, job github.Job, destroy bool) (store.RunnerVMSafetyEvidence, error) {
+	evidence, err := h.runners.DrainAndDeregister(ctx, vm, job)
 	if err != nil {
 		return store.RunnerVMSafetyEvidence{}, err
 	}
@@ -217,7 +221,7 @@ func (h *Handler) drainEvidence(ctx context.Context, vm store.RunnerVM, destroy 
 	proof := store.RunnerVMSafetyEvidence{EvidenceID: evidence.EvidenceID, ObservedAt: evidence.ObservedAt,
 		Drained: true, NoActiveJob: true, RunnerDeregistered: evidence.RunnerDeregistered, ExternalRunnerID: evidence.RunnerID}
 	if destroy {
-		if !evidence.RunnerDeregistered || !store.ValidID(evidence.ApprovalID) {
+		if !evidence.RunnerDeregistered || !store.ValidID(h.config.CleanupApprovalID) {
 			return store.RunnerVMSafetyEvidence{}, errors.New("reviewed deregistration and cleanup approval required")
 		}
 		identity, err := h.identity(vm)
@@ -232,7 +236,7 @@ func (h *Handler) drainEvidence(ctx context.Context, vm store.RunnerVM, destroy 
 			return store.RunnerVMSafetyEvidence{}, errors.New("guest is not safe for reviewed cleanup")
 		}
 		proof.ExpectedConfigDigest = observed.ConfigDigest
-		proof.ApprovalID = evidence.ApprovalID
+		proof.ApprovalID = h.config.CleanupApprovalID
 	}
 	return proof, nil
 }

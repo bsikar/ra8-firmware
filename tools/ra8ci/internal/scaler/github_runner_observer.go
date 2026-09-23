@@ -10,18 +10,19 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/actions/scaleset"
 	"github.com/bsikar/ra8-firmware/tools/ra8ci/internal/github"
 	"github.com/bsikar/ra8-firmware/tools/ra8ci/internal/store"
 )
 
-var ErrGuestDrainProtocolUnavailable = errors.New("authenticated runner guest drain protocol is unavailable")
-
 type runnerAdmin interface {
 	RunnerByID(context.Context, int) (github.RunnerIdentity, bool, error)
+	RemoveRunner(context.Context, int64) error
 }
 
-// GitHubRunnerObserver verifies runner registration independently. It never
-// derives guest health, idleness, or deregistration from a job message.
+// GitHubRunnerObserver uses the durable terminal job event as proof that the
+// runner has no active job, then independently deregisters and verifies its
+// absence through GitHub's scale-set-scoped runner administration API.
 type GitHubRunnerObserver struct {
 	scaleSetID int64
 	admin      runnerAdmin
@@ -69,8 +70,46 @@ func (o *GitHubRunnerObserver) Registered(ctx context.Context, vm store.RunnerVM
 		EvidenceID: evidenceID, ObservedAt: time.Now().UTC()}, nil
 }
 
-func (o *GitHubRunnerObserver) DrainAndDeregister(context.Context, store.RunnerVM) (RunnerObservation, error) {
-	return RunnerObservation{}, ErrGuestDrainProtocolUnavailable
+func (o *GitHubRunnerObserver) DrainAndDeregister(ctx context.Context, vm store.RunnerVM, job github.Job) (RunnerObservation, error) {
+	if o == nil || o.admin == nil || ctx == nil || ctx.Err() != nil ||
+		vm.ScaleSetID != o.scaleSetID || vm.VMID < 9000 || vm.VMID > 9099 ||
+		(vm.State != "draining" && vm.State != "stopped") || !vm.CleanupRequested || vm.UnknownOutcome ||
+		!store.ValidID(vm.ID) || vm.Name != fmt.Sprintf("ra8-lab-ci-%d", vm.VMID) ||
+		vm.ExternalRunnerID <= 0 || vm.ExternalRunnerName != "runner-"+strconv.Itoa(vm.VMID) {
+		return RunnerObservation{}, errors.New("invalid durable runner identity for drain")
+	}
+	if job.Kind != scaleset.MessageTypeJobCompleted || job.JobID != vm.JobID || job.RunnerRequestID != vm.RunnerRequestID ||
+		job.WorkflowRunID != vm.WorkflowRunID || job.Repository != vm.Repository || job.WorkflowRef != vm.WorkflowRef ||
+		job.RunnerID != int(vm.ExternalRunnerID) || job.RunnerName != vm.ExternalRunnerName || job.Result == "" ||
+		job.FinishTime.IsZero() || job.FinishTime.After(time.Now().Add(time.Second)) {
+		return RunnerObservation{}, errors.New("terminal job event does not prove completion for this runner")
+	}
+	identity, exists, err := o.admin.RunnerByID(ctx, job.RunnerID)
+	if err != nil {
+		return RunnerObservation{}, fmt.Errorf("verify runner before deregistration: %w", err)
+	}
+	if exists && (identity.ID != job.RunnerID || identity.Name != vm.ExternalRunnerName) {
+		return RunnerObservation{}, errors.New("refusing to deregister a foreign GitHub runner")
+	}
+	if exists {
+		if err := o.admin.RemoveRunner(ctx, int64(job.RunnerID)); err != nil {
+			return RunnerObservation{}, fmt.Errorf("deregister completed GitHub runner: %w", err)
+		}
+	}
+	_, remains, err := o.admin.RunnerByID(ctx, job.RunnerID)
+	if err != nil {
+		return RunnerObservation{}, fmt.Errorf("verify runner deregistration: %w", err)
+	}
+	if remains {
+		return RunnerObservation{}, errors.New("GitHub runner remains registered after deregistration")
+	}
+	evidenceID, err := store.NewID()
+	if err != nil {
+		return RunnerObservation{}, errors.New("create runner drain evidence ID")
+	}
+	return RunnerObservation{RunnerID: vm.ExternalRunnerID, RunnerName: vm.ExternalRunnerName,
+		EvidenceID: evidenceID, ObservedAt: time.Now().UTC(), Drained: true, NoActiveJob: true,
+		RunnerDeregistered: true}, nil
 }
 
 var _ RunnerObserver = (*GitHubRunnerObserver)(nil)

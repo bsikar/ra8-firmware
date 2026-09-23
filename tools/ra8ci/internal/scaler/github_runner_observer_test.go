@@ -9,15 +9,20 @@ import (
 	"testing"
 	"time"
 
+	"github.com/actions/scaleset"
+
 	"github.com/bsikar/ra8-firmware/tools/ra8ci/internal/github"
 	"github.com/bsikar/ra8-firmware/tools/ra8ci/internal/store"
 )
 
 type observerAdminFake struct {
-	identity github.RunnerIdentity
-	exists   bool
-	err      error
-	calls    int
+	identity          github.RunnerIdentity
+	exists            bool
+	err               error
+	calls             int
+	removeCalls       int
+	removeErr         error
+	remainAfterRemove bool
 }
 
 func (a *observerAdminFake) RunnerByID(_ context.Context, id int) (github.RunnerIdentity, bool, error) {
@@ -29,6 +34,20 @@ func (a *observerAdminFake) RunnerByID(_ context.Context, id int) (github.Runner
 		return github.RunnerIdentity{}, false, nil
 	}
 	return a.identity, a.exists, nil
+}
+
+func (a *observerAdminFake) RemoveRunner(_ context.Context, id int64) error {
+	a.removeCalls++
+	if a.removeErr != nil {
+		return a.removeErr
+	}
+	if int64(a.identity.ID) != id || !a.exists {
+		return errors.New("runner missing or mismatched")
+	}
+	if !a.remainAfterRemove {
+		a.exists = false
+	}
+	return nil
 }
 
 func observerFixture(t *testing.T) (*GitHubRunnerObserver, *observerAdminFake, store.RunnerVM, github.Job) {
@@ -45,7 +64,7 @@ func observerFixture(t *testing.T) (*GitHubRunnerObserver, *observerAdminFake, s
 	vm := store.RunnerVM{ID: id, RunnerVMInput: store.RunnerVMInput{
 		ScaleSetID: 42, JobID: "job-1", RunnerRequestID: 4, WorkflowRunID: 12,
 		Repository: "bsikar/ra8-firmware", WorkflowRef: "refs/heads/test", VMID: 9000, Name: "ra8-lab-ci-9000",
-	}, State: "running", Generation: 1}
+	}, State: "running", Generation: 1, ExternalRunnerID: 77, ExternalRunnerName: "runner-9000"}
 	job := github.Job{JobID: "job-1", RunnerRequestID: 4, WorkflowRunID: 12, Repository: "bsikar/ra8-firmware", WorkflowRef: "refs/heads/test", RunnerID: 77, RunnerName: "runner-9000"}
 	return observer, admin, vm, job
 }
@@ -93,18 +112,82 @@ func TestGitHubRunnerObserverRejectsMissingForeignOrUnboundRunner(t *testing.T) 
 	}
 }
 
-func TestGitHubRunnerObserverFailsClosedOnDrain(t *testing.T) {
-	o, admin, vm, _ := observerFixture(t)
-	evidence, err := o.DrainAndDeregister(context.Background(), vm)
-	if !errors.Is(err, ErrGuestDrainProtocolUnavailable) {
-		t.Fatalf("error=%v", err)
+func TestGitHubRunnerObserverDeregistersOnlyCompletedExactRunner(t *testing.T) {
+	o, admin, vm, job := observerFixture(t)
+	vm.State = "draining"
+	vm.CleanupRequested = true
+	job.Kind = scaleset.MessageTypeJobCompleted
+	job.Result = "Succeeded"
+	job.FinishTime = time.Now().UTC()
+	evidence, err := o.DrainAndDeregister(context.Background(), vm, job)
+	if err != nil {
+		t.Fatal(err)
 	}
-	if evidence.Drained || evidence.NoActiveJob || evidence.RunnerDeregistered || evidence.EvidenceID != "" || admin.calls != 0 {
-		t.Fatalf("drain synthesized proof or queried GitHub: %+v calls=%d", evidence, admin.calls)
+	if !evidence.Drained || !evidence.NoActiveJob || !evidence.RunnerDeregistered || evidence.RunnerID != 77 || evidence.RunnerName != "runner-9000" || !store.ValidID(evidence.EvidenceID) {
+		t.Fatalf("invalid drain evidence: %+v", evidence)
 	}
+	if admin.removeCalls != 1 || admin.exists || admin.calls != 2 {
+		t.Fatalf("remove=%d exists=%v lookups=%d", admin.removeCalls, admin.exists, admin.calls)
+	}
+}
+
+func TestGitHubRunnerObserverDrainIsIdempotentWhenAlreadyAbsent(t *testing.T) {
+	o, admin, vm, job := observerFixture(t)
+	vm.State = "stopped"
+	vm.CleanupRequested = true
+	admin.exists = false
+	job.Kind = scaleset.MessageTypeJobCompleted
+	job.Result = "Cancelled"
+	job.FinishTime = time.Now().UTC()
+	evidence, err := o.DrainAndDeregister(context.Background(), vm, job)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !evidence.RunnerDeregistered || admin.removeCalls != 0 || admin.calls != 2 {
+		t.Fatalf("evidence=%+v remove=%d lookups=%d", evidence, admin.removeCalls, admin.calls)
+	}
+}
+
+func TestGitHubRunnerObserverDrainFailsClosedForInvalidEvidenceOrAdminFailure(t *testing.T) {
+	tests := []struct {
+		name   string
+		mutate func(*observerAdminFake, *store.RunnerVM, *github.Job)
+	}{
+		{"no terminal event", func(_ *observerAdminFake, _ *store.RunnerVM, j *github.Job) {
+			j.Kind = scaleset.MessageTypeJobAvailable
+		}},
+		{"missing result", func(_ *observerAdminFake, _ *store.RunnerVM, j *github.Job) { j.Result = "" }},
+		{"future completion", func(_ *observerAdminFake, _ *store.RunnerVM, j *github.Job) { j.FinishTime = time.Now().Add(time.Hour) }},
+		{"wrong runner", func(_ *observerAdminFake, _ *store.RunnerVM, j *github.Job) { j.RunnerID++ }},
+		{"wrong reservation", func(_ *observerAdminFake, v *store.RunnerVM, _ *github.Job) { v.ExternalRunnerID++ }},
+		{"wrong state", func(_ *observerAdminFake, v *store.RunnerVM, _ *github.Job) { v.State = "running" }},
+		{"foreign registration", func(a *observerAdminFake, _ *store.RunnerVM, _ *github.Job) { a.identity.Name = "runner-9001" }},
+		{"remove error", func(a *observerAdminFake, _ *store.RunnerVM, _ *github.Job) {
+			a.removeErr = errors.New("API unavailable")
+		}},
+		{"still registered", func(a *observerAdminFake, _ *store.RunnerVM, _ *github.Job) { a.remainAfterRemove = true }},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			o, admin, vm, job := observerFixture(t)
+			vm.State = "draining"
+			vm.CleanupRequested = true
+			job.Kind = scaleset.MessageTypeJobCompleted
+			job.Result = "Succeeded"
+			job.FinishTime = time.Now().UTC()
+			tt.mutate(admin, &vm, &job)
+			evidence, err := o.DrainAndDeregister(context.Background(), vm, job)
+			if err == nil || evidence.EvidenceID != "" {
+				t.Fatalf("unsafe drain accepted: %+v %v", evidence, err)
+			}
+		})
+	}
+}
+
+func TestGitHubRunnerObserverRegistrationFailsClosedOnAPIError(t *testing.T) {
+	o, admin, vm, job := observerFixture(t)
 	admin.err = errors.New("GitHub API unavailable")
-	_, err = o.Registered(context.Background(), vm, github.Job{JobID: "job-1", RunnerRequestID: 4, WorkflowRunID: 12, Repository: "bsikar/ra8-firmware", WorkflowRef: "refs/heads/test", RunnerID: 77, RunnerName: "runner-9000"})
-	if err == nil {
+	if _, err := o.Registered(context.Background(), vm, job); err == nil {
 		t.Fatal("GitHub API failure was accepted")
 	}
 }
