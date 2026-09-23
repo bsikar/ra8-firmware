@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"runtime"
 	"time"
 
 	"github.com/bsikar/ra8-firmware/tools/ra8ci/internal/boardagent"
@@ -17,6 +18,9 @@ import (
 // runBoardAgent operates with a board-agent-only certificate and a durable,
 // board-bound generation file. It intentionally has no task execution hooks.
 func runBoardAgent(ctx context.Context) error {
+	if runtime.GOOS != "linux" {
+		return errors.New("board-agent service mode is supported only on Linux")
+	}
 	boardID := os.Getenv("RA8CI_BOARD_ID")
 	stateFile := os.Getenv("RA8CI_BOARD_STATE_FILE")
 	config := boardclient.Config{
