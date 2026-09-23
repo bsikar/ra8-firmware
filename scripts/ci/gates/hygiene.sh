@@ -534,7 +534,7 @@ commit_range_selftest() (
 )
 
 # --- ascii ----------------------------------------------------------------
-# Every first-party root. fix-encoding.py skips third_party and any non-text
+# Every first-party root. ra8ci ascii skips third_party and non-text files
 # extension, so vendored assets (the doxygen-awesome theme under docs/,
 # datasheets, fonts, epubs) are exempt automatically.
 # Scope is DERIVED from git ls-files, never a directory list. This gate used to
@@ -546,8 +546,7 @@ commit_range_selftest() (
 # non-ASCII byte before a clean run is believed.
 gate_ascii() (
   set -e
-  python3 scripts/fix/fix-encoding.py --selftest
-  python3 scripts/fix/fix-encoding.py --check --all
+  GOWORK=off go run ./tools/ra8ci ascii
 )
 
 # --- markdown-references --------------------------------------------------

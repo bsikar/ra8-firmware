@@ -62,8 +62,7 @@ unused_includes:
 
 # Check file encodings for non-ASCII characters
 ascii:
-    python3 scripts/fix/fix-encoding.py --selftest
-    python3 scripts/fix/fix-encoding.py --check --all
+    go run ./tools/ra8ci ascii
 
 # Verify @since version tags
 version:
