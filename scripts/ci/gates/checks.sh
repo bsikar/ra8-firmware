@@ -78,8 +78,7 @@ _pcc_banned_constructs() (
   # (Recursion needs a call graph -- covered by annot_rules.py RA8_NO_RECURSION
   # and MISRA 17.2.) --selftest asserts the detector both fires on code and
   # stays silent on comment/string occurrences before the tree is trusted.
-  python3 scripts/checks/check_no_goto_setjmp.py --selftest
-  python3 scripts/checks/check_no_goto_setjmp.py --all
+  (cd tools/ra8ci && GOWORK=off go run . no-goto-setjmp)
 )
 
 # The two size caps. NASA P10 Rule 4 -- every function fits in <=60 lines --

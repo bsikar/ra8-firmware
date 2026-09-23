@@ -71,7 +71,7 @@ commercial tool.
   *parseable subset* of the tree rather than every line. For the two
   MISRA rules this most affects -- 15.1 (`goto`) and 21.4 (`<setjmp.h>`)
   -- a parse-independent textual backstop
-  (`scripts/checks/check_no_goto_setjmp.py`) closes the gap for
+  (`ra8ci no-goto-setjmp`) closes the gap for
   `goto` / `setjmp` / `longjmp` across the whole tree.
 
 * **No commercial MISRA checker is integrated.** The project does
