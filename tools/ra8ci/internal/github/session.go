@@ -216,8 +216,8 @@ func OpenControllerWithHandlerFactory(ctx context.Context, config SessionConfig,
 	return ComposeControllerSession(session, inbox, admission, config.MaxRunners, processTimeout, factory)
 }
 
-// NewControllerSession binds an already-open GitHub session to a controller.
-func NewControllerSession(session *Session, controller *Controller) (*ControllerSession, error) {
+// newControllerSession is used only after composition builds the controller from the same session.
+func newControllerSession(session *Session, controller *Controller) (*ControllerSession, error) {
 	if session == nil || session.Client == nil || session.close == nil ||
 		session.scaleSetID <= 0 || controller == nil || controller.scaleSetID != session.scaleSetID {
 		return nil, errors.New("controller session requires an open GitHub session and controller")
@@ -248,7 +248,7 @@ func ComposeControllerSession(session *Session, inbox ReplayInbox, admission Adm
 	if err != nil {
 		return closeOnFailure(err)
 	}
-	return NewControllerSession(session, controller)
+	return newControllerSession(session, controller)
 }
 
 // Run processes messages until cancellation or a controller error, then closes
