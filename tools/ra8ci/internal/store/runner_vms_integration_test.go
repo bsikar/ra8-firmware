@@ -102,6 +102,28 @@ func TestIntegrationRunnerVMLifecycleAndNoRestartAfterDrain(t *testing.T) {
 	if err != nil || running.State != "running" {
 		t.Fatalf("start reconcile: %+v %v", running, err)
 	}
+	bootstrapEvidence := RunnerVMBootstrapEvidence{
+		ReservationID: vm.ID, VMID: vm.VMID, CommitSHA: vm.CommitSHA,
+		GuestOS: "linux", GuestArchitecture: "amd64", ServiceAccount: "ra8ci",
+		RunnerBinarySHA256: strings.Repeat("1", 64), AgentBinarySHA256: strings.Repeat("2", 64),
+		ReadinessSHA256: strings.Repeat("3", 64), JITConfigSHA256: strings.Repeat("4", 64),
+		JITConfigExpiresAt: time.Now().Add(30 * time.Minute), EvidenceID: mustID(t), PreparedAt: time.Now(),
+	}
+	if err := s.RecordRunnerVMBootstrapEvidence(ctx, "scaler", bootstrapEvidence); err != nil {
+		t.Fatalf("record validated bootstrap evidence: %v", err)
+	}
+	var bootstrapAudit string
+	if err := pool.QueryRow(ctx, "SELECT reason::text FROM audit WHERE action='runner_vm.bootstrap.ready' AND target_id=$1", vm.ID).Scan(&bootstrapAudit); err != nil {
+		t.Fatalf("read bootstrap audit: %v", err)
+	}
+	var bootstrapReason map[string]json.RawMessage
+	if err := json.Unmarshal([]byte(bootstrapAudit), &bootstrapReason); err != nil {
+		t.Fatalf("decode bootstrap audit: %v", err)
+	}
+	if !strings.Contains(bootstrapAudit, bootstrapEvidence.ReadinessSHA256) ||
+		bootstrapReason["jit_config"] != nil || bootstrapReason["encoded_config"] != nil {
+		t.Fatalf("bootstrap audit lacks digest metadata or contains JIT bytes: %s", bootstrapAudit)
+	}
 	registered, err := s.MarkRunnerVMRegistered(ctx, "scaler", vm.ID, running.Generation, 7734, "ra8ci-runner-7734")
 	if err != nil || registered.State != "registered" || registered.ExternalRunnerID != 7734 {
 		t.Fatalf("runner registration: %+v %v", registered, err)

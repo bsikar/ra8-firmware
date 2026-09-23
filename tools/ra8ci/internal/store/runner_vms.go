@@ -100,6 +100,85 @@ type RunnerVMTerraformPlanEvidence struct {
 	PreparedAt          time.Time
 }
 
+// RunnerVMBootstrapEvidence contains only validated, non-secret guest readiness
+// and JIT identity metadata. The encoded JIT configuration is never accepted.
+type RunnerVMBootstrapEvidence struct {
+	ReservationID      string
+	VMID               int
+	CommitSHA          string
+	GuestOS            string
+	GuestArchitecture  string
+	ServiceAccount     string
+	RunnerBinarySHA256 string
+	AgentBinarySHA256  string
+	ReadinessSHA256    string
+	JITConfigSHA256    string
+	JITConfigExpiresAt time.Time
+	EvidenceID         string
+	PreparedAt         time.Time
+}
+
+// RecordRunnerVMBootstrapEvidence durably audits validated readiness and JIT
+// metadata against the exact, still-running reservation. It intentionally
+// stores only digests and never receives the JIT credential bytes.
+func (s *Store) RecordRunnerVMBootstrapEvidence(ctx context.Context, actor string, evidence RunnerVMBootstrapEvidence) error {
+	now := time.Now()
+	if s == nil || s.pool == nil || ctx == nil || actor == "" || len(actor) > 256 ||
+		!ValidID(evidence.ReservationID) || evidence.VMID < 9000 ||
+		!commitSHA.MatchString(evidence.CommitSHA) ||
+		(evidence.GuestOS != "linux" && evidence.GuestOS != "windows") ||
+		(evidence.GuestArchitecture != "amd64" && evidence.GuestArchitecture != "arm64") ||
+		evidence.ServiceAccount != "ra8ci" ||
+		!runnerVMHexSHA256.MatchString(evidence.RunnerBinarySHA256) ||
+		!runnerVMHexSHA256.MatchString(evidence.AgentBinarySHA256) ||
+		!runnerVMHexSHA256.MatchString(evidence.ReadinessSHA256) ||
+		!runnerVMHexSHA256.MatchString(evidence.JITConfigSHA256) ||
+		!ValidID(evidence.EvidenceID) || evidence.PreparedAt.IsZero() ||
+		evidence.PreparedAt.After(now.Add(time.Second)) || now.Sub(evidence.PreparedAt) > 5*time.Minute ||
+		!evidence.JITConfigExpiresAt.After(now) ||
+		evidence.JITConfigExpiresAt.After(now.Add(time.Hour)) {
+		return ErrInvalid
+	}
+	tx, err := s.pool.BeginTx(ctx, pgx.TxOptions{IsoLevel: pgx.ReadCommitted})
+	if err != nil {
+		return fmt.Errorf("%w: begin runner bootstrap audit: %v", ErrUnavailable, err)
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+	var vmID int
+	var commitSHAValue, state string
+	var cleanupRequested, unknownOutcome bool
+	err = tx.QueryRow(ctx, `SELECT vmid,commit_sha,state,cleanup_requested,unknown_outcome
+		FROM runner_vms WHERE id=$1 FOR UPDATE`, evidence.ReservationID).Scan(
+		&vmID, &commitSHAValue, &state, &cleanupRequested, &unknownOutcome)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return ErrNotFound
+	}
+	if err != nil {
+		return fmt.Errorf("%w: read runner bootstrap reservation: %v", ErrUnavailable, err)
+	}
+	if vmID != evidence.VMID || commitSHAValue != evidence.CommitSHA || state != "running" || cleanupRequested || unknownOutcome {
+		return fmt.Errorf("%w: bootstrap evidence does not match a running reservation", ErrConflict)
+	}
+	if err := appendAudit(ctx, tx, actor, "runner_vm.bootstrap.ready", "runner_vm", evidence.ReservationID,
+		"ok", "running", "ready", "", map[string]any{
+			"evidence_id": evidence.EvidenceID, "vmid": evidence.VMID,
+			"commit_sha": evidence.CommitSHA, "guest_os": evidence.GuestOS,
+			"guest_architecture": evidence.GuestArchitecture, "service_account": evidence.ServiceAccount,
+			"runner_binary_sha256":  evidence.RunnerBinarySHA256,
+			"agent_binary_sha256":   evidence.AgentBinarySHA256,
+			"readiness_sha256":      evidence.ReadinessSHA256,
+			"jit_config_sha256":     evidence.JITConfigSHA256,
+			"jit_config_expires_at": evidence.JITConfigExpiresAt.UTC(),
+			"prepared_at":           evidence.PreparedAt.UTC(),
+		}); err != nil {
+		return fmt.Errorf("%w: append runner bootstrap evidence: %v", ErrUnavailable, err)
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return fmt.Errorf("%w: commit runner bootstrap evidence: %v", ErrUnavailable, err)
+	}
+	return nil
+}
+
 // RunnerVMResolution must be produced after independent provider observation
 // (Proxmox task/config evidence or Terraform state reconciliation). A boolean
 // claim without source-specific evidence cannot close an unknown operation.

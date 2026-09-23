@@ -30,14 +30,29 @@ const (
 )
 
 type memoryLedger struct {
-	mu            sync.Mutex
-	vm            store.RunnerVM
-	op            store.RunnerVMOperation
-	loseUPIDOnce  bool
-	reserveCalls  int
-	beginCalls    int
-	resolveCalls  int
+	mu           sync.Mutex
+	vm           store.RunnerVM
+	op           store.RunnerVMOperation
+	bootstrap    []store.RunnerVMBootstrapEvidence
+	loseUPIDOnce bool
+	reserveCalls int
+	beginCalls   int
+
+	resolveCalls int
+
 	resolvedProof store.RunnerVMResolution
+}
+
+func (m *memoryLedger) RecordRunnerVMBootstrapEvidence(_ context.Context, _ string, evidence store.RunnerVMBootstrapEvidence) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if m.vm.ID != evidence.ReservationID || m.vm.VMID != evidence.VMID ||
+		m.vm.CommitSHA != evidence.CommitSHA || m.vm.State != "running" ||
+		m.vm.CleanupRequested || m.vm.UnknownOutcome {
+		return store.ErrConflict
+	}
+	m.bootstrap = append(m.bootstrap, evidence)
+	return nil
 }
 
 func (m *memoryLedger) GetRunnerVMByJob(_ context.Context, scaleSetID int64, jobID string) (store.RunnerVM, error) {
@@ -418,6 +433,9 @@ func TestFullLifecycleUsesOneVMAndDeletesOnlyOwnedGuest(t *testing.T) {
 	vm, _ := ledger.GetRunnerVMByJob(ctx, 42, job.JobID)
 	if vm.State != "running" || vm.UnknownOutcome || bootstrap.calls != 2 {
 		t.Fatalf("assigned state=%+v bootstrap=%d", vm, bootstrap.calls)
+	}
+	if len(ledger.bootstrap) != 2 || ledger.bootstrap[1].ReservationID != vm.ID {
+		t.Fatalf("bootstrap audit evidence=%+v", ledger.bootstrap)
 	}
 	if err := h.Process(ctx, github.Message{ScaleSetID: 42, Started: []github.Job{job}}); err != nil {
 		t.Fatal(err)

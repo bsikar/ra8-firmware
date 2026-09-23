@@ -122,6 +122,7 @@ type Ledger interface {
 	MarkRunnerVMRegistered(context.Context, string, string, int64, int64, string) (store.RunnerVM, error)
 	MarkRunnerVMDraining(context.Context, string, string, int64) (store.RunnerVM, error)
 	ListUnresolvedRunnerVMs(context.Context, int64, int) ([]store.RunnerVM, error)
+	RecordRunnerVMBootstrapEvidence(context.Context, string, store.RunnerVMBootstrapEvidence) error
 }
 
 type Handler struct {
