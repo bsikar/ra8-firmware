@@ -2,18 +2,737 @@
   "schema_version": 1,
   "tasks": [
     {
+      "name": "agnostic-registers",
+      "version": 1,
+      "tier": "required",
+      "scope": "safe-local-read-only",
+      "os": [
+        "linux"
+      ],
+      "capabilities": [],
+      "args_schema": {
+        "positional": [],
+        "flags": []
+      },
+      "deadline_seconds": 1800,
+      "board_policy": "none",
+      "steps": [
+        {
+          "name": "agnostic-registers",
+          "program": "bash",
+          "args": [
+            "scripts/ci.sh",
+            "--gate",
+            "agnostic-registers"
+          ]
+        }
+      ],
+      "outputs": [],
+      "retry": {
+        "max_attempts": 1
+      },
+      "resource_hints": {}
+    },
+    {
+      "name": "annotations",
+      "version": 1,
+      "tier": "required",
+      "scope": "safe-local-read-only",
+      "os": [
+        "linux"
+      ],
+      "capabilities": [],
+      "args_schema": {
+        "positional": [],
+        "flags": []
+      },
+      "deadline_seconds": 1800,
+      "board_policy": "none",
+      "steps": [
+        {
+          "name": "annotations",
+          "program": "bash",
+          "args": [
+            "scripts/ci.sh",
+            "--gate",
+            "annotations"
+          ]
+        }
+      ],
+      "outputs": [],
+      "retry": {
+        "max_attempts": 1
+      },
+      "resource_hints": {}
+    },
+    {
+      "name": "artefact-freshness",
+      "version": 1,
+      "tier": "required",
+      "scope": "safe-local-read-only",
+      "os": [
+        "linux"
+      ],
+      "capabilities": [],
+      "args_schema": {
+        "positional": [],
+        "flags": []
+      },
+      "deadline_seconds": 7200,
+      "board_policy": "none",
+      "steps": [
+        {
+          "name": "artefact-freshness",
+          "program": "bash",
+          "args": [
+            "scripts/ci.sh",
+            "--gate",
+            "artefact-freshness"
+          ]
+        }
+      ],
+      "outputs": [],
+      "retry": {
+        "max_attempts": 1
+      },
+      "resource_hints": {}
+    },
+    {
+      "name": "ascii",
+      "version": 1,
+      "tier": "required",
+      "scope": "safe-local-read-only",
+      "os": [
+        "linux"
+      ],
+      "capabilities": [],
+      "args_schema": {
+        "positional": [],
+        "flags": []
+      },
+      "deadline_seconds": 1800,
+      "board_policy": "none",
+      "steps": [
+        {
+          "name": "ascii",
+          "program": "bash",
+          "args": [
+            "scripts/ci.sh",
+            "--gate",
+            "ascii"
+          ]
+        }
+      ],
+      "outputs": [],
+      "retry": {
+        "max_attempts": 1
+      },
+      "resource_hints": {}
+    },
+    {
+      "name": "bench-lock",
+      "version": 1,
+      "tier": "required",
+      "scope": "safe-local-read-only",
+      "os": [
+        "linux"
+      ],
+      "capabilities": [],
+      "args_schema": {
+        "positional": [],
+        "flags": []
+      },
+      "deadline_seconds": 1800,
+      "board_policy": "none",
+      "steps": [
+        {
+          "name": "bench-lock",
+          "program": "bash",
+          "args": [
+            "scripts/ci.sh",
+            "--gate",
+            "bench-lock"
+          ]
+        }
+      ],
+      "outputs": [],
+      "retry": {
+        "max_attempts": 1
+      },
+      "resource_hints": {}
+    },
+    {
+      "name": "build-cross",
+      "version": 1,
+      "tier": "required",
+      "scope": "safe-local-read-only",
+      "os": [
+        "linux"
+      ],
+      "capabilities": [],
+      "args_schema": {
+        "positional": [],
+        "flags": []
+      },
+      "deadline_seconds": 7200,
+      "board_policy": "none",
+      "steps": [
+        {
+          "name": "build-cross",
+          "program": "bash",
+          "args": [
+            "scripts/ci.sh",
+            "--gate",
+            "build-cross"
+          ]
+        }
+      ],
+      "outputs": [],
+      "retry": {
+        "max_attempts": 1
+      },
+      "resource_hints": {}
+    },
+    {
+      "name": "build-cross-union",
+      "version": 1,
+      "tier": "required",
+      "scope": "safe-local-read-only",
+      "os": [
+        "linux"
+      ],
+      "capabilities": [],
+      "args_schema": {
+        "positional": [],
+        "flags": []
+      },
+      "deadline_seconds": 7200,
+      "board_policy": "none",
+      "steps": [
+        {
+          "name": "build-cross-union",
+          "program": "bash",
+          "args": [
+            "scripts/ci.sh",
+            "--gate",
+            "build-cross-union"
+          ]
+        }
+      ],
+      "outputs": [],
+      "retry": {
+        "max_attempts": 1
+      },
+      "resource_hints": {}
+    },
+    {
+      "name": "cache-bench",
+      "version": 1,
+      "tier": "required",
+      "scope": "safe-local-read-only",
+      "os": [
+        "linux"
+      ],
+      "capabilities": [],
+      "args_schema": {
+        "positional": [],
+        "flags": []
+      },
+      "deadline_seconds": 7200,
+      "board_policy": "none",
+      "steps": [
+        {
+          "name": "cache-bench",
+          "program": "bash",
+          "args": [
+            "scripts/ci.sh",
+            "--gate",
+            "cache-bench"
+          ]
+        }
+      ],
+      "outputs": [],
+      "retry": {
+        "max_attempts": 1
+      },
+      "resource_hints": {}
+    },
+    {
+      "name": "ci-parity",
+      "version": 1,
+      "tier": "required",
+      "scope": "safe-local-read-only",
+      "os": [
+        "linux"
+      ],
+      "capabilities": [],
+      "args_schema": {
+        "positional": [],
+        "flags": []
+      },
+      "deadline_seconds": 1800,
+      "board_policy": "none",
+      "steps": [
+        {
+          "name": "ci-parity",
+          "program": "bash",
+          "args": [
+            "scripts/ci.sh",
+            "--gate",
+            "ci-parity"
+          ]
+        }
+      ],
+      "outputs": [],
+      "retry": {
+        "max_attempts": 1
+      },
+      "resource_hints": {}
+    },
+    {
+      "name": "ci-status-contract",
+      "version": 1,
+      "tier": "required",
+      "scope": "safe-local-read-only",
+      "os": [
+        "linux"
+      ],
+      "capabilities": [],
+      "args_schema": {
+        "positional": [],
+        "flags": []
+      },
+      "deadline_seconds": 1800,
+      "board_policy": "none",
+      "steps": [
+        {
+          "name": "ci-status-contract",
+          "program": "bash",
+          "args": [
+            "scripts/ci.sh",
+            "--gate",
+            "ci-status-contract"
+          ]
+        }
+      ],
+      "outputs": [],
+      "retry": {
+        "max_attempts": 1
+      },
+      "resource_hints": {}
+    },
+    {
+      "name": "cite-check",
+      "version": 1,
+      "tier": "required",
+      "scope": "safe-local-read-only",
+      "os": [
+        "linux"
+      ],
+      "capabilities": [],
+      "args_schema": {
+        "positional": [],
+        "flags": []
+      },
+      "deadline_seconds": 1800,
+      "board_policy": "none",
+      "steps": [
+        {
+          "name": "cite-check",
+          "program": "bash",
+          "args": [
+            "scripts/ci.sh",
+            "--gate",
+            "cite-check"
+          ]
+        }
+      ],
+      "outputs": [],
+      "retry": {
+        "max_attempts": 1
+      },
+      "resource_hints": {}
+    },
+    {
+      "name": "copyright",
+      "version": 1,
+      "tier": "required",
+      "scope": "safe-local-read-only",
+      "os": [
+        "linux"
+      ],
+      "capabilities": [],
+      "args_schema": {
+        "positional": [],
+        "flags": []
+      },
+      "deadline_seconds": 1800,
+      "board_policy": "none",
+      "steps": [
+        {
+          "name": "copyright",
+          "program": "bash",
+          "args": [
+            "scripts/ci.sh",
+            "--gate",
+            "copyright"
+          ]
+        }
+      ],
+      "outputs": [],
+      "retry": {
+        "max_attempts": 1
+      },
+      "resource_hints": {}
+    },
+    {
+      "name": "coverage-tree",
+      "version": 1,
+      "tier": "required",
+      "scope": "safe-local-read-only",
+      "os": [
+        "linux"
+      ],
+      "capabilities": [],
+      "args_schema": {
+        "positional": [],
+        "flags": []
+      },
+      "deadline_seconds": 7200,
+      "board_policy": "none",
+      "steps": [
+        {
+          "name": "coverage-tree",
+          "program": "bash",
+          "args": [
+            "scripts/ci.sh",
+            "--gate",
+            "coverage-tree"
+          ]
+        }
+      ],
+      "outputs": [],
+      "retry": {
+        "max_attempts": 1
+      },
+      "resource_hints": {}
+    },
+    {
+      "name": "cppcheck",
+      "version": 1,
+      "tier": "required",
+      "scope": "safe-local-read-only",
+      "os": [
+        "linux"
+      ],
+      "capabilities": [],
+      "args_schema": {
+        "positional": [],
+        "flags": []
+      },
+      "deadline_seconds": 7200,
+      "board_policy": "none",
+      "steps": [
+        {
+          "name": "cppcheck",
+          "program": "bash",
+          "args": [
+            "scripts/ci.sh",
+            "--gate",
+            "cppcheck"
+          ]
+        }
+      ],
+      "outputs": [],
+      "retry": {
+        "max_attempts": 1
+      },
+      "resource_hints": {}
+    },
+    {
+      "name": "disambig-readmes",
+      "version": 1,
+      "tier": "required",
+      "scope": "safe-local-read-only",
+      "os": [
+        "linux"
+      ],
+      "capabilities": [],
+      "args_schema": {
+        "positional": [],
+        "flags": []
+      },
+      "deadline_seconds": 1800,
+      "board_policy": "none",
+      "steps": [
+        {
+          "name": "disambig-readmes",
+          "program": "bash",
+          "args": [
+            "scripts/ci.sh",
+            "--gate",
+            "disambig-readmes"
+          ]
+        }
+      ],
+      "outputs": [],
+      "retry": {
+        "max_attempts": 1
+      },
+      "resource_hints": {}
+    },
+    {
+      "name": "doc-attachment",
+      "version": 1,
+      "tier": "required",
+      "scope": "safe-local-read-only",
+      "os": [
+        "linux"
+      ],
+      "capabilities": [],
+      "args_schema": {
+        "positional": [],
+        "flags": []
+      },
+      "deadline_seconds": 1800,
+      "board_policy": "none",
+      "steps": [
+        {
+          "name": "doc-attachment",
+          "program": "bash",
+          "args": [
+            "scripts/ci.sh",
+            "--gate",
+            "doc-attachment"
+          ]
+        }
+      ],
+      "outputs": [],
+      "retry": {
+        "max_attempts": 1
+      },
+      "resource_hints": {}
+    },
+    {
+      "name": "eil-integration",
+      "version": 1,
+      "tier": "required",
+      "scope": "safe-local-read-only",
+      "os": [
+        "linux"
+      ],
+      "capabilities": [],
+      "args_schema": {
+        "positional": [],
+        "flags": []
+      },
+      "deadline_seconds": 7200,
+      "board_policy": "none",
+      "steps": [
+        {
+          "name": "eil-integration",
+          "program": "bash",
+          "args": [
+            "scripts/ci.sh",
+            "--gate",
+            "eil-integration"
+          ]
+        }
+      ],
+      "outputs": [],
+      "retry": {
+        "max_attempts": 1
+      },
+      "resource_hints": {}
+    },
+    {
+      "name": "emulator-io-fabric",
+      "version": 1,
+      "tier": "required",
+      "scope": "safe-local-read-only",
+      "os": [
+        "linux"
+      ],
+      "capabilities": [],
+      "args_schema": {
+        "positional": [],
+        "flags": []
+      },
+      "deadline_seconds": 7200,
+      "board_policy": "none",
+      "steps": [
+        {
+          "name": "emulator-io-fabric",
+          "program": "bash",
+          "args": [
+            "scripts/ci.sh",
+            "--gate",
+            "emulator-io-fabric"
+          ]
+        }
+      ],
+      "outputs": [],
+      "retry": {
+        "max_attempts": 1
+      },
+      "resource_hints": {}
+    },
+    {
+      "name": "emulator-matrix",
+      "version": 1,
+      "tier": "required",
+      "scope": "safe-local-read-only",
+      "os": [
+        "linux"
+      ],
+      "capabilities": [],
+      "args_schema": {
+        "positional": [],
+        "flags": []
+      },
+      "deadline_seconds": 7200,
+      "board_policy": "none",
+      "steps": [
+        {
+          "name": "emulator-matrix",
+          "program": "bash",
+          "args": [
+            "scripts/ci.sh",
+            "--gate",
+            "emulator-matrix"
+          ]
+        }
+      ],
+      "outputs": [],
+      "retry": {
+        "max_attempts": 1
+      },
+      "resource_hints": {}
+    },
+    {
+      "name": "emulator-smoke",
+      "version": 1,
+      "tier": "required",
+      "scope": "safe-local-read-only",
+      "os": [
+        "linux"
+      ],
+      "capabilities": [],
+      "args_schema": {
+        "positional": [],
+        "flags": []
+      },
+      "deadline_seconds": 7200,
+      "board_policy": "none",
+      "steps": [
+        {
+          "name": "emulator-smoke",
+          "program": "bash",
+          "args": [
+            "scripts/ci.sh",
+            "--gate",
+            "emulator-smoke"
+          ]
+        }
+      ],
+      "outputs": [],
+      "retry": {
+        "max_attempts": 1
+      },
+      "resource_hints": {}
+    },
+    {
+      "name": "entry-points",
+      "version": 1,
+      "tier": "required",
+      "scope": "safe-local-read-only",
+      "os": [
+        "linux"
+      ],
+      "capabilities": [],
+      "args_schema": {
+        "positional": [],
+        "flags": []
+      },
+      "deadline_seconds": 1800,
+      "board_policy": "none",
+      "steps": [
+        {
+          "name": "entry-points",
+          "program": "bash",
+          "args": [
+            "scripts/ci.sh",
+            "--gate",
+            "entry-points"
+          ]
+        }
+      ],
+      "outputs": [],
+      "retry": {
+        "max_attempts": 1
+      },
+      "resource_hints": {}
+    },
+    {
+      "name": "enum-underlying-casts",
+      "version": 1,
+      "tier": "required",
+      "scope": "safe-local-read-only",
+      "os": [
+        "linux"
+      ],
+      "capabilities": [],
+      "args_schema": {
+        "positional": [],
+        "flags": []
+      },
+      "deadline_seconds": 1800,
+      "board_policy": "none",
+      "steps": [
+        {
+          "name": "enum-underlying-casts",
+          "program": "bash",
+          "args": [
+            "scripts/ci.sh",
+            "--gate",
+            "enum-underlying-casts"
+          ]
+        }
+      ],
+      "outputs": [],
+      "retry": {
+        "max_attempts": 1
+      },
+      "resource_hints": {}
+    },
+    {
       "name": "format",
       "version": 1,
       "tier": "required",
       "scope": "safe-local-write-working-tree",
-      "os": ["linux"],
+      "os": [
+        "linux"
+      ],
       "capabilities": [],
-      "args_schema": {"positional": [], "flags": []},
+      "args_schema": {
+        "positional": [],
+        "flags": []
+      },
       "deadline_seconds": 900,
       "board_policy": "none",
-      "steps": [{"name": "format-tree", "program": "bash", "args": ["scripts/checks/format_tree.sh"]}],
+      "steps": [
+        {
+          "name": "format-tree",
+          "program": "bash",
+          "args": [
+            "scripts/checks/format_tree.sh"
+          ]
+        }
+      ],
       "outputs": [],
-      "retry": {"max_attempts": 1},
+      "retry": {
+        "max_attempts": 1
+      },
       "resource_hints": {}
     },
     {
@@ -21,14 +740,318 @@
       "version": 1,
       "tier": "required",
       "scope": "safe-local-read-only",
-      "os": ["linux"],
+      "os": [
+        "linux"
+      ],
       "capabilities": [],
-      "args_schema": {"positional": [], "flags": []},
+      "args_schema": {
+        "positional": [],
+        "flags": []
+      },
       "deadline_seconds": 900,
       "board_policy": "none",
-      "steps": [{"name": "format-tree-check", "program": "bash", "args": ["scripts/checks/format_tree.sh", "--check"]}],
+      "steps": [
+        {
+          "name": "format-tree-check",
+          "program": "bash",
+          "args": [
+            "scripts/checks/format_tree.sh",
+            "--check"
+          ]
+        }
+      ],
       "outputs": [],
-      "retry": {"max_attempts": 1},
+      "retry": {
+        "max_attempts": 1
+      },
+      "resource_hints": {}
+    },
+    {
+      "name": "fuzz-sweep",
+      "version": 1,
+      "tier": "nightly",
+      "scope": "safe-local-read-only",
+      "os": [
+        "linux"
+      ],
+      "capabilities": [],
+      "args_schema": {
+        "positional": [],
+        "flags": []
+      },
+      "deadline_seconds": 86400,
+      "board_policy": "none",
+      "steps": [
+        {
+          "name": "fuzz-sweep",
+          "program": "bash",
+          "args": [
+            "scripts/ci.sh",
+            "--gate",
+            "fuzz-sweep"
+          ]
+        }
+      ],
+      "outputs": [],
+      "retry": {
+        "max_attempts": 1
+      },
+      "resource_hints": {}
+    },
+    {
+      "name": "hil-eil-parity",
+      "version": 1,
+      "tier": "required",
+      "scope": "safe-local-read-only",
+      "os": [
+        "linux"
+      ],
+      "capabilities": [],
+      "args_schema": {
+        "positional": [],
+        "flags": []
+      },
+      "deadline_seconds": 1800,
+      "board_policy": "none",
+      "steps": [
+        {
+          "name": "hil-eil-parity",
+          "program": "bash",
+          "args": [
+            "scripts/ci.sh",
+            "--gate",
+            "hil-eil-parity"
+          ]
+        }
+      ],
+      "outputs": [],
+      "retry": {
+        "max_attempts": 1
+      },
+      "resource_hints": {}
+    },
+    {
+      "name": "hum-register-map",
+      "version": 1,
+      "tier": "required",
+      "scope": "safe-local-read-only",
+      "os": [
+        "linux"
+      ],
+      "capabilities": [],
+      "args_schema": {
+        "positional": [],
+        "flags": []
+      },
+      "deadline_seconds": 1800,
+      "board_policy": "none",
+      "steps": [
+        {
+          "name": "hum-register-map",
+          "program": "bash",
+          "args": [
+            "scripts/ci.sh",
+            "--gate",
+            "hum-register-map"
+          ]
+        }
+      ],
+      "outputs": [],
+      "retry": {
+        "max_attempts": 1
+      },
+      "resource_hints": {}
+    },
+    {
+      "name": "inclusive-terminology",
+      "version": 1,
+      "tier": "required",
+      "scope": "safe-local-read-only",
+      "os": [
+        "linux"
+      ],
+      "capabilities": [],
+      "args_schema": {
+        "positional": [],
+        "flags": []
+      },
+      "deadline_seconds": 1800,
+      "board_policy": "none",
+      "steps": [
+        {
+          "name": "inclusive-terminology",
+          "program": "bash",
+          "args": [
+            "scripts/ci.sh",
+            "--gate",
+            "inclusive-terminology"
+          ]
+        }
+      ],
+      "outputs": [],
+      "retry": {
+        "max_attempts": 1
+      },
+      "resource_hints": {}
+    },
+    {
+      "name": "inclusive-terminology-commits",
+      "version": 1,
+      "tier": "required",
+      "scope": "safe-local-read-only",
+      "os": [
+        "linux"
+      ],
+      "capabilities": [],
+      "args_schema": {
+        "positional": [],
+        "flags": []
+      },
+      "deadline_seconds": 1800,
+      "board_policy": "none",
+      "steps": [
+        {
+          "name": "inclusive-terminology-commits",
+          "program": "bash",
+          "args": [
+            "scripts/ci.sh",
+            "--gate",
+            "inclusive-terminology-commits"
+          ]
+        }
+      ],
+      "outputs": [],
+      "retry": {
+        "max_attempts": 1
+      },
+      "resource_hints": {}
+    },
+    {
+      "name": "lint-asm",
+      "version": 1,
+      "tier": "required",
+      "scope": "safe-local-read-only",
+      "os": [
+        "linux"
+      ],
+      "capabilities": [],
+      "args_schema": {
+        "positional": [],
+        "flags": []
+      },
+      "deadline_seconds": 1800,
+      "board_policy": "none",
+      "steps": [
+        {
+          "name": "lint-asm",
+          "program": "bash",
+          "args": [
+            "scripts/ci.sh",
+            "--gate",
+            "lint-asm"
+          ]
+        }
+      ],
+      "outputs": [],
+      "retry": {
+        "max_attempts": 1
+      },
+      "resource_hints": {}
+    },
+    {
+      "name": "lint-cmake",
+      "version": 1,
+      "tier": "required",
+      "scope": "safe-local-read-only",
+      "os": [
+        "linux"
+      ],
+      "capabilities": [],
+      "args_schema": {
+        "positional": [],
+        "flags": []
+      },
+      "deadline_seconds": 1800,
+      "board_policy": "none",
+      "steps": [
+        {
+          "name": "lint-cmake",
+          "program": "bash",
+          "args": [
+            "scripts/ci.sh",
+            "--gate",
+            "lint-cmake"
+          ]
+        }
+      ],
+      "outputs": [],
+      "retry": {
+        "max_attempts": 1
+      },
+      "resource_hints": {}
+    },
+    {
+      "name": "lint-coverage",
+      "version": 1,
+      "tier": "required",
+      "scope": "safe-local-read-only",
+      "os": [
+        "linux"
+      ],
+      "capabilities": [],
+      "args_schema": {
+        "positional": [],
+        "flags": []
+      },
+      "deadline_seconds": 1800,
+      "board_policy": "none",
+      "steps": [
+        {
+          "name": "lint-coverage",
+          "program": "bash",
+          "args": [
+            "scripts/ci.sh",
+            "--gate",
+            "lint-coverage"
+          ]
+        }
+      ],
+      "outputs": [],
+      "retry": {
+        "max_attempts": 1
+      },
+      "resource_hints": {}
+    },
+    {
+      "name": "lint-devcontainer",
+      "version": 1,
+      "tier": "required",
+      "scope": "safe-local-read-only",
+      "os": [
+        "linux"
+      ],
+      "capabilities": [],
+      "args_schema": {
+        "positional": [],
+        "flags": []
+      },
+      "deadline_seconds": 1800,
+      "board_policy": "none",
+      "steps": [
+        {
+          "name": "lint-devcontainer",
+          "program": "bash",
+          "args": [
+            "scripts/ci.sh",
+            "--gate",
+            "lint-devcontainer"
+          ]
+        }
+      ],
+      "outputs": [],
+      "retry": {
+        "max_attempts": 1
+      },
       "resource_hints": {}
     },
     {
@@ -36,14 +1059,894 @@
       "version": 1,
       "tier": "required",
       "scope": "safe-local-read-only",
-      "os": ["linux"],
+      "os": [
+        "linux"
+      ],
       "capabilities": [],
-      "args_schema": {"positional": [], "flags": []},
+      "args_schema": {
+        "positional": [],
+        "flags": []
+      },
       "deadline_seconds": 1200,
       "board_policy": "none",
-      "steps": [{"name": "lint-go-gate", "program": "just", "args": ["quality::local::gate", "lint-go"]}],
+      "steps": [
+        {
+          "name": "lint-go-gate",
+          "program": "just",
+          "args": [
+            "quality::local::gate",
+            "lint-go"
+          ]
+        }
+      ],
       "outputs": [],
-      "retry": {"max_attempts": 1},
+      "retry": {
+        "max_attempts": 1
+      },
+      "resource_hints": {}
+    },
+    {
+      "name": "lint-just",
+      "version": 1,
+      "tier": "required",
+      "scope": "safe-local-read-only",
+      "os": [
+        "linux"
+      ],
+      "capabilities": [],
+      "args_schema": {
+        "positional": [],
+        "flags": []
+      },
+      "deadline_seconds": 1800,
+      "board_policy": "none",
+      "steps": [
+        {
+          "name": "lint-just",
+          "program": "bash",
+          "args": [
+            "scripts/ci.sh",
+            "--gate",
+            "lint-just"
+          ]
+        }
+      ],
+      "outputs": [],
+      "retry": {
+        "max_attempts": 1
+      },
+      "resource_hints": {}
+    },
+    {
+      "name": "lint-ld",
+      "version": 1,
+      "tier": "required",
+      "scope": "safe-local-read-only",
+      "os": [
+        "linux"
+      ],
+      "capabilities": [],
+      "args_schema": {
+        "positional": [],
+        "flags": []
+      },
+      "deadline_seconds": 1800,
+      "board_policy": "none",
+      "steps": [
+        {
+          "name": "lint-ld",
+          "program": "bash",
+          "args": [
+            "scripts/ci.sh",
+            "--gate",
+            "lint-ld"
+          ]
+        }
+      ],
+      "outputs": [],
+      "retry": {
+        "max_attempts": 1
+      },
+      "resource_hints": {}
+    },
+    {
+      "name": "lint-py-shell",
+      "version": 1,
+      "tier": "required",
+      "scope": "safe-local-read-only",
+      "os": [
+        "linux"
+      ],
+      "capabilities": [],
+      "args_schema": {
+        "positional": [],
+        "flags": []
+      },
+      "deadline_seconds": 1800,
+      "board_policy": "none",
+      "steps": [
+        {
+          "name": "lint-py-shell",
+          "program": "bash",
+          "args": [
+            "scripts/ci.sh",
+            "--gate",
+            "lint-py-shell"
+          ]
+        }
+      ],
+      "outputs": [],
+      "retry": {
+        "max_attempts": 1
+      },
+      "resource_hints": {}
+    },
+    {
+      "name": "lint-yaml",
+      "version": 1,
+      "tier": "required",
+      "scope": "safe-local-read-only",
+      "os": [
+        "linux"
+      ],
+      "capabilities": [],
+      "args_schema": {
+        "positional": [],
+        "flags": []
+      },
+      "deadline_seconds": 1800,
+      "board_policy": "none",
+      "steps": [
+        {
+          "name": "lint-yaml",
+          "program": "bash",
+          "args": [
+            "scripts/ci.sh",
+            "--gate",
+            "lint-yaml"
+          ]
+        }
+      ],
+      "outputs": [],
+      "retry": {
+        "max_attempts": 1
+      },
+      "resource_hints": {}
+    },
+    {
+      "name": "markdown-references",
+      "version": 1,
+      "tier": "required",
+      "scope": "safe-local-read-only",
+      "os": [
+        "linux"
+      ],
+      "capabilities": [],
+      "args_schema": {
+        "positional": [],
+        "flags": []
+      },
+      "deadline_seconds": 1800,
+      "board_policy": "none",
+      "steps": [
+        {
+          "name": "markdown-references",
+          "program": "bash",
+          "args": [
+            "scripts/ci.sh",
+            "--gate",
+            "markdown-references"
+          ]
+        }
+      ],
+      "outputs": [],
+      "retry": {
+        "max_attempts": 1
+      },
+      "resource_hints": {}
+    },
+    {
+      "name": "mcdc",
+      "version": 1,
+      "tier": "required",
+      "scope": "safe-local-read-only",
+      "os": [
+        "linux"
+      ],
+      "capabilities": [],
+      "args_schema": {
+        "positional": [],
+        "flags": []
+      },
+      "deadline_seconds": 7200,
+      "board_policy": "none",
+      "steps": [
+        {
+          "name": "mcdc",
+          "program": "bash",
+          "args": [
+            "scripts/ci.sh",
+            "--gate",
+            "mcdc"
+          ]
+        }
+      ],
+      "outputs": [],
+      "retry": {
+        "max_attempts": 1
+      },
+      "resource_hints": {}
+    },
+    {
+      "name": "mcdc-delta-base",
+      "version": 1,
+      "tier": "optional",
+      "scope": "safe-local-read-only",
+      "os": [
+        "linux"
+      ],
+      "capabilities": [],
+      "args_schema": {
+        "positional": [],
+        "flags": []
+      },
+      "deadline_seconds": 1800,
+      "board_policy": "none",
+      "steps": [
+        {
+          "name": "mcdc-delta-base",
+          "program": "bash",
+          "args": [
+            "scripts/ci.sh",
+            "--gate",
+            "mcdc-delta-base"
+          ]
+        }
+      ],
+      "outputs": [],
+      "retry": {
+        "max_attempts": 1
+      },
+      "resource_hints": {}
+    },
+    {
+      "name": "mcdc-delta-render",
+      "version": 1,
+      "tier": "optional",
+      "scope": "safe-local-write-working-tree",
+      "os": [
+        "linux"
+      ],
+      "capabilities": [],
+      "args_schema": {
+        "positional": [],
+        "flags": []
+      },
+      "deadline_seconds": 1800,
+      "board_policy": "none",
+      "steps": [
+        {
+          "name": "mcdc-delta-render",
+          "program": "bash",
+          "args": [
+            "scripts/ci.sh",
+            "--gate",
+            "mcdc-delta-render"
+          ]
+        }
+      ],
+      "outputs": [],
+      "retry": {
+        "max_attempts": 1
+      },
+      "resource_hints": {}
+    },
+    {
+      "name": "misra",
+      "version": 1,
+      "tier": "required",
+      "scope": "safe-local-read-only",
+      "os": [
+        "linux"
+      ],
+      "capabilities": [],
+      "args_schema": {
+        "positional": [],
+        "flags": []
+      },
+      "deadline_seconds": 7200,
+      "board_policy": "none",
+      "steps": [
+        {
+          "name": "misra",
+          "program": "bash",
+          "args": [
+            "scripts/ci.sh",
+            "--gate",
+            "misra"
+          ]
+        }
+      ],
+      "outputs": [],
+      "retry": {
+        "max_attempts": 1
+      },
+      "resource_hints": {}
+    },
+    {
+      "name": "no-ai-attribution",
+      "version": 1,
+      "tier": "required",
+      "scope": "safe-local-read-only",
+      "os": [
+        "linux"
+      ],
+      "capabilities": [],
+      "args_schema": {
+        "positional": [],
+        "flags": []
+      },
+      "deadline_seconds": 1800,
+      "board_policy": "none",
+      "steps": [
+        {
+          "name": "no-ai-attribution",
+          "program": "bash",
+          "args": [
+            "scripts/ci.sh",
+            "--gate",
+            "no-ai-attribution"
+          ]
+        }
+      ],
+      "outputs": [],
+      "retry": {
+        "max_attempts": 1
+      },
+      "resource_hints": {}
+    },
+    {
+      "name": "no-ai-attribution-commits",
+      "version": 1,
+      "tier": "required",
+      "scope": "safe-local-read-only",
+      "os": [
+        "linux"
+      ],
+      "capabilities": [],
+      "args_schema": {
+        "positional": [],
+        "flags": []
+      },
+      "deadline_seconds": 1800,
+      "board_policy": "none",
+      "steps": [
+        {
+          "name": "no-ai-attribution-commits",
+          "program": "bash",
+          "args": [
+            "scripts/ci.sh",
+            "--gate",
+            "no-ai-attribution-commits"
+          ]
+        }
+      ],
+      "outputs": [],
+      "retry": {
+        "max_attempts": 1
+      },
+      "resource_hints": {}
+    },
+    {
+      "name": "nsc-cmse",
+      "version": 1,
+      "tier": "required",
+      "scope": "safe-local-read-only",
+      "os": [
+        "linux"
+      ],
+      "capabilities": [],
+      "args_schema": {
+        "positional": [],
+        "flags": []
+      },
+      "deadline_seconds": 1800,
+      "board_policy": "none",
+      "steps": [
+        {
+          "name": "nsc-cmse",
+          "program": "bash",
+          "args": [
+            "scripts/ci.sh",
+            "--gate",
+            "nsc-cmse"
+          ]
+        }
+      ],
+      "outputs": [],
+      "retry": {
+        "max_attempts": 1
+      },
+      "resource_hints": {}
+    },
+    {
+      "name": "osv-scan",
+      "version": 1,
+      "tier": "optional",
+      "scope": "safe-local-read-only",
+      "os": [
+        "linux"
+      ],
+      "capabilities": [],
+      "args_schema": {
+        "positional": [],
+        "flags": []
+      },
+      "deadline_seconds": 1800,
+      "board_policy": "none",
+      "steps": [
+        {
+          "name": "osv-scan",
+          "program": "bash",
+          "args": [
+            "scripts/ci.sh",
+            "--gate",
+            "osv-scan"
+          ]
+        }
+      ],
+      "outputs": [],
+      "retry": {
+        "max_attempts": 1
+      },
+      "resource_hints": {}
+    },
+    {
+      "name": "pinout-freshness",
+      "version": 1,
+      "tier": "required",
+      "scope": "safe-local-read-only",
+      "os": [
+        "linux"
+      ],
+      "capabilities": [],
+      "args_schema": {
+        "positional": [],
+        "flags": []
+      },
+      "deadline_seconds": 1800,
+      "board_policy": "none",
+      "steps": [
+        {
+          "name": "pinout-freshness",
+          "program": "bash",
+          "args": [
+            "scripts/ci.sh",
+            "--gate",
+            "pinout-freshness"
+          ]
+        }
+      ],
+      "outputs": [],
+      "retry": {
+        "max_attempts": 1
+      },
+      "resource_hints": {}
+    },
+    {
+      "name": "pre-commit-checks",
+      "version": 1,
+      "tier": "required",
+      "scope": "safe-local-read-only",
+      "os": [
+        "linux"
+      ],
+      "capabilities": [],
+      "args_schema": {
+        "positional": [],
+        "flags": []
+      },
+      "deadline_seconds": 1800,
+      "board_policy": "none",
+      "steps": [
+        {
+          "name": "pre-commit-checks",
+          "program": "bash",
+          "args": [
+            "scripts/ci.sh",
+            "--gate",
+            "pre-commit-checks"
+          ]
+        }
+      ],
+      "outputs": [],
+      "retry": {
+        "max_attempts": 1
+      },
+      "resource_hints": {}
+    },
+    {
+      "name": "reserved-addrs",
+      "version": 1,
+      "tier": "required",
+      "scope": "safe-local-read-only",
+      "os": [
+        "linux"
+      ],
+      "capabilities": [],
+      "args_schema": {
+        "positional": [],
+        "flags": []
+      },
+      "deadline_seconds": 1800,
+      "board_policy": "none",
+      "steps": [
+        {
+          "name": "reserved-addrs",
+          "program": "bash",
+          "args": [
+            "scripts/ci.sh",
+            "--gate",
+            "reserved-addrs"
+          ]
+        }
+      ],
+      "outputs": [],
+      "retry": {
+        "max_attempts": 1
+      },
+      "resource_hints": {}
+    },
+    {
+      "name": "roadmap-stats",
+      "version": 1,
+      "tier": "required",
+      "scope": "safe-local-read-only",
+      "os": [
+        "linux"
+      ],
+      "capabilities": [],
+      "args_schema": {
+        "positional": [],
+        "flags": []
+      },
+      "deadline_seconds": 1800,
+      "board_policy": "none",
+      "steps": [
+        {
+          "name": "roadmap-stats",
+          "program": "bash",
+          "args": [
+            "scripts/ci.sh",
+            "--gate",
+            "roadmap-stats"
+          ]
+        }
+      ],
+      "outputs": [],
+      "retry": {
+        "max_attempts": 1
+      },
+      "resource_hints": {}
+    },
+    {
+      "name": "runner-clock",
+      "version": 1,
+      "tier": "optional",
+      "scope": "safe-local-read-only",
+      "os": [
+        "linux"
+      ],
+      "capabilities": [],
+      "args_schema": {
+        "positional": [],
+        "flags": []
+      },
+      "deadline_seconds": 1800,
+      "board_policy": "none",
+      "steps": [
+        {
+          "name": "runner-clock",
+          "program": "bash",
+          "args": [
+            "scripts/ci.sh",
+            "--gate",
+            "runner-clock"
+          ]
+        }
+      ],
+      "outputs": [],
+      "retry": {
+        "max_attempts": 1
+      },
+      "resource_hints": {}
+    },
+    {
+      "name": "runner-image-deps",
+      "version": 1,
+      "tier": "optional",
+      "scope": "safe-local-read-only",
+      "os": [
+        "linux"
+      ],
+      "capabilities": [],
+      "args_schema": {
+        "positional": [],
+        "flags": []
+      },
+      "deadline_seconds": 1800,
+      "board_policy": "none",
+      "steps": [
+        {
+          "name": "runner-image-deps",
+          "program": "bash",
+          "args": [
+            "scripts/ci.sh",
+            "--gate",
+            "runner-image-deps"
+          ]
+        }
+      ],
+      "outputs": [],
+      "retry": {
+        "max_attempts": 1
+      },
+      "resource_hints": {}
+    },
+    {
+      "name": "sbom",
+      "version": 1,
+      "tier": "required",
+      "scope": "safe-local-read-only",
+      "os": [
+        "linux"
+      ],
+      "capabilities": [],
+      "args_schema": {
+        "positional": [],
+        "flags": []
+      },
+      "deadline_seconds": 1800,
+      "board_policy": "none",
+      "steps": [
+        {
+          "name": "sbom",
+          "program": "bash",
+          "args": [
+            "scripts/ci.sh",
+            "--gate",
+            "sbom"
+          ]
+        }
+      ],
+      "outputs": [],
+      "retry": {
+        "max_attempts": 1
+      },
+      "resource_hints": {}
+    },
+    {
+      "name": "scan-build",
+      "version": 1,
+      "tier": "required",
+      "scope": "safe-local-read-only",
+      "os": [
+        "linux"
+      ],
+      "capabilities": [],
+      "args_schema": {
+        "positional": [],
+        "flags": []
+      },
+      "deadline_seconds": 7200,
+      "board_policy": "none",
+      "steps": [
+        {
+          "name": "scan-build",
+          "program": "bash",
+          "args": [
+            "scripts/ci.sh",
+            "--gate",
+            "scan-build"
+          ]
+        }
+      ],
+      "outputs": [],
+      "retry": {
+        "max_attempts": 1
+      },
+      "resource_hints": {}
+    },
+    {
+      "name": "sg-offsets",
+      "version": 1,
+      "tier": "required",
+      "scope": "safe-local-read-only",
+      "os": [
+        "linux"
+      ],
+      "capabilities": [],
+      "args_schema": {
+        "positional": [],
+        "flags": []
+      },
+      "deadline_seconds": 7200,
+      "board_policy": "none",
+      "steps": [
+        {
+          "name": "sg-offsets",
+          "program": "bash",
+          "args": [
+            "scripts/ci.sh",
+            "--gate",
+            "sg-offsets"
+          ]
+        }
+      ],
+      "outputs": [],
+      "retry": {
+        "max_attempts": 1
+      },
+      "resource_hints": {}
+    },
+    {
+      "name": "shebangs",
+      "version": 1,
+      "tier": "required",
+      "scope": "safe-local-read-only",
+      "os": [
+        "linux"
+      ],
+      "capabilities": [],
+      "args_schema": {
+        "positional": [],
+        "flags": []
+      },
+      "deadline_seconds": 1800,
+      "board_policy": "none",
+      "steps": [
+        {
+          "name": "shebangs",
+          "program": "bash",
+          "args": [
+            "scripts/ci.sh",
+            "--gate",
+            "shebangs"
+          ]
+        }
+      ],
+      "outputs": [],
+      "retry": {
+        "max_attempts": 1
+      },
+      "resource_hints": {}
+    },
+    {
+      "name": "since",
+      "version": 1,
+      "tier": "required",
+      "scope": "safe-local-read-only",
+      "os": [
+        "linux"
+      ],
+      "capabilities": [],
+      "args_schema": {
+        "positional": [],
+        "flags": []
+      },
+      "deadline_seconds": 1800,
+      "board_policy": "none",
+      "steps": [
+        {
+          "name": "since",
+          "program": "bash",
+          "args": [
+            "scripts/ci.sh",
+            "--gate",
+            "since"
+          ]
+        }
+      ],
+      "outputs": [],
+      "retry": {
+        "max_attempts": 1
+      },
+      "resource_hints": {}
+    },
+    {
+      "name": "soup-upstream",
+      "version": 1,
+      "tier": "required",
+      "scope": "safe-local-read-only",
+      "os": [
+        "linux"
+      ],
+      "capabilities": [],
+      "args_schema": {
+        "positional": [],
+        "flags": []
+      },
+      "deadline_seconds": 1800,
+      "board_policy": "none",
+      "steps": [
+        {
+          "name": "soup-upstream",
+          "program": "bash",
+          "args": [
+            "scripts/ci.sh",
+            "--gate",
+            "soup-upstream"
+          ]
+        }
+      ],
+      "outputs": [],
+      "retry": {
+        "max_attempts": 1
+      },
+      "resource_hints": {}
+    },
+    {
+      "name": "stack-usage",
+      "version": 1,
+      "tier": "required",
+      "scope": "safe-local-read-only",
+      "os": [
+        "linux"
+      ],
+      "capabilities": [],
+      "args_schema": {
+        "positional": [],
+        "flags": []
+      },
+      "deadline_seconds": 7200,
+      "board_policy": "none",
+      "steps": [
+        {
+          "name": "stack-usage",
+          "program": "bash",
+          "args": [
+            "scripts/ci.sh",
+            "--gate",
+            "stack-usage"
+          ]
+        }
+      ],
+      "outputs": [],
+      "retry": {
+        "max_attempts": 1
+      },
+      "resource_hints": {}
+    },
+    {
+      "name": "suppressions",
+      "version": 1,
+      "tier": "required",
+      "scope": "safe-local-read-only",
+      "os": [
+        "linux"
+      ],
+      "capabilities": [],
+      "args_schema": {
+        "positional": [],
+        "flags": []
+      },
+      "deadline_seconds": 1800,
+      "board_policy": "none",
+      "steps": [
+        {
+          "name": "suppressions",
+          "program": "bash",
+          "args": [
+            "scripts/ci.sh",
+            "--gate",
+            "suppressions"
+          ]
+        }
+      ],
+      "outputs": [],
+      "retry": {
+        "max_attempts": 1
+      },
       "resource_hints": {}
     },
     {
@@ -51,14 +1954,318 @@
       "version": 1,
       "tier": "required",
       "scope": "safe-local-read-only",
-      "os": ["linux"],
+      "os": [
+        "linux"
+      ],
       "capabilities": [],
-      "args_schema": {"positional": [], "flags": []},
+      "args_schema": {
+        "positional": [],
+        "flags": []
+      },
       "deadline_seconds": 1800,
       "board_policy": "none",
-      "steps": [{"name": "test-go-gate", "program": "scripts/ci.sh", "args": ["--gate", "test-go"]}],
+      "steps": [
+        {
+          "name": "test-go-gate",
+          "program": "scripts/ci.sh",
+          "args": [
+            "--gate",
+            "test-go"
+          ]
+        }
+      ],
       "outputs": [],
-      "retry": {"max_attempts": 1},
+      "retry": {
+        "max_attempts": 1
+      },
+      "resource_hints": {}
+    },
+    {
+      "name": "tests-readme",
+      "version": 1,
+      "tier": "required",
+      "scope": "safe-local-read-only",
+      "os": [
+        "linux"
+      ],
+      "capabilities": [],
+      "args_schema": {
+        "positional": [],
+        "flags": []
+      },
+      "deadline_seconds": 1800,
+      "board_policy": "none",
+      "steps": [
+        {
+          "name": "tests-readme",
+          "program": "bash",
+          "args": [
+            "scripts/ci.sh",
+            "--gate",
+            "tests-readme"
+          ]
+        }
+      ],
+      "outputs": [],
+      "retry": {
+        "max_attempts": 1
+      },
+      "resource_hints": {}
+    },
+    {
+      "name": "tidy",
+      "version": 1,
+      "tier": "required",
+      "scope": "safe-local-read-only",
+      "os": [
+        "linux"
+      ],
+      "capabilities": [],
+      "args_schema": {
+        "positional": [],
+        "flags": []
+      },
+      "deadline_seconds": 7200,
+      "board_policy": "none",
+      "steps": [
+        {
+          "name": "tidy",
+          "program": "bash",
+          "args": [
+            "scripts/ci.sh",
+            "--gate",
+            "tidy"
+          ]
+        }
+      ],
+      "outputs": [],
+      "retry": {
+        "max_attempts": 1
+      },
+      "resource_hints": {}
+    },
+    {
+      "name": "tier-imports",
+      "version": 1,
+      "tier": "required",
+      "scope": "safe-local-read-only",
+      "os": [
+        "linux"
+      ],
+      "capabilities": [],
+      "args_schema": {
+        "positional": [],
+        "flags": []
+      },
+      "deadline_seconds": 1800,
+      "board_policy": "none",
+      "steps": [
+        {
+          "name": "tier-imports",
+          "program": "bash",
+          "args": [
+            "scripts/ci.sh",
+            "--gate",
+            "tier-imports"
+          ]
+        }
+      ],
+      "outputs": [],
+      "retry": {
+        "max_attempts": 1
+      },
+      "resource_hints": {}
+    },
+    {
+      "name": "toolchain-parity",
+      "version": 1,
+      "tier": "required",
+      "scope": "safe-local-read-only",
+      "os": [
+        "linux"
+      ],
+      "capabilities": [],
+      "args_schema": {
+        "positional": [],
+        "flags": []
+      },
+      "deadline_seconds": 1800,
+      "board_policy": "none",
+      "steps": [
+        {
+          "name": "toolchain-parity",
+          "program": "bash",
+          "args": [
+            "scripts/ci.sh",
+            "--gate",
+            "toolchain-parity"
+          ]
+        }
+      ],
+      "outputs": [],
+      "retry": {
+        "max_attempts": 1
+      },
+      "resource_hints": {}
+    },
+    {
+      "name": "tools-build",
+      "version": 1,
+      "tier": "required",
+      "scope": "safe-local-read-only",
+      "os": [
+        "linux"
+      ],
+      "capabilities": [],
+      "args_schema": {
+        "positional": [],
+        "flags": []
+      },
+      "deadline_seconds": 7200,
+      "board_policy": "none",
+      "steps": [
+        {
+          "name": "tools-build",
+          "program": "bash",
+          "args": [
+            "scripts/ci.sh",
+            "--gate",
+            "tools-build"
+          ]
+        }
+      ],
+      "outputs": [],
+      "retry": {
+        "max_attempts": 1
+      },
+      "resource_hints": {}
+    },
+    {
+      "name": "ubsan",
+      "version": 1,
+      "tier": "required",
+      "scope": "safe-local-read-only",
+      "os": [
+        "linux"
+      ],
+      "capabilities": [],
+      "args_schema": {
+        "positional": [],
+        "flags": []
+      },
+      "deadline_seconds": 7200,
+      "board_policy": "none",
+      "steps": [
+        {
+          "name": "ubsan",
+          "program": "bash",
+          "args": [
+            "scripts/ci.sh",
+            "--gate",
+            "ubsan"
+          ]
+        }
+      ],
+      "outputs": [],
+      "retry": {
+        "max_attempts": 1
+      },
+      "resource_hints": {}
+    },
+    {
+      "name": "unit-tests",
+      "version": 1,
+      "tier": "required",
+      "scope": "safe-local-read-only",
+      "os": [
+        "linux"
+      ],
+      "capabilities": [],
+      "args_schema": {
+        "positional": [],
+        "flags": []
+      },
+      "deadline_seconds": 7200,
+      "board_policy": "none",
+      "steps": [
+        {
+          "name": "unit-tests",
+          "program": "bash",
+          "args": [
+            "scripts/ci.sh",
+            "--gate",
+            "unit-tests"
+          ]
+        }
+      ],
+      "outputs": [],
+      "retry": {
+        "max_attempts": 1
+      },
+      "resource_hints": {}
+    },
+    {
+      "name": "unused-includes",
+      "version": 1,
+      "tier": "required",
+      "scope": "safe-local-read-only",
+      "os": [
+        "linux"
+      ],
+      "capabilities": [],
+      "args_schema": {
+        "positional": [],
+        "flags": []
+      },
+      "deadline_seconds": 1800,
+      "board_policy": "none",
+      "steps": [
+        {
+          "name": "unused-includes",
+          "program": "bash",
+          "args": [
+            "scripts/ci.sh",
+            "--gate",
+            "unused-includes"
+          ]
+        }
+      ],
+      "outputs": [],
+      "retry": {
+        "max_attempts": 1
+      },
+      "resource_hints": {}
+    },
+    {
+      "name": "work-harness",
+      "version": 1,
+      "tier": "required",
+      "scope": "safe-local-read-only",
+      "os": [
+        "linux"
+      ],
+      "capabilities": [],
+      "args_schema": {
+        "positional": [],
+        "flags": []
+      },
+      "deadline_seconds": 1800,
+      "board_policy": "none",
+      "steps": [
+        {
+          "name": "work-harness",
+          "program": "bash",
+          "args": [
+            "scripts/ci.sh",
+            "--gate",
+            "work-harness"
+          ]
+        }
+      ],
+      "outputs": [],
+      "retry": {
+        "max_attempts": 1
+      },
       "resource_hints": {}
     }
   ]
