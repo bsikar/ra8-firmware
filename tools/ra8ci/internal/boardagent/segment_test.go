@@ -69,6 +69,19 @@ func newActiveSegmentAgent(t *testing.T) (*Agent, *testSegmentControlClient, boa
 	return agent, client, token
 }
 
+func TestRunSegmentRejectsInvalidAttemptBeforeContactingBoard(t *testing.T) {
+	agent, client, token := newActiveSegmentAgent(t)
+	started := false
+	if _, err := agent.RunSegment(context.Background(), token, "not-a-uuid", "invalid-attempt",
+		time.Second, 0, func(context.Context) error { started = true; return nil }); err == nil {
+		t.Fatal("invalid HIL attempt identifier was accepted")
+	}
+	if started || client.begins != 0 || len(client.finishes) != 0 {
+		t.Fatalf("invalid attempt reached hardware path: started=%v begins=%d finishes=%v",
+			started, client.begins, client.finishes)
+	}
+}
+
 func TestRunSegmentLetsStartedWorkFinishThenStopsAtHumanCheckpoint(t *testing.T) {
 	agent, client, token := newActiveSegmentAgent(t)
 	started := false

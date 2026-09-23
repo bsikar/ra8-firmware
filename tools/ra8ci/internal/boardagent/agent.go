@@ -165,7 +165,7 @@ func (a *Agent) CanStartSegment(ctx context.Context, token boardclient.LeaseToke
 func (a *Agent) RunSegment(ctx context.Context, token boardclient.LeaseToken, attemptID, key string,
 	bound, recoveryMargin time.Duration, operation func(context.Context) error) (store.BoardSegment, error) {
 	if a == nil || ctx == nil || a.segmentGate == nil || operation == nil || token.BoardID != a.boardID ||
-		bound <= 0 || bound > maxBoardOperation || recoveryMargin < 0 || recoveryMargin > maxBoardOperation {
+		!store.ValidID(attemptID) || bound <= 0 || bound > maxBoardOperation || recoveryMargin < 0 || recoveryMargin > maxBoardOperation {
 		return store.BoardSegment{}, ErrInvalidAgent
 	}
 	client, ok := a.client.(SegmentClient)
