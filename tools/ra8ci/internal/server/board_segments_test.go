@@ -80,7 +80,7 @@ type fakeBoardHILClaims struct {
 	trustedCommit string
 }
 
-func (f *fakeBoardHILClaims) ClaimNextBoardHILAttempt(_ context.Context, _ store.BoardActor, leaseID string, facts store.StartAttemptInput, cat *catalog.Catalog, commit string) (*store.BoardHILAssignment, error) {
+func (f *fakeBoardHILClaims) ClaimNextBoardHILAttempt(_ context.Context, _ store.BoardActor, leaseID string, facts store.StartAttemptInput, cat store.HILDefinitionCatalog, commit string) (*store.BoardHILAssignment, error) {
 	f.leaseID, f.facts, f.catalogDigest, f.trustedCommit = leaseID, facts, cat.Digest(), commit
 	return &store.BoardHILAssignment{Attempt: store.Attempt{ID: boardTestProofID, TaskID: boardTestLeaseID, AttemptNo: 1, State: "running"}}, nil
 }
@@ -127,7 +127,7 @@ type fakeBoardHILFinisher struct {
 }
 
 func (f *fakeBoardHILFinisher) CompleteBoardHILAttempt(_ context.Context, _ store.BoardActor,
-	completion store.BoardHILCompletion, cat *catalog.Catalog, _ string) error {
+	completion store.BoardHILCompletion, cat store.HILDefinitionCatalog, _ string) error {
 	f.completion, f.catalogDigest = completion, cat.Digest()
 	return nil
 }
