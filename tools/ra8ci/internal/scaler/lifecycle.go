@@ -77,10 +77,12 @@ func (h *Handler) bootstrapRunning(ctx context.Context, vm store.RunnerVM) error
 	if vm.State != "running" || vm.UnknownOutcome || vm.CleanupRequested {
 		return errors.New("JIT bootstrap requires a reconciled running reservation")
 	}
+	bootstrapStartedAt := time.Now().UTC()
 	receipt, err := h.bootstrap.Prepare(ctx, vm)
 	if err != nil {
 		return fmt.Errorf("post-boot Ansible readiness and JIT bootstrap: %w", err)
 	}
+	bootstrapCompletedAt := time.Now().UTC()
 	now := time.Now()
 	if receipt.ReservationID != vm.ID || receipt.VMID != vm.VMID || receipt.CommitSHA != vm.CommitSHA ||
 		!store.ValidID(receipt.EvidenceID) || !sha256Pattern.MatchString(receipt.ReadinessSHA256) ||
@@ -98,7 +100,8 @@ func (h *Handler) bootstrapRunning(ctx context.Context, vm store.RunnerVM) error
 		GuestOS: receipt.GuestOS, GuestArchitecture: receipt.GuestArchitecture, ServiceAccount: receipt.ServiceAccount,
 		RunnerBinarySHA256: receipt.RunnerBinarySHA256, AgentBinarySHA256: receipt.AgentBinarySHA256,
 		ReadinessSHA256: receipt.ReadinessSHA256, JITConfigSHA256: receipt.JITConfigSHA256,
-		JITConfigExpiresAt: receipt.JITConfigExpiresAt, EvidenceID: receipt.EvidenceID, PreparedAt: receipt.PreparedAt,
+		JITConfigExpiresAt: receipt.JITConfigExpiresAt, EvidenceID: receipt.EvidenceID,
+		StartedAt: bootstrapStartedAt, CompletedAt: bootstrapCompletedAt, PreparedAt: receipt.PreparedAt,
 	})
 }
 
