@@ -712,6 +712,43 @@
       "resource_hints": {}
     },
     {
+      "name": "final-newline",
+      "version": 1,
+      "tier": "required",
+      "scope": "safe-local-read-only",
+      "os": [
+        "linux"
+      ],
+      "capabilities": [],
+      "args_schema": {
+        "positional": [],
+        "flags": []
+      },
+      "deadline_seconds": 1800,
+      "board_policy": "none",
+      "steps": [
+        {
+          "name": "final-newline-selftest",
+          "program": "ra8ci:final-newline",
+          "args": [
+            "--selftest"
+          ]
+        },
+        {
+          "name": "final-newline-scan",
+          "program": "ra8ci:final-newline",
+          "args": [
+            "--all"
+          ]
+        }
+      ],
+      "outputs": [],
+      "retry": {
+        "max_attempts": 1
+      },
+      "resource_hints": {}
+    },
+    {
       "name": "format",
       "version": 1,
       "tier": "required",
