@@ -528,7 +528,6 @@ _SCHEMA_GROUPS = (
             "checks/check_source_layout.py:IMPLEMENTATION_SUFFIXES",
             "checks/check_source_layout.py:SCOPED_ROOTS",
             "checks/check_source_layout.py:TOOL_FILE_MIN_PARTS",
-            "checks/check_stub_crypto_guarded.py:STUB_TUS",
             "checks/check_third_party_patches.py:POLICY_PATH",
             "checks/check_tool_versions.py:DOCKERFILE",
             "checks/check_tool_versions.py:DOXYGEN_PROVISIONER",
