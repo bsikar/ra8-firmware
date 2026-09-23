@@ -207,6 +207,16 @@ func OpenController(ctx context.Context, config SessionConfig, inbox ReplayInbox
 		_ = session.Close(cleanupCtx)
 		return nil, err
 	}
+	return NewControllerSession(session, controller)
+}
+
+// NewControllerSession binds an already-open GitHub session to a controller.
+// This enables production composition to build session-backed runner
+// administration and JIT adapters before constructing the handler.
+func NewControllerSession(session *Session, controller *Controller) (*ControllerSession, error) {
+	if session == nil || session.Client == nil || session.close == nil || controller == nil {
+		return nil, errors.New("controller session requires an open GitHub session and controller")
+	}
 	return &ControllerSession{controller: controller, session: session}, nil
 }
 

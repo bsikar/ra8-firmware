@@ -95,3 +95,38 @@ func TestControllerRequiresAdmissionAndTimeout(t *testing.T) {
 		t.Fatal("unbounded callback accepted")
 	}
 }
+
+func TestNewControllerSessionAcceptsPrecomposedHandler(t *testing.T) {
+	closed := false
+	session := &Session{Client: testClient(), close: func(context.Context) error { closed = true; return nil }}
+	controller, err := NewController(session.Client, &fakeInbox{}, &testHandler{}, testAdmission{}, 42, 1, time.Second)
+	if err != nil {
+		t.Fatal(err)
+	}
+	bound, err := NewControllerSession(session, controller)
+	if err != nil {
+		t.Fatal(err)
+	}
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	_ = bound.Run(ctx)
+	if !closed {
+		t.Fatal("controller session did not close the supplied GitHub session")
+	}
+}
+
+func TestNewControllerSessionRejectsIncompleteSession(t *testing.T) {
+	controller, err := NewController(testClient(), &fakeInbox{}, &testHandler{}, testAdmission{}, 42, 1, time.Second)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := NewControllerSession(nil, controller); err == nil {
+		t.Fatal("nil GitHub session accepted")
+	}
+	if _, err := NewControllerSession(&Session{Client: testClient()}, controller); err == nil {
+		t.Fatal("session without close function accepted")
+	}
+	if _, err := NewControllerSession(&Session{close: func(context.Context) error { return nil }}, controller); err == nil {
+		t.Fatal("session without client accepted")
+	}
+}
