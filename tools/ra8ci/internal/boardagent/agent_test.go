@@ -95,3 +95,60 @@ func TestReconcileQuarantinesServerRestoredBehindLocalHighWater(t *testing.T) {
 			result, control.observations, control.acknowledgements, err)
 	}
 }
+
+func TestCanStartSegmentRequiresServerAndDurableFences(t *testing.T) {
+	serverNow := time.Now().UTC()
+	localNow := time.Now()
+	state, err := board.New("ek-ra8d2")
+	if err != nil {
+		t.Fatal(err)
+	}
+	waiter := board.Waiter{ID: "01996f90-3415-7cfe-8ff1-600058131afd",
+		LeaseID: "01996f90-3415-7cfe-8ff1-600058131afe", Holder: "agent",
+		Class: board.ClassAI, Reason: "HIL segment", Duration: time.Minute}
+	state, _, err = board.Apply(state, board.Enqueue{Actor: "agent", Waiter: waiter}, serverNow)
+	if err != nil {
+		t.Fatal(err)
+	}
+	grant := state.Lease
+	state, _, err = board.Apply(state, board.AcknowledgeGrant{Actor: "board-agent",
+		LeaseID: grant.ID, Generation: grant.Generation, InstalledGeneration: grant.Generation}, serverNow)
+	if err != nil {
+		t.Fatal(err)
+	}
+	durable, _ := newTestHighWater(t)
+	if err := durable.Advance(state.Generation); err != nil {
+		t.Fatal(err)
+	}
+	control := &testControlClient{state: state}
+	agent, err := New("ek-ra8d2", control, durable, time.Second)
+	if err != nil {
+		t.Fatal(err)
+	}
+	token := boardclient.LeaseToken{BoardID: state.BoardID, RequestID: state.Lease.WaiterID,
+		LeaseID: state.Lease.ID, Generation: state.Generation, ExpiresAt: state.Lease.ExpiresAt,
+		Version: state.Version}
+	fence, err := board.SeedDeadline(state.Generation, state.Version, state.Lease.ExpiresAt, localNow, 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := agent.CanStartSegment(context.Background(), token, fence, serverNow,
+		localNow, 5*time.Second, 3*time.Second); err != nil {
+		t.Fatalf("valid lease and durable fences rejected segment: %v", err)
+	}
+
+	human := board.Waiter{ID: "01996f90-3415-7cfe-8ff1-600058131b01",
+		LeaseID: "01996f90-3415-7cfe-8ff1-600058131b02", Holder: "human",
+		Class: board.ClassHuman, Reason: "operator needs board", Duration: time.Minute}
+	control.state, _, err = board.Apply(control.state, board.Enqueue{Actor: "human", Waiter: human}, serverNow)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if control.state.Phase != board.YieldRequested {
+		t.Fatalf("human waiter did not request cooperative yield: %s", control.state.Phase)
+	}
+	if err := agent.CanStartSegment(context.Background(), token, fence, serverNow,
+		localNow, time.Second, time.Second); !board.IsCode(err, board.RecoveryNecessary) {
+		t.Fatalf("segment started after yield request: %v", err)
+	}
+}
