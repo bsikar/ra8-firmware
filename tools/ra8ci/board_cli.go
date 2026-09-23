@@ -19,6 +19,25 @@ import (
 )
 
 func boardCommand(ctx context.Context, args []string) error {
+	if len(args) > 0 && args[0] == "checkpoint" {
+		if len(args) != 2 || !validBoardIDArgument(args[1]) {
+			return errors.New("usage: ra8ci board checkpoint <board-id>")
+		}
+		client, err := newBoardClient()
+		if err != nil {
+			return err
+		}
+		defer client.CloseIdleConnections()
+		directory, err := currentBoardLeaseDirectory()
+		if err != nil {
+			return err
+		}
+		snapshot, err := checkpointBoardLease(ctx, client, directory, args[1])
+		if err != nil {
+			return fmt.Errorf("board checkpoint: %w", err)
+		}
+		return json.NewEncoder(os.Stdout).Encode(snapshot)
+	}
 	if len(args) > 0 && args[0] == "extend" {
 		return boardExtendCommand(ctx, args[1:])
 	}
@@ -55,7 +74,7 @@ func boardCommand(ctx context.Context, args []string) error {
 		return json.NewEncoder(os.Stdout).Encode(snapshot)
 	}
 	if len(args) < 2 || args[0] != "take" {
-		return errors.New("usage: ra8ci board status <board-id> | board take <board-id> --class human|ci|agent --why <reason> --duration <duration> | board extend <board-id> --why <reason> --duration <duration> | board cancel <board-id> <request-id> <lease-id>")
+		return errors.New("usage: ra8ci board status <board-id> | board take <board-id> --class human|ci|agent --why <reason> --duration <duration> | board checkpoint <board-id> | board extend <board-id> --why <reason> --duration <duration> | board cancel <board-id> <request-id> <lease-id>")
 	}
 	flags := flag.NewFlagSet("board take", flag.ContinueOnError)
 	flags.SetOutput(io.Discard)
