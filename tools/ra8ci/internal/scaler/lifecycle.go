@@ -325,7 +325,9 @@ func (h *Handler) resolveVerified(ctx context.Context, vm store.RunnerVM, op sto
 			store.RunnerVMResolution{Outcome: evidence.Outcome, EvidenceID: evidenceID,
 				Source: "terraform_state", ObservedAt: evidence.ObservedAt, PostStateVerified: true,
 				PlanSHA256: evidence.PlanSHA256, StateIdentitySHA256: evidence.StateIdentitySHA256,
-				ReconciliationSHA256: evidence.ReconciliationSHA256})
+				ReconciliationSHA256: evidence.ReconciliationSHA256,
+				TerraformStateHasVM:  evidence.StateHasVM, TerraformVMAbsent: evidence.VMAbsent,
+				TerraformVMStatus: evidence.VMStatus})
 		if err != nil {
 			return store.RunnerVM{}, err
 		}

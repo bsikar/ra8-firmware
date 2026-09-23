@@ -461,7 +461,15 @@ func (p *TerraformRunnerProvisioner) Reconcile(ctx context.Context, operationID 
 	return proxmox.Result{TerraformEvidence: &proxmox.TerraformEvidence{
 		Outcome: outcome, PlanSHA256: op.PlanSHA256,
 		StateIdentitySHA256:  op.StateIdentitySHA256,
-		ReconciliationSHA256: hex.EncodeToString(stateHash[:]), ObservedAt: time.Now(),
+		ReconciliationSHA256: hex.EncodeToString(stateHash[:]),
+		StateHasVM:           hasRunner, VMAbsent: absent,
+		VMStatus: func() string {
+			if absent {
+				return ""
+			}
+			return observed.Status
+		}(),
+		ObservedAt: time.Now(),
 	}}, nil
 }
 
