@@ -171,3 +171,9 @@ func TestReportRejectsUnboundedAndUnauthenticatedRequests(t *testing.T) {
 		t.Fatalf("missing server identity accepted: %v", err)
 	}
 }
+
+func TestGitHubCommandRequiresExplicitCheck(t *testing.T) {
+	if err := githubCommand(context.Background(), nil); err == nil || !strings.Contains(err.Error(), "usage") {
+		t.Fatalf("github command without check accepted: %v", err)
+	}
+}

@@ -26,6 +26,7 @@ import (
 	"github.com/bsikar/ra8-firmware/tools/ra8ci/internal/agent"
 	"github.com/bsikar/ra8-firmware/tools/ra8ci/internal/catalog"
 	"github.com/bsikar/ra8-firmware/tools/ra8ci/internal/executor"
+	"github.com/bsikar/ra8-firmware/tools/ra8ci/internal/github"
 	"github.com/bsikar/ra8-firmware/tools/ra8ci/internal/neutral"
 	"github.com/bsikar/ra8-firmware/tools/ra8ci/internal/scaler"
 	"github.com/bsikar/ra8-firmware/tools/ra8ci/internal/server"
@@ -45,7 +46,7 @@ func main() {
 
 func run(ctx context.Context, args []string) int {
 	if len(args) == 0 {
-		fmt.Fprintln(os.Stderr, "usage: ra8ci <task>|tasks|server|agent|sync|backup refresh|keygen|board status|take|extend|cancel|db migrate|report slow|run submit|run status")
+		fmt.Fprintln(os.Stderr, "usage: ra8ci <task>|tasks|server|agent|sync|backup refresh|keygen|board status|take|extend|cancel|db migrate|report slow|github check|run submit|run status")
 		return 2
 	}
 	var err error
@@ -76,6 +77,8 @@ func run(ctx context.Context, args []string) int {
 			return usageError("sync takes no arguments")
 		}
 		err = syncLocalRuns(ctx)
+	case "github":
+		err = githubCommand(ctx, args[1:])
 	case "backup":
 		err = backupCommand(ctx, args[1:])
 	case "board":
@@ -409,6 +412,34 @@ func runAgent(ctx context.Context) error {
 		return nil
 	}
 	return err
+}
+
+// githubCommand checks that the configured scale-set credentials can establish
+// and cleanly close an official GitHub message session without consuming jobs.
+func githubCommand(ctx context.Context, args []string) error {
+	if len(args) != 1 || args[0] != "check" {
+		return errors.New("usage: ra8ci github check")
+	}
+	config, enabled, err := github.LoadSessionConfigFromEnv()
+	if err != nil {
+		return err
+	}
+	if !enabled {
+		return errors.New("GitHub scale-set integration is not configured")
+	}
+	session, err := github.OpenSession(ctx, config)
+	if err != nil {
+		return err
+	}
+	closeCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	if err := session.Close(closeCtx); err != nil {
+		return fmt.Errorf("close GitHub scale-set check session: %w", err)
+	}
+	return json.NewEncoder(os.Stdout).Encode(map[string]any{
+		"connected": true, "owner": config.Owner, "scale_set_id": config.ScaleSetID,
+		"max_runners": config.MaxRunners,
+	})
 }
 
 func usageError(message string) int {
