@@ -18,6 +18,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/actions/scaleset"
 	"github.com/bsikar/ra8-firmware/tools/ra8ci/internal/github"
 	"github.com/bsikar/ra8-firmware/tools/ra8ci/internal/proxmox"
 	"github.com/bsikar/ra8-firmware/tools/ra8ci/internal/store"
@@ -296,10 +297,9 @@ func (testObserver) Registered(_ context.Context, _ store.RunnerVM, job github.J
 	id, _ := store.NewID()
 	return RunnerObservation{RunnerID: int64(job.RunnerID), RunnerName: job.RunnerName, EvidenceID: id, ObservedAt: time.Now()}, nil
 }
-func (testObserver) DrainAndDeregister(_ context.Context, vm store.RunnerVM) (RunnerObservation, error) {
+func (testObserver) DrainAndDeregister(_ context.Context, vm store.RunnerVM, _ github.Job) (RunnerObservation, error) {
 	id, _ := store.NewID()
-	approval, _ := store.NewID()
-	return RunnerObservation{RunnerID: vm.ExternalRunnerID, RunnerName: vm.ExternalRunnerName, EvidenceID: id, ObservedAt: time.Now(), Drained: true, NoActiveJob: true, RunnerDeregistered: true, ApprovalID: approval}, nil
+	return RunnerObservation{RunnerID: vm.ExternalRunnerID, RunnerName: vm.ExternalRunnerName, EvidenceID: id, ObservedAt: time.Now(), Drained: true, NoActiveJob: true, RunnerDeregistered: true}, nil
 }
 
 type testBackupGate struct{ err error }
@@ -388,6 +388,25 @@ func fakeUPID(kind string) string {
 	return "UPID:pve:00000001:00000000:ABCD:" + kind + ":9000:api@pve!token:"
 }
 
+func mustDistinctID(t *testing.T, other string) string {
+	t.Helper()
+	id, err := store.NewID()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if id == other {
+		return mustDistinctID(t, other)
+	}
+	return id
+}
+
+func completedJob(job github.Job) github.Job {
+	job.Kind = scaleset.MessageTypeJobCompleted
+	job.Result = "Succeeded"
+	job.FinishTime = time.Now().UTC()
+	return job
+}
+
 func testHarness(t *testing.T) (*Handler, *memoryLedger, *fakeProxmox, *testBootstrapper, github.Job) {
 	t.Helper()
 	fake := &fakeProxmox{}
@@ -406,7 +425,7 @@ func testHarness(t *testing.T) (*Handler, *memoryLedger, *fakeProxmox, *testBoot
 		t.Fatal(err)
 	}
 	approval, _ := store.NewID()
-	config := Options{Actor: "github-scaler", ScaleSetID: 42, VMIDs: []int{9000}, Node: "pve", Pool: "ra8-tf-lab", Storage: "ra8-tf-lab", TemplateVMID: 9001, TemplateName: "ra8-lab-template", TemplateDigest: testDigest, BackupApprovalID: approval}
+	config := Options{Actor: "github-scaler", ScaleSetID: 42, VMIDs: []int{9000}, Node: "pve", Pool: "ra8-tf-lab", Storage: "ra8-tf-lab", TemplateVMID: 9001, TemplateName: "ra8-lab-template", TemplateDigest: testDigest, BackupApprovalID: approval, CleanupApprovalID: mustDistinctID(t, approval)}
 	policy, err := github.NewPolicy("bsikar", "ra8-firmware", []string{testWorkflow}, []string{"push"}, []string{"CI / test-go"}, []string{"ra8ci"})
 	if err != nil {
 		t.Fatal(err)
@@ -440,7 +459,7 @@ func TestFullLifecycleUsesOneVMAndDeletesOnlyOwnedGuest(t *testing.T) {
 	if err := h.Process(ctx, github.Message{ScaleSetID: 42, Started: []github.Job{job}}); err != nil {
 		t.Fatal(err)
 	}
-	if err := h.Process(ctx, github.Message{ScaleSetID: 42, Completed: []github.Job{job}}); err != nil {
+	if err := h.Process(ctx, github.Message{ScaleSetID: 42, Completed: []github.Job{completedJob(job)}}); err != nil {
 		t.Fatal(err)
 	}
 	vm, _ = ledger.GetRunnerVMByJob(ctx, 42, job.JobID)
@@ -548,6 +567,11 @@ func TestConstructorRejectsMissingApprovals(t *testing.T) {
 		t.Fatal("missing backup approval accepted")
 	}
 	config = h.config
+	config.CleanupApprovalID = config.BackupApprovalID
+	if _, err := NewHandler(config, h.ledger, h.vms, h.metadata, h.bootstrap, h.runners, h.backup, h.admission); err == nil {
+		t.Fatal("reused backup approval for cleanup accepted")
+	}
+	config = h.config
 	config.VMIDs = []int{9000, 9000}
 	if _, err := NewHandler(config, h.ledger, h.vms, h.metadata, h.bootstrap, h.runners, h.backup, h.admission); err == nil {
 		t.Fatal("duplicate VMIDs accepted")
@@ -572,7 +596,7 @@ func TestBadEventIdentityCannotBindOrCleanupRunner(t *testing.T) {
 	if err := h.Process(ctx, github.Message{ScaleSetID: 42, Started: []github.Job{bad}}); err == nil {
 		t.Fatal("foreign started event accepted")
 	}
-	if err := h.Process(ctx, github.Message{ScaleSetID: 42, Completed: []github.Job{bad}}); err == nil {
+	if err := h.Process(ctx, github.Message{ScaleSetID: 42, Completed: []github.Job{completedJob(bad)}}); err == nil {
 		t.Fatal("foreign completion deleted runner")
 	}
 	vm, _ := ledger.GetRunnerVMByJob(ctx, 42, job.JobID)
@@ -623,7 +647,7 @@ func TestEarlyCompletionMonotonicallyFencesAssignment(t *testing.T) {
 	if _, _, err := ledger.ReserveRunnerVM(context.Background(), h.config.Actor, input); err != nil {
 		t.Fatal(err)
 	}
-	if err := h.Process(context.Background(), github.Message{ScaleSetID: 42, Completed: []github.Job{job}}); err == nil {
+	if err := h.Process(context.Background(), github.Message{ScaleSetID: 42, Completed: []github.Job{completedJob(job)}}); err == nil {
 		t.Fatal("early completion pretended to release unverified reservation")
 	}
 	vm, _ := ledger.GetRunnerVMByJob(context.Background(), 42, job.JobID)

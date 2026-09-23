@@ -36,6 +36,7 @@ type Options struct {
 	TemplateName      string
 	TemplateDigest    string
 	BackupApprovalID  string
+	CleanupApprovalID string
 	MaxReconcileBatch int
 }
 
@@ -70,11 +71,12 @@ type BootstrapReceipt struct {
 	PreparedAt         time.Time
 }
 
-// RunnerObserver must use independent GitHub/guest facts, not the message
-// alone, to bind a runner and prove a job has drained before poweroff.
+// RunnerObserver independently verifies runner registration and deregistration.
+// A durable terminal GitHub completion event proves that the bound runner has
+// no active job; the observer never treats registration alone as idle proof.
 type RunnerObserver interface {
 	Registered(context.Context, store.RunnerVM, github.Job) (RunnerObservation, error)
-	DrainAndDeregister(context.Context, store.RunnerVM) (RunnerObservation, error)
+	DrainAndDeregister(context.Context, store.RunnerVM, github.Job) (RunnerObservation, error)
 }
 
 type RunnerObservation struct {
@@ -85,7 +87,6 @@ type RunnerObservation struct {
 	Drained            bool
 	NoActiveJob        bool
 	RunnerDeregistered bool
-	ApprovalID         string
 }
 
 // BackupGate checks current off-VM database backup/restore readiness before
@@ -145,7 +146,7 @@ var _ Ledger = (*store.Store)(nil)
 func NewHandler(cfg Options, ledger Ledger, vms Provisioner, metadata MetadataResolver, bootstrap Bootstrapper, runners RunnerObserver, backup BackupGate, admission github.Admission) (*Handler, error) {
 	if ledger == nil || vms == nil || metadata == nil || bootstrap == nil || runners == nil || backup == nil || admission == nil ||
 		cfg.Actor == "" || len(cfg.Actor) > 256 || cfg.ScaleSetID <= 0 || !infrastructurePart.MatchString(cfg.Node) || !infrastructurePart.MatchString(cfg.Pool) || cfg.Pool == "ra8ci-control" || !infrastructurePart.MatchString(cfg.Storage) ||
-		cfg.TemplateVMID < 9000 || !runnerName.MatchString(cfg.TemplateName) || !digestPattern.MatchString(cfg.TemplateDigest) || !store.ValidID(cfg.BackupApprovalID) || len(cfg.VMIDs) == 0 {
+		cfg.TemplateVMID < 9000 || !runnerName.MatchString(cfg.TemplateName) || !digestPattern.MatchString(cfg.TemplateDigest) || !store.ValidID(cfg.BackupApprovalID) || !store.ValidID(cfg.CleanupApprovalID) || cfg.BackupApprovalID == cfg.CleanupApprovalID || len(cfg.VMIDs) == 0 {
 		return nil, errors.New("scaler requires approved infrastructure, backup, and trusted service interfaces")
 	}
 	seen := make(map[int]struct{}, len(cfg.VMIDs))
