@@ -86,6 +86,7 @@ type Task struct {
 type StartAttemptInput struct {
 	TaskID       string          `json:"task_id"`
 	ActorID      string          `json:"actor_id"`
+	ClaimedBy    string          `json:"-"`
 	AgentID      string          `json:"agent_id,omitempty"`
 	BoardLeaseID string          `json:"board_lease_id,omitempty"`
 	Engine       string          `json:"engine"`
