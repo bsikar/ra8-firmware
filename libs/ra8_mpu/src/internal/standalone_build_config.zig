@@ -5,4 +5,5 @@
 //! compile. Real library and test builds receive generated options from
 //! build.zig instead.
 
+/// Use the host barrier stand-ins while the ABI source compiles in isolation.
 pub const off_target: bool = true;
