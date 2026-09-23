@@ -83,7 +83,7 @@ func (s *Store) ClaimAgentTask(ctx context.Context, certDER []byte, facts protoc
 	for _, name := range tasks.Names() {
 		definition, _ := tasks.Task(name)
 		if definition.Scope == "safe-local-read-only" && definition.BoardPolicy == "none" &&
-			len(definition.Steps) == 1 && definition.SupportsOS(facts.OS) {
+			len(definition.Steps) > 0 && definition.SupportsOS(facts.OS) {
 			names = append(names, name)
 		}
 	}
@@ -137,7 +137,7 @@ func (s *Store) ClaimAgentTask(ctx context.Context, certDER []byte, facts protoc
 			return nil, nil
 		}
 		definition, found := tasks.Task(prior.Task.Name)
-		if !found || definition.Scope != "safe-local-read-only" || len(definition.Steps) != 1 ||
+		if !found || definition.Scope != "safe-local-read-only" || len(definition.Steps) == 0 ||
 			definition.BoardPolicy != "none" || !definition.SupportsOS(agent.OS) {
 			return nil, ErrConflict
 		}
@@ -200,7 +200,7 @@ func (s *Store) ClaimAgentTask(ctx context.Context, certDER []byte, facts protoc
 	}
 	definition, found := tasks.Task(taskName)
 	if !found || definition.Scope != "safe-local-read-only" || definition.BoardPolicy != "none" ||
-		len(definition.Steps) != 1 ||
+		len(definition.Steps) == 0 ||
 		!definition.SupportsOS(facts.OS) || deadlineSeconds != definition.DeadlineSeconds {
 		return nil, fmt.Errorf("%w: unreviewed task definition", ErrConflict)
 	}
@@ -460,12 +460,12 @@ func (s *Store) SaveAgentLog(ctx context.Context, certDER []byte, chunk protocol
 		return fmt.Errorf("%w: log sequence: %v", ErrUnavailable, err)
 	}
 	if chunk.Sequence <= maxSequence {
-		var oldStream, oldSHA string
+		var oldStream, oldSHA, oldStep string
 		var oldData []byte
-		err = tx.QueryRow(ctx, `SELECT stream, sha256, bytes FROM log_chunks
+		err = tx.QueryRow(ctx, `SELECT stream, sha256, COALESCE(agent_step_key, ''), bytes FROM log_chunks
 			WHERE attempt_id=$1 AND seq=$2`, chunk.AttemptID, chunk.Sequence).Scan(
-			&oldStream, &oldSHA, &oldData)
-		if err != nil || oldStream != chunk.Stream || oldSHA != chunk.SHA256 || string(oldData) != string(data) {
+			&oldStream, &oldSHA, &oldStep, &oldData)
+		if err != nil || oldStream != chunk.Stream || oldSHA != chunk.SHA256 || oldStep != chunk.StepName || string(oldData) != string(data) {
 			return ErrConflict
 		}
 	} else {
@@ -474,9 +474,9 @@ func (s *Store) SaveAgentLog(ctx context.Context, certDER []byte, chunk protocol
 			return ErrConflict
 		}
 		_, err = tx.Exec(ctx, `INSERT INTO log_chunks
-			(attempt_id, stream, seq, monotonic_offset_ns, sha256, bytes)
-			VALUES ($1,$2,$3,0,$4,$5)`, chunk.AttemptID, chunk.Stream,
-			chunk.Sequence, chunk.SHA256, data)
+			(attempt_id, stream, seq, monotonic_offset_ns, sha256, bytes, agent_step_key)
+			VALUES ($1,$2,$3,0,$4,$5,$6)`, chunk.AttemptID, chunk.Stream,
+			chunk.Sequence, chunk.SHA256, data, chunk.StepName)
 		if err != nil {
 			return fmt.Errorf("%w: insert log: %v", ErrUnavailable, err)
 		}
@@ -674,28 +674,59 @@ const (
 	maxAgentLogChunks  = 4096
 )
 
+func validPartialStepEvidence(receipt protocol.TerminalReceipt, expectedSteps int) bool {
+	if expectedSteps < 0 || len(receipt.Steps) > expectedSteps {
+		return false
+	}
+	if len(receipt.Steps) == expectedSteps || !receipt.EvidenceComplete {
+		return true
+	}
+	if len(receipt.Steps) == 0 {
+		return false
+	}
+	last := receipt.Steps[len(receipt.Steps)-1]
+	return receipt.TimedOut || receipt.Cancelled || last.TimedOut || last.Cancelled || last.ExitCode != 0
+}
+
 func verifyReceiptLogs(ctx context.Context, tx pgx.Tx, receipt protocol.TerminalReceipt) error {
-	rows, err := tx.Query(ctx, `SELECT seq, stream, bytes FROM log_chunks
-		WHERE attempt_id=$1 ORDER BY seq`, receipt.AttemptID)
+	type stepLog struct {
+		stdout, stderr           hash.Hash
+		stdoutBytes, stderrBytes int64
+	}
+	logs := make(map[string]*stepLog, len(receipt.Steps))
+	for _, step := range receipt.Steps {
+		if step.Name == "" || logs[step.Name] != nil {
+			return ErrConflict
+		}
+		logs[step.Name] = &stepLog{stdout: sha256.New(), stderr: sha256.New()}
+	}
+	rows, err := tx.Query(ctx, `SELECT seq, stream, agent_step_key, bytes FROM log_chunks WHERE attempt_id=$1 ORDER BY seq`, receipt.AttemptID)
 	if err != nil {
 		return fmt.Errorf("%w: read terminal logs: %v", ErrUnavailable, err)
 	}
 	defer rows.Close()
-	digests := map[string]hash.Hash{"stdout": sha256.New(), "stderr": sha256.New()}
-	byteCounts := map[string]int64{"stdout": 0, "stderr": 0}
 	var last int64
 	for rows.Next() {
 		var seq int64
-		var stream string
+		var stream, stepName string
 		var data []byte
-		if err := rows.Scan(&seq, &stream, &data); err != nil {
+		if err := rows.Scan(&seq, &stream, &stepName, &data); err != nil {
 			return fmt.Errorf("%w: scan terminal log: %v", ErrUnavailable, err)
 		}
-		if seq != last+1 || digests[stream] == nil {
+		step := logs[stepName]
+		if seq != last+1 || step == nil {
 			return ErrConflict
 		}
-		_, _ = digests[stream].Write(data)
-		byteCounts[stream] += int64(len(data))
+		switch stream {
+		case "stdout":
+			_, _ = step.stdout.Write(data)
+			step.stdoutBytes += int64(len(data))
+		case "stderr":
+			_, _ = step.stderr.Write(data)
+			step.stderrBytes += int64(len(data))
+		default:
+			return ErrConflict
+		}
 		last = seq
 	}
 	if err := rows.Err(); err != nil {
@@ -710,14 +741,13 @@ func verifyReceiptLogs(ctx context.Context, tx pgx.Tx, receipt protocol.Terminal
 		}
 		return nil
 	}
-	if len(receipt.Steps) != 1 {
-		return ErrConflict
-	}
-	step := receipt.Steps[0]
-	if step.StdoutBytes != byteCounts["stdout"] || step.StderrBytes != byteCounts["stderr"] ||
-		step.StdoutSHA256 != hex.EncodeToString(digests["stdout"].Sum(nil)) ||
-		step.StderrSHA256 != hex.EncodeToString(digests["stderr"].Sum(nil)) {
-		return ErrConflict
+	for _, summary := range receipt.Steps {
+		step := logs[summary.Name]
+		if step.stdoutBytes != summary.StdoutBytes || step.stderrBytes != summary.StderrBytes ||
+			hex.EncodeToString(step.stdout.Sum(nil)) != summary.StdoutSHA256 ||
+			hex.EncodeToString(step.stderr.Sum(nil)) != summary.StderrSHA256 {
+			return ErrConflict
+		}
 	}
 	return nil
 }

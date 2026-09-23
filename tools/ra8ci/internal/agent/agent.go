@@ -203,7 +203,9 @@ func (agent *Agent) execute(parent context.Context, assignment protocol.Assignme
 	hbCtx, hbCancel := context.WithCancel(ctx)
 	hbDone := make(chan error, 1)
 	go func() { hbDone <- agent.heartbeat(hbCtx, assignment, cancel) }()
-	result, runErr := executor.Run(ctx, agent.root, task, &streamWriter{uploader, "stdout"}, &streamWriter{uploader, "stderr"})
+	result, runErr := executor.Run(ctx, agent.root, task, io.Discard, io.Discard, func(stepName string) (io.Writer, io.Writer) {
+		return &streamWriter{uploader: uploader, stream: "stdout", stepName: stepName}, &streamWriter{uploader: uploader, stream: "stderr", stepName: stepName}
+	})
 	hbCancel()
 	hbErr := <-hbDone
 	runErr = errors.Join(runErr, hbErr)
@@ -359,13 +361,14 @@ type logUploader struct {
 type streamWriter struct {
 	uploader *logUploader
 	stream   string
+	stepName string
 }
 
 func (writer *streamWriter) Write(data []byte) (int, error) {
-	return writer.uploader.write(writer.stream, data)
+	return writer.uploader.write(writer.stepName, writer.stream, data)
 }
 
-func (uploader *logUploader) write(stream string, data []byte) (int, error) {
+func (uploader *logUploader) write(stepName, stream string, data []byte) (int, error) {
 	uploader.mu.Lock()
 	defer uploader.mu.Unlock()
 	if uploader.err != nil {
@@ -382,7 +385,7 @@ func (uploader *logUploader) write(stream string, data []byte) (int, error) {
 		chunk := protocol.LogChunk{SchemaVersion: protocol.Version,
 			AssignmentID: uploader.assignment.AssignmentID, AttemptID: uploader.assignment.AttemptID,
 			AssignmentVersion: uploader.assignment.AssignmentVersion, FencingToken: uploader.assignment.FencingToken,
-			Sequence: uploader.sequence + 1, Stream: stream,
+			Sequence: uploader.sequence + 1, Stream: stream, StepName: stepName,
 			DataBase64: base64.StdEncoding.EncodeToString(part), SHA256: hex.EncodeToString(digest[:])}
 		if err := chunk.Validate(); err != nil {
 			uploader.err = err

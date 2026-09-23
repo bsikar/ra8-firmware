@@ -82,6 +82,27 @@ func TestRunTaskStreamsAndRecordsStep(t *testing.T) {
 	}
 }
 
+func TestRunTaskAttributesStreamsToEachStep(t *testing.T) {
+	task := fixtureTask("log")
+	task.Steps = append(task.Steps, catalog.Step{Name: "second-step", Program: os.Args[0], Args: helperArgs("log")})
+	outputs := map[string][2]*bytes.Buffer{}
+	result, err := runTaskWithStepWriters(context.Background(), t.TempDir(), task, func(name string) (io.Writer, io.Writer) {
+		streams := [2]*bytes.Buffer{&bytes.Buffer{}, &bytes.Buffer{}}
+		outputs[name] = streams
+		return streams[0], streams[1]
+	}, time.Millisecond)
+	if err != nil || result.ExitCode != 0 || len(result.Steps) != 2 {
+		t.Fatalf("multi-step result=%+v err=%v", result, err)
+	}
+	for _, step := range result.Steps {
+		streams := outputs[step.Name]
+		if streams[0].String() != "stdout\n" || streams[1].String() != "stderr\n" ||
+			step.StdoutBytes != int64(streams[0].Len()) || step.StderrBytes != int64(streams[1].Len()) {
+			t.Fatalf("step %q output was not attributed: %+v", step.Name, step)
+		}
+	}
+}
+
 func TestRunTaskReturnsExactChildExit(t *testing.T) {
 	task := fixtureTask("exit17")
 	var stdout, stderr bytes.Buffer

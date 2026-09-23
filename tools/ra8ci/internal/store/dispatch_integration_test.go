@@ -105,7 +105,7 @@ func TestIntegrationAgentDispatchEvidenceAndFence(t *testing.T) {
 	chunk := protocol.LogChunk{SchemaVersion: protocol.Version,
 		AssignmentID: grant.AssignmentID, AttemptID: grant.AttemptID,
 		AssignmentVersion: grant.AssignmentVersion, FencingToken: grant.FencingToken,
-		Sequence: 1, Stream: "stdout", DataBase64: base64.StdEncoding.EncodeToString(data),
+		Sequence: 1, Stream: "stdout", StepName: "format-tree-check", DataBase64: base64.StdEncoding.EncodeToString(data),
 		SHA256: hex.EncodeToString(sum[:])}
 	if err := st.SaveAgentLog(ctx, cert, chunk); err != nil {
 		t.Fatal(err)
