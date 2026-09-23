@@ -243,6 +243,30 @@ func (s *Store) applyBoardCommand(ctx context.Context, actor BoardActor, command
 	} else if after.Version != before.Version {
 		return before, nil, fmt.Errorf("%w: reducer advanced version without events", ErrConflict)
 	}
+	if commandErr == nil && proofError == nil {
+		reconciledBy := ""
+		switch c := trustedCommand.(type) {
+		case board.Release:
+			if c.NeutralReceipt != "" {
+				reconciledBy = "neutral_release"
+			}
+		case board.CompleteRecovery:
+			if c.NeutralReceipt != "" {
+				reconciledBy = "neutral_recovery"
+			}
+		}
+		if reconciledBy != "" {
+			tag, closeErr := tx.Exec(ctx, "UPDATE board_segments SET ended_at=clock_timestamp(), outcome='failed' WHERE board_id=$1 AND ended_at IS NULL", actor.boardID)
+			if closeErr != nil {
+				return before, nil, fmt.Errorf("%w: reconcile interrupted board segments: %v", ErrUnavailable, closeErr)
+			}
+			if tag.RowsAffected() > 0 {
+				if err := appendAudit(ctx, tx, actor.id, "board.segment.reconciled", "board", actor.boardID, "ok", "", "", "", map[string]any{"count": tag.RowsAffected(), "proof": reconciledBy}); err != nil {
+					return before, nil, fmt.Errorf("%w: segment reconciliation audit: %v", ErrUnavailable, err)
+				}
+			}
+		}
+	}
 	if err := tx.Commit(ctx); err != nil {
 		if isSerializationFailure(err) {
 			return before, nil, fmt.Errorf("%w: concurrent board transition: %v", ErrConflict, err)

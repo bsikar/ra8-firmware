@@ -52,6 +52,8 @@ func RegisterBoardRoutes(mux *http.ServeMux, st BoardStore, verifier store.Neutr
 	mux.HandleFunc("POST /v1/boards/{board_id}/agent/unavailable", h.agentUnavailable)
 	mux.HandleFunc("POST /v1/boards/{board_id}/recovery/start", h.recoveryStart)
 	mux.HandleFunc("POST /v1/boards/{board_id}/quarantine", h.quarantine)
+	mux.HandleFunc("POST /v1/boards/{board_id}/segments/begin", h.segmentBegin)
+	mux.HandleFunc("POST /v1/boards/{board_id}/segments/{segment_id}/finish", h.segmentFinish)
 	return nil
 }
 

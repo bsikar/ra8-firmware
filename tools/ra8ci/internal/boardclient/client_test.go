@@ -782,3 +782,59 @@ func TestCommandAndLeaseRejectMalformedServerState(t *testing.T) {
 		t.Fatalf("wrong waiter accepted: %v", err)
 	}
 }
+
+func TestBeginAndFinishSegmentUseCurrentLeaseFence(t *testing.T) {
+	state := activeBoard(t)
+	token := testToken(state)
+	var began, finished bool
+	c, closeServer := testClient(t, func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/v1/boards/ek-ra8d2":
+			jsonResponse(w, http.StatusOK, state)
+		case "/v1/boards/ek-ra8d2/segments/begin":
+			var req struct {
+				ExpectedVersion uint64 `json:"expected_version"`
+				LeaseID         string `json:"lease_id"`
+				Generation      uint64 `json:"generation"`
+				Key             string `json:"key"`
+				Bound           int64  `json:"bound_milliseconds"`
+				Margin          int64  `json:"recovery_margin_ms"`
+			}
+			if r.Method != http.MethodPost || json.NewDecoder(r.Body).Decode(&req) != nil ||
+				req.ExpectedVersion != state.Version || req.LeaseID != token.LeaseID ||
+				req.Generation != token.Generation || req.Key != "flash" || req.Bound != 25000 || req.Margin != 3000 {
+				t.Errorf("incorrect atomic segment begin request: %+v", req)
+				w.WriteHeader(http.StatusBadRequest)
+				return
+			}
+			began = true
+			jsonResponse(w, http.StatusCreated, store.BoardSegment{ID: testProofID, BoardID: token.BoardID,
+				LeaseID: token.LeaseID, Generation: token.Generation, Key: req.Key})
+		case "/v1/boards/ek-ra8d2/segments/" + testProofID + "/finish":
+			var req struct {
+				LeaseID    string `json:"lease_id"`
+				Generation uint64 `json:"generation"`
+				Outcome    string `json:"outcome"`
+			}
+			if r.Method != http.MethodPost || json.NewDecoder(r.Body).Decode(&req) != nil ||
+				req.LeaseID != token.LeaseID || req.Generation != token.Generation || req.Outcome != "completed" {
+				t.Errorf("incorrect atomic segment finish request: %+v", req)
+				w.WriteHeader(http.StatusBadRequest)
+				return
+			}
+			finished = true
+			jsonResponse(w, http.StatusOK, map[string]string{"outcome": req.Outcome})
+		default:
+			t.Errorf("unexpected segment route %s", r.URL.Path)
+			w.WriteHeader(http.StatusNotFound)
+		}
+	})
+	defer closeServer()
+	segment, err := c.BeginSegment(context.Background(), token, "flash", 25*time.Second, 3*time.Second)
+	if err != nil || !began || segment.ID != testProofID || segment.Key != "flash" {
+		t.Fatalf("segment begin failed: segment=%+v began=%v err=%v", segment, began, err)
+	}
+	if err := c.FinishSegment(context.Background(), token, segment.ID, "completed"); err != nil || !finished {
+		t.Fatalf("segment finish failed: finished=%v err=%v", finished, err)
+	}
+}

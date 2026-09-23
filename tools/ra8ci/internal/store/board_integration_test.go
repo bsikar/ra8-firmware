@@ -275,3 +275,48 @@ func boardTestActor(t *testing.T, ctx context.Context, s *Store, pool *pgxpool.P
 	}
 	return actor
 }
+func TestIntegrationBoardSegmentAndHumanWaiterSerialize(t *testing.T) {
+	s, pool := integrationStore(t)
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+	boardID := "board-" + mustID(t)
+	agent := boardTestActor(t, ctx, s, pool, boardID, "agent", "submitter")
+	human := boardTestActor(t, ctx, s, pool, boardID, "human", "board_human")
+	boardAgent := boardTestActor(t, ctx, s, pool, boardID, "board_agent", "board_agent")
+	now := time.Now().UTC()
+	waiter := board.Waiter{ID: mustID(t), LeaseID: mustID(t), Holder: agent.ID(),
+		Class: board.ClassAI, Reason: "bounded board segment", Duration: time.Minute}
+	pending, _, err := s.ApplyBoardCommand(ctx, agent, board.Enqueue{Waiter: waiter}, 0, nil, nil, now)
+	if err != nil {
+		t.Fatal(err)
+	}
+	active, _, err := s.ApplyBoardCommand(ctx, boardAgent, board.AcknowledgeGrant{
+		LeaseID: waiter.LeaseID, Generation: pending.Generation, InstalledGeneration: pending.Generation,
+	}, pending.Version, nil, nil, now.Add(time.Second))
+	if err != nil || active.Phase != board.Active {
+		t.Fatalf("agent did not install lease: phase=%s err=%v", active.Phase, err)
+	}
+	token := board.Token{BoardID: boardID, LeaseID: waiter.LeaseID, Generation: active.Generation}
+	segment, err := s.BeginBoardSegment(ctx, agent, active.Version, token, "flash", 20*time.Second, 3*time.Second)
+	if err != nil || segment.ID == "" || !segment.DeadlineAt.After(segment.StartedAt) {
+		t.Fatalf("bounded segment did not start: segment=%+v err=%v", segment, err)
+	}
+	humanWaiter := board.Waiter{ID: mustID(t), LeaseID: mustID(t), Holder: human.ID(),
+		Class: board.ClassHuman, Reason: "human board use", Duration: time.Minute}
+	yielding, _, err := s.ApplyBoardCommand(ctx, human, board.Enqueue{Waiter: humanWaiter}, active.Version, nil, nil, now.Add(2*time.Second))
+	if err != nil || yielding.Phase != board.YieldRequested {
+		t.Fatalf("human waiter did not request cooperative yield: phase=%s err=%v", yielding.Phase, err)
+	}
+	if _, err := s.BeginBoardSegment(ctx, agent, yielding.Version, token, "next", time.Second, 0); err == nil {
+		t.Fatal("new segment started after human waiter queued")
+	}
+	if err := s.FinishBoardSegment(ctx, agent, segment.ID, token, "yielded"); err != nil {
+		t.Fatalf("holder could not finish its already-started bounded segment: %v", err)
+	}
+	var outcome string
+	var endedAt time.Time
+	if err := pool.QueryRow(ctx, "SELECT outcome,ended_at FROM board_segments WHERE id=$1", segment.ID).Scan(&outcome, &endedAt); err != nil ||
+		outcome != "yielded" || endedAt.IsZero() {
+		t.Fatalf("segment completion not durable: outcome=%q ended=%v err=%v", outcome, endedAt, err)
+	}
+}
