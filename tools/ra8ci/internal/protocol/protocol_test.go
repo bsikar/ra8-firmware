@@ -28,7 +28,7 @@ func TestAssignmentValidation(t *testing.T) {
 		t.Fatal(err)
 	}
 	mutations := []func(*Assignment){
-		func(a *Assignment) { a.SchemaVersion = 2 },
+		func(a *Assignment) { a.SchemaVersion = Version + 1 },
 		func(a *Assignment) { a.AssignmentID = "bad" },
 		func(a *Assignment) { a.AttemptID = "bad" },
 		func(a *Assignment) { a.AssignmentVersion = 0 },
@@ -79,7 +79,7 @@ func TestLogChunkValidation(t *testing.T) {
 	sum := sha256.Sum256(data)
 	chunk := LogChunk{
 		SchemaVersion: Version, AssignmentID: assignmentID, AttemptID: attemptID,
-		AssignmentVersion: 1, FencingToken: 1, Sequence: 1, Stream: "stdout",
+		AssignmentVersion: 1, FencingToken: 1, Sequence: 1, Stream: "stdout", StepName: "format-tree-check",
 		DataBase64: base64.StdEncoding.EncodeToString(data), SHA256: hex.EncodeToString(sum[:]),
 	}
 	if err := chunk.Validate(); err != nil {
@@ -87,11 +87,12 @@ func TestLogChunkValidation(t *testing.T) {
 	}
 	for _, mutate := range []func(*LogChunk){
 		func(c *LogChunk) { c.Sequence = 0 },
+		func(c *LogChunk) { c.StepName = " " },
 		func(c *LogChunk) { c.Stream = "combined" },
 		func(c *LogChunk) { c.SHA256 = strings.Repeat("0", 64) },
 		func(c *LogChunk) { c.DataBase64 = "invalid!" },
 		func(c *LogChunk) { c.DataBase64 = "" },
-		func(c *LogChunk) { c.SchemaVersion = 2 },
+		func(c *LogChunk) { c.SchemaVersion = Version + 1 },
 	} {
 		copy := chunk
 		mutate(&copy)

@@ -22,7 +22,7 @@ import (
 )
 
 const (
-	Version       = 1
+	Version       = 2
 	MaxLogBytes   = 32 << 10
 	MaxJSONBytes  = 1 << 20
 	MaxDeadlineMS = 24 * 60 * 60 * 1000
@@ -125,6 +125,7 @@ type LogChunk struct {
 	FencingToken      int64  `json:"fencing_token"`
 	Sequence          int64  `json:"sequence"`
 	Stream            string `json:"stream"`
+	StepName          string `json:"step_name"`
 	DataBase64        string `json:"data_base64"`
 	SHA256            string `json:"sha256"`
 }
@@ -229,7 +230,8 @@ func (facts HostFacts) Validate() error {
 func (chunk LogChunk) Validate() error {
 	if chunk.SchemaVersion != Version || !ValidID(chunk.AssignmentID) || !ValidID(chunk.AttemptID) || chunk.AssignmentVersion < 1 ||
 		chunk.FencingToken < 1 || chunk.Sequence < 1 ||
-		(chunk.Stream != "stdout" && chunk.Stream != "stderr") || !ValidSHA256(chunk.SHA256) {
+		(chunk.Stream != "stdout" && chunk.Stream != "stderr") ||
+		chunk.StepName == "" || len(chunk.StepName) > 128 || strings.TrimSpace(chunk.StepName) != chunk.StepName || !ValidSHA256(chunk.SHA256) {
 		return ErrInvalid
 	}
 	data, err := base64.StdEncoding.DecodeString(chunk.DataBase64)
