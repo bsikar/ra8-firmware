@@ -30,13 +30,14 @@ const (
 )
 
 type memoryLedger struct {
-	mu           sync.Mutex
-	vm           store.RunnerVM
-	op           store.RunnerVMOperation
-	loseUPIDOnce bool
-	reserveCalls int
-	beginCalls   int
-	resolveCalls int
+	mu            sync.Mutex
+	vm            store.RunnerVM
+	op            store.RunnerVMOperation
+	loseUPIDOnce  bool
+	reserveCalls  int
+	beginCalls    int
+	resolveCalls  int
+	resolvedProof store.RunnerVMResolution
 }
 
 func (m *memoryLedger) GetRunnerVMByJob(_ context.Context, scaleSetID int64, jobID string) (store.RunnerVM, error) {
@@ -187,6 +188,7 @@ func (m *memoryLedger) ResolveRunnerVMOperation(_ context.Context, _, id string,
 		proof.PlanSHA256 != m.op.PlanSHA256 || proof.StateIdentitySHA256 != m.op.StateIdentitySHA256) {
 		return store.RunnerVM{}, store.ErrDenied
 	}
+	m.resolvedProof = proof
 	m.resolveCalls++
 	m.vm.State = store.VMOperationSuccessState(m.op.Kind)
 	if m.op.Kind == "start" && m.vm.CleanupRequested {
