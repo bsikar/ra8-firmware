@@ -93,6 +93,17 @@ func TestRunStepNativeDriverAsmGuardSelftest(t *testing.T) {
 	}
 }
 
+func TestRunStepNativeAssertCastsSelftest(t *testing.T) {
+	var stdout, stderr bytes.Buffer
+	result, err := runStep(context.Background(), t.TempDir(), nil,
+		catalog.Step{Name: "assert-casts-selftest", Program: "ra8ci:assert-casts", Args: []string{"--selftest"}},
+		&stdout, &stderr, time.Millisecond)
+	if err != nil || result.ExitCode != 0 || result.TimedOut || result.Cancelled || stderr.Len() != 0 ||
+		!strings.Contains(stdout.String(), "all cases pass") {
+		t.Fatalf("result=%+v stdout=%q stderr=%q err=%v", result, stdout.String(), stderr.String(), err)
+	}
+}
+
 func TestRunStepNativeGnuAttributeSelftest(t *testing.T) {
 	var stdout, stderr bytes.Buffer
 	result, err := runStep(context.Background(), t.TempDir(), nil,
