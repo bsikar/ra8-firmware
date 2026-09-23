@@ -909,7 +909,6 @@ _SCHEMA_GROUPS = (
             "checks/check_hum_register_map.py:BASELINE_COLUMNS",
             "checks/check_hum_register_map.py:BASELINE_FILE",
             "checks/check_inclusive_terminology.py:LEGACY_OK_RE",
-            "checks/check_inclusive_terminology_commits.py:LEGACY_OK",
             "checks/check_magic_numbers.py:MAGIC_CHECK_NAMES",
             "checks/check_magic_numbers.py:_NOLINT_BEGIN_RE",
             "checks/check_magic_numbers.py:_NOLINT_END_RE",

@@ -240,7 +240,7 @@ MAX_FINDINGS_SHOWN = 50
 SELF_EXEMPT_FILES: frozenset[str] = frozenset(
     {
         "scripts/checks/check_inclusive_terminology.py",
-        "scripts/checks/check_inclusive_terminology_commits.py",
+        "tools/ra8ci/internal/committerms/committerms.go",
         "docs/STYLE_GUIDE.md",
         "CLAUDE.md",
         ".claude/agents/style-reviewer.md",
