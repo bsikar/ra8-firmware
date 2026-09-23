@@ -601,6 +601,47 @@
         {"name": "ra8_wifi_get_mac", "calling_context": "task-only-non-reentrant", "ownership": "copies cached or freshly read station address into caller-owned output"},
         {"name": "ra8_wifi_get_ap", "calling_context": "task-only-non-reentrant", "ownership": "copies current access-point data into caller-owned output storage"}
       ]
+    },
+    {
+      "name": "ra8_ov5640",
+      "build_root": "libs/ra8_ov5640",
+      "public_header": "libs/ra8_ov5640/inc/ra8_ov5640.h",
+      "adapter": "libs/ra8_ov5640/src/ra8_ov5640_abi.zig",
+      "library_name": "ra8_ov5640",
+      "symbol_prefix": "ra8_ov5640_",
+      "compatibility_sha256": "e7422306f526f81719428d32b63ee6c0bddebc9caf6a646104de23d8cb947ab5",
+      "layout_assertions": [
+        "@sizeOf(JpegStatus) == 16",
+        "@alignOf(JpegStatus) == 4",
+        "@offsetOf(JpegStatus, \"encoded_bytes\") == 0",
+        "@offsetOf(JpegStatus, \"compression_width\") == 4",
+        "@offsetOf(JpegStatus, \"compression_height\") == 6",
+        "@offsetOf(JpegStatus, \"jpeg_ctrl01\") == 8",
+        "@offsetOf(JpegStatus, \"vfifo_ctrl00\") == 9",
+        "@offsetOf(JpegStatus, \"href_minimum_blanking\") == 10",
+        "@offsetOf(JpegStatus, \"fifo_overflow\") == 11",
+        "@offsetOf(JpegStatus, \"input_is_yuv422\") == 12",
+        "@offsetOf(JpegStatus, \"header_output\") == 13",
+        "@offsetOf(JpegStatus, \"compression_enabled\") == 14"
+      ],
+      "target_class": "host-ra8",
+      "targets": {"host": [], "ra8": ["-Dtarget=thumb-freestanding-eabihf", "-Dcpu=cortex_m85+fp_armv8-d32-fp64"]},
+      "run_host_tests_in_all_modes": false,
+      "c_include_dirs": ["libs/ra8_ov5640/inc", "libs/ra8_core/inc"],
+      "contract_tests": [
+        {"language": "c", "path": "tests/graphics/src/test_ra8_ov5640.c", "registration": "tests/cmake/unit_tests.cmake"},
+        {"language": "zig", "path": "libs/ra8_ov5640/tests/abi_test.zig", "registration": "libs/ra8_ov5640/.zig-test-contract.json"}
+      ],
+      "exports": [
+        {"name": "ra8_ov5640_init", "calling_context": "task-only-non-reentrant", "ownership": "initializes caller-owned device state and borrows callback/context pointers"},
+        {"name": "ra8_ov5640_probe", "calling_context": "task-only-non-reentrant", "ownership": "borrows initialized device and publishes the detected sensor ID to caller storage"},
+        {"name": "ra8_ov5640_configure", "calling_context": "task-only-non-reentrant", "ownership": "borrows initialized device and programs its sensor through injected callbacks"},
+        {"name": "ra8_ov5640_set_jpeg_quantization_scale", "calling_context": "task-only-non-reentrant", "ownership": "borrows initialized device and updates its JPEG encoder configuration"},
+        {"name": "ra8_ov5640_jpeg_status_get", "calling_context": "task-only-non-reentrant", "ownership": "borrows initialized device and writes a caller-owned status snapshot"},
+        {"name": "ra8_ov5640_stream_set", "calling_context": "task-only-non-reentrant", "ownership": "borrows initialized device and changes sensor streaming state"},
+        {"name": "ra8_ov5640_read_reg", "calling_context": "task-only-non-reentrant", "ownership": "borrows initialized device and writes one caller-owned register byte"},
+        {"name": "ra8_ov5640_write_reg", "calling_context": "task-only-non-reentrant", "ownership": "borrows initialized device and performs one register write"}
+      ]
     }
   ]
 }
