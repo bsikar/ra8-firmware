@@ -165,10 +165,10 @@ func (s *Store) ClaimNextBoardHILAttempt(ctx context.Context, actor BoardActor, 
 	var existingRaw []byte
 	var existing TaskHILAttempt
 	var existingTaskName string
-	var existingTaskVersion, existingDeadline int
+	var existingDeadline int
 	var existingCommit, existingSnapshot, existingCatalog string
 	err = tx.QueryRow(ctx, `SELECT a.id::text,a.task_id::text,a.attempt_no,a.state,a.started_at,a.deadline_at,
-		t.name,t.version,t.deadline_seconds,t.arguments,r.id::text,r.repository,r.branch,r.commit_sha,
+		t.name,t.deadline_seconds,t.arguments,r.id::text,r.repository,r.branch,r.commit_sha,
 		r.snapshot_sha256,r.catalog_sha256
 		FROM task_attempts a JOIN tasks t ON t.id=a.task_id JOIN runs r ON r.id=t.run_id
 		WHERE a.board_lease_id=$1 AND a.state='running' AND t.scope='hil' AND r.actor_id=$2
@@ -177,14 +177,14 @@ func (s *Store) ClaimNextBoardHILAttempt(ctx context.Context, actor BoardActor, 
 		    AND u.target_id=a.id::text AND u.reason->>'lease_id'=$1::text)
 		ORDER BY a.started_at DESC LIMIT 1`, leaseID, holderID, actor.id).Scan(
 		&existing.ID, &existing.TaskID, &existing.AttemptNo, &existing.State, &existing.StartedAt,
-		&existing.DeadlineAt, &existingTaskName, &existingTaskVersion, &existingDeadline,
+		&existing.DeadlineAt, &existingTaskName, &existingDeadline,
 		&existingRaw, &existing.RunID, &existing.Repository, &existing.Branch, &existingCommit,
 		&existingSnapshot, &existingCatalog)
 	if err == nil {
 		definition, found := definitions.Task(existingTaskName)
 		if !found || definition.Scope != "hil" || definition.BoardPolicy != "exclusive" ||
 			definition.HIL == nil || definition.HIL.BoardID != actor.boardID ||
-			!definition.SupportsOS("linux") || definition.Version != existingTaskVersion ||
+			!definition.SupportsOS("linux") ||
 			definition.DeadlineSeconds != existingDeadline || existingCatalog != definitions.Digest() ||
 			existingCommit != trustedCommit {
 			return nil, fmt.Errorf("%w: active HIL attempt differs from the current reviewed catalog or trusted commit", ErrConflict)
@@ -212,9 +212,9 @@ func (s *Store) ClaimNextBoardHILAttempt(ctx context.Context, actor BoardActor, 
 	}
 	var selected BoardHILAssignment
 	var taskID, taskName string
-	var taskVersion, deadlineSeconds int
+	var deadlineSeconds int
 	var rawArguments []byte
-	err = tx.QueryRow(ctx, `SELECT t.id::text,t.name,t.version,t.deadline_seconds,t.arguments,
+	err = tx.QueryRow(ctx, `SELECT t.id::text,t.name,t.deadline_seconds,t.arguments,
           r.id::text,r.repository,r.branch,r.commit_sha,r.snapshot_sha256,r.catalog_sha256
         FROM tasks t JOIN runs r ON r.id=t.run_id
         WHERE t.scope='hil' AND t.state='scheduled' AND r.actor_id=$1
@@ -226,7 +226,7 @@ func (s *Store) ClaimNextBoardHILAttempt(ctx context.Context, actor BoardActor, 
         ORDER BY t.enqueued_at,t.id
         LIMIT 1 FOR UPDATE OF t,r SKIP LOCKED`,
 		holderID, definitions.Digest(), trustedCommit, actor.boardID).
-		Scan(&taskID, &taskName, &taskVersion, &deadlineSeconds, &rawArguments,
+		Scan(&taskID, &taskName, &deadlineSeconds, &rawArguments,
 			&selected.RunID, &selected.Repository, &selected.Branch, &selected.CommitSHA,
 			&selected.SnapshotSHA256, &selected.CatalogSHA256)
 	if err != nil {
@@ -241,7 +241,7 @@ func (s *Store) ClaimNextBoardHILAttempt(ctx context.Context, actor BoardActor, 
 	definition, found := definitions.Task(taskName)
 	if !found || definition.Scope != "hil" || definition.BoardPolicy != "exclusive" ||
 		definition.HIL == nil || definition.HIL.BoardID != actor.boardID ||
-		!definition.SupportsOS("linux") || definition.Version != taskVersion ||
+		!definition.SupportsOS("linux") ||
 		definition.DeadlineSeconds != deadlineSeconds {
 		return nil, fmt.Errorf("%w: HIL task differs from the current reviewed catalog", ErrConflict)
 	}
