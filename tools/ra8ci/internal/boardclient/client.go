@@ -785,13 +785,14 @@ func (c *Client) Free(ctx context.Context, token LeaseToken, producer NeutralRec
 // HILObservations retrieves historical timings for the server-approved task
 // and the board's current operator-approved fixture profile.
 func (c *Client) HILObservations(ctx context.Context, boardID string,
-	task catalog.Task) ([]hilspec.HistoricalObservation, error) {
+	task catalog.Task) (hilspec.Workload, []hilspec.HistoricalObservation, error) {
 	if !validBoardID(boardID) || task.Scope != "hil" || task.HIL == nil ||
 		task.HIL.BoardID != boardID || catalog.ValidateTask(task) != nil {
-		return nil, ErrInvalidRequest
+		return hilspec.Workload{}, nil, ErrInvalidRequest
 	}
 	var response struct {
 		TaskName string                          `json:"task_name"`
+		Workload hilspec.Workload                `json:"workload"`
 		Rows     []hilspec.HistoricalObservation `json:"observations"`
 	}
 	err := c.request(ctx, http.MethodPost, boardPath(boardID, "/hil-observations"),
@@ -799,20 +800,24 @@ func (c *Client) HILObservations(ctx context.Context, boardID string,
 			TaskName string `json:"task_name"`
 		}{task.Name}, &response)
 	if err != nil {
-		return nil, err
+		return hilspec.Workload{}, nil, err
 	}
-	if response.TaskName != task.Name || len(response.Rows) > 10000 {
-		return nil, errors.New("HIL history response does not match the catalog task")
+	profile, decodeErr := hex.DecodeString(response.Workload.ProfileSHA256)
+	if response.TaskName != task.Name || len(response.Rows) > 10000 ||
+		response.Workload.ManifestPath != task.HIL.ManifestPath ||
+		response.Workload.BoardModel != task.HIL.BoardModel ||
+		response.Workload.ProgramFamily != task.HIL.ProgramFamily ||
+		response.Workload.Mode != hilspec.Mode(task.HIL.Mode) ||
+		response.Workload.FixtureRevision == "" || len(profile) != 32 || strings.ToLower(response.Workload.ProfileSHA256) != response.Workload.ProfileSHA256 || decodeErr != nil {
+		return hilspec.Workload{}, nil, errors.New("HIL history response does not match the catalog task")
 	}
 	for _, row := range response.Rows {
 		workload := row.Workload
 		profile, decodeErr := hex.DecodeString(workload.ProfileSHA256)
-		if workload.ManifestPath != task.HIL.ManifestPath || workload.BoardModel != task.HIL.BoardModel ||
-			workload.ProgramFamily != task.HIL.ProgramFamily || workload.Mode != hilspec.Mode(task.HIL.Mode) ||
-			workload.FixtureRevision == "" || len(profile) != 32 || strings.ToLower(workload.ProfileSHA256) != workload.ProfileSHA256 ||
+		if workload != response.Workload || len(profile) != 32 || strings.ToLower(workload.ProfileSHA256) != workload.ProfileSHA256 ||
 			decodeErr != nil || row.Duration <= 0 || row.Duration > time.Hour {
-			return nil, errors.New("HIL history contains a row outside the requested workload")
+			return hilspec.Workload{}, nil, errors.New("HIL history contains a row outside the requested workload")
 		}
 	}
-	return response.Rows, nil
+	return response.Workload, response.Rows, nil
 }

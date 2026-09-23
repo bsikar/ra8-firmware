@@ -15,20 +15,20 @@ const maxHistoryRows = 10000
 // caller supplies board/fixture/program family identity from trusted catalog
 // and inventory state, not an unverified run result.
 type Workload struct {
-	ManifestPath    string
-	BoardModel      string
-	FixtureRevision string
-	ProfileSHA256   string
-	ProgramFamily   string
-	Mode            Mode
+	ManifestPath    string `json:"manifest_path"`
+	BoardModel      string `json:"board_model"`
+	FixtureRevision string `json:"fixture_revision"`
+	ProfileSHA256   string `json:"profile_sha256"`
+	ProgramFamily   string `json:"program_family"`
+	Mode            Mode   `json:"mode"`
 }
 
 type HistoricalObservation struct {
-	Workload         Workload
-	Duration         time.Duration
-	Succeeded        bool
-	EvidenceComplete bool
-	TimedOut         bool
+	Workload         Workload       `json:"workload"`
+	Duration         time.Duration  `json:"duration"`
+	Succeeded        bool           `json:"succeeded"`
+	EvidenceComplete bool           `json:"evidence_complete"`
+	TimedOut         bool           `json:"timed_out"`
 }
 
 // ObservationSource returns historical rows; Decide independently filters
