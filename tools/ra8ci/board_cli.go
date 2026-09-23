@@ -19,6 +19,9 @@ import (
 )
 
 func boardCommand(ctx context.Context, args []string) error {
+	if len(args) > 0 && args[0] == "extend" {
+		return boardExtendCommand(ctx, args[1:])
+	}
 	if len(args) > 0 && args[0] == "cancel" {
 		ticket, err := parseBoardCancel(args[1:])
 		if err != nil {
@@ -52,7 +55,7 @@ func boardCommand(ctx context.Context, args []string) error {
 		return json.NewEncoder(os.Stdout).Encode(snapshot)
 	}
 	if len(args) < 2 || args[0] != "take" {
-		return errors.New("usage: ra8ci board status <board-id> | board take <board-id> --why <reason> --duration <duration> | board cancel <board-id> <request-id> <lease-id>")
+		return errors.New("usage: ra8ci board status <board-id> | board take <board-id> --why <reason> --duration <duration> | board extend <board-id> --why <reason> --duration <duration> | board cancel <board-id> <request-id> <lease-id>")
 	}
 	flags := flag.NewFlagSet("board take", flag.ContinueOnError)
 	flags.SetOutput(io.Discard)
@@ -90,10 +93,57 @@ func boardCommand(ctx context.Context, args []string) error {
 		}
 		return fmt.Errorf("waiting for board request %s: %w", ticket.RequestID, err)
 	}
-	return json.NewEncoder(os.Stdout).Encode(struct {
+	directory, directoryErr := currentBoardLeaseDirectory()
+	var saveErr error
+	if directoryErr == nil {
+		saveErr = writeBoardLeaseToken(directory, token)
+	} else {
+		saveErr = directoryErr
+	}
+	if encodeErr := json.NewEncoder(os.Stdout).Encode(struct {
 		Ticket boardclient.Ticket     `json:"ticket"`
 		Lease  boardclient.LeaseToken `json:"lease"`
-	}{Ticket: ticket, Lease: token})
+	}{Ticket: ticket, Lease: token}); encodeErr != nil {
+		return encodeErr
+	}
+	if saveErr != nil {
+		return fmt.Errorf("board lease is granted; token JSON was written to stdout but could not be saved privately: %w", saveErr)
+	}
+	return nil
+}
+
+func boardExtendCommand(ctx context.Context, args []string) error {
+	if len(args) < 1 || !validBoardIDArgument(args[0]) {
+		return errors.New("usage: ra8ci board extend <board-id> --why <reason> --duration <duration>")
+	}
+	flags := flag.NewFlagSet("board extend", flag.ContinueOnError)
+	flags.SetOutput(io.Discard)
+	why := flags.String("why", "", "reason for extending the board lease")
+	durationText := flags.String("duration", "", "additional lease duration")
+	if err := flags.Parse(args[1:]); err != nil {
+		return fmt.Errorf("usage: ra8ci board extend <board-id> --why <reason> --duration <duration>: %w", err)
+	}
+	if flags.NArg() != 0 || *why == "" || *durationText == "" {
+		return errors.New("usage: ra8ci board extend <board-id> --why <reason> --duration <duration>")
+	}
+	duration, err := time.ParseDuration(*durationText)
+	if err != nil || duration <= 0 || duration%time.Second != 0 || duration > 8*time.Hour {
+		return errors.New("board extension duration must be a whole number of seconds between 1s and 8h")
+	}
+	directory, err := currentBoardLeaseDirectory()
+	if err != nil {
+		return err
+	}
+	client, err := newBoardClient()
+	if err != nil {
+		return err
+	}
+	defer client.CloseIdleConnections()
+	snapshot, err := extendBoardLease(ctx, client, directory, args[0], time.Now().UTC().Add(duration), *why)
+	if err != nil {
+		return fmt.Errorf("extend board lease: %w", err)
+	}
+	return json.NewEncoder(os.Stdout).Encode(snapshot)
 }
 
 func parseBoardCancel(args []string) (boardclient.Ticket, error) {
