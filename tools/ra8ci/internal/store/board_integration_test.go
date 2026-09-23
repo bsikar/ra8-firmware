@@ -297,7 +297,7 @@ func TestIntegrationBoardSegmentAndHumanWaiterSerialize(t *testing.T) {
 		t.Fatalf("agent did not install lease: phase=%s err=%v", active.Phase, err)
 	}
 	token := board.Token{BoardID: boardID, LeaseID: waiter.LeaseID, Generation: active.Generation}
-	segment, err := s.BeginBoardSegment(ctx, agent, active.Version, token, "flash", 20*time.Second, 3*time.Second)
+	segment, err := s.BeginBoardSegment(ctx, boardAgent, active.Version, token, "flash", 20*time.Second, 3*time.Second)
 	if err != nil || segment.ID == "" || !segment.DeadlineAt.After(segment.StartedAt) {
 		t.Fatalf("bounded segment did not start: segment=%+v err=%v", segment, err)
 	}
@@ -310,7 +310,7 @@ func TestIntegrationBoardSegmentAndHumanWaiterSerialize(t *testing.T) {
 	if _, err := s.BeginBoardSegment(ctx, agent, yielding.Version, token, "next", time.Second, 0); err == nil {
 		t.Fatal("new segment started after human waiter queued")
 	}
-	if err := s.FinishBoardSegment(ctx, agent, segment.ID, token, "yielded"); err != nil {
+	if err := s.FinishBoardSegment(ctx, boardAgent, segment.ID, token, "yielded"); err != nil {
 		t.Fatalf("holder could not finish its already-started bounded segment: %v", err)
 	}
 	var outcome string
