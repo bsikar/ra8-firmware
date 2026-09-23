@@ -1,10 +1,13 @@
 package store
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 
+	"github.com/bsikar/ra8-firmware/tools/ra8ci/internal/catalog"
 	"github.com/jackc/pgx/v5"
 )
 
@@ -33,15 +36,41 @@ func (s *Store) StartAttempt(ctx context.Context, in StartAttemptInput) (Attempt
 	if err := withRunLock(ctx, tx, runID); err != nil {
 		return Attempt{}, fmt.Errorf("%w: lock run: %v", ErrUnavailable, err)
 	}
-	var state string
+	var state, scope string
+	var taskArguments []byte
 	var deadline int
 	var version int64
-	err = tx.QueryRow(ctx, "SELECT state, deadline_seconds, version FROM tasks WHERE id=$1 FOR UPDATE", in.TaskID).Scan(&state, &deadline, &version)
+	err = tx.QueryRow(ctx, `SELECT state,deadline_seconds,version,scope,arguments
+		FROM tasks WHERE id=$1 FOR UPDATE`, in.TaskID).
+		Scan(&state, &deadline, &version, &scope, &taskArguments)
 	if err != nil {
 		return Attempt{}, fmt.Errorf("%w: lock task: %v", ErrUnavailable, err)
 	}
 	if state != "scheduled" {
 		return Attempt{}, fmt.Errorf("%w: task is %s", ErrConflict, state)
+	}
+	var boardLeaseID any
+	if scope == "hil" {
+		if !ValidID(in.BoardLeaseID) {
+			return Attempt{}, fmt.Errorf("%w: HIL attempt requires an active board lease", ErrInvalid)
+		}
+		var definition struct {
+			Arguments []string         `json:"argv"`
+			HIL       *catalog.HILTask `json:"hil"`
+		}
+		decoder := json.NewDecoder(bytes.NewReader(taskArguments))
+		decoder.DisallowUnknownFields()
+		if err := decoder.Decode(&definition); err != nil || definition.HIL == nil ||
+			catalog.ValidateHILTaskMetadata(*definition.HIL) != nil {
+			return Attempt{}, fmt.Errorf("%w: persisted HIL task contract is invalid", ErrConflict)
+		}
+		if err := validateActiveHILLease(ctx, tx, in.BoardLeaseID, in.ActorID,
+			definition.HIL.BoardID, deadline+definition.HIL.FlashRestoreSeconds); err != nil {
+			return Attempt{}, err
+		}
+		boardLeaseID = in.BoardLeaseID
+	} else if in.BoardLeaseID != "" {
+		return Attempt{}, fmt.Errorf("%w: non-HIL attempt cannot claim a board lease", ErrInvalid)
 	}
 	var blocked int
 	err = tx.QueryRow(ctx, `SELECT COUNT(*) FROM task_edges e
@@ -68,12 +97,12 @@ func (s *Store) StartAttempt(ctx context.Context, in StartAttemptInput) (Attempt
 		agent = in.AgentID
 	}
 	err = tx.QueryRow(ctx, `INSERT INTO task_attempts
-		(id, task_id, attempt_no, agent_id, state, engine, host, host_cores,
+		(id, task_id, attempt_no, agent_id, board_lease_id, state, engine, host, host_cores,
 		host_ram_bytes, host_load, host_facts, started_at, deadline_at)
-		VALUES ($1,$2,$3,$4,'running',$5,$6,$7,$8,$9,$10,clock_timestamp(),
-		clock_timestamp()+($11 * interval '1 second'))
+		VALUES ($1,$2,$3,$4,$5,'running',$6,$7,$8,$9,$10,$11,clock_timestamp(),
+		clock_timestamp()+($12 * interval '1 second'))
 		RETURNING id::text, task_id::text, attempt_no, state, started_at, deadline_at`,
-		id, in.TaskID, attemptNo, agent, in.Engine, in.Host, in.HostCores,
+		id, in.TaskID, attemptNo, agent, boardLeaseID, in.Engine, in.Host, in.HostCores,
 		in.HostRAMBytes, in.HostLoad, facts, deadline).Scan(&attempt.ID, &attempt.TaskID,
 		&attempt.AttemptNo, &attempt.State, &attempt.StartedAt, &attempt.DeadlineAt)
 	if err != nil {
@@ -108,6 +137,32 @@ func (s *Store) StartAttempt(ctx context.Context, in StartAttemptInput) (Attempt
 		return Attempt{}, fmt.Errorf("%w: commit attempt start: %v", ErrUnavailable, err)
 	}
 	return attempt, nil
+}
+
+func validateActiveHILLease(ctx context.Context, tx pgx.Tx, leaseID, actorID, boardID string, requiredSeconds int) error {
+	if requiredSeconds < 1 {
+		return fmt.Errorf("%w: HIL lease budget", ErrInvalid)
+	}
+	var holderID, sessionBoardID, fixtureRevision, profileSHA string
+	var enoughTime bool
+	err := tx.QueryRow(ctx, `SELECT l.holder_id,s.board_id,s.fixture_revision,s.profile_sha256,
+		l.expires_at > clock_timestamp()+($2 * interval '1 second')
+		FROM board_leases l JOIN board_sessions s ON s.lease_id=l.id AND s.board_id=l.board_id
+		WHERE l.id=$1 AND l.state='active' AND s.ended_at IS NULL
+		AND s.owner_id=l.holder_id AND s.profile_sha256 IS NOT NULL
+		FOR SHARE OF l,s`, leaseID, requiredSeconds).Scan(&holderID, &sessionBoardID,
+		&fixtureRevision, &profileSHA, &enoughTime)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return fmt.Errorf("%w: HIL board lease has no active fixture session", ErrConflict)
+	}
+	if err != nil {
+		return fmt.Errorf("%w: verify HIL board lease: %v", ErrUnavailable, err)
+	}
+	if holderID != actorID || sessionBoardID != boardID || fixtureRevision == "" ||
+		!hexSHA.MatchString(profileSHA) || !enoughTime {
+		return fmt.Errorf("%w: HIL board lease identity or remaining duration is insufficient", ErrConflict)
+	}
+	return nil
 }
 
 // RecordStep persists a completed, named step exactly once with its measured

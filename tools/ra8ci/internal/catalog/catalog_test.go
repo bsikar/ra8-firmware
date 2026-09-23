@@ -258,3 +258,43 @@ func digestOf(t *testing.T, raw []byte) string {
 	sum := sha256.Sum256(canonical)
 	return hex.EncodeToString(sum[:])
 }
+
+func TestValidateHILTaskRequiresReviewedBoardAndObservationContract(t *testing.T) {
+	catalog, err := Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	task, found := catalog.Task("format")
+	if !found {
+		t.Fatal("format fixture not found")
+	}
+	task.Scope = "hil"
+	task.BoardPolicy = "exclusive"
+	task.Steps = append(task.Steps, Step{Name: "observe", Program: "ra8ci", Args: []string{"internal-observe"}})
+	task.HIL = &HILTask{BoardID: "ek-ra8d2", BoardModel: "EK-RA8D2",
+		ManifestPath:  "examples/ek_ra8d2/hw_validated/hil/demo/hil.conf",
+		ProgramFamily: "uart-demo", Mode: "uart_scrape", ObservationStep: "observe", FlashRestoreSeconds: 10}
+	if err := ValidateTask(task); err != nil {
+		t.Fatalf("valid HIL definition rejected: %v", err)
+	}
+	copy := cloneTask(task)
+	copy.HIL.Mode = "other"
+	if task.HIL.Mode != "uart_scrape" {
+		t.Fatal("task accessor exposed mutable HIL metadata")
+	}
+	invalid := []func(*Task){
+		func(task *Task) { task.BoardPolicy = "none" },
+		func(task *Task) { task.HIL = nil },
+		func(task *Task) { task.HIL.ManifestPath = "docs/hil.conf" },
+		func(task *Task) { task.HIL.BoardID = "../board" },
+		func(task *Task) { task.HIL.Mode = "unknown" },
+		func(task *Task) { task.HIL.ObservationStep = "missing" },
+	}
+	for index, edit := range invalid {
+		broken := cloneTask(task)
+		edit(&broken)
+		if err := ValidateTask(broken); !errors.Is(err, ErrInvalidCatalog) {
+			t.Errorf("invalid HIL mutation %d accepted: %v", index, err)
+		}
+	}
+}

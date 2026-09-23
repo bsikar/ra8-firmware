@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/tls"
 	"crypto/x509"
+	"encoding/json"
 	"errors"
 	"net/http"
 	"net/http/httptest"
@@ -86,5 +87,28 @@ func TestReadinessRunsEveryConfiguredDependencyAndFailsClosed(t *testing.T) {
 	}
 	if calls != 2 {
 		t.Fatalf("ran %d readiness checks, want 2", calls)
+	}
+}
+
+func TestPersistedTaskArgumentsCarryOnlyCatalogHILMetadata(t *testing.T) {
+	definition := catalog.Task{HIL: &catalog.HILTask{
+		BoardID: "ek-ra8d2", BoardModel: "EK-RA8D2",
+		ManifestPath:  "examples/ek_ra8d2/hw_validated/hil/demo/hil.conf",
+		ProgramFamily: "uart-demo", Mode: "uart_scrape",
+		ObservationStep: "observe", FlashRestoreSeconds: 10,
+	}}
+	raw, err := persistedTaskArguments(definition, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var stored struct {
+		Arguments []string         `json:"argv"`
+		HIL       *catalog.HILTask `json:"hil"`
+	}
+	if err := json.Unmarshal(raw, &stored); err != nil {
+		t.Fatal(err)
+	}
+	if len(stored.Arguments) != 0 || stored.HIL == nil || *stored.HIL != *definition.HIL {
+		t.Fatalf("persisted HIL task identity changed: %+v", stored)
 	}
 }

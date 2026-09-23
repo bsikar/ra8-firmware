@@ -4,8 +4,6 @@ import (
 	"encoding/json"
 	"errors"
 	"time"
-
-	"github.com/bsikar/ra8-firmware/tools/ra8ci/internal/hilspec"
 )
 
 var (
@@ -89,6 +87,7 @@ type StartAttemptInput struct {
 	TaskID       string          `json:"task_id"`
 	ActorID      string          `json:"actor_id"`
 	AgentID      string          `json:"agent_id,omitempty"`
+	BoardLeaseID string          `json:"board_lease_id,omitempty"`
 	Engine       string          `json:"engine"`
 	Host         string          `json:"host"`
 	HostCores    int             `json:"host_cores"`
@@ -134,5 +133,4 @@ type HILObservationInput struct {
 	AttemptID string
 	ActorID   string
 	StepKey   string
-	Workload  hilspec.Workload
 }
