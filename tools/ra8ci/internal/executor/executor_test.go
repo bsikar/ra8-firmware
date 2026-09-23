@@ -82,6 +82,17 @@ func TestRunTaskStreamsAndRecordsStep(t *testing.T) {
 	}
 }
 
+func TestRunStepNativeDriverAsmGuardSelftest(t *testing.T) {
+	var stdout, stderr bytes.Buffer
+	result, err := runStep(context.Background(), t.TempDir(), nil,
+		catalog.Step{Name: "driver-asm-guard-selftest", Program: "ra8ci:driver-asm-guard", Args: []string{"--selftest"}},
+		&stdout, &stderr, time.Millisecond)
+	if err != nil || result.ExitCode != 0 || result.TimedOut || result.Cancelled || stderr.Len() != 0 ||
+		!strings.Contains(stdout.String(), "all cases pass") {
+		t.Fatalf("result=%+v stdout=%q stderr=%q err=%v", result, stdout.String(), stderr.String(), err)
+	}
+}
+
 func TestRunStepNativeRunnerClockSelftest(t *testing.T) {
 	var stdout, stderr bytes.Buffer
 	result, err := runStep(context.Background(), t.TempDir(), nil,

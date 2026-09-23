@@ -23,7 +23,7 @@ func TestLoadReviewedTasks(t *testing.T) {
 		t.Fatal(err)
 	}
 	names := c.Names()
-	if len(names) != 79 {
+	if len(names) != 80 {
 		t.Fatalf("catalog has %d tasks, want 79", len(names))
 	}
 	deadlines := map[string]int{
@@ -49,6 +49,12 @@ func TestLoadReviewedTasks(t *testing.T) {
 		if _, found := c.Task(name); found {
 			t.Fatalf("task %q must remain outside local dispatch until its safety boundary is modeled", name)
 		}
+	}
+	asmGuard, found := c.Task("driver-asm-guard")
+	if !found || len(asmGuard.Steps) != 2 || asmGuard.Steps[0].Program != "ra8ci:driver-asm-guard" ||
+		!reflect.DeepEqual(asmGuard.Steps[0].Args, []string{"--selftest"}) ||
+		asmGuard.Steps[1].Program != "ra8ci:driver-asm-guard" || len(asmGuard.Steps[1].Args) != 0 {
+		t.Fatalf("driver-asm-guard task does not preserve selftest-then-scan semantics: %+v", asmGuard)
 	}
 	gate, found := c.Task("emulator-matrix")
 	if !found || len(gate.Steps) != 1 || gate.Steps[0].Program != "bash" ||

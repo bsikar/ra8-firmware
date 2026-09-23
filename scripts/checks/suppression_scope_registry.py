@@ -497,7 +497,6 @@ _SCHEMA_GROUPS = (
             "checks/check_no_antirecovery.py:XML_EXTS",
             "checks/check_no_antirecovery.py:_EXT_LANG",
             "checks/check_no_build_credentials.py:SOURCE_SUFFIXES",
-            "checks/check_no_driver_asm_guard.py:DRIVER_DIR",
             "checks/check_no_dynamic_alloc.py:SOURCE_SUFFIXES",
             "checks/check_no_gnu_attribute.py:EXTS",
             "checks/check_no_gnu_attribute.py:ROOTS",
