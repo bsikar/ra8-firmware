@@ -30,26 +30,69 @@ An engineer or AI must read those files before changing the corresponding subsys
 
 == As-built snapshot
 
-The snapshot below describes the worktree at the time this document was regenerated on 22 September 2026.
+This snapshot is pinned to 23 September 2026, commit `d928cb607ceb5fb147fcda058746fd4d71993676` on `ci/ra8ci-implementation`. The branch was pushed to `origin` and clean when inspected. It is based on the integrated `ci/orchestrator` work; that source branch has since been closed.
 
 #table(
   columns: (1.25fr, 3.35fr),
   inset: 5pt,
   stroke: rgb("#d6e1e8"),
-  table.header([*Item*], [*State*]),
-  [Branch], [`ci/ra8ci-implementation`, based on `ci/orchestrator` commit `7ff60fee72cbc0d8e2754de9cff247fa5c24ee46`.],
-  [Commit state], [The implementation is untracked and uncommitted. No implementation commit or push has occurred.],
-  [Go surface], [107 Go files, including 44 test files, under `tools/ra8ci`.],
-  [Packages], [`agent`, `board`, `boardclient`, `catalog`, `executor`, `github`, `hilpolicy`, `hilspec`, `neutral`, `protocol`, `proxmox`, `runclient`, `scaler`, `server`, `source`, `spool`, `store`, and `syncclient`.],
-  [Database], [Forward-only PostgreSQL migrations `0001` through `0013`; the runtime expects schema version 13. Migration 0012 stores durable run-cancellation intent; 0013 records the one-way Terraform apply intent before an external apply.],
-  [Task catalog], [Four transitional Linux tasks: `format`, `format-check`, `lint-go`, and `test-go`. They still delegate to existing commands and are not completed ports.],
-  [Inventory], [31 `dead` and 557 `used` helpers. There is no `unclear` residue in the accepted inventory. No Phase 1 deletion has been made on this branch.],
-  [Deployment], [Static control-VM Terraform and Ansible definitions exist. No plan has been applied and no VM has been created.],
-  [Board], [Durable reducer, store, HTTP API, client, and signed neutral receipt primitives exist. Production mutation remains disabled without a physical observer and approved fixture profile.],
-  [GitHub], [Durable inbox, admission policy, official scale-set client wrapper, controller, and a provider-injected scaler state machine exist. Production GitHub App bootstrap and runner provisioning are incomplete.],
+  table.header([*Item*], [*State at this snapshot*]),
+  [Go surface], [215 tracked Go files under `tools/ra8ci`, including tests and the server, agent, executor, store, board, scaler, GitHub, provisioning, and analytics packages.],
+  [Database], [Forward-only PostgreSQL migrations `0001` through `0013`; typed run, task, step, lease, runner, event, audit, and operation evidence exists in code. This is not evidence that a production database is deployed.],
+  [Task catalog], [84 reviewed task definitions. 18 task definitions contain a native `ra8ci:` step; 66 remain transitional wrappers or external-command tasks. The native count is a direct catalog count, not a weighted completion percentage.],
+  [Tracked helpers], [532 `.sh`/`.py` files and 28 `just/*.just` files remain in the current checkout. The Phase 0 JSON inventory still reflects its earlier baseline and must be reconciled before further planner batching.],
+  [Completed checker ports in this lane], [Five checker responsibilities now have native Go task implementations and have their old scripts removed in the same change: driver-assembly guard, goto/setjmp guard, GNU attribute guard, assert-casts, and C23 nullptr-only guard.],
+  [Server and agent], [CLI, local executor, offline receipt spool/sync, authenticated HTTP server, PostgreSQL store, agent claim/log/result flow, deadlines, cancellation, and resource facts are implemented and tested.],
+  [Analytics], [PostgreSQL timings and resource facts support report queries. Further report/API coverage and real production data are still required before scheduling tiers are tuned from evidence.],
+  [GitHub control], [Scale-set client, durable inbox, policy, controller, and scaler state-machine packages exist. Critical gap: `serve()` does not compose the production controller, scaler handler, concrete guest bootstrapper, runner observer, or Terraform runtime.],
+  [Provisioning], [Terraform control/runner environment definitions, a Terraform runner provisioner package, and the service Ansible role exist. The production Linux/Windows guest readiness and one-use JIT bootstrap path is incomplete; no plan was applied.],
+  [Board and HIL], [Durable lease/session/checkpoint/recovery primitives, API/client packages, neutral receipt primitives, and HIL timing policy exist. Production board-agent enrollment/device observation and `bench.sh` cutover are not complete.],
+  [Deployment], [No control VM or production PostgreSQL has been created. Proxmox/GitHub credentials, approved storage/network values, and an off-VM backup destination remain operator inputs.],
+  [Acceptance], [Full Go tests, race tests, vet, and Linux-amd64/Windows-amd64 static builds passed at this snapshot. The no-null scan still exits 1 with the same three legacy findings and assert-casts exits 1 with the same 34 legacy findings. No live GitHub, Proxmox, restore-drill, Windows runtime, or hardware acceptance is claimed.],
 )
 
-Verification is evidence, not status by assertion. Detached full Go unit tests, full PostgreSQL-backed integration tests, race tests, `go vet`, gofmt check, and Windows-amd64 cross-build exited zero after run cancellation was added. The integration suite used disposable PostgreSQL 17 with no persistent volume; it covers authenticated/idempotent HTTP cancellation, cancellation of queued runs, refusal to execute issued work after cancellation, active cancellation delivery on heartbeat, and terminal cancellation evidence. Coverage is not at the repository's 85 percent gate. The `test-go` catalog route was exercised earlier and exited 1 because the existing root-owned managed Python environment receipt does not match this checkout's `pyproject.toml`; that gate is not counted as passed. Windows runtime, live GitHub, live Proxmox, emulator-to-board, restore-drill, and hardware acceptance have not passed. Logs and exit files are under `/home/bsikar/ra8-verify/ra8ci-implementation/run-cancel/`; rerun affected gates after implementation changes stop.
+There is no defensible single project-completion percentage: one native checker port and a production dispatch controller are not comparable units. Use the status table below, the per-file JSON inventory, task catalog, and actual exit-code evidence instead. The earlier conversational estimate of roughly 85 percent remaining was deliberately approximate, not a release metric.
+
+== Implementation status and remaining work
+
+The target architecture remains approved. The rows below separate code that exists from acceptance that is still required. `SUBSTANTIAL` means useful implementation exists, not production-ready; `INCOMPLETE` and `NOT DEPLOYED` are explicit non-completion states.
+
+#table(
+  columns: (1.05fr, 1.05fr, 2.95fr),
+  inset: 5pt,
+  stroke: rgb("#d6e1e8"),
+  table.header([*Workstream*], [*Status*], [*Remaining work and proof required*]),
+  [CLI and task execution], [SUBSTANTIAL], [Finish semantic task coverage, strict task arguments, output/artifact contracts, and parity for every migrated behavior. Keep safe local tasks usable offline; prove sync receipts are idempotent and never become CI attestations.],
+  [PostgreSQL and analytics], [SUBSTANTIAL], [Complete API/report surfaces and query tests for queue, step, resource, board, and runner timings. Prove append-only audit privileges, concurrency, retention, schema upgrade, and performance with representative disposable PostgreSQL data.],
+  [GitHub scale-set control], [INCOMPLETE / FAIL-CLOSED], [Compose the production GitHub session/controller in `serve()`; add fixed reviewed config, singleton-controller fencing, durable reconciliation loops, concrete metadata resolution, guest bootstrap, runner observation, cancellation, and graceful shutdown. Until then the server must advertise zero managed capacity.],
+  [Disposable VM dispatch], [INCOMPLETE], [Resolve Terraform protection/identity/state contracts and implement Linux and Windows Ansible readiness. Deliver one-use JIT data through a protected channel only after reservation-bound guest proof. Test lost acknowledgments, restart, cancellation, busy drain, runner deregistration, and identity-checked cleanup on disposable VMs.],
+  [Board and HIL], [INCOMPLETE / PRODUCTION-DISABLED], [Implement and enroll the persistent board agent with key rotation, real device adapters, and independently verified neutral/restore proof. Integrate checkpoints, human > CI > AI ordering, yield/requeue, expiry, and recovery. Shadow then cut over from `bench.sh` without two live authorities; run emulator first and only one matching hardware case under lease.],
+  [Scripts and recipes], [EARLY], [Rebuild `tools/ra8ci-script-inventory.json` and `tools/ra8ci-work-units.json` from the current tree. Delete only evidenced dead files in planner-owned units. Port each used helper's behavior to a native task/package or explicitly retain it as provisioning/out-of-scope; repoint callers in the same change. 532 script files and 28 Justfiles remain as raw counts, not a promise to port every file.],
+  [Just, hooks, and workflows], [EARLY], [Repoint the remaining recipes and hook entries to semantic ra8ci task names. Keep GitHub's official Actions runner for workflow and `uses:` semantics; switch `runs-on` demand to ra8ci-managed scale sets only after end-to-end capacity acceptance. Remove old dispatch entry points only after parity.],
+  [Control VM and operations], [NOT DEPLOYED], [Obtain approved least-privilege Proxmox and GitHub credentials, node/pool/template/storage/bridge/network inputs, and encrypted off-VM backup target. Plan the VM in the 9000+ range, review before apply, configure TLS/firewall/monitoring, and complete a restore drill before starting dispatch.],
+  [Security and deployment acceptance], [INCOMPLETE], [Test workflow admission, RCE boundaries, secret/JIT non-disclosure, Windows service ACLs, Linux process isolation, network denies, agent identity/fencing, database outage behavior, disk/backup/certificate alarms, recovery and rollback. Record operator approval; tests alone do not authorize live infrastructure changes.],
+  [Verification and integration], [INCOMPLETE], [Complete the required coverage threshold and all supported platform/runtime tests without skips. Run Terraform/Ansible validation, isolated Linux and Windows scale-set lifecycle acceptance, and the board emulator-then-single-hardware lane. The planner defines the MR stack; do not merge to `dev` without Brighton's approval.],
+)
+
+=== Remaining-work ledger and completion evidence
+
+These stable keys are for status discussions and implementation reports; they do not replace planner-owned issues or the machine-readable per-file work-unit list.
+
+#table(
+  columns: (0.55fr, 1.35fr, 3.1fr),
+  inset: 4pt,
+  stroke: rgb("#d6e1e8"),
+  table.header([*Key*], [*Work unit*], [*Done only when*]),
+  [R0], [Inventory reconciliation], [Current script, tool, infra, helper, Just, workflow, hook, Terraform, and Ansible rows are scanned and classified; absorbed files and caller links no longer point to deleted behavior; planner receives current JSON.],
+  [R1], [Executor and evidence], [Every required task has a reviewed schema, deadline, ordered steps, host facts, durable result/log evidence, offline behavior where allowed, and parity tests; no duplicate old implementation remains.],
+  [R2], [Server production composition], [A reviewed config builds exactly one fenced scale-set controller, handler, concrete provisioning/bootstrap dependencies, and reconcile/shutdown loops. Missing credential, bootstrapper, observer, audit, or database fails closed and advertises zero capacity.],
+  [R3], [Linux/Windows guest lifecycle], [Each OS proves exact VM/reservation identity and Ansible readiness before one-use JIT delivery; one real isolated job drains, deregisters, and cleans up safely across cancellation, restart, and lost acknowledgments.],
+  [R4], [Board agent and cutover], [The board agent proves physical neutral state and recovery context; lease, yield, priority, and human wait semantics pass concurrency/failure tests. Emulator passes before a single matching leased hardware run, then old file/flock authority is retired.],
+  [R5], [Long-tail helper absorption], [All used in-scope helpers are ported or have an explicit retained-owner rationale; dead items are deleted only from evidence. Caller changes and deletion land together, with no old/new overlap.],
+  [R6], [Repository entry points], [Just recipes, hooks, and workflow jobs invoke the same semantic task names. Third-party Actions remain on the official runner; ra8ci-managed labels are enabled only after R2/R3 acceptance.],
+  [R7], [Control VM and recovery], [Operator-approved infrastructure values exist; the persistent VM is applied only after review; PostgreSQL, encrypted off-VM backups, TLS, monitoring, restore, and rollback drills pass.],
+  [R8], [Release verification], [Required static/unit/race/coverage/database/platform/security/CI gates and non-skipped end-to-end acceptance pass with logs and exit codes. Production readiness and owner approval are recorded before external cutover.],
+)
 
 == Full-stack ownership map
 
@@ -225,7 +268,7 @@ Each task declaration has: stable name and version; tier `required`, `optional`,
 
 === Exhaustive migration rule
 
-The accepted inventory contains 588 helpers: 31 dead and 557 used. The 31 dead files are deleted only in planner-defined Phase 1 units and only after re-running reference scans. The 557 used files are not necessarily 557 public tasks: entry points become catalog tasks; shared parsing/model code becomes internal Go packages; Terraform and Ansible remain provisioning; substantial firmware/deliverable programs remain out of scope.
+The Phase 0 inventory captured 588 helper rows at its historical `ci/orchestrator` snapshot: 31 dead and 557 used. It is no longer an exact picture of the implementation branch: dead files were removed and five used checker responsibilities were absorbed. Recompute the inventory before further planner batching. A used file is not necessarily a public task: entry points become catalog tasks; shared parsing/model code becomes internal Go packages; Terraform and Ansible remain the provisioning layer; substantial firmware/deliverable programs remain out of scope.
 
 For every used file, the migration ledger must record:
 
