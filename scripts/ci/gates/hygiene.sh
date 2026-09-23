@@ -546,7 +546,7 @@ commit_range_selftest() (
 # non-ASCII byte before a clean run is believed.
 gate_ascii() (
   set -e
-  GOWORK=off go run ./tools/ra8ci ascii
+  (cd tools/ra8ci && GOWORK=off go run . ascii)
 )
 
 # --- markdown-references --------------------------------------------------
@@ -602,8 +602,7 @@ gate_copyright() (
 # @since values sat there unseen. --selftest proves both halves first.
 gate_since() (
   set -e
-  python3 scripts/checks/check-since-version.py --selftest
-  python3 scripts/checks/check-since-version.py --all
+  (cd tools/ra8ci && GOWORK=off go run . since)
 )
 
 # --- toolchain-parity -----------------------------------------------------

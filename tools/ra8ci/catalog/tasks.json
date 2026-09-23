@@ -1844,12 +1844,17 @@
       "board_policy": "none",
       "steps": [
         {
-          "name": "since",
-          "program": "bash",
+          "name": "since-selftest",
+          "program": "ra8ci:since",
           "args": [
-            "scripts/ci.sh",
-            "--gate",
-            "since"
+            "--selftest"
+          ]
+        },
+        {
+          "name": "since-scan",
+          "program": "ra8ci:since",
+          "args": [
+            "--all"
           ]
         }
       ],
