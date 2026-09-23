@@ -68,8 +68,7 @@ _pcc_banned_constructs() (
   python3 scripts/checks/check_no_ai_attribution.py
   # C23 nullptr-only in first-party code. Vendor macros UX_NULL / TX_NULL /
   # FX_NULL / NX_NULL are exempted.
-  python3 scripts/checks/check_no_null.py --selftest
-  python3 scripts/checks/check_no_null.py --all
+  (cd tools/ra8ci && GOWORK=off go run . no-null)
   # NASA P10 Rule 1 -- no goto/setjmp/longjmp in firmware. A parse-independent
   # textual backstop: goto/setjmp were enforced only indirectly via the MISRA
   # cppcheck ratchet, which runs at --std=c11 (cppcheck 2.13 cannot parse C23)

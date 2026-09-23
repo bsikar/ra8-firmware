@@ -23,8 +23,8 @@ func TestLoadReviewedTasks(t *testing.T) {
 		t.Fatal(err)
 	}
 	names := c.Names()
-	if len(names) != 83 {
-		t.Fatalf("catalog has %d tasks, want 82", len(names))
+	if len(names) != 84 {
+		t.Fatalf("catalog has %d tasks, want 84", len(names))
 	}
 	deadlines := map[string]int{
 		"format": 900, "format-check": 900, "lint-go": 1200, "test-go": 1800,
@@ -73,6 +73,12 @@ func TestLoadReviewedTasks(t *testing.T) {
 		!reflect.DeepEqual(assertCasts.Steps[0].Args, []string{"--selftest"}) ||
 		assertCasts.Steps[1].Program != "ra8ci:assert-casts" || !reflect.DeepEqual(assertCasts.Steps[1].Args, []string{"--all"}) {
 		t.Fatalf("assert-casts task does not preserve selftest-then-scan semantics: %+v", assertCasts)
+	}
+	noNull, found := c.Task("no-null")
+	if !found || len(noNull.Steps) != 2 || noNull.Steps[0].Program != "ra8ci:no-null" ||
+		!reflect.DeepEqual(noNull.Steps[0].Args, []string{"--selftest"}) ||
+		noNull.Steps[1].Program != "ra8ci:no-null" || !reflect.DeepEqual(noNull.Steps[1].Args, []string{"--all"}) {
+		t.Fatalf("no-null task does not preserve selftest-then-scan semantics: %+v", noNull)
 	}
 	gate, found := c.Task("emulator-matrix")
 	if !found || len(gate.Steps) != 1 || gate.Steps[0].Program != "bash" ||

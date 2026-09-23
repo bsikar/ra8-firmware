@@ -1665,6 +1665,44 @@
       "resource_hints": {}
     },
     {
+      "name": "no-null",
+      "version": 1,
+      "tier": "required",
+      "scope": "safe-local-read-only",
+      "os": [
+        "linux",
+        "windows"
+      ],
+      "capabilities": [],
+      "args_schema": {
+        "positional": [],
+        "flags": []
+      },
+      "deadline_seconds": 1800,
+      "board_policy": "none",
+      "steps": [
+        {
+          "name": "no-null-selftest",
+          "program": "ra8ci:no-null",
+          "args": [
+            "--selftest"
+          ]
+        },
+        {
+          "name": "no-null-scan",
+          "program": "ra8ci:no-null",
+          "args": [
+            "--all"
+          ]
+        }
+      ],
+      "outputs": [],
+      "retry": {
+        "max_attempts": 1
+      },
+      "resource_hints": {}
+    },
+    {
       "name": "no-unsafe-python-install",
       "version": 1,
       "tier": "required",
