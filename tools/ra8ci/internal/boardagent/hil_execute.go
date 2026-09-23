@@ -34,7 +34,8 @@ func (a *Agent) RunHILAttempt(ctx context.Context, token boardclient.LeaseToken,
 		!assignment.Attempt.DeadlineAt.After(assignment.Attempt.StartedAt) ||
 		assignment.Task.Scope != "hil" || assignment.Task.HIL == nil ||
 		assignment.Task.HIL.BoardID != a.boardID || !assignment.Task.SupportsOS("linux") || catalog.ValidateTask(assignment.Task) != nil ||
-		assignment.CatalogSHA256 == "" || recoveryMargin < 0 || recoveryMargin > maxBoardOperation {
+		assignment.CatalogSHA256 == "" || safetyMaximum < 0 || safetyMaximum > time.Hour ||
+		recoveryMargin < 0 || recoveryMargin > maxBoardOperation {
 		return store.BoardHILCompletion{}, ErrInvalidAgent
 	}
 	attemptCtx, cancel := context.WithDeadline(ctx, assignment.Attempt.DeadlineAt)
@@ -57,6 +58,9 @@ func (a *Agent) RunHILAttempt(ctx context.Context, token boardclient.LeaseToken,
 		} else if assignment.HILTiming.Workload.ManifestPath != assignment.Task.HIL.ManifestPath || assignment.HILTiming.Workload.BoardModel != assignment.Task.HIL.BoardModel || assignment.HILTiming.Workload.ProgramFamily != assignment.Task.HIL.ProgramFamily || assignment.HILTiming.Workload.Mode != hilspec.Mode(assignment.Task.HIL.Mode) {
 			executionErr = hilspec.ErrInvalidHistory
 		}
+	}
+	if executionErr == nil {
+		executionErr = validateHILSafetyMaximum(decision, safetyMaximum)
 	}
 	if executionErr == nil && decision.ValidityWindow > assignment.Attempt.DeadlineAt.Sub(assignment.Attempt.StartedAt) {
 		executionErr = fmt.Errorf("%w: HIL observation budget exceeds persisted attempt deadline", ErrInvalidAgent)
@@ -177,4 +181,14 @@ func (a *Agent) RunHILAttempt(ctx context.Context, token boardclient.LeaseToken,
 	defer completeCancel()
 	completeErr := a.CompleteHILAttempt(completeCtx, token, assignment, completion)
 	return completion, completeErr
+}
+
+func validateHILSafetyMaximum(decision hilspec.Decision, safetyMaximum time.Duration) error {
+	if safetyMaximum < 0 || safetyMaximum > time.Hour {
+		return ErrInvalidAgent
+	}
+	if safetyMaximum > 0 && decision.ValidityWindow > safetyMaximum {
+		return fmt.Errorf("%w: server HIL validity window exceeds the local safety maximum", ErrInvalidAgent)
+	}
+	return nil
 }
