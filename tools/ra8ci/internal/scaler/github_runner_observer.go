@@ -17,7 +17,7 @@ import (
 
 type runnerAdmin interface {
 	RunnerByID(context.Context, int) (github.RunnerIdentity, bool, error)
-	RemoveRunner(context.Context, int64) error
+	RemoveRunner(context.Context, int) error
 }
 
 // GitHubRunnerObserver uses the durable terminal job event as proof that the
@@ -92,7 +92,7 @@ func (o *GitHubRunnerObserver) DrainAndDeregister(ctx context.Context, vm store.
 		return RunnerObservation{}, errors.New("refusing to deregister a foreign GitHub runner")
 	}
 	if exists {
-		if err := o.admin.RemoveRunner(ctx, int64(job.RunnerID)); err != nil {
+		if err := o.admin.RemoveRunner(ctx, job.RunnerID); err != nil {
 			return RunnerObservation{}, fmt.Errorf("deregister completed GitHub runner: %w", err)
 		}
 	}
@@ -113,3 +113,4 @@ func (o *GitHubRunnerObserver) DrainAndDeregister(ctx context.Context, vm store.
 }
 
 var _ RunnerObserver = (*GitHubRunnerObserver)(nil)
+var _ runnerAdmin = (*github.Session)(nil)
