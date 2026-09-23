@@ -2050,13 +2050,16 @@
       "board_policy": "none",
       "steps": [
         {
-          "name": "tests-readme",
-          "program": "bash",
+          "name": "tests-readme-selftest",
+          "program": "ra8ci:tests-readme",
           "args": [
-            "scripts/ci.sh",
-            "--gate",
-            "tests-readme"
+            "--selftest"
           ]
+        },
+        {
+          "name": "tests-readme-scan",
+          "program": "ra8ci:tests-readme",
+          "args": []
         }
       ],
       "outputs": [],

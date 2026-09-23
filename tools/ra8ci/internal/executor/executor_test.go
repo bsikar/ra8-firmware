@@ -457,3 +457,17 @@ func TestCleanEnvironmentKeepsOnlyApprovedExternalToolchainOverrides(t *testing.
 		t.Fatalf("checkout-local managed environment override error=%v", err)
 	}
 }
+
+func TestRunStepNativeTestsReadmeSelftest(t *testing.T) {
+	var stdout, stderr bytes.Buffer
+	result, err := runStep(context.Background(), t.TempDir(), nil,
+		catalog.Step{Name: "tests-readme-selftest", Program: "ra8ci:tests-readme", Args: []string{"--selftest"}},
+		&stdout, &stderr, time.Millisecond)
+	if err != nil || result.ExitCode != 0 || result.TimedOut || result.Cancelled {
+		t.Fatalf("tests-readme selftest result=%+v err=%v stderr=%q", result, err, stderr.String())
+	}
+	if !strings.Contains(stdout.String(), "4 cases plus the gitignore carve-out") || result.StdoutBytes != int64(stdout.Len()) ||
+		result.StderrBytes != int64(stderr.Len()) || result.StdoutSHA256 == "" || result.StderrSHA256 == "" {
+		t.Fatalf("tests-readme output/evidence mismatch: result=%+v stdout=%q stderr=%q", result, stdout.String(), stderr.String())
+	}
+}
