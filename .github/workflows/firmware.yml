@@ -223,7 +223,11 @@ jobs:
       - name: Build ra8ci task dispatcher
         run: |
           # ci-parity: infra -- build the reviewed ra8ci dispatcher binary used by the following task
-          CGO_ENABLED=0 go build -trimpath -o "$RUNNER_TEMP/ra8ci" ./tools/ra8ci
+          (
+            cd tools/ra8ci
+            CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -trimpath -o "$RUNNER_TEMP/ra8ci" .
+            CGO_ENABLED=0 GOOS=windows GOARCH=amd64 go build -trimpath -o "$RUNNER_TEMP/ra8ci-windows-amd64.exe" .
+          )
       - name: Go quality task through ra8ci
         run: '"$RUNNER_TEMP/ra8ci" test-go'
 
