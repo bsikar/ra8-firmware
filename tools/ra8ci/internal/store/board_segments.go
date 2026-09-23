@@ -58,7 +58,8 @@ func (s *Store) BeginBoardSegment(ctx context.Context, actor BoardActor, expecte
 	if snapshot.Version != expectedVersion {
 		return BoardSegment{}, fmt.Errorf("%w: stale board version", ErrConflict)
 	}
-	if !ownsLease(snapshot, actor.id) {
+	physicalAgent := actor.kind == "board_agent" && actor.role == "board_agent"
+	if !ownsLease(snapshot, actor.id) && !physicalAgent {
 		return BoardSegment{}, auditBoardDenial(ctx, tx, actor, ErrDenied)
 	}
 	now, err := databaseClock(ctx, tx)
@@ -91,7 +92,7 @@ func (s *Store) BeginBoardSegment(ctx context.Context, actor BoardActor, expecte
 		return BoardSegment{}, fmt.Errorf("%w: persist board segment: %v", ErrUnavailable, err)
 	}
 	if err := appendAudit(ctx, tx, actor.id, "board.segment.started", "board", actor.boardID,
-		"ok", "", "", "", map[string]any{"segment_id": id, "lease_id": token.LeaseID, "generation": token.Generation, "key": key, "deadline_at": segment.DeadlineAt}); err != nil {
+		"ok", "", "", "", map[string]any{"segment_id": id, "lease_id": token.LeaseID, "generation": token.Generation, "holder": snapshot.Lease.Holder, "key": key, "deadline_at": segment.DeadlineAt}); err != nil {
 		return BoardSegment{}, fmt.Errorf("%w: segment audit: %v", ErrUnavailable, err)
 	}
 	if err := tx.Commit(ctx); err != nil {
