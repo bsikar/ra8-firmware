@@ -30,6 +30,7 @@ import (
 	"github.com/bsikar/ra8-firmware/tools/ra8ci/internal/legacymake"
 	"github.com/bsikar/ra8-firmware/tools/ra8ci/internal/newlinegate"
 	"github.com/bsikar/ra8-firmware/tools/ra8ci/internal/nscveneers"
+	"github.com/bsikar/ra8-firmware/tools/ra8ci/internal/nullgate"
 	"github.com/bsikar/ra8-firmware/tools/ra8ci/internal/pointerboilerplate"
 	"github.com/bsikar/ra8-firmware/tools/ra8ci/internal/runnerclock"
 	"github.com/bsikar/ra8-firmware/tools/ra8ci/internal/sincegate"
@@ -189,7 +190,7 @@ func runStep(ctx context.Context, root string, env []string, step catalog.Step, 
 		result.EndedAt = end.UTC()
 		result.Duration = end.Sub(started)
 	}()
-	if step.Program == "ra8ci:ascii" || step.Program == "ra8ci:since" || step.Program == "ra8ci:final-newline" || step.Program == "ra8ci:runner-clock" || step.Program == "ra8ci:tests-readme" || step.Program == "ra8ci:inclusive-terminology-commits" || step.Program == "ra8ci:legacy-make" || step.Program == "ra8ci:no-unsafe-python-install" || step.Program == "ra8ci:wave-references" || step.Program == "ra8ci:pointer-boilerplate" || step.Program == "ra8ci:nsc-veneer-defs" || step.Program == "ra8ci:stub-crypto-guard" || step.Program == "ra8ci:tz-boundary-discard" || step.Program == "ra8ci:driver-asm-guard" || step.Program == "ra8ci:no-goto-setjmp" || step.Program == "ra8ci:gnu-attribute" || step.Program == "ra8ci:assert-casts" {
+	if step.Program == "ra8ci:ascii" || step.Program == "ra8ci:since" || step.Program == "ra8ci:final-newline" || step.Program == "ra8ci:runner-clock" || step.Program == "ra8ci:tests-readme" || step.Program == "ra8ci:inclusive-terminology-commits" || step.Program == "ra8ci:legacy-make" || step.Program == "ra8ci:no-unsafe-python-install" || step.Program == "ra8ci:wave-references" || step.Program == "ra8ci:pointer-boilerplate" || step.Program == "ra8ci:nsc-veneer-defs" || step.Program == "ra8ci:stub-crypto-guard" || step.Program == "ra8ci:tz-boundary-discard" || step.Program == "ra8ci:driver-asm-guard" || step.Program == "ra8ci:no-goto-setjmp" || step.Program == "ra8ci:gnu-attribute" || step.Program == "ra8ci:assert-casts" || step.Program == "ra8ci:no-null" {
 		stdoutLog := newDigestWriter(stdout)
 		stderrLog := newDigestWriter(stderr)
 		if step.Program == "ra8ci:ascii" {
@@ -226,6 +227,8 @@ func runStep(ctx context.Context, root string, env []string, step catalog.Step, 
 			result.ExitCode = gnuattribute.Run(ctx, root, step.Args, stdoutLog, stderrLog)
 		} else if step.Program == "ra8ci:assert-casts" {
 			result.ExitCode = assertcasts.Run(ctx, root, step.Args, stdoutLog, stderrLog)
+		} else if step.Program == "ra8ci:no-null" {
+			result.ExitCode = nullgate.Run(ctx, root, step.Args, stdoutLog, stderrLog)
 		}
 		if expiration := contextExpiration(ctx); expiration != nil {
 			result.TimedOut = errors.Is(expiration, context.DeadlineExceeded)

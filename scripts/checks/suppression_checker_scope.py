@@ -704,9 +704,6 @@ def _apply_derived(authorities: dict[str, ResolvedAuthority]) -> None:
         "scripts/checks/suppression_catalog.py:BINARY_SUFFIXES": _classified_values(
             extension_classes, "binary"
         ),
-        "scripts/checks/check_no_null.py:GENERATED_SOURCE_PATHS": _classified_values(
-            path_classes, "generated-source"
-        ),
         "scripts/checks/check_no_stdio_streams.py:GENERATED_SOURCE_PATHS": _classified_values(
             path_classes, "generated-source"
         ),
