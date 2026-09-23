@@ -27,6 +27,7 @@ default:
     @echo "  just hil::recover <app> [wait]                Recovery flash for a wedged target"
     @echo "  just hil::reflash <app> [wait]                Reset DLM/RoT state, then flash"
     @echo "  just hil::run_local <app> [uart] [wait]       Run one HIL gate on a local macOS rig"
+    @echo "  just hil::verify_capture <manifest> <capture> Validate a UART/RTT log offline"
     @echo "  just hil::erase [wait]                        Mass-erase target MRAM"
     @echo "  just hil::dlm_reset [wait]                    Reset device lifecycle state"
     @echo "  just hil::dlm_check_local                     Inspect a locally attached target read-only"
@@ -121,6 +122,12 @@ run_local app uart="" wait="":
     args=("{{ app }}")
     [ -n "{{ uart }}" ] && args+=(--uart "{{ uart }}")
     /bin/bash -p scripts/hil/run_local.sh "${args[@]}"
+
+# Validate UART/RTT output against its literal HIL manifest without board access.
+verify_capture manifest capture:
+    #!/bin/bash -p
+    set -euo pipefail
+    ra8ci hil verify-capture --manifest {{ quote(manifest) }} --capture {{ quote(capture) }}
 
 # Mass-erase target MRAM.
 erase wait="":
