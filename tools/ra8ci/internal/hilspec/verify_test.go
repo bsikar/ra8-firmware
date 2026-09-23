@@ -21,6 +21,17 @@ func TestVerifyTextCaptureAppliesPositiveAndNegativeAssertions(t *testing.T) {
 	}
 }
 
+func TestVerifyTextCapturePreservesModeSpecificNegativeCaseBehavior(t *testing.T) {
+	uart := Spec{Mode: ModeUARTScrape, Expect: "verdict=PASS", ExpectNegative: "HardFault"}
+	if err := VerifyTextCapture(uart, []byte("verdict=PASS\nhardfault\n")); !errors.Is(err, ErrNegativeExpectation) {
+		t.Fatalf("UART negative check did not match case-insensitively: %v", err)
+	}
+	rtt := Spec{Mode: ModeRTTScrape, Expect: "verdict=PASS", ExpectNegative: "HardFault"}
+	if err := VerifyTextCapture(rtt, []byte("verdict=PASS\nhardfault\n")); err != nil {
+		t.Fatalf("RTT negative check unexpectedly ignored case: %v", err)
+	}
+}
+
 func TestVerifyTextCaptureRequiresStrongPositiveAndValidRegex(t *testing.T) {
 	spec := Spec{Mode: ModeRTTScrape, Expect: "PASS"}
 	if err := VerifyTextCapture(spec, []byte("PASS")); !errors.Is(err, ErrWeakExpectation) {
