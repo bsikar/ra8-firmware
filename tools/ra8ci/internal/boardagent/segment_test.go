@@ -9,6 +9,7 @@ import (
 
 	"github.com/bsikar/ra8-firmware/tools/ra8ci/internal/board"
 	"github.com/bsikar/ra8-firmware/tools/ra8ci/internal/boardclient"
+	"github.com/bsikar/ra8-firmware/tools/ra8ci/internal/catalog"
 	"github.com/bsikar/ra8-firmware/tools/ra8ci/internal/store"
 )
 
@@ -19,6 +20,8 @@ type testSegmentControlClient struct {
 	lastSegment  store.BoardSegment
 	claimCount   int
 	claimedLease string
+	completed    int
+	completion   store.BoardHILCompletion
 }
 
 func (c *testSegmentControlClient) BeginSegment(_ context.Context, token boardclient.LeaseToken, attemptID, key string, bound, margin time.Duration) (store.BoardSegment, error) {
@@ -35,6 +38,13 @@ func (c *testSegmentControlClient) ClaimNextHILAttempt(_ context.Context, boardI
 	c.claimedLease = leaseID
 	return &store.BoardHILAssignment{Attempt: store.Attempt{ID: "01996f90-3415-7cfe-8ff1-600058131aff",
 		TaskID: "01996f90-3415-7cfe-8ff1-600058131b11", AttemptNo: 1, State: "running"}}, nil
+}
+
+func (c *testSegmentControlClient) CompleteHILAttempt(_ context.Context, _ boardclient.LeaseToken,
+	_ store.BoardHILAssignment, completion store.BoardHILCompletion) error {
+	c.completed++
+	c.completion = completion
+	return nil
 }
 
 func (c *testSegmentControlClient) FinishSegment(_ context.Context, _ boardclient.LeaseToken, attemptID, id, outcome string) error {
@@ -149,5 +159,28 @@ func TestRunSegmentDeadlineCancelsAndClosesFailedSegment(t *testing.T) {
 		})
 	if !errors.Is(err, context.DeadlineExceeded) || len(client.finishes) != 1 || client.finishes[0] != "failed" {
 		t.Fatalf("deadline was not applied and durably closed: finishes=%v err=%v", client.finishes, err)
+	}
+}
+
+func TestCompleteHILAttemptPersistsAfterCooperativeYield(t *testing.T) {
+	agent, client, token := newActiveSegmentAgent(t)
+	client.state.Phase = board.YieldRequested
+	task := catalog.Task{Name: "hil-test", Version: 1, Tier: "required", Scope: "hil",
+		OS: []string{"linux"}, DeadlineSeconds: 30, BoardPolicy: "exclusive",
+		Steps: []catalog.Step{{Name: "observe", Program: "fixture"}},
+		Retry: catalog.RetryPolicy{MaxAttempts: 1},
+		HIL: &catalog.HILTask{BoardID: token.BoardID, BoardModel: "EK-RA8D2",
+			ManifestPath:  "examples/ek_ra8d2/hw_validated/hil/demo/hil.conf",
+			ProgramFamily: "demo", Mode: "alive", ObservationStep: "observe", FlashRestoreSeconds: 5}}
+	if err := catalog.ValidateTask(task); err != nil {
+		t.Fatalf("test task invalid: %v", err)
+	}
+	assignment := store.BoardHILAssignment{Attempt: store.Attempt{ID: "01996f90-3415-7cfe-8ff1-600058131aff", State: "running"}, Task: task}
+	completion := store.BoardHILCompletion{AttemptID: assignment.Attempt.ID, LeaseID: token.LeaseID,
+		Generation: token.Generation, Result: "preempted", EvidenceComplete: false}
+	if err := agent.CompleteHILAttempt(context.Background(), token, assignment, completion); err != nil ||
+		client.completed != 1 || client.completion.AttemptID != assignment.Attempt.ID || client.completion.Result != "preempted" {
+		t.Fatalf("terminal HIL evidence was not persisted at the yield checkpoint: completion=%+v calls=%d err=%v",
+			client.completion, client.completed, err)
 	}
 }

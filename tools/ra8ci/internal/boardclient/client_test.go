@@ -897,3 +897,43 @@ func TestClaimNextHILAttemptBindsLeaseHostAndCatalog(t *testing.T) {
 		t.Fatalf("empty HIL queue response: assignment=%+v err=%v", none, err)
 	}
 }
+
+func TestCompleteHILAttemptBindsPathLeaseGenerationAndEvidence(t *testing.T) {
+	token := LeaseToken{BoardID: "ek-ra8d2", LeaseID: "01996f90-3415-7cfe-8ff1-600058131afe", Generation: 7}
+	task := catalog.Task{Name: "hil-demo", Version: 1, Tier: "required", Scope: "hil", OS: []string{"linux"},
+		DeadlineSeconds: 60, BoardPolicy: "exclusive", Steps: []catalog.Step{{Name: "observe", Program: "echo"}},
+		Retry: catalog.RetryPolicy{MaxAttempts: 1},
+		HIL: &catalog.HILTask{BoardID: token.BoardID, BoardModel: "EK-RA8D2",
+			ManifestPath:  "examples/ek_ra8d2/hw_validated/hil/uart_hello/hil.conf",
+			ProgramFamily: "uart-hello", Mode: "uart_scrape", ObservationStep: "observe", FlashRestoreSeconds: 10}}
+	assignment := store.BoardHILAssignment{Attempt: store.Attempt{ID: testProofID, State: "running"}, Task: task}
+	completion := store.BoardHILCompletion{AttemptID: testProofID, LeaseID: token.LeaseID, Generation: token.Generation,
+		Result: "failed", Reason: "fixture verdict", Steps: []store.HILStep{{Key: "observe", State: "failed"}}}
+	var called bool
+	c, closeServer := testClient(t, func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost || r.URL.Path != "/v1/boards/ek-ra8d2/hil-attempts/"+testProofID+"/complete" {
+			t.Errorf("unexpected HIL completion route: %s %s", r.Method, r.URL.Path)
+			w.WriteHeader(http.StatusNotFound)
+			return
+		}
+		var req store.BoardHILCompletion
+		if json.NewDecoder(r.Body).Decode(&req) != nil || req.LeaseID != token.LeaseID ||
+			req.Generation != token.Generation || req.Result != "failed" ||
+			len(req.Steps) != 1 || req.Steps[0].Key != "observe" {
+			t.Errorf("HIL completion body lost lease or evidence: %+v", req)
+			w.WriteHeader(http.StatusBadRequest)
+			return
+		}
+		called = true
+		jsonResponse(w, http.StatusOK, map[string]string{"attempt_id": testProofID, "result": req.Result})
+	})
+	defer closeServer()
+	if err := c.CompleteHILAttempt(context.Background(), token, assignment, completion); err != nil || !called {
+		t.Fatalf("HIL completion failed: called=%v err=%v", called, err)
+	}
+	bad := completion
+	bad.Generation++
+	if err := c.CompleteHILAttempt(context.Background(), token, assignment, bad); !errors.Is(err, ErrInvalidRequest) {
+		t.Fatalf("mismatched generation was sent: %v", err)
+	}
+}

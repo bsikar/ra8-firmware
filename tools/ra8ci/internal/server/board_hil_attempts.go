@@ -13,6 +13,56 @@ type durableBoardHILClaims interface {
 	ClaimNextBoardHILAttempt(context.Context, store.BoardActor, string, store.StartAttemptInput, *catalog.Catalog, string) (*store.BoardHILAssignment, error)
 }
 
+type durableBoardHILFinisher interface {
+	CompleteBoardHILAttempt(context.Context, store.BoardActor, store.BoardHILCompletion, *catalog.Catalog, string) error
+}
+
+type completeHILAttemptRequest struct {
+	LeaseID          string          `json:"lease_id"`
+	Generation       uint64          `json:"generation"`
+	Result           string          `json:"result"`
+	ChildExitCode    *int            `json:"child_exit_code,omitempty"`
+	HitDeadline      bool            `json:"hit_deadline"`
+	EvidenceComplete bool            `json:"evidence_complete"`
+	Reason           string          `json:"reason,omitempty"`
+	Steps            []store.HILStep `json:"steps"`
+}
+
+func (h *boardHTTP) completeHILAttempt(w http.ResponseWriter, r *http.Request) {
+	actor, ok := h.authorize(w, r, "board.hil.complete")
+	if !ok {
+		return
+	}
+	st, ok := h.store.(durableBoardHILFinisher)
+	if !ok || h.catalog == nil || h.catalog.Digest() == "" {
+		problem(w, http.StatusServiceUnavailable, "unavailable", "lease-bound HIL completion is not configured", true)
+		return
+	}
+	attemptID := r.PathValue("attempt_id")
+	if !store.ValidID(attemptID) {
+		problem(w, http.StatusBadRequest, "invalid_argument", "invalid HIL attempt ID", false)
+		return
+	}
+	var req completeHILAttemptRequest
+	if !decodeBoardJSON(w, r, &req) {
+		return
+	}
+	if !store.ValidID(req.LeaseID) || req.Generation == 0 {
+		problem(w, http.StatusBadRequest, "invalid_argument", "invalid HIL lease identity", false)
+		return
+	}
+	err := st.CompleteBoardHILAttempt(r.Context(), actor, store.BoardHILCompletion{
+		AttemptID: attemptID, LeaseID: req.LeaseID, Generation: req.Generation,
+		Result: req.Result, ChildExitCode: req.ChildExitCode, HitDeadline: req.HitDeadline,
+		EvidenceComplete: req.EvidenceComplete, Reason: req.Reason, Steps: req.Steps,
+	}, h.catalog, h.trustedCommit)
+	if err != nil {
+		writeBoardError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]string{"attempt_id": attemptID, "result": req.Result})
+}
+
 type claimHILAttemptRequest struct {
 	LeaseID      string          `json:"lease_id"`
 	Host         string          `json:"host"`
