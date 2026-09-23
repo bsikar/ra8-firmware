@@ -429,5 +429,29 @@
         {"name":"ra8_wdt_supervisor_thread_count","calling_context":"task-safe-reentrant","ownership":"Returns supervisor state and retains no caller resource."}
       ]
     }
+    ,{
+      "name": "ra8_keyboard",
+      "build_root": "libs/ra8_keyboard",
+      "public_header": "libs/ra8_keyboard/inc/ra8_keyboard.h",
+      "adapter": "libs/ra8_keyboard/src/ra8_keyboard_abi.zig",
+      "library_name": "ra8_keyboard",
+      "symbol_prefix": "ra8_kbd_",
+      "compatibility_sha256": "16c3e8ebadd6f7c31e8af1192339b9834d627aa28e0c97d2b87c0b8f3758d053",
+      "layout_assertions": ["@sizeOf(Rect) == 16", "@sizeOf(Key) == 20", "@sizeOf(Layout) == 820", "@offsetOf(Layout, \"frame\") == 804", "@sizeOf(Text) == 66"],
+      "target_class": "host-ra8",
+      "targets": {"host": [], "ra8": ["-Dtarget=thumb-freestanding-eabihf", "-Dcpu=cortex_m85+fp_armv8-d32-fp64"]},
+      "c_include_dirs": ["libs/ra8_keyboard/inc", "libs/ra8_ui/inc", "libs/ra8_core/inc"],
+      "contract_tests": [
+        {"language":"c","path":"tests/security/src/test_ra8_keyboard.c","registration":"tests/cmake/unit_tests.cmake"},
+        {"language":"zig","path":"libs/ra8_keyboard/tests/abi_test.zig","registration":"libs/ra8_keyboard/.zig-test-contract.json"}
+      ],
+      "exports": [
+        {"name":"ra8_kbd_layout_init","calling_context":"task-only-non-reentrant","ownership":"borrows frame and updates the caller-owned keyboard layout"},
+        {"name":"ra8_kbd_hit","calling_context":"task-safe-reentrant","ownership":"borrows a read-only layout and returns the hit key index"},
+        {"name":"ra8_kbd_key_glyph","calling_context":"task-safe-reentrant","ownership":"borrows a read-only layout and returns the shift-adjusted glyph"},
+        {"name":"ra8_kbd_text_init","calling_context":"task-only-non-reentrant","ownership":"resets the caller-owned text buffer to empty and uncommitted"},
+        {"name":"ra8_kbd_apply","calling_context":"task-only-non-reentrant","ownership":"mutates caller-owned text and keyboard layout state synchronously"}
+      ]
+    }
   ]
 }
