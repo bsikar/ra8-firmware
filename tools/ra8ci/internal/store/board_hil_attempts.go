@@ -159,6 +159,57 @@ func (s *Store) ClaimNextBoardHILAttempt(ctx context.Context, actor BoardActor, 
 		}
 		return nil, fmt.Errorf("%w: read HIL lease holder: %v", ErrUnavailable, err)
 	}
+	// Claims are idempotent across a lost HTTP response. A retry under the
+	// same live lease returns its already-running attempt instead of observing
+	// an empty scheduled queue and leaving the agent unable to continue.
+	var existingRaw []byte
+	var existing TaskHILAttempt
+	var existingTaskName string
+	var existingTaskVersion, existingDeadline int
+	var existingCommit, existingSnapshot, existingCatalog string
+	err = tx.QueryRow(ctx, `SELECT a.id::text,a.task_id::text,a.attempt_no,a.state,a.started_at,a.deadline_at,
+		t.name,t.version,t.deadline_seconds,t.arguments,r.id::text,r.repository,r.branch,r.commit_sha,
+		r.snapshot_sha256,r.catalog_sha256
+		FROM task_attempts a JOIN tasks t ON t.id=a.task_id JOIN runs r ON r.id=t.run_id
+		WHERE a.board_lease_id=$1 AND a.state='running' AND t.scope='hil' AND r.actor_id=$2
+		  AND EXISTS (SELECT 1 FROM audit u WHERE u.actor_id=$3
+		    AND u.action='board.hil.attempt_claimed' AND u.target_type='attempt'
+		    AND u.target_id=a.id::text AND u.reason->>'lease_id'=$1)
+		ORDER BY a.started_at DESC LIMIT 1`, leaseID, holderID, actor.id).Scan(
+		&existing.ID, &existing.TaskID, &existing.AttemptNo, &existing.State, &existing.StartedAt,
+		&existing.DeadlineAt, &existingTaskName, &existingTaskVersion, &existingDeadline,
+		&existingRaw, &existing.RunID, &existing.Repository, &existing.Branch, &existingCommit,
+		&existingSnapshot, &existingCatalog)
+	if err == nil {
+		definition, found := definitions.Task(existingTaskName)
+		if !found || definition.Scope != "hil" || definition.BoardPolicy != "exclusive" ||
+			definition.HIL == nil || definition.HIL.BoardID != actor.boardID ||
+			!definition.SupportsOS("linux") || definition.Version != existingTaskVersion ||
+			definition.DeadlineSeconds != existingDeadline || existingCatalog != definitions.Digest() ||
+			existingCommit != trustedCommit {
+			return nil, fmt.Errorf("%w: active HIL attempt differs from the current reviewed catalog or trusted commit", ErrConflict)
+		}
+		var persisted struct {
+			Args []string         `json:"argv"`
+			HIL  *catalog.HILTask `json:"hil"`
+		}
+		decoder := json.NewDecoder(bytes.NewReader(existingRaw))
+		decoder.DisallowUnknownFields()
+		if decoder.Decode(&persisted) != nil || persisted.HIL == nil ||
+			*persisted.HIL != *definition.HIL || definition.ValidateArguments(persisted.Args) != nil {
+			return nil, fmt.Errorf("%w: running HIL assignment no longer matches its catalog contract", ErrConflict)
+		}
+		if err := tx.Commit(ctx); err != nil {
+			return nil, fmt.Errorf("%w: close idempotent HIL claim: %v", ErrUnavailable, err)
+		}
+		return &BoardHILAssignment{Attempt: existing.Attempt, Task: definition,
+			Args: append([]string(nil), persisted.Args...), RunID: existing.RunID,
+			Repository: existing.Repository, Branch: existing.Branch, CommitSHA: existingCommit,
+			SnapshotSHA256: existingSnapshot, SourceAlgorithm: source.Algorithm,
+			CatalogSHA256: existingCatalog}, nil
+	} else if err != pgx.ErrNoRows {
+		return nil, fmt.Errorf("%w: read existing HIL assignment: %v", ErrUnavailable, err)
+	}
 	var selected BoardHILAssignment
 	var taskID, taskName string
 	var taskVersion, deadlineSeconds int
@@ -219,4 +270,11 @@ func (s *Store) ClaimNextBoardHILAttempt(ctx context.Context, actor BoardActor, 
 	selected.Args = append([]string(nil), persisted.Args...)
 	selected.CatalogSHA256 = definitions.Digest()
 	return &selected, nil
+}
+
+type TaskHILAttempt struct {
+	Attempt
+	RunID      string
+	Repository string
+	Branch     string
 }
