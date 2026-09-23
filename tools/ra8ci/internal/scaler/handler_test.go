@@ -243,11 +243,30 @@ func (testMetadataResolver) Resolve(_ context.Context, job github.Job) (Metadata
 	return Metadata{WorkflowAttempt: 1, CommitSHA: testSHA, JobID: job.JobID, WorkflowRunID: job.WorkflowRunID, Repository: job.Owner + "/" + job.Repository}, nil
 }
 
-type testBootstrapper struct{ calls int }
+type testBootstrapper struct {
+	calls    int
+	receipts map[string]BootstrapReceipt
+}
 
 func (b *testBootstrapper) Prepare(_ context.Context, vm store.RunnerVM) (BootstrapReceipt, error) {
 	b.calls++
-	return BootstrapReceipt{ReservationID: vm.ID, VMID: vm.VMID, CommitSHA: vm.CommitSHA, PreparedAt: time.Now()}, nil
+	if receipt, ok := b.receipts[vm.ID]; ok {
+		return receipt, nil
+	}
+	if vm.State != "running" || vm.UnknownOutcome {
+		return BootstrapReceipt{}, errors.New("guest is not running and reconciled")
+	}
+	evidenceID, _ := store.NewID()
+	receipt := BootstrapReceipt{ReservationID: vm.ID, VMID: vm.VMID, CommitSHA: vm.CommitSHA,
+		GuestOS: "linux", GuestArchitecture: "amd64", ServiceAccount: "ra8ci",
+		RunnerBinarySHA256: strings.Repeat("a", 64), AgentBinarySHA256: strings.Repeat("b", 64),
+		ReadinessSHA256: strings.Repeat("c", 64), JITConfigSHA256: strings.Repeat("d", 64),
+		JITConfigExpiresAt: time.Now().Add(time.Minute), EvidenceID: evidenceID, PreparedAt: time.Now()}
+	if b.receipts == nil {
+		b.receipts = make(map[string]BootstrapReceipt)
+	}
+	b.receipts[vm.ID] = receipt
+	return receipt, nil
 }
 
 type failedBootstrap struct{}
@@ -397,7 +416,7 @@ func TestFullLifecycleUsesOneVMAndDeletesOnlyOwnedGuest(t *testing.T) {
 		t.Fatal(err)
 	}
 	vm, _ := ledger.GetRunnerVMByJob(ctx, 42, job.JobID)
-	if vm.State != "running" || vm.UnknownOutcome || bootstrap.calls != 1 {
+	if vm.State != "running" || vm.UnknownOutcome || bootstrap.calls != 2 {
 		t.Fatalf("assigned state=%+v bootstrap=%d", vm, bootstrap.calls)
 	}
 	if err := h.Process(ctx, github.Message{ScaleSetID: 42, Started: []github.Job{job}}); err != nil {
@@ -549,7 +568,7 @@ func TestBadEventIdentityCannotBindOrCleanupRunner(t *testing.T) {
 	}
 }
 
-func TestMissingJITLeavesClonedGuestStoppedForReplay(t *testing.T) {
+func TestPostBootBootstrapFailureReplaysWithoutRecloningOrRestarting(t *testing.T) {
 	h, ledger, fake, bootstrap, job := testHarness(t)
 	h.bootstrap = failedBootstrap{}
 	msg := github.Message{ScaleSetID: 42, Assigned: []github.Job{job}}
@@ -557,14 +576,14 @@ func TestMissingJITLeavesClonedGuestStoppedForReplay(t *testing.T) {
 		t.Fatal("missing JIT did not fail")
 	}
 	vm, _ := ledger.GetRunnerVMByJob(context.Background(), 42, job.JobID)
-	if vm.State != "stopped" || vm.UnknownOutcome {
-		t.Fatalf("JIT failure state: %+v", vm)
+	if vm.State != "running" || vm.UnknownOutcome {
+		t.Fatalf("post-boot readiness failure state: %+v", vm)
 	}
 	fake.mu.Lock()
-	startCalls := fake.startCalls
+	cloneCalls, startCalls := fake.cloneCalls, fake.startCalls
 	fake.mu.Unlock()
-	if startCalls != 0 {
-		t.Fatal("guest started without JIT")
+	if cloneCalls != 1 || startCalls != 1 {
+		t.Fatal("post-boot readiness failure did not leave one reconciled running guest")
 	}
 	h.bootstrap = bootstrap
 	if err := h.Process(context.Background(), msg); err != nil {
@@ -572,8 +591,8 @@ func TestMissingJITLeavesClonedGuestStoppedForReplay(t *testing.T) {
 	}
 	fake.mu.Lock()
 	defer fake.mu.Unlock()
-	if fake.cloneCalls != 1 || fake.startCalls != 1 {
-		t.Fatal("JIT replay repeated clone or omitted start")
+	if fake.cloneCalls != 1 || fake.startCalls != 1 || bootstrap.calls != 1 {
+		t.Fatal("readiness retry repeated VM mutations or did not resume bootstrap")
 	}
 }
 

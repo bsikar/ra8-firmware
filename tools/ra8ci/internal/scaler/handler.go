@@ -46,18 +46,28 @@ type MetadataResolver interface {
 	Resolve(context.Context, github.Job) (Metadata, error)
 }
 
-// Bootstrapper must deliver a single-use JIT credential through a separately
-// approved guest channel. Prepare must be idempotent by reservation ID and
-// must not put a token in SQL, a VM description, or a task working directory.
+// Bootstrapper performs post-boot Ansible readiness, then delivers one-use JIT
+// configuration through a protected guest channel. Prepare is called only for
+// a running guest and must reconcile idempotently by reservation ID after an
+// ambiguous response; it must not put JIT bytes in SQL, logs, or argv.
 type Bootstrapper interface {
 	Prepare(context.Context, store.RunnerVM) (BootstrapReceipt, error)
 }
 
 type BootstrapReceipt struct {
-	ReservationID string
-	VMID          int
-	CommitSHA     string
-	PreparedAt    time.Time
+	ReservationID      string
+	VMID               int
+	CommitSHA          string
+	GuestOS            string
+	GuestArchitecture  string
+	ServiceAccount     string
+	RunnerBinarySHA256 string
+	AgentBinarySHA256  string
+	ReadinessSHA256    string
+	JITConfigSHA256    string
+	JITConfigExpiresAt time.Time
+	EvidenceID         string
+	PreparedAt         time.Time
 }
 
 // RunnerObserver must use independent GitHub/guest facts, not the message

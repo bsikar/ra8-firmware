@@ -45,7 +45,10 @@ func (h *Handler) assigned(ctx context.Context, job github.Job) error {
 	if vm.State == "stopped" && !vm.CleanupRequested {
 		return h.prepareAndStart(ctx, vm)
 	}
-	if vm.State == "running" || vm.State == "registered" || vm.State == "draining" {
+	if vm.State == "running" && !vm.CleanupRequested {
+		return h.bootstrapRunning(ctx, vm)
+	}
+	if vm.State == "registered" || vm.State == "draining" {
 		return nil
 	}
 	return fmt.Errorf("assigned job has unexpected VM state %q", vm.State)
@@ -61,18 +64,36 @@ func (h *Handler) prepareAndStart(ctx context.Context, vm store.RunnerVM) error 
 		if err != nil {
 			return err
 		}
-		return errors.New("runner guest is not stable and stopped before JIT bootstrap")
+		return errors.New("runner guest is not stable and stopped before start")
+	}
+	started, err := h.execute(ctx, vm, "start", store.RunnerVMSafetyEvidence{})
+	if err != nil {
+		return err
+	}
+	return h.bootstrapRunning(ctx, started)
+}
+
+func (h *Handler) bootstrapRunning(ctx context.Context, vm store.RunnerVM) error {
+	if vm.State != "running" || vm.UnknownOutcome || vm.CleanupRequested {
+		return errors.New("JIT bootstrap requires a reconciled running reservation")
 	}
 	receipt, err := h.bootstrap.Prepare(ctx, vm)
 	if err != nil {
-		return fmt.Errorf("secure JIT bootstrap: %w", err)
+		return fmt.Errorf("post-boot Ansible readiness and JIT bootstrap: %w", err)
 	}
+	now := time.Now()
 	if receipt.ReservationID != vm.ID || receipt.VMID != vm.VMID || receipt.CommitSHA != vm.CommitSHA ||
-		receipt.PreparedAt.IsZero() || receipt.PreparedAt.After(time.Now().Add(time.Second)) || time.Since(receipt.PreparedAt) > 5*time.Minute {
-		return errors.New("JIT bootstrap receipt does not bind the stopped guest and job")
+		!store.ValidID(receipt.EvidenceID) || !sha256Pattern.MatchString(receipt.ReadinessSHA256) ||
+		!sha256Pattern.MatchString(receipt.RunnerBinarySHA256) || !sha256Pattern.MatchString(receipt.AgentBinarySHA256) ||
+		!sha256Pattern.MatchString(receipt.JITConfigSHA256) ||
+		(receipt.GuestOS != "linux" && receipt.GuestOS != "windows") ||
+		(receipt.GuestArchitecture != "amd64" && receipt.GuestArchitecture != "arm64") ||
+		receipt.ServiceAccount != "ra8ci" || receipt.PreparedAt.IsZero() ||
+		receipt.PreparedAt.After(now.Add(time.Second)) || now.Sub(receipt.PreparedAt) > 5*time.Minute ||
+		!receipt.JITConfigExpiresAt.After(now) {
+		return errors.New("JIT bootstrap receipt lacks fresh identity-bound readiness evidence")
 	}
-	_, err = h.execute(ctx, vm, "start", store.RunnerVMSafetyEvidence{})
-	return err
+	return nil
 }
 
 func (h *Handler) started(ctx context.Context, job github.Job) error {
