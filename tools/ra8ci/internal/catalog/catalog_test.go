@@ -22,14 +22,17 @@ func TestLoadReviewedTasks(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	want := []string{"format", "format-check", "lint-go", "test-go"}
-	if !reflect.DeepEqual(c.Names(), want) {
-		t.Fatalf("task names = %v, want %v", c.Names(), want)
+	names := c.Names()
+	if len(names) != 71 {
+		t.Fatalf("catalog has %d tasks, want 71", len(names))
 	}
-	deadlines := []int{900, 900, 1200, 1800}
-	for index, name := range want {
+	deadlines := map[string]int{
+		"format": 900, "format-check": 900, "lint-go": 1200, "test-go": 1800,
+		"ascii": 1800, "unit-tests": 7200, "fuzz-sweep": 86400,
+	}
+	for name, deadline := range deadlines {
 		task, found := c.Task(name)
-		if !found || task.DeadlineSeconds != deadlines[index] || !task.IsSafeLocal() || !task.SupportsOS("linux") || task.SupportsOS("windows") {
+		if !found || task.DeadlineSeconds != deadline || !task.IsSafeLocal() || !task.SupportsOS("linux") || task.SupportsOS("windows") {
 			t.Fatalf("invalid reviewed task %q: %+v (found %t)", name, task, found)
 		}
 		if task.SupportsCurrentOS() != task.SupportsOS(runtime.GOOS) {
@@ -41,6 +44,16 @@ func TestLoadReviewedTasks(t *testing.T) {
 		if err := task.ValidateArguments([]string{"extra"}); err == nil {
 			t.Fatalf("task %q accepted unreviewed arguments", name)
 		}
+	}
+	for _, name := range []string{"hil-all", "bench-lock-selftest", "soup-upstream-refresh"} {
+		if _, found := c.Task(name); found {
+			t.Fatalf("task %q must remain outside local dispatch until its safety boundary is modeled", name)
+		}
+	}
+	gate, found := c.Task("emulator-matrix")
+	if !found || len(gate.Steps) != 1 || gate.Steps[0].Program != "bash" ||
+		!reflect.DeepEqual(gate.Steps[0].Args, []string{"scripts/ci.sh", "--gate", "emulator-matrix"}) {
+		t.Fatalf("CI gate task does not preserve exact argv: %+v", gate)
 	}
 	if _, found := c.Task("does-not-exist"); found {
 		t.Fatal("unknown task was found")
@@ -56,12 +69,13 @@ func TestCatalogReturnsCopies(t *testing.T) {
 		t.Fatal(err)
 	}
 	names := c.Names()
+	originalFirst := names[0]
 	names[0] = "mutated"
 	task, _ := c.Task("format")
 	task.OS[0] = "windows"
 	task.Steps[0].Args[0] = "elsewhere"
 	again, found := c.Task("format")
-	if !found || again.OS[0] != "linux" || again.Steps[0].Args[0] != "scripts/checks/format_tree.sh" || c.Names()[0] != "format" {
+	if !found || again.OS[0] != "linux" || again.Steps[0].Args[0] != "scripts/checks/format_tree.sh" || c.Names()[0] != originalFirst {
 		t.Fatalf("catalog was mutable through accessors: %+v", again)
 	}
 }
@@ -108,9 +122,9 @@ func TestParseRequiresEveryDeclaredField(t *testing.T) {
 	mutations := []string{
 		strings.Replace(base, `"outputs": [],`, ``, 1),
 		strings.Replace(base, `"resource_hints": {}`, `"resource_hints": null`, 1),
-		strings.Replace(base, `"args_schema": {"positional": [], "flags": []}`, `"args_schema": {"positional": []}`, 1),
-		strings.Replace(base, `"retry": {"max_attempts": 1}`, `"retry": {}`, 1),
-		strings.Replace(base, `"steps": [{"name": "format-tree", "program": "bash", "args": ["scripts/checks/format_tree.sh"]}]`, `"steps": [{"name": "format-tree", "program": "bash"}]`, 1),
+		strings.Replace(base, `"positional": [],`, ``, 1),
+		strings.Replace(base, `"max_attempts": 1`, `"max_attempts": null`, 1),
+		strings.Replace(base, `"args": [`, `"args": null`, 1),
 	}
 	for index, mutation := range mutations {
 		t.Run(string(rune('a'+index)), func(t *testing.T) {
@@ -128,7 +142,7 @@ func TestParseRejectsUnsupportedTaskBehavior(t *testing.T) {
 		strings.Replace(base, `"board_policy": "none"`, `"board_policy": "required"`, 1),
 		strings.Replace(base, `"max_attempts": 1`, `"max_attempts": 2`, 1),
 		strings.Replace(base, `"deadline_seconds": 900`, `"deadline_seconds": 0`, 1),
-		strings.Replace(base, `"os": ["linux"]`, `"os": ["darwin"]`, 1),
+		strings.Replace(base, `"linux"`, `"darwin"`, 1),
 		strings.Replace(base, `"program": "bash"`, `"program": ""`, 1),
 		strings.Replace(base, `"tier": "required"`, `"tier": "unknown"`, 1),
 		strings.Replace(base, `"scope": "safe-local-read-only"`, `"scope": "unknown"`, 1),
