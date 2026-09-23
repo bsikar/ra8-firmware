@@ -154,6 +154,14 @@ type taskRequest struct {
 	DependsOnKeys []string `json:"depends_on_keys"`
 }
 
+func persistedTaskArguments(definition catalog.Task, argv []string) (json.RawMessage, error) {
+	argumentData := map[string]any{"argv": argv}
+	if definition.HIL != nil {
+		argumentData["hil"] = definition.HIL
+	}
+	return json.Marshal(argumentData)
+}
+
 func (s *Server) createRun(w http.ResponseWriter, r *http.Request) {
 	if !strings.HasPrefix(r.Header.Get("Content-Type"), "application/json") {
 		problem(w, http.StatusUnsupportedMediaType, "invalid_argument", "content type must be application/json", false)
@@ -206,7 +214,7 @@ func (s *Server) createRun(w http.ResponseWriter, r *http.Request) {
 			problem(w, http.StatusBadRequest, "invalid_argument", "unknown task or invalid task arguments", false)
 			return
 		}
-		arguments, err := json.Marshal(map[string]any{"argv": requested.Args})
+		arguments, err := persistedTaskArguments(definition, requested.Args)
 		if err != nil {
 			problem(w, http.StatusBadRequest, "invalid_argument", "invalid task arguments", false)
 			return
