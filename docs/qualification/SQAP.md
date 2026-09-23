@@ -85,7 +85,7 @@ tools, all of which run on every commit and every PR:
 | Obsolete-standards audit             | `scripts/checks/check_obsolete_standards.py` (rejects superseded safety-standard references) |
 | MC/DC vector pattern audit on tests  | `scripts/checks/check_mcdc_block.py`                                              |
 | HUM citation audit                   | `scripts/checks/cite_check.py`                                                    |
-| Doxygen `@since` audit               | `scripts/checks/check-since-version.py`                                           |
+| Doxygen `@since` audit               | `ra8ci since`                                           |
 | Copyright header audit               | `scripts/checks/check-copyright.py`                                               |
 
 A failed gate is the audit finding. The CI log is the audit record;

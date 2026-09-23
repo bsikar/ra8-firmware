@@ -62,11 +62,11 @@ unused_includes:
 
 # Check file encodings for non-ASCII characters
 ascii:
-    go run ./tools/ra8ci ascii
+    cd tools/ra8ci && GOWORK=off go run . ascii
 
 # Verify @since version tags
 version:
-    python3 scripts/checks/check-since-version.py --all
+    cd tools/ra8ci && GOWORK=off go run . since
 
 # Run host unit tests
 test ubsan="0":

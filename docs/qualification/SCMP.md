@@ -104,7 +104,7 @@ The canonical EK-RA8D2 defaults are under
 | `scripts/checks/check_obsolete_standards.py`| Rejects superseded safety-standard references.       |
 | `scripts/checks/check_no_dynamic_alloc.py`  | NASA P10 Rule 3 enforcement.                         |
 | `scripts/checks/check_mcdc_block.py`        | `@par MC/DC:` block enforcement on tests.            |
-| `scripts/checks/check-since-version.py`     | Doxygen `@since` enforcement.                        |
+| `ra8ci since`     | Doxygen `@since` enforcement.                        |
 | `scripts/checks/check-copyright.py`         | Copyright + SPDX header enforcement.                 |
 | `scripts/report/roadmap_stats.py`           | `../ROADMAP.md` summary block freshness gate.        |
 | `scripts/report/tree_coverage.sh`                 | gcovr whole-tree coverage measurement.               |

@@ -22,6 +22,7 @@ import (
 
 	"github.com/bsikar/ra8-firmware/tools/ra8ci/internal/asciigate"
 	"github.com/bsikar/ra8-firmware/tools/ra8ci/internal/catalog"
+	"github.com/bsikar/ra8-firmware/tools/ra8ci/internal/sincegate"
 )
 
 const stopGrace = 30 * time.Second
@@ -173,10 +174,14 @@ func runStep(ctx context.Context, root string, env []string, step catalog.Step, 
 		result.EndedAt = end.UTC()
 		result.Duration = end.Sub(started)
 	}()
-	if step.Program == "ra8ci:ascii" {
+	if step.Program == "ra8ci:ascii" || step.Program == "ra8ci:since" {
 		stdoutLog := newDigestWriter(stdout)
 		stderrLog := newDigestWriter(stderr)
-		result.ExitCode = asciigate.Run(ctx, root, step.Args, stdoutLog, stderrLog)
+		if step.Program == "ra8ci:ascii" {
+			result.ExitCode = asciigate.Run(ctx, root, step.Args, stdoutLog, stderrLog)
+		} else {
+			result.ExitCode = sincegate.Run(ctx, root, step.Args, stdoutLog, stderrLog)
+		}
 		if expiration := contextExpiration(ctx); expiration != nil {
 			result.TimedOut = errors.Is(expiration, context.DeadlineExceeded)
 			result.Cancelled = !result.TimedOut
