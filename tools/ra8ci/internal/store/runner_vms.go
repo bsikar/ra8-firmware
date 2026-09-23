@@ -115,6 +115,8 @@ type RunnerVMBootstrapEvidence struct {
 	JITConfigSHA256    string
 	JITConfigExpiresAt time.Time
 	EvidenceID         string
+	StartedAt          time.Time
+	CompletedAt        time.Time
 	PreparedAt         time.Time
 }
 
@@ -133,7 +135,9 @@ func (s *Store) RecordRunnerVMBootstrapEvidence(ctx context.Context, actor strin
 		!runnerVMHexSHA256.MatchString(evidence.AgentBinarySHA256) ||
 		!runnerVMHexSHA256.MatchString(evidence.ReadinessSHA256) ||
 		!runnerVMHexSHA256.MatchString(evidence.JITConfigSHA256) ||
-		!ValidID(evidence.EvidenceID) || evidence.PreparedAt.IsZero() ||
+		!ValidID(evidence.EvidenceID) || evidence.StartedAt.IsZero() || evidence.CompletedAt.IsZero() || evidence.PreparedAt.IsZero() ||
+		evidence.StartedAt.After(evidence.CompletedAt) || evidence.CompletedAt.Sub(evidence.StartedAt) > 5*time.Minute ||
+		evidence.CompletedAt.After(now.Add(time.Second)) || now.Sub(evidence.CompletedAt) > 5*time.Minute ||
 		evidence.PreparedAt.After(now.Add(time.Second)) || now.Sub(evidence.PreparedAt) > 5*time.Minute ||
 		!evidence.JITConfigExpiresAt.After(now) ||
 		evidence.JITConfigExpiresAt.After(now.Add(time.Hour)) {
@@ -164,12 +168,15 @@ func (s *Store) RecordRunnerVMBootstrapEvidence(ctx context.Context, actor strin
 			"evidence_id": evidence.EvidenceID, "vmid": evidence.VMID,
 			"commit_sha": evidence.CommitSHA, "guest_os": evidence.GuestOS,
 			"guest_architecture": evidence.GuestArchitecture, "service_account": evidence.ServiceAccount,
-			"runner_binary_sha256":  evidence.RunnerBinarySHA256,
-			"agent_binary_sha256":   evidence.AgentBinarySHA256,
-			"readiness_sha256":      evidence.ReadinessSHA256,
-			"jit_config_sha256":     evidence.JITConfigSHA256,
-			"jit_config_expires_at": evidence.JITConfigExpiresAt.UTC(),
-			"prepared_at":           evidence.PreparedAt.UTC(),
+			"runner_binary_sha256":   evidence.RunnerBinarySHA256,
+			"agent_binary_sha256":    evidence.AgentBinarySHA256,
+			"readiness_sha256":       evidence.ReadinessSHA256,
+			"jit_config_sha256":      evidence.JITConfigSHA256,
+			"jit_config_expires_at":  evidence.JITConfigExpiresAt.UTC(),
+			"bootstrap_started_at":   evidence.StartedAt.UTC(),
+			"bootstrap_completed_at": evidence.CompletedAt.UTC(),
+			"bootstrap_duration_ms":  evidence.CompletedAt.Sub(evidence.StartedAt).Milliseconds(),
+			"prepared_at":            evidence.PreparedAt.UTC(),
 		}); err != nil {
 		return fmt.Errorf("%w: append runner bootstrap evidence: %v", ErrUnavailable, err)
 	}

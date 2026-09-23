@@ -107,7 +107,8 @@ func TestIntegrationRunnerVMLifecycleAndNoRestartAfterDrain(t *testing.T) {
 		GuestOS: "linux", GuestArchitecture: "amd64", ServiceAccount: "ra8ci",
 		RunnerBinarySHA256: strings.Repeat("1", 64), AgentBinarySHA256: strings.Repeat("2", 64),
 		ReadinessSHA256: strings.Repeat("3", 64), JITConfigSHA256: strings.Repeat("4", 64),
-		JITConfigExpiresAt: time.Now().Add(30 * time.Minute), EvidenceID: mustID(t), PreparedAt: time.Now(),
+		JITConfigExpiresAt: time.Now().Add(30 * time.Minute), EvidenceID: mustID(t),
+		StartedAt: time.Now().Add(-time.Second), CompletedAt: time.Now(), PreparedAt: time.Now(),
 	}
 	if err := s.RecordRunnerVMBootstrapEvidence(ctx, "scaler", bootstrapEvidence); err != nil {
 		t.Fatalf("record validated bootstrap evidence: %v", err)
@@ -119,6 +120,10 @@ func TestIntegrationRunnerVMLifecycleAndNoRestartAfterDrain(t *testing.T) {
 	var bootstrapReason map[string]json.RawMessage
 	if err := json.Unmarshal([]byte(bootstrapAudit), &bootstrapReason); err != nil {
 		t.Fatalf("decode bootstrap audit: %v", err)
+	}
+	var bootstrapDurationMS int64
+	if err := json.Unmarshal(bootstrapReason["bootstrap_duration_ms"], &bootstrapDurationMS); err != nil || bootstrapDurationMS <= 0 {
+		t.Fatalf("bootstrap duration missing or invalid: %d, %v", bootstrapDurationMS, err)
 	}
 	if !strings.Contains(bootstrapAudit, bootstrapEvidence.ReadinessSHA256) ||
 		bootstrapReason["jit_config"] != nil || bootstrapReason["encoded_config"] != nil {
