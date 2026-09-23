@@ -134,7 +134,7 @@ func (s *Store) FinishBoardSegment(ctx context.Context, actor BoardActor, segmen
 	var ended bool
 	err = tx.QueryRow(ctx, `SELECT lease_id::text, generation, actor_id, attempt_id::text, ended_at IS NOT NULL
 		FROM board_segments WHERE id=$1 AND board_id=$2 FOR UPDATE`, segmentID, actor.boardID).
-		Scan(&leaseID, &generation, &actorID, &ended)
+		Scan(&leaseID, &generation, &actorID, &storedAttemptID, &ended)
 	if err != nil && err != pgx.ErrNoRows {
 		return fmt.Errorf("%w: read board segment: %v", ErrUnavailable, err)
 	}

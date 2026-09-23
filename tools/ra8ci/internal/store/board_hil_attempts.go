@@ -59,7 +59,7 @@ func (s *Store) StartBoardHILAttempt(ctx context.Context, actor BoardActor, task
             WHERE a.task_id=$1 AND a.board_lease_id=$2 AND a.state='running'
               AND EXISTS (SELECT 1 FROM audit u WHERE u.actor_id=$3
                 AND u.action='board.hil.attempt_claimed' AND u.target_type='attempt'
-                AND u.target_id=a.id::text AND u.reason->>'lease_id'=$2)
+                AND u.target_id=a.id::text AND u.reason->>'lease_id'=$2::text)
             ORDER BY a.attempt_no DESC LIMIT 1`, taskID, leaseID, actor.id).
 			Scan(&existing.ID, &existing.TaskID, &existing.AttemptNo, &existing.State, &existing.StartedAt, &existing.DeadlineAt)
 		if err != nil {
@@ -174,7 +174,7 @@ func (s *Store) ClaimNextBoardHILAttempt(ctx context.Context, actor BoardActor, 
 		WHERE a.board_lease_id=$1 AND a.state='running' AND t.scope='hil' AND r.actor_id=$2
 		  AND EXISTS (SELECT 1 FROM audit u WHERE u.actor_id=$3
 		    AND u.action='board.hil.attempt_claimed' AND u.target_type='attempt'
-		    AND u.target_id=a.id::text AND u.reason->>'lease_id'=$1)
+		    AND u.target_id=a.id::text AND u.reason->>'lease_id'=$1::text)
 		ORDER BY a.started_at DESC LIMIT 1`, leaseID, holderID, actor.id).Scan(
 		&existing.ID, &existing.TaskID, &existing.AttemptNo, &existing.State, &existing.StartedAt,
 		&existing.DeadlineAt, &existingTaskName, &existingTaskVersion, &existingDeadline,
