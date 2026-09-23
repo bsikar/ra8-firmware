@@ -125,30 +125,18 @@ func TestCanStartSegmentRequiresServerAndDurableFences(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	agent.clock = func() time.Time { return localNow }
 	token := boardclient.LeaseToken{BoardID: state.BoardID, RequestID: state.Lease.WaiterID,
 		LeaseID: state.Lease.ID, Generation: state.Generation, ExpiresAt: state.Lease.ExpiresAt,
 		Version: state.Version}
-	fence, err := board.SeedDeadline(state.Generation, state.Lease.DeadlineVersion,
-		state.Lease.ExpiresAt, localNow, 0)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := agent.CanStartSegment(context.Background(), token, fence, serverNow,
-		localNow, 5*time.Second, 3*time.Second); err != nil {
+	if err := agent.CanStartSegment(context.Background(), token, 5*time.Second, 3*time.Second); err != nil {
 		t.Fatalf("valid lease and durable fences rejected segment: %v", err)
 	}
 	wrongGeneration := token
 	wrongGeneration.Generation++
-	if err := agent.CanStartSegment(context.Background(), wrongGeneration, fence, serverNow,
-		localNow, time.Second, time.Second); !board.IsCode(err, board.RecoveryNecessary) {
+	if err := agent.CanStartSegment(context.Background(), wrongGeneration,
+		time.Second, time.Second); !board.IsCode(err, board.RecoveryNecessary) {
 		t.Fatalf("non-durable generation authorized a segment: %v", err)
-	}
-	staleFence := fence
-	staleFence.Version++
-	if err := agent.CanStartSegment(context.Background(), token, staleFence, serverNow,
-		localNow, time.Second, time.Second); !board.IsCode(err, board.StaleGeneration) {
-		t.Fatalf("stale local deadline version authorized a segment: %v", err)
-
 	}
 	human := board.Waiter{ID: "01996f90-3415-7cfe-8ff1-600058131b01",
 		LeaseID: "01996f90-3415-7cfe-8ff1-600058131b02", Holder: "human",
@@ -160,8 +148,8 @@ func TestCanStartSegmentRequiresServerAndDurableFences(t *testing.T) {
 	if control.state.Phase != board.YieldRequested {
 		t.Fatalf("human waiter did not request cooperative yield: %s", control.state.Phase)
 	}
-	if err := agent.CanStartSegment(context.Background(), token, fence, serverNow,
-		localNow, time.Second, time.Second); !board.IsCode(err, board.RecoveryNecessary) {
+	if err := agent.CanStartSegment(context.Background(), token,
+		time.Second, time.Second); !board.IsCode(err, board.RecoveryNecessary) {
 		t.Fatalf("segment started after yield request: %v", err)
 	}
 }

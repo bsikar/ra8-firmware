@@ -9,6 +9,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"sync"
 	"time"
 
 	"github.com/bsikar/ra8-firmware/tools/ra8ci/internal/board"
@@ -29,6 +30,9 @@ type Agent struct {
 	client    ControlClient
 	highWater HighWaterStore
 	interval  time.Duration
+	clock     func() time.Time
+	fenceMu   sync.Mutex
+	fence     *board.DeadlineFence
 }
 
 // New constructs a single-board reconciler. Its service identity must be
@@ -38,7 +42,8 @@ func New(boardID string, client ControlClient, highWater HighWaterStore, interva
 		interval < 250*time.Millisecond || interval > 30*time.Second {
 		return nil, ErrInvalidAgent
 	}
-	return &Agent{boardID: boardID, client: client, highWater: highWater, interval: interval}, nil
+	return &Agent{boardID: boardID, client: client, highWater: highWater,
+		interval: interval, clock: time.Now}, nil
 }
 
 // Reconcile observes the server lease, persists any new grant generation
@@ -75,13 +80,27 @@ func (a *Agent) Reconcile(ctx context.Context) (board.Snapshot, error) {
 		token := boardclient.LeaseToken{BoardID: a.boardID, RequestID: snapshot.Lease.WaiterID,
 			LeaseID: snapshot.Lease.ID, Generation: snapshot.Lease.Generation,
 			ExpiresAt: snapshot.Lease.ExpiresAt, Version: snapshot.Version}
-		return a.client.AcknowledgeGrant(ctx, token)
+		acknowledged, err := a.client.AcknowledgeGrant(ctx, token)
+		if err != nil {
+			return acknowledged, err
+		}
+		if err := a.refreshDeadlineFence(acknowledged); err != nil {
+			return acknowledged, err
+		}
+		return acknowledged, nil
 	}
 	if snapshot.Lease != nil && (snapshot.Phase == board.Active ||
 		snapshot.Phase == board.YieldRequested || snapshot.Phase == board.Draining) {
 		if snapshot.Lease.Generation != localHighWater || snapshot.AgentHighWater != localHighWater {
 			return a.client.ObserveAgentGeneration(ctx, a.boardID, localHighWater)
 		}
+		if snapshot.Phase == board.Active {
+			if err := a.refreshDeadlineFence(snapshot); err != nil {
+				return snapshot, err
+			}
+		}
+	} else {
+		a.clearDeadlineFence()
 	}
 	return snapshot, nil
 }
@@ -91,7 +110,7 @@ func (a *Agent) Reconcile(ctx context.Context) (board.Snapshot, error) {
 // bound is the indivisible operation duration; recoveryMargin reserves time to
 // restore a known-safe fixture before the lease expires.
 func (a *Agent) CanStartSegment(ctx context.Context, token boardclient.LeaseToken,
-	fence board.DeadlineFence, serverNow, localNow time.Time, bound, recoveryMargin time.Duration) error {
+	bound, recoveryMargin time.Duration) error {
 	if a == nil || ctx == nil || token.BoardID != a.boardID || token.LeaseID == "" || token.Generation == 0 {
 		return &board.Error{Code: board.InvalidArgument, Detail: "invalid board-agent segment token"}
 	}
@@ -106,15 +125,61 @@ func (a *Agent) CanStartSegment(ctx context.Context, token boardclient.LeaseToke
 	if localHighWater != token.Generation || snapshot.AgentHighWater != token.Generation {
 		return &board.Error{Code: board.RecoveryNecessary, Detail: "server and durable board generations do not authorize this segment"}
 	}
+	now := a.clock()
 	serverToken := board.Token{BoardID: token.BoardID, LeaseID: token.LeaseID, Generation: token.Generation}
-	if err := board.CanStartSegment(snapshot, serverToken, serverNow, bound, recoveryMargin); err != nil {
+	if err := board.CanStartSegment(snapshot, serverToken, now.UTC(), bound, recoveryMargin); err != nil {
 		return err
 	}
-	if snapshot.Lease == nil || fence.Generation != token.Generation ||
-		fence.Version != snapshot.Lease.DeadlineVersion {
-		return &board.Error{Code: board.StaleGeneration, Detail: "local deadline fence does not match the current lease version"}
+	if err := a.refreshDeadlineFence(snapshot); err != nil {
+		return err
 	}
-	return fence.CanStartSegment(token.Generation, localNow, bound, recoveryMargin)
+	a.fenceMu.Lock()
+	fence := a.fence
+	a.fenceMu.Unlock()
+	if fence == nil {
+		return &board.Error{Code: board.RecoveryNecessary, Detail: "local board deadline fence is absent"}
+	}
+	return fence.CanStartSegment(token.Generation, now, bound, recoveryMargin)
+}
+
+func (a *Agent) refreshDeadlineFence(snapshot board.Snapshot) error {
+	if a == nil || snapshot.Lease == nil || snapshot.Phase != board.Active ||
+		snapshot.AgentHighWater != snapshot.Lease.Generation {
+		return &board.Error{Code: board.RecoveryNecessary, Detail: "active lease and installed generation are required for a deadline fence"}
+	}
+	localNow := a.clock()
+	a.fenceMu.Lock()
+	defer a.fenceMu.Unlock()
+	if a.fence == nil || a.fence.Generation < snapshot.Lease.Generation {
+		seeded, err := board.SeedDeadline(snapshot.Lease.Generation,
+			snapshot.Lease.DeadlineVersion, snapshot.Lease.ExpiresAt, localNow, board.MaxClockOffset)
+		if err != nil {
+			return err
+		}
+		a.fence = &seeded
+		return nil
+	}
+	if a.fence.Generation != snapshot.Lease.Generation ||
+		snapshot.Lease.DeadlineVersion < a.fence.Version {
+		return &board.Error{Code: board.StaleGeneration, Detail: "server lease regressed behind local deadline fence"}
+	}
+	if snapshot.Lease.DeadlineVersion == a.fence.Version {
+		return nil
+	}
+	refreshed, err := board.RefreshDeadline(*a.fence, snapshot.Lease.Generation,
+		snapshot.Lease.DeadlineVersion, snapshot.Lease.ExpiresAt, localNow,
+		board.MaxClockOffset, true)
+	if err != nil {
+		return err
+	}
+	a.fence = &refreshed
+	return nil
+}
+
+func (a *Agent) clearDeadlineFence() {
+	a.fenceMu.Lock()
+	a.fence = nil
+	a.fenceMu.Unlock()
 }
 
 // Run performs an immediate reconciliation and then maintains the fencing
