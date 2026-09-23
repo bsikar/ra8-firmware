@@ -46,7 +46,7 @@ func main() {
 
 func run(ctx context.Context, args []string) int {
 	if len(args) == 0 {
-		fmt.Fprintln(os.Stderr, "usage: ra8ci <task>|tasks|server|agent|sync|backup refresh|keygen|board status|take|extend|cancel|db migrate|report slow|github check|run submit|run status")
+		fmt.Fprintln(os.Stderr, "usage: ra8ci <task>|tasks|server|agent|sync|backup refresh|keygen|board status|take [--class human|agent]|extend|cancel|db migrate|report slow|github check|run submit|run status")
 		return 2
 	}
 	var err error
