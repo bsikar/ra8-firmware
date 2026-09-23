@@ -40,11 +40,18 @@ type HILStep struct {
 	ChildExitCode *int      `json:"child_exit_code,omitempty"`
 }
 
+// HILDefinitionCatalog is the immutable catalog view required to verify a
+// server-assigned HIL task at completion time.
+type HILDefinitionCatalog interface {
+	Digest() string
+	Task(string) (catalog.Task, bool)
+}
+
 // CompleteBoardHILAttempt commits step evidence and the terminal task result
 // together. It is bound to the board-agent certificate, lease generation,
 // holder, run actor, and immutable HIL catalog entry.
 func (s *Store) CompleteBoardHILAttempt(ctx context.Context, actor BoardActor,
-	in BoardHILCompletion, definitions *catalog.Catalog, trustedCommit string) error {
+	in BoardHILCompletion, definitions HILDefinitionCatalog, trustedCommit string) error {
 	if s == nil || s.pool == nil || ctx == nil || actor.kind != "board_agent" ||
 		actor.role != "board_agent" || !validBoardID(actor.boardID) ||
 		!ValidID(in.AttemptID) || !ValidID(in.LeaseID) || in.Generation == 0 ||
@@ -82,7 +89,7 @@ func (s *Store) CompleteBoardHILAttempt(ctx context.Context, actor BoardActor,
 		return fmt.Errorf("%w: lock HIL completion run: %v", ErrUnavailable, err)
 	}
 	var taskID, selectedRunID, runActor, taskName, scope, attemptState, leaseID, holderID, leaseState string
-	var taskVersion, taskDeadline int
+	var taskDeadline int
 	var runCancelled bool
 	var rawArguments []byte
 	var runCatalog, runCommit string
@@ -91,7 +98,7 @@ func (s *Store) CompleteBoardHILAttempt(ctx context.Context, actor BoardActor,
 	var storedExit sql.NullInt32
 	var storedTimedOut, storedEvidence bool
 	var storedReason sql.NullString
-	err = tx.QueryRow(ctx, `SELECT t.id::text,r.id::text,r.actor_id,t.name,t.version,t.scope,
+	err = tx.QueryRow(ctx, `SELECT t.id::text,r.id::text,r.actor_id,t.name,t.scope,
 	t.deadline_seconds,t.arguments,r.catalog_sha256,r.commit_sha,
 	r.cancel_requested_at IS NOT NULL,a.state,a.board_lease_id::text,
 	a.started_at,a.deadline_at,a.child_exit_code,a.hit_deadline,a.evidence_complete,a.result_reason,
@@ -99,7 +106,7 @@ func (s *Store) CompleteBoardHILAttempt(ctx context.Context, actor BoardActor,
 	FROM task_attempts a JOIN tasks t ON t.id=a.task_id JOIN runs r ON r.id=t.run_id
 	JOIN board_leases l ON l.id=a.board_lease_id
 	WHERE a.id=$1 FOR UPDATE OF a,t,r,l`, in.AttemptID).Scan(
-		&taskID, &selectedRunID, &runActor, &taskName, &taskVersion, &scope, &taskDeadline,
+		&taskID, &selectedRunID, &runActor, &taskName, &scope, &taskDeadline,
 		&rawArguments, &runCatalog, &runCommit, &runCancelled, &attemptState, &leaseID, &attemptStarted,
 		&attemptDeadline, &storedExit, &storedTimedOut, &storedEvidence, &storedReason,
 		&generation, &holderID, &leaseState)
@@ -118,7 +125,7 @@ func (s *Store) CompleteBoardHILAttempt(ctx context.Context, actor BoardActor,
 	definition, found := definitions.Task(taskName)
 	if !found || definition.Scope != "hil" || definition.BoardPolicy != "exclusive" ||
 		definition.HIL == nil || definition.HIL.BoardID != actor.boardID ||
-		definition.Version != taskVersion || runCatalog != definitions.Digest() || runCommit != trustedCommit ||
+		definition.DeadlineSeconds != taskDeadline || runCatalog != definitions.Digest() || runCommit != trustedCommit ||
 		scope != "hil" || !validHILTerminalState(attemptState) || leaseID != in.LeaseID ||
 		generation <= 0 || uint64(generation) != in.Generation || holderID != runActor ||
 		(leaseState != "active" && leaseState != "ended") {

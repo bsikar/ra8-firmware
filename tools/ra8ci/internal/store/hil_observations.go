@@ -133,7 +133,7 @@ func hilWorkloadForSession(ctx context.Context, tx pgx.Tx, leaseID string,
 		return hilspec.Workload{}, fmt.Errorf("%w: HIL observation interval", ErrConflict)
 	}
 	rows, err := tx.Query(ctx, `SELECT fixture_revision,profile_sha256 FROM board_sessions
-		WHERE lease_id=$1 AND board_id=$2 AND started_at<=$3 AND ended_at>=$4 AND profile_sha256 IS NOT NULL
+		WHERE lease_id=$1 AND board_id=$2 AND started_at<=$3 AND (ended_at IS NULL OR ended_at>=$4) AND profile_sha256 IS NOT NULL
 		ORDER BY started_at DESC LIMIT 2`, leaseID, definition.BoardID, startedAt, endedAt)
 	if err != nil {
 		return hilspec.Workload{}, fmt.Errorf("%w: find HIL board session: %v", ErrUnavailable, err)
