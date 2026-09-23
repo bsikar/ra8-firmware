@@ -45,7 +45,10 @@ file(GLOB_RECURSE RA8_GFX_SOURCES CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra8_gfx/src/
 # paging) is Zig (libs/ra8_ui/src/*.zig, built by libs/ra8_ui/build.zig)
 # behind the unchanged C header, and tests/cmake/zig_libraries.cmake links
 # that archive into ra8_core_hal.
-file(GLOB_RECURSE RA8_KEYBOARD_SOURCES CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra8_keyboard/src/*.c)
+# ra8_keyboard has no C sources: the half-unit key grid, the three layers and
+# the typing model are Zig (libs/ra8_keyboard/src/*.zig, built by
+# libs/ra8_keyboard/build.zig) behind the unchanged C header, and
+# tests/cmake/zig_libraries.cmake links that archive into ra8_core_hal.
 # ra8_box has no host C sources: its implementation is Zig (libs/ra8_box/src/
 # *.zig, built by libs/ra8_box/build.zig) behind the unchanged C header, and
 # tests/cmake/zig_libraries.cmake links that archive into ra8_core_hal. The ARM
