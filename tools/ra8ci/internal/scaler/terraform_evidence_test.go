@@ -37,7 +37,7 @@ func TestTerraformStateEvidenceMustMatchDurablePlan(t *testing.T) {
 
 	evidence := &proxmox.TerraformEvidence{Outcome: "succeeded", PlanSHA256: planHash,
 		StateIdentitySHA256: stateIdentityHash, ReconciliationSHA256: strings.Repeat("c", 64),
-		ObservedAt: time.Now()}
+		StateHasVM: true, VMAbsent: false, VMStatus: "stopped", ObservedAt: time.Now()}
 	resolved, err := handler.resolveVerified(context.Background(), vm, op,
 		proxmox.Result{TerraformEvidence: evidence})
 	if err != nil {
@@ -45,6 +45,11 @@ func TestTerraformStateEvidenceMustMatchDurablePlan(t *testing.T) {
 	}
 	if resolved.State != "stopped" || resolved.UnknownOutcome || ledger.resolveCalls != 1 {
 		t.Fatalf("Terraform evidence did not resolve the operation: %+v", resolved)
+	}
+	if got := ledger.resolvedProof; got.Source != "terraform_state" || !got.TerraformStateHasVM ||
+		got.TerraformVMAbsent || got.TerraformVMStatus != "stopped" ||
+		got.ReconciliationSHA256 != evidence.ReconciliationSHA256 {
+		t.Fatalf("Terraform observations were not propagated to durable ledger: %+v", got)
 	}
 }
 

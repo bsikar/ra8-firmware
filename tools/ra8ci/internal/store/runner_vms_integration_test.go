@@ -3,7 +3,11 @@
 package store
 
 import (
+	"bytes"
 	"context"
+	"crypto/aes"
+	"crypto/cipher"
+	"encoding/json"
 	"errors"
 	"strconv"
 	"strings"
@@ -209,6 +213,14 @@ func TestIntegrationRunnerVMEarlyCompletionAndUnknownStart(t *testing.T) {
 }
 func TestIntegrationRunnerVMTerraformPlanEvidenceIsImmutableAndFenced(t *testing.T) {
 	s, pool := integrationStore(t)
+	block, err := aes.NewCipher(bytes.Repeat([]byte{0x5a}, 32))
+	if err != nil {
+		t.Fatal(err)
+	}
+	s.terraformStateAEAD, err = cipher.NewGCM(block)
+	if err != nil {
+		t.Fatal(err)
+	}
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 	input := runnerVMTestInput(t)
@@ -300,11 +312,25 @@ func TestIntegrationRunnerVMTerraformPlanEvidenceIsImmutableAndFenced(t *testing
 	if err != nil || stored.TerraformApplyStartedAt == nil {
 		t.Fatalf("Terraform apply intent was not durable: %+v err=%v", stored, err)
 	}
-	stateSHA := strings.Repeat("4", 64)
-	if _, err := pool.Exec(ctx, `INSERT INTO runner_vm_terraform_states
-		(runner_vm_id,state_ciphertext,state_sha256,lineage,serial) VALUES ($1,$2,$3,$4,1)`,
-		vm.ID, []byte("test encrypted state"), stateSHA, mustID(t)); err != nil {
-		t.Fatalf("persist test Terraform state snapshot: %v", err)
+	lockID := mustID(t)
+	lockBytes, err := json.Marshal(TerraformStateLock{ID: lockID, Operation: "OperationTypeApply",
+		Who: "ra8ci@test", Version: "1.10.5", Path: "runner/" + vm.ID})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, acquired, err := s.LockRunnerVMTerraformState(ctx, "scaler", vm.ID, lockBytes); err != nil || !acquired {
+		t.Fatalf("acquire backend state lock: acquired=%t err=%v", acquired, err)
+	}
+	stateBody := []byte(`{"version":4,"terraform_version":"1.10.5","serial":1,"lineage":"123e4567-e89b-42d3-a456-426614174000","resources":[]}`)
+	if err := s.WriteRunnerVMTerraformState(ctx, "scaler", vm.ID, lockID, stateBody); err != nil {
+		t.Fatalf("persist encrypted Terraform state through backend API: %v", err)
+	}
+	if _, released, err := s.UnlockRunnerVMTerraformState(ctx, "scaler", vm.ID, lockBytes); err != nil || !released {
+		t.Fatalf("release backend state lock: released=%t err=%v", released, err)
+	}
+	var stateSHA string
+	if err := pool.QueryRow(ctx, `SELECT state_sha256 FROM runner_vm_terraform_states WHERE runner_vm_id=$1`, vm.ID).Scan(&stateSHA); err != nil {
+		t.Fatalf("read persisted state digest: %v", err)
 	}
 	proof := RunnerVMResolution{
 		Outcome: "succeeded", EvidenceID: mustID(t), Source: "terraform_state",
