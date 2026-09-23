@@ -59,7 +59,6 @@ add_library(
   ${RA8_PSA_CRYPTO_SOURCES}
   ${RA8_BOARD_EK_RA8D2_SOURCES}
   ${RA8_OV5640_SOURCES}
-  ${RA8_TZ_SECURE_BOOT_SOURCES}
   ${RA8_DFU_SOURCES}
   ${RA8_WIFI_SOURCES}
   # ThreadX SysTick retune (issue #287). Lives under port/threadx (not
