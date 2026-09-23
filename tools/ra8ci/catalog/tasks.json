@@ -1552,6 +1552,42 @@
       "resource_hints": {}
     },
     {
+      "name": "wave-references",
+      "version": 1,
+      "tier": "required",
+      "scope": "safe-local-read-only",
+      "os": [
+        "linux",
+        "windows"
+      ],
+      "capabilities": [],
+      "args_schema": {
+        "positional": [],
+        "flags": []
+      },
+      "deadline_seconds": 1800,
+      "board_policy": "none",
+      "steps": [
+        {
+          "name": "wave-references-selftest",
+          "program": "ra8ci:wave-references",
+          "args": [
+            "--selftest"
+          ]
+        },
+        {
+          "name": "wave-references-scan",
+          "program": "ra8ci:wave-references",
+          "args": []
+        }
+      ],
+      "outputs": [],
+      "retry": {
+        "max_attempts": 1
+      },
+      "resource_hints": {}
+    },
+    {
       "name": "nsc-cmse",
       "version": 1,
       "tier": "required",

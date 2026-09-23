@@ -107,7 +107,7 @@ RECOVERY_SCRIPTS: frozenset[str] = frozenset(
 
 # This checker must spell every forbidden pattern (in the regexes and in the
 # selftest fixtures) to describe them, so it exempts itself -- exactly as
-# check_no_wave_references.py exempts itself and the policy doc.
+# ra8ci wave-references exempts its implementation and the policy doc.
 SELF_PATH = "scripts/checks/check_no_antirecovery.py"
 
 EXCLUDED_FILES: frozenset[str] = RECOVERY_SCRIPTS | {SELF_PATH}
