@@ -1,0 +1,8 @@
+# Only a local Unix socket is permitted. No runner or agent may connect to SQL.
+listen_addresses = ''
+unix_socket_directories = '/var/run/postgresql'
+password_encryption = 'scram-sha-256'
+wal_level = 'replica'
+archive_mode = 'on'
+archive_command = 'pgbackrest --stanza=ra8ci archive-push %p'
+archive_timeout = '900s'

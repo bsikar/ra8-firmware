@@ -1,0 +1,846 @@
+---
+- name: Converge the protected ra8ci control VM
+  hosts: ra8ci_control
+  gather_facts: true
+  become: true
+  vars:
+    ra8ci_data_mount: /srv/ra8ci-data
+    ra8ci_pg_data: "/srv/ra8ci-data/postgresql/{{ ra8ci_postgres_major }}/ra8ci"
+    ra8ci_pg_config: "/etc/postgresql/{{ ra8ci_postgres_major }}/ra8ci"
+    ra8ci_service_dsn: "postgres://ra8ci_service@/ra8ci?host=/var/run/postgresql"
+    ra8ci_migration_dsn: "postgres://ra8ci_migrate@/ra8ci?host=/var/run/postgresql"
+    ra8ci_runtime_mutable_tables:
+      - runs
+      - tasks
+      - task_edges
+      - task_attempts
+      - task_steps
+      - resource_samples
+      - artifacts
+      - attempt_artifacts
+      - log_chunks
+      - boards
+      - board_waiters
+      - board_leases
+      - board_sessions
+      - board_snapshots
+      - board_recovery_context
+      - board_neutral_challenges
+      - github_jobs
+      - runner_vms
+      - runner_vm_operations
+      - runner_vm_terraform_states
+      - github_scaleset_inbox
+      - runner_lifecycle
+      - external_operations
+      - idempotency_keys
+    ra8ci_runtime_append_tables:
+      - audit
+      - board_events
+      - run_events
+      - local_runs
+      - local_run_steps
+    ra8ci_runtime_readonly_tables:
+      - schema_migrations
+      - board_fixture_profiles
+      - api_principals
+      - api_grants
+      - agents
+
+  pre_tasks:
+    - name: Require the approved control VM inputs before any mutation
+      ansible.builtin.assert:
+        that:
+          - ansible_facts['distribution'] in ['Debian', 'Ubuntu']
+          - ra8ci_deployment_approved | default(false) | bool
+          - ra8ci_network_approved | default(false) | bool
+          - ra8ci_off_vm_backup_approved | default(false) | bool
+          - ra8ci_backup_approval_id | default('') is match('^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$')
+          - >-
+            not (ra8ci_restore_drill_approved | default(false) | bool) or
+            (ra8ci_restore_drill_at | default('') is match('^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$'))
+          - ra8ci_data_device | default('') is match('^/dev/disk/by-id/[A-Za-z0-9_.-]+$')
+          - ra8ci_data_disk_serial | default('') == 'RA8CIDATA'
+          - ra8ci_postgres_major | default('') is match('^[0-9]{2}$')
+          - ra8ci_binary_src | default('') is file
+          - ra8ci_binary_sha256 | default('') is match('^[0-9a-f]{64}$')
+          - ra8ci_tls_cert_src | default('') is file
+          - ra8ci_tls_key_src | default('') is file
+          - ra8ci_client_ca_src | default('') is file
+          - ra8ci_listen_addr | default('') is match('^[0-9.]+:[0-9]{2,5}$')
+          - ra8ci_backup_s3_endpoint | default('') is match('^[A-Za-z0-9.-]+$')
+          - ra8ci_terraform_state_key_b64 | default('') is match('^[A-Za-z0-9+/]{43}=$')
+          - (ra8ci_terraform_state_key_b64 | default('') | b64decode | length) == 32
+          - ra8ci_backup_s3_endpoint | default('') not in ['localhost', '127.0.0.1']
+          - ra8ci_backup_s3_bucket | default('') is match('^[a-z0-9][a-z0-9.-]{2,62}$')
+          - ra8ci_backup_s3_region | default('') is match('^[A-Za-z0-9-]+$')
+          - ra8ci_backup_s3_key | default('') | length > 0
+          - ra8ci_backup_s3_secret | default('') | length > 0
+          - ra8ci_backup_cipher_pass | default('') | length >= 32
+          - ra8ci_backup_s3_key | default('') is not search('[\r\n]')
+          - ra8ci_backup_s3_secret | default('') is not search('[\r\n]')
+          - ra8ci_backup_cipher_pass | default('') is not search('[\r\n]')
+          - ra8ci_backup_repo_path | default('') is match('^/[A-Za-z0-9/_-]+$')
+          - ra8ci_backup_repo_path | default('') != '/'
+          - ra8ci_backup_s3_uri_style | default('') in ['host', 'path']
+        fail_msg: >-
+          Explicit VM/network/restore approvals, the separate data device,
+          verified binary and mTLS files, and an encrypted off-VM S3 repository
+          are required before this playbook changes the host.
+      become: false
+      no_log: true
+
+    - name: Verify the controller binary digest
+      ansible.builtin.stat:
+        path: "{{ ra8ci_binary_src }}"
+        checksum_algorithm: sha256
+      delegate_to: localhost
+      become: false
+      register: ra8ci_controller_binary
+
+    - name: Refuse an unverified ra8ci binary
+      ansible.builtin.assert:
+        that:
+          - ra8ci_controller_binary.stat.isreg
+          - ra8ci_controller_binary.stat.checksum == ra8ci_binary_sha256
+      become: false
+
+    - name: Resolve the explicitly approved separate data device
+      ansible.builtin.command:
+        argv: [readlink, -f, "{{ ra8ci_data_device }}"]
+      register: ra8ci_resolved_device
+      changed_when: false
+
+    - name: Inspect only the approved block device
+      ansible.builtin.command:
+        argv: [lsblk, -dn, -o, 'TYPE,SERIAL,FSTYPE', "{{ ra8ci_resolved_device.stdout }}"]
+      register: ra8ci_disk_identity
+      changed_when: false
+
+    - name: Reject an unexpected or already occupied block device
+      ansible.builtin.assert:
+        that:
+          - ra8ci_disk_identity.stdout_lines | length == 1
+          - ra8ci_disk_identity.stdout.split() | first == 'disk'
+          - ra8ci_data_disk_serial in ra8ci_disk_identity.stdout.split()
+          - ra8ci_disk_identity.stdout.split() | last in [ra8ci_data_disk_serial, 'ext4']
+        fail_msg: "The selected data device must be the RA8CIDATA whole disk and blank or ext4."
+
+    - name: Inspect child partitions or mappings of the data disk
+      ansible.builtin.command:
+        argv: [lsblk, -nr, -o, TYPE, "{{ ra8ci_resolved_device.stdout }}"]
+      register: ra8ci_disk_children
+      changed_when: false
+
+    - name: Refuse an occupied or partitioned data disk
+      ansible.builtin.assert:
+        that:
+          - ra8ci_disk_children.stdout_lines == ['disk']
+
+    - name: Probe the data disk for existing signatures
+      ansible.builtin.command:
+        argv:
+          - wipefs
+          - --no-act
+          - --no-headings
+          - --output
+          - TYPE
+          - "{{ ra8ci_resolved_device.stdout }}"
+      register: ra8ci_disk_signatures
+      changed_when: false
+
+    - name: Require explicit initialization approval for a blank disk
+      ansible.builtin.assert:
+        that:
+          - >-
+            ra8ci_disk_signatures.stdout_lines == ['ext4'] or
+            (ra8ci_disk_signatures.stdout_lines | length == 0
+            and ra8ci_initialize_blank_disk | default(false) | bool)
+        fail_msg: >-
+          An existing non-ext4 signature is never overwritten; a blank disk
+          needs ra8ci_initialize_blank_disk=true.
+
+  tasks:
+    - name: Install block device and PostgreSQL cluster tools
+      ansible.builtin.apt:
+        name:
+          - e2fsprogs
+          - postgresql-common
+          - python3-psycopg2
+          - ca-certificates
+        state: present
+        update_cache: true
+
+    - name: Format only the approved blank RA8CIDATA disk
+      community.general.filesystem:
+        dev: "{{ ra8ci_resolved_device.stdout }}"
+        fstype: ext4
+        force: false
+      when: ra8ci_disk_signatures.stdout_lines | length == 0
+
+    - name: Read the new or existing data filesystem UUID
+      ansible.builtin.command:
+        argv: [blkid, -s, UUID, -o, value, "{{ ra8ci_resolved_device.stdout }}"]
+      register: ra8ci_data_uuid
+      changed_when: false
+
+    - name: Require an ext4 UUID before mounting
+      ansible.builtin.assert:
+        that:
+          - ra8ci_data_uuid.stdout is match('^[0-9a-fA-F-]{36}$')
+
+    - name: Create the data mount point
+      ansible.builtin.file:
+        path: "{{ ra8ci_data_mount }}"
+        state: directory
+        owner: root
+        group: root
+        mode: '0755'
+
+    - name: Mount the persistent data disk by UUID
+      ansible.posix.mount:
+        path: "{{ ra8ci_data_mount }}"
+        src: "UUID={{ ra8ci_data_uuid.stdout }}"
+        fstype: ext4
+        opts: nosuid,nodev,noexec
+        state: mounted
+
+    - name: Confirm the mounted filesystem is the approved disk
+      ansible.builtin.command:
+        argv: [findmnt, --noheadings, --output, UUID, --target, "{{ ra8ci_data_mount }}"]
+      register: ra8ci_mounted_uuid
+      changed_when: false
+
+    - name: Refuse a mount mismatch
+      ansible.builtin.assert:
+        that:
+          - ra8ci_mounted_uuid.stdout | lower == ra8ci_data_uuid.stdout | lower
+
+    - name: Inspect existing PostgreSQL clusters before installing a server
+      ansible.builtin.command:
+        argv: [pg_lsclusters, -h]
+      register: ra8ci_clusters_before
+      changed_when: false
+
+    - name: Refuse an existing non-ra8ci PostgreSQL cluster
+      ansible.builtin.assert:
+        that:
+          - >-
+            ra8ci_clusters_before.stdout_lines | length == 0 or
+            (ra8ci_clusters_before.stdout_lines | length == 1 and
+            ra8ci_clusters_before.stdout_lines[0].split()[0] == ra8ci_postgres_major and
+            ra8ci_clusters_before.stdout_lines[0].split()[1] == 'ra8ci' and
+            ra8ci_pg_data in ra8ci_clusters_before.stdout_lines[0])
+        fail_msg: >-
+          This VM may host only the reviewed ra8ci PostgreSQL cluster on the
+          persistent data disk.
+
+    - name: Stop package hooks from creating a default root-disk cluster
+      ansible.builtin.copy:
+        dest: /etc/postgresql-common/createcluster.conf
+        content: "create_main_cluster = false\n"
+        owner: root
+        group: root
+        mode: '0644'
+      when: ra8ci_clusters_before.stdout_lines | length == 0
+
+    - name: Install the selected PostgreSQL major and pgBackRest
+      ansible.builtin.apt:
+        name:
+          - "postgresql-{{ ra8ci_postgres_major }}"
+          - pgbackrest
+        state: present
+
+    - name: Refuse an unexpected package-created cluster
+      ansible.builtin.command:
+        argv: [pg_lsclusters, -h]
+      register: ra8ci_clusters_after
+      changed_when: false
+
+    - name: Verify the package did not create an unrelated cluster
+      ansible.builtin.assert:
+        that:
+          - ra8ci_clusters_after.stdout_lines == ra8ci_clusters_before.stdout_lines
+
+    - name: Create the PostgreSQL parent directory on persistent storage
+      ansible.builtin.file:
+        path: "/srv/ra8ci-data/postgresql/{{ ra8ci_postgres_major }}"
+        state: directory
+        owner: postgres
+        group: postgres
+        mode: '0700'
+
+    - name: Create the dedicated PostgreSQL cluster only once
+      ansible.builtin.command:
+        argv:
+          - pg_createcluster
+          - "{{ ra8ci_postgres_major }}"
+          - ra8ci
+          - "--datadir={{ ra8ci_pg_data }}"
+          - --port=5432
+          - --start-conf=auto
+          - --
+          - --auth-local=peer
+          - --auth-host=scram-sha-256
+      when: ra8ci_clusters_after.stdout_lines | length == 0
+
+    - name: Create PostgreSQL configuration drop-in directory
+      ansible.builtin.file:
+        path: "{{ ra8ci_pg_config }}/conf.d"
+        state: directory
+        owner: postgres
+        group: postgres
+        mode: '0755'
+
+    - name: Restrict PostgreSQL to a Unix socket and archive WAL
+      ansible.builtin.template:
+        src: postgresql-ra8ci.conf.j2
+        dest: "{{ ra8ci_pg_config }}/conf.d/ra8ci.conf"
+        owner: postgres
+        group: postgres
+        mode: '0644'
+      notify: Restart ra8ci PostgreSQL
+
+    - name: Restrict local database authentication to peer-mapped service accounts
+      ansible.builtin.template:
+        src: pg_hba.conf.j2
+        dest: "{{ ra8ci_pg_config }}/pg_hba.conf"
+        owner: postgres
+        group: postgres
+        mode: '0640'
+      notify: Restart ra8ci PostgreSQL
+
+    - name: Add mount dependency to the exact PostgreSQL cluster unit
+      ansible.builtin.file:
+        path: "/etc/systemd/system/postgresql@{{ ra8ci_postgres_major }}-ra8ci.service.d"
+        state: directory
+        owner: root
+        group: root
+        mode: '0755'
+
+    - name: Prevent database start without the persistent disk
+      ansible.builtin.copy:
+        dest: "/etc/systemd/system/postgresql@{{ ra8ci_postgres_major }}-ra8ci.service.d/data.conf"
+        content: |
+          [Unit]
+          RequiresMountsFor=/srv/ra8ci-data
+        owner: root
+        group: root
+        mode: '0644'
+      notify: Reload systemd
+
+    - name: Create dedicated, nonprivileged Unix service identities
+      ansible.builtin.user:
+        name: "{{ item }}"
+        system: true
+        create_home: false
+        shell: /usr/sbin/nologin
+      loop:
+        - ra8ci_service
+        - ra8ci_migrate
+        - ra8ci_operator
+
+    - name: Create protected application state on the separate disk
+      ansible.builtin.file:
+        path: /srv/ra8ci-data/ra8ci
+        state: directory
+        owner: ra8ci_service
+        group: ra8ci_service
+        mode: '0700'
+
+    - name: Create the pgBackRest configuration directory
+      ansible.builtin.file:
+        path: /etc/pgbackrest
+        state: directory
+        owner: root
+        group: postgres
+        mode: '0750'
+
+    - name: Configure encrypted off-VM pgBackRest repository
+      ansible.builtin.template:
+        src: pgbackrest.conf.j2
+        dest: /etc/pgbackrest/pgbackrest.conf
+        owner: root
+        group: postgres
+        mode: '0640'
+      no_log: true
+
+    - name: Apply PostgreSQL configuration and mount ordering
+      ansible.builtin.meta: flush_handlers
+
+    - name: Start only the dedicated ra8ci PostgreSQL cluster
+      ansible.builtin.systemd:
+        name: "postgresql@{{ ra8ci_postgres_major }}-ra8ci.service"
+        state: started
+        enabled: true
+
+    - name: Create the off-VM backup stanza
+      ansible.builtin.command:
+        argv: [pgbackrest, --stanza=ra8ci, stanza-create]
+      become_user: postgres
+      register: ra8ci_stanza_create
+      changed_when: "'completed successfully' in ra8ci_stanza_create.stdout"
+      no_log: true
+
+    - name: Verify WAL archival reaches the off-VM backup destination
+      ansible.builtin.command:
+        argv: [pgbackrest, --stanza=ra8ci, check]
+      become_user: postgres
+      changed_when: false
+      no_log: true
+
+    - name: Create the separate migration and runtime PostgreSQL roles
+      community.postgresql.postgresql_user:
+        name: "{{ item }}"
+        role_attr_flags: NOSUPERUSER,NOCREATEDB,NOCREATEROLE,NOREPLICATION,LOGIN
+        login_unix_socket: /var/run/postgresql
+      become_user: postgres
+      loop:
+        - ra8ci_migrate
+        - ra8ci_service
+        - ra8ci_operator
+
+    - name: Create a database owned only by the migration role
+      community.postgresql.postgresql_db:
+        name: ra8ci
+        owner: ra8ci_migrate
+        encoding: UTF-8
+        login_unix_socket: /var/run/postgresql
+      become_user: postgres
+
+    - name: Revoke default database access from other local roles
+      community.postgresql.postgresql_privs:
+        database: ra8ci
+        type: database
+        objs: ra8ci
+        roles: PUBLIC
+        privs: CONNECT,TEMPORARY
+        state: absent
+        login_unix_socket: /var/run/postgresql
+      become_user: postgres
+
+    - name: Grant runtime connection without ownership or DDL
+      community.postgresql.postgresql_privs:
+        database: ra8ci
+        type: database
+        objs: ra8ci
+        roles: ra8ci_service
+        privs: CONNECT
+        login_unix_socket: /var/run/postgresql
+      become_user: postgres
+
+    - name: Grant the separate operator identity a database connection
+      community.postgresql.postgresql_privs:
+        database: ra8ci
+        type: database
+        objs: ra8ci
+        roles: ra8ci_operator
+        privs: CONNECT
+        login_unix_socket: /var/run/postgresql
+      become_user: postgres
+
+    - name: Install only the verified ra8ci binary
+      ansible.builtin.copy:
+        src: "{{ ra8ci_binary_src }}"
+        dest: /usr/local/bin/ra8ci
+        owner: root
+        group: root
+        mode: '0755'
+      notify: Restart ra8ci server
+
+    - name: Recheck installed binary digest after transfer
+      ansible.builtin.stat:
+        path: /usr/local/bin/ra8ci
+        checksum_algorithm: sha256
+      register: ra8ci_installed_binary
+
+    - name: Refuse a changed or truncated binary
+      ansible.builtin.assert:
+        that:
+          - ra8ci_installed_binary.stat.checksum == ra8ci_binary_sha256
+
+    - name: Apply forward-only migrations under the owner identity
+      ansible.builtin.command:
+        argv: [/usr/local/bin/ra8ci, db, migrate]
+      become_user: ra8ci_migrate
+      environment:
+        RA8CI_MIGRATION_DATABASE_URL: "{{ ra8ci_migration_dsn }}"
+      changed_when: false
+
+    - name: Remove public schema privileges from unrelated roles
+      community.postgresql.postgresql_privs:
+        database: ra8ci
+        type: schema
+        objs: public
+        roles: PUBLIC
+        privs: ALL
+        state: absent
+        login_unix_socket: /var/run/postgresql
+      become_user: postgres
+
+    - name: Grant the runtime only schema usage
+      community.postgresql.postgresql_privs:
+        database: ra8ci
+        type: schema
+        objs: public
+        roles: ra8ci_service
+        privs: USAGE
+        login_unix_socket: /var/run/postgresql
+      become_user: postgres
+
+    - name: Grant the separate operator only schema usage
+      community.postgresql.postgresql_privs:
+        database: ra8ci
+        type: schema
+        objs: public
+        roles: ra8ci_operator
+        privs: USAGE
+        login_unix_socket: /var/run/postgresql
+      become_user: postgres
+
+    - name: Revoke destructive privileges on every reviewed runtime table
+      community.postgresql.postgresql_privs:
+        database: ra8ci
+        type: table
+        schema: public
+        objs: >-
+          {{ (ra8ci_runtime_mutable_tables + ra8ci_runtime_append_tables +
+          ra8ci_runtime_readonly_tables) | join(',') }}
+        roles: ra8ci_service
+        privs: DELETE,TRUNCATE
+        state: absent
+        login_unix_socket: /var/run/postgresql
+      become_user: postgres
+
+    - name: Revoke dangerous DML from runtime on identity and fixture tables
+      community.postgresql.postgresql_privs:
+        database: ra8ci
+        type: table
+        schema: public
+        objs: "{{ item }}"
+        roles: ra8ci_service
+        privs: INSERT,UPDATE,DELETE,TRUNCATE
+        state: absent
+        login_unix_socket: /var/run/postgresql
+      become_user: postgres
+      loop:
+        - schema_migrations
+        - board_fixture_profiles
+        - api_principals
+        - api_grants
+        - agents
+
+    - name: Revoke alteration and removal of append-only event tables
+      community.postgresql.postgresql_privs:
+        database: ra8ci
+        type: table
+        schema: public
+        objs: "{{ item }}"
+        roles: ra8ci_service
+        privs: UPDATE,DELETE,TRUNCATE
+        state: absent
+        login_unix_socket: /var/run/postgresql
+      become_user: postgres
+      loop:
+        - audit
+        - board_events
+        - run_events
+        - local_runs
+        - local_run_steps
+
+    - name: Grant runtime read access only to the current reviewed tables
+      community.postgresql.postgresql_privs:
+        database: ra8ci
+        type: table
+        schema: public
+        objs: >-
+          {{ (ra8ci_runtime_mutable_tables + ra8ci_runtime_append_tables +
+          ra8ci_runtime_readonly_tables) | join(',') }}
+        roles: ra8ci_service
+        privs: SELECT
+        login_unix_socket: /var/run/postgresql
+      become_user: postgres
+
+    - name: Grant runtime writes only to state tables it owns operationally
+      community.postgresql.postgresql_privs:
+        database: ra8ci
+        type: table
+        schema: public
+        objs: "{{ ra8ci_runtime_mutable_tables | join(',') }}"
+        roles: ra8ci_service
+        privs: INSERT,UPDATE
+        login_unix_socket: /var/run/postgresql
+      become_user: postgres
+
+    - name: Permit append-only runtime records without mutation authority
+      community.postgresql.postgresql_privs:
+        database: ra8ci
+        type: table
+        schema: public
+        objs: "{{ ra8ci_runtime_append_tables | join(',') }}"
+        roles: ra8ci_service
+        privs: INSERT
+        login_unix_socket: /var/run/postgresql
+      become_user: postgres
+
+    - name: Grant the separate operator access to identity and fixture records
+      community.postgresql.postgresql_privs:
+        database: ra8ci
+        type: table
+        schema: public
+        objs: api_principals,api_grants,agents,board_fixture_profiles
+        roles: ra8ci_operator
+        privs: SELECT,INSERT,UPDATE
+        login_unix_socket: /var/run/postgresql
+      become_user: postgres
+
+    - name: Verify runtime cannot own DDL or mutate audit history
+      community.postgresql.postgresql_query:
+        db: ra8ci
+        query: >-
+          SELECT NOT r.rolsuper AND NOT r.rolcreatedb AND NOT r.rolcreaterole
+          AND NOT has_schema_privilege('ra8ci_service', 'public', 'CREATE')
+          AND NOT has_table_privilege('ra8ci_service', 'public.audit', 'UPDATE')
+          AND NOT has_table_privilege('ra8ci_service', 'public.audit', 'DELETE')
+          AND NOT has_table_privilege('ra8ci_service', 'public.schema_migrations', 'INSERT')
+          AND NOT has_table_privilege('ra8ci_service', 'public.board_fixture_profiles', 'UPDATE')
+          AND NOT has_table_privilege('ra8ci_service', 'public.api_principals', 'INSERT')
+          AND NOT has_table_privilege('ra8ci_service', 'public.api_grants', 'UPDATE')
+          AND NOT has_table_privilege('ra8ci_service', 'public.agents', 'TRUNCATE')
+          AS roles_safe FROM pg_roles r WHERE r.rolname = 'ra8ci_service'
+        login_unix_socket: /var/run/postgresql
+      become_user: postgres
+      register: ra8ci_role_check
+      changed_when: false
+
+    - name: Refuse an overprivileged service role
+      ansible.builtin.assert:
+        that:
+          - ra8ci_role_check.query_result | length == 1
+          - ra8ci_role_check.query_result[0].roles_safe | bool
+
+    - name: Inspect backup repository before first full backup
+      ansible.builtin.command:
+        argv: [pgbackrest, --stanza=ra8ci, --output=json, info]
+      become_user: postgres
+      register: ra8ci_backup_info
+      changed_when: false
+      no_log: true
+
+    - name: Create the first full off-VM backup before server starts
+      ansible.builtin.command:
+        argv: [pgbackrest, --stanza=ra8ci, --type=full, backup]
+      become_user: postgres
+      when: (ra8ci_backup_info.stdout | from_json)[0].backup | length == 0
+      no_log: true
+
+    - name: Create the private mTLS configuration directory
+      ansible.builtin.file:
+        path: /etc/ra8ci
+        state: directory
+        owner: root
+        group: ra8ci_service
+        mode: '0750'
+
+    - name: Install the reviewed server certificate and client CA
+      ansible.builtin.copy:
+        src: "{{ item.src }}"
+        dest: "{{ item.dest }}"
+        owner: root
+        group: ra8ci_service
+        mode: '0640'
+      loop:
+        - {src: "{{ ra8ci_tls_cert_src }}", dest: /etc/ra8ci/server.crt}
+        - {src: "{{ ra8ci_client_ca_src }}", dest: /etc/ra8ci/client-ca.crt}
+      notify: Restart ra8ci server
+
+    - name: Install the private server TLS key
+      ansible.builtin.copy:
+        src: "{{ ra8ci_tls_key_src }}"
+        dest: /etc/ra8ci/server.key
+        owner: root
+        group: ra8ci_service
+        mode: '0640'
+      no_log: true
+      notify: Restart ra8ci server
+
+    - name: Install the encrypted Terraform state key
+      ansible.builtin.copy:
+        content: "{{ ra8ci_terraform_state_key_b64 }}"
+        dest: /etc/ra8ci/terraform-state.key
+        owner: ra8ci_service
+        group: ra8ci_service
+        mode: '0400'
+      no_log: true
+      notify: Restart ra8ci server
+
+    - name: Create backup signing key pair once without replacing existing keys
+      ansible.builtin.command: /usr/local/bin/ra8ci backup keygen
+      args:
+        creates: /etc/ra8ci/backup-signing.key
+      environment:
+        RA8CI_BACKUP_SIGNING_KEY: /etc/ra8ci/backup-signing.key
+        RA8CI_BACKUP_PUBLIC_KEY_FILE: /etc/ra8ci/backup-signing.pub
+      no_log: true
+
+    - name: Restrict the backup signing private key to the monitor identity
+      ansible.builtin.file:
+        path: /etc/ra8ci/backup-signing.key
+        owner: root
+        group: postgres
+        mode: '0640'
+      no_log: true
+
+    - name: Publish the backup verification key to the API identity
+      ansible.builtin.file:
+        path: /etc/ra8ci/backup-signing.pub
+        owner: root
+        group: ra8ci_service
+        mode: '0640'
+
+    - name: Create the protected backup readiness directory
+      ansible.builtin.file:
+        path: /var/lib/ra8ci-backup
+        state: directory
+        owner: postgres
+        group: ra8ci_service
+        mode: '0750'
+
+    - name: Install a private environment file without database passwords
+      ansible.builtin.template:
+        src: ra8ci.env.j2
+        dest: /etc/ra8ci/server.env
+        owner: root
+        group: ra8ci_service
+        mode: '0640'
+      notify: Restart ra8ci server
+
+    - name: Install the hardened ra8ci server unit
+      ansible.builtin.template:
+        src: ra8ci.service.j2
+        dest: /etc/systemd/system/ra8ci.service
+        owner: root
+        group: root
+        mode: '0644'
+      notify:
+        - Reload systemd
+        - Restart ra8ci server
+
+    - name: Create the operator-approved restore drill receipt once
+      ansible.builtin.template:
+        src: ra8ci-restore-drill.json.j2
+        dest: /etc/ra8ci/restore-drill.json
+        owner: root
+        group: postgres
+        mode: '0640'
+        force: false
+      when: ra8ci_restore_drill_approved | default(false) | bool
+
+    - name: Read the persisted restore drill receipt
+      ansible.builtin.slurp:
+        src: /etc/ra8ci/restore-drill.json
+      register: ra8ci_restore_drill_receipt
+      when: ra8ci_restore_drill_approved | default(false) | bool
+      no_log: true
+
+    - name: Require the persisted receipt to match the approved backup identity
+      ansible.builtin.assert:
+        that:
+          - (ra8ci_restore_drill_receipt.content | b64decode | from_json).approval_id == ra8ci_backup_approval_id
+          - (ra8ci_restore_drill_receipt.content | b64decode | from_json).restore_drill_at is string
+          - (ra8ci_restore_drill_receipt.content | b64decode | from_json).restore_drill_at == ra8ci_restore_drill_at
+      when: ra8ci_restore_drill_approved | default(false) | bool
+      no_log: true
+
+    - name: Install the private backup monitor environment
+      ansible.builtin.template:
+        src: ra8ci-backup-monitor.env.j2
+        dest: /etc/ra8ci/backup-monitor.env
+        owner: root
+        group: postgres
+        mode: '0640'
+      when: ra8ci_restore_drill_approved | default(false) | bool
+      no_log: true
+
+    - name: Install daily full backup and 15-minute archive checks
+      ansible.builtin.template:
+        src: "{{ item }}.j2"
+        dest: "/etc/systemd/system/{{ item }}"
+        owner: root
+        group: root
+        mode: '0644'
+      loop:
+        - ra8ci-pgbackrest-backup.service
+        - ra8ci-pgbackrest-backup.timer
+        - ra8ci-pgbackrest-check.service
+        - ra8ci-pgbackrest-check.timer
+        - ra8ci-backup-monitor.service
+        - ra8ci-backup-monitor.timer
+      notify: Reload systemd
+
+    - name: Apply the service unit definitions
+      ansible.builtin.meta: flush_handlers
+
+    - name: Enable and start backup verification timers
+      ansible.builtin.systemd:
+        name: "{{ item }}"
+        enabled: true
+        state: started
+      loop:
+        - ra8ci-pgbackrest-backup.timer
+        - ra8ci-pgbackrest-check.timer
+
+    - name: Refresh signed backup evidence before server startup
+      ansible.builtin.systemd:
+        name: ra8ci-backup-monitor.service
+        state: started
+      when: ra8ci_restore_drill_approved | default(false) | bool
+
+    - name: Mark backup readiness refreshed for API start
+      ansible.builtin.set_fact:
+        ra8ci_backup_readiness_refreshed: true
+      when: ra8ci_restore_drill_approved | default(false) | bool
+
+    - name: Enable periodic signed backup evidence refresh
+      ansible.builtin.systemd:
+        name: ra8ci-backup-monitor.timer
+        enabled: true
+        state: started
+      when: ra8ci_restore_drill_approved | default(false) | bool
+
+    - name: Stop backup evidence refresh when restore approval is absent
+      ansible.builtin.systemd:
+        name: ra8ci-backup-monitor.timer
+        enabled: false
+        state: stopped
+      when: not (ra8ci_restore_drill_approved | default(false) | bool)
+
+    - name: Hold the API stopped until an off-VM restore drill is attested
+      ansible.builtin.systemd:
+        name: ra8ci.service
+        enabled: false
+        state: stopped
+      when: not (ra8ci_restore_drill_approved | default(false) | bool)
+
+    - name: Restart the server only after signed backup readiness succeeds
+      ansible.builtin.systemd:
+        name: ra8ci.service
+        enabled: true
+        state: restarted
+      when: ra8ci_restore_drill_approved | default(false) | bool
+
+  handlers:
+    - name: Reload systemd
+      ansible.builtin.systemd:
+        daemon_reload: true
+
+    - name: Restart ra8ci PostgreSQL
+      ansible.builtin.systemd:
+        name: "postgresql@{{ ra8ci_postgres_major }}-ra8ci.service"
+        state: restarted
+
+    - name: Restart ra8ci server
+      ansible.builtin.systemd:
+        name: ra8ci.service
+        state: restarted
+      when: ra8ci_backup_readiness_refreshed | default(false) | bool

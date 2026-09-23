@@ -1,0 +1,37 @@
+[Unit]
+Description=ra8ci control-plane server
+After=network-online.target postgresql@{{ ra8ci_postgres_major }}-ra8ci.service
+Requires=postgresql@{{ ra8ci_postgres_major }}-ra8ci.service
+Wants=network-online.target
+RequiresMountsFor=/srv/ra8ci-data
+
+[Service]
+Type=simple
+User=ra8ci_service
+Group=ra8ci_service
+EnvironmentFile=/etc/ra8ci/server.env
+WorkingDirectory=/srv/ra8ci-data/ra8ci
+ExecStart=/usr/local/bin/ra8ci server
+Restart=on-failure
+RestartSec=5s
+NoNewPrivileges=true
+PrivateTmp=true
+PrivateDevices=true
+ProtectSystem=strict
+ProtectHome=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+ProtectClock=true
+ProtectHostname=true
+LockPersonality=true
+RestrictSUIDSGID=true
+RestrictRealtime=true
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+CapabilityBoundingSet=
+AmbientCapabilities=
+UMask=0077
+ReadWritePaths=/srv/ra8ci-data/ra8ci
+
+[Install]
+WantedBy=multi-user.target
