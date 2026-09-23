@@ -55,28 +55,39 @@ func boardCommand(ctx context.Context, args []string) error {
 		return json.NewEncoder(os.Stdout).Encode(snapshot)
 	}
 	if len(args) < 2 || args[0] != "take" {
-		return errors.New("usage: ra8ci board status <board-id> | board take <board-id> --why <reason> --duration <duration> | board extend <board-id> --why <reason> --duration <duration> | board cancel <board-id> <request-id> <lease-id>")
+		return errors.New("usage: ra8ci board status <board-id> | board take <board-id> --class human|agent --why <reason> --duration <duration> | board extend <board-id> --why <reason> --duration <duration> | board cancel <board-id> <request-id> <lease-id>")
 	}
 	flags := flag.NewFlagSet("board take", flag.ContinueOnError)
 	flags.SetOutput(io.Discard)
+	classText := flags.String("class", "human", "priority class: human or agent")
 	why := flags.String("why", "", "reason for taking the board")
 	durationText := flags.String("duration", "", "requested lease duration")
 	if err := flags.Parse(args[2:]); err != nil {
 		return fmt.Errorf("usage: ra8ci board take <board-id> --why <reason> --duration <duration>: %w", err)
 	}
 	if flags.NArg() != 0 || *why == "" || *durationText == "" {
-		return errors.New("usage: ra8ci board take <board-id> --why <reason> --duration <duration>")
+		return errors.New("usage: ra8ci board take <board-id> --class human|agent --why <reason> --duration <duration>")
+	}
+	class := board.ClassHuman
+	maxDuration := 8 * time.Hour
+	switch *classText {
+	case "human":
+	case "agent":
+		class = board.ClassAI
+		maxDuration = time.Hour
+	default:
+		return errors.New("board take class must be human or agent")
 	}
 	duration, err := time.ParseDuration(*durationText)
-	if err != nil || duration <= 0 || duration%time.Second != 0 || duration > 8*time.Hour {
-		return errors.New("board lease duration must be a whole number of seconds between 1s and 8h")
+	if err != nil || duration <= 0 || duration%time.Second != 0 || duration > maxDuration {
+		return fmt.Errorf("board lease duration must be a whole number of seconds between 1s and %s", maxDuration)
 	}
 	client, err := newBoardClient()
 	if err != nil {
 		return err
 	}
 	defer client.CloseIdleConnections()
-	ticket, err := client.RequestTake(ctx, args[1], board.ClassHuman, *why, duration)
+	ticket, err := client.RequestTake(ctx, args[1], class, *why, duration)
 	if err != nil {
 		if ticket.RequestID != "" {
 			return fmt.Errorf("board request outcome may be ambiguous (request %s, lease %s): %w", ticket.RequestID, ticket.LeaseID, err)
