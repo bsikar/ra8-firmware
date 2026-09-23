@@ -13,6 +13,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path"
 	"path/filepath"
 	"runtime"
 	"strings"
@@ -53,6 +54,18 @@ type ResourceHints struct {
 	MaxParallelism int   `json:"max_parallelism,omitempty"`
 }
 
+// HILTask binds a HIL task to reviewed manifest and board identity. Fixture
+// revision and profile hash are captured from the granted board session.
+type HILTask struct {
+	BoardID             string `json:"board_id"`
+	BoardModel          string `json:"board_model"`
+	ManifestPath        string `json:"manifest_path"`
+	ProgramFamily       string `json:"program_family"`
+	Mode                string `json:"mode"`
+	ObservationStep     string `json:"observation_step"`
+	FlashRestoreSeconds int    `json:"flash_restore_seconds"`
+}
+
 // Task is a versioned definition of one executable task.
 type Task struct {
 	Name            string        `json:"name"`
@@ -68,6 +81,7 @@ type Task struct {
 	Outputs         []string      `json:"outputs"`
 	Retry           RetryPolicy   `json:"retry"`
 	ResourceHints   ResourceHints `json:"resource_hints"`
+	HIL             *HILTask      `json:"hil,omitempty"`
 }
 
 type manifest struct {
@@ -265,9 +279,16 @@ func ValidateTask(task Task) error {
 		}
 		seenOS[goos] = true
 	}
-	if task.BoardPolicy != "none" || task.Retry.MaxAttempts != 1 || len(task.Outputs) != 0 ||
+	if task.Retry.MaxAttempts != 1 || len(task.Outputs) != 0 ||
 		len(task.Capabilities) != 0 || len(task.ArgsSchema.Positional) != 0 || len(task.ArgsSchema.Flags) != 0 {
 		return fmt.Errorf("%w: unsupported v1 behavior for %q", ErrInvalidCatalog, task.Name)
+	}
+	if task.Scope == "hil" {
+		if task.BoardPolicy != "exclusive" || task.HIL == nil || validateHILTask(*task.HIL, task.Steps) != nil {
+			return fmt.Errorf("%w: HIL task %q lacks a valid exclusive-board contract", ErrInvalidCatalog, task.Name)
+		}
+	} else if task.BoardPolicy != "none" || task.HIL != nil {
+		return fmt.Errorf("%w: non-HIL task %q declares board behavior", ErrInvalidCatalog, task.Name)
 	}
 	if task.ResourceHints.CPU < 0 || task.ResourceHints.RAMBytes < 0 || task.ResourceHints.MaxParallelism < 0 {
 		return fmt.Errorf("%w: negative resource hint for %q", ErrInvalidCatalog, task.Name)
@@ -290,6 +311,40 @@ func ValidateTask(task Task) error {
 	return nil
 }
 
+func validateHILTask(hil HILTask, steps []Step) error {
+	if err := ValidateHILTaskMetadata(hil); err != nil {
+		return err
+	}
+	for _, step := range steps {
+		if step.Name == hil.ObservationStep {
+			return nil
+		}
+	}
+	return ErrInvalidCatalog
+}
+
+// ValidateHILTaskMetadata validates catalog-owned HIL workload identity.
+func ValidateHILTaskMetadata(hil HILTask) error {
+	if !validName(hil.BoardID) || hil.BoardModel == "" || strings.TrimSpace(hil.BoardModel) != hil.BoardModel ||
+		len(hil.BoardModel) > 128 || !validHILManifestPath(hil.ManifestPath) ||
+		!validName(hil.ProgramFamily) || !validName(hil.ObservationStep) ||
+		hil.FlashRestoreSeconds < 1 || hil.FlashRestoreSeconds > 3600 {
+		return ErrInvalidCatalog
+	}
+	switch hil.Mode {
+	case "alive", "uart_scrape", "rtt_scrape", "jlink_memprobe", "hil_eth_tcp", "c6_camera_livestream":
+		return nil
+	default:
+		return ErrInvalidCatalog
+	}
+}
+
+func validHILManifestPath(manifest string) bool {
+	return strings.HasPrefix(manifest, "examples/") && strings.HasSuffix(manifest, "/hil.conf") &&
+		!strings.Contains(manifest, "\\") && !strings.Contains(manifest, "..") &&
+		path.Clean(manifest) == manifest && len(manifest) <= 512
+}
+
 // SupportsCurrentOS is a convenience for CLI admission checks.
 func (t Task) SupportsCurrentOS() bool {
 	return t.SupportsOS(runtime.GOOS)
@@ -304,6 +359,10 @@ func cloneTask(task Task) Task {
 	task.Steps = append([]Step(nil), task.Steps...)
 	for i := range task.Steps {
 		task.Steps[i].Args = append([]string(nil), task.Steps[i].Args...)
+	}
+	if task.HIL != nil {
+		hil := *task.HIL
+		task.HIL = &hil
 	}
 	return task
 }
