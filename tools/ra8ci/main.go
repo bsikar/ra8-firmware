@@ -26,6 +26,7 @@ import (
 	"github.com/bsikar/ra8-firmware/tools/ra8ci/internal/agent"
 	"github.com/bsikar/ra8-firmware/tools/ra8ci/internal/catalog"
 	"github.com/bsikar/ra8-firmware/tools/ra8ci/internal/executor"
+	"github.com/bsikar/ra8-firmware/tools/ra8ci/internal/neutral"
 	"github.com/bsikar/ra8-firmware/tools/ra8ci/internal/scaler"
 	"github.com/bsikar/ra8-firmware/tools/ra8ci/internal/server"
 	"github.com/bsikar/ra8-firmware/tools/ra8ci/internal/source"
@@ -261,8 +262,13 @@ func serve(ctx context.Context) error {
 	caPath := os.Getenv("RA8CI_CLIENT_CA")
 	listenAddress := os.Getenv("RA8CI_LISTEN_ADDR")
 	stateKeyPath := os.Getenv("RA8CI_TERRAFORM_STATE_KEY_FILE")
+	boardAgentKeyPath := os.Getenv("RA8CI_BOARD_AGENT_KEYS_FILE")
 	if dsn == "" || certPath == "" || keyPath == "" || caPath == "" || listenAddress == "" || stateKeyPath == "" {
 		return errors.New("server requires RA8CI_DATABASE_URL, RA8CI_TLS_CERT, RA8CI_TLS_KEY, RA8CI_CLIENT_CA, RA8CI_LISTEN_ADDR, and RA8CI_TERRAFORM_STATE_KEY_FILE")
+	}
+	boardVerifier, err := neutral.LoadVerifierFile(boardAgentKeyPath)
+	if err != nil {
+		return fmt.Errorf("load board-agent trust allowlist: %w", err)
 	}
 	backupPublicKeyPath := os.Getenv("RA8CI_BACKUP_PUBLIC_KEY_FILE")
 	backupAttestationPath := os.Getenv("RA8CI_BACKUP_ATTESTATION_FILE")
@@ -319,7 +325,7 @@ func serve(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	api, err := server.NewWithOptions(st, cat, nil, os.Getenv("RA8CI_AGENT_TRUSTED_COMMIT"),
+	api, err := server.NewWithOptions(st, cat, boardVerifier, os.Getenv("RA8CI_AGENT_TRUSTED_COMMIT"),
 		func(checkCtx context.Context) error { return backupGate.Check(checkCtx, backupApprovalID) })
 	if err != nil {
 		return err
