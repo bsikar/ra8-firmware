@@ -24,7 +24,7 @@
  * translation unit, ``tests/mocks/src/ra8_host_asm_stub.c``. The test harness
  * therefore owns the whole host model and the driver ``.c`` files carry no
  * ``#ifdef RA8_OFF_TARGET`` of their own; the gate
- * ``scripts/checks/check_no_driver_asm_guard.py`` keeps it that way.
+ * the ``ra8ci driver-asm-guard`` task keeps it that way.
  *
  * @note The barriers are Arm architectural instructions (Armv8-M ARM), not
  *       RA8D2 peripheral registers, so no Hardware User's Manual citation
