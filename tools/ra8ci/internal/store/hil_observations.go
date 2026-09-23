@@ -234,6 +234,30 @@ func (s *Store) BoardHILObservations(ctx context.Context, actor BoardActor,
 	return workload, observations, err
 }
 
+func validateHILTimingEvidence(evidence HILTimingEvidence, definition catalog.HILTask, taskMaximumSeconds int) bool {
+	workload := evidence.Workload
+	decision := evidence.Decision
+	if !validHILWorkload(workload) || workload.ManifestPath != definition.ManifestPath ||
+		workload.BoardModel != definition.BoardModel || workload.ProgramFamily != definition.ProgramFamily ||
+		workload.Mode != hilspec.Mode(definition.Mode) || taskMaximumSeconds < 1 ||
+		decision.ValidityWindow <= 0 || decision.ValidityWindow%time.Second != 0 ||
+		decision.ValidityWindow > time.Duration(taskMaximumSeconds)*time.Second ||
+		decision.FlashRestoreBound != time.Duration(definition.FlashRestoreSeconds)*time.Second ||
+		decision.SafetyMaximum < decision.ValidityWindow || decision.SafetyMaximum > time.Hour ||
+		decision.Samples < 0 || decision.Samples > 10000 || decision.RejectedRows < 0 ||
+		decision.RejectedRows > 10000 {
+		return false
+	}
+	switch decision.Source {
+	case "default", "hil.conf":
+		return decision.Samples < 5
+	case "observed", "observed-capped":
+		return decision.Samples >= 5
+	default:
+		return false
+	}
+}
+
 func validHILWorkload(workload hilspec.Workload) bool {
 	if workload.ManifestPath == "" || path.Clean(workload.ManifestPath) != workload.ManifestPath ||
 		path.Base(workload.ManifestPath) != "hil.conf" || !strings.HasPrefix(workload.ManifestPath, "examples/") ||

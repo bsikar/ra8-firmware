@@ -556,6 +556,31 @@ func (c *Client) CanStartSegment(ctx context.Context, token LeaseToken, bound, r
 		LeaseID: token.LeaseID, Generation: token.Generation}, time.Now().UTC(), bound, recoveryMargin)
 }
 
+func validHILTimingAssignment(evidence *store.HILTimingEvidence, definition catalog.HILTask, taskDeadlineSeconds int) bool {
+	if evidence == nil {
+		return false
+	}
+	workload, decision := evidence.Workload, evidence.Decision
+	if workload.ManifestPath != definition.ManifestPath || workload.BoardModel != definition.BoardModel ||
+		workload.ProgramFamily != definition.ProgramFamily || workload.Mode != hilspec.Mode(definition.Mode) ||
+		workload.FixtureRevision == "" || workload.ProfileSHA256 == "" || taskDeadlineSeconds < 1 ||
+		decision.ValidityWindow <= 0 || decision.ValidityWindow%time.Second != 0 ||
+		decision.ValidityWindow > time.Duration(taskDeadlineSeconds)*time.Second ||
+		decision.FlashRestoreBound != time.Duration(definition.FlashRestoreSeconds)*time.Second ||
+		decision.SafetyMaximum < decision.ValidityWindow || decision.SafetyMaximum > time.Hour ||
+		decision.Samples < 0 || decision.Samples > 10000 || decision.RejectedRows < 0 || decision.RejectedRows > 10000 {
+		return false
+	}
+	switch decision.Source {
+	case "default", "hil.conf":
+		return decision.Samples < 5
+	case "observed", "observed-capped":
+		return decision.Samples >= 5
+	default:
+		return false
+	}
+}
+
 // ClaimNextHILAttempt asks the server to select one reviewed task under this
 // exact lease. A nil result means the eligible queue is empty.
 func (c *Client) ClaimNextHILAttempt(ctx context.Context, boardID, leaseID, host string,
@@ -592,7 +617,7 @@ func (c *Client) ClaimNextHILAttempt(ctx context.Context, boardID, leaseID, host
 	}
 	if !store.ValidID(a.Attempt.ID) || !store.ValidID(a.Attempt.TaskID) ||
 		a.Attempt.State != "running" || a.Task.Scope != "hil" || a.Task.BoardPolicy != "exclusive" ||
-		a.Task.HIL == nil || a.Task.HIL.BoardID != boardID ||
+		a.Task.HIL == nil || a.Task.HIL.BoardID != boardID || !validHILTimingAssignment(a.HILTiming, *a.Task.HIL, a.Task.DeadlineSeconds) ||
 		a.Task.ValidateArguments(a.Args) != nil || catalog.ValidateTask(a.Task) != nil ||
 		!store.ValidID(a.RunID) || !protocol.ValidCommit(a.CommitSHA) ||
 		!validDigest(a.SnapshotSHA256) || !validDigest(a.CatalogSHA256) || a.SourceAlgorithm != source.Algorithm {

@@ -25,6 +25,7 @@ import (
 
 	"github.com/bsikar/ra8-firmware/tools/ra8ci/internal/board"
 	"github.com/bsikar/ra8-firmware/tools/ra8ci/internal/catalog"
+	"github.com/bsikar/ra8-firmware/tools/ra8ci/internal/hilspec"
 	"github.com/bsikar/ra8-firmware/tools/ra8ci/internal/source"
 	"github.com/bsikar/ra8-firmware/tools/ra8ci/internal/store"
 )
@@ -855,7 +856,12 @@ func TestClaimNextHILAttemptBindsLeaseHostAndCatalog(t *testing.T) {
 			ProgramFamily: "uart-hello", Mode: "uart_scrape", ObservationStep: "observe", FlashRestoreSeconds: 10}}
 	assignment := store.BoardHILAssignment{Attempt: store.Attempt{ID: testProofID, TaskID: taskID, AttemptNo: 1, State: "running"},
 		Task: task, RunID: runID, Repository: "bsikar/ra8-firmware", Branch: "test", CommitSHA: strings.Repeat("a", 40),
-		SnapshotSHA256: strings.Repeat("b", 64), SourceAlgorithm: source.Algorithm, CatalogSHA256: strings.Repeat("c", 64)}
+		SnapshotSHA256: strings.Repeat("b", 64), SourceAlgorithm: source.Algorithm, CatalogSHA256: strings.Repeat("c", 64),
+		HILTiming: &store.HILTimingEvidence{Workload: hilspec.Workload{ManifestPath: task.HIL.ManifestPath,
+			BoardModel: task.HIL.BoardModel, FixtureRevision: "fixture-v2", ProfileSHA256: strings.Repeat("d", 64),
+			ProgramFamily: task.HIL.ProgramFamily, Mode: hilspec.Mode(task.HIL.Mode)}, Decision: hilspec.Decision{
+			ValidityWindow: 30 * time.Second, FlashRestoreBound: 10 * time.Second, SafetyMaximum: time.Hour,
+			Source: "default"}}}
 	var called bool
 	c, closeServer := testClient(t, func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost || r.URL.Path != "/v1/boards/ek-ra8d2/hil-attempts/claim" {
