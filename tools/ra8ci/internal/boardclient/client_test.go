@@ -24,6 +24,8 @@ import (
 	"time"
 
 	"github.com/bsikar/ra8-firmware/tools/ra8ci/internal/board"
+	"github.com/bsikar/ra8-firmware/tools/ra8ci/internal/catalog"
+	"github.com/bsikar/ra8-firmware/tools/ra8ci/internal/source"
 	"github.com/bsikar/ra8-firmware/tools/ra8ci/internal/store"
 )
 
@@ -841,18 +843,27 @@ func TestBeginAndFinishSegmentUseCurrentLeaseFence(t *testing.T) {
 	}
 }
 
-func TestStartHILAttemptBindsHostFactsAndLease(t *testing.T) {
-	taskID := "01996f90-3415-7cfe-8ff1-600058131aff"
+func TestClaimNextHILAttemptBindsLeaseHostAndCatalog(t *testing.T) {
 	leaseID := "01996f90-3415-7cfe-8ff1-600058131afe"
+	taskID := "01996f90-3415-7cfe-8ff1-600058131aff"
+	runID := "01996f90-3415-7cfe-8ff1-600058131b01"
+	task := catalog.Task{Name: "hil-demo", Version: 1, Tier: "required", Scope: "hil", OS: []string{"linux"},
+		DeadlineSeconds: 60, BoardPolicy: "exclusive", Steps: []catalog.Step{{Name: "observe", Program: "echo"}},
+		Retry: catalog.RetryPolicy{MaxAttempts: 1},
+		HIL: &catalog.HILTask{BoardID: "ek-ra8d2", BoardModel: "EK-RA8D2",
+			ManifestPath:  "examples/ek_ra8d2/hw_validated/hil/uart_hello/hil.conf",
+			ProgramFamily: "uart-hello", Mode: "uart_scrape", ObservationStep: "observe", FlashRestoreSeconds: 10}}
+	assignment := store.BoardHILAssignment{Attempt: store.Attempt{ID: testProofID, TaskID: taskID, AttemptNo: 1, State: "running"},
+		Task: task, RunID: runID, Repository: "bsikar/ra8-firmware", Branch: "test", CommitSHA: strings.Repeat("a", 40),
+		SnapshotSHA256: strings.Repeat("b", 64), SourceAlgorithm: source.Algorithm, CatalogSHA256: strings.Repeat("c", 64)}
 	var called bool
 	c, closeServer := testClient(t, func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != http.MethodPost || r.URL.Path != "/v1/boards/ek-ra8d2/hil-attempts/start" {
-			t.Errorf("unexpected HIL attempt request: %s %s", r.Method, r.URL.Path)
+		if r.Method != http.MethodPost || r.URL.Path != "/v1/boards/ek-ra8d2/hil-attempts/claim" {
+			t.Errorf("unexpected HIL claim request: %s %s", r.Method, r.URL.Path)
 			w.WriteHeader(http.StatusNotFound)
 			return
 		}
 		var req struct {
-			TaskID       string          `json:"task_id"`
 			LeaseID      string          `json:"lease_id"`
 			Host         string          `json:"host"`
 			HostCores    int             `json:"host_cores"`
@@ -860,23 +871,29 @@ func TestStartHILAttemptBindsHostFactsAndLease(t *testing.T) {
 			HostLoad     float64         `json:"host_load"`
 			HostFacts    json.RawMessage `json:"host_facts"`
 		}
-		if json.NewDecoder(r.Body).Decode(&req) != nil || req.TaskID != taskID || req.LeaseID != leaseID ||
+		if json.NewDecoder(r.Body).Decode(&req) != nil || req.LeaseID != leaseID ||
 			req.Host != "runner-1" || req.HostCores != 8 || req.HostRAMBytes != 8<<30 ||
 			req.HostLoad != 0.25 || string(req.HostFacts) != "{\"os\":\"linux\"}" {
-			t.Errorf("invalid HIL attempt request: %+v", req)
+			t.Errorf("invalid HIL claim request: %+v", req)
 			w.WriteHeader(http.StatusBadRequest)
 			return
 		}
 		called = true
-		jsonResponse(w, http.StatusCreated, store.Attempt{ID: testProofID, TaskID: taskID, AttemptNo: 1, State: "running"})
+		jsonResponse(w, http.StatusOK, map[string]any{"assignment": assignment})
 	})
 	defer closeServer()
-	facts := json.RawMessage("{\"os\":\"linux\"}")
-	attempt, err := c.StartHILAttempt(context.Background(), "ek-ra8d2", taskID, leaseID, "runner-1", 8, 8<<30, 0.25, facts)
-	if err != nil || !called || attempt.ID != testProofID {
-		t.Fatalf("HIL attempt start failed: attempt=%+v called=%v err=%v", attempt, called, err)
+	got, err := c.ClaimNextHILAttempt(context.Background(), "ek-ra8d2", leaseID, "runner-1", 8, 8<<30, 0.25,
+		json.RawMessage("{\"os\":\"linux\"}"))
+	if err != nil || !called || got == nil || got.Attempt.ID != testProofID || got.Task.Name != task.Name {
+		t.Fatalf("HIL claim failed validation: got=%+v called=%v err=%v", got, called, err)
 	}
-	if _, err := c.StartHILAttempt(context.Background(), "ek-ra8d2", "bad", leaseID, "runner-1", 8, 8<<30, 0.25, facts); err == nil {
-		t.Fatal("invalid HIL task ID was accepted")
+	empty, closeEmpty := testClient(t, func(w http.ResponseWriter, r *http.Request) {
+		jsonResponse(w, http.StatusOK, map[string]any{"assignment": nil})
+	})
+	defer closeEmpty()
+	none, err := empty.ClaimNextHILAttempt(context.Background(), "ek-ra8d2", leaseID, "runner-1", 8, 8<<30, 0.25,
+		json.RawMessage("{\"os\":\"linux\"}"))
+	if err != nil || none != nil {
+		t.Fatalf("empty HIL queue response: assignment=%+v err=%v", none, err)
 	}
 }

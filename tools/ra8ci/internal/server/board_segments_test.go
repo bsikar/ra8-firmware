@@ -3,8 +3,10 @@ package server
 import (
 	"context"
 	"encoding/json"
+	"github.com/bsikar/ra8-firmware/tools/ra8ci/internal/catalog"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 
@@ -70,34 +72,50 @@ func TestBoardSegmentRejectsUnboundedRequest(t *testing.T) {
 	}
 }
 
-type fakeBoardHILAttempts struct {
+type fakeBoardHILClaims struct {
 	*fakeBoardStore
-	started store.StartAttemptInput
+	leaseID       string
+	facts         store.StartAttemptInput
+	catalogDigest string
+	trustedCommit string
 }
 
-func (f *fakeBoardHILAttempts) StartBoardHILAttempt(_ context.Context, _ store.BoardActor, taskID, leaseID string, facts store.StartAttemptInput) (store.Attempt, error) {
-	facts.TaskID, facts.BoardLeaseID = taskID, leaseID
-	f.started = facts
-	return store.Attempt{ID: boardTestProofID, TaskID: taskID, AttemptNo: 1, State: "running"}, nil
+func (f *fakeBoardHILClaims) ClaimNextBoardHILAttempt(_ context.Context, _ store.BoardActor, leaseID string, facts store.StartAttemptInput, cat *catalog.Catalog, commit string) (*store.BoardHILAssignment, error) {
+	f.leaseID, f.facts, f.catalogDigest, f.trustedCommit = leaseID, facts, cat.Digest(), commit
+	return &store.BoardHILAssignment{Attempt: store.Attempt{ID: boardTestProofID, TaskID: boardTestLeaseID, AttemptNo: 1, State: "running"}}, nil
 }
 
-func TestBoardHILAttemptRouteUsesBoardAgentHostFacts(t *testing.T) {
-	f := &fakeBoardHILAttempts{fakeBoardStore: &fakeBoardStore{}}
-	mux := http.NewServeMux()
-	if err := RegisterBoardRoutes(mux, f, nil, "bsikar/ra8-firmware"); err != nil {
+func TestBoardHILClaimRouteUsesLeaseAndHostFacts(t *testing.T) {
+	cat, err := catalog.Load()
+	if err != nil {
 		t.Fatal(err)
 	}
-	body, err := json.Marshal(startHILAttemptRequest{TaskID: "01996f90-3415-7cfe-8ff1-600058131aff",
-		LeaseID: boardTestLeaseID, Host: "ra8-board", HostCores: 8, HostRAMBytes: 8589934592,
-		HostLoad: 0.25, HostFacts: json.RawMessage([]byte("{\"os\":\"linux\",\"arch\":\"amd64\"}"))})
+	f := &fakeBoardHILClaims{fakeBoardStore: &fakeBoardStore{}}
+	mux := http.NewServeMux()
+	policy := BoardHILPolicy{Catalog: cat, TrustedCommit: strings.Repeat("a", 40)}
+	if err := RegisterBoardRoutes(mux, f, nil, "bsikar/ra8-firmware", policy); err != nil {
+		t.Fatal(err)
+	}
+	body, err := json.Marshal(claimHILAttemptRequest{LeaseID: boardTestLeaseID, Host: "ra8-board",
+		HostCores: 8, HostRAMBytes: 8589934592, HostLoad: 0.25,
+		HostFacts: json.RawMessage("{\"os\":\"linux\",\"arch\":\"amd64\"}")})
 	if err != nil {
 		t.Fatal(err)
 	}
 	w := httptest.NewRecorder()
-	mux.ServeHTTP(w, boardTestRequest("POST", "/v1/boards/ek-ra8d2/hil-attempts/start", string(body)))
-	if w.Code != http.StatusCreated || f.started.ActorID != "" || f.started.AgentID != "" ||
-		f.started.BoardLeaseID != boardTestLeaseID || f.started.Engine != "board-agent" ||
-		f.started.Host != "ra8-board" || f.started.HostCores != 8 || f.started.HostRAMBytes != 8589934592 {
-		t.Fatalf("board HIL start was not fenced or host facts were lost: status=%d start=%+v body=%s", w.Code, f.started, w.Body.String())
+	mux.ServeHTTP(w, boardTestRequest("POST", "/v1/boards/ek-ra8d2/hil-attempts/claim", string(body)))
+	if w.Code != http.StatusOK || f.leaseID != boardTestLeaseID ||
+		f.facts.ActorID != "" || f.facts.Engine != "board-agent" ||
+		f.facts.Host != "ra8-board" || f.facts.HostCores != 8 ||
+		f.facts.HostRAMBytes != 8589934592 || f.catalogDigest != cat.Digest() ||
+		f.trustedCommit != policy.TrustedCommit {
+		t.Fatalf("HIL claim not policy/facts bound: status=%d fake=%+v body=%s", w.Code, f, w.Body.String())
+	}
+	var response struct {
+		Assignment *store.BoardHILAssignment `json:"assignment"`
+	}
+	if err := json.Unmarshal(w.Body.Bytes(), &response); err != nil || response.Assignment == nil ||
+		response.Assignment.Attempt.ID != boardTestProofID {
+		t.Fatalf("claim response lost assignment: %+v err=%v body=%s", response, err, w.Body.String())
 	}
 }
