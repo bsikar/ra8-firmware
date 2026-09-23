@@ -12,6 +12,7 @@ import (
 	"github.com/bsikar/ra8-firmware/tools/ra8ci/internal/board"
 	"github.com/bsikar/ra8-firmware/tools/ra8ci/internal/boardclient"
 	"github.com/bsikar/ra8-firmware/tools/ra8ci/internal/catalog"
+	"github.com/bsikar/ra8-firmware/tools/ra8ci/internal/hilspec"
 	"github.com/bsikar/ra8-firmware/tools/ra8ci/internal/store"
 )
 
@@ -42,7 +43,21 @@ func (a *Agent) RunHILAttempt(ctx context.Context, token boardclient.LeaseToken,
 		Generation: token.Generation, Result: "failed", Reason: "HIL task did not complete"}
 	steps := make([]store.HILStep, 0, len(assignment.Task.Steps))
 	var terminalExitCode *int
-	decision, executionErr := a.HILTimingDecision(attemptCtx, checkoutRoot, assignment.Task, safetyMaximum)
+	decision := hilspec.Decision{}
+	executionErr := error(nil)
+	if assignment.HILTiming == nil {
+		executionErr = fmt.Errorf("%w: server did not pin HIL timing evidence", ErrInvalidAgent)
+	} else {
+		decision = assignment.HILTiming.Decision
+		spec, err := hilspec.Load(checkoutRoot, assignment.Task.HIL.ManifestPath)
+		if err != nil {
+			executionErr = err
+		} else if spec.Mode != hilspec.Mode(assignment.Task.HIL.Mode) || spec.TimeoutDeclared != assignment.Task.HIL.TimeoutDeclared || spec.TimeoutSeconds != assignment.Task.HIL.TimeoutSeconds || spec.SafetyMaximumSeconds != assignment.Task.HIL.SafetyMaximumSeconds {
+			executionErr = fmt.Errorf("%w: pinned HIL timing differs from manifest", catalog.ErrInvalidCatalog)
+		} else if assignment.HILTiming.Workload.ManifestPath != assignment.Task.HIL.ManifestPath || assignment.HILTiming.Workload.BoardModel != assignment.Task.HIL.BoardModel || assignment.HILTiming.Workload.ProgramFamily != assignment.Task.HIL.ProgramFamily || assignment.HILTiming.Workload.Mode != hilspec.Mode(assignment.Task.HIL.Mode) {
+			executionErr = hilspec.ErrInvalidHistory
+		}
+	}
 	if executionErr == nil && decision.ValidityWindow > assignment.Attempt.DeadlineAt.Sub(assignment.Attempt.StartedAt) {
 		executionErr = fmt.Errorf("%w: HIL observation budget exceeds persisted attempt deadline", ErrInvalidAgent)
 	}
