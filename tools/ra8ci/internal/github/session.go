@@ -195,29 +195,60 @@ type ControllerSession struct {
 // constructs the durable, admission-checked controller around it.
 func OpenController(ctx context.Context, config SessionConfig, inbox ReplayInbox,
 	handler Handler, admission Admission, processTimeout time.Duration) (*ControllerSession, error) {
+	return OpenControllerWithHandlerFactory(ctx, config, inbox, admission, processTimeout,
+		func(*Session) (Handler, error) { return handler, nil })
+}
+
+// HandlerFactory builds the lifecycle handler after the official GitHub session
+// is open, allowing session-bound runner administration and JIT issuance to be
+// injected without creating a second credential/session owner.
+type HandlerFactory func(*Session) (Handler, error)
+
+// OpenControllerWithHandlerFactory opens one session, constructs the handler
+// against that exact session, and binds the durable controller. Any composition
+// failure closes the remote session before returning.
+func OpenControllerWithHandlerFactory(ctx context.Context, config SessionConfig, inbox ReplayInbox,
+	admission Admission, processTimeout time.Duration, factory HandlerFactory) (*ControllerSession, error) {
 	session, err := OpenSession(ctx, config)
 	if err != nil {
 		return nil, err
 	}
-	controller, err := NewController(session.Client, inbox, handler, admission,
-		config.ScaleSetID, config.MaxRunners, processTimeout)
-	if err != nil {
-		cleanupCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-		defer cancel()
-		_ = session.Close(cleanupCtx)
-		return nil, err
-	}
-	return NewControllerSession(session, controller)
+	return ComposeControllerSession(session, inbox, admission, config.MaxRunners, processTimeout, factory)
 }
 
 // NewControllerSession binds an already-open GitHub session to a controller.
-// This enables production composition to build session-backed runner
-// administration and JIT adapters before constructing the handler.
 func NewControllerSession(session *Session, controller *Controller) (*ControllerSession, error) {
-	if session == nil || session.Client == nil || session.close == nil || controller == nil {
+	if session == nil || session.Client == nil || session.close == nil ||
+		session.scaleSetID <= 0 || controller == nil || controller.scaleSetID != session.scaleSetID {
 		return nil, errors.New("controller session requires an open GitHub session and controller")
 	}
 	return &ControllerSession{controller: controller, session: session}, nil
+}
+
+// ComposeControllerSession binds an already-open session to a newly built
+// handler and controller. This seam supports safe production dependency
+// composition and deterministic tests without making HTTP calls.
+func ComposeControllerSession(session *Session, inbox ReplayInbox, admission Admission,
+	maxRunners int, processTimeout time.Duration, factory HandlerFactory) (*ControllerSession, error) {
+	if session == nil || session.Client == nil || session.close == nil || session.scaleSetID <= 0 ||
+		inbox == nil || admission == nil || factory == nil {
+		return nil, errors.New("controller composition requires an open session and complete dependencies")
+	}
+	closeOnFailure := func(err error) (*ControllerSession, error) {
+		cleanupCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		return nil, errors.Join(err, session.Close(cleanupCtx))
+	}
+	handler, err := factory(session)
+	if err != nil {
+		return closeOnFailure(fmt.Errorf("construct GitHub lifecycle handler: %w", err))
+	}
+	controller, err := NewController(session.Client, inbox, handler, admission,
+		session.scaleSetID, maxRunners, processTimeout)
+	if err != nil {
+		return closeOnFailure(err)
+	}
+	return NewControllerSession(session, controller)
 }
 
 // Run processes messages until cancellation or a controller error, then closes
