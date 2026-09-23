@@ -7,6 +7,7 @@ import (
 	"fmt"
 
 	"github.com/bsikar/ra8-firmware/tools/ra8ci/internal/catalog"
+	"github.com/bsikar/ra8-firmware/tools/ra8ci/internal/source"
 	"github.com/jackc/pgx/v5"
 )
 
@@ -111,4 +112,111 @@ func (s *Store) StartBoardHILAttempt(ctx context.Context, actor BoardActor, task
 		return Attempt{}, fmt.Errorf("%w: board HIL attempt task mismatch", ErrConflict)
 	}
 	return attempt, nil
+}
+
+// BoardHILAssignment is a server-selected, lease-bound HIL task and its pinned
+// source identity. It contains no caller-supplied command text.
+type BoardHILAssignment struct {
+	Attempt         Attempt      `json:"attempt"`
+	Task            catalog.Task `json:"task"`
+	Args            []string     `json:"args"`
+	RunID           string       `json:"run_id"`
+	Repository      string       `json:"repository"`
+	Branch          string       `json:"branch"`
+	CommitSHA       string       `json:"commit_sha"`
+	SnapshotSHA256  string       `json:"snapshot_sha256"`
+	SourceAlgorithm string       `json:"source_algorithm"`
+	CatalogSHA256   string       `json:"catalog_sha256"`
+}
+
+// ClaimNextBoardHILAttempt selects the oldest eligible HIL task for the
+// current lease holder, then binds its attempt to this board-agent identity.
+func (s *Store) ClaimNextBoardHILAttempt(ctx context.Context, actor BoardActor, leaseID string,
+	facts StartAttemptInput, definitions *catalog.Catalog, trustedCommit string) (*BoardHILAssignment, error) {
+	if s == nil || s.pool == nil || actor.kind != "board_agent" || actor.role != "board_agent" ||
+		!validBoardID(actor.boardID) || !ValidID(leaseID) || definitions == nil ||
+		definitions.Digest() == "" || !commitSHA.MatchString(trustedCommit) {
+		return nil, fmt.Errorf("%w: board HIL queue claim arguments", ErrInvalid)
+	}
+	tx, err := s.pool.Begin(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("%w: begin board HIL queue claim: %v", ErrUnavailable, err)
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+	if err := revalidateBoardActor(ctx, tx, actor); err != nil {
+		return nil, err
+	}
+	if _, err := tx.Exec(ctx, "SELECT pg_advisory_xact_lock(hashtextextended($1, 1))", actor.boardID); err != nil {
+		return nil, fmt.Errorf("%w: board HIL queue lock: %v", ErrUnavailable, err)
+	}
+	var holderID string
+	err = tx.QueryRow(ctx, `SELECT holder_id FROM board_leases
+        WHERE id=$1 AND board_id=$2 AND state='active' AND yield_requested_at IS NULL
+          AND expires_at>clock_timestamp()`, leaseID, actor.boardID).Scan(&holderID)
+	if err != nil {
+		if err == pgx.ErrNoRows {
+			return nil, fmt.Errorf("%w: board lease is not claimable", ErrConflict)
+		}
+		return nil, fmt.Errorf("%w: read HIL lease holder: %v", ErrUnavailable, err)
+	}
+	var selected BoardHILAssignment
+	var taskID, taskName string
+	var taskVersion, deadlineSeconds int
+	var rawArguments []byte
+	err = tx.QueryRow(ctx, `SELECT t.id::text,t.name,t.version,t.deadline_seconds,t.arguments,
+          r.id::text,r.repository,r.branch,r.commit_sha,r.snapshot_sha256,r.catalog_sha256
+        FROM tasks t JOIN runs r ON r.id=t.run_id
+        WHERE t.scope='hil' AND t.state='scheduled' AND r.actor_id=$1
+          AND r.state IN ('queued','running') AND r.cancel_requested_at IS NULL
+          AND r.catalog_sha256=$2 AND r.commit_sha=$3
+          AND t.arguments->'hil'->>'board_id'=$4
+          AND NOT EXISTS (SELECT 1 FROM task_edges e JOIN tasks d
+            ON d.id=e.depends_on_task_id WHERE e.task_id=t.id AND d.state<>'succeeded')
+        ORDER BY t.enqueued_at,t.id
+        LIMIT 1 FOR UPDATE OF t,r SKIP LOCKED`,
+		holderID, definitions.Digest(), trustedCommit, actor.boardID).
+		Scan(&taskID, &taskName, &taskVersion, &deadlineSeconds, &rawArguments,
+			&selected.RunID, &selected.Repository, &selected.Branch, &selected.CommitSHA,
+			&selected.SnapshotSHA256, &selected.CatalogSHA256)
+	if err != nil {
+		if err == pgx.ErrNoRows {
+			if err := tx.Commit(ctx); err != nil {
+				return nil, fmt.Errorf("%w: close empty HIL claim: %v", ErrUnavailable, err)
+			}
+			return nil, nil
+		}
+		return nil, fmt.Errorf("%w: select HIL task: %v", ErrUnavailable, err)
+	}
+	definition, found := definitions.Task(taskName)
+	if !found || definition.Scope != "hil" || definition.BoardPolicy != "exclusive" ||
+		definition.HIL == nil || definition.HIL.BoardID != actor.boardID ||
+		!definition.SupportsOS("linux") || definition.Version != taskVersion ||
+		definition.DeadlineSeconds != deadlineSeconds {
+		return nil, fmt.Errorf("%w: HIL task differs from the current reviewed catalog", ErrConflict)
+	}
+	var persisted struct {
+		Args []string         `json:"argv"`
+		HIL  *catalog.HILTask `json:"hil"`
+	}
+	decoder := json.NewDecoder(bytes.NewReader(rawArguments))
+	decoder.DisallowUnknownFields()
+	if decoder.Decode(&persisted) != nil || persisted.HIL == nil ||
+		*persisted.HIL != *definition.HIL || definition.ValidateArguments(persisted.Args) != nil {
+		return nil, fmt.Errorf("%w: persisted HIL contract differs from catalog", ErrConflict)
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return nil, fmt.Errorf("%w: close HIL selection: %v", ErrUnavailable, err)
+	}
+
+	facts.TaskID, facts.BoardLeaseID = taskID, leaseID
+	attempt, err := s.StartBoardHILAttempt(ctx, actor, taskID, leaseID, facts)
+	if err != nil {
+		return nil, err
+	}
+	selected.Attempt = attempt
+	selected.SourceAlgorithm = source.Algorithm
+	selected.Task = definition
+	selected.Args = append([]string(nil), persisted.Args...)
+	selected.CatalogSHA256 = definitions.Digest()
+	return &selected, nil
 }

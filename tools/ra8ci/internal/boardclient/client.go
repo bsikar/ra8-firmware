@@ -7,6 +7,7 @@ import (
 	"context"
 	"crypto/tls"
 	"crypto/x509"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -19,6 +20,9 @@ import (
 	"time"
 
 	"github.com/bsikar/ra8-firmware/tools/ra8ci/internal/board"
+	"github.com/bsikar/ra8-firmware/tools/ra8ci/internal/catalog"
+	"github.com/bsikar/ra8-firmware/tools/ra8ci/internal/protocol"
+	"github.com/bsikar/ra8-firmware/tools/ra8ci/internal/source"
 	"github.com/bsikar/ra8-firmware/tools/ra8ci/internal/store"
 )
 
@@ -551,33 +555,49 @@ func (c *Client) CanStartSegment(ctx context.Context, token LeaseToken, bound, r
 		LeaseID: token.LeaseID, Generation: token.Generation}, time.Now().UTC(), bound, recoveryMargin)
 }
 
-// StartHILAttempt starts one queued HIL task under the exact active board lease.
-// The server derives the lease holder; the caller contributes only its host facts.
-func (c *Client) StartHILAttempt(ctx context.Context, boardID, taskID, leaseID, host string, cores int, ramBytes int64, load float64, hostFacts json.RawMessage) (store.Attempt, error) {
-	if !validBoardID(boardID) || !store.ValidID(taskID) || !store.ValidID(leaseID) || host == "" || cores < 1 || ramBytes < 1 || load < 0 || math.IsNaN(load) || math.IsInf(load, 0) {
-		return store.Attempt{}, ErrInvalidRequest
+// ClaimNextHILAttempt asks the server to select one reviewed task under this
+// exact lease. A nil result means the eligible queue is empty.
+func (c *Client) ClaimNextHILAttempt(ctx context.Context, boardID, leaseID, host string,
+	cores int, ramBytes int64, load float64, hostFacts json.RawMessage) (*store.BoardHILAssignment, error) {
+	if !validBoardID(boardID) || !store.ValidID(leaseID) || host == "" || cores < 1 ||
+		ramBytes < 1 || load < 0 || math.IsNaN(load) || math.IsInf(load, 0) {
+		return nil, ErrInvalidRequest
 	}
 	var facts map[string]json.RawMessage
 	if len(hostFacts) == 0 || json.Unmarshal(hostFacts, &facts) != nil || facts == nil {
-		return store.Attempt{}, ErrInvalidRequest
+		return nil, ErrInvalidRequest
 	}
-	var result store.Attempt
-	err := c.request(ctx, http.MethodPost, boardPath(boardID, "/hil-attempts/start"), struct {
-		TaskID       string          `json:"task_id"`
+	var response struct {
+		Assignment *store.BoardHILAssignment `json:"assignment"`
+	}
+	err := c.request(ctx, http.MethodPost, boardPath(boardID, "/hil-attempts/claim"), struct {
 		LeaseID      string          `json:"lease_id"`
 		Host         string          `json:"host"`
 		HostCores    int             `json:"host_cores"`
 		HostRAMBytes int64           `json:"host_ram_bytes"`
 		HostLoad     float64         `json:"host_load"`
 		HostFacts    json.RawMessage `json:"host_facts"`
-	}{taskID, leaseID, host, cores, ramBytes, load, hostFacts}, &result)
+	}{leaseID, host, cores, ramBytes, load, hostFacts}, &response)
 	if err != nil {
-		return store.Attempt{}, err
+		return nil, err
 	}
-	if result.TaskID != taskID || !store.ValidID(result.ID) || result.State != "running" {
-		return store.Attempt{}, errors.New("HIL attempt response does not match request")
+	if response.Assignment == nil {
+		return nil, nil
 	}
-	return result, nil
+	a := response.Assignment
+	validDigest := func(value string) bool {
+		decoded, err := hex.DecodeString(value)
+		return err == nil && len(decoded) == 32 && strings.ToLower(value) == value
+	}
+	if !store.ValidID(a.Attempt.ID) || !store.ValidID(a.Attempt.TaskID) ||
+		a.Attempt.State != "running" || a.Task.Scope != "hil" || a.Task.BoardPolicy != "exclusive" ||
+		a.Task.HIL == nil || a.Task.HIL.BoardID != boardID ||
+		a.Task.ValidateArguments(a.Args) != nil || catalog.ValidateTask(a.Task) != nil ||
+		!store.ValidID(a.RunID) || !protocol.ValidCommit(a.CommitSHA) ||
+		!validDigest(a.SnapshotSHA256) || !validDigest(a.CatalogSHA256) || a.SourceAlgorithm != source.Algorithm {
+		return nil, errors.New("HIL claim response is not a valid catalog-bound assignment")
+	}
+	return a, nil
 }
 
 // BeginSegment atomically orders a bounded hardware operation against board
