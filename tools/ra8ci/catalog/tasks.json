@@ -971,6 +971,41 @@
       "resource_hints": {}
     },
     {
+      "name": "legacy-make",
+      "version": 1,
+      "tier": "required",
+      "scope": "safe-local-read-only",
+      "os": [
+        "linux"
+      ],
+      "capabilities": [],
+      "args_schema": {
+        "positional": [],
+        "flags": []
+      },
+      "deadline_seconds": 1800,
+      "board_policy": "none",
+      "steps": [
+        {
+          "name": "legacy-make-selftest",
+          "program": "ra8ci:legacy-make",
+          "args": [
+            "--selftest"
+          ]
+        },
+        {
+          "name": "legacy-make-scan",
+          "program": "ra8ci:legacy-make",
+          "args": []
+        }
+      ],
+      "outputs": [],
+      "retry": {
+        "max_attempts": 1
+      },
+      "resource_hints": {}
+    },
+    {
       "name": "lint-asm",
       "version": 1,
       "tier": "required",
