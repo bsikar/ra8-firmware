@@ -199,7 +199,7 @@ component is vendored at the exact version recorded in its
 The hook at `scripts/git/pre-commit` enforces the following gates on
 every commit. Failure of any gate refuses the commit:
 
-1. ASCII-only source files (`fix-encoding.py --check`).
+1. ASCII-only source files (`ra8ci ascii`).
 2. C23 patterns: no `_Static_assert`, no `= {0}`, no `#include
    <stdbool.h>`.
 3. Defensive-paren on numeric `#define` values.

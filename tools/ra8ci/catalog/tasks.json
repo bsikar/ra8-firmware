@@ -114,12 +114,18 @@
       "board_policy": "none",
       "steps": [
         {
-          "name": "ascii",
-          "program": "bash",
+          "name": "ascii-selftest",
+          "program": "ra8ci:ascii",
           "args": [
-            "scripts/ci.sh",
-            "--gate",
-            "ascii"
+            "--selftest"
+          ]
+        },
+        {
+          "name": "ascii-scan",
+          "program": "ra8ci:ascii",
+          "args": [
+            "--check",
+            "--all"
           ]
         }
       ],
