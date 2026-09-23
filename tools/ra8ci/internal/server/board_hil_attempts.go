@@ -3,18 +3,17 @@ package server
 import (
 	"context"
 	"encoding/json"
-	"github.com/bsikar/ra8-firmware/tools/ra8ci/internal/catalog"
 	"github.com/bsikar/ra8-firmware/tools/ra8ci/internal/protocol"
 	"github.com/bsikar/ra8-firmware/tools/ra8ci/internal/store"
 	"net/http"
 )
 
 type durableBoardHILClaims interface {
-	ClaimNextBoardHILAttempt(context.Context, store.BoardActor, string, store.StartAttemptInput, *catalog.Catalog, string) (*store.BoardHILAssignment, error)
+	ClaimNextBoardHILAttempt(context.Context, store.BoardActor, string, store.StartAttemptInput, store.HILDefinitionCatalog, string) (*store.BoardHILAssignment, error)
 }
 
 type durableBoardHILFinisher interface {
-	CompleteBoardHILAttempt(context.Context, store.BoardActor, store.BoardHILCompletion, *catalog.Catalog, string) error
+	CompleteBoardHILAttempt(context.Context, store.BoardActor, store.BoardHILCompletion, store.HILDefinitionCatalog, string) error
 }
 
 type completeHILAttemptRequest struct {
