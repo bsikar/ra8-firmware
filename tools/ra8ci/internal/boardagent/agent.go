@@ -110,6 +110,10 @@ func (a *Agent) CanStartSegment(ctx context.Context, token boardclient.LeaseToke
 	if err := board.CanStartSegment(snapshot, serverToken, serverNow, bound, recoveryMargin); err != nil {
 		return err
 	}
+	if snapshot.Lease == nil || fence.Generation != token.Generation ||
+		fence.Version != snapshot.Lease.DeadlineVersion {
+		return &board.Error{Code: board.StaleGeneration, Detail: "local deadline fence does not match the current lease version"}
+	}
 	return fence.CanStartSegment(token.Generation, localNow, bound, recoveryMargin)
 }
 
