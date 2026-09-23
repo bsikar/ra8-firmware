@@ -2,7 +2,9 @@ package store
 
 import (
 	"context"
+	"crypto/sha256"
 	"database/sql"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"regexp"
@@ -111,6 +113,9 @@ type RunnerVMResolution struct {
 	PlanSHA256           string
 	StateIdentitySHA256  string
 	ReconciliationSHA256 string
+	TerraformStateHasVM  bool
+	TerraformVMAbsent    bool
+	TerraformVMStatus    string
 }
 
 func nullablePositive(value int64) any {
@@ -633,9 +638,13 @@ func validateVMResolution(now time.Time, op RunnerVMOperation, proof RunnerVMRes
 			return ErrDenied
 		}
 	case "terraform_state":
-		if op.ProviderKind != "terraform" || proof.PlanSHA256 != op.PlanSHA256 ||
+		if op.ProviderKind != "terraform" || op.TerraformApplyStartedAt == nil || proof.PlanSHA256 != op.PlanSHA256 ||
 			proof.StateIdentitySHA256 != op.StateIdentitySHA256 ||
 			!runnerVMHexSHA256.MatchString(proof.ReconciliationSHA256) {
+			return ErrDenied
+		}
+		if !validTerraformObservedState(op.Kind, proof.Outcome, proof.TerraformStateHasVM,
+			proof.TerraformVMAbsent, proof.TerraformVMStatus) {
 			return ErrDenied
 		}
 	case "terraform_preflight":
@@ -650,6 +659,58 @@ func validateVMResolution(now time.Time, op RunnerVMOperation, proof RunnerVMRes
 			return ErrDenied
 		}
 	default:
+		return ErrDenied
+	}
+	return nil
+}
+
+// validTerraformObservedState requires the runtime's parsed Terraform state and
+// independent Proxmox observation to agree with both the operation and outcome.
+func validTerraformObservedState(kind, outcome string, stateHasVM, vmAbsent bool, vmStatus string) bool {
+	switch kind {
+	case "clone":
+		return outcome == "succeeded" && stateHasVM && !vmAbsent && vmStatus == "stopped" ||
+			outcome == "failed" && !stateHasVM && vmAbsent && vmStatus == ""
+	case "start":
+		return outcome == "succeeded" && stateHasVM && !vmAbsent && vmStatus == "running" ||
+			outcome == "failed" && stateHasVM && !vmAbsent && vmStatus == "stopped"
+	case "stop":
+		return outcome == "succeeded" && stateHasVM && !vmAbsent && vmStatus == "stopped" ||
+			outcome == "failed" && stateHasVM && !vmAbsent && vmStatus == "running"
+	case "destroy":
+		return outcome == "succeeded" && !stateHasVM && vmAbsent && vmStatus == "" ||
+			outcome == "failed" && stateHasVM && !vmAbsent && vmStatus == "stopped"
+	default:
+		return false
+	}
+}
+
+// lockTerraformReconciliationState binds proof to the state snapshot persisted
+// by the authenticated Terraform backend and prevents concurrent state writes
+// or lock acquisition until the resolution transaction commits.
+func lockTerraformReconciliationState(ctx context.Context, tx pgx.Tx, reservationID, proofSHA string) error {
+	var stateSHA sql.NullString
+	var locked bool
+	err := tx.QueryRow(ctx, `SELECT state_sha256,lock_id IS NOT NULL
+		FROM runner_vm_terraform_states WHERE runner_vm_id=$1 FOR UPDATE`, reservationID).
+		Scan(&stateSHA, &locked)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return ErrDenied
+	}
+	if err != nil {
+		return fmt.Errorf("%w: lock Terraform reconciliation snapshot: %v", ErrUnavailable, err)
+	}
+	if locked {
+		return ErrDenied
+	}
+	expected := sha256.Sum256([]byte("ra8ci-no-state"))
+	if stateSHA.Valid {
+		if !runnerVMHexSHA256.MatchString(stateSHA.String) || proofSHA != stateSHA.String {
+			return ErrDenied
+		}
+		return nil
+	}
+	if proofSHA != hex.EncodeToString(expected[:]) {
 		return ErrDenied
 	}
 	return nil
@@ -705,6 +766,11 @@ func (s *Store) ResolveRunnerVMOperation(ctx context.Context, actor, reservation
 	if err := validateVMResolution(now, op, proof); err != nil {
 		return RunnerVM{}, err
 	}
+	if proof.Source == "terraform_state" {
+		if err := lockTerraformReconciliationState(ctx, tx, reservationID, proof.ReconciliationSHA256); err != nil {
+			return RunnerVM{}, err
+		}
+	}
 	nextState := op.FromState
 	if proof.Outcome == "succeeded" {
 		nextState = VMOperationSuccessState(op.Kind)
@@ -735,7 +801,10 @@ func (s *Store) ResolveRunnerVMOperation(ctx context.Context, actor, reservation
 		"runner_vm", reservationID, proof.Outcome, vm.State, nextState, "",
 		map[string]any{"operation_id": operationID, "generation": vm.Generation + 1,
 			"evidence_id": proof.EvidenceID, "source": proof.Source,
-			"reconciliation_sha256": proof.ReconciliationSHA256}); err != nil {
+			"reconciliation_sha256":  proof.ReconciliationSHA256,
+			"terraform_state_has_vm": proof.TerraformStateHasVM,
+			"terraform_vm_absent":    proof.TerraformVMAbsent,
+			"terraform_vm_status":    proof.TerraformVMStatus}); err != nil {
 		return RunnerVM{}, fmt.Errorf("%w: audit VM reconciliation: %v", ErrUnavailable, err)
 	}
 	if err := tx.Commit(ctx); err != nil {

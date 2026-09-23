@@ -102,6 +102,9 @@ type TerraformEvidence struct {
 	PlanSHA256           string
 	StateIdentitySHA256  string
 	ReconciliationSHA256 string
+	StateHasVM           bool
+	VMAbsent             bool
+	VMStatus             string
 	ObservedAt           time.Time
 }
 
