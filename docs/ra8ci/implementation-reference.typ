@@ -96,7 +96,8 @@ The control VM contains `ra8ci server` and PostgreSQL. Repository-controlled job
   [`ra8ci board status <id>`], [`CURRENT`], [Read-only snapshot through the authenticated board API.],
   [`ra8ci board take <id>`], [`CURRENT`], [Queues a human-priority request with reason and duration, prints request and lease IDs before waiting, and cancels the waiter on interrupted wait where safe.],
   [`ra8ci board cancel <id> <request> <lease>`], [`CURRENT`], [Withdraws only a still-queued waiter using its board/request/lease IDs and authenticated owner identity. If the lease was already granted, cancellation refuses and does not release hardware.],
-  [Board release/extend/checkpoint CLI], [`BLOCKED`], [Not exposed as general-purpose human board control. Server mutation still requires verifier-backed neutral evidence, an enrolled/fenced board agent, and an approved fixture profile.],
+  [`ra8ci board extend <id> --why WHY --duration DURATION`], [`CURRENT`], [Extends the current user's lease using a private, owner-only token saved after grant; server-side class ceilings and contention rules remain authoritative.],
+  [Board release/checkpoint CLI], [`BLOCKED`], [Release still requires verifier-backed neutral evidence from an enrolled/fenced board agent; checkpoint requires an implemented agent operation and an approved fixture profile.],
 )
 
 Current process exit meanings are 0 for command/task success, the child exit for a completed local task, 124 for a task deadline, 130 for cancellation, 2 for CLI usage, and 1 for control-plane or internal failure. The target CLI must replace the generic 1 with stable documented categories without changing an underlying task's meaningful child result.
@@ -106,7 +107,7 @@ Current process exit meanings are 0 for command/task success, the child exit for
 Add only after their server contracts and tests exist:
 
 - `ra8ci run retry|explain <run-id>`.
-- `ra8ci board checkpoint|extend|release|queue|doctor`.
+- `ra8ci board checkpoint|release|queue|doctor`.
 - `ra8ci board flash|probe|reset|serial|debug` through allowlisted board-agent operations; never raw remote shell text.
 - `ra8ci report critical-path|resource-fit|board`.
 - `--json` for stable machine output and `--local` or `--dispatch` only where both routes have identical task semantics.
