@@ -67,6 +67,9 @@
           - ra8ci_tls_cert_src | default('') is file
           - ra8ci_tls_key_src | default('') is file
           - ra8ci_client_ca_src | default('') is file
+          - ra8ci_board_agent_keys_src | default('') is file
+          - (lookup('file', ra8ci_board_agent_keys_src | default('')) | from_json).schema_version | int == 1
+          - (lookup('file', ra8ci_board_agent_keys_src | default('')) | from_json).agents | length > 0
           - ra8ci_listen_addr | default('') is match('^[0-9.]+:[0-9]{2,5}$')
           - ra8ci_backup_s3_endpoint | default('') is match('^[A-Za-z0-9.-]+$')
           - ra8ci_terraform_state_key_b64 | default('') is match('^[A-Za-z0-9+/]{43}=$')
@@ -662,6 +665,15 @@
         group: ra8ci_service
         mode: '0640'
       no_log: true
+      notify: Restart ra8ci server
+
+    - name: Install the reviewed board-agent receipt public-key allowlist
+      ansible.builtin.copy:
+        src: "{{ ra8ci_board_agent_keys_src }}"
+        dest: /etc/ra8ci/board-agent-keys.json
+        owner: root
+        group: ra8ci_service
+        mode: '0640'
       notify: Restart ra8ci server
 
     - name: Install the encrypted Terraform state key
