@@ -377,6 +377,68 @@ func (c *Client) WaitForGrant(ctx context.Context, ticket Ticket) (LeaseToken, e
 	}
 }
 
+// AcknowledgeGrant records that the board agent durably installed the granted
+// generation. It is idempotent after an ambiguous successful response.
+func (c *Client) AcknowledgeGrant(ctx context.Context, token LeaseToken) (board.Snapshot, error) {
+	if ctx == nil || !validBoardID(token.BoardID) || !store.ValidID(token.RequestID) ||
+		!store.ValidID(token.LeaseID) || token.Generation == 0 {
+		return board.Snapshot{}, ErrInvalidRequest
+	}
+	for {
+		snapshot, err := c.Status(ctx, token.BoardID)
+		if err != nil {
+			return board.Snapshot{}, err
+		}
+		if !sameLease(snapshot, token) || snapshot.Lease.Generation != token.Generation {
+			return board.Snapshot{}, ErrStaleLease
+		}
+		if snapshot.AgentHighWater == token.Generation &&
+			(snapshot.Phase == board.Active || snapshot.Phase == board.YieldRequested || snapshot.Phase == board.Draining) {
+			return snapshot, nil
+		}
+		if snapshot.Phase != board.GrantPending {
+			if snapshot.Phase == board.Quarantined || snapshot.Phase == board.Recovering || snapshot.Phase == board.RecoveryRequired {
+				return board.Snapshot{}, ErrRecoveryRequired
+			}
+			return board.Snapshot{}, ErrStaleLease
+		}
+		result, err := c.command(ctx, token.BoardID, "/agent/ack", map[string]any{
+			"expected_version": snapshot.Version, "lease_id": token.LeaseID,
+			"generation": token.Generation, "installed_generation": token.Generation,
+		})
+		if err == nil || !isConflict(err) {
+			return result, err
+		}
+		if err := waitConflict(ctx); err != nil {
+			return board.Snapshot{}, err
+		}
+	}
+}
+
+// ObserveAgentGeneration reports the local durable high-water mark. If the
+// database was restored behind it, the reducer quarantines rather than
+// permitting a stale generation to touch the board.
+func (c *Client) ObserveAgentGeneration(ctx context.Context, boardID string, highWater uint64) (board.Snapshot, error) {
+	if ctx == nil || !validBoardID(boardID) {
+		return board.Snapshot{}, ErrInvalidRequest
+	}
+	for {
+		snapshot, err := c.Status(ctx, boardID)
+		if err != nil {
+			return board.Snapshot{}, err
+		}
+		result, err := c.command(ctx, boardID, "/agent/observe", map[string]any{
+			"expected_version": snapshot.Version, "high_water": highWater,
+		})
+		if err == nil || !isConflict(err) {
+			return result, err
+		}
+		if err := waitConflict(ctx); err != nil {
+			return board.Snapshot{}, err
+		}
+	}
+}
+
 // WaitForYieldRequest polls the durable lease until a higher-priority waiter
 // asks the holder to yield. It returns only a server-validated snapshot; the
 // caller must finish its current indivisible segment before Checkpoint.

@@ -78,6 +78,11 @@ func run(ctx context.Context, args []string) int {
 			return usageError("agent takes no arguments")
 		}
 		err = runAgent(ctx)
+	case "board-agent":
+		if len(args) != 1 {
+			return usageError("board-agent takes no arguments")
+		}
+		err = runBoardAgent(ctx)
 	case "sync":
 		if len(args) != 1 {
 			return usageError("sync takes no arguments")
