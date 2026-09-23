@@ -22,6 +22,7 @@
       - boards
       - board_waiters
       - board_leases
+      - board_segments
       - board_sessions
       - board_snapshots
       - board_recovery_context
