@@ -40,6 +40,7 @@
       - run_events
       - local_runs
       - local_run_steps
+      - hil_observations
     ra8ci_runtime_readonly_tables:
       - schema_migrations
       - board_fixture_profiles
@@ -550,6 +551,7 @@
         - run_events
         - local_runs
         - local_run_steps
+        - hil_observations
 
     - name: Grant runtime read access only to the current reviewed tables
       community.postgresql.postgresql_privs:
