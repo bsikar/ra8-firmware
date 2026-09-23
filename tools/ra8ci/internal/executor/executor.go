@@ -20,6 +20,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/bsikar/ra8-firmware/tools/ra8ci/internal/asciigate"
 	"github.com/bsikar/ra8-firmware/tools/ra8ci/internal/catalog"
 )
 
@@ -172,6 +173,21 @@ func runStep(ctx context.Context, root string, env []string, step catalog.Step, 
 		result.EndedAt = end.UTC()
 		result.Duration = end.Sub(started)
 	}()
+	if step.Program == "ra8ci:ascii" {
+		stdoutLog := newDigestWriter(stdout)
+		stderrLog := newDigestWriter(stderr)
+		result.ExitCode = asciigate.Run(ctx, root, step.Args, stdoutLog, stderrLog)
+		if expiration := contextExpiration(ctx); expiration != nil {
+			result.TimedOut = errors.Is(expiration, context.DeadlineExceeded)
+			result.Cancelled = !result.TimedOut
+		}
+		result.StdoutSHA256, result.StdoutBytes = stdoutLog.digest()
+		result.StderrSHA256, result.StderrBytes = stderrLog.digest()
+		if logErr := errors.Join(stdoutLog.err, stderrLog.err); logErr != nil {
+			return result, fmt.Errorf("execute %s: %w", step.Name, logErr)
+		}
+		return result, nil
+	}
 	program, err := resolveTaskProgram(root, step.Program)
 	if err != nil {
 		return result, err

@@ -24,6 +24,7 @@ import (
 	"time"
 
 	"github.com/bsikar/ra8-firmware/tools/ra8ci/internal/agent"
+	"github.com/bsikar/ra8-firmware/tools/ra8ci/internal/asciigate"
 	"github.com/bsikar/ra8-firmware/tools/ra8ci/internal/catalog"
 	"github.com/bsikar/ra8-firmware/tools/ra8ci/internal/executor"
 	"github.com/bsikar/ra8-firmware/tools/ra8ci/internal/github"
@@ -46,7 +47,7 @@ func main() {
 
 func run(ctx context.Context, args []string) int {
 	if len(args) == 0 {
-		fmt.Fprintln(os.Stderr, "usage: ra8ci <task>|tasks|server|agent|sync|backup refresh|keygen|board status|take [--class human|agent]|extend|cancel|db migrate|report slow|github check|run submit|run status")
+		fmt.Fprintln(os.Stderr, "usage: ra8ci <task>|tasks|ascii [--check] [--all|PATH]|server|agent|sync|backup refresh|keygen|board status|take [--class human|agent]|extend|cancel|db migrate|report slow|github check|run submit|run status")
 		return 2
 	}
 	var err error
@@ -83,6 +84,15 @@ func run(ctx context.Context, args []string) int {
 		err = backupCommand(ctx, args[1:])
 	case "board":
 		err = boardCommand(ctx, args[1:])
+	case "ascii":
+		if len(args) == 1 {
+			return runLocalTask(ctx, []string{"ascii"})
+		}
+		var root string
+		root, err = findCheckout()
+		if err == nil {
+			return asciigate.Run(ctx, root, args[1:], os.Stdout, os.Stderr)
+		}
 	case "db":
 		if len(args) != 2 || args[1] != "migrate" {
 			return usageError("usage: ra8ci db migrate")
