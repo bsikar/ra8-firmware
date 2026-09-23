@@ -37,6 +37,7 @@ import (
 	"github.com/bsikar/ra8-firmware/tools/ra8ci/internal/source"
 	"github.com/bsikar/ra8-firmware/tools/ra8ci/internal/spool"
 	"github.com/bsikar/ra8-firmware/tools/ra8ci/internal/store"
+	"github.com/bsikar/ra8-firmware/tools/ra8ci/internal/testsreadme"
 	"github.com/bsikar/ra8-firmware/tools/ra8ci/migrations"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
@@ -50,7 +51,7 @@ func main() {
 
 func run(ctx context.Context, args []string) int {
 	if len(args) == 0 {
-		fmt.Fprintln(os.Stderr, "usage: ra8ci <task>|tasks|ascii [--check] [--all|PATH]|since [--all|FILE...]|final-newline [FILE...]|runner-clock [--repo OWNER/REPO] [--runs N] [--hours N]|server|agent|sync|backup refresh|keygen|board status|take [--class human|agent]|extend|cancel|db migrate|report slow|github check|run submit|run status")
+		fmt.Fprintln(os.Stderr, "usage: ra8ci <task>|tasks|ascii [--check] [--all|PATH]|since [--all|FILE...]|final-newline [FILE...]|runner-clock [--repo OWNER/REPO] [--runs N] [--hours N]|tests-readme [--selftest]|server|agent|sync|backup refresh|keygen|board status|take [--class human|agent]|extend|cancel|db migrate|report slow|github check|run submit|run status")
 		return 2
 	}
 	var err error
@@ -119,6 +120,15 @@ func run(ctx context.Context, args []string) int {
 			return runLocalTask(ctx, []string{"runner-clock"})
 		}
 		return runnerclock.Run(ctx, args[1:], os.Stdout, os.Stderr)
+	case "tests-readme":
+		if len(args) == 1 {
+			return runLocalTask(ctx, []string{"tests-readme"})
+		}
+		var root string
+		root, err = findCheckout()
+		if err == nil {
+			return testsreadme.Run(ctx, root, args[1:], os.Stdout, os.Stderr)
+		}
 	case "db":
 		if len(args) != 2 || args[1] != "migrate" {
 			return usageError("usage: ra8ci db migrate")
