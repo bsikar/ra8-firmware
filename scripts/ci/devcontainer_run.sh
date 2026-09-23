@@ -108,6 +108,7 @@ main() {
   exec "${runtime[@]}" run --rm \
     "${tty[@]}" \
     -e RA8_MAX_JOBS="${RA8_MAX_JOBS:-$(ra8_max_jobs)}" \
+    -e RA8_CI_COMMIT_RANGE \
     -e CMAKE_BUILD_PARALLEL_LEVEL="${CMAKE_BUILD_PARALLEL_LEVEL:-${RA8_MAX_JOBS:-$(ra8_max_jobs)}}" \
     -v "$REPO_ROOT:/workspace:rw" \
     ${extra[@]+"${extra[@]}"} \
