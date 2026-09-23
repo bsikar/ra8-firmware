@@ -104,6 +104,13 @@ func TestLoadProfileReturnsExactDigestAndRejectsUnsafeFiles(t *testing.T) {
 	if _, _, err := LoadProfile(path); !errors.Is(err, ErrInvalidProfile) {
 		t.Fatalf("trailing profile data accepted: %v", err)
 	}
+	duplicateRaw := strings.Replace(string(raw), `"schema_version":1,`, `"schema_version":1,"schema_version":1,`, 1)
+	if err := os.WriteFile(path, []byte(duplicateRaw), 0600); err != nil {
+		t.Fatal(err)
+	}
+	if _, _, err := LoadProfile(path); !errors.Is(err, ErrInvalidProfile) {
+		t.Fatalf("duplicate profile field accepted: %v", err)
+	}
 	if strings.Contains(digest, " ") {
 		t.Fatalf("unexpected digest encoding %q", digest)
 	}
