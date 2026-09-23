@@ -30,8 +30,12 @@ The playbook requires these out-of-band inputs:
 - `ra8ci_binary_src`, `ra8ci_binary_sha256`, `ra8ci_tls_cert_src`,
   `ra8ci_tls_key_src`, `ra8ci_client_ca_src`, and `ra8ci_listen_addr` are
   controller-supplied reviewed artifacts/settings. The binary is hashed both
-  before and after transfer. The listener must bind the approved management
-  address; host/firewall policy must limit 8443 (or the chosen port) to
+  before and after transfer. `ra8ci_agent_trusted_commit` must be the exact
+  lowercase 40-character commit SHA whose source and embedded task catalog the
+  server permits agents to execute; update it only alongside a reviewed binary
+  release. It is installed as `RA8CI_AGENT_TRUSTED_COMMIT`; guests do not receive
+  server credentials. The listener must bind the approved management address;
+  host/firewall policy must limit 8443 (or the chosen port) to
   authorized mTLS clients.
 - `ra8ci_board_agent_keys_src` is a reviewed JSON keyring with schema version
   1 and an `agents` array of `{ "key_id", "public_key_base64" }` entries. Each
