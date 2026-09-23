@@ -13,6 +13,33 @@ import (
 	"github.com/jackc/pgx/v5"
 )
 
+// BoardFixtureProfile is the operator-approved immutable profile reference
+// used to bind HIL history and neutral receipts to one board fixture.
+type BoardFixtureProfile struct {
+	BoardID         string
+	FixtureRevision string
+	ProfileSHA256   string
+	RestorePolicy   string
+}
+
+// ApprovedBoardFixtureProfile returns the registered fixture identity. It is
+// intentionally read-only under the runtime database role.
+func (s *Store) ApprovedBoardFixtureProfile(ctx context.Context, boardID string) (BoardFixtureProfile, error) {
+	if s == nil || s.pool == nil || ctx == nil || !validBoardID(boardID) {
+		return BoardFixtureProfile{}, fmt.Errorf("%w: board fixture profile", ErrInvalid)
+	}
+	profile := BoardFixtureProfile{BoardID: boardID}
+	err := s.pool.QueryRow(ctx, "SELECT fixture_revision,profile_sha256,restore_policy FROM board_fixture_profiles WHERE board_id=$1", boardID).
+		Scan(&profile.FixtureRevision, &profile.ProfileSHA256, &profile.RestorePolicy)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return BoardFixtureProfile{}, ErrNotFound
+	}
+	if err != nil {
+		return BoardFixtureProfile{}, fmt.Errorf("%w: approved board fixture profile: %v", ErrUnavailable, err)
+	}
+	return profile, nil
+}
+
 // neutralContext reads operator-approved fixture state and the pinned session.
 // Neither a client nor the receipt verifier can select these values.
 func neutralContext(ctx context.Context, tx pgx.Tx, snapshot board.Snapshot, purpose string) (NeutralChallenge, error) {

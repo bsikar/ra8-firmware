@@ -65,6 +65,9 @@ func TestCommandSelectionRejectsUnknownAndUnsafeArguments(t *testing.T) {
 	if err := boardCommand(ctx, []string{"checkpoint", "ek-ra8d2"}); err == nil || !strings.Contains(err.Error(), "board client") {
 		t.Fatalf("valid checkpoint skipped identity configuration: %v", err)
 	}
+	if err := hilCommand(ctx, []string{"budget"}); err == nil || !strings.Contains(err.Error(), "usage") {
+		t.Fatalf("HIL budget accepted missing required inputs: %v", err)
+	}
 	if got := run(ctx, []string{"tasks"}); got != 0 {
 		t.Fatalf("list tasks exit=%d", got)
 	}

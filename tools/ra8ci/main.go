@@ -52,7 +52,7 @@ func main() {
 
 func run(ctx context.Context, args []string) int {
 	if len(args) == 0 {
-		fmt.Fprintln(os.Stderr, "usage: ra8ci <task>|tasks|ascii [--check] [--all|PATH]|since [--all|FILE...]|final-newline [FILE...]|runner-clock [--repo OWNER/REPO] [--runs N] [--hours N]|tests-readme [--selftest]|inclusive-terminology-commits [--selftest]|server|agent|sync|backup refresh|keygen|board status|take [--class human|ci|agent]|extend|cancel|db migrate|report slow|github check|run submit|run status")
+		fmt.Fprintln(os.Stderr, "usage: ra8ci <task>|tasks|ascii [--check] [--all|PATH]|since [--all|FILE...]|final-newline [FILE...]|runner-clock [--repo OWNER/REPO] [--runs N] [--hours N]|tests-readme [--selftest]|inclusive-terminology-commits [--selftest]|server|agent|sync|backup refresh|keygen|board status|take [--class human|ci|agent]|checkpoint|extend|cancel|hil budget|db migrate|report slow|github check|run submit|run status")
 		return 2
 	}
 	var err error
@@ -89,6 +89,8 @@ func run(ctx context.Context, args []string) int {
 		err = backupCommand(ctx, args[1:])
 	case "board":
 		err = boardCommand(ctx, args[1:])
+	case "hil":
+		err = hilCommand(ctx, args[1:])
 	case "ascii":
 		if len(args) == 1 {
 			return runLocalTask(ctx, []string{"ascii"})
