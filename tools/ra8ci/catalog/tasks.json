@@ -1684,6 +1684,42 @@
       "resource_hints": {}
     },
     {
+      "name": "pointer-boilerplate",
+      "version": 1,
+      "tier": "required",
+      "scope": "safe-local-read-only",
+      "os": [
+        "linux",
+        "windows"
+      ],
+      "capabilities": [],
+      "args_schema": {
+        "positional": [],
+        "flags": []
+      },
+      "deadline_seconds": 1800,
+      "board_policy": "none",
+      "steps": [
+        {
+          "name": "pointer-boilerplate-selftest",
+          "program": "ra8ci:pointer-boilerplate",
+          "args": [
+            "--selftest"
+          ]
+        },
+        {
+          "name": "pointer-boilerplate-scan",
+          "program": "ra8ci:pointer-boilerplate",
+          "args": []
+        }
+      ],
+      "outputs": [],
+      "retry": {
+        "max_attempts": 1
+      },
+      "resource_hints": {}
+    },
+    {
       "name": "pre-commit-checks",
       "version": 1,
       "tier": "required",
