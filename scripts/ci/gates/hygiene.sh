@@ -712,8 +712,7 @@ gate_format() (
   require_cmd python3
   bash scripts/checks/format_code.sh --selftest
   python3 scripts/checks/check_comment_format.py --selftest
-  python3 scripts/checks/check_pointer_boilerplate.py --selftest
-  python3 scripts/checks/check_pointer_boilerplate.py
+  (cd tools/ra8ci && GOWORK=off go run . pointer-boilerplate)
   # format_tree.sh drives every first-party formatter (C + Go + Python +
   # shell + CMake + justfiles) through each checker's own scope seam, so the
   # format gate now covers the whole tree, not just C. Its selftest proves
