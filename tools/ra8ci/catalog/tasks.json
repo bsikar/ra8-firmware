@@ -520,6 +520,42 @@
       "resource_hints": {}
     },
     {
+      "name": "driver-asm-guard",
+      "version": 1,
+      "tier": "required",
+      "scope": "safe-local-read-only",
+      "os": [
+        "linux",
+        "windows"
+      ],
+      "capabilities": [],
+      "args_schema": {
+        "positional": [],
+        "flags": []
+      },
+      "deadline_seconds": 1800,
+      "board_policy": "none",
+      "steps": [
+        {
+          "name": "driver-asm-guard-selftest",
+          "program": "ra8ci:driver-asm-guard",
+          "args": [
+            "--selftest"
+          ]
+        },
+        {
+          "name": "driver-asm-guard-scan",
+          "program": "ra8ci:driver-asm-guard",
+          "args": []
+        }
+      ],
+      "outputs": [],
+      "retry": {
+        "max_attempts": 1
+      },
+      "resource_hints": {}
+    },
+    {
       "name": "eil-integration",
       "version": 1,
       "tier": "required",

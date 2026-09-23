@@ -388,8 +388,7 @@ _pcc_security_invariants() (
   # route through libs/ra8_hal/inc/ra8_hw_intrinsics.h +
   # tests/mocks/src/ra8_host_asm_stub.c so the driver stays branch-free and
   # coverage lands on the shipping path (#293).
-  python3 scripts/checks/check_no_driver_asm_guard.py --selftest
-  python3 scripts/checks/check_no_driver_asm_guard.py
+  (cd tools/ra8ci && GOWORK=off go run . driver-asm-guard)
   # No first-party file may introduce a permanent anti-recovery brick ACTION
   # (setting the ce "Disable Initialize" security flag, or transitioning the DLM
   # to a terminal LCK_BOOT lock). Owner policy 2026-07-23: this project must
