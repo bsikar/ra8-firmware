@@ -9,6 +9,7 @@ import (
 
 	"github.com/bsikar/ra8-firmware/tools/ra8ci/internal/catalog"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 )
 
 // StartAttempt atomically claims one scheduled task whose dependencies have
@@ -106,6 +107,11 @@ func (s *Store) StartAttempt(ctx context.Context, in StartAttemptInput) (Attempt
 		in.HostRAMBytes, in.HostLoad, facts, deadline).Scan(&attempt.ID, &attempt.TaskID,
 		&attempt.AttemptNo, &attempt.State, &attempt.StartedAt, &attempt.DeadlineAt)
 	if err != nil {
+		var postgresError *pgconn.PgError
+		if errors.As(err, &postgresError) && postgresError.Code == "23505" &&
+			postgresError.ConstraintName == "task_attempts_one_active_hil_per_lease" {
+			return Attempt{}, fmt.Errorf("%w: this board lease already has a live HIL attempt", ErrConflict)
+		}
 		return Attempt{}, fmt.Errorf("%w: insert attempt: %v", ErrUnavailable, err)
 	}
 	tag, err := tx.Exec(ctx, `UPDATE tasks SET state='running', started_at=clock_timestamp(),
@@ -133,6 +139,12 @@ func (s *Store) StartAttempt(ctx context.Context, in StartAttemptInput) (Attempt
 	if err := appendEvent(ctx, tx, runID, "attempt.started", map[string]any{"task_id": in.TaskID, "attempt_id": id}); err != nil {
 		return Attempt{}, fmt.Errorf("%w: event attempt start: %v", ErrUnavailable, err)
 	}
+	if in.ClaimedBy != "" {
+		if err := appendAudit(ctx, tx, in.ClaimedBy, "board.hil.attempt_claimed", "attempt", id,
+			"ok", "", "running", runID, map[string]any{"task_id": in.TaskID, "lease_id": in.BoardLeaseID, "holder_id": in.ActorID}); err != nil {
+			return Attempt{}, fmt.Errorf("%w: audit board HIL claim: %v", ErrUnavailable, err)
+		}
+	}
 	if err := tx.Commit(ctx); err != nil {
 		return Attempt{}, fmt.Errorf("%w: commit attempt start: %v", ErrUnavailable, err)
 	}
@@ -148,7 +160,7 @@ func validateActiveHILLease(ctx context.Context, tx pgx.Tx, leaseID, actorID, bo
 	err := tx.QueryRow(ctx, `SELECT l.holder_id,s.board_id,s.fixture_revision,s.profile_sha256,
 		l.expires_at > clock_timestamp()+($2 * interval '1 second')
 		FROM board_leases l JOIN board_sessions s ON s.lease_id=l.id AND s.board_id=l.board_id
-		WHERE l.id=$1 AND l.state='active' AND s.ended_at IS NULL
+		WHERE l.id=$1 AND l.state='active' AND l.yield_requested_at IS NULL AND s.ended_at IS NULL
 		AND s.owner_id=l.holder_id AND s.profile_sha256 IS NOT NULL
 		FOR SHARE OF l,s`, leaseID, requiredSeconds).Scan(&holderID, &sessionBoardID,
 		&fixtureRevision, &profileSHA, &enoughTime)

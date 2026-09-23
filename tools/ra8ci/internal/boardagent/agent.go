@@ -8,6 +8,7 @@ package boardagent
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"sync"
@@ -33,6 +34,10 @@ type ControlClient interface {
 type SegmentClient interface {
 	BeginSegment(context.Context, boardclient.LeaseToken, string, string, time.Duration, time.Duration) (store.BoardSegment, error)
 	FinishSegment(context.Context, boardclient.LeaseToken, string, string, string) error
+}
+
+type HILAttemptClient interface {
+	StartHILAttempt(context.Context, string, string, string, string, int, int64, float64, json.RawMessage) (store.Attempt, error)
 }
 
 // Agent reconciles one persistent physical board agent identity.
@@ -156,6 +161,28 @@ func (a *Agent) CanStartSegment(ctx context.Context, token boardclient.LeaseToke
 		return &board.Error{Code: board.RecoveryNecessary, Detail: "local board deadline fence is absent"}
 	}
 	return fence.CanStartSegment(token.Generation, now, bound, recoveryMargin)
+}
+
+// StartHILAttempt requests a server-owned HIL attempt only while this board
+// agent's durable generation and the server's active lease agree.
+func (a *Agent) StartHILAttempt(ctx context.Context, token boardclient.LeaseToken, taskID, host string,
+	cores int, ramBytes int64, load float64, hostFacts json.RawMessage) (store.Attempt, error) {
+	if a == nil || ctx == nil || token.BoardID != a.boardID || !store.ValidID(taskID) {
+		return store.Attempt{}, ErrInvalidAgent
+	}
+	client, ok := a.client.(HILAttemptClient)
+	if !ok {
+		return store.Attempt{}, fmt.Errorf("%w: HIL attempt client is unavailable", ErrInvalidAgent)
+	}
+	if err := a.enterSegment(ctx); err != nil {
+		return store.Attempt{}, err
+	}
+	defer a.leaveSegment()
+	if err := a.CanStartSegment(ctx, token, time.Millisecond, 0); err != nil {
+		return store.Attempt{}, err
+	}
+	return client.StartHILAttempt(ctx, token.BoardID, taskID, token.LeaseID,
+		host, cores, ramBytes, load, hostFacts)
 }
 
 // RunSegment executes one indivisible, context-bounded board operation. The
