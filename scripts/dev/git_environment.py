@@ -18,6 +18,7 @@ import argparse
 import hashlib
 import os
 import shlex
+import shutil
 import stat
 import subprocess
 import sys
@@ -61,18 +62,43 @@ def _fail(message: str) -> None:
 def trusted_git_executable() -> str:
     """Return the one absolute Git executable allowed for control-plane work."""
     configured = os.environ.get("RA8_TRUSTED_GIT", str(TRUSTED_GIT_PATH))
-    if configured != str(TRUSTED_GIT_PATH):
+    trusted_path = TRUSTED_GIT_PATH
+    if os.name == "nt":
+        # Git Bash keeps the repository's POSIX policy spelling (/usr/bin/git),
+        # while CPython on Windows must validate and execute the native Git
+        # binary returned by PATH.  Once resolved, the native absolute path is
+        # carried forward in RA8_TRUSTED_GIT for nested Python processes.
+        # ``Path('/usr/bin/git')`` stringifies as ``\\usr\\bin\\git`` on
+        # Windows.  Normalize both spellings before deciding whether the
+        # configured value is the repository's POSIX authority marker.
+        configured_posix = configured.replace("\\", "/")
+        if configured_posix == "/usr/bin/git" or configured.startswith("/"):
+            resolved = shutil.which("git") or shutil.which("git.exe")
+            if not resolved:
+                # Git Bash can pass a POSIX-shaped PATH to native Python.  The
+                # Windows PATH entry is still authoritative, so also check
+                # the pinned portable Git location used by the lab runner.
+                program_data = os.environ.get("ProgramData", r"C:\ProgramData")
+                fallback = Path(program_data) / "ra8" / "mingit" / "cmd" / "git.exe"
+                if fallback.is_file():
+                    resolved = str(fallback)
+            if not resolved:
+                _fail("trusted Git is unavailable on the Windows PATH")
+            trusted_path = Path(resolved)
+        else:
+            trusted_path = Path(configured)
+    elif configured != str(TRUSTED_GIT_PATH):
         _fail(f"refusing non-authority Git executable: {configured}")
     try:
-        info = TRUSTED_GIT_PATH.lstat()
+        info = trusted_path.lstat()
     except OSError as exc:
-        message = "trusted /usr/bin/git is unavailable"
+        message = "trusted Git is unavailable"
         raise GitEnvironmentError(message) from exc
-    if not stat.S_ISREG(info.st_mode) or TRUSTED_GIT_PATH.is_symlink():
-        _fail("trusted /usr/bin/git is not a regular non-symlink executable")
-    if not os.access(TRUSTED_GIT_PATH, os.X_OK):
-        _fail("trusted /usr/bin/git is not executable")
-    return str(TRUSTED_GIT_PATH)
+    if not stat.S_ISREG(info.st_mode) or trusted_path.is_symlink():
+        _fail("trusted Git is not a regular non-symlink executable")
+    if not os.access(trusted_path, os.X_OK):
+        _fail("trusted Git is not executable")
+    return str(trusted_path)
 
 
 def sanitized_git_environment(

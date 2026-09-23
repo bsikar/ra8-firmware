@@ -51,12 +51,27 @@ elif [[ "$PROFILE" == "windows" ]]; then
   GATEWAY="10.250.8.1"
   GUEST_IP="10.250.8.20"
   GUEST_USER="Administrator"
+  GUEST_PASSWORD="${RA8_LAB_WINDOWS_PASSWORD:-}"
+  if [[ -z "$GUEST_PASSWORD" ]]; then
+    echo "$(ts) error: RA8_LAB_WINDOWS_PASSWORD must be provided through the runner environment."
+    exit 1
+  fi
 else
   echo "$(ts) error: unknown profile '$PROFILE'"
   exit 1
 fi
 
 NFT_TABLE="ra8_lab_ci_${RUN_ID}"
+
+# The lifecycle driver normally prevents duplicate starts, but the server-side
+# runner is also an entry point in its own right. Hold a profile-scoped lock so
+# a retried launcher cannot create two runners for the same fixed VMID.
+LOCK_FILE="/var/lock/ra8-lab-${PROFILE}.lock"
+exec 9>"$LOCK_FILE"
+if ! flock -n 9; then
+  echo "$(ts) Another $PROFILE CI runner already owns $LOCK_FILE."
+  exit 75
+fi
 
 cleanup() {
   local exit_code=$?
@@ -143,7 +158,36 @@ ssh-keygen -q -t ed25519 -N '' -C "ra8-lab-$RUN_ID" -f "$KEY_FILE"
 
 # 3. Clone and configure VM
 echo "$(ts) Cloning VM $TEMPLATE_ID -> $VM_ID (ra8-lab-$PROFILE-$RUN_ID)..."
-qm clone "$TEMPLATE_ID" "$VM_ID" --name "ra8-lab-$PROFILE-$RUN_ID" --pool ra8-tf-lab --storage ra8-tf-lab --full 1
+clone_full=1
+if [[ "$PROFILE" == "windows" ]]; then
+  # Windows' 64 GiB template is immutable and disposable runs do not need an
+  # independent disk copy; linked clones avoid spending minutes copying it.
+  clone_full=0
+fi
+clone_args=(qm clone "$TEMPLATE_ID" "$VM_ID" --name "ra8-lab-$PROFILE-$RUN_ID" --pool ra8-tf-lab --full "$clone_full")
+if ((clone_full)); then
+  clone_args+=(--storage ra8-tf-lab)
+fi
+"${clone_args[@]}"
+if [[ "$PROFILE" == "windows" ]]; then
+  # Server Core, the native toolchain, WSL2, and Podman builds exceed the
+  # template's 8 GiB once Windows and the Linux VM are resident together.
+  echo "$(ts) Allocating 16 GiB to the disposable Windows CI guest."
+  qm set "$VM_ID" --memory 16384
+  host_cpu_model=$(awk -F': ' '/^model name[[:space:]]*:/ { print $2; exit }' /proc/cpuinfo)
+  case "$host_cpu_model" in
+    *"12th Gen Intel"*|*"13th Gen Intel"*|*"14th Gen Intel"*)
+      # Nested Hyper-V/WSL2 can hang in recovery on hybrid Intel CPUs when the
+      # host's WAITPKG CPUID bit is exposed. Present a Skylake-compatible CPUID
+      # to the disposable Windows guest while preserving VMX and Hyper-V flags.
+      echo "$(ts) Applying the Windows nested-virtualization CPU workaround for $host_cpu_model."
+      qm set "$VM_ID" --args "-cpu host,hv_passthrough,level=30,-waitpkg"
+      ;;
+  esac
+  # Server Core plus the WSL2 CI toolchain and disposable container image need
+  # more working space than the 64 GiB base template provides.
+  qm resize "$VM_ID" sata0 +64G
+fi
 qm set "$VM_ID" --description "Disposable RA8 lab VM; RA8_LAB_RUN=$RUN_ID"
 tags="terraform,ra8-lab,run-$RUN_ID"
 if [[ "$PROFILE" == "windows" ]]; then
@@ -153,7 +197,13 @@ qm set "$VM_ID" --tags "$tags"
 # The runner's nftables table is the authoritative isolation boundary. Leaving
 # Proxmox's per-interface firewall enabled here blocks first-boot ARP/SSH on
 # the private bridge before cloud-init can finish configuring the guest.
-qm set "$VM_ID" --net0 "virtio,bridge=$BRIDGE,firewall=0,rate=10"
+net_model="virtio"
+if [[ "$PROFILE" == "windows" ]]; then
+  # Windows Server Core has no inbox VirtIO network driver. Use the emulated
+  # Intel adapter so first boot can reach native WinRM without a GUI/tool MSI.
+  net_model="e1000"
+fi
+qm set "$VM_ID" --net0 "$net_model,bridge=$BRIDGE,firewall=0,rate=10"
 
 qm set "$VM_ID" --ide2 "ra8-tf-lab:cloudinit"
   qm set "$VM_ID" --ipconfig0 "ip=$GUEST_IP/24,gw=$GATEWAY"
@@ -164,23 +214,34 @@ qm set "$VM_ID" --ide2 "ra8-tf-lab:cloudinit"
 echo "$(ts) Starting VM $VM_ID..."
 qm start "$VM_ID"
 
-# 4. Wait for SSH to guest
-echo "$(ts) Waiting for guest SSH to $GUEST_USER@$GUEST_IP..."
+# 4. Wait for the guest management endpoint
 SSH_OPTS=(-i "$KEY_FILE" -o BatchMode=yes -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o LogLevel=ERROR -o ConnectTimeout=3)
 ssh_ready=0
-for _ in {1..90}; do
-  if ssh "${SSH_OPTS[@]}" "$GUEST_USER@$GUEST_IP" true >/dev/null 2>&1; then
-    ssh_ready=1
-    break
-  fi
-  sleep 2
-done
+if [[ "$PROFILE" == "linux" ]]; then
+  echo "$(ts) Waiting for guest SSH to $GUEST_USER@$GUEST_IP..."
+  for _ in {1..90}; do
+    if ssh "${SSH_OPTS[@]}" "$GUEST_USER@$GUEST_IP" true >/dev/null 2>&1; then
+      ssh_ready=1
+      break
+    fi
+    sleep 2
+  done
+else
+  echo "$(ts) Waiting for guest WinRM at $GUEST_IP:5985..."
+  for _ in {1..90}; do
+    if timeout 3 bash -c "</dev/tcp/$GUEST_IP/5985" >/dev/null 2>&1; then
+      ssh_ready=1
+      break
+    fi
+    sleep 2
+  done
+fi
 
 if ((!ssh_ready)); then
-  echo "$(ts) Timed out waiting for guest SSH."
+  echo "$(ts) Timed out waiting for the guest management endpoint."
   exit 1
 fi
-echo "$(ts) Guest SSH is online."
+echo "$(ts) Guest management endpoint is online."
 
 # 5. Stage code into guest. Linux runs the containerized CI directly; Windows
 # is provisioned by the repository's Ansible playbook from the PVE controller.
@@ -253,6 +314,8 @@ cd ~/ra8-lab-ci
 git init -q --initial-branch=main
 git config user.name "ra8-lab-ci"
 git config user.email "ci@localhost"
+git config maintenance.auto false
+git config gc.auto 0
 git add -A -f
 git commit --allow-empty -q -m "Disposable CI snapshot"
 GUEST_SETUP
@@ -276,6 +339,26 @@ GUEST_LAUNCH
   echo "$(ts) Monitoring CI execution and system metrics..."
   ci_finished=0
   ci_exit=0
+  guest_log_lines=0
+  stream_guest_log() {
+    local output line_count marker
+    marker="__RA8_LOG_END_${guest_log_lines}__"
+    output=$(ssh "${SSH_OPTS[@]}" "$GUEST_USER@$GUEST_IP" \
+      "tail -n +$((guest_log_lines + 1)) ~/ci.log 2>/dev/null; printf '%s' '$marker'" || true)
+    output=${output%"$marker"}
+    if [[ -z "$output" ]]; then
+      return 0
+    fi
+    while IFS= read -r line || [[ -n "$line" ]]; do
+      echo "$(ts) [ra8-lab-ci] $line"
+    done < <(printf '%s' "$output")
+    line_count=$(printf '%s' "$output" | wc -l)
+    if [[ "$output" != *$'\n' ]]; then
+      line_count=$((line_count + 1))
+    fi
+    guest_log_lines=$((guest_log_lines + line_count))
+  }
+
   while true; do
     sleep 10
     # Check if process is still running
@@ -310,12 +393,11 @@ PYEOF
     if [[ -n "$metric" ]]; then
       echo "$(ts) [ra8-lab-linux] $metric"
     fi
+    stream_guest_log
   done
 
-  # Print CI log tail from guest
-  echo "$(ts) --- CI Guest Log Output (Tail) ---"
-  ssh "${SSH_OPTS[@]}" "$GUEST_USER@$GUEST_IP" "tail -n 50 ~/ci.log" || true
-  echo "$(ts) ---------------------------------"
+  # Drain lines written between the last poll and the guest exit marker.
+  stream_guest_log
 
   if ((ci_exit != 0)); then
     echo "$(ts) Guest CI command failed with exit code $ci_exit."
@@ -345,16 +427,15 @@ elif [[ "$PROFILE" == "windows" ]]; then
   INVENTORY="$RUN_DIR/windows-inventory.ini"
   cat > "$INVENTORY" <<EOF
 [lab_windows]
-ra8-lab-windows ansible_host=$GUEST_IP ansible_port=22 ansible_user=$GUEST_USER ansible_private_key_file=$KEY_FILE ansible_connection=ssh ansible_shell_type=powershell
+ra8-lab-windows ansible_host=$GUEST_IP ansible_port=5985 ansible_user=$GUEST_USER ansible_password=$GUEST_PASSWORD ansible_connection=winrm ansible_winrm_transport=ntlm ansible_winrm_server_cert_validation=ignore
 
 [lab_windows:vars]
 ansible_host_key_checking=False
-ansible_ssh_common_args='-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o IdentitiesOnly=yes'
 EOF
 
   echo "$(ts) Provisioning Windows Server Core and running CI through Ansible..."
   ANSIBLE_CONFIG="$CONTROLLER_DIR/infra/ansible/ansible.cfg" \
-    ANSIBLE_COLLECTIONS_PATHS="$COLLECTIONS_DIR" \
+    ANSIBLE_COLLECTIONS_PATH="$COLLECTIONS_DIR" \
     "$ANSIBLE_VENV/bin/ansible-playbook" \
       -i "$INVENTORY" \
       "$CONTROLLER_DIR/infra/ansible/playbooks/proxmox-lab-windows.yml" \

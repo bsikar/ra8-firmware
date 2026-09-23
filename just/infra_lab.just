@@ -17,6 +17,9 @@ default:
     @echo "  just infra::lab::bake-template               Pre-bake ra8-ci container into VM 9001 (~5s CI startup)"
     @echo "  just infra::lab::check                       Read-only lab/template preflight"
     @echo "  just infra::lab::setup [target]              Bootstrap host packages, pool, and templates"
+    @echo "  just infra::lab::ci-terraform [profile]      Run CI through the local Terraform/Ansible driver"
+    @echo "  just infra::lab::prepare-linux-template      Prepare the Debian lab template"
+    @echo "  just infra::lab::prepare-windows-template    Prepare the Windows Server Core lab template"
 
 # Read-only checks: no VM creation or state modifications.
 check:

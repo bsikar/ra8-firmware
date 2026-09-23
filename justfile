@@ -5,15 +5,15 @@
 # Run `just` or `just --list` for available commands.
 
 set dotenv-load := true
-set shell := ["/bin/bash", "-puc"]
+set shell := ["bash", "-puc"]
 
 export BASH_ENV := "/dev/null"
 export ENV := "/dev/null"
 export PYTHONHOME := ""
 export PYTHONPATH := ""
-export PATH := `/bin/bash -p scripts/dev/setup_python.sh --print-path`
+export PATH := `bash -p scripts/dev/setup_python.sh --print-path`
 export RA8_JUST := env('RA8_JUST', just_executable())
-export RA8_MAX_JOBS := env('RA8_MAX_JOBS', `/usr/bin/env -i PATH=/usr/bin:/bin:/usr/sbin:/sbin /bin/bash -p -c 'if [[ -x /usr/bin/nproc ]]; then /usr/bin/nproc; elif [[ -x /usr/sbin/sysctl ]]; then /usr/sbin/sysctl -n hw.ncpu 2>/dev/null || echo 4; elif [[ -x /usr/bin/sysctl ]]; then /usr/bin/sysctl -n hw.ncpu 2>/dev/null || echo 4; else echo 4; fi'`)
+export RA8_MAX_JOBS := env('RA8_MAX_JOBS', num_cpus())
 export CMAKE_BUILD_PARALLEL_LEVEL := env('CMAKE_BUILD_PARALLEL_LEVEL', RA8_MAX_JOBS)
 
 mod apps 'just/apps.just'
@@ -45,6 +45,7 @@ default:
     @echo "  just workspace         Isolated git agent workspaces"
     @echo "  just work              Plans and canonical task workspaces"
     @echo "  just infra             Ansible fleet infrastructure"
+    @echo "  just infra::lab        Disposable Proxmox CI runner management"
     @echo ""
     @echo "REPOSITORY META COMMANDS:"
     @echo "  just setup             Prepare venv/hooks and pinned compiler image"
