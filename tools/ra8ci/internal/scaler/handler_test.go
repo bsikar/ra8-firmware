@@ -585,6 +585,33 @@ func TestConstructorRejectsMissingApprovals(t *testing.T) {
 	}
 }
 
+func TestCleanupFailsClosedWithoutDurablyBoundRunnerIdentity(t *testing.T) {
+	h, ledger, fake, _, job := testHarness(t)
+	ctx := context.Background()
+	if err := h.Process(ctx, github.Message{ScaleSetID: 42, Assigned: []github.Job{job}}); err != nil {
+		t.Fatal(err)
+	}
+	if err := h.Process(ctx, github.Message{ScaleSetID: 42, Started: []github.Job{job}}); err != nil {
+		t.Fatal(err)
+	}
+	ledger.mu.Lock()
+	ledger.vm.ExternalRunnerID = 0
+	ledger.vm.ExternalRunnerName = ""
+	ledger.mu.Unlock()
+	if err := h.Process(ctx, github.Message{ScaleSetID: 42, Completed: []github.Job{completedJob(job)}}); err == nil {
+		t.Fatal("cleanup accepted a runner without durable external identity")
+	}
+	vm, err := ledger.GetRunnerVMByJob(ctx, 42, job.JobID)
+	if err != nil || vm.State != "draining" || !vm.CleanupRequested {
+		t.Fatalf("unsafe identity loss did not remain fenced: %+v err=%v", vm, err)
+	}
+	fake.mu.Lock()
+	defer fake.mu.Unlock()
+	if fake.stopCalls != 0 || fake.deleteCalls != 0 {
+		t.Fatalf("VM mutated without durable runner identity: stop=%d delete=%d", fake.stopCalls, fake.deleteCalls)
+	}
+}
+
 func TestBadEventIdentityCannotBindOrCleanupRunner(t *testing.T) {
 	h, ledger, fake, _, job := testHarness(t)
 	ctx := context.Background()

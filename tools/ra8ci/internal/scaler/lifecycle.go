@@ -7,6 +7,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strconv"
 	"time"
 
 	"github.com/actions/scaleset"
@@ -214,8 +215,8 @@ func (h *Handler) drainEvidence(ctx context.Context, vm store.RunnerVM, job gith
 		return store.RunnerVMSafetyEvidence{}, err
 	}
 	if !store.ValidID(evidence.EvidenceID) || !fresh(evidence.ObservedAt, 10*time.Second) || !evidence.Drained || !evidence.NoActiveJob ||
-		(vm.ExternalRunnerID != 0 && evidence.RunnerID != vm.ExternalRunnerID) ||
-		(vm.ExternalRunnerName != "" && evidence.RunnerName != vm.ExternalRunnerName) {
+		vm.ExternalRunnerID <= 0 || vm.ExternalRunnerName != "runner-"+strconv.Itoa(vm.VMID) ||
+		evidence.RunnerID != vm.ExternalRunnerID || evidence.RunnerName != vm.ExternalRunnerName {
 		return store.RunnerVMSafetyEvidence{}, errors.New("runner drain lacks fresh exact ownership and idle evidence")
 	}
 	proof := store.RunnerVMSafetyEvidence{EvidenceID: evidence.EvidenceID, ObservedAt: evidence.ObservedAt,
