@@ -308,8 +308,6 @@ _GROUPS = (
             "checks/check_source_layout.py:LEGACY_COMPRESS_FILES",
             "checks/check_third_party_patches.py:NUMBERED_PATCH_RE",
             "checks/check_tool_versions.py:_DOXYGEN_ARCH_GUARD",
-            "checks/check_tz_boundary_discard.py:ANY_RA8_RE",
-            "checks/check_tz_boundary_discard.py:FAMILY_RE",
             "checks/check_world_tags.py:NSC_ENTRY_RE",
             "checks/check_world_tags.py:RING_RE",
             "checks/check_world_tags.py:WORLD_RE",
