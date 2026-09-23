@@ -86,6 +86,33 @@ func (a *Agent) Reconcile(ctx context.Context) (board.Snapshot, error) {
 	return snapshot, nil
 }
 
+// CanStartSegment requires independent authorization from the server snapshot,
+// the locally persisted generation, and a local monotonic lease deadline. The
+// bound is the indivisible operation duration; recoveryMargin reserves time to
+// restore a known-safe fixture before the lease expires.
+func (a *Agent) CanStartSegment(ctx context.Context, token boardclient.LeaseToken,
+	fence board.DeadlineFence, serverNow, localNow time.Time, bound, recoveryMargin time.Duration) error {
+	if a == nil || ctx == nil || token.BoardID != a.boardID || token.LeaseID == "" || token.Generation == 0 {
+		return &board.Error{Code: board.InvalidArgument, Detail: "invalid board-agent segment token"}
+	}
+	snapshot, err := a.client.Status(ctx, a.boardID)
+	if err != nil {
+		return err
+	}
+	localHighWater, err := a.highWater.Load()
+	if err != nil {
+		return fmt.Errorf("read durable board generation: %w", err)
+	}
+	if localHighWater != token.Generation || snapshot.AgentHighWater != token.Generation {
+		return &board.Error{Code: board.RecoveryNecessary, Detail: "server and durable board generations do not authorize this segment"}
+	}
+	serverToken := board.Token{BoardID: token.BoardID, LeaseID: token.LeaseID, Generation: token.Generation}
+	if err := board.CanStartSegment(snapshot, serverToken, serverNow, bound, recoveryMargin); err != nil {
+		return err
+	}
+	return fence.CanStartSegment(token.Generation, localNow, bound, recoveryMargin)
+}
+
 // Run performs an immediate reconciliation and then maintains the fencing
 // state until cancelled. Any state or transport error exits for service-manager
 // restart; no new generation is assumed while disconnected.
