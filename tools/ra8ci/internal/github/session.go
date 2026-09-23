@@ -8,6 +8,8 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"net/http"
+	"net/url"
 	"os"
 	"regexp"
 	"strings"
@@ -20,6 +22,53 @@ import (
 const maxGitHubPrivateKeyBytes = 64 << 10
 
 var ownerName = regexp.MustCompile(`^[A-Za-z0-9](?:[A-Za-z0-9-]{0,37}[A-Za-z0-9])?$`)
+
+var repositoryName = regexp.MustCompile(`^[A-Za-z0-9_.-]{1,100}$`)
+
+// validateGitHubConfigURL only accepts the public GitHub organization or repository
+// endpoint used to derive API hosts. Credentials must never be sent to GHES or an
+// arbitrary host through this process.
+func validateGitHubConfigURL(raw, owner string) error {
+	u, err := url.Parse(raw)
+	if err != nil || u == nil || !strings.EqualFold(u.Scheme, "https") ||
+		!strings.EqualFold(u.Host, "github.com") || u.User != nil ||
+		u.RawQuery != "" || u.ForceQuery || u.Fragment != "" || u.RawPath != "" {
+		return errors.New("GitHub scale-set URL must be an HTTPS github.com organization or repository URL")
+	}
+	parts := strings.Split(strings.Trim(u.Path, "/"), "/")
+	if len(parts) < 1 || len(parts) > 2 || !strings.EqualFold(parts[0], owner) ||
+		(len(parts) == 2 && !repositoryName.MatchString(parts[1])) {
+		return errors.New("GitHub scale-set URL must match the configured owner and optional repository")
+	}
+	if strings.HasSuffix(u.Path, "/") {
+		return errors.New("GitHub scale-set URL must not contain a trailing slash")
+	}
+	return nil
+}
+
+func rejectGitHubEnterpriseOverride() error {
+	if _, exists := os.LookupEnv("GITHUB_ACTIONS_FORCE_GHES"); exists {
+		return errors.New("GITHUB_ACTIONS_FORCE_GHES is unsupported for the public GitHub scale-set client")
+	}
+	return nil
+}
+
+func noGitHubProxy(request *http.Request) (*url.URL, error) {
+	if request == nil || request.URL == nil || !strings.EqualFold(request.URL.Scheme, "https") ||
+		request.URL.User != nil || (request.Host != "" && !strings.EqualFold(request.Host, request.URL.Host)) {
+		return nil, errors.New("GitHub scale-set client refused a non-HTTPS or mismatched request")
+	}
+	port := request.URL.Port()
+	if port != "" && port != "443" {
+		return nil, errors.New("GitHub scale-set client refused a nonstandard request port")
+	}
+	host := strings.ToLower(request.URL.Hostname())
+	if host != "github.com" && host != "api.github.com" &&
+		!strings.HasSuffix(host, ".actions.githubusercontent.com") {
+		return nil, errors.New("GitHub scale-set client refused a request to an unapproved host")
+	}
+	return nil, nil
+}
 
 // SessionConfig contains explicit identity for the official GitHub runner
 // scale-set API. The private key is read from a protected file and is never
@@ -60,6 +109,12 @@ func OpenSession(ctx context.Context, config SessionConfig) (*Session, error) {
 		config.ScaleSetID <= 0 || config.MaxRunners < 0 || config.MaxRunners > 10000 {
 		return nil, errors.New("invalid GitHub scale-set session configuration")
 	}
+	if err := validateGitHubConfigURL(config.GitHubConfigURL, config.Owner); err != nil {
+		return nil, err
+	}
+	if err := rejectGitHubEnterpriseOverride(); err != nil {
+		return nil, err
+	}
 	keyInfo, err := os.Lstat(config.PrivateKeyFile)
 	if err != nil {
 		return nil, fmt.Errorf("stat GitHub App private key: %w", err)
@@ -94,7 +149,7 @@ func OpenSession(ctx context.Context, config SessionConfig) (*Session, error) {
 		GitHubAppAuth:   auth,
 		SystemInfo: scaleset.SystemInfo{System: "ra8ci", ScaleSetID: config.ScaleSetID,
 			Subsystem: "controller"},
-	}, scaleset.WithRetryMax(3))
+	}, scaleset.WithRetryMax(3), scaleset.WithProxy(noGitHubProxy))
 	if err != nil {
 		return nil, fmt.Errorf("create GitHub scale-set API client: %w", err)
 	}
