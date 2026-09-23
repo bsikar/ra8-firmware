@@ -209,6 +209,14 @@ def _selftest_live_archive_fail_closed(
     if not core.evaluate_against_baseline("new_app", migrated_libc, mock_baseline):
         failures.append("migrated Zig archive bypassed libc primitive check")
 
+    for archive in sorted(core._allowed_project_archives()):
+        approved_live = dict(
+            clean_analysis,
+            live_archive_members={archive: ["project_member.o"]},
+        )
+        if core.evaluate_against_baseline("new_app", approved_live, mock_baseline):
+            failures.append(f"approved project archive unexpectedly flagged: {archive}")
+
     project_prim = dict(
         clean_analysis,
         runtime_primitive_providers={"memset": "libra8_shared_ek_ra8d2.a(m.o)"},
