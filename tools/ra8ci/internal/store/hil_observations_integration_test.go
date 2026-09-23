@@ -11,6 +11,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/bsikar/ra8-firmware/tools/ra8ci/internal/catalog"
 	"github.com/bsikar/ra8-firmware/tools/ra8ci/internal/hilspec"
 )
 
@@ -111,4 +112,20 @@ func TestIntegrationHILObservationHistoryUsesExactEvidenceBackedCohort(t *testin
 	if err != nil || len(rows) != 0 {
 		t.Fatalf("cross-cohort history leaked: rows=%+v err=%v", rows, err)
 	}
+	if _, err := pool.Exec(ctx, `INSERT INTO board_fixture_profiles
+		(board_id,fixture_revision,profile_sha256,restore_policy)
+		VALUES ($1,'fixture-v1',$2,'restore-v1')`, boardID, profileSHA); err != nil {
+		t.Fatal(err)
+	}
+	boardAgent := boardTestActor(t, ctx, st, pool, boardID, "board_agent", "board_agent")
+	history, err := st.BoardHILObservations(ctx, boardAgent, catalog.HILTask{
+		BoardID: boardID, BoardModel: "EK-RA8D2",
+		ManifestPath:  "examples/ek_ra8d2/hw_validated/hil/demo/hil.conf",
+		ProgramFamily: "uart-demo", Mode: "uart_scrape", ObservationStep: "observe",
+		FlashRestoreSeconds: 10,
+	})
+	if err != nil || len(history) != 1 || history[0].Duration != duration || history[0].Workload != workload {
+		t.Fatalf("board-agent HIL history lookup returned wrong cohort: rows=%+v err=%v", history, err)
+	}
+
 }
