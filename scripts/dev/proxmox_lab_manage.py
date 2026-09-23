@@ -12,14 +12,13 @@ from __future__ import annotations
 
 import argparse
 import glob
-import json
 import os
 import re
 import shutil
 import subprocess
 import sys
 import tempfile
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 SSH_ALIAS = "pve"
 DEFAULT_USER = "terraform-lab"
@@ -32,7 +31,7 @@ VM_IP_MAP = {
 }
 
 
-def get_active_vms() -> List[Dict[str, Any]]:
+def get_active_vms() -> list[dict[str, Any]]:
     """Query Proxmox for all lab VMs in the 9000-9099 range."""
     cmd = [
         "ssh",
@@ -49,7 +48,7 @@ def get_active_vms() -> List[Dict[str, Any]]:
         sys.stderr.write(f"error: failed to query Proxmox VMs: {err.stderr}\n")
         return []
 
-    vms: List[Dict[str, Any]] = []
+    vms: list[dict[str, Any]] = []
     lines = proc.stdout.strip().splitlines()
     if not lines:
         return []
@@ -86,7 +85,7 @@ def get_active_vms() -> List[Dict[str, Any]]:
     return vms
 
 
-def find_run_key(run_id: str) -> Optional[str]:
+def find_run_key(run_id: str) -> str | None:
     """Find the private key matching a given run_id or the newest run key."""
     tmp_dirs = sorted(
         glob.glob(os.path.join(tempfile.gettempdir(), "ra8-lab-ci.*")),
@@ -98,7 +97,7 @@ def find_run_key(run_id: str) -> Optional[str]:
             pub_key = os.path.join(d, "id_ed25519.pub")
             if os.path.isfile(pub_key):
                 try:
-                    with open(pub_key, "r", encoding="utf-8") as f:
+                    with open(pub_key, encoding="utf-8") as f:
                         if run_id in f.read():
                             priv_key = os.path.join(d, "id_ed25519")
                             if os.path.isfile(priv_key):
@@ -212,15 +211,15 @@ def cmd_start(args: argparse.Namespace) -> int:
 
     keep_str = "true" if getattr(args, "keep", False) else "false"
     launch_cmd = (
-        f"sudo chmod +x /var/lib/ra8-lab/runner.sh && "
-        f"sudo nohup /bin/bash /var/lib/ra8-lab/runner.sh {profile} {run_id} {remote_dir}/source.tar {keep_str} "
-        f"< /dev/null > /dev/null 2>&1 &"
+        "sudo -n chmod +x /var/lib/ra8-lab/runner.sh && "
+        f"(sudo -n nohup /bin/bash /var/lib/ra8-lab/runner.sh {profile} {run_id} "
+        f"{remote_dir}/source.tar {keep_str} </dev/null >/dev/null 2>&1 &)"
     )
     subprocess.run(["ssh", "-o", "BatchMode=yes", SSH_ALIAS, launch_cmd], check=True)
 
     print(f"==> {profile.capitalize()} CI run started on {SSH_ALIAS} (run_id: {run_id})")
     print(f"    • Stream live logs:    just infra::lab::logs {profile}")
-    print(f"    • Check status:        just infra::lab::status")
+    print("    • Check status:        just infra::lab::status")
     print(f"    • Stop/cancel:         just infra::lab::stop {profile}")
     return 0
 
@@ -230,7 +229,7 @@ def cmd_logs(args: argparse.Namespace) -> int:
     profile = getattr(args, "profile", "linux").lower()
     log_file = f"/var/log/ra8-lab/{profile}.log"
     print(f"==> Attaching to {profile} CI log stream on {SSH_ALIAS}...")
-    print(f"    (Press Ctrl+C at any time to detach without stopping the CI run)\n")
+    print("    (Press Ctrl+C at any time to detach without stopping the CI run)\n")
 
     tail_cmd = [
         "ssh",
@@ -246,7 +245,7 @@ def cmd_logs(args: argparse.Namespace) -> int:
         print("\n^C\n==> Detached from log stream.")
         print("    The CI run is still executing on the server!")
         print(f"    • Re-attach logs:  just infra::lab::logs {profile}")
-        print(f"    • Check status:   just infra::lab::status")
+        print("    • Check status:   just infra::lab::status")
         print(f"    • Stop/cancel:    just infra::lab::stop {profile}")
         return 0
 
@@ -299,6 +298,7 @@ def cmd_stop(args: argparse.Namespace) -> int:
         print(f"==> Stopping {profile} CI background runner on {SSH_ALIAS}...")
         stop_script = f"""
         pid_file="/var/log/ra8-lab/{profile}.pid"
+        status_file="/var/log/ra8-lab/{profile}.status"
         if [[ -f "$pid_file" ]]; then
           pid=$(cat "$pid_file" 2>/dev/null)
           if [[ -n "$pid" ]] && kill -0 "$pid" 2>/dev/null; then
@@ -310,6 +310,9 @@ def cmd_stop(args: argparse.Namespace) -> int:
             kill -9 "$pid" 2>/dev/null || true
           fi
           rm -f "$pid_file"
+        fi
+        if [[ -f "$status_file" ]] && [[ "$(cat "$status_file" 2>/dev/null)" == "RUNNING" ]]; then
+          printf 'FAILED\\n' > "$status_file"
         fi
         """
         subprocess.run(["ssh", "-o", "BatchMode=yes", SSH_ALIAS, f"sudo bash -c '{stop_script}'"])
@@ -349,7 +352,7 @@ def cmd_ssh(args: argparse.Namespace) -> int:
     target = args.target
     remaining_cmd = args.command
 
-    selected_vm: Optional[Dict[str, Any]] = None
+    selected_vm: dict[str, Any] | None = None
 
     if target:
         try:
@@ -410,7 +413,12 @@ def cmd_ssh(args: argparse.Namespace) -> int:
             # Connect via SSH jumping through pve with remote key
             ip = selected_vm["ip"]
             user = "Administrator" if selected_vm["type"] == "windows" else DEFAULT_USER
-            ssh_cmd = f"ssh -i /var/lib/ra8-lab/{selected_vm['type']}/id_ed25519 -o StrictHostKeyChecking=no {user}@{ip}"
+            ssh_cmd = (
+                f"ssh -i /var/lib/ra8-lab/{selected_vm['type']}/id_ed25519 "
+                "-o BatchMode=yes -o StrictHostKeyChecking=no "
+                "-o UserKnownHostsFile=/dev/null -o LogLevel=ERROR "
+                f"{user}@{ip}"
+            )
             if remaining_cmd:
                 ssh_cmd += f" {' '.join(remaining_cmd)}"
             os.execvp("ssh", ["ssh", "-t", SSH_ALIAS, f"sudo {ssh_cmd}"])
@@ -452,7 +460,7 @@ def cmd_ssh(args: argparse.Namespace) -> int:
 def cmd_destroy(args: argparse.Namespace) -> int:
     target = getattr(args, "target", "all")
     all_vms = get_active_vms()
-    target_vms: List[Dict[str, Any]] = []
+    target_vms: list[dict[str, Any]] = []
 
     if target in ("", "all"):
         target_vms = [v for v in all_vms if v["type"] != "template"]

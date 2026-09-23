@@ -3,7 +3,6 @@
 
 from __future__ import annotations
 
-import os
 from ansible.plugins.action import ActionBase
 from ansible.utils.vars import merge_hash
 
@@ -58,7 +57,7 @@ class ActionModule(ActionBase):
         )
         res = self._low_level_execute_command(cmd, sudo=False)
         out = res.get('stdout', '').strip()
-        return out if out else None
+        return out or None
 
     def _collect_windows_metrics(self):
         cmd = (
@@ -80,10 +79,10 @@ class ActionModule(ActionBase):
         )
         res = self._low_level_execute_command(cmd, sudo=False)
         out = res.get('stdout', '').strip()
-        return out if out else None
+        return out or None
 
     def run(self, tmp=None, task_vars=None):
-        results = super(ActionModule, self).run(tmp, task_vars)
+        results = super().run(tmp, task_vars)
 
         validation_result, new_module_args = self.validate_argument_spec(
             argument_spec={
