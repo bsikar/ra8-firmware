@@ -689,7 +689,6 @@ gate_inclusive_terminology_commits() (
   # --selftest FIRST: proves the detector fires on an un-annotated legacy
   # term and that a LEGACY-OK opt-out at the end of a wrapped paragraph
   # covers the whole paragraph, not only the physical line it sits on.
-  python3 scripts/checks/check_inclusive_terminology_commits.py --selftest || return 1
   # See gate_no_ai_attribution_commits: self-test, then real-history guard,
   # then the scan.
   commit_range_selftest || return 1
@@ -700,7 +699,7 @@ gate_inclusive_terminology_commits() (
   # a run that examined nothing must not read as a pass.
   ci_report_commit_range "$repo" "$range" || return 1
   ci_history_git "$repo" log "$range" --format=%B |
-    python3 scripts/checks/check_inclusive_terminology_commits.py
+    (cd tools/ra8ci && GOWORK=off go run . inclusive-terminology-commits)
 )
 
 # --- format ---------------------------------------------------------------

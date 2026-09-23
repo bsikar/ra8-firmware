@@ -22,6 +22,7 @@ import (
 
 	"github.com/bsikar/ra8-firmware/tools/ra8ci/internal/asciigate"
 	"github.com/bsikar/ra8-firmware/tools/ra8ci/internal/catalog"
+	"github.com/bsikar/ra8-firmware/tools/ra8ci/internal/committerms"
 	"github.com/bsikar/ra8-firmware/tools/ra8ci/internal/newlinegate"
 	"github.com/bsikar/ra8-firmware/tools/ra8ci/internal/runnerclock"
 	"github.com/bsikar/ra8-firmware/tools/ra8ci/internal/sincegate"
@@ -177,7 +178,7 @@ func runStep(ctx context.Context, root string, env []string, step catalog.Step, 
 		result.EndedAt = end.UTC()
 		result.Duration = end.Sub(started)
 	}()
-	if step.Program == "ra8ci:ascii" || step.Program == "ra8ci:since" || step.Program == "ra8ci:final-newline" || step.Program == "ra8ci:runner-clock" || step.Program == "ra8ci:tests-readme" {
+	if step.Program == "ra8ci:ascii" || step.Program == "ra8ci:since" || step.Program == "ra8ci:final-newline" || step.Program == "ra8ci:runner-clock" || step.Program == "ra8ci:tests-readme" || step.Program == "ra8ci:inclusive-terminology-commits" {
 		stdoutLog := newDigestWriter(stdout)
 		stderrLog := newDigestWriter(stderr)
 		if step.Program == "ra8ci:ascii" {
@@ -188,8 +189,10 @@ func runStep(ctx context.Context, root string, env []string, step catalog.Step, 
 			result.ExitCode = newlinegate.Run(ctx, root, step.Args, stdoutLog, stderrLog)
 		} else if step.Program == "ra8ci:runner-clock" {
 			result.ExitCode = runnerclock.Run(ctx, step.Args, stdoutLog, stderrLog)
-		} else {
+		} else if step.Program == "ra8ci:tests-readme" {
 			result.ExitCode = testsreadme.Run(ctx, root, step.Args, stdoutLog, stderrLog)
+		} else if step.Program == "ra8ci:inclusive-terminology-commits" {
+			result.ExitCode = committerms.Run(ctx, step.Args, os.Stdin, stdoutLog, stderrLog)
 		}
 		if expiration := contextExpiration(ctx); expiration != nil {
 			result.TimedOut = errors.Is(expiration, context.DeadlineExceeded)

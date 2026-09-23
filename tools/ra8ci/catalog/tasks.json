@@ -954,13 +954,14 @@
       "board_policy": "none",
       "steps": [
         {
-          "name": "inclusive-terminology-commits",
-          "program": "bash",
-          "args": [
-            "scripts/ci.sh",
-            "--gate",
-            "inclusive-terminology-commits"
-          ]
+          "name": "inclusive-terminology-commits-selftest",
+          "program": "ra8ci:inclusive-terminology-commits",
+          "args": ["--selftest"]
+        },
+        {
+          "name": "inclusive-terminology-commits-scan",
+          "program": "ra8ci:inclusive-terminology-commits",
+          "args": []
         }
       ],
       "outputs": [],

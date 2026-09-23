@@ -470,4 +470,18 @@ func TestRunStepNativeTestsReadmeSelftest(t *testing.T) {
 		result.StderrBytes != int64(stderr.Len()) || result.StdoutSHA256 == "" || result.StderrSHA256 == "" {
 		t.Fatalf("tests-readme output/evidence mismatch: result=%+v stdout=%q stderr=%q", result, stdout.String(), stderr.String())
 	}
+
+}
+
+func TestRunStepNativeCommitTerminologySelftest(t *testing.T) {
+	var stdout, stderr bytes.Buffer
+	result, err := runStep(context.Background(), t.TempDir(), nil,
+		catalog.Step{Name: "inclusive-terminology-commits-selftest", Program: "ra8ci:inclusive-terminology-commits", Args: []string{"--selftest"}},
+		&stdout, &stderr, time.Millisecond)
+	if err != nil || result.ExitCode != 0 || result.TimedOut || result.Cancelled {
+		t.Fatalf("commit terminology selftest result=%+v err=%v stderr=%q", result, err, stderr.String())
+	}
+	if !strings.Contains(stdout.String(), "paragraph-scoped LEGACY-OK") || result.StdoutBytes != int64(stdout.Len()) || result.StdoutSHA256 == "" {
+		t.Fatalf("commit terminology output/evidence mismatch: result=%+v stdout=%q", result, stdout.String())
+	}
 }
