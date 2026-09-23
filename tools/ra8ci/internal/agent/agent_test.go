@@ -292,7 +292,7 @@ func TestLogUploaderChunksAndAmbiguousRetry(t *testing.T) {
 	defer server.Close()
 	uploader := &logUploader{agent: agent, ctx: context.Background(), assignment: a}
 	data := []byte(strings.Repeat("x", protocol.MaxLogBytes+4))
-	n, err := uploader.write("stdout", data)
+	n, err := uploader.write("step-one", "stdout", data)
 	if n != protocol.MaxLogBytes || !errors.Is(err, ErrServerProtocol) {
 		t.Fatalf("partial upload = %d, %v", n, err)
 	}

@@ -79,7 +79,7 @@ type commandResult struct {
 
 // Run executes only the exact task embedded in this binary and repository.
 // A nonzero child exit is returned in Result, not as a Go error.
-func Run(ctx context.Context, root string, task catalog.Task, stdout, stderr io.Writer) (Result, error) {
+func Run(ctx context.Context, root string, task catalog.Task, stdout, stderr io.Writer, stepWriters ...func(string) (io.Writer, io.Writer)) (Result, error) {
 	verifiedRoot, err := catalog.VerifyCheckout(root)
 	if err != nil {
 		return Result{}, err
@@ -95,12 +95,29 @@ func Run(ctx context.Context, root string, task catalog.Task, stdout, stderr io.
 	if !task.IsSafeLocal() {
 		return Result{}, ErrUnreviewedTask
 	}
-	return runTask(ctx, verifiedRoot, task, stdout, stderr, stopGrace)
+	if len(stepWriters) > 1 {
+		return Result{}, fmt.Errorf("at most one step-writer selector is allowed")
+	}
+	writers := func(string) (io.Writer, io.Writer) { return stdout, stderr }
+	if len(stepWriters) == 1 {
+		if stepWriters[0] == nil {
+			return Result{}, fmt.Errorf("nil step-writer selector")
+		}
+		writers = stepWriters[0]
+	}
+	return runTaskWithStepWriters(ctx, verifiedRoot, task, writers, stopGrace)
 }
 
 func runTask(ctx context.Context, root string, task catalog.Task, stdout, stderr io.Writer, grace time.Duration) (result Result, runErr error) {
+	return runTaskWithStepWriters(ctx, root, task, func(string) (io.Writer, io.Writer) {
+		return stdout, stderr
+	}, grace)
+}
+
+func runTaskWithStepWriters(ctx context.Context, root string, task catalog.Task,
+	writers func(stepName string) (io.Writer, io.Writer), grace time.Duration) (result Result, runErr error) {
 	result = Result{TaskName: task.Name, ExitCode: -1}
-	if ctx == nil || stdout == nil || stderr == nil {
+	if ctx == nil || writers == nil {
 		return result, fmt.Errorf("invalid executor input: nil context or log writer")
 	}
 	if err := catalog.ValidateTask(task); err != nil {
@@ -131,7 +148,11 @@ func runTask(ctx context.Context, root string, task catalog.Task, stdout, stderr
 			result.Cancelled = !result.TimedOut
 			return result, nil
 		}
-		stepResult, stepErr := runStep(runCtx, root, env, step, stdout, stderr, grace)
+		stepStdout, stepStderr := writers(step.Name)
+		if stepStdout == nil || stepStderr == nil {
+			return result, fmt.Errorf("step %s has nil log writer", step.Name)
+		}
+		stepResult, stepErr := runStep(runCtx, root, env, step, stepStdout, stepStderr, grace)
 		result.Steps = append(result.Steps, stepResult)
 		result.ExitCode = stepResult.ExitCode
 		result.TimedOut = stepResult.TimedOut

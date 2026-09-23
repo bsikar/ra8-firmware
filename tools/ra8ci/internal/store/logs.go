@@ -18,6 +18,7 @@ const MaxLogPageSize = 8
 type LogRecord struct {
 	Sequence          int64  `json:"sequence"`
 	Stream            string `json:"stream"`
+	StepName          string `json:"step_name"`
 	MonotonicOffsetNS int64  `json:"monotonic_offset_ns"`
 	SHA256            string `json:"sha256"`
 	DataBase64        string `json:"data_base64"`
@@ -41,7 +42,7 @@ func (s *Store) AttemptLogs(ctx context.Context, runID, attemptID string, after 
 	if !ValidID(runID) || !ValidID(attemptID) || after < 0 || limit < 1 || limit > MaxLogPageSize {
 		return LogPage{}, fmt.Errorf("%w: log page parameters", ErrInvalid)
 	}
-	rows, err := s.pool.Query(ctx, `SELECT c.seq, c.stream, c.monotonic_offset_ns, c.sha256, c.bytes
+	rows, err := s.pool.Query(ctx, `SELECT c.seq, c.stream, COALESCE(c.agent_step_key, c.step_key, ''), c.monotonic_offset_ns, c.sha256, c.bytes
 		FROM log_chunks c
 		JOIN task_attempts a ON a.id=c.attempt_id
 		JOIN tasks t ON t.id=a.task_id
@@ -55,7 +56,7 @@ func (s *Store) AttemptLogs(ctx context.Context, runID, attemptID string, after 
 	for rows.Next() {
 		var record LogRecord
 		var data []byte
-		if err := rows.Scan(&record.Sequence, &record.Stream, &record.MonotonicOffsetNS, &record.SHA256, &data); err != nil {
+		if err := rows.Scan(&record.Sequence, &record.Stream, &record.StepName, &record.MonotonicOffsetNS, &record.SHA256, &data); err != nil {
 			return LogPage{}, fmt.Errorf("%w: scan attempt log: %v", ErrUnavailable, err)
 		}
 		if len(page.Chunks) == limit {
