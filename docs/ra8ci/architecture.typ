@@ -16,14 +16,14 @@
   #v(0.22in)
   #text(size: 17pt)[One control plane for CI, the lab, and the board]
   #v(0.24in)
-  #text(size: 10pt, fill: rgb("#687487"))[Approved architecture and implementation contract | 22 September 2026]
+  #text(size: 10pt, fill: rgb("#687487"))[Approved architecture and implementation contract | 23 September 2026]
 ]
 #v(0.7in)
 #block(fill: rgb("#edf5f8"), stroke: rgb("#b9d2dc"), radius: 7pt, inset: 17pt)[
   *The proposal in one sentence.* A single Go product provides a command-line interface, a server in a protected Proxmox VM, and outbound-connecting agents. It controls disposable GitHub runner capacity, owns durable task and board lifecycles, records fine-grained measurements in colocated PostgreSQL, invokes Terraform and Ansible for provisioning, and runs named Zig build and quality tasks behind familiar just recipes.
 ]
 #v(0.45in)
-*Status:* Brighton approved the architecture and Go choice. Implementation is underway on a separate branch. This revision contains an as-built snapshot, the approved target, explicit production blockers, and an executable completion contract. It does not claim that deployment or script migration is complete. The planner still owns issue and MR boundaries. The active Zig build-graph work remains out of scope.
+*Status:* Brighton approved the architecture and Go choice. Implementation is underway on the pushed branch `ci/ra8ci-implementation`. The implementation reference records the as-built snapshot at commit `d928cb607`, evidence, and a prioritized completion ledger. Production dispatch and deployment are not complete. The planner still owns issue and MR boundaries. The active Zig build-graph work remains out of scope.
 
 *Audience:* Brighton, the planner AI, implementers, lab operators, and future CI maintainers.
 
@@ -84,7 +84,7 @@ The first version should not claim automatic optimal scheduling, arbitrary inter
 
 The published dev branch inspected for this draft was a7666d637. Its disposable lab driver uses run-local Terraform state, template checks, an isolated bridge, Ansible playbooks, and strict cleanup identity checks. A separate server-side runner uses direct qm commands and host networking changes. The Linux playbook stages a source archive and runs just ci in the pinned container. The Windows playbook prepares a disposable Windows guest and runs just ci there. The persistent fleet is declared in infra/fleet.yml: ARC on k3s, Docker runners on NAS and Windows/WSL, and a dedicated HIL listener on dev. Workflows select these with `runs-on` labels. Ansible installs the official runner, whose listener starts a worker per job. The dedicated HIL listener and bench are separate from ordinary scalable runners.
 
-The ra8ci inventory on ci/orchestrator has 588 in-scope shell/Python helpers: 557 used, 31 dead, and zero unclear. Twenty dead files have been removed in the current lane. Eleven still require reference or dependency-policy cleanup. The inventory is a migration ledger, not proof that every used script is a desirable permanent task.
+The accepted Phase 0 inventory on ci/orchestrator recorded 588 helper rows: 557 used, 31 dead, and zero unclear. That is a historical baseline, not a current-tree count. Since then the lane has removed dead helpers and absorbed five checkers; at implementation commit d928cb607, the current checkout has 532 tracked `.sh`/`.py` files and 28 `just/*.just` files. The machine-readable inventory and work-unit ledger must be reconciled with that current tree before the remaining planner units are cut. These raw counts do not mean every file becomes a public task: Terraform/Ansible stay as the provisioning layer, deliverable programs remain out of scope, and some helpers may be retained with an explicit reason.
 
 = User journeys
 
