@@ -878,6 +878,42 @@
       "resource_hints": {}
     },
     {
+      "name": "gnu-attribute",
+      "version": 1,
+      "tier": "required",
+      "scope": "safe-local-read-only",
+      "os": [
+        "linux",
+        "windows"
+      ],
+      "capabilities": [],
+      "args_schema": {
+        "positional": [],
+        "flags": []
+      },
+      "deadline_seconds": 1800,
+      "board_policy": "none",
+      "steps": [
+        {
+          "name": "gnu-attribute-selftest",
+          "program": "ra8ci:gnu-attribute",
+          "args": [
+            "--selftest"
+          ]
+        },
+        {
+          "name": "gnu-attribute-scan",
+          "program": "ra8ci:gnu-attribute",
+          "args": []
+        }
+      ],
+      "outputs": [],
+      "retry": {
+        "max_attempts": 1
+      },
+      "resource_hints": {}
+    },
+    {
       "name": "hil-eil-parity",
       "version": 1,
       "tier": "required",
@@ -992,7 +1028,9 @@
         {
           "name": "inclusive-terminology-commits-selftest",
           "program": "ra8ci:inclusive-terminology-commits",
-          "args": ["--selftest"]
+          "args": [
+            "--selftest"
+          ]
         },
         {
           "name": "inclusive-terminology-commits-scan",

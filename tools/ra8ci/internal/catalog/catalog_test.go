@@ -23,8 +23,8 @@ func TestLoadReviewedTasks(t *testing.T) {
 		t.Fatal(err)
 	}
 	names := c.Names()
-	if len(names) != 81 {
-		t.Fatalf("catalog has %d tasks, want 81", len(names))
+	if len(names) != 82 {
+		t.Fatalf("catalog has %d tasks, want 82", len(names))
 	}
 	deadlines := map[string]int{
 		"format": 900, "format-check": 900, "lint-go": 1200, "test-go": 1800,
@@ -61,6 +61,12 @@ func TestLoadReviewedTasks(t *testing.T) {
 		!reflect.DeepEqual(asmGuard.Steps[0].Args, []string{"--selftest"}) ||
 		asmGuard.Steps[1].Program != "ra8ci:driver-asm-guard" || len(asmGuard.Steps[1].Args) != 0 {
 		t.Fatalf("driver-asm-guard task does not preserve selftest-then-scan semantics: %+v", asmGuard)
+	}
+	gnuAttr, found := c.Task("gnu-attribute")
+	if !found || len(gnuAttr.Steps) != 2 || gnuAttr.Steps[0].Program != "ra8ci:gnu-attribute" ||
+		!reflect.DeepEqual(gnuAttr.Steps[0].Args, []string{"--selftest"}) ||
+		gnuAttr.Steps[1].Program != "ra8ci:gnu-attribute" || len(gnuAttr.Steps[1].Args) != 0 {
+		t.Fatalf("gnu-attribute task does not preserve selftest-then-scan semantics: %+v", gnuAttr)
 	}
 	gate, found := c.Task("emulator-matrix")
 	if !found || len(gate.Steps) != 1 || gate.Steps[0].Program != "bash" ||

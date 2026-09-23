@@ -93,6 +93,17 @@ func TestRunStepNativeDriverAsmGuardSelftest(t *testing.T) {
 	}
 }
 
+func TestRunStepNativeGnuAttributeSelftest(t *testing.T) {
+	var stdout, stderr bytes.Buffer
+	result, err := runStep(context.Background(), t.TempDir(), nil,
+		catalog.Step{Name: "gnu-attribute-selftest", Program: "ra8ci:gnu-attribute", Args: []string{"--selftest"}},
+		&stdout, &stderr, time.Millisecond)
+	if err != nil || result.ExitCode != 0 || result.TimedOut || result.Cancelled || stderr.Len() != 0 ||
+		!strings.Contains(stdout.String(), "pass (detections and exemptions)") {
+		t.Fatalf("result=%+v stdout=%q stderr=%q err=%v", result, stdout.String(), stderr.String(), err)
+	}
+}
+
 func TestRunStepNativeNoGotoSetjmpSelftest(t *testing.T) {
 	var stdout, stderr bytes.Buffer
 	result, err := runStep(context.Background(), t.TempDir(), nil,
