@@ -92,3 +92,21 @@ func TestHILTimingDecisionUsesManifestFallbackThenObservedCohort(t *testing.T) {
 			completion, stepsRun, segmentClient.finishes, err)
 	}
 }
+
+func TestValidateServerHILDecisionRespectsAgentSafetyMaximum(t *testing.T) {
+	decision := hilspec.Decision{ValidityWindow: 12 * time.Second}
+	if err := validateHILSafetyMaximum(decision, 12*time.Second); err != nil {
+		t.Fatalf("exact safety maximum rejected: %v", err)
+	}
+	if err := validateHILSafetyMaximum(decision, 13*time.Second); err != nil {
+		t.Fatalf("larger safety maximum rejected: %v", err)
+	}
+	if err := validateHILSafetyMaximum(decision, 11*time.Second); err == nil {
+		t.Fatal("server decision above local safety maximum was accepted")
+	}
+	for _, invalid := range []time.Duration{-time.Second, time.Hour + time.Second} {
+		if err := validateHILSafetyMaximum(decision, invalid); err == nil {
+			t.Fatalf("invalid safety maximum %s was accepted", invalid)
+		}
+	}
+}
