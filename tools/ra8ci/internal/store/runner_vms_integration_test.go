@@ -7,6 +7,8 @@ import (
 	"context"
 	"crypto/aes"
 	"crypto/cipher"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"strconv"
@@ -328,15 +330,24 @@ func TestIntegrationRunnerVMTerraformPlanEvidenceIsImmutableAndFenced(t *testing
 	if _, released, err := s.UnlockRunnerVMTerraformState(ctx, "scaler", vm.ID, lockBytes); err != nil || !released {
 		t.Fatalf("release backend state lock: released=%t err=%v", released, err)
 	}
+	stateDigest := sha256.Sum256(stateBody)
+	expectedStateSHA := hex.EncodeToString(stateDigest[:])
 	var stateSHA string
-	if err := pool.QueryRow(ctx, `SELECT state_sha256 FROM runner_vm_terraform_states WHERE runner_vm_id=$1`, vm.ID).Scan(&stateSHA); err != nil {
+	var stateCiphertext []byte
+	if err := pool.QueryRow(ctx, `SELECT state_sha256,state_ciphertext FROM runner_vm_terraform_states WHERE runner_vm_id=$1`, vm.ID).Scan(&stateSHA, &stateCiphertext); err != nil {
 		t.Fatalf("read persisted state digest: %v", err)
+	}
+	if stateSHA != expectedStateSHA {
+		t.Fatalf("stored state digest %q was not derived from submitted snapshot; want %q", stateSHA, expectedStateSHA)
+	}
+	if len(stateCiphertext) == 0 || bytes.Equal(stateCiphertext, stateBody) || bytes.Contains(stateCiphertext, stateBody) {
+		t.Fatal("Terraform state was not encrypted at rest")
 	}
 	proof := RunnerVMResolution{
 		Outcome: "succeeded", EvidenceID: mustID(t), Source: "terraform_state",
 		ObservedAt: time.Now().UTC(), PostStateVerified: true,
 		PlanSHA256: evidence.PlanSHA256, StateIdentitySHA256: evidence.StateIdentitySHA256,
-		ReconciliationSHA256: stateSHA, TerraformStateHasVM: true,
+		ReconciliationSHA256: expectedStateSHA, TerraformStateHasVM: true,
 		TerraformVMStatus: "stopped",
 	}
 	badProof := proof
