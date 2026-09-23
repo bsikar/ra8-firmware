@@ -52,11 +52,55 @@ func (s *Store) Close() {
 	}
 }
 
+// privilegeRule states which privileges the runtime role must not hold on a
+// group of relations, and what holding one of them means.
+type privilegeRule struct {
+	relations  []string
+	privileges []string
+	// violation is formatted with the offending relation name.
+	violation string
+}
+
+// runtimePrivilegeRules is the whole contract between the runtime role and the
+// schema: the ledgers it may append to but never rewrite, the authority tables
+// it may only read, and the runner VM ledger it may update but never erase.
+var runtimePrivilegeRules = []privilegeRule{
+	{
+		relations:  []string{"audit", "board_events", "run_events", "local_runs", "local_run_steps"},
+		privileges: []string{"UPDATE", "DELETE", "TRUNCATE"},
+		violation:  "runtime role can mutate append-only %s",
+	},
+	{
+		relations:  []string{"api_principals", "api_grants", "agents", "board_fixture_profiles", "schema_migrations"},
+		privileges: []string{"INSERT", "UPDATE", "DELETE", "TRUNCATE"},
+		violation:  "runtime role can mutate authority table %s",
+	},
+	{
+		relations:  []string{"runner_vms", "runner_vm_operations", "runner_vm_terraform_states"},
+		privileges: []string{"DELETE", "TRUNCATE"},
+		violation:  "runtime role can erase runner VM ledger %s",
+	},
+}
+
 // CheckSchema refuses both an uninitialized database and a future version.
 func (s *Store) CheckSchema(ctx context.Context) error {
 	if s == nil || s.pool == nil {
 		return fmt.Errorf("%w: store is nil", ErrUnavailable)
 	}
+	if err := s.checkSchemaVersion(ctx); err != nil {
+		return err
+	}
+	for _, rule := range runtimePrivilegeRules {
+		if err := s.checkRuntimePrivileges(ctx, rule); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// checkSchemaVersion requires the ledger to hold exactly the migrations this
+// binary knows about: one row per version, and no version beyond ours.
+func (s *Store) checkSchemaVersion(ctx context.Context) error {
 	var version, count int
 	err := s.pool.QueryRow(ctx, "SELECT COALESCE(MAX(version), 0), COUNT(*) FROM schema_migrations").Scan(&version, &count)
 	if err != nil {
@@ -65,44 +109,42 @@ func (s *Store) CheckSchema(ctx context.Context) error {
 	if version != migrations.CurrentVersion() || count != version {
 		return fmt.Errorf("%w: incompatible schema version %d (rows %d, expected %d)", ErrUnavailable, version, count, migrations.CurrentVersion())
 	}
-	for _, relation := range []string{"audit", "board_events", "run_events", "local_runs", "local_run_steps", "hil_observations"} {
-		var canUpdate, canDelete, canTruncate bool
-		err := s.pool.QueryRow(ctx, `SELECT has_table_privilege(current_user,$1,'UPDATE'),
-			has_table_privilege(current_user,$1,'DELETE'),
-			has_table_privilege(current_user,$1,'TRUNCATE')`, relation).
-			Scan(&canUpdate, &canDelete, &canTruncate)
+	return nil
+}
+
+// checkRuntimePrivileges fails on the first relation where the runtime role
+// holds any privilege the rule forbids.
+func (s *Store) checkRuntimePrivileges(ctx context.Context, rule privilegeRule) error {
+	for _, relation := range rule.relations {
+		var forbidden bool
+		err := s.pool.QueryRow(ctx,
+			`SELECT bool_or(has_table_privilege(current_user, $1, privilege))
+			FROM unnest($2::text[]) AS privilege`,
+			relation, rule.privileges).Scan(&forbidden)
 		if err != nil {
 			return fmt.Errorf("%w: inspect %s runtime privileges: %v", ErrUnavailable, relation, err)
 		}
-		if canUpdate || canDelete || canTruncate {
-			return fmt.Errorf("%w: runtime role can mutate append-only %s", ErrUnavailable, relation)
+		if forbidden {
+			return fmt.Errorf("%w: "+rule.violation, ErrUnavailable, relation)
 		}
 	}
-	for _, relation := range []string{"api_principals", "api_grants", "agents", "board_fixture_profiles", "schema_migrations"} {
-		var canInsert, canUpdate, canDelete, canTruncate bool
-		err := s.pool.QueryRow(ctx, `SELECT has_table_privilege(current_user,$1,'INSERT'),
-			has_table_privilege(current_user,$1,'UPDATE'),
-			has_table_privilege(current_user,$1,'DELETE'),
-			has_table_privilege(current_user,$1,'TRUNCATE')`, relation).
-			Scan(&canInsert, &canUpdate, &canDelete, &canTruncate)
-		if err != nil {
-			return fmt.Errorf("%w: inspect %s runtime privileges: %v", ErrUnavailable, relation, err)
-		}
-		if canInsert || canUpdate || canDelete || canTruncate {
-			return fmt.Errorf("%w: runtime role can mutate authority table %s", ErrUnavailable, relation)
-		}
+	return nil
+}
+
+// withTx runs fn inside a transaction and commits only if fn succeeds. The
+// rollback is unconditional; committing first makes it a no-op. stage names the
+// step in any error, so a caller reads which boundary failed.
+func (s *Store) withTx(ctx context.Context, stage string, fn func(pgx.Tx) error) error {
+	tx, err := s.pool.Begin(ctx)
+	if err != nil {
+		return fmt.Errorf("%w: begin %s: %v", ErrUnavailable, stage, err)
 	}
-	for _, relation := range []string{"runner_vms", "runner_vm_operations", "runner_vm_terraform_states"} {
-		var canDelete, canTruncate bool
-		err := s.pool.QueryRow(ctx, `SELECT has_table_privilege(current_user,$1,'DELETE'),
-			has_table_privilege(current_user,$1,'TRUNCATE')`, relation).
-			Scan(&canDelete, &canTruncate)
-		if err != nil {
-			return fmt.Errorf("%w: inspect %s runtime privileges: %v", ErrUnavailable, relation, err)
-		}
-		if canDelete || canTruncate {
-			return fmt.Errorf("%w: runtime role can erase runner VM ledger %s", ErrUnavailable, relation)
-		}
+	defer func() { _ = tx.Rollback(ctx) }()
+	if err := fn(tx); err != nil {
+		return err
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return fmt.Errorf("%w: commit %s: %v", ErrUnavailable, stage, err)
 	}
 	return nil
 }
@@ -112,18 +154,12 @@ func (s *Store) Health(ctx context.Context) error {
 	if err := s.CheckSchema(ctx); err != nil {
 		return err
 	}
-	tx, err := s.pool.Begin(ctx)
-	if err != nil {
-		return fmt.Errorf("%w: readiness transaction: %v", ErrUnavailable, err)
-	}
-	defer func() { _ = tx.Rollback(ctx) }()
-	if err := appendAudit(ctx, tx, "ra8ci-server", "server.readiness", "server", "control", "ok", "", "", "", nil); err != nil {
-		return fmt.Errorf("%w: readiness audit: %v", ErrUnavailable, err)
-	}
-	if err := tx.Commit(ctx); err != nil {
-		return fmt.Errorf("%w: readiness commit: %v", ErrUnavailable, err)
-	}
-	return nil
+	return s.withTx(ctx, "readiness", func(tx pgx.Tx) error {
+		if err := appendAudit(ctx, tx, "ra8ci-server", "server.readiness", "server", "control", "ok", "", "", "", nil); err != nil {
+			return fmt.Errorf("%w: readiness audit: %v", ErrUnavailable, err)
+		}
+		return nil
+	})
 }
 
 // AuthorizeCertificate maps a verified mTLS leaf to an active, scoped grant.
@@ -171,18 +207,12 @@ func (s *Store) AuditDenied(ctx context.Context, actor, action, target string) e
 	if actor == "" || action == "" || target == "" {
 		return fmt.Errorf("%w: denial audit fields", ErrInvalid)
 	}
-	tx, err := s.pool.Begin(ctx)
-	if err != nil {
-		return fmt.Errorf("%w: begin denial audit: %v", ErrUnavailable, err)
-	}
-	defer func() { _ = tx.Rollback(ctx) }()
-	if err := appendAudit(ctx, tx, actor, action, "api", target, "denied", "", "", "", nil); err != nil {
-		return fmt.Errorf("%w: denial audit: %v", ErrUnavailable, err)
-	}
-	if err := tx.Commit(ctx); err != nil {
-		return fmt.Errorf("%w: denial commit: %v", ErrUnavailable, err)
-	}
-	return nil
+	return s.withTx(ctx, "denial audit", func(tx pgx.Tx) error {
+		if err := appendAudit(ctx, tx, actor, action, "api", target, "denied", "", "", "", nil); err != nil {
+			return fmt.Errorf("%w: denial audit: %v", ErrUnavailable, err)
+		}
+		return nil
+	})
 }
 
 func appendAudit(ctx context.Context, tx pgx.Tx, actor, action, targetType, targetID, outcome, previous, next, runID string, reason any) error {
@@ -243,12 +273,30 @@ func validObject(raw json.RawMessage) (json.RawMessage, bool) {
 	return raw, true
 }
 
+// validHostFacts rejects an attempt whose identifiers, engine name, or
+// reported host shape could not have come from a healthy agent.
 func validHostFacts(in StartAttemptInput) bool {
-	if !ValidID(in.TaskID) || (in.AgentID != "" && !ValidID(in.AgentID)) || in.ActorID == "" || in.Engine == "" || len(in.Engine) > 64 || in.HostCores < 1 || in.HostRAMBytes < 1 || in.HostLoad < 0 || math.IsNaN(in.HostLoad) || math.IsInf(in.HostLoad, 0) {
+	switch {
+	case !ValidID(in.TaskID):
+		return false
+	case in.AgentID != "" && !ValidID(in.AgentID):
+		return false
+	case in.ActorID == "":
+		return false
+	case in.Engine == "" || len(in.Engine) > 64:
+		return false
+	case in.HostCores < 1 || in.HostRAMBytes < 1:
+		return false
+	case !validLoad(in.HostLoad):
 		return false
 	}
 	_, ok := validObject(in.HostFacts)
 	return ok
+}
+
+// validLoad accepts a real, non-negative load average and nothing else.
+func validLoad(load float64) bool {
+	return load >= 0 && !math.IsNaN(load) && !math.IsInf(load, 0)
 }
 
 // WaitForReady checks the same persisted readiness boundary under a deadline.
