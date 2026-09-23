@@ -36,12 +36,12 @@ func (a *observerAdminFake) RunnerByID(_ context.Context, id int) (github.Runner
 	return a.identity, a.exists, nil
 }
 
-func (a *observerAdminFake) RemoveRunner(_ context.Context, id int64) error {
+func (a *observerAdminFake) RemoveRunner(_ context.Context, id int) error {
 	a.removeCalls++
 	if a.removeErr != nil {
 		return a.removeErr
 	}
-	if int64(a.identity.ID) != id || !a.exists {
+	if a.identity.ID != id || !a.exists {
 		return errors.New("runner missing or mismatched")
 	}
 	if !a.remainAfterRemove {
