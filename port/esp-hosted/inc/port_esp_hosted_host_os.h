@@ -412,7 +412,7 @@ static inline void* heap_caps_malloc(size_t size, uint32_t caps)
  * Upstream's version is an allocate-or-bail macro whose failure arm is a
  * ``goto`` to a caller-supplied label. Defining it here would put a ``goto``
  * in first-party code, which NASA Power of 10 Rule 1 forbids and
- * ``scripts/checks/check_no_goto_setjmp.py`` rejects outright -- that gate has
+ * ``ra8ci no-goto-setjmp`` rejects outright -- that gate has
  * no allowlist, by design.
  *
  * Three ways out were considered and two were rejected:

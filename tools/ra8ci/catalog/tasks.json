@@ -1553,6 +1553,42 @@
       "resource_hints": {}
     },
     {
+      "name": "no-goto-setjmp",
+      "version": 1,
+      "tier": "required",
+      "scope": "safe-local-read-only",
+      "os": [
+        "linux",
+        "windows"
+      ],
+      "capabilities": [],
+      "args_schema": {
+        "positional": [],
+        "flags": []
+      },
+      "deadline_seconds": 1800,
+      "board_policy": "none",
+      "steps": [
+        {
+          "name": "no-goto-setjmp-selftest",
+          "program": "ra8ci:no-goto-setjmp",
+          "args": [
+            "--selftest"
+          ]
+        },
+        {
+          "name": "no-goto-setjmp-scan",
+          "program": "ra8ci:no-goto-setjmp",
+          "args": []
+        }
+      ],
+      "outputs": [],
+      "retry": {
+        "max_attempts": 1
+      },
+      "resource_hints": {}
+    },
+    {
       "name": "no-unsafe-python-install",
       "version": 1,
       "tier": "required",

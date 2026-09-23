@@ -23,8 +23,8 @@ func TestLoadReviewedTasks(t *testing.T) {
 		t.Fatal(err)
 	}
 	names := c.Names()
-	if len(names) != 80 {
-		t.Fatalf("catalog has %d tasks, want 79", len(names))
+	if len(names) != 81 {
+		t.Fatalf("catalog has %d tasks, want 81", len(names))
 	}
 	deadlines := map[string]int{
 		"format": 900, "format-check": 900, "lint-go": 1200, "test-go": 1800,
@@ -49,6 +49,12 @@ func TestLoadReviewedTasks(t *testing.T) {
 		if _, found := c.Task(name); found {
 			t.Fatalf("task %q must remain outside local dispatch until its safety boundary is modeled", name)
 		}
+	}
+	noGoto, found := c.Task("no-goto-setjmp")
+	if !found || len(noGoto.Steps) != 2 || noGoto.Steps[0].Program != "ra8ci:no-goto-setjmp" ||
+		!reflect.DeepEqual(noGoto.Steps[0].Args, []string{"--selftest"}) ||
+		noGoto.Steps[1].Program != "ra8ci:no-goto-setjmp" || len(noGoto.Steps[1].Args) != 0 {
+		t.Fatalf("no-goto-setjmp task does not preserve selftest-then-scan semantics: %+v", noGoto)
 	}
 	asmGuard, found := c.Task("driver-asm-guard")
 	if !found || len(asmGuard.Steps) != 2 || asmGuard.Steps[0].Program != "ra8ci:driver-asm-guard" ||

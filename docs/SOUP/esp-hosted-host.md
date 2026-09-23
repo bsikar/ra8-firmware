@@ -158,7 +158,7 @@ layer, the RPC wire codec and the shared utilities:
   label. (`host/drivers/rpc/core/rpc_core.c` expands it too, and is excluded
   for the ESP-IDF-API reason above.) Supplying that macro would put a `goto`
   in first-party code, which NASA Power of 10 Rule 1 forbids and
-  `check_no_goto_setjmp.py` rejects with no allowlist. Substituting a `return`
+  `ra8ci no-goto-setjmp` rejects with no allowlist. Substituting a `return`
   for the jump is not equivalent either: `serial_drv.c`'s `free_bufs` label
   frees two buffers before returning, so a bare `return` would leak. Both
   files are therefore excluded. `serial_ll_if.c`, the lower layer that does
