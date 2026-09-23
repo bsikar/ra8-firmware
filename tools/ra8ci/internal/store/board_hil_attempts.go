@@ -302,7 +302,18 @@ func (s *Store) ClaimNextBoardHILAttempt(ctx context.Context, actor BoardActor, 
 	selected.Task = definition
 	selected.Args = append([]string(nil), persisted.Args...)
 	selected.CatalogSHA256 = definitions.Digest()
-	selected.HILTiming = facts.HILTiming
+	var rawTiming []byte
+	err = s.pool.QueryRow(ctx, `SELECT reason FROM audit
+		WHERE action='task.hil_timing_selected' AND target_type='attempt' AND target_id=$1
+		ORDER BY happened_at DESC LIMIT 1`, attempt.ID).Scan(&rawTiming)
+	if err != nil {
+		return nil, fmt.Errorf("%w: read pinned HIL timing audit: %v", ErrUnavailable, err)
+	}
+	var timing HILTimingEvidence
+	if json.Unmarshal(rawTiming, &timing) != nil || !validateHILTimingEvidence(timing, *definition.HIL, definition.DeadlineSeconds) {
+		return nil, fmt.Errorf("%w: persisted HIL timing evidence is invalid", ErrConflict)
+	}
+	selected.HILTiming = &timing
 	return &selected, nil
 }
 

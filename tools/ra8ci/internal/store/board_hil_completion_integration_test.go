@@ -79,10 +79,16 @@ func TestIntegrationCompleteBoardHILAttemptAndIdempotentReplay(t *testing.T) {
 	if err != nil || assignment == nil {
 		t.Fatalf("claim HIL assignment: %v", err)
 	}
+	if assignment.HILTiming == nil || assignment.HILTiming.Decision.Source != "default" ||
+		assignment.HILTiming.Decision.ValidityWindow != 30*time.Second ||
+		assignment.HILTiming.Decision.FlashRestoreBound != 10*time.Second {
+		t.Fatalf("server did not pin the fallback timing decision: %+v", assignment.HILTiming)
+	}
 	attempt := assignment.Attempt
 	replayed, err := s.ClaimNextBoardHILAttempt(ctx, boardAgent, waiter.LeaseID, testStart(run.Tasks[0].ID), definitions, commitSHA)
-	if err != nil || replayed == nil || replayed.Attempt.ID != attempt.ID {
-		t.Fatalf("claim retry mismatch: original=%s replay=%+v err=%v", attempt.ID, replayed, err)
+	if err != nil || replayed == nil || replayed.Attempt.ID != attempt.ID || replayed.HILTiming == nil ||
+		*replayed.HILTiming != *assignment.HILTiming {
+		t.Fatalf("claim retry mismatch: original=%+v replay=%+v err=%v", assignment, replayed, err)
 	}
 	token := board.Token{BoardID: boardID, LeaseID: waiter.LeaseID, Generation: active.Generation}
 	zero := 0
