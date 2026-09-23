@@ -82,6 +82,20 @@ func TestRunTaskStreamsAndRecordsStep(t *testing.T) {
 	}
 }
 
+func TestRunStepNativeRunnerClockSelftest(t *testing.T) {
+	var stdout, stderr bytes.Buffer
+	result, err := runStep(context.Background(), t.TempDir(), nil,
+		catalog.Step{Name: "runner-clock-selftest", Program: "ra8ci:runner-clock", Args: []string{"--selftest"}},
+		&stdout, &stderr, time.Millisecond)
+	if err != nil || result.ExitCode != 0 || result.TimedOut || result.Cancelled {
+		t.Fatalf("runner-clock selftest result=%+v err=%v stderr=%q", result, err, stderr.String())
+	}
+	if !strings.Contains(stdout.String(), "7/7 cases as documented") || result.StdoutBytes != int64(stdout.Len()) ||
+		result.StderrBytes != int64(stderr.Len()) || result.StdoutSHA256 == "" || result.StderrSHA256 == "" {
+		t.Fatalf("runner-clock output/evidence mismatch: result=%+v stdout=%q stderr=%q", result, stdout.String(), stderr.String())
+	}
+}
+
 func TestRunTaskAttributesStreamsToEachStep(t *testing.T) {
 	task := fixtureTask("log")
 	task.Steps = append(task.Steps, catalog.Step{Name: "second-step", Program: os.Args[0], Args: helperArgs("log")})

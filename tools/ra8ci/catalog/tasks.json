@@ -1689,12 +1689,17 @@
       "board_policy": "none",
       "steps": [
         {
-          "name": "runner-clock",
-          "program": "bash",
+          "name": "runner-clock-selftest",
+          "program": "ra8ci:runner-clock",
           "args": [
-            "scripts/ci.sh",
-            "--gate",
-            "runner-clock"
+            "--selftest"
+          ]
+        },
+        {
+          "name": "runner-clock-scan",
+          "program": "ra8ci:runner-clock",
+          "args": [
+            "--ci-scan"
           ]
         }
       ],
