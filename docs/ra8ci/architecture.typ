@@ -23,7 +23,7 @@
   *The proposal in one sentence.* A single Go product provides a command-line interface, a server in a protected Proxmox VM, and outbound-connecting agents. It controls disposable GitHub runner capacity, owns durable task and board lifecycles, records fine-grained measurements in colocated PostgreSQL, invokes Terraform and Ansible for provisioning, and runs named Zig build and quality tasks behind familiar just recipes.
 ]
 #v(0.45in)
-*Status:* Brighton approved the architecture and Go choice. Implementation is underway on the pushed branch `ci/ra8ci-implementation`. The implementation reference records the as-built snapshot at commit `d928cb607`, evidence, and a prioritized completion ledger. Production dispatch and deployment are not complete. The planner still owns issue and MR boundaries. The active Zig build-graph work remains out of scope.
+*Status:* Brighton approved the architecture and Go choice. The pushed feature branch `ci/ra8ci-implementation` is rebased on `origin/dev` at `71feca26c`; the last code snapshot before this documentation refresh is `125f026c`. The implementation reference records the verified current state, the unverified Proxmox Linux/Windows baseline, the Windows secret-propagation blocker, and the concrete integration handoff. Production ra8ci dispatch and deployment are not complete. The active Zig build-graph work remains out of scope.
 
 *Audience:* Brighton, the planner AI, implementers, lab operators, and future CI maintainers.
 
