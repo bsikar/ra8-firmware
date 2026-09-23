@@ -132,7 +132,7 @@ type BoardHILAssignment struct {
 // ClaimNextBoardHILAttempt selects the oldest eligible HIL task for the
 // current lease holder, then binds its attempt to this board-agent identity.
 func (s *Store) ClaimNextBoardHILAttempt(ctx context.Context, actor BoardActor, leaseID string,
-	facts StartAttemptInput, definitions *catalog.Catalog, trustedCommit string) (*BoardHILAssignment, error) {
+	facts StartAttemptInput, definitions HILDefinitionCatalog, trustedCommit string) (*BoardHILAssignment, error) {
 	if s == nil || s.pool == nil || actor.kind != "board_agent" || actor.role != "board_agent" ||
 		!validBoardID(actor.boardID) || !ValidID(leaseID) || definitions == nil ||
 		definitions.Digest() == "" || !commitSHA.MatchString(trustedCommit) {

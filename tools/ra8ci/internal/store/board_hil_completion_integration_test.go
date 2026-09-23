@@ -74,9 +74,15 @@ func TestIntegrationCompleteBoardHILAttemptAndIdempotentReplay(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	attempt, err := s.StartBoardHILAttempt(ctx, boardAgent, run.Tasks[0].ID, waiter.LeaseID, testStart(run.Tasks[0].ID))
-	if err != nil {
-		t.Fatal(err)
+	definitions := completionTestCatalog{digest: digest, task: task}
+	assignment, err := s.ClaimNextBoardHILAttempt(ctx, boardAgent, waiter.LeaseID, testStart(run.Tasks[0].ID), definitions, commitSHA)
+	if err != nil || assignment == nil {
+		t.Fatalf("claim HIL assignment: %v", err)
+	}
+	attempt := assignment.Attempt
+	replayed, err := s.ClaimNextBoardHILAttempt(ctx, boardAgent, waiter.LeaseID, testStart(run.Tasks[0].ID), definitions, commitSHA)
+	if err != nil || replayed == nil || replayed.Attempt.ID != attempt.ID {
+		t.Fatalf("claim retry mismatch: original=%s replay=%+v err=%v", attempt.ID, replayed, err)
 	}
 	token := board.Token{BoardID: boardID, LeaseID: waiter.LeaseID, Generation: active.Generation}
 	zero := 0
@@ -99,7 +105,6 @@ func TestIntegrationCompleteBoardHILAttemptAndIdempotentReplay(t *testing.T) {
 	completion := BoardHILCompletion{AttemptID: attempt.ID, LeaseID: waiter.LeaseID,
 		Generation: active.Generation, Result: "succeeded", ChildExitCode: &zero,
 		EvidenceComplete: true, Steps: steps}
-	definitions := completionTestCatalog{digest: digest, task: task}
 	if err := s.CompleteBoardHILAttempt(ctx, boardAgent, completion, definitions, commitSHA); err != nil {
 		t.Fatalf("complete HIL attempt: %v", err)
 	}
