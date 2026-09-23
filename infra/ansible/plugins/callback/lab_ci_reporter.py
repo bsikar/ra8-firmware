@@ -17,8 +17,9 @@ DOCUMENTATION = r'''
 '''
 
 import subprocess
-from ansible.plugins.callback.default import CallbackModule as DefaultCallback
+
 from ansible import constants as C
+from ansible.plugins.callback.default import CallbackModule as DefaultCallback
 
 
 class CallbackModule(DefaultCallback):
@@ -101,7 +102,7 @@ class CallbackModule(DefaultCallback):
             proc = subprocess.run(ssh_cmd, capture_output=True, text=True, timeout=8.0)
             if proc.returncode == 0:
                 out = proc.stdout.strip()
-                return out if out else None
+                return out or None
         except Exception:
             pass
         return None
@@ -117,3 +118,16 @@ class CallbackModule(DefaultCallback):
         else:
             msg = f"ASYNC POLL on {host}: jid={jid} started={started} finished={finished}"
         self._display.display(msg, color=C.COLOR_DEBUG)
+
+    def v2_runner_retry(self, result: object) -> None:
+        """Expose incremental Windows guest log output during until retries."""
+        super().v2_runner_retry(result)
+        result_data = getattr(result, 'result', None)
+        if result_data is None:
+            result_data = getattr(result, '_result', {})
+        host_obj = getattr(result, 'host', None) or getattr(result, '_host', None)
+        host = host_obj.get_name() if host_obj is not None else 'unknown'
+        for stream in ('stdout_lines', 'stderr_lines'):
+            lines = result_data.get(stream) or []
+            for line in lines:
+                self._display.display(f"[{host} ci {stream}] {line}")

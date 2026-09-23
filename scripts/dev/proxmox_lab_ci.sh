@@ -510,16 +510,43 @@ build_disabled_windows_tfvar() {
 build_source_archive() {
   local source_tree="$run_dir/source-tree"
   local worktree_patch="$run_dir/worktree.patch"
+  local source_index="$run_dir/source-tree.index"
   mkdir -p "$source_tree"
   (
     umask 022
-    git archive --format=tar HEAD | tar -xpf - -C "$source_tree"
-    # Git's foreach shell supplies archive_stage/path; they must expand there.
+    # `git archive` applies nested export-ignore attributes, silently omitting
+    # tracked vendored headers and sources. Materialise the exact committed
+    # tree through a private index instead; skip LFS smudging so the source
+    # archive remains deterministic and does not require external LFS objects.
+    GIT_INDEX_FILE="$source_index" git -C "$REPO_ROOT" read-tree HEAD
+    GIT_LFS_SKIP_SMUDGE=1 GIT_INDEX_FILE="$source_index" \
+      git -C "$REPO_ROOT" checkout-index --all --prefix="$source_tree/"
+    local actual_tree expected_tree
+    actual_tree="$(GIT_INDEX_FILE="$source_index" git -C "$REPO_ROOT" write-tree)"
+    expected_tree="$(git -C "$REPO_ROOT" rev-parse 'HEAD^{tree}')"
+    [[ "$actual_tree" == "$expected_tree" ]] || {
+      echo "ERROR: source materialisation differs from HEAD." >&2
+      exit 1
+    }
+    rm -f -- "$source_index"
+
+    # Populate initialized submodules through the same exact-tree path. Git's
+    # foreach shell supplies archive_stage/path; they must expand there.
     # shellcheck disable=SC2016
-    archive_stage="$source_tree" git -C "$REPO_ROOT" submodule foreach --recursive '
-      mkdir -p "$archive_stage/$path"
-      git archive --format=tar HEAD | tar -xpf - -C "$archive_stage/$path"
-    '
+    archive_stage="$source_tree" run_dir="$run_dir" \
+      git -C "$REPO_ROOT" submodule foreach --recursive '
+        submodule_index="$(mktemp "$run_dir/submodule-index.XXXXXX")"
+        GIT_INDEX_FILE="$submodule_index" git read-tree HEAD
+        GIT_LFS_SKIP_SMUDGE=1 GIT_INDEX_FILE="$submodule_index" \
+          git checkout-index --all --prefix="$archive_stage/$path/"
+        actual_tree="$(GIT_INDEX_FILE="$submodule_index" git write-tree)"
+        expected_tree="$(git rev-parse "HEAD^{tree}")"
+        rm -f -- "$submodule_index"
+        [[ "$actual_tree" == "$expected_tree" ]] || {
+          echo "ERROR: submodule source materialisation differs from HEAD: $path" >&2
+          exit 1
+        }
+      '
   )
   # CI must exercise the working tree that the caller asked us to test. Apply
   # tracked edits/deletions, then add untracked first-party files without
@@ -534,6 +561,24 @@ build_source_archive() {
   done < <(git -C "$REPO_ROOT" ls-files --others --exclude-standard -z)
   chmod -R u=rwX,go=rX "$source_tree"
   COPYFILE_DISABLE=1 tar --exclude='._*' -cf "$run_dir/source.tar" -C "$source_tree" .
+}
+
+build_history_archive() {
+  local history_tree="$run_dir/history-tree"
+  # Commit-message gates need real history, while the source tar intentionally
+  # contains only a working-tree snapshot. Carry a shallow, credential-free
+  # Git repository separately so CI can inspect the actual latest commit.
+  git clone --quiet --depth=2 --no-local "$REPO_ROOT" "$history_tree"
+  git -C "$history_tree" remote remove origin
+  [[ "$(git -C "$history_tree" rev-list --count HEAD)" -ge 2 ]] ||
+    die "could not prepare two real commits for disposable CI history checks"
+  # The guest runs rootless Podman with user-namespace remapping. Git creates
+  # .git as 0700, which makes the bind-mounted history unreadable in that
+  # container even though it is readable by the guest account. The archive is
+  # credential-free and mounted read-only, so expose only normal read/traverse
+  # permissions for Git metadata.
+  chmod -R a+rX "$history_tree/.git"
+  COPYFILE_DISABLE=1 tar -cf "$run_dir/history.tar" -C "$history_tree" .git
 }
 
 cleanup_vm() {
@@ -756,6 +801,7 @@ run_ci() {
   chmod 0600 "$run_dir/id_ed25519"
   chmod 0644 "$run_dir/id_ed25519.pub"
   build_source_archive
+  build_history_archive
   setup_lab_network
 
   api_port="$(local_port)"
@@ -794,6 +840,7 @@ run_ci() {
         -i "$run_dir/inventory.ini" \
         "$PLAYBOOK" \
         -e "lab_ci_source_archive=$run_dir/source.tar" \
+        -e "lab_ci_history_archive=$run_dir/history.tar" \
         -e "lab_ci_user=$RA8_LAB_LINUX_USER"
   elif [[ "$profile" == "windows" ]]; then
     start_guest_ssh_proxy "guest_windows"
@@ -805,6 +852,7 @@ run_ci() {
         -i "$run_dir/inventory.ini" \
         "$PLAYBOOK_WINDOWS" \
         -e "lab_ci_source_archive=$run_dir/source.tar" \
+        -e "lab_ci_history_archive=$run_dir/history.tar" \
         -e "lab_ci_user=$RA8_LAB_WINDOWS_USER"
   fi
 }

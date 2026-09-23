@@ -18,6 +18,17 @@ resource "proxmox_virtual_environment_vm" "this" {
     full         = true
   }
 
+  # The complete Linux CI matrix exhausts the template's 32 GiB root disk.
+  # Manage the cloned boot disk explicitly so Terraform provisions enough
+  # capacity and Ansible can expand the guest filesystem before CI starts.
+  disk {
+    datastore_id = var.datastore_id
+    interface    = "scsi0"
+    size         = 64
+    discard      = "on"
+    iothread     = true
+  }
+
   agent {
     enabled = false
   }
