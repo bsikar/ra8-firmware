@@ -25,6 +25,7 @@ import (
 	"github.com/bsikar/ra8-firmware/tools/ra8ci/internal/committerms"
 	"github.com/bsikar/ra8-firmware/tools/ra8ci/internal/legacymake"
 	"github.com/bsikar/ra8-firmware/tools/ra8ci/internal/newlinegate"
+	"github.com/bsikar/ra8-firmware/tools/ra8ci/internal/nscveneers"
 	"github.com/bsikar/ra8-firmware/tools/ra8ci/internal/pointerboilerplate"
 	"github.com/bsikar/ra8-firmware/tools/ra8ci/internal/runnerclock"
 	"github.com/bsikar/ra8-firmware/tools/ra8ci/internal/sincegate"
@@ -182,7 +183,7 @@ func runStep(ctx context.Context, root string, env []string, step catalog.Step, 
 		result.EndedAt = end.UTC()
 		result.Duration = end.Sub(started)
 	}()
-	if step.Program == "ra8ci:ascii" || step.Program == "ra8ci:since" || step.Program == "ra8ci:final-newline" || step.Program == "ra8ci:runner-clock" || step.Program == "ra8ci:tests-readme" || step.Program == "ra8ci:inclusive-terminology-commits" || step.Program == "ra8ci:legacy-make" || step.Program == "ra8ci:no-unsafe-python-install" || step.Program == "ra8ci:wave-references" || step.Program == "ra8ci:pointer-boilerplate" {
+	if step.Program == "ra8ci:ascii" || step.Program == "ra8ci:since" || step.Program == "ra8ci:final-newline" || step.Program == "ra8ci:runner-clock" || step.Program == "ra8ci:tests-readme" || step.Program == "ra8ci:inclusive-terminology-commits" || step.Program == "ra8ci:legacy-make" || step.Program == "ra8ci:no-unsafe-python-install" || step.Program == "ra8ci:wave-references" || step.Program == "ra8ci:pointer-boilerplate" || step.Program == "ra8ci:nsc-veneer-defs" {
 		stdoutLog := newDigestWriter(stdout)
 		stderrLog := newDigestWriter(stderr)
 		if step.Program == "ra8ci:ascii" {
@@ -205,6 +206,8 @@ func runStep(ctx context.Context, root string, env []string, step catalog.Step, 
 			result.ExitCode = waverefs.Run(ctx, root, step.Args, stdoutLog, stderrLog)
 		} else if step.Program == "ra8ci:pointer-boilerplate" {
 			result.ExitCode = pointerboilerplate.Run(ctx, root, step.Args, stdoutLog, stderrLog)
+		} else if step.Program == "ra8ci:nsc-veneer-defs" {
+			result.ExitCode = nscveneers.Run(ctx, root, step.Args, stdoutLog, stderrLog)
 		}
 		if expiration := contextExpiration(ctx); expiration != nil {
 			result.TimedOut = errors.Is(expiration, context.DeadlineExceeded)

@@ -509,8 +509,6 @@ _SCHEMA_GROUPS = (
             "checks/check_no_silent_stubs.py:ROOTS",
             "checks/check_no_stdio_streams.py:SCOPE_ROOTS",
             "checks/check_no_stdio_streams.py:SOURCE_SUFFIXES",
-            "checks/check_nsc_veneer_defs.py:HEADER",
-            "checks/check_nsc_veneer_defs.py:SRC_DIR",
             "checks/check_obsolete_standards.py:SCAN_SUFFIXES",
             "checks/check_python_lock_policy.py:EXPORTS",
             "checks/check_python_lock_policy.py:MANIFEST",

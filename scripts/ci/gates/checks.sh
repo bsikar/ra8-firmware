@@ -364,8 +364,7 @@ _pcc_security_invariants() (
   # Every RA8_NSC_VENEER declared in ra8_nsc.h must have a definition -- a
   # decl with no def advertises an NS->S trust-boundary entry point that does
   # not exist.
-  python3 scripts/checks/check_nsc_veneer_defs.py --selftest
-  python3 scripts/checks/check_nsc_veneer_defs.py
+  (cd tools/ra8ci && GOWORK=off go run . nsc-veneer-defs)
   # Every insecure placeholder-crypto body (deterministic TRNG, forgeable
   # key-import MAC, plain-SRAM key vault, non-cryptographic RSIP key-wrap)
   # must sit behind the RA8_INSECURE_STUB_CRYPTO / RA8_OFF_TARGET guard
