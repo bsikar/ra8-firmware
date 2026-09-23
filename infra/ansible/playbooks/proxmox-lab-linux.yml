@@ -20,6 +20,8 @@
       - cloud-guest-utils
       - fuse-overlayfs
     lab_ci_repo_dir: "/home/{{ lab_ci_user }}/ra8-lab-ci"
+    lab_ci_history_dir: "/home/{{ lab_ci_user }}/ra8-lab-history"
+    lab_ci_tmp_dir: "/home/{{ lab_ci_user }}/ra8-lab-tmp"
   pre_tasks:
     - name: Require the controller-supplied lab inputs
       ansible.builtin.assert:
@@ -28,6 +30,8 @@
           - lab_ci_source_archive is string
           - lab_ci_source_archive is file
           - lab_ci_source_archive is not search('\n')
+          - lab_ci_history_archive is string
+          - lab_ci_history_archive is file
         fail_msg: "The disposable lab playbook requires a valid user and a controller-local source archive."
       become: false
 
@@ -236,6 +240,16 @@
         group: "{{ lab_ci_user }}"
         mode: "0755"
 
+    - name: Prepare an ext4-backed temporary directory for rootless CI
+      ansible.builtin.file:
+        path: "{{ lab_ci_tmp_dir }}"
+        state: directory
+        owner: "{{ lab_ci_user }}"
+        group: "{{ lab_ci_user }}"
+        # The parent home is private to lab_ci_user. The sticky, world-writable
+        # leaf lets the container's mapped vscode UID use host ext4 semantics.
+        mode: "1777"
+
     - name: Extract the committed repository snapshot
       ansible.builtin.unarchive:
         src: "{{ lab_ci_source_archive }}"
@@ -243,6 +257,30 @@
         copy: true
         owner: "{{ lab_ci_user }}"
         group: "{{ lab_ci_user }}"
+
+    - name: Create the separate Git history checkout
+      ansible.builtin.file:
+        path: "{{ lab_ci_history_dir }}"
+        state: directory
+        owner: "{{ lab_ci_user }}"
+        group: "{{ lab_ci_user }}"
+        mode: "0755"
+
+    - name: Extract real commit history outside the source snapshot
+      ansible.builtin.unarchive:
+        src: "{{ lab_ci_history_archive }}"
+        dest: "{{ lab_ci_history_dir }}"
+        copy: true
+        owner: "{{ lab_ci_user }}"
+        group: "{{ lab_ci_user }}"
+
+    - name: Verify the disposable history archive contains real commits
+      become_user: "{{ lab_ci_user }}"
+      ansible.builtin.command:
+        argv: [git, -C, "{{ lab_ci_history_dir }}", rev-list, --count, HEAD]
+      register: lab_ci_history_depth
+      changed_when: false
+      failed_when: lab_ci_history_depth.stdout | int < 2
 
     - name: Initialize a local Git identity for the extracted CI snapshot
       become_user: "{{ lab_ci_user }}"
@@ -276,10 +314,15 @@
         HOME: "/home/{{ lab_ci_user }}"
         XDG_RUNTIME_DIR: "/run/user/{{ ansible_facts.getent_passwd[lab_ci_user][1] }}"
         DBUS_SESSION_BUS_ADDRESS: "unix:path=/run/user/{{ ansible_facts.getent_passwd[lab_ci_user][1] }}/bus"
+        RA8_CI_COMMIT_RANGE: "HEAD~1..HEAD"
+        RA8_CI_CONTAINER_ARGS: "-v {{ lab_ci_history_dir }}:/ra8-ci-history:ro -v {{ lab_ci_tmp_dir }}:/ra8-ci-tmp:rw -e TMPDIR=/ra8-ci-tmp -e RA8_CI_HISTORY_REPO=/ra8-ci-history"
+        RA8_CI_HISTORY_REPO: /ra8-ci-history
       register: lab_ci_result
       changed_when: false
       failed_when: false
-      async: 7200
+      # The complete Linux CI normally exceeds two hours on the disposable
+      # guest (cross-build and emulator matrices dominate); allow six hours.
+      async: 21600
       poll: 10
 
     - name: Display CI execution message on failure

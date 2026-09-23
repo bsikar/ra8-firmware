@@ -9,23 +9,290 @@
   gather_facts: false
   vars:
     lab_ci_user: "Administrator"
+    # Server Core can be busy unpacking the disposable source tree when the
+    # Windows async wrapper starts. Give its named-pipe worker enough time to
+    # initialize instead of failing before `just ci` is launched.
+    ansible_win_async_startup_timeout: 300
     lab_ci_repo_dir: "C:\\ra8-lab-ci"
+    lab_ci_wsl_distribution: "Ubuntu-24.04"
+    # Windows Server Core's inbox wsl.exe is only a stub; bootstrap the
+    # standalone Microsoft WSL package before invoking its management commands.
+    lab_ci_wsl_msi_url: "https://github.com/microsoft/WSL/releases/download/2.7.14/wsl.2.7.14.0.x64.msi"
+    lab_ci_wsl_msi_path: "C:\\Windows\\Temp\\wsl.2.7.14.0.x64.msi"
+    lab_ci_wsl_msi_sha256: "db084e536279a59e90a26ec598d8aa8a4dff8309f41d078fd06242953ac1ebcd"
+    lab_ci_wsl_repo_dir: "/home/ra8-lab-ci"
+    lab_ci_wsl_history_dir: "/home/ra8-lab-history"
+    lab_ci_wsl_tmp_dir: "/home/ra8-lab-tmp"
+    lab_ci_log_dir: "C:\\ProgramData\\ra8\\ci"
+    lab_ci_log_path: "C:\\ProgramData\\ra8\\ci\\ci.log"
+    lab_ci_error_log_path: "C:\\ProgramData\\ra8\\ci\\ci.err"
+    lab_ci_exit_path: "C:\\ProgramData\\ra8\\ci\\ci.exit"
+    lab_ci_pid_path: "C:\\ProgramData\\ra8\\ci\\ci.pid"
+    lab_ci_stdout_offset_path: "C:\\ProgramData\\ra8\\ci\\stdout.offset"
+    lab_ci_stderr_offset_path: "C:\\ProgramData\\ra8\\ci\\stderr.offset"
+    lab_ci_wrapper_path: "C:\\ProgramData\\ra8\\ci\\run-ci.ps1"
     lab_ci_just_url: "https://github.com/casey/just/releases/download/1.40.0/just-1.40.0-x86_64-pc-windows-msvc.zip"
     lab_ci_just_zip: "C:\\Windows\\Temp\\just-1.40.0.zip"
     lab_ci_just_dir: "C:\\ProgramData\\ra8\\just"
+    lab_ci_mingit_url: "https://github.com/git-for-windows/git/releases/download/v2.55.0.windows.3/PortableGit-2.55.0.3-64-bit.7z.exe"
+    lab_ci_mingit_zip: "C:\\Windows\\Temp\\portablegit-2.55.0.3.7z.exe"
+    lab_ci_mingit_dir: "C:\\ProgramData\\ra8\\mingit"
+    lab_ci_git_lfs_url: "https://github.com/git-lfs/git-lfs/releases/download/v3.6.1/git-lfs-windows-amd64-v3.6.1.zip"
+    lab_ci_git_lfs_zip: "C:\\Windows\\Temp\\git-lfs-3.6.1.zip"
+    lab_ci_git_lfs_dir: "C:\\ProgramData\\ra8\\git-lfs"
+    lab_ci_python_url: "https://www.python.org/ftp/python/3.12.10/python-3.12.10-amd64.zip"
+    lab_ci_python_zip: "C:\\Windows\\Temp\\python-3.12.10-amd64.zip"
+    lab_ci_python_dir: "C:\\Python312"
+    lab_ci_get_pip_url: "https://bootstrap.pypa.io/get-pip.py"
+    lab_ci_get_pip_path: "C:\\Windows\\Temp\\get-pip.py"
+    lab_ci_python_scripts_dir: "C:\\Python312\\Scripts"
+    lab_ci_python_packages:
+      - "PyYAML==6.0.3"
+      - "cmakelang==0.6.13"
+      - "gcovr==7.0"
+      - "libclang==18.1.1"
+      - "ruff==0.15.19"
+      - "yamllint==1.37.1"
+      - "Pillow==12.2.0"
+      - "pyserial==3.5"
+      - "pyusb==1.3.1"
+      - "python-dotenv==1.2.2"
+      - "python-kasa==0.10.2"
+    lab_ci_go_url: "https://go.dev/dl/go1.27.1.windows-amd64.zip"
+    lab_ci_go_zip: "C:\\Windows\\Temp\\go1.27.1.windows-amd64.zip"
+    lab_ci_go_dir: "C:\\ProgramData\\ra8\\go"
+    lab_ci_go_bin: "C:\\ProgramData\\ra8\\go\\go\\bin"
+    lab_ci_jq_url: "https://github.com/jqlang/jq/releases/download/jq-1.7.1/jq-windows-amd64.exe"
+    lab_ci_jq_path: "C:\\ProgramData\\ra8\\tools\\jq.exe"
+    lab_ci_hadolint_url: "https://github.com/hadolint/hadolint/releases/download/v2.14.0/hadolint-Windows-x86_64.exe"
+    lab_ci_hadolint_path: "C:\\ProgramData\\ra8\\tools\\hadolint.exe"
+    lab_ci_actionlint_url: "https://github.com/rhysd/actionlint/releases/download/v1.7.7/actionlint_1.7.7_windows_amd64.zip"
+    lab_ci_actionlint_zip: "C:\\Windows\\Temp\\actionlint-1.7.7.zip"
+    lab_ci_actionlint_path: "C:\\ProgramData\\ra8\\tools\\actionlint.exe"
+    lab_ci_shfmt_url: "https://github.com/mvdan/sh/releases/download/v3.13.1/shfmt_v3.13.1_windows_amd64.exe"
+    lab_ci_shfmt_path: "C:\\ProgramData\\ra8\\tools\\shfmt.exe"
+    lab_ci_shellcheck_url: "https://github.com/koalaman/shellcheck/releases/download/v0.11.0/shellcheck-v0.11.0.zip"
+    lab_ci_shellcheck_zip: "C:\\Windows\\Temp\\shellcheck-0.11.0.zip"
+    lab_ci_shellcheck_path: "C:\\ProgramData\\ra8\\tools\\shellcheck.exe"
+    lab_ci_cppcheck_url: "https://github.com/cppcheck-opensource/cppcheck/releases/download/2.13.0/cppcheck-2.13.0-x64-Setup.msi"
+    lab_ci_cppcheck_msi: "C:\\Windows\\Temp\\cppcheck-2.13.0-x64-Setup.msi"
+    lab_ci_cppcheck_dir: "C:\\Program Files\\Cppcheck"
+    lab_ci_tools_dir: "C:\\ProgramData\\ra8\\tools"
+    lab_ci_cmake_url: "https://github.com/Kitware/CMake/releases/download/v3.31.6/cmake-3.31.6-windows-x86_64.zip"
+    lab_ci_cmake_zip: "C:\\Windows\\Temp\\cmake-3.31.6-windows-x86_64.zip"
+    lab_ci_cmake_dir: "C:\\ProgramData\\ra8\\cmake"
+    lab_ci_cmake_bin: "C:\\ProgramData\\ra8\\cmake\\cmake-3.31.6-windows-x86_64\\bin"
+    lab_ci_ninja_url: "https://github.com/ninja-build/ninja/releases/download/v1.12.1/ninja-win.zip"
+    lab_ci_ninja_zip: "C:\\Windows\\Temp\\ninja-1.12.1.zip"
+    lab_ci_ninja_dir: "C:\\ProgramData\\ra8\\ninja"
+    lab_ci_arm_url: "https://armkeil.blob.core.windows.net/developer/Files/downloads/gnu/14.2.rel1/binrel/arm-gnu-toolchain-14.2.rel1-mingw-w64-i686-arm-none-eabi.zip"
+    lab_ci_arm_zip: "C:\\Windows\\Temp\\arm-gnu-toolchain-14.2.rel1.zip"
+    lab_ci_arm_dir: "C:\\ProgramData\\ra8\\arm-gnu-toolchain"
+    lab_ci_arm_bin: "C:\\ProgramData\\ra8\\arm-gnu-toolchain\\bin"
     lab_ci_windows_packages:
       - 7zip
-      - cmake
-      - gcc-arm-embedded
-      - git
-      - git-lfs
       - llvm
       - make
-      - ninja
-      - python
   tasks:
     - name: Verify connection to the disposable Windows guest
       ansible.windows.win_ping:
+
+    - name: Expand the disposable Windows system volume
+      ansible.windows.win_shell: |
+        $supported = Get-PartitionSupportedSize -DriveLetter C
+        $current = Get-Partition -DriveLetter C
+        if ($current.Size -lt $supported.Size) {
+          Resize-Partition -DriveLetter C -Size $supported.Size
+          Write-Output 'Expanded the Windows system volume.'
+        } else {
+          Write-Output 'The Windows system volume already uses the available disk space.'
+        }
+      args:
+        executable: powershell.exe
+      register: lab_ci_windows_volume
+      changed_when: "'Expanded the Windows system volume' in lab_ci_windows_volume.stdout"
+
+    - name: Enable WSL and Virtual Machine Platform features
+      ansible.windows.win_shell: |
+        $ErrorActionPreference = 'Stop'
+        $featureNames = @('Microsoft-Windows-Subsystem-Linux', 'VirtualMachinePlatform')
+        $features = @($featureNames | ForEach-Object {
+          Get-WindowsOptionalFeature -Online -FeatureName $_
+        })
+        if (@($features | Where-Object State -ne 'Enabled').Count -gt 0) {
+          Enable-WindowsOptionalFeature -Online -FeatureName $featureNames -All -NoRestart |
+            Out-Null
+          Write-Output 'Enabled the WSL Windows features.'
+        } else {
+          Write-Output 'The WSL Windows features are already enabled.'
+        }
+      args:
+        executable: powershell.exe
+      register: lab_ci_wsl_features
+      changed_when: "'Enabled the WSL Windows features' in lab_ci_wsl_features.stdout"
+
+    - name: Reboot Windows after enabling WSL features
+      ansible.windows.win_reboot:
+        reboot_timeout: 1800
+        post_reboot_delay: 15
+      when: lab_ci_wsl_features.changed
+
+    - name: Verify WSL features survived the required reboot
+      ansible.windows.win_shell: |
+        $ErrorActionPreference = 'Stop'
+        $featureNames = @('Microsoft-Windows-Subsystem-Linux', 'VirtualMachinePlatform')
+        $features = @($featureNames | ForEach-Object {
+          Get-WindowsOptionalFeature -Online -FeatureName $_ |
+            Select-Object FeatureName, State
+        })
+        $features | Format-Table -AutoSize | Out-String | Write-Output
+        if (@($features | Where-Object State -ne 'Enabled').Count -gt 0) {
+          Write-Output 'Recent Windows servicing errors:'
+          Get-Content (Join-Path $env:SystemRoot 'Logs\CBS\CBS.log') -Tail 2000 |
+            Select-String -Pattern 'Error|Failed|0x800f' |
+            ForEach-Object { $_.Line }
+          throw 'Windows rolled back or did not finish enabling WSL features.'
+        }
+      args:
+        executable: powershell.exe
+      changed_when: false
+
+    - name: Download the pinned Microsoft WSL package
+      ansible.windows.win_get_url:
+        url: "{{ lab_ci_wsl_msi_url }}"
+        dest: "{{ lab_ci_wsl_msi_path }}"
+        checksum: "{{ lab_ci_wsl_msi_sha256 }}"
+        checksum_algorithm: sha256
+
+    - name: Install the Microsoft WSL package
+      ansible.windows.win_package:
+        path: "{{ lab_ci_wsl_msi_path }}"
+        state: present
+        arguments: /qn /norestart
+
+    - name: Install or update the WSL2 Linux kernel
+      ansible.windows.win_shell: |
+        $wsl = Join-Path $env:SystemRoot 'System32\wsl.exe'
+        & $wsl --update --web-download
+        if ($LASTEXITCODE -ne 0) {
+          throw "WSL kernel update failed with exit code $LASTEXITCODE"
+        }
+      args:
+        executable: powershell.exe
+      changed_when: true
+
+    - name: Set WSL2 as the default distribution version
+      ansible.windows.win_shell: |
+        $wsl = Join-Path $env:SystemRoot 'System32\wsl.exe'
+        & $wsl --set-default-version 2
+        if ($LASTEXITCODE -ne 0) {
+          throw "Could not set the WSL default version (exit code $LASTEXITCODE)"
+        }
+      args:
+        executable: powershell.exe
+      changed_when: false
+
+    - name: Ensure Ubuntu is installed in the Administrator WSL profile
+      ansible.windows.win_shell: |
+        $wsl = Join-Path $env:SystemRoot 'System32\wsl.exe'
+        $listing = @(& $wsl --list --quiet 2>$null)
+        $listExitCode = $LASTEXITCODE
+        $installed = @($listing | ForEach-Object {
+          ([string]$_).Replace([string][char]0, '').Trim()
+        })
+        if ($listExitCode -ne 0 -or $installed -notcontains '{{ lab_ci_wsl_distribution }}') {
+          & $wsl --install --distribution '{{ lab_ci_wsl_distribution }}' --web-download --no-launch
+          if ($LASTEXITCODE -ne 0) {
+            throw "WSL Ubuntu installation failed with exit code $LASTEXITCODE"
+          }
+          Write-Output 'Installed the CI distribution in WSL.'
+        } else {
+          Write-Output 'The CI distribution is already installed in WSL.'
+        }
+      args:
+        executable: powershell.exe
+      register: lab_ci_wsl_distro
+      changed_when: "'Installed the CI distribution' in lab_ci_wsl_distro.stdout"
+
+    - name: Ensure Ubuntu runs as a WSL2 distribution
+      ansible.windows.win_shell: |
+        $wsl = Join-Path $env:SystemRoot 'System32\wsl.exe'
+        $distribution = '{{ lab_ci_wsl_distribution }}'
+        & $wsl --set-default-version 2
+        if ($LASTEXITCODE -ne 0) {
+          $defaultExitCode = $LASTEXITCODE
+          throw ('Could not set the WSL default version; code {0}' -f $defaultExitCode)
+        }
+
+        $listing = @(& $wsl --list --verbose 2>$null)
+        $listExitCode = $LASTEXITCODE
+        $normalizedListing = @($listing | ForEach-Object {
+          ([string]$_).Replace([string][char]0, '').Trim()
+        })
+        $distributionLine = $normalizedListing |
+          Where-Object {
+            $_ -match ('^(?:\*\s*)?' + [regex]::Escape($distribution) + '\s+\S+\s+[12]$')
+          } |
+          Select-Object -First 1
+        if ($listExitCode -ne 0 -or $null -eq $distributionLine) {
+          throw ('Could not find {0} in the WSL distribution list.' -f $distribution)
+        }
+
+        if ($distributionLine -match '\s([12])$') {
+          $version = $Matches[1]
+        } else {
+          throw ('Could not determine the WSL version for {0}.' -f $distribution)
+        }
+        if ($version -eq '2') {
+          Write-Output ('{0} already runs as a WSL2 distribution.' -f $distribution)
+        } else {
+          & $wsl --set-version $distribution 2
+          $convertExitCode = $LASTEXITCODE
+          if ($convertExitCode -ne 0) {
+            throw ('Could not convert {0} to WSL2; code {1}' -f $distribution, $convertExitCode)
+          }
+          Write-Output ('Converted {0} to WSL2.' -f $distribution)
+        }
+      args:
+        executable: powershell.exe
+      register: lab_ci_wsl_version
+      changed_when: "'Converted ' ~ lab_ci_wsl_distribution ~ ' to WSL2.' in lab_ci_wsl_version.stdout"
+
+    - name: Configure explicit DNS for the isolated Windows guest
+      ansible.windows.win_shell: |
+        $adapters = Get-NetAdapter | Where-Object Status -eq 'Up'
+        foreach ($adapter in $adapters) {
+          Set-DnsClientServerAddress -InterfaceIndex $adapter.ifIndex -ServerAddresses @('1.1.1.1', '8.8.8.8')
+        }
+        Clear-DnsClientCache
+      args:
+        executable: powershell.exe
+      changed_when: false
+
+    - name: Stop the WSL VM before installing native Windows packages
+      ansible.windows.win_shell: |
+        $wsl = Join-Path $env:SystemRoot 'System32\wsl.exe'
+        & $wsl --shutdown
+        if ($LASTEXITCODE -ne 0) {
+          throw ('Could not stop the WSL VM before native package installation; code ' + $LASTEXITCODE)
+        }
+      args:
+        executable: powershell.exe
+      changed_when: false
+
+    - name: Record Windows resource state before Chocolatey bootstrap
+      ansible.windows.win_shell: |
+        $os = Get-CimInstance Win32_OperatingSystem
+        Write-Output ('UTC=' + [DateTimeOffset]::UtcNow.ToString('o'))
+        Write-Output ('FreeMemoryMiB=' + [math]::Round($os.FreePhysicalMemory / 1024))
+        Write-Output ('TotalMemoryMiB=' + [math]::Round($os.TotalVisibleMemorySize / 1024))
+        $wsl = Join-Path $env:SystemRoot 'System32\wsl.exe'
+        Write-Output 'Running WSL distributions:'
+        & $wsl --list --running
+        Get-Process | Sort-Object WorkingSet64 -Descending | Select-Object -First 8 Name, Id, WorkingSet64
+      args:
+        executable: powershell.exe
+      changed_when: false
 
     - name: Install Chocolatey package manager
       ansible.windows.win_shell: |
@@ -33,17 +300,31 @@
         $ErrorActionPreference = 'Stop'
         [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
         Set-ExecutionPolicy Bypass -Scope Process -Force
-        Invoke-Expression ((New-Object Net.WebClient).DownloadString('https://community.chocolatey.org/install.ps1'))
+        try {
+          Invoke-Expression ((New-Object Net.WebClient).DownloadString('https://community.chocolatey.org/install.ps1'))
+        } catch {
+          Write-Output ($_ | Format-List * -Force | Out-String)
+          Write-Output $_.ScriptStackTrace
+          throw
+        }
       args:
         executable: powershell.exe
         creates: C:\\ProgramData\\chocolatey\\bin\\choco.exe
+      register: lab_ci_chocolatey_install
+      until: lab_ci_chocolatey_install.rc == 0
+      retries: 3
+      delay: 10
 
     - name: Install Windows CI build and source dependencies
       ansible.windows.win_shell: |
+        $choco = 'C:\ProgramData\chocolatey\bin\choco.exe'
+        if (-not (Test-Path $choco)) {
+          throw "Chocolatey executable not found at $choco"
+        }
         $package = '{{ item }}'
-        $installed = & choco.exe list --local-only --exact $package --limit-output 2>$null
-        if ($installed -notmatch "^$package\\|") {
-          & choco.exe install $package --yes --no-progress --limit-output
+        $installed = & $choco list --local-only --exact $package --limit-output 2>$null
+        if ($installed -notmatch ('^' + [regex]::Escape($package) + '\|')) {
+          & $choco install $package --yes --no-progress --limit-output
           if ($LASTEXITCODE -ne 0) {
             throw "Chocolatey failed to install $package (exit code $LASTEXITCODE)"
           }
@@ -51,6 +332,129 @@
       args:
         executable: powershell.exe
       loop: "{{ lab_ci_windows_packages }}"
+
+    - name: Download pinned portable CMake
+      ansible.windows.win_get_url:
+        url: "{{ lab_ci_cmake_url }}"
+        dest: "{{ lab_ci_cmake_zip }}"
+        force: false
+
+    - name: Extract pinned portable CMake
+      community.windows.win_unzip:
+        src: "{{ lab_ci_cmake_zip }}"
+        dest: "{{ lab_ci_cmake_dir }}"
+        creates: "{{ lab_ci_cmake_bin }}\\cmake.exe"
+        delete_archive: true
+
+    - name: Add portable CMake to the machine PATH
+      ansible.windows.win_path:
+        elements:
+          - "{{ lab_ci_cmake_bin }}"
+        scope: machine
+        state: present
+
+    - name: Download pinned portable Ninja
+      ansible.windows.win_get_url:
+        url: "{{ lab_ci_ninja_url }}"
+        dest: "{{ lab_ci_ninja_zip }}"
+        force: false
+
+    - name: Extract pinned portable Ninja
+      community.windows.win_unzip:
+        src: "{{ lab_ci_ninja_zip }}"
+        dest: "{{ lab_ci_ninja_dir }}"
+        creates: "{{ lab_ci_ninja_dir }}\\ninja.exe"
+        delete_archive: true
+
+    - name: Add portable Ninja to the machine PATH
+      ansible.windows.win_path:
+        elements:
+          - "{{ lab_ci_ninja_dir }}"
+        scope: machine
+        state: present
+
+    - name: Download pinned Arm GNU toolchain
+      ansible.windows.win_get_url:
+        url: "{{ lab_ci_arm_url }}"
+        dest: "{{ lab_ci_arm_zip }}"
+        force: false
+
+    - name: Extract pinned Arm GNU toolchain
+      community.windows.win_unzip:
+        src: "{{ lab_ci_arm_zip }}"
+        dest: "{{ lab_ci_arm_dir }}"
+        creates: "{{ lab_ci_arm_bin }}\\arm-none-eabi-gcc.exe"
+        delete_archive: true
+
+    - name: Add Arm GNU toolchain to the machine PATH
+      ansible.windows.win_path:
+        elements:
+          - "{{ lab_ci_arm_bin }}"
+        scope: machine
+        state: present
+
+    - name: Download pinned portable Git
+      ansible.windows.win_get_url:
+        url: "{{ lab_ci_mingit_url }}"
+        dest: "{{ lab_ci_mingit_zip }}"
+        force: false
+
+    - name: Extract pinned portable Git self-extracting archive
+      ansible.windows.win_shell: |
+        & '{{ lab_ci_mingit_zip }}' -y '-o{{ lab_ci_mingit_dir }}'
+        if ($LASTEXITCODE -ne 0) {
+          exit $LASTEXITCODE
+        }
+      args:
+        executable: powershell.exe
+        creates: "{{ lab_ci_mingit_dir }}\\bin\\bash.exe"
+
+    - name: Add portable Git to the machine PATH
+      ansible.windows.win_path:
+        elements:
+          - "{{ lab_ci_mingit_dir }}\\cmd"
+          - "{{ lab_ci_mingit_dir }}\\bin"
+          - "{{ lab_ci_mingit_dir }}\\mingw64\\bin"
+          - "{{ lab_ci_mingit_dir }}\\usr\\bin"
+        scope: machine
+        state: present
+
+    - name: Provide the POSIX Git path required by repository CI policy
+      ansible.windows.win_copy:
+        dest: "{{ lab_ci_mingit_dir }}\\usr\\bin\\git"
+        content: |
+          #!/usr/bin/env bash
+          exec /mingw64/bin/git.exe "$@"
+
+    - name: Download pinned Git LFS
+      ansible.windows.win_get_url:
+        url: "{{ lab_ci_git_lfs_url }}"
+        dest: "{{ lab_ci_git_lfs_zip }}"
+        force: false
+
+    - name: Extract pinned Git LFS
+      community.windows.win_unzip:
+        src: "{{ lab_ci_git_lfs_zip }}"
+        dest: "{{ lab_ci_git_lfs_dir }}"
+        delete_archive: true
+
+    - name: Normalize Git LFS executable location
+      ansible.windows.win_shell: |
+        $binary = Get-ChildItem '{{ lab_ci_git_lfs_dir }}' -Recurse -File -Filter 'git-lfs*.exe' |
+          Select-Object -First 1
+        if ($null -eq $binary) {
+          throw 'The pinned Git LFS archive did not contain a git-lfs executable.'
+        }
+        Copy-Item $binary.FullName '{{ lab_ci_git_lfs_dir }}\\git-lfs.exe' -Force
+      args:
+        executable: powershell.exe
+
+    - name: Add Git LFS to the machine PATH
+      ansible.windows.win_path:
+        elements:
+          - "{{ lab_ci_git_lfs_dir }}"
+        scope: machine
+        state: present
 
     - name: Download pinned just release
       ansible.windows.win_get_url:
@@ -65,6 +469,13 @@
         creates: "{{ lab_ci_just_dir }}\\just.exe"
         delete_archive: true
 
+    - name: Provide the POSIX just path required by repository CI policy
+      ansible.windows.win_copy:
+        dest: "{{ lab_ci_mingit_dir }}\\usr\\bin\\just"
+        content: |
+          #!/usr/bin/env bash
+          exec /c/ProgramData/ra8/just/just.exe "$@"
+
     - name: Add just to the machine PATH
       ansible.windows.win_path:
         elements:
@@ -72,23 +483,221 @@
         scope: machine
         state: present
 
-    - name: Refresh PATH for subsequent Ansible commands
+    - name: Download pinned portable Python
+      ansible.windows.win_get_url:
+        url: "{{ lab_ci_python_url }}"
+        dest: "{{ lab_ci_python_zip }}"
+        force: false
+
+    - name: Extract pinned portable Python
+      community.windows.win_unzip:
+        src: "{{ lab_ci_python_zip }}"
+        dest: "{{ lab_ci_python_dir }}"
+        creates: "{{ lab_ci_python_dir }}\\python.exe"
+        delete_archive: true
+
+    - name: Download pip bootstrap for portable Python
+      ansible.windows.win_get_url:
+        url: "{{ lab_ci_get_pip_url }}"
+        dest: "{{ lab_ci_get_pip_path }}"
+        force: false
+
+    - name: Install pip into portable Python
+      ansible.windows.win_command:
+        cmd: "{{ lab_ci_python_dir }}\\python.exe {{ lab_ci_get_pip_path }} --disable-pip-version-check --no-warn-script-location"
+      args:
+        creates: "{{ lab_ci_python_dir }}\\Scripts\\pip.exe"
+
+    - name: Install pinned Python CI dependencies
+      ansible.windows.win_command:
+        cmd: "{{ lab_ci_python_dir }}\\python.exe -m pip install --disable-pip-version-check --no-cache-dir {{ lab_ci_python_packages | join(' ') }}"
+
+    - name: Add portable Python scripts to the machine PATH
+      ansible.windows.win_path:
+        elements:
+          - "{{ lab_ci_python_scripts_dir }}"
+        scope: machine
+        state: present
+
+    - name: Download pinned portable Go
+      ansible.windows.win_get_url:
+        url: "{{ lab_ci_go_url }}"
+        dest: "{{ lab_ci_go_zip }}"
+        force: false
+
+    - name: Extract pinned portable Go
+      community.windows.win_unzip:
+        src: "{{ lab_ci_go_zip }}"
+        dest: "{{ lab_ci_go_dir }}"
+        creates: "{{ lab_ci_go_bin }}\\go.exe"
+        delete_archive: true
+
+    - name: Add portable Go to the machine PATH
+      ansible.windows.win_path:
+        elements:
+          - "{{ lab_ci_go_bin }}"
+        scope: machine
+        state: present
+
+    - name: Create Windows CI tools directory
+      ansible.windows.win_file:
+        path: "{{ lab_ci_tools_dir }}"
+        state: directory
+
+    - name: Download pinned jq
+      ansible.windows.win_get_url:
+        url: "{{ lab_ci_jq_url }}"
+        dest: "{{ lab_ci_jq_path }}"
+        force: false
+
+    - name: Download pinned hadolint
+      ansible.windows.win_get_url:
+        url: "{{ lab_ci_hadolint_url }}"
+        dest: "{{ lab_ci_hadolint_path }}"
+        force: false
+
+    - name: Download pinned actionlint
+      ansible.windows.win_get_url:
+        url: "{{ lab_ci_actionlint_url }}"
+        dest: "{{ lab_ci_actionlint_zip }}"
+        force: false
+
+    - name: Extract pinned actionlint
+      community.windows.win_unzip:
+        src: "{{ lab_ci_actionlint_zip }}"
+        dest: "{{ lab_ci_tools_dir }}"
+        creates: "{{ lab_ci_actionlint_path }}"
+        delete_archive: true
+
+    - name: Normalize pinned actionlint executable location
       ansible.windows.win_shell: |
-        $env:Path = [Environment]::GetEnvironmentVariable('Path', 'Machine') + ';' + [Environment]::GetEnvironmentVariable('Path', 'User')
-        [Environment]::SetEnvironmentVariable('Path', $env:Path, 'Process')
+        $binary = Get-ChildItem '{{ lab_ci_tools_dir }}' -Recurse -File -Filter 'actionlint.exe' |
+          Select-Object -First 1
+        if ($null -eq $binary) {
+          throw 'The pinned actionlint archive did not contain actionlint.exe.'
+        }
+        if ($binary.FullName -ne '{{ lab_ci_actionlint_path }}') {
+          Copy-Item $binary.FullName '{{ lab_ci_actionlint_path }}' -Force
+        }
       args:
         executable: powershell.exe
 
-    - name: Verify required Windows CI tools
-      ansible.windows.win_command: "{{ item.command }}"
-      loop:
-        - {name: just, command: "{{ lab_ci_just_dir }}\\just.exe --version"}
-        - {name: git, command: "git --version"}
-        - {name: git-lfs, command: "git-lfs --version"}
-        - {name: python, command: "python --version"}
-        - {name: cmake, command: "cmake --version"}
-        - {name: ninja, command: "ninja --version"}
-        - {name: arm-none-eabi-gcc, command: "arm-none-eabi-gcc --version"}
+    - name: Download pinned shfmt
+      ansible.windows.win_get_url:
+        url: "{{ lab_ci_shfmt_url }}"
+        dest: "{{ lab_ci_shfmt_path }}"
+        force: false
+
+    - name: Download pinned ShellCheck
+      ansible.windows.win_get_url:
+        url: "{{ lab_ci_shellcheck_url }}"
+        dest: "{{ lab_ci_shellcheck_zip }}"
+        force: false
+
+    - name: Extract pinned ShellCheck
+      community.windows.win_unzip:
+        src: "{{ lab_ci_shellcheck_zip }}"
+        dest: "{{ lab_ci_tools_dir }}"
+        creates: "{{ lab_ci_shellcheck_path }}"
+        delete_archive: true
+
+    - name: Normalize pinned ShellCheck executable location
+      ansible.windows.win_shell: |
+        $binary = Get-ChildItem '{{ lab_ci_tools_dir }}' -Recurse -File -Filter 'shellcheck.exe' |
+          Select-Object -First 1
+        if ($null -eq $binary) {
+          throw 'The pinned ShellCheck archive did not contain shellcheck.exe.'
+        }
+        if ($binary.FullName -ne '{{ lab_ci_shellcheck_path }}') {
+          Copy-Item $binary.FullName '{{ lab_ci_shellcheck_path }}' -Force
+        }
+      args:
+        executable: powershell.exe
+
+    - name: Download pinned cppcheck
+      ansible.windows.win_get_url:
+        url: "{{ lab_ci_cppcheck_url }}"
+        dest: "{{ lab_ci_cppcheck_msi }}"
+        force: false
+
+    - name: Install pinned cppcheck
+      ansible.windows.win_package:
+        path: "{{ lab_ci_cppcheck_msi }}"
+        state: present
+        arguments: /qn /norestart
+
+    - name: Add pinned Windows CI tools to the machine PATH
+      ansible.windows.win_path:
+        elements:
+          - "{{ lab_ci_tools_dir }}"
+          - "{{ lab_ci_cppcheck_dir }}"
+        scope: machine
+        state: present
+
+    - name: Provide the python3 command expected by repository CI scripts
+      ansible.windows.win_copy:
+        src: "{{ lab_ci_python_dir }}\\python.exe"
+        dest: "{{ lab_ci_python_dir }}\\python3.exe"
+        remote_src: true
+
+    - name: Provide the POSIX python3 path required by repository CI policy
+      ansible.windows.win_copy:
+        dest: "{{ lab_ci_mingit_dir }}\\usr\\bin\\python3"
+        content: |
+          #!/usr/bin/env bash
+          exec /c/Python312/python.exe "$@"
+
+    - name: Verify required Windows CI tools with refreshed PATH
+      ansible.windows.win_shell: |
+        Import-Module "$env:ChocolateyInstall\helpers\chocolateyProfile.psm1"
+        Update-SessionEnvironment
+        $pathEntries = @('C:\ProgramData\chocolatey\bin', '{{ lab_ci_mingit_dir }}\\cmd', '{{ lab_ci_mingit_dir }}\\bin', '{{ lab_ci_mingit_dir }}\\mingw64\\bin', '{{ lab_ci_mingit_dir }}\\usr\\bin', '{{ lab_ci_git_lfs_dir }}', '{{ lab_ci_cmake_bin }}', '{{ lab_ci_ninja_dir }}', '{{ lab_ci_arm_bin }}', '{{ lab_ci_python_dir }}', '{{ lab_ci_python_scripts_dir }}', '{{ lab_ci_go_bin }}', '{{ lab_ci_tools_dir }}', '{{ lab_ci_cppcheck_dir }}')
+        $executableNames = @('git.exe', 'git-lfs.exe', 'cmake.exe', 'ninja.exe', 'python.exe', 'arm-none-eabi-gcc.exe', 'go.exe', 'jq.exe', 'hadolint.exe', 'cppcheck.exe', 'actionlint.exe', 'shfmt.exe', 'shellcheck.exe')
+        foreach ($searchRoot in @($env:ChocolateyInstall + '\lib', 'C:\Program Files', 'C:\Program Files (x86)')) {
+          if (Test-Path $searchRoot) {
+            $pathEntries += Get-ChildItem $searchRoot -Recurse -File -Include $executableNames -ErrorAction SilentlyContinue |
+              Select-Object -ExpandProperty DirectoryName -Unique
+          }
+        }
+        $pathEntries += Get-ChildItem 'C:\.' -Directory -Filter 'Python*' -ErrorAction SilentlyContinue |
+          Select-Object -ExpandProperty FullName
+        $pathEntries += Get-ChildItem 'C:\Program Files' -Directory -Filter 'Python*' -ErrorAction SilentlyContinue |
+          Select-Object -ExpandProperty FullName
+        $pathEntries += Get-ChildItem 'C:\Users' -Directory -ErrorAction SilentlyContinue |
+          ForEach-Object { Join-Path $_.FullName 'AppData\Local\Programs\Python' }
+        $pathEntries += Get-ChildItem '{{ lab_ci_arm_dir }}' -Recurse -File -Filter 'arm-none-eabi-gcc.exe' -ErrorAction SilentlyContinue |
+          Select-Object -ExpandProperty DirectoryName -Unique
+        $env:Path = (($pathEntries + [Environment]::GetEnvironmentVariable('Path', 'Machine') + [Environment]::GetEnvironmentVariable('Path', 'User')) -join ';')
+        $tools = @(
+          @{ Name = 'just'; Command = '{{ lab_ci_just_dir }}\\just.exe'; Arguments = @('--version') },
+          @{ Name = 'git'; Command = '{{ lab_ci_mingit_dir }}\\cmd\\git.exe'; Arguments = @('--version') },
+          @{ Name = 'git-lfs'; Command = '{{ lab_ci_git_lfs_dir }}\\git-lfs.exe'; Arguments = @('--version') },
+          @{ Name = 'python'; Command = 'python'; Arguments = @('--version') },
+          @{ Name = 'cmake'; Command = 'cmake'; Arguments = @('--version') },
+          @{ Name = 'ninja'; Command = 'ninja'; Arguments = @('--version') },
+          @{ Name = 'arm-none-eabi-gcc'; Command = 'arm-none-eabi-gcc'; Arguments = @('--version') },
+          @{ Name = 'go'; Command = 'go'; Arguments = @('version') },
+          @{ Name = 'jq'; Command = '{{ lab_ci_jq_path }}'; Arguments = @('--version') },
+          @{ Name = 'hadolint'; Command = '{{ lab_ci_hadolint_path }}'; Arguments = @('--version') },
+          @{ Name = 'cppcheck'; Command = '{{ lab_ci_cppcheck_dir }}\\cppcheck.exe'; Arguments = @('--version') },
+          @{ Name = 'actionlint'; Command = '{{ lab_ci_actionlint_path }}'; Arguments = @('-version') },
+          @{ Name = 'shfmt'; Command = '{{ lab_ci_shfmt_path }}'; Arguments = @('--version') },
+          @{ Name = 'shellcheck'; Command = '{{ lab_ci_shellcheck_path }}'; Arguments = @('--version') },
+          @{ Name = 'ruff'; Command = 'ruff'; Arguments = @('--version') },
+          @{ Name = 'cmake-lint'; Command = 'cmake-lint'; Arguments = @('--version') },
+          @{ Name = 'yamllint'; Command = 'yamllint'; Arguments = @('--version') }
+        )
+        foreach ($tool in $tools) {
+          $resolved = Get-Command $tool.Command -ErrorAction Stop
+          & $resolved.Source @($tool.Arguments)
+          if ($LASTEXITCODE -ne 0) {
+            throw "$($tool.Name) returned exit code $LASTEXITCODE"
+          }
+        }
+        & '{{ lab_ci_python_dir }}\\python.exe' -c "import PIL, clang.cindex, dotenv, kasa, serial, usb.core, yaml"
+        if ($LASTEXITCODE -ne 0) {
+          throw 'The pinned Python CI dependency set is incomplete.'
+        }
       changed_when: false
 
     - name: Ensure the disposable checkout directory is clean
@@ -106,6 +715,11 @@
         src: "{{ lab_ci_source_archive }}"
         dest: "C:\\source_archive.tmp"
 
+    - name: Stage real Git history archive to Windows guest
+      ansible.windows.win_copy:
+        src: "{{ lab_ci_history_archive }}"
+        dest: "C:\\history_archive.tmp"
+
     - name: Extract source tarball
       ansible.windows.win_command:
         cmd: "tar.exe -xf C:\\source_archive.tmp -C {{ lab_ci_repo_dir }}"
@@ -118,9 +732,121 @@
         delete_archive: false
       when: lab_ci_source_archive.endswith('.zip')
 
-    - name: Remove staged archive
+    - name: Initialize the disposable Git checkout
+      ansible.windows.win_shell: |
+        $git = '{{ lab_ci_mingit_dir }}\\cmd\\git.exe'
+        & $git init --initial-branch=main
+        & $git config user.name 'ra8-lab-ci'
+        & $git config user.email 'ci@localhost'
+        & $git config maintenance.auto false
+        & $git config gc.auto 0
+        # The source archive has .gitattributes files but no LFS object store.
+        # Disable LFS filters for this disposable snapshot while staging it.
+        & $git -c filter.lfs.process= -c filter.lfs.required=false -c filter.lfs.clean= -c filter.lfs.smudge= add -A
+        & $git commit --allow-empty --no-verify -m 'Disposable CI snapshot'
+      args:
+        chdir: "{{ lab_ci_repo_dir }}"
+        executable: powershell.exe
+
+    - name: Read the Proxmox controller UTC epoch
+      ansible.builtin.command:
+        argv: [date, -u, +%s]
+      delegate_to: localhost
+      changed_when: false
+      register: lab_ci_controller_utc_epoch
+
+    - name: Synchronize Windows guest clock from Proxmox UTC
+      ansible.windows.win_shell: |
+        $epoch = [long]'{{ lab_ci_controller_utc_epoch.stdout | trim }}'
+        $utc = [DateTimeOffset]::FromUnixTimeSeconds($epoch).UtcDateTime
+        Set-Date -Date $utc | Out-Null
+        Write-Output ('Windows UTC after synchronization: ' + [DateTimeOffset]::UtcNow.ToString('o'))
+      args:
+        executable: powershell.exe
+      changed_when: true
+
+    - name: Install the Linux container runtime and stage the CI snapshot in WSL2
+      ansible.windows.win_shell: |
+        $script = @'
+        set -euo pipefail
+        expected_epoch='{{ lab_ci_controller_utc_epoch.stdout | trim }}'
+        case "$expected_epoch" in
+          ''|*[!0-9]*) echo "Invalid Proxmox UTC epoch: $expected_epoch" >&2; exit 1 ;;
+        esac
+        date -u -s "@$expected_epoch"
+        date -u
+        export DEBIAN_FRONTEND=noninteractive
+        apt-get update
+        mkdir -p /etc/containers
+        printf '%s' 'W2VuZ2luZV0KY2dyb3VwX21hbmFnZXIgPSAiY2dyb3VwZnMiCmV2ZW50c19sb2dnZXIgPSAiZmlsZSIK' \
+          | base64 --decode > /etc/containers/containers.conf
+        printf '%s' 'W3N0b3JhZ2VdCmRyaXZlciA9ICJvdmVybGF5IgpydW5yb290ID0gIi9ydW4vY29udGFpbmVycy9zdG9yYWdlIgpncmFwaHJvb3QgPSAiL3Zhci9saWIvY29udGFpbmVycy9zdG9yYWdlIgpbc3RvcmFnZS5vcHRpb25zLm92ZXJsYXldCm1vdW50X3Byb2dyYW0gPSAiL3Vzci9iaW4vZnVzZS1vdmVybGF5ZnMiCg==' \
+          | base64 --decode > /etc/containers/storage.conf
+        apt-get install -y --no-install-recommends ca-certificates curl fuse-overlayfs git git-lfs podman
+        date -u -s "@$expected_epoch"
+        date -u
+        repo='{{ lab_ci_wsl_repo_dir }}'
+        mkdir -p "$repo"
+        # DrvFS may expose Windows ACL-derived 0664 modes while tar copies the
+        # source into WSL's ext4 filesystem. The devcontainer context policy
+        # intentionally requires canonical modes, so normalize those inputs
+        # explicitly instead of relying on the WSL mount's umask semantics.
+        umask 022
+        tar --no-same-owner -xf /mnt/c/source_archive.tmp -C "$repo"
+        chmod 0644 "$repo/.dockerignore" "$repo/pyproject.toml" "$repo/uv.lock" \
+          "$repo/scripts/dev/bootstrap_uv_exec.py" "$repo/scripts/dev/uv_release.json"
+        chmod 0755 "$repo/scripts/dev/bootstrap_uv.py" \
+          "$repo/scripts/dev/managed_python_env.py" \
+          "$repo/scripts/dev/managed_python_env_checks.py"
+        find "$repo/.devcontainer" -type f -exec chmod 0644 {} +
+        history='{{ lab_ci_wsl_history_dir }}'
+        mkdir -p "$history"
+        tar --no-same-owner -xf /mnt/c/history_archive.tmp -C "$history"
+        history_depth=$(git -C "$history" rev-list --count HEAD)
+        test "$history_depth" -ge 2
+        tmp='{{ lab_ci_wsl_tmp_dir }}'
+        install -d -m 1777 "$tmp"
+        cat > /usr/local/bin/ra8-lab-ci <<'EOF'
+        #!/bin/bash -p
+        set -euo pipefail
+        export RA8_CI_HISTORY_REPO='{{ lab_ci_wsl_history_dir }}'
+        export RA8_CI_COMMIT_RANGE='HEAD~1..HEAD'
+        export RA8_CI_CONTAINER_ARGS='-v {{ lab_ci_wsl_history_dir }}:/ra8-ci-history:ro -v {{ lab_ci_wsl_tmp_dir }}:/ra8-ci-tmp:rw -e TMPDIR=/ra8-ci-tmp -e RA8_CI_HISTORY_REPO=/ra8-ci-history'
+        cd '{{ lab_ci_wsl_repo_dir }}'
+        exec /bin/bash -p scripts/ci.sh
+        EOF
+        chmod 0755 /usr/local/bin/ra8-lab-ci
+        git -C "$repo" init --quiet --initial-branch=main
+        git -C "$repo" rev-parse --show-toplevel
+        git -C "$repo" config user.name 'ra8-lab-ci'
+        git -C "$repo" config user.email 'ci@localhost'
+        git -C "$repo" config maintenance.auto false
+        git -C "$repo" config gc.auto 0
+        git -C "$repo" -c filter.lfs.process= -c filter.lfs.required=false \
+          -c filter.lfs.clean= -c filter.lfs.smudge= add -A -f
+        git -C "$repo" commit --quiet --allow-empty --no-verify -m 'Disposable CI snapshot'
+        podman info >/dev/null
+        '@
+        $encoded = [Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes($script))
+        $command = ('printf ''%s'' ''{0}'' | base64 --decode | /bin/bash -p' -f $encoded)
+        $wsl = Join-Path $env:SystemRoot 'System32\wsl.exe'
+        & $wsl --distribution '{{ lab_ci_wsl_distribution }}' --user root --exec /bin/bash -lc $command
+        if ($LASTEXITCODE -ne 0) {
+          throw ('WSL2 CI provisioning failed with exit code ' + $LASTEXITCODE)
+        }
+      args:
+        executable: powershell.exe
+      register: lab_ci_wsl_provision
+      changed_when: true
+
+    - name: Remove staged Windows copy of the source archive
       ansible.windows.win_file:
         path: "C:\\source_archive.tmp"
+        state: absent
+
+    - name: Remove staged Windows copy of the history archive
+      ansible.windows.win_file:
+        path: "C:\\history_archive.tmp"
         state: absent
 
     - name: Query Windows system info
@@ -133,32 +859,270 @@
       ansible.builtin.debug:
         var: win_os_version.stdout_lines
 
-    - name: Run Windows CI validation asynchronously
-      ansible.windows.win_command:
-        cmd: just ci
+    - name: Prepare the Windows CI log directory
+      ansible.windows.win_file:
+        path: "{{ lab_ci_log_dir }}"
+        state: directory
+
+    - name: Install the Windows CI wrapper script
+      ansible.windows.win_copy:
+        dest: "{{ lab_ci_wrapper_path }}"
+        content: |
+          $ErrorActionPreference = 'Stop'
+          $stdoutStream = $null
+          $stderrStream = $null
+          $stdoutWriter = $null
+          $stderrWriter = $null
+          $stdoutEventSource = 'RA8LabCI.Stdout'
+          $stderrEventSource = 'RA8LabCI.Stderr'
+          Set-Content -Path '{{ lab_ci_pid_path }}' -Value $PID -Encoding ascii
+          try {
+            $psi = [System.Diagnostics.ProcessStartInfo]::new()
+            $psi.FileName = Join-Path $env:SystemRoot 'System32\wsl.exe'
+            $psi.WorkingDirectory = '{{ lab_ci_repo_dir }}'
+            $psi.UseShellExecute = $false
+            $psi.CreateNoWindow = $true
+            $psi.RedirectStandardOutput = $true
+            $psi.RedirectStandardError = $true
+            $psi.Arguments = '--distribution {{ lab_ci_wsl_distribution }} --user root --exec /usr/local/bin/ra8-lab-ci'
+            $process = [System.Diagnostics.Process]::new()
+            $process.StartInfo = $psi
+            $stdoutStream = [System.IO.FileStream]::new(
+              '{{ lab_ci_log_path }}',
+              [System.IO.FileMode]::Create,
+              [System.IO.FileAccess]::Write,
+              [System.IO.FileShare]::ReadWrite
+            )
+            $stderrStream = [System.IO.FileStream]::new(
+              '{{ lab_ci_error_log_path }}',
+              [System.IO.FileMode]::Create,
+              [System.IO.FileAccess]::Write,
+              [System.IO.FileShare]::ReadWrite
+            )
+            $utf8 = [System.Text.UTF8Encoding]::new($false)
+            $stdoutWriter = [System.IO.StreamWriter]::new($stdoutStream, $utf8)
+            $stderrWriter = [System.IO.StreamWriter]::new($stderrStream, $utf8)
+            $stdoutWriter.AutoFlush = $true
+            $stderrWriter.AutoFlush = $true
+            Register-ObjectEvent `
+              -InputObject $process `
+              -EventName OutputDataReceived `
+              -SourceIdentifier $stdoutEventSource | Out-Null
+            Register-ObjectEvent `
+              -InputObject $process `
+              -EventName ErrorDataReceived `
+              -SourceIdentifier $stderrEventSource | Out-Null
+            [void]$process.Start()
+            $process.BeginOutputReadLine()
+            $process.BeginErrorReadLine()
+            $stdoutDone = $false
+            $stderrDone = $false
+            while (-not ($stdoutDone -and $stderrDone)) {
+              $eventRecord = Wait-Event -Timeout 1
+              if ($null -eq $eventRecord) {
+                continue
+              }
+              $line = $eventRecord.SourceArgs[1].Data
+              if ($eventRecord.SourceIdentifier -eq $stdoutEventSource) {
+                if ($null -eq $line) {
+                  $stdoutDone = $true
+                } else {
+                  $stdoutWriter.WriteLine($line)
+                }
+              } elseif ($eventRecord.SourceIdentifier -eq $stderrEventSource) {
+                if ($null -eq $line) {
+                  $stderrDone = $true
+                } else {
+                  $stderrWriter.WriteLine($line)
+                }
+              }
+              Remove-Event -EventIdentifier $eventRecord.EventIdentifier
+            }
+            $process.WaitForExit()
+            Set-Content -Path '{{ lab_ci_exit_path }}' -Value ([int]$process.ExitCode) -Encoding ascii
+          } catch {
+            if ($stdoutWriter) {
+              $stdoutWriter.Dispose()
+              $stdoutWriter = $null
+              $stdoutStream = $null
+            } elseif ($stdoutStream) {
+              $stdoutStream.Dispose()
+              $stdoutStream = $null
+            }
+            if ($stderrWriter) {
+              $stderrWriter.Dispose()
+              $stderrWriter = $null
+              $stderrStream = $null
+            } elseif ($stderrStream) {
+              $stderrStream.Dispose()
+              $stderrStream = $null
+            }
+            Set-Content -Path '{{ lab_ci_error_log_path }}' -Value ($_ | Out-String) -Encoding utf8
+            Set-Content -Path '{{ lab_ci_exit_path }}' -Value 2 -Encoding ascii
+            exit 2
+          } finally {
+            Unregister-Event -SourceIdentifier $stdoutEventSource -ErrorAction SilentlyContinue
+            Unregister-Event -SourceIdentifier $stderrEventSource -ErrorAction SilentlyContinue
+            if ($stdoutWriter) {
+              $stdoutWriter.Dispose()
+            } elseif ($stdoutStream) {
+              $stdoutStream.Dispose()
+            }
+            if ($stderrWriter) {
+              $stderrWriter.Dispose()
+            } elseif ($stderrStream) {
+              $stderrStream.Dispose()
+            }
+          }
+
+    - name: Remove stale Windows CI result files
+      ansible.windows.win_file:
+        path: "{{ item }}"
+        state: absent
+      loop:
+        - "{{ lab_ci_log_path }}"
+        - "{{ lab_ci_error_log_path }}"
+        - "{{ lab_ci_exit_path }}"
+        - "{{ lab_ci_pid_path }}"
+        - "{{ lab_ci_stdout_offset_path }}"
+        - "{{ lab_ci_stderr_offset_path }}"
+
+    - name: Start Windows CI validation with guest-side logs
+      ansible.windows.win_shell: |
+        $taskName = 'RA8LabCI'
+        $taskArguments = '-NoProfile -NonInteractive -ExecutionPolicy Bypass -File "{{ lab_ci_wrapper_path }}"'
+        $taskAction = New-ScheduledTaskAction -Execute 'powershell.exe' -Argument $taskArguments
+        # WSL distributions are registered per Windows user, so the task must
+        # run under the same Administrator profile that Ansible provisioned.
+        $taskPrincipal = New-ScheduledTaskPrincipal -UserId 'Administrator' -LogonType S4U -RunLevel Highest
+        $taskSettings = New-ScheduledTaskSettingsSet `
+          -ExecutionTimeLimit ([TimeSpan]::FromHours(6)) `
+          -StartWhenAvailable
+        Register-ScheduledTask `
+          -TaskName $taskName `
+          -Action $taskAction `
+          -Principal $taskPrincipal `
+          -Settings $taskSettings `
+          -Force | Out-Null
+        Start-ScheduledTask -TaskName $taskName
+        $deadline = (Get-Date).AddSeconds(30)
+        while (-not (Test-Path '{{ lab_ci_pid_path }}') -and (Get-Date) -lt $deadline) {
+          Start-Sleep -Seconds 1
+        }
+        if (-not (Test-Path '{{ lab_ci_pid_path }}')) {
+          throw 'Scheduled Windows CI wrapper did not write its PID file.'
+        }
+        Write-Output "Windows CI scheduled task started with PID $(Get-Content '{{ lab_ci_pid_path }}')"
       args:
-        chdir: "{{ lab_ci_repo_dir }}"
-      async: 7200
-      poll: 10
-      register: win_ci_status
+        executable: powershell.exe
+      register: win_ci_start
+      changed_when: true
+
+    - name: Poll Windows CI and expose the guest log tail
+      ansible.windows.win_shell: |
+        function Write-NewLogLines($path, $offsetPath, $label) {
+          if (-not (Test-Path $path)) {
+            return
+          }
+          $offset = 0L
+          if (Test-Path $offsetPath) {
+            $offset = [long](Get-Content $offsetPath -Raw)
+          }
+          $stream = [System.IO.File]::Open(
+            $path,
+            [System.IO.FileMode]::Open,
+            [System.IO.FileAccess]::Read,
+            [System.IO.FileShare]::ReadWrite
+          )
+          try {
+            if ($offset -gt $stream.Length) {
+              $offset = 0L
+            }
+            [void]$stream.Seek($offset, [System.IO.SeekOrigin]::Begin)
+            $bytes = [byte[]]::new([int]($stream.Length - $offset))
+            $read = $stream.Read($bytes, 0, $bytes.Length)
+          } finally {
+            $stream.Dispose()
+          }
+          if ($read -eq 0) {
+            return
+          }
+          $encoding = [System.Text.UTF8Encoding]::new($false)
+          $text = $encoding.GetString($bytes, 0, $read)
+          $lastNewline = $text.LastIndexOf([char]10)
+          if ($lastNewline -lt 0) {
+            return
+          }
+          $complete = $text.Substring(0, $lastNewline + 1)
+          Write-Output "--- new $label ---"
+          Write-Output ([regex]::Replace($complete, '[\r\n]+$', ''))
+          $nextOffset = $offset + $encoding.GetByteCount($complete)
+          Set-Content -Path $offsetPath -Value $nextOffset -Encoding ascii
+        }
+        Write-NewLogLines '{{ lab_ci_log_path }}' '{{ lab_ci_stdout_offset_path }}' stdout
+        Write-NewLogLines '{{ lab_ci_error_log_path }}' '{{ lab_ci_stderr_offset_path }}' stderr
+        $ciPid = [int](Get-Content '{{ lab_ci_pid_path }}')
+        if (-not (Test-Path '{{ lab_ci_exit_path }}')) {
+          if (Get-Process -Id $ciPid -ErrorAction SilentlyContinue) {
+            exit 1
+          }
+          Write-Error 'Windows CI wrapper exited without writing its exit marker.'
+          exit 2
+        }
+        Write-Output "CI_EXIT_CODE=$(Get-Content '{{ lab_ci_exit_path }}')"
+        exit 0
+      args:
+        executable: powershell.exe
+      register: win_ci_poll
+      changed_when: false
       failed_when: false
+      until: win_ci_poll.rc == 0
+      # Keep Ansible attached longer than any expected full native Windows run;
+      # the scheduled task uses the same six-hour bound above.
+      retries: 720
+      delay: 30
+
+    - name: Read the canonical Windows CI exit code
+      ansible.windows.win_shell:
+        cmd: "Get-Content '{{ lab_ci_exit_path }}'"
+        executable: powershell.exe
+      register: win_ci_exit
+      changed_when: false
+      failed_when: false
+
+    - name: Normalize Windows CI result
+      ansible.builtin.set_fact:
+        win_ci_result:
+          rc: "{{ win_ci_exit.stdout | trim | int if win_ci_exit.rc | default(1) | int == 0 else 1 }}"
+          stdout_lines: "{{ win_ci_poll.stdout_lines | default([]) }}"
+          stderr_lines: "{{ win_ci_poll.stderr_lines | default([]) }}"
+
+    - name: Display Windows CI result metadata
+      ansible.builtin.debug:
+        var: win_ci_result
+
+    - name: Display Windows CI start metadata
+      ansible.builtin.debug:
+        var: win_ci_start.stdout_lines
 
     - name: Display CI execution message on failure
       ansible.builtin.debug:
-        var: win_ci_status.msg
-      when: win_ci_status.rc != 0 and win_ci_status.msg is defined
+        var: win_ci_result.msg
+      when: win_ci_result.rc | default(1) | int != 0 and win_ci_result.msg is defined
 
     - name: Display CI stdout on failure
       ansible.builtin.debug:
-        var: win_ci_status.stdout_lines
-      when: win_ci_status.rc != 0
+        var: win_ci_result.stdout_lines
+      when: win_ci_result.rc | default(1) | int != 0 and win_ci_result.stdout_lines is defined
 
     - name: Display CI stderr on failure
       ansible.builtin.debug:
-        var: win_ci_status.stderr_lines
-      when: win_ci_status.rc != 0
+        var: win_ci_result.stderr_lines
+      when: win_ci_result.rc | default(1) | int != 0 and win_ci_result.stderr_lines is defined
 
     - name: Return the canonical CI result to the lifecycle driver
       ansible.builtin.assert:
-        that: [win_ci_status.rc == 0]
-        fail_msg: "The disposable Windows guest CI command failed with exit code {{ win_ci_status.rc }}."
+        that:
+          - win_ci_result.rc is defined
+          - win_ci_result.rc | int == 0
+        fail_msg: "The disposable Windows guest CI command failed with result {{ win_ci_result }}."
