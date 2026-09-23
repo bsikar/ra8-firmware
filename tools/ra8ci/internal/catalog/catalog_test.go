@@ -23,8 +23,8 @@ func TestLoadReviewedTasks(t *testing.T) {
 		t.Fatal(err)
 	}
 	names := c.Names()
-	if len(names) != 71 {
-		t.Fatalf("catalog has %d tasks, want 71", len(names))
+	if len(names) != 72 {
+		t.Fatalf("catalog has %d tasks, want 72", len(names))
 	}
 	deadlines := map[string]int{
 		"format": 900, "format-check": 900, "lint-go": 1200, "test-go": 1800,

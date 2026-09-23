@@ -68,6 +68,10 @@ ascii:
 version:
     cd tools/ra8ci && GOWORK=off go run . since
 
+# Verify every first-party source file ends in a newline
+final_newline:
+    cd tools/ra8ci && GOWORK=off go run . final-newline
+
 # Run host unit tests
 test ubsan="0":
     #!/usr/bin/env bash
