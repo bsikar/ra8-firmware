@@ -33,6 +33,14 @@ The playbook requires these out-of-band inputs:
   before and after transfer. The listener must bind the approved management
   address; host/firewall policy must limit 8443 (or the chosen port) to
   authorized mTLS clients.
+- `ra8ci_board_agent_keys_src` is a reviewed JSON keyring with schema version
+  1 and an `agents` array of `{ "key_id", "public_key_base64" }` entries. Each
+  public key is a 32-byte Ed25519 key from a trusted board agent; provision it
+  from the board-agent trust process, never from runner jobs. The server
+  installs it root-owned and read-only to its service identity, and refuses to
+  start if the allowlist is absent, writable by group/others, malformed, or
+  contains duplicate/invalid keys. Rotation should overlap old and new public
+  keys until outstanding board challenges have expired.
 - `ra8ci_terraform_state_key_b64` is the strict Base64 encoding of a dedicated
   32-byte AES-256 key. Source it from the control-plane's protected secret
   manager, not from an inventory or command-line extra-vars. The server uses
