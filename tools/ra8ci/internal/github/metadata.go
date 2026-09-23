@@ -41,7 +41,7 @@ type JobMetadata struct {
 }
 
 // MetadataConfig grants read-only Actions access to one repository. APIBaseURL
-// is https://api.github.com for GitHub.com or the reviewed /api/v3 root for GHES.
+// is restricted to the public https://api.github.com origin.
 type MetadataConfig struct {
 	APIBaseURL     string
 	AppClientID    string
@@ -49,7 +49,8 @@ type MetadataConfig struct {
 	PrivateKeyFile string
 	Owner          string
 	Repository     string
-	HTTPClient     *http.Client
+	// httpClient is an internal deterministic-test seam; production callers use direct transport.
+	httpClient *http.Client
 }
 
 // MetadataResolver fetches trusted workflow-run metadata with a repository-
@@ -104,11 +105,13 @@ func NewMetadataResolver(config MetadataConfig) (*MetadataResolver, error) {
 		config.APIBaseURL = "https://api.github.com"
 	}
 	apiURL, err := url.Parse(config.APIBaseURL)
-	if err != nil || apiURL.Scheme != "https" || apiURL.Host == "" || apiURL.User != nil ||
-		apiURL.RawQuery != "" || apiURL.Fragment != "" || strings.TrimSpace(config.APIBaseURL) != config.APIBaseURL {
-		return nil, errors.New("GitHub metadata API base URL must be an absolute HTTPS URL")
+	if err != nil || apiURL == nil || !strings.EqualFold(apiURL.Scheme, "https") ||
+		!strings.EqualFold(apiURL.Hostname(), "api.github.com") ||
+		(apiURL.Port() != "" && apiURL.Port() != "443") || apiURL.User != nil ||
+		apiURL.Path != "" || apiURL.RawPath != "" || apiURL.RawQuery != "" || apiURL.ForceQuery ||
+		apiURL.Fragment != "" || strings.TrimSpace(config.APIBaseURL) != config.APIBaseURL {
+		return nil, errors.New("GitHub metadata API base URL must be exactly the public api.github.com HTTPS origin")
 	}
-	apiURL.Path = strings.TrimRight(apiURL.Path, "/")
 	if config.AppClientID == "" || len(config.AppClientID) > 256 || config.InstallationID <= 0 ||
 		config.PrivateKeyFile == "" || !ownerName.MatchString(config.Owner) || !repositoryPart.MatchString(config.Repository) {
 		return nil, errors.New("invalid GitHub metadata resolver configuration")
@@ -142,11 +145,22 @@ func NewMetadataResolver(config MetadataConfig) (*MetadataResolver, error) {
 	if err != nil {
 		return nil, errors.New("GitHub App private key must contain an RSA private key")
 	}
-	client := config.HTTPClient
+	client := config.httpClient
 	if client == nil {
-		client = &http.Client{Timeout: 10 * time.Second}
+		transport := http.DefaultTransport.(*http.Transport).Clone()
+		transport.Proxy = nil
+		client = &http.Client{Transport: transport, Timeout: 10 * time.Second}
 	} else {
 		copyClient := *client
+		if copyClient.Transport == nil {
+			transport := http.DefaultTransport.(*http.Transport).Clone()
+			transport.Proxy = nil
+			copyClient.Transport = transport
+		} else if transport, ok := copyClient.Transport.(*http.Transport); ok {
+			transport = transport.Clone()
+			transport.Proxy = nil
+			copyClient.Transport = transport
+		}
 		client = &copyClient
 	}
 	client.CheckRedirect = func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }

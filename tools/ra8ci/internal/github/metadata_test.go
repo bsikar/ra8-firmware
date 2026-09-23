@@ -9,6 +9,7 @@ import (
 	"encoding/pem"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
@@ -17,6 +18,19 @@ import (
 
 	"github.com/golang-jwt/jwt/v4"
 )
+
+type metadataTestTransport struct {
+	destination *url.URL
+	transport   http.RoundTripper
+}
+
+func (t metadataTestTransport) RoundTrip(request *http.Request) (*http.Response, error) {
+	rewritten := request.Clone(request.Context())
+	urlCopy := *rewritten.URL
+	urlCopy.Scheme, urlCopy.Host = t.destination.Scheme, t.destination.Host
+	rewritten.URL, rewritten.Host = &urlCopy, t.destination.Host
+	return t.transport.RoundTrip(rewritten)
+}
 
 func TestMetadataResolverScopesTokenAndBindsWorkflowRun(t *testing.T) {
 	key, err := rsa.GenerateKey(rand.Reader, 2048)
@@ -35,7 +49,7 @@ func TestMetadataResolverScopesTokenAndBindsWorkflowRun(t *testing.T) {
 	runBody.Repository.FullName = "bsikar/ra8-firmware"
 	server := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
-		case "/api/v3/app/installations/42/access_tokens":
+		case "/app/installations/42/access_tokens":
 			tokenCalls++
 			var body installationTokenRequest
 			if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
@@ -53,14 +67,14 @@ func TestMetadataResolverScopesTokenAndBindsWorkflowRun(t *testing.T) {
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusCreated)
 			_ = json.NewEncoder(w).Encode(installationTokenResponse{Token: "installation-token", ExpiresAt: time.Now().Add(time.Hour)})
-		case "/api/v3/repos/bsikar/ra8-firmware/actions/runs/1234":
+		case "/repos/bsikar/ra8-firmware/actions/runs/1234":
 			runCalls++
 			if r.Method != http.MethodGet || r.Header.Get("Authorization") != "Bearer installation-token" {
 				t.Errorf("workflow request not authorized")
 			}
 			w.Header().Set("Content-Type", "application/json")
 			_ = json.NewEncoder(w).Encode(runBody)
-		case "/api/v3/repos/bsikar/ra8-firmware/actions/runs/1234/attempts/2/jobs":
+		case "/repos/bsikar/ra8-firmware/actions/runs/1234/attempts/2/jobs":
 			if r.Method != http.MethodGet || r.URL.Query().Get("per_page") != "100" || r.URL.Query().Get("page") != "1" {
 				t.Errorf("workflow attempt jobs request malformed: %s?%s", r.URL.Path, r.URL.RawQuery)
 			}
@@ -73,10 +87,27 @@ func TestMetadataResolverScopesTokenAndBindsWorkflowRun(t *testing.T) {
 		}
 	}))
 	defer server.Close()
-	r, err := NewMetadataResolver(MetadataConfig{APIBaseURL: server.URL + "/api/v3", AppClientID: "client-id", InstallationID: 42,
-		PrivateKeyFile: keyPath, Owner: "bsikar", Repository: "ra8-firmware", HTTPClient: server.Client()})
+	destination, err := url.Parse(server.URL)
 	if err != nil {
 		t.Fatal(err)
+	}
+	client := server.Client()
+	client.Transport = metadataTestTransport{destination: destination, transport: client.Transport}
+	r, err := NewMetadataResolver(MetadataConfig{APIBaseURL: "https://api.github.com", AppClientID: "client-id", InstallationID: 42,
+		PrivateKeyFile: keyPath, Owner: "bsikar", Repository: "ra8-firmware", httpClient: client})
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("HTTP_PROXY", "http://127.0.0.1:8080")
+	t.Setenv("HTTPS_PROXY", "http://127.0.0.1:8080")
+	direct, err := NewMetadataResolver(MetadataConfig{AppClientID: "client-id", InstallationID: 42,
+		PrivateKeyFile: keyPath, Owner: "bsikar", Repository: "ra8-firmware"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	transport, ok := direct.client.Transport.(*http.Transport)
+	if !ok || transport.Proxy != nil {
+		t.Fatal("default GitHub metadata transport inherited a proxy")
 	}
 	job := Job{Owner: "bsikar", Repository: "ra8-firmware", JobID: "job-guid", WorkflowRunID: 1234,
 		WorkflowRef: "bsikar/ra8-firmware/.github/workflows/ci.yml@refs/heads/dev", DisplayName: "build", EventName: "push"}
@@ -109,7 +140,9 @@ func TestMetadataResolverScopesTokenAndBindsWorkflowRun(t *testing.T) {
 }
 
 func TestMetadataResolverRejectsUnsafeURLAndNonBranchRef(t *testing.T) {
-	for _, apiURL := range []string{"http://api.github.com", "https://user:pass@api.github.com", "https://api.github.com?x=y"} {
+	for _, apiURL := range []string{"http://api.github.com", "https://user:pass@api.github.com", "https://api.github.com?x=y",
+		"https://evil.example", "https://api.github.com:8443", "https://api.github.com/api/v3",
+	} {
 		if _, err := NewMetadataResolver(MetadataConfig{APIBaseURL: apiURL}); err == nil {
 			t.Errorf("unsafe URL accepted: %s", apiURL)
 		}
