@@ -348,8 +348,7 @@ _pcc_source_form() (
   # Ban the numbered session-bookkeeping tags from comments and docs.
   # --selftest proves the detector fires and that the derived scope reaches the
   # roots a hardcoded list had dropped (#549).
-  python3 scripts/checks/check_no_wave_references.py --selftest
-  python3 scripts/checks/check_no_wave_references.py
+  (cd tools/ra8ci && GOWORK=off go run . wave-references)
   # C23 typed enums (every enum names an explicit underlying type) and
   # pragma-once headers (no classic #ifndef include guards). Both were
   # CLAUDE.md mandates with no checker until #409; the --selftest asserts the
