@@ -4,6 +4,7 @@ package store
 
 import (
 	"context"
+	"crypto/sha256"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -21,7 +22,7 @@ func TestIntegrationHILObservationHistoryUsesExactEvidenceBackedCohort(t *testin
 	defer cancel()
 	boardID := "test-hil-" + mustID(t)
 	leaseID := mustID(t)
-	profileSHA := strings.Repeat("e", 64)
+	profileSHA := fmt.Sprintf("%x", sha256.Sum256([]byte(mustID(t))))
 	leaseStart := time.Now().UTC().Add(-time.Minute)
 	leaseExpiry := time.Now().UTC().Add(5 * time.Minute)
 	if _, err := pool.Exec(ctx, `INSERT INTO boards (id,generation,state) VALUES ($1,1,'held')`, boardID); err != nil {
