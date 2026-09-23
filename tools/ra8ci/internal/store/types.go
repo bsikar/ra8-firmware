@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"errors"
 	"time"
+
+	"github.com/bsikar/ra8-firmware/tools/ra8ci/internal/hilspec"
 )
 
 var (
@@ -125,4 +127,12 @@ type FinishAttemptInput struct {
 	HitDeadline      bool   `json:"hit_deadline"`
 	EvidenceComplete bool   `json:"evidence_complete"`
 	Reason           string `json:"reason,omitempty"`
+}
+
+// HILObservationInput binds a completed observation step to a trusted HIL cohort.
+type HILObservationInput struct {
+	AttemptID string
+	ActorID   string
+	StepKey   string
+	Workload  hilspec.Workload
 }

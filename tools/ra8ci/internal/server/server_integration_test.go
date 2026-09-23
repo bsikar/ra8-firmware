@@ -66,7 +66,7 @@ func TestIntegrationMTLSRunAdmissionAndStatus(t *testing.T) {
 		REVOKE INSERT,UPDATE ON schema_migrations,board_fixture_profiles FROM ra8ci_server_runtime_test;
 		REVOKE INSERT,UPDATE,DELETE,TRUNCATE ON api_principals,api_grants,agents,
 			board_fixture_profiles,schema_migrations FROM ra8ci_server_runtime_test;
-		REVOKE UPDATE ON audit,board_events,run_events,local_runs,local_run_steps FROM ra8ci_server_runtime_test`)
+		REVOKE UPDATE ON audit,board_events,run_events,local_runs,local_run_steps,hil_observations FROM ra8ci_server_runtime_test`)
 	if err != nil {
 		t.Fatal(err)
 	}
