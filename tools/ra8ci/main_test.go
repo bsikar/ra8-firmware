@@ -75,11 +75,17 @@ func TestBoardCommandsValidateBeforeNetworkConfiguration(t *testing.T) {
 	if err := boardCommand(context.Background(), []string{"take", "ek-ra8d2", "--why", "debug", "--duration", "30ms"}); err == nil || !strings.Contains(err.Error(), "whole number of seconds") {
 		t.Fatalf("sub-second board lease accepted: %v", err)
 	}
-	if err := boardCommand(context.Background(), []string{"take", "ek-ra8d2", "--class", "robot", "--why", "debug", "--duration", "30s"}); err == nil || !strings.Contains(err.Error(), "class must be human or agent") {
+	if err := boardCommand(context.Background(), []string{"take", "ek-ra8d2", "--class", "robot", "--why", "debug", "--duration", "30s"}); err == nil || !strings.Contains(err.Error(), "class must be human, ci, or agent") {
 		t.Fatalf("unknown board priority class accepted: %v", err)
 	}
 	if err := boardCommand(context.Background(), []string{"take", "ek-ra8d2", "--class", "agent", "--why", "debug", "--duration", "1h1m"}); err == nil || !strings.Contains(err.Error(), "between 1s and 1h0m0s") {
 		t.Fatalf("agent board lease exceeded its one-hour cap: %v", err)
+	}
+	if err := boardCommand(context.Background(), []string{"take", "ek-ra8d2", "--class", "ci", "--why", "build", "--duration", "2h1m"}); err == nil || !strings.Contains(err.Error(), "between 1s and 2h0m0s") {
+		t.Fatalf("CI board lease exceeded its two-hour cap: %v", err)
+	}
+	if err := boardCommand(context.Background(), []string{"take", "ek-ra8d2", "--class", "ci", "--why", "build", "--duration", "30s"}); err == nil || !strings.Contains(err.Error(), "board client") {
+		t.Fatalf("valid CI board take skipped identity configuration: %v", err)
 	}
 	if err := boardCommand(context.Background(), []string{"take", "ek-ra8d2", "--class", "agent", "--why", "debug", "--duration", "30s"}); err == nil || !strings.Contains(err.Error(), "board client") {
 		t.Fatalf("valid agent board take skipped identity configuration: %v", err)
