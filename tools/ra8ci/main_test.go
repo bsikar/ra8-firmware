@@ -59,6 +59,12 @@ func TestCommandSelectionRejectsUnknownAndUnsafeArguments(t *testing.T) {
 	if got := run(ctx, []string{"board", "take", "ek-ra8d2"}); got != 1 {
 		t.Fatalf("unsafe board command exit=%d", got)
 	}
+	if err := boardCommand(ctx, []string{"checkpoint", "bad/board"}); err == nil || !strings.Contains(err.Error(), "usage") {
+		t.Fatalf("checkpoint accepted invalid board ID: %v", err)
+	}
+	if err := boardCommand(ctx, []string{"checkpoint", "ek-ra8d2"}); err == nil || !strings.Contains(err.Error(), "board client") {
+		t.Fatalf("valid checkpoint skipped identity configuration: %v", err)
+	}
 	if got := run(ctx, []string{"tasks"}); got != 0 {
 		t.Fatalf("list tasks exit=%d", got)
 	}
