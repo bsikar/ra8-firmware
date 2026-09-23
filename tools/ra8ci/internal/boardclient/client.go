@@ -550,6 +550,42 @@ func (c *Client) CanStartSegment(ctx context.Context, token LeaseToken, bound, r
 		LeaseID: token.LeaseID, Generation: token.Generation}, time.Now().UTC(), bound, recoveryMargin)
 }
 
+// BeginSegment atomically orders a bounded hardware operation against board
+// waiters using the server's per-board database lock and clock.
+func (c *Client) BeginSegment(ctx context.Context, token LeaseToken, key string, bound, recoveryMargin time.Duration) (store.BoardSegment, error) {
+	if key == "" || bound <= 0 || bound%time.Millisecond != 0 || recoveryMargin < 0 || recoveryMargin%time.Millisecond != 0 {
+		return store.BoardSegment{}, ErrInvalidRequest
+	}
+	snapshot, err := c.leaseStatus(ctx, token)
+	if err != nil {
+		return store.BoardSegment{}, err
+	}
+	var result store.BoardSegment
+	err = c.request(ctx, http.MethodPost, boardPath(token.BoardID, "/segments/begin"), struct {
+		ExpectedVersion   uint64 `json:"expected_version"`
+		LeaseID           string `json:"lease_id"`
+		Generation        uint64 `json:"generation"`
+		Key               string `json:"key"`
+		BoundMilliseconds int64  `json:"bound_milliseconds"`
+		RecoveryMarginMS  int64  `json:"recovery_margin_ms"`
+	}{snapshot.Version, token.LeaseID, token.Generation, key, bound.Milliseconds(), recoveryMargin.Milliseconds()}, &result)
+	return result, err
+}
+
+// FinishSegment records a bounded operation's outcome using the same exact
+// lease token used to begin it. It never grants authority to finish another
+// actor's segment.
+func (c *Client) FinishSegment(ctx context.Context, token LeaseToken, segmentID, outcome string) error {
+	if segmentID == "" || (outcome != "completed" && outcome != "failed" && outcome != "yielded") {
+		return ErrInvalidRequest
+	}
+	return c.request(ctx, http.MethodPost, boardPath(token.BoardID, "/segments/"+url.PathEscape(segmentID)+"/finish"), struct {
+		LeaseID    string `json:"lease_id"`
+		Generation uint64 `json:"generation"`
+		Outcome    string `json:"outcome"`
+	}{token.LeaseID, token.Generation, outcome}, nil)
+}
+
 // Checkpoint cooperatively begins draining only after a yield request. It
 // does not free the board; Free still requires a verified neutral receipt.
 func (c *Client) Checkpoint(ctx context.Context, token LeaseToken) (board.Snapshot, error) {
