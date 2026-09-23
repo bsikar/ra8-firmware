@@ -12,7 +12,7 @@ Every component is assigned exactly one maturity label:
   inset: 5pt,
   stroke: rgb("#d6e1e8"),
   table.header([*Label*], [*Meaning*]),
-  [`CURRENT`], [Present in the uncommitted implementation worktree and covered by at least focused tests. It is not necessarily production-ready.],
+  [`CURRENT`], [Present in the implementation branch and covered by at least focused tests. It is not necessarily production-ready.],
   [`TARGET`], [Approved behavior that still has to be implemented or wired.],
   [`BLOCKED`], [Implementation must fail closed until a named operator input, physical proof, or external credential exists.],
   [`REFERENCE`], [Existing repository behavior to preserve during migration; it is not automatically the final implementation.],
@@ -30,7 +30,7 @@ An engineer or AI must read those files before changing the corresponding subsys
 
 == As-built snapshot
 
-This snapshot is pinned to 23 September 2026, commit `d928cb607ceb5fb147fcda058746fd4d71993676` on `ci/ra8ci-implementation`. The branch was pushed to `origin` and clean when inspected. It is based on the integrated `ci/orchestrator` work; that source branch has since been closed.
+This snapshot describes the `ci/ra8ci-implementation` code at `125f026ce4b596e7530c2743444f7ad07a78eaf9`, rebased onto `origin/dev` at `71feca26c2583545df7e06ee7c1e653e0a9d8025` on 23 September 2026. All 83 ra8ci commits replayed without conflict; the rebased feature branch was pushed. This document refresh is layered on that code snapshot. The branch includes the integrated `ci/orchestrator` work; the source branch is closed.
 
 #table(
   columns: (1.25fr, 3.35fr),
@@ -38,17 +38,18 @@ This snapshot is pinned to 23 September 2026, commit `d928cb607ceb5fb147fcda0587
   stroke: rgb("#d6e1e8"),
   table.header([*Item*], [*State at this snapshot*]),
   [Go surface], [215 tracked Go files under `tools/ra8ci`, including tests and the server, agent, executor, store, board, scaler, GitHub, provisioning, and analytics packages.],
-  [Database], [Forward-only PostgreSQL migrations `0001` through `0013`; typed run, task, step, lease, runner, event, audit, and operation evidence exists in code. This is not evidence that a production database is deployed.],
+  [Database], [Forward-only PostgreSQL migrations `0001` through `0019`; typed run, task, step, lease, runner, event, audit, HIL observation, and operation evidence exists in code. This is not evidence that a production database is deployed.],
   [Task catalog], [84 reviewed task definitions. 18 task definitions contain a native `ra8ci:` step; 66 remain transitional wrappers or external-command tasks. The native count is a direct catalog count, not a weighted completion percentage.],
-  [Tracked helpers], [532 `.sh`/`.py` files and 28 `just/*.just` files remain in the current checkout. The Phase 0 JSON inventory still reflects its earlier baseline and must be reconciled before further planner batching.],
+  [Tracked helpers], [532 `.sh`/`.py` files under `scripts/` and 28 `just/*.just` files remain. The Phase 0 JSON inventory still reflects its earlier baseline and must be reconciled before planner batching.],
+  [Latest dev infrastructure baseline], [Dev commits `b7c0f7eb0` and `71feca26c` harden disposable Linux/Windows Proxmox CI, Windows Server Core/WSL2 provisioning, log/status handling, and cleanup. The Linux full run was stopped before completion; Windows has no verified full run.],
   [Completed checker ports in this lane], [Five checker responsibilities now have native Go task implementations and have their old scripts removed in the same change: driver-assembly guard, goto/setjmp guard, GNU attribute guard, assert-casts, and C23 nullptr-only guard.],
   [Server and agent], [CLI, local executor, offline receipt spool/sync, authenticated HTTP server, PostgreSQL store, agent claim/log/result flow, deadlines, cancellation, and resource facts are implemented and tested.],
   [Analytics], [PostgreSQL timings and resource facts support report queries. Further report/API coverage and real production data are still required before scheduling tiers are tuned from evidence.],
   [GitHub control], [Scale-set client, durable inbox, policy, controller, and scaler state-machine packages exist. Critical gap: `serve()` does not compose the production controller, scaler handler, concrete guest bootstrapper, runner observer, or Terraform runtime.],
-  [Provisioning], [Terraform control/runner environment definitions, a Terraform runner provisioner package, and the service Ansible role exist. The production Linux/Windows guest readiness and one-use JIT bootstrap path is incomplete; no plan was applied.],
+  [Provisioning], [Terraform control/runner definitions, a Terraform runner provisioner package, and the service Ansible role exist. The new dev lab path is a separate legacy baseline: `just infra::lab::ci` launches the detached server runner; `just infra::lab::ci-terraform` uses the local Terraform/Ansible driver. Production ra8ci Linux/Windows readiness and one-use JIT bootstrap are incomplete; no control-VM plan was applied.],
   [Board and HIL], [Durable lease/session/checkpoint/recovery primitives, API/client packages, neutral receipt primitives, and HIL timing policy exist. Production board-agent enrollment/device observation and `bench.sh` cutover are not complete.],
   [Deployment], [No control VM or production PostgreSQL has been created. Proxmox/GitHub credentials, approved storage/network values, and an off-VM backup destination remain operator inputs.],
-  [Acceptance], [Full Go tests, race tests, vet, and Linux-amd64/Windows-amd64 static builds passed at this snapshot. The no-null scan still exits 1 with the same three legacy findings and assert-casts exits 1 with the same 34 legacy findings. No live GitHub, Proxmox, restore-drill, Windows runtime, or hardware acceptance is claimed.],
+  [Acceptance], [After the rebase, `GOWORK=off go test ./...`, `go test -race ./...`, `go vet ./...`, and static Linux-amd64/Windows-amd64 builds all exited 0. Logs and build artifacts are under `/home/bsikar/ra8-verify/ra8ci-implementation/pdf-handoff-20260923/`. The current dev full Proxmox CI runs are not verified: Linux has no final exit code and Windows has not completed. No live ra8ci GitHub dispatch, control-VM deployment, restore drill, Windows runtime, or hardware acceptance is claimed.],
 )
 
 There is no defensible single project-completion percentage: one native checker port and a production dispatch controller are not comparable units. Use the status table below, the per-file JSON inventory, task catalog, and actual exit-code evidence instead. The earlier conversational estimate of roughly 85 percent remaining was deliberately approximate, not a release metric.
@@ -86,13 +87,93 @@ These stable keys are for status discussions and implementation reports; they do
   [R0], [Inventory reconciliation], [Current script, tool, infra, helper, Just, workflow, hook, Terraform, and Ansible rows are scanned and classified; absorbed files and caller links no longer point to deleted behavior; planner receives current JSON.],
   [R1], [Executor and evidence], [Every required task has a reviewed schema, deadline, ordered steps, host facts, durable result/log evidence, offline behavior where allowed, and parity tests; no duplicate old implementation remains.],
   [R2], [Server production composition], [A reviewed config builds exactly one fenced scale-set controller, handler, concrete provisioning/bootstrap dependencies, and reconcile/shutdown loops. Missing credential, bootstrapper, observer, audit, or database fails closed and advertises zero capacity.],
-  [R3], [Linux/Windows guest lifecycle], [Each OS proves exact VM/reservation identity and Ansible readiness before one-use JIT delivery; one real isolated job drains, deregisters, and cleans up safely across cancellation, restart, and lost acknowledgments.],
+  [R3], [Linux/Windows guest lifecycle], [First complete the legacy baseline below, then prove each ra8ci OS path binds VM identity to reservation and Ansible readiness before one-use JIT delivery. Each real isolated job drains, deregisters, and cleans up safely across cancellation, restart, and lost acknowledgments.],
   [R4], [Board agent and cutover], [The board agent proves physical neutral state and recovery context; lease, yield, priority, and human wait semantics pass concurrency/failure tests. Emulator passes before a single matching leased hardware run, then old file/flock authority is retired.],
   [R5], [Long-tail helper absorption], [All used in-scope helpers are ported or have an explicit retained-owner rationale; dead items are deleted only from evidence. Caller changes and deletion land together, with no old/new overlap.],
   [R6], [Repository entry points], [Just recipes, hooks, and workflow jobs invoke the same semantic task names. Third-party Actions remain on the official runner; ra8ci-managed labels are enabled only after R2/R3 acceptance.],
   [R7], [Control VM and recovery], [Operator-approved infrastructure values exist; the persistent VM is applied only after review; PostgreSQL, encrypted off-VM backups, TLS, monitoring, restore, and rollback drills pass.],
   [R8], [Release verification], [Required static/unit/race/coverage/database/platform/security/CI gates and non-skipped end-to-end acceptance pass with logs and exit codes. Production readiness and owner approval are recorded before external cutover.],
 )
+
+== Integration takeover handoff
+
+This is the start-here section for the next engineer or AI taking over integration. It separates checked-in code from observed acceptance, gives the exact existing entry points, and names the prerequisites that must not be guessed. The handoff does not authorize a secret change, a Proxmox apply, a GitHub App change, a board operation, or a `dev` merge.
+
+=== Repository and branch identity
+
+#table(
+  columns: (1.25fr, 3.35fr),
+  inset: 5pt,
+  stroke: rgb("#d6e1e8"),
+  table.header([*Item*], [*Known state*]),
+  [Repository], [`bsikar/ra8-firmware`. Work only in `/home/bsikar/worktrees/ra8ci-implementation` on the dev box over `ssh dev`; never touch `/Users/bsikar/Documents/github/ra8-firmware`.],
+  [Feature branch], [`ci/ra8ci-implementation`. The code snapshot before this doc refresh is `125f026ce4b596e7530c2743444f7ad07a78eaf9`, pushed after rebasing.],
+  [Base], [`origin/dev` at `71feca26c2583545df7e06ee7c1e653e0a9d8025`; 83 ra8ci commits are replayed above it. `dev` is not this feature's merge target; Brighton controls the final integration.],
+  [Commit identity], [`Brighton Sikarskie <bsikar@tuta.io>`. Keep commits free of AI attribution.],
+  [Build/test evidence], [Post-rebase Go tests, race tests, vet, and Linux/Windows static builds exited 0. Current-runner acceptance is still incomplete; a Go package pass is not a Proxmox VM pass.],
+  [Output root], [Put every build and test output under `/home/bsikar/ra8-verify/ra8ci-implementation/<unique-unit>/`; do not use a shared or fixed `/tmp` build directory.],
+  [Hardware rule], [The board is single-holder. For any later HIL change, run the matching emulator case first, then at most one matching hardware case under a lease. Do not run a full hardware sweep.],
+)
+
+The detailed machine contracts remain in the repository: `tools/ra8ci/catalog/tasks.json`, `tools/ra8ci/migrations/`, `tools/ra8ci/internal/protocol/protocol.go`, `tools/ra8ci-script-inventory.json`, and `tools/ra8ci-work-units.json`. The inventory is stale relative to the current tree and must be regenerated before using it as an exhaustive deletion or migration plan.
+
+=== What dev added and what it proves
+
+The two relevant dev commits are `b7c0f7eb0` (`infra: harden disposable Proxmox CI runners`) and `71feca26c` (`WIP: continue Proxmox Linux and Windows ephemeral CI`). They change the existing disposable lab path: Linux guest setup and cleanup, a substantially expanded Windows Server Core/WSL2 playbook, Proxmox server-runner lifecycle and streamed logs, status/list/stop behavior, Windows-safe trusted Git/environment parsing, and a password variable named `RA8_LAB_WINDOWS_PASSWORD`.
+
+The WIP commit reports that Linux reached the CI gate phase after fixing source-snapshot and rootless-container temporary-filesystem issues, but the run was intentionally stopped before completion. It has no final Linux exit status. Windows has not completed a verified full run. Infrastructure syntax/format checks passed, but the detached launch with the Windows password configured has not been verified. Do not translate any of these statements into an end-to-end pass.
+
+=== The two lab commands are different implementations
+
+#table(
+  columns: (1.35fr, 3.65fr),
+  inset: 5pt,
+  stroke: rgb("#d6e1e8"),
+  table.header([*Recipe*], [*Actual path and what it validates*]),
+  [`just infra::lab::ci PROFILE`], [`just/infra_lab.just` -> `scripts/dev/proxmox_lab_manage.py` -> SSH upload of a source archive and runner -> detached `sudo -n nohup` launch of `scripts/dev/proxmox_lab_server_runner.sh` on Proxmox. The server runner uses direct `qm` lifecycle calls plus Ansible and applies the `terraform` tag. This is the detached server-runner baseline required first; it is not the local Terraform driver.],
+  [`just infra::lab::ci-terraform PROFILE`], [`just/infra_lab.just` -> local `scripts/dev/proxmox_lab_ci.sh`; Terraform/Ansible lifecycle runs from the invoking control node. This is a separate implementation. A pass here does not validate the detached server-runner path, and neither command validates ra8ci production dispatch.],
+)
+
+For the requested baseline use `just infra::lab::check` first, then `just infra::lab::ci linux` to completion. Follow or reattach to output with `just infra::lab::logs linux` and query `just infra::lab::status`. The server log is `/var/log/ra8-lab/linux.log`; the Windows log is `/var/log/ra8-lab/windows.log`. Copy complete logs and terminal evidence to the unique verification directory on dev. The profile VM IDs are Linux `9000` from template `9001`, and Windows `9010` from template `9011`. Each guest should carry `terraform`, `ra8-lab`, and a unique run tag. Do not run both profiles concurrently.
+
+=== Windows password is a hard gate
+
+`scripts/dev/proxmox_lab_server_runner.sh` reads `RA8_LAB_WINDOWS_PASSWORD` and stops before Windows provisioning if it is empty. The current launcher in `scripts/dev/proxmox_lab_manage.py` constructs a remote command using `sudo -n nohup /bin/bash ...` but does not explicitly preserve or fetch this variable. No verified mechanism currently proves that a Proxmox-side environment value survives the SSH command, `sudo`, and the detached process. Ordinary `sudo` environment filtering means the current source is not proof that it will survive.
+
+Before any Windows run, the owner/operator must establish a reviewed secret-delivery path on the Proxmox runner and verify presence through the full detached launch without printing the value. A narrowly-scoped root-owned service credential or protected environment file is preferable to broad environment preservation; if `sudo` preservation is proposed, allow only this named variable after reviewing the host policy. Do not put the password in Git, a command-line argument, shell history, Terraform state, Ansible inventory/artifacts, CI output, or logs. Never dump the environment or process arguments during verification; report only a boolean presence result and the run ID. If the safe path is not confirmed, stop before Windows provisioning and request operator setup rather than guessing.
+
+=== Required disposable-run sequence and evidence
+
+First run the read-only preflight `just infra::lab::check`. Then run Linux to completion with `just infra::lab::ci linux`; follow or reattach to output with `just infra::lab::logs linux`, and query `just infra::lab::status`. Preserve the complete log and the final runner exit code under a unique verification directory on dev. An interrupted/killed run is unknown, not pass or fail; do not report it as a completed measurement.
+
+After Linux reaches a terminal result, query both `just infra::lab::status` and `just infra::lab::list`. Confirm VM `9000`, its attached volumes, temporary bridge/firewall state, and its runner process are removed, unless `--keep` was deliberately requested for diagnosis. For a retained guest, record who requested preservation and destroy it with the approved destroy recipe after evidence collection. Confirm Terraform-created VMs carry the expected `terraform` tag before teardown.
+
+Only after Linux cleanup and the password prerequisite are proven, run `just infra::lab::ci windows` to completion and follow with `just infra::lab::logs windows`, `just infra::lab::status`, and `just infra::lab::list`. Verify Server Core boots, WSL2 and the intended distro are usable, Ansible installs all declared tools including Go, the scratch `TMPDIR` resolves to the intended filesystem, logs remain visible through long tasks, and VM `9010` plus volumes/processes/network state are cleaned up. Save the full log and exact terminal exit code. For both profiles, test teardown separately for a completed run, a controlled provisioning/task failure, and a deliberate cancellation using `just infra::lab::stop PROFILE`. Do not cancel the required uninterrupted full run to test cleanup. If no safe failure-injection path exists, record that case as untested rather than improvising one. After each case, inspect `just infra::lab::status` and `just infra::lab::list`, then use approved read-only Proxmox inspection keyed to the exact run ID to verify VM, attached volumes, runner process, and temporary network/firewall state are gone. If a failed run remains active, record its run ID and status before requesting stop. If `--keep` was used, remove only that exact retained target with `just infra::lab::destroy TARGET` after evidence is saved.
+
+For each profile record: commit under test, exact commands, start/end times, run ID, Proxmox VM ID and tags, log location, terminal exit code (or explicit unknown), gate failures grouped as infrastructure vs source/policy, cleanup checks, and any retained guest reason. A final `status` showing no active job is not by itself proof of no orphaned volume or process.
+
+=== Failure triage and ra8ci integration order
+
+#table(
+  columns: (1.05fr, 3.95fr),
+  inset: 5pt,
+  stroke: rgb("#d6e1e8"),
+  table.header([*Classification*], [*Evidence and next action*]),
+  [Infrastructure failure], [Missing package/tool, Ansible failure, guest boot/WSL2 issue, network, VM sizing, TMPDIR, absent/opaque logs, or leaked VM/volume/process. Fix the provisioning/runner path, rerun that profile from a clean state, and capture a new terminal result. A source-only finding may not mask an infrastructure failure.],
+  [Source or policy failure], [Formatting, static analysis, repository policy, or firmware test findings after infrastructure gates execute correctly. Record the exact gate and output separately. The source issue may remain for this baseline handoff, but do not call the overall CI run green.],
+  [UNKNOWN], [Signal, timeout outside a declared task deadline, or lost SSH/log session without server-side terminal evidence. Reattach through `logs` and `status`. If terminal result cannot be recovered, preserve evidence and rerun; interruption is never a pass.],
+  [Safety incident], [Guest or cleanup identity differs from the recorded run/tags. Do not destroy by guessed VM ID or name. Stop dispatch, retain evidence, and use the exact run identity and approved operator recovery process.],
+)
+
+Only after the legacy baseline has reproducible Linux and Windows results should the ra8ci lifecycle be integrated against it. Keep the handoff phases distinct:
+
+1. Compose the production GitHub controller into `ra8ci server`: trusted fixed config, exactly one fenced controller, durable reconciliation, real guest bootstrap/observer, cancellation, and shutdown. Today `serve()` starts the authenticated API and maintenance reaper but does not start that production controller. The server must continue to advertise zero managed capacity until those dependencies and credentials are present.
+2. Integrate the reservation-bound Terraform/Ansible lifecycle for Linux and Windows, including guest identity/readiness proof before one-use runner bootstrap. Preserve audit on retries, lost acknowledgments, cancellation, controller restart, busy drain, deregistration, and identity-checked cleanup.
+3. Accept ra8ci dispatch on one isolated Linux job, then one isolated Windows job. Preserve GitHub Actions as scheduler and the official Actions runner as worker; ra8ci manages capacity and our task evidence, not GitHub's job protocol.
+4. Once ra8ci parity is proven for a responsibility, repoint its `just` recipe/workflow and delete the superseded dispatch behavior in that same planner-defined change. Never operate old and new authorities for the same responsibility concurrently.
+5. Only then expand script/task absorption, production deployment, board-agent enrollment, database restore drills, and fleet cutover. Board work still requires the emulator-first, one-matching-hardware-case rule.
+
+The human handoff is intentionally scoped: this document gives the successor exact baseline paths and acceptance evidence. It does not grant access to secrets, the Proxmox API, a VM apply, GitHub App installation, physical hardware, or authority to merge to `dev`.
 
 == Full-stack ownership map
 
