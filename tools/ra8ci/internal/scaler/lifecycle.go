@@ -93,7 +93,13 @@ func (h *Handler) bootstrapRunning(ctx context.Context, vm store.RunnerVM) error
 		!receipt.JITConfigExpiresAt.After(now) {
 		return errors.New("JIT bootstrap receipt lacks fresh identity-bound readiness evidence")
 	}
-	return nil
+	return h.ledger.RecordRunnerVMBootstrapEvidence(ctx, h.config.Actor, store.RunnerVMBootstrapEvidence{
+		ReservationID: receipt.ReservationID, VMID: receipt.VMID, CommitSHA: receipt.CommitSHA,
+		GuestOS: receipt.GuestOS, GuestArchitecture: receipt.GuestArchitecture, ServiceAccount: receipt.ServiceAccount,
+		RunnerBinarySHA256: receipt.RunnerBinarySHA256, AgentBinarySHA256: receipt.AgentBinarySHA256,
+		ReadinessSHA256: receipt.ReadinessSHA256, JITConfigSHA256: receipt.JITConfigSHA256,
+		JITConfigExpiresAt: receipt.JITConfigExpiresAt, EvidenceID: receipt.EvidenceID, PreparedAt: receipt.PreparedAt,
+	})
 }
 
 func (h *Handler) started(ctx context.Context, job github.Job) error {
