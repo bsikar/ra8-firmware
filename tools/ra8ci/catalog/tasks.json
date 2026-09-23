@@ -1,0 +1,65 @@
+{
+  "schema_version": 1,
+  "tasks": [
+    {
+      "name": "format",
+      "version": 1,
+      "tier": "required",
+      "scope": "safe-local-write-working-tree",
+      "os": ["linux"],
+      "capabilities": [],
+      "args_schema": {"positional": [], "flags": []},
+      "deadline_seconds": 900,
+      "board_policy": "none",
+      "steps": [{"name": "format-tree", "program": "bash", "args": ["scripts/checks/format_tree.sh"]}],
+      "outputs": [],
+      "retry": {"max_attempts": 1},
+      "resource_hints": {}
+    },
+    {
+      "name": "format-check",
+      "version": 1,
+      "tier": "required",
+      "scope": "safe-local-read-only",
+      "os": ["linux"],
+      "capabilities": [],
+      "args_schema": {"positional": [], "flags": []},
+      "deadline_seconds": 900,
+      "board_policy": "none",
+      "steps": [{"name": "format-tree-check", "program": "bash", "args": ["scripts/checks/format_tree.sh", "--check"]}],
+      "outputs": [],
+      "retry": {"max_attempts": 1},
+      "resource_hints": {}
+    },
+    {
+      "name": "lint-go",
+      "version": 1,
+      "tier": "required",
+      "scope": "safe-local-read-only",
+      "os": ["linux"],
+      "capabilities": [],
+      "args_schema": {"positional": [], "flags": []},
+      "deadline_seconds": 1200,
+      "board_policy": "none",
+      "steps": [{"name": "lint-go-gate", "program": "just", "args": ["quality::local::gate", "lint-go"]}],
+      "outputs": [],
+      "retry": {"max_attempts": 1},
+      "resource_hints": {}
+    },
+    {
+      "name": "test-go",
+      "version": 1,
+      "tier": "required",
+      "scope": "safe-local-read-only",
+      "os": ["linux"],
+      "capabilities": [],
+      "args_schema": {"positional": [], "flags": []},
+      "deadline_seconds": 1800,
+      "board_policy": "none",
+      "steps": [{"name": "test-go-gate", "program": "scripts/ci.sh", "args": ["--gate", "test-go"]}],
+      "outputs": [],
+      "retry": {"max_attempts": 1},
+      "resource_hints": {}
+    }
+  ]
+}

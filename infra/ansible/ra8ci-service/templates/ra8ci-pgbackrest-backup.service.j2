@@ -1,0 +1,15 @@
+[Unit]
+Description=ra8ci encrypted off-VM PostgreSQL full backup
+After=network-online.target postgresql@{{ ra8ci_postgres_major }}-ra8ci.service
+Requires=postgresql@{{ ra8ci_postgres_major }}-ra8ci.service
+RequiresMountsFor=/srv/ra8ci-data
+
+[Service]
+Type=oneshot
+User=postgres
+Group=postgres
+ExecStart=/usr/bin/pgbackrest --stanza=ra8ci --type=full backup
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectHome=true
+UMask=0077

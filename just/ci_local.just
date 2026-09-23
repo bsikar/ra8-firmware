@@ -82,7 +82,7 @@ test ubsan="0":
     fi
 
 test_go:
-    "{{ just_executable() }}" quality::local::gate test-go
+    ra8ci test-go
 
 # Generate DO-178C Level B MC/DC coverage report
 mcdc:
@@ -191,6 +191,7 @@ scan_build strict="0":
 
 # Run host microbenchmarks. RA8_BENCH_TARGETS in tests/bench/CMakeLists.txt is
 # the harness registry, so read it rather than restating it here: a harness
+
 # added to the registry must RUN, not just build (#1415).
 bench:
     #!/usr/bin/env bash
