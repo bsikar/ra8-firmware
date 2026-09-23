@@ -57,7 +57,6 @@ add_library(
   ${RA8_SECURE_APP_SOURCES}
   ${RA8_PSA_CRYPTO_SOURCES}
   ${RA8_BOARD_EK_RA8D2_SOURCES}
-  ${RA8_OV5640_SOURCES}
   ${RA8_DFU_SOURCES}
   # ThreadX SysTick retune (issue #287). Lives under port/threadx (not
   # libs/), so it is not caught by the libs/ globs above -- add it by

@@ -192,7 +192,11 @@ file(GLOB RA8_BOARD_EK_RA8D2_SOURCES CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra8_board
 # ra8_lsm6dso has no C sources left: the CTRL1_XL / CTRL2_G encoders, the
 # little-endian sample decoders and the FIFO drain are Zig now, linked via
 # tests/cmake/zig_libraries.cmake.
-file(GLOB_RECURSE RA8_OV5640_SOURCES CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra8_ov5640/src/*.c)
+# ra8_ov5640 has no C sources left: the OV5640 register map, the qualified VGA
+# DVP scene table, the JPEG overlay and the status decode are Zig now
+# (libs/ra8_ov5640/src/*.zig, built by libs/ra8_ov5640/build.zig) behind the
+# unchanged C header, and tests/cmake/zig_libraries.cmake links that archive
+# into ra8_core_hal.
 # ra8_tz_secure_boot has no C sources left: the SAU partition, the PRCR_S /
 # IPCSAR unlock sequence, the NS RoT header read and the BLXNS arming are Zig
 # now, linked via tests/cmake/zig_libraries.cmake.
