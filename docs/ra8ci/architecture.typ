@@ -25,6 +25,8 @@
 #v(0.45in)
 *Status:* Brighton approved the architecture and Go choice. The pushed feature branch `ci/ra8ci-implementation` is rebased on `origin/dev` at `71feca26c`; the last code snapshot before this documentation refresh is `125f026c`. The implementation reference records the verified current state, the unverified Proxmox Linux/Windows baseline, the Windows secret-propagation blocker, and the concrete integration handoff. Production ra8ci dispatch and deployment are not complete. The active Zig build-graph work remains out of scope.
 
+*Revision, 23 September 2026, evening.* The demand signal is re-specified after review. `workflow_job` webhooks plus just-in-time runner registration are now the primary path; the Actions Runner Scale Set Client is retained only as a feature-gated second adapter behind one internal interface. An unclaimed-runner reaper becomes a required component. The Windows lab credential moves out of the environment. Self-hosting a forge is rejected as an answer to this problem. See "Demand signal: webhooks and just-in-time runners", "Second migration: ra8ci posts its own check runs", the migration spine, and the decision register.
+
 *Audience:* Brighton, the planner AI, implementers, lab operators, and future CI maintainers.
 
 #pagebreak()
@@ -118,17 +120,58 @@ A single Go module and shared task schema avoid inconsistent behavior. The contr
 
 GitHub Actions has two distinct planes. GitHub evaluates workflow YAML, queues jobs, matches `runs-on` labels, and reports workflow results. A self-hosted runner registers with GitHub, listens for a job, starts a worker, executes shell and `uses:` steps, and reports native logs and status. A process that merely posts a check run or exposes an HTTP API is not a GitHub Actions runner.
 
-Use GitHub's Actions Runner Scale Set Client, a Go module extracted from Actions Runner Controller, in ra8ci server. It receives scale-set demand and manages scale-set registration and just-in-time runner configuration. ra8ci maps demand to a capacity reservation, provisions a guest through the existing Terraform/Ansible layer, enrolls ra8ci agent, and starts an official ephemeral runner in that guest with the just-in-time configuration. The runner accepts at most one job. GitHub continues to schedule its workflow steps; ra8ci schedules capacity and its own named tasks. These are separate queues with correlated IDs, not competing owners of one job.
+ra8ci learns that a job wants capacity from a `workflow_job` webhook delivered to a GitHub App endpoint on the control VM, and mints the runner credential with the documented `generate-jitconfig` REST endpoint. ra8ci maps demand to a capacity reservation, provisions a guest through the existing Terraform/Ansible layer, enrolls ra8ci agent, and starts an official ephemeral runner in that guest with the just-in-time configuration. The runner accepts at most one job. GitHub continues to schedule its workflow steps; ra8ci schedules capacity and its own named tasks. These are separate queues with correlated IDs, not competing owners of one job.
 
 The controller must account for capacity requested, provisioning, registered/idle, busy, draining, deregistered, and destroyed. It never advertises capacity as usable before the guest is healthy, and never treats an assignment, registration, or delete request as proof that a job ran or cleanup completed. Reconcile GitHub runner state, Proxmox guest identity, Terraform state, and ra8ci agent receipts after any lost acknowledgment. A stopped runner cannot be killed just to scale down while its worker is busy. Linux and Windows guests require separate images and capability labels; HIL stays in its dedicated lane until the board lease migration is proven.
 
-The scale-set client is public preview. Before depending on it, a read-only API review and an isolated prototype must verify repository-scoped authorization, Windows guest registration, label matching, one-job teardown, cancellation, client/server versioning, quota behavior, and how pending jobs recover from failed provisioning. Its interfaces may change; pin a reviewed version and keep the GitHub adapter behind a small internal interface. No direct GitHub runner wire-protocol implementation is authorized by this design.
+No direct GitHub runner wire-protocol implementation is authorized by this design. The next section specifies where demand comes from and what must exist before a credential is minted.
+
+== Demand signal: webhooks and just-in-time runners
+
+*Decision.* The primary demand source is the `workflow_job` webhook; the one-job runner credential comes from `POST /repos/{owner}/{repo}/actions/runners/generate-jitconfig`. Both are generally available surfaces that GitHub documents as the basis for custom autoscaling. The Actions Runner Scale Set Client remains in the tree as an optional second adapter behind the same internal interface, feature-gated and off by default. It is promoted only if it leaves public preview with a stated compatibility policy and a maintained integration test rig. The original design made one public-preview Go package the single point of failure for all dispatch; that is the defect this revision removes.
+
+Both adapters normalize into one internal demand event. No adapter-specific identifier may become a primary key in PostgreSQL, and no scale-set protocol state may leak into the run state machine. Failover is an operational action, not a code change: disable one intake, reconcile outstanding reservations, enable the other.
+
+```go
+type DemandEvent struct {
+    Source        DemandSourceKind // webhook or scaleset
+    DeliveryID    string           // GitHub delivery, for idempotency
+    WorkflowJobID int64
+    RunID         int64
+    Attempt       int
+    Repository    string
+    HeadSHA       string
+    Labels        []string
+    ObservedAt    time.Time
+}
+
+type DemandSource interface {
+    Observe(ctx context.Context, ev DemandEvent) error
+    Cancel(ctx context.Context, workflowJobID int64) error
+    Reconcile(ctx context.Context) error
+}
+
+type RunnerDelivery interface {
+    MintOneJobCredential(ctx context.Context, spec RunnerSpec) (JITConfig, error)
+    Revoke(ctx context.Context, runnerID int64) error
+}
+```
+
+*Delivery is a hint, not a queue.* Treat `workflow_job.queued` as at-least-once. Deduplicate on workflow job ID plus attempt, persist the GitHub delivery ID, and run a reconciliation pass that lists queued and in-progress Actions jobs for open pull-request head SHAs and opens the demand rows no webhook delivered. A lost delivery must degrade to a late run, never a silent one. Handle `completed` and `cancelled` as cancellation inputs, but never as the only ones; the database stays authoritative.
+
+*The unclaimed-runner reaper.* A just-in-time runner is single-use only after it has received a job. A guest provisioned for a job that is cancelled, relabelled, superseded by a new push, or delivered twice will otherwise sit idle and registered. Every reservation therefore carries an explicit unclaimed deadline. On expiry ra8ci revokes the runner registration, destroys the guest, releases any bench lease, and marks the attempt abandoned rather than leaving capacity available for unrelated work. This reaper is a required component of the first dispatch release, not a later optimization: it is the one thing the scale-set listener provided for free.
+
+*Ordering.* Mint the just-in-time configuration as late as possible: after capacity admission, after bench admission, after the guest's network policy is in place, and after its identity channel exists. Runner labels stay narrow, naming OS, image generation, architecture, trust tier, and bench class. No generic self-hosted pool ever serves untrusted pull-request content.
+
+*Prototype gates, unchanged in substance.* Before dispatch depends on either adapter, an isolated prototype must verify repository-scoped authorization, Windows guest registration, label matching, one-job teardown, cancellation, quota behavior, and recovery of pending jobs from failed provisioning. Under the webhook path it must additionally verify signature validation, duplicate and out-of-order delivery, and reaper expiry.
 
 == Trust boundaries
 
 The control VM has authority to request lab lifecycle actions, not carte-blanche root access to the Proxmox host. A dedicated, least-privilege Proxmox API credential or narrowly scoped provisioner invokes approved Terraform and Ansible workflows. Template, bridge, pool, datastore, run marker, and stopped-state checks remain enforced at the provisioning boundary. Credential delivery through the existing secret system must be verified before deployment; neither an API credential nor OpenBao access is assumed to exist on dev. No Proxmox credential is copied to a guest.
 
 GitHub App credentials belong only to the control VM and are scoped to the repository or organization and permissions actually required by the scale set. Short-lived registration and just-in-time configuration material is treated as a secret and passed only to the intended guest. GitHub job tokens and repository secrets remain confined to the disposable worker. Workflow YAML and checked-out repository code are untrusted inputs: neither may select a Proxmox API operation, inject provisioner arguments, reach the control VM's database socket, or execute on the Proxmox host. Named task arguments are validated against a reviewed schema; no shell-concatenated command reaches a privileged boundary. Audit authorization failures, token issuance, VM lifecycle actions, and runner cleanup without logging secret values.
+
+The Windows lab credential is not carried in the environment. `RA8_LAB_WINDOWS_PASSWORD` leaves the runner script's inherited environment; the value lives in a root-owned file with restrictive permissions on the Proxmox runner host and is read at the point of use by the process that needs it. It is never sourced into a shell, never exported, and never passed through `sudo`. Verification reports presence as a boolean and nothing else. No log line, process listing, crash dump, or guest copy may carry the value.
 
 Agents receive task-scoped credentials and a capability allowlist. A disposable guest agent first enrolls against a capacity reservation and verified VM identity with health-only authority; it has no run ID, source SHA, task, or board permission until the server correlates a GitHub job and issues a separate job grant. A Windows guest never receives a token that can create Proxmox VMs. The board-side agent cannot mint its own lease. Unlike disposable guests, the persistent board agent has an operator-enrolled host identity with rotation and revocation; it is not bound to a run ID.
 
@@ -292,21 +335,31 @@ GitHub integration health separately reports scale-set session health, authentic
 
 *Decision: scale-set control with the official runner in disposable guests.* Replacing the runner binary itself would require ra8ci to implement registration/authentication, encrypted job receipt, listener/worker behavior, arbitrary shell/JavaScript/container/composite action semantics, workflow commands, secret masking, logs, artifacts, cancellation, and compatibility with GitHub updates on Linux and Windows. The published Go scale-set client provides controller integration, not a substitute job worker. A simple workflow bridge that invokes ra8ci from an existing runner is a useful migration step, but does not let ra8ci own runner capacity or lifecycle. The selected design gives native GitHub UI/job behavior and lets ra8ci own Proxmox capacity, task semantics, analytics, and hardware safety without maintaining a private Actions protocol implementation.
 
+*Demand source, revised.* Owning the runner binary stays out of scope; what changed is how ra8ci learns a job exists. The scale-set client is public preview with no fallback in the original design, so a single preview package gated all dispatch. The webhook and just-in-time route uses generally available surfaces, maps directly onto the durable state machine, and costs exactly one new component, the unclaimed-runner reaper. The trade is the loss of the listener's push efficiency and the acceptance of webhook delivery delay, both bounded by the reconciliation pass. Self-hosting a forge was evaluated and rejected for this problem: GitLab's custom executor is in maintenance mode and brings a full second platform to operate, Forgejo and Gitea move the same integration seam rather than removing it, and no evaluated forge supports this design better than the one already in use. A forge migration would be a source-control decision, made for its own reasons, not a response to one preview interface.
+
 = Migration with proof at every boundary
 
 The planner AI decides issues, MR batches, and ordering. This is the approved technical dependency spine, not a planner-defined stack.
 
 1. *Executor and evidence.* Define task contracts, local CLI, server run ingestion, deadlines, logs, and the run/task/step schema. Initially delegate to existing commands so comparable measurements start early. No old/new executor may run the same responsibility concurrently.
 2. *Board lease.* Move bench.sh semantics into the server, add durable queue and audit, then delete the script and repoint its just recipes in the same MR. Prove cooperative checkpoint and recovery behavior before hardware use.
-3. *Dispatch and GitHub capacity.* First prototype the Go scale-set client against a disposable Linux guest, then Windows. Enroll agents in the guests, start an official ephemeral runner with JIT configuration, and replace both Proxmox CI dispatch scripts with one ra8ci-owned lifecycle that invokes Terraform and Ansible. Prove label matching, one-job teardown, identity-checked cleanup, result propagation, cancellation, failed provisioning, GitHub and server reconnect, and restart reconciliation. Keep the current ARC/Docker/HIL fleet until matching gates are green; do not route the same job class to two competing dispatch paths during cutover.
+3. *Dispatch and GitHub capacity.* Introduce the internal demand-source interface first, then implement and shadow-run `workflow_job` intake: verify signatures, deduplicate deliveries, persist delivery order, and reconcile against the Actions jobs API. Take just-in-time registration to a disposable Linux guest first, then Windows, whose longer boot and provisioning time exposes stale-demand and cancellation races. Ship the unclaimed-runner reaper in the same batch as the first credential mint, and put bench-aware admission ahead of minting so scarce Windows capacity is not consumed while the board is unavailable. Enroll agents in the guests, start an official ephemeral runner with that configuration, and replace both Proxmox CI dispatch scripts with one ra8ci-owned lifecycle that invokes Terraform and Ansible. Prove label matching, one-job teardown, identity-checked cleanup, result propagation, cancellation, failed provisioning, GitHub and server reconnect, and restart reconciliation. Keep the current ARC/Docker/HIL fleet until matching gates are green; do not route the same job class to two competing dispatch paths during cutover.
 4. *Absorb checks.* Replace each used script's behavior, repoint every caller, delete the old script in that MR, and require a non-skipped gate. Prioritize frequent/slow checks using real task-step data.
 5. *Entry points.* Hooks, workflows, and just recipes call stable ra8ci task names. GitHub workflows may remain thin native Actions entry points: `runs-on` selects the ra8ci scale set, while required setup or third-party `uses:` actions still execute in the official runner. Keep required Zig build-parity and analysis coverage; only retire CMake-facing paths when #857's acceptance evidence is complete.
 
 A migration ledger maps old path, callers, new task, behavior proof, deletion MR, and fallback policy. A task is not "ported" because ra8ci shells out to the old script. The final state must preserve exact exit semantics, artifacts, selftests, and safety checks.
 
+== Second migration: ra8ci posts its own check runs
+
+*Direction, not authorized work.* The end state worth building toward is that GitHub holds the pull request, the review, and the merge gate, while ra8ci publishes one check run per catalog task through a GitHub App and branch protection requires those names. The forge then sits behind a very small adapter: repository events in, check-run state out.
+
+The repository's own workflows make that unusually cheap here. Measured on dev for this revision, `.github/workflows` holds 10 files and 1,566 lines defining 39 jobs, with 39 `runs-on` declarations, one `matrix`, two `needs` edges, ten `concurrency` groups, about 51 `uses:` steps, and no reusable workflow definitions; `firmware.yml` alone accounts for 26 of the jobs. Actions is expanding almost nothing. It is a flat fan-out of job names the task catalog already owns, which is exactly the case where owning the checks is cheap rather than a rewrite of a workflow engine.
+
+What would actually be rebuilt is the third-party `uses:` steps, rerun controls, log tailing, artifact browsing, and a stable required-check naming scheme. Take this as the second migration, after the demand-source change is proven in production, and adopt it only when the reviewer experience is at least as good as the one it replaces. Run it in shadow mode first and compare conclusions against Actions over representative pull requests before any required check moves.
+
 == Verification gates
 
-Unit tests cover state transitions, SQL constraints, CLI parsing, scheduling, auth, deadlines, and Windows/Linux process-tree termination. Property and concurrency tests cover board uniqueness, queue ordering, idempotent retries, and lost acknowledgments. Integration tests use fake agents, disposable databases, and a mocked GitHub scale-set adapter. An isolated GitHub/Proxmox acceptance run proves the actual scale-set client, JIT runner registration, one Linux job, one Windows job, cancellation, cleanup, and recovery from controller restart; it is not a full CI sweep. Emulator tests precede the single matching hardware test. Hardware work requires a live lease and stops at the next safe checkpoint on yield. Full CI must be green; warnings and skipped tests are not passes.
+Unit tests cover state transitions, SQL constraints, CLI parsing, scheduling, auth, deadlines, and Windows/Linux process-tree termination. Property and concurrency tests cover board uniqueness, queue ordering, idempotent retries, and lost acknowledgments. Integration tests use fake agents, disposable databases, and a mocked GitHub demand adapter; they must cover duplicate and out-of-order webhook deliveries, a job cancelled after its credential was minted, and a reservation that reaches its unclaimed deadline. An isolated GitHub/Proxmox acceptance run proves real webhook delivery and signature validation, just-in-time runner registration, one Linux job, one Windows job, cancellation, cleanup, reaper expiry, and recovery from controller restart; it is not a full CI sweep. Emulator tests precede the single matching hardware test. Hardware work requires a live lease and stops at the next safe checkpoint on yield. Full CI must be green; warnings and skipped tests are not passes.
 
 #include "appendix.typ"
 #include "implementation-contract.typ"
@@ -316,6 +369,8 @@ Unit tests cover state transitions, SQL constraints, CLI parsing, scheduling, au
 *Confirmed decisions:* Safe local tasks run offline when the server or PostgreSQL is unavailable. Their receipts remain visibly unsynced until uploaded; board and dispatched tasks fail closed. Thirty seconds is the default human handoff target, not a hard takeover guarantee: an indivisible flash or recovery can overrun it visibly, and no next lease is granted until the board is verified safe. A hung or unverifiable board is quarantined.
 
 *Confirmed design direction:* Go; one product/three modes; protected persistent control VM on Proxmox with colocated PostgreSQL; agents connect out; ra8ci owns lifecycle state while Terraform/Ansible provision; Zig owns the build graph; semantic tasks behind just; cooperative board priority human > CI > AI; detailed per-step and per-resource measurements. For GitHub Actions, ra8ci controls an ephemeral runner scale set while the official runner executes jobs in disposable guests; it does not replace the worker protocol.
+
+*Confirmed decisions, 23 September 2026 revision:* `workflow_job` webhooks plus just-in-time runner registration are the primary demand signal, with the scale-set client retained as a feature-gated second adapter behind one internal interface. An unclaimed-runner deadline with a reconciliation pass is a required component of the first dispatch release. The Windows lab password moves out of the environment into a root-owned file read at the point of use. Self-hosting a forge is rejected as an answer to this problem. ra8ci publishing its own check runs is the intended end state and the second migration, sequenced after dispatch is proven.
 
 *Required operator inputs before production:*
 - What approved off-VM destination holds encrypted PostgreSQL and artifact backups, and which dedicated Proxmox API/GitHub App credentials can be provisioned? No deployment proceeds by guessing either.
@@ -327,9 +382,12 @@ Unit tests cover state transitions, SQL constraints, CLI parsing, scheduling, au
 
 Repository sources inspected read-only: infra/fleet.yml; infra/terraform/README.md and lab modules; infra/ansible/playbooks/proxmox-lab-linux.yml and proxmox-lab-windows.yml; scripts/dev/proxmox_lab_ci.sh and proxmox_lab_server_runner.sh on published dev at a7666d637. HIL timing and recovery evidence on that dev tip: scripts/hil/all.sh:21-32, 375-462, 487-531, 543-596; scripts/hil/lib/hil_conf.sh:97-109; examples/ek_ra8d2/hw_validated/hil/usb_selftest_soak/hil.conf:9 (200-second observation); scripts/hil/reflash.sh:92-127 (indivisible destructive reset and flash). The current ra8ci inventory and work-unit JSON are on ci/orchestrator at 7ff60fee7. Unpushed work in other checkouts was not inspected.
 
+Workflow inventory measured on dev for this revision, by parsing `.github/workflows`: 10 files, 1,566 lines, 39 jobs, 39 `runs-on` declarations, one `matrix`, two `needs` edges, ten `concurrency` groups, about 51 `uses:` steps, and no `workflow_call` definitions. `firmware.yml` declares 26 of those jobs.
+
 Runner-specific repository evidence on that published dev tip: infra/fleet.yml declares ARC on k3s, NAS Docker, Windows/WSL Docker, and a dedicated HIL listener; infra/ansible/roles/ci_runner/tasks/main.yml installs the ARC scale set and official runner; infra/ansible/roles/ci_runner_docker/tasks/deploy.yml configures per-instance registration and documents Runner.Listener / Runner.Worker; infra/ansible/roles/dev_box/tasks/hil_runner_transaction.yml installs the dedicated listener. GitHub workflows select those runners with `runs-on` labels. These are current-state observations, not authority to alter Brighton's active dev work.
 
 - Build and storage: #link("https://github.com/bsikar/ra8-firmware/issues/857")[Epic #857], #link("https://ziglang.org/learn/build-system/")[Zig build system], and #link("https://www.postgresql.org/docs/current/sql-select.html")[PostgreSQL row locking].
 - Execution: #link("https://pkg.go.dev/os/exec")[Go os/exec] and #link("https://pkg.go.dev/context")[Go context].
-- GitHub runner model: #link("https://docs.github.com/en/actions/reference/runners/self-hosted-runners")[self-hosted runners], #link("https://github.com/actions/scaleset/blob/main/README.md")[scale-set client], #link("https://github.com/actions/runner/blob/main/docs/design/auth.md")[runner authentication], and #link("https://docs.github.com/en/actions/concepts/runners/actions-runner-controller")[ARC concepts].
+- GitHub runner model: #link("https://docs.github.com/en/actions/reference/runners/self-hosted-runners")[self-hosted runners and autoscaling], #link("https://github.com/actions/scaleset/blob/main/README.md")[scale-set client], #link("https://github.com/actions/runner/blob/main/docs/design/auth.md")[runner authentication], and #link("https://docs.github.com/en/actions/concepts/runners/actions-runner-controller")[ARC concepts].
+- Demand signal and gating: #link("https://github.blog/changelog/2023-06-02-github-actions-just-in-time-self-hosted-runners/")[just-in-time runners], #link("https://docs.github.com/en/rest/actions/workflow-jobs")[workflow jobs REST], #link("https://docs.github.com/en/apps/creating-github-apps/writing-code-for-a-github-app/building-ci-checks-with-a-github-app")[CI checks with a GitHub App], and #link("https://docs.github.com/en/rest/branches/branch-protection")[branch protection].
 - Document format: #link("https://typst.app/docs/reference/pdf/")[Typst PDF documentation].
