@@ -96,14 +96,14 @@ func TestControllerRequiresAdmissionAndTimeout(t *testing.T) {
 	}
 }
 
-func TestNewControllerSessionAcceptsPrecomposedHandler(t *testing.T) {
+func TestControllerSessionConstructorAcceptsPrecomposedHandler(t *testing.T) {
 	closed := false
 	session := &Session{Client: testClient(), close: func(context.Context) error { closed = true; return nil }, scaleSetID: 42}
 	controller, err := NewController(session.Client, &fakeInbox{}, &testHandler{}, testAdmission{}, 42, 1, time.Second)
 	if err != nil {
 		t.Fatal(err)
 	}
-	bound, err := NewControllerSession(session, controller)
+	bound, err := newControllerSession(session, controller)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -115,21 +115,21 @@ func TestNewControllerSessionAcceptsPrecomposedHandler(t *testing.T) {
 	}
 }
 
-func TestNewControllerSessionRejectsIncompleteSession(t *testing.T) {
+func TestControllerSessionConstructorRejectsIncompleteSession(t *testing.T) {
 	controller, err := NewController(testClient(), &fakeInbox{}, &testHandler{}, testAdmission{}, 42, 1, time.Second)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := NewControllerSession(nil, controller); err == nil {
+	if _, err := newControllerSession(nil, controller); err == nil {
 		t.Fatal("nil GitHub session accepted")
 	}
-	if _, err := NewControllerSession(&Session{Client: testClient()}, controller); err == nil {
+	if _, err := newControllerSession(&Session{Client: testClient()}, controller); err == nil {
 		t.Fatal("session without close function accepted")
 	}
-	if _, err := NewControllerSession(&Session{close: func(context.Context) error { return nil }}, controller); err == nil {
+	if _, err := newControllerSession(&Session{close: func(context.Context) error { return nil }}, controller); err == nil {
 		t.Fatal("session without client accepted")
 	}
-	if _, err := NewControllerSession(&Session{Client: testClient(), close: func(context.Context) error { return nil }, scaleSetID: 43}, controller); err == nil {
+	if _, err := newControllerSession(&Session{Client: testClient(), close: func(context.Context) error { return nil }, scaleSetID: 43}, controller); err == nil {
 		t.Fatal("controller bound to a different scale set accepted")
 	}
 }
