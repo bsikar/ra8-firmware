@@ -11,14 +11,15 @@ import (
 )
 
 type durableBoardSegments interface {
-	BeginBoardSegment(ctx context.Context, actor store.BoardActor, expectedVersion uint64, token board.Token, key string, bound, recoveryMargin time.Duration) (store.BoardSegment, error)
-	FinishBoardSegment(ctx context.Context, actor store.BoardActor, segmentID string, token board.Token, outcome string) error
+	BeginBoardSegment(ctx context.Context, actor store.BoardActor, expectedVersion uint64, token board.Token, attemptID, key string, bound, recoveryMargin time.Duration) (store.BoardSegment, error)
+	FinishBoardSegment(ctx context.Context, actor store.BoardActor, segmentID string, token board.Token, attemptID, outcome string) error
 }
 
 type segmentBeginRequest struct {
 	ExpectedVersion   uint64 `json:"expected_version"`
 	LeaseID           string `json:"lease_id"`
 	Generation        uint64 `json:"generation"`
+	AttemptID         string `json:"attempt_id"`
 	Key               string `json:"key"`
 	BoundMilliseconds int64  `json:"bound_milliseconds"`
 	RecoveryMarginMS  int64  `json:"recovery_margin_ms"`
@@ -38,7 +39,7 @@ func (h *boardHTTP) segmentBegin(w http.ResponseWriter, r *http.Request) {
 	if !decodeBoardJSON(w, r, &req) {
 		return
 	}
-	if !store.ValidID(req.LeaseID) || req.Generation == 0 || req.Key == "" ||
+	if !store.ValidID(req.LeaseID) || !store.ValidID(req.AttemptID) || req.Generation == 0 || req.Key == "" ||
 		req.BoundMilliseconds <= 0 || req.BoundMilliseconds > int64((24*time.Hour)/time.Millisecond) ||
 		req.RecoveryMarginMS < 0 || req.RecoveryMarginMS > int64((24*time.Hour)/time.Millisecond) {
 		problem(w, http.StatusBadRequest, "invalid_argument", "invalid board segment request", false)
@@ -46,7 +47,7 @@ func (h *boardHTTP) segmentBegin(w http.ResponseWriter, r *http.Request) {
 	}
 	segment, err := st.BeginBoardSegment(r.Context(), actor, req.ExpectedVersion,
 		board.Token{BoardID: r.PathValue("board_id"), LeaseID: req.LeaseID, Generation: req.Generation},
-		req.Key, time.Duration(req.BoundMilliseconds)*time.Millisecond,
+		req.AttemptID, req.Key, time.Duration(req.BoundMilliseconds)*time.Millisecond,
 		time.Duration(req.RecoveryMarginMS)*time.Millisecond)
 	if err != nil {
 		writeBoardError(w, err)
@@ -58,6 +59,7 @@ func (h *boardHTTP) segmentBegin(w http.ResponseWriter, r *http.Request) {
 type segmentFinishRequest struct {
 	LeaseID    string `json:"lease_id"`
 	Generation uint64 `json:"generation"`
+	AttemptID  string `json:"attempt_id"`
 	Outcome    string `json:"outcome"`
 }
 
@@ -80,13 +82,13 @@ func (h *boardHTTP) segmentFinish(w http.ResponseWriter, r *http.Request) {
 	if !decodeBoardJSON(w, r, &req) {
 		return
 	}
-	if !store.ValidID(req.LeaseID) || req.Generation == 0 ||
+	if !store.ValidID(req.LeaseID) || !store.ValidID(req.AttemptID) || req.Generation == 0 ||
 		(req.Outcome != "completed" && req.Outcome != "failed" && req.Outcome != "yielded") {
 		problem(w, http.StatusBadRequest, "invalid_argument", "invalid board segment result", false)
 		return
 	}
 	err := st.FinishBoardSegment(r.Context(), actor, segmentID,
-		board.Token{BoardID: r.PathValue("board_id"), LeaseID: req.LeaseID, Generation: req.Generation}, req.Outcome)
+		board.Token{BoardID: r.PathValue("board_id"), LeaseID: req.LeaseID, Generation: req.Generation}, req.AttemptID, req.Outcome)
 	if err != nil {
 		writeBoardError(w, err)
 		return

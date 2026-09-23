@@ -796,13 +796,14 @@ func TestBeginAndFinishSegmentUseCurrentLeaseFence(t *testing.T) {
 				ExpectedVersion uint64 `json:"expected_version"`
 				LeaseID         string `json:"lease_id"`
 				Generation      uint64 `json:"generation"`
+				AttemptID       string `json:"attempt_id"`
 				Key             string `json:"key"`
 				Bound           int64  `json:"bound_milliseconds"`
 				Margin          int64  `json:"recovery_margin_ms"`
 			}
 			if r.Method != http.MethodPost || json.NewDecoder(r.Body).Decode(&req) != nil ||
 				req.ExpectedVersion != state.Version || req.LeaseID != token.LeaseID ||
-				req.Generation != token.Generation || req.Key != "flash" || req.Bound != 25000 || req.Margin != 3000 {
+				req.Generation != token.Generation || req.AttemptID != "01996f90-3415-7cfe-8ff1-600058131aff" || req.Key != "flash" || req.Bound != 25000 || req.Margin != 3000 {
 				t.Errorf("incorrect atomic segment begin request: %+v", req)
 				w.WriteHeader(http.StatusBadRequest)
 				return
@@ -814,10 +815,11 @@ func TestBeginAndFinishSegmentUseCurrentLeaseFence(t *testing.T) {
 			var req struct {
 				LeaseID    string `json:"lease_id"`
 				Generation uint64 `json:"generation"`
+				AttemptID  string `json:"attempt_id"`
 				Outcome    string `json:"outcome"`
 			}
 			if r.Method != http.MethodPost || json.NewDecoder(r.Body).Decode(&req) != nil ||
-				req.LeaseID != token.LeaseID || req.Generation != token.Generation || req.Outcome != "completed" {
+				req.LeaseID != token.LeaseID || req.Generation != token.Generation || req.AttemptID != "01996f90-3415-7cfe-8ff1-600058131aff" || req.Outcome != "completed" {
 				t.Errorf("incorrect atomic segment finish request: %+v", req)
 				w.WriteHeader(http.StatusBadRequest)
 				return
@@ -830,11 +832,11 @@ func TestBeginAndFinishSegmentUseCurrentLeaseFence(t *testing.T) {
 		}
 	})
 	defer closeServer()
-	segment, err := c.BeginSegment(context.Background(), token, "flash", 25*time.Second, 3*time.Second)
+	segment, err := c.BeginSegment(context.Background(), token, "01996f90-3415-7cfe-8ff1-600058131aff", "flash", 25*time.Second, 3*time.Second)
 	if err != nil || !began || segment.ID != testProofID || segment.Key != "flash" {
 		t.Fatalf("segment begin failed: segment=%+v began=%v err=%v", segment, began, err)
 	}
-	if err := c.FinishSegment(context.Background(), token, segment.ID, "completed"); err != nil || !finished {
+	if err := c.FinishSegment(context.Background(), token, "01996f90-3415-7cfe-8ff1-600058131aff", segment.ID, "completed"); err != nil || !finished {
 		t.Fatalf("segment finish failed: finished=%v err=%v", finished, err)
 	}
 }
