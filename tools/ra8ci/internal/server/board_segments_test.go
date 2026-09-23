@@ -119,3 +119,36 @@ func TestBoardHILClaimRouteUsesLeaseAndHostFacts(t *testing.T) {
 		t.Fatalf("claim response lost assignment: %+v err=%v body=%s", response, err, w.Body.String())
 	}
 }
+
+type fakeBoardHILFinisher struct {
+	*fakeBoardStore
+	completion    store.BoardHILCompletion
+	catalogDigest string
+}
+
+func (f *fakeBoardHILFinisher) CompleteBoardHILAttempt(_ context.Context, _ store.BoardActor,
+	completion store.BoardHILCompletion, cat *catalog.Catalog, _ string) error {
+	f.completion, f.catalogDigest = completion, cat.Digest()
+	return nil
+}
+
+func TestBoardHILCompletionRouteBindsAttemptLeaseAndCatalog(t *testing.T) {
+	cat, err := catalog.Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	f := &fakeBoardHILFinisher{fakeBoardStore: &fakeBoardStore{}}
+	mux := http.NewServeMux()
+	if err := RegisterBoardRoutes(mux, f, nil, "bsikar/ra8-firmware", BoardHILPolicy{Catalog: cat}); err != nil {
+		t.Fatal(err)
+	}
+	body := `{"lease_id":"` + boardTestLeaseID + `","generation":5,"result":"failed","hit_deadline":false,"evidence_complete":false,"reason":"fixture failure","steps":[{"key":"observe","started_at":"2026-01-01T00:00:00Z","ended_at":"2026-01-01T00:00:01Z","duration_ns":1000000000,"state":"failed","child_exit_code":1}]}`
+	w := httptest.NewRecorder()
+	mux.ServeHTTP(w, boardTestRequest("POST", "/v1/boards/ek-ra8d2/hil-attempts/"+boardTestProofID+"/complete", body))
+	if w.Code != http.StatusOK || f.completion.AttemptID != boardTestProofID ||
+		f.completion.LeaseID != boardTestLeaseID || f.completion.Generation != 5 ||
+		f.completion.Result != "failed" || len(f.completion.Steps) != 1 || f.catalogDigest != cat.Digest() {
+		t.Fatalf("HIL completion was not bound to route identity and catalog: status=%d completion=%+v digest=%s body=%s",
+			w.Code, f.completion, f.catalogDigest, w.Body.String())
+	}
+}

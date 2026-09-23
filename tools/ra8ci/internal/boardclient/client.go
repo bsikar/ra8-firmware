@@ -600,6 +600,33 @@ func (c *Client) ClaimNextHILAttempt(ctx context.Context, boardID, leaseID, host
 	return a, nil
 }
 
+// CompleteHILAttempt persists the board agent's terminal timing evidence
+// against the exact lease generation and server-selected assignment.
+func (c *Client) CompleteHILAttempt(ctx context.Context, token LeaseToken, assignment store.BoardHILAssignment,
+	completion store.BoardHILCompletion) error {
+	if !validBoardID(token.BoardID) || !store.ValidID(token.LeaseID) || token.Generation == 0 ||
+		assignment.Attempt.ID != completion.AttemptID || !store.ValidID(completion.AttemptID) ||
+		completion.LeaseID != token.LeaseID || completion.Generation != token.Generation ||
+		assignment.Task.Scope != "hil" || assignment.Task.BoardPolicy != "exclusive" ||
+		assignment.Task.HIL == nil || assignment.Task.HIL.BoardID != token.BoardID ||
+		catalog.ValidateTask(assignment.Task) != nil {
+		return ErrInvalidRequest
+	}
+	return c.request(ctx, http.MethodPost,
+		boardPath(token.BoardID, "/hil-attempts/"+completion.AttemptID+"/complete"),
+		struct {
+			LeaseID          string          `json:"lease_id"`
+			Generation       uint64          `json:"generation"`
+			Result           string          `json:"result"`
+			ChildExitCode    *int            `json:"child_exit_code,omitempty"`
+			HitDeadline      bool            `json:"hit_deadline"`
+			EvidenceComplete bool            `json:"evidence_complete"`
+			Reason           string          `json:"reason,omitempty"`
+			Steps            []store.HILStep `json:"steps"`
+		}{completion.LeaseID, completion.Generation, completion.Result, completion.ChildExitCode,
+			completion.HitDeadline, completion.EvidenceComplete, completion.Reason, completion.Steps}, nil)
+}
+
 // BeginSegment atomically orders a bounded hardware operation against board
 // waiters using the server's per-board database lock and clock.
 func (c *Client) BeginSegment(ctx context.Context, token LeaseToken, attemptID, key string, bound, recoveryMargin time.Duration) (store.BoardSegment, error) {

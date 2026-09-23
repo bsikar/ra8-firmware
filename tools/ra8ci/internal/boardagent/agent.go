@@ -16,6 +16,7 @@ import (
 
 	"github.com/bsikar/ra8-firmware/tools/ra8ci/internal/board"
 	"github.com/bsikar/ra8-firmware/tools/ra8ci/internal/boardclient"
+	"github.com/bsikar/ra8-firmware/tools/ra8ci/internal/catalog"
 	"github.com/bsikar/ra8-firmware/tools/ra8ci/internal/store"
 )
 
@@ -38,6 +39,10 @@ type SegmentClient interface {
 
 type HILAttemptClient interface {
 	ClaimNextHILAttempt(context.Context, string, string, string, int, int64, float64, json.RawMessage) (*store.BoardHILAssignment, error)
+}
+
+type HILCompletionClient interface {
+	CompleteHILAttempt(context.Context, boardclient.LeaseToken, store.BoardHILAssignment, store.BoardHILCompletion) error
 }
 
 // Agent reconciles one persistent physical board agent identity.
@@ -182,6 +187,30 @@ func (a *Agent) ClaimNextHILAttempt(ctx context.Context, token boardclient.Lease
 		return nil, err
 	}
 	return client.ClaimNextHILAttempt(ctx, token.BoardID, token.LeaseID, host, cores, ramBytes, load, hostFacts)
+}
+
+// CompleteHILAttempt closes the exact server-selected HIL attempt under the
+// board-agent client. Terminal persistence is allowed after a cooperative
+// yield request because it does not begin another hardware operation.
+func (a *Agent) CompleteHILAttempt(ctx context.Context, token boardclient.LeaseToken,
+	assignment store.BoardHILAssignment, completion store.BoardHILCompletion) error {
+	if a == nil || ctx == nil || token.BoardID != a.boardID || !store.ValidID(token.LeaseID) ||
+		token.Generation == 0 || assignment.Attempt.ID != completion.AttemptID ||
+		!store.ValidID(completion.AttemptID) || completion.LeaseID != token.LeaseID ||
+		completion.Generation != token.Generation || assignment.Task.Scope != "hil" ||
+		assignment.Task.BoardPolicy != "exclusive" || assignment.Task.HIL == nil ||
+		assignment.Task.HIL.BoardID != a.boardID || catalog.ValidateTask(assignment.Task) != nil {
+		return ErrInvalidAgent
+	}
+	client, ok := a.client.(HILCompletionClient)
+	if !ok {
+		return fmt.Errorf("%w: HIL completion client is unavailable", ErrInvalidAgent)
+	}
+	if err := a.enterSegment(ctx); err != nil {
+		return err
+	}
+	defer a.leaveSegment()
+	return client.CompleteHILAttempt(ctx, token, assignment, completion)
 }
 
 // RunSegment executes one indivisible, context-bounded board operation. The
