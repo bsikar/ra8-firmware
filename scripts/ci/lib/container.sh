@@ -298,6 +298,7 @@ ci_host_mode_exec() {
     -e RA8_CI_INNER=1 \
     -e RA8_CI_FAST="$fast" \
     -e RA8_CI_GATE="$gate" \
+    -e RA8_CI_COMMIT_RANGE \
     -e HOME=/home/ra8-ci \
     -e GIT_CONFIG_COUNT=1 \
     -e GIT_CONFIG_KEY_0=safe.directory \

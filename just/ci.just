@@ -36,13 +36,13 @@ mod devcontainer 'ci_devcontainer.just'
 mod gate 'ci_gate.just'
 
 run:
-    /bin/bash -p scripts/ci.sh
+    bash -p scripts/ci.sh
 
 fast:
-    /bin/bash -p scripts/ci.sh --fast
+    bash -p scripts/ci.sh --fast
 
 native:
-    /bin/bash -p scripts/ci.sh --native
+    bash -p scripts/ci.sh --native
 
 native_fast:
     /bin/bash -p scripts/ci.sh --native --fast

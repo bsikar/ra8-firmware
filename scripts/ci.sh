@@ -456,7 +456,7 @@ if [[ "$-" == *p* ]]; then
       echo "       snapshot has one commit, so the gate would report PASS" >&2
       echo "       having read no real commit message at all." >&2
       echo "       Under the suite runner, RA8_CI_HISTORY_REPO must point at" >&2
-      echo "       the host repository (run_suite_on_snapshot exports it)." >&2
+      echo "       a real-history repository; otherwise the snapshot is used." >&2
       return 1
     fi
   }
