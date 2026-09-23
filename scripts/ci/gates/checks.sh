@@ -126,8 +126,7 @@ _pcc_migration_contracts() (
   (cd tools/ra8ci && GOWORK=off go run . legacy-make)
   # Python-managed tools belong in venvs. Reject the system-pip override in
   # active automation and in copy-pasteable developer guidance.
-  python3 scripts/checks/check_no_unsafe_python_install.py --selftest
-  python3 scripts/checks/check_no_unsafe_python_install.py
+  (cd tools/ra8ci && GOWORK=off go run . no-unsafe-python-install)
   # Release bootstrap paths must pin both the upstream version and per-arch
   # bytes. Prove the container, native dev box, and macOS paths all download to
   # disk and verify before executing, parsing, or installing anything.
