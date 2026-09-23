@@ -55,7 +55,7 @@ func boardCommand(ctx context.Context, args []string) error {
 		return json.NewEncoder(os.Stdout).Encode(snapshot)
 	}
 	if len(args) < 2 || args[0] != "take" {
-		return errors.New("usage: ra8ci board status <board-id> | board take <board-id> --class human|agent --why <reason> --duration <duration> | board extend <board-id> --why <reason> --duration <duration> | board cancel <board-id> <request-id> <lease-id>")
+		return errors.New("usage: ra8ci board status <board-id> | board take <board-id> --class human|ci|agent --why <reason> --duration <duration> | board extend <board-id> --why <reason> --duration <duration> | board cancel <board-id> <request-id> <lease-id>")
 	}
 	flags := flag.NewFlagSet("board take", flag.ContinueOnError)
 	flags.SetOutput(io.Discard)
@@ -66,17 +66,20 @@ func boardCommand(ctx context.Context, args []string) error {
 		return fmt.Errorf("usage: ra8ci board take <board-id> --why <reason> --duration <duration>: %w", err)
 	}
 	if flags.NArg() != 0 || *why == "" || *durationText == "" {
-		return errors.New("usage: ra8ci board take <board-id> --class human|agent --why <reason> --duration <duration>")
+		return errors.New("usage: ra8ci board take <board-id> --class human|ci|agent --why <reason> --duration <duration>")
 	}
 	class := board.ClassHuman
 	maxDuration := 8 * time.Hour
 	switch *classText {
 	case "human":
+	case "ci":
+		class = board.ClassCI
+		maxDuration = 2 * time.Hour
 	case "agent":
 		class = board.ClassAI
 		maxDuration = time.Hour
 	default:
-		return errors.New("board take class must be human or agent")
+		return errors.New("board take class must be human, ci, or agent")
 	}
 	duration, err := time.ParseDuration(*durationText)
 	if err != nil || duration <= 0 || duration%time.Second != 0 || duration > maxDuration {
