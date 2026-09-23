@@ -11,6 +11,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"math"
 	"net/http"
 	"net/url"
 	"os"
@@ -548,6 +549,35 @@ func (c *Client) CanStartSegment(ctx context.Context, token LeaseToken, bound, r
 	}
 	return board.CanStartSegment(snapshot, board.Token{BoardID: token.BoardID,
 		LeaseID: token.LeaseID, Generation: token.Generation}, time.Now().UTC(), bound, recoveryMargin)
+}
+
+// StartHILAttempt starts one queued HIL task under the exact active board lease.
+// The server derives the lease holder; the caller contributes only its host facts.
+func (c *Client) StartHILAttempt(ctx context.Context, boardID, taskID, leaseID, host string, cores int, ramBytes int64, load float64, hostFacts json.RawMessage) (store.Attempt, error) {
+	if !validBoardID(boardID) || !store.ValidID(taskID) || !store.ValidID(leaseID) || host == "" || cores < 1 || ramBytes < 1 || load < 0 || math.IsNaN(load) || math.IsInf(load, 0) {
+		return store.Attempt{}, ErrInvalidRequest
+	}
+	var facts map[string]json.RawMessage
+	if len(hostFacts) == 0 || json.Unmarshal(hostFacts, &facts) != nil || facts == nil {
+		return store.Attempt{}, ErrInvalidRequest
+	}
+	var result store.Attempt
+	err := c.request(ctx, http.MethodPost, boardPath(boardID, "/hil-attempts/start"), struct {
+		TaskID       string          `json:"task_id"`
+		LeaseID      string          `json:"lease_id"`
+		Host         string          `json:"host"`
+		HostCores    int             `json:"host_cores"`
+		HostRAMBytes int64           `json:"host_ram_bytes"`
+		HostLoad     float64         `json:"host_load"`
+		HostFacts    json.RawMessage `json:"host_facts"`
+	}{taskID, leaseID, host, cores, ramBytes, load, hostFacts}, &result)
+	if err != nil {
+		return store.Attempt{}, err
+	}
+	if result.TaskID != taskID || !store.ValidID(result.ID) || result.State != "running" {
+		return store.Attempt{}, errors.New("HIL attempt response does not match request")
+	}
+	return result, nil
 }
 
 // BeginSegment atomically orders a bounded hardware operation against board

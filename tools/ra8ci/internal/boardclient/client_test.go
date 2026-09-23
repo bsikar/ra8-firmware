@@ -840,3 +840,43 @@ func TestBeginAndFinishSegmentUseCurrentLeaseFence(t *testing.T) {
 		t.Fatalf("segment finish failed: finished=%v err=%v", finished, err)
 	}
 }
+
+func TestStartHILAttemptBindsHostFactsAndLease(t *testing.T) {
+	taskID := "01996f90-3415-7cfe-8ff1-600058131aff"
+	leaseID := "01996f90-3415-7cfe-8ff1-600058131afe"
+	var called bool
+	c, closeServer := testClient(t, func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost || r.URL.Path != "/v1/boards/ek-ra8d2/hil-attempts/start" {
+			t.Errorf("unexpected HIL attempt request: %s %s", r.Method, r.URL.Path)
+			w.WriteHeader(http.StatusNotFound)
+			return
+		}
+		var req struct {
+			TaskID       string          `json:"task_id"`
+			LeaseID      string          `json:"lease_id"`
+			Host         string          `json:"host"`
+			HostCores    int             `json:"host_cores"`
+			HostRAMBytes int64           `json:"host_ram_bytes"`
+			HostLoad     float64         `json:"host_load"`
+			HostFacts    json.RawMessage `json:"host_facts"`
+		}
+		if json.NewDecoder(r.Body).Decode(&req) != nil || req.TaskID != taskID || req.LeaseID != leaseID ||
+			req.Host != "runner-1" || req.HostCores != 8 || req.HostRAMBytes != 8<<30 ||
+			req.HostLoad != 0.25 || string(req.HostFacts) != "{\"os\":\"linux\"}" {
+			t.Errorf("invalid HIL attempt request: %+v", req)
+			w.WriteHeader(http.StatusBadRequest)
+			return
+		}
+		called = true
+		jsonResponse(w, http.StatusCreated, store.Attempt{ID: testProofID, TaskID: taskID, AttemptNo: 1, State: "running"})
+	})
+	defer closeServer()
+	facts := json.RawMessage("{\"os\":\"linux\"}")
+	attempt, err := c.StartHILAttempt(context.Background(), "ek-ra8d2", taskID, leaseID, "runner-1", 8, 8<<30, 0.25, facts)
+	if err != nil || !called || attempt.ID != testProofID {
+		t.Fatalf("HIL attempt start failed: attempt=%+v called=%v err=%v", attempt, called, err)
+	}
+	if _, err := c.StartHILAttempt(context.Background(), "ek-ra8d2", "bad", leaseID, "runner-1", 8, 8<<30, 0.25, facts); err == nil {
+		t.Fatal("invalid HIL task ID was accepted")
+	}
+}

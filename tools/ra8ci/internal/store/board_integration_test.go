@@ -299,15 +299,24 @@ func TestIntegrationBoardSegmentAndHumanWaiterSerialize(t *testing.T) {
 	args := []byte(`{"argv":[],"hil":{"board_id":"` + boardID + `","board_model":"EK-RA8D2","manifest_path":"examples/ek_ra8d2/hw_validated/hil/demo/hil.conf","program_family":"uart-demo","mode":"uart_scrape","observation_step":"observe","flash_restore_seconds":10}}`)
 	run, err := s.CreateRun(ctx, CreateRunInput{Trigger: "integration", ActorID: agent.ID(), Repository: boardTestRepo,
 		CommitSHA: strings.Repeat("a", 40), SnapshotSHA256: strings.Repeat("b", 64), CatalogSHA256: strings.Repeat("c", 64),
-		Tasks: []TaskInput{{Key: "bounded-segment", Name: "hil-run", Arguments: args, Tier: "required", Scope: "hil", HostClass: "hil-lab", DeadlineSeconds: 30}}})
+		Tasks: []TaskInput{
+			{Key: "bounded-segment", Name: "hil-run", Arguments: args, Tier: "required", Scope: "hil", HostClass: "hil-lab", DeadlineSeconds: 30},
+			{Key: "second-hil", Name: "hil-run", Arguments: args, Tier: "required", Scope: "hil", HostClass: "hil-lab", DeadlineSeconds: 30},
+		}})
 	if err != nil {
 		t.Fatal(err)
 	}
 	start := testStart(run.Tasks[0].ID)
-	start.ActorID, start.BoardLeaseID = agent.ID(), waiter.LeaseID
-	attempt, err := s.StartAttempt(ctx, start)
+	attempt, err := s.StartBoardHILAttempt(ctx, boardAgent, run.Tasks[0].ID, waiter.LeaseID, start)
 	if err != nil {
 		t.Fatal(err)
+	}
+	replayedAttempt, replayErr := s.StartBoardHILAttempt(ctx, boardAgent, run.Tasks[0].ID, waiter.LeaseID, start)
+	if replayErr != nil || replayedAttempt.ID != attempt.ID {
+		t.Fatalf("HIL claim retry did not return the original attempt: original=%s replay=%+v err=%v", attempt.ID, replayedAttempt, replayErr)
+	}
+	if _, secondErr := s.StartBoardHILAttempt(ctx, boardAgent, run.Tasks[1].ID, waiter.LeaseID, start); !errors.Is(secondErr, ErrConflict) {
+		t.Fatalf("one board lease started concurrent HIL tasks: %v", secondErr)
 	}
 	token := board.Token{BoardID: boardID, LeaseID: waiter.LeaseID, Generation: active.Generation}
 	segment, err := s.BeginBoardSegment(ctx, boardAgent, active.Version, token, attempt.ID, "flash", 20*time.Second, 3*time.Second)

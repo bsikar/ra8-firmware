@@ -2,6 +2,7 @@ package server
 
 import (
 	"context"
+	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -66,5 +67,37 @@ func TestBoardSegmentRejectsUnboundedRequest(t *testing.T) {
 	mux.ServeHTTP(w, boardTestRequest("POST", "/v1/boards/ek-ra8d2/segments/begin", body))
 	if w.Code != http.StatusBadRequest || f.beginBound != 0 {
 		t.Fatalf("unbounded segment was accepted: status=%d bound=%s body=%s", w.Code, f.beginBound, w.Body.String())
+	}
+}
+
+type fakeBoardHILAttempts struct {
+	*fakeBoardStore
+	started store.StartAttemptInput
+}
+
+func (f *fakeBoardHILAttempts) StartBoardHILAttempt(_ context.Context, _ store.BoardActor, taskID, leaseID string, facts store.StartAttemptInput) (store.Attempt, error) {
+	facts.TaskID, facts.BoardLeaseID = taskID, leaseID
+	f.started = facts
+	return store.Attempt{ID: boardTestProofID, TaskID: taskID, AttemptNo: 1, State: "running"}, nil
+}
+
+func TestBoardHILAttemptRouteUsesBoardAgentHostFacts(t *testing.T) {
+	f := &fakeBoardHILAttempts{fakeBoardStore: &fakeBoardStore{}}
+	mux := http.NewServeMux()
+	if err := RegisterBoardRoutes(mux, f, nil, "bsikar/ra8-firmware"); err != nil {
+		t.Fatal(err)
+	}
+	body, err := json.Marshal(startHILAttemptRequest{TaskID: "01996f90-3415-7cfe-8ff1-600058131aff",
+		LeaseID: boardTestLeaseID, Host: "ra8-board", HostCores: 8, HostRAMBytes: 8589934592,
+		HostLoad: 0.25, HostFacts: json.RawMessage([]byte("{\"os\":\"linux\",\"arch\":\"amd64\"}"))})
+	if err != nil {
+		t.Fatal(err)
+	}
+	w := httptest.NewRecorder()
+	mux.ServeHTTP(w, boardTestRequest("POST", "/v1/boards/ek-ra8d2/hil-attempts/start", string(body)))
+	if w.Code != http.StatusCreated || f.started.ActorID != "" || f.started.AgentID != "" ||
+		f.started.BoardLeaseID != boardTestLeaseID || f.started.Engine != "board-agent" ||
+		f.started.Host != "ra8-board" || f.started.HostCores != 8 || f.started.HostRAMBytes != 8589934592 {
+		t.Fatalf("board HIL start was not fenced or host facts were lost: status=%d start=%+v body=%s", w.Code, f.started, w.Body.String())
 	}
 }
