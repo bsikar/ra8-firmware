@@ -377,6 +377,34 @@ func (c *Client) WaitForGrant(ctx context.Context, ticket Ticket) (LeaseToken, e
 	}
 }
 
+// WaitForYieldRequest polls the durable lease until a higher-priority waiter
+// asks the holder to yield. It returns only a server-validated snapshot; the
+// caller must finish its current indivisible segment before Checkpoint.
+func (c *Client) WaitForYieldRequest(ctx context.Context, token LeaseToken) (board.Snapshot, error) {
+	if c == nil || ctx == nil || token.ExpiresAt.IsZero() {
+		return board.Snapshot{}, ErrInvalidRequest
+	}
+	for {
+		snapshot, err := c.leaseStatus(ctx, token)
+		if err != nil {
+			return board.Snapshot{}, err
+		}
+		switch snapshot.Phase {
+		case board.YieldRequested, board.Draining:
+			return snapshot, nil
+		case board.Active:
+			// Continue polling while this exact generation still owns the board.
+		case board.Quarantined, board.Recovering, board.RecoveryRequired:
+			return board.Snapshot{}, ErrRecoveryRequired
+		default:
+			return board.Snapshot{}, ErrStaleLease
+		}
+		if err := waitPoll(ctx, c.poll); err != nil {
+			return board.Snapshot{}, err
+		}
+	}
+}
+
 func waitPoll(ctx context.Context, duration time.Duration) error {
 	if duration <= 0 {
 		duration = time.Second
