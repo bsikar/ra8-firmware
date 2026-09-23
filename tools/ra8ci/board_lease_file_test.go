@@ -65,6 +65,39 @@ func TestBoardLeaseTokenRejectsUnsafeFilePermissions(t *testing.T) {
 	}
 }
 
+type fakeBoardLeaseCheckpointer struct {
+	gotToken boardclient.LeaseToken
+	result   board.Snapshot
+	err      error
+}
+
+func (f *fakeBoardLeaseCheckpointer) Checkpoint(_ context.Context, token boardclient.LeaseToken) (board.Snapshot, error) {
+	f.gotToken = token
+	return f.result, f.err
+}
+
+func TestCheckpointBoardLeaseRequiresMatchingDrainingLease(t *testing.T) {
+	directory := filepath.Join(t.TempDir(), "leases")
+	requestID, _ := store.NewID()
+	leaseID, _ := store.NewID()
+	token := boardclient.LeaseToken{BoardID: "ek-ra8d2", RequestID: requestID,
+		LeaseID: leaseID, Generation: 3, Version: 8, ExpiresAt: time.Now().UTC().Add(time.Hour)}
+	if err := writeBoardLeaseToken(directory, token); err != nil {
+		t.Fatal(err)
+	}
+	checkpointer := &fakeBoardLeaseCheckpointer{result: board.Snapshot{BoardID: token.BoardID,
+		Version: 9, Phase: board.Draining, Lease: &board.Lease{ID: leaseID, WaiterID: requestID,
+			Generation: token.Generation, ExpiresAt: token.ExpiresAt}}}
+	snapshot, err := checkpointBoardLease(context.Background(), checkpointer, directory, token.BoardID)
+	if err != nil || snapshot.Phase != board.Draining || checkpointer.gotToken != token {
+		t.Fatalf("checkpoint result=%+v sent=%+v err=%v", snapshot, checkpointer.gotToken, err)
+	}
+	checkpointer.result.Lease.ID = "another-lease"
+	if _, err := checkpointBoardLease(context.Background(), checkpointer, directory, token.BoardID); err == nil {
+		t.Fatal("checkpoint for another lease was accepted")
+	}
+}
+
 func TestBoardExtendValidatesBeforeLoadingCredentials(t *testing.T) {
 	if err := boardExtendCommand(t.Context(), []string{"bad/board", "--why", "debug", "--duration", "30s"}); err == nil {
 		t.Fatal("invalid board ID was accepted")

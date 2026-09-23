@@ -126,6 +126,33 @@ func readBoardLeaseToken(directory, boardID string) (boardclient.LeaseToken, err
 	return token, nil
 }
 
+type boardLeaseCheckpointer interface {
+	Checkpoint(context.Context, boardclient.LeaseToken) (board.Snapshot, error)
+}
+
+// checkpointBoardLease moves a yielded holder into drain state after it has
+// reached an application-defined safe point. It does not claim the hardware
+// is neutral or release the lease.
+func checkpointBoardLease(ctx context.Context, client boardLeaseCheckpointer, directory, boardID string) (board.Snapshot, error) {
+	if ctx == nil || client == nil {
+		return board.Snapshot{}, errors.New("board checkpoint requires context and client")
+	}
+	token, err := readBoardLeaseToken(directory, boardID)
+	if err != nil {
+		return board.Snapshot{}, err
+	}
+	snapshot, err := client.Checkpoint(ctx, token)
+	if err != nil {
+		return board.Snapshot{}, err
+	}
+	if snapshot.BoardID != token.BoardID || snapshot.Phase != board.Draining || snapshot.Lease == nil ||
+		snapshot.Lease.ID != token.LeaseID || snapshot.Lease.WaiterID != token.RequestID ||
+		snapshot.Lease.Generation != token.Generation {
+		return board.Snapshot{}, errors.New("server returned a checkpoint for another board lease or phase")
+	}
+	return snapshot, nil
+}
+
 type boardLeaseExtender interface {
 	Extend(context.Context, boardclient.LeaseToken, time.Time, string) (board.Snapshot, error)
 }
