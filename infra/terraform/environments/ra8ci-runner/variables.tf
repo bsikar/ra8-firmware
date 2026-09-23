@@ -25,18 +25,18 @@ variable "runner" {
     creation_operation_id = string
     run_id                = string
     vm_id                 = number
-    template_vm_id  = number
-    node_name       = string
-    pool_id         = string
-    datastore_id    = string
-    bridge          = string
-    cores           = number
-    memory_mb       = number
-    ipv4_address    = string
-    ipv4_gateway    = string
-    ssh_public_keys = list(string)
-    user_name       = string
-    started         = bool
-    network_enabled = bool
+    template_vm_id        = number
+    node_name             = string
+    pool_id               = string
+    datastore_id          = string
+    bridge                = string
+    cores                 = number
+    memory_mb             = number
+    ipv4_address          = string
+    ipv4_gateway          = string
+    ssh_public_keys       = list(string)
+    user_name             = string
+    started               = bool
+    network_enabled       = bool
   })
 }
