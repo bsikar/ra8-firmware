@@ -536,22 +536,31 @@ func acknowledge(s *Snapshot, c AcknowledgeGrant, now time.Time, events *[]Event
 	return nil
 }
 
-func requestYield(s *Snapshot, c RequestYield, now time.Time, events *[]Event) error {
-	if c.Actor == "" || c.WaiterID == "" {
+// admitYield is the sole admission rule for asking a board to yield: there is
+// a holder that can still be asked, and the named waiter is queued and
+// outranks it. PlanYield shares it with requestYield on purpose, so a plan can
+// never quote an ETA for a yield Apply would refuse.
+func admitYield(s Snapshot, waiterID string) error {
+	if waiterID == "" {
 		return &Error{InvalidArgument, "missing actor or waiter ID"}
 	}
 	if s.Lease == nil || (s.Phase != Active && s.Phase != YieldRequested && s.Phase != Draining) {
 		return &Error{Conflict, "no active holder to ask"}
 	}
-	valid := false
 	for _, w := range s.Queue {
-		if w.ID == c.WaiterID && w.Class > s.Lease.Class {
-			valid = true
-			break
+		if w.ID == waiterID && w.Class > s.Lease.Class {
+			return nil
 		}
 	}
-	if !valid {
-		return &Error{Denied, "named waiter does not outrank holder"}
+	return &Error{Denied, "named waiter does not outrank holder"}
+}
+
+func requestYield(s *Snapshot, c RequestYield, now time.Time, events *[]Event) error {
+	if c.Actor == "" {
+		return &Error{InvalidArgument, "missing actor or waiter ID"}
+	}
+	if err := admitYield(*s, c.WaiterID); err != nil {
+		return err
 	}
 	if s.Phase == Active {
 		s.Phase = YieldRequested
