@@ -48,8 +48,11 @@ func (s *Store) StartAttempt(ctx context.Context, in StartAttemptInput) (Attempt
 	if err != nil {
 		return Attempt{}, fmt.Errorf("%w: lock task: %v", ErrUnavailable, err)
 	}
-	if state != "scheduled" {
-		return Attempt{}, fmt.Errorf("%w: task is %s", ErrConflict, state)
+	// The claim is a task transition: scheduled -> running is the only edge
+	// into running, so the machine states the guard this site used to spell
+	// out for itself.
+	if err := CheckTaskTransition(state, "running"); err != nil {
+		return Attempt{}, err
 	}
 	var boardLeaseID any
 	attemptDeadlineSeconds := deadline
@@ -132,7 +135,9 @@ func (s *Store) StartAttempt(ctx context.Context, in StartAttemptInput) (Attempt
 	if err != nil {
 		return Attempt{}, fmt.Errorf("%w: read run state: %v", ErrUnavailable, err)
 	}
-	if previousRunState == "queued" {
+	// queued -> running is the run machine's only edge into running; a run
+	// already running or terminal simply has nothing to start.
+	if CheckRunTransition(previousRunState, "running") == nil {
 		_, err = tx.Exec(ctx, `UPDATE runs SET state='running', started_at=clock_timestamp(), version=version+1 WHERE id=$1 AND state='queued'`, runID)
 		if err != nil {
 			return Attempt{}, fmt.Errorf("%w: start run: %v", ErrUnavailable, err)
@@ -271,6 +276,16 @@ func validAttemptResult(in FinishAttemptInput) bool {
 	}
 }
 
+// taskResultFor maps an attempt outcome onto the outcome its task takes. A
+// success whose evidence is incomplete is not a success: the task fails, so
+// an unverifiable green never reaches the run summary as one.
+func taskResultFor(attemptResult string, evidenceComplete bool) string {
+	if attemptResult == "succeeded" && !evidenceComplete {
+		return "failed"
+	}
+	return attemptResult
+}
+
 // FinishAttempt writes the exact result, skips every dependent scheduled task
 // after non-success, and closes the run only when all its tasks are terminal.
 func (s *Store) FinishAttempt(ctx context.Context, in FinishAttemptInput) error {
@@ -300,8 +315,15 @@ func (s *Store) FinishAttempt(ctx context.Context, in FinishAttemptInput) error 
 	if err != nil {
 		return fmt.Errorf("%w: lock attempt: %v", ErrUnavailable, err)
 	}
+	// Two different statements: only a running attempt finishes on this path
+	// (the machine also allows issued -> cancelled/lost, but the reaper takes
+	// those edges), and the result has to be a legal outcome of a running
+	// attempt.
 	if state != "running" {
 		return fmt.Errorf("%w: attempt is %s", ErrConflict, state)
+	}
+	if err := CheckAttemptTransition(state, in.Result); err != nil {
+		return err
 	}
 	tag, err := tx.Exec(ctx, `UPDATE task_attempts SET state=$2, ended_at=clock_timestamp(),
 		child_exit_code=$3, hit_deadline=$4, evidence_complete=$5, result_reason=$6,
@@ -310,17 +332,21 @@ func (s *Store) FinishAttempt(ctx context.Context, in FinishAttemptInput) error 
 	if err != nil || tag.RowsAffected() != 1 {
 		return fmt.Errorf("%w: finish attempt: %v", ErrConflict, err)
 	}
+	var taskState string
 	var taskVersion int64
-	err = tx.QueryRow(ctx, "SELECT version FROM tasks WHERE id=$1 AND state='running' FOR UPDATE", taskID).Scan(&taskVersion)
+	err = tx.QueryRow(ctx, "SELECT state, version FROM tasks WHERE id=$1 FOR UPDATE", taskID).Scan(&taskState, &taskVersion)
 	if errors.Is(err, pgx.ErrNoRows) {
-		return fmt.Errorf("%w: task no longer running", ErrConflict)
+		return fmt.Errorf("%w: task", ErrNotFound)
 	}
 	if err != nil {
 		return fmt.Errorf("%w: lock task: %v", ErrUnavailable, err)
 	}
-	taskResult := in.Result
-	if !in.EvidenceComplete && in.Result == "succeeded" {
-		taskResult = "failed"
+	if taskState != "running" {
+		return fmt.Errorf("%w: task is %s", ErrConflict, taskState)
+	}
+	taskResult := taskResultFor(in.Result, in.EvidenceComplete)
+	if err := CheckTaskTransition(taskState, taskResult); err != nil {
+		return err
 	}
 	tag, err = tx.Exec(ctx, `UPDATE tasks SET state=$2, ended_at=clock_timestamp(), version=version+1
 		WHERE id=$1 AND version=$3 AND state='running'`, taskID, taskResult, taskVersion)
@@ -428,6 +454,9 @@ func closeRunIfTerminal(ctx context.Context, tx pgx.Tx, runID, actor string) err
 		result = "timed_out"
 	} else if unsuccessful != 0 {
 		result = "failed"
+	}
+	if err := CheckRunTransition(previousState, "terminal"); err != nil {
+		return err
 	}
 	_, err = tx.Exec(ctx, `UPDATE runs SET state='terminal', execution_result=$2,
 		evidence_state=$3, ended_at=clock_timestamp(), version=version+1
