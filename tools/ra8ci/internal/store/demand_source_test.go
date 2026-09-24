@@ -12,7 +12,7 @@ import (
 	"github.com/bsikar/ra8-firmware/tools/ra8ci/internal/demand"
 )
 
-func demandFixture(jobID int64, attempt int, phase demand.Phase) demand.Event {
+func sourceDemandFixture(jobID int64, attempt int, phase demand.Phase) demand.Event {
 	queued := time.Date(2026, 9, 24, 12, 0, 0, 0, time.UTC)
 	event := demand.Event{Adapter: demand.WebhookAdapter, DeliveryID: "d-1", Phase: phase,
 		JobID: jobID, RunID: 55, RunAttempt: attempt, Owner: "bsikar", Repository: "ra8-firmware",
@@ -63,8 +63,8 @@ func TestRecordedDemandPreservesWriteFailures(t *testing.T) {
 // event through untouched and in the order the store listed it.
 func TestDemandEventsProjectsRecordsInOrder(t *testing.T) {
 	records := []DemandRecord{
-		{Event: demandFixture(11, 1, demand.PhaseQueued), Version: 1},
-		{Event: demandFixture(12, 2, demand.PhaseInProgress), Version: 7},
+		{Event: sourceDemandFixture(11, 1, demand.PhaseQueued), Version: 1},
+		{Event: sourceDemandFixture(12, 2, demand.PhaseInProgress), Version: 7},
 	}
 	events := demandEvents(records)
 	if len(events) != len(records) {
@@ -87,7 +87,7 @@ func TestDemandEventsProjectsRecordsInOrder(t *testing.T) {
 // event: it merges a snapshot onto what ListOpen handed it, so a field
 // dropped here becomes an invalid write later.
 func TestProjectedEventStillValidates(t *testing.T) {
-	record := DemandRecord{Event: demandFixture(21, 1, demand.PhaseInProgress),
+	record := DemandRecord{Event: sourceDemandFixture(21, 1, demand.PhaseInProgress),
 		FirstSeenAt: time.Now(), UpdatedAt: time.Now(), Version: 3}
 	events := demandEvents([]DemandRecord{record})
 	if err := events[0].Validate(); err != nil {
@@ -101,7 +101,7 @@ func TestDemandSourceRefusesWithoutAStore(t *testing.T) {
 	if _, err := source.ListOpen(context.Background(), 10); !errors.Is(err, ErrInvalid) {
 		t.Fatalf("nil source should refuse to list, got %v", err)
 	}
-	if err := (&DemandSource{}).Record(context.Background(), demandFixture(31, 1, demand.PhaseQueued)); !errors.Is(err, ErrInvalid) {
+	if err := (&DemandSource{}).Record(context.Background(), sourceDemandFixture(31, 1, demand.PhaseQueued)); !errors.Is(err, ErrInvalid) {
 		t.Fatalf("storeless source should refuse to record, got %v", err)
 	}
 }
