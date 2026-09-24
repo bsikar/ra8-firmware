@@ -45,14 +45,52 @@ func (a MTLSAuthorizer) Authorize(r *http.Request, repository, permission string
 	return a.Store.AuthorizeCertificate(r.Context(), leaf.Raw, repository, permission)
 }
 
+// denialAuditor records a refused request. It is the only part of the store a
+// denial needs, kept as its own seam so the audited actor can be pinned by a
+// test: what a denial writes is a security property, and a property nothing
+// can observe is a property nothing protects.
+type denialAuditor interface {
+	AuditDenied(ctx context.Context, actor, action, target string) error
+}
+
 type Server struct {
 	store              *store.Store
 	logReader          runLogReader
+	audit              denialAuditor
 	catalog            *catalog.Catalog
 	auth               Authorizer
 	mux                *http.ServeMux
 	trustedAgentCommit string
 	readinessChecks    []func(context.Context) error
+}
+
+// certificateActor is the only identifier a denial may record for a peer: the
+// SHA-256 of the certificate the peer presented, which is what
+// api_principals.cert_sha256 already holds. A peer that presented nothing
+// usable is recorded as unverified rather than described.
+//
+// Nothing from the request body, the query, or a header reaches the audit
+// trail through here. A denial is written before the request is understood,
+// so anything else carried into it would be attacker-chosen text.
+func certificateActor(r *http.Request) string {
+	if r == nil || r.TLS == nil || len(r.TLS.PeerCertificates) == 0 ||
+		r.TLS.PeerCertificates[0] == nil || len(r.TLS.PeerCertificates[0].Raw) == 0 {
+		return "unverified-peer"
+	}
+	return "certificate-sha256:" + certificateFingerprint(r.TLS.PeerCertificates[0].Raw)
+}
+
+// denialAudit returns the sink a denial is written to. A server holding
+// neither is a configuration error, and it fails closed at the denial rather
+// than answering as though the refusal had been recorded.
+func (s *Server) denialAudit() denialAuditor {
+	if s.audit != nil {
+		return s.audit
+	}
+	if s.store != nil {
+		return s.store
+	}
+	return nil
 }
 
 // New installs only implemented endpoints with the mTLS authorizer. An absent
@@ -81,7 +119,7 @@ func NewWithOptions(st *store.Store, cat *catalog.Catalog, verifier store.Neutra
 			return nil, fmt.Errorf("%w: nil readiness check", store.ErrInvalid)
 		}
 	}
-	s := &Server{store: st, logReader: st, catalog: cat, auth: MTLSAuthorizer{Store: st},
+	s := &Server{store: st, logReader: st, audit: st, catalog: cat, auth: MTLSAuthorizer{Store: st},
 		mux: http.NewServeMux(), trustedAgentCommit: trustedAgentCommit,
 		readinessChecks: append([]func(context.Context) error(nil), readinessChecks...)}
 	s.mux.HandleFunc("GET /health/live", s.live)
@@ -288,12 +326,12 @@ func (s *Server) getRun(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) deny(w http.ResponseWriter, r *http.Request, action, target string, authErr error) {
-	actor := "unverified-peer"
-	if r.TLS != nil && len(r.TLS.PeerCertificates) > 0 {
-		sum := sha256.Sum256(r.TLS.PeerCertificates[0].Raw)
-		actor = "certificate-sha256:" + hex.EncodeToString(sum[:])
+	auditor := s.denialAudit()
+	if auditor == nil {
+		problem(w, http.StatusServiceUnavailable, "unavailable", "authorization audit unavailable", true)
+		return
 	}
-	if err := s.store.AuditDenied(r.Context(), actor, action, target); err != nil {
+	if err := auditor.AuditDenied(r.Context(), certificateActor(r), action, target); err != nil {
 		problem(w, http.StatusServiceUnavailable, "unavailable", "authorization audit unavailable", true)
 		return
 	}

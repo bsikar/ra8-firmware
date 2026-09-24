@@ -52,11 +52,12 @@ func (s *Server) agentFailure(w http.ResponseWriter, r *http.Request, action, ta
 		return
 	}
 	if errors.Is(err, store.ErrConflict) {
-		peer := "unverified-peer"
-		if r.TLS != nil && len(r.TLS.PeerCertificates) > 0 && r.TLS.PeerCertificates[0] != nil {
-			peer = "certificate-sha256:" + certificateFingerprint(r.TLS.PeerCertificates[0].Raw)
+		auditor := s.denialAudit()
+		if auditor == nil {
+			problem(w, http.StatusServiceUnavailable, "unavailable", "conflict audit unavailable", true)
+			return
 		}
-		if auditErr := s.store.AuditDenied(r.Context(), peer, action+".conflict", target); auditErr != nil {
+		if auditErr := auditor.AuditDenied(r.Context(), certificateActor(r), action+".conflict", target); auditErr != nil {
 			problem(w, http.StatusServiceUnavailable, "unavailable", "conflict audit unavailable", true)
 			return
 		}
