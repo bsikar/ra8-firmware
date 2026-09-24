@@ -17,6 +17,7 @@ import (
 	"path/filepath"
 	"runtime"
 	"strings"
+	"time"
 
 	embedded "github.com/bsikar/ra8-firmware/tools/ra8ci/catalog"
 )
@@ -67,6 +68,35 @@ type HILTask struct {
 	TimeoutDeclared      bool   `json:"timeout_declared"`
 	TimeoutSeconds       int    `json:"timeout_seconds,omitempty"`
 	SafetyMaximumSeconds int    `json:"safety_maximum_seconds,omitempty"`
+
+	// HandoffSafeStepSeconds and HandoffRestoreProbeSeconds are the reviewed
+	// bounds on giving the board up: the longest indivisible step this task
+	// may be in the middle of when it is asked to yield, and the longest
+	// restore-and-probe that follows before the board is neutral again.
+	// Their sum is the safety bound a handoff ETA may never be quoted below.
+	//
+	// They are declared together or not at all. Undeclared is a real
+	// answer, not a default: a task with no declared bounds has an unknown
+	// handoff ETA, which a person may still choose to wait out and a
+	// scheduler may not dispatch against.
+	HandoffSafeStepSeconds     int `json:"handoff_safe_step_seconds,omitempty"`
+	HandoffRestoreProbeSeconds int `json:"handoff_restore_probe_seconds,omitempty"`
+}
+
+// HandoffBoundsDeclared reports whether this task states what giving the
+// board up costs.
+func (h HILTask) HandoffBoundsDeclared() bool {
+	return h.HandoffSafeStepSeconds > 0 && h.HandoffRestoreProbeSeconds > 0
+}
+
+// HandoffSafetyBound is the declared request-to-neutral safety bound, zero
+// when the task declares none. It is a floor under an estimate, never an
+// estimate: history may only ever push a quoted ETA above it.
+func (h HILTask) HandoffSafetyBound() time.Duration {
+	if !h.HandoffBoundsDeclared() {
+		return 0
+	}
+	return time.Duration(h.HandoffSafeStepSeconds+h.HandoffRestoreProbeSeconds) * time.Second
 }
 
 // Task is a versioned definition of one executable task.
@@ -317,6 +347,11 @@ func ValidateTask(task Task) error {
 	return nil
 }
 
+// maxHandoffBoundSeconds caps either declared handoff bound. It matches the
+// estimator's own ceiling on a bound (board.MaxHandoffBound), stated here in
+// seconds so this package keeps no dependency on the board state machine.
+const maxHandoffBoundSeconds = 3600
+
 func validateHILTask(hil HILTask, steps []Step) error {
 	if err := ValidateHILTaskMetadata(hil); err != nil {
 		return err
@@ -340,6 +375,9 @@ func ValidateHILTaskMetadata(hil HILTask) error {
 		hil.SafetyMaximumSeconds < 0 || hil.SafetyMaximumSeconds > 3600 {
 		return ErrInvalidCatalog
 	}
+	if err := validateHandoffBounds(hil); err != nil {
+		return err
+	}
 	fallback := 30
 	if hil.TimeoutDeclared {
 		fallback = hil.TimeoutSeconds
@@ -353,6 +391,30 @@ func ValidateHILTaskMetadata(hil HILTask) error {
 	default:
 		return ErrInvalidCatalog
 	}
+}
+
+// validateHandoffBounds judges the reviewed cost of giving the board up.
+//
+// The two halves travel together. Half a bound is worse than none: the sum is
+// what a handoff ETA is floored by, so a task declaring only its safe step
+// would quote a target that omits the restore it always pays, and one
+// declaring only its restore probe would quote a target that assumes it can
+// be interrupted anywhere.
+func validateHandoffBounds(hil HILTask) error {
+	if hil.HandoffSafeStepSeconds == 0 && hil.HandoffRestoreProbeSeconds == 0 {
+		return nil
+	}
+	if hil.HandoffSafeStepSeconds < 1 || hil.HandoffSafeStepSeconds > maxHandoffBoundSeconds ||
+		hil.HandoffRestoreProbeSeconds < 1 || hil.HandoffRestoreProbeSeconds > maxHandoffBoundSeconds {
+		return ErrInvalidCatalog
+	}
+	// An indivisible step cannot outlast the cap on the whole attempt it
+	// runs inside: such a task could be asked to yield in the middle of a
+	// step the safety maximum would already have killed.
+	if hil.SafetyMaximumSeconds > 0 && hil.HandoffSafeStepSeconds > hil.SafetyMaximumSeconds {
+		return ErrInvalidCatalog
+	}
+	return nil
 }
 
 func validHILManifestPath(manifest string) bool {
