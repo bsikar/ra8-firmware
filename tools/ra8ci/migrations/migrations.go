@@ -18,7 +18,7 @@ import (
 //go:embed *.sql
 var sqlFiles embed.FS
 
-const currentVersion = 20
+const currentVersion = 21
 
 // CurrentVersion is the exact schema version accepted by the runtime store.
 func CurrentVersion() int { return currentVersion }

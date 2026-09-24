@@ -36,6 +36,13 @@ func runnerVMTestInput(t *testing.T) RunnerVMInput {
 	}
 }
 
+// testUnclaimedDeadline is the deadline a reservation in these tests carries.
+// Every reservation has to have one, so the fixture takes the default lease
+// rather than letting each test invent a duration.
+func testUnclaimedDeadline() time.Time {
+	return time.Now().UTC().Add(DefaultUnclaimedLease)
+}
+
 func vmResolution(t *testing.T) RunnerVMResolution {
 	t.Helper()
 	return RunnerVMResolution{Outcome: "succeeded", EvidenceID: mustID(t),
@@ -47,11 +54,11 @@ func TestIntegrationRunnerVMLifecycleAndNoRestartAfterDrain(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 	in := runnerVMTestInput(t)
-	vm, created, err := s.ReserveRunnerVM(ctx, "scaler", in)
+	vm, created, err := s.ReserveRunnerVM(ctx, "scaler", in, testUnclaimedDeadline())
 	if err != nil || !created || vm.State != "reserved" || vm.Generation != 1 || !ValidID(vm.CreationOperationID) {
 		t.Fatalf("reserve exact VM: %+v created=%v err=%v", vm, created, err)
 	}
-	replayed, created, err := s.ReserveRunnerVM(ctx, "scaler", in)
+	replayed, created, err := s.ReserveRunnerVM(ctx, "scaler", in, testUnclaimedDeadline())
 	if err != nil || created || replayed.ID != vm.ID || replayed.CreationOperationID != vm.CreationOperationID {
 		t.Fatalf("job replay changed identity: %+v created=%v err=%v", replayed, created, err)
 	}
@@ -61,12 +68,12 @@ func TestIntegrationRunnerVMLifecycleAndNoRestartAfterDrain(t *testing.T) {
 	}
 	changed := in
 	changed.VMID++
-	if _, _, err := s.ReserveRunnerVM(ctx, "scaler", changed); !errors.Is(err, ErrConflict) {
+	if _, _, err := s.ReserveRunnerVM(ctx, "scaler", changed, testUnclaimedDeadline()); !errors.Is(err, ErrConflict) {
 		t.Fatalf("changed VMID rebound job: %v", err)
 	}
 	other := runnerVMTestInput(t)
 	other.VMID = in.VMID
-	if _, _, err := s.ReserveRunnerVM(ctx, "scaler", other); !errors.Is(err, ErrConflict) {
+	if _, _, err := s.ReserveRunnerVM(ctx, "scaler", other, testUnclaimedDeadline()); !errors.Is(err, ErrConflict) {
 		t.Fatalf("active VMID reused: %v", err)
 	}
 	clone, err := s.BeginRunnerVMOperation(ctx, "scaler", vm.ID, vm.Generation, "clone", RunnerVMSafetyEvidence{})
@@ -172,7 +179,7 @@ func TestIntegrationRunnerVMLifecycleAndNoRestartAfterDrain(t *testing.T) {
 		t.Fatalf("VM lifecycle audit missing: %d %v", audits, err)
 	}
 	other.VMID = in.VMID
-	if _, created, err := s.ReserveRunnerVM(ctx, "scaler", other); err != nil || !created {
+	if _, created, err := s.ReserveRunnerVM(ctx, "scaler", other, testUnclaimedDeadline()); err != nil || !created {
 		t.Fatalf("released VMID could not be reserved again: created=%v %v", created, err)
 	}
 }
@@ -181,7 +188,7 @@ func TestIntegrationRunnerVMEarlyCompletionAndUnknownStart(t *testing.T) {
 	s, _ := integrationStore(t)
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
-	vm, _, err := s.ReserveRunnerVM(ctx, "scaler", runnerVMTestInput(t))
+	vm, _, err := s.ReserveRunnerVM(ctx, "scaler", runnerVMTestInput(t), testUnclaimedDeadline())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -199,7 +206,7 @@ func TestIntegrationRunnerVMEarlyCompletionAndUnknownStart(t *testing.T) {
 	if err != nil || stillReserved.State != "reserved" || !stillReserved.CleanupRequested {
 		t.Fatalf("unverified absence released reservation: %+v %v", stillReserved, err)
 	}
-	second, _, err := s.ReserveRunnerVM(ctx, "scaler", runnerVMTestInput(t))
+	second, _, err := s.ReserveRunnerVM(ctx, "scaler", runnerVMTestInput(t), testUnclaimedDeadline())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -253,7 +260,7 @@ func TestIntegrationRunnerVMTerraformPlanEvidenceIsImmutableAndFenced(t *testing
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 	input := runnerVMTestInput(t)
-	vm, created, err := s.ReserveRunnerVM(ctx, "scaler", input)
+	vm, created, err := s.ReserveRunnerVM(ctx, "scaler", input, testUnclaimedDeadline())
 	if err != nil || !created {
 		t.Fatalf("reserve VM: %+v, %v", vm, err)
 	}
@@ -441,5 +448,121 @@ func TestValidTerraformObservedStateAcceptsVerifiedNoEffectOutcomes(t *testing.T
 	}
 	if validTerraformObservedState("clone", "failed", true, true, "running") {
 		t.Fatal("inconsistent failed/no-effect evidence accepted")
+	}
+}
+
+// A reservation carries its deadline from the moment it exists, a replayed
+// delivery gets the original deadline back rather than a fresh one, and a
+// claim takes the row out of the reaper's queue for good.
+func TestIntegrationUnclaimedDeadlineAndClaim(t *testing.T) {
+	s, _ := integrationStore(t)
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+	in := runnerVMTestInput(t)
+	before := time.Now().UTC()
+	deadline := before.Add(DefaultUnclaimedLease)
+	vm, created, err := s.ReserveRunnerVM(ctx, "scaler", in, deadline)
+	if err != nil || !created {
+		t.Fatalf("reserve: %+v created=%v err=%v", vm, created, err)
+	}
+	if vm.UnclaimedDeadline.IsZero() || vm.UnclaimedDeadline.Sub(deadline).Abs() > time.Second {
+		t.Fatalf("reservation did not carry its deadline: %s want %s", vm.UnclaimedDeadline, deadline)
+	}
+	if vm.ClaimedAt != nil {
+		t.Fatalf("a fresh reservation is claimed: %v", vm.ClaimedAt)
+	}
+	if !UnclaimedReservation(vm) || UnclaimedExpired(vm, before) {
+		t.Fatalf("fresh reservation reads as expired: %+v", vm)
+	}
+
+	// A redelivery must not extend the life of a credential nobody took.
+	replayed, created, err := s.ReserveRunnerVM(ctx, "scaler", in, before.Add(MaxUnclaimedLease))
+	if err != nil || created {
+		t.Fatalf("replay: created=%v err=%v", created, err)
+	}
+	if !replayed.UnclaimedDeadline.Equal(vm.UnclaimedDeadline) {
+		t.Fatalf("replay moved the deadline %s -> %s", vm.UnclaimedDeadline, replayed.UnclaimedDeadline)
+	}
+
+	claimed, err := s.MarkRunnerVMClaimed(ctx, "dispatch", vm.ID)
+	if err != nil || claimed.ClaimedAt == nil {
+		t.Fatalf("claim: %+v %v", claimed, err)
+	}
+	if claimed.Generation != vm.Generation {
+		t.Fatalf("claim bumped the operation generation %d -> %d", vm.Generation, claimed.Generation)
+	}
+	again, err := s.MarkRunnerVMClaimed(ctx, "dispatch", vm.ID)
+	if err != nil || again.ClaimedAt == nil || !again.ClaimedAt.Equal(*claimed.ClaimedAt) {
+		t.Fatalf("second claim moved the timestamp: %+v %v", again, err)
+	}
+	if UnclaimedExpired(again, time.Now().UTC().Add(MaxUnclaimedLease)) {
+		t.Fatal("a claimed reservation came back as expired")
+	}
+	if _, err := s.MarkRunnerVMClaimed(ctx, "dispatch", mustID(t)); !errors.Is(err, ErrNotFound) {
+		t.Fatalf("claim of an unknown reservation: %v", err)
+	}
+	if _, _, err := s.ReserveRunnerVM(ctx, "scaler", runnerVMTestInput(t), time.Now().UTC().Add(time.Second)); !errors.Is(err, ErrInvalid) {
+		t.Fatalf("a one second lease was accepted: %v", err)
+	}
+}
+
+// The reaper queue is exactly the reservations UnclaimedExpired names, in
+// deadline order: the SQL predicate and the Go one are the same sentence.
+func TestIntegrationListExpiredUnclaimedRunnerVMs(t *testing.T) {
+	s, _ := integrationStore(t)
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+	scaleSet := runnerVMTestInput(t).ScaleSetID
+	now := time.Now().UTC()
+
+	reserve := func(lease time.Duration) RunnerVM {
+		t.Helper()
+		in := runnerVMTestInput(t)
+		in.ScaleSetID = scaleSet
+		vm, created, err := s.ReserveRunnerVM(ctx, "scaler", in, now.Add(lease))
+		if err != nil || !created {
+			t.Fatalf("reserve: %v", err)
+		}
+		return vm
+	}
+	soon := reserve(2 * time.Minute)
+	later := reserve(10 * time.Minute)
+	fresh := reserve(MaxUnclaimedLease)
+	taken := reserve(3 * time.Minute)
+	if _, err := s.MarkRunnerVMClaimed(ctx, "dispatch", taken.ID); err != nil {
+		t.Fatal(err)
+	}
+
+	after := now.Add(time.Hour)
+	expired, err := s.ListExpiredUnclaimedRunnerVMs(ctx, scaleSet, after, 100)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var ids []string
+	for _, vm := range expired {
+		ids = append(ids, vm.ID)
+		if !UnclaimedExpired(vm, after) {
+			t.Fatalf("queued row %s is not expired in Go: %+v", vm.ID, vm)
+		}
+	}
+	if len(ids) != 2 || ids[0] != soon.ID || ids[1] != later.ID {
+		t.Fatalf("queue %v, want [%s %s] in deadline order", ids, soon.ID, later.ID)
+	}
+	for _, vm := range []RunnerVM{fresh, taken} {
+		for _, got := range ids {
+			if got == vm.ID {
+				t.Fatalf("%s should not be in the reaper queue", vm.ID)
+			}
+		}
+	}
+	none, err := s.ListExpiredUnclaimedRunnerVMs(ctx, scaleSet, now.Add(-time.Hour), 100)
+	if err != nil || len(none) != 0 {
+		t.Fatalf("queue before any deadline: %d rows %v", len(none), err)
+	}
+	if _, err := s.ListExpiredUnclaimedRunnerVMs(ctx, scaleSet, time.Time{}, 100); !errors.Is(err, ErrInvalid) {
+		t.Fatalf("zero clock accepted: %v", err)
+	}
+	if _, err := s.ListExpiredUnclaimedRunnerVMs(ctx, scaleSet, after, 0); !errors.Is(err, ErrInvalid) {
+		t.Fatalf("zero limit accepted: %v", err)
 	}
 }
