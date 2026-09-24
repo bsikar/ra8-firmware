@@ -25,6 +25,8 @@ import (
 	"github.com/bsikar/ra8-firmware/tools/ra8ci/internal/protocol"
 	"github.com/bsikar/ra8-firmware/tools/ra8ci/internal/source"
 	"github.com/bsikar/ra8-firmware/tools/ra8ci/internal/store"
+
+	"github.com/bsikar/ra8-firmware/tools/ra8ci/internal/mtls"
 )
 
 const maxResponseBytes = 1 << 20
@@ -76,6 +78,9 @@ func New(config Config) (*Client, error) {
 	certificate, err := tls.LoadX509KeyPair(config.CertFile, config.KeyFile)
 	if err != nil {
 		return nil, fmt.Errorf("%w: client certificate: %v", ErrInvalidConfig, err)
+	}
+	if err := mtls.ValidateClientIdentity(certificate, time.Now()); err != nil {
+		return nil, fmt.Errorf("%w: %v", ErrInvalidConfig, err)
 	}
 	poll := config.PollInterval
 	if poll == 0 {

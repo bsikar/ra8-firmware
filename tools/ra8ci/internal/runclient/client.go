@@ -23,6 +23,8 @@ import (
 	"time"
 
 	"github.com/bsikar/ra8-firmware/tools/ra8ci/internal/store"
+
+	"github.com/bsikar/ra8-firmware/tools/ra8ci/internal/mtls"
 )
 
 const maxResponseBytes = 1 << 20
@@ -95,6 +97,9 @@ func New(config Config) (*Client, error) {
 	identity, err := tls.LoadX509KeyPair(config.CertFile, config.KeyFile)
 	if err != nil {
 		return nil, fmt.Errorf("load run client identity: %w", err)
+	}
+	if err := mtls.ValidateClientIdentity(identity, time.Now()); err != nil {
+		return nil, fmt.Errorf("run client identity: %w", err)
 	}
 	base.Path = ""
 	base.RawPath = ""

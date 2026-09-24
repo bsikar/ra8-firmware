@@ -31,6 +31,8 @@ import (
 	"github.com/bsikar/ra8-firmware/tools/ra8ci/internal/executor"
 	"github.com/bsikar/ra8-firmware/tools/ra8ci/internal/protocol"
 	"github.com/bsikar/ra8-firmware/tools/ra8ci/internal/source"
+
+	"github.com/bsikar/ra8-firmware/tools/ra8ci/internal/mtls"
 )
 
 const (
@@ -98,6 +100,9 @@ func New(config Config) (*Agent, error) {
 	}
 	identity, err := tls.LoadX509KeyPair(config.CertFile, config.KeyFile)
 	if err != nil {
+		return nil, err
+	}
+	if err := mtls.ValidateClientIdentity(identity, time.Now()); err != nil {
 		return nil, err
 	}
 	absolute, err := filepath.Abs(config.Root)
