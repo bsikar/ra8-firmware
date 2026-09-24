@@ -39,6 +39,18 @@ func YieldSampleFor(before Snapshot, events []Event, cohort YieldCohort, shownTa
 	if lease == nil || lease.YieldRequestedAt.IsZero() {
 		return YieldSample{}, false, nil
 	}
+	// The lease carries the promise when the request recorded one, and the
+	// recorded number wins: it is what the requester was actually shown, and
+	// a caller re-deriving it at completion time would be measuring against
+	// whatever the estimator says now. A caller that passes a different
+	// nonzero target is refused rather than quietly overruled, since one of
+	// the two numbers is wrong and the disagreement is the finding.
+	if lease.HandoffTarget > 0 {
+		if shownTarget > 0 && shownTarget != lease.HandoffTarget {
+			return YieldSample{}, false, &Error{InvalidArgument, "shown handoff target contradicts the target recorded on the lease"}
+		}
+		shownTarget = lease.HandoffTarget
+	}
 
 	sample := YieldSample{
 		Cohort:      cohort,
