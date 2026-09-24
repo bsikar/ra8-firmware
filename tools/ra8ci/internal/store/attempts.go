@@ -61,8 +61,9 @@ func (s *Store) StartAttempt(ctx context.Context, in StartAttemptInput) (Attempt
 			return Attempt{}, fmt.Errorf("%w: HIL attempt requires an active board lease", ErrInvalid)
 		}
 		var definition struct {
-			Arguments []string         `json:"argv"`
-			HIL       *catalog.HILTask `json:"hil"`
+			Arguments []string          `json:"argv"`
+			Values    map[string]string `json:"values"`
+			HIL       *catalog.HILTask  `json:"hil"`
 		}
 		decoder := json.NewDecoder(bytes.NewReader(taskArguments))
 		decoder.DisallowUnknownFields()

@@ -177,3 +177,66 @@ func TestStepArgvAppendsBoundArgumentsAfterTheReviewedOnes(t *testing.T) {
 		t.Fatal("NUL in a reviewed argument accepted")
 	}
 }
+
+// TestValidatePersistedArgumentsRebindsRatherThanShapeChecks is the property
+// the whole persisted path rests on: argv is checked by re-deriving it from
+// the names it was bound from, so every stored element traces back to a
+// declared argument of the schema held now.
+func TestValidatePersistedArgumentsRebindsRatherThanShapeChecks(t *testing.T) {
+	task := Task{Name: "hil-run", ArgsSchema: ArgsSchema{
+		Positional: []string{"target"}, Flags: []string{"profile"}}}
+	values := map[string]string{"target": "ra8p1", "profile": "release"}
+	argv := []string{"ra8p1", "--profile=release"}
+	if err := task.ValidatePersistedArguments(values, argv); err != nil {
+		t.Fatalf("a row this schema binds was refused: %v", err)
+	}
+	// Each of these is well-shaped argv that no binding of this schema
+	// produces, which is exactly what a shape check cannot tell apart.
+	for name, stored := range map[string][]string{
+		"reordered": {"--profile=release", "ra8p1"},
+		"altered":   {"ra8p1", "--profile=debug"},
+		"extra":     {"ra8p1", "--profile=release", "--quiet=1"},
+		"short":     {"ra8p1"},
+		"empty":     nil,
+	} {
+		if err := task.ValidatePersistedArguments(values, stored); !errors.Is(err, ErrInvalidCatalog) {
+			t.Fatalf("%s argv accepted: %v", name, err)
+		}
+	}
+	// Catalog drift fails closed: the row named an argument the reviewed
+	// schema no longer declares, so it refuses rather than running the argv.
+	renamed := Task{Name: "hil-run", ArgsSchema: ArgsSchema{
+		Positional: []string{"board"}, Flags: []string{"profile"}}}
+	if err := renamed.ValidatePersistedArguments(values, argv); !errors.Is(err, ErrInvalidCatalog) {
+		t.Fatalf("a row bound against a dropped argument was accepted: %v", err)
+	}
+}
+
+// TestValidatePersistedArgumentsKeepsTheV1Refusal pins the case every row in
+// the catalog today takes: no schema, no values, no argv.
+func TestValidatePersistedArgumentsKeepsTheV1Refusal(t *testing.T) {
+	task := Task{Name: "test-go"}
+	if err := task.ValidatePersistedArguments(nil, nil); err != nil {
+		t.Fatalf("an argument-free row was refused: %v", err)
+	}
+	if err := task.ValidatePersistedArguments(nil, []string{}); err != nil {
+		t.Fatalf("an empty argv was refused: %v", err)
+	}
+	if err := task.ValidatePersistedArguments(nil, []string{"--profile=release"}); !errors.Is(err, ErrInvalidCatalog) {
+		t.Fatalf("argv on a task that declares none was accepted: %v", err)
+	}
+	if err := task.ValidatePersistedArguments(map[string]string{"profile": "release"}, nil); !errors.Is(err, ErrInvalidCatalog) {
+		t.Fatalf("values on a task that declares none were accepted: %v", err)
+	}
+}
+
+// TestValidatePersistedArgumentsRefusesAValueTheRulesRefuse keeps the value
+// allowlist on the read path too: a row written before a rule tightened, or
+// written by some other hand, is refused rather than trusted for being stored.
+func TestValidatePersistedArgumentsRefusesAValueTheRulesRefuse(t *testing.T) {
+	task := Task{Name: "hil-run", ArgsSchema: ArgsSchema{Positional: []string{"target"}}}
+	if err := task.ValidatePersistedArguments(
+		map[string]string{"target": "a;rm -rf /"}, []string{"a;rm -rf /"}); !errors.Is(err, ErrInvalidCatalog) {
+		t.Fatalf("a stored shell metacharacter was accepted: %v", err)
+	}
+}
