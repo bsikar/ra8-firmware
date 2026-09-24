@@ -318,22 +318,22 @@ func TestTerminalReceiptPreservesFailureEvidence(t *testing.T) {
 	result := executor.Result{TaskName: "format-check", StartedAt: now, EndedAt: now.Add(time.Second),
 		Duration: time.Second, ExitCode: 17, Steps: []executor.StepResult{{Name: "format-tree-check",
 			StartedAt: now, EndedAt: now.Add(time.Second), Duration: time.Second, ExitCode: 17}}}
-	receipt := terminalReceipt(a, result, facts, facts, 3, nil, nil)
+	receipt := terminalReceipt(a, result, facts, facts, 3, nil, nil, nil)
 	if receipt.Outcome != "failed" || receipt.ChildExitCode == nil || *receipt.ChildExitCode != 17 ||
 		!receipt.EvidenceComplete || receipt.FinalLogSequence != 3 || receipt.Validate() != nil {
 		t.Fatalf("bad child failure receipt: %+v", receipt)
 	}
-	receipt = terminalReceipt(a, result, facts, facts, 3, errors.New("broken logs"), nil)
+	receipt = terminalReceipt(a, result, facts, facts, 3, errors.New("broken logs"), nil, nil)
 	if receipt.EvidenceComplete || receipt.ErrorCode != "executor_error" || receipt.Validate() != nil {
 		t.Fatalf("false complete evidence: %+v", receipt)
 	}
 	result = executor.Result{}
-	receipt = terminalReceipt(a, result, facts, facts, 0, errors.New("pre-start error"), nil)
+	receipt = terminalReceipt(a, result, facts, facts, 0, errors.New("pre-start error"), nil, nil)
 	if receipt.ChildExitCode != nil || receipt.Outcome != "failed" || receipt.Validate() != nil {
 		t.Fatalf("pre-start error forged exit: %+v", receipt)
 	}
 	result = executor.Result{StartedAt: now, EndedAt: now, ExitCode: -1, TimedOut: true}
-	receipt = terminalReceipt(a, result, facts, facts, 0, nil, nil)
+	receipt = terminalReceipt(a, result, facts, facts, 0, nil, nil, nil)
 	if receipt.Outcome != "timed_out" || receipt.EvidenceComplete || receipt.ErrorCode != "no_step_executed" || receipt.Validate() != nil {
 		t.Fatalf("pre-step timeout lost: %+v", receipt)
 	}
