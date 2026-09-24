@@ -103,7 +103,12 @@ func ValidateYieldCohort(cohort YieldCohort) error {
 // ExclusionReason: it stays in the history as evidence, and it is never passed
 // off as a completed latency measurement.
 type YieldSample struct {
-	Cohort      YieldCohort
+	Cohort YieldCohort
+	// LeaseID and WaiterID identify the handoff this sample measures. They are
+	// the persistence identity: one lease leaves at most one yield sample, so
+	// a replayed commit updates a row instead of inventing a second handoff.
+	LeaseID     string
+	WaiterID    string
 	RequestedAt time.Time
 	NeutralAt   time.Time
 	// SafetyOverrun records that the holder finished an indivisible phase past
