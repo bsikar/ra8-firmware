@@ -245,6 +245,15 @@ func (m *memoryLedger) MarkRunnerVMDraining(_ context.Context, _, id string, gen
 	return m.vm, nil
 }
 
+func (m *memoryLedger) ListExpiredUnclaimedRunnerVMs(_ context.Context, scaleSetID int64, now time.Time, limit int) ([]store.RunnerVM, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if limit < 1 || m.vm.ScaleSetID != scaleSetID || !store.UnclaimedExpired(m.vm, now) {
+		return nil, nil
+	}
+	return []store.RunnerVM{m.vm}, nil
+}
+
 func (m *memoryLedger) ListUnresolvedRunnerVMs(_ context.Context, scaleSetID int64, _ int) ([]store.RunnerVM, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
