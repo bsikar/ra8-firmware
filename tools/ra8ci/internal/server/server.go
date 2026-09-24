@@ -139,7 +139,15 @@ func NewWithOptions(st *store.Store, cat *catalog.Catalog, verifier store.Neutra
 	s.mux.HandleFunc("POST /v1/attempts/{attempt_id}/artifacts/chunk", s.agentArtifactChunk)
 	s.mux.HandleFunc("POST /v1/attempts/{attempt_id}/artifacts/manifest", s.agentArtifactManifest)
 	s.mux.HandleFunc("POST /v1/agents/me/heartbeat", s.agentHeartbeat)
-	if err := RegisterBoardRoutes(s.mux, st, verifier, "bsikar/ra8-firmware", BoardPolicy{Catalog: cat, TrustedCommit: trustedAgentCommit}); err != nil {
+	// The yield budget is wired only when the store behind this server can
+	// actually answer one. A test double that cannot leaves the door closed
+	// at 503, which is the documented behaviour, rather than open with the
+	// estimate skipped.
+	policy := BoardPolicy{Catalog: cat, TrustedCommit: trustedAgentCommit}
+	if budgetStore, ok := any(st).(YieldBudgetStore); ok {
+		policy.YieldBudget = NewStoreYieldBudget(budgetStore)
+	}
+	if err := RegisterBoardRoutes(s.mux, st, verifier, "bsikar/ra8-firmware", policy); err != nil {
 		return nil, fmt.Errorf("register board routes: %w", err)
 	}
 	return s, nil
