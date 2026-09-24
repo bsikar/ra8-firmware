@@ -199,10 +199,12 @@ func validBoardIDArgument(id string) bool {
 	return true
 }
 func newBoardClient() (*boardclient.Client, error) {
-	config := boardclient.Config{ServerURL: os.Getenv("RA8CI_SERVER_URL"),
-		CAFile: os.Getenv("RA8CI_SERVER_CA"), CertFile: os.Getenv("RA8CI_CLIENT_CERT"),
-		KeyFile: os.Getenv("RA8CI_CLIENT_KEY")}
-	client, err := boardclient.New(config)
+	endpoint, err := resolveClientEndpoint("ra8ci board", roleOperator, os.Getenv)
+	if err != nil {
+		return nil, err
+	}
+	client, err := boardclient.New(boardclient.Config{ServerURL: endpoint.ServerURL,
+		CAFile: endpoint.CAFile, CertFile: endpoint.CertFile, KeyFile: endpoint.KeyFile})
 	if err != nil {
 		return nil, fmt.Errorf("board client: %w", err)
 	}

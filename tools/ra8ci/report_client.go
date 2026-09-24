@@ -17,6 +17,7 @@ import (
 	"os"
 	"time"
 
+	"github.com/bsikar/ra8-firmware/tools/ra8ci/internal/mtls"
 	"github.com/bsikar/ra8-firmware/tools/ra8ci/internal/store"
 )
 
@@ -28,19 +29,16 @@ type slowReportPayload struct {
 
 // fetchSlowReport asks the server; a CLI on a laptop never opens PostgreSQL.
 func fetchSlowReport(ctx context.Context, repository string, window time.Duration, limit int) (slowReportPayload, error) {
-	baseText := os.Getenv("RA8CI_SERVER_URL")
-	caFile := os.Getenv("RA8CI_SERVER_CA")
-	certFile := os.Getenv("RA8CI_CLIENT_CERT")
-	keyFile := os.Getenv("RA8CI_CLIENT_KEY")
-	if baseText == "" || caFile == "" || certFile == "" || keyFile == "" {
-		return slowReportPayload{}, errors.New("report requires RA8CI_SERVER_URL, RA8CI_SERVER_CA, RA8CI_CLIENT_CERT, and RA8CI_CLIENT_KEY")
+	endpoint, err := resolveClientEndpoint("ra8ci report slow", roleOperator, os.Getenv)
+	if err != nil {
+		return slowReportPayload{}, err
 	}
-	base, err := url.Parse(baseText)
+	base, err := url.Parse(endpoint.ServerURL)
 	if err != nil || base.Scheme != "https" || base.Host == "" || base.User != nil ||
 		(base.Path != "" && base.Path != "/") || base.RawQuery != "" || base.Fragment != "" {
 		return slowReportPayload{}, errors.New("RA8CI_SERVER_URL must be an HTTPS origin")
 	}
-	caPEM, err := os.ReadFile(caFile)
+	caPEM, err := os.ReadFile(endpoint.CAFile)
 	if err != nil {
 		return slowReportPayload{}, fmt.Errorf("read server CA: %w", err)
 	}
@@ -48,9 +46,9 @@ func fetchSlowReport(ctx context.Context, repository string, window time.Duratio
 	if !roots.AppendCertsFromPEM(caPEM) {
 		return slowReportPayload{}, errors.New("server CA has no trusted certificate")
 	}
-	identity, err := tls.LoadX509KeyPair(certFile, keyFile)
+	identity, err := mtls.LoadClientIdentity(endpoint.CertFile, endpoint.KeyFile, time.Now())
 	if err != nil {
-		return slowReportPayload{}, fmt.Errorf("load report client identity: %w", err)
+		return slowReportPayload{}, fmt.Errorf("report client identity: %w", err)
 	}
 	base.Path = "/v1/reports/slow"
 	query := url.Values{}
