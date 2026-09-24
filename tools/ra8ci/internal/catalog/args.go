@@ -215,3 +215,37 @@ func StepArgv(step Step, bound []string) ([]string, error) {
 	}
 	return argv, nil
 }
+
+// ValidatePersistedArguments re-checks a task's arguments as they were stored
+// rather than as they arrived. The named values are the record; argv is a
+// derived copy of them, so this re-derives argv from the values against the
+// reviewed schema held NOW and requires the two to agree.
+//
+// Why re-derive rather than re-validate the argv: an argv that merely passes
+// a shape check proves nothing about which reviewed arguments it came from,
+// so a stored element that no binding of this schema could produce would sail
+// through. Equality with a fresh binding is what ties every element back to a
+// declared name. It also fails closed when the catalog changed underneath a
+// persisted row: a renamed or dropped argument no longer binds to the same
+// argv, and the caller refuses the row instead of running an argv the current
+// catalog would never have produced.
+//
+// A task with no values and no argv is the whole v1 catalog, and there this
+// is exactly the older "accepts no arguments" refusal.
+func (t Task) ValidatePersistedArguments(values map[string]string, argv []string) error {
+	bound, err := t.BindArguments(values)
+	if err != nil {
+		return err
+	}
+	if len(bound) != len(argv) {
+		return fmt.Errorf("%w: task %q persisted %d argument(s), its schema binds %d",
+			ErrInvalidCatalog, t.Name, len(argv), len(bound))
+	}
+	for i := range bound {
+		if bound[i] != argv[i] {
+			return fmt.Errorf("%w: task %q persisted argument %d is not a binding of its reviewed schema",
+				ErrInvalidCatalog, t.Name, i)
+		}
+	}
+	return nil
+}

@@ -8,6 +8,7 @@ import (
 	"errors"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 
@@ -110,5 +111,62 @@ func TestPersistedTaskArgumentsCarryOnlyCatalogHILMetadata(t *testing.T) {
 	}
 	if len(stored.Arguments) != 0 || stored.HIL == nil || *stored.HIL != *definition.HIL {
 		t.Fatalf("persisted HIL task identity changed: %+v", stored)
+	}
+}
+
+// TestPersistedTaskArgumentsBindsArgvAtThePlane is the admission property:
+// the plane writes argv it derived itself from the submitter's names and the
+// reviewed schema, so a caller cannot state an argv element at all.
+func TestPersistedTaskArgumentsBindsArgvAtThePlane(t *testing.T) {
+	definition := catalog.Task{Name: "hil-run", ArgsSchema: catalog.ArgsSchema{
+		Positional: []string{"target"}, Flags: []string{"profile"}}}
+	values := map[string]string{"target": "ra8p1", "profile": "release"}
+	raw, err := persistedTaskArguments(definition, values)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var stored struct {
+		Arguments []string          `json:"argv"`
+		Values    map[string]string `json:"values"`
+	}
+	if err := json.Unmarshal(raw, &stored); err != nil {
+		t.Fatal(err)
+	}
+	want := []string{"ra8p1", "--profile=release"}
+	if strings.Join(stored.Arguments, "\x00") != strings.Join(want, "\x00") {
+		t.Fatalf("persisted argv = %q, want %q", stored.Arguments, want)
+	}
+	if len(stored.Values) != 2 || stored.Values["target"] != "ra8p1" || stored.Values["profile"] != "release" {
+		t.Fatalf("persisted values = %v", stored.Values)
+	}
+	// And the row re-validates against the catalog that wrote it.
+	if err := definition.ValidatePersistedArguments(stored.Values, stored.Arguments); err != nil {
+		t.Fatalf("a row the plane just wrote does not re-validate: %v", err)
+	}
+	for name, values := range map[string]map[string]string{
+		"undeclared": {"target": "ra8p1", "quiet": "1"},
+		"missing":    {"profile": "release"},
+		"shell":      {"target": "a;rm -rf /"},
+	} {
+		if _, err := persistedTaskArguments(definition, values); err == nil {
+			t.Fatalf("%s values were admitted", name)
+		}
+	}
+}
+
+// TestPersistedTaskArgumentsKeepsTheStoredShapeForAnArgumentFreeTask pins that
+// every task in the v1 catalog still writes exactly {"argv":[]}: no values
+// key appears, so nothing that reads a row written before this changes.
+func TestPersistedTaskArgumentsKeepsTheStoredShapeForAnArgumentFreeTask(t *testing.T) {
+	raw, err := persistedTaskArguments(catalog.Task{Name: "test-go"}, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(raw) != `{"argv":[]}` {
+		t.Fatalf("stored shape = %s, want {\"argv\":[]}", raw)
+	}
+	if _, err := persistedTaskArguments(catalog.Task{Name: "test-go"},
+		map[string]string{"profile": "release"}); err == nil {
+		t.Fatal("values were admitted for a task that declares none")
 	}
 }
