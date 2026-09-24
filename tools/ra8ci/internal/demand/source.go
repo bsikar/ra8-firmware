@@ -104,3 +104,11 @@ func (r *Registry) Submit(ctx context.Context, event Event) error {
 	}
 	return r.recorder.Record(ctx, event)
 }
+
+// Record satisfies EventRecorder, so the webhook endpoint and anything else
+// that writes one event at a time can be pointed at the gate instead of at
+// the store directly. It is Submit under the name the rest of the package
+// already uses for a recorder.
+func (r *Registry) Record(ctx context.Context, event Event) error { return r.Submit(ctx, event) }
+
+var _ EventRecorder = (*Registry)(nil)

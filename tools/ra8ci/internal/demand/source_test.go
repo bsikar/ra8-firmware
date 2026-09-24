@@ -156,3 +156,21 @@ func TestNewRegistryRefusesNonsense(t *testing.T) {
 		t.Fatal("a nil registry must refuse rather than panic")
 	}
 }
+
+func TestRegistryRecordIsSubmitUnderTheRecorderName(t *testing.T) {
+	recorder := &recorderStub{}
+	registry, err := NewRegistry(recorder)
+	if err != nil {
+		t.Fatalf("new registry: %v", err)
+	}
+	var sink EventRecorder = registry
+	if err := sink.Record(context.Background(), sampleEvent(WebhookAdapter)); err != nil {
+		t.Fatalf("record: %v", err)
+	}
+	if len(recorder.events) != 1 {
+		t.Fatalf("recorded %d events, want 1", len(recorder.events))
+	}
+	if err := sink.Record(context.Background(), sampleEvent(ScaleSetAdapter)); !errors.Is(err, ErrAdapterDisabled) {
+		t.Fatalf("record from a disabled adapter = %v, want ErrAdapterDisabled", err)
+	}
+}
