@@ -209,6 +209,13 @@ func (agent *Agent) execute(parent context.Context, assignment protocol.Assignme
 	hbCancel()
 	hbErr := <-hbDone
 	runErr = errors.Join(runErr, hbErr)
+	// Artifacts travel on the parent, not on ctx: ctx is the run's own budget
+	// and is already expired on the deadline path, which is precisely the
+	// attempt whose outputs explain the most. The window is bounded and
+	// separate from the receipt's so a large upload cannot cost the receipt.
+	artifactCtx, artifactStop := context.WithTimeout(parent, artifactWindow)
+	_, artifactErr := agent.collectAttemptArtifacts(artifactCtx, assignment, task, result, time.Now)
+	artifactStop()
 	// Retry only the last ambiguous log chunk. The server must treat the same
 	// sequence and digest idempotently; this never resumes the child process.
 	evidenceCtx, evidenceCancel := context.WithTimeout(parent, requestLimit)
@@ -219,7 +226,7 @@ func (agent *Agent) execute(parent context.Context, assignment protocol.Assignme
 		return err
 	}
 	sequence, logErr := uploader.status()
-	receipt := terminalReceipt(assignment, result, startFacts, endFacts, sequence, runErr, logErr)
+	receipt := terminalReceipt(assignment, result, startFacts, endFacts, sequence, runErr, logErr, artifactErr)
 	if err := receipt.Validate(); err != nil {
 		return err
 	}
@@ -227,7 +234,7 @@ func (agent *Agent) execute(parent context.Context, assignment protocol.Assignme
 	if err := agent.accept(evidenceCtx, assignment, "/v1/attempts/"+assignment.AttemptID+"/result", receipt); err != nil {
 		return err
 	}
-	return errors.Join(runErr, logErr)
+	return errors.Join(runErr, logErr, artifactErr)
 }
 
 // assignmentBudget uses only the server's remaining-time hint for a local
@@ -422,7 +429,7 @@ func (uploader *logUploader) status() (int64, error) {
 	return uploader.sequence, uploader.err
 }
 
-func terminalReceipt(assignment protocol.Assignment, result executor.Result, start, end protocol.HostFacts, sequence int64, runErr, logErr error) protocol.TerminalReceipt {
+func terminalReceipt(assignment protocol.Assignment, result executor.Result, start, end protocol.HostFacts, sequence int64, runErr, logErr, artifactErr error) protocol.TerminalReceipt {
 	steps := make([]protocol.StepSummary, 0, len(result.Steps))
 	for _, step := range result.Steps {
 		steps = append(steps, protocol.StepSummary{Name: step.Name, StartedAt: step.StartedAt,
@@ -436,7 +443,7 @@ func terminalReceipt(assignment protocol.Assignment, result executor.Result, sta
 		outcome = "timed_out"
 	case result.Cancelled:
 		outcome = "cancelled"
-	case runErr != nil || logErr != nil || result.ExitCode != 0:
+	case runErr != nil || logErr != nil || artifactErr != nil || result.ExitCode != 0:
 		outcome = "failed"
 	}
 	if len(result.Steps) == 0 && outcome == "succeeded" {
@@ -462,7 +469,8 @@ func terminalReceipt(assignment protocol.Assignment, result executor.Result, sta
 		AssignmentID: assignment.AssignmentID, AttemptID: assignment.AttemptID,
 		AssignmentVersion: assignment.AssignmentVersion, FencingToken: assignment.FencingToken,
 		Outcome: outcome, ChildExitCode: exit, TimedOut: result.TimedOut, Cancelled: result.Cancelled,
-		EvidenceComplete: runErr == nil && logErr == nil && len(result.Steps) > 0, StartedAt: started, EndedAt: ended,
+		EvidenceComplete: runErr == nil && logErr == nil && artifactErr == nil && len(result.Steps) > 0,
+		StartedAt:        started, EndedAt: ended,
 		DurationNS: int64(result.Duration), Steps: steps, FinalLogSequence: sequence,
 		CatalogSHA256: assignment.CatalogSHA256, SourceSnapshotSHA256: assignment.Source.SnapshotSHA256,
 		HostFactsAtStart: start, HostFactsAtEnd: end}
@@ -470,6 +478,8 @@ func terminalReceipt(assignment protocol.Assignment, result executor.Result, sta
 		receipt.ErrorCode = "executor_error"
 	} else if logErr != nil {
 		receipt.ErrorCode = "log_upload_error"
+	} else if artifactErr != nil {
+		receipt.ErrorCode = "artifact_upload_error"
 	} else if len(result.Steps) == 0 {
 		receipt.ErrorCode = "no_step_executed"
 	}
