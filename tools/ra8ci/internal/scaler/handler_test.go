@@ -83,7 +83,7 @@ func (m *memoryLedger) GetRunnerVMOperation(_ context.Context, id string) (store
 	return m.op, nil
 }
 
-func (m *memoryLedger) ReserveRunnerVM(_ context.Context, _ string, input store.RunnerVMInput) (store.RunnerVM, bool, error) {
+func (m *memoryLedger) ReserveRunnerVM(_ context.Context, _ string, input store.RunnerVMInput, deadline time.Time) (store.RunnerVM, bool, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	m.reserveCalls++
@@ -101,7 +101,8 @@ func (m *memoryLedger) ReserveRunnerVM(_ context.Context, _ string, input store.
 	if err != nil {
 		return store.RunnerVM{}, false, err
 	}
-	m.vm = store.RunnerVM{ID: id, RunnerVMInput: input, CreationOperationID: creation, State: "reserved", Generation: 1}
+	m.vm = store.RunnerVM{ID: id, RunnerVMInput: input, CreationOperationID: creation,
+		State: "reserved", Generation: 1, UnclaimedDeadline: deadline}
 	return m.vm, true, nil
 }
 
@@ -671,7 +672,8 @@ func TestEarlyCompletionMonotonicallyFencesAssignment(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, _, err := ledger.ReserveRunnerVM(context.Background(), h.config.Actor, input); err != nil {
+	deadline := time.Now().UTC().Add(store.DefaultUnclaimedLease)
+	if _, _, err := ledger.ReserveRunnerVM(context.Background(), h.config.Actor, input, deadline); err != nil {
 		t.Fatal(err)
 	}
 	if err := h.Process(context.Background(), github.Message{ScaleSetID: 42, Completed: []github.Job{completedJob(job)}}); err == nil {

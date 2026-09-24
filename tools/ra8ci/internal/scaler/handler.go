@@ -38,6 +38,19 @@ type Options struct {
 	BackupApprovalID  string
 	CleanupApprovalID string
 	MaxReconcileBatch int
+	// UnclaimedLease is how long a reservation may hold a minted runner
+	// credential before the unclaimed-runner reaper takes it back. Zero
+	// means store.DefaultUnclaimedLease; the reaper needs every
+	// reservation to carry a deadline, so there is no "no deadline".
+	UnclaimedLease time.Duration
+}
+
+// unclaimedLease is the configured lease or the default, never zero.
+func (o Options) unclaimedLease() time.Duration {
+	if o.UnclaimedLease == 0 {
+		return store.DefaultUnclaimedLease
+	}
+	return o.UnclaimedLease
 }
 
 // Metadata is independently fetched from trusted GitHub API state.
@@ -116,7 +129,7 @@ type Ledger interface {
 	GetRunnerVMByJob(context.Context, int64, string) (store.RunnerVM, error)
 	GetRunnerVM(context.Context, string) (store.RunnerVM, error)
 	GetRunnerVMOperation(context.Context, string) (store.RunnerVMOperation, error)
-	ReserveRunnerVM(context.Context, string, store.RunnerVMInput) (store.RunnerVM, bool, error)
+	ReserveRunnerVM(context.Context, string, store.RunnerVMInput, time.Time) (store.RunnerVM, bool, error)
 	BeginRunnerVMOperation(context.Context, string, string, int64, string, store.RunnerVMSafetyEvidence) (store.RunnerVMOperation, error)
 	RecordRunnerVMUPID(context.Context, string, string, int64, string, string) error
 	ResolveRunnerVMOperation(context.Context, string, string, int64, string, store.RunnerVMResolution) (store.RunnerVM, error)
@@ -279,7 +292,11 @@ func (h *Handler) reservation(ctx context.Context, job github.Job) (store.Runner
 		if err != nil {
 			return store.RunnerVM{}, err
 		}
-		vm, _, err := h.ledger.ReserveRunnerVM(ctx, h.config.Actor, input)
+		deadline, err := store.UnclaimedDeadline(time.Now().UTC(), h.config.unclaimedLease())
+		if err != nil {
+			return store.RunnerVM{}, err
+		}
+		vm, _, err := h.ledger.ReserveRunnerVM(ctx, h.config.Actor, input, deadline)
 		if err == nil {
 			return vm, nil
 		}
