@@ -457,21 +457,55 @@ def _matrix_jobs(
     ]
 
 
-def _archive_symbols(nm: str, archive: Path, name: str) -> tuple[list[str], set[str]]:
+def _archive_symbols(
+    nm: str, archive: Path, name: str, *, bundle_compiler_rt: bool = False
+) -> tuple[list[str], set[str]]:
     """Read one archive's global defined symbols with the resolved nm tool."""
     if not archive.is_file():
         return [f"{name} archive missing: {archive}"], set()
     proc = subprocess.run(  # noqa: S603 -- resolved tool; fresh archive
-        [nm, "-g", "--defined-only", str(archive)], capture_output=True, text=True, check=False
+        [nm, "-A", "-g", "--defined-only", str(archive)],
+        capture_output=True,
+        text=True,
+        check=False,
     )
     if proc.returncode != 0:
         return [f"{name} symbol scan failed: {proc.stderr.strip()}"], set()
-    actual = {
-        parts[-1].removeprefix("_")
-        for line in proc.stdout.splitlines()
-        if len(parts := line.split()) >= MIN_NM_SYMBOL_FIELDS
-    }
-    return [], actual
+    return [], _archive_symbol_names(proc.stdout, bundle_compiler_rt=bundle_compiler_rt)
+
+
+def _archive_symbol_names(output: str, *, bundle_compiler_rt: bool = False) -> set[str]:
+    """Parse nm -A output, ignoring only explicitly bundled compiler runtime members."""
+    actual: set[str] = set()
+    for line in output.splitlines():
+        parts = line.split()
+        if len(parts) < MIN_NM_SYMBOL_FIELDS:
+            continue
+        member_match = re.search(r"[\[(]([^\)\]]+)[\)\]]", parts[0])
+        member = member_match.group(1) if member_match else ""
+        if not member and parts[0].count(":") >= 2:
+            archive_and_member, _address = parts[0].rsplit(":", 1)
+            _archive, member = archive_and_member.split(":", 1)
+        if bundle_compiler_rt and Path(member).name == "compiler_rt.o":
+            continue
+        actual.add(parts[-1].removeprefix("_"))
+    return actual
+
+
+def _bundle_compiler_rt_enabled(build_root: Path) -> bool:
+    """Filter compiler_rt.o only when this archive's build explicitly bundles it."""
+    try:
+        build_source = (build_root / "build.zig").read_text(encoding="utf-8")
+    except OSError:
+        return False
+    build_source = _strip_comments(build_source)
+    return (
+        re.search(
+            r"(?m)^[ \t]*library\.bundle_compiler_rt[ \t]*=[ \t]*true[ \t]*;[ \t]*$",
+            build_source,
+        )
+        is not None
+    )
 
 
 def _host_mode_test_findings(
@@ -530,7 +564,15 @@ def _compiled_findings(
                 findings.append(f"{name}: {target}/{mode} archive build failed: {detail}")
                 continue
             archive = output / "install" / "lib" / f"lib{library['library_name']}.a"
-            symbol_findings, actual = _archive_symbols(nm, archive, f"{name}: {target}/{mode}")
+            bundle_compiler_rt = _bundle_compiler_rt_enabled(
+                repository_root / library["build_root"]
+            )
+            symbol_findings, actual = _archive_symbols(
+                nm,
+                archive,
+                f"{name}: {target}/{mode}",
+                bundle_compiler_rt=bundle_compiler_rt,
+            )
             findings.extend(symbol_findings)
             if symbol_findings:
                 continue
@@ -887,6 +929,52 @@ def _selftest_compiled_policy(base: dict[str, Any], root: Path) -> str | None:
     for expected in ("compiled archive missing export", "compiled archive unexpected export"):
         if not any(expected in item for item in findings):
             return f"must-fire fixture was accepted: {expected}"
+    parsed = _archive_symbol_names(
+        "libdemo.a(adapter.o): 00000000 T demo_run\n"
+        "libdemo.a(compiler_rt.o): 00000000 T __zig_probe_stack\n",
+        bundle_compiler_rt=True,
+    )
+    if parsed != {"demo_run"}:
+        return f"compiler runtime member filtering was not exact: {sorted(parsed)}"
+    retained = _archive_symbol_names(
+        "libdemo.a(adapter.o): 00000000 T __zig_probe_stack\n"
+        "libdemo.a(compiler_rt.o): 00000000 T __zig_probe_stack\n",
+        bundle_compiler_rt=True,
+    )
+    if retained != {"_zig_probe_stack"}:
+        return "must-fire fixture was accepted: runtime-named symbol in non-runtime member"
+    bracket_member = _archive_symbol_names(
+        "libdemo.a[adapter.o]: 00000000 T demo_run\n"
+        "libdemo.a[compiler_rt.o]: 00000000 T __zig_probe_stack\n",
+        bundle_compiler_rt=True,
+    )
+    if bracket_member != {"demo_run"}:
+        return f"bracket-form nm archive members were not parsed: {sorted(bracket_member)}"
+    colon_member = _archive_symbol_names(
+        "libdemo.a:/opt/zig-cache/compiler_rt.o:00000000 W __zig_probe_stack\n"
+        "libdemo.a:/opt/zig-cache/adapter.o:00000000 T demo_run\n",
+        bundle_compiler_rt=True,
+    )
+    if colon_member != {"demo_run"}:
+        return f"colon-form nm archive members were not parsed: {sorted(colon_member)}"
+    unbundled = _archive_symbol_names(
+        "libdemo.a(compiler_rt.o): 00000000 T __zig_probe_stack\n",
+        bundle_compiler_rt=False,
+    )
+    if unbundled != {"_zig_probe_stack"}:
+        return "must-fire fixture was accepted: unconfigured compiler runtime member"
+    flag_root = root / "compiler-rt-flag-selftest"
+    flag_root.mkdir()
+    build_file = flag_root / "build.zig"
+    build_file.write_text("library.bundle_compiler_rt = true;\n", encoding="utf-8")
+    if not _bundle_compiler_rt_enabled(flag_root):
+        return "must-stay-quiet fixture missed an enabled compiler runtime bundle"
+    build_file.write_text("library.bundle_compiler_rt = false;\n", encoding="utf-8")
+    if _bundle_compiler_rt_enabled(flag_root):
+        return "must-fire fixture accepted a disabled compiler runtime bundle"
+    build_file.write_text("// library.bundle_compiler_rt = true;\n", encoding="utf-8")
+    if _bundle_compiler_rt_enabled(flag_root):
+        return "must-fire fixture accepted a commented compiler runtime bundle"
     return None
 
 
