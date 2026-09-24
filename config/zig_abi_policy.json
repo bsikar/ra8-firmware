@@ -633,19 +633,6 @@
         {"name": "priv_sdmmc_spi_wait_not_busy", "calling_context": "task-only-non-reentrant", "ownership": "borrows shared transport state while polling the protocol busy bound"},
         {"name": "priv_sdmmc_spi_validate_transport", "calling_context": "task-safe-reentrant", "ownership": "borrows a transport descriptor for validation and retains no callbacks"},
         {"name": "priv_sdmmc_spi_run_init_sequence", "calling_context": "task-only-non-reentrant", "ownership": "mutates the single shared card state through the active transport"}
-      ],
-      "retained_c_exports": [
-        {"name": "ra8_sdmmc_spi_transport_sci", "source": "libs/ra8_sdmmc_spi/src/ra8_sdmmc_spi_io.c"},
-        {"name": "ra8_sdmmc_spi_init", "source": "libs/ra8_sdmmc_spi/src/ra8_sdmmc_spi_io.c"},
-        {"name": "ra8_sdmmc_spi_deinit", "source": "libs/ra8_sdmmc_spi/src/ra8_sdmmc_spi_io.c"},
-        {"name": "ra8_sdmmc_spi_read_block", "source": "libs/ra8_sdmmc_spi/src/ra8_sdmmc_spi_io.c"},
-        {"name": "ra8_sdmmc_spi_read_blocks", "source": "libs/ra8_sdmmc_spi/src/ra8_sdmmc_spi_io.c"},
-        {"name": "ra8_sdmmc_spi_write_block", "source": "libs/ra8_sdmmc_spi/src/ra8_sdmmc_spi_io.c"},
-        {"name": "ra8_sdmmc_spi_write_blocks", "source": "libs/ra8_sdmmc_spi/src/ra8_sdmmc_spi_io.c"},
-        {"name": "ra8_sdmmc_spi_erase_blocks", "source": "libs/ra8_sdmmc_spi/src/ra8_sdmmc_spi_io.c"},
-        {"name": "ra8_sdmmc_spi_get_capacity", "source": "libs/ra8_sdmmc_spi/src/ra8_sdmmc_spi_io.c"},
-        {"name": "ra8_sdmmc_spi_get_card_type", "source": "libs/ra8_sdmmc_spi/src/ra8_sdmmc_spi_io.c"},
-        {"name": "ra8_sdmmc_spi_bind_fs_backend", "source": "libs/ra8_sdmmc_spi/src/ra8_sdmmc_spi_io.c"}
       ]
     },
     {
