@@ -506,8 +506,6 @@ def _archive_symbols(
     if proc.returncode != 0:
         return [f"{name} symbol scan failed: {proc.stderr.strip()}"], set()
     return [], _archive_symbol_names(proc.stdout, bundle_compiler_rt=bundle_compiler_rt)
-
-
 def _host_mode_test_findings(
     library: dict[str, Any], command: list[str], mode: str, repository_root: Path
 ) -> tuple[list[str], int]:

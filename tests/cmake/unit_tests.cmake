@@ -206,6 +206,10 @@ endfunction()
 # target, so this remains one CTest case.
 ra8_add_test(test_ra8_net_pal ${CMAKE_CURRENT_SOURCE_DIR}/net/src/test_ra8_net_pal.c)
 
+# Keep the LSM6DSO C ABI consumer registration literal for ABI-policy checks;
+# the later auto-glob skips this already-declared target.
+ra8_add_test(test_ra8_lsm6dso ${CMAKE_CURRENT_SOURCE_DIR}/misc/src/test_ra8_lsm6dso.c)
+
 # Auto-discover every test_*.c file in each category's src/ directory and register it
 # via ra8_add_test(). Dropping a new test_foo.c file is enough -- no
 # manual list edit required. (CONFIGURE_DEPENDS means CMake re-globs

@@ -107,6 +107,34 @@
         {"name": "ra8_net_pal_link_status", "calling_context": "task-only-non-reentrant", "ownership": "writes current link state to caller-owned output"},
         {"name": "ra8_net_pal_set_event_handler", "calling_context": "boot-only", "ownership": "borrows handler and context until replaced or deinitialized; callback is invoked from ISR context"}
       ]
+    },
+    {
+      "name": "ra8_lsm6dso",
+      "build_root": "libs/ra8_lsm6dso",
+      "public_header": "libs/ra8_lsm6dso/inc/ra8_lsm6dso.h",
+      "adapter": "libs/ra8_lsm6dso/src/ra8_lsm6dso_abi.zig",
+      "library_name": "ra8_lsm6dso",
+      "symbol_prefix": "ra8_lsm6dso_",
+      "compatibility_sha256": "4fc8c01299619934e49f00f69789e934094fd628db03d32de1175c7a9d6e7a01",
+      "layout_assertions": ["@sizeOf(Bus) == word * 3", "@offsetOf(Bus, \"write_regs\") == word", "@offsetOf(Bus, \"ctx\") == word * 2", "@sizeOf(Device) == word * 4", "@offsetOf(Device, \"initialized\") == word * 3 + 3", "@sizeOf(Xyz) == 6"],
+      "target_class": "host-ra8",
+      "targets": {"host": [], "ra8": ["-Dtarget=thumb-freestanding-eabihf", "-Dcpu=cortex_m85+fp_armv8-d32-fp64"]},
+      "c_include_dirs": ["libs/ra8_lsm6dso/inc", "libs/ra8_core/inc"],
+      "contract_tests": [
+        {"language":"c","path":"tests/misc/src/test_ra8_lsm6dso.c","registration":"tests/cmake/unit_tests.cmake"},
+        {"language":"zig","path":"libs/ra8_lsm6dso/tests/abi_test.zig","registration":"libs/ra8_lsm6dso/.zig-test-contract.json"}
+      ],
+      "exports": [
+        {"name":"ra8_lsm6dso_init","calling_context":"task-only-non-reentrant","ownership":"initializes caller-owned device and borrows bus callbacks and context"},
+        {"name":"ra8_lsm6dso_who_am_i","calling_context":"task-only-non-reentrant","ownership":"borrows initialized device and writes ID to caller-owned output"},
+        {"name":"ra8_lsm6dso_set_accel_range","calling_context":"task-only-non-reentrant","ownership":"borrows device and updates its accelerometer range state"},
+        {"name":"ra8_lsm6dso_set_gyro_range","calling_context":"task-only-non-reentrant","ownership":"borrows device and updates its gyroscope range state"},
+        {"name":"ra8_lsm6dso_set_odr","calling_context":"task-only-non-reentrant","ownership":"borrows device and updates its output data rate state"},
+        {"name":"ra8_lsm6dso_read_accel","calling_context":"task-only-non-reentrant","ownership":"borrows device and writes sample to caller-owned output"},
+        {"name":"ra8_lsm6dso_read_gyro","calling_context":"task-only-non-reentrant","ownership":"borrows device and writes sample to caller-owned output"},
+        {"name":"ra8_lsm6dso_read_temp","calling_context":"task-only-non-reentrant","ownership":"borrows device and writes centi-degrees to caller-owned output"},
+        {"name":"ra8_lsm6dso_read_xl_gyro_fifo","calling_context":"task-only-non-reentrant","ownership":"borrows device and output buffer and writes record count to caller-owned output"}
+      ]
     }
   ]
 }
