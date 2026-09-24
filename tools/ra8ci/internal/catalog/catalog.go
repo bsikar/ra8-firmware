@@ -141,6 +141,9 @@ func Parse(raw []byte, expectedDigest string) (*Catalog, error) {
 		if err := ValidateTask(task); err != nil {
 			return nil, err
 		}
+		if err := ValidateTaskDispatch(task); err != nil {
+			return nil, err
+		}
 		if _, found := c.tasks[task.Name]; found {
 			return nil, fmt.Errorf("%w: duplicate task %q", ErrInvalidCatalog, task.Name)
 		}

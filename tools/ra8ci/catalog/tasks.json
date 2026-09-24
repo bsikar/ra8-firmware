@@ -1263,9 +1263,10 @@
       "steps": [
         {
           "name": "lint-go-gate",
-          "program": "just",
+          "program": "bash",
           "args": [
-            "quality::local::gate",
+            "scripts/ci.sh",
+            "--gate",
             "lint-go"
           ]
         }
@@ -2457,8 +2458,9 @@
       "steps": [
         {
           "name": "test-go-gate",
-          "program": "scripts/ci.sh",
+          "program": "bash",
           "args": [
+            "scripts/ci.sh",
             "--gate",
             "test-go"
           ]
