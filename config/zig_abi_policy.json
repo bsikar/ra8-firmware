@@ -555,8 +555,100 @@
         {"name": "ra8_ftl_checkpoint_save", "calling_context": "task-only-non-reentrant", "ownership": "borrows the initialized FTL handle and writes the checkpoint to caller-owned buf"},
         {"name": "ra8_ftl_checkpoint_load", "calling_context": "task-only-non-reentrant", "ownership": "borrows the checkpoint buffer and mutates caller-owned FTL mapping tables only on success"}
       ]
-    }
-    ,{
+    },
+    {
+      "name": "ra8_sdmmc_spi",
+      "build_root": "libs/ra8_sdmmc_spi",
+      "public_header": "libs/ra8_sdmmc_spi/inc/ra8_sdmmc_spi.h",
+      "adapter": "libs/ra8_sdmmc_spi/src/ra8_sdmmc_spi_abi.zig",
+      "library_name": "ra8_sdmmc_spi",
+      "symbol_prefix": "ra8_sdmmc_spi_",
+      "compatibility_sha256": "e61462364fd14c38c33aa42526a169058f692a429e09eaf26d3e37fd9ad6612e",
+      "layout_assertions": [
+        "@sizeOf(Transport) == ptr * 4",
+        "@offsetOf(State, \"transport\") == 0",
+        "@offsetOf(State, \"card_type\") == ptr * 4",
+        "@sizeOf(State) == std.mem.alignForward(usize, @offsetOf(State, \"initialized\") + 1, ptr,)"
+      ],
+      "additional_headers": [
+        {
+          "path": "libs/ra8_sdmmc_spi/src/ra8_sdmmc_spi_internal.h",
+          "role": "test-only",
+          "symbol_prefix": "priv_sdmmc_spi_",
+          "compatibility_sha256": "9352b42cba40aa7b2f094da8de56f820f3fac74607de5c88ddcb09ab6a8a8949"
+        }
+      ],
+      "data_exports": [
+        {
+          "name": "g_sdmmc_spi_state",
+          "header": "libs/ra8_sdmmc_spi/src/ra8_sdmmc_spi_internal.h",
+          "adapter": "libs/ra8_sdmmc_spi/src/ra8_sdmmc_spi_abi.zig",
+          "calling_context": "task-only-non-reentrant",
+          "ownership": "owns the single mutable card state shared with the retained C block-I/O translation unit"
+        }
+      ],
+      "target_class": "host-ra8",
+      "targets": {
+        "host": [],
+        "ra8": ["-Dtarget=thumb-freestanding-eabihf", "-Dcpu=cortex_m85+fp_armv8-d32-fp64"]
+      },
+      "run_host_tests_in_all_modes": false,
+      "c_include_dirs": [
+        "libs/ra8_sdmmc_spi/inc",
+        "libs/ra8_sdmmc_spi/src",
+        "libs/ra8_core/inc",
+        "libs/ra8_fs/inc"
+      ],
+      "contract_tests": [
+        {"language": "c", "path": "tests/storage/src/test_ra8_sdmmc_spi.c", "registration": "tests/cmake/unit_tests.cmake"},
+        {"language": "c", "path": "tests/storage/src/test_ra8_sdmmc_spi_read.c", "registration": "tests/cmake/unit_tests.cmake"},
+        {"language": "c", "path": "tests/storage/src/test_ra8_sdmmc_spi_write.c", "registration": "tests/cmake/unit_tests.cmake"},
+        {"language": "c", "path": "tests/storage/src/test_ra8_sdmmc_spi_cov.c", "registration": "tests/cmake/unit_tests.cmake"},
+        {"language": "zig", "path": "libs/ra8_sdmmc_spi/tests/abi_test.zig", "registration": "libs/ra8_sdmmc_spi/.zig-test-contract.json"},
+        {"language": "zig", "path": "libs/ra8_sdmmc_spi/tests/internal_test.zig", "symbol_evidence": "libs/ra8_sdmmc_spi/src/ra8_sdmmc_spi_abi.zig", "registration": "libs/ra8_sdmmc_spi/.zig-test-contract.json"}
+      ],
+      "exports": [
+        {"name": "ra8_sdmmc_spi_transport_sci", "calling_context": "task-only-non-reentrant", "ownership": "writes a caller-owned transport descriptor for the single SCI bus context"},
+        {"name": "ra8_sdmmc_spi_init", "calling_context": "task-only-non-reentrant", "ownership": "binds caller-owned transport callbacks to the single card state"},
+        {"name": "ra8_sdmmc_spi_deinit", "calling_context": "task-only-non-reentrant", "ownership": "clears the single shared card state and releases the active transport binding"},
+        {"name": "ra8_sdmmc_spi_read_block", "calling_context": "task-only-non-reentrant", "ownership": "writes one caller-owned 512-byte block after a successful card read"},
+        {"name": "ra8_sdmmc_spi_read_blocks", "calling_context": "task-only-non-reentrant", "ownership": "writes caller-owned consecutive blocks after a successful card read"},
+        {"name": "ra8_sdmmc_spi_write_block", "calling_context": "task-only-non-reentrant", "ownership": "borrows one caller-owned 512-byte block for the duration of a card write"},
+        {"name": "ra8_sdmmc_spi_write_blocks", "calling_context": "task-only-non-reentrant", "ownership": "borrows caller-owned consecutive blocks for the duration of a card write"},
+        {"name": "ra8_sdmmc_spi_erase_blocks", "calling_context": "task-only-non-reentrant", "ownership": "mutates the selected card block range and shared protocol state"},
+        {"name": "ra8_sdmmc_spi_get_capacity", "calling_context": "task-only-non-reentrant", "ownership": "borrows shared card state and writes caller-owned capacity output"},
+        {"name": "ra8_sdmmc_spi_get_card_type", "calling_context": "task-only-non-reentrant", "ownership": "borrows shared card state and writes caller-owned card type output"},
+        {"name": "ra8_sdmmc_spi_bind_fs_backend", "calling_context": "task-only-non-reentrant", "ownership": "writes a caller-owned filesystem backend borrowing the active card transport"},
+        {"name": "ra8_sdmmc_spi_crc7", "calling_context": "task-safe-reentrant", "ownership": "borrows the input bytes for the call and returns a CRC value"},
+        {"name": "ra8_sdmmc_spi_crc16", "calling_context": "task-safe-reentrant", "ownership": "borrows the input bytes for the call and returns a CRC value"},
+        {"name": "priv_sdmmc_spi_xfer_one", "calling_context": "task-only-non-reentrant", "ownership": "borrows the current transport callbacks and writes an optional caller-owned response byte"},
+        {"name": "priv_sdmmc_spi_send_idle", "calling_context": "task-only-non-reentrant", "ownership": "borrows shared transport state while clocking the requested idle bytes"},
+        {"name": "priv_sdmmc_spi_cs_assert", "calling_context": "task-only-non-reentrant", "ownership": "mutates shared chip-select state through the borrowed transport callbacks"},
+        {"name": "priv_sdmmc_spi_cs_release", "calling_context": "task-only-non-reentrant", "ownership": "mutates shared chip-select state through the borrowed transport callbacks"},
+        {"name": "priv_sdmmc_spi_send_command", "calling_context": "task-only-non-reentrant", "ownership": "borrows shared transport state and writes an optional caller-owned response byte"},
+        {"name": "priv_sdmmc_spi_send_acmd", "calling_context": "task-only-non-reentrant", "ownership": "borrows shared transport state and writes an optional caller-owned response byte"},
+        {"name": "priv_sdmmc_spi_send_stop_transmission", "calling_context": "task-only-non-reentrant", "ownership": "borrows shared transport state and writes an optional caller-owned response byte"},
+        {"name": "priv_sdmmc_spi_wait_data_token", "calling_context": "task-only-non-reentrant", "ownership": "borrows shared transport state while waiting for the card data token"},
+        {"name": "priv_sdmmc_spi_wait_not_busy_bounded", "calling_context": "task-only-non-reentrant", "ownership": "borrows shared transport state while polling the requested busy bound"},
+        {"name": "priv_sdmmc_spi_wait_not_busy", "calling_context": "task-only-non-reentrant", "ownership": "borrows shared transport state while polling the protocol busy bound"},
+        {"name": "priv_sdmmc_spi_validate_transport", "calling_context": "task-safe-reentrant", "ownership": "borrows a transport descriptor for validation and retains no callbacks"},
+        {"name": "priv_sdmmc_spi_run_init_sequence", "calling_context": "task-only-non-reentrant", "ownership": "mutates the single shared card state through the active transport"}
+      ],
+      "retained_c_exports": [
+        {"name": "ra8_sdmmc_spi_transport_sci", "source": "libs/ra8_sdmmc_spi/src/ra8_sdmmc_spi_io.c"},
+        {"name": "ra8_sdmmc_spi_init", "source": "libs/ra8_sdmmc_spi/src/ra8_sdmmc_spi_io.c"},
+        {"name": "ra8_sdmmc_spi_deinit", "source": "libs/ra8_sdmmc_spi/src/ra8_sdmmc_spi_io.c"},
+        {"name": "ra8_sdmmc_spi_read_block", "source": "libs/ra8_sdmmc_spi/src/ra8_sdmmc_spi_io.c"},
+        {"name": "ra8_sdmmc_spi_read_blocks", "source": "libs/ra8_sdmmc_spi/src/ra8_sdmmc_spi_io.c"},
+        {"name": "ra8_sdmmc_spi_write_block", "source": "libs/ra8_sdmmc_spi/src/ra8_sdmmc_spi_io.c"},
+        {"name": "ra8_sdmmc_spi_write_blocks", "source": "libs/ra8_sdmmc_spi/src/ra8_sdmmc_spi_io.c"},
+        {"name": "ra8_sdmmc_spi_erase_blocks", "source": "libs/ra8_sdmmc_spi/src/ra8_sdmmc_spi_io.c"},
+        {"name": "ra8_sdmmc_spi_get_capacity", "source": "libs/ra8_sdmmc_spi/src/ra8_sdmmc_spi_io.c"},
+        {"name": "ra8_sdmmc_spi_get_card_type", "source": "libs/ra8_sdmmc_spi/src/ra8_sdmmc_spi_io.c"},
+        {"name": "ra8_sdmmc_spi_bind_fs_backend", "source": "libs/ra8_sdmmc_spi/src/ra8_sdmmc_spi_io.c"}
+      ]
+    },
+    {
       "name": "ra8_keyboard",
       "build_root": "libs/ra8_keyboard",
       "public_header": "libs/ra8_keyboard/inc/ra8_keyboard.h",
