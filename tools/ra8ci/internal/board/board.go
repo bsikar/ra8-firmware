@@ -104,6 +104,15 @@ type Lease struct {
 	// yield the state machine raised itself and for a task that declares no
 	// handoff bounds.
 	HandoffTarget time.Duration
+
+	// HandoffCohort is the comparable history the shown target was estimated
+	// over, retained alongside it for the same reason. The sample recorded
+	// when this handoff ends must land in the bucket whose estimate the
+	// requester was actually shown; a cohort re-derived at completion time
+	// would file the measurement against whatever the board is doing by
+	// then, which is how an estimate ends up judged by work it never
+	// described. A zero cohort means none was recorded.
+	HandoffCohort YieldCohort
 }
 
 // Snapshot is a copyable board state. The store must serialize updates by
@@ -203,6 +212,12 @@ type RequestYield struct {
 	// before this command was issued. It is recorded on the lease so the
 	// promise survives the request. Zero states that no ETA was shown.
 	ShownTarget time.Duration
+
+	// Cohort is the history ShownTarget was estimated over, recorded with
+	// it so the sample this handoff leaves behind is filed against the same
+	// comparable work. It is required whenever ShownTarget is nonzero: a
+	// promise with no cohort behind it cannot be measured against anything.
+	Cohort YieldCohort
 }
 
 func (RequestYield) boardCommand() {}
@@ -513,6 +528,7 @@ func cancel(s *Snapshot, c CancelWaiter, now time.Time, events *[]Event) error {
 				s.Phase = Active
 				s.Lease.YieldRequestedAt = time.Time{}
 				s.Lease.HandoffTarget = 0
+				s.Lease.HandoffCohort = YieldCohort{}
 				*events = append(*events, event(s, YieldCleared, now, c.Actor, w.ID, s.Lease.ID, "no higher-priority waiter remains"))
 			}
 			return nil
@@ -578,6 +594,16 @@ func requestYield(s *Snapshot, c RequestYield, now time.Time, events *[]Event) e
 	if c.ShownTarget < 0 || c.ShownTarget > MaxHandoffBound {
 		return &Error{InvalidArgument, "shown handoff target is out of range"}
 	}
+	// A target and its cohort travel together or not at all. A number with
+	// no comparable history named behind it is unfalsifiable: nothing can
+	// later say which work it described, so nothing can say it was missed.
+	if c.Cohort != (YieldCohort{}) {
+		if err := ValidateYieldCohort(c.Cohort); err != nil {
+			return err
+		}
+	} else if c.ShownTarget > 0 {
+		return &Error{InvalidArgument, "shown handoff target has no cohort behind it"}
+	}
 	if err := admitYield(*s, c.WaiterID); err != nil {
 		return err
 	}
@@ -590,6 +616,7 @@ func requestYield(s *Snapshot, c RequestYield, now time.Time, events *[]Event) e
 		// overwrite it is how a deadline slides without anyone deciding to
 		// move it.
 		s.Lease.HandoffTarget = c.ShownTarget
+		s.Lease.HandoffCohort = c.Cohort
 		*events = append(*events, event(s, YieldAsked, now, c.Actor, c.WaiterID, s.Lease.ID, "higher-priority waiter"))
 	}
 	return nil
@@ -932,6 +959,16 @@ func Validate(s Snapshot) error {
 		// handoff, so it is refused rather than ignored.
 		if lease.HandoffTarget != 0 && lease.YieldRequestedAt.IsZero() {
 			return &Error{Conflict, "retained lease carries a handoff target without a yield request"}
+		}
+		if lease.HandoffCohort != (YieldCohort{}) {
+			if lease.YieldRequestedAt.IsZero() {
+				return &Error{Conflict, "retained lease carries a handoff cohort without a yield request"}
+			}
+			if err := ValidateYieldCohort(lease.HandoffCohort); err != nil {
+				return &Error{Conflict, "retained lease carries an invalid handoff cohort"}
+			}
+		} else if lease.HandoffTarget != 0 {
+			return &Error{Conflict, "retained lease carries a handoff target without its cohort"}
 		}
 	}
 	switch s.Phase {
