@@ -162,27 +162,33 @@ func (s *Store) Health(ctx context.Context) error {
 	})
 }
 
-// AuthorizeCertificate maps a verified mTLS leaf to an active, scoped grant.
-// The HTTP layer is responsible for requiring a verified certificate chain.
-func (s *Store) AuthorizeCertificate(ctx context.Context, certDER []byte, repository, role string) (string, error) {
-	if len(certDER) == 0 || repository == "" || (role != "read" && role != "submit" && role != "terraform_state") {
+// AuthorizeCertificate maps a verified mTLS leaf to an active, scoped grant on
+// the client surface. The HTTP layer is responsible for requiring a verified
+// certificate chain. The permission is satisfied only by a grant role paired
+// with the principal's own kind, so an agent or board-agent certificate cannot
+// spend a client grant here even when it holds one for another surface.
+func (s *Store) AuthorizeCertificate(ctx context.Context, certDER []byte, repository, permission string) (string, error) {
+	if len(certDER) == 0 || repository == "" || !ValidAPIPermission(permission) {
 		return "", fmt.Errorf("%w: invalid certificate scope request", ErrInvalid)
 	}
 	sum := sha256.Sum256(certDER)
-	var principal string
-	err := s.pool.QueryRow(ctx, `SELECT p.principal_id FROM api_principals p
+	var principal, kind, role string
+	err := s.pool.QueryRow(ctx, `SELECT p.principal_id, p.kind, g.role FROM api_principals p
 		JOIN api_grants g ON g.principal_id = p.principal_id
 		WHERE p.cert_sha256 = $1 AND p.revoked_at IS NULL AND p.expires_at > clock_timestamp()
-		AND g.repository = $2 AND (
-			($3 = 'read' AND g.role IN ('observer', 'submitter', 'operator')) OR
-			($3 = 'submit' AND g.role IN ('submitter', 'operator')) OR
-			($3 = 'terraform_state' AND g.role = 'terraform_state')
-		) LIMIT 1`, hex.EncodeToString(sum[:]), repository, role).Scan(&principal)
+		AND g.repository = $2 AND p.kind = ANY($3) AND g.role = ANY($4)
+		LIMIT 1`, hex.EncodeToString(sum[:]), repository,
+		PrincipalKindsForPermission(permission), GrantRolesForPermission(permission)).Scan(&principal, &kind, &role)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return "", ErrDenied
 	}
 	if err != nil {
 		return "", fmt.Errorf("%w: authorize certificate: %v", ErrUnavailable, err)
+	}
+	// The row is re-judged against the same rule that built the query, so a
+	// widened query can never admit a pair the decision refuses.
+	if !ClientAPIGrantAllowed(kind, role, permission) {
+		return "", ErrDenied
 	}
 	return principal, nil
 }
