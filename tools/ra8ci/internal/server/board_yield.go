@@ -97,7 +97,10 @@ func (h *boardHTTP) yield(w http.ResponseWriter, r *http.Request) {
 	}
 	// One clock for the plan and the commit, so the lease's YieldRequestedAt
 	// is the instant the requester's ETA is anchored to rather than a few
-	// microseconds past it.
+	// microseconds past it. The target the plan shows is committed with the
+	// request for the same reason: the number in the response body and the
+	// number the handoff is later judged against are one value, recorded by
+	// the transition that made the promise.
 	now := time.Now().UTC()
 	plan, err := board.PlanYield(snapshot, req.WaiterID, yieldDispatch(snapshot, req.WaiterID),
 		budget.Cohort, budget.Bounds, budget.Samples, now)
@@ -106,7 +109,8 @@ func (h *boardHTTP) yield(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	applied, events, err := h.store.ApplyBoardCommand(r.Context(), actor,
-		board.RequestYield{Actor: actor.ID(), WaiterID: req.WaiterID}, req.ExpectedVersion, nil, h.verifier, now)
+		board.RequestYield{Actor: actor.ID(), WaiterID: req.WaiterID, ShownTarget: plan.ShownTarget()},
+		req.ExpectedVersion, nil, h.verifier, now)
 	if err != nil {
 		writeBoardError(w, err)
 		return
