@@ -98,6 +98,15 @@ type commandResult struct {
 // Run executes only the exact task embedded in this binary and repository.
 // A nonzero child exit is returned in Result, not as a Go error.
 func Run(ctx context.Context, root string, task catalog.Task, stdout, stderr io.Writer, stepWriters ...func(string) (io.Writer, io.Writer)) (Result, error) {
+	return runReviewed(ctx, root, task, nil, stdout, stderr, stepWriters...)
+}
+
+// runReviewed is the single admission path for a reviewed task, with or
+// without caller-supplied argument values. Arguments are bound only after the
+// task has been proven to be the reviewed definition, so a task that is not
+// in the catalog is refused as unreviewed rather than on its arguments.
+func runReviewed(ctx context.Context, root string, task catalog.Task, values map[string]string,
+	stdout, stderr io.Writer, stepWriters ...func(string) (io.Writer, io.Writer)) (Result, error) {
 	verifiedRoot, err := catalog.VerifyCheckout(root)
 	if err != nil {
 		return Result{}, err
@@ -113,6 +122,10 @@ func Run(ctx context.Context, root string, task catalog.Task, stdout, stderr io.
 	if !task.IsSafeLocal() {
 		return Result{}, ErrUnreviewedTask
 	}
+	bound, err := task.BindArguments(values)
+	if err != nil {
+		return Result{}, err
+	}
 	if len(stepWriters) > 1 {
 		return Result{}, fmt.Errorf("at most one step-writer selector is allowed")
 	}
@@ -123,7 +136,7 @@ func Run(ctx context.Context, root string, task catalog.Task, stdout, stderr io.
 		}
 		writers = stepWriters[0]
 	}
-	return runTaskWithStepWriters(ctx, verifiedRoot, task, writers, stopGrace)
+	return runBoundTask(ctx, verifiedRoot, task, bound, writers, stopGrace)
 }
 
 func runTask(ctx context.Context, root string, task catalog.Task, stdout, stderr io.Writer, grace time.Duration) (result Result, runErr error) {
@@ -133,6 +146,13 @@ func runTask(ctx context.Context, root string, task catalog.Task, stdout, stderr
 }
 
 func runTaskWithStepWriters(ctx context.Context, root string, task catalog.Task,
+	writers func(stepName string) (io.Writer, io.Writer), grace time.Duration) (result Result, runErr error) {
+	return runBoundTask(ctx, root, task, nil, writers, grace)
+}
+
+// runBoundTask runs a task whose arguments are already bound to argv. bound is
+// nil for every task in the v1 catalog, which declares no arguments.
+func runBoundTask(ctx context.Context, root string, task catalog.Task, bound []string,
 	writers func(stepName string) (io.Writer, io.Writer), grace time.Duration) (result Result, runErr error) {
 	result = Result{TaskName: task.Name, ExitCode: -1}
 	if ctx == nil || writers == nil {
@@ -170,7 +190,11 @@ func runTaskWithStepWriters(ctx context.Context, root string, task catalog.Task,
 		if stepStdout == nil || stepStderr == nil {
 			return result, fmt.Errorf("step %s has nil log writer", step.Name)
 		}
-		stepResult, stepErr := runStep(runCtx, root, env, step, stepStdout, stepStderr, grace)
+		dispatch, bindErr := boundStep(step, bound)
+		if bindErr != nil {
+			return result, bindErr
+		}
+		stepResult, stepErr := runStep(runCtx, root, env, dispatch, stepStdout, stepStderr, grace)
 		result.Steps = append(result.Steps, stepResult)
 		result.ExitCode = stepResult.ExitCode
 		result.TimedOut = stepResult.TimedOut
