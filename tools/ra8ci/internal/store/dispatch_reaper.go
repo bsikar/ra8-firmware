@@ -8,7 +8,26 @@ import (
 
 	"github.com/bsikar/ra8-firmware/tools/ra8ci/internal/catalog"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 )
+
+// retryable reports whether a fenced assignment gets another attempt. A task
+// whose definition has moved since the run was planned is not retried under
+// the new definition: the catalog digest has to still match.
+func retryable(definitions *catalog.Catalog, taskName, catalogSHA string, attemptNo int) bool {
+	definition, found := definitions.Task(taskName)
+	return found && catalogSHA == definitions.Digest() && attemptNo < definition.Retry.MaxAttempts
+}
+
+// reapedTaskState is the task edge the reaper takes: back to scheduled for a
+// retry, terminal as lost otherwise. Both are running -> X edges of the task
+// machine.
+func reapedTaskState(retry bool) string {
+	if retry {
+		return "scheduled"
+	}
+	return "lost"
+}
 
 type expiredAssignment struct {
 	AttemptID string
@@ -66,14 +85,14 @@ func (s *Store) reapOneAgentAssignment(ctx context.Context, definitions *catalog
 	if err := withRunLock(ctx, tx, candidate.RunID); err != nil {
 		return false, fmt.Errorf("%w: lock expired run: %v", ErrUnavailable, err)
 	}
-	var taskID, taskName, state, catalogSHA string
+	var taskID, taskName, state, taskState, catalogSHA string
 	var attemptNo int
 	var deadline time.Time
-	err = tx.QueryRow(ctx, `SELECT a.task_id::text, t.name, a.state,
+	err = tx.QueryRow(ctx, `SELECT a.task_id::text, t.name, a.state, t.state,
 		r.catalog_sha256, a.attempt_no, a.deadline_at FROM task_attempts a
 		JOIN tasks t ON t.id=a.task_id JOIN runs r ON r.id=t.run_id
 		WHERE a.id=$1 AND t.run_id=$2 FOR UPDATE OF a`,
-		candidate.AttemptID, candidate.RunID).Scan(&taskID, &taskName, &state,
+		candidate.AttemptID, candidate.RunID).Scan(&taskID, &taskName, &state, &taskState,
 		&catalogSHA, &attemptNo, &deadline)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return false, ErrNotFound
@@ -85,11 +104,26 @@ func (s *Store) reapOneAgentAssignment(ctx context.Context, definitions *catalog
 	if err := tx.QueryRow(ctx, "SELECT clock_timestamp()").Scan(&databaseNow); err != nil {
 		return false, fmt.Errorf("%w: reaper clock: %v", ErrUnavailable, err)
 	}
-	if state != "issued" && state != "acknowledged" && state != "running" {
+	// The attempt reached a terminal state between the candidate query and
+	// this lock: another writer got there first, so there is nothing to
+	// fence. AttemptReapable is the machine's own answer to "can this still
+	// be lost", which is what the candidate query selects for.
+	if !AttemptReapable(state) {
 		return false, nil
 	}
 	if !databaseNow.After(deadline.Add(agentReaperGrace)) {
 		return false, nil
+	}
+	// The task the attempt belongs to has to be able to take the edge the
+	// reaper is about to write. It always can when the attempt was live, so
+	// a failure here is a race worth reporting rather than a write to drop
+	// on the floor: the audit below claims the task moved.
+	next := reapedTaskState(retryable(definitions, taskName, catalogSHA, attemptNo))
+	if err := CheckTaskTransition(taskState, next); err != nil {
+		return false, err
+	}
+	if err := CheckAttemptTransition(state, "lost"); err != nil {
+		return false, err
 	}
 	_, err = tx.Exec(ctx, `UPDATE task_attempts SET state='lost',
 		ended_at=clock_timestamp(), evidence_complete=false,
@@ -98,23 +132,22 @@ func (s *Store) reapOneAgentAssignment(ctx context.Context, definitions *catalog
 	if err != nil {
 		return false, fmt.Errorf("%w: fence expired attempt: %v", ErrUnavailable, err)
 	}
-	definition, found := definitions.Task(taskName)
-	retry := found && catalogSHA == definitions.Digest() && attemptNo < definition.Retry.MaxAttempts
+	retry := next == "scheduled"
+	var tag pgconn.CommandTag
 	if retry {
-		_, err = tx.Exec(ctx, `UPDATE tasks SET state='scheduled',
+		tag, err = tx.Exec(ctx, `UPDATE tasks SET state='scheduled',
 			started_at=NULL, ended_at=NULL, version=version+1
 			WHERE id=$1 AND state='running'`, taskID)
 	} else {
-		_, err = tx.Exec(ctx, `UPDATE tasks SET state='lost',
+		tag, err = tx.Exec(ctx, `UPDATE tasks SET state='lost',
 			ended_at=clock_timestamp(), version=version+1
 			WHERE id=$1 AND state='running'`, taskID)
 	}
 	if err != nil {
 		return false, fmt.Errorf("%w: advance expired task: %v", ErrUnavailable, err)
 	}
-	next := "lost"
-	if retry {
-		next = "scheduled"
+	if tag.RowsAffected() != 1 {
+		return false, fmt.Errorf("%w: expired task moved under the reaper", ErrConflict)
 	}
 	if err := appendAudit(ctx, tx, "ra8ci-server", "task.assignment.killed", "task",
 		taskID, "ok", "running", next, candidate.RunID,

@@ -141,3 +141,12 @@ func CheckAttemptTransition(from, to string) error { return attemptMachine.check
 // ended_at CHECK constraint in 0001_initial.sql is written over exactly this
 // set.
 func TerminalTaskState(state string) bool { return taskMachine.terminal(state) }
+
+// TerminalRunState reports whether a run has already been closed.
+func TerminalRunState(state string) bool { return runMachine.terminal(state) }
+
+// AttemptReapable reports whether an attempt in this state is still a
+// candidate for fencing. The reaper's candidate set is not a list it keeps of
+// its own: it is exactly the states from which the machine allows an attempt
+// to be lost.
+func AttemptReapable(state string) bool { return attemptMachine.allows(state, "lost") }
