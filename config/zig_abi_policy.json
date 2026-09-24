@@ -683,6 +683,40 @@
         {"name": "ra8_ov5640_read_reg", "calling_context": "task-only-non-reentrant", "ownership": "borrows initialized device and writes one caller-owned register byte"},
         {"name": "ra8_ov5640_write_reg", "calling_context": "task-only-non-reentrant", "ownership": "borrows initialized device and performs one register write"}
       ]
+    },
+    {
+      "name": "if_ra8_vfs",
+      "build_root": "libs/if_ra8_vfs",
+      "public_header": "libs/if_ra8_vfs/inc/fw_if_fs_ra8_vfs.h",
+      "adapter": "libs/if_ra8_vfs/src/fw_if_fs_ra8_vfs_abi.zig",
+      "library_name": "if_ra8_vfs",
+      "symbol_prefix": "fw_fs_ra8_vfs_",
+      "compatibility_sha256": "415e99de09f36350c6ee748d510c37e1ffc8ffd27cfbca9c510117e74f52820b",
+      "layout_assertions": [
+        "@sizeOf(Backend) == ptr * 5",
+        "@offsetOf(Mount, \"fs_type\") == ptr * 5",
+        "@offsetOf(Mount, \"in_use\") == @offsetOf(Mount, \"partition_base_lba\") + 8",
+        "@sizeOf(NamespaceIface) == ptr * 10",
+        "@sizeOf(StreamIface) == ptr * 8",
+        "@sizeOf(TransactionIface) == ptr * 6",
+        "@offsetOf(File, \"state_bytes\") == ptr * 3",
+        "@offsetOf(Config, \"mount\") == ptr",
+        "@offsetOf(State, \"path_a\") == 16",
+        "@offsetOf(State, \"path_b\") == 16 + core.full_path_cap",
+        "@offsetOf(State, \"mount\") % ptr == 0",
+        "@offsetOf(State, \"directory_workspace_bytes\") == @offsetOf(State, \"mount\") + ptr"
+      ],
+      "target_class": "host-ra8",
+      "targets": {"host": [], "ra8": ["-Dtarget=thumb-freestanding-eabihf", "-Dcpu=cortex_m85+fp_armv8-d32-fp64"]},
+      "run_host_tests_in_all_modes": false,
+      "c_include_dirs": ["libs/if_ra8_vfs/inc", "libs/if/inc", "libs/ra8_fs/inc", "libs/ra8_io/inc", "libs/ra8_core/inc"],
+      "contract_tests": [
+        {"language": "c", "path": "tests/misc/src/test_fw_if_fs.c", "registration": "tests/cmake/unit_tests.cmake"},
+        {"language": "zig", "path": "libs/if_ra8_vfs/tests/abi_test.zig", "registration": "libs/if_ra8_vfs/.zig-test-contract.json"}
+      ],
+      "exports": [
+        {"name": "fw_fs_ra8_vfs_init", "calling_context": "task-only-non-reentrant", "ownership": "borrows the configuration and live mount while initializing caller-owned facade and adapter state"}
+      ]
     }
   ]
 }
