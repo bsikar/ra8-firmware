@@ -98,6 +98,8 @@ func NewWithOptions(st *store.Store, cat *catalog.Catalog, verifier store.Neutra
 	s.mux.HandleFunc("POST /v1/assignments/{assignment_id}/ack", s.agentAck)
 	s.mux.HandleFunc("POST /v1/attempts/{attempt_id}/logs", s.agentLog)
 	s.mux.HandleFunc("POST /v1/attempts/{attempt_id}/result", s.agentResult)
+	s.mux.HandleFunc("POST /v1/attempts/{attempt_id}/artifacts/chunk", s.agentArtifactChunk)
+	s.mux.HandleFunc("POST /v1/attempts/{attempt_id}/artifacts/manifest", s.agentArtifactManifest)
 	s.mux.HandleFunc("POST /v1/agents/me/heartbeat", s.agentHeartbeat)
 	if err := RegisterBoardRoutes(s.mux, st, verifier, "bsikar/ra8-firmware", BoardHILPolicy{Catalog: cat, TrustedCommit: trustedAgentCommit}); err != nil {
 		return nil, fmt.Errorf("register board routes: %w", err)
