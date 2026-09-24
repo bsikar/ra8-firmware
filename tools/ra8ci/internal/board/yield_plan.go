@@ -34,6 +34,14 @@ const (
 // EstimateHandoff never returns it, since it refuses such a cohort outright.
 const HandoffUnknown HandoffSource = "unknown"
 
+// HandoffAsPromised is the source of a target that was already shown to a
+// requester and recorded on the lease. It outranks a fresh estimate for as
+// long as the request is outstanding: more history arriving mid-handoff is a
+// reason to learn, never a reason to move a deadline somebody was already
+// given. EstimateHandoff never returns it either; only a recorded request
+// does.
+const HandoffAsPromised HandoffSource = "promised"
+
 // YieldPlan is the answer to "may this yield be asked for, and what do I tell
 // the requester". It is advisory: Apply still enforces the transition, and a
 // plan never authorizes interrupting an indivisible phase.
@@ -128,7 +136,7 @@ func PlanYield(s Snapshot, waiterID string, dispatch YieldDispatch, cohort Yield
 			return YieldPlan{}, err
 		}
 		plan.Estimate = HandoffEstimate{Cohort: cohort, Source: HandoffUnknown}
-		return plan, nil
+		return promised(plan, s), nil
 	}
 
 	estimate, err := EstimateHandoff(cohort, bounds, samples, now)
@@ -137,5 +145,23 @@ func PlanYield(s Snapshot, waiterID string, dispatch YieldDispatch, cohort Yield
 	}
 	plan.Estimate = estimate
 	plan.ExpectedNeutralAt = plan.RequestedAt.Add(estimate.Target)
-	return plan, nil
+	return promised(plan, s), nil
+}
+
+// promised replaces a freshly estimated target with the one already recorded
+// on the lease, for an outstanding request that carries one.
+//
+// The estimate around it is kept as it stands, cohort, sample counts and all,
+// because that is still the honest account of what the history says now. Only
+// the number the requester is held to is pinned, which is the whole point of
+// recording it: a handoff is not overdue against an estimate that moved after
+// the promise was made.
+func promised(plan YieldPlan, s Snapshot) YieldPlan {
+	if !plan.Outstanding || s.Lease == nil || s.Lease.HandoffTarget <= 0 {
+		return plan
+	}
+	plan.Estimate.Target = s.Lease.HandoffTarget
+	plan.Estimate.Source = HandoffAsPromised
+	plan.ExpectedNeutralAt = plan.RequestedAt.Add(s.Lease.HandoffTarget)
+	return plan
 }

@@ -94,6 +94,16 @@ type Lease struct {
 	DeadlineVersion        uint64
 	YieldRequestedAt       time.Time
 	ContendedExtensionUsed time.Duration
+
+	// HandoffTarget is the handoff ETA the requester was shown when this
+	// board was asked to yield, retained for as long as the request is
+	// outstanding. It is a promise already made, not an estimate: a later
+	// re-estimate over more history must not move the number a waiter was
+	// given, and the sample recorded when the handoff ends is judged against
+	// this. Zero means no ETA was shown, which is the honest answer for a
+	// yield the state machine raised itself and for a task that declares no
+	// handoff bounds.
+	HandoffTarget time.Duration
 }
 
 // Snapshot is a copyable board state. The store must serialize updates by
@@ -188,6 +198,11 @@ func (AcknowledgeGrant) boardCommand() {}
 type RequestYield struct {
 	Actor    string
 	WaiterID string
+
+	// ShownTarget is the handoff ETA the requester was shown by PlanYield
+	// before this command was issued. It is recorded on the lease so the
+	// promise survives the request. Zero states that no ETA was shown.
+	ShownTarget time.Duration
 }
 
 func (RequestYield) boardCommand() {}
@@ -497,6 +512,7 @@ func cancel(s *Snapshot, c CancelWaiter, now time.Time, events *[]Event) error {
 			if s.Phase == YieldRequested && !higherWaiting(*s) {
 				s.Phase = Active
 				s.Lease.YieldRequestedAt = time.Time{}
+				s.Lease.HandoffTarget = 0
 				*events = append(*events, event(s, YieldCleared, now, c.Actor, w.ID, s.Lease.ID, "no higher-priority waiter remains"))
 			}
 			return nil
@@ -559,12 +575,21 @@ func requestYield(s *Snapshot, c RequestYield, now time.Time, events *[]Event) e
 	if c.Actor == "" {
 		return &Error{InvalidArgument, "missing actor or waiter ID"}
 	}
+	if c.ShownTarget < 0 || c.ShownTarget > MaxHandoffBound {
+		return &Error{InvalidArgument, "shown handoff target is out of range"}
+	}
 	if err := admitYield(*s, c.WaiterID); err != nil {
 		return err
 	}
 	if s.Phase == Active {
 		s.Phase = YieldRequested
 		s.Lease.YieldRequestedAt = now
+		// Only the transition records the target. A repeat request against a
+		// board already asked is a no-op here, and it must stay one: the
+		// first requester's ETA is the promise, and letting a later caller
+		// overwrite it is how a deadline slides without anyone deciding to
+		// move it.
+		s.Lease.HandoffTarget = c.ShownTarget
 		*events = append(*events, event(s, YieldAsked, now, c.Actor, c.WaiterID, s.Lease.ID, "higher-priority waiter"))
 	}
 	return nil
@@ -898,6 +923,15 @@ func Validate(s Snapshot) error {
 		}
 		if lease.Generation > s.Generation {
 			return &Error{Conflict, "lease generation exceeds board generation"}
+		}
+		if lease.HandoffTarget < 0 || lease.HandoffTarget > MaxHandoffBound {
+			return &Error{Conflict, "retained lease carries an out-of-range handoff target"}
+		}
+		// A target with no request behind it is a promise nobody made. It
+		// would read as an outstanding deadline to anything measuring the
+		// handoff, so it is refused rather than ignored.
+		if lease.HandoffTarget != 0 && lease.YieldRequestedAt.IsZero() {
+			return &Error{Conflict, "retained lease carries a handoff target without a yield request"}
 		}
 	}
 	switch s.Phase {
