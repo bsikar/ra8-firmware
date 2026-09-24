@@ -201,7 +201,11 @@ def _data_export_findings(
                 continue
             text = _strip_comments(path.read_text(encoding="utf-8"))
             if field == "header":
-                present = re.search(rf"\bextern\b[^;{{}}]*\b{re.escape(symbol)}\s*;", text)
+                present = re.search(
+                    rf"\bextern\b[^;{{}}]*\b{re.escape(symbol)}"
+                    r"\s*(?:\[[^\]]*\]\s*)*;",
+                    text,
+                )
             else:
                 present = re.search(rf"\bpub\s+export\s+var\s+{re.escape(symbol)}\s*:", text)
             if present is None:
@@ -463,19 +467,34 @@ def _multi_header_rows(library: dict[str, Any]) -> list[dict[str, Any]]:
         row
         for row in rows
         if isinstance(row, dict)
-        and set(row) == {"path", "compatibility_sha256", "layout_assertions"}
+        and set(row) in (
+            {"path", "compatibility_sha256", "layout_assertions"},
+            {"path", "compatibility_sha256", "layout_assertions", "symbol_prefix"},
+        )
         and isinstance(row.get("path"), str)
         and isinstance(row.get("compatibility_sha256"), str)
         and isinstance(row.get("layout_assertions"), list)
+        and ("symbol_prefix" not in row or (isinstance(row["symbol_prefix"], str) and row["symbol_prefix"]))
     ]
+
+
+def _multi_adapter_rows(library: dict[str, Any]) -> list[dict[str, Any]]:
+    """Normalize legacy multi-adapter paths and prefix-aware adapter rows."""
+    rows = library.get("adapters")
+    if not isinstance(rows, list):
+        return []
+    normalized: list[dict[str, Any]] = []
+    for row in rows:
+        if isinstance(row, str):
+            normalized.append({"path": row})
+        elif isinstance(row, dict) and set(row) == {"path", "symbol_prefixes"}:
+            normalized.append(row)
+    return normalized
 
 
 def _multi_adapter_paths(library: dict[str, Any]) -> list[str]:
     """Return explicit production adapter paths for a multi-adapter row."""
-    rows = library.get("adapters")
-    if not isinstance(rows, list):
-        return []
-    return [value for value in rows if isinstance(value, str)]
+    return [row["path"] for row in _multi_adapter_rows(library) if isinstance(row.get("path"), str)]
 
 
 def _multi_boundary_findings(
@@ -492,20 +511,24 @@ def _multi_boundary_findings(
         findings.append(f"{name}: public_headers must be a nonempty list")
     elif any(
         not isinstance(row, dict)
-        or set(row) != {"path", "compatibility_sha256", "layout_assertions"}
+        or set(row)
+        not in (
+            {"path", "compatibility_sha256", "layout_assertions"},
+            {"path", "compatibility_sha256", "layout_assertions", "symbol_prefix"},
+        )
         or not isinstance(row.get("path"), str)
         or not isinstance(row.get("compatibility_sha256"), str)
         or not isinstance(row.get("layout_assertions"), list)
+        or ("symbol_prefix" in row and (not isinstance(row["symbol_prefix"], str) or not row["symbol_prefix"]))
         for row in raw_headers
     ):
         findings.append(f"{name}: malformed public header metadata")
     elif len({row["path"] for row in raw_headers}) != len(raw_headers):
         findings.append(f"{name}: duplicate public header path")
-    if not isinstance(raw_adapters, list) or not raw_adapters or not all(
-        isinstance(value, str) for value in raw_adapters
-    ):
+    adapter_rows = _multi_adapter_rows(library)
+    if not adapter_rows or len(adapter_rows) != len(raw_adapters or []):
         findings.append(f"{name}: adapters must be a nonempty list of paths")
-    elif len(set(raw_adapters)) != len(raw_adapters):
+    elif len({row["path"] for row in adapter_rows}) != len(adapter_rows):
         findings.append(f"{name}: duplicate adapter path")
 
     header_names: set[str] = set()
@@ -520,7 +543,8 @@ def _multi_boundary_findings(
         if not path.is_file():
             findings.append(f"{name}: missing public header: {row['path']}")
             continue
-        names = _header_exports(path.read_text(encoding="utf-8"), prefix)
+        header_prefix = row.get("symbol_prefix", prefix)
+        names = _header_exports(path.read_text(encoding="utf-8"), header_prefix)
         overlap = header_names & names
         if overlap:
             findings.append(f"{name}: duplicate header export(s): {', '.join(sorted(overlap))}")
@@ -530,7 +554,8 @@ def _multi_boundary_findings(
     adapter_names: set[str] = set()
     adapter_heads: dict[str, str] = {}
     adapter_paths: set[Path] = set()
-    for value in _multi_adapter_paths(library):
+    for row in adapter_rows:
+        value = row["path"]
         path = repository_root / value
         try:
             path.resolve().relative_to((repository_root / library["build_root"]).resolve())
@@ -541,6 +566,22 @@ def _multi_boundary_findings(
             findings.append(f"{name}: missing adapter: {value}")
             continue
         names, heads = _zig_exports(path.read_text(encoding="utf-8"))
+        accepted_prefixes = row.get("symbol_prefixes", [prefix])
+        if (
+            not isinstance(accepted_prefixes, list)
+            or not accepted_prefixes
+            or not all(isinstance(item, str) and item for item in accepted_prefixes)
+            or len(set(accepted_prefixes)) != len(accepted_prefixes)
+        ):
+            findings.append(f"{name}: malformed adapter symbol_prefixes: {value}")
+            continue
+        unexpected = sorted(
+            symbol for symbol in names if not any(symbol.startswith(item) for item in accepted_prefixes)
+        )
+        if unexpected:
+            findings.append(
+                f"{name}: adapter export prefix mismatch in {value}: {', '.join(unexpected)}"
+            )
         overlap = adapter_names & names
         if overlap:
             findings.append(f"{name}: duplicate adapter export(s): {', '.join(sorted(overlap))}")
@@ -548,7 +589,26 @@ def _multi_boundary_findings(
         adapter_heads.update(heads)
         adapter_paths.add(path.resolve())
 
-    adapter_text = "\n".join(path.read_text(encoding="utf-8") for path in sorted(adapter_paths))
+    layout_sources = library.get("layout_sources", [])
+    if not isinstance(layout_sources, list) or not all(isinstance(value, str) for value in layout_sources):
+        findings.append(f"{name}: layout_sources must be a list of paths")
+        layout_sources = []
+    layout_text: list[str] = []
+    build_root = (repository_root / library["build_root"]).resolve()
+    for value in layout_sources:
+        path = repository_root / value
+        try:
+            path.resolve().relative_to(build_root)
+        except ValueError:
+            findings.append(f"{name}: layout source is outside build root: {value}")
+            continue
+        if not path.is_file():
+            findings.append(f"{name}: missing layout source: {value}")
+            continue
+        layout_text.append(path.read_text(encoding="utf-8"))
+    adapter_text = "\n".join(
+        [*(path.read_text(encoding="utf-8") for path in sorted(adapter_paths)), *layout_text]
+    )
     for row, path in header_rows:
         compatibility = {
             "compatibility_sha256": row["compatibility_sha256"],
@@ -1556,12 +1616,15 @@ def _selftest_metadata_policy(base: dict[str, Any], root: Path) -> str | None:
         if not any(expected in item for item in _library_findings(broken, {"host", "ra8"}, root)):
             return f"must-fire fixture was accepted: {expected}"
     data_header = root / "build/data.h"
-    data_header.write_text("extern DemoState demo_state;\n", encoding="utf-8")
+    data_header.write_text(
+        "extern DemoState demo_state;\nextern uint8_t demo_buffer[32];\n", encoding="utf-8"
+    )
     adapter = root / "build/adapter.zig"
     adapter.write_text(
         adapter.read_text(encoding="utf-8")
         + "const DemoState = extern struct { value: u32 };\n"
-        + "pub export var demo_state: DemoState = .{ .value = 0 };\n",
+        + "pub export var demo_state: DemoState = .{ .value = 0 };\n"
+        + "pub export var demo_buffer: [32]u8 = @splat(0);\n",
         encoding="utf-8",
     )
     data_row = json.loads(json.dumps(base))
@@ -1572,7 +1635,14 @@ def _selftest_metadata_policy(base: dict[str, Any], root: Path) -> str | None:
             "adapter": "build/adapter.zig",
             "calling_context": "task-only-non-reentrant",
             "ownership": "owns one shared mutable demo state",
-        }
+        },
+        {
+            "name": "demo_buffer",
+            "header": "build/data.h",
+            "adapter": "build/adapter.zig",
+            "calling_context": "task-only-non-reentrant",
+            "ownership": "owns a fixed-size shared demo buffer",
+        },
     ]
     if findings := _library_findings(data_row, {"host", "ra8"}, root):
         return f"must-stay-quiet exported-data fixture failed: {findings}"
@@ -1733,6 +1803,55 @@ def _selftest_multi_boundary_fixture(fixture_root: Path) -> str | None:
     findings = _library_findings(no_secondary_symbol, {"host", "ra8"}, fixture_root)
     if not any("header missing export(s): demo_retained" in item for item in findings):
         return "multi-header must-fire fixture accepted missing secondary-header export"
+
+    # A library can have separate C namespaces and adapter files. Keep the
+    # old shared-prefix string form above, while proving per-header and
+    # per-adapter prefixes cover an intentionally mixed ABI boundary.
+    additional_header.write_text(additional_text, encoding="utf-8")
+    private_header = fixture_root / "inc/demo_private.h"
+    private_header_text = "int private_demo_run(void);\n"
+    private_header.write_text(private_header_text, encoding="utf-8")
+    private_adapter = fixture_root / "build/private.zig"
+    private_adapter.write_text(
+        "pub export fn private_demo_run() callconv(.c) i32 { return 0; }\n",
+        encoding="utf-8",
+    )
+    layout_source = fixture_root / "build/layout.zig"
+    layout_source.write_text(
+        "comptime { std.debug.assert(@sizeOf(DemoConfig) == 4); }\n", encoding="utf-8"
+    )
+    prefixed = json.loads(json.dumps(multi))
+    prefixed["public_headers"][0]["layout_assertions"] = ["@sizeOf(DemoConfig) == 4"]
+    prefixed["public_headers"].append(
+        {
+            "path": "inc/demo_private.h",
+            "compatibility_sha256": _normalized_header_digest(private_header_text),
+            "layout_assertions": [],
+            "symbol_prefix": "private_demo_",
+        }
+    )
+    prefixed["adapters"] = [
+        {"path": "build/adapter.zig", "symbol_prefixes": ["demo_"]},
+        {"path": "build/extra.zig", "symbol_prefixes": ["demo_"]},
+        {"path": "build/private.zig", "symbol_prefixes": ["private_demo_"]},
+    ]
+    prefixed["layout_sources"] = ["build/layout.zig"]
+    prefixed["exports"].append(
+        {
+            "name": "private_demo_run",
+            "calling_context": "task-only-non-reentrant",
+            "ownership": "borrows no caller resource and retains no state",
+        }
+    )
+    if findings := _library_findings(prefixed, {"host", "ra8"}, fixture_root):
+        return f"multi-prefix header/adapter fixture failed: {findings}"
+    wrong_adapter_prefix = json.loads(json.dumps(prefixed))
+    wrong_adapter_prefix["adapters"][2]["symbol_prefixes"] = ["wrong_"]
+    if not any(
+        "adapter export prefix mismatch" in item
+        for item in _library_findings(wrong_adapter_prefix, {"host", "ra8"}, fixture_root)
+    ):
+        return "multi-adapter must-fire fixture accepted a mismatched adapter prefix"
     return None
 
 

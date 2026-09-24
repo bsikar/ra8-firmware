@@ -5,27 +5,74 @@
   "mode_test_library": "ra8_abi_fixture",
   "libraries": [
     {
-      "name": "ra8_ota_parse",
+      "name": "ra8_ota",
       "build_root": "libs/ra8_ota",
-      "public_header": "libs/ra8_ota/src/ra8_ota_parse_abi.h",
-      "adapter": "libs/ra8_ota/src/ra8_ota_parse_abi.zig",
+      "public_headers": [
+        {
+          "path": "libs/ra8_ota/inc/ra8_ota.h",
+          "compatibility_sha256": "1df569c4b98686f6d2fe8aa017c7d6583c01499dc15ce780bf7eaff1d1e56174",
+          "layout_assertions": [
+            "@offsetOf(Cfg, \"manifest_url\") == 0",
+            "@offsetOf(Cfg, \"net\") == @offsetOf(Cfg, \"on_progress\") + ptr_bytes",
+            "@offsetOf(Manifest, \"signature\") == 324",
+            "@sizeOf(Manifest) == 424"
+          ]
+        },
+        {
+          "path": "libs/ra8_ota/src/ra8_ota_internal.h",
+          "compatibility_sha256": "fb8d65221e4779eee1fe9d95650c21fc7bcd770a21eec82b4c417c2aa99411b9",
+          "layout_assertions": [
+            "@sizeOf(NetIface) == ptr_bytes * 4",
+            "@sizeOf(CryptoIface) == ptr_bytes * 5",
+            "@sizeOf(FlashIface) ==",
+            "@offsetOf(Cfg, \"flash\") == @offsetOf(Cfg, \"crypto\") + @sizeOf(CryptoIface)",
+            "@offsetOf(Manifest, \"signature\") == 324",
+            "@sizeOf(Progress) == 16"
+          ],
+          "symbol_prefix": "priv_ota_"
+        }
+      ],
+      "adapters": [
+        {"path": "libs/ra8_ota/src/ra8_ota_parse_abi.zig", "symbol_prefixes": ["priv_ota_"]},
+        {"path": "libs/ra8_ota/src/ra8_ota_abi.zig", "symbol_prefixes": ["ra8_ota_", "priv_ota_"]},
+        {"path": "libs/ra8_ota/src/reset_hook.zig", "symbol_prefixes": ["ra8_ota_"]}
+      ],
+      "layout_sources": ["libs/ra8_ota/src/internal/root.zig"],
       "library_name": "ra8_ota",
-      "symbol_prefix": "priv_ota_",
-      "compatibility_sha256": "176cb3bc9280483a1d512be4e26c6bd7ca41a7cb3b9b8873b9efdcc70ddfbbf6",
-      "layout_assertions": [],
+      "symbol_prefix": "ra8_ota_",
       "target_class": "host-ra8",
       "targets": {"host": [], "ra8": ["-Dtarget=thumb-freestanding-eabihf", "-Dcpu=cortex_m85+fp_armv8-d32-fp64"]},
       "c_include_dirs": ["libs/ra8_ota/inc", "libs/ra8_ota/src", "libs/ra8_core/inc"],
       "contract_tests": [
-        {"language":"c","path":"tests/misc/src/test_ra8_ota_parse_cov.c","registration":"tests/cmake/unit_tests.cmake"},
-        {"language":"zig","path":"libs/ra8_ota/tests/abi_test.zig","registration":"libs/ra8_ota/.zig-test-contract.json"}
+        {"language":"c","path":"tests/misc/src/test_ra8_ota.c","symbol_evidence":"libs/ra8_ota/src/ra8_ota_abi.zig","registration":"tests/cmake/unit_tests.cmake"},
+        {"language":"c","path":"tests/misc/src/test_ra8_ota_cov.c","symbol_evidence":"libs/ra8_ota/src/ra8_ota_abi.zig","registration":"tests/cmake/unit_tests.cmake"},
+        {"language":"c","path":"tests/misc/src/test_ra8_ota_parse_cov.c","symbol_evidence":"libs/ra8_ota/src/ra8_ota_abi.zig","registration":"tests/cmake/unit_tests.cmake"},
+        {"language":"zig","path":"libs/ra8_ota/tests/abi_test.zig","symbol_evidence":"libs/ra8_ota/src/ra8_ota_abi.zig","registration":"libs/ra8_ota/.zig-test-contract.json"},
+        {"language":"zig","path":"libs/ra8_ota/tests/orchestration_test.zig","symbol_evidence":"libs/ra8_ota/src/ra8_ota_abi.zig","registration":"libs/ra8_ota/.zig-test-contract.json"}
       ],
       "exports": [
         {"name":"priv_ota_validate_cfg","calling_context":"task-safe-reentrant","ownership":"borrows configuration and callbacks for this validation call; retains no pointers"},
         {"name":"priv_ota_manifest_decode","calling_context":"task-safe-reentrant","ownership":"borrows JSON input and caller-owned output manifest for this call"},
         {"name":"priv_ota_json_u32","calling_context":"task-safe-reentrant","ownership":"borrows JSON and key; writes the caller-owned output only on success"},
         {"name":"priv_ota_char_in_range","calling_context":"task-safe-reentrant","ownership":"copies no data; evaluates the character range from call arguments"},
-        {"name":"priv_ota_download_state_invalid","calling_context":"task-safe-reentrant","ownership":"copies no data; evaluates the download state from call arguments"}
+        {"name":"priv_ota_download_state_invalid","calling_context":"task-safe-reentrant","ownership":"copies no data; evaluates the download state from call arguments"},
+        {"name":"priv_ota_set_state","calling_context":"task-only-non-reentrant","ownership":"updates module state and synchronously borrows the configured progress callback"},
+        {"name":"ra8_ota_init","calling_context":"task-only-non-reentrant","ownership":"borrows configuration during init and retains its copied callback state"},
+        {"name":"ra8_ota_deinit","calling_context":"task-only-non-reentrant","ownership":"resets module state and retains no caller resource"},
+        {"name":"ra8_ota_get_state","calling_context":"task-safe-reentrant","ownership":"returns a state snapshot and retains no caller resource"},
+        {"name":"ra8_ota_check_for_update","calling_context":"task-only-non-reentrant","ownership":"writes a decoded manifest to caller-owned output storage"},
+        {"name":"ra8_ota_download_to_inactive_bank","calling_context":"task-only-non-reentrant","ownership":"borrows the manifest and streams image bytes into the inactive bank"},
+        {"name":"ra8_ota_verify_signature","calling_context":"task-only-non-reentrant","ownership":"borrows the manifest and verifies its signed metadata and image digest"},
+        {"name":"ra8_ota_commit_and_reboot","calling_context":"task-only-non-reentrant","ownership":"commits verified slot metadata and invokes the reset hook"},
+        {"name":"ra8_ota_run_step","calling_context":"task-only-non-reentrant","ownership":"advances one bounded state-machine step and retains module state"},
+        {"name":"ra8_ota_run_full_update","calling_context":"task-only-non-reentrant","ownership":"runs the full update sequence using the initialized module state"},
+        {"name":"ra8_ota_system_reset_hook","calling_context":"task-only-non-reentrant","ownership":"provides a weak default reset hook that a firmware image may override"}
+      ],
+      "data_exports": [
+        {"name":"g_ra8_ota_cfg","header":"libs/ra8_ota/src/ra8_ota_internal.h","adapter":"libs/ra8_ota/src/ra8_ota_abi.zig","calling_context":"task-only-non-reentrant","ownership":"owns the copied module configuration while the OTA state machine is initialized"},
+        {"name":"g_ra8_ota_state","header":"libs/ra8_ota/src/ra8_ota_internal.h","adapter":"libs/ra8_ota/src/ra8_ota_abi.zig","calling_context":"task-only-non-reentrant","ownership":"owns the current cooperative OTA state shared with the verification pass"},
+        {"name":"g_ra8_ota_initialized","header":"libs/ra8_ota/src/ra8_ota_internal.h","adapter":"libs/ra8_ota/src/ra8_ota_abi.zig","calling_context":"task-only-non-reentrant","ownership":"owns the module initialization flag shared with the verification pass"},
+        {"name":"g_ra8_ota_buf","header":"libs/ra8_ota/src/ra8_ota_internal.h","adapter":"libs/ra8_ota/src/ra8_ota_abi.zig","calling_context":"task-only-non-reentrant","ownership":"owns the bounded shared scratch buffer used for streamed OTA verification"}
       ]
     },
     {

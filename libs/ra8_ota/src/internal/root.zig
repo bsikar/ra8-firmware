@@ -16,11 +16,29 @@ const std = @import("std");
 pub const err = struct {
     pub const ok: u16 = 0;
     pub const invalid_arg: u16 = 0x103;
+    pub const invalid_state: u16 = 0x104;
     pub const invalid_size: u16 = 0x105;
+    pub const not_initialized: u16 = 0x10F;
+    pub const hw_error: u16 = 0x204;
+    pub const crc_mismatch: u16 = 0x405;
     pub const null_ptr: u16 = 0x504;
 };
 
+/// `ra8_ota_state_t` (C23 `enum : uint8_t`). `k_ra8_ota_state_error` is spelled
+/// `failed` here because `error` is a Zig keyword; the numeric values are ABI.
+pub const state = struct {
+    pub const idle: u8 = 0;
+    pub const checking: u8 = 1;
+    pub const downloading: u8 = 2;
+    pub const verifying: u8 = 3;
+    pub const committing: u8 = 4;
+    pub const done: u8 = 5;
+    pub const failed: u8 = 6;
+    pub const count: u8 = 7;
+};
+
 pub const chunk_bytes: u32 = 4096;
+pub const manifest_max_bytes: u32 = 2048;
 pub const sha256_bytes: u32 = 32;
 pub const signature_max_bytes: u32 = 96;
 pub const url_max_bytes: u32 = 256;
@@ -87,6 +105,15 @@ pub const Manifest = extern struct {
     signature_len: u16,
 };
 
+/// `ra8_ota_progress_t`: the snapshot `priv_ota_set_state` hands the caller's
+/// progress callback.
+pub const Progress = extern struct {
+    state: u8,
+    bytes_done: u32,
+    bytes_total: u32,
+    last_err: u16,
+};
+
 const ptr_bytes = @sizeOf(*anyopaque);
 const ptr_align = @alignOf(*anyopaque);
 
@@ -124,6 +151,12 @@ comptime {
     std.debug.assert(@offsetOf(Manifest, "signature") == 324);
     std.debug.assert(@offsetOf(Manifest, "signature_len") == 420);
     std.debug.assert(@sizeOf(Manifest) == 424);
+
+    std.debug.assert(@offsetOf(Progress, "state") == 0);
+    std.debug.assert(@offsetOf(Progress, "bytes_done") == 4);
+    std.debug.assert(@offsetOf(Progress, "bytes_total") == 8);
+    std.debug.assert(@offsetOf(Progress, "last_err") == 12);
+    std.debug.assert(@sizeOf(Progress) == 16);
 }
 
 // =============================================================================
@@ -135,9 +168,10 @@ pub fn charInRange(c: c_char, lo: c_char, hi: c_char) bool {
     return (c >= lo) and (c <= hi);
 }
 
-/// `(state != idle) && (state != downloading)`.
-pub fn downloadStateInvalid(state_idle_val: u32, state_downloading_val: u32, state: u32) bool {
-    return (state != state_idle_val) and (state != state_downloading_val);
+/// `(state != idle) && (state != downloading)`. The candidate parameter is
+/// spelled `state_val` because `state` is now a container declaration here.
+pub fn downloadStateInvalid(state_idle_val: u32, state_downloading_val: u32, state_val: u32) bool {
+    return (state_val != state_idle_val) and (state_val != state_downloading_val);
 }
 
 // =============================================================================
@@ -270,4 +304,101 @@ pub fn manifestSizeStatus(image_size_bytes: u32) u16 {
 /// The `cfg->manifest_url[0] == '\0'` gate.
 pub fn manifestUrlEmpty(first_byte: u8) bool {
     return first_byte == 0;
+}
+
+// =============================================================================
+// Orchestration / verify predicates and arithmetic
+//
+// The state machine itself lives in the ABI membrane (it mutates the module
+// statics the C suites poke); everything here is the pure decision material
+// that used to sit inline in `ra8_ota.c` / `ra8_ota_verify.c`.
+// =============================================================================
+
+/// `k_ra8_ota_manifest_max_bytes - 1U`: the drain cap the manifest fetch uses,
+/// leaving room for the NUL the JSON scanners need.
+pub const manifest_drain_cap: u32 = manifest_max_bytes - 1;
+
+/// `(k_ra8_ota_max_image_bytes / k_ra8_ota_chunk_bytes) + 1U`: the static loop
+/// bound both the download loop and the re-hash pass carry (NASA Rule 2).
+pub const max_chunks: u32 = (max_image_bytes / chunk_bytes) + 1;
+
+/// Fixed byte-widths bound into the OTA signature material (T5-05).
+pub const size_field_bytes: u32 = 4;
+pub const octet_bits: u5 = 8;
+
+/// `total >= cap`: the drain loop's early exit before the next read.
+pub fn drainFilled(total: u32, cap: u32) bool {
+    return total >= cap;
+}
+
+/// `content_len > k_ra8_ota_manifest_max_bytes`: the advertised-length gate the
+/// manifest fetch applies after a successful open (invalid_size, no log line).
+pub fn manifestPayloadTooLarge(content_len: u32) bool {
+    return content_len > manifest_max_bytes;
+}
+
+/// `(remaining < k_ra8_ota_chunk_bytes) ? remaining : k_ra8_ota_chunk_bytes`,
+/// shared by the download chunk sizing and the re-hash pass.
+pub fn chunkWant(remaining: u32) u32 {
+    return if (remaining < chunk_bytes) remaining else chunk_bytes;
+}
+
+/// `manifest->image_size_bytes > g_ra8_ota_cfg.flash.bank_size_bytes`.
+pub fn imageExceedsBank(image_size_bytes: u32, bank_size_bytes: u32) bool {
+    return image_size_bytes > bank_size_bytes;
+}
+
+/// `s_bytes_done == 0U`: a fresh download start erases the bank and primes SHA.
+pub fn freshDownload(bytes_done: u32) bool {
+    return bytes_done == 0;
+}
+
+/// `bytes_total` for the progress snapshot: the cached size only once a
+/// manifest has actually been decoded, else zero.
+pub fn progressTotal(manifest_valid: bool, image_size_bytes: u32) u32 {
+    return if (manifest_valid) image_size_bytes else 0;
+}
+
+/// `(state == done) || (state == error)`: `ra8_ota_run_full_update`'s stop gate.
+pub fn isTerminal(s: u8) bool {
+    return (s == state.done) or (s == state.failed);
+}
+
+/// The little-endian `image_size_bytes` segment of the signed material.
+pub fn sizeLe(image_size_bytes: u32) [size_field_bytes]u8 {
+    var out: [size_field_bytes]u8 = @splat(0);
+    var i: u8 = 0;
+    while (i < size_field_bytes) : (i += 1) {
+        out[i] = @truncate(image_size_bytes >> @as(u5, @intCast(i)) * octet_bits);
+    }
+    return out;
+}
+
+/// What `internal_step_dispatch` resolves the current state to.
+pub const StepAction = enum {
+    /// Fetch and decode the manifest (idle, nothing cached yet).
+    check,
+    /// Download the cached manifest's image.
+    download,
+    /// Verify the freshly-programmed bank.
+    verify,
+    /// Latch the inactive bank and reboot.
+    commit,
+    /// Terminal or sentinel state: answer ok so the caller may stop polling.
+    settle,
+    /// A transient state with no cached manifest: invalid_state.
+    refuse,
+};
+
+/// `internal_step_dispatch`'s switch, decided without touching module state.
+pub fn stepAction(s: u8, manifest_valid: bool) StepAction {
+    return switch (s) {
+        state.idle => if (manifest_valid) .download else .check,
+        // checking and downloading are always resolved synchronously inside a
+        // single API call, so the host build never dispatches from them.
+        state.checking, state.downloading => if (manifest_valid) .download else .refuse,
+        state.verifying => .verify,
+        state.committing => .commit,
+        else => .settle,
+    };
 }
