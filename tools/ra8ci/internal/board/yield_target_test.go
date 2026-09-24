@@ -35,7 +35,7 @@ func targetTestSnapshot(now time.Time) Snapshot {
 func TestRequestYieldRecordsTheTargetTheRequesterWasShown(t *testing.T) {
 	now := time.Date(2026, 9, 24, 18, 0, 0, 0, time.UTC)
 	before := targetTestSnapshot(now)
-	after, events, err := Apply(before, RequestYield{Actor: "brighton", WaiterID: "waiter-human", ShownTarget: 45 * time.Second}, now)
+	after, events, err := Apply(before, RequestYield{Actor: "brighton", WaiterID: "waiter-human", Cohort: cohortUnderTest(), ShownTarget: 45 * time.Second}, now)
 	if err != nil {
 		t.Fatalf("request yield: %v", err)
 	}
@@ -64,12 +64,12 @@ func TestRequestYieldRecordsTheTargetTheRequesterWasShown(t *testing.T) {
 
 func TestRepeatRequestCannotMoveAPromiseAlreadyMade(t *testing.T) {
 	now := time.Date(2026, 9, 24, 18, 0, 0, 0, time.UTC)
-	asked, _, err := Apply(targetTestSnapshot(now), RequestYield{Actor: "brighton", WaiterID: "waiter-human", ShownTarget: 45 * time.Second}, now)
+	asked, _, err := Apply(targetTestSnapshot(now), RequestYield{Actor: "brighton", WaiterID: "waiter-human", Cohort: cohortUnderTest(), ShownTarget: 45 * time.Second}, now)
 	if err != nil {
 		t.Fatalf("first request: %v", err)
 	}
 	later := now.Add(30 * time.Second)
-	again, _, err := Apply(asked, RequestYield{Actor: "brighton", WaiterID: "waiter-human", ShownTarget: 10 * time.Minute}, later)
+	again, _, err := Apply(asked, RequestYield{Actor: "brighton", WaiterID: "waiter-human", Cohort: cohortUnderTest(), ShownTarget: 10 * time.Minute}, later)
 	if err != nil {
 		t.Fatalf("repeat request: %v", err)
 	}
@@ -84,13 +84,13 @@ func TestRepeatRequestCannotMoveAPromiseAlreadyMade(t *testing.T) {
 func TestRequestYieldRefusesATargetOutOfRange(t *testing.T) {
 	now := time.Date(2026, 9, 24, 18, 0, 0, 0, time.UTC)
 	for _, target := range []time.Duration{-time.Second, MaxHandoffBound + time.Nanosecond} {
-		if _, _, err := Apply(targetTestSnapshot(now), RequestYield{Actor: "brighton", WaiterID: "waiter-human", ShownTarget: target}, now); !IsCode(err, InvalidArgument) {
+		if _, _, err := Apply(targetTestSnapshot(now), RequestYield{Actor: "brighton", WaiterID: "waiter-human", Cohort: cohortUnderTest(), ShownTarget: target}, now); !IsCode(err, InvalidArgument) {
 			t.Fatalf("target %s: err = %v, want invalid_argument", target, err)
 		}
 	}
 	// The bound itself is allowed: the estimator clamps to it, so a task
 	// sitting at the ceiling must still be able to record what it was shown.
-	after, _, err := Apply(targetTestSnapshot(now), RequestYield{Actor: "brighton", WaiterID: "waiter-human", ShownTarget: MaxHandoffBound}, now)
+	after, _, err := Apply(targetTestSnapshot(now), RequestYield{Actor: "brighton", WaiterID: "waiter-human", Cohort: cohortUnderTest(), ShownTarget: MaxHandoffBound}, now)
 	if err != nil || after.Lease.HandoffTarget != MaxHandoffBound {
 		t.Fatalf("target at the ceiling refused: %v (%s)", err, after.Lease.HandoffTarget)
 	}
@@ -98,7 +98,7 @@ func TestRequestYieldRefusesATargetOutOfRange(t *testing.T) {
 
 func TestWithdrawnYieldClearsTheTargetWithTheRequest(t *testing.T) {
 	now := time.Date(2026, 9, 24, 18, 0, 0, 0, time.UTC)
-	asked, _, err := Apply(targetTestSnapshot(now), RequestYield{Actor: "brighton", WaiterID: "waiter-human", ShownTarget: 45 * time.Second}, now)
+	asked, _, err := Apply(targetTestSnapshot(now), RequestYield{Actor: "brighton", WaiterID: "waiter-human", Cohort: cohortUnderTest(), ShownTarget: 45 * time.Second}, now)
 	if err != nil {
 		t.Fatalf("request yield: %v", err)
 	}
@@ -126,8 +126,12 @@ func TestValidateRefusesATargetNoRequestStandsBehind(t *testing.T) {
 	}
 	s.Lease.YieldRequestedAt = now
 	s.Phase = YieldRequested
+	if err := Validate(s); !IsCode(err, Conflict) {
+		t.Fatalf("target with no cohort behind it: err = %v, want conflict", err)
+	}
+	s.Lease.HandoffCohort = cohortUnderTest()
 	if err := Validate(s); err != nil {
-		t.Fatalf("target with a request behind it refused: %v", err)
+		t.Fatalf("target with a request and cohort behind it refused: %v", err)
 	}
 	s.Lease.HandoffTarget = MaxHandoffBound + time.Nanosecond
 	if err := Validate(s); !IsCode(err, Conflict) {
@@ -144,7 +148,7 @@ func TestPlanYieldReportsThePromiseRatherThanARevisedEstimate(t *testing.T) {
 	cohort := YieldCohort{BoardID: "board-1", BoardModel: "ra8p1", FixtureRevision: "rev-c", TaskName: "hil-smoke", CatalogDigest: "digest-1"}
 	bounds := DeclaredHandoffBounds{SafeStepBound: 20 * time.Second, RestoreProbeBound: 10 * time.Second}
 
-	asked, _, err := Apply(targetTestSnapshot(now), RequestYield{Actor: "brighton", WaiterID: "waiter-human", ShownTarget: 45 * time.Second}, now)
+	asked, _, err := Apply(targetTestSnapshot(now), RequestYield{Actor: "brighton", WaiterID: "waiter-human", Cohort: cohortUnderTest(), ShownTarget: 45 * time.Second}, now)
 	if err != nil {
 		t.Fatalf("request yield: %v", err)
 	}
@@ -185,7 +189,7 @@ func TestPlanYieldReportsThePromiseRatherThanARevisedEstimate(t *testing.T) {
 func TestPlanYieldCarriesThePromiseEvenWithNoBoundsLeft(t *testing.T) {
 	now := time.Date(2026, 9, 24, 18, 0, 0, 0, time.UTC)
 	cohort := YieldCohort{BoardID: "board-1", BoardModel: "ra8p1", FixtureRevision: "rev-c", TaskName: "hil-smoke", CatalogDigest: "digest-1"}
-	asked, _, err := Apply(targetTestSnapshot(now), RequestYield{Actor: "brighton", WaiterID: "waiter-human", ShownTarget: 45 * time.Second}, now)
+	asked, _, err := Apply(targetTestSnapshot(now), RequestYield{Actor: "brighton", WaiterID: "waiter-human", Cohort: cohortUnderTest(), ShownTarget: 45 * time.Second}, now)
 	if err != nil {
 		t.Fatalf("request yield: %v", err)
 	}
@@ -232,7 +236,7 @@ func TestEstimateHandoffNeverReportsThePromisedSource(t *testing.T) {
 func TestYieldSampleIsMeasuredAgainstTheRecordedPromise(t *testing.T) {
 	now := time.Date(2026, 9, 24, 18, 0, 0, 0, time.UTC)
 	cohort := YieldCohort{BoardID: "board-1", BoardModel: "ra8p1", FixtureRevision: "rev-c", TaskName: "hil-smoke", CatalogDigest: "digest-1"}
-	asked, _, err := Apply(targetTestSnapshot(now), RequestYield{Actor: "brighton", WaiterID: "waiter-human", ShownTarget: 45 * time.Second}, now)
+	asked, _, err := Apply(targetTestSnapshot(now), RequestYield{Actor: "brighton", WaiterID: "waiter-human", Cohort: cohort, ShownTarget: 45 * time.Second}, now)
 	if err != nil {
 		t.Fatalf("request yield: %v", err)
 	}
@@ -269,7 +273,7 @@ func TestPlanAndSampleAgreeOnTheNumberThroughTheLease(t *testing.T) {
 	if err != nil {
 		t.Fatalf("plan yield: %v", err)
 	}
-	asked, _, err := Apply(targetTestSnapshot(now), RequestYield{Actor: "brighton", WaiterID: "waiter-human", ShownTarget: planned.ShownTarget()}, now)
+	asked, _, err := Apply(targetTestSnapshot(now), RequestYield{Actor: "brighton", WaiterID: "waiter-human", Cohort: cohort, ShownTarget: planned.ShownTarget()}, now)
 	if err != nil {
 		t.Fatalf("request yield: %v", err)
 	}

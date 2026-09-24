@@ -24,14 +24,17 @@ const (
 // completed handoff that ran past it is flagged as a safety overrun and stays
 // in the history. Pass zero when no estimate was shown.
 //
+// cohort names the comparable history this measurement belongs to. A lease
+// that recorded its own cohort when the yield was asked for supplies it, and
+// a caller may pass a zero cohort to take it; the recorded one is what the
+// shown target was estimated over, so it is the only bucket the sample can
+// honestly be filed against.
+//
 // The second return is false when the transition measures nothing: no lease,
 // no outstanding yield request, or no event that ended the handoff either way.
 // A sample is refused rather than corrected when it would contradict itself,
 // for instance a board reaching neutral before the yield that asked for it.
 func YieldSampleFor(before Snapshot, events []Event, cohort YieldCohort, shownTarget time.Duration) (YieldSample, bool, error) {
-	if err := ValidateYieldCohort(cohort); err != nil {
-		return YieldSample{}, false, err
-	}
 	if shownTarget < 0 || shownTarget > MaxHandoffBound {
 		return YieldSample{}, false, &Error{InvalidArgument, "shown handoff target is out of range"}
 	}
@@ -50,6 +53,20 @@ func YieldSampleFor(before Snapshot, events []Event, cohort YieldCohort, shownTa
 			return YieldSample{}, false, &Error{InvalidArgument, "shown handoff target contradicts the target recorded on the lease"}
 		}
 		shownTarget = lease.HandoffTarget
+	}
+	// The cohort travels the same way and for a stronger reason. The target
+	// is only a number; the cohort decides which history this measurement
+	// joins and which future estimate it moves. Filing it against a cohort
+	// derived at completion time would let a board that has since changed
+	// task or image absorb the measurement of work it never did.
+	if lease.HandoffCohort != (YieldCohort{}) {
+		if cohort != (YieldCohort{}) && cohort != lease.HandoffCohort {
+			return YieldSample{}, false, &Error{InvalidArgument, "cohort contradicts the cohort recorded on the lease"}
+		}
+		cohort = lease.HandoffCohort
+	}
+	if err := ValidateYieldCohort(cohort); err != nil {
+		return YieldSample{}, false, err
 	}
 
 	sample := YieldSample{

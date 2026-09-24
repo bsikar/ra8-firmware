@@ -100,7 +100,9 @@ func (h *boardHTTP) yield(w http.ResponseWriter, r *http.Request) {
 	// microseconds past it. The target the plan shows is committed with the
 	// request for the same reason: the number in the response body and the
 	// number the handoff is later judged against are one value, recorded by
-	// the transition that made the promise.
+	// the transition that made the promise. The cohort it was estimated over
+	// is committed with it, so the sample recorded when the handoff ends is
+	// filed against the history the requester was actually quoted.
 	now := time.Now().UTC()
 	plan, err := board.PlanYield(snapshot, req.WaiterID, yieldDispatch(snapshot, req.WaiterID),
 		budget.Cohort, budget.Bounds, budget.Samples, now)
@@ -109,7 +111,8 @@ func (h *boardHTTP) yield(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	applied, events, err := h.store.ApplyBoardCommand(r.Context(), actor,
-		board.RequestYield{Actor: actor.ID(), WaiterID: req.WaiterID, ShownTarget: plan.ShownTarget()},
+		board.RequestYield{Actor: actor.ID(), WaiterID: req.WaiterID,
+			ShownTarget: plan.ShownTarget(), Cohort: budget.Cohort},
 		req.ExpectedVersion, nil, h.verifier, now)
 	if err != nil {
 		writeBoardError(w, err)
