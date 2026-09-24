@@ -29,7 +29,9 @@ func (s *Store) RequestRunCancellation(ctx context.Context, runID, actor string)
 		FROM runs WHERE id=$1`, runID).Scan(&state, &alreadyRequested); err != nil {
 		return Run{}, fmt.Errorf("%w: read run cancellation state: %v", ErrUnavailable, err)
 	}
-	if state == "terminal" || alreadyRequested {
+	// A closed run has nothing to cancel, and a second request is a no-op:
+	// both replay the current run rather than write again.
+	if TerminalRunState(state) || alreadyRequested {
 		if err := tx.Rollback(ctx); err != nil {
 			return Run{}, fmt.Errorf("%w: finish idempotent cancellation: %v", ErrUnavailable, err)
 		}
@@ -38,6 +40,14 @@ func (s *Store) RequestRunCancellation(ctx context.Context, runID, actor string)
 	if _, err := tx.Exec(ctx, `UPDATE runs SET cancel_requested_at=clock_timestamp(),
 		cancel_requested_by=$2, version=version+1 WHERE id=$1`, runID, actor); err != nil {
 		return Run{}, fmt.Errorf("%w: persist cancellation intent: %v", ErrUnavailable, err)
+	}
+	// Only unassigned work is terminalized here; a running task stops at its
+	// next heartbeat and keeps its fenced receipt path, which is why this
+	// write is narrower than the set of edges the machine allows into
+	// cancelled. The one edge it does take is still checked, so a schema
+	// change that removes it fails loudly instead of cancelling nothing.
+	if err := CheckTaskTransition("scheduled", "cancelled"); err != nil {
+		return Run{}, err
 	}
 	rows, err := tx.Query(ctx, `UPDATE tasks SET state='cancelled', ended_at=clock_timestamp(),
 		version=version+1 WHERE run_id=$1 AND state='scheduled' RETURNING id::text, task_key`, runID)
