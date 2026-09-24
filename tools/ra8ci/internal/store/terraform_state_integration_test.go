@@ -26,7 +26,7 @@ func TestIntegrationRunnerVMTerraformHTTPStateIsEncryptedLockedAndMonotonic(t *t
 	if err != nil {
 		t.Fatal(err)
 	}
-	vm, created, err := s.ReserveRunnerVM(ctx, "scaler", runnerVMTestInput(t))
+	vm, created, err := s.ReserveRunnerVM(ctx, "scaler", runnerVMTestInput(t), testUnclaimedDeadline())
 	if err != nil || !created {
 		t.Fatalf("reserve state owner: created=%v err=%v", created, err)
 	}

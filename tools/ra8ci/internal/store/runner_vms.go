@@ -50,6 +50,8 @@ type RunnerVM struct {
 	CurrentOperationID  string
 	ExternalRunnerID    int64
 	ExternalRunnerName  string
+	UnclaimedDeadline   time.Time
+	ClaimedAt           *time.Time
 	CreatedAt           time.Time
 	UpdatedAt           time.Time
 	EndedAt             *time.Time
@@ -215,21 +217,24 @@ const runnerVMColumns = `id::text,scale_set_id,job_id,runner_request_id,workflow
 	workflow_attempt,repository,workflow_ref,commit_sha,vmid,node,pool,storage,vm_name,
 	template_vmid,template_name,template_digest,creation_operation_id::text,state,generation,
 	unknown_outcome,cleanup_requested,current_operation_id::text,external_runner_id,external_runner_name,
-	created_at,updated_at,ended_at`
+	unclaimed_deadline,claimed_at,created_at,updated_at,ended_at`
 
 func scanRunnerVM(row pgx.Row) (RunnerVM, error) {
 	var vm RunnerVM
 	var operation, runnerName, templateDigest sql.NullString
 	var runnerID sql.NullInt64
-	var ended sql.NullTime
+	var ended, claimed sql.NullTime
 	err := row.Scan(&vm.ID, &vm.ScaleSetID, &vm.JobID, &vm.RunnerRequestID,
 		&vm.WorkflowRunID, &vm.WorkflowAttempt, &vm.Repository, &vm.WorkflowRef,
 		&vm.CommitSHA, &vm.VMID, &vm.Node, &vm.Pool, &vm.Storage, &vm.Name,
 		&vm.TemplateVMID, &vm.TemplateName, &templateDigest, &vm.CreationOperationID, &vm.State,
 		&vm.Generation, &vm.UnknownOutcome, &vm.CleanupRequested, &operation, &runnerID, &runnerName,
-		&vm.CreatedAt, &vm.UpdatedAt, &ended)
+		&vm.UnclaimedDeadline, &claimed, &vm.CreatedAt, &vm.UpdatedAt, &ended)
 	vm.TemplateDigest = templateDigest.String
 	vm.CurrentOperationID, vm.ExternalRunnerID, vm.ExternalRunnerName = operation.String, runnerID.Int64, runnerName.String
+	if claimed.Valid {
+		vm.ClaimedAt = &claimed.Time
+	}
 	if ended.Valid {
 		vm.EndedAt = &ended.Time
 	}
@@ -251,9 +256,18 @@ func validRunnerVMInput(in RunnerVMInput) bool {
 // ReserveRunnerVM inserts a permanent job-attempt reservation. Repeating the
 // exact key and identity returns the original markers; changed identity or an
 // active VMID collision fails without changing any existing reservation.
-func (s *Store) ReserveRunnerVM(ctx context.Context, actor string, in RunnerVMInput) (RunnerVM, bool, error) {
+//
+// The unclaimed deadline is part of the reservation, not a later decoration:
+// a single-use credential is minted against this row, and the deadline is
+// what says when an unused one stops being live. A replay returns the
+// original row with its original deadline, so a repeated delivery can never
+// extend the life of a reservation nobody ever claimed.
+func (s *Store) ReserveRunnerVM(ctx context.Context, actor string, in RunnerVMInput, unclaimedDeadline time.Time) (RunnerVM, bool, error) {
 	if s == nil || s.pool == nil || actor == "" || len(actor) > 256 || !validRunnerVMInput(in) {
 		return RunnerVM{}, false, ErrInvalid
+	}
+	if err := ValidUnclaimedDeadline(time.Now().UTC(), unclaimedDeadline); err != nil {
+		return RunnerVM{}, false, err
 	}
 	tx, err := s.pool.BeginTx(ctx, pgx.TxOptions{IsoLevel: pgx.ReadCommitted})
 	if err != nil {
@@ -286,18 +300,20 @@ func (s *Store) ReserveRunnerVM(ctx context.Context, actor string, in RunnerVMIn
 	_, err = tx.Exec(ctx, `INSERT INTO runner_vms
 		(id,scale_set_id,job_id,runner_request_id,workflow_run_id,workflow_attempt,
 		repository,workflow_ref,commit_sha,vmid,node,pool,storage,vm_name,
-		template_vmid,template_name,template_digest,creation_operation_id,state)
-		VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,'reserved')`,
+		template_vmid,template_name,template_digest,creation_operation_id,state,unclaimed_deadline)
+		VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,'reserved',$19)`,
 		id, in.ScaleSetID, in.JobID, in.RunnerRequestID, in.WorkflowRunID,
 		in.WorkflowAttempt, in.Repository, in.WorkflowRef, in.CommitSHA, in.VMID,
-		in.Node, in.Pool, in.Storage, in.Name, in.TemplateVMID, in.TemplateName, in.TemplateDigest, creationID)
+		in.Node, in.Pool, in.Storage, in.Name, in.TemplateVMID, in.TemplateName, in.TemplateDigest,
+		creationID, unclaimedDeadline.UTC())
 	if err != nil {
 		return RunnerVM{}, false, fmt.Errorf("%w: reserve exact VM: %v", ErrConflict, err)
 	}
 	if err := appendAudit(ctx, tx, actor, "runner_vm.reserved", "runner_vm", id,
 		"ok", "", "reserved", "", map[string]any{"scale_set_id": in.ScaleSetID,
 			"job_id": in.JobID, "workflow_attempt": in.WorkflowAttempt,
-			"node": in.Node, "vmid": in.VMID, "creation_operation_id": creationID}); err != nil {
+			"node": in.Node, "vmid": in.VMID, "creation_operation_id": creationID,
+			"unclaimed_deadline": unclaimedDeadline.UTC().Format(time.RFC3339Nano)}); err != nil {
 		return RunnerVM{}, false, fmt.Errorf("%w: audit VM reservation: %v", ErrUnavailable, err)
 	}
 	if err := tx.Commit(ctx); err != nil {
@@ -1015,6 +1031,85 @@ func (s *Store) MarkRunnerVMDraining(ctx context.Context, actor, reservationID s
 		return RunnerVM{}, fmt.Errorf("%w: commit VM drain: %v", ErrUnavailable, err)
 	}
 	return s.GetRunnerVM(ctx, vm.ID)
+}
+
+// MarkRunnerVMClaimed records that a job actually took this runner, which
+// ends the reaper's interest in it for good. It is deliberately not a
+// generation-fenced transition: claiming is not a Proxmox mutation, and
+// bumping the generation here would invalidate an in-flight operation CAS
+// that has nothing to do with the job starting.
+//
+// Idempotent by design. The forge redelivers, and the second delivery must
+// not move the claim timestamp, so the write is fenced on claimed_at IS NULL
+// and a row already claimed is returned unchanged.
+func (s *Store) MarkRunnerVMClaimed(ctx context.Context, actor, reservationID string) (RunnerVM, error) {
+	if s == nil || s.pool == nil || actor == "" || len(actor) > 256 || !ValidID(reservationID) {
+		return RunnerVM{}, ErrInvalid
+	}
+	tx, err := s.pool.Begin(ctx)
+	if err != nil {
+		return RunnerVM{}, fmt.Errorf("%w: begin claim: %v", ErrUnavailable, err)
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+	vm, err := scanRunnerVM(tx.QueryRow(ctx, `SELECT `+runnerVMColumns+`
+		FROM runner_vms WHERE id=$1 FOR UPDATE`, reservationID))
+	if errors.Is(err, pgx.ErrNoRows) {
+		return RunnerVM{}, ErrNotFound
+	}
+	if err != nil {
+		return RunnerVM{}, fmt.Errorf("%w: lock claim: %v", ErrUnavailable, err)
+	}
+	if vm.ClaimedAt != nil {
+		return vm, nil
+	}
+	if vm.State == "released" {
+		return RunnerVM{}, fmt.Errorf("%w: reservation already released", ErrConflict)
+	}
+	tag, err := tx.Exec(ctx, `UPDATE runner_vms SET claimed_at=clock_timestamp(),
+		updated_at=clock_timestamp() WHERE id=$1 AND claimed_at IS NULL`, vm.ID)
+	if err != nil || tag.RowsAffected() != 1 {
+		return RunnerVM{}, fmt.Errorf("%w: claim CAS: %v", ErrConflict, err)
+	}
+	if err := appendAudit(ctx, tx, actor, "runner_vm.claimed", "runner_vm", vm.ID,
+		"ok", vm.State, vm.State, "", map[string]any{
+			"unclaimed_deadline": vm.UnclaimedDeadline.UTC().Format(time.RFC3339Nano)}); err != nil {
+		return RunnerVM{}, fmt.Errorf("%w: audit claim: %v", ErrUnavailable, err)
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return RunnerVM{}, fmt.Errorf("%w: commit claim: %v", ErrUnavailable, err)
+	}
+	return s.GetRunnerVM(ctx, vm.ID)
+}
+
+// ListExpiredUnclaimedRunnerVMs is the unclaimed-runner reaper's work queue:
+// reservations whose deadline has passed with no job ever taking them,
+// soonest deadline first. The WHERE clause is built from unclaimedCandidate,
+// the same predicate UnclaimedExpired states in Go, so the queue and the
+// guard a caller re-runs under its own lock cannot drift apart.
+func (s *Store) ListExpiredUnclaimedRunnerVMs(ctx context.Context, scaleSetID int64, now time.Time, limit int) ([]RunnerVM, error) {
+	if s == nil || s.pool == nil || scaleSetID <= 0 || now.IsZero() || limit < 1 || limit > 1000 {
+		return nil, ErrInvalid
+	}
+	query := `SELECT ` + runnerVMColumns + ` FROM runner_vms
+		WHERE scale_set_id=$1 AND ` + fmt.Sprintf(unclaimedCandidate, 2) + `
+		ORDER BY unclaimed_deadline,id LIMIT $3`
+	rows, err := s.pool.Query(ctx, query, scaleSetID, now.UTC(), limit)
+	if err != nil {
+		return nil, fmt.Errorf("%w: list expired unclaimed VMs: %v", ErrUnavailable, err)
+	}
+	defer rows.Close()
+	var result []RunnerVM
+	for rows.Next() {
+		vm, err := scanRunnerVM(rows)
+		if err != nil {
+			return nil, fmt.Errorf("%w: expired unclaimed VM scan: %v", ErrUnavailable, err)
+		}
+		result = append(result, vm)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("%w: expired unclaimed VM rows: %v", ErrUnavailable, err)
+	}
+	return result, nil
 }
 
 // ListUnresolvedRunnerVMs is the restart queue. Every row needs explicit
