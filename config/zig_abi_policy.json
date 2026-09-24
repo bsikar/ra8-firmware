@@ -430,6 +430,63 @@
       ]
     },
     {
+      "name": "ra8_display_pal",
+      "build_root": "libs/ra8_display_pal",
+      "public_headers": [
+        {
+          "path": "libs/ra8_display_pal/inc/ra8_display_pal.h",
+          "compatibility_sha256": "841d255fcb0a027d05864d4202916967c1c4944737babb70e5ca2e0201bbed14",
+          "layout_assertions": [
+            "@sizeOf(Rect) == 8",
+            "@offsetOf(Rect, \"w\") == 4",
+            "@sizeOf(Caps) == 20",
+            "@offsetOf(Caps, \"stride_bytes\") == 8",
+            "@offsetOf(Fb, \"width_px\") == @sizeOf(usize)"
+          ]
+        },
+        {
+          "path": "libs/ra8_display_pal/inc/ra8_display_pal_policy.h",
+          "compatibility_sha256": "1c4ee234985afafbbe57d65b929e541f9da280f03b8be1594b713f7a7897c73b",
+          "layout_assertions": [
+            "@sizeOf(Policy) == 6",
+            "@offsetOf(Policy, \"clean_every\") == 2",
+            "@offsetOf(Decision, \"full_update\") == 1"
+          ]
+        }
+      ],
+      "adapters": ["libs/ra8_display_pal/src/ra8_display_pal_abi.zig"],
+      "library_name": "ra8_display_pal",
+      "symbol_prefix": "display_",
+      "target_class": "host-ra8",
+      "targets": {
+        "host": [],
+        "ra8": ["-Dtarget=thumb-freestanding-eabihf", "-Dcpu=cortex_m85+fp_armv8-d32-fp64"]
+      },
+      "run_host_tests_in_all_modes": false,
+      "c_include_dirs": [
+        "libs/ra8_display_pal/inc",
+        "libs/ra8_core/inc"
+      ],
+      "contract_tests": [
+        {"language": "c", "path": "tests/graphics/src/test_ra8_display_pal.c", "registration": "tests/cmake/unit_tests.cmake"},
+        {"language": "c", "path": "tests/graphics/src/test_ra8_display_pal_policy.c", "registration": "tests/cmake/unit_tests.cmake"},
+        {"language": "zig", "path": "libs/ra8_display_pal/tests/abi_test.zig", "registration": "libs/ra8_display_pal/.zig-test-contract.json"},
+        {"language": "zig", "path": "libs/ra8_display_pal/tests/internal_test.zig", "symbol_evidence": "libs/ra8_display_pal/src/ra8_display_pal_abi.zig", "registration": "libs/ra8_display_pal/.zig-test-contract.json"}
+      ],
+      "exports": [
+        {"name": "display_init", "calling_context": "task-only-non-reentrant", "ownership": "binds the caller backend and context to the single module-owned live handle until deinit"},
+        {"name": "display_get_caps", "calling_context": "task-only-non-reentrant", "ownership": "borrows the live backend and writes capability values to caller-owned output"},
+        {"name": "display_get_framebuffer", "calling_context": "task-only-non-reentrant", "ownership": "borrows the live backend and writes a framebuffer view to caller-owned output"},
+        {"name": "display_flush", "calling_context": "task-only-non-reentrant", "ownership": "borrows the live backend and forwards the rectangle and refresh hint synchronously"},
+        {"name": "display_clear", "calling_context": "task-only-non-reentrant", "ownership": "borrows the live backend and forwards the clear color synchronously"},
+        {"name": "display_deinit", "calling_context": "task-only-non-reentrant", "ownership": "releases backend state and clears the module-owned handle even when deinit reports an error"},
+        {"name": "display_full_rect", "calling_context": "task-only-non-reentrant", "ownership": "borrows the live backend capability snapshot and returns its full rectangle by value"},
+        {"name": "display_policy_init", "calling_context": "task-only-non-reentrant", "ownership": "initializes caller-owned refresh policy and retains no caller pointer"},
+        {"name": "display_policy_decide", "calling_context": "task-only-non-reentrant", "ownership": "updates caller-owned policy cadence and writes its decision to caller-owned output"},
+        {"name": "display_policy_full_rect", "calling_context": "task-safe-reentrant", "ownership": "writes a caller-owned rectangle from the supplied dimensions and retains no state"}
+      ]
+    },
+    {
       "name": "if",
       "build_root": "libs/if",
       "public_headers": [

@@ -380,6 +380,29 @@ ra8_add_zig_library(
   ra8_sdmmc_spi
 )
 
+# The BACKEND-AGNOSTIC HALF only: the dispatcher behind inc/ra8_display_pal.h
+# (argument guards, the one module-static handle, dispatch through the bound
+# vtable) and the page-turn refresh cadence behind
+# inc/ra8_display_pal_policy.h are Zig now, so src/ra8_display_pal.c and
+# src/ra8_display_pal_policy.c are gone. The two panel backends
+# (src/ra8_display_pal_lcd.c over the GLCDC, src/ra8_display_pal_eink.c over
+# the IT8951) are deliberately still C on this branch: they ride ra8_glcdc /
+# ra8_epaper inside ra8_core_hal, so the RA8_DISPLAY_PAL_SOURCES glob stays
+# and now matches exactly those two files. The panel stays a caller-supplied
+# vtable, so the archive names no controller and the host suite's fake
+# backends substitute for one exactly as before. src/ra8_display_pal_internal.h
+# stays too: tests/graphics/src/test_ra8_display_pal.c includes it, so the
+# libs/ra8_display_pal/src include dirs stay in core_hal.cmake and
+# unit_tests.cmake.
+ra8_add_zig_library(
+  NAME
+  ra8_display_pal
+  ZIG_ROOT
+  ${FW_ROOT}/libs/ra8_display_pal
+  LIBRARY_NAME
+  ra8_display_pal
+)
+
 target_link_libraries(
   ra8_core_hal
   PUBLIC ra8_zig::ra8_box
@@ -404,6 +427,7 @@ target_link_libraries(
          ra8_zig::fw_if_fs
          ra8_zig::ra8_ftl
          ra8_zig::ra8_sdmmc_spi
+         ra8_zig::ra8_display_pal
 )
 
 link_libraries(
@@ -415,6 +439,7 @@ link_libraries(
   ra8_zig::ra8_audio ra8_zig::ra8_wifi ra8_zig::ra8_ov5640
   ra8_zig::ra8_modem_at ra8_zig::if_ra8_vfs ra8_zig::ra8_camera
   ra8_zig::fw_if_fs ra8_zig::ra8_ftl ra8_zig::ra8_sdmmc_spi
+  ra8_zig::ra8_display_pal
 )
 
 link_libraries(ra8_zig::ra8_batt)
