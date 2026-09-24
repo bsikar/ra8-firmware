@@ -149,17 +149,44 @@ type sourceRequest struct {
 	SnapshotSHA256 string `json:"snapshot_sha256"`
 }
 
+// taskRequest asks for one task within a run.
+//
+// Values carries the task's arguments by NAME. Args is the older field and
+// must stay empty: the plane derives argv itself, from these names and the
+// reviewed schema it already holds, under the catalog digest both sides have
+// agreed on. A submitter therefore cannot state an argv element, which means
+// it cannot state one that no binding of a reviewed argument could produce.
 type taskRequest struct {
-	Key           string   `json:"key"`
-	Name          string   `json:"name"`
-	Args          []string `json:"args"`
-	DependsOnKeys []string `json:"depends_on_keys"`
+	Key           string            `json:"key"`
+	Name          string            `json:"name"`
+	Args          []string          `json:"args"`
+	Values        map[string]string `json:"values"`
+	DependsOnKeys []string          `json:"depends_on_keys"`
 }
 
-func persistedTaskArguments(definition catalog.Task, argv []string) (json.RawMessage, error) {
+// persistedTaskArguments writes what a task will run with: the argv the plane
+// bound, and the named values it bound them from.
+//
+// Both are stored because they answer different questions later. argv is what
+// the agent is handed; the values are the record of what was actually asked
+// for, and they are what a re-validating reader re-binds to check that argv
+// still matches the catalog it holds. The values key is omitted when there
+// are none, so a task with no arguments keeps the exact stored shape every
+// row written before this had.
+func persistedTaskArguments(definition catalog.Task, values map[string]string) (json.RawMessage, error) {
+	argv, err := definition.BindArguments(values)
+	if err != nil {
+		return nil, err
+	}
+	if argv == nil {
+		argv = []string{}
+	}
 	argumentData := map[string]any{"argv": argv}
 	if definition.HIL != nil {
 		argumentData["hil"] = definition.HIL
+	}
+	if len(values) != 0 {
+		argumentData["values"] = values
 	}
 	return json.Marshal(argumentData)
 }
@@ -216,7 +243,7 @@ func (s *Server) createRun(w http.ResponseWriter, r *http.Request) {
 			problem(w, http.StatusBadRequest, "invalid_argument", "unknown task or invalid task arguments", false)
 			return
 		}
-		arguments, err := persistedTaskArguments(definition, requested.Args)
+		arguments, err := persistedTaskArguments(definition, requested.Values)
 		if err != nil {
 			problem(w, http.StatusBadRequest, "invalid_argument", "invalid task arguments", false)
 			return

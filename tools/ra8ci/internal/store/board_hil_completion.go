@@ -132,8 +132,9 @@ func (s *Store) CompleteBoardHILAttempt(ctx context.Context, actor BoardActor,
 		return fmt.Errorf("%w: HIL attempt, lease, or catalog identity mismatch", ErrConflict)
 	}
 	var stored struct {
-		Arguments []string         `json:"argv"`
-		HIL       *catalog.HILTask `json:"hil"`
+		Arguments []string          `json:"argv"`
+		Values    map[string]string `json:"values"`
+		HIL       *catalog.HILTask  `json:"hil"`
 	}
 	decoder := json.NewDecoder(bytes.NewReader(rawArguments))
 	decoder.DisallowUnknownFields()

@@ -44,11 +44,16 @@ type Source struct {
 }
 
 // Task requests one catalog task and its dependencies within a run.
+//
+// Values carries the task's arguments BY NAME. Args stays on the wire for the
+// older shape and must be empty: the plane binds argv itself from Values and
+// its own reviewed schema, so a submitter never states argv.
 type Task struct {
-	Key           string   `json:"key"`
-	Name          string   `json:"name"`
-	Args          []string `json:"args"`
-	DependsOnKeys []string `json:"depends_on_keys"`
+	Key           string            `json:"key"`
+	Name          string            `json:"name"`
+	Args          []string          `json:"args"`
+	Values        map[string]string `json:"values,omitempty"`
+	DependsOnKeys []string          `json:"depends_on_keys"`
 }
 
 // SubmitRequest is the immutable, idempotent run admission payload.

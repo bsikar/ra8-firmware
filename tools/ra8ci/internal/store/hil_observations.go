@@ -67,8 +67,9 @@ func (s *Store) RecordHILObservation(ctx context.Context, in HILObservationInput
 		return fmt.Errorf("%w: HIL observation is not a completed observation step", ErrConflict)
 	}
 	var arguments struct {
-		Arguments []string         `json:"argv"`
-		HIL       *catalog.HILTask `json:"hil"`
+		Arguments []string          `json:"argv"`
+		Values    map[string]string `json:"values"`
+		HIL       *catalog.HILTask  `json:"hil"`
 	}
 	decoder := json.NewDecoder(bytes.NewReader(taskArguments))
 	decoder.DisallowUnknownFields()

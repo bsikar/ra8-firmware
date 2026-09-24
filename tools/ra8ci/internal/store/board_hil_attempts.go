@@ -89,8 +89,9 @@ func (s *Store) StartBoardHILAttempt(ctx context.Context, actor BoardActor, task
 		return Attempt{}, fmt.Errorf("%w: cancelled run cannot start another HIL task", ErrConflict)
 	}
 	var definition struct {
-		Arguments []string         `json:"argv"`
-		HIL       *catalog.HILTask `json:"hil"`
+		Arguments []string          `json:"argv"`
+		Values    map[string]string `json:"values"`
+		HIL       *catalog.HILTask  `json:"hil"`
 	}
 	decoder := json.NewDecoder(bytes.NewReader(rawArguments))
 	decoder.DisallowUnknownFields()
@@ -219,13 +220,15 @@ func (s *Store) ClaimNextBoardHILAttempt(ctx context.Context, actor BoardActor, 
 			return nil, fmt.Errorf("%w: active HIL attempt differs from the current reviewed catalog or trusted commit", ErrConflict)
 		}
 		var persisted struct {
-			Args []string         `json:"argv"`
-			HIL  *catalog.HILTask `json:"hil"`
+			Args   []string          `json:"argv"`
+			Values map[string]string `json:"values"`
+			HIL    *catalog.HILTask  `json:"hil"`
 		}
 		decoder := json.NewDecoder(bytes.NewReader(existingRaw))
 		decoder.DisallowUnknownFields()
 		if decoder.Decode(&persisted) != nil || persisted.HIL == nil ||
-			*persisted.HIL != *definition.HIL || definition.ValidateArguments(persisted.Args) != nil {
+			*persisted.HIL != *definition.HIL ||
+			definition.ValidatePersistedArguments(persisted.Values, persisted.Args) != nil {
 			return nil, fmt.Errorf("%w: running HIL assignment no longer matches its catalog contract", ErrConflict)
 		}
 		var timing HILTimingEvidence
@@ -279,13 +282,15 @@ func (s *Store) ClaimNextBoardHILAttempt(ctx context.Context, actor BoardActor, 
 		return nil, fmt.Errorf("%w: HIL task differs from the current reviewed catalog", ErrConflict)
 	}
 	var persisted struct {
-		Args []string         `json:"argv"`
-		HIL  *catalog.HILTask `json:"hil"`
+		Args   []string          `json:"argv"`
+		Values map[string]string `json:"values"`
+		HIL    *catalog.HILTask  `json:"hil"`
 	}
 	decoder := json.NewDecoder(bytes.NewReader(rawArguments))
 	decoder.DisallowUnknownFields()
 	if decoder.Decode(&persisted) != nil || persisted.HIL == nil ||
-		*persisted.HIL != *definition.HIL || definition.ValidateArguments(persisted.Args) != nil {
+		*persisted.HIL != *definition.HIL ||
+		definition.ValidatePersistedArguments(persisted.Values, persisted.Args) != nil {
 		return nil, fmt.Errorf("%w: persisted HIL contract differs from catalog", ErrConflict)
 	}
 	if err := tx.Commit(ctx); err != nil {
