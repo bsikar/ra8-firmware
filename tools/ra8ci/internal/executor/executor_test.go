@@ -424,6 +424,10 @@ func TestHelperProcess(t *testing.T) {
 		os.Exit(17)
 	case "sleep":
 		time.Sleep(10 * time.Second)
+	case "echo-args":
+		for _, arg := range os.Args[index+2:] {
+			fmt.Fprintln(os.Stdout, arg)
+		}
 	case "environment":
 		fmt.Fprintln(os.Stdout, os.Getenv("RA8CI_SECRET_TEST"))
 	case "toolchain":
