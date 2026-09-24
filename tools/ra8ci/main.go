@@ -449,16 +449,16 @@ func serve(ctx context.Context) error {
 }
 
 func runAgent(ctx context.Context) error {
-	config := agent.Config{
-		ServerURL: os.Getenv("RA8CI_SERVER_URL"),
-		CAFile:    os.Getenv("RA8CI_SERVER_CA"),
-		CertFile:  os.Getenv("RA8CI_AGENT_CERT"),
-		KeyFile:   os.Getenv("RA8CI_AGENT_KEY"),
-		Root:      os.Getenv("RA8CI_AGENT_ROOT"),
+	endpoint, err := resolveClientEndpoint("ra8ci agent", roleRunnerAgent, os.Getenv, envAgentRoot)
+	if err != nil {
+		return err
 	}
-	if config.ServerURL == "" || config.CAFile == "" || config.CertFile == "" ||
-		config.KeyFile == "" || config.Root == "" {
-		return errors.New("agent requires RA8CI_SERVER_URL, RA8CI_SERVER_CA, RA8CI_AGENT_CERT, RA8CI_AGENT_KEY, and RA8CI_AGENT_ROOT")
+	config := agent.Config{
+		ServerURL: endpoint.ServerURL,
+		CAFile:    endpoint.CAFile,
+		CertFile:  endpoint.CertFile,
+		KeyFile:   endpoint.KeyFile,
+		Root:      os.Getenv(envAgentRoot),
 	}
 	if text := os.Getenv("RA8CI_AGENT_POLL_WAIT"); text != "" {
 		wait, err := time.ParseDuration(text)

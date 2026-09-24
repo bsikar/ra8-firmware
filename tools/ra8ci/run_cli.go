@@ -233,13 +233,12 @@ func showRun(ctx context.Context, args []string) error {
 }
 
 func newRunClient() (*runclient.Client, error) {
-	config := runclient.Config{ServerURL: os.Getenv("RA8CI_SERVER_URL"),
-		CAFile: os.Getenv("RA8CI_SERVER_CA"), CertFile: os.Getenv("RA8CI_CLIENT_CERT"),
-		KeyFile: os.Getenv("RA8CI_CLIENT_KEY")}
-	if config.ServerURL == "" || config.CAFile == "" || config.CertFile == "" || config.KeyFile == "" {
-		return nil, errors.New("run command requires RA8CI_SERVER_URL, RA8CI_SERVER_CA, RA8CI_CLIENT_CERT, and RA8CI_CLIENT_KEY")
+	endpoint, err := resolveClientEndpoint("ra8ci run", roleOperator, os.Getenv)
+	if err != nil {
+		return nil, err
 	}
-	return runclient.New(config)
+	return runclient.New(runclient.Config{ServerURL: endpoint.ServerURL,
+		CAFile: endpoint.CAFile, CertFile: endpoint.CertFile, KeyFile: endpoint.KeyFile})
 }
 
 func writeJSON(writer io.Writer, value any) error {

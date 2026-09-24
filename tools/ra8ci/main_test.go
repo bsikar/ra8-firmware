@@ -62,7 +62,7 @@ func TestCommandSelectionRejectsUnknownAndUnsafeArguments(t *testing.T) {
 	if err := boardCommand(ctx, []string{"checkpoint", "bad/board"}); err == nil || !strings.Contains(err.Error(), "usage") {
 		t.Fatalf("checkpoint accepted invalid board ID: %v", err)
 	}
-	if err := boardCommand(ctx, []string{"checkpoint", "ek-ra8d2"}); err == nil || !strings.Contains(err.Error(), "board client") {
+	if err := boardCommand(ctx, []string{"checkpoint", "ek-ra8d2"}); err == nil || !strings.Contains(err.Error(), envClientCert) {
 		t.Fatalf("valid checkpoint skipped identity configuration: %v", err)
 	}
 	if err := hilCommand(ctx, []string{"budget"}); err == nil || !strings.Contains(err.Error(), "usage") {
@@ -93,10 +93,10 @@ func TestBoardCommandsValidateBeforeNetworkConfiguration(t *testing.T) {
 	if err := boardCommand(context.Background(), []string{"take", "ek-ra8d2", "--class", "ci", "--why", "build", "--duration", "2h1m"}); err == nil || !strings.Contains(err.Error(), "between 1s and 2h0m0s") {
 		t.Fatalf("CI board lease exceeded its two-hour cap: %v", err)
 	}
-	if err := boardCommand(context.Background(), []string{"take", "ek-ra8d2", "--class", "ci", "--why", "build", "--duration", "30s"}); err == nil || !strings.Contains(err.Error(), "board client") {
+	if err := boardCommand(context.Background(), []string{"take", "ek-ra8d2", "--class", "ci", "--why", "build", "--duration", "30s"}); err == nil || !strings.Contains(err.Error(), envClientCert) {
 		t.Fatalf("valid CI board take skipped identity configuration: %v", err)
 	}
-	if err := boardCommand(context.Background(), []string{"take", "ek-ra8d2", "--class", "agent", "--why", "debug", "--duration", "30s"}); err == nil || !strings.Contains(err.Error(), "board client") {
+	if err := boardCommand(context.Background(), []string{"take", "ek-ra8d2", "--class", "agent", "--why", "debug", "--duration", "30s"}); err == nil || !strings.Contains(err.Error(), envClientCert) {
 		t.Fatalf("valid agent board take skipped identity configuration: %v", err)
 	}
 	if err := boardCommand(context.Background(), []string{"status", "ek-ra8d2"}); err == nil {
@@ -112,10 +112,10 @@ func TestBoardCommandsValidateBeforeNetworkConfiguration(t *testing.T) {
 	if err != nil || ticket.BoardID != "ek-ra8d2" || ticket.RequestID == "" || ticket.LeaseID == "" {
 		t.Fatalf("valid board cancellation ticket rejected: %+v err=%v", ticket, err)
 	}
-	if err := boardCommand(context.Background(), []string{"cancel", "ek-ra8d2", "01996f90-3415-7cfe-8ff1-600058131afd", "01996f90-3415-7cfe-8ff1-600058131afe"}); err == nil || !strings.Contains(err.Error(), "board client") {
+	if err := boardCommand(context.Background(), []string{"cancel", "ek-ra8d2", "01996f90-3415-7cfe-8ff1-600058131afd", "01996f90-3415-7cfe-8ff1-600058131afe"}); err == nil || !strings.Contains(err.Error(), envClientCert) {
 		t.Fatalf("valid cancel skipped identity configuration: %v", err)
 	}
-	if err := boardCommand(context.Background(), []string{"take", "ek-ra8d2", "--why", "debug", "--duration", "30s"}); err == nil || !strings.Contains(err.Error(), "board client") {
+	if err := boardCommand(context.Background(), []string{"take", "ek-ra8d2", "--why", "debug", "--duration", "30s"}); err == nil || !strings.Contains(err.Error(), envClientCert) {
 		t.Fatalf("valid take skipped identity configuration: %v", err)
 	}
 }
