@@ -81,7 +81,7 @@ pub const Config = extern struct {
     panel: PanelOps = .{},
     store: Store = .{},
     provisioned_mv: u16 = 0,
-    has_provisioned: bool = false,
+    has_provisioned: u8 = 0,
 };
 
 /// Outcome of `ra8_epd_cal_resolve` (`ra8_epd_cal_result_t`).
@@ -136,12 +136,17 @@ comptime {
     if (@offsetOf(Config, "panel") != word) @compileError("ra8_epd_cal_cfg_t panel offset");
     if (@offsetOf(Config, "store") != word * 4) @compileError("ra8_epd_cal_cfg_t store offset");
     if (@offsetOf(Config, "provisioned_mv") != word * 7) @compileError("ra8_epd_cal_cfg_t provisioned offset");
+    if (@offsetOf(Config, "has_provisioned") != word * 7 + 2) @compileError("ra8_epd_cal_cfg_t has_provisioned offset");
     if (@sizeOf(PanelOps) != word * 3) @compileError("ra8_epd_cal_panel_ops_t size");
     if (@sizeOf(Store) != word * 3) @compileError("ra8_epd_cal_store_t size");
 }
 
 fn err(code: CalError) RawErr {
     return @intFromEnum(code);
+}
+
+fn configBoolsValid(config: *const Config) bool {
+    return config.has_provisioned <= 1;
 }
 
 /// Read and validate the per-device record through the store seam.
@@ -211,9 +216,9 @@ fn tryRecord(cfg: *const Config, out_result: *Result) bool {
 
 /// `ra8_epd_cal_vcom_in_range`: the single decision every source's value
 /// passes through.
-pub export fn ra8_epd_cal_vcom_in_range(mv: u16, limits: ?*const Limits) callconv(.c) bool {
-    const window = limits orelse return false;
-    return implementation.vcomInRange(mv, window.*);
+pub export fn ra8_epd_cal_vcom_in_range(mv: u16, limits: ?*const Limits) callconv(.c) u8 {
+    const window = limits orelse return 0;
+    return @intFromBool(implementation.vcomInRange(mv, window.*));
 }
 
 /// `ra8_epd_cal_serialize`: pack a record, CRC trailer included.
@@ -285,6 +290,8 @@ pub export fn ra8_epd_cal_resolve(cfg: ?*const Config, out_result: ?*Result) cal
         return err(.null_ptr);
     };
 
+    if (!configBoolsValid(config)) return err(.invalid_arg);
+
     result.* = .{ .vcom_mv = 0, .source = .none };
     if (!implementation.limitsUsable(config.limits)) {
         ra8_log_emit_error(tag, "resolve: VCOM limits are zero or inverted");
@@ -293,7 +300,7 @@ pub export fn ra8_epd_cal_resolve(cfg: ?*const Config, out_result: ?*Result) cal
 
     if (tryPanel(config, result)) return err(.ok);
     if (tryRecord(config, result)) return err(.ok);
-    if (config.has_provisioned and implementation.vcomInRange(config.provisioned_mv, config.limits)) {
+    if (config.has_provisioned != 0 and implementation.vcomInRange(config.provisioned_mv, config.limits)) {
         result.* = .{ .vcom_mv = config.provisioned_mv, .source = .provisioned };
         return err(.ok);
     }
@@ -323,6 +330,8 @@ pub export fn ra8_epd_cal_apply(cfg: ?*const Config, result: ?*const Result) cal
         ra8_log_emit_error(tag, "apply: result null");
         return err(.null_ptr);
     };
+
+    if (!configBoolsValid(config)) return err(.invalid_arg);
 
     if (resolved.source == .none) return err(.invalid_state);
     const set = config.panel.set orelse return err(.not_supported);
@@ -362,6 +371,8 @@ pub export fn ra8_epd_cal_provision(cfg: ?*const Config, vcom_mv: u16) callconv(
         ra8_log_emit_error(tag, "provision: cfg null");
         return err(.null_ptr);
     };
+
+    if (!configBoolsValid(config)) return err(.invalid_arg);
 
     const write = config.store.write orelse return err(.not_supported);
     if (!implementation.vcomInRange(vcom_mv, config.limits)) {

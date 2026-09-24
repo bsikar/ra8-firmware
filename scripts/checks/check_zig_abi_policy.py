@@ -6,6 +6,7 @@
 from __future__ import annotations
 
 import argparse
+import fnmatch
 import hashlib
 import json
 import re
@@ -81,7 +82,15 @@ def _strip_conditional_blocks(text: str) -> str:
 def _lexical_tokens(text: str) -> list[str]:
     """Return assertion-relevant C/Zig tokens while ignoring layout."""
     clean = re.sub(r"(?m)\\\\[^\r\n]*", "", text)
-    clean = re.sub(r'"(?:\\.|[^"\\])*"|\'(?:\\.|[^\'\\])*\'', "", clean)
+    # Preserve only the field-name string argument of a real Zig @offsetOf
+    # expression. Removing all strings made correct field-offset assertions
+    # impossible to match, while retaining arbitrary strings admits fake proof.
+    clean = re.sub(
+        r'(@offsetOf\s*\(\s*[^,()]+,\s*)"((?:\\.|[^"\\])*)"(\s*\))',
+        lambda match: match.group(1) + "FIELDNAME_" + match.group(2) + match.group(3),
+        clean,
+    )
+    clean = re.sub(r'"(?:\\.|[^"\\\r\n])*"|\'(?:\\.|[^\'\\\r\n])*\'', "", clean)
     clean = _strip_conditional_blocks(_strip_comments(clean))
     return re.findall(
         r"@[A-Za-z_][A-Za-z0-9_]*|[A-Za-z_][A-Za-z0-9_]*|\d+[A-Za-z]*|==|!=|\S", clean
@@ -156,23 +165,25 @@ def _metadata_findings(name: str, metadata: object) -> tuple[list[str], set[str]
 def _inventory_findings(
     name: str,
     declared: set[str],
+    zig_declared: set[str],
     header_names: set[str],
     zig_names: set[str],
     zig_heads: dict[str, str],
 ) -> list[str]:
-    """Compare metadata, header, and Zig declarations and reject native-only types."""
+    """Compare full header metadata and Zig-owned adapter declarations."""
     findings: list[str] = []
-    for label, actual in (("header", header_names), ("Zig adapter", zig_names)):
-        missing = sorted(declared - actual)
-        unexpected = sorted(actual - declared)
+    for label, expected, actual in (
+        ("header", declared, header_names),
+        ("Zig adapter", zig_declared, zig_names),
+    ):
+        missing = sorted(expected - actual)
+        unexpected = sorted(actual - expected)
         if missing:
             findings.append(f"{name}: {label} missing export(s): {', '.join(missing)}")
         if unexpected:
             findings.append(f"{name}: {label} unexpected export(s): {', '.join(unexpected)}")
-    for symbol in sorted(declared & zig_names):
+    for symbol in sorted(zig_declared & zig_names):
         head = zig_heads[symbol]
-        if "callconv(.c)" not in re.sub(r"\s+", "", head):
-            findings.append(f"{name}: export lacks callconv(.c): {symbol}")
         findings.extend(
             f"{name}: prohibited Zig-only type {type_name}: {symbol}"
             for pattern, type_name in PROHIBITED_ZIG_TYPES
@@ -181,14 +192,76 @@ def _inventory_findings(
     return findings
 
 
+def _retained_c_export_findings(
+    library: dict[str, Any],
+    name: str,
+    declared: set[str],
+    header_names: set[str],
+    zig_names: set[str],
+    repository_root: Path,
+) -> tuple[list[str], set[str]]:
+    """Validate exact retained-C symbol/source ownership for split ports."""
+    rows = library.get("retained_c_exports", [])
+    if not isinstance(rows, list):
+        return [f"{name}: retained_c_exports must be a list"], set()
+    build_root = repository_root / library["build_root"]
+    retained: set[str] = set()
+    findings: list[str] = []
+    for row in rows:
+        if (
+            not isinstance(row, dict)
+            or set(row) != {"name", "source"}
+            or not isinstance(row.get("name"), str)
+            or not isinstance(row.get("source"), str)
+        ):
+            findings.append(f"{name}: malformed retained C export metadata")
+            continue
+        symbol = row["name"]
+        source_value = row["source"]
+        if symbol in retained:
+            findings.append(f"{name}: duplicate retained C export: {symbol}")
+            continue
+        retained.add(symbol)
+        if symbol not in declared or symbol not in header_names:
+            findings.append(
+                f"{name}: retained C export is not declared by the public header: {symbol}"
+            )
+        if symbol in zig_names:
+            findings.append(f"{name}: retained C export is also defined by a Zig adapter: {symbol}")
+        source = repository_root / source_value
+        try:
+            source.resolve().relative_to(build_root.resolve())
+        except ValueError:
+            findings.append(f"{name}: retained C source is outside build root: {source_value}")
+            continue
+        if not source.is_file():
+            findings.append(f"{name}: missing retained C source: {source_value}")
+            continue
+        source_text = _strip_comments(source.read_text(encoding="utf-8"))
+        definition = re.search(rf"\b{re.escape(symbol)}\s*\([^;{{}}]*\)\s*\{{", source_text)
+        if definition is None:
+            findings.append(f"{name}: retained C source does not define {symbol}: {source_value}")
+    return findings, retained
+
+
 def _adapter_scope_findings(
-    name: str, build_root: Path, adapter: Path, repository_root: Path = ROOT
+    name: str,
+    build_root: Path,
+    adapter: Path,
+    repository_root: Path = ROOT,
+    additional_adapters: set[Path] | None = None,
 ) -> list[str]:
-    """Reject exports declared outside the one registered adapter."""
+    """Reject exports outside the adapter while allowing test-local link stubs."""
     findings: list[str] = []
     for source in build_root.rglob("*.zig"):
         generated = any(part in GENERATED_PATH_PARTS for part in source.parts)
-        if source.resolve() == adapter or generated:
+        relative_parts = source.relative_to(build_root).parts
+        if (
+            source.resolve() == adapter
+            or source.resolve() in (additional_adapters or set())
+            or generated
+            or "tests" in relative_parts
+        ):
             continue
         other_names, _ = _zig_exports(source.read_text(encoding="utf-8"))
         if other_names:
@@ -208,12 +281,81 @@ def _repository_inventory_findings(
         for library in libraries
         if isinstance(library, dict) and isinstance((value := library.get("adapter")), str)
     }
+    registered.update(
+        (repository_root / row["path"]).resolve()
+        for library in libraries
+        if isinstance(library, dict)
+        for row in (
+            library.get("additional_adapters", [])
+            if isinstance(library.get("additional_adapters", []), list)
+            else []
+        )
+        if isinstance(row, dict)
+        and isinstance(row.get("path"), str)
+        and not (
+            row.get("role") == "test-only"
+            and (parts := Path(row["path"]).parts)
+            and parts[0] == "libs"
+            and "tests" in parts[1:]
+        )
+    )
+    library_by_name = {
+        library.get("name"): library
+        for library in libraries
+        if isinstance(library, dict) and isinstance(library.get("name"), str)
+    }
     discovered: set[Path] = set()
     findings: list[str] = []
+    for library in libraries:
+        if not isinstance(library, dict):
+            continue
+        owner_name = library.get("name")
+        additional = library.get("additional_adapters", [])
+        if not isinstance(additional, list):
+            continue
+        for row in additional:
+            if not isinstance(row, dict) or row.get("role") != "peer-public":
+                continue
+            path_value = row.get("path")
+            peer_name = row.get("owner_library")
+            peer = library_by_name.get(peer_name)
+            if not isinstance(path_value, str) or not isinstance(peer, dict):
+                findings.append(f"{owner_name}: peer adapter has unknown owner: {peer_name}")
+                continue
+            if peer_name == owner_name:
+                findings.append(f"{owner_name}: peer adapter owner must be a different library")
+                continue
+            peer_paths = {peer.get("adapter")}
+            peer_additional = peer.get("additional_adapters", [])
+            if isinstance(peer_additional, list):
+                peer_paths.update(
+                    item.get("path")
+                    for item in peer_additional
+                    if isinstance(item, dict) and item.get("role") == "public"
+                )
+            if path_value not in peer_paths:
+                findings.append(
+                    f"{owner_name}: peer adapter {path_value} is not registered by owner {peer_name}"
+                )
+            elif row.get("symbol_prefix") != peer.get("symbol_prefix"):
+                findings.append(
+                    f"{owner_name}: peer adapter prefix does not match owner {peer_name}"
+                )
+            else:
+                try:
+                    (repository_root / path_value).resolve().relative_to(
+                        (repository_root / peer["build_root"]).resolve()
+                    )
+                except (KeyError, TypeError, ValueError):
+                    findings.append(
+                        f"{owner_name}: peer adapter is outside owner {peer_name} build root: {path_value}"
+                    )
     for source in repository_root.rglob("*.zig"):
         if any(part in REPOSITORY_EXCLUDED_PATH_PARTS for part in source.parts):
             continue
         relative_parts = source.relative_to(repository_root).parts
+        if relative_parts[0] == "libs" and "tests" in relative_parts[1:]:
+            continue
         if relative_parts[: len(PROVISIONED_TOOLCHAIN_PREFIX)] == PROVISIONED_TOOLCHAIN_PREFIX:
             continue
         text = source.read_text(encoding="utf-8")
@@ -322,11 +464,48 @@ def _contract_test_findings(
             findings.extend(
                 _json_registration_findings(name, language, path, symbol_path, registration)
             )
-        elif path.name not in _strip_comments(registration.read_text(encoding="utf-8")):
-            findings.append(f"{name}: C contract test is not registered: {path_value}")
+        else:
+            registration_text = registration.read_text(encoding="utf-8")
+            if path.name not in _strip_comments(
+                registration_text
+            ) and not _cmake_glob_registers_test(path, registration, registration_text):
+                findings.append(f"{name}: C contract test is not registered: {path_value}")
     if "c" not in seen or "zig" not in seen:
         findings.append(f"{name}: contract tests must include C and Zig")
     return findings
+
+
+def _cmake_glob_registers_test(path: Path, registration: Path, text: str) -> bool:
+    """Recognize tests registered through the canonical tests source glob."""
+    tests_root = registration.parent.parent
+    if registration.parent.name != "cmake" or tests_root.name != "tests":
+        return False
+    try:
+        relative = path.relative_to(tests_root).as_posix()
+    except ValueError:
+        return False
+    # The CMake glob contains /*/, which the C/C++ comment stripper mistakes
+    # for a block comment. Strip CMake line comments only for this inspection.
+    clean = re.sub(r"(?m)#.*$", "", text)
+    compact = re.sub(r"\s+", " ", clean)
+    glob = re.search(
+        r"file\s*\(\s*GLOB\s+RA8_TEST_SOURCES\s+CONFIGURE_DEPENDS\s+"
+        r"\$\{CMAKE_CURRENT_SOURCE_DIR\}/\*/src/test_\*\.c\s*\)",
+        clean,
+        re.IGNORECASE,
+    )
+    if glob is None or not fnmatch.fnmatchcase(relative, "*/src/test_*.c"):
+        return False
+    if "foreach(src ${RA8_TEST_SOURCES})" not in compact:
+        return False
+    if "ra8_add_test(${name} ${src})" not in compact:
+        return False
+    removals = re.findall(r"list\s*\(\s*REMOVE_ITEM\s+RA8_TEST_SOURCES(.*?)\)", clean, re.DOTALL)
+    candidates = {
+        f"${{CMAKE_CURRENT_SOURCE_DIR}}/{relative}",
+        f"${{FW_ROOT}}/tests/{relative}",
+    }
+    return not any(any(candidate in removal for candidate in candidates) for removal in removals)
 
 
 def _target_findings(library: dict[str, Any], name: str, required_targets: set[str]) -> list[str]:
@@ -373,18 +552,110 @@ def _library_findings(
         return findings
 
     header_text = paths["public_header"].read_text(encoding="utf-8")
-    adapter_text = paths["adapter"].read_text(encoding="utf-8")
     header_names = _header_exports(header_text, prefix)
+    additional_headers = library.get("additional_headers", [])
+    if not isinstance(additional_headers, list):
+        return [f"{name}: additional_headers must be a list"]
+    for row in additional_headers:
+        if not isinstance(row, dict):
+            findings.append(f"{name}: malformed additional header metadata")
+            continue
+        path_value = row.get("path")
+        header_prefix = row.get("symbol_prefix")
+        digest = row.get("compatibility_sha256")
+        role = row.get("role")
+        if (
+            set(row) != {"path", "role", "symbol_prefix", "compatibility_sha256"}
+            or not isinstance(path_value, str)
+            or role not in {"test-only", "public"}
+            or not isinstance(header_prefix, str)
+            or not header_prefix
+            or not isinstance(digest, str)
+        ):
+            findings.append(f"{name}: malformed additional header metadata")
+            continue
+        if role == "public" and header_prefix != prefix:
+            findings.append(f"{name}: public additional header must use the library symbol prefix")
+            continue
+        additional_path = repository_root / path_value
+        try:
+            additional_path.resolve().relative_to(paths["build_root"].resolve())
+        except ValueError:
+            findings.append(f"{name}: additional header is outside build root: {path_value}")
+            continue
+        if not additional_path.is_file():
+            findings.append(f"{name}: missing additional header: {path_value}")
+            continue
+        additional_text = additional_path.read_text(encoding="utf-8")
+        if digest != _normalized_header_digest(additional_text):
+            findings.append(f"{name}: additional header compatibility drift: {path_value}")
+        header_names.update(_header_exports(additional_text, header_prefix))
+    adapter_text = paths["adapter"].read_text(encoding="utf-8")
     zig_names, zig_heads = _zig_exports(adapter_text)
+    additional_adapters = library.get("additional_adapters", [])
+    if not isinstance(additional_adapters, list):
+        findings.append(f"{name}: additional_adapters must be a list")
+        additional_adapters = []
+    additional_paths: set[Path] = set()
+    for row in additional_adapters:
+        if (
+            not isinstance(row, dict)
+            or row.get("role") not in {"test-only", "public", "peer-public"}
+            or not isinstance(row.get("path"), str)
+            or not isinstance(row.get("symbol_prefix"), str)
+            or not row["symbol_prefix"]
+        ):
+            findings.append(f"{name}: malformed additional adapter metadata")
+            continue
+        if row["role"] == "public" and row["symbol_prefix"] != prefix:
+            findings.append(f"{name}: public additional adapter must use the library symbol prefix")
+            continue
+        if row["role"] == "peer-public" and (
+            not isinstance(row.get("owner_library"), str)
+            or not row["owner_library"]
+            or row["owner_library"] == name
+        ):
+            findings.append(f"{name}: peer-public adapter requires a distinct owner_library")
+            continue
+        path = repository_root / row["path"]
+        try:
+            path.resolve().relative_to(paths["build_root"].resolve())
+        except ValueError:
+            findings.append(f"{name}: test-only adapter is outside build root: {row['path']}")
+            continue
+        if not path.is_file():
+            findings.append(f"{name}: missing additional adapter: {row['path']}")
+            continue
+        names, _ = _zig_exports(path.read_text(encoding="utf-8"))
+        if not names or any(not symbol.startswith(row["symbol_prefix"]) for symbol in names):
+            findings.append(
+                f"{name}: additional adapter exports do not match its prefix: {row['path']}"
+            )
+            continue
+        if row["role"] == "public":
+            zig_names.update(names)
+            zig_heads.update(
+                (symbol, head)
+                for symbol, head in _zig_exports(path.read_text(encoding="utf-8"))[1].items()
+            )
+        additional_paths.add(path.resolve())
     metadata_findings, declared = _metadata_findings(name, library.get("exports"))
     findings.extend(metadata_findings)
-    findings.extend(_inventory_findings(name, declared, header_names, zig_names, zig_heads))
+    retained_findings, retained_c = _retained_c_export_findings(
+        library, name, declared, header_names, zig_names, repository_root
+    )
+    findings.extend(retained_findings)
+    zig_declared = declared - retained_c
+    findings.extend(
+        _inventory_findings(name, declared, zig_declared, header_names, zig_names, zig_heads)
+    )
     findings.extend(
         _adapter_scope_findings(
             name,
             paths["build_root"].resolve(),
             paths["adapter"].resolve(),
             repository_root,
+            additional_paths,
         )
     )
     findings.extend(_compatibility_findings(library, name, header_text, adapter_text))
@@ -419,9 +690,20 @@ def _c_compile_findings(
     includes = library.get("c_include_dirs")
     if not isinstance(includes, list) or not includes:
         return [f"{library['name']}: missing C include directories"]
+    additional_headers = library.get("additional_headers", [])
+    if not isinstance(additional_headers, list) or any(
+        not isinstance(row, dict) or not isinstance(row.get("path"), str)
+        for row in additional_headers
+    ):
+        return [f"{library['name']}: malformed additional header metadata"]
     probe = output / "abi_header_probe.c"
     probe.parent.mkdir(parents=True, exist_ok=True)
-    probe.write_text(f'#include "{Path(library["public_header"]).name}"\n', encoding="utf-8")
+    headers = [library["public_header"]]
+    headers.extend(row["path"] for row in additional_headers)
+    probe.write_text(
+        "".join(f'#include "{Path(header).name}"\n' for header in headers),
+        encoding="utf-8",
+    )
     command = [
         zig,
         "cc",
@@ -576,7 +858,12 @@ def _compiled_findings(
             findings.extend(symbol_findings)
             if symbol_findings:
                 continue
-            expected = {row["name"] for row in library["exports"]}
+            retained_c = {
+                row["name"]
+                for row in library.get("retained_c_exports", [])
+                if isinstance(row, dict) and isinstance(row.get("name"), str)
+            }
+            expected = {row["name"] for row in library["exports"]} - retained_c
             findings.extend(_compiled_symbol_findings(f"{name}: {target}/{mode}", expected, actual))
             counts["zig_matrix"] += 1
             if target == "host":
@@ -869,6 +1156,11 @@ def _selftest_source_policy(base: dict[str, Any], root: Path, adapter: str) -> s
         if not any(label.split()[0] in item for item in findings):
             return f"must-fire fixture was accepted: {label}"
     (root / "build/adapter.zig").write_text(adapter, encoding="utf-8")
+    default_c_abi = adapter.replace(" callconv(.c)", "")
+    (root / "build/adapter.zig").write_text(default_c_abi, encoding="utf-8")
+    if findings := _library_findings(base, {"host", "ra8"}, root):
+        return f"must-stay-quiet default export C ABI fixture failed: {findings}"
+    (root / "build/adapter.zig").write_text(adapter, encoding="utf-8")
     c_test = root / "tests/test.c"
     valid = c_test.read_text(encoding="utf-8")
     c_test.write_text("/* demo_run main( */\n", encoding="utf-8")
@@ -883,6 +1175,127 @@ def _selftest_source_policy(base: dict[str, Any], root: Path, adapter: str) -> s
         for item in _library_findings(broken, {"host", "ra8"}, root)
     ):
         return "must-fire fixture was accepted: mislabeled RA8 target"
+    return None
+
+
+def _selftest_additional_adapter_policy(base: dict[str, Any], root: Path) -> str | None:
+    """Allow explicitly typed test and peer adapters inside a library build root."""
+    path = root / "build/test_adapter.zig"
+    path.write_text("pub export fn demo_test_helper() callconv(.c) void {}\n", encoding="utf-8")
+    row = json.loads(json.dumps(base))
+    row["additional_adapters"] = [
+        {"path": "build/test_adapter.zig", "role": "test-only", "symbol_prefix": "demo_test_"}
+    ]
+    if findings := _library_findings(row, {"host", "ra8"}, root):
+        return f"must-stay-quiet test-only adapter fixture failed: {findings}"
+    policy_findings = _repository_inventory_findings([row], root)
+    if policy_findings:
+        return f"must-stay-quiet registered test-only adapter was rejected: {policy_findings}"
+    for mutation, expected in (
+        ("role", "public"),
+        ("symbol_prefix", "rogue_"),
+    ):
+        broken = json.loads(json.dumps(row))
+        broken["additional_adapters"][0][mutation] = expected
+        if not _library_findings(broken, {"host", "ra8"}, root):
+            return f"must-fire fixture was accepted: malformed test-only adapter {mutation}"
+    broken = json.loads(json.dumps(row))
+    broken["additional_adapters"][0]["path"] = "../outside.zig"
+    if not any(
+        "outside build root" in finding
+        for finding in _library_findings(broken, {"host", "ra8"}, root)
+    ):
+        return "must-fire fixture was accepted: test-only adapter outside build root"
+    malformed = json.loads(json.dumps(row))
+    malformed["additional_adapters"] = None
+    if not any(
+        "additional_adapters must be a list" in finding
+        for finding in _library_findings(malformed, {"host", "ra8"}, root)
+    ):
+        return "must-fire fixture was accepted: malformed additional adapter collection"
+    _repository_inventory_findings([malformed], root)
+
+    # A test-only helper may live in the library's tests tree. It is checked
+    # against its declared prefix and owner build root, but is not a production
+    # adapter registered in the repository-wide production inventory.
+    inventory_root = root / "test-only-inventory"
+    library_root = inventory_root / "libs/demo"
+    (library_root / "src").mkdir(parents=True)
+    (library_root / "inc").mkdir(parents=True)
+    (library_root / "tests").mkdir(parents=True)
+    (library_root / "src/adapter.zig").write_text(
+        (root / "build/adapter.zig").read_text(encoding="utf-8"), encoding="utf-8"
+    )
+    (library_root / "inc/demo.h").write_text(
+        (root / "inc/demo.h").read_text(encoding="utf-8"), encoding="utf-8"
+    )
+    inventory_tests = inventory_root / "tests"
+    inventory_tests.mkdir(parents=True)
+    for language in ("c", "rust", "zig"):
+        (inventory_tests / f"test.{language}").write_text(
+            (root / f"tests/test.{language}").read_text(encoding="utf-8"), encoding="utf-8"
+        )
+    (inventory_tests / "contract.json").write_text(
+        (root / "tests/contract.json").read_text(encoding="utf-8"), encoding="utf-8"
+    )
+    library_test_adapter = library_root / "tests/test_adapter.zig"
+    library_test_adapter.write_text(
+        "pub export fn demo_test_helper() callconv(.c) void {}\n", encoding="utf-8"
+    )
+    library_row = json.loads(json.dumps(base))
+    library_row["build_root"] = "libs/demo"
+    library_row["public_header"] = "libs/demo/inc/demo.h"
+    library_row["adapter"] = "libs/demo/src/adapter.zig"
+    library_row["additional_adapters"] = [
+        {
+            "path": "libs/demo/tests/test_adapter.zig",
+            "role": "test-only",
+            "symbol_prefix": "demo_test_",
+        }
+    ]
+    if findings := _library_findings(library_row, {"host", "ra8"}, inventory_root):
+        return f"must-stay-quiet library test-only adapter fixture failed: {findings}"
+    if findings := _repository_inventory_findings([library_row], inventory_root):
+        return f"must-stay-quiet library test-only adapter registered as production: {findings}"
+    shutil.rmtree(inventory_root)
+
+    peer_path = root / "build/peer_adapter.zig"
+    peer_path.write_text(
+        "pub export fn peer_demo_run() callconv(.c) i32 { return 0; }\n",
+        encoding="utf-8",
+    )
+    owner = json.loads(json.dumps(base))
+    owner["name"] = "peer_demo"
+    owner["symbol_prefix"] = "peer_demo_"
+    owner["adapter"] = "build/peer_adapter.zig"
+    row["additional_adapters"] = [
+        {"path": "build/test_adapter.zig", "role": "test-only", "symbol_prefix": "demo_test_"},
+        {
+            "path": "build/peer_adapter.zig",
+            "role": "peer-public",
+            "symbol_prefix": "peer_demo_",
+            "owner_library": "peer_demo",
+        },
+    ]
+    if findings := _library_findings(row, {"host", "ra8"}, root):
+        return f"must-stay-quiet peer adapter fixture failed: {findings}"
+    if findings := _repository_inventory_findings([row, owner], root):
+        return f"must-stay-quiet explicitly owned peer adapter was rejected: {findings}"
+    broken_peer = json.loads(json.dumps(row))
+    broken_peer["additional_adapters"][1]["owner_library"] = "unknown"
+    if not any(
+        "unknown owner" in finding
+        for finding in _repository_inventory_findings([broken_peer, owner], root)
+    ):
+        return "must-fire fixture was accepted: unknown peer adapter owner"
+    broken_peer["additional_adapters"][1]["owner_library"] = "peer_demo"
+    broken_peer["additional_adapters"][1]["path"] = "build/test_adapter.zig"
+    peer_findings = _repository_inventory_findings([broken_peer, owner], root)
+    if not any("not registered by owner" in finding for finding in peer_findings):
+        return f"must-fire fixture was accepted: unowned peer adapter path: {peer_findings}"
+    row["additional_adapters"] = []
+    peer_path.unlink()
+    path.unlink()
     return None
 
 
@@ -911,12 +1324,201 @@ def _selftest_metadata_policy(base: dict[str, Any], root: Path) -> str | None:
     return None
 
 
+def _selftest_retained_c_exports(base: dict[str, Any], root: Path) -> str | None:
+    """Keep retained C exports in header metadata but out of Zig archive parity."""
+    original_header = (root / "inc/demo.h").read_text(encoding="utf-8")
+    header = original_header + "int demo_retained(void);\n"
+    (root / "inc/demo.h").write_text(header, encoding="utf-8")
+    c_source = root / "build/retained.c"
+    c_source.write_text("int demo_retained(void) { return 0; }\n", encoding="utf-8")
+    row = json.loads(json.dumps(base))
+    row["compatibility_sha256"] = _normalized_header_digest(header)
+    row["exports"].append(
+        {
+            "name": "demo_retained",
+            "calling_context": "task-only-non-reentrant",
+            "ownership": "Uses no retained caller resource.",
+        }
+    )
+    row["retained_c_exports"] = [{"name": "demo_retained", "source": "build/retained.c"}]
+    if findings := _library_findings(row, {"host", "ra8"}, root):
+        return f"must-stay-quiet retained C export fixture failed: {findings}"
+    zig_owned = {item["name"] for item in row["exports"]} - {
+        item["name"] for item in row["retained_c_exports"]
+    }
+    if zig_owned != {"demo_run"}:
+        return f"retained C export leaked into Zig archive expectations: {zig_owned}"
+    if _compiled_symbol_findings("demo", zig_owned, {"demo_run"}):
+        return "must-stay-quiet Zig archive omitted the expected Zig-owned export"
+    if not any(
+        "unexpected export(s): demo_retained" in finding
+        for finding in _compiled_symbol_findings("demo", zig_owned, {"demo_run", "demo_retained"})
+    ):
+        return "must-fire fixture accepted retained C export in the Zig archive"
+    for mutation, message in (
+        ("missing", "missing retained C source"),
+        ("outside", "retained C source is outside build root"),
+        ("declaration", "retained C source does not define"),
+    ):
+        broken = json.loads(json.dumps(row))
+        if mutation == "missing":
+            broken["retained_c_exports"][0]["source"] = "build/missing.c"
+        elif mutation == "outside":
+            broken["retained_c_exports"][0]["source"] = "../outside.c"
+        else:
+            c_source.write_text("int demo_retained(void);\n", encoding="utf-8")
+        findings = _library_findings(broken, {"host", "ra8"}, root)
+        if not any(message in finding for finding in findings):
+            return f"must-fire fixture accepted invalid retained C ownership: {mutation}"
+        if mutation == "declaration":
+            c_source.write_text("int demo_retained(void) { return 0; }\n", encoding="utf-8")
+    (root / "inc/demo.h").write_text(original_header, encoding="utf-8")
+    return None
+
+
+def _selftest_additional_header_policy(base: dict[str, Any], root: Path) -> str | None:
+    """Exercise typed public and test-only headers in the combined ABI inventory."""
+    path = root / "build/inc/demo_internal.h"
+    path.parent.mkdir(parents=True, exist_ok=True)
+    header = "int demo_private_run(void);\n"
+    path.write_text(header, encoding="utf-8")
+    adapter_path = root / "build/adapter.zig"
+    original_adapter = adapter_path.read_text(encoding="utf-8")
+    adapter_path.write_text(
+        original_adapter + "pub export fn demo_private_run() callconv(.c) i32 { return 0; }\n",
+        encoding="utf-8",
+    )
+    with_header = json.loads(json.dumps(base))
+    with_header["additional_headers"] = [
+        {
+            "path": "build/inc/demo_internal.h",
+            "role": "test-only",
+            "symbol_prefix": "demo_private_",
+            "compatibility_sha256": _normalized_header_digest(header),
+        }
+    ]
+    with_header["exports"].append(
+        {
+            "name": "demo_private_run",
+            "calling_context": "task-only-non-reentrant",
+            "ownership": "Uses no caller-owned resources.",
+        }
+    )
+    findings = _library_findings(with_header, {"host", "ra8"}, root)
+    if findings:
+        return f"must-stay-quiet additional header fixture failed: {findings}"
+    broken = json.loads(json.dumps(with_header))
+    broken["additional_headers"][0]["role"] = "public"
+    findings = _library_findings(broken, {"host", "ra8"}, root)
+    if not any(
+        "public additional header must use the library symbol prefix" in item for item in findings
+    ):
+        return "must-fire fixture accepted a public header with a mismatched symbol prefix"
+
+    public_header = "int demo_public_run(void);\n"
+    path.write_text(public_header, encoding="utf-8")
+    adapter_path.write_text(
+        original_adapter + "pub export fn demo_public_run() callconv(.c) i32 { return 0; }\n",
+        encoding="utf-8",
+    )
+    public_row = json.loads(json.dumps(base))
+    public_row["additional_headers"] = [
+        {
+            "path": "build/inc/demo_internal.h",
+            "role": "public",
+            "symbol_prefix": "demo_",
+            "compatibility_sha256": _normalized_header_digest(public_header),
+        }
+    ]
+    public_row["exports"].append(
+        {
+            "name": "demo_public_run",
+            "calling_context": "task-only-non-reentrant",
+            "ownership": "borrows no caller-owned resources.",
+        }
+    )
+    findings = _library_findings(public_row, {"host", "ra8"}, root)
+    if findings:
+        return f"must-stay-quiet public additional header fixture failed: {findings}"
+    broken = json.loads(json.dumps(public_row))
+    broken["additional_headers"][0]["compatibility_sha256"] = "0" * 64
+    findings = _library_findings(broken, {"host", "ra8"}, root)
+    if not any("additional header compatibility drift" in item for item in findings):
+        return "must-fire fixture accepted public additional-header digest drift"
+    broken = json.loads(json.dumps(public_row))
+    broken["additional_headers"][0]["path"] = "../outside.h"
+    findings = _library_findings(broken, {"host", "ra8"}, root)
+    if not any("additional header is outside build root" in item for item in findings):
+        return "must-fire fixture accepted public additional header outside its build root"
+    return None
+
+
+def _selftest_library_test_exports(base: dict[str, Any], root: Path) -> str | None:
+    """Ignore implementation exports placed under a Zig library's test directory."""
+    test_source = root / "libs/demo/tests/mock.zig"
+    test_source.parent.mkdir(parents=True)
+    test_source.write_text(
+        "pub export fn demo_test_only() callconv(.c) void {}\n", encoding="utf-8"
+    )
+    findings = _repository_inventory_findings([base], root)
+    if findings:
+        return f"must-stay-quiet library test fixture failed: {findings}"
+    link_stub = root / "build/tests/link_stub.zig"
+    link_stub.parent.mkdir(parents=True)
+    link_stub.write_text("export fn demo_test_stub() callconv(.c) void {}\n", encoding="utf-8")
+    findings = _adapter_scope_findings("demo", root / "build", root / "build/adapter.zig", root)
+    if findings:
+        return f"must-stay-quiet adapter test-stub fixture failed: {findings}"
+    rogue = root / "build/rogue.zig"
+    rogue.write_text("export fn demo_rogue() callconv(.c) void {}\n", encoding="utf-8")
+    findings = _adapter_scope_findings("demo", root / "build", root / "build/adapter.zig", root)
+    if not any("demo_rogue" in item for item in findings):
+        return "must-fire fixture was accepted: production export outside adapter"
+    return None
+
+
+def _selftest_cmake_glob_registration(root: Path) -> str | None:
+    """Exercise glob-based C test registration and explicit removal detection."""
+    tests_root = root / "tests"
+    registration = tests_root / "cmake/unit_tests.cmake"
+    registration.parent.mkdir(parents=True, exist_ok=True)
+    path = tests_root / "usb/src/test_demo.c"
+    path.parent.mkdir(parents=True, exist_ok=True)
+    text = """file(GLOB RA8_TEST_SOURCES CONFIGURE_DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/*/src/test_*.c)
+foreach(src ${RA8_TEST_SOURCES})
+  ra8_add_test(${name} ${src})
+endforeach()
+"""
+    if not _cmake_glob_registers_test(path, registration, text):
+        return "must-stay-quiet CMake test glob fixture failed"
+    removed = (
+        text
+        + "list(REMOVE_ITEM RA8_TEST_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/usb/src/test_demo.c)\n"
+    )
+    if _cmake_glob_registers_test(path, registration, removed):
+        return "must-fire fixture was accepted: CMake glob explicitly removes test"
+    return None
+
+
 def _selftest_compiled_policy(base: dict[str, Any], root: Path) -> str | None:
     """Exercise compiled target counts and both symbol-drift directions when tools exist."""
     zig = shutil.which("zig")
     nm = shutil.which("llvm-nm") or shutil.which("nm")
     if zig is None or nm is None:
         return None
+    archive_output = "\n".join(
+        (
+            "libdemo.a:/build/adapter.o:0000000000000000 T demo_run",
+            "libdemo.a:/zig-cache/compiler_rt.o:0000000000000000 W __zig_probe_stack",
+            "libdemo.a:/build/rogue.o:0000000000000000 T demo_extra",
+        )
+    )
+    archive_symbols = _archive_symbol_names(archive_output, bundle_compiler_rt=True)
+    if archive_symbols != {"demo_run", "demo_extra"}:
+        return f"archive member provenance filter failed: {archive_symbols}"
+    findings = _compiled_symbol_findings("demo", {"demo_run"}, archive_symbols)
+    if not any("unexpected export(s): demo_extra" in item for item in findings):
+        return "must-fire fixture was accepted: rogue user archive member export"
     compiled = json.loads(json.dumps(base))
     compiled["exports"][0]["name"] = "demo_missing"
     compiled["run_host_tests_in_all_modes"] = False
@@ -988,6 +1590,21 @@ def _selftest_layout_assertions() -> str | None:
     }
     if _compatibility_findings(policy, "demo", valid, ""):
         return "must-stay-quiet reformatted layout assertion was rejected"
+    field_fragment = '@offsetOf(Regs, "TYPE") == 0x00'
+    field_assertion = (
+        "// The source's ABI field offset is asserted below.\n"
+        'std.debug.assert(@offsetOf(Regs, "TYPE") == 0x00);\n'
+    )
+    if _compatibility_findings(
+        {
+            "compatibility_sha256": _normalized_header_digest(""),
+            "layout_assertions": [field_fragment],
+        },
+        "demo",
+        "",
+        field_assertion,
+    ):
+        return "must-stay-quiet Zig field-offset assertion was rejected"
     invalid = (
         (f"/* {fragment} */\n", "", "comment-only layout assertion"),
         (f"#if 0\n{fragment}\n#endif\n", "", "disabled layout assertion"),
@@ -1029,7 +1646,22 @@ static_assert(sizeof(demo_config_t) == 4U, "layout");
         if error := _selftest_source_policy(base, root, adapter):
             print(error, file=sys.stderr)
             return 1
+        if error := _selftest_additional_adapter_policy(base, root):
+            print(error, file=sys.stderr)
+            return 1
         if error := _selftest_metadata_policy(base, root):
+            print(error, file=sys.stderr)
+            return 1
+        if error := _selftest_retained_c_exports(base, root):
+            print(error, file=sys.stderr)
+            return 1
+        if error := _selftest_additional_header_policy(base, root):
+            print(error, file=sys.stderr)
+            return 1
+        if error := _selftest_library_test_exports(base, root):
+            print(error, file=sys.stderr)
+            return 1
+        if error := _selftest_cmake_glob_registration(root):
             print(error, file=sys.stderr)
             return 1
         if error := _selftest_compiled_policy(base, root):

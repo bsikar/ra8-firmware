@@ -6,9 +6,8 @@
 //! C ABI; the `test` step covers the pure logic, the runtime ABI membrane and
 //! the mount / recovery path.
 //!
-//! The archive root is `src/root.zig` because the library is two files that
-//! meet at the `priv_cache_store_*` symbols, and both have to be part of the
-//! compilation for their exports to land. The tests deliberately do not share
+//! The archive root is `src/root.zig` because the library is two Zig modules
+//! compiled behind one public C ABI. The tests deliberately do not share
 //! that root: `tests/abi_test.zig` substitutes its own helpers over a RAM
 //! medium, which only works while `mount.zig` is out of that binary.
 //!
@@ -20,11 +19,42 @@ pub fn build(b: *std.Build) void {
     const target = b.standardTargetOptions(.{});
     const optimize = b.standardOptimizeOption(.{});
 
+    const implementation_module = b.createModule(.{
+        .root_source_file = b.path("src/internal/root.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+
+    const types_module = b.createModule(.{
+        .root_source_file = b.path("src/abi_types.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    types_module.addImport("cache_store_impl", implementation_module);
+    const mount_module = b.createModule(.{
+        .root_source_file = b.path("src/mount.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    mount_module.addImport("cache_store_types", types_module);
+    mount_module.addImport("cache_store_impl", implementation_module);
+    const init_module = b.createModule(.{
+        .root_source_file = b.path("src/init.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    init_module.addImport("cache_store_types", types_module);
+    init_module.addImport("cache_store_mount", mount_module);
+
     const library_module = b.createModule(.{
         .root_source_file = b.path("src/root.zig"),
         .target = target,
         .optimize = optimize,
     });
+    library_module.addImport("cache_store_types", types_module);
+    library_module.addImport("cache_store_impl", implementation_module);
+    library_module.addImport("cache_store_backend", mount_module);
+    library_module.addImport("cache_store_init", init_module);
 
     const library = b.addLibrary(.{
         .name = "ra8_cache_store",
@@ -35,21 +65,21 @@ pub fn build(b: *std.Build) void {
     library.root_module.pic = true;
     b.installArtifact(library);
 
-    const implementation_module = b.createModule(.{
-        .root_source_file = b.path("src/internal/root.zig"),
+    const test_backend_module = b.createModule(.{
+        .root_source_file = b.path("tests/abi_backend.zig"),
         .target = target,
         .optimize = optimize,
     });
-    const abi_module = b.createModule(.{
+    test_backend_module.addImport("cache_store_types", types_module);
+    const abi_test_impl_module = b.createModule(.{
         .root_source_file = b.path("src/ra8_cache_store_abi.zig"),
         .target = target,
         .optimize = optimize,
     });
-    const mount_module = b.createModule(.{
-        .root_source_file = b.path("src/mount.zig"),
-        .target = target,
-        .optimize = optimize,
-    });
+    abi_test_impl_module.addImport("cache_store_types", types_module);
+    abi_test_impl_module.addImport("cache_store_impl", implementation_module);
+    abi_test_impl_module.addImport("cache_store_impl", implementation_module);
+    abi_test_impl_module.addImport("cache_store_backend", test_backend_module);
 
     const internal_test_module = b.createModule(.{
         .root_source_file = b.path("tests/internal_test.zig"),
@@ -64,7 +94,8 @@ pub fn build(b: *std.Build) void {
         .target = target,
         .optimize = optimize,
     });
-    abi_test_module.addImport("abi", abi_module);
+    abi_test_module.addImport("abi", abi_test_impl_module);
+    abi_test_module.addImport("cache_store_backend", test_backend_module);
     const abi_tests = b.addTest(.{ .root_module = abi_test_module });
 
     const mount_test_module = b.createModule(.{
@@ -72,8 +103,28 @@ pub fn build(b: *std.Build) void {
         .target = target,
         .optimize = optimize,
     });
+    mount_test_module.addImport("cache_store_types", types_module);
+    mount_test_module.addImport("cache_store_impl", implementation_module);
     mount_test_module.addImport("mount", mount_module);
+    mount_test_module.addImport("cache_store_init", init_module);
     const mount_tests = b.addTest(.{ .root_module = mount_test_module });
+
+    const test_helpers_module = b.createModule(.{
+        .root_source_file = b.path("tests/test_helpers.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    test_helpers_module.addImport("cache_store_types", types_module);
+    test_helpers_module.addImport("cache_store_impl", implementation_module);
+    test_helpers_module.addImport("cache_store_mount", mount_module);
+    const test_helpers_library = b.addLibrary(.{
+        .name = "ra8_cache_store_test_helpers",
+        .linkage = .static,
+        .root_module = test_helpers_module,
+    });
+    test_helpers_library.bundle_compiler_rt = true;
+    test_helpers_library.root_module.pic = true;
+    b.installArtifact(test_helpers_library);
 
     const run_internal_tests = b.addRunArtifact(internal_tests);
     const run_abi_tests = b.addRunArtifact(abi_tests);

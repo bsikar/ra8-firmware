@@ -132,7 +132,7 @@ typedef struct {
   uint32_t           size;       /**< Region size in bytes (power of two). */
   ra8_mpu_perm_t     priv;       /**< Privileged-mode permission.          */
   ra8_mpu_perm_t     unpriv;     /**< Unprivileged-mode permission.        */
-  bool               executable; /**< If true, instruction fetch allowed.  */
+  uint8_t            executable; /**< 0 or 1: instruction fetch allowed.  */
   ra8_mpu_share_t    shareable;  /**< SH[1:0] field.                       */
   ra8_mpu_attr_idx_t attr_idx;   /**< MAIR slot index.                     */
 } ra8_mpu_region_t;
@@ -152,8 +152,8 @@ typedef struct {
   uint8_t                 region_count; /**< Entries in regions.       */
   uint32_t                mair0;        /**< Verbatim MPU_MAIR0 value. */
   uint32_t                mair1;        /**< Verbatim MPU_MAIR1 value. */
-  bool                    privdefena;   /**< MPU_CTRL.PRIVDEFENA = 1.  */
-  bool                    hfnmiena;     /**< MPU_CTRL.HFNMIENA   = 1.  */
+  uint8_t                 privdefena;   /**< 0 or 1: MPU_CTRL.PRIVDEFENA. */
+  uint8_t                 hfnmiena;     /**< 0 or 1: MPU_CTRL.HFNMIENA.   */
 } ra8_mpu_cfg_t;
 
 /**
@@ -312,9 +312,9 @@ const ra8_mpu_region_t* ra8_mpu_boot_map(uint8_t* out_count);
  * boot attribute map came up without poking the register block directly -- the
  * whole point of routing MPU access through this driver.
  *
- * @return Whether MPU_CTRL.ENABLE is set.
- * @retval true  The MPU is enabled.
- * @retval false The MPU is disabled.
+ * @return uint8_t 1 if MPU_CTRL.ENABLE is set, otherwise 0.
+ * @retval 1 The MPU is enabled.
+ * @retval 0 The MPU is disabled.
  *
  * @pre Caller is privileged (or RA8_OFF_TARGET, where the register is faked).
  * @post No MPU state is modified (pure read).
@@ -324,7 +324,7 @@ const ra8_mpu_region_t* ra8_mpu_boot_map(uint8_t* out_count);
  * @see ra8_mpu_apply_boot_map()
  * @since 0.1.0
  */
-[[nodiscard]] bool ra8_mpu_is_enabled(void);
+[[nodiscard]] uint8_t ra8_mpu_is_enabled(void);
 
 #ifdef __cplusplus
 }

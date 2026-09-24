@@ -83,8 +83,8 @@ typedef enum : uint8_t {
  * @invariant A flag is true only between the band's nag and its re-arm.
  */
 typedef struct {
-  bool low_raised;      /**< Low nag raised and not yet re-armed.      */
-  bool critical_raised; /**< Critical nag raised and not yet re-armed. */
+  uint8_t low_raised;      /**< 0 or 1: low nag raised and not yet re-armed.      */
+  uint8_t critical_raised; /**< 0 or 1: critical nag raised and not yet re-armed. */
 } ra8_batt_monitor_t;
 
 /**
@@ -143,7 +143,7 @@ ra8_err_t ra8_batt_monitor_init(ra8_batt_monitor_t* mon);
  * @since 0.1.0
  */
 ra8_err_t
-ra8_batt_update(ra8_batt_monitor_t* mon, uint8_t soc_pct, bool charging, ra8_batt_nag_t* out_nag);
+ra8_batt_update(ra8_batt_monitor_t* mon, uint8_t soc_pct, uint8_t charging, ra8_batt_nag_t* out_nag);
 
 /**
  * @brief Map a nag level to a short, stable upper-case label.

@@ -181,7 +181,7 @@ static void test_default_now_hook_called_by_register(void)
 
   /* tick also calls s_state.now() = internal_default_now().
    * tx_time_get() returns 0 -> now=0, last_checkin=0, gap=0 <= 200 -> alive. */
-  bool did_refresh = false;
+  uint8_t did_refresh = 0U;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_wdt_supervisor_tick(&did_refresh));
   TEST_ASSERT_EQ(1, did_refresh);
   TEST_ASSERT_EQ(1U, s_cov_refresh_calls);
@@ -247,7 +247,7 @@ static void test_default_refresh_hook_called_by_tick(void)
 
   /* tick: any_present=T, all_alive=T (gap=0 <= 200) -> will_refresh=T.
    * s_state.refresh() == internal_default_refresh() -> ra8_wdt_refresh_deferred(). */
-  bool did_refresh = false;
+  uint8_t did_refresh = 0U;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_wdt_supervisor_tick(&did_refresh));
   TEST_ASSERT_EQ(1, did_refresh);
 

@@ -188,9 +188,9 @@ test "registration primes the check-in stamp so the first tick refreshes" {
     try freshInit();
     fake_clock = 5000;
     _ = try registerOne("worker", 10);
-    var refreshed = false;
+    var refreshed: u8 = 0;
     try std.testing.expectEqual(ok, abi.ra8_wdt_supervisor_tick(&refreshed));
-    try std.testing.expect(refreshed);
+    try std.testing.expectEqual(@as(u8, 1), refreshed);
 }
 
 test "checkin rejects an out-of-range handle" {
@@ -218,12 +218,12 @@ test "checkin resets the deadline window" {
     try freshInit();
     const handle = try registerOne("worker", 50);
     fake_clock = 1100;
-    var refreshed = true;
+    var refreshed: u8 = 1;
     try std.testing.expectEqual(ok, abi.ra8_wdt_supervisor_tick(&refreshed));
-    try std.testing.expect(!refreshed);
+    try std.testing.expectEqual(@as(u8, 0), refreshed);
     try std.testing.expectEqual(ok, abi.ra8_wdt_supervisor_checkin(handle));
     try std.testing.expectEqual(ok, abi.ra8_wdt_supervisor_tick(&refreshed));
-    try std.testing.expect(refreshed);
+    try std.testing.expectEqual(@as(u8, 1), refreshed);
 }
 
 test "start reports not_initialized before init" {
@@ -240,9 +240,9 @@ test "start is single-shot" {
 
 test "tick reports not_initialized and clears the output" {
     _ = abi.ra8_wdt_supervisor_deinit();
-    var refreshed = true;
+    var refreshed: u8 = 1;
     try std.testing.expectEqual(not_initialized, abi.ra8_wdt_supervisor_tick(&refreshed));
-    try std.testing.expect(!refreshed);
+    try std.testing.expectEqual(@as(u8, 0), refreshed);
 }
 
 test "tick tolerates a null output" {
@@ -253,18 +253,18 @@ test "tick tolerates a null output" {
 
 test "an empty registry never refreshes" {
     try freshInit();
-    var refreshed = true;
+    var refreshed: u8 = 1;
     try std.testing.expectEqual(ok, abi.ra8_wdt_supervisor_tick(&refreshed));
-    try std.testing.expect(!refreshed);
+    try std.testing.expectEqual(@as(u8, 0), refreshed);
     try std.testing.expectEqual(@as(u32, 0), deferred_kicks);
 }
 
 test "the default refresh hook calls ra8_wdt_refresh_deferred" {
     try freshInit();
     _ = try registerOne("worker", 100);
-    var refreshed = false;
+    var refreshed: u8 = 0;
     try std.testing.expectEqual(ok, abi.ra8_wdt_supervisor_tick(&refreshed));
-    try std.testing.expect(refreshed);
+    try std.testing.expectEqual(@as(u8, 1), refreshed);
     try std.testing.expectEqual(@as(u32, 1), deferred_kicks);
 }
 
@@ -272,9 +272,9 @@ test "an overdue thread stops the kick" {
     try freshInit();
     _ = try registerOne("worker", 50);
     fake_clock = 1051;
-    var refreshed = true;
+    var refreshed: u8 = 1;
     try std.testing.expectEqual(ok, abi.ra8_wdt_supervisor_tick(&refreshed));
-    try std.testing.expect(!refreshed);
+    try std.testing.expectEqual(@as(u8, 0), refreshed);
     try std.testing.expectEqual(@as(u32, 0), deferred_kicks);
 }
 
@@ -283,21 +283,21 @@ test "one wedged worker among healthy ones stops the kick" {
     const fast = try registerOne("fast", 10);
     _ = try registerOne("slow", 10_000);
     fake_clock = 1020;
-    var refreshed = true;
+    var refreshed: u8 = 1;
     try std.testing.expectEqual(ok, abi.ra8_wdt_supervisor_tick(&refreshed));
-    try std.testing.expect(!refreshed);
+    try std.testing.expectEqual(@as(u8, 0), refreshed);
     try std.testing.expectEqual(ok, abi.ra8_wdt_supervisor_checkin(fast));
     try std.testing.expectEqual(ok, abi.ra8_wdt_supervisor_tick(&refreshed));
-    try std.testing.expect(refreshed);
+    try std.testing.expectEqual(@as(u8, 1), refreshed);
 }
 
 test "the refresh hook replaces the default" {
     try freshInit();
     _ = try registerOne("worker", 100);
     try std.testing.expectEqual(ok, abi.ra8_wdt_supervisor_set_refresh_hook(countingRefresh));
-    var refreshed = false;
+    var refreshed: u8 = 0;
     try std.testing.expectEqual(ok, abi.ra8_wdt_supervisor_tick(&refreshed));
-    try std.testing.expect(refreshed);
+    try std.testing.expectEqual(@as(u8, 1), refreshed);
     try std.testing.expectEqual(@as(u32, 1), hook_kicks);
     try std.testing.expectEqual(@as(u32, 0), deferred_kicks);
 }
@@ -307,9 +307,9 @@ test "a null refresh hook restores the default" {
     _ = try registerOne("worker", 100);
     try std.testing.expectEqual(ok, abi.ra8_wdt_supervisor_set_refresh_hook(countingRefresh));
     try std.testing.expectEqual(ok, abi.ra8_wdt_supervisor_set_refresh_hook(null));
-    var refreshed = false;
+    var refreshed: u8 = 0;
     try std.testing.expectEqual(ok, abi.ra8_wdt_supervisor_tick(&refreshed));
-    try std.testing.expect(refreshed);
+    try std.testing.expectEqual(@as(u8, 1), refreshed);
     try std.testing.expectEqual(@as(u32, 0), hook_kicks);
     try std.testing.expectEqual(@as(u32, 1), deferred_kicks);
 }
@@ -318,9 +318,9 @@ test "a null now hook restores the default clock" {
     try freshInit();
     try std.testing.expectEqual(ok, abi.ra8_wdt_supervisor_set_now_hook(null));
     _ = try registerOne("worker", 100);
-    var refreshed = false;
+    var refreshed: u8 = 0;
     try std.testing.expectEqual(ok, abi.ra8_wdt_supervisor_tick(&refreshed));
-    try std.testing.expect(refreshed);
+    try std.testing.expectEqual(@as(u8, 1), refreshed);
 }
 
 test "the hooks are settable before init" {
@@ -343,12 +343,12 @@ test "the deadline boundary is inclusive through the ABI" {
     try freshInit();
     _ = try registerOne("worker", 50);
     fake_clock = 1050;
-    var refreshed = false;
+    var refreshed: u8 = 0;
     try std.testing.expectEqual(ok, abi.ra8_wdt_supervisor_tick(&refreshed));
-    try std.testing.expect(refreshed);
+    try std.testing.expectEqual(@as(u8, 1), refreshed);
     fake_clock = 1051;
     try std.testing.expectEqual(ok, abi.ra8_wdt_supervisor_tick(&refreshed));
-    try std.testing.expect(!refreshed);
+    try std.testing.expectEqual(@as(u8, 0), refreshed);
 }
 
 test "the supervisor keeps kicking across a clock wrap" {
@@ -358,9 +358,9 @@ test "the supervisor keeps kicking across a clock wrap" {
     // 0x100 -% 0xFFFF_FF00 is a 512 ms gap, so the wrap itself must not read as
     // a 4-billion-millisecond one.
     fake_clock = 0x0000_0050;
-    var refreshed = false;
+    var refreshed: u8 = 0;
     try std.testing.expectEqual(ok, abi.ra8_wdt_supervisor_tick(&refreshed));
-    try std.testing.expect(refreshed);
+    try std.testing.expectEqual(@as(u8, 1), refreshed);
 }
 
 test "the config block matches the C layout" {

@@ -15,10 +15,71 @@ const builtin = @import("builtin");
 const build_config = @import("build_config");
 const implementation = @import("internal/root.zig");
 
-/// One MPU region descriptor (`ra8_mpu_region_t`).
-pub const Region = implementation.Region;
-/// Whole-MPU static configuration (`ra8_mpu_cfg_t`).
-pub const Config = implementation.Config;
+/// One MPU region descriptor (`ra8_mpu_region_t`) at the C boundary.
+pub const Region = extern struct {
+    base: usize,
+    size: u32,
+    priv: u8,
+    unpriv: u8,
+    executable: u8,
+    shareable: u8,
+    attr_idx: u8,
+};
+/// Whole-MPU static configuration (`ra8_mpu_cfg_t`) at the C boundary.
+pub const Config = extern struct {
+    regions: ?[*]const Region,
+    region_count: u8,
+    mair0: u32,
+    mair1: u32,
+    privdefena: u8,
+    hfnmiena: u8,
+};
+
+fn toImplementationRegion(region: *const Region) implementation.Region {
+    return .{
+        .base = region.base,
+        .size = region.size,
+        .priv = region.priv,
+        .unpriv = region.unpriv,
+        .executable = region.executable == 1,
+        .shareable = region.shareable,
+        .attr_idx = region.attr_idx,
+    };
+}
+
+const boot_regions = blk: {
+    var regions: [implementation.boot_regions.len]Region = undefined;
+    for (implementation.boot_regions, 0..) |region, index| {
+        regions[index] = .{
+            .base = region.base,
+            .size = region.size,
+            .priv = region.priv,
+            .unpriv = region.unpriv,
+            .executable = @intFromBool(region.executable),
+            .shareable = region.shareable,
+            .attr_idx = region.attr_idx,
+        };
+    }
+    break :blk regions;
+};
+
+comptime {
+    const ptr = @sizeOf(usize);
+    if (@offsetOf(Region, "base") != 0) @compileError("ra8_mpu_region_t base offset");
+    if (@offsetOf(Region, "size") != ptr) @compileError("ra8_mpu_region_t size offset");
+    if (@offsetOf(Region, "priv") != ptr + 4) @compileError("ra8_mpu_region_t priv offset");
+    if (@offsetOf(Region, "unpriv") != ptr + 5) @compileError("ra8_mpu_region_t unpriv offset");
+    if (@offsetOf(Region, "executable") != ptr + 6) @compileError("ra8_mpu_region_t executable offset");
+    if (@offsetOf(Region, "shareable") != ptr + 7) @compileError("ra8_mpu_region_t shareable offset");
+    if (@offsetOf(Region, "attr_idx") != ptr + 8) @compileError("ra8_mpu_region_t attr_idx offset");
+    if (@sizeOf(Region) != std.mem.alignForward(usize, ptr + 9, ptr)) @compileError("ra8_mpu_region_t size");
+    if (@offsetOf(Config, "regions") != 0) @compileError("ra8_mpu_cfg_t regions offset");
+    if (@offsetOf(Config, "region_count") != ptr) @compileError("ra8_mpu_cfg_t region_count offset");
+    if (@offsetOf(Config, "mair0") != ptr + 4) @compileError("ra8_mpu_cfg_t mair0 offset");
+    if (@offsetOf(Config, "mair1") != ptr + 8) @compileError("ra8_mpu_cfg_t mair1 offset");
+    if (@offsetOf(Config, "privdefena") != ptr + 12) @compileError("ra8_mpu_cfg_t privdefena offset");
+    if (@offsetOf(Config, "hfnmiena") != ptr + 13) @compileError("ra8_mpu_cfg_t hfnmiena offset");
+}
 
 /// Subset of `ra8_err_t` this library returns.
 pub const MpuError = enum(u16) {
@@ -128,7 +189,7 @@ fn dregionCount() u8 {
     return implementation.dregionOf(regs().TYPE);
 }
 
-fn programRegion(region: u8, r: *const Region) void {
+fn programRegion(region: u8, r: *const implementation.Region) void {
     const mpu = regs();
     mpu.RNR = region;
     mpu.RBAR = implementation.buildRbar(r);
@@ -156,10 +217,13 @@ fn writeMair(mair0: u32, mair1: u32) void {
 fn validateCfg(cfg: *const Config) MpuError {
     if (cfg.region_count > dregionCount()) return .invalid_arg;
     if (cfg.region_count > 0 and cfg.regions == null) return .null_ptr;
+    if (cfg.privdefena > 1 or cfg.hfnmiena > 1) return .invalid_arg;
     const regions = cfg.regions orelse return .ok;
     var i: u8 = 0;
     while (i < cfg.region_count) : (i += 1) {
-        if (implementation.checkRegion(&regions[i]) != .ok) return .invalid_arg;
+        if (regions[i].executable > 1) return .invalid_arg;
+        const internal = toImplementationRegion(&regions[i]);
+        if (implementation.checkRegion(&internal) != .ok) return .invalid_arg;
     }
     return .ok;
 }
@@ -186,7 +250,8 @@ pub export fn ra8_mpu_configure(cfg: ?*const Config) callconv(.c) u16 {
     if (config.regions) |regions| {
         var i: u8 = 0;
         while (i < config.region_count) : (i += 1) {
-            programRegion(i, &regions[i]);
+            const internal = toImplementationRegion(&regions[i]);
+            programRegion(i, &internal);
         }
     }
     const implemented = dregionCount();
@@ -194,7 +259,15 @@ pub export fn ra8_mpu_configure(cfg: ?*const Config) callconv(.c) u16 {
     while (i < implemented) : (i += 1) {
         clearRegion(i);
     }
-    writeCtrl(implementation.buildCtrl(config));
+    const internal_config = implementation.Config{
+        .regions = null,
+        .region_count = config.region_count,
+        .mair0 = config.mair0,
+        .mair1 = config.mair1,
+        .privdefena = config.privdefena == 1,
+        .hfnmiena = config.hfnmiena == 1,
+    };
+    writeCtrl(implementation.buildCtrl(&internal_config));
 
     // Without SHCSR.MEMFAULTENA every MPU permission violation escalates to
     // HardFault and the strong MemManage_Handler the application installed
@@ -229,8 +302,10 @@ pub export fn ra8_mpu_set_region(region: u8, region_cfg: ?*const Region) callcon
         return @intFromEnum(MpuError.null_ptr);
     };
     if (region >= dregionCount()) return @intFromEnum(MpuError.invalid_arg);
-    if (implementation.checkRegion(descriptor) != .ok) return @intFromEnum(MpuError.invalid_arg);
-    programRegion(region, descriptor);
+    if (descriptor.executable > 1) return @intFromEnum(MpuError.invalid_arg);
+    const internal = toImplementationRegion(descriptor);
+    if (implementation.checkRegion(&internal) != .ok) return @intFromEnum(MpuError.invalid_arg);
+    programRegion(region, &internal);
     return @intFromEnum(MpuError.ok);
 }
 
@@ -238,7 +313,7 @@ pub export fn ra8_mpu_set_region(region: u8, region_cfg: ?*const Region) callcon
 pub export fn ra8_mpu_boot_map(out_count: ?*u8) callconv(.c) ?[*]const Region {
     const count = out_count orelse return null;
     count.* = implementation.boot_region_count;
-    return &implementation.boot_regions;
+    return &boot_regions;
 }
 
 /// Install the canonical 5-region boot map and enable the MPU.
@@ -275,6 +350,6 @@ pub export fn ra8_mpu_apply_boot_map() callconv(.c) u16 {
 }
 
 /// Report whether MPU_CTRL.ENABLE is set.
-pub export fn ra8_mpu_is_enabled() callconv(.c) bool {
-    return (regs().CTRL & implementation.ctrl_enable) != 0;
+pub export fn ra8_mpu_is_enabled() callconv(.c) u8 {
+    return @intFromBool((regs().CTRL & implementation.ctrl_enable) != 0);
 }

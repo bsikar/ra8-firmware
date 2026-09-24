@@ -326,9 +326,9 @@ ra8_wdt_supervisor_register_thread(const char* name, uint32_t deadline_ms, uint8
  * supervisor without spinning a real ThreadX kernel and lets a host
  * application probe "would I refresh right now?" out-of-band.
  *
- * @param[out] out_did_refresh Optional. Receives ``true`` if every
- *                             registered thread was within deadline and
- *                             the refresh hook was therefore called.
+ * @param[out] out_did_refresh Optional uint8_t pointer. Receives 1 if every
+ *                             registered thread was within deadline and the
+ *                             refresh hook was called, otherwise 0.
  *
  * @return ``ra8_err_t``
  * @retval k_ra8_ok Tick complete.
@@ -342,7 +342,7 @@ ra8_wdt_supervisor_register_thread(const char* name, uint32_t deadline_ms, uint8
  *
  * @since 0.1.0
  */
-[[nodiscard]] ra8_err_t ra8_wdt_supervisor_tick(bool* out_did_refresh);
+[[nodiscard]] ra8_err_t ra8_wdt_supervisor_tick(uint8_t* out_did_refresh);
 
 /**
  * @brief Override the monotonic-time hook (test injection point).

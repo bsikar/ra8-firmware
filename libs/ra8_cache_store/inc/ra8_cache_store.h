@@ -165,7 +165,7 @@ typedef struct {
   uint32_t                    live_sectors;    /**< Sectors currently held by live entries. */
   uint32_t                    next_seq;        /**< Monotonic append sequence number.       */
   uint8_t                     flash_state;     /**< RAM shadow of sector 0 (dirty/clean).   */
-  bool                        inited;          /**< True between init and close.            */
+  uint8_t                     inited;          /**< 0 or 1: true between init and close.     */
 } ra8_cache_store_t;
 
 /**
@@ -211,7 +211,7 @@ typedef struct {
   uint32_t                    logical_sectors;   /**< Usable LevelX logical-sector span.   */
   uint16_t                    index_cap;         /**< Index slots (max live entries).      */
   uint8_t                     overprovision_pct; /**< GC headroom margin (0 => default).   */
-  bool                        format;            /**< Format (wipe) before open.           */
+  uint8_t                     format;            /**< 0 or 1: format (wipe) before open.    */
 } ra8_cache_store_cfg_t;
 
 /**
@@ -402,7 +402,7 @@ ra8_err_t ra8_cache_store_read(void* ctx, uint64_t offset, uint8_t* buf, uint32_
  * @note Not thread-safe.
  * @since 0.1.0
  */
-[[nodiscard]] ra8_err_t ra8_cache_store_pin(ra8_cache_store_t* store, uint32_t key, bool pin);
+[[nodiscard]] ra8_err_t ra8_cache_store_pin(ra8_cache_store_t* store, uint32_t key, uint8_t pin);
 
 /**
  * @brief Checkpoint the index to flash (directory + clean marker not set).
