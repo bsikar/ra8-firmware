@@ -87,3 +87,19 @@ func UnclaimedExpired(vm RunnerVM, now time.Time) bool {
 func UnclaimedReservation(vm RunnerVM) bool {
 	return vm.ClaimedAt == nil && vm.State != "released"
 }
+
+// unclaimedGuestless is the set of reservation states in which no guest has
+// ever existed on the hypervisor. A reservation is a row before it is a
+// machine: nothing is cloned until the clone operation begins, and a released
+// row's guest is already gone. Every other state means a guest may be there,
+// so the reaper asks rather than assumes.
+var unclaimedGuestless = map[string]struct{}{"reserved": {}, "released": {}}
+
+// UnclaimedGuestExists reports whether the destroy step of the unclaimed
+// sequence has anything to do for this reservation. It is deliberately
+// generous: "cloning" covers a clone whose outcome nobody heard, and that is
+// exactly the guest a reaper must not walk past.
+func UnclaimedGuestExists(vm RunnerVM) bool {
+	_, guestless := unclaimedGuestless[vm.State]
+	return !guestless
+}
