@@ -92,7 +92,7 @@ func TestBoardHILClaimRouteUsesLeaseAndHostFacts(t *testing.T) {
 	}
 	f := &fakeBoardHILClaims{fakeBoardStore: &fakeBoardStore{}}
 	mux := http.NewServeMux()
-	policy := BoardHILPolicy{Catalog: cat, TrustedCommit: strings.Repeat("a", 40)}
+	policy := BoardPolicy{Catalog: cat, TrustedCommit: strings.Repeat("a", 40)}
 	if err := RegisterBoardRoutes(mux, f, nil, "bsikar/ra8-firmware", policy); err != nil {
 		t.Fatal(err)
 	}
@@ -139,7 +139,7 @@ func TestBoardHILCompletionRouteBindsAttemptLeaseAndCatalog(t *testing.T) {
 	}
 	f := &fakeBoardHILFinisher{fakeBoardStore: &fakeBoardStore{}}
 	mux := http.NewServeMux()
-	if err := RegisterBoardRoutes(mux, f, nil, "bsikar/ra8-firmware", BoardHILPolicy{Catalog: cat}); err != nil {
+	if err := RegisterBoardRoutes(mux, f, nil, "bsikar/ra8-firmware", BoardPolicy{Catalog: cat}); err != nil {
 		t.Fatal(err)
 	}
 	body := `{"lease_id":"` + boardTestLeaseID + `","generation":5,"result":"failed","hit_deadline":false,"evidence_complete":false,"reason":"fixture failure","steps":[{"key":"observe","started_at":"2026-01-01T00:00:00Z","ended_at":"2026-01-01T00:00:01Z","duration_ns":1000000000,"state":"failed","child_exit_code":1}]}`

@@ -26,37 +26,44 @@ type BoardStore interface {
 	AuditDenied(context.Context, string, string, string) error
 }
 
-type BoardHILPolicy struct {
+// BoardPolicy is the optional configuration the board surface runs under: the
+// catalog and trusted commit a HIL attempt is validated against, and the
+// handoff budget a yield request is planned against. A zero value leaves each
+// of those doors closed rather than open with its check skipped.
+type BoardPolicy struct {
 	Catalog       *catalog.Catalog
 	TrustedCommit string
+	YieldBudget   BoardYieldBudget
 }
 
 type boardHTTP struct {
 	store         BoardStore
 	catalog       *catalog.Catalog
 	trustedCommit string
+	budget        BoardYieldBudget
 	verifier      store.NeutralReceiptVerifier
 	repository    string
 }
 
 // RegisterBoardRoutes adds authenticated board endpoints to the server mux.
 // A missing neutral verifier deliberately leaves release and recovery closed.
-func RegisterBoardRoutes(mux *http.ServeMux, st BoardStore, verifier store.NeutralReceiptVerifier, repository string, hilPolicy ...BoardHILPolicy) error {
+func RegisterBoardRoutes(mux *http.ServeMux, st BoardStore, verifier store.NeutralReceiptVerifier, repository string, boardPolicy ...BoardPolicy) error {
 	if mux == nil || st == nil || strings.TrimSpace(repository) != repository || repository == "" {
 		return store.ErrInvalid
 	}
-	if len(hilPolicy) > 1 {
+	if len(boardPolicy) > 1 {
 		return store.ErrInvalid
 	}
-	var policy BoardHILPolicy
-	if len(hilPolicy) == 1 {
-		policy = hilPolicy[0]
+	var policy BoardPolicy
+	if len(boardPolicy) == 1 {
+		policy = boardPolicy[0]
 	}
 	h := &boardHTTP{store: st, verifier: verifier, repository: repository,
-		catalog: policy.Catalog, trustedCommit: policy.TrustedCommit}
+		catalog: policy.Catalog, trustedCommit: policy.TrustedCommit, budget: policy.YieldBudget}
 	mux.HandleFunc("GET /v1/boards/{board_id}", h.status)
 	mux.HandleFunc("POST /v1/boards/{board_id}/take", h.take)
 	mux.HandleFunc("POST /v1/boards/{board_id}/waiters/{waiter_id}/cancel", h.cancel)
+	mux.HandleFunc("POST /v1/boards/{board_id}/yield", h.yield)
 	mux.HandleFunc("POST /v1/boards/{board_id}/checkpoint", h.checkpoint)
 	mux.HandleFunc("POST /v1/boards/{board_id}/leases/{lease_id}/free", h.free)
 	mux.HandleFunc("POST /v1/boards/{board_id}/leases/{lease_id}/extend", h.extend)
