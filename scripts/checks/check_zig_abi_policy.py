@@ -162,6 +162,55 @@ def _metadata_findings(name: str, metadata: object) -> tuple[list[str], set[str]
     return findings, declared
 
 
+def _data_export_findings(
+    library: dict[str, Any], name: str, repository_root: Path
+) -> tuple[list[str], set[str]]:
+    """Validate explicitly inventoried exported data symbols at a C/Zig boundary."""
+    rows = library.get("data_exports", [])
+    if not isinstance(rows, list):
+        return [f"{name}: data_exports must be a list"], set()
+    findings: list[str] = []
+    declared: set[str] = set()
+    build_root = repository_root / library["build_root"]
+    for row in rows:
+        if (
+            not isinstance(row, dict)
+            or set(row) != {"name", "header", "adapter", "calling_context", "ownership"}
+            or not all(isinstance(row.get(field), str) for field in row)
+        ):
+            findings.append(f"{name}: malformed data export metadata")
+            continue
+        symbol = row["name"]
+        if symbol in declared:
+            findings.append(f"{name}: duplicate data export: {symbol}")
+            continue
+        declared.add(symbol)
+        if row["calling_context"] not in CONTEXTS:
+            findings.append(f"{name}: undocumented calling context: {symbol}")
+        if len(row["ownership"].strip()) < MIN_OWNERSHIP_LENGTH:
+            findings.append(f"{name}: undocumented ownership: {symbol}")
+        for field in ("header", "adapter"):
+            path = repository_root / row[field]
+            try:
+                path.resolve().relative_to(build_root.resolve())
+            except ValueError:
+                findings.append(f"{name}: data export {field} is outside build root: {row[field]}")
+                continue
+            if not path.is_file():
+                findings.append(f"{name}: missing data export {field}: {row[field]}")
+                continue
+            text = _strip_comments(path.read_text(encoding="utf-8"))
+            if field == "header":
+                present = re.search(rf"\bextern\b[^;{{}}]*\b{re.escape(symbol)}\s*;", text)
+            else:
+                present = re.search(rf"\bpub\s+export\s+var\s+{re.escape(symbol)}\s*:", text)
+            if present is None:
+                findings.append(
+                    f"{name}: data export {field} does not declare {symbol}: {row[field]}"
+                )
+    return findings, declared
+
+
 def _inventory_findings(
     name: str,
     declared: set[str],
@@ -673,6 +722,8 @@ def _library_findings(
             adapter_paths,
         ) = _multi_boundary_findings(library, name, prefix, repository_root)
         findings.extend(boundary_findings)
+        data_findings, _data_exports = _data_export_findings(library, name, repository_root)
+        findings.extend(data_findings)
         metadata_findings, declared = _metadata_findings(name, library.get("exports"))
         findings.extend(metadata_findings)
         retained_findings, retained_c = _retained_c_export_findings(
@@ -791,6 +842,8 @@ def _library_findings(
         additional_paths.add(path.resolve())
     metadata_findings, declared = _metadata_findings(name, library.get("exports"))
     findings.extend(metadata_findings)
+    data_findings, data_exports = _data_export_findings(library, name, repository_root)
+    findings.extend(data_findings)
     retained_findings, retained_c = _retained_c_export_findings(
         library, name, declared, header_names, zig_names, repository_root
     )
@@ -1019,7 +1072,12 @@ def _compiled_findings(
                 for row in library.get("retained_c_exports", [])
                 if isinstance(row, dict) and isinstance(row.get("name"), str)
             }
-            expected = {row["name"] for row in library["exports"]} - retained_c
+            data_exports = {
+                row["name"]
+                for row in library.get("data_exports", [])
+                if isinstance(row, dict) and isinstance(row.get("name"), str)
+            }
+            expected = ({row["name"] for row in library["exports"]} - retained_c) | data_exports
             findings.extend(_compiled_symbol_findings(f"{name}: {target}/{mode}", expected, actual))
             counts["zig_matrix"] += 1
             if target == "host":
@@ -1497,6 +1555,34 @@ def _selftest_metadata_policy(base: dict[str, Any], root: Path) -> str | None:
         broken.pop(field)
         if not any(expected in item for item in _library_findings(broken, {"host", "ra8"}, root)):
             return f"must-fire fixture was accepted: {expected}"
+    data_header = root / "build/data.h"
+    data_header.write_text("extern DemoState demo_state;\n", encoding="utf-8")
+    adapter = root / "build/adapter.zig"
+    adapter.write_text(
+        adapter.read_text(encoding="utf-8")
+        + "const DemoState = extern struct { value: u32 };\n"
+        + "pub export var demo_state: DemoState = .{ .value = 0 };\n",
+        encoding="utf-8",
+    )
+    data_row = json.loads(json.dumps(base))
+    data_row["data_exports"] = [
+        {
+            "name": "demo_state",
+            "header": "build/data.h",
+            "adapter": "build/adapter.zig",
+            "calling_context": "task-only-non-reentrant",
+            "ownership": "owns one shared mutable demo state",
+        }
+    ]
+    if findings := _library_findings(data_row, {"host", "ra8"}, root):
+        return f"must-stay-quiet exported-data fixture failed: {findings}"
+    missing_data = json.loads(json.dumps(data_row))
+    missing_data["data_exports"][0]["adapter"] = "build/missing.zig"
+    if not any(
+        "missing data export adapter" in item
+        for item in _library_findings(missing_data, {"host", "ra8"}, root)
+    ):
+        return "must-fire fixture was accepted: missing Zig data export"
     return None
 
 
