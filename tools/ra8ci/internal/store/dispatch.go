@@ -160,8 +160,8 @@ func (s *Store) ClaimAgentTask(ctx context.Context, certDER []byte, facts protoc
 	if !errors.Is(err, pgx.ErrNoRows) {
 		return nil, fmt.Errorf("%w: check agent capacity: %v", ErrUnavailable, err)
 	}
-	var runID, repository, commitSHA, snapshotSHA, catalogSHA string
-	err = tx.QueryRow(ctx, `SELECT r.id::text, r.repository, r.commit_sha,
+	var runID, runState, repository, commitSHA, snapshotSHA, catalogSHA string
+	err = tx.QueryRow(ctx, `SELECT r.id::text, r.state, r.repository, r.commit_sha,
 		r.snapshot_sha256, r.catalog_sha256 FROM runs r
 		WHERE r.state IN ('queued','running') AND r.cancel_requested_at IS NULL
 		AND r.catalog_sha256=$1 AND r.commit_sha=$4
@@ -172,7 +172,8 @@ func (s *Store) ClaimAgentTask(ctx context.Context, certDER []byte, facts protoc
 			AND NOT EXISTS (SELECT 1 FROM task_edges e JOIN tasks d
 				ON d.id=e.depends_on_task_id WHERE e.task_id=t.id AND d.state<>'succeeded'))
 		ORDER BY r.created_at, r.id LIMIT 1 FOR UPDATE OF r SKIP LOCKED`,
-		tasks.Digest(), agent.Principal, names, trustedCommit).Scan(&runID, &repository, &commitSHA, &snapshotSHA, &catalogSHA)
+		tasks.Digest(), agent.Principal, names, trustedCommit).Scan(&runID, &runState,
+		&repository, &commitSHA, &snapshotSHA, &catalogSHA)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, nil
 	}
@@ -182,16 +183,16 @@ func (s *Store) ClaimAgentTask(ctx context.Context, certDER []byte, facts protoc
 	if err := agentMayExecute(ctx, tx, agent, repository); err != nil {
 		return nil, err
 	}
-	var taskID, taskName string
+	var taskID, taskName, taskState string
 	var taskVersion int64
 	var deadlineSeconds int
-	err = tx.QueryRow(ctx, `SELECT t.id::text, t.name, t.version, t.deadline_seconds
+	err = tx.QueryRow(ctx, `SELECT t.id::text, t.name, t.state, t.version, t.deadline_seconds
 		FROM tasks t WHERE t.run_id=$1 AND t.state='scheduled'
 		AND t.scope='safe-local-read-only' AND t.name=ANY($2)
 		AND NOT EXISTS (SELECT 1 FROM task_edges e JOIN tasks d
 			ON d.id=e.depends_on_task_id WHERE e.task_id=t.id AND d.state<>'succeeded')
 		ORDER BY t.enqueued_at, t.id LIMIT 1 FOR UPDATE OF t SKIP LOCKED`, runID, names).Scan(
-		&taskID, &taskName, &taskVersion, &deadlineSeconds)
+		&taskID, &taskName, &taskState, &taskVersion, &deadlineSeconds)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, nil
 	}
@@ -232,16 +233,25 @@ func (s *Store) ClaimAgentTask(ctx context.Context, certDER []byte, facts protoc
 	if err != nil {
 		return nil, fmt.Errorf("%w: insert issued attempt: %v", ErrUnavailable, err)
 	}
+	if err := CheckTaskTransition(taskState, "running"); err != nil {
+		return nil, err
+	}
 	tag, err := tx.Exec(ctx, `UPDATE tasks SET state='running', started_at=clock_timestamp(),
-		version=version+1 WHERE id=$1 AND version=$2 AND state='scheduled'`, taskID, taskVersion)
+		version=version+1 WHERE id=$1 AND version=$2 AND state=$3`, taskID, taskVersion, taskState)
 	if err != nil || tag.RowsAffected() != 1 {
 		return nil, fmt.Errorf("%w: claim task: %v", ErrConflict, err)
 	}
-	_, err = tx.Exec(ctx, `UPDATE runs SET state='running',
-		started_at=COALESCE(started_at,clock_timestamp()), version=version+1
-		WHERE id=$1 AND state='queued'`, runID)
-	if err != nil {
-		return nil, fmt.Errorf("%w: start run: %v", ErrUnavailable, err)
+	// The candidate query takes queued and running runs alike, so the run is
+	// started only from the state the machine has that edge out of. This was
+	// an UPDATE fenced on state='queued' whose tag was discarded: the same
+	// rule stated a second time in SQL, and never checked.
+	if RunStartable(runState) {
+		_, err = tx.Exec(ctx, `UPDATE runs SET state='running',
+			started_at=COALESCE(started_at,clock_timestamp()), version=version+1
+			WHERE id=$1 AND state=$2`, runID, runState)
+		if err != nil {
+			return nil, fmt.Errorf("%w: start run: %v", ErrUnavailable, err)
+		}
 	}
 	if err := appendAudit(ctx, tx, agent.Principal, "task.assigned", "task", taskID,
 		"ok", "scheduled", "running", runID,
@@ -366,21 +376,37 @@ func (s *Store) AcknowledgeAgentAssignment(ctx context.Context, certDER []byte, 
 			return fmt.Errorf("%w: read run cancellation: %v", ErrUnavailable, err)
 		}
 		if cancellationRequested {
+			if err := CheckAttemptTransition(attempt.State, "cancelled"); err != nil {
+				return err
+			}
 			if _, err := tx.Exec(ctx, `UPDATE task_attempts SET state='cancelled', ended_at=clock_timestamp(),
 				evidence_complete=true, result_reason='run_cancelled_before_ack', version=version+1
-				WHERE id=$1 AND state='issued'`, ack.AttemptID); err != nil {
+				WHERE id=$1 AND state=$2`, ack.AttemptID, attempt.State); err != nil {
 				return fmt.Errorf("%w: cancel unacknowledged attempt: %v", ErrUnavailable, err)
 			}
-			if _, err := tx.Exec(ctx, `UPDATE tasks SET state='cancelled', ended_at=clock_timestamp(),
-				version=version+1 WHERE id=$1 AND state='running'`, attempt.TaskID); err != nil {
-				return fmt.Errorf("%w: cancel unacknowledged task: %v", ErrUnavailable, err)
+			var taskState string
+			if err := tx.QueryRow(ctx, `SELECT state FROM tasks WHERE id=$1 FOR UPDATE`,
+				attempt.TaskID).Scan(&taskState); err != nil {
+				return fmt.Errorf("%w: read task before cancelling: %v", ErrUnavailable, err)
 			}
-			if err := appendAudit(ctx, tx, agent.Principal, "task.cancelled_before_ack", "task",
-				attempt.TaskID, "ok", "issued", "cancelled", attempt.RunID, map[string]any{"attempt_id": ack.AttemptID}); err != nil {
-				return fmt.Errorf("%w: audit cancelled assignment: %v", ErrUnavailable, err)
-			}
-			if err := appendEvent(ctx, tx, attempt.RunID, "task.cancelled_before_ack", map[string]any{"task_id": attempt.TaskID, "attempt_id": ack.AttemptID}); err != nil {
-				return fmt.Errorf("%w: event cancelled assignment: %v", ErrUnavailable, err)
+			// This attempt is cancelled either way, but the task belongs to
+			// the run: a sibling attempt may already have ended it, so the
+			// machine decides whether there is still an edge to take. The
+			// UPDATE was fenced on state='running' with its tag discarded,
+			// so a task that had moved was left alone while the audit below
+			// still recorded a running -> cancelled move.
+			if err := CheckTaskTransition(taskState, "cancelled"); err == nil {
+				if _, err := tx.Exec(ctx, `UPDATE tasks SET state='cancelled', ended_at=clock_timestamp(),
+					version=version+1 WHERE id=$1 AND state=$2`, attempt.TaskID, taskState); err != nil {
+					return fmt.Errorf("%w: cancel unacknowledged task: %v", ErrUnavailable, err)
+				}
+				if err := appendAudit(ctx, tx, agent.Principal, "task.cancelled_before_ack", "task",
+					attempt.TaskID, "ok", taskState, "cancelled", attempt.RunID, map[string]any{"attempt_id": ack.AttemptID}); err != nil {
+					return fmt.Errorf("%w: audit cancelled assignment: %v", ErrUnavailable, err)
+				}
+				if err := appendEvent(ctx, tx, attempt.RunID, "task.cancelled_before_ack", map[string]any{"task_id": attempt.TaskID, "attempt_id": ack.AttemptID}); err != nil {
+					return fmt.Errorf("%w: event cancelled assignment: %v", ErrUnavailable, err)
+				}
 			}
 			if err := closeRunIfTerminal(ctx, tx, attempt.RunID, agent.Principal); err != nil {
 				return err
@@ -398,19 +424,29 @@ func (s *Store) AcknowledgeAgentAssignment(ctx context.Context, certDER []byte, 
 			return ErrConflict
 		}
 		facts, _ := json.Marshal(ack.HostFacts)
-		_, err = tx.Exec(ctx, `UPDATE task_attempts SET state='running', host_cores=$2,
+		if err := CheckAttemptTransition(attempt.State, "running"); err != nil {
+			return err
+		}
+		// lockAgentAttempt holds FOR UPDATE on this row, so the state cannot
+		// move under us. The fence says which edge the write is taking rather
+		// than setting running over whatever it finds.
+		tag, err := tx.Exec(ctx, `UPDATE task_attempts SET state='running', host_cores=$2,
 			host_ram_bytes=$3, host_load=$4, host_facts=$5,
-			agent_last_heartbeat_at=clock_timestamp(), version=version+1 WHERE id=$1`,
+			agent_last_heartbeat_at=clock_timestamp(), version=version+1
+			WHERE id=$1 AND state=$6`,
 			ack.AttemptID, ack.HostFacts.Cores, ack.HostFacts.RAMBytes,
-			ack.HostFacts.Load1, facts)
+			ack.HostFacts.Load1, facts, attempt.State)
 		if err != nil {
 			return fmt.Errorf("%w: acknowledge attempt: %v", ErrUnavailable, err)
+		}
+		if tag.RowsAffected() != 1 {
+			return fmt.Errorf("%w: attempt moved under the acknowledgment", ErrConflict)
 		}
 		if err := recordResourceSample(ctx, tx, ack.AttemptID, ack.HostFacts); err != nil {
 			return err
 		}
 		if err := appendAudit(ctx, tx, agent.Principal, "task.assignment.ack", "task",
-			attempt.TaskID, "ok", "issued", "running", attempt.RunID,
+			attempt.TaskID, "ok", attempt.State, "running", attempt.RunID,
 			map[string]any{"attempt_id": ack.AttemptID}); err != nil {
 			return fmt.Errorf("%w: audit acknowledgment: %v", ErrUnavailable, err)
 		}
@@ -625,26 +661,45 @@ func (s *Store) CompleteAgentAttempt(ctx context.Context, certDER []byte, receip
 			return fmt.Errorf("%w: terminal step: %v", ErrConflict, err)
 		}
 	}
-	result := receipt.Outcome
-	if result == "succeeded" && !receipt.EvidenceComplete {
-		result = "failed"
+	// The downgrade of an unverifiable green is the store's rule, not this
+	// call site's: taskResultFor states it once for both write sites. Unlike
+	// FinishAttempt, where validAttemptResult makes the case unreachable, an
+	// agent receipt can carry succeeded with incomplete evidence, and the
+	// attempt is recorded with the same downgraded result as its task.
+	result := taskResultFor(receipt.Outcome, receipt.EvidenceComplete)
+	if err := CheckAttemptTransition(attempt.State, result); err != nil {
+		return err
+	}
+	var taskState string
+	if err := tx.QueryRow(ctx, `SELECT state FROM tasks WHERE id=$1 FOR UPDATE`,
+		attempt.TaskID).Scan(&taskState); err != nil {
+		return fmt.Errorf("%w: read task before finishing: %v", ErrUnavailable, err)
+	}
+	if err := CheckTaskTransition(taskState, result); err != nil {
+		return err
 	}
 	_, err = tx.Exec(ctx, `UPDATE task_attempts SET state=$2,
 		ended_at=clock_timestamp(), child_exit_code=$3, hit_deadline=$4,
 		evidence_complete=$5, result_reason=$6, version=version+1
-		WHERE id=$1 AND state='running'`, receipt.AttemptID, result,
+		WHERE id=$1 AND state=$7`, receipt.AttemptID, result,
 		receipt.ChildExitCode, receipt.TimedOut, receipt.EvidenceComplete,
-		nullable(receipt.ErrorCode))
+		nullable(receipt.ErrorCode), attempt.State)
 	if err != nil {
 		return fmt.Errorf("%w: terminal attempt: %v", ErrUnavailable, err)
 	}
-	_, err = tx.Exec(ctx, `UPDATE tasks SET state=$2, ended_at=clock_timestamp(),
-		version=version+1 WHERE id=$1 AND state='running'`, attempt.TaskID, result)
+	// Fenced on the state the check was made against, and checked: a task
+	// that moved under the receipt is a conflict, not a silent no-op with an
+	// audit record claiming the move happened.
+	tag, err := tx.Exec(ctx, `UPDATE tasks SET state=$2, ended_at=clock_timestamp(),
+		version=version+1 WHERE id=$1 AND state=$3`, attempt.TaskID, result, taskState)
 	if err != nil {
 		return fmt.Errorf("%w: terminal task state: %v", ErrUnavailable, err)
 	}
+	if tag.RowsAffected() != 1 {
+		return fmt.Errorf("%w: task moved under the terminal receipt", ErrConflict)
+	}
 	if err := appendAudit(ctx, tx, agent.Principal, "task.attempt.finished", "task",
-		attempt.TaskID, "ok", "running", result, attempt.RunID,
+		attempt.TaskID, "ok", taskState, result, attempt.RunID,
 		map[string]any{"attempt_id": receipt.AttemptID, "evidence_complete": receipt.EvidenceComplete,
 			"final_log_sequence": receipt.FinalLogSequence}); err != nil {
 		return fmt.Errorf("%w: terminal audit: %v", ErrUnavailable, err)

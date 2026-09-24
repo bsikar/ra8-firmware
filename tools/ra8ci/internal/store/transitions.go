@@ -145,6 +145,11 @@ func TerminalTaskState(state string) bool { return taskMachine.terminal(state) }
 // TerminalRunState reports whether a run has already been closed.
 func TerminalRunState(state string) bool { return runMachine.terminal(state) }
 
+// RunStartable reports whether a run in this state still has to be started.
+// The agent dispatch candidate query takes queued and running runs alike, so
+// the write site needs the machine to say which of the two it is looking at.
+func RunStartable(state string) bool { return runMachine.allows(state, "running") }
+
 // AttemptReapable reports whether an attempt in this state is still a
 // candidate for fencing. The reaper's candidate set is not a list it keeps of
 // its own: it is exactly the states from which the machine allows an attempt
