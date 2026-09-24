@@ -528,6 +528,12 @@ func persistBoardTransition(ctx context.Context, tx pgx.Tx, before, after board.
 	if err := projectBoard(ctx, tx, before, after, command, events); err != nil {
 		return err
 	}
+	// After the projection, because the sample references the lease row, and
+	// inside this transaction, because a handoff that ended must not leave
+	// the history describing it to a later pass that may never run.
+	if err := recordYieldSample(ctx, tx, before, events); err != nil {
+		return err
+	}
 	var seq int64
 	if err := tx.QueryRow(ctx, "SELECT COALESCE(MAX(event_seq),0) FROM board_events WHERE board_id=$1", after.BoardID).Scan(&seq); err != nil {
 		return fmt.Errorf("%w: board event sequence: %v", ErrUnavailable, err)
