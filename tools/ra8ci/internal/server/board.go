@@ -2,9 +2,7 @@ package server
 
 import (
 	"context"
-	"crypto/sha256"
 	"crypto/tls"
-	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"io"
@@ -98,12 +96,7 @@ func (h *boardHTTP) authorize(w http.ResponseWriter, r *http.Request, action str
 	if err == nil {
 		return actor, true
 	}
-	peer := "unverified-peer"
-	if r.TLS != nil && len(r.TLS.PeerCertificates) > 0 && r.TLS.PeerCertificates[0] != nil {
-		sum := sha256.Sum256(r.TLS.PeerCertificates[0].Raw)
-		peer = "certificate-sha256:" + hex.EncodeToString(sum[:])
-	}
-	if auditErr := h.store.AuditDenied(r.Context(), peer, action, id); auditErr != nil {
+	if auditErr := h.store.AuditDenied(r.Context(), certificateActor(r), action, id); auditErr != nil {
 		problem(w, http.StatusServiceUnavailable, "unavailable", "authorization audit unavailable", true)
 		return store.BoardActor{}, false
 	}
