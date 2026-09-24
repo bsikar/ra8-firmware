@@ -171,7 +171,12 @@ func runLocalTask(ctx context.Context, args []string) int {
 	if !ok {
 		return usageError("unknown task " + args[0])
 	}
-	if err := task.ValidateArguments(args[1:]); err != nil {
+	values, err := taskArgumentValues(task, args[1:])
+	if err != nil {
+		return usageError(err.Error())
+	}
+	bound, err := task.BindArguments(values)
+	if err != nil {
 		return usageError(err.Error())
 	}
 	if !task.IsSafeLocal() {
@@ -193,7 +198,7 @@ func runLocalTask(ctx context.Context, args []string) int {
 		return 1
 	}
 	metadata := spool.Metadata{Tier: task.Tier, Scope: task.Scope,
-		DeadlineSeconds: task.DeadlineSeconds, Args: append([]string(nil), args[1:]...)}
+		DeadlineSeconds: task.DeadlineSeconds, Args: append([]string(nil), bound...)}
 	metadata.Source, err = localSourceIdentity(ctx, root)
 	var started spool.Entry
 	if err != nil {
@@ -206,7 +211,7 @@ func runLocalTask(ctx context.Context, args []string) int {
 		fmt.Fprintln(os.Stderr, "ra8ci:", err)
 		return 1
 	}
-	result, err := executor.Run(ctx, root, task, os.Stdout, os.Stderr)
+	result, err := executor.RunWithArguments(ctx, root, task, values, os.Stdout, os.Stderr)
 	finished, recordErr := localSpool.Finish(started, result, err)
 	if recordErr != nil {
 		fmt.Fprintln(os.Stderr, "ra8ci: unable to persist local result:", recordErr)
