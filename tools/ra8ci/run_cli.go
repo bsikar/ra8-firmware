@@ -82,15 +82,23 @@ func showRunLogs(ctx context.Context, args []string) error {
 	}
 }
 
+// submitUsage is the one place the submit grammar is stated. Arguments follow
+// the task they belong to, so several parameterised tasks fit in one run.
+const submitUsage = "usage: ra8ci run submit --idempotency-key KEY TASK [NAME=VALUE...] [TASK [NAME=VALUE...]]..."
+
 func submitRun(ctx context.Context, args []string) error {
 	flags := flag.NewFlagSet("run submit", flag.ContinueOnError)
 	flags.SetOutput(io.Discard)
 	key := flags.String("idempotency-key", "", "stable caller-generated retry key")
 	if err := flags.Parse(args); err != nil {
-		return fmt.Errorf("usage: ra8ci run submit --idempotency-key KEY TASK [TASK...]: %w", err)
+		return fmt.Errorf("%s: %w", submitUsage, err)
 	}
-	if *key == "" || flags.NArg() == 0 || flags.NArg() > 100 {
-		return errors.New("usage: ra8ci run submit --idempotency-key KEY TASK [TASK...]")
+	if *key == "" || flags.NArg() == 0 {
+		return errors.New(submitUsage)
+	}
+	submitted, err := splitSubmitTasks(flags.Args())
+	if err != nil {
+		return fmt.Errorf("%s: %w", submitUsage, err)
 	}
 	root, err := findCheckout()
 	if err != nil {
@@ -109,25 +117,34 @@ func submitRun(ctx context.Context, args []string) error {
 	if err != nil {
 		return err
 	}
-	seen := make(map[string]bool, flags.NArg())
-	tasks := make([]runclient.Task, 0, flags.NArg())
-	for index, name := range flags.Args() {
-		definition, found := definitions.Task(name)
+	seen := make(map[string]bool, len(submitted))
+	tasks := make([]runclient.Task, 0, len(submitted))
+	for index, entry := range submitted {
+		definition, found := definitions.Task(entry.Name)
 		if !found {
-			return fmt.Errorf("unknown task %q", name)
+			return fmt.Errorf("unknown task %q", entry.Name)
 		}
-		if err := definition.ValidateArguments(nil); err != nil {
-			return fmt.Errorf("task %q requires arguments not supported by run submit: %w", name, err)
+		values, err := taskArgumentValues(definition, entry.Words)
+		if err != nil {
+			return fmt.Errorf("task %q: %w", entry.Name, err)
+		}
+		// Bind here as well as at the plane. The plane binds argv itself and
+		// is the enforcing side, but a missing positional or an undeclared
+		// name is a typing mistake, and it reads better as a local refusal
+		// naming the argument than as an invalid_argument from the API.
+		if _, err := definition.BindArguments(values); err != nil {
+			return fmt.Errorf("task %q: %w (accepts %s)", entry.Name, err, argumentUsage(definition))
 		}
 		if definition.Scope != "safe-local-read-only" || definition.BoardPolicy != "none" {
-			return fmt.Errorf("task %q is not eligible for remote dispatch", name)
+			return fmt.Errorf("task %q is not eligible for remote dispatch", entry.Name)
 		}
-		if seen[name] {
-			return fmt.Errorf("task %q appears more than once", name)
+		identity := submissionIdentity(entry.Name, values)
+		if seen[identity] {
+			return fmt.Errorf("task %q appears more than once with the same arguments", entry.Name)
 		}
-		seen[name] = true
-		tasks = append(tasks, runclient.Task{Key: fmt.Sprintf("task-%03d", index+1), Name: name,
-			Args: []string{}, DependsOnKeys: []string{}})
+		seen[identity] = true
+		tasks = append(tasks, runclient.Task{Key: fmt.Sprintf("task-%03d", index+1), Name: entry.Name,
+			Args: []string{}, Values: values, DependsOnKeys: []string{}})
 	}
 	repository := os.Getenv("RA8CI_REPOSITORY")
 	if repository == "" {
