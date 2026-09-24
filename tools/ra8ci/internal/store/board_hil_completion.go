@@ -210,6 +210,11 @@ func (s *Store) CompleteBoardHILAttempt(ctx context.Context, actor BoardActor,
 	if err := tx.QueryRow(ctx, "SELECT state,version FROM task_attempts WHERE id=$1 FOR UPDATE", in.AttemptID).Scan(&currentState, &version); err != nil || currentState != "running" {
 		return fmt.Errorf("%w: HIL attempt is no longer running", ErrConflict)
 	}
+	// Running is necessary but not sufficient: the result the board reports
+	// still has to be an edge the attempt machine has.
+	if err := CheckAttemptTransition(currentState, in.Result); err != nil {
+		return err
+	}
 	for ordinal, step := range in.Steps {
 		phase := "execute"
 		if step.Key == definition.HIL.ObservationStep {
@@ -235,14 +240,21 @@ func (s *Store) CompleteBoardHILAttempt(ctx context.Context, actor BoardActor,
 		return fmt.Errorf("%w: HIL task is no longer running", ErrConflict)
 	}
 	taskResult := taskResultForHIL(in, runCancelled)
+	// The cooperative yield is the backwards edge the task machine carries on
+	// purpose (running -> scheduled); everything else is an outcome state.
+	// Either way the edge is checked before the write, and the writes are
+	// fenced on the state that was checked.
+	if err := CheckTaskTransition(taskState, taskResult); err != nil {
+		return err
+	}
 	requeue := taskResult == "scheduled"
 	if requeue {
 		if _, err := tx.Exec(ctx, `UPDATE tasks SET state='scheduled',started_at=NULL,ended_at=NULL,
-			enqueued_at=clock_timestamp(),version=version+1 WHERE id=$1 AND state='running'`, taskID); err != nil {
+			enqueued_at=clock_timestamp(),version=version+1 WHERE id=$1 AND state=$2`, taskID, taskState); err != nil {
 			return fmt.Errorf("%w: requeue preempted HIL task: %v", ErrUnavailable, err)
 		}
 	} else {
-		if _, err := tx.Exec(ctx, "UPDATE tasks SET state=$2,ended_at=clock_timestamp(),version=version+1 WHERE id=$1 AND state='running'", taskID, taskResult); err != nil {
+		if _, err := tx.Exec(ctx, "UPDATE tasks SET state=$2,ended_at=clock_timestamp(),version=version+1 WHERE id=$1 AND state=$3", taskID, taskResult, taskState); err != nil {
 			return fmt.Errorf("%w: finish HIL task: %v", ErrUnavailable, err)
 		}
 	}
