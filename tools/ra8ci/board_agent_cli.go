@@ -21,17 +21,17 @@ func runBoardAgent(ctx context.Context) error {
 	if runtime.GOOS != "linux" {
 		return errors.New("board-agent service mode is supported only on Linux")
 	}
-	boardID := os.Getenv("RA8CI_BOARD_ID")
-	stateFile := os.Getenv("RA8CI_BOARD_STATE_FILE")
-	config := boardclient.Config{
-		ServerURL: os.Getenv("RA8CI_SERVER_URL"),
-		CAFile:    os.Getenv("RA8CI_SERVER_CA"),
-		CertFile:  os.Getenv("RA8CI_BOARD_AGENT_CERT"),
-		KeyFile:   os.Getenv("RA8CI_BOARD_AGENT_KEY"),
+	endpoint, err := resolveClientEndpoint("ra8ci board-agent", roleBoardAgent, os.Getenv, envBoardID, envBoardStateFile)
+	if err != nil {
+		return err
 	}
-	if boardID == "" || stateFile == "" || config.ServerURL == "" || config.CAFile == "" ||
-		config.CertFile == "" || config.KeyFile == "" {
-		return errors.New("board-agent requires RA8CI_BOARD_ID, RA8CI_BOARD_STATE_FILE, RA8CI_SERVER_URL, RA8CI_SERVER_CA, RA8CI_BOARD_AGENT_CERT, and RA8CI_BOARD_AGENT_KEY")
+	boardID := os.Getenv(envBoardID)
+	stateFile := os.Getenv(envBoardStateFile)
+	config := boardclient.Config{
+		ServerURL: endpoint.ServerURL,
+		CAFile:    endpoint.CAFile,
+		CertFile:  endpoint.CertFile,
+		KeyFile:   endpoint.KeyFile,
 	}
 	interval := time.Second
 	if value := os.Getenv("RA8CI_BOARD_AGENT_POLL_INTERVAL"); value != "" {
