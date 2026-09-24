@@ -36,6 +36,12 @@ type fakePlane struct {
 	receipt    *protocol.TerminalReceipt
 	cancel     bool
 	violations []string
+	// atReceipt is asked, at the moment the terminal receipt arrives,
+	// whether the world outside the protocol is already in the state the
+	// receipt claims. It answers "" when it is, and a violation otherwise.
+	// Ordering assertions that need a real clock live here rather than
+	// after the run, where a dead process proves nothing about when it died.
+	atReceipt func() string
 }
 
 func newFakePlane(assignment protocol.Assignment) *fakePlane {
@@ -47,6 +53,15 @@ func (plane *fakePlane) cancelNextHeartbeat() {
 	plane.mu.Lock()
 	defer plane.mu.Unlock()
 	plane.cancel = true
+}
+
+// acknowledge stands in for the ack a full walk performs. A test driving one
+// phase on its own uses it so the plane still refuses evidence outside a
+// grant it never acknowledged for every other test.
+func (plane *fakePlane) acknowledge() {
+	plane.mu.Lock()
+	defer plane.mu.Unlock()
+	plane.acked = true
 }
 
 func (plane *fakePlane) violate(format string, args ...any) {
@@ -273,6 +288,13 @@ func (plane *fakePlane) result(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusConflict)
 		return
 	}
+	if plane.atReceipt != nil {
+		if note := plane.atReceipt(); note != "" {
+			plane.violate("%s", note)
+			w.WriteHeader(http.StatusConflict)
+			return
+		}
+	}
 	if held := len(plane.logs); int64(held) != receipt.FinalLogSequence {
 		plane.violate("receipt claims final log sequence %d, plane holds %d chunks",
 			receipt.FinalLogSequence, held)
@@ -281,6 +303,21 @@ func (plane *fakePlane) result(w http.ResponseWriter, r *http.Request) {
 	}
 	plane.receipt = &receipt
 	plane.accept(w)
+}
+
+// artifacts reports what the plane holds about produced files, so a test can
+// assert an attempt spent no upload at all.
+func (plane *fakePlane) artifacts() (chunks, manifests int) {
+	plane.mu.Lock()
+	defer plane.mu.Unlock()
+	return len(plane.chunks), len(plane.manifests)
+}
+
+// beats reports how many heartbeats arrived.
+func (plane *fakePlane) beats() int {
+	plane.mu.Lock()
+	defer plane.mu.Unlock()
+	return plane.heartbeats
 }
 
 // state is a snapshot a test can assert against without racing the handler.

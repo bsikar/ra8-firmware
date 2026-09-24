@@ -62,8 +62,20 @@ type Agent struct {
 	base     string
 	root     string
 	pollWait time.Duration
+	beat     time.Duration
 	client   *http.Client
 	catalog  *catalog.Catalog
+}
+
+// beatInterval is the period between heartbeats. Zero means the reviewed
+// heartbeatInterval, so every agent New builds beats at that rate; the field
+// exists because the plane's cancellation only reaches a running attempt on a
+// heartbeat, and a test cannot wait five seconds to observe the teardown.
+func (agent *Agent) beatInterval() time.Duration {
+	if agent.beat > 0 {
+		return agent.beat
+	}
+	return heartbeatInterval
 }
 
 // New constructs an outbound-only client with TLS 1.3 mutual authentication.
@@ -315,7 +327,7 @@ func (agent *Agent) accept(ctx context.Context, assignment protocol.Assignment, 
 }
 
 func (agent *Agent) heartbeat(ctx context.Context, assignment protocol.Assignment, cancel context.CancelFunc) error {
-	ticker := time.NewTicker(heartbeatInterval)
+	ticker := time.NewTicker(agent.beatInterval())
 	defer ticker.Stop()
 	for {
 		select {
