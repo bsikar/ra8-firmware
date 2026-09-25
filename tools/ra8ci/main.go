@@ -54,7 +54,7 @@ func main() {
 
 func run(ctx context.Context, args []string) int {
 	if len(args) == 0 {
-		fmt.Fprintln(os.Stderr, "usage: ra8ci <task>|tasks [--digest|--json]|ascii [--check] [--all|PATH]|since [--all|FILE...]|final-newline [FILE...]|runner-clock [--repo OWNER/REPO] [--runs N] [--hours N]|tests-readme [--selftest]|inclusive-terminology-commits [--selftest]|server|agent|sync|backup refresh|keygen|board status|take [--class human|ci|agent]|checkpoint|extend|cancel|hil budget|verify-capture|db migrate|report slow|github check|github shadow|run submit|run status")
+		fmt.Fprintln(os.Stderr, "usage: ra8ci <task>|tasks [--digest|--json]|ascii [--check] [--all|PATH]|since [--all|FILE...]|final-newline [FILE...]|runner-clock [--repo OWNER/REPO] [--runs N] [--hours N]|tests-readme [--selftest]|inclusive-terminology-commits [--selftest]|server|agent|sync|backup refresh|keygen|board status|take [--class human|ci|agent]|checkpoint|extend|cancel|hil budget|verify-capture|db migrate|report slow|github check|github shadow|github shadow-compare|run submit|run status")
 		return 2
 	}
 	var err error
@@ -511,16 +511,121 @@ func runAgent(ctx context.Context) error {
 // changes anything on GitHub.
 func githubCommand(ctx context.Context, args []string) error {
 	if len(args) != 1 {
-		return errors.New("usage: ra8ci github check|shadow")
+		return errors.New("usage: ra8ci github check|shadow|shadow-compare")
 	}
 	switch args[0] {
 	case "check":
 		return githubSessionCheck(ctx)
 	case "shadow":
 		return githubShadowConfig(os.Stdout)
+	case "shadow-compare":
+		return githubShadowCompare(os.Stdin, os.Stdout)
 	default:
-		return errors.New("usage: ra8ci github check|shadow")
+		return errors.New("usage: ra8ci github check|shadow|shadow-compare")
 	}
+}
+
+// maxShadowComparisonBytes bounds the observation document this reads. One
+// commit's outcomes across the whole catalog are a few kilobytes, so this is
+// room to spare and still a refusal rather than an unbounded read of whatever
+// is piped in.
+const maxShadowComparisonBytes = 256 << 10
+
+// shadowComparisonInput is the wire shape this command reads. The field names
+// are declared here rather than as tags on PlaneOutcome and ActionsOutcome,
+// because a wire contract on those types would outlive this command and they
+// were written as in-process values.
+type shadowComparisonInput struct {
+	Plane []struct {
+		Task     string `json:"task"`
+		HeadSHA  string `json:"head_sha"`
+		Observed string `json:"observed"`
+	} `json:"plane"`
+	Actions []struct {
+		Job        string `json:"job"`
+		HeadSHA    string `json:"head_sha"`
+		Conclusion string `json:"conclusion"`
+	} `json:"actions"`
+}
+
+// githubShadowCompare grades one commit's shadow run against Actions and
+// renders the page the required-check decision is read from.
+//
+// The two sides are read from a document rather than fetched, for the same
+// reason the correspondence is the caller's statement: which job covers which
+// task is a claim somebody makes, and a command that went and collected both
+// sides itself would be making that claim silently.
+func githubShadowCompare(in io.Reader, out io.Writer) error {
+	loaded, err := catalog.Load()
+	if err != nil {
+		return fmt.Errorf("load task catalog: %w", err)
+	}
+	config, enabled, err := github.LoadCheckRunConfigFromEnv(loaded.Names())
+	if err != nil {
+		return err
+	}
+	if !enabled {
+		return fmt.Errorf("GitHub check-run publishing is not configured: set %s",
+			github.EnvShadowCorrespondenceFile)
+	}
+
+	var document shadowComparisonInput
+	decoder := json.NewDecoder(io.LimitReader(in, maxShadowComparisonBytes+1))
+	decoder.DisallowUnknownFields()
+	if err := decoder.Decode(&document); err != nil {
+		return fmt.Errorf("read shadow observations: %w", err)
+	}
+	// Anything after the object is a second document, which means the
+	// input is not the one commit it is read as.
+	if decoder.More() {
+		return errors.New("read shadow observations: trailing content after the document")
+	}
+	if decoder.InputOffset() > maxShadowComparisonBytes {
+		return fmt.Errorf("read shadow observations: larger than %d bytes", maxShadowComparisonBytes)
+	}
+
+	plane := make([]github.PlaneOutcome, 0, len(document.Plane))
+	for _, outcome := range document.Plane {
+		plane = append(plane, github.PlaneOutcome{
+			Task: outcome.Task, HeadSHA: outcome.HeadSHA, Observed: outcome.Observed,
+		})
+	}
+	actions := make([]github.ActionsOutcome, 0, len(document.Actions))
+	for _, outcome := range document.Actions {
+		actions = append(actions, github.ActionsOutcome{
+			Job: outcome.Job, HeadSHA: outcome.HeadSHA, Conclusion: outcome.Conclusion,
+		})
+	}
+
+	collection, err := config.Correspondence.Collect(plane, actions)
+	if err != nil {
+		return fmt.Errorf("collect shadow observations: %w", err)
+	}
+	report, err := github.CompareShadowRun(collection.Observations)
+	if err != nil {
+		return fmt.Errorf("compare shadow run: %w", err)
+	}
+	if err := github.RenderShadowReport(out, report); err != nil {
+		return fmt.Errorf("render shadow comparison: %w", err)
+	}
+	// The tasks this commit did not exercise are named after the page
+	// rather than folded into it. A task selection that skipped them is a
+	// normal commit, not a gap in the evidence, so they are not pairings
+	// and must not read as any.
+	if len(collection.NotRun) > 0 {
+		if _, err := fmt.Fprintf(out, "\nnot exercised on this commit: %s\n",
+			strings.Join(collection.NotRun, ", ")); err != nil {
+			return fmt.Errorf("render shadow comparison: %w", err)
+		}
+	}
+	// The verdict is the exit status, and the page is written first. A
+	// caller that reads only the status must not be able to get a clean
+	// one from a report nobody could read.
+	if !report.Clean() {
+		return fmt.Errorf("shadow comparison is not clean: %d conflicting, %d indeterminate",
+			report.Conflicting, report.Indeterminate)
+	}
+	return nil
 }
 
 // githubShadowConfig reports the check-run configuration this process would

@@ -410,3 +410,146 @@ func sortedStrings(values []string) bool {
 	}
 	return true
 }
+
+// shadowCompareEnv configures a correspondence covering one real task and
+// returns that task name.
+func shadowCompareEnv(t *testing.T, job string) string {
+	t.Helper()
+	task := firstCatalogTask(t)
+	t.Setenv(github.EnvCheckRunMode, "shadow")
+	t.Setenv(github.EnvShadowCorrespondenceFile, writeCorrespondence(t, `{"`+task+`":"`+job+`"}`))
+	return task
+}
+
+const shadowCompareHead = "0123456789abcdef0123456789abcdef01234567"
+
+func TestShadowCompareRendersAndPassesOnAgreement(t *testing.T) {
+	task := shadowCompareEnv(t, "build")
+	input := `{"plane":[{"task":"` + task + `","head_sha":"` + shadowCompareHead + `","observed":"success"}],` +
+		`"actions":[{"job":"build","head_sha":"` + shadowCompareHead + `","conclusion":"success"}]}`
+
+	var out bytes.Buffer
+	if err := githubShadowCompare(strings.NewReader(input), &out); err != nil {
+		t.Fatalf("agreeing comparison refused: %v", err)
+	}
+	page := out.String()
+	if !strings.Contains(page, shadowCompareHead) || !strings.Contains(page, task) {
+		t.Fatalf("page does not carry the commit and the task: %q", page)
+	}
+}
+
+// A report that is not clean still renders, and the refusal comes after the
+// page. A caller reading only the exit status must not be able to get a clean
+// one from a report nobody could read.
+func TestShadowCompareRendersBeforeReportingAnUncleanVerdict(t *testing.T) {
+	task := shadowCompareEnv(t, "build")
+	cases := map[string]string{
+		"conflicting":   `"success"`,
+		"indeterminate": `""`,
+	}
+	for name, conclusion := range cases {
+		t.Run(name, func(t *testing.T) {
+			input := `{"plane":[{"task":"` + task + `","head_sha":"` + shadowCompareHead + `","observed":"failure"}],` +
+				`"actions":[{"job":"build","head_sha":"` + shadowCompareHead + `","conclusion":` + conclusion + `}]}`
+			var out bytes.Buffer
+			err := githubShadowCompare(strings.NewReader(input), &out)
+			if err == nil || !strings.Contains(err.Error(), "not clean") {
+				t.Fatalf("unclean comparison reported as clean: %v", err)
+			}
+			if !strings.Contains(out.String(), shadowCompareHead) {
+				t.Fatalf("unclean comparison rendered nothing: %q", out.String())
+			}
+		})
+	}
+}
+
+// A task the plane did not report is named after the page, never as a pairing.
+// A selection that skipped it is a normal commit, not a gap in the evidence.
+func TestShadowCompareNamesTheTasksThisCommitDidNotExercise(t *testing.T) {
+	task := firstCatalogTask(t)
+	loaded, err := catalog.Load()
+	if err != nil {
+		t.Fatalf("load catalog: %v", err)
+	}
+	names := loaded.Names()
+	if len(names) < 2 {
+		t.Skip("catalog carries fewer than two tasks")
+	}
+	other := names[1]
+	t.Setenv(github.EnvCheckRunMode, "shadow")
+	t.Setenv(github.EnvShadowCorrespondenceFile,
+		writeCorrespondence(t, `{"`+task+`":"build","`+other+`":"test"}`))
+
+	input := `{"plane":[{"task":"` + task + `","head_sha":"` + shadowCompareHead + `","observed":"success"}],` +
+		`"actions":[{"job":"build","head_sha":"` + shadowCompareHead + `","conclusion":"success"}]}`
+	var out bytes.Buffer
+	if err := githubShadowCompare(strings.NewReader(input), &out); err != nil {
+		t.Fatalf("comparison refused: %v", err)
+	}
+	page := out.String()
+	if !strings.Contains(page, "not exercised on this commit: "+other) {
+		t.Fatalf("unexercised task not named: %q", page)
+	}
+	if strings.Count(page, other) != 1 {
+		t.Fatalf("unexercised task appears as a pairing: %q", page)
+	}
+}
+
+func TestShadowCompareRefusesInputItCannotReadAsOneCommit(t *testing.T) {
+	task := shadowCompareEnv(t, "build")
+	pair := `{"task":"` + task + `","head_sha":"` + shadowCompareHead + `","observed":"success"}`
+	other := "89abcdef0123456789abcdef0123456789abcdef"
+	cases := map[string]string{
+		"not an object":      `[` + pair + `]`,
+		"unknown field":      `{"plane":[` + pair + `],"runs":[]}`,
+		"trailing document":  `{"plane":[` + pair + `]}{"plane":[]}`,
+		"no plane outcomes":  `{"plane":[],"actions":[]}`,
+		"uncovered task":     `{"plane":[{"task":"no-such-reviewed-task","head_sha":"` + shadowCompareHead + `","observed":"success"}]}`,
+		"two commits":        `{"plane":[` + pair + `],"actions":[{"job":"build","head_sha":"` + other + `","conclusion":"success"}]}`,
+		"unknown conclusion": `{"plane":[{"task":"` + task + `","head_sha":"` + shadowCompareHead + `","observed":"melted"}]}`,
+	}
+	for name, input := range cases {
+		t.Run(name, func(t *testing.T) {
+			var out bytes.Buffer
+			if err := githubShadowCompare(strings.NewReader(input), &out); err == nil {
+				t.Fatalf("unreadable input accepted, wrote %q", out.String())
+			}
+		})
+	}
+}
+
+func TestShadowCompareRefusesWhenCheckRunPublishingIsNotConfigured(t *testing.T) {
+	t.Setenv(github.EnvCheckRunMode, "")
+	os.Unsetenv(github.EnvCheckRunMode)
+	t.Setenv(github.EnvShadowCorrespondenceFile, "")
+	os.Unsetenv(github.EnvShadowCorrespondenceFile)
+
+	var out bytes.Buffer
+	err := githubShadowCompare(strings.NewReader(`{"plane":[]}`), &out)
+	if err == nil || !strings.Contains(err.Error(), "not configured") {
+		t.Fatalf("unconfigured comparison accepted: %v", err)
+	}
+	if out.Len() != 0 {
+		t.Fatalf("refused comparison wrote output: %q", out.String())
+	}
+}
+
+// The comparison is graded on what the plane observed, never on the mode it
+// publishes under: an authoritative deployment grades the same evidence.
+func TestShadowCompareGradesTheSameEvidenceInEitherMode(t *testing.T) {
+	task := shadowCompareEnv(t, "build")
+	input := `{"plane":[{"task":"` + task + `","head_sha":"` + shadowCompareHead + `","observed":"success"}],` +
+		`"actions":[{"job":"build","head_sha":"` + shadowCompareHead + `","conclusion":"success"}]}`
+	var shadow bytes.Buffer
+	if err := githubShadowCompare(strings.NewReader(input), &shadow); err != nil {
+		t.Fatalf("shadow comparison refused: %v", err)
+	}
+	t.Setenv(github.EnvCheckRunMode, "authoritative")
+	var authoritative bytes.Buffer
+	if err := githubShadowCompare(strings.NewReader(input), &authoritative); err != nil {
+		t.Fatalf("authoritative comparison refused: %v", err)
+	}
+	if shadow.String() != authoritative.String() {
+		t.Fatalf("mode changed the graded page:\n%q\n%q", shadow.String(), authoritative.String())
+	}
+}
