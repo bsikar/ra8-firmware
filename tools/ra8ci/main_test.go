@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -551,5 +552,185 @@ func TestShadowCompareGradesTheSameEvidenceInEitherMode(t *testing.T) {
 	}
 	if shadow.String() != authoritative.String() {
 		t.Fatalf("mode changed the graded page:\n%q\n%q", shadow.String(), authoritative.String())
+	}
+}
+
+// publishCheckRunEnv configures a complete publishing environment covering one
+// real catalog task, and returns that task name. The private key file does not
+// exist: every test using this stops before a publisher is built, which is
+// itself the pin that refusals come first.
+func publishCheckRunEnv(t *testing.T) string {
+	t.Helper()
+	task := shadowCompareEnv(t, "build")
+	t.Setenv(github.EnvCheckRunRepository, "ra8-firmware")
+	t.Setenv(github.EnvAppClientID, "Iv1.0123456789abcdef")
+	t.Setenv(github.EnvInstallationID, "94213")
+	t.Setenv(github.EnvPrivateKeyFile, filepath.Join(t.TempDir(), "absent.pem"))
+	t.Setenv(github.EnvOwner, "bsikar")
+	return task
+}
+
+// planCheckRunsInput builds a one-task document for the planner.
+func planCheckRunsInput(task, state, summary string) checkRunPublishInput {
+	document := checkRunPublishInput{HeadSHA: shadowCompareHead}
+	document.Runs = append(document.Runs, struct {
+		Task    string `json:"task"`
+		State   string `json:"state"`
+		Summary string `json:"summary"`
+	}{Task: task, State: state, Summary: summary})
+	return document
+}
+
+func TestPublishCheckRunNeedsBothHalvesOfTheConfiguration(t *testing.T) {
+	task := firstCatalogTask(t)
+	t.Run("no correspondence", func(t *testing.T) {
+		for _, name := range []string{github.EnvShadowCorrespondenceFile, github.EnvCheckRunMode, github.EnvCheckRunRepository} {
+			t.Setenv(name, "")
+			os.Unsetenv(name)
+		}
+		err := githubPublishCheckRuns(context.Background(), strings.NewReader("{}"), io.Discard)
+		if err == nil || !strings.Contains(err.Error(), github.EnvShadowCorrespondenceFile) {
+			t.Fatalf("error %v, want one naming %s", err, github.EnvShadowCorrespondenceFile)
+		}
+	})
+	t.Run("no repository", func(t *testing.T) {
+		t.Setenv(github.EnvCheckRunMode, "shadow")
+		t.Setenv(github.EnvShadowCorrespondenceFile, writeCorrespondence(t, `{"`+task+`":"build"}`))
+		t.Setenv(github.EnvCheckRunRepository, "")
+		os.Unsetenv(github.EnvCheckRunRepository)
+
+		err := githubPublishCheckRuns(context.Background(), strings.NewReader("{}"), io.Discard)
+		if err == nil || !strings.Contains(err.Error(), github.EnvCheckRunRepository) {
+			t.Fatalf("error %v, want one naming %s", err, github.EnvCheckRunRepository)
+		}
+	})
+}
+
+// A shadow deployment posts runs that cannot hold a pull request, and the
+// observed conclusion still travels so the comparison can be made.
+func TestPlannedRunsCarryTheDeploymentsMode(t *testing.T) {
+	task := firstCatalogTask(t)
+	correspondence, err := github.NewShadowCorrespondence(map[string]string{task: "build"}, []string{task})
+	if err != nil {
+		t.Fatalf("correspondence: %v", err)
+	}
+	document := planCheckRunsInput(task, "failed", "")
+
+	shadow, err := planCheckRuns(github.ModeShadow, correspondence, document)
+	if err != nil {
+		t.Fatalf("plan shadow: %v", err)
+	}
+	if shadow[0].Run.Blocking() {
+		t.Fatalf("a shadow run would hold a pull request: %+v", shadow[0].Run)
+	}
+	if shadow[0].Run.Observed != "failure" {
+		t.Fatalf("observed %q, want failure", shadow[0].Run.Observed)
+	}
+
+	authoritative, err := planCheckRuns(github.ModeAuthoritative, correspondence, document)
+	if err != nil {
+		t.Fatalf("plan authoritative: %v", err)
+	}
+	if !authoritative[0].Run.Blocking() {
+		t.Fatalf("an authoritative failure would not hold a pull request: %+v", authoritative[0].Run)
+	}
+	if shadow[0].Run.Name == authoritative[0].Run.Name {
+		t.Fatalf("both modes published under one name: %q", shadow[0].Run.Name)
+	}
+}
+
+// A blank summary publishes a check run a reviewer cannot act on, and a
+// summary the caller wrote is theirs.
+func TestPlannedSummaryFallsBackToTheFactsTheRunCarries(t *testing.T) {
+	task := firstCatalogTask(t)
+	correspondence, err := github.NewShadowCorrespondence(map[string]string{task: "build"}, []string{task})
+	if err != nil {
+		t.Fatalf("correspondence: %v", err)
+	}
+
+	planned, err := planCheckRuns(github.ModeShadow, correspondence, planCheckRunsInput(task, "succeeded", "  "))
+	if err != nil {
+		t.Fatalf("plan: %v", err)
+	}
+	for _, want := range []string{task, "success", shadowCompareHead} {
+		if !strings.Contains(planned[0].Summary, want) {
+			t.Fatalf("composed summary %q does not carry %q", planned[0].Summary, want)
+		}
+	}
+
+	planned, err = planCheckRuns(github.ModeShadow, correspondence, planCheckRunsInput(task, "succeeded", "ran on the bench"))
+	if err != nil {
+		t.Fatalf("plan: %v", err)
+	}
+	if planned[0].Summary != "ran on the bench" {
+		t.Fatalf("summary %q, want the one the caller wrote", planned[0].Summary)
+	}
+}
+
+// A check run cannot be taken back once GitHub has it, so a document with a
+// bad outcome anywhere in it is refused whole.
+func TestPlanRefusesTheWholeDocumentRatherThanPostingPartOfIt(t *testing.T) {
+	task := firstCatalogTask(t)
+	correspondence, err := github.NewShadowCorrespondence(map[string]string{task: "build"}, []string{task})
+	if err != nil {
+		t.Fatalf("correspondence: %v", err)
+	}
+	good := planCheckRunsInput(task, "succeeded", "").Runs[0]
+
+	cases := map[string]checkRunPublishInput{
+		"no outcomes":    {HeadSHA: shadowCompareHead},
+		"uncovered task": planCheckRunsInput("a-task-no-correspondence-covers", "succeeded", ""),
+		"unknown state":  planCheckRunsInput(task, "exploded", ""),
+		"unfinished":     planCheckRunsInput(task, "running", ""),
+		"short sha": {HeadSHA: "0123456", Runs: []struct {
+			Task    string `json:"task"`
+			State   string `json:"state"`
+			Summary string `json:"summary"`
+		}{good}},
+		"task twice": {HeadSHA: shadowCompareHead, Runs: []struct {
+			Task    string `json:"task"`
+			State   string `json:"state"`
+			Summary string `json:"summary"`
+		}{good, good}},
+	}
+	for name, document := range cases {
+		t.Run(name, func(t *testing.T) {
+			planned, err := planCheckRuns(github.ModeShadow, correspondence, document)
+			if err == nil {
+				t.Fatalf("accepted %d runs", len(planned))
+			}
+			if planned != nil {
+				t.Fatalf("a refused plan returned %d runs", len(planned))
+			}
+		})
+	}
+}
+
+// The document is read and planned before a publisher exists, so a bad
+// document is reported as a bad document rather than as a credential problem,
+// and nothing reaches GitHub.
+func TestPublishCheckRunRefusesTheDocumentBeforeBuildingAPublisher(t *testing.T) {
+	task := publishCheckRunEnv(t)
+	cases := map[string]string{
+		"not an object":     `[]`,
+		"unknown field":     `{"head_sha":"` + shadowCompareHead + `","commit":"x"}`,
+		"trailing document": `{"head_sha":"` + shadowCompareHead + `","runs":[{"task":"` + task + `","state":"succeeded"}]} {}`,
+		"no runs":           `{"head_sha":"` + shadowCompareHead + `"}`,
+		"uncovered task":    `{"head_sha":"` + shadowCompareHead + `","runs":[{"task":"not-a-covered-task","state":"succeeded"}]}`,
+	}
+	for name, input := range cases {
+		t.Run(name, func(t *testing.T) {
+			var out bytes.Buffer
+			err := githubPublishCheckRuns(context.Background(), strings.NewReader(input), &out)
+			if err == nil {
+				t.Fatal("a document that cannot be published was accepted")
+			}
+			if strings.Contains(err.Error(), "absent.pem") {
+				t.Fatalf("the key was opened before the document was judged: %v", err)
+			}
+			if out.Len() != 0 {
+				t.Fatalf("a refused publish wrote %q", out.String())
+			}
+		})
 	}
 }
