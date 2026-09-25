@@ -56,7 +56,13 @@ type TaskEvidence struct {
 	Task string
 	// Observed is how many accumulated commits paired this task at all.
 	Observed int
-	// Graded is Agreed + Divergent: the commits that produced a verdict.
+	// Graded is Agreed + Divergent + Conflicting: the commits that
+	// produced a verdict. A conflict is a verdict. It is the one that
+	// holds the required check where it is, and leaving it out of the
+	// count would say a task nobody could agree about had been graded
+	// on fewer commits than it was. Observed is Graded + Indeterminate:
+	// the pairings that produced no verdict are counted and named, not
+	// graded.
 	Graded int
 	// Agreed, Divergent, Conflicting and Indeterminate are the verdicts
 	// this task collected, in shadow_compare.go's vocabulary.
