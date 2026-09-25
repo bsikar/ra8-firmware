@@ -782,6 +782,16 @@ func reconcileCheckRunPlan(planned []plannedCheckRun, published github.Published
 			return nil, fmt.Errorf("reconcile %s: %w", plan.Task, err)
 		}
 		if verdict.Decision == github.PublishConflicts {
+			// The two conflicts send an operator to different places.
+			// A run this plane did not publish is a question about who
+			// holds a checks:write token on the repository, and saying
+			// only that the commit disagrees would have somebody go
+			// looking through this deployment's own history for a run
+			// that was never in it.
+			if len(verdict.Unclaimed) > 0 {
+				return nil, fmt.Errorf("task %s already has a check run on %s this plane did not publish: %s",
+					plan.Task, plan.Run.HeadSHA, describePublishedRuns(verdict.Unclaimed))
+			}
 			return nil, fmt.Errorf("task %s already has a check run on %s saying something else: %s",
 				plan.Task, plan.Run.HeadSHA, describePublishedRuns(verdict.Existing))
 		}

@@ -23,9 +23,26 @@ func intendedRun(t *testing.T, mode CheckRunMode, state string) TaskCheckRun {
 }
 
 func publishedAs(run TaskCheckRun, id int64, status, conclusion, title string) PublishedCheckRuns {
-	return PublishedCheckRuns{HeadSHA: run.HeadSHA, Runs: []PublishedCheckRun{{
-		ID: id, Name: run.Name, Mode: run.Mode, Status: status, Conclusion: conclusion, Title: title,
-	}}}
+	return PublishedCheckRuns{HeadSHA: run.HeadSHA, Runs: []PublishedCheckRun{ourRun(run, id, status, conclusion, title)}}
+}
+
+// ourRun renders one intended run as a run this plane already published,
+// carrying the external identifier the publisher posts. A listing built
+// without it is a listing of somebody else's runs, which is a different case
+// and has its own tests below.
+func ourRun(run TaskCheckRun, id int64, status, conclusion, title string) PublishedCheckRun {
+	identifier, _ := CheckRunExternalID(run)
+	return PublishedCheckRun{
+		ID: id, Name: run.Name, Mode: run.Mode,
+		Status: status, Conclusion: conclusion, Title: title, ExternalID: identifier,
+	}
+}
+
+// foreignRun renders a run left under one of our names by something else.
+func foreignRun(run TaskCheckRun, id int64, status, conclusion, title, identifier string) PublishedCheckRun {
+	published := ourRun(run, id, status, conclusion, title)
+	published.ExternalID = identifier
+	return published
 }
 
 // A commit carrying nothing under this name has not been published to, and
@@ -65,9 +82,7 @@ func TestARunAlreadyOnTheCommitIsNotPostedAgain(t *testing.T) {
 func TestTwoAgreeingRunsAreStillSettled(t *testing.T) {
 	run := intendedRun(t, ModeAuthoritative, "succeeded")
 	published := publishedAs(run, 5, "completed", run.Conclusion, run.Title)
-	published.Runs = append(published.Runs, PublishedCheckRun{
-		ID: 9, Name: run.Name, Mode: run.Mode, Status: "completed", Conclusion: run.Conclusion, Title: run.Title,
-	})
+	published.Runs = append(published.Runs, ourRun(run, 9, "completed", run.Conclusion, run.Title))
 	reconciled, err := ReconcilePublish(run, published)
 	if err != nil {
 		t.Fatalf("ReconcilePublish: %v", err)
@@ -109,9 +124,7 @@ func TestAnUnfinishedRunIsWaitedForRatherThanArguedWith(t *testing.T) {
 	run := intendedRun(t, ModeAuthoritative, "succeeded")
 	for _, status := range []string{"queued", "in_progress", "waiting", "pending"} {
 		published := publishedAs(run, 3, status, "", "")
-		published.Runs = append(published.Runs, PublishedCheckRun{
-			ID: 4, Name: run.Name, Mode: run.Mode, Status: "completed", Conclusion: "failure",
-		})
+		published.Runs = append(published.Runs, ourRun(run, 4, "completed", "failure", ""))
 		reconciled, err := ReconcilePublish(run, published)
 		if err != nil {
 			t.Fatalf("ReconcilePublish: %v", err)
@@ -231,5 +244,121 @@ func TestOnlyOneDecisionPosts(t *testing.T) {
 	}
 	if got := PublishDecision(9).String(); !strings.Contains(got, "9") {
 		t.Fatalf("unknown decision named %q", got)
+	}
+}
+
+// A name is public. Anything holding a checks:write token on the repository
+// can post under one of ours, and the external identifier is what tells the
+// two apart: a run carrying somebody else's identifier is a collision to
+// report even when it says exactly what this plane was about to say.
+func TestARunWeDidNotPostIsAConflictHoweverWellItAgrees(t *testing.T) {
+	run := intendedRun(t, ModeAuthoritative, "succeeded")
+	elsewhere := foreignRun(run, 11, "completed", run.Conclusion, run.Title, "ra8ci-1-"+strings.Repeat("0", 32))
+	reconciled, err := ReconcilePublish(run, PublishedCheckRuns{HeadSHA: run.HeadSHA, Runs: []PublishedCheckRun{elsewhere}})
+	if err != nil {
+		t.Fatalf("ReconcilePublish: %v", err)
+	}
+	if reconciled.Decision != PublishConflicts || reconciled.Repeat() {
+		t.Fatalf("reconciled = %+v", reconciled)
+	}
+	if len(reconciled.Unclaimed) != 1 || reconciled.Unclaimed[0].ID != 11 {
+		t.Fatalf("unclaimed = %+v", reconciled.Unclaimed)
+	}
+	if len(reconciled.Existing) != 1 {
+		t.Fatalf("existing = %+v", reconciled.Existing)
+	}
+}
+
+// A run with no identifier at all is either one posted before this plane wrote
+// the field or one posted by something else. Nothing here can tell which, and
+// answering for an operator in either direction is worse than reporting it.
+func TestARunCarryingNoIdentifierIsNotClaimed(t *testing.T) {
+	run := intendedRun(t, ModeAuthoritative, "succeeded")
+	before := foreignRun(run, 12, "completed", run.Conclusion, run.Title, "")
+	reconciled, err := ReconcilePublish(run, PublishedCheckRuns{HeadSHA: run.HeadSHA, Runs: []PublishedCheckRun{before}})
+	if err != nil {
+		t.Fatalf("ReconcilePublish: %v", err)
+	}
+	if reconciled.Decision != PublishConflicts || len(reconciled.Unclaimed) != 1 {
+		t.Fatalf("reconciled = %+v", reconciled)
+	}
+}
+
+// Somebody else's run is reported whatever state it is in. Waiting for it is
+// waiting for an answer to a question it was never asked, so the identity is
+// settled ahead of the status the in-flight answer reads.
+func TestSomebodyElsesRunIsNeverWaitedFor(t *testing.T) {
+	run := intendedRun(t, ModeAuthoritative, "succeeded")
+	for _, status := range []string{"queued", "in_progress", "waiting", "pending"} {
+		theirs := foreignRun(run, 13, status, "", "", "ra8ci-1-"+strings.Repeat("f", 32))
+		reconciled, err := ReconcilePublish(run, PublishedCheckRuns{HeadSHA: run.HeadSHA, Runs: []PublishedCheckRun{theirs}})
+		if err != nil {
+			t.Fatalf("%s ReconcilePublish: %v", status, err)
+		}
+		if reconciled.Decision != PublishConflicts {
+			t.Fatalf("%s reconciled = %+v", status, reconciled)
+		}
+	}
+}
+
+// Every run the decision was made from is reported, and the ones this plane
+// did not post are named among them: an operator opening the commit has to
+// know which of several runs under one name is the one that does not belong.
+func TestTheRunsWeDidNotPostAreNamedAmongTheRest(t *testing.T) {
+	run := intendedRun(t, ModeAuthoritative, "succeeded")
+	published := publishedAs(run, 14, "completed", run.Conclusion, run.Title)
+	published.Runs = append(published.Runs,
+		foreignRun(run, 15, "completed", run.Conclusion, run.Title, "ra8ci-1-"+strings.Repeat("a", 32)))
+	reconciled, err := ReconcilePublish(run, published)
+	if err != nil {
+		t.Fatalf("ReconcilePublish: %v", err)
+	}
+	if reconciled.Decision != PublishConflicts || len(reconciled.Existing) != 2 {
+		t.Fatalf("reconciled = %+v", reconciled)
+	}
+	if len(reconciled.Unclaimed) != 1 || reconciled.Unclaimed[0].ID != 15 {
+		t.Fatalf("unclaimed = %+v", reconciled.Unclaimed)
+	}
+}
+
+// The two conflicts are different work: our own runs disagreeing about one
+// commit is a question about this deployment, and a stranger under our name is
+// a question about who holds a token. A disagreement among our own runs
+// therefore names nothing unclaimed.
+func TestOurOwnDisagreementNamesNothingUnclaimed(t *testing.T) {
+	run := intendedRun(t, ModeAuthoritative, "succeeded")
+	reconciled, err := ReconcilePublish(run, publishedAs(run, 16, "completed", "failure", "failed"))
+	if err != nil {
+		t.Fatalf("ReconcilePublish: %v", err)
+	}
+	if reconciled.Decision != PublishConflicts {
+		t.Fatalf("reconciled = %+v", reconciled)
+	}
+	if len(reconciled.Unclaimed) != 0 {
+		t.Fatalf("unclaimed = %+v", reconciled.Unclaimed)
+	}
+}
+
+// Nothing short of a conflict carries unclaimed runs, so a caller can read the
+// list as the reason for the refusal rather than as a warning beside an answer
+// that was fine.
+func TestOnlyAConflictCarriesUnclaimedRuns(t *testing.T) {
+	run := intendedRun(t, ModeAuthoritative, "succeeded")
+	listings := map[PublishDecision]PublishedCheckRuns{
+		PublishNeeded:   {HeadSHA: run.HeadSHA},
+		PublishSettled:  publishedAs(run, 17, "completed", run.Conclusion, run.Title),
+		PublishInFlight: publishedAs(run, 18, "queued", "", ""),
+	}
+	for want, published := range listings {
+		reconciled, err := ReconcilePublish(run, published)
+		if err != nil {
+			t.Fatalf("%s ReconcilePublish: %v", want, err)
+		}
+		if reconciled.Decision != want {
+			t.Fatalf("decision %s, want %s", reconciled.Decision, want)
+		}
+		if len(reconciled.Unclaimed) != 0 {
+			t.Fatalf("%s unclaimed = %+v", want, reconciled.Unclaimed)
+		}
 	}
 }
