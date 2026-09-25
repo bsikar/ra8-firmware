@@ -426,6 +426,14 @@ func checkReconcileSurveyStandings(report reconcileReport) error {
 // An empty group is refused rather than skipped. Both groupings leave a
 // standing out when no run carries it, so an empty one is a group about
 // nothing, and it would print as an identifier with an empty list after it.
+//
+// A run's number is read before anything else about it, because the number
+// is the whole of what the page hands the reader: both grouping sections
+// print their runs as "#7", and the reader's next move is to open that run.
+// A run numbered zero prints as "#0", which is a run to go and look at that
+// nobody can look at, and a number is what every other answer about the run
+// is keyed by. This is the rule the candidate page keeps for a candidate
+// the survey numbers zero.
 func checkSurveyGrouping[standing any](
 	standings []standing,
 	grouping string,
@@ -448,6 +456,10 @@ func checkSurveyGrouping[standing any](
 		}
 		groupedUnder[identifier] = true
 		for _, run := range runs {
+			if run <= 0 {
+				return fmt.Errorf("%w: %s a run grouped under %s is numbered %d",
+					ErrReconcilePageInvalid, grouping, identifier, run)
+			}
 			if under, already := named[run]; already {
 				return fmt.Errorf("%w: %s run %d is grouped under %s and %s",
 					ErrReconcilePageInvalid, grouping, run, under, identifier)
