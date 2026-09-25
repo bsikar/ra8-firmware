@@ -51,6 +51,23 @@ type Report struct {
 	Failed    int
 }
 
+// Notable says whether this pass is worth telling anyone about. A bench where
+// every holder came back on time is the normal case and produces a pass a
+// second apart from the last one, so a quiet pass stays quiet: printing one
+// line every fifteen seconds forever would bury the passes that did something.
+func (r Report) Notable() bool {
+	return r.Found > 0 || r.Reclaimed > 0 || r.Overtaken > 0 || r.Failed > 0
+}
+
+// String is the one line a person reads. It names what the pass found and
+// what became of it, including the boards it left alone, because a pass that
+// found ten expired leases and reclaimed none is a different thing from a
+// pass that found none at all and must not be readable as the same.
+func (r Report) String() string {
+	return fmt.Sprintf("board sweep: found %d expired lease(s), reclaimed %d, already reclaimed %d, failed %d",
+		r.Found, r.Reclaimed, r.Overtaken, r.Failed)
+}
+
 // Sweeper reclaims expired board leases one pass at a time. It owns no timer:
 // the caller already has one, and a sweep that ran on its own schedule could
 // disagree with the maintenance loop about whether the server is still
