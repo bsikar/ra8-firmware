@@ -897,3 +897,111 @@ func TestRequiredChecksIsDispatchedByName(t *testing.T) {
 		t.Fatalf("usage does not name the subcommand: %v", err)
 	}
 }
+
+// gateEnv configures a deployment that could read a gate, with a private key
+// file that does not exist: every test below is refused before a reader is
+// built, so none of them speaks to GitHub.
+func gateEnv(t *testing.T) {
+	t.Helper()
+	publishCheckRunEnv(t)
+}
+
+// The document `gate` writes is the document `required-checks` reads, with no
+// extra field. required-checks refuses a field it does not know, so an echoed
+// branch name would break the pipe this command exists for.
+func TestTheGateDocumentIsExactlyWhatRequiredChecksReads(t *testing.T) {
+	var gateOutput bytes.Buffer
+	encoder := json.NewEncoder(&gateOutput)
+	encoder.SetIndent("", "  ")
+	if err := encoder.Encode(requiredCheckInput{Required: emptyWhenNil([]string{"CodeQL"})}); err != nil {
+		t.Fatalf("encode gate document: %v", err)
+	}
+	if strings.Contains(gateOutput.String(), "branch") {
+		t.Fatalf("the gate document carries a field required-checks does not read: %q", gateOutput.String())
+	}
+
+	requiredChecksEnv(t, "authoritative")
+	var plan bytes.Buffer
+	if err := githubRequiredChecks(strings.NewReader(gateOutput.String()), &plan); err != nil {
+		t.Fatalf("required-checks refused the gate document: %v", err)
+	}
+	if !strings.Contains(plan.String(), "CodeQL") {
+		t.Fatalf("the planned gate lost the context it was given: %q", plan.String())
+	}
+}
+
+// The branch is named, never defaulted: a default would read some other
+// branch's protection and report it as the gate.
+func TestGateRefusesADocumentThatNamesNoBranch(t *testing.T) {
+	for name, input := range map[string]string{
+		"empty object":      `{}`,
+		"empty branch":      `{"branch":""}`,
+		"not an object":     `["main"]`,
+		"unknown field":     `{"ref":"main"}`,
+		"trailing document": `{"branch":"main"}{"branch":"dev"}`,
+	} {
+		t.Run(name, func(t *testing.T) {
+			gateEnv(t)
+			var out bytes.Buffer
+			if err := githubGate(context.Background(), strings.NewReader(input), &out); err == nil {
+				t.Fatal("document was accepted")
+			}
+			if out.Len() != 0 {
+				t.Fatalf("a refused read wrote %q", out.String())
+			}
+		})
+	}
+}
+
+// A deployment that cannot say which repository's gate it means is refused
+// before anything is read, naming the variable that is missing.
+func TestGateNeedsBothHalvesOfTheConfiguration(t *testing.T) {
+	t.Run("no correspondence", func(t *testing.T) {
+		var out bytes.Buffer
+		err := githubGate(context.Background(), strings.NewReader(`{"branch":"main"}`), &out)
+		if err == nil || !strings.Contains(err.Error(), github.EnvShadowCorrespondenceFile) {
+			t.Fatalf("returned %v, want the correspondence variable named", err)
+		}
+		if out.Len() != 0 {
+			t.Fatalf("a refused read wrote %q", out.String())
+		}
+	})
+	t.Run("no repository", func(t *testing.T) {
+		shadowCompareEnv(t, "build")
+		var out bytes.Buffer
+		err := githubGate(context.Background(), strings.NewReader(`{"branch":"main"}`), &out)
+		if err == nil || !strings.Contains(err.Error(), github.EnvCheckRunRepository) {
+			t.Fatalf("returned %v, want the repository variable named", err)
+		}
+		if out.Len() != 0 {
+			t.Fatalf("a refused read wrote %q", out.String())
+		}
+	})
+}
+
+// The document is read before a reader exists, so a bad document is reported
+// as a bad document rather than as a credential problem. The key file these
+// tests name does not exist, so reaching the reader is itself the failure.
+func TestGateReadsTheDocumentBeforeBuildingAReader(t *testing.T) {
+	gateEnv(t)
+	var out bytes.Buffer
+	err := githubGate(context.Background(), strings.NewReader(`{"branch":"main"}`), &out)
+	if err == nil {
+		t.Fatal("a reader was built from a key file that does not exist")
+	}
+	if strings.Contains(err.Error(), "read the branch to report") {
+		t.Fatalf("a readable document was reported as a document problem: %v", err)
+	}
+	if out.Len() != 0 {
+		t.Fatalf("a refused read wrote %q", out.String())
+	}
+}
+
+// gate is dispatched by name like every other subcommand, and a near miss is
+// refused with a usage line naming the real one.
+func TestGateIsDispatchedByName(t *testing.T) {
+	err := githubCommand(context.Background(), []string{"gates"})
+	if err == nil || !strings.Contains(err.Error(), "gate") {
+		t.Fatalf("github gates returned %v", err)
+	}
+}
