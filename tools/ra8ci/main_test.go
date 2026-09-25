@@ -2380,3 +2380,261 @@ func TestPullRequestEvidenceIsOneOfTheGithubSubcommands(t *testing.T) {
 		t.Fatalf("usage %q does not name the subcommand", err)
 	}
 }
+
+// surveyHeadA and surveyHeadB are the two commits the survey report is pinned
+// over. They are their own constants because the other test files in this
+// package each keep their own head and reusing one across them couples tests
+// that answer different questions.
+const (
+	surveyHeadA = "3333333333333333333333333333333333333333"
+	surveyHeadB = "4444444444444444444444444444444444444444"
+)
+
+// selectableFor is one pull request the survey could pick a run on.
+func selectableFor(number int, head string, runID int64, attempt int, conclusion string) surveyedHead {
+	return surveyedHead{
+		Head: pullRequestHeadFor(number, head, "ra8ci/dev", "open", false, false),
+		Selected: github.CommitWorkflowRun{
+			ID: runID, Workflow: "Checks", Attempt: attempt, Event: "pull_request",
+			Status: "completed", Conclusion: conclusion,
+		},
+	}
+}
+
+// unselectableFor is one pull request the selection refused, carrying the
+// refusal github.SelectEvidenceRun would actually return.
+func unselectableFor(number int, head string, listed github.CommitWorkflowRuns) surveyedHead {
+	_, refusal := github.SelectEvidenceRun(listed, "Checks")
+	return surveyedHead{
+		Head:    pullRequestHeadFor(number, head, "ra8ci/dev", "open", false, false),
+		Refusal: refusal,
+	}
+}
+
+// The survey answers for every pull request it was asked about, including the
+// ones no run can be selected on. Dropping them would hide from the operator
+// picking a representative set exactly the candidates that cannot be in it.
+func TestTheSurveyAnswersForEveryPullRequestConsidered(t *testing.T) {
+	report := pullRequestSurveyFrom("Checks", []surveyedHead{
+		selectableFor(1589, surveyHeadA, 771, 1, "failure"),
+		unselectableFor(1590, surveyHeadB, github.CommitWorkflowRuns{
+			HeadSHA: surveyHeadB,
+			Runs: []github.CommitWorkflowRun{{
+				ID: 772, Workflow: "Checks", Attempt: 1, Event: "pull_request",
+				Status: "in_progress",
+			}},
+		}),
+	})
+	if report.Considered != 2 || report.Selectable != 1 || report.Unselectable != 1 {
+		t.Fatalf("counts = %#v", report)
+	}
+	if len(report.PullRequests) != 2 {
+		t.Fatalf("report holds %d pull requests", len(report.PullRequests))
+	}
+	if report.PullRequests[0].Number != 1589 || report.PullRequests[1].Number != 1590 {
+		t.Fatalf("the survey reordered the candidates: %#v", report.PullRequests)
+	}
+	if report.Workflow != "Checks" {
+		t.Fatalf("the report lost the workflow: %q", report.Workflow)
+	}
+}
+
+// A selectable pull request names the run the gathering would use.
+func TestASelectablePullRequestNamesItsRun(t *testing.T) {
+	report := pullRequestSurveyFrom("Checks", []surveyedHead{
+		selectableFor(1589, surveyHeadA, 909, 2, "failure"),
+	})
+	answer := report.PullRequests[0]
+	if !answer.Selectable {
+		t.Fatalf("answer = %#v", answer)
+	}
+	if answer.RunID != 909 || answer.Attempt != 2 || answer.Conclusion != "failure" {
+		t.Fatalf("answer lost the run: %#v", answer)
+	}
+	if answer.Event != "pull_request" {
+		t.Fatalf("answer lost the event: %#v", answer)
+	}
+	if answer.Reason != "" {
+		t.Fatalf("a selectable pull request carries a reason: %q", answer.Reason)
+	}
+	if answer.HeadSHA != surveyHeadA || answer.BaseRef != "ra8ci/dev" {
+		t.Fatalf("answer lost the head: %#v", answer)
+	}
+}
+
+// A pull request no run can be selected on carries the refusal in words and
+// no run at all: reporting the run fields of a refused selection would hand a
+// reader a run ID the gathering will not use.
+func TestAnUnselectablePullRequestCarriesTheReasonAndNoRun(t *testing.T) {
+	cases := map[string]github.CommitWorkflowRuns{
+		"no runs at all": {HeadSHA: surveyHeadB},
+		"only another workflow": {HeadSHA: surveyHeadB, Runs: []github.CommitWorkflowRun{{
+			ID: 1, Workflow: "Docs", Attempt: 1, Status: "completed", Conclusion: "success",
+		}}},
+		"still executing": {HeadSHA: surveyHeadB, Runs: []github.CommitWorkflowRun{{
+			ID: 2, Workflow: "Checks", Attempt: 1, Status: "in_progress",
+		}}},
+		"concluded without deciding": {HeadSHA: surveyHeadB, Runs: []github.CommitWorkflowRun{{
+			ID: 3, Workflow: "Checks", Attempt: 1, Status: "completed", Conclusion: "cancelled",
+		}}},
+		"two decided runs": {HeadSHA: surveyHeadB, Runs: []github.CommitWorkflowRun{
+			{ID: 4, Workflow: "Checks", Attempt: 1, Status: "completed", Conclusion: "success"},
+			{ID: 5, Workflow: "Checks", Attempt: 2, Status: "completed", Conclusion: "success"},
+		}},
+	}
+	for name, listed := range cases {
+		t.Run(name, func(t *testing.T) {
+			report := pullRequestSurveyFrom("Checks", []surveyedHead{
+				unselectableFor(1590, surveyHeadB, listed),
+			})
+			answer := report.PullRequests[0]
+			if answer.Selectable {
+				t.Fatalf("answer = %#v", answer)
+			}
+			if answer.Reason == "" {
+				t.Fatal("an unselectable pull request gave no reason")
+			}
+			if answer.RunID != 0 || answer.Attempt != 0 || answer.Conclusion != "" || answer.Event != "" {
+				t.Fatalf("a refused selection carried a run: %#v", answer)
+			}
+			if report.Selectable != 0 || report.Unselectable != 1 {
+				t.Fatalf("counts = %#v", report)
+			}
+		})
+	}
+}
+
+// The head's state travels with every answer, selectable or not: whether a
+// fork or a merged pull request is representative is the operator's call, and
+// they are choosing the set from this report.
+func TestTheSurveyReportsWhereEachPullRequestIs(t *testing.T) {
+	_, refusal := github.SelectEvidenceRun(github.CommitWorkflowRuns{HeadSHA: surveyHeadB}, "Checks")
+	report := pullRequestSurveyFrom("Checks", []surveyedHead{{
+		Head: github.PullRequestHead{
+			Number: 12, HeadSHA: surveyHeadB, BaseRef: "ra8ci/dev", State: "closed",
+			Merged: true, FromFork: true, HeadRepository: "someone/ra8-firmware",
+		},
+		Refusal: refusal,
+	}})
+	answer := report.PullRequests[0]
+	if !answer.FromFork || !answer.Merged || answer.State != "closed" {
+		t.Fatalf("answer = %#v", answer)
+	}
+	if answer.HeadRepository != "someone/ra8-firmware" {
+		t.Fatalf("answer lost the head repository: %#v", answer)
+	}
+}
+
+// An empty survey encodes as an empty list rather than null, so two reports
+// diff against each other.
+func TestASurveyOfNothingEncodesAsAnEmptyList(t *testing.T) {
+	encoded, err := json.Marshal(pullRequestSurveyFrom("Checks", nil))
+	if err != nil {
+		t.Fatalf("encode: %v", err)
+	}
+	if !strings.Contains(string(encoded), `"pull_requests":[]`) {
+		t.Fatalf("encoded as %s", encoded)
+	}
+	if !strings.Contains(string(encoded), `"considered":0`) {
+		t.Fatalf("encoded as %s", encoded)
+	}
+}
+
+// The run named here is the run the gathering would select. Both ask
+// github.SelectEvidenceRun, so a survey cannot promise a run
+// pull-request-evidence would not use.
+func TestTheSurveyNamesTheRunTheGatheringWouldSelect(t *testing.T) {
+	listed := github.CommitWorkflowRuns{
+		HeadSHA: surveyHeadA,
+		Runs: []github.CommitWorkflowRun{
+			{ID: 900, Workflow: "Docs", Attempt: 1, Status: "completed", Conclusion: "success"},
+			{ID: 901, Workflow: "Checks", Attempt: 3, Event: "pull_request", Status: "completed", Conclusion: "failure"},
+		},
+	}
+	selected, err := github.SelectEvidenceRun(listed, "Checks")
+	if err != nil {
+		t.Fatalf("select: %v", err)
+	}
+	report := pullRequestSurveyFrom("Checks", []surveyedHead{{
+		Head:     pullRequestHeadFor(1589, surveyHeadA, "ra8ci/dev", "open", false, false),
+		Selected: selected,
+	}})
+	if report.PullRequests[0].RunID != 901 || report.PullRequests[0].Attempt != 3 {
+		t.Fatalf("answer = %#v", report.PullRequests[0])
+	}
+}
+
+// An ask nothing could be surveyed from is refused before a token is minted,
+// and writes nothing.
+func TestASurveyAskThatIsRefusedWritesNothing(t *testing.T) {
+	cases := map[string]string{
+		"not an object":     `[1589]`,
+		"unknown field":     `{"workflow":"Checks","pull_requests":[1589],"threshold":2}`,
+		"trailing document": `{"workflow":"Checks","pull_requests":[1589]}{"workflow":"Checks","pull_requests":[1590]}`,
+		"no workflow":       `{"pull_requests":[1589]}`,
+		"blank workflow":    `{"workflow":"  ","pull_requests":[1589]}`,
+		"no pull requests":  `{"workflow":"Checks","pull_requests":[]}`,
+		"a zero number":     `{"workflow":"Checks","pull_requests":[0]}`,
+		"a negative number": `{"workflow":"Checks","pull_requests":[-1]}`,
+		"one twice":         `{"workflow":"Checks","pull_requests":[1589,1589]}`,
+	}
+	for name, document := range cases {
+		t.Run(name, func(t *testing.T) {
+			evidenceGateEnv(t)
+			var out strings.Builder
+			if err := githubPullRequestSurvey(context.Background(), strings.NewReader(document), &out); err == nil {
+				t.Fatal("the ask was not refused")
+			}
+			if out.String() != "" {
+				t.Fatalf("a refused ask wrote %q", out.String())
+			}
+		})
+	}
+}
+
+// A pull request named twice is refused by name, so the operator is told what
+// to fix rather than shown a count that answered for it twice.
+func TestASurveyRefusesARepeatedPullRequestByName(t *testing.T) {
+	err := checkPullRequestSurveyAsk(pullRequestSurveyRequest{
+		Workflow: "Checks", PullRequests: []int{1589, 1590, 1589},
+	})
+	if err == nil {
+		t.Fatal("a repeated pull request was accepted")
+	}
+	for _, want := range []string{"1589", "twice"} {
+		if !strings.Contains(err.Error(), want) {
+			t.Fatalf("refusal %q does not name %q", err, want)
+		}
+	}
+}
+
+// Two different pull requests are surveyed.
+func TestTwoDifferentPullRequestsAreSurveyed(t *testing.T) {
+	if err := checkPullRequestSurveyAsk(pullRequestSurveyRequest{
+		Workflow: "Checks", PullRequests: []int{1589, 1590},
+	}); err != nil {
+		t.Fatalf("a two pull request survey was refused: %v", err)
+	}
+}
+
+func TestPullRequestSurveyNeedsTheCheckRunConfiguration(t *testing.T) {
+	for _, name := range []string{github.EnvShadowCorrespondenceFile, github.EnvCheckRunMode, github.EnvCheckRunRepository} {
+		t.Setenv(name, "")
+		os.Unsetenv(name)
+	}
+	err := githubPullRequestSurvey(context.Background(),
+		strings.NewReader(`{"workflow":"Checks","pull_requests":[1589]}`), io.Discard)
+	if err == nil || !strings.Contains(err.Error(), github.EnvShadowCorrespondenceFile) {
+		t.Fatalf("error %v, want one naming %s", err, github.EnvShadowCorrespondenceFile)
+	}
+}
+
+func TestPullRequestSurveyIsOneOfTheGithubSubcommands(t *testing.T) {
+	err := githubCommand(context.Background(), []string{"pull-request-surveys"})
+	if err == nil {
+		t.Fatal("an unknown subcommand was accepted")
+	}
+	if !strings.Contains(err.Error(), "pull-request-survey") {
+		t.Fatalf("usage does not name the subcommand: %v", err)
+	}
+}
