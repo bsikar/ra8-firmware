@@ -33,3 +33,22 @@ func LoadClientIdentity(certFile, keyFile string, now time.Time) (tls.Certificat
 	}
 	return identity, nil
 }
+
+// LoadServerIdentity reads a key pair from disk and refuses one this process
+// must not present as its own server identity. Same pairing as
+// LoadClientIdentity, for the same reason: a call site that loads without
+// checking gets a handshake failure instead of a refusal naming the
+// certificate.
+func LoadServerIdentity(certFile, keyFile string, now time.Time) (tls.Certificate, error) {
+	if certFile == "" || keyFile == "" {
+		return tls.Certificate{}, fmt.Errorf("%w: a certificate path and a key path are both required", ErrIdentity)
+	}
+	identity, err := tls.LoadX509KeyPair(certFile, keyFile)
+	if err != nil {
+		return tls.Certificate{}, fmt.Errorf("%w: load key pair: %v", ErrIdentity, err)
+	}
+	if err := ValidateServerIdentity(identity, now); err != nil {
+		return tls.Certificate{}, err
+	}
+	return identity, nil
+}
