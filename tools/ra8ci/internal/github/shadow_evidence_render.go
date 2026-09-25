@@ -88,6 +88,9 @@ func RenderShadowEvidence(out io.Writer, evidence ShadowEvidence, readiness Shad
 	if err := checkShortfallAddsUp(byTask, readiness, shortfall); err != nil {
 		return err
 	}
+	if err := checkCountedVerdicts(byTask, readiness); err != nil {
+		return err
+	}
 	if err := checkNamedCommits(byTask, readiness, accumulatedCommits(evidence)); err != nil {
 		return err
 	}
@@ -247,6 +250,85 @@ func checkShortfallAddsUp(byTask map[string]TaskEvidence, readiness ShadowReadin
 		}
 	}
 	return nil
+}
+
+// checkCountedVerdicts refuses a task whose counted verdicts do not add up to
+// the number printed beside them.
+//
+// Every section of this page prints this task's integers and nothing else.
+// The conflicting line is "%d of %d graded commit(s) disagreed" (Conflicting
+// out of Graded), the insufficient line carries "(paired on %d, %d never
+// judged)" (Observed and Indeterminate), and the ready line is "%d graded (%d
+// agreed, %d divergent)". They are four counters and two totals written by one
+// walk in AccumulateShadowEvidence, and until now nothing read them against
+// each other: checkReadinessCovers reads the readiness against the tasks,
+// checkShortfallAddsUp reads the shortfall against Graded, checkNamedCommits
+// reads the commit lists against the accumulation. The task's own arithmetic
+// was the last thing on this page nobody checked.
+//
+// The worst reading is on the ready line, the section headed "ready (may
+// move)". "4 graded (1 agreed, 1 divergent)" is a task whose page says it
+// cleared a threshold of four and accounts for two, and the two numbers that
+// would say what the other two were are the ones printed. An operator moving a
+// required check on this page has no other source for them. The conflicting
+// line's is "0 of 3 graded commits disagreed" under a heading that says this
+// task disagreed, which is a task in the section for tasks to argue about with
+// nothing to argue about.
+//
+// The COUNTS are read here and the LENGTHS of the commit lists beside them are
+// deliberately not, though "3 of 5 graded commits disagreed" over a "disagreed
+// on:" line naming two commits is the same family of wrong. The size bounds on
+// those lists (maxRenderedEvidenceCommits) are enforced by writeCommitLine
+// while the page is being written, which is after every check in this
+// function, so a check here would refuse an over-long list as a disagreement
+// between a count and a list rather than as a page too long to read. Holding
+// the lists to their counts means moving that bound forward first, and that is
+// an argument about where a size bound belongs, not about arithmetic.
+//
+// It is read AFTER the readiness checks and BEFORE checkNamedCommits. A
+// readiness assembled beside some other accumulation is not this page's
+// arithmetic going wrong, it is the wrong pair of arguments, and a reader told
+// that first is told the more useful thing. Within a task, the numbers on a
+// line are read before the commits that line names, the order #1663 settled
+// for the insufficient line.
+//
+// It is the report sentinel rather than the mismatch one: the readiness is not
+// in the wrong here, the accumulation is, and nothing AccumulateShadowEvidence
+// writes can fail it. Every verdict increments exactly one counter and Graded
+// with it, Observed is incremented once per pairing, and a conflicting or
+// indeterminate pairing appends exactly one commit as it counts it.
+func checkCountedVerdicts(byTask map[string]TaskEvidence, readiness ShadowReadiness) error {
+	for _, name := range evidenceSections(readiness) {
+		task := byTask[name]
+		if task.Agreed+task.Divergent+task.Conflicting != task.Graded {
+			return fmt.Errorf("%w: %q is graded on %d and counts %d agreed, %d divergent, %d disagreeing",
+				ErrShadowEvidenceReportInvalid, name, task.Graded,
+				task.Agreed, task.Divergent, task.Conflicting)
+		}
+		if task.Graded+task.Indeterminate != task.Observed {
+			return fmt.Errorf("%w: %q is paired on %d and counts %d graded with %d never judged",
+				ErrShadowEvidenceReportInvalid, name, task.Observed,
+				task.Graded, task.Indeterminate)
+		}
+	}
+	for _, name := range readiness.Conflicting {
+		task := byTask[name]
+		if task.Conflicting < 1 {
+			return fmt.Errorf("%w: %q is named as disagreeing and counts %d disagreeing commits",
+				ErrShadowEvidenceReportInvalid, name, task.Conflicting)
+		}
+	}
+	return nil
+}
+
+// evidenceSections walks the readiness in the order the page prints it, so a
+// page with two tasks wrong is refused for the one a reader reaches first.
+func evidenceSections(readiness ShadowReadiness) []string {
+	names := make([]string, 0, len(readiness.Conflicting)+len(readiness.Insufficient)+len(readiness.Ready))
+	names = append(names, readiness.Conflicting...)
+	names = append(names, readiness.Insufficient...)
+	names = append(names, readiness.Ready...)
+	return names
 }
 
 // checkNamedCommits holds the commit lists this page prints to the commits the
