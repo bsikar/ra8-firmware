@@ -7,6 +7,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -1003,5 +1004,234 @@ func TestGateIsDispatchedByName(t *testing.T) {
 	err := githubCommand(context.Background(), []string{"gates"})
 	if err == nil || !strings.Contains(err.Error(), "gate") {
 		t.Fatalf("github gates returned %v", err)
+	}
+}
+
+// shadowEvidenceCommit builds one pull request's comparison document for the
+// evidence command, using a real catalog task name.
+func shadowEvidenceCommit(task, head, observed, conclusion string) string {
+	return `{"plane":[{"task":"` + task + `","head_sha":"` + head + `","observed":"` + observed + `"}],` +
+		`"actions":[{"job":"build","head_sha":"` + head + `","conclusion":"` + conclusion + `"}]}`
+}
+
+func shadowEvidenceInputDocument(threshold int, commits ...string) string {
+	return `{"threshold":` + strconv.Itoa(threshold) + `,"commits":[` + strings.Join(commits, ",") + `]}`
+}
+
+func decodeShadowEvidence(t *testing.T, raw string) map[string]any {
+	t.Helper()
+	var report map[string]any
+	if err := json.Unmarshal([]byte(raw), &report); err != nil {
+		t.Fatalf("decode evidence report: %v\n%s", err, raw)
+	}
+	return report
+}
+
+const (
+	evidenceHeadOne   = "1111111111111111111111111111111111111111"
+	evidenceHeadTwo   = "2222222222222222222222222222222222222222"
+	evidenceHeadThree = "3333333333333333333333333333333333333333"
+)
+
+// The command exists because #1481's hold condition is plural: one clean pull
+// request is not the comparison "over representative pull requests" the issue
+// asks for.
+func TestShadowEvidenceSettlesOnlyWhenTheThresholdIsMet(t *testing.T) {
+	task := shadowCompareEnv(t, "build")
+	for _, testCase := range []struct {
+		name      string
+		threshold int
+		commits   []string
+		settled   bool
+	}{
+		{"two graded commits at threshold two", 2, []string{
+			shadowEvidenceCommit(task, evidenceHeadOne, "success", "success"),
+			shadowEvidenceCommit(task, evidenceHeadTwo, "success", "success"),
+		}, true},
+		{"two graded commits at threshold three", 3, []string{
+			shadowEvidenceCommit(task, evidenceHeadOne, "success", "success"),
+			shadowEvidenceCommit(task, evidenceHeadTwo, "success", "success"),
+		}, false},
+	} {
+		t.Run(testCase.name, func(t *testing.T) {
+			var out bytes.Buffer
+			err := githubShadowEvidence(
+				strings.NewReader(shadowEvidenceInputDocument(testCase.threshold, testCase.commits...)), &out)
+			report := decodeShadowEvidence(t, out.String())
+			if report["settled"] != testCase.settled {
+				t.Fatalf("settled %v, want %v", report["settled"], testCase.settled)
+			}
+			if testCase.settled && err != nil {
+				t.Fatalf("settled evidence returned %v", err)
+			}
+			if !testCase.settled && err == nil {
+				t.Fatal("unsettled evidence returned no error")
+			}
+			if report["threshold"] != float64(testCase.threshold) {
+				t.Fatalf("threshold %v, want %d", report["threshold"], testCase.threshold)
+			}
+		})
+	}
+}
+
+// The answer is written before the verdict is returned, the shadow-compare
+// convention: a caller reading only the exit status must not be able to get a
+// settled one from an answer nobody could read.
+func TestShadowEvidenceWritesTheAnswerBeforeReportingItIsUnsettled(t *testing.T) {
+	task := shadowCompareEnv(t, "build")
+	var out bytes.Buffer
+	err := githubShadowEvidence(strings.NewReader(shadowEvidenceInputDocument(1,
+		shadowEvidenceCommit(task, evidenceHeadOne, "failure", "success"))), &out)
+	if err == nil {
+		t.Fatal("a conflict returned no error")
+	}
+	report := decodeShadowEvidence(t, out.String())
+	conflicting, _ := report["conflicting"].([]any)
+	if len(conflicting) != 1 || conflicting[0] != task {
+		t.Fatalf("conflicting %v, want only %s", report["conflicting"], task)
+	}
+	tasks, _ := report["tasks"].([]any)
+	if len(tasks) != 1 {
+		t.Fatalf("tasks %v, want one", report["tasks"])
+	}
+	first, _ := tasks[0].(map[string]any)
+	commits, _ := first["conflicting_commits"].([]any)
+	if len(commits) != 1 || commits[0] != evidenceHeadOne {
+		t.Fatalf("conflicting_commits %v, want only %s", first["conflicting_commits"], evidenceHeadOne)
+	}
+}
+
+// One conflict holds the task however many clean pull requests follow it. The
+// decision is whether ra8ci has ever disagreed with Actions about a merge, not
+// what share of the time it agreed.
+func TestShadowEvidenceKeepsAConflictingTaskOutOfReady(t *testing.T) {
+	task := shadowCompareEnv(t, "build")
+	var out bytes.Buffer
+	err := githubShadowEvidence(strings.NewReader(shadowEvidenceInputDocument(1,
+		shadowEvidenceCommit(task, evidenceHeadOne, "failure", "success"),
+		shadowEvidenceCommit(task, evidenceHeadTwo, "success", "success"),
+		shadowEvidenceCommit(task, evidenceHeadThree, "success", "success"))), &out)
+	if err == nil {
+		t.Fatal("evidence with an unexplained conflict settled")
+	}
+	report := decodeShadowEvidence(t, out.String())
+	ready, _ := report["ready"].([]any)
+	if len(ready) != 0 {
+		t.Fatalf("ready %v with a conflict outstanding", report["ready"])
+	}
+}
+
+// A task a commit did not exercise is not evidence for that task, and is
+// reported per commit so an under-observed task can be explained without
+// going back to the inputs.
+func TestShadowEvidenceNamesWhatEachCommitDidNotExercise(t *testing.T) {
+	task := shadowCompareEnv(t, "build")
+	var out bytes.Buffer
+	if err := githubShadowEvidence(strings.NewReader(shadowEvidenceInputDocument(1,
+		shadowEvidenceCommit(task, evidenceHeadOne, "success", "success"))), &out); err != nil {
+		t.Fatalf("githubShadowEvidence: %v", err)
+	}
+	report := decodeShadowEvidence(t, out.String())
+	commits, _ := report["commits"].([]any)
+	if len(commits) != 1 {
+		t.Fatalf("commits %v, want one", report["commits"])
+	}
+	first, _ := commits[0].(map[string]any)
+	if first["head_sha"] != evidenceHeadOne {
+		t.Fatalf("head_sha %v, want %s", first["head_sha"], evidenceHeadOne)
+	}
+	if first["clean"] != true {
+		t.Fatalf("clean %v, want true", first["clean"])
+	}
+	if _, ok := first["not_exercised"].([]any); !ok {
+		t.Fatalf("not_exercised %v is not a list", first["not_exercised"])
+	}
+	if strings.Contains(out.String(), "null") {
+		t.Fatalf("report carries a null field:\n%s", out.String())
+	}
+}
+
+// The threshold is the operator's judgement and is stated, never defaulted. A
+// default would answer a question nobody asked while looking like an answer to
+// the one they did.
+func TestShadowEvidenceRefusesInputItCannotReadAsEvidence(t *testing.T) {
+	task := shadowCompareEnv(t, "build")
+	good := shadowEvidenceCommit(task, evidenceHeadOne, "success", "success")
+	for _, testCase := range []struct {
+		name  string
+		input string
+	}{
+		{"not an object", `["commits"]`},
+		{"unknown field", `{"threshold":1,"commits":[` + good + `],"note":"x"}`},
+		{"trailing document", shadowEvidenceInputDocument(1, good) + `{"threshold":1}`},
+		{"no threshold", `{"commits":[` + good + `]}`},
+		{"threshold below one", shadowEvidenceInputDocument(0, good)},
+		{"no commits", `{"threshold":1,"commits":[]}`},
+		{"one commit twice", shadowEvidenceInputDocument(1, good, good)},
+		{"unknown conclusion", shadowEvidenceInputDocument(1,
+			shadowEvidenceCommit(task, evidenceHeadOne, "success", "exploded"))},
+	} {
+		t.Run(testCase.name, func(t *testing.T) {
+			var out bytes.Buffer
+			if err := githubShadowEvidence(strings.NewReader(testCase.input), &out); err == nil {
+				t.Fatal("refusable input was accepted")
+			}
+			if out.Len() != 0 {
+				t.Fatalf("a refused answer wrote to the stream:\n%s", out.String())
+			}
+		})
+	}
+}
+
+func TestShadowEvidenceRefusesWhenCheckRunPublishingIsNotConfigured(t *testing.T) {
+	t.Setenv(github.EnvShadowCorrespondenceFile, "")
+	os.Unsetenv(github.EnvShadowCorrespondenceFile)
+	t.Setenv(github.EnvCheckRunMode, "")
+	os.Unsetenv(github.EnvCheckRunMode)
+	var out bytes.Buffer
+	err := githubShadowEvidence(strings.NewReader(`{"threshold":1,"commits":[]}`), &out)
+	if err == nil || !strings.Contains(err.Error(), github.EnvShadowCorrespondenceFile) {
+		t.Fatalf("error %v, want one naming %s", err, github.EnvShadowCorrespondenceFile)
+	}
+	if out.Len() != 0 {
+		t.Fatalf("a refused answer wrote to the stream:\n%s", out.String())
+	}
+}
+
+// The mode decides what a deployment may do with the answer, never how the
+// evidence is graded.
+func TestShadowEvidenceGradesTheSameEvidenceInEitherMode(t *testing.T) {
+	var pages []string
+	for _, mode := range []string{"shadow", "authoritative"} {
+		task := requiredChecksEnv(t, mode)
+		var out bytes.Buffer
+		if err := githubShadowEvidence(strings.NewReader(shadowEvidenceInputDocument(1,
+			shadowEvidenceCommit(task, evidenceHeadOne, "success", "success"))), &out); err != nil {
+			t.Fatalf("mode %s: %v", mode, err)
+		}
+		report := decodeShadowEvidence(t, out.String())
+		if report["mode"] != mode {
+			t.Fatalf("mode %v, want %s", report["mode"], mode)
+		}
+		if report["may_block_merges"] != (mode == "authoritative") {
+			t.Fatalf("mode %s: may_block_merges %v", mode, report["may_block_merges"])
+		}
+		delete(report, "mode")
+		delete(report, "may_block_merges")
+		encoded, err := json.Marshal(report)
+		if err != nil {
+			t.Fatalf("re-encode: %v", err)
+		}
+		pages = append(pages, string(encoded))
+	}
+	if pages[0] != pages[1] {
+		t.Fatalf("the same evidence graded differently by mode:\n%s\n%s", pages[0], pages[1])
+	}
+}
+
+func TestShadowEvidenceIsDispatchedByName(t *testing.T) {
+	if err := githubCommand(context.Background(), []string{"shadow-evidenc"}); err == nil ||
+		!strings.Contains(err.Error(), "shadow-evidence") {
+		t.Fatalf("error %v, want a usage line naming shadow-evidence", err)
 	}
 }
