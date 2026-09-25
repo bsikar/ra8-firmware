@@ -43,6 +43,10 @@ func (s *Server) ingestOffline(w http.ResponseWriter, r *http.Request) {
 		problem(w, http.StatusBadRequest, "invalid_argument", "trailing JSON data", false)
 		return
 	}
+	if !usableRepository(entry.Source.Repository) {
+		problem(w, http.StatusBadRequest, "invalid_argument", "offline record states no usable repository", false)
+		return
+	}
 	principal, err := s.auth.Authorize(r, entry.Source.Repository, "submit")
 	if err != nil {
 		s.deny(w, r, "local_run.ingest", entry.Source.Repository, err)

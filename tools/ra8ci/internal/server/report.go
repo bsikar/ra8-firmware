@@ -26,7 +26,7 @@ func (s *Server) slowReport(w http.ResponseWriter, r *http.Request) {
 	repository := query.Get("repository")
 	seconds, secondsErr := strconv.ParseInt(query.Get("window_seconds"), 10, 64)
 	limit, limitErr := strconv.Atoi(query.Get("limit"))
-	if repository == "" || len(repository) > 512 || secondsErr != nil ||
+	if !usableRepository(repository) || secondsErr != nil ||
 		seconds < 1 || seconds > int64((365*24*time.Hour)/time.Second) ||
 		limitErr != nil || limit < 1 || limit > 500 {
 		problem(w, http.StatusBadRequest, "invalid_argument", "invalid slow report window, repository, or limit", false)
