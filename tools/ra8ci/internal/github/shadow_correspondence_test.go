@@ -326,3 +326,144 @@ func TestCollectAcceptsEveryConclusionATaskCanEndWith(t *testing.T) {
 		}
 	}
 }
+
+// The mirror of the pairing Actions never reported: this plane ran nothing and
+// Actions concluded. It is named, it stays in NotRun, and it is not a pairing.
+func TestCollectNamesATaskActionsJudgedThatThisPlaneDidNotRun(t *testing.T) {
+	correspondence := testCorrespondence(t, map[string]string{
+		"format": "lint-format",
+		"tidy":   "lint-tidy",
+	})
+	collection, err := correspondence.Collect(
+		[]PlaneOutcome{{Task: "format", HeadSHA: headA, Observed: "success"}},
+		[]ActionsOutcome{
+			{Job: "lint-format", HeadSHA: headA, Conclusion: "success"},
+			{Job: "lint-tidy", HeadSHA: headA, Conclusion: "failure"},
+		},
+	)
+	if err != nil {
+		t.Fatalf("Collect: %v", err)
+	}
+	if len(collection.NotRunJudged) != 1 {
+		t.Fatalf("NotRunJudged = %+v, want one entry", collection.NotRunJudged)
+	}
+	judged := collection.NotRunJudged[0]
+	if judged.Task != "tidy" || judged.Job != "lint-tidy" || judged.Conclusion != "failure" {
+		t.Fatalf("NotRunJudged[0] = %+v", judged)
+	}
+	if len(collection.NotRun) != 1 || collection.NotRun[0] != "tidy" {
+		t.Fatalf("a judged task is still one this commit did not exercise: %v", collection.NotRun)
+	}
+	if len(collection.Observations) != 1 || collection.Observations[0].Task != "format" {
+		t.Fatalf("a task with nothing observed is never paired: %+v", collection.Observations)
+	}
+	report, err := CompareShadowRun(collection.Observations)
+	if err != nil {
+		t.Fatalf("CompareShadowRun: %v", err)
+	}
+	if !report.Clean() || len(report.Comparisons) != 1 {
+		t.Fatalf("an unpaired verdict grades nothing: %+v", report)
+	}
+}
+
+// A task nobody judged is ordinary. Only a stated outcome is news, so an
+// absent job, an unfinished one and an outcome Actions lost are all silent.
+func TestANotRunTaskWithNoActionsVerdictIsNotJudged(t *testing.T) {
+	correspondence := testCorrespondence(t, map[string]string{
+		"format": "lint-format",
+		"tidy":   "lint-tidy",
+	})
+	for _, testCase := range []struct {
+		name    string
+		actions []ActionsOutcome
+	}{
+		{"job absent", nil},
+		{"job not completed", []ActionsOutcome{{Job: "lint-tidy", HeadSHA: headA, Conclusion: ""}}},
+		{"outcome lost", []ActionsOutcome{{Job: "lint-tidy", HeadSHA: headA, Conclusion: "stale"}}},
+	} {
+		t.Run(testCase.name, func(t *testing.T) {
+			collection, err := correspondence.Collect(
+				[]PlaneOutcome{{Task: "format", HeadSHA: headA, Observed: "success"}},
+				testCase.actions,
+			)
+			if err != nil {
+				t.Fatalf("Collect: %v", err)
+			}
+			if len(collection.NotRunJudged) != 0 {
+				t.Fatalf("nothing was stated about tidy: %+v", collection.NotRunJudged)
+			}
+			if len(collection.NotRun) != 1 || collection.NotRun[0] != "tidy" {
+				t.Fatalf("NotRun = %v, want [tidy]", collection.NotRun)
+			}
+		})
+	}
+}
+
+// The conclusion travels verbatim. A job the workflow skipped and a job that
+// failed are different news, and collapsing them into "judged" would leave the
+// one worth acting on indistinguishable from the one that is routine.
+func TestTheActionsConclusionForANotRunTaskIsCarriedVerbatim(t *testing.T) {
+	correspondence := testCorrespondence(t, map[string]string{
+		"format": "lint-format",
+		"tidy":   "lint-tidy",
+	})
+	for _, conclusion := range []string{"success", "failure", "cancelled", "skipped", "timed_out", "neutral", "action_required"} {
+		t.Run(conclusion, func(t *testing.T) {
+			collection, err := correspondence.Collect(
+				[]PlaneOutcome{{Task: "format", HeadSHA: headA, Observed: "success"}},
+				[]ActionsOutcome{{Job: "lint-tidy", HeadSHA: headA, Conclusion: conclusion}},
+			)
+			if err != nil {
+				t.Fatalf("Collect: %v", err)
+			}
+			if len(collection.NotRunJudged) != 1 || collection.NotRunJudged[0].Conclusion != conclusion {
+				t.Fatalf("NotRunJudged = %+v, want one %q", collection.NotRunJudged, conclusion)
+			}
+		})
+	}
+}
+
+// Named in task order, the order NotRun and Observations are already in, so
+// the three lists can be read beside each other.
+func TestTheJudgedTasksThatDidNotRunAreNamedInTaskOrder(t *testing.T) {
+	correspondence := testCorrespondence(t, map[string]string{
+		"format": "lint-format",
+		"tidy":   "lint-tidy",
+		"misra":  "static-misra",
+	})
+	collection, err := correspondence.Collect(
+		[]PlaneOutcome{{Task: "format", HeadSHA: headA, Observed: "success"}},
+		[]ActionsOutcome{
+			{Job: "static-misra", HeadSHA: headA, Conclusion: "failure"},
+			{Job: "lint-tidy", HeadSHA: headA, Conclusion: "success"},
+		},
+	)
+	if err != nil {
+		t.Fatalf("Collect: %v", err)
+	}
+	if len(collection.NotRunJudged) != 2 {
+		t.Fatalf("NotRunJudged = %+v, want two entries", collection.NotRunJudged)
+	}
+	if collection.NotRunJudged[0].Task != "misra" || collection.NotRunJudged[1].Task != "tidy" {
+		t.Fatalf("NotRunJudged order = %+v, want misra then tidy", collection.NotRunJudged)
+	}
+}
+
+// An Actions job outside the correspondence stays ignored. This slice reports
+// covered tasks, never the whole workflow.
+func TestAJobOutsideTheCorrespondenceIsNeverNamedAsJudged(t *testing.T) {
+	correspondence := testCorrespondence(t, map[string]string{"format": "lint-format"})
+	collection, err := correspondence.Collect(
+		[]PlaneOutcome{{Task: "format", HeadSHA: headA, Observed: "success"}},
+		[]ActionsOutcome{
+			{Job: "lint-format", HeadSHA: headA, Conclusion: "success"},
+			{Job: "docs", HeadSHA: headA, Conclusion: "failure"},
+		},
+	)
+	if err != nil {
+		t.Fatalf("Collect: %v", err)
+	}
+	if len(collection.NotRunJudged) != 0 || len(collection.NotRun) != 0 {
+		t.Fatalf("collection = %+v", collection)
+	}
+}
