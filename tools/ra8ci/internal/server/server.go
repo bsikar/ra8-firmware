@@ -153,7 +153,9 @@ func NewWithOptions(st *store.Store, cat *catalog.Catalog, verifier store.Neutra
 	return s, nil
 }
 
-func (s *Server) Handler() http.Handler { return s.mux }
+// Handler wraps the mux so every request carries a correlation identifier on
+// the way back out, including the ones that never reach a route.
+func (s *Server) Handler() http.Handler { return withCorrelation(s.mux) }
 
 func (s *Server) live(w http.ResponseWriter, _ *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]any{"status": "alive"})
@@ -365,11 +367,18 @@ func writeStoreError(w http.ResponseWriter, err error) {
 
 func problem(w http.ResponseWriter, status int, code, detail string, retryable bool) {
 	w.Header().Set("Content-Type", "application/problem+json")
-	w.WriteHeader(status)
-	_ = json.NewEncoder(w).Encode(map[string]any{
+	body := map[string]any{
 		"type": "about:blank", "status": status, "code": code,
 		"detail": detail, "retryable": retryable,
-	})
+	}
+	// Read back what withCorrelation set rather than minting one here: a
+	// mux served without that wrapper carries no thread to report, and an
+	// invented one would name a request nothing else recorded.
+	if id := w.Header().Get(correlationHeader); id != "" {
+		body["correlation_id"] = id
+	}
+	w.WriteHeader(status)
+	_ = json.NewEncoder(w).Encode(body)
 }
 
 func writeJSON(w http.ResponseWriter, status int, value any) {
