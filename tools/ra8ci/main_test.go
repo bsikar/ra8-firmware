@@ -3712,3 +3712,122 @@ func TestAnOrdinaryComparisonNamesNoJudgementWithoutARun(t *testing.T) {
 		t.Fatalf("clean page carries the judged line: %q", out.String())
 	}
 }
+
+// shadowEvidenceCommitJudged builds one pull request's comparison in which this
+// plane ran one task and Actions concluded a second job the plane never ran.
+// The helper above always names the job "build", which cannot produce this
+// shape.
+func shadowEvidenceCommitJudged(task, head, observed, conclusion, otherJob, otherConclusion string) string {
+	return `{"plane":[{"task":"` + task + `","head_sha":"` + head + `","observed":"` + observed + `"}],` +
+		`"actions":[{"job":"build","head_sha":"` + head + `","conclusion":"` + conclusion + `"},` +
+		`{"job":"` + otherJob + `","head_sha":"` + head + `","conclusion":"` + otherConclusion + `"}]}`
+}
+
+// The accumulation carries no evidence for a task no commit ran, so a failing
+// Actions job for such a task is in no task's evidence and in none of
+// ready/conflicting/insufficient. Both writers name it against its own commit,
+// or it is recoverable from nothing.
+func TestTheEvidenceNamesAJudgementNoCommitRanAgainst(t *testing.T) {
+	exercised, skipped := twoCatalogTasks(t)
+	t.Setenv(github.EnvCheckRunMode, "shadow")
+	t.Setenv(github.EnvShadowCorrespondenceFile, writeCorrespondence(t,
+		`{"`+exercised+`":"build","`+skipped+`":"lint"}`))
+	input := shadowEvidenceInputDocument(1,
+		shadowEvidenceCommitJudged(exercised, evidenceHeadOne, "success", "success", "lint", "failure"))
+
+	var document bytes.Buffer
+	if err := githubShadowEvidence(strings.NewReader(input), &document); err != nil {
+		t.Fatalf("githubShadowEvidence: %v", err)
+	}
+	report := decodeShadowEvidence(t, document.String())
+	// The judgement moves nothing: it is not evidence, and this command
+	// does not fail over it. That is exactly why it has to be visible.
+	if report["settled"] != true {
+		t.Fatalf("settled %v, want true", report["settled"])
+	}
+	commits, _ := report["commits"].([]any)
+	if len(commits) != 1 {
+		t.Fatalf("commits %v, want one", report["commits"])
+	}
+	commit, _ := commits[0].(map[string]any)
+	judged, _ := commit["judged"].([]any)
+	if len(judged) != 1 || judged[0] != skipped+" (lint: failure)" {
+		t.Fatalf("judged %v, want [%s (lint: failure)]", commit["judged"], skipped)
+	}
+
+	var page bytes.Buffer
+	if err := githubEvidencePage(strings.NewReader(input), &page); err != nil {
+		t.Fatalf("githubEvidencePage: %v", err)
+	}
+	want := "judged by Actions without a run on " + evidenceHeadOne + ": " + skipped + " (lint: failure)"
+	if !strings.Contains(page.String(), want) {
+		t.Fatalf("the judgement is not named on the page:\n%s", page.String())
+	}
+	// Both facts are said, against the same commit.
+	if !strings.Contains(page.String(), "not exercised on "+evidenceHeadOne+": "+skipped) {
+		t.Fatalf("the judged task is dropped from the unexercised line:\n%s", page.String())
+	}
+}
+
+// A judgement is named against the commit it was made on. Accumulating them
+// would say the other side failed lint somewhere without saying which pull
+// request to open.
+func TestAJudgementIsNamedAgainstItsOwnCommit(t *testing.T) {
+	exercised, skipped := twoCatalogTasks(t)
+	t.Setenv(github.EnvCheckRunMode, "shadow")
+	t.Setenv(github.EnvShadowCorrespondenceFile, writeCorrespondence(t,
+		`{"`+exercised+`":"build","`+skipped+`":"lint"}`))
+	input := shadowEvidenceInputDocument(1,
+		shadowEvidenceCommitJudged(exercised, evidenceHeadOne, "success", "success", "lint", "failure"),
+		shadowEvidenceCommit(exercised, evidenceHeadTwo, "success", "success"))
+
+	var page bytes.Buffer
+	if err := githubEvidencePage(strings.NewReader(input), &page); err != nil {
+		t.Fatalf("githubEvidencePage: %v", err)
+	}
+	if !strings.Contains(page.String(), "judged by Actions without a run on "+evidenceHeadOne) {
+		t.Fatalf("the judged commit is not named:\n%s", page.String())
+	}
+	if strings.Contains(page.String(), "judged by Actions without a run on "+evidenceHeadTwo) {
+		t.Fatalf("a commit nothing was judged on carries the line:\n%s", page.String())
+	}
+	// The commit that skipped the task without a judgement still says so.
+	if !strings.Contains(page.String(), "not exercised on "+evidenceHeadTwo+": "+skipped) {
+		t.Fatalf("the second commit's unexercised line is missing:\n%s", page.String())
+	}
+}
+
+// An ordinary evidence set says nothing about judgements without a run, in
+// either writer. A line on every clean page teaches a reader to skip it, and
+// the document field stays present as an empty list rather than going null.
+func TestAnOrdinaryEvidenceSetNamesNoJudgementWithoutARun(t *testing.T) {
+	exercised, skipped := twoCatalogTasks(t)
+	t.Setenv(github.EnvCheckRunMode, "shadow")
+	t.Setenv(github.EnvShadowCorrespondenceFile, writeCorrespondence(t,
+		`{"`+exercised+`":"build","`+skipped+`":"lint"}`))
+	input := shadowEvidenceInputDocument(1,
+		shadowEvidenceCommit(exercised, evidenceHeadOne, "success", "success"))
+
+	var document bytes.Buffer
+	if err := githubShadowEvidence(strings.NewReader(input), &document); err != nil {
+		t.Fatalf("githubShadowEvidence: %v", err)
+	}
+	report := decodeShadowEvidence(t, document.String())
+	commits, _ := report["commits"].([]any)
+	commit, _ := commits[0].(map[string]any)
+	judged, ok := commit["judged"].([]any)
+	if !ok {
+		t.Fatalf("judged %v is not a list", commit["judged"])
+	}
+	if len(judged) != 0 {
+		t.Fatalf("judged %v, want empty", commit["judged"])
+	}
+
+	var page bytes.Buffer
+	if err := githubEvidencePage(strings.NewReader(input), &page); err != nil {
+		t.Fatalf("githubEvidencePage: %v", err)
+	}
+	if strings.Contains(page.String(), "judged by Actions") {
+		t.Fatalf("a clean page carries the judged line:\n%s", page.String())
+	}
+}

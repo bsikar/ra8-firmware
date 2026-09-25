@@ -1473,6 +1473,7 @@ func gradeShadowCommits(config github.CheckRunEnvConfig, commits []shadowCompari
 		coverage = append(coverage, commitCoverage{
 			HeadSHA:      report.HeadSHA,
 			NotExercised: emptyWhenNil(collection.NotRun),
+			Judged:       judgedWithoutARun(collection.NotRunJudged),
 			Comparisons:  len(report.Comparisons),
 			Clean:        report.Clean(),
 		})
@@ -1516,6 +1517,12 @@ type commitCoverage struct {
 	// outcome for. They are not evidence for those tasks and are not
 	// accumulated as any.
 	NotExercised []string
+	// Judged are the NotExercised tasks the Actions side concluded
+	// anyway, as "task (job: conclusion)". They are in NotExercised as
+	// well: this commit did not exercise them, and the other side had
+	// something to say about them. Neither fact is evidence, and neither
+	// moves the readiness answer.
+	Judged []string
 	// Comparisons is how many pairings the commit produced.
 	Comparisons int
 	// Clean is whether the commit's own comparison came back clean, the
@@ -1575,6 +1582,7 @@ func coverageDocument(coverage []commitCoverage) []map[string]any {
 		document = append(document, map[string]any{
 			"head_sha":      commit.HeadSHA,
 			"not_exercised": emptyWhenNil(commit.NotExercised),
+			"judged":        emptyWhenNil(commit.Judged),
 			"comparisons":   commit.Comparisons,
 			"clean":         commit.Clean,
 		})
@@ -1766,6 +1774,20 @@ func githubEvidencePage(in io.Reader, out io.Writer) error {
 		}
 		if _, err := fmt.Fprintf(out, "\nnot exercised on %s: %s\n",
 			commit.HeadSHA, strings.Join(commit.NotExercised, ", ")); err != nil {
+			return fmt.Errorf("render shadow evidence: %w", err)
+		}
+		// The judgements this plane never ran against follow their own
+		// commit's line, the same shape the one-commit page uses. They
+		// are not accumulated anywhere and are in no task's evidence,
+		// so a reader who only has the accumulation cannot recover
+		// them: a pull request whose lint job failed while this side
+		// skipped lint would otherwise read here as an ordinary
+		// unexercised task.
+		if len(commit.Judged) == 0 {
+			continue
+		}
+		if _, err := fmt.Fprintf(out, "judged by Actions without a run on %s: %s\n",
+			commit.HeadSHA, strings.Join(commit.Judged, ", ")); err != nil {
 			return fmt.Errorf("render shadow evidence: %w", err)
 		}
 	}
