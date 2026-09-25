@@ -984,8 +984,31 @@ type reconcileSurveyedRun struct {
 	ID         int64  `json:"id"`
 	Status     string `json:"status"`
 	Conclusion string `json:"conclusion"`
-	ExternalID string `json:"external_id"`
-	Ours       bool   `json:"ours"`
+	Title      string `json:"title"`
+	// Summary is the run's output body, cut at maxReportedCheckRunSummary
+	// runes. A publisher may write pages there and this report exists to
+	// be read, so it is excerpted rather than carried whole.
+	Summary string `json:"summary"`
+	// SummaryTruncated says the excerpt above is not the whole summary.
+	// A cut that did not announce itself would let a report be read as
+	// the run's own words when it is only their beginning.
+	SummaryTruncated bool   `json:"summary_truncated"`
+	ExternalID       string `json:"external_id"`
+	Ours             bool   `json:"ours"`
+}
+
+// excerptCheckRunSummary cuts a published run's summary to what a report can
+// carry, and says whether it cut anything.
+//
+// The cut is by rune, not by byte: a summary is prose a publisher wrote, and
+// halving a multi-byte character would put a replacement character in a
+// document that is meant to be the run's own words as far as it goes.
+func excerptCheckRunSummary(summary string) (string, bool) {
+	runes := []rune(summary)
+	if len(runes) <= maxReportedCheckRunSummary {
+		return summary, false
+	}
+	return string(runes[:maxReportedCheckRunSummary]), true
 }
 
 // reconcileReport is the whole survey of one commit.
@@ -1036,12 +1059,16 @@ func surveyCheckRunPlan(planned []plannedCheckRun, published github.PublishedChe
 		}
 		surveyed := make([]reconcileSurveyedRun, 0, len(verdict.Existing))
 		for _, run := range verdict.Existing {
+			summary, cut := excerptCheckRunSummary(run.Summary)
 			surveyed = append(surveyed, reconcileSurveyedRun{
-				ID:         run.ID,
-				Status:     run.Status,
-				Conclusion: run.Conclusion,
-				ExternalID: run.ExternalID,
-				Ours:       !unclaimed[run.ID],
+				ID:               run.ID,
+				Status:           run.Status,
+				Conclusion:       run.Conclusion,
+				Title:            run.Title,
+				Summary:          summary,
+				SummaryTruncated: cut,
+				ExternalID:       run.ExternalID,
+				Ours:             !unclaimed[run.ID],
 			})
 		}
 		report.Tasks = append(report.Tasks, reconcileSurvey{
@@ -2366,6 +2393,13 @@ func pullRequestEvidenceDocument(threshold int, gathered []gatheredPullRequest) 
 	}
 	return document
 }
+
+// maxReportedCheckRunSummary bounds the summary excerpt the reconcile report
+// carries for each published run, in runes. A check run's output body may run
+// to pages, and this report is a document a person reads to decide what a
+// commit is carrying; the excerpt is long enough to show what a run is about
+// and short enough that twenty of them still fit on a screen.
+const maxReportedCheckRunSummary = 400
 
 // maxPullRequestSurveyBytes bounds the document `pull-request-survey` reads.
 // It carries a workflow name and a list of pull request numbers, so a few

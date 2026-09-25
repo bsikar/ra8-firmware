@@ -170,6 +170,17 @@ func ReconcilePublish(intended TaskCheckRun, published PublishedCheckRuns) (Reco
 // says. It is asked only of runs this plane posted, so it judges what a run
 // says and never who left it there. The title is part of the comparison for a
 // shadow run, where the conclusion is neutral whatever was observed.
+//
+// The summary is deliberately not compared, and the reason is worth stating
+// because the field is now read back. An intended TaskCheckRun does not carry
+// one: the summary is a caller's argument, handed to Publish beside the run,
+// and it is free text that a duration, a timestamp or a re-worded sentence
+// changes without anything about the outcome changing. Comparing it would
+// turn an ordinary republish into a conflict an operator has to clear by
+// hand, which is the opposite of what this file is for. It is reported
+// instead, so a run whose title agrees while its summary describes other work
+// is visible to the person reading the listing rather than answered for them
+// here. TestASummaryIsReportedAndNeverMatchedOn pins both halves.
 func sameCheckRun(intended TaskCheckRun, published PublishedCheckRun) bool {
 	if published.Mode != intended.Mode || published.Conclusion != intended.Conclusion {
 		return false

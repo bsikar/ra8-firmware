@@ -432,3 +432,89 @@ func TestTheListingCarriesEachRunsExternalIdentifier(t *testing.T) {
 		t.Fatalf("a run with no external id carried %q", published.Runs[1].ExternalID)
 	}
 }
+
+// publishedRunWithSummaryJSON renders one listed run carrying an output body.
+// It is a separate helper rather than a wider publishedRunJSON so every test
+// above keeps saying exactly what it is about.
+func publishedRunWithSummaryJSON(id int64, name, head, status, conclusion, title, summary string) string {
+	return fmt.Sprintf(`{"id":%d,"name":%q,"head_sha":%q,"status":%q,"conclusion":%q,"external_id":"","output":{"title":%q,"summary":%q}}`,
+		id, name, head, status, conclusion, title, summary)
+}
+
+// reconcilerRunName is the check run name one catalog task publishes under.
+// reconcilerTaskNames answers with task names, and a listing carrying one of
+// those is a listing of runs under no namespace of ours.
+func reconcilerRunName(t *testing.T) string {
+	t.Helper()
+	first, _ := reconcilerTaskNames(t)
+	name, err := CheckRunName(ModeAuthoritative, first)
+	if err != nil {
+		t.Fatalf("check run name: %v", err)
+	}
+	return name
+}
+
+func TestTheListingCarriesEachRunsSummary(t *testing.T) {
+	reconciler, server := newCheckRunReconciler(t)
+	authoritativeName := reconcilerRunName(t)
+	server.serveListing(http.StatusOK, `{"total_count":1,"check_runs":[`+
+		publishedRunWithSummaryJSON(4, authoritativeName, reconcilerHead, "completed", "success",
+			"ok", "attempt 2 on board ra8d2-07, 41 cases, 0 failures")+`]}`)
+
+	published, err := reconciler.PublishedRuns(context.Background(), reconcilerHead)
+	if err != nil {
+		t.Fatalf("published runs: %v", err)
+	}
+	if len(published.Runs) != 1 {
+		t.Fatalf("runs = %d, want 1", len(published.Runs))
+	}
+	if published.Runs[0].Summary != "attempt 2 on board ra8d2-07, 41 cases, 0 failures" {
+		t.Fatalf("summary = %q", published.Runs[0].Summary)
+	}
+	if published.Runs[0].Title != "ok" {
+		t.Fatalf("title = %q, want the title left alone", published.Runs[0].Title)
+	}
+}
+
+// A run with no output body is reported with an empty summary and not refused:
+// the field is somebody else's to fill, and a publisher that wrote only a
+// title is a state the listing has to be able to describe.
+func TestARunWithNoSummaryIsStillReported(t *testing.T) {
+	reconciler, server := newCheckRunReconciler(t)
+	authoritativeName := reconcilerRunName(t)
+	server.serveListing(http.StatusOK, `{"total_count":1,"check_runs":[`+
+		publishedRunJSON(6, authoritativeName, reconcilerHead, "completed", "success", "ok")+`]}`)
+
+	published, err := reconciler.PublishedRuns(context.Background(), reconcilerHead)
+	if err != nil {
+		t.Fatalf("published runs: %v", err)
+	}
+	if len(published.Runs) != 1 || published.Runs[0].Summary != "" {
+		t.Fatalf("runs = %+v, want one run with no summary", published.Runs)
+	}
+}
+
+// Two runs under one name whose summaries differ are both reported with their
+// own words. This is the whole reason the field is read: the listing is what
+// an operator has to tell them apart from.
+func TestTwoRunsUnderOneNameKeepTheirOwnSummaries(t *testing.T) {
+	reconciler, server := newCheckRunReconciler(t)
+	authoritativeName := reconcilerRunName(t)
+	server.serveListing(http.StatusOK, `{"total_count":2,"check_runs":[`+
+		publishedRunWithSummaryJSON(11, authoritativeName, reconcilerHead, "completed", "failure",
+			"failed", "flash write timed out")+`,`+
+		publishedRunWithSummaryJSON(12, authoritativeName, reconcilerHead, "completed", "failure",
+			"failed", "board never came back from reset")+`]}`)
+
+	published, err := reconciler.PublishedRuns(context.Background(), reconcilerHead)
+	if err != nil {
+		t.Fatalf("published runs: %v", err)
+	}
+	if len(published.Runs) != 2 {
+		t.Fatalf("runs = %d, want 2", len(published.Runs))
+	}
+	if published.Runs[0].Summary != "flash write timed out" ||
+		published.Runs[1].Summary != "board never came back from reset" {
+		t.Fatalf("summaries = %q / %q", published.Runs[0].Summary, published.Runs[1].Summary)
+	}
+}

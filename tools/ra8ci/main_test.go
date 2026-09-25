@@ -12,6 +12,7 @@ import (
 	"strconv"
 	"strings"
 	"testing"
+	"unicode/utf8"
 
 	"github.com/bsikar/ra8-firmware/tools/ra8ci/internal/catalog"
 	"github.com/bsikar/ra8-firmware/tools/ra8ci/internal/github"
@@ -2636,5 +2637,91 @@ func TestPullRequestSurveyIsOneOfTheGithubSubcommands(t *testing.T) {
 	}
 	if !strings.Contains(err.Error(), "pull-request-survey") {
 		t.Fatalf("usage does not name the subcommand: %v", err)
+	}
+}
+
+// The survey carries each published run's title and summary, because the
+// decision beside them deliberately does not read the summary: a run whose
+// title agrees while its summary describes other work is settled as far as
+// the reconciliation is concerned, and the report is where a person sees it.
+func TestTheSurveyReportsWhatEachRunSaid(t *testing.T) {
+	task := firstCatalogTask(t)
+	plan := plannedRun(t, github.ModeAuthoritative, task, "failed")
+	run := publishedAs(plan, 90, "completed", plan.Run.Conclusion, plan.Run.Title)
+	run.Summary = "flash write timed out on board ra8d2-07"
+
+	report, err := surveyCheckRunPlan([]plannedCheckRun{plan}, listing(run))
+	if err != nil {
+		t.Fatalf("survey: %v", err)
+	}
+	if report.Tasks[0].Decision != "settled" {
+		t.Fatalf("decision = %q, want settled", report.Tasks[0].Decision)
+	}
+	published := report.Tasks[0].Published
+	if len(published) != 1 {
+		t.Fatalf("published = %d, want 1", len(published))
+	}
+	if published[0].Title != plan.Run.Title {
+		t.Fatalf("title = %q, want %q", published[0].Title, plan.Run.Title)
+	}
+	if published[0].Summary != "flash write timed out on board ra8d2-07" || published[0].SummaryTruncated {
+		t.Fatalf("summary = %q truncated = %v", published[0].Summary, published[0].SummaryTruncated)
+	}
+}
+
+// A summary longer than the report carries is cut, and the cut says so. An
+// excerpt that did not announce itself would be read as the run's own words
+// when it is only their beginning.
+func TestALongSummaryIsExcerptedAndSaysSo(t *testing.T) {
+	task := firstCatalogTask(t)
+	plan := plannedRun(t, github.ModeAuthoritative, task, "failed")
+	run := publishedAs(plan, 91, "completed", plan.Run.Conclusion, plan.Run.Title)
+	run.Summary = strings.Repeat("a", maxReportedCheckRunSummary+50)
+
+	report, err := surveyCheckRunPlan([]plannedCheckRun{plan}, listing(run))
+	if err != nil {
+		t.Fatalf("survey: %v", err)
+	}
+	reported := report.Tasks[0].Published[0]
+	if len([]rune(reported.Summary)) != maxReportedCheckRunSummary {
+		t.Fatalf("summary length = %d, want %d", len([]rune(reported.Summary)), maxReportedCheckRunSummary)
+	}
+	if !reported.SummaryTruncated {
+		t.Fatal("a cut summary did not say it was cut")
+	}
+}
+
+// The cut is by rune. Halving a multi-byte character would put a replacement
+// character into a document meant to be the run's own words as far as it goes.
+func TestASummaryIsCutOnACharacterBoundary(t *testing.T) {
+	body := strings.Repeat("\u00e9", maxReportedCheckRunSummary+10)
+	excerpt, truncated := excerptCheckRunSummary(body)
+	if !truncated {
+		t.Fatal("an over-long summary was not reported as cut")
+	}
+	if !utf8.ValidString(excerpt) {
+		t.Fatalf("excerpt is not valid UTF-8: %q", excerpt)
+	}
+	if excerpt != strings.Repeat("\u00e9", maxReportedCheckRunSummary) {
+		t.Fatalf("excerpt = %q", excerpt)
+	}
+}
+
+// An exact-length summary is whole, not cut. The bound is a ceiling, not a
+// point the report starts lying at.
+func TestASummaryAtTheBoundIsNotCut(t *testing.T) {
+	body := strings.Repeat("b", maxReportedCheckRunSummary)
+	excerpt, truncated := excerptCheckRunSummary(body)
+	if truncated || excerpt != body {
+		t.Fatalf("excerpt = %d runes truncated = %v, want the whole summary", len([]rune(excerpt)), truncated)
+	}
+}
+
+// A run with no output body is reported with an empty summary and no cut,
+// which is a different thing from an excerpt that came out empty.
+func TestARunWithNoSummaryReportsNoCut(t *testing.T) {
+	excerpt, truncated := excerptCheckRunSummary("")
+	if excerpt != "" || truncated {
+		t.Fatalf("excerpt = %q truncated = %v", excerpt, truncated)
 	}
 }
