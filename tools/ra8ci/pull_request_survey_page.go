@@ -351,6 +351,20 @@ func statedSurveyHead(head string) string {
 // A commit is matched the way `sharedHeads` grouped it, without its casing or
 // surrounding space: one commit written two ways is one commit, and refusing
 // over the spelling would refuse a survey that is perfectly well formed.
+//
+// The commit the group is about is read before any of that, because every
+// refusal in here names it: "%s is shared by 1 candidate(s)", "%s is shared
+// in more than one group", "#1589 shares %s with itself", "... and was not
+// surveyed", "... and is at abc123". A group carrying no commit turns all
+// five into a sentence with a gap where the subject goes, and turns the line
+// the page leads with into "shared head : #1589, #1590". One check first
+// answers for all of them, the same reason #1648 reads a candidate's head
+// before the group it is grouped under.
+//
+// The candidates are not named in that refusal. A group that names no commit
+// may name no candidates either, and "a shared head grouping  names no
+// commit" is the gap this check exists to close. The count says which group
+// it is without ever being blank.
 func checkSurveySharedHeads(report pullRequestSurveyReport) error {
 	at := make(map[int]string, len(report.PullRequests))
 	for _, candidate := range report.PullRequests {
@@ -358,6 +372,10 @@ func checkSurveySharedHeads(report pullRequestSurveyReport) error {
 	}
 	grouped := make(map[string]struct{}, len(report.SharedHeads))
 	for _, shared := range report.SharedHeads {
+		if strings.TrimSpace(shared.HeadSHA) == "" {
+			return fmt.Errorf("%w: a shared head over %d candidate(s) names no commit",
+				ErrPullRequestSurveyPageInvalid, len(shared.PullRequests))
+		}
 		if len(shared.PullRequests) < 2 {
 			return fmt.Errorf("%w: %s is shared by %d candidate(s)",
 				ErrPullRequestSurveyPageInvalid, shared.HeadSHA, len(shared.PullRequests))
