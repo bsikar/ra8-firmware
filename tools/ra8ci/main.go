@@ -1011,15 +1011,43 @@ func excerptCheckRunSummary(summary string) (string, bool) {
 	return string(runes[:maxReportedCheckRunSummary]), true
 }
 
+// reconcileUnplannedRun is one run occupying a name in this plane's
+// namespaces that no task in the document plans.
+//
+// Ours is the whole reason this is worth reporting separately from a task's
+// own runs. A run of ours under a retired task name is our own leftover; a run
+// that is not ours is somebody else publishing into a namespace branch
+// protection may one day be pointed at. They read alike in a listing and send
+// an operator to entirely different places.
+type reconcileUnplannedRun struct {
+	ID               int64  `json:"id"`
+	Name             string `json:"name"`
+	Mode             string `json:"mode"`
+	Status           string `json:"status"`
+	Conclusion       string `json:"conclusion"`
+	Title            string `json:"title"`
+	Summary          string `json:"summary"`
+	SummaryTruncated bool   `json:"summary_truncated"`
+	ExternalID       string `json:"external_id"`
+	Ours             bool   `json:"ours"`
+}
+
 // reconcileReport is the whole survey of one commit.
 type reconcileReport struct {
-	Commit   string            `json:"commit"`
-	Mode     string            `json:"mode"`
-	Settled  bool              `json:"settled"`
-	Posting  int               `json:"posting"`
-	Waiting  int               `json:"waiting"`
-	Conflict int               `json:"conflicting"`
-	Tasks    []reconcileSurvey `json:"tasks"`
+	Commit   string `json:"commit"`
+	Mode     string `json:"mode"`
+	Settled  bool   `json:"settled"`
+	Posting  int    `json:"posting"`
+	Waiting  int    `json:"waiting"`
+	Conflict int    `json:"conflicting"`
+	// Unplanned counts the runs below. It is deliberately not part of
+	// Settled and never reaches the exit status: a run under a name the
+	// document does not plan says nothing about whether this publish is
+	// settled, and a commit whose every planned task is accounted for is
+	// settled while an operator still has a leftover run to look at.
+	Unplanned    int                     `json:"unplanned"`
+	UnplannedRun []reconcileUnplannedRun `json:"unplanned_runs"`
+	Tasks        []reconcileSurvey       `json:"tasks"`
 }
 
 // surveyCheckRunPlan decides every planned run against one listing and reports
@@ -1031,6 +1059,16 @@ type reconcileReport struct {
 // refusing would only withhold the picture an operator came for: the
 // conflicting task is reported beside the others, and the exit status carries
 // the fact that one was found.
+//
+// It also reports what the document does NOT plan. Every decision above is
+// made by walking the plan and asking the listing about one name at a time,
+// so a run under a name no task plans any more, left by a task since retired
+// or renamed, is accounted for by nothing and reported nowhere. It still
+// occupies a name in a namespace branch protection may one day be pointed at.
+// Those runs are listed beside the tasks and counted apart from them, and
+// they move neither Settled nor the exit status: the document is about this
+// publish, and a leftover run is a fact about the commit rather than a verdict
+// on the runs in hand.
 func surveyCheckRunPlan(planned []plannedCheckRun, published github.PublishedCheckRuns) (reconcileReport, error) {
 	if len(planned) == 0 {
 		return reconcileReport{}, errors.New("no check runs to survey")
@@ -1078,6 +1116,31 @@ func surveyCheckRunPlan(planned []plannedCheckRun, published github.PublishedChe
 			Published: surveyed,
 		})
 	}
+	claimed := make([]string, 0, len(planned))
+	for _, plan := range planned {
+		claimed = append(claimed, plan.Run.Name)
+	}
+	unplanned, err := github.UnplannedRuns(published, claimed)
+	if err != nil {
+		return reconcileReport{}, fmt.Errorf("account for the commit's runs: %w", err)
+	}
+	report.UnplannedRun = make([]reconcileUnplannedRun, 0, len(unplanned))
+	for _, run := range unplanned {
+		summary, cut := excerptCheckRunSummary(run.Summary)
+		report.UnplannedRun = append(report.UnplannedRun, reconcileUnplannedRun{
+			ID:               run.ID,
+			Name:             run.Name,
+			Mode:             run.Mode.String(),
+			Status:           run.Status,
+			Conclusion:       run.Conclusion,
+			Title:            run.Title,
+			Summary:          summary,
+			SummaryTruncated: cut,
+			ExternalID:       run.ExternalID,
+			Ours:             github.PublishedByThisPlane(run, report.Commit),
+		})
+	}
+	report.Unplanned = len(report.UnplannedRun)
 	report.Settled = report.Posting == 0 && report.Waiting == 0 && report.Conflict == 0
 	return report, nil
 }

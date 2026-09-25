@@ -230,6 +230,21 @@ func firstCatalogTask(t *testing.T) string {
 	return names[0]
 }
 
+// twoCatalogTasks returns two real reviewed task names, for a test that needs
+// one the document plans and one it does not.
+func twoCatalogTasks(t *testing.T) (string, string) {
+	t.Helper()
+	loaded, err := catalog.Load()
+	if err != nil {
+		t.Fatalf("load catalog: %v", err)
+	}
+	names := loaded.Names()
+	if len(names) < 2 {
+		t.Skip("catalog carries fewer than two tasks")
+	}
+	return names[0], names[1]
+}
+
 func writeCorrespondence(t *testing.T, pairs string) string {
 	t.Helper()
 	path := filepath.Join(t.TempDir(), "correspondence.json")
@@ -1869,6 +1884,131 @@ func TestTheSurveyIsSettledOnlyWhenNothingIsLeft(t *testing.T) {
 				t.Fatalf("decision %q, want %q", report.Tasks[0].Decision, test.decision)
 			}
 		})
+	}
+}
+
+// A run under a name the document does not plan is accounted for by nothing
+// above, so the survey reports it apart from the tasks. This is the leftover
+// a retired or renamed task leaves on every commit it was published to.
+func TestTheSurveyReportsARunNoTaskPlans(t *testing.T) {
+	first, second := twoCatalogTasks(t)
+	plan := plannedRun(t, github.ModeAuthoritative, first, "failed")
+	retired := plannedRun(t, github.ModeAuthoritative, second, "succeeded")
+	ours := publishedAs(plan, 80, "completed", plan.Run.Conclusion, plan.Run.Title)
+	leftover := publishedAs(retired, 81, "completed", retired.Run.Conclusion, retired.Run.Title)
+
+	report, err := surveyCheckRunPlan([]plannedCheckRun{plan}, listing(ours, leftover))
+	if err != nil {
+		t.Fatalf("survey: %v", err)
+	}
+	if report.Unplanned != 1 || len(report.UnplannedRun) != 1 {
+		t.Fatalf("report = %+v", report)
+	}
+	reported := report.UnplannedRun[0]
+	if reported.ID != 81 || reported.Name != retired.Run.Name || reported.Mode != retired.Run.Mode.String() {
+		t.Fatalf("unplanned = %+v", reported)
+	}
+	if reported.Status != "completed" || reported.Conclusion != retired.Run.Conclusion || reported.Title != retired.Run.Title {
+		t.Fatalf("unplanned = %+v", reported)
+	}
+	if len(report.Tasks) != 1 || len(report.Tasks[0].Published) != 1 || report.Tasks[0].Published[0].ID != 80 {
+		t.Fatalf("tasks = %+v", report.Tasks)
+	}
+}
+
+// A leftover run of ours and somebody else's run under one of our names read
+// alike in a listing and send an operator to different places, so the report
+// says which it is without an intended run to compare against.
+func TestAnUnplannedRunSaysWhetherItIsOurs(t *testing.T) {
+	first, second := twoCatalogTasks(t)
+	plan := plannedRun(t, github.ModeAuthoritative, first, "failed")
+	retired := plannedRun(t, github.ModeAuthoritative, second, "succeeded")
+	mine := publishedAs(retired, 82, "completed", retired.Run.Conclusion, retired.Run.Title)
+	stranger := mine
+	stranger.ID = 83
+	stranger.ExternalID = "ra8ci-1-" + strings.Repeat("0", 32)
+	blank := mine
+	blank.ID = 84
+	blank.ExternalID = ""
+
+	report, err := surveyCheckRunPlan([]plannedCheckRun{plan}, listing(mine, stranger, blank))
+	if err != nil {
+		t.Fatalf("survey: %v", err)
+	}
+	claimed := map[int64]bool{}
+	for _, run := range report.UnplannedRun {
+		claimed[run.ID] = run.Ours
+	}
+	if len(claimed) != 3 || !claimed[82] || claimed[83] || claimed[84] {
+		t.Fatalf("claimed = %+v", claimed)
+	}
+}
+
+// An unplanned run moves neither the settled answer nor the counts the exit
+// status reads. The document is about this publish; a leftover run is a fact
+// about the commit, and failing the command over one would stop a publish
+// nothing is wrong with.
+func TestAnUnplannedRunDoesNotUnsettleThePublish(t *testing.T) {
+	first, second := twoCatalogTasks(t)
+	plan := plannedRun(t, github.ModeAuthoritative, first, "failed")
+	retired := plannedRun(t, github.ModeAuthoritative, second, "succeeded")
+	ours := publishedAs(plan, 85, "completed", plan.Run.Conclusion, plan.Run.Title)
+	leftover := publishedAs(retired, 86, "completed", retired.Run.Conclusion, retired.Run.Title)
+
+	report, err := surveyCheckRunPlan([]plannedCheckRun{plan}, listing(ours, leftover))
+	if err != nil {
+		t.Fatalf("survey: %v", err)
+	}
+	if !report.Settled || report.Conflict != 0 || report.Posting != 0 || report.Waiting != 0 {
+		t.Fatalf("report = %+v", report)
+	}
+	if report.Unplanned != 1 {
+		t.Fatalf("unplanned = %d, want the leftover still reported", report.Unplanned)
+	}
+}
+
+// A commit the document accounts for reports an empty list, not a null one:
+// the field is read by whatever consumes the survey, and null would have to
+// be handled as a third state that never means anything different.
+func TestAnAccountedForCommitReportsAnEmptyUnplannedList(t *testing.T) {
+	task := firstCatalogTask(t)
+	plan := plannedRun(t, github.ModeAuthoritative, task, "failed")
+	ours := publishedAs(plan, 87, "completed", plan.Run.Conclusion, plan.Run.Title)
+
+	report, err := surveyCheckRunPlan([]plannedCheckRun{plan}, listing(ours))
+	if err != nil {
+		t.Fatalf("survey: %v", err)
+	}
+	encoded, err := json.Marshal(report)
+	if err != nil {
+		t.Fatalf("encode: %v", err)
+	}
+	if !strings.Contains(string(encoded), `"unplanned_runs":[]`) {
+		t.Fatalf("encoded = %s", encoded)
+	}
+}
+
+// An unplanned run's summary is excerpted exactly as a task's run is: the
+// report is a document a person reads, and one leftover run must not be able
+// to fill it.
+func TestAnUnplannedRunsSummaryIsExcerpted(t *testing.T) {
+	first, second := twoCatalogTasks(t)
+	plan := plannedRun(t, github.ModeAuthoritative, first, "failed")
+	retired := plannedRun(t, github.ModeAuthoritative, second, "succeeded")
+	ours := publishedAs(plan, 88, "completed", plan.Run.Conclusion, plan.Run.Title)
+	leftover := publishedAs(retired, 89, "completed", retired.Run.Conclusion, retired.Run.Title)
+	leftover.Summary = strings.Repeat("e", maxReportedCheckRunSummary+7)
+
+	report, err := surveyCheckRunPlan([]plannedCheckRun{plan}, listing(ours, leftover))
+	if err != nil {
+		t.Fatalf("survey: %v", err)
+	}
+	if len(report.UnplannedRun) != 1 {
+		t.Fatalf("report = %+v", report)
+	}
+	reported := report.UnplannedRun[0]
+	if len([]rune(reported.Summary)) != maxReportedCheckRunSummary || !reported.SummaryTruncated {
+		t.Fatalf("summary = %d runes, truncated %v", len([]rune(reported.Summary)), reported.SummaryTruncated)
 	}
 }
 
