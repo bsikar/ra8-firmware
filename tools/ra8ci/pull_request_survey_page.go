@@ -83,6 +83,9 @@ func RenderPullRequestSurvey(out io.Writer, report pullRequestSurveyReport) erro
 			ErrPullRequestSurveyPageInvalid,
 			report.Selectable, report.Unselectable, len(selectable), len(unselectable))
 	}
+	if err := checkSurveySharedHeads(report); err != nil {
+		return err
+	}
 
 	page := &bytes.Buffer{}
 	if report.Unselectable == 0 && len(report.SharedHeads) == 0 {
@@ -135,6 +138,59 @@ func partitionSurveyedPullRequests(report pullRequestSurveyReport) (selectable, 
 		unselectable = append(unselectable, candidate)
 	}
 	return selectable, unselectable
+}
+
+// checkSurveySharedHeads refuses a survey whose shared heads are not about
+// its own candidates.
+//
+// The counts are already checked against the candidates, because a page that
+// says "3 selectable" over two selections is a page an operator would act
+// on. The shared heads were not, and they are the section that leads the
+// page and the one that spends the verdict: everything below them is read in
+// the light of "these two candidates clash". They were printed exactly as
+// the document stated them, so a document from another build, or one put
+// together by hand, could put a clash on the page between pull requests this
+// survey never surveyed.
+//
+// Three things make a shared head a fact about this survey, and `sharedHeads`
+// produces all three by construction: more than one candidate, every
+// candidate surveyed here, and every one of them actually at that commit. A
+// document that fails any of them is refused by name rather than rendered,
+// the treatment its counts already get.
+//
+// A commit is matched the way `sharedHeads` grouped it, without its casing or
+// surrounding space: one commit written two ways is one commit, and refusing
+// over the spelling would refuse a survey that is perfectly well formed.
+func checkSurveySharedHeads(report pullRequestSurveyReport) error {
+	at := make(map[int]string, len(report.PullRequests))
+	for _, candidate := range report.PullRequests {
+		at[candidate.Number] = strings.ToLower(strings.TrimSpace(candidate.HeadSHA))
+	}
+	for _, shared := range report.SharedHeads {
+		if len(shared.PullRequests) < 2 {
+			return fmt.Errorf("%w: %s is shared by %d candidate(s)",
+				ErrPullRequestSurveyPageInvalid, shared.HeadSHA, len(shared.PullRequests))
+		}
+		commit := strings.ToLower(strings.TrimSpace(shared.HeadSHA))
+		named := make(map[int]struct{}, len(shared.PullRequests))
+		for _, number := range shared.PullRequests {
+			if _, repeated := named[number]; repeated {
+				return fmt.Errorf("%w: #%d shares %s with itself",
+					ErrPullRequestSurveyPageInvalid, number, shared.HeadSHA)
+			}
+			named[number] = struct{}{}
+			head, surveyed := at[number]
+			if !surveyed {
+				return fmt.Errorf("%w: #%d shares %s and was not surveyed",
+					ErrPullRequestSurveyPageInvalid, number, shared.HeadSHA)
+			}
+			if head != commit {
+				return fmt.Errorf("%w: #%d shares %s and is at %s",
+					ErrPullRequestSurveyPageInvalid, number, shared.HeadSHA, head)
+			}
+		}
+	}
+	return nil
 }
 
 // numberedPullRequests writes a shared head's candidates the way a person
