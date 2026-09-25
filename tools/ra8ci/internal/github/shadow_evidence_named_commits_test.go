@@ -138,8 +138,11 @@ func TestAReadyTaskKeepsCommitListsThePageNeverPrints(t *testing.T) {
 }
 
 func TestACommitThePageNamesAndTheEvidenceAccumulatedIsRendered(t *testing.T) {
+	// Two accumulated commits, both disagreeing, so the fixture counts what
+	// it names: an accumulation increments Conflicting as it appends the
+	// commit, and Observed is Graded plus the pairings nobody judged.
 	evidence := namedCommitEvidence([]string{"aaa1", "bbb2"}, TaskEvidence{
-		Task: "build", Observed: 2, Graded: 1, Conflicting: 1,
+		Task: "build", Observed: 2, Graded: 2, Conflicting: 2,
 		ConflictingCommits: []string{"aaa1", "bbb2"},
 	})
 	readiness := ShadowReadiness{Threshold: 1, Conflicting: []string{"build"}}
