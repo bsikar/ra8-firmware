@@ -7,6 +7,7 @@ import (
 	"errors"
 	"strings"
 	"testing"
+	"unicode/utf8"
 
 	"github.com/bsikar/ra8-firmware/tools/ra8ci/internal/catalog"
 	"github.com/bsikar/ra8-firmware/tools/ra8ci/internal/store"
@@ -220,5 +221,26 @@ func TestModeNamesItself(t *testing.T) {
 	}
 	if got := CheckRunMode(7).String(); got != "CheckRunMode(7)" {
 		t.Fatalf("out of set mode names itself %q", got)
+	}
+}
+
+// A title past GitHub's ceiling is cut by character, never by byte. A byte cut
+// can halve a multi-byte character, and the broken text GitHub then renders is
+// the one line a reviewer reads the run's conclusion from.
+func TestALongTitleIsCutByCharacterAndStaysReadable(t *testing.T) {
+	long := strings.Repeat("\u756e", 400)
+	cut := boundCheckRunTitle(long)
+	if utf8.RuneCountInString(cut) != maxCheckRunTitle {
+		t.Fatalf("cut title is %d characters, want %d", utf8.RuneCountInString(cut), maxCheckRunTitle)
+	}
+	if !utf8.ValidString(cut) || strings.ContainsRune(cut, utf8.RuneError) {
+		t.Fatalf("cut title is not readable text: %q", cut)
+	}
+	if short := "ra8ci shadow"; boundCheckRunTitle(short) != short {
+		t.Fatal("a title inside the ceiling was altered")
+	}
+	exact := strings.Repeat("t", maxCheckRunTitle)
+	if boundCheckRunTitle(exact) != exact {
+		t.Fatal("a title of exactly the ceiling was cut")
 	}
 }

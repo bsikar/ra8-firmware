@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"unicode/utf8"
 )
 
 // #1481 publishes one check run per catalog task through the GitHub App, with
@@ -36,8 +37,8 @@ const (
 	// for its own check runs.
 	checkRunNameSeparator = " / "
 	// maxCheckRunTitle bounds the observed-conclusion title a shadow run
-	// carries; GitHub's own limit is larger and this is only ever a short
-	// sentence.
+	// carries, in characters. It is GitHub's own ceiling for a check run
+	// title, and this plane's titles are only ever a short sentence.
 	maxCheckRunTitle = 255
 )
 
@@ -200,10 +201,19 @@ func NewTaskCheckRun(mode CheckRunMode, task, headSHA, state string) (TaskCheckR
 		run.Conclusion = shadowConclusion
 		run.Title = fmt.Sprintf("shadow: %s would report %s", task, observed)
 	}
-	if len(run.Title) > maxCheckRunTitle {
-		run.Title = run.Title[:maxCheckRunTitle]
-	}
+	run.Title = boundCheckRunTitle(run.Title)
 	return run, nil
+}
+
+// boundCheckRunTitle cuts a title to GitHub's ceiling by character, never by
+// byte. A byte cut can halve a multi-byte character and leave the one line a
+// check run shows as broken text, which GitHub then renders as a replacement
+// character rather than the conclusion the title was written to state.
+func boundCheckRunTitle(title string) string {
+	if utf8.RuneCountInString(title) <= maxCheckRunTitle {
+		return title
+	}
+	return string([]rune(title)[:maxCheckRunTitle])
 }
 
 // Blocking reports whether the conclusion this run carries is one branch

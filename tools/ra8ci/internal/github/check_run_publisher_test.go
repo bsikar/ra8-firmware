@@ -389,3 +389,132 @@ func TestAnEchoedExternalIdentifierIsCheckedOnlyWhenItIsThere(t *testing.T) {
 		})
 	}
 }
+
+// GitHub refuses an over-long summary with a status code and no word about
+// which field was at fault. The bound is applied here, where the field has a
+// name, and it is applied before an installation token is minted: a body
+// GitHub would reject never costs a token or reaches the network.
+func TestAnOverLongSummaryIsRefusedBeforeATokenIsMinted(t *testing.T) {
+	publisher, server := newCheckRunPublisher(t, ModeShadow)
+	run, err := NewTaskCheckRun(ModeShadow, "build", testHeadSHA, "failed")
+	if err != nil {
+		t.Fatalf("build run: %v", err)
+	}
+	id, err := publisher.Publish(context.Background(), run, strings.Repeat("a", maxCheckRunSummary+1))
+	if !errors.Is(err, ErrCheckRunOutputUnusable) {
+		t.Fatalf("error %v, want ErrCheckRunOutputUnusable", err)
+	}
+	if id != 0 {
+		t.Fatalf("refused publish returned id %d", id)
+	}
+	if tokens, runs := server.requests(); tokens != 0 || runs != 0 {
+		t.Fatalf("refused publish spoke to GitHub: %d token, %d check run requests", tokens, runs)
+	}
+	if !strings.Contains(err.Error(), "65536") {
+		t.Fatalf("refusal %q does not say how long the summary was", err)
+	}
+}
+
+// The bound is a ceiling, not a point the summary starts lying at. A body of
+// exactly the ceiling is published whole and unaltered.
+func TestASummaryOfExactlyTheCeilingIsPublishedWhole(t *testing.T) {
+	publisher, server := newCheckRunPublisher(t, ModeShadow)
+	run, err := NewTaskCheckRun(ModeShadow, "build", testHeadSHA, "failed")
+	if err != nil {
+		t.Fatalf("build run: %v", err)
+	}
+	summary := strings.Repeat("a", maxCheckRunSummary)
+	if _, err := publisher.Publish(context.Background(), run, summary); err != nil {
+		t.Fatalf("publish: %v", err)
+	}
+	server.mu.Lock()
+	defer server.mu.Unlock()
+	if len(server.runBodies) != 1 {
+		t.Fatalf("posted %d check runs", len(server.runBodies))
+	}
+	if posted := server.runBodies[0].Output.Summary; posted != summary {
+		t.Fatalf("posted summary is %d characters, want the %d it was given", len(posted), len(summary))
+	}
+}
+
+// GitHub states its ceiling in characters, so the bound counts characters. A
+// byte count would refuse a legal summary written in a script whose characters
+// take more than one byte, which is a refusal nobody could act on.
+func TestTheSummaryIsCountedInCharactersNotBytes(t *testing.T) {
+	publisher, server := newCheckRunPublisher(t, ModeShadow)
+	run, err := NewTaskCheckRun(ModeShadow, "build", testHeadSHA, "failed")
+	if err != nil {
+		t.Fatalf("build run: %v", err)
+	}
+	summary := strings.Repeat("\u756e", maxCheckRunSummary)
+	if len(summary) <= maxCheckRunSummary {
+		t.Fatalf("test summary is %d bytes, it has to exceed the ceiling in bytes to be a test", len(summary))
+	}
+	if _, err := publisher.Publish(context.Background(), run, summary); err != nil {
+		t.Fatalf("publish a legal multi-byte summary: %v", err)
+	}
+	if _, runs := server.requests(); runs != 1 {
+		t.Fatalf("posted %d check runs, want 1", runs)
+	}
+}
+
+// GitHub requires a summary whenever an output body is sent, and this
+// publisher always sends one. An empty summary is that refusal stated here
+// rather than a status code from the API.
+func TestAnEmptySummaryIsRefusedBeforeATokenIsMinted(t *testing.T) {
+	publisher, server := newCheckRunPublisher(t, ModeShadow)
+	run, err := NewTaskCheckRun(ModeShadow, "build", testHeadSHA, "failed")
+	if err != nil {
+		t.Fatalf("build run: %v", err)
+	}
+	id, err := publisher.Publish(context.Background(), run, "")
+	if !errors.Is(err, ErrCheckRunOutputUnusable) {
+		t.Fatalf("error %v, want ErrCheckRunOutputUnusable", err)
+	}
+	if id != 0 {
+		t.Fatalf("refused publish returned id %d", id)
+	}
+	if tokens, runs := server.requests(); tokens != 0 || runs != 0 {
+		t.Fatalf("refused publish spoke to GitHub: %d token, %d check run requests", tokens, runs)
+	}
+}
+
+// NewTaskCheckRun holds its own titles to the ceiling, but a caller may build a
+// TaskCheckRun by hand. The publisher is the last place the title can be
+// refused before GitHub sees it, and it refuses rather than cuts for the same
+// reason the summary is refused.
+func TestAnOverLongTitleIsRefusedBeforeATokenIsMinted(t *testing.T) {
+	publisher, server := newCheckRunPublisher(t, ModeShadow)
+	run, err := NewTaskCheckRun(ModeShadow, "build", testHeadSHA, "failed")
+	if err != nil {
+		t.Fatalf("build run: %v", err)
+	}
+	run.Title = strings.Repeat("t", maxCheckRunTitle+1)
+	id, err := publisher.Publish(context.Background(), run, "summary")
+	if !errors.Is(err, ErrCheckRunOutputUnusable) {
+		t.Fatalf("error %v, want ErrCheckRunOutputUnusable", err)
+	}
+	if id != 0 {
+		t.Fatalf("refused publish returned id %d", id)
+	}
+	if tokens, runs := server.requests(); tokens != 0 || runs != 0 {
+		t.Fatalf("refused publish spoke to GitHub: %d token, %d check run requests", tokens, runs)
+	}
+}
+
+// The bound answers about the output body and nothing else. A run refused for
+// its output is refused for that reason, and a run whose output is fine is
+// still held to every rule that was already there.
+func TestTheOutputBoundDoesNotDisplaceTheOtherRefusals(t *testing.T) {
+	publisher, server := newCheckRunPublisher(t, ModeShadow)
+	run, err := NewTaskCheckRun(ModeAuthoritative, "build", testHeadSHA, "failed")
+	if err != nil {
+		t.Fatalf("build run: %v", err)
+	}
+	if _, err := publisher.Publish(context.Background(), run, ""); !errors.Is(err, ErrCheckRunModeNotPermitted) {
+		t.Fatalf("error %v, want ErrCheckRunModeNotPermitted", err)
+	}
+	if tokens, runs := server.requests(); tokens != 0 || runs != 0 {
+		t.Fatalf("refused publish spoke to GitHub: %d token, %d check run requests", tokens, runs)
+	}
+}
