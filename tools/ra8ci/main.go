@@ -54,7 +54,7 @@ func main() {
 
 func run(ctx context.Context, args []string) int {
 	if len(args) == 0 {
-		fmt.Fprintln(os.Stderr, "usage: ra8ci <task>|tasks [--digest|--json]|ascii [--check] [--all|PATH]|since [--all|FILE...]|final-newline [FILE...]|runner-clock [--repo OWNER/REPO] [--runs N] [--hours N]|tests-readme [--selftest]|inclusive-terminology-commits [--selftest]|server|agent|sync|backup refresh|keygen|board status|take [--class human|ci|agent]|checkpoint|extend|cancel|hil budget|verify-capture|db migrate|report slow|github check|github shadow|github shadow-compare|github publish-check-run|run submit|run status")
+		fmt.Fprintln(os.Stderr, "usage: ra8ci <task>|tasks [--digest|--json]|ascii [--check] [--all|PATH]|since [--all|FILE...]|final-newline [FILE...]|runner-clock [--repo OWNER/REPO] [--runs N] [--hours N]|tests-readme [--selftest]|inclusive-terminology-commits [--selftest]|server|agent|sync|backup refresh|keygen|board status|take [--class human|ci|agent]|checkpoint|extend|cancel|hil budget|verify-capture|db migrate|report slow|github check|github shadow|github shadow-compare|github publish-check-run|github required-checks|github gate|run submit|run status")
 		return 2
 	}
 	var err error
@@ -507,12 +507,13 @@ func runAgent(ctx context.Context) error {
 	return err
 }
 
-// githubCommand dispatches the GitHub subcommands. check, shadow and
-// shadow-compare change nothing on GitHub; publish-check-run is the one that
-// writes, and it says so in its own documentation.
+// githubCommand dispatches the GitHub subcommands. check, shadow,
+// shadow-compare and required-checks change nothing on GitHub, and gate only
+// reads it; publish-check-run is the one that writes, and it says so in its own
+// documentation.
 func githubCommand(ctx context.Context, args []string) error {
 	if len(args) != 1 {
-		return errors.New("usage: ra8ci github check|shadow|shadow-compare|publish-check-run|required-checks")
+		return errors.New("usage: ra8ci github check|shadow|shadow-compare|publish-check-run|required-checks|gate")
 	}
 	switch args[0] {
 	case "check":
@@ -525,8 +526,10 @@ func githubCommand(ctx context.Context, args []string) error {
 		return githubPublishCheckRuns(ctx, os.Stdin, os.Stdout)
 	case "required-checks":
 		return githubRequiredChecks(os.Stdin, os.Stdout)
+	case "gate":
+		return githubGate(ctx, os.Stdin, os.Stdout)
 	default:
-		return errors.New("usage: ra8ci github check|shadow|shadow-compare|publish-check-run|required-checks")
+		return errors.New("usage: ra8ci github check|shadow|shadow-compare|publish-check-run|required-checks|gate")
 	}
 }
 
@@ -836,6 +839,92 @@ func githubRequiredChecks(in io.Reader, out io.Writer) error {
 		"keep":             emptyWhenNil(plan.Keep),
 		"foreign":          emptyWhenNil(plan.Foreign),
 	})
+}
+
+// maxGateRequestBytes bounds the branch document `gate` reads. One branch name
+// is tens of bytes, so this is room to spare and still a refusal rather than an
+// unbounded read of whatever is piped in.
+const maxGateRequestBytes = 4 << 10
+
+// gateBranchInput is the wire shape `gate` reads: which protected branch's
+// requirements to report.
+type gateBranchInput struct {
+	Branch string `json:"branch"`
+}
+
+// githubGate reports the status check contexts branch protection requires on
+// one branch today, as exactly the document `required-checks` reads, so the two
+// compose:
+//
+//	ra8ci github gate <<<'{"branch":"main"}' | ra8ci github required-checks
+//
+// It reads GitHub and changes nothing there. Fetching lives in its own
+// subcommand so that `required-checks`, the command whose output an operator
+// reads before the gate is touched, still speaks to nothing.
+func githubGate(ctx context.Context, in io.Reader, out io.Writer) error {
+	loaded, err := catalog.Load()
+	if err != nil {
+		return fmt.Errorf("load task catalog: %w", err)
+	}
+	config, enabled, err := github.LoadCheckRunConfigFromEnv(loaded.Names())
+	if err != nil {
+		return err
+	}
+	if !enabled {
+		return fmt.Errorf("GitHub check-run publishing is not configured: set %s",
+			github.EnvShadowCorrespondenceFile)
+	}
+	publisherConfig, enabled, err := github.LoadCheckRunPublisherConfigFromEnv(config.Mode)
+	if err != nil {
+		return err
+	}
+	if !enabled {
+		return fmt.Errorf("GitHub check-run publishing has no repository: set %s",
+			github.EnvCheckRunRepository)
+	}
+
+	var document gateBranchInput
+	decoder := json.NewDecoder(io.LimitReader(in, maxGateRequestBytes+1))
+	decoder.DisallowUnknownFields()
+	if err := decoder.Decode(&document); err != nil {
+		return fmt.Errorf("read the branch to report: %w", err)
+	}
+	if decoder.More() {
+		return errors.New("read the branch to report: trailing content after the document")
+	}
+	if decoder.InputOffset() > maxGateRequestBytes {
+		return fmt.Errorf("read the branch to report: larger than %d bytes", maxGateRequestBytes)
+	}
+	// The branch is named, never defaulted. The gate that matters is the one
+	// on the branch pull requests merge into, and a default would read some
+	// other branch's protection and report it as the gate.
+	if document.Branch == "" {
+		return errors.New("read the branch to report: no branch named")
+	}
+
+	reader, err := github.NewRequiredCheckReader(github.RequiredCheckReaderConfig{
+		APIBaseURL:     publisherConfig.APIBaseURL,
+		AppClientID:    publisherConfig.AppClientID,
+		InstallationID: publisherConfig.InstallationID,
+		PrivateKeyFile: publisherConfig.PrivateKeyFile,
+		Owner:          publisherConfig.Owner,
+		Repository:     publisherConfig.Repository,
+	})
+	if err != nil {
+		return err
+	}
+	required, err := reader.RequiredContexts(ctx, document.Branch)
+	if err != nil {
+		return fmt.Errorf("read the gate on %s: %w", document.Branch, err)
+	}
+
+	// The output is the next command's input and nothing else.
+	// required-checks refuses a field it does not know, so an echoed branch
+	// name would break the pipe this command exists for. It is encoded as
+	// requiredCheckInput itself, so the two cannot drift apart.
+	encoder := json.NewEncoder(out)
+	encoder.SetIndent("", "  ")
+	return encoder.Encode(requiredCheckInput{Required: emptyWhenNil(required)})
 }
 
 // emptyWhenNil renders an empty list as [] rather than null, so a reader
