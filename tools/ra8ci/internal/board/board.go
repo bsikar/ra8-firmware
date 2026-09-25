@@ -95,6 +95,13 @@ type Lease struct {
 	YieldRequestedAt       time.Time
 	ContendedExtensionUsed time.Duration
 
+	// LastHeartbeatAt is when the holder last reported itself alive. Zero
+	// means it has not reported since the grant, which the grant itself
+	// already witnesses. It moves only forward, never lengthens or shortens
+	// ExpiresAt, and is read by ObserveHolderLiveness; silence is evidence a
+	// holder may have crashed, never authority withdrawn from it.
+	LastHeartbeatAt time.Time
+
 	// HandoffTarget is the handoff ETA the requester was shown when this
 	// board was asked to yield, retained for as long as the request is
 	// outstanding. It is a promise already made, not an estimate: a later
@@ -341,6 +348,10 @@ func Apply(before Snapshot, command Command, now time.Time) (Snapshot, []Event, 
 		err = release(&s, c, now, &events)
 	case Extend:
 		err = extend(&s, c, now, &events)
+	case HolderHeartbeat:
+		var beat bool
+		beat, err = holderHeartbeat(&s, c, now)
+		changed = changed || beat
 	case Tick:
 		err = grantNext(&s, now, c.Actor, &events)
 	case AgentUnavailable:
@@ -434,6 +445,8 @@ func commandActor(command Command) string {
 	case Release:
 		return c.Actor
 	case Extend:
+		return c.Actor
+	case HolderHeartbeat:
 		return c.Actor
 	case Tick:
 		return c.Actor
@@ -950,6 +963,11 @@ func Validate(s Snapshot) error {
 		}
 		if lease.Generation > s.Generation {
 			return &Error{Conflict, "lease generation exceeds board generation"}
+		}
+		// A beat stamped before the grant it belongs to is evidence of a
+		// replayed or misattributed report, not of a live holder.
+		if !lease.LastHeartbeatAt.IsZero() && lease.LastHeartbeatAt.Before(lease.GrantedAt) {
+			return &Error{Conflict, "retained lease carries a heartbeat from before its grant"}
 		}
 		if lease.HandoffTarget < 0 || lease.HandoffTarget > MaxHandoffBound {
 			return &Error{Conflict, "retained lease carries an out-of-range handoff target"}
