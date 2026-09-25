@@ -98,6 +98,13 @@ type PublishedCheckRun struct {
 	Status     string
 	Conclusion string
 	Title      string
+	// Summary is the body of the run's output, carried verbatim and
+	// empty for a run that has none. The title is one line and says what
+	// the run concluded; the summary is where a publisher says what it
+	// concluded it about, so two runs under one name can agree on every
+	// other field and still describe different work. Reporting it is the
+	// only way an operator reading a listing can tell.
+	Summary string
 	// ExternalID is the publisher's own name for the run, carried
 	// verbatim and empty for a run that has none: a run posted before
 	// this plane wrote the field, or one posted by something else under a
@@ -138,7 +145,8 @@ type commitCheckRunsResponse struct {
 		Conclusion string `json:"conclusion"`
 		ExternalID string `json:"external_id"`
 		Output     struct {
-			Title string `json:"title"`
+			Title   string `json:"title"`
+			Summary string `json:"summary"`
 		} `json:"output"`
 	} `json:"check_runs"`
 }
@@ -255,7 +263,7 @@ func (r *CheckRunReconciler) readPage(ctx context.Context, token, commit string,
 		kept = append(kept, PublishedCheckRun{
 			ID: run.ID, Name: run.Name, Mode: mode,
 			Status: run.Status, Conclusion: run.Conclusion, Title: run.Output.Title,
-			ExternalID: run.ExternalID,
+			Summary: run.Output.Summary, ExternalID: run.ExternalID,
 		})
 	}
 	return kept, listing.TotalCount, nil
