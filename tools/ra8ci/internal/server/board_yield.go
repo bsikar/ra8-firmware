@@ -3,6 +3,7 @@ package server
 import (
 	"context"
 	"net/http"
+	"strconv"
 	"time"
 
 	"github.com/bsikar/ra8-firmware/tools/ra8ci/internal/board"
@@ -88,6 +89,24 @@ func (h *boardHTTP) yield(w http.ResponseWriter, r *http.Request) {
 	snapshot, err := h.store.GetBoard(r.Context(), r.PathValue("board_id"))
 	if err != nil {
 		writeBoardError(w, err)
+		return
+	}
+	// The estimate and the commit must describe the same board.
+	//
+	// This door is the only one that reads the board outside the
+	// transaction, because the plan has to exist before the request is
+	// made. The commit is then guarded by the version the CALLER states,
+	// not by the one this read saw, so a caller a version ahead of this
+	// read would have its promise estimated over a state nobody planned
+	// from: a different holder, a different queue, and a cohort derived
+	// from work the board is no longer doing, all of it recorded on the
+	// lease as the number the requester was shown. A caller a version
+	// behind is refused by the commit anyway, just later and after the
+	// history read. Both are the same disagreement, so both are refused
+	// here, before anything is estimated.
+	if req.ExpectedVersion != snapshot.Version {
+		problem(w, http.StatusConflict, "conflict",
+			"board version "+strconv.FormatUint(snapshot.Version, 10)+", expected "+strconv.FormatUint(req.ExpectedVersion, 10), false)
 		return
 	}
 	budget, err := h.budget.HandoffBudget(r.Context(), snapshot)
