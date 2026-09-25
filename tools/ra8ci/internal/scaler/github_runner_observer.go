@@ -10,7 +10,6 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/actions/scaleset"
 	"github.com/bsikar/ra8-firmware/tools/ra8ci/internal/github"
 	"github.com/bsikar/ra8-firmware/tools/ra8ci/internal/store"
 )
@@ -41,6 +40,9 @@ func (o *GitHubRunnerObserver) Registered(ctx context.Context, vm store.RunnerVM
 		vm.State != "running" || vm.Generation <= 0 || vm.UnknownOutcome || vm.CleanupRequested ||
 		!store.ValidID(vm.ID) || vm.Name != fmt.Sprintf("ra8-lab-ci-%d", vm.VMID) {
 		return RunnerObservation{}, errors.New("invalid or mismatched runner registration observation")
+	}
+	if !provesRunnerStarted(job) {
+		return RunnerObservation{}, errors.New("registration evidence requires a job-started event")
 	}
 	if job.JobID == "" || job.JobID != vm.JobID || job.RunnerRequestID <= 0 ||
 		job.RunnerRequestID != vm.RunnerRequestID || job.WorkflowRunID <= 0 ||
@@ -78,7 +80,7 @@ func (o *GitHubRunnerObserver) DrainAndDeregister(ctx context.Context, vm store.
 		vm.ExternalRunnerID <= 0 || vm.ExternalRunnerName != "runner-"+strconv.Itoa(vm.VMID) {
 		return RunnerObservation{}, errors.New("invalid durable runner identity for drain")
 	}
-	if job.Kind != scaleset.MessageTypeJobCompleted || job.JobID != vm.JobID || job.RunnerRequestID != vm.RunnerRequestID ||
+	if !provesJobCompleted(job) || job.JobID != vm.JobID || job.RunnerRequestID != vm.RunnerRequestID ||
 		job.WorkflowRunID != vm.WorkflowRunID || job.Repository != vm.Repository || job.WorkflowRef != vm.WorkflowRef ||
 		job.RunnerID != int(vm.ExternalRunnerID) || job.RunnerName != vm.ExternalRunnerName || job.Result == "" ||
 		job.FinishTime.IsZero() || job.FinishTime.After(time.Now().Add(time.Second)) {
