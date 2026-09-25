@@ -404,3 +404,31 @@ func TestAnUnreadableListingDocumentIsRefused(t *testing.T) {
 		})
 	}
 }
+
+// The listing carries each run's external identifier verbatim, including the
+// empty one of a run posted before this plane wrote the field. Deciding what
+// an absent identifier means belongs to the caller holding the run it would
+// be compared against, not to the reader.
+func TestTheListingCarriesEachRunsExternalIdentifier(t *testing.T) {
+	reconciler, server := newCheckRunReconciler(t)
+	server.mu.Lock()
+	server.listPages = []string{`{"total_count":2,"check_runs":[` +
+		`{"id":1,"name":"ra8ci-shadow / build","head_sha":"` + reconcilerHead + `","status":"completed",` +
+		`"conclusion":"neutral","external_id":"ra8ci-1-abc","output":{"title":"ra8ci observed success"}},` +
+		`{"id":2,"name":"ra8ci-shadow / unit-tests","head_sha":"` + reconcilerHead + `","status":"completed",` +
+		`"conclusion":"neutral","output":{"title":"ra8ci observed success"}}]}`}
+	server.mu.Unlock()
+	published, err := reconciler.PublishedRuns(context.Background(), reconcilerHead)
+	if err != nil {
+		t.Fatalf("published runs: %v", err)
+	}
+	if len(published.Runs) != 2 {
+		t.Fatalf("listed %d runs, want 2", len(published.Runs))
+	}
+	if published.Runs[0].ExternalID != "ra8ci-1-abc" {
+		t.Fatalf("first run carried external id %q", published.Runs[0].ExternalID)
+	}
+	if published.Runs[1].ExternalID != "" {
+		t.Fatalf("a run with no external id carried %q", published.Runs[1].ExternalID)
+	}
+}

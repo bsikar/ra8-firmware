@@ -98,6 +98,11 @@ type PublishedCheckRun struct {
 	Status     string
 	Conclusion string
 	Title      string
+	// ExternalID is the publisher's own name for the run, carried
+	// verbatim and empty for a run that has none: a run posted before
+	// this plane wrote the field, or one posted by something else under a
+	// name of ours. Both are states an operator has to see.
+	ExternalID string
 }
 
 // PublishedCheckRuns is what this plane has published on one commit.
@@ -131,6 +136,7 @@ type commitCheckRunsResponse struct {
 		HeadSHA    string `json:"head_sha"`
 		Status     string `json:"status"`
 		Conclusion string `json:"conclusion"`
+		ExternalID string `json:"external_id"`
 		Output     struct {
 			Title string `json:"title"`
 		} `json:"output"`
@@ -249,6 +255,7 @@ func (r *CheckRunReconciler) readPage(ctx context.Context, token, commit string,
 		kept = append(kept, PublishedCheckRun{
 			ID: run.ID, Name: run.Name, Mode: mode,
 			Status: run.Status, Conclusion: run.Conclusion, Title: run.Output.Title,
+			ExternalID: run.ExternalID,
 		})
 	}
 	return kept, listing.TotalCount, nil

@@ -320,3 +320,72 @@ func TestAnIncompleteRunIsNotPosted(t *testing.T) {
 		t.Fatalf("incomplete runs spoke to GitHub: %d token, %d check run requests", tokens, runs)
 	}
 }
+
+// Every posted run carries this plane's own identifier for it, so a later
+// reconciliation can tell a run this deployment posted from one that merely
+// shares the name.
+func TestThePostedRunCarriesItsExternalIdentifier(t *testing.T) {
+	publisher, server := newCheckRunPublisher(t, ModeShadow)
+	run, err := NewTaskCheckRun(ModeShadow, "build", testHeadSHA, "failed")
+	if err != nil {
+		t.Fatalf("build run: %v", err)
+	}
+	if _, err := publisher.Publish(context.Background(), run, "ra8ci shadow"); err != nil {
+		t.Fatalf("publish: %v", err)
+	}
+	want, err := CheckRunExternalID(run)
+	if err != nil {
+		t.Fatalf("external id: %v", err)
+	}
+	server.mu.Lock()
+	defer server.mu.Unlock()
+	if len(server.runBodies) != 1 {
+		t.Fatalf("posted %d check runs", len(server.runBodies))
+	}
+	if server.runBodies[0].ExternalID != want {
+		t.Fatalf("posted external id %q, want %q", server.runBodies[0].ExternalID, want)
+	}
+}
+
+// An echoed identifier naming another run is refused for the same reason a
+// name is: the comparison against Actions would be made against the wrong
+// run. An answer carrying none is silence about the field, not a different
+// run, and the listing a reconciliation reads carries it independently.
+func TestAnEchoedExternalIdentifierIsCheckedOnlyWhenItIsThere(t *testing.T) {
+	run, err := NewTaskCheckRun(ModeShadow, "build", testHeadSHA, "succeeded")
+	if err != nil {
+		t.Fatalf("build run: %v", err)
+	}
+	for _, testCase := range []struct {
+		name       string
+		externalID string
+		published  bool
+	}{
+		{name: "no identifier echoed", externalID: "", published: true},
+		{name: "another identifier echoed", externalID: "ra8ci-1-00000000000000000000000000000000"},
+	} {
+		t.Run(testCase.name, func(t *testing.T) {
+			publisher, server := newCheckRunPublisher(t, ModeShadow)
+			server.mu.Lock()
+			server.echo = false
+			server.response = checkRunResponse{
+				ID: 11, Name: run.Name, HeadSHA: testHeadSHA, Status: "completed",
+				Conclusion: run.Conclusion, ExternalID: testCase.externalID,
+			}
+			server.mu.Unlock()
+			id, err := publisher.Publish(context.Background(), run, "summary")
+			if testCase.published {
+				if err != nil || id != 11 {
+					t.Fatalf("publish returned %d, %v", id, err)
+				}
+				return
+			}
+			if err == nil || id != 0 {
+				t.Fatalf("publish returned %d, %v", id, err)
+			}
+			if !errors.Is(err, ErrCheckRunRejected) {
+				t.Fatalf("error %v, want a rejected check run", err)
+			}
+		})
+	}
+}
