@@ -957,6 +957,48 @@ func checkPlanIsOneSubject(planned []plannedCheckRun) error {
 	return nil
 }
 
+// checkPlanNamesEachRunOnce holds the plan to one run per check run name,
+// before either command decides it against the listing.
+//
+// checkListingNamesEachRunOnce reads the other argument these two functions
+// are handed; this one reads the plan itself, and for the same reason: the
+// plan arrives as a slice, and what both commands do with it assumes each
+// name in it is decided once. planCheckRuns refuses a task that appears twice
+// in a document, and a name is derived from the mode and the task, so today
+// it produces nothing this refuses. That is a property of that function, not
+// of the slice, which is exactly the argument checkPlanIsOneSubject makes
+// about the subject.
+//
+// What a repeat costs is different at each entry point, and neither of them
+// notices it. The publish path reads the commit ONCE and decides the whole
+// document against that one listing, so a second planned run under a name the
+// first one is about to post is reconciled against a listing taken before it
+// existed: both decide a run is needed, both post, and the commit ends up
+// carrying two runs under one name. That is the state this whole file exists
+// to keep off a commit, reached from the plan rather than from a repeated
+// write, and if the two disagree, which one a gate reads is a race.
+//
+// The survey posts nothing, so it reports the name twice instead, and counts
+// its decision twice in Posting, Waiting or Conflict. The counts are what
+// Settled and the exit status are read from, so one task planned twice makes
+// a commit look like it has more still to post than it has, and the
+// document's own arithmetic no longer describes the commit.
+func checkPlanNamesEachRunOnce(planned []plannedCheckRun) error {
+	named := make(map[string]string, len(planned))
+	for _, plan := range planned {
+		first, taken := named[plan.Run.Name]
+		if !taken {
+			named[plan.Run.Name] = plan.Task
+			continue
+		}
+		if first == plan.Task {
+			return fmt.Errorf("task %s is planned twice for this commit", plan.Task)
+		}
+		return fmt.Errorf("tasks %s and %s are both planned as %q", first, plan.Task, plan.Run.Name)
+	}
+	return nil
+}
+
 // checkListingNamesEachRunOnce holds the commit's listing to one entry per
 // run, before either command decides a plan against it.
 //
@@ -1024,6 +1066,9 @@ func reconcileCheckRunPlan(planned []plannedCheckRun, published github.Published
 		return nil, errors.New("no check runs to reconcile")
 	}
 	if err := checkPlanIsOneSubject(planned); err != nil {
+		return nil, err
+	}
+	if err := checkPlanNamesEachRunOnce(planned); err != nil {
 		return nil, err
 	}
 	if err := checkListingNamesEachRunOnce(published); err != nil {
@@ -1510,6 +1555,9 @@ func surveyCheckRunPlan(planned []plannedCheckRun, published github.PublishedChe
 		return reconcileReport{}, errors.New("no check runs to survey")
 	}
 	if err := checkPlanIsOneSubject(planned); err != nil {
+		return reconcileReport{}, err
+	}
+	if err := checkPlanNamesEachRunOnce(planned); err != nil {
 		return reconcileReport{}, err
 	}
 	if err := checkListingNamesEachRunOnce(published); err != nil {
