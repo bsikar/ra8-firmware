@@ -74,6 +74,9 @@ func RenderReconcileSurvey(out io.Writer, report reconcileReport) error {
 	if err := checkReconcileSurveyRuns(report); err != nil {
 		return err
 	}
+	if err := checkSurveyedRunOwnership(report); err != nil {
+		return err
+	}
 	if err := checkReconcileSurveyDecisions(report); err != nil {
 		return err
 	}
@@ -282,6 +285,72 @@ func checkReconcileSurveyRuns(report reconcileReport) error {
 				return fmt.Errorf("%w: run %d is listed as one no task plans and under %s",
 					ErrReconcilePageInvalid, run.ID, task.Name)
 			}
+		}
+	}
+	return nil
+}
+
+// checkSurveyedRunOwnership refuses a survey that claims a run as ours over
+// a standing saying it is not.
+//
+// Every surveyed run and every unplanned run carries the question twice:
+// Ours, a bit, and Identifier, the standing it is the collapsed form of.
+// They are written by two different derivations in one walk. A task's runs
+// take Ours from the reconcile's unclaimed set, which is keyed on this
+// plane's own external identifier; an unplanned run takes it from
+// ExternalIDStanding.Ours(). The two agree by both asking whether the
+// identifier is the one this name on this commit computes, and nothing read
+// them against each other.
+//
+// The disagreement is not cosmetic. The two answers are read by different
+// readers of the same survey: a machine reading the document acts on the
+// bit, and this page's two grouping sections are built entirely out of the
+// standing, the contested one by skipping the runs standing ours. So a run
+// claimed as ours under a foreign standing is named on the page as somebody
+// else publishing under a name of ours and handed to whatever reads the
+// document as our own run. One of those two readers is told the opposite of
+// what an operator has to act on, and neither is told there is an argument.
+//
+// This is deliberately not the line the shadow comparison drew around a
+// field the page never prints. An unprinted value the page makes no claim
+// about is not a page's business; this one IS the page's claim, written in
+// the other half of the document the page was rendered from.
+//
+// *** ONLY THE CLAIM IS READ, AND THE OTHER DIRECTION IS DELIBERATELY LEFT
+// ALONE. A run standing ours whose bit is false looks identical to a run
+// whose document never carried the field at all: the bit is a plain bool,
+// so an absent key and a stated false decode the same way, and the page
+// reads documents written by other builds. Refusing it would refuse every
+// survey written before the field existed, and the page already reads
+// ownership off the standing, which is the answer it would keep. ***
+//
+// A claim under a blank standing IS refused, and the refusal says the
+// standing is unstated rather than leaving a gap where the answer goes. The
+// blank on the other side needs no rule here: a run not standing ours is
+// grouped as contested, and a group carrying no standing is already
+// refused.
+//
+// The runs a task published are read before the unplanned ones, the order
+// the page states the two groupings in: a reader who meets both meets the
+// contested one first.
+//
+// Nothing a real survey writes is refused: both derivations answer the same
+// question about the same name and commit, and surveyCheckRunPlan sets the
+// pair in one place per listing.
+func checkSurveyedRunOwnership(report reconcileReport) error {
+	ours := github.ExternalIDOurs.String()
+	for _, task := range report.Tasks {
+		for _, run := range task.Published {
+			if run.Ours && run.Identifier != ours {
+				return fmt.Errorf("%w: run %d is published under a name we plan, is reported as ours, and stands %s",
+					ErrReconcilePageInvalid, run.ID, statedSurveyStanding(run.Identifier))
+			}
+		}
+	}
+	for _, run := range report.UnplannedRun {
+		if run.Ours && run.Identifier != ours {
+			return fmt.Errorf("%w: run %d is listed as one no task plans, is reported as ours, and stands %s",
+				ErrReconcilePageInvalid, run.ID, statedSurveyStanding(run.Identifier))
 		}
 	}
 	return nil
