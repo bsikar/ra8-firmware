@@ -749,12 +749,82 @@ func planCheckRuns(mode github.CheckRunMode, correspondence *github.ShadowCorres
 	return planned, nil
 }
 
+// reconciledCheckRun is one planned run and what the commit's already
+// published runs mean for it.
+type reconciledCheckRun struct {
+	Plan    plannedCheckRun
+	Verdict github.ReconciledPublish
+}
+
+// reconcileCheckRunPlan decides the whole plan against one listing of what is
+// already on the commit, before anything is posted.
+//
+// This is the implementation contract's rule at the command: an uncertain
+// Checks API write is reconciled by listing the commit's runs, never blindly
+// repeated. A second post is not a correction; GitHub keeps each post as its
+// own run, so repeating one leaves two runs under a name branch protection
+// may one day require, and which of them a gate reads is then a race.
+//
+// A conflict refuses the document whole rather than skipping the one task.
+// The other runs in the document are about the same commit and the same
+// workflow, and a commit already carrying a run that says something else is
+// evidence about this deployment, not about that one task; publishing the
+// rest would bury the disagreement under fresh runs while an operator is
+// still working out where it came from.
+func reconcileCheckRunPlan(planned []plannedCheckRun, published github.PublishedCheckRuns) ([]reconciledCheckRun, error) {
+	if len(planned) == 0 {
+		return nil, errors.New("no check runs to reconcile")
+	}
+	reconciled := make([]reconciledCheckRun, 0, len(planned))
+	for _, plan := range planned {
+		verdict, err := github.ReconcilePublish(plan.Run, published)
+		if err != nil {
+			return nil, fmt.Errorf("reconcile %s: %w", plan.Task, err)
+		}
+		if verdict.Decision == github.PublishConflicts {
+			return nil, fmt.Errorf("task %s already has a check run on %s saying something else: %s",
+				plan.Task, plan.Run.HeadSHA, describePublishedRuns(verdict.Existing))
+		}
+		reconciled = append(reconciled, reconciledCheckRun{Plan: plan, Verdict: verdict})
+	}
+	return reconciled, nil
+}
+
+// describePublishedRuns names the runs a decision was made from, so a refusal
+// points at the runs an operator has to open rather than at the name alone.
+func describePublishedRuns(runs []github.PublishedCheckRun) string {
+	described := make([]string, 0, len(runs))
+	for _, run := range runs {
+		described = append(described, fmt.Sprintf("%s #%d %s", run.Name, run.ID, publishedState(run)))
+	}
+	return strings.Join(described, ", ")
+}
+
+// publishedState is a run's conclusion, or its status while it has none.
+func publishedState(run github.PublishedCheckRun) string {
+	if run.Conclusion == "" {
+		return run.Status
+	}
+	return run.Conclusion
+}
+
+// decisionToken renders a decision as one word for the report, taken from the
+// decision's own name so the two cannot drift apart.
+func decisionToken(decision github.PublishDecision) string {
+	return strings.ReplaceAll(decision.String(), " ", "-")
+}
+
 // githubPublishCheckRuns posts one check run per task outcome for one commit.
 //
 // This is the first ra8ci command that writes to GitHub. What it may write is
 // configuration, not an argument: the mode comes from the environment, so a
 // shadow deployment posts runs that report neutral and cannot hold a pull
 // request, and moving onto the merge gate is a deployment change.
+//
+// Nothing is posted before the commit's existing check runs are read. A run
+// this plane already published under the same name is left alone, a write
+// still in flight is waited for rather than repeated, and a run that
+// disagrees stops the whole document for an operator to settle.
 func githubPublishCheckRuns(ctx context.Context, in io.Reader, out io.Writer) error {
 	loaded, err := catalog.Load()
 	if err != nil {
@@ -799,18 +869,81 @@ func githubPublishCheckRuns(ctx context.Context, in io.Reader, out io.Writer) er
 	if err != nil {
 		return err
 	}
-	for index, plan := range planned {
-		id, err := publisher.Publish(ctx, plan.Run, plan.Summary)
+	// The reconciler reads with its own narrow token. It asks for
+	// checks:read where the publisher holds checks:write, so the read
+	// that decides whether to write cannot itself write, and an
+	// installation granting write can still mint it.
+	reconciler, err := github.NewCheckRunReconciler(github.CheckRunReconcilerConfig{
+		APIBaseURL:     publisherConfig.APIBaseURL,
+		AppClientID:    publisherConfig.AppClientID,
+		InstallationID: publisherConfig.InstallationID,
+		PrivateKeyFile: publisherConfig.PrivateKeyFile,
+		Owner:          publisherConfig.Owner,
+		Repository:     publisherConfig.Repository,
+	})
+	if err != nil {
+		return err
+	}
+	// One listing decides the whole document. Reading the commit once per
+	// task would let the answer change underneath the plan, and every run
+	// here is about the same commit.
+	commit := planned[0].Run.HeadSHA
+	published, err := reconciler.PublishedRuns(ctx, commit)
+	if err != nil {
+		return fmt.Errorf("read the check runs already on %s: %w", commit, err)
+	}
+	reconciled, err := reconcileCheckRunPlan(planned, published)
+	if err != nil {
+		return err
+	}
+
+	posted := 0
+	needed := 0
+	for _, decided := range reconciled {
+		if decided.Verdict.Repeat() {
+			needed++
+		}
+	}
+	waiting := make([]string, 0, len(reconciled))
+	for _, decided := range reconciled {
+		if !decided.Verdict.Repeat() {
+			// A run this plane has already published is reported
+			// with the run that settles it, so an operator reading
+			// the output can open it rather than take the word for
+			// it.
+			for _, existing := range decided.Verdict.Existing {
+				if _, err := fmt.Fprintf(out, "%s %d %s %s\n", decisionToken(decided.Verdict.Decision),
+					existing.ID, publishedState(existing), existing.Name); err != nil {
+					return fmt.Errorf("report published check run: %w", err)
+				}
+			}
+			if decided.Verdict.Decision == github.PublishInFlight {
+				waiting = append(waiting, decided.Plan.Task)
+			}
+			continue
+		}
+		id, err := publisher.Publish(ctx, decided.Plan.Run, decided.Plan.Summary)
 		if err != nil {
 			// A partial publish is not a failed publish. The runs
 			// already posted are on the commit whatever this
 			// command returns, so the count is reported rather
 			// than left for the operator to guess.
-			return fmt.Errorf("publish %s after %d of %d posted: %w", plan.Task, index, len(planned), err)
+			return fmt.Errorf("publish %s after %d of %d posted: %w", decided.Plan.Task, posted, needed, err)
 		}
-		if _, err := fmt.Fprintf(out, "%d %s %s\n", id, plan.Run.Conclusion, plan.Run.Name); err != nil {
+		posted++
+		if _, err := fmt.Fprintf(out, "%s %d %s %s\n", decisionToken(github.PublishNeeded),
+			id, decided.Plan.Run.Conclusion, decided.Plan.Run.Name); err != nil {
 			return fmt.Errorf("report published check run: %w", err)
 		}
+	}
+	// A run left to a write already in flight is not an error in the
+	// document, it is the answer: the post landed and its answer did not,
+	// and the caller has to read the commit again rather than treat it as
+	// published. The report is written first, so an exit status is never
+	// the only thing that carries it.
+	if len(waiting) > 0 {
+		return fmt.Errorf("%d of %d check runs were left to a write already in flight on %s: %s",
+			len(waiting), len(reconciled), commit, strings.Join(waiting, ", "))
 	}
 	return nil
 }
