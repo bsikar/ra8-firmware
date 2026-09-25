@@ -10,7 +10,6 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/actions/scaleset"
 	"github.com/bsikar/ra8-firmware/tools/ra8ci/internal/github"
 	"github.com/bsikar/ra8-firmware/tools/ra8ci/internal/proxmox"
 	"github.com/bsikar/ra8-firmware/tools/ra8ci/internal/store"
@@ -108,6 +107,9 @@ func (h *Handler) bootstrapRunning(ctx context.Context, vm store.RunnerVM) error
 }
 
 func (h *Handler) started(ctx context.Context, job github.Job) error {
+	if !provesRunnerStarted(job) {
+		return errors.New("started event is not a job-started message")
+	}
 	vm, err := h.ledger.GetRunnerVMByJob(ctx, h.config.ScaleSetID, job.JobID)
 	if err != nil {
 		return err
@@ -149,7 +151,7 @@ func (h *Handler) started(ctx context.Context, job github.Job) error {
 }
 
 func (h *Handler) completed(ctx context.Context, job github.Job) error {
-	if job.Kind != scaleset.MessageTypeJobCompleted || job.Result == "" || job.FinishTime.IsZero() || job.FinishTime.After(time.Now().Add(time.Second)) {
+	if !provesJobCompleted(job) || job.Result == "" || job.FinishTime.IsZero() || job.FinishTime.After(time.Now().Add(time.Second)) {
 		return errors.New("completed event lacks terminal result or finish time")
 	}
 	vm, err := h.ledger.GetRunnerVMByJob(ctx, h.config.ScaleSetID, job.JobID)
