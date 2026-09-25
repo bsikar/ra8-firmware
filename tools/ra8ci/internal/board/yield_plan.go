@@ -108,6 +108,14 @@ func (p YieldPlan) Explain(now time.Time) string {
 // EstimateHandoff over comparable history. Without them an automatic dispatch
 // is rejected, and an operator dispatch proceeds with the ETA reported as
 // unknown.
+//
+// The cohort must name the board in the snapshot. It arrives from a caller
+// that derived it separately (the server reads it from held work), so this is
+// the place the two derivations are made to agree: a cohort for another board
+// would estimate this handoff over another board's history and, worse, be
+// recorded on this lease and file the completed measurement there too. Loud
+// beats quiet here, the same way the history read refuses a row outside the
+// cohort it asked for rather than skipping it.
 func PlanYield(s Snapshot, waiterID string, dispatch YieldDispatch, cohort YieldCohort, bounds DeclaredHandoffBounds, samples []YieldSample, now time.Time) (YieldPlan, error) {
 	if dispatch != YieldAutomatic && dispatch != YieldOperator {
 		return YieldPlan{}, &Error{InvalidArgument, "unknown yield dispatch"}
@@ -120,6 +128,10 @@ func PlanYield(s Snapshot, waiterID string, dispatch YieldDispatch, cohort Yield
 	}
 	if err := ValidateYieldCohort(cohort); err != nil {
 		return YieldPlan{}, err
+	}
+	if cohort.BoardID != s.BoardID {
+		return YieldPlan{}, &Error{InvalidArgument,
+			"yield cohort names board " + cohort.BoardID + ", not the board being asked to yield"}
 	}
 	if err := admitYield(s, waiterID); err != nil {
 		return YieldPlan{}, err

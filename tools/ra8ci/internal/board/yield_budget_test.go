@@ -8,7 +8,7 @@ import (
 
 func testCohort() YieldCohort {
 	return YieldCohort{
-		BoardID:         "ra8p1-bench-1",
+		BoardID:         "ek-ra8d2",
 		BoardModel:      "ra8p1",
 		FixtureRevision: "fixture-c",
 		TaskName:        "hil-smoke",
