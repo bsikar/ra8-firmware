@@ -181,3 +181,82 @@ func extendBoardLease(ctx context.Context, client boardLeaseExtender, directory,
 	}
 	return snapshot, nil
 }
+
+type boardLeaseHeartbeater interface {
+	Heartbeat(context.Context, boardclient.LeaseToken) (board.Snapshot, boardclient.HolderLiveness, error)
+}
+
+// heartbeatBoardLease reports the local holder still alive using the lease
+// token this machine already holds. A beat is evidence about the holder, never
+// a request for more time: nothing here names a duration, and a deadline that
+// came back later than the token records is refused rather than written down,
+// because a liveness call that bought time would route around the reason and
+// the class ceiling every extension is held to.
+func heartbeatBoardLease(ctx context.Context, client boardLeaseHeartbeater, directory,
+	boardID string) (board.Snapshot, boardclient.HolderLiveness, error) {
+	if ctx == nil || client == nil {
+		return board.Snapshot{}, boardclient.HolderLiveness{}, errors.New("board heartbeat requires context and client")
+	}
+	token, err := readBoardLeaseToken(directory, boardID)
+	if err != nil {
+		return board.Snapshot{}, boardclient.HolderLiveness{}, err
+	}
+	snapshot, liveness, err := client.Heartbeat(ctx, token)
+	if err != nil {
+		return board.Snapshot{}, boardclient.HolderLiveness{}, err
+	}
+	if snapshot.BoardID != token.BoardID || snapshot.Lease == nil || snapshot.Lease.ID != token.LeaseID ||
+		snapshot.Lease.WaiterID != token.RequestID || snapshot.Lease.Generation != token.Generation {
+		return board.Snapshot{}, boardclient.HolderLiveness{}, errors.New("server returned a heartbeat for another board lease")
+	}
+	if !liveness.Held || liveness.LeaseID != token.LeaseID {
+		return board.Snapshot{}, boardclient.HolderLiveness{}, errors.New("server reported liveness for another board lease")
+	}
+	if snapshot.Lease.ExpiresAt.After(token.ExpiresAt) {
+		return board.Snapshot{}, boardclient.HolderLiveness{}, errors.New("board heartbeat came back with a later deadline; a beat may not extend a lease")
+	}
+	token.Version = snapshot.Version
+	token.ExpiresAt = snapshot.Lease.ExpiresAt
+	if err := writeBoardLeaseToken(directory, token); err != nil {
+		return board.Snapshot{}, boardclient.HolderLiveness{},
+			fmt.Errorf("holder was reported alive but the local token could not be updated: %w", err)
+	}
+	return snapshot, liveness, nil
+}
+
+// boardLivenessLine is the CLI rendering of a liveness report. Durations go out
+// as whole seconds and absent instants as null, so a board nobody has ever
+// beaten for does not read as one last seen at the zero time.
+type boardLivenessLine struct {
+	Held            bool       `json:"held"`
+	LeaseID         string     `json:"lease_id,omitempty"`
+	Holder          string     `json:"holder,omitempty"`
+	LastSeenAt      *time.Time `json:"last_seen_at"`
+	Beat            bool       `json:"beat"`
+	SilenceSeconds  int64      `json:"silence_seconds"`
+	IntervalSeconds int64      `json:"interval_seconds"`
+	NextBeatBy      *time.Time `json:"next_beat_by"`
+	Overdue         bool       `json:"overdue"`
+	ExpiresAt       *time.Time `json:"expires_at"`
+	Explain         string     `json:"explain"`
+}
+
+func boardLivenessLineFrom(report boardclient.HolderLiveness) boardLivenessLine {
+	line := boardLivenessLine{Held: report.Held, LeaseID: report.LeaseID, Holder: report.Holder,
+		Beat: report.Beat, SilenceSeconds: int64(report.Silence / time.Second),
+		IntervalSeconds: int64(report.Interval / time.Second), Overdue: report.Overdue,
+		Explain: report.Explain}
+	if !report.LastSeenAt.IsZero() {
+		seen := report.LastSeenAt.UTC()
+		line.LastSeenAt = &seen
+	}
+	if !report.NextBeatBy.IsZero() {
+		next := report.NextBeatBy.UTC()
+		line.NextBeatBy = &next
+	}
+	if !report.ExpiresAt.IsZero() {
+		expiry := report.ExpiresAt.UTC()
+		line.ExpiresAt = &expiry
+	}
+	return line
+}
