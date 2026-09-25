@@ -80,6 +80,14 @@ type ReconciledPublish struct {
 	// order the listing carried them. There may be more than one, and a
 	// caller that wants to explain the decision needs all of them.
 	Existing []PublishedCheckRun
+	// Unclaimed are the runs among Existing that this plane did not post:
+	// they carry another deployment's external identifier, or none at
+	// all. It is empty unless the decision is PublishConflicts, and it is
+	// what separates the two conflicts an operator can meet: our own runs
+	// disagreeing about one commit, and somebody else publishing under a
+	// name of ours. They are different pieces of work, so the answer says
+	// which one it is rather than leaving it to be guessed from the runs.
+	Unclaimed []PublishedCheckRun
 }
 
 // Repeat reports whether the caller should post the run. It is true for
@@ -90,14 +98,22 @@ func (r ReconciledPublish) Repeat() bool { return r.Decision == PublishNeeded }
 // ReconcilePublish decides what a commit's published runs mean for the run a
 // caller meant to post.
 //
-// The match is on the commit and the check run name. The contract also names
-// the App and an external ID; nothing this plane posts carries an external ID
-// yet, and the name is already this plane's own by construction, so matching
-// on it is the whole of what the tree can currently check. A run under one of
-// our names posted by something else is a collision an operator has to settle,
-// and it lands here as a conflict rather than as a run to post over.
+// The match is on the commit, the check run name and this plane's own external
+// identifier, which is the set the implementation contract names. A name is
+// public: anything holding a checks:write token on the repository can post
+// under one of ours, and while nothing this plane posted carried an identifier
+// a run somebody else left under our name was indistinguishable from our own.
+// It is distinguishable now, and a run under our name that this plane did not
+// post is reported as a conflict rather than waited for or posted over,
+// because it is an argument about who owns the name and no amount of waiting
+// settles it.
 //
-// A shadow run is matched on its title as well as its conclusion. Every
+// A run carrying no identifier at all is unclaimed for the same reason: it is
+// either a run posted before this plane wrote the field or a run posted by
+// something else, and both are states an operator has to see rather than have
+// answered for them by a match that cannot tell them apart.
+//
+// A shadow run of ours is matched on its title as well as its conclusion. Every
 // completed shadow run reports neutral whatever the task did and carries the
 // observed conclusion in its title, so two shadow runs about opposite
 // observations agree on conclusion alone. Comparing only the conclusion there
@@ -118,6 +134,21 @@ func ReconcilePublish(intended TaskCheckRun, published PublishedCheckRuns) (Reco
 	if len(existing) == 0 {
 		return ReconciledPublish{Decision: PublishNeeded}, nil
 	}
+	// Who posted a run is settled before what it says, and before whether
+	// it has finished. A run this plane did not post is not ours to wait
+	// for: it concludes on somebody else's schedule and never answers the
+	// question the caller came with, so reporting it as a write still in
+	// flight would send an operator away to wait for an answer that is
+	// not coming.
+	var unclaimed []PublishedCheckRun
+	for _, run := range existing {
+		if !SameCheckRunExternalID(intended, run) {
+			unclaimed = append(unclaimed, run)
+		}
+	}
+	if len(unclaimed) > 0 {
+		return ReconciledPublish{Decision: PublishConflicts, Existing: existing, Unclaimed: unclaimed}, nil
+	}
 	// An unfinished run is reported before any disagreement is: what a run
 	// still executing will conclude is not known yet, so calling it a
 	// conflict would send an operator to settle an argument that may not
@@ -136,8 +167,9 @@ func ReconcilePublish(intended TaskCheckRun, published PublishedCheckRuns) (Reco
 }
 
 // sameCheckRun reports whether a published run says what the intended run
-// says. The title is part of the comparison for a shadow run, where the
-// conclusion is neutral whatever was observed.
+// says. It is asked only of runs this plane posted, so it judges what a run
+// says and never who left it there. The title is part of the comparison for a
+// shadow run, where the conclusion is neutral whatever was observed.
 func sameCheckRun(intended TaskCheckRun, published PublishedCheckRun) bool {
 	if published.Mode != intended.Mode || published.Conclusion != intended.Conclusion {
 		return false
