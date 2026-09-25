@@ -414,3 +414,72 @@ func min(a, b int) int {
 	}
 	return b
 }
+
+// The first line of the page says how many commits the evidence covers, and a
+// reader takes that for the breadth the threshold was met across. A commit
+// every pairing came back indeterminate on is in that number and moved
+// nothing, so the page says so directly under it and names which.
+func TestThePageSaysHowMuchOfTheEvidenceGradedNothing(t *testing.T) {
+	evidence, readiness := renderedEvidence(t, 1,
+		TaskEvidence{Task: "build", Observed: 2, Graded: 1, Agreed: 1, Indeterminate: 1,
+			IndeterminateCommits: []string{renderEvidenceCommitB}},
+	)
+	evidence.UngradedCommits = []string{renderEvidenceCommitB}
+	page := renderEvidencePage(t, evidence, readiness)
+
+	if !strings.Contains(page, "1 of them graded nothing (every pairing indeterminate): "+renderEvidenceCommitB) {
+		t.Fatalf("the page does not say what counted for nothing:\n%s", page)
+	}
+}
+
+// The line is left out when every commit graded something. A page that prints
+// "0 graded nothing" on every clean run teaches a reader to skip the line the
+// warning appears on.
+func TestAPageWhereEveryCommitGradedSaysNothingAboutIt(t *testing.T) {
+	evidence, readiness := renderedEvidence(t, 1,
+		TaskEvidence{Task: "build", Observed: 2, Graded: 2, Agreed: 2},
+	)
+	page := renderEvidencePage(t, evidence, readiness)
+
+	if strings.Contains(page, "graded nothing") {
+		t.Fatalf("a clean page mentions commits that graded nothing:\n%s", page)
+	}
+}
+
+// AccumulateShadowEvidence cannot produce a commit that graded nothing without
+// also accumulating it, so an evidence value carrying one was assembled by
+// hand. Printing it would send an operator to a pull request this evidence
+// never looked at.
+func TestAPageRefusesAnUngradedCommitItNeverAccumulated(t *testing.T) {
+	evidence, readiness := renderedEvidence(t, 1,
+		TaskEvidence{Task: "build", Observed: 2, Graded: 2, Agreed: 2},
+	)
+	evidence.UngradedCommits = []string{renderEvidenceCommitC}
+
+	var page strings.Builder
+	err := RenderShadowEvidence(&page, evidence, readiness)
+	if !errors.Is(err, ErrShadowEvidenceReportInvalid) {
+		t.Fatalf("render: %v, want %v", err, ErrShadowEvidenceReportInvalid)
+	}
+	if page.Len() != 0 {
+		t.Fatalf("a refused page was written anyway:\n%s", page.String())
+	}
+}
+
+// A list of commits past what anybody reads is refused rather than cut, the
+// argument writeCommitLine already makes for the per-task lists.
+func TestAPageRefusesMoreUngradedCommitsThanAnyoneReads(t *testing.T) {
+	evidence, readiness := renderedEvidence(t, 1,
+		TaskEvidence{Task: "build", Observed: 2, Graded: 2, Agreed: 2},
+	)
+	commits := make([]string, 0, maxRenderedEvidenceCommits+1)
+	for i := 0; i <= maxRenderedEvidenceCommits; i++ {
+		commits = append(commits, renderEvidenceCommitA)
+	}
+	evidence.UngradedCommits = commits
+
+	var page strings.Builder
+	if err := RenderShadowEvidence(&page, evidence, readiness); !errors.Is(err, ErrShadowEvidenceTooLarge) {
+		t.Fatalf("render: %v, want %v", err, ErrShadowEvidenceTooLarge)
+	}
+}
