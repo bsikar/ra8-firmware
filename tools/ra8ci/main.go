@@ -1090,6 +1090,38 @@ type reconcileUnplannedStanding struct {
 	Runs       []int64 `json:"runs"`
 }
 
+// reconcileContestedRun is one run sitting under a name a task plans that
+// this plane did not post, and the task whose name it sits under.
+//
+// The name is carried beside the run because a planned name is the work. An
+// unplanned leftover is a run to look at; a stranger's run under a name the
+// document plans is a name branch protection may one day require, held by
+// somebody else, and the first thing an operator needs is which name.
+type reconcileContestedRun struct {
+	ID   int64  `json:"id"`
+	Task string `json:"task"`
+	Name string `json:"name"`
+}
+
+// reconcileContestedStanding is one standing and the runs under planned names
+// that carry it.
+//
+// This is the planned half of what reconcileUnplannedStanding says about the
+// rest of the commit. Each task's own listing already carries the standing of
+// every run under its name, one run at a time, which answers "what is under
+// this name" and not the question an operator arrives with, "is anything
+// under a name we plan somebody else's". On a document of forty tasks that
+// question is answered today by reading forty listings.
+//
+// It adds no verdict and takes none away. A run under a planned name that
+// this plane did not post already makes its task conflict, which is already
+// counted and already carried by the exit status; this says which name and
+// who, in one place.
+type reconcileContestedStanding struct {
+	Identifier string                  `json:"identifier"`
+	Runs       []reconcileContestedRun `json:"runs"`
+}
+
 // reconcileReport is the whole survey of one commit.
 type reconcileReport struct {
 	Commit   string `json:"commit"`
@@ -1110,6 +1142,12 @@ type reconcileReport struct {
 	// fact: it moves neither Settled nor the exit status, for the reason
 	// Unplanned does not.
 	UnplannedStanding []reconcileUnplannedStanding `json:"unplanned_standing"`
+	// ContestedStanding groups the runs under names tasks DO plan that
+	// this plane did not post, by the same standing. It is derived from
+	// the task listings below and adds no fact: such a run already makes
+	// its task conflict, so unlike UnplannedStanding it is not a matter
+	// of what the counts leave out, only of where the answer can be read.
+	ContestedStanding []reconcileContestedStanding `json:"contested_standing"`
 	Tasks             []reconcileSurvey            `json:"tasks"`
 }
 
@@ -1129,7 +1167,14 @@ type reconcileReport struct {
 // A standing this build does not know is kept, in the order it was met,
 // rather than dropped. A run this function cannot place is the one an
 // operator most needs to see.
-func unplannedStandings(runs []reconcileUnplannedRun) []reconcileUnplannedStanding {
+// knownStandingNames is the order both groupings in this file report
+// standings in, from the least said about a run to the most: absent, foreign,
+// superseded, other subject, ours.
+//
+// It is built from the package's own constants rather than restated as five
+// string literals, so a standing added to the package cannot quietly fall out
+// of either report, and both reports cannot drift into two orders.
+func knownStandingNames() []string {
 	known := []github.ExternalIDStanding{
 		github.ExternalIDAbsent,
 		github.ExternalIDForeign,
@@ -1137,12 +1182,18 @@ func unplannedStandings(runs []reconcileUnplannedRun) []reconcileUnplannedStandi
 		github.ExternalIDOtherSubject,
 		github.ExternalIDOurs,
 	}
-	order := make([]string, 0, len(known))
-	placed := make(map[string]bool, len(known))
-	grouped := make(map[string][]int64, len(known))
+	names := make([]string, 0, len(known))
 	for _, standing := range known {
-		name := standing.String()
-		order = append(order, name)
+		names = append(names, standing.String())
+	}
+	return names
+}
+
+func unplannedStandings(runs []reconcileUnplannedRun) []reconcileUnplannedStanding {
+	order := knownStandingNames()
+	placed := make(map[string]bool, len(order))
+	grouped := make(map[string][]int64, len(order))
+	for _, name := range order {
 		placed[name] = true
 	}
 	for _, run := range runs {
@@ -1159,6 +1210,60 @@ func unplannedStandings(runs []reconcileUnplannedRun) []reconcileUnplannedStandi
 			continue
 		}
 		standings = append(standings, reconcileUnplannedStanding{
+			Identifier: identifier,
+			Runs:       named,
+		})
+	}
+	return standings
+}
+
+// contestedStandings names the runs under planned names that this plane did
+// not post, grouped by what their identifier says about who did.
+//
+// The selection is the identifier's standing, which is the same derivation
+// the unplanned grouping uses, so both halves of one report answer "not ours"
+// the same way. The per-run Ours bit is left exactly as the reconciler
+// decided it and is deliberately not read here: it is that function's own
+// answer about a run it was asked to account for, and two answers to one
+// question in one report is how they drift apart.
+//
+// A standing no run carries is left out, and the order is the package's own,
+// for the reasons unplannedStandings gives. Ours is never a group: a run this
+// plane posted under a name it plans is the ordinary case and the whole
+// subject here is the runs that are not that.
+//
+// A standing this build does not know is kept, in the order it was met.
+func contestedStandings(tasks []reconcileSurvey) []reconcileContestedStanding {
+	ours := github.ExternalIDOurs.String()
+	order := knownStandingNames()
+	placed := make(map[string]bool, len(order))
+	for _, name := range order {
+		placed[name] = true
+	}
+	grouped := make(map[string][]reconcileContestedRun, len(order))
+	for _, task := range tasks {
+		for _, run := range task.Published {
+			if run.Identifier == ours {
+				continue
+			}
+			if !placed[run.Identifier] {
+				order = append(order, run.Identifier)
+				placed[run.Identifier] = true
+			}
+			grouped[run.Identifier] = append(grouped[run.Identifier], reconcileContestedRun{
+				ID:   run.ID,
+				Task: task.Task,
+				Name: task.Name,
+			})
+		}
+	}
+	standings := []reconcileContestedStanding{}
+	for _, identifier := range order {
+		named := grouped[identifier]
+		if len(named) == 0 {
+			continue
+		}
+		standings = append(standings, reconcileContestedStanding{
 			Identifier: identifier,
 			Runs:       named,
 		})
@@ -1270,6 +1375,7 @@ func surveyCheckRunPlan(planned []plannedCheckRun, published github.PublishedChe
 	}
 	report.Unplanned = len(report.UnplannedRun)
 	report.UnplannedStanding = unplannedStandings(report.UnplannedRun)
+	report.ContestedStanding = contestedStandings(report.Tasks)
 	report.Settled = report.Posting == 0 && report.Waiting == 0 && report.Conflict == 0
 	return report, nil
 }
