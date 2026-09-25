@@ -89,6 +89,16 @@ type ShadowEvidence struct {
 	// Tasks are ordered by task name, so two passes are diffable, the
 	// convention shadow_compare.go and shadow_correspondence.go follow.
 	Tasks []TaskEvidence
+	// UngradedCommits names the accumulated commits that graded nothing:
+	// every task they paired came back indeterminate, so they moved no
+	// task one step closer to its threshold. They are kept apart from
+	// Commits rather than dropped from it, because both facts are true
+	// and each is read for a different reason: Commits is the record of
+	// what was looked at, and this is the part of that record that
+	// counted for nothing. A caller holding only the first reads the
+	// breadth of the evidence as wider than it is, which is the one
+	// mistake this accumulation exists to prevent.
+	UngradedCommits []string
 }
 
 // ShadowReadiness is the answer to "may a required check move for this task",
@@ -147,7 +157,10 @@ func AccumulateShadowEvidence(reports []ShadowReport) (ShadowEvidence, error) {
 	if len(reports) == 0 {
 		return ShadowEvidence{}, ErrShadowEvidenceEmpty
 	}
-	evidence := ShadowEvidence{Commits: make([]string, 0, len(reports))}
+	evidence := ShadowEvidence{
+		Commits:         make([]string, 0, len(reports)),
+		UngradedCommits: []string{},
+	}
 	seenCommit := make(map[string]bool, len(reports))
 	byTask := make(map[string]*TaskEvidence)
 	for _, report := range reports {
@@ -166,6 +179,7 @@ func AccumulateShadowEvidence(reports []ShadowReport) (ShadowEvidence, error) {
 		evidence.Commits = append(evidence.Commits, report.HeadSHA)
 
 		seenTask := make(map[string]bool, len(report.Comparisons))
+		gradedHere := 0
 		for _, comparison := range report.Comparisons {
 			if comparison.HeadSHA != report.HeadSHA {
 				return ShadowEvidence{}, fmt.Errorf("%w: %s carries a comparison of %s",
@@ -191,6 +205,7 @@ func AccumulateShadowEvidence(reports []ShadowReport) (ShadowEvidence, error) {
 			case ShadowAgreed:
 				task.Agreed++
 				task.Graded++
+				gradedHere++
 			case ShadowDivergent:
 				// A divergence is evidence. shadow_compare.go grades
 				// by gating effect and Clean() already treats it as
@@ -198,14 +213,27 @@ func AccumulateShadowEvidence(reports []ShadowReport) (ShadowEvidence, error) {
 				// difference branch protection cannot see.
 				task.Divergent++
 				task.Graded++
+				gradedHere++
 			case ShadowConflicting:
 				task.Conflicting++
 				task.Graded++
+				gradedHere++
 				task.ConflictingCommits = append(task.ConflictingCommits, report.HeadSHA)
 			default:
 				task.Indeterminate++
 				task.IndeterminateCommits = append(task.IndeterminateCommits, report.HeadSHA)
 			}
+		}
+		// A commit whose every pairing came back indeterminate is
+		// recorded as one that graded nothing. It is NOT refused: a
+		// pull request whose Actions side stated no outcome is an
+		// ordinary thing to have looked at, and refusing the whole
+		// accumulation over one would throw away the commits that did
+		// grade. It is named instead, because the alternative is a
+		// caller counting it as one of the representative pull
+		// requests #1481 asks for.
+		if gradedHere == 0 {
+			evidence.UngradedCommits = append(evidence.UngradedCommits, report.HeadSHA)
 		}
 	}
 	evidence.Tasks = make([]TaskEvidence, 0, len(byTask))

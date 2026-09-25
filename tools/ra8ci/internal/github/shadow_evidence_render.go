@@ -99,6 +99,9 @@ func RenderShadowEvidence(out io.Writer, evidence ShadowEvidence, readiness Shad
 	}
 	fmt.Fprintf(&page, "%d ready, %d conflicting, %d insufficient\n",
 		len(readiness.Ready), len(readiness.Conflicting), len(readiness.Insufficient))
+	if err := writeUngradedLine(&page, evidence); err != nil {
+		return err
+	}
 
 	if len(readiness.Conflicting) > 0 {
 		page.WriteString("\nconflicting (ra8ci and Actions disagreed about a merge)\n")
@@ -135,6 +138,44 @@ func RenderShadowEvidence(out io.Writer, evidence ShadowEvidence, readiness Shad
 	if _, err := io.WriteString(out, page.String()); err != nil {
 		return fmt.Errorf("write shadow evidence: %w", err)
 	}
+	return nil
+}
+
+// writeUngradedLine says how much of the evidence counted for nothing, and is
+// written directly under the count line rather than in a section of its own.
+// The first line of this page says the evidence covers so many commits, and a
+// reader takes that as the breadth the threshold was met across; a commit every
+// task came back indeterminate on is part of that number and moved nothing. The
+// line is left out entirely when there are none, because a page that says "0
+// graded nothing" on every clean run trains a reader to skip the place the
+// warning appears.
+//
+// The commits are named, not counted, for writeCommitLine's reason: they are
+// the pull requests to go back to.
+func writeUngradedLine(page *strings.Builder, evidence ShadowEvidence) error {
+	if len(evidence.UngradedCommits) == 0 {
+		return nil
+	}
+	if len(evidence.UngradedCommits) > maxRenderedEvidenceCommits {
+		return fmt.Errorf("%w: %d commits graded nothing", ErrShadowEvidenceTooLarge, len(evidence.UngradedCommits))
+	}
+	// An ungraded commit the accumulation does not carry is refused
+	// rather than printed. AccumulateShadowEvidence cannot produce one,
+	// so an evidence value carrying one was assembled by hand, and the
+	// line would send an operator to a pull request this evidence never
+	// looked at.
+	accumulated := make(map[string]bool, len(evidence.Commits))
+	for _, commit := range evidence.Commits {
+		accumulated[commit] = true
+	}
+	for _, commit := range evidence.UngradedCommits {
+		if !accumulated[commit] {
+			return fmt.Errorf("%w: %s graded nothing and is not one of the accumulated commits",
+				ErrShadowEvidenceReportInvalid, commit)
+		}
+	}
+	fmt.Fprintf(page, "%d of them graded nothing (every pairing indeterminate): %s\n",
+		len(evidence.UngradedCommits), strings.Join(evidence.UngradedCommits, ", "))
 	return nil
 }
 
