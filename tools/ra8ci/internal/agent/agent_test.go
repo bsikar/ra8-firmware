@@ -265,7 +265,7 @@ func TestLogUploaderChunksAndAmbiguousRetry(t *testing.T) {
 	a := testAssignment()
 	var mu sync.Mutex
 	seen := map[int64]int{}
-	failSecond := true
+	failSecond := evidenceAttempts
 	agent, server := testAgent(t, func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path != "/v1/attempts/"+a.AttemptID+"/logs" {
 			w.WriteHeader(http.StatusNotFound)
@@ -277,9 +277,11 @@ func TestLogUploaderChunksAndAmbiguousRetry(t *testing.T) {
 		}
 		mu.Lock()
 		seen[chunk.Sequence]++
-		shouldFail := chunk.Sequence == 2 && failSecond
+		// Fail every in-flight offer of the second chunk, so the uploader
+		// exhausts its bounded retry and leaves it for the grace flush.
+		shouldFail := chunk.Sequence == 2 && failSecond > 0
 		if shouldFail {
-			failSecond = false
+			failSecond--
 		}
 		mu.Unlock()
 		if shouldFail {
@@ -303,7 +305,7 @@ func TestLogUploaderChunksAndAmbiguousRetry(t *testing.T) {
 	}
 	mu.Lock()
 	defer mu.Unlock()
-	if seen[1] != 1 || seen[2] != 2 {
+	if seen[1] != 1 || seen[2] != evidenceAttempts+1 {
 		t.Fatalf("sequences = %+v", seen)
 	}
 }
