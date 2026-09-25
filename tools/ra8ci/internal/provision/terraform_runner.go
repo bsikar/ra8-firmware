@@ -18,6 +18,7 @@ import (
 	"regexp"
 	"slices"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 
@@ -49,6 +50,48 @@ var reviewedRunnerBridges = []string{"vmbr8", "vmbr9"}
 
 func reviewedRunnerBridge(name string) bool {
 	return slices.Contains(reviewedRunnerBridges, name)
+}
+
+// runnerBridgeSegment is the third octet of the lab network a reviewed bridge
+// carries: vmbr8 carries 10.250.8.0/24 and vmbr9 carries 10.250.9.0/24, the
+// pairing every lab script already assumes (scripts/dev/proxmox_lab_ci.sh,
+// proxmox_lab_server_runner.sh, prepare_proxmox_lab_windows_template.sh).
+//
+// It is read out of the bridge name rather than kept in a second table beside
+// reviewedRunnerBridges, because a table is a place for the two to disagree: a
+// bridge added to the reviewed set without its row would acquire segment zero
+// and refuse every address, and a row edited without its bridge would bind a
+// segment nothing carries.
+func runnerBridgeSegment(bridge string) (byte, bool) {
+	if !reviewedRunnerBridge(bridge) {
+		return 0, false
+	}
+	segment, err := strconv.Atoi(strings.TrimPrefix(bridge, "vmbr"))
+	if err != nil || segment < 0 || segment > 255 {
+		return 0, false
+	}
+	return byte(segment), true
+}
+
+// runnerAddressOnBridge requires a profile's static address to sit on the
+// segment its own bridge carries.
+//
+// validRunnerIPv4 answers a different question. It asks whether an address is
+// a lab address at all, and it accepts either segment because it never sees
+// which bridge the profile names. That leaves a reviewed profile able to pass
+// admission with bridge vmbr8 and an address out of vmbr9's /24: a guest on
+// one segment addressed for the other, which does not fail at the provisioning
+// boundary but in the lab, as a runner that never answers.
+func runnerAddressOnBridge(bridge, address, gateway string) bool {
+	segment, reviewed := runnerBridgeSegment(bridge)
+	if !reviewed || !validRunnerIPv4(address, gateway) {
+		return false
+	}
+	prefix, err := netip.ParsePrefix(address)
+	if err != nil {
+		return false
+	}
+	return prefix.Addr().As4()[2] == segment
 }
 
 // TerraformRunnerLedger is the durable boundary shared by the runner
@@ -145,7 +188,8 @@ func NewTerraformRunnerProvisioner(runtime *TerraformRuntime, ledger TerraformRu
 			!reviewedRunnerBridge(profile.Bridge) ||
 			profile.Cores < 1 || profile.Cores > 4 ||
 			profile.MemoryMB < 512 || profile.MemoryMB > 8192 ||
-			profile.UserName != "ra8ci" || !validRunnerIPv4(profile.IPv4Address, profile.IPv4Gateway) {
+			profile.UserName != "ra8ci" ||
+			!runnerAddressOnBridge(profile.Bridge, profile.IPv4Address, profile.IPv4Gateway) {
 			return nil, errors.New("Terraform runner profile is outside the reviewed disposable policy")
 		}
 	}
