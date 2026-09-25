@@ -2790,6 +2790,133 @@ func TestTheSurveyAnswersForEveryPullRequestConsidered(t *testing.T) {
 	}
 }
 
+// The survey names the commits more than one candidate is at. The gather
+// refuses that pair, because the readiness threshold counts commits, and
+// until the survey says so an operator finds out only after every head and
+// workflow run in the set has been read.
+func TestTheSurveyNamesTheCommitTwoCandidatesShare(t *testing.T) {
+	report := pullRequestSurveyFrom("Checks", []surveyedHead{
+		selectableFor(1589, surveyHeadA, 771, 1, "failure"),
+		selectableFor(1590, surveyHeadA, 771, 1, "failure"),
+		selectableFor(1591, surveyHeadB, 772, 1, "success"),
+	})
+	if len(report.SharedHeads) != 1 {
+		t.Fatalf("shared heads = %#v, want the one commit two candidates are at", report.SharedHeads)
+	}
+	shared := report.SharedHeads[0]
+	if shared.HeadSHA != surveyHeadA {
+		t.Fatalf("shared head %s, want %s", shared.HeadSHA, surveyHeadA)
+	}
+	if len(shared.PullRequests) != 2 || shared.PullRequests[0] != 1589 || shared.PullRequests[1] != 1590 {
+		t.Fatalf("shared by %v, want 1589 and 1590 in the order asked", shared.PullRequests)
+	}
+}
+
+// The candidates at their own commits are not named. A report that listed
+// every head would say nothing, and the line exists to be read only when
+// there is something wrong with the set.
+func TestAnOrdinarySurveyNamesNoSharedCommit(t *testing.T) {
+	report := pullRequestSurveyFrom("Checks", []surveyedHead{
+		selectableFor(1589, surveyHeadA, 771, 1, "failure"),
+		selectableFor(1590, surveyHeadB, 772, 1, "success"),
+	})
+	if len(report.SharedHeads) != 0 {
+		t.Fatalf("shared heads = %#v, want none", report.SharedHeads)
+	}
+}
+
+// An empty shared-head list encodes as [] and never as null, the convention
+// every other list in these reports keeps.
+func TestNoSharedCommitsEncodeAsAnEmptyList(t *testing.T) {
+	encoded, err := json.Marshal(pullRequestSurveyFrom("Checks", []surveyedHead{
+		selectableFor(1589, surveyHeadA, 771, 1, "failure"),
+	}))
+	if err != nil {
+		t.Fatalf("encode the survey: %v", err)
+	}
+	if !strings.Contains(string(encoded), `"shared_heads": []`) &&
+		!strings.Contains(string(encoded), `"shared_heads":[]`) {
+		t.Fatalf("shared heads did not encode as an empty list: %s", encoded)
+	}
+}
+
+// The counts are left alone. Considered and Selectable are true of each pull
+// request on its own, and rewriting them for a shared commit would answer a
+// different question than the one they have always answered.
+func TestASharedCommitDoesNotMoveTheSurveyCounts(t *testing.T) {
+	report := pullRequestSurveyFrom("Checks", []surveyedHead{
+		selectableFor(1589, surveyHeadA, 771, 1, "failure"),
+		selectableFor(1590, surveyHeadA, 771, 1, "failure"),
+	})
+	if report.Considered != 2 || report.Selectable != 2 || report.Unselectable != 0 {
+		t.Fatalf("counts = %#v", report)
+	}
+	if len(report.PullRequests) != 2 {
+		t.Fatalf("the survey dropped a candidate: %#v", report.PullRequests)
+	}
+}
+
+// Three candidates at one commit are named together, not as two pairs.
+func TestThreeCandidatesAtOneCommitAreNamedOnce(t *testing.T) {
+	report := pullRequestSurveyFrom("Checks", []surveyedHead{
+		selectableFor(1589, surveyHeadA, 771, 1, "failure"),
+		selectableFor(1590, surveyHeadA, 771, 1, "failure"),
+		selectableFor(1591, surveyHeadA, 771, 1, "failure"),
+	})
+	if len(report.SharedHeads) != 1 {
+		t.Fatalf("shared heads = %#v, want one entry", report.SharedHeads)
+	}
+	if got := report.SharedHeads[0].PullRequests; len(got) != 3 {
+		t.Fatalf("shared by %v, want all three", got)
+	}
+}
+
+// GitHub's casing of a commit is not a different commit, the rule the gather
+// keeps too: a candidate list assembled by hand is where an upper case SHA
+// turns up, and it must not read as two separate commits here.
+func TestASharedCommitIsFoundWhateverItsCasing(t *testing.T) {
+	report := pullRequestSurveyFrom("Checks", []surveyedHead{
+		selectableFor(1589, surveyHeadA, 771, 1, "failure"),
+		selectableFor(1590, strings.ToUpper(surveyHeadA), 771, 1, "failure"),
+	})
+	if len(report.SharedHeads) != 1 {
+		t.Fatalf("shared heads = %#v, want the commit found across casings", report.SharedHeads)
+	}
+	if report.SharedHeads[0].HeadSHA != surveyHeadA {
+		t.Fatalf("head %s, want it as the first candidate stated it", report.SharedHeads[0].HeadSHA)
+	}
+}
+
+// Two pull requests with no head commit are two unanswered heads, not a
+// shared commit. Grouping them would point an operator at a clash that is
+// not there.
+func TestCandidatesWithNoHeadCommitAreNotAShare(t *testing.T) {
+	report := pullRequestSurveyFrom("Checks", []surveyedHead{
+		selectableFor(1589, "", 771, 1, "failure"),
+		selectableFor(1590, "", 772, 1, "failure"),
+	})
+	if len(report.SharedHeads) != 0 {
+		t.Fatalf("shared heads = %#v, want none", report.SharedHeads)
+	}
+}
+
+// The shared commits are named in the order they were first surveyed, so the
+// report can be read beside the ask it came from.
+func TestSharedCommitsKeepTheOrderTheyWereSurveyedIn(t *testing.T) {
+	report := pullRequestSurveyFrom("Checks", []surveyedHead{
+		selectableFor(1589, surveyHeadB, 772, 1, "success"),
+		selectableFor(1590, surveyHeadA, 771, 1, "failure"),
+		selectableFor(1591, surveyHeadB, 772, 1, "success"),
+		selectableFor(1592, surveyHeadA, 771, 1, "failure"),
+	})
+	if len(report.SharedHeads) != 2 {
+		t.Fatalf("shared heads = %#v, want both commits", report.SharedHeads)
+	}
+	if report.SharedHeads[0].HeadSHA != surveyHeadB || report.SharedHeads[1].HeadSHA != surveyHeadA {
+		t.Fatalf("shared heads were reordered: %#v", report.SharedHeads)
+	}
+}
+
 // A selectable pull request names the run the gathering would use.
 func TestASelectablePullRequestNamesItsRun(t *testing.T) {
 	report := pullRequestSurveyFrom("Checks", []surveyedHead{
