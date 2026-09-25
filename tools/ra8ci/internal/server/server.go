@@ -287,7 +287,11 @@ func (s *Server) createRun(w http.ResponseWriter, r *http.Request) {
 	input.RequestSHA256 = hex.EncodeToString(sum[:])
 	for _, requested := range req.Tasks {
 		definition, found := s.catalog.Task(requested.Name)
-		if !found || definition.ValidateArguments(requested.Args) != nil {
+		if !found {
+			problem(w, http.StatusBadRequest, "invalid_argument", "unknown task or invalid task arguments", false)
+			return
+		}
+		if err := checkSubmittedArgumentsAreBound(definition, requested); err != nil {
 			problem(w, http.StatusBadRequest, "invalid_argument", "unknown task or invalid task arguments", false)
 			return
 		}
