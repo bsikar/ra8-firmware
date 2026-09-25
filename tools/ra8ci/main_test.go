@@ -4007,3 +4007,228 @@ func TestAnUnknownStandingIsKeptNotDropped(t *testing.T) {
 		t.Fatalf("standings = %+v, want %+v", standings, want)
 	}
 }
+
+// The question an operator arrives at a survey with is whether anything on
+// this commit is somebody else's, and a name the document PLANS is the worst
+// place for the answer to be yes: it is a name branch protection may one day
+// require. Each task's listing already carried the fact, one run at a time.
+func TestTheSurveyNamesTheRunsUnderAPlannedNameThatAreNotOurs(t *testing.T) {
+	task := firstCatalogTask(t)
+	plan := plannedRun(t, github.ModeAuthoritative, task, "failed")
+	stranger := publishedAs(plan, 81, "completed", plan.Run.Conclusion, plan.Run.Title)
+	stranger.ExternalID = ""
+
+	report, err := surveyCheckRunPlan([]plannedCheckRun{plan}, listing(stranger))
+	if err != nil {
+		t.Fatalf("survey: %v", err)
+	}
+	want := []reconcileContestedStanding{{
+		Identifier: github.ExternalIDAbsent.String(),
+		Runs:       []reconcileContestedRun{{ID: 81, Task: task, Name: plan.Run.Name}},
+	}}
+	if !reflect.DeepEqual(report.ContestedStanding, want) {
+		t.Fatalf("contested = %+v, want %+v", report.ContestedStanding, want)
+	}
+}
+
+// The name is carried beside the run because the name is the work: an
+// operator holding a run number and no name still has to find which task it
+// sits under before they can do anything about it.
+func TestAContestedRunIsNamedWithTheTaskAndNameItSitsUnder(t *testing.T) {
+	task := firstCatalogTask(t)
+	plan := plannedRun(t, github.ModeAuthoritative, task, "failed")
+	stranger := publishedAs(plan, 82, "completed", plan.Run.Conclusion, plan.Run.Title)
+	stranger.ExternalID = "someone-else-0001"
+
+	report, err := surveyCheckRunPlan([]plannedCheckRun{plan}, listing(stranger))
+	if err != nil {
+		t.Fatalf("survey: %v", err)
+	}
+	if len(report.ContestedStanding) != 1 || len(report.ContestedStanding[0].Runs) != 1 {
+		t.Fatalf("contested = %+v", report.ContestedStanding)
+	}
+	named := report.ContestedStanding[0].Runs[0]
+	if named.Task != task || named.Name != plan.Run.Name || named.ID != 82 {
+		t.Fatalf("run = %+v, want the task and the name it sits under", named)
+	}
+	if report.ContestedStanding[0].Identifier != github.ExternalIDForeign.String() {
+		t.Fatalf("standing = %q, want a stranger's value read as foreign",
+			report.ContestedStanding[0].Identifier)
+	}
+}
+
+// Ordinary surveys are the common case and they say nothing here. A group per
+// standing on every clean survey teaches a reader to skip the field.
+func TestAnOrdinarySurveyNamesNoContestedRun(t *testing.T) {
+	task := firstCatalogTask(t)
+	plan := plannedRun(t, github.ModeAuthoritative, task, "failed")
+	ours := publishedAs(plan, 83, "completed", plan.Run.Conclusion, plan.Run.Title)
+
+	report, err := surveyCheckRunPlan([]plannedCheckRun{plan}, listing(ours))
+	if err != nil {
+		t.Fatalf("survey: %v", err)
+	}
+	if len(report.ContestedStanding) != 0 {
+		t.Fatalf("contested = %+v, want nothing said", report.ContestedStanding)
+	}
+	encoded, err := json.Marshal(report)
+	if err != nil {
+		t.Fatalf("encode: %v", err)
+	}
+	if !strings.Contains(string(encoded), `"contested_standing":[]`) {
+		t.Fatalf("document %s does not carry the field as an empty list", encoded)
+	}
+}
+
+// The order is the package's own, from the least said about a run to the
+// most, and it is shared with the unplanned grouping rather than restated.
+func TestTheContestedStandingsAreInThePackagesOwnOrder(t *testing.T) {
+	first, second := twoCatalogTasks(t)
+	foreign := plannedRun(t, github.ModeAuthoritative, first, "failed")
+	absent := plannedRun(t, github.ModeAuthoritative, second, "failed")
+	theirs := publishedAs(foreign, 84, "completed", foreign.Run.Conclusion, foreign.Run.Title)
+	theirs.ExternalID = "someone-else-0002"
+	nameless := publishedAs(absent, 85, "completed", absent.Run.Conclusion, absent.Run.Title)
+	nameless.ExternalID = ""
+
+	report, err := surveyCheckRunPlan([]plannedCheckRun{foreign, absent}, listing(theirs, nameless))
+	if err != nil {
+		t.Fatalf("survey: %v", err)
+	}
+	if len(report.ContestedStanding) != 2 {
+		t.Fatalf("contested = %+v", report.ContestedStanding)
+	}
+	if report.ContestedStanding[0].Identifier != github.ExternalIDAbsent.String() ||
+		report.ContestedStanding[1].Identifier != github.ExternalIDForeign.String() {
+		t.Fatalf("contested = %+v, want absent before foreign whatever the survey order",
+			report.ContestedStanding)
+	}
+}
+
+// A run of ours derived for another commit is not a stranger and is not a
+// leftover: it is our own run posted against other work, and reading it as
+// "not ours" without saying which kind sends an operator to argue with a
+// person who was never involved.
+func TestAContestedRunOfOursForAnotherCommitIsNamedAsSuch(t *testing.T) {
+	task := firstCatalogTask(t)
+	plan := plannedRun(t, github.ModeAuthoritative, task, "failed")
+	elsewhere, err := github.CheckRunExternalID(github.TaskCheckRun{
+		Name:    plan.Run.Name,
+		HeadSHA: strings.Repeat("7", 40),
+	})
+	if err != nil {
+		t.Fatalf("derive another commit's identifier: %v", err)
+	}
+	misplaced := publishedAs(plan, 86, "completed", plan.Run.Conclusion, plan.Run.Title)
+	misplaced.ExternalID = elsewhere
+
+	report, err := surveyCheckRunPlan([]plannedCheckRun{plan}, listing(misplaced))
+	if err != nil {
+		t.Fatalf("survey: %v", err)
+	}
+	if len(report.ContestedStanding) != 1 ||
+		report.ContestedStanding[0].Identifier != github.ExternalIDOtherSubject.String() {
+		t.Fatalf("contested = %+v", report.ContestedStanding)
+	}
+}
+
+// One derivation, one answer: the grouping selects on the identifier's
+// standing and the per-run bit is the reconciler's own, so the two agreeing
+// is worth pinning rather than assuming.
+func TestTheContestedRunsAreExactlyTheRunsTheSurveyCallsNotOurs(t *testing.T) {
+	first, second := twoCatalogTasks(t)
+	contested := plannedRun(t, github.ModeAuthoritative, first, "failed")
+	settled := plannedRun(t, github.ModeAuthoritative, second, "failed")
+	stranger := publishedAs(contested, 87, "completed", contested.Run.Conclusion, contested.Run.Title)
+	stranger.ExternalID = ""
+	mine := publishedAs(settled, 88, "completed", settled.Run.Conclusion, settled.Run.Title)
+
+	report, err := surveyCheckRunPlan([]plannedCheckRun{contested, settled}, listing(stranger, mine))
+	if err != nil {
+		t.Fatalf("survey: %v", err)
+	}
+	notOurs := []int64{}
+	for _, task := range report.Tasks {
+		for _, run := range task.Published {
+			if !run.Ours {
+				notOurs = append(notOurs, run.ID)
+			}
+		}
+	}
+	named := []int64{}
+	for _, standing := range report.ContestedStanding {
+		for _, run := range standing.Runs {
+			named = append(named, run.ID)
+		}
+	}
+	if !reflect.DeepEqual(named, notOurs) {
+		t.Fatalf("named %v, the survey calls %v not ours", named, notOurs)
+	}
+}
+
+// Two runs carrying one standing under two different names are one group
+// naming both, in the order the survey walked the tasks.
+func TestRunsSharingAStandingAreNamedOnceInSurveyOrder(t *testing.T) {
+	first, second := twoCatalogTasks(t)
+	one := plannedRun(t, github.ModeAuthoritative, first, "failed")
+	two := plannedRun(t, github.ModeAuthoritative, second, "failed")
+	theirs := publishedAs(one, 89, "completed", one.Run.Conclusion, one.Run.Title)
+	theirs.ExternalID = ""
+	alsoTheirs := publishedAs(two, 90, "completed", two.Run.Conclusion, two.Run.Title)
+	alsoTheirs.ExternalID = ""
+
+	report, err := surveyCheckRunPlan([]plannedCheckRun{one, two}, listing(theirs, alsoTheirs))
+	if err != nil {
+		t.Fatalf("survey: %v", err)
+	}
+	if len(report.ContestedStanding) != 1 {
+		t.Fatalf("contested = %+v, want one group for one standing", report.ContestedStanding)
+	}
+	want := []reconcileContestedRun{
+		{ID: 89, Task: first, Name: one.Run.Name},
+		{ID: 90, Task: second, Name: two.Run.Name},
+	}
+	if !reflect.DeepEqual(report.ContestedStanding[0].Runs, want) {
+		t.Fatalf("runs = %+v, want %+v", report.ContestedStanding[0].Runs, want)
+	}
+}
+
+// It adds no verdict and takes none away: such a run already makes its task
+// conflict, and the counts are what the exit status is built from.
+func TestNamingAContestedRunMovesNoCount(t *testing.T) {
+	task := firstCatalogTask(t)
+	plan := plannedRun(t, github.ModeAuthoritative, task, "failed")
+	stranger := publishedAs(plan, 91, "completed", plan.Run.Conclusion, plan.Run.Title)
+	stranger.ExternalID = ""
+
+	report, err := surveyCheckRunPlan([]plannedCheckRun{plan}, listing(stranger))
+	if err != nil {
+		t.Fatalf("survey: %v", err)
+	}
+	if report.Conflict != 1 || report.Posting != 0 || report.Waiting != 0 {
+		t.Fatalf("report = %+v, want the conflict the task already was", report)
+	}
+	if report.Unplanned != 0 || len(report.UnplannedStanding) != 0 {
+		t.Fatalf("report = %+v, a run under a planned name is not unplanned", report)
+	}
+	if report.Settled {
+		t.Fatalf("report = %+v", report)
+	}
+}
+
+// The two groupings read the same list of standings. A standing added to the
+// package has to reach both, which is why the order is built from the
+// constants rather than written out twice.
+func TestBothGroupingsReadOneStandingOrder(t *testing.T) {
+	names := knownStandingNames()
+	want := []string{
+		github.ExternalIDAbsent.String(),
+		github.ExternalIDForeign.String(),
+		github.ExternalIDSuperseded.String(),
+		github.ExternalIDOtherSubject.String(),
+		github.ExternalIDOurs.String(),
+	}
+	if !reflect.DeepEqual(names, want) {
+		t.Fatalf("order = %v, want %v", names, want)
+	}
+}
