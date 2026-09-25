@@ -18,16 +18,65 @@ import (
 	"github.com/bsikar/ra8-firmware/tools/ra8ci/internal/store"
 )
 
+// hilSubcommand is one thing `ra8ci hil` does, named the way it is typed.
+//
+// Usage states the subcommand with its arguments and begins with Name: a
+// subcommand cannot be dispatched under one name and stated under another.
+type hilSubcommand struct {
+	Name  string
+	Usage string
+	Run   func(ctx context.Context, args []string) error
+}
+
+// hilSubcommands is the one list: what hilCommand dispatches and what the
+// usage states.
+//
+// Run is handed the arguments after the subcommand name.
+func hilSubcommands() []hilSubcommand {
+	return []hilSubcommand{
+		{Name: "budget", Usage: "budget --board-id ID --manifest examples/.../hil.conf --board-model MODEL --program-family NAME --flash-restore-bound DURATION [--safety-maximum DURATION]", Run: hilBudgetCommand},
+		{Name: "verify-capture", Usage: "verify-capture --manifest examples/.../hil.conf --capture FILE", Run: hilVerifyCaptureCommand},
+	}
+}
+
+// hilUsage states the HIL subcommands the way the front door lists them: the
+// names alone, because each subcommand prints its own arguments where it
+// parses them.
+func hilUsage() string {
+	subcommands := hilSubcommands()
+	named := make([]string, 0, len(subcommands))
+	for _, subcommand := range subcommands {
+		named = append(named, subcommand.Name)
+	}
+	return "hil " + strings.Join(named, "|")
+}
+
+// hilUsageError states every HIL subcommand with its arguments. It is the
+// answer to no subcommand at all and to a name nothing dispatches, both of
+// which were previously told about one subcommand and not the other.
+func hilUsageError() error {
+	subcommands := hilSubcommands()
+	stated := make([]string, 0, len(subcommands))
+	for _, subcommand := range subcommands {
+		stated = append(stated, subcommand.Usage)
+	}
+	return errors.New("usage: ra8ci hil " + strings.Join(stated, " | hil "))
+}
+
 func hilCommand(ctx context.Context, args []string) error {
 	if len(args) == 0 {
-		return errors.New("usage: ra8ci hil budget ...|verify-capture --manifest examples/.../hil.conf --capture FILE")
+		return hilUsageError()
 	}
-	if args[0] == "verify-capture" {
-		return hilVerifyCaptureCommand(ctx, args[1:])
+	for _, subcommand := range hilSubcommands() {
+		if subcommand.Name == args[0] {
+			return subcommand.Run(ctx, args[1:])
+		}
 	}
-	if args[0] != "budget" {
-		return errors.New("usage: ra8ci hil budget --board-id ID --manifest examples/.../hil.conf --board-model MODEL --program-family NAME --flash-restore-bound DURATION [--safety-maximum DURATION]")
-	}
+	return hilUsageError()
+}
+
+// hilBudgetCommand chooses the validity window a board's fixture supports.
+func hilBudgetCommand(ctx context.Context, args []string) error {
 	flags := flag.NewFlagSet("hil budget", flag.ContinueOnError)
 	flags.SetOutput(io.Discard)
 	boardID := flags.String("board-id", "", "registered board ID")
@@ -36,7 +85,7 @@ func hilCommand(ctx context.Context, args []string) error {
 	programFamily := flags.String("program-family", "", "reviewed firmware program family")
 	restoreText := flags.String("flash-restore-bound", "", "reserved board flash/restore time")
 	safetyText := flags.String("safety-maximum", "", "optional fixture safety cap")
-	if err := flags.Parse(args[1:]); err != nil {
+	if err := flags.Parse(args); err != nil {
 		return fmt.Errorf("usage: ra8ci hil budget: %w", err)
 	}
 	if flags.NArg() != 0 || *boardID == "" || *manifest == "" || !validHILLabel(*boardModel) ||
