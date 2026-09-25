@@ -992,6 +992,67 @@ func (c *Client) Free(ctx context.Context, token LeaseToken, producer NeutralRec
 	}
 }
 
+// FinishRecovery ends a recovery in progress. Like Free, it never assumes the
+// hardware is safe because the work stopped: it asks the server for a one-use
+// challenge bound to this board and its approved fixture profile, has that
+// exact challenge neutralized and signed, and submits the opaque proof. With
+// no producer, no completion is sent.
+func (c *Client) FinishRecovery(ctx context.Context, boardID string, producer NeutralReceiptProducer) (board.Snapshot, error) {
+	if !validBoardID(boardID) {
+		return board.Snapshot{}, ErrInvalidRequest
+	}
+	if producer == nil {
+		return board.Snapshot{}, ErrNeutralUnavailable
+	}
+	for {
+		snapshot, err := c.Status(ctx, boardID)
+		if err != nil {
+			return board.Snapshot{}, err
+		}
+		if snapshot.Phase != board.Recovering {
+			return board.Snapshot{}, ErrNoRecoveryPending
+		}
+		var challenge store.NeutralChallenge
+		err = c.request(ctx, http.MethodPost, boardPath(boardID, "/neutral-challenge"), struct {
+			ExpectedVersion uint64 `json:"expected_version"`
+			Purpose         string `json:"purpose"`
+		}{snapshot.Version, "recovery"}, &challenge)
+		if isConflict(err) {
+			if err := waitConflict(ctx); err != nil {
+				return board.Snapshot{}, err
+			}
+			continue
+		}
+		if err != nil {
+			return board.Snapshot{}, err
+		}
+		if !store.ValidID(challenge.ID) || challenge.BoardID != boardID ||
+			challenge.SnapshotVersion != snapshot.Version || challenge.Purpose != "recovery" ||
+			challenge.Nonce == "" || challenge.ProfileSHA256 == "" || challenge.FixtureRevision == "" ||
+			!time.Now().Before(challenge.ExpiresAt) {
+			return board.Snapshot{}, ErrInvalidNeutralProof
+		}
+		receipt, err := producer.ProduceNeutralReceipt(ctx, challenge)
+		if err != nil {
+			return board.Snapshot{}, err
+		}
+		if len(receipt) == 0 || len(receipt) > 65536 {
+			return board.Snapshot{}, ErrInvalidNeutralProof
+		}
+		result, err := c.command(ctx, boardID, "/recovery/complete", struct {
+			ExpectedVersion uint64 `json:"expected_version"`
+			ChallengeID     string `json:"challenge_id"`
+			Receipt         []byte `json:"receipt"`
+		}{snapshot.Version, challenge.ID, receipt})
+		if err == nil || !isConflict(err) {
+			return result, err
+		}
+		if err := waitConflict(ctx); err != nil {
+			return board.Snapshot{}, err
+		}
+	}
+}
+
 // HILObservations retrieves historical timings for the server-approved task
 // and the board's current operator-approved fixture profile.
 func (c *Client) HILObservations(ctx context.Context, boardID string,

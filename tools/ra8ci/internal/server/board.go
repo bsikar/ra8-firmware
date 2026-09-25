@@ -90,6 +90,7 @@ func RegisterBoardRoutes(mux *http.ServeMux, st BoardStore, verifier store.Neutr
 	mux.HandleFunc("POST /v1/boards/{board_id}/agent/observe", h.agentObserve)
 	mux.HandleFunc("POST /v1/boards/{board_id}/agent/unavailable", h.agentUnavailable)
 	mux.HandleFunc("POST /v1/boards/{board_id}/recovery/start", h.recoveryStart)
+	mux.HandleFunc("POST /v1/boards/{board_id}/recovery/complete", h.recoveryComplete)
 	mux.HandleFunc("POST /v1/boards/{board_id}/quarantine", h.quarantine)
 	mux.HandleFunc("POST /v1/boards/{board_id}/hil-attempts/claim", h.claimNextHILAttempt)
 	mux.HandleFunc("POST /v1/boards/{board_id}/hil-attempts/{attempt_id}/complete", h.completeHILAttempt)
@@ -456,6 +457,37 @@ func (h *boardHTTP) recoveryStart(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	h.apply(w, r, actor, board.BeginRecovery{PlanID: req.PlanID, Reason: req.Why}, req.ExpectedVersion, nil)
+}
+
+type recoveryCompleteRequest struct {
+	ExpectedVersion uint64 `json:"expected_version"`
+	ChallengeID     string `json:"challenge_id"`
+	Receipt         []byte `json:"receipt"`
+}
+
+// recoveryComplete ends a recovery the same way a release ends a lease: on a
+// neutral receipt the server itself bound to this board, this challenge, and
+// the operator-approved fixture profile. An operator asserting the hardware is
+// safe is not evidence that it is.
+func (h *boardHTTP) recoveryComplete(w http.ResponseWriter, r *http.Request) {
+	actor, ok := h.authorize(w, r, "board.recovery.complete")
+	if !ok {
+		return
+	}
+	if h.verifier == nil {
+		problem(w, http.StatusServiceUnavailable, "unavailable", "neutral receipt verifier is not configured", true)
+		return
+	}
+	var req recoveryCompleteRequest
+	if !decodeBoardJSON(w, r, &req) {
+		return
+	}
+	if !store.ValidID(req.ChallengeID) || len(req.Receipt) == 0 || len(req.Receipt) > 65536 {
+		problem(w, http.StatusBadRequest, "invalid_argument", "invalid neutral recovery submission", false)
+		return
+	}
+	h.apply(w, r, actor, board.CompleteRecovery{}, req.ExpectedVersion,
+		&store.NeutralSubmission{ChallengeID: req.ChallengeID, Receipt: req.Receipt})
 }
 
 func (h *boardHTTP) quarantine(w http.ResponseWriter, r *http.Request) {
