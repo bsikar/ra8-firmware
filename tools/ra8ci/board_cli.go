@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/bsikar/ra8-firmware/tools/ra8ci/internal/board"
@@ -18,79 +19,143 @@ import (
 	"github.com/bsikar/ra8-firmware/tools/ra8ci/internal/store"
 )
 
+// boardSubcommand is one thing `ra8ci board` does, named the way it is typed.
+//
+// Usage states the subcommand with its arguments, as the board usage prints
+// it, and begins with Name: a subcommand cannot be dispatched under one name
+// and stated under another.
+type boardSubcommand struct {
+	Name  string
+	Usage string
+	Run   func(ctx context.Context, args []string) error
+}
+
+// boardSubcommands is the one list: what boardCommand dispatches and what the
+// usage states. The order is the order an operator meets these, deliberately
+// not alphabetical.
+//
+// Run is handed the arguments after the subcommand name.
+func boardSubcommands() []boardSubcommand {
+	return []boardSubcommand{
+		{Name: "status", Usage: "status <board-id>", Run: boardStatusCommand},
+		{Name: "take", Usage: "take <board-id> --class human|ci|agent --why <reason> --duration <duration>", Run: boardTakeCommand},
+		{Name: "checkpoint", Usage: "checkpoint <board-id>", Run: boardCheckpointCommand},
+		{Name: "extend", Usage: "extend <board-id> --why <reason> --duration <duration>", Run: boardExtendCommand},
+		{Name: "heartbeat", Usage: "heartbeat <board-id>", Run: boardHeartbeatCommand},
+		{Name: "liveness", Usage: "liveness <board-id>", Run: boardLivenessCommand},
+		{Name: "recover", Usage: "recover <board-id> --plan <plan-id> --why <reason>", Run: boardRecoverCommand},
+		{Name: "cancel", Usage: "cancel <board-id> <request-id> <lease-id>", Run: boardCancelCommand},
+	}
+}
+
+// boardUsage states the board subcommands the way the front door lists them:
+// the names alone, because each subcommand prints its own arguments where it
+// parses them.
+func boardUsage() string {
+	subcommands := boardSubcommands()
+	named := make([]string, 0, len(subcommands))
+	for _, subcommand := range subcommands {
+		named = append(named, subcommand.Name)
+	}
+	return "board " + strings.Join(named, "|")
+}
+
+// boardUsageError states every board subcommand with its arguments. It is the
+// answer to a name nothing dispatches, and to a status or take whose
+// arguments are not a request.
+func boardUsageError() error {
+	subcommands := boardSubcommands()
+	stated := make([]string, 0, len(subcommands))
+	for _, subcommand := range subcommands {
+		stated = append(stated, subcommand.Usage)
+	}
+	return errors.New("usage: ra8ci board " + strings.Join(stated, " | board "))
+}
+
 func boardCommand(ctx context.Context, args []string) error {
-	if len(args) > 0 && args[0] == "checkpoint" {
-		if len(args) != 2 || !validBoardIDArgument(args[1]) {
-			return errors.New("usage: ra8ci board checkpoint <board-id>")
-		}
-		client, err := newBoardClient()
-		if err != nil {
-			return err
-		}
-		defer client.CloseIdleConnections()
-		directory, err := currentBoardLeaseDirectory()
-		if err != nil {
-			return err
-		}
-		snapshot, err := checkpointBoardLease(ctx, client, directory, args[1])
-		if err != nil {
-			return fmt.Errorf("board checkpoint: %w", err)
-		}
-		return json.NewEncoder(os.Stdout).Encode(snapshot)
+	if len(args) == 0 {
+		return boardUsageError()
 	}
-	if len(args) > 0 && args[0] == "extend" {
-		return boardExtendCommand(ctx, args[1:])
-	}
-	if len(args) > 0 && args[0] == "heartbeat" {
-		return boardHeartbeatCommand(ctx, args[1:])
-	}
-	if len(args) > 0 && args[0] == "liveness" {
-		return boardLivenessCommand(ctx, args[1:])
-	}
-	if len(args) > 0 && args[0] == "recover" {
-		return boardRecoverCommand(ctx, args[1:])
-	}
-	if len(args) > 0 && args[0] == "cancel" {
-		ticket, err := parseBoardCancel(args[1:])
-		if err != nil {
-			return err
+	for _, subcommand := range boardSubcommands() {
+		if subcommand.Name == args[0] {
+			return subcommand.Run(ctx, args[1:])
 		}
-		client, err := newBoardClient()
-		if err != nil {
-			return err
-		}
-		defer client.CloseIdleConnections()
-		if err := client.Cancel(ctx, ticket); err != nil {
-			if errors.Is(err, boardclient.ErrAlreadyGranted) {
-				return fmt.Errorf("board request %s was already granted; cancellation cannot release the board", ticket.RequestID)
-			}
-			return fmt.Errorf("cancel board request %s: %w", ticket.RequestID, err)
-		}
-		return json.NewEncoder(os.Stdout).Encode(map[string]any{
-			"board_id": ticket.BoardID, "request_id": ticket.RequestID, "cancelled": true,
-		})
 	}
-	if len(args) == 2 && args[0] == "status" {
-		client, err := newBoardClient()
-		if err != nil {
-			return err
-		}
-		defer client.CloseIdleConnections()
-		snapshot, err := client.Status(ctx, args[1])
-		if err != nil {
-			return err
-		}
-		return json.NewEncoder(os.Stdout).Encode(snapshot)
+	return boardUsageError()
+}
+
+// boardStatusCommand reads what the server holds about one board.
+func boardStatusCommand(ctx context.Context, args []string) error {
+	if len(args) != 1 {
+		return boardUsageError()
 	}
-	if len(args) < 2 || args[0] != "take" {
-		return errors.New("usage: ra8ci board status <board-id> | board take <board-id> --class human|ci|agent --why <reason> --duration <duration> | board checkpoint <board-id> | board extend <board-id> --why <reason> --duration <duration> | board heartbeat <board-id> | board liveness <board-id> | board recover <board-id> --plan <plan-id> --why <reason> | board cancel <board-id> <request-id> <lease-id>")
+	client, err := newBoardClient()
+	if err != nil {
+		return err
+	}
+	defer client.CloseIdleConnections()
+	snapshot, err := client.Status(ctx, args[0])
+	if err != nil {
+		return err
+	}
+	return json.NewEncoder(os.Stdout).Encode(snapshot)
+}
+
+// boardCheckpointCommand records the holder's progress against the lease this
+// machine holds.
+func boardCheckpointCommand(ctx context.Context, args []string) error {
+	if len(args) != 1 || !validBoardIDArgument(args[0]) {
+		return errors.New("usage: ra8ci board checkpoint <board-id>")
+	}
+	client, err := newBoardClient()
+	if err != nil {
+		return err
+	}
+	defer client.CloseIdleConnections()
+	directory, err := currentBoardLeaseDirectory()
+	if err != nil {
+		return err
+	}
+	snapshot, err := checkpointBoardLease(ctx, client, directory, args[0])
+	if err != nil {
+		return fmt.Errorf("board checkpoint: %w", err)
+	}
+	return json.NewEncoder(os.Stdout).Encode(snapshot)
+}
+
+// boardCancelCommand withdraws a request that has not been granted.
+func boardCancelCommand(ctx context.Context, args []string) error {
+	ticket, err := parseBoardCancel(args)
+	if err != nil {
+		return err
+	}
+	client, err := newBoardClient()
+	if err != nil {
+		return err
+	}
+	defer client.CloseIdleConnections()
+	if err := client.Cancel(ctx, ticket); err != nil {
+		if errors.Is(err, boardclient.ErrAlreadyGranted) {
+			return fmt.Errorf("board request %s was already granted; cancellation cannot release the board", ticket.RequestID)
+		}
+		return fmt.Errorf("cancel board request %s: %w", ticket.RequestID, err)
+	}
+	return json.NewEncoder(os.Stdout).Encode(map[string]any{
+		"board_id": ticket.BoardID, "request_id": ticket.RequestID, "cancelled": true,
+	})
+}
+
+// boardTakeCommand queues a request for the board and waits for the grant.
+func boardTakeCommand(ctx context.Context, args []string) error {
+	if len(args) < 1 {
+		return boardUsageError()
 	}
 	flags := flag.NewFlagSet("board take", flag.ContinueOnError)
 	flags.SetOutput(io.Discard)
 	classText := flags.String("class", "human", "priority class: human or agent")
 	why := flags.String("why", "", "reason for taking the board")
 	durationText := flags.String("duration", "", "requested lease duration")
-	if err := flags.Parse(args[2:]); err != nil {
+	if err := flags.Parse(args[1:]); err != nil {
 		return fmt.Errorf("usage: ra8ci board take <board-id> --why <reason> --duration <duration>: %w", err)
 	}
 	if flags.NArg() != 0 || *why == "" || *durationText == "" {
@@ -118,7 +183,7 @@ func boardCommand(ctx context.Context, args []string) error {
 		return err
 	}
 	defer client.CloseIdleConnections()
-	ticket, err := client.RequestTake(ctx, args[1], class, *why, duration)
+	ticket, err := client.RequestTake(ctx, args[0], class, *why, duration)
 	if err != nil {
 		if ticket.RequestID != "" {
 			return fmt.Errorf("board request outcome may be ambiguous (request %s, lease %s): %w", ticket.RequestID, ticket.LeaseID, err)
