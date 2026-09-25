@@ -54,7 +54,7 @@ func main() {
 
 func run(ctx context.Context, args []string) int {
 	if len(args) == 0 {
-		fmt.Fprintln(os.Stderr, "usage: ra8ci <task>|tasks [--digest|--json]|ascii [--check] [--all|PATH]|since [--all|FILE...]|final-newline [FILE...]|runner-clock [--repo OWNER/REPO] [--runs N] [--hours N]|tests-readme [--selftest]|inclusive-terminology-commits [--selftest]|server|agent|sync|backup refresh|keygen|board status|take [--class human|ci|agent]|checkpoint|extend|cancel|hil budget|verify-capture|db migrate|report slow|github check|github shadow|github shadow-compare|github publish-check-run|github required-checks|github gate|run submit|run status")
+		fmt.Fprintln(os.Stderr, "usage: ra8ci <task>|tasks [--digest|--json]|ascii [--check] [--all|PATH]|since [--all|FILE...]|final-newline [FILE...]|runner-clock [--repo OWNER/REPO] [--runs N] [--hours N]|tests-readme [--selftest]|inclusive-terminology-commits [--selftest]|server|agent|sync|backup refresh|keygen|board status|take [--class human|ci|agent]|checkpoint|extend|cancel|hil budget|verify-capture|db migrate|report slow|github check|github shadow|github shadow-compare|github publish-check-run|github required-checks|github gate|github actions-run|run submit|run status")
 		return 2
 	}
 	var err error
@@ -513,7 +513,7 @@ func runAgent(ctx context.Context) error {
 // documentation.
 func githubCommand(ctx context.Context, args []string) error {
 	if len(args) != 1 {
-		return errors.New("usage: ra8ci github check|shadow|shadow-compare|shadow-evidence|publish-check-run|required-checks|gate")
+		return errors.New("usage: ra8ci github check|shadow|shadow-compare|shadow-evidence|publish-check-run|required-checks|gate|actions-run")
 	}
 	switch args[0] {
 	case "check":
@@ -530,8 +530,10 @@ func githubCommand(ctx context.Context, args []string) error {
 		return githubRequiredChecks(os.Stdin, os.Stdout)
 	case "gate":
 		return githubGate(ctx, os.Stdin, os.Stdout)
+	case "actions-run":
+		return githubActionsRun(ctx, os.Stdin, os.Stdout)
 	default:
-		return errors.New("usage: ra8ci github check|shadow|shadow-compare|shadow-evidence|publish-check-run|required-checks|gate")
+		return errors.New("usage: ra8ci github check|shadow|shadow-compare|shadow-evidence|publish-check-run|required-checks|gate|actions-run")
 	}
 }
 
@@ -553,16 +555,36 @@ const maxShadowEvidenceBytes = 4 << 20
 // because a wire contract on those types would outlive this command and they
 // were written as in-process values.
 type shadowComparisonInput struct {
-	Plane []struct {
-		Task     string `json:"task"`
-		HeadSHA  string `json:"head_sha"`
-		Observed string `json:"observed"`
-	} `json:"plane"`
-	Actions []struct {
-		Job        string `json:"job"`
-		HeadSHA    string `json:"head_sha"`
-		Conclusion string `json:"conclusion"`
-	} `json:"actions"`
+	// ActionsRun names the workflow run the Actions half came from. It is
+	// optional, because a document assembled by hand has no run to name,
+	// and checked when present: evidence that does not say which attempt
+	// it graded cannot be checked against the run a second reader sees.
+	ActionsRun *actionsRunAnchor     `json:"actions_run,omitempty"`
+	Plane      []planeOutcomeInput   `json:"plane,omitempty"`
+	Actions    []actionsOutcomeInput `json:"actions,omitempty"`
+}
+
+// planeOutcomeInput is one task's terminal conclusion as this plane observed
+// it.
+type planeOutcomeInput struct {
+	Task     string `json:"task"`
+	HeadSHA  string `json:"head_sha"`
+	Observed string `json:"observed"`
+}
+
+// actionsOutcomeInput is one workflow job's conclusion.
+type actionsOutcomeInput struct {
+	Job        string `json:"job"`
+	HeadSHA    string `json:"head_sha"`
+	Conclusion string `json:"conclusion"`
+}
+
+// actionsRunAnchor says which workflow run and attempt the Actions half was
+// read from.
+type actionsRunAnchor struct {
+	RunID   int64  `json:"run_id"`
+	Attempt int    `json:"attempt"`
+	HeadSHA string `json:"head_sha"`
 }
 
 // shadowEvidenceInput is several pull requests' comparisons and the number of
@@ -624,6 +646,14 @@ func githubShadowCompare(in io.Reader, out io.Writer) error {
 	collection, err := config.Correspondence.Collect(plane, actions)
 	if err != nil {
 		return fmt.Errorf("collect shadow observations: %w", err)
+	}
+	// An anchor naming another commit is refused rather than ignored. It is
+	// how one run's outcomes end up filed under another run's attempt, and
+	// an attempt that does not describe the evidence under it is worse than
+	// no attempt at all.
+	if document.ActionsRun != nil && !strings.EqualFold(document.ActionsRun.HeadSHA, collection.HeadSHA) {
+		return fmt.Errorf("shadow observations are about %s, the run they name is about %s",
+			collection.HeadSHA, document.ActionsRun.HeadSHA)
 	}
 	report, err := github.CompareShadowRun(collection.Observations)
 	if err != nil {
@@ -1073,6 +1103,115 @@ func githubGate(ctx context.Context, in io.Reader, out io.Writer) error {
 	encoder := json.NewEncoder(out)
 	encoder.SetIndent("", "  ")
 	return encoder.Encode(requiredCheckInput{Required: emptyWhenNil(required)})
+}
+
+// maxActionsRunRequestBytes bounds the document `actions-run` reads. It carries
+// one run number and this plane's own outcomes for one commit, which is a few
+// kilobytes across the whole catalog.
+const maxActionsRunRequestBytes = 256 << 10
+
+// actionsRunRequest is the wire shape `actions-run` reads: which workflow run
+// to collect, and what this plane observed on the same commit.
+type actionsRunRequest struct {
+	RunID int64               `json:"run_id"`
+	Plane []planeOutcomeInput `json:"plane"`
+}
+
+// githubActionsRun reads one completed workflow run's job conclusions and
+// writes exactly the document `shadow-compare` reads, so the two compose:
+//
+//	ra8ci github actions-run < observations.json | ra8ci github shadow-compare
+//
+// The plane half passes through verbatim and is never fetched. What this plane
+// observed for a commit is the caller's statement, the same division
+// shadow-compare draws by reading both sides rather than gathering either, and
+// a command that collected the plane side itself would be making that statement
+// silently.
+//
+// The run's attempt travels with the outcomes in actions_run. A re-run answers
+// the same run number with different conclusions, so evidence that does not
+// name the attempt it came from cannot be checked against the run a second
+// reader sees.
+//
+// A refused read writes nothing. A document with the Actions half missing
+// would grade every covered task as indeterminate, which reads as a comparison
+// nobody made rather than a read that did not happen.
+func githubActionsRun(ctx context.Context, in io.Reader, out io.Writer) error {
+	loaded, err := catalog.Load()
+	if err != nil {
+		return fmt.Errorf("load task catalog: %w", err)
+	}
+	config, enabled, err := github.LoadCheckRunConfigFromEnv(loaded.Names())
+	if err != nil {
+		return err
+	}
+	if !enabled {
+		return fmt.Errorf("GitHub check-run publishing is not configured: set %s",
+			github.EnvShadowCorrespondenceFile)
+	}
+	publisherConfig, enabled, err := github.LoadCheckRunPublisherConfigFromEnv(config.Mode)
+	if err != nil {
+		return err
+	}
+	if !enabled {
+		return fmt.Errorf("GitHub check-run publishing has no repository: set %s",
+			github.EnvCheckRunRepository)
+	}
+
+	// The document is read and refused before a reader exists, so a bad
+	// document is reported as a bad document rather than as a failure to
+	// reach GitHub.
+	var document actionsRunRequest
+	decoder := json.NewDecoder(io.LimitReader(in, maxActionsRunRequestBytes+1))
+	decoder.DisallowUnknownFields()
+	if err := decoder.Decode(&document); err != nil {
+		return fmt.Errorf("read the run to collect: %w", err)
+	}
+	if decoder.More() {
+		return errors.New("read the run to collect: trailing content after the document")
+	}
+	if decoder.InputOffset() > maxActionsRunRequestBytes {
+		return fmt.Errorf("read the run to collect: larger than %d bytes", maxActionsRunRequestBytes)
+	}
+	if document.RunID <= 0 {
+		return errors.New("read the run to collect: no workflow run named")
+	}
+	if len(document.Plane) == 0 {
+		return errors.New("read the run to collect: no plane outcomes to compare against")
+	}
+
+	reader, err := github.NewActionsOutcomeReader(github.ActionsOutcomeReaderConfig{
+		APIBaseURL:     publisherConfig.APIBaseURL,
+		AppClientID:    publisherConfig.AppClientID,
+		InstallationID: publisherConfig.InstallationID,
+		PrivateKeyFile: publisherConfig.PrivateKeyFile,
+		Owner:          publisherConfig.Owner,
+		Repository:     publisherConfig.Repository,
+	})
+	if err != nil {
+		return err
+	}
+	run, err := reader.Outcomes(ctx, document.RunID)
+	if err != nil {
+		return fmt.Errorf("collect workflow run %d: %w", document.RunID, err)
+	}
+
+	// The output is the next command's input and nothing else. It is
+	// encoded as shadowComparisonInput itself rather than a lookalike map,
+	// so the two cannot drift apart.
+	actions := make([]actionsOutcomeInput, 0, len(run.Outcomes))
+	for _, outcome := range run.Outcomes {
+		actions = append(actions, actionsOutcomeInput{
+			Job: outcome.Job, HeadSHA: outcome.HeadSHA, Conclusion: outcome.Conclusion,
+		})
+	}
+	encoder := json.NewEncoder(out)
+	encoder.SetIndent("", "  ")
+	return encoder.Encode(shadowComparisonInput{
+		ActionsRun: &actionsRunAnchor{RunID: run.RunID, Attempt: run.Attempt, HeadSHA: run.HeadSHA},
+		Plane:      document.Plane,
+		Actions:    actions,
+	})
 }
 
 // emptyWhenNil renders an empty list as [] rather than null, so a reader
