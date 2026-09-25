@@ -513,7 +513,7 @@ func runAgent(ctx context.Context) error {
 // documentation.
 func githubCommand(ctx context.Context, args []string) error {
 	if len(args) != 1 {
-		return errors.New("usage: ra8ci github check|shadow|shadow-compare|publish-check-run|required-checks|gate")
+		return errors.New("usage: ra8ci github check|shadow|shadow-compare|shadow-evidence|publish-check-run|required-checks|gate")
 	}
 	switch args[0] {
 	case "check":
@@ -524,12 +524,14 @@ func githubCommand(ctx context.Context, args []string) error {
 		return githubShadowCompare(os.Stdin, os.Stdout)
 	case "publish-check-run":
 		return githubPublishCheckRuns(ctx, os.Stdin, os.Stdout)
+	case "shadow-evidence":
+		return githubShadowEvidence(os.Stdin, os.Stdout)
 	case "required-checks":
 		return githubRequiredChecks(os.Stdin, os.Stdout)
 	case "gate":
 		return githubGate(ctx, os.Stdin, os.Stdout)
 	default:
-		return errors.New("usage: ra8ci github check|shadow|shadow-compare|publish-check-run|required-checks|gate")
+		return errors.New("usage: ra8ci github check|shadow|shadow-compare|shadow-evidence|publish-check-run|required-checks|gate")
 	}
 }
 
@@ -538,6 +540,13 @@ func githubCommand(ctx context.Context, args []string) error {
 // room to spare and still a refusal rather than an unbounded read of whatever
 // is piped in.
 const maxShadowComparisonBytes = 256 << 10
+
+// maxShadowEvidenceBytes bounds the evidence document. It holds one
+// comparison document per pull request rather than one commit's, so it is
+// larger than maxShadowComparisonBytes, and still bounded: the readiness
+// answer is read by a person, and a document nobody could review is not
+// evidence anybody is weighing.
+const maxShadowEvidenceBytes = 4 << 20
 
 // shadowComparisonInput is the wire shape this command reads. The field names
 // are declared here rather than as tags on PlaneOutcome and ActionsOutcome,
@@ -554,6 +563,13 @@ type shadowComparisonInput struct {
 		HeadSHA    string `json:"head_sha"`
 		Conclusion string `json:"conclusion"`
 	} `json:"actions"`
+}
+
+// shadowEvidenceInput is several pull requests' comparisons and the number of
+// graded commits the reader is asking for.
+type shadowEvidenceInput struct {
+	Threshold int                     `json:"threshold"`
+	Commits   []shadowComparisonInput `json:"commits"`
 }
 
 // githubShadowCompare grades one commit's shadow run against Actions and
@@ -788,6 +804,138 @@ type requiredCheckInput struct {
 // it decides the whole answer: a shadow deployment plans no additions at all,
 // because a shadow run reports neutral whatever the task did and a required
 // check satisfied by a failing task is worse than no gate.
+// githubShadowEvidence grades several pull requests through the declared
+// correspondence and reports which tasks the evidence would let a required
+// check move for.
+//
+// #1481 holds that move until conclusions have been "compared against Actions
+// over representative pull requests", which `github shadow-compare` cannot
+// answer because it grades one commit. This is the same grading, accumulated.
+func githubShadowEvidence(in io.Reader, out io.Writer) error {
+	loaded, err := catalog.Load()
+	if err != nil {
+		return fmt.Errorf("load task catalog: %w", err)
+	}
+	config, enabled, err := github.LoadCheckRunConfigFromEnv(loaded.Names())
+	if err != nil {
+		return err
+	}
+	if !enabled {
+		return fmt.Errorf("GitHub check-run publishing is not configured: set %s",
+			github.EnvShadowCorrespondenceFile)
+	}
+
+	var document shadowEvidenceInput
+	decoder := json.NewDecoder(io.LimitReader(in, maxShadowEvidenceBytes+1))
+	decoder.DisallowUnknownFields()
+	if err := decoder.Decode(&document); err != nil {
+		return fmt.Errorf("read shadow evidence: %w", err)
+	}
+	if decoder.More() {
+		return errors.New("read shadow evidence: trailing content after the document")
+	}
+	if decoder.InputOffset() > maxShadowEvidenceBytes {
+		return fmt.Errorf("read shadow evidence: larger than %d bytes", maxShadowEvidenceBytes)
+	}
+	// The threshold is stated, never defaulted. How many pull requests
+	// are "representative" is the operator's judgement, and a default
+	// here would answer a question nobody asked while looking like an
+	// answer to the one they did.
+	if document.Threshold < 1 {
+		return errors.New("read shadow evidence: no threshold stated")
+	}
+	if len(document.Commits) == 0 {
+		return errors.New("read shadow evidence: no commits to accumulate")
+	}
+
+	reports := make([]github.ShadowReport, 0, len(document.Commits))
+	notExercised := make([]map[string]any, 0, len(document.Commits))
+	for i, commit := range document.Commits {
+		plane := make([]github.PlaneOutcome, 0, len(commit.Plane))
+		for _, outcome := range commit.Plane {
+			plane = append(plane, github.PlaneOutcome{
+				Task: outcome.Task, HeadSHA: outcome.HeadSHA, Observed: outcome.Observed,
+			})
+		}
+		actions := make([]github.ActionsOutcome, 0, len(commit.Actions))
+		for _, outcome := range commit.Actions {
+			actions = append(actions, github.ActionsOutcome{
+				Job: outcome.Job, HeadSHA: outcome.HeadSHA, Conclusion: outcome.Conclusion,
+			})
+		}
+		// Every commit is collected through the one declared
+		// correspondence. Evidence graded under two different statements
+		// of which job covers which task is not one body of evidence.
+		collection, err := config.Correspondence.Collect(plane, actions)
+		if err != nil {
+			return fmt.Errorf("collect shadow observations for commit %d: %w", i+1, err)
+		}
+		report, err := github.CompareShadowRun(collection.Observations)
+		if err != nil {
+			return fmt.Errorf("compare shadow run for commit %d: %w", i+1, err)
+		}
+		reports = append(reports, report)
+		// A task a commit did not exercise is not evidence for that
+		// task and is not accumulated as any. It is reported per commit
+		// so a task that reads as under-observed can be explained
+		// without going back to the inputs.
+		notExercised = append(notExercised, map[string]any{
+			"head_sha":      report.HeadSHA,
+			"not_exercised": emptyWhenNil(collection.NotRun),
+			"comparisons":   len(report.Comparisons),
+			"clean":         report.Clean(),
+		})
+	}
+
+	evidence, err := github.AccumulateShadowEvidence(reports)
+	if err != nil {
+		return fmt.Errorf("accumulate shadow evidence: %w", err)
+	}
+	readiness, err := evidence.Readiness(document.Threshold)
+	if err != nil {
+		return fmt.Errorf("read shadow evidence at threshold %d: %w", document.Threshold, err)
+	}
+
+	tasks := make([]map[string]any, 0, len(evidence.Tasks))
+	for _, task := range evidence.Tasks {
+		tasks = append(tasks, map[string]any{
+			"task":                task.Task,
+			"observed":            task.Observed,
+			"graded":              task.Graded,
+			"agreed":              task.Agreed,
+			"divergent":           task.Divergent,
+			"conflicting":         task.Conflicting,
+			"indeterminate":       task.Indeterminate,
+			"conflicting_commits": emptyWhenNil(task.ConflictingCommits),
+		})
+	}
+	encoder := json.NewEncoder(out)
+	encoder.SetIndent("", "  ")
+	if err := encoder.Encode(map[string]any{
+		"mode":             config.Mode.String(),
+		"may_block_merges": config.Mode == github.ModeAuthoritative,
+		"catalog_digest":   loaded.Digest(),
+		"threshold":        readiness.Threshold,
+		"settled":          readiness.Settled(),
+		"commits":          notExercised,
+		"tasks":            tasks,
+		"ready":            emptyWhenNil(readiness.Ready),
+		"conflicting":      emptyWhenNil(readiness.Conflicting),
+		"insufficient":     emptyWhenNil(readiness.Insufficient),
+	}); err != nil {
+		return fmt.Errorf("write shadow evidence: %w", err)
+	}
+	// The page is written before the verdict is returned, the
+	// shadow-compare convention: a caller reading only the exit status
+	// must not be able to get a settled one from an answer nobody could
+	// read.
+	if !readiness.Settled() {
+		return fmt.Errorf("shadow evidence is not settled at threshold %d: %d conflicting, %d insufficient",
+			readiness.Threshold, len(readiness.Conflicting), len(readiness.Insufficient))
+	}
+	return nil
+}
+
 func githubRequiredChecks(in io.Reader, out io.Writer) error {
 	loaded, err := catalog.Load()
 	if err != nil {
