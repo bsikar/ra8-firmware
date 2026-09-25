@@ -89,6 +89,9 @@ func RenderPullRequestSurvey(out io.Writer, report pullRequestSurveyReport) erro
 	if err := checkSurveyedAnswers(report); err != nil {
 		return err
 	}
+	if err := checkSurveyedSubject(report); err != nil {
+		return err
+	}
 	if err := checkSurveySharedHeads(report); err != nil {
 		return err
 	}
@@ -254,6 +257,51 @@ func checkSurveyedAnswers(report pullRequestSurveyReport) error {
 		}
 		if refusal == "" {
 			return fmt.Errorf("%w: #%d is unselectable and no reason is given",
+				ErrPullRequestSurveyPageInvalid, candidate.Number)
+		}
+	}
+	return nil
+}
+
+// checkSurveyedSubject refuses a survey that does not say what it is about.
+//
+// The listing is checked for who it answers for and for what it answers, and
+// neither reads the two words the page prints about the work itself. The
+// workflow is on the line read first, in both readings of it: a survey
+// without one renders "ready: every candidate can carry  evidence on a
+// commit of its own", which is a verdict about nothing over a set an operator
+// is about to gather. The head is on every candidate's line in both
+// listings, and it is the commit the gather opens the run on: "selected:
+// #1589 at , run 771 attempt 1" names a run and no commit to find it on, and
+// "no evidence run: #1591 at  (no run for Checks on )" asks an operator to
+// drop a candidate over a commit it does not name.
+//
+// Every candidate is read, unlike the reconcile page's conflicting tasks,
+// because this page prints every one of them: a selectable candidate on a
+// selected line, an unselectable one on a no-evidence-run line. There is no
+// candidate here whose head a reader would never have seen.
+//
+// It is read AFTER the listing and the answers and BEFORE the shared heads,
+// and both halves of that matter. A candidate numbered zero at no commit is
+// still refused as unnumbered, naming the unstated commit, because the
+// number is what a reader opens. A candidate at no commit grouped under a
+// shared head would otherwise be refused as "#1589 shares abc123 and is at",
+// a sentence with a gap where the answer goes.
+//
+// Whitespace is not a statement, the rule the other checks on this page keep
+// for a commit: a head of three spaces would print as a blank one.
+//
+// Nothing a real survey writes is refused: the workflow is the argument the
+// command was given, and the head comes straight off the pull request GitHub
+// answered with.
+func checkSurveyedSubject(report pullRequestSurveyReport) error {
+	if strings.TrimSpace(report.Workflow) == "" {
+		return fmt.Errorf("%w: the survey names no workflow",
+			ErrPullRequestSurveyPageInvalid)
+	}
+	for _, candidate := range report.PullRequests {
+		if strings.TrimSpace(candidate.HeadSHA) == "" {
+			return fmt.Errorf("%w: #%d is at no commit",
 				ErrPullRequestSurveyPageInvalid, candidate.Number)
 		}
 	}
