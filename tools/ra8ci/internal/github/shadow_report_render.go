@@ -62,6 +62,9 @@ func RenderShadowReport(out io.Writer, report ShadowReport) error {
 	if err := checkGradedComparisons(report); err != nil {
 		return err
 	}
+	if err := checkNamedComparisons(report); err != nil {
+		return err
+	}
 	var page strings.Builder
 	fmt.Fprintf(&page, "shadow comparison for %s\n", report.HeadSHA)
 	if report.Clean() {
@@ -139,6 +142,60 @@ func checkGradedComparisons(report ShadowReport) error {
 		if counted[verdict] != graded {
 			return fmt.Errorf("%w: %d %s counted, %d graded so",
 				ErrShadowObservationInvalid, counted[verdict], verdict, graded)
+		}
+	}
+	return nil
+}
+
+// checkNamedComparisons refuses a pairing this page cannot print a readable
+// line for.
+//
+// renderComparison writes one line per pairing and that line is made of four
+// fields: the catalog task, the conclusion this plane saw, the conclusion
+// Actions reached, and the Actions job the caller said covers the task. Three
+// of the four are load-bearing and nothing read them. A pairing with no task
+// renders "  : ra8ci success, Actions success [build (ubuntu-latest)]", a line
+// under a section heading that says which grade it got and never says what got
+// it. A pairing with no observed conclusion renders "ra8ci , Actions failure",
+// which reads as a plane that saw nothing rather than one whose answer went
+// missing on the way to the page. A pairing with no Actions job renders a
+// trailing "[]", and renderComparison's own comment is the argument against
+// that one: a line without the job name cannot be checked by the person
+// reading it, which is the only thing this page is for.
+//
+// The fourth field is deliberately not read here. An empty ActionsConclusion
+// is a real state with a real meaning, the one ShadowObservation documents as
+// "it has not completed", and the page already states it as "(not completed)"
+// rather than leaving a hole in the sentence. It is also what puts the pairing
+// in the indeterminate section, the reason the report holds the required
+// check. Refusing it would refuse the most ordinary unclean report there is.
+//
+// The comparison's own HeadSHA is not read either. It is carried on every
+// pairing and printed on none of them: the commit is stated once, at the top,
+// off report.HeadSHA. Whether a pairing was graded against the commit the page
+// is about is a real question and a different one from what this page says,
+// and reading a field nobody sees is the rule this family of checks has kept
+// to since the page checks began.
+//
+// The existing observation sentinel carries it, the same one the miscount and
+// the empty report return. Nothing a real comparison writes is refused:
+// ShadowObservation.validate already requires a valid task name, a known
+// observed conclusion and a non-empty Actions job before CompareShadowRun will
+// grade the pairing at all, so a report reaching this renderer with one of
+// them missing was assembled somewhere that validation is not.
+func checkNamedComparisons(report ShadowReport) error {
+	for _, comparison := range report.Comparisons {
+		if strings.TrimSpace(comparison.Task) == "" {
+			return fmt.Errorf("%w: a pairing graded %s names no task",
+				ErrShadowObservationInvalid, comparison.Verdict)
+		}
+		if strings.TrimSpace(comparison.Observed) == "" {
+			return fmt.Errorf("%w: %q names no conclusion of ours",
+				ErrShadowObservationInvalid, comparison.Task)
+		}
+		if strings.TrimSpace(comparison.ActionsJob) == "" {
+			return fmt.Errorf("%w: %q was compared against no Actions job",
+				ErrShadowObservationInvalid, comparison.Task)
 		}
 	}
 	return nil
