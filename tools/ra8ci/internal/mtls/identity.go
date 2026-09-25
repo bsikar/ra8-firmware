@@ -17,6 +17,7 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"encoding/hex"
+	"encoding/pem"
 	"errors"
 	"fmt"
 	"time"
@@ -99,4 +100,105 @@ func allowsClientAuth(leaf *x509.Certificate) bool {
 		}
 	}
 	return false
+}
+
+// ValidateServerIdentity refuses a key pair this process must not present as
+// its own server identity. The server side of a mutual-TLS deployment has the
+// same problem the clients had: tls.LoadX509KeyPair checks that the key
+// matches the certificate, so an expired certificate, a client certificate, or
+// the authority's own certificate all load and then fail at the first
+// handshake, where the operator sees a connection reset rather than a reason.
+//
+// It does not check the host name. Which names a server may answer to is the
+// client's question and the client already asks it; what is decided here is
+// only that the thing being presented is a usable server certificate at all.
+//
+// The error names the subject and the public fingerprint, never the key.
+func ValidateServerIdentity(identity tls.Certificate, now time.Time) error {
+	leaf, err := Leaf(identity)
+	if err != nil {
+		return err
+	}
+	where := fmt.Sprintf("subject %q sha256 %s", leaf.Subject.String(), Fingerprint(leaf))
+	if leaf.IsCA {
+		return fmt.Errorf("%w: %s is a certificate authority, not a server identity", ErrIdentity, where)
+	}
+	if now.Before(leaf.NotBefore) {
+		return fmt.Errorf("%w: %s is not valid until %s", ErrIdentity, where, leaf.NotBefore.UTC().Format(time.RFC3339))
+	}
+	if !now.Before(leaf.NotAfter) {
+		return fmt.Errorf("%w: %s expired at %s", ErrIdentity, where, leaf.NotAfter.UTC().Format(time.RFC3339))
+	}
+	// Same rule as the client side: an unconstrained certificate is accepted,
+	// a constrained one has to declare the usage it is being put to. This is
+	// what keeps a client identity from being served from the listener.
+	if len(leaf.ExtKeyUsage) > 0 && !allowsServerAuth(leaf) {
+		return fmt.Errorf("%w: %s is not issued for server authentication", ErrIdentity, where)
+	}
+	if leaf.KeyUsage != 0 && leaf.KeyUsage&x509.KeyUsageDigitalSignature == 0 {
+		return fmt.Errorf("%w: %s may not be used to sign", ErrIdentity, where)
+	}
+	return nil
+}
+
+func allowsServerAuth(leaf *x509.Certificate) bool {
+	for _, usage := range leaf.ExtKeyUsage {
+		if usage == x509.ExtKeyUsageServerAuth || usage == x509.ExtKeyUsageAny {
+			return true
+		}
+	}
+	return false
+}
+
+// ClientAuthorities parses the PEM bundle a server trusts client certificates
+// from, and refuses a bundle that cannot authenticate anyone.
+//
+// x509.CertPool.AppendCertsFromPEM reports only whether at least one
+// certificate parsed. A bundle of end-entity certificates, or one holding
+// nothing but authorities that have already expired, parses happily and then
+// refuses every client at the handshake, which reaches the operator as a
+// denial indistinguishable from a missing grant.
+//
+// An expired authority alongside a live one is not an error: that is what a CA
+// rotation looks like from here, and certificates issued by the old authority
+// are still being retired. What is refused is a bundle with no authority that
+// can verify anything today.
+func ClientAuthorities(bundle []byte, now time.Time) (*x509.CertPool, error) {
+	if len(bundle) == 0 {
+		return nil, fmt.Errorf("%w: client certificate authority bundle is empty", ErrIdentity)
+	}
+	pool := x509.NewCertPool()
+	rest := bundle
+	parsed := 0
+	usable := 0
+	for {
+		var block *pem.Block
+		block, rest = pem.Decode(rest)
+		if block == nil {
+			break
+		}
+		if block.Type != "CERTIFICATE" {
+			continue
+		}
+		authority, err := x509.ParseCertificate(block.Bytes)
+		if err != nil {
+			return nil, fmt.Errorf("%w: parse client certificate authority: %v", ErrIdentity, err)
+		}
+		parsed++
+		where := fmt.Sprintf("subject %q sha256 %s", authority.Subject.String(), Fingerprint(authority))
+		if !authority.IsCA {
+			return nil, fmt.Errorf("%w: %s in the client CA bundle is not a certificate authority", ErrIdentity, where)
+		}
+		pool.AddCert(authority)
+		if !now.Before(authority.NotBefore) && now.Before(authority.NotAfter) {
+			usable++
+		}
+	}
+	if parsed == 0 {
+		return nil, fmt.Errorf("%w: client certificate authority bundle holds no certificate", ErrIdentity)
+	}
+	if usable == 0 {
+		return nil, fmt.Errorf("%w: every certificate authority in the client CA bundle is outside its validity window", ErrIdentity)
+	}
+	return pool, nil
 }
