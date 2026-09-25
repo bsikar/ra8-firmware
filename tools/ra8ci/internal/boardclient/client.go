@@ -726,6 +726,118 @@ func (c *Client) Checkpoint(ctx context.Context, token LeaseToken) (board.Snapsh
 
 // Extend requests a later UTC expiry; class ceilings and contended extension
 // limits remain server-side and cannot be bypassed by changing this client.
+// HolderLiveness is what the server says about the holder after a beat: when
+// it was last seen, when the next report is due, and whether the silence has
+// already passed the grace. It is a report, never a verdict: a holder that is
+// overdue still holds the board until its own expiry, so nothing here is a
+// signal to stop working.
+type HolderLiveness struct {
+	Held       bool
+	LeaseID    string
+	Holder     string
+	LastSeenAt time.Time
+	Beat       bool
+	Silence    time.Duration
+	Interval   time.Duration
+
+	// NextBeatBy is the only number a holder can act on: report before it
+	// or start reading as overdue to anyone watching.
+	NextBeatBy time.Time
+
+	Overdue   bool
+	ExpiresAt time.Time
+	Explain   string
+}
+
+// livenessResponse is the wire form. Durations arrive as seconds and absent
+// times as null, so they are decoded rather than mapped field for field.
+type livenessResponse struct {
+	Held            bool       `json:"held"`
+	LeaseID         string     `json:"lease_id"`
+	Holder          string     `json:"holder"`
+	LastSeenAt      *time.Time `json:"last_seen_at"`
+	Beat            bool       `json:"beat"`
+	SilenceSeconds  float64    `json:"silence_seconds"`
+	IntervalSeconds float64    `json:"interval_seconds"`
+	NextBeatBy      *time.Time `json:"next_beat_by"`
+	Overdue         bool       `json:"overdue"`
+	ExpiresAt       *time.Time `json:"expires_at"`
+	Explain         string     `json:"explain"`
+}
+
+type heartbeatResponse struct {
+	Snapshot board.Snapshot   `json:"snapshot"`
+	Events   []board.Event    `json:"events"`
+	Liveness livenessResponse `json:"liveness"`
+}
+
+func (l livenessResponse) liveness() HolderLiveness {
+	reported := HolderLiveness{
+		Held: l.Held, LeaseID: l.LeaseID, Holder: l.Holder, Beat: l.Beat,
+		Silence:  time.Duration(l.SilenceSeconds * float64(time.Second)),
+		Interval: time.Duration(l.IntervalSeconds * float64(time.Second)),
+		Overdue:  l.Overdue, Explain: l.Explain,
+	}
+	if l.LastSeenAt != nil {
+		reported.LastSeenAt = *l.LastSeenAt
+	}
+	if l.NextBeatBy != nil {
+		reported.NextBeatBy = *l.NextBeatBy
+	}
+	if l.ExpiresAt != nil {
+		reported.ExpiresAt = *l.ExpiresAt
+	}
+	return reported
+}
+
+// Heartbeat reports that this holder is still alive and returns what the
+// server now says about its liveness.
+//
+// It is not a deadline command in either direction. A beat cannot lengthen the
+// lease, which is what Extend is for and what its reason and policy limit
+// exist to hold; and being refused here never shortens one either, because a
+// crashed holder is answered by waiting for expiry and then a reviewed
+// recovery sequence. So a caller should report on the interval the server
+// hands back and otherwise carry on with its work.
+//
+// A lease the server no longer agrees this caller holds is ErrStaleLease
+// before anything is sent, so a superseded holder cannot keep a board looking
+// alive by beating at it.
+func (c *Client) Heartbeat(ctx context.Context, token LeaseToken) (board.Snapshot, HolderLiveness, error) {
+	for {
+		snapshot, err := c.leaseStatus(ctx, token)
+		if err != nil {
+			return board.Snapshot{}, HolderLiveness{}, err
+		}
+		var response heartbeatResponse
+		err = c.request(ctx, http.MethodPost,
+			boardPath(token.BoardID, "/leases/"+url.PathEscape(token.LeaseID)+"/heartbeat"),
+			struct {
+				ExpectedVersion uint64 `json:"expected_version"`
+				Generation      uint64 `json:"generation"`
+			}{snapshot.Version, token.Generation}, &response)
+		if err == nil {
+			if response.Snapshot.BoardID != token.BoardID || board.Validate(response.Snapshot) != nil {
+				return board.Snapshot{}, HolderLiveness{}, fmt.Errorf("%w: invalid command result", ErrInvalidRequest)
+			}
+			// A report about some other lease is not an answer about
+			// this one, however healthy it looks.
+			if reported := response.Liveness; reported.Held && reported.LeaseID != token.LeaseID {
+				return board.Snapshot{}, HolderLiveness{}, fmt.Errorf("%w: liveness for another lease", ErrInvalidRequest)
+			}
+			return response.Snapshot, response.Liveness.liveness(), nil
+		}
+		if !isConflict(err) {
+			return board.Snapshot{}, HolderLiveness{}, err
+		}
+		// Another transition landed between the read and the beat. The
+		// version moved, not the holder, so read it again and report.
+		if err := waitConflict(ctx); err != nil {
+			return board.Snapshot{}, HolderLiveness{}, err
+		}
+	}
+}
+
 func (c *Client) Extend(ctx context.Context, token LeaseToken, expiry time.Time, why string) (board.Snapshot, error) {
 	if expiry.IsZero() || why == "" || len(why) > 500 || strings.TrimSpace(why) != why {
 		return board.Snapshot{}, ErrInvalidRequest
