@@ -513,7 +513,7 @@ func runAgent(ctx context.Context) error {
 // documentation.
 func githubCommand(ctx context.Context, args []string) error {
 	if len(args) != 1 {
-		return errors.New("usage: ra8ci github check|shadow|shadow-compare|shadow-evidence|publish-check-run|required-checks|evidence-gate|gate|actions-run|reconcile|pull-request|evidence-run")
+		return errors.New("usage: ra8ci github check|shadow|shadow-compare|shadow-evidence|publish-check-run|required-checks|evidence-gate|gate|actions-run|reconcile|pull-request|evidence-run|pull-request-evidence")
 	}
 	switch args[0] {
 	case "check":
@@ -540,8 +540,10 @@ func githubCommand(ctx context.Context, args []string) error {
 		return githubPullRequestRuns(ctx, os.Stdin, os.Stdout)
 	case "evidence-run":
 		return githubEvidenceRun(ctx, os.Stdin, os.Stdout)
+	case "pull-request-evidence":
+		return githubPullRequestEvidence(ctx, os.Stdin, os.Stdout)
 	default:
-		return errors.New("usage: ra8ci github check|shadow|shadow-compare|shadow-evidence|publish-check-run|required-checks|evidence-gate|gate|actions-run|reconcile|pull-request|evidence-run")
+		return errors.New("usage: ra8ci github check|shadow|shadow-compare|shadow-evidence|publish-check-run|required-checks|evidence-gate|gate|actions-run|reconcile|pull-request|evidence-run|pull-request-evidence")
 	}
 }
 
@@ -2120,4 +2122,245 @@ func backupCommand(ctx context.Context, args []string) error {
 		return fmt.Errorf("refresh backup attestation: %w", err)
 	}
 	return nil
+}
+
+// maxPullRequestEvidenceBytes bounds the document `pull-request-evidence`
+// reads. It carries this plane's own outcomes for several pull requests
+// rather than one commit's, so it is the size of the evidence document it
+// produces rather than of one comparison, and still a refusal rather than an
+// unbounded read of whatever is piped in.
+const maxPullRequestEvidenceBytes = 4 << 20
+
+// pullRequestEvidenceRequest is the wire shape `pull-request-evidence` reads:
+// which workflow carries the evidence, how many graded commits the readiness
+// answer is being asked for, and what this plane observed on each pull
+// request.
+type pullRequestEvidenceRequest struct {
+	Workflow     string                     `json:"workflow"`
+	Threshold    int                        `json:"threshold"`
+	PullRequests []pullRequestEvidenceEntry `json:"pull_requests"`
+}
+
+// pullRequestEvidenceEntry is one pull request and this plane's own outcomes
+// on it. The head commit is deliberately absent: the whole point of naming a
+// pull request is that the head is read rather than typed.
+type pullRequestEvidenceEntry struct {
+	Number int                 `json:"number"`
+	Plane  []planeOutcomeInput `json:"plane"`
+}
+
+// gatheredPullRequest is one pull request's Actions half once GitHub has
+// answered for it, beside the plane half the caller stated.
+type gatheredPullRequest struct {
+	Number   int
+	Outcomes github.ActionsRunOutcomes
+	Plane    []planeOutcomeInput
+}
+
+// githubPullRequestEvidence gathers #1481's evidence from pull request numbers
+// and writes exactly the document `shadow-evidence` reads, so the whole
+// readiness answer is one pipe:
+//
+//	ra8ci github pull-request-evidence < pulls.json | ra8ci github shadow-evidence
+//
+// Every piece of this already existed and none of them met. `pull-request`
+// says where a pull request is, `evidence-run` picks the run, `actions-run`
+// grades one run whose ID somebody already holds, and `shadow-evidence`
+// accumulates comparisons somebody already assembled. Gathering evidence over
+// a dozen representative pull requests meant running three commands per pull
+// request and pasting run IDs and head SHAs between them by hand, which is
+// exactly where a commit gets graded against the wrong run.
+//
+// It reads and never writes to GitHub. Three narrow tokens do the work,
+// pull_requests:read for each head and actions:read for each commit's runs and
+// job conclusions, the seam #1589 drew and #1590 kept.
+func githubPullRequestEvidence(ctx context.Context, in io.Reader, out io.Writer) error {
+	loaded, err := catalog.Load()
+	if err != nil {
+		return fmt.Errorf("load task catalog: %w", err)
+	}
+	config, enabled, err := github.LoadCheckRunConfigFromEnv(loaded.Names())
+	if err != nil {
+		return err
+	}
+	if !enabled {
+		return fmt.Errorf("GitHub check-run publishing is not configured: set %s",
+			github.EnvShadowCorrespondenceFile)
+	}
+	publisherConfig, enabled, err := github.LoadCheckRunPublisherConfigFromEnv(config.Mode)
+	if err != nil {
+		return err
+	}
+	if !enabled {
+		return fmt.Errorf("GitHub check-run publishing has no repository: set %s",
+			github.EnvCheckRunRepository)
+	}
+
+	// The document is read and refused before a reader exists, so a bad
+	// ask is reported as a bad ask rather than as a failure to reach
+	// GitHub.
+	var document pullRequestEvidenceRequest
+	decoder := json.NewDecoder(io.LimitReader(in, maxPullRequestEvidenceBytes+1))
+	decoder.DisallowUnknownFields()
+	if err := decoder.Decode(&document); err != nil {
+		return fmt.Errorf("read the pull requests to gather: %w", err)
+	}
+	if decoder.More() {
+		return errors.New("read the pull requests to gather: trailing content after the document")
+	}
+	if decoder.InputOffset() > maxPullRequestEvidenceBytes {
+		return fmt.Errorf("read the pull requests to gather: larger than %d bytes", maxPullRequestEvidenceBytes)
+	}
+	if err := checkPullRequestEvidenceAsk(document); err != nil {
+		return fmt.Errorf("read the pull requests to gather: %w", err)
+	}
+
+	heads, err := github.NewPullRequestHeadReader(github.PullRequestHeadReaderConfig{
+		APIBaseURL:     publisherConfig.APIBaseURL,
+		AppClientID:    publisherConfig.AppClientID,
+		InstallationID: publisherConfig.InstallationID,
+		PrivateKeyFile: publisherConfig.PrivateKeyFile,
+		Owner:          publisherConfig.Owner,
+		Repository:     publisherConfig.Repository,
+	})
+	if err != nil {
+		return err
+	}
+	runs, err := github.NewActionsOutcomeReader(github.ActionsOutcomeReaderConfig{
+		APIBaseURL:     publisherConfig.APIBaseURL,
+		AppClientID:    publisherConfig.AppClientID,
+		InstallationID: publisherConfig.InstallationID,
+		PrivateKeyFile: publisherConfig.PrivateKeyFile,
+		Owner:          publisherConfig.Owner,
+		Repository:     publisherConfig.Repository,
+	})
+	if err != nil {
+		return err
+	}
+
+	// Every pull request is gathered before anything is written. A
+	// document holding the pull requests that answered before the read
+	// failed is evidence over a smaller set than the one that was asked
+	// for, and nothing downstream could tell the two apart.
+	gathered := make([]gatheredPullRequest, 0, len(document.PullRequests))
+	for _, asked := range document.PullRequests {
+		head, err := heads.Head(ctx, asked.Number)
+		if err != nil {
+			return fmt.Errorf("read pull request %d: %w", asked.Number, err)
+		}
+		if err := checkPlaneIsAboutTheHead(asked, head.HeadSHA); err != nil {
+			return err
+		}
+		listed, err := runs.RunsOn(ctx, head.HeadSHA)
+		if err != nil {
+			return fmt.Errorf("read the workflow runs on %s (pull request %d): %w",
+				head.HeadSHA, asked.Number, err)
+		}
+		selected, err := github.SelectEvidenceRun(listed, document.Workflow)
+		if err != nil {
+			return fmt.Errorf("select the evidence run on %s (pull request %d): %w",
+				head.HeadSHA, asked.Number, err)
+		}
+		outcomes, err := runs.Outcomes(ctx, selected.ID)
+		if err != nil {
+			return fmt.Errorf("collect workflow run %d (pull request %d): %w",
+				selected.ID, asked.Number, err)
+		}
+		gathered = append(gathered, gatheredPullRequest{
+			Number: asked.Number, Outcomes: outcomes, Plane: asked.Plane,
+		})
+	}
+
+	// The output is the next command's input and nothing else. It is
+	// encoded as shadowEvidenceInput itself rather than a lookalike map,
+	// so the two cannot drift apart.
+	encoder := json.NewEncoder(out)
+	encoder.SetIndent("", "  ")
+	return encoder.Encode(pullRequestEvidenceDocument(document.Threshold, gathered))
+}
+
+// checkPullRequestEvidenceAsk refuses an ask nothing could be gathered from,
+// before a token is minted.
+//
+// A pull request named twice is refused rather than gathered twice or
+// silently collapsed: two entries for one number are two different statements
+// about what this plane observed there, and the readiness threshold counts
+// commits, so gathering both would let one pull request answer a threshold of
+// two.
+func checkPullRequestEvidenceAsk(document pullRequestEvidenceRequest) error {
+	if strings.TrimSpace(document.Workflow) == "" {
+		return errors.New("no workflow named")
+	}
+	if document.Threshold <= 0 {
+		return errors.New("no readiness threshold stated")
+	}
+	if len(document.PullRequests) == 0 {
+		return errors.New("no pull requests to gather")
+	}
+	seen := make(map[int]struct{}, len(document.PullRequests))
+	for _, asked := range document.PullRequests {
+		if asked.Number <= 0 {
+			return errors.New("a pull request with no number")
+		}
+		if _, repeated := seen[asked.Number]; repeated {
+			return fmt.Errorf("pull request %d named twice", asked.Number)
+		}
+		seen[asked.Number] = struct{}{}
+		if len(asked.Plane) == 0 {
+			return fmt.Errorf("pull request %d has no plane outcomes to compare against", asked.Number)
+		}
+	}
+	return nil
+}
+
+// checkPlaneIsAboutTheHead refuses a plane half stated for a commit the pull
+// request is not at.
+//
+// The Actions half is read from the head this command just looked up, so a
+// plane half about some other commit would be a comparison between two
+// different commits. Collect refuses that mismatch downstream, but only ever
+// by naming two SHAs; this command is the only place that knows which pull
+// request they came from, which is what somebody re-gathering the evidence
+// needs to be told. The plane's own commit is never rewritten to the head:
+// correcting it silently would turn a caller who graded the wrong commit into
+// evidence.
+func checkPlaneIsAboutTheHead(asked pullRequestEvidenceEntry, head string) error {
+	for _, outcome := range asked.Plane {
+		if !strings.EqualFold(outcome.HeadSHA, head) {
+			return fmt.Errorf("pull request %d is at %s, but this plane's outcome for task %q is about %s",
+				asked.Number, head, outcome.Task, outcome.HeadSHA)
+		}
+	}
+	return nil
+}
+
+// pullRequestEvidenceDocument assembles the evidence document. It is separate
+// from the command so the shape can be pinned without a GitHub of any kind.
+//
+// The pull request numbers do not survive into it. shadow-evidence reads
+// commits, and widening the document to carry the number each comparison came
+// from would change a shape shadow-evidence and evidence-gate both read, for a
+// field neither of them grades; the run anchor and the head SHA are the link
+// back to where a comparison was gathered.
+func pullRequestEvidenceDocument(threshold int, gathered []gatheredPullRequest) shadowEvidenceInput {
+	document := shadowEvidenceInput{
+		Threshold: threshold,
+		Commits:   make([]shadowComparisonInput, 0, len(gathered)),
+	}
+	for _, one := range gathered {
+		actions := make([]actionsOutcomeInput, 0, len(one.Outcomes.Outcomes))
+		for _, outcome := range one.Outcomes.Outcomes {
+			actions = append(actions, actionsOutcomeInput{
+				Job: outcome.Job, HeadSHA: outcome.HeadSHA, Conclusion: outcome.Conclusion,
+			})
+		}
+		document.Commits = append(document.Commits, shadowComparisonInput{
+			ActionsRun: &actionsRunAnchor{
+				RunID: one.Outcomes.RunID, Attempt: one.Outcomes.Attempt, HeadSHA: one.Outcomes.HeadSHA,
+			},
+			Plane:   one.Plane,
+			Actions: actions,
+		})
+	}
+	return document
 }
