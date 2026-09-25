@@ -9,7 +9,6 @@ import (
 	"bytes"
 	"context"
 	"crypto/tls"
-	"crypto/x509"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -22,6 +21,8 @@ import (
 	"regexp"
 	"strings"
 	"time"
+
+	"github.com/bsikar/ra8-firmware/tools/ra8ci/internal/mtls"
 )
 
 const maxAppRoleResponseBytes = 64 << 10
@@ -102,12 +103,9 @@ func LoginAppRole(ctx context.Context, config AppRoleConfig) (*AppRoleToken, err
 		return nil, fmt.Errorf("read AppRole CA bundle: %w", err)
 	}
 	defer clear(caPEM)
-	roots, err := x509.SystemCertPool()
-	if err != nil || roots == nil {
-		roots = x509.NewCertPool()
-	}
-	if !roots.AppendCertsFromPEM(caPEM) {
-		return nil, errors.New("AppRole CA bundle contains no certificates")
+	roots, err := mtls.ServerAuthorities(caPEM, time.Now())
+	if err != nil {
+		return nil, fmt.Errorf("AppRole CA bundle cannot authenticate the Vault endpoint: %w", err)
 	}
 	transport := &http.Transport{
 		Proxy:               nil,
