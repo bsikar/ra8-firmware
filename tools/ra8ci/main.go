@@ -18,6 +18,7 @@ import (
 	"os/exec"
 	"os/signal"
 	"path/filepath"
+	"sort"
 	"strings"
 	"syscall"
 	"time"
@@ -53,7 +54,7 @@ func main() {
 
 func run(ctx context.Context, args []string) int {
 	if len(args) == 0 {
-		fmt.Fprintln(os.Stderr, "usage: ra8ci <task>|tasks [--digest|--json]|ascii [--check] [--all|PATH]|since [--all|FILE...]|final-newline [FILE...]|runner-clock [--repo OWNER/REPO] [--runs N] [--hours N]|tests-readme [--selftest]|inclusive-terminology-commits [--selftest]|server|agent|sync|backup refresh|keygen|board status|take [--class human|ci|agent]|checkpoint|extend|cancel|hil budget|verify-capture|db migrate|report slow|github check|run submit|run status")
+		fmt.Fprintln(os.Stderr, "usage: ra8ci <task>|tasks [--digest|--json]|ascii [--check] [--all|PATH]|since [--all|FILE...]|final-newline [FILE...]|runner-clock [--repo OWNER/REPO] [--runs N] [--hours N]|tests-readme [--selftest]|inclusive-terminology-commits [--selftest]|server|agent|sync|backup refresh|keygen|board status|take [--class human|ci|agent]|checkpoint|extend|cancel|hil budget|verify-capture|db migrate|report slow|github check|github shadow|run submit|run status")
 		return 2
 	}
 	var err error
@@ -506,12 +507,91 @@ func runAgent(ctx context.Context) error {
 	return err
 }
 
-// githubCommand checks that the configured scale-set credentials can establish
-// and cleanly close an official GitHub message session without consuming jobs.
+// githubCommand dispatches the read-only GitHub subcommands. Neither of them
+// changes anything on GitHub.
 func githubCommand(ctx context.Context, args []string) error {
-	if len(args) != 1 || args[0] != "check" {
-		return errors.New("usage: ra8ci github check")
+	if len(args) != 1 {
+		return errors.New("usage: ra8ci github check|shadow")
 	}
+	switch args[0] {
+	case "check":
+		return githubSessionCheck(ctx)
+	case "shadow":
+		return githubShadowConfig(os.Stdout)
+	default:
+		return errors.New("usage: ra8ci github check|shadow")
+	}
+}
+
+// githubShadowConfig reports the check-run configuration this process would
+// publish with. It reads the environment and the catalog and speaks to nobody:
+// the whole point of shadow mode is that the decision to move onto the merge
+// gate is made from evidence, so the command that shows what is configured
+// must not itself publish a run.
+//
+// The mode is taken from the environment only. A mode on the command line
+// would be a second place to say it, and the one that matters is the mode the
+// running process was deployed with.
+func githubShadowConfig(out io.Writer) error {
+	loaded, err := catalog.Load()
+	if err != nil {
+		return fmt.Errorf("load task catalog: %w", err)
+	}
+	names := loaded.Names()
+	config, enabled, err := github.LoadCheckRunConfigFromEnv(names)
+	if err != nil {
+		return err
+	}
+	if !enabled {
+		return fmt.Errorf("GitHub check-run publishing is not configured: set %s",
+			github.EnvShadowCorrespondenceFile)
+	}
+
+	covered := config.Correspondence.Tasks()
+	declared := make(map[string]bool, len(covered))
+	pairs := make([]map[string]string, 0, len(covered))
+	for _, task := range covered {
+		job, found := config.Correspondence.Job(task)
+		if !found {
+			return fmt.Errorf("correspondence lists task %q without a job", task)
+		}
+		declared[task] = true
+		pairs = append(pairs, map[string]string{"task": task, "actions_job": job})
+	}
+
+	// The uncovered tasks are named, not counted. A plane outcome the
+	// correspondence does not cover is refused rather than dropped, so an
+	// operator shipping a declaration that misses a task gets a refused
+	// comparison, and the list of names is the only thing that says which.
+	uncovered := make([]string, 0, len(names))
+	for _, name := range names {
+		if !declared[name] {
+			uncovered = append(uncovered, name)
+		}
+	}
+	sort.Strings(uncovered)
+
+	encoder := json.NewEncoder(out)
+	encoder.SetIndent("", "  ")
+	return encoder.Encode(map[string]any{
+		"mode": config.Mode.String(),
+		// A shadow run reports neutral whatever the task did, so it can
+		// never hold a pull request. Saying so here keeps the answer to
+		// "can this deployment block a merge" in the output rather than
+		// in the reader's head.
+		"may_block_merges": config.Mode == github.ModeAuthoritative,
+		"catalog_digest":   loaded.Digest(),
+		"catalog_tasks":    len(names),
+		"covered_tasks":    len(covered),
+		"correspondence":   pairs,
+		"uncovered_tasks":  uncovered,
+	})
+}
+
+// githubSessionCheck checks that the configured scale-set credentials can
+// establish and cleanly close an official GitHub message session without
+// consuming jobs.
+func githubSessionCheck(ctx context.Context) error {
 	config, enabled, err := github.LoadSessionConfigFromEnv()
 	if err != nil {
 		return err
