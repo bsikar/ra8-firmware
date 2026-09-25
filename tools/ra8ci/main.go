@@ -2490,6 +2490,44 @@ type gatheredPullRequest struct {
 	Plane    []planeOutcomeInput
 }
 
+// gatheredHeads records which pull request each commit has already been
+// gathered from, so two pull requests sitting on one commit are refused by
+// name rather than gathered twice.
+//
+// checkPullRequestEvidenceAsk already refuses a pull request NAMED twice, and
+// says why: the readiness threshold counts commits, so one pull request must
+// not answer for two. Two DIFFERENT numbers at one commit do exactly that and
+// the ask cannot see it, because a pull request's head is only known once
+// GitHub has been asked. It is an ordinary shape to hit: a pull request
+// reopened under a new number, a branch two pull requests both point at, a
+// candidate list assembled from a search.
+//
+// The accumulation downstream does refuse the repeated commit
+// (ErrShadowEvidenceRepeatedCommit), but only after every head and every
+// workflow run has been read, and only ever by naming one SHA. This command
+// is the only place that knows which pull requests that commit came from,
+// which is what somebody re-assembling the candidate set needs to be told.
+// Same reasoning as checkPlaneIsAboutTheHead.
+type gatheredHeads map[string]int
+
+// claim records that this pull request was gathered at this commit, refusing
+// a commit an earlier pull request already answered for.
+//
+// A commit is matched case-insensitively, the rule the rest of the package
+// keeps: GitHub's casing of a commit is not a different commit.
+func (heads gatheredHeads) claim(number int, head string) error {
+	key := strings.ToLower(strings.TrimSpace(head))
+	if key == "" {
+		return fmt.Errorf("pull request %d has no head commit", number)
+	}
+	if first, repeated := heads[key]; repeated {
+		return fmt.Errorf("pull requests %d and %d are both at %s: one commit cannot answer for two",
+			first, number, head)
+	}
+	heads[key] = number
+	return nil
+}
+
 // githubPullRequestEvidence gathers #1481's evidence from pull request numbers
 // and writes exactly the document `shadow-evidence` reads, so the whole
 // readiness answer is one pipe:
@@ -2576,10 +2614,14 @@ func githubPullRequestEvidence(ctx context.Context, in io.Reader, out io.Writer)
 	// failed is evidence over a smaller set than the one that was asked
 	// for, and nothing downstream could tell the two apart.
 	gathered := make([]gatheredPullRequest, 0, len(document.PullRequests))
+	gatheredAt := make(gatheredHeads, len(document.PullRequests))
 	for _, asked := range document.PullRequests {
 		head, err := heads.Head(ctx, asked.Number)
 		if err != nil {
 			return fmt.Errorf("read pull request %d: %w", asked.Number, err)
+		}
+		if err := gatheredAt.claim(asked.Number, head.HeadSHA); err != nil {
+			return err
 		}
 		if err := checkPlaneIsAboutTheHead(asked, head.HeadSHA); err != nil {
 			return err
