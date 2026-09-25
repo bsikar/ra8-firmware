@@ -13,6 +13,7 @@ import (
 	"net/http"
 	"net/url"
 	"path"
+	"unicode/utf8"
 )
 
 // CheckRunPublisher posts one completed check run per catalog task through the
@@ -22,12 +23,24 @@ import (
 
 const maxCheckRunResponse = 1 << 20
 
+// maxCheckRunSummary is GitHub's ceiling for a check run's output summary, in
+// characters. A body over it is refused by the API with a status code and no
+// explanation of which field was at fault, so the bound is applied here where
+// the field has a name.
+const maxCheckRunSummary = 65535
+
 var (
 	// ErrCheckRunModeNotPermitted is returned when a run is published in a
 	// mode this publisher was not configured for.
 	ErrCheckRunModeNotPermitted = errors.New("publisher is not configured for this check run mode")
 	// ErrCheckRunRejected is returned when GitHub refused the check run.
 	ErrCheckRunRejected = errors.New("GitHub refused the check run")
+	// ErrCheckRunOutputUnusable is returned when the output a caller asked
+	// to publish is one GitHub will not accept: an empty summary, or a
+	// summary or title past the API's ceiling. It is refused before an
+	// installation token is minted, so a body GitHub would reject never
+	// costs a token or reaches the network.
+	ErrCheckRunOutputUnusable = errors.New("check run output is unusable")
 )
 
 // CheckRunPublisherConfig grants checks:write on one repository.
@@ -129,6 +142,9 @@ func (p *CheckRunPublisher) Publish(ctx context.Context, run TaskCheckRun, summa
 	if run.Mode != ModeShadow && run.Mode != ModeAuthoritative {
 		return 0, fmt.Errorf("%w: %s", ErrInvalidCheckRunMode, run.Mode)
 	}
+	if err := checkPublishableOutput(run.Title, summary); err != nil {
+		return 0, err
+	}
 	token, err := p.tokens.accessToken(ctx)
 	if err != nil {
 		return 0, err
@@ -183,4 +199,32 @@ func (p *CheckRunPublisher) Publish(ctx context.Context, run TaskCheckRun, summa
 			created.ExternalID, externalID)
 	}
 	return created.ID, nil
+}
+
+// checkPublishableOutput holds the output body to what GitHub will accept,
+// before anything is built and before a token is minted.
+//
+// The summary is the only place a check run explains itself, so an over-long
+// one is refused and never cut: a published body that stops mid-account reads
+// as the whole account, and the caller that assembled it is the one that knows
+// what to drop. The report a reconciliation writes excerpts a summary instead,
+// but that excerpt announces itself with a field beside it; a published run
+// carries no such field.
+//
+// Both ceilings are counted in characters, the unit GitHub states them in. A
+// byte count would refuse a legal summary that happens to be written in a
+// script whose characters take more than one byte.
+func checkPublishableOutput(title, summary string) error {
+	if summary == "" {
+		return fmt.Errorf("%w: a check run is published with a summary", ErrCheckRunOutputUnusable)
+	}
+	if length := utf8.RuneCountInString(summary); length > maxCheckRunSummary {
+		return fmt.Errorf("%w: summary is %d characters, GitHub accepts %d",
+			ErrCheckRunOutputUnusable, length, maxCheckRunSummary)
+	}
+	if length := utf8.RuneCountInString(title); length > maxCheckRunTitle {
+		return fmt.Errorf("%w: title is %d characters, GitHub accepts %d",
+			ErrCheckRunOutputUnusable, length, maxCheckRunTitle)
+	}
+	return nil
 }
