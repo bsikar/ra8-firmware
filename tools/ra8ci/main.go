@@ -54,7 +54,7 @@ func main() {
 
 func run(ctx context.Context, args []string) int {
 	if len(args) == 0 {
-		fmt.Fprintln(os.Stderr, "usage: ra8ci <task>|tasks [--digest|--json]|ascii [--check] [--all|PATH]|since [--all|FILE...]|final-newline [FILE...]|runner-clock [--repo OWNER/REPO] [--runs N] [--hours N]|tests-readme [--selftest]|inclusive-terminology-commits [--selftest]|server|agent|sync|backup refresh|keygen|board status|take [--class human|ci|agent]|checkpoint|extend|cancel|hil budget|verify-capture|db migrate|report slow|github check|github shadow|github shadow-compare|run submit|run status")
+		fmt.Fprintln(os.Stderr, "usage: ra8ci <task>|tasks [--digest|--json]|ascii [--check] [--all|PATH]|since [--all|FILE...]|final-newline [FILE...]|runner-clock [--repo OWNER/REPO] [--runs N] [--hours N]|tests-readme [--selftest]|inclusive-terminology-commits [--selftest]|server|agent|sync|backup refresh|keygen|board status|take [--class human|ci|agent]|checkpoint|extend|cancel|hil budget|verify-capture|db migrate|report slow|github check|github shadow|github shadow-compare|github publish-check-run|run submit|run status")
 		return 2
 	}
 	var err error
@@ -507,11 +507,12 @@ func runAgent(ctx context.Context) error {
 	return err
 }
 
-// githubCommand dispatches the read-only GitHub subcommands. Neither of them
-// changes anything on GitHub.
+// githubCommand dispatches the GitHub subcommands. check, shadow and
+// shadow-compare change nothing on GitHub; publish-check-run is the one that
+// writes, and it says so in its own documentation.
 func githubCommand(ctx context.Context, args []string) error {
 	if len(args) != 1 {
-		return errors.New("usage: ra8ci github check|shadow|shadow-compare")
+		return errors.New("usage: ra8ci github check|shadow|shadow-compare|publish-check-run")
 	}
 	switch args[0] {
 	case "check":
@@ -520,8 +521,10 @@ func githubCommand(ctx context.Context, args []string) error {
 		return githubShadowConfig(os.Stdout)
 	case "shadow-compare":
 		return githubShadowCompare(os.Stdin, os.Stdout)
+	case "publish-check-run":
+		return githubPublishCheckRuns(ctx, os.Stdin, os.Stdout)
 	default:
-		return errors.New("usage: ra8ci github check|shadow|shadow-compare")
+		return errors.New("usage: ra8ci github check|shadow|shadow-compare|publish-check-run")
 	}
 }
 
@@ -624,6 +627,137 @@ func githubShadowCompare(in io.Reader, out io.Writer) error {
 	if !report.Clean() {
 		return fmt.Errorf("shadow comparison is not clean: %d conflicting, %d indeterminate",
 			report.Conflicting, report.Indeterminate)
+	}
+	return nil
+}
+
+// maxCheckRunPublishBytes bounds the outcome document this reads. One commit's
+// outcomes across the whole catalog are a few kilobytes.
+const maxCheckRunPublishBytes = 256 << 10
+
+// checkRunPublishInput is the wire shape publish-check-run reads: one commit,
+// and what the plane observed for each task it ran.
+type checkRunPublishInput struct {
+	HeadSHA string `json:"head_sha"`
+	Runs    []struct {
+		Task    string `json:"task"`
+		State   string `json:"state"`
+		Summary string `json:"summary"`
+	} `json:"runs"`
+}
+
+// plannedCheckRun is one check run and the body it will carry, built and
+// checked before anything is posted.
+type plannedCheckRun struct {
+	Task    string
+	Run     github.TaskCheckRun
+	Summary string
+}
+
+// planCheckRuns turns one commit's observed outcomes into the runs to post.
+//
+// Every run is built before any is posted. A check run cannot be taken back
+// once GitHub has it, so a document with a bad task in the middle must be
+// refused whole rather than half published.
+func planCheckRuns(mode github.CheckRunMode, correspondence *github.ShadowCorrespondence, document checkRunPublishInput) ([]plannedCheckRun, error) {
+	if len(document.Runs) == 0 {
+		return nil, errors.New("no task outcomes to publish")
+	}
+	planned := make([]plannedCheckRun, 0, len(document.Runs))
+	seen := make(map[string]bool, len(document.Runs))
+	for _, outcome := range document.Runs {
+		// Two runs for one task on one commit post two check runs under
+		// the same name, and which one a gate reads is then a race.
+		if seen[outcome.Task] {
+			return nil, fmt.Errorf("task %q appears twice for this commit", outcome.Task)
+		}
+		seen[outcome.Task] = true
+		// The correspondence is checked against the catalog when it is
+		// loaded, so covering a task is also the statement that the
+		// task exists. An uncovered task is refused rather than
+		// dropped: its shadow run could be posted but never graded,
+		// which is a run published as evidence that nothing reads.
+		if _, covered := correspondence.Job(outcome.Task); !covered {
+			return nil, fmt.Errorf("task %q is not covered by the declared correspondence", outcome.Task)
+		}
+		run, err := github.NewTaskCheckRun(mode, outcome.Task, document.HeadSHA, outcome.State)
+		if err != nil {
+			return nil, err
+		}
+		summary := strings.TrimSpace(outcome.Summary)
+		if summary == "" {
+			// A blank summary publishes a check run a reviewer
+			// cannot act on. The composed one restates facts the
+			// run already carries rather than inventing any.
+			summary = fmt.Sprintf("ra8ci observed %s for task %s on %s.", run.Observed, outcome.Task, run.HeadSHA)
+		}
+		planned = append(planned, plannedCheckRun{Task: outcome.Task, Run: run, Summary: summary})
+	}
+	return planned, nil
+}
+
+// githubPublishCheckRuns posts one check run per task outcome for one commit.
+//
+// This is the first ra8ci command that writes to GitHub. What it may write is
+// configuration, not an argument: the mode comes from the environment, so a
+// shadow deployment posts runs that report neutral and cannot hold a pull
+// request, and moving onto the merge gate is a deployment change.
+func githubPublishCheckRuns(ctx context.Context, in io.Reader, out io.Writer) error {
+	loaded, err := catalog.Load()
+	if err != nil {
+		return fmt.Errorf("load task catalog: %w", err)
+	}
+	config, enabled, err := github.LoadCheckRunConfigFromEnv(loaded.Names())
+	if err != nil {
+		return err
+	}
+	if !enabled {
+		return fmt.Errorf("GitHub check-run publishing is not configured: set %s",
+			github.EnvShadowCorrespondenceFile)
+	}
+	publisherConfig, enabled, err := github.LoadCheckRunPublisherConfigFromEnv(config.Mode)
+	if err != nil {
+		return err
+	}
+	if !enabled {
+		return fmt.Errorf("GitHub check-run publishing has no repository: set %s",
+			github.EnvCheckRunRepository)
+	}
+
+	var document checkRunPublishInput
+	decoder := json.NewDecoder(io.LimitReader(in, maxCheckRunPublishBytes+1))
+	decoder.DisallowUnknownFields()
+	if err := decoder.Decode(&document); err != nil {
+		return fmt.Errorf("read task outcomes: %w", err)
+	}
+	if decoder.More() {
+		return errors.New("read task outcomes: trailing content after the document")
+	}
+	if decoder.InputOffset() > maxCheckRunPublishBytes {
+		return fmt.Errorf("read task outcomes: larger than %d bytes", maxCheckRunPublishBytes)
+	}
+
+	planned, err := planCheckRuns(config.Mode, config.Correspondence, document)
+	if err != nil {
+		return fmt.Errorf("plan check runs: %w", err)
+	}
+
+	publisher, err := github.NewCheckRunPublisher(publisherConfig)
+	if err != nil {
+		return err
+	}
+	for index, plan := range planned {
+		id, err := publisher.Publish(ctx, plan.Run, plan.Summary)
+		if err != nil {
+			// A partial publish is not a failed publish. The runs
+			// already posted are on the commit whatever this
+			// command returns, so the count is reported rather
+			// than left for the operator to guess.
+			return fmt.Errorf("publish %s after %d of %d posted: %w", plan.Task, index, len(planned), err)
+		}
+		if _, err := fmt.Fprintf(out, "%d %s %s\n", id, plan.Run.Conclusion, plan.Run.Name); err != nil {
+			return fmt.Errorf("report published check run: %w", err)
+		}
 	}
 	return nil
 }
