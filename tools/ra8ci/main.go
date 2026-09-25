@@ -441,7 +441,14 @@ func serve(ctx context.Context) error {
 				checkCtx, stop := context.WithTimeout(serverCtx, 10*time.Second)
 				_, maintenanceErr := st.ReapAgentAssignments(checkCtx, cat, 100)
 				if maintenanceErr == nil {
-					_, maintenanceErr = boardSweeper.Pass(checkCtx, time.Now().UTC())
+					var swept boardsweep.Report
+					swept, maintenanceErr = boardSweeper.Pass(checkCtx, time.Now().UTC())
+					// The counts are what happened either way, so
+					// they are reported before the error is, and a
+					// quiet bench prints nothing.
+					if swept.Notable() {
+						fmt.Fprintln(os.Stderr, "ra8ci:", swept)
+					}
 					if maintenanceErr != nil {
 						maintenanceErr = fmt.Errorf("reclaim expired board leases: %w", maintenanceErr)
 					}
