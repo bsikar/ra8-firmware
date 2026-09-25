@@ -122,8 +122,18 @@ macro(_ra8_app_collect_sources)
   # Extra first-party libraries (plain + off-target).
   set(_ra8_lib_extra "")
   set(_ra8_lib_extra_off_target "")
-  # Migrated (Zig) libraries named in LIBS, as "<lib>|<path>" entries.
+  # Migrated (Zig) libraries, as "<lib>|<path>" entries.
   set(_ra8_lib_zig "")
+  # ra8_net_pal is part of every app's universal source set, so applications
+  # do not normally name it in LIBS. Once its primary C implementation is
+  # gone, register the replacement archive here just as the LIBS loop below
+  # does for explicitly selected migrated libraries.
+  set(_ra8_net_pal_path "${RA8_REPO_ROOT}/libs/ra8_net_pal")
+  if(EXISTS "${_ra8_net_pal_path}/build.zig" AND NOT EXISTS
+                                                 "${_ra8_net_pal_path}/src/ra8_net_pal.c"
+  )
+    list(APPEND _ra8_lib_zig "ra8_net_pal|${_ra8_net_pal_path}")
+  endif()
   set(_ra8_lib_inc "")
   foreach(_ra8_lib ${_RA8_APP_LIBS})
     if(EXISTS "${RA8_REPO_ROOT}/libs/${_ra8_lib}")
@@ -207,6 +217,7 @@ macro(_ra8_app_collect_sources)
       list(APPEND _ra8_lib_inc ${_ra8_lib_path}/inc)
     endif()
   endforeach()
+  list(REMOVE_DUPLICATES _ra8_lib_zig)
 
   # reflow rasterises glyphs through the vendored stb_truetype. Its
   # implementation TU lives under third_party (not apps/shared_libs/reflow/src), and

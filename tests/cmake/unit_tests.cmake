@@ -201,6 +201,11 @@ function(ra8_add_test name src_file)
   add_test(NAME ${name} COMMAND ${name})
 endfunction()
 
+# The public C ABI consumer is registered explicitly for the Zig ABI policy
+# inventory. The later auto-glob sees the same source but skips its existing
+# target, so this remains one CTest case.
+ra8_add_test(test_ra8_net_pal ${CMAKE_CURRENT_SOURCE_DIR}/net/src/test_ra8_net_pal.c)
+
 # Auto-discover every test_*.c file in each category's src/ directory and register it
 # via ra8_add_test(). Dropping a new test_foo.c file is enough -- no
 # manual list edit required. (CONFIGURE_DEPENDS means CMake re-globs

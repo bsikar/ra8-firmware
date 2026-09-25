@@ -77,6 +77,36 @@
       "exports": [
         {"name": "firmware_pipeline_analyze", "calling_context": "task-safe-reentrant", "ownership": "borrows all inputs for the call and publishes caller-owned output only on success"}
       ]
+    },
+    {
+      "name": "ra8_net_pal",
+      "build_root": "libs/ra8_net_pal",
+      "public_header": "libs/ra8_net_pal/inc/ra8_net_pal.h",
+      "adapter": "libs/ra8_net_pal/src/ra8_net_pal_abi.zig",
+      "library_name": "ra8_net_pal",
+      "symbol_prefix": "ra8_net_pal_",
+      "compatibility_sha256": "1a60ed5e723709994d421687a5a4b396bce1be8c2d6db2bbc6fc81396f032a55",
+      "layout_assertions": ["@sizeOf(Mac) == implementation.mac_addr_len", "@sizeOf(LinkState) == 1"],
+      "target_class": "host-ra8",
+      "targets": {
+        "host": [],
+        "ra8": ["-Dtarget=thumb-freestanding-eabihf", "-Dcpu=cortex_m85+fp_armv8-d32-fp64"]
+      },
+      "c_include_dirs": ["libs/ra8_net_pal/inc", "libs/ra8_core/inc"],
+      "contract_tests": [
+        {"language": "c", "path": "tests/net/src/test_ra8_net_pal.c", "registration": "tests/cmake/unit_tests.cmake"},
+        {"language": "zig", "path": "libs/ra8_net_pal/tests/abi_test.zig", "registration": "libs/ra8_net_pal/.zig-test-contract.json"}
+      ],
+      "exports": [
+        {"name": "ra8_net_pal_init", "calling_context": "boot-only", "ownership": "copies the optional MAC and retains no caller resource"},
+        {"name": "ra8_net_pal_deinit", "calling_context": "task-only-non-reentrant", "ownership": "releases PAL state and detaches the retained callback"},
+        {"name": "ra8_net_pal_set_mac_addr", "calling_context": "task-only-non-reentrant", "ownership": "copies the caller MAC for the duration of the call"},
+        {"name": "ra8_net_pal_get_mac_addr", "calling_context": "task-only-non-reentrant", "ownership": "writes the stored MAC to caller-owned output"},
+        {"name": "ra8_net_pal_send_frame", "calling_context": "task-only-non-reentrant", "ownership": "borrows frame bytes only for the duration of the call"},
+        {"name": "ra8_net_pal_recv_frame", "calling_context": "task-only-non-reentrant", "ownership": "writes received bytes and length to caller-owned buffers"},
+        {"name": "ra8_net_pal_link_status", "calling_context": "task-only-non-reentrant", "ownership": "writes current link state to caller-owned output"},
+        {"name": "ra8_net_pal_set_event_handler", "calling_context": "boot-only", "ownership": "borrows handler and context until replaced or deinitialized; callback is invoked from ISR context"}
+      ]
     }
   ]
 }

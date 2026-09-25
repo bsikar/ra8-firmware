@@ -457,21 +457,55 @@ def _matrix_jobs(
     ]
 
 
-def _archive_symbols(nm: str, archive: Path, name: str) -> tuple[list[str], set[str]]:
-    """Read one archive's global defined symbols with the resolved nm tool."""
+def _archive_symbol_names(output: str, *, bundle_compiler_rt: bool = False) -> set[str]:
+    """Parse nm output, ignoring only explicitly bundled compiler runtime members."""
+    actual: set[str] = set()
+    for line in output.splitlines():
+        parts = line.split()
+        if len(parts) < MIN_NM_SYMBOL_FIELDS:
+            continue
+        member_match = re.search(r"[\[(]([^\)\]]+)[\)\]]", parts[0])
+        member = member_match.group(1) if member_match else ""
+        if not member and parts[0].count(":") > 1:
+            archive_and_member, _address = parts[0].rsplit(":", 1)
+            _archive, member = archive_and_member.split(":", 1)
+        if bundle_compiler_rt and Path(member).name == "compiler_rt.o":
+            continue
+        actual.add(parts[-1].removeprefix("_"))
+    return actual
+
+
+def _bundle_compiler_rt_enabled(build_root: Path) -> bool:
+    """Return whether a library build explicitly bundles Zig's runtime archive."""
+    try:
+        build_source = (build_root / "build.zig").read_text(encoding="utf-8")
+    except OSError:
+        return False
+    build_source = _strip_comments(build_source)
+    return (
+        re.search(
+            r"(?m)^[ \t]*library\.bundle_compiler_rt[ \t]*=[ \t]*true[ \t]*;[ \t]*$",
+            build_source,
+        )
+        is not None
+    )
+
+
+def _archive_symbols(
+    nm: str, archive: Path, name: str, *, bundle_compiler_rt: bool = False
+) -> tuple[list[str], set[str]]:
+    """Read public global definitions, excluding explicitly bundled runtime members."""
     if not archive.is_file():
         return [f"{name} archive missing: {archive}"], set()
     proc = subprocess.run(  # noqa: S603 -- resolved tool; fresh archive
-        [nm, "-g", "--defined-only", str(archive)], capture_output=True, text=True, check=False
+        [nm, "-A", "-g", "--defined-only", str(archive)],
+        capture_output=True,
+        text=True,
+        check=False,
     )
     if proc.returncode != 0:
         return [f"{name} symbol scan failed: {proc.stderr.strip()}"], set()
-    actual = {
-        parts[-1].removeprefix("_")
-        for line in proc.stdout.splitlines()
-        if len(parts := line.split()) >= MIN_NM_SYMBOL_FIELDS
-    }
-    return [], actual
+    return [], _archive_symbol_names(proc.stdout, bundle_compiler_rt=bundle_compiler_rt)
 
 
 def _host_mode_test_findings(
@@ -530,7 +564,15 @@ def _compiled_findings(
                 findings.append(f"{name}: {target}/{mode} archive build failed: {detail}")
                 continue
             archive = output / "install" / "lib" / f"lib{library['library_name']}.a"
-            symbol_findings, actual = _archive_symbols(nm, archive, f"{name}: {target}/{mode}")
+            bundle_compiler_rt = _bundle_compiler_rt_enabled(
+                repository_root / library["build_root"]
+            )
+            symbol_findings, actual = _archive_symbols(
+                nm,
+                archive,
+                f"{name}: {target}/{mode}",
+                bundle_compiler_rt=bundle_compiler_rt,
+            )
             findings.extend(symbol_findings)
             if symbol_findings:
                 continue
@@ -890,6 +932,57 @@ def _selftest_compiled_policy(base: dict[str, Any], root: Path) -> str | None:
     return None
 
 
+def _selftest_archive_member_policy(root: Path) -> str | None:
+    """Prove bundled runtime symbols are filtered by archive-member provenance."""
+    parsed = _archive_symbol_names(
+        "libdemo.a(adapter.o): 00000000 T demo_run\n"
+        "libdemo.a(compiler_rt.o): 00000000 T __zig_probe_stack\n",
+        bundle_compiler_rt=True,
+    )
+    retained = _archive_symbol_names(
+        "libdemo.a(adapter.o): 00000000 T __zig_probe_stack\n"
+        "libdemo.a(compiler_rt.o): 00000000 T __zig_probe_stack\n",
+        bundle_compiler_rt=True,
+    )
+    bracket_member = _archive_symbol_names(
+        "libdemo.a[adapter.o]: 00000000 T demo_run\n"
+        "libdemo.a[compiler_rt.o]: 00000000 T __zig_probe_stack\n",
+        bundle_compiler_rt=True,
+    )
+    colon_member = _archive_symbol_names(
+        "libdemo.a:/opt/zig-cache/compiler_rt.o:00000000 W __zig_probe_stack\n"
+        "libdemo.a:/opt/zig-cache/adapter.o:00000000 T demo_run\n",
+        bundle_compiler_rt=True,
+    )
+    unbundled = _archive_symbol_names(
+        "libdemo.a(compiler_rt.o): 00000000 T __zig_probe_stack\n",
+        bundle_compiler_rt=False,
+    )
+    cases = (
+        (parsed, {"demo_run"}, "paren-form runtime member was not filtered"),
+        (retained, {"_zig_probe_stack"}, "runtime-named library export was hidden"),
+        (bracket_member, {"demo_run"}, "bracket-form member was not parsed"),
+        (colon_member, {"demo_run"}, "colon-form member was not parsed"),
+        (unbundled, {"_zig_probe_stack"}, "unbundled runtime member was hidden"),
+    )
+    for actual, expected, message in cases:
+        if actual != expected:
+            return f"{message}: expected={expected}, actual={actual}"
+
+    flag_root = root / "compiler-rt-flag-selftest"
+    flag_root.mkdir()
+    build_file = flag_root / "build.zig"
+    for source, expected in (
+        ("library.bundle_compiler_rt = true;\n", True),
+        ("library.bundle_compiler_rt = false;\n", False),
+        ("// library.bundle_compiler_rt = true;\n", False),
+    ):
+        build_file.write_text(source, encoding="utf-8")
+        if _bundle_compiler_rt_enabled(flag_root) is not expected:
+            return f"compiler runtime flag detection mismatch: {source.strip()}"
+    return None
+
+
 def _selftest_layout_assertions() -> str | None:
     """Prove assertion matching tolerates layout without accepting false evidence."""
     fragment = "sizeof(demo_config_t) == 4U"
@@ -938,19 +1031,17 @@ static_assert(sizeof(demo_config_t) == 4U, "layout");
             if error := check(base, root):
                 print(error, file=sys.stderr)
                 return 1
-        if error := _selftest_source_policy(base, root, adapter):
-            print(error, file=sys.stderr)
-            return 1
-        if error := _selftest_metadata_policy(base, root):
-            print(error, file=sys.stderr)
-            return 1
-        if error := _selftest_compiled_policy(base, root):
-            print(error, file=sys.stderr)
-            return 1
-        if error := _selftest_layout_assertions():
-            print(error, file=sys.stderr)
-            return 1
-    print("check_zig_abi_policy.py --selftest: OK (quiet + all named failure classes).")
+        for check in (
+            lambda: _selftest_source_policy(base, root, adapter),
+            lambda: _selftest_metadata_policy(base, root),
+            lambda: _selftest_compiled_policy(base, root),
+            lambda: _selftest_archive_member_policy(root),
+            _selftest_layout_assertions,
+        ):
+            if error := check():
+                print(error, file=sys.stderr)
+                return 1
+    print("check_zig_abi_policy.py --selftest: OK (quiet + named failures + runtime provenance).")
     return 0
 
 
