@@ -1,9 +1,16 @@
 package main
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/bsikar/ra8-firmware/tools/ra8ci/internal/catalog"
+	"github.com/bsikar/ra8-firmware/tools/ra8ci/internal/github"
 )
 
 func TestCommandSelectionRejectsUnknownAndUnsafeArguments(t *testing.T) {
@@ -200,4 +207,206 @@ func TestGitHubCommandRequiresExplicitCheck(t *testing.T) {
 	if err := githubCommand(context.Background(), nil); err == nil || !strings.Contains(err.Error(), "usage") {
 		t.Fatalf("github command without check accepted: %v", err)
 	}
+}
+
+// firstCatalogTask returns a real reviewed task name. The correspondence is
+// checked against the catalog at startup, so a test that invented a name would
+// only ever exercise the refusal path.
+func firstCatalogTask(t *testing.T) string {
+	t.Helper()
+	loaded, err := catalog.Load()
+	if err != nil {
+		t.Fatalf("load catalog: %v", err)
+	}
+	names := loaded.Names()
+	if len(names) == 0 {
+		t.Fatal("catalog carries no tasks")
+	}
+	return names[0]
+}
+
+func writeCorrespondence(t *testing.T, pairs string) string {
+	t.Helper()
+	path := filepath.Join(t.TempDir(), "correspondence.json")
+	if err := os.WriteFile(path, []byte(pairs), 0o600); err != nil {
+		t.Fatalf("write correspondence: %v", err)
+	}
+	return path
+}
+
+func TestGitHubSubcommandsAreDispatchedByName(t *testing.T) {
+	ctx := context.Background()
+	for _, args := range [][]string{nil, {}, {"shadow", "extra"}, {"publish"}, {""}} {
+		err := githubCommand(ctx, args)
+		if err == nil || !strings.Contains(err.Error(), "usage") {
+			t.Fatalf("github %v accepted: %v", args, err)
+		}
+	}
+}
+
+// An unknown subcommand is refused on its name alone. It must not depend on
+// the environment being configured, or a deployment would learn about a typo
+// only where the configuration happens to be present.
+func TestUnknownGitHubSubcommandIsRefusedBeforeReadingTheEnvironment(t *testing.T) {
+	t.Setenv(github.EnvCheckRunMode, "authoritative")
+	t.Setenv(github.EnvShadowCorrespondenceFile, filepath.Join(t.TempDir(), "absent.json"))
+	err := githubCommand(context.Background(), []string{"publish"})
+	if err == nil || !strings.Contains(err.Error(), "usage") {
+		t.Fatalf("unknown subcommand accepted: %v", err)
+	}
+}
+
+func TestShadowConfigRefusesWhenCheckRunPublishingIsNotConfigured(t *testing.T) {
+	t.Setenv(github.EnvCheckRunMode, "")
+	os.Unsetenv(github.EnvCheckRunMode)
+	t.Setenv(github.EnvShadowCorrespondenceFile, "")
+	os.Unsetenv(github.EnvShadowCorrespondenceFile)
+
+	var out bytes.Buffer
+	err := githubShadowConfig(&out)
+	if err == nil || !strings.Contains(err.Error(), "not configured") {
+		t.Fatalf("unconfigured shadow report accepted: %v", err)
+	}
+	if !strings.Contains(err.Error(), github.EnvShadowCorrespondenceFile) {
+		t.Fatalf("refusal does not name the variable to set: %v", err)
+	}
+	if out.Len() != 0 {
+		t.Fatalf("refused report wrote output: %q", out.String())
+	}
+}
+
+// A declaration this build would refuse is refused by the command too, with
+// nothing written. The report exists to be read as configuration that works.
+func TestShadowConfigRefusalsLeaveTheStreamUntouched(t *testing.T) {
+	task := firstCatalogTask(t)
+	cases := map[string]struct {
+		mode  string
+		pairs string
+	}{
+		"unknown mode":   {mode: "required", pairs: `{"` + task + `":"build"}`},
+		"unknown task":   {mode: "shadow", pairs: `{"no-such-reviewed-task":"build"}`},
+		"repeated task":  {mode: "shadow", pairs: `{"` + task + `":"build","` + task + `":"test"}`},
+		"not an object":  {mode: "shadow", pairs: `["` + task + `"]`},
+		"shared job":     {mode: "shadow", pairs: `{"` + task + `":"build","` + task + `":"build"}`},
+		"empty document": {mode: "shadow", pairs: `{}`},
+	}
+	for name, testCase := range cases {
+		t.Run(name, func(t *testing.T) {
+			t.Setenv(github.EnvCheckRunMode, testCase.mode)
+			t.Setenv(github.EnvShadowCorrespondenceFile, writeCorrespondence(t, testCase.pairs))
+			var out bytes.Buffer
+			if err := githubShadowConfig(&out); err == nil {
+				t.Fatal("invalid configuration accepted")
+			}
+			if out.Len() != 0 {
+				t.Fatalf("refused report wrote output: %q", out.String())
+			}
+		})
+	}
+}
+
+// An absent mode is shadow at the command, not only inside the loader. This is
+// the line an operator reads to answer "can this deployment block a merge".
+func TestShadowConfigReportsShadowWhenTheModeIsUnset(t *testing.T) {
+	task := firstCatalogTask(t)
+	t.Setenv(github.EnvCheckRunMode, "")
+	os.Unsetenv(github.EnvCheckRunMode)
+	t.Setenv(github.EnvShadowCorrespondenceFile, writeCorrespondence(t, `{"`+task+`":"build"}`))
+
+	var out bytes.Buffer
+	if err := githubShadowConfig(&out); err != nil {
+		t.Fatalf("shadow report refused: %v", err)
+	}
+	var report struct {
+		Mode           string              `json:"mode"`
+		MayBlockMerges bool                `json:"may_block_merges"`
+		CatalogTasks   int                 `json:"catalog_tasks"`
+		CoveredTasks   int                 `json:"covered_tasks"`
+		Correspondence []map[string]string `json:"correspondence"`
+		Uncovered      []string            `json:"uncovered_tasks"`
+		Digest         string              `json:"catalog_digest"`
+	}
+	if err := json.Unmarshal(out.Bytes(), &report); err != nil {
+		t.Fatalf("report is not JSON: %v: %q", err, out.String())
+	}
+	if report.Mode != "shadow" || report.MayBlockMerges {
+		t.Fatalf("absent mode did not report a non-blocking shadow deployment: %+v", report)
+	}
+	if report.CoveredTasks != 1 || len(report.Correspondence) != 1 {
+		t.Fatalf("one declared pair did not report as one: %+v", report)
+	}
+	if report.Correspondence[0]["task"] != task || report.Correspondence[0]["actions_job"] != "build" {
+		t.Fatalf("declared pair not reported: %+v", report.Correspondence)
+	}
+	if report.Digest == "" {
+		t.Fatal("report does not name the catalog it was checked against")
+	}
+	if report.CatalogTasks <= report.CoveredTasks {
+		t.Fatalf("catalog reported as no larger than the declaration: %+v", report)
+	}
+	// Every task outside the declaration is named, because a plane
+	// outcome the correspondence does not cover is refused, not dropped.
+	if len(report.Uncovered) != report.CatalogTasks-report.CoveredTasks {
+		t.Fatalf("uncovered tasks not fully named: %d of %d: %+v",
+			len(report.Uncovered), report.CatalogTasks-report.CoveredTasks, report)
+	}
+	for _, name := range report.Uncovered {
+		if name == task {
+			t.Fatal("a covered task was reported as uncovered")
+		}
+	}
+	if !sortedStrings(report.Uncovered) {
+		t.Fatalf("uncovered tasks are not in a diffable order: %v", report.Uncovered)
+	}
+}
+
+// An authoritative deployment says so in the same field, so the two are read
+// from one place rather than inferred from the namespace.
+func TestShadowConfigReportsAnAuthoritativeDeploymentAsBlocking(t *testing.T) {
+	task := firstCatalogTask(t)
+	t.Setenv(github.EnvCheckRunMode, "authoritative")
+	t.Setenv(github.EnvShadowCorrespondenceFile, writeCorrespondence(t, `{"`+task+`":"build"}`))
+
+	var out bytes.Buffer
+	if err := githubShadowConfig(&out); err != nil {
+		t.Fatalf("shadow report refused: %v", err)
+	}
+	var report struct {
+		Mode           string `json:"mode"`
+		MayBlockMerges bool   `json:"may_block_merges"`
+	}
+	if err := json.Unmarshal(out.Bytes(), &report); err != nil {
+		t.Fatalf("report is not JSON: %v", err)
+	}
+	if report.Mode != "authoritative" || !report.MayBlockMerges {
+		t.Fatalf("authoritative deployment not reported as blocking: %+v", report)
+	}
+}
+
+// The report speaks to nobody: it is configuration, not a publish. Pointing
+// the scale-set variables at an address nothing listens on must not change the
+// outcome, because nothing here opens a connection.
+func TestShadowConfigPublishesNothing(t *testing.T) {
+	task := firstCatalogTask(t)
+	t.Setenv(github.EnvConfigURL, "https://127.0.0.1:1/")
+	t.Setenv(github.EnvOwner, "bsikar")
+	t.Setenv(github.EnvCheckRunMode, "shadow")
+	t.Setenv(github.EnvShadowCorrespondenceFile, writeCorrespondence(t, `{"`+task+`":"build"}`))
+
+	var out bytes.Buffer
+	if err := githubShadowConfig(&out); err != nil {
+		t.Fatalf("shadow report refused: %v", err)
+	}
+	if !strings.Contains(out.String(), task) {
+		t.Fatalf("report does not carry the declaration: %q", out.String())
+	}
+}
+
+func sortedStrings(values []string) bool {
+	for i := 1; i < len(values); i++ {
+		if values[i-1] > values[i] {
+			return false
+		}
+	}
+	return true
 }
