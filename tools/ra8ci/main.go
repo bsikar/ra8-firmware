@@ -25,6 +25,7 @@ import (
 
 	"github.com/bsikar/ra8-firmware/tools/ra8ci/internal/agent"
 	"github.com/bsikar/ra8-firmware/tools/ra8ci/internal/asciigate"
+	"github.com/bsikar/ra8-firmware/tools/ra8ci/internal/boardsweep"
 	"github.com/bsikar/ra8-firmware/tools/ra8ci/internal/catalog"
 	"github.com/bsikar/ra8-firmware/tools/ra8ci/internal/committerms"
 	"github.com/bsikar/ra8-firmware/tools/ra8ci/internal/executor"
@@ -414,6 +415,15 @@ func serve(ctx context.Context) error {
 		defer cancel()
 		_ = httpServer.Shutdown(shutdownCtx)
 	}()
+	// A board whose holder died is only reclaimed when something asks it a
+	// question, and an idle bench is asked nothing. This is what gives an
+	// idle board a clock; it runs on the maintenance tick already here
+	// rather than a timer of its own, so a sweep and the server can never
+	// disagree about whether this process is still serving.
+	boardSweeper, err := boardsweep.New(st, 100)
+	if err != nil {
+		return err
+	}
 	maintenanceFailed := make(chan error, 1)
 	go func() {
 		ticker := time.NewTicker(15 * time.Second)
@@ -425,9 +435,17 @@ func serve(ctx context.Context) error {
 			case <-ticker.C:
 				checkCtx, stop := context.WithTimeout(serverCtx, 10*time.Second)
 				_, maintenanceErr := st.ReapAgentAssignments(checkCtx, cat, 100)
+				if maintenanceErr == nil {
+					_, maintenanceErr = boardSweeper.Pass(checkCtx, time.Now().UTC())
+					if maintenanceErr != nil {
+						maintenanceErr = fmt.Errorf("reclaim expired board leases: %w", maintenanceErr)
+					}
+				} else {
+					maintenanceErr = fmt.Errorf("reap expired agent assignments: %w", maintenanceErr)
+				}
 				stop()
-				if maintenanceErr != nil {
-					maintenanceFailed <- fmt.Errorf("reap expired agent assignments: %w", maintenanceErr)
+				if maintenanceErr != nil && serverCtx.Err() == nil {
+					maintenanceFailed <- maintenanceErr
 					serverCancel()
 					return
 				}
