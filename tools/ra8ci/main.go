@@ -6,7 +6,6 @@ package main
 import (
 	"context"
 	"crypto/tls"
-	"crypto/x509"
 	"encoding/base64"
 	"encoding/json"
 	"errors"
@@ -30,6 +29,7 @@ import (
 	"github.com/bsikar/ra8-firmware/tools/ra8ci/internal/committerms"
 	"github.com/bsikar/ra8-firmware/tools/ra8ci/internal/executor"
 	"github.com/bsikar/ra8-firmware/tools/ra8ci/internal/github"
+	"github.com/bsikar/ra8-firmware/tools/ra8ci/internal/mtls"
 	"github.com/bsikar/ra8-firmware/tools/ra8ci/internal/neutral"
 	"github.com/bsikar/ra8-firmware/tools/ra8ci/internal/newlinegate"
 	"github.com/bsikar/ra8-firmware/tools/ra8ci/internal/runnerclock"
@@ -355,7 +355,12 @@ func serve(ctx context.Context) error {
 	if err := backupGate.Check(ctx, backupApprovalID); err != nil {
 		return fmt.Errorf("server startup blocked by off-VM backup/restore readiness: %w", err)
 	}
-	cert, err := tls.LoadX509KeyPair(certPath, keyPath)
+	// The listener's own identity and the authorities it trusts clients from
+	// are both decided here, before the socket opens. Loading them without
+	// deciding anything moves every refusal to the first handshake, where an
+	// operator sees a connection reset and cannot tell a stale certificate
+	// apart from a missing grant.
+	cert, err := mtls.LoadServerIdentity(certPath, keyPath, time.Now())
 	if err != nil {
 		return fmt.Errorf("load TLS identity: %w", err)
 	}
@@ -363,9 +368,9 @@ func serve(ctx context.Context) error {
 	if err != nil {
 		return fmt.Errorf("load client CA: %w", err)
 	}
-	clientCAs := x509.NewCertPool()
-	if !clientCAs.AppendCertsFromPEM(caPEM) {
-		return errors.New("client CA has no trusted certificate")
+	clientCAs, err := mtls.ClientAuthorities(caPEM, time.Now())
+	if err != nil {
+		return fmt.Errorf("load client CA: %w", err)
 	}
 	stateKeyInfo, err := os.Lstat(stateKeyPath)
 	if err != nil {
