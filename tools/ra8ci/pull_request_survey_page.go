@@ -152,11 +152,22 @@ func partitionSurveyedPullRequests(report pullRequestSurveyReport) (selectable, 
 // together by hand, could put a clash on the page between pull requests this
 // survey never surveyed.
 //
-// Three things make a shared head a fact about this survey, and `sharedHeads`
-// produces all three by construction: more than one candidate, every
-// candidate surveyed here, and every one of them actually at that commit. A
-// document that fails any of them is refused by name rather than rendered,
-// the treatment its counts already get.
+// Four things make a shared head a fact about this survey, and `sharedHeads`
+// produces all four by construction: more than one candidate, every candidate
+// surveyed here, every one of them actually at that commit, and one group per
+// commit. A document that fails any of them is refused by name rather than
+// rendered, the treatment its counts already get.
+//
+// The fourth is what bounds this section. Everything else on the page is
+// bounded by the candidate count: the bases, the caveats and the two listings
+// are all derived from candidates the survey answered for, and there are at
+// most `maxRenderedSurveyCandidates` of those. The shared heads are their own
+// slice in the document, and while each group is bounded by the candidates it
+// may name, nothing stopped a document carrying the same clash a thousand
+// times over under a thousand spellings of one commit. One group per commit
+// makes the section as long as the candidates allow and no longer, which is a
+// better answer than a bound: a page refused for its size tells a reader
+// nothing about which line was wrong.
 //
 // A commit is matched the way `sharedHeads` grouped it, without its casing or
 // surrounding space: one commit written two ways is one commit, and refusing
@@ -166,12 +177,18 @@ func checkSurveySharedHeads(report pullRequestSurveyReport) error {
 	for _, candidate := range report.PullRequests {
 		at[candidate.Number] = strings.ToLower(strings.TrimSpace(candidate.HeadSHA))
 	}
+	grouped := make(map[string]struct{}, len(report.SharedHeads))
 	for _, shared := range report.SharedHeads {
 		if len(shared.PullRequests) < 2 {
 			return fmt.Errorf("%w: %s is shared by %d candidate(s)",
 				ErrPullRequestSurveyPageInvalid, shared.HeadSHA, len(shared.PullRequests))
 		}
 		commit := strings.ToLower(strings.TrimSpace(shared.HeadSHA))
+		if _, twice := grouped[commit]; twice {
+			return fmt.Errorf("%w: %s is shared in more than one group",
+				ErrPullRequestSurveyPageInvalid, shared.HeadSHA)
+		}
+		grouped[commit] = struct{}{}
 		named := make(map[int]struct{}, len(shared.PullRequests))
 		for _, number := range shared.PullRequests {
 			if _, repeated := named[number]; repeated {
