@@ -59,6 +59,9 @@ func RenderShadowReport(out io.Writer, report ShadowReport) error {
 	if len(report.Comparisons) > maxRenderedComparisons {
 		return fmt.Errorf("%w: %d", ErrShadowReportTooLarge, len(report.Comparisons))
 	}
+	if err := checkGradedComparisons(report); err != nil {
+		return err
+	}
 	var page strings.Builder
 	fmt.Fprintf(&page, "shadow comparison for %s\n", report.HeadSHA)
 	if report.Clean() {
@@ -82,6 +85,61 @@ func RenderShadowReport(out io.Writer, report ShadowReport) error {
 	}
 	if _, err := io.WriteString(out, page.String()); err != nil {
 		return fmt.Errorf("write shadow report: %w", err)
+	}
+	return nil
+}
+
+// checkGradedComparisons refuses a report whose counts are not about its own
+// pairings.
+//
+// Everything a reader acts on at the top of this page comes off the four
+// counters, and everything below them comes off the pairings. The counts
+// line is printed from the counters. The verdict line above it is printed
+// from Clean(), which is those same counters and nothing else. The sections
+// under it are built by walking Comparisons and grading each line. Nothing
+// read the two against each other.
+//
+// The worst reading is the one at the top. A report counting no conflicts
+// over a pairing graded conflicting opens "every pairing was judged and none
+// would have changed a merge outcome", then prints the conflicting section
+// underneath it, and an operator who read the line the page leads with has
+// been told the required check may move by the same page that shows why it
+// may not. The milder reading is a hold over a section that is not there:
+// "holds the required check: 1 were never judged" above a page with nothing
+// indeterminate on it, which sends someone looking for a comparison nobody
+// failed to make.
+//
+// Every verdict is counted, not only the two that decide the hold. A
+// divergent pairing moves no outcome, but the counts line prints it beside
+// the other three and a reader comparing two commits reads those four
+// numbers as the shape of the run.
+//
+// It is refused rather than recounted here. The counters are written by
+// CompareShadowRun beside the grading, in one walk, and a page that quietly
+// corrects them is a page that disagrees with the ShadowReport its caller
+// holds. A report that contradicts itself is not a report to render more
+// carefully; it was assembled somewhere this command did not.
+//
+// The existing observation sentinel carries it, the one an empty report and
+// a commitless report already return. It is not a size bound: the pairings
+// are already bounded, and a miscount is not a long report, it is a wrong
+// one.
+//
+// Nothing a real comparison writes is refused: CompareShadowRun increments
+// exactly one counter per graded pairing.
+func checkGradedComparisons(report ShadowReport) error {
+	counted := map[ShadowVerdict]int{
+		ShadowAgreed:        report.Agreed,
+		ShadowDivergent:     report.Divergent,
+		ShadowConflicting:   report.Conflicting,
+		ShadowIndeterminate: report.Indeterminate,
+	}
+	for _, verdict := range renderOrder {
+		graded := len(comparisonsWith(report.Comparisons, verdict))
+		if counted[verdict] != graded {
+			return fmt.Errorf("%w: %d %s counted, %d graded so",
+				ErrShadowObservationInvalid, counted[verdict], verdict, graded)
+		}
 	}
 	return nil
 }
