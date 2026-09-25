@@ -362,3 +362,67 @@ func TestOnlyAConflictCarriesUnclaimedRuns(t *testing.T) {
 		}
 	}
 }
+
+// A summary is carried through the decision and never decides it. The
+// intended run has no summary to compare against, and the field is free text
+// a duration or a re-wording changes without the outcome changing, so
+// matching on it would turn an ordinary republish into a conflict somebody
+// has to clear by hand. It is reported so the person reading the listing can
+// see a run whose title agrees while its summary describes other work.
+func TestASummaryIsReportedAndNeverMatchedOn(t *testing.T) {
+	run := intendedRun(t, ModeAuthoritative, "succeeded")
+	published := publishedAs(run, 21, "completed", run.Conclusion, run.Title)
+	published.Runs[0].Summary = "ran the wrong board and said so at length"
+
+	reconciled, err := ReconcilePublish(run, published)
+	if err != nil {
+		t.Fatalf("reconcile: %v", err)
+	}
+	if reconciled.Decision != PublishSettled {
+		t.Fatalf("decision = %s, want settled: the summary is not part of the match", reconciled.Decision)
+	}
+	if len(reconciled.Existing) != 1 || reconciled.Existing[0].Summary != "ran the wrong board and said so at length" {
+		t.Fatalf("existing = %+v, want the summary carried through verbatim", reconciled.Existing)
+	}
+}
+
+// Two of our runs differing only in their summaries are still settled, and
+// both summaries survive into the answer. This is the case the reporting
+// exists for: nothing here can say which of the two is right.
+func TestTwoRunsDifferingOnlyInSummaryAreStillSettled(t *testing.T) {
+	run := intendedRun(t, ModeAuthoritative, "succeeded")
+	published := publishedAs(run, 22, "completed", run.Conclusion, run.Title)
+	published.Runs[0].Summary = "41 cases, 0 failures"
+	second := ourRun(run, 23, "completed", run.Conclusion, run.Title)
+	second.Summary = "12 cases, 0 failures"
+	published.Runs = append(published.Runs, second)
+
+	reconciled, err := ReconcilePublish(run, published)
+	if err != nil {
+		t.Fatalf("reconcile: %v", err)
+	}
+	if reconciled.Decision != PublishSettled {
+		t.Fatalf("decision = %s, want settled", reconciled.Decision)
+	}
+	if len(reconciled.Existing) != 2 ||
+		reconciled.Existing[0].Summary != "41 cases, 0 failures" ||
+		reconciled.Existing[1].Summary != "12 cases, 0 failures" {
+		t.Fatalf("existing = %+v, want both summaries reported", reconciled.Existing)
+	}
+}
+
+// A disagreement is still decided on what the run concluded, whatever its
+// summary says. A matching summary does not rescue a conflicting conclusion.
+func TestAnAgreeingSummaryDoesNotSettleADisagreeingRun(t *testing.T) {
+	run := intendedRun(t, ModeAuthoritative, "succeeded")
+	published := publishedAs(run, 24, "completed", "failure", "failed")
+	published.Runs[0].Summary = run.Title
+
+	reconciled, err := ReconcilePublish(run, published)
+	if err != nil {
+		t.Fatalf("reconcile: %v", err)
+	}
+	if reconciled.Decision != PublishConflicts {
+		t.Fatalf("decision = %s, want conflicts", reconciled.Decision)
+	}
+}
