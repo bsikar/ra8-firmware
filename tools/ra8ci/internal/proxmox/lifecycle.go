@@ -214,21 +214,8 @@ func (c *Client) inspect(ctx context.Context, identity Identity, r resource) (VM
 	if err != nil {
 		return VM{}, ErrProtocol
 	}
-	storageFound := false
-	for key, raw := range config {
-		if !diskKeyPattern.MatchString(key) {
-			continue
-		}
-		var value string
-		if err := json.Unmarshal(raw, &value); err != nil {
-			return VM{}, ErrProtocol
-		}
-		if strings.HasPrefix(value, identity.Storage+":") {
-			storageFound = true
-		}
-	}
-	if !storageFound {
-		return VM{}, fmt.Errorf("%w: no disk on approved storage", ErrConflict)
+	if err := checkDisks(config, identity.Storage, "reservation"); err != nil {
+		return VM{}, err
 	}
 	if err := c.checkNetworks(config, "reservation"); err != nil {
 		return VM{}, err
