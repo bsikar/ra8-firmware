@@ -468,7 +468,7 @@ static void test_sup_tick_not_initialized(void)
 {
   TEST_BEGIN("wdt_supervisor_tick not_initialized");
   (void)ra8_wdt_supervisor_deinit();
-  bool did_refresh = true;
+  uint8_t did_refresh = 1U;
   TEST_ASSERT_EQ(k_ra8_err_not_initialized, ra8_wdt_supervisor_tick(&did_refresh));
   TEST_ASSERT_EQ(0, did_refresh);
   TEST_END("wdt_supervisor_tick not_initialized");

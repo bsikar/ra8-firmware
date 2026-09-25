@@ -42,9 +42,9 @@ fn rejectNull(message: [*:0]const u8) u16 {
 }
 
 /// Test whether a point lies inside a rectangle; a null rectangle is a miss.
-pub export fn ra8_ui_rect_contains(r: ?*const Rect, px: i32, py: i32) callconv(.c) bool {
-    const rect = r orelse return false;
-    return rect.contains(px, py);
+pub export fn ra8_ui_rect_contains(r: ?*const Rect, px: i32, py: i32) callconv(.c) u8 {
+    const rect = r orelse return 0;
+    return @intFromBool(rect.contains(px, py));
 }
 
 /// Find the first tap target containing a point.
@@ -54,7 +54,7 @@ pub export fn ra8_ui_hit_test(
     px: i32,
     py: i32,
     out_action: ?*u16,
-    out_hit: ?*bool,
+    out_hit: ?*u8,
 ) callconv(.c) u16 {
     const action_out = out_action orelse return rejectNull("out_action must not be nullptr");
     const hit_out = out_hit orelse return rejectNull("out_hit must not be nullptr");
@@ -66,10 +66,10 @@ pub export fn ra8_ui_hit_test(
         list = base[0..count];
     }
 
-    hit_out.* = false;
+    hit_out.* = 0;
     if (implementation.hitTest(list, px, py)) |action| {
         action_out.* = action;
-        hit_out.* = true;
+        hit_out.* = 1;
     }
     return @intFromEnum(UiError.ok);
 }
@@ -122,26 +122,26 @@ pub export fn ra8_ui_pager_init(p: ?*Pager, total: u16) callconv(.c) u16 {
 }
 
 /// Advance to the next page, clamping at the last.
-pub export fn ra8_ui_pager_next(p: ?*Pager, out_changed: ?*bool) callconv(.c) u16 {
+pub export fn ra8_ui_pager_next(p: ?*Pager, out_changed: ?*u8) callconv(.c) u16 {
     const pager = p orelse return rejectNull("p must not be nullptr");
     const changed = out_changed orelse return rejectNull("out_changed must not be nullptr");
-    changed.* = implementation.pagerNext(pager);
+    changed.* = @intFromBool(implementation.pagerNext(pager));
     return @intFromEnum(UiError.ok);
 }
 
 /// Step to the previous page, clamping at page 0.
-pub export fn ra8_ui_pager_prev(p: ?*Pager, out_changed: ?*bool) callconv(.c) u16 {
+pub export fn ra8_ui_pager_prev(p: ?*Pager, out_changed: ?*u8) callconv(.c) u16 {
     const pager = p orelse return rejectNull("p must not be nullptr");
     const changed = out_changed orelse return rejectNull("out_changed must not be nullptr");
-    changed.* = implementation.pagerPrev(pager);
+    changed.* = @intFromBool(implementation.pagerPrev(pager));
     return @intFromEnum(UiError.ok);
 }
 
 /// Jump to an absolute page, clamping into `[0, total-1]`.
-pub export fn ra8_ui_pager_goto(p: ?*Pager, page: u16, out_changed: ?*bool) callconv(.c) u16 {
+pub export fn ra8_ui_pager_goto(p: ?*Pager, page: u16, out_changed: ?*u8) callconv(.c) u16 {
     const pager = p orelse return rejectNull("p must not be nullptr");
     const changed = out_changed orelse return rejectNull("out_changed must not be nullptr");
-    changed.* = implementation.pagerGoto(pager, page);
+    changed.* = @intFromBool(implementation.pagerGoto(pager, page));
     return @intFromEnum(UiError.ok);
 }
 

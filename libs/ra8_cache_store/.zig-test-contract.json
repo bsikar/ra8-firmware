@@ -5,13 +5,84 @@
     "tests/mount_test.zig"
   ],
   "covered_sources": [
+    "src/abi_types.zig",
+    "src/init.zig",
     "src/internal/root.zig",
     "src/ra8_cache_store_abi.zig",
     "src/mount.zig",
     "src/root.zig",
-    "tests/internal_test.zig",
+    "tests/abi_backend.zig",
     "tests/abi_test.zig",
-    "tests/mount_test.zig"
+    "tests/internal_test.zig",
+    "tests/mount_test.zig",
+    "tests/test_helpers.zig"
   ],
+  "standalone_source_args": {
+    "src/abi_types.zig": [
+      "--dep",
+      "cache_store_impl",
+      "-Mroot=src/abi_types.zig",
+      "-Mcache_store_impl=src/internal/root.zig"
+    ],
+    "src/init.zig": [
+      "--dep",
+      "cache_store_backend",
+      "--dep",
+      "cache_store_types",
+      "-Mroot=src/init.zig",
+      "--dep",
+      "cache_store_types",
+      "--dep",
+      "cache_store_impl",
+      "-Mcache_store_backend=src/mount.zig",
+      "--dep",
+      "cache_store_impl",
+      "-Mcache_store_types=src/abi_types.zig",
+      "-Mcache_store_impl=src/internal/root.zig"
+    ],
+    "src/ra8_cache_store_abi.zig": [
+      "--dep",
+      "cache_store_impl",
+      "--dep",
+      "cache_store_types",
+      "--dep",
+      "cache_store_backend",
+      "-Mroot=src/ra8_cache_store_abi.zig",
+      "--dep",
+      "cache_store_types",
+      "--dep",
+      "cache_store_impl",
+      "-Mcache_store_backend=src/mount.zig",
+      "--dep",
+      "cache_store_impl",
+      "-Mcache_store_types=src/abi_types.zig",
+      "-Mcache_store_impl=src/internal/root.zig"
+    ],
+    "src/root.zig": [
+      "--dep",
+      "cache_store_types",
+      "--dep",
+      "cache_store_impl",
+      "--dep",
+      "cache_store_backend",
+      "--dep",
+      "cache_store_init",
+      "-Mroot=src/root.zig",
+      "--dep",
+      "cache_store_types",
+      "--dep",
+      "cache_store_impl",
+      "-Mcache_store_backend=src/mount.zig",
+      "--dep",
+      "cache_store_types",
+      "--dep",
+      "cache_store_backend",
+      "-Mcache_store_init=src/init.zig",
+      "--dep",
+      "cache_store_impl",
+      "-Mcache_store_types=src/abi_types.zig",
+      "-Mcache_store_impl=src/internal/root.zig"
+    ]
+  },
   "minimum_tests": 10
 }

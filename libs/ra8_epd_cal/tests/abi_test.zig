@@ -89,9 +89,23 @@ fn configWith(panel: *FakePanel, store: *FakeStore) abi.Config {
 }
 
 test "vcom_in_range refuses a null window" {
-    try std.testing.expect(!abi.ra8_epd_cal_vcom_in_range(1530, null));
-    try std.testing.expect(abi.ra8_epd_cal_vcom_in_range(1530, &limits));
-    try std.testing.expect(!abi.ra8_epd_cal_vcom_in_range(4001, &limits));
+    try std.testing.expectEqual(@as(u8, 0), abi.ra8_epd_cal_vcom_in_range(1530, null));
+    try std.testing.expectEqual(@as(u8, 1), abi.ra8_epd_cal_vcom_in_range(1530, &limits));
+    try std.testing.expectEqual(@as(u8, 0), abi.ra8_epd_cal_vcom_in_range(4001, &limits));
+}
+
+test "resolve rejects a noncanonical provisioned flag without writing output" {
+    var panel = FakePanel{};
+    var store = FakeStore{};
+    var config = configWith(&panel, &store);
+    config.has_provisioned = 2;
+    var result: abi.Result = .{ .vcom_mv = 0xBEEF, .source = .bench };
+
+    try std.testing.expectEqual(@as(abi.RawErr, 0x103), abi.ra8_epd_cal_resolve(&config, &result));
+    try std.testing.expectEqual(@as(u16, 0xBEEF), result.vcom_mv);
+    try std.testing.expectEqual(abi.Source.bench, result.source);
+    try std.testing.expectEqual(@as(u32, 0), panel.set_calls);
+    try std.testing.expectEqual(@as(u32, 0), store.writes);
 }
 
 test "serialize and deserialize refuse null pointers and short buffers" {
@@ -183,7 +197,7 @@ test "resolve falls through to the operator value, then refuses" {
     try std.testing.expectEqual(@as(u16, 0), result.vcom_mv);
 
     // An out-of-range operator value is not a value.
-    cfg.has_provisioned = true;
+    cfg.has_provisioned = 1;
     cfg.provisioned_mv = 4001;
     try std.testing.expectEqual(@as(abi.RawErr, 0x106), abi.ra8_epd_cal_resolve(&cfg, &result));
 
@@ -197,7 +211,7 @@ test "resolve ignores a corrupt or out-of-range record" {
     var panel: FakePanel = .{ .mv = 0 };
     var store: FakeStore = .{};
     var cfg = configWith(&panel, &store);
-    cfg.has_provisioned = true;
+    cfg.has_provisioned = 1;
     cfg.provisioned_mv = 1800;
 
     // CRC damage: the record is present but cannot be trusted.

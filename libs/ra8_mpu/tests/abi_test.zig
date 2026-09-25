@@ -66,7 +66,7 @@ fn region(size: u32, priv: u8, unpriv: u8) Region {
         .size = size,
         .priv = priv,
         .unpriv = unpriv,
-        .executable = true,
+        .executable = 1,
         .shareable = 0,
         .attr_idx = 0,
     };
@@ -78,8 +78,8 @@ fn oneRegionCfg(r: *const Region) Config {
         .region_count = 1,
         .mair0 = 0,
         .mair1 = 0,
-        .privdefena = false,
-        .hfnmiena = false,
+        .privdefena = 0,
+        .hfnmiena = 0,
     };
 }
 
@@ -100,11 +100,36 @@ test "configure rejects a region count above DREGION" {
         .region_count = 16,
         .mair0 = 0,
         .mair1 = 0,
-        .privdefena = false,
-        .hfnmiena = false,
+        .privdefena = 0,
+        .hfnmiena = 0,
     };
     try std.testing.expectEqual(invalid_arg, abi.ra8_mpu_configure(&cfg));
     try std.testing.expectEqual(@as(u32, 0), abi.testRegs().CTRL);
+}
+
+test "configure rejects noncanonical boolean bytes before register writes" {
+    setup(16);
+    const mpu = abi.testRegs();
+    mpu.CTRL = ctrl_enable;
+    mpu.MAIR0 = 0xDEADBEEF;
+    const region_value = region(0x1000, perm_rw, perm_rw);
+    var cfg = oneRegionCfg(&region_value);
+    cfg.privdefena = 2;
+    try std.testing.expectEqual(invalid_arg, abi.ra8_mpu_configure(&cfg));
+    try std.testing.expectEqual(ctrl_enable, mpu.CTRL);
+    try std.testing.expectEqual(@as(u32, 0xDEADBEEF), mpu.MAIR0);
+
+    cfg.privdefena = 0;
+    var invalid_region = region(0x1000, perm_rw, perm_rw);
+    invalid_region.executable = 2;
+    cfg.regions = @ptrCast(&invalid_region);
+    try std.testing.expectEqual(invalid_arg, abi.ra8_mpu_configure(&cfg));
+    try std.testing.expectEqual(ctrl_enable, mpu.CTRL);
+    try std.testing.expectEqual(@as(u32, 0xDEADBEEF), mpu.MAIR0);
+
+    try std.testing.expectEqual(invalid_arg, abi.ra8_mpu_set_region(0, &invalid_region));
+    try std.testing.expectEqual(ctrl_enable, mpu.CTRL);
+    try std.testing.expectEqual(@as(u32, 0xDEADBEEF), mpu.MAIR0);
 }
 
 test "configure rejects a non-power-of-two size" {
@@ -144,7 +169,7 @@ test "a rejected configuration leaves the MPU untouched" {
 test "configure programs region zero and writes MAIR" {
     setup(16);
     var r = region(0x1000, perm_rw, perm_none);
-    r.executable = false;
+    r.executable = 0;
     r.shareable = 3;
     r.attr_idx = 2;
     const cfg = Config{
@@ -152,8 +177,8 @@ test "configure programs region zero and writes MAIR" {
         .region_count = 1,
         .mair0 = 0x44440000,
         .mair1 = 0x00000044,
-        .privdefena = true,
-        .hfnmiena = false,
+        .privdefena = 1,
+        .hfnmiena = 0,
     };
     try std.testing.expectEqual(ok, abi.ra8_mpu_configure(&cfg));
 
@@ -169,8 +194,8 @@ test "configure honours HFNMIENA" {
     setup(16);
     const r = region(0x1000, perm_rw, perm_rw);
     var cfg = oneRegionCfg(&r);
-    cfg.hfnmiena = true;
-    cfg.privdefena = true;
+    cfg.hfnmiena = 1;
+    cfg.privdefena = 1;
     try std.testing.expectEqual(ok, abi.ra8_mpu_configure(&cfg));
     try std.testing.expectEqual(
         ctrl_enable | ctrl_privdefena | ctrl_hfnmiena,
@@ -216,8 +241,8 @@ test "configure accepts an empty region table" {
         .region_count = 0,
         .mair0 = 0,
         .mair1 = 0,
-        .privdefena = false,
-        .hfnmiena = false,
+        .privdefena = 0,
+        .hfnmiena = 0,
     };
     try std.testing.expectEqual(ok, abi.ra8_mpu_configure(&cfg));
     try std.testing.expectEqual(ctrl_enable, abi.testRegs().CTRL);
@@ -332,8 +357,8 @@ test "MC/DC validate_cfg: region_count > 0 and regions == null" {
         .region_count = 0,
         .mair0 = 0,
         .mair1 = 0,
-        .privdefena = false,
-        .hfnmiena = false,
+        .privdefena = 0,
+        .hfnmiena = 0,
     };
     try std.testing.expectEqual(ok, abi.ra8_mpu_configure(&cfg_v1));
 
@@ -346,8 +371,8 @@ test "MC/DC validate_cfg: region_count > 0 and regions == null" {
         .region_count = 1,
         .mair0 = 0,
         .mair1 = 0,
-        .privdefena = false,
-        .hfnmiena = false,
+        .privdefena = 0,
+        .hfnmiena = 0,
     };
     try std.testing.expectEqual(null_ptr, abi.ra8_mpu_configure(&cfg_v3));
 }
@@ -377,7 +402,7 @@ test "the size-checked setter rejects the boot map's shared bank" {
 test "apply_boot_map installs the map and enables the MPU" {
     setup(16);
     try std.testing.expectEqual(ok, abi.ra8_mpu_apply_boot_map());
-    try std.testing.expect(abi.ra8_mpu_is_enabled());
+    try std.testing.expectEqual(@as(u8, 1), abi.ra8_mpu_is_enabled());
 
     const mpu = abi.testRegs();
     try std.testing.expectEqual(@as(u32, 0x000444FF), mpu.MAIR0);
@@ -408,7 +433,7 @@ test "apply_boot_map never logs" {
 test "apply_boot_map refuses silicon one region short" {
     setup(4);
     try std.testing.expectEqual(invalid_arg, abi.ra8_mpu_apply_boot_map());
-    try std.testing.expect(!abi.ra8_mpu_is_enabled());
+    try std.testing.expectEqual(@as(u8, 0), abi.ra8_mpu_is_enabled());
     try std.testing.expectEqual(@as(u32, 0), abi.testRegs().CTRL);
     try std.testing.expectEqual(@as(usize, 0), dsb_calls);
 }
@@ -416,7 +441,7 @@ test "apply_boot_map refuses silicon one region short" {
 test "apply_boot_map accepts silicon with exactly the map's region count" {
     setup(5);
     try std.testing.expectEqual(ok, abi.ra8_mpu_apply_boot_map());
-    try std.testing.expect(abi.ra8_mpu_is_enabled());
+    try std.testing.expectEqual(@as(u8, 1), abi.ra8_mpu_is_enabled());
 }
 
 test "apply_boot_map does not touch SHCSR" {
@@ -427,15 +452,15 @@ test "apply_boot_map does not touch SHCSR" {
 
 test "is_enabled tracks CTRL.ENABLE" {
     setup(16);
-    try std.testing.expect(!abi.ra8_mpu_is_enabled());
+    try std.testing.expectEqual(@as(u8, 0), abi.ra8_mpu_is_enabled());
     try std.testing.expectEqual(ok, abi.ra8_mpu_enable());
-    try std.testing.expect(abi.ra8_mpu_is_enabled());
+    try std.testing.expectEqual(@as(u8, 1), abi.ra8_mpu_is_enabled());
     try std.testing.expectEqual(ok, abi.ra8_mpu_disable());
-    try std.testing.expect(!abi.ra8_mpu_is_enabled());
+    try std.testing.expectEqual(@as(u8, 0), abi.ra8_mpu_is_enabled());
 }
 
 test "is_enabled ignores the other CTRL bits" {
     setup(16);
     abi.testRegs().CTRL = ctrl_privdefena | ctrl_hfnmiena;
-    try std.testing.expect(!abi.ra8_mpu_is_enabled());
+    try std.testing.expectEqual(@as(u8, 0), abi.ra8_mpu_is_enabled());
 }

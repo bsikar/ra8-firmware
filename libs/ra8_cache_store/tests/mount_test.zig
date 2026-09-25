@@ -12,6 +12,7 @@
 
 const std = @import("std");
 const mount = @import("mount");
+const init = @import("cache_store_init");
 
 const Store = mount.Store;
 const Entry = mount.Entry;
@@ -183,7 +184,7 @@ const Fixture = struct {
             .logical_sectors = logical_sectors,
             .index_cap = self.index.len,
             .overprovision_pct = 0,
-            .format = format,
+            .format = @intFromBool(format),
         };
     }
 };
@@ -584,14 +585,14 @@ test "init: a null store handle is rejected" {
     var fixture = Fixture{};
     fixture.bind();
     const cfg = fixture.cfg(64, true);
-    try std.testing.expectEqual(err_null_ptr, mount.ra8_cache_store_init(null, &cfg));
+    try std.testing.expectEqual(err_null_ptr, init.ra8_cache_store_init(null, &cfg));
 }
 
 test "init: a null config is rejected" {
     resetMedium();
     var fixture = Fixture{};
     fixture.bind();
-    try std.testing.expectEqual(err_null_ptr, mount.ra8_cache_store_init(&fixture.store, null));
+    try std.testing.expectEqual(err_null_ptr, init.ra8_cache_store_init(&fixture.store, null));
 }
 
 test "init: every required config pointer is checked in order" {
@@ -646,7 +647,7 @@ test "init: a span too small for the layout is a size error" {
     var fixture = Fixture{};
     fixture.bind();
     const cfg = fixture.cfg(9, true);
-    try std.testing.expectEqual(err_invalid_size, mount.ra8_cache_store_init(&fixture.store, &cfg));
+    try std.testing.expectEqual(err_invalid_size, init.ra8_cache_store_init(&fixture.store, &cfg));
 }
 
 // -------------------------------------------------------------------------
@@ -696,8 +697,8 @@ test "init: a format mount comes up clean and empty" {
     var fixture = Fixture{};
     fixture.bind();
     const cfg = fixture.cfg(64, true);
-    try std.testing.expectEqual(ok, mount.ra8_cache_store_init(&fixture.store, &cfg));
-    try std.testing.expect(fixture.store.inited);
+    try std.testing.expectEqual(ok, init.ra8_cache_store_init(&fixture.store, &cfg));
+    try std.testing.expectEqual(@as(u8, 1), fixture.store.inited);
     try std.testing.expectEqual(@as(u8, 1), fixture.store.flash_state);
     try std.testing.expectEqual(@as(u32, 0), fixture.store.live_sectors);
     try std.testing.expectEqual(@as(u32, 1), fixture.store.next_seq);
@@ -713,9 +714,9 @@ test "init: a failed format is a hardware failure" {
     const cfg = fixture.cfg(64, true);
     try std.testing.expectEqual(
         err_hw_init_failed,
-        mount.ra8_cache_store_init(&fixture.store, &cfg),
+        init.ra8_cache_store_init(&fixture.store, &cfg),
     );
-    try std.testing.expect(!fixture.store.inited);
+    try std.testing.expectEqual(@as(u8, 0), fixture.store.inited);
 }
 
 test "init: a failed open is a hardware failure" {
@@ -726,7 +727,7 @@ test "init: a failed open is a hardware failure" {
     const cfg = fixture.cfg(64, false);
     try std.testing.expectEqual(
         err_hw_init_failed,
-        mount.ra8_cache_store_init(&fixture.store, &cfg),
+        init.ra8_cache_store_init(&fixture.store, &cfg),
     );
 }
 
@@ -736,7 +737,7 @@ test "init: the index is cleared before the mount rebuilds it" {
     fixture.bind();
     fixture.index[2] = .{ .key = 5, .flags = implementation.flag_in_use };
     const cfg = fixture.cfg(64, true);
-    try std.testing.expectEqual(ok, mount.ra8_cache_store_init(&fixture.store, &cfg));
+    try std.testing.expectEqual(ok, init.ra8_cache_store_init(&fixture.store, &cfg));
     try std.testing.expectEqual(@as(u16, 0), implementation.indexUsed(&fixture.index));
 }
 
@@ -749,7 +750,7 @@ test "recovery: a clean checkpoint is loaded back into the index" {
     var writer = Fixture{};
     writer.bind();
     var cfg = writer.cfg(64, true);
-    try std.testing.expectEqual(ok, mount.ra8_cache_store_init(&writer.store, &cfg));
+    try std.testing.expectEqual(ok, init.ra8_cache_store_init(&writer.store, &cfg));
 
     writer.index[0] = .{
         .key = 101,
@@ -776,7 +777,7 @@ test "recovery: a clean checkpoint is loaded back into the index" {
     reader.flash_block = writer.flash_block;
     var reopen = reader.cfg(64, false);
     reopen.nor_flash = @ptrCast(&reader.flash_block);
-    try std.testing.expectEqual(ok, mount.ra8_cache_store_init(&reader.store, &reopen));
+    try std.testing.expectEqual(ok, init.ra8_cache_store_init(&reader.store, &reopen));
 
     try std.testing.expectEqual(@as(u8, 1), reader.store.flash_state);
     try std.testing.expectEqual(@as(u32, 7), reader.store.next_seq);
@@ -807,7 +808,7 @@ test "recovery: a checkpoint claiming more entries than the index holds is inval
     const cfg = fixture.cfg(64, false);
     try std.testing.expectEqual(
         mount.err_invalid_state,
-        mount.ra8_cache_store_init(&fixture.store, &cfg),
+        init.ra8_cache_store_init(&fixture.store, &cfg),
     );
 }
 
@@ -823,7 +824,7 @@ test "replay: an absent superblock rebuilds the index from the log" {
     writeHeaderAt(5, 222, 9, 2, 300, implementation.flag_pinned);
 
     const cfg = fixture.cfg(64, false);
-    try std.testing.expectEqual(ok, mount.ra8_cache_store_init(&fixture.store, &cfg));
+    try std.testing.expectEqual(ok, init.ra8_cache_store_init(&fixture.store, &cfg));
     try std.testing.expectEqual(@as(u8, 0), fixture.store.flash_state);
     try std.testing.expectEqual(@as(u16, 2), implementation.indexUsed(&fixture.index));
     try std.testing.expectEqual(@as(u32, 5), fixture.store.live_sectors);
@@ -844,7 +845,7 @@ test "replay: a torn header is skipped and the scan carries on" {
     writeHeaderAt(6, 333, 3, 1, 10, 0);
 
     const cfg = fixture.cfg(64, false);
-    try std.testing.expectEqual(ok, mount.ra8_cache_store_init(&fixture.store, &cfg));
+    try std.testing.expectEqual(ok, init.ra8_cache_store_init(&fixture.store, &cfg));
     try std.testing.expectEqual(@as(u16, 2), implementation.indexUsed(&fixture.index));
     try std.testing.expect(mount.priv_cache_store_index_find(&fixture.store, 222) < 0);
     try std.testing.expectEqual(@as(u32, 4), fixture.store.next_seq);
@@ -869,7 +870,7 @@ test "replay: a header anchored at the wrong sector claims nothing" {
     present[2] = true;
 
     const cfg = fixture.cfg(64, false);
-    try std.testing.expectEqual(ok, mount.ra8_cache_store_init(&fixture.store, &cfg));
+    try std.testing.expectEqual(ok, init.ra8_cache_store_init(&fixture.store, &cfg));
     try std.testing.expectEqual(@as(u16, 0), implementation.indexUsed(&fixture.index));
 }
 
@@ -879,7 +880,7 @@ test "replay: a run that would overrun the span is refused" {
     fixture.bind();
     writeHeaderAt(60, 77, 1, 100, 10, 0);
     const cfg = fixture.cfg(64, false);
-    try std.testing.expectEqual(ok, mount.ra8_cache_store_init(&fixture.store, &cfg));
+    try std.testing.expectEqual(ok, init.ra8_cache_store_init(&fixture.store, &cfg));
     try std.testing.expectEqual(@as(u16, 0), implementation.indexUsed(&fixture.index));
     try std.testing.expectEqual(@as(u32, 1), fixture.store.next_seq);
 }
@@ -890,7 +891,7 @@ test "replay: a zero-length run is refused" {
     fixture.bind();
     writeHeaderAt(2, 77, 1, 0, 10, 0);
     const cfg = fixture.cfg(64, false);
-    try std.testing.expectEqual(ok, mount.ra8_cache_store_init(&fixture.store, &cfg));
+    try std.testing.expectEqual(ok, init.ra8_cache_store_init(&fixture.store, &cfg));
     try std.testing.expectEqual(@as(u16, 0), implementation.indexUsed(&fixture.index));
 }
 
@@ -901,7 +902,7 @@ test "replay: a duplicate key keeps the first run" {
     writeHeaderAt(2, 500, 1, 1, 10, 0);
     writeHeaderAt(3, 500, 2, 1, 20, 0);
     const cfg = fixture.cfg(64, false);
-    try std.testing.expectEqual(ok, mount.ra8_cache_store_init(&fixture.store, &cfg));
+    try std.testing.expectEqual(ok, init.ra8_cache_store_init(&fixture.store, &cfg));
     try std.testing.expectEqual(@as(u16, 1), implementation.indexUsed(&fixture.index));
     const slot = mount.priv_cache_store_index_find(&fixture.store, 500);
     try std.testing.expectEqual(@as(u32, 2), fixture.index[@intCast(slot)].start_sector);
@@ -919,7 +920,7 @@ test "replay: a full index stops accumulating live sectors" {
         sector += 1;
     }
     const cfg = fixture.cfg(64, false);
-    try std.testing.expectEqual(ok, mount.ra8_cache_store_init(&fixture.store, &cfg));
+    try std.testing.expectEqual(ok, init.ra8_cache_store_init(&fixture.store, &cfg));
     try std.testing.expectEqual(@as(u16, 8), implementation.indexUsed(&fixture.index));
     try std.testing.expectEqual(@as(u32, 8), fixture.store.live_sectors);
     // The ninth entry never landed, so its sequence never raised the counter.
@@ -944,7 +945,7 @@ test "replay: a stale but structurally valid superblock still replays the log" {
     writeHeaderAt(2, 900, 12, 2, 600, 0);
 
     const cfg = fixture.cfg(64, false);
-    try std.testing.expectEqual(ok, mount.ra8_cache_store_init(&fixture.store, &cfg));
+    try std.testing.expectEqual(ok, init.ra8_cache_store_init(&fixture.store, &cfg));
     try std.testing.expectEqual(@as(u8, 0), fixture.store.flash_state);
     try std.testing.expectEqual(@as(u32, 13), fixture.store.next_seq);
     try std.testing.expectEqual(@as(u32, 2), fixture.store.live_sectors);
@@ -956,7 +957,7 @@ test "replay: a medium that cannot be read at all leaves an empty index" {
     fixture.bind();
     forced_read_rc = 1;
     const cfg = fixture.cfg(64, false);
-    try std.testing.expectEqual(ok, mount.ra8_cache_store_init(&fixture.store, &cfg));
+    try std.testing.expectEqual(ok, init.ra8_cache_store_init(&fixture.store, &cfg));
     try std.testing.expectEqual(@as(u16, 0), implementation.indexUsed(&fixture.index));
     try std.testing.expectEqual(@as(u32, 1), fixture.store.next_seq);
 }

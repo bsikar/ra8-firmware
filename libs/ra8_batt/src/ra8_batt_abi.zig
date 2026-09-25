@@ -14,13 +14,17 @@ const std = @import("std");
 const implementation = @import("internal/root.zig");
 
 /// Nag state carried across calls (`ra8_batt_monitor_t`).
-pub const Monitor = implementation.Monitor;
+pub const Monitor = extern struct {
+    low_raised: u8,
+    critical_raised: u8,
+};
 /// Warning a single update raises (`ra8_batt_nag_t`).
 pub const Nag = implementation.Nag;
 
 /// Subset of `ra8_err_t` this library returns.
 pub const BattError = enum(u16) {
     ok = 0,
+    invalid_arg = 0x103,
     null_ptr = 0x504,
 };
 
@@ -37,7 +41,7 @@ pub export fn ra8_batt_monitor_init(mon: ?*Monitor) callconv(.c) u16 {
         ra8_log_emit_error(tag, "mon must not be nullptr");
         return @intFromEnum(BattError.null_ptr);
     };
-    monitor.reset();
+    monitor.* = .{ .low_raised = 0, .critical_raised = 0 };
     return @intFromEnum(BattError.ok);
 }
 
@@ -49,7 +53,7 @@ pub export fn ra8_batt_monitor_init(mon: ?*Monitor) callconv(.c) u16 {
 pub export fn ra8_batt_update(
     mon: ?*Monitor,
     soc_pct: u8,
-    charging: bool,
+    charging: u8,
     out_nag: ?*Nag,
 ) callconv(.c) u16 {
     const monitor = mon orelse {
@@ -61,7 +65,18 @@ pub export fn ra8_batt_update(
         return @intFromEnum(BattError.null_ptr);
     };
 
-    out.* = implementation.step(monitor, soc_pct, charging);
+    if (charging > 1 or monitor.low_raised > 1 or monitor.critical_raised > 1) {
+        return @intFromEnum(BattError.invalid_arg);
+    }
+
+    var state = implementation.Monitor{
+        .low_raised = monitor.low_raised != 0,
+        .critical_raised = monitor.critical_raised != 0,
+    };
+    const nag = implementation.step(&state, soc_pct, charging == 1);
+    monitor.low_raised = @intFromBool(state.low_raised);
+    monitor.critical_raised = @intFromBool(state.critical_raised);
+    out.* = nag;
     return @intFromEnum(BattError.ok);
 }
 
@@ -78,6 +93,7 @@ comptime {
     // `ra8_err_t` is 16-bit across the repo; these two are the only codes the
     // library can return.
     std.debug.assert(@intFromEnum(BattError.ok) == 0);
+    std.debug.assert(@intFromEnum(BattError.invalid_arg) == 0x103);
     std.debug.assert(@intFromEnum(BattError.null_ptr) == 0x504);
     // The nag enumerators are public API: consumers switch on the numbers.
     std.debug.assert(@intFromEnum(Nag.none) == 0);
@@ -85,4 +101,7 @@ comptime {
     std.debug.assert(@intFromEnum(Nag.critical) == 2);
     std.debug.assert(@sizeOf(Nag) == 1);
     std.debug.assert(@sizeOf(Monitor) == 2);
+    std.debug.assert(@alignOf(Monitor) == 1);
+    std.debug.assert(@offsetOf(Monitor, "low_raised") == 0);
+    std.debug.assert(@offsetOf(Monitor, "critical_raised") == 1);
 }

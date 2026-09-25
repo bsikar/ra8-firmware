@@ -131,7 +131,7 @@ RA8_INTERNAL static void internal_test_hit_test_basic(void)
     {{50, 0, 50, 50}, (uint16_t)k_ui_act_back, 0U},
   };
   uint16_t action = 0U;
-  bool     hit    = false;
+  uint8_t  hit    = 0U;
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_ui_hit_test(targets, 2U, 60, 25, &action, &hit));
   TEST_ASSERT(hit);
@@ -232,7 +232,7 @@ RA8_INTERNAL static void internal_test_pager_basic(void)
 {
   TEST_BEGIN("ra8_ui pager basic");
   ra8_ui_pager_t p;
-  bool           changed = false;
+  uint8_t        changed = 0U;
 
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_ui_pager_init(&p, 0U));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_ui_pager_init(&p, 5U));
@@ -279,7 +279,7 @@ RA8_INTERNAL static void internal_test_pager_basic(void)
 RA8_INTERNAL static void internal_test_mcdc_pager_next(void)
 {
   TEST_BEGIN("ra8_ui pager_next MC/DC: total>0 && current<total-1");
-  bool changed = false;
+  uint8_t changed = 0U;
 
   ra8_ui_pager_t v1 = {0U, 3U}; /* current=0, total=3 */
   TEST_ASSERT_EQ(k_ra8_ok, ra8_ui_pager_next(&v1, &changed));
@@ -318,7 +318,7 @@ RA8_INTERNAL static void internal_test_mcdc_pager_next(void)
 RA8_INTERNAL static void internal_test_mcdc_pager_goto(void)
 {
   TEST_BEGIN("ra8_ui pager_goto MC/DC: total>0 && target>total-1");
-  bool changed = false;
+  uint8_t changed = 0U;
 
   ra8_ui_pager_t v1 = {0U, 3U};
   TEST_ASSERT_EQ(k_ra8_ok, ra8_ui_pager_goto(&v1, 5U, &changed));

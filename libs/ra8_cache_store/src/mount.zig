@@ -4,23 +4,18 @@
 //! Mount, crash recovery and the shared on-flash helpers for `ra8_cache_store`:
 //! superblock read/write, the directory checkpoint, the append-log replay and
 //! `ra8_cache_store_init`. This is the other half of the library; the runtime
-//! path (put / get / read / evict / pin / sync / close) lives in
-//! `ra8_cache_store_abi.zig` and reaches the medium only through the seven
-//! `priv_cache_store_*` helpers exported here.
-//!
-//! The seam is deliberate and unchanged from the C: the runtime file declares
-//! those helpers `extern`, so its tests can substitute a RAM medium at link
-//! time exactly as the shipped build substitutes this file.
+//! path (put / get / read / evict / pin / sync / close) calls these helpers
+//! through a Zig module boundary. They are not exported in the C ABI archive.
 //!
 //! LevelX is reached through its public `lx_nor_flash_*` API, but those names
 //! are macros in `lx_api.h`, so the externs below name the `_lx_*`
 //! implementation symbols the macros expand to.
 
 const std = @import("std");
-const abi = @import("ra8_cache_store_abi.zig");
+const abi = @import("cache_store_types");
 
 /// Pure logic shared with the runtime half (CRC-32, record layouts, flags).
-pub const implementation = @import("internal/root.zig");
+pub const implementation = @import("cache_store_impl");
 
 /// Mounted store handle (`ra8_cache_store_t`).
 pub const Store = abi.Store;
@@ -30,103 +25,26 @@ pub const Entry = abi.Entry;
 pub const EntryHeader = abi.EntryHeader;
 /// Raw `ra8_err_t` as it crosses the ABI.
 pub const RawErr = abi.RawErr;
+pub const err_invalid_arg = abi.err_invalid_arg;
+pub const err_invalid_state = abi.err_invalid_state;
 
 const sector_bytes = implementation.sector_bytes;
 
-/// `k_ra8_err_invalid_arg`, not needed by the runtime half.
-pub const err_invalid_arg: RawErr = 0x103;
-/// `k_ra8_err_invalid_state`, raised by an inconsistent checkpoint.
-pub const err_invalid_state: RawErr = 0x104;
-
-/// Superblock tag 'R','C','S','1' (`k_ra8_cs_super_magic`).
-pub const super_magic: u32 = 0x52435331;
-/// On-flash layout revision (`k_ra8_cs_format_version`).
-pub const format_version: u32 = 1;
-/// Serialized directory-entry size (`k_ra8_cs_dir_ent_bytes`).
-pub const dir_ent_bytes: u32 = 16;
-/// Directory entries per 512-byte sector (`k_ra8_cs_dir_per_sector`).
-pub const dir_per_sector: u32 = 32;
-/// Minimum usable logical-sector span (`k_ra8_cache_store_min_sectors`).
-pub const min_sectors: u32 = 8;
-/// Default GC headroom margin (`k_ra8_cache_store_overprov_pct`).
-pub const overprov_pct_default: u32 = 20;
-/// Reject nonsensical margins above this (`k_ra8_cache_store_max_overprov`).
-pub const max_overprov: u8 = 90;
-/// Whole-percent denominator (`k_ra8_cs_pct_full`).
-pub const pct_full: u32 = 100;
-
-/// `LX_SUCCESS`.
-pub const lx_success: c_uint = 0;
-/// `LX_SECTOR_NOT_FOUND`.
-pub const lx_sector_not_found: c_uint = 3;
-
-/// Injected physical-flash bind (`ra8_cache_store_nor_init_fn`).
-pub const NorInitFn = *const fn (?*anyopaque) callconv(.c) c_uint;
-
-/// On-flash superblock at logical sector 0 (`ra8_cs_super_t`).
-pub const Super = extern struct {
-    magic: u32 = 0,
-    version: u32 = 0,
-    seq: u32 = 0,
-    clean: u32 = 0,
-    entry_count: u32 = 0,
-    live_sectors: u32 = 0,
-    next_seq: u32 = 0,
-    log_start: u32 = 0,
-    data_capacity: u32 = 0,
-    logical_sectors: u32 = 0,
-    crc: u32 = 0,
-};
-
-/// One packed checkpoint directory entry (`ra8_cs_dir_ent_t`).
-pub const DirEntry = extern struct {
-    key: u32 = 0,
-    start_sector: u32 = 0,
-    byte_len: u32 = 0,
-    sector_count: u16 = 0,
-    flags: u16 = 0,
-};
-
-/// Init config (`ra8_cache_store_cfg_t`).
-pub const Config = extern struct {
-    nor_flash: ?*anyopaque = null,
-    nor_driver_init: ?NorInitFn = null,
-    name: ?[*:0]const u8 = null,
-    index: ?[*]Entry = null,
-    staging: ?[*]u8 = null,
-    staging_bytes: u32 = 0,
-    logical_sectors: u32 = 0,
-    index_cap: u16 = 0,
-    overprovision_pct: u8 = 0,
-    format: bool = false,
-};
-
-/// Bytes of a superblock covered by its CRC (everything before `crc`).
-pub const super_crc_span: u32 = @sizeOf(Super) - @sizeOf(u32);
-
-comptime {
-    // These are the on-flash format and the C ABI, not implementation detail.
-    std.debug.assert(@sizeOf(Super) == 44);
-    std.debug.assert(super_crc_span == 40);
-    std.debug.assert(@sizeOf(Super) <= sector_bytes);
-    std.debug.assert(@sizeOf(DirEntry) == dir_ent_bytes);
-    std.debug.assert(@offsetOf(DirEntry, "sector_count") == 12);
-    std.debug.assert(@offsetOf(DirEntry, "flags") == 14);
-    std.debug.assert(dir_ent_bytes * dir_per_sector == sector_bytes);
-
-    // Pointer-width aware, so the asserts hold on the host and on Arm alike.
-    const word = @sizeOf(usize);
-    std.debug.assert(@offsetOf(Config, "nor_flash") == 0);
-    std.debug.assert(@offsetOf(Config, "nor_driver_init") == word);
-    std.debug.assert(@offsetOf(Config, "name") == 2 * word);
-    std.debug.assert(@offsetOf(Config, "index") == 3 * word);
-    std.debug.assert(@offsetOf(Config, "staging") == 4 * word);
-    std.debug.assert(@offsetOf(Config, "staging_bytes") == 5 * word);
-    std.debug.assert(@offsetOf(Config, "logical_sectors") == 5 * word + 4);
-    std.debug.assert(@offsetOf(Config, "index_cap") == 5 * word + 8);
-    std.debug.assert(@offsetOf(Config, "overprovision_pct") == 5 * word + 10);
-    std.debug.assert(@offsetOf(Config, "format") == 5 * word + 11);
-}
+pub const super_magic = abi.super_magic;
+pub const format_version = abi.format_version;
+pub const dir_ent_bytes = abi.dir_ent_bytes;
+pub const dir_per_sector = abi.dir_per_sector;
+pub const min_sectors = abi.min_sectors;
+pub const overprov_pct_default = abi.overprov_pct_default;
+pub const max_overprov = abi.max_overprov;
+pub const pct_full = abi.pct_full;
+pub const lx_success = abi.lx_success;
+pub const lx_sector_not_found = abi.lx_sector_not_found;
+pub const NorInitFn = abi.NorInitFn;
+pub const Super = abi.Super;
+pub const DirEntry = abi.DirEntry;
+pub const Config = abi.Config;
+pub const super_crc_span = abi.super_crc_span;
 
 extern fn _lx_nor_flash_initialize() c_uint;
 extern fn _lx_nor_flash_format(
@@ -168,14 +86,14 @@ fn propagate(code: RawErr, message: [*:0]const u8) ?RawErr {
 // -------------------------------------------------------------------------
 
 /// CRC-32 over `data`; 0 for a null pointer or an empty span.
-pub export fn priv_cache_store_crc32(data: ?[*]const u8, len: u32) u32 {
+pub fn priv_cache_store_crc32(data: ?[*]const u8, len: u32) u32 {
     const base = data orelse return 0;
     if (len == 0) return 0;
     return implementation.crc32(base[0..len]);
 }
 
 /// Read one logical sector into `out512`.
-pub export fn priv_cache_store_sector_read(
+pub fn priv_cache_store_sector_read(
     store_arg: ?*const Store,
     sector: u32,
     out512: ?[*]u8,
@@ -189,7 +107,7 @@ pub export fn priv_cache_store_sector_read(
 }
 
 /// Write one logical sector from `in512`.
-pub export fn priv_cache_store_sector_write(
+pub fn priv_cache_store_sector_write(
     store_arg: ?*Store,
     sector: u32,
     in512: ?[*]const u8,
@@ -205,7 +123,7 @@ pub export fn priv_cache_store_sector_write(
 /// Release one logical sector back to LevelX.
 /// The `flash` guard here has no counterpart in read/write; that asymmetry is
 /// the C's and the MC/DC vectors depend on it.
-pub export fn priv_cache_store_sector_release(store_arg: ?*Store, sector: u32) RawErr {
+pub fn priv_cache_store_sector_release(store_arg: ?*Store, sector: u32) RawErr {
     const store = store_arg orelse return reject("store", abi.err_null_ptr);
     const flash = store.flash orelse return reject("flash", abi.err_null_ptr);
     const rc = _lx_nor_flash_sector_release(flash, sector);
@@ -214,7 +132,7 @@ pub export fn priv_cache_store_sector_release(store_arg: ?*Store, sector: u32) R
 }
 
 /// Slot holding `key`, or -1 when absent.
-pub export fn priv_cache_store_index_find(store_arg: ?*const Store, key: u32) i32 {
+pub fn priv_cache_store_index_find(store_arg: ?*const Store, key: u32) i32 {
     const store = store_arg orelse return -1;
     const base = store.index orelse return -1;
     const slot = implementation.findKey(base[0..store.index_cap], key) orelse return -1;
@@ -222,7 +140,7 @@ pub export fn priv_cache_store_index_find(store_arg: ?*const Store, key: u32) i3
 }
 
 /// Claim the first free index slot, or -1 when the index is full.
-pub export fn priv_cache_store_index_add(
+pub fn priv_cache_store_index_add(
     store_arg: ?*Store,
     key: u32,
     start_sector: u32,
@@ -256,7 +174,7 @@ pub export fn priv_cache_store_index_add(
 // -------------------------------------------------------------------------
 
 /// Stamp sector 0 with the current geometry and the `clean` marker.
-pub export fn priv_cache_store_super_write(store_arg: ?*Store, clean: u32) RawErr {
+pub fn priv_cache_store_super_write(store_arg: ?*Store, clean: u32) RawErr {
     const store = store_arg orelse return reject("store", abi.err_null_ptr);
     const staging = store.staging orelse return reject("staging", abi.err_null_ptr);
     var sb = Super{
@@ -338,7 +256,7 @@ fn dirPackSector(store: *Store, slot: *u16, out512: [*]u8) u32 {
 }
 
 /// Write the whole checkpoint directory and report the entry count.
-pub export fn priv_cache_store_dir_save(store_arg: ?*Store, out_entry_count: ?*u32) RawErr {
+pub fn priv_cache_store_dir_save(store_arg: ?*Store, out_entry_count: ?*u32) RawErr {
     const store = store_arg orelse return reject("store", abi.err_null_ptr);
     const out = out_entry_count orelse return reject("out_entry_count", abi.err_null_ptr);
     var count: u32 = 0;
@@ -497,7 +415,7 @@ fn openLevelx(store: *Store, cfg: *const Config) RawErr {
     // LevelX takes a mutable CHAR* name but never writes it.
     const default_name: [*:0]const u8 = "ra8_cache";
     const name: ?[*:0]u8 = @constCast(cfg.name orelse default_name);
-    if (cfg.format) {
+    if (cfg.format != 0) {
         if (_lx_nor_flash_format(store.flash, name, cfg.nor_driver_init, null) != lx_success) {
             return abi.err_hw_init_failed;
         }
@@ -508,7 +426,7 @@ fn openLevelx(store: *Store, cfg: *const Config) RawErr {
     // Stamp an empty clean superblock at format time so a fresh mount loads the
     // (empty) checkpoint instead of scanning the whole -- as-yet unmapped -- log
     // region, which on LevelX would allocate a physical sector per read.
-    if (cfg.format) {
+    if (cfg.format != 0) {
         const wrote = priv_cache_store_super_write(store, abi.clean_clean);
         if (propagate(wrote, "format super")) |code| return code;
     }
@@ -558,12 +476,12 @@ fn bringup(store: *Store, cfg: *const Config) RawErr {
 }
 
 /// Mount the cache store over an injected LevelX NOR partition.
-pub export fn ra8_cache_store_init(store_arg: ?*Store, cfg_arg: ?*const Config) RawErr {
+pub fn initStore(store_arg: ?*Store, cfg_arg: ?*const Config) RawErr {
     const store = store_arg orelse return reject("store", abi.err_null_ptr);
     if (propagate(validateCfg(cfg_arg), "cfg")) |code| return code;
     const cfg = cfg_arg.?;
     initFields(store, cfg);
     if (propagate(bringup(store, cfg), "bringup")) |code| return code;
-    store.inited = true;
+    store.inited = 1;
     return abi.ok;
 }

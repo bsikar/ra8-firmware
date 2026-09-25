@@ -109,7 +109,7 @@ typedef struct {
  * @note Pure; thread-safe.
  * @since 0.1.0
  */
-bool ra8_ui_rect_contains(const ra8_ui_rect_t* r, int32_t px, int32_t py);
+uint8_t ra8_ui_rect_contains(const ra8_ui_rect_t* r, int32_t px, int32_t py);
 
 /**
  * @brief Find the first tap target containing a point.
@@ -144,7 +144,7 @@ bool ra8_ui_rect_contains(const ra8_ui_rect_t* r, int32_t px, int32_t py);
                                         int32_t                px,
                                         int32_t                py,
                                         uint16_t*              out_action,
-                                        bool*                  out_hit);
+                                        uint8_t*               out_hit);
 
 /* ===========================================================================
  * Screen-stack navigation
@@ -326,7 +326,7 @@ typedef struct {
  * @note Not thread-safe.
  * @since 0.1.0
  */
-[[nodiscard]] ra8_err_t ra8_ui_pager_next(ra8_ui_pager_t* p, bool* out_changed);
+[[nodiscard]] ra8_err_t ra8_ui_pager_next(ra8_ui_pager_t* p, uint8_t* out_changed);
 
 /**
  * @brief Step to the previous page, clamping at page 0.
@@ -346,7 +346,7 @@ typedef struct {
  * @note Not thread-safe.
  * @since 0.1.0
  */
-[[nodiscard]] ra8_err_t ra8_ui_pager_prev(ra8_ui_pager_t* p, bool* out_changed);
+[[nodiscard]] ra8_err_t ra8_ui_pager_prev(ra8_ui_pager_t* p, uint8_t* out_changed);
 
 /**
  * @brief Jump to an absolute page, clamping into `[0, total-1]`.
@@ -367,7 +367,7 @@ typedef struct {
  * @note Not thread-safe.
  * @since 0.1.0
  */
-[[nodiscard]] ra8_err_t ra8_ui_pager_goto(ra8_ui_pager_t* p, uint16_t page, bool* out_changed);
+[[nodiscard]] ra8_err_t ra8_ui_pager_goto(ra8_ui_pager_t* p, uint16_t page, uint8_t* out_changed);
 
 #ifdef __cplusplus
 }

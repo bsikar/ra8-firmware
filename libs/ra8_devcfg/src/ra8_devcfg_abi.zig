@@ -172,8 +172,8 @@ pub export fn ra8_devcfg_get_body(out_body: ?*?*const Body) callconv(.c) RawErr 
 
 /// Report whether neither record copy is valid: the provisioning gate. True
 /// before any load has run, too.
-pub export fn ra8_devcfg_is_blank() callconv(.c) bool {
-    return s_state != .loaded;
+pub export fn ra8_devcfg_is_blank() callconv(.c) u8 {
+    return @intFromBool(s_state != .loaded);
 }
 
 /// Commit a new record to the stale copy slot with header-last ordering, so a
