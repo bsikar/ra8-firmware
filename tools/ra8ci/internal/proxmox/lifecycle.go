@@ -19,6 +19,7 @@ import (
 
 var (
 	diskKeyPattern = regexp.MustCompile(`^(scsi|virtio|sata)[0-9]+$`)
+	netKeyPattern  = regexp.MustCompile(`^net[0-9]+$`)
 	digestPattern  = regexp.MustCompile(`^[0-9a-f]{40}$`)
 )
 
@@ -229,6 +230,9 @@ func (c *Client) inspect(ctx context.Context, identity Identity, r resource) (VM
 	if !storageFound {
 		return VM{}, fmt.Errorf("%w: no disk on approved storage", ErrConflict)
 	}
+	if err := c.checkNetworks(config, "reservation"); err != nil {
+		return VM{}, err
+	}
 	var state struct {
 		VMID   int    `json:"vmid"`
 		Status string `json:"status"`
@@ -240,6 +244,48 @@ func (c *Client) inspect(ctx context.Context, identity Identity, r resource) (VM
 		return VM{}, fmt.Errorf("%w: inconsistent VM status", ErrProtocol)
 	}
 	return VM{Identity: identity, Status: state.Status, ConfigDigest: digest, Protected: protected, Locked: lock != ""}, nil
+}
+
+// checkNetworks requires every interface a guest carries to sit on a reviewed
+// bridge, not merely one of them: a second interface on the management bridge
+// is exactly the escape the pool, storage, and marker checks cannot see. An
+// interface with no bridge= setting is refused rather than read as harmless,
+// because a passed-through device is not a bridge this client can approve.
+func (c *Client) checkNetworks(config map[string]json.RawMessage, subject string) error {
+	found := false
+	for key, raw := range config {
+		if !netKeyPattern.MatchString(key) {
+			continue
+		}
+		var value string
+		if err := json.Unmarshal(raw, &value); err != nil {
+			return ErrProtocol
+		}
+		bridge, ok := bridgeOf(value)
+		if !ok {
+			return fmt.Errorf("%w: %s interface %s declares no bridge", ErrConflict, subject, key)
+		}
+		if _, approved := c.bridges[bridge]; !approved {
+			return fmt.Errorf("%w: %s interface %s is on unreviewed bridge %q", ErrConflict, subject, key, bridge)
+		}
+		found = true
+	}
+	if !found {
+		return fmt.Errorf("%w: %s has no interface on an approved bridge", ErrConflict, subject)
+	}
+	return nil
+}
+
+// bridgeOf reads the bridge out of a Proxmox net line such as
+// "virtio=AA:BB:CC:DD:EE:FF,bridge=vmbr8,firewall=1".
+func bridgeOf(value string) (string, bool) {
+	for _, field := range strings.Split(value, ",") {
+		name, setting, ok := strings.Cut(field, "=")
+		if ok && name == "bridge" {
+			return setting, setting != ""
+		}
+	}
+	return "", false
 }
 
 func stringField(values map[string]json.RawMessage, key string) (string, error) {
@@ -336,6 +382,9 @@ func (c *Client) Clone(ctx context.Context, action Action, spec CloneSpec) (Resu
 	sourceTemplate, templateErr := boolField(sourceConfig, "template")
 	if digestErr != nil || nameErr != nil || templateErr != nil || sourceDigest != spec.TemplateDigest || sourceName != spec.TemplateName || !sourceTemplate {
 		return Result{}, fmt.Errorf("%w: reviewed source template digest or identity changed", ErrConflict)
+	}
+	if err := c.checkNetworks(sourceConfig, "source template"); err != nil {
+		return Result{}, err
 	}
 	form := url.Values{
 		"newid":       {strconv.Itoa(spec.Target.VMID)},

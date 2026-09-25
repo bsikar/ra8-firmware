@@ -346,9 +346,9 @@ func (f *fakeProxmox) serve(w http.ResponseWriter, r *http.Request) {
 		}
 		respond(w, entries)
 	case r.Method == http.MethodGet && path == "/api2/json/nodes/pve/qemu/9001/config":
-		respond(w, map[string]any{"name": "ra8-lab-template", "digest": testDigest, "template": 1})
+		respond(w, map[string]any{"name": "ra8-lab-template", "digest": testDigest, "template": 1, "net0": "virtio=AA:BB:CC:DD:EE:00,bridge=vmbr8,firewall=1"})
 	case r.Method == http.MethodGet && path == "/api2/json/nodes/pve/qemu/9000/config" && f.exists:
-		respond(w, map[string]any{"name": "ra8-lab-ci-9000", "description": f.marker, "digest": testDigest, "protection": 0, "template": 0, "scsi0": "ra8-tf-lab:disk-9000"})
+		respond(w, map[string]any{"name": "ra8-lab-ci-9000", "description": f.marker, "digest": testDigest, "protection": 0, "template": 0, "scsi0": "ra8-tf-lab:disk-9000", "net0": "virtio=AA:BB:CC:DD:EE:01,bridge=vmbr8,firewall=1"})
 	case r.Method == http.MethodGet && path == "/api2/json/nodes/pve/qemu/9000/status/current" && f.exists:
 		respond(w, map[string]any{"vmid": 9000, "status": f.status})
 	case r.Method == http.MethodPost && path == "/api2/json/nodes/pve/qemu/9001/clone":
@@ -430,7 +430,7 @@ func testHarness(t *testing.T) (*Handler, *memoryLedger, *fakeProxmox, *testBoot
 	if err := os.WriteFile(token, []byte("scaler@pve!api=secret"), 0600); err != nil {
 		t.Fatal(err)
 	}
-	client, err := proxmox.New(proxmox.Config{Endpoint: server.URL, CAFile: ca, TokenFile: token, Node: "pve", Pool: "ra8-tf-lab", Storage: "ra8-tf-lab", AllowedVMIDs: []int{9000}, TemplateVMIDs: []int{9001}, RequestTimeout: time.Second, OperationTimeout: 70 * time.Millisecond, TaskPollInterval: time.Millisecond})
+	client, err := proxmox.New(proxmox.Config{Endpoint: server.URL, CAFile: ca, TokenFile: token, Node: "pve", Pool: "ra8-tf-lab", Storage: "ra8-tf-lab", AllowedVMIDs: []int{9000}, TemplateVMIDs: []int{9001}, Bridges: []string{"vmbr8", "vmbr9"}, RequestTimeout: time.Second, OperationTimeout: 70 * time.Millisecond, TaskPollInterval: time.Millisecond})
 	if err != nil {
 		t.Fatal(err)
 	}

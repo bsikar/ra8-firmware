@@ -52,6 +52,7 @@ type fakePVE struct {
 	taskOverride       map[string]any
 	malformedResources bool
 	templateDigest     string
+	templateConfig     map[string]any
 }
 
 func newFake() *fakePVE {
@@ -94,7 +95,7 @@ func (f *fakePVE) serve(w http.ResponseWriter, r *http.Request) {
 		}
 		writeData(w, resources)
 	case r.Method == http.MethodGet && path == "/api2/json/nodes/pve/qemu/9000/config" && f.exists:
-		entry := map[string]any{"name": testIdentity.Name, "description": f.marker, "digest": testDigest, "protection": boolInt(f.protected), "template": 0, "lock": f.lock, "scsi0": "ra8-tf-lab:vm-9000-disk-0"}
+		entry := map[string]any{"name": testIdentity.Name, "description": f.marker, "digest": testDigest, "protection": boolInt(f.protected), "template": 0, "lock": f.lock, "scsi0": "ra8-tf-lab:vm-9000-disk-0", "net0": "virtio=AA:BB:CC:DD:EE:01,bridge=vmbr8,firewall=1"}
 		mergeMap(entry, f.configOverride)
 		writeData(w, entry)
 	case r.Method == http.MethodGet && path == "/api2/json/nodes/pve/qemu/9001/config":
@@ -102,7 +103,9 @@ func (f *fakePVE) serve(w http.ResponseWriter, r *http.Request) {
 		if f.templateDigest != "" {
 			digest = f.templateDigest
 		}
-		writeData(w, map[string]any{"name": "ra8-lab-template", "digest": digest, "template": 1})
+		entry := map[string]any{"name": "ra8-lab-template", "digest": digest, "template": 1, "net0": "virtio=AA:BB:CC:DD:EE:00,bridge=vmbr8,firewall=1"}
+		mergeMap(entry, f.templateConfig)
+		writeData(w, entry)
 	case r.Method == http.MethodGet && path == "/api2/json/nodes/pve/qemu/9000/status/current" && f.exists:
 		entry := map[string]any{"vmid": 9000, "status": f.status}
 		mergeMap(entry, f.statusOverride)
@@ -188,7 +191,7 @@ func testClient(t *testing.T, f *fakePVE) (*Client, *httptest.Server) {
 	if err := os.WriteFile(token, []byte("ra8ci@pve!client=secret-token\n"), 0600); err != nil {
 		t.Fatal(err)
 	}
-	client, err := New(Config{Endpoint: server.URL, CAFile: ca, TokenFile: token, Node: "pve", Pool: "ra8-tf-lab", Storage: "ra8-tf-lab", AllowedVMIDs: []int{9000}, TemplateVMIDs: []int{9001}, RequestTimeout: time.Second, OperationTimeout: time.Second, TaskPollInterval: time.Millisecond})
+	client, err := New(Config{Endpoint: server.URL, CAFile: ca, TokenFile: token, Node: "pve", Pool: "ra8-tf-lab", Storage: "ra8-tf-lab", AllowedVMIDs: []int{9000}, TemplateVMIDs: []int{9001}, Bridges: []string{"vmbr8", "vmbr9"}, RequestTimeout: time.Second, OperationTimeout: time.Second, TaskPollInterval: time.Millisecond})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -331,7 +334,7 @@ func TestUnknownOutcomeAndReconciliation(t *testing.T) {
 func TestConstructorAndTransportFailClosed(t *testing.T) {
 	f := newFake()
 	client, server := testClient(t, f)
-	config := Config{Endpoint: server.URL, CAFile: filepath.Join(t.TempDir(), "ca"), TokenEnv: "RA8CI_PROXMOX_API_TOKEN", Node: "pve", Pool: "ra8-tf-lab", Storage: "ra8-tf-lab", AllowedVMIDs: []int{9000}, TemplateVMIDs: []int{9001}}
+	config := Config{Endpoint: server.URL, CAFile: filepath.Join(t.TempDir(), "ca"), TokenEnv: "RA8CI_PROXMOX_API_TOKEN", Node: "pve", Pool: "ra8-tf-lab", Storage: "ra8-tf-lab", AllowedVMIDs: []int{9000}, TemplateVMIDs: []int{9001}, Bridges: []string{"vmbr8", "vmbr9"}}
 	certBytes := pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: server.Certificate().Raw})
 	if err := os.WriteFile(config.CAFile, certBytes, 0600); err != nil {
 		t.Fatal(err)
@@ -349,6 +352,12 @@ func TestConstructorAndTransportFailClosed(t *testing.T) {
 		{"both tokens", func(c *Config) { c.TokenFile = "also" }},
 		{"wrong token env", func(c *Config) { c.TokenEnv = "HOME" }},
 		{"bad timeout", func(c *Config) { c.OperationTimeout = 31 * time.Minute }},
+		{"no bridge", func(c *Config) { c.Bridges = nil }},
+		{"management bridge", func(c *Config) { c.Bridges = []string{"vmbr0"} }},
+		{"management bridge among reviewed", func(c *Config) { c.Bridges = []string{"vmbr8", "vmbr0"} }},
+		{"unnamed bridge", func(c *Config) { c.Bridges = []string{"br8"} }},
+		{"bridge with a suffix", func(c *Config) { c.Bridges = []string{"vmbr8.100"} }},
+		{"duplicate bridge", func(c *Config) { c.Bridges = []string{"vmbr8", "vmbr8"} }},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			candidate := config
