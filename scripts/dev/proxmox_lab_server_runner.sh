@@ -33,6 +33,29 @@ echo "RUNNING" > "$STATUS_FILE"
 
 ts() { date +"[%Y-%m-%d %H:%M:%S]"; }
 
+# The Windows lab credential does not travel in the environment. It lives in a
+# root-owned file on this host, is checked for presence only, and is read at the
+# point of use by the process that needs it. The variable below names a PATH and
+# never a value.
+WINDOWS_CREDENTIAL_FILE="${RA8_LAB_WINDOWS_CREDENTIAL_FILE:-/etc/ra8-lab/windows-password}"
+
+# Reports presence as a boolean and nothing else: the file must exist, be a
+# regular non-empty file owned by the user running this script (root on the
+# Proxmox host), and be unreadable by group and other. The contents are never
+# read here, so no caller can turn a presence check into a disclosure.
+windows_credential_present() {
+  local file="$1" mode
+  [[ -f "$file" ]] || return 1
+  [[ -s "$file" ]] || return 1
+  [[ -O "$file" ]] || return 1
+  mode="$(stat -c '%a' "$file" 2>/dev/null)" || return 1
+  [[ "$mode" =~ ^[0-7]{3,4}$ ]] || return 1
+  if ((8#$mode & 8#077)); then
+    return 1
+  fi
+  return 0
+}
+
 echo "$(ts) Initializing background execution for profile '$PROFILE' (PID: $$)..."
 
 if [[ "$PROFILE" == "linux" ]]; then
@@ -51,11 +74,18 @@ elif [[ "$PROFILE" == "windows" ]]; then
   GATEWAY="10.250.8.1"
   GUEST_IP="10.250.8.20"
   GUEST_USER="Administrator"
-  GUEST_PASSWORD="${RA8_LAB_WINDOWS_PASSWORD:-}"
-  if [[ -z "$GUEST_PASSWORD" ]]; then
-    echo "$(ts) error: RA8_LAB_WINDOWS_PASSWORD must be provided through the runner environment."
+  if [[ -n "${RA8_LAB_WINDOWS_PASSWORD:-}" ]]; then
+    echo "$(ts) error: RA8_LAB_WINDOWS_PASSWORD is set in this runner's environment."
+    echo "$(ts) A credential in the environment is already readable from the process table and any crash dump."
+    echo "$(ts) Unset it and place the value in $WINDOWS_CREDENTIAL_FILE instead (root-owned, mode 0600)."
     exit 1
   fi
+  if ! windows_credential_present "$WINDOWS_CREDENTIAL_FILE"; then
+    echo "$(ts) error: Windows lab credential not present."
+    echo "$(ts) Expected a non-empty regular file at $WINDOWS_CREDENTIAL_FILE, owned by this user, mode 0600."
+    exit 1
+  fi
+  echo "$(ts) Windows lab credential present. Value not read at this point and never logged."
 else
   echo "$(ts) error: unknown profile '$PROFILE'"
   exit 1
@@ -96,6 +126,9 @@ cleanup() {
   else
     echo "$(ts) Preserving VM $VM_ID and network $BRIDGE (--keep=true)"
   fi
+  # The Windows inventory carries the credential at the point of use, so it does
+  # not outlive the run that needed it.
+  rm -f "$RUN_DIR/windows-inventory.ini"
   rm -f "$PID_FILE"
   if ((exit_code == 0)); then
     echo "SUCCESS" > "$STATUS_FILE"
@@ -424,14 +457,24 @@ elif [[ "$PROFILE" == "windows" ]]; then
     -r "$CONTROLLER_DIR/infra/ansible/requirements.yml" \
     -p "$COLLECTIONS_DIR"
 
+  # Point of use. The credential is copied byte for byte out of the root-owned
+  # file into the inventory the playbook reads, and never becomes a shell
+  # variable, an exported name, or a command-line argument on the way, so it
+  # cannot surface in a process listing or a dump of this script. The inventory
+  # is created 0600 before a byte is written and removed by cleanup().
   INVENTORY="$RUN_DIR/windows-inventory.ini"
-  cat > "$INVENTORY" <<EOF
-[lab_windows]
-ra8-lab-windows ansible_host=$GUEST_IP ansible_port=5985 ansible_user=$GUEST_USER ansible_password=$GUEST_PASSWORD ansible_connection=winrm ansible_winrm_transport=ntlm ansible_winrm_server_cert_validation=ignore
-
-[lab_windows:vars]
-ansible_host_key_checking=False
-EOF
+  if ! windows_credential_present "$WINDOWS_CREDENTIAL_FILE"; then
+    echo "$(ts) error: Windows lab credential is no longer present at $WINDOWS_CREDENTIAL_FILE."
+    exit 1
+  fi
+  install -m 600 /dev/null "$INVENTORY"
+  {
+    printf '[lab_windows]\n'
+    printf 'ra8-lab-windows ansible_host=%s ansible_port=5985 ansible_user=%s ansible_connection=winrm ansible_winrm_transport=ntlm ansible_winrm_server_cert_validation=ignore ansible_password=' \
+      "$GUEST_IP" "$GUEST_USER"
+    tr -d '\r\n' < "$WINDOWS_CREDENTIAL_FILE"
+    printf '\n\n[lab_windows:vars]\nansible_host_key_checking=False\n'
+  } > "$INVENTORY"
 
   echo "$(ts) Provisioning Windows Server Core and running CI through Ansible..."
   ANSIBLE_CONFIG="$CONTROLLER_DIR/infra/ansible/ansible.cfg" \

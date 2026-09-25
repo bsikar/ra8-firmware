@@ -21,6 +21,12 @@ import tempfile
 from typing import Any
 
 SSH_ALIAS = "pve"
+
+# The Windows lab credential lives in a root-owned file on the Proxmox host and
+# is read at the point of use by the runner. This controller never reads it,
+# never forwards it, and reports presence as a boolean and nothing else.
+WINDOWS_CREDENTIAL_FILE = "/etc/ra8-lab/windows-password"
+WINDOWS_CREDENTIAL_ENV = "RA8_LAB_WINDOWS_PASSWORD"
 DEFAULT_USER = "terraform-lab"
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 REPO_ROOT = os.path.dirname(os.path.dirname(SCRIPT_DIR))
@@ -165,6 +171,52 @@ def build_source_archive(output_path: str) -> int:
         shutil.rmtree(temp_dir, ignore_errors=True)
 
 
+def windows_credential_present() -> bool:
+    """Report whether the Proxmox host holds the Windows lab credential.
+
+    Runs a test on the host that answers with an exit status only. Nothing in
+    the command reads, prints, or transports the value, so a false answer and a
+    true answer differ by one bit and by nothing else.
+    """
+    probe = (
+        f"sudo -n test -f {WINDOWS_CREDENTIAL_FILE} && "
+        f"sudo -n test -s {WINDOWS_CREDENTIAL_FILE} && "
+        f"sudo -n test -O {WINDOWS_CREDENTIAL_FILE} && "
+        f"[ \"$(sudo -n stat -c %a {WINDOWS_CREDENTIAL_FILE})\" = 600 ]"
+    )
+    completed = subprocess.run(
+        ["ssh", "-o", "BatchMode=yes", "-o", "RequestTTY=no", SSH_ALIAS, probe],
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+        check=False,
+    )
+    return completed.returncode == 0
+
+
+def check_windows_credential() -> int:
+    """Gate a Windows run on the credential being in place, without reading it."""
+    if os.environ.get(WINDOWS_CREDENTIAL_ENV):
+        sys.stderr.write(
+            f"error: {WINDOWS_CREDENTIAL_ENV} is set in this shell's environment.\n"
+            "  The lab credential is no longer carried in the environment: a value there is\n"
+            "  readable from the process table and survives in shell history and crash dumps.\n"
+            f"  Unset it, and place the value on {SSH_ALIAS} at {WINDOWS_CREDENTIAL_FILE}.\n"
+        )
+        return 1
+    if not windows_credential_present():
+        sys.stderr.write(
+            f"error: Windows lab credential not present on {SSH_ALIAS}.\n"
+            f"  Expected a non-empty root-owned file at {WINDOWS_CREDENTIAL_FILE}, mode 0600.\n"
+            "  Create it on the host as root, for example:\n"
+            f"    install -d -m 700 -o root -g root {os.path.dirname(WINDOWS_CREDENTIAL_FILE)}\n"
+            f"    install -m 600 -o root -g root /dev/null {WINDOWS_CREDENTIAL_FILE}\n"
+            f"    # then write the value into {WINDOWS_CREDENTIAL_FILE} from a root editor\n"
+        )
+        return 1
+    print(f"    Windows lab credential: present on {SSH_ALIAS} (value not read)")
+    return 0
+
+
 def cmd_start(args: argparse.Namespace) -> int:
     """Start CI execution asynchronously on the Proxmox server."""
     profile = args.profile.lower()
@@ -184,6 +236,12 @@ def cmd_start(args: argparse.Namespace) -> int:
         sys.stderr.write(f"  • View live logs:  just infra::lab::logs {profile}\n")
         sys.stderr.write(f"  • Stop running job: just infra::lab::stop {profile}\n")
         return 1
+
+    if profile == "windows":
+        print(f"==> Checking the Windows lab credential on {SSH_ALIAS}...")
+        credential_status = check_windows_credential()
+        if credential_status != 0:
+            return credential_status
 
     run_id = os.urandom(8).hex()
     tar_path = os.path.join(tempfile.gettempdir(), f"ra8-lab-{profile}-{run_id}.tar")
