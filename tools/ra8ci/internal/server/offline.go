@@ -85,6 +85,9 @@ func offlineInput(entry spool.Entry, cat *catalog.Catalog) (store.LocalRunInput,
 		entry.Source.Repository == "" || entry.Source.CommitSHA == "" {
 		return store.LocalRunInput{}, store.ErrInvalid
 	}
+	if err := checkLocalEnvelopeIsStated(entry); err != nil {
+		return store.LocalRunInput{}, err
+	}
 	definition, found := cat.Task(entry.Task)
 	if !found || !definition.IsSafeLocal() || definition.Tier != entry.Tier ||
 		definition.Scope != entry.Scope || definition.DeadlineSeconds != entry.DeadlineSeconds ||
@@ -148,4 +151,43 @@ func offlineInput(entry spool.Entry, cat *catalog.Catalog) (store.LocalRunInput,
 		return store.LocalRunInput{}, store.ErrInvalid
 	}
 	return in, nil
+}
+
+// maxLocalEnvelope caps the wall-clock span a spooled record may state about
+// itself. A reviewed task's deadline is at most 86400 seconds (the ceiling
+// catalog.ValidateTask holds every task to), so no honest attempt at one can
+// span longer than that; the extra hour is slack for the spool write and for
+// skew between the two stamps, which are taken by the local host and not by
+// the server that reads them.
+const maxLocalEnvelope = 25 * time.Hour
+
+// checkLocalEnvelopeIsStated holds a spooled record's own envelope to two
+// stamps that can be subtracted.
+//
+// Neither stamp is validated anywhere else. A record arrives as client JSON, so
+// an absent started_at is the zero time rather than a missing field, and the
+// only stamp rule below is that the start is not AFTER the finish, which the
+// zero time passes trivially. What that buys the record is not a merely odd
+// duration: time.Time.Sub saturates, so FinishedAt.Sub(zero) is exactly
+// math.MaxInt64 nanoseconds, and that is what lands in the local run's
+// duration_ns in durable history, for a run the record itself never claimed to
+// have started. A start far enough in the past saturates the same way with
+// both stamps set, so the span is bounded here too rather than only checked
+// for a zero.
+//
+// The existing "start is not after finish" refusal at the end of offlineInput
+// is left where it is: it states a different thing (the stamps are in order),
+// and one rule per refusal is how that function already reads.
+func checkLocalEnvelopeIsStated(entry spool.Entry) error {
+	if entry.FinishedAt == nil || entry.FinishedAt.IsZero() {
+		return fmt.Errorf("%w: the spooled record states no finish", store.ErrInvalid)
+	}
+	if entry.StartedAt.IsZero() {
+		return fmt.Errorf("%w: the spooled record states no start", store.ErrInvalid)
+	}
+	if span := entry.FinishedAt.Sub(entry.StartedAt); span > maxLocalEnvelope {
+		return fmt.Errorf("%w: the spooled record's envelope spans %s, longer than any reviewed deadline",
+			store.ErrInvalid, span)
+	}
+	return nil
 }
