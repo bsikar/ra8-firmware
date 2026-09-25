@@ -1502,6 +1502,46 @@ type commitCoverage struct {
 // order-independent names and their JSON types are what a reader already
 // parses, and a field rename here would be a wire change dressed as a
 // refactor.
+// neverExercised names the covered tasks that no accumulated commit paired.
+//
+// shadow_evidence.go opens by saying that eighty clean pull requests are not
+// evidence for a task none of them exercised, and the accumulation enforces
+// that by simply not carrying such a task: it is in no TaskEvidence, so it is
+// in none of readiness's three lists and Settled() can answer true over an
+// evidence set that never touched it. Per-commit coverage does say so, once
+// per commit, which is the same fact repeated as many times as there are pull
+// requests and stated nowhere as the thing an operator has to act on.
+//
+// It is derived rather than counted: a task is never exercised when the
+// correspondence covers it on some commit (so a comparison was possible) and
+// the accumulation holds no evidence for it at all. Names are sorted, the
+// ordering convention the rest of the answer follows, because this is a set
+// and the order commits happened to skip a task in means nothing.
+//
+// It deliberately moves neither the readiness answer nor the exit status, the
+// rule #1605 set for an unplanned run: the decision is about the tasks the
+// evidence covers, and a task with no evidence is a gap in what was collected,
+// which is the operator's call to make and not this command's to fail over.
+func neverExercised(coverage []commitCoverage, evidence github.ShadowEvidence) []string {
+	exercised := make(map[string]bool, len(evidence.Tasks))
+	for _, task := range evidence.Tasks {
+		exercised[task.Task] = true
+	}
+	seen := make(map[string]bool)
+	names := []string{}
+	for _, commit := range coverage {
+		for _, task := range commit.NotExercised {
+			if exercised[task] || seen[task] {
+				continue
+			}
+			seen[task] = true
+			names = append(names, task)
+		}
+	}
+	sort.Strings(names)
+	return names
+}
+
 func coverageDocument(coverage []commitCoverage) []map[string]any {
 	document := make([]map[string]any, 0, len(coverage))
 	for _, commit := range coverage {
@@ -1628,6 +1668,13 @@ func githubShadowEvidence(in io.Reader, out io.Writer) error {
 		"threshold":        answer.Readiness.Threshold,
 		"settled":          answer.Readiness.Settled(),
 		"commits":          coverageDocument(answer.Coverage),
+		// A task the correspondence covers that no accumulated commit
+		// paired carries no evidence at all, so it is in none of
+		// ready/conflicting/insufficient and `settled` above can be
+		// true without it ever having been compared. Per-commit
+		// coverage says so once per commit; this says it once, as the
+		// gap in the collection that it is.
+		"never_exercised": emptyWhenNil(neverExercised(answer.Coverage, answer.Evidence)),
 		// The commits that graded nothing are named beside the commits
 		// themselves. A reader counting `commits` is reading the
 		// breadth the threshold was met across, and a pull request
@@ -1673,6 +1720,19 @@ func githubEvidencePage(in io.Reader, out io.Writer) error {
 	// than folded into it, the githubShadowCompare convention: a task
 	// selection that skipped a task is a normal commit, not a gap in the
 	// evidence, and folding them in would read as pairings nobody made.
+	// The tasks no commit exercised are named once, before the per-commit
+	// lines. They are the same fact those lines already carry, repeated
+	// once per pull request; stating it as a set is the only form an
+	// operator can act on, because the question it answers is whether
+	// anything was left out of the whole collection rather than out of
+	// one commit. The line is omitted when there are none: a "never
+	// exercised: none" on every clean run teaches a reader to skip it.
+	if names := neverExercised(answer.Coverage, answer.Evidence); len(names) > 0 {
+		if _, err := fmt.Fprintf(out, "\nnever exercised on any commit: %s\n",
+			strings.Join(names, ", ")); err != nil {
+			return fmt.Errorf("render shadow evidence: %w", err)
+		}
+	}
 	for _, commit := range answer.Coverage {
 		if len(commit.NotExercised) == 0 {
 			continue
