@@ -1073,6 +1073,23 @@ type reconcileUnplannedRun struct {
 	Identifier string `json:"identifier"`
 }
 
+// reconcileUnplannedStanding is one standing and the unplanned runs that
+// carry it.
+//
+// The per-run records below already say this one run at a time, and that is
+// the wrong shape for the question an operator actually arrives with: is
+// anything on this commit somebody else's. A listing of forty runs answers
+// that only by reading forty identifiers, and the two answers that matter
+// most, a stranger's run under a name of ours and a run of ours posted for
+// other work, are the two easiest to walk past.
+//
+// The runs are NAMED, never counted. A count sends a reader back to the list
+// to find which ones, which is the walk this exists to save.
+type reconcileUnplannedStanding struct {
+	Identifier string  `json:"identifier"`
+	Runs       []int64 `json:"runs"`
+}
+
 // reconcileReport is the whole survey of one commit.
 type reconcileReport struct {
 	Commit   string `json:"commit"`
@@ -1088,7 +1105,65 @@ type reconcileReport struct {
 	// settled while an operator still has a leftover run to look at.
 	Unplanned    int                     `json:"unplanned"`
 	UnplannedRun []reconcileUnplannedRun `json:"unplanned_runs"`
-	Tasks        []reconcileSurvey       `json:"tasks"`
+	// UnplannedStanding groups the runs above by what their identifier
+	// says about who posted them. It is derived from them and adds no
+	// fact: it moves neither Settled nor the exit status, for the reason
+	// Unplanned does not.
+	UnplannedStanding []reconcileUnplannedStanding `json:"unplanned_standing"`
+	Tasks             []reconcileSurvey            `json:"tasks"`
+}
+
+// unplannedStandings groups the runs no task plans by their identifier's
+// standing.
+//
+// The order is the package's own, from the least said about a run to the
+// most: absent, foreign, superseded, other subject, ours. It is taken from
+// the standings themselves rather than restated here, so a standing added to
+// the package cannot quietly fall out of this report, and it is deliberately
+// not alphabetical: "absent, foreign, other subject, ours, superseded" reads
+// as a list of five unrelated words.
+//
+// A standing no run carries is left out. A page of empty groups on every
+// clean survey teaches a reader to skip the whole field.
+//
+// A standing this build does not know is kept, in the order it was met,
+// rather than dropped. A run this function cannot place is the one an
+// operator most needs to see.
+func unplannedStandings(runs []reconcileUnplannedRun) []reconcileUnplannedStanding {
+	known := []github.ExternalIDStanding{
+		github.ExternalIDAbsent,
+		github.ExternalIDForeign,
+		github.ExternalIDSuperseded,
+		github.ExternalIDOtherSubject,
+		github.ExternalIDOurs,
+	}
+	order := make([]string, 0, len(known))
+	placed := make(map[string]bool, len(known))
+	grouped := make(map[string][]int64, len(known))
+	for _, standing := range known {
+		name := standing.String()
+		order = append(order, name)
+		placed[name] = true
+	}
+	for _, run := range runs {
+		if !placed[run.Identifier] {
+			order = append(order, run.Identifier)
+			placed[run.Identifier] = true
+		}
+		grouped[run.Identifier] = append(grouped[run.Identifier], run.ID)
+	}
+	standings := []reconcileUnplannedStanding{}
+	for _, identifier := range order {
+		named := grouped[identifier]
+		if len(named) == 0 {
+			continue
+		}
+		standings = append(standings, reconcileUnplannedStanding{
+			Identifier: identifier,
+			Runs:       named,
+		})
+	}
+	return standings
 }
 
 // surveyCheckRunPlan decides every planned run against one listing and reports
@@ -1194,6 +1269,7 @@ func surveyCheckRunPlan(planned []plannedCheckRun, published github.PublishedChe
 		})
 	}
 	report.Unplanned = len(report.UnplannedRun)
+	report.UnplannedStanding = unplannedStandings(report.UnplannedRun)
 	report.Settled = report.Posting == 0 && report.Waiting == 0 && report.Conflict == 0
 	return report, nil
 }

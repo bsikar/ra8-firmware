@@ -3831,3 +3831,179 @@ func TestAnOrdinaryEvidenceSetNamesNoJudgementWithoutARun(t *testing.T) {
 		t.Fatalf("a clean page carries the judged line:\n%s", page.String())
 	}
 }
+
+// An operator arrives at the survey with one question about the runs no task
+// plans: is any of this somebody else's. The per-run records answer it one
+// run at a time, so the report groups them by standing and names each run.
+func TestTheSurveyGroupsUnplannedRunsByStanding(t *testing.T) {
+	first, second := twoCatalogTasks(t)
+	plan := plannedRun(t, github.ModeAuthoritative, first, "failed")
+	retired := plannedRun(t, github.ModeAuthoritative, second, "succeeded")
+	ours := publishedAs(plan, 300, "completed", plan.Run.Conclusion, plan.Run.Title)
+	mine := publishedAs(retired, 301, "completed", retired.Run.Conclusion, retired.Run.Title)
+	stranger := mine
+	stranger.ID = 302
+	stranger.ExternalID = "jenkins-42"
+	unsigned := mine
+	unsigned.ID = 303
+	unsigned.ExternalID = ""
+
+	report, err := surveyCheckRunPlan([]plannedCheckRun{plan}, listing(ours, mine, stranger, unsigned))
+	if err != nil {
+		t.Fatalf("survey: %v", err)
+	}
+	want := []reconcileUnplannedStanding{
+		{Identifier: "absent", Runs: []int64{303}},
+		{Identifier: "foreign", Runs: []int64{302}},
+		{Identifier: "ours", Runs: []int64{301}},
+	}
+	if !reflect.DeepEqual(report.UnplannedStanding, want) {
+		t.Fatalf("standings = %+v, want %+v", report.UnplannedStanding, want)
+	}
+}
+
+// The standings are said in the package's own order, from the least said
+// about a run to the most, never alphabetically: read alphabetically the five
+// words are a list of unrelated states.
+func TestTheStandingsAreInThePackagesOwnOrder(t *testing.T) {
+	first, second := twoCatalogTasks(t)
+	plan := plannedRun(t, github.ModeAuthoritative, first, "failed")
+	retired := plannedRun(t, github.ModeAuthoritative, second, "succeeded")
+	mine := publishedAs(retired, 310, "completed", retired.Run.Conclusion, retired.Run.Title)
+	stranger := mine
+	stranger.ID = 311
+	stranger.ExternalID = "jenkins-42"
+
+	report, err := surveyCheckRunPlan([]plannedCheckRun{plan}, listing(mine, stranger))
+	if err != nil {
+		t.Fatalf("survey: %v", err)
+	}
+	if len(report.UnplannedStanding) != 2 {
+		t.Fatalf("standings = %+v", report.UnplannedStanding)
+	}
+	// The listing names ours first; the report still names foreign first.
+	if report.UnplannedStanding[0].Identifier != github.ExternalIDForeign.String() ||
+		report.UnplannedStanding[1].Identifier != github.ExternalIDOurs.String() {
+		t.Fatalf("standings = %+v", report.UnplannedStanding)
+	}
+}
+
+// Every unplanned run is named under exactly one standing. A run grouped
+// nowhere is a run an operator reading the grouping never sees at all.
+func TestEveryUnplannedRunIsNamedUnderOneStanding(t *testing.T) {
+	first, second := twoCatalogTasks(t)
+	plan := plannedRun(t, github.ModeAuthoritative, first, "failed")
+	retired := plannedRun(t, github.ModeAuthoritative, second, "succeeded")
+	mine := publishedAs(retired, 320, "completed", retired.Run.Conclusion, retired.Run.Title)
+	stranger := mine
+	stranger.ID = 321
+	stranger.ExternalID = "jenkins-42"
+	unsigned := mine
+	unsigned.ID = 322
+	unsigned.ExternalID = ""
+
+	report, err := surveyCheckRunPlan([]plannedCheckRun{plan}, listing(mine, stranger, unsigned))
+	if err != nil {
+		t.Fatalf("survey: %v", err)
+	}
+	named := map[int64]int{}
+	for _, standing := range report.UnplannedStanding {
+		for _, id := range standing.Runs {
+			named[id]++
+		}
+	}
+	if len(named) != len(report.UnplannedRun) {
+		t.Fatalf("named = %+v, runs = %+v", named, report.UnplannedRun)
+	}
+	for _, run := range report.UnplannedRun {
+		if named[run.ID] != 1 {
+			t.Fatalf("run %d named %d times", run.ID, named[run.ID])
+		}
+	}
+}
+
+// Two runs of one standing are named in the order the listing gave them, the
+// order the runs themselves are reported in. A grouping that re-sorted would
+// put the two halves of the report out of step.
+func TestRunsOfOneStandingKeepTheReportedOrder(t *testing.T) {
+	first, second := twoCatalogTasks(t)
+	plan := plannedRun(t, github.ModeAuthoritative, first, "failed")
+	retired := plannedRun(t, github.ModeAuthoritative, second, "succeeded")
+	mine := publishedAs(retired, 330, "completed", retired.Run.Conclusion, retired.Run.Title)
+	also := mine
+	also.ID = 331
+
+	report, err := surveyCheckRunPlan([]plannedCheckRun{plan}, listing(mine, also))
+	if err != nil {
+		t.Fatalf("survey: %v", err)
+	}
+	reported := []int64{}
+	for _, run := range report.UnplannedRun {
+		reported = append(reported, run.ID)
+	}
+	if len(report.UnplannedStanding) != 1 ||
+		!reflect.DeepEqual(report.UnplannedStanding[0].Runs, reported) {
+		t.Fatalf("standings = %+v, runs = %v", report.UnplannedStanding, reported)
+	}
+}
+
+// A standing no run carries is left out, and a commit the document accounts
+// for reports an empty list rather than a null one.
+func TestAnAccountedForCommitReportsNoStandings(t *testing.T) {
+	task := firstCatalogTask(t)
+	plan := plannedRun(t, github.ModeAuthoritative, task, "failed")
+	ours := publishedAs(plan, 340, "completed", plan.Run.Conclusion, plan.Run.Title)
+
+	report, err := surveyCheckRunPlan([]plannedCheckRun{plan}, listing(ours))
+	if err != nil {
+		t.Fatalf("survey: %v", err)
+	}
+	if len(report.UnplannedStanding) != 0 {
+		t.Fatalf("standings = %+v", report.UnplannedStanding)
+	}
+	encoded, err := json.Marshal(report)
+	if err != nil {
+		t.Fatalf("encode: %v", err)
+	}
+	if !strings.Contains(string(encoded), `"unplanned_standing":[]`) {
+		t.Fatalf("encoded = %s", encoded)
+	}
+}
+
+// The grouping is derived from runs already reported, so it moves neither the
+// settled answer nor the counts the exit status reads.
+func TestTheStandingsDoNotMoveTheSurveyAnswer(t *testing.T) {
+	first, second := twoCatalogTasks(t)
+	plan := plannedRun(t, github.ModeAuthoritative, first, "failed")
+	retired := plannedRun(t, github.ModeAuthoritative, second, "succeeded")
+	ours := publishedAs(plan, 350, "completed", plan.Run.Conclusion, plan.Run.Title)
+	stranger := publishedAs(retired, 351, "completed", retired.Run.Conclusion, retired.Run.Title)
+	stranger.ExternalID = "jenkins-42"
+
+	report, err := surveyCheckRunPlan([]plannedCheckRun{plan}, listing(ours, stranger))
+	if err != nil {
+		t.Fatalf("survey: %v", err)
+	}
+	if !report.Settled || report.Posting != 0 || report.Waiting != 0 || report.Conflict != 0 {
+		t.Fatalf("report = %+v", report)
+	}
+	if report.Unplanned != 1 || len(report.UnplannedStanding) != 1 {
+		t.Fatalf("report = %+v", report)
+	}
+}
+
+// A standing this build does not know is kept, in the order it was met. A run
+// the grouping cannot place is the one an operator most needs to see.
+func TestAnUnknownStandingIsKeptNotDropped(t *testing.T) {
+	standings := unplannedStandings([]reconcileUnplannedRun{
+		{ID: 360, Identifier: "ours"},
+		{ID: 361, Identifier: "ExternalIDStanding(9)"},
+	})
+	want := []reconcileUnplannedStanding{
+		{Identifier: "ours", Runs: []int64{360}},
+		{Identifier: "ExternalIDStanding(9)", Runs: []int64{361}},
+	}
+	if !reflect.DeepEqual(standings, want) {
+		t.Fatalf("standings = %+v, want %+v", standings, want)
+	}
+}
