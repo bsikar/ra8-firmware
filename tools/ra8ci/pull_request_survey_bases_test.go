@@ -90,16 +90,21 @@ func TestAnUnselectableCandidateDoesNotSpreadTheSet(t *testing.T) {
 
 // A base the survey could not answer for is not a base of its own: two
 // unanswered bases are not two branches.
+//
+// This is read off surveyedBases rather than off a page, because the page no
+// longer renders one: checkSurveyedBase refuses a selection aimed at no base
+// before the grouping is ever reached. The grouping rule is still the rule,
+// and this is the level it is now readable at. The page's own answer to a
+// blank base is pinned in pull_request_survey_base_test.go.
 func TestACandidateWithNoBaseIsNotABaseOfItsOwn(t *testing.T) {
-	unanswered := baseSelection(1593, "5555555555555555555555555555555555555555", "   ")
-
-	page := renderCaveatSurvey(t, caveatSurveyOf(
+	bases := surveyedBases([]surveyedPullRequest{
 		baseSelection(1589, "1111111111111111111111111111111111111111", "ra8ci/dev"),
-		unanswered,
-	))
+		baseSelection(1593, "5555555555555555555555555555555555555555", "   "),
+		baseSelection(1594, "6666666666666666666666666666666666666666", ""),
+	})
 
-	if strings.Contains(page, "base ") {
-		t.Fatalf("an unanswered base spread the set:\n%s", page)
+	if len(bases) != 0 {
+		t.Fatalf("two unanswered bases read as branches: %+v", bases)
 	}
 }
 

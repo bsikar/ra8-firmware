@@ -95,6 +95,9 @@ func RenderPullRequestSurvey(out io.Writer, report pullRequestSurveyReport) erro
 	if err := checkSurveyedHeadState(report); err != nil {
 		return err
 	}
+	if err := checkSurveyedBase(report); err != nil {
+		return err
+	}
 	if err := checkSurveySharedHeads(report); err != nil {
 		return err
 	}
@@ -361,6 +364,65 @@ func checkSurveyedHeadState(report pullRequestSurveyReport) error {
 		if candidate.Merged && strings.EqualFold(state, "open") {
 			return fmt.Errorf("%w: #%d is merged and is stated %s",
 				ErrPullRequestSurveyPageInvalid, candidate.Number, state)
+		}
+	}
+	return nil
+}
+
+// checkSurveyedBase refuses a selection aimed at no base.
+//
+// The listing is now read for who it answers for, for what it answers, for
+// the two words the page prints about the work and for the head facts the
+// caveats are made of. The base is the last document field a selection
+// carries onto this page, and it is the one the set-shaped section is built
+// from: surveyedBases groups the selections by it, and that section exists
+// because a pull request aimed at a release branch reads, on every other
+// line of this page, exactly like the rest of the set.
+//
+// A blank base does not render as a gap in a sentence. surveyedBases skips
+// it, by the key it groups on, so the candidate is simply absent from the
+// grouping: the page names the bases of the rest of the set and says nothing
+// at all about where this one is aimed. Worse is the shape that hides the
+// section outright. Two selections on one base and a third aimed at nothing
+// leave one key, the section is omitted for being a set aimed at one base,
+// and a page that exists to say the set is spread says the opposite by
+// saying nothing. That is the reading this check refuses: a survey that
+// could not answer for a base must not be stated as a set aimed at one.
+//
+// The skip in surveyedBases stays where it is. It is what keeps the grouping
+// from carrying an empty key, and it is reached on a page this check has
+// already refused.
+//
+// Only the selectable candidates are read, the rule checkSurveyedHeadState
+// keeps for the head facts and for the same reason: the grouping is derived
+// from the selections alone, and an unselectable candidate is dropped from
+// it deliberately, so where it was aimed is printed nowhere. It is the
+// deliberate contrast with checkSurveyedSubject, which reads every candidate
+// because every candidate's number and commit is printed.
+//
+// It is read AFTER the head state, so a selection that is merged and aimed
+// at nothing is refused as the contradiction the caveat section would have
+// stated, and BEFORE the shared heads, so a grouping refusal never names a
+// candidate this page could not have placed.
+//
+// Whitespace is not a statement, the rule every other check on this page
+// keeps: surveyedBases trims before it groups, so a base of three spaces is
+// skipped exactly like a blank one.
+//
+// Nothing a real survey writes is refused. The base comes straight off the
+// pull request GitHub answered with, and the head reader refuses a pull
+// request whose base repository is not ours before it ever reaches here.
+//
+// The refusal is the page's existing invalid sentinel and is not a bound. A
+// candidate answered for wrongly is not a long page, it is a wrong one.
+func checkSurveyedBase(report pullRequestSurveyReport) error {
+	for _, candidate := range report.PullRequests {
+		if !candidate.Selectable {
+			continue
+		}
+		if strings.TrimSpace(candidate.BaseRef) == "" {
+			return fmt.Errorf("%w: #%d is selectable and is aimed at no base",
+				ErrPullRequestSurveyPageInvalid, candidate.Number)
 		}
 	}
 	return nil
