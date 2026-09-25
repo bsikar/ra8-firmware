@@ -22,12 +22,35 @@ import (
 	"strings"
 	"time"
 
+	"github.com/bsikar/ra8-firmware/tools/ra8ci/internal/correlate"
 	"github.com/bsikar/ra8-firmware/tools/ra8ci/internal/store"
 
 	"github.com/bsikar/ra8-firmware/tools/ra8ci/internal/mtls"
 )
 
 const maxResponseBytes = 1 << 20
+
+// ErrInvalidCorrelationID names an identifier the server would refuse to echo.
+// It is reported rather than sanitised: a caller that believes it pinned a
+// thread across the requests of one job, and silently got a different one on
+// every request, is worse off than one told its identifier was unusable.
+var ErrInvalidCorrelationID = errors.New("invalid run API correlation identifier")
+
+// WithCorrelationID pins one identifier to every request made under the
+// returned context. A CI job that submits a run, polls it and reads its logs
+// makes many requests about one piece of work; pinning is what ties them
+// together in the server output an operator later reads. Without it each
+// request carries its own freshly minted thread.
+func WithCorrelationID(ctx context.Context, id string) (context.Context, error) {
+	pinned, ok := correlate.WithID(ctx, id)
+	if !ok {
+		return pinned, ErrInvalidCorrelationID
+	}
+	return pinned, nil
+}
+
+// CorrelationIDFrom reports the identifier pinned to ctx, or "" when none is.
+func CorrelationIDFrom(ctx context.Context) string { return correlate.IDFrom(ctx) }
 
 // Config contains the server endpoint and the caller's mutually authenticated identity.
 type Config struct {
@@ -271,6 +294,13 @@ func (c *Client) do(ctx context.Context, method, path, idempotencyKey string, bo
 	if idempotencyKey != "" {
 		request.Header.Set("Idempotency-Key", idempotencyKey)
 	}
+	// Every request carries a thread, pinned by the caller when one job spans
+	// several requests, minted here otherwise. The server mints its own when
+	// this header is absent, so sending one only ever decides WHICH identifier
+	// the request is recorded under, never whether it is served.
+	if id := correlate.Outgoing(ctx); id != "" {
+		request.Header.Set(correlate.Header, id)
+	}
 	response, err := c.http.Do(request)
 	if err != nil {
 		return err
@@ -281,6 +311,17 @@ func (c *Client) do(ctx context.Context, method, path, idempotencyKey string, bo
 		return errors.New("run API response is unreadable or exceeds limit")
 	}
 	if response.StatusCode < 200 || response.StatusCode >= 300 {
+		// Report the thread the server ANSWERED with, from the header it
+		// adopted first and the problem document second, never from what was
+		// sent: an identifier that came back from nowhere would name a request
+		// the server may never have recorded.
+		problem := struct {
+			CorrelationID string `json:"correlation_id"`
+		}{}
+		_ = json.Unmarshal(raw, &problem)
+		if thread := correlate.Served(response.Header.Get(correlate.Header), problem.CorrelationID); thread != "" {
+			return fmt.Errorf("run API returned HTTP %d [correlation %s]", response.StatusCode, thread)
+		}
 		return fmt.Errorf("run API returned HTTP %d", response.StatusCode)
 	}
 	if output != nil {

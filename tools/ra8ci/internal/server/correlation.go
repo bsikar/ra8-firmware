@@ -4,9 +4,9 @@
 package server
 
 import (
-	"crypto/rand"
-	"encoding/hex"
 	"net/http"
+
+	"github.com/bsikar/ra8-firmware/tools/ra8ci/internal/correlate"
 )
 
 // correlationHeader carries one request's identifier on the way in and on the
@@ -14,17 +14,17 @@ import (
 // a correlation ID alongside its body limit, idempotency scope and
 // retryability; without one, an operator holding a 503 has no thread back to
 // the audit rows and server output that request produced.
-const correlationHeader = "X-Correlation-Id"
+//
+// The rule itself lives in internal/correlate so this server and every client
+// that speaks to it apply exactly one rule. What is accepted here is what a
+// client is willing to send, character for character.
+const correlationHeader = correlate.Header
 
-// correlationIDBytes is the minted length in bytes before hex encoding. A
-// request identifier only has to stay distinct inside a bounded window of
-// traffic, and 128 bits does that with room to spare.
-const correlationIDBytes = 16
+// correlationIDBytes is the minted length in bytes before hex encoding.
+const correlationIDBytes = correlate.IDBytes
 
-// maxCorrelationID bounds an identifier a caller supplied. Long enough for a
-// UUID with braces or a build identifier carried down from CI, short enough
-// that it can be read in a line of output.
-const maxCorrelationID = 64
+// maxCorrelationID bounds an identifier a caller supplied.
+const maxCorrelationID = correlate.MaxID
 
 // withCorrelation gives every request an identifier and returns it on the
 // response before the handler runs, so a body written by any path (a problem
@@ -52,29 +52,9 @@ func withCorrelation(next http.Handler) http.Handler {
 // server output, so a value carrying a newline, a control byte, a space or a
 // non-ASCII rune is replaced rather than reflected: reflecting it would let a
 // caller choose what a later reader sees around it.
-func validCorrelationID(id string) bool {
-	if len(id) == 0 || len(id) > maxCorrelationID {
-		return false
-	}
-	for i := 0; i < len(id); i++ {
-		c := id[i]
-		switch {
-		case c >= 'a' && c <= 'z', c >= 'A' && c <= 'Z', c >= '0' && c <= '9':
-		case c == '-', c == '_', c == '.', c == '~':
-		default:
-			return false
-		}
-	}
-	return true
-}
+func validCorrelationID(id string) bool { return correlate.Valid(id) }
 
-// newCorrelationID mints an identifier. rand.Read is documented never to
-// return an error, and an identifier is not a secret: a failure here must not
-// be able to refuse a request that would otherwise have been served.
-func newCorrelationID() string {
-	var raw [correlationIDBytes]byte
-	if _, err := rand.Read(raw[:]); err != nil {
-		return ""
-	}
-	return hex.EncodeToString(raw[:])
-}
+// newCorrelationID mints an identifier. An identifier is not a secret: a
+// failure to mint one must not be able to refuse a request that would
+// otherwise have been served.
+func newCorrelationID() string { return correlate.New() }
