@@ -68,6 +68,9 @@ func RenderReconcileSurvey(out io.Writer, report reconcileReport) error {
 	if err := checkRenderedSurveyBounds(report); err != nil {
 		return err
 	}
+	if err := checkReconcileSurveyRuns(report); err != nil {
+		return err
+	}
 	if err := checkReconcileSurveyCounts(report); err != nil {
 		return err
 	}
@@ -149,6 +152,50 @@ func checkRenderedSurveyBounds(report reconcileReport) error {
 		if len(standing.Runs) > maxRenderedSurveyRuns {
 			return fmt.Errorf("%w: %s carries %d runs no task plans, %d at most",
 				ErrReconcilePageTooLarge, standing.Identifier, len(standing.Runs), maxRenderedSurveyRuns)
+		}
+	}
+	return nil
+}
+
+// checkReconcileSurveyRuns refuses a survey that answers for one run more
+// than once.
+//
+// The unplanned runs are the listing the standings are checked against, and
+// nothing checked the listing itself. checkReconcileSurveyStandings reads it
+// into a map keyed by run, so a run listed twice collapses into whichever
+// answer came last: a group standing that run under the identifier the FIRST
+// listing gave it is then refused as standing somewhere else, and the reader
+// is sent after a run the page has just described wrongly. The count check
+// does not catch it either, because it counts the listing's length and a
+// repeat lengthens it.
+//
+// A run listed both as unplanned and under a task is the same finding from
+// the other side. The two listings are meant to be disjoint: `UnplannedRuns`
+// is given the planned names and keeps back everything under them, so a run
+// in both is a document that contradicts itself about whether any task plans
+// that run at all. Both of the page's grouping sections are derived from
+// those listings, and the run would be read into both.
+//
+// Neither is a size bound. The listing is bounded where it is read and the
+// page never prints it whole; a repeat is not a long page, it is a wrong one.
+//
+// The refusals say where the run stands, in the order the page states the
+// groupings: the reader's next move is that run.
+func checkReconcileSurveyRuns(report reconcileReport) error {
+	listed := make(map[int64]struct{}, len(report.UnplannedRun))
+	for _, run := range report.UnplannedRun {
+		if _, twice := listed[run.ID]; twice {
+			return fmt.Errorf("%w: run %d is listed more than once as one no task plans",
+				ErrReconcilePageInvalid, run.ID)
+		}
+		listed[run.ID] = struct{}{}
+	}
+	for _, task := range report.Tasks {
+		for _, run := range task.Published {
+			if _, unplanned := listed[run.ID]; unplanned {
+				return fmt.Errorf("%w: run %d is listed as one no task plans and under %s",
+					ErrReconcilePageInvalid, run.ID, task.Name)
+			}
 		}
 	}
 	return nil
