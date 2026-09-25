@@ -734,3 +734,166 @@ func TestPublishCheckRunRefusesTheDocumentBeforeBuildingAPublisher(t *testing.T)
 		})
 	}
 }
+
+// requiredChecksEnv declares a correspondence covering one catalog task and
+// returns that task, so the gate plan has something to plan for.
+func requiredChecksEnv(t *testing.T, mode string) string {
+	t.Helper()
+	task := firstCatalogTask(t)
+	t.Setenv(github.EnvCheckRunMode, mode)
+	t.Setenv(github.EnvShadowCorrespondenceFile, writeCorrespondence(t, `{"`+task+`":"build"}`))
+	return task
+}
+
+func decodeRequiredChecks(t *testing.T, out *bytes.Buffer) map[string]any {
+	t.Helper()
+	var report map[string]any
+	if err := json.Unmarshal(out.Bytes(), &report); err != nil {
+		t.Fatalf("report is not JSON: %v (%q)", err, out.String())
+	}
+	return report
+}
+
+func requiredCheckList(t *testing.T, report map[string]any, field string) []string {
+	t.Helper()
+	raw, present := report[field]
+	if !present {
+		t.Fatalf("report has no %q section", field)
+	}
+	values, ok := raw.([]any)
+	if !ok {
+		t.Fatalf("%q is %T, want a list", field, raw)
+	}
+	out := make([]string, 0, len(values))
+	for _, value := range values {
+		text, ok := value.(string)
+		if !ok {
+			t.Fatalf("%q carries %T, want a string", field, value)
+		}
+		out = append(out, text)
+	}
+	return out
+}
+
+func TestRequiredChecksPlansTheGateForTheCoveredTasks(t *testing.T) {
+	task := requiredChecksEnv(t, "authoritative")
+	var out bytes.Buffer
+	if err := githubRequiredChecks(strings.NewReader(`{"required":[]}`), &out); err != nil {
+		t.Fatalf("plan refused: %v", err)
+	}
+	report := decodeRequiredChecks(t, &out)
+	add := requiredCheckList(t, report, "add")
+	want := "ra8ci / " + task
+	if len(add) != 1 || add[0] != want {
+		t.Fatalf("add = %v, want [%s]", add, want)
+	}
+	if report["may_block_merges"] != true {
+		t.Fatalf("may_block_merges = %v for an authoritative deployment", report["may_block_merges"])
+	}
+	if report["no_change"] != false {
+		t.Fatalf("no_change = %v for a plan that adds a context", report["no_change"])
+	}
+}
+
+// A shadow deployment plans no additions: a shadow run reports neutral whatever
+// the task did, so a required check pointed at one is satisfied by a task that
+// failed.
+func TestRequiredChecksAddsNothingInShadowMode(t *testing.T) {
+	requiredChecksEnv(t, "shadow")
+	var out bytes.Buffer
+	if err := githubRequiredChecks(strings.NewReader(`{"required":[]}`), &out); err != nil {
+		t.Fatalf("plan refused: %v", err)
+	}
+	report := decodeRequiredChecks(t, &out)
+	if add := requiredCheckList(t, report, "add"); len(add) != 0 {
+		t.Fatalf("shadow plan adds %v", add)
+	}
+	if report["may_block_merges"] != false {
+		t.Fatalf("may_block_merges = %v for a shadow deployment", report["may_block_merges"])
+	}
+	if report["no_change"] != true {
+		t.Fatalf("no_change = %v for a shadow plan over an empty gate", report["no_change"])
+	}
+}
+
+// The gate carries contexts this plane does not own. They are reported so the
+// operator sees the whole list, and never proposed for removal.
+func TestRequiredChecksLeavesForeignContextsAlone(t *testing.T) {
+	requiredChecksEnv(t, "authoritative")
+	var out bytes.Buffer
+	input := `{"required":["CodeQL","build (ubuntu-latest)"]}`
+	if err := githubRequiredChecks(strings.NewReader(input), &out); err != nil {
+		t.Fatalf("plan refused: %v", err)
+	}
+	report := decodeRequiredChecks(t, &out)
+	foreign := requiredCheckList(t, report, "foreign")
+	if len(foreign) != 2 || foreign[0] != "CodeQL" || foreign[1] != "build (ubuntu-latest)" {
+		t.Fatalf("foreign = %v", foreign)
+	}
+	if remove := requiredCheckList(t, report, "remove"); len(remove) != 0 {
+		t.Fatalf("plan proposes removing %v, which it does not own", remove)
+	}
+}
+
+// An empty section renders as [] rather than null, so two plans diff against
+// each other instead of one of them missing a field.
+func TestRequiredChecksRendersEmptySectionsAsLists(t *testing.T) {
+	requiredChecksEnv(t, "authoritative")
+	var out bytes.Buffer
+	if err := githubRequiredChecks(strings.NewReader(`{"required":[]}`), &out); err != nil {
+		t.Fatalf("plan refused: %v", err)
+	}
+	if strings.Contains(out.String(), "null") {
+		t.Fatalf("report carries a null section: %q", out.String())
+	}
+	for _, field := range []string{"add", "remove", "keep", "foreign"} {
+		requiredCheckList(t, decodeRequiredChecks(t, &out), field)
+	}
+}
+
+func TestRequiredChecksRefusesInputItCannotRead(t *testing.T) {
+	cases := map[string]string{
+		"not an object":      `["ra8ci / build"]`,
+		"unknown field":      `{"required":[],"contexts":[]}`,
+		"trailing document":  `{"required":[]}{"required":[]}`,
+		"padded context":     `{"required":[" CodeQL "]}`,
+		"same context twice": `{"required":["CodeQL","CodeQL"]}`,
+	}
+	for name, input := range cases {
+		t.Run(name, func(t *testing.T) {
+			requiredChecksEnv(t, "authoritative")
+			var out bytes.Buffer
+			if err := githubRequiredChecks(strings.NewReader(input), &out); err == nil {
+				t.Fatal("unreadable input accepted")
+			}
+			if out.Len() != 0 {
+				t.Fatalf("a refused plan wrote %q", out.String())
+			}
+		})
+	}
+}
+
+func TestRequiredChecksRefusesWhenCheckRunPublishingIsNotConfigured(t *testing.T) {
+	t.Setenv(github.EnvCheckRunMode, "")
+	os.Unsetenv(github.EnvCheckRunMode)
+	t.Setenv(github.EnvShadowCorrespondenceFile, "")
+	os.Unsetenv(github.EnvShadowCorrespondenceFile)
+
+	var out bytes.Buffer
+	if err := githubRequiredChecks(strings.NewReader(`{"required":[]}`), &out); err == nil {
+		t.Fatal("planned a gate with nothing configured")
+	}
+	if out.Len() != 0 {
+		t.Fatalf("a refused plan wrote %q", out.String())
+	}
+}
+
+// The subcommand is dispatched by name, and an unknown one is refused before
+// the environment is read.
+func TestRequiredChecksIsDispatchedByName(t *testing.T) {
+	if err := githubCommand(context.Background(), []string{"required-check"}); err == nil {
+		t.Fatal("a misspelled subcommand was accepted")
+	} else if !strings.Contains(err.Error(), "required-checks") {
+		t.Fatalf("usage does not name the subcommand: %v", err)
+	}
+}

@@ -512,7 +512,7 @@ func runAgent(ctx context.Context) error {
 // writes, and it says so in its own documentation.
 func githubCommand(ctx context.Context, args []string) error {
 	if len(args) != 1 {
-		return errors.New("usage: ra8ci github check|shadow|shadow-compare|publish-check-run")
+		return errors.New("usage: ra8ci github check|shadow|shadow-compare|publish-check-run|required-checks")
 	}
 	switch args[0] {
 	case "check":
@@ -523,8 +523,10 @@ func githubCommand(ctx context.Context, args []string) error {
 		return githubShadowCompare(os.Stdin, os.Stdout)
 	case "publish-check-run":
 		return githubPublishCheckRuns(ctx, os.Stdin, os.Stdout)
+	case "required-checks":
+		return githubRequiredChecks(os.Stdin, os.Stdout)
 	default:
-		return errors.New("usage: ra8ci github check|shadow|shadow-compare|publish-check-run")
+		return errors.New("usage: ra8ci github check|shadow|shadow-compare|publish-check-run|required-checks")
 	}
 }
 
@@ -760,6 +762,89 @@ func githubPublishCheckRuns(ctx context.Context, in io.Reader, out io.Writer) er
 		}
 	}
 	return nil
+}
+
+// maxRequiredCheckBytes bounds the gate document this reads. A repository's
+// required-context list is a few dozen short strings, so this is room to spare
+// and still a refusal rather than an unbounded read.
+const maxRequiredCheckBytes = 64 << 10
+
+// requiredCheckInput is the wire shape this command reads: the contexts branch
+// protection requires today. It is a document rather than a fetch for the same
+// reason the shadow comparison is: the plan is read before anything is changed,
+// and a command that went and collected the gate itself would be one step from
+// changing it.
+type requiredCheckInput struct {
+	Required []string `json:"required"`
+}
+
+// githubRequiredChecks reports what branch protection should require, given
+// what it requires today. It plans; it changes nothing, here or on GitHub.
+//
+// The mode comes from the environment, like every other check-run command, and
+// it decides the whole answer: a shadow deployment plans no additions at all,
+// because a shadow run reports neutral whatever the task did and a required
+// check satisfied by a failing task is worse than no gate.
+func githubRequiredChecks(in io.Reader, out io.Writer) error {
+	loaded, err := catalog.Load()
+	if err != nil {
+		return fmt.Errorf("load task catalog: %w", err)
+	}
+	names := loaded.Names()
+	config, enabled, err := github.LoadCheckRunConfigFromEnv(names)
+	if err != nil {
+		return err
+	}
+	if !enabled {
+		return fmt.Errorf("GitHub check-run publishing is not configured: set %s",
+			github.EnvShadowCorrespondenceFile)
+	}
+
+	var document requiredCheckInput
+	decoder := json.NewDecoder(io.LimitReader(in, maxRequiredCheckBytes+1))
+	decoder.DisallowUnknownFields()
+	if err := decoder.Decode(&document); err != nil {
+		return fmt.Errorf("read the required contexts: %w", err)
+	}
+	if decoder.More() {
+		return errors.New("read the required contexts: trailing content after the document")
+	}
+	if decoder.InputOffset() > maxRequiredCheckBytes {
+		return fmt.Errorf("read the required contexts: larger than %d bytes", maxRequiredCheckBytes)
+	}
+
+	// The gate is planned for the tasks the declared correspondence covers,
+	// not for the whole catalog. A task with no Actions job to compare
+	// against has no shadow evidence behind it, and #1481 holds the
+	// required-check move until that evidence exists.
+	covered := config.Correspondence.Tasks()
+	plan, err := github.PlanRequiredChecks(config.Mode, covered, document.Required)
+	if err != nil {
+		return fmt.Errorf("plan the required checks: %w", err)
+	}
+
+	encoder := json.NewEncoder(out)
+	encoder.SetIndent("", "  ")
+	return encoder.Encode(map[string]any{
+		"mode":             config.Mode.String(),
+		"may_block_merges": config.Mode == github.ModeAuthoritative,
+		"catalog_digest":   loaded.Digest(),
+		"planned_tasks":    len(covered),
+		"no_change":        plan.NoChange(),
+		"add":              emptyWhenNil(plan.Add),
+		"remove":           emptyWhenNil(plan.Remove),
+		"keep":             emptyWhenNil(plan.Keep),
+		"foreign":          emptyWhenNil(plan.Foreign),
+	})
+}
+
+// emptyWhenNil renders an empty list as [] rather than null, so a reader
+// diffing two plans sees an empty section instead of a missing one.
+func emptyWhenNil(values []string) []string {
+	if values == nil {
+		return []string{}
+	}
+	return values
 }
 
 // githubShadowConfig reports the check-run configuration this process would
