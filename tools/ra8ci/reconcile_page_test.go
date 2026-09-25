@@ -5,6 +5,7 @@ package main
 
 import (
 	"bytes"
+	"encoding/json"
 	"errors"
 	"strings"
 	"testing"
@@ -159,5 +160,145 @@ func TestAnOversizeSurveyIsRefusedRatherThanCut(t *testing.T) {
 func TestTheSurveyPageCountsInWords(t *testing.T) {
 	if surveyPlural(1, "task", "tasks") != "task" || surveyPlural(0, "task", "tasks") != "tasks" {
 		t.Fatal("the count is not written as a person writes it")
+	}
+}
+
+// documentOf writes a survey the way the surveying command writes it, so the
+// page command is tested against the bytes it will actually be handed rather
+// than a value passed in memory.
+func documentOf(t *testing.T, report reconcileReport) string {
+	t.Helper()
+	document := &bytes.Buffer{}
+	encoder := json.NewEncoder(document)
+	encoder.SetIndent("", "  ")
+	if err := encoder.Encode(report); err != nil {
+		t.Fatalf("encode survey: %v", err)
+	}
+	return document.String()
+}
+
+// The command's whole job: a survey document in, the page out. It is the same
+// page the renderer writes, because a second rendering path is a second page
+// to keep in step.
+func TestTheReconcilePageCommandWritesThePage(t *testing.T) {
+	task := firstCatalogTask(t)
+	plan := plannedRun(t, github.ModeAuthoritative, task, "failed")
+	report := surveyOf(t, []plannedCheckRun{plan}, listing())
+
+	page := &bytes.Buffer{}
+	if err := githubReconcilePage(strings.NewReader(documentOf(t, report)), page); err != nil {
+		t.Fatalf("reconcile page: %v", err)
+	}
+	if page.String() != renderedSurvey(t, report) {
+		t.Fatalf("page %q is not the survey's own page", page)
+	}
+}
+
+// A conflict is the answer, so it reaches the exit status here exactly as it
+// does from the surveying command, and the page is written first: a verdict
+// carried only by an exit status is one nobody can read.
+func TestTheReconcilePageCommandCarriesTheConflictVerdict(t *testing.T) {
+	task := firstCatalogTask(t)
+	plan := plannedRun(t, github.ModeAuthoritative, task, "failed")
+	stranger := publishedAs(plan, 201, "completed", plan.Run.Conclusion, plan.Run.Title)
+	stranger.ExternalID = ""
+	report := surveyOf(t, []plannedCheckRun{plan}, listing(stranger))
+
+	page := &bytes.Buffer{}
+	err := githubReconcilePage(strings.NewReader(documentOf(t, report)), page)
+	if err == nil {
+		t.Fatal("a conflicting survey came back without a verdict")
+	}
+	if !strings.Contains(err.Error(), plan.Task) || !strings.Contains(err.Error(), report.Commit) {
+		t.Fatalf("verdict %q does not name the task on its commit", err)
+	}
+	if !strings.Contains(page.String(), "conflicting: "+plan.Task) {
+		t.Fatalf("page %q was not written above the verdict", page)
+	}
+}
+
+// The verdict names every conflicting task, and it is the survey's own
+// decision that picks them rather than a second reading of the runs.
+func TestTheConflictVerdictNamesEveryConflictingTask(t *testing.T) {
+	first, second := twoCatalogTasks(t)
+	one := plannedRun(t, github.ModeAuthoritative, first, "failed")
+	other := plannedRun(t, github.ModeAuthoritative, second, "failed")
+	strangerOne := publishedAs(one, 202, "completed", one.Run.Conclusion, one.Run.Title)
+	strangerOne.ExternalID = ""
+	strangerOther := publishedAs(other, 203, "completed", other.Run.Conclusion, other.Run.Title)
+	strangerOther.ExternalID = ""
+
+	report := surveyOf(t, []plannedCheckRun{one, other}, listing(strangerOne, strangerOther))
+	err := surveyConflictVerdict(report)
+	if err == nil {
+		t.Fatal("two conflicting tasks came back without a verdict")
+	}
+	for _, task := range []string{one.Task, other.Task} {
+		if !strings.Contains(err.Error(), task) {
+			t.Fatalf("verdict %q does not name %s", err, task)
+		}
+	}
+}
+
+// A settled survey returns nothing at all: the page is the whole answer.
+func TestASettledSurveyCarriesNoVerdict(t *testing.T) {
+	task := firstCatalogTask(t)
+	plan := plannedRun(t, github.ModeAuthoritative, task, "failed")
+	settled := publishedAs(plan, 204, "completed", plan.Run.Conclusion, plan.Run.Title)
+	report := surveyOf(t, []plannedCheckRun{plan}, listing(settled))
+
+	if err := surveyConflictVerdict(report); err != nil {
+		t.Fatalf("settled survey carried a verdict: %v", err)
+	}
+}
+
+// A field this build cannot state is refused rather than ignored. A newer
+// build's survey rendered by an older page would read as a commit with
+// nothing on it but the parts this one happens to know.
+func TestAFieldThePageCannotStateIsRefused(t *testing.T) {
+	task := firstCatalogTask(t)
+	plan := plannedRun(t, github.ModeAuthoritative, task, "failed")
+	document := documentOf(t, surveyOf(t, []plannedCheckRun{plan}, listing()))
+	document = strings.Replace(document, "{\n", "{\n  \"disputed_standing\": [],\n", 1)
+
+	page := &bytes.Buffer{}
+	if err := githubReconcilePage(strings.NewReader(document), page); err == nil {
+		t.Fatal("a document with an unknown field was rendered")
+	}
+	if page.Len() != 0 {
+		t.Fatalf("page %q was written above the refusal", page)
+	}
+}
+
+// Neither an empty document nor a commit with no tasks is a survey, and a
+// "settled" line over nothing at all is the one reading this must never
+// produce.
+func TestADocumentThatIsNotASurveyIsRefused(t *testing.T) {
+	for _, document := range []string{
+		"{}",
+		`{"commit":"","tasks":[]}`,
+		`{"commit":"0d9ab2e5f01c4b4b8a1b6d7f6b2b9c0f1a2b3c4d","tasks":[]}`,
+	} {
+		page := &bytes.Buffer{}
+		if err := githubReconcilePage(strings.NewReader(document), page); err == nil {
+			t.Fatalf("document %q was rendered as a survey", document)
+		}
+		if page.Len() != 0 {
+			t.Fatalf("page %q was written above the refusal", page)
+		}
+	}
+}
+
+// Two surveys in one stream are two answers about two commits, and rendering
+// the first silently would state one of them as the whole reading.
+func TestASecondSurveyInTheStreamIsRefused(t *testing.T) {
+	task := firstCatalogTask(t)
+	plan := plannedRun(t, github.ModeAuthoritative, task, "failed")
+	document := documentOf(t, surveyOf(t, []plannedCheckRun{plan}, listing()))
+
+	page := &bytes.Buffer{}
+	err := githubReconcilePage(strings.NewReader(document+document), page)
+	if err == nil || !strings.Contains(err.Error(), "trailing content") {
+		t.Fatalf("err = %v, want a refusal of the trailing survey", err)
 	}
 }
