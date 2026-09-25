@@ -94,7 +94,11 @@ func RenderPullRequestSurvey(out io.Writer, report pullRequestSurveyReport) erro
 	}
 
 	page := &bytes.Buffer{}
-	if report.Unselectable == 0 && len(report.SharedHeads) == 0 {
+	// The readiness question is answered once, by candidateSetIsReady,
+	// and this line states that answer. Writing the expression out again
+	// here is how a page that says a set is ready ends up over a command
+	// that refuses it.
+	if candidateSetIsReady(report) {
 		fmt.Fprintf(page, "ready: every candidate can carry %s evidence on a commit of its own\n",
 			report.Workflow)
 	} else {
