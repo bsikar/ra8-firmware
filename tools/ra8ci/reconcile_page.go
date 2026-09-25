@@ -179,6 +179,14 @@ func checkRenderedSurveyBounds(report reconcileReport) error {
 // identifier is the whole of what groups a standing's runs, and a blank one
 // prints "no task plans, : #7, #9".
 //
+// It is the same rule that reads a contested run's name and task and leaves
+// an unplanned run's alone. A contested line names both, "#7 under ra8ci /
+// build (build)", and the name is the point of the section: a stranger's run
+// under a name we plan is a name branch protection may one day require, and
+// "#7 under  (build)" is that finding with the answer missing. An unplanned
+// standing prints its runs as bare numbers, so the name in that listing is
+// a field nobody would have read here.
+//
 // Whitespace is not a statement. A commit of three spaces is a blank commit
 // wearing a value, and it would print as one.
 //
@@ -207,6 +215,20 @@ func checkSurveySubject(report reconcileReport) error {
 		if strings.TrimSpace(standing.Identifier) == "" {
 			return fmt.Errorf("%w: under a name we plan, a group of %d runs carries no standing",
 				ErrReconcilePageInvalid, len(standing.Runs))
+		}
+		for _, run := range standing.Runs {
+			// The check run is read first because it is what the
+			// section is for: the task beside it says which of our
+			// plans wanted that name, and a reader who has the name
+			// can already go and look.
+			if strings.TrimSpace(run.Name) == "" {
+				return fmt.Errorf("%w: run %d grouped under %s names no check run",
+					ErrReconcilePageInvalid, run.ID, standing.Identifier)
+			}
+			if strings.TrimSpace(run.Task) == "" {
+				return fmt.Errorf("%w: run %d grouped under %s names no task",
+					ErrReconcilePageInvalid, run.ID, standing.Identifier)
+			}
 		}
 	}
 	for _, standing := range report.UnplannedStanding {
