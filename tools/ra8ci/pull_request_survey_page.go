@@ -98,6 +98,9 @@ func RenderPullRequestSurvey(out io.Writer, report pullRequestSurveyReport) erro
 	if err := checkSurveySharedHeads(report); err != nil {
 		return err
 	}
+	if err := checkSurveyedSharedCommits(report); err != nil {
+		return err
+	}
 
 	page := &bytes.Buffer{}
 	// The readiness question is answered once, by candidateSetIsReady,
@@ -468,6 +471,84 @@ func checkSurveySharedHeads(report pullRequestSurveyReport) error {
 			if head != commit {
 				return fmt.Errorf("%w: #%d shares %s and is at %s",
 					ErrPullRequestSurveyPageInvalid, number, shared.HeadSHA, head)
+			}
+		}
+	}
+	return nil
+}
+
+// checkSurveyedSharedCommits refuses a survey whose candidates share a commit
+// the grouping does not name.
+//
+// checkSurveySharedHeads reads every group against the listing: the commit is
+// stated, the group is not empty, no commit is grouped twice, and every
+// candidate it names really is at that commit. All five refusals are about a
+// group that is there. Nothing read the other direction, and that is the one
+// the page's first line depends on.
+//
+// candidateSetIsReady answers the readiness question with
+// `len(report.SharedHeads) == 0`, so a document carrying two candidates at one
+// commit and no group for it prints "ready: every candidate can carry Checks
+// evidence on a commit of its own" and then lists both candidates as selected.
+// `pull-request-evidence` refuses that set, because the readiness threshold
+// counts commits and this one is counted twice. An operator who read this page
+// first was told the opposite by the page whose job is to tell them. A missing
+// group is worse than a wrong one: a wrong group is a line to check, while a
+// missing group is a clean verdict over a set that cannot be gathered.
+//
+// The grouping is derived here the way `sharedHeads` derives it, and that
+// agreement is the whole point: matched without casing or surrounding space,
+// because one commit written two ways is one commit; blanks skipped, because
+// two unanswered heads are not a shared commit; and every candidate the survey
+// answered for is read, selectable or not, because `sharedHeads` walks the
+// surveyed heads rather than the selections.
+//
+// A group that names only some of the candidates at its commit is refused too.
+// `sharedHeads` names all of them, the page prints the group verbatim, and
+// "shared head abc123: #1589, #1590" over a third candidate also at abc123
+// understates the clash on the one line a reader uses to size it.
+//
+// The groups are read before this, so a group that is itself malformed is
+// refused as that rather than as a candidate missing from it.
+func checkSurveyedSharedCommits(report pullRequestSurveyReport) error {
+	grouped := make(map[string]map[int]struct{}, len(report.SharedHeads))
+	for _, shared := range report.SharedHeads {
+		named := make(map[int]struct{}, len(shared.PullRequests))
+		for _, number := range shared.PullRequests {
+			named[number] = struct{}{}
+		}
+		grouped[strings.ToLower(strings.TrimSpace(shared.HeadSHA))] = named
+	}
+	order := make([]string, 0, len(report.PullRequests))
+	sharing := make(map[string][]int, len(report.PullRequests))
+	stated := make(map[string]string, len(report.PullRequests))
+	for _, candidate := range report.PullRequests {
+		commit := strings.ToLower(strings.TrimSpace(candidate.HeadSHA))
+		if commit == "" {
+			continue
+		}
+		if _, met := sharing[commit]; !met {
+			order = append(order, commit)
+			// Reported as the first candidate stated it, the
+			// rule sharedHeads keeps for a commit.
+			stated[commit] = candidate.HeadSHA
+		}
+		sharing[commit] = append(sharing[commit], candidate.Number)
+	}
+	for _, commit := range order {
+		at := sharing[commit]
+		if len(at) < 2 {
+			continue
+		}
+		named, isGrouped := grouped[commit]
+		if !isGrouped {
+			return fmt.Errorf("%w: #%d and #%d are both at %s and it is not grouped as a shared head",
+				ErrPullRequestSurveyPageInvalid, at[0], at[1], stated[commit])
+		}
+		for _, number := range at {
+			if _, ok := named[number]; !ok {
+				return fmt.Errorf("%w: #%d is at %s and is not named among the candidates sharing it",
+					ErrPullRequestSurveyPageInvalid, number, stated[commit])
 			}
 		}
 	}
