@@ -513,7 +513,7 @@ func runAgent(ctx context.Context) error {
 // documentation.
 func githubCommand(ctx context.Context, args []string) error {
 	if len(args) != 1 {
-		return errors.New("usage: ra8ci github check|shadow|shadow-compare|shadow-evidence|publish-check-run|required-checks|evidence-gate|gate|actions-run|reconcile|pull-request|evidence-run|pull-request-evidence")
+		return errors.New("usage: ra8ci github check|shadow|shadow-compare|shadow-evidence|publish-check-run|required-checks|evidence-gate|gate|actions-run|reconcile|pull-request|evidence-run|pull-request-evidence|pull-request-survey")
 	}
 	switch args[0] {
 	case "check":
@@ -542,8 +542,10 @@ func githubCommand(ctx context.Context, args []string) error {
 		return githubEvidenceRun(ctx, os.Stdin, os.Stdout)
 	case "pull-request-evidence":
 		return githubPullRequestEvidence(ctx, os.Stdin, os.Stdout)
+	case "pull-request-survey":
+		return githubPullRequestSurvey(ctx, os.Stdin, os.Stdout)
 	default:
-		return errors.New("usage: ra8ci github check|shadow|shadow-compare|shadow-evidence|publish-check-run|required-checks|evidence-gate|gate|actions-run|reconcile|pull-request|evidence-run|pull-request-evidence")
+		return errors.New("usage: ra8ci github check|shadow|shadow-compare|shadow-evidence|publish-check-run|required-checks|evidence-gate|gate|actions-run|reconcile|pull-request|evidence-run|pull-request-evidence|pull-request-survey")
 	}
 }
 
@@ -2363,4 +2365,236 @@ func pullRequestEvidenceDocument(threshold int, gathered []gatheredPullRequest) 
 		})
 	}
 	return document
+}
+
+// maxPullRequestSurveyBytes bounds the document `pull-request-survey` reads.
+// It carries a workflow name and a list of pull request numbers, so a few
+// kilobytes are room to spare and still a refusal rather than an unbounded
+// read of whatever is piped in.
+const maxPullRequestSurveyBytes = 64 << 10
+
+// pullRequestSurveyRequest is the wire shape `pull-request-survey` reads:
+// which workflow carries the evidence, and which pull requests are being
+// considered for it.
+//
+// It is its own shape rather than a `pull-request-evidence` document with the
+// plane half left out. That command reads what this plane observed on each
+// pull request, and this one is asked before any of that has been gathered:
+// the whole point is to find out which pull requests are worth observing.
+type pullRequestSurveyRequest struct {
+	Workflow     string `json:"workflow"`
+	PullRequests []int  `json:"pull_requests"`
+}
+
+// pullRequestSurveyReport is what `pull-request-survey` writes: for each pull
+// request considered, where it is and whether an evidence run can be selected
+// on its head.
+type pullRequestSurveyReport struct {
+	Workflow     string                `json:"workflow"`
+	Considered   int                   `json:"considered"`
+	Selectable   int                   `json:"selectable"`
+	Unselectable int                   `json:"unselectable"`
+	PullRequests []surveyedPullRequest `json:"pull_requests"`
+}
+
+// surveyedPullRequest is one pull request's answer. The head's state travels
+// with it because whether a pull request is representative is the operator's
+// judgement and job policy distrusts fork heads (#1589); Reason is the
+// selection refusal in words, empty when a run was selected.
+type surveyedPullRequest struct {
+	Number         int    `json:"number"`
+	HeadSHA        string `json:"head_sha"`
+	BaseRef        string `json:"base_ref"`
+	State          string `json:"state"`
+	Merged         bool   `json:"merged"`
+	FromFork       bool   `json:"from_fork"`
+	HeadRepository string `json:"head_repository"`
+	Selectable     bool   `json:"selectable"`
+	RunID          int64  `json:"run_id"`
+	Attempt        int    `json:"attempt"`
+	Event          string `json:"event"`
+	Conclusion     string `json:"conclusion"`
+	Reason         string `json:"reason"`
+}
+
+// surveyedHead is one pull request once GitHub has answered for it: the head,
+// the runs on it, and the selection that was or was not made.
+type surveyedHead struct {
+	Head     github.PullRequestHead
+	Selected github.CommitWorkflowRun
+	Refusal  error
+}
+
+// githubPullRequestSurvey answers, for a SET of pull requests at once, which
+// of them can carry #1481's evidence:
+//
+//	ra8ci github pull-request-survey < candidates.json
+//
+// `pull-request` and `evidence-run` answer this one pull request at a time,
+// which is the wrong shape for the question actually being asked. Choosing the
+// representative pull requests the readiness threshold counts is a decision
+// about a SET, and making it meant running a command per candidate and
+// keeping the answers in a text file, where the pull request whose checks
+// never finished is the one that quietly stays in the set.
+//
+// It reads and never writes to GitHub. Two narrow tokens do the work,
+// pull_requests:read for each head and actions:read for each commit's runs,
+// the seam #1589 drew and #1590 kept. Neither grows a permission here.
+//
+// It does not gather evidence and it does not grade. The run it names is the
+// run `pull-request-evidence` would select for the same pull request, because
+// both ask github.SelectEvidenceRun: one place decides what the evidence run
+// is, so a survey cannot promise a run the gathering would not use.
+func githubPullRequestSurvey(ctx context.Context, in io.Reader, out io.Writer) error {
+	loaded, err := catalog.Load()
+	if err != nil {
+		return fmt.Errorf("load task catalog: %w", err)
+	}
+	config, enabled, err := github.LoadCheckRunConfigFromEnv(loaded.Names())
+	if err != nil {
+		return err
+	}
+	if !enabled {
+		return fmt.Errorf("GitHub check-run publishing is not configured: set %s",
+			github.EnvShadowCorrespondenceFile)
+	}
+	publisherConfig, enabled, err := github.LoadCheckRunPublisherConfigFromEnv(config.Mode)
+	if err != nil {
+		return err
+	}
+	if !enabled {
+		return fmt.Errorf("GitHub check-run publishing has no repository: set %s",
+			github.EnvCheckRunRepository)
+	}
+
+	// The document is read and refused before a reader exists, so a bad
+	// ask is reported as a bad ask rather than as a failure to reach
+	// GitHub.
+	var document pullRequestSurveyRequest
+	decoder := json.NewDecoder(io.LimitReader(in, maxPullRequestSurveyBytes+1))
+	decoder.DisallowUnknownFields()
+	if err := decoder.Decode(&document); err != nil {
+		return fmt.Errorf("read the pull requests to survey: %w", err)
+	}
+	if decoder.More() {
+		return errors.New("read the pull requests to survey: trailing content after the document")
+	}
+	if decoder.InputOffset() > maxPullRequestSurveyBytes {
+		return fmt.Errorf("read the pull requests to survey: larger than %d bytes", maxPullRequestSurveyBytes)
+	}
+	if err := checkPullRequestSurveyAsk(document); err != nil {
+		return fmt.Errorf("read the pull requests to survey: %w", err)
+	}
+
+	heads, err := github.NewPullRequestHeadReader(github.PullRequestHeadReaderConfig{
+		APIBaseURL:     publisherConfig.APIBaseURL,
+		AppClientID:    publisherConfig.AppClientID,
+		InstallationID: publisherConfig.InstallationID,
+		PrivateKeyFile: publisherConfig.PrivateKeyFile,
+		Owner:          publisherConfig.Owner,
+		Repository:     publisherConfig.Repository,
+	})
+	if err != nil {
+		return err
+	}
+	runs, err := github.NewActionsOutcomeReader(github.ActionsOutcomeReaderConfig{
+		APIBaseURL:     publisherConfig.APIBaseURL,
+		AppClientID:    publisherConfig.AppClientID,
+		InstallationID: publisherConfig.InstallationID,
+		PrivateKeyFile: publisherConfig.PrivateKeyFile,
+		Owner:          publisherConfig.Owner,
+		Repository:     publisherConfig.Repository,
+	})
+	if err != nil {
+		return err
+	}
+
+	// Every pull request is surveyed before anything is written, the
+	// convention pull-request-evidence follows: a report holding the
+	// candidates that answered before a read failed is a picture of a
+	// smaller set than the one that was asked about, and nothing reading
+	// it could tell the two apart.
+	surveyed := make([]surveyedHead, 0, len(document.PullRequests))
+	for _, number := range document.PullRequests {
+		head, err := heads.Head(ctx, number)
+		if err != nil {
+			return fmt.Errorf("read pull request %d: %w", number, err)
+		}
+		listed, err := runs.RunsOn(ctx, head.HeadSHA)
+		if err != nil {
+			return fmt.Errorf("read the workflow runs on %s (pull request %d): %w",
+				head.HeadSHA, number, err)
+		}
+		// A selection that cannot be made is this pull request's
+		// answer, not the survey's failure. A read that did not
+		// happen, above, is neither: it says nothing about the pull
+		// request at all, so it refuses the whole survey rather than
+		// entering it as a candidate nobody should pick.
+		selected, refusal := github.SelectEvidenceRun(listed, document.Workflow)
+		surveyed = append(surveyed, surveyedHead{Head: head, Selected: selected, Refusal: refusal})
+	}
+
+	encoder := json.NewEncoder(out)
+	encoder.SetIndent("", "  ")
+	return encoder.Encode(pullRequestSurveyFrom(document.Workflow, surveyed))
+}
+
+// checkPullRequestSurveyAsk refuses an ask nothing could be surveyed from,
+// before a token is minted.
+//
+// A pull request named twice is refused rather than surveyed twice. The
+// counts beside the report are what an operator weighs against the readiness
+// threshold, and a repeated number would let one pull request answer for two.
+func checkPullRequestSurveyAsk(document pullRequestSurveyRequest) error {
+	if strings.TrimSpace(document.Workflow) == "" {
+		return errors.New("no workflow named")
+	}
+	if len(document.PullRequests) == 0 {
+		return errors.New("no pull requests to survey")
+	}
+	seen := make(map[int]struct{}, len(document.PullRequests))
+	for _, number := range document.PullRequests {
+		if number <= 0 {
+			return errors.New("a pull request with no number")
+		}
+		if _, repeated := seen[number]; repeated {
+			return fmt.Errorf("pull request %d named twice", number)
+		}
+		seen[number] = struct{}{}
+	}
+	return nil
+}
+
+// pullRequestSurveyFrom assembles the report. It is separate from the command
+// so the shape can be pinned without a GitHub of any kind.
+//
+// A pull request with no selectable run is reported with the refusal in
+// words and carries no run: reporting the run fields of a selection that was
+// refused would hand a reader a run ID the gathering will not use.
+func pullRequestSurveyFrom(workflow string, surveyed []surveyedHead) pullRequestSurveyReport {
+	report := pullRequestSurveyReport{
+		Workflow:     workflow,
+		Considered:   len(surveyed),
+		PullRequests: []surveyedPullRequest{},
+	}
+	for _, one := range surveyed {
+		answer := surveyedPullRequest{
+			Number: one.Head.Number, HeadSHA: one.Head.HeadSHA, BaseRef: one.Head.BaseRef,
+			State: one.Head.State, Merged: one.Head.Merged, FromFork: one.Head.FromFork,
+			HeadRepository: one.Head.HeadRepository,
+		}
+		if one.Refusal != nil {
+			answer.Reason = one.Refusal.Error()
+			report.Unselectable++
+		} else {
+			answer.Selectable = true
+			answer.RunID = one.Selected.ID
+			answer.Attempt = one.Selected.Attempt
+			answer.Event = one.Selected.Event
+			answer.Conclusion = one.Selected.Conclusion
+			report.Selectable++
+		}
+		report.PullRequests = append(report.PullRequests, answer)
+	}
+	return report
 }
