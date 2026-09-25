@@ -208,7 +208,9 @@ The control VM contains `ra8ci server` and PostgreSQL. Repository-controlled job
   inset: 5pt,
   stroke: rgb("#d6e1e8"),
   table.header([*Command*], [*State*], [*Behavior*]),
-  [`ra8ci tasks`], [`CURRENT`], [Lists embedded task names.],
+  [`ra8ci tasks`], [`CURRENT`], [Lists embedded task names, one per line, in manifest order.],
+  [`ra8ci tasks --digest`], [`CURRENT`], [Prints the digest of the catalog embedded in this binary, alone and unlabelled, so it can be compared against the digest recorded on an attempt, a HIL claim, or a local outbox record rather than edited out of a sentence.],
+  [`ra8ci tasks --json`], [`CURRENT`], [Prints one document carrying the schema version, the digest, and every reviewed definition in manifest order, including the exact argv of every step. It answers what the binary carries; reading `tools/ra8ci/catalog/tasks.json` out of the source tree answers what review changed.],
   [`ra8ci <task>`], [`CURRENT`], [Runs only an embedded safe-local task after checkout/catalog validation. Creates an append-only local outbox record.],
   [`ra8ci sync`], [`CURRENT`], [Uploads schema-v2 finished local evidence over mTLS. Legacy or unverified evidence never becomes a CI pass.],
   [`ra8ci server`], [`CURRENT`], [Runs the authenticated control-plane HTTP server and expired-assignment reaper.],
@@ -351,6 +353,8 @@ These are executor-stage adapters, not finished ports. A completed task implemen
 === Catalog schema
 
 Each task declaration has: stable name and version; tier `required`, `optional`, or `nightly`; scope; OS allowlist; capability list; strict arguments schema; total deadline; board policy; ordered typed steps; declared artifacts; bounded retry policy; and resource hints. Board tasks additionally declare cancellation class, maximum safe segment, restore/probe bound, retry-from-baseline rule, fixture profile, and checkpoint positions. Unknown fields, executable paths, environment additions, or arguments fail catalog validation.
+
+The catalog is identified by the SHA-256 of its canonical JSON, and that digest is the identifier the plane records rather than a convenience: it is written onto a HIL claim, checked again when the completion arrives, refused when the recorded catalog differs from the one in hand, and stamped onto every local outbox record. Two definitions of one task name are therefore distinguishable after the fact only through the digest they came from, which is why `ra8ci tasks --digest` and `ra8ci tasks --json` report it from the binary and why the document carries it beside the definitions rather than apart from them.
 
 === Exhaustive migration rule
 
