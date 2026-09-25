@@ -71,6 +71,9 @@ func RenderReconcileSurvey(out io.Writer, report reconcileReport) error {
 	if err := checkReconcileSurveyCounts(report); err != nil {
 		return err
 	}
+	if err := checkReconcileSurveyStandings(report); err != nil {
+		return err
+	}
 	conflicting := conflictingSurveyTasks(report)
 	page := &bytes.Buffer{}
 	if report.Settled {
@@ -215,6 +218,121 @@ func checkReconcileSurveyCounts(report reconcileReport) error {
 	if report.Settled != settled {
 		return fmt.Errorf("%w: settled is %t over %d to post, %d in flight, %d conflicting",
 			ErrReconcilePageInvalid, report.Settled, report.Posting, report.Waiting, report.Conflict)
+	}
+	return nil
+}
+
+// checkReconcileSurveyStandings refuses a grouping that is not about the runs
+// the survey listed.
+//
+// The two groupings are the page's longest sections and the only lines that
+// NAME runs. An operator reads "under a name we plan, foreign: #7 under ra8ci
+// / build (build)" and goes and opens run 7, so a group naming a run this
+// survey never accounted for, or standing it under an identifier the run does
+// not carry, sends them to the wrong commit with the page's own authority
+// behind it.
+//
+// Both groupings are derived where the survey is assembled, so nothing the
+// surveying command writes is refused here. What this catches is a document
+// from another build, or one assembled by hand, whose groupings and listings
+// disagree.
+//
+// The refusals say where the run actually stands rather than that something
+// is wrong: the reader's next move is the run, and the page has just told
+// them where it is not.
+func checkReconcileSurveyStandings(report reconcileReport) error {
+	listed := make(map[int64]string, len(report.UnplannedRun))
+	for _, run := range report.UnplannedRun {
+		listed[run.ID] = run.Identifier
+	}
+	if err := checkSurveyGrouping(report.UnplannedStanding, "no task plans",
+		func(standing reconcileUnplannedStanding) []int64 { return standing.Runs },
+		func(standing reconcileUnplannedStanding) string { return standing.Identifier },
+		func(run int64) (string, bool) {
+			identifier, ok := listed[run]
+			return identifier, ok
+		}); err != nil {
+		return err
+	}
+	ours := github.ExternalIDOurs.String()
+	contested := make(map[int64]string, len(report.Tasks))
+	for _, task := range report.Tasks {
+		for _, run := range task.Published {
+			if run.Identifier == ours {
+				continue
+			}
+			contested[run.ID] = run.Identifier
+		}
+	}
+	for _, standing := range report.ContestedStanding {
+		// Ours is never a group. A run this plane posted under a name
+		// it plans is the ordinary case, and the whole subject of this
+		// section is the runs that are not that.
+		if standing.Identifier == ours {
+			return fmt.Errorf("%w: runs we posted are grouped under a name we plan",
+				ErrReconcilePageInvalid)
+		}
+	}
+	return checkSurveyGrouping(report.ContestedStanding, "under a name we plan",
+		func(standing reconcileContestedStanding) []int64 {
+			runs := make([]int64, 0, len(standing.Runs))
+			for _, run := range standing.Runs {
+				runs = append(runs, run.ID)
+			}
+			return runs
+		},
+		func(standing reconcileContestedStanding) string { return standing.Identifier },
+		func(run int64) (string, bool) {
+			identifier, ok := contested[run]
+			return identifier, ok
+		})
+}
+
+// checkSurveyGrouping reads one grouping against the listing it is derived
+// from. The two groupings carry different run records and are checked the
+// same way, so the walk is written once and handed what it needs: the runs
+// on a standing, the standing's identifier, and where a run actually stands.
+//
+// An empty group is refused rather than skipped. Both groupings leave a
+// standing out when no run carries it, so an empty one is a group about
+// nothing, and it would print as an identifier with an empty list after it.
+func checkSurveyGrouping[standing any](
+	standings []standing,
+	grouping string,
+	runsOn func(standing) []int64,
+	identifierOf func(standing) string,
+	standsAs func(int64) (string, bool),
+) error {
+	groupedUnder := map[string]bool{}
+	named := map[int64]string{}
+	for _, group := range standings {
+		identifier := identifierOf(group)
+		runs := runsOn(group)
+		if len(runs) == 0 {
+			return fmt.Errorf("%w: %s %s groups no run",
+				ErrReconcilePageInvalid, grouping, identifier)
+		}
+		if groupedUnder[identifier] {
+			return fmt.Errorf("%w: %s %s is grouped more than once",
+				ErrReconcilePageInvalid, grouping, identifier)
+		}
+		groupedUnder[identifier] = true
+		for _, run := range runs {
+			if under, already := named[run]; already {
+				return fmt.Errorf("%w: %s run %d is grouped under %s and %s",
+					ErrReconcilePageInvalid, grouping, run, under, identifier)
+			}
+			stands, listed := standsAs(run)
+			if !listed {
+				return fmt.Errorf("%w: %s run %d is grouped under %s and was not surveyed",
+					ErrReconcilePageInvalid, grouping, run, identifier)
+			}
+			if stands != identifier {
+				return fmt.Errorf("%w: %s run %d is grouped under %s and stands %s",
+					ErrReconcilePageInvalid, grouping, run, identifier, stands)
+			}
+			named[run] = identifier
+		}
 	}
 	return nil
 }
