@@ -11,7 +11,6 @@ import (
 	"context"
 	"crypto/sha256"
 	"crypto/tls"
-	"crypto/x509"
 	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
@@ -101,9 +100,9 @@ func New(config Config) (*Agent, error) {
 	if err != nil {
 		return nil, err
 	}
-	roots := x509.NewCertPool()
-	if !roots.AppendCertsFromPEM(caPEM) {
-		return nil, fmt.Errorf("%w: invalid server CA", ErrServerProtocol)
+	roots, err := mtls.ServerAuthorities(caPEM, time.Now())
+	if err != nil {
+		return nil, fmt.Errorf("%w: %v", ErrServerProtocol, err)
 	}
 	identity, err := tls.LoadX509KeyPair(config.CertFile, config.KeyFile)
 	if err != nil {

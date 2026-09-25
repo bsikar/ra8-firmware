@@ -6,7 +6,6 @@ import (
 	"bytes"
 	"context"
 	"crypto/tls"
-	"crypto/x509"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
@@ -72,9 +71,9 @@ func New(config Config) (*Client, error) {
 	if err != nil {
 		return nil, fmt.Errorf("%w: read server CA: %v", ErrInvalidConfig, err)
 	}
-	roots := x509.NewCertPool()
-	if !roots.AppendCertsFromPEM(caPEM) {
-		return nil, fmt.Errorf("%w: server CA has no certificates", ErrInvalidConfig)
+	roots, err := mtls.ServerAuthorities(caPEM, time.Now())
+	if err != nil {
+		return nil, fmt.Errorf("%w: %v", ErrInvalidConfig, err)
 	}
 	certificate, err := tls.LoadX509KeyPair(config.CertFile, config.KeyFile)
 	if err != nil {

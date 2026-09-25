@@ -17,7 +17,6 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"encoding/hex"
-	"encoding/pem"
 	"errors"
 	"fmt"
 	"time"
@@ -164,44 +163,5 @@ func allowsServerAuth(leaf *x509.Certificate) bool {
 // are still being retired. What is refused is a bundle with no authority that
 // can verify anything today.
 func ClientAuthorities(bundle []byte, now time.Time) (*x509.CertPool, error) {
-	if len(bundle) == 0 {
-		return nil, fmt.Errorf("%w: client certificate authority bundle is empty", ErrIdentity)
-	}
-	pool := x509.NewCertPool()
-	rest := bundle
-	parsed := 0
-	usable := 0
-	for {
-		var block *pem.Block
-		block, rest = pem.Decode(rest)
-		if block == nil {
-			break
-		}
-		if block.Type != "CERTIFICATE" {
-			continue
-		}
-		authority, err := x509.ParseCertificate(block.Bytes)
-		if err != nil {
-			return nil, fmt.Errorf("%w: parse client certificate authority: %v", ErrIdentity, err)
-		}
-		parsed++
-		where := fmt.Sprintf("subject %q sha256 %s", authority.Subject.String(), Fingerprint(authority))
-		if !authority.IsCA {
-			return nil, fmt.Errorf("%w: %s in the client CA bundle is not a certificate authority", ErrIdentity, where)
-		}
-		if err := checkAuthorityCanSign(authority, where); err != nil {
-			return nil, err
-		}
-		pool.AddCert(authority)
-		if !now.Before(authority.NotBefore) && now.Before(authority.NotAfter) {
-			usable++
-		}
-	}
-	if parsed == 0 {
-		return nil, fmt.Errorf("%w: client certificate authority bundle holds no certificate", ErrIdentity)
-	}
-	if usable == 0 {
-		return nil, fmt.Errorf("%w: every certificate authority in the client CA bundle is outside its validity window", ErrIdentity)
-	}
-	return pool, nil
+	return parseAuthorities(bundle, now, "client")
 }
