@@ -48,16 +48,20 @@ const maxRenderedSurveyCandidates = 200
 // The verdict is first and states the decision rather than the counts, the
 // convention the other three pages keep. The sections that follow are in
 // decision order, never alphabetical and never the order the candidates were
-// asked about: the commits two candidates share, then the candidates that can
-// carry no evidence, then the selections worth reading before they are
-// gathered, then the runs the gather would actually use. That is the order
-// the work is in, from the clash that refuses the whole gather, through the
+// asked about: the commits two candidates share, then the bases the set is
+// spread across, then the candidates that can carry no evidence, then the
+// selections worth reading before they are gathered, then the runs the
+// gather would actually use. That is the order the work is in, from the
+// clash that refuses the whole gather, through the shape of the set and the
 // candidates to drop and the ones to look at twice, to the set to hand on.
 //
-// A shared head leads because it is the only one of the three that is a fact
-// about the SET rather than about a candidate: both pull requests are
-// selectable, both are counted so, and `pull-request-evidence` refuses the
-// pair anyway because the readiness threshold counts commits.
+// A shared head leads because it is the one section that refuses the gather:
+// both pull requests are selectable, both are counted so, and
+// `pull-request-evidence` refuses the pair anyway because the readiness
+// threshold counts commits. The bases follow it because they are the other
+// fact about the SET rather than about a candidate, and a reader who has
+// just been told two candidates clash is the reader who wants to know the
+// set is not all aimed at one branch either.
 //
 // A section with nothing in it is left out. "0 shared heads" on every
 // ordinary survey teaches a reader to skip the line that matters.
@@ -93,6 +97,9 @@ func RenderPullRequestSurvey(out io.Writer, report pullRequestSurveyReport) erro
 		report.Selectable, report.Unselectable)
 	for _, shared := range report.SharedHeads {
 		fmt.Fprintf(page, "shared head %s: %s\n", shared.HeadSHA, numberedPullRequests(shared.PullRequests))
+	}
+	for _, base := range surveyedBases(selectable) {
+		fmt.Fprintf(page, "base %s: %s\n", base.BaseRef, numberedPullRequests(base.PullRequests))
 	}
 	for _, candidate := range unselectable {
 		fmt.Fprintf(page, "no evidence run: #%d at %s (%s)\n",
@@ -140,6 +147,70 @@ func numberedPullRequests(numbers []int) string {
 		named = append(named, fmt.Sprintf("#%d", number))
 	}
 	return strings.Join(named, ", ")
+}
+
+// surveyBase is one base branch the set is aimed at, with the candidates
+// aimed at it.
+type surveyBase struct {
+	BaseRef      string
+	PullRequests []int
+}
+
+// surveyedBases names the base branches the selections are spread across,
+// and says nothing at all when they are all aimed at one.
+//
+// The survey reads every candidate's base and writes it into the document,
+// and the page dropped it. A candidate set is gathered as one body of
+// evidence against one readiness threshold, so which branch each candidate
+// is aimed at is a fact about whether the set is one set. A pull request
+// aimed at a release branch sitting in a set gathered for the development
+// branch reads, on every other line of this page, exactly like the rest of
+// them: open, ours, a run behind it, selectable.
+//
+// It states and never refuses, the rule #1625 settled and #1635 kept. A set
+// spread across two bases is gatherable and may well be deliberate; being
+// deliberate is the operator's to decide, and they cannot decide it from a
+// page that does not mention it.
+//
+// Nothing is said when every selection is aimed at one base, which is the
+// ordinary survey. "1 base" on every page is the line that teaches a reader
+// to skip the line that matters, the reason the other sections are omitted
+// when empty.
+//
+// Only the selectable candidates are read. An unselectable one is not going
+// to be gathered, so where it was aimed cannot make the gathered set span
+// two branches; naming it here would report a spread that the gather does
+// not have.
+//
+// A base is matched without its casing or surrounding space and reported as
+// the first candidate stated it, the rule sharedHeads keeps for a commit.
+// A candidate whose base the survey could not answer for is not a base of
+// its own: two unanswered bases are not two branches, and reporting a blank
+// one as a base would turn an unread head into a spread.
+func surveyedBases(selectable []surveyedPullRequest) []surveyBase {
+	order := make([]string, 0, len(selectable))
+	at := make(map[string]*surveyBase, len(selectable))
+	for _, candidate := range selectable {
+		key := strings.ToLower(strings.TrimSpace(candidate.BaseRef))
+		if key == "" {
+			continue
+		}
+		base := at[key]
+		if base == nil {
+			base = &surveyBase{BaseRef: candidate.BaseRef}
+			at[key] = base
+			order = append(order, key)
+		}
+		base.PullRequests = append(base.PullRequests, candidate.Number)
+	}
+	if len(order) < 2 {
+		return nil
+	}
+	bases := make([]surveyBase, 0, len(order))
+	for _, key := range order {
+		bases = append(bases, *at[key])
+	}
+	return bases
 }
 
 // surveyCaveat is one selectable candidate whose head is not the ordinary
