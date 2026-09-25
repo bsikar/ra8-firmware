@@ -1411,9 +1411,9 @@ func githubEvidenceGate(in io.Reader, out io.Writer) error {
 // Both commands that read several pull requests' comparisons go through this,
 // so evidence read for a readiness answer and evidence read for a gate plan are
 // graded the same way rather than by two loops that can drift apart.
-func gradeShadowCommits(config github.CheckRunEnvConfig, commits []shadowComparisonInput) ([]github.ShadowReport, []map[string]any, error) {
+func gradeShadowCommits(config github.CheckRunEnvConfig, commits []shadowComparisonInput) ([]github.ShadowReport, []commitCoverage, error) {
 	reports := make([]github.ShadowReport, 0, len(commits))
-	notExercised := make([]map[string]any, 0, len(commits))
+	coverage := make([]commitCoverage, 0, len(commits))
 	for i, commit := range commits {
 		plane := make([]github.PlaneOutcome, 0, len(commit.Plane))
 		for _, outcome := range commit.Plane {
@@ -1443,14 +1443,14 @@ func gradeShadowCommits(config github.CheckRunEnvConfig, commits []shadowCompari
 		// task and is not accumulated as any. It is reported per commit
 		// so a task that reads as under-observed can be explained
 		// without going back to the inputs.
-		notExercised = append(notExercised, map[string]any{
-			"head_sha":      report.HeadSHA,
-			"not_exercised": emptyWhenNil(collection.NotRun),
-			"comparisons":   len(report.Comparisons),
-			"clean":         report.Clean(),
+		coverage = append(coverage, commitCoverage{
+			HeadSHA:      report.HeadSHA,
+			NotExercised: emptyWhenNil(collection.NotRun),
+			Comparisons:  len(report.Comparisons),
+			Clean:        report.Clean(),
 		})
 	}
-	return reports, notExercised, nil
+	return reports, coverage, nil
 }
 
 // shadowEvidenceAnswer is one evidence document read, graded and accumulated:
@@ -1467,10 +1467,52 @@ type shadowEvidenceAnswer struct {
 	CatalogDigest string
 	Evidence      github.ShadowEvidence
 	Readiness     github.ShadowReadiness
-	// NotExercised is the per-commit record of the tasks a commit did not
-	// exercise, kept beside the accumulation so a task that reads as
+	// Coverage is the per-commit record of what each commit exercised,
+	// kept beside the accumulation so a task that reads as
 	// under-observed can be explained without going back to the inputs.
-	NotExercised []map[string]any
+	Coverage []commitCoverage
+}
+
+// commitCoverage is what one accumulated commit exercised.
+//
+// It is a type rather than the map[string]any the two writers used to share,
+// because the page recovers every field it prints from it and a map hands
+// that recovery to an unchecked assertion: a renamed key or a changed element
+// type reads as a commit with nothing unexercised, so the whole section
+// disappears from the page with no error anywhere. A page silently missing a
+// section is the worst failure this command has, because the answer it is
+// read for is whether the evidence is broad enough, and a missing section
+// makes it look broader.
+type commitCoverage struct {
+	HeadSHA string
+	// NotExercised are the covered tasks this commit reported no
+	// outcome for. They are not evidence for those tasks and are not
+	// accumulated as any.
+	NotExercised []string
+	// Comparisons is how many pairings the commit produced.
+	Comparisons int
+	// Clean is whether the commit's own comparison came back clean, the
+	// verdict shadow_compare.go gives one commit.
+	Clean bool
+}
+
+// coverageDocument writes the per-commit record for the machine document.
+//
+// The document's shape is unchanged by the typing above: the keys, their
+// order-independent names and their JSON types are what a reader already
+// parses, and a field rename here would be a wire change dressed as a
+// refactor.
+func coverageDocument(coverage []commitCoverage) []map[string]any {
+	document := make([]map[string]any, 0, len(coverage))
+	for _, commit := range coverage {
+		document = append(document, map[string]any{
+			"head_sha":      commit.HeadSHA,
+			"not_exercised": emptyWhenNil(commit.NotExercised),
+			"comparisons":   commit.Comparisons,
+			"clean":         commit.Clean,
+		})
+	}
+	return document
 }
 
 // unsettled is the verdict both writers return after they have written. It is
@@ -1523,7 +1565,7 @@ func readShadowEvidence(in io.Reader) (shadowEvidenceAnswer, error) {
 		return shadowEvidenceAnswer{}, errors.New("read shadow evidence: no commits to accumulate")
 	}
 
-	reports, notExercised, err := gradeShadowCommits(config, document.Commits)
+	reports, coverage, err := gradeShadowCommits(config, document.Commits)
 	if err != nil {
 		return shadowEvidenceAnswer{}, err
 	}
@@ -1541,7 +1583,7 @@ func readShadowEvidence(in io.Reader) (shadowEvidenceAnswer, error) {
 		CatalogDigest: loaded.Digest(),
 		Evidence:      evidence,
 		Readiness:     readiness,
-		NotExercised:  notExercised,
+		Coverage:      coverage,
 	}, nil
 }
 
@@ -1585,7 +1627,7 @@ func githubShadowEvidence(in io.Reader, out io.Writer) error {
 		"catalog_digest":   answer.CatalogDigest,
 		"threshold":        answer.Readiness.Threshold,
 		"settled":          answer.Readiness.Settled(),
-		"commits":          answer.NotExercised,
+		"commits":          coverageDocument(answer.Coverage),
 		// The commits that graded nothing are named beside the commits
 		// themselves. A reader counting `commits` is reading the
 		// breadth the threshold was met across, and a pull request
@@ -1631,14 +1673,12 @@ func githubEvidencePage(in io.Reader, out io.Writer) error {
 	// than folded into it, the githubShadowCompare convention: a task
 	// selection that skipped a task is a normal commit, not a gap in the
 	// evidence, and folding them in would read as pairings nobody made.
-	for _, commit := range answer.NotExercised {
-		names, _ := commit["not_exercised"].([]string)
-		if len(names) == 0 {
+	for _, commit := range answer.Coverage {
+		if len(commit.NotExercised) == 0 {
 			continue
 		}
-		head, _ := commit["head_sha"].(string)
 		if _, err := fmt.Fprintf(out, "\nnot exercised on %s: %s\n",
-			head, strings.Join(names, ", ")); err != nil {
+			commit.HeadSHA, strings.Join(commit.NotExercised, ", ")); err != nil {
 			return fmt.Errorf("render shadow evidence: %w", err)
 		}
 	}

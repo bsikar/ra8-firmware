@@ -3160,6 +3160,86 @@ func TestTheEvidencePageNamesWhatACommitDidNotExercise(t *testing.T) {
 	}
 }
 
+// Every commit that skipped a task is named, not just the first. The evidence
+// is plural by construction and a reader working out why a task reads as
+// under-observed needs the whole list, not a sample of it.
+func TestTheEvidencePageNamesEveryCommitThatSkippedATask(t *testing.T) {
+	exercised, skipped := twoCatalogTasks(t)
+	t.Setenv(github.EnvCheckRunMode, "shadow")
+	t.Setenv(github.EnvShadowCorrespondenceFile, writeCorrespondence(t,
+		`{"`+exercised+`":"build","`+skipped+`":"lint"}`))
+
+	var out bytes.Buffer
+	if err := githubEvidencePage(strings.NewReader(shadowEvidenceInputDocument(1,
+		shadowEvidenceCommit(exercised, evidenceHeadOne, "success", "success"),
+		shadowEvidenceCommit(exercised, evidenceHeadTwo, "success", "success"))), &out); err != nil {
+		t.Fatalf("settled evidence page returned %v", err)
+	}
+	page := out.String()
+	for _, head := range []string{evidenceHeadOne, evidenceHeadTwo} {
+		if !strings.Contains(page, "not exercised on "+head+": "+skipped) {
+			t.Fatalf("%s is not named as having skipped %s:\n%s", head, skipped, page)
+		}
+	}
+}
+
+// The document and the page are written from one per-commit record, so they
+// cannot disagree about what a commit exercised. They used to share it as a
+// map whose keys the page recovered with an unchecked assertion: a renamed
+// key left the document intact and dropped the whole section off the page,
+// which is the one failure that makes thin evidence look broad.
+func TestTheDocumentAndThePageAgreeOnWhatEachCommitSkipped(t *testing.T) {
+	exercised, skipped := twoCatalogTasks(t)
+	t.Setenv(github.EnvCheckRunMode, "shadow")
+	t.Setenv(github.EnvShadowCorrespondenceFile, writeCorrespondence(t,
+		`{"`+exercised+`":"build","`+skipped+`":"lint"}`))
+	input := shadowEvidenceInputDocument(1,
+		shadowEvidenceCommit(exercised, evidenceHeadOne, "success", "success"),
+		shadowEvidenceCommit(exercised, evidenceHeadTwo, "success", "success"))
+
+	var document bytes.Buffer
+	if err := githubShadowEvidence(strings.NewReader(input), &document); err != nil {
+		t.Fatalf("githubShadowEvidence: %v", err)
+	}
+	var page bytes.Buffer
+	if err := githubEvidencePage(strings.NewReader(input), &page); err != nil {
+		t.Fatalf("githubEvidencePage: %v", err)
+	}
+
+	report := decodeShadowEvidence(t, document.String())
+	commits, _ := report["commits"].([]any)
+	if len(commits) != 2 {
+		t.Fatalf("commits %v, want two", report["commits"])
+	}
+	named := 0
+	for _, entry := range commits {
+		commit, _ := entry.(map[string]any)
+		head, _ := commit["head_sha"].(string)
+		names, _ := commit["not_exercised"].([]any)
+		if _, ok := commit["comparisons"].(float64); !ok {
+			t.Fatalf("comparisons %v on %s is not a number", commit["comparisons"], head)
+		}
+		if len(names) == 0 {
+			if strings.Contains(page.String(), "not exercised on "+head) {
+				t.Fatalf("%s skipped nothing in the document and is named on the page:\n%s",
+					head, page.String())
+			}
+			continue
+		}
+		named++
+		for _, name := range names {
+			task, _ := name.(string)
+			if !strings.Contains(page.String(), "not exercised on "+head+": "+task) {
+				t.Fatalf("%s skipped %s in the document and the page does not say so:\n%s",
+					head, task, page.String())
+			}
+		}
+	}
+	if named == 0 {
+		t.Fatal("no commit skipped a task, so the two writers were never compared")
+	}
+}
+
 // The document says which configuration produced the answer; the page is read
 // while deciding whether a task may gate, and a digest is not part of that
 // decision.
