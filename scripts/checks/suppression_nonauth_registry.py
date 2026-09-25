@@ -265,6 +265,8 @@ _GROUPS = (
             "checks/check_just_references.py:QUOTED_JUST_RE",
             "checks/check_justfiles.py:BARE_NESTED_JUST_RE",
             "checks/check_justfiles.py:FIRMWARE_BUILD_RE",
+            "checks/check_linker_scripts.py:DEVICE_HEADER",
+            "checks/check_linker_scripts.py:DEVICE_MEM",
             "checks/check_linker_scripts.py:OPTION_SETTING_ADDR",
             "checks/check_linker_scripts.py:SRAM_WINDOW_BASE",
             "checks/check_linker_scripts.py:SRAM_WINDOW_END",
