@@ -54,18 +54,18 @@ func main() {
 
 // usageLine is the front door: everything ra8ci dispatches, named once.
 //
-// The GitHub half is built from the subcommand table rather than restated
-// here. It was restated, and drifted: the line named ten GitHub subcommands
-// while the command dispatched fifteen, so the five newest were reachable
-// only by knowing they existed.
+// It is built from the dispatch table rather than restated here. It was
+// restated and it drifted, twice over: the GitHub half named ten subcommands
+// while sixteen were dispatched (#1628), and the top-level half never named
+// board-agent at all.
 func usageLine() string {
-	return "usage: ra8ci <task>|tasks [--digest|--json]|ascii [--check] [--all|PATH]|since [--all|FILE...]|" +
-		"final-newline [FILE...]|runner-clock [--repo OWNER/REPO] [--runs N] [--hours N]|" +
-		"tests-readme [--selftest]|inclusive-terminology-commits [--selftest]|server|agent|sync|" +
-		"backup refresh|keygen|board status|take [--class human|ci|agent]|checkpoint|extend|cancel|" +
-		"hil budget|verify-capture|db migrate|report slow|" +
-		strings.Join(githubUsageNames(), "|") +
-		"|run submit|run status"
+	commands := topLevelCommands()
+	named := make([]string, 0, len(commands)+1)
+	named = append(named, "<task>")
+	for _, command := range commands {
+		named = append(named, command.Usage)
+	}
+	return "usage: ra8ci " + strings.Join(named, "|")
 }
 
 // githubUsageNames states each GitHub subcommand the way it is typed.
@@ -78,113 +78,154 @@ func githubUsageNames() []string {
 	return named
 }
 
+// topLevelCommand is one thing ra8ci dispatches, named the way it is typed.
+//
+// Usage states the command with its arguments, as the front door prints it,
+// and begins with Name: a command cannot be dispatched under one name and
+// stated under another.
+type topLevelCommand struct {
+	Name  string
+	Usage string
+	Run   func(ctx context.Context, args []string) int
+}
+
+// topLevelCommands is the one list: what run dispatches and what the usage
+// states. The order is the order an operator meets these, deliberately not
+// alphabetical.
+//
+// Run is handed the arguments after the command name, and answers with the
+// exit status, so a command that ends in an error states it through
+// reportError rather than through a tail the table cannot see.
+func topLevelCommands() []topLevelCommand {
+	return []topLevelCommand{
+		{Name: "tasks", Usage: "tasks [--digest|--json]", Run: func(_ context.Context, args []string) int {
+			cat, err := catalog.Load()
+			if err != nil {
+				return reportError(err)
+			}
+			err = tasksCommand(os.Stdout, cat, args)
+			if errors.Is(err, errTasksUsage) {
+				return usageError(err.Error())
+			}
+			return reportError(err)
+		}},
+		{Name: "server", Usage: "server", Run: func(ctx context.Context, args []string) int {
+			if len(args) != 0 {
+				return usageError("server takes no arguments")
+			}
+			return reportError(serve(ctx))
+		}},
+		{Name: "agent", Usage: "agent", Run: func(ctx context.Context, args []string) int {
+			if len(args) != 0 {
+				return usageError("agent takes no arguments")
+			}
+			return reportError(runAgent(ctx))
+		}},
+		{Name: "board-agent", Usage: "board-agent", Run: func(ctx context.Context, args []string) int {
+			if len(args) != 0 {
+				return usageError("board-agent takes no arguments")
+			}
+			return reportError(runBoardAgent(ctx))
+		}},
+		{Name: "sync", Usage: "sync", Run: func(ctx context.Context, args []string) int {
+			if len(args) != 0 {
+				return usageError("sync takes no arguments")
+			}
+			return reportError(syncLocalRuns(ctx))
+		}},
+		{Name: "github", Usage: strings.Join(githubUsageNames(), "|"), Run: func(ctx context.Context, args []string) int {
+			return reportError(githubCommand(ctx, args))
+		}},
+		{Name: "backup", Usage: "backup refresh|keygen", Run: func(ctx context.Context, args []string) int {
+			return reportError(backupCommand(ctx, args))
+		}},
+		{Name: "board", Usage: "board status|take [--class human|ci|agent]|checkpoint|extend|cancel", Run: func(ctx context.Context, args []string) int {
+			return reportError(boardCommand(ctx, args))
+		}},
+		{Name: "hil", Usage: "hil budget|verify-capture", Run: func(ctx context.Context, args []string) int {
+			return reportError(hilCommand(ctx, args))
+		}},
+		{Name: "ascii", Usage: "ascii [--check] [--all|PATH]", Run: func(ctx context.Context, args []string) int {
+			return runCheckoutGate(ctx, "ascii", args, asciigate.Run)
+		}},
+		{Name: "since", Usage: "since [--all|FILE...]", Run: func(ctx context.Context, args []string) int {
+			return runCheckoutGate(ctx, "since", args, sincegate.Run)
+		}},
+		{Name: "final-newline", Usage: "final-newline [FILE...]", Run: func(ctx context.Context, args []string) int {
+			return runCheckoutGate(ctx, "final-newline", args, newlinegate.Run)
+		}},
+		{Name: "runner-clock", Usage: "runner-clock [--repo OWNER/REPO] [--runs N] [--hours N]", Run: func(ctx context.Context, args []string) int {
+			if len(args) == 0 {
+				return runLocalTask(ctx, []string{"runner-clock"})
+			}
+			return runnerclock.Run(ctx, args, os.Stdout, os.Stderr)
+		}},
+		{Name: "tests-readme", Usage: "tests-readme [--selftest]", Run: func(ctx context.Context, args []string) int {
+			return runCheckoutGate(ctx, "tests-readme", args, testsreadme.Run)
+		}},
+		{Name: "inclusive-terminology-commits", Usage: "inclusive-terminology-commits [--selftest]", Run: func(ctx context.Context, args []string) int {
+			if len(args) == 0 {
+				return runLocalTask(ctx, []string{"inclusive-terminology-commits"})
+			}
+			return committerms.Run(ctx, args, os.Stdin, os.Stdout, os.Stderr)
+		}},
+		{Name: "db", Usage: "db migrate", Run: func(ctx context.Context, args []string) int {
+			if len(args) != 1 || args[0] != "migrate" {
+				return usageError("usage: ra8ci db migrate")
+			}
+			return reportError(migrate(ctx))
+		}},
+		{Name: "report", Usage: "report slow", Run: func(ctx context.Context, args []string) int {
+			return reportError(report(ctx, args))
+		}},
+		{Name: "run", Usage: "run submit|run status", Run: func(ctx context.Context, args []string) int {
+			return reportError(runCommand(ctx, args))
+		}},
+	}
+}
+
+// topLevelCommandNamed finds the command typed as name.
+func topLevelCommandNamed(name string) (topLevelCommand, bool) {
+	for _, command := range topLevelCommands() {
+		if command.Name == name {
+			return command, true
+		}
+	}
+	return topLevelCommand{}, false
+}
+
+// runCheckoutGate runs a gate that reads the checkout, or, when the gate is
+// given no arguments of its own, the catalog task of the same name.
+func runCheckoutGate(ctx context.Context, name string, args []string, gate func(context.Context, string, []string, io.Writer, io.Writer) int) int {
+	if len(args) == 0 {
+		return runLocalTask(ctx, []string{name})
+	}
+	root, err := findCheckout()
+	if err != nil {
+		return reportError(err)
+	}
+	return gate(ctx, root, args, os.Stdout, os.Stderr)
+}
+
+// reportError states an error the way ra8ci states every error, and answers
+// with the exit status that goes with it.
+func reportError(err error) int {
+	if err == nil {
+		return 0
+	}
+	fmt.Fprintln(os.Stderr, "ra8ci:", err)
+	return 1
+}
+
 func run(ctx context.Context, args []string) int {
 	if len(args) == 0 {
 		fmt.Fprintln(os.Stderr, usageLine())
 		return 2
 	}
-	var err error
-	switch args[0] {
-	case "tasks":
-		var cat *catalog.Catalog
-		cat, err = catalog.Load()
-		if err == nil {
-			err = tasksCommand(os.Stdout, cat, args[1:])
-			if errors.Is(err, errTasksUsage) {
-				return usageError(err.Error())
-			}
-		}
-	case "server":
-		if len(args) != 1 {
-			return usageError("server takes no arguments")
-		}
-		err = serve(ctx)
-	case "agent":
-		if len(args) != 1 {
-			return usageError("agent takes no arguments")
-		}
-		err = runAgent(ctx)
-	case "board-agent":
-		if len(args) != 1 {
-			return usageError("board-agent takes no arguments")
-		}
-		err = runBoardAgent(ctx)
-	case "sync":
-		if len(args) != 1 {
-			return usageError("sync takes no arguments")
-		}
-		err = syncLocalRuns(ctx)
-	case "github":
-		err = githubCommand(ctx, args[1:])
-	case "backup":
-		err = backupCommand(ctx, args[1:])
-	case "board":
-		err = boardCommand(ctx, args[1:])
-	case "hil":
-		err = hilCommand(ctx, args[1:])
-	case "ascii":
-		if len(args) == 1 {
-			return runLocalTask(ctx, []string{"ascii"})
-		}
-		var root string
-		root, err = findCheckout()
-		if err == nil {
-			return asciigate.Run(ctx, root, args[1:], os.Stdout, os.Stderr)
-		}
-	case "since":
-		if len(args) == 1 {
-			return runLocalTask(ctx, []string{"since"})
-		}
-		var root string
-		root, err = findCheckout()
-		if err == nil {
-			return sincegate.Run(ctx, root, args[1:], os.Stdout, os.Stderr)
-		}
-	case "final-newline":
-		if len(args) == 1 {
-			return runLocalTask(ctx, []string{"final-newline"})
-		}
-		var root string
-		root, err = findCheckout()
-		if err == nil {
-			return newlinegate.Run(ctx, root, args[1:], os.Stdout, os.Stderr)
-		}
-	case "runner-clock":
-		if len(args) == 1 {
-			return runLocalTask(ctx, []string{"runner-clock"})
-		}
-		return runnerclock.Run(ctx, args[1:], os.Stdout, os.Stderr)
-	case "tests-readme":
-		if len(args) == 1 {
-			return runLocalTask(ctx, []string{"tests-readme"})
-		}
-		var root string
-		root, err = findCheckout()
-		if err == nil {
-			return testsreadme.Run(ctx, root, args[1:], os.Stdout, os.Stderr)
-		}
-	case "inclusive-terminology-commits":
-		if len(args) == 1 {
-			return runLocalTask(ctx, []string{"inclusive-terminology-commits"})
-		}
-		return committerms.Run(ctx, args[1:], os.Stdin, os.Stdout, os.Stderr)
-	case "db":
-		if len(args) != 2 || args[1] != "migrate" {
-			return usageError("usage: ra8ci db migrate")
-		}
-		err = migrate(ctx)
-	case "report":
-		err = report(ctx, args[1:])
-	case "run":
-		err = runCommand(ctx, args[1:])
-	default:
-		return runLocalTask(ctx, args)
+	if command, ok := topLevelCommandNamed(args[0]); ok {
+		return command.Run(ctx, args[1:])
 	}
-	if err != nil {
-		fmt.Fprintln(os.Stderr, "ra8ci:", err)
-		return 1
-	}
-	return 0
+	return runLocalTask(ctx, args)
 }
 
 func runLocalTask(ctx context.Context, args []string) int {
