@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"io"
 	"os"
 	"path/filepath"
@@ -1585,5 +1586,154 @@ func TestEvidenceGateIsDispatchedByName(t *testing.T) {
 	if err := githubCommand(ctx, []string{"evidence gate"}); err == nil ||
 		!strings.Contains(err.Error(), "evidence-gate") {
 		t.Fatalf("error = %v, want a usage line naming evidence-gate", err)
+	}
+}
+
+// plannedRun builds one planned check run through NewTaskCheckRun, so the
+// reconciliation is exercised against runs the publisher would actually post
+// rather than hand-set values.
+func plannedRun(t *testing.T, mode github.CheckRunMode, task, state string) plannedCheckRun {
+	t.Helper()
+	run, err := github.NewTaskCheckRun(mode, task, shadowCompareHead, state)
+	if err != nil {
+		t.Fatalf("build the intended run: %v", err)
+	}
+	return plannedCheckRun{Task: task, Run: run, Summary: "ra8ci observed " + state}
+}
+
+// publishedAs renders one planned run as a run already on the commit.
+func publishedAs(plan plannedCheckRun, id int64, status, conclusion, title string) github.PublishedCheckRun {
+	return github.PublishedCheckRun{
+		ID: id, Name: plan.Run.Name, Mode: plan.Run.Mode,
+		Status: status, Conclusion: conclusion, Title: title,
+	}
+}
+
+// listing builds the commit listing the reconciliation reads.
+func listing(runs ...github.PublishedCheckRun) github.PublishedCheckRuns {
+	return github.PublishedCheckRuns{HeadSHA: shadowCompareHead, Runs: runs}
+}
+
+func TestReconciledPlanPostsOnlyWhatIsNotAlreadyPublished(t *testing.T) {
+	task := firstCatalogTask(t)
+	plan := plannedRun(t, github.ModeAuthoritative, task, "failed")
+	cases := map[string]struct {
+		published github.PublishedCheckRuns
+		want      github.PublishDecision
+		repeat    bool
+	}{
+		"nothing on the commit": {listing(), github.PublishNeeded, true},
+		"the same run already there": {
+			listing(publishedAs(plan, 41, "completed", plan.Run.Conclusion, plan.Run.Title)),
+			github.PublishSettled, false,
+		},
+		"a write still in flight": {
+			listing(publishedAs(plan, 42, "in_progress", "", "")),
+			github.PublishInFlight, false,
+		},
+	}
+	for name, test := range cases {
+		t.Run(name, func(t *testing.T) {
+			reconciled, err := reconcileCheckRunPlan([]plannedCheckRun{plan}, test.published)
+			if err != nil {
+				t.Fatalf("reconcile: %v", err)
+			}
+			if len(reconciled) != 1 {
+				t.Fatalf("reconciled %d runs, want 1", len(reconciled))
+			}
+			if reconciled[0].Verdict.Decision != test.want {
+				t.Fatalf("decision %s, want %s", reconciled[0].Verdict.Decision, test.want)
+			}
+			if reconciled[0].Verdict.Repeat() != test.repeat {
+				t.Fatalf("repeat %v, want %v", reconciled[0].Verdict.Repeat(), test.repeat)
+			}
+		})
+	}
+}
+
+func TestOneDisagreeingRunRefusesTheWholeDocument(t *testing.T) {
+	task := firstCatalogTask(t)
+	disagreeing := plannedRun(t, github.ModeAuthoritative, task, "failed")
+	agreeing := plannedRun(t, github.ModeAuthoritative, task, "succeeded")
+	published := listing(publishedAs(agreeing, 77, "completed", agreeing.Run.Conclusion, agreeing.Run.Title))
+	reconciled, err := reconcileCheckRunPlan([]plannedCheckRun{disagreeing}, published)
+	if err == nil {
+		t.Fatalf("reconciled %v, want a refusal", reconciled)
+	}
+	if reconciled != nil {
+		t.Fatalf("a refused reconciliation carried %d runs, want none", len(reconciled))
+	}
+	for _, want := range []string{task, "#77", shadowCompareHead} {
+		if !strings.Contains(err.Error(), want) {
+			t.Fatalf("error %q names neither the task, the run nor the commit: want %q", err, want)
+		}
+	}
+}
+
+func TestAShadowRunIsSettledOnlyByItsOwnObservation(t *testing.T) {
+	task := firstCatalogTask(t)
+	failed := plannedRun(t, github.ModeShadow, task, "failed")
+	succeeded := plannedRun(t, github.ModeShadow, task, "succeeded")
+	if failed.Run.Conclusion != succeeded.Run.Conclusion {
+		t.Fatalf("shadow conclusions differ (%q, %q); this test is about the title carrying the observation",
+			failed.Run.Conclusion, succeeded.Run.Conclusion)
+	}
+	published := listing(publishedAs(succeeded, 9, "completed", succeeded.Run.Conclusion, succeeded.Run.Title))
+	if _, err := reconcileCheckRunPlan([]plannedCheckRun{failed}, published); err == nil {
+		t.Fatal("a shadow run reporting the opposite observation was settled by it")
+	}
+	same := listing(publishedAs(failed, 9, "completed", failed.Run.Conclusion, failed.Run.Title))
+	reconciled, err := reconcileCheckRunPlan([]plannedCheckRun{failed}, same)
+	if err != nil {
+		t.Fatalf("reconcile the same observation: %v", err)
+	}
+	if reconciled[0].Verdict.Decision != github.PublishSettled {
+		t.Fatalf("decision %s, want settled", reconciled[0].Verdict.Decision)
+	}
+}
+
+func TestReconcileNamesTheTaskWhenTheListingIsAboutAnotherCommit(t *testing.T) {
+	task := firstCatalogTask(t)
+	plan := plannedRun(t, github.ModeAuthoritative, task, "succeeded")
+	elsewhere := github.PublishedCheckRuns{HeadSHA: "89abcdef0123456789abcdef0123456789abcdef"}
+	_, err := reconcileCheckRunPlan([]plannedCheckRun{plan}, elsewhere)
+	if err == nil || !strings.Contains(err.Error(), task) {
+		t.Fatalf("error %v, want one naming %s", err, task)
+	}
+	if !errors.Is(err, github.ErrReconcileCommitMismatch) {
+		t.Fatalf("error %v, want a commit mismatch", err)
+	}
+}
+
+func TestAnEmptyPlanIsRefusedRatherThanPublishedAsNothing(t *testing.T) {
+	if _, err := reconcileCheckRunPlan(nil, listing()); err == nil {
+		t.Fatal("an empty plan reconciled without complaint")
+	}
+}
+
+func TestEveryDecisionIsOneWordInTheReport(t *testing.T) {
+	for _, decision := range []github.PublishDecision{
+		github.PublishNeeded, github.PublishSettled, github.PublishInFlight, github.PublishConflicts,
+	} {
+		token := decisionToken(decision)
+		if token == "" || strings.ContainsAny(token, " \t") {
+			t.Fatalf("decision %s renders as %q, which a line-oriented report cannot carry", decision, token)
+		}
+	}
+}
+
+func TestAnUnfinishedRunIsReportedByItsStatus(t *testing.T) {
+	task := firstCatalogTask(t)
+	plan := plannedRun(t, github.ModeShadow, task, "succeeded")
+	queued := publishedAs(plan, 5, "queued", "", "")
+	if got := publishedState(queued); got != "queued" {
+		t.Fatalf("state %q, want the status of a run with no conclusion", got)
+	}
+	finished := publishedAs(plan, 5, "completed", plan.Run.Conclusion, plan.Run.Title)
+	if got := publishedState(finished); got != plan.Run.Conclusion {
+		t.Fatalf("state %q, want the conclusion %q", got, plan.Run.Conclusion)
+	}
+	if !strings.Contains(describePublishedRuns([]github.PublishedCheckRun{queued}), "#5 queued") {
+		t.Fatalf("description %q does not point at the run", describePublishedRuns([]github.PublishedCheckRun{queued}))
 	}
 }
