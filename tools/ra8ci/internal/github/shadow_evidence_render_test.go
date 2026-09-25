@@ -344,6 +344,11 @@ func TestTooMuchToRenderIsRefusedNotCut(t *testing.T) {
 }
 
 // The bound is a ceiling, not a lying point: exactly the limit renders whole.
+//
+// The task counts one conflict per commit it names, the arithmetic
+// checkPrintedCommitCounts holds the line to. The old fixture counted one
+// fewer, which was a page saying a task disagreed on 199 commits and naming
+// 200 of them.
 func TestExactlyTheBoundRendersWhole(t *testing.T) {
 	commits := make([]string, 0, maxRenderedEvidenceCommits)
 	for i := 0; i < maxRenderedEvidenceCommits; i++ {
@@ -352,7 +357,7 @@ func TestExactlyTheBoundRendersWhole(t *testing.T) {
 	evidence, readiness := renderedEvidence(t, 2,
 		TaskEvidence{
 			Task: "build", Observed: len(commits), Graded: len(commits),
-			Agreed: 1, Conflicting: len(commits) - 1, ConflictingCommits: commits,
+			Conflicting: len(commits), ConflictingCommits: commits,
 		},
 	)
 	page := renderEvidencePage(t, evidence, readiness)

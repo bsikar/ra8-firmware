@@ -4,6 +4,7 @@
 package github
 
 import (
+	"errors"
 	"strings"
 	"testing"
 )
@@ -152,21 +153,29 @@ func TestAReadyTaskKeepsItsUnprintedCommitsUnread(t *testing.T) {
 	}
 }
 
-// *** THE LENGTHS OF THE PRINTED COMMIT LISTS ARE DELIBERATELY NOT HELD TO
-// THESE COUNTS. maxRenderedEvidenceCommits is enforced by writeCommitLine
-// while the page is being written, after every check in this function, so a
-// length check here would refuse an over-long list as a disagreement between a
-// count and a list rather than as a page too long to read. The bounds tests
-// pin that, and holding the lists to their counts means moving that bound
-// forward first. ***
-func TestACountWithMoreCommitsNamedThanItSaysStillRenders(t *testing.T) {
+// The lengths of the printed commit lists ARE now held to these counts, by
+// checkPrintedCommitCounts. They were not while maxRenderedEvidenceCommits was
+// enforced by writeCommitLine as the page was written, because a length check
+// running before the page is built met an over-long list first and would have
+// refused it as a count disagreement rather than as a page too long to read.
+// The bound was moved forward into checkRenderedCommitBounds, which is what
+// made the two readable separately; the bounds tests still pin the over-long
+// list as too large.
+func TestACountWithMoreCommitsNamedThanItSaysIsRefused(t *testing.T) {
 	evidence, readiness := countedEvidence(t)
 	at := taskAt(t, evidence, "alpha")
 	evidence.Tasks[at].ConflictingCommits = []string{commitOne, commitOne}
 
 	var page strings.Builder
-	if err := RenderShadowEvidence(&page, evidence, readiness); err != nil {
-		t.Fatalf("the page was refused for a list length this check does not read: %v", err)
+	err := RenderShadowEvidence(&page, evidence, readiness)
+	if !errors.Is(err, ErrShadowEvidenceReportInvalid) {
+		t.Fatalf("render: %v, want %v", err, ErrShadowEvidenceReportInvalid)
+	}
+	if !strings.Contains(err.Error(), "disagreed on 1 commit(s) and names 2") {
+		t.Fatalf("the refusal does not state the disagreement: %v", err)
+	}
+	if page.Len() != 0 {
+		t.Fatal("a refused page was written anyway")
 	}
 }
 
