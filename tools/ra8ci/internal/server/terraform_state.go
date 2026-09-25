@@ -4,7 +4,6 @@ import (
 	"errors"
 	"io"
 	"net/http"
-	"strings"
 
 	"github.com/bsikar/ra8-firmware/tools/ra8ci/internal/store"
 )
@@ -24,7 +23,7 @@ func (s *Server) terraformState(w http.ResponseWriter, r *http.Request) {
 	}
 	actor, err := s.auth.Authorize(r, repository, "terraform_state")
 	if err != nil {
-		s.deny(w, r, "terraform_state."+strings.ToLower(r.Method), reservationID, err)
+		s.deny(w, r, terraformStateAction(r.Method), reservationID, err)
 		return
 	}
 
@@ -59,7 +58,7 @@ func (s *Server) terraformState(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		w.WriteHeader(http.StatusOK)
-	case "LOCK":
+	case terraformLockMethod:
 		body, ok := readTerraformStateBody(w, r)
 		if !ok {
 			return
@@ -74,7 +73,7 @@ func (s *Server) terraformState(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		w.WriteHeader(http.StatusOK)
-	case "UNLOCK":
+	case terraformUnlockMethod:
 		body, ok := readTerraformStateBody(w, r)
 		if !ok {
 			return
@@ -90,7 +89,7 @@ func (s *Server) terraformState(w http.ResponseWriter, r *http.Request) {
 		}
 		w.WriteHeader(http.StatusOK)
 	default:
-		w.Header().Set("Allow", "GET, POST, DELETE, LOCK, UNLOCK")
+		w.Header().Set("Allow", terraformStateAllow)
 		problem(w, http.StatusMethodNotAllowed, "invalid_argument", "unsupported Terraform state backend method", false)
 	}
 }
