@@ -40,7 +40,12 @@ var (
 const (
 	// maxRenderedSurveyTasks bounds the per-task section.
 	maxRenderedSurveyTasks = 500
-	// maxRenderedSurveyRuns bounds each grouping of runs.
+	// maxRenderedSurveyStandings bounds each grouping section: one
+	// standing is one line of the page.
+	maxRenderedSurveyStandings = 200
+	// maxRenderedSurveyRuns bounds the runs named on one standing's
+	// line. The runs are named rather than counted, so a standing that
+	// carries a thousand of them is a line a thousand runs wide.
 	maxRenderedSurveyRuns = 200
 )
 
@@ -60,13 +65,8 @@ const (
 // Nothing is written on a refusal: a caller that hands the page straight to
 // a terminal should not be left with half of one above the error.
 func RenderReconcileSurvey(out io.Writer, report reconcileReport) error {
-	if len(report.Tasks) > maxRenderedSurveyTasks {
-		return fmt.Errorf("%w: %d tasks, %d at most",
-			ErrReconcilePageTooLarge, len(report.Tasks), maxRenderedSurveyTasks)
-	}
-	if len(report.UnplannedRun) > maxRenderedSurveyRuns {
-		return fmt.Errorf("%w: %d unplanned runs, %d at most",
-			ErrReconcilePageTooLarge, len(report.UnplannedRun), maxRenderedSurveyRuns)
+	if err := checkRenderedSurveyBounds(report); err != nil {
+		return err
 	}
 	conflicting := conflictingSurveyTasks(report)
 	if len(conflicting) != report.Conflict {
@@ -104,6 +104,52 @@ func RenderReconcileSurvey(out io.Writer, report reconcileReport) error {
 	}
 	_, err := out.Write(page.Bytes())
 	return err
+}
+
+// checkRenderedSurveyBounds refuses a survey the page cannot state in full.
+//
+// The bounds are on what is WRITTEN, which is the part this one got wrong.
+// The page never prints report.UnplannedRun: it prints the two groupings
+// derived from it, one line per standing, with every run named on the line.
+// So the one bound that existed guarded a slice nobody renders, while the
+// sections that do get rendered had none. A survey carrying three hundred
+// unplanned runs under two identifiers is a two-line page and was refused;
+// a survey carrying three hundred standings, or one standing naming three
+// hundred runs, is the page this bound was meant to stop and went through.
+//
+// Dropping the bound on the unplanned runs loses nothing. The document is
+// already bounded at four megabytes where it is read, the count is already
+// on the page, and the runs themselves are read from the document with a
+// machine rather than from here.
+//
+// The refusals name which grouping, and which standing, rather than a bare
+// total: the reader's next move is to look at that identifier.
+func checkRenderedSurveyBounds(report reconcileReport) error {
+	if len(report.Tasks) > maxRenderedSurveyTasks {
+		return fmt.Errorf("%w: %d tasks, %d at most",
+			ErrReconcilePageTooLarge, len(report.Tasks), maxRenderedSurveyTasks)
+	}
+	if len(report.ContestedStanding) > maxRenderedSurveyStandings {
+		return fmt.Errorf("%w: %d standings under names we plan, %d at most",
+			ErrReconcilePageTooLarge, len(report.ContestedStanding), maxRenderedSurveyStandings)
+	}
+	if len(report.UnplannedStanding) > maxRenderedSurveyStandings {
+		return fmt.Errorf("%w: %d standings no task plans, %d at most",
+			ErrReconcilePageTooLarge, len(report.UnplannedStanding), maxRenderedSurveyStandings)
+	}
+	for _, standing := range report.ContestedStanding {
+		if len(standing.Runs) > maxRenderedSurveyRuns {
+			return fmt.Errorf("%w: %s carries %d runs under names we plan, %d at most",
+				ErrReconcilePageTooLarge, standing.Identifier, len(standing.Runs), maxRenderedSurveyRuns)
+		}
+	}
+	for _, standing := range report.UnplannedStanding {
+		if len(standing.Runs) > maxRenderedSurveyRuns {
+			return fmt.Errorf("%w: %s carries %d runs no task plans, %d at most",
+				ErrReconcilePageTooLarge, standing.Identifier, len(standing.Runs), maxRenderedSurveyRuns)
+		}
+	}
+	return nil
 }
 
 // conflictingSurveyTasks names the tasks the survey decided against, in the
