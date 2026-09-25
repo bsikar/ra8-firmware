@@ -68,11 +68,10 @@ func RenderReconcileSurvey(out io.Writer, report reconcileReport) error {
 	if err := checkRenderedSurveyBounds(report); err != nil {
 		return err
 	}
-	conflicting := conflictingSurveyTasks(report)
-	if len(conflicting) != report.Conflict {
-		return fmt.Errorf("%w: %d conflicting tasks counted, %d named",
-			ErrReconcilePageInvalid, report.Conflict, len(conflicting))
+	if err := checkReconcileSurveyCounts(report); err != nil {
+		return err
 	}
+	conflicting := conflictingSurveyTasks(report)
 	page := &bytes.Buffer{}
 	if report.Settled {
 		fmt.Fprintf(page, "settled: every planned task is accounted for on %s (%s)\n",
@@ -148,6 +147,74 @@ func checkRenderedSurveyBounds(report reconcileReport) error {
 			return fmt.Errorf("%w: %s carries %d runs no task plans, %d at most",
 				ErrReconcilePageTooLarge, standing.Identifier, len(standing.Runs), maxRenderedSurveyRuns)
 		}
+	}
+	return nil
+}
+
+// checkReconcileSurveyCounts refuses a survey whose own counts and verdict
+// disagree with its tasks.
+//
+// Only the conflicting count was ever checked, and it is the one count the
+// reader can check for themselves: every conflicting task is named on a line
+// below it. The two counts nobody can check were printed straight from the
+// document, and the verdict was printed above all three. So the line read
+// first could say a publish is settled while three conflicting lines follow
+// it, and the line read second could say two tasks are waiting on a survey
+// that decided nothing of the sort. That is the one reading this page must
+// never produce: it is read to decide whether a publish needs a person.
+//
+// The counts are checked against the decisions the survey already wrote
+// rather than decided again, the rule conflictingSurveyTasks keeps.
+//
+// The verdict is checked against the three counts and not against the tasks,
+// because that is the survey's own rule for it: a publish is settled when
+// nothing is to post, nothing is in flight and nothing conflicts.
+//
+// A settled survey carrying runs no task plans is NOT refused. The unplanned
+// count deliberately moves neither the verdict nor the exit status, so a
+// commit whose every planned task is accounted for is settled while an
+// operator still has a leftover run to look at. That pair is ordinary and
+// the page states both.
+//
+// Every refusal names what was counted and what was found, in that order:
+// the reader's next move is to look at the listing, not at the total.
+func checkReconcileSurveyCounts(report reconcileReport) error {
+	counted := map[string]int{
+		decisionToken(github.PublishNeeded):    report.Posting,
+		decisionToken(github.PublishInFlight):  report.Waiting,
+		decisionToken(github.PublishConflicts): report.Conflict,
+	}
+	named := map[string]int{}
+	for _, task := range report.Tasks {
+		named[task.Decision]++
+	}
+	// Stated in the order the page states them, so two wrong counts are
+	// reported from the left rather than in map order.
+	for _, decision := range []struct {
+		token string
+		as    string
+	}{
+		{decisionToken(github.PublishNeeded), "tasks to post"},
+		{decisionToken(github.PublishInFlight), "tasks in flight"},
+		{decisionToken(github.PublishConflicts), "conflicting tasks"},
+	} {
+		if counted[decision.token] != named[decision.token] {
+			if decision.token == decisionToken(github.PublishConflicts) {
+				return fmt.Errorf("%w: %d conflicting tasks counted, %d named",
+					ErrReconcilePageInvalid, counted[decision.token], named[decision.token])
+			}
+			return fmt.Errorf("%w: %d %s counted, %d named",
+				ErrReconcilePageInvalid, counted[decision.token], decision.as, named[decision.token])
+		}
+	}
+	if report.Unplanned != len(report.UnplannedRun) {
+		return fmt.Errorf("%w: %d runs no task plans counted, %d listed",
+			ErrReconcilePageInvalid, report.Unplanned, len(report.UnplannedRun))
+	}
+	settled := report.Posting == 0 && report.Waiting == 0 && report.Conflict == 0
+	if report.Settled != settled {
+		return fmt.Errorf("%w: settled is %t over %d to post, %d in flight, %d conflicting",
+			ErrReconcilePageInvalid, report.Settled, report.Posting, report.Waiting, report.Conflict)
 	}
 	return nil
 }
