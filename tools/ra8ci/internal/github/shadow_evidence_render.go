@@ -85,6 +85,9 @@ func RenderShadowEvidence(out io.Writer, evidence ShadowEvidence, readiness Shad
 	if err != nil {
 		return err
 	}
+	if err := checkShortfallAddsUp(byTask, readiness, shortfall); err != nil {
+		return err
+	}
 	if err := checkNamedCommits(byTask, readiness, accumulatedCommits(evidence)); err != nil {
 		return err
 	}
@@ -213,6 +216,36 @@ func writeCommitLine(page *strings.Builder, label string, commits []string) erro
 		return fmt.Errorf("%w: %d commits %s one task", ErrShadowEvidenceTooLarge, len(commits), label)
 	}
 	fmt.Fprintf(page, "    %s: %s\n", label, strings.Join(commits, ", "))
+	return nil
+}
+
+// checkShortfallAddsUp reads the numbers on an insufficient line against the
+// two things the page already states around them. The line is
+// "graded on N, M more needed (paired on P, Q never judged)": N and M come off
+// the shortfall, P and Q off the evidence, and the threshold M counts toward is
+// printed on the first line of the page. Nothing read them together, so a
+// shortfall assembled beside an accumulation rather than from it renders a line
+// that contradicts the header it sits under and the pairing counts it sits
+// beside, with no number on the page wrong on its own.
+//
+// shortfallByTask already holds the shortfall to the insufficient NAMES. This
+// holds it to their numbers.
+func checkShortfallAddsUp(byTask map[string]TaskEvidence, readiness ShadowReadiness, shortfall map[string]TaskShortfall) error {
+	for _, name := range readiness.Insufficient {
+		short := shortfall[name]
+		if short.Graded != byTask[name].Graded {
+			return fmt.Errorf("%w: %q is graded on %d in the evidence and on %d in its shortfall",
+				ErrShadowEvidenceMismatch, name, byTask[name].Graded, short.Graded)
+		}
+		if short.Remaining < 1 {
+			return fmt.Errorf("%w: %q is held short with %d more needed",
+				ErrShadowEvidenceMismatch, name, short.Remaining)
+		}
+		if short.Graded+short.Remaining != readiness.Threshold {
+			return fmt.Errorf("%w: %q is graded on %d with %d more needed, which is not the threshold %d this page was read at",
+				ErrShadowEvidenceMismatch, name, short.Graded, short.Remaining, readiness.Threshold)
+		}
+	}
 	return nil
 }
 
