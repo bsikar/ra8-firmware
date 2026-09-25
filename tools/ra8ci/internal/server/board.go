@@ -77,6 +77,7 @@ func RegisterBoardRoutes(mux *http.ServeMux, st BoardStore, verifier store.Neutr
 		catalog: policy.Catalog, trustedCommit: policy.TrustedCommit, budget: policy.YieldBudget,
 		heartbeatInterval: interval}
 	mux.HandleFunc("GET /v1/boards/{board_id}", h.status)
+	mux.HandleFunc("GET /v1/boards/{board_id}/liveness", h.liveness)
 	mux.HandleFunc("POST /v1/boards/{board_id}/take", h.take)
 	mux.HandleFunc("POST /v1/boards/{board_id}/waiters/{waiter_id}/cancel", h.cancel)
 	mux.HandleFunc("POST /v1/boards/{board_id}/yield", h.yield)
