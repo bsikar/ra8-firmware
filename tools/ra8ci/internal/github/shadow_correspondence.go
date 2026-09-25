@@ -138,6 +138,19 @@ type ShadowCollection struct {
 	// evidence, so they are counted here rather than paired against
 	// nothing.
 	NotRun []string
+	// NotRunJudged are the NotRun tasks the Actions side did state an
+	// outcome for. They are in NotRun as well: both facts are true, and
+	// this is the half a reader cannot recover from the other lists.
+	NotRunJudged []NotRunOutcome
+}
+
+// NotRunOutcome is what Actions concluded for a task this plane did not run.
+// Conclusion is the Actions value verbatim, because a skipped job and a failed
+// one are different news and only the reader can say which matters here.
+type NotRunOutcome struct {
+	Task       string
+	Job        string
+	Conclusion string
 }
 
 // Collect assembles the pairings for one commit from what each side reported.
@@ -157,6 +170,14 @@ type ShadowCollection struct {
 // conclusion. CompareShadowRun grades that as indeterminate, which is the true
 // answer: the pairing was never judged. Leaving it out would let a report be
 // clean because a comparison was missing.
+//
+// The mirror of that case is the one NotRunJudged answers: a covered task this
+// plane did not run whose job Actions did conclude. It is not paired and never
+// graded, because grading a verdict against nothing observed would manufacture
+// agreement or conflict out of an absence, the same reason "stale" is read as
+// indeterminate rather than compared. It is named instead, so that a task
+// reported only as "not exercised" cannot hide that the other side had
+// something to say about it.
 func (c *ShadowCorrespondence) Collect(plane []PlaneOutcome, actions []ActionsOutcome) (ShadowCollection, error) {
 	if len(plane) == 0 {
 		return ShadowCollection{}, fmt.Errorf("%w: no plane outcomes", ErrShadowObservationInvalid)
@@ -220,9 +241,18 @@ func (c *ShadowCorrespondence) Collect(plane []PlaneOutcome, actions []ActionsOu
 		})
 	}
 	for _, task := range c.tasks {
-		if !reported[task] {
-			collection.NotRun = append(collection.NotRun, task)
+		if reported[task] {
+			continue
 		}
+		collection.NotRun = append(collection.NotRun, task)
+		job := c.jobs[task]
+		conclusion, judged := concluded[job]
+		if !judged || actionsNonVerdicts[conclusion] {
+			continue
+		}
+		collection.NotRunJudged = append(collection.NotRunJudged, NotRunOutcome{
+			Task: task, Job: job, Conclusion: conclusion,
+		})
 	}
 	sort.Slice(collection.Observations, func(i, j int) bool {
 		return collection.Observations[i].Task < collection.Observations[j].Task
