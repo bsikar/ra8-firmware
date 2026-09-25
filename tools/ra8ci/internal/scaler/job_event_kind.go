@@ -15,6 +15,13 @@ import (
 // durable evidence names the kind it needs here rather than reading the field
 // itself, so the two rules cannot drift apart.
 
+// provesJobAssigned reports whether the event is GitHub's statement that the
+// job has been handed to this scale set, the only kind that may drive a
+// reservation towards a running guest.
+func provesJobAssigned(job github.Job) bool {
+	return job.Kind == scaleset.MessageTypeJobAssigned
+}
+
 // provesRunnerStarted reports whether the event is GitHub's statement that the
 // job began on its runner, the only kind that may back registration evidence.
 func provesRunnerStarted(job github.Job) bool {

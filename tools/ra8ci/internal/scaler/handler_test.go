@@ -410,6 +410,12 @@ func mustDistinctID(t *testing.T, other string) string {
 	return id
 }
 
+func assignedJob(job github.Job) github.Job {
+	job.Kind = scaleset.MessageTypeJobAssigned
+	job.RunnerID, job.RunnerName = 0, ""
+	return job
+}
+
 func completedJob(job github.Job) github.Job {
 	job.Kind = scaleset.MessageTypeJobCompleted
 	job.Result = "Succeeded"
@@ -453,10 +459,10 @@ func testHarness(t *testing.T) (*Handler, *memoryLedger, *fakeProxmox, *testBoot
 func TestFullLifecycleUsesOneVMAndDeletesOnlyOwnedGuest(t *testing.T) {
 	h, ledger, fake, bootstrap, job := testHarness(t)
 	ctx := context.Background()
-	if err := h.Process(ctx, github.Message{ScaleSetID: 42, Assigned: []github.Job{job}}); err != nil {
+	if err := h.Process(ctx, github.Message{ScaleSetID: 42, Assigned: []github.Job{assignedJob(job)}}); err != nil {
 		t.Fatal(err)
 	}
-	if err := h.Process(ctx, github.Message{ScaleSetID: 42, Assigned: []github.Job{job}}); err != nil {
+	if err := h.Process(ctx, github.Message{ScaleSetID: 42, Assigned: []github.Job{assignedJob(job)}}); err != nil {
 		t.Fatal(err)
 	}
 	vm, _ := ledger.GetRunnerVMByJob(ctx, 42, job.JobID)
@@ -486,7 +492,7 @@ func TestFullLifecycleUsesOneVMAndDeletesOnlyOwnedGuest(t *testing.T) {
 func TestCrashAfterCloneReplaysMarkerWithoutSecondClone(t *testing.T) {
 	h, ledger, fake, _, job := testHarness(t)
 	ledger.loseUPIDOnce = true
-	message := github.Message{ScaleSetID: 42, Assigned: []github.Job{job}}
+	message := github.Message{ScaleSetID: 42, Assigned: []github.Job{assignedJob(job)}}
 	if err := h.Process(context.Background(), message); err == nil {
 		t.Fatal("lost UPID not reported")
 	}
@@ -509,7 +515,7 @@ func TestForeignMarkerCannotBeAdoptedOrDestroyed(t *testing.T) {
 	fake.exists = true
 	fake.status = "stopped"
 	fake.marker = "RA8CI_RESERVATION=foreign;RA8CI_OPERATION=foreign"
-	if err := h.Process(context.Background(), github.Message{ScaleSetID: 42, Assigned: []github.Job{job}}); err == nil {
+	if err := h.Process(context.Background(), github.Message{ScaleSetID: 42, Assigned: []github.Job{assignedJob(job)}}); err == nil {
 		t.Fatal("foreign VM adopted")
 	}
 	vm, _ := ledger.GetRunnerVMByJob(context.Background(), 42, job.JobID)
@@ -526,7 +532,7 @@ func TestForeignMarkerCannotBeAdoptedOrDestroyed(t *testing.T) {
 func TestTimedOutTaskReconcilesWithoutSecondMutation(t *testing.T) {
 	h, ledger, fake, _, job := testHarness(t)
 	fake.taskRunning = true
-	msg := github.Message{ScaleSetID: 42, Assigned: []github.Job{job}}
+	msg := github.Message{ScaleSetID: 42, Assigned: []github.Job{assignedJob(job)}}
 	err := h.Process(context.Background(), msg)
 	if !errors.Is(err, proxmox.ErrUnknownOutcome) {
 		t.Fatalf("timeout not unknown: %v", err)
@@ -551,7 +557,7 @@ func TestTimedOutTaskReconcilesWithoutSecondMutation(t *testing.T) {
 func TestLostStartUPIDFailsClosed(t *testing.T) {
 	h, ledger, fake, _, job := testHarness(t)
 	fake.startLostResponse = true
-	msg := github.Message{ScaleSetID: 42, Assigned: []github.Job{job}}
+	msg := github.Message{ScaleSetID: 42, Assigned: []github.Job{assignedJob(job)}}
 	if err := h.Process(context.Background(), msg); !errors.Is(err, proxmox.ErrUnknownOutcome) {
 		t.Fatalf("lost start response not unknown: %v", err)
 	}
@@ -598,7 +604,7 @@ func TestConstructorRejectsMissingApprovals(t *testing.T) {
 func TestCleanupFailsClosedWithoutDurablyBoundRunnerIdentity(t *testing.T) {
 	h, ledger, fake, _, job := testHarness(t)
 	ctx := context.Background()
-	if err := h.Process(ctx, github.Message{ScaleSetID: 42, Assigned: []github.Job{job}}); err != nil {
+	if err := h.Process(ctx, github.Message{ScaleSetID: 42, Assigned: []github.Job{assignedJob(job)}}); err != nil {
 		t.Fatal(err)
 	}
 	if err := h.Process(ctx, github.Message{ScaleSetID: 42, Started: []github.Job{job}}); err != nil {
@@ -625,7 +631,7 @@ func TestCleanupFailsClosedWithoutDurablyBoundRunnerIdentity(t *testing.T) {
 func TestBadEventIdentityCannotBindOrCleanupRunner(t *testing.T) {
 	h, ledger, fake, _, job := testHarness(t)
 	ctx := context.Background()
-	if err := h.Process(ctx, github.Message{ScaleSetID: 42, Assigned: []github.Job{job}}); err != nil {
+	if err := h.Process(ctx, github.Message{ScaleSetID: 42, Assigned: []github.Job{assignedJob(job)}}); err != nil {
 		t.Fatal(err)
 	}
 	bad := job
@@ -650,7 +656,7 @@ func TestBadEventIdentityCannotBindOrCleanupRunner(t *testing.T) {
 func TestPostBootBootstrapFailureReplaysWithoutRecloningOrRestarting(t *testing.T) {
 	h, ledger, fake, bootstrap, job := testHarness(t)
 	h.bootstrap = failedBootstrap{}
-	msg := github.Message{ScaleSetID: 42, Assigned: []github.Job{job}}
+	msg := github.Message{ScaleSetID: 42, Assigned: []github.Job{assignedJob(job)}}
 	if err := h.Process(context.Background(), msg); err == nil {
 		t.Fatal("missing JIT did not fail")
 	}
@@ -692,7 +698,7 @@ func TestEarlyCompletionMonotonicallyFencesAssignment(t *testing.T) {
 	if !vm.CleanupRequested || vm.State != "reserved" {
 		t.Fatalf("early completion not fenced: %+v", vm)
 	}
-	if err := h.Process(context.Background(), github.Message{ScaleSetID: 42, Assigned: []github.Job{job}}); err != nil {
+	if err := h.Process(context.Background(), github.Message{ScaleSetID: 42, Assigned: []github.Job{assignedJob(job)}}); err != nil {
 		t.Fatal(err)
 	}
 	fake.mu.Lock()
@@ -705,7 +711,7 @@ func TestEarlyCompletionMonotonicallyFencesAssignment(t *testing.T) {
 func TestBackupGateFailsClosedBeforeReserve(t *testing.T) {
 	h, ledger, fake, _, job := testHarness(t)
 	h.backup = testBackupGate{err: errors.New("off-VM backup stale")}
-	if err := h.Process(context.Background(), github.Message{ScaleSetID: 42, Assigned: []github.Job{job}}); err == nil {
+	if err := h.Process(context.Background(), github.Message{ScaleSetID: 42, Assigned: []github.Job{assignedJob(job)}}); err == nil {
 		t.Fatal("stale backup allowed reservation")
 	}
 	if ledger.reserveCalls != 0 {

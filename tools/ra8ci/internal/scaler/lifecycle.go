@@ -16,6 +16,9 @@ import (
 )
 
 func (h *Handler) assigned(ctx context.Context, job github.Job) error {
+	if !provesJobAssigned(job) {
+		return errors.New("assigned event is not a job-assigned message")
+	}
 	vm, err := h.reservation(ctx, job)
 	if err != nil {
 		return err

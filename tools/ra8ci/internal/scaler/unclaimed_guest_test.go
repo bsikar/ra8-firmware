@@ -107,7 +107,7 @@ func TestNewUnclaimedDestroyerRefusesAPartialWiring(t *testing.T) {
 func expired(t *testing.T, h *Handler, ledger *memoryLedger, job github.Job) store.RunnerVM {
 	t.Helper()
 	ctx := context.Background()
-	if err := h.Process(ctx, github.Message{ScaleSetID: 42, Assigned: []github.Job{job}}); err != nil {
+	if err := h.Process(ctx, github.Message{ScaleSetID: 42, Assigned: []github.Job{assignedJob(job)}}); err != nil {
 		t.Fatal(err)
 	}
 	vm, err := ledger.GetRunnerVMByJob(ctx, 42, job.JobID)
