@@ -481,6 +481,47 @@
       ]
     },
     {
+      "name": "ra8_modem_at",
+      "build_root": "libs/ra8_modem_at",
+      "public_header": "libs/ra8_modem_at/inc/ra8_modem_at.h",
+      "adapter": "libs/ra8_modem_at/src/ra8_modem_at_abi.zig",
+      "additional_adapters": [
+        {"path":"libs/ra8_modem_at/src/ra8_modem_at_test_helpers.zig","role":"test-only","symbol_prefix":"priv_modem_"},
+        {"path":"libs/ra8_modem_at/tests/abi_test.zig","role":"test-only","symbol_prefix":"ra8_log_emit_error"}
+      ],
+      "library_name": "ra8_modem_at",
+      "symbol_prefix": "ra8_modem_at_",
+      "compatibility_sha256": "410569f1aba72eb7e9272aa682cf7adaa801875f161a94474d76c64c506222bf",
+      "layout_assertions": [
+        "@sizeOf(Io) == ptr * 4",
+        "@offsetOf(Io, \"tx_byte\") == 0",
+        "@offsetOf(Io, \"rx_byte\") == ptr",
+        "@offsetOf(Io, \"now_ms\") == ptr * 2",
+        "@offsetOf(Io, \"ctx\") == ptr * 3",
+        "@sizeOf(Cfg) == ptr * 6",
+        "@offsetOf(Cfg, \"io\") == 0",
+        "@offsetOf(Cfg, \"line_buf\") == ptr * 4",
+        "@offsetOf(Cfg, \"line_buf_len\") == ptr * 5",
+        "@offsetOf(Cfg, \"default_timeout_ms\") == ptr * 5 + 2"
+      ],
+      "target_class": "host-ra8",
+      "targets": {"host": [], "ra8": ["-Dtarget=thumb-freestanding-eabihf", "-Dcpu=cortex_m85+fp_armv8-d32-fp64"]},
+      "run_host_tests_in_all_modes": false,
+      "c_include_dirs": ["libs/ra8_modem_at/inc", "libs/ra8_core/inc"],
+      "contract_tests": [
+        {"language":"c","path":"tests/wireless/src/test_ra8_modem_at.c","registration":"tests/cmake/unit_tests.cmake"},
+        {"language":"c","path":"tests/wireless/src/test_ra8_modem_at_mcdc.c","registration":"tests/cmake/unit_tests.cmake"},
+        {"language":"zig","path":"libs/ra8_modem_at/tests/abi_test.zig","registration":"libs/ra8_modem_at/.zig-test-contract.json"}
+      ],
+      "exports": [
+        {"name":"ra8_modem_at_init","calling_context":"task-only-non-reentrant","ownership":"copies caller configuration while borrowing its line buffer and transport callbacks"},
+        {"name":"ra8_modem_at_send_cmd","calling_context":"task-only-non-reentrant","ownership":"borrows command and expected-response strings for the blocking transaction"},
+        {"name":"ra8_modem_at_send_cmd_capture","calling_context":"task-only-non-reentrant","ownership":"borrows the command and writes the caller-owned capture buffer synchronously"},
+        {"name":"ra8_modem_at_register_unsolicited_handler","calling_context":"task-only-non-reentrant","ownership":"stores the caller's callback and context for synchronous dispatch during modem service"},
+        {"name":"ra8_modem_at_poll","calling_context":"task-only-non-reentrant","ownership":"drains the injected RX path and dispatches registered callbacks without retaining caller resources"}
+      ]
+    },
+    {
       "name": "ra8_audio",
       "build_root": "libs/ra8_audio",
       "public_headers": [

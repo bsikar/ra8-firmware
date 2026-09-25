@@ -261,6 +261,48 @@ ra8_add_zig_library(
   ra8_ov5640
 )
 
+# Fully migrated: the AT line accumulator, the OK / ERROR / +CME ERROR /
+# +CMS ERROR / BUSY / NO CARRIER final-result table, the newline-separated
+# capture appender and the eight-slot URC dispatch table are all Zig now, so
+# libs/ra8_modem_at/src has no .c left and the RA8_MODEM_AT_SOURCES glob is
+# gone from library_sources.cmake and core_hal.cmake. The byte transport and
+# the millisecond timebase stay caller-injected seams, so the archive links
+# against no driver. The eight priv_modem_* helpers declared in
+# src/ra8_modem_at_internal.h are driven by the MC/DC suites. They are emitted
+# only by a test-configured copy of
+# the archive, linked to the C MC/DC suites and never into firmware.
+ra8_add_zig_library(
+  NAME
+  ra8_modem_at
+  ZIG_ROOT
+  ${FW_ROOT}/libs/ra8_modem_at
+  LIBRARY_NAME
+  ra8_modem_at
+)
+
+set(_ra8_modem_at_test_dir "${CMAKE_CURRENT_BINARY_DIR}/zig_libs/ra8_modem_at_test_helpers")
+set(_ra8_modem_at_test_library
+    "${_ra8_modem_at_test_dir}/lib/${CMAKE_STATIC_LIBRARY_PREFIX}ra8_modem_at_test_helpers${CMAKE_STATIC_LIBRARY_SUFFIX}"
+)
+add_custom_target(
+  ra8_modem_at_test_helpers_zig_library ALL
+  COMMAND "${ZIG_EXECUTABLE}" build -Dtest-helpers=true -Doptimize=Debug --prefix
+          "${_ra8_modem_at_test_dir}" --cache-dir "${_ra8_modem_at_test_dir}/cache"
+          --global-cache-dir "${_ra8_modem_at_test_dir}/global-cache"
+  WORKING_DIRECTORY "${FW_ROOT}/libs/ra8_modem_at"
+  BYPRODUCTS "${_ra8_modem_at_test_library}"
+  COMMENT "Building test-only ra8_modem_at helper archive"
+  VERBATIM
+)
+add_library(ra8_zig::ra8_modem_at_test_helpers STATIC IMPORTED GLOBAL)
+set_target_properties(
+  ra8_zig::ra8_modem_at_test_helpers
+  PROPERTIES IMPORTED_LOCATION "${_ra8_modem_at_test_library}"
+             INTERFACE_INCLUDE_DIRECTORIES "${FW_ROOT}/libs/ra8_modem_at/inc;${FW_ROOT}/libs/ra8_modem_at/src"
+)
+add_dependencies(ra8_zig::ra8_modem_at_test_helpers ra8_modem_at_test_helpers_zig_library)
+link_libraries(ra8_zig::ra8_modem_at_test_helpers)
+
 ra8_add_zig_library(
   NAME
   ra8_wifi
