@@ -233,6 +233,38 @@ The control VM contains `ra8ci server` and PostgreSQL. Repository-controlled job
 
 Current process exit meanings are 0 for command/task success, the child exit for a completed local task, 124 for a task deadline, 130 for cancellation, 2 for CLI usage, and 1 for control-plane or internal failure. The target CLI must replace the generic 1 with stable documented categories without changing an underlying task's meaningful child result.
 
+=== GitHub check-run commands
+
+`ra8ci github` carries ten subcommands built for #1481. Nine of them change nothing: `publish-check-run` is the only one that writes to GitHub, and it says so in its own documentation. Each reads one JSON document from standard input, writes one to standard output, and takes its mode from the environment rather than from an argument, so moving a deployment onto the merge gate is a deployment change rather than a flag somebody passes.
+
+#table(
+  columns: (1.35fr, 0.7fr, 2.85fr),
+  inset: 5pt,
+  stroke: rgb("#d6e1e8"),
+  table.header([*Command*], [*State*], [*Behavior*]),
+  [`ra8ci github check`], [`CURRENT`], [Establishes and cleanly closes an official scale-set message session with the configured credentials, consuming no jobs. Speaks to GitHub and changes nothing there.],
+  [`ra8ci github shadow`], [`CURRENT`], [Prints the check-run configuration this process would publish with: the mode and the declared task-to-job correspondence, read from the environment and the catalog. Speaks to nobody, because the command that shows what is configured must not itself publish a run.],
+  [`ra8ci github actions-run`], [`CURRENT`], [Reads `{"run_id":N,"plane":[...]}`, reads that workflow run's current attempt and its job conclusions through the App, and writes exactly the document `shadow-compare` reads. The plane half passes through verbatim and is never fetched. The attempt travels with the outcomes, because a re-run answers the same run number with different conclusions. A run still executing is refused rather than banked as indeterminate.],
+  [`ra8ci github shadow-compare`], [`CURRENT`], [Grades one commit's plane outcomes against the Actions outcomes through the declared correspondence and renders the page the required-check decision is read from. It fetches neither side: which job covers which task is a claim somebody makes, and a command that collected both sides would be making it silently.],
+  [`ra8ci github shadow-evidence`], [`CURRENT`], [Grades several pull requests' comparisons and reports, per task, how many commits were observed and graded and which of them agreed, diverged, or conflicted. #1481 holds the gate move until conclusions have been compared over representative pull requests, which `shadow-compare` cannot answer because it grades one commit.],
+  [`ra8ci github gate`], [`CURRENT`], [Reads `{"branch":"main"}` and reports the status check contexts branch protection requires on that branch today, as exactly the document `required-checks` reads. An unreadable protection is a refusal, never an empty gate.],
+  [`ra8ci github required-checks`], [`CURRENT`], [Plans the required-context change from the mode and the currently required list: what to add, remove, keep, and what is foreign to this plane. Speaks to nobody, so an operator can read the plan before the gate is touched.],
+  [`ra8ci github evidence-gate`], [`CURRENT`], [Plans the same change from the shadow evidence at a stated threshold rather than from the mode alone, proposing only the tasks the evidence backs and naming every task it withholds with its reason. It never takes an existing gate off. A withheld task is a non-zero exit, and the plan is written first.],
+  [`ra8ci github reconcile`], [`CURRENT`], [Reports what one commit already carries for a document of task outcomes: per task, the publish decision and every published run with its identifier and whether this plane posted it. It builds only the `checks:read` reader, so the read that decides a write cannot perform one. A conflict is reported rather than refused, and is a non-zero exit.],
+  [`ra8ci github publish-check-run`], [`CURRENT`], [Posts one check run per task outcome for one commit, and is the only ra8ci command that writes to GitHub. Nothing is posted before the commit's existing runs are read: a run this plane already published is left alone, a write still in flight is waited for rather than repeated, and a run that disagrees stops the whole document. A write still in flight is a non-zero exit, not an input error.],
+)
+
+Two pairs compose over a pipe, which is how the evidence is gathered without any command claiming both sides of a comparison:
+
+```
+ra8ci github actions-run < observations.json | ra8ci github shadow-compare
+ra8ci github gate <<< '{"branch":"main"}'     | ra8ci github required-checks
+```
+
+Configuration is `RA8CI_GITHUB_SHADOW_CORRESPONDENCE_FILE` (the reviewed task-to-job declaration, a file because it covers an eighty-odd-task catalog and belongs in a diff), `RA8CI_GITHUB_CHECK_RUN_MODE` (absent means shadow), and `RA8CI_GITHUB_CHECK_RUN_REPOSITORY`, whose presence is what turns publishing on. The App credentials are the scale-set ones under the names `env_config.go` already defines, because there is one App and one installation; a second spelling would be a second place for one deployment to disagree with itself.
+
+Each reader mints its own installation token holding one permission: `actions:read` for the metadata and workflow-run readers, `administration:read` for the gate reader, `checks:read` for the reconciler, and `checks:write` for the publisher alone. No reader can reach the write permission, and the publisher's token is never widened to cover a read.
+
 === Target commands
 
 Add only after their server contracts and tests exist:
@@ -385,6 +417,8 @@ Persist scale-set ID, session ID, message ID, and normalized nonsecret payload b
 Runner teardown is permitted only from the durably persisted terminal `JobCompleted` event whose job/request/run/repository/ref and runner ID/name exactly match the reservation, and which contains a nonempty result and finish time. That GitHub terminal event is the no-active-job proof; independently query the configured scale-set administration API, verify the exact runner identity, remove it, then query again and require absence. An already-absent exact runner is an idempotent success. API uncertainty, a mismatched runner, missing completion facts, or continued registration fails closed. VM stop and Terraform cleanup remain separately fenced by fresh drain evidence, distinct cleanup approval, stopped-state identity, and exact preserved Terraform state.
 
 `TARGET`: publish one separate ra8ci lifecycle check per GitHub run/attempt. It remains pending through guest creation, runner registration, execution, evidence, deregistration, and cleanup. Native job success cannot override failed or incomplete lifecycle evidence. An ambiguous Checks API write is reconciled by SHA, check name, App ID, and external ID.
+
+The reconciliation half of that clause is built and in use: `publish-check-run` lists the commit's check runs and decides each intended run before posting any of them, and every run this plane posts carries a derived external identifier so a second reader can tell our run from a run somebody else left under the same name. It diverges from the clause in one respect, deliberately. Ownership is settled by that identifier rather than by App ID: the list endpoint filters on the numeric app ID, this deployment holds the App client ID, and adding a lookup to translate one into the other would put a second identity in the path of a decision the identifier already answers. A run under one of our names carrying no identifier, or somebody else's, is reported as a conflict for an operator to settle rather than published over. The per-run/attempt lifecycle check itself remains `TARGET`: what is published today is one check run per catalog task.
 
 === JIT and guest correlation
 
