@@ -168,10 +168,7 @@ func Parse(raw []byte, expectedDigest string) (*Catalog, error) {
 	}
 	c := &Catalog{digest: digest, tasks: make(map[string]Task, len(source.Tasks))}
 	for _, task := range source.Tasks {
-		if err := ValidateTask(task); err != nil {
-			return nil, err
-		}
-		if err := ValidateTaskDispatch(task); err != nil {
+		if err := ValidateReviewedTask(task); err != nil {
 			return nil, err
 		}
 		if _, found := c.tasks[task.Name]; found {
@@ -293,7 +290,27 @@ func (t Task) ValidateArguments(args []string) error {
 	return nil
 }
 
+// ValidateReviewedTask is the admission rule for a task read out of a manifest:
+// the behavior rules plus the reviewed-dispatch seam, in the order Parse applies
+// them. A caller admitting a catalog by hand wants this one; a runtime
+// re-checking a task it already holds wants ValidateTask.
+func ValidateReviewedTask(task Task) error {
+	if err := ValidateTask(task); err != nil {
+		return err
+	}
+	return ValidateTaskDispatch(task)
+}
+
 // ValidateTask rejects malformed or unsupported task behavior before execution.
+//
+// It deliberately does NOT apply the reviewed-dispatch seam
+// (ValidateTaskDispatch). This function is the re-check a runtime runs against a
+// task it already holds: the executor before it runs one, and the board client
+// on an assignment that arrived over the wire. Those callers never see the
+// manifest again, and the task they hold was admitted against a reviewed
+// digest, possibly under an older dispatch rule. Folding the seam in here would
+// retroactively refuse work that review already admitted, so a caller that is
+// admitting a manifest calls ValidateReviewedTask instead.
 func ValidateTask(task Task) error {
 	if !validName(task.Name) || task.Version < 1 {
 		return fmt.Errorf("%w: invalid task identity", ErrInvalidCatalog)
