@@ -16,6 +16,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"slices"
 	"sort"
 	"strings"
 	"time"
@@ -29,6 +30,27 @@ var terraformRunnerLineagePattern = regexp.MustCompile("^[0-9a-f]{8}-[0-9a-f]{4}
 var terraformRunnerConfigDigestPattern = regexp.MustCompile("^[0-9a-f]{40}$")
 var terraformRunnerNodePattern = regexp.MustCompile("^[A-Za-z0-9][A-Za-z0-9_.-]{0,63}$")
 
+// reviewedRunnerBridges is the closed set of guest bridges a Terraform runner
+// profile may name. It stays a literal here, and it is deliberately NOT read
+// from operator configuration the way proxmox.Config.Bridges is.
+//
+// The two checks look alike and answer different questions. This one is an
+// admission rule over a reviewed module: a profile is written by review, and
+// the literal pair IS the review, so an operator who could widen it could
+// place a disposable runner on a network review never saw. The client's
+// allowlist is a runtime observation check that must serve any lab an operator
+// stands up, so it cannot hardcode this pair without owning a policy that
+// belongs to this module.
+//
+// Both ends still refuse vmbr0 by name, and this set is a subset of any
+// allowlist the client would accept. Widening it is a review decision, not a
+// deployment one.
+var reviewedRunnerBridges = []string{"vmbr8", "vmbr9"}
+
+func reviewedRunnerBridge(name string) bool {
+	return slices.Contains(reviewedRunnerBridges, name)
+}
+
 // TerraformRunnerLedger is the durable boundary shared by the runner
 // provisioner and the PostgreSQL control store.
 type TerraformRunnerLedger interface {
@@ -41,7 +63,10 @@ type TerraformRunnerLedger interface {
 }
 
 // TerraformRunnerProfile contains only reviewed, fixed guest-network settings.
-// A GitHub payload can never select or alter one of these profiles.
+// A GitHub payload can never select or alter one of these profiles. Bridge is
+// checked against reviewedRunnerBridges, not against whatever guest bridges the
+// Proxmox client was configured with; see that variable for why the two rules
+// stay separate.
 type TerraformRunnerProfile struct {
 	TemplateVMID int
 	Node         string
@@ -117,7 +142,7 @@ func NewTerraformRunnerProvisioner(runtime *TerraformRuntime, ledger TerraformRu
 		if vmid < 9000 || vmid > 9099 || profile.TemplateVMID < 9000 || profile.TemplateVMID > 9099 || vmid == profile.TemplateVMID ||
 			!terraformRunnerNodePattern.MatchString(profile.Node) || profile.Pool != "ra8-tf-lab" ||
 			profile.DatastoreID != "ra8-tf-lab" ||
-			(profile.Bridge != "vmbr8" && profile.Bridge != "vmbr9") ||
+			!reviewedRunnerBridge(profile.Bridge) ||
 			profile.Cores < 1 || profile.Cores > 4 ||
 			profile.MemoryMB < 512 || profile.MemoryMB > 8192 ||
 			profile.UserName != "ra8ci" || !validRunnerIPv4(profile.IPv4Address, profile.IPv4Gateway) {
