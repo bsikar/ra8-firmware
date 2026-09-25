@@ -1188,10 +1188,7 @@
       "layout_sources": ["libs/ra8_gfx/src/internal/root.zig"],
       "library_name": "ra8_gfx",
       "symbol_prefix": "ra8_gfx_",
-      "retained_c_exports": [
-        {"name": "ra8_gfx_text_out", "source": "libs/ra8_gfx/src/ra8_gfx_text_glyph.c"},
-        {"name": "ra8_gfx_text_size", "source": "libs/ra8_gfx/src/ra8_gfx_text_glyph.c"}
-      ],
+      "retained_c_exports": [],
       "target_class": "host-ra8",
       "targets": {
         "host": [],
@@ -1218,8 +1215,8 @@
         {"name": "ra8_gfx_line", "calling_context": "task-only-non-reentrant", "ownership": "mutates the clipped pixels along the requested rasterized line"},
         {"name": "ra8_gfx_rect", "calling_context": "task-only-non-reentrant", "ownership": "mutates clipped framebuffer pixels within or around the requested rectangle"},
         {"name": "ra8_gfx_circle", "calling_context": "task-only-non-reentrant", "ownership": "mutates clipped framebuffer pixels along or within the requested circle"},
-        {"name": "ra8_gfx_text_out", "calling_context": "task-only-non-reentrant", "ownership": "retained C implementation borrows text and font data while drawing glyphs"},
-        {"name": "ra8_gfx_text_size", "calling_context": "task-safe-reentrant", "ownership": "retained C implementation borrows text and font data and writes caller-owned dimensions"},
+        {"name": "ra8_gfx_text_out", "calling_context": "task-only-non-reentrant", "ownership": "Zig implementation borrows text and font data while drawing glyphs"},
+        {"name": "ra8_gfx_text_size", "calling_context": "task-safe-reentrant", "ownership": "Zig implementation borrows text and font data and writes caller-owned dimensions without reading singleton state"},
         {"name": "ra8_gfx_blit", "calling_context": "task-only-non-reentrant", "ownership": "borrows a source image buffer and mutates the clipped destination"},
         {"name": "priv_gfx_text_pack_565", "calling_context": "task-safe-reentrant", "ownership": "converts one value argument without retaining state or caller storage"},
         {"name": "priv_gfx_text_plot", "calling_context": "task-only-non-reentrant", "ownership": "mutates one clipped pixel through the shared framebuffer state"}
