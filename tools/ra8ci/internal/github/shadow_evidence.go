@@ -69,6 +69,14 @@ type TaskEvidence struct {
 	// the reports were given. These are the pairings an operator has to
 	// explain, so the answer names them rather than counting them.
 	ConflictingCommits []string
+	// IndeterminateCommits names the commits where this task was paired
+	// but nobody judged the pairing, in the order the reports were
+	// given. Indeterminate above counts them, and a count is not enough
+	// to act on: a task held short of its threshold moves forward by
+	// going back to the pull requests whose Actions side stated no
+	// outcome, and until they are named an operator holding this answer
+	// cannot tell which of the accumulated commits those were.
+	IndeterminateCommits []string
 }
 
 // ShadowEvidence is the accumulated comparison across commits.
@@ -102,6 +110,27 @@ type ShadowReadiness struct {
 	// Insufficient are the tasks with no conflict and fewer than
 	// Threshold graded commits.
 	Insufficient []string
+	// Shortfall is one entry per Insufficient task, in the same order,
+	// saying how far short it is. A name on its own says a task is not
+	// ready; it does not say whether one more pull request finishes it
+	// or twenty do, and that is the difference between waiting for the
+	// next merge and going looking for commits that exercise the task.
+	//
+	// It covers the insufficient tasks and nothing else. A conflicting
+	// task carries no shortfall on purpose: writing one would read as
+	// "grade this many more and it is ready", and a conflict is not
+	// cleared by more commits.
+	Shortfall []TaskShortfall
+}
+
+// TaskShortfall is how far one insufficient task is from its threshold.
+type TaskShortfall struct {
+	Task string
+	// Graded is what the accumulated reports produced a verdict on.
+	Graded int
+	// Remaining is Threshold minus Graded, always at least one: a task
+	// with nothing remaining is ready and is not reported here.
+	Remaining int
 }
 
 // Settled reports whether every covered task is ready at this threshold.
@@ -175,6 +204,7 @@ func AccumulateShadowEvidence(reports []ShadowReport) (ShadowEvidence, error) {
 				task.ConflictingCommits = append(task.ConflictingCommits, report.HeadSHA)
 			default:
 				task.Indeterminate++
+				task.IndeterminateCommits = append(task.IndeterminateCommits, report.HeadSHA)
 			}
 		}
 	}
@@ -209,6 +239,7 @@ func (e ShadowEvidence) Readiness(threshold int) (ShadowReadiness, error) {
 		Ready:        []string{},
 		Conflicting:  []string{},
 		Insufficient: []string{},
+		Shortfall:    []TaskShortfall{},
 	}
 	for _, task := range e.Tasks {
 		switch {
@@ -218,6 +249,11 @@ func (e ShadowEvidence) Readiness(threshold int) (ShadowReadiness, error) {
 			readiness.Ready = append(readiness.Ready, task.Task)
 		default:
 			readiness.Insufficient = append(readiness.Insufficient, task.Task)
+			readiness.Shortfall = append(readiness.Shortfall, TaskShortfall{
+				Task:      task.Task,
+				Graded:    task.Graded,
+				Remaining: threshold - task.Graded,
+			})
 		}
 	}
 	return readiness, nil

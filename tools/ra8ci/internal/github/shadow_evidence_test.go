@@ -395,3 +395,238 @@ func TestEmptyEvidenceIsNeverSettled(t *testing.T) {
 		t.Fatal("empty evidence reported as settled")
 	}
 }
+
+// TestTheCommitsNobodyJudgedAreNamedNotJustCounted pins the point of this
+// slice: a task short of its threshold is chased through the pull requests
+// whose Actions side stated no outcome, and a count does not say which.
+func TestTheCommitsNobodyJudgedAreNamedNotJustCounted(t *testing.T) {
+	evidence, err := AccumulateShadowEvidence([]ShadowReport{
+		gradedReport(t, evidenceCommitA, ungraded("build")),
+		gradedReport(t, evidenceCommitB, agreeing("build")),
+		gradedReport(t, evidenceCommitC, ungraded("build")),
+	})
+	if err != nil {
+		t.Fatalf("AccumulateShadowEvidence: %v", err)
+	}
+	build := taskEvidence(t, evidence, "build")
+	if build.Indeterminate != 2 {
+		t.Fatalf("indeterminate = %d, want 2", build.Indeterminate)
+	}
+	want := []string{evidenceCommitA, evidenceCommitC}
+	if len(build.IndeterminateCommits) != len(want) {
+		t.Fatalf("indeterminate commits = %v, want %v", build.IndeterminateCommits, want)
+	}
+	for i, commit := range want {
+		if build.IndeterminateCommits[i] != commit {
+			t.Fatalf("indeterminate commit %d = %s, want %s", i, build.IndeterminateCommits[i], commit)
+		}
+	}
+	if len(build.IndeterminateCommits) != build.Indeterminate {
+		t.Fatalf("named %d ungraded commits for a count of %d",
+			len(build.IndeterminateCommits), build.Indeterminate)
+	}
+}
+
+// TestUngradedCommitsKeepTheOrderTheReportsWereGiven holds them to the
+// ConflictingCommits convention: the order pull requests were observed in is
+// the caller's record of what happened.
+func TestUngradedCommitsKeepTheOrderTheReportsWereGiven(t *testing.T) {
+	evidence, err := AccumulateShadowEvidence([]ShadowReport{
+		gradedReport(t, evidenceCommitC, ungraded("build")),
+		gradedReport(t, evidenceCommitA, ungraded("build")),
+		gradedReport(t, evidenceCommitB, ungraded("build")),
+	})
+	if err != nil {
+		t.Fatalf("AccumulateShadowEvidence: %v", err)
+	}
+	build := taskEvidence(t, evidence, "build")
+	want := []string{evidenceCommitC, evidenceCommitA, evidenceCommitB}
+	for i, commit := range want {
+		if build.IndeterminateCommits[i] != commit {
+			t.Fatalf("ungraded commit %d = %s, want %s", i, build.IndeterminateCommits[i], commit)
+		}
+	}
+}
+
+// TestAGradedCommitIsNeverNamedAsUngraded pins that the two lists do not
+// overlap: agreement, divergence and conflict all produced a verdict.
+func TestAGradedCommitIsNeverNamedAsUngraded(t *testing.T) {
+	evidence, err := AccumulateShadowEvidence([]ShadowReport{
+		gradedReport(t, evidenceCommitA, agreeing("build")),
+		gradedReport(t, evidenceCommitB, diverging("build")),
+		gradedReport(t, evidenceCommitC, conflicting("build")),
+	})
+	if err != nil {
+		t.Fatalf("AccumulateShadowEvidence: %v", err)
+	}
+	build := taskEvidence(t, evidence, "build")
+	if len(build.IndeterminateCommits) != 0 {
+		t.Fatalf("graded commits named as ungraded: %v", build.IndeterminateCommits)
+	}
+}
+
+// TestAConflictingTaskStillNamesItsUnjudgedCommits pins that the two lists are
+// about different things. A conflict is work of its own; a pairing nobody
+// judged is still unjudged beside it.
+func TestAConflictingTaskStillNamesItsUnjudgedCommits(t *testing.T) {
+	evidence, err := AccumulateShadowEvidence([]ShadowReport{
+		gradedReport(t, evidenceCommitA, conflicting("build")),
+		gradedReport(t, evidenceCommitB, ungraded("build")),
+	})
+	if err != nil {
+		t.Fatalf("AccumulateShadowEvidence: %v", err)
+	}
+	build := taskEvidence(t, evidence, "build")
+	if len(build.ConflictingCommits) != 1 || build.ConflictingCommits[0] != evidenceCommitA {
+		t.Fatalf("conflicting commits = %v, want [%s]", build.ConflictingCommits, evidenceCommitA)
+	}
+	if len(build.IndeterminateCommits) != 1 || build.IndeterminateCommits[0] != evidenceCommitB {
+		t.Fatalf("ungraded commits = %v, want [%s]", build.IndeterminateCommits, evidenceCommitB)
+	}
+}
+
+// TestAnInsufficientTaskSaysHowFarShortItIs pins the shortfall: a name on its
+// own does not say whether one more pull request finishes the task.
+func TestAnInsufficientTaskSaysHowFarShortItIs(t *testing.T) {
+	evidence, err := AccumulateShadowEvidence([]ShadowReport{
+		gradedReport(t, evidenceCommitA, agreeing("build"), ungraded("lint")),
+		gradedReport(t, evidenceCommitB, agreeing("build"), ungraded("lint")),
+	})
+	if err != nil {
+		t.Fatalf("AccumulateShadowEvidence: %v", err)
+	}
+	readiness, err := evidence.Readiness(3)
+	if err != nil {
+		t.Fatalf("Readiness: %v", err)
+	}
+	if len(readiness.Shortfall) != len(readiness.Insufficient) {
+		t.Fatalf("%d shortfalls for %d insufficient tasks",
+			len(readiness.Shortfall), len(readiness.Insufficient))
+	}
+	shortfall := map[string]TaskShortfall{}
+	for _, task := range readiness.Shortfall {
+		shortfall[task.Task] = task
+	}
+	build, ok := shortfall["build"]
+	if !ok {
+		t.Fatalf("no shortfall for build: %+v", readiness.Shortfall)
+	}
+	if build.Graded != 2 || build.Remaining != 1 {
+		t.Fatalf("build shortfall = %+v, want graded 2 remaining 1", build)
+	}
+	lint, ok := shortfall["lint"]
+	if !ok {
+		t.Fatalf("no shortfall for lint: %+v", readiness.Shortfall)
+	}
+	if lint.Graded != 0 || lint.Remaining != 3 {
+		t.Fatalf("lint shortfall = %+v, want graded 0 remaining 3", lint)
+	}
+}
+
+// TestTheShortfallCoversTheInsufficientTasksAndNothingElse pins the judgement
+// call: a conflicting task carries no remaining count, because no number of
+// pull requests clears a conflict, and a ready task has nothing to report.
+func TestTheShortfallCoversTheInsufficientTasksAndNothingElse(t *testing.T) {
+	evidence, err := AccumulateShadowEvidence([]ShadowReport{
+		gradedReport(t, evidenceCommitA, agreeing("build"), conflicting("lint"), ungraded("docs")),
+		gradedReport(t, evidenceCommitB, agreeing("build"), agreeing("lint"), ungraded("docs")),
+	})
+	if err != nil {
+		t.Fatalf("AccumulateShadowEvidence: %v", err)
+	}
+	readiness, err := evidence.Readiness(2)
+	if err != nil {
+		t.Fatalf("Readiness: %v", err)
+	}
+	if len(readiness.Ready) != 1 || readiness.Ready[0] != "build" {
+		t.Fatalf("ready = %v, want [build]", readiness.Ready)
+	}
+	if len(readiness.Conflicting) != 1 || readiness.Conflicting[0] != "lint" {
+		t.Fatalf("conflicting = %v, want [lint]", readiness.Conflicting)
+	}
+	if len(readiness.Shortfall) != 1 {
+		t.Fatalf("shortfall = %+v, want one entry", readiness.Shortfall)
+	}
+	if readiness.Shortfall[0].Task != "docs" {
+		t.Fatalf("shortfall names %q, want docs", readiness.Shortfall[0].Task)
+	}
+	if readiness.Shortfall[0].Remaining != 2 {
+		t.Fatalf("docs remaining = %d, want 2", readiness.Shortfall[0].Remaining)
+	}
+}
+
+// TestTheShortfallIsInTheSameOrderAsTheInsufficientList pins that the two can
+// be read side by side.
+func TestTheShortfallIsInTheSameOrderAsTheInsufficientList(t *testing.T) {
+	evidence, err := AccumulateShadowEvidence([]ShadowReport{
+		gradedReport(t, evidenceCommitA, ungraded("zeta"), ungraded("alpha"), ungraded("mid")),
+	})
+	if err != nil {
+		t.Fatalf("AccumulateShadowEvidence: %v", err)
+	}
+	readiness, err := evidence.Readiness(1)
+	if err != nil {
+		t.Fatalf("Readiness: %v", err)
+	}
+	if len(readiness.Insufficient) != len(readiness.Shortfall) {
+		t.Fatalf("%d insufficient, %d shortfalls", len(readiness.Insufficient), len(readiness.Shortfall))
+	}
+	for i, name := range readiness.Insufficient {
+		if readiness.Shortfall[i].Task != name {
+			t.Fatalf("shortfall %d is %q beside insufficient %q", i, readiness.Shortfall[i].Task, name)
+		}
+	}
+}
+
+// TestARemainingCountIsNeverZeroOrBelow pins that the shortfall is only ever
+// written for a task that really is short: a task graded past its threshold is
+// ready, not a shortfall of zero or a negative one.
+func TestARemainingCountIsNeverZeroOrBelow(t *testing.T) {
+	evidence, err := AccumulateShadowEvidence([]ShadowReport{
+		gradedReport(t, evidenceCommitA, agreeing("build"), ungraded("lint")),
+		gradedReport(t, evidenceCommitB, agreeing("build"), ungraded("lint")),
+		gradedReport(t, evidenceCommitC, agreeing("build"), ungraded("lint")),
+	})
+	if err != nil {
+		t.Fatalf("AccumulateShadowEvidence: %v", err)
+	}
+	for _, threshold := range []int{1, 2, 3} {
+		readiness, err := evidence.Readiness(threshold)
+		if err != nil {
+			t.Fatalf("Readiness(%d): %v", threshold, err)
+		}
+		for _, task := range readiness.Shortfall {
+			if task.Remaining < 1 {
+				t.Fatalf("threshold %d: %q remaining %d", threshold, task.Task, task.Remaining)
+			}
+			if task.Graded+task.Remaining != threshold {
+				t.Fatalf("threshold %d: %q graded %d remaining %d do not add up",
+					threshold, task.Task, task.Graded, task.Remaining)
+			}
+		}
+	}
+}
+
+// TestSettledEvidenceReportsNoShortfall pins that a settled answer carries an
+// empty shortfall rather than a nil one a reader has to guess at.
+func TestSettledEvidenceReportsNoShortfall(t *testing.T) {
+	evidence, err := AccumulateShadowEvidence([]ShadowReport{
+		gradedReport(t, evidenceCommitA, agreeing("build")),
+	})
+	if err != nil {
+		t.Fatalf("AccumulateShadowEvidence: %v", err)
+	}
+	readiness, err := evidence.Readiness(1)
+	if err != nil {
+		t.Fatalf("Readiness: %v", err)
+	}
+	if !readiness.Settled() {
+		t.Fatalf("readiness is not settled: %+v", readiness)
+	}
+	if readiness.Shortfall == nil {
+		t.Fatal("shortfall is nil, want an empty list")
+	}
+	if len(readiness.Shortfall) != 0 {
+		t.Fatalf("shortfall = %+v, want none", readiness.Shortfall)
+	}
+}

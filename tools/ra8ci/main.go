@@ -1520,6 +1520,12 @@ func githubShadowEvidence(in io.Reader, out io.Writer) error {
 			"conflicting":         task.Conflicting,
 			"indeterminate":       task.Indeterminate,
 			"conflicting_commits": emptyWhenNil(task.ConflictingCommits),
+			// The commits nobody judged are named beside the ones that
+			// conflicted. A task reported short of the threshold is
+			// chased through exactly these pull requests, and a bare
+			// count of them sends an operator back through the whole
+			// document to work out which they were.
+			"indeterminate_commits": emptyWhenNil(task.IndeterminateCommits),
 		})
 	}
 	encoder := json.NewEncoder(out)
@@ -1535,6 +1541,7 @@ func githubShadowEvidence(in io.Reader, out io.Writer) error {
 		"ready":            emptyWhenNil(readiness.Ready),
 		"conflicting":      emptyWhenNil(readiness.Conflicting),
 		"insufficient":     emptyWhenNil(readiness.Insufficient),
+		"shortfall":        shortfallDocument(readiness.Shortfall),
 	}); err != nil {
 		return fmt.Errorf("write shadow evidence: %w", err)
 	}
@@ -2117,6 +2124,25 @@ func emptyWhenNil(values []string) []string {
 		return []string{}
 	}
 	return values
+}
+
+// shortfallDocument writes how far each insufficient task is from the
+// threshold, in the order the readiness answer names them.
+//
+// It is one entry per insufficient task and nothing else: a ready task has no
+// shortfall, and a conflicting task deliberately has none either, because a
+// remaining count beside a conflict would read as a number of pull requests
+// that clears it, which no number of pull requests does.
+func shortfallDocument(shortfall []github.TaskShortfall) []map[string]any {
+	document := make([]map[string]any, 0, len(shortfall))
+	for _, task := range shortfall {
+		document = append(document, map[string]any{
+			"task":      task.Task,
+			"graded":    task.Graded,
+			"remaining": task.Remaining,
+		})
+	}
+	return document
 }
 
 // githubShadowConfig reports the check-run configuration this process would

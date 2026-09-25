@@ -2988,3 +2988,76 @@ func TestARunWithNoSummaryReportsNoCut(t *testing.T) {
 		t.Fatalf("excerpt = %q truncated = %v", excerpt, truncated)
 	}
 }
+
+// An insufficient task is reported with how far short it is and with the
+// commits nobody judged, because those are the pull requests an operator goes
+// back to. A name and a count send them through the whole document by hand.
+func TestShadowEvidenceNamesTheUnjudgedCommitsAndTheShortfall(t *testing.T) {
+	task := shadowCompareEnv(t, "build")
+	var out bytes.Buffer
+	err := githubShadowEvidence(strings.NewReader(shadowEvidenceInputDocument(3,
+		shadowEvidenceCommit(task, evidenceHeadOne, "success", "success"),
+		shadowEvidenceCommit(task, evidenceHeadTwo, "success", ""),
+		shadowEvidenceCommit(task, evidenceHeadThree, "success", ""))), &out)
+	if err == nil {
+		t.Fatal("unsettled evidence exited clean")
+	}
+	report := decodeShadowEvidence(t, out.String())
+
+	tasks, _ := report["tasks"].([]any)
+	if len(tasks) != 1 {
+		t.Fatalf("tasks %v, want one", report["tasks"])
+	}
+	first, _ := tasks[0].(map[string]any)
+	ungraded, _ := first["indeterminate_commits"].([]any)
+	if len(ungraded) != 2 {
+		t.Fatalf("indeterminate_commits %v, want two", first["indeterminate_commits"])
+	}
+	if ungraded[0] != evidenceHeadTwo || ungraded[1] != evidenceHeadThree {
+		t.Fatalf("indeterminate_commits %v, want %s then %s",
+			ungraded, evidenceHeadTwo, evidenceHeadThree)
+	}
+
+	shortfall, _ := report["shortfall"].([]any)
+	if len(shortfall) != 1 {
+		t.Fatalf("shortfall %v, want one entry", report["shortfall"])
+	}
+	entry, _ := shortfall[0].(map[string]any)
+	if entry["task"] != task {
+		t.Fatalf("shortfall names %v, want %s", entry["task"], task)
+	}
+	if entry["graded"] != float64(1) || entry["remaining"] != float64(2) {
+		t.Fatalf("shortfall %v, want graded 1 remaining 2", entry)
+	}
+	if strings.Contains(out.String(), "null") {
+		t.Fatalf("report carries a null field:\n%s", out.String())
+	}
+}
+
+// Settled evidence writes both new fields as empty lists rather than leaving
+// a reader to tell a missing field from an answer of none.
+func TestSettledShadowEvidenceWritesEmptyUnjudgedAndShortfallLists(t *testing.T) {
+	task := shadowCompareEnv(t, "build")
+	var out bytes.Buffer
+	if err := githubShadowEvidence(strings.NewReader(shadowEvidenceInputDocument(1,
+		shadowEvidenceCommit(task, evidenceHeadOne, "success", "success"))), &out); err != nil {
+		t.Fatalf("githubShadowEvidence: %v", err)
+	}
+	report := decodeShadowEvidence(t, out.String())
+	shortfall, ok := report["shortfall"].([]any)
+	if !ok {
+		t.Fatalf("shortfall %v is not a list", report["shortfall"])
+	}
+	if len(shortfall) != 0 {
+		t.Fatalf("shortfall %v, want none on settled evidence", shortfall)
+	}
+	tasks, _ := report["tasks"].([]any)
+	first, _ := tasks[0].(map[string]any)
+	ungraded, ok := first["indeterminate_commits"].([]any)
+	if !ok {
+		t.Fatalf("indeterminate_commits %v is not a list", first["indeterminate_commits"])
+	}
+	if len(ungraded) != 0 {
+		t.Fatalf("indeterminate_commits %v, want none", ungraded)
+	}
+}
