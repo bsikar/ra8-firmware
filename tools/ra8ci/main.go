@@ -1490,8 +1490,29 @@ func surveyCheckRunPlan(planned []plannedCheckRun, published github.PublishedChe
 	report.Unplanned = len(report.UnplannedRun)
 	report.UnplannedStanding = unplannedStandings(report.UnplannedRun)
 	report.ContestedStanding = contestedStandings(report.Tasks)
-	report.Settled = report.Posting == 0 && report.Waiting == 0 && report.Conflict == 0
+	report.Settled = reconcileIsSettled(report)
 	return report, nil
+}
+
+// reconcileIsSettled answers, in one place, whether a commit's publish is
+// settled: every planned task is accounted for, so nothing is left to post,
+// nothing is still in flight, and nothing conflicts.
+//
+// The page states this answer rather than deciding it again, the rule
+// candidateSetIsReady keeps for the candidate survey. The expression is
+// short enough to type twice and that is the trouble with it: a survey
+// assembled here and a page checked over there agreed only by having been
+// written the same way, and the reading they can drift into is a page
+// opening "settled: every planned task is accounted for" over a command
+// that exits non-zero.
+//
+// A leftover run is deliberately not in it. A run under a name the document
+// does not plan says nothing about whether the tasks this publish planned
+// are accounted for, and Unplanned reaches neither Settled nor the exit
+// status for that reason. A run under a name a task DOES plan already makes
+// that task conflict, so it arrives here counted.
+func reconcileIsSettled(report reconcileReport) bool {
+	return report.Posting == 0 && report.Waiting == 0 && report.Conflict == 0
 }
 
 // githubReconcileCheckRuns reports what one commit already carries for a
