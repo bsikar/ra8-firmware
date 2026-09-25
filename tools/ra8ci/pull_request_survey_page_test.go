@@ -5,6 +5,7 @@ package main
 
 import (
 	"bytes"
+	"encoding/json"
 	"errors"
 	"strings"
 	"testing"
@@ -254,5 +255,178 @@ func TestTheCandidateSurveyPageKeepsTheSurveysOwnOrder(t *testing.T) {
 	}))
 	if !strings.HasPrefix(page[2], "selected: #1591 ") || !strings.HasPrefix(page[3], "selected: #1589 ") {
 		t.Fatalf("the page reordered the selections: %#v", page)
+	}
+}
+
+// candidateDocumentOf is one survey as the document `pull-request-survey`
+// writes, which is what the page command is handed.
+func candidateDocumentOf(t *testing.T, report pullRequestSurveyReport) string {
+	t.Helper()
+	document := &bytes.Buffer{}
+	encoder := json.NewEncoder(document)
+	encoder.SetIndent("", "  ")
+	if err := encoder.Encode(report); err != nil {
+		t.Fatalf("encode survey: %v", err)
+	}
+	return document.String()
+}
+
+// The command's whole job: a survey document in, the page out. It is the same
+// page the renderer writes, because a second rendering path is a second page
+// to keep in step.
+func TestTheCandidateSurveyPageCommandWritesThePage(t *testing.T) {
+	report := pullRequestSurveyFrom("Checks", []surveyedHead{
+		selectableFor(1589, surveyHeadA, 771, 1, "success"),
+		selectableFor(1590, surveyHeadB, 772, 1, "success"),
+	})
+	page := &bytes.Buffer{}
+	if err := githubPullRequestSurveyPage(strings.NewReader(candidateDocumentOf(t, report)), page); err != nil {
+		t.Fatalf("the page command answered %v", err)
+	}
+	rendered := &bytes.Buffer{}
+	if err := RenderPullRequestSurvey(rendered, report); err != nil {
+		t.Fatalf("render the survey: %v", err)
+	}
+	if page.String() != rendered.String() {
+		t.Fatalf("the command wrote %q, the renderer %q", page.String(), rendered.String())
+	}
+}
+
+// A field this build cannot state is refused rather than ignored. A survey
+// from a newer build carrying a finding this one does not know would
+// otherwise be rendered as a page that says the set is ready.
+func TestTheCandidateSurveyPageCommandRefusesAnUnknownField(t *testing.T) {
+	document := `{"workflow":"Checks","considered":0,"selectable":0,"unselectable":0,` +
+		`"shared_heads":[],"pull_requests":[],"forks_excluded":3}`
+	page := &bytes.Buffer{}
+	if err := githubPullRequestSurveyPage(strings.NewReader(document), page); err == nil {
+		t.Fatal("a survey carrying an unknown finding was rendered")
+	}
+	if page.Len() != 0 {
+		t.Fatalf("a refusal wrote %q", page.String())
+	}
+}
+
+// A document that is not a survey is refused. Rendering it would put a
+// "ready" line over nothing at all.
+func TestTheCandidateSurveyPageCommandRefusesADocumentThatIsNotASurvey(t *testing.T) {
+	page := &bytes.Buffer{}
+	err := githubPullRequestSurveyPage(strings.NewReader(`{"considered":0,"selectable":0,`+
+		`"unselectable":0,"shared_heads":[],"pull_requests":[]}`), page)
+	if err == nil || !strings.Contains(err.Error(), "no workflow stated") {
+		t.Fatalf("a document with no workflow was answered with %v", err)
+	}
+	if page.Len() != 0 {
+		t.Fatalf("a refusal wrote %q", page.String())
+	}
+}
+
+// Two surveys in one stream are two candidate sets, and the page states one.
+func TestTheCandidateSurveyPageCommandRefusesASecondSurvey(t *testing.T) {
+	one := candidateDocumentOf(t, pullRequestSurveyFrom("Checks", []surveyedHead{
+		selectableFor(1589, surveyHeadA, 771, 1, "success"),
+	}))
+	page := &bytes.Buffer{}
+	err := githubPullRequestSurveyPage(strings.NewReader(one+one), page)
+	if err == nil || !strings.Contains(err.Error(), "trailing content") {
+		t.Fatalf("two surveys in one stream were answered with %v", err)
+	}
+}
+
+// A survey of no pull requests is a real, empty answer rather than a
+// malformed document, and the command states it as one. It is the one shape
+// the reader deliberately does not refuse.
+func TestTheCandidateSurveyPageCommandStatesAnEmptySurvey(t *testing.T) {
+	page := &bytes.Buffer{}
+	if err := githubPullRequestSurveyPage(strings.NewReader(
+		candidateDocumentOf(t, pullRequestSurveyFrom("Checks", nil))), page); err != nil {
+		t.Fatalf("an empty survey was answered with %v", err)
+	}
+	if !strings.HasPrefix(page.String(), "ready: ") {
+		t.Fatalf("an empty survey rendered as %q", page.String())
+	}
+}
+
+// A set that cannot be gathered as it stands is said in the verdict as well
+// as on the page, and the page is written first: an answer carried only by an
+// exit status is one nobody can read.
+func TestTheCandidateSurveyPageCommandAnswersForACandidateWithNoRun(t *testing.T) {
+	report := pullRequestSurveyFrom("Checks", []surveyedHead{
+		selectableFor(1589, surveyHeadA, 771, 1, "success"),
+		unselectableFor(1590, surveyHeadB, github.CommitWorkflowRuns{HeadSHA: surveyHeadB}),
+	})
+	page := &bytes.Buffer{}
+	err := githubPullRequestSurveyPage(strings.NewReader(candidateDocumentOf(t, report)), page)
+	if err == nil || !strings.Contains(err.Error(), "1 of 2 candidates have no Checks run to gather") {
+		t.Fatalf("an unselectable candidate was answered with %v", err)
+	}
+	if !strings.Contains(page.String(), "no evidence run: #1590 ") {
+		t.Fatalf("the page was not written above the verdict: %q", page.String())
+	}
+}
+
+// A commit two candidates share makes the set ungatherable on its own, and
+// the verdict says so even though every candidate is selectable and the
+// unselectable count is zero.
+func TestTheCandidateSurveyPageCommandAnswersForASharedHead(t *testing.T) {
+	report := pullRequestSurveyFrom("Checks", []surveyedHead{
+		selectableFor(1589, surveyHeadA, 771, 1, "success"),
+		selectableFor(1590, surveyHeadA, 771, 1, "success"),
+	})
+	page := &bytes.Buffer{}
+	err := githubPullRequestSurveyPage(strings.NewReader(candidateDocumentOf(t, report)), page)
+	if err == nil || !strings.Contains(err.Error(), "1 commit carries more than one candidate") {
+		t.Fatalf("a shared head was answered with %v", err)
+	}
+	if strings.Contains(err.Error(), "no Checks run to gather") {
+		t.Fatalf("a shared head was reported as a missing run: %v", err)
+	}
+	if !strings.Contains(page.String(), "shared head "+surveyHeadA+": #1589, #1590") {
+		t.Fatalf("the page was not written above the verdict: %q", page.String())
+	}
+}
+
+// Both reasons are said at once when both hold. A set with one of each is not
+// two findings an operator gets to discover one run at a time.
+func TestTheCandidateSurveyVerdictSaysBothReasons(t *testing.T) {
+	err := candidateSurveyVerdict(pullRequestSurveyFrom("Checks", []surveyedHead{
+		selectableFor(1589, surveyHeadA, 771, 1, "success"),
+		selectableFor(1590, surveyHeadA, 771, 1, "success"),
+		unselectableFor(1591, surveyHeadB, github.CommitWorkflowRuns{HeadSHA: surveyHeadB}),
+	}))
+	if err == nil {
+		t.Fatal("a set with both findings was called ready")
+	}
+	if !strings.Contains(err.Error(), "1 of 3 candidates have no Checks run to gather") ||
+		!strings.Contains(err.Error(), "1 commit carries more than one candidate") {
+		t.Fatalf("the verdict says %v", err)
+	}
+}
+
+// A gatherable set answers with nothing. The verdict is for the operator to
+// act on, so a clean survey must not spend one.
+func TestAGatherableCandidateSetHasNoVerdict(t *testing.T) {
+	if err := candidateSurveyVerdict(pullRequestSurveyFrom("Checks", []surveyedHead{
+		selectableFor(1589, surveyHeadA, 771, 1, "failure"),
+		selectableFor(1590, surveyHeadB, 772, 1, "success"),
+	})); err != nil {
+		t.Fatalf("a gatherable set was answered with %v", err)
+	}
+}
+
+// The page is reachable by name, and the usage says so. #1628's table is what
+// makes that one fact rather than two.
+func TestTheGitHubUsageNamesTheCandidateSurveyPage(t *testing.T) {
+	if !strings.Contains(githubUsage(), "pull-request-survey-page") {
+		t.Fatalf("the github usage is %q", githubUsage())
+	}
+	var found bool
+	for _, subcommand := range githubSubcommands() {
+		if subcommand.Name == "pull-request-survey-page" {
+			found = true
+		}
+	}
+	if !found {
+		t.Fatal("no subcommand runs the candidate survey page")
 	}
 }
