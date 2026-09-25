@@ -83,6 +83,9 @@ func RenderPullRequestSurvey(out io.Writer, report pullRequestSurveyReport) erro
 			ErrPullRequestSurveyPageInvalid,
 			report.Selectable, report.Unselectable, len(selectable), len(unselectable))
 	}
+	if err := checkSurveyedCandidates(report); err != nil {
+		return err
+	}
 	if err := checkSurveySharedHeads(report); err != nil {
 		return err
 	}
@@ -138,6 +141,68 @@ func partitionSurveyedPullRequests(report pullRequestSurveyReport) (selectable, 
 		unselectable = append(unselectable, candidate)
 	}
 	return selectable, unselectable
+}
+
+// checkSurveyedCandidates refuses a listing that does not answer for each
+// candidate exactly once, by a number a reader can open.
+//
+// The counts are checked against this listing, and the shared heads are
+// checked against it too, so it is the one slice of the document everything
+// else on the page is read through. Nothing checked it. A survey answering
+// for one pull request twice passes both count checks, because the counts
+// are derived from the listing's own length and its own selectable bits, and
+// then prints that candidate twice: twice under its base, twice in the
+// caveats, twice in the selections. A reader counting the selected lines to
+// decide how much evidence the gather will carry counts one pull request as
+// two.
+//
+// The repeat is worse than a doubled line, and this is why the check runs
+// before the shared heads rather than beside them. checkSurveySharedHeads
+// looks a candidate up BY NUMBER to decide whether it is really at the
+// commit it is grouped under. With one number answered for twice, that
+// lookup reads whichever of the two came last: a real clash can be refused
+// as "#1589 shares abc and is at def", naming a head the reader will not
+// find on the line the page prints, or pass because the second answer
+// happened to agree. A refusal about the wrong candidate is the one thing
+// this page must never produce.
+//
+// An unnumbered candidate is refused for the reason the page names every
+// candidate by number: every line an operator acts on is "#1589", and their
+// next move is to open it. "#0" is not a pull request, and a listing that
+// carries one is not a survey of ours: the number comes straight off the
+// head GitHub answered with, so a missing one means the document was
+// assembled somewhere else. It is named by the commit it sits on, because
+// that is the only thing left to identify it with.
+//
+// Both refusals are the page's existing invalid sentinel. Neither is a size
+// bound: the listing is already bounded, and a repeat is not a long page, it
+// is a wrong one.
+func checkSurveyedCandidates(report pullRequestSurveyReport) error {
+	answeredFor := make(map[int]struct{}, len(report.PullRequests))
+	for _, candidate := range report.PullRequests {
+		if candidate.Number <= 0 {
+			return fmt.Errorf("%w: a candidate at %s is numbered %d",
+				ErrPullRequestSurveyPageInvalid,
+				statedSurveyHead(candidate.HeadSHA), candidate.Number)
+		}
+		if _, twice := answeredFor[candidate.Number]; twice {
+			return fmt.Errorf("%w: #%d is answered for more than once",
+				ErrPullRequestSurveyPageInvalid, candidate.Number)
+		}
+		answeredFor[candidate.Number] = struct{}{}
+	}
+	return nil
+}
+
+// statedSurveyHead names the commit a candidate sits on for a refusal that
+// cannot name the candidate. A survey that answered for neither is refused
+// saying so rather than with an empty gap in the sentence.
+func statedSurveyHead(head string) string {
+	head = strings.TrimSpace(head)
+	if head == "" {
+		return "an unstated commit"
+	}
+	return head
 }
 
 // checkSurveySharedHeads refuses a survey whose shared heads are not about
