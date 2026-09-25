@@ -49,9 +49,10 @@ const maxRenderedSurveyCandidates = 200
 // convention the other three pages keep. The sections that follow are in
 // decision order, never alphabetical and never the order the candidates were
 // asked about: the commits two candidates share, then the candidates that can
-// carry no evidence, then the runs the gather would actually use. That is the
-// order the work is in, from the clash that refuses the whole gather, through
-// the candidates to drop, to the set to hand on.
+// carry no evidence, then the selections worth reading before they are
+// gathered, then the runs the gather would actually use. That is the order
+// the work is in, from the clash that refuses the whole gather, through the
+// candidates to drop and the ones to look at twice, to the set to hand on.
 //
 // A shared head leads because it is the only one of the three that is a fact
 // about the SET rather than about a candidate: both pull requests are
@@ -97,6 +98,10 @@ func RenderPullRequestSurvey(out io.Writer, report pullRequestSurveyReport) erro
 		fmt.Fprintf(page, "no evidence run: #%d at %s (%s)\n",
 			candidate.Number, candidate.HeadSHA, candidate.Reason)
 	}
+	for _, caveat := range caveatedSelections(selectable) {
+		fmt.Fprintf(page, "read before gathering: #%d at %s (%s)\n",
+			caveat.Number, caveat.HeadSHA, caveat.Reason)
+	}
 	for _, candidate := range selectable {
 		fmt.Fprintf(page, "selected: #%d at %s, run %d attempt %d (%s: %s)\n",
 			candidate.Number, candidate.HeadSHA, candidate.RunID, candidate.Attempt,
@@ -135,4 +140,74 @@ func numberedPullRequests(numbers []int) string {
 		named = append(named, fmt.Sprintf("#%d", number))
 	}
 	return strings.Join(named, ", ")
+}
+
+// surveyCaveat is one selectable candidate whose head is not the ordinary
+// case the rest of the page reads as: a pull request that is no longer open,
+// or one whose head lives in a fork.
+type surveyCaveat struct {
+	Number  int
+	HeadSHA string
+	Reason  string
+}
+
+// caveatedSelections names the selections an operator should look at twice
+// before handing the set on.
+//
+// The survey already reads a candidate's state, whether it merged, and
+// whether its head is in a fork, and it writes all three into the document.
+// The page dropped them, so the two selections that are worth a second
+// thought read exactly like the ordinary ones. A merged pull request still
+// has a run and is still selectable, but the evidence it would carry is
+// about a branch that is already in the base; and a fork's run is somebody
+// else's branch under a workflow of ours. Neither is wrong to gather, which
+// is why this states them rather than refusing them: the page's job is to
+// put the fact where it is read, and #1625 settled that naming something
+// moves no verdict.
+//
+// Only selectable candidates are read here. An unselectable one is named on
+// its own line already and is not going to be gathered, so a second line
+// about its head is noise on the section that matters.
+//
+// A candidate that is both merged and forked is read once, with both
+// reasons, rather than on two lines: two lines about one pull request read
+// as two pull requests.
+func caveatedSelections(selectable []surveyedPullRequest) []surveyCaveat {
+	caveats := make([]surveyCaveat, 0, len(selectable))
+	for _, candidate := range selectable {
+		reasons := make([]string, 0, 2)
+		// Merged is said instead of the state, never beside it: a
+		// merged pull request is closed too, and "already merged;
+		// no longer open (closed)" states one fact twice.
+		state := strings.TrimSpace(candidate.State)
+		switch {
+		case candidate.Merged:
+			reasons = append(reasons, "already merged")
+		case state != "" && !strings.EqualFold(state, "open"):
+			reasons = append(reasons, "no longer open ("+state+")")
+		}
+		if candidate.FromFork {
+			reasons = append(reasons, forkedHead(candidate.HeadRepository))
+		}
+		if len(reasons) == 0 {
+			continue
+		}
+		caveats = append(caveats, surveyCaveat{
+			Number:  candidate.Number,
+			HeadSHA: candidate.HeadSHA,
+			Reason:  strings.Join(reasons, "; "),
+		})
+	}
+	return caveats
+}
+
+// forkedHead names the fork a head sits in, and says the head is forked even
+// when the survey could not name the repository: which fork it is matters
+// less than that it is one.
+func forkedHead(repository string) string {
+	repository = strings.TrimSpace(repository)
+	if repository == "" {
+		return "from a fork"
+	}
+	return "from the fork " + repository
 }
