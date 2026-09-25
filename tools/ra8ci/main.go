@@ -54,7 +54,7 @@ func main() {
 
 func run(ctx context.Context, args []string) int {
 	if len(args) == 0 {
-		fmt.Fprintln(os.Stderr, "usage: ra8ci <task>|tasks [--digest|--json]|ascii [--check] [--all|PATH]|since [--all|FILE...]|final-newline [FILE...]|runner-clock [--repo OWNER/REPO] [--runs N] [--hours N]|tests-readme [--selftest]|inclusive-terminology-commits [--selftest]|server|agent|sync|backup refresh|keygen|board status|take [--class human|ci|agent]|checkpoint|extend|cancel|hil budget|verify-capture|db migrate|report slow|github check|github shadow|github shadow-compare|github publish-check-run|github required-checks|github gate|github actions-run|run submit|run status")
+		fmt.Fprintln(os.Stderr, "usage: ra8ci <task>|tasks [--digest|--json]|ascii [--check] [--all|PATH]|since [--all|FILE...]|final-newline [FILE...]|runner-clock [--repo OWNER/REPO] [--runs N] [--hours N]|tests-readme [--selftest]|inclusive-terminology-commits [--selftest]|server|agent|sync|backup refresh|keygen|board status|take [--class human|ci|agent]|checkpoint|extend|cancel|hil budget|verify-capture|db migrate|report slow|github check|github shadow|github shadow-compare|github publish-check-run|github required-checks|github evidence-gate|github gate|github actions-run|run submit|run status")
 		return 2
 	}
 	var err error
@@ -513,7 +513,7 @@ func runAgent(ctx context.Context) error {
 // documentation.
 func githubCommand(ctx context.Context, args []string) error {
 	if len(args) != 1 {
-		return errors.New("usage: ra8ci github check|shadow|shadow-compare|shadow-evidence|publish-check-run|required-checks|gate|actions-run")
+		return errors.New("usage: ra8ci github check|shadow|shadow-compare|shadow-evidence|publish-check-run|required-checks|evidence-gate|gate|actions-run")
 	}
 	switch args[0] {
 	case "check":
@@ -528,12 +528,14 @@ func githubCommand(ctx context.Context, args []string) error {
 		return githubShadowEvidence(os.Stdin, os.Stdout)
 	case "required-checks":
 		return githubRequiredChecks(os.Stdin, os.Stdout)
+	case "evidence-gate":
+		return githubEvidenceGate(os.Stdin, os.Stdout)
 	case "gate":
 		return githubGate(ctx, os.Stdin, os.Stdout)
 	case "actions-run":
 		return githubActionsRun(ctx, os.Stdin, os.Stdout)
 	default:
-		return errors.New("usage: ra8ci github check|shadow|shadow-compare|shadow-evidence|publish-check-run|required-checks|gate|actions-run")
+		return errors.New("usage: ra8ci github check|shadow|shadow-compare|shadow-evidence|publish-check-run|required-checks|evidence-gate|gate|actions-run")
 	}
 }
 
@@ -827,6 +829,124 @@ type requiredCheckInput struct {
 	Required []string `json:"required"`
 }
 
+// evidenceGateInput is several pull requests' comparisons, the threshold they
+// are read at, and the gate as it stands today.
+//
+// It is its own shape rather than a "required" key added to shadowEvidenceInput,
+// because both commands set DisallowUnknownFields and widening the evidence
+// document would have `ra8ci github shadow-evidence` quietly accept a gate list
+// it never reads. The evidence half is the same type, so the two documents
+// cannot drift apart.
+type evidenceGateInput struct {
+	Threshold int                     `json:"threshold"`
+	Commits   []shadowComparisonInput `json:"commits"`
+	Required  []string                `json:"required"`
+}
+
+// githubEvidenceGate plans the gate from the shadow evidence rather than from
+// the mode alone.
+//
+// `ra8ci github required-checks` plans for every task the declared
+// correspondence covers, which is the mode's answer: a deployment flipped to
+// authoritative on its first morning would propose requiring tasks nothing has
+// ever compared. This command reads the same gate document, grades the pull
+// requests behind it, and proposes only the tasks the evidence backs at the
+// stated threshold. Everything it holds back is named with its reason.
+//
+// It plans; it changes nothing, here or on GitHub.
+func githubEvidenceGate(in io.Reader, out io.Writer) error {
+	loaded, err := catalog.Load()
+	if err != nil {
+		return fmt.Errorf("load task catalog: %w", err)
+	}
+	config, enabled, err := github.LoadCheckRunConfigFromEnv(loaded.Names())
+	if err != nil {
+		return err
+	}
+	if !enabled {
+		return fmt.Errorf("GitHub check-run publishing is not configured: set %s",
+			github.EnvShadowCorrespondenceFile)
+	}
+
+	var document evidenceGateInput
+	decoder := json.NewDecoder(io.LimitReader(in, maxShadowEvidenceBytes+1))
+	decoder.DisallowUnknownFields()
+	if err := decoder.Decode(&document); err != nil {
+		return fmt.Errorf("read evidence gate document: %w", err)
+	}
+	if decoder.More() {
+		return errors.New("read evidence gate document: trailing content after the document")
+	}
+	if decoder.InputOffset() > maxShadowEvidenceBytes {
+		return fmt.Errorf("read evidence gate document: larger than %d bytes", maxShadowEvidenceBytes)
+	}
+	// Stated, never defaulted, for the reason shadow-evidence states it:
+	// how many pull requests are representative is the operator's
+	// judgement, and this command spends that judgement on a gate.
+	if document.Threshold < 1 {
+		return errors.New("read evidence gate document: no threshold stated")
+	}
+	if len(document.Commits) == 0 {
+		return errors.New("read evidence gate document: no commits to accumulate")
+	}
+
+	reports, _, err := gradeShadowCommits(config, document.Commits)
+	if err != nil {
+		return err
+	}
+	evidence, err := github.AccumulateShadowEvidence(reports)
+	if err != nil {
+		return fmt.Errorf("accumulate shadow evidence: %w", err)
+	}
+	readiness, err := evidence.Readiness(document.Threshold)
+	if err != nil {
+		return fmt.Errorf("read shadow evidence at threshold %d: %w", document.Threshold, err)
+	}
+	plan, err := github.PlanRequiredChecksFromEvidence(config.Mode, readiness, document.Required)
+	if err != nil {
+		return fmt.Errorf("plan required checks from the evidence: %w", err)
+	}
+
+	withheld := make([]map[string]any, 0, len(plan.Withheld))
+	for _, task := range plan.Withheld {
+		withheld = append(withheld, map[string]any{
+			"task":             task.Task,
+			"context":          task.Context,
+			"reason":           task.Reason.String(),
+			"already_required": task.AlreadyRequired,
+		})
+	}
+	encoder := json.NewEncoder(out)
+	encoder.SetIndent("", "  ")
+	if err := encoder.Encode(map[string]any{
+		"mode":             config.Mode.String(),
+		"may_block_merges": config.Mode == github.ModeAuthoritative,
+		"catalog_digest":   loaded.Digest(),
+		"threshold":        plan.Threshold,
+		"settled":          readiness.Settled(),
+		"no_change":        plan.Plan.NoChange(),
+		"add":              emptyWhenNil(plan.Plan.Add),
+		"remove":           emptyWhenNil(plan.Plan.Remove),
+		"keep":             emptyWhenNil(plan.Plan.Keep),
+		"foreign":          emptyWhenNil(plan.Plan.Foreign),
+		"withheld":         withheld,
+	}); err != nil {
+		return fmt.Errorf("write evidence gate plan: %w", err)
+	}
+	// The plan is written before the verdict is returned, the
+	// shadow-compare convention: a caller reading only the exit status
+	// must not be able to get a clean one from a plan nobody could read.
+	// A held-back task is not an error in the inputs, it is the answer,
+	// and the exit status says so because a pipeline that pipes this into
+	// a gate change must not treat a partially-backed plan as a finished
+	// one.
+	if plan.Withholds() {
+		return fmt.Errorf("the evidence does not back %d of the covered tasks at threshold %d",
+			len(plan.Withheld), plan.Threshold)
+	}
+	return nil
+}
+
 // githubRequiredChecks reports what branch protection should require, given
 // what it requires today. It plans; it changes nothing, here or on GitHub.
 //
@@ -834,6 +954,55 @@ type requiredCheckInput struct {
 // it decides the whole answer: a shadow deployment plans no additions at all,
 // because a shadow run reports neutral whatever the task did and a required
 // check satisfied by a failing task is worse than no gate.
+// gradeShadowCommits collects and grades one evidence document's commits
+// through the one declared correspondence, and reports per commit what that
+// commit did not exercise.
+//
+// Both commands that read several pull requests' comparisons go through this,
+// so evidence read for a readiness answer and evidence read for a gate plan are
+// graded the same way rather than by two loops that can drift apart.
+func gradeShadowCommits(config github.CheckRunEnvConfig, commits []shadowComparisonInput) ([]github.ShadowReport, []map[string]any, error) {
+	reports := make([]github.ShadowReport, 0, len(commits))
+	notExercised := make([]map[string]any, 0, len(commits))
+	for i, commit := range commits {
+		plane := make([]github.PlaneOutcome, 0, len(commit.Plane))
+		for _, outcome := range commit.Plane {
+			plane = append(plane, github.PlaneOutcome{
+				Task: outcome.Task, HeadSHA: outcome.HeadSHA, Observed: outcome.Observed,
+			})
+		}
+		actions := make([]github.ActionsOutcome, 0, len(commit.Actions))
+		for _, outcome := range commit.Actions {
+			actions = append(actions, github.ActionsOutcome{
+				Job: outcome.Job, HeadSHA: outcome.HeadSHA, Conclusion: outcome.Conclusion,
+			})
+		}
+		// Every commit is collected through the one declared
+		// correspondence. Evidence graded under two different statements
+		// of which job covers which task is not one body of evidence.
+		collection, err := config.Correspondence.Collect(plane, actions)
+		if err != nil {
+			return nil, nil, fmt.Errorf("collect shadow observations for commit %d: %w", i+1, err)
+		}
+		report, err := github.CompareShadowRun(collection.Observations)
+		if err != nil {
+			return nil, nil, fmt.Errorf("compare shadow run for commit %d: %w", i+1, err)
+		}
+		reports = append(reports, report)
+		// A task a commit did not exercise is not evidence for that
+		// task and is not accumulated as any. It is reported per commit
+		// so a task that reads as under-observed can be explained
+		// without going back to the inputs.
+		notExercised = append(notExercised, map[string]any{
+			"head_sha":      report.HeadSHA,
+			"not_exercised": emptyWhenNil(collection.NotRun),
+			"comparisons":   len(report.Comparisons),
+			"clean":         report.Clean(),
+		})
+	}
+	return reports, notExercised, nil
+}
+
 // githubShadowEvidence grades several pull requests through the declared
 // correspondence and reports which tasks the evidence would let a required
 // check move for.
@@ -878,43 +1047,9 @@ func githubShadowEvidence(in io.Reader, out io.Writer) error {
 		return errors.New("read shadow evidence: no commits to accumulate")
 	}
 
-	reports := make([]github.ShadowReport, 0, len(document.Commits))
-	notExercised := make([]map[string]any, 0, len(document.Commits))
-	for i, commit := range document.Commits {
-		plane := make([]github.PlaneOutcome, 0, len(commit.Plane))
-		for _, outcome := range commit.Plane {
-			plane = append(plane, github.PlaneOutcome{
-				Task: outcome.Task, HeadSHA: outcome.HeadSHA, Observed: outcome.Observed,
-			})
-		}
-		actions := make([]github.ActionsOutcome, 0, len(commit.Actions))
-		for _, outcome := range commit.Actions {
-			actions = append(actions, github.ActionsOutcome{
-				Job: outcome.Job, HeadSHA: outcome.HeadSHA, Conclusion: outcome.Conclusion,
-			})
-		}
-		// Every commit is collected through the one declared
-		// correspondence. Evidence graded under two different statements
-		// of which job covers which task is not one body of evidence.
-		collection, err := config.Correspondence.Collect(plane, actions)
-		if err != nil {
-			return fmt.Errorf("collect shadow observations for commit %d: %w", i+1, err)
-		}
-		report, err := github.CompareShadowRun(collection.Observations)
-		if err != nil {
-			return fmt.Errorf("compare shadow run for commit %d: %w", i+1, err)
-		}
-		reports = append(reports, report)
-		// A task a commit did not exercise is not evidence for that
-		// task and is not accumulated as any. It is reported per commit
-		// so a task that reads as under-observed can be explained
-		// without going back to the inputs.
-		notExercised = append(notExercised, map[string]any{
-			"head_sha":      report.HeadSHA,
-			"not_exercised": emptyWhenNil(collection.NotRun),
-			"comparisons":   len(report.Comparisons),
-			"clean":         report.Clean(),
-		})
+	reports, notExercised, err := gradeShadowCommits(config, document.Commits)
+	if err != nil {
+		return err
 	}
 
 	evidence, err := github.AccumulateShadowEvidence(reports)
