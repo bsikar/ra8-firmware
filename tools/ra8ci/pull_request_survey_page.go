@@ -365,6 +365,14 @@ func statedSurveyHead(head string) string {
 // may name no candidates either, and "a shared head grouping  names no
 // commit" is the gap this check exists to close. The count says which group
 // it is without ever being blank.
+//
+// A candidate is read for its number before it is looked up, the answer the
+// reconcile page's grouping already gives a run of its own. The listing
+// refuses an unnumbered candidate, so a group naming #0 could only ever be
+// looked up and missed, and "#0 shares abc123 and was not surveyed" sends a
+// reader off to find a pull request the survey was never asked about. The
+// document is not wrong about which candidates were surveyed; it is carrying
+// a number nobody can open, and it is refused saying so.
 func checkSurveySharedHeads(report pullRequestSurveyReport) error {
 	at := make(map[int]string, len(report.PullRequests))
 	for _, candidate := range report.PullRequests {
@@ -388,6 +396,10 @@ func checkSurveySharedHeads(report pullRequestSurveyReport) error {
 		grouped[commit] = struct{}{}
 		named := make(map[int]struct{}, len(shared.PullRequests))
 		for _, number := range shared.PullRequests {
+			if number <= 0 {
+				return fmt.Errorf("%w: a candidate sharing %s is numbered %d",
+					ErrPullRequestSurveyPageInvalid, shared.HeadSHA, number)
+			}
 			if _, repeated := named[number]; repeated {
 				return fmt.Errorf("%w: #%d shares %s with itself",
 					ErrPullRequestSurveyPageInvalid, number, shared.HeadSHA)
