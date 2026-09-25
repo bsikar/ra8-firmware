@@ -127,9 +127,10 @@ type UnclaimedReport struct {
 	Reaped  int
 	Claimed int
 	Partial int
-	// Steps counts completed steps by name, so a pass that keeps
-	// stopping at the same place says so rather than only counting
-	// failures.
+	// Steps counts completed steps by name, whether or not the
+	// reservation they belong to finished the sequence. A pass that
+	// keeps stopping at the same place says so here: the steps before
+	// the failure are counted and the one that failed is not.
 	Steps map[string]int
 }
 
@@ -165,7 +166,7 @@ func (r *UnclaimedReaper) Reap(ctx context.Context) (UnclaimedReport, error) {
 			report.Claimed++
 			continue
 		}
-		if err := r.revoke(ctx, vm); err != nil {
+		if err := r.revoke(ctx, vm, &report); err != nil {
 			report.Partial++
 			failures++
 			if firstErr == nil {
@@ -178,9 +179,6 @@ func (r *UnclaimedReaper) Reap(ctx context.Context) (UnclaimedReport, error) {
 			continue
 		}
 		report.Reaped++
-		for _, step := range UnclaimedSteps() {
-			report.step(step)
-		}
 	}
 	if firstErr != nil {
 		return report, fmt.Errorf("%w: %d of %d reservations: %w",
@@ -193,7 +191,14 @@ func (r *UnclaimedReaper) Reap(ctx context.Context) (UnclaimedReport, error) {
 // that fails. Nothing later runs: the order exists precisely so a guest is
 // never destroyed while its registration is still live, and carrying on past
 // a failed revocation would throw that away for the sake of a tidier count.
-func (r *UnclaimedReaper) revoke(ctx context.Context, vm store.RunnerVM) error {
+//
+// Each step is counted as it completes rather than four at a time once the
+// whole sequence has. A reservation that stops midway has still had real work
+// done on the systems behind the steps that ran, and the counts are where an
+// operator reads how far a failing pass is getting: without this, a pass
+// stopping at destroy_guest every time and a pass stopping at the very first
+// step report exactly the same thing, an empty map and a count of failures.
+func (r *UnclaimedReaper) revoke(ctx context.Context, vm store.RunnerVM, report *UnclaimedReport) error {
 	steps := map[string]func(context.Context, store.RunnerVM) error{
 		StepRevokeRegistration: r.revoker.RevokeRegistration,
 		StepDestroyGuest:       r.revoker.DestroyGuest,
@@ -208,6 +213,7 @@ func (r *UnclaimedReaper) revoke(ctx context.Context, vm store.RunnerVM) error {
 		if err := step(ctx, vm); err != nil {
 			return fmt.Errorf("reservation %s stopped at %s: %w", vm.ID, name, err)
 		}
+		report.step(name)
 	}
 	return nil
 }
