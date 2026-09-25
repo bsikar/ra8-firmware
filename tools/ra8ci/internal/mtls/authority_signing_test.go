@@ -157,7 +157,7 @@ func TestARotatingBundleIsStillAccepted(t *testing.T) {
 }
 
 func TestCheckAuthorityCanSignRefusesNothing(t *testing.T) {
-	if err := checkAuthorityCanSign(nil, "subject \"none\""); !errors.Is(err, ErrIdentity) {
+	if err := checkAuthorityCanSign(nil, "subject \"none\"", "client"); !errors.Is(err, ErrIdentity) {
 		t.Fatalf("a nil authority was not refused: %v", err)
 	}
 }

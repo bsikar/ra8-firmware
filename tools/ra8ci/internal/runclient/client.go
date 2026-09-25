@@ -9,7 +9,6 @@ import (
 	"context"
 	"crypto/sha256"
 	"crypto/tls"
-	"crypto/x509"
 	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
@@ -113,9 +112,9 @@ func New(config Config) (*Client, error) {
 	if err != nil {
 		return nil, fmt.Errorf("read server CA: %w", err)
 	}
-	roots := x509.NewCertPool()
-	if !roots.AppendCertsFromPEM(caPEM) {
-		return nil, errors.New("server CA has no trusted certificate")
+	roots, err := mtls.ServerAuthorities(caPEM, time.Now())
+	if err != nil {
+		return nil, fmt.Errorf("run client server trust: %w", err)
 	}
 	identity, err := tls.LoadX509KeyPair(config.CertFile, config.KeyFile)
 	if err != nil {

@@ -6,8 +6,6 @@ package main
 import (
 	"context"
 	"crypto/tls"
-	"crypto/x509"
-	"errors"
 	"fmt"
 	"net/http"
 	"os"
@@ -29,9 +27,9 @@ func syncLocalRuns(ctx context.Context) error {
 	if err != nil {
 		return fmt.Errorf("read server CA: %w", err)
 	}
-	roots := x509.NewCertPool()
-	if !roots.AppendCertsFromPEM(caPEM) {
-		return errors.New("server CA has no trusted certificate")
+	roots, err := mtls.ServerAuthorities(caPEM, time.Now())
+	if err != nil {
+		return fmt.Errorf("sync server trust: %w", err)
 	}
 	identity, err := mtls.LoadClientIdentity(endpoint.CertFile, endpoint.KeyFile, time.Now())
 	if err != nil {
