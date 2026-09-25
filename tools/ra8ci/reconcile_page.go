@@ -74,6 +74,9 @@ func RenderReconcileSurvey(out io.Writer, report reconcileReport) error {
 	if err := checkReconcileSurveyRuns(report); err != nil {
 		return err
 	}
+	if err := checkReconcileSurveyDecisions(report); err != nil {
+		return err
+	}
 	if err := checkReconcileSurveyCounts(report); err != nil {
 		return err
 	}
@@ -282,6 +285,74 @@ func checkReconcileSurveyRuns(report reconcileReport) error {
 		}
 	}
 	return nil
+}
+
+// checkReconcileSurveyDecisions refuses a survey carrying a task whose
+// decision this build cannot state.
+//
+// Every count on this page is bucketed by that one string. The counts are
+// read against it, conflictingSurveyTasks selects the lines below them with
+// it, and the verdict is read against the counts. Nothing read the string
+// itself, and a decision outside the four the survey writes falls into none
+// of the three buckets: the counts still agree with the tasks, because both
+// sides of that comparison skip it, and the verdict still comes out settled,
+// because the three counts are zero. The page then opens "settled: every
+// planned task is accounted for" over a task it has not accounted for
+// anywhere, and never prints a line about it. That is the one reading this
+// page must never produce, and it is the reading a miscount would have been
+// refused for.
+//
+// Every task is read, not only the ones the page names. This is the
+// deliberate contrast with the subject check, which reads only the
+// conflicting tasks because a settled task's name is never printed: a
+// decision is not printed for any task at all, and it is still what the
+// total on the second line and the verdict on the first are claims about.
+// A task nobody can see is exactly the one that must not be silently
+// dropped.
+//
+// A decision is matched EXACTLY, without trimming, and that is not the
+// whitespace rule the subject checks keep. The counts are keyed by the raw
+// string, so " conflicts" is counted under nothing whatever it looks like;
+// trimming here would state a decision as well formed and leave the count it
+// defeats to the check below, which cannot see it either.
+//
+// The blank decision is named separately because it is the one a reader can
+// act on: a task that states no decision was assembled somewhere other than
+// a survey of ours, and the token is worth printing for the others.
+//
+// Nothing a real survey writes is refused: every decision in the document is
+// written by decisionToken from the reconcile the plane already ran.
+func checkReconcileSurveyDecisions(report reconcileReport) error {
+	stated := map[string]struct{}{
+		decisionToken(github.PublishNeeded):    {},
+		decisionToken(github.PublishSettled):   {},
+		decisionToken(github.PublishInFlight):  {},
+		decisionToken(github.PublishConflicts): {},
+	}
+	for _, task := range report.Tasks {
+		if strings.TrimSpace(task.Decision) == "" {
+			return fmt.Errorf("%w: %s states no decision",
+				ErrReconcilePageInvalid, statedSurveyTask(task.Task))
+		}
+		if _, writes := stated[task.Decision]; !writes {
+			return fmt.Errorf("%w: %s carries a decision this survey does not write: %s",
+				ErrReconcilePageInvalid, statedSurveyTask(task.Task),
+				strings.TrimSpace(task.Decision))
+		}
+	}
+	return nil
+}
+
+// statedSurveyTask names a task for a refusal about a task the page would
+// never have printed. A settled task's name is nowhere on the page, so an
+// unnamed one is said to be unnamed rather than left as a gap in the
+// sentence.
+func statedSurveyTask(task string) string {
+	task = strings.TrimSpace(task)
+	if task == "" {
+		return "an unnamed task"
+	}
+	return "task " + task
 }
 
 // checkReconcileSurveyCounts refuses a survey whose own counts and verdict
