@@ -20,24 +20,48 @@ import (
 	"github.com/bsikar/ra8-firmware/tools/ra8ci/internal/store"
 )
 
+// runSubcommand is one thing `ra8ci run` dispatches, named the way it is
+// typed.
+type runSubcommand struct {
+	Name string
+	Run  func(ctx context.Context, args []string) error
+}
+
+// runSubcommands is the one list: what runCommand dispatches and what its
+// usage states. The order is the order a run is lived through, deliberately
+// not alphabetical.
+func runSubcommands() []runSubcommand {
+	return []runSubcommand{
+		{Name: "submit", Run: submitRun},
+		{Name: "status", Run: showRun},
+		{Name: "logs", Run: showRunLogs},
+		{Name: "events", Run: showRunEvents},
+		{Name: "cancel", Run: cancelRun},
+	}
+}
+
+// runUsage states `ra8ci run` the way the front door and the command itself
+// both print it, built from the table so neither can name a subcommand the
+// other does not dispatch.
+func runUsage() string {
+	subcommands := runSubcommands()
+	named := make([]string, 0, len(subcommands))
+	for _, subcommand := range subcommands {
+		named = append(named, subcommand.Name)
+	}
+	return "run " + strings.Join(named, "|")
+}
+
 func runCommand(ctx context.Context, args []string) error {
 	if len(args) == 0 {
-		return errors.New("usage: ra8ci run submit|status|logs|events|cancel")
+		return errors.New("usage: ra8ci " + runUsage())
 	}
-	switch args[0] {
-	case "submit":
-		return submitRun(ctx, args[1:])
-	case "status":
-		return showRun(ctx, args[1:])
-	case "cancel":
-		return cancelRun(ctx, args[1:])
-	case "events":
-		return showRunEvents(ctx, args[1:])
-	case "logs":
-		return showRunLogs(ctx, args[1:])
-	default:
-		return errors.New("usage: ra8ci run submit|status|logs|events|cancel")
+	for _, subcommand := range runSubcommands() {
+		if subcommand.Name == args[0] {
+			return subcommand.Run(ctx, args[1:])
+		}
 	}
+	return errors.New("usage: ra8ci " + runUsage())
 }
 
 func showRunLogs(ctx context.Context, args []string) error {

@@ -178,7 +178,7 @@ func topLevelCommands() []topLevelCommand {
 		{Name: "report", Usage: "report slow", Run: func(ctx context.Context, args []string) int {
 			return reportError(report(ctx, args))
 		}},
-		{Name: "run", Usage: "run submit|run status", Run: func(ctx context.Context, args []string) int {
+		{Name: "run", Usage: runUsage(), Run: func(ctx context.Context, args []string) int {
 			return reportError(runCommand(ctx, args))
 		}},
 	}
