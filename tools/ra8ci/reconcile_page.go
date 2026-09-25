@@ -495,7 +495,94 @@ func checkReconcileSurveyStandings(report reconcileReport) error {
 		}); err != nil {
 		return err
 	}
-	return checkContestedRunNames(report.ContestedStanding, publishedAs)
+	if err := checkContestedRunNames(report.ContestedStanding, publishedAs); err != nil {
+		return err
+	}
+	return checkStandingsNameEveryRun(report)
+}
+
+// checkStandingsNameEveryRun refuses a survey that places a run in a listing
+// and then groups it nowhere.
+//
+// Every check above reads a GROUP against the listing it is derived from:
+// the group is not empty, no standing is grouped twice, every run it names
+// is numbered, was surveyed, and stands where the group says. All of them
+// are about a group that is there. Nothing read the other direction, and
+// that is the direction this page's two grouping sections are the only
+// statement of.
+//
+// The page never prints either listing. It prints the groupings, one line
+// per standing, and a run no standing names is therefore printed nowhere at
+// all: the document says run 7 is under a name no task plans, the page says
+// nothing about run 7, and the operator who came here to be told what is
+// standing on their commit is told there is nothing. A missing group is
+// worse than a wrong one for the reason the candidate page gives for a
+// missing shared head: a wrong group is a line to check, while a missing
+// group is a clean page over a run that is really there.
+//
+// Neither count would catch it. Unplanned counts the listing rather than the
+// grouping, and it is deliberately outside Settled and the exit status, so a
+// run that vanishes between the two takes nothing with it. A contested run
+// already makes its task conflict, so the conflicting line still appears,
+// and it names the task rather than the run: the reader is told a task is
+// contested and is never told which run to open.
+//
+// The runs are read in the order the document lists them, not out of the
+// maps above, so a survey that drops several is refused naming the first one
+// a reader would have looked for.
+//
+// Runs of ours are not read. They are skipped where the contested grouping
+// is built, because a run this plane posted under a name it plans is the
+// ordinary case and the whole subject of that section is the runs that are
+// not that.
+//
+// Nothing a real survey writes is refused: unplannedStandings groups every
+// run in the listing it is handed, and contestedStandings groups every
+// non-ours run it finds in the task listings. This refuses a document those
+// two did not build.
+func checkStandingsNameEveryRun(report reconcileReport) error {
+	grouped := make(map[int64]struct{}, len(report.UnplannedRun))
+	for _, standing := range report.UnplannedStanding {
+		for _, run := range standing.Runs {
+			grouped[run] = struct{}{}
+		}
+	}
+	for _, run := range report.UnplannedRun {
+		if _, named := grouped[run.ID]; !named {
+			return fmt.Errorf("%w: run %d is listed as one no task plans, stands %s, and no group names it",
+				ErrReconcilePageInvalid, run.ID, statedSurveyStanding(run.Identifier))
+		}
+	}
+	standing := make(map[int64]struct{}, len(report.Tasks))
+	for _, group := range report.ContestedStanding {
+		for _, run := range group.Runs {
+			standing[run.ID] = struct{}{}
+		}
+	}
+	ours := github.ExternalIDOurs.String()
+	for _, task := range report.Tasks {
+		for _, run := range task.Published {
+			if run.Identifier == ours {
+				continue
+			}
+			if _, named := standing[run.ID]; !named {
+				return fmt.Errorf("%w: run %d is published under a name we plan, stands %s, and no group names it",
+					ErrReconcilePageInvalid, run.ID, statedSurveyStanding(run.Identifier))
+			}
+		}
+	}
+	return nil
+}
+
+// statedSurveyStanding names what a run's identifier says about who posted
+// it, for a refusal about a run no group speaks for. A blank one is said to
+// be unstated rather than left as a gap, the statedSurveyTask precedent.
+func statedSurveyStanding(identifier string) string {
+	identifier = strings.TrimSpace(identifier)
+	if identifier == "" {
+		return "under no stated standing"
+	}
+	return identifier
 }
 
 // checkContestedRunNames refuses a contested group that names a run under a
