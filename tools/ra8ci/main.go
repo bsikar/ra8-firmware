@@ -54,7 +54,7 @@ func main() {
 
 func run(ctx context.Context, args []string) int {
 	if len(args) == 0 {
-		fmt.Fprintln(os.Stderr, "usage: ra8ci <task>|tasks [--digest|--json]|ascii [--check] [--all|PATH]|since [--all|FILE...]|final-newline [FILE...]|runner-clock [--repo OWNER/REPO] [--runs N] [--hours N]|tests-readme [--selftest]|inclusive-terminology-commits [--selftest]|server|agent|sync|backup refresh|keygen|board status|take [--class human|ci|agent]|checkpoint|extend|cancel|hil budget|verify-capture|db migrate|report slow|github check|github shadow|github shadow-compare|github publish-check-run|github required-checks|github evidence-gate|github gate|github actions-run|run submit|run status")
+		fmt.Fprintln(os.Stderr, "usage: ra8ci <task>|tasks [--digest|--json]|ascii [--check] [--all|PATH]|since [--all|FILE...]|final-newline [FILE...]|runner-clock [--repo OWNER/REPO] [--runs N] [--hours N]|tests-readme [--selftest]|inclusive-terminology-commits [--selftest]|server|agent|sync|backup refresh|keygen|board status|take [--class human|ci|agent]|checkpoint|extend|cancel|hil budget|verify-capture|db migrate|report slow|github check|github shadow|github shadow-compare|github publish-check-run|github required-checks|github evidence-gate|github gate|github actions-run|github reconcile|github pull-request|run submit|run status")
 		return 2
 	}
 	var err error
@@ -513,7 +513,7 @@ func runAgent(ctx context.Context) error {
 // documentation.
 func githubCommand(ctx context.Context, args []string) error {
 	if len(args) != 1 {
-		return errors.New("usage: ra8ci github check|shadow|shadow-compare|shadow-evidence|publish-check-run|required-checks|evidence-gate|gate|actions-run|reconcile")
+		return errors.New("usage: ra8ci github check|shadow|shadow-compare|shadow-evidence|publish-check-run|required-checks|evidence-gate|gate|actions-run|reconcile|pull-request")
 	}
 	switch args[0] {
 	case "check":
@@ -536,8 +536,10 @@ func githubCommand(ctx context.Context, args []string) error {
 		return githubActionsRun(ctx, os.Stdin, os.Stdout)
 	case "reconcile":
 		return githubReconcileCheckRuns(ctx, os.Stdin, os.Stdout)
+	case "pull-request":
+		return githubPullRequestRuns(ctx, os.Stdin, os.Stdout)
 	default:
-		return errors.New("usage: ra8ci github check|shadow|shadow-compare|shadow-evidence|publish-check-run|required-checks|evidence-gate|gate|actions-run|reconcile")
+		return errors.New("usage: ra8ci github check|shadow|shadow-compare|shadow-evidence|publish-check-run|required-checks|evidence-gate|gate|actions-run|reconcile|pull-request")
 	}
 }
 
@@ -1673,6 +1675,166 @@ func githubActionsRun(ctx context.Context, in io.Reader, out io.Writer) error {
 		Plane:      document.Plane,
 		Actions:    actions,
 	})
+}
+
+// maxPullRequestRequestBytes bounds the document `pull-request` reads. It
+// carries one pull request number, so this is room to spare and still a
+// refusal rather than an unbounded read of whatever is piped in.
+const maxPullRequestRequestBytes = 4 << 10
+
+// pullRequestRunsRequest is the wire shape `pull-request` reads: which pull
+// request to look at.
+type pullRequestRunsRequest struct {
+	Number int `json:"number"`
+}
+
+// pullRequestRunsReport is what `pull-request` writes: where a pull request is
+// and what Actions recorded there.
+type pullRequestRunsReport struct {
+	Number         int                     `json:"number"`
+	HeadSHA        string                  `json:"head_sha"`
+	BaseRef        string                  `json:"base_ref"`
+	State          string                  `json:"state"`
+	Merged         bool                    `json:"merged"`
+	FromFork       bool                    `json:"from_fork"`
+	HeadRepository string                  `json:"head_repository"`
+	Gradable       int                     `json:"gradable"`
+	Runs           []pullRequestRunsListed `json:"runs"`
+}
+
+// pullRequestRunsListed is one workflow run on the pull request's head.
+type pullRequestRunsListed struct {
+	RunID      int64  `json:"run_id"`
+	Workflow   string `json:"workflow"`
+	Attempt    int    `json:"attempt"`
+	Event      string `json:"event"`
+	Status     string `json:"status"`
+	Conclusion string `json:"conclusion"`
+	// Gradable says whether `actions-run` will accept this run. A run
+	// still executing is listed and marked, never dropped.
+	Gradable bool `json:"gradable"`
+}
+
+// githubPullRequestRuns answers where one pull request is and which workflow
+// runs Actions recorded on its head, so gathering #1481's evidence over
+// representative pull requests starts from a pull request number rather than
+// from run IDs copied out of the web interface:
+//
+//	ra8ci github pull-request           # what is on PR 1589's head
+//	ra8ci github actions-run < obs.json # grade one of the run IDs it named
+//
+// It reads two things with two narrow tokens: the pull request through
+// pull_requests:read and the commit's runs through actions:read. Neither token
+// grows a second permission to save a hop, which is the seam the pull-request
+// reader was built with.
+//
+// It never grades. Which run on a pull request is the evidence, and whether
+// the pull request is representative at all, are the operator's judgement:
+// this command reports the state those judgements are made from, the same
+// division `reconcile` draws when it surveys a commit without publishing to
+// it.
+//
+// A pull request whose head carries no completed run is an answer, not a
+// failure: it exits clean with gradable 0, because "CI has not finished here
+// yet" is exactly what somebody choosing pull requests needs to be told.
+func githubPullRequestRuns(ctx context.Context, in io.Reader, out io.Writer) error {
+	loaded, err := catalog.Load()
+	if err != nil {
+		return fmt.Errorf("load task catalog: %w", err)
+	}
+	config, enabled, err := github.LoadCheckRunConfigFromEnv(loaded.Names())
+	if err != nil {
+		return err
+	}
+	if !enabled {
+		return fmt.Errorf("GitHub check-run publishing is not configured: set %s",
+			github.EnvShadowCorrespondenceFile)
+	}
+	publisherConfig, enabled, err := github.LoadCheckRunPublisherConfigFromEnv(config.Mode)
+	if err != nil {
+		return err
+	}
+	if !enabled {
+		return fmt.Errorf("GitHub check-run publishing has no repository: set %s",
+			github.EnvCheckRunRepository)
+	}
+
+	// The document is read and refused before a reader exists, so a bad
+	// document is reported as a bad document rather than as a failure to
+	// reach GitHub.
+	var document pullRequestRunsRequest
+	decoder := json.NewDecoder(io.LimitReader(in, maxPullRequestRequestBytes+1))
+	decoder.DisallowUnknownFields()
+	if err := decoder.Decode(&document); err != nil {
+		return fmt.Errorf("read the pull request to look at: %w", err)
+	}
+	if decoder.More() {
+		return errors.New("read the pull request to look at: trailing content after the document")
+	}
+	if decoder.InputOffset() > maxPullRequestRequestBytes {
+		return fmt.Errorf("read the pull request to look at: larger than %d bytes", maxPullRequestRequestBytes)
+	}
+	if document.Number <= 0 {
+		return errors.New("read the pull request to look at: no pull request named")
+	}
+
+	heads, err := github.NewPullRequestHeadReader(github.PullRequestHeadReaderConfig{
+		APIBaseURL:     publisherConfig.APIBaseURL,
+		AppClientID:    publisherConfig.AppClientID,
+		InstallationID: publisherConfig.InstallationID,
+		PrivateKeyFile: publisherConfig.PrivateKeyFile,
+		Owner:          publisherConfig.Owner,
+		Repository:     publisherConfig.Repository,
+	})
+	if err != nil {
+		return err
+	}
+	head, err := heads.Head(ctx, document.Number)
+	if err != nil {
+		return fmt.Errorf("read pull request %d: %w", document.Number, err)
+	}
+
+	runs, err := github.NewActionsOutcomeReader(github.ActionsOutcomeReaderConfig{
+		APIBaseURL:     publisherConfig.APIBaseURL,
+		AppClientID:    publisherConfig.AppClientID,
+		InstallationID: publisherConfig.InstallationID,
+		PrivateKeyFile: publisherConfig.PrivateKeyFile,
+		Owner:          publisherConfig.Owner,
+		Repository:     publisherConfig.Repository,
+	})
+	if err != nil {
+		return err
+	}
+	listed, err := runs.RunsOn(ctx, head.HeadSHA)
+	if err != nil {
+		return fmt.Errorf("read the workflow runs on %s: %w", head.HeadSHA, err)
+	}
+
+	encoder := json.NewEncoder(out)
+	encoder.SetIndent("", "  ")
+	return encoder.Encode(pullRequestRunsFrom(head, listed))
+}
+
+// pullRequestRunsFrom assembles the report. It is separate from the command so
+// the shape can be pinned without a GitHub of any kind.
+func pullRequestRunsFrom(head github.PullRequestHead, listed github.CommitWorkflowRuns) pullRequestRunsReport {
+	report := pullRequestRunsReport{
+		Number: head.Number, HeadSHA: head.HeadSHA, BaseRef: head.BaseRef,
+		State: head.State, Merged: head.Merged, FromFork: head.FromFork,
+		HeadRepository: head.HeadRepository,
+		Runs:           []pullRequestRunsListed{},
+	}
+	for _, run := range listed.Runs {
+		report.Runs = append(report.Runs, pullRequestRunsListed{
+			RunID: run.ID, Workflow: run.Workflow, Attempt: run.Attempt,
+			Event: run.Event, Status: run.Status, Conclusion: run.Conclusion,
+			Gradable: run.Completed(),
+		})
+		if run.Completed() {
+			report.Gradable++
+		}
+	}
+	return report
 }
 
 // emptyWhenNil renders an empty list as [] rather than null, so a reader

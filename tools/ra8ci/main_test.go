@@ -1925,3 +1925,127 @@ func TestReconcileIsOneOfTheGithubSubcommands(t *testing.T) {
 		t.Fatalf("usage %q does not name the subcommand", err)
 	}
 }
+
+// pullRequestHeadFor builds a head the report can be assembled from without
+// contacting GitHub, so the wire shape is pinned on its own.
+func pullRequestHeadFor(number int, head, base, state string, merged, fork bool) github.PullRequestHead {
+	return github.PullRequestHead{
+		Number: number, HeadSHA: head, BaseRef: base, State: state,
+		Merged: merged, FromFork: fork, HeadRepository: "bsikar/ra8-firmware",
+	}
+}
+
+// The report names where the pull request is and every run on its head, each
+// run marked with whether `actions-run` will grade it.
+func TestThePullRequestReportNamesEveryRunOnTheHead(t *testing.T) {
+	head := pullRequestHeadFor(1589, shadowCompareHead, "ra8ci/dev", "open", false, false)
+	report := pullRequestRunsFrom(head, github.CommitWorkflowRuns{
+		HeadSHA: shadowCompareHead,
+		Runs: []github.CommitWorkflowRun{
+			{ID: 43, Workflow: "nightly", Attempt: 1, Event: "schedule", Status: "in_progress"},
+			{ID: 41, Workflow: "checks", Attempt: 2, Event: "pull_request", Status: "completed", Conclusion: "failure"},
+		},
+	})
+	if report.Number != 1589 || report.HeadSHA != shadowCompareHead || report.BaseRef != "ra8ci/dev" ||
+		report.State != "open" || report.Merged || report.FromFork || report.HeadRepository != "bsikar/ra8-firmware" {
+		t.Fatalf("report anchor = %#v", report)
+	}
+	if len(report.Runs) != 2 {
+		t.Fatalf("report dropped a run: %#v", report.Runs)
+	}
+	if report.Runs[0].RunID != 43 || report.Runs[0].Gradable || report.Runs[0].Conclusion != "" {
+		t.Fatalf("unfinished run = %#v", report.Runs[0])
+	}
+	if report.Runs[1].RunID != 41 || !report.Runs[1].Gradable || report.Runs[1].Attempt != 2 ||
+		report.Runs[1].Workflow != "checks" || report.Runs[1].Conclusion != "failure" {
+		t.Fatalf("completed run = %#v", report.Runs[1])
+	}
+	if report.Gradable != 1 {
+		t.Fatalf("gradable = %d, want 1", report.Gradable)
+	}
+}
+
+// A head with no runs at all is an answer, not an absence: the report says so
+// with an empty list rather than a null one, so two reports diff.
+func TestAPullRequestWithNoRunsIsStillAReport(t *testing.T) {
+	head := pullRequestHeadFor(1590, shadowCompareHead, "ra8ci/dev", "closed", true, true)
+	report := pullRequestRunsFrom(head, github.CommitWorkflowRuns{HeadSHA: shadowCompareHead})
+	if report.Runs == nil || len(report.Runs) != 0 || report.Gradable != 0 {
+		t.Fatalf("report = %#v", report)
+	}
+	if !report.Merged || !report.FromFork {
+		t.Fatalf("report lost the head's state: %#v", report)
+	}
+	encoded, err := json.Marshal(report)
+	if err != nil {
+		t.Fatalf("encode: %v", err)
+	}
+	if !strings.Contains(string(encoded), `"runs":[]`) {
+		t.Fatalf("empty runs encoded as %s", encoded)
+	}
+}
+
+// A fork head is reported, not hidden. Job policy distrusts fork pull
+// requests, so an operator choosing representative ones has to be able to see
+// which they are.
+func TestAForkPullRequestIsReportedAsOne(t *testing.T) {
+	head := github.PullRequestHead{
+		Number: 12, HeadSHA: shadowCompareHead, BaseRef: "ra8ci/dev", State: "open",
+		FromFork: true, HeadRepository: "someone/ra8-firmware",
+	}
+	report := pullRequestRunsFrom(head, github.CommitWorkflowRuns{
+		HeadSHA: shadowCompareHead,
+		Runs:    []github.CommitWorkflowRun{{ID: 7, Workflow: "checks", Attempt: 1, Status: "completed", Conclusion: "success"}},
+	})
+	if !report.FromFork || report.HeadRepository != "someone/ra8-firmware" || report.Gradable != 1 {
+		t.Fatalf("report = %#v", report)
+	}
+}
+
+// A document this command cannot read writes nothing and never reaches GitHub.
+func TestAPullRequestAskIsRefusedBeforeAnyRead(t *testing.T) {
+	cases := map[string]string{
+		"not an object":     `["1589"]`,
+		"unknown field":     `{"number":1589,"repository":"ra8-firmware"}`,
+		"trailing document": `{"number":1589}{"number":1590}`,
+		"no number":         `{}`,
+		"zero":              `{"number":0}`,
+		"negative":          `{"number":-1}`,
+	}
+	for name, document := range cases {
+		t.Run(name, func(t *testing.T) {
+			publishCheckRunEnv(t)
+			var out strings.Builder
+			if err := githubPullRequestRuns(context.Background(), strings.NewReader(document), &out); err == nil {
+				t.Fatal("a document that cannot be read was accepted")
+			}
+			if out.Len() != 0 {
+				t.Fatalf("refused ask still wrote %q", out.String())
+			}
+		})
+	}
+}
+
+// The command needs the check-run configuration, like every other github
+// subcommand that speaks to GitHub.
+func TestPullRequestNeedsTheCheckRunConfiguration(t *testing.T) {
+	for _, name := range []string{github.EnvShadowCorrespondenceFile, github.EnvCheckRunMode, github.EnvCheckRunRepository} {
+		t.Setenv(name, "")
+		os.Unsetenv(name)
+	}
+	err := githubPullRequestRuns(context.Background(), strings.NewReader(`{"number":1}`), io.Discard)
+	if err == nil || !strings.Contains(err.Error(), github.EnvShadowCorrespondenceFile) {
+		t.Fatalf("error %v, want one naming %s", err, github.EnvShadowCorrespondenceFile)
+	}
+}
+
+// The subcommand is reachable by name, and the usage line names it.
+func TestPullRequestIsOneOfTheGithubSubcommands(t *testing.T) {
+	err := githubCommand(context.Background(), []string{"pull-requests"})
+	if err == nil {
+		t.Fatal("a misspelled subcommand was accepted")
+	}
+	if !strings.Contains(err.Error(), "pull-request") {
+		t.Fatalf("usage %q does not name the subcommand", err)
+	}
+}
