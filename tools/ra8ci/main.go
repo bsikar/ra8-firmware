@@ -3530,14 +3530,36 @@ func githubPullRequestSurveyPage(in io.Reader, out io.Writer) error {
 	return candidateSurveyVerdict(report)
 }
 
+// candidateSetIsReady answers whether a surveyed set can be gathered as it
+// stands, and it is the only place that question is answered.
+//
+// It was answered twice. The verdict below claimed to be the one place the
+// decision is made, and the page wrote its own copy of the same expression to
+// pick between its "ready" and "not ready" lines. The two agreed by having
+// been typed the same way, which is exactly the drift this tree refuses
+// everywhere else it reads a decision the survey already made.
+//
+// A third reason a set cannot be gathered would have had to be remembered in
+// two places, and the reading it produces is the worst this command has: a
+// page that opens "ready: every candidate can carry Checks evidence on a
+// commit of its own" over a command that exits non-zero, or the reverse. An
+// operator reads one of those and runs the gather.
+//
+// A set is ready when every candidate can carry evidence and no two of them
+// sit on one commit. The second is not implied by the first: both candidates
+// on a shared commit are selectable on their own, and `pull-request-evidence`
+// refuses the pair anyway because the readiness threshold counts commits.
+func candidateSetIsReady(report pullRequestSurveyReport) bool {
+	return report.Unselectable == 0 && len(report.SharedHeads) == 0
+}
+
 // candidateSurveyVerdict answers for a set that cannot be gathered as it
-// stands. It is the one place that decision is made, so the page and the exit
-// status cannot come apart, and it states BOTH reasons a set is not ready:
-// a candidate no run can be selected on, and a commit two candidates share,
-// which `pull-request-evidence` refuses even though both candidates are
-// selectable on their own.
+// stands. It states BOTH reasons a set is not ready: a candidate no run can
+// be selected on, and a commit two candidates share, which
+// `pull-request-evidence` refuses even though both candidates are selectable
+// on their own.
 func candidateSurveyVerdict(report pullRequestSurveyReport) error {
-	if report.Unselectable == 0 && len(report.SharedHeads) == 0 {
+	if candidateSetIsReady(report) {
 		return nil
 	}
 	said := make([]string, 0, 2)
