@@ -2770,11 +2770,33 @@ type pullRequestSurveyRequest struct {
 // request considered, where it is and whether an evidence run can be selected
 // on its head.
 type pullRequestSurveyReport struct {
-	Workflow     string                `json:"workflow"`
-	Considered   int                   `json:"considered"`
-	Selectable   int                   `json:"selectable"`
-	Unselectable int                   `json:"unselectable"`
+	Workflow     string `json:"workflow"`
+	Considered   int    `json:"considered"`
+	Selectable   int    `json:"selectable"`
+	Unselectable int    `json:"unselectable"`
+	// SharedHeads names the commits more than one surveyed pull request
+	// sits on, with the pull requests that share each one. Empty on an
+	// ordinary survey, and never null.
+	SharedHeads  []surveySharedHead    `json:"shared_heads"`
 	PullRequests []surveyedPullRequest `json:"pull_requests"`
+}
+
+// surveySharedHead is one commit that more than one candidate is at.
+//
+// `pull-request-evidence` refuses two pull requests on one commit, because
+// the readiness threshold counts commits and one commit cannot answer for
+// two. This command is where the candidate set is CHOSEN, and it reported
+// nothing about that clash: an operator picked a set, gathered it, and found
+// out from the gather's refusal, after every head and workflow run in the set
+// had been read.
+//
+// A survey of two pull requests at one commit is not a survey of two
+// candidates, and the counts beside the report do not say so: Considered and
+// Selectable count them separately, because both are true of each pull
+// request on its own.
+type surveySharedHead struct {
+	HeadSHA      string `json:"head_sha"`
+	PullRequests []int  `json:"pull_requests"`
 }
 
 // surveyedPullRequest is one pull request's answer. The head's state travels
@@ -2945,6 +2967,45 @@ func checkPullRequestSurveyAsk(document pullRequestSurveyRequest) error {
 	return nil
 }
 
+// sharedHeads names the commits more than one surveyed pull request is at,
+// in the order those commits were first surveyed, each with its pull requests
+// in the order they were asked about.
+//
+// It reports and never refuses. The survey's job is to show what is wrong
+// with a candidate set, and a clash between two candidates is exactly that;
+// refusing here would throw away the answers for every other pull request in
+// the same ask. The gather is where the refusal belongs, because that is
+// where a commit would be counted twice.
+//
+// A commit is matched without its casing or surrounding space, the rule the
+// gather keeps, and is reported as the first pull request stated it. A pull
+// request with no head commit is not grouped with another one: two blanks are
+// not a shared commit, they are two unanswered heads.
+func sharedHeads(surveyed []surveyedHead) []surveySharedHead {
+	order := make([]string, 0, len(surveyed))
+	at := make(map[string]*surveySharedHead, len(surveyed))
+	for _, one := range surveyed {
+		key := strings.ToLower(strings.TrimSpace(one.Head.HeadSHA))
+		if key == "" {
+			continue
+		}
+		shared := at[key]
+		if shared == nil {
+			shared = &surveySharedHead{HeadSHA: one.Head.HeadSHA}
+			at[key] = shared
+			order = append(order, key)
+		}
+		shared.PullRequests = append(shared.PullRequests, one.Head.Number)
+	}
+	answer := []surveySharedHead{}
+	for _, key := range order {
+		if shared := at[key]; len(shared.PullRequests) > 1 {
+			answer = append(answer, *shared)
+		}
+	}
+	return answer
+}
+
 // pullRequestSurveyFrom assembles the report. It is separate from the command
 // so the shape can be pinned without a GitHub of any kind.
 //
@@ -2955,6 +3016,7 @@ func pullRequestSurveyFrom(workflow string, surveyed []surveyedHead) pullRequest
 	report := pullRequestSurveyReport{
 		Workflow:     workflow,
 		Considered:   len(surveyed),
+		SharedHeads:  sharedHeads(surveyed),
 		PullRequests: []surveyedPullRequest{},
 	}
 	for _, one := range surveyed {
