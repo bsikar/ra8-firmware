@@ -20,6 +20,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/bsikar/ra8-firmware/tools/ra8ci/internal/mtls"
 	"github.com/bsikar/ra8-firmware/tools/ra8ci/internal/store"
 )
 
@@ -92,9 +93,8 @@ func HTTPBackendEnvironment(config HTTPBackendConfig) ([]string, error) {
 		return nil, fmt.Errorf("read Terraform server CA bundle: %w", err)
 	}
 	defer clear(caPEM)
-	roots := x509.NewCertPool()
-	if !roots.AppendCertsFromPEM(caPEM) {
-		return nil, errors.New("Terraform server CA bundle contains no certificates")
+	if _, err := mtls.ServerAuthorities(caPEM, time.Now()); err != nil {
+		return nil, fmt.Errorf("Terraform server CA bundle cannot authenticate the state server: %w", err)
 	}
 
 	return []string{
