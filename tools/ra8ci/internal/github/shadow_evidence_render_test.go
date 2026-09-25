@@ -20,8 +20,22 @@ const (
 // written beside it, so every test below renders a pair that agrees.
 func renderedEvidence(t *testing.T, threshold int, tasks ...TaskEvidence) (ShadowEvidence, ShadowReadiness) {
 	t.Helper()
+	// The commits a task names are accumulated commits: every one of them
+	// came off a report whose head AccumulateShadowEvidence appended to
+	// Commits. The fixture carries that invariant rather than leaving the
+	// page to render a commit this evidence never looked at.
+	commits := []string{renderEvidenceCommitA, renderEvidenceCommitB}
+	accumulated := map[string]bool{renderEvidenceCommitA: true, renderEvidenceCommitB: true}
+	for _, task := range tasks {
+		for _, named := range append(append([]string{}, task.ConflictingCommits...), task.IndeterminateCommits...) {
+			if !accumulated[named] {
+				accumulated[named] = true
+				commits = append(commits, named)
+			}
+		}
+	}
 	evidence := ShadowEvidence{
-		Commits: []string{renderEvidenceCommitA, renderEvidenceCommitB},
+		Commits: commits,
 		Tasks:   tasks,
 	}
 	readiness, err := evidence.Readiness(threshold)
