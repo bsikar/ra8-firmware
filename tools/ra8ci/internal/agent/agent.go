@@ -41,6 +41,13 @@ const (
 	deadlineSafety    = 500 * time.Millisecond
 	defaultPollWait   = 25 * time.Second
 	maxHTTPResponse   = protocol.MaxJSONBytes
+	// evidenceAttempts bounds how many times one piece of in-flight evidence
+	// is offered before the uploader gives up. Repeating a log chunk is safe
+	// because the plane stores a chunk at or below its high-water sequence
+	// only when the stream, step, digest and bytes all match, and reports
+	// that match as success. Three attempts inside the task's own budget.
+	evidenceAttempts = 3
+	evidenceBackoff  = 250 * time.Millisecond
 )
 
 var (
@@ -331,6 +338,46 @@ func (agent *Agent) accept(ctx context.Context, assignment protocol.Assignment, 
 	return nil
 }
 
+// retryableEvidence separates a call the plane never answered from a refusal
+// it did answer with. Status 0 is a transport failure, so the server's mind is
+// unknown; 5xx is the server saying it could not answer right now. Every 4xx is
+// a decision, and a decision does not change because it was asked twice.
+func retryableEvidence(status int) bool {
+	return status == 0 || status >= http.StatusInternalServerError
+}
+
+// acceptEvidence posts evidence a running attempt cannot re-derive later, and
+// repeats it while the plane is merely unreachable. Fencing is never retried: a
+// stale or negative acknowledgment is the plane refusing this attempt's word,
+// and asking again would only overwrite that refusal with a transport error.
+func (agent *Agent) acceptEvidence(ctx context.Context, assignment protocol.Assignment, endpoint string, body any) error {
+	var last error
+	for attempt := 1; attempt <= evidenceAttempts; attempt++ {
+		if attempt > 1 {
+			timer := time.NewTimer(time.Duration(attempt-1) * evidenceBackoff)
+			select {
+			case <-ctx.Done():
+				timer.Stop()
+				return last
+			case <-timer.C:
+			}
+		}
+		var response protocol.AcceptResponse
+		status, err := agent.post(ctx, endpoint, body, &response, false)
+		if err == nil {
+			if response.ValidateFor(assignment) != nil {
+				return fmt.Errorf("%w: stale or negative acknowledgment", ErrServerProtocol)
+			}
+			return nil
+		}
+		last = err
+		if !retryableEvidence(status) {
+			return err
+		}
+	}
+	return last
+}
+
 func (agent *Agent) heartbeat(ctx context.Context, assignment protocol.Assignment, cancel context.CancelFunc) error {
 	ticker := time.NewTicker(agent.beatInterval())
 	defer ticker.Stop()
@@ -415,7 +462,7 @@ func (uploader *logUploader) write(stepName, stream string, data []byte) (int, e
 			uploader.err = err
 			return written, err
 		}
-		if err := uploader.agent.accept(uploader.ctx, uploader.assignment, "/v1/attempts/"+uploader.assignment.AttemptID+"/logs", chunk); err != nil {
+		if err := uploader.agent.acceptEvidence(uploader.ctx, uploader.assignment, "/v1/attempts/"+uploader.assignment.AttemptID+"/logs", chunk); err != nil {
 			uploader.err = err
 			uploader.pending = &chunk
 			return written, err
