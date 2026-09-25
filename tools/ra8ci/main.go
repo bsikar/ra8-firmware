@@ -909,6 +909,44 @@ type reconciledCheckRun struct {
 	Verdict github.ReconciledPublish
 }
 
+// checkPlanIsOneSubject holds every planned run to the commit and the mode the
+// first one carries.
+//
+// Both callers below read the document's subject off planned[0] and nothing
+// else: the publish command lists that commit's runs once and decides the
+// whole plan against the listing, and the survey names that commit and that
+// mode at the top of the report it writes. That is right where the plan is
+// built, because planCheckRuns builds every run from one mode and one
+// document head, and it is a contract of these two functions rather than a
+// property of their argument: the plan arrives as a slice, and a caller
+// assembling one from two documents would have the subject decided by
+// whichever run happens to be first.
+//
+// The two halves fail differently, which is why both are refused here rather
+// than left to what comes next. A second commit is caught downstream, because
+// ReconcilePublish refuses a run whose commit is not the listing's, but only
+// after the listing for the wrong commit has already been read, and the
+// refusal then reads as a listing that does not match rather than a document
+// about two commits. A second MODE is caught by nothing at all: the name
+// carries the namespace, so the two runs are reconciled against different
+// names and both decide cleanly, the report states one mode over runs of
+// both, and in authoritative mode the publisher accepts a shadow run without
+// complaint. Neither reader can tell afterwards that the document was mixed.
+func checkPlanIsOneSubject(planned []plannedCheckRun) error {
+	subject := planned[0]
+	for _, plan := range planned[1:] {
+		if !strings.EqualFold(plan.Run.HeadSHA, subject.Run.HeadSHA) {
+			return fmt.Errorf("task %s is planned on %s and this document is about %s",
+				plan.Task, plan.Run.HeadSHA, subject.Run.HeadSHA)
+		}
+		if plan.Run.Mode != subject.Run.Mode {
+			return fmt.Errorf("task %s is planned in %s mode and this document is about %s",
+				plan.Task, plan.Run.Mode, subject.Run.Mode)
+		}
+	}
+	return nil
+}
+
 // reconcileCheckRunPlan decides the whole plan against one listing of what is
 // already on the commit, before anything is posted.
 //
@@ -927,6 +965,9 @@ type reconciledCheckRun struct {
 func reconcileCheckRunPlan(planned []plannedCheckRun, published github.PublishedCheckRuns) ([]reconciledCheckRun, error) {
 	if len(planned) == 0 {
 		return nil, errors.New("no check runs to reconcile")
+	}
+	if err := checkPlanIsOneSubject(planned); err != nil {
+		return nil, err
 	}
 	reconciled := make([]reconciledCheckRun, 0, len(planned))
 	for _, plan := range planned {
@@ -1407,6 +1448,9 @@ func contestedStandings(tasks []reconcileSurvey) []reconcileContestedStanding {
 func surveyCheckRunPlan(planned []plannedCheckRun, published github.PublishedCheckRuns) (reconcileReport, error) {
 	if len(planned) == 0 {
 		return reconcileReport{}, errors.New("no check runs to survey")
+	}
+	if err := checkPlanIsOneSubject(planned); err != nil {
+		return reconcileReport{}, err
 	}
 	report := reconcileReport{
 		Commit: planned[0].Run.HeadSHA,
