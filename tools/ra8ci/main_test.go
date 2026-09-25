@@ -3240,6 +3240,94 @@ func TestTheDocumentAndThePageAgreeOnWhatEachCommitSkipped(t *testing.T) {
 	}
 }
 
+// A task no accumulated commit paired carries no evidence at all, so it is in
+// none of ready/conflicting/insufficient and the answer can settle without it
+// ever having been compared. That is the mistake the accumulation opens by
+// naming, and it is stated once rather than once per commit.
+func TestTheAnswerNamesACoveredTaskNoCommitExercised(t *testing.T) {
+	exercised, skipped := twoCatalogTasks(t)
+	t.Setenv(github.EnvCheckRunMode, "shadow")
+	t.Setenv(github.EnvShadowCorrespondenceFile, writeCorrespondence(t,
+		`{"`+exercised+`":"build","`+skipped+`":"lint"}`))
+	input := shadowEvidenceInputDocument(1,
+		shadowEvidenceCommit(exercised, evidenceHeadOne, "success", "success"),
+		shadowEvidenceCommit(exercised, evidenceHeadTwo, "success", "success"))
+
+	var document bytes.Buffer
+	if err := githubShadowEvidence(strings.NewReader(input), &document); err != nil {
+		t.Fatalf("githubShadowEvidence: %v", err)
+	}
+	report := decodeShadowEvidence(t, document.String())
+	// The answer settles: the task it never compared is not evidence
+	// against anything, and this command does not fail over it.
+	if report["settled"] != true {
+		t.Fatalf("settled %v, want true", report["settled"])
+	}
+	never, _ := report["never_exercised"].([]any)
+	if len(never) != 1 || never[0] != skipped {
+		t.Fatalf("never_exercised %v, want [%s]", report["never_exercised"], skipped)
+	}
+
+	var page bytes.Buffer
+	if err := githubEvidencePage(strings.NewReader(input), &page); err != nil {
+		t.Fatalf("githubEvidencePage: %v", err)
+	}
+	if !strings.Contains(page.String(), "never exercised on any commit: "+skipped) {
+		t.Fatalf("the never-exercised task is not named on the page:\n%s", page.String())
+	}
+	// Once, as a set. The per-commit lines carry the same fact and the
+	// summary is not one of them.
+	if got := strings.Count(page.String(), "never exercised on any commit"); got != 1 {
+		t.Fatalf("the summary appears %d times, want once:\n%s", got, page.String())
+	}
+}
+
+// A task exercised somewhere is not a gap in the collection, however many
+// other commits skipped it. The question is whether the accumulation holds
+// any evidence for it, not whether every commit produced some.
+func TestATaskExercisedOnOneCommitIsNotNeverExercised(t *testing.T) {
+	first, second := twoCatalogTasks(t)
+	t.Setenv(github.EnvCheckRunMode, "shadow")
+	t.Setenv(github.EnvShadowCorrespondenceFile, writeCorrespondence(t,
+		`{"`+first+`":"build","`+second+`":"lint"}`))
+	// Each commit exercises one of the two, so each skips the other and
+	// neither is a gap. shadowEvidenceCommit always names the "build"
+	// job, so the second commit is written out with its own.
+	secondCommit := `{"plane":[{"task":"` + second + `","head_sha":"` + evidenceHeadTwo +
+		`","observed":"success"}],` +
+		`"actions":[{"job":"lint","head_sha":"` + evidenceHeadTwo + `","conclusion":"success"}]}`
+	input := shadowEvidenceInputDocument(1,
+		shadowEvidenceCommit(first, evidenceHeadOne, "success", "success"),
+		secondCommit)
+
+	var document bytes.Buffer
+	if err := githubShadowEvidence(strings.NewReader(input), &document); err != nil {
+		t.Fatalf("githubShadowEvidence: %v", err)
+	}
+	report := decodeShadowEvidence(t, document.String())
+	never, _ := report["never_exercised"].([]any)
+	if len(never) != 0 {
+		t.Fatalf("never_exercised %v, want empty", report["never_exercised"])
+	}
+	if strings.Contains(document.String(), "null") {
+		t.Fatalf("report carries a null field:\n%s", document.String())
+	}
+
+	var page bytes.Buffer
+	if err := githubEvidencePage(strings.NewReader(input), &page); err != nil {
+		t.Fatalf("githubEvidencePage: %v", err)
+	}
+	// The line is omitted rather than written empty: a summary that says
+	// nothing on every clean run teaches a reader to skip it.
+	if strings.Contains(page.String(), "never exercised on any commit") {
+		t.Fatalf("the summary is written with nothing to say:\n%s", page.String())
+	}
+	// The per-commit lines still carry what each one skipped.
+	if !strings.Contains(page.String(), "not exercised on "+evidenceHeadOne+": "+second) {
+		t.Fatalf("the per-commit coverage is gone:\n%s", page.String())
+	}
+}
+
 // The document says which configuration produced the answer; the page is read
 // while deciding whether a task may gate, and a digest is not part of that
 // decision.
