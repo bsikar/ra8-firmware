@@ -446,7 +446,7 @@ func testHarness(t *testing.T) (*Handler, *memoryLedger, *fakeProxmox, *testBoot
 	if err != nil {
 		t.Fatal(err)
 	}
-	job := github.Job{Owner: "bsikar", Repository: "ra8-firmware", JobID: "job-1", WorkflowRunID: 23, RunnerRequestID: 19, WorkflowRef: testWorkflow, EventName: "push", DisplayName: "CI / test-go", Labels: []string{"ra8ci"}, RunnerID: 77, RunnerName: "runner-9000"}
+	job := github.Job{Kind: scaleset.MessageTypeJobStarted, Owner: "bsikar", Repository: "ra8-firmware", JobID: "job-1", WorkflowRunID: 23, RunnerRequestID: 19, WorkflowRef: testWorkflow, EventName: "push", DisplayName: "CI / test-go", Labels: []string{"ra8ci"}, RunnerID: 77, RunnerName: "runner-9000"}
 	return handler, ledger, fake, bootstrap, job
 }
 

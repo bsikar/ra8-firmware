@@ -65,7 +65,7 @@ func observerFixture(t *testing.T) (*GitHubRunnerObserver, *observerAdminFake, s
 		ScaleSetID: 42, JobID: "job-1", RunnerRequestID: 4, WorkflowRunID: 12,
 		Repository: "bsikar/ra8-firmware", WorkflowRef: "refs/heads/test", VMID: 9000, Name: "ra8-lab-ci-9000",
 	}, State: "running", Generation: 1, ExternalRunnerID: 77, ExternalRunnerName: "runner-9000"}
-	job := github.Job{JobID: "job-1", RunnerRequestID: 4, WorkflowRunID: 12, Repository: "bsikar/ra8-firmware", WorkflowRef: "refs/heads/test", RunnerID: 77, RunnerName: "runner-9000"}
+	job := github.Job{Kind: scaleset.MessageTypeJobStarted, JobID: "job-1", RunnerRequestID: 4, WorkflowRunID: 12, Repository: "bsikar/ra8-firmware", WorkflowRef: "refs/heads/test", RunnerID: 77, RunnerName: "runner-9000"}
 	return observer, admin, vm, job
 }
 
