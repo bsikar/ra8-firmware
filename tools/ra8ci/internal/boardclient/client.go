@@ -790,6 +790,39 @@ func (l livenessResponse) liveness() HolderLiveness {
 	return reported
 }
 
+type livenessReadResponse struct {
+	Snapshot board.Snapshot   `json:"snapshot"`
+	Liveness livenessResponse `json:"liveness"`
+}
+
+// Liveness reads what the server says about whoever holds this board, without
+// claiming to be them.
+//
+// A beat is a claim about who is alive and only the holder may make it, so an
+// operator or a scheduler deciding whether a quiet board has crashed reads it
+// here instead. Nothing it returns ends anything: an overdue holder still
+// holds the board until its own expiry, and silence is answered by waiting for
+// that expiry and then a reviewed recovery sequence.
+func (c *Client) Liveness(ctx context.Context, boardID string) (board.Snapshot, HolderLiveness, error) {
+	if !validBoardID(boardID) {
+		return board.Snapshot{}, HolderLiveness{}, ErrInvalidRequest
+	}
+	var response livenessReadResponse
+	if err := c.request(ctx, http.MethodGet, boardPath(boardID, "/liveness"), nil, &response); err != nil {
+		return board.Snapshot{}, HolderLiveness{}, err
+	}
+	if response.Snapshot.BoardID != boardID || board.Validate(response.Snapshot) != nil {
+		return board.Snapshot{}, HolderLiveness{}, fmt.Errorf("%w: invalid board snapshot", ErrInvalidRequest)
+	}
+	// A report about a lease this board does not record is not an answer
+	// about this board, however healthy it looks.
+	reported := response.Liveness.liveness()
+	if reported.Held && (response.Snapshot.Lease == nil || response.Snapshot.Lease.ID != reported.LeaseID) {
+		return board.Snapshot{}, HolderLiveness{}, fmt.Errorf("%w: liveness for another lease", ErrInvalidRequest)
+	}
+	return response.Snapshot, reported, nil
+}
+
 // Heartbeat reports that this holder is still alive and returns what the
 // server now says about its liveness.
 //
