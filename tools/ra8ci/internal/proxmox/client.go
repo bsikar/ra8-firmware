@@ -9,7 +9,6 @@ import (
 	"bytes"
 	"context"
 	"crypto/tls"
-	"crypto/x509"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -23,6 +22,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/bsikar/ra8-firmware/tools/ra8ci/internal/mtls"
 )
 
 const maxResponseBytes = 1 << 20
@@ -115,9 +116,9 @@ func New(cfg Config) (*Client, error) {
 	if err != nil {
 		return nil, fmt.Errorf("%w: load configured CA: %v", ErrInvalid, err)
 	}
-	roots := x509.NewCertPool()
-	if !roots.AppendCertsFromPEM(caPEM) {
-		return nil, fmt.Errorf("%w: configured CA contains no certificate", ErrInvalid)
+	roots, err := mtls.ServerAuthorities(caPEM, time.Now())
+	if err != nil {
+		return nil, fmt.Errorf("%w: configured Proxmox API CA: %v", ErrInvalid, err)
 	}
 	requestTimeout := cfg.RequestTimeout
 	if requestTimeout == 0 {
