@@ -18,6 +18,29 @@ const impl = @import("internal/root.zig");
 /// Re-exported so the ABI test binary shares the exact struct types.
 pub const internal = impl;
 
+/// `ra8_log_error` from `libs/ra8_core`: the dither's three pointer guards each
+/// carry their own message, under this library's own log tag. CPU1 builds set
+/// `RA8_LOG_LEVEL=0`, where the equivalent C macro compiles away entirely, so
+/// keep the logger optional for that freestanding image.
+const builtin = @import("builtin");
+extern fn ra8_log_emit_error(tag: [*:0]const u8, message: [*:0]const u8) callconv(.c) void;
+const LogEmitError = *const fn ([*:0]const u8, [*:0]const u8) callconv(.c) void;
+const log_emit_error = @extern(LogEmitError, .{
+    .name = "ra8_log_emit_error",
+    .linkage = .weak,
+});
+
+fn logError(tag: [*:0]const u8, message: [*:0]const u8) void {
+    if (builtin.is_test) {
+        ra8_log_emit_error(tag, message);
+    } else if (@intFromPtr(log_emit_error) != 0) {
+        log_emit_error(tag, message);
+    }
+}
+
+/// The dither translation unit logged under its OWN tag, not `ra8_gfx`.
+const dither_tag: [*:0]const u8 = "ra8_gfx_dither";
+
 /// `g_gfx_text_state` -- the single shared framebuffer binding. The C
 /// definition initialised only `.format`, so RGB565 is the pre-init format.
 pub export var g_gfx_text_state: impl.State = .{ .format = impl.format.rgb565 };
@@ -544,5 +567,83 @@ pub export fn ra8_gfx_text_size(
     const extent = impl.textExtent(impl.textLength(str.?), face.glyph_width, face.glyph_height);
     out_w.?.* = extent.w;
     out_h.?.* = extent.h;
+    return impl.err.ok;
+}
+
+// --- blue-noise dither (#477) ----------------------------------------------
+
+/// Dither a gray8 tile to packed 4-bpp nibbles, mask-phased at (`ox`, `oy`).
+///
+/// Every pixel is thresholded against the blue-noise mask at ABSOLUTE panel
+/// coordinates, so a large image split into tiles packs byte-for-byte the same
+/// as the whole image.
+fn packTile(src: [*]const u8, w: i32, h: i32, ox: i32, oy: i32, out: [*]u8) void {
+    var row: i32 = 0;
+    while (row < h) : (row += 1) {
+        var col: i32 = 0;
+        while (col < w) : (col += 1) {
+            const i: u32 = (@as(u32, @bitCast(row)) *% @as(u32, @bitCast(w))) +%
+                @as(u32, @bitCast(col));
+            const level = impl.ditherLevel(src[i], ox +% col, oy +% row);
+            const byte_idx = impl.packByteIndex(i);
+            out[byte_idx] = impl.packNibble(out[byte_idx], level, i);
+        }
+    }
+}
+
+/// `ra8_gfx_dither_gray4_level`
+pub export fn ra8_gfx_dither_gray4_level(gray8: u8, x: i32, y: i32) callconv(.c) u8 {
+    return impl.ditherLevel(gray8, x, y);
+}
+
+/// `ra8_gfx_dither_gray8_to_gray4`
+pub export fn ra8_gfx_dither_gray8_to_gray4(
+    src: ?[*]const u8,
+    w: i32,
+    h: i32,
+    origin_x: i32,
+    origin_y: i32,
+    out: ?[*]u8,
+    out_cap: u32,
+    out_size: ?*u32,
+) callconv(.c) u16 {
+    const guard = impl.packGuard(src != null, out != null, out_size != null, w, h, out_cap);
+    switch (guard) {
+        .ok => {},
+        .no_src => logError(dither_tag, "src must not be nullptr"),
+        .no_out => logError(dither_tag, "out must not be nullptr"),
+        .no_out_size => logError(dither_tag, "out_size must not be nullptr"),
+        .bad_dims => logError(dither_tag, "w or h is non-positive"),
+        .too_small => logError(dither_tag, "output buffer too small"),
+    }
+    if (guard != .ok) return impl.packStatus(guard);
+
+    packTile(src.?, w, h, origin_x, origin_y, out.?);
+    out_size.?.* = impl.packedBytes(w, h);
+    return impl.err.ok;
+}
+
+/// `ra8_gfx_blit_gray8_dither`
+pub export fn ra8_gfx_blit_gray8_dither(
+    src: ?[*]const u8,
+    w: i32,
+    h: i32,
+    dst_x: i32,
+    dst_y: i32,
+) callconv(.c) u16 {
+    const status = impl.ditherBlitStatus(g_gfx_text_state.initialized, src != null, w, h);
+    if (status != impl.err.ok) return status;
+
+    const pixels = src.?;
+    var row: i32 = 0;
+    while (row < h) : (row += 1) {
+        var col: i32 = 0;
+        while (col < w) : (col += 1) {
+            const i: usize = (@as(usize, @intCast(row)) * @as(usize, @intCast(w))) +
+                @as(usize, @intCast(col));
+            const level = impl.ditherLevel(pixels[i], dst_x +% col, dst_y +% row);
+            priv_gfx_text_plot(dst_x +% col, dst_y +% row, impl.levelToColor(level));
+        }
+    }
     return impl.err.ok;
 }

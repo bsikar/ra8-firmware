@@ -4,6 +4,7 @@
     "tests/abi_test.zig"
   ],
   "covered_sources": [
+    "src/internal/dither_mask.zig",
     "src/internal/root.zig",
     "src/ra8_gfx_abi.zig",
     "tests/internal_test.zig",
