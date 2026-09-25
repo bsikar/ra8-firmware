@@ -81,6 +81,9 @@ func RenderShadowEvidence(out io.Writer, evidence ShadowEvidence, readiness Shad
 	if err := checkReadinessCovers(byTask, readiness); err != nil {
 		return err
 	}
+	if err := checkRenderedCommitBounds(evidence, byTask, readiness); err != nil {
+		return err
+	}
 	shortfall, err := shortfallByTask(readiness)
 	if err != nil {
 		return err
@@ -89,6 +92,9 @@ func RenderShadowEvidence(out io.Writer, evidence ShadowEvidence, readiness Shad
 		return err
 	}
 	if err := checkCountedVerdicts(byTask, readiness); err != nil {
+		return err
+	}
+	if err := checkPrintedCommitCounts(byTask, readiness); err != nil {
 		return err
 	}
 	if err := checkNamedCommits(byTask, readiness, accumulatedCommits(evidence)); err != nil {
@@ -121,9 +127,7 @@ func RenderShadowEvidence(out io.Writer, evidence ShadowEvidence, readiness Shad
 			task := byTask[name]
 			fmt.Fprintf(&page, "  %s: %d of %d graded commit%s disagreed\n",
 				name, task.Conflicting, task.Graded, plural(task.Graded))
-			if err := writeCommitLine(&page, "disagreed on", task.ConflictingCommits); err != nil {
-				return err
-			}
+			writeCommitLine(&page, "disagreed on", task.ConflictingCommits)
 		}
 	}
 	if len(readiness.Insufficient) > 0 {
@@ -133,9 +137,7 @@ func RenderShadowEvidence(out io.Writer, evidence ShadowEvidence, readiness Shad
 			short := shortfall[name]
 			fmt.Fprintf(&page, "  %s: graded on %d, %d more needed (paired on %d, %d never judged)\n",
 				name, short.Graded, short.Remaining, task.Observed, task.Indeterminate)
-			if err := writeCommitLine(&page, "never judged on", task.IndeterminateCommits); err != nil {
-				return err
-			}
+			writeCommitLine(&page, "never judged on", task.IndeterminateCommits)
 		}
 	}
 	if len(readiness.Ready) > 0 {
@@ -167,9 +169,6 @@ func RenderShadowEvidence(out io.Writer, evidence ShadowEvidence, readiness Shad
 func writeUngradedLine(page *strings.Builder, evidence ShadowEvidence) error {
 	if len(evidence.UngradedCommits) == 0 {
 		return nil
-	}
-	if len(evidence.UngradedCommits) > maxRenderedEvidenceCommits {
-		return fmt.Errorf("%w: %d commits graded nothing", ErrShadowEvidenceTooLarge, len(evidence.UngradedCommits))
 	}
 	// An ungraded commit the accumulation does not carry is refused
 	// rather than printed. AccumulateShadowEvidence cannot produce one,
@@ -273,14 +272,104 @@ func evidenceHoldReason(readiness ShadowReadiness) string {
 // its task and carried in the order the reports were given, which is the order
 // the pull requests were observed in: re-sorting would invent an order that
 // means nothing, the argument ShadowEvidence.Commits already makes.
-func writeCommitLine(page *strings.Builder, label string, commits []string) error {
+// The bound on how many commits one line may name is read before the page is
+// written, by checkRenderedCommitBounds, rather than here: a list discovered
+// to be too long halfway through a page leaves the sections above it written
+// and the refusal decided after the reader's first three lines were already
+// produced. This writes what that check has already allowed.
+func writeCommitLine(page *strings.Builder, label string, commits []string) {
 	if len(commits) == 0 {
-		return nil
-	}
-	if len(commits) > maxRenderedEvidenceCommits {
-		return fmt.Errorf("%w: %d commits %s one task", ErrShadowEvidenceTooLarge, len(commits), label)
+		return
 	}
 	fmt.Fprintf(page, "    %s: %s\n", label, strings.Join(commits, ", "))
+}
+
+// checkRenderedCommitBounds refuses an evidence page carrying more commits on
+// one line than a person reads, before a line of it is written.
+//
+// The bound itself is not new. writeCommitLine and writeUngradedLine enforced
+// maxRenderedEvidenceCommits as they wrote, which is the last check on this
+// page and the only one that runs after the header, the counts and every
+// section above the offending line have already been built. It also put the
+// bound out of reach of everything else: a check that reads a printed list
+// runs before the page is written, so it meets an over-long list first and
+// refuses it as whatever it is checking rather than as a page too long to
+// read. That is the reason the lengths of the printed lists were left unheld
+// to their counts, and holding them is what this pair of checks is for.
+//
+// Only the lists the page prints are bounded, which is the scope the write-time
+// bound already had: the conflicting tasks' disagreed-on lists, the insufficient
+// tasks' never-judged-on lists, and the ungraded line under the counts. A ready
+// task's lists are printed nowhere and are read nowhere, the line
+// checkNamedCommits drew.
+//
+// The refusals carry the wording the write-time bound carried, because they are
+// the same refusal moved: "%d commits disagreed on one task" for a task's line
+// and "%d commits graded nothing" for the ungraded one. A reader who saw the
+// old message sees the same one.
+func checkRenderedCommitBounds(evidence ShadowEvidence, byTask map[string]TaskEvidence, readiness ShadowReadiness) error {
+	if len(evidence.UngradedCommits) > maxRenderedEvidenceCommits {
+		return fmt.Errorf("%w: %d commits graded nothing",
+			ErrShadowEvidenceTooLarge, len(evidence.UngradedCommits))
+	}
+	for _, name := range readiness.Conflicting {
+		if named := len(byTask[name].ConflictingCommits); named > maxRenderedEvidenceCommits {
+			return fmt.Errorf("%w: %d commits disagreed on one task",
+				ErrShadowEvidenceTooLarge, named)
+		}
+	}
+	for _, name := range readiness.Insufficient {
+		if named := len(byTask[name].IndeterminateCommits); named > maxRenderedEvidenceCommits {
+			return fmt.Errorf("%w: %d commits never judged on one task",
+				ErrShadowEvidenceTooLarge, named)
+		}
+	}
+	return nil
+}
+
+// checkPrintedCommitCounts reads a task's printed commit list against the
+// number printed beside it on the same line.
+//
+// Both lines state a count and then name the commits it counts.
+// "build: 2 of 5 graded commits disagreed" is followed by "disagreed on:
+// <commits>", and "build: graded on 1, 2 more needed (paired on 3, 2 never
+// judged)" by "never judged on: <commits>". The count and the list come off
+// two fields of one TaskEvidence, written in one walk of the accumulator, and
+// nothing read them against each other: checkCountedVerdicts reads the four
+// counters against Graded and Observed, and checkNamedCommits reads each named
+// commit against the accumulation, so a list one commit short of its count is
+// right in both of them and wrong on the page.
+//
+// The reading it refuses is the one a person acts on. An operator holding a
+// required check goes to the disagreed-on list and opens every pull request in
+// it; a line that says two commits disagreed and names one sends them away
+// having read half the evidence, with no reason to think there was more. The
+// opposite shape is as bad in the other direction: a list naming more commits
+// than the count says is a line whose own numbers cannot be trusted, and this
+// page is read for its numbers.
+//
+// Only the printed lists are read, the scope checkNamedCommits settled: a ready
+// task's lists are counted nowhere and printed nowhere.
+//
+// Nothing a real accumulation produces is refused. AccumulateShadowEvidence
+// appends to ConflictingCommits in the same branch that increments Conflicting,
+// and to IndeterminateCommits in the same branch that increments Indeterminate,
+// so the two identities hold by construction over any evidence it built.
+func checkPrintedCommitCounts(byTask map[string]TaskEvidence, readiness ShadowReadiness) error {
+	for _, name := range readiness.Conflicting {
+		task := byTask[name]
+		if named := len(task.ConflictingCommits); named != task.Conflicting {
+			return fmt.Errorf("%w: %q disagreed on %d commit(s) and names %d",
+				ErrShadowEvidenceReportInvalid, name, task.Conflicting, named)
+		}
+	}
+	for _, name := range readiness.Insufficient {
+		task := byTask[name]
+		if named := len(task.IndeterminateCommits); named != task.Indeterminate {
+			return fmt.Errorf("%w: %q was never judged on %d commit(s) and names %d",
+				ErrShadowEvidenceReportInvalid, name, task.Indeterminate, named)
+		}
+	}
 	return nil
 }
 
