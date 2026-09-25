@@ -415,8 +415,11 @@ func checkReconcileSurveyCounts(report reconcileReport) error {
 		return fmt.Errorf("%w: %d runs no task plans counted, %d listed",
 			ErrReconcilePageInvalid, report.Unplanned, len(report.UnplannedRun))
 	}
-	settled := report.Posting == 0 && report.Waiting == 0 && report.Conflict == 0
-	if report.Settled != settled {
+	// The settled question is answered once, by reconcileIsSettled, and
+	// this reads that answer. Writing the expression out again here is
+	// how a page that calls a publish settled ends up over a command
+	// that refuses it.
+	if report.Settled != reconcileIsSettled(report) {
 		return fmt.Errorf("%w: settled is %t over %d to post, %d in flight, %d conflicting",
 			ErrReconcilePageInvalid, report.Settled, report.Posting, report.Waiting, report.Conflict)
 	}
