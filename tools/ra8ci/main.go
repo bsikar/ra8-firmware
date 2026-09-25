@@ -53,20 +53,18 @@ func main() {
 
 func run(ctx context.Context, args []string) int {
 	if len(args) == 0 {
-		fmt.Fprintln(os.Stderr, "usage: ra8ci <task>|tasks|ascii [--check] [--all|PATH]|since [--all|FILE...]|final-newline [FILE...]|runner-clock [--repo OWNER/REPO] [--runs N] [--hours N]|tests-readme [--selftest]|inclusive-terminology-commits [--selftest]|server|agent|sync|backup refresh|keygen|board status|take [--class human|ci|agent]|checkpoint|extend|cancel|hil budget|verify-capture|db migrate|report slow|github check|run submit|run status")
+		fmt.Fprintln(os.Stderr, "usage: ra8ci <task>|tasks [--digest|--json]|ascii [--check] [--all|PATH]|since [--all|FILE...]|final-newline [FILE...]|runner-clock [--repo OWNER/REPO] [--runs N] [--hours N]|tests-readme [--selftest]|inclusive-terminology-commits [--selftest]|server|agent|sync|backup refresh|keygen|board status|take [--class human|ci|agent]|checkpoint|extend|cancel|hil budget|verify-capture|db migrate|report slow|github check|run submit|run status")
 		return 2
 	}
 	var err error
 	switch args[0] {
 	case "tasks":
-		if len(args) != 1 {
-			return usageError("tasks takes no arguments")
-		}
 		var cat *catalog.Catalog
 		cat, err = catalog.Load()
 		if err == nil {
-			for _, name := range cat.Names() {
-				fmt.Fprintln(os.Stdout, name)
+			err = tasksCommand(os.Stdout, cat, args[1:])
+			if errors.Is(err, errTasksUsage) {
+				return usageError(err.Error())
 			}
 		}
 	case "server":
