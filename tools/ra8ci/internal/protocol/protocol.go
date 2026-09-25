@@ -319,7 +319,9 @@ func (receipt TerminalReceipt) Validate() error {
 			return ErrInvalid
 		}
 	}
-	return nil
+	// Last, because it reads stamps the loops above have already held in
+	// order: every duration must fit the window it was measured in.
+	return checkReportedDurations(receipt)
 }
 
 func validGrant(assignmentID, attemptID string, version, fence int64) bool {
