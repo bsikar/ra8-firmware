@@ -1601,11 +1601,15 @@ func plannedRun(t *testing.T, mode github.CheckRunMode, task, state string) plan
 	return plannedCheckRun{Task: task, Run: run, Summary: "ra8ci observed " + state}
 }
 
-// publishedAs renders one planned run as a run already on the commit.
+// publishedAs renders one planned run as a run this plane already published,
+// carrying the external identifier the publisher posts. Without it the run is
+// one somebody else left under our name, which the reconciliation reads as a
+// collision; that case has its own test below.
 func publishedAs(plan plannedCheckRun, id int64, status, conclusion, title string) github.PublishedCheckRun {
+	identifier, _ := github.CheckRunExternalID(plan.Run)
 	return github.PublishedCheckRun{
 		ID: id, Name: plan.Run.Name, Mode: plan.Run.Mode,
-		Status: status, Conclusion: conclusion, Title: title,
+		Status: status, Conclusion: conclusion, Title: title, ExternalID: identifier,
 	}
 }
 
@@ -1735,5 +1739,43 @@ func TestAnUnfinishedRunIsReportedByItsStatus(t *testing.T) {
 	}
 	if !strings.Contains(describePublishedRuns([]github.PublishedCheckRun{queued}), "#5 queued") {
 		t.Fatalf("description %q does not point at the run", describePublishedRuns([]github.PublishedCheckRun{queued}))
+	}
+}
+
+// A check run name is public, so a run under one of ours may have been posted
+// by something else entirely. The refusal has to say so: telling an operator
+// the commit disagrees would send them through this deployment's own history
+// looking for a run that was never in it.
+func TestARunThisPlaneDidNotPublishRefusesTheDocument(t *testing.T) {
+	task := firstCatalogTask(t)
+	plan := plannedRun(t, github.ModeAuthoritative, task, "failed")
+	theirs := publishedAs(plan, 61, "completed", plan.Run.Conclusion, plan.Run.Title)
+	theirs.ExternalID = ""
+	_, err := reconcileCheckRunPlan([]plannedCheckRun{plan}, listing(theirs))
+	if err == nil {
+		t.Fatal("a run under our name with no identifier of ours was accepted")
+	}
+	if !strings.Contains(err.Error(), "did not publish") {
+		t.Fatalf("refusal %q does not say who posted the run", err)
+	}
+	if !strings.Contains(err.Error(), "#61") {
+		t.Fatalf("refusal %q does not point at the run", err)
+	}
+}
+
+// Our own runs disagreeing about one commit is the other conflict, and it
+// reads differently: the runs are ours, and what they say is the question.
+func TestOurOwnDisagreementStillReadsAsADisagreement(t *testing.T) {
+	task := firstCatalogTask(t)
+	plan := plannedRun(t, github.ModeAuthoritative, task, "failed")
+	_, err := reconcileCheckRunPlan([]plannedCheckRun{plan}, listing(publishedAs(plan, 62, "completed", "success", "")))
+	if err == nil {
+		t.Fatal("a disagreeing run of ours was accepted")
+	}
+	if !strings.Contains(err.Error(), "saying something else") {
+		t.Fatalf("refusal %q does not read as a disagreement", err)
+	}
+	if strings.Contains(err.Error(), "did not publish") {
+		t.Fatalf("refusal %q blames a stranger for our own run", err)
 	}
 }
