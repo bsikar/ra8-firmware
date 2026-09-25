@@ -85,6 +85,9 @@ func RenderShadowEvidence(out io.Writer, evidence ShadowEvidence, readiness Shad
 	if err != nil {
 		return err
 	}
+	if err := checkNamedCommits(byTask, readiness, accumulatedCommits(evidence)); err != nil {
+		return err
+	}
 
 	var page strings.Builder
 	fmt.Fprintf(&page, "shadow evidence over %d commit%s, threshold %d\n",
@@ -164,10 +167,7 @@ func writeUngradedLine(page *strings.Builder, evidence ShadowEvidence) error {
 	// so an evidence value carrying one was assembled by hand, and the
 	// line would send an operator to a pull request this evidence never
 	// looked at.
-	accumulated := make(map[string]bool, len(evidence.Commits))
-	for _, commit := range evidence.Commits {
-		accumulated[commit] = true
-	}
+	accumulated := accumulatedCommits(evidence)
 	for _, commit := range evidence.UngradedCommits {
 		if !accumulated[commit] {
 			return fmt.Errorf("%w: %s graded nothing and is not one of the accumulated commits",
@@ -214,6 +214,68 @@ func writeCommitLine(page *strings.Builder, label string, commits []string) erro
 	}
 	fmt.Fprintf(page, "    %s: %s\n", label, strings.Join(commits, ", "))
 	return nil
+}
+
+// checkNamedCommits holds the commit lists this page prints to the commits the
+// evidence was accumulated from. writeUngradedLine already makes this argument
+// for the ungraded line: a commit the accumulation does not carry sends an
+// operator to a pull request this evidence never looked at. The two per-task
+// lists are the same sentence in the same page and are the ones writeCommitLine
+// calls the point of the answer, so they are read the same way.
+//
+// Only the lists the page PRINTS are read: ConflictingCommits for a conflicting
+// task and IndeterminateCommits for an insufficient one. A ready task's
+// conflicting commits are printed nowhere and are counted nowhere (every count
+// on this page comes off the integer fields), so refusing a whole page over a
+// list nobody would have seen takes a readable page away from an operator for
+// nothing. That is the rule the reconcile page's subject check settled, applied
+// here.
+//
+// The readiness lists are walked rather than byTask, so the refusals come in
+// the order the sections are printed in rather than in map order.
+func checkNamedCommits(byTask map[string]TaskEvidence, readiness ShadowReadiness, accumulated map[string]bool) error {
+	for _, name := range readiness.Conflicting {
+		if err := checkCommitList(name, "disagreed on", byTask[name].ConflictingCommits, accumulated); err != nil {
+			return err
+		}
+	}
+	for _, name := range readiness.Insufficient {
+		if err := checkCommitList(name, "never judged on", byTask[name].IndeterminateCommits, accumulated); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// checkCommitList reads one printed commit list. The label is the one the page
+// prints for that list, so the refusal says which line the operator would have
+// read rather than naming the field it came from.
+//
+// A blank commit is read before an unaccumulated one, and not only because an
+// unnamed commit is the worse line: an accumulation carrying a blank of its own
+// would make a blank commit answer to the accumulated set and render a list
+// with a gap in it.
+func checkCommitList(name, label string, commits []string, accumulated map[string]bool) error {
+	for _, commit := range commits {
+		if strings.TrimSpace(commit) == "" {
+			return fmt.Errorf("%w: %q %s an unnamed commit", ErrShadowEvidenceReportInvalid, name, label)
+		}
+		if !accumulated[commit] {
+			return fmt.Errorf("%w: %q %s %s, which is not one of the accumulated commits",
+				ErrShadowEvidenceReportInvalid, name, label, commit)
+		}
+	}
+	return nil
+}
+
+// accumulatedCommits is the set of commits this evidence looked at. It is the
+// one definition of that, read by every line on the page that names a commit.
+func accumulatedCommits(evidence ShadowEvidence) map[string]bool {
+	accumulated := make(map[string]bool, len(evidence.Commits))
+	for _, commit := range evidence.Commits {
+		accumulated[commit] = true
+	}
+	return accumulated
 }
 
 // evidenceByTask indexes the accumulated tasks. A task named twice is refused
