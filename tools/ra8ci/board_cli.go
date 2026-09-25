@@ -41,6 +41,9 @@ func boardCommand(ctx context.Context, args []string) error {
 	if len(args) > 0 && args[0] == "extend" {
 		return boardExtendCommand(ctx, args[1:])
 	}
+	if len(args) > 0 && args[0] == "recover" {
+		return boardRecoverCommand(ctx, args[1:])
+	}
 	if len(args) > 0 && args[0] == "cancel" {
 		ticket, err := parseBoardCancel(args[1:])
 		if err != nil {
@@ -74,7 +77,7 @@ func boardCommand(ctx context.Context, args []string) error {
 		return json.NewEncoder(os.Stdout).Encode(snapshot)
 	}
 	if len(args) < 2 || args[0] != "take" {
-		return errors.New("usage: ra8ci board status <board-id> | board take <board-id> --class human|ci|agent --why <reason> --duration <duration> | board checkpoint <board-id> | board extend <board-id> --why <reason> --duration <duration> | board cancel <board-id> <request-id> <lease-id>")
+		return errors.New("usage: ra8ci board status <board-id> | board take <board-id> --class human|ci|agent --why <reason> --duration <duration> | board checkpoint <board-id> | board extend <board-id> --why <reason> --duration <duration> | board recover <board-id> --plan <plan-id> --why <reason> | board cancel <board-id> <request-id> <lease-id>")
 	}
 	flags := flag.NewFlagSet("board take", flag.ContinueOnError)
 	flags.SetOutput(io.Discard)
@@ -209,4 +212,41 @@ func newBoardClient() (*boardclient.Client, error) {
 		return nil, fmt.Errorf("board client: %w", err)
 	}
 	return client, nil
+}
+
+// boardRecoverCommand hands a reviewed recovery plan to a board that is waiting
+// for one. The plan identifier is required: an operator naming no plan is not
+// approving a hardware sequence, and nothing else in the tree may name one on
+// their behalf.
+func boardRecoverCommand(ctx context.Context, args []string) error {
+	usage := "usage: ra8ci board recover <board-id> --plan <plan-id> --why <reason>"
+	if len(args) < 1 || !validBoardIDArgument(args[0]) {
+		return errors.New(usage)
+	}
+	flags := flag.NewFlagSet("board recover", flag.ContinueOnError)
+	flags.SetOutput(io.Discard)
+	plan := flags.String("plan", "", "identifier of the reviewed recovery plan")
+	why := flags.String("why", "", "reason this board needs recovery")
+	if err := flags.Parse(args[1:]); err != nil {
+		return fmt.Errorf("%s: %w", usage, err)
+	}
+	if flags.NArg() != 0 || *why == "" {
+		return errors.New(usage)
+	}
+	if !store.ValidID(*plan) {
+		return errors.New("board recover --plan must be the identifier of a reviewed recovery plan")
+	}
+	client, err := newBoardClient()
+	if err != nil {
+		return err
+	}
+	defer client.CloseIdleConnections()
+	snapshot, err := client.StartRecovery(ctx, args[0], *plan, *why)
+	if err != nil {
+		if errors.Is(err, boardclient.ErrNoRecoveryPending) {
+			return fmt.Errorf("board %s is not waiting for a recovery plan", args[0])
+		}
+		return fmt.Errorf("start board recovery: %w", err)
+	}
+	return json.NewEncoder(os.Stdout).Encode(snapshot)
 }
