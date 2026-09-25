@@ -1235,3 +1235,117 @@ func TestShadowEvidenceIsDispatchedByName(t *testing.T) {
 		t.Fatalf("error %v, want a usage line naming shadow-evidence", err)
 	}
 }
+
+func actionsRunEnv(t *testing.T) string {
+	t.Helper()
+	return publishCheckRunEnv(t)
+}
+
+// actions-run needs both halves of the configuration, and names the variable
+// that is missing rather than the one that happens to be checked first.
+func TestActionsRunNeedsBothHalvesOfTheConfiguration(t *testing.T) {
+	t.Run("no correspondence", func(t *testing.T) {
+		var out bytes.Buffer
+		err := githubActionsRun(context.Background(), strings.NewReader(`{"run_id":41}`), &out)
+		if err == nil || !strings.Contains(err.Error(), github.EnvShadowCorrespondenceFile) {
+			t.Fatalf("err = %v", err)
+		}
+		if out.Len() != 0 {
+			t.Fatalf("refused read wrote %q", out.String())
+		}
+	})
+	t.Run("no repository", func(t *testing.T) {
+		shadowCompareEnv(t, "build")
+		var out bytes.Buffer
+		err := githubActionsRun(context.Background(), strings.NewReader(`{"run_id":41}`), &out)
+		if err == nil || !strings.Contains(err.Error(), github.EnvCheckRunRepository) {
+			t.Fatalf("err = %v", err)
+		}
+		if out.Len() != 0 {
+			t.Fatalf("refused read wrote %q", out.String())
+		}
+	})
+}
+
+// The document is read and refused before a reader is built, so a bad document
+// is reported as a bad document rather than as a failure to reach GitHub. The
+// environment here names a private key file that does not exist, so any case
+// that got as far as building a reader would fail differently.
+func TestActionsRunRefusesTheDocumentBeforeBuildingAReader(t *testing.T) {
+	task := actionsRunEnv(t)
+	plane := `[{"task":"` + task + `","head_sha":"` + shadowCompareHead + `","observed":"success"}]`
+	cases := map[string]string{
+		"not an object":     `["run"]`,
+		"unknown field":     `{"run_id":41,"plane":` + plane + `,"actions":[]}`,
+		"trailing document": `{"run_id":41,"plane":` + plane + `} {"run_id":42}`,
+		"no run":            `{"plane":` + plane + `}`,
+		"negative run":      `{"run_id":-3,"plane":` + plane + `}`,
+		"no plane":          `{"run_id":41}`,
+	}
+	for name, input := range cases {
+		t.Run(name, func(t *testing.T) {
+			var out bytes.Buffer
+			err := githubActionsRun(context.Background(), strings.NewReader(input), &out)
+			if err == nil {
+				t.Fatal("document accepted")
+			}
+			if strings.Contains(err.Error(), "private key") {
+				t.Fatalf("built a reader before refusing the document: %v", err)
+			}
+			if out.Len() != 0 {
+				t.Fatalf("refused read wrote %q", out.String())
+			}
+		})
+	}
+}
+
+// The comparison document accepts the anchor actions-run writes, and grades
+// the same evidence with or without it: an anchor is provenance, never a term
+// in the comparison.
+func TestShadowCompareAcceptsTheRunAnchorWithoutRegrading(t *testing.T) {
+	task := shadowCompareEnv(t, "build")
+	plane := `"plane":[{"task":"` + task + `","head_sha":"` + shadowCompareHead + `","observed":"success"}]`
+	actions := `"actions":[{"job":"build","head_sha":"` + shadowCompareHead + `","conclusion":"success"}]`
+	anchored := `{"actions_run":{"run_id":41,"attempt":2,"head_sha":"` + shadowCompareHead + `"},` + plane + `,` + actions + `}`
+	bare := `{` + plane + `,` + actions + `}`
+
+	var withAnchor, without bytes.Buffer
+	if err := githubShadowCompare(strings.NewReader(anchored), &withAnchor); err != nil {
+		t.Fatalf("anchored comparison refused: %v", err)
+	}
+	if err := githubShadowCompare(strings.NewReader(bare), &without); err != nil {
+		t.Fatalf("bare comparison refused: %v", err)
+	}
+	if withAnchor.String() != without.String() {
+		t.Fatalf("the anchor changed the page:\n%s\n---\n%s", withAnchor.String(), without.String())
+	}
+}
+
+// An anchor naming another commit is refused rather than ignored. It is how one
+// run's outcomes end up filed under another run's attempt, and an attempt that
+// does not describe the evidence under it is worse than no attempt at all.
+func TestShadowCompareRefusesAnAnchorFromAnotherCommit(t *testing.T) {
+	task := shadowCompareEnv(t, "build")
+	other := "89abcdef0123456789abcdef0123456789abcdef"
+	input := `{"actions_run":{"run_id":41,"attempt":1,"head_sha":"` + other + `"},` +
+		`"plane":[{"task":"` + task + `","head_sha":"` + shadowCompareHead + `","observed":"success"}],` +
+		`"actions":[{"job":"build","head_sha":"` + shadowCompareHead + `","conclusion":"success"}]}`
+
+	var out bytes.Buffer
+	err := githubShadowCompare(strings.NewReader(input), &out)
+	if err == nil || !strings.Contains(err.Error(), other) {
+		t.Fatalf("err = %v, want a refusal naming %s", err, other)
+	}
+	if out.Len() != 0 {
+		t.Fatalf("refused comparison wrote a page: %q", out.String())
+	}
+}
+
+// The subcommand is dispatched by name, and a misspelling is refused with a
+// usage line that names the real one.
+func TestActionsRunIsDispatchedByName(t *testing.T) {
+	err := githubCommand(context.Background(), []string{"actions-runs"})
+	if err == nil || !strings.Contains(err.Error(), "actions-run") {
+		t.Fatalf("err = %v", err)
+	}
+}
