@@ -957,6 +957,53 @@ func checkPlanIsOneSubject(planned []plannedCheckRun) error {
 	return nil
 }
 
+// checkListingNamesEachRunOnce holds the commit's listing to one entry per
+// run, before either command decides a plan against it.
+//
+// The listing is the other half of what these two functions are given, and it
+// is the half neither of them reads. ReconcilePublish checks the intended run
+// and that the listing is about the same commit; it then asks the listing for
+// the runs under one name and judges those. Nothing asks whether the listing
+// describes the commit sensibly, and all three of these travel straight into
+// what the survey reports:
+//
+// A run listed with no identifier cannot be opened. Every refusal and every
+// reported line points at a run by its number, and the survey does more than
+// print it: it decides which existing runs are this plane's by building a set
+// of the unclaimed ones keyed on the identifier, so two runs listed without
+// one collapse into a single key and a run of ours is reported as somebody
+// else's, or the reverse. That is the same run described twice for the same
+// reason, which is why a duplicate is refused here too: it is one run on the
+// commit, counted as two leftovers and opened as one.
+//
+// A run listed under no name is accounted for by nothing. Names are matched
+// exactly, as UnplannedRuns says they must be, so a blank one claims no plan
+// and is reported as a leftover run on the commit whose line names nothing to
+// go and read.
+//
+// The order is deliberately not read. PublishedRuns sorts the listing by name
+// and then by identifier so one commit read twice produces one document, but
+// that is the reader's promise about how it pages GitHub, and a listing
+// carrying the same runs in another order is the same commit. Refusing it
+// here would refuse a document that is merely paged differently, and would
+// put a second definition of that sort in the command.
+func checkListingNamesEachRunOnce(published github.PublishedCheckRuns) error {
+	listed := make(map[int64]bool, len(published.Runs))
+	for _, run := range published.Runs {
+		if run.ID < 1 {
+			return fmt.Errorf("the commit's listing carries a run under %q with no identifier", run.Name)
+		}
+		if strings.TrimSpace(run.Name) == "" {
+			return fmt.Errorf("the commit's listing carries run %d under no name", run.ID)
+		}
+		if listed[run.ID] {
+			return fmt.Errorf("the commit's listing carries run %d twice", run.ID)
+		}
+		listed[run.ID] = true
+	}
+	return nil
+}
+
 // reconcileCheckRunPlan decides the whole plan against one listing of what is
 // already on the commit, before anything is posted.
 //
@@ -977,6 +1024,9 @@ func reconcileCheckRunPlan(planned []plannedCheckRun, published github.Published
 		return nil, errors.New("no check runs to reconcile")
 	}
 	if err := checkPlanIsOneSubject(planned); err != nil {
+		return nil, err
+	}
+	if err := checkListingNamesEachRunOnce(published); err != nil {
 		return nil, err
 	}
 	reconciled := make([]reconciledCheckRun, 0, len(planned))
@@ -1460,6 +1510,9 @@ func surveyCheckRunPlan(planned []plannedCheckRun, published github.PublishedChe
 		return reconcileReport{}, errors.New("no check runs to survey")
 	}
 	if err := checkPlanIsOneSubject(planned); err != nil {
+		return reconcileReport{}, err
+	}
+	if err := checkListingNamesEachRunOnce(published); err != nil {
 		return reconcileReport{}, err
 	}
 	report := reconcileReport{
