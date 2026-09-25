@@ -13,19 +13,19 @@ make it say. A rule that matches nothing is a failure here, not a pass.
 
 WHY IT LIVES BESIDE THE CHECKER RATHER THAN INSIDE IT
 =====================================================
-``check_linker_scripts.py`` carries nine rules, and the proof of those rules is
-about as long again as the rules themselves. Keeping both in one file leaves no
-room under the 1000-line ceiling ``check_file_size.py`` enforces, and puts a
-fixture edit next to a rule edit where neither can be reviewed on its own. The
-split follows the one already made for ``linker_script_fixtures.py`` (static
-fixture text) and for ``lint_coverage_rules.py``: data, proof, and enforcement
-each in their own file.
+``check_linker_scripts.py`` carries ten rules and the device-header parse that
+LD009/LD010 are measured against, and the proof of those rules is about as long
+again as the rules themselves. Keeping both in one file put it past the
+1000-line ceiling ``check_file_size.py`` enforces, and made a fixture edit
+unreviewable next to a rule edit. The split follows the one already made for
+``linker_script_fixtures.py`` (static fixture text) and for
+``lint_coverage_rules.py``: data, proof, and enforcement each in their own file.
 
 The import runs ONE WAY. This module imports the checker; the checker imports
 this one only inside ``selftest()``, deferred, so there is no cycle and the
-plain scan never pays to build fixtures it does not run. The builder-style
-fixtures that need the checker's own tables (``_synth_option_script``,
-``_sram_fixture``) moved here with the assertions that use them; the static
+plain scan never pays for the fixtures. The builder-style fixtures that need
+the checker's own tables (``_synth_option_script``, ``_sram_fixture``,
+``_device_fixture``) moved here with the assertions that use them; the static
 whole-file fixtures stay in ``linker_script_fixtures.py``.
 
 Run it through the checker's own CLI: ``check_linker_scripts.py --selftest``.
@@ -42,13 +42,16 @@ sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1] / "dev"))
 
 from check_linker_scripts import (
+    DEVICE_MEM,
     OPTION_SETTING_ADDR,
+    SRAM_WINDOW_BASE,
     SRAM_WINDOW_SIZE,
     check_file,
     closure_problems,
     defined_symbols,
     eval_size,
     option_section,
+    parse_device_memory_map,
     referenced_symbols,
     repo_files,
 )
@@ -323,11 +326,117 @@ def _selftest_sram_fit() -> int:
     return rc
 
 
+def _device_fixture(itcm: str, sdram_origin: str = "0x68000000") -> str:
+    """A board-shaped script whose ITCM row and SDRAM origin are caller-chosen.
+
+    Everything else is the real EK layout, so a finding can only come from the
+    row under test rather than from a fixture that was never legal.
+    """
+    return (
+        "/*\n * Copyright (c) 2026 Brighton Sikarskie\n"
+        " * SPDX-License-Identifier: MIT\n */\n\n"
+        "ENTRY(Reset_Handler)\n\n"
+        "MEMORY\n{\n"
+        "    MRAM (rx) : ORIGIN = 0x02000000, LENGTH = 1024K\n"
+        f"    ITCM (rwx) : {itcm}\n"
+        "    DTCM (rwx) : ORIGIN = 0x20000000, LENGTH = 64K\n"
+        "    SRAM (rwx) : ORIGIN = 0x22000000, LENGTH = 1024K\n"
+        f"    SDRAM (rwx) : ORIGIN = {sdram_origin}, LENGTH = 64M\n"
+        "    NS_SRAM (rwx) : ORIGIN = 0x22100000, LENGTH = 640K\n}\n"
+    )
+
+
+def _selftest_device_map() -> int:
+    """The map is really READ from ra8_device.h, and rejects a broken header."""
+    rc = 0
+    # Anchor: prove DEVICE_MEM came from the header rather than from a default.
+    # A stubbed-out parser would fail here before any fixture below runs.
+    sram_size = DEVICE_MEM["k_ra8_mem_sram_size"]
+    sram_base = DEVICE_MEM["k_ra8_mem_sram_base"]
+    if sram_size != eval_size("1664K"):
+        print(f"SELFTEST FAIL: k_ra8_mem_sram_size parsed as {sram_size}")
+        return 1
+    if sram_size != SRAM_WINDOW_SIZE or sram_base != SRAM_WINDOW_BASE:
+        print("SELFTEST FAIL: the SRAM window constants are not the header's values")
+        return 1
+    print("selftest: SRAM window read from ra8_device.h OK")
+
+    synthetic = (
+        "typedef enum : uintptr_t {\n"
+        "  k_ra8_mem_mram_base  = 0x0A000000U, /**< moved. */\n"
+        "  k_ra8_mem_itcm_base  = 0x00000000U,\n"
+        "  k_ra8_mem_dtcm_base  = 0x20000000U,\n"
+        "  k_ra8_mem_sram_base  = 0x22000000U,\n"
+        "  k_ra8_mem_sdram_base = 0x68000000U,\n"
+        "} ra8_device_mem_base_t;\n"
+        "typedef enum : uint32_t {\n"
+        "  k_ra8_mem_mram_size = 0x00100000U,\n"
+        "  k_ra8_mem_itcm_size = 0x00010000U,\n"
+        "  k_ra8_mem_dtcm_size = 0x00010000U,\n"
+        "  k_ra8_mem_sram_size = 0x001A0000U,\n"
+        "} ra8_device_mem_size_t;\n"
+    )
+    parsed = parse_device_memory_map(synthetic)
+    moved_mram_base = 0x0A000000
+    if parsed["k_ra8_mem_mram_base"] != moved_mram_base:
+        print(f"SELFTEST FAIL: synthetic header parsed as {parsed}")
+        rc = 1
+    else:
+        print("selftest: synthetic header parses to its own values OK")
+
+    try:
+        parse_device_memory_map(synthetic.replace("k_ra8_mem_sram_size", "k_ra8_mem_sram_bytes"))
+    except ValueError as exc:
+        if "k_ra8_mem_sram_size" not in str(exc):
+            print(f"SELFTEST FAIL: rename raised the wrong ValueError: {exc}")
+            rc = 1
+        else:
+            print("selftest: a renamed memory-map enum is a loud failure OK")
+    else:
+        print("SELFTEST FAIL: a renamed memory-map enum was accepted")
+        rc = 1
+    return rc
+
+
+def _selftest_device_region_fit() -> int:
+    """LD010 fires on a mis-addressed / oversized named region, silent when legal."""
+    rc = 0
+    cases = (
+        # tag, ITCM row, SDRAM origin, expected LD010 count, region named in msg
+        ("legal.ld", "ORIGIN = 0x00000000, LENGTH = 64K", "0x68000000", 0, ""),
+        ("itcm_addr.ld", "ORIGIN = 0x30000000, LENGTH = 64K", "0x68000000", 1, "ITCM"),
+        ("itcm_size.ld", "ORIGIN = 0x00000000, LENGTH = 128K", "0x68000000", 1, "ITCM"),
+        ("sdram_addr.ld", "ORIGIN = 0x00000000, LENGTH = 64K", "0x60000000", 1, "SDRAM"),
+    )
+    with tempfile.TemporaryDirectory() as td:
+        for tag, itcm, sdram, want, region in cases:
+            path = pathlib.Path(td) / tag
+            path.write_bytes(_device_fixture(itcm, sdram).encode())
+            got = [f for f in check_file(path, path.read_bytes()) if f.code == "LD010"]
+            if len(got) != want or (region and region not in got[0].msg):
+                named = region or "nothing"
+                print(f"SELFTEST FAIL: {tag} expected {want} LD010 on {named}, got {got}")
+                rc = 1
+            else:
+                print(f"selftest: {tag} -> {want} LD010 OK")
+        # A 64K ITCM overrun is LD010's, not LD009's: the TCM window is nowhere
+        # near the SRAM array, so exactly one rule must own each defect.
+        path = pathlib.Path(td) / "itcm_size.ld"
+        if [f for f in check_file(path, path.read_bytes()) if f.code == "LD009"]:
+            print("SELFTEST FAIL: LD009 double-reported an ITCM overrun")
+            rc = 1
+        else:
+            print("selftest: ITCM overrun reported once, by LD010 only OK")
+    return rc
+
+
 def run_selftests() -> int:
     """Assert every finding code fires, and that none of them over-fires."""
     rc = _selftest_fixtures()
     rc |= _selftest_option_setting()
     rc |= _selftest_option_completeness()
     rc |= _selftest_sram_fit()
+    rc |= _selftest_device_map()
+    rc |= _selftest_device_region_fit()
     scan_rc, got_def, got_ref = _selftest_symbol_scan()
     return rc | scan_rc | _selftest_closure(got_def, got_ref) | _selftest_worktree_inventory()
