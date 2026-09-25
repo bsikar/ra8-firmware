@@ -633,6 +633,9 @@ func githubSubcommands() []githubSubcommand {
 		{"evidence-run", githubEvidenceRun},
 		{"pull-request-evidence", githubPullRequestEvidence},
 		{"pull-request-survey", githubPullRequestSurvey},
+		{"pull-request-survey-page", func(_ context.Context, in io.Reader, out io.Writer) error {
+			return githubPullRequestSurveyPage(in, out)
+		}},
 	}
 }
 
@@ -3458,4 +3461,89 @@ func pullRequestSurveyFrom(workflow string, surveyed []surveyedHead) pullRequest
 		report.PullRequests = append(report.PullRequests, answer)
 	}
 	return report
+}
+
+// maxRenderedCandidateSurveyBytes bounds the survey document the page reads.
+// A survey carries one short record per candidate and a refusal in words for
+// the ones no run could be selected on, so it is the same order of size as
+// the ask that produced it. This is room to spare and still a refusal rather
+// than an unbounded read of whatever is piped in.
+const maxRenderedCandidateSurveyBytes = 4 << 20
+
+// readPullRequestSurvey reads one candidate set's survey document.
+//
+// A field this build cannot state is refused rather than ignored. The page is
+// read to decide which pull requests go into the evidence, and a document
+// from a newer build carrying a finding this one does not know would
+// otherwise be rendered as a page that says the set is ready.
+func readPullRequestSurvey(in io.Reader) (pullRequestSurveyReport, error) {
+	var report pullRequestSurveyReport
+	decoder := json.NewDecoder(io.LimitReader(in, maxRenderedCandidateSurveyBytes+1))
+	decoder.DisallowUnknownFields()
+	if err := decoder.Decode(&report); err != nil {
+		return pullRequestSurveyReport{}, fmt.Errorf("read pull request survey: %w", err)
+	}
+	if decoder.More() {
+		return pullRequestSurveyReport{}, errors.New("read pull request survey: trailing content after the document")
+	}
+	if decoder.InputOffset() > maxRenderedCandidateSurveyBytes {
+		return pullRequestSurveyReport{}, fmt.Errorf("read pull request survey: larger than %d bytes",
+			maxRenderedCandidateSurveyBytes)
+	}
+	// A survey is about one workflow; githubPullRequestSurvey refuses an
+	// ask without one and pullRequestSurveyFrom carries it through. A
+	// document missing it is not an empty survey, it is some other
+	// document, and rendering it would put a "ready" line over nothing.
+	// The candidate list is NOT checked the same way: a survey of no pull
+	// requests is a real, empty answer, and the page states it as one.
+	if report.Workflow == "" {
+		return pullRequestSurveyReport{}, errors.New("read pull request survey: no workflow stated")
+	}
+	return report, nil
+}
+
+// githubPullRequestSurveyPage writes a candidate survey as the page it is read
+// from.
+//
+// It is the reading half of github pull-request-survey, wired the way
+// github reconcile-page is wired beside github reconcile and github
+// evidence-page beside github shadow-evidence: the surveying command keeps
+// writing the document it has always written, and this one takes that
+// document back in and states it. Nothing here reads GitHub, holds a token or
+// decides anything; a survey goes in and the page comes out.
+//
+// The page is written before the verdict is returned, the same rule the other
+// two pages follow and for the same reason: the finding is the answer, and an
+// answer carried only by an exit status is one nobody can read.
+func githubPullRequestSurveyPage(in io.Reader, out io.Writer) error {
+	report, err := readPullRequestSurvey(in)
+	if err != nil {
+		return err
+	}
+	if err := RenderPullRequestSurvey(out, report); err != nil {
+		return fmt.Errorf("render pull request survey: %w", err)
+	}
+	return candidateSurveyVerdict(report)
+}
+
+// candidateSurveyVerdict answers for a set that cannot be gathered as it
+// stands. It is the one place that decision is made, so the page and the exit
+// status cannot come apart, and it states BOTH reasons a set is not ready:
+// a candidate no run can be selected on, and a commit two candidates share,
+// which `pull-request-evidence` refuses even though both candidates are
+// selectable on their own.
+func candidateSurveyVerdict(report pullRequestSurveyReport) error {
+	if report.Unselectable == 0 && len(report.SharedHeads) == 0 {
+		return nil
+	}
+	said := make([]string, 0, 2)
+	if report.Unselectable > 0 {
+		said = append(said, fmt.Sprintf("%d of %d candidates have no %s run to gather",
+			report.Unselectable, report.Considered, report.Workflow))
+	}
+	if shared := len(report.SharedHeads); shared > 0 {
+		said = append(said, fmt.Sprintf("%d %s carries more than one candidate",
+			shared, surveyPlural(shared, "commit", "commits")))
+	}
+	return errors.New(strings.Join(said, "; "))
 }
