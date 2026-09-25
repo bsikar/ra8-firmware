@@ -40,6 +40,22 @@ func (a *Agent) RunHILAttempt(ctx context.Context, token boardclient.LeaseToken,
 	}
 	attemptCtx, cancel := context.WithDeadline(ctx, assignment.Attempt.DeadlineAt)
 	defer cancel()
+	// Report this holder alive for as long as the attempt runs. A beat is
+	// not a deadline command in either direction, so its outcome never
+	// decides anything here: a lease that stopped being ours is already
+	// answered by the fence and by every segment call, and a client that
+	// cannot beat simply goes unseen. The attempt never outlives its own
+	// reporting, so nothing keeps beating at a board this call has left.
+	beatCtx, stopBeats := context.WithCancel(attemptCtx)
+	beatsStopped := make(chan struct{})
+	go func() {
+		defer close(beatsStopped)
+		_ = a.KeepAlive(beatCtx, token)
+	}()
+	defer func() {
+		stopBeats()
+		<-beatsStopped
+	}()
 	completion := store.BoardHILCompletion{AttemptID: assignment.Attempt.ID, LeaseID: token.LeaseID,
 		Generation: token.Generation, Result: "failed", Reason: "HIL task did not complete"}
 	steps := make([]store.HILStep, 0, len(assignment.Task.Steps))
