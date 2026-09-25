@@ -513,7 +513,7 @@ func runAgent(ctx context.Context) error {
 // documentation.
 func githubCommand(ctx context.Context, args []string) error {
 	if len(args) != 1 {
-		return errors.New("usage: ra8ci github check|shadow|shadow-compare|shadow-evidence|publish-check-run|required-checks|evidence-gate|gate|actions-run|reconcile|pull-request|evidence-run|pull-request-evidence|pull-request-survey|evidence-page")
+		return errors.New("usage: ra8ci github check|shadow|shadow-compare|shadow-evidence|publish-check-run|required-checks|evidence-gate|gate|actions-run|reconcile|pull-request|evidence-run|pull-request-evidence|pull-request-survey|evidence-page|reconcile-page")
 	}
 	switch args[0] {
 	case "check":
@@ -538,6 +538,8 @@ func githubCommand(ctx context.Context, args []string) error {
 		return githubActionsRun(ctx, os.Stdin, os.Stdout)
 	case "reconcile":
 		return githubReconcileCheckRuns(ctx, os.Stdin, os.Stdout)
+	case "reconcile-page":
+		return githubReconcilePage(os.Stdin, os.Stdout)
 	case "pull-request":
 		return githubPullRequestRuns(ctx, os.Stdin, os.Stdout)
 	case "evidence-run":
@@ -547,7 +549,7 @@ func githubCommand(ctx context.Context, args []string) error {
 	case "pull-request-survey":
 		return githubPullRequestSurvey(ctx, os.Stdin, os.Stdout)
 	default:
-		return errors.New("usage: ra8ci github check|shadow|shadow-compare|shadow-evidence|publish-check-run|required-checks|evidence-gate|gate|actions-run|reconcile|pull-request|evidence-run|pull-request-evidence|pull-request-survey|evidence-page")
+		return errors.New("usage: ra8ci github check|shadow|shadow-compare|shadow-evidence|publish-check-run|required-checks|evidence-gate|gate|actions-run|reconcile|pull-request|evidence-run|pull-request-evidence|pull-request-survey|evidence-page|reconcile-page")
 	}
 }
 
@@ -1461,17 +1463,94 @@ func githubReconcileCheckRuns(ctx context.Context, in io.Reader, out io.Writer) 
 	// does not resolve itself: a needed run is posted and a run in flight
 	// finishes, but a run this plane cannot account for waits for a
 	// person.
-	if report.Conflict > 0 {
-		conflicting := make([]string, 0, report.Conflict)
-		for _, task := range report.Tasks {
-			if task.Decision == decisionToken(github.PublishConflicts) {
-				conflicting = append(conflicting, task.Task)
-			}
-		}
-		return fmt.Errorf("%d of %d tasks have a check run on %s that this publish cannot account for: %s",
-			report.Conflict, len(report.Tasks), commit, strings.Join(conflicting, ", "))
+	return surveyConflictVerdict(report)
+}
+
+// surveyConflictVerdict is the exit status a surveyed commit carries.
+//
+// It is one function rather than one per writer deliberately. The document
+// and the page are two readings of the same survey, and a verdict worked out
+// twice is a verdict that can come out differently on the two of them; the
+// tasks it names are read off the decision the survey already wrote, the same
+// way the page names them.
+//
+// A conflict is the answer rather than an error in the inputs, and it is the
+// one state that does not resolve itself: a needed run is posted and a run in
+// flight finishes, but a run this plane cannot account for waits for a person.
+func surveyConflictVerdict(report reconcileReport) error {
+	if report.Conflict == 0 {
+		return nil
 	}
-	return nil
+	conflicting := conflictingSurveyTasks(report)
+	named := make([]string, 0, len(conflicting))
+	for _, task := range conflicting {
+		named = append(named, task.Task)
+	}
+	return fmt.Errorf("%d of %d tasks have a check run on %s that this publish cannot account for: %s",
+		report.Conflict, len(report.Tasks), report.Commit, strings.Join(named, ", "))
+}
+
+// maxReconcileSurveyBytes bounds the survey document the page reads. A survey
+// carries an excerpt of every published run's summary across the whole
+// catalog, so it is larger than the outcome document it was made from and
+// smaller than an evidence set. This is room to spare and still a refusal
+// rather than an unbounded read of whatever is piped in.
+const maxReconcileSurveyBytes = 4 << 20
+
+// readReconcileSurvey reads one commit's survey document.
+//
+// A field this build cannot state is refused rather than ignored. The page is
+// read to decide whether a publish needs a person, and a document from a
+// newer build carrying a standing or a grouping this one does not know would
+// otherwise be rendered as a page that says everything is accounted for.
+func readReconcileSurvey(in io.Reader) (reconcileReport, error) {
+	var report reconcileReport
+	decoder := json.NewDecoder(io.LimitReader(in, maxReconcileSurveyBytes+1))
+	decoder.DisallowUnknownFields()
+	if err := decoder.Decode(&report); err != nil {
+		return reconcileReport{}, fmt.Errorf("read reconcile survey: %w", err)
+	}
+	if decoder.More() {
+		return reconcileReport{}, errors.New("read reconcile survey: trailing content after the document")
+	}
+	if decoder.InputOffset() > maxReconcileSurveyBytes {
+		return reconcileReport{}, fmt.Errorf("read reconcile survey: larger than %d bytes",
+			maxReconcileSurveyBytes)
+	}
+	// A survey is about one commit and is made from at least one planned
+	// task; surveyCheckRunPlan refuses to produce anything else. A
+	// document missing either is not an empty survey, it is some other
+	// document, and rendering it would put an authoritative-looking
+	// "settled" line over nothing at all.
+	if report.Commit == "" {
+		return reconcileReport{}, errors.New("read reconcile survey: no commit stated")
+	}
+	if len(report.Tasks) == 0 {
+		return reconcileReport{}, errors.New("read reconcile survey: no tasks surveyed")
+	}
+	return report, nil
+}
+
+// githubReconcilePage writes a survey as the page it is read from.
+//
+// It is the reading half of github reconcile, wired the way github
+// evidence-page is wired beside github shadow-evidence: the surveying command
+// keeps writing the document it has always written, and this one takes that
+// document back in and states it. Nothing here reads GitHub, holds a token or
+// decides anything; a survey goes in and the page comes out.
+//
+// The page is written before the verdict is returned, the same rule the
+// document writer follows and for the same reason: a conflict is the answer,
+// and an answer carried only by an exit status is one nobody can read.
+func githubReconcilePage(in io.Reader, out io.Writer) error {
+	report, err := readReconcileSurvey(in)
+	if err != nil {
+		return err
+	}
+	if err := RenderReconcileSurvey(out, report); err != nil {
+		return fmt.Errorf("render reconcile survey: %w", err)
+	}
+	return surveyConflictVerdict(report)
 }
 
 // maxRequiredCheckBytes bounds the gate document this reads. A repository's
