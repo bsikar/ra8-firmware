@@ -516,8 +516,8 @@ func (c *Client) Reconcile(ctx context.Context, operationID string, identity Ide
 		}
 		return Result{}, &UnknownOutcomeError{OperationID: operationID, Cause: errors.New("no durable Proxmox task ID")}
 	}
-	if !upidPattern.MatchString(upid) || !strings.HasPrefix(upid, "UPID:"+c.node+":") {
-		return Result{}, ErrInvalid
+	if _, err := parseTaskID(upid, c.node, kind); err != nil {
+		return Result{}, err
 	}
 	if err := c.waitTask(opCtx, upid, identity.VMID, kind); err != nil {
 		return Result{}, &UnknownOutcomeError{OperationID: operationID, UPID: upid, Cause: err}
@@ -534,8 +534,8 @@ func (c *Client) mutateAndVerify(ctx context.Context, action Action, method, pat
 		}
 		return Result{}, &UnknownOutcomeError{OperationID: action.ID, Cause: err}
 	}
-	if !upidPattern.MatchString(upid) || !strings.HasPrefix(upid, "UPID:"+c.node+":") {
-		return Result{}, &UnknownOutcomeError{OperationID: action.ID, Cause: ErrProtocol}
+	if _, taskErr := parseTaskID(upid, c.node, kind); taskErr != nil {
+		return Result{}, &UnknownOutcomeError{OperationID: action.ID, Cause: fmt.Errorf("%w: %v", ErrProtocol, taskErr)}
 	}
 	if err := c.waitTask(ctx, upid, identity.VMID, kind); err != nil {
 		return Result{}, &UnknownOutcomeError{OperationID: action.ID, UPID: upid, Cause: err}
@@ -566,7 +566,7 @@ func (c *Client) verifyAfterTask(ctx context.Context, operationID, upid string, 
 
 func (c *Client) waitTask(ctx context.Context, upid string, vmid int, kind string) error {
 	path := "/nodes/" + c.node + "/tasks/" + upid + "/status"
-	wantType := map[string]string{"clone": "qmclone", "start": "qmstart", "stop": "qmstop", "destroy": "qmdestroy"}[kind]
+	wantType := taskTypeFor(kind)
 	for {
 		var task struct {
 			UPID       string `json:"upid"`
