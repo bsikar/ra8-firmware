@@ -8,6 +8,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"reflect"
 	"strconv"
 	"strings"
 	"testing"
@@ -2137,5 +2138,245 @@ func TestEvidenceRunIsOneOfTheGithubSubcommands(t *testing.T) {
 	}
 	if !strings.Contains(err.Error(), "evidence-run") {
 		t.Fatalf("usage does not name the subcommand: %v", err)
+	}
+}
+
+// pullRequestEvidenceHeadA and pullRequestEvidenceHeadB are the two commits
+// the gathered document is pinned over. They are their own constants because
+// the evidence document's whole job is to hold more than one commit.
+const (
+	pullRequestEvidenceHeadA = "1111111111111111111111111111111111111111"
+	pullRequestEvidenceHeadB = "2222222222222222222222222222222222222222"
+)
+
+// gatheredFor builds one pull request's gathered half without contacting
+// GitHub, so the document shape is pinned on its own.
+func gatheredFor(number int, head string, runID int64, attempt int, task, job, conclusion string) gatheredPullRequest {
+	return gatheredPullRequest{
+		Number: number,
+		Outcomes: github.ActionsRunOutcomes{
+			RunID: runID, Attempt: attempt, HeadSHA: head,
+			Outcomes: []github.ActionsOutcome{{Job: job, HeadSHA: head, Conclusion: conclusion}},
+		},
+		Plane: []planeOutcomeInput{{Task: task, HeadSHA: head, Observed: "failed"}},
+	}
+}
+
+// The gathered document is exactly what shadow-evidence reads. It is decoded
+// back with unknown fields refused, the way the command downstream reads it,
+// so a field added here that shadow-evidence does not know breaks this test
+// rather than the pipe.
+func TestTheGatheredEvidenceIsWhatShadowEvidenceReads(t *testing.T) {
+	document := pullRequestEvidenceDocument(2, []gatheredPullRequest{
+		gatheredFor(1589, pullRequestEvidenceHeadA, 771, 1, "build", "build", "failure"),
+		gatheredFor(1590, pullRequestEvidenceHeadB, 772, 2, "build", "build", "success"),
+	})
+	encoded, err := json.Marshal(document)
+	if err != nil {
+		t.Fatalf("encode the gathered document: %v", err)
+	}
+	var read shadowEvidenceInput
+	decoder := json.NewDecoder(bytes.NewReader(encoded))
+	decoder.DisallowUnknownFields()
+	if err := decoder.Decode(&read); err != nil {
+		t.Fatalf("shadow-evidence would refuse the gathered document: %v", err)
+	}
+	if read.Threshold != 2 {
+		t.Fatalf("threshold %d, want the stated 2", read.Threshold)
+	}
+	if len(read.Commits) != 2 {
+		t.Fatalf("%d commits, want one per pull request", len(read.Commits))
+	}
+}
+
+// The pull requests are gathered in the order they were asked for. The
+// readiness answer counts commits, so the order changes nothing it decides,
+// but a document that reordered them could not be read beside the ask it came
+// from.
+func TestTheGatheredCommitsKeepTheOrderTheyWereAskedIn(t *testing.T) {
+	document := pullRequestEvidenceDocument(1, []gatheredPullRequest{
+		gatheredFor(1590, pullRequestEvidenceHeadB, 772, 1, "build", "build", "success"),
+		gatheredFor(1589, pullRequestEvidenceHeadA, 771, 1, "build", "build", "failure"),
+	})
+	if document.Commits[0].ActionsRun.HeadSHA != pullRequestEvidenceHeadB {
+		t.Fatalf("first commit is %s, want the pull request asked for first",
+			document.Commits[0].ActionsRun.HeadSHA)
+	}
+	if document.Commits[1].ActionsRun.HeadSHA != pullRequestEvidenceHeadA {
+		t.Fatalf("second commit is %s", document.Commits[1].ActionsRun.HeadSHA)
+	}
+}
+
+// Every gathered comparison names the run and attempt its Actions half was
+// read from. A re-run answers the same run number with different conclusions,
+// so evidence that does not name the attempt cannot be checked a second time.
+func TestEveryGatheredCommitNamesTheRunItWasGradedFrom(t *testing.T) {
+	document := pullRequestEvidenceDocument(1, []gatheredPullRequest{
+		gatheredFor(1590, pullRequestEvidenceHeadB, 9001, 3, "build", "build", "success"),
+	})
+	anchor := document.Commits[0].ActionsRun
+	if anchor == nil {
+		t.Fatal("the gathered comparison names no workflow run")
+	}
+	if anchor.RunID != 9001 || anchor.Attempt != 3 || anchor.HeadSHA != pullRequestEvidenceHeadB {
+		t.Fatalf("anchor %+v, want the run the outcomes were read from", *anchor)
+	}
+}
+
+// The plane half is the caller's statement and passes through verbatim. This
+// command reads the Actions half and never the plane's, the division
+// actions-run draws, and a gatherer that edited the plane side would be making
+// the claim the correspondence exists to keep explicit.
+func TestTheGatheredPlaneHalfPassesThroughVerbatim(t *testing.T) {
+	plane := []planeOutcomeInput{
+		{Task: "build", HeadSHA: pullRequestEvidenceHeadA, Observed: "failed"},
+		{Task: "lint", HeadSHA: pullRequestEvidenceHeadA, Observed: "succeeded"},
+	}
+	document := pullRequestEvidenceDocument(1, []gatheredPullRequest{{
+		Number: 1589,
+		Outcomes: github.ActionsRunOutcomes{
+			RunID: 771, Attempt: 1, HeadSHA: pullRequestEvidenceHeadA,
+			Outcomes: []github.ActionsOutcome{{Job: "build", HeadSHA: pullRequestEvidenceHeadA, Conclusion: "failure"}},
+		},
+		Plane: plane,
+	}})
+	if !reflect.DeepEqual(document.Commits[0].Plane, plane) {
+		t.Fatalf("plane half %+v, want it verbatim", document.Commits[0].Plane)
+	}
+}
+
+// A plane half stated for a commit the pull request is not at is refused, and
+// the refusal names the pull request as well as both commits: the mismatch
+// Collect reports downstream names only two SHAs, and this is the one place
+// that knows which pull request they were gathered for.
+func TestAPlaneHalfAboutAnotherCommitIsRefusedByPullRequest(t *testing.T) {
+	asked := pullRequestEvidenceEntry{
+		Number: 1589,
+		Plane:  []planeOutcomeInput{{Task: "build", HeadSHA: pullRequestEvidenceHeadB, Observed: "failed"}},
+	}
+	err := checkPlaneIsAboutTheHead(asked, pullRequestEvidenceHeadA)
+	if err == nil {
+		t.Fatal("a plane half about another commit was accepted")
+	}
+	for _, want := range []string{"1589", pullRequestEvidenceHeadA, pullRequestEvidenceHeadB, "build"} {
+		if !strings.Contains(err.Error(), want) {
+			t.Fatalf("refusal %q does not name %s", err, want)
+		}
+	}
+}
+
+// GitHub renders a commit in either case, and a pull request at the same
+// commit written differently is the same commit.
+func TestTheHeadCheckIsNotAboutTheCasingOfACommit(t *testing.T) {
+	asked := pullRequestEvidenceEntry{
+		Number: 1589,
+		Plane:  []planeOutcomeInput{{Task: "build", HeadSHA: strings.ToUpper(pullRequestEvidenceHeadA), Observed: "failed"}},
+	}
+	if err := checkPlaneIsAboutTheHead(asked, pullRequestEvidenceHeadA); err != nil {
+		t.Fatalf("the same commit in another casing was refused: %v", err)
+	}
+}
+
+// An ask nothing could be gathered from is refused before a token is minted,
+// and each refusal says which of them it is.
+func TestAnUngatherableAskIsRefused(t *testing.T) {
+	plane := []planeOutcomeInput{{Task: "build", HeadSHA: pullRequestEvidenceHeadA, Observed: "failed"}}
+	one := pullRequestEvidenceEntry{Number: 1589, Plane: plane}
+	refusals := map[string]struct {
+		ask  pullRequestEvidenceRequest
+		says string
+	}{
+		"no workflow": {pullRequestEvidenceRequest{
+			Threshold: 1, PullRequests: []pullRequestEvidenceEntry{one}}, "workflow"},
+		"a blank workflow": {pullRequestEvidenceRequest{
+			Workflow: "   ", Threshold: 1, PullRequests: []pullRequestEvidenceEntry{one}}, "workflow"},
+		"no threshold": {pullRequestEvidenceRequest{
+			Workflow: "Checks", PullRequests: []pullRequestEvidenceEntry{one}}, "threshold"},
+		"a negative threshold": {pullRequestEvidenceRequest{
+			Workflow: "Checks", Threshold: -1, PullRequests: []pullRequestEvidenceEntry{one}}, "threshold"},
+		"no pull requests": {pullRequestEvidenceRequest{
+			Workflow: "Checks", Threshold: 1}, "pull requests"},
+		"a pull request with no number": {pullRequestEvidenceRequest{
+			Workflow: "Checks", Threshold: 1,
+			PullRequests: []pullRequestEvidenceEntry{{Plane: plane}}}, "number"},
+		"one pull request twice": {pullRequestEvidenceRequest{
+			Workflow: "Checks", Threshold: 2,
+			PullRequests: []pullRequestEvidenceEntry{one, one}}, "twice"},
+		"a pull request with no plane half": {pullRequestEvidenceRequest{
+			Workflow: "Checks", Threshold: 1,
+			PullRequests: []pullRequestEvidenceEntry{{Number: 1589}}}, "plane"},
+	}
+	for name, refusal := range refusals {
+		t.Run(name, func(t *testing.T) {
+			err := checkPullRequestEvidenceAsk(refusal.ask)
+			if err == nil {
+				t.Fatal("the ask was accepted")
+			}
+			if !strings.Contains(err.Error(), refusal.says) {
+				t.Fatalf("refusal %q does not say %q", err, refusal.says)
+			}
+		})
+	}
+}
+
+// Two pull requests are gathered, and the same pull request twice is not: the
+// threshold counts commits, so a repeated number would let one pull request
+// answer a threshold of two.
+func TestTwoDifferentPullRequestsAreGathered(t *testing.T) {
+	plane := []planeOutcomeInput{{Task: "build", HeadSHA: pullRequestEvidenceHeadA, Observed: "failed"}}
+	ask := pullRequestEvidenceRequest{Workflow: "Checks", Threshold: 2, PullRequests: []pullRequestEvidenceEntry{
+		{Number: 1589, Plane: plane}, {Number: 1590, Plane: plane},
+	}}
+	if err := checkPullRequestEvidenceAsk(ask); err != nil {
+		t.Fatalf("two pull requests were refused: %v", err)
+	}
+}
+
+// A refused document writes nothing: half a gathered evidence document reads
+// as evidence over a smaller set rather than as a read that did not happen.
+func TestAPullRequestEvidenceAskThatIsRefusedWritesNothing(t *testing.T) {
+	publishCheckRunEnv(t)
+	refusals := map[string]string{
+		"not an object":     `["1589"]`,
+		"unknown field":     `{"workflow":"Checks","threshold":1,"commits":[]}`,
+		"trailing document": `{"workflow":"Checks","threshold":1,"pull_requests":[]} {}`,
+		"no workflow":       `{"threshold":1,"pull_requests":[{"number":1589,"plane":[]}]}`,
+		"no threshold":      `{"workflow":"Checks","pull_requests":[{"number":1589,"plane":[]}]}`,
+		"no pull requests":  `{"workflow":"Checks","threshold":1,"pull_requests":[]}`,
+	}
+	for name, document := range refusals {
+		t.Run(name, func(t *testing.T) {
+			var out strings.Builder
+			if err := githubPullRequestEvidence(context.Background(), strings.NewReader(document), &out); err == nil {
+				t.Fatal("the document was accepted")
+			}
+			if out.Len() != 0 {
+				t.Fatalf("wrote %q", out.String())
+			}
+		})
+	}
+}
+
+// Gathering needs the same configuration the other check-run commands do, and
+// says which half is missing.
+func TestPullRequestEvidenceNeedsTheCheckRunConfiguration(t *testing.T) {
+	for _, name := range []string{github.EnvShadowCorrespondenceFile, github.EnvCheckRunMode, github.EnvCheckRunRepository} {
+		t.Setenv(name, "")
+		os.Unsetenv(name)
+	}
+	err := githubPullRequestEvidence(context.Background(), strings.NewReader("{}"), io.Discard)
+	if err == nil || !strings.Contains(err.Error(), github.EnvShadowCorrespondenceFile) {
+		t.Fatalf("error %v, want one naming %s", err, github.EnvShadowCorrespondenceFile)
+	}
+}
+
+// The subcommand is reachable by name, and the usage line names it.
+func TestPullRequestEvidenceIsOneOfTheGithubSubcommands(t *testing.T) {
+	err := githubCommand(context.Background(), []string{"pull-request-evidenc"})
+	if err == nil {
+		t.Fatal("a misspelled subcommand was accepted")
+	}
+	if !strings.Contains(err.Error(), "pull-request-evidence") {
+		t.Fatalf("usage %q does not name the subcommand", err)
 	}
 }
