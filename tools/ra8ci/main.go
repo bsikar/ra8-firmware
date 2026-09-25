@@ -1602,45 +1602,71 @@ func surveyConflictVerdict(report reconcileReport) error {
 		report.Conflict, len(report.Tasks), report.Commit, strings.Join(named, ", "))
 }
 
-// maxReconcileSurveyBytes bounds the survey document the page reads. A survey
-// carries an excerpt of every published run's summary across the whole
-// catalog, so it is larger than the outcome document it was made from and
-// smaller than an evidence set. This is room to spare and still a refusal
-// rather than an unbounded read of whatever is piped in.
-const maxReconcileSurveyBytes = 4 << 20
-
-// readReconcileSurvey reads one commit's survey document.
+// maxSurveyDocumentBytes bounds any survey document a page is rendered from.
 //
-// A field this build cannot state is refused rather than ignored. The page is
-// read to decide whether a publish needs a person, and a document from a
-// newer build carrying a standing or a grouping this one does not know would
-// otherwise be rendered as a page that says everything is accounted for.
-func readReconcileSurvey(in io.Reader) (reconcileReport, error) {
-	var report reconcileReport
-	decoder := json.NewDecoder(io.LimitReader(in, maxReconcileSurveyBytes+1))
+// One bound covers all of them because they are the same order of size: a
+// reconcile survey carries an excerpt of every published run's summary across
+// the whole catalog, a candidate survey carries one short record and a
+// refusal in words per pull request, and both are larger than the document
+// they were made from and smaller than an evidence set. This is room to spare
+// and still a refusal rather than an unbounded read of whatever is piped in.
+const maxSurveyDocumentBytes = 4 << 20
+
+// readSurveyDocument reads one JSON document a page is rendered from, and is
+// the whole of what the page-reading commands have in common.
+//
+// Each page's reader used to spell this out for itself: a LimitReader one
+// byte past the bound, DisallowUnknownFields, a More check for a second
+// document, an InputOffset check for the bound, then its own shape check. Two
+// copies already differed in nothing but their wording, and the third page
+// would have been written by copying one of them. The careful part of a read
+// is not the part to retype.
+//
+// A field this build cannot state is refused rather than ignored, for every
+// page at once. A page is read to decide something, and a document from a
+// newer build carrying a finding this one does not know would otherwise be
+// rendered as a page that says everything is fine.
+//
+// named is the document in the operator's words and opens every refusal, so
+// a page's errors read as that page's own. wellFormed is the one thing that
+// genuinely differs per page: what makes this document that document rather
+// than some other JSON with no conflicting fields.
+func readSurveyDocument[document any](in io.Reader, named string, wellFormed func(document) error) (document, error) {
+	var empty, read document
+	decoder := json.NewDecoder(io.LimitReader(in, maxSurveyDocumentBytes+1))
 	decoder.DisallowUnknownFields()
-	if err := decoder.Decode(&report); err != nil {
-		return reconcileReport{}, fmt.Errorf("read reconcile survey: %w", err)
+	if err := decoder.Decode(&read); err != nil {
+		return empty, fmt.Errorf("read %s: %w", named, err)
 	}
 	if decoder.More() {
-		return reconcileReport{}, errors.New("read reconcile survey: trailing content after the document")
+		return empty, fmt.Errorf("read %s: trailing content after the document", named)
 	}
-	if decoder.InputOffset() > maxReconcileSurveyBytes {
-		return reconcileReport{}, fmt.Errorf("read reconcile survey: larger than %d bytes",
-			maxReconcileSurveyBytes)
+	if decoder.InputOffset() > maxSurveyDocumentBytes {
+		return empty, fmt.Errorf("read %s: larger than %d bytes", named, maxSurveyDocumentBytes)
 	}
-	// A survey is about one commit and is made from at least one planned
-	// task; surveyCheckRunPlan refuses to produce anything else. A
-	// document missing either is not an empty survey, it is some other
-	// document, and rendering it would put an authoritative-looking
-	// "settled" line over nothing at all.
-	if report.Commit == "" {
-		return reconcileReport{}, errors.New("read reconcile survey: no commit stated")
+	if err := wellFormed(read); err != nil {
+		return empty, fmt.Errorf("read %s: %w", named, err)
 	}
-	if len(report.Tasks) == 0 {
-		return reconcileReport{}, errors.New("read reconcile survey: no tasks surveyed")
-	}
-	return report, nil
+	return read, nil
+}
+
+// readReconcileSurvey reads one commit's survey document.
+func readReconcileSurvey(in io.Reader) (reconcileReport, error) {
+	return readSurveyDocument(in, "reconcile survey", func(report reconcileReport) error {
+		// A survey is about one commit and is made from at least
+		// one planned task; surveyCheckRunPlan refuses to produce
+		// anything else. A document missing either is not an empty
+		// survey, it is some other document, and rendering it would
+		// put an authoritative-looking "settled" line over nothing
+		// at all.
+		if report.Commit == "" {
+			return errors.New("no commit stated")
+		}
+		if len(report.Tasks) == 0 {
+			return errors.New("no tasks surveyed")
+		}
+		return nil
+	})
 }
 
 // githubReconcilePage writes a survey as the page it is read from.
@@ -3463,43 +3489,21 @@ func pullRequestSurveyFrom(workflow string, surveyed []surveyedHead) pullRequest
 	return report
 }
 
-// maxRenderedCandidateSurveyBytes bounds the survey document the page reads.
-// A survey carries one short record per candidate and a refusal in words for
-// the ones no run could be selected on, so it is the same order of size as
-// the ask that produced it. This is room to spare and still a refusal rather
-// than an unbounded read of whatever is piped in.
-const maxRenderedCandidateSurveyBytes = 4 << 20
-
 // readPullRequestSurvey reads one candidate set's survey document.
-//
-// A field this build cannot state is refused rather than ignored. The page is
-// read to decide which pull requests go into the evidence, and a document
-// from a newer build carrying a finding this one does not know would
-// otherwise be rendered as a page that says the set is ready.
 func readPullRequestSurvey(in io.Reader) (pullRequestSurveyReport, error) {
-	var report pullRequestSurveyReport
-	decoder := json.NewDecoder(io.LimitReader(in, maxRenderedCandidateSurveyBytes+1))
-	decoder.DisallowUnknownFields()
-	if err := decoder.Decode(&report); err != nil {
-		return pullRequestSurveyReport{}, fmt.Errorf("read pull request survey: %w", err)
-	}
-	if decoder.More() {
-		return pullRequestSurveyReport{}, errors.New("read pull request survey: trailing content after the document")
-	}
-	if decoder.InputOffset() > maxRenderedCandidateSurveyBytes {
-		return pullRequestSurveyReport{}, fmt.Errorf("read pull request survey: larger than %d bytes",
-			maxRenderedCandidateSurveyBytes)
-	}
-	// A survey is about one workflow; githubPullRequestSurvey refuses an
-	// ask without one and pullRequestSurveyFrom carries it through. A
-	// document missing it is not an empty survey, it is some other
-	// document, and rendering it would put a "ready" line over nothing.
-	// The candidate list is NOT checked the same way: a survey of no pull
-	// requests is a real, empty answer, and the page states it as one.
-	if report.Workflow == "" {
-		return pullRequestSurveyReport{}, errors.New("read pull request survey: no workflow stated")
-	}
-	return report, nil
+	return readSurveyDocument(in, "pull request survey", func(report pullRequestSurveyReport) error {
+		// A survey is about one workflow; githubPullRequestSurvey
+		// refuses an ask without one and pullRequestSurveyFrom
+		// carries it through. A document missing it is not an empty
+		// survey, it is some other document, and rendering it would
+		// put a "ready" line over nothing. The candidate list is NOT
+		// checked the same way: a survey of no pull requests is a
+		// real, empty answer, and the page states it as one.
+		if report.Workflow == "" {
+			return errors.New("no workflow stated")
+		}
+		return nil
+	})
 }
 
 // githubPullRequestSurveyPage writes a candidate survey as the page it is read
