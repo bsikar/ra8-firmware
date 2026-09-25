@@ -40,6 +40,7 @@ var (
 	ErrYieldRequested      = errors.New("board lease must yield before any new work")
 	ErrNoYieldRequest      = errors.New("board has not requested a yield")
 	ErrRecoveryRequired    = errors.New("board requires recovery or is quarantined")
+	ErrNoRecoveryPending   = errors.New("board is not waiting for a recovery plan")
 	ErrNeutralUnavailable  = errors.New("authenticated board-agent neutral receipt producer is unavailable")
 	ErrInvalidNeutralProof = errors.New("board-agent neutral receipt is absent or invalid")
 )
@@ -867,6 +868,40 @@ func (c *Client) Heartbeat(ctx context.Context, token LeaseToken) (board.Snapsho
 		// version moved, not the holder, so read it again and report.
 		if err := waitConflict(ctx); err != nil {
 			return board.Snapshot{}, HolderLiveness{}, err
+		}
+	}
+}
+
+// StartRecovery hands a board that is waiting for human intervention the
+// identifier of a reviewed recovery plan. Recovery is never started
+// automatically: what puts a board back in service is a person approving a
+// hardware sequence, so the plan is required and never defaulted, and the
+// phase is checked here so an operator who names the wrong board is told what
+// is wrong with it rather than reading a version conflict.
+func (c *Client) StartRecovery(ctx context.Context, boardID, planID, why string) (board.Snapshot, error) {
+	if boardID == "" || !store.ValidID(planID) || why == "" || len(why) > 500 || strings.TrimSpace(why) != why {
+		return board.Snapshot{}, ErrInvalidRequest
+	}
+	for {
+		snapshot, err := c.Status(ctx, boardID)
+		if err != nil {
+			return board.Snapshot{}, err
+		}
+		if snapshot.Phase != board.RecoveryRequired && snapshot.Phase != board.Quarantined {
+			return board.Snapshot{}, ErrNoRecoveryPending
+		}
+		result, err := c.command(ctx, boardID, "/recovery/start", struct {
+			ExpectedVersion uint64 `json:"expected_version"`
+			PlanID          string `json:"plan_id"`
+			Why             string `json:"why"`
+		}{snapshot.Version, planID, why})
+		if err == nil || !isConflict(err) {
+			return result, err
+		}
+		// The board moved between the read and the start. That is the
+		// board being busy, not the plan being wrong.
+		if err := waitConflict(ctx); err != nil {
+			return board.Snapshot{}, err
 		}
 	}
 }
