@@ -1349,3 +1349,241 @@ func TestActionsRunIsDispatchedByName(t *testing.T) {
 		t.Fatalf("err = %v", err)
 	}
 }
+
+// evidenceGateEnv declares a correspondence for two catalog tasks in
+// authoritative mode, the only mode in which the evidence decides anything.
+func evidenceGateEnv(t *testing.T) (string, string) {
+	t.Helper()
+	loaded, err := catalog.Load()
+	if err != nil {
+		t.Fatalf("load catalog: %v", err)
+	}
+	names := loaded.Names()
+	if len(names) < 2 {
+		t.Skip("catalog carries fewer than two tasks")
+	}
+	t.Setenv(github.EnvCheckRunMode, "authoritative")
+	t.Setenv(github.EnvShadowCorrespondenceFile, writeCorrespondence(t,
+		`{"`+names[0]+`":"build","`+names[1]+`":"lint"}`))
+	return names[0], names[1]
+}
+
+// evidenceCommit is one pull request's comparisons: each task observed with the
+// given conclusion and its Actions job concluding the same way.
+func evidenceCommit(head, task, job, conclusion string) string {
+	return `{"plane":[{"task":"` + task + `","head_sha":"` + head + `","observed":"` + conclusion + `"}],` +
+		`"actions":[{"job":"` + job + `","head_sha":"` + head + `","conclusion":"` + conclusion + `"}]}`
+}
+
+func decodeEvidenceGate(t *testing.T, out *bytes.Buffer) map[string]any {
+	t.Helper()
+	var report map[string]any
+	if err := json.Unmarshal(out.Bytes(), &report); err != nil {
+		t.Fatalf("decode evidence gate plan: %v\nplan: %s", err, out.String())
+	}
+	return report
+}
+
+const (
+	evidenceGateHeadA = "1111111111111111111111111111111111111111"
+	evidenceGateHeadB = "2222222222222222222222222222222222222222"
+)
+
+// The gate is planned for the tasks the evidence backs, and a task compared
+// fewer times than the threshold asked for is held back and named.
+func TestEvidenceGateProposesOnlyWhatTheEvidenceBacks(t *testing.T) {
+	backed, thin := evidenceGateEnv(t)
+	input := `{"threshold":2,"required":[],"commits":[` +
+		evidenceCommit(evidenceGateHeadA, backed, "build", "success") + `,` +
+		`{"plane":[{"task":"` + backed + `","head_sha":"` + evidenceGateHeadB + `","observed":"success"},` +
+		`{"task":"` + thin + `","head_sha":"` + evidenceGateHeadB + `","observed":"success"}],` +
+		`"actions":[{"job":"build","head_sha":"` + evidenceGateHeadB + `","conclusion":"success"},` +
+		`{"job":"lint","head_sha":"` + evidenceGateHeadB + `","conclusion":"success"}]}` +
+		`]}`
+
+	var out bytes.Buffer
+	err := githubEvidenceGate(strings.NewReader(input), &out)
+	if err == nil || !strings.Contains(err.Error(), "does not back") {
+		t.Fatalf("a held-back task reported as a finished plan: %v", err)
+	}
+
+	report := decodeEvidenceGate(t, &out)
+	add, _ := report["add"].([]any)
+	if len(add) != 1 || add[0] != "ra8ci / "+backed {
+		t.Fatalf("add = %v, want only the backed task", report["add"])
+	}
+	withheld, _ := report["withheld"].([]any)
+	if len(withheld) != 1 {
+		t.Fatalf("withheld = %v, want the thin task named", report["withheld"])
+	}
+	held, _ := withheld[0].(map[string]any)
+	if held["task"] != thin || held["reason"] != "insufficient" || held["already_required"] != false {
+		t.Fatalf("withheld entry = %v, want %q held as insufficient", held, thin)
+	}
+}
+
+// A plan that holds nothing back is a clean exit, so a pipeline can tell a
+// finished plan from a partial one by its status alone.
+func TestEvidenceGateExitsCleanWhenNothingIsHeldBack(t *testing.T) {
+	backed, _ := evidenceGateEnv(t)
+	input := `{"threshold":2,"required":[],"commits":[` +
+		evidenceCommit(evidenceGateHeadA, backed, "build", "success") + `,` +
+		evidenceCommit(evidenceGateHeadB, backed, "build", "success") + `]}`
+
+	var out bytes.Buffer
+	if err := githubEvidenceGate(strings.NewReader(input), &out); err != nil {
+		t.Fatalf("fully backed plan refused: %v", err)
+	}
+	report := decodeEvidenceGate(t, &out)
+	if report["settled"] != true {
+		t.Fatalf("settled = %v, want true", report["settled"])
+	}
+	if withheld, _ := report["withheld"].([]any); len(withheld) != 0 {
+		t.Fatalf("withheld = %v, want none", report["withheld"])
+	}
+	if report["no_change"] != false {
+		t.Fatalf("no_change = %v, want the addition to count as a change", report["no_change"])
+	}
+}
+
+// The plan is written before the verdict is returned: a caller reading only the
+// exit status must not be able to get a clean one from a plan nobody could read.
+func TestEvidenceGateWritesThePlanBeforeReportingWhatItHeldBack(t *testing.T) {
+	backed, _ := evidenceGateEnv(t)
+	input := `{"threshold":5,"required":[],"commits":[` +
+		evidenceCommit(evidenceGateHeadA, backed, "build", "success") + `]}`
+
+	var out bytes.Buffer
+	if err := githubEvidenceGate(strings.NewReader(input), &out); err == nil {
+		t.Fatal("an unbacked plan reported as finished")
+	}
+	if !strings.Contains(out.String(), backed) {
+		t.Fatalf("plan wrote nothing about %q: %q", backed, out.String())
+	}
+}
+
+// A conflict is not more pull requests to wait for, and the plan says which of
+// the two kinds of work the task is waiting on.
+func TestEvidenceGateNamesAConflictAsAConflict(t *testing.T) {
+	backed, _ := evidenceGateEnv(t)
+	input := `{"threshold":1,"required":[],"commits":[` +
+		`{"plane":[{"task":"` + backed + `","head_sha":"` + evidenceGateHeadA + `","observed":"failure"}],` +
+		`"actions":[{"job":"build","head_sha":"` + evidenceGateHeadA + `","conclusion":"success"}]}` + `]}`
+
+	var out bytes.Buffer
+	if err := githubEvidenceGate(strings.NewReader(input), &out); err == nil {
+		t.Fatal("a conflicting task planned onto the gate")
+	}
+	report := decodeEvidenceGate(t, &out)
+	withheld, _ := report["withheld"].([]any)
+	if len(withheld) != 1 {
+		t.Fatalf("withheld = %v, want the conflicting task", report["withheld"])
+	}
+	if held, _ := withheld[0].(map[string]any); held["reason"] != "conflicting" {
+		t.Fatalf("reason = %v, want conflicting", held["reason"])
+	}
+	if add, _ := report["add"].([]any); len(add) != 0 {
+		t.Fatalf("add = %v, want nothing added", report["add"])
+	}
+}
+
+// Withholding decides whether this plane asks for a NEW gate. A context the
+// operator already requires is kept and reported, never proposed for removal.
+func TestEvidenceGateKeepsAGateTheOperatorAlreadyHas(t *testing.T) {
+	backed, _ := evidenceGateEnv(t)
+	context := "ra8ci / " + backed
+	input := `{"threshold":4,"required":["` + context + `"],"commits":[` +
+		evidenceCommit(evidenceGateHeadA, backed, "build", "success") + `]}`
+
+	var out bytes.Buffer
+	if err := githubEvidenceGate(strings.NewReader(input), &out); err == nil {
+		t.Fatal("an unbacked plan reported as finished")
+	}
+	report := decodeEvidenceGate(t, &out)
+	keep, _ := report["keep"].([]any)
+	if len(keep) != 1 || keep[0] != context {
+		t.Fatalf("keep = %v, want %q", report["keep"], context)
+	}
+	if remove, _ := report["remove"].([]any); len(remove) != 0 {
+		t.Fatalf("remove = %v, want the evidence never to take a gate off", report["remove"])
+	}
+	withheld, _ := report["withheld"].([]any)
+	held, _ := withheld[0].(map[string]any)
+	if held["already_required"] != true {
+		t.Fatalf("already_required = %v, want the report to say the gate runs ahead of the evidence", held)
+	}
+}
+
+// A shadow deployment proposes nothing whatever the evidence says, and holds
+// nothing back either: the mode refused, not the evidence.
+func TestEvidenceGateInShadowModeProposesAndWithholdsNothing(t *testing.T) {
+	task := shadowCompareEnv(t, "build")
+	input := `{"threshold":1,"required":[],"commits":[` +
+		evidenceCommit(evidenceGateHeadA, task, "build", "success") + `]}`
+
+	var out bytes.Buffer
+	if err := githubEvidenceGate(strings.NewReader(input), &out); err != nil {
+		t.Fatalf("shadow plan refused: %v", err)
+	}
+	report := decodeEvidenceGate(t, &out)
+	if report["mode"] != "shadow" || report["may_block_merges"] != false {
+		t.Fatalf("mode = %v / %v, want a shadow deployment", report["mode"], report["may_block_merges"])
+	}
+	if add, _ := report["add"].([]any); len(add) != 0 {
+		t.Fatalf("add = %v, want none in shadow mode", report["add"])
+	}
+	if withheld, _ := report["withheld"].([]any); len(withheld) != 0 {
+		t.Fatalf("withheld = %v, want none: the mode refused, not the evidence", report["withheld"])
+	}
+}
+
+func TestEvidenceGateRefusesInputItCannotReadAsOneAsk(t *testing.T) {
+	backed, _ := evidenceGateEnv(t)
+	commit := evidenceCommit(evidenceGateHeadA, backed, "build", "success")
+	cases := map[string]string{
+		"not an object":       `[` + commit + `]`,
+		"unknown field":       `{"threshold":1,"commits":[` + commit + `],"gate":[]}`,
+		"trailing document":   `{"threshold":1,"commits":[` + commit + `]}{"threshold":1}`,
+		"no threshold":        `{"commits":[` + commit + `]}`,
+		"threshold below one": `{"threshold":0,"commits":[` + commit + `]}`,
+		"no commits":          `{"threshold":1,"commits":[]}`,
+		"repeated commit":     `{"threshold":1,"commits":[` + commit + `,` + commit + `]}`,
+		"padded context":      `{"threshold":1,"required":[" CodeQL"],"commits":[` + commit + `]}`,
+		"same context twice":  `{"threshold":1,"required":["CodeQL","CodeQL"],"commits":[` + commit + `]}`,
+	}
+	for name, input := range cases {
+		t.Run(name, func(t *testing.T) {
+			var out bytes.Buffer
+			if err := githubEvidenceGate(strings.NewReader(input), &out); err == nil {
+				t.Fatalf("unreadable input accepted, wrote %q", out.String())
+			}
+			if out.Len() != 0 {
+				t.Fatalf("refused ask wrote %q", out.String())
+			}
+		})
+	}
+}
+
+func TestEvidenceGateRefusesWhenCheckRunPublishingIsNotConfigured(t *testing.T) {
+	t.Setenv(github.EnvShadowCorrespondenceFile, "")
+	os.Unsetenv(github.EnvShadowCorrespondenceFile)
+	t.Setenv(github.EnvCheckRunMode, "")
+	os.Unsetenv(github.EnvCheckRunMode)
+
+	var out bytes.Buffer
+	err := githubEvidenceGate(strings.NewReader(`{"threshold":1,"commits":[]}`), &out)
+	if err == nil || !strings.Contains(err.Error(), github.EnvShadowCorrespondenceFile) {
+		t.Fatalf("error = %v, want one naming %s", err, github.EnvShadowCorrespondenceFile)
+	}
+	if out.Len() != 0 {
+		t.Fatalf("refusal wrote %q", out.String())
+	}
+}
+
+func TestEvidenceGateIsDispatchedByName(t *testing.T) {
+	ctx := context.Background()
+	if err := githubCommand(ctx, []string{"evidence gate"}); err == nil ||
+		!strings.Contains(err.Error(), "evidence-gate") {
+		t.Fatalf("error = %v, want a usage line naming evidence-gate", err)
+	}
+}
