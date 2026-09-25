@@ -233,15 +233,19 @@ func (s *Store) applyBoardCommand(ctx context.Context, actor BoardActor, command
 	if err := validateBoardSQLBounds(after); err != nil {
 		return before, nil, err
 	}
-	if len(events) > 0 {
-		if after.Version != before.Version+1 {
-			return before, nil, fmt.Errorf("%w: reducer event without version advance", ErrConflict)
-		}
+	write, writeErr := boardWriteFor(before, after, trustedCommand, events)
+	if writeErr != nil {
+		return before, nil, writeErr
+	}
+	switch write {
+	case writeTransition:
 		if err := persistBoardTransition(ctx, tx, before, after, trustedCommand, events); err != nil {
 			return before, nil, err
 		}
-	} else if after.Version != before.Version {
-		return before, nil, fmt.Errorf("%w: reducer advanced version without events", ErrConflict)
+	case writeLiveness:
+		if err := persistBoardLiveness(ctx, tx, before, after); err != nil {
+			return before, nil, err
+		}
 	}
 	if commandErr == nil && proofError == nil {
 		reconciledBy := ""
@@ -419,6 +423,17 @@ func authorizeAndBindCommand(actor BoardActor, before board.Snapshot, command bo
 		c.Actor, c.NeutralReceipt = actor.id, proof
 		return c, nil
 	case board.Extend:
+		if !ownsLease(before, actor.id) {
+			return nil, ErrDenied
+		}
+		c.Actor = actor.id
+		return c, nil
+	case board.HolderHeartbeat:
+		// Held to the same ownership rule as the other holder commands,
+		// and the reducer fences the lease ID and generation on top of
+		// it, so a superseded holder still beating is a denied action
+		// rather than a board that reads as alive because something is
+		// beating for it.
 		if !ownsLease(before, actor.id) {
 			return nil, ErrDenied
 		}
