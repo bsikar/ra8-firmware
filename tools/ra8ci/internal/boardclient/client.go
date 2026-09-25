@@ -108,10 +108,17 @@ type HTTPError struct {
 	Code      string
 	Detail    string
 	Retryable bool
+	// CorrelationID is the thread the server used for this request, taken
+	// from what the server answered with and never from what was sent. It
+	// is empty when the server named none.
+	CorrelationID string
 }
 
 func (e *HTTPError) Error() string {
-	return fmt.Sprintf("board API status %d (%s): %s", e.Status, e.Code, e.Detail)
+	if e.CorrelationID == "" {
+		return fmt.Sprintf("board API status %d (%s): %s", e.Status, e.Code, e.Detail)
+	}
+	return fmt.Sprintf("board API status %d (%s): %s [correlation %s]", e.Status, e.Code, e.Detail, e.CorrelationID)
 }
 
 func (e *HTTPError) Is(target error) bool {
@@ -184,6 +191,15 @@ func (c *Client) request(ctx context.Context, method, path string, input, output
 	if input != nil {
 		req.Header.Set("Content-Type", "application/json")
 	}
+	// Every request carries a thread, pinned by the caller when one operation
+	// spans several requests, minted here otherwise. The server mints its own
+	// when this header is absent, so sending one only ever decides WHICH
+	// identifier the request is recorded under, never whether it is served.
+	if id := CorrelationIDFrom(ctx); validCorrelationID(id) {
+		req.Header.Set(correlationHeader, id)
+	} else if minted := newCorrelationID(); minted != "" {
+		req.Header.Set(correlationHeader, minted)
+	}
 	resp, err := c.http.Do(req)
 	if err != nil {
 		return err
@@ -199,13 +215,15 @@ func (c *Client) request(ctx context.Context, method, path string, input, output
 	}
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
 		problem := struct {
-			Code      string `json:"code"`
-			Detail    string `json:"detail"`
-			Retryable bool   `json:"retryable"`
+			Code          string `json:"code"`
+			Detail        string `json:"detail"`
+			Retryable     bool   `json:"retryable"`
+			CorrelationID string `json:"correlation_id"`
 		}{}
 		_ = json.Unmarshal(raw, &problem)
 		return &HTTPError{Status: resp.StatusCode, Code: problem.Code,
-			Detail: problem.Detail, Retryable: problem.Retryable}
+			Detail: problem.Detail, Retryable: problem.Retryable,
+			CorrelationID: servedCorrelationID(resp.Header.Get(correlationHeader), problem.CorrelationID)}
 	}
 	if output != nil {
 		decoder := json.NewDecoder(bytes.NewReader(raw))
