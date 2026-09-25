@@ -2453,6 +2453,93 @@ func TestTheGatheredEvidenceIsWhatShadowEvidenceReads(t *testing.T) {
 	}
 }
 
+// Two pull requests at one commit are refused by name. The readiness
+// threshold counts commits, so gathering both would put one commit into the
+// evidence document twice and let it answer a threshold of two, which is the
+// exact thing checkPullRequestEvidenceAsk refuses a repeated NUMBER for.
+func TestTwoPullRequestsAtOneCommitAreRefusedByName(t *testing.T) {
+	gatheredAt := make(gatheredHeads, 2)
+	if err := gatheredAt.claim(1589, pullRequestEvidenceHeadA); err != nil {
+		t.Fatalf("the first pull request was refused: %v", err)
+	}
+	err := gatheredAt.claim(1590, pullRequestEvidenceHeadA)
+	if err == nil {
+		t.Fatal("a second pull request at the same commit was gathered")
+	}
+	for _, want := range []string{"1589", "1590", pullRequestEvidenceHeadA} {
+		if !strings.Contains(err.Error(), want) {
+			t.Fatalf("refusal %q does not name %s", err, want)
+		}
+	}
+}
+
+// The refusal says why, not just that it happened. An operator holding it is
+// choosing a representative set, and "one commit cannot answer for two" is
+// the whole reason one of the two has to leave the candidate list.
+func TestTheRefusalSaysWhyOneCommitCannotBeGatheredTwice(t *testing.T) {
+	gatheredAt := make(gatheredHeads, 2)
+	if err := gatheredAt.claim(1589, pullRequestEvidenceHeadA); err != nil {
+		t.Fatalf("the first pull request was refused: %v", err)
+	}
+	err := gatheredAt.claim(1590, pullRequestEvidenceHeadA)
+	if err == nil || !strings.Contains(err.Error(), "one commit cannot answer for two") {
+		t.Fatalf("refusal %v does not say why", err)
+	}
+}
+
+// GitHub's casing of a commit is not a different commit, the rule the rest of
+// the package keeps (#1605, #1607). A candidate list assembled by hand is
+// exactly where an upper case SHA turns up.
+func TestTheSameCommitInADifferentCasingIsTheSameCommit(t *testing.T) {
+	gatheredAt := make(gatheredHeads, 2)
+	if err := gatheredAt.claim(1589, pullRequestEvidenceHeadA); err != nil {
+		t.Fatalf("the first pull request was refused: %v", err)
+	}
+	if err := gatheredAt.claim(1590, strings.ToUpper(pullRequestEvidenceHeadA)); err == nil {
+		t.Fatal("the same commit in upper case was gathered as a second commit")
+	}
+}
+
+// Surrounding space is not a different commit either.
+func TestACommitIsMatchedWithoutItsSurroundingSpace(t *testing.T) {
+	gatheredAt := make(gatheredHeads, 2)
+	if err := gatheredAt.claim(1589, pullRequestEvidenceHeadA); err != nil {
+		t.Fatalf("the first pull request was refused: %v", err)
+	}
+	if err := gatheredAt.claim(1590, " "+pullRequestEvidenceHeadA+"\n"); err == nil {
+		t.Fatal("the same commit with space around it was gathered as a second commit")
+	}
+}
+
+// Pull requests at different commits are both gathered. The refusal is about
+// one commit answering twice, not about how many pull requests there are.
+func TestPullRequestsAtDifferentCommitsAreBothGathered(t *testing.T) {
+	gatheredAt := make(gatheredHeads, 2)
+	if err := gatheredAt.claim(1589, pullRequestEvidenceHeadA); err != nil {
+		t.Fatalf("the first pull request was refused: %v", err)
+	}
+	if err := gatheredAt.claim(1590, pullRequestEvidenceHeadB); err != nil {
+		t.Fatalf("a pull request at a different commit was refused: %v", err)
+	}
+	if len(gatheredAt) != 2 {
+		t.Fatalf("%d commits claimed, want one per pull request", len(gatheredAt))
+	}
+}
+
+// A head that is not a commit at all is refused here rather than carried into
+// the document. The accumulation would refuse it downstream, but by then
+// every remaining head and workflow run has been read for nothing.
+func TestAPullRequestWithNoHeadCommitIsRefused(t *testing.T) {
+	for name, head := range map[string]string{"empty": "", "space": "   "} {
+		t.Run(name, func(t *testing.T) {
+			err := make(gatheredHeads, 1).claim(1589, head)
+			if err == nil || !strings.Contains(err.Error(), "1589") {
+				t.Fatalf("error %v, want one naming the pull request", err)
+			}
+		})
+	}
+}
+
 // The pull requests are gathered in the order they were asked for. The
 // readiness answer counts commits, so the order changes nothing it decides,
 // but a document that reordered them could not be read beside the ask it came
