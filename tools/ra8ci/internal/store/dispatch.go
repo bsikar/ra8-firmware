@@ -110,9 +110,10 @@ func (s *Store) ClaimAgentTask(ctx context.Context, certDER []byte, facts protoc
 	}
 	var prior protocol.Assignment
 	var priorState string
+	var priorArguments []byte
 	err = tx.QueryRow(ctx, `SELECT a.id::text, a.assignment_id::text,
 		a.assignment_version, a.fencing_token, a.state, t.name,
-		r.catalog_sha256, r.commit_sha, r.snapshot_sha256, a.deadline_at
+		r.catalog_sha256, r.commit_sha, r.snapshot_sha256, a.deadline_at, t.arguments
 		FROM task_attempts a JOIN tasks t ON t.id=a.task_id
 		JOIN runs r ON r.id=t.run_id
 		WHERE a.agent_id=$1 AND a.state IN ('issued','acknowledged','running')
@@ -120,7 +121,7 @@ func (s *Store) ClaimAgentTask(ctx context.Context, certDER []byte, facts protoc
 		&prior.AttemptID, &prior.AssignmentID, &prior.AssignmentVersion,
 		&prior.FencingToken, &priorState, &prior.Task.Name,
 		&prior.CatalogSHA256, &prior.Source.Commit,
-		&prior.Source.SnapshotSHA256, &prior.DeadlineAt)
+		&prior.Source.SnapshotSHA256, &prior.DeadlineAt, &priorArguments)
 	if err == nil {
 		var priorRepository string
 		lookupErr := tx.QueryRow(ctx, `SELECT r.repository FROM task_attempts a
@@ -140,6 +141,10 @@ func (s *Store) ClaimAgentTask(ctx context.Context, certDER []byte, facts protoc
 		if !found || definition.Scope != "safe-local-read-only" || len(definition.Steps) == 0 ||
 			definition.BoardPolicy != "none" || !definition.SupportsOS(agent.OS) {
 			return nil, ErrConflict
+		}
+		if _, err := checkedPersistedArguments(priorArguments, definition); err != nil {
+			return nil, fmt.Errorf("%w: issued assignment no longer matches its catalog contract: %v",
+				ErrConflict, err)
 		}
 		prior.Task.Version = definition.Version
 		prior.SchemaVersion = protocol.Version
@@ -186,13 +191,14 @@ func (s *Store) ClaimAgentTask(ctx context.Context, certDER []byte, facts protoc
 	var taskID, taskName, taskState string
 	var taskVersion int64
 	var deadlineSeconds int
-	err = tx.QueryRow(ctx, `SELECT t.id::text, t.name, t.state, t.version, t.deadline_seconds
+	var taskArguments []byte
+	err = tx.QueryRow(ctx, `SELECT t.id::text, t.name, t.state, t.version, t.deadline_seconds, t.arguments
 		FROM tasks t WHERE t.run_id=$1 AND t.state='scheduled'
 		AND t.scope='safe-local-read-only' AND t.name=ANY($2)
 		AND NOT EXISTS (SELECT 1 FROM task_edges e JOIN tasks d
 			ON d.id=e.depends_on_task_id WHERE e.task_id=t.id AND d.state<>'succeeded')
 		ORDER BY t.enqueued_at, t.id LIMIT 1 FOR UPDATE OF t SKIP LOCKED`, runID, names).Scan(
-		&taskID, &taskName, &taskState, &taskVersion, &deadlineSeconds)
+		&taskID, &taskName, &taskState, &taskVersion, &deadlineSeconds, &taskArguments)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, nil
 	}
@@ -204,6 +210,10 @@ func (s *Store) ClaimAgentTask(ctx context.Context, certDER []byte, facts protoc
 		len(definition.Steps) == 0 ||
 		!definition.SupportsOS(facts.OS) || deadlineSeconds != definition.DeadlineSeconds {
 		return nil, fmt.Errorf("%w: unreviewed task definition", ErrConflict)
+	}
+	if _, err := checkedPersistedArguments(taskArguments, definition); err != nil {
+		return nil, fmt.Errorf("%w: scheduled task arguments differ from the reviewed catalog: %v",
+			ErrConflict, err)
 	}
 	attemptID, err := NewID()
 	if err != nil {
