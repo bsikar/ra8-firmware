@@ -139,7 +139,7 @@ func topLevelCommands() []topLevelCommand {
 		{Name: "backup", Usage: "backup refresh|keygen", Run: func(ctx context.Context, args []string) int {
 			return reportError(backupCommand(ctx, args))
 		}},
-		{Name: "board", Usage: "board status|take [--class human|ci|agent]|checkpoint|extend|cancel", Run: func(ctx context.Context, args []string) int {
+		{Name: "board", Usage: boardUsage(), Run: func(ctx context.Context, args []string) int {
 			return reportError(boardCommand(ctx, args))
 		}},
 		{Name: "hil", Usage: "hil budget|verify-capture", Run: func(ctx context.Context, args []string) int {
