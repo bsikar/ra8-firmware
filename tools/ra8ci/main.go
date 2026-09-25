@@ -142,7 +142,7 @@ func topLevelCommands() []topLevelCommand {
 		{Name: "board", Usage: boardUsage(), Run: func(ctx context.Context, args []string) int {
 			return reportError(boardCommand(ctx, args))
 		}},
-		{Name: "hil", Usage: "hil budget|verify-capture", Run: func(ctx context.Context, args []string) int {
+		{Name: "hil", Usage: hilUsage(), Run: func(ctx context.Context, args []string) int {
 			return reportError(hilCommand(ctx, args))
 		}},
 		{Name: "ascii", Usage: "ascii [--check] [--all|PATH]", Run: func(ctx context.Context, args []string) int {
