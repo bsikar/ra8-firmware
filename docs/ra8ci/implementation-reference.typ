@@ -223,6 +223,9 @@ The control VM contains `ra8ci server` and PostgreSQL. Repository-controlled job
   [`ra8ci board take <id>`], [`CURRENT`], [Queues a human-priority request with reason and duration, prints request and lease IDs before waiting, and cancels the waiter on interrupted wait where safe.],
   [`ra8ci board cancel <id> <request> <lease>`], [`CURRENT`], [Withdraws only a still-queued waiter using its board/request/lease IDs and authenticated owner identity. If the lease was already granted, cancellation refuses and does not release hardware.],
   [`ra8ci board extend <id> --why WHY --duration DURATION`], [`CURRENT`], [Extends the current user's lease using a private, owner-only token saved after grant; server-side class ceilings and contention rules remain authoritative.],
+  [`ra8ci board heartbeat <id>`], [`CURRENT`], [Reports the current holder alive using the owner-only token saved after grant, and prints the server's judgement of that holder's silence. It carries no reason, duration, or claim about the hardware; a returned deadline later than the saved one is refused rather than written down, so a beat can never buy lease time that `board extend` would have had to justify.],
+  [`ra8ci board liveness <id>`], [`CURRENT`], [Reads how long a board's holder has been silent without recording a beat. Separate from `board heartbeat` because a beat is a claim about who is alive and only the holder may make it; this verb needs no token and is how an operator tells a crashed holder from a person at a bench.],
+  [`ra8ci board recover <id> --plan PLAN --why WHY`], [`CURRENT`], [Hands a board that is waiting in recovery-required or quarantine the identifier of a reviewed recovery plan. The plan is required and never defaulted, and nothing in the tree starts a recovery automatically: what puts a board back in service is a human approving a reviewed hardware sequence.],
   [Board release/checkpoint CLI], [`BLOCKED`], [Release still requires verifier-backed neutral evidence from an enrolled/fenced board agent; checkpoint requires an implemented agent operation and an approved fixture profile.],
 )
 
@@ -262,7 +265,7 @@ Add only after their server contracts and tests exist:
   [`POST`], [`/v1/agents/me/heartbeat`], [Host facts, phase, cancel, and yield intent.],
 )
 
-Board routes currently include status, take, waiter cancel, checkpoint, release, extend, neutral challenge, agent acknowledgment/observation/unavailable, recovery start, and quarantine under `/v1/boards/{board-id}`. A route existing does not make it production-enabled: absence of a neutral verifier, board-agent identity, or approved fixture profile must return unavailable or denied and must be audited.
+Board routes currently include status, holder liveness read, take, waiter cancel, yield, checkpoint, release, extend, holder heartbeat, neutral challenge, agent acknowledgment/observation/unavailable, recovery start, recovery completion, quarantine, HIL attempt claim/completion, HIL observation history, and indivisible segment begin/finish under `/v1/boards/{board-id}`. The holder heartbeat is `POST /v1/boards/{board-id}/leases/{lease-id}/heartbeat` and is authorized to the holder of that exact lease; the operator read is `GET /v1/boards/{board-id}/liveness` and records nothing. A route existing does not make it production-enabled: absence of a neutral verifier, board-agent identity, or approved fixture profile must return unavailable or denied and must be audited.
 
 === Required API completion
 
@@ -437,6 +440,18 @@ Deployment order is:
 The persistent board agent is the only software allowed to touch J-Link, UART, reset, relay, or board power after cutover. Disposable guests, hooks, workflows, and legacy scripts lose direct device/SSH authority. Physical/root access remains outside software fencing and must be an audited operator procedure.
 
 The lease service provides human > CI > AI priority, FIFO within class, one holder, bounded duration, cooperative yield, and crash durability. Priority requests never yank an indivisible operation. An active holder checks yield at declared checkpoints, neutralizes, releases with signed proof, and requeues if work remains. Expiry forbids starting another segment but does not claim that an already-running electrical operation became safe.
+
+=== Holder liveness
+
+`CURRENT`: a lease carries a heartbeat as well as a duration and an expiry, and the two answer different questions. The expiry says when authority ends. The heartbeat says whether the holder is still there, and the server reports that judgement without ever acting on it.
+
+A holder beats with `POST /v1/boards/{board-id}/leases/{lease-id}/heartbeat`, authorized to the holder of that exact lease and refused for a superseded generation before anything is written. The board agent beats on a timer for the length of a HIL attempt and joins that loop before the attempt returns, so an attempt never outlives its own reporting. A human or CI holder beats with `ra8ci board heartbeat`. Anyone authorized to read the board reads the same judgement with `GET /v1/boards/{board-id}/liveness` or `ra8ci board liveness`, which records no beat.
+
+The reporting interval is the server's to set: `defaultHolderHeartbeatInterval` is one minute, a deployment may configure any positive interval up to `board.MaxHeartbeatInterval` of ten minutes, and the server hands the interval it used back with every report so a holder does not have to guess a cadence. `board.HeartbeatGraceBeats` is three, so a holder is reported overdue after three consecutive intervals of silence rather than on the first miss, which would make a dropped packet look like a crash. At the ceiling that is thirty minutes of silence, still inside the shortest class lifetime, so a holder can be reported overdue before its authority ends rather than only after expiry has already answered the question.
+
+*Overdue is reported and never enforced.* A missed beat does not shorten a lease, end a segment, change a phase, or release hardware, and no caller treats it as though it did: an overdue holder still owns its lease with its expiry intact. A beat cannot lengthen a lease either. That is `board extend`, which demands a reason and is held to the class ceiling and the contended ten-minute limit, and a liveness call that quietly bought time would route around both. Silence is evidence for an operator, not authority to withdraw.
+
+What does act on time is expiry, and only expiry. A maintenance pass runs on the server's existing fifteen-second tick, finds leases whose absolute deadline has passed, and asks the board for the reclaim the reducer would have performed anyway on the next command; a lease that turns out not to be expired under the transaction clock is a loud conflict naming the board, never a quietly reclaimed live lease. The pass prints a line only when it found something, and a board reclaimed that way lands in recovery-required, where it waits for a reviewed plan exactly as any other recovery does.
 
 === Signed neutral proof
 
