@@ -65,6 +65,9 @@ func RenderShadowReport(out io.Writer, report ShadowReport) error {
 	if err := checkNamedComparisons(report); err != nil {
 		return err
 	}
+	if err := checkBlockingClaims(report); err != nil {
+		return err
+	}
 	var page strings.Builder
 	fmt.Fprintf(&page, "shadow comparison for %s\n", report.HeadSHA)
 	if report.Clean() {
@@ -197,6 +200,55 @@ func checkNamedComparisons(report ShadowReport) error {
 			return fmt.Errorf("%w: %q was compared against no Actions job",
 				ErrShadowObservationInvalid, comparison.Task)
 		}
+	}
+	return nil
+}
+
+// checkBlockingClaims refuses a conflicting pairing whose own blocking flags
+// do not say what its line says they say.
+//
+// A conflict is the only grade on this page that prints a claim about what
+// each side would have done with the merge. renderComparison writes
+// "(ra8ci would block, Actions would merge)" off ActionsBlocks alone, and it
+// can write that because a conflict is by construction the disagreeing case:
+// compare() grades a pairing conflicting only where PlaneBlocks and
+// ActionsBlocks differ, so naming one side names the other. PlaneBlocks is
+// carried on every pairing and read nowhere else in this package.
+//
+// That leaves the claim resting on an invariant nothing checked. A pairing
+// graded conflicting whose two flags agree renders a sentence its own fields
+// contradict, and it renders it in the section the page leads with, under a
+// heading that says ra8ci and Actions disagree about the merge. The worst of
+// the two readings is the one where both sides would block: the line tells an
+// operator that ra8ci would block a merge Actions would have let through,
+// which is the exact shape of the evidence that keeps a required check where
+// it is, over a pairing where both planes agreed to block. Nobody reading it
+// can tell, because the line is otherwise ordinary.
+//
+// Only the conflicting pairings are read. The flags reach the page nowhere
+// else: an agreed or divergent line prints no blocking claim, and an
+// indeterminate pairing has no Actions verdict to gate on at all. Holding
+// those to their flags would refuse pages over a field the reader is never
+// shown, which is the same line #1664 drew around HeadSHA.
+//
+// It is refused rather than reworded. The page cannot know which of the two
+// fields is the wrong one, and a line that quietly drops the claim leaves a
+// conflict section whose lines no longer say what the conflict was.
+//
+// The existing observation sentinel carries it, and nothing a real comparison
+// writes is refused: compare() sets both flags from blockingConclusion and
+// reaches the conflicting case only where they differ.
+func checkBlockingClaims(report ShadowReport) error {
+	for _, comparison := range report.Comparisons {
+		if comparison.Verdict != ShadowConflicting || comparison.PlaneBlocks != comparison.ActionsBlocks {
+			continue
+		}
+		would := "merge"
+		if comparison.PlaneBlocks {
+			would = "block"
+		}
+		return fmt.Errorf("%w: %q disagreed about the merge, and both sides would %s",
+			ErrShadowObservationInvalid, comparison.Task, would)
 	}
 	return nil
 }
