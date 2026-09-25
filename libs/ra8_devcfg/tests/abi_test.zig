@@ -112,13 +112,13 @@ test "commit then load reproduces every body field" {
     try std.testing.expectEqual(@as(u16, 2), b.hw_rev);
     try std.testing.expectEqual(@as(u16, 7), b.fixture_id);
     try std.testing.expectEqual(@as(u16, 1530), b.panel_vcom_mv);
-    try std.testing.expect(!abi.ra8_devcfg_is_blank());
+    try std.testing.expectEqual(@as(u8, 0), abi.ra8_devcfg_is_blank());
 }
 
 test "a blank window resolves to UNPROVISIONED" {
     blankMock();
     try std.testing.expectEqual(err_validation_failed, abi.ra8_devcfg_load(&mock));
-    try std.testing.expect(abi.ra8_devcfg_is_blank());
+    try std.testing.expectEqual(@as(u8, 1), abi.ra8_devcfg_is_blank());
 }
 
 test "a corrupt magic word rejects the copy" {
@@ -152,7 +152,7 @@ test "a single-bit body corruption fails the CRC gate" {
     _ = abi.ra8_devcfg_commit(&mock, &rec);
     pokeCopy0(off_serial, mem[copy0_off + off_serial] ^ 0x01);
     try std.testing.expectEqual(err_validation_failed, abi.ra8_devcfg_load(&mock));
-    try std.testing.expect(abi.ra8_devcfg_is_blank());
+    try std.testing.expectEqual(@as(u8, 1), abi.ra8_devcfg_is_blank());
 }
 
 test "both copies valid: the higher sequence wins, in both directions" {
@@ -226,7 +226,7 @@ test "a read fault marks both copies absent rather than failing hard" {
     blankMock();
     const faulty: abi.Store = .{ .read = failingRead, .write = mockWrite };
     try std.testing.expectEqual(err_validation_failed, abi.ra8_devcfg_load(&faulty));
-    try std.testing.expect(abi.ra8_devcfg_is_blank());
+    try std.testing.expectEqual(@as(u8, 1), abi.ra8_devcfg_is_blank());
 }
 
 test "get_vcom_mv refuses before a load" {
@@ -296,10 +296,10 @@ test "reset returns the module to the never-loaded state" {
     const rec = makeRecord(1530, abi.flag_vcom_valid);
     _ = abi.ra8_devcfg_commit(&mock, &rec);
     try std.testing.expectEqual(ok, abi.ra8_devcfg_load(&mock));
-    try std.testing.expect(!abi.ra8_devcfg_is_blank());
+    try std.testing.expectEqual(@as(u8, 0), abi.ra8_devcfg_is_blank());
 
     abi.ra8_devcfg_reset();
-    try std.testing.expect(abi.ra8_devcfg_is_blank());
+    try std.testing.expectEqual(@as(u8, 1), abi.ra8_devcfg_is_blank());
     var mv: u16 = 0;
     try std.testing.expectEqual(err_not_initialized, abi.ra8_devcfg_get_vcom_mv(&mv));
     var body: ?*const abi.Body = null;

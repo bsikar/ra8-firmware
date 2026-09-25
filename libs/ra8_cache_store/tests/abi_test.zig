@@ -12,6 +12,7 @@
 
 const std = @import("std");
 const abi = @import("abi");
+const backend = @import("cache_store_backend");
 
 const Entry = abi.Entry;
 const Store = abi.Store;
@@ -63,13 +64,13 @@ fn mountedStore() Store {
         .live_sectors = 0,
         .next_seq = 1,
         .flash_state = @intCast(abi.clean_clean),
-        .inited = true,
+        .inited = 1,
     };
 }
 
 // --- the mount TU's helpers, standing in over a RAM medium -----------------
 
-export fn priv_cache_store_crc32(data: ?[*]const u8, len: u32) u32 {
+export fn cache_store_test_mock_crc32(data: ?[*]const u8, len: u32) u32 {
     const bytes = data orelse return 0;
     if (len == 0) return 0;
     var crc: u32 = 0xFFFF_FFFF;
@@ -85,7 +86,7 @@ export fn priv_cache_store_crc32(data: ?[*]const u8, len: u32) u32 {
     return crc ^ 0xFFFF_FFFF;
 }
 
-export fn priv_cache_store_sector_read(store: ?*const Store, sector: u32, out512: ?[*]u8) u16 {
+export fn cache_store_test_mock_sector_read(store: ?*const Store, sector: u32, out512: ?[*]u8) u16 {
     if (store == null) return abi.err_null_ptr;
     const dst = out512 orelse return abi.err_null_ptr;
     if (sector >= total_sectors) return abi.err_hw_init_failed;
@@ -94,7 +95,7 @@ export fn priv_cache_store_sector_read(store: ?*const Store, sector: u32, out512
     return abi.ok;
 }
 
-export fn priv_cache_store_sector_write(store: ?*Store, sector: u32, in512: ?[*]const u8) u16 {
+export fn cache_store_test_mock_sector_write(store: ?*Store, sector: u32, in512: ?[*]const u8) u16 {
     if (store == null) return abi.err_null_ptr;
     const src = in512 orelse return abi.err_null_ptr;
     if (sector >= total_sectors) return abi.err_hw_init_failed;
@@ -105,7 +106,7 @@ export fn priv_cache_store_sector_write(store: ?*Store, sector: u32, in512: ?[*]
     return abi.ok;
 }
 
-export fn priv_cache_store_sector_release(store: ?*Store, sector: u32) u16 {
+export fn cache_store_test_mock_sector_release(store: ?*Store, sector: u32) u16 {
     if (store == null) return abi.err_null_ptr;
     if (release_fails) return abi.err_hw_init_failed;
     if (sector >= total_sectors) return abi.err_hw_init_failed;
@@ -113,7 +114,7 @@ export fn priv_cache_store_sector_release(store: ?*Store, sector: u32) u16 {
     return abi.ok;
 }
 
-export fn priv_cache_store_index_find(store: ?*const Store, key: u32) i32 {
+export fn cache_store_test_mock_index_find(store: ?*const Store, key: u32) i32 {
     const handle = store orelse return -1;
     const base = handle.index orelse return -1;
     var slot: u16 = 0;
@@ -125,7 +126,7 @@ export fn priv_cache_store_index_find(store: ?*const Store, key: u32) i32 {
     return -1;
 }
 
-export fn priv_cache_store_index_add(
+export fn cache_store_test_mock_index_add(
     store: ?*Store,
     key: u32,
     start_sector: u32,
@@ -150,7 +151,7 @@ export fn priv_cache_store_index_add(
     return -1;
 }
 
-export fn priv_cache_store_super_write(store: ?*Store, clean: u32) u16 {
+export fn cache_store_test_mock_super_write(store: ?*Store, clean: u32) u16 {
     if (store == null) return abi.err_null_ptr;
     if (super_fails) return abi.err_hw_init_failed;
     super_writes += 1;
@@ -158,7 +159,7 @@ export fn priv_cache_store_super_write(store: ?*Store, clean: u32) u16 {
     return abi.ok;
 }
 
-export fn priv_cache_store_dir_save(store: ?*Store, out_entry_count: ?*u32) u16 {
+export fn cache_store_test_mock_dir_save(store: ?*Store, out_entry_count: ?*u32) u16 {
     const handle = store orelse return abi.err_null_ptr;
     const out = out_entry_count orelse return abi.err_null_ptr;
     if (dir_fails) return abi.err_hw_init_failed;
@@ -240,7 +241,7 @@ test "put writes the header last and seals it" {
     try std.testing.expectEqual(@as(u32, 2), header.start_sector);
     try std.testing.expectEqual(@as(u16, 2), header.sector_count);
     try std.testing.expectEqual(@as(u16, 0), header.flags);
-    const sealed = priv_cache_store_crc32(@ptrCast(header), 24);
+    const sealed = backend.priv_cache_store_crc32(@ptrCast(header), 24);
     try std.testing.expectEqual(sealed, header.hdr_crc);
 }
 
@@ -320,10 +321,10 @@ test "put guards store then data then init then size" {
     var store = mountedStore();
     try std.testing.expectEqual(abi.err_null_ptr, ra8_cache_store_put(&store, key_a, null, data.len));
 
-    store.inited = false;
+    store.inited = 0;
     try std.testing.expectEqual(abi.err_not_initialized, ra8_cache_store_put(&store, key_a, &data, data.len));
 
-    store.inited = true;
+    store.inited = 1;
     try std.testing.expectEqual(abi.err_invalid_size, ra8_cache_store_put(&store, key_a, &data, 0));
 }
 
@@ -418,7 +419,7 @@ test "get guards store then out_reader then init" {
     try std.testing.expectEqual(abi.err_null_ptr, ra8_cache_store_get(null, key_a, &reader));
     var store = mountedStore();
     try std.testing.expectEqual(abi.err_null_ptr, ra8_cache_store_get(&store, key_a, null));
-    store.inited = false;
+    store.inited = 0;
     try std.testing.expectEqual(abi.err_not_initialized, ra8_cache_store_get(&store, key_a, &reader));
 }
 
@@ -470,9 +471,9 @@ test "evict guards store then init then the key, and propagates a release failur
     resetMedium();
     try std.testing.expectEqual(abi.err_null_ptr, ra8_cache_store_evict(null, key_a));
     var store = mountedStore();
-    store.inited = false;
+    store.inited = 0;
     try std.testing.expectEqual(abi.err_not_initialized, ra8_cache_store_evict(&store, key_a));
-    store.inited = true;
+    store.inited = 1;
     try std.testing.expectEqual(abi.err_not_found, ra8_cache_store_evict(&store, key_a));
 
     const data = payload(16, 1);
@@ -486,9 +487,9 @@ test "pin guards store then init then the key" {
     resetMedium();
     try std.testing.expectEqual(abi.err_null_ptr, ra8_cache_store_pin(null, key_a, true));
     var store = mountedStore();
-    store.inited = false;
+    store.inited = 0;
     try std.testing.expectEqual(abi.err_not_initialized, ra8_cache_store_pin(&store, key_a, true));
-    store.inited = true;
+    store.inited = 1;
     try std.testing.expectEqual(abi.err_not_found, ra8_cache_store_pin(&store, key_a, true));
 }
 
@@ -529,9 +530,9 @@ test "sync guards store then init and propagates a directory failure" {
     resetMedium();
     try std.testing.expectEqual(abi.err_null_ptr, ra8_cache_store_sync(null));
     var store = mountedStore();
-    store.inited = false;
+    store.inited = 0;
     try std.testing.expectEqual(abi.err_not_initialized, ra8_cache_store_sync(&store));
-    store.inited = true;
+    store.inited = 1;
     dir_fails = true;
     try std.testing.expectEqual(abi.err_hw_init_failed, ra8_cache_store_sync(&store));
     try std.testing.expectEqual(@as(u8, 0), store.flash_state); // left dirty, so mount replays
@@ -547,7 +548,7 @@ test "close checkpoints, closes LevelX and clears inited" {
     try std.testing.expectEqual(@as(u32, 1), dir_saves);
     try std.testing.expectEqual(abi.clean_clean, last_clean);
     try std.testing.expectEqual(@as(u32, 1), closes);
-    try std.testing.expect(!store.inited);
+    try std.testing.expectEqual(@as(u8, 0), store.inited);
 }
 
 test "close refuses a second call" {
@@ -563,7 +564,7 @@ test "close leaves the store open when the checkpoint fails" {
     var store = mountedStore();
     dir_fails = true;
     try std.testing.expectEqual(abi.err_hw_init_failed, ra8_cache_store_close(&store));
-    try std.testing.expect(store.inited);
+    try std.testing.expectEqual(@as(u8, 1), store.inited);
     try std.testing.expectEqual(@as(u32, 0), closes);
 }
 

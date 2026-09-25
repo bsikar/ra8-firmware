@@ -429,9 +429,9 @@ typedef struct {
  * with the writer (#317). Blank-alone is not a sufficient gate while the debug
  * port is open (#244).
  *
- * @return bool True iff the unit is UNPROVISIONED (or load never ran).
- * @retval true  Both copies were invalid, or ``ra8_devcfg_load`` never ran.
- * @retval false A valid record is loaded.
+ * @return uint8_t 1 iff the unit is UNPROVISIONED (or load never ran), else 0.
+ * @retval 1 Both copies were invalid, or ``ra8_devcfg_load`` never ran.
+ * @retval 0 A valid record is loaded.
  *
  * @pre None (safe to call before ``ra8_devcfg_load``; reports true).
  * @post No state is mutated.
@@ -440,7 +440,7 @@ typedef struct {
  * @see ra8_devcfg_load
  * @since 0.1.0
  */
-[[nodiscard]] bool ra8_devcfg_is_blank(void);
+[[nodiscard]] uint8_t ra8_devcfg_is_blank(void);
 
 /**
  * @brief Commit a new record to the stale copy slot with header-last ordering.

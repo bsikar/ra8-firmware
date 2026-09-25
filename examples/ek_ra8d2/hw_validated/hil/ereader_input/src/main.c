@@ -153,7 +153,7 @@ static bool iu_tap(int32_t px, int32_t py, bool want_hit, uint16_t want_act, uin
 {
   const uint16_t count  = (uint16_t)(sizeof(k_iu_targets) / sizeof(k_iu_targets[0]));
   uint16_t       action = 0U;
-  bool           hit    = false;
+  uint8_t        hit    = 0U;
   if (ra8_ui_hit_test(k_iu_targets, count, px, py, &action, &hit) != k_ra8_ok) {
     return false;
   }

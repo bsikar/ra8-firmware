@@ -94,7 +94,7 @@ static void test_mcdc_supervisor_tick_will_refresh(void)
 
   /* V1: zero workers -> any_present F, will_refresh F. */
   prep();
-  bool did_refresh = true;
+  uint8_t did_refresh = 1U;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_wdt_supervisor_tick(&did_refresh));
   TEST_ASSERT_EQ(0, did_refresh);
   TEST_ASSERT_EQ(0, s_refresh_calls);
@@ -104,7 +104,7 @@ static void test_mcdc_supervisor_tick_will_refresh(void)
   uint8_t h = (uint8_t)k_ra8_wdt_sup_handle_invalid;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_wdt_supervisor_register_thread("w1", 100U, &h));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_wdt_supervisor_checkin(h));
-  did_refresh = false;
+  did_refresh = 0U;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_wdt_supervisor_tick(&did_refresh));
   TEST_ASSERT_EQ(1, did_refresh);
   TEST_ASSERT_EQ(1, s_refresh_calls);
@@ -115,7 +115,7 @@ static void test_mcdc_supervisor_tick_will_refresh(void)
   TEST_ASSERT_EQ(k_ra8_ok, ra8_wdt_supervisor_register_thread("w2", 10U, &h));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_wdt_supervisor_checkin(h));
   s_now_ms    = k_t_past_deadline_ms; /* push monotonic clock past the deadline */
-  did_refresh = true;
+  did_refresh = 1U;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_wdt_supervisor_tick(&did_refresh));
   TEST_ASSERT_EQ(0, did_refresh);
   TEST_ASSERT_EQ(0, s_refresh_calls);
@@ -162,7 +162,7 @@ static void test_mcdc_supervisor_tick_invoke_refresh(void)
 
   /* V1: no workers => will_refresh=F => C1=F => refresh hook not invoked. */
   prep();
-  bool did_refresh = true;
+  uint8_t did_refresh = 1U;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_wdt_supervisor_tick(&did_refresh));
   TEST_ASSERT_EQ(0, s_refresh_calls);
 

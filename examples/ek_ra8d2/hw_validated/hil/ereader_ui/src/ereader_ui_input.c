@@ -460,7 +460,7 @@ static bool er_handle_reading_tap(int32_t x, int32_t y)
 static bool er_handle_keyboard_tap(int32_t x, int32_t y)
 {
   uint16_t action = (uint16_t)k_er_act_none;
-  bool     hit    = false;
+  uint8_t  hit    = 0U;
   (void)ra8_ui_hit_test(s_targets, s_target_count, x, y, &action, &hit);
   if (!hit || (action < (uint16_t)k_er_act_key_base)) {
     return false;
@@ -523,7 +523,7 @@ static bool er_handle_tap(int32_t x, int32_t y)
   }
 #endif
   uint16_t action = (uint16_t)k_er_act_none;
-  bool     hit    = false;
+  uint8_t  hit    = 0U;
   (void)ra8_ui_hit_test(s_targets, s_target_count, x, y, &action, &hit);
 #ifdef RA8_APP_SETTINGS
   if (hit && (action == (uint16_t)k_er_act_settings)) {
@@ -642,7 +642,7 @@ void er_poll_battery(void)
   }
   s_batt_soc         = soc;
   ra8_batt_nag_t nag = k_ra8_batt_nag_none;
-  if (ra8_batt_update(&s_batt_mon, soc, chg, &nag) != k_ra8_ok) {
+  if (ra8_batt_update(&s_batt_mon, soc, (uint8_t)(chg ? 1U : 0U), &nag) != k_ra8_ok) {
     return;
   }
   const ra8_batt_nag_t prev = s_batt_nag;

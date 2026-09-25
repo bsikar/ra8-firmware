@@ -47,18 +47,18 @@ const two_targets = [_]abi.Target{
 
 test "rect_contains: a null rectangle is a miss and logs nothing" {
     resetLog();
-    try testing.expect(!abi.ra8_ui_rect_contains(null, 0, 0));
+    try testing.expectEqual(@as(u8, 0), abi.ra8_ui_rect_contains(null, 0, 0));
     try testing.expectEqual(@as(usize, 0), log_calls);
 }
 
 test "rect_contains: containment through the ABI" {
-    try testing.expect(abi.ra8_ui_rect_contains(&fixture_rect, 10, 20));
-    try testing.expect(!abi.ra8_ui_rect_contains(&fixture_rect, 40, 20));
+    try testing.expectEqual(@as(u8, 1), abi.ra8_ui_rect_contains(&fixture_rect, 10, 20));
+    try testing.expectEqual(@as(u8, 0), abi.ra8_ui_rect_contains(&fixture_rect, 40, 20));
 }
 
 test "hit_test: a null out_action is refused first" {
     resetLog();
-    var hit: bool = false;
+    var hit: u8 = 0;
     try testing.expectEqual(null_ptr, abi.ra8_ui_hit_test(&two_targets, 2, 0, 0, null, &hit));
     try testing.expectEqual(@as(usize, 1), log_calls);
     try testing.expect(lastMessageIs("out_action must not be nullptr"));
@@ -74,7 +74,7 @@ test "hit_test: a null out_hit is refused" {
 test "hit_test: null targets with a nonzero count is refused" {
     resetLog();
     var action: u16 = 0;
-    var hit: bool = false;
+    var hit: u8 = 0;
     try testing.expectEqual(null_ptr, abi.ra8_ui_hit_test(null, 2, 0, 0, &action, &hit));
     try testing.expect(lastMessageIs("targets must not be nullptr when count > 0"));
 }
@@ -82,7 +82,7 @@ test "hit_test: null targets with a nonzero count is refused" {
 test "hit_test: guard order puts out_action ahead of targets" {
     // Both are null; the C's first RA8_CHECK_NULL_PTR decides the message.
     resetLog();
-    var hit: bool = false;
+    var hit: u8 = 0;
     try testing.expectEqual(null_ptr, abi.ra8_ui_hit_test(null, 2, 0, 0, null, &hit));
     try testing.expect(lastMessageIs("out_action must not be nullptr"));
 }
@@ -90,25 +90,25 @@ test "hit_test: guard order puts out_action ahead of targets" {
 test "hit_test: a zero count permits null targets and always misses" {
     resetLog();
     var action: u16 = 0;
-    var hit: bool = true;
+    var hit: u8 = 1;
     try testing.expectEqual(ok, abi.ra8_ui_hit_test(null, 0, 0, 0, &action, &hit));
-    try testing.expect(!hit);
+    try testing.expectEqual(@as(u8, 0), hit);
     try testing.expectEqual(@as(usize, 0), log_calls);
 }
 
 test "hit_test: a hit publishes the action id" {
     var action: u16 = 0;
-    var hit: bool = false;
+    var hit: u8 = 0;
     try testing.expectEqual(ok, abi.ra8_ui_hit_test(&two_targets, 2, 60, 25, &action, &hit));
-    try testing.expect(hit);
+    try testing.expectEqual(@as(u8, 1), hit);
     try testing.expectEqual(@as(u16, 101), action);
 }
 
 test "hit_test: a miss leaves the action untouched" {
     var action: u16 = 4242;
-    var hit: bool = true;
+    var hit: u8 = 1;
     try testing.expectEqual(ok, abi.ra8_ui_hit_test(&two_targets, 2, 200, 200, &action, &hit));
-    try testing.expect(!hit);
+    try testing.expectEqual(@as(u8, 0), hit);
     try testing.expectEqual(@as(u16, 4242), action);
 }
 
@@ -202,48 +202,48 @@ test "pager_init: null, zero total, then success" {
 
 test "pager_next: both pointer guards, then the advance" {
     var pager = abi.Pager{ .current = 0, .total = 2 };
-    var changed: bool = false;
+    var changed: u8 = 0;
     try testing.expectEqual(null_ptr, abi.ra8_ui_pager_next(null, &changed));
     try testing.expectEqual(null_ptr, abi.ra8_ui_pager_next(&pager, null));
     try testing.expectEqual(ok, abi.ra8_ui_pager_next(&pager, &changed));
-    try testing.expect(changed);
+    try testing.expectEqual(@as(u8, 1), changed);
     try testing.expectEqual(ok, abi.ra8_ui_pager_next(&pager, &changed));
-    try testing.expect(!changed);
+    try testing.expectEqual(@as(u8, 0), changed);
 }
 
 test "pager_prev: both pointer guards, then the clamp" {
     var pager = abi.Pager{ .current = 0, .total = 3 };
-    var changed: bool = true;
+    var changed: u8 = 1;
     try testing.expectEqual(null_ptr, abi.ra8_ui_pager_prev(null, &changed));
     try testing.expectEqual(null_ptr, abi.ra8_ui_pager_prev(&pager, null));
     try testing.expectEqual(ok, abi.ra8_ui_pager_prev(&pager, &changed));
-    try testing.expect(!changed);
+    try testing.expectEqual(@as(u8, 0), changed);
     try testing.expectEqual(@as(u16, 0), pager.current);
 }
 
 test "pager_goto: both pointer guards, then the clamp past the end" {
     var pager = abi.Pager{ .current = 0, .total = 5 };
-    var changed: bool = false;
+    var changed: u8 = 0;
     try testing.expectEqual(null_ptr, abi.ra8_ui_pager_goto(null, 1, &changed));
     try testing.expectEqual(null_ptr, abi.ra8_ui_pager_goto(&pager, 1, null));
     try testing.expectEqual(ok, abi.ra8_ui_pager_goto(&pager, 99, &changed));
-    try testing.expect(changed);
+    try testing.expectEqual(@as(u8, 1), changed);
     try testing.expectEqual(@as(u16, 4), pager.current);
 }
 
 test "C suite mirror: rect_contains edges" {
-    try testing.expect(abi.ra8_ui_rect_contains(&fixture_rect, 10, 20));
-    try testing.expect(!abi.ra8_ui_rect_contains(&fixture_rect, 40, 20));
-    try testing.expect(!abi.ra8_ui_rect_contains(&fixture_rect, 10, 60));
-    try testing.expect(!abi.ra8_ui_rect_contains(null, 0, 0));
+    try testing.expectEqual(@as(u8, 1), abi.ra8_ui_rect_contains(&fixture_rect, 10, 20));
+    try testing.expectEqual(@as(u8, 0), abi.ra8_ui_rect_contains(&fixture_rect, 40, 20));
+    try testing.expectEqual(@as(u8, 0), abi.ra8_ui_rect_contains(&fixture_rect, 10, 60));
+    try testing.expectEqual(@as(u8, 0), abi.ra8_ui_rect_contains(null, 0, 0));
 }
 
 test "C suite mirror: rect_contains MC/DC vectors" {
-    try testing.expect(abi.ra8_ui_rect_contains(&fixture_rect, 25, 40));
-    try testing.expect(!abi.ra8_ui_rect_contains(&fixture_rect, 5, 40));
-    try testing.expect(!abi.ra8_ui_rect_contains(&fixture_rect, 45, 40));
-    try testing.expect(!abi.ra8_ui_rect_contains(&fixture_rect, 25, 10));
-    try testing.expect(!abi.ra8_ui_rect_contains(&fixture_rect, 25, 70));
+    try testing.expectEqual(@as(u8, 1), abi.ra8_ui_rect_contains(&fixture_rect, 25, 40));
+    try testing.expectEqual(@as(u8, 0), abi.ra8_ui_rect_contains(&fixture_rect, 5, 40));
+    try testing.expectEqual(@as(u8, 0), abi.ra8_ui_rect_contains(&fixture_rect, 45, 40));
+    try testing.expectEqual(@as(u8, 0), abi.ra8_ui_rect_contains(&fixture_rect, 25, 10));
+    try testing.expectEqual(@as(u8, 0), abi.ra8_ui_rect_contains(&fixture_rect, 25, 70));
 }
 
 test "C suite mirror: nav stack lifecycle" {
@@ -268,50 +268,50 @@ test "C suite mirror: nav stack lifecycle" {
 
 test "C suite mirror: pager basic" {
     var pager: abi.Pager = undefined;
-    var changed: bool = false;
+    var changed: u8 = 0;
     try testing.expectEqual(invalid_arg, abi.ra8_ui_pager_init(&pager, 0));
     try testing.expectEqual(ok, abi.ra8_ui_pager_init(&pager, 5));
     try testing.expectEqual(@as(u16, 0), pager.current);
     try testing.expectEqual(ok, abi.ra8_ui_pager_prev(&pager, &changed));
-    try testing.expect(!changed);
+    try testing.expectEqual(@as(u8, 0), changed);
     try testing.expectEqual(ok, abi.ra8_ui_pager_goto(&pager, 99, &changed));
-    try testing.expect(changed);
+    try testing.expectEqual(@as(u8, 1), changed);
     try testing.expectEqual(@as(u16, 4), pager.current);
     try testing.expectEqual(ok, abi.ra8_ui_pager_prev(&pager, &changed));
-    try testing.expect(changed);
+    try testing.expectEqual(@as(u8, 1), changed);
     try testing.expectEqual(@as(u16, 3), pager.current);
 }
 
 test "C suite mirror: pager_next MC/DC vectors" {
-    var changed: bool = false;
+    var changed: u8 = 0;
     var v1 = abi.Pager{ .current = 0, .total = 3 };
     try testing.expectEqual(ok, abi.ra8_ui_pager_next(&v1, &changed));
-    try testing.expect(changed);
+    try testing.expectEqual(@as(u8, 1), changed);
     try testing.expectEqual(@as(u16, 1), v1.current);
 
     var v2 = abi.Pager{ .current = 0, .total = 0 };
     try testing.expectEqual(ok, abi.ra8_ui_pager_next(&v2, &changed));
-    try testing.expect(!changed);
+    try testing.expectEqual(@as(u8, 0), changed);
 
     var v3 = abi.Pager{ .current = 0, .total = 1 };
     try testing.expectEqual(ok, abi.ra8_ui_pager_next(&v3, &changed));
-    try testing.expect(!changed);
+    try testing.expectEqual(@as(u8, 0), changed);
 }
 
 test "C suite mirror: pager_goto MC/DC vectors" {
-    var changed: bool = false;
+    var changed: u8 = 0;
     var v1 = abi.Pager{ .current = 0, .total = 3 };
     try testing.expectEqual(ok, abi.ra8_ui_pager_goto(&v1, 5, &changed));
-    try testing.expect(changed);
+    try testing.expectEqual(@as(u8, 1), changed);
     try testing.expectEqual(@as(u16, 2), v1.current);
 
     var v2 = abi.Pager{ .current = 0, .total = 0 };
     try testing.expectEqual(ok, abi.ra8_ui_pager_goto(&v2, 5, &changed));
-    try testing.expect(changed);
+    try testing.expectEqual(@as(u8, 1), changed);
     try testing.expectEqual(@as(u16, 5), v2.current);
 
     var v3 = abi.Pager{ .current = 0, .total = 3 };
     try testing.expectEqual(ok, abi.ra8_ui_pager_goto(&v3, 1, &changed));
-    try testing.expect(changed);
+    try testing.expectEqual(@as(u8, 1), changed);
     try testing.expectEqual(@as(u16, 1), v3.current);
 }

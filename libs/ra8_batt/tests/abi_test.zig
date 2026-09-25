@@ -11,6 +11,7 @@ const std = @import("std");
 const abi = @import("abi");
 
 const ok = @intFromEnum(abi.BattError.ok);
+const invalid_arg = @intFromEnum(abi.BattError.invalid_arg);
 const null_ptr = @intFromEnum(abi.BattError.null_ptr);
 
 var log_calls: usize = 0;
@@ -29,16 +30,16 @@ fn resetLog() void {
 
 fn update(mon: *abi.Monitor, soc: u8, charging: bool) abi.Nag {
     var nag: abi.Nag = .none;
-    std.testing.expectEqual(ok, abi.ra8_batt_update(mon, soc, charging, &nag)) catch unreachable;
+    std.testing.expectEqual(ok, abi.ra8_batt_update(mon, soc, @intFromBool(charging), &nag)) catch unreachable;
     return nag;
 }
 
 test "init returns ok and arms both bands" {
     resetLog();
-    var mon: abi.Monitor = .{ .low_raised = true, .critical_raised = true };
+    var mon: abi.Monitor = .{ .low_raised = 1, .critical_raised = 1 };
     try std.testing.expectEqual(ok, abi.ra8_batt_monitor_init(&mon));
-    try std.testing.expect(!mon.low_raised);
-    try std.testing.expect(!mon.critical_raised);
+    try std.testing.expectEqual(@as(u8, 0), mon.low_raised);
+    try std.testing.expectEqual(@as(u8, 0), mon.critical_raised);
     try std.testing.expectEqual(@as(usize, 0), log_calls);
 }
 
@@ -51,9 +52,23 @@ test "init rejects a null monitor and logs" {
 
 test "update rejects a null monitor before touching the out pointer" {
     resetLog();
-    try std.testing.expectEqual(null_ptr, abi.ra8_batt_update(null, 5, false, null));
+    try std.testing.expectEqual(null_ptr, abi.ra8_batt_update(null, 5, 0, null));
     try std.testing.expectEqual(@as(usize, 1), log_calls);
     try std.testing.expectEqualStrings("mon must not be nullptr", std.mem.span(last_message));
+}
+
+test "update rejects noncanonical boolean bytes without publishing state" {
+    var mon: abi.Monitor = .{ .low_raised = 0, .critical_raised = 0 };
+    var nag: abi.Nag = .critical;
+    try std.testing.expectEqual(invalid_arg, abi.ra8_batt_update(&mon, 5, 2, &nag));
+    try std.testing.expectEqual(@as(u8, 0), mon.low_raised);
+    try std.testing.expectEqual(@as(u8, 0), mon.critical_raised);
+    try std.testing.expectEqual(abi.Nag.critical, nag);
+
+    mon.low_raised = 2;
+    try std.testing.expectEqual(invalid_arg, abi.ra8_batt_update(&mon, 5, 0, &nag));
+    try std.testing.expectEqual(@as(u8, 2), mon.low_raised);
+    try std.testing.expectEqual(abi.Nag.critical, nag);
 }
 
 test "update rejects a null out pointer with the monitor untouched" {
@@ -61,15 +76,15 @@ test "update rejects a null out pointer with the monitor untouched" {
     var mon: abi.Monitor = undefined;
     try std.testing.expectEqual(ok, abi.ra8_batt_monitor_init(&mon));
     _ = update(&mon, 20, false);
-    try std.testing.expectEqual(null_ptr, abi.ra8_batt_update(&mon, 5, false, null));
-    try std.testing.expect(mon.low_raised);
+    try std.testing.expectEqual(null_ptr, abi.ra8_batt_update(&mon, 5, 0, null));
+    try std.testing.expectEqual(@as(u8, 1), mon.low_raised);
     try std.testing.expectEqualStrings("out_nag must not be nullptr", std.mem.span(last_message));
 }
 
 test "a rejected update leaves the caller's nag slot alone" {
     resetLog();
     var nag: abi.Nag = .critical;
-    try std.testing.expectEqual(null_ptr, abi.ra8_batt_update(null, 5, false, &nag));
+    try std.testing.expectEqual(null_ptr, abi.ra8_batt_update(null, 5, 0, &nag));
     try std.testing.expectEqual(abi.Nag.critical, nag);
 }
 
@@ -77,7 +92,7 @@ test "the monitor stays usable after a rejected call" {
     resetLog();
     var mon: abi.Monitor = undefined;
     try std.testing.expectEqual(ok, abi.ra8_batt_monitor_init(&mon));
-    try std.testing.expectEqual(null_ptr, abi.ra8_batt_update(&mon, 5, false, null));
+    try std.testing.expectEqual(null_ptr, abi.ra8_batt_update(&mon, 5, 0, null));
     try std.testing.expectEqual(abi.Nag.low, update(&mon, 20, false));
 }
 
@@ -200,7 +215,7 @@ test "a sweep across the ABI stays in the documented enum" {
     while (soc <= 255) : (soc += 1) {
         try std.testing.expectEqual(ok, abi.ra8_batt_monitor_init(&mon));
         var nag: abi.Nag = .none;
-        try std.testing.expectEqual(ok, abi.ra8_batt_update(&mon, @intCast(soc), false, &nag));
+        try std.testing.expectEqual(ok, abi.ra8_batt_update(&mon, @intCast(soc), 0, &nag));
         try std.testing.expect(@intFromEnum(nag) <= 2);
     }
 }

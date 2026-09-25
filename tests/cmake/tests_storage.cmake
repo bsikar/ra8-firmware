@@ -85,7 +85,10 @@ add_executable(
   $<TARGET_OBJECTS:ra8_core_hal>
 )
 set_target_properties(test_ra8_cache_store PROPERTIES LINKER_LANGUAGE CXX)
-target_link_libraries(test_ra8_cache_store PRIVATE ra8_zig::ra8_cache_store)
+target_link_libraries(
+  test_ra8_cache_store
+  PRIVATE ra8_zig::ra8_cache_store ra8_zig::ra8_cache_store_test_helpers
+)
 target_compile_definitions(test_ra8_cache_store PRIVATE LX_STANDALONE_ENABLE)
 target_compile_options(test_ra8_cache_store PRIVATE -Wall -Wextra)
 target_include_directories(

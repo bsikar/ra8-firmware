@@ -318,6 +318,7 @@ def _test_module_errors(root: Path, entries: list[Path], declared_sources: set[P
         if path not in entry_paths
         and "tests" in path.relative_to(root).parts
         and path.suffix == ".zig"
+        and _test_declarations(path)
     )
     for test_root in entries:
         if "tests" not in test_root.relative_to(root).parts:
@@ -695,6 +696,51 @@ def _selftest_test_declaration_grammar(
     contract.write_text(json.dumps(raw_contract) + "\n", encoding="utf-8")
 
 
+def _selftest_test_module_imports(
+    root: Path, contract: Path, raw_contract: dict[str, object], failures: list[str]
+) -> None:
+    """Require imports for sibling test modules but not compile-only helpers."""
+    main = root / "tests/main.zig"
+    original_main = main.read_text(encoding="utf-8")
+    support = root / "tests/support.zig"
+    sibling_test = root / "tests/sibling_test.zig"
+    support.write_text("pub const value: u32 = 2;\n", encoding="utf-8")
+    sibling_test.write_text(
+        'test "sibling test" { try @import("std").testing.expect(true); }\n',
+        encoding="utf-8",
+    )
+    covered = cast("list[str]", raw_contract["covered_sources"])
+    original_covered = covered.copy()
+    raw_contract["covered_sources"] = [
+        "tests/main.zig",
+        "helper.zig",
+        "tests/support.zig",
+        "tests/sibling_test.zig",
+    ]
+    contract.write_text(json.dumps(raw_contract) + "\n", encoding="utf-8")
+
+    errors, _ = _test_contract_errors(root)
+    sibling_errors = [error for error in errors if "sibling_test.zig" in error]
+    support_errors = [error for error in errors if "support.zig" in error]
+    if not sibling_errors:
+        failures.append("  must-fire: unimported sibling Zig tests were accepted")
+    if support_errors:
+        failures.append(
+            f"  must-stay-quiet: compile-only test support required import: {support_errors}"
+        )
+
+    main.write_text(original_main + '_ = @import("sibling_test.zig");\n', encoding="utf-8")
+    errors, _ = _test_contract_errors(root)
+    if errors:
+        failures.append(f"  must-stay-quiet: imported sibling Zig tests failed: {errors}")
+
+    main.write_text(original_main, encoding="utf-8")
+    raw_contract["covered_sources"] = original_covered
+    contract.write_text(json.dumps(raw_contract) + "\n", encoding="utf-8")
+    support.unlink()
+    sibling_test.unlink()
+
+
 def _selftest_standalone_args(
     root: Path, contract: Path, raw_contract: dict[str, object], failures: list[str]
 ) -> None:
@@ -847,6 +893,7 @@ def _selftest_test_contract(failures: list[str]) -> None:
 
         contract = root / TEST_CONTRACT_NAME
         raw_contract = json.loads(contract.read_text(encoding="utf-8"))
+        _selftest_test_module_imports(root, contract, raw_contract, failures)
         _selftest_standalone_args(root, contract, raw_contract, failures)
 
         (root / "src").mkdir()

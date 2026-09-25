@@ -481,7 +481,7 @@ typedef struct {
   ra8_epd_cal_panel_ops_t panel;           /**< Controller access seam.         */
   ra8_epd_cal_store_t     store;           /**< Per-device record store seam.   */
   uint16_t                provisioned_mv;  /**< Operator value for this boot.   */
-  bool                    has_provisioned; /**< Whether the field above is set. */
+  uint8_t                 has_provisioned; /**< 0 or 1: whether the field above is set. */
 } ra8_epd_cal_cfg_t;
 
 /**
@@ -523,9 +523,9 @@ typedef struct {
  * @param[in] mv     Candidate VCOM magnitude in millivolts.
  * @param[in] limits Panel's documented window; non-NULL.
  *
- * @return Whether ``mv`` may be programmed.
- * @retval true  ``limits->min_mv <= mv <= limits->max_mv``.
- * @retval false ``mv`` is outside the window, or ``limits`` is NULL.
+ * @return uint8_t 1 if ``mv`` may be programmed, otherwise 0.
+ * @retval 1 ``limits->min_mv <= mv <= limits->max_mv``.
+ * @retval 0 ``mv`` is outside the window, or ``limits`` is NULL.
  *
  * @pre  ``limits`` is NULL or readable.
  * @pre  ``limits->min_mv <= limits->max_mv``.
@@ -538,7 +538,7 @@ typedef struct {
  *
  * @since 0.1.0
  */
-[[nodiscard]] bool ra8_epd_cal_vcom_in_range(uint16_t mv, const ra8_epd_cal_limits_mv_t* limits);
+[[nodiscard]] uint8_t ra8_epd_cal_vcom_in_range(uint16_t mv, const ra8_epd_cal_limits_mv_t* limits);
 
 /**
  * @brief Serialise a record into its 32-byte on-flash form.

@@ -135,6 +135,299 @@
         {"name":"ra8_lsm6dso_read_temp","calling_context":"task-only-non-reentrant","ownership":"borrows device and writes centi-degrees to caller-owned output"},
         {"name":"ra8_lsm6dso_read_xl_gyro_fifo","calling_context":"task-only-non-reentrant","ownership":"borrows device and output buffer and writes record count to caller-owned output"}
       ]
+    },
+    {
+      "name": "ra8_usb_pal",
+      "build_root": "libs/ra8_usb_pal",
+      "public_header": "libs/ra8_usb_pal/inc/ra8_usb_pal.h",
+      "additional_headers": [
+        {
+          "path": "libs/ra8_usb_pal/src/ra8_usb_pal_internal.h",
+          "role": "test-only",
+          "symbol_prefix": "priv_usb_pal_",
+          "compatibility_sha256": "4c9ecf8478f204e0a72d767a6df11e341da0fc28b00ca283cafac997e0b54bda"
+        }
+      ],
+      "adapter": "libs/ra8_usb_pal/src/ra8_usb_pal_abi.zig",
+      "library_name": "ra8_usb_pal",
+      "symbol_prefix": "ra8_usb_pal_",
+      "compatibility_sha256": "00b2c03499171d7518b2ad219cd1b0b07119bb92a84cda3041ff2b15395b9e57",
+      "layout_assertions": [],
+      "target_class": "host-ra8",
+      "targets": {"host": [], "ra8": ["-Dtarget=thumb-freestanding-eabihf", "-Dcpu=cortex_m85+fp_armv8-d32-fp64"]},
+      "c_include_dirs": ["libs/ra8_usb_pal/inc", "libs/ra8_usb_pal/src", "libs/ra8_core/inc", "libs/ra8_hal/inc"],
+      "contract_tests": [
+        {"language":"c","path":"tests/usb/src/test_ra8_usb_pal.c","registration":"tests/cmake/unit_tests.cmake"},
+        {"language":"zig","path":"libs/ra8_usb_pal/tests/abi_test.zig","registration":"libs/ra8_usb_pal/.zig-test-contract.json"}
+      ],
+      "exports": [
+        {"name":"ra8_usb_pal_init","calling_context":"boot-only","ownership":"Initializes the singleton and retains no caller-owned resource."},
+        {"name":"ra8_usb_pal_deinit","calling_context":"task-only-non-reentrant","ownership":"Tears down singleton state and releases the selected USB controller."},
+        {"name":"ra8_usb_pal_attach","calling_context":"task-only-non-reentrant","ownership":"Updates the attached state without retaining caller-owned resources."},
+        {"name":"ra8_usb_pal_get_state","calling_context":"task-only-non-reentrant","ownership":"Writes the current state into caller-owned output storage."},
+        {"name":"ra8_usb_pal_ep_open","calling_context":"task-only-non-reentrant","ownership":"Configures a singleton endpoint slot and retains no caller-owned resource."},
+        {"name":"ra8_usb_pal_ep_send","calling_context":"task-only-non-reentrant","ownership":"Copies the submitted packet into PAL-owned endpoint storage."},
+        {"name":"ra8_usb_pal_ep_recv","calling_context":"task-only-non-reentrant","ownership":"Copies queued packet data into caller-owned output storage."},
+        {"name":"ra8_usb_pal_set_event_handler","calling_context":"boot-only","ownership":"Borrows the callback and context until replaced or deinitialized."},
+        {"name":"priv_usb_pal_should_dispatch_event","calling_context":"task-safe-reentrant","ownership":"Evaluates its inputs only and retains no caller-owned resource."},
+        {"name":"priv_usb_pal_ep_out_of_range","calling_context":"task-safe-reentrant","ownership":"Evaluates its inputs only and retains no caller-owned resource."}
+      ]
+    },
+    {
+      "name": "ra8_batt",
+      "build_root": "libs/ra8_batt",
+      "public_header": "libs/ra8_batt/inc/ra8_batt.h",
+      "adapter": "libs/ra8_batt/src/ra8_batt_abi.zig",
+      "library_name": "ra8_batt",
+      "symbol_prefix": "ra8_batt_",
+      "compatibility_sha256": "3b528d7d6bd73477ce1aac85b967117f9fc9a8b0800a49ffa44024bc5c1cacbb",
+      "layout_assertions": ["@sizeOf(Nag) == 1", "@sizeOf(Monitor) == 2"],
+      "target_class": "host-ra8",
+      "targets": {"host": [], "ra8": ["-Dtarget=thumb-freestanding-eabihf", "-Dcpu=cortex_m85+fp_armv8-d32-fp64"]},
+      "c_include_dirs": ["libs/ra8_batt/inc", "libs/ra8_core/inc"],
+      "contract_tests": [
+        {"language":"c","path":"tests/misc/src/test_ra8_batt.c","registration":"tests/cmake/unit_tests.cmake"},
+        {"language":"zig","path":"libs/ra8_batt/tests/abi_test.zig","registration":"libs/ra8_batt/.zig-test-contract.json"}
+      ],
+      "exports": [
+        {"name":"ra8_batt_monitor_init","calling_context":"task-only-non-reentrant","ownership":"Initializes the caller-provided monitor in place."},
+        {"name":"ra8_batt_update","calling_context":"task-only-non-reentrant","ownership":"Reads the supplied state and writes the computed nag to caller storage."},
+        {"name":"ra8_batt_nag_str","calling_context":"task-safe-reentrant","ownership":"Returns a static string and retains no caller resource."}
+      ]
+    },
+    {
+      "name": "ra8_box",
+      "build_root": "libs/ra8_box",
+      "public_header": "libs/ra8_box/inc/ra8_box.h",
+      "adapter": "libs/ra8_box/src/ra8_box_abi.zig",
+      "library_name": "ra8_box",
+      "symbol_prefix": "ra8_box_",
+      "compatibility_sha256": "82ea84b2b647ad90554a0f278aa7eb218e649fdaf3dbc2a27cafcd432629609d",
+      "layout_assertions": ["@sizeOf(implementation.Rect) != 16", "@offsetOf(implementation.Rect, \"x\") != 0"],
+      "target_class": "host-ra8",
+      "targets": {"host": [], "ra8": ["-Dtarget=thumb-freestanding-eabihf", "-Dcpu=cortex_m85+fp_armv8-d32-fp64"]},
+      "c_include_dirs": ["libs/ra8_box/inc", "libs/ra8_ui/inc", "libs/ra8_core/inc"],
+      "contract_tests": [
+        {"language":"c","path":"tests/misc/src/test_ra8_box.c","registration":"tests/cmake/unit_tests.cmake"},
+        {"language":"zig","path":"libs/ra8_box/tests/abi_test.zig","registration":"libs/ra8_box/.zig-test-contract.json"}
+      ],
+      "exports": [
+        {"name":"ra8_box_tree_init","calling_context":"task-only-non-reentrant","ownership":"Initializes caller-owned tree and storage without retaining either."},
+        {"name":"ra8_box_add","calling_context":"task-only-non-reentrant","ownership":"Borrows the node and mutates caller-owned tree storage."},
+        {"name":"ra8_box_layout","calling_context":"task-only-non-reentrant","ownership":"Borrows the tree and frame and writes layout into caller-owned nodes."}
+      ]
+    },
+    {
+      "name": "ra8_cache_store",
+      "build_root": "libs/ra8_cache_store",
+      "public_header": "libs/ra8_cache_store/inc/ra8_cache_store.h",
+      "adapter": "libs/ra8_cache_store/src/ra8_cache_store_abi.zig",
+      "library_name": "ra8_cache_store",
+      "symbol_prefix": "ra8_cache_store_",
+      "additional_adapters": [{"path":"libs/ra8_cache_store/src/init.zig","role":"public","symbol_prefix":"ra8_cache_store_"}],
+      "compatibility_sha256": "bde9645cd2c00bee498710188554739dd6608a48fba54247aad7027cec085b64",
+      "layout_assertions": ["@offsetOf(Store, \"flash\") == 0", "@offsetOf(Reader, \"byte_len\") == word + 8"],
+      "target_class": "host-ra8",
+      "targets": {"host": [], "ra8": ["-Dtarget=thumb-freestanding-eabihf", "-Dcpu=cortex_m85+fp_armv8-d32-fp64"]},
+      "c_include_dirs": ["libs/ra8_cache_store/inc", "libs/ra8_core/inc"],
+      "contract_tests": [
+        {"language":"c","path":"tests/misc/src/test_ra8_cache_store.c","registration":"tests/cmake/tests_storage.cmake"},
+        {"language":"zig","path":"libs/ra8_cache_store/tests/abi_test.zig","registration":"libs/ra8_cache_store/.zig-test-contract.json"}
+      ],
+      "exports": [
+        {"name":"ra8_cache_store_init","calling_context":"task-only-non-reentrant","ownership":"Initializes caller-owned store using caller-provided configuration."},
+        {"name":"ra8_cache_store_put","calling_context":"task-only-non-reentrant","ownership":"Borrows data for the call and copies it into store-managed storage."},
+        {"name":"ra8_cache_store_get","calling_context":"task-only-non-reentrant","ownership":"Writes retrieved bytes into caller-provided output storage."},
+        {"name":"ra8_cache_store_read","calling_context":"task-only-non-reentrant","ownership":"Reads from the store into the caller-provided buffer."},
+        {"name":"ra8_cache_store_evict","calling_context":"task-only-non-reentrant","ownership":"Mutates store state and retains no caller resource."},
+        {"name":"ra8_cache_store_pin","calling_context":"task-only-non-reentrant","ownership":"Mutates store metadata and retains no caller resource."},
+        {"name":"ra8_cache_store_sync","calling_context":"task-only-non-reentrant","ownership":"Synchronizes store contents without retaining caller resources."},
+        {"name":"ra8_cache_store_close","calling_context":"task-only-non-reentrant","ownership":"Closes the store and clears caller-owned store state."}
+      ]
+    },
+    {
+      "name": "ra8_devcfg",
+      "build_root": "libs/ra8_devcfg",
+      "public_header": "libs/ra8_devcfg/inc/ra8_devcfg.h",
+      "additional_adapters": [{"path":"libs/ra8_devcfg/src/store_extra_mram.zig","role":"public","symbol_prefix":"ra8_devcfg_"}],
+      "adapter": "libs/ra8_devcfg/src/ra8_devcfg_abi.zig",
+      "library_name": "ra8_devcfg",
+      "symbol_prefix": "ra8_devcfg_",
+      "compatibility_sha256": "9d5db0e2a5539b3034563bbd74d9441073b7b5a4e6c0f9bd8572652dae9761c1",
+      "layout_assertions": ["@sizeOf(Store) != word * 2", "@offsetOf(Store, \"write\") != word"],
+      "target_class": "host-ra8",
+      "targets": {"host": [], "ra8": ["-Dtarget=thumb-freestanding-eabihf", "-Dcpu=cortex_m85+fp_armv8-d32-fp64"]},
+      "c_include_dirs": ["libs/ra8_devcfg/inc", "libs/ra8_core/inc"],
+      "contract_tests": [
+        {"language":"c","path":"tests/misc/src/test_ra8_devcfg.c","registration":"tests/cmake/unit_tests.cmake"},
+        {"language":"zig","path":"libs/ra8_devcfg/tests/abi_test.zig","registration":"libs/ra8_devcfg/.zig-test-contract.json"}
+      ],
+      "exports": [
+        {"name":"ra8_devcfg_load","calling_context":"task-only-non-reentrant","ownership":"Loads persisted data from the borrowed store into library state."},
+        {"name":"ra8_devcfg_get_vcom_mv","calling_context":"task-only-non-reentrant","ownership":"Writes the configured VCOM value to caller-owned output."},
+        {"name":"ra8_devcfg_get_body","calling_context":"task-only-non-reentrant","ownership":"Returns a borrowed read-only view into library-owned configuration."},
+        {"name":"ra8_devcfg_is_blank","calling_context":"task-safe-reentrant","ownership":"Returns state only and retains no caller resource."},
+        {"name":"ra8_devcfg_commit","calling_context":"task-only-non-reentrant","ownership":"Borrows the store and record for the duration of commit."},
+        {"name":"ra8_devcfg_reset","calling_context":"task-only-non-reentrant","ownership":"Resets library-owned configuration state."},
+        {"name":"ra8_devcfg_default_store","calling_context":"task-only-non-reentrant","ownership":"Returns a borrowed pointer to the platform default store."}
+      ]
+    },
+    {
+      "name": "ra8_epd_cal",
+      "build_root": "libs/ra8_epd_cal",
+      "public_header": "libs/ra8_epd_cal/inc/ra8_epd_cal.h",
+      "adapter": "libs/ra8_epd_cal/src/ra8_epd_cal_abi.zig",
+      "library_name": "ra8_epd_cal",
+      "symbol_prefix": "ra8_epd_cal_",
+      "compatibility_sha256": "4d9b5b8fbcd53386c2bc654c3fc6cd40841b2326aebfc381123bb37dfa1d8c73",
+      "layout_assertions": ["@sizeOf(Source) != 1", "@sizeOf(Result) != 4"],
+      "target_class": "host-ra8",
+      "targets": {"host": [], "ra8": ["-Dtarget=thumb-freestanding-eabihf", "-Dcpu=cortex_m85+fp_armv8-d32-fp64"]},
+      "c_include_dirs": ["libs/ra8_epd_cal/inc", "libs/ra8_core/inc"],
+      "contract_tests": [
+        {"language":"c","path":"tests/misc/src/test_ra8_epd_cal.c","registration":"tests/cmake/unit_tests.cmake"},
+        {"language":"zig","path":"libs/ra8_epd_cal/tests/abi_test.zig","registration":"libs/ra8_epd_cal/.zig-test-contract.json"}
+      ],
+      "exports": [
+        {"name":"ra8_epd_cal_vcom_in_range","calling_context":"task-safe-reentrant","ownership":"Evaluates the supplied limits and retains no caller resource."},
+        {"name":"ra8_epd_cal_serialize","calling_context":"task-safe-reentrant","ownership":"Reads a record and writes serialized bytes to caller-owned storage."},
+        {"name":"ra8_epd_cal_deserialize","calling_context":"task-safe-reentrant","ownership":"Reads caller-owned bytes and writes the decoded record to caller storage."},
+        {"name":"ra8_epd_cal_resolve","calling_context":"task-only-non-reentrant","ownership":"Reads configuration and writes the selected result to caller storage."},
+        {"name":"ra8_epd_cal_apply","calling_context":"task-only-non-reentrant","ownership":"Borrows configuration and resolved result for the call."},
+        {"name":"ra8_epd_cal_provision","calling_context":"task-only-non-reentrant","ownership":"Persists the requested VCOM value through configured callbacks."}
+      ]
+    },
+    {
+      "name": "ra8_mpu",
+      "build_root": "libs/ra8_mpu",
+      "public_header": "libs/ra8_mpu/inc/ra8_mpu.h",
+      "adapter": "libs/ra8_mpu/src/ra8_mpu_abi.zig",
+      "library_name": "ra8_mpu",
+      "symbol_prefix": "ra8_mpu_",
+      "compatibility_sha256": "5f95f91c8a46c479bb82e4807835c0ab7fa6ef2194ff300985735650f4cbea21",
+      "layout_assertions": ["@offsetOf(Regs, \"TYPE\") == 0x00", "@sizeOf(Regs) == 0x38"],
+      "target_class": "host-ra8",
+      "targets": {"host": [], "ra8": ["-Dtarget=thumb-freestanding-eabihf", "-Dcpu=cortex_m85+fp_armv8-d32-fp64"]},
+      "c_include_dirs": ["libs/ra8_mpu/inc", "libs/ra8_core/inc"],
+      "contract_tests": [
+        {"language":"c","path":"tests/misc/src/test_ra8_mpu.c","registration":"tests/cmake/unit_tests.cmake"},
+        {"language":"zig","path":"libs/ra8_mpu/tests/abi_test.zig","registration":"libs/ra8_mpu/.zig-test-contract.json"}
+      ],
+      "exports": [
+        {"name":"ra8_mpu_configure","calling_context":"boot-only","ownership":"Borrows the caller-provided region configuration for setup."},
+        {"name":"ra8_mpu_enable","calling_context":"task-only-non-reentrant","ownership":"Changes processor MPU state and retains no caller resource."},
+        {"name":"ra8_mpu_disable","calling_context":"task-only-non-reentrant","ownership":"Changes processor MPU state and retains no caller resource."},
+        {"name":"ra8_mpu_set_region","calling_context":"task-only-non-reentrant","ownership":"Borrows the selected region descriptor for the call."},
+        {"name":"ra8_mpu_boot_map","calling_context":"boot-only","ownership":"Returns a read-only view of static region descriptors."},
+        {"name":"ra8_mpu_apply_boot_map","calling_context":"boot-only","ownership":"Applies the static boot region map to processor MPU state."},
+        {"name":"ra8_mpu_is_enabled","calling_context":"task-safe-reentrant","ownership":"Reads processor MPU state and retains no caller resource."}
+      ]
+    },
+    {
+      "name": "ra8_power_profile",
+      "build_root": "libs/ra8_power_profile",
+      "public_header": "libs/ra8_power_profile/inc/ra8_power_profile.h",
+      "adapter": "libs/ra8_power_profile/src/ra8_power_profile_abi.zig",
+      "library_name": "ra8_power_profile",
+      "symbol_prefix": "ra8_power_profile_",
+      "compatibility_sha256": "e0e53b519ef86c954e89d6514c89360bfd9b7176f85d3be8b0068e01eb00885c",
+      "layout_assertions": ["@sizeOf(RegionStats) != 40", "@sizeOf(Stats) != 40 * 16"],
+      "target_class": "host-ra8",
+      "targets": {"host": [], "ra8": ["-Dtarget=thumb-freestanding-eabihf", "-Dcpu=cortex_m85+fp_armv8-d32-fp64"]},
+      "c_include_dirs": ["libs/ra8_power_profile/inc", "libs/ra8_core/inc"],
+      "contract_tests": [
+        {"language":"c","path":"tests/misc/src/test_ra8_power_profile.c","registration":"tests/cmake/unit_tests.cmake"},
+        {"language":"zig","path":"libs/ra8_power_profile/tests/abi_test.zig","registration":"libs/ra8_power_profile/.zig-test-contract.json"}
+      ],
+      "exports": [
+        {"name":"ra8_power_profile_init","calling_context":"boot-only","ownership":"Copies configuration and retains callback state per the public API."},
+        {"name":"ra8_power_profile_mark_enter","calling_context":"task-only-non-reentrant","ownership":"Updates internal timing state for the selected region."},
+        {"name":"ra8_power_profile_mark_exit","calling_context":"task-only-non-reentrant","ownership":"Updates internal timing state for the selected region."},
+        {"name":"ra8_power_profile_get_stats","calling_context":"task-only-non-reentrant","ownership":"Writes a snapshot into caller-owned output storage."},
+        {"name":"ra8_power_profile_reset_stats","calling_context":"task-only-non-reentrant","ownership":"Resets internal profiling counters."}
+      ]
+    },
+    {
+      "name": "ra8_touch_cal",
+      "build_root": "libs/ra8_touch_cal",
+      "public_header": "libs/ra8_touch_cal/inc/ra8_touch_cal.h",
+      "adapter": "libs/ra8_touch_cal/src/ra8_touch_cal_abi.zig",
+      "library_name": "ra8_touch_cal",
+      "symbol_prefix": "ra8_touch_cal_",
+      "compatibility_sha256": "f8ae64e8c0f32813e093ef0159496a5975d520735a51e2ad8984375625fb0522",
+      "layout_assertions": ["@offsetOf(RunConfig, \"draw_target\") != 8"],
+      "target_class": "host-ra8",
+      "targets": {"host": [], "ra8": ["-Dtarget=thumb-freestanding-eabihf", "-Dcpu=cortex_m85+fp_armv8-d32-fp64"]},
+      "c_include_dirs": ["libs/ra8_touch_cal/inc", "libs/ra8_core/inc"],
+      "contract_tests": [
+        {"language":"c","path":"tests/graphics/src/test_ra8_touch_cal.c","registration":"tests/cmake/unit_tests.cmake"},
+        {"language":"zig","path":"libs/ra8_touch_cal/tests/abi_test.zig","registration":"libs/ra8_touch_cal/.zig-test-contract.json"}
+      ],
+      "exports": [
+        {"name":"ra8_touch_cal_compute","calling_context":"task-safe-reentrant","ownership":"Reads sample arrays and writes the computed matrix to caller storage."},
+        {"name":"ra8_touch_cal_run","calling_context":"task-only-non-reentrant","ownership":"Uses callbacks synchronously and writes the computed matrix to caller storage."},
+        {"name":"ra8_touch_cal_apply","calling_context":"task-safe-reentrant","ownership":"Reads the supplied calibration points and writes transformed coordinates."},
+        {"name":"ra8_touch_cal_save","calling_context":"task-safe-reentrant","ownership":"Serializes a matrix into caller-owned buffer storage."},
+        {"name":"ra8_touch_cal_load","calling_context":"task-safe-reentrant","ownership":"Deserializes caller-owned bytes into caller-owned matrix storage."}
+      ]
+    },
+    {
+      "name": "ra8_ui",
+      "build_root": "libs/ra8_ui",
+      "public_header": "libs/ra8_ui/inc/ra8_ui.h",
+      "adapter": "libs/ra8_ui/src/ra8_ui_abi.zig",
+      "library_name": "ra8_ui",
+      "symbol_prefix": "ra8_ui_",
+      "compatibility_sha256": "f749f6ab64c43b168543b5b14fec0c8eec48c23f26b1591e96ff376283596b77",
+      "layout_assertions": [],
+      "target_class": "host-ra8",
+      "targets": {"host": [], "ra8": ["-Dtarget=thumb-freestanding-eabihf", "-Dcpu=cortex_m85+fp_armv8-d32-fp64"]},
+      "c_include_dirs": ["libs/ra8_ui/inc", "libs/ra8_core/inc"],
+      "contract_tests": [
+        {"language":"c","path":"tests/graphics/src/test_ra8_ui.c","registration":"tests/cmake/unit_tests.cmake"},
+        {"language":"zig","path":"libs/ra8_ui/tests/abi_test.zig","registration":"libs/ra8_ui/.zig-test-contract.json"}
+      ],
+      "exports": [
+        {"name":"ra8_ui_rect_contains","calling_context":"task-safe-reentrant","ownership":"Reads rectangle values and retains no caller resource."},
+        {"name":"ra8_ui_hit_test","calling_context":"task-safe-reentrant","ownership":"Reads caller-owned targets and writes the selected result to caller storage."},
+        {"name":"ra8_ui_nav_init","calling_context":"task-only-non-reentrant","ownership":"Initializes caller-owned navigation state."},
+        {"name":"ra8_ui_nav_push","calling_context":"task-only-non-reentrant","ownership":"Mutates caller-owned navigation state."},
+        {"name":"ra8_ui_nav_pop","calling_context":"task-only-non-reentrant","ownership":"Mutates navigation state and writes the removed screen to caller storage."},
+        {"name":"ra8_ui_nav_replace","calling_context":"task-only-non-reentrant","ownership":"Mutates caller-owned navigation state."},
+        {"name":"ra8_ui_nav_top","calling_context":"task-safe-reentrant","ownership":"Reads navigation state and writes the top screen to caller storage."},
+        {"name":"ra8_ui_pager_init","calling_context":"task-only-non-reentrant","ownership":"Initializes caller-owned pager state."},
+        {"name":"ra8_ui_pager_next","calling_context":"task-only-non-reentrant","ownership":"Mutates pager state and writes change status to caller storage."},
+        {"name":"ra8_ui_pager_prev","calling_context":"task-only-non-reentrant","ownership":"Mutates pager state and writes change status to caller storage."},
+        {"name":"ra8_ui_pager_goto","calling_context":"task-only-non-reentrant","ownership":"Mutates pager state and writes change status to caller storage."}
+      ]
+    },
+    {
+      "name": "ra8_wdt_supervisor",
+      "build_root": "libs/ra8_wdt_supervisor",
+      "public_header": "libs/ra8_wdt_supervisor/inc/ra8_wdt_supervisor.h",
+      "adapter": "libs/ra8_wdt_supervisor/src/ra8_wdt_supervisor_abi.zig",
+      "library_name": "ra8_wdt_supervisor",
+      "symbol_prefix": "ra8_wdt_supervisor_",
+      "compatibility_sha256": "cb49d4032306213b6c3ffed003469bbb2c57d5f9bcdd16814c7b63447fbf5df0",
+      "layout_assertions": ["@offsetOf(Cfg, \"stack\") == 0", "@offsetOf(Cfg, \"refresh_period_ms\") == word + 8"],
+      "target_class": "host-ra8",
+      "targets": {"host": [], "ra8": ["-Dtarget=thumb-freestanding-eabihf", "-Dcpu=cortex_m85+fp_armv8-d32-fp64"]},
+      "c_include_dirs": ["libs/ra8_wdt_supervisor/inc", "libs/ra8_core/inc"],
+      "contract_tests": [
+        {"language":"c","path":"tests/hal/src/test_ra8_wdt_supervisor.c","registration":"tests/cmake/unit_tests.cmake"},
+        {"language":"zig","path":"libs/ra8_wdt_supervisor/tests/abi_test.zig","registration":"libs/ra8_wdt_supervisor/.zig-test-contract.json"}
+      ],
+      "exports": [
+        {"name":"ra8_wdt_supervisor_init","calling_context":"boot-only","ownership":"Copies configuration and retains only the documented callback context."},
+        {"name":"ra8_wdt_supervisor_deinit","calling_context":"task-only-non-reentrant","ownership":"Releases supervisor state and retains no caller resource."},
+        {"name":"ra8_wdt_supervisor_register_thread","calling_context":"task-only-non-reentrant","ownership":"Borrows the name and writes an assigned handle to caller storage."},
+        {"name":"ra8_wdt_supervisor_checkin","calling_context":"task-only-non-reentrant","ownership":"Updates supervisor state for the supplied handle."},
+        {"name":"ra8_wdt_supervisor_start","calling_context":"task-only-non-reentrant","ownership":"Starts supervisor tracking without retaining caller resources."},
+        {"name":"ra8_wdt_supervisor_tick","calling_context":"task-only-non-reentrant","ownership":"Updates watchdog state and writes refresh status to caller storage."},
+        {"name":"ra8_wdt_supervisor_set_now_hook","calling_context":"task-only-non-reentrant","ownership":"Retains the supplied callback until replaced or deinitialized."},
+        {"name":"ra8_wdt_supervisor_set_refresh_hook","calling_context":"task-only-non-reentrant","ownership":"Retains the supplied callback until replaced or deinitialized."},
+        {"name":"ra8_wdt_supervisor_thread_count","calling_context":"task-safe-reentrant","ownership":"Returns supervisor state and retains no caller resource."}
+      ]
     }
   ]
 }

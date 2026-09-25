@@ -223,8 +223,8 @@ fn nowMs() u32 {
 fn threadEntry(arg: c_ulong) callconv(.c) void {
     _ = arg;
     while (true) {
-        var refreshed: bool = false;
-        _ = ra8_wdt_supervisor_tick(&refreshed);
+        var abi_refreshed: u8 = 0;
+        _ = ra8_wdt_supervisor_tick(&abi_refreshed);
         _ = tx.threadSleep(state.cfg.refresh_period_ms);
     }
 }
@@ -326,14 +326,14 @@ pub export fn ra8_wdt_supervisor_start() callconv(.c) u16 {
     return Err.ok;
 }
 
-pub export fn ra8_wdt_supervisor_tick(out_did_refresh: ?*bool) callconv(.c) u16 {
+pub export fn ra8_wdt_supervisor_tick(out_did_refresh: ?*u8) callconv(.c) u16 {
     if (!state.initialized) {
-        if (out_did_refresh) |out| out.* = false;
+        if (out_did_refresh) |out| out.* = 0;
         return Err.not_initialized;
     }
 
     if (tx.mutexGet(&state.mutex) != tx.success) {
-        if (out_did_refresh) |out| out.* = false;
+        if (out_did_refresh) |out| out.* = 0;
         return Err.rtos_error;
     }
 
@@ -345,7 +345,7 @@ pub export fn ra8_wdt_supervisor_tick(out_did_refresh: ?*bool) callconv(.c) u16 
     if (will_refresh) {
         if (state.refresh) |hook| hook();
     }
-    if (out_did_refresh) |out| out.* = will_refresh;
+    if (out_did_refresh) |out| out.* = @intFromBool(will_refresh);
     return Err.ok;
 }
 
