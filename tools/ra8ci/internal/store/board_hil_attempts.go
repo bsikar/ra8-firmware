@@ -219,17 +219,10 @@ func (s *Store) ClaimNextBoardHILAttempt(ctx context.Context, actor BoardActor, 
 			existingCommit != trustedCommit {
 			return nil, fmt.Errorf("%w: active HIL attempt differs from the current reviewed catalog or trusted commit", ErrConflict)
 		}
-		var persisted struct {
-			Args   []string          `json:"argv"`
-			Values map[string]string `json:"values"`
-			HIL    *catalog.HILTask  `json:"hil"`
-		}
-		decoder := json.NewDecoder(bytes.NewReader(existingRaw))
-		decoder.DisallowUnknownFields()
-		if decoder.Decode(&persisted) != nil || persisted.HIL == nil ||
-			*persisted.HIL != *definition.HIL ||
-			definition.ValidatePersistedArguments(persisted.Values, persisted.Args) != nil {
-			return nil, fmt.Errorf("%w: running HIL assignment no longer matches its catalog contract", ErrConflict)
+		persisted, argumentsErr := checkedPersistedArguments(existingRaw, definition)
+		if argumentsErr != nil {
+			return nil, fmt.Errorf("%w: running HIL assignment no longer matches its catalog contract: %v",
+				ErrConflict, argumentsErr)
 		}
 		var timing HILTimingEvidence
 		if json.Unmarshal(existingTimingRaw, &timing) != nil || !validateHILTimingEvidence(timing, *definition.HIL, definition.DeadlineSeconds) {
@@ -281,17 +274,9 @@ func (s *Store) ClaimNextBoardHILAttempt(ctx context.Context, actor BoardActor, 
 		definition.DeadlineSeconds != deadlineSeconds {
 		return nil, fmt.Errorf("%w: HIL task differs from the current reviewed catalog", ErrConflict)
 	}
-	var persisted struct {
-		Args   []string          `json:"argv"`
-		Values map[string]string `json:"values"`
-		HIL    *catalog.HILTask  `json:"hil"`
-	}
-	decoder := json.NewDecoder(bytes.NewReader(rawArguments))
-	decoder.DisallowUnknownFields()
-	if decoder.Decode(&persisted) != nil || persisted.HIL == nil ||
-		*persisted.HIL != *definition.HIL ||
-		definition.ValidatePersistedArguments(persisted.Values, persisted.Args) != nil {
-		return nil, fmt.Errorf("%w: persisted HIL contract differs from catalog", ErrConflict)
+	persisted, argumentsErr := checkedPersistedArguments(rawArguments, definition)
+	if argumentsErr != nil {
+		return nil, fmt.Errorf("%w: persisted HIL contract differs from catalog: %v", ErrConflict, argumentsErr)
 	}
 	if err := tx.Commit(ctx); err != nil {
 		return nil, fmt.Errorf("%w: close HIL selection: %v", ErrUnavailable, err)
