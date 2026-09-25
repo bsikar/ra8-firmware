@@ -2049,3 +2049,93 @@ func TestPullRequestIsOneOfTheGithubSubcommands(t *testing.T) {
 		t.Fatalf("usage %q does not name the subcommand", err)
 	}
 }
+
+// The selected run travels with enough of the pull request to judge whether it
+// is representative evidence.
+func TestTheEvidenceRunReportCarriesTheHeadAndTheRun(t *testing.T) {
+	head := pullRequestHeadFor(1592, shadowCompareHead, "ra8ci/dev", "open", false, false)
+	report := evidenceRunFrom(head, github.CommitWorkflowRun{
+		ID: 909, Workflow: "Checks", Attempt: 2, Event: "pull_request",
+		Status: "completed", Conclusion: "failure",
+	})
+	if report.RunID != 909 || report.Attempt != 2 || report.Conclusion != "failure" {
+		t.Fatalf("report = %#v", report)
+	}
+	if report.Number != 1592 || report.HeadSHA != shadowCompareHead || report.BaseRef != "ra8ci/dev" {
+		t.Fatalf("report lost the pull request: %#v", report)
+	}
+	encoded, err := json.Marshal(report)
+	if err != nil {
+		t.Fatalf("encode: %v", err)
+	}
+	// The status is deliberately absent: a selected run has completed, so
+	// reporting it would be a field with one value.
+	if strings.Contains(string(encoded), `"status"`) {
+		t.Fatalf("the report carries a status: %s", encoded)
+	}
+	if !strings.Contains(string(encoded), `"run_id":909`) {
+		t.Fatalf("encoded as %s", encoded)
+	}
+}
+
+// A fork pull request is reported as one here too: the run is only evidence if
+// the pull request it came from is.
+func TestAnEvidenceRunFromAForkSaysSo(t *testing.T) {
+	head := github.PullRequestHead{
+		Number: 12, HeadSHA: shadowCompareHead, BaseRef: "ra8ci/dev", State: "closed",
+		Merged: true, FromFork: true, HeadRepository: "someone/ra8-firmware",
+	}
+	report := evidenceRunFrom(head, github.CommitWorkflowRun{
+		ID: 7, Workflow: "Checks", Attempt: 1, Status: "completed", Conclusion: "success",
+	})
+	if !report.FromFork || !report.Merged || report.HeadRepository != "someone/ra8-firmware" {
+		t.Fatalf("report = %#v", report)
+	}
+}
+
+// A document this command cannot read writes nothing and never reaches GitHub.
+func TestAnEvidenceRunAskIsRefusedBeforeAnyRead(t *testing.T) {
+	cases := map[string]string{
+		"not an object":     `["1592"]`,
+		"unknown field":     `{"number":1592,"workflow":"Checks","run_id":9}`,
+		"trailing document": `{"number":1592,"workflow":"Checks"}{"number":1593,"workflow":"Checks"}`,
+		"no number":         `{"workflow":"Checks"}`,
+		"zero number":       `{"number":0,"workflow":"Checks"}`,
+		"negative number":   `{"number":-1,"workflow":"Checks"}`,
+		"no workflow":       `{"number":1592}`,
+		"blank workflow":    `{"number":1592,"workflow":"   "}`,
+	}
+	for name, document := range cases {
+		t.Run(name, func(t *testing.T) {
+			evidenceGateEnv(t)
+			var out strings.Builder
+			if err := githubEvidenceRun(context.Background(), strings.NewReader(document), &out); err == nil {
+				t.Fatal("the ask was not refused")
+			}
+			if out.String() != "" {
+				t.Fatalf("a refused ask wrote %q", out.String())
+			}
+		})
+	}
+}
+
+func TestEvidenceRunNeedsTheCheckRunConfiguration(t *testing.T) {
+	for _, name := range []string{github.EnvShadowCorrespondenceFile, github.EnvCheckRunMode, github.EnvCheckRunRepository} {
+		t.Setenv(name, "")
+		os.Unsetenv(name)
+	}
+	err := githubEvidenceRun(context.Background(), strings.NewReader(`{"number":1,"workflow":"Checks"}`), io.Discard)
+	if err == nil || !strings.Contains(err.Error(), github.EnvShadowCorrespondenceFile) {
+		t.Fatalf("error %v, want one naming %s", err, github.EnvShadowCorrespondenceFile)
+	}
+}
+
+func TestEvidenceRunIsOneOfTheGithubSubcommands(t *testing.T) {
+	err := githubCommand(context.Background(), []string{"evidence-runs"})
+	if err == nil {
+		t.Fatal("an unknown subcommand was accepted")
+	}
+	if !strings.Contains(err.Error(), "evidence-run") {
+		t.Fatalf("usage does not name the subcommand: %v", err)
+	}
+}
