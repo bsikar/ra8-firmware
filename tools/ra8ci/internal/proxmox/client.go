@@ -38,11 +38,12 @@ var (
 )
 
 var (
-	idPattern    = regexp.MustCompile(`^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$`)
-	namePattern  = regexp.MustCompile(`^ra8-lab-[a-z0-9][a-z0-9-]{0,54}$`)
-	partPattern  = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9_.-]{0,63}$`)
-	tokenPattern = regexp.MustCompile(`^[A-Za-z0-9_.-]+@[A-Za-z0-9_.-]+![A-Za-z0-9_.-]+=[A-Za-z0-9_-]+$`)
-	upidPattern  = regexp.MustCompile(`^UPID:[A-Za-z0-9_.-]+:[A-Za-z0-9:@!_.-]+$`)
+	idPattern     = regexp.MustCompile(`^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$`)
+	namePattern   = regexp.MustCompile(`^ra8-lab-[a-z0-9][a-z0-9-]{0,54}$`)
+	partPattern   = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9_.-]{0,63}$`)
+	tokenPattern  = regexp.MustCompile(`^[A-Za-z0-9_.-]+@[A-Za-z0-9_.-]+![A-Za-z0-9_.-]+=[A-Za-z0-9_-]+$`)
+	bridgePattern = regexp.MustCompile(`^vmbr[0-9]{1,4}$`)
+	upidPattern   = regexp.MustCompile(`^UPID:[A-Za-z0-9_.-]+:[A-Za-z0-9:@!_.-]+$`)
 )
 
 // Config is operator-controlled, never derived from a job payload or checkout.
@@ -57,6 +58,7 @@ type Config struct {
 	Storage          string
 	AllowedVMIDs     []int
 	TemplateVMIDs    []int
+	Bridges          []string
 	RequestTimeout   time.Duration
 	OperationTimeout time.Duration
 	TaskPollInterval time.Duration
@@ -72,6 +74,7 @@ type Client struct {
 	storage          string
 	allowedVMIDs     map[int]struct{}
 	templateVMIDs    map[int]struct{}
+	bridges          map[string]struct{}
 	requestTimeout   time.Duration
 	operationTimeout time.Duration
 	pollInterval     time.Duration
@@ -96,6 +99,10 @@ func New(cfg Config) (*Client, error) {
 	templates, err := checkedIDs(cfg.TemplateVMIDs)
 	if err != nil || len(templates) == 0 {
 		return nil, fmt.Errorf("%w: explicit reviewed template IDs >= 9000 required", ErrInvalid)
+	}
+	bridges, err := checkedBridges(cfg.Bridges)
+	if err != nil {
+		return nil, err
 	}
 	if (cfg.TokenFile == "") == (cfg.TokenEnv == "") {
 		return nil, fmt.Errorf("%w: exactly one API token source is required", ErrInvalid)
@@ -138,7 +145,7 @@ func New(cfg Config) (*Client, error) {
 	return &Client{
 		endpoint: *u, httpClient: &http.Client{Transport: transport, CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }},
 		token: token, node: cfg.Node, pool: cfg.Pool, storage: cfg.Storage,
-		allowedVMIDs: allowed, templateVMIDs: templates,
+		allowedVMIDs: allowed, templateVMIDs: templates, bridges: bridges,
 		requestTimeout: requestTimeout, operationTimeout: operationTimeout, pollInterval: pollInterval,
 	}, nil
 }
@@ -155,6 +162,27 @@ func checkedIDs(ids []int) (map[int]struct{}, error) {
 		result[id] = struct{}{}
 	}
 	return result, nil
+}
+
+// checkedBridges accepts only explicitly reviewed guest bridges. vmbr0 is
+// refused by name: it is the Proxmox management bridge by convention, and a
+// disposable guest that reaches the control plane's own network defeats every
+// other boundary in this package.
+func checkedBridges(names []string) (map[string]struct{}, error) {
+	if len(names) == 0 {
+		return nil, fmt.Errorf("%w: explicit reviewed guest bridges required", ErrInvalid)
+	}
+	checked := make(map[string]struct{}, len(names))
+	for _, name := range names {
+		if !bridgePattern.MatchString(name) || name == "vmbr0" {
+			return nil, fmt.Errorf("%w: guest bridge %q is outside the reviewed disposable network", ErrInvalid, name)
+		}
+		if _, duplicate := checked[name]; duplicate {
+			return nil, fmt.Errorf("%w: duplicate guest bridge %q", ErrInvalid, name)
+		}
+		checked[name] = struct{}{}
+	}
+	return checked, nil
 }
 
 func isPersonalNetworkHost(host string) bool {
