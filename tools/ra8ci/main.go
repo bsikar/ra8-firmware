@@ -686,6 +686,20 @@ func githubShadowCompare(in io.Reader, out io.Writer) error {
 			return fmt.Errorf("render shadow comparison: %w", err)
 		}
 	}
+	// A task this plane did not run that Actions did conclude is named on
+	// its own line, never folded into the one above. "Not exercised" reads
+	// as nothing to see here, and the other side having failed the job is
+	// the news; it is also the one fact on this page a reader cannot
+	// recover from the rest of it. It is reported and never graded, so it
+	// moves neither the report nor the exit status: grading a verdict
+	// against nothing observed would manufacture agreement or conflict out
+	// of an absence, which is Collect's own reason for keeping it apart.
+	if len(collection.NotRunJudged) > 0 {
+		if _, err := fmt.Fprintf(out, "judged by Actions without a run on this side: %s\n",
+			strings.Join(judgedWithoutARun(collection.NotRunJudged), ", ")); err != nil {
+			return fmt.Errorf("render shadow comparison: %w", err)
+		}
+	}
 	// The verdict is the exit status, and the page is written first. A
 	// caller that reads only the status must not be able to get a clean
 	// one from a report nobody could read.
@@ -694,6 +708,19 @@ func githubShadowCompare(in io.Reader, out io.Writer) error {
 			report.Conflicting, report.Indeterminate)
 	}
 	return nil
+}
+
+// judgedWithoutARun names each task Actions concluded that this plane did not
+// run, as "task (job: conclusion)". The job is named because the correspondence
+// is the caller's own statement and a surprise here is as often a wrong pairing
+// as a real outcome. The conclusion travels verbatim because a skipped job and
+// a failed one are different news, and only the reader can say which matters.
+func judgedWithoutARun(judged []github.NotRunOutcome) []string {
+	named := make([]string, 0, len(judged))
+	for _, outcome := range judged {
+		named = append(named, fmt.Sprintf("%s (%s: %s)", outcome.Task, outcome.Job, outcome.Conclusion))
+	}
+	return named
 }
 
 // maxCheckRunPublishBytes bounds the outcome document this reads. One commit's

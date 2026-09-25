@@ -3589,3 +3589,126 @@ func TestTheEvidencePageRefusesWhatTheDocumentRefuses(t *testing.T) {
 		})
 	}
 }
+
+// A covered task this commit did not exercise that Actions did conclude is
+// named on its own line. "Not exercised" reads as nothing to see here, and the
+// other side having failed the job is the news.
+func TestShadowCompareNamesATaskActionsJudgedWithoutARun(t *testing.T) {
+	task, other := twoCatalogTasks(t)
+	t.Setenv(github.EnvCheckRunMode, "shadow")
+	t.Setenv(github.EnvShadowCorrespondenceFile,
+		writeCorrespondence(t, `{"`+task+`":"build","`+other+`":"test"}`))
+
+	input := `{"plane":[{"task":"` + task + `","head_sha":"` + shadowCompareHead + `","observed":"success"}],` +
+		`"actions":[{"job":"build","head_sha":"` + shadowCompareHead + `","conclusion":"success"},` +
+		`{"job":"test","head_sha":"` + shadowCompareHead + `","conclusion":"failure"}]}`
+	var out bytes.Buffer
+	if err := githubShadowCompare(strings.NewReader(input), &out); err != nil {
+		t.Fatalf("comparison refused: %v", err)
+	}
+	page := out.String()
+	if !strings.Contains(page, "judged by Actions without a run on this side: "+other+" (test: failure)") {
+		t.Fatalf("judged task not named: %q", page)
+	}
+	// Both facts are true and both are said: it was not exercised here,
+	// and the other side judged it anyway.
+	if !strings.Contains(page, "not exercised on this commit: "+other) {
+		t.Fatalf("judged task dropped from the unexercised line: %q", page)
+	}
+}
+
+// The judgement is reported, never graded. A verdict compared against nothing
+// observed would manufacture agreement or conflict out of an absence, so a
+// failing job for a task this side did not run leaves the comparison clean and
+// the task out of the pairings.
+func TestATaskJudgedWithoutARunIsNeverAPairing(t *testing.T) {
+	task, other := twoCatalogTasks(t)
+	t.Setenv(github.EnvCheckRunMode, "shadow")
+	t.Setenv(github.EnvShadowCorrespondenceFile,
+		writeCorrespondence(t, `{"`+task+`":"build","`+other+`":"test"}`))
+
+	input := `{"plane":[{"task":"` + task + `","head_sha":"` + shadowCompareHead + `","observed":"success"}],` +
+		`"actions":[{"job":"build","head_sha":"` + shadowCompareHead + `","conclusion":"success"},` +
+		`{"job":"test","head_sha":"` + shadowCompareHead + `","conclusion":"failure"}]}`
+	var out bytes.Buffer
+	if err := githubShadowCompare(strings.NewReader(input), &out); err != nil {
+		t.Fatalf("a judgement without a run moved the verdict: %v", err)
+	}
+	if count := strings.Count(out.String(), other); count != 2 {
+		t.Fatalf("judged task named %d times, want the unexercised line and the judged line: %q",
+			count, out.String())
+	}
+}
+
+// An unexercised task the Actions side stated no outcome for is not named as
+// judged. An unfinished job and a job whose outcome was lost are not news.
+func TestAnUnexercisedTaskActionsSaidNothingAboutIsNotNamedAsJudged(t *testing.T) {
+	task, other := twoCatalogTasks(t)
+	t.Setenv(github.EnvCheckRunMode, "shadow")
+	t.Setenv(github.EnvShadowCorrespondenceFile,
+		writeCorrespondence(t, `{"`+task+`":"build","`+other+`":"test"}`))
+
+	cases := map[string]string{
+		"no job reported": ``,
+		"job unfinished":  `,{"job":"test","head_sha":"` + shadowCompareHead + `","conclusion":""}`,
+		"outcome lost":    `,{"job":"test","head_sha":"` + shadowCompareHead + `","conclusion":"stale"}`,
+	}
+	for name, extra := range cases {
+		t.Run(name, func(t *testing.T) {
+			input := `{"plane":[{"task":"` + task + `","head_sha":"` + shadowCompareHead + `","observed":"success"}],` +
+				`"actions":[{"job":"build","head_sha":"` + shadowCompareHead + `","conclusion":"success"}` + extra + `]}`
+			var out bytes.Buffer
+			if err := githubShadowCompare(strings.NewReader(input), &out); err != nil {
+				t.Fatalf("comparison refused: %v", err)
+			}
+			page := out.String()
+			if strings.Contains(page, "judged by Actions") {
+				t.Fatalf("a task nothing was stated about was named as judged: %q", page)
+			}
+			if !strings.Contains(page, "not exercised on this commit: "+other) {
+				t.Fatalf("unexercised task not named: %q", page)
+			}
+		})
+	}
+}
+
+// The Actions conclusion is given as Actions stated it. A skipped job and a
+// failed one are different news, and collapsing them into "judged" would leave
+// the one worth acting on indistinguishable from the one that is routine.
+func TestThePageGivesTheConclusionForAnUnrunTaskVerbatim(t *testing.T) {
+	task, other := twoCatalogTasks(t)
+	t.Setenv(github.EnvCheckRunMode, "shadow")
+	t.Setenv(github.EnvShadowCorrespondenceFile,
+		writeCorrespondence(t, `{"`+task+`":"build","`+other+`":"test"}`))
+
+	for _, conclusion := range []string{"success", "failure", "cancelled", "skipped", "timed_out", "neutral", "action_required"} {
+		t.Run(conclusion, func(t *testing.T) {
+			input := `{"plane":[{"task":"` + task + `","head_sha":"` + shadowCompareHead + `","observed":"success"}],` +
+				`"actions":[{"job":"build","head_sha":"` + shadowCompareHead + `","conclusion":"success"},` +
+				`{"job":"test","head_sha":"` + shadowCompareHead + `","conclusion":"` + conclusion + `"}]}`
+			var out bytes.Buffer
+			if err := githubShadowCompare(strings.NewReader(input), &out); err != nil {
+				t.Fatalf("comparison refused: %v", err)
+			}
+			want := "judged by Actions without a run on this side: " + other + " (test: " + conclusion + ")"
+			if !strings.Contains(out.String(), want) {
+				t.Fatalf("conclusion %q not given verbatim: %q", conclusion, out.String())
+			}
+		})
+	}
+}
+
+// An ordinary commit says nothing about judgements without a run. A line that
+// appears on every clean page teaches a reader to skip it.
+func TestAnOrdinaryComparisonNamesNoJudgementWithoutARun(t *testing.T) {
+	task := shadowCompareEnv(t, "build")
+	input := `{"plane":[{"task":"` + task + `","head_sha":"` + shadowCompareHead + `","observed":"success"}],` +
+		`"actions":[{"job":"build","head_sha":"` + shadowCompareHead + `","conclusion":"success"}]}`
+	var out bytes.Buffer
+	if err := githubShadowCompare(strings.NewReader(input), &out); err != nil {
+		t.Fatalf("comparison refused: %v", err)
+	}
+	if strings.Contains(out.String(), "judged by Actions") {
+		t.Fatalf("clean page carries the judged line: %q", out.String())
+	}
+}
