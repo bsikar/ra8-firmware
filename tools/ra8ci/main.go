@@ -897,6 +897,16 @@ func planCheckRuns(mode github.CheckRunMode, correspondence *github.ShadowCorres
 			// run already carries rather than inventing any.
 			summary = fmt.Sprintf("ra8ci observed %s for task %s on %s.", run.Observed, outcome.Task, run.HeadSHA)
 		}
+		// The publisher holds every output body to GitHub's ceilings,
+		// but it does that as it posts: a document whose third summary
+		// is too long is refused with the first two already on the
+		// commit, and a check run cannot be taken back. The same rule
+		// read here refuses the document while nothing has been
+		// posted. It is the publisher's own function rather than a
+		// restatement of the ceilings, so the two cannot drift.
+		if err := github.CheckPublishableOutput(run.Title, summary); err != nil {
+			return nil, fmt.Errorf("task %q: %w", outcome.Task, err)
+		}
 		planned = append(planned, plannedCheckRun{Task: outcome.Task, Run: run, Summary: summary})
 	}
 	return planned, nil

@@ -201,6 +201,19 @@ func (p *CheckRunPublisher) Publish(ctx context.Context, run TaskCheckRun, summa
 	return created.ID, nil
 }
 
+// CheckPublishableOutput reports whether an output body is one GitHub will
+// accept, so a caller assembling a document of runs can refuse the whole
+// document before any single run of it is posted.
+//
+// The publisher applies this rule to every run it posts, and that is the last
+// place it can be applied: by then the runs before it in the document are
+// already on the commit, and a check run cannot be taken back. Exporting it
+// keeps the rule in one definition rather than restating GitHub's ceilings
+// wherever a document is built.
+func CheckPublishableOutput(title, summary string) error {
+	return checkPublishableOutput(title, summary)
+}
+
 // checkPublishableOutput holds the output body to what GitHub will accept,
 // before anything is built and before a token is minted.
 //
