@@ -66,7 +66,7 @@ func TestDrainEvidenceStillRefusesAStartedEvent(t *testing.T) {
 func TestACompletionInTheStartedBucketNeverRegistersTheRunner(t *testing.T) {
 	h, ledger, _, _, job := testHarness(t)
 	ctx := context.Background()
-	if err := h.Process(ctx, github.Message{ScaleSetID: 42, Assigned: []github.Job{job}}); err != nil {
+	if err := h.Process(ctx, github.Message{ScaleSetID: 42, Assigned: []github.Job{assignedJob(job)}}); err != nil {
 		t.Fatal(err)
 	}
 	misfiled := completedJob(job)
@@ -85,7 +85,7 @@ func TestACompletionInTheStartedBucketNeverRegistersTheRunner(t *testing.T) {
 func TestAStartedEventStillRegistersTheRunner(t *testing.T) {
 	h, ledger, _, _, job := testHarness(t)
 	ctx := context.Background()
-	if err := h.Process(ctx, github.Message{ScaleSetID: 42, Assigned: []github.Job{job}}); err != nil {
+	if err := h.Process(ctx, github.Message{ScaleSetID: 42, Assigned: []github.Job{assignedJob(job)}}); err != nil {
 		t.Fatal(err)
 	}
 	if err := h.Process(ctx, github.Message{ScaleSetID: 42, Started: []github.Job{job}}); err != nil {
