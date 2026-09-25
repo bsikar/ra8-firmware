@@ -3061,3 +3061,149 @@ func TestSettledShadowEvidenceWritesEmptyUnjudgedAndShortfallLists(t *testing.T)
 		t.Fatalf("indeterminate_commits %v, want none", ungraded)
 	}
 }
+
+// The page and the document are the same answer written two ways. An operator
+// reading a page that says a task is ready while the gate reads a document
+// saying it is not has been given two facts and no way to tell which the
+// decision was made on.
+func TestTheEvidencePageAndTheEvidenceDocumentAgree(t *testing.T) {
+	task := shadowCompareEnv(t, "build")
+	document := shadowEvidenceInputDocument(2,
+		shadowEvidenceCommit(task, evidenceHeadOne, "success", "success"),
+		shadowEvidenceCommit(task, evidenceHeadTwo, "success", "success"))
+
+	var asDocument, asPage bytes.Buffer
+	if err := githubShadowEvidence(strings.NewReader(document), &asDocument); err != nil {
+		t.Fatalf("settled evidence returned %v", err)
+	}
+	if err := githubEvidencePage(strings.NewReader(document), &asPage); err != nil {
+		t.Fatalf("settled evidence page returned %v", err)
+	}
+	report := decodeShadowEvidence(t, asDocument.String())
+	if report["settled"] != true {
+		t.Fatalf("settled %v, want true", report["settled"])
+	}
+	page := asPage.String()
+	if !strings.Contains(page, "every compared task is ready") {
+		t.Fatalf("the page does not agree with the document:\n%s", page)
+	}
+	if !strings.Contains(page, "threshold 2") || !strings.Contains(page, task) {
+		t.Fatalf("the page does not name what it answered for:\n%s", page)
+	}
+}
+
+// The page is written before the verdict is returned, the same rule the
+// document writer follows: a caller reading only the exit status must not be
+// able to get a settled one from an answer nobody could read.
+func TestTheEvidencePageIsWrittenBeforeReportingItIsUnsettled(t *testing.T) {
+	task := shadowCompareEnv(t, "build")
+	var out bytes.Buffer
+	err := githubEvidencePage(strings.NewReader(shadowEvidenceInputDocument(1,
+		shadowEvidenceCommit(task, evidenceHeadOne, "failure", "success"))), &out)
+	if err == nil {
+		t.Fatal("a conflict returned no error")
+	}
+	page := out.String()
+	if !strings.Contains(page, "holds the required checks: 1 disagreed with Actions") {
+		t.Fatalf("the page does not state the hold:\n%s", page)
+	}
+	if !strings.Contains(page, "disagreed on: "+evidenceHeadOne) {
+		t.Fatalf("the page does not name the commit to go back to:\n%s", page)
+	}
+}
+
+// A task short of the threshold is chased through the pull requests it was
+// never judged on, so the page has to name them and say how far short it is.
+func TestTheEvidencePageNamesTheShortfallAndItsCommits(t *testing.T) {
+	task := shadowCompareEnv(t, "build")
+	var out bytes.Buffer
+	err := githubEvidencePage(strings.NewReader(shadowEvidenceInputDocument(3,
+		shadowEvidenceCommit(task, evidenceHeadOne, "success", "success"),
+		shadowEvidenceCommit(task, evidenceHeadTwo, "success", ""))), &out)
+	if err == nil {
+		t.Fatal("an unsettled page returned no error")
+	}
+	page := out.String()
+	if !strings.Contains(page, "graded on 1, 2 more needed") {
+		t.Fatalf("the shortfall is not on the page:\n%s", page)
+	}
+	if !strings.Contains(page, "never judged on: "+evidenceHeadTwo) {
+		t.Fatalf("the unjudged commit is not named:\n%s", page)
+	}
+}
+
+// A task the commit did not exercise is not a pairing and must not read as
+// one, the githubShadowCompare convention: it is named after the page.
+func TestTheEvidencePageNamesWhatACommitDidNotExercise(t *testing.T) {
+	exercised, skipped := twoCatalogTasks(t)
+	t.Setenv(github.EnvCheckRunMode, "shadow")
+	t.Setenv(github.EnvShadowCorrespondenceFile, writeCorrespondence(t,
+		`{"`+exercised+`":"build","`+skipped+`":"lint"}`))
+
+	var out bytes.Buffer
+	// The evidence settles: a task no commit exercised is not evidence for
+	// that task and is not accumulated as any, so it does not hold the
+	// answer. It is still named, because a task that reads as
+	// under-observed has to be explainable without going back to the
+	// inputs.
+	if err := githubEvidencePage(strings.NewReader(shadowEvidenceInputDocument(1,
+		shadowEvidenceCommit(exercised, evidenceHeadOne, "success", "success"))), &out); err != nil {
+		t.Fatalf("settled evidence page returned %v", err)
+	}
+	page := out.String()
+	if !strings.Contains(page, "not exercised on "+evidenceHeadOne+": "+skipped) {
+		t.Fatalf("the unexercised task is not named:\n%s", page)
+	}
+	// It is named AFTER the page, never as a pairing inside it.
+	if strings.Index(page, "not exercised on") < strings.Index(page, "ready (may move)") {
+		t.Fatalf("the unexercised task is folded into the pairings:\n%s", page)
+	}
+}
+
+// The document says which configuration produced the answer; the page is read
+// while deciding whether a task may gate, and a digest is not part of that
+// decision.
+func TestTheEvidencePageLeavesTheDigestToTheDocument(t *testing.T) {
+	task := shadowCompareEnv(t, "build")
+	document := shadowEvidenceInputDocument(1,
+		shadowEvidenceCommit(task, evidenceHeadOne, "success", "success"))
+	var asDocument, asPage bytes.Buffer
+	if err := githubShadowEvidence(strings.NewReader(document), &asDocument); err != nil {
+		t.Fatalf("settled evidence returned %v", err)
+	}
+	if err := githubEvidencePage(strings.NewReader(document), &asPage); err != nil {
+		t.Fatalf("settled evidence page returned %v", err)
+	}
+	digest, _ := decodeShadowEvidence(t, asDocument.String())["catalog_digest"].(string)
+	if digest == "" {
+		t.Fatal("the document carries no catalog digest")
+	}
+	if strings.Contains(asPage.String(), digest) {
+		t.Fatalf("the digest is on the page:\n%s", asPage.String())
+	}
+}
+
+// A document the reader refuses is refused the same way by both writers, and
+// neither writes anything first.
+func TestTheEvidencePageRefusesWhatTheDocumentRefuses(t *testing.T) {
+	shadowCompareEnv(t, "build")
+	for _, testCase := range []struct {
+		name  string
+		input string
+	}{
+		{"no threshold", `{"commits":[]}`},
+		{"no commits", `{"threshold":1,"commits":[]}`},
+		{"trailing content", `{"threshold":1,"commits":[]} {}`},
+		{"unknown field", `{"threshold":1,"commits":[],"required":["build"]}`},
+	} {
+		t.Run(testCase.name, func(t *testing.T) {
+			var out bytes.Buffer
+			if err := githubEvidencePage(strings.NewReader(testCase.input), &out); err == nil {
+				t.Fatal("an unreadable document was accepted")
+			}
+			if out.Len() != 0 {
+				t.Fatalf("a refused document wrote a page anyway:\n%s", out.String())
+			}
+		})
+	}
+}

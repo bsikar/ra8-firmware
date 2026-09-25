@@ -513,7 +513,7 @@ func runAgent(ctx context.Context) error {
 // documentation.
 func githubCommand(ctx context.Context, args []string) error {
 	if len(args) != 1 {
-		return errors.New("usage: ra8ci github check|shadow|shadow-compare|shadow-evidence|publish-check-run|required-checks|evidence-gate|gate|actions-run|reconcile|pull-request|evidence-run|pull-request-evidence|pull-request-survey")
+		return errors.New("usage: ra8ci github check|shadow|shadow-compare|shadow-evidence|publish-check-run|required-checks|evidence-gate|gate|actions-run|reconcile|pull-request|evidence-run|pull-request-evidence|pull-request-survey|evidence-page")
 	}
 	switch args[0] {
 	case "check":
@@ -526,6 +526,8 @@ func githubCommand(ctx context.Context, args []string) error {
 		return githubPublishCheckRuns(ctx, os.Stdin, os.Stdout)
 	case "shadow-evidence":
 		return githubShadowEvidence(os.Stdin, os.Stdout)
+	case "evidence-page":
+		return githubEvidencePage(os.Stdin, os.Stdout)
 	case "required-checks":
 		return githubRequiredChecks(os.Stdin, os.Stdout)
 	case "evidence-gate":
@@ -545,7 +547,7 @@ func githubCommand(ctx context.Context, args []string) error {
 	case "pull-request-survey":
 		return githubPullRequestSurvey(ctx, os.Stdin, os.Stdout)
 	default:
-		return errors.New("usage: ra8ci github check|shadow|shadow-compare|shadow-evidence|publish-check-run|required-checks|evidence-gate|gate|actions-run|reconcile|pull-request|evidence-run|pull-request-evidence|pull-request-survey")
+		return errors.New("usage: ra8ci github check|shadow|shadow-compare|shadow-evidence|publish-check-run|required-checks|evidence-gate|gate|actions-run|reconcile|pull-request|evidence-run|pull-request-evidence|pull-request-survey|evidence-page")
 	}
 }
 
@@ -1451,6 +1453,98 @@ func gradeShadowCommits(config github.CheckRunEnvConfig, commits []shadowCompari
 	return reports, notExercised, nil
 }
 
+// shadowEvidenceAnswer is one evidence document read, graded and accumulated:
+// everything a caller needs before it decides how to write the answer out.
+//
+// It exists because there are now two ways to write the same answer. The
+// machine document is what a pipe reads and the rendered page is what the
+// person deciding whether a required check may move reads, and they must be
+// the same answer: an operator who reads a page saying a task is ready while
+// the gate reads a document saying it is not has been given two facts and no
+// way to tell which one the decision was made on.
+type shadowEvidenceAnswer struct {
+	Config        github.CheckRunEnvConfig
+	CatalogDigest string
+	Evidence      github.ShadowEvidence
+	Readiness     github.ShadowReadiness
+	// NotExercised is the per-commit record of the tasks a commit did not
+	// exercise, kept beside the accumulation so a task that reads as
+	// under-observed can be explained without going back to the inputs.
+	NotExercised []map[string]any
+}
+
+// unsettled is the verdict both writers return after they have written. It is
+// a method so the two cannot drift into reporting the same evidence
+// differently.
+func (a shadowEvidenceAnswer) unsettled() error {
+	if a.Readiness.Settled() {
+		return nil
+	}
+	return fmt.Errorf("shadow evidence is not settled at threshold %d: %d conflicting, %d insufficient",
+		a.Readiness.Threshold, len(a.Readiness.Conflicting), len(a.Readiness.Insufficient))
+}
+
+// readShadowEvidence reads an evidence document, grades every commit in it
+// through the one declared correspondence, and accumulates the result.
+func readShadowEvidence(in io.Reader) (shadowEvidenceAnswer, error) {
+	loaded, err := catalog.Load()
+	if err != nil {
+		return shadowEvidenceAnswer{}, fmt.Errorf("load task catalog: %w", err)
+	}
+	config, enabled, err := github.LoadCheckRunConfigFromEnv(loaded.Names())
+	if err != nil {
+		return shadowEvidenceAnswer{}, err
+	}
+	if !enabled {
+		return shadowEvidenceAnswer{}, fmt.Errorf("GitHub check-run publishing is not configured: set %s",
+			github.EnvShadowCorrespondenceFile)
+	}
+
+	var document shadowEvidenceInput
+	decoder := json.NewDecoder(io.LimitReader(in, maxShadowEvidenceBytes+1))
+	decoder.DisallowUnknownFields()
+	if err := decoder.Decode(&document); err != nil {
+		return shadowEvidenceAnswer{}, fmt.Errorf("read shadow evidence: %w", err)
+	}
+	if decoder.More() {
+		return shadowEvidenceAnswer{}, errors.New("read shadow evidence: trailing content after the document")
+	}
+	if decoder.InputOffset() > maxShadowEvidenceBytes {
+		return shadowEvidenceAnswer{}, fmt.Errorf("read shadow evidence: larger than %d bytes", maxShadowEvidenceBytes)
+	}
+	// The threshold is stated, never defaulted. How many pull requests
+	// are "representative" is the operator's judgement, and a default
+	// here would answer a question nobody asked while looking like an
+	// answer to the one they did.
+	if document.Threshold < 1 {
+		return shadowEvidenceAnswer{}, errors.New("read shadow evidence: no threshold stated")
+	}
+	if len(document.Commits) == 0 {
+		return shadowEvidenceAnswer{}, errors.New("read shadow evidence: no commits to accumulate")
+	}
+
+	reports, notExercised, err := gradeShadowCommits(config, document.Commits)
+	if err != nil {
+		return shadowEvidenceAnswer{}, err
+	}
+	evidence, err := github.AccumulateShadowEvidence(reports)
+	if err != nil {
+		return shadowEvidenceAnswer{}, fmt.Errorf("accumulate shadow evidence: %w", err)
+	}
+	readiness, err := evidence.Readiness(document.Threshold)
+	if err != nil {
+		return shadowEvidenceAnswer{}, fmt.Errorf("read shadow evidence at threshold %d: %w",
+			document.Threshold, err)
+	}
+	return shadowEvidenceAnswer{
+		Config:        config,
+		CatalogDigest: loaded.Digest(),
+		Evidence:      evidence,
+		Readiness:     readiness,
+		NotExercised:  notExercised,
+	}, nil
+}
+
 // githubShadowEvidence grades several pull requests through the declared
 // correspondence and reports which tasks the evidence would let a required
 // check move for.
@@ -1459,58 +1553,13 @@ func gradeShadowCommits(config github.CheckRunEnvConfig, commits []shadowCompari
 // over representative pull requests", which `github shadow-compare` cannot
 // answer because it grades one commit. This is the same grading, accumulated.
 func githubShadowEvidence(in io.Reader, out io.Writer) error {
-	loaded, err := catalog.Load()
-	if err != nil {
-		return fmt.Errorf("load task catalog: %w", err)
-	}
-	config, enabled, err := github.LoadCheckRunConfigFromEnv(loaded.Names())
-	if err != nil {
-		return err
-	}
-	if !enabled {
-		return fmt.Errorf("GitHub check-run publishing is not configured: set %s",
-			github.EnvShadowCorrespondenceFile)
-	}
-
-	var document shadowEvidenceInput
-	decoder := json.NewDecoder(io.LimitReader(in, maxShadowEvidenceBytes+1))
-	decoder.DisallowUnknownFields()
-	if err := decoder.Decode(&document); err != nil {
-		return fmt.Errorf("read shadow evidence: %w", err)
-	}
-	if decoder.More() {
-		return errors.New("read shadow evidence: trailing content after the document")
-	}
-	if decoder.InputOffset() > maxShadowEvidenceBytes {
-		return fmt.Errorf("read shadow evidence: larger than %d bytes", maxShadowEvidenceBytes)
-	}
-	// The threshold is stated, never defaulted. How many pull requests
-	// are "representative" is the operator's judgement, and a default
-	// here would answer a question nobody asked while looking like an
-	// answer to the one they did.
-	if document.Threshold < 1 {
-		return errors.New("read shadow evidence: no threshold stated")
-	}
-	if len(document.Commits) == 0 {
-		return errors.New("read shadow evidence: no commits to accumulate")
-	}
-
-	reports, notExercised, err := gradeShadowCommits(config, document.Commits)
+	answer, err := readShadowEvidence(in)
 	if err != nil {
 		return err
 	}
 
-	evidence, err := github.AccumulateShadowEvidence(reports)
-	if err != nil {
-		return fmt.Errorf("accumulate shadow evidence: %w", err)
-	}
-	readiness, err := evidence.Readiness(document.Threshold)
-	if err != nil {
-		return fmt.Errorf("read shadow evidence at threshold %d: %w", document.Threshold, err)
-	}
-
-	tasks := make([]map[string]any, 0, len(evidence.Tasks))
-	for _, task := range evidence.Tasks {
+	tasks := make([]map[string]any, 0, len(answer.Evidence.Tasks))
+	for _, task := range answer.Evidence.Tasks {
 		tasks = append(tasks, map[string]any{
 			"task":                task.Task,
 			"observed":            task.Observed,
@@ -1531,17 +1580,17 @@ func githubShadowEvidence(in io.Reader, out io.Writer) error {
 	encoder := json.NewEncoder(out)
 	encoder.SetIndent("", "  ")
 	if err := encoder.Encode(map[string]any{
-		"mode":             config.Mode.String(),
-		"may_block_merges": config.Mode == github.ModeAuthoritative,
-		"catalog_digest":   loaded.Digest(),
-		"threshold":        readiness.Threshold,
-		"settled":          readiness.Settled(),
-		"commits":          notExercised,
+		"mode":             answer.Config.Mode.String(),
+		"may_block_merges": answer.Config.Mode == github.ModeAuthoritative,
+		"catalog_digest":   answer.CatalogDigest,
+		"threshold":        answer.Readiness.Threshold,
+		"settled":          answer.Readiness.Settled(),
+		"commits":          answer.NotExercised,
 		"tasks":            tasks,
-		"ready":            emptyWhenNil(readiness.Ready),
-		"conflicting":      emptyWhenNil(readiness.Conflicting),
-		"insufficient":     emptyWhenNil(readiness.Insufficient),
-		"shortfall":        shortfallDocument(readiness.Shortfall),
+		"ready":            emptyWhenNil(answer.Readiness.Ready),
+		"conflicting":      emptyWhenNil(answer.Readiness.Conflicting),
+		"insufficient":     emptyWhenNil(answer.Readiness.Insufficient),
+		"shortfall":        shortfallDocument(answer.Readiness.Shortfall),
 	}); err != nil {
 		return fmt.Errorf("write shadow evidence: %w", err)
 	}
@@ -1549,11 +1598,47 @@ func githubShadowEvidence(in io.Reader, out io.Writer) error {
 	// shadow-compare convention: a caller reading only the exit status
 	// must not be able to get a settled one from an answer nobody could
 	// read.
-	if !readiness.Settled() {
-		return fmt.Errorf("shadow evidence is not settled at threshold %d: %d conflicting, %d insufficient",
-			readiness.Threshold, len(readiness.Conflicting), len(readiness.Insufficient))
+	return answer.unsettled()
+}
+
+// githubEvidencePage is `shadow-evidence`'s answer written for the person who
+// has to act on it rather than for a pipe.
+//
+// It is a separate subcommand rather than a flag on shadow-evidence, because
+// the two write different things to stdout and a command whose output shape
+// depends on a flag is one a pipeline can be pointed at wrongly without
+// failing. The grading is the same function, so the two cannot disagree.
+//
+// The catalog digest and the mode are deliberately NOT on the page. They say
+// which configuration produced the answer, which is a thing to check a
+// document against, not a thing to read while deciding whether a task may
+// gate; the document carries both for that.
+func githubEvidencePage(in io.Reader, out io.Writer) error {
+	answer, err := readShadowEvidence(in)
+	if err != nil {
+		return err
 	}
-	return nil
+	if err := github.RenderShadowEvidence(out, answer.Evidence, answer.Readiness); err != nil {
+		return fmt.Errorf("render shadow evidence: %w", err)
+	}
+	// The tasks a commit did not exercise are named after the page rather
+	// than folded into it, the githubShadowCompare convention: a task
+	// selection that skipped a task is a normal commit, not a gap in the
+	// evidence, and folding them in would read as pairings nobody made.
+	for _, commit := range answer.NotExercised {
+		names, _ := commit["not_exercised"].([]string)
+		if len(names) == 0 {
+			continue
+		}
+		head, _ := commit["head_sha"].(string)
+		if _, err := fmt.Fprintf(out, "\nnot exercised on %s: %s\n",
+			head, strings.Join(names, ", ")); err != nil {
+			return fmt.Errorf("render shadow evidence: %w", err)
+		}
+	}
+	// The page is written before the verdict is returned, the same rule
+	// the document writer follows and for the same reason.
+	return answer.unsettled()
 }
 
 func githubRequiredChecks(in io.Reader, out io.Writer) error {
