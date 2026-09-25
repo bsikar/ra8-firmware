@@ -1046,6 +1046,41 @@ func checkListingNamesEachRunOnce(published github.PublishedCheckRuns) error {
 	return nil
 }
 
+// checkListedRunsAreStated holds every run in the commit's listing to a state,
+// alongside the identifier and the name checkListingNamesEachRunOnce holds it
+// to.
+//
+// The listing is read verbatim. readPage copies status and conclusion off
+// GitHub's answer with nothing between it and the decision, and
+// ReconcilePublish reads the status by asking whether it is exactly
+// "completed": anything else is a write still in flight. A run listed with no
+// status at all is therefore not an unknown state, it is the in-flight one,
+// and that decision is the one this plane cannot take back by reading again.
+// The publish path stops on it and tells the operator to come back to the
+// commit later; the survey counts it in Waiting, which is what Settled and
+// the exit status are read from. Nothing about the commit will ever change
+// that answer, so the task waits on a run that is not going to conclude,
+// which is the reading ReconcilePublish's own comment says the in-flight
+// decision must never produce.
+//
+// The conclusion is deliberately not read here, and the reason is the mirror
+// of the one above. A run that is queued or in progress has no conclusion
+// yet, and that empty field is the ordinary shape of the state the caller
+// came to look for: PublishedCheckRun says so where it declares it, and the
+// fixtures in this tree build a completed run without one. Refusing a blank
+// conclusion would refuse the commonest listing GitHub answers with, and
+// deciding what a completed run with no conclusion means belongs with
+// sameCheckRun, which already compares the field, and not with a check that
+// only asks whether the listing describes the commit at all.
+func checkListedRunsAreStated(published github.PublishedCheckRuns) error {
+	for _, run := range published.Runs {
+		if strings.TrimSpace(run.Status) == "" {
+			return fmt.Errorf("the commit's listing carries run %d under %q in no state", run.ID, run.Name)
+		}
+	}
+	return nil
+}
+
 // reconcileCheckRunPlan decides the whole plan against one listing of what is
 // already on the commit, before anything is posted.
 //
@@ -1072,6 +1107,9 @@ func reconcileCheckRunPlan(planned []plannedCheckRun, published github.Published
 		return nil, err
 	}
 	if err := checkListingNamesEachRunOnce(published); err != nil {
+		return nil, err
+	}
+	if err := checkListedRunsAreStated(published); err != nil {
 		return nil, err
 	}
 	reconciled := make([]reconciledCheckRun, 0, len(planned))
@@ -1561,6 +1599,9 @@ func surveyCheckRunPlan(planned []plannedCheckRun, published github.PublishedChe
 		return reconcileReport{}, err
 	}
 	if err := checkListingNamesEachRunOnce(published); err != nil {
+		return reconcileReport{}, err
+	}
+	if err := checkListedRunsAreStated(published); err != nil {
 		return reconcileReport{}, err
 	}
 	report := reconcileReport{
