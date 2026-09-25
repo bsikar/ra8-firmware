@@ -147,3 +147,18 @@ func holderHeartbeat(s *Snapshot, c HolderHeartbeat, now time.Time) (bool, error
 	s.Lease.LastHeartbeatAt = now
 	return true, nil
 }
+
+// EventFreeCommand reports whether a command may advance the snapshot version
+// without emitting a board event. HolderHeartbeat is the only one, for the
+// reason holderHeartbeat states: the audited set is take, grant, extend, yield
+// request, checkpoint, release, expiry, recovery, and denied action, and a
+// record every few seconds per board would bury all of them.
+//
+// It exists so the store can tell that case apart from a reducer bug. Every
+// other command that moves the version owes an event, and a version that moves
+// with neither an event nor this predicate is a defect the store must refuse
+// rather than commit.
+func EventFreeCommand(command Command) bool {
+	_, beat := command.(HolderHeartbeat)
+	return beat
+}
