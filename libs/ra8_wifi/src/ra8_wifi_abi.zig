@@ -40,39 +40,19 @@ fn nullPtr(message: [*:0]const u8) u16 {
 }
 
 /// IP provider seam (`ra8_wifi_ip_bind_fn`).
-pub const IpBindFn = *const fn (
-    ip_ctx: ?*anyopaque,
-    mac: ?*const Mac,
-    out: ?*Lease,
-) callconv(.c) u16;
-
-/// The radio-operation vtable (`ra8_wifi_backend_t`). Every row is optional
-/// here because the C struct holds plain function pointers a caller may leave
-/// null, which is exactly what `ra8_wifi_init` rejects.
-pub const Backend = extern struct {
-    open: ?*const fn (ctx: ?*anyopaque) callconv(.c) u16 = null,
-    close: ?*const fn (ctx: ?*anyopaque) callconv(.c) u16 = null,
-    radio_up: ?*const fn (ctx: ?*anyopaque) callconv(.c) u16 = null,
-    radio_down: ?*const fn (ctx: ?*anyopaque) callconv(.c) u16 = null,
-    join: ?*const fn (
-        ctx: ?*anyopaque,
-        ssid: ?[*:0]const u8,
-        psk: ?[*:0]const u8,
-    ) callconv(.c) u16 = null,
-    leave: ?*const fn (ctx: ?*anyopaque) callconv(.c) u16 = null,
-    service: ?*const fn (ctx: ?*anyopaque, out_link: ?*u8) callconv(.c) u16 = null,
-    get_mac: ?*const fn (ctx: ?*anyopaque, out: ?*Mac) callconv(.c) u16 = null,
-    get_ap: ?*const fn (ctx: ?*anyopaque, out: ?*Ap) callconv(.c) u16 = null,
-    idle: ?*const fn (ctx: ?*anyopaque, ms: u16) callconv(.c) void = null,
-};
-
+pub const IpBindFn = implementation.IpBindFn;
+/// The radio-operation vtable (`ra8_wifi_backend_t`), shared with the backends.
+pub const Backend = implementation.Backend;
 /// Selection a caller hands `ra8_wifi_init` (`ra8_wifi_cfg_t`).
-pub const Config = extern struct {
-    backend: ?*const Backend = null,
-    backend_ctx: ?*anyopaque = null,
-    ip_bind: ?IpBindFn = null,
-    ip_ctx: ?*anyopaque = null,
-};
+pub const Config = implementation.Config;
+
+// Keep the public vtable and configuration layout proof at the ABI adapter
+// boundary so the policy gate can validate the types callers actually see.
+comptime {
+    const ptr = @sizeOf(usize);
+    std.debug.assert(@sizeOf(Backend) == ptr * 10);
+    std.debug.assert(@sizeOf(Config) == ptr * 4);
+}
 
 /// Caller-owned handle (`ra8_wifi_t`). `state` stays a raw byte: the initial
 /// zeroed struct is the only guaranteed initial value, so nothing here may
@@ -93,10 +73,6 @@ pub const Wifi = extern struct {
 
 comptime {
     const ptr = @sizeOf(usize);
-    std.debug.assert(@sizeOf(Backend) == ptr * 10);
-    std.debug.assert(@sizeOf(Config) == ptr * 4);
-    std.debug.assert(@offsetOf(Config, "ip_bind") == ptr * 2);
-
     std.debug.assert(@offsetOf(Wifi, "backend") == 0);
     std.debug.assert(@offsetOf(Wifi, "backend_ctx") == ptr);
     std.debug.assert(@offsetOf(Wifi, "ip_bind") == ptr * 2);

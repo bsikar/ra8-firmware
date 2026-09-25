@@ -181,3 +181,91 @@ test "error values are the ra8_err_t codes the facade returns" {
     try std.testing.expectEqual(@as(u16, 0x010F), core.err_not_initialized);
     try std.testing.expectEqual(@as(u16, 0x0504), core.err_null_ptr);
 }
+// --- the ESP32-C6 backend's core ------------------------------------------
+
+test "an arena below the link's floor is refused, the floor itself is not" {
+    try std.testing.expect(core.arenaTooSmall(0));
+    try std.testing.expect(core.arenaTooSmall(core.c6_arena_min - 1));
+    try std.testing.expect(!core.arenaTooSmall(core.c6_arena_min));
+    try std.testing.expect(!core.arenaTooSmall(core.c6_arena_min + 1));
+    try std.testing.expectEqual(@as(u32, 2048), core.c6_arena_min);
+}
+
+test "the facade and link widths agree, which is what the straight copies need" {
+    try std.testing.expectEqual(core.mac_bytes, core.c6_mac_bytes);
+    try std.testing.expectEqual(core.ssid_max, core.c6_ssid_max);
+    try std.testing.expectEqual(@as(usize, 64), core.c6_pass_max);
+    try std.testing.expectEqual(@as(u16, 8), core.c6_announce_transfers);
+}
+
+test "the announcement kinds carry the co-processor's own numbering" {
+    try std.testing.expectEqual(@as(u8, 0), @intFromEnum(core.EventKind.boot));
+    try std.testing.expectEqual(@as(u8, 1), @intFromEnum(core.EventKind.sta_connected));
+    try std.testing.expectEqual(@as(u8, 2), @intFromEnum(core.EventKind.sta_disconnected));
+    try std.testing.expectEqual(@as(u8, 3), @intFromEnum(core.EventKind.wifi));
+}
+
+test "a connected announcement latches, and keeps the reason it was given" {
+    const latched = core.Latches.clear.latch(
+        @intFromEnum(core.EventKind.sta_connected),
+        7,
+    );
+    try std.testing.expect(latched.connected);
+    try std.testing.expect(!latched.disconnected);
+    // A connect carries no reason code, so the field is left where it was.
+    try std.testing.expectEqual(@as(u16, 0), latched.reason);
+}
+
+test "a disconnected announcement latches and records its reason" {
+    const latched = core.Latches.clear.latch(
+        @intFromEnum(core.EventKind.sta_disconnected),
+        0x0F,
+    );
+    try std.testing.expect(!latched.connected);
+    try std.testing.expect(latched.disconnected);
+    try std.testing.expectEqual(@as(u16, 0x0F), latched.reason);
+}
+
+test "a boot or bare Wi-Fi announcement leaves every latch alone" {
+    const held: core.Latches = .{ .connected = true, .disconnected = false, .reason = 3 };
+    for ([_]u8{
+        @intFromEnum(core.EventKind.boot),
+        @intFromEnum(core.EventKind.wifi),
+        9, // a kind this build does not know
+        255,
+    }) |kind| {
+        const after = held.latch(kind, 42);
+        try std.testing.expect(after.connected);
+        try std.testing.expect(!after.disconnected);
+        try std.testing.expectEqual(@as(u16, 3), after.reason);
+    }
+}
+
+test "a disconnect after a connect keeps both latches set" {
+    const after = core.Latches.clear
+        .latch(@intFromEnum(core.EventKind.sta_connected), 0)
+        .latch(@intFromEnum(core.EventKind.sta_disconnected), 5);
+    try std.testing.expect(after.connected);
+    try std.testing.expect(after.disconnected);
+    try std.testing.expectEqual(@as(u16, 5), after.reason);
+}
+
+test "the link reading is down unless connected, and a disconnect wins outright" {
+    try std.testing.expectEqual(core.Link.down, core.linkForLatches(false, false));
+    try std.testing.expectEqual(core.Link.up, core.linkForLatches(true, false));
+    try std.testing.expectEqual(core.Link.down, core.linkForLatches(false, true));
+    try std.testing.expectEqual(core.Link.down, core.linkForLatches(true, true));
+}
+
+test "the shared vtable layout is the C's ten rows, in the C's order" {
+    const ptr = @sizeOf(usize);
+    try std.testing.expectEqual(ptr * 10, @sizeOf(core.Backend));
+    try std.testing.expectEqual(@as(usize, 0), @offsetOf(core.Backend, "open"));
+    try std.testing.expectEqual(ptr * 4, @offsetOf(core.Backend, "join"));
+    try std.testing.expectEqual(ptr * 9, @offsetOf(core.Backend, "idle"));
+    try std.testing.expectEqual(ptr * 4, @sizeOf(core.Config));
+}
+
+test "invalid_size is the arena rejection the header documents" {
+    try std.testing.expectEqual(@as(u16, 0x0105), core.err_invalid_size);
+}

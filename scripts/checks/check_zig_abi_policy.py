@@ -207,7 +207,9 @@ def _data_export_findings(
                     text,
                 )
             else:
-                present = re.search(rf"\bpub\s+export\s+var\s+{re.escape(symbol)}\s*:", text)
+                present = re.search(
+                    rf"\bpub\s+export\s+(?:const|var)\s+{re.escape(symbol)}\s*:", text
+                )
             if present is None:
                 findings.append(
                     f"{name}: data export {field} does not declare {symbol}: {row[field]}"
@@ -1617,14 +1619,18 @@ def _selftest_metadata_policy(base: dict[str, Any], root: Path) -> str | None:
             return f"must-fire fixture was accepted: {expected}"
     data_header = root / "build/data.h"
     data_header.write_text(
-        "extern DemoState demo_state;\nextern uint8_t demo_buffer[32];\n", encoding="utf-8"
+        "extern DemoState demo_state;\n"
+        "extern uint8_t demo_buffer[32];\n"
+        "extern const uint8_t demo_constant;\n",
+        encoding="utf-8",
     )
     adapter = root / "build/adapter.zig"
     adapter.write_text(
         adapter.read_text(encoding="utf-8")
         + "const DemoState = extern struct { value: u32 };\n"
         + "pub export var demo_state: DemoState = .{ .value = 0 };\n"
-        + "pub export var demo_buffer: [32]u8 = @splat(0);\n",
+        + "pub export var demo_buffer: [32]u8 = @splat(0);\n"
+        + "pub export const demo_constant: u8 = 7;\n",
         encoding="utf-8",
     )
     data_row = json.loads(json.dumps(base))
@@ -1642,6 +1648,13 @@ def _selftest_metadata_policy(base: dict[str, Any], root: Path) -> str | None:
             "adapter": "build/adapter.zig",
             "calling_context": "task-only-non-reentrant",
             "ownership": "owns a fixed-size shared demo buffer",
+        },
+        {
+            "name": "demo_constant",
+            "header": "build/data.h",
+            "adapter": "build/adapter.zig",
+            "calling_context": "task-safe-reentrant",
+            "ownership": "immutable value with static lifetime shared by all consumers",
         },
     ]
     if findings := _library_findings(data_row, {"host", "ra8"}, root):

@@ -242,9 +242,9 @@ file(GLOB RA8_BOARD_EK_RA8D2_SOURCES CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra8_board
 file(GLOB_RECURSE RA8_DFU_SOURCES CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra8_dfu/src/*.c)
 # ra8_devcfg has no C sources left: both the record core and the production
 # extra-MRAM store binding are Zig now, linked via tests/cmake/zig_libraries.cmake.
-# ra8_wifi: the PURE facade is Zig now (libs/ra8_wifi/src/ra8_wifi.c is gone),
-# linked via tests/cmake/zig_libraries.cmake, so ra8_core_hal globs nothing for
-# this library. The ESP32-C6 backend (ra8_wifi_c6link.c) is still C: it rides
-# ra8_c6link + the vendored protobuf codec, which ra8_core_hal does not carry,
-# so it is built in tests/cmake/tests_wifi.cmake instead -- the same split
-# ra8_c6link uses.
+# ra8_wifi has no C sources left: the facade AND the ESP32-C6 backend are both
+# Zig now (libs/ra8_wifi/src holds no .c at all), linked via
+# tests/cmake/zig_libraries.cmake, so ra8_core_hal globs nothing for this
+# library. The backend is its own object inside that archive because it is the
+# only part that references ra8_c6link; tests/cmake/tests_wifi.cmake links the
+# radio stack alongside it for the end-to-end suite that names it.
