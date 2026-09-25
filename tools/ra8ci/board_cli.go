@@ -41,6 +41,12 @@ func boardCommand(ctx context.Context, args []string) error {
 	if len(args) > 0 && args[0] == "extend" {
 		return boardExtendCommand(ctx, args[1:])
 	}
+	if len(args) > 0 && args[0] == "heartbeat" {
+		return boardHeartbeatCommand(ctx, args[1:])
+	}
+	if len(args) > 0 && args[0] == "liveness" {
+		return boardLivenessCommand(ctx, args[1:])
+	}
 	if len(args) > 0 && args[0] == "recover" {
 		return boardRecoverCommand(ctx, args[1:])
 	}
@@ -77,7 +83,7 @@ func boardCommand(ctx context.Context, args []string) error {
 		return json.NewEncoder(os.Stdout).Encode(snapshot)
 	}
 	if len(args) < 2 || args[0] != "take" {
-		return errors.New("usage: ra8ci board status <board-id> | board take <board-id> --class human|ci|agent --why <reason> --duration <duration> | board checkpoint <board-id> | board extend <board-id> --why <reason> --duration <duration> | board recover <board-id> --plan <plan-id> --why <reason> | board cancel <board-id> <request-id> <lease-id>")
+		return errors.New("usage: ra8ci board status <board-id> | board take <board-id> --class human|ci|agent --why <reason> --duration <duration> | board checkpoint <board-id> | board extend <board-id> --why <reason> --duration <duration> | board heartbeat <board-id> | board liveness <board-id> | board recover <board-id> --plan <plan-id> --why <reason> | board cancel <board-id> <request-id> <lease-id>")
 	}
 	flags := flag.NewFlagSet("board take", flag.ContinueOnError)
 	flags.SetOutput(io.Discard)
@@ -249,4 +255,55 @@ func boardRecoverCommand(ctx context.Context, args []string) error {
 		return fmt.Errorf("start board recovery: %w", err)
 	}
 	return json.NewEncoder(os.Stdout).Encode(snapshot)
+}
+
+// boardHeartbeatCommand reports the holder on this machine still alive. It
+// takes no flags on purpose: a beat carries no reason, no duration and no
+// claim about the hardware, only that whoever holds the lease is still here.
+func boardHeartbeatCommand(ctx context.Context, args []string) error {
+	if len(args) != 1 || !validBoardIDArgument(args[0]) {
+		return errors.New("usage: ra8ci board heartbeat <board-id>")
+	}
+	directory, err := currentBoardLeaseDirectory()
+	if err != nil {
+		return err
+	}
+	client, err := newBoardClient()
+	if err != nil {
+		return err
+	}
+	defer client.CloseIdleConnections()
+	snapshot, liveness, err := heartbeatBoardLease(ctx, client, directory, args[0])
+	if err != nil {
+		if errors.Is(err, boardclient.ErrStaleLease) {
+			return fmt.Errorf("board %s is no longer held by this lease", args[0])
+		}
+		return fmt.Errorf("board heartbeat: %w", err)
+	}
+	return json.NewEncoder(os.Stdout).Encode(struct {
+		Snapshot board.Snapshot    `json:"snapshot"`
+		Liveness boardLivenessLine `json:"liveness"`
+	}{Snapshot: snapshot, Liveness: boardLivenessLineFrom(liveness)})
+}
+
+// boardLivenessCommand reads what the server thinks of a holder's silence.
+// It is a read: it records no beat, so an operator watching a board can never
+// make it look alive on the holder's behalf.
+func boardLivenessCommand(ctx context.Context, args []string) error {
+	if len(args) != 1 || !validBoardIDArgument(args[0]) {
+		return errors.New("usage: ra8ci board liveness <board-id>")
+	}
+	client, err := newBoardClient()
+	if err != nil {
+		return err
+	}
+	defer client.CloseIdleConnections()
+	snapshot, liveness, err := client.Liveness(ctx, args[0])
+	if err != nil {
+		return fmt.Errorf("read board liveness: %w", err)
+	}
+	return json.NewEncoder(os.Stdout).Encode(struct {
+		Snapshot board.Snapshot    `json:"snapshot"`
+		Liveness boardLivenessLine `json:"liveness"`
+	}{Snapshot: snapshot, Liveness: boardLivenessLineFrom(liveness)})
 }
