@@ -92,6 +92,9 @@ func RenderPullRequestSurvey(out io.Writer, report pullRequestSurveyReport) erro
 	if err := checkSurveyedSubject(report); err != nil {
 		return err
 	}
+	if err := checkSurveyedHeadState(report); err != nil {
+		return err
+	}
 	if err := checkSurveySharedHeads(report); err != nil {
 		return err
 	}
@@ -303,6 +306,58 @@ func checkSurveyedSubject(report pullRequestSurveyReport) error {
 		if strings.TrimSpace(candidate.HeadSHA) == "" {
 			return fmt.Errorf("%w: #%d is at no commit",
 				ErrPullRequestSurveyPageInvalid, candidate.Number)
+		}
+	}
+	return nil
+}
+
+// checkSurveyedHeadState refuses a selection whose head state the page
+// cannot state.
+//
+// The listing is checked for who it answers for, for what it answers, and
+// for the two words the page prints about the work. The head facts are the
+// last of it unread, and they are the ones the caveat section is made of:
+// caveatedSelections turns State, Merged and FromFork into the "read before
+// gathering" line, the section that exists precisely because a merged pull
+// request and a fork's head read like an ordinary selection on every other
+// line of this page.
+//
+// A selection stating no head state is the first shape refused. The page
+// says nothing at all about a candidate with no caveat, so a survey that
+// could not answer for a state renders a candidate that reads open, ours and
+// ordinary. That is worse than a gap in a sentence, which is what #1648
+// refuses a blank commit for: there is no gap to see. GitHub answers with a
+// state for every pull request and the head reader refuses a pull request
+// without one, so no survey of ours carries a blank.
+//
+// A selection that is merged and stated open is the second. Those two cannot
+// both be true, and caveatedSelections says "already merged" and drops the
+// state on the floor, so the contradiction never reaches the page either
+// way. It is read after the blank because a state that was never stated
+// cannot contradict anything.
+//
+// Only the selectable candidates are read, the rule #1647 keeps on the
+// reconcile page and the deliberate contrast with #1648 here: this page
+// prints every candidate's number and commit, so those are read for every
+// one of them, but the caveats are derived from the selections alone. An
+// unselectable candidate is named on its own line, is not going to be
+// gathered, and its head facts are printed nowhere.
+//
+// Both are the page's existing invalid sentinel, and neither is a bound.
+// A candidate answered for wrongly is not a long page, it is a wrong one.
+func checkSurveyedHeadState(report pullRequestSurveyReport) error {
+	for _, candidate := range report.PullRequests {
+		if !candidate.Selectable {
+			continue
+		}
+		state := strings.TrimSpace(candidate.State)
+		if state == "" {
+			return fmt.Errorf("%w: #%d is selectable and is in no state",
+				ErrPullRequestSurveyPageInvalid, candidate.Number)
+		}
+		if candidate.Merged && strings.EqualFold(state, "open") {
+			return fmt.Errorf("%w: #%d is merged and is stated %s",
+				ErrPullRequestSurveyPageInvalid, candidate.Number, state)
 		}
 	}
 	return nil
