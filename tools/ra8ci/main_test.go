@@ -1779,3 +1779,149 @@ func TestOurOwnDisagreementStillReadsAsADisagreement(t *testing.T) {
 		t.Fatalf("refusal %q blames a stranger for our own run", err)
 	}
 }
+
+// The survey is the read publish-check-run tells an operator to make when it
+// leaves a task to a write already in flight. Every task is reported,
+// including the one that conflicts: nothing is posted here, so withholding
+// the rest would only hide the picture the read was made for.
+func TestTheSurveyReportsEveryTaskIncludingTheConflictingOne(t *testing.T) {
+	task := firstCatalogTask(t)
+	settled := plannedRun(t, github.ModeAuthoritative, task, "failed")
+	stranger := publishedAs(settled, 71, "completed", settled.Run.Conclusion, settled.Run.Title)
+	stranger.ExternalID = ""
+
+	report, err := surveyCheckRunPlan([]plannedCheckRun{settled}, listing(stranger))
+	if err != nil {
+		t.Fatalf("survey: %v", err)
+	}
+	if report.Conflict != 1 || report.Settled {
+		t.Fatalf("report = %+v", report)
+	}
+	if len(report.Tasks) != 1 || report.Tasks[0].Decision != "conflicts" {
+		t.Fatalf("tasks = %+v", report.Tasks)
+	}
+	if len(report.Tasks[0].Published) != 1 || report.Tasks[0].Published[0].Ours {
+		t.Fatalf("published = %+v", report.Tasks[0].Published)
+	}
+	if report.Commit != settled.Run.HeadSHA || report.Mode != settled.Run.Mode.String() {
+		t.Fatalf("report = %+v", report)
+	}
+}
+
+// A run this plane published and a run it did not read identically in a
+// listing. Saying which is which is the whole of why one of them conflicts.
+func TestTheSurveySaysWhichRunsAreOurs(t *testing.T) {
+	task := firstCatalogTask(t)
+	plan := plannedRun(t, github.ModeAuthoritative, task, "failed")
+	ours := publishedAs(plan, 72, "completed", plan.Run.Conclusion, plan.Run.Title)
+	if ours.ExternalID == "" {
+		t.Fatal("a run we published carries no identifier")
+	}
+	theirs := ours
+	theirs.ID = 73
+	theirs.ExternalID = "ra8ci-1-" + strings.Repeat("0", 32)
+
+	report, err := surveyCheckRunPlan([]plannedCheckRun{plan}, listing(ours, theirs))
+	if err != nil {
+		t.Fatalf("survey: %v", err)
+	}
+	claimed := map[int64]bool{}
+	for _, run := range report.Tasks[0].Published {
+		claimed[run.ID] = run.Ours
+		if run.ExternalID == "" {
+			t.Fatalf("run #%d reported without its identifier", run.ID)
+		}
+	}
+	if !claimed[72] || claimed[73] {
+		t.Fatalf("claimed = %+v", claimed)
+	}
+}
+
+// Settled is the whole commit's answer, and it is the strict one: a run still
+// to post and a run still in flight are both work not yet done.
+func TestTheSurveyIsSettledOnlyWhenNothingIsLeft(t *testing.T) {
+	task := firstCatalogTask(t)
+	plan := plannedRun(t, github.ModeAuthoritative, task, "failed")
+	cases := map[string]struct {
+		published github.PublishedCheckRuns
+		settled   bool
+		decision  string
+	}{
+		"nothing published yet": {listing(), false, "needed"},
+		"a write in flight":     {listing(publishedAs(plan, 74, "queued", "", "")), false, "in-flight"},
+		"already published": {
+			listing(publishedAs(plan, 75, "completed", plan.Run.Conclusion, plan.Run.Title)),
+			true, "settled",
+		},
+	}
+	for name, test := range cases {
+		t.Run(name, func(t *testing.T) {
+			report, err := surveyCheckRunPlan([]plannedCheckRun{plan}, test.published)
+			if err != nil {
+				t.Fatalf("survey: %v", err)
+			}
+			if report.Settled != test.settled {
+				t.Fatalf("settled %v, want %v", report.Settled, test.settled)
+			}
+			if report.Tasks[0].Decision != test.decision {
+				t.Fatalf("decision %q, want %q", report.Tasks[0].Decision, test.decision)
+			}
+		})
+	}
+}
+
+// A survey of no runs is a question with no answer, and it is what a document
+// nobody filled in looks like.
+func TestASurveyOfNoRunsIsRefused(t *testing.T) {
+	if _, err := surveyCheckRunPlan(nil, listing()); err == nil {
+		t.Fatal("an empty plan was surveyed")
+	}
+}
+
+// The command reads and reports; a refused document leaves nothing behind, so
+// a half-written survey can never be read as the commit's state.
+func TestAReconcileOfARefusedDocumentWritesNothing(t *testing.T) {
+	task := publishCheckRunEnv(t)
+	refusals := map[string]string{
+		"not an object":      `["` + task + `"]`,
+		"unknown field":      `{"head_sha":"` + shadowCompareHead + `","commits":[]}`,
+		"trailing document":  `{"head_sha":"` + shadowCompareHead + `","runs":[]} {}`,
+		"unknown task":       `{"head_sha":"` + shadowCompareHead + `","runs":[{"task":"nowhere","state":"failed"}]}`,
+		"a commit we cannot": `{"head_sha":"nope","runs":[{"task":"` + task + `","state":"failed"}]}`,
+	}
+	for name, document := range refusals {
+		t.Run(name, func(t *testing.T) {
+			var out strings.Builder
+			if err := githubReconcileCheckRuns(context.Background(), strings.NewReader(document), &out); err == nil {
+				t.Fatal("the document was accepted")
+			}
+			if out.Len() != 0 {
+				t.Fatalf("wrote %q", out.String())
+			}
+		})
+	}
+}
+
+// The survey needs the same configuration publishing does, and says which half
+// is missing.
+func TestReconcileNeedsTheCheckRunConfiguration(t *testing.T) {
+	for _, name := range []string{github.EnvShadowCorrespondenceFile, github.EnvCheckRunMode, github.EnvCheckRunRepository} {
+		t.Setenv(name, "")
+		os.Unsetenv(name)
+	}
+	err := githubReconcileCheckRuns(context.Background(), strings.NewReader("{}"), io.Discard)
+	if err == nil || !strings.Contains(err.Error(), github.EnvShadowCorrespondenceFile) {
+		t.Fatalf("error %v, want one naming %s", err, github.EnvShadowCorrespondenceFile)
+	}
+}
+
+// The subcommand is reachable by name, and the usage line names it.
+func TestReconcileIsOneOfTheGithubSubcommands(t *testing.T) {
+	err := githubCommand(context.Background(), []string{"reconcil"})
+	if err == nil {
+		t.Fatal("a misspelled subcommand was accepted")
+	}
+	if !strings.Contains(err.Error(), "reconcile") {
+		t.Fatalf("usage %q does not name the subcommand", err)
+	}
+}
