@@ -62,6 +62,10 @@ type checkRunRequest struct {
 	HeadSHA    string `json:"head_sha"`
 	Status     string `json:"status"`
 	Conclusion string `json:"conclusion"`
+	// ExternalID is this plane's own name for the run, which a later
+	// reconciliation recomputes from the run in hand to tell a run this
+	// deployment posted from one that merely shares the name.
+	ExternalID string `json:"external_id"`
 	Output     struct {
 		Title   string `json:"title"`
 		Summary string `json:"summary"`
@@ -74,6 +78,7 @@ type checkRunResponse struct {
 	HeadSHA    string `json:"head_sha"`
 	Status     string `json:"status"`
 	Conclusion string `json:"conclusion"`
+	ExternalID string `json:"external_id"`
 }
 
 // NewCheckRunPublisher validates the configuration and loads the App key
@@ -128,8 +133,13 @@ func (p *CheckRunPublisher) Publish(ctx context.Context, run TaskCheckRun, summa
 	if err != nil {
 		return 0, err
 	}
+	externalID, err := CheckRunExternalID(run)
+	if err != nil {
+		return 0, err
+	}
 	var body checkRunRequest
 	body.Name, body.HeadSHA, body.Status, body.Conclusion = run.Name, run.HeadSHA, run.Status, run.Conclusion
+	body.ExternalID = externalID
 	body.Output.Title, body.Output.Summary = run.Title, summary
 	payload, err := json.Marshal(body)
 	if err != nil {
@@ -163,6 +173,14 @@ func (p *CheckRunPublisher) Publish(ctx context.Context, run TaskCheckRun, summa
 	if created.Name != run.Name || created.Conclusion != run.Conclusion {
 		return 0, fmt.Errorf("%w: GitHub recorded %q/%q for %q/%q", ErrCheckRunRejected,
 			created.Name, created.Conclusion, run.Name, run.Conclusion)
+	}
+	// An echoed identifier that names another run is refused for the same
+	// reason the name is. An absent one is not: a response that carries no
+	// identifier is silence about the field, and the listing a
+	// reconciliation reads carries it independently of this answer.
+	if created.ExternalID != "" && created.ExternalID != externalID {
+		return 0, fmt.Errorf("%w: GitHub recorded external id %q for %q", ErrCheckRunRejected,
+			created.ExternalID, externalID)
 	}
 	return created.ID, nil
 }
