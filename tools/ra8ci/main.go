@@ -54,7 +54,7 @@ func main() {
 
 func run(ctx context.Context, args []string) int {
 	if len(args) == 0 {
-		fmt.Fprintln(os.Stderr, "usage: ra8ci <task>|tasks [--digest|--json]|ascii [--check] [--all|PATH]|since [--all|FILE...]|final-newline [FILE...]|runner-clock [--repo OWNER/REPO] [--runs N] [--hours N]|tests-readme [--selftest]|inclusive-terminology-commits [--selftest]|server|agent|sync|backup refresh|keygen|board status|take [--class human|ci|agent]|checkpoint|extend|cancel|hil budget|verify-capture|db migrate|report slow|github check|github shadow|github shadow-compare|github publish-check-run|github required-checks|github evidence-gate|github gate|github actions-run|github reconcile|github pull-request|run submit|run status")
+		fmt.Fprintln(os.Stderr, "usage: ra8ci <task>|tasks [--digest|--json]|ascii [--check] [--all|PATH]|since [--all|FILE...]|final-newline [FILE...]|runner-clock [--repo OWNER/REPO] [--runs N] [--hours N]|tests-readme [--selftest]|inclusive-terminology-commits [--selftest]|server|agent|sync|backup refresh|keygen|board status|take [--class human|ci|agent]|checkpoint|extend|cancel|hil budget|verify-capture|db migrate|report slow|github check|github shadow|github shadow-compare|github publish-check-run|github required-checks|github evidence-gate|github gate|github actions-run|github reconcile|github pull-request|github evidence-run|run submit|run status")
 		return 2
 	}
 	var err error
@@ -513,7 +513,7 @@ func runAgent(ctx context.Context) error {
 // documentation.
 func githubCommand(ctx context.Context, args []string) error {
 	if len(args) != 1 {
-		return errors.New("usage: ra8ci github check|shadow|shadow-compare|shadow-evidence|publish-check-run|required-checks|evidence-gate|gate|actions-run|reconcile|pull-request")
+		return errors.New("usage: ra8ci github check|shadow|shadow-compare|shadow-evidence|publish-check-run|required-checks|evidence-gate|gate|actions-run|reconcile|pull-request|evidence-run")
 	}
 	switch args[0] {
 	case "check":
@@ -538,8 +538,10 @@ func githubCommand(ctx context.Context, args []string) error {
 		return githubReconcileCheckRuns(ctx, os.Stdin, os.Stdout)
 	case "pull-request":
 		return githubPullRequestRuns(ctx, os.Stdin, os.Stdout)
+	case "evidence-run":
+		return githubEvidenceRun(ctx, os.Stdin, os.Stdout)
 	default:
-		return errors.New("usage: ra8ci github check|shadow|shadow-compare|shadow-evidence|publish-check-run|required-checks|evidence-gate|gate|actions-run|reconcile|pull-request")
+		return errors.New("usage: ra8ci github check|shadow|shadow-compare|shadow-evidence|publish-check-run|required-checks|evidence-gate|gate|actions-run|reconcile|pull-request|evidence-run")
 	}
 }
 
@@ -1835,6 +1837,159 @@ func pullRequestRunsFrom(head github.PullRequestHead, listed github.CommitWorkfl
 		}
 	}
 	return report
+}
+
+// maxEvidenceRunRequestBytes bounds the document `evidence-run` reads: a pull
+// request number and the name of one workflow.
+const maxEvidenceRunRequestBytes = 4 << 10
+
+// evidenceRunRequest is the wire shape `evidence-run` reads.
+//
+// It is its own shape rather than a `pull-request` document grown a field.
+// Both commands set DisallowUnknownFields, so widening the shared one would
+// have `pull-request` quietly accept a workflow name it never reads, and an
+// operator would have no way to tell a selection that was made from one that
+// was silently skipped.
+type evidenceRunRequest struct {
+	Number   int    `json:"number"`
+	Workflow string `json:"workflow"`
+}
+
+// evidenceRunReport is what `evidence-run` writes: the one run on a pull
+// request's head whose job conclusions are the Actions half of the shadow
+// comparison, and enough of the pull request to judge whether it is
+// representative.
+//
+// The head's state travels with the run deliberately. Job policy distrusts
+// fork pull requests, and whether a merged pull request still says anything
+// about the gate is the operator's call (#1589); making them run a second
+// command to find that out invites the answer nobody looked up.
+type evidenceRunReport struct {
+	Number         int    `json:"number"`
+	HeadSHA        string `json:"head_sha"`
+	BaseRef        string `json:"base_ref"`
+	State          string `json:"state"`
+	Merged         bool   `json:"merged"`
+	FromFork       bool   `json:"from_fork"`
+	HeadRepository string `json:"head_repository"`
+	Workflow       string `json:"workflow"`
+	RunID          int64  `json:"run_id"`
+	Attempt        int    `json:"attempt"`
+	Event          string `json:"event"`
+	Conclusion     string `json:"conclusion"`
+}
+
+// githubEvidenceRun answers, for one pull request and one workflow, which
+// workflow run is the evidence. The run ID it writes is the one `actions-run`
+// grades.
+//
+// It reads and selects; it changes nothing. The two reads hold one narrow
+// permission each, pull_requests:read to find the head and actions:read to
+// list the commit's runs, the seam #1589 drew and #1590 kept.
+//
+// A selection that cannot be made is a refusal, not a report. `reconcile`
+// reports a conflict because the picture it was asked for still exists around
+// it; here the answer IS the run, so writing a document with no run in it
+// would hand a pipeline something that looks like evidence. The refusal names
+// the commit, so `pull-request` on the same number shows the listing the
+// selection was made from.
+func githubEvidenceRun(ctx context.Context, in io.Reader, out io.Writer) error {
+	loaded, err := catalog.Load()
+	if err != nil {
+		return fmt.Errorf("load task catalog: %w", err)
+	}
+	config, enabled, err := github.LoadCheckRunConfigFromEnv(loaded.Names())
+	if err != nil {
+		return err
+	}
+	if !enabled {
+		return fmt.Errorf("GitHub check-run publishing is not configured: set %s",
+			github.EnvShadowCorrespondenceFile)
+	}
+	publisherConfig, enabled, err := github.LoadCheckRunPublisherConfigFromEnv(config.Mode)
+	if err != nil {
+		return err
+	}
+	if !enabled {
+		return fmt.Errorf("GitHub check-run publishing has no repository: set %s",
+			github.EnvCheckRunRepository)
+	}
+
+	// The document is read and refused before a reader exists, so a bad
+	// ask is reported as a bad ask rather than as a failure to reach
+	// GitHub.
+	var document evidenceRunRequest
+	decoder := json.NewDecoder(io.LimitReader(in, maxEvidenceRunRequestBytes+1))
+	decoder.DisallowUnknownFields()
+	if err := decoder.Decode(&document); err != nil {
+		return fmt.Errorf("read the run to select: %w", err)
+	}
+	if decoder.More() {
+		return errors.New("read the run to select: trailing content after the document")
+	}
+	if decoder.InputOffset() > maxEvidenceRunRequestBytes {
+		return fmt.Errorf("read the run to select: larger than %d bytes", maxEvidenceRunRequestBytes)
+	}
+	if document.Number <= 0 {
+		return errors.New("read the run to select: no pull request named")
+	}
+	if strings.TrimSpace(document.Workflow) == "" {
+		return errors.New("read the run to select: no workflow named")
+	}
+
+	heads, err := github.NewPullRequestHeadReader(github.PullRequestHeadReaderConfig{
+		APIBaseURL:     publisherConfig.APIBaseURL,
+		AppClientID:    publisherConfig.AppClientID,
+		InstallationID: publisherConfig.InstallationID,
+		PrivateKeyFile: publisherConfig.PrivateKeyFile,
+		Owner:          publisherConfig.Owner,
+		Repository:     publisherConfig.Repository,
+	})
+	if err != nil {
+		return err
+	}
+	head, err := heads.Head(ctx, document.Number)
+	if err != nil {
+		return fmt.Errorf("read pull request %d: %w", document.Number, err)
+	}
+
+	runs, err := github.NewActionsOutcomeReader(github.ActionsOutcomeReaderConfig{
+		APIBaseURL:     publisherConfig.APIBaseURL,
+		AppClientID:    publisherConfig.AppClientID,
+		InstallationID: publisherConfig.InstallationID,
+		PrivateKeyFile: publisherConfig.PrivateKeyFile,
+		Owner:          publisherConfig.Owner,
+		Repository:     publisherConfig.Repository,
+	})
+	if err != nil {
+		return err
+	}
+	listed, err := runs.RunsOn(ctx, head.HeadSHA)
+	if err != nil {
+		return fmt.Errorf("read the workflow runs on %s: %w", head.HeadSHA, err)
+	}
+
+	selected, err := github.SelectEvidenceRun(listed, document.Workflow)
+	if err != nil {
+		return fmt.Errorf("select the evidence run on %s (pull request %d): %w",
+			head.HeadSHA, document.Number, err)
+	}
+
+	encoder := json.NewEncoder(out)
+	encoder.SetIndent("", "  ")
+	return encoder.Encode(evidenceRunFrom(head, selected))
+}
+
+// evidenceRunFrom assembles the report. It is separate from the command so the
+// shape can be pinned without a GitHub of any kind.
+func evidenceRunFrom(head github.PullRequestHead, selected github.CommitWorkflowRun) evidenceRunReport {
+	return evidenceRunReport{
+		Number: head.Number, HeadSHA: head.HeadSHA, BaseRef: head.BaseRef,
+		State: head.State, Merged: head.Merged, FromFork: head.FromFork,
+		HeadRepository: head.HeadRepository,
+		Workflow:       selected.Workflow, RunID: selected.ID, Attempt: selected.Attempt,
+		Event: selected.Event, Conclusion: selected.Conclusion,
+	}
 }
 
 // emptyWhenNil renders an empty list as [] rather than null, so a reader
