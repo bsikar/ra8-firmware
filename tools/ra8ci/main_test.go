@@ -1944,6 +1944,129 @@ func TestAnUnplannedRunSaysWhetherItIsOurs(t *testing.T) {
 	}
 }
 
+// Ours is one bit and there are four ways a run is not ours, so the survey
+// reports the longer answer beside it. A stranger's run, our own work from a
+// deployment that derives identifiers differently, and a run of ours derived
+// for another commit all report ours false and are different work.
+func TestTheSurveySaysWhichWayARunIsNotOurs(t *testing.T) {
+	task := firstCatalogTask(t)
+	plan := plannedRun(t, github.ModeAuthoritative, task, "failed")
+	ours := publishedAs(plan, 90, "completed", plan.Run.Conclusion, plan.Run.Title)
+	elsewhere, err := github.CheckRunExternalID(github.TaskCheckRun{
+		Name: plan.Run.Name, HeadSHA: "77777777aaaaaaaa55555555cccccccc99999999",
+	})
+	if err != nil {
+		t.Fatalf("identifier for another commit: %v", err)
+	}
+	runs := []github.PublishedCheckRun{ours}
+	for id, identifier := range map[int64]string{
+		91: "",
+		92: "jenkins-build-4417",
+		93: "ra8ci-2-" + strings.Repeat("a", 32),
+		94: elsewhere,
+	} {
+		run := ours
+		run.ID = id
+		run.ExternalID = identifier
+		runs = append(runs, run)
+	}
+
+	report, err := surveyCheckRunPlan([]plannedCheckRun{plan}, listing(runs...))
+	if err != nil {
+		t.Fatalf("survey: %v", err)
+	}
+	want := map[int64]string{
+		90: "ours", 91: "absent", 92: "foreign", 93: "superseded", 94: "other subject",
+	}
+	for _, run := range report.Tasks[0].Published {
+		if run.Identifier != want[run.ID] {
+			t.Fatalf("run #%d identifier = %q, want %q", run.ID, run.Identifier, want[run.ID])
+		}
+		if run.Ours != (run.Identifier == "ours") {
+			t.Fatalf("run #%d: ours = %v beside identifier %q", run.ID, run.Ours, run.Identifier)
+		}
+	}
+	if len(report.Tasks[0].Published) != len(want) {
+		t.Fatalf("published = %d runs, want %d", len(report.Tasks[0].Published), len(want))
+	}
+}
+
+// The same longer answer on the unplanned list, where it matters most: a
+// leftover of ours under a retired name is a name to clean up, and a run of
+// ours derived for another commit was posted against the wrong commit.
+func TestAnUnplannedRunSaysWhichWayItIsNotOurs(t *testing.T) {
+	first, second := twoCatalogTasks(t)
+	plan := plannedRun(t, github.ModeAuthoritative, first, "failed")
+	retired := plannedRun(t, github.ModeAuthoritative, second, "succeeded")
+	mine := publishedAs(retired, 95, "completed", retired.Run.Conclusion, retired.Run.Title)
+	elsewhere, err := github.CheckRunExternalID(github.TaskCheckRun{
+		Name: retired.Run.Name, HeadSHA: "77777777aaaaaaaa55555555cccccccc99999999",
+	})
+	if err != nil {
+		t.Fatalf("identifier for another commit: %v", err)
+	}
+	misSubjected := mine
+	misSubjected.ID = 96
+	misSubjected.ExternalID = elsewhere
+	stranger := mine
+	stranger.ID = 97
+	stranger.ExternalID = "buildkite-2231"
+
+	report, err := surveyCheckRunPlan([]plannedCheckRun{plan},
+		listing(publishedAs(plan, 98, "completed", plan.Run.Conclusion, plan.Run.Title),
+			mine, misSubjected, stranger))
+	if err != nil {
+		t.Fatalf("survey: %v", err)
+	}
+	want := map[int64]string{95: "ours", 96: "other subject", 97: "foreign"}
+	if len(report.UnplannedRun) != len(want) {
+		t.Fatalf("unplanned = %+v", report.UnplannedRun)
+	}
+	for _, run := range report.UnplannedRun {
+		if run.Identifier != want[run.ID] {
+			t.Fatalf("run #%d identifier = %q, want %q", run.ID, run.Identifier, want[run.ID])
+		}
+		if run.Ours != (run.Identifier == "ours") {
+			t.Fatalf("run #%d: ours = %v beside identifier %q", run.ID, run.Ours, run.Identifier)
+		}
+	}
+}
+
+// Every reported run carries a standing: a run with no identifier says
+// absent in words, so nothing in the document reads as a field that failed
+// to be filled in.
+func TestEveryReportedRunCarriesAStanding(t *testing.T) {
+	first, second := twoCatalogTasks(t)
+	plan := plannedRun(t, github.ModeAuthoritative, first, "failed")
+	retired := plannedRun(t, github.ModeAuthoritative, second, "succeeded")
+	blankTask := publishedAs(plan, 99, "completed", plan.Run.Conclusion, plan.Run.Title)
+	blankTask.ExternalID = ""
+	blankLeftover := publishedAs(retired, 100, "completed", retired.Run.Conclusion, retired.Run.Title)
+	blankLeftover.ExternalID = ""
+
+	report, err := surveyCheckRunPlan([]plannedCheckRun{plan}, listing(blankTask, blankLeftover))
+	if err != nil {
+		t.Fatalf("survey: %v", err)
+	}
+	for _, run := range report.Tasks[0].Published {
+		if run.Identifier != "absent" {
+			t.Fatalf("task run #%d identifier = %q", run.ID, run.Identifier)
+		}
+	}
+	for _, run := range report.UnplannedRun {
+		if run.Identifier != "absent" {
+			t.Fatalf("unplanned run #%d identifier = %q", run.ID, run.Identifier)
+		}
+	}
+	encoded, err := json.Marshal(report)
+	if err != nil {
+		t.Fatalf("encode: %v", err)
+	}
+	if !strings.Contains(string(encoded), `"identifier":"absent"`) {
+		t.Fatalf("report does not carry the standing on the wire: %s", encoded)
+	}
+}
+
 // An unplanned run moves neither the settled answer nor the counts the exit
 // status reads. The document is about this publish; a leftover run is a fact
 // about the commit, and failing the command over one would stop a publish

@@ -995,6 +995,12 @@ type reconcileSurveyedRun struct {
 	SummaryTruncated bool   `json:"summary_truncated"`
 	ExternalID       string `json:"external_id"`
 	Ours             bool   `json:"ours"`
+	// Identifier says which way the run's external identifier is or is
+	// not this plane's: absent, foreign, superseded, other subject, or
+	// ours. Ours above is one bit and collapses the four ways a run can
+	// fail to be ours into one, and they send an operator to entirely
+	// different places.
+	Identifier string `json:"identifier"`
 }
 
 // excerptCheckRunSummary cuts a published run's summary to what a report can
@@ -1030,6 +1036,12 @@ type reconcileUnplannedRun struct {
 	SummaryTruncated bool   `json:"summary_truncated"`
 	ExternalID       string `json:"external_id"`
 	Ours             bool   `json:"ours"`
+	// Identifier is the same longer answer Ours is the one-bit form of.
+	// It matters most here: a leftover of ours under a retired name and
+	// a run of ours derived for another commit both report ours false
+	// under a bare bit, and one is a name to clean up while the other
+	// is a run posted against the wrong commit.
+	Identifier string `json:"identifier"`
 }
 
 // reconcileReport is the whole survey of one commit.
@@ -1098,6 +1110,11 @@ func surveyCheckRunPlan(planned []plannedCheckRun, published github.PublishedChe
 		surveyed := make([]reconcileSurveyedRun, 0, len(verdict.Existing))
 		for _, run := range verdict.Existing {
 			summary, cut := excerptCheckRunSummary(run.Summary)
+			standing, err := github.ExternalIDStandingOf(run, plan.Run.HeadSHA)
+			if err != nil {
+				return reconcileReport{}, fmt.Errorf("account for run %d under %s: %w",
+					run.ID, plan.Run.Name, err)
+			}
 			surveyed = append(surveyed, reconcileSurveyedRun{
 				ID:               run.ID,
 				Status:           run.Status,
@@ -1107,6 +1124,7 @@ func surveyCheckRunPlan(planned []plannedCheckRun, published github.PublishedChe
 				SummaryTruncated: cut,
 				ExternalID:       run.ExternalID,
 				Ours:             !unclaimed[run.ID],
+				Identifier:       standing.String(),
 			})
 		}
 		report.Tasks = append(report.Tasks, reconcileSurvey{
@@ -1127,6 +1145,11 @@ func surveyCheckRunPlan(planned []plannedCheckRun, published github.PublishedChe
 	report.UnplannedRun = make([]reconcileUnplannedRun, 0, len(unplanned))
 	for _, run := range unplanned {
 		summary, cut := excerptCheckRunSummary(run.Summary)
+		standing, err := github.ExternalIDStandingOf(run, report.Commit)
+		if err != nil {
+			return reconcileReport{}, fmt.Errorf("account for unplanned run %d under %s: %w",
+				run.ID, run.Name, err)
+		}
 		report.UnplannedRun = append(report.UnplannedRun, reconcileUnplannedRun{
 			ID:               run.ID,
 			Name:             run.Name,
@@ -1137,7 +1160,8 @@ func surveyCheckRunPlan(planned []plannedCheckRun, published github.PublishedChe
 			Summary:          summary,
 			SummaryTruncated: cut,
 			ExternalID:       run.ExternalID,
-			Ours:             github.PublishedByThisPlane(run, report.Commit),
+			Ours:             standing.Ours(),
+			Identifier:       standing.String(),
 		})
 	}
 	report.Unplanned = len(report.UnplannedRun)
