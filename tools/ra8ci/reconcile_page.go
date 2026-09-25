@@ -68,6 +68,9 @@ func RenderReconcileSurvey(out io.Writer, report reconcileReport) error {
 	if err := checkRenderedSurveyBounds(report); err != nil {
 		return err
 	}
+	if err := checkSurveySubject(report); err != nil {
+		return err
+	}
 	if err := checkReconcileSurveyRuns(report); err != nil {
 		return err
 	}
@@ -152,6 +155,64 @@ func checkRenderedSurveyBounds(report reconcileReport) error {
 		if len(standing.Runs) > maxRenderedSurveyRuns {
 			return fmt.Errorf("%w: %s carries %d runs no task plans, %d at most",
 				ErrReconcilePageTooLarge, standing.Identifier, len(standing.Runs), maxRenderedSurveyRuns)
+		}
+	}
+	return nil
+}
+
+// checkSurveySubject refuses a survey that does not say what it is about.
+//
+// Every other check on this page reads the survey against itself: the counts
+// against the tasks, the standings against the listings, the listings against
+// each other. None of them reads the words the page actually prints, and four
+// of those are carried straight out of the document: the commit and the mode
+// on the line read first, and the task and the name on every conflicting
+// line. A survey with a blank commit renders as "settled: every planned task
+// is accounted for on  ()", which is a clean verdict about nothing, and a
+// conflicting task with no name renders as "conflicting: build ()" over the
+// one line an operator is meant to act on.
+//
+// Only the tasks the page NAMES are read, which is the rule the bounds
+// settled: a settled task is never printed, so refusing a whole page over a
+// line nobody reads takes a readable page away from an operator over a field
+// they would never have seen. The same rule puts the standings here: an
+// identifier is the whole of what groups a standing's runs, and a blank one
+// prints "no task plans, : #7, #9".
+//
+// Whitespace is not a statement. A commit of three spaces is a blank commit
+// wearing a value, and it would print as one.
+//
+// Nothing here decides anything, and nothing a real survey writes is refused:
+// the commit and the mode come from the arguments the command was given, and
+// the task and the name come from the catalog.
+func checkSurveySubject(report reconcileReport) error {
+	if strings.TrimSpace(report.Commit) == "" {
+		return fmt.Errorf("%w: the survey names no commit", ErrReconcilePageInvalid)
+	}
+	if strings.TrimSpace(report.Mode) == "" {
+		return fmt.Errorf("%w: the survey on %s names no mode",
+			ErrReconcilePageInvalid, report.Commit)
+	}
+	for _, task := range conflictingSurveyTasks(report) {
+		if strings.TrimSpace(task.Task) == "" {
+			return fmt.Errorf("%w: a conflicting task is not named",
+				ErrReconcilePageInvalid)
+		}
+		if strings.TrimSpace(task.Name) == "" {
+			return fmt.Errorf("%w: conflicting task %s names no check run",
+				ErrReconcilePageInvalid, task.Task)
+		}
+	}
+	for _, standing := range report.ContestedStanding {
+		if strings.TrimSpace(standing.Identifier) == "" {
+			return fmt.Errorf("%w: under a name we plan, a group of %d runs carries no standing",
+				ErrReconcilePageInvalid, len(standing.Runs))
+		}
+	}
+	for _, standing := range report.UnplannedStanding {
+		if strings.TrimSpace(standing.Identifier) == "" {
+			return fmt.Errorf("%w: no task plans, a group of %d runs carries no standing",
+				ErrReconcilePageInvalid, len(standing.Runs))
 		}
 	}
 	return nil
