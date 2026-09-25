@@ -513,7 +513,7 @@ func runAgent(ctx context.Context) error {
 // documentation.
 func githubCommand(ctx context.Context, args []string) error {
 	if len(args) != 1 {
-		return errors.New("usage: ra8ci github check|shadow|shadow-compare|shadow-evidence|publish-check-run|required-checks|evidence-gate|gate|actions-run")
+		return errors.New("usage: ra8ci github check|shadow|shadow-compare|shadow-evidence|publish-check-run|required-checks|evidence-gate|gate|actions-run|reconcile")
 	}
 	switch args[0] {
 	case "check":
@@ -534,8 +534,10 @@ func githubCommand(ctx context.Context, args []string) error {
 		return githubGate(ctx, os.Stdin, os.Stdout)
 	case "actions-run":
 		return githubActionsRun(ctx, os.Stdin, os.Stdout)
+	case "reconcile":
+		return githubReconcileCheckRuns(ctx, os.Stdin, os.Stdout)
 	default:
-		return errors.New("usage: ra8ci github check|shadow|shadow-compare|shadow-evidence|publish-check-run|required-checks|evidence-gate|gate|actions-run")
+		return errors.New("usage: ra8ci github check|shadow|shadow-compare|shadow-evidence|publish-check-run|required-checks|evidence-gate|gate|actions-run|reconcile")
 	}
 }
 
@@ -954,6 +956,187 @@ func githubPublishCheckRuns(ctx context.Context, in io.Reader, out io.Writer) er
 	if len(waiting) > 0 {
 		return fmt.Errorf("%d of %d check runs were left to a write already in flight on %s: %s",
 			len(waiting), len(reconciled), commit, strings.Join(waiting, ", "))
+	}
+	return nil
+}
+
+// reconcileSurvey is one task's standing on the commit, as the read-only
+// survey reports it.
+type reconcileSurvey struct {
+	Task      string                 `json:"task"`
+	Name      string                 `json:"name"`
+	Decision  string                 `json:"decision"`
+	Published []reconcileSurveyedRun `json:"published"`
+}
+
+// reconcileSurveyedRun is one run already on the commit under that task's
+// name. Ours reports whether this plane published it, which is the whole of
+// why a run that reads identically can still be a conflict.
+type reconcileSurveyedRun struct {
+	ID         int64  `json:"id"`
+	Status     string `json:"status"`
+	Conclusion string `json:"conclusion"`
+	ExternalID string `json:"external_id"`
+	Ours       bool   `json:"ours"`
+}
+
+// reconcileReport is the whole survey of one commit.
+type reconcileReport struct {
+	Commit   string            `json:"commit"`
+	Mode     string            `json:"mode"`
+	Settled  bool              `json:"settled"`
+	Posting  int               `json:"posting"`
+	Waiting  int               `json:"waiting"`
+	Conflict int               `json:"conflicting"`
+	Tasks    []reconcileSurvey `json:"tasks"`
+}
+
+// surveyCheckRunPlan decides every planned run against one listing and reports
+// all of them.
+//
+// It is deliberately NOT reconcileCheckRunPlan. That function refuses the
+// whole document on a conflict, because it is about to post the rest and
+// publishing over a disagreement buries it. Nothing is posted here, so
+// refusing would only withhold the picture an operator came for: the
+// conflicting task is reported beside the others, and the exit status carries
+// the fact that one was found.
+func surveyCheckRunPlan(planned []plannedCheckRun, published github.PublishedCheckRuns) (reconcileReport, error) {
+	if len(planned) == 0 {
+		return reconcileReport{}, errors.New("no check runs to survey")
+	}
+	report := reconcileReport{
+		Commit: planned[0].Run.HeadSHA,
+		Mode:   planned[0].Run.Mode.String(),
+		Tasks:  make([]reconcileSurvey, 0, len(planned)),
+	}
+	for _, plan := range planned {
+		verdict, err := github.ReconcilePublish(plan.Run, published)
+		if err != nil {
+			return reconcileReport{}, fmt.Errorf("reconcile %s: %w", plan.Task, err)
+		}
+		switch verdict.Decision {
+		case github.PublishNeeded:
+			report.Posting++
+		case github.PublishInFlight:
+			report.Waiting++
+		case github.PublishConflicts:
+			report.Conflict++
+		}
+		unclaimed := make(map[int64]bool, len(verdict.Unclaimed))
+		for _, run := range verdict.Unclaimed {
+			unclaimed[run.ID] = true
+		}
+		surveyed := make([]reconcileSurveyedRun, 0, len(verdict.Existing))
+		for _, run := range verdict.Existing {
+			surveyed = append(surveyed, reconcileSurveyedRun{
+				ID:         run.ID,
+				Status:     run.Status,
+				Conclusion: run.Conclusion,
+				ExternalID: run.ExternalID,
+				Ours:       !unclaimed[run.ID],
+			})
+		}
+		report.Tasks = append(report.Tasks, reconcileSurvey{
+			Task:      plan.Task,
+			Name:      plan.Run.Name,
+			Decision:  decisionToken(verdict.Decision),
+			Published: surveyed,
+		})
+	}
+	report.Settled = report.Posting == 0 && report.Waiting == 0 && report.Conflict == 0
+	return report, nil
+}
+
+// githubReconcileCheckRuns reports what one commit already carries for a
+// document of task outcomes, and writes nothing to GitHub.
+//
+// publish-check-run already reads the commit before it posts, and when it
+// leaves a task to a write still in flight it tells the operator to read the
+// commit again. Running publish-check-run again is not that read: it would
+// post every run the first pass decided was needed. This command is the read
+// on its own, so the state of a publish can be looked at without a token that
+// could change it, and it builds only the checks:read reconciler for exactly
+// that reason.
+func githubReconcileCheckRuns(ctx context.Context, in io.Reader, out io.Writer) error {
+	loaded, err := catalog.Load()
+	if err != nil {
+		return fmt.Errorf("load task catalog: %w", err)
+	}
+	config, enabled, err := github.LoadCheckRunConfigFromEnv(loaded.Names())
+	if err != nil {
+		return err
+	}
+	if !enabled {
+		return fmt.Errorf("GitHub check-run publishing is not configured: set %s",
+			github.EnvShadowCorrespondenceFile)
+	}
+	publisherConfig, enabled, err := github.LoadCheckRunPublisherConfigFromEnv(config.Mode)
+	if err != nil {
+		return err
+	}
+	if !enabled {
+		return fmt.Errorf("GitHub check-run publishing has no repository: set %s",
+			github.EnvCheckRunRepository)
+	}
+
+	var document checkRunPublishInput
+	decoder := json.NewDecoder(io.LimitReader(in, maxCheckRunPublishBytes+1))
+	decoder.DisallowUnknownFields()
+	if err := decoder.Decode(&document); err != nil {
+		return fmt.Errorf("read task outcomes: %w", err)
+	}
+	if decoder.More() {
+		return errors.New("read task outcomes: trailing content after the document")
+	}
+	if decoder.InputOffset() > maxCheckRunPublishBytes {
+		return fmt.Errorf("read task outcomes: larger than %d bytes", maxCheckRunPublishBytes)
+	}
+
+	planned, err := planCheckRuns(config.Mode, config.Correspondence, document)
+	if err != nil {
+		return fmt.Errorf("plan check runs: %w", err)
+	}
+
+	reconciler, err := github.NewCheckRunReconciler(github.CheckRunReconcilerConfig{
+		APIBaseURL:     publisherConfig.APIBaseURL,
+		AppClientID:    publisherConfig.AppClientID,
+		InstallationID: publisherConfig.InstallationID,
+		PrivateKeyFile: publisherConfig.PrivateKeyFile,
+		Owner:          publisherConfig.Owner,
+		Repository:     publisherConfig.Repository,
+	})
+	if err != nil {
+		return err
+	}
+	commit := planned[0].Run.HeadSHA
+	published, err := reconciler.PublishedRuns(ctx, commit)
+	if err != nil {
+		return fmt.Errorf("read the check runs already on %s: %w", commit, err)
+	}
+	report, err := surveyCheckRunPlan(planned, published)
+	if err != nil {
+		return err
+	}
+	encoder := json.NewEncoder(out)
+	encoder.SetIndent("", "  ")
+	if err := encoder.Encode(report); err != nil {
+		return fmt.Errorf("write the reconciliation: %w", err)
+	}
+	// The report is written before the verdict is returned, so a conflict
+	// is never carried by an exit status alone. A conflict is the answer
+	// rather than an error in the inputs, and it is the one state that
+	// does not resolve itself: a needed run is posted and a run in flight
+	// finishes, but a run this plane cannot account for waits for a
+	// person.
+	if report.Conflict > 0 {
+		conflicting := make([]string, 0, report.Conflict)
+		for _, task := range report.Tasks {
+			if task.Decision == decisionToken(github.PublishConflicts) {
+				conflicting = append(conflicting, task.Task)
+			}
+		}
+		return fmt.Errorf("%d of %d tasks have a check run on %s that this publish cannot account for: %s",
+			report.Conflict, len(report.Tasks), commit, strings.Join(conflicting, ", "))
 	}
 	return nil
 }
