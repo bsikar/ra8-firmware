@@ -34,15 +34,23 @@ type BoardPolicy struct {
 	Catalog       *catalog.Catalog
 	TrustedCommit string
 	YieldBudget   BoardYieldBudget
+
+	// HeartbeatInterval is how often a holder is expected to report
+	// itself alive. Zero takes the default; a value past the state
+	// machine's ceiling is refused at registration rather than clamped,
+	// because a deployment that asked for a slower beat than the board
+	// will judge should hear so.
+	HeartbeatInterval time.Duration
 }
 
 type boardHTTP struct {
-	store         BoardStore
-	catalog       *catalog.Catalog
-	trustedCommit string
-	budget        BoardYieldBudget
-	verifier      store.NeutralReceiptVerifier
-	repository    string
+	store             BoardStore
+	catalog           *catalog.Catalog
+	trustedCommit     string
+	budget            BoardYieldBudget
+	verifier          store.NeutralReceiptVerifier
+	repository        string
+	heartbeatInterval time.Duration
 }
 
 // RegisterBoardRoutes adds authenticated board endpoints to the server mux.
@@ -58,8 +66,16 @@ func RegisterBoardRoutes(mux *http.ServeMux, st BoardStore, verifier store.Neutr
 	if len(boardPolicy) == 1 {
 		policy = boardPolicy[0]
 	}
+	if policy.HeartbeatInterval < 0 || policy.HeartbeatInterval > board.MaxHeartbeatInterval {
+		return store.ErrInvalid
+	}
+	interval := policy.HeartbeatInterval
+	if interval == 0 {
+		interval = defaultHolderHeartbeatInterval
+	}
 	h := &boardHTTP{store: st, verifier: verifier, repository: repository,
-		catalog: policy.Catalog, trustedCommit: policy.TrustedCommit, budget: policy.YieldBudget}
+		catalog: policy.Catalog, trustedCommit: policy.TrustedCommit, budget: policy.YieldBudget,
+		heartbeatInterval: interval}
 	mux.HandleFunc("GET /v1/boards/{board_id}", h.status)
 	mux.HandleFunc("POST /v1/boards/{board_id}/take", h.take)
 	mux.HandleFunc("POST /v1/boards/{board_id}/waiters/{waiter_id}/cancel", h.cancel)
@@ -67,6 +83,7 @@ func RegisterBoardRoutes(mux *http.ServeMux, st BoardStore, verifier store.Neutr
 	mux.HandleFunc("POST /v1/boards/{board_id}/checkpoint", h.checkpoint)
 	mux.HandleFunc("POST /v1/boards/{board_id}/leases/{lease_id}/free", h.free)
 	mux.HandleFunc("POST /v1/boards/{board_id}/leases/{lease_id}/extend", h.extend)
+	mux.HandleFunc("POST /v1/boards/{board_id}/leases/{lease_id}/heartbeat", h.heartbeat)
 	mux.HandleFunc("POST /v1/boards/{board_id}/neutral-challenge", h.challenge)
 	mux.HandleFunc("POST /v1/boards/{board_id}/agent/ack", h.agentAck)
 	mux.HandleFunc("POST /v1/boards/{board_id}/agent/observe", h.agentObserve)
