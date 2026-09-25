@@ -189,6 +189,9 @@ func ClientAuthorities(bundle []byte, now time.Time) (*x509.CertPool, error) {
 		if !authority.IsCA {
 			return nil, fmt.Errorf("%w: %s in the client CA bundle is not a certificate authority", ErrIdentity, where)
 		}
+		if err := checkAuthorityCanSign(authority, where); err != nil {
+			return nil, err
+		}
 		pool.AddCert(authority)
 		if !now.Before(authority.NotBefore) && now.Before(authority.NotAfter) {
 			usable++
