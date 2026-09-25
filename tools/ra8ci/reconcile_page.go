@@ -457,12 +457,18 @@ func checkReconcileSurveyStandings(report reconcileReport) error {
 	}
 	ours := github.ExternalIDOurs.String()
 	contested := make(map[int64]string, len(report.Tasks))
+	publishedAs := make(map[int64]reconcileContestedRun, len(report.Tasks))
 	for _, task := range report.Tasks {
 		for _, run := range task.Published {
 			if run.Identifier == ours {
 				continue
 			}
 			contested[run.ID] = run.Identifier
+			publishedAs[run.ID] = reconcileContestedRun{
+				ID:   run.ID,
+				Task: task.Task,
+				Name: task.Name,
+			}
 		}
 	}
 	for _, standing := range report.ContestedStanding {
@@ -474,7 +480,7 @@ func checkReconcileSurveyStandings(report reconcileReport) error {
 				ErrReconcilePageInvalid)
 		}
 	}
-	return checkSurveyGrouping(report.ContestedStanding, "under a name we plan",
+	if err := checkSurveyGrouping(report.ContestedStanding, "under a name we plan",
 		func(standing reconcileContestedStanding) []int64 {
 			runs := make([]int64, 0, len(standing.Runs))
 			for _, run := range standing.Runs {
@@ -486,7 +492,81 @@ func checkReconcileSurveyStandings(report reconcileReport) error {
 		func(run int64) (string, bool) {
 			identifier, ok := contested[run]
 			return identifier, ok
-		})
+		}); err != nil {
+		return err
+	}
+	return checkContestedRunNames(report.ContestedStanding, publishedAs)
+}
+
+// checkContestedRunNames refuses a contested group that names a run under a
+// check run, or a task, the listing it was derived from does not give it.
+//
+// The grouping check reads WHERE a run stands. The two words beside it on
+// the line are the ones the reader acts on: "under a name we plan, foreign:
+// #7 under ra8ci / build (build)" sends an operator to a check run called
+// "ra8ci / build" and tells them which of our plans wanted that name. Both
+// are copied out of the task whose listing carried the run, and until now
+// nothing read them back against it. A document whose standing says
+// "ra8ci / lint" over a listing that published the run under
+// "ra8ci / build" sends the reader looking for a check run no task in the
+// document plans, with the page's own authority behind it, and every other
+// check on this page passes: the identifier agrees, the counts are derived
+// from the tasks, and the name is nowhere in them.
+//
+// The listing is the authority, not the standing. contestedStandings builds
+// each grouped run out of the task it was published under, so the listing is
+// where the word came from and the standing is the copy.
+//
+// The check run is read before the task, the order #1649 pinned for the two
+// blank cases: the check run is what the section is for and what the reader
+// opens, and the task only says which of our plans wanted the name.
+//
+// Both are matched exactly, with no trimming and no folding of case. A
+// check run name is GitHub's own string and it is what a reader types into
+// the Checks tab to find it, so "ra8ci / Build" and "ra8ci / build" are two
+// different answers to the question this line exists to answer. That is the
+// deliberate contrast with a commit, which the pages match without casing
+// because a SHA is a number written down.
+//
+// Nothing the surveying command writes is refused: both words are copied
+// from the task in the same walk that groups the run.
+func checkContestedRunNames(
+	standings []reconcileContestedStanding,
+	publishedAs map[int64]reconcileContestedRun,
+) error {
+	for _, standing := range standings {
+		for _, run := range standing.Runs {
+			published, listed := publishedAs[run.ID]
+			if !listed {
+				// Unreachable through the page: the grouping
+				// check above refuses a run the listing does
+				// not carry, and it refuses it as that.
+				continue
+			}
+			if run.Name != published.Name {
+				return fmt.Errorf("%w: under a name we plan, run %d is stated under %s and the listing publishes it under %s",
+					ErrReconcilePageInvalid, run.ID,
+					statedSurveyCheckRun(run.Name), statedSurveyCheckRun(published.Name))
+			}
+			if run.Task != published.Task {
+				return fmt.Errorf("%w: under a name we plan, run %d is stated under %s and the listing publishes it under %s",
+					ErrReconcilePageInvalid, run.ID,
+					statedSurveyTask(run.Task), statedSurveyTask(published.Task))
+			}
+		}
+	}
+	return nil
+}
+
+// statedSurveyCheckRun names a check run for a refusal, the sibling of
+// statedSurveyTask. A blank one is said to be unnamed rather than left as a
+// gap in a sentence whose whole subject is which name to go and look at.
+func statedSurveyCheckRun(name string) string {
+	name = strings.TrimSpace(name)
+	if name == "" {
+		return "an unnamed check run"
+	}
+	return "the check run " + name
 }
 
 // checkSurveyGrouping reads one grouping against the listing it is derived
