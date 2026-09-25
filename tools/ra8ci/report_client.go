@@ -7,7 +7,6 @@ import (
 	"bytes"
 	"context"
 	"crypto/tls"
-	"crypto/x509"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -42,9 +41,9 @@ func fetchSlowReport(ctx context.Context, repository string, window time.Duratio
 	if err != nil {
 		return slowReportPayload{}, fmt.Errorf("read server CA: %w", err)
 	}
-	roots := x509.NewCertPool()
-	if !roots.AppendCertsFromPEM(caPEM) {
-		return slowReportPayload{}, errors.New("server CA has no trusted certificate")
+	roots, err := mtls.ServerAuthorities(caPEM, time.Now())
+	if err != nil {
+		return slowReportPayload{}, fmt.Errorf("report server trust: %w", err)
 	}
 	identity, err := mtls.LoadClientIdentity(endpoint.CertFile, endpoint.KeyFile, time.Now())
 	if err != nil {
