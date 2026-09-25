@@ -86,6 +86,9 @@ func RenderPullRequestSurvey(out io.Writer, report pullRequestSurveyReport) erro
 	if err := checkSurveyedCandidates(report); err != nil {
 		return err
 	}
+	if err := checkSurveyedAnswers(report); err != nil {
+		return err
+	}
 	if err := checkSurveySharedHeads(report); err != nil {
 		return err
 	}
@@ -190,6 +193,65 @@ func checkSurveyedCandidates(report pullRequestSurveyReport) error {
 				ErrPullRequestSurveyPageInvalid, candidate.Number)
 		}
 		answeredFor[candidate.Number] = struct{}{}
+	}
+	return nil
+}
+
+// checkSurveyedAnswers refuses a candidate whose answer is not the one its
+// own selectable bit says it is.
+//
+// The listing is checked for who it answers for, and nothing checked WHAT it
+// answers. Both halves of it are printed with fields nothing reads first,
+// and each half has one field the reader's next move depends on.
+//
+// An unselectable candidate's line is "no evidence run: #1589 at abc123
+// (reason)", and the reason is the only thing on it that says why the
+// candidate is being dropped: the refusal text appears nowhere else in the
+// document, and the page is read to decide which pull requests to leave out
+// of the gather. Without it the line reads "#1589 at abc123 ()", which asks
+// the operator to drop a candidate and tells them nothing they could argue
+// with.
+//
+// A selectable candidate's line names a run, and naming a run is the whole
+// point of the section: the gather opens run 771 on that commit. A selection
+// carrying no run prints "run 0 attempt 0", which is a line an operator acts
+// on pointing at a run that does not exist. The run identifier comes straight
+// off the run GitHub answered with, so a selection without one was assembled
+// somewhere other than a survey of ours.
+//
+// A selectable candidate carrying a refusal is the same contradiction from
+// the other side, and it is read first because it explains the other two: the
+// survey writes a reason exactly when it refuses a candidate, and it refuses
+// and selects in the same breath. The page would print such a candidate among
+// the selections with its refusal dropped on the floor, which is the one
+// direction this page must never round in.
+//
+// The other run fields are deliberately not checked. An attempt of zero, an
+// unnamed event and an empty conclusion are all things a real run can come
+// back with, and refusing a survey over them would refuse a page that is
+// perfectly readable.
+//
+// All three are the page's existing invalid sentinel, and none is a bound:
+// the listing is already bounded, and a candidate answered for wrongly is not
+// a long page, it is a wrong one.
+func checkSurveyedAnswers(report pullRequestSurveyReport) error {
+	for _, candidate := range report.PullRequests {
+		refusal := strings.TrimSpace(candidate.Reason)
+		if candidate.Selectable {
+			if refusal != "" {
+				return fmt.Errorf("%w: #%d is selectable and is refused as %s",
+					ErrPullRequestSurveyPageInvalid, candidate.Number, refusal)
+			}
+			if candidate.RunID <= 0 {
+				return fmt.Errorf("%w: #%d is selectable and names no run",
+					ErrPullRequestSurveyPageInvalid, candidate.Number)
+			}
+			continue
+		}
+		if refusal == "" {
+			return fmt.Errorf("%w: #%d is unselectable and no reason is given",
+				ErrPullRequestSurveyPageInvalid, candidate.Number)
+		}
 	}
 	return nil
 }
