@@ -45,6 +45,9 @@ func newArtifactUploader(agent *Agent, assignment protocol.Assignment) (*artifac
 // send is the SendArtifactChunk the collector calls per chunk. The chunk is
 // validated again here rather than trusted from the collector: this is the
 // last place before the wire, and the plane refuses an invalid chunk anyway.
+// A chunk the plane never answered for is offered again: a byte-identical
+// replay is ArtifactDuplicate and the same 200 as the first, which is the
+// outcome the store keeps precisely so an agent's retry is safe.
 func (uploader *artifactUploader) send(ctx context.Context, chunk protocol.ArtifactChunk) error {
 	if uploader == nil || uploader.agent == nil {
 		return fmt.Errorf("%w: artifact uploader", ErrUnsafeAssignment)
@@ -56,13 +59,15 @@ func (uploader *artifactUploader) send(ctx context.Context, chunk protocol.Artif
 		chunk.AssignmentVersion, chunk.FencingToken); err != nil {
 		return err
 	}
-	return uploader.agent.accept(ctx, uploader.assignment,
+	return uploader.agent.acceptEvidence(ctx, uploader.assignment,
 		artifactChunkPath(uploader.assignment.AttemptID), chunk)
 }
 
 // Close ends every artifact the collector produced, in the order it produced
 // them. A manifest is only sent after its own chunks, so the plane never
-// holds a close for bytes it has not seen.
+// holds a close for bytes it has not seen. A close the plane never answered
+// for is offered again: a duplicate manifest describing the same bytes is the
+// same 200 as the first, so a retry never has to decide whether it landed.
 func (uploader *artifactUploader) Close(ctx context.Context, manifests []protocol.ArtifactManifest) error {
 	if uploader == nil || uploader.agent == nil {
 		return fmt.Errorf("%w: artifact uploader", ErrUnsafeAssignment)
@@ -75,7 +80,7 @@ func (uploader *artifactUploader) Close(ctx context.Context, manifests []protoco
 			manifest.AssignmentVersion, manifest.FencingToken); err != nil {
 			return err
 		}
-		if err := uploader.agent.accept(ctx, uploader.assignment,
+		if err := uploader.agent.acceptEvidence(ctx, uploader.assignment,
 			artifactManifestPath(uploader.assignment.AttemptID), manifest); err != nil {
 			return err
 		}
