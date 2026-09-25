@@ -94,6 +94,9 @@ func RenderShadowEvidence(out io.Writer, evidence ShadowEvidence, readiness Shad
 	if err := checkNamedCommits(byTask, readiness, accumulatedCommits(evidence)); err != nil {
 		return err
 	}
+	if err := checkUngradedCommits(evidence, byTask, readiness); err != nil {
+		return err
+	}
 
 	var page strings.Builder
 	fmt.Fprintf(&page, "shadow evidence over %d commit%s, threshold %d\n",
@@ -182,6 +185,65 @@ func writeUngradedLine(page *strings.Builder, evidence ShadowEvidence) error {
 	}
 	fmt.Fprintf(page, "%d of them graded nothing (every pairing indeterminate): %s\n",
 		len(evidence.UngradedCommits), strings.Join(evidence.UngradedCommits, ", "))
+	return nil
+}
+
+// checkUngradedCommits reads the ungraded line against the sections printed
+// under it. The line says "N of them graded nothing (every pairing
+// indeterminate)" and then names those commits, and that sentence is a claim
+// about the same commits the conflicting section names underneath it. Nothing
+// read the two together: writeUngradedLine holds the list to the accumulation,
+// and checkNamedCommits holds each task's printed list to the accumulation, so
+// both lists can name the same commit and each is right on its own. The page
+// then tells an operator a commit moved no task one step closer to its
+// threshold, and four lines lower tells them a task disagreed with Actions on
+// exactly that commit, which is the strongest evidence this page ever carries.
+//
+// Only ConflictingCommits is read against it. A commit that graded nothing came
+// back indeterminate on every task it paired, so its appearance in an
+// insufficient task's "never judged on" list is the two lines agreeing, not
+// contradicting: refusing that would refuse every page with an ungraded commit
+// on it.
+//
+// The blank is read here too, for the line's own sake: a blank the
+// accumulation happens to carry answers to writeUngradedLine's check and
+// renders "3 of them graded nothing: aaa1, , ccc3".
+//
+// *** A COMMIT NAMED TWICE IS DELIBERATELY NOT REFUSED, AND THE GAP IS PINNED
+// OPEN BY TestACommitNamedTwiceAsUngradedStillRenders. The printed count is
+// len(UngradedCommits), so a duplicate does overstate how much of the evidence
+// counted for nothing, but the list's size bound is enforced inside
+// writeUngradedLine while the page is being written, i.e. after every check
+// here, and the bound is exercised by a fixture that repeats one commit past
+// maxRenderedEvidenceCommits. A duplicate check in this position refuses an
+// over-long list as a duplicate instead of as a page too long to read. That is
+// the trap #1665 hit with the commit-list lengths, and the fix is the same one:
+// hold the list to its length where the length is read, not here. ***
+//
+// writeUngradedLine's accumulation check stays where it is for the same
+// reason.
+func checkUngradedCommits(evidence ShadowEvidence, byTask map[string]TaskEvidence, readiness ShadowReadiness) error {
+	if len(evidence.UngradedCommits) == 0 {
+		return nil
+	}
+	ungraded := make(map[string]bool, len(evidence.UngradedCommits))
+	for _, commit := range evidence.UngradedCommits {
+		if strings.TrimSpace(commit) == "" {
+			return fmt.Errorf("%w: a commit that graded nothing is unnamed",
+				ErrShadowEvidenceReportInvalid)
+		}
+		ungraded[commit] = true
+	}
+	// Walked in section order, so a page with two contradictions refuses
+	// for the one the reader reaches first.
+	for _, name := range readiness.Conflicting {
+		for _, commit := range byTask[name].ConflictingCommits {
+			if ungraded[commit] {
+				return fmt.Errorf("%w: %s graded nothing, and %q disagreed on it",
+					ErrShadowEvidenceReportInvalid, commit, name)
+			}
+		}
+	}
 	return nil
 }
 
