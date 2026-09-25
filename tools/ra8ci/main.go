@@ -52,9 +52,35 @@ func main() {
 	os.Exit(code)
 }
 
+// usageLine is the front door: everything ra8ci dispatches, named once.
+//
+// The GitHub half is built from the subcommand table rather than restated
+// here. It was restated, and drifted: the line named ten GitHub subcommands
+// while the command dispatched fifteen, so the five newest were reachable
+// only by knowing they existed.
+func usageLine() string {
+	return "usage: ra8ci <task>|tasks [--digest|--json]|ascii [--check] [--all|PATH]|since [--all|FILE...]|" +
+		"final-newline [FILE...]|runner-clock [--repo OWNER/REPO] [--runs N] [--hours N]|" +
+		"tests-readme [--selftest]|inclusive-terminology-commits [--selftest]|server|agent|sync|" +
+		"backup refresh|keygen|board status|take [--class human|ci|agent]|checkpoint|extend|cancel|" +
+		"hil budget|verify-capture|db migrate|report slow|" +
+		strings.Join(githubUsageNames(), "|") +
+		"|run submit|run status"
+}
+
+// githubUsageNames states each GitHub subcommand the way it is typed.
+func githubUsageNames() []string {
+	subcommands := githubSubcommands()
+	named := make([]string, 0, len(subcommands))
+	for _, subcommand := range subcommands {
+		named = append(named, "github "+subcommand.Name)
+	}
+	return named
+}
+
 func run(ctx context.Context, args []string) int {
 	if len(args) == 0 {
-		fmt.Fprintln(os.Stderr, "usage: ra8ci <task>|tasks [--digest|--json]|ascii [--check] [--all|PATH]|since [--all|FILE...]|final-newline [FILE...]|runner-clock [--repo OWNER/REPO] [--runs N] [--hours N]|tests-readme [--selftest]|inclusive-terminology-commits [--selftest]|server|agent|sync|backup refresh|keygen|board status|take [--class human|ci|agent]|checkpoint|extend|cancel|hil budget|verify-capture|db migrate|report slow|github check|github shadow|github shadow-compare|github publish-check-run|github required-checks|github evidence-gate|github gate|github actions-run|github reconcile|github pull-request|github evidence-run|run submit|run status")
+		fmt.Fprintln(os.Stderr, usageLine())
 		return 2
 	}
 	var err error
@@ -507,50 +533,92 @@ func runAgent(ctx context.Context) error {
 	return err
 }
 
+// githubSubcommand is one thing `ra8ci github` does, named the way it is
+// typed and paired with what it runs.
+type githubSubcommand struct {
+	Name string
+	Run  func(ctx context.Context, in io.Reader, out io.Writer) error
+}
+
+// githubSubcommands is the whole of what `ra8ci github` dispatches, in the
+// order the usage lines state them.
+//
+// It is one table rather than a switch beside three restatements of the same
+// list. The restatements drifted: the front-door usage in run() named ten of
+// these while the command dispatched fifteen, so the five newest were
+// reachable only by knowing they were there. A table cannot drift, because
+// the dispatch and every usage line are the same names.
+//
+// The order is the order the commands were built in, which is roughly the
+// order an operator meets them: what reads a session, then what compares one
+// commit, then what accumulates many, then what writes to GitHub, then the
+// surveys and their pages. It is deliberately not alphabetical, which would
+// put actions-run first and check in the middle.
+//
+// Every entry takes the same three arguments even where it uses fewer. A
+// signature per subcommand is what forced the switch, and the switch is what
+// drifted.
+func githubSubcommands() []githubSubcommand {
+	return []githubSubcommand{
+		{"check", func(ctx context.Context, _ io.Reader, _ io.Writer) error {
+			return githubSessionCheck(ctx)
+		}},
+		{"shadow", func(_ context.Context, _ io.Reader, out io.Writer) error {
+			return githubShadowConfig(out)
+		}},
+		{"shadow-compare", func(_ context.Context, in io.Reader, out io.Writer) error {
+			return githubShadowCompare(in, out)
+		}},
+		{"shadow-evidence", func(_ context.Context, in io.Reader, out io.Writer) error {
+			return githubShadowEvidence(in, out)
+		}},
+		{"evidence-page", func(_ context.Context, in io.Reader, out io.Writer) error {
+			return githubEvidencePage(in, out)
+		}},
+		{"publish-check-run", githubPublishCheckRuns},
+		{"required-checks", func(_ context.Context, in io.Reader, out io.Writer) error {
+			return githubRequiredChecks(in, out)
+		}},
+		{"evidence-gate", func(_ context.Context, in io.Reader, out io.Writer) error {
+			return githubEvidenceGate(in, out)
+		}},
+		{"gate", githubGate},
+		{"actions-run", githubActionsRun},
+		{"reconcile", githubReconcileCheckRuns},
+		{"reconcile-page", func(_ context.Context, in io.Reader, out io.Writer) error {
+			return githubReconcilePage(in, out)
+		}},
+		{"pull-request", githubPullRequestRuns},
+		{"evidence-run", githubEvidenceRun},
+		{"pull-request-evidence", githubPullRequestEvidence},
+		{"pull-request-survey", githubPullRequestSurvey},
+	}
+}
+
+// githubUsage states what `ra8ci github` takes, from the table itself.
+func githubUsage() string {
+	subcommands := githubSubcommands()
+	named := make([]string, 0, len(subcommands))
+	for _, subcommand := range subcommands {
+		named = append(named, subcommand.Name)
+	}
+	return "usage: ra8ci github " + strings.Join(named, "|")
+}
+
 // githubCommand dispatches the GitHub subcommands. check, shadow,
-// shadow-compare and required-checks change nothing on GitHub, and gate only
-// reads it; publish-check-run is the one that writes, and it says so in its own
-// documentation.
+// shadow-compare, the two pages and required-checks change nothing on GitHub,
+// and gate only reads it; publish-check-run is the one that writes, and it
+// says so in its own documentation.
 func githubCommand(ctx context.Context, args []string) error {
 	if len(args) != 1 {
-		return errors.New("usage: ra8ci github check|shadow|shadow-compare|shadow-evidence|publish-check-run|required-checks|evidence-gate|gate|actions-run|reconcile|pull-request|evidence-run|pull-request-evidence|pull-request-survey|evidence-page|reconcile-page")
+		return errors.New(githubUsage())
 	}
-	switch args[0] {
-	case "check":
-		return githubSessionCheck(ctx)
-	case "shadow":
-		return githubShadowConfig(os.Stdout)
-	case "shadow-compare":
-		return githubShadowCompare(os.Stdin, os.Stdout)
-	case "publish-check-run":
-		return githubPublishCheckRuns(ctx, os.Stdin, os.Stdout)
-	case "shadow-evidence":
-		return githubShadowEvidence(os.Stdin, os.Stdout)
-	case "evidence-page":
-		return githubEvidencePage(os.Stdin, os.Stdout)
-	case "required-checks":
-		return githubRequiredChecks(os.Stdin, os.Stdout)
-	case "evidence-gate":
-		return githubEvidenceGate(os.Stdin, os.Stdout)
-	case "gate":
-		return githubGate(ctx, os.Stdin, os.Stdout)
-	case "actions-run":
-		return githubActionsRun(ctx, os.Stdin, os.Stdout)
-	case "reconcile":
-		return githubReconcileCheckRuns(ctx, os.Stdin, os.Stdout)
-	case "reconcile-page":
-		return githubReconcilePage(os.Stdin, os.Stdout)
-	case "pull-request":
-		return githubPullRequestRuns(ctx, os.Stdin, os.Stdout)
-	case "evidence-run":
-		return githubEvidenceRun(ctx, os.Stdin, os.Stdout)
-	case "pull-request-evidence":
-		return githubPullRequestEvidence(ctx, os.Stdin, os.Stdout)
-	case "pull-request-survey":
-		return githubPullRequestSurvey(ctx, os.Stdin, os.Stdout)
-	default:
-		return errors.New("usage: ra8ci github check|shadow|shadow-compare|shadow-evidence|publish-check-run|required-checks|evidence-gate|gate|actions-run|reconcile|pull-request|evidence-run|pull-request-evidence|pull-request-survey|evidence-page|reconcile-page")
+	for _, subcommand := range githubSubcommands() {
+		if subcommand.Name == args[0] {
+			return subcommand.Run(ctx, os.Stdin, os.Stdout)
+		}
 	}
+	return errors.New(githubUsage())
 }
 
 // maxShadowComparisonBytes bounds the observation document this reads. One
