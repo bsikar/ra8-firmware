@@ -630,3 +630,110 @@ func TestSettledEvidenceReportsNoShortfall(t *testing.T) {
 		t.Fatalf("shortfall = %+v, want none", readiness.Shortfall)
 	}
 }
+
+// A pull request whose every pairing came back indeterminate is still one of
+// the commits that were looked at, and it graded nothing. Both facts are kept:
+// dropping it from Commits would hide that it was examined, and leaving it
+// unmarked would let it be counted as one of the representative pull requests
+// the threshold is read across.
+func TestACommitThatGradedNothingIsNamed(t *testing.T) {
+	evidence, err := AccumulateShadowEvidence([]ShadowReport{
+		gradedReport(t, evidenceCommitA, agreeing("build"), agreeing("lint")),
+		gradedReport(t, evidenceCommitB, ungraded("build"), ungraded("lint")),
+	})
+	if err != nil {
+		t.Fatalf("AccumulateShadowEvidence: %v", err)
+	}
+	if len(evidence.Commits) != 2 {
+		t.Fatalf("commits %v, want both accumulated", evidence.Commits)
+	}
+	if len(evidence.UngradedCommits) != 1 || evidence.UngradedCommits[0] != evidenceCommitB {
+		t.Fatalf("ungraded commits %v, want only %s", evidence.UngradedCommits, evidenceCommitB)
+	}
+}
+
+// One graded pairing is enough to make a commit count for something, however
+// many of its other tasks nobody judged. The question this answers is whether
+// the commit moved any task at all, not whether it moved every task.
+func TestACommitThatGradedOneTaskIsNotUngraded(t *testing.T) {
+	evidence, err := AccumulateShadowEvidence([]ShadowReport{
+		gradedReport(t, evidenceCommitA, agreeing("build"), ungraded("lint"), ungraded("docs")),
+	})
+	if err != nil {
+		t.Fatalf("AccumulateShadowEvidence: %v", err)
+	}
+	if len(evidence.UngradedCommits) != 0 {
+		t.Fatalf("ungraded commits %v, want none", evidence.UngradedCommits)
+	}
+}
+
+// A conflict is a verdict. A commit whose only judged pairing disagreed with
+// Actions is the most informative commit in the accumulation, and reporting it
+// as one that graded nothing would send an operator past the disagreement they
+// have to explain.
+func TestACommitThatOnlyConflictedGradedSomething(t *testing.T) {
+	evidence, err := AccumulateShadowEvidence([]ShadowReport{
+		gradedReport(t, evidenceCommitA, conflicting("build"), ungraded("lint")),
+	})
+	if err != nil {
+		t.Fatalf("AccumulateShadowEvidence: %v", err)
+	}
+	if len(evidence.UngradedCommits) != 0 {
+		t.Fatalf("ungraded commits %v, want none", evidence.UngradedCommits)
+	}
+}
+
+// A divergence is graded too, for the reason the accumulation counts it toward
+// the threshold: branch protection cannot see the difference.
+func TestACommitThatOnlyDivergedGradedSomething(t *testing.T) {
+	evidence, err := AccumulateShadowEvidence([]ShadowReport{
+		gradedReport(t, evidenceCommitA, diverging("build")),
+	})
+	if err != nil {
+		t.Fatalf("AccumulateShadowEvidence: %v", err)
+	}
+	if len(evidence.UngradedCommits) != 0 {
+		t.Fatalf("ungraded commits %v, want none", evidence.UngradedCommits)
+	}
+}
+
+// The commits that graded nothing are carried in the order the reports were
+// given, the order the pull requests were observed in, for ShadowEvidence.Commits'
+// reason: any other order is invented.
+func TestTheUngradedCommitsKeepTheOrderTheyWereGivenIn(t *testing.T) {
+	evidence, err := AccumulateShadowEvidence([]ShadowReport{
+		gradedReport(t, evidenceCommitC, ungraded("build")),
+		gradedReport(t, evidenceCommitA, agreeing("build")),
+		gradedReport(t, evidenceCommitB, ungraded("build")),
+	})
+	if err != nil {
+		t.Fatalf("AccumulateShadowEvidence: %v", err)
+	}
+	want := []string{evidenceCommitC, evidenceCommitB}
+	if len(evidence.UngradedCommits) != len(want) {
+		t.Fatalf("ungraded commits %v, want %v", evidence.UngradedCommits, want)
+	}
+	for i, commit := range want {
+		if evidence.UngradedCommits[i] != commit {
+			t.Fatalf("ungraded commits %v, want %v", evidence.UngradedCommits, want)
+		}
+	}
+}
+
+// An accumulation where every commit graded something answers with an empty
+// list rather than a nil one, so a caller encoding it writes [] and a reader
+// can tell "none" from "this answer does not say".
+func TestAnAccumulationWhereEveryCommitGradedAnswersWithAnEmptyList(t *testing.T) {
+	evidence, err := AccumulateShadowEvidence([]ShadowReport{
+		gradedReport(t, evidenceCommitA, agreeing("build")),
+	})
+	if err != nil {
+		t.Fatalf("AccumulateShadowEvidence: %v", err)
+	}
+	if evidence.UngradedCommits == nil {
+		t.Fatal("ungraded commits is nil, want an empty list")
+	}
+	if len(evidence.UngradedCommits) != 0 {
+		t.Fatalf("ungraded commits %v, want none", evidence.UngradedCommits)
+	}
+}

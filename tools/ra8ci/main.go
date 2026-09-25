@@ -1586,6 +1586,12 @@ func githubShadowEvidence(in io.Reader, out io.Writer) error {
 		"threshold":        answer.Readiness.Threshold,
 		"settled":          answer.Readiness.Settled(),
 		"commits":          answer.NotExercised,
+		// The commits that graded nothing are named beside the commits
+		// themselves. A reader counting `commits` is reading the
+		// breadth the threshold was met across, and a pull request
+		// whose every pairing came back indeterminate is in that count
+		// while having moved no task at all.
+		"ungraded_commits": emptyWhenNil(answer.Evidence.UngradedCommits),
 		"tasks":            tasks,
 		"ready":            emptyWhenNil(answer.Readiness.Ready),
 		"conflicting":      emptyWhenNil(answer.Readiness.Conflicting),
