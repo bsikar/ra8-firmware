@@ -44,8 +44,14 @@ func TestAFailureInTheLastStepIsAccepted(t *testing.T) {
 	}
 }
 
+// An attempt that failed around its steps has no failing step to have taken a
+// child exit code from, so the receipt states none: the executor drops the
+// attempt-level code back to noChildExit when the ending landed between two
+// steps (executor/between_steps.go), and the agent then leaves the field out.
 func TestCleanStepsUnderAFailedAttemptAreAccepted(t *testing.T) {
-	if err := failureOrderReceipt(t).Validate(); err != nil {
+	receipt := failureOrderReceipt(t)
+	receipt.ChildExitCode = nil
+	if err := receipt.Validate(); err != nil {
 		t.Fatalf("an attempt that failed around its steps was refused: %v", err)
 	}
 }
