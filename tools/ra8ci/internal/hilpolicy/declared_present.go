@@ -32,6 +32,12 @@ import (
 // declaration from a missing one without matching on message text.
 var ErrUnresolvableConfig = errors.New("HIL config exists but does not resolve")
 
+// ErrUnreadableDeclaration means a HIL configuration names HIL_TIMEOUT_S in a
+// spelling this reader does not interpret. It is exported for the same reason
+// ErrUnresolvableConfig is: the caller has to tell an unreadable declaration
+// from a missing one without matching on message text.
+var ErrUnreadableDeclaration = errors.New("HIL config declares HIL_TIMEOUT_S in an unread spelling")
+
 // configIsAbsent reports whether an app's hil.conf is genuinely not there,
 // given that resolving it already failed with os.ErrNotExist.
 //
