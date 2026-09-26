@@ -7,7 +7,6 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
-	"regexp"
 )
 
 var (
@@ -36,16 +35,11 @@ func VerifyTextCapture(spec Spec, captured []byte) error {
 		return ErrExpectationNotFound
 	}
 	if spec.ExpectNegative != "" {
-		// UART uses grep -iE; RTT uses grep -qE. Preserve that distinction.
-		negative := spec.ExpectNegative
-		if spec.Mode == ModeUARTScrape {
-			negative = "(?i:(?:" + negative + "))"
-		}
-		pattern, err := regexp.Compile(negative)
+		matched, err := negativeExpectationMatches(spec.Mode, spec.ExpectNegative, captured)
 		if err != nil {
-			return fmt.Errorf("invalid HIL negative expectation: %w", err)
+			return err
 		}
-		if pattern.Match(captured) {
+		if matched {
 			return ErrNegativeExpectation
 		}
 	}
