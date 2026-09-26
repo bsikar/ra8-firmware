@@ -201,12 +201,14 @@ func (s *Spool) Pending() ([]Entry, error) {
 		if !validID(id) {
 			return nil, fmt.Errorf("invalid spool entry %q", file.Name())
 		}
-		if _, err := os.Stat(filepath.Join(s.directory, id+".synced.json")); err == nil {
-			continue
-		} else if !errors.Is(err, os.ErrNotExist) {
+		synced, err := syncReceiptPresent(filepath.Join(s.directory, id+".synced.json"))
+		if err != nil {
 			return nil, err
 		}
-		raw, err := os.ReadFile(filepath.Join(s.directory, file.Name()))
+		if synced {
+			continue
+		}
+		raw, err := readRegularFile(filepath.Join(s.directory, file.Name()))
 		if err != nil {
 			return nil, err
 		}
