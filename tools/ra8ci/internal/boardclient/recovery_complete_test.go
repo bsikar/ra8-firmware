@@ -23,7 +23,7 @@ func recoveryChallenge(state board.Snapshot) store.NeutralChallenge {
 		ID: testProofID, Nonce: "nonce", BoardID: state.BoardID, Purpose: "recovery",
 		Generation: state.Generation, SnapshotVersion: state.Version,
 		AgentHighWater: state.AgentHighWater, FixtureRevision: "rev-3",
-		ProfileSHA256: "abc", RestorePolicy: "reflash",
+		ProfileSHA256: "abc", RestorePolicy: "reflash", RecoveryPlanID: testPlanID,
 		IssuedAt: time.Now().UTC(), ExpiresAt: time.Now().UTC().Add(30 * time.Second),
 	}
 }
@@ -65,7 +65,8 @@ func TestFinishRecoverySubmitsAChallengeBoundReceipt(t *testing.T) {
 	if posted.ChallengeID != testProofID || string(posted.Receipt) != "board-agent-signature" || posted.ExpectedVersion != state.Version {
 		t.Fatalf("submission did not carry the challenge it signed: %+v", posted)
 	}
-	if producer.seen.Purpose != "recovery" || producer.seen.Nonce != "nonce" {
+	if producer.seen.Purpose != "recovery" || producer.seen.Nonce != "nonce" ||
+		producer.seen.RecoveryPlanID != testPlanID {
 		t.Fatalf("the producer signed the wrong challenge: %+v", producer.seen)
 	}
 	if snapshot.Phase != board.Ready {
@@ -126,6 +127,11 @@ func TestFinishRecoveryRefusesAChallengeThatDoesNotFit(t *testing.T) {
 		"wrong purpose": func(c store.NeutralChallenge) store.NeutralChallenge { c.Purpose = "release"; return c },
 		"wrong version": func(c store.NeutralChallenge) store.NeutralChallenge { c.SnapshotVersion++; return c },
 		"no profile":    func(c store.NeutralChallenge) store.NeutralChallenge { c.ProfileSHA256 = ""; return c },
+		"no plan":       func(c store.NeutralChallenge) store.NeutralChallenge { c.RecoveryPlanID = ""; return c },
+		"plan is not an ID": func(c store.NeutralChallenge) store.NeutralChallenge {
+			c.RecoveryPlanID = "plan-3"
+			return c
+		},
 		"expired": func(c store.NeutralChallenge) store.NeutralChallenge {
 			c.ExpiresAt = time.Now().UTC().Add(-time.Second)
 			return c
