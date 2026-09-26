@@ -83,7 +83,10 @@ func (g *UnclaimedLeaseGuard) ReleaseReservationLease(ctx context.Context, vm st
 		if len(live) == 0 {
 			continue
 		}
-		lease := live[0]
+		lease, err := heldLease(holder, live)
+		if err != nil {
+			return fmt.Errorf("read bench leases for %s: %w", holder, err)
+		}
 		return fmt.Errorf("%w: reservation %s, holder %s, lease %s on board %s (%s, %s priority)",
 			ErrUnclaimedLeaseHeld, vm.ID, holder, lease.ID, lease.BoardID, lease.State, lease.Priority)
 	}
