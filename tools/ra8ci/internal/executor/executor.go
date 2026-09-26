@@ -451,6 +451,9 @@ func resolveTaskProgram(root, name string) (string, error) {
 		if err != nil {
 			return "", fmt.Errorf("%w: %s: %v", ErrToolMissing, name, err)
 		}
+		if err := checkProgramIsOutsideTheCheckout(root, program); err != nil {
+			return "", err
+		}
 		return program, nil
 	}
 	relativeName := filepath.Clean(filepath.FromSlash(name))
