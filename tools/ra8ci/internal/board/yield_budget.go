@@ -221,6 +221,7 @@ func EstimateHandoff(cohort YieldCohort, bounds DeclaredHandoffBounds, samples [
 	}
 
 	latencies := make([]time.Duration, 0, len(samples))
+	measured := make(measuredLeases, len(samples))
 	for _, sample := range samples {
 		if sample.Cohort != cohort {
 			continue
@@ -235,6 +236,9 @@ func EstimateHandoff(cohort YieldCohort, bounds DeclaredHandoffBounds, samples [
 		if now.Sub(sample.NeutralAt) > MaxHandoffSampleAge {
 			estimate.Stale++
 			continue
+		}
+		if err := measured.admit(sample.LeaseID); err != nil {
+			return HandoffEstimate{}, err
 		}
 		latency := sample.Latency()
 		if latency > MaxHandoffBound {
