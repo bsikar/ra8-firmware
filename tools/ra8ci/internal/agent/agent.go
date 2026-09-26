@@ -318,11 +318,15 @@ func (agent *Agent) post(ctx context.Context, endpoint string, request any, resp
 	if response == nil {
 		return result.StatusCode, fmt.Errorf("%w: missing response target", ErrServerProtocol)
 	}
+	// Past this point the plane has answered 200. A body this agent cannot
+	// read is a protocol break, not silence, so the status travels with the
+	// error: status 0 is reserved for a call the plane never answered, and
+	// only that is worth offering again.
 	if result.ContentLength > maxHTTPResponse {
-		return 0, fmt.Errorf("%w: oversized response", ErrServerProtocol)
+		return result.StatusCode, fmt.Errorf("%w: oversized response", ErrServerProtocol)
 	}
 	if err := protocol.DecodeStrict(result.Body, response); err != nil {
-		return 0, fmt.Errorf("%w: %v", ErrServerProtocol, err)
+		return result.StatusCode, fmt.Errorf("%w: %v", ErrServerProtocol, err)
 	}
 	return result.StatusCode, nil
 }
