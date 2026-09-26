@@ -113,7 +113,7 @@ func TestAnExtensionThatWasNotMarkedCriticalIsAccepted(t *testing.T) {
 func TestAPresentedChainLinkIsHeldToTheSameRule(t *testing.T) {
 	template := chainAuthority()
 	template.ExtraExtensions = []pkix.Extension{criticalExtension("1.3.6.1.4.1.99999.4")}
-	err := ValidateClientIdentity(presenting(t, link(t, template)), testNow)
+	err := ValidateClientIdentity(presenting(t, template), testNow)
 	if err == nil || !strings.Contains(err.Error(), "1.3.6.1.4.1.99999.4") {
 		t.Fatalf("expected a refusal naming the extension, got %v", err)
 	}
