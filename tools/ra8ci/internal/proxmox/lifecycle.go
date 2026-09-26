@@ -438,7 +438,7 @@ type IdleProof struct {
 }
 
 func validateIdleProof(identity Identity, proof IdleProof, now time.Time) error {
-	if proof.VMID != identity.VMID || proof.ReservationID != identity.ReservationID || !idPattern.MatchString(proof.EvidenceID) || !proof.Drained || !proof.NoActiveJob || proof.ObservedAt.IsZero() || proof.ObservedAt.After(now.Add(time.Second)) || now.Sub(proof.ObservedAt) > 10*time.Second {
+	if proof.VMID != identity.VMID || proof.ReservationID != identity.ReservationID || !idPattern.MatchString(proof.EvidenceID) || !proof.Drained || !proof.NoActiveJob || !idleProofIsFresh(proof, now) {
 		return fmt.Errorf("%w: fresh durable drain and idle evidence required", ErrInvalid)
 	}
 	return nil
@@ -464,6 +464,12 @@ func (c *Client) Stop(ctx context.Context, action Action, identity Identity, pro
 	}
 	if vm.Status == "stopped" {
 		return Result{VM: &vm, AlreadySatisfied: true}, nil
+	}
+	// The reads above are unbounded by the freshness window, and an
+	// already-stopped guest is not reached here, so nothing is refused that
+	// would not have issued a stop.
+	if err := checkIdleProofStillFresh(proof, time.Now()); err != nil {
+		return Result{}, err
 	}
 	return c.mutateAndVerify(opCtx, action, http.MethodPost, vmPath(c.node, identity.VMID)+"/status/stop", url.Values{}, identity, "stop")
 }
@@ -497,6 +503,9 @@ func (c *Client) Destroy(ctx context.Context, action Action, identity Identity, 
 	}
 	if vm.Status != "stopped" || vm.Protected || vm.Locked || vm.ConfigDigest != proof.ExpectedConfigDigest {
 		return Result{}, fmt.Errorf("%w: VM not safe for deletion", ErrConflict)
+	}
+	if err := checkIdleProofStillFresh(proof.IdleProof, time.Now()); err != nil {
+		return Result{}, err
 	}
 	return c.mutateAndVerify(opCtx, action, http.MethodDelete, vmPath(c.node, identity.VMID)+"?purge=0&destroy-unreferenced-disks=0", nil, identity, "destroy")
 }
