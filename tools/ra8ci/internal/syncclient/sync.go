@@ -12,8 +12,6 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"net/url"
-	"strings"
 
 	"github.com/bsikar/ra8-firmware/tools/ra8ci/internal/catalog"
 	"github.com/bsikar/ra8-firmware/tools/ra8ci/internal/spool"
@@ -32,12 +30,10 @@ func SyncPending(ctx context.Context, outbox *spool.Spool, baseURL string, clien
 	if outbox == nil || client == nil {
 		return Report{}, errors.New("offline sync requires outbox and HTTP client")
 	}
-	parsed, err := url.Parse(baseURL)
-	if err != nil || parsed.Scheme != "https" || parsed.Host == "" || parsed.User != nil ||
-		parsed.RawQuery != "" || parsed.Fragment != "" || parsed.Path != "" {
-		return Report{}, errors.New("offline sync server must be an HTTPS origin")
+	endpoint, err := syncEndpoint(baseURL)
+	if err != nil {
+		return Report{}, err
 	}
-	endpoint := strings.TrimSuffix(baseURL, "/") + "/v1/local-runs/sync"
 	entries, err := outbox.Pending()
 	if err != nil {
 		return Report{}, err
