@@ -49,14 +49,15 @@ extern "C" {
  * @details Zero-initialise and pass to ::ra8_arena_init. The backing region must
  *          out-live the arena and every block carved from it. Fields are private.
  *
- * @invariant `used <= size`.
+ * @invariant `used <= high_water <= size`.
  *
  * @since 0.1.0
  */
 typedef struct {
-  uint8_t* base; /**< First byte of the tier region.         */
-  uint32_t size; /**< Region length in bytes.                */
-  uint32_t used; /**< High-water mark (bytes carved so far). */
+  uint8_t* base;       /**< First byte of the tier region.                  */
+  uint32_t size;       /**< Region length in bytes.                         */
+  uint32_t used;       /**< Live bump cursor (bytes carved so far).         */
+  uint32_t high_water; /**< Largest `used` observed since ::ra8_arena_init. */
 } ra8_arena_t;
 
 /**
@@ -73,7 +74,8 @@ typedef struct {
  *
  * @pre `base` addresses at least `size` writable bytes.
  * @pre `arena` does not alias `base`.
- * @post On success `arena->used == 0` and the whole region is available.
+ * @post On success `arena->used` and `arena->high_water` are zero and the whole
+ *       region is available.
  * @post On any non-ok return `arena` is left unbound.
  *
  * @note Not thread-safe.
@@ -130,6 +132,120 @@ ra8_arena_carve(ra8_arena_t* arena, uint32_t bytes, uint32_t align, void** out_p
  * @since 0.1.0
  */
 [[nodiscard]] ra8_err_t ra8_arena_remaining(const ra8_arena_t* arena, uint32_t* out_remaining);
+
+/**
+ * @struct ra8_arena_slot_t
+ * @brief One named sub-block of a multi-slot workspace carve.
+ *
+ * @details Describes a single reservation for ::ra8_arena_carve_all: how many
+ *          bytes it needs, what alignment it needs, and where the resulting
+ *          pointer is written. A workspace struct is filled by declaring one
+ *          slot per member instead of chaining byte offsets by hand.
+ *
+ * @since 0.1.0
+ */
+typedef struct {
+  uint32_t bytes;   /**< Block size to carve (> 0).       */
+  uint32_t align;   /**< Alignment: a power of two, >= 1. */
+  void**   out_ptr; /**< Receives the aligned block.      */
+} ra8_arena_slot_t;
+
+/**
+ * @enum ra8_arena_limits_t
+ * @brief Bounds the arena enforces on a multi-slot carve.
+ *
+ * @since 0.1.0
+ */
+typedef enum : uint32_t {
+  k_ra8_arena_slot_cap = 16U, /**< Largest slot count ::ra8_arena_carve_all accepts. */
+} ra8_arena_limits_t;
+
+/**
+ * @brief Carve a whole multi-slot workspace, or nothing at all.
+ *
+ * @details Validates every slot and proves the whole set fits before the first
+ *          pointer is published, so a workspace is never half-filled: on any
+ *          rejection the arena is unchanged and no `out_ptr` has been written.
+ *          Slots are carved in array order, so the caller controls packing.
+ *          This is the checked replacement for a hand-written offset chain and
+ *          its per-slot capacity comparisons.
+ *
+ * @param[in,out] arena      Initialised arena.
+ * @param[in]     slots      Array of @p slot_count slot descriptors.
+ * @param[in]     slot_count Number of slots (1 .. ::k_ra8_arena_slot_cap).
+ *
+ * @return ra8_err_t Error code.
+ * @retval k_ra8_ok               Every slot carved; every `out_ptr` set.
+ * @retval k_ra8_err_null_ptr     `arena`, `slots`, or some `slots[i].out_ptr` was NULL.
+ * @retval k_ra8_err_invalid_size Some `slots[i].bytes` was zero.
+ * @retval k_ra8_err_invalid_arg  `slot_count` was zero or above the cap, or some
+ *                                `slots[i].align` was zero or not a power of two.
+ * @retval k_ra8_err_no_mem       The slots do not all fit the remainder.
+ *
+ * @pre `arena` was populated by ::ra8_arena_init.
+ * @pre Each `slots[i].out_ptr` addresses writable pointer storage.
+ * @post On success each `slots[i].out_ptr` holds an `align`-aligned block of
+ *       `bytes` storage, and no two blocks overlap.
+ * @post On any non-ok return the arena and every `out_ptr` are untouched.
+ *
+ * @note Not thread-safe.
+ *
+ * @since 0.1.0
+ */
+[[nodiscard]] ra8_err_t
+ra8_arena_carve_all(ra8_arena_t* arena, const ra8_arena_slot_t* slots, uint32_t slot_count);
+
+/**
+ * @brief Report the largest occupancy the arena has ever reached.
+ *
+ * @details Unlike ::ra8_arena_remaining this survives ::ra8_arena_reset, so a
+ *          reusable scratch arena can report the peak a whole run needed and
+ *          bring-up can size the region from a measurement rather than a guess.
+ *
+ * @param[in]  arena          Initialised arena.
+ * @param[out] out_high_water Receives the peak `used` value since init.
+ *
+ * @return ra8_err_t Error code.
+ * @retval k_ra8_ok           Peak reported.
+ * @retval k_ra8_err_null_ptr `arena` or `out_high_water` was NULL.
+ *
+ * @pre `arena` was populated by ::ra8_arena_init.
+ * @pre `out_high_water` is writable.
+ * @post `*out_high_water == arena->high_water`.
+ * @post No arena state is mutated.
+ *
+ * @note Thread-safe with respect to a quiescent arena (pure read).
+ *
+ * @since 0.1.0
+ */
+[[nodiscard]] ra8_err_t ra8_arena_high_water(const ra8_arena_t* arena, uint32_t* out_high_water);
+
+/**
+ * @brief Rewind the arena to empty, keeping the high-water record.
+ *
+ * @details For a reusable scratch arena whose blocks all die together at the
+ *          end of one operation: the next operation carves the same region
+ *          again. Slab backing carved once during bring-up must never be in a
+ *          reset arena, because reset does not and cannot invalidate the
+ *          pointers already handed out.
+ *
+ * @param[in,out] arena Initialised arena.
+ *
+ * @return ra8_err_t Error code.
+ * @retval k_ra8_ok           Arena rewound.
+ * @retval k_ra8_err_null_ptr `arena` was NULL.
+ *
+ * @pre `arena` was populated by ::ra8_arena_init.
+ * @pre Every block previously carved from @p arena is dead.
+ * @post `arena->used == 0` and the whole region is available again.
+ * @post `arena->high_water` is unchanged.
+ *
+ * @note Not thread-safe.
+ *
+ * @since 0.1.0
+ */
+[[nodiscard]] ra8_err_t ra8_arena_reset(ra8_arena_t* arena);
+
 
 #ifdef __cplusplus
 }
