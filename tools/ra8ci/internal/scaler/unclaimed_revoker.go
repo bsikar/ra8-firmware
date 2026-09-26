@@ -162,8 +162,5 @@ func (r *UnclaimedRevocation) AbandonAttempt(ctx context.Context, vm store.Runne
 	if err != nil {
 		return fmt.Errorf("abandon reservation %s: %w", vm.ID, err)
 	}
-	if released.State != "released" {
-		return fmt.Errorf("%w: reservation %s is %s after release", store.ErrConflict, vm.ID, released.State)
-	}
-	return nil
+	return checkReleasedReservation(vm.ID, released)
 }
