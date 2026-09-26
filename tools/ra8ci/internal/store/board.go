@@ -34,8 +34,15 @@ func (a BoardActor) ID() string { return a.id }
 // AuthorizeBoardPeer binds a verified TLS leaf to an active board-scoped grant.
 // Operator grants may be repository-wide; all other grants name the board.
 func (s *Store) AuthorizeBoardPeer(ctx context.Context, peer *tls.ConnectionState, repository, boardID string) (BoardActor, error) {
-	if s == nil || s.pool == nil || peer == nil || len(peer.PeerCertificates) == 0 || len(peer.VerifiedChains) == 0 || len(peer.VerifiedChains[0]) == 0 || !peer.PeerCertificates[0].Equal(peer.VerifiedChains[0][0]) || repository == "" || !validBoardID(boardID) {
+	if s == nil || s.pool == nil {
 		return BoardActor{}, ErrDenied
+	}
+	// The peer rules live in checkedBoardPeer, which holds the verified leaf
+	// to its own validity window as well as to the verified chain: the
+	// listener decides that window once, at the handshake, and requests keep
+	// arriving on that connection long after.
+	if err := checkedBoardPeer(peer, repository, boardID, time.Now()); err != nil {
+		return BoardActor{}, err
 	}
 	sum := sha256.Sum256(peer.PeerCertificates[0].Raw)
 	var actor BoardActor
