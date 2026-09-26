@@ -111,32 +111,3 @@ bool mdl_path_contained(const char* parent, const char* candidate);
  * @since 0.1.0
  */
 bool mdl_path_join(const char* parent, const char* seg, char* out, size_t cap);
-
-/**
- * @brief XML-escape `src` into `out`, failing rather than truncating.
- *
- * @details
- * Replaces the five XML metacharacters (`&`, `<`, `>`, `"`, `'`) with their
- * predefined entities and copies everything else verbatim. Applied to every
- * untrusted filename interpolated into the OPF, nav document and per-page
- * XHTML so a page named `a"><script>.jpg` cannot break the container's
- * well-formedness. If the escaped result would not fit, the function fails
- * instead of emitting a truncated (and possibly malformed) document.
- *
- * @param[in]  src Source string (NUL-terminated), or NULL.
- * @param[out] out Destination buffer for the escaped, NUL-terminated result.
- * @param[in]  cap Capacity of `out` in bytes.
- *
- * @return Whether the fully escaped string fit in `out`.
- * @retval true  `out` holds the complete escaped form of `src`.
- * @retval false `src`/`out` was NULL, `cap` was 0, or the result did not fit.
- *
- * @pre `out`, when non-NULL, has room for at least `cap` bytes.
- * @pre The caller treats `false` as a hard error (no partial output is used).
- * @post On `false` with `cap > 0`, `out[0]` is `'\0'`.
- * @post `src` is not modified.
- *
- * @note Thread-safe: writes only caller-provided storage.
- * @since 0.1.0
- */
-bool mdl_xml_escape(const char* src, char* out, size_t cap);
