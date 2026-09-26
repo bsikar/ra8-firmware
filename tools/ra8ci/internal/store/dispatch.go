@@ -142,7 +142,7 @@ func (s *Store) ClaimAgentTask(ctx context.Context, certDER []byte, facts protoc
 			definition.BoardPolicy != "none" || !definition.SupportsOS(agent.OS) {
 			return nil, ErrConflict
 		}
-		if _, err := checkedPersistedArguments(priorArguments, definition); err != nil {
+		if _, err := checkedAssignableArguments(priorArguments, definition); err != nil {
 			return nil, fmt.Errorf("%w: issued assignment no longer matches its catalog contract: %v",
 				ErrConflict, err)
 		}
@@ -211,7 +211,7 @@ func (s *Store) ClaimAgentTask(ctx context.Context, certDER []byte, facts protoc
 		!definition.SupportsOS(facts.OS) || deadlineSeconds != definition.DeadlineSeconds {
 		return nil, fmt.Errorf("%w: unreviewed task definition", ErrConflict)
 	}
-	if _, err := checkedPersistedArguments(taskArguments, definition); err != nil {
+	if _, err := checkedAssignableArguments(taskArguments, definition); err != nil {
 		return nil, fmt.Errorf("%w: scheduled task arguments differ from the reviewed catalog: %v",
 			ErrConflict, err)
 	}
