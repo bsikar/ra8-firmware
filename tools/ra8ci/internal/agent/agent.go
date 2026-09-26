@@ -104,11 +104,12 @@ func New(config Config) (*Agent, error) {
 	if err != nil {
 		return nil, fmt.Errorf("%w: %v", ErrServerProtocol, err)
 	}
-	identity, err := tls.LoadX509KeyPair(config.CertFile, config.KeyFile)
+	identity, err := mtls.LoadClientIdentity(config.CertFile, config.KeyFile, time.Now())
 	if err != nil {
 		return nil, err
 	}
-	if err := mtls.ValidateClientIdentity(identity, time.Now()); err != nil {
+	present, err := mtls.ClientIdentitySource(identity, time.Now)
+	if err != nil {
 		return nil, err
 	}
 	absolute, err := filepath.Abs(config.Root)
@@ -131,7 +132,7 @@ func New(config Config) (*Agent, error) {
 		return nil, fmt.Errorf("%w: invalid poll wait", ErrServerProtocol)
 	}
 	transport := &http.Transport{Proxy: nil, ForceAttemptHTTP2: true, TLSClientConfig: &tls.Config{
-		MinVersion: tls.VersionTLS13, RootCAs: roots, Certificates: []tls.Certificate{identity},
+		MinVersion: tls.VersionTLS13, RootCAs: roots, GetClientCertificate: present,
 	}}
 	return &Agent{base: strings.TrimSuffix(config.ServerURL, "/"), root: root, pollWait: wait,
 		client: &http.Client{Transport: transport, CheckRedirect: func(_ *http.Request, _ []*http.Request) error {
