@@ -71,8 +71,11 @@ type Agent struct {
 	root     string
 	pollWait time.Duration
 	beat     time.Duration
-	client   *http.Client
-	catalog  *catalog.Catalog
+	// flush bounds the kept-back log chunk's last offer. Zero means the
+	// reviewed logFlushWindow; see flushWindow.
+	flush   time.Duration
+	client  *http.Client
+	catalog *catalog.Catalog
 	// authorities re-asks whether the trust file this agent verifies the
 	// server against can still verify anything. Only New wires it, from the
 	// bundle it read; an agent assembled directly in a test holds no bundle
@@ -260,9 +263,12 @@ func (agent *Agent) execute(parent context.Context, assignment protocol.Assignme
 	artifactStop()
 	// Retry only the last ambiguous log chunk. The server must treat the same
 	// sequence and digest idempotently; this never resumes the child process.
-	evidenceCtx, evidenceCancel := context.WithTimeout(parent, requestLimit)
-	defer evidenceCancel()
-	uploader.flushGrace(evidenceCtx)
+	// On its own window, not the receipt's: a plane that stalls here must not
+	// be able to spend the budget of the one message that says how this
+	// attempt ended. See logFlushWindow.
+	flushCtx, flushStop := context.WithTimeout(parent, agent.flushWindow())
+	uploader.flushGrace(flushCtx)
+	flushStop()
 	endFacts, err := HostFacts()
 	if err != nil {
 		return err
@@ -272,7 +278,11 @@ func (agent *Agent) execute(parent context.Context, assignment protocol.Assignme
 	if err := receipt.Validate(); err != nil {
 		return err
 	}
-	// This grace permits reporting a deadline, not further task execution.
+	// Taken after the flush has returned, so the receipt starts on a full
+	// window however long the flush spent. This grace permits reporting a
+	// deadline, not further task execution.
+	evidenceCtx, evidenceCancel := context.WithTimeout(parent, requestLimit)
+	defer evidenceCancel()
 	if err := agent.accept(evidenceCtx, assignment, "/v1/attempts/"+assignment.AttemptID+"/result", receipt); err != nil {
 		return err
 	}
