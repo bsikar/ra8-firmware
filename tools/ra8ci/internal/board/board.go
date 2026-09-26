@@ -614,6 +614,12 @@ func requestYield(s *Snapshot, c RequestYield, now time.Time, events *[]Event) e
 		if err := ValidateYieldCohort(c.Cohort); err != nil {
 			return err
 		}
+		// PlanYield asks this before quoting the ETA. Ask it again here,
+		// on the path that actually records the cohort on the lease: a
+		// plan is advisory, and this command can be issued without one.
+		if err := checkCohortNamesBoard(c.Cohort, s.BoardID); err != nil {
+			return err
+		}
 	} else if c.ShownTarget > 0 {
 		return &Error{InvalidArgument, "shown handoff target has no cohort behind it"}
 	}
@@ -996,6 +1002,15 @@ func Validate(s Snapshot) error {
 			}
 			if err := ValidateYieldCohort(lease.HandoffCohort); err != nil {
 				return &Error{Conflict, "retained lease carries an invalid handoff cohort"}
+			}
+			// The recorded cohort is the bucket the completed handoff is
+			// filed against, so one naming another board sends this
+			// board's measurement into a stranger's history. Refused in
+			// every phase, including the recovery ones that keep the
+			// lease as evidence, which is where a bad row is most likely
+			// to sit unread until something measures it.
+			if err := checkCohortNamesBoard(lease.HandoffCohort, s.BoardID); err != nil {
+				return &Error{Conflict, "retained lease carries a handoff cohort for another board"}
 			}
 		} else if lease.HandoffTarget != 0 {
 			return &Error{Conflict, "retained lease carries a handoff target without its cohort"}
