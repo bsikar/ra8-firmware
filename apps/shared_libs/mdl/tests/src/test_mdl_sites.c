@@ -266,8 +266,8 @@ RA8_INTERNAL static void internal_test_peppercarrot_series(const mdl_site_t* sit
                                   site->chapter_url_contains,
                                   &s_urls) == k_ra8_ok);
   TEST_ASSERT_EQ((uint16_t)2, s_urls.count);
-  TEST_ASSERT(mdl_urlname_chapter_number(s_urls.urls[0]) == 39L);
-  TEST_ASSERT(mdl_urlname_chapter_number(s_urls.urls[1]) == 38L);
+  TEST_ASSERT(mdl_urlname_chapter_value(s_urls.urls[0]) == 39.0);
+  TEST_ASSERT(mdl_urlname_chapter_value(s_urls.urls[1]) == 38.0);
   TEST_ASSERT(strncmp(s_urls.urls[0], site->chapter_url_prefix, strlen(site->chapter_url_prefix)) ==
               0);
   char metadata[k_mdl_url_max];

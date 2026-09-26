@@ -253,12 +253,6 @@ mdl_chapter_rec_t* mdl_state_find_chapter(mdl_state_t* st, const char* id)
   return nullptr;
 }
 
-mdl_chapter_rec_t*
-mdl_state_add_chapter(mdl_state_t* st, const char* id, const char* url, long number)
-{
-  return mdl_state_add_chapter_numbered(st, id, url, (double)number, number != 0L);
-}
-
 mdl_chapter_rec_t* mdl_state_add_chapter_numbered(mdl_state_t* st,
                                                   const char*  id,
                                                   const char*  url,

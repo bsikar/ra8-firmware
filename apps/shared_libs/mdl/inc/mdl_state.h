@@ -420,35 +420,12 @@ ra8_err_t mdl_state_save(mdl_storage_t*     storage,
 mdl_chapter_rec_t* mdl_state_find_chapter(mdl_state_t* st, const char* id);
 
 /**
- * @brief Find or append a chapter record, returning it.
- *
- * @param[in,out] st     State to update (never NULL).
- * @param[in]     id     Chapter identifier (never NULL).
- * @param[in]     url    Chapter page URL (never NULL).
- * @param[in]     number Parsed chapter number (0 when unnumbered).
- *
- * @return The existing or newly-added record, or NULL when the table is full.
- * @retval NULL A NULL argument, or ::k_mdl_max_chapters already reached.
- *
- * @pre @p st, @p id, @p url are non-NULL and NUL-terminated.
- * @pre The caller treats NULL as "table full" and degrades, never crashes.
- * @post A new record starts incomplete with `page_count == 0`; a nonzero
- *       @p number is marked known and zero retains legacy "unknown" semantics.
- * @post `st->chapter_count` grows by at most one.
- *
- * @note Not thread-safe.
- * @since 0.1.0
- */
-mdl_chapter_rec_t*
-mdl_state_add_chapter(mdl_state_t* st, const char* id, const char* url, long number);
-
-/**
  * @brief Find or append a chapter with explicit parsed-number presence.
  *
  * @details
- * Unlike the source-compatible ::mdl_state_add_chapter wrapper, this API keeps
- * chapter zero distinct from an unknown number and preserves fractional chapter
- * numbers. An unknown number must be supplied canonically as 0.0.
+ * This is the only way to append a chapter, so chapter zero stays distinct from
+ * an unknown number and a fractional chapter number is preserved exactly. An
+ * unknown number must be supplied canonically as 0.0.
  *
  * @param[in,out] st           State to update (never NULL).
  * @param[in]     id           Chapter identifier (never NULL).
