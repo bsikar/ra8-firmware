@@ -183,20 +183,11 @@ func (p *CheckRunPublisher) Publish(ctx context.Context, run TaskCheckRun, summa
 	if err := json.NewDecoder(io.LimitReader(response.Body, maxCheckRunResponse)).Decode(&created); err != nil || created.ID <= 0 {
 		return 0, errors.New("GitHub returned invalid check run metadata")
 	}
-	// GitHub is the record of what was published. A response naming a
+	// GitHub is the record of what was published. A response describing a
 	// different run than the one posted is not a success to report, because
 	// a comparison against Actions would then be made against the wrong run.
-	if created.Name != run.Name || created.Conclusion != run.Conclusion {
-		return 0, fmt.Errorf("%w: GitHub recorded %q/%q for %q/%q", ErrCheckRunRejected,
-			created.Name, created.Conclusion, run.Name, run.Conclusion)
-	}
-	// An echoed identifier that names another run is refused for the same
-	// reason the name is. An absent one is not: a response that carries no
-	// identifier is silence about the field, and the listing a
-	// reconciliation reads carries it independently of this answer.
-	if created.ExternalID != "" && created.ExternalID != externalID {
-		return 0, fmt.Errorf("%w: GitHub recorded external id %q for %q", ErrCheckRunRejected,
-			created.ExternalID, externalID)
+	if err := checkCreatedRunIsTheRunPosted(created, run, externalID); err != nil {
+		return 0, err
 	}
 	return created.ID, nil
 }
