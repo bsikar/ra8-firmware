@@ -19,6 +19,12 @@ func deadlineHILTask(t *testing.T) Task {
 	task.HIL.HandoffSafeStepSeconds = 12
 	task.HIL.HandoffRestoreProbeSeconds = 8
 	task.DeadlineSeconds = 120
+	// The sibling rule checkRestoreProbeCoversTheFlashRestore holds the
+	// declared restore-and-probe over the task's own flash restore, and
+	// these tests vary the probe freely while saying nothing about it, so
+	// the fixture declares the smallest flash restore there is: every
+	// case below then exercises the deadline rule and only it.
+	task.HIL.FlashRestoreSeconds = 1
 	return task
 }
 
