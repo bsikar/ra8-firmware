@@ -87,13 +87,17 @@ static np_bio_t s_np_bio;
 #include "ra8_tls_net_test_contracts.h"
 
 /**
- * @brief BIO send: fragment ciphertext into <= MTU ra8_net_pal frames.
+ * @brief Transport send: fragment ciphertext into <= MTU ra8_net_pal frames.
  * @copydoc internal_np_bio_send
  */
-RA8_INTERNAL static int internal_np_bio_send(void* ctx, const uint8_t* buf, size_t len)
+RA8_INTERNAL static ra8_err_t internal_np_bio_send(void*          ctx,
+                                                   const uint8_t* buf,
+                                                   size_t         len,
+                                                   size_t*        out_sent)
 {
   np_bio_t* b   = (np_bio_t*)ctx;
   size_t    off = 0U;
+  *out_sent     = 0U;
   /* Bounded by ``len``: each iteration consumes at least one byte. */
   while (off < len) {
     size_t   remain = len - off;
@@ -103,23 +107,28 @@ RA8_INTERNAL static int internal_np_bio_send(void* ctx, const uint8_t* buf, size
     }
     off += (size_t)chunk;
   }
-  return (int)off;
+  *out_sent = off;
+  return k_ra8_ok;
 }
 
 /**
- * @brief BIO recv: drain one ra8_net_pal frame, buffering the remainder.
+ * @brief Transport recv: drain one ra8_net_pal frame, buffering the remainder.
  * @copydoc internal_np_bio_recv
  */
-RA8_INTERNAL static int internal_np_bio_recv(void* ctx, uint8_t* buf, size_t len)
+RA8_INTERNAL static ra8_err_t internal_np_bio_recv(void*    ctx,
+                                                   uint8_t* buf,
+                                                   size_t   len,
+                                                   size_t*  out_received)
 {
-  np_bio_t* b = (np_bio_t*)ctx;
+  np_bio_t* b   = (np_bio_t*)ctx;
+  *out_received = 0U;
   if (b->reasm_pos >= b->reasm_len) {
     uint16_t cap  = (uint16_t)k_ra8_net_pal_frame_max;
     b->reasm_len  = 0U;
     b->reasm_pos  = 0U;
     ra8_err_t err = ra8_net_pal_recv_frame(b->scratch, &cap);
     if (err != k_ra8_ok) {
-      return 0; /* No frame ready -- loopback drained. */
+      return k_ra8_ok; /* No frame ready -- loopback drained, zero bytes. */
     }
     (void)memcpy(b->reasm, b->scratch, (size_t)cap);
     b->reasm_len = cap;
@@ -127,8 +136,9 @@ RA8_INTERNAL static int internal_np_bio_recv(void* ctx, uint8_t* buf, size_t len
   size_t avail = (size_t)(b->reasm_len - b->reasm_pos);
   size_t n     = (len < avail) ? len : avail;
   (void)memcpy(buf, &b->reasm[b->reasm_pos], n);
-  b->reasm_pos = (uint16_t)(b->reasm_pos + (uint16_t)n);
-  return (int)n;
+  b->reasm_pos  = (uint16_t)(b->reasm_pos + (uint16_t)n);
+  *out_received = n;
+  return k_ra8_ok;
 }
 
 /** @brief MAC used by the loopback bring-up. */
@@ -144,9 +154,9 @@ RA8_INTERNAL static ra8_tls_session_cfg_t internal_make_np_cfg(void)
   s_np_bio.mtu = (uint16_t)k_ra8_tls_mtu_min;
 
   ra8_tls_session_cfg_t cfg = {};
-  cfg.bio_send              = internal_np_bio_send;
-  cfg.bio_recv              = internal_np_bio_recv;
-  cfg.bio_ctx               = &s_np_bio;
+  cfg.transport.send        = internal_np_bio_send;
+  cfg.transport.recv        = internal_np_bio_recv;
+  cfg.transport.ctx         = &s_np_bio;
   cfg.server_name           = "endpoint.test";
   cfg.verify_mode           = k_ra8_tls_verify_optional;
   return cfg;

@@ -60,9 +60,7 @@
 #include "ra8_tls.h"
 
 #ifndef RA8_OFF_TARGET
-#include "mbedtls/net_sockets.h"
 #include "mbedtls/platform.h"
-#include "mbedtls/ssl.h"
 #include "nx_api.h"
 #include "nx_ether_driver_ra8_eth.h"
 #include "psa/crypto.h"
@@ -418,75 +416,88 @@ static void demo_free(void* p)
 }
 
 /**
- * @brief ra8_tls BIO send callback bound to ``nx_tcp_socket_send``.
+ * @brief ra8_tls transport send callback bound to ``nx_tcp_socket_send``.
  *
- * @param[in] ctx Opaque context (unused -- the file-scope socket is used).
- * @param[in] buf Ciphertext bytes the TLS layer wants to transmit.
- * @param[in] len Buffer length in bytes.
+ * @param[in]  ctx      Opaque context (unused -- the file-scope socket is used).
+ * @param[in]  buf      Ciphertext bytes the TLS layer wants to transmit.
+ * @param[in]  len      Buffer length in bytes.
+ * @param[out] out_sent Bytes handed to the TCP socket.
  *
- * @return Bytes written, or a negative ``MBEDTLS_ERR_*`` code.
+ * @return ra8_err_t Error code.
+ * @retval k_ra8_ok              Bytes queued for TX.
+ * @retval k_ra8_err_would_block Socket window full; retry the same bytes.
+ * @retval k_ra8_err_comm_error  The socket rejected the segment.
  *
  * @pre Socket ``s_tls_socket`` is connected.
  * @post On success the bytes are queued for TX.
  *
- * @since 0.1.0
+ * @since 0.2.0
  */
-static int tls_bio_send(void* ctx, const uint8_t* buf, size_t len)
+static ra8_err_t tls_transport_send(void*          ctx,
+                                    const uint8_t* buf,
+                                    size_t         len,
+                                    size_t*        out_sent)
 {
   (void)ctx;
+  *out_sent = 0U;
   if (buf == nullptr || len == 0U) {
-    return 0;
+    return k_ra8_ok;
   }
   NX_PACKET* pkt = NX_NULL;
   UINT       s   = nx_packet_allocate(&s_packet_pool, &pkt, NX_TCP_PACKET, NX_WAIT_FOREVER);
   if (s != NX_SUCCESS || pkt == NX_NULL) {
-    return MBEDTLS_ERR_SSL_INTERNAL_ERROR;
+    return k_ra8_err_comm_error;
   }
   s =
     nx_packet_data_append(pkt, (VOID*)(uintptr_t)buf, (ULONG)len, &s_packet_pool, NX_WAIT_FOREVER);
   if (s != NX_SUCCESS) {
     (void)nx_packet_release(pkt);
-    return MBEDTLS_ERR_SSL_INTERNAL_ERROR;
+    return k_ra8_err_comm_error;
   }
   s = nx_tcp_socket_send(&s_tls_socket, pkt, (ULONG)k_demo_recv_timeout);
   if (s != NX_SUCCESS) {
     (void)nx_packet_release(pkt);
     if (s == NX_NO_PACKET || s == NX_WINDOW_OVERFLOW) {
-      return MBEDTLS_ERR_SSL_WANT_WRITE;
+      return k_ra8_err_would_block;
     }
-    return MBEDTLS_ERR_NET_SEND_FAILED;
+    return k_ra8_err_comm_error;
   }
-  return (int)len;
+  *out_sent = len;
+  return k_ra8_ok;
 }
 
 /**
- * @brief ra8_tls BIO recv callback bound to ``nx_tcp_socket_receive``.
+ * @brief ra8_tls transport recv callback bound to ``nx_tcp_socket_receive``.
  *
- * @param[in]  ctx Opaque context (unused).
- * @param[out] buf Output buffer.
- * @param[in]  len Maximum bytes to read.
+ * @param[in]  ctx          Opaque context (unused).
+ * @param[out] buf          Output buffer.
+ * @param[in]  len          Maximum bytes to read.
+ * @param[out] out_received Bytes copied into @p buf.
  *
- * @return Bytes copied, ``MBEDTLS_ERR_SSL_WANT_READ`` when nothing is
- *         ready yet, or a negative ``MBEDTLS_ERR_*`` on error.
+ * @return ra8_err_t Error code.
+ * @retval k_ra8_ok              Bytes copied, or EOF when the count is zero.
+ * @retval k_ra8_err_would_block No segment ready yet; retry later.
+ * @retval k_ra8_err_comm_error  The socket reported a receive failure.
  *
  * @pre Socket ``s_tls_socket`` is connected.
  * @post On success @p buf holds the returned bytes.
  *
- * @since 0.1.0
+ * @since 0.2.0
  */
-static int tls_bio_recv(void* ctx, uint8_t* buf, size_t len)
+static ra8_err_t tls_transport_recv(void* ctx, uint8_t* buf, size_t len, size_t* out_received)
 {
   (void)ctx;
+  *out_received = 0U;
   if (buf == nullptr || len == 0U) {
-    return 0;
+    return k_ra8_ok;
   }
   NX_PACKET* pkt = NX_NULL;
   UINT       s   = nx_tcp_socket_receive(&s_tls_socket, &pkt, (ULONG)k_demo_recv_timeout);
   if (s == NX_NO_PACKET) {
-    return MBEDTLS_ERR_SSL_WANT_READ;
+    return k_ra8_err_would_block;
   }
   if (s != NX_SUCCESS || pkt == NX_NULL) {
-    return MBEDTLS_ERR_NET_RECV_FAILED;
+    return k_ra8_err_comm_error;
   }
   ULONG copied = 0U;
   (void)nx_packet_data_retrieve(pkt, (VOID*)buf, &copied);
@@ -494,7 +505,8 @@ static int tls_bio_recv(void* ctx, uint8_t* buf, size_t len)
   if (copied > (ULONG)len) {
     copied = (ULONG)len;
   }
-  return (int)copied;
+  *out_received = (size_t)copied;
+  return k_ra8_ok;
 }
 
 /**
@@ -691,9 +703,9 @@ static ra8_err_t demo_run_tls(void)
   }
 
   ra8_tls_session_cfg_t cfg = {};
-  cfg.bio_send              = tls_bio_send;
-  cfg.bio_recv              = tls_bio_recv;
-  cfg.bio_ctx               = &s_tls_socket;
+  cfg.transport.send        = tls_transport_send;
+  cfg.transport.recv        = tls_transport_recv;
+  cfg.transport.ctx         = &s_tls_socket;
   cfg.server_name           = k_demo_server_name;
   /* The test endpoint typically presents a self-signed cert; report the
    * verification result rather than aborting the exchange. */

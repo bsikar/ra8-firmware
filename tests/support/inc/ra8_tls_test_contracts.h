@@ -31,45 +31,53 @@ RA8_INTERNAL static void internal_loop_reset(void);
 /**
  * @brief Append TLS bytes to the loopback ring.
  * @details Copies as many source bytes as available ring capacity permits.
- * @param[in,out] ctx Unused BIO context retained for signature parity.
+ * @param[in,out] ctx Unused transport context retained for signature parity.
  * @param[in] buf Readable TLS byte span.
  * @param[in] len Requested byte count.
- * @return Number of bytes accepted by the ring.
- * @retval 0 The request was empty or the ring was full.
+ * @param[out] out_sent Number of bytes accepted by the ring.
+ * @return ra8_err_t Error code.
+ * @retval k_ra8_ok The ring accepted between zero and @p len bytes.
  * @pre @p buf addresses at least @p len readable bytes when length is nonzero.
- * @pre The requested length is representable by the callback return type.
- * @post The return value never exceeds @p len.
+ * @pre @p out_sent addresses writable storage.
+ * @post The accepted count never exceeds @p len.
  * @post Accepted bytes are readable from the ring in source order.
  * @note The bounded loop advances once per accepted byte.
  * @since 0.1.0
  */
-RA8_INTERNAL static int internal_loop_bio_send(void* ctx, const uint8_t* buf, size_t len);
+RA8_INTERNAL static ra8_err_t internal_loop_bio_send(void*          ctx,
+                                                     const uint8_t* buf,
+                                                     size_t         len,
+                                                     size_t*        out_sent);
 
 /**
  * @brief Drain TLS bytes from the loopback ring.
  * @details Copies up to the requested count without synthesizing bytes.
- * @param[in,out] ctx Unused BIO context retained for signature parity.
+ * @param[in,out] ctx Unused transport context retained for signature parity.
  * @param[out] buf Writable destination byte span.
  * @param[in] len Maximum byte count to drain.
- * @return Number of bytes copied from the ring.
- * @retval 0 The request was empty or the ring contained no data.
+ * @param[out] out_received Number of bytes copied from the ring.
+ * @return ra8_err_t Error code.
+ * @retval k_ra8_ok The ring yielded between zero and @p len bytes.
  * @pre @p buf addresses at least @p len writable bytes when length is nonzero.
- * @pre The requested length is representable by the callback return type.
- * @post The return value never exceeds @p len.
+ * @pre @p out_received addresses writable storage.
+ * @post The copied count never exceeds @p len.
  * @post Returned bytes preserve ring insertion order.
  * @note The bounded loop advances once per drained byte.
  * @since 0.1.0
  */
-RA8_INTERNAL static int internal_loop_bio_recv(void* ctx, uint8_t* buf, size_t len);
+RA8_INTERNAL static ra8_err_t internal_loop_bio_recv(void*    ctx,
+                                                     uint8_t* buf,
+                                                     size_t   len,
+                                                     size_t*  out_received);
 
 /**
  * @brief Build a session config bound to the loopback callbacks.
- * @details Populates both BIO callbacks, their shared context, and hostname.
+ * @details Populates the transport seam, its shared context, and hostname.
  * @return Complete loopback TLS session configuration.
  * @retval ra8_tls_session_cfg_t Value referencing the file-local ring.
  * @pre The file-local ring has static storage duration.
  * @pre The callback functions are linked into the test target.
- * @post Both BIO callback fields are nonnull.
+ * @post Both transport callback fields are nonnull.
  * @post The returned hostname remains valid for the test lifetime.
  * @note The helper does not reset or otherwise mutate the ring.
  * @since 0.1.0
