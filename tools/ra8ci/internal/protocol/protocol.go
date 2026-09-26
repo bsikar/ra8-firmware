@@ -327,7 +327,10 @@ func (receipt TerminalReceipt) Validate() error {
 	if err := checkStepTimeline(receipt); err != nil {
 		return err
 	}
-	return checkStepLogEvidence(receipt)
+	if err := checkStepLogEvidence(receipt); err != nil {
+		return err
+	}
+	return checkLogSequenceCoversSteps(receipt)
 }
 
 func validGrant(assignmentID, attemptID string, version, fence int64) bool {
