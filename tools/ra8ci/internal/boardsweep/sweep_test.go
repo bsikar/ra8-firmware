@@ -207,3 +207,51 @@ func TestPassOverAnEmptyLedgerTicksNothing(t *testing.T) {
 func TestStoreSatisfiesTheSweptLedger(t *testing.T) {
 	var _ Boards = (*store.Store)(nil)
 }
+
+// A pass that is cancelled mid-page still reports which boards failed before
+// the cancellation. The counts and the error have to agree: Failed says how
+// many, and the joined error is the only thing that says which.
+func TestACancelledPassStillNamesTheBoardsThatFailed(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	boards := &fakeBoards{expired: []store.ExpiredBoardLease{lease("a", 3), lease("b", 9)},
+		answer: func(boardID string) ([]board.Event, error) {
+			cancel()
+			return nil, fmt.Errorf("%w: board ledger is down", store.ErrUnavailable)
+		}}
+	sweeper, err := New(boards, 10)
+	if err != nil {
+		t.Fatalf("new: %v", err)
+	}
+	report, err := sweeper.Pass(ctx, epoch)
+	if !errors.Is(err, context.Canceled) {
+		t.Fatalf("cancelled pass: got %v, want a context cancellation", err)
+	}
+	if !errors.Is(err, store.ErrUnavailable) || !strings.Contains(err.Error(), "board a") {
+		t.Fatalf("cancelled pass dropped the failure it already had: %v", err)
+	}
+	if report.Found != 2 || report.Failed != 1 || report.Reclaimed != 0 {
+		t.Fatalf("report: got %+v", report)
+	}
+	if len(boards.ticks) != 1 {
+		t.Fatalf("ticks after cancellation: got %+v", boards.ticks)
+	}
+}
+
+// Cancellation before the first board still reports the read that happened.
+func TestACancelledPassWithNoFailuresReturnsTheCancellationAlone(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	boards := &fakeBoards{expired: []store.ExpiredBoardLease{lease("a", 3)},
+		answer: func(string) ([]board.Event, error) {
+			t.Error("a cancelled pass ticked a board")
+			return nil, nil
+		}}
+	sweeper, _ := New(boards, 10)
+	report, err := sweeper.Pass(ctx, epoch)
+	if !errors.Is(err, context.Canceled) {
+		t.Fatalf("cancelled pass: got %v, want a context cancellation", err)
+	}
+	if report != (Report{Found: 1}) {
+		t.Fatalf("report: got %+v", report)
+	}
+}
