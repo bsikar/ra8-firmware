@@ -105,7 +105,8 @@ set_source_files_properties(
 # never sees, which is what a 64-bit host build is for (#309).
 set(FW ${MDL_REPO_ROOT}/libs)
 set(MDL_PUBLIC_INC ${MDL_CORE_INC} ${MDL_REPO_ROOT}/apps/shared_libs/mdl/inc
-                   ${MDL_REPO_ROOT}/libs/ra8_net_policy/inc)
+                   ${MDL_REPO_ROOT}/libs/ra8_net_policy/inc
+                   ${MDL_REPO_ROOT}/libs/ra8_xml/inc)
 set(MDL_FS_SRC
     ${FW}/if/src/fw_if_fs.c
     ${FW}/if/src/fw_if_fs_dir.c
@@ -299,6 +300,7 @@ set(MDL_CORE_SRC
     ${MDL_CORE_SRC_DIR}/mdl_stream.c
     ${MDL_CORE_SRC_DIR}/mdl_net.c
     ${MDL_REPO_ROOT}/libs/ra8_net_policy/src/ra8_net_urlguard.c
+    ${MDL_REPO_ROOT}/libs/ra8_xml/src/ra8_xml_writer.c
     ${MDL_CORE_SRC_DIR}/mdl_sanitize.c
     ${MDL_CORE_SRC_DIR}/mdl_pathfs.c
     ${MDL_CORE_SRC_DIR}/mdl_robots.c
@@ -359,6 +361,7 @@ enable_testing()
 
 set(MDL_CORE_TEST_COMMON_SRC
     ${MDL_REPO_ROOT}/libs/ra8_net_policy/src/ra8_net_urlguard.c
+    ${MDL_REPO_ROOT}/libs/ra8_xml/src/ra8_xml_writer.c
     ${MDL_CORE_SRC_DIR}/mdl_sanitize.c
     ${MDL_CORE_SRC_DIR}/mdl_urlname.c
     ${MDL_CORE_SRC_DIR}/mdl_robots.c
@@ -550,6 +553,7 @@ add_executable(
   ${MDL_CORE_SRC_DIR}/mdl_net.c
   ${MDL_CORE_SRC_DIR}/mdl_politeness.c
   ${MDL_REPO_ROOT}/libs/ra8_net_policy/src/ra8_net_urlguard.c
+  ${MDL_REPO_ROOT}/libs/ra8_xml/src/ra8_xml_writer.c
   ${MDL_STREAM_CORE_SRC}
   ${MDL_STREAM_RAM_SRC}
   ${MDL_STREAM_POSIX_SRC}
@@ -631,6 +635,7 @@ add_executable(
   ${MDL_CORE_SRC_DIR}/mdl_net.c
   ${MDL_CORE_SRC_DIR}/mdl_politeness.c
   ${MDL_REPO_ROOT}/libs/ra8_net_policy/src/ra8_net_urlguard.c
+  ${MDL_REPO_ROOT}/libs/ra8_xml/src/ra8_xml_writer.c
   ${MDL_EXTRACT_SRC}
   ${MDL_FS_SRC}
   ${MDL_STREAM_CORE_SRC}
@@ -675,6 +680,7 @@ add_executable(
   ${MDL_CORE_SRC_DIR}/mdl_net.c
   ${MDL_CORE_SRC_DIR}/mdl_politeness.c
   ${MDL_REPO_ROOT}/libs/ra8_net_policy/src/ra8_net_urlguard.c
+  ${MDL_REPO_ROOT}/libs/ra8_xml/src/ra8_xml_writer.c
   ${MDL_EXTRACT_SRC}
   ${MDL_FS_SRC}
   ${MDL_STREAM_CORE_SRC}
@@ -709,6 +715,7 @@ add_executable(
   ${MDL_CORE_SRC_DIR}/mdl_storage.c
   ${MDL_CORE_SRC_DIR}/mdl_sanitize.c
   ${MDL_REPO_ROOT}/libs/ra8_net_policy/src/ra8_net_urlguard.c
+  ${MDL_REPO_ROOT}/libs/ra8_xml/src/ra8_xml_writer.c
   ${MDL_FS_SRC}
 )
 target_include_directories(

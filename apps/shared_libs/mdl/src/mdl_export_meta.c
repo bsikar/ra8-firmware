@@ -21,8 +21,8 @@
 
 #include "mdl_export.h"
 #include "mdl_export_internal.h"
-#include "mdl_sanitize.h"
 #include "ra8_net_urlguard.h"
+#include "ra8_xml_writer.h"
 #include "ra8_attributes.h"
 
 /** @brief Radices and bounded metadata text expansion sizes. */
@@ -868,25 +868,25 @@ RA8_INTERNAL static ra8_err_t internal_escape_comicinfo(const mdl_export_meta_t*
   const char* title_fallback = (meta->series_title[0] != '\0') ? meta->series_title : "Chapter";
   const char* title  = (meta->chapter_title[0] != '\0') ? meta->chapter_title : title_fallback;
   const char* series = (meta->series_title[0] != '\0') ? meta->series_title : "Series";
-  if (!mdl_xml_escape(title, escaped->title, sizeof(escaped->title))) {
+  if (ra8_xml_escape(title, escaped->title, sizeof(escaped->title)) != k_ra8_ok) {
     (void)snprintf(escaped->title, sizeof(escaped->title), "Chapter");
   }
-  if (!mdl_xml_escape(series, escaped->series, sizeof(escaped->series))) {
+  if (ra8_xml_escape(series, escaped->series, sizeof(escaped->series)) != k_ra8_ok) {
     (void)snprintf(escaped->series, sizeof(escaped->series), "Series");
   }
-  if (!mdl_xml_escape(meta->summary, escaped->summary, sizeof(escaped->summary))) {
+  if (ra8_xml_escape(meta->summary, escaped->summary, sizeof(escaped->summary)) != k_ra8_ok) {
     escaped->summary[0] = '\0';
   }
-  if (!mdl_xml_escape(meta->writer, escaped->writer, sizeof(escaped->writer))) {
+  if (ra8_xml_escape(meta->writer, escaped->writer, sizeof(escaped->writer)) != k_ra8_ok) {
     escaped->writer[0] = '\0';
   }
-  if (!mdl_xml_escape(meta->artist, escaped->artist, sizeof(escaped->artist))) {
+  if (ra8_xml_escape(meta->artist, escaped->artist, sizeof(escaped->artist)) != k_ra8_ok) {
     escaped->artist[0] = '\0';
   }
-  return (mdl_xml_escape(meta->language, escaped->language, sizeof(escaped->language)) &&
-          mdl_xml_escape(meta->source_url, escaped->source, sizeof(escaped->source)))
-           ? k_ra8_ok
-           : k_ra8_err_invalid_size;
+  const bool tail_ok =
+    (ra8_xml_escape(meta->language, escaped->language, sizeof(escaped->language)) == k_ra8_ok) &&
+    (ra8_xml_escape(meta->source_url, escaped->source, sizeof(escaped->source)) == k_ra8_ok);
+  return tail_ok ? k_ra8_ok : k_ra8_err_invalid_size;
 }
 
 /**
