@@ -48,6 +48,7 @@
 #pragma once
 
 #include "ra8_board_ek_ra8d2_bringup.h"
+#include "ra8_board_ek_ra8d2_camera_mode.h"
 #include "ra8_board_ek_ra8d2_connectors.h"
 #include "ra8_board_ek_ra8d2_dualcore.h"
 #include "ra8_board_ek_ra8d2_pdm.h"
