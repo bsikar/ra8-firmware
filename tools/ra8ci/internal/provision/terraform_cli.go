@@ -127,6 +127,7 @@ func (runtime *TerraformRuntime) WithSession(ctx context.Context, reservationID 
 	}
 	backend := runtime.config.Backend
 	backend.ReservationID = reservationID
+	backend.OperationTimeout = runtime.config.OperationTimeout
 	backendEnvironment, err := HTTPBackendEnvironment(backend)
 	if err != nil {
 		return err

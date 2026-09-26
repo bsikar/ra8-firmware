@@ -40,6 +40,10 @@ type HTTPBackendConfig struct {
 	ClientCertificateFile string
 	ClientPrivateKeyFile  string
 	ServerCABundleFile    string
+	// OperationTimeout is the deadline one Terraform command runs under, so
+	// the client identity can be held to the work it is being issued for.
+	// Zero leaves that question to checkTerraformStateClientIdentity alone.
+	OperationTimeout time.Duration
 }
 
 // HTTPBackendEnvironment constructs the supported Terraform HTTP backend
@@ -81,6 +85,9 @@ func HTTPBackendEnvironment(config HTTPBackendConfig) ([]string, error) {
 		return nil, errors.New("Terraform client certificate and private key do not match")
 	}
 	if err := checkTerraformStateClientIdentity(clientPair, time.Now()); err != nil {
+		return nil, err
+	}
+	if err := checkClientIdentityCoversOperation(clientPair, config.OperationTimeout, time.Now()); err != nil {
 		return nil, err
 	}
 
