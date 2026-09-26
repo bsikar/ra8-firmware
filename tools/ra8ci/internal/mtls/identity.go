@@ -89,7 +89,10 @@ func ValidateClientIdentity(identity tls.Certificate, now time.Time) error {
 	if leaf.KeyUsage != 0 && leaf.KeyUsage&x509.KeyUsageDigitalSignature == 0 {
 		return fmt.Errorf("%w: %s may not be used to sign", ErrIdentity, where)
 	}
-	return nil
+	// Last, and about the certificates beside the leaf rather than the leaf:
+	// a key pair presents a chain, and every issuer in it is walked by the
+	// far end exactly as this one was judged here.
+	return checkPresentedChain(identity, now, "client")
 }
 
 func allowsClientAuth(leaf *x509.Certificate) bool {
@@ -137,7 +140,9 @@ func ValidateServerIdentity(identity tls.Certificate, now time.Time) error {
 	if leaf.KeyUsage != 0 && leaf.KeyUsage&x509.KeyUsageDigitalSignature == 0 {
 		return fmt.Errorf("%w: %s may not be used to sign", ErrIdentity, where)
 	}
-	return nil
+	// Same reading as the client side: the leaf is the identity, and the
+	// certificates sent with it are the path the far end has to walk.
+	return checkPresentedChain(identity, now, "server")
 }
 
 func allowsServerAuth(leaf *x509.Certificate) bool {
