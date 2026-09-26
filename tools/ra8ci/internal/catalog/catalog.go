@@ -290,6 +290,9 @@ func ValidateReviewedTask(task Task) error {
 	if err := ValidateTask(task); err != nil {
 		return err
 	}
+	if err := checkArgumentsReachOneStep(task); err != nil {
+		return err
+	}
 	return ValidateTaskDispatch(task)
 }
 
