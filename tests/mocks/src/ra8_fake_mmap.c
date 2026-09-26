@@ -45,6 +45,7 @@
 #include <unistd.h>
 
 #include "ra8_attributes.h"
+#include "ra8_board_memmap.h"
 #include "ra8_test_output.h"
 
 /** @brief Address-rendering dimensions for fake-MMIO diagnostics. */
@@ -225,18 +226,62 @@ enum : size_t {
   k_ra8_fake_extra_mram_size = 0x00011000U, /**< Covers the OTP window through 0x02E18000. */
 };
 
+/*
+ * The four windows that back a BOARD memory-map region take their base from
+ * `libs/ra8_board_ek_ra8d2/inc/ra8_board_memmap.h`, which is the board layer's
+ * published map and is itself pinned to the linker script's `MEMORY{}` block by
+ * `scripts/checks/check_board_memory_map.py` (#758). They are no longer retyped
+ * here. The remaining four are NOT board memory: the peripheral bus, its
+ * Non-Secure alias and the SCB/MPU window are architectural address space the
+ * `ra8_*_regs.h` headers own, and the MRAM calibration window is a host backing
+ * choice that happens to cover the option-setting region.
+ *
+ * SIZES STAY LOCAL, deliberately. A window's length here is how much host RAM
+ * the unit tests want standing behind that address, not how much silicon is
+ * there: the SRAM window is mapped 2 MiB to cover the Non-Secure placeholder
+ * above it, and the SDRAM window is mapped 1 MiB because no host test touches
+ * more than the head of a 64 MiB part. The static assertions below pin each
+ * span to the board region it has to cover, so a board map that grows past one
+ * of these windows is a compile error rather than a segfault mid-test.
+ *
+ * ITCM (0x00000000) and DTCM (0x20000000) are board regions with no window
+ * here: the host cannot MAP_FIXED the zero page, and no off-target driver
+ * dereferences a TCM address.
+ */
 enum : uintptr_t {
-  k_ra8_fake_peri_base       = 0x40000000UL, /**< RA8 fake peri base.                         */
-  k_ra8_fake_core_base       = 0xE0000000UL, /**< RA8 fake core base.                         */
-  k_ra8_fake_mram_base       = 0x02C00000UL, /**< RA8 fake MRAM base.                         */
-  k_ra8_fake_sram_base       = 0x22000000UL, /**< RA8 fake SRAM base.                         */
-  k_ra8_fake_sdram_base      = 0x68000000UL, /**< RA8 fake SDRAM base.                        */
-  k_ra8_fake_code_mram_base  = 0x02000000UL, /**< Code MRAM (matches k_ra8_flash_code_start). */
-  k_ra8_fake_extra_mram_base = 0x02E07000UL, /**< Page-aligned head of the extra-MRAM OTP
-                     * window (covers k_ra8_flash_extra_start
-                     * 0x02E07600, HUM Ch 59.7.4.5 Table 59.15 p 3592). */
+  k_ra8_fake_peri_base       = 0x40000000UL,           /**< RA8 fake peri base.      */
+  k_ra8_fake_core_base       = 0xE0000000UL,           /**< RA8 fake core base.      */
+  k_ra8_fake_mram_base       = 0x02C00000UL,           /**< MRAM calibration window. */
+  k_ra8_fake_sram_base       = k_ra8_board_sram_base,  /**< Board on-chip SRAM.      */
+  k_ra8_fake_sdram_base      = k_ra8_board_sdram_base, /**< Board external SDRAM.    */
+  k_ra8_fake_code_mram_base  = k_ra8_board_mram_base,  /**< Board code MRAM.         */
+  k_ra8_fake_extra_mram_base = k_ra8_board_ofs_otp_base, /**< Board OTP / anti-rollback
+                     * window, whose head covers k_ra8_flash_extra_start
+                     * 0x02E07600 (HUM Ch 59.7.4.5 Table 59.15 p 3592). */
   k_ra8_fake_peri_ns_base    = 0x50000000UL, /**< Non-Secure alias of peri bus. */
 };
+
+/* Every backing window has to contain the board region it stands in for, and
+ * the Non-Secure placeholders that alias into it. Sizes are host-backing
+ * choices (see above), so these are the pins that keep a choice honest. */
+static_assert(k_ra8_fake_sram_size >= (size_t)k_ra8_board_sram_size + (size_t)k_ra8_board_noinit_size,
+              "SRAM window must cover the board SRAM region and its NOINIT tail");
+static_assert((uintptr_t)k_ra8_board_ns_sram_base + (uintptr_t)k_ra8_board_ns_sram_size <=
+                (uintptr_t)k_ra8_fake_sram_base + (uintptr_t)k_ra8_fake_sram_size,
+              "SRAM window must cover the Non-Secure SRAM placeholder");
+static_assert(k_ra8_fake_code_mram_size >= (size_t)k_ra8_board_mram_size,
+              "Code-MRAM window must cover the board MRAM region");
+static_assert((uintptr_t)k_ra8_board_ns_mram_base + (uintptr_t)k_ra8_board_ns_mram_size <=
+                (uintptr_t)k_ra8_fake_code_mram_base + (uintptr_t)k_ra8_fake_code_mram_size,
+              "Code-MRAM window must cover the Non-Secure MRAM placeholder");
+static_assert(k_ra8_fake_extra_mram_size >= (size_t)k_ra8_board_ofs_otp_size,
+              "Extra-MRAM window must cover the board OTP region");
+static_assert((uintptr_t)k_ra8_fake_mram_base <= (uintptr_t)k_ra8_board_ofs_cfg_base &&
+                (uintptr_t)k_ra8_board_ofs_cfg_base + (uintptr_t)k_ra8_board_ofs_cfg_size <=
+                  (uintptr_t)k_ra8_fake_mram_base + (uintptr_t)k_ra8_fake_mram_size,
+              "MRAM calibration window must contain the option-setting config region");
+static_assert(k_ra8_fake_sdram_size <= (size_t)k_ra8_board_sdram_size,
+              "SDRAM window must be a head of the board SDRAM region, not larger than it");
 
 static const ra8_fake_region_t s_ra8_fake_regions[k_ra8_fake_region_count] = {
   {.base = (uintptr_t)k_ra8_fake_peri_base, .size = (size_t)k_ra8_fake_peri_size},
