@@ -227,6 +227,9 @@ func Parse(reader io.Reader, path string) (Spec, error) {
 	if spec.SafetyMaximumSeconds > 0 && spec.TimeoutDeclared && spec.SafetyMaximumSeconds < spec.TimeoutSeconds {
 		return Spec{}, fmt.Errorf("%w: safety maximum is below declared fallback", ErrInvalidManifest)
 	}
+	if err := checkPhasesFitTheSafetyCap(spec); err != nil {
+		return Spec{}, err
+	}
 	return spec, nil
 }
 
