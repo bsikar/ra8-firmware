@@ -65,16 +65,29 @@ type Server struct {
 }
 
 // certificateActor is the only identifier a denial may record for a peer: the
-// SHA-256 of the certificate the peer presented, which is what
+// SHA-256 of the certificate the listener verified, which is what
 // api_principals.cert_sha256 already holds. A peer that presented nothing
 // usable is recorded as unverified rather than described.
 //
 // Nothing from the request body, the query, or a header reaches the audit
 // trail through here. A denial is written before the request is understood,
 // so anything else carried into it would be attacker-chosen text.
+//
+// The fingerprint is taken from the verified chain, not from the presented
+// certificate alone. Every other place this tree derives an identity from a
+// peer (MTLSAuthorizer, verifiedAgentCertificate, AuthorizeBoardPeer) requires
+// the presented leaf to be the one the listener verified, and an actor string
+// is read as an identity too: an operator matches it against
+// api_principals.cert_sha256, and "certificate-sha256:..." written from an
+// unverified leaf is indistinguishable in the audit trail from one written
+// after a chain was checked. The rule is stated once here so the audit trail
+// cannot describe a peer in terms the authorization path would have refused.
 func certificateActor(r *http.Request) string {
 	if r == nil || r.TLS == nil || len(r.TLS.PeerCertificates) == 0 ||
-		r.TLS.PeerCertificates[0] == nil || len(r.TLS.PeerCertificates[0].Raw) == 0 {
+		r.TLS.PeerCertificates[0] == nil || len(r.TLS.PeerCertificates[0].Raw) == 0 ||
+		len(r.TLS.VerifiedChains) == 0 || len(r.TLS.VerifiedChains[0]) == 0 ||
+		r.TLS.VerifiedChains[0][0] == nil ||
+		!r.TLS.PeerCertificates[0].Equal(r.TLS.VerifiedChains[0][0]) {
 		return "unverified-peer"
 	}
 	return "certificate-sha256:" + certificateFingerprint(r.TLS.PeerCertificates[0].Raw)
