@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -186,8 +187,11 @@ func TestYieldEstimateReportsTheHistoryItRestsOn(t *testing.T) {
 	samples := make([]board.YieldSample, 0, 7)
 	for i := range 6 {
 		at := now.Add(-time.Duration(i+1) * time.Hour)
+		// One measurement per lease, which is what the estimator is held
+		// to: six repeats of one lease would weight a single handoff six
+		// times in the quantile.
 		samples = append(samples, board.YieldSample{
-			Cohort: cohort, LeaseID: boardTestLeaseID, WaiterID: boardTestRequestID,
+			Cohort: cohort, LeaseID: fmt.Sprintf("%s-%d", boardTestLeaseID, i), WaiterID: boardTestRequestID,
 			RequestedAt: at, NeutralAt: at.Add(time.Duration(40+i) * time.Second),
 		})
 	}
