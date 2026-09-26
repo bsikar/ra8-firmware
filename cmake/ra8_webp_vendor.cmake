@@ -61,7 +61,8 @@ function(ra8_webp_vendor_sources out_var repo_root)
   )
 endfunction()
 
-# The first-party facade (ra8_webp.c) and its bump arena (ra8_webp_arena.c).
+# The first-party facade (ra8_webp.c) and its bump arena (ra8_webp_arena.c),
+# plus the shared decoder scratch the arena forwards to (#768).
 # Held to the full project warning bar -- these never take the SOUP flags.
 function(ra8_webp_facade_sources out_var repo_root)
   set(_root "${repo_root}/apps/shared_libs/webp")
@@ -72,8 +73,12 @@ function(ra8_webp_facade_sources out_var repo_root)
   if(NOT _srcs)
     message(FATAL_ERROR "ra8_webp_facade_sources(): no facade TUs under ${_root}/src")
   endif()
+  set(_scratch "${repo_root}/libs/ra8_imgdec/src/ra8_imgdec_scratch.c")
+  if(NOT EXISTS "${_scratch}")
+    message(FATAL_ERROR "ra8_webp_facade_sources(): shared scratch missing at ${_scratch}")
+  endif()
   set(${out_var}
-      ${_srcs}
+      ${_srcs} ${_scratch}
       PARENT_SCOPE
   )
 endfunction()
@@ -83,7 +88,7 @@ endfunction()
 function(ra8_webp_includes out_var repo_root)
   set(${out_var}
       ${repo_root}/apps/shared_libs/third_party/libwebp ${repo_root}/apps/shared_libs/webp/inc
-      ${repo_root}/apps/shared_libs/webp/src
+      ${repo_root}/apps/shared_libs/webp/src ${repo_root}/libs/ra8_imgdec/inc
       PARENT_SCOPE
   )
 endfunction()
