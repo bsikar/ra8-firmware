@@ -224,6 +224,9 @@ func Parse(reader io.Reader, path string) (Spec, error) {
 	if spec.Mode == "" {
 		return Spec{}, fmt.Errorf("%w: %s has no HIL_MODE", ErrInvalidManifest, path)
 	}
+	if err := checkNegativeExpectationCompiles(spec); err != nil {
+		return Spec{}, err
+	}
 	if spec.SafetyMaximumSeconds > 0 && spec.TimeoutDeclared && spec.SafetyMaximumSeconds < spec.TimeoutSeconds {
 		return Spec{}, fmt.Errorf("%w: safety maximum is below declared fallback", ErrInvalidManifest)
 	}
