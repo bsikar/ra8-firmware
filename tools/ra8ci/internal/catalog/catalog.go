@@ -30,7 +30,7 @@ var (
 	ErrInvalidCheckout = errors.New("invalid repository checkout")
 )
 
-// ArgsSchema is deliberately closed until a task with reviewed arguments is added.
+// ArgsSchema declares the reviewed named arguments a task accepts.
 type ArgsSchema struct {
 	Positional []string `json:"positional"`
 	Flags      []string `json:"flags"`
@@ -332,8 +332,11 @@ func ValidateTask(task Task) error {
 		}
 		seenOS[goos] = true
 	}
+	if err := ValidateArgsSchema(task.ArgsSchema); err != nil {
+		return fmt.Errorf("%w: task %q argument schema: %v", ErrInvalidCatalog, task.Name, err)
+	}
 	if task.Retry.MaxAttempts != 1 || len(task.Outputs) != 0 ||
-		len(task.Capabilities) != 0 || len(task.ArgsSchema.Positional) != 0 || len(task.ArgsSchema.Flags) != 0 {
+		len(task.Capabilities) != 0 {
 		return fmt.Errorf("%w: unsupported v1 behavior for %q", ErrInvalidCatalog, task.Name)
 	}
 	if task.Scope == "hil" {
