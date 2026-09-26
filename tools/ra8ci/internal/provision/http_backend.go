@@ -7,7 +7,6 @@ package provision
 
 import (
 	"crypto/tls"
-	"crypto/x509"
 	"errors"
 	"fmt"
 	"io"
@@ -81,11 +80,8 @@ func HTTPBackendEnvironment(config HTTPBackendConfig) ([]string, error) {
 	if err != nil || len(clientPair.Certificate) == 0 || clientPair.PrivateKey == nil {
 		return nil, errors.New("Terraform client certificate and private key do not match")
 	}
-	leaf, err := x509.ParseCertificate(clientPair.Certificate[0])
-	now := time.Now()
-	if err != nil || leaf.IsCA || now.Before(leaf.NotBefore) || !now.Before(leaf.NotAfter) ||
-		!allowsClientAuthentication(leaf) {
-		return nil, errors.New("Terraform client certificate is not a currently valid client leaf")
+	if err := checkTerraformStateClientIdentity(clientPair, time.Now()); err != nil {
+		return nil, err
 	}
 
 	caPEM, err := readRegularFile(config.ServerCABundleFile, maxServerCABundleBytes, false)
@@ -158,18 +154,6 @@ func OverlayEnvironment(base, overlay []string) ([]string, error) {
 	}
 	sort.Strings(result)
 	return result, nil
-}
-
-func allowsClientAuthentication(certificate *x509.Certificate) bool {
-	if len(certificate.ExtKeyUsage) == 0 {
-		return true
-	}
-	for _, usage := range certificate.ExtKeyUsage {
-		if usage == x509.ExtKeyUsageClientAuth || usage == x509.ExtKeyUsageAny {
-			return true
-		}
-	}
-	return false
 }
 
 func readRegularFile(file string, limit int64, private bool) ([]byte, error) {
