@@ -50,6 +50,9 @@ func SignBackupAttestation(attestation BackupAttestation, key ed25519.PrivateKey
 		attestation.LatestFullBackup.IsZero() || attestation.RestoreDrillAt.IsZero() || attestation.Signature != "" {
 		return nil, errors.New("invalid backup attestation signing request")
 	}
+	if err := checkObservesItsEvidence(attestation); err != nil {
+		return nil, fmt.Errorf("invalid backup attestation signing request: %w", err)
+	}
 	payload := payloadFromAttestation(attestation)
 	encoded, err := json.Marshal(payload)
 	if err != nil {
@@ -139,6 +142,12 @@ func (g *SignedBackupGate) Check(ctx context.Context, approvalID string) error {
 	if err != nil || !ed25519.Verify(g.publicKey, encoded, signature) {
 		return errors.New("backup attestation signature verification failed")
 	}
+	// The envelope has to agree with itself before its dates are worth
+	// measuring against this clock: a monitor cannot have observed a backup
+	// or a drill that finished after the check it signed.
+	if err := checkObservesItsEvidence(attestation); err != nil {
+		return fmt.Errorf("backup attestation is internally inconsistent: %w", err)
+	}
 	now := g.now().UTC()
 	if err := validAttestationTime(attestation.CheckedAt, now, g.maxCheckAge); err != nil {
 		return fmt.Errorf("backup check evidence: %w", err)
@@ -159,7 +168,7 @@ func payloadFromAttestation(attestation BackupAttestation) backupAttestationPayl
 }
 
 func validAttestationTime(value, now time.Time, maxAge time.Duration) error {
-	if value.IsZero() || value.After(now.Add(2*time.Minute)) || now.Sub(value) > maxAge {
+	if value.IsZero() || value.After(now.Add(backupClockSkew)) || now.Sub(value) > maxAge {
 		return errors.New("timestamp is absent, too old, or unexpectedly in the future")
 	}
 	return nil
