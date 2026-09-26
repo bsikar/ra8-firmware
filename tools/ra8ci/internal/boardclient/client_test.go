@@ -543,8 +543,9 @@ func TestWaitForGrantNeverTreatsPendingYieldOrRecoveryAsAuthority(t *testing.T) 
 	missing, _ := board.New("ek-ra8d2")
 	expired := active
 	copyLease := *active.Lease
-	copyLease.GrantedAt = time.Now().Add(-2 * time.Minute)
-	copyLease.ExpiresAt = time.Now().Add(-time.Second)
+	expiredAt := time.Now().Add(-time.Second)
+	copyLease.GrantedAt = expiredAt.Add(-copyLease.RequestedDuration)
+	copyLease.ExpiresAt = expiredAt
 	expired.Lease = &copyLease
 	ticket := Ticket{BoardID: "ek-ra8d2", RequestID: testRequestID, LeaseID: testLeaseID}
 	for _, tc := range []struct {
