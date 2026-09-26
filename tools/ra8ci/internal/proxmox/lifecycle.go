@@ -157,6 +157,12 @@ func (c *Client) List(ctx context.Context) ([]VM, error) {
 		if template {
 			return nil, fmt.Errorf("%w: allowed VM ID %d is a template", ErrConflict, r.VMID)
 		}
+		// Last, so an identity conflict is reported before a status: a
+		// guest on the wrong node is a different guest, and what state it
+		// happens to be in says nothing about that.
+		if err := checkListedStatus(r); err != nil {
+			return nil, err
+		}
 		result = append(result, VM{Identity: Identity{VMID: r.VMID, Node: r.Node, Pool: r.Pool, Name: r.Name}, Status: r.Status})
 	}
 	sort.Slice(result, func(a, b int) bool { return result[a].Identity.VMID < result[b].Identity.VMID })
