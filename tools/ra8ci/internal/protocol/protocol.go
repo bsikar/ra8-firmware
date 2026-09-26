@@ -319,6 +319,11 @@ func (receipt TerminalReceipt) Validate() error {
 			return ErrInvalid
 		}
 	}
+	// Beside the outcome switch above rather than inside it: the switch judges
+	// the attempt's own fields, this holds its steps to the verdict it reached.
+	if err := checkStepOutcomesAgreeWithTheAttempt(receipt); err != nil {
+		return err
+	}
 	// Before the evidence checks below, because they report by step name and
 	// the attempt's evidence is filed under it.
 	if err := checkStepNamesAttributeEvidence(receipt); err != nil {
