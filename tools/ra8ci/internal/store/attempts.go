@@ -206,6 +206,9 @@ func (s *Store) RecordStep(ctx context.Context, in StepInput) error {
 	if !ValidID(in.AttemptID) || in.ActorID == "" || len(in.Key) == 0 || len(in.Key) > 128 || in.Ordinal < 0 || len(in.Phase) == 0 || len(in.Phase) > 64 || in.StartedAt.IsZero() || in.EndedAt.IsZero() || in.EndedAt.Before(in.StartedAt) || in.DurationNS < 0 || !validStepState(in.State) {
 		return fmt.Errorf("%w: step metadata", ErrInvalid)
 	}
+	if err := checkRecordedStepDuration(in); err != nil {
+		return err
+	}
 	tx, err := s.pool.Begin(ctx)
 	if err != nil {
 		return fmt.Errorf("%w: begin step: %v", ErrUnavailable, err)
