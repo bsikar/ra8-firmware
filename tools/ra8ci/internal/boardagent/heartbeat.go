@@ -96,6 +96,12 @@ func (a *Agent) ReportAlive(ctx context.Context, token boardclient.LeaseToken) (
 		snapshot.Lease.Generation != token.Generation {
 		return boardclient.HolderLiveness{}, boardclient.ErrStaleLease
 	}
+	// The two halves of a beat are one answer about one board, so a
+	// liveness half reporting nobody holds a board whose snapshot still
+	// carries this lease is not an answer to act on.
+	if !beatHalvesAgree(snapshot, liveness) {
+		return boardclient.HolderLiveness{}, boardclient.ErrInvalidRequest
+	}
 	return liveness, nil
 }
 
