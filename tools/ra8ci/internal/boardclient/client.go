@@ -554,8 +554,7 @@ func sameLease(snapshot board.Snapshot, token LeaseToken) bool {
 }
 
 func (c *Client) leaseStatus(ctx context.Context, token LeaseToken) (board.Snapshot, error) {
-	if !validBoardID(token.BoardID) || !store.ValidID(token.LeaseID) ||
-		!store.ValidID(token.RequestID) || token.Generation == 0 {
+	if !validLeaseToken(token) {
 		return board.Snapshot{}, ErrInvalidRequest
 	}
 	snapshot, err := c.Status(ctx, token.BoardID)
@@ -704,7 +703,8 @@ func (c *Client) BeginSegment(ctx context.Context, token LeaseToken, attemptID, 
 // lease token used to begin it. It never grants authority to finish another
 // actor's segment.
 func (c *Client) FinishSegment(ctx context.Context, token LeaseToken, attemptID, segmentID, outcome string) error {
-	if !store.ValidID(attemptID) || segmentID == "" || (outcome != "completed" && outcome != "failed" && outcome != "yielded") {
+	if !validLeaseToken(token) || !store.ValidID(attemptID) || segmentID == "" ||
+		(outcome != "completed" && outcome != "failed" && outcome != "yielded") {
 		return ErrInvalidRequest
 	}
 	return c.request(ctx, http.MethodPost, boardPath(token.BoardID, "/segments/"+url.PathEscape(segmentID)+"/finish"), struct {
