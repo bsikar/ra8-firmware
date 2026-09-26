@@ -173,10 +173,7 @@ func (e Event) Validate() error {
 	if e.Phase != PhaseQueued && e.StartedAt.IsZero() {
 		return fmt.Errorf("%w: start time", ErrInvalid)
 	}
-	if !e.CompletedAt.IsZero() && e.CompletedAt.Before(e.QueuedAt) {
-		return fmt.Errorf("%w: completed before queued", ErrInvalid)
-	}
-	return nil
+	return checkTimestampsAgree(e)
 }
 
 // workflowJobDelivery is the subset of the workflow_job webhook body this
