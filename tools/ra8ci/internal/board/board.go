@@ -987,6 +987,10 @@ func Validate(s Snapshot) error {
 		if !lease.LastHeartbeatAt.IsZero() && !lease.LastHeartbeatAt.Before(lease.ExpiresAt) {
 			return &Error{Conflict, "retained lease carries a heartbeat from at or after its expiry"}
 		}
+		// The same window, for the stamp the handoff clock starts from.
+		if err := checkYieldRequestWindow(lease); err != nil {
+			return err
+		}
 		if lease.HandoffTarget < 0 || lease.HandoffTarget > MaxHandoffBound {
 			return &Error{Conflict, "retained lease carries an out-of-range handoff target"}
 		}

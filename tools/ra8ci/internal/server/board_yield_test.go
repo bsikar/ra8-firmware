@@ -322,7 +322,14 @@ func TestYieldAnchorsTheETAToTheRecordedRequest(t *testing.T) {
 	// A second ask while the yield is outstanding must not move the deadline.
 	outstanding := yieldTestBoard(board.ClassHuman)
 	outstanding.Phase = board.YieldRequested
-	outstanding.Lease.YieldRequestedAt = out.Plan.RequestedAt.Add(-90 * time.Second)
+	asked := out.Plan.RequestedAt.Add(-90 * time.Second)
+	outstanding.Lease.YieldRequestedAt = asked
+	// A yield can only have been asked for inside the lease it is asked of,
+	// so the fixture's grant has to bracket the stamp rather than sit at a
+	// fixed epoch two days behind it.
+	outstanding.Lease.GrantedAt = asked.Add(-time.Minute)
+	outstanding.Lease.ExpiresAt = outstanding.Lease.GrantedAt.Add(time.Hour)
+	outstanding.Queue[0].QueuedAt = outstanding.Lease.GrantedAt.Add(time.Second)
 	f2 := &fakeBoardStore{board: outstanding}
 	w2 := postYield(t, yieldTestMux(t, f2, budget), boardTestWaiterID)
 	if w2.Code != http.StatusOK {
