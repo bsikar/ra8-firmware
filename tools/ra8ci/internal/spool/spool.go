@@ -177,6 +177,9 @@ func (s *Spool) Finish(entry Entry, result executor.Result, runErr error) (Entry
 	if runErr != nil {
 		entry.Error = runErr.Error()
 	}
+	if err := checkStampsAreInOrder(entry); err != nil {
+		return Entry{}, err
+	}
 	if err := s.write(entry.ID+".finished.json", entry); err != nil {
 		return Entry{}, err
 	}
