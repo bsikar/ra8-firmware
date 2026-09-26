@@ -75,11 +75,12 @@ func New(config Config) (*Client, error) {
 	if err != nil {
 		return nil, fmt.Errorf("%w: %v", ErrInvalidConfig, err)
 	}
-	certificate, err := tls.LoadX509KeyPair(config.CertFile, config.KeyFile)
+	certificate, err := mtls.LoadClientIdentity(config.CertFile, config.KeyFile, time.Now())
 	if err != nil {
 		return nil, fmt.Errorf("%w: client certificate: %v", ErrInvalidConfig, err)
 	}
-	if err := mtls.ValidateClientIdentity(certificate, time.Now()); err != nil {
+	present, err := mtls.ClientIdentitySource(certificate, time.Now)
+	if err != nil {
 		return nil, fmt.Errorf("%w: %v", ErrInvalidConfig, err)
 	}
 	poll := config.PollInterval
@@ -88,7 +89,7 @@ func New(config Config) (*Client, error) {
 	}
 	base.Path, base.RawPath = "", ""
 	transport := &http.Transport{TLSClientConfig: &tls.Config{
-		MinVersion: tls.VersionTLS13, RootCAs: roots, Certificates: []tls.Certificate{certificate},
+		MinVersion: tls.VersionTLS13, RootCAs: roots, GetClientCertificate: present,
 	}}
 	return &Client{base: base, poll: poll, http: &http.Client{
 		Transport:     transport,
