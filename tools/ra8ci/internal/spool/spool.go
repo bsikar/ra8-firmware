@@ -217,6 +217,16 @@ func (s *Spool) Pending() ([]Entry, error) {
 		if entry.ID != id || entry.SyncState != "unsynced" || entry.FinishedAt == nil {
 			return nil, fmt.Errorf("invalid terminal record %q", file.Name())
 		}
+		// The same rule Finish applies, applied again at the door the upload
+		// actually reads from. Finish can only hold what the caller hands it;
+		// this holds what is on disk, which is what SyncPending marshals.
+		started, err := s.readStarted(id)
+		if err != nil {
+			return nil, err
+		}
+		if err := checkFinishMatchesStart(started, entry); err != nil {
+			return nil, fmt.Errorf("terminal record %q: %w", file.Name(), err)
+		}
 		pending = append(pending, entry)
 	}
 	return pending, nil
