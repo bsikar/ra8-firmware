@@ -76,13 +76,9 @@ func (s *Server) getRunLogs(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	pageInvalid := page.AttemptID != attemptID || len(page.Chunks) > limit ||
-		page.NextAfter < after || page.NextAfter-after > int64(limit)
-	if len(page.Chunks) == 0 {
-		pageInvalid = pageInvalid || page.NextAfter != after || page.HasMore
-	} else {
-		pageInvalid = pageInvalid || page.Chunks[len(page.Chunks)-1].Sequence != page.NextAfter ||
-			(page.HasMore && len(page.Chunks) != limit)
-	}
+		page.NextAfter < after || page.NextAfter-after > int64(limit) ||
+		(page.HasMore && len(page.Chunks) != limit) ||
+		!logPageFitsItsWindow(page, after)
 	if pageInvalid {
 		problem(w, http.StatusServiceUnavailable, "unavailable", "stored log page is inconsistent", true)
 		return
