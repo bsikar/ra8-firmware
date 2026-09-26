@@ -76,6 +76,9 @@ func (a *Agent) RunHILAttempt(ctx context.Context, token boardclient.LeaseToken,
 		}
 	}
 	if executionErr == nil {
+		executionErr = checkReservedRecoveryIsOperable(recoveryMargin, decision.FlashRestoreBound)
+	}
+	if executionErr == nil {
 		executionErr = validateHILSafetyMaximum(decision, safetyMaximum)
 	}
 	if executionErr == nil && decision.ValidityWindow > assignment.Attempt.DeadlineAt.Sub(assignment.Attempt.StartedAt) {
