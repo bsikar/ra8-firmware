@@ -205,12 +205,12 @@ func (r *CheckRunReconciler) PublishedRuns(ctx context.Context, headSHA string) 
 	}
 	runs := []PublishedCheckRun{}
 	for page := 1; page <= maxPublishedCheckRunPages; page++ {
-		listed, total, err := r.readPage(ctx, token, commit, page)
+		listed, rows, total, err := r.readPage(ctx, token, commit, page)
 		if err != nil {
 			return PublishedCheckRuns{}, err
 		}
 		runs = append(runs, listed...)
-		if total <= page*100 {
+		if commitCheckRunPageEndsTheWalk(rows, total, page) {
 			sort.Slice(runs, func(i, j int) bool {
 				if runs[i].Name != runs[j].Name {
 					return runs[i].Name < runs[j].Name
@@ -225,23 +225,25 @@ func (r *CheckRunReconciler) PublishedRuns(ctx context.Context, headSHA string) 
 
 // readPage reads one page of the commit's check runs and keeps the ones this
 // plane publishes.
-func (r *CheckRunReconciler) readPage(ctx context.Context, token, commit string, page int) ([]PublishedCheckRun, int, error) {
+// The second return is how many runs the page itself carried, before the names
+// this plane does not publish are dropped. It is what says whether the API
+// could fill the page, which the kept runs cannot: a full page of Actions
+// checks keeps nothing and is still a full page.
+func (r *CheckRunReconciler) readPage(ctx context.Context, token, commit string, page int) ([]PublishedCheckRun, int, int, error) {
 	endpoint := *r.apiURL
 	endpoint.Path = path.Join(endpoint.Path, "repos", r.config.Owner, r.config.Repository, "commits", commit, "check-runs")
 	query := endpoint.Query()
-	query.Set("per_page", "100")
+	query.Set("per_page", fmt.Sprint(publishedCheckRunPageSize))
 	query.Set("page", fmt.Sprint(page))
 	endpoint.RawQuery = query.Encode()
 	body, err := r.get(ctx, token, endpoint)
 	if err != nil {
-		return nil, 0, err
+		return nil, 0, 0, err
 	}
 	var listing commitCheckRunsResponse
-	if err := json.Unmarshal(body, &listing); err != nil || listing.TotalCount < 0 || len(listing.CheckRuns) > 100 {
-		return nil, 0, fmt.Errorf("%w: unreadable check run listing", ErrPublishedCheckRunsUnreadable)
-	}
-	if len(listing.CheckRuns) == 0 {
-		return nil, page * 100, nil
+	if err := json.Unmarshal(body, &listing); err != nil || listing.TotalCount < 0 ||
+		len(listing.CheckRuns) > publishedCheckRunPageSize {
+		return nil, 0, 0, fmt.Errorf("%w: unreadable check run listing", ErrPublishedCheckRunsUnreadable)
 	}
 	kept := []PublishedCheckRun{}
 	for _, run := range listing.CheckRuns {
@@ -249,7 +251,7 @@ func (r *CheckRunReconciler) readPage(ctx context.Context, token, commit string,
 		// reconciled against this one, the same self-description check
 		// the workflow run reader makes.
 		if !strings.EqualFold(run.HeadSHA, commit) {
-			return nil, 0, fmt.Errorf("%w: run %d is on %s", ErrPublishedCheckRunsUnreadable, run.ID, run.HeadSHA)
+			return nil, 0, 0, fmt.Errorf("%w: run %d is on %s", ErrPublishedCheckRunsUnreadable, run.ID, run.HeadSHA)
 		}
 		var mode CheckRunMode
 		switch ownerOfContext(run.Name) {
@@ -266,7 +268,7 @@ func (r *CheckRunReconciler) readPage(ctx context.Context, token, commit string,
 			Summary: run.Output.Summary, ExternalID: run.ExternalID,
 		})
 	}
-	return kept, listing.TotalCount, nil
+	return kept, len(listing.CheckRuns), listing.TotalCount, nil
 }
 
 // get performs one bounded read. Every non-200 is ErrPublishedCheckRunsUnreadable
