@@ -430,6 +430,14 @@ func serve(ctx context.Context) error {
 	if err != nil {
 		return fmt.Errorf("load TLS identity: %w", err)
 	}
+	// The startup check above answers the question once. This listener runs
+	// for as long as the service is up, so it asks again at every handshake:
+	// a certificate that expires under a running server otherwise fails on
+	// every client at once with nothing on this side saying why.
+	present, err := mtls.ServerIdentitySource(cert, time.Now)
+	if err != nil {
+		return fmt.Errorf("load TLS identity: %w", err)
+	}
 	caPEM, err := os.ReadFile(caPath)
 	if err != nil {
 		return fmt.Errorf("load client CA: %w", err)
@@ -469,7 +477,7 @@ func serve(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	tlsConfig := &tls.Config{MinVersion: tls.VersionTLS13, ClientAuth: tls.RequireAndVerifyClientCert, ClientCAs: clientCAs, Certificates: []tls.Certificate{cert}}
+	tlsConfig := &tls.Config{MinVersion: tls.VersionTLS13, ClientAuth: tls.RequireAndVerifyClientCert, ClientCAs: clientCAs, GetCertificate: present}
 	listener, err := net.Listen("tcp", listenAddress)
 	if err != nil {
 		return err
