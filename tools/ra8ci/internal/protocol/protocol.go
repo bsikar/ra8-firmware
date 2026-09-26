@@ -293,6 +293,12 @@ func (receipt TerminalReceipt) Validate() error {
 	if err := receipt.HostFactsAtEnd.Validate(); err != nil {
 		return err
 	}
+	// After both snapshots have been judged on their own terms: this is the
+	// one thing neither of them can say alone, which side of the attempt it
+	// was taken on.
+	if err := checkHostFactsBracketTheAttempt(receipt); err != nil {
+		return err
+	}
 	switch receipt.Outcome {
 	case "succeeded":
 		if receipt.ChildExitCode == nil || *receipt.ChildExitCode != 0 || !receipt.EvidenceComplete || receipt.TimedOut || receipt.Cancelled {
