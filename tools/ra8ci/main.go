@@ -442,7 +442,12 @@ func serve(ctx context.Context) error {
 	if err != nil {
 		return fmt.Errorf("load client CA: %w", err)
 	}
-	clientCAs, err := mtls.ClientAuthorities(caPEM, time.Now())
+	// Same again for the authorities clients are verified against. They
+	// outlive a leaf by years, so a listener started before the root expires
+	// runs on past it and then denies every client at once, with nothing on
+	// this side saying the trust file ran out rather than the grants being
+	// pulled.
+	clientCAs, authoritiesUsable, err := mtls.ClientAuthoritySource(caPEM, time.Now)
 	if err != nil {
 		return fmt.Errorf("load client CA: %w", err)
 	}
@@ -478,6 +483,15 @@ func serve(ctx context.Context) error {
 		return err
 	}
 	tlsConfig := &tls.Config{MinVersion: tls.VersionTLS13, ClientAuth: tls.RequireAndVerifyClientCert, ClientCAs: clientCAs, GetCertificate: present}
+	// Ask the bundle question again at each handshake. Returning a nil config
+	// means keep the one the listener already has: only the answer is being
+	// re-read here, not the TLS floor or the pool itself.
+	tlsConfig.GetConfigForClient = func(*tls.ClientHelloInfo) (*tls.Config, error) {
+		if err := authoritiesUsable(); err != nil {
+			return nil, err
+		}
+		return nil, nil
+	}
 	listener, err := net.Listen("tcp", listenAddress)
 	if err != nil {
 		return err
