@@ -193,47 +193,6 @@ uint16_t priv_gfx_text_pack_565(uint32_t color)
 }
 
 /**
- * @brief Bytes per pixel for a given format.
- *
- * @details See implementation.
- * @param[in] format See implementation.
- * @return Result code.
- * @retval k_ra8_ok Operation succeeded.
- * @pre Module state is consistent.
- * @pre Module state is consistent.
- * @post Caller-visible state matches the documented contract.
- * @post Caller-visible state matches the documented contract.
- * @note Not thread-safe unless documented otherwise.
- * @since 0.1.0
- */
-RA8_INTERNAL
-static inline uint8_t internal_bpp(ra8_gfx_format_t format)
-{
-  return (uint8_t)format;
-}
-
-/**
- * @brief Validate a format enum.
- *
- * @details See implementation.
- * @param[in] f See implementation.
- * @return Result code.
- * @retval k_ra8_ok Operation succeeded.
- * @pre Module state is consistent.
- * @pre Module state is consistent.
- * @post Caller-visible state matches the documented contract.
- * @post Caller-visible state matches the documented contract.
- * @note Not thread-safe unless documented otherwise.
- * @since 0.1.0
- */
-RA8_INTERNAL
-static inline bool internal_format_ok(ra8_gfx_format_t f)
-{
-  return (f == k_ra8_gfx_format_rgb565) || (f == k_ra8_gfx_format_rgb888) ||
-         (f == k_ra8_gfx_format_argb8888);
-}
-
-/**
  * @brief Write one pixel into a generic destination buffer.
  *
  * @param[out] dst     Destination buffer base.
@@ -259,7 +218,7 @@ static void internal_put_pixel(uint8_t*         dst,
                                size_t           y,
                                uint32_t         color)
 {
-  uint8_t* p = dst + (y * stride) + (x * (size_t)internal_bpp(format));
+  uint8_t* p = dst + (y * stride) + (x * (size_t)priv_gfx_bpp(format));
   switch (format) {
     case k_ra8_gfx_format_rgb565: {
       const uint16_t v = priv_gfx_text_pack_565(color);
@@ -305,7 +264,7 @@ RA8_INTERNAL
 static uint32_t
 internal_get_pixel(const uint8_t* src, size_t stride, ra8_gfx_format_t format, size_t x, size_t y)
 {
-  const uint8_t* p = src + (y * stride) + (x * (size_t)internal_bpp(format));
+  const uint8_t* p = src + (y * stride) + (x * (size_t)priv_gfx_bpp(format));
   switch (format) {
     case k_ra8_gfx_format_rgb565: {
       const uint16_t v = (uint16_t)(p[k_idx_r] | ((uint16_t)p[k_idx_g] << k_glyph_bits_per_byte));
@@ -344,7 +303,7 @@ void priv_gfx_text_plot(int32_t x, int32_t y, uint32_t color)
     return;
   }
   internal_put_pixel(g_gfx_text_state.fb,
-                     (size_t)g_gfx_text_state.width * (size_t)g_gfx_text_state.bpp,
+                     (size_t)g_gfx_text_state.pitch,
                      g_gfx_text_state.format,
                      (size_t)x,
                      (size_t)y,
@@ -437,7 +396,7 @@ static void internal_fill_rect_565(int32_t x, int32_t y, int32_t w, int32_t h, u
   const uint8_t  lo     = (uint8_t)(v & (uint16_t)k_mask_byte);
   const uint8_t  hi     = (uint8_t)((v >> k_glyph_bits_per_byte) & (uint16_t)k_mask_byte);
   const size_t   bpp    = (size_t)g_gfx_text_state.bpp;
-  const size_t   stride = (size_t)g_gfx_text_state.width * bpp;
+  const size_t   stride = (size_t)g_gfx_text_state.pitch;
   const size_t   count  = (size_t)(x1 - x0);
   for (int32_t row = y0; row < y1; row++) {
     internal_fill_565(g_gfx_text_state.fb + ((size_t)row * stride) + ((size_t)x0 * bpp),
@@ -519,33 +478,6 @@ static void internal_rect_outline(int32_t x, int32_t y, int32_t w, int32_t h, ui
 /* Public API */
 /* ------------------------------------------------------------------ */
 
-ra8_err_t ra8_gfx_init(void* fb, uint16_t width, uint16_t height, ra8_gfx_format_t format)
-{
-  if (fb == nullptr) {
-    return k_ra8_err_null_ptr;
-  }
-  if ((width < k_ra8_gfx_min_dim) || (width > k_ra8_gfx_max_dim)) {
-    return k_ra8_err_invalid_arg;
-  }
-  if ((height < k_ra8_gfx_min_dim) || (height > k_ra8_gfx_max_dim)) {
-    return k_ra8_err_invalid_arg;
-  }
-  if (!internal_format_ok(format)) {
-    return k_ra8_err_invalid_arg;
-  }
-  g_gfx_text_state.fb          = (uint8_t*)fb;
-  g_gfx_text_state.width       = width;
-  g_gfx_text_state.height      = height;
-  g_gfx_text_state.format      = format;
-  g_gfx_text_state.bpp         = internal_bpp(format);
-  g_gfx_text_state.clip_x0     = 0;
-  g_gfx_text_state.clip_y0     = 0;
-  g_gfx_text_state.clip_x1     = (int32_t)width; /* default clip = whole framebuffer. */
-  g_gfx_text_state.clip_y1     = (int32_t)height;
-  g_gfx_text_state.initialized = true;
-  return k_ra8_ok;
-}
-
 ra8_err_t ra8_gfx_clear(uint32_t color)
 {
   if (!g_gfx_text_state.initialized) {
@@ -567,7 +499,7 @@ ra8_err_t ra8_gfx_clear(uint32_t color)
   for (int32_t y = g_gfx_text_state.clip_y0; y < g_gfx_text_state.clip_y1; y++) {
     for (int32_t x = g_gfx_text_state.clip_x0; x < g_gfx_text_state.clip_x1; x++) {
       internal_put_pixel(g_gfx_text_state.fb,
-                         (size_t)g_gfx_text_state.width * (size_t)g_gfx_text_state.bpp,
+                         (size_t)g_gfx_text_state.pitch,
                          g_gfx_text_state.format,
                          (size_t)x,
                          (size_t)y,
@@ -705,7 +637,7 @@ static void internal_blit_gray8_565(const uint8_t* src,
                                     int32_t        x1,
                                     int32_t        y1)
 {
-  const size_t stride = (size_t)g_gfx_text_state.width * (size_t)g_gfx_text_state.bpp;
+  const size_t stride = (size_t)g_gfx_text_state.pitch;
   for (int32_t y = y0; y < y1; ++y) {
     uint8_t* p = g_gfx_text_state.fb + ((size_t)y * stride) + ((size_t)x0 * (size_t)k_rgb565_bpp);
     const uint8_t* s = src + ((size_t)(y - dst_y) * (size_t)w) + (size_t)(x0 - dst_x);
@@ -938,11 +870,11 @@ ra8_err_t ra8_gfx_blit(const void*      src_buf,
   if (!g_gfx_text_state.initialized) {
     return k_ra8_err_not_initialized;
   }
-  if ((src_w == 0) || (src_h == 0) || !internal_format_ok(src_format)) {
+  if ((src_w == 0) || (src_h == 0) || !priv_gfx_format_ok(src_format)) {
     return k_ra8_err_invalid_arg;
   }
   const uint8_t* src        = (const uint8_t*)src_buf;
-  const size_t   src_stride = (size_t)src_w * (size_t)internal_bpp(src_format);
+  const size_t   src_stride = (size_t)src_w * (size_t)priv_gfx_bpp(src_format);
   for (uint32_t row = 0; row < src_h; row++) {
     for (uint32_t col = 0; col < src_w; col++) {
       const uint32_t color = internal_get_pixel(src, src_stride, src_format, col, row);
