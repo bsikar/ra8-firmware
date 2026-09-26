@@ -27,6 +27,7 @@ add_library(
   ${RA8_IF_SOURCES}
   ${RA8_NET_POLICY_SOURCES}
   ${RA8_XML_WRITER_SOURCES}
+  ${RA8_IMGDEC_SOURCES}
   ${RA8_IF_RA8_VFS_SOURCES}
   ${RA8_IO_SOURCES}
   ${COMPRESS_SOURCES}
@@ -128,6 +129,7 @@ target_include_directories(
          ${FW_ROOT}/libs/if/inc
          ${FW_ROOT}/libs/ra8_net_policy/inc
          ${FW_ROOT}/libs/ra8_xml/inc
+         ${FW_ROOT}/libs/ra8_imgdec/inc
          ${FW_ROOT}/libs/if_ra8_vfs/inc
          ${FW_ROOT}/libs/ra8_io/inc
          ${FW_ROOT}/apps/shared_libs/compress/inc
