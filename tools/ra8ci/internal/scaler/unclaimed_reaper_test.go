@@ -51,14 +51,19 @@ func (r *fakeRevoker) AbandonAttempt(_ context.Context, vm store.RunnerVM) error
 	return r.run(StepAbandonAttempt, vm)
 }
 
+// expiredVM builds a candidate the way the ledger answers one: the queue
+// selects on scale_set_id, so a row in its answer carries the scale set the
+// pass is reaping. Every reaper in these tests is built over reapedScaleSet.
 func expiredVM(id string, deadline time.Time) store.RunnerVM {
-	return store.RunnerVM{ID: id, State: "registered", UnclaimedDeadline: deadline}
+	vm := store.RunnerVM{ID: id, State: "registered", UnclaimedDeadline: deadline}
+	vm.ScaleSetID = reapedScaleSet
+	return vm
 }
 
 func reaperAt(t *testing.T, now time.Time, queue ExpiredUnclaimedLister, revoker UnclaimedRevoker) *UnclaimedReaper {
 	t.Helper()
 	reaper, err := NewUnclaimedReaper(UnclaimedReaperConfig{
-		ScaleSetID: 42, BatchSize: 10, Now: func() time.Time { return now },
+		ScaleSetID: reapedScaleSet, BatchSize: 10, Now: func() time.Time { return now },
 	}, queue, revoker)
 	if err != nil {
 		t.Fatal(err)
