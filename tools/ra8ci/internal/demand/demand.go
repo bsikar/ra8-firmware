@@ -173,6 +173,9 @@ func (e Event) Validate() error {
 	if e.Phase != PhaseQueued && e.StartedAt.IsZero() {
 		return fmt.Errorf("%w: start time", ErrInvalid)
 	}
+	if err := checkStampsMatchThePhase(e); err != nil {
+		return err
+	}
 	return checkTimestampsAgree(e)
 }
 
