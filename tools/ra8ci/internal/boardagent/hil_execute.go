@@ -81,6 +81,10 @@ func (a *Agent) RunHILAttempt(ctx context.Context, token boardclient.LeaseToken,
 	if executionErr == nil {
 		executionErr = validateHILSafetyMaximum(decision, safetyMaximum)
 	}
+	if executionErr == nil {
+		executionErr = checkStepBoundsAreOperable(time.Duration(assignment.Task.DeadlineSeconds)*time.Second,
+			decision.ValidityWindow, assignment.Attempt.DeadlineAt.Sub(assignment.Attempt.StartedAt))
+	}
 	if executionErr == nil && decision.ValidityWindow > assignment.Attempt.DeadlineAt.Sub(assignment.Attempt.StartedAt) {
 		executionErr = fmt.Errorf("%w: HIL observation budget exceeds persisted attempt deadline", ErrInvalidAgent)
 	}
