@@ -139,8 +139,8 @@ NONE_EXTS: frozenset[str] = frozenset({".json"})
 HASH_BASENAMES: frozenset[str] = frozenset({"justfile", "Justfile", "CMakeLists.txt", "Dockerfile"})
 
 # Extensionless basenames that are still shell/text worth scanning (the git
-# hooks: scripts/git/pre-commit, pre-push).
-HASH_STEM_HINTS: frozenset[str] = frozenset({"pre-commit", "pre-push"})
+# hooks: scripts/git/commit-msg, hook-launcher).
+HASH_STEM_HINTS: frozenset[str] = frozenset({"commit-msg", "hook-launcher"})
 
 # Extension -> comment/prose class, assembled once.
 _EXT_LANG: dict[str, str] = {

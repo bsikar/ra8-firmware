@@ -160,13 +160,13 @@ hand-traced decisions, and so on.
 |                                 | same-repository PRs schedule the managed dev-box listener, while |
 |                                 | fork PRs are excluded. Manual dispatch remains available.        |
 
-## 5. scripts/git/pre-commit (qualified internal tool)
+## 5. scripts/ci/gates/checks.sh (qualified internal tool)
 
 | Attribute                       | Value                                                              |
 |---------------------------------|--------------------------------------------------------------------|
 | Vendor                          | In-house (Brighton Sikarskie / project author)                     |
 | Tool version pinned             | Git-managed; the current tree ships the pre-commit gate as         |
-|                                 | `scripts/git/pre-commit` plus per-check helpers under              |
+|                                 | the `pre-commit-checks` CI gate plus per-check helpers under              |
 |                                 | `scripts/checks/`.                                                 |
 | Intended use                    | Block any commit that violates ASCII-only, clang-format,           |
 |                                 | clang-tidy, cppcheck (without MISRA addon), no-dynamic-allocation, |
@@ -256,7 +256,7 @@ and the other pending evidence.
 | clang-18 / llvm-cov        | Major-version bump or LLVM MC/DC accounting change.               |
 | cppcheck + misra addon     | Cppcheck major-version bump (esp. C23 support); MAR 2026-11-02.   |
 | JLinkExe                   | Major-version bump or rubric change.                              |
-| scripts/git/pre-commit     | Per-PR; reviewed alongside the change.                            |
+| scripts/ci/gates/checks.sh     | Per-PR; reviewed alongside the change.                            |
 | GitHub Actions runners     | Self-hosted image/Ansible change, hosted fork-image bump, or workflow change. |
 | clang-tidy / clang-format  | Major-version bump.                                               |
 | llvm-profdata              | Bundled with clang version pin.                                   |

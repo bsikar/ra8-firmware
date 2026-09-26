@@ -4,7 +4,7 @@
 """check_c23_patterns.py -- enforce four C23 source patterns on first-party code.
 
 These four rules previously lived ONLY as inline ``grep`` loops inside the
-local ``scripts/git/pre-commit`` hook and were never run by the CI gate
+removed local pre-commit hook and were never run by the CI gate
 ``pre-commit-checks`` (``gate_pre_commit_checks`` in
 ``scripts/ci/gates/checks.sh``).  The workflow claimed the gate mirrored the
 hook, but these four checks were absent from it -- a "local green, CI red"
@@ -87,7 +87,7 @@ _ZERO_INIT_RE = re.compile(rf"=\s*\{{\s*{_ZERO_BODY}{_ZERO_SUFFIX}\s*,?\s*\}}")
 _STDBOOL_RE = re.compile(r"^\s*#\s*include\s+<stdbool\.h>")
 
 # Rule 4: object-like `#define NAME <bare-numeric-literal>` whose value is not
-# paren-wrapped. Faithful translation of the ERE in scripts/git/pre-commit:
+# paren-wrapped. Faithful translation of the ERE in the removed pre-commit hook:
 # a bare integer or float literal (with optional U/L/F suffix, and hex / binary
 # / exponent forms), ignoring function-like macros, bare feature flags, and
 # already-parenthesised values. The trailing comment group is retained for

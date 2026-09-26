@@ -615,20 +615,6 @@ _BASE_SHELL_POLICIES: dict[str, ShellPolicy] = {
         executable=True,
         source_requires_privileged_parent=False,
     ),
-    "scripts/git/pre-commit": ShellPolicy(
-        ShellSecurity.PRIVILEGED,
-        ShellUsage.ENTRY,
-        ShellDialect.BASH,
-        executable=True,
-        source_requires_privileged_parent=False,
-    ),
-    "scripts/git/pre-push": ShellPolicy(
-        ShellSecurity.PRIVILEGED,
-        ShellUsage.ENTRY,
-        ShellDialect.BASH,
-        executable=True,
-        source_requires_privileged_parent=False,
-    ),
     "scripts/report/mcdc_report.sh": ShellPolicy(
         ShellSecurity.PORTABLE,
         ShellUsage.ENTRY,

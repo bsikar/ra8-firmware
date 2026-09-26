@@ -400,7 +400,7 @@ unless an app overrides it (for example,
 - `docs/RING_AND_WORLD.md` -- architectural partitioning baseline.
 - `docs/qualification/TOOL_QUALIFICATION.md` -- tool TQL dossier.
 - `.github/workflows/firmware.yml` -- CI gate definitions.
-- `scripts/git/pre-commit` -- per-commit gate definitions.
+- the `pre-commit-checks` CI gate -- per-commit gate definitions.
 - IEC 61508-3:2010 Clauses 7.9 and Annex C.
 - RTCA DO-178C:2011 Sections 6 and 11.3, Annex A Tables A-3 through A-7.
 - RTCA DO-330:2011 (tool qualification considerations).

@@ -183,32 +183,32 @@ def _selftest() -> int:
     """Exercise aligned, misaligned, missing-description, and whitespace cases."""
     aligned = "\n".join(
         (
-            f"{'  just git_hooks::pre_commit':<48}Run pre-commit",
-            f"{'  just git_hooks::pre_push <remote> <url>':<48}Run pre-push",
+            f"{'  just checks::list':<48}List registered checks",
+            f"{'  just checks::run <name>':<48}Run one registered check",
         )
     )
     misaligned = "\n".join(
         (
-            "  just git_hooks::pre_commit                   Run pre-commit",
-            "  just git_hooks::pre_push <remote> <url>       Run pre-push",
+            f"{'  just checks::list':<44}List registered checks",
+            f"{'  just checks::run <name>':<40}Run one registered check",
         )
     )
     failures: list[str] = []
-    if _audit_screen("git_hooks", aligned):
+    if _audit_screen("checks", aligned):
         failures.append("aligned command descriptions were rejected")
     if not any(
         "description starts at column" in finding
-        for finding in _audit_screen("git_hooks", misaligned)
+        for finding in _audit_screen("checks", misaligned)
     ):
         failures.append("misaligned command descriptions were accepted")
     if not any(
         "no description column" in finding
-        for finding in _audit_screen("git_hooks", "  just git_hooks::pre_commit")
+        for finding in _audit_screen("checks", "  just checks::list")
     ):
         failures.append("missing command description was accepted")
     if not any(
         "trailing whitespace" in finding
-        for finding in _audit_screen("git_hooks", "  just git_hooks::pre_commit  Run \t")
+        for finding in _audit_screen("checks", "  just checks::list  List \t")
     ):
         failures.append("trailing whitespace was accepted")
     if failures:

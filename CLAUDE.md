@@ -285,10 +285,9 @@ immediately, and the coverage checker also rejects recreating an empty
 retirement baseline. Do not add a waiver or baseline row; add the genuine
 both-direction selftest and invoke it from the registered gate.
 
-The **pre-push hook** (`scripts/git/pre-push`) runs the suite automatically and
-**blocks the push** if any gate fails. For emergencies, bypass it with
-`SKIP_CI_PUSH=1 git push` (skip just this gate) or `git push --no-verify` (skip
-every push hook).
+There is **no pre-commit or pre-push hook**: nothing runs the suite for you and
+nothing blocks a commit or a push. Run `just ci` yourself before pushing, and
+treat the GitHub workflows as the gate of record.
 
 ---
 
@@ -505,7 +504,7 @@ plainly exists.
 
 `scripts/checks/check_no_silent_stubs.py` runs in the `pre-commit-checks` gate
 (so it is covered by `just ci` / `just quality::native` and the matching workflow job)
-and in the `scripts/git/pre-commit` hook. It fails on two narrowly-calibrated
+and in the `pre-commit-checks` CI gate. It fails on two narrowly-calibrated
 patterns:
 
 - **SHADOW** -- a do-nothing second definition of a symbol that is really
@@ -586,7 +585,7 @@ typedef struct {
 
 ### Enforcement
 
-The committed `scripts/git/pre-commit` policy rejects any commit containing
+The committed `pre-commit-checks` gate policy rejects any commit containing
 non-ASCII characters in source files. CI also runs the check.
 
 `just hooks` installs a tiny generic launcher under the shared Git common
@@ -615,7 +614,7 @@ removed. The owner rejects a supervisor Python, Bash, or Just resolved through
 the repository. Only after immutable validation may candidate policy see the
 repository's ignored `.venv`; it receives no owner proof capability. Users can
 still bypass local hooks, so CI independently reruns the registered content
-gates. Policy belongs in `just/hooks.just`, not in the launcher or owner
+gates. Policy belongs in the registered CI gates, not in the launcher or owner
 bootstrap.
 
 Changes to the launcher, installer, pre-commit owner, validator, or validator
