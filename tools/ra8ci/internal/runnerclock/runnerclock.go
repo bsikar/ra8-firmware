@@ -402,13 +402,12 @@ func scan(ctx context.Context, api *actionsAPI, repo string, limit int, hours *i
 			return 2, fmt.Errorf("GitHub returned a workflow run without a valid id")
 		}
 		scannedRuns++
-		var payload jobList
-		endpoint := fmt.Sprintf("repos/%s/actions/runs/%d/jobs", repo, workflow.ID)
-		if err := api.get(ctx, endpoint, url.Values{"per_page": {"100"}}, &payload); err != nil {
+		jobs, err := runJobs(ctx, api, repo, workflow.ID)
+		if err != nil {
 			return 2, err
 		}
 		dispatched, haveDispatched := runStart(workflow)
-		for _, currentJob := range payload.Jobs {
+		for _, currentJob := range jobs {
 			scannedJobs++
 			scannedSteps += len(currentJob.Steps)
 			jobFindings := scanJob(currentJob)
