@@ -991,6 +991,13 @@ func Validate(s Snapshot) error {
 		if err := checkYieldRequestWindow(lease); err != nil {
 			return err
 		}
+		// The deadline itself, held to the grant and the extensions on
+		// record. Same shape as the two windows above: a value only this
+		// reducer writes, checked against what this reducer can produce.
+		if err := checkDeadlineMatchesItsExtensions(lease); err != nil {
+			return err
+		}
+
 		if lease.HandoffTarget < 0 || lease.HandoffTarget > MaxHandoffBound {
 			return &Error{Conflict, "retained lease carries an out-of-range handoff target"}
 		}
