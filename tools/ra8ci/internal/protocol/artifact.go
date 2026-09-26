@@ -203,6 +203,12 @@ func ValidateArtifactSet(manifests []ArtifactManifest) error {
 		if err := manifest.Validate(); err != nil {
 			return err
 		}
+		// Before this entry joins the count, the byte total or the path
+		// set: all three are budgets of one attempt, and a set naming more
+		// than one grant answers them against the wrong denominator.
+		if err := checkArtifactSetNamesOneAttempt(manifests[0], manifest); err != nil {
+			return err
+		}
 		if seen[manifest.Path] {
 			return ErrInvalid
 		}
