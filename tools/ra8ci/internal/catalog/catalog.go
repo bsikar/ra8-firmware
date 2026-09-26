@@ -282,14 +282,6 @@ func (t Task) SupportsOS(goos string) bool {
 	return false
 }
 
-// ValidateArguments rejects arguments not yet represented by a reviewed schema.
-func (t Task) ValidateArguments(args []string) error {
-	if len(args) != 0 {
-		return fmt.Errorf("%w: task %q accepts no arguments", ErrInvalidCatalog, t.Name)
-	}
-	return nil
-}
-
 // ValidateReviewedTask is the admission rule for a task read out of a manifest:
 // the behavior rules plus the reviewed-dispatch seam, in the order Parse applies
 // them. A caller admitting a catalog by hand wants this one; a runtime
