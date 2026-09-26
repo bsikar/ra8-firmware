@@ -13,6 +13,16 @@ import (
 
 // ParseLatestFullBackupInfo reads pgBackRest's JSON info format, requiring
 // exactly one requested stanza and selecting its newest completed full backup.
+//
+// A full backup pgBackRest itself flags as errored is not a completed backup
+// and is skipped. pgBackRest sets "error" on a backup whose copy finished
+// with file-level failures, and such a backup still carries type "full" and
+// a stop timestamp, so reading the timestamps alone would take a backup the
+// tool has already said not to trust as the evidence the gate ages. Skipping
+// rather than refusing the whole response is deliberate: one failed backup
+// must not blind the gate to the good ones behind it, and if every full is
+// errored the parse fails with that said plainly. Older pgBackRest builds
+// omit the field; an absent flag is not a claim either way and is accepted.
 func ParseLatestFullBackupInfo(raw []byte, stanza string) (time.Time, error) {
 	if len(raw) == 0 || len(raw) > 8<<20 || stanza == "" {
 		return time.Time{}, errors.New("invalid pgBackRest info response")
@@ -21,6 +31,7 @@ func ParseLatestFullBackupInfo(raw []byte, stanza string) (time.Time, error) {
 		Name   string `json:"name"`
 		Backup []struct {
 			Type      string `json:"type"`
+			Error     *bool  `json:"error"`
 			Timestamp struct {
 				Stop json.Number `json:"stop"`
 			} `json:"timestamp"`
@@ -38,8 +49,13 @@ func ParseLatestFullBackupInfo(raw []byte, stanza string) (time.Time, error) {
 		return time.Time{}, errors.New("pgBackRest info response has trailing JSON")
 	}
 	var latest time.Time
+	var errored bool
 	for _, backup := range response[0].Backup {
 		if backup.Type != "full" {
+			continue
+		}
+		if backup.Error != nil && *backup.Error {
+			errored = true
 			continue
 		}
 		if backup.Timestamp.Stop == "" {
@@ -55,6 +71,9 @@ func ParseLatestFullBackupInfo(raw []byte, stanza string) (time.Time, error) {
 		}
 	}
 	if latest.IsZero() {
+		if errored {
+			return time.Time{}, errors.New("pgBackRest reports no full backup that completed without errors")
+		}
 		return time.Time{}, errors.New("pgBackRest reports no completed full backup")
 	}
 	return latest, nil
