@@ -129,9 +129,8 @@ func PlanYield(s Snapshot, waiterID string, dispatch YieldDispatch, cohort Yield
 	if err := ValidateYieldCohort(cohort); err != nil {
 		return YieldPlan{}, err
 	}
-	if cohort.BoardID != s.BoardID {
-		return YieldPlan{}, &Error{InvalidArgument,
-			"yield cohort names board " + cohort.BoardID + ", not the board being asked to yield"}
+	if err := checkCohortNamesBoard(cohort, s.BoardID); err != nil {
+		return YieldPlan{}, err
 	}
 	if err := admitYield(s, waiterID); err != nil {
 		return YieldPlan{}, err
