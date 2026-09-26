@@ -47,6 +47,7 @@ func SyncPending(ctx context.Context, outbox *spool.Spool, baseURL string, clien
 		return http.ErrUseLastResponse
 	}
 	var report Report
+	claimed := make(map[string]string, len(entries))
 	for _, entry := range entries {
 		if entry.SchemaVersion != 2 {
 			report.Quarantined++
@@ -90,6 +91,9 @@ func SyncPending(ctx context.Context, outbox *spool.Spool, baseURL string, clien
 		if err := decoder.Decode(&extra); !errors.Is(err, io.EOF) ||
 			receipt.LocalID != entry.ID || receipt.PayloadSHA256 != digest || !store.ValidID(receipt.LocalRunID) {
 			return report, fmt.Errorf("local %s receipt did not match durable request", entry.ID)
+		}
+		if err := checkDurableRunIsUnclaimed(claimed, entry.ID, receipt); err != nil {
+			return report, fmt.Errorf("local %s receipt: %w", entry.ID, err)
 		}
 		if err := outbox.MarkSynced(entry.ID, receipt.LocalRunID); err != nil {
 			return report, fmt.Errorf("persist local %s receipt: %w", entry.ID, err)
