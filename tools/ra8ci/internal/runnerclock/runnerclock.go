@@ -30,6 +30,8 @@ const (
 	defaultRepo      = "bsikar/ra8-firmware"
 	defaultRuns      = 40
 	ciRuns           = 60
+	maxRunPage       = 100
+	maxScanRuns      = 1000
 	overlapTolerance = 5 * time.Second
 )
 
@@ -319,37 +321,70 @@ func scanJob(input job) []finding {
 	return findings
 }
 
+// runs walks the completed-run list until it has SEEN the number of runs the
+// caller asked to scan.
+//
+// One request cannot answer for more than maxRunPage runs, because that is
+// where the GitHub API stops enlarging a page. A single request therefore
+// scanned 100 runs however many were asked for, and --runs 400 reported on a
+// quarter of the window it was given while saying nothing about the rest. The
+// count in the report was honest; what the flag promised was not.
+//
+// Runs SEEN, not runs kept, bounds the walk: --hours drops runs outside its
+// window and dropping one is not a reason to reach further back than the
+// caller asked. per_page stays fixed across the walk, because a page number
+// only means something beside the size the earlier pages used.
 func runs(ctx context.Context, api *actionsAPI, repo string, limit int, hours *int) ([]run, error) {
+	if limit > maxScanRuns {
+		return nil, fmt.Errorf("--runs is %d; the GitHub Actions run list stops paging after %d", limit, maxScanRuns)
+	}
 	perPage := limit
-	if perPage > 100 {
-		perPage = 100
+	if perPage > maxRunPage {
+		perPage = maxRunPage
 	}
-	query := url.Values{"status": {"completed"}, "per_page": {strconv.Itoa(perPage)}}
-	var payload runList
-	if err := api.get(ctx, "repos/"+repo+"/actions/runs", query, &payload); err != nil {
-		return nil, err
+	var cutoff time.Time
+	if hours != nil {
+		cutoff = time.Now().UTC().Add(-time.Duration(*hours) * time.Hour)
 	}
-	if hours == nil {
-		if len(payload.Runs) > limit {
-			payload.Runs = payload.Runs[:limit]
+	collected := make([]run, 0, limit)
+	seen := 0
+	for page := 1; seen < limit; page++ {
+		query := url.Values{
+			"status":   {"completed"},
+			"per_page": {strconv.Itoa(perPage)},
+			"page":     {strconv.Itoa(page)},
 		}
-		return payload.Runs, nil
-	}
-	cutoff := time.Now().UTC().Add(-time.Duration(*hours) * time.Hour)
-	filtered := make([]run, 0, len(payload.Runs))
-	for _, item := range payload.Runs {
-		started, ok := parseTimestamp(item.RunStarted)
-		if !ok {
-			started, ok = parseTimestamp(item.CreatedAt)
+		var payload runList
+		if err := api.get(ctx, "repos/"+repo+"/actions/runs", query, &payload); err != nil {
+			return nil, err
 		}
-		if ok && !started.Before(cutoff) {
-			filtered = append(filtered, item)
+		if len(payload.Runs) == 0 {
+			break
+		}
+		for _, item := range payload.Runs {
+			if seen >= limit {
+				break
+			}
+			seen++
+			if hours == nil {
+				collected = append(collected, item)
+				continue
+			}
+			started, ok := parseTimestamp(item.RunStarted)
+			if !ok {
+				started, ok = parseTimestamp(item.CreatedAt)
+			}
+			if ok && !started.Before(cutoff) {
+				collected = append(collected, item)
+			}
+		}
+		// A page the API could not fill is the end of the list. Asking for the
+		// next one reads nothing and costs a request.
+		if len(payload.Runs) < perPage {
+			break
 		}
 	}
-	if len(filtered) > limit {
-		filtered = filtered[:limit]
-	}
-	return filtered, nil
+	return collected, nil
 }
 
 func scan(ctx context.Context, api *actionsAPI, repo string, limit int, hours *int, stdout io.Writer) (int, error) {
