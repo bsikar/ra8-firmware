@@ -459,6 +459,11 @@ type logUploader struct {
 	sequence   int64
 	err        error
 	pending    *protocol.LogChunk
+	// dropped counts the bytes this uploader refused or never offered after
+	// the chunk it is holding. Those bytes are gone whatever the last offer
+	// does, so they decide whether a held chunk landing leaves the plane
+	// holding the whole log. See recoveredLogIsWhole.
+	dropped int64
 }
 
 type streamWriter struct {
@@ -475,6 +480,9 @@ func (uploader *logUploader) write(stepName, stream string, data []byte) (int, e
 	uploader.mu.Lock()
 	defer uploader.mu.Unlock()
 	if uploader.err != nil {
+		// Turned away at the door: these bytes are never offered to the
+		// plane, and no later call recovers them.
+		uploader.dropped += int64(len(data))
 		return 0, uploader.err
 	}
 	written := 0
@@ -497,6 +505,10 @@ func (uploader *logUploader) write(stepName, stream string, data []byte) (int, e
 		if err := uploader.agent.acceptEvidence(uploader.ctx, uploader.assignment, "/v1/attempts/"+uploader.assignment.AttemptID+"/logs", chunk); err != nil {
 			uploader.err = err
 			uploader.pending = &chunk
+			// Whatever is left of this call sits behind the held chunk and
+			// is never offered either. The held chunk itself is not lost
+			// yet, so it is not counted here.
+			uploader.dropped += int64(len(data) - length)
 			return written, err
 		}
 		uploader.sequence++
@@ -514,8 +526,7 @@ func (uploader *logUploader) flushGrace(ctx context.Context) {
 	}
 	if err := uploader.agent.accept(ctx, uploader.assignment,
 		"/v1/attempts/"+uploader.assignment.AttemptID+"/logs", *uploader.pending); err == nil {
-		uploader.sequence = uploader.pending.Sequence
-		uploader.pending = nil
+		uploader.acceptHeldChunk()
 	}
 }
 

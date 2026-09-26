@@ -300,7 +300,11 @@ func TestLogUploaderChunksAndAmbiguousRetry(t *testing.T) {
 	}
 	uploader.flushGrace(context.Background())
 	sequence, evidenceErr := uploader.status()
-	if sequence != 2 || evidenceErr == nil {
+	// The held chunk was the end of the log and the last offer landed, so
+	// the plane holds every byte and the attempt no longer reports a broken
+	// log. Nothing was written behind the held chunk here; a run that did
+	// write behind it keeps the failure. See recoveredLogIsWhole.
+	if sequence != 2 || evidenceErr != nil {
 		t.Fatalf("retry result = %d, %v", sequence, evidenceErr)
 	}
 	mu.Lock()
