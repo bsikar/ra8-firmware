@@ -245,29 +245,27 @@ RA8_INTERNAL static ra8_err_t internal_cover_cached(mdl_fetch_ctx_t* ctx,
   const mdl_net_req_t request  = {.user_agent = ctx->session->user_agent,
                                   .referer    = priv_mdl_app_context()->state.series_url,
                                   .timeout_ms = ctx->timeout_ms};
-  mdl_net_resp_t      response = {};
-  mdl_cache_result_t  result;
-  size_t              bytes = 0U;
-  ra8_err_t           error = mdl_cache_get_buf(ctx->cache,
-                                                priv_mdl_app_context()->state.cover_url,
-                                                &request,
-                                                priv_mdl_fetch_cache_get_buf,
-                                                &fetch,
-                                                ctx->page_buf,
-                                                ctx->page_cap,
-                                                &bytes,
-                                                &response,
-                                                &result);
+  const mdl_cache_get_req_t get = {.url           = priv_mdl_app_context()->state.cover_url,
+                                   .request       = &request,
+                                   .fetch         = priv_mdl_fetch_cache_get_buf,
+                                   .fetch_context = &fetch,
+                                   .buffer        = ctx->page_buf,
+                                   .capacity      = ctx->page_cap};
+  mdl_cache_get_out_t       got = {};
+  ra8_err_t                 error = mdl_cache_get(ctx->cache, &get, &got);
   if (error == k_ra8_ok) {
-    error = priv_mdl_app_report_cache(priv_mdl_app_context()->state.cover_url, &result);
+    error = priv_mdl_app_report_cache(priv_mdl_app_context()->state.cover_url, &got.result);
   }
-  if ((error == k_ra8_ok) && current && result.body_reused) {
+  if ((error == k_ra8_ok) && current && got.result.body_reused) {
     return k_ra8_ok;
   }
   if (error == k_ra8_ok) {
-    return internal_cover_publish_cached(ctx, holding, bytes);
+    return internal_cover_publish_cached(ctx, holding, got.length);
   }
-  priv_mdl_fetch_record_fail(ctx, priv_mdl_app_context()->state.cover_url, response.status, error);
+  priv_mdl_fetch_record_fail(ctx,
+                             priv_mdl_app_context()->state.cover_url,
+                             got.response.status,
+                             error);
   return error;
 }
 

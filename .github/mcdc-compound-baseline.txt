@@ -155,7 +155,7 @@ apps/shared_libs/mdl/src/mdl_cache.c	internal_cache_prepare	1
 apps/shared_libs/mdl/src/mdl_cache.c	internal_cache_publish	3
 apps/shared_libs/mdl/src/mdl_cache.c	internal_cache_record_response	3
 apps/shared_libs/mdl/src/mdl_cache.c	internal_cache_retry_unconditional	1
-apps/shared_libs/mdl/src/mdl_cache.c	mdl_cache_get_buf	6
+apps/shared_libs/mdl/src/mdl_cache.c	mdl_cache_get	6
 apps/shared_libs/mdl/src/mdl_cache_io.c	internal_cache_decode	7
 apps/shared_libs/mdl/src/mdl_cache_io.c	internal_cache_ensure_directory	1
 apps/shared_libs/mdl/src/mdl_cache_io.c	internal_cache_paths	4

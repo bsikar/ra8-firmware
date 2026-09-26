@@ -481,48 +481,45 @@ internal_mdl_fetch_chapter_html(mdl_fetch_ctx_t* ctx, const char* chapter_url, s
   if (ra8_net_urlguard_host(chapter_url, fetch.host, sizeof(fetch.host)) != k_ra8_ok) {
     return k_ra8_err_invalid_arg;
   }
-  const mdl_net_req_t req      = {.user_agent = ctx->session->user_agent,
-                                  .referer    = ctx->series_url,
-                                  .timeout_ms = ctx->timeout_ms};
-  size_t              len      = 0U;
-  mdl_net_resp_t      response = {};
-  mdl_cache_result_t  cache_result;
-  const ra8_err_t     rc = (ctx->cache != nullptr) ? mdl_cache_get_buf(ctx->cache,
-                                                                       chapter_url,
-                                                                       &req,
-                                                                       priv_mdl_fetch_cache_get_buf,
-                                                                       &fetch,
-                                                                       ctx->page_buf,
-                                                                       ctx->page_cap,
-                                                                       &len,
-                                                                       &response,
-                                                                       &cache_result)
-                                                   : priv_mdl_fetch_cache_get_buf(&fetch,
-                                                                                  chapter_url,
-                                                                                  &req,
-                                                                                  ctx->page_buf,
-                                                                                  ctx->page_cap,
-                                                                                  &len,
-                                                                                  &response);
+  const mdl_net_req_t req = {.user_agent = ctx->session->user_agent,
+                             .referer    = ctx->series_url,
+                             .timeout_ms = ctx->timeout_ms};
+
+  const mdl_cache_get_req_t get = {.url           = chapter_url,
+                                   .request       = &req,
+                                   .fetch         = priv_mdl_fetch_cache_get_buf,
+                                   .fetch_context = &fetch,
+                                   .buffer        = ctx->page_buf,
+                                   .capacity      = ctx->page_cap};
+  mdl_cache_get_out_t       got = {};
+
+  const ra8_err_t rc = (ctx->cache != nullptr) ? mdl_cache_get(ctx->cache, &get, &got)
+                                               : priv_mdl_fetch_cache_get_buf(&fetch,
+                                                                              chapter_url,
+                                                                              &req,
+                                                                              ctx->page_buf,
+                                                                              ctx->page_cap,
+                                                                              &got.length,
+                                                                              &got.response);
   if (rc != k_ra8_ok) {
-    priv_mdl_fetch_record_fail(ctx, chapter_url, response.status, rc);
+    priv_mdl_fetch_record_fail(ctx, chapter_url, got.response.status, rc);
     return k_ra8_fail;
   }
   const ra8_err_t erc = mdl_extract_images(ctx->page_buf,
-                                           len,
+                                           got.length,
                                            chapter_url,
                                            ctx->site->page_img_attr,
                                            ctx->site->page_img_url_contains,
                                            ctx->images);
   if (erc != k_ra8_ok) {
-    priv_mdl_fetch_record_fail(ctx, chapter_url, response.status, erc);
+    priv_mdl_fetch_record_fail(ctx, chapter_url, got.response.status, erc);
     return erc;
   }
   if (ctx->images->count == 0U) {
-    priv_mdl_fetch_record_fail(ctx, chapter_url, response.status, k_ra8_err_no_data);
+    priv_mdl_fetch_record_fail(ctx, chapter_url, got.response.status, k_ra8_err_no_data);
     return k_ra8_err_no_data;
   }
-  *out_len = len;
+  *out_len = got.length;
   return k_ra8_ok;
 }
 

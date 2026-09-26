@@ -534,47 +534,41 @@ RA8_INTERNAL static ra8_err_t internal_cache_network(mdl_cache_t*              c
                                 result);
 }
 
-ra8_err_t mdl_cache_get_buf(mdl_cache_t*         cache,
-                            const char*          url,
-                            const mdl_net_req_t* base_request,
-                            mdl_cache_fetch_fn   fetch,
-                            void*                fetch_context,
-                            char*                buffer,
-                            size_t               capacity,
-                            size_t*              out_length,
-                            mdl_net_resp_t*      response,
-                            mdl_cache_result_t*  result)
+ra8_err_t mdl_cache_get(mdl_cache_t*               cache,
+                        const mdl_cache_get_req_t* req,
+                        mdl_cache_get_out_t*       out)
 {
-  if ((cache == nullptr) || (cache->storage == nullptr) || (cache->index == nullptr) ||
-      (cache->root == nullptr) || (url == nullptr) || (base_request == nullptr) ||
-      (fetch == nullptr) || (buffer == nullptr) || (capacity == 0U) || (out_length == nullptr) ||
-      (response == nullptr) || (result == nullptr)) {
+  if ((cache == nullptr) || (req == nullptr) || (out == nullptr)) {
     return k_ra8_err_invalid_arg;
   }
-  *out_length = 0U;
-  *response   = (mdl_net_resp_t){};
-  *result     = (mdl_cache_result_t){.age_seconds = -1};
+  if ((cache->storage == nullptr) || (cache->index == nullptr) || (cache->root == nullptr) ||
+      (req->url == nullptr) || (req->request == nullptr) || (req->fetch == nullptr) ||
+      (req->buffer == nullptr) || (req->capacity == 0U)) {
+    return k_ra8_err_invalid_arg;
+  }
+  *out = (mdl_cache_get_out_t){.result = {.age_seconds = -1}};
   mdl_cache_lookup_t lookup;
-  ra8_err_t          error = internal_cache_prepare(cache, url, buffer, capacity, result, &lookup);
+  ra8_err_t          error =
+    internal_cache_prepare(cache, req->url, req->buffer, req->capacity, &out->result, &lookup);
   if (error != k_ra8_ok) {
     return error;
   }
   const bool validators =
     lookup.held && ((lookup.record->etag[0] != '\0') || (lookup.record->last_modified[0] != '\0'));
   if (lookup.held && !cache->refetch && !validators) {
-    *out_length         = lookup.retained_length;
-    result->body_reused = true;
+    out->length             = lookup.retained_length;
+    out->result.body_reused = true;
     return k_ra8_ok;
   }
   return internal_cache_network(cache,
                                 &lookup,
-                                url,
-                                base_request,
-                                fetch,
-                                fetch_context,
-                                buffer,
-                                capacity,
-                                out_length,
-                                response,
-                                result);
+                                req->url,
+                                req->request,
+                                req->fetch,
+                                req->fetch_context,
+                                req->buffer,
+                                req->capacity,
+                                &out->length,
+                                &out->response,
+                                &out->result);
 }
