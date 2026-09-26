@@ -142,6 +142,9 @@ func (runtime *TerraformRuntime) WithSession(ctx context.Context, reservationID 
 		token.Clear()
 		result = errors.Join(result, revokeErr)
 	}()
+	if err := checkTokenLeaseCoversOperation(token, runtime.config.OperationTimeout, time.Now()); err != nil {
+		return err
+	}
 	tokenEnvironment, err := token.TerraformEnvironment()
 	if err != nil {
 		return err
