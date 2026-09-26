@@ -141,7 +141,9 @@ func holderHeartbeat(s *Snapshot, c HolderHeartbeat, now time.Time) (bool, error
 	}
 	// A beat delivered out of order must not make the holder look less
 	// recently seen than it already is, so the later observation stands.
-	if !now.After(s.Lease.LastHeartbeatAt) {
+	// The grant counts as an observation too, which is what makes a beat
+	// from before it change nothing.
+	if !beatAddsAnObservation(s.Lease, now) {
 		return false, nil
 	}
 	s.Lease.LastHeartbeatAt = now
