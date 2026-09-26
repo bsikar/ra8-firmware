@@ -50,9 +50,10 @@ typedef struct {
 static loop_ctx_t s_loop;
 static uint8_t    s_initialized;
 
-static int loop_send(void* ctx, const uint8_t* buf, size_t len)
+static ra8_err_t loop_send(void* ctx, const uint8_t* buf, size_t len, size_t* out_sent)
 {
   (void)ctx;
+  *out_sent      = 0U;
   size_t written = 0U;
   while ((written < len) && (s_loop.count < (uint16_t)k_fuzz_loop_cap)) {
     s_loop.buf[s_loop.head] = buf[written]; /* Producer write. */
@@ -60,12 +61,14 @@ static int loop_send(void* ctx, const uint8_t* buf, size_t len)
     s_loop.count++;
     written++;
   }
-  return (int)written;
+  *out_sent = written;
+  return k_ra8_ok;
 }
 
-static int loop_recv(void* ctx, uint8_t* buf, size_t len)
+static ra8_err_t loop_recv(void* ctx, uint8_t* buf, size_t len, size_t* out_received)
 {
   (void)ctx;
+  *out_received = 0U;
   /* Prefer attacker-controlled fuzz bytes when available; fall through
    * to whatever the facade itself produced (ring) once exhausted. */
   size_t produced = 0U;
@@ -80,7 +83,8 @@ static int loop_recv(void* ctx, uint8_t* buf, size_t len)
     s_loop.count--;
     produced++;
   }
-  return (int)produced;
+  *out_received = produced;
+  return k_ra8_ok;
 }
 
 int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size)
@@ -100,9 +104,9 @@ int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size)
   s_loop.feed_size = size;
 
   ra8_tls_session_cfg_t cfg = {};
-  cfg.bio_send              = loop_send;
-  cfg.bio_recv              = loop_recv;
-  cfg.bio_ctx               = nullptr;
+  cfg.transport.send        = loop_send;
+  cfg.transport.recv        = loop_recv;
+  cfg.transport.ctx         = nullptr;
   cfg.server_name           = nullptr;
 
   ra8_tls_session_t session = nullptr;
