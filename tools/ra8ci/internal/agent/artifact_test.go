@@ -196,6 +196,23 @@ func TestCollectRefusesSomethingThatIsNotAPlainFile(t *testing.T) {
 	}
 }
 
+func TestCollectRefusesAFileReachedThroughASymlinkedParent(t *testing.T) {
+	root := t.TempDir()
+	outside := t.TempDir()
+	writeArtifact(t, outside, "secret.txt", []byte("outside checkout"))
+	if err := os.Symlink(outside, filepath.Join(root, "linked")); err != nil {
+		t.Skipf("symlinks unavailable: %v", err)
+	}
+	sender := &recordingSender{}
+	collector := newCollector(t, root, sender)
+	if _, err := collector.Collect(context.Background(), "build", []string{"linked/secret.txt"}); !errors.Is(err, ErrUnsafeArtifact) {
+		t.Fatalf("collected a file through a symlinked parent: %v", err)
+	}
+	if len(sender.chunks) != 0 {
+		t.Fatalf("symlinked parent spent %d uploads", len(sender.chunks))
+	}
+}
+
 func TestCollectRefusesAnEmptyFile(t *testing.T) {
 	root := t.TempDir()
 	writeArtifact(t, root, "empty.log", nil)
