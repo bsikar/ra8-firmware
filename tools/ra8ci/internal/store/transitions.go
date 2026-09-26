@@ -145,6 +145,15 @@ func TerminalTaskState(state string) bool { return taskMachine.terminal(state) }
 // TerminalRunState reports whether a run has already been closed.
 func TerminalRunState(state string) bool { return runMachine.terminal(state) }
 
+// KnownRunState reports whether a run state exists in the machine at all.
+//
+// The other predicates here answer questions about a state the caller already
+// believes in. A reader outside the plane has the earlier question: the run
+// API hands a submitter a state string, and telling one the plane can be in
+// from one no run ever carries needs the vocabulary, which is stated here and
+// nowhere else.
+func KnownRunState(state string) bool { return runMachine.known(state) }
+
 // RunStartable reports whether a run in this state still has to be started.
 // The agent dispatch candidate query takes queued and running runs alike, so
 // the write site needs the machine to say which of the two it is looking at.

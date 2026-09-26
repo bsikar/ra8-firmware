@@ -167,8 +167,8 @@ func (c *Client) Submit(ctx context.Context, key string, input SubmitRequest) (R
 	if err := c.do(ctx, http.MethodPost, "/v1/runs", key, body, &receipt); err != nil {
 		return Receipt{}, err
 	}
-	if !store.ValidID(receipt.ID) || receipt.State != "queued" {
-		return Receipt{}, errors.New("run submission returned an invalid receipt")
+	if err := checkSubmitReceipt(receipt); err != nil {
+		return Receipt{}, err
 	}
 	return receipt, nil
 }
