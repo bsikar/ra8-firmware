@@ -173,11 +173,19 @@ func (b *boundedBackupBuffer) Write(p []byte) (int, error) {
 	return len(p), nil
 }
 
+// writeBackupAttestation publishes the signed envelope by rename. Its
+// directory is held to the same rule as every input the monitor reads: an
+// account that can write the directory can unlink or rename the published
+// attestation whatever the file's own 0640 says, and the verifier's SameFile
+// check cannot see a swap that happened at the path.
 func writeBackupAttestation(path string, data []byte) error {
 	directory := filepath.Dir(path)
 	info, err := os.Lstat(directory)
-	if err != nil || !info.IsDir() || info.Mode()&os.ModeSymlink != 0 || info.Mode().Perm()&0002 != 0 {
+	if err != nil || !info.IsDir() || info.Mode()&os.ModeSymlink != 0 {
 		return errors.New("backup attestation directory must be a protected real directory")
+	}
+	if info.Mode().Perm()&0022 != 0 {
+		return errors.New("backup attestation directory must not be group or world writable")
 	}
 	temporary, err := os.CreateTemp(directory, ".ra8ci-backup-attestation-*")
 	if err != nil {

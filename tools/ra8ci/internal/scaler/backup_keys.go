@@ -23,8 +23,15 @@ func CreateBackupSigningKeyPair(privatePath, publicPath string) error {
 	}
 	for _, path := range []string{privatePath, publicPath} {
 		info, err := os.Lstat(filepath.Dir(path))
-		if err != nil || !info.IsDir() || info.Mode()&os.ModeSymlink != 0 || info.Mode().Perm()&0002 != 0 {
+		if err != nil || !info.IsDir() || info.Mode()&os.ModeSymlink != 0 {
 			return errors.New("backup signing key parent must be a protected real directory")
+		}
+		// Exclusive creation refuses to replace an existing key, but it
+		// cannot stop an account that can write the directory from renaming
+		// the new key away and leaving its own pair at the path, which keys
+		// the gate to an attacker from the moment it is generated.
+		if info.Mode().Perm()&0022 != 0 {
+			return errors.New("backup signing key parent must not be group or world writable")
 		}
 		if _, err := os.Lstat(path); err == nil || !os.IsNotExist(err) {
 			return errors.New("refusing to replace existing backup signing key")
