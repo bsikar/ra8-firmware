@@ -319,6 +319,12 @@ func (receipt TerminalReceipt) Validate() error {
 	default:
 		return ErrInvalid
 	}
+	// After the outcome switch, which is what the code has to agree with, and
+	// before the per-step rules: this is an attempt-level statement about why
+	// the attempt ended, not about any one step.
+	if err := checkErrorCodeMatchesTheReport(receipt); err != nil {
+		return err
+	}
 	for _, step := range receipt.Steps {
 		if step.Name == "" || step.StartedAt.IsZero() || step.EndedAt.Before(step.StartedAt) || step.DurationNS < 0 ||
 			step.StdoutBytes < 0 || step.StderrBytes < 0 {
