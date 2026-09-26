@@ -407,10 +407,13 @@ func scan(ctx context.Context, api *actionsAPI, repo string, limit int, hours *i
 		if err := api.get(ctx, endpoint, url.Values{"per_page": {"100"}}, &payload); err != nil {
 			return 2, err
 		}
+		dispatched, haveDispatched := runStart(workflow)
 		for _, currentJob := range payload.Jobs {
 			scannedJobs++
 			scannedSteps += len(currentJob.Steps)
-			for _, found := range scanJob(currentJob) {
+			jobFindings := scanJob(currentJob)
+			jobFindings = append(jobFindings, jobBeganWithinItsRun(currentJob, dispatched, haveDispatched)...)
+			for _, found := range jobFindings {
 				found.runner = currentJob.RunnerName
 				if found.runner == "" {
 					found.runner = "(unknown runner)"
