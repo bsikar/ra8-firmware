@@ -319,6 +319,11 @@ func (receipt TerminalReceipt) Validate() error {
 			return ErrInvalid
 		}
 	}
+	// Before the evidence checks below, because they report by step name and
+	// the attempt's evidence is filed under it.
+	if err := checkStepNamesAttributeEvidence(receipt); err != nil {
+		return err
+	}
 	// Last, because it reads stamps the loops above have already held in
 	// order: every duration must fit the window it was measured in.
 	if err := checkReportedDurations(receipt); err != nil {
