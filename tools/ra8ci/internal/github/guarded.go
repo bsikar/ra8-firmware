@@ -88,11 +88,11 @@ func (c *GuardedClient) GetMessage(ctx context.Context, lastMessageID, maxCapaci
 	if err != nil || msg == nil {
 		return msg, err
 	}
-	session := c.inner.Session()
-	if session.SessionID.String() == "00000000-0000-0000-0000-000000000000" {
-		return nil, errors.New("github message has no session identity")
+	identity, err := sessionIdentity(c.inner.Session())
+	if err != nil {
+		return nil, err
 	}
-	entry, err := normalize(c.scaleSetID, session.SessionID.String(), msg)
+	entry, err := normalize(c.scaleSetID, identity, msg)
 	if err != nil {
 		return nil, err
 	}
@@ -105,13 +105,21 @@ func (c *GuardedClient) GetMessage(ctx context.Context, lastMessageID, maxCapaci
 	return msg, nil
 }
 
-// DeleteMessage refuses to acknowledge anything not saved by this process.
+// DeleteMessage refuses to acknowledge anything not saved by this process,
+// under the session now in force. A message identifier is the queue's
+// sequence number and the queue belongs to the session, so a record written
+// down under a session the client has since replaced says nothing about the
+// message carrying that number today.
 func (c *GuardedClient) DeleteMessage(ctx context.Context, messageID int) error {
 	c.mu.Lock()
-	_, ok := c.recorded[messageID]
+	recorded := c.recorded[messageID]
 	c.mu.Unlock()
-	if !ok {
-		return fmt.Errorf("github message %d was not persisted", messageID)
+	identity, err := sessionIdentity(c.inner.Session())
+	if err != nil {
+		return err
+	}
+	if err := acknowledgedUnderThisSession(messageID, recorded, identity); err != nil {
+		return err
 	}
 	if err := c.inner.DeleteMessage(ctx, messageID); err != nil {
 		return err
