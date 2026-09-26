@@ -69,6 +69,16 @@ type GuestReconciliation struct {
 // a confident answer about a set nobody can act on.
 var ErrGuestSetAmbiguous = errors.New("guest reconciliation input is ambiguous")
 
+// ErrGuestSetUnusable is an observed record that names no guest anything can
+// address. A reservation naming no VMID is ordinary and is counted as
+// Unassigned above, because a row exists before its clone and after its
+// destroy. A guest is not the same case: Proxmox gives every guest a VMID, so
+// a record without one is not a guest caught early, it is a record no path in
+// this package can act on. Reporting it as unaccounted would send an operator
+// hunting a leak at a VMID that cannot exist, and dropping it quietly would
+// hide a listing this pass could not read.
+var ErrGuestSetUnusable = errors.New("observed guest names no usable VMID")
+
 // ReconcileObservedGuests compares the guests Proxmox reports against the
 // reservations the ledger holds.
 //
@@ -99,6 +109,10 @@ func ReconcileObservedGuests(observed []proxmox.VM, reservations []store.RunnerV
 	}
 	seen := make(map[int]struct{}, len(observed))
 	for _, guest := range observed {
+		if guest.Identity.VMID <= 0 {
+			return GuestReconciliation{}, fmt.Errorf("%w: observed guest %q on node %q reported VMID %d",
+				ErrGuestSetUnusable, guest.Identity.Name, guest.Identity.Node, guest.Identity.VMID)
+		}
 		if _, duplicate := seen[guest.Identity.VMID]; duplicate {
 			return GuestReconciliation{}, fmt.Errorf("%w: VMID %d observed twice",
 				ErrGuestSetAmbiguous, guest.Identity.VMID)
