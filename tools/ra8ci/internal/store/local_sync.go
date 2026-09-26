@@ -225,5 +225,5 @@ func validateLocalRun(in LocalRunInput) error {
 		}
 		seen[step.Key] = true
 	}
-	return nil
+	return checkLocalRunDurations(in)
 }
