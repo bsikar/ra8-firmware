@@ -84,6 +84,13 @@ func RefreshBackupAttestation(ctx context.Context, config BackupMonitorConfig) e
 	if dec.Decode(&trailing) != io.EOF {
 		return errors.New("restore drill receipt has trailing JSON")
 	}
+	keyDirInfo, err := os.Lstat(filepath.Dir(config.PrivateKeyPath))
+	if err != nil || !keyDirInfo.IsDir() || keyDirInfo.Mode()&os.ModeSymlink != 0 {
+		return errors.New("backup signing key directory must be a real directory")
+	}
+	if keyDirInfo.Mode().Perm()&0022 != 0 {
+		return errors.New("backup signing key directory must not be group or world writable")
+	}
 	keyInfo, err := os.Lstat(config.PrivateKeyPath)
 	if err != nil || !keyInfo.Mode().IsRegular() || keyInfo.Mode().Perm()&0077 != 0 || keyInfo.Size() > 256 {
 		return errors.New("backup signing key must be a bounded private regular file")
