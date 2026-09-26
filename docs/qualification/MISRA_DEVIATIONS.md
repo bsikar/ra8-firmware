@@ -285,7 +285,7 @@ controls:
   functions.
 - **No `goto` / `setjmp` / dynamic-allocation cleanup paths** (NASA
   Power-of-10 Rules 1 and 3, enforced by the pre-commit hooks
-  `scripts/git/pre-commit` and `scripts/checks/check_no_dynamic_alloc.py`).
+  the `pre-commit-checks` CI gate and `scripts/checks/check_no_dynamic_alloc.py`).
   Early return therefore cannot leak resources because there are no
   resources to leak.
 
@@ -411,14 +411,18 @@ C23 `= {}` (empty initializer) is mandated by `CLAUDE.md` in place
 of the obsolete C99 `= {0}` form. The pinned cppcheck 2.13.0 MISRA addon reads
 `= {}` as "no brace around aggregate" because its parser does not
 recognize the C23 empty-initializer rule. The compiler accepts it
-correctly at every build.
+correctly at every build. No MISRA edition removes this: C:2012
+addresses C90/C99 and C:2023/C:2025 reach C11/C17-C18, so the gap is
+the audited language level rather than the edition audited against
+(`docs/MISRA.md` section "Which edition, and why it is not the current
+one").
 
 ### Alternative verification
 
 - arm-none-eabi-gcc `-std=gnu23 -Wmissing-braces -Werror` (cross
   build) and host gcc / clang in the unit-test build both validate
   every aggregate initializer at compile time.
-- `scripts/git/pre-commit` actively
+- the `pre-commit-checks` CI gate actively
   *forbids* the legacy `= {0}` form and *requires* C23 `= {}`,
   giving an inverse check that complements the disabled cppcheck
   rule.

@@ -43,13 +43,26 @@ mechanically checkable about a linker script without linking it:
                                 section for each; and it may not place an
                                 `.option_setting_*` section outside that family.
   LD009  fits the silicon    -- no MEMORY region declared inside the on-chip
-                                SRAM window (0x22000000 .. 0x221A0000, i.e.
-                                k_ra8_mem_sram_size = 1664 KiB) may extend past
-                                that end. LD003/LD004 prove a region is declared
-                                and closed; only this proves it is real memory,
-                                the one enforcement a 0-byte placeholder no CI
-                                job links can have (an ASSERT there never fires,
-                                #544).
+                                SRAM window (k_ra8_mem_sram_base ..
+                                + k_ra8_mem_sram_size = 1664 KiB) may extend
+                                past that end. LD003/LD004 prove a region is
+                                declared and closed; only this proves it is real
+                                memory, the one enforcement a 0-byte placeholder
+                                no CI job links can have (an ASSERT there never
+                                fires, #544).
+  LD010  named region agrees -- a MEMORY region NAMED for a device memory
+                                region (MRAM, MRAM_CPU1, ITCM, DTCM, SRAM,
+                                SRAM_CPU1, SDRAM) must actually lie inside that
+                                region's window as libs/ra8_core/inc/ra8_device.h
+                                declares it. LD009 judges by ADDRESS (anything
+                                landing in the SRAM window), so it cannot see an
+                                ITCM region parked at 0x30000000, a "SRAM" at the
+                                MRAM base, or an ITCM twice the size of the TCM
+                                the silicon has. The bounds are READ from
+                                ra8_device.h, never restated here, which is the
+                                point: that header calls itself the single source
+                                of truth the linker scripts mirror, and until
+                                this rule existed nothing in the tree read it.
 
 The REVERSE direction (a script defines a g_ra8_ls_* nothing in C names) is
 deliberately NOT a finding, and that is a statement about what is enforceable
@@ -273,11 +286,73 @@ def _check_region_closure(path: pathlib.Path, code: str, regions: set[str]) -> l
     return findings
 
 
-# On-chip system SRAM extent, identical on RA8D2 and RA8P1 and mirrored by
-# k_ra8_mem_sram_size (libs/ra8_core/inc/ra8_device.h): 1664 KiB = SRAM0 1024 KiB
-# + SRAM1 640 KiB, so SRAM_WINDOW_END is the first address past the array.
-SRAM_WINDOW_BASE = 0x22000000
-SRAM_WINDOW_SIZE = 0x001A0000  # k_ra8_mem_sram_size: 1664 KiB, both parts.
+# The device memory map, READ from the header that declares itself its single
+# source of truth rather than restated here. Copying the numbers is what this
+# rule set is fixing: libs/ra8_core/inc/ra8_device.h says the enums below are
+# "the runtime mirror of the MEMORY { } block in every app's linker_script.ld;
+# keep the two in lock-step", and nothing in the tree read them, so nothing
+# enforced the lock-step either (issue #1048).
+DEVICE_HEADER = pathlib.Path(__file__).resolve().parents[2] / "libs/ra8_core/inc/ra8_device.h"
+
+# One enum row: `k_ra8_mem_sram_base = 0x22000000U, /**< ... */`. Only the
+# k_ra8_mem_* family is read; the device-id and feature enums are not a map.
+_DEVICE_MEM_ROW = re.compile(r"^\s*(k_ra8_mem_\w+)\s*=\s*(0x[0-9A-Fa-f_]+|\d+)U?\s*,", re.MULTILINE)
+
+# Every name LD009/LD010 resolve. Requiring the whole set (rather than reading
+# whatever happens to be there) is what makes a renamed or deleted enum a loud
+# failure instead of a rule that quietly stops judging that region.
+DEVICE_MEM_REQUIRED = (
+    "k_ra8_mem_mram_base",
+    "k_ra8_mem_mram_size",
+    "k_ra8_mem_itcm_base",
+    "k_ra8_mem_itcm_size",
+    "k_ra8_mem_dtcm_base",
+    "k_ra8_mem_dtcm_size",
+    "k_ra8_mem_sram_base",
+    "k_ra8_mem_sram_size",
+    "k_ra8_mem_sdram_base",
+)
+
+
+def parse_device_memory_map(text: str) -> dict[str, int]:
+    """Parse the `k_ra8_mem_*` enum rows of ra8_device.h into name -> value.
+
+    Takes the header TEXT (not a path) so the selftest can feed it a synthetic
+    header and prove both directions. Raises ValueError when any name in
+    ``DEVICE_MEM_REQUIRED`` is absent: a silently-empty map would disarm every
+    rule built on it, which is the failure mode this whole file exists to avoid.
+    """
+    found = {name: int(value.replace("_", ""), 0) for name, value in _DEVICE_MEM_ROW.findall(text)}
+    missing = [name for name in DEVICE_MEM_REQUIRED if name not in found]
+    if missing:
+        msg = f"ra8_device.h: memory-map enum(s) missing: {', '.join(missing)}"
+        raise ValueError(msg)
+    return found
+
+
+DEVICE_MEM = parse_device_memory_map(DEVICE_HEADER.read_text(encoding="utf-8"))
+
+# MEMORY-region name -> (base enum, size enum or None). A region named for a
+# device region is held to that region's extent by LD010. MRAM_CPU1 / SRAM_CPU1
+# are the second-core slices carved out of the same physical array, so they are
+# judged against the same window rather than given one of their own. SDRAM is
+# external and the header carries no size for it, so only its base is pinned.
+DEVICE_REGIONS = {
+    "MRAM": ("k_ra8_mem_mram_base", "k_ra8_mem_mram_size"),
+    "MRAM_CPU1": ("k_ra8_mem_mram_base", "k_ra8_mem_mram_size"),
+    "ITCM": ("k_ra8_mem_itcm_base", "k_ra8_mem_itcm_size"),
+    "DTCM": ("k_ra8_mem_dtcm_base", "k_ra8_mem_dtcm_size"),
+    "SRAM": ("k_ra8_mem_sram_base", "k_ra8_mem_sram_size"),
+    "SRAM_CPU1": ("k_ra8_mem_sram_base", "k_ra8_mem_sram_size"),
+    "SDRAM": ("k_ra8_mem_sdram_base", None),
+}
+
+# On-chip system SRAM extent, identical on RA8D2 and RA8P1: 1664 KiB = SRAM0
+# 1024 KiB + SRAM1 640 KiB, so SRAM_WINDOW_END is the first address past the
+# array. Both numbers come from DEVICE_MEM, so the array can only be resized in
+# one place.
+SRAM_WINDOW_BASE = DEVICE_MEM["k_ra8_mem_sram_base"]
+SRAM_WINDOW_SIZE = DEVICE_MEM["k_ra8_mem_sram_size"]
 SRAM_WINDOW_END = SRAM_WINDOW_BASE + SRAM_WINDOW_SIZE
 
 _SIZE_UNIT = {"": 1, "K": 1024, "M": 1024 * 1024}
@@ -303,6 +378,31 @@ def eval_size(expr: str) -> int | None:
     return total
 
 
+def region_extent(code: str, name: str) -> tuple[int, int, int] | None:
+    """Statically evaluated (origin, length, line) of one MEMORY region.
+
+    None when the region is absent, lacks ORIGIN/LENGTH (LD003 already reports
+    that), or spells either as an expression ``eval_size`` cannot evaluate --
+    a symbolic ``ORIGIN(SRAM)`` is skipped rather than guessed at.
+    """
+    decl = re.search(
+        rf"^\s*{re.escape(name)}\s*(\([rwxail!]+\))?\s*:([^\n]*)$",
+        code,
+        re.MULTILINE,
+    )
+    if not decl:
+        return None
+    om = re.search(r"ORIGIN\s*=\s*([^,\n]+)", decl.group(2))
+    lm = re.search(r"LENGTH\s*=\s*([^,\n]+)", decl.group(2))
+    if not (om and lm):
+        return None
+    origin = eval_size(om.group(1))
+    length = eval_size(lm.group(1))
+    if origin is None or length is None:
+        return None
+    return origin, length, code[: decl.start()].count("\n") + 1
+
+
 def _check_sram_fit(path: pathlib.Path, code: str, regions: set[str]) -> list[Finding]:
     """LD009 -- a region inside the SRAM window may not run past the array end.
 
@@ -313,35 +413,89 @@ def _check_sram_fit(path: pathlib.Path, code: str, regions: set[str]) -> list[Fi
     """
     findings: list[Finding] = []
     for name in sorted(regions):
-        decl = re.search(
-            rf"^\s*{re.escape(name)}\s*(\([rwxail!]+\))?\s*:([^\n]*)$",
-            code,
-            re.MULTILINE,
-        )
-        if not decl:
+        extent = region_extent(code, name)
+        if extent is None:
             continue
-        om = re.search(r"ORIGIN\s*=\s*([^,\n]+)", decl.group(2))
-        lm = re.search(r"LENGTH\s*=\s*([^,\n]+)", decl.group(2))
-        if not (om and lm):
-            continue  # LD003 already reports a region missing ORIGIN/LENGTH.
-        origin = eval_size(om.group(1))
-        length = eval_size(lm.group(1))
-        if origin is None or length is None:
-            continue
+        origin, length, decl_line = extent
         if not (SRAM_WINDOW_BASE <= origin < SRAM_WINDOW_END):
             continue
         end = origin + length
         if end > SRAM_WINDOW_END:
-            line = code[: decl.start()].count("\n") + 1
             findings.append(
                 Finding(
                     path,
-                    line,
+                    decl_line,
                     "LD009",
                     f"region '{name}' spans 0x{origin:08X}..0x{end:08X}, "
                     f"{end - SRAM_WINDOW_END} bytes past the end of on-chip SRAM "
                     f"(0x{SRAM_WINDOW_END:08X}); the array is 1664 KiB "
                     f"(k_ra8_mem_sram_size)",
+                )
+            )
+    return findings
+
+
+def _check_device_region_fit(path: pathlib.Path, code: str, regions: set[str]) -> list[Finding]:
+    """LD010 -- a region named for a device memory region must lie inside it.
+
+    LD009 judges by ADDRESS: it catches anything that lands in the SRAM window
+    and runs off the end. This rule judges by NAME, which is the direction
+    LD009 cannot see -- an ITCM parked at 0x30000000, a region called SRAM at
+    the MRAM base, an ITCM twice the size of the TCM the silicon has. Bounds
+    come from DEVICE_MEM (parsed from ra8_device.h), never from a literal here.
+
+    Overrun inside the SRAM window stays LD009's finding so one defect is not
+    reported twice; this rule reports overrun only for the windows LD009 does
+    not judge (MRAM and the two TCMs).
+    """
+    findings: list[Finding] = []
+    for name in sorted(regions):
+        window = DEVICE_REGIONS.get(name)
+        if window is None:
+            continue
+        extent = region_extent(code, name)
+        if extent is None:
+            continue
+        origin, length, decl_line = extent
+        base_key, size_key = window
+        base = DEVICE_MEM[base_key]
+        if size_key is None:
+            if origin != base:
+                findings.append(
+                    Finding(
+                        path,
+                        decl_line,
+                        "LD010",
+                        f"region '{name}' starts at 0x{origin:08X}, but {base_key} "
+                        f"(libs/ra8_core/inc/ra8_device.h) puts that window at "
+                        f"0x{base:08X}",
+                    )
+                )
+            continue
+        size = DEVICE_MEM[size_key]
+        end = base + size
+        if not (base <= origin < end):
+            findings.append(
+                Finding(
+                    path,
+                    decl_line,
+                    "LD010",
+                    f"region '{name}' starts at 0x{origin:08X}, outside the "
+                    f"0x{base:08X}..0x{end:08X} window {base_key} / {size_key} "
+                    f"declare (libs/ra8_core/inc/ra8_device.h)",
+                )
+            )
+            continue
+        if base != SRAM_WINDOW_BASE and origin + length > end:
+            findings.append(
+                Finding(
+                    path,
+                    decl_line,
+                    "LD010",
+                    f"region '{name}' spans 0x{origin:08X}..0x{origin + length:08X}, "
+                    f"{origin + length - end} bytes past the 0x{end:08X} end of the "
+                    f"window {base_key} / {size_key} declare "
+                    f"(libs/ra8_core/inc/ra8_device.h)",
                 )
             )
     return findings
@@ -511,8 +665,9 @@ def check_file(path: pathlib.Path, raw: bytes) -> list[Finding]:
     """Every linker-script rule, one function per finding code.
 
     The rule list is the call sequence below: LD005 formatting, LD001 licence,
-    LD002 ENTRY, LD003 MEMORY, LD004 region closure, LD009 SRAM fit, LD007
-    option-setting addresses, LD008 option-setting completeness.
+    LD002 ENTRY, LD003 MEMORY, LD004 region closure, LD009 SRAM fit, LD010
+    named-region agreement with ra8_device.h, LD007 option-setting addresses,
+    LD008 option-setting completeness.
     """
     findings, text = _check_formatting(path, raw)
     findings += _check_licence(path, text.splitlines())
@@ -522,6 +677,7 @@ def check_file(path: pathlib.Path, raw: bytes) -> list[Finding]:
     findings += memory_findings
     findings += _check_region_closure(path, code, regions)
     findings += _check_sram_fit(path, code, regions)
+    findings += _check_device_region_fit(path, code, regions)
     findings += _check_option_setting(path, code)
     findings += _check_option_completeness(path, code)
     return findings
@@ -596,290 +752,18 @@ def check_symbol_closure(root: pathlib.Path) -> list[str]:
     return closure_problems(defined, referenced)
 
 
-# ---------------------------------------------------------------------------
-# selftest
-# ---------------------------------------------------------------------------
-def _selftest_option_setting() -> int:
-    """LD007 fires on the phantom region and a wrong OFS0 address, quiet on the twin."""
-    rc = 0
-    with tempfile.TemporaryDirectory() as td:
-        bad = pathlib.Path(td) / "ofs_bad.ld"
-        bad.write_bytes(OFS_BAD.encode())
-        codes = {f.code for f in check_file(bad, bad.read_bytes())}
-        if "LD007" not in codes:
-            print("SELFTEST FAIL: ofs_bad.ld did not report LD007")
-            rc = 1
-        else:
-            print("selftest: ofs_bad.ld -> LD007 (phantom + wrong OFS0) OK")
-
-        good = pathlib.Path(td) / "ofs_good.ld"
-        good.write_bytes(OFS_GOOD.encode())
-        ld007 = [f for f in check_file(good, good.read_bytes()) if f.code == "LD007"]
-        if ld007:
-            print("SELFTEST FAIL: ofs_good.ld should have no LD007 but reported:")
-            for f in ld007:
-                print(f"    {f}")
-            rc = 1
-        else:
-            print("selftest: ofs_good.ld -> no LD007 OK")
-    return rc
-
-
-def _synth_option_script(omit: tuple[str, ...] = (), stray: str = "") -> str:
-    """Build a syntactically real .ld declaring the option family minus `omit`.
-
-    Generated from OPTION_SETTING_ADDR so the "complete" case cannot rot as the
-    HUM table grows -- the point of that case is that LD008 stays SILENT on a
-    complete script, which is only meaningful if "complete" tracks the table.
-    """
-    names = [n for n in OPTION_SETTING_ADDR if n not in omit]
-    provides = "\n".join(f"PROVIDE({n} = 0x{OPTION_SETTING_ADDR[n]:08X});" for n in names)
-    sections = "\n".join(
-        f"    {option_section(n)} {n} : {{ KEEP(*({option_section(n)})) }} > OFS_CFG" for n in names
-    )
-    if stray:
-        sections += f"\n    {stray} 0x02C9F800 : {{ KEEP(*({stray})) }} > OFS_CFG"
-    return (
-        "/*\n * Copyright (c) 2026 Brighton Sikarskie\n"
-        " * SPDX-License-Identifier: MIT\n */\n\n"
-        "ENTRY(Reset_Handler)\n\n"
-        "MEMORY\n{\n"
-        "    MRAM (rx) : ORIGIN = 0x02000000, LENGTH = 1024K\n"
-        "    OFS_CFG (r) : ORIGIN = 0x02C9F000, LENGTH = 2K\n"
-        "    OFS_OTP (r) : ORIGIN = 0x02E07000, LENGTH = 68K\n}\n\n"
-        f"{provides}\n\n"
-        "SECTIONS\n{\n"
-        "    .text : { *(.text) } > MRAM\n"
-        f"{sections}\n}}\n"
-    )
-
-
-# The exact trio #223 deleted from the four RA8P1 app scripts. LD008 exists to
-# make that deletion impossible to land again, so the selftest reproduces it
-# rather than an invented omission.
-OFS3_FAMILY = ("OFS3_ADDR", "OFS3_SEC_ADDR", "OFS3_SEL_ADDR")
-
-# Below this many words, OPTION_SETTING_ADDR has plainly been gutted and every
-# LD008 case built from it would pass without asserting anything.
-MIN_OPTION_WORDS = 20
-
-
-def _selftest_option_completeness() -> int:
-    """LD008 fires on a partial family and on a stray section, silent when complete."""
-    rc = 0
-    # Anchor: an emptied or OFS3-less table would make every case below vacuous.
-    missing = [n for n in OFS3_FAMILY if n not in OPTION_SETTING_ADDR]
-    n_words = len(OPTION_SETTING_ADDR)
-    if missing or n_words < MIN_OPTION_WORDS:
-        print(f"SELFTEST FAIL: OPTION_SETTING_ADDR lost {missing or 'entries'}; LD008 vacuous")
-        return 1
-    print(f"selftest: OPTION_SETTING_ADDR has {n_words} words incl. the OFS3 family OK")
-
-    with tempfile.TemporaryDirectory() as td:
-        cases = [
-            ("partial.ld", _synth_option_script(omit=OFS3_FAMILY), True, "OFS3 family cut (#223)"),
-            ("complete.ld", _synth_option_script(), False, "complete family"),
-            ("stray.ld", _synth_option_script(stray=".option_setting_ofs4"), True, "phantom ofs4"),
-        ]
-        for fname, text, want_fire, label in cases:
-            p = pathlib.Path(td) / fname
-            p.write_bytes(text.encode())
-            ld008 = [f for f in check_file(p, p.read_bytes()) if f.code == "LD008"]
-            if want_fire and not ld008:
-                print(f"SELFTEST FAIL: {fname} ({label}) did not report LD008")
-                rc = 1
-            elif not want_fire and ld008:
-                print(f"SELFTEST FAIL: {fname} ({label}) should have no LD008 but reported:")
-                for f in ld008:
-                    print(f"    {f}")
-                rc = 1
-            else:
-                verdict = "LD008" if want_fire else "no LD008"
-                print(f"selftest: {fname} -> {verdict} ({label}) OK")
-
-        # A script owning no option bytes at all must stay silent -- that is the
-        # CPU1 / non-secure-image shape, 64 files in this tree.
-        none = pathlib.Path(td) / "none.ld"
-        none.write_bytes(TRICKY.encode())
-        if [f for f in check_file(none, none.read_bytes()) if f.code == "LD008"]:
-            print("SELFTEST FAIL: a script with no option-setting block reported LD008")
-            rc = 1
-        else:
-            print("selftest: none.ld -> no LD008 (owns no option bytes) OK")
-    return rc
-
-
-def _selftest_fixtures() -> int:
-    """The two whole-file fixtures: every code must fire, nothing may over-fire."""
-    rc = 0
-    with tempfile.TemporaryDirectory() as td:
-        bad = pathlib.Path(td) / "malformed.ld"
-        bad.write_bytes(MALFORMED.encode())
-        got = check_file(bad, bad.read_bytes())
-        codes = {f.code for f in got}
-        expected = {"LD001", "LD002", "LD003", "LD004", "LD005"}
-        missing = expected - codes
-        if missing:
-            print(f"SELFTEST FAIL: malformed.ld did not report {sorted(missing)}")
-            for f in got:
-                print(f"    got: {f}")
-            rc = 1
-        else:
-            print(f"selftest: malformed.ld -> {len(got)} findings {sorted(codes)} OK")
-
-        good = pathlib.Path(td) / "tricky.ld"
-        good.write_bytes(TRICKY.encode())
-        got = check_file(good, good.read_bytes())
-        if got:
-            print("SELFTEST FAIL: tricky.ld should be clean but reported:")
-            for f in got:
-                print(f"    {f}")
-            rc = 1
-        else:
-            print("selftest: tricky.ld -> 0 findings OK")
-    return rc
-
-
-def _selftest_symbol_scan() -> tuple[int, set[str], set[str]]:
-    """LD006 halves: a symbol named only in a comment is neither defined nor used."""
-    rc = 0
-    ld_text = (
-        "/* mentions g_ra8_ls_in_comment_only, which is NOT a definition */\n"
-        "g_ra8_ls_alpha = .;\n"
-        "PROVIDE(g_ra8_ls_beta = 0x20000000);\n"
-    )
-    c_text = (
-        "/* prose naming g_ra8_ls_prose_only must not count as a use */\n"
-        "// nor g_ra8_ls_slash_comment\n"
-        "extern uint32_t g_ra8_ls_alpha;\n"
-        "extern uint32_t g_ra8_ls_missing;\n"
-    )
-    got_def = defined_symbols(ld_text)
-    if got_def != {"g_ra8_ls_alpha", "g_ra8_ls_beta"}:
-        print(f"SELFTEST FAIL: defined_symbols -> {sorted(got_def)}")
-        rc = 1
-    else:
-        print("selftest: defined_symbols ignores comment mentions OK")
-
-    got_ref = referenced_symbols(c_text)
-    if got_ref != {"g_ra8_ls_alpha", "g_ra8_ls_missing"}:
-        print(f"SELFTEST FAIL: referenced_symbols -> {sorted(got_ref)}")
-        rc = 1
-    else:
-        print("selftest: referenced_symbols ignores comment mentions OK")
-    return rc, got_def, got_ref
-
-
-def _selftest_closure(got_def: set[str], got_ref: set[str]) -> int:
-    """LD006 closure, both directions: fires on a gap, silent when resolved."""
-    rc = 0
-    defined = {s: ["fake.ld"] for s in got_def}
-    referenced = {s: ["fake.c"] for s in got_ref}
-    problems = closure_problems(defined, referenced)
-    if len(problems) != 1 or "g_ra8_ls_missing" not in problems[0]:
-        print(f"SELFTEST FAIL: closure_problems -> {problems}")
-        rc = 1
-    else:
-        print("selftest: closure fires on an undefined symbol OK")
-
-    if closure_problems({"g_ra8_ls_a": ["x.ld"]}, {"g_ra8_ls_a": ["x.c"]}):
-        print("SELFTEST FAIL: closure fired on a fully-resolved symbol")
-        rc = 1
-    else:
-        print("selftest: closure quiet when every symbol resolves OK")
-    return rc
-
-
-def _selftest_worktree_inventory() -> int:
-    """Candidate scope includes an unstaged move target and drops its source."""
-    with tempfile.TemporaryDirectory() as td:
-        root = pathlib.Path(td)
-        subprocess.run(  # noqa: S603 -- fixed Git argv and private fixture path
-            [trusted_git_executable(), "init", "-q", str(root)],
-            check=True,
-        )
-        old = root / "old.c"
-        old.write_text("int old_symbol;\n", encoding="utf-8")
-        subprocess.run(  # noqa: S603 -- fixed Git argv and private fixture path
-            [trusted_git_executable(), "-C", str(root), "add", "old.c"],
-            check=True,
-        )
-        old.unlink()
-        new = root / "new.c"
-        new.write_text("int new_symbol;\n", encoding="utf-8")
-
-        got = [path.relative_to(root).as_posix() for path in repo_files(root, "*.c")]
-        if got != ["new.c"]:
-            print(f"SELFTEST FAIL: worktree move inventory -> {got}")
-            return 1
-        print("selftest: worktree move drops deleted source and includes destination OK")
-    return 0
-
-
-def _sram_fixture(ns_sram_len: str) -> str:
-    """A board-shaped script whose NS_SRAM placeholder is sized `ns_sram_len`.
-
-    The other rows are load-bearing: SRAM ``1024K - 256`` exercises subtraction,
-    NOINIT sits at the top of SRAM (must stay silent), and NS_SRAM_RUN at 0x32..
-    is the non-secure alias that must fall OUTSIDE the window LD009 judges.
-    """
-    return (
-        "/*\n * Copyright (c) 2026 Brighton Sikarskie\n"
-        " * SPDX-License-Identifier: MIT\n */\n\n"
-        "ENTRY(Reset_Handler)\n\n"
-        "MEMORY\n{\n"
-        "    SRAM (rwx) : ORIGIN = 0x22000000, LENGTH = 1024K - 256\n"
-        "    NOINIT (rw) : ORIGIN = 0x220FFF00, LENGTH = 256\n"
-        f"    NS_SRAM (rwx) : ORIGIN = 0x22100000, LENGTH = {ns_sram_len}\n"
-        "    NS_SRAM_RUN (rwx) : ORIGIN = 0x32100000, LENGTH = 512K\n}\n"
-    )
-
-
-def _selftest_sram_fit() -> int:
-    """LD009 fires on a region past the SRAM end, silent when every region fits."""
-    rc = 0
-    # Anchor: a collapsed evaluator or a zeroed window constant would make every
-    # case below vacuous. Compare only named constants and eval_size results,
-    # never a bare literal, encoding the real bank arithmetic (1M + 640K = 1664K).
-    if eval_size("1664K") != SRAM_WINDOW_SIZE or eval_size("1024K") != eval_size("1M"):
-        print("SELFTEST FAIL: eval_size unit / SRAM-window anchor is wrong")
-        return 1
-    if eval_size("1M - 384K") != eval_size("640K") or eval_size("ORIGIN(SRAM)") is not None:
-        print("SELFTEST FAIL: eval_size mis-handled subtraction or a symbolic expr")
-        return 1
-
-    with tempfile.TemporaryDirectory() as td:
-        # 1024K overruns to 0x22200000 (the #544 defect); 640K lands exactly on
-        # 0x221A0000, proving the bound is inclusive.
-        for tag, ns_len, want in (("overrun.ld", "1024K", True), ("fits.ld", "640K", False)):
-            p = pathlib.Path(td) / tag
-            p.write_bytes(_sram_fixture(ns_len).encode())
-            ld009 = [f for f in check_file(p, p.read_bytes()) if f.code == "LD009"]
-            if want and (len(ld009) != 1 or "NS_SRAM" not in ld009[0].msg):
-                print(f"SELFTEST FAIL: {tag} expected one LD009 on NS_SRAM, got {ld009}")
-                rc = 1
-            elif not want and ld009:
-                print(f"SELFTEST FAIL: {tag} should have no LD009 but reported {ld009}")
-                rc = 1
-            else:
-                print(f"selftest: {tag} -> {'LD009 on NS_SRAM' if want else 'no LD009'} OK")
-    return rc
-
-
-def _selftest_body() -> int:
-    """Assert every finding code fires, and that none of them over-fires."""
-    rc = _selftest_fixtures()
-    rc |= _selftest_option_setting()
-    rc |= _selftest_option_completeness()
-    rc |= _selftest_sram_fit()
-    scan_rc, got_def, got_ref = _selftest_symbol_scan()
-    return rc | scan_rc | _selftest_closure(got_def, got_ref) | _selftest_worktree_inventory()
-
-
 def selftest() -> int:
-    """Run linker-script fixtures without inheriting the caller's repository."""
+    """Run linker-script fixtures without inheriting the caller's repository.
+
+    The assertions live in ``linker_script_selftests``, imported HERE rather
+    than at module scope: that module imports this one, so a top-level import
+    would be a cycle, and the plain scan would pay to build fixtures it never
+    runs.
+    """
+    from linker_script_selftests import run_selftests
+
     with isolated_git_environment():
-        return _selftest_body()
+        return run_selftests()
 
 
 def scan(paths: list[pathlib.Path]) -> tuple[list[Finding], int]:

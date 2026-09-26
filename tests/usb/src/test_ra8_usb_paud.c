@@ -2,6 +2,9 @@
  * @file test_ra8_usb_paud.c
  * @brief Unit tests for the native USB device-side Audio (UAC1) class layer
  *
+ * @par Tag
+ * [Ring 3 / HAL] {World: NS}
+ *
  * @details Exercises USB Audio class request routing, control validation, endpoint behavior, and failure propagation with bounded device fixtures.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie

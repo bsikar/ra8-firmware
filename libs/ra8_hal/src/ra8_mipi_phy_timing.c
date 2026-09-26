@@ -15,6 +15,8 @@
  *    mode, p 3835-3836) as static lookup tables.
  *  - The linear-scan lookup walker that picks the correct row for a
  *    requested ``(mode, pclka, rate)`` tuple.
+ *  - ``priv_mipi_phy_find_timing``, the register-free matcher shared with
+ *    the public dry-run lookup in ``ra8_mipi_phy_ops.c``.
  *  - ``ra8_mipi_phy_select_timing``, the public table-driven entry point
  *    that selects a row and programs DPHYTIM1..6.
  *  - ``priv_mipi_phy_compute_freq``, the HUM 64.2.2 PLL-frequency
@@ -897,10 +899,10 @@ uint32_t priv_mipi_phy_compute_freq(const ra8_mipi_phy_pll_t* pll, uint8_t mosc_
   return (denom == 0U) ? 0U : (numerator / denom);
 }
 
-ra8_err_t ra8_mipi_phy_select_timing(ra8_mipi_phy_mode_t          mode,
-                                     uint8_t                      pclka_mhz,
-                                     uint16_t                     rate_mbps,
-                                     ra8_mipi_phy_timing_t* const out_timing)
+ra8_err_t priv_mipi_phy_find_timing(ra8_mipi_phy_mode_t          mode,
+                                    uint8_t                      pclka_mhz,
+                                    uint16_t                     rate_mbps,
+                                    ra8_mipi_phy_timing_t* const out_timing)
 {
   if ((mode != k_ra8_mipi_phy_mode_dsi_host) && (mode != k_ra8_mipi_phy_mode_csi_device)) {
     return k_ra8_err_invalid_arg;
@@ -930,9 +932,23 @@ ra8_err_t ra8_mipi_phy_select_timing(ra8_mipi_phy_mode_t          mode,
   if (row == nullptr) {
     return k_ra8_err_not_supported;
   }
-  priv_mipi_phy_write_timing(row);
+  *out_timing = *row;
+  return k_ra8_ok;
+}
+
+ra8_err_t ra8_mipi_phy_select_timing(ra8_mipi_phy_mode_t          mode,
+                                     uint8_t                      pclka_mhz,
+                                     uint16_t                     rate_mbps,
+                                     ra8_mipi_phy_timing_t* const out_timing)
+{
+  ra8_mipi_phy_timing_t row;
+  const ra8_err_t       err = priv_mipi_phy_find_timing(mode, pclka_mhz, rate_mbps, &row);
+  if (err != k_ra8_ok) {
+    return err;
+  }
+  priv_mipi_phy_write_timing(&row);
   if (out_timing != nullptr) {
-    *out_timing = *row;
+    *out_timing = row;
   }
   return k_ra8_ok;
 }

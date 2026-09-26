@@ -3,6 +3,9 @@
  * @brief MIPI DSI Host (DSI-2) register layout for the RA8D2
  * @ingroup grp_hal_display
  *
+ * @par Tag
+ * [Ring 3 / HAL] {World: S}
+ *
  * @details
  * The RA8D2 MIPI DSI Host module is a MIPI DSI-2 transmitter that
  * pairs with the GLCDC parallel-RGB stream and the on-die D-PHY

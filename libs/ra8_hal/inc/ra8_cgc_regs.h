@@ -3,6 +3,9 @@
  * @brief Clock Generation Circuit (CGC) field layouts for the Renesas RA8D2
  * @ingroup grp_hal_system
  *
+ * @par Tag
+ * [Ring 3 / HAL] {World: S}
+ *
  * @details
  * The CGC is logically a separate peripheral but physically lives
  * inside the SYSC register block (`ra8_system_regs.h`). This header

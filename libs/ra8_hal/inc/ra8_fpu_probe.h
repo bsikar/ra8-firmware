@@ -7,30 +7,41 @@
  * [Ring 3 / HAL] {World: S}
  *
  * @details
- * The two supported RA8 parts differ in FPU width even though both are a
- * Cortex-M85:
+ * The two supported RA8 parts do NOT differ in FPU width (settled in issue
+ * #225): FSP's CMSIS device headers declare `__FPU_PRESENT 1` and `__FPU_DP 0`
+ * for the primary Cortex-M85 of BOTH parts (`R7KA8P1KF_core0.h` is
+ * byte-identical to `R7KA8D2KF_core0.h` in that block), and the "half, single,
+ * and double-precision" sentence in the RA8P1 datasheet appears verbatim in the
+ * RA8D2 datasheet, so it describes the licensed Cortex-M85 r1p1 FPU rather than
+ * an RA8P1 delta. Both parts therefore build `-mfpu=fpv5-sp-d16`, where `double`
+ * arithmetic cannot run on the FPU and the compiler lowers it to soft-float
+ * library calls (`__aeabi_dmul`, `__aeabi_dadd`, ...).
  *
- * - **RA8D2**: single-precision FPv5 (`__FPU_DP == 0`). The RA8D2 toolchain
- *   file compiles with `-mfpu=fpv5-sp-d16`, so `double` arithmetic cannot run
- *   on the FPU and the compiler lowers it to soft-float library calls
- *   (`__aeabi_dmul`, `__aeabi_dadd`, ...).
- * - **RA8P1**: double-precision FPv5 (the M85 DP-FPU). The RA8P1 toolchain file
- *   (`cmake/toolchain-ra8p1.cmake`) overrides to `-mfpu=fpv5-d16`, so the same
- *   `double` arithmetic compiles to hardware DP-FPU opcodes (`vmul.f64`,
- *   `vadd.f64` / `vfma.f64`).
+ * A double-precision image is still reachable, as the bench switch the
+ * on-silicon benchmark (#229) needs and never by default:
+ * `cmake -DCMAKE_TOOLCHAIN_FILE=cmake/toolchain-ra8p1.cmake -DRA8P1_DP_FPU=ON`
+ * appends `-mfpu=fpv5-d16` and defines `RA8_FPU_DP_ENABLED`, and the same
+ * `double` arithmetic then compiles to hardware `.f64` opcodes (`vmul.f64`,
+ * `vadd.f64` / `vfma.f64`). Whether this silicon executes them at all is
+ * unmeasured; it needs an RA8P1 EK.
  *
- * `ra8_fpu_dp_madd()` is a deliberately tiny `double` computation that both
- * device builds compile. Disassembling its object (`arm-none-eabi-objdump -d`)
- * is the witness: the RA8P1 build shows `.f64` VFP opcodes; the RA8D2 build
- * shows soft-float `bl __aeabi_d*` calls. It doubles as a runtime DP-FPU sanity
+ * `ra8_fpu_dp_madd()` is a deliberately tiny `double` computation that every
+ * build compiles. Disassembling its object (`arm-none-eabi-objdump -d`) is the
+ * witness: an `RA8P1_DP_FPU=ON` build shows `.f64` VFP opcodes; every default
+ * build shows soft-float `bl __aeabi_d*` calls. It doubles as a runtime sanity
  * check whose numeric result is validated by the host unit test.
+ *
+ * ::RA8_FPU_DP_SELECTED reports which of the two the compiler actually chose,
+ * and the guard below refuses a build where that disagrees with the switch, so
+ * the toolchain file and the code cannot drift apart silently.
  *
  * @note Host-friendly: pure numeric leaf function, touches no hardware, so it
  *       runs unchanged under `RA8_OFF_TARGET` and in the host unit tests
  *       (which compute it on the host's native binary64 hardware).
  *
- * @see cmake/toolchain-ra8p1.cmake  Overrides `-mfpu` to the DP-FPU for RA8P1.
+ * @see cmake/toolchain-ra8p1.cmake  Carries the opt-in `RA8P1_DP_FPU` switch.
  * @see ra8_device.h                  RA8D2/RA8P1 compile-time device switch.
+ * @see docs/reference/ra8p1_vs_ra8d2.md  The sourced #225 resolution.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -38,6 +49,41 @@
  */
 
 #pragma once
+
+/**
+ * @def RA8_FPU_DP_SELECTED
+ * @brief 1 when the compiler selected a double-precision FPU, else 0.
+ *
+ * @details
+ * Read off ACLE's `__ARM_FP` bitmap, whose `0x8` bit means the selected FPU
+ * supports double precision. Measured with the pinned Arm GNU Toolchain
+ * 13.3.Rel1 on `-mcpu=cortex-m85 -mfloat-abi=hard`: `-mfpu=fpv5-sp-d16` gives
+ * `__ARM_FP == 0x4` (single only), `-mfpu=fpv5-d16` gives `__ARM_FP == 0xE`
+ * (half + single + double). A host build defines no `__ARM_FP` at all, so this
+ * is 0 off-target, which is correct: the host runs `double` on its own
+ * hardware, not on an RA8 FPU.
+ */
+#if defined(__ARM_FP) && (((__ARM_FP) & 0x8) != 0)
+#define RA8_FPU_DP_SELECTED 1
+#else
+#define RA8_FPU_DP_SELECTED 0
+#endif
+
+/* The toolchain file defines RA8_FPU_DP_ENABLED only for an opt-in
+ * RA8P1_DP_FPU=ON build, which is also the only build whose -mfpu carries double
+ * precision. Either half without the other means the flags and the intent have
+ * drifted -- a silent soft-float image where a DP benchmark was asked for, or
+ * .f64 opcodes in an image nothing asked to be DP -- so refuse the build and say
+ * which way round it went. Only checked on a target build; a host build has no
+ * -mfpu to disagree with. */
+#ifdef __ARM_FP
+#if defined(RA8_FPU_DP_ENABLED) && (RA8_FPU_DP_SELECTED == 0)
+#error "RA8_FPU_DP_ENABLED is set but -mfpu selected no double-precision FPU (see #225)"
+#endif
+#if !defined(RA8_FPU_DP_ENABLED) && (RA8_FPU_DP_SELECTED == 1)
+#error "-mfpu selected a double-precision FPU without RA8P1_DP_FPU=ON (see #225)"
+#endif
+#endif
 
 #ifdef __cplusplus
 extern "C" {

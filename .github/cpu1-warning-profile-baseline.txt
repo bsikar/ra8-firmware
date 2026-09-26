@@ -1,0 +1,77 @@
+# CPU1 (Cortex-M33) first-party warning-profile escape inventory -- issue #843.
+#
+# Each row is a FIRST-PARTY translation unit on a CPU1 executable that
+# ra8_add_cpu1_image()'s per-source profile (-Wall -Wextra -Werror ...
+# -Wstack-usage=2048 -fstack-usage) never reaches: it compiles at
+# -mcpu=cortex-m33 ... -Os with no warning flags and emits no .su stack data.
+# These are the sources #843 must bring onto the bar. Two ways a TU lands here:
+#
+#   * the app bolts it onto a helper-built image with its own target_sources(),
+#     and the helper scopes the profile to its own SOURCES (compile_on_m33,
+#     ereader_m33);
+#   * the app HAND-ROLLS the CPU1 executable with add_executable() plus its own
+#     -mcpu=cortex-m33 options and never calls the helper, so NOTHING on that
+#     image carries the profile, its own cpu1_main.c included (cpu1_pingpong,
+#     cpu1_pingpong_ipc).
+#
+# Format: <cpu1-target>  <repo-relative source path>
+#
+# scripts/checks/check_cpu1_warning_profile.py judges this file. The list is
+# SHRINK-ONLY: a first-party CPU1 .c source that is not here fails the gate, and
+# a row that stops escaping (profile-covered, detached from the image, or
+# deleted) fails as stale and must be removed. Never add a row to silence a new
+# escape without saying why in review. Vendored SOUP never belongs here: it is
+# deliberately outside the first-party bar and the gate rejects such a row.
+#
+# WHAT THIS INVENTORY DOES NOT COVER -- said plainly rather than implied by the
+# rule above. The checker resolves a source token only when it ends in ".c":
+# resolve_source() returns the empty list for every other suffix, and
+# glob_vars() skips a file(GLOB ...) pattern that does not end in ".c", ".h" or
+# "*". So a first-party .cpp / .cc / .S / .s translation unit bolted onto a CPU1
+# image is neither profile-covered nor an escape row: it is dropped with no
+# finding and the gate still prints a clean run. Every row below is .c because
+# .c is all the parser can see, so this gate's own output can never tell you
+# whether the tree holds such a TU today.
+#
+# A hand census can, and one was taken on 2026-09-17: the tree has ten CPU1
+# images, every source token on every one of them is .c, and the uncovered
+# shape is therefore LATENT rather than live.
+#
+#   * Eight images are helper-built and pass only SOURCES src/cpu1_main.c,
+#     which the per-source profile does reach: blink_m33, blink_m33_hal,
+#     cache_coherency_hil, compile_on_m33, dualcore_background_m33,
+#     dualcore_mailbox, ereader_m33, lowpower_holdpage.
+#   * Exactly two of those bolt more on with target_sources(): compile_on_m33
+#     (21 first-party .c, counting the epub/src/*.c glob, plus vendored
+#     miniz.c, which is SOUP and correctly not a row) and ereader_m33 (4 .c).
+#     Established by reading both listfiles and by a repo-wide search for
+#     target_sources() on a *_cpu1.elf target, which returns those two alone.
+#   * The two hand-rolled images name four .c sources each in add_executable()
+#     (cpu1_pingpong, cpu1_pingpong_ipc), read in full.
+#
+# 21 + 4 + 4 + 4 is exactly the 33 rows below, so this inventory is currently
+# complete for the .c set as well as scoped to it. The census is a human read
+# of the listfiles rather than a gate run, so it decays the moment one of them
+# changes: that is the argument for teaching the parser the other suffixes
+# instead of trusting this paragraph. The repo does compile first-party C++
+# elsewhere (apps/shared_libs/reflow/v2/src/reflow_v2.cpp), so the shape stays
+# live. Read the SHRINK-ONLY rule as scoped to .c until the parser measures
+# the rest.
+#
+# A missing or unreadable file yields the EMPTY set, so every escape reports.
+# The gate fails closed.
+#
+# The "#! rows:" line below declares how many rows this file holds and the gate
+# fails when it disagrees with the rows it parses. That is what lets this file
+# legitimately reach zero rows when #843 is paid off: an intact inventory can
+# declare "#! rows: 0", while a truncated or hand-emptied one carries no
+# matching declaration and still fails closed.
+#! rows: 8
+cpu1_pingpong_cpu1.elf  examples/ek_ra8d2/hw_validated/hil/cpu1_pingpong/src/cpu1_main.c
+cpu1_pingpong_cpu1.elf  libs/ra8_core/src/ra8_log.c
+cpu1_pingpong_cpu1.elf  libs/ra8_core/src/ra8_scb.c
+cpu1_pingpong_cpu1.elf  libs/ra8_hal/src/ra8_ipc.c
+cpu1_pingpong_ipc_cpu1.elf  examples/ek_ra8d2/hil_needs_revalidation/cpu1_pingpong_ipc/src/cpu1_main.c
+cpu1_pingpong_ipc_cpu1.elf  libs/ra8_core/src/ra8_log.c
+cpu1_pingpong_ipc_cpu1.elf  libs/ra8_core/src/ra8_scb.c
+cpu1_pingpong_ipc_cpu1.elf  libs/ra8_hal/src/ra8_ipc.c

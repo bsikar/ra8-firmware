@@ -3,6 +3,9 @@
  * @brief Native USB device-side composite-class layer
  * @ingroup grp_hal_usb
  *
+ * @par Tag
+ * [Ring 3 / HAL] {World: NS}
+ *
  * @details
  * Mirrors FSP's `r_usb_composite` peripheral-mode composite-device
  * driver. With this layer the EK-RA8D2 can present multiple USB

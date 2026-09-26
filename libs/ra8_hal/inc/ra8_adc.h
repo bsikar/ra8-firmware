@@ -68,9 +68,23 @@ typedef enum : uint8_t {
  * @brief Configuration descriptor for ``ra8_adc_init_configured``.
  *
  * @details
- * cppcheck cannot see tests/ so it flags every field as unused;
- * each member is read in ``ra8_adc_init_configured`` in
- * ``libs/ra8_hal/src/adc.c``.
+ * cppcheck cannot see tests/ so it flags every field as unused; every
+ * member is read by ``ra8_adc_init_configured`` in
+ * ``libs/ra8_hal/src/adc.c``, and each one lands somewhere observable:
+ *   - ``resolution``    -> ADDOPCRCn.ADPRC on every result channel.
+ *   - ``trigger``       -> ADTRGENR.STTRGEN for the default scan group
+ *                          (software clears the bit, external / ELC set
+ *                          it).
+ *   - ``scan_mode``     -> ADMDR.ADMD0 (one-cycle vs continuous).
+ *   - ``right_aligned`` -> checked, not programmed. ADDR[n].DATA is
+ *                          always right-aligned on the ADC16H and the
+ *                          block has no alignment field; the only
+ *                          per-channel data controls are
+ *                          ADDOPCRCn.ADPRC (precision) and SIGNSEL
+ *                          (sign), HUM Ch 53.2.3.4 p 3339. A descriptor
+ *                          asking for left-aligned data is rejected with
+ *                          ``k_ra8_err_not_supported`` rather than
+ *                          silently ignored.
  */
 typedef struct {
   ra8_adc_resolution_t resolution;    /**< 16 / 14 / 12 / 10 bit.   */
@@ -190,6 +204,9 @@ typedef struct {
 /**
  * @brief Legacy init -- 14-bit right-aligned, software trigger.
  * @return `ra8_err_t` error code.
+ * @post ADMDR.ADMD0 selects one-cycle mode, every result channel reports
+ * 14-bit, and the default scan group's ADTRGENR.STTRGEN bit is clear, so
+ * the group answers only to ``ra8_adc_start_group``.
  * @since 0.1.0
  */
 [[nodiscard]] ra8_err_t ra8_adc_init(void);
@@ -202,8 +219,19 @@ typedef struct {
  *
  * @pre IRQs masked or single-threaded init context.
  * @pre ``ra8_mstp_init`` has been called.
- * @post On success ADCSR and ADCER match ``cfg`` and the ADC_B
+ * @post On success ADMDR.ADMD0 encodes ``cfg->scan_mode``, every result
+ * channel's ADDOPCRCn.ADPRC encodes ``cfg->resolution``, the default scan
+ * group's ADTRGENR.STTRGEN bit matches ``cfg->trigger``, and the ADC_B
  * module is powered on via MSTP.
+ * @post On a rejected descriptor no register is written and the module
+ * stays gated.
+ *
+ * @retval k_ra8_ok Operation succeeded.
+ * @retval k_ra8_err_null_ptr @p cfg is nullptr.
+ * @retval k_ra8_err_invalid_arg ``resolution`` or ``trigger`` is outside
+ * its enumeration.
+ * @retval k_ra8_err_not_supported ``right_aligned`` is false; the ADC16H
+ * cannot left-align a result.
  *
  * @note Thread safety: not thread-safe.
  * @since 0.1.0
@@ -213,7 +241,8 @@ typedef struct {
 /**
  * @brief Tear down the ADC_B peripheral.
  * @return ``ra8_err_t`` error code.
- * @post ADCSR == 0, ADCER == 0, MSTP released.
+ * @post ADMDR == 0, ADSGER == 0, ADINTCR == 0, ADTRGENR == 0,
+ * ADCLKENR == 0, MSTP released.
  * @since 0.1.0
  */
 [[nodiscard]] ra8_err_t ra8_adc_deinit(void);

@@ -519,7 +519,7 @@ uint32_t ra8_tz_ns_signed_body_len(const uint32_t* ns_vector_table)
    * ::k_ra8_tz_ns_rot_header_offset), self-describing the signed body length.
    * This is a plain memory read of the (already-flashed/copied) NS image; there
    * is no MMIO register access here, so no HUM citation applies. The reinterpret
-   * casts route through a named `const void*` seam (as `ra8_epub` does): a direct
+   * casts route through a named `const void*` seam (as `epub` does): a direct
    * `const uint8_t* -> ra8_ns_rot_header_t*` cast trips -Wcast-align, and a
    * one-expression `(T*)(const void*)p` cast trips bugprone-casting-through-void. */
   const void* const          ns_image  = ns_vector_table;

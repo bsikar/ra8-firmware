@@ -13,8 +13,7 @@
 #            every run; gaining measurement is one-way.
 #
 # Columns are TAB-separated. Rows are sorted by path.
-# rows: 1059  measured: 523  unmeasured: 536
-
+# rows: 1065  measured: 523  unmeasured: 542
 apps/board/stand_alone/ereader/src/main.c	UNMEASURED	firmware-composition
 apps/board/stand_alone/ereader/src/ns_main.c	UNMEASURED	firmware-composition
 apps/board/stand_alone/ereader/src/secure_exception.c	UNMEASURED	firmware-composition
@@ -268,6 +267,7 @@ examples/ek_ra8d2/hw_pending/cache_hal_enable_demo/src/main.c	UNMEASURED	firmwar
 examples/ek_ra8d2/hw_pending/compile_on_m33/src/cpu1_main.c	UNMEASURED	firmware-composition
 examples/ek_ra8d2/hw_pending/compile_on_m33/src/main.c	UNMEASURED	firmware-composition
 examples/ek_ra8d2/hw_pending/compile_on_m33/src/trustzone_init.c	UNMEASURED	firmware-composition
+examples/ek_ra8d2/hw_pending/devcfg_record_demo/src/main.c	UNMEASURED	firmware-composition
 examples/ek_ra8d2/hw_pending/dtc_isr_arm_demo/src/main.c	UNMEASURED	firmware-composition
 examples/ek_ra8d2/hw_pending/epaper_refresh/src/main.c	UNMEASURED	firmware-composition
 examples/ek_ra8d2/hw_pending/epub_stress/src/main.c	UNMEASURED	firmware-composition
@@ -307,13 +307,16 @@ examples/ek_ra8d2/hw_pending/media_download/src/media_download_image.c	UNMEASURE
 examples/ek_ra8d2/hw_pending/modem_at_demo/src/main.c	UNMEASURED	firmware-composition
 examples/ek_ra8d2/hw_pending/mpu_boot_map_hal/src/main.c	UNMEASURED	firmware-composition
 examples/ek_ra8d2/hw_pending/mpu_boot_map_hal/src/system_init.c	UNMEASURED	firmware-composition
+examples/ek_ra8d2/hw_pending/net_pal_frame_demo/src/main.c	UNMEASURED	firmware-composition
 examples/ek_ra8d2/hw_pending/ota_ab_orchestration/src/main.c	UNMEASURED	firmware-composition
+examples/ek_ra8d2/hw_pending/power_profile_stats_demo/src/main.c	UNMEASURED	firmware-composition
 examples/ek_ra8d2/hw_pending/ra8_ftl_demo/src/main.c	UNMEASURED	firmware-composition
 examples/ek_ra8d2/hw_pending/ra8_io_mram_demo/src/main.c	UNMEASURED	firmware-composition
 examples/ek_ra8d2/hw_pending/ra8_io_sdhi_demo/src/main.c	UNMEASURED	firmware-composition
 examples/ek_ra8d2/hw_pending/ra8_io_swap_demo/src/main.c	UNMEASURED	firmware-composition
 examples/ek_ra8d2/hw_pending/ra8_sdhi_card_demo/src/main.c	UNMEASURED	firmware-composition
 examples/ek_ra8d2/hw_pending/scb_diag_demo/src/main.c	UNMEASURED	firmware-composition
+examples/ek_ra8d2/hw_pending/secure_app_vault_demo/src/main.c	UNMEASURED	firmware-composition
 examples/ek_ra8d2/hw_pending/secure_boot_ns_hil/src/main.c	UNMEASURED	firmware-composition
 examples/ek_ra8d2/hw_pending/secure_boot_ns_hil/src/ns_main.c	UNMEASURED	firmware-composition
 examples/ek_ra8d2/hw_pending/secure_boot_ns_hil/src/psa_verify_rng.c	UNMEASURED	firmware-composition
@@ -322,11 +325,13 @@ examples/ek_ra8d2/hw_pending/secure_boot_ns_hil/src/trustzone_init.c	UNMEASURED	
 examples/ek_ra8d2/hw_pending/secure_boot_ns_hil/src/vector_table.c	UNMEASURED	firmware-composition
 examples/ek_ra8d2/hw_pending/smbus_demo/src/main.c	UNMEASURED	firmware-composition
 examples/ek_ra8d2/hw_pending/tls_client/src/main.c	UNMEASURED	firmware-composition
+examples/ek_ra8d2/hw_pending/touch_cal_matrix_demo/src/main.c	UNMEASURED	firmware-composition
 examples/ek_ra8d2/hw_pending/tz_threadx_demo/src/main.c	UNMEASURED	firmware-composition
 examples/ek_ra8d2/hw_pending/tz_threadx_demo/src/ns_main.c	UNMEASURED	firmware-composition
 examples/ek_ra8d2/hw_pending/tz_threadx_demo/src/system_init.c	UNMEASURED	firmware-composition
 examples/ek_ra8d2/hw_pending/tz_threadx_demo/src/trustzone_init.c	UNMEASURED	firmware-composition
 examples/ek_ra8d2/hw_pending/tz_threadx_demo/src/vector_table.c	UNMEASURED	firmware-composition
+examples/ek_ra8d2/hw_pending/vfs_port_demo/src/main.c	UNMEASURED	firmware-composition
 examples/ek_ra8d2/hw_pending/webp_decode_demo/src/main.c	UNMEASURED	firmware-composition
 examples/ek_ra8d2/hw_validated/c6/c6_camera_livestream/src/c6_cam_camera.c	UNMEASURED	firmware-composition
 examples/ek_ra8d2/hw_validated/c6/c6_camera_livestream/src/main.c	UNMEASURED	firmware-composition

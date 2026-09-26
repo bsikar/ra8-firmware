@@ -225,7 +225,6 @@ if [[ "$-" == *p* ]]; then
     "build-cross-union|slow|the cross-build shards covered every app exactly once"
     "sg-offsets|slow|NSC SG-veneer slot offsets in the linked secure ELF"
     "stack-usage|slow|aggregate -fstack-usage frames"
-    "docs|slow|Doxygen warning gate + authored-diagram render check"
     "emulator-smoke|slow|ra8_emulator boot smoke over the example apps"
     "emulator-matrix|slow|every example booted in ra8_emulator, ratcheted downward"
     "emulator-io-fabric|slow|ra8_io fabric demos in ra8_emulator"
@@ -239,7 +238,6 @@ if [[ "$-" == *p* ]]; then
     "runner-image-deps|manual|every require_cmd/require_python_mod tool exists in the runner image"
     "hil-all|manual|hardware-in-the-loop suite on the bench EK-RA8D2"
     "bench-lock-selftest|manual|the bench lock proved against the real bench host"
-    "docs-publish|manual|build + force-push the Doxygen site to gh-pages"
   )
 
   # ===========================================================================
@@ -458,7 +456,7 @@ if [[ "$-" == *p* ]]; then
       echo "       snapshot has one commit, so the gate would report PASS" >&2
       echo "       having read no real commit message at all." >&2
       echo "       Under the suite runner, RA8_CI_HISTORY_REPO must point at" >&2
-      echo "       the host repository (run_suite_on_snapshot exports it)." >&2
+      echo "       a real-history repository; otherwise the snapshot is used." >&2
       return 1
     fi
   }

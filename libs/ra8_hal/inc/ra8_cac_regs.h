@@ -3,6 +3,9 @@
  * @brief Clock Accuracy Check (CAC) register layout for the Renesas RA8D2
  * @ingroup grp_hal_system
  *
+ * @par Tag
+ * [Ring 3 / HAL] {World: NS}
+ *
  * @details
  * The CAC compares a reference clock (external crystal / pin) against
  * a measurement clock (HOCO / MOCO / PLL output) and raises an error

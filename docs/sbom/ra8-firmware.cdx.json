@@ -1,7 +1,7 @@
 {
   "bomFormat": "CycloneDX",
   "specVersion": "1.5",
-  "serialNumber": "urn:uuid:4970a9b0-f4b6-5aca-aaba-66d53a56766f",
+  "serialNumber": "urn:uuid:ecc83389-f9e1-5bc8-ab17-923de91a10df",
   "version": 1,
   "metadata": {
     "tools": [
@@ -312,6 +312,18 @@
           "value": "d12fbb991c0822f347bbc569badef904629ce605"
         },
         {
+          "name": "ra8:releaseBasis",
+          "value": "v4.1.0"
+        },
+        {
+          "name": "ra8:releaseBasisCommit",
+          "value": "0fe989b6b514192783c469039edd325fd0989806"
+        },
+        {
+          "name": "ra8:commitsAfterRelease",
+          "value": "72"
+        },
+        {
           "name": "ra8:licenseOriginal",
           "value": "Apache-2.0 OR GPL-2.0-or-later"
         },
@@ -376,6 +388,18 @@
           "value": "bbf1eaf5f4a72bcc3e0cfe854e0313c93b75cd77"
         },
         {
+          "name": "ra8:releaseBasis",
+          "value": "v1.1.0"
+        },
+        {
+          "name": "ra8:releaseBasisCommit",
+          "value": "29160dd877d29658279fd683b2ae57b320ddcf09"
+        },
+        {
+          "name": "ra8:commitsAfterRelease",
+          "value": "76"
+        },
+        {
           "name": "ra8:licenseOriginal",
           "value": "Apache-2.0 OR GPL-2.0-or-later"
         },
@@ -413,7 +437,7 @@
       "hashes": [
         {
           "alg": "SHA-256",
-          "content": "72cde25f8bc8b364e12c3018717527d33a0dc695a729ebd16a38d0cb7bc6453d"
+          "content": "26608420d612a545fad34e477356009b1ba26530fa7d2dda57b10f2897afa879"
         }
       ],
       "externalReferences": [
@@ -433,7 +457,7 @@
         },
         {
           "name": "ra8:fileCount",
-          "value": "827"
+          "value": "615"
         },
         {
           "name": "ra8:upstreamCommit",
@@ -900,7 +924,7 @@
       "hashes": [
         {
           "alg": "SHA-256",
-          "content": "5d78b9898cdcb4d94a7200e02f9b64ed5b815feabda58ba293178869199a9308"
+          "content": "7003a5b6c767362a5055a3ece298a3cb6b8ae5a6f40db1e3fb45addfc556b5e8"
         }
       ],
       "externalReferences": [
@@ -920,7 +944,7 @@
         },
         {
           "name": "ra8:fileCount",
-          "value": "31"
+          "value": "19"
         },
         {
           "name": "ra8:upstreamCommit",
@@ -1277,6 +1301,52 @@
         {
           "name": "ra8:note2",
           "value": "esp-idf toolchain pinned at v5.5.4; firmware version 2.12.11."
+        }
+      ]
+    },
+    {
+      "type": "application",
+      "bom-ref": "ethos-u-vela",
+      "name": "Arm Ethos-U Vela (offline NPU model compiler)",
+      "group": "arm",
+      "version": "5.1.0",
+      "description": "Host-side .tflite -> Ethos-U55 command-stream compiler; never linked into firmware.",
+      "scope": "excluded",
+      "licenses": [
+        {
+          "license": {
+            "id": "Apache-2.0"
+          }
+        }
+      ],
+      "copyright": "Build-time host tool installed into a throwaway uv environment; not linked into the RA8 firmware binary.",
+      "purl": "pkg:pypi/ethos-u-vela@5.1.0",
+      "externalReferences": [
+        {
+          "type": "vcs",
+          "url": "https://gitlab.arm.com/artificial-intelligence/ethos-u/ethos-u-vela"
+        }
+      ],
+      "properties": [
+        {
+          "name": "ra8:provenance",
+          "value": "dependency-pinned-lockfile"
+        },
+        {
+          "name": "ra8:path",
+          "value": "pyproject.toml"
+        },
+        {
+          "name": "ra8:modified",
+          "value": "false"
+        },
+        {
+          "name": "ra8:note0",
+          "value": "NOT vendored: pinned as the `vela` dependency group in pyproject.toml and resolved by uv.lock; scripts/dev/setup_python.sh installs it into the git-ignored .venv and check_python_lock_policy.py holds the pin. Usage notes in tools/vela/README.md; qualification in docs/SOUP/vela.md."
+        },
+        {
+          "name": "ra8:note1",
+          "value": "Host build tool: it shapes a build input (the Ethos-U command stream) but is not part of the RA8 linked image -- hence scope=excluded. Recorded here so the SBOM-driven osv-scan issues a pkg:pypi query for the pin; PyPI is an OSV-supported ecosystem, so this purl resolves advisories today, unlike the pkg:github purls of the git-vendored C/C++ components."
         }
       ]
     },

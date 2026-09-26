@@ -48,6 +48,7 @@ PROV_COMMIT_PINNED = "commit-pinned-sha256"  # upstream commit + per-file upstre
 PROV_ARCHIVE_PINNED = "archive-pinned-sha256"  # upstream release artifact pinned by SHA-256
 PROV_VERSION_HEADER = "version-header"  # version from an in-tree header macro only
 PROV_NOT_VENDORED = "not-vendored"  # documented but absent from the tree
+PROV_DEP_PINNED = "dependency-pinned-lockfile"  # external build dep, pinned in a lockfile
 PROV_PROPRIETARY = "proprietary-unresolved"  # license not cleared; see notes
 PROV_OPEN_ASSET = "open-asset-versioned"  # cleared open asset (OFL font); version from name table
 
@@ -126,6 +127,10 @@ class Component:
     probe_re: str | None = None  # single-capture version regex, group 1
     probe_prefix: str | None = None  # macro prefix for MAJOR/MINOR/PATCH triplet
     expected_version: str | None = None  # version the probe is expected to yield
+    release_basis: str | None = None  # newest upstream release tag the pin descends from
+    release_basis_commit: str | None = None  # commit that release tag points at
+    release_basis_distance: int | None = None  # commits from that tag to upstream_commit
+    dep_pin_spec: str | None = None  # PROV_DEP_PINNED: exact requirement string in `path`
     extra_notes: tuple[str, ...] = field(default_factory=tuple)  # extra properties
 
 
@@ -270,6 +275,9 @@ REGISTRY: tuple[Component, ...] = (
         probe_file="include/mbedtls/build_info.h",
         probe_re=r'MBEDTLS_VERSION_STRING_FULL\s+"Mbed TLS ([0-9.]+)"',
         expected_version="4.1.0",
+        release_basis="v4.1.0",
+        release_basis_commit="0fe989b6b514192783c469039edd325fd0989806",
+        release_basis_distance=72,
     ),
     Component(
         key="tf-psa-crypto",
@@ -315,6 +323,9 @@ REGISTRY: tuple[Component, ...] = (
         probe_file="include/tf-psa-crypto/build_info.h",
         probe_re=r'TF_PSA_CRYPTO_VERSION_STRING_FULL\s+"TF-PSA-Crypto ([0-9.]+)"',
         expected_version="1.1.0",
+        release_basis="v1.1.0",
+        release_basis_commit="29160dd877d29658279fd683b2ae57b320ddcf09",
+        release_basis_distance=76,
     ),
     Component(
         key="nimble",
@@ -757,6 +768,38 @@ REGISTRY: tuple[Component, ...] = (
             "not part of the RA8 linked image -- hence scope=excluded. The image is "
             "pinned esp-hosted-mcu SOUP plus a reviewed first-party media component.",
             "esp-idf toolchain pinned at v5.5.4; firmware version 2.12.11.",
+        ),
+    ),
+    Component(
+        key="ethos-u-vela",
+        name="Arm Ethos-U Vela (offline NPU model compiler)",
+        version="5.1.0",
+        ctype="application",
+        group="arm",
+        url="https://gitlab.arm.com/artificial-intelligence/ethos-u/ethos-u-vela",
+        path="pyproject.toml",
+        provenance=PROV_DEP_PINNED,
+        description=(
+            "Host-side .tflite -> Ethos-U55 command-stream compiler; never linked into firmware."
+        ),
+        purl="pkg:pypi/ethos-u-vela@5.1.0",
+        spdx="Apache-2.0",
+        dep_pin_spec='"ethos-u-vela==5.1.0"',
+        license_note=(
+            "Build-time host tool installed into a throwaway uv environment; "
+            "not linked into the RA8 firmware binary."
+        ),
+        scope="excluded",
+        extra_notes=(
+            "NOT vendored: pinned as the `vela` dependency group in pyproject.toml and "
+            "resolved by uv.lock; scripts/dev/setup_python.sh installs it into the "
+            "git-ignored .venv and check_python_lock_policy.py holds the pin. Usage notes "
+            "in tools/vela/README.md; qualification in docs/SOUP/vela.md.",
+            "Host build tool: it shapes a build input (the Ethos-U command stream) but is "
+            "not part of the RA8 linked image -- hence scope=excluded. Recorded here so "
+            "the SBOM-driven osv-scan issues a pkg:pypi query for the pin; PyPI is an "
+            "OSV-supported ecosystem, so this purl resolves advisories today, unlike the "
+            "pkg:github purls of the git-vendored C/C++ components.",
         ),
     ),
     Component(

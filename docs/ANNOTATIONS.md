@@ -475,7 +475,7 @@ failing is a gate that hides the gap.
 
 ### Pre-commit wiring
 
-The hook at [`scripts/git/pre-commit`](../scripts/git/pre-commit)
+The hook at [`scripts/ci/gates/checks.sh`](../scripts/ci/gates/checks.sh)
 invokes the script after the existing static gates (`cite_check`,
 `check_world_tags`, etc.) and before the stack-usage aggregator.
 
@@ -492,7 +492,7 @@ invokes the script after the existing static gates (`cite_check`,
 | 7  | `ra8_nasa_rule_3_ok`            | global malloc/free sweep                |
 | 8  | `ra8_mcdc_deactivated:<reason>` | reason-string regex                     |
 | 9  | `ra8_max_stack:<bytes>`         | reads `examples/**/build*/**/*.su`      |
-| 10 | `ra8_isr_safe`                  | marker; no static check yet (see below) |
+| 10 | `ra8_isr_safe`                  | marker only; nothing reads it (#1247)   |
 | 11 | `ra8_expects_lock:<name>`       | caller owns or propagates the lock      |
 | 12 | `ra8_host_friendly`             | rejects calls into MMIO accessors       |
 | 13 | `ra8_latency_budget_ns:<n>`     | informational until a WCET pass exists  |
@@ -515,4 +515,19 @@ was keyed on `ra8_isr_handler`, an annotation no macro has ever emitted,
 so the walk never ran on a single handler. The dead walk is gone rather
 than left looking enforced; deriving the handler set from the vector
 tables and requiring `RA8_ISR_SAFE` across each closure is a campaign of
-its own, tracked separately.
+its own, tracked by
+[#1247](https://github.com/bsikar/ra8-firmware/issues/1247).
+
+Saying that here was not enough. `ra8_attributes.h` went on promising a
+libclang call-graph walk, and the `RULE_CHECKS` comment went on listing
+`ra8_isr_safe` among the keys "read by other rules", for as long as
+nobody checked -- across 70 annotated sites. So the marker is now
+declared in one place the checker reads,
+`annot_rulekeys.MARKER_ONLY_RULES`, and `check_rule_coverage()` requires
+every key in `ANNOTATION_PREFIXES` to be implemented in `RULE_CHECKS`,
+read by name in another rule module, or declared there. "Read by name" is
+derived from the rule sources, counting string literals and skipping
+comments and docstrings, because a comment claiming a key is read is the
+exact shape of this defect. The reverse fails too: a marker declaration
+that survives its own fix would tell the next reader the annotation is
+still unchecked.

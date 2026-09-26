@@ -161,6 +161,8 @@ jobs:
       || github.event.pull_request.head.repo.full_name == github.repository
     steps:
       - uses: actions/checkout@v4
+        with:
+          submodules: true
       - run: just quality::local::gate hil-eil-parity
 
   format:
@@ -171,6 +173,8 @@ jobs:
       || github.event.pull_request.head.repo.full_name == github.repository
     steps:
       - uses: actions/checkout@v4
+        with:
+          submodules: true
       - run: just quality::local::gate format
 
   # ---------------------------------------------------------------------------
@@ -317,7 +321,7 @@ jobs:
           retention-days: 14
 
   # ---------------------------------------------------------------------------
-  # Pre-commit gate suite -- mirrors scripts/git/pre-commit so PRs surface what
+  # Pre-commit gate suite -- the commit-time gate set, so PRs surface what
   # the local hook would have caught. The seconds-long check_*.py and lint-*
   # gates stay grouped: a job apiece would cost more in runner scheduling than
   # in checking.
@@ -582,16 +586,6 @@ jobs:
       - run: just quality::local::gate build-cross-union
       - run: just quality::local::gate sg-offsets
       - run: just quality::local::gate stack-usage
-
-  docs:
-    name: Doxygen warnings
-    runs-on: ra8-ci
-    if: >-
-      github.event_name != 'pull_request'
-      || github.event.pull_request.head.repo.full_name == github.repository
-    steps:
-      - uses: actions/checkout@v4
-      - run: just quality::local::gate docs
 
   # ---------------------------------------------------------------------------
   # MISRA-C 2012 ratchet (#240). The baseline records the cppcheck version it

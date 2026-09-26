@@ -42,10 +42,6 @@ def _positive_scope_literal_1_p1() -> tuple[str, ...]:
         checks/check_hil_rig_contract.py:PARSER
         checks/check_hil_rig_contract.py:REMOTE_GDB_ARGS
         checks/check_hil_rig_contract.py:RIG_ENV
-        checks/check_hook_parity.py:BOOTSTRAP_REQUIREMENTS
-        checks/check_hook_parity.py:CANDIDATE_BOUNDARY_MODULES
-        checks/check_hook_parity.py:MUTATION_HELPER
-        checks/check_hook_parity.py:TRUSTED_MUTATIONS
         checks/check_shell_just_invocations.py:ROOT_JUSTFILE
         checks/check_shell_just_invocations.py:WORKSPACE_JUSTFILE
         checks/hil_cache_repair_rules.py:ENTRYPOINT_POLICY

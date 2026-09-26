@@ -81,7 +81,16 @@ typedef struct {
 
 /**
  * @struct ra8_etha_ring_cfg_t
- * @brief Descriptor-ring configuration for ::ra8_etha_descriptor_ring_init.
+ * @brief Descriptor-ring configuration for ::ra8_etha_descriptor_ring_init_cfg.
+ *
+ * @details
+ * The const-pointer counterpart of ::ra8_etha_descriptor_ring_init's three
+ * scalar arguments, following the same convention as ::ra8_etha_config_t so
+ * a future field never breaks the ABI. Both entry points share one
+ * implementation and one set of bound checks; pick whichever reads better
+ * at the call site.
+ *
+ * @see ra8_etha_descriptor_ring_init_cfg
  */
 typedef struct {
   uint16_t num_tx;      /**< Number of TX descriptors (1..4096).  */

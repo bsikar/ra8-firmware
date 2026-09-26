@@ -5,6 +5,9 @@
  * @details Declares reset, configuration, start, stop, and counter access for the two ultra-low-power timer channels.
  * @ingroup grp_hal_timers
  *
+ * @par Tag
+ * [Ring 3 / HAL] {World: NS}
+ *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
  */

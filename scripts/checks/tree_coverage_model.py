@@ -45,6 +45,7 @@ happened to be compiled first.
 
 from __future__ import annotations
 
+import re
 import sys
 from dataclasses import dataclass
 from pathlib import Path
@@ -327,3 +328,293 @@ def census_floor_failures(paths: list[str]) -> list[str]:
         for root, floor in sorted(ROOT_CENSUS_FLOORS.items())
         if counts[root] < floor
     ]
+
+
+# ---------------------------------------------------------------------------
+# THE UNMEASURED CEILING -- unmeasured debt may fall and may not grow.
+#
+# The baseline file is re-derived wholesale by
+# ``check_tree_coverage.py --update``, so its ``unmeasured: N`` header line
+# DESCRIBES the tree rather than bounding it. A unit that lands with no host
+# execution path is reported once as drift, written down by the next
+# ``--update``, and from then on reads as declared: missing measurement
+# becoming a pass, one row at a time, with nothing in the gate that says the
+# population grew.
+#
+# The ceiling is the bound the baseline cannot be. It is committed separately,
+# in a file ``--update`` may only ever LOWER, and it carries one cap per reason
+# class so debt paid off in one class cannot quietly fund growth in another.
+# Raising a cap is a reviewed policy decision that shows up as its own diff.
+# ---------------------------------------------------------------------------
+
+#: The ceiling directive prefix. ``#!`` rather than a bare comment so a cap is
+#: never mistaken for the prose around it, and so a truncated file is missing
+#: its directives rather than silently reading as zero debt.
+_DIRECTIVE = "#!"
+
+
+def parse_ceiling(text: str) -> dict[str, int]:
+    """Parse ceiling text into the declared cap per reason class.
+
+    Args:
+        text: The committed ceiling file's contents.
+
+    Returns:
+        Reason class -> the maximum number of UNMEASURED rows it may carry.
+
+    Raises:
+        ValueError: On a malformed or duplicated directive. A ceiling that
+            cannot be read is not a ceiling of zero.
+    """
+    caps: dict[str, int] = {}
+    for raw in text.splitlines():
+        if not raw.startswith(_DIRECTIVE):
+            continue
+        name, _, cap = raw[len(_DIRECTIVE) :].partition(":")
+        name, cap = name.strip(), cap.strip()
+        if not name or not cap.isdigit():
+            message = f"malformed ceiling directive: {raw!r}"
+            raise ValueError(message)
+        if name in caps:
+            message = f"reason class {name!r} is capped twice"
+            raise ValueError(message)
+        caps[name] = int(cap)
+    return caps
+
+
+def reason_population(reasons: list[str]) -> dict[str, int]:
+    """Count `reasons` per class, with every known class present at zero."""
+    counts = dict.fromkeys(REASONS, 0)
+    for reason in reasons:
+        counts[reason] = counts.get(reason, 0) + 1
+    return counts
+
+
+def ceiling_setup_failures(caps: dict[str, int] | None) -> list[str]:
+    """Return one message per way the ceiling fails to bound the tree at all.
+
+    Args:
+        caps: Parsed caps, or ``None`` when the file is missing or malformed.
+
+    Returns:
+        The vacuity failures: an unreadable ceiling, a reason class with no
+        cap, or a cap on something that is not a reason class. Each one means
+        some unmeasured population is unbounded, so each fails the gate rather
+        than reading as no debt.
+    """
+    if caps is None:
+        return ["the unmeasured ceiling is missing or unreadable; that is not a ceiling of zero"]
+    missing = [
+        f"the unmeasured ceiling declares no cap for reason class {reason}"
+        for reason in REASONS
+        if reason not in caps
+    ]
+    unknown = [
+        f"the unmeasured ceiling caps {name!r}, which is not a reason class"
+        for name in sorted(caps)
+        if name not in REASONS
+    ]
+    return missing + unknown
+
+
+def ceiling_findings(counts: dict[str, int], caps: dict[str, int]) -> tuple[list[str], list[str]]:
+    """Judge an unmeasured population against its committed caps.
+
+    Args:
+        counts: Reason class -> UNMEASURED units the tree now reports.
+        caps: Reason class -> committed cap, from ``parse_ceiling``.
+
+    Returns:
+        ``(growth, slack)``. GROWTH is a population above its cap: a
+        regression, because the tree grew code no host build reaches. SLACK is
+        a cap left above the population: the ceiling stopped describing the
+        debt, which is the direction a re-freeze may record.
+    """
+    growth = [
+        f"unmeasured {reason} debt is {counts.get(reason, 0)} unit(s), ceiling is {caps[reason]}; "
+        f"raising a ceiling is a reviewed decision, not a re-freeze"
+        for reason in REASONS
+        if counts.get(reason, 0) > caps[reason]
+    ]
+    slack = [
+        f"unmeasured {reason} debt fell to {counts.get(reason, 0)}, ceiling still says "
+        f"{caps[reason]}; lower it so the ceiling keeps bounding the tree"
+        for reason in REASONS
+        if counts.get(reason, 0) < caps[reason]
+    ]
+    return growth, slack
+
+
+def format_ceiling(counts: dict[str, int]) -> str:
+    """Render the ceiling file at `counts`, prose and all, deterministically."""
+    header = (
+        "# The UNMEASURED ceiling: how many first-party units each reason class",
+        "# may carry with no coverage measurement behind them.",
+        "#",
+        "# .github/tree-coverage-baseline.txt is re-derived by",
+        "# `check_tree_coverage.py --update`, so the counts in its header describe",
+        "# the tree rather than bound it: a new unit no host build reaches would be",
+        "# written down once and read as declared from then on. These caps are the",
+        "# bound. `--update` may LOWER one and never raise one, so paying debt off",
+        "# ratchets the ceiling down and adding unmeasured code is a reviewed",
+        "# decision with its own diff instead of a silent row.",
+        "#",
+        "# One `#! <reason-class>: <cap>` directive per class in",
+        "# tree_coverage_model.REASONS, all of them required: a missing class, an",
+        "# unknown class, or an unreadable file fails the gate closed.",
+        "",
+    )
+    caps = [f"{_DIRECTIVE} {reason}: {counts.get(reason, 0)}" for reason in REASONS]
+    return "\n".join([*header, *caps, ""])
+
+
+def _ceiling_ratchet_failures() -> list[str]:
+    """Prove the ceiling fires on growth, reports slack, and stays quiet at cap."""
+    caps = {REASON_FIRMWARE: 3, REASON_PLATFORM: 2, REASON_HOSTED: 1, REASON_COMPILED: 0}
+    out: list[str] = []
+    if ceiling_findings(dict(caps), caps) != ([], []):
+        out.append("a population sitting exactly at every cap must be quiet")
+    for reason in REASONS:
+        grown = {**caps, reason: caps[reason] + 1}
+        if not ceiling_findings(grown, caps)[0]:
+            out.append(f"one unmeasured {reason} unit past the ceiling must fire")
+    paid = {**caps, REASON_FIRMWARE: 1}
+    growth, slack = ceiling_findings(paid, caps)
+    if growth or not slack:
+        out.append("debt paid below its ceiling must report slack, not a regression")
+    if ceiling_findings({}, caps)[0]:
+        out.append("an empty population must never read as growth")
+    counted = reason_population([REASON_HOSTED, REASON_HOSTED, REASON_COMPILED])
+    if counted != {REASON_FIRMWARE: 0, REASON_PLATFORM: 0, REASON_HOSTED: 2, REASON_COMPILED: 1}:
+        out.append("the population count must total per class and keep the quiet classes")
+    return out
+
+
+def _ceiling_parse_failures() -> list[str]:
+    """Prove the ceiling round-trips and that an unusable file fails closed."""
+    counts = {REASON_FIRMWARE: 7, REASON_PLATFORM: 5, REASON_HOSTED: 2, REASON_COMPILED: 0}
+    out: list[str] = []
+    if parse_ceiling(format_ceiling(counts)) != counts:
+        out.append("the ceiling must round-trip through format/parse unchanged")
+    if ceiling_setup_failures(parse_ceiling(format_ceiling(counts))):
+        out.append("a rendered ceiling must satisfy its own setup guard")
+    if not ceiling_setup_failures(None):
+        out.append("a missing ceiling must fail closed")
+    if not ceiling_setup_failures(dict.fromkeys(REASONS[:-1], 0)):
+        out.append("a ceiling that omits a reason class must fail")
+    if not ceiling_setup_failures({**counts, "made-up-class": 9}):
+        out.append("a ceiling capping an unknown reason class must fail")
+    malformed = (
+        f"{_DIRECTIVE} {REASON_HOSTED}: lots",
+        f"{_DIRECTIVE} {REASON_HOSTED}",
+        f"{_DIRECTIVE} : 4",
+    )
+    for bad in malformed:
+        try:
+            parse_ceiling(f"{bad}\n")
+        except ValueError:
+            continue
+        out.append(f"a malformed directive must raise, not be skipped: {bad!r}")
+    twice = f"{_DIRECTIVE} {REASON_PLATFORM}: 1\n{_DIRECTIVE} {REASON_PLATFORM}: 2\n"
+    try:
+        parse_ceiling(twice)
+    except ValueError:
+        pass
+    else:
+        out.append("a reason class capped twice must raise")
+    return out
+
+
+def ceiling_selftest_failures() -> list[str]:
+    """Prove every ceiling rule fires and stays quiet in both directions."""
+    return _ceiling_ratchet_failures() + _ceiling_parse_failures()
+# The requirement this gate is the executable form of
+#
+# REQ-SAFE-017 in ``docs/qualification/SRS.md`` carries NUMBERS, and a number
+# in a requirements document drifts from the gate the moment one of the two is
+# edited alone: the row claimed a universal 90/90 floor while the checker
+# enforced a shrink-only ratchet with a 90% line / 80% branch entry floor and
+# explicit UNMEASURED rows (#844). The tie below turns that drift into a gate
+# failure instead of a discovery. The requirement must STATE the floors the
+# checker enforces, name the baseline that carries the per-unit rows, and keep
+# the UNMEASURED disposition visible; change a floor on either side and the
+# other side fails until it says so too.
+# ---------------------------------------------------------------------------
+
+#: The requirement whose numbers ``check_tree_coverage.py`` enforces.
+REQUIREMENT_ID = "REQ-SAFE-017"
+
+
+def srs_text() -> str:
+    """Read the requirements document REQ-SAFE-017 lives in."""
+    return (REPO_ROOT / "docs" / "qualification" / "SRS.md").read_text(encoding="utf-8")
+
+
+def requirement_row(text: str) -> str:
+    """Return the REQ-SAFE-017 table row of an SRS document, or ``""``.
+
+    Args:
+        text: A whole SRS document.
+
+    Returns:
+        The single stripped table row, or the empty string when the document
+        states the requirement nowhere -- itself a finding, because floors no
+        requirement states are floors nobody agreed to.
+    """
+    for line in text.splitlines():
+        stripped = line.strip()
+        if stripped.startswith(f"| {REQUIREMENT_ID}"):
+            return stripped
+    return ""
+
+
+def _stated_floors(row: str) -> tuple[int, int] | None:
+    """The ``>= N% line / M% branch`` entry floor the requirement states."""
+    match = re.search(r">=\s*(\d+)%\s+line\s*/\s*(\d+)%\s+branch", row)
+    return (int(match.group(1)), int(match.group(2))) if match else None
+
+
+def requirement_claim_failures(text: str, line_floor: int, branch_floor: int) -> list[str]:
+    """Name every way REQ-SAFE-017 and the enforced contract disagree.
+
+    Args:
+        text: The SRS document, from ``srs_text()`` or a selftest fixture.
+        line_floor: The line floor the checker actually enforces.
+        branch_floor: The branch floor the checker actually enforces.
+
+    Returns:
+        One message per disagreement; empty when the stated requirement and
+        the executable gate are one policy.
+    """
+    row = requirement_row(text)
+    if not row:
+        return [
+            f"{REQUIREMENT_ID} has no row in docs/qualification/SRS.md: "
+            "the coverage floors state no requirement"
+        ]
+    out = [
+        f"{REQUIREMENT_ID} must name {token} so the claim points at the authority that holds it"
+        for token in (
+            "`.github/tree-coverage-baseline.txt`",
+            "`scripts/checks/check_tree_coverage.py`",
+            "UNMEASURED",
+        )
+        if token not in row
+    ]
+    stated = _stated_floors(row)
+    if stated is None:
+        out.append(
+            f"{REQUIREMENT_ID} states no '>= N% line / M% branch' entry floor; "
+            f"the gate enforces {line_floor}% line / {branch_floor}% branch"
+        )
+    elif stated != (line_floor, branch_floor):
+        out.append(
+            f"{REQUIREMENT_ID} states {stated[0]}% line / {stated[1]}% branch; "
+            f"the gate enforces {line_floor}% line / {branch_floor}% branch"
+        )
+    if re.search(r"\b\d{1,3}/\d{1,3}\b", row):
+        out.append(
+            f"{REQUIREMENT_ID} carries a bare N/M coverage ratio: state each floor with its "
+            "metric and its unit, which is the ambiguity that let the claim drift"
+        )
+    return out

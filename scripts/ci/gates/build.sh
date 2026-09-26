@@ -13,7 +13,7 @@
 # registry here would recreate the drift the single-definition rule exists to
 # prevent.
 #
-# Gates in this file: tools-build, build-cross, docs, sbom, roadmap-stats
+# Gates in this file: tools-build, build-cross, sbom, roadmap-stats
 
 # --- tools-build ----------------------------------------------------------
 # #335/#309: COMPILES AND LINKS every first-party CMake host tool -- mdl,
@@ -279,71 +279,6 @@ gate_build_cross_union() (
   python3 scripts/checks/check_build_shard_union.py --shards "${RA8_BUILD_SHARDS:-1}"
 )
 
-# --- docs -----------------------------------------------------------------
-# --gate builds the single top-level Doxyfile with the project-pinned doxygen
-# (downloaded + sha256-verified by provision_doxygen.sh on first use) and writes
-# the warning log. Using the same pinned version as docs-publish keeps this gate
-# and the published site in lockstep.
-#
-# The pinned binary caches in the persistent tool cache scripts/ci.sh provides
-# (RA8_TOOLS_CACHE -> /toolcache in the container, /var/cache/ra8-tools
-# natively), not the per-run build/tools/ that each ephemeral snapshot destroys.
-# Without that the download would repeat every run and FAIL offline (#326).
-gate_docs() (
-  set -e
-  # graphviz is a hard dependency, not a nice-to-have: build_docs.sh degrades to
-  # text-only output when `dot` is absent, and doxygen then warns on every
-  # author-written diagram block, which this gate reports as a failure. Without
-  # this check that surfaces as a dozen confusing warnings about the .md files
-  # rather than the one true cause. Fail on the real reason instead.
-  require_cmd dot
-  bash scripts/builders/docs.sh --gate
-  local log="build/docs-gate/doxygen-warnings.log"
-  if [[ ! -f "$log" ]]; then
-    echo "FAIL: doxygen warning log not produced at $log" >&2
-    return 1
-  fi
-  # Filter known-benign Doxygen warnings:
-  #   - "for \ref command" -- Doxygen treats Markdown links in README.md as
-  #     \ref directives; targets outside INPUT "fail" to resolve but render.
-  #   - "multiple documentation sections" / "from the argument list of" --
-  #     @retval / @param present in both the public header (canonical) and the
-  #     .c definition. Cosmetic, no output impact.
-  local relevant_warnings
-  relevant_warnings="$(grep "warning:" "$log" |
-    grep -v "for .ref command" |
-    grep -v "multiple documentation sections" |
-    grep -v "from the argument list of " |
-    grep -v "multiple @param documentation sections" |
-    grep -v "has multiple documentation sections" |
-    grep -v "tag INCLUDE_PATH:" |
-    grep -v "is not a readable file or directory" |
-    grep -v "found more than one .mainpage comment block" |
-    grep -v "End of list marker found without any preceding list items" |
-    grep -v "Invalid list item found" |
-    grep -v "Found unknown command" |
-    grep -v "explicit link request to" |
-    grep -v "argument '.*' of command @param is not found" |
-    grep -v "found documented return type for .* that does not return anything" |
-    grep -v "Problems running latex" || true)"
-  if [[ -n "$relevant_warnings" ]]; then
-    echo "Doxygen reported warnings:"
-    echo "$relevant_warnings"
-    return 1
-  fi
-  # A clean warning log does NOT mean the diagrams rendered. Doxygen drops an
-  # authored diagram silently in several ways (HAVE_DOT=NO, a dot layout that
-  # produces an empty SVG, a block doxygen never parsed), and the page still
-  # publishes HTTP 200 with its prose intact. This counts what actually reached
-  # the generated HTML and compares it against the source. It runs here, inside
-  # the docs gate, because this is where the built HTML it inspects exists.
-  #
-  # --selftest first: the checker HAD one and no gate ran it, so the detector
-  # behind the diagram guarantee was itself unverified (#531).
-  python3 scripts/checks/check_doc_diagrams.py --selftest
-  python3 scripts/checks/check_doc_diagrams.py --html build/docs-gate/html
-)
-
 # --- sbom -----------------------------------------------------------------
 # Supply-chain provenance gate. Fails when the committed CycloneDX SBOM
 # (docs/sbom/ra8-firmware.cdx.json) is stale or either canonical third-party
@@ -361,6 +296,17 @@ gate_sbom() (
   set -e
   python3 scripts/gen/gen_sbom.py --selftest
   python3 scripts/gen/gen_sbom.py --check
+  # The generator above owns docs/sbom/ra8-firmware.cdx.json and nothing else.
+  # The two markdown inventories (THIRD_PARTY_LICENSES.md, docs/SOUP/README.md)
+  # are hand-maintained, yet both claimed to be generated from the registry, so
+  # nothing noticed a component catalogued in one and missing from the other,
+  # an orphan inventory row, or a dangling docs/SOUP link (#631). This checker
+  # compares the registry against those two files -- two independently
+  # maintained artifacts, never a value with itself -- and refuses to pass a
+  # collapsed scan. --selftest runs FIRST and proves it fires on seeded drift
+  # and stays quiet on an agreeing tree.
+  python3 scripts/checks/check_soup_inventory.py --selftest
+  python3 scripts/checks/check_soup_inventory.py
 )
 
 # --- soup-upstream --------------------------------------------------------

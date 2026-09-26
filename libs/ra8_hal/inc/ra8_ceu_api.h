@@ -50,9 +50,10 @@ extern "C" {
  *     latch edges, capture format, input order, FLDPOL, DTIF),
  *     CMCYR (image dimensions), CAMOR (start offsets), CAPWR
  *     (capture cycles), CFSZR (filter clip), CDWDR (destination
- *     stride), CLFCR (LPF enable), CDOCR (output format, byte
- *     swap, bundle-write enable), CFWCR (firewall off; armed in
- *     capture_start).
+ *     stride, `cfg->dst_stride` or, when that is zero, the scaled
+ *     output width times `cfg->bytes_per_pixel`), CLFCR (LPF
+ *     enable), CDOCR (output format, byte swap, bundle-write
+ *     enable), CFWCR (firewall off; armed in capture_start).
  *  4. Clear CETCR and write CEIER from `cfg->interrupts`.
  *
  * @param[in] cfg Non-NULL configuration descriptor.
@@ -61,7 +62,10 @@ extern "C" {
  * @retval k_ra8_ok                Capture engine powered + configured.
  * @retval k_ra8_err_null_ptr      `cfg` was NULL.
  * @retval k_ra8_err_invalid_arg   `cfg->capture_mode` is continuous
- *                                in a non-image-capture format.
+ *                                in a non-image-capture format, or a
+ *                                pixel-format descriptor supplies
+ *                                neither `dst_stride` nor a width and
+ *                                `bytes_per_pixel` to derive one from.
  * @retval k_ra8_err_hw_timeout    MSTP enable failed or the
  *                                reset-clear spin overran.
  *

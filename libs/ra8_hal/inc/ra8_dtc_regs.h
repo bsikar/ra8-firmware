@@ -3,6 +3,9 @@
  * @brief DTC (Data Transfer Controller) register layout for the RA8D2
  * @ingroup grp_hal_memory
  *
+ * @par Tag
+ * [Ring 3 / HAL] {World: S}
+ *
  * @details
  * The DTC is a lighter-weight alternative to the DMAC for moving
  * small amounts of data in response to peripheral interrupts. Its
@@ -88,6 +91,23 @@ typedef enum : uint16_t {
   k_ra8_dtcsts_vecn_msk = 0x00FFU, /**< Active-vector number field. */
   k_ra8_dtcsts_act_msk  = 0x8000U, /**< Active flag (bit 15).       */
 } ra8_dtc_dtcsts_bits_t;
+
+/* Transfer-Information MR field geometry (HUM Figure 18.4 p 799 lays the
+ * first TI long-word out as MR[31:24] = MRA, MR[23:16] = MRB,
+ * MR[15:8] = MRC, MR[7:0] = reserved) plus the MRA / MRB sub-field
+ * positions (MRA: HUM 18.2.2 p 786, MRB: HUM 18.2.3 p 787). These were
+ * transcribed into three application files (issue #774); they live here
+ * now so a consumer never has to encode them. */
+typedef enum : uint8_t {
+  k_ra8_dtc_mra_byte_pos = 24U,   /**< MRA occupies MR[31:24].        */
+  k_ra8_dtc_mrb_byte_pos = 16U,   /**< MRB occupies MR[23:16].        */
+  k_ra8_dtc_mra_md_pos   = 6U,    /**< MRA.MD[7:6] transfer mode.     */
+  k_ra8_dtc_mra_sz_pos   = 4U,    /**< MRA.SZ[5:4] unit width.        */
+  k_ra8_dtc_mra_sm_pos   = 2U,    /**< MRA.SM[3:2] source-addr mode.  */
+  k_ra8_dtc_mrb_dm_pos   = 2U,    /**< MRB.DM[3:2] dest-addr mode.    */
+  k_ra8_dtc_mr_2bit_msk  = 0x3U,  /**< Two-bit MR sub-field mask.     */
+  k_ra8_dtc_cra_high_pos = 8U,    /**< CRAH occupies CRA[15:8].       */
+} ra8_dtc_mr_layout_t;
 
 /* DTCADMOD bit positions (HUM 18.2.12 p 793). */
 typedef enum : uint8_t {

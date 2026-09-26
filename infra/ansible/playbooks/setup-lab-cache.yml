@@ -1,0 +1,8 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Brighton Sikarskie
+---
+- name: Setup Proxmox Lab Cache Services (apt-cacher-ng & artifact HTTP cache)
+  hosts: pve:localhost
+  become: yes
+  roles:
+    - role: lab_cache

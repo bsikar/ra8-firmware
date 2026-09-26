@@ -48,6 +48,7 @@
 #include <stdint.h>
 
 #include "ra8_err.h"
+#include "ra8_gfx_tone.h"
 
 /**
  * @enum ra8_gfx_dither_const_t
@@ -125,9 +126,46 @@ typedef enum : uint16_t {
  * @endcode
  *
  * @see ra8_gfx_dither_gray8_to_gray4  Bulk tile -> packed 4 bpp using this rule.
+ * @see ra8_gfx_dither_gray4_level_tone Same rule through a measured panel curve.
  * @since 0.1.0
  */
 uint8_t ra8_gfx_dither_gray4_level(uint8_t gray8, int32_t x, int32_t y);
+
+/**
+ * @brief Quantise one gray8 sample through a per-panel tone curve (#479).
+ *
+ * @details
+ * ::ra8_gfx_dither_gray4_level assumes the panel's 16 levels are evenly spaced
+ * at `n * 17`. They are not: the tone each level renders is a property of the
+ * glass. This variant takes a prepared curve (::ra8_gfx_tone_prepare) and
+ * brackets the sample between the levels that curve says surround it, so the
+ * blue-noise round-up is measured against the real interval width rather than a
+ * nominal 17. The mask lookup and its absolute-coordinate phase are unchanged,
+ * so tiled rendering stays seamless. Passing NULL selects the nominal even
+ * palette and is byte-for-byte ::ra8_gfx_dither_gray4_level.
+ *
+ * @param[in] map   Prepared tone map, or NULL for the nominal even palette.
+ * @param[in] gray8 Source luminance sample, 0 (black) .. 255 (white).
+ * @param[in] x     Absolute panel/framebuffer column (any int32; wraps mod 64).
+ * @param[in] y     Absolute panel/framebuffer row (any int32; wraps mod 64).
+ *
+ * @return The dithered 4-bit level.
+ * @retval 0  The pixel quantised to black.
+ * @retval 15 The pixel quantised to white (the maximum level).
+ *
+ * @pre  @p map is NULL or was written by a successful ::ra8_gfx_tone_prepare.
+ * @pre  The blue-noise mask table is linked (compile-time `const`).
+ * @post The result is in [0, @ref k_ra8_gfx_dither_max_level].
+ * @post No memory is modified (pure function).
+ *
+ * @note Thread-safe: reads only its arguments and immutable data; ISR-safe.
+ * @see ra8_gfx_tone_prepare  Builds the map this takes.
+ * @since 0.1.0
+ */
+uint8_t ra8_gfx_dither_gray4_level_tone(const ra8_gfx_tone_map_t* map,
+                                        uint8_t                   gray8,
+                                        int32_t                   x,
+                                        int32_t                   y);
 
 /**
  * @brief Dither a gray8 tile to packed 4-bpp nibbles (panel-native), seamlessly.
@@ -167,6 +205,7 @@ uint8_t ra8_gfx_dither_gray4_level(uint8_t gray8, int32_t x, int32_t y);
  *
  * @note Not thread-safe only in that it writes @p out; holds no shared state.
  * @see ra8_gfx_blit_gray8_dither  Dither straight into the bound framebuffer.
+ * @see ra8_gfx_dither_gray8_to_gray4_tone  Same pack through a measured curve.
  * @since 0.1.0
  */
 [[nodiscard]] ra8_err_t ra8_gfx_dither_gray8_to_gray4(const uint8_t* src,
@@ -177,6 +216,53 @@ uint8_t ra8_gfx_dither_gray4_level(uint8_t gray8, int32_t x, int32_t y);
                                                       uint8_t*       out,
                                                       uint32_t       out_cap,
                                                       uint32_t*      out_size);
+
+/**
+ * @brief Dither a gray8 tile to packed 4 bpp through a per-panel tone curve (#479).
+ *
+ * @details
+ * ::ra8_gfx_dither_gray8_to_gray4 with the quantisation stage taken from a
+ * prepared curve instead of the nominal even palette: identical geometry,
+ * identical nibble packing, identical absolute-coordinate mask phase (so tiles
+ * still abut seamlessly), and identical argument validation. Passing NULL for
+ * @p map is byte-for-byte the nominal entry point.
+ *
+ * @param[in]  map      Prepared tone map, or NULL for the nominal even palette.
+ * @param[in]  src      Row-major gray8 tile of at least @p w * @p h bytes.
+ * @param[in]  w        Tile width in pixels (> 0; also the source row stride).
+ * @param[in]  h        Tile height in pixels (> 0).
+ * @param[in]  origin_x Absolute panel column of the tile's left edge (mask phase).
+ * @param[in]  origin_y Absolute panel row of the tile's top edge (mask phase).
+ * @param[out] out      Packed-gray4 output; >= `(w * h + 1) / 2` writable bytes.
+ * @param[in]  out_cap  Capacity of @p out in bytes.
+ * @param[out] out_size On success, the byte count written (`(w * h + 1) / 2`).
+ *
+ * @return Error code.
+ * @retval k_ra8_ok              Tile dithered and packed.
+ * @retval k_ra8_err_null_ptr    @p src, @p out, or @p out_size is NULL.
+ * @retval k_ra8_err_invalid_arg @p w <= 0 or @p h <= 0.
+ * @retval k_ra8_err_no_mem      @p out_cap < `(w * h + 1) / 2`.
+ *
+ * @pre  @p src holds at least @p w * @p h readable bytes.
+ * @pre  @p map is NULL or was written by a successful ::ra8_gfx_tone_prepare.
+ * @post On k_ra8_ok, *@p out_size == `(w * h + 1) / 2` and every packed nibble
+ *       is in [0, @ref k_ra8_gfx_dither_max_level].
+ * @post On any error return, @p out and *@p out_size are unmodified past the
+ *       point of the failing check.
+ *
+ * @note Not thread-safe only in that it writes @p out; holds no shared state.
+ * @see ra8_gfx_tone_prepare  Builds the map this takes.
+ * @since 0.1.0
+ */
+[[nodiscard]] ra8_err_t ra8_gfx_dither_gray8_to_gray4_tone(const ra8_gfx_tone_map_t* map,
+                                                           const uint8_t*            src,
+                                                           int32_t                   w,
+                                                           int32_t                   h,
+                                                           int32_t                   origin_x,
+                                                           int32_t                   origin_y,
+                                                           uint8_t*                  out,
+                                                           uint32_t                  out_cap,
+                                                           uint32_t*                 out_size);
 
 /**
  * @brief Blit a gray8 image into the bound framebuffer, blue-noise dithered.
@@ -215,3 +301,41 @@ uint8_t ra8_gfx_dither_gray4_level(uint8_t gray8, int32_t x, int32_t y);
  */
 [[nodiscard]] ra8_err_t
 ra8_gfx_blit_gray8_dither(const uint8_t* src, int32_t w, int32_t h, int32_t dst_x, int32_t dst_y);
+
+/**
+ * @brief Blit a gray8 image into the bound framebuffer through a tone curve (#479).
+ *
+ * @details
+ * ::ra8_gfx_blit_gray8_dither with the quantisation stage taken from a prepared
+ * per-panel curve: same clipping, same plotter, same level-to-colour expansion,
+ * same absolute-coordinate mask phase (so a damaged sub-rectangle repaints
+ * without seaming). Passing NULL for @p map is byte-for-byte the nominal entry
+ * point, which is what keeps the committed render goldens valid.
+ *
+ * @param[in] map   Prepared tone map, or NULL for the nominal even palette.
+ * @param[in] src   Row-major gray8 source of at least @p w * @p h bytes.
+ * @param[in] w     Source width in pixels (> 0; also the row stride).
+ * @param[in] h     Source height in pixels (> 0).
+ * @param[in] dst_x Destination column of the source top-left in the framebuffer.
+ * @param[in] dst_y Destination row of the source top-left in the framebuffer.
+ *
+ * @return Error code.
+ * @retval k_ra8_ok                  Visible pixels written (or fully clipped out).
+ * @retval k_ra8_err_not_initialized ra8_gfx_init() was not called.
+ * @retval k_ra8_err_invalid_arg     @p src is NULL, or @p w / @p h <= 0.
+ *
+ * @pre  ra8_gfx_init() returned k_ra8_ok.
+ * @pre  @p map is NULL or was written by a successful ::ra8_gfx_tone_prepare.
+ * @post Each in-clip destination pixel equals its dithered, down-converted level.
+ * @post Pixels outside the clip rectangle are left unchanged.
+ *
+ * @note Not thread-safe; shares the single ra8_gfx bind state.
+ * @see ra8_gfx_tone_prepare  Builds the map this takes.
+ * @since 0.1.0
+ */
+[[nodiscard]] ra8_err_t ra8_gfx_blit_gray8_dither_tone(const ra8_gfx_tone_map_t* map,
+                                                       const uint8_t*            src,
+                                                       int32_t                   w,
+                                                       int32_t                   h,
+                                                       int32_t                   dst_x,
+                                                       int32_t                   dst_y);

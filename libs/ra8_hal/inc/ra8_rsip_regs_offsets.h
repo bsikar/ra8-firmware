@@ -3,6 +3,9 @@
  * @brief RSIP-E50D register base address, byte offsets, and layout asserts
  * @ingroup grp_hal_crypto
  *
+ * @par Tag
+ * [Ring 3 / HAL] {World: S}
+ *
  * @details
  * Sub-header of @ref ra8_rsip_regs.h. Carries the memory-mapped base
  * address (@ref ra8_rsip_addr_t), the full byte-offset table for every

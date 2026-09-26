@@ -17,6 +17,10 @@
 
 cmake_minimum_required(VERSION 3.20)
 
+# Put <repo>/cmake on CMAKE_MODULE_PATH (exports RA8_ROOT / RA8_CMAKE_DIR) so
+# the app listfiles pulled in below can include(ra8_add_app) by name (#779).
+include("${CMAKE_CURRENT_LIST_DIR}/cmake/ra8_bootstrap.cmake")
+
 # If ON, we pivot the root CMake away from firmware and build host/tools/tests.
 option(RA8_HOST_MODE "Build host apps/tests/tools natively" OFF)
 if(RA8_HOST_MODE)

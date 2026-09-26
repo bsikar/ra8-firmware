@@ -3,6 +3,9 @@
  * @brief Interrupt Control Unit (ICU) register layout for the Renesas RA8D2
  * @ingroup grp_hal_system
  *
+ * @par Tag
+ * [Ring 3 / HAL] {World: S}
+ *
  * @details
  * The RA Interrupt Control Unit sits between the peripheral event
  * sources and the two Cortex-M NVICs (one per core). Unlike most

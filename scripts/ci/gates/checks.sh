@@ -19,7 +19,7 @@
 
 # --- pre-commit-checks ----------------------------------------------------
 # The check_*.py gate suite. Each entry runs in its default mode -- the same
-# way scripts/git/pre-commit invokes it.
+# way the removed pre-commit hook invoked it.
 #
 # The suite is grouped into helpers below rather than written as one 150-line
 # body. The grouping is CONTIGUOUS and the execution order is unchanged: these
@@ -48,7 +48,7 @@ _pcc_banned_constructs() (
   # --selftest FIRST proves the detector fires in BOTH directions, so one that
   # stopped matching cannot pass as clean; --all then audits the whole tree
   # index-independently (the fix), so CI and local agree. The --staged
-  # counterpart runs blocking in scripts/git/pre-commit.
+  # counterpart used to run blocking in the removed pre-commit hook.
   python3 scripts/checks/check_mcdc_block.py --selftest
   python3 scripts/checks/check_mcdc_block.py --all
   # --all asks it to enumerate src/ + libs/ rather than read staged files.
@@ -111,11 +111,6 @@ _pcc_size_caps() (
 # Migration contracts that span the executable hook/checker surfaces.
 _pcc_migration_contracts() (
   set -e
-  # Hook policy lives in Just while scripts/git/* remain transport wrappers.
-  # Guard that split explicitly: the first migration collapsed a large hook
-  # to a wrapper while silently dropping most staged checks.
-  python3 scripts/checks/check_hook_parity.py --selftest
-  python3 scripts/checks/check_hook_parity.py
   # Shell recursion must preserve the Just executable that entered the recipe;
   # a noninteractive SSH PATH need not contain that binary's directory.
   /bin/bash -p scripts/dev/run_just.sh --selftest
@@ -146,6 +141,16 @@ _pcc_migration_contracts() (
   bash scripts/builders/host_cmake.sh --selftest
   python3 scripts/checks/check_host_build_entrypoints.py --selftest
   python3 scripts/checks/check_host_build_entrypoints.py
+  # The Cortex-M33 side of the dual-core product: ra8_add_cpu1_image() attaches
+  # the first-party warning + stack-usage profile PER-SOURCE to its own
+  # SOURCES, so app-added first-party M33 translation units compile with no
+  # -Wall/-Wextra/-Werror and emit no .su data (#843, TODO(T1-09)). That escape
+  # was prose only. Enumerate it instead: --selftest proves the classifier
+  # fires in both directions, then the tree check holds the escape to the
+  # shrink-only .github/cpu1-warning-profile-baseline.txt, so a NEW first-party
+  # M33 source outside the profile is red rather than invisible.
+  python3 scripts/checks/check_cpu1_warning_profile.py --selftest
+  python3 scripts/checks/check_cpu1_warning_profile.py
 )
 
 # The Python project, bootstrap, exports, and managed environment boundaries.
@@ -219,6 +224,16 @@ _pcc_board_and_layering() (
   # do not leak across libraries, and hosted APIs stay behind port adapters.
   python3 scripts/checks/check_core_layering.py --selftest
   python3 scripts/checks/check_core_layering.py
+  # No first-party library may name an RTOS or middleware API symbol: the
+  # scheduler, the USB device stack and the FTL are reached through a seam
+  # bound under port/ (#695 workstream (c)). The tree does not satisfy that
+  # yet and #695 is design-only, so the ledger in the checker freezes the
+  # leak sites that exist today: a new symbol fails, and a symbol that has
+  # been burned down also fails until its ledger entry goes with it.
+  # --selftest proves the detector fires, stays quiet on lookalike
+  # identifiers (tx_len, tx_pool), and judges the ledger in both directions.
+  python3 scripts/checks/check_rtos_symbol_isolation.py --selftest
+  python3 scripts/checks/check_rtos_symbol_isolation.py
 )
 
 # Repository-wide structural contracts that are independent of C source
@@ -316,7 +331,7 @@ _pcc_source_form() (
   python3 scripts/checks/check_no_gnu_attribute.py
   # The four C23 source patterns (_Static_assert -> static_assert, = {0} ->
   # = {}, no <stdbool.h>, paren-wrapped numeric #define values). These lived
-  # ONLY as inline grep loops in scripts/git/pre-commit and were never run by
+  # ONLY as inline grep loops in the removed pre-commit hook and were never run by
   # this gate, so a violation the hook rejects slipped through CI on any
   # machine whose hook was not installed. The hook and this gate now share one
   # implementation. The selftest asserts each rule in both directions before
@@ -406,7 +421,7 @@ _pcc_mcdc_discipline() (
   # range-aware and fail-loud now (no mode / unresolvable range is exit 2, not
   # a silent clean scan). --selftest proves the detector in BOTH directions, so
   # one that stopped matching cannot pass as clean; the staged counterpart runs
-  # blocking in scripts/git/pre-commit (--staged).
+  # blocking in the removed pre-commit hook (--staged).
   python3 scripts/checks/check_new_compound_has_mcdc.py --selftest
   # ... and the CI teeth for that rule: the MC/DC RATCHET (#426). Until it
   # landed, enforcement here was decorative -- only the --selftest above ran, so
@@ -453,6 +468,14 @@ _pcc_cross_references() (
   # #325 / #355; a bare invocation is an error now rather than the vacuous mode.
   python3 scripts/checks/check_obsolete_standards.py --selftest
   python3 scripts/checks/check_obsolete_standards.py --all
+  # A documented thread-safety claim must still be backed by the unit's own
+  # state (#893). The ra8_jpeg header advertised the decoder as re-entrant and
+  # the encoder as thread-safe while both keep their working set in shared
+  # statics; review caught it once, and nothing stopped it coming back. The
+  # selftest runs first: a claim checker that stopped matching would report a
+  # supported claim, which is the same defect class as the claim it polices.
+  python3 scripts/checks/check_jpeg_concurrency_contract.py --selftest
+  python3 scripts/checks/check_jpeg_concurrency_contract.py
 )
 
 # Documentation completeness, cross-reference integrity, and the test-side
@@ -697,6 +720,26 @@ gate_pinout_freshness() (
   require_cmd pdftotext "poppler-utils provides pdftotext; the datasheets are PDFs"
   python3 scripts/gen/gen_pinouts.py --selftest
   python3 scripts/gen/gen_pinouts.py --check
+)
+
+# --- font coverage --------------------------------------------------------
+# Which characters the reader can draw with no SD card present is decided by
+# the cmap of the subset checked in under libs/ra8_fonts/, and until #687 no
+# file in the tree declared that set: the only record was the pyftsubset recipe
+# in the docstring of scripts/gen/font_to_c.py, which nothing read the font
+# back against and which is 33 codepoints wider than the committed bytes.
+# .github/font-coverage-declaration.txt is now that record, held against the
+# .ttf in BOTH directions, so narrowing the baked coverage cannot land as a
+# replaced blob with a green build.
+#
+# --selftest FIRST, both directions: every rule is driven against synthetic
+# coverage that must fire it, and the committed declaration must be quiet, so
+# "0 findings" cannot mean a checker that stopped reading the font.
+gate_font_coverage() (
+  set -e
+  require_cmd python3 "the font-coverage gate parses the committed .ttf cmaps"
+  python3 scripts/checks/check_font_coverage.py --selftest
+  python3 scripts/checks/check_font_coverage.py
 )
 
 # --- bench-lock -----------------------------------------------------------

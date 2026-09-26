@@ -128,7 +128,7 @@ driver-checklist template applies to drivers, not to documentation.
 - [x] `scripts/checks/cite_check.py --strict` -- fail-closed HUM citation gate.
 - [x] `scripts/checks/check_world_tags.py` -- `{World: ...}` tag validator.
 - [x] `scripts/report/roadmap_stats.py` -- summary block rewriter.
-- [x] `scripts/git/pre-commit` extended with cite_check + check_world_tags + roadmap_stats hooks.
+- [x] the `pre-commit-checks` CI gate extended with cite_check + check_world_tags + roadmap_stats hooks.
 - [x] promoted to `[x]` DONE in the wave table (verify-gates pass succeeded: 41/41 ctests, 98.0% lines / 92.3% branches coverage, cross-build ELF in budget, 0 doxygen warnings).
 
 ---

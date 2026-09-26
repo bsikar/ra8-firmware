@@ -191,7 +191,7 @@ def first_party_scripts() -> list[str]:
     """First-party shell scripts: by ``*.sh`` suffix OR by shebang.
 
     The shebang sweep is not hypothetical. Every git hook in ``scripts/git/``
-    -- pre-commit, pre-push, commit-msg, post-merge, post-commit,
+    -- commit-msg, hook-launcher, post-merge, post-commit,
     post-checkout -- is an extensionless bash script, so a suffix-only scope
     left the hooks that enforce this entire tree as the only shell in it that
     nothing shellchecked. That is the #296/#332/#358/#359/#360

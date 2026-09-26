@@ -2,6 +2,9 @@
  * @file timer.c
  * @brief Thin SysTick-based timer wrapper
  *
+ * @par Tag
+ * [Ring 3 / HAL] {World: S}
+ *
  * @details
  * Re-exports `ra8_time_ms()` / `ra8_delay_ms()` from `ra8_time.h` under
  * a shorter name so driver code can use `ra8_now_ms()` and

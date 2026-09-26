@@ -5,6 +5,9 @@
  * @details Declares validated BCD calendar configuration and read/write operations for the RA8 real-time clock.
  * @ingroup grp_hal_timers
  *
+ * @par Tag
+ * [Ring 3 / HAL] {World: S}
+ *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
  */

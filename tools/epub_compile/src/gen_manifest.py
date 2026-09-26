@@ -129,6 +129,16 @@ def read_meta(path: Path) -> dict[str, object]:
 #: struct. Nothing here depends on the books, so it is a constant rather than
 #: 30 more lines inside the generator -- what varies and what does not should
 #: be readable apart.
+#:
+#: The member comments are emitted pre-aligned on the widest member
+#: (`inflated_size`), which is what `check_comment_format.py` demands of a
+#: trailing-comment block: one `/**<` column and one `*/` column for the whole
+#: block. Emitting them unaligned made a regeneration UN-COMMITTABLE (#782):
+#: clang-format then opens the block at two different columns, and
+#: `check_comment_format.py --fix` -- the second half of `format_generated()`
+#: in scripts/builders/books.sh -- cannot repair that, because repairing it
+#: means shortening prose. Keep any edit here inside 100 columns and keep the
+#: `/**<` and `*/` columns identical on all five lines.
 _HEADER_PREAMBLE = (
     "/**",
     " * @file book_library.h",
@@ -153,11 +163,11 @@ _HEADER_PREAMBLE = (
     " * @since Version 0.1.0",
     " */",
     "typedef struct {",
-    "  const char* title;       /**< Book title (transliterated to ASCII). */",
-    "  const char* author;      /**< Author (transliterated to ASCII).     */",
-    "  const char* filename;    /**< `.rabook` file name on storage.       */",
-    "  uint32_t    file_size;   /**< Compressed size on disk, bytes.       */",
-    "  uint32_t    inflated_size; /**< Scratch bytes book_open() needs. */",
+    "  const char* title;         /**< Book title (transliterated to ASCII). */",
+    "  const char* author;        /**< Author (transliterated to ASCII).     */",
+    "  const char* filename;      /**< `.rabook` file name on storage.       */",
+    "  uint32_t    file_size;     /**< Compressed size on disk, bytes.       */",
+    "  uint32_t    inflated_size; /**< Scratch bytes book_open() needs.      */",
     "} book_library_entry_t;",
     "",
 )
@@ -192,7 +202,8 @@ def _generated_table(entries: list[dict[str, object]]) -> list[str]:
     """The book table itself, one initialiser row per book."""
     lines = [
         "/** @brief The bundled book index. Generated; data table, magic numbers ok. */",
-        "// NOLINTBEGIN(readability-magic-numbers)",
+        "// NOLINTBEGIN(readability-magic-numbers) -- Generated book measurements "
+        "are payload data, not control constants.",
         "static const book_library_entry_t g_book_library[k_book_library_count] = {",
     ]
     lines.extend(

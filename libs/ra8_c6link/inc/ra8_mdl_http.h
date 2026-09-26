@@ -42,6 +42,14 @@ typedef struct {
  * @brief HTTP status and selected response headers proven by the C6 backend.
  * @invariant `status` is in the inclusive range 100..599 on success.
  * @invariant Every array is NUL-terminated, including when its header is absent.
+ *
+ * @note Field-for-field twin of the downloader-side ::mdl_net_resp_t
+ *       (`apps/shared_libs/mdl/inc/mdl_net.h`), which `mdl_net_c6link.c` fills
+ *       by copying each member out of this record; that record spells `status`
+ *       as `long` where this one is `int32_t`. The four array capacities are
+ *       pinned to their `k_mdl_*` twins by `static_assert` in that bridge, so
+ *       a capacity changed here must change there too. Issue #746 tracks
+ *       reducing the two records to one.
  * @since 0.1.0
  */
 typedef struct {

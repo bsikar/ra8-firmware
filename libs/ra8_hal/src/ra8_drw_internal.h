@@ -5,6 +5,9 @@
  * @details Declares module-private geometry helpers shared by the DRW command and drawing translation units.
  * @ingroup grp_hal_display
  *
+ * @par Tag
+ * [Ring 3 / HAL] {World: NS}
+ *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
  */

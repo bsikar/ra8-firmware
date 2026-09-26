@@ -8,8 +8,12 @@ caller-owned workspace regions from their metadata. This script emits a small
 corpus that exercises both sides of that policy:
 
   * malicious fixtures that MUST be refused with a clean ra8_err_t (process exit
-    1), never an OOM, an abort, or a hang; and
-  * legitimate fixtures that MUST still decode (exit 0, a P6 PPM written).
+    1), never an OOM, an abort, or a hang;
+  * legitimate fixtures that MUST still decode (exit 0, a P6 PPM written); and
+  * recognised-but-unwired fixtures (#849) that MUST be refused with the honest
+    reason for the refusal -- a wrapped comic, an EPUB, a RABOOK, and an
+    unrecognised extension -- so "not wired yet" can never quietly become
+    "accepted and rendered wrong".
 
 Everything here is pure Python standard library so the corpus regenerates on any
 CI runner with no third-party dependency (unlike make_fixture.py, which needs
@@ -36,8 +40,11 @@ OVER_CAP_BYTES = 128 * MIB  # > 64 MiB output cap  -> k_ra8_err_decomp_output_ca
 BOMB_UNCOMP_BYTES = 50 * MIB  # < cap but huge ratio -> k_ra8_err_decomp_ratio
 UNWRAP_BOMB_BYTES = 160 * MIB  # > the 128 MiB gzip/xz unwrap arena
 PAGE_NAME = "page01.jpg"  # Archive fixture entry name.
+RBKC_MAGIC = b"RBKC"  # .rabook container magic (ra8_rabook_container.c).
+RBKC_HEADER_BYTES = 24  # RBKC fixed header: magic, chunk, total, count, rsvd.
 FILL_BYTE = 0x80  # decoded-pixel fill for generated atlases
-EXPECTED_ARGC = 2  # argv is: script, out_dir
+MIN_ARGC = 2  # argv is: script, out_dir
+MAX_ARGC = 3  # argv may add: a real comic archive to repack as CBT
 
 # --- JOF (RTA1 atlas) on-disk layout -----------------------------------------
 JOF_MAGIC_HDR = b"JOF1"
@@ -156,8 +163,8 @@ def build_cbz(entry_name: str, data: bytes, forced_uncomp: int | None = None) ->
     return bytes(raw)
 
 
-def build_cbt(entry_name: str, data: bytes, forced_size: int | None = None) -> bytes:
-    """Build a one-member ustar tar, optionally forging the member size field.
+def build_tar_member(entry_name: str, data: bytes, forced_size: int | None = None) -> bytes:
+    """Build one ustar member (header + data + padding), optionally forging size.
 
     The CBT (tar) walker has no open-time declared-size guard, so a forged size
     is the viewer's own line of defence: viewer_read_page_bytes validates the
@@ -172,7 +179,7 @@ def build_cbt(entry_name: str, data: bytes, forced_size: int | None = None) -> b
             size.
 
     Returns:
-        The tar bytes (header + data + zero padding + two zero end blocks).
+        The member bytes: one 512-byte header, the data, and its zero padding.
     """
     name = entry_name.encode("ascii")
     header = bytearray(TAR_BLOCK)
@@ -192,7 +199,121 @@ def build_cbt(entry_name: str, data: bytes, forced_size: int | None = None) -> b
     header[TAR_CHKSUM_OFF : TAR_CHKSUM_OFF + 8] = f"{chksum:06o}\x00 ".encode("ascii")
 
     pad = (-real_size) % TAR_BLOCK
-    return bytes(header) + data + (b"\x00" * pad) + (b"\x00" * (2 * TAR_BLOCK))
+    return bytes(header) + data + (b"\x00" * pad)
+
+
+def build_cbt(entry_name: str, data: bytes, forced_size: int | None = None) -> bytes:
+    """Build a one-member ustar tar terminated by the two zero end blocks.
+
+    Args:
+        entry_name: Member name (a page image name).
+        data: The real (tiny) member bytes.
+        forced_size: Octal size to force into the header, or None for the honest
+            size.
+
+    Returns:
+        The tar bytes (member + two zero end blocks).
+    """
+    return build_tar_member(entry_name, data, forced_size) + (b"\x00" * (2 * TAR_BLOCK))
+
+
+def build_cbt_from_comic(archive: Path) -> bytes:
+    """Repack every page of a real ZIP comic into an equivalent ustar CBT.
+
+    The member bytes are copied verbatim, so the CBT holds exactly the encoded
+    images the committed .cbz golden already renders. That is the point: the two
+    containers must decode to the same pixels, and only the tar index path
+    differs between them.
+
+    Args:
+        archive: Path to a real one-or-more page CBZ.
+
+    Returns:
+        The CBT bytes.
+
+    Raises:
+        RuntimeError: The archive holds no page-image member.
+    """
+    members: list[bytes] = []
+    with zipfile.ZipFile(archive) as zf:
+        for info in sorted(zf.infolist(), key=lambda i: i.filename):
+            if info.is_dir():
+                continue
+            if not info.filename.lower().endswith((".jpg", ".jpeg", ".png")):
+                continue
+            members.append(build_tar_member(info.filename, zf.read(info.filename)))
+    if not members:
+        msg = f"no page image inside {archive}"
+        raise RuntimeError(msg)
+    return b"".join(members) + (b"\x00" * (2 * TAR_BLOCK))
+
+
+def build_epub() -> bytes:
+    """Build a structurally valid minimal EPUB 3 publication.
+
+    Valid on purpose: the viewer must refuse this because its reflow engine is
+    not wired (#849), never because the file is malformed. `mimetype` is the
+    first member and is stored uncompressed, as OCF requires, so a real EPUB
+    reader would open it.
+
+    Returns:
+        The EPUB (ZIP) bytes.
+    """
+    container = (
+        '<?xml version="1.0" encoding="UTF-8"?>\n'
+        '<container version="1.0" '
+        'xmlns="urn:oasis:names:tc:opendocument:xmlns:container">\n'
+        "  <rootfiles>\n"
+        '    <rootfile full-path="OEBPS/content.opf" '
+        'media-type="application/oebps-package+xml"/>\n'
+        "  </rootfiles>\n"
+        "</container>\n"
+    )
+    opf = (
+        '<?xml version="1.0" encoding="UTF-8"?>\n'
+        '<package xmlns="http://www.idpf.org/2007/opf" version="3.0" '
+        'unique-identifier="pub-id">\n'
+        '  <metadata xmlns:dc="http://purl.org/dc/elements/1.1/">\n'
+        '    <dc:identifier id="pub-id">urn:uuid:ra8-viewer-corpus</dc:identifier>\n'
+        "    <dc:title>ra8_viewer corpus</dc:title>\n"
+        "    <dc:language>en</dc:language>\n"
+        '    <meta property="dcterms:modified">2026-01-01T00:00:00Z</meta>\n'
+        "  </metadata>\n"
+        "  <manifest>\n"
+        '    <item id="ch1" href="ch1.xhtml" media-type="application/xhtml+xml"/>\n'
+        "  </manifest>\n"
+        '  <spine>\n    <itemref idref="ch1"/>\n  </spine>\n'
+        "</package>\n"
+    )
+    chapter = (
+        '<?xml version="1.0" encoding="UTF-8"?>\n'
+        '<html xmlns="http://www.w3.org/1999/xhtml"><head><title>1</title></head>\n'
+        "<body><h1>Chapter 1</h1><p>Reflowable text the viewer cannot lay out "
+        "yet.</p></body></html>\n"
+    )
+    buf = io.BytesIO()
+    with zipfile.ZipFile(buf, "w") as zf:
+        zf.writestr(zipfile.ZipInfo("mimetype"), "application/epub+zip", zipfile.ZIP_STORED)
+        zf.writestr("META-INF/container.xml", container, zipfile.ZIP_DEFLATED)
+        zf.writestr("OEBPS/content.opf", opf, zipfile.ZIP_DEFLATED)
+        zf.writestr("OEBPS/ch1.xhtml", chapter, zipfile.ZIP_DEFLATED)
+    return buf.getvalue()
+
+
+def build_rabook_stub() -> bytes:
+    """Build a .rabook whose RBKC magic is real and whose body is deliberately not.
+
+    The exporter that emits real RBKC containers is not wired into this corpus,
+    and forging a chunk table here would assert a layout this script does not
+    own. The viewer classifies `.rabook` by extension and refuses it before any
+    byte is parsed, so the magic plus a zeroed fixed header is exactly enough to
+    gate that refusal. Replace this fixture with exporter output when the reflow
+    engine lands (#849).
+
+    Returns:
+        The stub container bytes.
+    """
+    return RBKC_MAGIC + (b"\x00" * (RBKC_HEADER_BYTES - len(RBKC_MAGIC)))
 
 
 def _write(out_dir: Path, name: str, blob: bytes) -> None:
@@ -202,12 +323,18 @@ def _write(out_dir: Path, name: str, blob: bytes) -> None:
 
 
 def main() -> int:
-    """Emit the whole corpus into the directory named by argv[1]."""
-    if len(sys.argv) != EXPECTED_ARGC:
-        sys.stderr.write("usage: gen_corpus.py <out_dir>\n")
+    """Emit the whole corpus into the directory named by argv[1].
+
+    An optional argv[2] names a real CBZ whose pages are repacked as a
+    legitimate CBT (and as a legitimate gzip-wrapped CBT), so the tar reader and
+    the wrapper refusal are both covered by content that genuinely decodes.
+    """
+    if not (MIN_ARGC <= len(sys.argv) <= MAX_ARGC):
+        sys.stderr.write("usage: gen_corpus.py <out_dir> [sample_comic.cbz]\n")
         return 2
     out = Path(sys.argv[1])
     out.mkdir(parents=True, exist_ok=True)
+    sample = Path(sys.argv[2]) if len(sys.argv) == MAX_ARGC else None
 
     tiny = b"not a real image, refused before decode"
 
@@ -233,6 +360,15 @@ def main() -> int:
     # --- legitimate: must still decode ---------------------------------------
     _write(out, "legit.jof", build_jof(JofGeom(32, 32, 32, 32, 1)))
     _write(out, "legit_deflate.jof", build_jof(JofGeom(32, 32, 32, 32, 1), codec=1))
+
+    # --- recognised but unwired: must be refused with the honest reason (#849)
+    _write(out, "sample.epub", build_epub())
+    _write(out, "sample.rabook", build_rabook_stub())
+    _write(out, "notes.pdf", b"%PDF-1.7\n% not a book format the viewer knows\n")
+    if sample is not None:
+        legit_cbt = build_cbt_from_comic(sample)
+        _write(out, "legit.cbt", legit_cbt)
+        _write(out, "legit.cbt.gz", gzip.compress(legit_cbt, compresslevel=6))
     return 0
 
 

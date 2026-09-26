@@ -627,7 +627,7 @@ RA8_INTERNAL static ra8_err_t internal_validate_body(stream_validate_t* ctx)
   return err;
 }
 
-ra8_err_t book_validate_stream_strict(book_stream_read_fn read,
+ra8_err_t book_validate_stream_strict(ra8_vsource_read_fn read,
                                       void*               read_ctx,
                                       uint64_t            source_size,
                                       uint8_t*            scratch,

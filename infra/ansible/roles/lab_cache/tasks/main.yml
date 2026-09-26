@@ -1,0 +1,66 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Brighton Sikarskie
+---
+- name: Ensure apt-cacher-ng and nginx packages are installed
+  ansible.builtin.apt:
+    name:
+      - apt-cacher-ng
+      - nginx
+      - curl
+      - ca-certificates
+    state: present
+    update_cache: yes
+    cache_valid_time: 3600
+
+- name: Deploy apt-cacher-ng configuration
+  ansible.builtin.template:
+    src: acng.conf.j2
+    dest: /etc/apt-cacher-ng/acng.conf
+    owner: root
+    group: root
+    mode: "0644"
+  notify: Restart apt-cacher-ng
+
+- name: Ensure artifact cache directory exists
+  ansible.builtin.file:
+    path: "{{ lab_cache_dir }}"
+    state: directory
+    owner: www-data
+    group: www-data
+    mode: "0755"
+
+- name: Deploy Nginx artifact cache configuration
+  ansible.builtin.template:
+    src: nginx-lab-cache.conf.j2
+    dest: /etc/nginx/sites-available/ra8-lab-cache
+    owner: root
+    group: root
+    mode: "0644"
+  notify: Restart nginx
+
+- name: Enable Nginx artifact cache site
+  ansible.builtin.file:
+    src: /etc/nginx/sites-available/ra8-lab-cache
+    dest: /etc/nginx/sites-enabled/ra8-lab-cache
+    state: link
+  notify: Restart nginx
+
+- name: Ensure services are enabled and running
+  ansible.builtin.service:
+    name: "{{ item }}"
+    state: started
+    enabled: yes
+  loop:
+    - apt-cacher-ng
+    - nginx
+
+- name: Pre-seed pinned artifacts into local cache
+  ansible.builtin.get_url:
+    url: "{{ item.url }}"
+    dest: "{{ lab_cache_dir }}/{{ item.name }}"
+    checksum: "{{ item.checksum if item.checksum != '' else omit }}"
+    mode: "0644"
+    owner: www-data
+    group: www-data
+  loop: "{{ lab_cache_artifacts }}"
+  ignore_errors: yes

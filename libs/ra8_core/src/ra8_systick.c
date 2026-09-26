@@ -5,8 +5,9 @@
  * @details
  * Implements ::ra8_systick.h against the Arm v8-M System Control Space (PPB
  * window 0xE000Exxx). SysTick is programmed through SYST_CSR / SYST_RVR /
- * SYST_CVR; the DWT free-running cycle counter is unlocked via DEMCR.TRCENA,
- * started via DWT_CTRL.CYCCNTENA, and sampled from DWT_CYCCNT.
+ * SYST_CVR; the DWT free-running cycle counter is unlocked through
+ * ::ra8_scb_trace_enable (the single owner of DEMCR.TRCENA, see #588), started
+ * via DWT_CTRL.CYCCNTENA, and sampled from DWT_CYCCNT.
  *
  * These are Arm-architecture registers, so the inline comments reference the
  * Arm v8-M Architecture Reference Manual (the "Arm v8-M ARM") rather than the
@@ -28,6 +29,7 @@
 #include "ra8_check.h"
 #include "ra8_err.h"
 #include "ra8_log.h"
+#include "ra8_scb.h"
 
 /** @brief Module log tag. */
 static const char* const s_tag = "ra8_systick";
@@ -44,22 +46,20 @@ typedef enum : uintptr_t {
   k_ra8_systick_csr = 0xE000E010UL, /**< SYST_CSR control and status.      */
   k_ra8_systick_rvr = 0xE000E014UL, /**< SYST_RVR reload value.            */
   k_ra8_systick_cvr = 0xE000E018UL, /**< SYST_CVR current value.           */
-  k_ra8_dwt_demcr   = 0xE000EDFCUL, /**< DEMCR: bit 24 TRCENA unlocks DWT. */
   k_ra8_dwt_ctrl    = 0xE0001000UL, /**< DWT_CTRL: bit 0 CYCCNTENA.        */
   k_ra8_dwt_cyccnt  = 0xE0001004UL, /**< DWT_CYCCNT free-running counter.  */
 } ra8_systick_reg_addr_t;
 
 /**
  * @enum ra8_systick_bit_t
- * @brief Control bits for SYST_CSR, DEMCR, and DWT_CTRL.
- * @details Arm v8-M ARM register descriptions for SYST_CSR, DEMCR, and
- * DWT_CTRL.
+ * @brief Control bits for SYST_CSR and DWT_CTRL.
+ * @details Arm v8-M ARM register descriptions for SYST_CSR and DWT_CTRL.
+ *          DEMCR.TRCENA is deliberately absent: ::ra8_scb owns that bit.
  */
 typedef enum : uint32_t {
   k_ra8_systick_csr_enable    = 0x00000001UL, /**< SYST_CSR.ENABLE (bit 0).    */
   k_ra8_systick_csr_tickint   = 0x00000002UL, /**< SYST_CSR.TICKINT (bit 1).   */
   k_ra8_systick_csr_clksource = 0x00000004UL, /**< SYST_CSR.CLKSOURCE (bit 2). */
-  k_ra8_dwt_demcr_trcena      = 0x01000000UL, /**< DEMCR.TRCENA (bit 24).      */
   k_ra8_dwt_ctrl_cyccntena    = 0x00000001UL, /**< DWT_CTRL.CYCCNTENA (bit 0). */
 } ra8_systick_bit_t;
 
@@ -168,8 +168,11 @@ uint32_t ra8_systick_current_value(void)
 void ra8_dwt_cyccnt_enable(void)
 {
   /* Arm v8-M ARM: DEMCR.TRCENA unlocks the DWT unit; DWT_CTRL.CYCCNTENA then
-   * starts DWT_CYCCNT. Read-modify-write preserves any other trace bits. */
-  *internal_systick_reg(k_ra8_dwt_demcr) |= (uint32_t)k_ra8_dwt_demcr_trcena;
+   * starts DWT_CYCCNT. TRCENA has exactly one writer in the tree -- ra8_scb,
+   * which owns the debug/trace gate -- so delegate the unlock rather than
+   * poking DEMCR a second time here (#588). Both are read-modify-write, so any
+   * other trace bits already set are preserved. */
+  ra8_scb_trace_enable();
   *internal_systick_reg(k_ra8_dwt_ctrl) |= (uint32_t)k_ra8_dwt_ctrl_cyccntena;
 }
 

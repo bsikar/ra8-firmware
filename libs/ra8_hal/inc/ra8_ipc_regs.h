@@ -3,6 +3,9 @@
  * @brief Inter-Processor Communication (IPC) register layout for the RA8D2
  * @ingroup grp_hal_system
  *
+ * @par Tag
+ * [Ring 3 / HAL] {World: NS}
+ *
  * @details
  * The RA8D2 hosts two CPU cores (Cortex-M85 / "CPU0" and Cortex-M33 /
  * "CPU1") connected by a single IPC peripheral block. The block is

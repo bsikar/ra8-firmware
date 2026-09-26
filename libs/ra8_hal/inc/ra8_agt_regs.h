@@ -3,6 +3,9 @@
  * @brief Asynchronous General-Purpose Timer (AGT) register layout for RA8D2
  * @ingroup grp_hal_timers
  *
+ * @par Tag
+ * [Ring 3 / HAL] {World: NS}
+ *
  * @details
  * The AGT is a 16-bit down-counter typically used as a tick timer or
  * a low-power wakeup source. RA8D2 has AGTX0..AGTX9 at `0x40221000`

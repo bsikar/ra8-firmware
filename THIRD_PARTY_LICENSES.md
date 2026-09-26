@@ -10,9 +10,15 @@ companion to the machine-readable SBOM at
 [`docs/sbom/ra8-firmware.cdx.json`](docs/sbom/ra8-firmware.cdx.json) and to
 the per-component qualification catalog under [`docs/SOUP/`](docs/SOUP/).
 
-Both this file and the SBOM are generated/checked from one registry in
-[`scripts/gen/gen_sbom.py`](scripts/gen/gen_sbom.py); when you re-vendor
-a component, update that registry and run `just quality::local::sbom`.
+The SBOM is generated from one registry,
+[`scripts/gen/sbom_registry.py`](scripts/gen/sbom_registry.py), by
+[`scripts/gen/gen_sbom.py`](scripts/gen/gen_sbom.py). This file is
+hand-maintained against that same registry rather than generated from it, and
+[`scripts/checks/check_soup_inventory.py`](scripts/checks/check_soup_inventory.py)
+cross-checks the two so the registry and this inventory cannot drift apart
+unnoticed. When you re-vendor a component, update the registry, update the
+section below, and run `just quality::local::sbom`, which runs the generator
+and that cross-check (#631).
 
 > Closes the aggregation half of recon seed **T5-14** (SOUP-5). The
 > provenance-pinning half, **T5-09** (SOUP-1), is closed too: every vendored
@@ -125,7 +131,7 @@ permitted to differ.
 | LevelX | tag `v6.5.0.202601_rel` `a46b74fb8aa133796ccbc13e7902cb8bb818e12f` | 89/90 | 1 patched (`.gitattributes`) |
 | Mbed TLS | `development` `d12fbb991c0822f347bbc569badef904629ce605` | 252/256 | 1 patched, 3 generated |
 | TF-PSA-Crypto | `development` `bbf1eaf5f4a72bcc3e0cfe854e0313c93b75cd77` | 217/222 | 5 generated |
-| Apache NimBLE | tag `nimble_1_10_0_tag` `a7a156f28954819e158b62dd613008f22f9cf73b` | 827/827 | none |
+| Apache NimBLE | tag `nimble_1_10_0_tag` `a7a156f28954819e158b62dd613008f22f9cf73b` | 615/615 | none |
 | litehtml | `8836bc1bc35ca0cfd71dc0386ef841d5cbc3bd5e` | 215/215 | none |
 | miniz | release artifact `miniz-3.0.2.zip`, SHA-256 `ada38db0...5332c5` | 3/3 | none |
 | XZ Embedded | tag `v2024-12-30` `ae63ae3a36ed01724674e8f3d750dc47bf125410` | 11/11 | none (8 relocated) |
@@ -139,8 +145,8 @@ permitted to differ.
 | protobuf-c (nested) | `abc67a11c6db271bedbb9f58be85d6f4e2ea8389` | 3/3 | none |
 | Literata | tag `3.103` `0c2761b727a1b3a7cffd313c37f0f5163dfc7a63` | 1/1 | none (1 relocated) |
 
-**Totals: 19 components, 9150 vendored files, 9133 byte-identical to their
-pinned upstream revision, 17 declared deviations.**
+**Totals: 19 components, 8938 vendored files, 8918 byte-identical to their
+pinned upstream revision, 20 declared deviations.**
 
 ### Why there are no hash values in this table
 
@@ -279,6 +285,11 @@ the vendor process (owner requirement) and are recorded here:
   `tools/vela/README.md`; qualification in
   [`docs/SOUP/vela.md`](docs/SOUP/vela.md). Its output command stream is a build
   input consumed on-device by the vendored TFLite-micro `ethos-u` operator.
+  It carries an SBOM component of its own (`ethos-u-vela`,
+  `pkg:pypi/ethos-u-vela@5.1.0`, provenance `dependency-pinned-lockfile`), so
+  the SBOM-driven `osv-scan` gate queries the pin every week; `gen_sbom.py`
+  fails if the recorded version stops matching the requirement string in
+  `pyproject.toml`.
 
 ---
 

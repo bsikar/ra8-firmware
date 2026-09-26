@@ -28,6 +28,14 @@
 #
 #
 
+# The shipping-image marker (cmake/ra8_production_build.cmake, issue #1085).
+# It is pulled in here because this is the one file BOTH paths that compile
+# first-party library sources include before they create a target: the per-app
+# recipe (cmake/ra8_add_app.cmake) and the archive builder above
+# (cmake/shared_libs/CMakeLists.txt). A ship-only guard inside a library source
+# is therefore armed identically whichever path compiled it.
+include(${CMAKE_CURRENT_LIST_DIR}/ra8_production_build.cmake)
+
 # Canonical universal first-party source list. MUST stay in lockstep with the
 # _ra8_lib_core / _ra8_lib_hal / _ra8_lib_net_pal / _ra8_lib_usb_pal /
 # _ra8_lib_board / _ra8_secure_app globs in cmake/ra8_add_app.cmake -- an app

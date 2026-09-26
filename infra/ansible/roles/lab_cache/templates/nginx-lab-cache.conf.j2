@@ -1,0 +1,21 @@
+# Managed by Ansible (infra/ansible/roles/lab_cache)
+server {
+    listen {{ lab_cache_http_port }} default_server;
+    listen [::]:{{ lab_cache_http_port }} default_server;
+    server_name _;
+
+    root {{ lab_cache_dir }};
+    autoindex on;
+    sendfile on;
+    tcp_nopush on;
+    tcp_nodelay on;
+
+    location / {
+        try_files $uri $uri/ =404;
+    }
+
+    location /health {
+        return 200 "ra8-lab-cache ok\n";
+        add_header Content-Type text/plain;
+    }
+}

@@ -11,6 +11,13 @@
 #
 # or simply `just` in this directory (its justfile points at toolchain-ra8p1).
 #
+# BOARD ra8p1 selects the dedicated libs/ra8_board_ra8p1 layer (issue #226), the
+# same selector npu_smoke and blink_ra8p1 pass. This app is an RA8P1 build
+# (-DRA8_DEVICE_RA8P1 via cmake/toolchain-ra8p1.cmake), so the RA8P1 board's pin
+# map is the correct one; before issue #773 it took the ek_ra8d2 default and
+# compiled against the RA8D2 board header, which only worked because the app
+# touches nothing outside the console subset the two boards share by name.
+#
 # `USES tflite_micro` pulls in cmake/tflite_micro.cmake, which builds the vendored
 # TensorFlow Lite for Microcontrollers runtime (plus the first-party Ethos-U
 # kernel ra8_ethosu_kernel.cc that replaces the vendored Register_ETHOSU stub) as
@@ -36,6 +43,7 @@ include("${_d}/cmake/ra8_add_app.cmake")
 
 ra8_add_app(
   NAME npu_infer
+  BOARD ra8p1
   STACK_BYTES 3072
   USES tflite_micro
   DESCRIPTION "RA8P1 Ethos-U55 inference runtime: quantize + IRQ + TFLite-micro (R7KA8P1KFLCAC)"

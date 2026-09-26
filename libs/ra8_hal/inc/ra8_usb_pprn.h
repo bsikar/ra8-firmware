@@ -3,6 +3,9 @@
  * @brief Native USB device-side Printer class layer
  * @ingroup grp_hal_usb
  *
+ * @par Tag
+ * [Ring 3 / HAL] {World: NS}
+ *
  * @details
  * Glues the device-mode `ra8_usb` controller driver to a USB Printer
  * class function so the EK-RA8D2 enumerates as a uni-directional or

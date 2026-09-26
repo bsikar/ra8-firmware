@@ -3,6 +3,9 @@
  * @brief xSPI / Octo-SPI driver (flash read/program/erase + ID/status)
  * @ingroup grp_hal_memory
  *
+ * @par Tag
+ * [Ring 3 / HAL] {World: S}
+ *
  * @details
  * Driver surface for the RA8D2 xSPI controller in direct-command
  * mode. Supports initialisation at a given link-layer IO width, raw

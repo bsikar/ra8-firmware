@@ -3,6 +3,9 @@
  * @brief Generic Ethernet PHY abstraction (MDIO Clause-22 + auto-neg)
  * @ingroup grp_hal_net
  *
+ * @par Tag
+ * [Ring 3 / HAL] {World: NS}
+ *
  * @details
  * Mirrors the FSP `r_ether_phy` API shape (open / close / chipInit /
  * read / write / startAutoNegotiate / linkPartnerAbilityGet /

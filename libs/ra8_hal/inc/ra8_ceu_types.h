@@ -258,9 +258,19 @@ typedef struct {
  *  - Set `low_pass_filter` to enable the input LPF (CLFCR.LPF=1).
  *  - Set `scale.h_*` or `scale.v_*` non-zero to enable scale-down.
  *
+ * Destination stride: `dst_stride` is the byte pitch written to
+ * CDWDR. Leaving it at zero asks the driver to derive the pitch from
+ * the scaled output width (`scale.h_output_clip`, else
+ * `x_capture_px`, else `width_px`) times `bytes_per_pixel`, which is
+ * the only thing that member is read for. A pixel-format descriptor
+ * that supplies neither is rejected by `ra8_ceu_init` with
+ * `k_ra8_err_invalid_arg`; data-enable fetch carries no pixel pitch
+ * and is exempt.
+ *
  * cppcheck cannot see tests/ so it flags every field as unused;
- * each member is read in `ra8_ceu_init` in
- * `libs/ra8_hal/src/ra8_ceu.c`.
+ * every member is read at open time by `ra8_ceu_init` in
+ * `libs/ra8_hal/src/ra8_ceu.c` or by the register-programming phases
+ * in `libs/ra8_hal/src/ra8_ceu_init_regs.c`.
  */
 typedef struct {
   uint16_t                 width_px;        /**< Captured image width (CMCYR.HCYL).  */
@@ -269,9 +279,9 @@ typedef struct {
   uint16_t                 y_start_px;      /**< CAMOR.VOFST start offset.           */
   uint16_t                 x_capture_px;    /**< CAPWR.HWDTH capture width cycles.   */
   uint16_t                 y_capture_lines; /**< CAPWR.VWDTH capture line count.     */
-  uint16_t                 dst_stride;      /**< Destination stride bytes (CDWDR).   */
+  uint16_t                 dst_stride;      /**< CDWDR stride bytes; 0 = derive it.  */
   uint8_t                  frame_drop;      /**< CAPCR.FDRP[7:0].                    */
-  uint8_t                  bytes_per_pixel; /**< Used to derive scaled stride.       */
+  uint8_t                  bytes_per_pixel; /**< Bytes per output pixel (CDWDR).      */
   uint32_t                 interrupts;      /**< CEIER bitmask (k_ra8_ceu_evt_*).    */
   ra8_ceu_capture_format_t capture_format;  /**< CAMCR.JPG.                          */
   ra8_ceu_capture_mode_t   capture_mode;    /**< CAPCR.CTNCP single/continuous.      */

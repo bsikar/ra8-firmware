@@ -218,6 +218,47 @@ static uint32_t internal_pack_cdocr(const ra8_ceu_config_t* cfg)
   return cdocr;
 }
 
+/**
+ * @brief Output width in pixels after the scale-down filter.
+ *
+ * @details
+ * HUM Ch 60.2.11 "CFSZR : Capture Filter Size Clip Register" p 3653.
+ * The bytes the engine writes per line follow the width that leaves
+ * the filter, not the width that entered it, so a clipping
+ * configuration is measured at scale.h_output_clip. With no clip the
+ * capture window (x_capture_px) governs, and with neither the full
+ * image width does, mirroring the fallback order
+ * priv_ra8_ceu_program_geometry already uses for CAPWR.
+ *
+ * @param[in] cfg Non-NULL descriptor, already validated by the caller.
+ * @return Output width in pixels; zero only when the descriptor
+ *         carries no width at all.
+ *
+ * @pre cfg is non-nullptr.
+ * @post No register or global state is modified.
+ * @note Pure function; thread-safe.
+ * @since 0.1.0
+ */
+RA8_INTERNAL
+static uint16_t internal_output_width_px(const ra8_ceu_config_t* cfg)
+{
+  if (cfg->scale.h_output_clip != 0U) {
+    return cfg->scale.h_output_clip;
+  }
+  if (cfg->x_capture_px != 0U) {
+    return cfg->x_capture_px;
+  }
+  return cfg->width_px;
+}
+
+uint32_t priv_ra8_ceu_min_stride_bytes(const ra8_ceu_config_t* cfg)
+{
+  if (cfg->capture_format == k_ra8_ceu_fmt_data_enable) {
+    return 0U;
+  }
+  return (uint32_t)internal_output_width_px(cfg) * (uint32_t)cfg->bytes_per_pixel;
+}
+
 void priv_ra8_ceu_program_geometry(const ra8_ceu_config_t* cfg)
 {
   if (cfg->capture_format == k_ra8_ceu_fmt_data_enable) {
@@ -267,7 +308,11 @@ void priv_ra8_ceu_program_destination(const ra8_ceu_config_t* cfg)
   *ra8_ceu_reg32(k_ra8_ceu_off_cfszr) = internal_pack_cfszr(cfg);
 
   /* HUM Ch 60.2.12 "CDWDR : Capture Destination Width Register" p 3654 */
-  *ra8_ceu_reg32(k_ra8_ceu_off_cdwdr) = (uint32_t)cfg->dst_stride;
+  uint32_t cdwdr = (uint32_t)cfg->dst_stride;
+  if (cdwdr == 0U) {
+    cdwdr = priv_ra8_ceu_min_stride_bytes(cfg);
+  }
+  *ra8_ceu_reg32(k_ra8_ceu_off_cdwdr) = cdwdr;
 
   /* HUM Ch 60.2.18 "CFWCR : Firewall Operation Control Register" p 3661 */
   *ra8_ceu_reg32(k_ra8_ceu_off_cfwcr) = 0U;

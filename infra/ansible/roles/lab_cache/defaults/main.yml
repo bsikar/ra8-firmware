@@ -1,0 +1,25 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Brighton Sikarskie
+---
+lab_cache_apt_port: 3142
+lab_cache_http_port: 8080
+lab_cache_dir: "/var/lib/ra8-lab/cache"
+lab_cache_bind_address: "0.0.0.0"
+
+# Pinned build artifacts to mirror
+lab_cache_artifacts:
+  - name: "unicorn-2.1.4.tar.gz"
+    url: "https://codeload.github.com/unicorn-engine/unicorn/tar.gz/refs/tags/2.1.4"
+    checksum: "sha256:ea8863f095a0136388694e5a6063afd9bb7650e30243dd6251af59c5ce5601f4"
+  - name: "arm-gnu-toolchain-13.3.rel1-x86_64-arm-none-eabi.tar.xz"
+    url: "https://developer.arm.com/-/media/Files/downloads/gnu/13.3.rel1/binrel/arm-gnu-toolchain-13.3.rel1-x86_64-arm-none-eabi.tar.xz"
+    checksum: "sha256:95c011cee430e64dd6087c75c800f04b9c49832cc1000127a92a97f9c8d83af4"
+  - name: "arm-gnu-toolchain-13.3.rel1-aarch64-arm-none-eabi.tar.xz"
+    url: "https://developer.arm.com/-/media/Files/downloads/gnu/13.3.rel1/binrel/arm-gnu-toolchain-13.3.rel1-aarch64-arm-none-eabi.tar.xz"
+    checksum: "sha256:c8824bffd057afce2259f7618254e840715f33523a3d4e4294f471208f976764"
+  - name: "doxygen-1.16.1.linux.bin.tar.gz"
+    url: "https://github.com/doxygen/doxygen/releases/download/Release_1_16_1/doxygen-1.16.1.linux.bin.tar.gz"
+    checksum: "sha256:a56f885d37e3aae08a99f638d17bbb381224c03a878d9e2dda4f9fa4baf1d8bd"
+  - name: "just-1.40.0-x86_64-pc-windows-msvc.zip"
+    url: "https://github.com/casey/just/releases/download/1.40.0/just-1.40.0-x86_64-pc-windows-msvc.zip"
+    checksum: ""

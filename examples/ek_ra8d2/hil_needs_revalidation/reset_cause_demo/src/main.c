@@ -38,8 +38,8 @@
 
 #include <stdint.h>
 
-#include "ra8_attributes.h"
 #include "ra8_boot_entry.h"
+#include "ra8_check.h"
 #include "ra8_err.h"
 #include "ra8_isr.h"
 #include "ra8_log.h"
@@ -87,43 +87,15 @@ volatile uint32_t g_reset_cause_loop = 0U;
  */
 volatile uint32_t g_reset_cause_initial = 0U;
 
-/**
- * @brief Park the CPU forever in WFI -- used after the SW reset write
- *        or if HAL init fails.
- *
- * @details Compiled into a tight ``WFI`` loop so the chip is idle but
- *          observable from J-Link.
- *
- * @pre Caller has finished any work that must happen before park.
- * @pre IRQs are either disabled or harmless.
- * @post CPU spins in WFI; ``g_reset_cause_loop`` is no longer advancing.
- * @post No further C-level state changes.
- *
- * @note Not thread-safe (single CPU).
- * @since 0.1.0
- */
-RA8_INTERNAL static void internal_reset_cause_panic_halt(void)
-{
-  while (1) {
-    __asm__ volatile("wfi");
-  }
-}
-
 void main(void)
 {
-  if (ra8_time_init(k_reset_cause_cpu_hz_at_reset) != k_ra8_ok) {
-    internal_reset_cause_panic_halt();
-  }
+  RA8_BOOT_REQUIRE(ra8_time_init(k_reset_cause_cpu_hz_at_reset), "time_init");
   ra8_isr_globals_enable();
 
-  if (ra8_reset_init() != k_ra8_ok) {
-    internal_reset_cause_panic_halt();
-  }
+  RA8_BOOT_REQUIRE(ra8_reset_init(), "reset_init");
 
   ra8_reset_cause_t cause = k_ra8_reset_cause_unknown;
-  if (ra8_reset_get_cause(&cause) != k_ra8_ok) {
-    internal_reset_cause_panic_halt();
-  }
+  RA8_BOOT_REQUIRE(ra8_reset_get_cause(&cause), "reset_get_cause");
   g_reset_cause_initial = (uint32_t)cause;
   ra8_log_info_val("reset_cause_demo", "boot cause", (uint32_t)cause);
 
@@ -132,7 +104,7 @@ void main(void)
      * gate validates. ra8_reset_software_reset does not return on target. */
     ra8_delay_ms(k_reset_cause_settle_ms);
     ra8_reset_software_reset();
-    internal_reset_cause_panic_halt();
+    ra8_fatal_error("BOOT", "software_reset returned", (uint32_t)k_ra8_err_invalid_state);
   }
 
   /* Post-reset boot: cause == software. Advance the HIL counter so

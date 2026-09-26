@@ -472,6 +472,38 @@ RA8_INTERNAL static void internal_test_events(void)
   TEST_ASSERT_EQ(k_c6m_chip_id, quiet.chip_id);
   TEST_ASSERT(ra8_c6_model()->caps_seen);
 
+  /* #594: a momentarily quiet co-processor is not an absent one. The pump
+     abandons a run after k_ra8_c6link_hs_giveup quiet HANDSHAKE waits, each
+     k_ra8_c6link_hs_wait_ms long and sampled every k_ra8_c6link_hs_poll_ms, so
+     that whole first announcement clocks nothing and the probe is never
+     reached. Script exactly that many quiet samples and readiness must still be
+     established on the retry, with the capabilities frame sent once. */
+  priv_c6link_test_reset();
+  const uint16_t polls_per_wait = (uint16_t)k_ra8_c6link_hs_wait_ms / (uint16_t)k_ra8_c6link_hs_poll_ms;
+  ra8_c6_model()->hs_quiet_polls =
+    (uint16_t)(polls_per_wait * (uint16_t)k_ra8_c6link_hs_giveup);
+  ra8_c6link_fw_version_t busy = {};
+  TEST_ASSERT_EQ(k_ra8_ok,
+                 ra8_c6link_await_ready(priv_c6link_test_link(),
+                                        (uint16_t)k_ra8_c6link_announce_transfers,
+                                        &busy));
+  TEST_ASSERT_EQ(0, ra8_c6_model()->hs_quiet_polls);
+  TEST_ASSERT_EQ(k_c6m_chip_id, busy.chip_id);
+  TEST_ASSERT_EQ(1, ra8_c6_model()->caps_len != 0U ? 1 : 0);
+  TEST_ASSERT(ra8_c6_model()->caps_seen);
+
+  /* And the bound holds the other way: a co-processor that stays quiet past
+     every attempt is still reported absent rather than retried forever. */
+  priv_c6link_test_reset();
+  ra8_c6_model()->handshake     = false;
+  ra8_c6link_fw_version_t absent = {};
+  TEST_ASSERT_EQ(k_ra8_err_hw_timeout,
+                 ra8_c6link_await_ready(priv_c6link_test_link(),
+                                        (uint16_t)k_ra8_c6link_announce_transfers,
+                                        &absent));
+  TEST_ASSERT(!ra8_c6_model()->caps_seen);
+
+  priv_c6link_test_reset();
   TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_c6link_await_ready(nullptr, 2U, &quiet));
   TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_c6link_await_ready(priv_c6link_test_link(), 2U, nullptr));
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg,

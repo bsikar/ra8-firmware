@@ -10,7 +10,8 @@
  * @details
  * Exercises @ref rabook_import_compile_adapter -- the production binding of
  * the import compile seam -- end to end over a real FAT16 volume (RAM block
- * backend, the mem-disk pattern of tests/src/test_rabook_import_m33.c):
+ * backend, the mem-disk pattern of
+ * apps/shared_libs/rabook_import/tests/src/test_rabook_import_m33.c):
  *
  *  - **Byte parity** (the #230 lock-step proof): the parity fixture `.epub` is
  *    compiled through the STREAMED adapter and the emitted `.rabook` is

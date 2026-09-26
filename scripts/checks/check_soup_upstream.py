@@ -57,6 +57,7 @@ from __future__ import annotations
 
 import argparse
 import hashlib
+import re
 import subprocess
 import sys
 import zipfile
@@ -69,6 +70,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "dev"))
 
 from git_environment import isolated_git_environment, trusted_git_executable
 from sbom_registry import (
+    PROV_COMMIT_PINNED,
+    PROV_DEP_PINNED,
     PROV_NOT_VENDORED,
     REGISTRY,
     UPSTREAM_ARCHIVE,
@@ -96,16 +99,23 @@ EXIT_VACUOUS = 2
 # pronounce all of them clean, and a manifest made only of `patch`/`local` rows
 # would prove nothing about upstream at all -- it would record our opinion of
 # our own tree, which is exactly the defect this gate exists to remove.  All
-# three are MEASURED against the live tree. Re-measured 2026-08-22 after the
-# unused XML vendor was removed: 19 components, 9150 vendored files, 9133 of
-# them byte-identical to their pinned upstream revision. The file floors keep enough
-# slack that ordinary re-vendoring does not trip them while sitting far above
-# any plausible collapse; MIN_COMPONENTS has no component slack, so adding or
-# deleting a vendored component is meant to fail here until whoever
-# does it re-measures these three numbers deliberately.
+# three are MEASURED against the live tree. Re-measured 2026-09-17 after the
+# NimBLE prune (#622) dropped 212 never-buildable vendored files: 19 components,
+# 8938 vendored files, 8918 of them byte-identical to their pinned upstream
+# revision. The previous measurement, 2026-08-22 after the unused XML vendor was
+# removed, read 19 / 9150 / 9133 against floors of 9000 / 8900, and the prune put
+# the live tree under that entry floor. The floors move with a DELIBERATE change
+# to the vendored set and keep the same slack as before (roughly 1.5% on entries,
+# 2.5% on upstream-verified), so what they still catch is unchanged: an
+# enumeration that collapsed, not a subset someone chose on purpose and recorded
+# in docs/SOUP/. The file floors keep enough slack that ordinary re-vendoring
+# does not trip them while sitting far above any plausible collapse;
+# MIN_COMPONENTS has no component slack, so adding or deleting a vendored
+# component is meant to fail here until whoever does it re-measures these three
+# numbers deliberately.
 MIN_COMPONENTS = 19
-MIN_ENTRIES = 9000
-MIN_UPSTREAM_VERIFIED = 8900
+MIN_ENTRIES = 8800
+MIN_UPSTREAM_VERIFIED = 8700
 
 GIT_TIMEOUT_S = 900
 FETCH_TIMEOUT_S = 300
@@ -116,8 +126,15 @@ class VacuousScanError(Exception):
 
 
 def vendored_components() -> tuple[Component, ...]:
-    """Return every registry entry that is actually vendored in this tree."""
-    return tuple(comp for comp in REGISTRY if comp.provenance != PROV_NOT_VENDORED)
+    """Return every registry entry that is actually vendored in this tree.
+
+    Two provenance classes have no vendored bytes and therefore no upstream
+    manifest to prove: ``PROV_NOT_VENDORED`` (absent from the tree) and
+    ``PROV_DEP_PINNED`` (an external build dependency pinned in a lockfile,
+    whose pin is checked by ``gen_sbom.py`` instead).
+    """
+    excluded = (PROV_NOT_VENDORED, PROV_DEP_PINNED)
+    return tuple(comp for comp in REGISTRY if comp.provenance not in excluded)
 
 
 def blob_id(data: bytes) -> str:
@@ -255,6 +272,157 @@ def _component_errors(comp: Component, root: Path) -> tuple[list[str], int, int]
         message = f"{comp.key}: manifest records no upstream revision"
         raise VacuousScanError(message)
     return errors, len(manifest.entries), manifest.verified_count()
+
+
+# --------------------------------------------------------------------------- #
+# Release basis -- which NAMED release a commit-pinned snapshot descends from. #
+# --------------------------------------------------------------------------- #
+# A bare commit pin says what bytes we vendored and nothing about where they
+# sit in upstream's release history, so `version="4.1.0"` beside
+# `upstream_commit=d12fbb99` reads as "this is release 4.1.0" when the tree is
+# actually 4.1.0 plus 72 unreleased development commits.  The probe in
+# gen_sbom.py ties the registry version to the vendored version MACRO, which is
+# the snapshot's own claim about itself; nothing tied either to upstream's tag
+# graph, and nothing could tell a tag pin from a post-tag snapshot (#804).
+#
+# So a component may DECLARE its release basis, and these rules hold the
+# declaration to the rest of the record.  What they cannot do offline is prove
+# the ancestry itself: that measurement is upstream's to answer and is recorded
+# in docs/SOUP/<key>.md with the date it was taken.  What they do prove is that
+# the declaration, the registry version, the purl and the SOUP prose cannot
+# drift apart one edit at a time, which is how the four of them disagreed in
+# the first place.
+SOUP_DOC_DIR = "docs/SOUP"
+
+# The one legal form of the prose claim.  Matched whitespace-insensitively over
+# the whole document, because the sentence wraps in every one of these files
+# and a line-anchored tie is one a re-wrap switches off silently (precedent:
+# the floor claim sites in check_tree_coverage.py).
+BASIS_CLAIM_FORM = (
+    "- **Release basis**: `{tag}` (`{basis_short}`) plus {distance} commits. "
+    "The vendored pin `{pin_short}` is a post-tag development snapshot, not "
+    "the release."
+)
+BASIS_SHORT_LEN = 12
+
+# Measured 2026-09-17: mbedtls and tf-psa-crypto are the two components whose
+# upstream pin is a bare development commit rather than a tag or an archive.
+# No slack, deliberately: a declaration deleted or a component re-pinned to a
+# tag is meant to fail here until someone re-measures this number on purpose.
+MIN_RELEASE_BASIS = 2
+
+
+def basis_declared(comp: Component) -> bool:
+    """Return True when `comp` declares any part of a release basis."""
+    return (
+        comp.release_basis is not None
+        or comp.release_basis_commit is not None
+        or comp.release_basis_distance is not None
+    )
+
+
+def basis_claim_sentence(comp: Component) -> str:
+    """Render the one legal prose form of `comp`'s release-basis claim."""
+    return BASIS_CLAIM_FORM.format(
+        tag=comp.release_basis,
+        basis_short=str(comp.release_basis_commit)[:BASIS_SHORT_LEN],
+        distance=comp.release_basis_distance,
+        pin_short=str(comp.upstream_commit)[:BASIS_SHORT_LEN],
+    )
+
+
+def _claim_pattern(sentence: str) -> re.Pattern[str]:
+    """Compile `sentence` so any run of whitespace, including a wrap, matches."""
+    return re.compile(r"\s+".join(re.escape(word) for word in sentence.split()))
+
+
+def soup_doc_path(key: str) -> str:
+    """Return the repo-relative SOUP qualification document for `key`."""
+    return f"{SOUP_DOC_DIR}/{key}.md"
+
+
+def _basis_record_failures(comp: Component) -> list[str]:
+    """Check one component's release-basis declaration against its own record."""
+    failures: list[str] = []
+    if None in (comp.release_basis, comp.release_basis_commit, comp.release_basis_distance):
+        failures.append(
+            f"{comp.key}: partial release-basis declaration; tag, commit and distance "
+            "are one claim and must be declared together"
+        )
+        return failures
+    if comp.provenance != PROV_COMMIT_PINNED:
+        failures.append(
+            f"{comp.key}: release basis declared on a '{comp.provenance}' component; "
+            f"only a {PROV_COMMIT_PINNED} pin can sit at a distance from a release"
+        )
+    if comp.upstream_commit is None:
+        failures.append(f"{comp.key}: release basis declared with no upstream_commit to measure")
+    elif comp.upstream_commit == comp.release_basis_commit:
+        failures.append(
+            f"{comp.key}: the pin IS {comp.release_basis}, so it is a tag pin and not a "
+            "post-tag snapshot; drop the release-basis declaration"
+        )
+    if not isinstance(comp.release_basis_distance, int) or comp.release_basis_distance < 1:
+        failures.append(
+            f"{comp.key}: release-basis distance {comp.release_basis_distance!r} is not a "
+            "positive commit count"
+        )
+    tag_version = str(comp.release_basis).lstrip("v")
+    if comp.version != tag_version:
+        failures.append(
+            f"{comp.key}: version '{comp.version}' does not match declared release basis "
+            f"{comp.release_basis}; a snapshot cannot descend from one release and publish another"
+        )
+    if comp.purl is not None and "@" in comp.purl and comp.purl.rsplit("@", 1)[1] != comp.version:
+        failures.append(
+            f"{comp.key}: purl '{comp.purl}' does not carry the recorded version '{comp.version}'"
+        )
+    return failures
+
+
+def _basis_doc_failures(comp: Component, root: Path) -> list[str]:
+    """Check that `comp`'s SOUP document states its release basis verbatim."""
+    rel = soup_doc_path(comp.key)
+    try:
+        text = (root / rel).read_text(encoding="utf-8")
+    except OSError as exc:
+        return [f"{rel}: release-basis claim site unreadable ({exc.strerror})"]
+    if _claim_pattern(basis_claim_sentence(comp)).search(text) is None:
+        return [
+            f"{rel}: does not state {comp.key}'s declared release basis in the legal form -- "
+            f"expected: {basis_claim_sentence(comp)}"
+        ]
+    return []
+
+
+def release_basis_failures(
+    comps: tuple[Component, ...] | None = None,
+    root: Path = REPO_ROOT,
+    floor: int = MIN_RELEASE_BASIS,
+) -> list[str]:
+    """Return every release-basis inconsistency across `comps`.
+
+    Args:
+        comps: Components to check; defaults to the whole registry.
+        root: Repository root holding the SOUP claim sites.
+        floor: Minimum number of declaring components; 0 disables the floor,
+            which only the selftest's fixtures do.
+
+    Returns:
+        One human-readable failure per inconsistency, empty when clean.
+    """
+    comps = REGISTRY if comps is None else comps
+    declaring = tuple(comp for comp in comps if basis_declared(comp))
+    failures: list[str] = []
+    for comp in declaring:
+        failures.extend(_basis_record_failures(comp))
+        failures.extend(_basis_doc_failures(comp, root))
+    if len(declaring) < floor:
+        failures.append(
+            f"only {len(declaring)} component(s) declare a release basis, floor is {floor}; "
+            "a deleted declaration must not read as a tree with no snapshot pins"
+        )
+    return failures
 
 
 def run_check(
@@ -671,6 +839,16 @@ def main(argv: list[str]) -> int:
         from soup_selftest import run_selftest  # noqa: PLC0415  # selftest-only import
 
         return run_selftest()
+    basis = release_basis_failures()
+    if basis:
+        for failure in basis:
+            print(f"  ERROR {failure}", file=sys.stderr)
+        print(
+            f"check_soup_upstream: {len(basis)} release-basis failure(s); the pinned "
+            "snapshots and what the records claim about them disagree.",
+            file=sys.stderr,
+        )
+        return EXIT_FAIL
     if args.refresh or args.verify_upstream:
         return run_refresh(write=args.refresh, only=args.component)
     return run_check()

@@ -28,7 +28,8 @@ import tempfile
 from annot_clang import _first_party_include_roots, cindex
 from annot_loopbound import run_loopbound_selftest
 from annot_model import AnnotatedSymbol, Violation, WalkState
-from annot_rules import enforce_rules
+from annot_rulekeys import ANNOTATION_PREFIXES, check_rule_coverage
+from annot_rules import RULE_CHECKS, enforce_rules
 from annot_scope import discover_translation_units, override_repo_root
 from annot_walk import walk_tu
 
@@ -760,6 +761,66 @@ def _check_include_root_discovery(root: pathlib.Path) -> list[str]:
     return failures
 
 
+def _check_rule_coverage(tmp: pathlib.Path) -> list[str]:
+    """Both directions on the rule-coverage self-check.
+
+    The defect being guarded is a key that is spelled correctly, sits in
+    ANNOTATION_PREFIXES, and reaches no code: ``annot_rules.enforce_rules``
+    looks it up, finds nothing and moves on, so every use of the macro is
+    ignored while the gate prints success. ``ra8_isr_safe`` was in that
+    state across 70 annotated sites while ``ra8_attributes.h`` promised a
+    call-graph walk and the RULE_CHECKS comment listed it among the keys
+    other rules read (issue #1247).
+
+    Asserting only that the real tree is clean would pass just as happily
+    with the check defanged, so the mechanism is driven over a synthetic
+    rule module as well: a key present as a literal counts as read, a key
+    mentioned only in a comment or a docstring does not, and a key declared
+    marker-only stays quiet either way.
+    """
+    failures: list[str] = []
+
+    real = check_rule_coverage(frozenset(RULE_CHECKS))
+    if real:
+        joined = "; ".join(v.message for v in real)
+        failures.append(f"rule coverage fires on the real vocabulary: {joined}")
+
+    fake = tmp / "rulemods"
+    fake.mkdir()
+    (fake / "annot_fake_rules.py").write_text(
+        '"""ra8_validates is named in this docstring and nowhere else."""\n'
+        "# ra8_reviewed_by is read by the rollup below (it is not)\n"
+        'RULES = {"ra8_no_recursion": None}\n'
+        'MSG = f"ra8_owns_resource:{0}"\n'
+    )
+    modules = sorted(fake.glob("annot_*.py"))
+    found = check_rule_coverage(frozenset(), modules=modules)
+    reported = {key for key in ANNOTATION_PREFIXES for v in found if f"'{key}'" in v.message}
+    for key in ("ra8_no_recursion", "ra8_owns_resource"):
+        if key in reported:
+            failures.append(
+                f"rule coverage reported '{key}', which the fixture names as a "
+                f"string literal, so a real rule reading a key would be flagged"
+            )
+    for key in ("ra8_reviewed_by", "ra8_validates"):
+        if key not in reported:
+            failures.append(
+                f"rule coverage accepted '{key}' on a comment/docstring mention "
+                f"alone, which is the exact shape of the defect it guards"
+            )
+    if "ra8_isr_safe" in reported:
+        failures.append(
+            "rule coverage reported 'ra8_isr_safe' despite its MARKER_ONLY_RULES "
+            "declaration, so stating a gap cannot be done without failing the gate"
+        )
+    if not check_rule_coverage(frozenset(), modules=[]):
+        failures.append(
+            "rule coverage stayed quiet with no rule modules at all, so a renamed "
+            "or reshaped checker would read as a fully enforced vocabulary"
+        )
+    return failures
+
+
 def run_selftest() -> int:
     """Regression-test the checker itself. Returns a process exit code.
 
@@ -805,6 +866,10 @@ def run_selftest() -> int:
                 state,
                 naming_contract=True,
             )
+        # Outside override_repo_root: the rule-coverage check reads the real
+        # checker sources, which are a fixed part of the repository and are
+        # never re-pointed at the synthetic tree.
+        rule_coverage_failures = _check_rule_coverage(root)
 
     failures = [
         *_check_priv_namesakes(violations, state.symbols),
@@ -815,6 +880,7 @@ def run_selftest() -> int:
         *_check_fixtures_parsed(state.symbols),
         *_check_generated_scope(state.symbols),
         *include_root_failures,
+        *rule_coverage_failures,
         # The loop-bound scan is textual and libclang-free, so it self-tests on
         # synthetic source strings rather than the parsed synthetic tree.
         *run_loopbound_selftest(),
@@ -834,6 +900,8 @@ def run_selftest() -> int:
         "pb-c.c neighbor remains in scope; "
         "recursive inc/ and sanctioned private src/ include roots are discovered; "
         "linkage prefixes agree with static/data scope and their annotations; "
+        "every recognised annotation key is implemented, read by a rule, or "
+        "declared a marker, and a comment or docstring mention does not count; "
         "loop-bound scan fires on a "
         "mis-attached marker and a stale RA8_BOUNDED_LOOP statement, stays quiet on "
         "correct markers and on #define/comment/string mentions)"

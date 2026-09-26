@@ -248,18 +248,32 @@ ra8_c6link_await_ready(ra8_c6link_t* link, uint16_t max_transactions, ra8_c6link
   /* Announce this host first. A co-processor that has just booted services no
      RPC until the host has introduced itself, and one that is already up
      ignores a restatement of capabilities that have not changed -- so sending
-     it unconditionally is both necessary and harmless. */
-  const uint8_t caps =
-    priv_c6link_caps(&link->tx[k_ra8_c6link_header_bytes], (uint8_t)k_ra8_c6link_caps_bytes);
-  if (caps == 0U) {
-    return k_ra8_err_invalid_size;
-  }
-  link->tx_len = (uint16_t)caps;
-  link->tx_if  = (uint8_t)ESP_PRIV_IF;
+     it unconditionally is both necessary and harmless.
 
-  ra8_c6link_stats_t local     = {};
-  const ra8_err_t    announced = priv_c6link_pump(link, max_transactions, &local);
-  link->tx_len                 = 0U;
+     Retried while the pump reports k_ra8_err_hw_timeout, which it returns only
+     when it clocked no transaction at all: the co-processor left HANDSHAKE
+     quiet for k_ra8_c6link_hs_giveup waits, 600 ms, and the probe below was
+     never reached. That is a busy co-processor as often as an absent one
+     (#594), and because nothing was clocked the capabilities frame never went
+     out, so a retry restates nothing. Any other verdict is a real fault and is
+     returned on the spot. */
+  ra8_err_t announced = k_ra8_err_hw_timeout;
+  for (uint16_t attempt = 0U; attempt < (uint16_t)k_ra8_c6link_ready_attempts; attempt++) {
+    const uint8_t caps =
+      priv_c6link_caps(&link->tx[k_ra8_c6link_header_bytes], (uint8_t)k_ra8_c6link_caps_bytes);
+    if (caps == 0U) {
+      return k_ra8_err_invalid_size;
+    }
+    link->tx_len = (uint16_t)caps;
+    link->tx_if  = (uint8_t)ESP_PRIV_IF;
+
+    ra8_c6link_stats_t local = {};
+    announced                = priv_c6link_pump(link, max_transactions, &local);
+    link->tx_len             = 0U;
+    if (announced != k_ra8_err_hw_timeout) {
+      break;
+    }
+  }
   if (announced != k_ra8_ok) {
     return announced;
   }

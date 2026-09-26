@@ -20,9 +20,9 @@
  * (`ra8_jof_produce()` -> `priv_webp_transcode`): a WebP manifest image
  * is decoded whole-frame here and banded into the one normalized band-tile
  * format, so render time touches a single codec regardless of source. The
- * small-image (non-tiled) `ra8_reflow` / `ra8_img` inline raster dispatch does
- * not yet have a WebP arm -- that lands with the #289 longstrip render path; see
- * the `TODO(#289)` seam in ra8_webp.c.
+ * small-image (non-tiled) `reflow` / `ra8_img` inline raster dispatch calls
+ * ra8_webp_get_info() / ra8_webp_decode_rgba() directly instead (#637), so an
+ * inline EPUB illustration takes the same decoder a comic tile does. (#637 feat(reflow): decode inline WebP through the libwebp facade)
  *
  *
  * [Ring 4 / WebP] {World: NS}

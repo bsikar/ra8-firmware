@@ -21,7 +21,7 @@ looks exactly like a clean one.
 The scope now comes from :mod:`lint_targets`, which derives it from
 ``git ls-files`` plus per-file language detection (suffix, well-known basename,
 or ``#!`` shebang).  A new top-level directory is covered the day it is added,
-and an extensionless executable -- the 670-line ``scripts/git/pre-commit``, for
+and an extensionless executable -- the ``scripts/git/commit-msg`` hook, for
 instance -- cannot escape by having no suffix.
 
 Every language ``lint_targets`` calls code is in scope: C/C++, Python, shell,
@@ -203,7 +203,7 @@ def _selftest_cap(cases: tuple) -> list[str]:
                 failures.append(f"  FAIL {description}: expected {expected}, got {got}")
 
         # A shebang script with no suffix is code. This is the case a
-        # suffix-only scope silently drops -- and scripts/git/pre-commit is
+        # suffix-only scope silently drops -- and scripts/git/commit-msg is
         # 677 lines of exactly it.
         hook = root / "pre-commit-like"
         hook.write_text("#!/usr/bin/env bash\n" + "x\n" * (THRESHOLD_LINES + 1))
