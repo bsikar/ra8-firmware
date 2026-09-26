@@ -23,6 +23,7 @@
 #include "mdl_urlname.h"
 #include "miniz.h"
 #include "ra8_attributes.h"
+#include "ra8_xml_writer.h"
 
 /* --- EPUB (self-contained: a valid EPUB3 of the page images via miniz) ---- */
 
@@ -354,7 +355,7 @@ RA8_INTERNAL static ra8_err_t internal_epub_write_page_xhtml(mz_zip_archive* zip
                                                              char*           esc,
                                                              size_t          esc_cap)
 {
-  if (!mdl_xml_escape(name, esc, esc_cap)) {
+  if (ra8_xml_escape(name, esc, esc_cap) != k_ra8_ok) {
     return k_ra8_fail; /* untrusted filename must not break the container XML */
   }
   char      xhtml[k_epub_xhtml_max];

@@ -20,6 +20,7 @@
 #include "mdl_sanitize.h"
 #include "miniz.h"
 #include "ra8_attributes.h"
+#include "ra8_xml_writer.h"
 
 /** @brief Bounded EPUB text expansion sizes. */
 typedef enum : uint16_t {
@@ -175,7 +176,7 @@ RA8_INTERNAL static void internal_epub_prepare_creators(const mdl_export_meta_t*
   if (meta->writer[0] != '\0') {
     char escaped[k_mdl_meta_name_max * 6U];
     char fragment[(k_mdl_meta_name_max * 6U) + k_epub_fragment_slack];
-    (void)mdl_xml_escape(meta->writer, escaped, sizeof(escaped));
+    (void)ra8_xml_escape(meta->writer, escaped, sizeof(escaped));
     (void)
       snprintf(fragment, sizeof(fragment), "<dc:creator opf:role=\"aut\">%s</dc:creator>", escaped);
     (void)priv_mdl_epub_str_cat(text->creators, sizeof(text->creators), fragment);
@@ -183,7 +184,7 @@ RA8_INTERNAL static void internal_epub_prepare_creators(const mdl_export_meta_t*
   if (meta->artist[0] != '\0') {
     char escaped[k_mdl_meta_name_max * 6U];
     char fragment[(k_mdl_meta_name_max * 6U) + k_epub_fragment_slack];
-    (void)mdl_xml_escape(meta->artist, escaped, sizeof(escaped));
+    (void)ra8_xml_escape(meta->artist, escaped, sizeof(escaped));
     (void)
       snprintf(fragment, sizeof(fragment), "<dc:creator opf:role=\"art\">%s</dc:creator>", escaped);
     (void)priv_mdl_epub_str_cat(text->creators, sizeof(text->creators), fragment);
@@ -214,7 +215,7 @@ RA8_INTERNAL static ra8_err_t internal_epub_prepare_optional(const mdl_export_me
   text->description[0] = '\0';
   if (meta->summary[0] != '\0') {
     char escaped[k_mdl_meta_summary_max * 6U];
-    (void)mdl_xml_escape(meta->summary, escaped, sizeof(escaped));
+    (void)ra8_xml_escape(meta->summary, escaped, sizeof(escaped));
     (void)snprintf(text->description,
                    sizeof(text->description),
                    "<dc:description>%s</dc:description>",
@@ -223,7 +224,7 @@ RA8_INTERNAL static ra8_err_t internal_epub_prepare_optional(const mdl_export_me
   text->source[0] = '\0';
   if (meta->source_url[0] != '\0') {
     char escaped[k_mdl_meta_url_max * 6U];
-    if (!mdl_xml_escape(meta->source_url, escaped, sizeof(escaped))) {
+    if (ra8_xml_escape(meta->source_url, escaped, sizeof(escaped)) != k_ra8_ok) {
       return k_ra8_err_invalid_size;
     }
     const int written =
@@ -259,9 +260,9 @@ RA8_INTERNAL static ra8_err_t internal_epub_prepare_text(const mdl_export_meta_t
   } else {
     internal_generate_uuid(raw_id, sizeof(raw_id), meta);
   }
-  if (!mdl_xml_escape(raw_id, text->identifier, sizeof(text->identifier)) ||
-      !mdl_xml_escape(meta->language, text->language, sizeof(text->language)) ||
-      !mdl_xml_escape(meta->modified, text->modified, sizeof(text->modified))) {
+  if ((ra8_xml_escape(raw_id, text->identifier, sizeof(text->identifier)) != k_ra8_ok) ||
+      (ra8_xml_escape(meta->language, text->language, sizeof(text->language)) != k_ra8_ok) ||
+      (ra8_xml_escape(meta->modified, text->modified, sizeof(text->modified)) != k_ra8_ok)) {
     return k_ra8_err_invalid_size;
   }
   const char* raw_title;
@@ -272,7 +273,7 @@ RA8_INTERNAL static ra8_err_t internal_epub_prepare_text(const mdl_export_meta_t
   } else {
     raw_title = "chapter";
   }
-  if (!mdl_xml_escape(raw_title, text->title, sizeof(text->title))) {
+  if (ra8_xml_escape(raw_title, text->title, sizeof(text->title)) != k_ra8_ok) {
     (void)snprintf(text->title, sizeof(text->title), "chapter");
   }
   text->progression = (meta->reading_direction == k_mdl_read_rtl) ? "rtl" : "ltr";

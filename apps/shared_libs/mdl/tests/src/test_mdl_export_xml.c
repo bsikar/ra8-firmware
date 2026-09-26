@@ -21,6 +21,7 @@
 #include "mdl_test_storage.h"
 #include "miniz.h"
 #include "ra8_attributes.h"
+#include "ra8_xml_writer.h"
 #include "test_mdl_export_xml_internal.h"
 #include "unity_minimal.h"
 
@@ -255,12 +256,12 @@ RA8_INTERNAL static void internal_test_xml_escape(void)
 {
   TEST_BEGIN("xml escape");
   char out[k_xml_escape_bytes];
-  TEST_ASSERT(mdl_xml_escape("a&b<c>\"'", out, sizeof(out)));
+  TEST_ASSERT(ra8_xml_escape("a&b<c>\"'", out, sizeof(out)) == k_ra8_ok);
   TEST_ASSERT(strcmp(out, "a&amp;b&lt;c&gt;&quot;&apos;") == 0);
-  TEST_ASSERT(mdl_xml_escape("page_001.jpg", out, sizeof(out))); /* legal name kept */
+  TEST_ASSERT(ra8_xml_escape("page_001.jpg", out, sizeof(out)) == k_ra8_ok); /* legal name kept */
   TEST_ASSERT(strcmp(out, "page_001.jpg") == 0);
   char tiny[4];
-  TEST_ASSERT(!mdl_xml_escape("&&&", tiny, sizeof(tiny))); /* would not fit -> fail */
+  TEST_ASSERT(ra8_xml_escape("&&&", tiny, sizeof(tiny)) == k_ra8_err_no_mem); /* refused, not cut */
   TEST_END("xml escape");
 }
 
