@@ -50,29 +50,6 @@
 void mdl_urlname_last_segment(const char* url, char* out, size_t cap);
 
 /**
- * @brief Parse a chapter URL's integral chapter number.
- *
- * @details
- * Recognises chapter slugs such as `chapter-137`, `chapter-108-5`, and `ch-5`.
- * Decimal slugs return their integral part here; use
- * ::mdl_urlname_chapter_value when ordering decimal chapters.
- *
- * @param[in] url URL to parse (never NULL).
- *
- * @return The parsed chapter number, or 0 when the URL holds no digits.
- * @retval 0 No decimal digit appears in @p url.
- *
- * @pre @p url is non-NULL and NUL-terminated.
- * @pre The caller treats 0 as "unnumbered", not "chapter zero" specifically.
- * @post @p url is not modified.
- * @post The result is the integral truncation of ::mdl_urlname_chapter_value.
- *
- * @note Thread-safe: depends only on its argument.
- * @since 0.1.0
- */
-long mdl_urlname_chapter_number(const char* url);
-
-/**
  * @brief Parse an explicitly-marked integral or decimal chapter value.
  *
  * @details Recognises `chapter-N`, `/ch-N`, and Pepper&Carrot-style `/epN`
@@ -130,8 +107,8 @@ bool mdl_urlname_chapter_text_parse(const char* text, double* out);
  * decimals while ignoring unrelated digits in the host or earlier path.
  *
  * @param[in] url URL to parse; may be NULL.
- * @return Parsed chapter value, or 0.0 for an unnumbered URL. New callers that
- *         must distinguish an absent number from chapter zero use
+ * @return Parsed chapter value, or 0.0 for an unnumbered URL. A caller that
+ *         must distinguish an absent number from chapter zero uses
  *         ::mdl_urlname_chapter_parse.
  * @retval 0.0 No explicit bounded chapter marker was found.
  * @retval other The non-negative integral or decimal chapter value.
