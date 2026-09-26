@@ -15,7 +15,7 @@
 #include <string.h>
 
 #include "mdl_stream_internal.h"
-#include "mdl_url_guard.h"
+#include "ra8_net_urlguard.h"
 #include "ra8_attributes.h"
 
 /** @brief robots.txt fetch tunables. */
@@ -293,7 +293,7 @@ bool mdl_session_url_allowed(mdl_session_t* session, const char* url, uint32_t* 
     return false;
   }
   char host[k_mdl_robots_host_max];
-  if (!mdl_url_host(url, host, sizeof(host))) {
+  if (ra8_net_urlguard_host(url, host, sizeof(host)) != k_ra8_ok) {
     (void)priv_mdl_stream_text(k_ra8_ok,
                                session->diagnostic,
                                "mdl: cannot identify URL origin for robots.txt; refusing\n");

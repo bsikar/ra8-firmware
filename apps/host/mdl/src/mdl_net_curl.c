@@ -30,7 +30,7 @@
 #include "mdl_net.h"
 #include "mdl_net_curl_internal.h"
 #include "mdl_net_internal.h"
-#include "mdl_url_guard.h"
+#include "ra8_net_urlguard.h"
 #include "ra8_attributes.h"
 
 /** @brief Backend tunables. */
@@ -256,7 +256,8 @@ RA8_PRIV size_t priv_mdl_net_curl_body_write(char* data, size_t size, size_t nme
     return 0U;
   }
   const size_t bytes = size * nmemb;
-  if ((bytes > (size_t)UINT32_MAX) || mdl_size_exceeds(sink->written, (uint64_t)bytes, sink->cap)) {
+  if ((bytes > (size_t)UINT32_MAX) ||
+      ra8_net_urlguard_size_exceeds(sink->written, (uint64_t)bytes, sink->cap)) {
     sink->overflow = true;
     return 0U;
   }
@@ -296,7 +297,7 @@ RA8_INTERNAL static bool internal_redirect_host_ok(mdl_curl_ctx_t* net)
     return false; /* Security decision cannot be made: fail closed. */
   }
   char host[k_origin_host_max];
-  if (!mdl_url_host(eff, host, sizeof(host))) {
+  if (ra8_net_urlguard_host(eff, host, sizeof(host)) != k_ra8_ok) {
     return false;
   }
   return strcmp(host, net->origin_host) == 0;
@@ -337,8 +338,8 @@ RA8_INTERNAL static int internal_on_prereq(
   if (net == nullptr) {
     return CURL_PREREQFUNC_ABORT;
   }
-  const mdl_addr_class_t cls = mdl_classify_ip(conn_primary_ip);
-  if (!mdl_addr_is_fetchable(cls, net->allow_private)) {
+  const ra8_net_addr_class_t cls = ra8_net_urlguard_classify_ip(conn_primary_ip);
+  if (!ra8_net_urlguard_addr_fetchable(cls, net->allow_private)) {
     return CURL_PREREQFUNC_ABORT;
   }
   if (!internal_redirect_host_ok(net)) {
@@ -558,7 +559,7 @@ RA8_INTERNAL static bool internal_build_req_headers(const mdl_net_req_t* req,
 RA8_INTERNAL static bool
 internal_apply_req(mdl_curl_ctx_t* net, const char* url, const mdl_net_req_t* req)
 {
-  if (!mdl_url_host(url, net->origin_host, sizeof(net->origin_host))) {
+  if (ra8_net_urlguard_host(url, net->origin_host, sizeof(net->origin_host)) != k_ra8_ok) {
     net->origin_host[0] = '\0';
     return false;
   }
@@ -681,7 +682,7 @@ RA8_INTERNAL static ra8_err_t internal_curl_get_buf(void*                ctx,
                                                     mdl_net_resp_t*      resp)
 {
   mdl_curl_ctx_t* net = (mdl_curl_ctx_t*)ctx;
-  if (!mdl_url_scheme_allowed(url)) {
+  if (!ra8_net_urlguard_scheme_allowed(url)) {
     return k_ra8_err_invalid_arg; /* refuse file://, gopher://, ... before curl */
   }
 
@@ -745,7 +746,7 @@ RA8_INTERNAL static ra8_err_t internal_curl_get_body(void*                ctx,
                                                      mdl_net_resp_t*      resp)
 {
   mdl_curl_ctx_t* net = (mdl_curl_ctx_t*)ctx;
-  if (!mdl_url_scheme_allowed(url)) {
+  if (!ra8_net_urlguard_scheme_allowed(url)) {
     return k_ra8_err_invalid_arg;
   }
 

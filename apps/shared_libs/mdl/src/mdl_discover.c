@@ -16,7 +16,7 @@
 #include "mdl_net.h"
 #include "mdl_search.h"
 #include "mdl_stream_internal.h"
-#include "mdl_url_guard.h"
+#include "ra8_net_urlguard.h"
 #include "ra8_attributes.h"
 #include "ra8_err.h"
 
@@ -189,7 +189,8 @@ RA8_INTERNAL static ra8_err_t internal_discover_fetch(const mdl_discover_req_t* 
     return k_ra8_fail; /* robots refused (message already printed) */
   }
   char                hostbuf[k_mdl_gov_host_max];
-  const char*         host = mdl_url_host(url, hostbuf, sizeof(hostbuf)) ? hostbuf : nullptr;
+  const char*         host =
+    (ra8_net_urlguard_host(url, hostbuf, sizeof(hostbuf)) == k_ra8_ok) ? hostbuf : nullptr;
   const uint32_t      jmin = internal_max_u32(req->site->chapter_delay_min, crawl);
   const uint32_t      jmax = internal_max_u32(req->site->chapter_delay_max, crawl);
   const mdl_net_req_t nreq = {.user_agent = req->session->user_agent,
