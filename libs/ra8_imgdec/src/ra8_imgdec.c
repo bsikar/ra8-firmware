@@ -119,12 +119,12 @@ RA8_INTERNAL static ra8_err_t internal_check_req(const ra8_imgdec_req_t* req) {
  * @brief Check the request against what the backend actually advertised.
  */
 RA8_INTERNAL static ra8_err_t internal_check_against_caps(const ra8_imgdec_req_t*  req,
-                                                          const ra8_imgdec_caps_t* caps) {
+                                                          const ra8_imgdec_caps_t* caps,
+                                                          ra8_imgdec_format_t      format) {
   if ((((uint32_t)req->want) & caps->pixels) == 0U) {
     return k_ra8_err_not_supported;
   }
-  if ((req->format != k_ra8_imgdec_format_none) &&
-      ((((uint32_t)req->format) & caps->formats) == 0U)) {
+  if ((((uint32_t)format) & caps->formats) == 0U) {
     return k_ra8_err_not_supported;
   }
 
@@ -143,6 +143,37 @@ RA8_INTERNAL static ra8_err_t internal_check_against_caps(const ra8_imgdec_req_t
   if (remaining < caps->scratch_bytes) {
     return k_ra8_err_no_mem;
   }
+  return k_ra8_ok;
+}
+
+/**
+ * @brief Settle which container the request is about, sniffing when it must.
+ *
+ * @details A declared format is taken as given: ::internal_check_req has
+ * already proven it names one defined bit, and the capability gate is what
+ * decides whether the backend opens it. ::k_ra8_imgdec_format_none is resolved
+ * here rather than in the backend, so that every backend is handed a request
+ * naming exactly one format it advertised, and so that a buffer carrying no
+ * recognised signature is refused once, in one place, rather than differently
+ * by each decoder. A sniff that finds nothing is ::k_ra8_err_not_supported:
+ * the seam cannot open these bytes, which is what the caller needs to know.
+ */
+RA8_INTERNAL static ra8_err_t internal_resolve_format(const ra8_imgdec_req_t* req,
+                                                      ra8_imgdec_format_t*    out) {
+  *out = k_ra8_imgdec_format_none;
+
+  if (req->format != k_ra8_imgdec_format_none) {
+    *out = req->format;
+    return k_ra8_ok;
+  }
+
+  ra8_imgdec_format_t sniffed = k_ra8_imgdec_format_none;
+  const ra8_err_t     err     = ra8_imgdec_sniff(req->bytes, req->byte_count, &sniffed);
+  if (err != k_ra8_ok) {
+    return k_ra8_err_not_supported;
+  }
+
+  *out = sniffed;
   return k_ra8_ok;
 }
 
@@ -224,12 +255,21 @@ ra8_imgdec_decode(const ra8_imgdec_t* dec, const ra8_imgdec_req_t* req, ra8_imgd
     return req_err;
   }
 
-  const ra8_err_t gate_err = internal_check_against_caps(req, &caps);
+  ra8_imgdec_format_t format      = k_ra8_imgdec_format_none;
+  const ra8_err_t     format_err  = internal_resolve_format(req, &format);
+  if (format_err != k_ra8_ok) {
+    return format_err;
+  }
+
+  const ra8_err_t gate_err = internal_check_against_caps(req, &caps, format);
   if (gate_err != k_ra8_ok) {
     return gate_err;
   }
 
-  const ra8_err_t err = dec->iface->decode(dec->ctx, req, out);
+  ra8_imgdec_req_t resolved = *req;
+  resolved.format           = format;
+
+  const ra8_err_t err = dec->iface->decode(dec->ctx, &resolved, out);
   if (err != k_ra8_ok) {
     internal_clear_image(out);
   }

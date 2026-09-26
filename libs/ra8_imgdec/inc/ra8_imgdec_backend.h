@@ -18,14 +18,17 @@
  * - `req`, `req->bytes`, `req->dst` and `out` are non-NULL;
  * - `req->byte_count` and `req->dst_bytes` are non-zero;
  * - `req->want` is exactly one pixel bit the backend advertised;
- * - `req->format` is either ::k_ra8_imgdec_format_none or exactly one format
- *   bit the backend advertised;
+ * - `req->format` names exactly one format bit the backend advertised, never
+ *   ::k_ra8_imgdec_format_none: a request that left the format unstated was
+ *   sniffed by the fabric with ::ra8_imgdec_sniff() and refused before this
+ *   call if nothing matched, so the backend is told which container it holds;
  * - `req->dst_stride` is either 0 or at least one pixel wide;
  * - `req->arena` is non-NULL whenever `caps.scratch_bytes` is non-zero, and
  *   that arena has at least `caps.scratch_bytes` remaining.
  *
  * @par What the backend still owns
- * Sniffing the container when `format` is `_none`, refusing an image wider or
+ * Verifying that the container really is what the signature claimed (the sniff
+ * reads a signature, never the rest of the file), refusing an image wider or
  * taller than the `dim_max` it advertised, refusing a `dst` too small for the
  * decoded surface, and filling every field of `*out`.
  *

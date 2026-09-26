@@ -47,8 +47,9 @@
  *
  * It defines the seam, the format and pixel vocabulary, the capability record
  * and the request/result pair, and it implements the fabric: argument
- * validation, the capability gate (a backend is never handed a format or a
- * destination pixel layout it did not advertise), and the dispatch. **No
+ * validation, the shared container sniff (::ra8_imgdec_sniff), the capability
+ * gate (a backend is never handed a format or a destination pixel layout it
+ * did not advertise), and the dispatch. **No
  * backend is bound and no consumer is converted here.** The binders named in
  * #768 (`ra8_imgdec_bind_jpeg_sw`, `_png`, `_webp`, `_stb`) and the
  * `ra8_reflow_set_image_loader()` signature change are later slices, each of
@@ -88,13 +89,13 @@ extern "C" {
  * @since 0.1.0
  */
 typedef enum : uint32_t {
-  k_ra8_imgdec_format_none = 0U,      /**< Empty set. Not a format.          */
-  k_ra8_imgdec_format_jpeg = 1U << 0, /**< JFIF/EXIF baseline or progressive.*/
-  k_ra8_imgdec_format_png  = 1U << 1, /**< PNG.                              */
-  k_ra8_imgdec_format_webp = 1U << 2, /**< WebP, lossy or lossless.          */
-  k_ra8_imgdec_format_gif  = 1U << 3, /**< GIF (first frame).                */
-  k_ra8_imgdec_format_bmp  = 1U << 4, /**< Windows BMP.                      */
-  k_ra8_imgdec_format_tga  = 1U << 5, /**< Truevision TGA.                   */
+  k_ra8_imgdec_format_none = 0U,      /**< Empty set. Not a format.           */
+  k_ra8_imgdec_format_jpeg = 1U << 0, /**< JFIF/EXIF baseline or progressive. */
+  k_ra8_imgdec_format_png  = 1U << 1, /**< PNG.                               */
+  k_ra8_imgdec_format_webp = 1U << 2, /**< WebP, lossy or lossless.           */
+  k_ra8_imgdec_format_gif  = 1U << 3, /**< GIF (first frame).                 */
+  k_ra8_imgdec_format_bmp  = 1U << 4, /**< Windows BMP.                       */
+  k_ra8_imgdec_format_tga  = 1U << 5, /**< Truevision TGA.                    */
 } ra8_imgdec_format_t;
 
 /**
@@ -111,10 +112,10 @@ typedef enum : uint32_t {
  * @since 0.1.0
  */
 typedef enum : uint32_t {
-  k_ra8_imgdec_pixel_none     = 0U,      /**< Empty set. Not a layout.      */
-  k_ra8_imgdec_pixel_grey8    = 1U << 0, /**< 1 byte/px luminance.          */
-  k_ra8_imgdec_pixel_rgb888   = 1U << 1, /**< 3 bytes/px, R,G,B.            */
-  k_ra8_imgdec_pixel_rgba8888 = 1U << 2, /**< 4 bytes/px, R,G,B,A.          */
+  k_ra8_imgdec_pixel_none     = 0U,      /**< Empty set. Not a layout. */
+  k_ra8_imgdec_pixel_grey8    = 1U << 0, /**< 1 byte/px luminance.     */
+  k_ra8_imgdec_pixel_rgb888   = 1U << 1, /**< 3 bytes/px, R,G,B.       */
+  k_ra8_imgdec_pixel_rgba8888 = 1U << 2, /**< 4 bytes/px, R,G,B,A.     */
 } ra8_imgdec_pixel_t;
 
 /**
@@ -124,9 +125,11 @@ typedef enum : uint32_t {
  * @since 0.1.0
  */
 typedef enum : uint32_t {
-  k_ra8_imgdec_dim_max     = 16384U,                /**< Widest/tallest accepted. */
-  k_ra8_imgdec_format_mask = 0x3FU,                 /**< Every defined format bit. */
-  k_ra8_imgdec_pixel_mask  = 0x07U,                 /**< Every defined pixel bit.  */
+  k_ra8_imgdec_dim_max     = 16384U, /**< Widest/tallest accepted.  */
+  k_ra8_imgdec_format_mask = 0x3FU,  /**< Every defined format bit. */
+  k_ra8_imgdec_pixel_mask  = 0x07U,  /**< Every defined pixel bit.  */
+  k_ra8_imgdec_sniff_bytes = 12U,    /**< Leading bytes ra8_imgdec_sniff()
+                                          needs to answer for every format. */
 } ra8_imgdec_limits_t;
 
 /**
@@ -145,6 +148,47 @@ typedef enum : uint32_t {
  * @since 0.1.0
  */
 [[nodiscard]] uint32_t ra8_imgdec_pixel_bytes(ra8_imgdec_pixel_t pixel);
+
+/**
+ * @brief Name the container format @p bytes opens with, from its leading bytes.
+ *
+ * @details
+ * The container sniff is the other half of the duplication #768 is about. The
+ * format *matrix* was four-way, and so was the signature test that feeds it:
+ * `reflow_image.c` carries a RIFF/WEBP predicate, `jof_produce.c` carries the
+ * JPEG SOI plus PNG signature plus the same RIFF/WEBP pair, `mdl_export_jof.c`
+ * carries the RIFF/WEBP pair again, and `mdl_urlname.c` carries all of those
+ * plus GIF and BMP to pick a file extension. One buffer could therefore be
+ * "a WebP" to one path and "not an image" to the next.
+ *
+ * This is that test, written once, as a pure function of the bytes. It reads
+ * at most ::k_ra8_imgdec_sniff_bytes and answers only from fixed signatures,
+ * so it is cheap enough to call before choosing a decoder and says nothing
+ * about whether the rest of the file is well-formed. TGA has no signature at
+ * all (its header is bare geometry), so it is never sniffed and a consumer
+ * holding one must declare ::k_ra8_imgdec_format_tga in the request.
+ *
+ * @param[in]  bytes      Encoded image bytes. Never NULL.
+ * @param[in]  byte_count Readable bytes at @p bytes.
+ * @param[out] out        Format recognised, one ::ra8_imgdec_format_t bit.
+ *
+ * @return ra8_err_t Error code.
+ * @retval k_ra8_ok              `*out` names the recognised container.
+ * @retval k_ra8_err_null_ptr    `bytes` or `out` was NULL.
+ * @retval k_ra8_err_invalid_size `byte_count` was 0.
+ * @retval k_ra8_err_not_found   No signature matched, including the case of a
+ *                               buffer too short to carry one.
+ *
+ * @post On any non-ok return `*out` is ::k_ra8_imgdec_format_none.
+ * @post @p bytes is never modified.
+ *
+ * @note Thread-safe (pure read of @p bytes).
+ *
+ * @since 0.1.0
+ */
+[[nodiscard]] ra8_err_t ra8_imgdec_sniff(const uint8_t*       bytes,
+                                         uint32_t             byte_count,
+                                         ra8_imgdec_format_t* out);
 
 /* =============================================================================
  * Capabilities
@@ -168,12 +212,12 @@ typedef enum : uint32_t {
  * @since 0.1.0
  */
 typedef struct {
-  uint32_t formats;       /**< OR of ::ra8_imgdec_format_t the backend opens.  */
-  uint32_t pixels;        /**< OR of ::ra8_imgdec_pixel_t it can write.        */
-  uint32_t scratch_bytes; /**< Peak arena bytes a decode may carve. 0 = none.  */
-  uint32_t scratch_align; /**< Alignment the scratch carve needs. 0 treated 1. */
-  uint32_t dim_max;       /**< Widest/tallest image it accepts (<= dim_max).   */
-  bool     streams;       /**< true => decodes without the whole file resident.*/
+  uint32_t formats;       /**< OR of ::ra8_imgdec_format_t the backend opens.   */
+  uint32_t pixels;        /**< OR of ::ra8_imgdec_pixel_t it can write.         */
+  uint32_t scratch_bytes; /**< Peak arena bytes a decode may carve. 0 = none.   */
+  uint32_t scratch_align; /**< Alignment the scratch carve needs. 0 treated 1.  */
+  uint32_t dim_max;       /**< Widest/tallest image it accepts (<= dim_max).    */
+  bool     streams;       /**< true => decodes without the whole file resident. */
 } ra8_imgdec_caps_t;
 
 /* =============================================================================
@@ -186,11 +230,15 @@ typedef struct {
  * @brief One decode request: the encoded bytes in, the surface out.
  *
  * @details
- * `format` may be ::k_ra8_imgdec_format_none, which asks the backend to sniff
- * the container from the bytes. Naming a format instead is not a hint: the
- * fabric checks it against the backend's capability set and refuses up front,
- * so a consumer that knows what it holds gets a clean refusal rather than a
- * decoder failure deep inside a parse.
+ * `format` may be ::k_ra8_imgdec_format_none, which asks the *fabric* to sniff
+ * the container with ::ra8_imgdec_sniff() and then gate the answer against the
+ * backend's capability set, exactly as it gates a declared format. Naming a
+ * format instead is not a hint: it is checked and refused up front, so a
+ * consumer that knows what it holds gets a clean refusal rather than a decoder
+ * failure deep inside a parse. Either way the backend is handed a request
+ * whose `format` names exactly one bit it advertised; a buffer carrying no
+ * recognised signature is refused ::k_ra8_err_not_supported before any decoder
+ * runs. ::k_ra8_imgdec_format_tga has no signature, so a TGA must be declared.
  *
  * @since 0.1.0
  */
@@ -335,7 +383,9 @@ typedef struct {
  * @retval k_ra8_err_invalid_size    `byte_count` or `dst_bytes` was 0, or
  *                                   `dst_stride` cannot hold one pixel row.
  * @retval k_ra8_err_not_supported   The backend does not open that format, or
- *                                   cannot write that pixel layout.
+ *                                   cannot write that pixel layout, or
+ *                                   `format` was `_none` and the bytes carry
+ *                                   no recognised container signature.
  * @retval k_ra8_err_invalid_state   Scratch is required and `req->arena` is
  *                                   NULL, or the backend has no decode entry.
  * @retval k_ra8_err_no_mem          The arena cannot cover `scratch_bytes`.
