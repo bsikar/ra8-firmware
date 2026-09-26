@@ -985,7 +985,7 @@ func (c *Client) Free(ctx context.Context, token LeaseToken, producer NeutralRec
 			challenge.LeaseID != token.LeaseID || challenge.Generation != token.Generation ||
 			challenge.SnapshotVersion != snapshot.Version || challenge.Purpose != "release" ||
 			challenge.Nonce == "" || challenge.ProfileSHA256 == "" || challenge.FixtureRevision == "" ||
-			!time.Now().Before(challenge.ExpiresAt) {
+			!checkChallengeContext(challenge) || !time.Now().Before(challenge.ExpiresAt) {
 			return board.Snapshot{}, ErrInvalidNeutralProof
 		}
 		receipt, err := producer.ProduceNeutralReceipt(ctx, challenge)
@@ -1047,7 +1047,7 @@ func (c *Client) FinishRecovery(ctx context.Context, boardID string, producer Ne
 		if !store.ValidID(challenge.ID) || challenge.BoardID != boardID ||
 			challenge.SnapshotVersion != snapshot.Version || challenge.Purpose != "recovery" ||
 			challenge.Nonce == "" || challenge.ProfileSHA256 == "" || challenge.FixtureRevision == "" ||
-			!time.Now().Before(challenge.ExpiresAt) {
+			!checkChallengeContext(challenge) || !time.Now().Before(challenge.ExpiresAt) {
 			return board.Snapshot{}, ErrInvalidNeutralProof
 		}
 		receipt, err := producer.ProduceNeutralReceipt(ctx, challenge)
