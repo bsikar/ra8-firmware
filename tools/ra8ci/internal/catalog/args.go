@@ -246,3 +246,74 @@ func (t Task) ValidatePersistedArguments(values map[string]string, argv []string
 	}
 	return nil
 }
+
+// ValidateArguments re-checks argv a runtime already holds against this task's
+// reviewed schema. It is the argv-only half of the pair with
+// ValidatePersistedArguments.
+//
+// A caller holding both the named values and the argv derived from them wants
+// that one: it re-derives the argv and demands equality, which ties every
+// element back to a declared name. Two callers never see the values. The board
+// client judges a HIL assignment that arrived over the wire, and the offline
+// ingest judges a spool entry another process wrote. All either can ask is
+// whether the argv is a shape some binding of this schema could have produced:
+// the declared positionals in order, then declared flags as --name=value in
+// declared order, no repeats, every value passing the value rules above.
+//
+// That is deliberately the weaker question, stated once here rather than
+// approximated at each call site. It is still worth asking: it refuses an
+// element no binding produces, a flag this task does not declare, a value
+// carrying a shell metacharacter or a control byte, and a flag order that could
+// only come from somewhere other than BindArguments.
+//
+// A task declaring no arguments accepts none, which is the whole v1 catalog and
+// exactly the rule this function has always applied there.
+func (t Task) ValidateArguments(argv []string) error {
+	if len(t.ArgsSchema.Positional) == 0 && len(t.ArgsSchema.Flags) == 0 {
+		if len(argv) != 0 {
+			return fmt.Errorf("%w: task %q accepts no arguments", ErrInvalidCatalog, t.Name)
+		}
+		return nil
+	}
+	if err := ValidateArgsSchema(t.ArgsSchema); err != nil {
+		return fmt.Errorf("%w (task %q)", err, t.Name)
+	}
+	positional := t.ArgsSchema.Positional
+	if len(argv) < len(positional) {
+		return fmt.Errorf("%w: task %q binds %d positional argument(s), argv carries %d element(s)",
+			ErrInvalidCatalog, t.Name, len(positional), len(argv))
+	}
+	for i, name := range positional {
+		if !ValidArgumentValue(argv[i]) {
+			return fmt.Errorf("%w: task %q holds an invalid value for positional %q",
+				ErrInvalidCatalog, t.Name, name)
+		}
+	}
+	// next is the first flag still bindable. Advancing it past each match is
+	// what refuses both a repeated flag and a flag order no binding produces.
+	next := 0
+	for _, element := range argv[len(positional):] {
+		name, value, split := strings.Cut(strings.TrimPrefix(element, "--"), "=")
+		if !strings.HasPrefix(element, "--") || !split {
+			return fmt.Errorf("%w: task %q holds %q, which no binding of its schema produces",
+				ErrInvalidCatalog, t.Name, element)
+		}
+		index := -1
+		for i := next; i < len(t.ArgsSchema.Flags); i++ {
+			if t.ArgsSchema.Flags[i] == name {
+				index = i
+				break
+			}
+		}
+		if index < 0 {
+			return fmt.Errorf("%w: task %q binds no flag %q after the flags already read",
+				ErrInvalidCatalog, t.Name, name)
+		}
+		if !ValidArgumentValue(value) {
+			return fmt.Errorf("%w: task %q holds an invalid value for flag %q",
+				ErrInvalidCatalog, t.Name, name)
+		}
+		next = index + 1
+	}
+	return nil
+}
