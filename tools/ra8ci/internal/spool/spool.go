@@ -232,6 +232,9 @@ func (s *Spool) Pending() ([]Entry, error) {
 		if err := checkFinishMatchesStart(started, entry); err != nil {
 			return nil, fmt.Errorf("terminal record %q: %w", file.Name(), err)
 		}
+		if err := checkTerminalRecordCarriesItsRun(entry); err != nil {
+			return nil, fmt.Errorf("terminal record %q: %w", file.Name(), err)
+		}
 		pending = append(pending, entry)
 	}
 	return pending, nil
