@@ -77,6 +77,86 @@ typedef enum : uint16_t {
 ra8_gfx_init(void* fb, uint16_t width, uint16_t height, ra8_gfx_format_t format);
 
 /**
+ * @struct ra8_gfx_surface_t
+ * @brief Framebuffer descriptor carried end to end, stride included.
+ *
+ * @details
+ * The positional ra8_gfx_init() cannot express a row pitch, so a caller whose
+ * backend padded its rows has to drop `stride_bytes` on the floor and hope the
+ * rasteriser's `width * bpp` assumption still holds. This descriptor is the
+ * same four values plus the pitch, so the binding survives the handoff intact:
+ * it is what a producer of a framebuffer (the display PAL's `display_fb_t`, an
+ * off-screen scratch allocator, a host test buffer) already knows.
+ *
+ * `stride_bytes` is the distance in bytes from one row's first pixel to the
+ * next row's first pixel. Set it to `w * bytes_per_pixel(fmt)` for a densely
+ * packed buffer; a larger value leaves the trailing bytes of each row as
+ * padding that no draw call touches.
+ *
+ * @since 0.1.0
+ */
+typedef struct {
+  void*            pixels;       /**< Base of pixel data.                  */
+  uint16_t         w;            /**< Width in pixels, in [1, 4096].       */
+  uint16_t         h;            /**< Height in pixels, in [1, 4096].      */
+  uint32_t         stride_bytes; /**< Row pitch in bytes; >= w * bpp(fmt). */
+  ra8_gfx_format_t fmt;          /**< Pixel format of `pixels`.            */
+} ra8_gfx_surface_t;
+
+/**
+ * @brief Bind ra8_gfx to a caller-owned surface, honouring its row stride.
+ *
+ * @details
+ * The surface form of ra8_gfx_init(). Identical in effect when
+ * `s->stride_bytes == s->w * bytes_per_pixel(s->fmt)`; when the stride is
+ * larger, every draw call addresses row `y` at `s->pixels + y * stride_bytes`
+ * and the padding bytes past `w` pixels are left untouched.
+ *
+ * @param[in] s Surface descriptor. Copied; the caller may reuse the object.
+ *
+ * @return Error code.
+ * @retval k_ra8_ok               Bound successfully.
+ * @retval k_ra8_err_null_ptr     `s` or `s->pixels` was NULL.
+ * @retval k_ra8_err_invalid_arg  Dimensions out of range, unsupported format,
+ *                                or `stride_bytes` narrower than one packed row.
+ *
+ * @pre  s->pixels points to at least `(h - 1) * stride_bytes + w * bpp` bytes.
+ * @pre  w, h in [1, 4096].
+ * @post The clip rectangle is reset to the whole surface.
+ * @post On error, no module state is changed.
+ *
+ * @note Not thread-safe; bind once during init.
+ * @see ra8_gfx_init
+ * @since 0.1.0
+ */
+[[nodiscard]] ra8_err_t ra8_gfx_init_surface(const ra8_gfx_surface_t* s);
+
+/**
+ * @brief Release the current binding, leaving the module uninitialised.
+ *
+ * @details
+ * The teardown half of the lifecycle. The framebuffer memory is the caller's,
+ * so nothing is freed; the binding is dropped, which lets a caller retire the
+ * buffer it lent (unmap it, hand it back to the PAL, let a stack fixture go out
+ * of scope) and be certain no later draw call can still reach it. Without this,
+ * ra8_gfx was init-without-teardown while `display_deinit` on the other side of
+ * the seam already existed.
+ *
+ * @return Error code.
+ * @retval k_ra8_ok                  Binding released.
+ * @retval k_ra8_err_not_initialized No binding was in place.
+ *
+ * @post Every draw entry point returns k_ra8_err_not_initialized until a
+ *       subsequent ra8_gfx_init() / ra8_gfx_init_surface() succeeds.
+ * @post The retained framebuffer pointer is cleared.
+ *
+ * @note Not thread-safe; the binding is module-global state.
+ * @see ra8_gfx_init_surface
+ * @since 0.1.0
+ */
+[[nodiscard]] ra8_err_t ra8_gfx_deinit(void);
+
+/**
  * @brief Fill the bound framebuffer's clip region with a single colour.
  *
  * @param[in] color 32-bit colour in 0x00RRGGBB or 0xAARRGGBB form.
