@@ -77,6 +77,12 @@ func ValidateClientIdentity(identity tls.Certificate, now time.Time) error {
 	if err := checkNoUnhandledCriticalExtension(leaf, where, "as a client identity"); err != nil {
 		return err
 	}
+	// Beside it, and for the same reason: a signature no verifier on this
+	// connection will accept is a permanent property of the certificate, and
+	// the far end reads it before the window too.
+	if err := checkSignatureIsVerifiable(leaf, where, "as a client identity"); err != nil {
+		return err
+	}
 	if now.Before(leaf.NotBefore) {
 		return fmt.Errorf("%w: %s is not valid until %s", ErrIdentity, where, leaf.NotBefore.UTC().Format(time.RFC3339))
 	}
@@ -134,6 +140,10 @@ func ValidateServerIdentity(identity tls.Certificate, now time.Time) error {
 	}
 	// Same reading as the client side, and in the same place in the order.
 	if err := checkNoUnhandledCriticalExtension(leaf, where, "as a server identity"); err != nil {
+		return err
+	}
+	// Same reading as the client side, in the same place in the order.
+	if err := checkSignatureIsVerifiable(leaf, where, "as a server identity"); err != nil {
 		return err
 	}
 	if now.Before(leaf.NotBefore) {
