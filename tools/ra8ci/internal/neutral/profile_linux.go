@@ -398,7 +398,16 @@ func (i LinuxActivityInspector) CheckIdle(ctx context.Context, processNames, dev
 				return fmt.Errorf("inspect process descriptor: %w", err)
 			}
 			resolved, err := filepath.EvalSymlinks(target)
-			if err == nil && devices[resolved] {
+			if err != nil {
+				// An unresolvable descriptor is evidence only when it names a
+				// path under the protected device root; see
+				// descriptorCouldBeProtectedDevice.
+				if descriptorCouldBeProtectedDevice(devRoot, target, len(devices) > 0) {
+					return ErrObservationAbsent
+				}
+				continue
+			}
+			if devices[resolved] {
 				return ErrHardwareBusy
 			}
 		}
