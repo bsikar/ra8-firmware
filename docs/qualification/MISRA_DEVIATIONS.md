@@ -285,7 +285,7 @@ controls:
   functions.
 - **No `goto` / `setjmp` / dynamic-allocation cleanup paths** (NASA
   Power-of-10 Rules 1 and 3, enforced by the pre-commit hooks
-  `scripts/git/pre-commit` and `scripts/checks/check_no_dynamic_alloc.py`).
+  the `pre-commit-checks` CI gate and `scripts/checks/check_no_dynamic_alloc.py`).
   Early return therefore cannot leak resources because there are no
   resources to leak.
 
@@ -422,7 +422,7 @@ one").
 - arm-none-eabi-gcc `-std=gnu23 -Wmissing-braces -Werror` (cross
   build) and host gcc / clang in the unit-test build both validate
   every aggregate initializer at compile time.
-- `scripts/git/pre-commit` actively
+- the `pre-commit-checks` CI gate actively
   *forbids* the legacy `= {0}` form and *requires* C23 `= {}`,
   giving an inverse check that complements the disabled cppcheck
   rule.

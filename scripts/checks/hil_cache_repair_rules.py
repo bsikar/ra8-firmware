@@ -31,7 +31,6 @@ JUST_REFERENCE_CHECKER = "scripts/checks/check_just_references.py"
 ENTRYPOINT_POLICY = "scripts/checks/shell_entrypoint_policy.py"
 SHEBANG_CHECKER = "scripts/checks/check_shebangs.py"
 DEV_BOX_DEFAULTS = "infra/ansible/roles/dev_box/defaults/main.yml"
-PRECOMMIT_HOOK = "just/hooks.just"
 FULL_GATE = "scripts/ci/gates/checks.sh"
 CORE_INPUT_FILES = (
     PLAYBOOK,
@@ -485,26 +484,22 @@ def _check_text_file(
         return [f"{relative}: cannot read execution surface: {exc}"]
 
 
-def _check_gate_wiring_texts(hook_text: str, gate_text: str) -> list[str]:
-    """Require unconditional pre-commit and full-gate repair validation."""
-    hook_line = "        pre-commit-checks"
+def _check_gate_wiring_texts(gate_text: str) -> list[str]:
+    """Require unconditional full-gate repair validation."""
     gate_pair = (
         "  python3 scripts/checks/check_fleet_declaration.py --selftest\n"
         "  python3 scripts/checks/check_fleet_declaration.py\n"
     )
     problems = []
-    if hook_text.splitlines().count(hook_line) != 1:
-        problems.append(f"{PRECOMMIT_HOOK}: pre-commit-checks is not wired exactly once")
     if gate_text.count(gate_pair) != 1:
         problems.append(f"{FULL_GATE}: fleet guard pair is not wired exactly once")
     return problems
 
 
 def _check_gate_wiring(repo_root: Path) -> list[str]:
-    """Read the two unconditional gate dispatch surfaces fail-closed."""
+    """Read the unconditional gate dispatch surface fail-closed."""
     try:
         return _check_gate_wiring_texts(
-            (repo_root / PRECOMMIT_HOOK).read_text(encoding="utf-8"),
             (repo_root / FULL_GATE).read_text(encoding="utf-8"),
         )
     except (OSError, UnicodeError) as exc:
@@ -802,8 +797,7 @@ def _selftest_checker_occurrences() -> list[str]:
 
 
 def _selftest_gate_wiring() -> list[str]:
-    """Prove every census change reaches both unconditional repair gates."""
-    hook = "pre-commit:\n    gates=(\n        pre-commit-checks\n    )\n"
+    """Prove every census change reaches the unconditional repair gate."""
     gate = (
         "_pcc_repository_structure() (\n"
         "  python3 scripts/checks/check_fleet_declaration.py --selftest\n"
@@ -811,13 +805,11 @@ def _selftest_gate_wiring() -> list[str]:
         ")\n"
     )
     failures = []
-    if _check_gate_wiring_texts(hook, gate):
+    if _check_gate_wiring_texts(gate):
         failures.append("  approved unconditional repair-gate wiring was rejected")
-    if not _check_gate_wiring_texts(hook.replace("pre-commit-checks", "lint-just"), gate):
-        failures.append("  pre-commit repair-gate removal was accepted")
-    if not _check_gate_wiring_texts(hook, gate.replace(" --selftest", "")):
+    if not _check_gate_wiring_texts(gate.replace(" --selftest", "")):
         failures.append("  full-gate repair selftest removal was accepted")
-    if not _check_gate_wiring_texts(hook, gate.replace("declaration.py\n", "other.py\n")):
+    if not _check_gate_wiring_texts(gate.replace("declaration.py\n", "other.py\n")):
         failures.append("  full-gate live repair guard removal was accepted")
     return failures
 

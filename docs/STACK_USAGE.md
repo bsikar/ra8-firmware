@@ -117,7 +117,7 @@ Rule 3 forbids VLAs and `alloca()` regardless of frame size.
 
 ## Pre-commit gate
 
-`scripts/git/pre-commit` invokes
+the `pre-commit-checks` CI gate invokes
 `scripts/checks/stack_usage_check.py --strict --quiet` on every commit.
 Behaviour:
 
