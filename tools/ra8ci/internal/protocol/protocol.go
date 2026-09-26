@@ -355,6 +355,12 @@ func (receipt TerminalReceipt) Validate() error {
 	if err := checkAFailingStepEndsTheAttempt(receipt); err != nil {
 		return err
 	}
+	// After the failure-order rule rather than before it: a receipt whose
+	// failing step is not its last one is wrong about which step ended the
+	// attempt, and that is the refusal a reader needs, not this one.
+	if err := checkChildExitIsTheLastStepsExit(receipt); err != nil {
+		return err
+	}
 	if err := checkStepLogEvidence(receipt); err != nil {
 		return err
 	}
