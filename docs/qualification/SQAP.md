@@ -34,7 +34,7 @@ third-party assessor engagement is not pursued). The mitigation,
 recorded throughout the planning document family, is:
 
 1. **Automated gates as the primary SQA control.** The pre-commit
-   hook (`scripts/git/pre-commit`) and CI workflow
+   hook (the `pre-commit-checks` CI gate) and CI workflow
    (`.github/workflows/firmware.yml`) execute identical checks on
    every change irrespective of authorship. Automation is the
    independent reviewer in lieu of a separate person.
@@ -78,7 +78,7 @@ tools, all of which run on every commit and every PR:
 | Audit                                | Tool / artifact                                                                  |
 |--------------------------------------|----------------------------------------------------------------------------------|
 | Roadmap progress audit               | `scripts/report/roadmap_stats.py --check` (refuses stale ROADMAP summaries)       |
-| Pre-commit gate audit                | `scripts/git/pre-commit` exit status; CI mirror in `pre-commit-checks` job       |
+| Pre-commit gate audit                | the `pre-commit-checks` CI gate exit status; CI mirror in `pre-commit-checks` job       |
 | Coding-standard audit                | `clang-format`, `clang-tidy`, `cppcheck`                                         |
 | MISRA-C 2012 process audit           | `just quality::local::misra` quarterly + `docs/MISRA.md` baseline table          |
 | World-tag (architecture) audit       | `scripts/checks/check_world_tags.py`                                              |
@@ -165,7 +165,7 @@ producing an audit trail without manual SQA intervention.
 
 ### 3.1 Per-commit audits (pre-commit hook)
 
-The hook at `scripts/git/pre-commit` runs the following audits in
+The hook at the `pre-commit-checks` CI gate runs the following audits in
 sequence and refuses the commit on any failure:
 
 1. ASCII-only source-file check.
@@ -293,7 +293,7 @@ must outlive the CI window.
   register.
 - `docs/qualification/TOOL_QUALIFICATION.md` -- tool TQL dossier.
 - `docs/SOUP/` -- pre-existing software register.
-- `scripts/git/pre-commit` -- authoritative pre-commit gate suite.
+- the `pre-commit-checks` CI gate -- authoritative pre-commit gate suite.
 - `.github/workflows/firmware.yml` -- authoritative CI gate suite.
 - IEC 61508-3:2010 Clause 6.2.5 and IEC 61508-1:2010 Clause 8.2.
 - RTCA DO-178C:2011 Sections 8 and 11.5.

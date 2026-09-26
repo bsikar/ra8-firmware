@@ -55,7 +55,7 @@ FORBIDDEN_PATTERNS = [
 WHITELIST = {
     "CLAUDE.md",
     "scripts/checks/check_obsolete_standards.py",
-    "scripts/git/pre-commit",
+    "scripts/git/commit-msg",
     "docs/MCDC.md",
     # Historical/explanatory reference: SQLite's test harness targeted
     # DO-178B, framed in-text as the direct ancestor of this project's

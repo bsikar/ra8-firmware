@@ -122,7 +122,7 @@ the pinned environment when host tool versions differ.
 
 CI runs in GitHub Actions via
 [`../../.github/workflows/firmware.yml`](../../.github/workflows/firmware.yml).
-The pre-commit hook ([`../../scripts/git/pre-commit`](../../scripts/git/pre-commit))
+The pre-commit hook ([`scripts/ci/gates/checks.sh`](../../scripts/ci/gates/checks.sh))
 enforces the same gates locally. Hardware-in-the-loop uses the dedicated native
 listener on the dev box to build, then drives the guarded Raspberry Pi 5
 instrument host documented in
@@ -238,7 +238,7 @@ must pass:
 - `check_mcdc_block.py` (MC/DC-blocking patterns; pre-commit hook).
 
 The pre-commit hook is at
-[`../../scripts/git/pre-commit`](../../scripts/git/pre-commit) and is
+[`scripts/ci/gates/checks.sh`](../../scripts/ci/gates/checks.sh) and is
 the source of truth for the gate set.
 
 ### 4.4 Test
@@ -412,7 +412,7 @@ own qualified checker.
 
 ### 7.1 Pre-commit gates (local, mandatory)
 
-Source: [`../../scripts/git/pre-commit`](../../scripts/git/pre-commit).
+Source: [`scripts/ci/gates/checks.sh`](../../scripts/ci/gates/checks.sh).
 
 | Gate                                             | Tool / script                                              |
 |--------------------------------------------------|------------------------------------------------------------|
@@ -464,6 +464,6 @@ listener, while the shared lock serialises access to the remote bench.
 - [`../MCDC.md`](../MCDC.md) -- MC/DC instrumentation.
 - [`../HARDWARE_BRINGUP.md`](../HARDWARE_BRINGUP.md) -- hardware sweep results and probe configuration.
 - [`../SOUP/`](../SOUP/) -- pre-existing software register.
-- [`../../scripts/git/pre-commit`](../../scripts/git/pre-commit) -- pre-commit gate set.
+- [`scripts/ci/gates/checks.sh`](../../scripts/ci/gates/checks.sh) -- pre-commit gate set.
 - [`../../.github/workflows/firmware.yml`](../../.github/workflows/firmware.yml) -- CI gate set.
 - [`../QUALIFICATION_ROADMAP.md`](../QUALIFICATION_ROADMAP.md) -- 22-week schedule.

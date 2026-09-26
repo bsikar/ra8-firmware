@@ -592,7 +592,7 @@ Rationale: multi-byte UTF-8 breaks downstream toolchains -- static
 analysers, MISRA checkers, code-coverage tools, Windows IDEs, and
 the embedded debugger console.
 
-`scripts/git/pre-commit` rejects any commit containing non-ASCII in
+the `pre-commit-checks` CI gate rejects any commit containing non-ASCII in
 source files.
 
 ## Ring and World tagging

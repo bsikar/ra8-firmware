@@ -63,7 +63,7 @@ EXACT_REFERENCES = (
     ),
     ExactReference(
         "scripts/git/hook-launcher",
-        "scripts/git/pre-commit",
+        "scripts/git/commit-msg",
         (
             "exec env -u BASH_ENV -u ENV -u PYTHONHOME -u PYTHONPATH "
             '"$bash_bin" -p "$owner" "${hook_args[@]}"'

@@ -330,7 +330,7 @@ jobs:
           retention-days: 14
 
   # ---------------------------------------------------------------------------
-  # Pre-commit gate suite -- mirrors scripts/git/pre-commit so PRs surface what
+  # Pre-commit gate suite -- the commit-time gate set, so PRs surface what
   # the local hook would have caught. The seconds-long check_*.py and lint-*
   # gates stay grouped: a job apiece would cost more in runner scheduling than
   # in checking.

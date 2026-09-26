@@ -15,7 +15,7 @@ helper is four places for the reporting convention to drift, and drift in a
 selftest is invisible by construction. They share this module instead.
 
 This is deliberately not a unittest/pytest layer. The gates run as standalone
-scripts from ``scripts/git/pre-commit`` and from ``scripts/ci.sh`` with no test
+scripts from the removed pre-commit hook and from ``scripts/ci.sh`` with no test
 runner on PATH, and their selftest output is read by humans in a CI log.
 """
 

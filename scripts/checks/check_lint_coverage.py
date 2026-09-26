@@ -215,7 +215,7 @@ def classify(rel: str) -> str | None:
     one reproducible generated file from exempting every future file with the
     same extension. Name beats extension so ``CMakeLists.txt`` is cmake rather
     than text; shebang comes last so it only rescues files the tables genuinely
-    miss -- which is how an extensionless ``scripts/git/pre-commit`` is
+    miss -- which is how an extensionless ``scripts/git/commit-msg`` is
     recognised as shell.
     """
     if rel in PATH_CLASS:
@@ -479,7 +479,7 @@ def _fixture() -> tuple[list[str], dict[str, set[str]]]:
         "libs/ra8_core/src/ra8_err.c",
         "libs/ra8_core/inc/ra8_err.h",
         "scripts/checks/check_thing.py",  # PATHREF-OK: synthetic fixture
-        "scripts/git/pre-commit",
+        "scripts/git/commit-msg",
         "CMakeLists.txt",
         "examples/app/linker_script.ld",
         "examples/app/boot.S",
@@ -497,8 +497,8 @@ def _fixture() -> tuple[list[str], dict[str, set[str]]]:
         "clang-format": {"libs/ra8_core/src/ra8_err.c", "libs/ra8_core/inc/ra8_err.h"},
         "ruff": {"scripts/checks/check_thing.py"},  # PATHREF-OK: synthetic
         "ruff-format": {"scripts/checks/check_thing.py"},  # PATHREF-OK: synthetic
-        "shellcheck": {"scripts/git/pre-commit"},
-        "shfmt": {"scripts/git/pre-commit"},
+        "shellcheck": {"scripts/git/commit-msg"},
+        "shfmt": {"scripts/git/commit-msg"},
         "cmake-lint": {"CMakeLists.txt"},
         "cmake-format": {"CMakeLists.txt"},
         "yamllint+actionlint": {".github/workflows/firmware.yml"},

@@ -131,7 +131,7 @@ gate_cppcheck() (
 #
 # docs/STATIC_ANALYSIS.md claimed "CI runs bash scripts/checks/scan_build.sh
 # --strict" for months while no workflow ran it and RA8_GATE_REGISTRY had no
-# such gate (#532); scripts/git/pre-commit even carried a comment saying so, so
+# such gate (#532); the removed pre-commit hook even carried a comment saying so, so
 # the tree contradicted itself. This row is what makes the sentence true.
 #
 # require_cmd on the PINNED major, not a bare `scan-build`: the CI image

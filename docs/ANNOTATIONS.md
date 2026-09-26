@@ -475,7 +475,7 @@ failing is a gate that hides the gap.
 
 ### Pre-commit wiring
 
-The hook at [`scripts/git/pre-commit`](../scripts/git/pre-commit)
+The hook at [`scripts/ci/gates/checks.sh`](../scripts/ci/gates/checks.sh)
 invokes the script after the existing static gates (`cite_check`,
 `check_world_tags`, etc.) and before the stack-usage aggregator.
 

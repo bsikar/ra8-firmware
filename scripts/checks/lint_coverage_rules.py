@@ -304,7 +304,7 @@ NAME_CLASS: dict[str, str] = {
 
 # ---------------------------------------------------------------------------
 # Shebang interpreter -> class. Consulted for files the tables above miss,
-# which is how `scripts/git/pre-commit` (extensionless, #!/usr/bin/env bash)
+# which is how `scripts/git/commit-msg` (extensionless, #!/usr/bin/env bash)
 # is recognised as shell rather than falling through as unclassified.
 # ---------------------------------------------------------------------------
 SHEBANG_CLASS: tuple[tuple[str, str], ...] = (
