@@ -273,11 +273,6 @@ double mdl_urlname_chapter_value(const char* url)
   return value;
 }
 
-long mdl_urlname_chapter_number(const char* url)
-{
-  return (long)mdl_urlname_chapter_value(url);
-}
-
 /**
  * @brief Lower-case an ASCII byte.
  * @details Maps uppercase ASCII letters and preserves every other byte.
