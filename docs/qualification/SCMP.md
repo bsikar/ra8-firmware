@@ -111,7 +111,7 @@ The canonical EK-RA8D2 defaults are under
 | `scripts/checks/format_code.sh`                   | clang-format wrapper.                                |
 | `scripts/checks/clang_tidy.sh`                    | clang-tidy wrapper.                                  |
 | `scripts/dev/flash.sh`                         | J-Link flash wrapper (HW operations).                |
-| `scripts/git/pre-commit`                   | Pre-commit hook (the authoritative gate suite).      |
+| the `pre-commit-checks` CI gate                   | Pre-commit hook (the authoritative gate suite).      |
 
 ### 1.6 Documentation
 
@@ -196,7 +196,7 @@ component is vendored at the exact version recorded in its
 
 ### 2.4 Pre-commit gate (authoritative configuration of "what cannot land")
 
-The hook at `scripts/git/pre-commit` enforces the following gates on
+The hook at the `pre-commit-checks` CI gate enforces the following gates on
 every commit. Failure of any gate refuses the commit:
 
 1. ASCII-only source files (`fix-encoding.py --check`).
@@ -484,7 +484,7 @@ by the Just devcontainer recipes.
   no-AI-attribution policy, zero-backward-compatibility policy.
 - `docs/QUALIFICATION_ROADMAP.md` -- phase plan and gap analysis.
 - `docs/SOUP/` -- pre-existing software register.
-- `scripts/git/pre-commit` -- authoritative pre-commit gate suite.
+- the `pre-commit-checks` CI gate -- authoritative pre-commit gate suite.
 - `.github/workflows/firmware.yml` -- authoritative CI gate suite.
 - IEC 61508-3:2010 Clause 6.2.3.
 - RTCA DO-178C:2011 Sections 7 and 11.4.

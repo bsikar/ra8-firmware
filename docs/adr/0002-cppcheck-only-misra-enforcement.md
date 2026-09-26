@@ -47,7 +47,7 @@ commercial tool.
 ## Decision
 
 * **MISRA enforcement is performed by `cppcheck` only**, via the
-  pre-commit hook (`scripts/git/pre-commit`) and the CI workflow.
+  pre-commit hook (the `pre-commit-checks` CI gate) and the CI workflow.
   The exact invocation is
 
       cppcheck --enable=warning,style,performance,portability \

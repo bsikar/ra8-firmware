@@ -620,7 +620,6 @@ def _registered_fixture_commands(repo_root: Path) -> tuple[tuple[str, tuple[str,
         _python_selftest(
             repo_root,
             "pre-commit-bootstrap",
-            "scripts/checks/check_hook_parity.py",
             "--selftest",
         ),
         _python_selftest(
