@@ -969,6 +969,18 @@ func Validate(s Snapshot) error {
 		if !lease.LastHeartbeatAt.IsZero() && lease.LastHeartbeatAt.Before(lease.GrantedAt) {
 			return &Error{Conflict, "retained lease carries a heartbeat from before its grant"}
 		}
+		// The other end of the same window. holderHeartbeat records a beat
+		// only through current(), which refuses one at or after the expiry
+		// it is checked against, and ExpiresAt only ever moves later
+		// (grantNext sets it, extend demands a strictly later one, nothing
+		// shortens it). So a retained beat at or past expiry did not come
+		// from this reducer, and the reading it produces is the damaging
+		// one: ObserveHolderLiveness would report a holder seen alive after
+		// its authority ended, which is the single fact the liveness report
+		// exists to keep separate from expiry.
+		if !lease.LastHeartbeatAt.IsZero() && !lease.LastHeartbeatAt.Before(lease.ExpiresAt) {
+			return &Error{Conflict, "retained lease carries a heartbeat from at or after its expiry"}
+		}
 		if lease.HandoffTarget < 0 || lease.HandoffTarget > MaxHandoffBound {
 			return &Error{Conflict, "retained lease carries an out-of-range handoff target"}
 		}
