@@ -234,6 +234,14 @@ _pcc_board_and_layering() (
   # identifiers (tx_len, tx_pool), and judges the ledger in both directions.
   python3 scripts/checks/check_rtos_symbol_isolation.py --selftest
   python3 scripts/checks/check_rtos_symbol_isolation.py
+  # A board's memory map is a board fact too, and until #758 it was readable
+  # only by the linker: three host-side consumers retyped it under three sets
+  # of names. libs/ra8_board_<board>/inc/ra8_board_memmap.h publishes it, and
+  # this pins the published copy to the MEMORY{} block next door so it can be
+  # a second spelling of the map without becoming a second version of it.
+  # --selftest proves each of the five rules fires against fixtures first.
+  python3 scripts/checks/check_board_memory_map.py --selftest
+  python3 scripts/checks/check_board_memory_map.py
 )
 
 # Repository-wide structural contracts that are independent of C source
