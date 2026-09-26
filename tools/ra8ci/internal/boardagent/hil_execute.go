@@ -188,10 +188,7 @@ func (a *Agent) RunHILAttempt(ctx context.Context, token boardclient.LeaseToken,
 		completion.ChildExitCode = terminalExitCode
 		completion.Reason = "HIL attempt failed"
 		if executionErr != nil {
-			completion.Reason = executionErr.Error()
-			if len(completion.Reason) > 1024 {
-				completion.Reason = completion.Reason[:1024]
-			}
+			completion.Reason = boundedReason(executionErr.Error())
 		}
 		if errors.Is(executionErr, context.DeadlineExceeded) ||
 			errors.Is(attemptCtx.Err(), context.DeadlineExceeded) {
