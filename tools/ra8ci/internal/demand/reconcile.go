@@ -87,6 +87,10 @@ type Report struct {
 	// Failed is demand the pass could not settle: a source error, or a
 	// snapshot that does not describe a state this plane can record.
 	Failed int
+	// Truncated says the pass read a full batch, so the counters below
+	// describe the oldest BatchSize units of open demand and not all of
+	// it. Anything behind that window was not asked about.
+	Truncated bool
 }
 
 // Reconciler turns a dropped delivery into a late run. GitHub delivers
@@ -208,7 +212,11 @@ func (r *Reconciler) Pass(ctx context.Context) (Report, error) {
 	if err != nil {
 		return Report{}, fmt.Errorf("list open demand: %w", err)
 	}
-	report := Report{Scanned: len(open)}
+	truncated, err := checkOpenDemandFitsTheBatch(open, r.batchSize)
+	if err != nil {
+		return Report{}, err
+	}
+	report := Report{Scanned: len(open), Truncated: truncated}
 	var firstFailure error
 	for _, held := range open {
 		now := r.now().UTC()
