@@ -105,7 +105,13 @@ func ValidateClientIdentity(identity tls.Certificate, now time.Time) error {
 	// Last, and about the certificates beside the leaf rather than the leaf:
 	// a key pair presents a chain, and every issuer in it is walked by the
 	// far end exactly as this one was judged here.
-	return checkPresentedChain(identity, now, "client")
+	if err := checkPresentedChain(identity, now, "client"); err != nil {
+		return err
+	}
+	// And the chain has to be a path: each certificate in it issued the one
+	// before it, or the far end cannot walk from this leaf to anything it
+	// trusts no matter how good every certificate in the file is.
+	return checkPresentedChainIsAPath(identity, "client")
 }
 
 func allowsClientAuth(leaf *x509.Certificate) bool {
@@ -163,7 +169,10 @@ func ValidateServerIdentity(identity tls.Certificate, now time.Time) error {
 	}
 	// Same reading as the client side: the leaf is the identity, and the
 	// certificates sent with it are the path the far end has to walk.
-	return checkPresentedChain(identity, now, "server")
+	if err := checkPresentedChain(identity, now, "server"); err != nil {
+		return err
+	}
+	return checkPresentedChainIsAPath(identity, "server")
 }
 
 func allowsServerAuth(leaf *x509.Certificate) bool {

@@ -15,7 +15,7 @@ import (
 	"time"
 )
 
-// authorityTemplate is an intermediate as a real deployment sends one: a live
+// chainAuthority is an intermediate as a real deployment sends one: a live
 // certificate authority allowed to sign certificates.
 func chainAuthority() *x509.Certificate {
 	return &x509.Certificate{
@@ -28,43 +28,89 @@ func chainAuthority() *x509.Certificate {
 	}
 }
 
-// link mints one certificate to be presented beside a leaf. The chain is never
-// verified here, only judged certificate by certificate, so a self-signed link
-// carries every property the rule reads.
-func link(t *testing.T, template *x509.Certificate) []byte {
+// mintedLink is one certificate of a presented chain kept beside its key, so
+// the certificate below it can be signed by it rather than by itself.
+type mintedLink struct {
+	der  []byte
+	cert *x509.Certificate
+	key  *ecdsa.PrivateKey
+}
+
+// mintLink mints template: signed by parent when one is given, self-signed
+// otherwise, and reusing key when one is given so two certificates can share a
+// key pair. A chain here is minted as a real path, because the rule in
+// presented_chain_is_a_path.go reads whether each link actually issued the one
+// before it, which a bundle of self-signed certificates does not.
+func mintLink(t *testing.T, template *x509.Certificate, parent *mintedLink, key *ecdsa.PrivateKey, serial int64) mintedLink {
 	t.Helper()
-	key, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
-	if err != nil {
-		t.Fatalf("generate key: %v", err)
+	if key == nil {
+		generated, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+		if err != nil {
+			t.Fatalf("generate key: %v", err)
+		}
+		key = generated
 	}
-	template.SerialNumber = big.NewInt(2)
-	der, err := x509.CreateCertificate(rand.Reader, template, template, &key.PublicKey, key)
+	template.SerialNumber = big.NewInt(serial)
+	signerTemplate := template
+	var signerKey any = key
+	if parent != nil {
+		signerTemplate = parent.cert
+		signerKey = parent.key
+	}
+	der, err := x509.CreateCertificate(rand.Reader, template, signerTemplate, &key.PublicKey, signerKey)
 	if err != nil {
 		t.Fatalf("create certificate: %v", err)
 	}
-	return der
+	cert, err := x509.ParseCertificate(der)
+	if err != nil {
+		t.Fatalf("parse minted certificate: %v", err)
+	}
+	return mintedLink{der: der, cert: cert, key: key}
 }
 
-// presenting is a valid client identity sending the given certificates after
-// its leaf, which is exactly the shape tls.LoadX509KeyPair builds from a
+// presenting is a valid client identity sending the given issuers after its
+// leaf, which is exactly the shape tls.LoadX509KeyPair builds from a
 // certificate file holding a leaf and its issuers.
-func presenting(t *testing.T, links ...[]byte) tls.Certificate {
+func presenting(t *testing.T, issuers ...*x509.Certificate) tls.Certificate {
 	t.Helper()
-	identity := issue(t, clientTemplate())
-	identity.Certificate = append(identity.Certificate, links...)
+	return presentingLeaf(t, clientTemplate(), issuers...)
+}
+
+// presentingLeaf builds the same shape around a caller's leaf. It mints from
+// the far end inward: the last issuer signs itself, each issuer before it is
+// signed by the one after, and the leaf is signed by the first, so what comes
+// back is the path a deployment really presents.
+func presentingLeaf(t *testing.T, leafTemplate *x509.Certificate, issuers ...*x509.Certificate) tls.Certificate {
+	t.Helper()
+	minted := make([]mintedLink, len(issuers))
+	for position := len(issuers) - 1; position >= 0; position-- {
+		var parent *mintedLink
+		if position+1 < len(issuers) {
+			parent = &minted[position+1]
+		}
+		minted[position] = mintLink(t, issuers[position], parent, nil, int64(10+position))
+	}
+	var parent *mintedLink
+	if len(minted) > 0 {
+		parent = &minted[0]
+	}
+	leaf := mintLink(t, leafTemplate, parent, nil, 1)
+	identity := tls.Certificate{Certificate: [][]byte{leaf.der}, PrivateKey: leaf.key}
+	for position := range minted {
+		identity.Certificate = append(identity.Certificate, minted[position].der)
+	}
 	return identity
 }
 
 func TestALiveIntermediateIsAccepted(t *testing.T) {
-	identity := presenting(t, link(t, chainAuthority()))
-	if err := ValidateClientIdentity(identity, testNow); err != nil {
+	if err := ValidateClientIdentity(presenting(t, chainAuthority()), testNow); err != nil {
 		t.Fatalf("an honest chain was refused: %v", err)
 	}
 	// An intermediate declaring no key usage at all is unconstrained and
 	// accepted, the same reading the leaf and a trusted authority get.
 	unconstrained := chainAuthority()
 	unconstrained.KeyUsage = 0
-	if err := ValidateClientIdentity(presenting(t, link(t, unconstrained)), testNow); err != nil {
+	if err := ValidateClientIdentity(presenting(t, unconstrained), testNow); err != nil {
 		t.Fatalf("an unconstrained intermediate was refused: %v", err)
 	}
 }
@@ -79,7 +125,7 @@ func TestAnEndEntityCertificateInThePresentedChainIsRefused(t *testing.T) {
 	notAnAuthority := chainAuthority()
 	notAnAuthority.IsCA = false
 	notAnAuthority.KeyUsage = x509.KeyUsageDigitalSignature
-	err := ValidateClientIdentity(presenting(t, link(t, notAnAuthority)), testNow)
+	err := ValidateClientIdentity(presenting(t, notAnAuthority), testNow)
 	if err == nil || !strings.Contains(err.Error(), "is not a certificate authority") {
 		t.Fatalf("expected an authority refusal, got %v", err)
 	}
@@ -96,7 +142,7 @@ func TestAnExpiredIntermediateIsRefusedEvenBesideALiveOne(t *testing.T) {
 	expired := chainAuthority()
 	expired.NotBefore = testNow.Add(-48 * time.Hour)
 	expired.NotAfter = testNow.Add(-time.Hour)
-	err := ValidateClientIdentity(presenting(t, link(t, expired), link(t, chainAuthority())), testNow)
+	err := ValidateClientIdentity(presenting(t, expired, chainAuthority()), testNow)
 	if err == nil || !strings.Contains(err.Error(), "expired at") {
 		t.Fatalf("expected an expiry refusal, got %v", err)
 	}
@@ -106,7 +152,7 @@ func TestANotYetValidIntermediateIsRefused(t *testing.T) {
 	early := chainAuthority()
 	early.NotBefore = testNow.Add(time.Hour)
 	early.NotAfter = testNow.Add(48 * time.Hour)
-	err := ValidateClientIdentity(presenting(t, link(t, early)), testNow)
+	err := ValidateClientIdentity(presenting(t, early), testNow)
 	if err == nil || !strings.Contains(err.Error(), "not valid until") {
 		t.Fatalf("expected a not-yet-valid refusal, got %v", err)
 	}
@@ -115,14 +161,16 @@ func TestANotYetValidIntermediateIsRefused(t *testing.T) {
 func TestAnIntermediateThatMayNotSignCertificatesIsRefused(t *testing.T) {
 	cannotSign := chainAuthority()
 	cannotSign.KeyUsage = x509.KeyUsageDigitalSignature
-	err := ValidateClientIdentity(presenting(t, link(t, cannotSign)), testNow)
+	err := ValidateClientIdentity(presenting(t, cannotSign), testNow)
 	if err == nil || !strings.Contains(err.Error(), "may not sign certificates") {
 		t.Fatalf("expected a signing refusal, got %v", err)
 	}
 }
 
 func TestUnparseableChainBytesAreRefusedNamingThePosition(t *testing.T) {
-	err := ValidateClientIdentity(presenting(t, link(t, chainAuthority()), []byte("not a certificate")), testNow)
+	identity := presenting(t, chainAuthority())
+	identity.Certificate = append(identity.Certificate, []byte("not a certificate"))
+	err := ValidateClientIdentity(identity, testNow)
 	if err == nil || !strings.Contains(err.Error(), "position 2") {
 		t.Fatalf("expected a parse refusal naming position 2, got %v", err)
 	}
@@ -142,12 +190,10 @@ func TestTheServerChainIsJudgedTheSameWay(t *testing.T) {
 		ExtKeyUsage:           []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth},
 		BasicConstraintsValid: true,
 	}
-	identity := issue(t, server)
 	expired := chainAuthority()
 	expired.NotBefore = testNow.Add(-48 * time.Hour)
 	expired.NotAfter = testNow.Add(-time.Hour)
-	identity.Certificate = append(identity.Certificate, link(t, expired))
-	err := ValidateServerIdentity(identity, testNow)
+	err := ValidateServerIdentity(presentingLeaf(t, server, expired), testNow)
 	if err == nil || !strings.Contains(err.Error(), "presented server chain") {
 		t.Fatalf("expected a server chain refusal, got %v", err)
 	}
@@ -166,14 +212,14 @@ func TestAChainLinkAndATrustedAuthorityAreJudgedAlike(t *testing.T) {
 		"an authority that may not sign": cannotSign,
 		"a live authority":               chainAuthority(),
 	} {
-		der := link(t, template)
-		parsed, err := x509.ParseCertificate(der)
+		identity := presenting(t, template)
+		parsed, err := x509.ParseCertificate(identity.Certificate[1])
 		if err != nil {
 			t.Fatalf("%s: parse: %v", name, err)
 		}
 		where := fmt.Sprintf("subject %q sha256 %s", parsed.Subject.String(), Fingerprint(parsed))
 		bundleRefused := !parsed.IsCA || checkAuthorityCanSign(parsed, where, "client") != nil
-		chainRefused := ValidateClientIdentity(presenting(t, der), testNow) != nil
+		chainRefused := ValidateClientIdentity(identity, testNow) != nil
 		if bundleRefused != chainRefused {
 			t.Fatalf("%s: the trust bundle and the presented chain disagree (bundle refused %v, chain refused %v)",
 				name, bundleRefused, chainRefused)
@@ -184,12 +230,12 @@ func TestAChainLinkAndATrustedAuthorityAreJudgedAlike(t *testing.T) {
 func TestEveryChainRefusalNamesTheSubjectAndFingerprint(t *testing.T) {
 	notAnAuthority := chainAuthority()
 	notAnAuthority.IsCA = false
-	der := link(t, notAnAuthority)
-	parsed, err := x509.ParseCertificate(der)
+	identity := presenting(t, notAnAuthority)
+	parsed, err := x509.ParseCertificate(identity.Certificate[1])
 	if err != nil {
 		t.Fatalf("parse: %v", err)
 	}
-	refusal := ValidateClientIdentity(presenting(t, der), testNow)
+	refusal := ValidateClientIdentity(identity, testNow)
 	if refusal == nil {
 		t.Fatal("expected a refusal")
 	}
