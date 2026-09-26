@@ -173,10 +173,7 @@ func BindArguments(schema ArgsSchema, values map[string]string) ([]string, error
 }
 
 // BindArguments binds a caller's named values against this task's reviewed
-// schema. A task declaring no arguments accepts none, which is every task in
-// the v1 catalog: ValidateTask still refuses a definition that declares a
-// schema, so this is the contract a reviewed task will bind against rather
-// than a path any embedded task reaches today.
+// schema. A task declaring no arguments accepts none.
 func (t Task) BindArguments(values map[string]string) ([]string, error) {
 	if len(t.ArgsSchema.Positional) == 0 && len(t.ArgsSchema.Flags) == 0 {
 		if len(values) != 0 {

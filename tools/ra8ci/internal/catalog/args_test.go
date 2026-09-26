@@ -109,10 +109,9 @@ func TestBindArgumentsRefusesWhatItCannotRunFaithfully(t *testing.T) {
 	}
 }
 
-// TestTaskBindArgumentsKeepsTheV1Refusal pins that stating this contract has
-// not quietly opened arguments to the embedded catalog: every reviewed task
-// declares no schema today, and ValidateTask still refuses one that does.
-func TestTaskBindArgumentsKeepsTheV1Refusal(t *testing.T) {
+// TestTaskBindArgumentsUsesTheReviewedSchema checks the catalog path from
+// admission through binding, while argument-free tasks still refuse values.
+func TestTaskBindArgumentsUsesTheReviewedSchema(t *testing.T) {
 	definitions, err := Load()
 	if err != nil {
 		t.Fatal(err)
@@ -122,10 +121,20 @@ func TestTaskBindArgumentsKeepsTheV1Refusal(t *testing.T) {
 		if !found {
 			t.Fatalf("catalog names %q but does not hold it", name)
 		}
-		if len(task.ArgsSchema.Positional) != 0 || len(task.ArgsSchema.Flags) != 0 {
-			t.Fatalf("task %q declares arguments the v1 catalog cannot carry", name)
-		}
 		argv, err := task.BindArguments(nil)
+		if name == "ascii-rewrite" {
+			if !errors.Is(err, ErrInvalidCatalog) || len(argv) != 0 {
+				t.Fatalf("task %q with missing required path = %q, %v", name, argv, err)
+			}
+			argv, err = task.BindArguments(map[string]string{"path": "docs/README.md"})
+			if err != nil || len(argv) != 1 || argv[0] != "docs/README.md" {
+				t.Fatalf("task %q path bind = %q, %v", name, argv, err)
+			}
+			continue
+		}
+		if len(task.ArgsSchema.Positional) != 0 || len(task.ArgsSchema.Flags) != 0 {
+			t.Fatalf("task %q unexpectedly declares arguments", name)
+		}
 		if err != nil || len(argv) != 0 {
 			t.Fatalf("task %q with no arguments = %q, %v", name, argv, err)
 		}
@@ -133,19 +142,25 @@ func TestTaskBindArgumentsKeepsTheV1Refusal(t *testing.T) {
 			t.Fatalf("task %q accepted an argument it does not declare: %v", name, err)
 		}
 	}
-	// A schema on a definition is still refused at review time.
+	// A valid schema is accepted at runtime review and manifest admission.
 	schemaTask := Task{Name: "format-check", Version: 1, Tier: "required",
 		Scope: "safe-local-read-only", OS: []string{"linux"}, DeadlineSeconds: 900,
 		BoardPolicy: "none", Retry: RetryPolicy{MaxAttempts: 1},
 		ArgsSchema: ArgsSchema{Flags: []string{"profile"}},
 		Steps:      []Step{{Name: "check", Program: "bash", Args: []string{"x.sh"}}}}
-	if err := ValidateTask(schemaTask); !errors.Is(err, ErrInvalidCatalog) {
-		t.Fatalf("a v1 definition declaring arguments was accepted: %v", err)
+	if err := ValidateTask(schemaTask); err != nil {
+		t.Fatalf("a valid argument schema was refused: %v", err)
 	}
-	// And a task that does declare one binds against it.
+	if err := ValidateReviewedTask(schemaTask); err != nil {
+		t.Fatalf("a valid argument schema failed reviewed admission: %v", err)
+	}
 	argv, err := schemaTask.BindArguments(map[string]string{"profile": "release"})
 	if err != nil || len(argv) != 1 || argv[0] != "--profile=release" {
 		t.Fatalf("declared schema bind = %q, %v", argv, err)
+	}
+	schemaTask.ArgsSchema.Positional = []string{"BadName"}
+	if err := ValidateTask(schemaTask); !errors.Is(err, ErrInvalidCatalog) {
+		t.Fatalf("an invalid argument schema was accepted: %v", err)
 	}
 }
 

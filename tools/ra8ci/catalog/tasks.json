@@ -136,6 +136,39 @@
       "resource_hints": {}
     },
     {
+      "name": "ascii-rewrite",
+      "version": 1,
+      "tier": "optional",
+      "scope": "safe-local-write-working-tree",
+      "os": [
+        "linux",
+        "windows"
+      ],
+      "capabilities": [],
+      "args_schema": {
+        "positional": [
+          "path"
+        ],
+        "flags": []
+      },
+      "deadline_seconds": 300,
+      "board_policy": "none",
+      "steps": [
+        {
+          "name": "rewrite-path",
+          "program": "ra8ci:ascii",
+          "args": [
+            "--checkout"
+          ]
+        }
+      ],
+      "outputs": [],
+      "retry": {
+        "max_attempts": 1
+      },
+      "resource_hints": {}
+    },
+    {
       "name": "assert-casts",
       "version": 1,
       "tier": "required",
