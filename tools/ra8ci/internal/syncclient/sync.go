@@ -45,7 +45,10 @@ func SyncPending(ctx context.Context, outbox *spool.Spool, baseURL string, clien
 	var report Report
 	claimed := make(map[string]string, len(entries))
 	for _, entry := range entries {
-		if entry.SchemaVersion != 2 {
+		if err := checkSchemaVersionIsKnown(entry); err != nil {
+			return report, fmt.Errorf("local %s: %w", entry.ID, err)
+		}
+		if entry.SchemaVersion != uploadableSchemaVersion {
 			report.Quarantined++
 			continue
 		}
