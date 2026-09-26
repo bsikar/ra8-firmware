@@ -605,6 +605,27 @@ if(TARGET test_fw_if_fs_posix_raw)
   endif()
 endif()
 
+# The host composition root binds the POSIX filesystem, the standard stream
+# pair and the scratch arena in one call. Its test links the hosted port
+# directly for the same reason the conformance tests above do: the POSIX
+# sources must stay out of the firmware object library.
+if(TARGET test_ra8_host)
+  target_sources(
+    test_ra8_host
+    PRIVATE ${FW_ROOT}/port/posix/src/ra8_host.c
+            ${FW_ROOT}/port/posix/src/ra8_io_stream_posix.c
+            ${FW_ROOT}/port/posix/src/fw_if_fs_posix.c
+            ${FW_ROOT}/port/posix/src/fw_if_fs_posix_bind.c
+            ${FW_ROOT}/port/posix/src/fw_if_fs_posix_common.c
+            ${FW_ROOT}/port/posix/src/fw_if_fs_posix_stream.c
+  )
+  target_include_directories(
+    test_ra8_host PRIVATE ${FW_ROOT}/libs/if/inc ${FW_ROOT}/port/posix/inc
+                          ${FW_ROOT}/port/posix/src
+  )
+  target_compile_definitions(test_ra8_host PRIVATE _GNU_SOURCE RA8_OFF_TARGET)
+endif()
+
 # Downloader state persistence runs one journal/recovery/fault vector against
 # both the hosted POSIX adapter and the firmware RAM blockdev -> FAT -> VFS
 # stack. Production state sources are compiled directly into this focused
