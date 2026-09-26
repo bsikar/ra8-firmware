@@ -135,6 +135,9 @@ func PlanYield(s Snapshot, waiterID string, dispatch YieldDispatch, cohort Yield
 	if err := admitYield(s, waiterID); err != nil {
 		return YieldPlan{}, err
 	}
+	if err := checkPlanCohortIsThePromisedOne(cohort, s.Lease); err != nil {
+		return YieldPlan{}, err
+	}
 
 	plan := YieldPlan{Dispatch: dispatch, RequestedAt: now}
 	if !s.Lease.YieldRequestedAt.IsZero() {

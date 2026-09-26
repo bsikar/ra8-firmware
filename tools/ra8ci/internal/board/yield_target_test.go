@@ -146,7 +146,11 @@ func TestValidateRefusesATargetNoRequestStandsBehind(t *testing.T) {
 
 func TestPlanYieldReportsThePromiseRatherThanARevisedEstimate(t *testing.T) {
 	now := time.Date(2026, 9, 24, 18, 0, 0, 0, time.UTC)
-	cohort := YieldCohort{BoardID: "board-1", BoardModel: "ra8p1", FixtureRevision: "rev-c", TaskName: "hil-smoke", CatalogDigest: "digest-1"}
+	// The cohort the promise was recorded under IS the cohort this plan is
+	// built on; a planner deriving a different one is now refused outright
+	// (plan_cohort_is_the_promised_one.go). Fixture alignment only: every
+	// assertion below is unchanged.
+	cohort := cohortUnderTest()
 	bounds := DeclaredHandoffBounds{SafeStepBound: 20 * time.Second, RestoreProbeBound: 10 * time.Second}
 
 	asked, _, err := Apply(targetTestSnapshot(now), RequestYield{Actor: "brighton", WaiterID: "waiter-human", Cohort: cohortUnderTest(), ShownTarget: 45 * time.Second}, now)
@@ -191,7 +195,11 @@ func TestPlanYieldReportsThePromiseRatherThanARevisedEstimate(t *testing.T) {
 
 func TestPlanYieldCarriesThePromiseEvenWithNoBoundsLeft(t *testing.T) {
 	now := time.Date(2026, 9, 24, 18, 0, 0, 0, time.UTC)
-	cohort := YieldCohort{BoardID: "board-1", BoardModel: "ra8p1", FixtureRevision: "rev-c", TaskName: "hil-smoke", CatalogDigest: "digest-1"}
+	// The cohort the promise was recorded under IS the cohort this plan is
+	// built on; a planner deriving a different one is now refused outright
+	// (plan_cohort_is_the_promised_one.go). Fixture alignment only: every
+	// assertion below is unchanged.
+	cohort := cohortUnderTest()
 	asked, _, err := Apply(targetTestSnapshot(now), RequestYield{Actor: "brighton", WaiterID: "waiter-human", Cohort: cohortUnderTest(), ShownTarget: 45 * time.Second}, now)
 	if err != nil {
 		t.Fatalf("request yield: %v", err)
