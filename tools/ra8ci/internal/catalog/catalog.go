@@ -296,6 +296,9 @@ func ValidateReviewedTask(task Task) error {
 	if err := checkBoundArgumentsKeepTheirMeaning(task); err != nil {
 		return err
 	}
+	if err := checkSafeStepFitsTheDeadline(task); err != nil {
+		return err
+	}
 	return ValidateTaskDispatch(task)
 }
 
