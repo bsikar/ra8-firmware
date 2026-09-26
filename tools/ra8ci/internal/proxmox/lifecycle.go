@@ -124,7 +124,13 @@ type Result struct {
 	AlreadySatisfied           bool
 }
 
-// List reports only explicitly allowlisted IDs in the configured pool.
+// List reports only explicitly allowlisted IDs in the configured pool, and it
+// reports them as disposable guests: a listed VM is something a later pass may
+// observe, stop or destroy. So the identity facts inspect() refuses are
+// refused here too, on the cluster record, before anything is reported. A
+// reservation that moved to another node cannot be addressed at all, since
+// every path this client builds names the configured node, and an allowed ID
+// that has become a template is not a guest a sweep may act on.
 func (c *Client) List(ctx context.Context) ([]VM, error) {
 	resources, err := c.resources(ctx)
 	if err != nil {
@@ -140,6 +146,16 @@ func (c *Client) List(ctx context.Context) ([]VM, error) {
 		}
 		if r.Pool != c.pool {
 			return nil, fmt.Errorf("%w: allowed VM ID is in a different pool", ErrConflict)
+		}
+		if r.Node != c.node {
+			return nil, fmt.Errorf("%w: allowed VM ID %d is on node %q, not the configured node", ErrConflict, r.VMID, r.Node)
+		}
+		template, err := flagRaw(r.Template)
+		if err != nil {
+			return nil, ErrProtocol
+		}
+		if template {
+			return nil, fmt.Errorf("%w: allowed VM ID %d is a template", ErrConflict, r.VMID)
 		}
 		result = append(result, VM{Identity: Identity{VMID: r.VMID, Node: r.Node, Pool: r.Pool, Name: r.Name}, Status: r.Status})
 	}
