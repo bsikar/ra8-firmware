@@ -19,6 +19,9 @@
  * pulls them in so existing consumers that ``#include
  * "ra8_board_ek_ra8d2.h"`` keep compiling unchanged:
  *
+ *   - ``ra8_board_ek_ra8d2_bringup.h`` -- the substrate prologue
+ *     (clocks, module stop, timebase, console, LEDs, interrupts)
+ *     behind one ``ra8_board_bringup()`` call.
  *   - ``ra8_board_ek_ra8d2_connectors.h`` -- board identity, user LEDs,
  *     user switches, parallel-RGB J1, audio CODEC, Arduino header,
  *     Pmod1/Pmod2, MikroBUS, and the project SW4-layout enum.
@@ -44,6 +47,7 @@
 
 #pragma once
 
+#include "ra8_board_ek_ra8d2_bringup.h"
 #include "ra8_board_ek_ra8d2_connectors.h"
 #include "ra8_board_ek_ra8d2_dualcore.h"
 #include "ra8_board_ek_ra8d2_pdm.h"
