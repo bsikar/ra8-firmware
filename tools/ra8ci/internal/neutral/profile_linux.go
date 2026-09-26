@@ -333,6 +333,10 @@ func (i LinuxActivityInspector) CheckIdle(ctx context.Context, processNames, dev
 	for _, name := range processNames {
 		protected[strings.ToLower(name)] = true
 	}
+	// comm cannot hold a name longer than commLimit, and the kernel writes
+	// the short form back with nothing saying it was cut; see
+	// commNamesAProtectedProcess.
+	truncated := truncatedProtectedNames(processNames)
 	devices := make(map[string]bool, len(devicePaths))
 	// A protected fixture is the device node's number, not the name it was
 	// listed under; see checkHeldDescriptorIsNotTheFixture.
@@ -375,7 +379,7 @@ func (i LinuxActivityInspector) CheckIdle(ctx context.Context, processNames, dev
 			}
 			return fmt.Errorf("inspect process: %w", err)
 		}
-		if protected[strings.ToLower(strings.TrimSpace(string(comm)))] {
+		if commNamesAProtectedProcess(string(comm), protected, truncated) {
 			return ErrHardwareBusy
 		}
 		cmdline, err := os.ReadFile(filepath.Join(processDir, "cmdline"))
