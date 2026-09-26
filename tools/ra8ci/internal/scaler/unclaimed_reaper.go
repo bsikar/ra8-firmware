@@ -163,6 +163,12 @@ func (r *UnclaimedReaper) Reap(ctx context.Context) (UnclaimedReport, error) {
 	var failures int
 	var firstErr error
 	for _, candidate := range expired {
+		// Before the row is counted: a candidate from another scale set is
+		// not a reservation this pass judged and failed to reap, it is an
+		// answer this pass cannot read.
+		if err := checkReservationScaleSet(r.config.ScaleSetID, unclaimedQueueRead, candidate); err != nil {
+			return report, fmt.Errorf("%w: %w", ErrUnclaimedIncomplete, err)
+		}
 		report.Scanned++
 		vm, err := r.queue.GetRunnerVM(ctx, candidate.ID)
 		if errors.Is(err, store.ErrNotFound) {
@@ -176,6 +182,9 @@ func (r *UnclaimedReaper) Reap(ctx context.Context) (UnclaimedReport, error) {
 		if vm.ID != candidate.ID {
 			return report, fmt.Errorf("%w: re-read returned reservation %s for %s",
 				ErrUnclaimedIncomplete, vm.ID, candidate.ID)
+		}
+		if err := checkReservationScaleSet(r.config.ScaleSetID, unclaimedRereadRead, vm); err != nil {
+			return report, fmt.Errorf("%w: %w", ErrUnclaimedIncomplete, err)
 		}
 		if !store.UnclaimedReservation(vm) {
 			report.Claimed++
