@@ -137,6 +137,9 @@ func offlineInput(entry spool.Entry, cat *catalog.Catalog) (store.LocalRunInput,
 		if step.Name != definition.Steps[i].Name {
 			return store.LocalRunInput{}, store.ErrInvalid
 		}
+		if err := checkLocalStepIsStated(step, entry); err != nil {
+			return store.LocalRunInput{}, err
+		}
 		in.Steps = append(in.Steps, store.LocalStepInput{
 			Key: step.Name, Ordinal: i, StartedAt: step.StartedAt,
 			EndedAt: step.EndedAt, DurationNS: int64(step.Duration), ExitCode: step.ExitCode,
