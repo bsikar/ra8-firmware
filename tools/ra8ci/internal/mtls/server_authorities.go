@@ -39,13 +39,28 @@ func ServerAuthorities(bundle []byte, now time.Time) (*x509.CertPool, error) {
 // every refusal, because an operator reading one wants to know which file to
 // go and look at: the listener's client CA or their own server CA.
 func parseAuthorities(bundle []byte, now time.Time, role string) (*x509.CertPool, error) {
+	pool, authorities, err := parseAuthorityBundle(bundle, role)
+	if err != nil {
+		return nil, err
+	}
+	if err := checkAuthoritiesUsable(authorities, now, role); err != nil {
+		return nil, err
+	}
+	return pool, nil
+}
+
+// parseAuthorityBundle reads the bundle and applies every rule that does not
+// depend on the clock: what an authority is, and that it may sign. Those are
+// permanent properties of the file, so they are decided once and never asked
+// again. It hands back the parsed authorities alongside the pool so a caller
+// holding the pool open can re-ask the one rule that does change with time.
+func parseAuthorityBundle(bundle []byte, role string) (*x509.CertPool, []*x509.Certificate, error) {
 	if len(bundle) == 0 {
-		return nil, fmt.Errorf("%w: %s certificate authority bundle is empty", ErrIdentity, role)
+		return nil, nil, fmt.Errorf("%w: %s certificate authority bundle is empty", ErrIdentity, role)
 	}
 	pool := x509.NewCertPool()
+	var authorities []*x509.Certificate
 	rest := bundle
-	parsed := 0
-	usable := 0
 	for {
 		var block *pem.Block
 		block, rest = pem.Decode(rest)
@@ -57,26 +72,33 @@ func parseAuthorities(bundle []byte, now time.Time, role string) (*x509.CertPool
 		}
 		authority, err := x509.ParseCertificate(block.Bytes)
 		if err != nil {
-			return nil, fmt.Errorf("%w: parse %s certificate authority: %v", ErrIdentity, role, err)
+			return nil, nil, fmt.Errorf("%w: parse %s certificate authority: %v", ErrIdentity, role, err)
 		}
-		parsed++
 		where := fmt.Sprintf("subject %q sha256 %s", authority.Subject.String(), Fingerprint(authority))
 		if !authority.IsCA {
-			return nil, fmt.Errorf("%w: %s in the %s CA bundle is not a certificate authority", ErrIdentity, where, role)
+			return nil, nil, fmt.Errorf("%w: %s in the %s CA bundle is not a certificate authority", ErrIdentity, where, role)
 		}
 		if err := checkAuthorityCanSign(authority, where, role); err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 		pool.AddCert(authority)
+		authorities = append(authorities, authority)
+	}
+	if len(authorities) == 0 {
+		return nil, nil, fmt.Errorf("%w: %s certificate authority bundle holds no certificate", ErrIdentity, role)
+	}
+	return pool, authorities, nil
+}
+
+// checkAuthoritiesUsable is the one rule in a CA bundle that changes without
+// the file changing: whether anything in it can still verify a certificate
+// today. An expired authority beside a live one is a rotation and stays
+// acceptable; a bundle where none is live authenticates nobody.
+func checkAuthoritiesUsable(authorities []*x509.Certificate, now time.Time, role string) error {
+	for _, authority := range authorities {
 		if !now.Before(authority.NotBefore) && now.Before(authority.NotAfter) {
-			usable++
+			return nil
 		}
 	}
-	if parsed == 0 {
-		return nil, fmt.Errorf("%w: %s certificate authority bundle holds no certificate", ErrIdentity, role)
-	}
-	if usable == 0 {
-		return nil, fmt.Errorf("%w: every certificate authority in the %s CA bundle is outside its validity window", ErrIdentity, role)
-	}
-	return pool, nil
+	return fmt.Errorf("%w: every certificate authority in the %s CA bundle is outside its validity window", ErrIdentity, role)
 }
