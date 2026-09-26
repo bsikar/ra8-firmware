@@ -215,10 +215,20 @@ func writeBackupAttestation(path string, data []byte) error {
 }
 
 // LoadBackupPublicKey reads a bounded base64 Ed25519 public key from a
-// non-writable regular file available to the API service.
+// non-writable regular file available to the API service. The directory
+// holding it is held to the same rule as the file: this key decides which
+// signatures the gate will accept, so an account that can replace it decides
+// what the gate believes.
 func LoadBackupPublicKey(path string) (ed25519.PublicKey, error) {
 	if !filepath.IsAbs(path) {
 		return nil, errors.New("backup public key path must be absolute")
+	}
+	directoryInfo, err := os.Lstat(filepath.Dir(path))
+	if err != nil || !directoryInfo.IsDir() || directoryInfo.Mode()&os.ModeSymlink != 0 {
+		return nil, errors.New("backup public key directory must be a real directory")
+	}
+	if directoryInfo.Mode().Perm()&0022 != 0 {
+		return nil, errors.New("backup public key directory must not be group or world writable")
 	}
 	info, err := os.Lstat(path)
 	if err != nil || !info.Mode().IsRegular() || info.Mode()&os.ModeSymlink != 0 || info.Mode().Perm()&0022 != 0 || info.Size() <= 0 || info.Size() > 256 {
