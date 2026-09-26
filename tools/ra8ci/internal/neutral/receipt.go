@@ -224,7 +224,7 @@ func (v *Verifier) VerifyNeutralReceipt(_ context.Context, challenge store.Neutr
 	if err != nil || formatTime(signedAt) != receipt.Payload.SignedAt || receipt.Payload.State != "neutral" ||
 		observedAt.Before(challenge.IssuedAt) || !checkObservationIsFresh(observedAt, signedAt) ||
 		signedAt.After(now) || !signedAt.Before(challenge.ExpiresAt) ||
-		!validSHA256(receipt.Payload.EvidenceSHA256) {
+		!evidenceWasMeasured(receipt.Payload.EvidenceSHA256) {
 		return ErrInvalidReceipt
 	}
 	toVerify, err := signedBytes(receipt.Payload)
