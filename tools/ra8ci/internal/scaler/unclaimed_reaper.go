@@ -70,9 +70,11 @@ type UnclaimedRevoker interface {
 	AbandonAttempt(context.Context, store.RunnerVM) error
 }
 
-// ExpiredUnclaimedLister is the reaper's work queue. *store.Store satisfies it.
+// ExpiredUnclaimedLister lists candidate snapshots and reads the current row
+// before the reaper starts revoking it. *store.Store satisfies it.
 type ExpiredUnclaimedLister interface {
 	ListExpiredUnclaimedRunnerVMs(context.Context, int64, time.Time, int) ([]store.RunnerVM, error)
+	GetRunnerVM(context.Context, string) (store.RunnerVM, error)
 }
 
 // UnclaimedReaperConfig is what a pass needs beyond its two collaborators.
@@ -160,8 +162,21 @@ func (r *UnclaimedReaper) Reap(ctx context.Context) (UnclaimedReport, error) {
 	}
 	var failures int
 	var firstErr error
-	for _, vm := range expired {
+	for _, candidate := range expired {
 		report.Scanned++
+		vm, err := r.queue.GetRunnerVM(ctx, candidate.ID)
+		if errors.Is(err, store.ErrNotFound) {
+			report.Claimed++
+			continue
+		}
+		if err != nil {
+			return report, fmt.Errorf("%w: re-read expired reservation %s: %w",
+				ErrUnclaimedIncomplete, candidate.ID, err)
+		}
+		if vm.ID != candidate.ID {
+			return report, fmt.Errorf("%w: re-read returned reservation %s for %s",
+				ErrUnclaimedIncomplete, vm.ID, candidate.ID)
+		}
 		if !store.UnclaimedReservation(vm) {
 			report.Claimed++
 			continue
