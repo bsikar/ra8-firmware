@@ -13,7 +13,7 @@ from shell_entrypoint_policy import (
 
 INSTALL = "scripts/ci/install_unicorn.sh"
 INFRA = "infra/network/ap_openwrt.sh"
-EXTENSIONLESS = "scripts/git/pre-commit"
+EXTENSIONLESS = "scripts/git/commit-msg"
 SOURCED = "scripts/hil/lib/bench_lock.sh"
 DUAL = "scripts/ci/lib/tool_env.sh"
 RELEASE_LOADER_REL = "scripts/dev/provision_dev_box_toolchain.sh"

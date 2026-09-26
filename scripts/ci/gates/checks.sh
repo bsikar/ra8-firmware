@@ -19,7 +19,7 @@
 
 # --- pre-commit-checks ----------------------------------------------------
 # The check_*.py gate suite. Each entry runs in its default mode -- the same
-# way scripts/git/pre-commit invokes it.
+# way the removed pre-commit hook invoked it.
 #
 # The suite is grouped into helpers below rather than written as one 150-line
 # body. The grouping is CONTIGUOUS and the execution order is unchanged: these
@@ -48,7 +48,7 @@ _pcc_banned_constructs() (
   # --selftest FIRST proves the detector fires in BOTH directions, so one that
   # stopped matching cannot pass as clean; --all then audits the whole tree
   # index-independently (the fix), so CI and local agree. The --staged
-  # counterpart runs blocking in scripts/git/pre-commit.
+  # counterpart used to run blocking in the removed pre-commit hook.
   python3 scripts/checks/check_mcdc_block.py --selftest
   python3 scripts/checks/check_mcdc_block.py --all
   # --all asks it to enumerate src/ + libs/ rather than read staged files.
@@ -111,11 +111,6 @@ _pcc_size_caps() (
 # Migration contracts that span the executable hook/checker surfaces.
 _pcc_migration_contracts() (
   set -e
-  # Hook policy lives in Just while scripts/git/* remain transport wrappers.
-  # Guard that split explicitly: the first migration collapsed a large hook
-  # to a wrapper while silently dropping most staged checks.
-  python3 scripts/checks/check_hook_parity.py --selftest
-  python3 scripts/checks/check_hook_parity.py
   # Shell recursion must preserve the Just executable that entered the recipe;
   # a noninteractive SSH PATH need not contain that binary's directory.
   /bin/bash -p scripts/dev/run_just.sh --selftest
@@ -336,7 +331,7 @@ _pcc_source_form() (
   python3 scripts/checks/check_no_gnu_attribute.py
   # The four C23 source patterns (_Static_assert -> static_assert, = {0} ->
   # = {}, no <stdbool.h>, paren-wrapped numeric #define values). These lived
-  # ONLY as inline grep loops in scripts/git/pre-commit and were never run by
+  # ONLY as inline grep loops in the removed pre-commit hook and were never run by
   # this gate, so a violation the hook rejects slipped through CI on any
   # machine whose hook was not installed. The hook and this gate now share one
   # implementation. The selftest asserts each rule in both directions before
@@ -426,7 +421,7 @@ _pcc_mcdc_discipline() (
   # range-aware and fail-loud now (no mode / unresolvable range is exit 2, not
   # a silent clean scan). --selftest proves the detector in BOTH directions, so
   # one that stopped matching cannot pass as clean; the staged counterpart runs
-  # blocking in scripts/git/pre-commit (--staged).
+  # blocking in the removed pre-commit hook (--staged).
   python3 scripts/checks/check_new_compound_has_mcdc.py --selftest
   # ... and the CI teeth for that rule: the MC/DC RATCHET (#426). Until it
   # landed, enforcement here was decorative -- only the --selftest above ran, so

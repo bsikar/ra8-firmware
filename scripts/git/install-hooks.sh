@@ -6,9 +6,9 @@
 # Install stable launchers under the shared Git common directory.
 #
 # Each installed hook executes scripts/git/<hook> from the invoking worktree's
-# immutable HEAD. Candidate staged or unstaged hook bytes therefore cannot run
-# before pre-commit captures the exact index. Linked worktrees share the
-# launcher directory but resolve their own current HEAD at invocation time.
+# immutable HEAD, so candidate staged or unstaged hook bytes never run. Linked
+# worktrees share the launcher directory but resolve their own current HEAD at
+# invocation time. Commit and push are not gated here: run `just ci` yourself.
 #
 #     ./scripts/git/install-hooks.sh        (or: just hooks)
 if [[ "$-" == *p* ]]; then
@@ -93,7 +93,7 @@ if [[ "$-" == *p* ]]; then
   export GIT_TERMINAL_PROMPT=0
 
   MARKER="RA8-MANAGED-HOOK-LAUNCHER-V1"
-  HOOK_NAMES="commit-msg post-checkout post-commit post-merge pre-commit pre-push"
+  HOOK_NAMES="commit-msg post-checkout post-commit post-merge"
   scratch=""
   staging=""
   backup=""

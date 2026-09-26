@@ -27,7 +27,6 @@ mod workspace 'just/ws.just'
 mod work 'just/work.just'
 mod docs 'just/docs.just'
 mod checks 'just/checks.just'
-mod git_hooks "just/hooks.just"
 
 # --- Primary Developer Shortcuts --------------------------------------------
 
@@ -56,7 +55,6 @@ default:
     @echo "  just dev_shell         Enter the pinned writable development environment"
     @echo "  just checks            Pre-commit verification: format, tidy, unit tests"
     @echo "  just hooks             Install tracked git hooks into .git/hooks"
-    @echo "  just git_hooks         Explore git hook commands"
     @echo "  just search <keyword>  Search across Apps, Examples, and Tests"
     @echo ""
 

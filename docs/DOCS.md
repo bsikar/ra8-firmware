@@ -127,7 +127,7 @@ When you add a new function, struct, enum, or file:
    `scripts/checks/check_doc_attachment.py` covers the harder question
    of whether a block actually describes the symbol it is attached to.
    They run in the `pre-commit-checks` / `doc-attachment` CI gates and
-   in `scripts/git/pre-commit`.
+   in the `pre-commit-checks` CI gate.
 2. Run `just docs::build` locally and confirm the new symbol appears in
    the rendered HTML.
 3. Tail `build/docs/doxygen-warnings.log` for any new warnings

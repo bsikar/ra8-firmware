@@ -89,7 +89,7 @@ if [[ "$-" == *p* ]]; then
 
   hook="${0##*/}"
   case "$hook" in
-    commit-msg | post-checkout | post-commit | post-merge | pre-commit | pre-push) ;;
+    commit-msg | post-checkout | post-commit | post-merge) ;;
     *) die "unsupported installed hook name: $hook" ;;
   esac
 

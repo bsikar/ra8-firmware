@@ -169,7 +169,7 @@ BASENAME_LANG = {
 }
 
 # Directories whose extensionless executables are shell by construction. The
-# git hooks are the case that matters: scripts/git/pre-commit is 670 lines of
+# git hooks are the case that matters: scripts/git/commit-msg is 670 lines of
 # shell that no suffix-driven scope has ever seen.
 SHEBANG_LANG = {
     "sh": "shell",
@@ -420,11 +420,11 @@ def selftest() -> int:
     """Prove source classification includes tricky code and excludes real outputs/SOUP."""
     with tempfile.TemporaryDirectory(prefix="lint-targets-selftest-") as raw:
         root = Path(raw)
-        hook = root / "scripts/git/pre-commit"
+        hook = root / "scripts/git/commit-msg"
         hook.parent.mkdir(parents=True)
         hook.write_text("#!/usr/bin/env bash\nexit 0\n", encoding="ascii")
         cases = (
-            (language_of("scripts/git/pre-commit", root) == "shell", "shebang-only hook is shell"),
+            (language_of("scripts/git/commit-msg", root) == "shell", "shebang-only hook is shell"),
             (
                 language_of("internal/build/helper.sh", root) == "shell",
                 "source build dir is visible",

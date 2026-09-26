@@ -29,7 +29,7 @@ Three selection modes, and NO fourth silent one:
     #325 fix -- see below.
 
   * ``--staged`` -- audit the staged ``tests/**/*.c`` files. This is the mode
-    the local ``scripts/git/pre-commit`` hook uses: it gates exactly the test
+    the removed local pre-commit hook used: it gates exactly the test
     files about to be committed.
 
   * ``--range BASE..HEAD [--repo DIR]`` -- audit the test files changed in a
