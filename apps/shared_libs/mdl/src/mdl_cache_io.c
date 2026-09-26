@@ -13,7 +13,7 @@
 #include "mdl_cache_internal.h"
 #include "mdl_hash.h"
 #include "mdl_sanitize.h"
-#include "mdl_url_guard.h"
+#include "ra8_net_urlguard.h"
 
 /** @brief Canonical binary layout and bounded I/O constants. */
 typedef enum : uint32_t {
@@ -319,7 +319,8 @@ internal_cache_paths(mdl_cache_t* cache, const char* url, mdl_cache_paths_t* pat
 {
   *paths = (mdl_cache_paths_t){};
   if ((cache == nullptr) || (cache->storage == nullptr) || (cache->root == nullptr) ||
-      (cache->root[0] != '/') || !mdl_url_host(url, paths->host, sizeof(paths->host))) {
+      (cache->root[0] != '/') ||
+      (ra8_net_urlguard_host(url, paths->host, sizeof(paths->host)) != k_ra8_ok)) {
     return k_ra8_err_invalid_arg;
   }
   paths->host_hash = mdl_hash_str(paths->host);
@@ -363,7 +364,8 @@ RA8_INTERNAL static bool internal_cache_record_valid(const mdl_cache_record_t* r
                       (record->response_status >= (uint16_t)k_cache_status_min) &&
                       (record->response_status <= (uint16_t)k_cache_status_max);
   return fields && (record->url_hash == mdl_hash_str(record->url)) &&
-         mdl_url_host(record->url, host, sizeof(host)) && (mdl_hash_str(host) == paths->host_hash);
+         (ra8_net_urlguard_host(record->url, host, sizeof(host)) == k_ra8_ok) &&
+         (mdl_hash_str(host) == paths->host_hash);
 }
 
 /**

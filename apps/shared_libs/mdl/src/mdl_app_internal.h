@@ -41,7 +41,7 @@
 #include "mdl_state.h"
 #include "mdl_storage.h"
 #include "mdl_stream_internal.h"
-#include "mdl_url_guard.h"
+#include "ra8_net_urlguard.h"
 #include "mdl_urlname.h"
 #include "mdl_verify.h"
 #include "ra8_attributes.h"

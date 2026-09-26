@@ -20,7 +20,7 @@
 #include "mdl_pathfs.h"
 #include "mdl_storage.h"
 #include "mdl_stream_internal.h"
-#include "mdl_url_guard.h"
+#include "ra8_net_urlguard.h"
 #include "mdl_urlname.h"
 #include "ra8_attributes.h"
 #include "ra8_err.h"
@@ -206,7 +206,7 @@ RA8_PRIV ra8_err_t priv_mdl_fetch_checkpoint(const mdl_fetch_ctx_t* ctx)
 /** @brief Governor host key for `url`, or NULL when it cannot be parsed. */
 RA8_INTERNAL static const char* internal_mdl_fetch_page_host(const char* url, char* buf, size_t cap)
 {
-  return mdl_url_host(url, buf, cap) ? buf : nullptr;
+  return (ra8_net_urlguard_host(url, buf, cap) == k_ra8_ok) ? buf : nullptr;
 }
 
 /**
@@ -478,7 +478,7 @@ internal_mdl_fetch_chapter_html(mdl_fetch_ctx_t* ctx, const char* chapter_url, s
     .ctx  = ctx,
     .jmin = internal_mdl_fetch_max_u32(ctx->site->chapter_delay_min, crawl),
     .jmax = internal_mdl_fetch_max_u32(ctx->site->chapter_delay_max, crawl)};
-  if (!mdl_url_host(chapter_url, fetch.host, sizeof(fetch.host))) {
+  if (ra8_net_urlguard_host(chapter_url, fetch.host, sizeof(fetch.host)) != k_ra8_ok) {
     return k_ra8_err_invalid_arg;
   }
   const mdl_net_req_t req      = {.user_agent = ctx->session->user_agent,

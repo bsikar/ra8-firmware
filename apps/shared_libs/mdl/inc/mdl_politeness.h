@@ -350,7 +350,7 @@ void mdl_governor_init_clock(mdl_governor_t*      g,
  * disabled), matching a NULL jitter source.
  *
  * @param[in,out] g             Governor, or NULL to disable pacing.
- * @param[in]     host          Host key (e.g. from ::mdl_url_host); may be NULL.
+ * @param[in]     host          Host key (e.g. from ::ra8_net_urlguard_host); may be NULL.
  * @param[in]     jitter_min_ms Baseline spacing floor (e.g. the site img delay).
  * @param[in]     jitter_max_ms Baseline spacing ceiling (clamped up to the floor).
  *

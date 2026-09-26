@@ -205,7 +205,7 @@ add_executable(
   ${MDL_FORM_SRC_DIR}/mdl_net_curl.c
   ${MDL_FORM_SRC_DIR}/mdl_net_curl_credentials.c
   ${MDL_CORE_SRC_DIR}/mdl_politeness.c
-  ${MDL_CORE_SRC_DIR}/mdl_url_guard.c
+  ${MDL_REPO_ROOT}/libs/ra8_net_policy/src/ra8_net_urlguard.c
   ${MDL_FS_SRC}
 )
 target_include_directories(
@@ -232,7 +232,7 @@ add_executable(
   ${MDL_FORM_SRC_DIR}/mdl_net_curl.c
   ${MDL_FORM_SRC_DIR}/mdl_net_curl_credentials.c
   ${MDL_FORM_SRC_DIR}/mdl_host_credentials.c
-  ${MDL_CORE_SRC_DIR}/mdl_url_guard.c
+  ${MDL_REPO_ROOT}/libs/ra8_net_policy/src/ra8_net_urlguard.c
 )
 target_include_directories(
   test_mdl_credentials

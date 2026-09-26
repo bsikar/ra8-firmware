@@ -761,7 +761,6 @@ if(TARGET test_mdl_export_parity)
             ${FW_ROOT}/apps/shared_libs/mdl/src/mdl_verify_tarball.c
             ${FW_ROOT}/apps/shared_libs/mdl/src/mdl_verify_rabook.c
             ${FW_ROOT}/apps/shared_libs/mdl/src/mdl_urlname.c
-            ${FW_ROOT}/apps/shared_libs/mdl/src/mdl_url_guard.c
             ${FW_ROOT}/apps/shared_libs/mdl/src/mdl_sanitize.c
             ${FW_ROOT}/apps/shared_libs/mdl/src/mdl_storage.c
             ${FW_ROOT}/apps/shared_libs/mdl/src/mdl_hash.c
