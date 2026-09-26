@@ -81,6 +81,12 @@ func parseAuthorityBundle(bundle []byte, role string) (*x509.CertPool, []*x509.C
 		if err := checkAuthorityCanSign(authority, where, role); err != nil {
 			return nil, nil, err
 		}
+		// Same permanent rule the identities are held to: an authority
+		// carrying a field the verifier cannot interpret authenticates
+		// nobody, today or after any rotation.
+		if err := checkNoUnhandledCriticalExtension(authority, where, "in the "+role+" CA bundle"); err != nil {
+			return nil, nil, err
+		}
 		pool.AddCert(authority)
 		authorities = append(authorities, authority)
 	}
