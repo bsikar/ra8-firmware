@@ -1035,6 +1035,9 @@ func Validate(s Snapshot) error {
 		if (s.Phase == YieldRequested || s.Phase == Draining) && s.Lease.YieldRequestedAt.IsZero() {
 			return &Error{Conflict, "yield phase lacks request time"}
 		}
+		if err := checkYieldStampNeedsAYieldPhase(s.Phase, s.Lease); err != nil {
+			return err
+		}
 	case RecoveryRequired, Recovering, Quarantined:
 		// The old lease is retained as recovery evidence, if one existed.
 	default:
