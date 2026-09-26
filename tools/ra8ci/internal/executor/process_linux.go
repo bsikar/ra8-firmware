@@ -68,6 +68,11 @@ func runCommand(ctx context.Context, program string, args []string, root string,
 		case observeErr = <-exited:
 			timer.Stop()
 		case <-timer.C:
+			// The grace timer firing means the exit channel did not, so the
+			// leader is still alive and the tree below it is still walkable.
+			// Anything that left the group while the step was being asked to
+			// stop is in this reading and in no earlier one.
+			escaped = escapeesBeforeTheKill(cmd.Process.Pid, escaped)
 			_ = signalGroup(cmd.Process.Pid, syscall.SIGKILL)
 			_, _ = signalEscapedDescendants(escaped, syscall.SIGKILL)
 			observeErr = <-exited
