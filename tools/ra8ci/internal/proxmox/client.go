@@ -138,6 +138,9 @@ func New(cfg Config) (*Client, error) {
 	if requestTimeout < time.Millisecond || requestTimeout > 30*time.Second || operationTimeout < time.Millisecond || operationTimeout > 30*time.Minute || pollInterval < time.Millisecond || pollInterval > 30*time.Second {
 		return nil, fmt.Errorf("%w: timeout outside bounded policy", ErrInvalid)
 	}
+	if err := checkTimeoutsFitTogether(requestTimeout, operationTimeout, pollInterval); err != nil {
+		return nil, err
+	}
 	transport := &http.Transport{
 		Proxy:                 nil,
 		TLSClientConfig:       &tls.Config{RootCAs: roots, MinVersion: tls.VersionTLS13},
