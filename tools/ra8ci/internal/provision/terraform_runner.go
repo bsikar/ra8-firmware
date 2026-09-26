@@ -445,7 +445,7 @@ func (p *TerraformRunnerProvisioner) apply(ctx context.Context, action proxmox.A
 		if !begun {
 			return errors.New("Terraform apply intent was already consumed; reconcile without retry")
 		}
-		return session.Apply(ctx, planFile)
+		return session.Apply(ctx, planFile, digest)
 	})
 	if err != nil {
 		return proxmox.Result{}, &proxmox.UnknownOutcomeError{OperationID: action.ID, Cause: err}

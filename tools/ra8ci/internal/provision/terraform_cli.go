@@ -218,14 +218,19 @@ func (session *TerraformSession) Plan(ctx context.Context, operationID, variable
 	return planFile, digest, nil
 }
 
-// Apply applies only a private saved plan in the reservation workspace. It
-// never retries a failed or interrupted apply; the caller must reconcile first.
-func (session *TerraformSession) Apply(ctx context.Context, planFile string) error {
+// Apply applies only a private saved plan in the reservation workspace, and
+// only when that plan still hashes to approvedDigest, the digest Plan returned
+// and the caller recorded as its apply intent. It never retries a failed or
+// interrupted apply; the caller must reconcile first.
+func (session *TerraformSession) Apply(ctx context.Context, planFile, approvedDigest string) error {
 	if err := session.validate(ctx); err != nil {
 		return err
 	}
 	if err := requirePrivateFileInside(session.workspace, planFile, maxTerraformPlanBytes); err != nil {
 		return fmt.Errorf("validate Terraform saved plan: %w", err)
+	}
+	if err := requireApprovedPlan(planFile, approvedDigest); err != nil {
+		return err
 	}
 	return session.run(ctx, nil, "apply", "-input=false", "-no-color", planFile)
 }
