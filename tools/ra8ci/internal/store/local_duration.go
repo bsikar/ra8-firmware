@@ -62,9 +62,10 @@ func checkLocalRunDurations(in LocalRunInput) error {
 // and refuses a span too wide to measure at all. time.Time.Sub saturates at
 // MaxInt64 rather than reporting an overflow, so a pair of stamps more than
 // about 292 years apart yields the largest representable span and would admit
-// any duration whatsoever. Callers reach this only after validateLocalRun has
-// held the later stamp at or after the earlier one, so a saturated result means
-// an absurd span and never a reversed one, and the subtraction below cannot
+// any duration whatsoever. Every caller reaches this only after the later stamp
+// has been held at or after the earlier one, by validateLocalRun on the upload
+// path and by RecordStep's metadata rule on the recorded-step path, so a
+// saturated result means an absurd span and never a reversed one, and the subtraction below cannot
 // overflow: both sides are non-negative.
 func checkLocalDurationFitsStamps(subject string, durationNS int64, started, ended time.Time) error {
 	span := ended.Sub(started)
