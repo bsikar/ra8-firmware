@@ -302,6 +302,9 @@ func ValidateReviewedTask(task Task) error {
 	if err := checkObservationTimeoutFitsTheDeadline(task); err != nil {
 		return err
 	}
+	if err := checkRestoreProbeCoversTheFlashRestore(task); err != nil {
+		return err
+	}
 	return ValidateTaskDispatch(task)
 }
 
