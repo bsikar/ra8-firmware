@@ -83,8 +83,16 @@ func (collector *ArtifactCollector) collectOne(ctx context.Context, stepName, ou
 	if !protocol.ValidArtifactPath(output) {
 		return protocol.ArtifactManifest{}, false, fmt.Errorf("%w: %q", ErrUnsafeArtifact, output)
 	}
-	path := filepath.Join(collector.root, filepath.FromSlash(output))
-	info, err := os.Lstat(path)
+	root, err := os.OpenRoot(collector.root)
+	if err != nil {
+		return protocol.ArtifactManifest{}, false, err
+	}
+	defer root.Close()
+	name := filepath.FromSlash(output)
+	if err := collector.refuseSymlinkParents(root, name, output); err != nil {
+		return protocol.ArtifactManifest{}, false, err
+	}
+	info, err := root.Lstat(name)
 	if errors.Is(err, os.ErrNotExist) {
 		return protocol.ArtifactManifest{}, false, nil
 	}
@@ -96,7 +104,9 @@ func (collector *ArtifactCollector) collectOne(ctx context.Context, stepName, ou
 	if !info.Mode().IsRegular() {
 		return protocol.ArtifactManifest{}, false, fmt.Errorf("%w: %q is not a plain file", ErrUnsafeArtifact, output)
 	}
-	file, err := os.Open(path)
+	// Root.Open prevents a concurrent parent replacement from redirecting the
+	// read outside the checkout after the component checks above.
+	file, err := root.Open(name)
 	if err != nil {
 		return protocol.ArtifactManifest{}, false, err
 	}
@@ -106,6 +116,27 @@ func (collector *ArtifactCollector) collectOne(ctx context.Context, stepName, ou
 		return protocol.ArtifactManifest{}, false, err
 	}
 	return manifest, true, nil
+}
+
+// refuseSymlinkParents rejects each existing parent component independently.
+// Checking only the final path with Lstat misses a symlink in an ancestor,
+// which would make Open read a file outside the checkout.
+func (collector *ArtifactCollector) refuseSymlinkParents(root *os.Root, name, output string) error {
+	parent := filepath.Dir(name)
+	for parent != "." {
+		info, err := root.Lstat(parent)
+		if errors.Is(err, os.ErrNotExist) {
+			return nil
+		}
+		if err != nil {
+			return err
+		}
+		if info.Mode()&os.ModeSymlink != 0 || !info.IsDir() {
+			return fmt.Errorf("%w: parent of %q is not a plain directory", ErrUnsafeArtifact, output)
+		}
+		parent = filepath.Dir(parent)
+	}
+	return nil
 }
 
 func (collector *ArtifactCollector) stream(ctx context.Context, stepName, output string, reader io.Reader) (protocol.ArtifactManifest, error) {
