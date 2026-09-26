@@ -163,8 +163,12 @@ func (s *Spool) Finish(entry Entry, result executor.Result, runErr error) (Entry
 	if s == nil || !validID(entry.ID) || entry.SyncState != "running" {
 		return Entry{}, errors.New("invalid running local record")
 	}
-	if _, err := os.Lstat(filepath.Join(s.directory, entry.ID+".started.json")); err != nil {
-		return Entry{}, fmt.Errorf("missing start record: %w", err)
+	started, err := s.readStarted(entry.ID)
+	if err != nil {
+		return Entry{}, err
+	}
+	if err := checkFinishMatchesStart(started, entry); err != nil {
+		return Entry{}, err
 	}
 	now := time.Now().UTC()
 	entry.FinishedAt = &now
@@ -227,6 +231,29 @@ func (s *Spool) MarkSynced(id, serverRunID string) error {
 		return err
 	}
 	return s.write(id+".synced.json", map[string]string{"local_id": id, "server_run_id": serverRunID})
+}
+
+// readStarted returns the record frozen before the task ran. The Lstat comes
+// first so a start record that is a symlink is reported as a missing record
+// rather than followed, the same refusal Open makes about the directory.
+func (s *Spool) readStarted(id string) (Entry, error) {
+	path := filepath.Join(s.directory, id+".started.json")
+	info, err := os.Lstat(path)
+	if err != nil {
+		return Entry{}, fmt.Errorf("missing start record: %w", err)
+	}
+	if !info.Mode().IsRegular() {
+		return Entry{}, errors.New("start record is not a regular file")
+	}
+	raw, err := os.ReadFile(path)
+	if err != nil {
+		return Entry{}, fmt.Errorf("missing start record: %w", err)
+	}
+	var started Entry
+	if err := json.Unmarshal(raw, &started); err != nil {
+		return Entry{}, fmt.Errorf("unreadable start record: %w", err)
+	}
+	return started, nil
 }
 
 func (s *Spool) write(name string, value any) error {
