@@ -25,7 +25,7 @@ func evidenceReceipt(t *testing.T) TerminalReceipt {
 	return TerminalReceipt{
 		SchemaVersion: Version, AssignmentID: "018f8b3a-1c2d-7e4f-8a1b-2c3d4e5f6a7b",
 		AttemptID: "018f8b3a-1c2d-7e4f-9a1b-2c3d4e5f6a7c", AssignmentVersion: 1, FencingToken: 1,
-		Outcome: "succeeded", ChildExitCode: &zero, EvidenceComplete: true,
+		Outcome: "succeeded", ChildExitCode: &zero, EvidenceComplete: true, FinalLogSequence: 1,
 		StartedAt: now, EndedAt: now.Add(time.Second), DurationNS: int64(time.Second),
 		CatalogSHA256: strings.Repeat("a", 64), SourceSnapshotSHA256: strings.Repeat("b", 64),
 		HostFactsAtStart: facts, HostFactsAtEnd: facts,
