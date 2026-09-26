@@ -22,6 +22,12 @@ func LoadClientIdentity(certFile, keyFile string, now time.Time) (tls.Certificat
 	if certFile == "" || keyFile == "" {
 		return tls.Certificate{}, fmt.Errorf("%w: a certificate path and a key path are both required", ErrIdentity)
 	}
+	// Before the read rather than after it: a key every account can read is
+	// already exposed, and saying so before the process starts is the whole
+	// value of saying it at all.
+	if err := checkPrivateKeyFileMode(keyFile); err != nil {
+		return tls.Certificate{}, err
+	}
 	identity, err := tls.LoadX509KeyPair(certFile, keyFile)
 	if err != nil {
 		// The error from the TLS package names the two paths, never the key
@@ -42,6 +48,11 @@ func LoadClientIdentity(certFile, keyFile string, now time.Time) (tls.Certificat
 func LoadServerIdentity(certFile, keyFile string, now time.Time) (tls.Certificate, error) {
 	if certFile == "" || keyFile == "" {
 		return tls.Certificate{}, fmt.Errorf("%w: a certificate path and a key path are both required", ErrIdentity)
+	}
+	// Same reading as the client side: the listener's key is no less private
+	// for being a server's.
+	if err := checkPrivateKeyFileMode(keyFile); err != nil {
+		return tls.Certificate{}, err
 	}
 	identity, err := tls.LoadX509KeyPair(certFile, keyFile)
 	if err != nil {
