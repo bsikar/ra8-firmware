@@ -86,6 +86,9 @@ func DeclaredTimeout(root, app string) (seconds int, found bool, err error) {
 		}
 		key, raw, hasEquals := strings.Cut(line, "=")
 		if !hasEquals {
+			if lineDeclaresTheTimeoutWithoutAValue(line) {
+				return 0, false, fmt.Errorf("%w: %s states HIL_TIMEOUT_S as %q, assigning nothing", ErrUnreadableDeclaration, path, line)
+			}
 			continue
 		}
 		if trimmed := strings.TrimSpace(key); trimmed != "HIL_TIMEOUT_S" {
