@@ -73,6 +73,11 @@ type Agent struct {
 	beat     time.Duration
 	client   *http.Client
 	catalog  *catalog.Catalog
+	// authorities re-asks whether the trust file this agent verifies the
+	// server against can still verify anything. Only New wires it, from the
+	// bundle it read; an agent assembled directly in a test holds no bundle
+	// and there is nothing to re-ask.
+	authorities func() error
 }
 
 // beatInterval is the period between heartbeats. Zero means the reviewed
@@ -100,7 +105,11 @@ func New(config Config) (*Agent, error) {
 	if err != nil {
 		return nil, err
 	}
-	roots, err := mtls.ServerAuthorities(caPEM, time.Now())
+	// The pool and the same question asked again on every poll. This agent
+	// runs until it is cancelled, and an authority outlives a leaf by years,
+	// so deciding the bundle once at startup leaves the whole remaining life
+	// of the CA uncovered.
+	roots, authorities, err := mtls.ServerAuthoritySource(caPEM, time.Now)
 	if err != nil {
 		return nil, fmt.Errorf("%w: %v", ErrServerProtocol, err)
 	}
@@ -137,7 +146,7 @@ func New(config Config) (*Agent, error) {
 	return &Agent{base: strings.TrimSuffix(config.ServerURL, "/"), root: root, pollWait: wait,
 		client: &http.Client{Transport: transport, CheckRedirect: func(_ *http.Request, _ []*http.Request) error {
 			return http.ErrUseLastResponse
-		}}, catalog: definitions}, nil
+		}}, catalog: definitions, authorities: authorities}, nil
 }
 
 // Run polls until cancelled. A protocol or active-attempt error terminates the
@@ -164,6 +173,15 @@ func (agent *Agent) Run(ctx context.Context) error {
 func (agent *Agent) RunOnce(ctx context.Context) (bool, error) {
 	if agent == nil || ctx == nil {
 		return false, fmt.Errorf("%w: nil agent or context", ErrServerProtocol)
+	}
+	// Before the request rather than after it. If the trust file has lapsed
+	// the handshake fails verifying the SERVER's chain, and that error names
+	// the server, so the operator reads the listener's log and finds nothing
+	// wrong. Asking here is what makes a lapsed local file readable as one.
+	if agent.authorities != nil {
+		if err := agent.authorities(); err != nil {
+			return false, fmt.Errorf("%w: %v", ErrServerProtocol, err)
+		}
 	}
 	facts, err := HostFacts()
 	if err != nil {
