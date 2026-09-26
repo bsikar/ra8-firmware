@@ -75,7 +75,8 @@ func TestUnclaimedLeaseGuardStopsOnALiveLease(t *testing.T) {
 func TestUnclaimedLeaseGuardStopsOnTheFirstIdentity(t *testing.T) {
 	vm := unclaimedLeaseFixture()
 	bench := &fakeBench{live: map[string][]store.LiveBoardLease{
-		vm.ID: {{ID: "44444444-4444-4444-8444-444444444444", BoardID: "bench-b", State: "pending", Priority: "agent"}},
+		vm.ID: {{ID: "44444444-4444-4444-8444-444444444444", BoardID: "bench-b",
+			HolderID: vm.ID, State: "pending", Priority: "agent"}},
 	}}
 	guard, _ := NewUnclaimedLeaseGuard(bench)
 	if err := guard.ReleaseReservationLease(context.Background(), vm); !errors.Is(err, ErrUnclaimedLeaseHeld) {
