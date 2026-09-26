@@ -242,6 +242,9 @@ func (c *Client) inspect(ctx context.Context, identity Identity, r resource) (VM
 	if err := c.checkNetworks(config, "reservation"); err != nil {
 		return VM{}, err
 	}
+	if err := checkNoHostDevices(config, "reservation"); err != nil {
+		return VM{}, err
+	}
 	var state struct {
 		VMID   int    `json:"vmid"`
 		Status string `json:"status"`
@@ -393,6 +396,9 @@ func (c *Client) Clone(ctx context.Context, action Action, spec CloneSpec) (Resu
 		return Result{}, fmt.Errorf("%w: reviewed source template digest or identity changed", ErrConflict)
 	}
 	if err := c.checkNetworks(sourceConfig, "source template"); err != nil {
+		return Result{}, err
+	}
+	if err := checkNoHostDevices(sourceConfig, "source template"); err != nil {
 		return Result{}, err
 	}
 	form := url.Values{
