@@ -256,6 +256,13 @@ func (p *TerraformRunnerProvisioner) Clone(ctx context.Context, action proxmox.A
 		vm.TemplateName != spec.TemplateName || vm.TemplateDigest != spec.TemplateDigest {
 		return proxmox.Result{}, proxmox.ErrConflict
 	}
+	// Last before the apply intent is consumed, and the only observation in
+	// this method: the other three lifecycle steps each read Proxmox and
+	// refuse on what they see, and a clone into an occupied VMID has to be
+	// refused here rather than found by Terraform with the intent spent.
+	if err := checkCloneTargetIsFree(ctx, p.Get, spec.Target); err != nil {
+		return proxmox.Result{}, err
+	}
 	return p.apply(ctx, action, vm, "clone", false, false)
 }
 
