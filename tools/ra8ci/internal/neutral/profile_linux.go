@@ -291,6 +291,11 @@ func (r SysfsReader) ReadSignal(ctx context.Context, target string) (string, err
 		return "", err
 	}
 	defer file.Close()
+	// The value must come from the file that was judged, not from whatever
+	// occupies the path by the time it is opened; see confirmSignalFile.
+	if err := confirmSignalFile(info, file); err != nil {
+		return "", err
+	}
 	raw, err := io.ReadAll(io.LimitReader(file, 4097))
 	if err != nil || len(raw) > 4096 {
 		return "", ErrInvalidProfile
