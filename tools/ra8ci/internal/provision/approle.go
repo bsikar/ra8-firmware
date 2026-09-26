@@ -42,11 +42,16 @@ type AppRoleConfig struct {
 	Timeout      time.Duration
 }
 
-// AppRoleToken owns a short-lived token and never prints its value.
+// AppRoleToken owns a short-lived token and never prints its value. The lease
+// Vault answered with is kept beside it, counted from the moment that answer
+// arrived, so a caller can judge whether the token covers the work it is about
+// to be handed to instead of discovering the expiry inside a running command.
 type AppRoleToken struct {
 	value     []byte
 	client    *http.Client
 	revokeURL string
+	issued    time.Time
+	lease     time.Duration
 }
 
 type appRoleLoginRequest struct {
@@ -133,6 +138,7 @@ func LoginAppRole(ctx context.Context, config AppRoleConfig) (*AppRoleToken, err
 	if err != nil {
 		return nil, errors.New("AppRole login request failed")
 	}
+	issued := time.Now()
 	defer response.Body.Close()
 	body, err := io.ReadAll(io.LimitReader(response.Body, maxAppRoleResponseBytes+1))
 	if err != nil || len(body) > maxAppRoleResponseBytes {
@@ -159,7 +165,8 @@ func LoginAppRole(ctx context.Context, config AppRoleConfig) (*AppRoleToken, err
 	revokeURL := *address
 	revokeURL.Path = path.Join(strings.TrimRight(address.Path, "/"), "v1", "auth", "token", "revoke-self")
 	return &AppRoleToken{value: []byte(decoded.Auth.ClientToken), client: client,
-		revokeURL: revokeURL.String()}, nil
+		revokeURL: revokeURL.String(), issued: issued,
+		lease: time.Duration(decoded.Auth.LeaseDuration) * time.Second}, nil
 }
 
 func personalAppRoleHost(host string) bool {
