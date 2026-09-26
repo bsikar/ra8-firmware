@@ -182,9 +182,9 @@ func runBoundTask(ctx context.Context, root string, task catalog.Task, bound []s
 	}()
 	for _, step := range task.Steps {
 		if err := contextExpiration(runCtx); err != nil {
-			result.TimedOut = errors.Is(err, context.DeadlineExceeded)
-			result.Cancelled = !result.TimedOut
-			return result, nil
+			// No step ran under this verdict, so the attempt reports no child
+			// exit rather than the previous step's clean 0.
+			return endedBetweenSteps(result, err), nil
 		}
 		stepStdout, stepStderr := writers(step.Name)
 		if stepStdout == nil || stepStderr == nil {
