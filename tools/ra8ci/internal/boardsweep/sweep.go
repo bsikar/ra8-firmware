@@ -113,7 +113,11 @@ func (s *Sweeper) Pass(ctx context.Context, now time.Time) (Report, error) {
 	var failures []error
 	for _, lease := range expired {
 		if err := ctx.Err(); err != nil {
-			return report, err
+			// The boards already tried are the pass that happened.
+			// Returning the cancellation on its own would leave the
+			// Failed count above naming nobody, and the board IDs
+			// behind it are the only reason that count is useful.
+			return report, errors.Join(append(failures, err)...)
 		}
 		reclaimed, err := s.reclaim(ctx, lease, now)
 		switch {
