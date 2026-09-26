@@ -108,7 +108,7 @@ static void internal_blit_glyph_565(int32_t        x,
   const uint8_t  blo    = (uint8_t)(vbg & (uint16_t)k_mask_byte);
   const uint8_t  bhi    = (uint8_t)((vbg >> k_glyph_bits_per_byte) & (uint16_t)k_mask_byte);
   const size_t   bpp    = (size_t)g_gfx_text_state.bpp;
-  const size_t   stride = (size_t)g_gfx_text_state.width * bpp;
+  const size_t   stride = (size_t)g_gfx_text_state.pitch;
   for (int32_t sy = cy0; sy < cy1; sy++) {
     const uint32_t grow = (uint32_t)(sy - y);
     uint8_t*       p    = g_gfx_text_state.fb + ((size_t)sy * stride) + ((size_t)cx0 * bpp);
