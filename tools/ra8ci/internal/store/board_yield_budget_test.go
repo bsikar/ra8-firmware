@@ -207,7 +207,7 @@ func yieldBudgetSnapshot() board.Snapshot {
 		Lease: &board.Lease{
 			ID: "lease-1", WaiterID: "waiter-0", Holder: "holder-1", Class: board.ClassCI,
 			Reason: "hil run", Generation: 1, GrantedAt: now.Add(-time.Minute),
-			ExpiresAt: now.Add(30 * time.Minute), RequestedDuration: 30 * time.Minute,
+			ExpiresAt: now.Add(29 * time.Minute), RequestedDuration: 30 * time.Minute,
 			DeadlineVersion: 1,
 		},
 		Queue: []board.Waiter{{ID: "waiter-1", LeaseID: "lease-2", Holder: "person-1",
