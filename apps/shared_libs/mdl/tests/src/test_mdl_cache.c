@@ -213,18 +213,20 @@ RA8_INTERNAL static ra8_err_t internal_get(mdl_cache_t*        cache,
                                            mdl_cache_result_t* result,
                                            size_t*             out_length)
 {
-  const mdl_net_req_t request = {.timeout_ms = 1000U};
+  const mdl_net_req_t       request = {.timeout_ms = 1000U};
+  const mdl_cache_get_req_t get     = {.url           = url,
+                                       .request       = &request,
+                                       .fetch         = internal_script_fetch,
+                                       .fetch_context = script,
+                                       .buffer        = s_body,
+                                       .capacity      = sizeof(s_body)};
+  mdl_cache_get_out_t       got     = {};
   memset(s_body, 0, sizeof(s_body));
-  return mdl_cache_get_buf(cache,
-                           url,
-                           &request,
-                           internal_script_fetch,
-                           script,
-                           s_body,
-                           sizeof(s_body),
-                           out_length,
-                           response,
-                           result);
+  const ra8_err_t error = mdl_cache_get(cache, &get, &got);
+  *out_length           = got.length;
+  *response             = got.response;
+  *result               = got.result;
+  return error;
 }
 
 /**
