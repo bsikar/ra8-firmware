@@ -22,7 +22,7 @@
 #include "mdl_export.h"
 #include "mdl_export_internal.h"
 #include "mdl_sanitize.h"
-#include "mdl_url_guard.h"
+#include "ra8_net_urlguard.h"
 #include "ra8_attributes.h"
 
 /** @brief Radices and bounded metadata text expansion sizes. */
@@ -60,8 +60,8 @@ RA8_PRIV ra8_err_t priv_mdl_export_validate_source_url(const char* url)
   if (len == 0U) {
     return k_ra8_ok;
   }
-  char host[k_mdl_meta_url_max];
-  if (!mdl_url_scheme_allowed(url) || !mdl_url_host(url, host, sizeof(host))) {
+  char h[k_ra8_net_urlguard_host_cap]; /* discarded: presence is the test */
+  if (!ra8_net_urlguard_scheme_allowed(url) || ra8_net_urlguard_host(url, h, sizeof(h)) != k_ra8_ok) {
     return k_ra8_err_invalid_arg;
   }
   for (size_t i = 0U; i < len; ++i) {

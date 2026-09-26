@@ -18,7 +18,7 @@
 #include "mdl_hash.h"
 #include "mdl_net.h"
 #include "mdl_storage.h"
-#include "mdl_url_guard.h"
+#include "ra8_net_urlguard.h"
 #include "mdl_urlname.h"
 #include "ra8_attributes.h"
 #include "ra8_err.h"
@@ -87,7 +87,7 @@ RA8_INTERNAL static uint32_t internal_mdl_fetch_page_max_u32(uint32_t a, uint32_
 /** @brief Governor host key for one page URL. */
 RA8_INTERNAL static const char* internal_mdl_fetch_page_host(const char* url, char* buf, size_t cap)
 {
-  return mdl_url_host(url, buf, cap) ? buf : nullptr;
+  return (ra8_net_urlguard_host(url, buf, cap) == k_ra8_ok) ? buf : nullptr;
 }
 
 /**

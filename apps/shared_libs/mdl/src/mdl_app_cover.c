@@ -293,7 +293,8 @@ RA8_PRIV ra8_err_t priv_mdl_app_ensure_series_cover(mdl_fetch_ctx_t* ctx,
     return k_ra8_err_access_denied;
   }
   char host[k_mdl_gov_host_max];
-  if (!mdl_url_host(priv_mdl_app_context()->state.cover_url, host, sizeof(host))) {
+  if (ra8_net_urlguard_host(priv_mdl_app_context()->state.cover_url, host, sizeof(host)) !=
+      k_ra8_ok) {
     return k_ra8_err_invalid_arg;
   }
   const uint32_t minimum_delay =

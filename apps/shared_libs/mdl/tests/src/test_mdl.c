@@ -20,7 +20,7 @@
 #include "mdl_robots.h"
 #include "mdl_sanitize.h"
 #include "mdl_test_storage.h"
-#include "mdl_url_guard.h"
+#include "ra8_net_urlguard.h"
 #include "mdl_verify.h"
 #include "ra8_io_stream_ram.h"
 #include "ra8_test_output.h"
@@ -309,14 +309,14 @@ RA8_INTERNAL static void internal_test_config_load(void)
 RA8_INTERNAL static void internal_test_url_scheme(void)
 {
   TEST_BEGIN("url scheme allowlist");
-  TEST_ASSERT(mdl_url_scheme_allowed("http://example.net/a"));
-  TEST_ASSERT(mdl_url_scheme_allowed("HTTPS://Example.net/a")); /* case-insensitive */
-  TEST_ASSERT(!mdl_url_scheme_allowed("file:///etc/passwd"));
-  TEST_ASSERT(!mdl_url_scheme_allowed("ftp://h/x"));
-  TEST_ASSERT(!mdl_url_scheme_allowed("gopher://h/"));
-  TEST_ASSERT(!mdl_url_scheme_allowed("data:text/html,x"));
-  TEST_ASSERT(!mdl_url_scheme_allowed(""));
-  TEST_ASSERT(!mdl_url_scheme_allowed(nullptr));
+  TEST_ASSERT(ra8_net_urlguard_scheme_allowed("http://example.net/a"));
+  TEST_ASSERT(ra8_net_urlguard_scheme_allowed("HTTPS://Example.net/a")); /* case-insensitive */
+  TEST_ASSERT(!ra8_net_urlguard_scheme_allowed("file:///etc/passwd"));
+  TEST_ASSERT(!ra8_net_urlguard_scheme_allowed("ftp://h/x"));
+  TEST_ASSERT(!ra8_net_urlguard_scheme_allowed("gopher://h/"));
+  TEST_ASSERT(!ra8_net_urlguard_scheme_allowed("data:text/html,x"));
+  TEST_ASSERT(!ra8_net_urlguard_scheme_allowed(""));
+  TEST_ASSERT(!ra8_net_urlguard_scheme_allowed(nullptr));
   TEST_END("url scheme allowlist");
 }
 
@@ -333,25 +333,27 @@ RA8_INTERNAL static void internal_test_url_scheme(void)
 RA8_INTERNAL static void internal_test_addr_classify(void)
 {
   TEST_BEGIN("address classify");
-  TEST_ASSERT(mdl_classify_ip("8.8.8.8") == k_mdl_addr_public);
-  TEST_ASSERT(mdl_classify_ip("2606:4700:4700::1111") == k_mdl_addr_public);
-  TEST_ASSERT(mdl_classify_ip("172.15.0.1") == k_mdl_addr_public);  /* below the /12  */
-  TEST_ASSERT(mdl_classify_ip("172.32.0.1") == k_mdl_addr_public);  /* above the /12  */
-  TEST_ASSERT(mdl_classify_ip("169.253.0.1") == k_mdl_addr_public); /* not link-local */
-  TEST_ASSERT(mdl_classify_ip("127.0.0.1") == k_mdl_addr_loopback);
-  TEST_ASSERT(mdl_classify_ip("::1") == k_mdl_addr_loopback);
-  TEST_ASSERT(mdl_classify_ip("::ffff:127.0.0.1") == k_mdl_addr_loopback);
-  TEST_ASSERT(mdl_classify_ip("10.1.2.3") == k_mdl_addr_private);
-  TEST_ASSERT(mdl_classify_ip("192.168.1.1") == k_mdl_addr_private);
-  TEST_ASSERT(mdl_classify_ip("172.16.0.1") == k_mdl_addr_private);
-  TEST_ASSERT(mdl_classify_ip("172.31.255.1") == k_mdl_addr_private);
-  TEST_ASSERT(mdl_classify_ip("100.64.0.1") == k_mdl_addr_private); /* CGNAT */
-  TEST_ASSERT(mdl_classify_ip("fc00::1") == k_mdl_addr_private);
-  TEST_ASSERT(mdl_classify_ip("169.254.1.2") == k_mdl_addr_linklocal);
-  TEST_ASSERT(mdl_classify_ip("fe80::1") == k_mdl_addr_linklocal);
-  TEST_ASSERT(mdl_classify_ip("0.0.0.0") == k_mdl_addr_unknown);
-  TEST_ASSERT(mdl_classify_ip("nonsense") == k_mdl_addr_unknown);
-  TEST_ASSERT(mdl_classify_ip(nullptr) == k_mdl_addr_unknown);
+  TEST_ASSERT(ra8_net_urlguard_classify_ip("8.8.8.8") == k_ra8_net_addr_public);
+  TEST_ASSERT(ra8_net_urlguard_classify_ip("2606:4700:4700::1111") == k_ra8_net_addr_public);
+  /* The three near misses: just below and just above the 172.16/12 block, and one
+     that is 169.253 rather than 169.254, so it is not link-local. */
+  TEST_ASSERT(ra8_net_urlguard_classify_ip("172.15.0.1") == k_ra8_net_addr_public);
+  TEST_ASSERT(ra8_net_urlguard_classify_ip("172.32.0.1") == k_ra8_net_addr_public);
+  TEST_ASSERT(ra8_net_urlguard_classify_ip("169.253.0.1") == k_ra8_net_addr_public);
+  TEST_ASSERT(ra8_net_urlguard_classify_ip("127.0.0.1") == k_ra8_net_addr_loopback);
+  TEST_ASSERT(ra8_net_urlguard_classify_ip("::1") == k_ra8_net_addr_loopback);
+  TEST_ASSERT(ra8_net_urlguard_classify_ip("::ffff:127.0.0.1") == k_ra8_net_addr_loopback);
+  TEST_ASSERT(ra8_net_urlguard_classify_ip("10.1.2.3") == k_ra8_net_addr_private);
+  TEST_ASSERT(ra8_net_urlguard_classify_ip("192.168.1.1") == k_ra8_net_addr_private);
+  TEST_ASSERT(ra8_net_urlguard_classify_ip("172.16.0.1") == k_ra8_net_addr_private);
+  TEST_ASSERT(ra8_net_urlguard_classify_ip("172.31.255.1") == k_ra8_net_addr_private);
+  TEST_ASSERT(ra8_net_urlguard_classify_ip("100.64.0.1") == k_ra8_net_addr_private); /* CGNAT */
+  TEST_ASSERT(ra8_net_urlguard_classify_ip("fc00::1") == k_ra8_net_addr_private);
+  TEST_ASSERT(ra8_net_urlguard_classify_ip("169.254.1.2") == k_ra8_net_addr_linklocal);
+  TEST_ASSERT(ra8_net_urlguard_classify_ip("fe80::1") == k_ra8_net_addr_linklocal);
+  TEST_ASSERT(ra8_net_urlguard_classify_ip("0.0.0.0") == k_ra8_net_addr_unknown);
+  TEST_ASSERT(ra8_net_urlguard_classify_ip("nonsense") == k_ra8_net_addr_unknown);
+  TEST_ASSERT(ra8_net_urlguard_classify_ip(nullptr) == k_ra8_net_addr_unknown);
   TEST_END("address classify");
 }
 
@@ -368,13 +370,13 @@ RA8_INTERNAL static void internal_test_addr_classify(void)
 RA8_INTERNAL static void internal_test_addr_fetchable(void)
 {
   TEST_BEGIN("address fetchable");
-  TEST_ASSERT(mdl_addr_is_fetchable(k_mdl_addr_public, false));
-  TEST_ASSERT(!mdl_addr_is_fetchable(k_mdl_addr_loopback, false));
-  TEST_ASSERT(mdl_addr_is_fetchable(k_mdl_addr_loopback, true));
-  TEST_ASSERT(!mdl_addr_is_fetchable(k_mdl_addr_private, false));
-  TEST_ASSERT(mdl_addr_is_fetchable(k_mdl_addr_private, true));
-  TEST_ASSERT(!mdl_addr_is_fetchable(k_mdl_addr_linklocal, false));
-  TEST_ASSERT(!mdl_addr_is_fetchable(k_mdl_addr_unknown, true)); /* never fetchable */
+  TEST_ASSERT(ra8_net_urlguard_addr_fetchable(k_ra8_net_addr_public, false));
+  TEST_ASSERT(!ra8_net_urlguard_addr_fetchable(k_ra8_net_addr_loopback, false));
+  TEST_ASSERT(ra8_net_urlguard_addr_fetchable(k_ra8_net_addr_loopback, true));
+  TEST_ASSERT(!ra8_net_urlguard_addr_fetchable(k_ra8_net_addr_private, false));
+  TEST_ASSERT(ra8_net_urlguard_addr_fetchable(k_ra8_net_addr_private, true));
+  TEST_ASSERT(!ra8_net_urlguard_addr_fetchable(k_ra8_net_addr_linklocal, false));
+  TEST_ASSERT(!ra8_net_urlguard_addr_fetchable(k_ra8_net_addr_unknown, true)); /* never fetchable */
   TEST_END("address fetchable");
 }
 
@@ -391,10 +393,10 @@ RA8_INTERNAL static void internal_test_addr_fetchable(void)
 RA8_INTERNAL static void internal_test_size_cap(void)
 {
   TEST_BEGIN("size cap");
-  TEST_ASSERT(!mdl_size_exceeds(0U, 100U, 0U));   /* cap 0 -> unlimited */
-  TEST_ASSERT(!mdl_size_exceeds(90U, 10U, 100U)); /* exactly fits       */
-  TEST_ASSERT(mdl_size_exceeds(90U, 11U, 100U));  /* one byte over      */
-  TEST_ASSERT(mdl_size_exceeds(200U, 1U, 100U));  /* already over cap   */
+  TEST_ASSERT(!ra8_net_urlguard_size_exceeds(0U, 100U, 0U));   /* cap 0 -> unlimited */
+  TEST_ASSERT(!ra8_net_urlguard_size_exceeds(90U, 10U, 100U)); /* exactly fits       */
+  TEST_ASSERT(ra8_net_urlguard_size_exceeds(90U, 11U, 100U));  /* one byte over      */
+  TEST_ASSERT(ra8_net_urlguard_size_exceeds(200U, 1U, 100U));  /* already over cap   */
   TEST_END("size cap");
 }
 
@@ -412,15 +414,16 @@ RA8_INTERNAL static void internal_test_url_parts(void)
 {
   TEST_BEGIN("url parts");
   char h[k_buf_128];
-  TEST_ASSERT(mdl_url_host("https://user:pw@Host.EXAMPLE.net:8443/p?q", h, sizeof(h)));
+  TEST_ASSERT_EQ(k_ra8_ok,
+                 ra8_net_urlguard_host("https://user:pw@Host.EXAMPLE.net:8443/p?q", h, sizeof(h)));
   TEST_ASSERT(strcmp(h, "host.example.net:8443") == 0); /* userinfo dropped, port kept */
-  TEST_ASSERT(mdl_url_host("https://Plain.Example.net/x", h, sizeof(h)));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_net_urlguard_host("https://Plain.Example.net/x", h, sizeof(h)));
   TEST_ASSERT(strcmp(h, "plain.example.net") == 0);
-  TEST_ASSERT(!mdl_url_host("notaurl", h, sizeof(h)));
+  TEST_ASSERT_EQ(k_ra8_err_not_found, ra8_net_urlguard_host("notaurl", h, sizeof(h)));
   char p[k_buf_128];
-  TEST_ASSERT(mdl_url_path("https://h.net/a/b?x=1#f", p, sizeof(p)));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_net_urlguard_path("https://h.net/a/b?x=1#f", p, sizeof(p)));
   TEST_ASSERT(strcmp(p, "/a/b") == 0);
-  TEST_ASSERT(mdl_url_path("https://h.net", p, sizeof(p)));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_net_urlguard_path("https://h.net", p, sizeof(p)));
   TEST_ASSERT(strcmp(p, "/") == 0);
   TEST_END("url parts");
 }
