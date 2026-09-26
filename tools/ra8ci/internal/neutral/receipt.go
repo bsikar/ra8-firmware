@@ -222,7 +222,7 @@ func (v *Verifier) VerifyNeutralReceipt(_ context.Context, challenge store.Neutr
 	}
 	signedAt, err := time.Parse(time.RFC3339Nano, receipt.Payload.SignedAt)
 	if err != nil || formatTime(signedAt) != receipt.Payload.SignedAt || receipt.Payload.State != "neutral" ||
-		observedAt.Before(challenge.IssuedAt) || observedAt.After(signedAt) ||
+		observedAt.Before(challenge.IssuedAt) || !checkObservationIsFresh(observedAt, signedAt) ||
 		signedAt.After(now) || !signedAt.Before(challenge.ExpiresAt) ||
 		!validSHA256(receipt.Payload.EvidenceSHA256) {
 		return ErrInvalidReceipt
