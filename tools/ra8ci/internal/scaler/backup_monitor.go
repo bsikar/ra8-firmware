@@ -38,6 +38,8 @@ type restoreDrillReceipt struct {
 
 // RefreshBackupAttestation queries pgBackRest and signs a bounded status
 // record. Callers should run this as the dedicated backup-monitor identity.
+// Every file it reads or executes must be a bounded regular file that no
+// other account can write, the pgBackRest executable included.
 func RefreshBackupAttestation(ctx context.Context, config BackupMonitorConfig) error {
 	if ctx == nil || !filepath.IsAbs(config.PgBackRestPath) || !filepath.IsAbs(config.PrivateKeyPath) ||
 		!filepath.IsAbs(config.RestoreDrillPath) || !filepath.IsAbs(config.AttestationPath) ||
@@ -99,6 +101,9 @@ func RefreshBackupAttestation(ctx context.Context, config BackupMonitorConfig) e
 	binaryInfo, err := os.Lstat(config.PgBackRestPath)
 	if err != nil || !binaryInfo.Mode().IsRegular() || binaryInfo.Mode()&os.ModeSymlink != 0 || binaryInfo.Mode().Perm()&0111 == 0 {
 		return errors.New("pgBackRest executable must be an executable regular file")
+	}
+	if binaryInfo.Mode().Perm()&0022 != 0 {
+		return errors.New("pgBackRest executable must not be group or world writable")
 	}
 	commandCtx, cancel := context.WithTimeout(ctx, 30*time.Second)
 	defer cancel()
