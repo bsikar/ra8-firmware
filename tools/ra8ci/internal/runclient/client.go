@@ -116,17 +116,18 @@ func New(config Config) (*Client, error) {
 	if err != nil {
 		return nil, fmt.Errorf("run client server trust: %w", err)
 	}
-	identity, err := tls.LoadX509KeyPair(config.CertFile, config.KeyFile)
+	identity, err := mtls.LoadClientIdentity(config.CertFile, config.KeyFile, time.Now())
 	if err != nil {
-		return nil, fmt.Errorf("load run client identity: %w", err)
+		return nil, fmt.Errorf("run client identity: %w", err)
 	}
-	if err := mtls.ValidateClientIdentity(identity, time.Now()); err != nil {
+	present, err := mtls.ClientIdentitySource(identity, time.Now)
+	if err != nil {
 		return nil, fmt.Errorf("run client identity: %w", err)
 	}
 	base.Path = ""
 	base.RawPath = ""
 	transport := &http.Transport{Proxy: nil, ForceAttemptHTTP2: true, TLSClientConfig: &tls.Config{
-		MinVersion: tls.VersionTLS13, RootCAs: roots, Certificates: []tls.Certificate{identity},
+		MinVersion: tls.VersionTLS13, RootCAs: roots, GetClientCertificate: present,
 	}}
 	return &Client{base: base, http: &http.Client{Transport: transport, Timeout: 30 * time.Second,
 		CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }}}, nil
