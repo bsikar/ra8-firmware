@@ -337,6 +337,12 @@ func (receipt TerminalReceipt) Validate() error {
 	if err := checkStepTimeline(receipt); err != nil {
 		return err
 	}
+	// Beside the timeline check rather than beside the outcome one: this is a
+	// statement about step ORDER, that a failing step is the last step, and it
+	// reads the sequence the timeline check has just held in order.
+	if err := checkAFailingStepEndsTheAttempt(receipt); err != nil {
+		return err
+	}
 	if err := checkStepLogEvidence(receipt); err != nil {
 		return err
 	}
