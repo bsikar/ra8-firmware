@@ -70,6 +70,13 @@ func ValidateClientIdentity(identity tls.Certificate, now time.Time) error {
 	if leaf.IsCA {
 		return fmt.Errorf("%w: %s is a certificate authority, not a client identity", ErrIdentity, where)
 	}
+	// Before the clock, because this is a permanent property of the
+	// certificate rather than a reading of today: a critical extension this
+	// process cannot interpret is refused by the far end before it looks at
+	// anything else, so it is decided here before anything else too.
+	if err := checkNoUnhandledCriticalExtension(leaf, where, "as a client identity"); err != nil {
+		return err
+	}
 	if now.Before(leaf.NotBefore) {
 		return fmt.Errorf("%w: %s is not valid until %s", ErrIdentity, where, leaf.NotBefore.UTC().Format(time.RFC3339))
 	}
@@ -124,6 +131,10 @@ func ValidateServerIdentity(identity tls.Certificate, now time.Time) error {
 	where := fmt.Sprintf("subject %q sha256 %s", leaf.Subject.String(), Fingerprint(leaf))
 	if leaf.IsCA {
 		return fmt.Errorf("%w: %s is a certificate authority, not a server identity", ErrIdentity, where)
+	}
+	// Same reading as the client side, and in the same place in the order.
+	if err := checkNoUnhandledCriticalExtension(leaf, where, "as a server identity"); err != nil {
+		return err
 	}
 	if now.Before(leaf.NotBefore) {
 		return fmt.Errorf("%w: %s is not valid until %s", ErrIdentity, where, leaf.NotBefore.UTC().Format(time.RFC3339))

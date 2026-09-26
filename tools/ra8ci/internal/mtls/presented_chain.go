@@ -70,6 +70,10 @@ func checkChainLink(issuer *x509.Certificate, position int, role string, now tim
 		return fmt.Errorf("%w: %s at position %d of the presented %s chain is not a certificate authority",
 			ErrIdentity, where, position, role)
 	}
+	at := fmt.Sprintf("at position %d of the presented %s chain", position, role)
+	if err := checkNoUnhandledCriticalExtension(issuer, where, at); err != nil {
+		return err
+	}
 	if issuer.KeyUsage != 0 && issuer.KeyUsage&x509.KeyUsageCertSign == 0 {
 		return fmt.Errorf("%w: %s at position %d of the presented %s chain may not sign certificates",
 			ErrIdentity, where, position, role)
