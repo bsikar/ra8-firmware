@@ -28,11 +28,11 @@
 # rather than a moved line. Widening the requirement means moving a root to
 # "required" and tagging what is under it; it is never an edit to this file
 # alone.
-#! roots: 52
+#! roots: 54
 #! required: 7
 #! partial: 1
 #! exempt: 3
-#! unscoped: 41
+#! unscoped: 43
 unscoped apps/: first-party app and shared-library code; tags present by convention, not required
 unscoped arch/: CPU-architecture contract headers (Ring A); no Ring-3+ file and no backend translation unit exists yet, so nothing is inside the requirement
 partial examples/: only <app>/src/main.c is inside (Ring 6); every other app TU, boot files included, is not
@@ -65,6 +65,7 @@ unscoped libs/ra8_mem/: first-party library; tags present by convention, not req
 unscoped libs/ra8_modem_at/: first-party library; tags present by convention, not required or read
 unscoped libs/ra8_mpu/: first-party library; no file carries a tag and nothing requires one
 required libs/ra8_net_pal/
+unscoped libs/ra8_net_policy/: first-party library; tags present by convention, not required or read
 required libs/ra8_nsc/
 unscoped libs/ra8_ota/: first-party library; tags present by convention, not required or read
 unscoped libs/ra8_ov5640/: first-party library; tags present by convention, not required or read
@@ -81,6 +82,7 @@ required libs/ra8_usb_pal/
 unscoped libs/ra8_wdt_supervisor/: first-party library; tags present by convention, not required or read
 unscoped libs/ra8_widget/: first-party library; tags present by convention, not required or read
 unscoped libs/ra8_wifi/: first-party library; tags present by convention, not required or read
+unscoped libs/ra8_xml/: first-party library; tags present by convention, not required or read
 unscoped port/: first-party RTOS and stack ports (vendored subtrees are dropped by the sweep); tags by convention, not required
 exempt scripts/: host tooling, never cross-compiled into either TrustZone world
 required tests/
