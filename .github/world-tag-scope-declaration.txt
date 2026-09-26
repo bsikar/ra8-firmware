@@ -28,12 +28,13 @@
 # rather than a moved line. Widening the requirement means moving a root to
 # "required" and tagging what is under it; it is never an edit to this file
 # alone.
-#! roots: 51
+#! roots: 52
 #! required: 7
 #! partial: 1
 #! exempt: 3
-#! unscoped: 40
+#! unscoped: 41
 unscoped apps/: first-party app and shared-library code; tags present by convention, not required
+unscoped arch/: CPU-architecture contract headers (Ring A); no Ring-3+ file and no backend translation unit exists yet, so nothing is inside the requirement
 partial examples/: only <app>/src/main.c is inside (Ring 6); every other app TU, boot files included, is not
 unscoped libs/if/: first-party library; tags present by convention, not required or read
 unscoped libs/if_ra8_vfs/: first-party library; tags present by convention, not required or read

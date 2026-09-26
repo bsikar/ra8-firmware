@@ -28,6 +28,7 @@ services.
 
 | Ring | Layer | Where it lives | What it does |
 |---:|---|---|---|
+| **A** | Arch | `arch/` -- `arch.h` plus `core/<core>/caps.h` | CPU-architecture contract: C-runtime init, core early init, idle, fault report, the CPU-side interrupt controller, barriers, atomics, and the capability-gated leaves (memory protection, cache, SIMD, TrustZone-M). Below Ring 0: the BSP's vector table and `SystemInit` are written against it. Lettered, not numbered, because it is not a fourth tier squeezed under three -- it is the tier every numbered ring is implicitly standing on. See [`arch/README.md`](../arch/README.md). |
 | **0** | BSP | `libs/ra8_board_<board>/src/boot/*.c` + `ld/linker_script.ld`, with optional `examples/ek_ra8d2/<tier>/.../<app>/src/{vector_table,system_init,secure_exception,nmi_exception,trustzone_init}.c` and app-root linker-script overrides | Vector table, SystemInit, linker script. CPU-state setup before C runtime is live. Apps inherit board defaults unless they explicitly diverge. |
 | **1** | Core fundamentals | `libs/ra8_core/` | Pure-C utilities with no hardware dependencies (err codes, log, time, pin validator, register-protection helpers). Compiles identically on host and target. |
 | **2** | Register layer | `libs/ra8_hal/inc/ra8_*_regs.h` | Hand-written register layouts derived from the HUM. No code paths -- just typed enums + accessor inline functions. |
@@ -36,6 +37,11 @@ services.
 | **5** | Secure app | `libs/ra8_secure_app/` | Secure-side application code (key vault, secure-boot trust anchor). Sits above the HAL but below the NS-callable veneer surface. |
 | **6** | Application | Canonical inventory from `scripts/dev/ra8_apps.py` (for example, `examples/ek_ra8d2/hw_validated/hil/blink/src/main.c`), plus test mocks | The firmware "user code" -- whatever drives the HAL to do something useful. The blink demo, board-bringup smoke tests, and unit-test harnesses all live at Ring 6. |
 
+Ring A sits below Ring 0 and every ring may cross down into it. Nothing
+crosses the other way: an `arch/` backend that reached up into a board,
+a HAL driver or an app would stop being portable, which is the one
+property the tier exists to have.
+
 The numbering doesn't have to be contiguous; it's a coordinate system,
 not a rule book. A Ring 3 driver can include Ring 1 / Ring 2 headers
 freely. A Ring 6 application uses Ring 3 drivers via their public
@@ -43,6 +49,16 @@ headers. Crossing **down** is fine; crossing **up** -- a Ring 3 driver
 calling Ring 6 application code -- is a layering violation.
 
 ## `{World: X}` -- TrustZone world
+
+**These tags are arch-conditional.** TrustZone-M is Armv8-M only and has no
+cross-ISA analogue, so it is one of the four un-portable leaves `arch/README.md`
+names rather than something the platform abstracts. A World tag is meaningful
+when the selected core declares `ARCH_HAS_TRUSTZONE_M 1` in its
+`arch/core/<core>/caps.h`, and inert on a backend that declines it: the file
+still carries the tag, and it describes a partition that build has no way to
+create. Both RA8D2 cores set the flag today, so nothing in this tree is inert
+yet; the rule is written down now so the first non-TrustZone backend is a
+capability answer rather than a documentation argument.
 
 The RA8D2 implements the Armv8-M Security Extension (TrustZone-M),
 which partitions execution into two **worlds**: Secure (S) and
@@ -63,9 +79,12 @@ Three concrete rules the linter enforces:
 1. **NSC veneers stay in `libs/ra8_nsc/`.** Any file outside that
    directory that declares a function with
    `__attribute__((cmse_nonsecure_entry))` is rejected.
-2. **Ring 1 / Ring 2 files never carry a World tag.** They have no
-   peripheral access and run identically in either world; tagging
-   them would lie about where the security boundary sits.
+2. **Ring A / Ring 1 / Ring 2 files never carry a World tag.** They have
+   no peripheral access and run identically in either world; tagging
+   them would lie about where the security boundary sits. Ring A is the
+   sharper case: the arch tier is what *implements* the partition, via
+   the capability-gated `arch_trustzone_*` surface, so a World tag on it
+   would be circular.
 3. **Ring 3+ files require *both* tags.** A driver without a Ring tag
    cannot be placed in the build; a driver without a World tag cannot
    be linked into the secure / non-secure partition cleanly.
