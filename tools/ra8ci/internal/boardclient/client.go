@@ -743,8 +743,6 @@ func (c *Client) Checkpoint(ctx context.Context, token LeaseToken) (board.Snapsh
 	}
 }
 
-// Extend requests a later UTC expiry; class ceilings and contended extension
-// limits remain server-side and cannot be bypassed by changing this client.
 // HolderLiveness is what the server says about the holder after a beat: when
 // it was last seen, when the next report is due, and whether the silence has
 // already passed the grace. It is a report, never a verdict: a holder that is
@@ -924,6 +922,12 @@ func (c *Client) StartRecovery(ctx context.Context, boardID, planID, why string)
 	}
 }
 
+// Extend requests a later UTC expiry; class ceilings and contended extension
+// limits remain server-side and cannot be bypassed by changing this client.
+//
+// An expiry the lease already reaches is refused here rather than sent: see
+// extensionIsLater for why the freshly read snapshot, and not the caller's
+// token, is what it is held against.
 func (c *Client) Extend(ctx context.Context, token LeaseToken, expiry time.Time, why string) (board.Snapshot, error) {
 	if expiry.IsZero() || why == "" || len(why) > 500 || strings.TrimSpace(why) != why {
 		return board.Snapshot{}, ErrInvalidRequest
@@ -935,6 +939,10 @@ func (c *Client) Extend(ctx context.Context, token LeaseToken, expiry time.Time,
 		}
 		if snapshot.Phase != board.Active && snapshot.Phase != board.YieldRequested && snapshot.Phase != board.Draining {
 			return board.Snapshot{}, ErrStaleLease
+		}
+		if !extensionIsLater(snapshot, expiry) {
+			return board.Snapshot{}, fmt.Errorf("%w: extension to %s is not later than the lease's expiry %s",
+				ErrInvalidRequest, expiry.UTC().Format(time.RFC3339Nano), snapshot.Lease.ExpiresAt.UTC().Format(time.RFC3339Nano))
 		}
 		result, err := c.command(ctx, token.BoardID, "/leases/"+url.PathEscape(token.LeaseID)+"/extend", struct {
 			ExpectedVersion uint64    `json:"expected_version"`
