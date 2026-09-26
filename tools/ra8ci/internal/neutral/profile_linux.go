@@ -334,6 +334,9 @@ func (i LinuxActivityInspector) CheckIdle(ctx context.Context, processNames, dev
 		protected[strings.ToLower(name)] = true
 	}
 	devices := make(map[string]bool, len(devicePaths))
+	// A protected fixture is the device node's number, not the name it was
+	// listed under; see checkHeldDescriptorIsNotTheFixture.
+	fixtures := make(map[uint64]bool, len(devicePaths))
 	for _, path := range devicePaths {
 		if !withinRoot(devRoot, path) {
 			return ErrInvalidProfile
@@ -346,7 +349,12 @@ func (i LinuxActivityInspector) CheckIdle(ctx context.Context, processNames, dev
 		if err != nil || info.Mode()&os.ModeDevice == 0 {
 			return ErrObservationAbsent
 		}
+		number, ok := deviceNumber(info)
+		if !ok {
+			return ErrObservationAbsent
+		}
 		devices[resolved] = true
+		fixtures[number] = true
 	}
 	entries, err := os.ReadDir(procRoot)
 	if err != nil {
@@ -414,6 +422,9 @@ func (i LinuxActivityInspector) CheckIdle(ctx context.Context, processNames, dev
 			}
 			if devices[resolved] {
 				return ErrHardwareBusy
+			}
+			if err := checkHeldDescriptorIsNotTheFixture(devRoot, resolved, fixtures); err != nil {
+				return err
 			}
 		}
 	}
