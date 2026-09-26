@@ -281,11 +281,11 @@ func (p *TerraformRunnerProvisioner) Start(ctx context.Context, action proxmox.A
 
 // Stop requires fresh cooperative-drain evidence before disconnecting and stopping.
 func (p *TerraformRunnerProvisioner) Stop(ctx context.Context, action proxmox.Action, identity proxmox.Identity, proof proxmox.IdleProof) (proxmox.Result, error) {
-	now := time.Now()
-	if proof.VMID != identity.VMID || proof.ReservationID != identity.ReservationID ||
-		!store.ValidID(proof.EvidenceID) || !proof.Drained || !proof.NoActiveJob ||
-		proof.ObservedAt.IsZero() || proof.ObservedAt.After(now.Add(time.Second)) ||
-		now.Sub(proof.ObservedAt) > 10*time.Second {
+	// The same rule Destroy applies, from the same place. Stop and Destroy
+	// are the two doors that read cooperative drain evidence, and they used
+	// to state the rule separately in terms identical down to the second; two
+	// copies of one rule only ever agree until one of them is edited.
+	if !validTerraformIdleProof(identity, proof) {
 		return proxmox.Result{}, errors.New("Terraform stop requires fresh cooperative drain evidence")
 	}
 	vm, err := p.reservation(ctx, identity)
