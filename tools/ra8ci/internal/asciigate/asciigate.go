@@ -34,10 +34,11 @@ var replacements = strings.NewReplacer(
 )
 
 type options struct {
-	check  bool
-	all    bool
-	self   bool
-	target string
+	check    bool
+	all      bool
+	checkout bool
+	self     bool
+	target   string
 }
 
 // Run scans or rewrites files. Exit 0 means clean/success, 1 means findings,
@@ -66,6 +67,8 @@ func Run(ctx context.Context, root string, args []string, stdout, stderr io.Writ
 	var targets []string
 	if opts.all {
 		targets, err = derivedTargets(ctx, root)
+	} else if opts.checkout {
+		targets, err = checkoutTargets(root, opts.target)
 	} else {
 		targets, err = walkTargets(opts.target)
 	}
@@ -87,7 +90,12 @@ func Run(ctx context.Context, root string, args []string, stdout, stderr io.Writ
 		if opts.all {
 			path = filepath.Join(root, filepath.FromSlash(target))
 		}
-		count, err := process(path, !opts.check)
+		var count int
+		if opts.checkout {
+			count, err = processCheckout(root, target, !opts.check)
+		} else {
+			count, err = process(path, !opts.check)
+		}
 		if err != nil {
 			fmt.Fprintln(stderr, "ra8ci ascii: FATAL --", err)
 			return 2
@@ -115,24 +123,92 @@ func parseOptions(args []string) (options, error) {
 	flags.SetOutput(io.Discard)
 	check := flags.Bool("check", false, "report without changing files")
 	all := flags.Bool("all", false, "scan the derived first-party file set")
+	checkout := flags.Bool("checkout", false, "rewrite one file beneath the verified checkout")
 	self := flags.Bool("selftest", false, "prove detection, rewrite and scope behavior")
 	if err := flags.Parse(args); err != nil {
 		return options{}, err
 	}
 	if *self {
-		if *check || *all || flags.NArg() != 0 {
+		if *check || *all || *checkout || flags.NArg() != 0 {
 			return options{}, errors.New("--selftest cannot be combined with other modes")
 		}
 		return options{self: true}, nil
 	}
-	if *all == (flags.NArg() != 0) || flags.NArg() > 1 {
-		return options{}, errors.New("pass exactly one of --all or a target path")
+	if (*all && (*checkout || flags.NArg() != 0)) || (!*all && flags.NArg() != 1) {
+		return options{}, errors.New("pass one target path, optionally with --checkout, or pass --all")
 	}
-	opts := options{check: *check, all: *all}
+	opts := options{check: *check, all: *all, checkout: *checkout}
 	if !*all {
 		opts.target = flags.Arg(0)
 	}
 	return opts, nil
+}
+
+func checkoutTargets(root, target string) ([]string, error) {
+	if target == "" || filepath.IsAbs(target) || filepath.VolumeName(target) != "" {
+		return nil, errors.New("checkout target must be a relative file path")
+	}
+	clean := filepath.Clean(target)
+	if clean == "." || clean == ".." || strings.HasPrefix(clean, ".."+string(filepath.Separator)) {
+		return nil, errors.New("checkout target escapes the checkout")
+	}
+	rooted, err := os.OpenRoot(root)
+	if err != nil {
+		return nil, fmt.Errorf("open checkout: %w", err)
+	}
+	defer rooted.Close()
+	parts := strings.Split(clean, string(filepath.Separator))
+	parent := rooted
+	opened := make([]*os.Root, 0, len(parts)-1)
+	defer func() {
+		for _, dir := range opened {
+			_ = dir.Close()
+		}
+	}()
+	for _, part := range parts[:len(parts)-1] {
+		info, statErr := parent.Lstat(part)
+		if statErr != nil || !info.IsDir() || info.Mode()&os.ModeSymlink != 0 {
+			return nil, errors.New("checkout target has a missing or linked directory")
+		}
+		child, openErr := parent.OpenRoot(part)
+		if openErr != nil {
+			return nil, openErr
+		}
+		opened = append(opened, child)
+		parent = child
+	}
+	info, err := parent.Lstat(parts[len(parts)-1])
+	if err != nil || !info.Mode().IsRegular() || info.Mode()&os.ModeSymlink != 0 {
+		return nil, errors.New("checkout target must be a regular file")
+	}
+	return []string{filepath.ToSlash(clean)}, nil
+}
+
+func processCheckout(root, target string, rewrite bool) (int, error) {
+	clean := filepath.FromSlash(target)
+	rooted, err := os.OpenRoot(root)
+	if err != nil {
+		return 0, err
+	}
+	defer rooted.Close()
+	info, err := rooted.Lstat(clean)
+	if err != nil || !info.Mode().IsRegular() || info.Mode()&os.ModeSymlink != 0 {
+		return 0, errors.New("checkout target is no longer a regular file")
+	}
+	raw, err := rooted.ReadFile(clean)
+	if err != nil {
+		return 0, err
+	}
+	if !utf8.Valid(raw) {
+		return 0, errors.New("checkout target has invalid UTF-8")
+	}
+	cleaned, count := transliterate(normalizeNewlines(string(raw)))
+	if count != 0 && rewrite {
+		if err := rooted.WriteFile(clean, []byte(cleaned), info.Mode().Perm()); err != nil {
+			return 0, err
+		}
+	}
+	return count, nil
 }
 
 func process(name string, rewrite bool) (int, error) {
