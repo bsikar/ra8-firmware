@@ -68,7 +68,8 @@ func (s *Server) getRunEvents(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if page.RunID != runID || len(page.Events) > limit || page.NextAfter < after ||
-		page.NextAfter-after > int64(limit) || (page.HasMore && len(page.Events) != limit) {
+		page.NextAfter-after > int64(limit) || (page.HasMore && len(page.Events) != limit) ||
+		!runEventCursorFitsPage(page, after) {
 		problem(w, http.StatusServiceUnavailable, "unavailable", "stored run event page is inconsistent", true)
 		return
 	}
