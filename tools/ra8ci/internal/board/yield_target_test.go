@@ -1,6 +1,7 @@
 package board
 
 import (
+	"fmt"
 	"testing"
 	"time"
 )
@@ -157,7 +158,9 @@ func TestPlanYieldReportsThePromiseRatherThanARevisedEstimate(t *testing.T) {
 	samples := make([]YieldSample, 0, 6)
 	for i := 0; i < 6; i++ {
 		samples = append(samples, YieldSample{
-			Cohort: cohort, LeaseID: "lease-old", WaiterID: "waiter-old",
+			Cohort:      cohort,
+			LeaseID:     fmt.Sprintf("lease-old-%d", i),
+			WaiterID:    "waiter-old",
 			RequestedAt: now.Add(-time.Duration(i+1) * time.Hour),
 			NeutralAt:   now.Add(-time.Duration(i+1)*time.Hour + 9*time.Minute),
 		})
