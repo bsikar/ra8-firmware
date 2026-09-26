@@ -58,6 +58,13 @@ func DeclaredTimeout(root, app string) (seconds int, found bool, err error) {
 	path := filepath.Join(base, app, "hil.conf")
 	resolved, err := filepath.EvalSymlinks(path)
 	if errors.Is(err, os.ErrNotExist) {
+		absent, absentErr := configIsAbsent(filepath.Join(base, app), path)
+		if absentErr != nil {
+			return 0, false, absentErr
+		}
+		if !absent {
+			return 0, false, fmt.Errorf("%w: %s", ErrUnresolvableConfig, path)
+		}
 		return 0, false, nil
 	}
 	if err != nil {
