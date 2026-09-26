@@ -164,3 +164,16 @@ func TestEveryStateIsReachable(t *testing.T) {
 		}
 	}
 }
+
+func TestKnownRunStateIsTheMachineVocabulary(t *testing.T) {
+	for _, state := range runMachine.states() {
+		if !KnownRunState(state) {
+			t.Fatalf("KnownRunState(%q) = false for a state of the machine", state)
+		}
+	}
+	for _, state := range []string{"", "scheduled", "succeeded", "issued", "QUEUED", "unknown"} {
+		if KnownRunState(state) {
+			t.Fatalf("KnownRunState(%q) = true; no run carries it", state)
+		}
+	}
+}
