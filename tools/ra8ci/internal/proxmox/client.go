@@ -101,6 +101,9 @@ func New(cfg Config) (*Client, error) {
 	if err != nil || len(templates) == 0 {
 		return nil, fmt.Errorf("%w: explicit reviewed template IDs >= 9000 required", ErrInvalid)
 	}
+	if err := checkDisjointIDs(allowed, templates); err != nil {
+		return nil, err
+	}
 	bridges, err := checkedBridges(cfg.Bridges)
 	if err != nil {
 		return nil, err
