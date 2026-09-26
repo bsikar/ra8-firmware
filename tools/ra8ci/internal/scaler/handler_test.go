@@ -436,7 +436,12 @@ func testHarness(t *testing.T) (*Handler, *memoryLedger, *fakeProxmox, *testBoot
 	if err := os.WriteFile(token, []byte("scaler@pve!api=secret"), 0600); err != nil {
 		t.Fatal(err)
 	}
-	client, err := proxmox.New(proxmox.Config{Endpoint: server.URL, CAFile: ca, TokenFile: token, Node: "pve", Pool: "ra8-tf-lab", Storage: "ra8-tf-lab", AllowedVMIDs: []int{9000}, TemplateVMIDs: []int{9001}, Bridges: []string{"vmbr8", "vmbr9"}, RequestTimeout: time.Second, OperationTimeout: 70 * time.Millisecond, TaskPollInterval: time.Millisecond})
+	// The operation budget is deliberately tight so a hung fake task is
+	// reconciled inside a test rather than a wall-clock minute, and the
+	// per-request ceiling sits under it: an operation issues several requests
+	// under its own context, so a request ceiling above the whole budget is a
+	// shape no operation could complete and proxmox.New refuses it outright.
+	client, err := proxmox.New(proxmox.Config{Endpoint: server.URL, CAFile: ca, TokenFile: token, Node: "pve", Pool: "ra8-tf-lab", Storage: "ra8-tf-lab", AllowedVMIDs: []int{9000}, TemplateVMIDs: []int{9001}, Bridges: []string{"vmbr8", "vmbr9"}, RequestTimeout: 50 * time.Millisecond, OperationTimeout: 70 * time.Millisecond, TaskPollInterval: time.Millisecond})
 	if err != nil {
 		t.Fatal(err)
 	}
