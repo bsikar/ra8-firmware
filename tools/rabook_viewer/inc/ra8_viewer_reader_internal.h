@@ -161,6 +161,27 @@ RA8_PRIV [[nodiscard]] ra8_err_t priv_viewer_tile_comic(ra8_viewer_reader_t* rea
                                                         uint32_t*            width,
                                                         uint32_t*            height);
 
+/**
+ * @brief Name the container one comic page holds (#748).
+ * @details Re-extracts the page into the resident slice and answers from
+ * ::ra8_imgdec_identify, the one naming table in the tree. It makes no claim
+ * about whether the bound decoder can open what it names.
+ * @param[in,out] reader Open comic reader.
+ * @param[in] page Page index below the comic page count.
+ * @param[out] out Receives the container and its borrowed canonical names.
+ * @return Naming status.
+ * @retval k_ra8_ok @p out holds a complete naming record.
+ * @retval k_ra8_err_not_found The page carries no recognised signature.
+ * @pre @p reader owns an open comic and @p page is in range.
+ * @pre @p out is writable.
+ * @post On any non-ok return `*out` is zeroed.
+ * @post The resident encoded-page slice holds @p page on success.
+ * @note Not thread-safe; reuses the one resident page slice.
+ * @since 0.1.0
+ */
+RA8_PRIV [[nodiscard]] ra8_err_t
+priv_viewer_comic_container(ra8_viewer_reader_t* reader, uint32_t page, ra8_imgdec_name_t* out);
+
 /** @brief Probe every comic page into the bound dimension arrays. */
 RA8_PRIV [[nodiscard]] ra8_err_t priv_viewer_size_comic_tiles(ra8_viewer_reader_t* reader);
 

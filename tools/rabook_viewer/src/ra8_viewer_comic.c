@@ -19,6 +19,7 @@
 #include "ra8_err.h"
 #include "ra8_gfx.h"
 #include "ra8_img_arena.h"
+#include "ra8_imgdec_name.h"
 #include "ra8_viewer_reader_internal.h"
 #include "reflow_image.h"
 
@@ -246,6 +247,25 @@ ra8_err_t priv_viewer_open_comic(ra8_viewer_reader_t* reader)
                     (uint32_t)k_viewer_comic_page_cap,
                     reader->comic.names,
                     (uint32_t)k_viewer_comic_name_bytes);
+}
+
+ra8_err_t
+priv_viewer_comic_container(ra8_viewer_reader_t* reader, uint32_t page, ra8_imgdec_name_t* out)
+{
+  if (out == nullptr) {
+    return k_ra8_err_null_ptr;
+  }
+  *out = (ra8_imgdec_name_t){};
+
+  size_t          encoded = 0U;
+  const ra8_err_t error   = internal_read_page(reader, page, &encoded);
+  if (error != k_ra8_ok) {
+    return error;
+  }
+  const uint32_t prefix = (encoded < (size_t)k_ra8_imgdec_sniff_bytes)
+                            ? (uint32_t)encoded
+                            : (uint32_t)k_ra8_imgdec_sniff_bytes;
+  return ra8_imgdec_identify(reader->comic.page, prefix, out);
 }
 
 ra8_err_t priv_viewer_size_comic_tiles(ra8_viewer_reader_t* reader)

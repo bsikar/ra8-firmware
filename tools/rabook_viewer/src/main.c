@@ -22,6 +22,7 @@
 #include "ra8_arena.h"
 #include "ra8_attributes.h"
 #include "ra8_err.h"
+#include "ra8_imgdec_name.h"
 #include "ra8_io_stream.h"
 #include "ra8_io_stream_posix.h"
 #include "ra8_log.h"
@@ -150,6 +151,31 @@ RA8_INTERNAL static void internal_report_capacity(ra8_io_stream_t*              
 }
 
 /**
+ * @brief Name the container a failed page holds, when it can be named (#748).
+ * @details A render refusal says the page did not open; it does not say what
+ * the page was. ::ra8_viewer_page_container answers that from the one shared
+ * naming table, so a GIF the bound decoder will not open reads as a GIF rather
+ * than as an anonymous unsupported status. A page with no recognised signature
+ * adds no line: there is nothing truthful to add.
+ * @param[in,out] diagnostic Bound diagnostic byte stream.
+ * @param[in,out] reader Open reader.
+ * @param[in] page Page index that failed.
+ * @pre @p reader is open and @p page is in range.
+ * @post At most one naming line was attempted.
+ * @post No render state is published.
+ * @note Best-effort; a naming failure is silent by design.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void
+internal_report_container(ra8_io_stream_t* diagnostic, ra8_viewer_reader_t* reader, uint32_t page)
+{
+  ra8_imgdec_name_t name = {};
+  if (ra8_viewer_page_container(reader, page, &name) == k_ra8_ok) {
+    (void)priv_viewer_output_container(diagnostic, page, name.ext, name.mime);
+  }
+}
+
+/**
  * @brief Render and optionally write one fixed-framebuffer page.
  * @details Drives the fixed target and publishes it only when a path was given.
  * @param[in,out] reader Open reader.
@@ -174,6 +200,7 @@ RA8_INTERNAL static bool internal_render_page(ra8_viewer_reader_t*    reader,
   const ra8_err_t error = ra8_viewer_render_page(reader, page);
   if (error != k_ra8_ok) {
     (void)priv_viewer_output_index_error(diagnostic, "render page ", page, error);
+    internal_report_container(diagnostic, reader, page);
     return false;
   }
   if ((options->dump_ppm != nullptr) &&
@@ -231,6 +258,7 @@ RA8_INTERNAL static bool internal_dump_tile(ra8_viewer_reader_t* reader,
       internal_report_capacity(diagnostic, "tile", &report);
     }
     (void)priv_viewer_output_index_error(diagnostic, "render tile ", tile, error);
+    internal_report_container(diagnostic, reader, tile);
     return false;
   }
   const ra8_err_t write_error = ra8_viewer_write_ppm565(pixels, width, height, path);
