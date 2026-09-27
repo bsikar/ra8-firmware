@@ -75,6 +75,13 @@ func SyncPending(ctx context.Context, outbox *spool.Spool, baseURL string, clien
 		if err := checkUploadedExitsAreOnesARunnerCouldReport(entry); err != nil {
 			return report, fmt.Errorf("local %s: %w", entry.ID, err)
 		}
+		// Last of the record-only doors, beside the exits for the same
+		// reason: a step's log evidence is stated by the record, needs
+		// neither the bytes nor a catalog to judge, and the server refuses it
+		// with the same opaque 400 that ends the sweep.
+		if err := checkUploadedLogEvidenceWasMeasured(entry); err != nil {
+			return report, fmt.Errorf("local %s: %w", entry.ID, err)
+		}
 		body, err := json.Marshal(entry)
 		if err != nil {
 			return report, err
