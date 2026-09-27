@@ -72,6 +72,9 @@ RA8_INTERNAL static ra8_err_t internal_emit_golden(ra8_io_stream_t* output)
     error = priv_viewer_output_tile(output, 9U, 800U, 600U, "tile.ppm");
   }
   if (error == k_ra8_ok) {
+    error = priv_viewer_output_container(output, 7U, "gif", "image/gif");
+  }
+  if (error == k_ra8_ok) {
     error = priv_viewer_output_text(output, "dump ppm failed\n");
   }
   return error;
@@ -104,6 +107,7 @@ RA8_INTERNAL static bool internal_exact_capture(void)
                                     "opened 'book.jof': 4 page(s)\n"
                                     "wrote out.ppm\n"
                                     "wrote tile 9 (800x600) -> tile.ppm\n"
+                                    "  page 7 holds a gif container (image/gif)\n"
                                     "dump ppm failed\n";
   ra8_io_stream_t   output        = {};
   ra8_io_stream_ram_state_t state = {};

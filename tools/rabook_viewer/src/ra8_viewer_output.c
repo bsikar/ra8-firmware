@@ -199,6 +199,20 @@ ra8_err_t priv_viewer_output_tile(ra8_io_stream_t* output,
   return internal_put_text(output, error, "\n");
 }
 
+ra8_err_t priv_viewer_output_container(ra8_io_stream_t* output,
+                                       uint32_t         page,
+                                       const char*      ext,
+                                       const char*      mime)
+{
+  ra8_err_t error = ra8_io_stream_puts(output, "  page ");
+  error           = internal_put_u32(output, error, page);
+  error           = internal_put_text(output, error, " holds a ");
+  error           = internal_put_text(output, error, ext);
+  error           = internal_put_text(output, error, " container (");
+  error           = internal_put_text(output, error, mime);
+  return internal_put_text(output, error, ")\n");
+}
+
 ra8_err_t priv_viewer_output_text(ra8_io_stream_t* output, const char* text)
 {
   return ra8_io_stream_puts(output, text);
