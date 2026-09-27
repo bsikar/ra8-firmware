@@ -16,6 +16,7 @@
 #include "jof_produce.h"
 #include "ra8_attributes.h"
 #include "ra8_fmt_stream.h"
+#include "ra8_imgdec.h"
 #include "ra8_webp.h"
 
 /** @brief Image-probe and report constants. */
@@ -43,14 +44,6 @@ typedef enum : uint32_t {
   k_convert_jpeg_sof_last  = 0xCFU, /**< Last JPEG SOF-range marker.               */
   k_convert_probe_min      = 12U,   /**< Smallest supported image prefix.          */
 } convert_const_t;
-
-/** @brief Fixed non-ASCII bytes in the PNG signature. */
-typedef enum : uint8_t {
-  k_convert_png_sig_high = 0x89U, /**< High-bit signature byte. */
-  k_convert_png_sig_cr   = 0x0DU, /**< Carriage return byte.    */
-  k_convert_png_sig_lf   = 0x0AU, /**< Line feed byte.          */
-  k_convert_png_sig_sub  = 0x1AU, /**< DOS EOF byte.            */
-} convert_png_signature_t;
 
 /** @brief Accepted source encoding selected by the header probe. */
 typedef enum : uint8_t {
@@ -344,8 +337,45 @@ internal_png_dims(const uint8_t prefix[k_convert_png_dims_end], uint16_t* out_w,
 }
 
 /**
+ * @brief Map one sniffed container onto the kind this converter accepts.
+ * @details The shared sniff names six containers; the JOF producer has front
+ * ends for three. GIF, BMP and TGA are therefore named-but-refused here rather
+ * than silently treated as an unrecognised prefix, which keeps "what this tool
+ * can convert" a property of the producer rather than of a private signature
+ * table (#748).
+ * @param[in] format One sniffed ::ra8_imgdec_format_t bit.
+ * @param[out] kind Receives the accepted encoding kind.
+ * @return Mapping status.
+ * @retval k_ra8_ok @p format has a producer front end and @p kind was written.
+ * @retval k_ra8_err_not_supported The container is real but has no front end.
+ * @pre @p kind is non-null and writable.
+ * @post Failure leaves @p kind unwritten.
+ * @note Thread-safe: pure function over its arguments.
+ * @since 0.1.0
+ */
+RA8_INTERNAL
+static ra8_err_t internal_kind_of(ra8_imgdec_format_t format, convert_kind_t* kind)
+{
+  switch (format) {
+    case k_ra8_imgdec_format_jpeg:
+      *kind = k_convert_kind_jpeg;
+      return k_ra8_ok;
+    case k_ra8_imgdec_format_png:
+      *kind = k_convert_kind_png;
+      return k_ra8_ok;
+    case k_ra8_imgdec_format_webp:
+      *kind = k_convert_kind_webp;
+      return k_ra8_ok;
+    default:
+      return k_ra8_err_not_supported;
+  }
+}
+
+/**
  * @brief Probe the exact source kind and dimensions through positioned reads.
- * @details Mirrors firmware dispatch across JPEG, PNG, and RIFF/WebP headers.
+ * @details Names the container with the shared ::ra8_imgdec_sniff, maps it onto
+ * a producer front end, then measures geometry with the per-format reader that
+ * front end needs. The signature bytes are the library's, not this tool's.
  * @param[in] source Immutable image source.
  * @param[out] kind Receives accepted encoding kind.
  * @param[out] out_w Receives width.
@@ -353,11 +383,13 @@ internal_png_dims(const uint8_t prefix[k_convert_png_dims_end], uint16_t* out_w,
  * @return Probe status.
  * @retval k_ra8_ok Encoding and dimensions were returned.
  * @retval k_ra8_err_not_supported The prefix matched no supported source.
+ * @retval k_ra8_err_invalid_size WebP geometry is zero or past the producer cap.
  * @pre @p source and its positioned callback are non-null.
  * @pre Every output pointer is non-null and writable.
  * @post Success initializes kind, width, and height together.
  * @post No backend cursor, source byte, or filesystem object changed.
  * @note Reads at most one fixed prefix plus the JPEG marker chain.
+ * @see ra8_imgdec_sniff()
  * @since 0.1.0
  */
 RA8_INTERNAL
@@ -366,54 +398,55 @@ static ra8_err_t internal_probe(const ra8_fmt_source_t* source,
                                 uint16_t*               out_w,
                                 uint16_t*               out_h)
 {
-  static const uint8_t png_magic[8U] = {k_convert_png_sig_high,
-                                        'P',
-                                        'N',
-                                        'G',
-                                        k_convert_png_sig_cr,
-                                        k_convert_png_sig_lf,
-                                        k_convert_png_sig_sub,
-                                        k_convert_png_sig_lf};
-  uint8_t              prefix[k_convert_probe_bytes];
-  size_t               count = sizeof(prefix);
+  static_assert((uint32_t)k_convert_probe_min == (uint32_t)k_ra8_imgdec_sniff_bytes,
+                "the shortest prefix this tool accepts is what the shared sniff needs");
+  uint8_t prefix[k_convert_probe_bytes];
+  size_t  count = sizeof(prefix);
   if (source->size < (uint64_t)count) {
     count = (size_t)source->size;
   }
-  if (count < k_convert_probe_min) {
+  if (count < (size_t)k_convert_probe_min) {
     return k_ra8_err_not_supported;
   }
   ra8_err_t rc = internal_read_exact(source, 0U, prefix, count);
   if (rc != k_ra8_ok) {
     return rc;
   }
-  if ((prefix[0] == (uint8_t)k_convert_marker) && (prefix[1] == (uint8_t)k_convert_jpeg_soi)) {
+  ra8_imgdec_format_t format = k_ra8_imgdec_format_none;
+  rc                         = ra8_imgdec_sniff(prefix, (uint32_t)count, &format);
+  if (rc != k_ra8_ok) {
+    return k_ra8_err_not_supported;
+  }
+  convert_kind_t sniffed = k_convert_kind_jpeg;
+  rc                     = internal_kind_of(format, &sniffed);
+  if (rc != k_ra8_ok) {
+    return rc;
+  }
+  if (sniffed == k_convert_kind_jpeg) {
     *kind = k_convert_kind_jpeg;
     return internal_jpeg_dims(source, out_w, out_h);
   }
-  if (memcmp(prefix, png_magic, sizeof(png_magic)) == 0) {
+  if (sniffed == k_convert_kind_png) {
     if (count < (size_t)k_convert_png_dims_end) {
       return k_ra8_err_not_supported;
     }
     *kind = k_convert_kind_png;
     return internal_png_dims(prefix, out_w, out_h);
   }
-  if ((memcmp(prefix, "RIFF", 4U) == 0) && (memcmp(&prefix[8], "WEBP", 4U) == 0)) {
-    uint32_t width  = 0U;
-    uint32_t height = 0U;
-    rc              = ra8_webp_get_info(prefix, count, &width, &height);
-    if (rc != k_ra8_ok) {
-      return rc;
-    }
-    if ((width == 0U) || (height == 0U) || (width > (uint32_t)k_jof_max_dim) ||
-        (height > (uint32_t)k_jof_max_dim)) {
-      return k_ra8_err_invalid_size;
-    }
-    *kind  = k_convert_kind_webp;
-    *out_w = (uint16_t)width;
-    *out_h = (uint16_t)height;
-    return k_ra8_ok;
+  uint32_t width  = 0U;
+  uint32_t height = 0U;
+  rc              = ra8_webp_get_info(prefix, count, &width, &height);
+  if (rc != k_ra8_ok) {
+    return rc;
   }
-  return k_ra8_err_not_supported;
+  if ((width == 0U) || (height == 0U) || (width > (uint32_t)k_jof_max_dim) ||
+      (height > (uint32_t)k_jof_max_dim)) {
+    return k_ra8_err_invalid_size;
+  }
+  *kind  = k_convert_kind_webp;
+  *out_w = (uint16_t)width;
+  *out_h = (uint16_t)height;
+  return k_ra8_ok;
 }
 
 /**
