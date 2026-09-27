@@ -170,7 +170,13 @@ func ValidateStepDispatch(step Step) error {
 	// Beside the option door, which refuses what the script cannot parse:
 	// this one refuses what it parses perfectly and then returns zero
 	// having done no work. See a_gate_step_runs_a_gate.go.
-	return checkAScriptStepRunsTheWorkItNames(step)
+	if err := checkAScriptStepRunsTheWorkItNames(step); err != nil {
+		return err
+	}
+	// Beside both doors above, which judge one argv element at a time:
+	// this one refuses two the script parses individually and rejects
+	// together. See a_container_step_names_a_gate.go.
+	return checkAScriptStepNamesEveryCompanionItNeeds(step)
 }
 
 // ValidateTaskDispatch applies the seam to every step of a task.
