@@ -15,10 +15,12 @@
  *    two TU-private decisions (fit-box branch, decode-failure classify).
  *  - The WebP arm (#637): the committed 8x8 lossless fixture probes and blits
  *    through the same public entry points, bit-exact against the fixture's
- *    documented source pattern, and the two conditions of the RIFF/WEBP
- *    signature test are driven independently (a non-RIFF buffer, and a RIFF
- *    buffer whose form tag is not WEBP -- which must fall through to stb_image
- *    and be rejected there, not mis-routed into the WebP facade).
+ *    documented source pattern, and the routing decision is driven from both
+ *    sides (a non-RIFF buffer, and a RIFF buffer whose form tag is not WEBP --
+ *    which must fall through to stb_image and be rejected there, not
+ *    mis-routed into the WebP facade). Since #768 the signature test itself
+ *    lives in libs/ra8_imgdec/src/ra8_imgdec_sniff.c, so these vectors assert
+ *    the routing this module still owns, not the tag comparison it forwards.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -76,7 +78,7 @@ static const uint8_t s_webp_lossless_8x8[] = {
 
 /**
  * @brief A RIFF container whose form tag is `WAVE`, not `WEBP`.
- * @details The second condition of the signature test in isolation: the `RIFF`
+ * @details The form-tag condition of the shared sniff in isolation: the `RIFF`
  * tag matches and the form tag does not, so this must NOT reach the WebP facade
  * -- it falls through to stb_image, which rejects it as an unknown format.
  */
@@ -514,10 +516,12 @@ RA8_INTERNAL static void internal_test_decode_fail_real_paths_mcdc(void)
  * @brief ra8_img_probe_size reads an 8x8 WebP through the libwebp arm (#637).
  *
  * @par MC/DC:
- * Signature test `(len >= 12) && (RIFF match) && (WEBP match)`: this vector
- * passes all three, and internal_test_webp_signature_falls_through drives the
- * false arms of the two tag conditions, so each independently decides whether
- * the WebP facade or stb_image sees the bytes.
+ * Routing decision `internal_is_webp(bytes, len)` in reflow_image.c: this
+ * vector takes its true arm, and internal_test_webp_signature_falls_through
+ * takes the false arm from both sides. The compound tag comparison behind it
+ * moved to libs/ra8_imgdec/src/ra8_imgdec_sniff.c@internal_is_webp under #768
+ * and carries its own vectors in tests/misc/src/test_ra8_imgdec_sniff.c; what
+ * is asserted here is that this module routes on the sniff's answer.
  *
  * @brief Verify the WebP probe arm reports the container's canvas size.
  * @details Probes the committed lossless fixture and asserts the declared 8x8 canvas.
@@ -610,9 +614,10 @@ RA8_INTERNAL static void internal_test_decode_blit_webp_pixels(void)
  * @brief Bytes that are not a WebP container never reach the WebP facade.
  *
  * @par MC/DC:
- * Signature test `(len >= 12) && (RIFF match) && (WEBP match)`, false arms:
- *  - V1: 8 junk bytes            -> C1 false (too short to hold both tags).
- *  - V2: 16 bytes, `RIFF`+`WAVE` -> C1 true, C2 true, C3 false.
+ * Routing decision `internal_is_webp(bytes, len)`, false arm, reached two ways
+ * so the forwarding is exercised over both refusals the shared sniff publishes:
+ *  - V1: 8 junk bytes            -> the sniff finds no signature at all.
+ *  - V2: 16 bytes, `RIFF`+`WAVE` -> the sniff finds a RIFF that is not WebP.
  * Both must be rejected by stb_image as unsupported, which is the observable
  * difference from the WebP arm (whose header rejection logs a WebP reason and
  * would return the same code for a different reason). V1 and V2 together with
