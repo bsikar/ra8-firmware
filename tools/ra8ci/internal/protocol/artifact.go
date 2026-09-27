@@ -188,6 +188,12 @@ func (manifest ArtifactManifest) Covers(chunk ArtifactChunk) error {
 	if err != nil || chunk.Offset+int64(len(data)) > manifest.TotalBytes {
 		return ErrInvalid
 	}
+	// Ending inside the artifact is not enough: the bytes this chunk leaves
+	// behind have to be the bytes the chunks after it can carry, which is
+	// what makes a final chunk end exactly where the close says it does.
+	if err := checkChunkLeavesRoomForTheChunksThatFollow(manifest, chunk, int64(len(data))); err != nil {
+		return err
+	}
 	return nil
 }
 
