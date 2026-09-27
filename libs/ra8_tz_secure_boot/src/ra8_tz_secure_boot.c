@@ -28,6 +28,7 @@
 #include "ra8_check.h"
 #include "ra8_err.h"
 #include "ra8_log.h"
+#include "ra8_sau.h"
 #ifdef RA8_ENABLE_ROOT_OF_TRUST
 #include "ra8_rot.h"
 #endif
@@ -67,41 +68,22 @@ static volatile ra8_tz_secure_boot_step_t s_step = k_ra8_tz_secure_boot_step_idl
  * @brief Memory-mapped register addresses used by the secure-boot.
  *
  * @details
- * SAU registers live in the System Control Space at 0xE000EDD0
- * (ARMv8-M architectural address). The Cortex-M85 Secure VTOR_NS is
- * at 0xE000ED08 (the regular VTOR; writes to it from Secure state set
- * VTOR_NS when SAU is enabled per ARMv8-M ARM section B3.2.4).
- * CPSCU.IPCSAR / IPCPAR follow the layout in HUM Ch 3.2.1 / 3.2.2.
- * PRCR_S lives in the SYSC block at base 0x4001E000 (HUM Ch 13.2.1).
+ * The SAU register block is deliberately absent: attribution is
+ * programmed through ``ra8_sau_configure()``, which owns the
+ * 0xE000EDD0 block and its RNR / RBAR / RLAR encoding (issue #735).
+ * What is left here is the rest of the boot sequence. The Cortex-M85
+ * Secure VTOR_NS is at 0xE000ED08 (the regular VTOR; writes to it
+ * from Secure state set VTOR_NS when the SAU is enabled per ARMv8-M
+ * ARM section B3.2.4). CPSCU.IPCSAR / IPCPAR follow the layout in
+ * HUM Ch 3.2.1 / 3.2.2. PRCR_S lives in the SYSC block at base
+ * 0x4001E000 (HUM Ch 13.2.1).
  */
 typedef enum : uintptr_t {
-  k_ra8_tz_sau_ctrl_addr    = 0xE000EDD0UL, /**< SAU Control.           */
-  k_ra8_tz_sau_type_addr    = 0xE000EDD4UL, /**< SAU Type.              */
-  k_ra8_tz_sau_rnr_addr     = 0xE000EDD8UL, /**< Region Num.            */
-  k_ra8_tz_sau_rbar_addr    = 0xE000EDDCUL, /**< Region Base.           */
-  k_ra8_tz_sau_rlar_addr    = 0xE000EDE0UL, /**< Region Lim.            */
   k_ra8_tz_scb_vtor_ns_addr = 0xE002ED08UL, /**< VTOR Non-Secure alias. */
   k_ra8_tz_ipcsar_addr      = 0x40008610UL, /**< CPSCU IPCSAR.          */
   k_ra8_tz_ipcpar_addr      = 0x40008614UL, /**< CPSCU IPCPAR.          */
   k_ra8_tz_prcr_s_addr      = 0x4001E3FAUL, /**< SYSC PRCR_S (16-bit).  */
 } ra8_tz_secure_boot_addr_t;
-
-/**
- * @enum ra8_tz_secure_boot_sau_bit_t
- * @brief Bit positions used to enable / configure each SAU region.
- *
- * @details
- * Mirrors the ARMv8-M ARM register-field encoding (D.4.5 SAU_CTRL,
- * D.4.7 SAU_RLAR). Names are kept identical to the FSP equivalents
- * so the bench-debug trail is easy to follow.
- */
-typedef enum : uint32_t {
-  k_ra8_tz_sau_ctrl_enable = 0x00000001U, /**< CTRL.ENABLE.           */
-  k_ra8_tz_sau_ctrl_allns  = 0x00000002U, /**< CTRL.ALLNS (kept 0).   */
-  k_ra8_tz_sau_rlar_enable = 0x00000001U, /**< RLAR.ENABLE.           */
-  k_ra8_tz_sau_rlar_nsc    = 0x00000002U, /**< RLAR.NSC.              */
-  k_ra8_tz_sau_type_mask   = 0x000000FFU, /**< TYPE.SREGION lower 8b. */
-} ra8_tz_secure_boot_sau_bit_t;
 
 /**
  * @enum ra8_tz_secure_boot_prcr_t
@@ -121,24 +103,29 @@ typedef enum : uint16_t {
 
 /**
  * @enum ra8_tz_secure_boot_partition_t
- * @brief Canonical SAU region base / limit addresses (HUM Ch 4).
+ * @brief Canonical SAU region base / size pairs (HUM Ch 4).
  *
  * @details
  * Region 3 (NSC alias) deliberately targets the unused 0x10000000
  * IDAU alias rather than the actual ``.gnu.sgstubs`` placement. See
  * ``project_sau_sgstubs_brick`` in project memory for the bench
- * fault that drove that choice. RLAR limits are the upper bound
- * minus the ARMv8-M 32-byte region quantum.
+ * fault that drove that choice.
+ *
+ * These are sizes, not the pre-decremented RLAR limits this file used
+ * to carry: ``ra8_sau_configure()`` derives ``base + size - 32`` once,
+ * so the window is stated the way the linker script states it and the
+ * 32-byte quantum is the driver's arithmetic rather than a constant
+ * somebody has to keep correct by hand.
  */
 typedef enum : uint32_t {
-  k_ra8_tz_part_code_nsc_base  = 0x10000000U, /**< RA8 TrustZone part code NSC base.  */
-  k_ra8_tz_part_code_nsc_limit = 0x100FFFE0U, /**< RA8 TrustZone part code NSC limit. */
-  k_ra8_tz_part_ns_mram_base   = 0x02080000U, /**< RA8 TrustZone part ns MRAM base.   */
-  k_ra8_tz_part_ns_mram_limit  = 0x020FFFE0U, /**< RA8 TrustZone part ns MRAM limit.  */
-  k_ra8_tz_part_sram_nsc_base  = 0x12000000U, /**< RA8 TrustZone part SRAM NSC base.  */
-  k_ra8_tz_part_sram_nsc_limit = 0x1200FFE0U, /**< RA8 TrustZone part SRAM NSC limit. */
-  k_ra8_tz_part_ns_sram_base   = 0x22100000U, /**< RA8 TrustZone part ns SRAM base.   */
-  k_ra8_tz_part_ns_sram_limit  = 0x221FFFE0U, /**< RA8 TrustZone part ns SRAM limit.  */
+  k_ra8_tz_part_code_nsc_base = 0x10000000U, /**< Code NSC alias base. */
+  k_ra8_tz_part_code_nsc_size = 0x00100000U, /**< Code NSC, 1 MiB.     */
+  k_ra8_tz_part_ns_mram_base  = 0x02080000U, /**< NS upper MRAM base.  */
+  k_ra8_tz_part_ns_mram_size  = 0x00080000U, /**< NS MRAM, 512 KiB.    */
+  k_ra8_tz_part_sram_nsc_base = 0x12000000U, /**< SRAM NSC alias base. */
+  k_ra8_tz_part_sram_nsc_size = 0x00010000U, /**< SRAM NSC, 64 KiB.    */
+  k_ra8_tz_part_ns_sram_base  = 0x22100000U, /**< NS upper SRAM base.  */
+  k_ra8_tz_part_ns_sram_size  = 0x00100000U, /**< NS SRAM, 1 MiB.      */
   /* NS peripheral region needs to cover BOTH the standard Cortex-M
    * peripheral window at 0x40000000 (where IPC lives at 0x40020000)
    * AND the alias window at 0x50000000. With the original 0x5xxxxxxx-
@@ -149,8 +136,8 @@ typedef enum : uint32_t {
    * evidence on 2026-05-27: with 0x5xxxxxxx-only the ping-pong
    * counters stay at zero (CPU0 sends, CPU1 SecureFaults on recv);
    * extending the region down to 0x40000000 unblocks the round-trip. */
-  k_ra8_tz_part_ns_per_base  = 0x50000000U, /**< RA8 TrustZone part ns per base.  */
-  k_ra8_tz_part_ns_per_limit = 0x5FFFFFE0U, /**< RA8 TrustZone part ns per limit. */
+  k_ra8_tz_part_ns_per_base = 0x50000000U, /**< NS peripheral base. */
+  k_ra8_tz_part_ns_per_size = 0x10000000U, /**< NS periph, 256 MiB. */
 } ra8_tz_secure_boot_partition_t;
 
 #ifdef RA8_OFF_TARGET
@@ -171,23 +158,23 @@ typedef enum : uint32_t {
  * @details
  * One field per piece of state the unit tests want to inspect. Tests
  * use ``ra8_tz_secure_boot_host_reset`` to clear it between cases.
+ * SAU state is deliberately absent: the partition is programmed
+ * through ``ra8_sau_configure()``, whose host build writes the shared
+ * fake SAU register block, so a test reads ``ra8_sau_regs()`` and sees
+ * the real RBAR / RLAR words rather than a private shadow copy.
  *
  * @invariant ``prcr_unlock_count`` matches ``prcr_relock_count`` after
  *            a successful security-init call.
  */
 typedef struct {
-  uint32_t sau_ctrl;                                    /**< Last value written to SAU_CTRL.    */
-  uint32_t sau_region_base[k_ra8_tz_sau_region_count];  /**< Per-region base.                   */
-  uint32_t sau_region_limit[k_ra8_tz_sau_region_count]; /**< Per-region lim.                    */
-  uint8_t  sau_region_nsc[k_ra8_tz_sau_region_count];   /**< NSC flag.                          */
-  uint16_t prcr_s_last;                                 /**< Last value written to PRCR_S.      */
-  uint8_t  prcr_unlock_count;                           /**< # of PRC4-open writes.             */
-  uint8_t  prcr_relock_count;                           /**< # of PRC4-close writes.            */
-  uint32_t ipcsar_value;                                /**< Latest IPCSAR write (post-unlock). */
-  uint32_t ipcpar_value;                                /**< Latest IPCPAR write (post-unlock). */
-  uint32_t blxns_target;                                /**< Captured BLXNS reset vector.       */
-  uint32_t blxns_msp_ns;                                /**< Captured MSP_NS value.             */
-  uint32_t vtor_ns;                                     /**< Captured VTOR_NS value.            */
+  uint16_t prcr_s_last;       /**< Last value written to PRCR_S.      */
+  uint8_t  prcr_unlock_count; /**< # of PRC4-open writes.             */
+  uint8_t  prcr_relock_count; /**< # of PRC4-close writes.            */
+  uint32_t ipcsar_value;      /**< Latest IPCSAR write (post-unlock). */
+  uint32_t ipcpar_value;      /**< Latest IPCPAR write (post-unlock). */
+  uint32_t blxns_target;      /**< Captured BLXNS reset vector.       */
+  uint32_t blxns_msp_ns;      /**< Captured MSP_NS value.             */
+  uint32_t vtor_ns;           /**< Captured VTOR_NS value.            */
 } ra8_tz_secure_boot_host_state_t;
 
 /**
@@ -253,7 +240,7 @@ uint32_t ra8_tz_secure_boot_host_blxns_target(void)
  * @param[in] addr Target address.
  * @param[in] value Value to write.
  *
- * @pre ``addr`` is one of the documented SAU / CPSCU / VTOR addresses.
+ * @pre ``addr`` is one of the documented CPSCU / VTOR addresses.
  * @pre Caller is in Secure state (target) / unit-test context (host).
  * @post Target write lands; host capture updated.
  * @post Caller can verify via the host-state accessors.
@@ -269,53 +256,14 @@ RA8_INTERNAL static void internal_write32(uintptr_t addr, uint32_t value)
     s_host.ipcpar_value = value;
   } else if (addr == (uintptr_t)k_ra8_tz_scb_vtor_ns_addr) {
     s_host.vtor_ns = value;
-  } else if (addr == (uintptr_t)k_ra8_tz_sau_ctrl_addr) {
-    s_host.sau_ctrl = value;
+  } else {
+    /* No other 32-bit register is written through this helper. */
   }
-  /* SAU RBAR / RLAR writes are routed through internal_sau_set_region. */
 #else
   /* HUM Ch 3.2.1 "IPCSAR" p 205 and HUM Ch 13.2.1 "PRCR_S" p 521 for
    * the secure-only writes routed through this helper. Generic 32-bit
    * MMIO store; the called sites cite their own register page. */
   *(volatile uint32_t*)addr = value;
-#endif
-}
-
-/**
- * @brief Read a 32-bit MMIO register (or canned host value).
- *
- * @details On target the function dereferences the MMIO address.
- *          On host (``RA8_OFF_TARGET``) it returns the canned values
- *          tests expect for SAU_TYPE (= 8 regions) and IPCSAR.
- *
- * @param[in] addr Target address.
- * @return Read value (host: documented constant for SAU_TYPE).
- * @retval 8U          When ``addr == k_ra8_tz_sau_type_addr`` on host.
- * @retval s_host.ipcsar_value  When ``addr == k_ra8_tz_ipcsar_addr`` on host.
- * @retval 0U          For any other addr on host.
- *
- * @pre  ``addr`` is one of the documented SAU / CPSCU addresses.
- * @pre  Caller is in Secure state on target.
- * @post No state change.
- * @post Returned value matches the most recent write on host.
- * @note Not thread-safe.
- * @since 0.1.0
- */
-RA8_INTERNAL static uint32_t internal_read32(uintptr_t addr)
-{
-#ifdef RA8_OFF_TARGET
-  if (addr == (uintptr_t)k_ra8_tz_sau_type_addr) {
-    /* Cortex-M85 implements 8 SAU regions; tests rely on that. */
-    return 8U;
-  }
-  if (addr == (uintptr_t)k_ra8_tz_ipcsar_addr) {
-    return s_host.ipcsar_value;
-  }
-  return 0U;
-#else
-  /* HUM Ch 3.2.1 "IPCSAR" p 205 -- only IPCSAR is ever read back here
-   * after the write; everything else (SAU_TYPE) is architectural. */
-  return *(volatile uint32_t*)addr;
 #endif
 }
 
@@ -373,107 +321,80 @@ RA8_INTERNAL static inline void internal_dsb(void)
 #endif
 }
 
-/**
- * @brief Emit an Instruction Synchronisation Barrier (no-op on host).
- *
- * @details Wraps the ``isb 0xF`` inline-asm so the file's hot path
- *          stays readable. Host build compiles to a true no-op.
- *
- * @pre  Caller is in Secure state (any context valid on host).
- * @pre  Used only inside the secure-boot sequence.
- * @post Pipeline flushed; subsequent fetches see post-write SAU state.
- * @post On host: no-op.
- * @note Not thread-safe.
- * @since 0.1.0
- */
-RA8_INTERNAL static inline void internal_isb(void)
-{
-#ifndef RA8_OFF_TARGET
-  __asm__ volatile("isb 0xF" ::: "memory");
-#endif
-}
-
 /* =============================================================================
  * SAU region programming
  * =============================================================================
  */
 
 /**
- * @brief Programme one SAU region via RNR/RBAR/RLAR.
+ * @var s_sau_regions
+ * @brief The canonical five-region secure-boot partition, declared.
  *
- * @details Selects region via SAU_RNR, writes the base address into
- *          SAU_RBAR, and writes ``limit | ENABLE [| NSC]`` into
- *          SAU_RLAR. Captures the values into ``s_host`` on host so
- *          the layout-sanity unit test can inspect them.
+ * @details
+ * The table this file used to write by hand through RNR / RBAR / RLAR,
+ * now stated as intent: a base, a size and NS-or-NSC per window, in the
+ * region order ``ra8_tz_sau_region_t`` fixes. ``ra8_sau_configure()``
+ * derives every register word from it (issue #735).
  *
- * @param[in] region Region index (0..SAU_TYPE.SREGION - 1).
- * @param[in] base   Base address (32-byte aligned).
- * @param[in] limit  Upper-bound minus 32 (32-byte aligned).
- * @param[in] is_nsc ``true`` to mark the region as Non-Secure Callable.
- *
- * @pre region < k_ra8_tz_sau_region_count.
- * @pre Caller is in Secure state.
- * @post Region's RBAR + RLAR loaded.
- * @post Region enabled (RLAR.ENABLE = 1).
- * @note Not thread-safe.
- * @since 0.1.0
+ * @note    File-private; lives in ``.rodata`` so the reset path can read
+ *          it before ``.data`` / ``.bss`` are initialised.
+ * @warning Region order is a published contract: it is what a bench SWD
+ *          dump of SAU_RNR indexes against.
+ * @since   0.1.0
  */
-RA8_INTERNAL static void
-internal_sau_set_region(uint8_t region, uint32_t base, uint32_t limit, bool is_nsc)
-{
-  internal_write32(k_ra8_tz_sau_rnr_addr, (uint32_t)region);
-  internal_write32(k_ra8_tz_sau_rbar_addr, base);
-  uint32_t rlar = limit | (uint32_t)k_ra8_tz_sau_rlar_enable;
-  if (is_nsc) {
-    rlar |= (uint32_t)k_ra8_tz_sau_rlar_nsc;
-  }
-  internal_write32(k_ra8_tz_sau_rlar_addr, rlar);
+static const ra8_sau_region_t s_sau_regions[k_ra8_tz_sau_region_count] = {
+  [k_ra8_tz_sau_region_code_nsc]  = {.base = (uintptr_t)k_ra8_tz_part_code_nsc_base,
+                                     .size = (uint32_t)k_ra8_tz_part_code_nsc_size,
+                                     .attr = k_ra8_sau_attr_nsc},
+  [k_ra8_tz_sau_region_ns_mram]   = {.base = (uintptr_t)k_ra8_tz_part_ns_mram_base,
+                                     .size = (uint32_t)k_ra8_tz_part_ns_mram_size,
+                                     .attr = k_ra8_sau_attr_ns},
+  [k_ra8_tz_sau_region_sram_nsc]  = {.base = (uintptr_t)k_ra8_tz_part_sram_nsc_base,
+                                     .size = (uint32_t)k_ra8_tz_part_sram_nsc_size,
+                                     .attr = k_ra8_sau_attr_nsc},
+  [k_ra8_tz_sau_region_ns_sram]   = {.base = (uintptr_t)k_ra8_tz_part_ns_sram_base,
+                                     .size = (uint32_t)k_ra8_tz_part_ns_sram_size,
+                                     .attr = k_ra8_sau_attr_ns},
+  [k_ra8_tz_sau_region_ns_periph] = {.base = (uintptr_t)k_ra8_tz_part_ns_per_base,
+                                     .size = (uint32_t)k_ra8_tz_part_ns_per_size,
+                                     .attr = k_ra8_sau_attr_ns},
+};
 
-#ifdef RA8_OFF_TARGET
-  if ((uint32_t)region < (uint32_t)k_ra8_tz_sau_region_count) {
-    s_host.sau_region_base[region]  = base;
-    s_host.sau_region_limit[region] = limit;
-    s_host.sau_region_nsc[region]   = (uint8_t)(is_nsc ? 1U : 0U);
-  }
-#endif
-}
+/**
+ * @var s_sau_cfg
+ * @brief Partition descriptor handed to ``ra8_sau_configure()``.
+ *
+ * @details ``all_ns`` stays false: unmapped memory remains Secure, which
+ *          is the default-deny posture this boot depends on.
+ * @note    File-private.
+ * @warning Do not modify.
+ * @since   0.1.0
+ */
+static const ra8_sau_cfg_t s_sau_cfg = {
+  .regions      = s_sau_regions,
+  .region_count = (uint8_t)k_ra8_tz_sau_region_count,
+  .all_ns       = false,
+};
 
 ra8_err_t ra8_tz_secure_boot_sau_init(void)
 {
-  /* Pre: SAU_TYPE.SREGION must report >= 5 implemented regions. */
-  const uint32_t sau_type = internal_read32(k_ra8_tz_sau_type_addr);
-  if ((sau_type & (uint32_t)k_ra8_tz_sau_type_mask) < (uint32_t)k_ra8_tz_sau_region_count) {
+  /* Pre: SAU_TYPE.SREGION must report >= 5 implemented regions. Checked
+   * here rather than left to ra8_sau_configure() so a shortfall keeps
+   * reporting k_ra8_err_not_supported, which is this function's
+   * published contract, not the driver's k_ra8_err_invalid_arg. */
+  if (ra8_sau_region_count() < (uint8_t)k_ra8_tz_sau_region_count) {
     ra8_log_error(s_tag, "SAU_TYPE.SREGION below required count");
     return k_ra8_err_not_supported;
   }
 
-  internal_sau_set_region((uint8_t)k_ra8_tz_sau_region_code_nsc,
-                          (uint32_t)k_ra8_tz_part_code_nsc_base,
-                          (uint32_t)k_ra8_tz_part_code_nsc_limit,
-                          /*is_nsc=*/true);
-  internal_sau_set_region((uint8_t)k_ra8_tz_sau_region_ns_mram,
-                          (uint32_t)k_ra8_tz_part_ns_mram_base,
-                          (uint32_t)k_ra8_tz_part_ns_mram_limit,
-                          /*is_nsc=*/false);
-  internal_sau_set_region((uint8_t)k_ra8_tz_sau_region_sram_nsc,
-                          (uint32_t)k_ra8_tz_part_sram_nsc_base,
-                          (uint32_t)k_ra8_tz_part_sram_nsc_limit,
-                          /*is_nsc=*/true);
-  internal_sau_set_region((uint8_t)k_ra8_tz_sau_region_ns_sram,
-                          (uint32_t)k_ra8_tz_part_ns_sram_base,
-                          (uint32_t)k_ra8_tz_part_ns_sram_limit,
-                          /*is_nsc=*/false);
-  internal_sau_set_region((uint8_t)k_ra8_tz_sau_region_ns_periph,
-                          (uint32_t)k_ra8_tz_part_ns_per_base,
-                          (uint32_t)k_ra8_tz_part_ns_per_limit,
-                          /*is_nsc=*/false);
+  const ra8_err_t err = ra8_sau_configure(&s_sau_cfg);
+  if (err != k_ra8_ok) {
+    ra8_log_error(s_tag, "SAU partition refused");
+    return err;
+  }
 
-  internal_dsb();
-  internal_write32(k_ra8_tz_sau_ctrl_addr, (uint32_t)k_ra8_tz_sau_ctrl_enable);
-  internal_dsb();
-  internal_isb();
-
-  /* Post: SAU enabled with the canonical layout, default-deny. */
+  /* Post: SAU enabled with the canonical layout, default-deny, and every
+   * region above the fifth cleared by the driver. */
   s_step = k_ra8_tz_secure_boot_step_sau_done;
   return k_ra8_ok;
 }
