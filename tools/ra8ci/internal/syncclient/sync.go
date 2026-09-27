@@ -157,6 +157,16 @@ func SyncPending(ctx context.Context, outbox *spool.Spool, baseURL string, clien
 		if err := checkUploadedRecordFitsTheOfflineDoor(body); err != nil {
 			return report, fmt.Errorf("local %s: %w", entry.ID, err)
 		}
+		// Asked AFTER the size door rather than beside the record-only
+		// doors above, and deliberately: a failure message is the one
+		// field wide enough to carry a record over the offline door by
+		// itself, and a record oversized on the whole should be reported
+		// as that rather than under one of its fields. Everything this
+		// door refuses is therefore a record the plane would otherwise
+		// have taken the bytes of and then refused at the column.
+		if err := checkUploadedExecutorErrorIsOneThePlaneWillFile(entry); err != nil {
+			return report, fmt.Errorf("local %s: %w", entry.ID, err)
+		}
 		canonical, err := catalog.CanonicalJSON(body)
 		if err != nil {
 			return report, err
