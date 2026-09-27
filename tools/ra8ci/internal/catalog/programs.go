@@ -186,10 +186,17 @@ func ValidateStepDispatch(step Step) error {
 	if err := checkNoScriptOptionIsOneTheModeIgnores(step); err != nil {
 		return err
 	}
-	// Last on the shell branch, and the only door here that reads past an
-	// option's name: the VALUE the script's own case arms accept. See
-	// a_script_option_value_the_script_accepts.go.
-	return checkScriptOptionValuesAreOnesTheScriptAccepts(step)
+	// Beside the doors above, which read an option's name and the value
+	// after it: this one judges the VALUE the script's own case arms
+	// accept. See a_script_option_value_the_script_accepts.go.
+	if err := checkScriptOptionValuesAreOnesTheScriptAccepts(step); err != nil {
+		return err
+	}
+	// Last on the shell branch, and the only door here that judges one argv
+	// element against another rather than against the script's contract: an
+	// option the parser assigns twice, keeping the last and dropping a value
+	// review wrote down. See an_option_the_script_reads_once.go.
+	return checkNoScriptOptionIsNamedTwice(step)
 }
 
 // ValidateTaskDispatch applies the seam to every step of a task.
