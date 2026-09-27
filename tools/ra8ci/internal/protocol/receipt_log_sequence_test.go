@@ -127,11 +127,16 @@ func TestTheChunkCountNeverWrapsNegative(t *testing.T) {
 }
 
 // The rule reads only the steps and the sequence, so a receipt with no steps at
-// all keeps the outcome rules it already had.
+// all keeps the outcome rules it already had. Those rules now include
+// checkSuccessNamesTheStepsItRan, so the stepless receipt here is the shape an
+// agent actually sends when nothing ran: failed, evidence incomplete, and
+// saying so with no_step_executed.
 func TestAReceiptWithNoStepsKeepsItsOwnRules(t *testing.T) {
 	receipt := sequenceReceipt(t)
 	receipt.Steps = nil
 	receipt.FinalLogSequence = 0
+	receipt.Outcome, receipt.EvidenceComplete = "failed", false
+	receipt.ErrorCode = "no_step_executed"
 	if err := receipt.Validate(); err != nil {
 		t.Fatalf("a stepless receipt was refused by the sequence rule: %v", err)
 	}
