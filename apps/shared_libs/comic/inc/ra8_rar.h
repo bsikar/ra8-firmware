@@ -35,8 +35,19 @@
  * caller's output buffer. Resident set is O(one header + one member), never the
  * file size -- so a multi-hundred-MB volume walks inside a few hundred bytes.
  *
+ * @par The member name is untrusted, and this walker does not judge it
+ * A RAR member name is attacker-controlled data in both generations: the RAR4
+ * name field and the RAR5 name record are whatever the archive author wrote.
+ * This walker copies the name into the caller's buffer, clamped to capacity,
+ * and inspects none of it: a leading `/`, a `..` component and any control
+ * byte all survive the walk. A caller that materialises a member under a
+ * directory applies ::ra8_path_sanitize_segment and then
+ * ::ra8_path_join_under, which refuses rather than composes anything that is
+ * not a single safe segment.
+ *
  * @note Not thread-safe; the single-threaded reader loop serialises access.
  *
+ * @see ra8_path.h  The untrusted-name policy a caller applies to the name.
  * @see comic.h  The comic facade that turns this walk into a page list.
  * @see https://www.rarlab.com/technote.htm  RAR 5.0 archive format (reference).
  *
@@ -238,6 +249,10 @@ ra8_rar_open(ra8_rar_t* rar, ra8_rar_read_fn read, void* ctx, uint64_t size);
  * @post On any error @p out is left zeroed.
  *
  * @note Not thread-safe.
+ * @note The name written to @p name_buf is untrusted archive data, copied and
+ *       clamped but never inspected. A caller that turns it into a filesystem
+ *       path applies ::ra8_path_sanitize_segment and ::ra8_path_join_under.
+ * @see ra8_path.h
  * @see ra8_rar_extract_stored()
  * @since Version 0.1.0
  */

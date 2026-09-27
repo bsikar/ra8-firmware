@@ -41,8 +41,27 @@
  * Resident state is O(one header block); pax data is parsed through a
  * small fixed scratch and rejected when larger.
  *
+ * @par The member name is untrusted, and this walker does not judge it
+ * A tar member name is attacker-controlled data: the archive author chooses
+ * every byte of the pax `path` record, the GNU longname block, and the ustar
+ * `name` / `prefix` pair. This walker assembles that name and clamps it to the
+ * caller's buffer; it does **not** reject a leading `/`, a `..` component, a
+ * control byte, or a name that resolves outside any directory. `../../etc/passwd`
+ * enumerates as a perfectly ordinary member, because rejecting it here would
+ * mean this reader deciding a filesystem policy for callers that never write
+ * the member to a filesystem at all.
+ *
+ * A caller that materialises a member under a directory must therefore apply
+ * the name policy itself, and the tree publishes one: run the name through
+ * ::ra8_path_sanitize_segment, then compose it with ::ra8_path_join_under,
+ * which refuses rather than composes anything that is not a single safe
+ * segment. A caller holding an already-resolved absolute candidate uses
+ * ::ra8_path_contained. Callers that only read members in place (the comic
+ * page index sorts by name and never writes it) need none of this.
+ *
  * @note Not thread-safe; the single-threaded reader loop serialises access.
  *
+ * @see ra8_path.h       The untrusted-name policy a caller applies to the name.
  * @see comic.h          The comic facade whose CBT backend drives this.
  * @see ra8_decomp_limits.h  The policy every walk is charged against.
  * @see unarch_io.h      The seek+read seam the walker consumes.
@@ -234,6 +253,12 @@ typedef struct {
  * @post On any error @p out is left zeroed.
  *
  * @note Not thread-safe (charges the walker's embedded budget).
+ * @note The name written to @p name_buf is untrusted archive data, copied and
+ *       clamped but never inspected: it can be absolute, can carry `..`
+ *       components, and can hold any byte the archive author chose. A caller
+ *       that turns it into a filesystem path applies ::ra8_path_sanitize_segment
+ *       and ::ra8_path_join_under first.
+ * @see ra8_path.h
  * @see unarch_tar_read()
  * @since Version 0.1.0
  */
