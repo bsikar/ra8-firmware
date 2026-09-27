@@ -18,6 +18,7 @@
 #include "mdl_sanitize.h"
 #include "ra8_attributes.h"
 #include "ra8_imgdec.h"
+#include "ra8_imgdec_name.h"
 
 /** @brief On-stack buffers and parse radix for the URL-name helpers. */
 typedef enum : uint16_t {
@@ -48,28 +49,6 @@ static const double s_chapter_fraction_step = 0.1;
  */
 static_assert((uint32_t)k_urlname_magic_bytes >= (uint32_t)k_ra8_imgdec_sniff_bytes,
               "magic prefix must cover the shared sniff window");
-
-/** @brief One recognised container and the names this module publishes for it. */
-typedef struct {
-  ra8_imgdec_format_t format; /**< Container the shared sniff reported. */
-  const char*         ext;    /**< Canonical extension, without a dot.  */
-  const char*         mime;   /**< Canonical MIME type.                 */
-} mdl_image_type_name_t;
-
-/**
- * @brief Names for every container the shared sniff can report.
- *
- * @details ::k_ra8_imgdec_format_tga is deliberately absent. TGA has no
- * signature at all, so ::ra8_imgdec_sniff never reports it and a row here
- * would be unreachable.
- */
-static const mdl_image_type_name_t s_image_type_names[] = {
-    {k_ra8_imgdec_format_jpeg, "jpg", "image/jpeg"},
-    {k_ra8_imgdec_format_png, "png", "image/png"},
-    {k_ra8_imgdec_format_webp, "webp", "image/webp"},
-    {k_ra8_imgdec_format_gif, "gif", "image/gif"},
-    {k_ra8_imgdec_format_bmp, "bmp", "image/bmp"},
-};
 
 /**
  * @brief End offset of a URL's path, before any `?query`/`#fragment`.
@@ -418,19 +397,14 @@ void mdl_urlname_ext(const char* url, char* out, size_t cap)
 RA8_INTERNAL static bool
 internal_sniff_magic_image(const void* buf, size_t buf_len, const char** ext, const char** mime)
 {
-  const size_t   capped = (buf_len > (size_t)UINT32_MAX) ? (size_t)UINT32_MAX : buf_len;
-  ra8_imgdec_format_t format = k_ra8_imgdec_format_none;
-  if (ra8_imgdec_sniff((const uint8_t*)buf, (uint32_t)capped, &format) != k_ra8_ok) {
+  const size_t      capped = (buf_len > (size_t)UINT32_MAX) ? (size_t)UINT32_MAX : buf_len;
+  ra8_imgdec_name_t id     = {};
+  if (ra8_imgdec_identify((const uint8_t*)buf, (uint32_t)capped, &id) != k_ra8_ok) {
     return false;
   }
-  for (size_t i = 0U; i < (sizeof(s_image_type_names) / sizeof(s_image_type_names[0])); ++i) {
-    if (s_image_type_names[i].format == format) {
-      *ext  = s_image_type_names[i].ext;
-      *mime = s_image_type_names[i].mime;
-      return true;
-    }
-  }
-  return false;
+  *ext  = id.ext;
+  *mime = id.mime;
+  return true;
 }
 
 /**
@@ -462,24 +436,26 @@ internal_sniff_content_type(const char* content_type, const char** ext, const ch
     ct_lower[i] = internal_urlname_to_lower_ascii(content_type[i]);
   }
   ct_lower[i] = '\0';
+  ra8_imgdec_format_t format = k_ra8_imgdec_format_none;
   if ((strstr(ct_lower, "image/jpeg") != nullptr) || (strstr(ct_lower, "image/jpg") != nullptr)) {
-    *ext  = "jpg";
-    *mime = "image/jpeg";
+    format = k_ra8_imgdec_format_jpeg; /* the `image/jpg` alias is HTTP-side tolerance */
   } else if (strstr(ct_lower, "image/png") != nullptr) {
-    *ext  = "png";
-    *mime = "image/png";
+    format = k_ra8_imgdec_format_png;
   } else if (strstr(ct_lower, "image/webp") != nullptr) {
-    *ext  = "webp";
-    *mime = "image/webp";
+    format = k_ra8_imgdec_format_webp;
   } else if (strstr(ct_lower, "image/gif") != nullptr) {
-    *ext  = "gif";
-    *mime = "image/gif";
+    format = k_ra8_imgdec_format_gif;
   } else if (strstr(ct_lower, "image/bmp") != nullptr) {
-    *ext  = "bmp";
-    *mime = "image/bmp";
+    format = k_ra8_imgdec_format_bmp;
   } else {
     return false;
   }
+  ra8_imgdec_name_t id = {};
+  if (ra8_imgdec_name(format, &id) != k_ra8_ok) {
+    return false;
+  }
+  *ext  = id.ext;
+  *mime = id.mime;
   return true;
 }
 
