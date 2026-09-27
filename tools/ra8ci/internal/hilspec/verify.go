@@ -28,7 +28,7 @@ func VerifyTextCapture(spec Spec, captured []byte) error {
 	if spec.Expect == "" {
 		return ErrMissingExpectation
 	}
-	if len(spec.Expect) < 12 && !spec.Values["HIL_EXPECT_SHORT_OK"].Flag {
+	if len(spec.Expect) < minimumExpectationBytes && !spec.Values["HIL_EXPECT_SHORT_OK"].Flag {
 		return fmt.Errorf("%w: %d bytes", ErrWeakExpectation, len(spec.Expect))
 	}
 	if !bytes.Contains(captured, []byte(spec.Expect)) {
