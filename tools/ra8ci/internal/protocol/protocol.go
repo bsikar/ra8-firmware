@@ -194,7 +194,7 @@ func DecodeStrict(reader io.Reader, target any) error {
 func (assignment Assignment) Validate() error {
 	if assignment.SchemaVersion != Version || !ValidID(assignment.AssignmentID) || !ValidID(assignment.AttemptID) ||
 		assignment.AssignmentVersion < 1 || assignment.FencingToken < 1 ||
-		assignment.Task.Name == "" || assignment.Task.Version < 1 ||
+		!taskNameNamesAReviewedTask(assignment.Task.Name) || assignment.Task.Version < 1 ||
 		!ValidSHA256(assignment.CatalogSHA256) ||
 		assignment.Source.Algorithm != source.Algorithm || !ValidCommit(assignment.Source.Commit) ||
 		!ValidSHA256(assignment.Source.SnapshotSHA256) || assignment.DeadlineAt.IsZero() ||
