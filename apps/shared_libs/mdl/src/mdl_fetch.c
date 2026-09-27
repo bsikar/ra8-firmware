@@ -232,21 +232,22 @@ RA8_INTERNAL static const char* internal_mdl_fetch_page_host(const char* url, ch
  * @note The function performs no dynamic allocation and retains no caller pointer.
  * @since 0.1.0
  */
-RA8_INTERNAL static ra8_err_t internal_mdl_fetch_governed_get_body(mdl_fetch_ctx_t*     ctx,
-                                                                   const char*          host,
-                                                                   const char*          url,
-                                                                   const mdl_net_req_t* req,
-                                                                   mdl_net_body_sink_t* sink,
-                                                                   uint32_t             jmin,
-                                                                   uint32_t             jmax,
-                                                                   mdl_net_resp_t*      out_resp,
-                                                                   size_t*              out_bytes)
+RA8_INTERNAL static ra8_err_t
+internal_mdl_fetch_governed_get_body(mdl_fetch_ctx_t*             ctx,
+                                     const char*                  host,
+                                     const char*                  url,
+                                     const ra8_mdl_http_policy_t* req,
+                                     mdl_net_body_sink_t*         sink,
+                                     uint32_t                     jmin,
+                                     uint32_t                     jmax,
+                                     ra8_mdl_http_response_t*     out_resp,
+                                     size_t*                      out_bytes)
 {
   if (mdl_governor_acquire(ctx->gov, host, jmin, jmax) == k_ra8_err_would_block) {
     return k_ra8_err_would_block;
   }
   size_t          got  = 0U;
-  mdl_net_resp_t  resp = {};
+  ra8_mdl_http_response_t resp = {};
   const ra8_err_t rc   = mdl_net_get_body(ctx->session->net, url, req, sink, &got, &resp);
   mdl_governor_observe(ctx->gov, host, resp.status, resp.retry_after);
   mdl_governor_release(ctx->gov, host);
@@ -261,15 +262,15 @@ RA8_INTERNAL static ra8_err_t internal_mdl_fetch_governed_get_body(mdl_fetch_ctx
 
 /** @brief Bounded, governed retry of one image transfer; last status latched.
  */
-RA8_PRIV ra8_err_t priv_mdl_fetch_with_retry(mdl_fetch_ctx_t*     ctx,
-                                             const char*          host,
-                                             const char*          url,
-                                             const mdl_net_req_t* req,
-                                             mdl_net_body_sink_t* sink,
-                                             uint32_t             jmin,
-                                             uint32_t             jmax,
-                                             mdl_net_resp_t*      out_resp,
-                                             size_t*              out_bytes)
+RA8_PRIV ra8_err_t priv_mdl_fetch_with_retry(mdl_fetch_ctx_t*             ctx,
+                                             const char*                  host,
+                                             const char*                  url,
+                                             const ra8_mdl_http_policy_t* req,
+                                             mdl_net_body_sink_t*         sink,
+                                             uint32_t                     jmin,
+                                             uint32_t                     jmax,
+                                             ra8_mdl_http_response_t*     out_resp,
+                                             size_t*                      out_bytes)
 {
   ra8_err_t rc = k_ra8_fail;
   for (uint8_t attempt = 0U; attempt < (uint8_t)k_fetch_max_attempts; ++attempt) {
@@ -314,18 +315,18 @@ RA8_PRIV ra8_err_t priv_mdl_fetch_with_retry(mdl_fetch_ctx_t*     ctx,
  * @note Not thread-safe with respect to concurrent callers sharing @p ctx.
  * @since 0.1.0
  */
-RA8_INTERNAL static ra8_err_t internal_fetch_asset_execute(mdl_fetch_ctx_t*     ctx,
-                                                           const char*          host,
-                                                           const char*          url,
-                                                           const mdl_net_req_t* req,
-                                                           uint32_t             jmin,
-                                                           uint32_t             jmax,
-                                                           const char*          target_abs,
-                                                           mdl_net_resp_t*      out_resp,
-                                                           size_t*              out_bytes)
+RA8_INTERNAL static ra8_err_t internal_fetch_asset_execute(mdl_fetch_ctx_t*             ctx,
+                                                           const char*                  host,
+                                                           const char*                  url,
+                                                           const ra8_mdl_http_policy_t* req,
+                                                           uint32_t                     jmin,
+                                                           uint32_t                     jmax,
+                                                           const char*                  target_abs,
+                                                           ra8_mdl_http_response_t*     out_resp,
+                                                           size_t*                      out_bytes)
 {
   size_t              got  = 0U;
-  mdl_net_resp_t      resp = {};
+  ra8_mdl_http_response_t resp = {};
   mdl_fetch_body_t    body = {};
   ra8_err_t           rc   = priv_mdl_fetch_body_init_exact(&body, ctx->storage, target_abs);
   mdl_net_body_sink_t sink = priv_mdl_fetch_body_sink(&body);
@@ -353,15 +354,15 @@ RA8_INTERNAL static ra8_err_t internal_fetch_asset_execute(mdl_fetch_ctx_t*     
   return k_ra8_ok;
 }
 
-ra8_err_t mdl_fetch_asset(mdl_fetch_ctx_t* ctx,
-                          const char*      url,
-                          const char*      target_abs,
-                          const char*      referer,
-                          mdl_net_resp_t*  out_resp,
-                          size_t*          out_bytes)
+ra8_err_t mdl_fetch_asset(mdl_fetch_ctx_t*         ctx,
+                          const char*              url,
+                          const char*              target_abs,
+                          const char*              referer,
+                          ra8_mdl_http_response_t* out_resp,
+                          size_t*                  out_bytes)
 {
   if (out_resp != nullptr) {
-    *out_resp = (mdl_net_resp_t){};
+    *out_resp = (ra8_mdl_http_response_t){};
   }
   if (out_bytes != nullptr) {
     *out_bytes = 0U;
@@ -385,11 +386,11 @@ ra8_err_t mdl_fetch_asset(mdl_fetch_ctx_t* ctx,
 
   const uint32_t      jmin = internal_mdl_fetch_max_u32(ctx->site->img_delay_min, crawl);
   const uint32_t      jmax = internal_mdl_fetch_max_u32(ctx->site->img_delay_max, crawl);
-  const mdl_net_req_t req  = {.user_agent        = ctx->session->user_agent,
-                              .referer           = referer,
-                              .if_none_match     = nullptr,
-                              .if_modified_since = nullptr,
-                              .timeout_ms        = ctx->timeout_ms};
+  const ra8_mdl_http_policy_t req  = {.user_agent        = ctx->session->user_agent,
+                                      .referer           = referer,
+                                      .if_none_match     = nullptr,
+                                      .if_modified_since = nullptr,
+                                      .timeout_ms        = ctx->timeout_ms};
   return internal_fetch_asset_execute(ctx,
                                       host,
                                       url,
@@ -418,13 +419,13 @@ ra8_err_t mdl_fetch_asset(mdl_fetch_ctx_t* ctx,
  * @note No callback argument is retained.
  * @since 0.1.0
  */
-RA8_PRIV ra8_err_t priv_mdl_fetch_cache_get_buf(void*                context,
-                                                const char*          url,
-                                                const mdl_net_req_t* request,
-                                                char*                buffer,
-                                                size_t               capacity,
-                                                size_t*              out_length,
-                                                mdl_net_resp_t*      response)
+RA8_PRIV ra8_err_t priv_mdl_fetch_cache_get_buf(void*                        context,
+                                                const char*                  url,
+                                                const ra8_mdl_http_policy_t* request,
+                                                char*                        buffer,
+                                                size_t                       capacity,
+                                                size_t*                      out_length,
+                                                ra8_mdl_http_response_t*     response)
 {
   mdl_fetch_cache_request_t* fetch = (mdl_fetch_cache_request_t*)context;
   ra8_err_t                  error = k_ra8_fail;
@@ -481,9 +482,9 @@ internal_mdl_fetch_chapter_html(mdl_fetch_ctx_t* ctx, const char* chapter_url, s
   if (ra8_net_urlguard_host(chapter_url, fetch.host, sizeof(fetch.host)) != k_ra8_ok) {
     return k_ra8_err_invalid_arg;
   }
-  const mdl_net_req_t req = {.user_agent = ctx->session->user_agent,
-                             .referer    = ctx->series_url,
-                             .timeout_ms = ctx->timeout_ms};
+  const ra8_mdl_http_policy_t req = {.user_agent = ctx->session->user_agent,
+                                     .referer    = ctx->series_url,
+                                     .timeout_ms = ctx->timeout_ms};
 
   const mdl_cache_get_req_t get = {.url           = chapter_url,
                                    .request       = &req,

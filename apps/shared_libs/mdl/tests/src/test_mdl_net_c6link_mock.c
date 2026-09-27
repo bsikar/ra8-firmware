@@ -238,14 +238,14 @@ RA8_INTERNAL static void internal_test_buffer_and_sink(void)
   mdl_net_iface_t  net;
   mdl_net_c6link_t backend;
   internal_bind(&net, &backend);
-  const mdl_net_req_t request = {
+  const ra8_mdl_http_policy_t request = {
     .user_agent        = "ra8-media-test/3",
     .referer           = "https://example.test/catalog",
     .if_none_match     = "\"prior-etag\"",
     .if_modified_since = "Tue, 20 Oct 2015 07:28:00 GMT",
     .timeout_ms        = 6789U,
   };
-  mdl_net_resp_t response;
+  ra8_mdl_http_response_t response;
   char           buffer[k_internal_sink_bytes];
   size_t         length = 0U;
   TEST_ASSERT_EQ(k_ra8_ok,
@@ -308,8 +308,8 @@ RA8_INTERNAL static void internal_test_http_status_is_not_synthesized(void)
   mdl_net_iface_t  net;
   mdl_net_c6link_t backend;
   internal_bind(&net, &backend);
-  const mdl_net_req_t request = {};
-  mdl_net_resp_t      response;
+  const ra8_mdl_http_policy_t request = {};
+  ra8_mdl_http_response_t     response;
   char                buffer[k_internal_sink_bytes];
   size_t              length = 0U;
   TEST_ASSERT_EQ(k_ra8_err_busy,
@@ -375,7 +375,7 @@ RA8_INTERNAL static void internal_test_fail_closed(void)
   mdl_net_c6link_t backend;
   internal_bind(&net, &backend);
   char                buffer[4] = {'o', 'l', 'd', '\0'};
-  const mdl_net_req_t malformed = {.user_agent = "ra8-test\r\nInjected: value"};
+  const ra8_mdl_http_policy_t malformed = {.user_agent = "ra8-test\r\nInjected: value"};
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg,
                  mdl_net_get_buf(&net,
                                  "https://example.test/book",
@@ -386,7 +386,7 @@ RA8_INTERNAL static void internal_test_fail_closed(void)
                                  nullptr));
   TEST_ASSERT_EQ('\0', buffer[0]);
 
-  const mdl_net_req_t request = {};
+  const ra8_mdl_http_policy_t request = {};
   TEST_ASSERT_EQ(k_ra8_err_no_mem,
                  mdl_net_get_buf(&net,
                                  "https://example.test/book",

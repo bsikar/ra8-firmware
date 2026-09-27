@@ -50,8 +50,8 @@ typedef struct {
  */
 typedef struct {
   cache_step_t steps[k_test_step_max];                           /**< Responses.   */
-  char         if_none_match[k_test_step_max][k_mdl_etag_max];   /**< ETags sent.  */
-  char         if_modified[k_test_step_max][k_mdl_last_mod_max]; /**< Dates sent.  */
+  char         if_none_match[k_test_step_max][k_ra8_mdl_etag_max];    /**< ETags sent.  */
+  char         if_modified[k_test_step_max][k_ra8_mdl_http_date_max]; /**< Dates sent.  */
   size_t       step_count;                                       /**< Script size. */
   size_t       calls;                                            /**< Calls made.  */
 } cache_script_t;
@@ -113,13 +113,13 @@ RA8_INTERNAL static bool internal_test_copy(char* destination, size_t capacity, 
  * @note The URL is intentionally irrelevant to response selection.
  * @since 0.1.0
  */
-RA8_INTERNAL static ra8_err_t internal_script_fetch(void*                context,
-                                                    const char*          url,
-                                                    const mdl_net_req_t* request,
-                                                    char*                buffer,
-                                                    size_t               capacity,
-                                                    size_t*              out_length,
-                                                    mdl_net_resp_t*      response)
+RA8_INTERNAL static ra8_err_t internal_script_fetch(void*                        context,
+                                                    const char*                  url,
+                                                    const ra8_mdl_http_policy_t* request,
+                                                    char*                        buffer,
+                                                    size_t                       capacity,
+                                                    size_t*                      out_length,
+                                                    ra8_mdl_http_response_t*     response)
 {
   (void)url;
   cache_script_t* script = (cache_script_t*)context;
@@ -138,7 +138,7 @@ RA8_INTERNAL static ra8_err_t internal_script_fetch(void*                context
                           request->if_modified_since)) {
     return k_ra8_err_invalid_size;
   }
-  *response   = (mdl_net_resp_t){.status = step->status};
+  *response   = (ra8_mdl_http_response_t){.status = step->status};
   *out_length = 0U;
   if (!internal_test_copy(response->etag, sizeof(response->etag), step->etag) ||
       !internal_test_copy(response->last_modified,
@@ -206,14 +206,14 @@ RA8_INTERNAL static void internal_begin_case(char* root, size_t root_capacity, m
  * @note Each test process runs scenarios serially.
  * @since 0.1.0
  */
-RA8_INTERNAL static ra8_err_t internal_get(mdl_cache_t*        cache,
-                                           const char*         url,
-                                           cache_script_t*     script,
-                                           mdl_net_resp_t*     response,
-                                           mdl_cache_result_t* result,
-                                           size_t*             out_length)
+RA8_INTERNAL static ra8_err_t internal_get(mdl_cache_t*             cache,
+                                           const char*              url,
+                                           cache_script_t*          script,
+                                           ra8_mdl_http_response_t* response,
+                                           mdl_cache_result_t*      result,
+                                           size_t*                  out_length)
 {
-  const mdl_net_req_t       request = {.timeout_ms = 1000U};
+  const ra8_mdl_http_policy_t request = {.timeout_ms = 1000U};
   const mdl_cache_get_req_t get     = {.url           = url,
                                        .request       = &request,
                                        .fetch         = internal_script_fetch,
@@ -415,7 +415,7 @@ RA8_INTERNAL static void internal_test_conditional_304(void)
     .steps      = {{200L, "alpha", "\"v1\"", "Wed, 21 Oct 2015 07:28:00 GMT", k_ra8_ok},
                    {304L, nullptr, nullptr, nullptr, k_ra8_ok}},
     .step_count = 2U};
-  mdl_net_resp_t     response;
+  ra8_mdl_http_response_t response;
   mdl_cache_result_t result;
   size_t             length = 0U;
   const char*        url    = "https://example.test/series/one";
@@ -469,7 +469,7 @@ RA8_INTERNAL static void internal_test_changed_etag(void)
   cache_script_t     script = {.steps      = {{200L, "alpha", "\"v1\"", nullptr, k_ra8_ok},
                                               {200L, "beta", "\"v2\"", nullptr, k_ra8_ok}},
                                .step_count = 2U};
-  mdl_net_resp_t     response;
+  ra8_mdl_http_response_t response;
   mdl_cache_result_t result;
   size_t             length = 0U;
   const char*        url    = "https://example.test/chapter/one";
@@ -516,7 +516,7 @@ RA8_INTERNAL static void internal_test_corrupt_index_rebuild(void)
   cache_script_t     script = {.steps      = {{200L, "alpha", "\"old\"", nullptr, k_ra8_ok},
                                               {200L, "rebuilt", "\"new\"", nullptr, k_ra8_ok}},
                                .step_count = 2U};
-  mdl_net_resp_t     response;
+  ra8_mdl_http_response_t response;
   mdl_cache_result_t result;
   size_t             length = 0U;
   const char*        url    = "https://corrupt.test/index";
@@ -566,7 +566,7 @@ RA8_INTERNAL static void internal_test_refetch_policy(void)
   cache_script_t     script = {.steps      = {{200L, "alpha", nullptr, nullptr, k_ra8_ok},
                                               {200L, "forced", nullptr, nullptr, k_ra8_ok}},
                                .step_count = 2U};
-  mdl_net_resp_t     response;
+  ra8_mdl_http_response_t response;
   mdl_cache_result_t result;
   size_t             length = 0U;
   const char*        url    = "https://plain.test/document";
@@ -619,7 +619,7 @@ RA8_INTERNAL static void internal_test_host_partition(void)
   cache_script_t     script = {.steps      = {{200L, "alpha", nullptr, nullptr, k_ra8_ok},
                                               {200L, "beta", nullptr, nullptr, k_ra8_ok}},
                                .step_count = 2U};
-  mdl_net_resp_t     response;
+  ra8_mdl_http_response_t response;
   mdl_cache_result_t result;
   size_t             length = 0U;
   const char*        url_a  = "https://alpha.test/index";
@@ -669,7 +669,7 @@ RA8_INTERNAL static void internal_test_unexpected_304_retry(void)
   cache_script_t     script = {.steps      = {{304L, nullptr, nullptr, nullptr, k_ra8_ok},
                                               {200L, "recovered", "\"fresh\"", nullptr, k_ra8_ok}},
                                .step_count = 2U};
-  mdl_net_resp_t     response;
+  ra8_mdl_http_response_t response;
   mdl_cache_result_t result;
   size_t             length = 0U;
   const char*        url    = "https://retry.test/index";
@@ -710,7 +710,7 @@ RA8_INTERNAL static void internal_test_repeated_304_rejected(void)
   cache_script_t     script = {.steps      = {{304L, nullptr, nullptr, nullptr, k_ra8_ok},
                                               {304L, nullptr, nullptr, nullptr, k_ra8_ok}},
                                .step_count = 2U};
-  mdl_net_resp_t     response;
+  ra8_mdl_http_response_t response;
   mdl_cache_result_t result;
   size_t             length = 0U;
   const char*        url    = "https://retry.test/repeated";

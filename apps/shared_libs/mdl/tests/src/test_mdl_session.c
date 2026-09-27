@@ -92,13 +92,13 @@ typedef struct {
  * @note Host-only and synchronous; assertion failure terminates the test process.
  * @since 0.1.0
  */
-RA8_INTERNAL static ra8_err_t internal_robo_get_buf(void*                ctx,
-                                                    const char*          url,
-                                                    const mdl_net_req_t* req,
-                                                    char*                buf,
-                                                    size_t               cap,
-                                                    size_t*              out_len,
-                                                    mdl_net_resp_t*      resp)
+RA8_INTERNAL static ra8_err_t internal_robo_get_buf(void*                        ctx,
+                                                    const char*                  url,
+                                                    const ra8_mdl_http_policy_t* req,
+                                                    char*                        buf,
+                                                    size_t                       cap,
+                                                    size_t*                      out_len,
+                                                    ra8_mdl_http_response_t*     resp)
 {
   robo_net_t* f = (robo_net_t*)ctx;
   f->calls += 1U;
@@ -142,12 +142,12 @@ RA8_INTERNAL static ra8_err_t internal_robo_get_buf(void*                ctx,
  * @note Host-only and synchronous; assertion failure terminates the test process.
  * @since 0.1.0
  */
-RA8_INTERNAL static ra8_err_t internal_robo_get_body(void*                ctx,
-                                                     const char*          url,
-                                                     const mdl_net_req_t* req,
-                                                     mdl_net_body_sink_t* sink,
-                                                     size_t*              out_len,
-                                                     mdl_net_resp_t*      resp)
+RA8_INTERNAL static ra8_err_t internal_robo_get_body(void*                        ctx,
+                                                     const char*                  url,
+                                                     const ra8_mdl_http_policy_t* req,
+                                                     mdl_net_body_sink_t*         sink,
+                                                     size_t*                      out_len,
+                                                     ra8_mdl_http_response_t*     resp)
 {
   (void)ctx;
   (void)url;
