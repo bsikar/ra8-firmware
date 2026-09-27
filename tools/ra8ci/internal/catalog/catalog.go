@@ -220,11 +220,11 @@ func VerifyCheckout(root string) (string, error) {
 		return "", fmt.Errorf("%w: missing .git: %v", ErrInvalidCheckout, err)
 	}
 	base := filepath.Join(resolved, "tools", "ra8ci", "catalog")
-	raw, err := os.ReadFile(filepath.Join(base, "tasks.json"))
+	raw, err := readCheckoutFile(filepath.Join(base, "tasks.json"), maxReadableManifestBytes)
 	if err != nil {
 		return "", fmt.Errorf("%w: manifest: %v", ErrInvalidCheckout, err)
 	}
-	storedDigest, err := os.ReadFile(filepath.Join(base, "sha256.txt"))
+	storedDigest, err := readCheckoutFile(filepath.Join(base, "sha256.txt"), maxReadableDigestBytes)
 	if err != nil {
 		return "", fmt.Errorf("%w: digest: %v", ErrInvalidCheckout, err)
 	}
