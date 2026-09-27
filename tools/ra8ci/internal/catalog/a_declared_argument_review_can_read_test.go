@@ -95,6 +95,10 @@ func TestAnEmptyDeclaredArgumentIsRefused(t *testing.T) {
 
 func TestTheWidestDeclarableArgumentIsAdmittedAndOneByteMoreIsNot(t *testing.T) {
 	task := readableTask()
+	// A script that states no argument contract, because this test is
+	// about how WIDE a declared argument may be, not about what any one
+	// script parses. See a_script_option_the_script_parses.go.
+	task.Steps[0].Args[0] = unstatedScript
 	task.Steps[0].Args[1] = strings.Repeat("a", maxDeclaredArgumentBytes)
 	if err := ValidateReviewedTask(task); err != nil {
 		t.Fatalf("an argument of exactly %d bytes was refused: %v", maxDeclaredArgumentBytes, err)
@@ -109,12 +113,12 @@ func TestTheWidestDeclarableArgvIsAdmittedAndOneMoreIsNot(t *testing.T) {
 	task := readableTask()
 	task.Steps[0].Args = make([]string, maxDeclaredArgumentsPerStep)
 	for i := range task.Steps[0].Args {
-		task.Steps[0].Args[i] = "scripts/ci.sh"
+		task.Steps[0].Args[i] = unstatedScript
 	}
 	if err := ValidateReviewedTask(task); err != nil {
 		t.Fatalf("a step declaring exactly %d arguments was refused: %v", maxDeclaredArgumentsPerStep, err)
 	}
-	task.Steps[0].Args = append(task.Steps[0].Args, "scripts/ci.sh")
+	task.Steps[0].Args = append(task.Steps[0].Args, unstatedScript)
 	if err := ValidateReviewedTask(task); !errors.Is(err, errUnreadableDeclaredArgument) {
 		t.Fatalf("a step declaring %d arguments was admitted: %v", maxDeclaredArgumentsPerStep+1, err)
 	}
@@ -134,6 +138,7 @@ func TestTheDeclaredArgumentDoorDoesNotRefuseALeadingDash(t *testing.T) {
 
 func TestTheDeclaredArgumentDoorDoesNotChooseAnAlphabet(t *testing.T) {
 	task := readableTask()
+	task.Steps[0].Args[0] = unstatedScript
 	task.Steps[0].Args[1] = "--pattern=*.zig"
 	if err := ValidateReviewedTask(task); err != nil {
 		t.Fatalf("a declared argument carrying a glob was refused: %v", err)

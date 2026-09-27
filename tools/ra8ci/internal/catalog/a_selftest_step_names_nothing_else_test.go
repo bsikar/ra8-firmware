@@ -51,7 +51,7 @@ func TestAScanStepWithSeveralOptionsIsStillAdmitted(t *testing.T) {
 }
 
 func TestTheSelftestDoorSaysNothingAboutShellSteps(t *testing.T) {
-	step := Step{Name: "gate", Program: DispatchShell, Args: []string{"scripts/ci" + ScriptPathSuffix, "--selftest", "--all"}}
+	step := Step{Name: "gate", Program: DispatchShell, Args: []string{unstatedScript, "--selftest", "--all"}}
 	if err := ValidateStepDispatch(step); err != nil {
 		t.Fatalf("a reviewed script owns its own options: %v", err)
 	}
