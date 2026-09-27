@@ -730,9 +730,10 @@ RA8_INTERNAL static void internal_test_gzip_payload_faults(void)
 /**
  * @test internal_test_verify_arguments
  * @brief Arena reservation limits and the validator's argument and format contracts.
- * @details Exercises every rejection the bounded arena reservation makes -- a zero request, a zero
- * alignment, a non power-of-two alignment, an alignment walking the cursor past the capacity, an
- * oversized request, and a cursor whose rounding would overflow -- then proves a reserved format is
+ * @details Exercises every rejection the bounded arena reservation makes -- a missing workspace, a
+ * workspace with no arena storage, a zero request, a zero alignment, a non power-of-two alignment,
+ * an alignment walking the cursor past the capacity, an oversized request, and a cursor whose
+ * rounding would overflow -- then proves a reserved format is
  * refused as unsupported, a non-container format as an invalid argument, and that both public entry
  * points reject a missing pointer before touching storage.
  * @pre Storage is initialized and the fixture path is writable. @pre The scratch buffer is owned.
@@ -744,6 +745,10 @@ RA8_INTERNAL static void internal_test_verify_arguments(void)
   mdl_storage_t*         store = mdl_test_storage_get();
   mdl_export_workspace_t ws;
   mdl_export_workspace_init(&ws, s_io, sizeof(s_io));
+  TEST_ASSERT_NULL(priv_mdl_verify_workspace_take(nullptr, k_fx_one, k_fx_one));
+  mdl_export_workspace_t unbound;
+  mdl_export_workspace_init(&unbound, nullptr, sizeof(s_io));
+  TEST_ASSERT_NULL(priv_mdl_verify_workspace_take(&unbound, k_fx_one, k_fx_one));
   TEST_ASSERT_NULL(priv_mdl_verify_workspace_take(&ws, 0U, alignof(max_align_t)));
   TEST_ASSERT_NULL(priv_mdl_verify_workspace_take(&ws, k_fx_one, 0U));
   TEST_ASSERT_NULL(priv_mdl_verify_workspace_take(&ws, k_fx_one, k_fx_odd_align));
@@ -779,9 +784,11 @@ RA8_INTERNAL static void internal_test_verify_arguments(void)
  * @test internal_test_mcdc_workspace_take_overflow
  *
  * @par MC/DC:
- * Decision: `(workspace->used > (UINTPTR_MAX - base)) || ((base +
- * workspace->used) > (UINTPTR_MAX - mask))` cites
- * apps/shared_libs/mdl/src/mdl_verify.c@priv_mdl_verify_workspace_take.
+ * Decision: `(ws->used > (UINTPTR_MAX - base)) || ((base + ws->used) >
+ * (UINTPTR_MAX - mask))` cites
+ * apps/shared_libs/mdl/src/mdl_export_workspace.c@mdl_export_workspace_take,
+ * reached here through the verifier's forwarder
+ * ::priv_mdl_verify_workspace_take (one bump implementation, #757).
  * - Vector 1: used=0, aligned cursor in capacity -> false (both conditions false)
  * - Vector 2: used=SIZE_MAX -> true (varies the first condition)
  * - Vector 3: used=UINTPTR_MAX-base -> true (varies the second condition)
