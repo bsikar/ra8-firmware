@@ -133,6 +133,14 @@ func (s *Spool) BeginWithMetadata(task, digest string, metadata Metadata) (Entry
 		metadata.DeadlineSeconds > 86400 {
 		return Entry{}, errors.New("invalid local source or task metadata")
 	}
+	// The arguments are frozen here and never revised: checkFinishMatchesStart
+	// holds the terminal record to the list the start record carries, so a
+	// list the plane cannot file makes the whole run unuploadable. See
+	// arguments_the_plane_will_take.go for why that is refused now rather
+	// than after the task has run.
+	if err := checkArgumentsAreOnesThePlaneWillFile(metadata.Args); err != nil {
+		return Entry{}, err
+	}
 	return s.begin(task, digest, metadata)
 }
 
