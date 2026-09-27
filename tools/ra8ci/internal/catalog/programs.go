@@ -124,7 +124,10 @@ func ValidateStepDispatch(step Step) error {
 		if err := checkToolProgramExists(step, tool); err != nil {
 			return err
 		}
-		return checkToolFlagsAreOnesTheToolParses(step, program)
+		if err := checkToolFlagsAreOnesTheToolParses(step, program); err != nil {
+			return err
+		}
+		return checkASelftestStepNamesNothingElse(step, program)
 	}
 	if IsFrontDoorProgram(program) {
 		return fmt.Errorf("%w: step %q runs %q: %w, dispatch its reviewed script instead",
