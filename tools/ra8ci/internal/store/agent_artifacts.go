@@ -107,9 +107,10 @@ func artifactClose(manifest protocol.ArtifactManifest, artifact heldArtifact, di
 		return "", fmt.Errorf("%w: manifest names another step", ErrConflict)
 	}
 	if artifact.Closed {
-		if artifact.SHA256 != manifest.SHA256 || artifact.TotalBytes != manifest.TotalBytes ||
-			artifact.Truncated != manifest.Truncated {
-			return "", fmt.Errorf("%w: artifact was closed on other evidence", ErrConflict)
+		// The replay judged against what is on file, including the chunk
+		// count the open path below already refuses to disagree with.
+		if err := closedArtifactMatchesTheManifest(manifest, artifact); err != nil {
+			return "", err
 		}
 		return ArtifactDuplicate, nil
 	}
