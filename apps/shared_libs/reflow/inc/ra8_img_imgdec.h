@@ -8,19 +8,36 @@
  *
  * @details
  * #768 names four binders, one per decoder the tree already carries, and this
- * is the one for "the residual GIF/BMP/TGA formats": the containers no
- * first-party codec in this tree opens, which reach a reader today only
- * because `reflow_image.c` calls `stbi_load_from_memory()` directly.
+ * is the one over the vendored stb_image residue: the decoder that reaches a
+ * reader today only because `reflow_image.c` calls `stbi_load_from_memory()`
+ * directly.
  *
- * @par What this backend advertises, and why it is two formats and not three
+ * @par What this backend advertises, and why PNG is on the list
  * `stb_image_impl.c` compiles with `STBI_ONLY_JPEG`, `STBI_ONLY_PNG`,
  * `STBI_ONLY_GIF` and `STBI_ONLY_BMP`. There is no `STBI_ONLY_TGA`, so **TGA
- * is not in the firmware image** and this binder must not claim it. JPEG and
- * PNG are compiled in but are deliberately left off the advertised set too:
- * the first-party JPEG codec is already bound as a backend, and a second
- * decoder for one format is the "two behaviours on one file" defect #768
- * exists to remove. So the advertised matrix is GIF and BMP, the two
- * containers nothing else in the tree can open.
+ * is not in the firmware image** and this binder must not claim it, whatever
+ * #768's prose says. The advertised matrix is therefore PNG, GIF and BMP.
+ *
+ * PNG is on that list for a reason worth stating, because #768 proposes a
+ * separate `ra8_imgdec_bind_png()` promoting `jof_png.c` to a public
+ * `libs/ra8_png`. That promotion has not happened and is not a small job:
+ * `priv_jof_png_rows()` is a pull-based streaming decoder declared `RA8_PRIV`
+ * in `jof_internal.h`, with no public header and no whole-frame entry. Until
+ * it exists, **stb is the only bindable PNG decoder in the tree**, and the
+ * consumers this seam is built to replace -- the reflow inline-image path and
+ * the RABOOK compiler -- decode PNG through exactly this `stbi` call today. A
+ * binder that refused PNG could not stand in for any of them, which would
+ * leave the seam unable to do the one job it exists for.
+ *
+ * JPEG stays off the list. The first-party codec is already bound
+ * (`ra8_jpeg_imgdec_bind()`), it is the better decoder, and nothing is blocked
+ * by leaving JPEG to it.
+ *
+ * Overlap, when `libs/ra8_png` does arrive, is not a conflict the fabric has
+ * to be protected from: ::ra8_imgdec_mux resolves a format in member order,
+ * so a mux listing a first-party PNG backend ahead of this one routes PNG
+ * there and never reaches this arm. At that point the `k_ra8_imgdec_format_png`
+ * bit below can be dropped, and this paragraph with it.
  *
  * @par Where the scratch comes from
  * `STBI_MALLOC` and friends are macros with no context parameter, so the
