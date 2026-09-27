@@ -152,6 +152,11 @@ func offlineInput(entry spool.Entry, cat *catalog.Catalog) (store.LocalRunInput,
 		if err := checkLocalStepEvidenceIsMeasured(step); err != nil {
 			return store.LocalRunInput{}, err
 		}
+		// After the shape rule above and before the copy below: the pair is
+		// only worth comparing once each half is a digest and a count at all.
+		if err := checkLocalStepCountsAgreeWithTheDigest(step); err != nil {
+			return store.LocalRunInput{}, err
+		}
 		in.Steps = append(in.Steps, store.LocalStepInput{
 			Key: step.Name, Ordinal: i, StartedAt: step.StartedAt,
 			EndedAt: step.EndedAt, DurationNS: int64(step.Duration), ExitCode: step.ExitCode,
