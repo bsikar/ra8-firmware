@@ -48,7 +48,13 @@ if(TARGET wifi_hal_join.elf)
     wifi_hal_join.elf PRIVATE "${_d}/examples/ek_ra8d2/common/network_provision/inc"
                               "${_d}/port/netxduo/inc" "${_d}/libs/third_party/netxduo/addons/dhcp"
   )
-  target_link_libraries(wifi_hal_join.elf PRIVATE netxduo_port_c6)
+  # The IP bring-up and its C6 provider now live in port/netxduo rather than in
+  # this application's wifi_hal_ip.c; netxduo_ipif_wifi already pulls in
+  # netxduo_ipif and netxduo_port_c6, so one target names all three.
+  get_property(_ipif_src GLOBAL PROPERTY RA8_NETXDUO_IPIF_SOURCES)
+  get_property(_ipif_wifi_src GLOBAL PROPERTY RA8_NETXDUO_IPIF_WIFI_SOURCES)
+  target_sources(wifi_hal_join.elf PRIVATE ${_ipif_src} ${_ipif_wifi_src})
+  target_link_libraries(wifi_hal_join.elf PRIVATE netxduo_ipif_wifi)
   # Vendored SOUP. All three names were measured on nxd_dhcp_client.c under the
   # pinned cross toolchain arm-none-eabi-gcc 13.3.1 at -O0 by removing one at a
   # time with the others still applied: -Wdiscarded-qualifiers fires where the
