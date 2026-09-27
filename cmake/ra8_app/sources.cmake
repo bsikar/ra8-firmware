@@ -443,12 +443,20 @@ macro(_ra8_app_collect_sources)
       ${RA8_REPO_ROOT}/apps/shared_libs/third_party/miniz
     )
     # unarch_xz_pool.c forwards its bump arithmetic to the shared decoder
-    # scratch (#768), so the contract's TU and header travel with it. The
-    # reflow / rabook_compile blocks above may already have added the same TU,
-    # so both are appended only when absent -- a duplicate source is an error
-    # under some generators and a duplicate symbol under all of them.
+    # scratch, and comic_tiles.c reads a page's footprint through the shared
+    # geometry probe, which sniffs first (#768), so those three TUs and the
+    # header travel with this block. The reflow / rabook_compile blocks above
+    # may already have added the same TUs, so each is appended only when
+    # absent -- a duplicate source is an error under some generators and a
+    # duplicate symbol under all of them.
     if(NOT ${RA8_REPO_ROOT}/libs/ra8_imgdec/src/ra8_imgdec_scratch.c IN_LIST _ra8_lib_extra)
       list(APPEND _ra8_lib_extra ${RA8_REPO_ROOT}/libs/ra8_imgdec/src/ra8_imgdec_scratch.c)
+    endif()
+    if(NOT ${RA8_REPO_ROOT}/libs/ra8_imgdec/src/ra8_imgdec_dims.c IN_LIST _ra8_lib_extra)
+      list(APPEND _ra8_lib_extra ${RA8_REPO_ROOT}/libs/ra8_imgdec/src/ra8_imgdec_dims.c)
+    endif()
+    if(NOT ${RA8_REPO_ROOT}/libs/ra8_imgdec/src/ra8_imgdec_sniff.c IN_LIST _ra8_lib_extra)
+      list(APPEND _ra8_lib_extra ${RA8_REPO_ROOT}/libs/ra8_imgdec/src/ra8_imgdec_sniff.c)
     endif()
     if(NOT ${RA8_REPO_ROOT}/libs/ra8_imgdec/inc IN_LIST _ra8_lib_inc)
       list(APPEND _ra8_lib_inc ${RA8_REPO_ROOT}/libs/ra8_imgdec/inc)
