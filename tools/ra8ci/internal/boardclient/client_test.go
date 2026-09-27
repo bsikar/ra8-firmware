@@ -813,8 +813,15 @@ func TestBeginAndFinishSegmentUseCurrentLeaseFence(t *testing.T) {
 				return
 			}
 			began = true
+			// The store writes every field of the row it takes the
+			// per-board lock to insert, so the fake answers with the
+			// whole document rather than the four fields this test
+			// happens to read.
+			started := time.Now().UTC()
 			jsonResponse(w, http.StatusCreated, store.BoardSegment{ID: testProofID, BoardID: token.BoardID,
-				LeaseID: token.LeaseID, Generation: token.Generation, Key: req.Key})
+				LeaseID: token.LeaseID, Generation: token.Generation, AttemptID: req.AttemptID, Key: req.Key,
+				StartedAt: started, DeadlineAt: started.Add(time.Duration(req.Bound) * time.Millisecond),
+				RecoveryMarginMS: uint64(req.Margin)})
 		case "/v1/boards/ek-ra8d2/segments/" + testProofID + "/finish":
 			var req struct {
 				LeaseID    string `json:"lease_id"`
