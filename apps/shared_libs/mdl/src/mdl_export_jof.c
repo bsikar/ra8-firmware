@@ -37,6 +37,7 @@
 #include "mdl_export_internal.h"
 #include "ra8_attributes.h"
 #include "ra8_err.h"
+#include "ra8_imgdec.h"
 
 /**
  * @enum mdl_jof_geom_t
@@ -50,20 +51,6 @@ typedef enum : uint16_t {
   k_jof_band_h = 256, /**< Tile-band height in pixels. */
 } mdl_jof_geom_t;
 
-/**
- * @enum mdl_jof_webp_t
- * @brief WebP container-head offsets for the whole-frame-arena decision.
- * @details The exporter must know whether a page is WebP *before* producing, to
- *          decide whether to carve the whole-frame arena the WebP arm needs.
- * @see internal_jof_is_webp()
- * @since 0.1.0
- */
-typedef enum : uint8_t {
-  k_jof_webp_riff_ofs   = 0U,  /**< Offset of the "RIFF" fourCC.        */
-  k_jof_webp_fourcc_ofs = 8U,  /**< Offset of the "WEBP" fourCC.        */
-  k_jof_webp_head_len   = 12U, /**< Bytes needed to sniff both fourCCs. */
-  k_jof_webp_tag_len    = 4U,  /**< Length of one fourCC tag.           */
-} mdl_jof_webp_t;
 /** @brief Hard memory ceilings for the non-reentrant transcode workspace. */
 typedef enum : uint32_t {
   k_jof_source_cap    = 16U * 1024U * 1024U, /**< Maximum encoded source bytes. */
@@ -71,22 +58,20 @@ typedef enum : uint32_t {
   k_jof_webp_work_cap = 64U * 1024U * 1024U, /**< Maximum WebP frame workspace. */
 } mdl_jof_workspace_t;
 
-/** @brief WebP RIFF container tag (page head bytes 0..3). */
-static const uint8_t s_jof_webp_riff[k_jof_webp_tag_len] = {'R', 'I', 'F', 'F'};
-
-/** @brief WebP form-type fourCC (page head bytes 8..11). */
-static const uint8_t s_jof_webp_webp[k_jof_webp_tag_len] = {'W', 'E', 'B', 'P'};
-
 /**
  * @brief Test whether a page's bytes carry the WebP RIFF container head.
- * @details Mirrors the producer's own dispatch sniff: both fourCCs must match,
- *          so a non-WebP RIFF (WAVE, AVI) is not mistaken for a WebP page and
- *          charged the whole-frame arena.
+ * @details Forwards to ::ra8_imgdec_sniff(), the one container sniff in the
+ *          tree (#768). That sniff requires both the "RIFF" container tag and
+ *          the "WEBP" form type, so a non-WebP RIFF (WAVE, AVI) is not mistaken
+ *          for a WebP page and charged the whole-frame arena. The exporter must
+ *          know whether a page is WebP *before* producing, to decide whether to
+ *          carve the arena the WebP arm needs, so this stays a pre-produce
+ *          question answered off the page head.
  * @param[in] data Page bytes (non-NULL).
  * @param[in] len  Readable byte count at @p data.
  * @return Whether @p data begins with a WebP container head.
- * @retval true  Both the "RIFF" and "WEBP" fourCCs are present.
- * @retval false Too short, or either fourCC differs.
+ * @retval true  The head sniffs as WebP.
+ * @retval false Null, empty, too short, or some other container.
  * @pre @p data holds @p len readable bytes.
  * @pre The page has been slurped whole (the sniff reads the head only).
  * @post No state is mutated.
@@ -97,11 +82,14 @@ static const uint8_t s_jof_webp_webp[k_jof_webp_tag_len] = {'W', 'E', 'B', 'P'};
  */
 RA8_INTERNAL static bool internal_jof_is_webp(const uint8_t* data, size_t len)
 {
-  if ((data == nullptr) || (len < (size_t)k_jof_webp_head_len)) {
+  if ((data == nullptr) || (len == 0U)) {
     return false;
   }
-  return (memcmp(&data[k_jof_webp_riff_ofs], s_jof_webp_riff, sizeof(s_jof_webp_riff)) == 0) &&
-         (memcmp(&data[k_jof_webp_fourcc_ofs], s_jof_webp_webp, sizeof(s_jof_webp_webp)) == 0);
+  ra8_imgdec_format_t format = k_ra8_imgdec_format_none;
+  if (ra8_imgdec_sniff(data, (uint32_t)len, &format) != k_ra8_ok) {
+    return false;
+  }
+  return format == k_ra8_imgdec_format_webp;
 }
 
 /** @brief Pull cursor over an in-RAM encoded image. */

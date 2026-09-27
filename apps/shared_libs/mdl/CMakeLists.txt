@@ -206,6 +206,7 @@ set(MDL_RABOOK_RUNTIME_SRC
     ${MDL_REPO_ROOT}/apps/shared_libs/compress/src/ra8_compress.c
     ${MDL_REPO_ROOT}/apps/shared_libs/reflow/src/ra8_img_arena.c
     ${MDL_REPO_ROOT}/libs/ra8_imgdec/src/ra8_imgdec_scratch.c
+    ${MDL_REPO_ROOT}/libs/ra8_imgdec/src/ra8_imgdec_sniff.c
     ${MDL_REPO_ROOT}/apps/shared_libs/reflow/src/ra8_stbtt_alloc.c
     ${MDL_REPO_ROOT}/apps/shared_libs/reflow/src/ra8_stbtt_guard.c
     ${MDL_REPO_ROOT}/apps/shared_libs/third_party/stb/stb_image_impl.c
@@ -339,6 +340,7 @@ target_include_directories(
          # takes the host-safe path.
          ${MDL_REPO_ROOT}/libs/ra8_core/inc
          ${MDL_REPO_ROOT}/apps/shared_libs/third_party/miniz
+         ${MDL_REPO_ROOT}/libs/ra8_imgdec/inc
          ${MDL_JOF_INC}
          ${MDL_RABOOK_READER_INC}
          ${MDL_FS_INC}
@@ -393,6 +395,7 @@ function(mdl_add_core_test target source)
             ${MDL_CORE_SRC_DIR}
             ${MDL_REPO_ROOT}/libs/ra8_core/inc
             ${MDL_REPO_ROOT}/apps/shared_libs/third_party/miniz
+            ${MDL_REPO_ROOT}/libs/ra8_imgdec/inc
             ${MDL_REPO_ROOT}/tests/support/inc
             ${MDL_REPO_ROOT}/apps/shared_libs/mdl/tests/inc
             ${MDL_REPO_ROOT}/apps/shared_libs/rabook_compile/tests/inc
