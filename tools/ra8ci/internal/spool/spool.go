@@ -211,6 +211,13 @@ func (s *Spool) Finish(entry Entry, result executor.Result, runErr error) (Entry
 	if err := checkTheExitsWereReported(result); err != nil {
 		return Entry{}, err
 	}
+	// And beside it: a step states how it stopped with two independent
+	// booleans, and both cannot be true of one step. See
+	// an_ending_a_run_measured.go for why the freeze asks as well as the
+	// sweep.
+	if err := checkEachStepEndedOneWay(result); err != nil {
+		return Entry{}, err
+	}
 	if err := checkStampsAreInOrder(entry); err != nil {
 		return Entry{}, err
 	}
