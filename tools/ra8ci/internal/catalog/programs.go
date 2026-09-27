@@ -121,7 +121,10 @@ func ValidateStepDispatch(step Step) error {
 		if !validName(tool) || len(tool) > MaxToolNameBytes {
 			return fmt.Errorf("%w: step %q names an invalid ra8ci tool %q", ErrInvalidCatalog, step.Name, tool)
 		}
-		return checkToolProgramExists(step, tool)
+		if err := checkToolProgramExists(step, tool); err != nil {
+			return err
+		}
+		return checkToolFlagsAreOnesTheToolParses(step, program)
 	}
 	if IsFrontDoorProgram(program) {
 		return fmt.Errorf("%w: step %q runs %q: %w, dispatch its reviewed script instead",
