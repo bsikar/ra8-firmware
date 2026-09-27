@@ -186,6 +186,10 @@ func (o *LinuxObserver) ObserveNeutral(ctx context.Context, challenge store.Neut
 	if err := ctx.Err(); err != nil {
 		return Observation{}, err
 	}
+	// The first clock reading of the physical read. Every reading below is
+	// sworn to under one stamp, so the whole span has to be bounded and the
+	// stamp has to be its earliest moment; see observationUnderOneStamp.
+	startedAt := o.now().UTC()
 	devices := make([]string, len(o.profile.ProtectedDevices))
 	for i, path := range o.profile.ProtectedDevices {
 		devices[i] = filepath.Join(o.dev, filepath.FromSlash(path))
@@ -235,7 +239,10 @@ func (o *LinuxObserver) ObserveNeutral(ctx context.Context, challenge store.Neut
 	if err != nil || len(encoded) == 0 || len(encoded) > MaxEvidenceBytes {
 		return Observation{}, ErrObservationAbsent
 	}
-	observedAt := o.now().UTC()
+	observedAt, err := observationUnderOneStamp(startedAt, o.now().UTC())
+	if err != nil {
+		return Observation{}, err
+	}
 	return Observation{ChallengeID: challenge.ID, Nonce: challenge.Nonce,
 		BoardID: challenge.BoardID, LeaseID: challenge.LeaseID,
 		Generation: challenge.Generation, AgentHighWater: challenge.AgentHighWater,
