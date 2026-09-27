@@ -7,7 +7,9 @@
  *
  *   1. SAU region layout sanity -- no overlap, NSC alias placed in
  *      its dedicated non-S-executable address range (per
- *      ``project_sau_sgstubs_brick`` in project memory).
+ *      ``project_sau_sgstubs_brick`` in project memory) -- and the
+ *      register words ``ra8_sau_configure()`` derives from it, read
+ *      back off the shared fake SAU block.
  *   2. IPCSAR unlock sequence -- PRCR_S.PRC4 is opened, the IPCSAR
  *      write lands, then PRCR_S is re-locked.
  *   3. BLXNS transition state -- before branching out, the function
@@ -22,7 +24,11 @@
 
 #include <stdint.h>
 
+#include "ra8_attributes.h"
 #include "ra8_err.h"
+#include "ra8_fake_mmap.h"
+#include "ra8_sau.h"
+#include "ra8_sau_regs.h"
 #include "ra8_tz_secure_boot.h"
 #include "unity_minimal.h"
 
@@ -55,6 +61,33 @@ typedef enum : uint32_t {
   k_test_tz_ipcsar_expected = 0x00050000U, /**< Test TrustZone ipcsar expected. */
   k_test_tz_ipcpar_expected = 0x00000000U, /**< Test TrustZone ipcpar expected. */
 } test_tz_const_t;
+
+/**
+ * @enum test_tz_sau_probe_t
+ * @brief Values the suite drives the shared fake SAU block with.
+ */
+typedef enum : uint32_t {
+  k_test_tz_sregion_count = 8U,           /**< SREGION on a Cortex-M85.  */
+  k_test_tz_stale_region  = 7U,           /**< A region above the table. */
+  k_test_tz_stale_word    = 0xDEADBEE1UL, /**< Junk in a stale RLAR.     */
+} test_tz_sau_probe_t;
+
+/* Publish a Cortex-M85-shaped SAU and leave a stale region behind.
+ *
+ * The secure boot no longer keeps a private SAU shadow: it programmes the
+ * partition through ra8_sau_configure(), so on host the register words land
+ * in the shared fake block and SAU_TYPE.SREGION has to be published here.
+ * Region 7 is dirtied on purpose so the clearing pass has something to
+ * prove. */
+RA8_INTERNAL static void internal_sau_setup(void)
+{
+  ra8_fake_mmap_reset();
+  *ra8_sau_regs()      = (r_sau_regs_t){0};
+  ra8_sau_regs()->TYPE = (uint32_t)k_test_tz_sregion_count;
+  ra8_sau_regs()->RNR  = (uint32_t)k_test_tz_stale_region;
+  ra8_sau_regs()->RBAR = (uint32_t)k_test_tz_stale_word;
+  ra8_sau_regs()->RLAR = (uint32_t)k_test_tz_stale_word;
+}
 
 /**
  * @brief Verify the SAU layout: regions are ordered, do not overlap,
@@ -129,11 +162,88 @@ static void test_tz_sau_layout_sanity(void)
 static void test_tz_sau_init_advances_step(void)
 {
   ra8_tz_secure_boot_host_reset();
+  internal_sau_setup();
   TEST_BEGIN("tz_secure_boot: sau_init -> step=sau_done");
   TEST_ASSERT_EQ(k_ra8_tz_secure_boot_step_idle, ra8_tz_secure_boot_get_step());
   TEST_ASSERT_EQ(k_ra8_ok, ra8_tz_secure_boot_sau_init());
   TEST_ASSERT_EQ(k_ra8_tz_secure_boot_step_sau_done, ra8_tz_secure_boot_get_step());
   TEST_END("tz_secure_boot: sau_init -> step=sau_done");
+}
+
+/**
+ * @brief Confirm ``sau_init`` installs the partition through the driver:
+ *        unit enabled, ALLNS clear, and every region above the five-entry
+ *        table cleared rather than left stale.
+ *
+ * @details
+ * The hosted SAU block is flat rather than banked by RNR, so the readable
+ * state after a five-region partition on eight-region silicon is whatever
+ * the driver wrote last: the clear of the top region. RNR parked at 7 with
+ * a zeroed RBAR / RLAR pair is what proves the clear loop ran, and it is a
+ * guarantee the hand-rolled pokes this replaces never gave -- they wrote
+ * five regions and left whatever sat above them enabled.
+ *
+ * @par MC/DC: not applicable -- straight-line read-back of driver state.
+ *
+ * @pre None.
+ * @pre None.
+ * @post Secure-boot host state reset before next case.
+ * @post Fake SAU block holds the canonical partition, unit enabled.
+ * @note Test-only.
+ * @since 0.1.0
+ */
+static void test_tz_sau_init_installs_partition(void)
+{
+  ra8_tz_secure_boot_host_reset();
+  internal_sau_setup();
+  TEST_BEGIN("tz_secure_boot: sau_init installs the partition and clears the tail");
+
+  /* The seeded region above the table is enabled going in. */
+  TEST_ASSERT((ra8_sau_regs()->RLAR & (uint32_t)k_ra8_sau_rlar_enable) != 0U);
+
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_tz_secure_boot_sau_init());
+
+  TEST_ASSERT_EQ(k_test_tz_sregion_count - 1U, ra8_sau_regs()->RNR);
+  TEST_ASSERT_EQ(0U, ra8_sau_regs()->RBAR);
+  TEST_ASSERT_EQ(0U, ra8_sau_regs()->RLAR);
+
+  /* Unit enabled, ALLNS clear: unmapped memory stays Secure. */
+  TEST_ASSERT(ra8_sau_is_enabled());
+  TEST_ASSERT_EQ(k_ra8_sau_ctrl_enable, ra8_sau_regs()->CTRL);
+
+  TEST_END("tz_secure_boot: sau_init installs the partition and clears the tail");
+}
+
+/**
+ * @brief Silicon with fewer regions than the partition needs is refused,
+ *        and nothing is programmed.
+ *
+ * @par MC/DC:
+ * Decision (libs/ra8_tz_secure_boot/src/ra8_tz_secure_boot.c@ra8_tz_secure_boot_sau_init):
+ * ``ra8_sau_region_count() < k_ra8_tz_sau_region_count`` (1 condition)
+ * - Vector 1: SREGION=8 -> false -> partition installed (the case above).
+ * - Vector 2: SREGION=4 -> true  -> k_ra8_err_not_supported, SAU untouched.
+ * N+1 = 2 vectors for N=1 condition: minimal MC/DC.
+ *
+ * @pre None.
+ * @pre None.
+ * @post Secure-boot host state reset before next case.
+ * @post SAU left disabled.
+ * @note Test-only.
+ * @since 0.1.0
+ */
+static void test_tz_sau_init_refuses_small_sau(void)
+{
+  ra8_tz_secure_boot_host_reset();
+  internal_sau_setup();
+  TEST_BEGIN("tz_secure_boot: sau_init refuses silicon below five regions");
+
+  ra8_sau_regs()->TYPE = (uint32_t)k_ra8_tz_sau_region_count - 1U;
+  TEST_ASSERT_EQ(k_ra8_err_not_supported, ra8_tz_secure_boot_sau_init());
+  TEST_ASSERT_EQ(k_ra8_tz_secure_boot_step_idle, ra8_tz_secure_boot_get_step());
+  TEST_ASSERT(!ra8_sau_is_enabled());
+
+  TEST_END("tz_secure_boot: sau_init refuses silicon below five regions");
 }
 
 /**
@@ -249,6 +359,7 @@ static void test_mcdc_tz_secure_boot_jump_ns(void)
 static void test_tz_run_happy_path_branches(void)
 {
   ra8_tz_secure_boot_host_reset();
+  internal_sau_setup();
   TEST_BEGIN("tz_secure_boot: run happy path -> step=branched");
 
   const uint32_t ns_vt[2] = {0x22180000U, 0x02080101U};
@@ -332,6 +443,8 @@ int main(void)
 {
   test_tz_sau_layout_sanity();
   test_tz_sau_init_advances_step();
+  test_tz_sau_init_installs_partition();
+  test_tz_sau_init_refuses_small_sau();
   test_tz_security_init_ipcsar_landed();
   test_mcdc_tz_secure_boot_jump_ns();
   test_tz_run_happy_path_branches();
