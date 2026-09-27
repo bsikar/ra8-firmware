@@ -15,7 +15,7 @@ func deadlineHILTask(t *testing.T) Task {
 	// seam refuses, which is fine for ValidateTask and not for the
 	// admission path this rule sits on, so name a reviewed tool instead.
 	task.Steps[len(task.Steps)-1].Program = "ra8ci:ascii"
-	task.Steps[len(task.Steps)-1].Args = nil
+	task.Steps[len(task.Steps)-1].Args = []string{"--all"} // ascii cannot derive its own scope; see a_scope_selector_the_tool_requires.go
 	task.HIL.HandoffSafeStepSeconds = 12
 	task.HIL.HandoffRestoreProbeSeconds = 8
 	task.DeadlineSeconds = 120

@@ -15,7 +15,7 @@ func timeoutHILTask(t *testing.T) Task {
 	t.Helper()
 	task := handoffHILTask(t)
 	task.Steps[len(task.Steps)-1].Program = "ra8ci:ascii"
-	task.Steps[len(task.Steps)-1].Args = nil
+	task.Steps[len(task.Steps)-1].Args = []string{"--all"} // ascii cannot derive its own scope; see a_scope_selector_the_tool_requires.go
 	task.DeadlineSeconds = 300
 	task.HIL.TimeoutDeclared = true
 	task.HIL.TimeoutSeconds = 60
