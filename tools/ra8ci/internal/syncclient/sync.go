@@ -82,6 +82,13 @@ func SyncPending(ctx context.Context, outbox *spool.Spool, baseURL string, clien
 		if err := checkUploadedLogEvidenceWasMeasured(entry); err != nil {
 			return report, fmt.Errorf("local %s: %w", entry.ID, err)
 		}
+		// Beside the record-only doors above, for the same reason: the
+		// digest is stated by the record, its SHAPE needs neither the bytes
+		// nor a catalog to judge, and the store refuses a shapeless one with
+		// the same opaque 400 that ends the sweep.
+		if err := checkUploadedCatalogDigestIsStated(entry); err != nil {
+			return report, fmt.Errorf("local %s: %w", entry.ID, err)
+		}
 		body, err := json.Marshal(entry)
 		if err != nil {
 			return report, err
