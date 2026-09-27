@@ -122,11 +122,17 @@ add_executable(
   ${MDL_FORM_SRC_DIR}/mdl_net_curl.c
   ${MDL_FORM_SRC_DIR}/mdl_net_curl_credentials.c
   ${MDL_FORM_SRC_DIR}/mdl_host_credentials.c
+  ${MDL_FORM_SRC_DIR}/mdl_host_storage.c
   ${MDL_JOF_SRC}
   ${MDL_FS_SRC}
   ${MDL_STREAM_CORE_SRC}
   ${MDL_STREAM_POSIX_SRC}
   ${MDL_MINIZ}
+  # The composition root carves its four filesystem spans out of one block
+  # through the platform arena (#757), so main.c needs the arena itself. No
+  # other target here compiles main.c, and mdl_core/mdl_rabook_runtime name
+  # ra8_mem only as an include directory, never as a source.
+  ${MDL_REPO_ROOT}/libs/ra8_mem/src/ra8_arena.c
 )
 
 target_include_directories(
@@ -138,6 +144,7 @@ target_include_directories(
           # same switch the host unit-test build uses so register-reaching code
           # takes the host-safe path.
           ${MDL_REPO_ROOT}/libs/ra8_core/inc
+          ${MDL_REPO_ROOT}/libs/ra8_mem/inc
           ${MDL_REPO_ROOT}/apps/shared_libs/third_party/miniz
           ${MDL_JOF_INC}
           ${MDL_RABOOK_READER_INC}
