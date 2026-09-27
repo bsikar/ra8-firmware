@@ -146,6 +146,12 @@ func (s *Spool) BeginWithMetadata(task, digest string, metadata Metadata) (Entry
 	if err := checkIdentitiesAreOnesThePlaneWillFile(task, metadata.Source); err != nil {
 		return Entry{}, err
 	}
+	// And the last field on the start record taken on trust: the two words
+	// the run is filed under. See a_classification_the_plane_files.go for
+	// why the column's value set is asked here rather than at the sweep.
+	if err := checkTheClassificationIsOneThePlaneFiles(metadata.Tier, metadata.Scope); err != nil {
+		return Entry{}, err
+	}
 	return s.begin(task, digest, metadata)
 }
 
