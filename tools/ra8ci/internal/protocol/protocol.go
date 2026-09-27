@@ -325,6 +325,12 @@ func (receipt TerminalReceipt) Validate() error {
 	if err := checkErrorCodeMatchesTheReport(receipt); err != nil {
 		return err
 	}
+	// Beside the error-code rule, and before every rule that loops over the
+	// steps: those loops say nothing about a receipt with no steps at all, and
+	// this is the one refusal that reads the empty list itself.
+	if err := checkSuccessNamesTheStepsItRan(receipt); err != nil {
+		return err
+	}
 	for _, step := range receipt.Steps {
 		if step.Name == "" || step.StartedAt.IsZero() || step.EndedAt.Before(step.StartedAt) || step.DurationNS < 0 ||
 			step.StdoutBytes < 0 || step.StderrBytes < 0 {

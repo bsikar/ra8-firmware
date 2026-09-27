@@ -100,11 +100,19 @@ func TestTheReceiptAndItsEvidenceJudgeANameAlike(t *testing.T) {
 	}
 }
 
+// checkSuccessNamesTheStepsItRan now refuses a stepless receipt that claims a
+// success or complete evidence, so the receipt here states what an agent states
+// when nothing ran; the name rule still has nothing to judge either way.
 func TestAReceiptWithNoStepsNamesNothing(t *testing.T) {
 	receipt := twoStepReceipt(t)
 	receipt.Steps = nil
 	receipt.FinalLogSequence = 0
+	receipt.Outcome, receipt.EvidenceComplete = "failed", false
+	receipt.ErrorCode = "no_step_executed"
 	if err := receipt.Validate(); err != nil {
 		t.Fatalf("a receipt carrying no steps was refused: %v", err)
+	}
+	if err := checkStepNamesAttributeEvidence(receipt); err != nil {
+		t.Fatalf("the name rule judged a receipt with no names: %v", err)
 	}
 }
