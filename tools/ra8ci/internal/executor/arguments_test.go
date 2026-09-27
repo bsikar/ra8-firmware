@@ -55,6 +55,16 @@ func TestBoundStepDoesNotMutateTheReviewedStep(t *testing.T) {
 // The dispatch seam (#1517) is that a step is either an ra8ci tool or bash
 // whose first argument is a reviewed script path. Binding appends, so it
 // cannot displace either, whatever a caller supplies.
+//
+// The seam is those two facts and nothing else, so this test asserts them
+// directly rather than through ValidateStepDispatch. That validator is the
+// catalog's ADMISSION rule and has since grown a row of doors about what a
+// step hands its script (an option the script cannot parse, a value it
+// rejects, an option named twice). Every one of them is a judgement about
+// argv CONTENT, which a caller's bound value is free to fail: "-c" is exactly
+// such a value, and a catalog door refusing it is that door working, not the
+// seam breaking. Borrowing the validator here made this test fail whenever a
+// new door landed, for a reason that had nothing to do with displacement.
 func TestBoundStepCannotDisplaceTheReviewedDispatch(t *testing.T) {
 	for _, bound := range [][]string{
 		{"-c"},
@@ -65,11 +75,18 @@ func TestBoundStepCannotDisplaceTheReviewedDispatch(t *testing.T) {
 		if err != nil {
 			t.Fatalf("bound %q: %v", bound, err)
 		}
+		if dispatch.Program != gateStep().Program {
+			t.Fatalf("bound %q moved the program: %q", bound, dispatch.Program)
+		}
 		if dispatch.Args[0] != "scripts/ci.sh" {
 			t.Fatalf("bound %q moved the script path: %q", bound, dispatch.Args)
 		}
-		if err := catalog.ValidateStepDispatch(dispatch); err != nil {
-			t.Fatalf("bound %q broke the dispatch seam: %v", bound, err)
+		if !catalog.ValidScriptPath(dispatch.Args[0]) {
+			t.Fatalf("bound %q left an unreviewed script path: %q", bound, dispatch.Args[0])
+		}
+		reviewed := gateStep().Args
+		if strings.Join(dispatch.Args[:len(reviewed)], "\x1f") != strings.Join(reviewed, "\x1f") {
+			t.Fatalf("bound %q displaced a reviewed argument: %q", bound, dispatch.Args)
 		}
 	}
 }
