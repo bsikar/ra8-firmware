@@ -168,7 +168,16 @@ func ValidateStepDispatch(step Step) error {
 		return fmt.Errorf("%w: step %q must dispatch a reviewed script path as its first %s argument",
 			ErrInvalidCatalog, step.Name, DispatchShell)
 	}
-	// Beside the path rule above, which settles WHICH script a step
+	// Beside the path rule above, which judges only the SHAPE of the path:
+	// this one settles whether the checkout ships that script at all. It is
+	// the shell mirror of checkToolProgramExists and stands in the same
+	// place, before a single argument is judged, because a script nothing
+	// ships has no argument contract to judge. See
+	// a_script_the_checkout_ships.go.
+	if err := checkTheScriptIsOneTheCheckoutShips(step); err != nil {
+		return err
+	}
+	// Beside the two rules above, which settle WHICH script a step
 	// dispatches: this one judges what it hands that script, where the
 	// script's own argument contract is stated. See
 	// a_script_option_the_script_parses.go.

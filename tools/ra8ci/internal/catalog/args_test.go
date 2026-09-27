@@ -147,7 +147,7 @@ func TestTaskBindArgumentsUsesTheReviewedSchema(t *testing.T) {
 		Scope: "safe-local-read-only", OS: []string{"linux"}, DeadlineSeconds: 900,
 		BoardPolicy: "none", Retry: RetryPolicy{MaxAttempts: 1},
 		ArgsSchema: ArgsSchema{Flags: []string{"profile"}},
-		Steps:      []Step{{Name: "check", Program: "bash", Args: []string{"x.sh"}}}}
+		Steps:      []Step{{Name: "check", Program: "bash", Args: []string{"scripts/checks/format_tree.sh"}}}}
 	if err := ValidateTask(schemaTask); err != nil {
 		t.Fatalf("a valid argument schema was refused: %v", err)
 	}

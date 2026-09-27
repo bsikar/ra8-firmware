@@ -43,7 +43,7 @@ func TestADeclaredFlagIsNotJudgedAgainstAWholeTreeScan(t *testing.T) {
 
 func TestAWholeTreeScanOnAScriptStepIsNotJudged(t *testing.T) {
 	task := boundTask(t, ArgsSchema{Positional: []string{"path"}},
-		"bash", "scripts/checks/check_something.sh", "--all")
+		"bash", "scripts/checks/format_tree.sh", "--all")
 	if err := ValidateReviewedTask(task); err != nil {
 		t.Fatalf("a reviewed script reads its own argv: %v", err)
 	}

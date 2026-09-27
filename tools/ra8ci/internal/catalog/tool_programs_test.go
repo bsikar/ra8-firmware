@@ -95,7 +95,7 @@ func TestReviewedToolProgramsCannotBeEditedThroughTheCopy(t *testing.T) {
 }
 
 func TestAReviewedScriptStepIsUntouchedByTheRegistry(t *testing.T) {
-	step := Step{Name: "gate", Program: DispatchShell, Args: []string{"tools/ci/gate.sh"}}
+	step := Step{Name: "gate", Program: DispatchShell, Args: []string{"scripts/checks/format_tree.sh"}}
 	if err := ValidateStepDispatch(step); err != nil {
 		t.Fatalf("bash dispatch refused: %v", err)
 	}
