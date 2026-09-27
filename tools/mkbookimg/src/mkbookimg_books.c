@@ -29,7 +29,10 @@
 #include "mkbookimg_internal.h"
 #include "mkbookimg_names.h"
 #include "ra8_attributes.h"
+#include "ra8_err.h"
 #include "ra8_fs.h"
+#include "ra8_imgdec.h"
+#include "ra8_imgdec_name.h"
 
 /** @brief Stable facts used to detect input replacement or mutation. */
 typedef struct {
@@ -161,6 +164,54 @@ internal_input_open(const char* path, int* out_fd, mkbookimg_input_identity_t* i
 }
 
 /**
+ * @brief Name the image container an input holds, when it holds one.
+ *
+ * @details mkbookimg packs compiled `.rabook` blobs, and a compiled book is
+ *          not an image container, so a recognised signature here means the
+ *          caller handed the packer a page instead of a book. The tool still
+ *          files the bytes -- what an input is for is the caller's business,
+ *          and refusing one would be a policy change, not a naming one -- but
+ *          it now says what it saw instead of packing an unnamed blob.
+ *
+ *          The answer comes from ::ra8_imgdec_identify, the one shared table
+ *          (#748); the tool keeps no magic-byte list of its own. At most
+ *          ::k_ra8_imgdec_sniff_bytes leading bytes are read, into a local
+ *          buffer, and an input shorter than that prefix or carrying no
+ *          recognised signature is passed over in silence rather than guessed
+ *          at. Naming is not a decode claim and never a verdict on the input.
+ *
+ * @param[in] fd   Open read descriptor for the input.
+ * @param[in] path Input path, for the diagnostic.
+ *
+ * @pre @p fd is open for reading and @p path is non-NULL and NUL-terminated.
+ * @pre Standard error may be written or may reject the diagnostic.
+ * @post The descriptor position is unchanged (the read is positioned).
+ * @post No application state changed; the outcome of the build is unaffected.
+ *
+ * @note Not a validity check: an unnamed input is not thereby a valid book.
+ * @see ra8_imgdec_identify()
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_note_container(int fd, const char* path)
+{
+  uint8_t head[k_ra8_imgdec_sniff_bytes];
+  if (!priv_mkbookimg_pread_exact(fd, 0U, head, sizeof(head))) {
+    return;
+  }
+  ra8_imgdec_name_t named = {};
+  if (ra8_imgdec_identify(head, (uint32_t)sizeof(head), &named) != k_ra8_ok) {
+    return;
+  }
+  priv_mkbookimg_diag("mkbookimg: note: ");
+  priv_mkbookimg_diag(path);
+  priv_mkbookimg_diag(" holds a ");
+  priv_mkbookimg_diag(named.ext);
+  priv_mkbookimg_diag(" container (");
+  priv_mkbookimg_diag(named.mime);
+  priv_mkbookimg_diag("), not a compiled book\n");
+}
+
+/**
  * @brief Stream one host input into a newly truncated filesystem file.
  * @details Copies through a bounded stack chunk and rechecks identity before close.
  * @param[in,out] mount Mounted FAT32 image.
@@ -186,6 +237,7 @@ RA8_INTERNAL static bool internal_stream_book(ra8_fs_mount_t*             mount,
   if (!internal_input_open(path, &input_fd, identity)) {
     return false;
   }
+  internal_note_container(input_fd, path);
   ra8_fs_file_t* card = nullptr;
   if (ra8_fs_open(mount, name, k_ra8_fs_mode_write, &card) != k_ra8_ok) {
     (void)close(input_fd);
