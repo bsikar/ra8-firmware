@@ -85,7 +85,8 @@ func Run(ctx context.Context, root string, args []string, stdout, stderr io.Writ
 		}
 		data, readErr := os.ReadFile(path)
 		if readErr != nil {
-			continue
+			fmt.Fprintln(stderr, "ra8ci final-newline:", unreadable(root, path, readErr))
+			return 2
 		}
 		if len(data) > 0 && data[len(data)-1] != '\n' {
 			missing = append(missing, displayPath(root, path))
@@ -160,7 +161,10 @@ func explicitTargets(root string, args []string) ([]string, error) {
 			path = filepath.Join(root, path)
 		}
 		info, err := os.Stat(path)
-		if err == nil && info.IsDir() {
+		if err != nil {
+			return nil, unreadable(root, path, err)
+		}
+		if info.IsDir() {
 			err = filepath.WalkDir(path, func(name string, entry os.DirEntry, walkErr error) error {
 				if walkErr != nil {
 					return walkErr
