@@ -68,7 +68,7 @@ func TestTheGrantNameDoorSaysNothingAboutStepNames(t *testing.T) {
 	task.Steps = []Step{{
 		Name:    strings.Repeat("s", maxGrantableTaskNameBytes+1),
 		Program: DispatchShell,
-		Args:    []string{"scripts/checks/selftest" + ScriptPathSuffix},
+		Args:    []string{"scripts/checks/format_tree" + ScriptPathSuffix},
 	}}
 	if err := ValidateReviewedTask(task); err != nil {
 		t.Fatalf("a step name inside the history bound must be admitted: %v", err)

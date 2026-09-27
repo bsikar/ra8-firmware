@@ -102,7 +102,7 @@ func TestADeclaredSchemaIsNotJudgedAgainstAScriptStep(t *testing.T) {
 	// A reviewed script reads whatever it likes off its own argv, so this
 	// door has nothing to say about a bash dispatch.
 	task := boundTask(t, ArgsSchema{Positional: []string{"path"}, Flags: []string{"anything"}},
-		"bash", "scripts/checks/check_something.sh")
+		"bash", "scripts/checks/format_tree.sh")
 	if err := ValidateReviewedTask(task); err != nil {
 		t.Fatalf("a script step is not judged by this door: %v", err)
 	}
