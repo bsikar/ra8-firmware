@@ -190,6 +190,12 @@ func (s *Spool) Finish(entry Entry, result executor.Result, runErr error) (Entry
 	if runErr != nil {
 		entry.Error = runErr.Error()
 	}
+	// The message is whatever the executor wrapped, and the plane files it
+	// into a text column of its own. See an_error_the_plane_will_file.go for
+	// what a message it will not file costs the rest of the outbox.
+	if err := checkTheErrorIsOneThePlaneWillFile(entry.Error); err != nil {
+		return Entry{}, err
+	}
 	if err := checkStampsAreInOrder(entry); err != nil {
 		return Entry{}, err
 	}
