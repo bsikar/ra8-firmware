@@ -86,14 +86,24 @@ func DeclaredTimeout(root, app string) (seconds int, found bool, err error) {
 	}
 	defer file.Close()
 	scanner := bufio.NewScanner(file)
+	// depth is what a shell sourcing this file would be inside when it
+	// reaches the current line. A statement about HIL_TIMEOUT_S read at any
+	// other depth is one this line-oriented reader cannot decide the fate
+	// of; see block_the_shell_may_skip.go.
+	depth := 0
 	for scanner.Scan() {
 		line := strings.TrimSpace(scanner.Text())
 		if line == "" || strings.HasPrefix(line, "#") {
 			continue
 		}
+		statedHere := depth
+		depth = blockDepthAfter(line, depth)
 		key, raw, hasEquals := strings.Cut(line, "=")
 		if !hasEquals {
 			if lineDeclaresTheTimeoutWithoutAValue(line) {
+				if statedHere != 0 {
+					return 0, false, fmt.Errorf("%w: %s states HIL_TIMEOUT_S as %q inside a block this reader cannot decide", ErrUnreadableDeclaration, path, line)
+				}
 				return 0, false, fmt.Errorf("%w: %s states HIL_TIMEOUT_S as %q, assigning nothing", ErrUnreadableDeclaration, path, line)
 			}
 			continue
@@ -103,6 +113,15 @@ func DeclaredTimeout(root, app string) (seconds int, found bool, err error) {
 				return 0, false, fmt.Errorf("%w: %s declares HIL_TIMEOUT_S as %q", ErrUnreadableDeclaration, path, trimmed)
 			}
 			continue
+		}
+		// The key spells the name, so whether the shell reaches this line at
+		// all is now this reader's business. It is asked before the
+		// assignment door so that a line inside a block is reported as the
+		// block it sits in rather than as its spacing or its value, and only
+		// for a line naming HIL_TIMEOUT_S, so that structure around any other
+		// knob is still read past in silence.
+		if statedHere != 0 {
+			return 0, false, fmt.Errorf("%w: %s writes HIL_TIMEOUT_S as %q inside a block this reader cannot decide", ErrUnreadableDeclaration, path, line)
 		}
 		// The key spells the name and nothing else, so what is left to ask is
 		// whether the line assigns at all. It is asked here rather than before
@@ -130,6 +149,12 @@ func DeclaredTimeout(root, app string) (seconds int, found bool, err error) {
 	}
 	if err := scanner.Err(); err != nil {
 		return 0, false, err
+	}
+	// A file whose blocks are still open when the scan ends was not read the
+	// way the shell reads it, so the depth beside the declaration was not the
+	// shell's either and the value taken at it cannot be trusted.
+	if found && depth != 0 {
+		return 0, false, fmt.Errorf("%w: %s leaves a block open, so this reader cannot place its HIL_TIMEOUT_S", ErrUnreadableDeclaration, path)
 	}
 	return seconds, found, nil
 }
