@@ -134,12 +134,19 @@ func LoginAppRole(ctx context.Context, config AppRoleConfig) (*AppRoleToken, err
 		return nil, errors.New("create AppRole login request")
 	}
 	request.Header.Set("Content-Type", "application/json")
+	// Stamped before the request, not after the answer: the lease is already
+	// running while the round trip is in flight, and leaseStartsWhenVaultWasAsked
+	// says why that is the only origin the remaining-lease arithmetic can use.
+	askedAt := time.Now()
 	response, err := client.Do(request)
 	if err != nil {
 		return nil, errors.New("AppRole login request failed")
 	}
-	issued := time.Now()
 	defer response.Body.Close()
+	issued, err := leaseStartsWhenVaultWasAsked(askedAt, time.Now())
+	if err != nil {
+		return nil, err
+	}
 	body, err := io.ReadAll(io.LimitReader(response.Body, maxAppRoleResponseBytes+1))
 	if err != nil || len(body) > maxAppRoleResponseBytes {
 		clear(body)
