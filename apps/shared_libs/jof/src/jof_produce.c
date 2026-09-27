@@ -55,13 +55,13 @@ typedef enum : uint32_t {
   k_jof_le_sh8          = 8U,     /**< Little-endian shift.                         */
   k_jof_le_sh16         = 16U,    /**< Little-endian shift.                         */
   k_jof_le_sh24         = 24U,    /**< Little-endian shift.                         */
-  k_jof_png_ihdr_w      = 16U,    /**< PNG IHDR width field offset (big-endian).    */
-  k_jof_png_ihdr_h      = 20U,    /**< PNG IHDR height field offset (big-endian).   */
-  k_jof_png_ihdr_end    = 24U,    /**< Bytes needed to read both IHDR fields.       */
 } jof_prod_const_t;
 
 static_assert((uint32_t)k_jof_sniff_bytes == (uint32_t)k_ra8_imgdec_sniff_bytes,
               "the producer's sniff window must match the shared sniff's");
+
+static_assert((uint32_t)k_ra8_imgdec_dim_max <= (uint32_t)k_jof_max_dim,
+              "the shared probe's dimension cap must not exceed the container's");
 
 /**
  * @brief Name the container the source head carries, or the empty set.
@@ -766,58 +766,6 @@ internal_dispatch(jof_prod_state_t* st, const uint8_t* head, jof_prefix_pull_t* 
 }
 
 /**
- * @brief Read a big-endian uint32 (PNG stores its IHDR fields big-endian).
- * @details The JOF container is little-endian throughout, so the little-endian
- *          helpers above do not serve the PNG IHDR probe.
- * @param[in] buf Source bytes (at least 4 readable).
- * @return The decoded value.
- * @retval 0 All four source bytes were zero.
- * @pre @p buf holds 4 readable bytes.
- * @pre The field is big-endian per the PNG specification.
- * @post No state is mutated.
- * @post The result equals the four bytes assembled big-endian.
- * @note Pure; thread-safe.
- * @since 0.1.0
- */
-RA8_INTERNAL
-RA8_INTERNAL static uint32_t internal_rd_be32(const uint8_t* buf)
-{
-  return ((uint32_t)buf[0] << k_jof_le_sh24) | ((uint32_t)buf[1] << k_jof_le_sh16) |
-         ((uint32_t)buf[2] << k_jof_le_sh8) | (uint32_t)buf[3];
-}
-
-/**
- * @brief Read the pixel geometry out of a PNG IHDR chunk.
- * @details IHDR is fixed at the head of every PNG, so the width and height sit
- *          at constant offsets; both are big-endian per the specification.
- * @param[in]  data  Source bytes beginning with the PNG signature.
- * @param[in]  len   Readable length of @p data in bytes.
- * @param[out] out_w Receives the declared width in pixels.
- * @param[out] out_h Receives the declared height in pixels.
- * @return Result code.
- * @retval k_ra8_ok                Geometry read.
- * @retval k_ra8_err_not_supported The source is too short to hold a full IHDR.
- * @pre @p data starts with the eight-byte PNG signature.
- * @pre @p out_w and @p out_h are writable.
- * @post On success both outputs hold the IHDR fields verbatim, unvalidated.
- * @post On failure neither output is written.
- * @note Pure apart from the outputs; thread-safe.
- * @see internal_rd_be32()
- * @since 0.1.0
- */
-RA8_INTERNAL
-RA8_INTERNAL static ra8_err_t
-internal_png_dims(const uint8_t* data, size_t len, uint32_t* out_w, uint32_t* out_h)
-{
-  if (len < (size_t)k_jof_png_ihdr_end) {
-    return k_ra8_err_not_supported; /* IHDR truncated */
-  }
-  *out_w = internal_rd_be32(&data[k_jof_png_ihdr_w]);
-  *out_h = internal_rd_be32(&data[k_jof_png_ihdr_h]);
-  return k_ra8_ok;
-}
-
-/**
  * @brief Sniff the container, read its declared geometry and range-check it.
  * @details The probing algorithm behind ::jof_probe_dims, split from
  *          it so the public entry carries only the null-pointer contract. The
@@ -827,8 +775,12 @@ internal_png_dims(const uint8_t* data, size_t len, uint32_t* out_w, uint32_t* ou
  *          JPEG is answered by ::ra8_jpeg_sw_get_dimensions directly: that
  *          reader already range-checks against its own frame limits and writes
  *          the 16-bit outputs itself, so it returns without a second check.
- *          PNG and WebP yield 32-bit values that still have to be proved
- *          non-zero and within ::k_jof_max_dim before narrowing.
+ *          PNG is answered by ::ra8_imgdec_dims, the one in-tree geometry
+ *          probe (#768), so the producer no longer carries its own IHDR field
+ *          offsets; the shared probe also verifies the first chunk really is
+ *          IHDR, which the offsets alone never did. WebP still yields a
+ *          32-bit pair from ::ra8_webp_get_info. Both are proved non-zero and
+ *          within ::k_jof_max_dim before narrowing.
  * @param[in]  data  Encoded source bytes.
  * @param[in]  len   Readable length of @p data in bytes.
  * @param[out] out_w Receives the source width in pixels.
@@ -843,7 +795,7 @@ internal_png_dims(const uint8_t* data, size_t len, uint32_t* out_w, uint32_t* ou
  * @post On success both outputs hold a non-zero, in-range dimension.
  * @post On any error neither output is written.
  * @note Not thread-safe beyond its arguments.
- * @see internal_png_dims(), internal_sniffed(), ra8_webp_get_info()
+ * @see ra8_imgdec_dims(), internal_sniffed(), ra8_webp_get_info()
  * @since 0.1.0
  */
 RA8_INTERNAL
@@ -860,10 +812,14 @@ internal_probe_sniff(const uint8_t* data, size_t len, uint16_t* out_w, uint16_t*
   }
   const ra8_imgdec_format_t sniffed = internal_sniffed(data, len);
   if (sniffed == k_ra8_imgdec_format_png) {
-    const ra8_err_t rc = internal_png_dims(data, len, &w, &h);
+    ra8_imgdec_geom_t geom = {};
+    const uint32_t    n    = (len > (size_t)UINT32_MAX) ? UINT32_MAX : (uint32_t)len;
+    const ra8_err_t   rc   = ra8_imgdec_dims(data, n, &geom);
     if (rc != k_ra8_ok) {
       return rc;
     }
+    w = geom.width_px;
+    h = geom.height_px;
   } else if (sniffed == k_ra8_imgdec_format_webp) {
     const ra8_err_t rc = ra8_webp_get_info(data, len, &w, &h);
     if (rc != k_ra8_ok) {
