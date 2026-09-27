@@ -141,6 +141,11 @@ func (s *Spool) BeginWithMetadata(task, digest string, metadata Metadata) (Entry
 	if err := checkArgumentsAreOnesThePlaneWillFile(metadata.Args); err != nil {
 		return Entry{}, err
 	}
+	// The same argument about the three strings the run is filed under. See
+	// identities_the_plane_will_file.go.
+	if err := checkIdentitiesAreOnesThePlaneWillFile(task, metadata.Source); err != nil {
+		return Entry{}, err
+	}
 	return s.begin(task, digest, metadata)
 }
 
