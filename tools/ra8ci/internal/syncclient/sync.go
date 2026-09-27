@@ -89,6 +89,13 @@ func SyncPending(ctx context.Context, outbox *spool.Spool, baseURL string, clien
 		if err := checkUploadedCatalogDigestIsStated(entry); err != nil {
 			return report, fmt.Errorf("local %s: %w", entry.ID, err)
 		}
+		// Beside the digest door for the same reason: the tier, the scope
+		// and the deadline are stated by the record, the columns that hold
+		// them carry CHECK constraints needing no catalog to read, and an
+		// unfilable one is the same opaque 400 that ends the sweep.
+		if err := checkUploadedClassificationIsOneThePlaneFiles(entry); err != nil {
+			return report, fmt.Errorf("local %s: %w", entry.ID, err)
+		}
 		body, err := json.Marshal(entry)
 		if err != nil {
 			return report, err
