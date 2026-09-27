@@ -129,6 +129,8 @@ typedef enum : uint8_t {
  * @retval k_ra8_ok / k_ra8_err_invalid_arg
  * @pre ra8_board_led_init(led) succeeded.
  * @post LED pin output latch == 1.
+ *
+ * @since 0.1.0
  */
 [[nodiscard]] ra8_err_t ra8_board_led_on(ra8_board_led_id_t led);
 
@@ -137,6 +139,8 @@ typedef enum : uint8_t {
  * @retval k_ra8_ok / k_ra8_err_invalid_arg
  * @pre ra8_board_led_init(led) succeeded.
  * @post LED pin output latch == 0.
+ *
+ * @since 0.1.0
  */
 [[nodiscard]] ra8_err_t ra8_board_led_off(ra8_board_led_id_t led);
 
@@ -145,6 +149,8 @@ typedef enum : uint8_t {
  * @retval k_ra8_ok / k_ra8_err_invalid_arg
  * @pre ra8_board_led_init(led) succeeded.
  * @post LED pin output latch is inverted from its prior value.
+ *
+ * @since 0.1.0
  */
 [[nodiscard]] ra8_err_t ra8_board_led_toggle(ra8_board_led_id_t led);
 

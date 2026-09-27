@@ -132,11 +132,7 @@ func checkPresence(path string) []string {
 		if match == nil {
 			continue
 		}
-		start := index - 30
-		if start < 0 {
-			start = 0
-		}
-		if !sinceTag.MatchString(strings.Join(lines[start:index], "\n")) {
+		if !sinceTag.MatchString(strings.Join(commentAbove(lines, index), "\n")) {
 			problems = append(problems, fmt.Sprintf("%s:%d: %s missing @since", path, index+1, match[1]))
 		}
 	}
