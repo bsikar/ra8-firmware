@@ -103,6 +103,14 @@ func SyncPending(ctx context.Context, outbox *spool.Spool, baseURL string, clien
 		if err := checkUploadedTaskNameIsOneThePlaneFiles(entry); err != nil {
 			return report, fmt.Errorf("local %s: %w", entry.ID, err)
 		}
+		// Last of the record-only doors, beside the task name for the same
+		// reason: the arguments are stated by the record, the jsonb column
+		// that holds them bounds their count and their text with no catalog
+		// to read, and one the plane will not file is the same opaque 400
+		// that ends the sweep.
+		if err := checkUploadedArgumentsAreOnesThePlaneWillFile(entry); err != nil {
+			return report, fmt.Errorf("local %s: %w", entry.ID, err)
+		}
 		body, err := json.Marshal(entry)
 		if err != nil {
 			return report, err
