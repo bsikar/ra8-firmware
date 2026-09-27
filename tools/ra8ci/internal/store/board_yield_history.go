@@ -130,6 +130,13 @@ func (s *Store) YieldHistory(ctx context.Context, cohort board.YieldCohort, now 
 			row.NeutralAt = neutral.UTC()
 		}
 		row.RequestedAt = row.RequestedAt.UTC()
+		// Judged before the row is shaped into a sample: the cutoff above
+		// bounds only the old side of this read, and requested_at is its
+		// ORDER BY key, so a row stamped ahead of this host holds the head
+		// of every page of the cohort until the clock catches up to it.
+		if err := yieldSampleFitsTheClock(row, now); err != nil {
+			return nil, err
+		}
 		sample, err := yieldSampleFrom(row, cohort)
 		if err != nil {
 			return nil, err
