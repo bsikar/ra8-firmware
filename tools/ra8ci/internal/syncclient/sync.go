@@ -133,6 +133,13 @@ func SyncPending(ctx context.Context, outbox *spool.Spool, baseURL string, clien
 		if err := checkUploadedStepWindowsWereMeasured(entry); err != nil {
 			return report, fmt.Errorf("local %s: %w", entry.ID, err)
 		}
+		// Beside the step windows, on the pair the executor wrote rather
+		// than the pair the spool did: an execution claiming to have run
+		// outside the window this host observed needs no catalog to
+		// refuse, and is the same opaque 400 that ends the sweep.
+		if err := checkUploadedAttemptWindowFitsTheRecord(entry); err != nil {
+			return report, fmt.Errorf("local %s: %w", entry.ID, err)
+		}
 		body, err := json.Marshal(entry)
 		if err != nil {
 			return report, err
