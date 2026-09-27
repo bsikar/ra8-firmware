@@ -440,6 +440,17 @@ macro(_ra8_app_collect_sources)
       ${RA8_REPO_ROOT}/apps/shared_libs/unarch/inc
       ${RA8_REPO_ROOT}/apps/shared_libs/third_party/miniz
     )
+    # unarch_xz_pool.c forwards its bump arithmetic to the shared decoder
+    # scratch (#768), so the contract's TU and header travel with it. The
+    # reflow / rabook_compile blocks above may already have added the same TU,
+    # so both are appended only when absent -- a duplicate source is an error
+    # under some generators and a duplicate symbol under all of them.
+    if(NOT ${RA8_REPO_ROOT}/libs/ra8_imgdec/src/ra8_imgdec_scratch.c IN_LIST _ra8_lib_extra)
+      list(APPEND _ra8_lib_extra ${RA8_REPO_ROOT}/libs/ra8_imgdec/src/ra8_imgdec_scratch.c)
+    endif()
+    if(NOT ${RA8_REPO_ROOT}/libs/ra8_imgdec/inc IN_LIST _ra8_lib_inc)
+      list(APPEND _ra8_lib_inc ${RA8_REPO_ROOT}/libs/ra8_imgdec/inc)
+    endif()
     if(NOT "unarch" IN_LIST _RA8_APP_LIBS)
       file(GLOB_RECURSE _unarch_srcs CONFIGURE_DEPENDS
            ${RA8_REPO_ROOT}/apps/shared_libs/unarch/src/*.c
