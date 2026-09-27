@@ -183,7 +183,14 @@ func ValidateTaskDispatch(task Task) error {
 	// argument at all: this one asks whether a bound path contradicts a
 	// scope the step already named. See
 	// a_bound_path_beside_a_whole_tree_scan.go.
-	return checkNoBoundPathContradictsAWholeTreeScan(task)
+	if err := checkNoBoundPathContradictsAWholeTreeScan(task); err != nil {
+		return err
+	}
+	// Beside the rule above, which asks whether a bound path contradicts a
+	// scope the step named: this one asks whether the reviewed and bound
+	// targets together fit what the tool reads. See
+	// a_bound_target_the_tool_can_read.go.
+	return checkBoundTargetsFitTheToolsCeiling(task)
 }
 
 // validateDispatchArgs bounds what a reviewed step may put on argv. An empty
