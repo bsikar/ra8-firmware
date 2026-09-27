@@ -111,7 +111,13 @@ func ValidateClientIdentity(identity tls.Certificate, now time.Time) error {
 	// And the chain has to be a path: each certificate in it issued the one
 	// before it, or the far end cannot walk from this leaf to anything it
 	// trusts no matter how good every certificate in the file is.
-	return checkPresentedChainIsAPath(identity, "client")
+	if err := checkPresentedChainIsAPath(identity, "client"); err != nil {
+		return err
+	}
+	// Last, the path has to be one the authorities in it allow: a link that
+	// states how deep a path below it may go refuses a longer one at the far
+	// end however well every certificate in the file verifies.
+	return checkChainDepthTheIssuersAllow(identity, "client")
 }
 
 func allowsClientAuth(leaf *x509.Certificate) bool {
@@ -172,7 +178,12 @@ func ValidateServerIdentity(identity tls.Certificate, now time.Time) error {
 	if err := checkPresentedChain(identity, now, "server"); err != nil {
 		return err
 	}
-	return checkPresentedChainIsAPath(identity, "server")
+	if err := checkPresentedChainIsAPath(identity, "server"); err != nil {
+		return err
+	}
+	// Same reading as the client side: the listener's chain is walked by the
+	// same verifier and is held to the depth its own authorities state.
+	return checkChainDepthTheIssuersAllow(identity, "server")
 }
 
 func allowsServerAuth(leaf *x509.Certificate) bool {
