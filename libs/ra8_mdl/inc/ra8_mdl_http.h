@@ -84,11 +84,10 @@ typedef struct {
  * @invariant Every array is NUL-terminated, including when its header is
  *            absent, in which case the first byte is NUL.
  *
- * @note The downloader-side ::mdl_net_resp_t
- *       (`apps/shared_libs/mdl/inc/mdl_net.h`) is still a field-for-field twin
- *       of this record, and `mdl_net_c6link.c` fills it by copying each member
- *       out of one of these. Issue #746 tracks deleting that twin in favour of
- *       this record; this header is the transport-neutral home it moves to.
+ * @note This is the one HTTP response record in the tree. The downloader-side
+ *       twin it used to sit beside is deleted, and `mdl_net_c6link.c` assigns
+ *       this record straight across instead of copying it member by member
+ *       (#746).
  * @since 0.1.0
  */
 typedef struct {
