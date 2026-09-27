@@ -187,12 +187,12 @@ func (e Event) concluded(adapter string, at time.Time) (Event, error) {
 	next.DeliveryID = reconcileDeliveryID(e.Key(), PhaseCompleted)
 	next.Conclusion = "stale"
 	next.ObservedAt = at.UTC()
-	next.CompletedAt = at.UTC()
+	// The conclusion sits after everything already on file about this
+	// job, not merely after the queue time: the held stamps come from the
+	// forge's clock and this one comes from the host's.
+	next.CompletedAt = conclusionStamp(e, at)
 	if next.StartedAt.IsZero() {
 		next.StartedAt = e.QueuedAt
-	}
-	if next.CompletedAt.Before(next.QueuedAt) {
-		next.CompletedAt = next.QueuedAt
 	}
 	if err := next.Validate(); err != nil {
 		return Event{}, err
