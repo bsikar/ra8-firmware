@@ -637,6 +637,12 @@ func requestYield(s *Snapshot, c RequestYield, now time.Time, events *[]Event) e
 		s.Lease.HandoffTarget = c.ShownTarget
 		s.Lease.HandoffCohort = c.Cohort
 		*events = append(*events, event(s, YieldAsked, now, c.Actor, c.WaiterID, s.Lease.ID, "higher-priority waiter"))
+	} else {
+		// The board was already asked, so nothing is asked again here.
+		// The promise the requester was shown is still written down when
+		// the lease is carrying none, which is the case a yield this
+		// state machine raised itself leaves behind.
+		adoptShownPromise(s.Lease, c.ShownTarget, c.Cohort)
 	}
 	return nil
 }
