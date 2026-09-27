@@ -17,6 +17,7 @@
 #include "ra8_attributes.h"
 #include "ra8_err.h"
 #include "ra8_imgdec.h"
+#include "ra8_imgdec_scratch.h"
 
 /* =============================================================================
  * Internal helpers
@@ -308,4 +309,76 @@ ra8_err_t ra8_imgdec_mux_decode(const ra8_imgdec_mux_t* mux,
   ra8_imgdec_req_t resolved = *req;
   resolved.format           = format;
   return ra8_imgdec_decode(member, &resolved, out);
+}
+
+/**
+ * @brief Widen a running peak budget by one member's published record.
+ *
+ * @details Bytes take the maximum because only one member decodes at a time,
+ * so the peak funds whichever the router picks. Alignment takes the maximum
+ * too, and a member reporting 0 contributes nothing: 0 means "no preference",
+ * not "byte-aligned", so treating it as a candidate maximum would let a
+ * silent member weaken a loud one.
+ */
+RA8_INTERNAL static void internal_widen(const ra8_imgdec_caps_t* caps,
+                                        uint32_t*                bytes,
+                                        uint32_t*                align) {
+  if (caps->scratch_bytes > *bytes) {
+    *bytes = caps->scratch_bytes;
+  }
+  if (caps->scratch_align > *align) {
+    *align = caps->scratch_align;
+  }
+}
+
+ra8_err_t ra8_imgdec_mux_scratch_budget(const ra8_imgdec_mux_t* mux,
+                                        uint32_t*               out_bytes,
+                                        uint32_t*               out_align) {
+  if ((out_bytes == nullptr) || (out_align == nullptr)) {
+    return k_ra8_err_null_ptr;
+  }
+  *out_bytes = 0U;
+  *out_align = 0U;
+
+  const ra8_err_t usable = internal_usable(mux);
+  if (usable != k_ra8_ok) {
+    return usable;
+  }
+
+  uint32_t bytes = 0U;
+  uint32_t align = 0U;
+  for (uint32_t i = 0U; i < mux->count; ++i) {
+    ra8_imgdec_caps_t caps = {};
+    const ra8_err_t   err  = ra8_imgdec_get_caps(&mux->members[i], &caps);
+    if (err != k_ra8_ok) {
+      *out_bytes = 0U;
+      *out_align = 0U;
+      return err;
+    }
+    internal_widen(&caps, &bytes, &align);
+  }
+
+  *out_bytes = bytes;
+  *out_align = (align != 0U) ? align : (uint32_t)k_ra8_imgdec_scratch_align;
+  return k_ra8_ok;
+}
+
+ra8_err_t ra8_imgdec_mux_carve(const ra8_imgdec_mux_t* mux,
+                               ra8_arena_t*            arena,
+                               ra8_imgdec_scratch_t*   out) {
+  if ((arena == nullptr) || (out == nullptr)) {
+    return k_ra8_err_null_ptr;
+  }
+  *out = (ra8_imgdec_scratch_t){};
+
+  uint32_t        bytes  = 0U;
+  uint32_t        align  = 0U;
+  const ra8_err_t budget = ra8_imgdec_mux_scratch_budget(mux, &bytes, &align);
+  if (budget != k_ra8_ok) {
+    return budget;
+  }
+  if (bytes == 0U) {
+    return k_ra8_ok; /* nothing in the set decodes with scratch */
+  }
+  return ra8_imgdec_scratch_carve(out, arena, bytes, align);
 }

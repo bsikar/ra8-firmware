@@ -63,6 +63,7 @@ extern "C" {
 
 #include "ra8_err.h"
 #include "ra8_imgdec.h"
+#include "ra8_imgdec_scratch.h"
 
 /**
  * @enum ra8_imgdec_mux_limits_t
@@ -284,6 +285,87 @@ typedef struct {
 [[nodiscard]] ra8_err_t ra8_imgdec_mux_decode(const ra8_imgdec_mux_t* mux,
                                               const ra8_imgdec_req_t* req,
                                               ra8_imgdec_image_t*     out);
+
+/**
+ * @brief Report the one scratch budget that covers every member of the set.
+ *
+ * @details
+ * Each backend publishes its own `scratch_bytes` / `scratch_align`, which is
+ * the right shape for a backend and the wrong shape for a consumer: a consumer
+ * does not know which member a given file will route to, so it cannot know
+ * which member's budget to honour. The answer is the peak. Carve the peak once
+ * and any member the router picks is funded, which is what made the five
+ * private shims a guess from the outside and makes this a query.
+ *
+ * A set whose every member decodes without scratch answers `*out_bytes` 0.
+ * That is a real answer, not an error: the fabric already accepts a request
+ * with no arena for such a backend.
+ *
+ * @param[in]  mux       Mux to query.
+ * @param[out] out_bytes Peak `scratch_bytes` over the members. May be 0.
+ * @param[out] out_align Strongest `scratch_align` over the members, or
+ *                       ::k_ra8_imgdec_scratch_align when every member
+ *                       reported 0 (the carve's own default).
+ *
+ * @return ra8_err_t Error code.
+ * @retval k_ra8_ok                  Budget answered.
+ * @retval k_ra8_err_null_ptr        `mux`, `out_bytes` or `out_align` was NULL.
+ * @retval k_ra8_err_not_initialized The mux holds no members.
+ * @retval other                     Propagated from a member's capability
+ *                                   query.
+ *
+ * @post On any non-ok return `*out_bytes` is 0 and `*out_align` is 0.
+ *
+ * @note Thread-safe (pure read of immutable backend state).
+ *
+ * @see ra8_imgdec_caps_t
+ * @since 0.1.0
+ */
+[[nodiscard]] ra8_err_t ra8_imgdec_mux_scratch_budget(const ra8_imgdec_mux_t* mux,
+                                                      uint32_t*               out_bytes,
+                                                      uint32_t*               out_align);
+
+/**
+ * @brief Carve one scratch out of @p arena that funds any member of the set.
+ *
+ * @details
+ * ::ra8_imgdec_mux_scratch_budget then ::ra8_imgdec_scratch_carve, as the one
+ * call a consumer actually makes at binding time. Carving per member would
+ * spend the arena once per backend for a scratch only one of them uses at a
+ * time; carving per decode would spend it a decode at a time, because
+ * ::ra8_arena_carve has no matching free. One carve, rewound by the scratch
+ * between decodes, is the whole lifecycle.
+ *
+ * A set whose every member decodes without scratch carves nothing: @p out is
+ * left empty, @p arena is untouched, and the return is ::k_ra8_ok. Handing
+ * that empty scratch to a decode is correct, because no member of such a set
+ * asks for one.
+ *
+ * @param[in]     mux   Mux whose members must all be funded.
+ * @param[in,out] arena Arena to carve from; advanced only when a carve happens.
+ * @param[out]    out   Scratch record to bind over the carved block.
+ *
+ * @return ra8_err_t Error code.
+ * @retval k_ra8_ok                  Carved, or nothing to carve.
+ * @retval k_ra8_err_null_ptr        `mux`, `arena` or `out` was NULL.
+ * @retval k_ra8_err_not_initialized The mux holds no members.
+ * @retval k_ra8_err_not_supported   A member asks for an alignment stronger
+ *                                   than ::k_ra8_imgdec_scratch_align.
+ * @retval k_ra8_err_no_mem          The arena has no room for the peak.
+ * @retval other                     Propagated from a member's capability
+ *                                   query or from the carve.
+ *
+ * @pre @p arena was populated by ::ra8_arena_init.
+ * @post On any non-ok return @p out is empty and @p arena is unchanged.
+ *
+ * @note Not thread-safe: one scratch belongs to one decode.
+ *
+ * @see ra8_imgdec_scratch_carve()
+ * @since 0.1.0
+ */
+[[nodiscard]] ra8_err_t ra8_imgdec_mux_carve(const ra8_imgdec_mux_t* mux,
+                                             ra8_arena_t*            arena,
+                                             ra8_imgdec_scratch_t*   out);
 
 #ifdef __cplusplus
 }
