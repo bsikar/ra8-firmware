@@ -114,6 +114,15 @@ func offlineInput(entry spool.Entry, cat *catalog.Catalog) (store.LocalRunInput,
 		FinishedAt: *entry.FinishedAt, DurationNS: entry.FinishedAt.Sub(entry.StartedAt).Nanoseconds(),
 		ChildExitCode: entry.Result.ExitCode, ExecutorError: entry.Error,
 	}
+	// Before the switch below and the step loop under it, which are the two
+	// readers of these numbers: the switch turns the record's own exit code
+	// into the verdict history will hold, and the loop downgrades a success
+	// whose steps disagree with it. Both are judgements about an exit code,
+	// and neither means anything until the number is one a child could have
+	// reported.
+	if err := checkLocalExitCodesNameAChildThatRan(entry); err != nil {
+		return store.LocalRunInput{}, err
+	}
 	switch {
 	case entry.Error != "" || entry.Result.StartedAt.IsZero() || entry.Result.EndedAt.IsZero():
 		in.Result = "incomplete_evidence"
