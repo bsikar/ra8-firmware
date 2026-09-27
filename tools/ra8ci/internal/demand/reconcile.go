@@ -165,7 +165,9 @@ func (e Event) observed(adapter string, snapshot JobSnapshot, observedAt time.Ti
 	next.DeliveryID = reconcileDeliveryID(e.Key(), snapshot.Phase)
 	next.Phase = snapshot.Phase
 	next.Conclusion = snapshot.Conclusion
-	next.StartedAt = snapshot.StartedAt
+	// A snapshot that did not read a start has not learned there is none,
+	// the same reading RunnerName gets below.
+	next.StartedAt = startTheJobAlreadyHad(e, snapshot)
 	next.CompletedAt = snapshot.CompletedAt
 	next.ObservedAt = observedAt.UTC()
 	if snapshot.RunnerName != "" {
