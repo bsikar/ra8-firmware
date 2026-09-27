@@ -211,14 +211,20 @@ macro(_ra8_app_collect_sources)
     # ra8_img_arena.c. That single-TU build (stb_image_impl.c) is self-contained
     # (the STBI_* macros are defined inside it), so it needs no -include here.
     set(_ra8_stb_img_impl ${RA8_REPO_ROOT}/apps/shared_libs/third_party/stb/stb_image_impl.c)
-    list(APPEND _ra8_lib_extra ${_ra8_stb_impl} ${_ra8_stb_img_impl})
+    # The arena hooks forward to the shared decoder scratch (#768), so the
+    # contract's TU and header travel with ra8_img_arena.c wherever it goes.
+    list(APPEND _ra8_lib_extra ${_ra8_stb_impl} ${_ra8_stb_img_impl}
+         ${RA8_REPO_ROOT}/libs/ra8_imgdec/src/ra8_imgdec_scratch.c
+    )
     list(APPEND _ra8_lib_inc ${RA8_REPO_ROOT}/apps/shared_libs/third_party/stb
          ${RA8_REPO_ROOT}/apps/shared_libs/reflow/src
+         ${RA8_REPO_ROOT}/libs/ra8_imgdec/inc
     )
   elseif("rabook_compile" IN_LIST _RA8_APP_LIBS)
     set(_ra8_stb_img_impl ${RA8_REPO_ROOT}/apps/shared_libs/third_party/stb/stb_image_impl.c)
     list(APPEND _ra8_lib_extra ${_ra8_stb_img_impl}
          ${RA8_REPO_ROOT}/apps/shared_libs/reflow/src/ra8_img_arena.c
+         ${RA8_REPO_ROOT}/libs/ra8_imgdec/src/ra8_imgdec_scratch.c
     )
     list(
       APPEND
@@ -226,6 +232,7 @@ macro(_ra8_app_collect_sources)
       ${RA8_REPO_ROOT}/apps/shared_libs/third_party/stb
       ${RA8_REPO_ROOT}/apps/shared_libs/reflow/inc
       ${RA8_REPO_ROOT}/apps/shared_libs/reflow/src
+      ${RA8_REPO_ROOT}/libs/ra8_imgdec/inc
     )
   endif()
 

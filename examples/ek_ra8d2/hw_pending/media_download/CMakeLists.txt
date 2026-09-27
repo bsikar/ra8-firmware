@@ -38,6 +38,7 @@ ra8_add_app(
              ${_d}/apps/shared_libs/rabook_compile/src/ra8_rabook_gray4.c
              ${_d}/apps/shared_libs/rabook_compile/src/ra8_rabook_raster.c
              ${_d}/apps/shared_libs/reflow/src/ra8_img_arena.c
+             ${_d}/libs/ra8_imgdec/src/ra8_imgdec_scratch.c
              ${_d}/examples/ek_ra8d2/common/network_provision/src/ra8_net_provision.c
              ${_d}/apps/shared_libs/third_party/stb/stb_image_impl.c
 )
@@ -50,6 +51,7 @@ if(TARGET media_download.elf)
   target_include_directories(
     media_download.elf
     PRIVATE ${_d}/apps/shared_libs/rabook_compile/inc ${_d}/apps/shared_libs/reflow/inc
+            ${_d}/libs/ra8_imgdec/inc
             ${_d}/examples/ek_ra8d2/common/network_provision/inc
             ${_d}/apps/shared_libs/third_party/stb
   )

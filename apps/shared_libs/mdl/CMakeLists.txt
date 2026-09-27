@@ -205,6 +205,7 @@ set(MDL_RABOOK_RUNTIME_SRC
     ${MDL_REPO_ROOT}/apps/shared_libs/rabook_compile/src/ra8_rabook_xml_shim.c
     ${MDL_REPO_ROOT}/apps/shared_libs/compress/src/ra8_compress.c
     ${MDL_REPO_ROOT}/apps/shared_libs/reflow/src/ra8_img_arena.c
+    ${MDL_REPO_ROOT}/libs/ra8_imgdec/src/ra8_imgdec_scratch.c
     ${MDL_REPO_ROOT}/apps/shared_libs/reflow/src/ra8_stbtt_alloc.c
     ${MDL_REPO_ROOT}/apps/shared_libs/reflow/src/ra8_stbtt_guard.c
     ${MDL_REPO_ROOT}/apps/shared_libs/third_party/stb/stb_image_impl.c
@@ -231,6 +232,7 @@ target_include_directories(
           ${MDL_REPO_ROOT}/apps/shared_libs/rabook_compile/src
           ${MDL_REPO_ROOT}/apps/shared_libs/reflow/inc
           ${MDL_REPO_ROOT}/apps/shared_libs/reflow/src
+          ${FW}/ra8_imgdec/inc
           ${FW}/ra8_fs/inc
           ${MDL_FS_INC}
 )
