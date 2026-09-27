@@ -26,24 +26,27 @@
 #include <stdint.h>
 
 #include "ra8_err.h"
+#include "ra8_imgdec_scratch.h"
 
 /**
- * @struct ra8_img_arena_t
+ * @typedef ra8_img_arena_t
  * @brief Caller-owned bump arena backing a single image decode.
  *
- * @details A linear bump allocator over `base[0..cap)` with a live-block count:
- * `stb_image`'s allocations bump `offset`, each free decrements `live`, and the
- * arena auto-resets to empty when `live` reaches 0 -- so it fully drains after
- * each decode with no caller bookkeeping and no fragmentation.
+ * @details One spelling of ::ra8_imgdec_scratch_t (#768): a linear bump
+ * allocator over `base[0..cap)` with a live-block count, so `stb_image`'s
+ * allocations bump `offset`, each free decrements `live`, and the arena
+ * auto-resets to empty when `live` reaches 0. It fully drains after each
+ * decode with no caller bookkeeping and no fragmentation.
+ *
+ * The name is kept because thirty-odd call sites across `examples/`,
+ * `apps/shared_libs/` and `tests/` name it, and because "the arena stb_image
+ * decodes out of" is still the useful thing to call it here. The arithmetic
+ * behind it is no longer written in this module; ::ra8_imgdec_scratch_t owns
+ * it, once, for every decoder shim in the tree.
  *
  * @invariant `offset <= cap`.
  */
-typedef struct {
-  uint8_t* base;   /**< Caller-owned scratch buffer.        */
-  size_t   cap;    /**< Scratch capacity, bytes.            */
-  size_t   offset; /**< Current bump offset.                */
-  size_t   live;   /**< Live (allocated, not freed) blocks. */
-} ra8_img_arena_t;
+typedef ra8_imgdec_scratch_t ra8_img_arena_t;
 
 /**
  * @brief Decode @p bytes and blit it, scaled to fit, into the bound framebuffer.
