@@ -305,6 +305,13 @@ func ValidateReviewedTask(task Task) error {
 	if err := checkRestoreProbeCoversTheFlashRestore(task); err != nil {
 		return err
 	}
+	// After the deadline rule, which bounds the safe step from above, and
+	// beside the restore-probe rule, which holds the other handoff bound
+	// over the restore it contains: this one holds the safe step over the
+	// observation the same definition says one step may run for.
+	if err := checkSafeStepCoversTheObservation(task); err != nil {
+		return err
+	}
 	return ValidateTaskDispatch(task)
 }
 
