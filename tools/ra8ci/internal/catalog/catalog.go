@@ -325,6 +325,13 @@ func ValidateReviewedTask(task Task) error {
 	if err := checkTheManifestPathIsOneARecordCanHold(task); err != nil {
 		return err
 	}
+	// Beside the two text rules above, which hold the free-text halves of
+	// the key an observation is filed under: this one holds the two
+	// identifier halves to a width the row can actually carry. See
+	// a_hil_identifier_a_record_can_hold.go.
+	if err := checkTheHILIdentifiersAreOnesARecordCanHold(task); err != nil {
+		return err
+	}
 	if err := checkArgumentsReachOneStep(task); err != nil {
 		return err
 	}
