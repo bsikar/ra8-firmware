@@ -1085,5 +1085,10 @@ func Validate(s Snapshot) error {
 		leaseIDs[w.LeaseID] = struct{}{}
 		sequences[w.Sequence] = struct{}{}
 	}
+	// The queue's slice order, held to the sequences the loop above has just
+	// proved distinct. Last, so a repeated sequence keeps its own refusal.
+	if err := checkQueueIsInArrivalOrder(s.Queue); err != nil {
+		return err
+	}
 	return nil
 }
