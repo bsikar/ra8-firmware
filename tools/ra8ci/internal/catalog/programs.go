@@ -133,7 +133,10 @@ func ValidateStepDispatch(step Step) error {
 		if err := checkFileArgumentsAreOnesTheToolReads(step, program); err != nil {
 			return err
 		}
-		return checkAnAllStepNamesTheWholeTree(step, program)
+		if err := checkAnAllStepNamesTheWholeTree(step, program); err != nil {
+			return err
+		}
+		return checkToolFlagValuesAreOnesTheToolAccepts(step, program)
 	}
 	if IsFrontDoorProgram(program) {
 		return fmt.Errorf("%w: step %q runs %q: %w, dispatch its reviewed script instead",
