@@ -20,8 +20,11 @@ func arrivalWaiter(id string, sequence uint64, queuedAt time.Time) Waiter {
 	}
 }
 
-// arrivalBoard is a ready board carrying the given queue and nothing else, so a
-// test moves only the order.
+// arrivalBoard is a quarantined board carrying the given queue and nothing
+// else, so a test moves only the order. Quarantined rather than ready because a
+// ready board is held to an empty queue: grantNext serves a free board's queue
+// inside the command that fills it, and the quarantined board retains its
+// waiters on purpose while nothing can be granted.
 func arrivalBoard(queue ...Waiter) Snapshot {
 	var highest uint64
 	for _, w := range queue {
@@ -31,7 +34,7 @@ func arrivalBoard(queue ...Waiter) Snapshot {
 	}
 	return Snapshot{
 		BoardID:      "board-a",
-		Phase:        Ready,
+		Phase:        Quarantined,
 		Version:      3,
 		NextSequence: highest,
 		Queue:        queue,
