@@ -97,6 +97,13 @@ func DeclaredTimeout(root, app string) (seconds int, found bool, err error) {
 			}
 			continue
 		}
+		// The key spells the name and nothing else, so what is left to ask is
+		// whether the line assigns at all. It is asked here rather than before
+		// the spelling door so that an unread spelling is reported as the
+		// spelling it is.
+		if !shellAssignsHere(key, raw) {
+			return 0, false, fmt.Errorf("%w: %s writes HIL_TIMEOUT_S as %q, which a shell sourcing it does not assign", ErrUnreadableDeclaration, path, line)
+		}
 		if found {
 			return 0, false, errors.New("duplicate HIL_TIMEOUT_S")
 		}
