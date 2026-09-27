@@ -141,7 +141,9 @@ func scan(ctx context.Context, root string, paths []string) ([]finding, error) {
 			continue
 		}
 		for number, line := range strings.Split(lineBreaks.Replace(string(data)), "\n") {
-			if strings.Contains(line, forbidden) {
+			// Every spelling pip reads, not just the flag: the environment
+			// variable and the pip.conf key make the same decision.
+			if statesTheOverride(line) {
 				findings = append(findings, finding{path: rel, line: number + 1})
 			}
 		}
@@ -160,6 +162,9 @@ func selfTest(stdout, stderr io.Writer) bool {
 		{"hint: " + unsafe, []int{1}, "documentation hint"},
 		{"python3 -m venv .venv\n.venv/bin/pip install libclang", nil, "virtual environment install"},
 		{"python3 -m pip --version", nil, "non-mutating pip probe"},
+		{"ENV PIP" + "_BREAK_SYSTEM_" + "PACKAGES=1", []int{1}, "environment override"},
+		{"python3 -m pip config set global." + overrideKey + " true", []int{1}, "pip.conf override"},
+		{"PIP" + "_BREAK_SYSTEM_" + "PACKAGES: \"0\"", nil, "override pinned off"},
 	}
 	for _, item := range cases {
 		got := scanText(item.text)
@@ -177,7 +182,7 @@ func scanText(text string) []int {
 		"\u001c", "\n", "\u001d", "\n", "\u001e", "\n", "\u0085", "\n", "\u2028", "\n", "\u2029", "\n")
 	var lines []int
 	for number, line := range strings.Split(lineBreaks.Replace(text), "\n") {
-		if strings.Contains(line, forbidden) {
+		if statesTheOverride(line) {
 			lines = append(lines, number+1)
 		}
 	}
