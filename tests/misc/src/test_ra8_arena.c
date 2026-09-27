@@ -272,6 +272,69 @@ RA8_INTERNAL static void internal_test_high_water_reset(void)
 }
 
 /**
+ * @brief Prove the tail carve takes the whole remainder and charges its padding.
+ * @details Covers a full-arena tail, a tail after an unaligned cursor, the empty
+ *          tail rejection, and every argument rejection.
+ * @pre The suite owns the logger sink.
+ * @pre No other vector borrows the local region.
+ * @post The local arena state is discarded.
+ * @post No global state is modified.
+ * @note Host-only; the region is stack storage.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_test_carve_remaining(void)
+{
+  TEST_BEGIN("arena carve_remaining takes the tail");
+  alignas(max_align_t) uint8_t region[256];
+  ra8_arena_t a         = {};
+  void*       tail      = nullptr;
+  uint32_t    bytes     = 0U;
+  uint32_t    remaining = 1U;
+
+  /* A whole free arena hands back every byte from the base. */
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_arena_init(&a, region, (uint32_t)sizeof(region)));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_arena_carve_remaining(&a, 1U, &tail, &bytes));
+  TEST_ASSERT(tail == (void*)region);
+  TEST_ASSERT_EQ(sizeof(region), bytes);
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_arena_remaining(&a, &remaining));
+  TEST_ASSERT_EQ(0U, remaining);
+
+  /* A second call finds nothing left. */
+  TEST_ASSERT_EQ(k_ra8_err_no_mem, ra8_arena_carve_remaining(&a, 1U, &tail, &bytes));
+
+  /* The alignment pad is charged, so the reported extent is usable. */
+  void* head = nullptr;
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_arena_init(&a, region, (uint32_t)sizeof(region)));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_arena_carve(&a, 10U, 1U, &head));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_arena_carve_remaining(&a, 16U, &tail, &bytes));
+  TEST_ASSERT(tail == (void*)&region[16]);
+  TEST_ASSERT_EQ(sizeof(region) - 16U, bytes);
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_arena_remaining(&a, &remaining));
+  TEST_ASSERT_EQ(0U, remaining);
+
+  /* An aligned cursor sitting on the end is an empty tail, not a zero block. */
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_arena_init(&a, region, (uint32_t)sizeof(region)));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_arena_carve(&a, (uint32_t)sizeof(region), 1U, &head));
+  TEST_ASSERT_EQ(k_ra8_err_no_mem, ra8_arena_carve_remaining(&a, 1U, &tail, &bytes));
+
+  /* The peak records the tail, and survives a rewind. */
+  uint32_t peak = 0U;
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_arena_high_water(&a, &peak));
+  TEST_ASSERT_EQ(sizeof(region), peak);
+
+  /* Argument rejections leave the arena alone. */
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_arena_init(&a, region, (uint32_t)sizeof(region)));
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_arena_carve_remaining(nullptr, 1U, &tail, &bytes));
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_arena_carve_remaining(&a, 1U, nullptr, &bytes));
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_arena_carve_remaining(&a, 1U, &tail, nullptr));
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_arena_carve_remaining(&a, 0U, &tail, &bytes));
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_arena_carve_remaining(&a, 3U, &tail, &bytes));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_arena_remaining(&a, &remaining));
+  TEST_ASSERT_EQ(sizeof(region), remaining);
+  TEST_END("arena carve_remaining takes the tail");
+}
+
+/**
  * @brief Consume one host-test log byte without touching target ITM MMIO.
  * @details Implements the injected logger sink as an intentional no-op for expected-error vectors.
  * @param[in] context Unused sink context.
@@ -297,6 +360,7 @@ int main(void)
   internal_test_carve_all();
   internal_test_carve_all_atomic();
   internal_test_high_water_reset();
+  internal_test_carve_remaining();
   ra8_log_set_byte_sink(nullptr, nullptr);
   return 0;
 }

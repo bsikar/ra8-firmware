@@ -196,6 +196,45 @@ typedef enum : uint32_t {
 ra8_arena_carve_all(ra8_arena_t* arena, const ra8_arena_slot_t* slots, uint32_t slot_count);
 
 /**
+ * @brief Carve everything left in the arena as one aligned block.
+ *
+ * @details The companion to ::ra8_arena_carve_all for the last slot of a
+ *          composition, whose size is not a fixed requirement but "whatever
+ *          the earlier slots did not take". Expressing that by hand means
+ *          rounding the cursor up and subtracting it from the region length at
+ *          the call site, which is the arithmetic this arena exists to own.
+ *          The alignment padding is charged to the arena exactly as a normal
+ *          carve charges it, so @p out_bytes is the usable extent and not the
+ *          raw remainder.
+ *
+ * @param[in,out] arena     Initialised arena.
+ * @param[in]     align     Required alignment in bytes (a power of two, >= 1).
+ * @param[out]    out_ptr   Receives the aligned block pointer on success.
+ * @param[out]    out_bytes Receives the block length in bytes (> 0).
+ *
+ * @return ra8_err_t Error code.
+ * @retval k_ra8_ok              Block carved; `*out_ptr` and `*out_bytes` set.
+ * @retval k_ra8_err_null_ptr    `arena`, `out_ptr`, or `out_bytes` was NULL.
+ * @retval k_ra8_err_invalid_arg `align` was zero or not a power of two.
+ * @retval k_ra8_err_no_mem      Nothing is left once the cursor is aligned.
+ *
+ * @pre `arena` was populated by ::ra8_arena_init.
+ * @pre `align` is a power of two.
+ * @post On success the arena is full: ::ra8_arena_remaining reports zero.
+ * @post On any non-ok return the arena and both outputs are untouched.
+ *
+ * @note An empty tail is ::k_ra8_err_no_mem, never a zero-length block, so a
+ *       caller can never be handed a span it must not write to.
+ * @note Not thread-safe.
+ *
+ * @since 0.1.0
+ */
+[[nodiscard]] ra8_err_t ra8_arena_carve_remaining(ra8_arena_t* arena,
+                                                  uint32_t     align,
+                                                  void**       out_ptr,
+                                                  uint32_t*    out_bytes);
+
+/**
  * @brief Report the largest occupancy the arena has ever reached.
  *
  * @details Unlike ::ra8_arena_remaining this survives ::ra8_arena_reset, so a
