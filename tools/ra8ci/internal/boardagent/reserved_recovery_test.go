@@ -88,7 +88,7 @@ func hilAttemptRoot(t *testing.T) string {
 	if err := os.MkdirAll(filepath.Dir(manifest), 0o700); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(manifest, []byte("HIL_MODE=uart_scrape\nHIL_TIMEOUT_S=12\n"), 0o600); err != nil {
+	if err := os.WriteFile(manifest, []byte("HIL_MODE=uart_scrape\nHIL_TIMEOUT_S=12\nHIL_EXPECT=\"demo: verdict=PASS\"\n"), 0o600); err != nil {
 		t.Fatal(err)
 	}
 	return root
