@@ -309,6 +309,7 @@ set(MDL_CORE_SRC
     ${MDL_REPO_ROOT}/libs/ra8_net_policy/src/ra8_net_urlguard.c
     ${MDL_REPO_ROOT}/libs/ra8_xml/src/ra8_xml_writer.c
     ${MDL_CORE_SRC_DIR}/mdl_sanitize.c
+    ${MDL_REPO_ROOT}/libs/if/src/ra8_path.c
     ${MDL_CORE_SRC_DIR}/mdl_pathfs.c
     ${MDL_CORE_SRC_DIR}/mdl_robots.c
     ${MDL_CORE_SRC_DIR}/mdl_session.c
@@ -371,6 +372,7 @@ set(MDL_CORE_TEST_COMMON_SRC
     ${MDL_REPO_ROOT}/libs/ra8_net_policy/src/ra8_net_urlguard.c
     ${MDL_REPO_ROOT}/libs/ra8_xml/src/ra8_xml_writer.c
     ${MDL_CORE_SRC_DIR}/mdl_sanitize.c
+    ${MDL_REPO_ROOT}/libs/if/src/ra8_path.c
     ${MDL_CORE_SRC_DIR}/mdl_urlname.c
     ${MDL_CORE_SRC_DIR}/mdl_robots.c
     ${MDL_EXTRACT_SRC}
@@ -602,6 +604,7 @@ add_executable(
   # mdl_urlname.c names an image from the shared container sniff (#768).
   ${MDL_REPO_ROOT}/libs/ra8_imgdec/src/ra8_imgdec_sniff.c
   ${MDL_CORE_SRC_DIR}/mdl_sanitize.c
+  ${MDL_REPO_ROOT}/libs/if/src/ra8_path.c
   ${MDL_FS_SRC}
 )
 target_include_directories(
@@ -643,6 +646,7 @@ add_executable(
   # mdl_urlname.c names an image from the shared container sniff (#768).
   ${MDL_REPO_ROOT}/libs/ra8_imgdec/src/ra8_imgdec_sniff.c
   ${MDL_CORE_SRC_DIR}/mdl_sanitize.c
+  ${MDL_REPO_ROOT}/libs/if/src/ra8_path.c
   ${MDL_CORE_SRC_DIR}/mdl_pathfs.c
   ${MDL_CORE_SRC_DIR}/mdl_session.c
   ${MDL_CORE_SRC_DIR}/mdl_robots.c
@@ -691,6 +695,7 @@ add_executable(
   # mdl_urlname.c names an image from the shared container sniff (#768).
   ${MDL_REPO_ROOT}/libs/ra8_imgdec/src/ra8_imgdec_sniff.c
   ${MDL_CORE_SRC_DIR}/mdl_sanitize.c
+  ${MDL_REPO_ROOT}/libs/if/src/ra8_path.c
   ${MDL_CORE_SRC_DIR}/mdl_pathfs.c
   ${MDL_CORE_SRC_DIR}/mdl_session.c
   ${MDL_CORE_SRC_DIR}/mdl_robots.c
@@ -732,6 +737,7 @@ add_executable(
   ${MDL_CORE_SRC_DIR}/mdl_hash.c
   ${MDL_CORE_SRC_DIR}/mdl_storage.c
   ${MDL_CORE_SRC_DIR}/mdl_sanitize.c
+  ${MDL_REPO_ROOT}/libs/if/src/ra8_path.c
   ${MDL_REPO_ROOT}/libs/ra8_net_policy/src/ra8_net_urlguard.c
   ${MDL_REPO_ROOT}/libs/ra8_xml/src/ra8_xml_writer.c
   ${MDL_FS_SRC}
@@ -766,6 +772,7 @@ add_executable(
   # mdl_urlname.c names an image from the shared container sniff (#768).
   ${MDL_REPO_ROOT}/libs/ra8_imgdec/src/ra8_imgdec_sniff.c
   ${MDL_CORE_SRC_DIR}/mdl_sanitize.c
+  ${MDL_REPO_ROOT}/libs/if/src/ra8_path.c
   ${MDL_REPO_ROOT}/apps/shared_libs/mdl/tests/src/mdl_state_fs_fault.c
   ${MDL_FS_SRC}
 )
@@ -844,6 +851,7 @@ add_executable(
   # mdl_urlname.c names an image from the shared container sniff (#768).
   ${MDL_REPO_ROOT}/libs/ra8_imgdec/src/ra8_imgdec_sniff.c
   ${MDL_CORE_SRC_DIR}/mdl_sanitize.c
+  ${MDL_REPO_ROOT}/libs/if/src/ra8_path.c
   ${MDL_CORE_SRC_DIR}/mdl_politeness.c
   ${MDL_CORE_SRC_DIR}/mdl_hash.c
   ${MDL_CORE_SRC_DIR}/mdl_storage.c
