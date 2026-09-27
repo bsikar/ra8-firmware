@@ -39,6 +39,7 @@ ra8_add_app(
              ${_d}/apps/shared_libs/rabook_compile/src/ra8_rabook_raster.c
              ${_d}/apps/shared_libs/reflow/src/ra8_img_arena.c
              ${_d}/libs/ra8_imgdec/src/ra8_imgdec_scratch.c
+             ${_d}/libs/ra8_imgdec/src/ra8_imgdec_sniff.c
              ${_d}/examples/ek_ra8d2/common/network_provision/src/ra8_net_provision.c
              ${_d}/apps/shared_libs/third_party/stb/stb_image_impl.c
 )
