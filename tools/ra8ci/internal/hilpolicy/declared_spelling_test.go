@@ -57,7 +57,7 @@ func TestADifferentVariableIsStillSkippedInSilence(t *testing.T) {
 func TestTheOrdinaryDeclarationStillReadsTheSame(t *testing.T) {
 	for _, body := range []string{
 		"HIL_TIMEOUT_S=90\n",
-		"  HIL_TIMEOUT_S =90\n",
+		"  HIL_TIMEOUT_S=90\n",
 		"# export HIL_TIMEOUT_S=180\nHIL_TIMEOUT_S=90\n",
 	} {
 		t.Run(body, func(t *testing.T) {

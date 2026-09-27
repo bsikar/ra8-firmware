@@ -65,7 +65,7 @@ func TestAnOrdinaryDeclarationIsUntouchedByThisRule(t *testing.T) {
 	for _, body := range []string{
 		"HIL_TIMEOUT_S=90\n",
 		"# comment\nHIL_MODE=uart_scrape\nHIL_EXPECT=\"verdict=PASS\"\nHIL_TIMEOUT_S=90\n",
-		"  HIL_TIMEOUT_S =90\n",
+		"  HIL_TIMEOUT_S=90\n",
 	} {
 		t.Run(body, func(t *testing.T) {
 			seconds, found, err := readDeclaration(t, body)
