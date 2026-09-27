@@ -367,6 +367,79 @@ typedef struct {
                                              ra8_arena_t*            arena,
                                              ra8_imgdec_scratch_t*   out);
 
+/**
+ * @brief Ask the set whether it can open these bytes into @p pixel, and how
+ *        big the image says it is.
+ *
+ * @details
+ * The set-level form of ::ra8_imgdec_probe, and the question a consumer with a
+ * mux actually has before it reserves a destination surface: *can any of my
+ * backends show this file at the layout I want, and what size is it*. Asking
+ * it by hand means ::ra8_imgdec_sniff, then ::ra8_imgdec_mux_route, then
+ * ::ra8_imgdec_probe on whatever came back, with the error mapping written out
+ * again at every call site. Four decode paths' worth of that is the
+ * duplication #768 exists to remove, so the mux does it once.
+ *
+ * Nothing is decoded: the answer costs a signature read plus a header parse,
+ * not a decode, and no backend hook beyond its capability query is reached.
+ *
+ * @par Which member answers
+ * The routed member is the one ::ra8_imgdec_mux_decode would hand the request
+ * to: the first in priority order advertising both the sniffed container and
+ * @p pixel. A member that covers the pair but publishes a `dim_max` smaller
+ * than this image makes the probe ::k_ra8_err_not_supported; it does *not*
+ * fall through to a later member. Routing on anything but the pair would mean
+ * probe and decode disagreeing about who serves a request, and a probe whose
+ * answer does not describe the decode that follows is worse than no probe.
+ *
+ * @param[in]  mux        Mux to query.
+ * @param[in]  bytes      Leading bytes of the encoded image.
+ * @param[in]  byte_count Readable length of @p bytes.
+ * @param[in]  pixel      Destination layout the caller intends to decode into.
+ * @param[out] out_geom   Receives the container and its declared geometry.
+ * @param[out] out_member Receives the member that would serve the decode, or
+ *                        NULL when the caller only wants the geometry.
+ *
+ * @return ra8_err_t Error code.
+ * @retval k_ra8_ok                  `*out_geom` holds a container this set
+ *                                   opens into @p pixel, at a size the routed
+ *                                   member accepts.
+ * @retval k_ra8_err_null_ptr        `mux`, `bytes` or `out_geom` was NULL.
+ * @retval k_ra8_err_not_initialized The mux holds no members.
+ * @retval k_ra8_err_invalid_arg     `pixel` did not name exactly one defined
+ *                                   layout.
+ * @retval k_ra8_err_invalid_size    `byte_count` was 0, or a declared
+ *                                   dimension is 0 or over
+ *                                   ::k_ra8_imgdec_dim_max.
+ * @retval k_ra8_err_not_supported   The set cannot open these bytes into
+ *                                   @p pixel: no recognised signature, a
+ *                                   container whose geometry is not readable
+ *                                   here, no member advertising the pair, or a
+ *                                   size past the routed member's `dim_max`.
+ * @retval k_ra8_err_invalid_state   A member reported an unusable record.
+ *
+ * @pre @p bytes holds @p byte_count readable bytes.
+ * @post `*out_geom` is zeroed and `*out_member` (when given) is NULL on every
+ *       non-ok return.
+ * @post The buffer is never written and no decoder is invoked.
+ *
+ * @note A buffer carrying no recognised signature is reported
+ *       ::k_ra8_err_not_supported, the same code ::ra8_imgdec_mux_decode gives
+ *       it, so the two doors answer the same bytes the same way.
+ *
+ * @note Thread-safe (pure read of @p bytes and of immutable backend state).
+ *
+ * @see ra8_imgdec_probe()
+ * @see ra8_imgdec_mux_route()
+ * @since 0.1.0
+ */
+[[nodiscard]] ra8_err_t ra8_imgdec_mux_probe(const ra8_imgdec_mux_t* mux,
+                                             const uint8_t*          bytes,
+                                             uint32_t                byte_count,
+                                             ra8_imgdec_pixel_t      pixel,
+                                             ra8_imgdec_geom_t*      out_geom,
+                                             const ra8_imgdec_t**    out_member);
+
 #ifdef __cplusplus
 }
 #endif
