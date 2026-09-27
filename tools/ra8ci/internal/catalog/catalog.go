@@ -290,6 +290,13 @@ func ValidateReviewedTask(task Task) error {
 	if err := ValidateTask(task); err != nil {
 		return err
 	}
+	// Before the seam rules, which judge what a task DOES: this one judges
+	// whether a completed run of it could be filed at all. See
+	// a_task_history_can_file.go for why it is an admission rule and not
+	// part of the runtime re-check above.
+	if err := checkTheTaskIsOneHistoryCanFile(task); err != nil {
+		return err
+	}
 	if err := checkArgumentsReachOneStep(task); err != nil {
 		return err
 	}
