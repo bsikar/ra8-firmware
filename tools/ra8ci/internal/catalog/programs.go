@@ -142,7 +142,15 @@ func ValidateStepDispatch(step Step) error {
 		// Beside the file door, which asks whether the tool reads a path at
 		// all: this one asks how many it can read. See
 		// a_target_count_the_tool_takes.go.
-		return checkTheTargetCountIsOneTheToolTakes(step, program)
+		if err := checkTheTargetCountIsOneTheToolTakes(step, program); err != nil {
+			return err
+		}
+		// Last on the tool branch, and the only door here that judges one
+		// argv element against another rather than against the tool's
+		// parser: a flag the flag package sets twice, keeping the last and
+		// dropping a value review wrote down. See
+		// a_tool_flag_the_tool_reads_once.go.
+		return checkNoToolFlagIsNamedTwice(step, program)
 	}
 	if IsFrontDoorProgram(program) {
 		return fmt.Errorf("%w: step %q runs %q: %w, dispatch its reviewed script instead",
