@@ -335,6 +335,14 @@ func ValidateReviewedTask(task Task) error {
 	if err := checkArgumentsReachOneStep(task); err != nil {
 		return err
 	}
+	// Beside the rule above, which holds a task that takes arguments to one
+	// step: this one holds a task's steps apart from each other. Nothing
+	// else in this package compares one step to another, so a byte-identical
+	// command under a second name is admitted by every dispatch door and
+	// runs twice inside one deadline. See a_step_the_task_runs_once.go.
+	if err := checkNoStepRepeatsAnotherStepsCommand(task); err != nil {
+		return err
+	}
 	if err := checkBoundArgumentsKeepTheirMeaning(task); err != nil {
 		return err
 	}
