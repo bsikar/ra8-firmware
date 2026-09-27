@@ -200,7 +200,14 @@ func ValidateTaskDispatch(task Task) error {
 	// scope the step named: this one asks whether the reviewed and bound
 	// targets together fit what the tool reads. See
 	// a_bound_target_the_tool_can_read.go.
-	return checkBoundTargetsFitTheToolsCeiling(task)
+	if err := checkBoundTargetsFitTheToolsCeiling(task); err != nil {
+		return err
+	}
+	// The three rules above judge what binding adds to a TOOL step and each
+	// walks past a shell one. This judges what it adds to a step
+	// dispatching a script whose argument contract is stated. See
+	// a_bound_argument_the_script_parses.go.
+	return checkBoundArgumentsAreOnesTheScriptParses(task)
 }
 
 // validateDispatchArgs bounds what a reviewed step may put on argv. An empty
