@@ -231,7 +231,7 @@ func (chunk LogChunk) Validate() error {
 	if chunk.SchemaVersion != Version || !ValidID(chunk.AssignmentID) || !ValidID(chunk.AttemptID) || chunk.AssignmentVersion < 1 ||
 		chunk.FencingToken < 1 || chunk.Sequence < 1 ||
 		(chunk.Stream != "stdout" && chunk.Stream != "stderr") ||
-		chunk.StepName == "" || len(chunk.StepName) > 128 || strings.TrimSpace(chunk.StepName) != chunk.StepName || !ValidSHA256(chunk.SHA256) {
+		!validStepName(chunk.StepName) || !ValidSHA256(chunk.SHA256) {
 		return ErrInvalid
 	}
 	data, err := base64.StdEncoding.DecodeString(chunk.DataBase64)

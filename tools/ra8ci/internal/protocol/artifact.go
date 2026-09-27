@@ -222,5 +222,6 @@ func ValidateArtifactSet(manifests []ArtifactManifest) error {
 }
 
 func validStepName(name string) bool {
-	return name != "" && len(name) <= 128 && strings.TrimSpace(name) == name
+	return name != "" && len(name) <= 128 && strings.TrimSpace(name) == name &&
+		stepNameCanBeFiled(name)
 }
