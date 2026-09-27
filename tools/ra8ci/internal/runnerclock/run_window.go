@@ -37,7 +37,9 @@ func jobBeganWithinItsRun(input job, runStarted time.Time, haveRunStart bool) []
 		return nil
 	}
 	var findings []finding
-	for _, item := range input.Steps {
+	// In the runner's own order, so the one finding this rule reports names
+	// the step that ran first rather than whichever one was serialized first.
+	for _, item := range stepsInRunnerOrder(input.Steps) {
 		start, hasStart := parseTimestamp(item.StartedAt)
 		if !hasStart {
 			continue

@@ -39,6 +39,7 @@ var repoPattern = regexp.MustCompile(`^[A-Za-z0-9_.-]{1,100}/[A-Za-z0-9_.-]{1,10
 
 type step struct {
 	Name        string `json:"name"`
+	Number      int    `json:"number"`
 	StartedAt   string `json:"started_at"`
 	CompletedAt string `json:"completed_at"`
 }
@@ -290,7 +291,9 @@ func scanJob(input job) []finding {
 	var previousEnd time.Time
 	var previousName string
 	havePreviousEnd := false
-	for _, item := range input.Steps {
+	// The runner's own numbering, not the order the objects arrived in: every
+	// finding below is a statement about one step and the step BEFORE it.
+	for _, item := range stepsInRunnerOrder(input.Steps) {
 		start, hasStart := parseTimestamp(item.StartedAt)
 		end, hasEnd := parseTimestamp(item.CompletedAt)
 		name := item.Name
