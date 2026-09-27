@@ -114,7 +114,15 @@ func DeclaredTimeout(root, app string) (seconds int, found bool, err error) {
 		if found {
 			return 0, false, errors.New("duplicate HIL_TIMEOUT_S")
 		}
-		value, convErr := strconv.Atoi(strings.TrimSpace(raw))
+		// The "=" assigns, so what is left is what it assigns. That is one
+		// shell word rather than the rest of the line, and it is asked here,
+		// after the assignment door, because a line that assigns nothing has
+		// no value to resolve; see value_the_shell_assigns.go.
+		assigned, readable := valueTheShellAssigns(raw)
+		if !readable {
+			return 0, false, fmt.Errorf("%w: %s writes HIL_TIMEOUT_S as %q, which this reader cannot resolve without evaluating shell syntax", ErrUnreadableDeclaration, path, line)
+		}
+		value, convErr := strconv.Atoi(assigned)
 		if convErr != nil || value < 1 || value > MaximumSeconds {
 			return 0, false, fmt.Errorf("invalid HIL_TIMEOUT_S in %s", path)
 		}
