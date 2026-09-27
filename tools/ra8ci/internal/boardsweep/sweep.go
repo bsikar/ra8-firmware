@@ -41,14 +41,22 @@ type Boards interface {
 
 // Report is what one pass actually did.
 //
+// Found counts boards, not page rows: one board can hold two live lease rows
+// at once, and the three outcomes below account for Found exactly.
+//
 // Overtaken is not a failure and is counted apart from it: it means the board
 // moved between the read and the tick, and whatever moved it ran the same
 // expiry first, so the lease is reclaimed either way.
+//
+// Duplicated is the rows the page named a second time for a board already in
+// it. It is not an outcome, because no board was acted on for it; it is here
+// so the difference between the rows read and the boards swept stays visible.
 type Report struct {
-	Found     int
-	Reclaimed int
-	Overtaken int
-	Failed    int
+	Found      int
+	Reclaimed  int
+	Overtaken  int
+	Failed     int
+	Duplicated int
 }
 
 // Notable says whether this pass is worth telling anyone about. A bench where
@@ -56,16 +64,21 @@ type Report struct {
 // second apart from the last one, so a quiet pass stays quiet: printing one
 // line every fifteen seconds forever would bury the passes that did something.
 func (r Report) Notable() bool {
-	return r.Found > 0 || r.Reclaimed > 0 || r.Overtaken > 0 || r.Failed > 0
+	return r.Found > 0 || r.Reclaimed > 0 || r.Overtaken > 0 || r.Failed > 0 ||
+		r.Duplicated > 0
 }
 
 // String is the one line a person reads. It names what the pass found and
 // what became of it, including the boards it left alone, because a pass that
 // found ten expired leases and reclaimed none is a different thing from a
 // pass that found none at all and must not be readable as the same.
+//
+// The duplicate count is on the line for the same reason: a bench where every
+// stuck board also has a queued waiter past its deadline reads as twice the
+// rows, and the number that differs is the one that explains it.
 func (r Report) String() string {
-	return fmt.Sprintf("board sweep: found %d expired lease(s), reclaimed %d, already reclaimed %d, failed %d",
-		r.Found, r.Reclaimed, r.Overtaken, r.Failed)
+	return fmt.Sprintf("board sweep: found %d expired lease(s), reclaimed %d, already reclaimed %d, failed %d, duplicate row(s) %d",
+		r.Found, r.Reclaimed, r.Overtaken, r.Failed, r.Duplicated)
 }
 
 // Sweeper reclaims expired board leases one pass at a time. It owns no timer:
@@ -105,11 +118,16 @@ func (s *Sweeper) Pass(ctx context.Context, now time.Time) (Report, error) {
 	if ctx == nil || now.IsZero() {
 		return Report{}, fmt.Errorf("%w: board sweep needs a context and a clock", store.ErrInvalid)
 	}
-	expired, err := s.boards.ExpiredBoardLeases(ctx, now, s.batch)
+	page, err := s.boards.ExpiredBoardLeases(ctx, now, s.batch)
 	if err != nil {
 		return Report{}, fmt.Errorf("read expired board leases: %w", err)
 	}
-	report := Report{Found: len(expired)}
+	// One board can be in the page twice, so the boards are settled before
+	// the first tick: ticking the same board again under the version the
+	// page was read at costs a board lock to earn a conflict, and lands in
+	// the report as a second stuck board that was never there.
+	expired, duplicates := oneRowPerBoard(page)
+	report := Report{Found: len(expired), Duplicated: duplicates}
 	var failures []error
 	for _, lease := range expired {
 		if err := ctx.Err(); err != nil {
