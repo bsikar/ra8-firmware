@@ -36,7 +36,7 @@ typedef enum : uint16_t {
  * @since 0.1.0
  */
 typedef struct {
-  long        status;        /**< HTTP response status.             */
+  int32_t     status;        /**< HTTP response status.             */
   const char* body;          /**< Body returned for a 2xx response. */
   const char* etag;          /**< Response ETag, or NULL.           */
   const char* last_modified; /**< Last-Modified, or NULL.           */
@@ -149,7 +149,7 @@ RA8_INTERNAL static ra8_err_t internal_script_fetch(void*                context
   if (step->error != k_ra8_ok) {
     return step->error;
   }
-  if ((step->status >= 200L) && (step->status <= 299L)) {
+  if ((step->status >= 200) && (step->status <= 299)) {
     const char*  body  = (step->body != nullptr) ? step->body : "";
     const size_t bytes = strlen(body);
     if ((bytes == 0U) || ((bytes + 1U) > capacity)) {
