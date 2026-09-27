@@ -182,8 +182,8 @@ func (c *Client) Get(ctx context.Context, id string) (store.Run, error) {
 	if err := c.do(ctx, http.MethodGet, "/v1/runs/"+url.PathEscape(id), "", nil, &result); err != nil {
 		return store.Run{}, err
 	}
-	if result.ID != id || !store.ValidID(result.ID) || result.State == "" {
-		return store.Run{}, errors.New("run status response does not match requested ID")
+	if err := checkAnsweredRun(result, id); err != nil {
+		return store.Run{}, err
 	}
 	return result, nil
 }
@@ -229,9 +229,15 @@ func (c *Client) Cancel(ctx context.Context, id string) (store.Run, error) {
 	if err := c.do(ctx, http.MethodPost, "/v1/runs/"+url.PathEscape(id)+"/cancel", "", nil, &result); err != nil {
 		return store.Run{}, err
 	}
-	if result.ID != id || !store.ValidID(result.ID) || result.State == "" ||
-		(result.CancelRequestedAt == nil && result.State != "terminal") {
-		return store.Run{}, errors.New("run cancellation response does not match requested run")
+	// The identity and the state vocabulary are the same question both read
+	// doors ask, so they are asked in one place. What stays here is the part
+	// only cancellation cares about: an answer with no cancellation stamp is
+	// honest only about a run the plane had already closed.
+	if err := checkAnsweredRun(result, id); err != nil {
+		return store.Run{}, err
+	}
+	if result.CancelRequestedAt == nil && result.State != "terminal" {
+		return store.Run{}, errors.New("run cancellation response states no cancellation and no closed run")
 	}
 	return result, nil
 }
