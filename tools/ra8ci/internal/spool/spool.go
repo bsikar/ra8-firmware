@@ -233,6 +233,13 @@ func (s *Spool) Finish(entry Entry, result executor.Result, runErr error) (Entry
 	if err := checkTheResultNamesTheFrozenTask(entry, result); err != nil {
 		return Entry{}, err
 	}
+	// And beside it: the attempt states one number about how long it took,
+	// nothing on this host re-derives it, and a duration longer than the
+	// window it was measured in is a contradiction. See
+	// a_duration_a_run_measured.go.
+	if err := checkTheDurationWasMeasured(result); err != nil {
+		return Entry{}, err
+	}
 	if err := checkStampsAreInOrder(entry); err != nil {
 		return Entry{}, err
 	}
