@@ -224,9 +224,13 @@ macro(_ra8_app_collect_sources)
     )
   elseif("rabook_compile" IN_LIST _RA8_APP_LIBS)
     set(_ra8_stb_img_impl ${RA8_REPO_ROOT}/apps/shared_libs/third_party/stb/stb_image_impl.c)
+    # ra8_rabook_raster.c routes its WebP-or-stb decision through the shared
+    # container sniff (#768), the same way reflow_image.c does above, so the
+    # sniff TU travels with the rabook_compile sources wherever they go.
     list(APPEND _ra8_lib_extra ${_ra8_stb_img_impl}
          ${RA8_REPO_ROOT}/apps/shared_libs/reflow/src/ra8_img_arena.c
          ${RA8_REPO_ROOT}/libs/ra8_imgdec/src/ra8_imgdec_scratch.c
+         ${RA8_REPO_ROOT}/libs/ra8_imgdec/src/ra8_imgdec_sniff.c
     )
     list(
       APPEND
