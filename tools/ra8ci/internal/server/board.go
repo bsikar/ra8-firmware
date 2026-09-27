@@ -407,9 +407,16 @@ func (h *boardHTTP) agentObserve(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var req observeRequest
-	if decodeBoardJSON(w, r, &req) {
-		h.apply(w, r, actor, board.ObserveAgentGeneration{HighWater: req.HighWater}, req.ExpectedVersion, nil)
+	if !decodeBoardJSON(w, r, &req) {
+		return
 	}
+	// A report that names no mark is not a report, and the state machine
+	// reads the unwritten value as grounds to quarantine the board.
+	if !observedHighWaterIsStated(req.HighWater) {
+		problem(w, http.StatusBadRequest, "invalid_argument", "observation states no agent high-water", false)
+		return
+	}
+	h.apply(w, r, actor, board.ObserveAgentGeneration{HighWater: req.HighWater}, req.ExpectedVersion, nil)
 }
 
 type reasonRequest struct {
