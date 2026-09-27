@@ -99,6 +99,11 @@ func HTTPBackendEnvironment(config HTTPBackendConfig) ([]string, error) {
 	if _, err := mtls.ServerAuthorities(caPEM, time.Now()); err != nil {
 		return nil, fmt.Errorf("Terraform server CA bundle cannot authenticate the state server: %w", err)
 	}
+	// Beside the identity rules above, and after the bundle is known to be
+	// usable today: this asks the same question about the end of the command.
+	if err := checkServerTrustCoversOperation(caPEM, config.OperationTimeout, time.Now()); err != nil {
+		return nil, err
+	}
 
 	return []string{
 		"TF_HTTP_ADDRESS=" + stateURL,
