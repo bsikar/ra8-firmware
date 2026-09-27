@@ -17,6 +17,7 @@
 
 #include "mdl_sanitize.h"
 #include "ra8_attributes.h"
+#include "ra8_imgdec.h"
 
 /** @brief On-stack buffers and parse radix for the URL-name helpers. */
 typedef enum : uint16_t {
@@ -37,21 +38,38 @@ typedef enum : uint32_t {
 /** @brief Initial decimal place multiplier for a fractional chapter. */
 static const double s_chapter_fraction_step = 0.1;
 
-/** @brief Signature byte offsets not already exempted by the numeric policy. */
-typedef enum : uint8_t {
-  k_webp_sig_bytes = 12U, /**< RIFF header plus WEBP form type. */
-  k_webp_e_offset  = 9U,  /**< 'E' in the WEBP form type.       */
-  k_webp_b_offset  = 10U, /**< 'B' in the WEBP form type.       */
-  k_webp_p_offset  = 11U, /**< 'P' in the WEBP form type.       */
-  k_gif_a_offset   = 5U,  /**< 'a' trailer in GIF87a/GIF89a.    */
-} mdl_image_signature_offset_t;
+/**
+ * @brief The prefix this module reads must cover the shared sniff's window.
+ *
+ * @details ::mdl_urlname_sniff_file fills a ::k_urlname_magic_bytes buffer and
+ * hands it to ::ra8_imgdec_sniff, which reads up to
+ * ::k_ra8_imgdec_sniff_bytes. Were the buffer the smaller of the two a WebP
+ * would arrive one byte short of its form type and be named as nothing.
+ */
+static_assert((uint32_t)k_urlname_magic_bytes >= (uint32_t)k_ra8_imgdec_sniff_bytes,
+              "magic prefix must cover the shared sniff window");
 
-/** @brief Non-ASCII fixed bytes used by the JPEG and PNG signatures. */
-typedef enum : uint8_t {
-  k_jpeg_marker_byte = 0xFFU, /**< JPEG marker prefix.         */
-  k_jpeg_soi_byte    = 0xD8U, /**< JPEG Start Of Image marker. */
-  k_png_lead_byte    = 0x89U, /**< PNG signature lead byte.    */
-} mdl_image_signature_byte_t;
+/** @brief One recognised container and the names this module publishes for it. */
+typedef struct {
+  ra8_imgdec_format_t format; /**< Container the shared sniff reported. */
+  const char*         ext;    /**< Canonical extension, without a dot.  */
+  const char*         mime;   /**< Canonical MIME type.                 */
+} mdl_image_type_name_t;
+
+/**
+ * @brief Names for every container the shared sniff can report.
+ *
+ * @details ::k_ra8_imgdec_format_tga is deliberately absent. TGA has no
+ * signature at all, so ::ra8_imgdec_sniff never reports it and a row here
+ * would be unreachable.
+ */
+static const mdl_image_type_name_t s_image_type_names[] = {
+    {k_ra8_imgdec_format_jpeg, "jpg", "image/jpeg"},
+    {k_ra8_imgdec_format_png, "png", "image/png"},
+    {k_ra8_imgdec_format_webp, "webp", "image/webp"},
+    {k_ra8_imgdec_format_gif, "gif", "image/gif"},
+    {k_ra8_imgdec_format_bmp, "bmp", "image/bmp"},
+};
 
 /**
  * @brief End offset of a URL's path, before any `?query`/`#fragment`.
@@ -377,8 +395,11 @@ void mdl_urlname_ext(const char* url, char* out, size_t cap)
 
 /**
  * @brief Classify a supported image from its leading magic bytes.
- * @details Checks bounded JPEG, PNG, GIF, WebP, and AVIF signatures in a fixed
- *          order and returns immutable canonical extension and MIME strings.
+ * @details Forwards to ::ra8_imgdec_sniff, the tree's one container signature
+ *          test (#768), then names the container it reported. This module used
+ *          to carry the widest of the four private copies of that test, and a
+ *          buffer could therefore be a WebP here and not an image to the
+ *          decode path that was handed the same bytes.
  * @param[in] buf Readable response prefix.
  * @param[in] buf_len Number of readable bytes at @p buf.
  * @param[out] ext Receives a borrowed canonical extension pointer.
@@ -390,45 +411,24 @@ void mdl_urlname_ext(const char* url, char* out, size_t cap)
  * @pre @p buf is non-NULL when @p buf_len is nonzero.
  * @post Success initializes both outputs to process-lifetime constants.
  * @post Input bytes and caller ownership remain unchanged.
- * @note Partial signatures are rejected rather than guessed.
+ * @note Partial signatures are rejected rather than guessed, and the shared
+ *       sniff holds that line for PNG where this module did not.
  * @since 0.1.0
  */
 RA8_INTERNAL static bool
 internal_sniff_magic_image(const void* buf, size_t buf_len, const char** ext, const char** mime)
 {
-  if ((buf == nullptr) || (buf_len < 2U)) {
+  const size_t   capped = (buf_len > (size_t)UINT32_MAX) ? (size_t)UINT32_MAX : buf_len;
+  ra8_imgdec_format_t format = k_ra8_imgdec_format_none;
+  if (ra8_imgdec_sniff((const uint8_t*)buf, (uint32_t)capped, &format) != k_ra8_ok) {
     return false;
   }
-  const uint8_t* b = (const uint8_t*)buf;
-  if ((buf_len >= 3U) && (b[0] == (uint8_t)k_jpeg_marker_byte) &&
-      (b[1] == (uint8_t)k_jpeg_soi_byte) && (b[2] == (uint8_t)k_jpeg_marker_byte)) {
-    *ext  = "jpg";
-    *mime = "image/jpeg";
-    return true;
-  }
-  if ((b[0] == (uint8_t)'B') && (b[1] == (uint8_t)'M')) {
-    *ext  = "bmp";
-    *mime = "image/bmp";
-    return true;
-  }
-  if ((buf_len >= 4U) && (b[0] == (uint8_t)k_png_lead_byte) && (b[1] == (uint8_t)'P') &&
-      (b[2] == (uint8_t)'N') && (b[3] == (uint8_t)'G')) {
-    *ext  = "png";
-    *mime = "image/png";
-    return true;
-  }
-  if ((buf_len >= (size_t)k_webp_sig_bytes) && (b[0] == 'R') && (b[1] == 'I') && (b[2] == 'F') &&
-      (b[3] == 'F') && (b[8] == 'W') && (b[k_webp_e_offset] == 'E') &&
-      (b[k_webp_b_offset] == 'B') && (b[k_webp_p_offset] == 'P')) {
-    *ext  = "webp";
-    *mime = "image/webp";
-    return true;
-  }
-  if ((buf_len >= 6U) && (b[0] == 'G') && (b[1] == 'I') && (b[2] == 'F') && (b[3] == '8') &&
-      ((b[4] == '7') || (b[4] == '9')) && (b[k_gif_a_offset] == 'a')) {
-    *ext  = "gif";
-    *mime = "image/gif";
-    return true;
+  for (size_t i = 0U; i < (sizeof(s_image_type_names) / sizeof(s_image_type_names[0])); ++i) {
+    if (s_image_type_names[i].format == format) {
+      *ext  = s_image_type_names[i].ext;
+      *mime = s_image_type_names[i].mime;
+      return true;
+    }
   }
   return false;
 }
