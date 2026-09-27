@@ -171,11 +171,14 @@ typedef struct c6_join_lease {
  * @brief Bring the IP layer up over the associated C6 link and prove traffic.
  *
  * @details
- * Binds ::nx_ether_driver_c6 to @p link, hands it the station MAC, creates the
- * NetX Duo packet pool and IP instance, enables ARP / UDP / ICMP, runs the DHCP
- * client to a bound lease, then pings the gateway. It performs no ``ra8_c6link``
- * calls itself after ``nx_ip_create`` -- from that point the driver's RX worker
- * owns the wire -- so the caller must not poll the link directly once this runs.
+ * Configures ::ra8_ipif_wifi_bind with this application's buffers and waits and
+ * calls it: the driver bind, the MAC stamp, the packet pool and IP instance,
+ * ARP / UDP / ICMP, and the DHCP client run to a bound lease all happen inside
+ * the shared bring-up. The gateway ping afterwards is this application's own,
+ * and runs against the ``NX_IP`` the facade publishes. It performs no
+ * ``ra8_c6link`` calls itself after ``nx_ip_create`` -- from that point the
+ * driver's RX worker owns the wire -- so the caller must not poll the link
+ * directly once this runs.
  *
  * @param[in]  link Open, associated C6 link handle; must be non-null.
  * @param[in]  mac  Station MAC read with ``ra8_c6link_wifi_mac``; must be non-null.
@@ -184,6 +187,8 @@ typedef struct c6_join_lease {
  * @return ra8_err_t Error code.
  * @retval k_ra8_ok A lease was obtained; @p out->ping_ok reports reachability.
  * @retval k_ra8_err_null_ptr @p link, @p mac or @p out was null.
+ * @retval k_ra8_err_invalid_arg The configured driver is not the C6 driver.
+ * @retval k_ra8_err_invalid_size A buffer or packet payload was refused.
  * @retval k_ra8_err_not_initialized A NetX object could not be created.
  * @retval k_ra8_err_timeout No DHCP lease arrived within the budget.
  *
@@ -201,7 +206,7 @@ typedef struct c6_join_lease {
  * (void)c6_join_net_up(&s_link, &mac, &lease);
  * @endcode
  *
- * @see nx_ether_driver_c6
+ * @see ra8_ipif_wifi_bind
  * @since 0.1.0
  */
 ra8_err_t c6_join_net_up(ra8_c6link_t* link, const ra8_c6link_mac_t* mac, c6_join_lease_t* out);
