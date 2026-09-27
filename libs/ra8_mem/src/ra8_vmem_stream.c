@@ -12,6 +12,11 @@
  * is pinned at any instant, so the resident set is the caller's fixed `ra8_vmem`
  * pool plus O(1) -- never the object size.
  *
+ * A frame that will not page in leaves the span short. `ra8_vmem_stream_read_checked`
+ * returns the cache's error with the bytes copied so far, so the caller can tell that
+ * apart from the object simply ending; `ra8_vmem_stream_read` is the binding for
+ * callback seams that can only carry a count, and drops the reason (#764).
+ *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
  */
@@ -48,31 +53,32 @@ ra8_vmem_stream_init(ra8_vmem_stream_t* st, ra8_vmem_t* vm, uint32_t object_id, 
   return k_ra8_ok;
 }
 
-size_t ra8_vmem_stream_read(void* ctx, uint64_t offset, void* buf, size_t len)
+ra8_err_t ra8_vmem_stream_read_checked(ra8_vmem_stream_t* st,
+                                       uint64_t           offset,
+                                       void*              buf,
+                                       uint32_t           len,
+                                       uint32_t*          out_read)
 {
-  ra8_vmem_stream_t* st = (ra8_vmem_stream_t*)ctx;
-  if (st == nullptr) {
-    return 0U;
-  }
-  if (buf == nullptr) {
-    return 0U;
-  }
+  RA8_CHECK_NULL_PTR(out_read, s_tag, "out_read must not be nullptr");
+  *out_read = 0U;
+  RA8_CHECK_NULL_PTR(st, s_tag, "st must not be nullptr");
+  RA8_CHECK_NULL_PTR(buf, s_tag, "buf must not be nullptr");
   if (st->frame_bytes == 0U) {
-    return 0U;
+    return k_ra8_err_invalid_state;
   }
   if (len == 0U) {
-    return 0U;
+    return k_ra8_err_invalid_size;
   }
   if (offset >= st->size) {
-    return 0U;
+    return k_ra8_ok; /* Clean end of file: nothing copied, nothing failed. */
   }
 
   const uint64_t avail = st->size - offset;
-  const size_t   want  = ((uint64_t)len > avail) ? (size_t)avail : len;
+  const uint32_t want  = ((uint64_t)len > avail) ? (uint32_t)avail : len;
 
   uint8_t* const out  = (uint8_t*)buf;
   const uint32_t fb   = st->frame_bytes;
-  size_t         done = 0U;
+  uint32_t       done = 0U;
   uint64_t       cur  = offset;
 
   /* Bounded loop (NASA P10 Rule 2): every pass copies `chunk >= 1` bytes and
@@ -82,19 +88,37 @@ size_t ra8_vmem_stream_read(void* ctx, uint64_t offset, void* buf, size_t len)
     const uint64_t frame_base = cur - (cur % (uint64_t)fb);
     const uint32_t in_frame   = (uint32_t)(cur - frame_base);
     const uint32_t frame_room = fb - in_frame;
-    const size_t   remaining  = want - done;
-    const size_t   chunk      = (remaining < (size_t)frame_room) ? remaining : (size_t)frame_room;
+    const uint32_t remaining  = want - done;
+    const uint32_t chunk      = (remaining < frame_room) ? remaining : frame_room;
 
-    void* page = nullptr;
-    if (ra8_vmem_get(st->vm, st->object_id, frame_base, &page) != k_ra8_ok) {
-      break;
+    void*           page = nullptr;
+    const ra8_err_t got  = ra8_vmem_get(st->vm, st->object_id, frame_base, &page);
+    if (got != k_ra8_ok) {
+      *out_read = done;
+      return got;
     }
     (void)memcpy(out + done, (const uint8_t*)page + in_frame, chunk);
-    if (ra8_vmem_put(st->vm, page) != k_ra8_ok) {
-      break; /* GCOVR_EXCL_LINE -- put fails only on a foreign page; pin came from the get above */
+    const ra8_err_t put = ra8_vmem_put(st->vm, page);
+    if (put != k_ra8_ok) {
+      *out_read = done; /* GCOVR_EXCL_LINE -- put fails only on a foreign page */
+      return put;       /* GCOVR_EXCL_LINE -- the pin came from the get above  */
     }
     done += chunk;
     cur += chunk;
   }
-  return done;
+
+  *out_read = done;
+  return k_ra8_ok;
+}
+
+size_t ra8_vmem_stream_read(void* ctx, uint64_t offset, void* buf, size_t len)
+{
+  if (len > (size_t)UINT32_MAX) {
+    return 0U;
+  }
+  uint32_t read = 0U;
+  /* The reason the read stopped is exactly what this signature cannot carry, so
+   * the error is discarded here and nowhere else. `read` is set on every path. */
+  (void)ra8_vmem_stream_read_checked((ra8_vmem_stream_t*)ctx, offset, buf, (uint32_t)len, &read);
+  return (size_t)read;
 }
