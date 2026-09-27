@@ -65,6 +65,6 @@ if "$tool" convert --format jof --in "$tmp/oversize.png" --out "$tmp/oversize.jo
 fi
 printf 'preserve-oversize' >"$tmp/oversize.expected"
 cmp "$tmp/oversize.expected" "$tmp/oversize.jof"
-grep -E '^ra8_fmt: JOF convert workspace too small: required [0-9]+ supplied 8388608 \(work [0-9]+, webp 0\)$' "$tmp/oversize.stderr" >/dev/null
+grep -E '^ra8_fmt: JOF convert workspace too small: supplied 8388608 \(work [0-9]+, webp 0\)$' "$tmp/oversize.stderr" >/dev/null
 
 test -z "$(find "$tmp" -maxdepth 1 -name '.*.ra8tmp.*' -print -quit)"
