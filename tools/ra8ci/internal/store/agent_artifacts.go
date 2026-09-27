@@ -235,6 +235,12 @@ func (s *Store) CloseAgentArtifact(ctx context.Context, certDER []byte, manifest
 	if err := agentEvidenceWindow(ctx, tx, attempt); err != nil {
 		return "", err
 	}
+	// The window above judges when the upload arrived, against the plane's
+	// clock. This one judges when the guest says it captured the bytes,
+	// against the attempt the grant issued.
+	if err := checkCaptureStampSitsInTheAttempt(manifest, attempt); err != nil {
+		return "", err
+	}
 	artifact, err := lockHeldArtifact(ctx, tx, manifest.AttemptID, manifest.Path)
 	if err != nil {
 		return "", err
