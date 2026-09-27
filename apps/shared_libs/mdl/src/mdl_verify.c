@@ -29,28 +29,7 @@ typedef struct {
 RA8_PRIV void*
 priv_mdl_verify_workspace_take(mdl_export_workspace_t* workspace, size_t bytes, size_t alignment)
 {
-  if ((bytes == 0U) || (alignment == 0U) || ((alignment & (alignment - 1U)) != 0U)) {
-    return nullptr;
-  }
-  const size_t mask = alignment - 1U;
-  uintptr_t    base = 0U;
-  static_assert(sizeof(base) >= sizeof(workspace->data), "uintptr_t must preserve object pointers");
-  (void)memcpy((void*)&base, (const void*)&workspace->data, sizeof(workspace->data));
-  if ((workspace->used > (size_t)(UINTPTR_MAX - base)) ||
-      ((base + (uintptr_t)workspace->used) > (UINTPTR_MAX - (uintptr_t)mask))) {
-    return nullptr;
-  }
-  const uintptr_t cursor  = base + (uintptr_t)workspace->used;
-  const uintptr_t aligned = (cursor + (uintptr_t)mask) & ~(uintptr_t)mask;
-  const size_t    start   = (size_t)(aligned - base);
-  if ((start > workspace->cap) || (bytes > (workspace->cap - start))) {
-    return nullptr;
-  }
-  workspace->used = start + bytes;
-  if (workspace->used > workspace->high_water) {
-    workspace->high_water = workspace->used;
-  }
-  return &workspace->data[start];
+  return mdl_export_workspace_take(workspace, bytes, alignment);
 }
 
 /**
