@@ -60,6 +60,12 @@ RA8_PRIV [[nodiscard]] ra8_err_t priv_viewer_output_tile(ra8_io_stream_t* output
                                                          uint32_t         height,
                                                          const char*      path);
 
+/** @brief Write the container a page was found to hold (#748). */
+RA8_PRIV [[nodiscard]] ra8_err_t priv_viewer_output_container(ra8_io_stream_t* output,
+                                                              uint32_t         page,
+                                                              const char*      ext,
+                                                              const char*      mime);
+
 /** @brief Write one fixed diagnostic without a terminating byte. */
 RA8_PRIV [[nodiscard]] ra8_err_t priv_viewer_output_text(ra8_io_stream_t* output, const char* text);
 
