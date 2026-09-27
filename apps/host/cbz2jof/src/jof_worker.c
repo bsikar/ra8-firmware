@@ -25,6 +25,7 @@
 
 #include "jof_produce.h"
 #include "ra8_attributes.h"
+#include "ra8_imgdec.h"
 
 /** @brief Named resource limits for the worker. */
 typedef enum : uint64_t {
@@ -32,20 +33,6 @@ typedef enum : uint64_t {
   k_worker_tile_h    = 256U,                 /**< Band-tile height cap, pixels.  */
   k_worker_out_mode  = 0644U,                /**< File mode: rw-r--r--.          */
 } worker_limit_t;
-
-/** @brief WebP container-head offsets for the whole-frame-arena decision. */
-typedef enum : uint8_t {
-  k_worker_webp_riff_ofs = 0U,  /**< Offset of the "RIFF" fourCC.     */
-  k_worker_webp_form_ofs = 8U,  /**< Offset of the "WEBP" fourCC.     */
-  k_worker_webp_head_len = 12U, /**< Bytes needed to sniff both tags. */
-  k_worker_webp_tag_len  = 4U,  /**< Length of one fourCC tag.        */
-} worker_webp_t;
-
-/** @brief WebP RIFF container tag (source head bytes 0..3). */
-static const uint8_t s_worker_riff[k_worker_webp_tag_len] = {'R', 'I', 'F', 'F'};
-
-/** @brief WebP form-type fourCC (source head bytes 8..11). */
-static const uint8_t s_worker_webp[k_worker_webp_tag_len] = {'W', 'E', 'B', 'P'};
 
 /** @brief Pull cursor over the in-RAM encoded source. */
 typedef struct {
@@ -171,9 +158,13 @@ static ra8_err_t worker_pull(void* ctx, uint8_t* buf, size_t cap, size_t* got)
 
 /**
  * @brief Test whether source bytes carry the WebP RIFF container head.
- * @details Mirrors the producer's own dispatch sniff: both fourCCs must match,
- *          so a non-WebP RIFF (WAVE, AVI) is not mistaken for WebP and charged
- *          the whole-frame arena.
+ * @details Forwards to the shared container sniff (#768) rather than carrying
+ *          a private copy of the two fourCC tables. The sniff requires both
+ *          the "RIFF" container tag and the "WEBP" form tag, so a non-WebP
+ *          RIFF (WAVE, AVI) is not mistaken for WebP and charged the
+ *          whole-frame arena. Every refusal the sniff can report, including a
+ *          buffer too short to carry a signature, folds to false here, which
+ *          keeps the predicate total for the caller.
  * @param[in] data Source bytes.
  * @param[in] len  Readable byte count at `data`.
  * @return Whether `data` begins with a WebP container head.
@@ -188,11 +179,14 @@ static ra8_err_t worker_pull(void* ctx, uint8_t* buf, size_t cap, size_t* got)
  */
 static bool worker_is_webp(const uint8_t* data, size_t len)
 {
-  if (len < (size_t)k_worker_webp_head_len) {
+  if (len > (size_t)UINT32_MAX) {
+    len = (size_t)UINT32_MAX;
+  }
+  ra8_imgdec_format_t format = k_ra8_imgdec_format_none;
+  if (ra8_imgdec_sniff(data, (uint32_t)len, &format) != k_ra8_ok) {
     return false;
   }
-  return (memcmp(&data[k_worker_webp_riff_ofs], s_worker_riff, sizeof(s_worker_riff)) == 0) &&
-         (memcmp(&data[k_worker_webp_form_ofs], s_worker_webp, sizeof(s_worker_webp)) == 0);
+  return format == k_ra8_imgdec_format_webp;
 }
 
 /**
