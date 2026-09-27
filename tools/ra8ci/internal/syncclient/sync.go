@@ -68,6 +68,13 @@ func SyncPending(ctx context.Context, outbox *spool.Spool, baseURL string, clien
 		if err := checkUploadedResultNamesItsTask(entry); err != nil {
 			return report, fmt.Errorf("local %s: %w", entry.ID, err)
 		}
+		// Beside the three doors above rather than after the marshal: the
+		// codes are stated by the record, need neither the bytes nor a
+		// catalog to judge, and the server refuses them with the same opaque
+		// 400 that ends the sweep.
+		if err := checkUploadedExitsAreOnesARunnerCouldReport(entry); err != nil {
+			return report, fmt.Errorf("local %s: %w", entry.ID, err)
+		}
 		body, err := json.Marshal(entry)
 		if err != nil {
 			return report, err
