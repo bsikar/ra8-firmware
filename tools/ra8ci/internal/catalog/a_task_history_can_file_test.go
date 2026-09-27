@@ -16,7 +16,7 @@ func filableTask() Task {
 		Name: "selftest", Version: 1, Tier: "optional", Scope: "safe-local-read-only",
 		OS: []string{"linux"}, DeadlineSeconds: 300, BoardPolicy: "none",
 		Steps: []Step{{Name: "selftest-run", Program: DispatchShell,
-			Args: []string{"scripts/checks/selftest" + ScriptPathSuffix}}},
+			Args: []string{"scripts/checks/format_tree" + ScriptPathSuffix}}},
 		Retry: RetryPolicy{MaxAttempts: 1},
 	}
 }
@@ -26,7 +26,7 @@ func namedStepsFor(count int) []Step {
 	for i := 0; i < count; i++ {
 		steps = append(steps, Step{
 			Name: "step-" + stepOrdinalName(i), Program: DispatchShell,
-			Args: []string{"scripts/checks/selftest" + ScriptPathSuffix},
+			Args: []string{"scripts/checks/format_tree" + ScriptPathSuffix},
 		})
 	}
 	return steps

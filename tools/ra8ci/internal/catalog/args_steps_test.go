@@ -17,14 +17,14 @@ func argumentStepsTask() Task {
 		Name: "rewrite", Version: 1, Tier: "optional", Scope: "safe-local-write-working-tree",
 		OS: []string{"linux"}, DeadlineSeconds: 300, BoardPolicy: "none",
 		Steps: []Step{{Name: "rewrite-path", Program: DispatchShell,
-			Args: []string{"scripts/checks/rewrite" + ScriptPathSuffix}}},
+			Args: []string{"scripts/checks/format_tree" + ScriptPathSuffix}}},
 		Retry: RetryPolicy{MaxAttempts: 1},
 	}
 }
 
 func secondStep() Step {
 	return Step{Name: "selftest", Program: DispatchShell,
-		Args: []string{"scripts/checks/selftest" + ScriptPathSuffix}}
+		Args: []string{"scripts/checks/format_tree" + ScriptPathSuffix}}
 }
 
 func TestATaskWithOneStepMayDeclareArguments(t *testing.T) {

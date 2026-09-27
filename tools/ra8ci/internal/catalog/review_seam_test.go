@@ -47,7 +47,7 @@ func TestValidateReviewedTaskReportsBehaviorRefusalsFirst(t *testing.T) {
 
 func TestValidateReviewedTaskAdmitsAReviewedDefinition(t *testing.T) {
 	task := reviewSeamTask()
-	task.Steps = []Step{{Name: "observe", Program: DispatchShell, Args: []string{"scripts/checks/observe" + ScriptPathSuffix}}}
+	task.Steps = []Step{{Name: "observe", Program: DispatchShell, Args: []string{"scripts/checks/format_tree" + ScriptPathSuffix}}}
 	if err := ValidateReviewedTask(task); err != nil {
 		t.Fatalf("a reviewed definition must be admitted: %v", err)
 	}

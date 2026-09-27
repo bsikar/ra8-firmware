@@ -17,7 +17,7 @@ func collisionTask() Task {
 		Name: "rewrite", Version: 1, Tier: "optional", Scope: "safe-local-write-working-tree",
 		OS: []string{"linux"}, DeadlineSeconds: 300, BoardPolicy: "none",
 		Steps: []Step{{Name: "rewrite-path", Program: DispatchShell,
-			Args: []string{"scripts/checks/rewrite" + ScriptPathSuffix}}},
+			Args: []string{"scripts/checks/format_tree" + ScriptPathSuffix}}},
 		Retry: RetryPolicy{MaxAttempts: 1},
 	}
 }
@@ -115,7 +115,7 @@ func TestTheCollisionRuleReadsEveryStep(t *testing.T) {
 	task := collisionTask()
 	task.ArgsSchema = ArgsSchema{Flags: []string{"mode"}}
 	task.Steps = append(task.Steps, Step{Name: "selftest", Program: DispatchShell,
-		Args: []string{"scripts/checks/selftest" + ScriptPathSuffix, "--mode=strict"}})
+		Args: []string{"scripts/checks/format_tree" + ScriptPathSuffix, "--mode=strict"}})
 	if err := checkBoundArgumentsKeepTheirMeaning(task); !errors.Is(err, ErrInvalidCatalog) {
 		t.Fatalf("expected a refusal naming the later step, got %v", err)
 	}
