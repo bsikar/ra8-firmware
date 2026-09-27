@@ -233,6 +233,11 @@ func Parse(reader io.Reader, path string) (Spec, error) {
 	if err := checkPositiveExpectationIsUsable(spec); err != nil {
 		return Spec{}, err
 	}
+	// Both halves are now known to be usable on their own, which is what
+	// makes it worth asking whether they can hold together.
+	if err := checkExpectationIsNotAlsoForbidden(spec); err != nil {
+		return Spec{}, err
+	}
 	if spec.SafetyMaximumSeconds > 0 && spec.TimeoutDeclared && spec.SafetyMaximumSeconds < spec.TimeoutSeconds {
 		return Spec{}, fmt.Errorf("%w: safety maximum is below declared fallback", ErrInvalidManifest)
 	}
