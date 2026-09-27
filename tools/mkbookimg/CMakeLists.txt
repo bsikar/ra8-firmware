@@ -24,16 +24,26 @@ get_filename_component(_repo "${CMAKE_CURRENT_SOURCE_DIR}/../.." ABSOLUTE)
 # tool keeps linking as the library gains/renames TUs.
 file(GLOB _ra8_fs_srcs CONFIGURE_DEPENDS ${_repo}/libs/ra8_fs/src/*.c)
 
+# Container identification comes from the one shared table (#748), not a
+# private magic-byte list: the sniffer plus its naming rows, named by path
+# because app-side builds enumerate imgdec TUs that way (#754).
+set(_ra8_imgdec_srcs ${_repo}/libs/ra8_imgdec/src/ra8_imgdec_sniff.c
+                     ${_repo}/libs/ra8_imgdec/src/ra8_imgdec_name.c
+)
+
 # The tool is split across two TUs (file-size gate): the host container plus
 # entry point, and the population pass that streams and verifies each book.
 add_executable(
-  mkbookimg ${CMAKE_CURRENT_SOURCE_DIR}/src/mkbookimg.c
-            ${CMAKE_CURRENT_SOURCE_DIR}/src/mkbookimg_books.c ${_ra8_fs_srcs}
+  mkbookimg
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/mkbookimg.c
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/mkbookimg_books.c ${_ra8_fs_srcs}
+  ${_ra8_imgdec_srcs}
 )
 
 target_include_directories(
-  mkbookimg PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/inc ${_repo}/libs/ra8_fs/inc
-                    ${_repo}/libs/ra8_core/inc
+  mkbookimg
+  PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/inc ${_repo}/libs/ra8_fs/inc
+          ${_repo}/libs/ra8_core/inc ${_repo}/libs/ra8_imgdec/inc
 )
 
 # First-party sources carry the project warning bar (NASA Power of 10
