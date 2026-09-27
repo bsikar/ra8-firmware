@@ -45,14 +45,18 @@ function(c6_camera_server_add_app)
     ${APP_NAME}.elf PRIVATE "-Wl,--defsym=g_ra8_threadx_unused_memory_start=0x68000000"
   )
   get_property(_c6_nx_src GLOBAL PROPERTY RA8_NETXDUO_C6_PORT_SOURCES)
+  get_property(_ipif_src GLOBAL PROPERTY RA8_NETXDUO_IPIF_SOURCES)
+  get_property(_ipif_wifi_src GLOBAL PROPERTY RA8_NETXDUO_IPIF_WIFI_SOURCES)
   set(_dhcp_src "${APP_ROOT}/libs/third_party/netxduo/addons/dhcp/nxd_dhcp_client.c")
-  target_sources(${APP_NAME}.elf PRIVATE ${_c6_nx_src} "${_dhcp_src}")
+  target_sources(
+    ${APP_NAME}.elf PRIVATE ${_c6_nx_src} ${_ipif_src} ${_ipif_wifi_src} "${_dhcp_src}"
+  )
   target_include_directories(
     ${APP_NAME}.elf
     PRIVATE "${_common}/inc" "${APP_ROOT}/examples/ek_ra8d2/common/network_provision/inc"
             "${APP_ROOT}/port/netxduo/inc" "${APP_ROOT}/libs/third_party/netxduo/addons/dhcp"
   )
-  target_link_libraries(${APP_NAME}.elf PRIVATE netxduo_port_c6)
+  target_link_libraries(${APP_NAME}.elf PRIVATE netxduo_ipif_wifi)
   # Vendored SOUP. All three names were measured on nxd_dhcp_client.c under the
   # pinned cross toolchain arm-none-eabi-gcc 13.3.1 at -O0 by removing one at a
   # time with the others still applied: -Wdiscarded-qualifiers fires where the

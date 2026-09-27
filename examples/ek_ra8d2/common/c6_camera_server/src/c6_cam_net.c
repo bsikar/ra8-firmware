@@ -7,6 +7,8 @@
  *
  * @details The C6 remains the validated esp-hosted L2 co-processor. NetX Duo,
  * DHCP, TCP, HTTP parsing, camera capture and JPEG generation all run on RA8.
+ * The IP bring-up itself is the shared `ra8_ipif` facade (#740); what stays here
+ * is the HTTP server and the buffers it and the stack are given.
  * The page uses one persistent multipart/MJPEG connection. `/frame.jpg`
  * remains available for still capture, diagnostics, and HIL qualification.
  *
@@ -20,24 +22,50 @@
 
 #include "c6_camera_server.h"
 #include "nx_api.h"
-#include "nx_ether_driver_c6.h"
-#include "nxd_dhcp_client.h"
 #include "ra8_attributes.h"
 #include "ra8_c6link.h"
 #include "ra8_err.h"
+#include "ra8_ipif.h"
+#include "ra8_ipif_wifi.h"
+#include "ra8_wifi.h"
 #include "tx_api.h"
 
-static NX_PACKET_POOL s_pool;
+static_assert((uint32_t)k_c6_cam_net_pkt_payload >= (uint32_t)k_ra8_ipif_pkt_payload_min,
+              "the camera packet payload still has to carry a full Ethernet frame");
+static_assert((uint32_t)k_ra8_c6link_mac_bytes == (uint32_t)k_ra8_wifi_mac_bytes,
+              "the C6 and Wi-Fi facades have to agree on the address width");
+
 alignas(4) static uint8_t s_pool_mem[k_c6_cam_net_pool_bytes];
-static NX_IP s_ip;
 alignas(8) static uint8_t s_ip_stack[k_c6_cam_net_ip_stack];
 alignas(4) static uint8_t s_arp_cache[k_c6_cam_net_arp_bytes];
-static NX_DHCP       s_dhcp;
-static NX_TCP_SOCKET s_http_socket;
-static CHAR          s_pool_name[]   = "c6_cam_pool";
-static CHAR          s_ip_name[]     = "c6_cam_ip";
-static CHAR          s_dhcp_name[]   = "c6_cam_dhcp";
-static CHAR          s_socket_name[] = "c6_cam_http";
+static NX_TCP_SOCKET     s_http_socket;
+static CHAR              s_socket_name[] = "c6_cam_http";
+
+static ra8_ipif_t      s_ipif;
+static ra8_ipif_wifi_t s_bind;
+
+/**
+ * @brief The bring-up this application asks the shared facade for.
+ * @details `driver` stays null on purpose: ::ra8_ipif_wifi_bind reads that as
+ * the C6 link driver and refuses any other, so naming it here would be a second
+ * place to keep in step. `enable_tcp` is what separates this application from
+ * the other two C6 consumers; the HTTP server below needs it.
+ * @since 0.1.0
+ */
+static const ra8_ipif_cfg_t k_c6_cam_ipif_cfg = {
+  .name           = "c6_cam",
+  .driver         = nullptr,
+  .pool_mem       = s_pool_mem,
+  .pool_bytes     = (uint32_t)sizeof(s_pool_mem),
+  .pkt_payload    = (uint32_t)k_c6_cam_net_pkt_payload,
+  .ip_stack       = s_ip_stack,
+  .ip_stack_bytes = (uint32_t)sizeof(s_ip_stack),
+  .ip_prio        = (uint32_t)k_c6_cam_net_ip_prio,
+  .arp_cache      = s_arp_cache,
+  .arp_bytes      = (uint32_t)sizeof(s_arp_cache),
+  .enable_tcp     = true,
+  .dhcp_wait_ms   = (uint32_t)k_c6_cam_dhcp_wait_ms,
+};
 
 static const char s_page[] =
   "<!doctype html><html><head><meta charset=utf-8>"
@@ -54,94 +82,37 @@ static const char s_page[] =
   "setTimeout(()=>{s.src='/stream.mjpg?t='+Date.now()},1000)}</script>"
   "</main></body></html>";
 
-/**
- * @brief Create the static NetX packet pool and IP instance.
- * @details Enables ARP, UDP, TCP, and ICMP over the already-bound C6 Ethernet driver.
- * @return NetX status code.
- * @retval NX_SUCCESS All required NetX objects and protocols are ready.
- * @retval NX_NOT_SUCCESSFUL A NetX creation or enable operation failed.
- * @pre `nx_system_initialize` has completed.
- * @pre Static pool, stack, and ARP storage are not owned by another NetX instance.
- * @post On success, `s_pool` and `s_ip` are initialized.
- * @post On failure, no later protocol-enable step is attempted.
- * @note Exact non-success codes are propagated from NetX.
- * @since 0.1.0
- */
-RA8_INTERNAL static UINT internal_c6_cam_net_create(void)
-{
-  UINT status = nx_packet_pool_create(&s_pool,
-                                      s_pool_name,
-                                      (ULONG)k_c6_cam_net_pkt_payload,
-                                      (VOID*)s_pool_mem,
-                                      (ULONG)sizeof(s_pool_mem));
-  if (status != NX_SUCCESS) {
-    return status;
-  }
-  status = nx_ip_create(&s_ip,
-                        s_ip_name,
-                        IP_ADDRESS(0, 0, 0, 0),
-                        IP_ADDRESS(0, 0, 0, 0),
-                        &s_pool,
-                        nx_ether_driver_c6,
-                        (VOID*)s_ip_stack,
-                        (ULONG)sizeof(s_ip_stack),
-                        (UINT)k_c6_cam_net_ip_prio);
-  if (status != NX_SUCCESS) {
-    return status;
-  }
-  status = nx_arp_enable(&s_ip, (VOID*)s_arp_cache, (ULONG)sizeof(s_arp_cache));
-  if (status != NX_SUCCESS) {
-    return status;
-  }
-  status = nx_udp_enable(&s_ip);
-  if (status != NX_SUCCESS) {
-    return status;
-  }
-  status = nx_tcp_enable(&s_ip);
-  if (status != NX_SUCCESS) {
-    return status;
-  }
-  return nx_icmp_enable(&s_ip);
-}
-
 ra8_err_t c6_cam_net_up(ra8_c6link_t* link, const ra8_c6link_mac_t* mac, c6_cam_lease_t* out)
 {
   if ((link == nullptr) || (mac == nullptr) || (out == nullptr)) {
     return k_ra8_err_null_ptr;
   }
   *out = (c6_cam_lease_t){};
-  nx_ether_driver_c6_bind(link);
-  nx_ether_driver_c6_set_mac(mac->octet);
-  nx_system_initialize();
-  if (internal_c6_cam_net_create() != NX_SUCCESS) {
-    return k_ra8_err_not_initialized;
+
+  /* The handle is file scope, so a second association would meet an interface
+   * still up from the first. Down on a handle that was never up is a no-op. */
+  (void)ra8_ipif_down(&s_ipif);
+
+  s_bind = (ra8_ipif_wifi_t){
+    .ipif = &s_ipif,
+    .cfg  = &k_c6_cam_ipif_cfg,
+    .link = link,
+  };
+
+  ra8_wifi_mac_t station = {};
+  (void)memcpy(station.octet, mac->octet, sizeof(station.octet));
+
+  ra8_wifi_lease_t lease = {};
+  const ra8_err_t  err   = ra8_ipif_wifi_bind(&s_bind, &station, &lease);
+  if (err != k_ra8_ok) {
+    return err;
   }
-  UINT status = nx_dhcp_create(&s_dhcp, &s_ip, s_dhcp_name);
-  if (status == NX_SUCCESS) {
-    status = nx_dhcp_start(&s_dhcp);
-  }
-  ULONG actual = 0U;
-  if (status == NX_SUCCESS) {
-    status = nx_ip_status_check(&s_ip,
-                                (ULONG)NX_IP_ADDRESS_RESOLVED,
-                                &actual,
-                                (ULONG)k_c6_cam_dhcp_wait_ms);
-  }
-  if (status != NX_SUCCESS) {
-    return k_ra8_err_timeout;
-  }
-  ULONG ip      = 0U;
-  ULONG mask    = 0U;
-  ULONG gateway = 0U;
-  ULONG server  = 0U;
-  (void)nx_ip_address_get(&s_ip, &ip, &mask);
-  (void)nx_ip_gateway_address_get(&s_ip, &gateway);
-  (void)nx_dhcp_server_address_get(&s_dhcp, &server);
-  out->ip          = (uint32_t)ip;
-  out->mask        = (uint32_t)mask;
-  out->gateway     = (uint32_t)gateway;
-  out->dhcp_server = (uint32_t)server;
-  out->bound       = (ip != 0U);
+
+  out->ip          = lease.ip;
+  out->mask        = lease.mask;
+  out->gateway     = lease.gateway;
+  out->dhcp_server = lease.dhcp_server;
+  out->bound       = lease.bound;
   return out->bound ? k_ra8_ok : k_ra8_err_timeout;
 }
 
@@ -154,7 +125,7 @@ ra8_err_t c6_cam_net_up(ra8_c6link_t* link, const ra8_c6link_mac_t* mac, c6_cam_
  * @retval NX_SUCCESS The entire span was queued.
  * @retval NX_NOT_SUCCESSFUL Packet allocation, append, or socket send failed.
  * @pre `data` addresses at least `bytes` readable bytes.
- * @pre `s_http_socket` is connected and `s_pool` is initialized.
+ * @pre `s_http_socket` is connected and `s_ipif` is up.
  * @post On success, exactly `bytes` were sent in order.
  * @post Failed unsent packets are released before return.
  * @note Exact non-success codes are propagated from NetX.
@@ -168,14 +139,14 @@ RA8_INTERNAL static UINT internal_c6_cam_http_send(const void* data, uint32_t by
     const uint32_t chunk =
       (remaining > (uint32_t)k_c6_cam_http_chunk) ? (uint32_t)k_c6_cam_http_chunk : remaining;
     NX_PACKET* packet = NX_NULL;
-    UINT       status = nx_packet_allocate(&s_pool, &packet, NX_TCP_PACKET, NX_WAIT_FOREVER);
+    UINT       status = nx_packet_allocate(&s_ipif.pool, &packet, NX_TCP_PACKET, NX_WAIT_FOREVER);
     if (status != NX_SUCCESS) {
       return status;
     }
     status = nx_packet_data_append(packet,
                                    (VOID*)(uintptr_t)cursor,
                                    (ULONG)chunk,
-                                   &s_pool,
+                                   &s_ipif.pool,
                                    NX_WAIT_FOREVER);
     if (status != NX_SUCCESS) {
       (void)nx_packet_release(packet);
@@ -549,7 +520,7 @@ RA8_INTERNAL static void internal_c6_cam_http_handle(void)
 
 void c6_cam_http_serve(void)
 {
-  UINT status = nx_tcp_socket_create(&s_ip,
+  UINT status = nx_tcp_socket_create(&s_ipif.ip,
                                      &s_http_socket,
                                      s_socket_name,
                                      NX_IP_NORMAL,
@@ -559,7 +530,7 @@ void c6_cam_http_serve(void)
                                      NX_NULL,
                                      NX_NULL);
   if (status == NX_SUCCESS) {
-    status = nx_tcp_server_socket_listen(&s_ip,
+    status = nx_tcp_server_socket_listen(&s_ipif.ip,
                                          (UINT)k_c6_cam_http_port,
                                          &s_http_socket,
                                          (UINT)k_c6_cam_listen_backlog,
@@ -578,6 +549,6 @@ void c6_cam_http_serve(void)
       (void)nx_tcp_socket_disconnect(&s_http_socket, NX_WAIT_FOREVER);
       (void)nx_tcp_server_socket_unaccept(&s_http_socket);
     }
-    (void)nx_tcp_server_socket_relisten(&s_ip, (UINT)k_c6_cam_http_port, &s_http_socket);
+    (void)nx_tcp_server_socket_relisten(&s_ipif.ip, (UINT)k_c6_cam_http_port, &s_http_socket);
   }
 }
