@@ -79,7 +79,9 @@ static void t_mg_crosscheck_raw(ra8_vmem_stream_t* st, uint32_t page, uint32_t b
   static uint8_t s_raw[(size_t)k_mg_payload];
   const uint64_t abs = ((uint64_t)page * (uint64_t)k_mg_atlas_size) + (uint64_t)k_jof_hdr_bytes +
                        ((uint64_t)band * (uint64_t)k_mg_payload);
-  const size_t   got = ra8_vmem_stream_read(st, abs, s_raw, (size_t)k_mg_payload);
+  uint32_t       got = 0U;
+  TEST_ASSERT_EQ(k_ra8_ok,
+                 ra8_vmem_stream_read_checked(st, abs, s_raw, (uint32_t)k_mg_payload, &got));
   TEST_ASSERT_EQ(k_mg_payload, got);
   for (uint32_t i = 0U; i < (uint32_t)k_mg_payload; i += (uint32_t)k_mg_pix_stride) {
     TEST_ASSERT_EQ(t_mg_payload_byte((uint64_t)page, band, i), s_raw[i]);

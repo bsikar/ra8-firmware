@@ -496,8 +496,9 @@ static ra8_err_t t_mg_vol_read(void* ctx, uint64_t offset, uint8_t* buf, uint32_
  * @param[in]  len    Bytes requested.
  * @param[out] got    Bytes actually copied through the page cache.
  *
- * @return ra8_err_t Always k_ra8_ok (a short read reports `*got < len`).
- * @retval k_ra8_ok The stream served `*got` bytes.
+ * @return ra8_err_t The stream's own verdict, propagated unchanged.
+ * @retval k_ra8_ok The stream served `*got` bytes; `*got < len` is a clean object end.
+ * @retval other    The page cache failed mid-span; `*got` counts the bytes that arrived.
  *
  * @pre `ctx` is a bound ::t_mg_atlas_pread_t; `buf` is writable for `len`.
  * @pre The atlas lies fully within the volume stream's object.
@@ -509,9 +510,12 @@ static ra8_err_t t_mg_vol_read(void* ctx, uint64_t offset, uint8_t* buf, uint32_
  */
 static ra8_err_t t_mg_atlas_pread(void* ctx, uint64_t offset, uint8_t* buf, size_t len, size_t* got)
 {
-  t_mg_atlas_pread_t* ap = (t_mg_atlas_pread_t*)ctx;
-  *got                   = ra8_vmem_stream_read(ap->st, ap->base + offset, buf, len);
-  return k_ra8_ok;
+  t_mg_atlas_pread_t* ap   = (t_mg_atlas_pread_t*)ctx;
+  uint32_t            read = 0U;
+  const ra8_err_t     err =
+    ra8_vmem_stream_read_checked(ap->st, ap->base + offset, buf, (uint32_t)len, &read);
+  *got = (size_t)read;
+  return err;
 }
 
 /**

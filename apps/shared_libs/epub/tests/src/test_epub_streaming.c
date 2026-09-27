@@ -516,8 +516,9 @@ RA8_INTERNAL static void internal_stream_check_churn(ra8_vmem_t* vm, ra8_vmem_st
   for (uint32_t i = 0U; i < (uint32_t)k_churn; ++i) {
     const uint64_t off =
       ((uint64_t)i * (uint64_t)k_churn_stride) % (uint64_t)s_fixture.archive_size;
-    uint8_t      one = 0U;
-    const size_t got = ra8_vmem_stream_read(st, off, &one, 1U);
+    uint8_t  one = 0U;
+    uint32_t got = 0U;
+    TEST_ASSERT_EQ(k_ra8_ok, ra8_vmem_stream_read_checked(st, off, &one, 1U, &got));
     TEST_ASSERT_EQ(1U, got);
     TEST_ASSERT_EQ(s_fixture.archive[off], one); /* byte-correct through the cache */
     TEST_ASSERT(internal_count_valid_frames() <= (uint32_t)k_frames);
@@ -539,7 +540,10 @@ RA8_INTERNAL static void internal_stream_check_span(ra8_vmem_stream_t* st)
 {
   const uint64_t span_off           = (uint64_t)k_frame_bytes - 10U;
   uint8_t        span[k_span_probe] = {};
-  const size_t   span_got = ra8_vmem_stream_read(st, span_off, span, (size_t)k_span_probe);
+  uint32_t       span_got = 0U;
+  TEST_ASSERT_EQ(k_ra8_ok,
+                 ra8_vmem_stream_read_checked(st, span_off, span, (uint32_t)k_span_probe,
+                                              &span_got));
   TEST_ASSERT_EQ(k_span_probe, span_got);
   TEST_ASSERT_EQ(0, memcmp(span, &s_fixture.archive[span_off], (size_t)k_span_probe));
 }

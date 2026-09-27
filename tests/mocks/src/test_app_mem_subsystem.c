@@ -362,9 +362,13 @@ static size_t
 stream_window(ra8_vmem_stream_t* st, uint64_t off, uint32_t len, uint32_t* crc, bool* bytes_ok)
 {
   static uint8_t s_buf[k_win_buf_bytes];
-  const size_t   got = ra8_vmem_stream_read(st, off, s_buf, (size_t)len);
-  bool           ok  = true;
-  for (size_t i = 0U; i < got; i++) {
+  uint32_t       got = 0U;
+  if (ra8_vmem_stream_read_checked(st, off, s_buf, len, &got) != k_ra8_ok) {
+    *bytes_ok = false;
+    return 0U;
+  }
+  bool ok = true;
+  for (uint32_t i = 0U; i < got; i++) {
     if (s_buf[i] != gen_byte(off + (uint64_t)i)) {
       ok = false;
     }
