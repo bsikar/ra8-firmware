@@ -1090,5 +1090,10 @@ func Validate(s Snapshot) error {
 	if err := checkQueueIsInArrivalOrder(s.Queue); err != nil {
 		return err
 	}
+	// The queue against the phase, last of all, so a waiter that is invalid
+	// or out of order keeps the refusal naming the row at fault.
+	if err := checkAReadyBoardKeepsNoWaiters(s.Phase, s.Queue); err != nil {
+		return err
+	}
 	return nil
 }

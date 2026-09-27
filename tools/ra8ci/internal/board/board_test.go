@@ -405,6 +405,9 @@ func TestAgentLossDuringRecoveryQuarantines(t *testing.T) {
 
 func TestValidateRejectsMalformedPersistedWaiters(t *testing.T) {
 	base := boardForTest(t)
+	// Quarantined, not ready: a ready board is held to an empty queue, and
+	// the phase is nothing this case is about.
+	base.Phase = Quarantined
 	base.NextSequence = 2
 	base.Queue = []Waiter{{ID: "one", LeaseID: "lease-one", Holder: "owner", Class: ClassCI, Reason: "reason", Duration: time.Minute, Sequence: 1, QueuedAt: testEpoch}}
 	if err := Validate(base); err != nil {
@@ -448,6 +451,10 @@ func TestValidateRejectsMalformedPersistedWaiters(t *testing.T) {
 
 func TestMaxWaitersRejectsNewClaim(t *testing.T) {
 	s := boardForTest(t)
+	// Quarantined, not ready: a full queue is a queue nothing has granted
+	// from, which is a phase where grantNext declines, and the cap enqueue
+	// enforces is read before any phase is consulted.
+	s.Phase = Quarantined
 	s.NextSequence = MaxWaiters
 	for i := 1; i <= MaxWaiters; i++ {
 		s.Queue = append(s.Queue, Waiter{ID: fmtID(i), LeaseID: "lease-" + fmtID(i), Holder: "owner", Class: ClassAI, Reason: "queued", Duration: time.Minute, Sequence: uint64(i), QueuedAt: testEpoch})
