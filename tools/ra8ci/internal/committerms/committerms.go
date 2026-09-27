@@ -112,18 +112,8 @@ func splitLines(text string) []string {
 
 func paragraphHasLegacyOK(lines []string) bool {
 	for _, line := range lines {
-		runes := []rune(line)
-		for index := 0; index+len("LEGACY-OK") <= len(runes); index++ {
-			if !strings.EqualFold(string(runes[index:index+len("LEGACY-OK")]), "LEGACY-OK") {
-				continue
-			}
-			cursor := index + len("LEGACY-OK")
-			for cursor < len(runes) && unicode.IsSpace(runes[cursor]) {
-				cursor++
-			}
-			if cursor < len(runes) && runes[cursor] == ':' {
-				return true
-			}
+		if lineStatesALegacyOptOut(line) {
+			return true
 		}
 	}
 	return false
