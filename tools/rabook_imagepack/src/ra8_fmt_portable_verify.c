@@ -14,6 +14,7 @@
 #include <string.h>
 #include <unistd.h>
 
+#include "ra8_arena.h"
 #include "ra8_attributes.h"
 #include "ra8_fmt_host_fd_internal.h"
 #include "ra8_fmt_host_spool_internal.h"
@@ -30,21 +31,18 @@ typedef enum : uint32_t {
   k_verify_cli_decimal = 10U,        /**< Decimal formatting radix.        */
 } verify_cli_const_t;
 
+/** @brief Slot capacity of each overlaid workspace phase. */
+typedef enum : uint32_t {
+  k_verify_producer_slots = 2U, /**< Producer work and optional WebP arena. */
+  k_verify_compare_slots  = 3U, /**< Band tile, stored scratch, and row.    */
+} verify_slot_count_t;
+
 /** @brief Parsed legacy-compatible JOF verify selections. */
 typedef struct {
   const char* input;  /**< Encoded source path. */
   const char* output; /**< Optional PPM path.   */
   const char* format; /**< Explicit format.     */
 } verify_cli_args_t;
-
-/** @brief Exact phase-overlaid byte offsets in the shared composition arena. */
-typedef struct {
-  size_t producer; /**< Maximum producer work bytes.    */
-  size_t webp;     /**< WebP arena offset.              */
-  size_t scratch;  /**< Comparison scratch offset.      */
-  size_t row;      /**< Reference-row offset.           */
-  size_t total;    /**< Exact maximum phase high-water. */
-} verify_layout_t;
 
 /**
  * @brief Append one NUL-terminated text fragment.
@@ -182,106 +180,122 @@ static bool internal_parse(int argc, char** argv, verify_cli_args_t* args)
 }
 
 /**
- * @brief Align one size to the composition slice boundary.
- * @details Checks addition before rounding up to ::k_verify_cli_align.
- * @param[in] value Unaligned byte count.
- * @param[out] out Receives the aligned count.
- * @return Whether alignment is representable.
- * @retval true @p out contains the aligned count.
- * @retval false Rounding would overflow size_t.
- * @pre @p out is writable.
- * @pre ::k_verify_cli_align is a power of two.
- * @post Success initializes @p out.
- * @post Failure performs no allocation or I/O.
- * @note Pure and thread-safe.
- * @since 0.1.0
- */
-RA8_INTERNAL
-static bool internal_align(size_t value, size_t* out)
-{
-  const size_t mask = (size_t)k_verify_cli_align - 1U;
-  if (value > (SIZE_MAX - mask)) {
-    return false;
-  }
-  *out = (value + mask) & ~mask;
-  return true;
-}
-
-/**
- * @brief Add one aligned arena slice without size_t wrapping.
- * @details Aligns the incoming offset before checked slice addition.
- * @param[in] offset Current phase offset.
- * @param[in] bytes Slice bytes.
- * @param[out] next Receives the next unaligned phase offset.
- * @return Whether alignment and addition were representable.
- * @retval true @p next contains the exact slice end.
- * @retval false Alignment or addition overflowed.
- * @pre @p next is writable.
- * @pre @p offset describes the current phase arena.
- * @post Success initializes @p next.
- * @post Failure performs no allocation or I/O.
+ * @brief Declare one workspace span as an arena slot, or as an absent span.
+ * @details A requirement of zero bytes is not carved at all: the matching
+ * workspace pointer is published as null with a zero cap, which is how this
+ * struct has always spelled an absent WebP arena. Every present span takes
+ * the same ::k_verify_cli_align boundary the hand-written offset chain used.
+ * @param[in,out] slots Slot array being filled, with room for one more.
+ * @param[in] count Slots already declared.
+ * @param[in] bytes Requirement for this span, possibly zero.
+ * @param[out] out_ptr Receives the carved span, or null when @p bytes is zero.
+ * @return The new slot count.
+ * @retval count @p bytes was zero and no slot was added.
+ * @pre @p slots has capacity for @p count + 1 entries.
+ * @pre @p out_ptr is writable.
+ * @post A zero requirement writes null through @p out_ptr immediately.
+ * @post A non-zero requirement leaves @p out_ptr untouched until the carve.
  * @note Pure apart from caller output.
  * @since 0.1.0
  */
 RA8_INTERNAL
-static bool internal_add(size_t offset, size_t bytes, size_t* next)
+static uint32_t
+internal_slot(ra8_arena_slot_t* slots, uint32_t count, uint32_t bytes, void** out_ptr)
 {
-  size_t aligned = 0U;
-  if (!internal_align(offset, &aligned) || (bytes > (SIZE_MAX - aligned))) {
-    return false;
+  if (bytes == 0U) {
+    *out_ptr = nullptr;
+    return count;
   }
-  *next = aligned + bytes;
-  return true;
+  slots[count] = (ra8_arena_slot_t){
+    .bytes   = bytes,
+    .align   = (uint32_t)k_verify_cli_align,
+    .out_ptr = out_ptr,
+  };
+  return count + 1U;
 }
 
 /**
- * @brief Compute exact maximum high-water across producer and compare phases.
- * @details Overlays mutually exclusive phases while aligning every simultaneous slice.
- * @param[in] need Exact engine requirements.
- * @param[out] layout Receives offsets and maximum phase high-water.
- * @return Whether every offset is representable.
- * @retval true Every exact slice and high-water fits size_t.
- * @retval false One alignment or addition overflowed.
- * @pre @p need and @p layout are non-null.
- * @pre Requirement fields came from the bounded planner.
- * @post Success initializes all layout fields.
- * @post Failure performs no workspace write.
- * @note Producer and comparison phases intentionally overlap byte zero.
+ * @brief Carve both overlaid verify phases out of the shared CLI block (#757).
+ * @details Declares one slot per workspace member and lets the platform arena
+ * place them, replacing a hand-written offset chain and the struct that held
+ * it. The producer and comparison phases are mutually exclusive, so they are
+ * carved as two passes over one arena with ::ra8_arena_reset between them:
+ * the overlay at byte zero is now what the reset means rather than an aliased
+ * pointer written by hand. Each pass is all-or-none, so a block too small for
+ * its last span publishes no pointer at all.
+ * @param[in,out] root Shared composition-root storage.
+ * @param[in] need Exact verifier requirements.
+ * @param[out] out Receives every engine arena view.
+ * @return Arena status.
+ * @retval k_ra8_ok Every present span was carved and published.
+ * @retval k_ra8_err_no_mem One phase did not fit the shared block.
+ * @retval other An arena argument was rejected.
+ * @pre Every pointer argument is non-null.
+ * @post Success publishes spans that are disjoint within each phase.
+ * @post Failure leaves every carved pointer in @p out unpublished.
+ * @note Not thread-safe; the CLI is single-threaded.
  * @since 0.1.0
  */
 RA8_INTERNAL
-static bool internal_layout(const ra8_fmt_jof_verify_requirements_t* need, verify_layout_t* layout)
+static ra8_err_t internal_carve(ra8_fmt_cli_workspace_t*                 root,
+                                const ra8_fmt_jof_verify_requirements_t* need,
+                                ra8_fmt_jof_verify_workspace_t*          out)
 {
-  *layout             = (verify_layout_t){};
-  layout->producer    = (need->reference_work_bytes > need->banded_work_bytes)
-                          ? need->reference_work_bytes
-                          : need->banded_work_bytes;
-  size_t producer_end = 0U;
-  if (!internal_align(layout->producer, &layout->webp) ||
-      !internal_add(layout->webp, need->webp_work_bytes, &producer_end)) {
-    return false;
+  const uint32_t producer_bytes = (need->reference_work_bytes > need->banded_work_bytes)
+                                    ? need->reference_work_bytes
+                                    : need->banded_work_bytes;
+  *out                          = (ra8_fmt_jof_verify_workspace_t){
+                             .work_cap      = producer_bytes,
+                             .webp_work_cap = need->webp_work_bytes,
+                             .band_tile_cap = need->band_tile_bytes,
+                             .scratch_cap   = need->scratch_bytes,
+                             .row_cap       = need->row_bytes,
+  };
+  void*            work      = nullptr;
+  void*            webp      = nullptr;
+  void*            band_tile = nullptr;
+  void*            scratch   = nullptr;
+  void*            row       = nullptr;
+  ra8_arena_slot_t producer[k_verify_producer_slots] = {};
+  uint32_t         producer_count = internal_slot(producer, 0U, producer_bytes, &work);
+  producer_count = internal_slot(producer, producer_count, need->webp_work_bytes, &webp);
+  ra8_arena_slot_t compare[k_verify_compare_slots] = {};
+  uint32_t         compare_count = internal_slot(compare, 0U, need->band_tile_bytes, &band_tile);
+  compare_count = internal_slot(compare, compare_count, need->scratch_bytes, &scratch);
+  compare_count = internal_slot(compare, compare_count, need->row_bytes, &row);
+
+  ra8_arena_t arena = {};
+  ra8_err_t   rc    = ra8_arena_init(&arena, root->bytes, (uint32_t)sizeof root->bytes);
+  if ((rc == k_ra8_ok) && (producer_count > 0U)) {
+    rc = ra8_arena_carve_all(&arena, producer, producer_count);
   }
-  size_t scratch_end = 0U;
-  size_t compare_end = 0U;
-  if (!internal_align(need->band_tile_bytes, &layout->scratch) ||
-      !internal_add(layout->scratch, need->scratch_bytes, &scratch_end) ||
-      !internal_align(scratch_end, &layout->row) ||
-      !internal_add(layout->row, need->row_bytes, &compare_end)) {
-    return false;
+  if (rc == k_ra8_ok) {
+    rc = ra8_arena_reset(&arena);
   }
-  layout->total = (producer_end > compare_end) ? producer_end : compare_end;
-  return true;
+  if ((rc == k_ra8_ok) && (compare_count > 0U)) {
+    rc = ra8_arena_carve_all(&arena, compare, compare_count);
+  }
+  if (rc != k_ra8_ok) {
+    return rc;
+  }
+  out->work      = (uint8_t*)work;
+  out->webp_work = (uint8_t*)webp;
+  out->band_tile = (uint8_t*)band_tile;
+  out->scratch   = (uint8_t*)scratch;
+  out->row       = (uint8_t*)row;
+  return k_ra8_ok;
 }
 
 /**
- * @brief Report exact required and supplied shared-workspace evidence.
- * @details Emits the high-water plus every contributing phase component.
+ * @brief Report the supplied capacity and every shared-workspace component.
+ * @details Emits each phase component the arena was asked to place. The exact
+ * high-water is no longer spelled here: the offsets belong to the arena now,
+ * and a carve that did not fit published no placement to report.
  * @param[in] errors Standard-error sink.
  * @param[in] need Exact verifier requirements.
- * @param[in] layout Computed exact offsets.
  * @param[in] supplied Caller workspace capacity.
  * @pre Every pointer argument is valid.
- * @pre @p layout corresponds to @p need.
+ * @pre @p need came from the bounded planner.
  * @post Best effort emits one bounded diagnostic line.
  * @post Workspace and requirements remain unchanged.
  * @note Sink failures are intentionally ignored after first failure.
@@ -290,13 +304,14 @@ static bool internal_layout(const ra8_fmt_jof_verify_requirements_t* need, verif
 RA8_INTERNAL
 static void internal_capacity(const ra8_fmt_sink_t*                    errors,
                               const ra8_fmt_jof_verify_requirements_t* need,
-                              const verify_layout_t*                   layout,
                               size_t                                   supplied)
 {
-  ra8_err_t rc = internal_text(errors, "ra8_fmt: JOF verify workspace too small: required ");
-  internal_field(errors, layout->total, " supplied ", &rc);
+  const uint32_t producer = (need->reference_work_bytes > need->banded_work_bytes)
+                              ? need->reference_work_bytes
+                              : need->banded_work_bytes;
+  ra8_err_t rc = internal_text(errors, "ra8_fmt: JOF verify workspace too small: supplied ");
   internal_field(errors, supplied, " (producer ", &rc);
-  internal_field(errors, layout->producer, ", webp ", &rc);
+  internal_field(errors, producer, ", webp ", &rc);
   internal_field(errors, need->webp_work_bytes, ", band ", &rc);
   internal_field(errors, need->band_tile_bytes, ", scratch ", &rc);
   internal_field(errors, need->scratch_bytes, ", row ", &rc);
@@ -355,40 +370,6 @@ static const ra8_fmt_transaction_ops_t s_failed_transaction_ops = {
   .commit = internal_failed_commit,
   .abort  = internal_failed_abort,
 };
-
-/**
- * @brief Bind phase-overlaid producer and comparison arena views.
- * @details Maps validated exact offsets into the caller-owned composition root.
- * @param[in,out] root Shared composition workspace.
- * @param[in] need Exact verifier requirements.
- * @param[in] layout Validated exact offsets.
- * @param[out] out Receives every engine arena view.
- * @pre Every pointer argument is non-null.
- * @pre @p layout total fits @p root storage.
- * @post All spans lie within layout total bytes.
- * @post No workspace byte is initialized or allocated.
- * @note Spans overlap only across non-concurrent phases.
- * @since 0.1.0
- */
-RA8_INTERNAL
-static void internal_bind(ra8_fmt_cli_workspace_t*                 root,
-                          const ra8_fmt_jof_verify_requirements_t* need,
-                          const verify_layout_t*                   layout,
-                          ra8_fmt_jof_verify_workspace_t*          out)
-{
-  *out = (ra8_fmt_jof_verify_workspace_t){
-    .work          = root->bytes,
-    .work_cap      = (uint32_t)layout->producer,
-    .webp_work     = (need->webp_work_bytes == 0U) ? nullptr : &root->bytes[layout->webp],
-    .webp_work_cap = need->webp_work_bytes,
-    .band_tile     = root->bytes,
-    .band_tile_cap = need->band_tile_bytes,
-    .scratch       = &root->bytes[layout->scratch],
-    .scratch_cap   = need->scratch_bytes,
-    .row           = &root->bytes[layout->row],
-    .row_cap       = need->row_bytes,
-  };
-}
 
 /**
  * @brief Close all verifier-owned source and spool descriptors.
@@ -464,11 +445,10 @@ static ra8_err_t internal_run(const ra8_fmt_host_source_t*             ref,
  * @brief Bind host spools and optional output, run, and close every owner.
  * @details Creates anonymous sibling spools and a durable optional transaction.
  * @param[in] args Valid portable verify arguments.
- * @param[in,out] workspace Shared composition arena.
  * @param[in,out] ref_source Open reference source, always closed here.
  * @param[in,out] got_source Open subject source, always closed here.
  * @param[in] need Exact verifier requirements.
- * @param[in] layout Validated arena layout.
+ * @param[in,out] work Phase-overlaid arena views already carved from @p workspace.
  * @param[in] errors Standard-error sink.
  * @param[in] report Standard-output sink.
  * @return Portable CLI status.
@@ -483,11 +463,10 @@ static ra8_err_t internal_run(const ra8_fmt_host_source_t*             ref,
  */
 RA8_INTERNAL
 static int internal_execute(const verify_cli_args_t*                 args,
-                            ra8_fmt_cli_workspace_t*                 workspace,
                             ra8_fmt_host_source_t*                   ref_source,
                             ra8_fmt_host_source_t*                   got_source,
                             const ra8_fmt_jof_verify_requirements_t* need,
-                            const verify_layout_t*                   layout,
+                            ra8_fmt_jof_verify_workspace_t*          work,
                             const ra8_fmt_sink_t*                    errors,
                             const ra8_fmt_sink_t*                    report)
 {
@@ -514,12 +493,10 @@ static int internal_execute(const verify_cli_args_t*                 args,
     }
     dump_ptr = &dump;
   }
-  ra8_fmt_jof_verify_workspace_t work;
-  internal_bind(workspace, need, layout, &work);
   rc = internal_run(ref_source,
                     got_source,
                     need,
-                    &work,
+                    work,
                     &ref_spool,
                     &got_spool,
                     dump_ptr,
@@ -533,21 +510,21 @@ static int internal_execute(const verify_cli_args_t*                 args,
 }
 
 /**
- * @brief Open both verify sources and compute the workspace sizing.
+ * @brief Open both verify sources and carve the shared workspace.
  * @details Opens the reference and comparison file descriptors on the same
- * input, confirms they observe the identical unchanged file, then derives
- * the JOF verify requirements and workspace layout.
+ * input, confirms they observe the identical unchanged file, derives the JOF
+ * verify requirements, then asks the platform arena to place every span.
  * @param[in] args Parsed CLI arguments (input path).
- * @param[in] workspace_bytes Capacity of the CLI workspace scratch, in bytes.
+ * @param[in,out] workspace Shared composition-root storage.
  * @param[out] ref_source Opened reference-pass source.
  * @param[out] got_source Opened comparison-pass source.
  * @param[out] need Derived JOF verify requirements.
- * @param[out] layout Derived workspace layout.
+ * @param[out] work Receives every carved engine arena view.
  * @param[in] errors Sink for open/validation diagnostics.
  * @param[in] report Sink for capacity diagnostics.
  * @return Open/sizing status.
  * @retval k_ra8_ok Both sources are open, identical, unchanged, and sized.
- * @retval other Open, identity, sizing, or capacity validation failed
+ * @retval other Open, identity, sizing, or carve validation failed
  * (already reported and cleaned up).
  * @pre @p args->input names a readable file.
  * @pre Every output pointer and both sink bindings are valid and independent.
@@ -557,11 +534,11 @@ static int internal_execute(const verify_cli_args_t*                 args,
  * @since 0.1.0
  */
 RA8_INTERNAL static ra8_err_t internal_open_and_size(const verify_cli_args_t* args,
-                                                     size_t                   workspace_bytes,
+                                                     ra8_fmt_cli_workspace_t* workspace,
                                                      ra8_fmt_host_source_t*   ref_source,
                                                      ra8_fmt_host_source_t*   got_source,
                                                      ra8_fmt_jof_verify_requirements_t* need,
-                                                     verify_layout_t*                   layout,
+                                                     ra8_fmt_jof_verify_workspace_t*    work,
                                                      const ra8_fmt_sink_t*              errors,
                                                      const ra8_fmt_sink_t*              report)
 {
@@ -579,11 +556,13 @@ RA8_INTERNAL static ra8_err_t internal_open_and_size(const verify_cli_args_t* ar
     internal_cleanup(ref_source, got_source, nullptr, nullptr);
     return rc;
   }
-  rc               = ra8_fmt_jof_verify_requirements(&ref_source->source, need);
-  const bool sized = (rc == k_ra8_ok) && internal_layout(need, layout);
-  if ((rc == k_ra8_ok) && (!sized || (layout->total > workspace_bytes))) {
-    internal_capacity(errors, need, layout, workspace_bytes);
-    rc = k_ra8_err_invalid_size;
+  rc = ra8_fmt_jof_verify_requirements(&ref_source->source, need);
+  if (rc == k_ra8_ok) {
+    rc = internal_carve(workspace, need, work);
+    if (rc != k_ra8_ok) {
+      internal_capacity(errors, need, sizeof workspace->bytes);
+      rc = k_ra8_err_invalid_size;
+    }
   }
   if (rc != k_ra8_ok) {
     internal_status(report, "verify: cannot read source dimensions (rc=", rc);
@@ -617,24 +596,17 @@ RA8_PRIV int priv_fmt_try_portable_verify(int                      argc,
   ra8_fmt_host_source_t             ref_source   = {.fd = -1};
   ra8_fmt_host_source_t             got_source   = {.fd = -1};
   ra8_fmt_jof_verify_requirements_t need         = {};
-  verify_layout_t                   layout       = {};
+  ra8_fmt_jof_verify_workspace_t    work         = {};
   const ra8_err_t                   rc           = internal_open_and_size(&args,
-                                                                          sizeof(workspace->bytes),
+                                                                          workspace,
                                                                           &ref_source,
                                                                           &got_source,
                                                                           &need,
-                                                                          &layout,
+                                                                          &work,
                                                                           &errors,
                                                                           &report);
   if (rc != k_ra8_ok) {
     return (int)k_verify_cli_fail;
   }
-  return internal_execute(&args,
-                          workspace,
-                          &ref_source,
-                          &got_source,
-                          &need,
-                          &layout,
-                          &errors,
-                          &report);
+  return internal_execute(&args, &ref_source, &got_source, &need, &work, &errors, &report);
 }
