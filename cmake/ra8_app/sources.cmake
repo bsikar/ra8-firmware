@@ -415,6 +415,27 @@ macro(_ra8_app_collect_sources)
     ra8_webp_vendor_sources(_ra8_webp_vendor ${RA8_REPO_ROOT})
     list(APPEND _ra8_lib_extra ${_ra8_webp_vendor})
     list(APPEND _ra8_lib_inc ${RA8_REPO_ROOT}/apps/shared_libs/third_party/libwebp)
+    # ra8_webp_imgdec.c binds the facade as an imgdec backend (#768) and reads
+    # the container's declared geometry through the shared probe, which sniffs
+    # first, so those two TUs and the header travel with this block. The reflow
+    # / rabook_compile / comic blocks may already have added the same TUs, so
+    # each is appended only when absent -- a duplicate source is an error under
+    # some generators and a duplicate symbol under all of them.
+    if(NOT ${RA8_REPO_ROOT}/libs/ra8_imgdec/src/ra8_imgdec_dims.c IN_LIST _ra8_lib_extra)
+      list(APPEND _ra8_lib_extra ${RA8_REPO_ROOT}/libs/ra8_imgdec/src/ra8_imgdec_dims.c)
+    endif()
+    if(NOT ${RA8_REPO_ROOT}/libs/ra8_imgdec/src/ra8_imgdec_sniff.c IN_LIST _ra8_lib_extra)
+      list(APPEND _ra8_lib_extra ${RA8_REPO_ROOT}/libs/ra8_imgdec/src/ra8_imgdec_sniff.c)
+    endif()
+    if(NOT ${RA8_REPO_ROOT}/libs/ra8_imgdec/src/ra8_imgdec_scratch.c IN_LIST _ra8_lib_extra)
+      list(APPEND _ra8_lib_extra ${RA8_REPO_ROOT}/libs/ra8_imgdec/src/ra8_imgdec_scratch.c)
+    endif()
+    if(NOT ${RA8_REPO_ROOT}/libs/ra8_imgdec/src/ra8_imgdec.c IN_LIST _ra8_lib_extra)
+      list(APPEND _ra8_lib_extra ${RA8_REPO_ROOT}/libs/ra8_imgdec/src/ra8_imgdec.c)
+    endif()
+    if(NOT ${RA8_REPO_ROOT}/libs/ra8_imgdec/inc IN_LIST _ra8_lib_inc)
+      list(APPEND _ra8_lib_inc ${RA8_REPO_ROOT}/libs/ra8_imgdec/inc)
+    endif()
   endif()
 
   # unarch decodes wrapped / container archive streams (tar for .cbt,
