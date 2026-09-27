@@ -299,6 +299,12 @@ func (receipt TerminalReceipt) Validate() error {
 	if err := checkHostFactsBracketTheAttempt(receipt); err != nil {
 		return err
 	}
+	// Beside the bracket rule, which compares the two capture stamps: this
+	// is the other thing neither snapshot can say alone, that both are
+	// readings of one machine rather than of two.
+	if err := checkHostFactsNameOneHost(receipt); err != nil {
+		return err
+	}
 	switch receipt.Outcome {
 	case "succeeded":
 		if receipt.ChildExitCode == nil || *receipt.ChildExitCode != 0 || !receipt.EvidenceComplete || receipt.TimedOut || receipt.Cancelled {
