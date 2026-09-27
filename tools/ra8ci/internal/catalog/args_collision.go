@@ -27,6 +27,16 @@ const endOfOptions = "--"
 // replaces a value review pinned. The reviewed definition still reads as
 // though the pinned one applies.
 //
+// The collision is about the NAME, not the spelling that carries it. Go's
+// flag package reads -name and --name as the same flag, and reads -name=value,
+// --name=value and the bare boolean form the same way again, so a reviewed
+// -mode=pinned is displaced by a bound --mode=caller exactly as a reviewed
+// --mode=pinned would be. Reading only the double-dash spelling left the
+// single-dash one admitted, which is the same silent replacement wearing one
+// fewer character. Every reviewed argument that claims to be a flag is read
+// for the name it claims, by the same flagNameArgvClaims the dispatch-seam
+// argv doors use, so all of them agree on what an argument is called.
+//
 // A reviewed "--" among the step's arguments. Everything a binding appends
 // lands after the end-of-options marker, so a declared flag arrives as an
 // operand rather than a flag: --mode=fast becomes a file name. The task does
@@ -52,13 +62,13 @@ func checkBoundArgumentsKeepTheirMeaning(task Task) error {
 				return fmt.Errorf("%w: task %q declares arguments and its step %q passes %q, which would make every bound argument an operand",
 					ErrInvalidCatalog, task.Name, step.Name, endOfOptions)
 			}
-			if !strings.HasPrefix(arg, "--") {
+			if !strings.HasPrefix(arg, "-") {
 				continue
 			}
-			name, _, _ := strings.Cut(strings.TrimPrefix(arg, "--"), "=")
+			name := flagNameArgvClaims(arg)
 			if declared[name] {
 				return fmt.Errorf("%w: task %q declares flag %q and its step %q already passes %q; a bound value would be a second %s the program reads instead",
-					ErrInvalidCatalog, task.Name, name, step.Name, arg, arg[:2]+name)
+					ErrInvalidCatalog, task.Name, name, step.Name, arg, "--"+name)
 			}
 		}
 	}
