@@ -26,7 +26,6 @@ var (
 	toolOutputNames = map[string]bool{"CMakeFiles": true, "_deps": true, "__pycache__": true, "node_modules": true}
 	familyPattern   = regexp.MustCompile(`\(\s*void\s*\)\s*(ra8_tz_secure_boot_[a-z0-9_]+)\s*\(`)
 	anyRA8Pattern   = regexp.MustCompile(`\(\s*void\s*\)\s*(ra8_[a-z0-9_]+)\s*\(`)
-	bootTUPattern   = regexp.MustCompile(`(?m)^\s*void\s+(?:SystemInit|ra8_trustzone_init)\s*\(\s*void\s*\)`)
 	waiverPattern   = regexp.MustCompile(`TZ-DISCARD-OK:\s*\S`)
 	voidCastSuffix  = regexp.MustCompile(`\(\s*void\s*\)\s*$`)
 )
@@ -201,7 +200,7 @@ func checkFile(path, root string) []finding {
 	if !strings.Contains(strings.ReplaceAll(text, " ", ""), "(void)") {
 		return nil
 	}
-	bootTU := strings.HasSuffix(filepath.ToSlash(path), ".c") && bootTUPattern.MatchString(text)
+	bootTU := strings.HasSuffix(filepath.ToSlash(path), ".c") && definesBootEntry(text)
 	lines := strings.Split(text, "\n")
 	var out []finding
 	for i, raw := range lines {
