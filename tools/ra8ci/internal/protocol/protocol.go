@@ -358,6 +358,13 @@ func (receipt TerminalReceipt) Validate() error {
 	if err := checkReportedDurations(receipt); err != nil {
 		return err
 	}
+	// After the duration rule rather than before it: that rule owns the pair
+	// of stamps no clock can subtract, and its message is the one a reader
+	// needs for that receipt. This one asks the next question, whether the
+	// span it measured is one a grant could have allowed at all.
+	if err := checkAttemptFitsADeadlineAGrantCouldIssue(receipt); err != nil {
+		return err
+	}
 	if err := checkStepTimeline(receipt); err != nil {
 		return err
 	}
