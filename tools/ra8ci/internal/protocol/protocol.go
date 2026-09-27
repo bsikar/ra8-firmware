@@ -216,7 +216,7 @@ func (claim ClaimRequest) Validate() error {
 func (facts HostFacts) Validate() error {
 	if facts.Cores < 1 || facts.RAMBytes < 1 || facts.RAMFreeBytes < 0 || facts.RAMFreeBytes > facts.RAMBytes ||
 		facts.Load1 < 0 || math.IsNaN(facts.Load1) || math.IsInf(facts.Load1, 0) || facts.CapturedAt.IsZero() ||
-		(facts.OS != "linux" && facts.OS != "windows") || facts.Arch == "" {
+		(facts.OS != "linux" && facts.OS != "windows") || !archIsReportable(facts.Arch) {
 		return ErrInvalid
 	}
 	if (facts.OS == "linux" && facts.LoadKind != "linux_load1") ||
