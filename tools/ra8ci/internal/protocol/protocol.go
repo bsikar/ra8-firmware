@@ -389,7 +389,14 @@ func (receipt TerminalReceipt) Validate() error {
 	if err := checkStepLogEvidence(receipt); err != nil {
 		return err
 	}
-	return checkLogSequenceCoversSteps(receipt)
+	if err := checkLogSequenceCoversSteps(receipt); err != nil {
+		return err
+	}
+	// Last, beside the sequence rule and reading the same two numbers: that
+	// rule bounds them from below, against what the receipt's own bytes
+	// need, and this one from above, against what the plane would have
+	// accepted at all.
+	return checkCompleteEvidenceFitsTheAttemptsLogBudget(receipt)
 }
 
 func validGrant(assignmentID, attemptID string, version, fence int64) bool {
