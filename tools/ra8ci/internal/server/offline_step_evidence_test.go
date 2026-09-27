@@ -84,13 +84,21 @@ func TestANegativeStepByteCountIsRefused(t *testing.T) {
 	}
 }
 
-// TestAStepThatPrintedIsNotJudgedAgainstItsByteCount states a bound this rule
-// deliberately does not have: the digest is over the bytes, but the count is
-// not recomputable from a record carrying no logs, so a count that disagrees
-// with the digest is not something this door can tell.
-func TestAStepThatPrintedIsNotJudgedAgainstItsByteCount(t *testing.T) {
+// TestAStepsCountIsStillNotJudgedAgainstAMeasuredDigest states the bound this
+// rule still does not have, narrowed by the emptiness rule that came after it
+// (checkLocalStepCountsAgreeWithTheDigest). The record carries no logs, so a
+// digest over some bytes cannot be checked against the count stated beside
+// it: 4096 against the digest of "ok\n" is a disagreement this door has no
+// way to see, and it is accepted. Only the one comparison a door CAN make,
+// whether each side says the stream was empty, is refused, and that case is
+// pinned in offline_step_counts_agree_with_the_digest_test.go.
+func TestAStepsCountIsStillNotJudgedAgainstAMeasuredDigest(t *testing.T) {
 	_, cat := offlineTestEntry(t)
-	entry := stepped(t, func(e *spool.Entry) { e.Result.Steps[0].StdoutBytes = 4096 })
+	spoke, _ := measuredStream("ok\n")
+	entry := stepped(t, func(e *spool.Entry) {
+		e.Result.Steps[0].StdoutSHA256 = spoke
+		e.Result.Steps[0].StdoutBytes = 4096
+	})
 	if _, err := offlineInput(entry, cat); err != nil {
 		t.Fatalf("a stated byte count was judged against a digest it cannot be checked with: %v", err)
 	}
