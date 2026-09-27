@@ -213,7 +213,9 @@ func sanitizedGitEnvironment(source []string) []string {
 
 func documentedSubdirs(readme string) map[string]struct{} {
 	names := make(map[string]struct{})
-	for _, line := range strings.Split(readme, "\n") {
+	// Only lines the reader sees as a table: a row shown inside a fenced code
+	// block is an example of the format, never a documented subdirectory.
+	for _, line := range linesOutsideCodeFences(readme) {
 		stripped := strings.TrimSpace(line)
 		if !strings.HasPrefix(stripped, "|") {
 			continue
