@@ -256,6 +256,9 @@ ra8_viewer_read_path(
 set(RA8_THIRD_PARTY_SRC ${FW_ROOT}/apps/shared_libs/third_party/miniz/miniz.c
                         ${FW_ROOT}/apps/shared_libs/third_party/stb/stb_image_impl.c
 )
+# ra8_img_arena.c forwards stb_image's allocator hooks to the shared decoder
+# scratch (#768), so that contract's TU travels with it.
+set(RA8_IMGDEC_SRC ${FW_ROOT}/libs/ra8_imgdec/src/ra8_imgdec_scratch.c)
 set(RA8_STREAM_POSIX_SRC ${FW_ROOT}/port/posix/src/ra8_io_stream_posix.c)
 set(RA8_STREAM_RAM_SRC ${FW_ROOT}/libs/ra8_io/src/ra8_io_stream_ram.c)
 
@@ -272,6 +275,7 @@ add_library(
   ${COMPRESS_SRC}
   ${RA8_MEM_SRC}
   ${RA8_CORE_SRC}
+  ${RA8_IMGDEC_SRC}
   ${RA8_THIRD_PARTY_SRC}
 )
 target_compile_definitions(
@@ -294,6 +298,7 @@ target_include_directories(
          ${FW_ROOT}/apps/shared_libs/compress/inc
          ${FW_ROOT}/libs/ra8_mem/inc
          ${FW_ROOT}/apps/shared_libs/reflow/inc
+         ${FW_ROOT}/libs/ra8_imgdec/inc
          ${FW_ROOT}/apps/shared_libs/unarch/inc
          ${FW_ROOT}/apps/shared_libs/third_party/miniz
          ${FW_ROOT}/apps/shared_libs/third_party/stb

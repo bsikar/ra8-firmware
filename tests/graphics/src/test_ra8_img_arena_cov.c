@@ -29,6 +29,7 @@
 #include <string.h>
 
 #include "ra8_img_arena.h"
+#include "ra8_imgdec_scratch.h"
 #include "unity_minimal.h"
 
 /** @brief Fill byte marking a block released back to the arena. */
@@ -239,10 +240,12 @@ static void test_realloc_zero_oldsz(void)
   ra8_img_arena_t arena = {.base = s_buf, .cap = sizeof s_buf, .offset = 0U, .live = 0U};
   ra8_img_arena_bind(&arena);
 
-  /* A zero-byte allocation: aligned = 0, so offset stays at 0, live = 1. */
+  /* A zero-byte allocation reserves one byte (#768), so it gets an address of
+   * its own instead of aliasing whatever is handed out next: offset advances
+   * one alignment step, live = 1. */
   void* const zero_blk = ra8_img_arena_malloc(0U);
   TEST_ASSERT_NOT_NULL(zero_blk);
-  TEST_ASSERT_EQ(0, arena.offset);
+  TEST_ASSERT_EQ(k_ra8_imgdec_scratch_align, arena.offset);
   TEST_ASSERT_EQ(1, arena.live);
 
   /* oldsz(0) < newsz(16) -> copy = 0 -> memcpy skipped; returns 16-byte block. */

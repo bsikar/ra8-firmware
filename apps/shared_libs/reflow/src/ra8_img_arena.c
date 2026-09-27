@@ -1,13 +1,13 @@
 /**
  * @file ra8_img_arena.c
- * @brief Caller-bound bump arena with refcount auto-reset for stb_image.
+ * @brief stb_image's allocator hooks, forwarded to the shared scratch (#768).
  *
  * @details
- * See ra8_img_arena.h for the rationale. Unlike the stb_truetype arena, the
- * backing store is not a file-scope array: the consumer binds a buffer sized
- * for the image at hand (SRAM for thumbnails, SDRAM for full covers) via
- * ra8_img_arena_bind(), and these hooks bump-allocate out of it. The reference
- * count drives an auto-reset so the arena fully drains after each decode.
+ * See ra8_img_arena.h for the rationale. The bump arithmetic that used to live
+ * here is now ::ra8_imgdec_scratch_t, written once for every decoder shim in
+ * the tree; what stays is the one thing the shared contract cannot take: the
+ * file-static "currently bound arena" slot, forced by `STBI_MALLOC` and
+ * friends being macros with no context parameter.
  *
  *
  * [Ring 4 / Reflow] {World: NS}
@@ -21,15 +21,15 @@
 
 #include <stddef.h>
 #include <stdint.h>
-#include <string.h>
+
+#include "ra8_imgdec_scratch.h"
 
 /**
  * @enum ra8_img_arena_consts_t
- * @brief Arena alignment knobs (no magic numbers).
+ * @brief Local knobs (no magic numbers).
  */
 typedef enum : uint32_t {
-  k_ra8_img_align      = 16U, /**< Allocation alignment, bytes.         */
-  k_ra8_img_align_mask = 15U, /**< k_ra8_img_align - 1 (round-up mask). */
+  k_ra8_img_zero_request_bytes = 1U, /**< What a zero-byte request reserves. */
 } ra8_img_arena_consts_t;
 
 /** Currently-bound arena, or nullptr when no decode is in flight. */
@@ -39,8 +39,11 @@ void ra8_img_arena_bind(ra8_img_arena_t* arena)
 {
   s_arena = arena;
   if (arena != nullptr) {
-    arena->offset = 0U;
-    arena->live   = 0U;
+    if (ra8_imgdec_scratch_init(arena, arena->base, arena->cap) != k_ra8_ok) {
+      /* An unusable descriptor is still emptied, so a stray hook call cannot
+       * hand out a block from whatever the fields happened to hold. */
+      ra8_imgdec_scratch_reset(arena);
+    }
   }
 }
 
@@ -51,53 +54,24 @@ void ra8_img_arena_unbind(void)
 
 void* ra8_img_arena_malloc(size_t n)
 {
-  ra8_img_arena_t* const a = s_arena;
-  if (a == nullptr) {
-    return nullptr;
-  }
-  /* Reject requests too large to ever fit; this also prevents the alignment
-   * round-up below from overflowing. */
-  if (n > a->cap) {
-    return nullptr;
-  }
-  const size_t aligned = (n + (size_t)k_ra8_img_align_mask) & ~(size_t)k_ra8_img_align_mask;
-  if (aligned > (a->cap - a->offset)) {
-    return nullptr;
-  }
-  void* const block = &a->base[a->offset];
-  a->offset += aligned;
-  a->live += 1U;
-  return block;
+  /* stb_image, unlike libwebp, does not promise a non-zero request. Reserve a
+   * byte for one rather than refuse it: a zero-byte block must still be
+   * non-NULL (stb reads NULL as out-of-memory and fails the decode), and
+   * reserving something is what stops two zero-byte blocks aliasing the next
+   * real allocation the way this shim's own arithmetic used to. */
+  const size_t want = (n == 0U) ? (size_t)k_ra8_img_zero_request_bytes : n;
+  return ra8_imgdec_scratch_alloc(s_arena, want);
 }
 
 void ra8_img_arena_free(void* p)
 {
-  ra8_img_arena_t* const a = s_arena;
-  if ((p == nullptr) || (a == nullptr)) {
-    return;
-  }
-  if (a->live > 0U) {
-    a->live -= 1U;
-  }
-  if (a->live == 0U) {
-    a->offset = 0U;
-  }
+  ra8_imgdec_scratch_free(s_arena, p);
 }
 
 void* ra8_img_arena_realloc_sized(void* p, size_t oldsz, size_t newsz)
 {
-  if (p == nullptr) {
-    return ra8_img_arena_malloc(newsz);
+  if (newsz == 0U) {
+    return ra8_img_arena_malloc(0U);
   }
-  /* A bump arena cannot grow in place: allocate fresh, copy, release old. */
-  void* const fresh = ra8_img_arena_malloc(newsz);
-  if (fresh == nullptr) {
-    return nullptr;
-  }
-  const size_t copy = (oldsz < newsz) ? oldsz : newsz;
-  if (copy > 0U) {
-    (void)memcpy(fresh, p, copy);
-  }
-  ra8_img_arena_free(p);
-  return fresh;
+  return ra8_imgdec_scratch_realloc(s_arena, p, oldsz, newsz);
 }
