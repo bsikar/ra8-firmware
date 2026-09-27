@@ -239,6 +239,9 @@ func (c *Client) inspect(ctx context.Context, identity Identity, r resource) (VM
 	if err := checkDisks(config, identity.Storage, "reservation"); err != nil {
 		return VM{}, err
 	}
+	if err := checkAttachedVolumes(config, identity.Storage, "reservation"); err != nil {
+		return VM{}, err
+	}
 	if err := c.checkNetworks(config, "reservation"); err != nil {
 		return VM{}, err
 	}
@@ -399,6 +402,11 @@ func (c *Client) Clone(ctx context.Context, action Action, spec CloneSpec) (Resu
 		return Result{}, err
 	}
 	if err := checkNoHostDevices(sourceConfig, "source template"); err != nil {
+		return Result{}, err
+	}
+	// storage= relocates the volumes the template owns; a cdrom reference is
+	// copied through as written, so the source is held to the same rule.
+	if err := checkAttachedVolumes(sourceConfig, c.storage, "source template"); err != nil {
 		return Result{}, err
 	}
 	form := url.Values{
