@@ -161,7 +161,7 @@ func ValidateTaskDispatch(task Task) error {
 			return fmt.Errorf("%w (task %q)", err, task.Name)
 		}
 	}
-	return nil
+	return checkAScopeSelectorIsNamedWhereTheToolRequiresOne(task)
 }
 
 // validateDispatchArgs bounds what a reviewed step may put on argv. An empty
