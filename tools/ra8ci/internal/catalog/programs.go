@@ -179,11 +179,17 @@ func ValidateStepDispatch(step Step) error {
 	if err := checkAScriptStepNamesEveryCompanionItNeeds(step); err != nil {
 		return err
 	}
-	// Last on the shell branch, and the only door here that refuses an
-	// argv the script runs happily: an option the mode it selects accepts
+	// Beside the three doors above, which judge an option the script
+	// runs happily: this one refuses an option the mode it selects accepts
 	// and never reads, so the step passes having done something other than
 	// what it names. See a_flag_the_mode_reads.go.
-	return checkNoScriptOptionIsOneTheModeIgnores(step)
+	if err := checkNoScriptOptionIsOneTheModeIgnores(step); err != nil {
+		return err
+	}
+	// Last on the shell branch, and the only door here that reads past an
+	// option's name: the VALUE the script's own case arms accept. See
+	// a_script_option_value_the_script_accepts.go.
+	return checkScriptOptionValuesAreOnesTheScriptAccepts(step)
 }
 
 // ValidateTaskDispatch applies the seam to every step of a task.
