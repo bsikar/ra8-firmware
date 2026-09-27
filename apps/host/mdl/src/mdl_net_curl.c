@@ -83,10 +83,10 @@ static_assert(alignof(mdl_net_curl_storage_t) >= alignof(mdl_curl_ctx_t),
 
 /** @brief Response-header capture sink: keeps the final response's Retry-After. */
 typedef struct {
-  char retry_after[k_mdl_retry_after_max];   /**< Raw value, "" when absent.         */
-  char etag[k_mdl_etag_max];                 /**< Raw ETag, "" when absent.          */
-  char last_modified[k_mdl_last_mod_max];    /**< Raw Last-Modified, "" when absent. */
-  char content_type[k_mdl_content_type_max]; /**< Raw Content-Type, "" when absent.  */
+  char retry_after[k_ra8_mdl_retry_after_max];   /**< Raw value, "" when absent.         */
+  char etag[k_ra8_mdl_etag_max];                 /**< Raw ETag, "" when absent.          */
+  char last_modified[k_ra8_mdl_http_date_max];   /**< Raw Last-Modified, "" when absent. */
+  char content_type[k_ra8_mdl_content_type_max]; /**< Raw Content-Type, "" when absent.  */
 } hdr_sink_t;
 
 /**
@@ -522,8 +522,8 @@ internal_append_req_header(mdl_req_headers_t* headers, const char* name, const c
  * @note The returned list borrows only storage embedded in @p headers.
  * @since 0.1.0
  */
-RA8_INTERNAL static bool internal_build_req_headers(const mdl_net_req_t* req,
-                                                    mdl_req_headers_t*   headers)
+RA8_INTERNAL static bool internal_build_req_headers(const ra8_mdl_http_policy_t* req,
+                                                    mdl_req_headers_t*           headers)
 {
   *headers = (mdl_req_headers_t){};
   if ((req != nullptr) && (req->if_none_match != nullptr) && (req->if_none_match[0] != '\0')) {
@@ -557,7 +557,7 @@ RA8_INTERNAL static bool internal_build_req_headers(const mdl_net_req_t* req,
  * @since 0.1.0
  */
 RA8_INTERNAL static bool
-internal_apply_req(mdl_curl_ctx_t* net, const char* url, const mdl_net_req_t* req)
+internal_apply_req(mdl_curl_ctx_t* net, const char* url, const ra8_mdl_http_policy_t* req)
 {
   if (ra8_net_urlguard_host(url, net->origin_host, sizeof(net->origin_host)) != k_ra8_ok) {
     net->origin_host[0] = '\0';
@@ -601,7 +601,7 @@ RA8_INTERNAL static void internal_release_req_headers(CURL* curl, const mdl_req_
 
 RA8_PRIV int32_t priv_mdl_net_curl_status(long status)
 {
-  if ((status < (long)k_mdl_http_status_min) || (status > (long)k_mdl_http_status_max)) {
+  if ((status < (long)k_ra8_mdl_http_status_min) || (status > (long)k_ra8_mdl_http_status_max)) {
     return 0;
   }
   return (int32_t)status;
@@ -639,11 +639,11 @@ RA8_PRIV ra8_err_t priv_mdl_net_curl_classify(CURLcode code, bool overflow, int3
  * @note Thread safety follows ownership of the easy handle.
  * @since 0.1.0
  */
-RA8_INTERNAL static ra8_err_t internal_finish_transfer(CURL*             curl,
-                                                       CURLcode          code,
-                                                       bool              overflow,
-                                                       const hdr_sink_t* hdr,
-                                                       mdl_net_resp_t*   resp)
+RA8_INTERNAL static ra8_err_t internal_finish_transfer(CURL*                    curl,
+                                                       CURLcode                 code,
+                                                       bool                     overflow,
+                                                       const hdr_sink_t*        hdr,
+                                                       ra8_mdl_http_response_t* resp)
 {
   long wire_status = 0;
   curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &wire_status);
@@ -682,13 +682,13 @@ RA8_INTERNAL static ra8_err_t internal_finish_transfer(CURL*             curl,
  * @note Not thread-safe: reuses backend request storage.
  * @since 0.1.0
  */
-RA8_INTERNAL static ra8_err_t internal_curl_get_buf(void*                ctx,
-                                                    const char*          url,
-                                                    const mdl_net_req_t* req,
-                                                    char*                buf,
-                                                    size_t               cap,
-                                                    size_t*              out_len,
-                                                    mdl_net_resp_t*      resp)
+RA8_INTERNAL static ra8_err_t internal_curl_get_buf(void*                        ctx,
+                                                    const char*                  url,
+                                                    const ra8_mdl_http_policy_t* req,
+                                                    char*                        buf,
+                                                    size_t                       cap,
+                                                    size_t*                      out_len,
+                                                    ra8_mdl_http_response_t*     resp)
 {
   mdl_curl_ctx_t* net = (mdl_curl_ctx_t*)ctx;
   if (!ra8_net_urlguard_scheme_allowed(url)) {
@@ -747,12 +747,12 @@ RA8_INTERNAL static ra8_err_t internal_curl_get_buf(void*                ctx,
  * @note Not thread-safe: reuses backend request storage.
  * @since 0.1.0
  */
-RA8_INTERNAL static ra8_err_t internal_curl_get_body(void*                ctx,
-                                                     const char*          url,
-                                                     const mdl_net_req_t* req,
-                                                     mdl_net_body_sink_t* sink,
-                                                     size_t*              out_len,
-                                                     mdl_net_resp_t*      resp)
+RA8_INTERNAL static ra8_err_t internal_curl_get_body(void*                        ctx,
+                                                     const char*                  url,
+                                                     const ra8_mdl_http_policy_t* req,
+                                                     mdl_net_body_sink_t*         sink,
+                                                     size_t*                      out_len,
+                                                     ra8_mdl_http_response_t*     resp)
 {
   mdl_curl_ctx_t* net = (mdl_curl_ctx_t*)ctx;
   if (!ra8_net_urlguard_scheme_allowed(url)) {

@@ -214,12 +214,12 @@ typedef struct {
  * @note Not thread-safe: mutates the session cache and governor.
  * @since 0.1.0
  */
-ra8_err_t mdl_fetch_asset(mdl_fetch_ctx_t* ctx,
-                          const char*      url,
-                          const char*      target_abs,
-                          const char*      referer,
-                          mdl_net_resp_t*  out_resp,
-                          size_t*          out_bytes);
+ra8_err_t mdl_fetch_asset(mdl_fetch_ctx_t*         ctx,
+                          const char*              url,
+                          const char*              target_abs,
+                          const char*              referer,
+                          ra8_mdl_http_response_t* out_resp,
+                          size_t*                  out_bytes);
 
 /**
  * @brief Download a series' chapters incrementally, resuming and deduping.

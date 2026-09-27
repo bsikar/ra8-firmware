@@ -543,7 +543,7 @@ RA8_INTERNAL static void internal_test_fetch_asset_policy_atomic_and_nonempty(vo
   s_mock.response_prefix     = nullptr;
   s_mock.response_prefix_len = 0U;
   s_mock.response_body       = "cover bytes";
-  mdl_net_resp_t resp        = {};
+  ra8_mdl_http_response_t resp        = {};
   size_t         bytes       = 0U;
   TEST_ASSERT_EQ(
     (int64_t)k_ra8_ok,

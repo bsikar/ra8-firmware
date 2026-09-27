@@ -293,11 +293,11 @@ RA8_INTERNAL static void internal_test_curl_get_body_failure_keeps_existing(void
   mdl_net_curl_storage_t storage = {};
   TEST_ASSERT(mdl_net_curl_init(&net, &storage, &pol) == k_ra8_ok);
 
-  const mdl_net_req_t req      = {.user_agent = "mdl-test",
-                                  .referer    = nullptr,
-                                  .timeout_ms = (uint32_t)k_atom_timeout_ms};
+  const ra8_mdl_http_policy_t req      = {.user_agent = "mdl-test",
+                                          .referer    = nullptr,
+                                          .timeout_ms = (uint32_t)k_atom_timeout_ms};
   size_t              len      = 0U;
-  mdl_net_resp_t      resp     = {};
+  ra8_mdl_http_response_t     resp     = {};
   atom_body_t         received = {};
   mdl_net_body_sink_t sink     = internal_atom_body_sink(&received);
   /* Port 1 on loopback refuses immediately: deterministic, offline, fast. */

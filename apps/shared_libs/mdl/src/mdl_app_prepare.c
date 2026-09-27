@@ -29,13 +29,13 @@
  * @note Series indexes currently require no separate governor.
  * @since 0.1.0
  */
-RA8_INTERNAL static ra8_err_t internal_prepare_cache_fetch(void*                context,
-                                                           const char*          url,
-                                                           const mdl_net_req_t* request,
-                                                           char*                buffer,
-                                                           size_t               capacity,
-                                                           size_t*              out_length,
-                                                           mdl_net_resp_t*      response)
+RA8_INTERNAL static ra8_err_t internal_prepare_cache_fetch(void*                        context,
+                                                           const char*                  url,
+                                                           const ra8_mdl_http_policy_t* request,
+                                                           char*                        buffer,
+                                                           size_t                       capacity,
+                                                           size_t*                      out_length,
+                                                           ra8_mdl_http_response_t*     response)
 {
   return mdl_net_get_buf((mdl_net_iface_t*)context,
                          url,
@@ -553,9 +553,9 @@ RA8_PRIV ra8_err_t priv_mdl_app_prepare_chapters(const mdl_site_t* site,
       !mdl_session_url_allowed(&priv_mdl_app_context()->session, series_url, nullptr)) {
     return k_ra8_fail; /* robots refused the series page (message printed) */
   }
-  const mdl_net_req_t req = {.user_agent = priv_mdl_app_context()->session.user_agent,
-                             .referer    = nullptr,
-                             .timeout_ms = timeout};
+  const ra8_mdl_http_policy_t req = {.user_agent = priv_mdl_app_context()->session.user_agent,
+                                     .referer    = nullptr,
+                                     .timeout_ms = timeout};
 
   const mdl_cache_get_req_t get = {.url           = series_url,
                                    .request       = &req,

@@ -152,9 +152,9 @@ typedef struct {
   uint64_t url_hash;                    /**< FNV-1a 64 of the source URL.     */
   uint64_t content_hash;                /**< FNV-1a 64 of the fetched bytes.  */
   char     rel_path[k_mdl_relpath_max]; /**< Path under the series directory. */
-  char     etag[k_mdl_etag_max];        /**< Cached ETag for conditional GET. */
+  char     etag[k_ra8_mdl_etag_max];    /**< Cached ETag for conditional GET. */
   /** @brief Cached Last-Modified response value. */
-  char     last_modified[k_mdl_last_mod_max];
+  char     last_modified[k_ra8_mdl_http_date_max];
   int64_t  fetched_at;      /**< Most recent HTTP result time (epoch s).  */
   uint16_t response_status; /**< Most recent HTTP status; zero if legacy. */
 } mdl_page_rec_t;

@@ -351,9 +351,9 @@ bool mdl_state_add_page(mdl_state_t* st,
     return false;
   }
   if (!priv_mdl_state_field_valid(rel_path, k_mdl_relpath_max) ||
-      !priv_mdl_state_field_valid((etag != nullptr) ? etag : "", k_mdl_etag_max) ||
+      !priv_mdl_state_field_valid((etag != nullptr) ? etag : "", k_ra8_mdl_etag_max) ||
       !priv_mdl_state_field_valid((last_modified != nullptr) ? last_modified : "",
-                                  k_mdl_last_mod_max) ||
+                                  k_ra8_mdl_http_date_max) ||
       !internal_mdl_state_page_response_valid(fetched_at, response_status)) {
     return false;
   }

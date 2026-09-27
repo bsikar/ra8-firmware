@@ -65,13 +65,13 @@ struct mdl_fetch_cache_request {
  * @note Conforms directly to ::mdl_cache_fetch_fn.
  * @since 0.1.0
  */
-RA8_PRIV ra8_err_t priv_mdl_fetch_cache_get_buf(void*                context,
-                                                const char*          url,
-                                                const mdl_net_req_t* request,
-                                                char*                buffer,
-                                                size_t               capacity,
-                                                size_t*              out_length,
-                                                mdl_net_resp_t*      response);
+RA8_PRIV ra8_err_t priv_mdl_fetch_cache_get_buf(void*                        context,
+                                                const char*                  url,
+                                                const ra8_mdl_http_policy_t* request,
+                                                char*                        buffer,
+                                                size_t                       capacity,
+                                                size_t*                      out_length,
+                                                ra8_mdl_http_response_t*     response);
 
 /**
  * @struct mdl_run_pos_t
@@ -246,15 +246,15 @@ RA8_PRIV ra8_err_t priv_mdl_fetch_checkpoint(const mdl_fetch_ctx_t* ctx);
  * @note The function performs no dynamic allocation and retains no caller pointer.
  * @since 0.1.0
  */
-RA8_PRIV ra8_err_t priv_mdl_fetch_with_retry(mdl_fetch_ctx_t*     ctx,
-                                             const char*          host,
-                                             const char*          url,
-                                             const mdl_net_req_t* req,
-                                             mdl_net_body_sink_t* sink,
-                                             uint32_t             jmin,
-                                             uint32_t             jmax,
-                                             mdl_net_resp_t*      out_resp,
-                                             size_t*              out_bytes);
+RA8_PRIV ra8_err_t priv_mdl_fetch_with_retry(mdl_fetch_ctx_t*             ctx,
+                                             const char*                  host,
+                                             const char*                  url,
+                                             const ra8_mdl_http_policy_t* req,
+                                             mdl_net_body_sink_t*         sink,
+                                             uint32_t                     jmin,
+                                             uint32_t                     jmax,
+                                             ra8_mdl_http_response_t*     out_resp,
+                                             size_t*                      out_bytes);
 
 /**
  * @brief Fetch and checkpoint every extracted page in one chapter.

@@ -301,7 +301,7 @@ RA8_INTERNAL static void internal_bind(mdl_net_iface_t* net, mdl_net_c6link_t* b
  * @details Constructs all supported request fields so the transfer stub can
  * prove the adapter forwards each value without rewriting it.
  * @return Complete immutable-by-value request policy.
- * @retval mdl_net_req_t Deterministic header and timeout values.
+ * @retval ra8_mdl_http_policy_t Deterministic header and timeout values.
  * @pre Fixture string literals have static lifetime.
  * @pre Callers do not mutate the returned pointer targets.
  * @post Every optional request header is non-null.
@@ -309,9 +309,9 @@ RA8_INTERNAL static void internal_bind(mdl_net_iface_t* net, mdl_net_c6link_t* b
  * @note Returned by value and safe for independent test vectors.
  * @since 0.1.0
  */
-RA8_INTERNAL static mdl_net_req_t internal_request(void)
+RA8_INTERNAL static ra8_mdl_http_policy_t internal_request(void)
 {
-  return (mdl_net_req_t){
+  return (ra8_mdl_http_policy_t){
     .user_agent        = "coverage-agent",
     .referer           = "https://example.test/index",
     .if_none_match     = "\"prior\"",
@@ -340,10 +340,10 @@ RA8_INTERNAL static void internal_test_buffer_policy_and_status(void)
   mdl_net_iface_t  net;
   mdl_net_c6link_t backend;
   internal_bind(&net, &backend);
-  const mdl_net_req_t request                     = internal_request();
+  const ra8_mdl_http_policy_t request                     = internal_request();
   char                body[k_internal_sink_bytes] = "old";
   size_t              length                      = 99U;
-  mdl_net_resp_t      response;
+  ra8_mdl_http_response_t     response;
   TEST_ASSERT_EQ(k_ra8_ok,
                  mdl_net_get_buf(&net,
                                  "https://example.test/body",
@@ -381,7 +381,7 @@ RA8_INTERNAL static void internal_test_buffer_policy_and_status(void)
 RA8_INTERNAL static void internal_test_stream_and_sink_faults(void)
 {
   TEST_BEGIN("c6 adapter sink faults");
-  const mdl_net_req_t request = internal_request();
+  const ra8_mdl_http_policy_t request = internal_request();
   for (uint8_t vector = 0U; vector < 3U; ++vector) {
     internal_script_reset();
     mdl_net_iface_t  net;
@@ -432,7 +432,7 @@ RA8_INTERNAL static void internal_test_http_fail_closed(void)
   TEST_BEGIN("c6 adapter HTTP failures clear output");
   const int32_t       statuses[] = {404, 429, 500};
   const ra8_err_t     expected[] = {k_ra8_err_not_found, k_ra8_err_busy, k_ra8_fail};
-  const mdl_net_req_t request    = internal_request();
+  const ra8_mdl_http_policy_t request    = internal_request();
   for (size_t index = 0U; index < (sizeof(statuses) / sizeof(statuses[0])); ++index) {
     internal_script_reset();
     s_script.status = statuses[index];
@@ -440,7 +440,7 @@ RA8_INTERNAL static void internal_test_http_fail_closed(void)
     mdl_net_c6link_t backend;
     internal_bind(&net, &backend);
     char           body[k_internal_sink_bytes] = "old";
-    mdl_net_resp_t response;
+    ra8_mdl_http_response_t response;
     TEST_ASSERT_EQ(expected[index],
                    mdl_net_get_buf(&net,
                                    "https://example.test/body",
@@ -471,7 +471,7 @@ RA8_INTERNAL static void internal_test_http_fail_closed(void)
 RA8_INTERNAL static void internal_test_local_failures(void)
 {
   TEST_BEGIN("c6 adapter local failures");
-  const mdl_net_req_t request = internal_request();
+  const ra8_mdl_http_policy_t request = internal_request();
   internal_script_reset();
   mdl_net_iface_t  net;
   mdl_net_c6link_t backend;
@@ -599,7 +599,7 @@ RA8_INTERNAL static void internal_test_status_range_contract(void)
 {
   TEST_BEGIN("c6 adapter status range contract");
   const int32_t       malformed[] = {99, 600, 700, -1};
-  const mdl_net_req_t request     = internal_request();
+  const ra8_mdl_http_policy_t request     = internal_request();
   for (size_t index = 0U; index < (sizeof(malformed) / sizeof(malformed[0])); ++index) {
     internal_script_reset();
     s_script.status = malformed[index];
@@ -607,7 +607,7 @@ RA8_INTERNAL static void internal_test_status_range_contract(void)
     mdl_net_c6link_t backend;
     internal_bind(&net, &backend);
     char           body[k_internal_sink_bytes] = "old";
-    mdl_net_resp_t response;
+    ra8_mdl_http_response_t response;
     TEST_ASSERT_EQ(k_ra8_err_protocol_error,
                    mdl_net_get_buf(&net,
                                    "https://example.test/body",
@@ -628,7 +628,7 @@ RA8_INTERNAL static void internal_test_status_range_contract(void)
   internal_bind(&net, &backend);
   char           body[k_internal_sink_bytes] = "old";
   size_t         length                      = 0U;
-  mdl_net_resp_t response;
+  ra8_mdl_http_response_t response;
   TEST_ASSERT_EQ(k_ra8_ok,
                  mdl_net_get_buf(&net,
                                  "https://example.test/body",
