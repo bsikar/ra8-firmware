@@ -170,7 +170,14 @@ func ValidateTaskDispatch(task Task) error {
 	// Beside the scope rule above, which judges the argv a step STATES:
 	// this one judges the argv a caller may later ADD, which only the task
 	// states. See a_bound_argument_the_tool_takes.go.
-	return checkBoundArgumentsAreOnesTheToolTakes(task)
+	if err := checkBoundArgumentsAreOnesTheToolTakes(task); err != nil {
+		return err
+	}
+	// Beside the rule above, which asks whether the tool reads a bound
+	// argument at all: this one asks whether a bound path contradicts a
+	// scope the step already named. See
+	// a_bound_path_beside_a_whole_tree_scan.go.
+	return checkNoBoundPathContradictsAWholeTreeScan(task)
 }
 
 // validateDispatchArgs bounds what a reviewed step may put on argv. An empty
