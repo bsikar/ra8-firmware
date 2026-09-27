@@ -7,19 +7,28 @@
  * [Ring 3 / Imaging] {World: NS}
  *
  * @details
- * Five private scratch shims decode images in this tree and no two of them
+ * Four private scratch shims decode images in this tree and no two of them
  * agree. `ra8_img_arena.h` and `ra8_webp_arena.h` are the same bump arena
  * written twice, differing only in `live` being `size_t` in one and `uint32_t`
- * in the other; `epub_miniz_alloc.h` carries an explicit opaque handle;
- * `ra8_stbtt_alloc.h` and `unarch_xz_pool.h` are file-static pools with no
- * handle at all. The policy inside them is identical: bump a cursor, count the
- * live blocks, rewind to empty when the count reaches zero, refuse rather than
+ * in the other; `ra8_stbtt_alloc.h` and `unarch_xz_pool.h` are pools with no
+ * handle at all, one file-static and one installed over a caller's buffer.
+ * The policy inside all four is identical: bump a cursor, count the live
+ * blocks, rewind to empty when the count reaches zero, refuse rather than
  * overrun.
  *
  * This is that policy, written once, with the context passed in. A shim keeps
  * only what its SOUP library forces on it: `STBI_MALLOC` and friends are
  * macros with no context parameter, so the implicit bind/unbind slot stays
  * with the shim, pointing at one of these. The arithmetic does not.
+ *
+ * @par The fifth shim is not one of these
+ * `epub_miniz_alloc.h` looks like a sibling and is not: it is a first-fit
+ * free list with in-band headers, block splitting and coalescing, because
+ * miniz holds a book's central-directory arrays open across every chapter
+ * read while allocating and freeing an ~11 KiB inflate state underneath them.
+ * On this contract `live` would never reach zero while a book is open, so the
+ * cursor would never rewind and each chapter would eat another ~11 KiB of a
+ * 160 KiB pool for good. It keeps its own allocator on purpose.
  *
  * @par Why not ::ra8_arena_t
  * `libs/ra8_mem/inc/ra8_arena.h` is an init-time carve with no free, by
@@ -43,6 +52,7 @@ extern "C" {
 #include <stddef.h>
 #include <stdint.h>
 
+#include "ra8_arena.h"
 #include "ra8_err.h"
 
 /**
@@ -209,6 +219,51 @@ void ra8_imgdec_scratch_reset(ra8_imgdec_scratch_t* scratch);
  * @since 0.1.0
  */
 void ra8_imgdec_scratch_free(ra8_imgdec_scratch_t* scratch, void* ptr);
+
+/**
+ * @brief Carve a decode scratch out of a caller's arena, once.
+ *
+ * @details Every backend behind ::ra8_imgdec_t is handed a `ra8_arena_t*` on
+ * the request and publishes a `scratch_bytes` / `scratch_align` budget in its
+ * capabilities. This is the one place those two meet: carve the published
+ * budget out of the arena and bind the block as a scratch. Without it each
+ * backend would write the same carve again, which is the duplication #768
+ * exists to remove, one layer up from the shims.
+ *
+ * The carve is a *binding-time* act, not a per-decode one. ::ra8_arena_carve
+ * has no matching free by design, so carving per decode would consume the
+ * arena a decode at a time; carve once, then let the scratch rewind inside
+ * that block for every decode after it.
+ *
+ * @param[out]    scratch Scratch record to bind over the carved block.
+ * @param[in,out] arena   Arena to carve from; advanced on success.
+ * @param[in]     bytes   Budget to carve, from `caps.scratch_bytes`.
+ * @param[in]     align   Carve alignment, from `caps.scratch_align`; 0 means
+ *                        ::k_ra8_imgdec_scratch_align.
+ *
+ * @return ra8_err_t Error code.
+ * @retval k_ra8_ok                 Block carved; @p scratch is empty and ready.
+ * @retval k_ra8_err_invalid_arg    @p scratch or @p arena was NULL, or @p align
+ *                                  was not a power of two.
+ * @retval k_ra8_err_invalid_size   @p bytes was zero.
+ * @retval k_ra8_err_not_supported  @p align is stronger than
+ *                                  ::k_ra8_imgdec_scratch_align.
+ * @retval k_ra8_err_no_mem         The arena has no room for @p bytes.
+ *
+ * @pre @p arena was populated by ::ra8_arena_init.
+ * @post On success @p scratch owns `bytes` of the arena and holds no blocks.
+ * @post On any failure @p scratch is left empty and unusable, never partly
+ *       bound and never still pointing at an earlier store.
+ * @post On any failure the arena is unchanged.
+ *
+ * @note Not thread-safe: one scratch belongs to one decode.
+ *
+ * @see ra8_imgdec_caps_t
+ * @since 0.1.0
+ */
+[[nodiscard]] ra8_err_t ra8_imgdec_scratch_carve(ra8_imgdec_scratch_t* scratch,
+                                                 ra8_arena_t* arena, uint32_t bytes,
+                                                 uint32_t align);
 
 /**
  * @brief Deepest byte count @p scratch has held since it was initialised.
