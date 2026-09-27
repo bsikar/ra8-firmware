@@ -164,7 +164,13 @@ func ValidateTaskDispatch(task Task) error {
 			return fmt.Errorf("%w (task %q)", err, task.Name)
 		}
 	}
-	return checkAScopeSelectorIsNamedWhereTheToolRequiresOne(task)
+	if err := checkAScopeSelectorIsNamedWhereTheToolRequiresOne(task); err != nil {
+		return err
+	}
+	// Beside the scope rule above, which judges the argv a step STATES:
+	// this one judges the argv a caller may later ADD, which only the task
+	// states. See a_bound_argument_the_tool_takes.go.
+	return checkBoundArgumentsAreOnesTheToolTakes(task)
 }
 
 // validateDispatchArgs bounds what a reviewed step may put on argv. An empty
