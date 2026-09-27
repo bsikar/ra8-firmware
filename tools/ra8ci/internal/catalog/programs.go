@@ -256,7 +256,14 @@ func ValidateTaskDispatch(task Task) error {
 	// walks past a shell one. This judges what it adds to a step
 	// dispatching a script whose argument contract is stated. See
 	// a_bound_argument_the_script_parses.go.
-	return checkBoundArgumentsAreOnesTheScriptParses(task)
+	if err := checkBoundArgumentsAreOnesTheScriptParses(task); err != nil {
+		return err
+	}
+	// Last on the task branch: binding writes flags behind positionals and
+	// appends them behind the reviewed argv, and the three flag-package
+	// tools stop reading options at the first target. See
+	// a_bound_flag_the_parser_still_reads.go.
+	return checkNoBoundFlagLandsBehindATarget(task)
 }
 
 // validateDispatchArgs bounds what a reviewed step may put on argv. An empty
