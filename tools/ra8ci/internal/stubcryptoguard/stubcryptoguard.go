@@ -88,27 +88,27 @@ func checkFile(rel, token, root string) []string {
 		return []string{fmt.Sprintf("%s: cannot decode UTF-8", rel)}
 	}
 	lines := strings.Split(string(data), "\n")
-	ifIndex, elseIndex, endIndex, ok := guardRegion(lines)
+	ifIndex, insecureEnd, endIndex, ok := guardRegion(lines)
 	if !ok {
 		return []string{fmt.Sprintf("%s: missing the stub-crypto guard '#if defined(RA8_INSECURE_STUB_CRYPTO) || defined(RA8_OFF_TARGET)' with a matching #else / #endif", rel)}
 	}
 	var problems []string
-	failClosed := false
-	for _, line := range lines[elseIndex+1 : endIndex] {
-		if errorDirective.MatchString(line) || strings.Contains(line, "k_ra8_err_") {
-			failClosed = true
-			break
+	starts := armStarts(lines, insecureEnd, endIndex)
+	for k, start := range starts {
+		stop := endIndex
+		if k+1 < len(starts) {
+			stop = starts[k+1]
 		}
-	}
-	if !failClosed {
-		problems = append(problems, fmt.Sprintf("%s: the #else branch is not fail-closed (needs a #error or a k_ra8_err_* hard return, not k_ra8_ok)", rel))
+		if !armFailsClosed(lines[start+1 : stop]) {
+			problems = append(problems, fmt.Sprintf("%s: the production arm opened at line %d is not fail-closed (needs a #error or a k_ra8_err_* hard return, not k_ra8_ok)", rel, start+1))
+		}
 	}
 	var inside, escaped []int
 	for i, line := range lines {
 		if !strings.Contains(line, token) {
 			continue
 		}
-		if i > ifIndex && i < elseIndex {
+		if i > ifIndex && i < insecureEnd {
 			inside = append(inside, i)
 		} else {
 			escaped = append(escaped, i)
@@ -139,7 +139,7 @@ func guardRegion(lines []string) (int, int, int, bool) {
 	if ifIndex < 0 {
 		return 0, 0, 0, false
 	}
-	depth, elseIndex := 1, -1
+	depth, insecureEnd := 1, -1
 	for i := ifIndex + 1; i < len(lines); i++ {
 		switch {
 		case ifDirective.MatchString(lines[i]):
@@ -147,10 +147,13 @@ func guardRegion(lines []string) (int, int, int, bool) {
 		case endifDirective.MatchString(lines[i]):
 			depth--
 			if depth == 0 {
-				return ifIndex, elseIndex, i, elseIndex >= 0
+				return ifIndex, insecureEnd, i, insecureEnd >= 0
 			}
-		case elseDirective.MatchString(lines[i]) && depth == 1:
-			elseIndex = i
+		case depth == 1 && insecureEnd < 0 && opensAnArm(lines[i]):
+			// The first arm boundary at this level, whether it is spelled
+			// #elif or #else, is where the preprocessor stops compiling the
+			// insecure body. Later boundaries open production arms.
+			insecureEnd = i
 		}
 	}
 	return 0, 0, 0, false
