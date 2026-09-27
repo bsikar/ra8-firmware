@@ -45,18 +45,22 @@ typedef struct {
 
 /**
  * @brief Reserve one aligned span from the verifier's caller-owned arena.
- * @details Rounds the bump cursor up to @p alignment, refuses a request that
- *          would leave the arena, and records the resulting high-water mark.
- * @param[in,out] workspace Exclusive caller-owned bump arena.
+ * @details Forwards to ::mdl_export_workspace_take, which owns the one bump
+ *          implementation in this library: it rounds the cursor up to
+ *          @p alignment, refuses a request that would leave the arena, and
+ *          records the resulting high-water mark. This entry point exists so
+ *          the verifier's internal call sites keep a name of their own; it
+ *          holds no arithmetic and no capacity policy.
+ * @param[in,out] workspace Exclusive caller-owned bump arena, or NULL.
  * @param[in] bytes Nonzero span extent to reserve.
  * @param[in] alignment Power-of-two alignment required by the caller.
  * @return Reserved span, or NULL when the request cannot be satisfied.
  * @retval NULL The request was malformed or the arena is exhausted.
  * @retval other One writable span of @p bytes bytes inside the arena.
- * @pre @p workspace is non-NULL and owns writable arena storage.
  * @pre @p alignment is a nonzero power of two.
  * @post Success advances the arena cursor past the reserved span.
  * @post Failure leaves the arena cursor and high-water mark unchanged.
+ * @post A NULL @p workspace, or one with no arena storage, returns NULL.
  * @note Not thread-safe for a shared workspace.
  * @since 0.1.0
  */
