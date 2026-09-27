@@ -303,6 +303,14 @@ func ValidateReviewedTask(task Task) error {
 	if err := checkTheTaskNameIsOneAGrantCanCarry(task); err != nil {
 		return err
 	}
+	// Beside the two rules above, which judge whether a finished run could
+	// be filed and whether a grant could name it: this one judges the
+	// literal argv a step states, which ValidateTask holds only to a NUL
+	// while it holds the program beside it to a NUL, a CR and an LF. See
+	// a_declared_argument_review_can_read.go.
+	if err := checkEachDeclaredArgumentIsOneReviewCanRead(task); err != nil {
+		return err
+	}
 	if err := checkArgumentsReachOneStep(task); err != nil {
 		return err
 	}
