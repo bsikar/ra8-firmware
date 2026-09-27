@@ -297,6 +297,12 @@ func ValidateReviewedTask(task Task) error {
 	if err := checkTheTaskIsOneHistoryCanFile(task); err != nil {
 		return err
 	}
+	// Beside the history bounds above, which ask whether a finished run of
+	// this task could be filed: this one asks whether it could be
+	// dispatched at all. See a_task_name_a_grant_can_carry.go.
+	if err := checkTheTaskNameIsOneAGrantCanCarry(task); err != nil {
+		return err
+	}
 	if err := checkArgumentsReachOneStep(task); err != nil {
 		return err
 	}
