@@ -27,7 +27,6 @@ const snippetTrimLen = 117
 
 var (
 	wavePattern    = regexp.MustCompile("\\b[Ww]ave[\\s_-]?\\d+[A-Za-z]?\\b")
-	optOutPattern  = regexp.MustCompile("WAVE-OK\\s*:")
 	scanExtensions = map[string]bool{
 		".c": true, ".h": true, ".cpp": true, ".hpp": true, ".cc": true, ".cmake": true,
 		".md": true, ".yml": true, ".yaml": true, ".sh": true, ".py": true, ".txt": true,
@@ -188,7 +187,7 @@ func scan(ctx context.Context, root string, paths []string) ([]finding, error) {
 		}
 		text := lineBreaks.Replace(string(data))
 		for number, line := range strings.Split(text, "\n") {
-			if optOutPattern.MatchString(line) || !wavePattern.MatchString(line) {
+			if lineStatesAWaveOptOut(line) || !wavePattern.MatchString(line) {
 				continue
 			}
 			out = append(out, finding{path: rel, line: number + 1, text: strings.TrimRightFunc(line, unicode.IsSpace)})
@@ -215,10 +214,12 @@ func selfTest(ctx context.Context, root string, stdout, stderr io.Writer) bool {
 		{"k_ra8_pdg_wave_saw selects the waveform", false, "hardware identifier"},
 		{"wave_table[0] holds the sample", false, "wave identifier"},
 		{"see Wave 12 WAVE-OK: quoted source symbol", false, "per-line opt-out"},
+		{"see Wave 12 WAVE-OK:", true, "opt-out with no reason"},
+		{"see Wave 12 NOT-WAVE-OK: about the annotation", true, "marker welded to a longer token"},
 	}
 	for _, test := range tests {
 		got := wavePattern.MatchString(test.text)
-		if optOutPattern.MatchString(test.text) {
+		if lineStatesAWaveOptOut(test.text) {
 			got = false
 		}
 		if got != test.want {
