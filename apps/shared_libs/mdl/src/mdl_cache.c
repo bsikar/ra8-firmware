@@ -336,7 +336,7 @@ RA8_INTERNAL static ra8_err_t internal_cache_retry_unconditional(const char*    
   *response                 = (mdl_net_resp_t){};
   const ra8_err_t error =
     fetch(fetch_context, url, &request, buffer, capacity, out_length, response);
-  return ((error == k_ra8_ok) && (response->status == (long)k_cache_http_not_modified))
+  return ((error == k_ra8_ok) && (response->status == (int32_t)k_cache_http_not_modified))
            ? k_ra8_err_protocol_error
            : error;
 }
@@ -417,9 +417,9 @@ RA8_INTERNAL static ra8_err_t internal_cache_publish(mdl_cache_t*             ca
                                                      const mdl_net_resp_t*    response,
                                                      mdl_cache_result_t*      result)
 {
-  if ((response->status < (long)k_cache_http_success_min) ||
-      (response->status > (long)k_cache_http_success_max) ||
-      (response->status > (long)k_cache_http_status_max) || (length == 0U)) {
+  if ((response->status < (int32_t)k_cache_http_success_min) ||
+      (response->status > (int32_t)k_cache_http_success_max) ||
+      (response->status > (int32_t)k_cache_http_status_max) || (length == 0U)) {
     return k_ra8_err_protocol_error;
   }
   const uint64_t url_hash     = mdl_hash_str(url);
@@ -502,7 +502,7 @@ RA8_INTERNAL static ra8_err_t internal_cache_network(mdl_cache_t*              c
   if (error != k_ra8_ok) {
     return error;
   }
-  if (response->status == (long)k_cache_http_not_modified) {
+  if (response->status == (int32_t)k_cache_http_not_modified) {
     if (lookup->held) {
       return internal_cache_finish_304(cache,
                                        &lookup->paths,

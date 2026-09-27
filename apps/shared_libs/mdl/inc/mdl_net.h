@@ -110,6 +110,27 @@ typedef enum : uint16_t {
 } mdl_net_resp_size_t;
 
 /**
+ * @brief Inclusive bounds of the HTTP status codes this seam admits.
+ *
+ * @details RFC 9110 assigns response status codes the three-digit range
+ * 100..599, so a value outside it is malformed rather than merely
+ * unsuccessful. ::priv_mdl_net_classify_http refuses such a value instead of
+ * ranking it, and `mdl_net_curl.c` bounds libcurl's `long` against these before
+ * it reaches ::mdl_net_resp_t::status.
+ *
+ * @note Twin of ::k_ra8_mdl_http_status_min / ::k_ra8_mdl_http_status_max in
+ *       `libs/ra8_c6link/inc/ra8_mdl_protocol.h`, which the C6 endpoint already
+ *       enforces on its own side. Core cannot include that header (the C6
+ *       backend deliberately sits outside `MDL_CORE_SRC`), so the two spellings
+ *       coexist until issue #746 gives the contract one home.
+ * @since 0.1.0
+ */
+typedef enum : int32_t {
+  k_mdl_http_status_min = 100, /**< Lowest well-formed HTTP status code.  */
+  k_mdl_http_status_max = 599, /**< Highest well-formed HTTP status code. */
+} mdl_net_status_bound_t;
+
+/**
  * @struct mdl_net_resp_t
  * @brief Per-transfer response metadata surfaced to the politeness governor.
  *
@@ -126,24 +147,28 @@ typedef enum : uint16_t {
  *            exactly when the header was absent.
  * @invariant `status == 0` means no HTTP status was observed (transport error
  *            before a response, or an argument the dispatcher refused).
+ * @invariant A nonzero `status` is within ::k_mdl_http_status_min ..
+ *            ::k_mdl_http_status_max inclusive.
  *
- * @note `status` is a `long` rather than a fixed-width type because the host
- *       libcurl backend reads it straight out of `CURLINFO_RESPONSE_CODE`
- *       (`apps/host/mdl/src/mdl_net_curl.c`), and ::priv_mdl_net_classify_http
- *       takes the same `long` so both backends share one classifier. The C6
- *       twin ::ra8_mdl_http_response_t spells the field `int32_t`, so the
- *       bridge widens. Unifying on the narrower type (issue #746) therefore
- *       needs a range check where libcurl's value is read, not only a rename.
+ * @note `status` is `int32_t`, the same width its C6 twin
+ *       ::ra8_mdl_http_response_t has always used. It was a `long` because the
+ *       host libcurl backend reads it straight out of `CURLINFO_RESPONSE_CODE`
+ *       and ::priv_mdl_net_classify_http took the same `long` so both backends
+ *       could share one classifier, which put a host transport's integer width
+ *       in a portable seam. `mdl_net_curl.c` now bounds libcurl's `long`
+ *       against ::k_mdl_http_status_min / ::k_mdl_http_status_max at the read
+ *       itself, so nothing outside a well-formed HTTP status reaches this
+ *       field. The two records now differ only in name (issue #746).
  * @see mdl_net_get_buf()
  * @see mdl_retry_after_parse()
  * @since 0.1.0
  */
 typedef struct {
-  long status;                               /**< Finished transfer's HTTP status, 0 if none. */
-  char retry_after[k_mdl_retry_after_max];   /**< Raw `Retry-After` value, "" when absent.    */
-  char etag[k_mdl_etag_max];                 /**< Raw `ETag` value, "" when absent.           */
-  char last_modified[k_mdl_last_mod_max];    /**< Raw `Last-Modified` value, "" when absent.  */
-  char content_type[k_mdl_content_type_max]; /**< Raw `Content-Type` value, "" when absent.   */
+  int32_t status;                               /**< Final HTTP status, 0 if none.      */
+  char    retry_after[k_mdl_retry_after_max];   /**< Raw `Retry-After`, "" if absent.   */
+  char    etag[k_mdl_etag_max];                 /**< Raw `ETag`, "" if absent.          */
+  char    last_modified[k_mdl_last_mod_max];    /**< Raw `Last-Modified`, "" if absent. */
+  char    content_type[k_mdl_content_type_max]; /**< Raw `Content-Type`, "" if absent.  */
 } mdl_net_resp_t;
 
 /**

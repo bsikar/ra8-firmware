@@ -207,12 +207,13 @@ internal_session_fetch(void* ctx, const char* robots_url, char* buf, size_t cap,
   if (mdl_net_get_buf(s->net, robots_url, &req, buf, cap, out_len, &resp) == k_ra8_ok) {
     return k_mdl_robots_fetch_ok;
   }
-  if ((resp.status >= (long)k_http_client_err_min) &&
-      (resp.status <= (long)k_http_client_err_max) && (resp.status != (long)k_http_too_many)) {
+  if ((resp.status >= (int32_t)k_http_client_err_min) &&
+      (resp.status <= (int32_t)k_http_client_err_max) &&
+      (resp.status != (int32_t)k_http_too_many)) {
     return k_mdl_robots_fetch_absent;
   }
-  if ((resp.status >= (long)k_http_server_err_min) &&
-      (resp.status <= (long)k_http_server_err_max)) {
+  if ((resp.status >= (int32_t)k_http_server_err_min) &&
+      (resp.status <= (int32_t)k_http_server_err_max)) {
     return k_mdl_robots_fetch_denied;
   }
   return k_mdl_robots_fetch_denied;
