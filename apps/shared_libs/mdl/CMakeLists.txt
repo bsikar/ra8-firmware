@@ -518,6 +518,7 @@ target_include_directories(
           ${FW}/ra8_core/inc
           ${MDL_REPO_ROOT}/apps/shared_libs/mdl/inc
           ${FW}/ra8_c6link/inc
+          ${FW}/ra8_mdl/inc
           ${MDL_REPO_ROOT}/tests/support/inc
           ${MDL_REPO_ROOT}/apps/shared_libs/mdl/tests/inc
           ${MDL_REPO_ROOT}/apps/shared_libs/rabook_compile/tests/inc

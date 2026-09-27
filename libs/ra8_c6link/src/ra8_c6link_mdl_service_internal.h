@@ -13,7 +13,7 @@
 
 #include "ra8_attributes.h"
 #include "ra8_err.h"
-#include "ra8_mdl_http.h"
+#include "ra8_mdl_request.h"
 
 #ifdef __cplusplus
 extern "C" {

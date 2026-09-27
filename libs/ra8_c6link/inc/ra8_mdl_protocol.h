@@ -18,18 +18,18 @@
 
 #include <stdint.h>
 
-/** @brief Bounded dimensions shared by both protocol endpoints. */
+#include "ra8_mdl_http.h"
+
+/**
+ * @brief Bounded framing dimensions shared by both protocol endpoints.
+ * @details The HTTP header capacities this protocol packs live in
+ * `ra8_mdl_http.h` with the records they size (::ra8_mdl_http_capacity_t);
+ * what stays here is the framing the RPC itself owns.
+ */
 typedef enum : uint16_t {
-  k_ra8_mdl_url_max          = 512U,   /**< Maximum URL buffer size, including NUL.     */
-  k_ra8_mdl_user_agent_max   = 256U,   /**< Maximum User-Agent size, including NUL.     */
-  k_ra8_mdl_referer_max      = 512U,   /**< Maximum Referer size, including NUL.        */
-  k_ra8_mdl_etag_max         = 128U,   /**< Maximum ETag size, including NUL.           */
-  k_ra8_mdl_http_date_max    = 64U,    /**< Maximum HTTP-date size, including NUL.      */
-  k_ra8_mdl_retry_after_max  = 64U,    /**< Maximum Retry-After size, including NUL.    */
-  k_ra8_mdl_content_type_max = 128U,   /**< Maximum Content-Type size, including NUL.   */
-  k_ra8_mdl_chunk_data_max   = 1024U,  /**< Maximum raw body bytes in one chunk.        */
-  k_ra8_mdl_sha256_bytes     = 32U,    /**< SHA-256 digest size in bytes.               */
-  k_ra8_mdl_timeout_ms_max   = 60000U, /**< Maximum caller-selected HTTP timeout in ms. */
+  k_ra8_mdl_url_max        = 512U,  /**< Maximum URL buffer size, including NUL. */
+  k_ra8_mdl_chunk_data_max = 1024U, /**< Maximum raw body bytes in one chunk.    */
+  k_ra8_mdl_sha256_bytes   = 32U,   /**< SHA-256 digest size in bytes.           */
 } ra8_mdl_dimension_t;
 
 /**
@@ -37,29 +37,21 @@ typedef enum : uint16_t {
  * @details A Start request carries the bounded URL and every bounded HTTP
  * header; the constant adds the generated encoder's per-field tag and varint
  * overhead on top. Next and Cancel are far smaller and share the buffer.
+ *
+ * @note The operands are cast to `uint16_t` because the URL bound is framing
+ * (::ra8_mdl_dimension_t) while the header bounds are contract
+ * (::ra8_mdl_http_capacity_t), and adding two enumeration types is refused
+ * under `-Wenum-enum-conversion`. The cast is the sum's width, not a narrowing.
  * @invariant No legal packed inner request exceeds this bound.
  * @see ra8_c6link_mdl_start_request
  * @since 0.1.0
  */
 typedef enum : uint16_t {
-  k_ra8_mdl_request_bytes_max = k_ra8_mdl_url_max + k_ra8_mdl_user_agent_max +
-                                k_ra8_mdl_referer_max + k_ra8_mdl_etag_max +
-                                k_ra8_mdl_http_date_max + 96U, /**< Maximum packed request bytes. */
+  k_ra8_mdl_request_bytes_max =
+      (uint16_t)k_ra8_mdl_url_max + (uint16_t)k_ra8_mdl_user_agent_max +
+      (uint16_t)k_ra8_mdl_referer_max + (uint16_t)k_ra8_mdl_etag_max +
+      (uint16_t)k_ra8_mdl_http_date_max + 96U, /**< Maximum packed request bytes. */
 } ra8_mdl_request_bound_t;
-
-/**
- * @brief Inclusive bounds of the HTTP status codes the protocol admits.
- * @details RFC 9110 assigns status codes the three-digit range 100..599, so a
- * response outside it is malformed rather than merely unsuccessful. Both
- * endpoints reject such a response instead of forwarding it.
- * @invariant ::k_ra8_mdl_http_status_min <= ::k_ra8_mdl_http_status_max.
- * @see ra8_mdl_http_response_t
- * @since 0.1.0
- */
-typedef enum : uint16_t {
-  k_ra8_mdl_http_status_min = 100U, /**< Lowest well-formed HTTP status code.  */
-  k_ra8_mdl_http_status_max = 599U, /**< Highest well-formed HTTP status code. */
-} ra8_mdl_http_status_bound_t;
 
 /** @brief Version included in every media RPC request and response. */
 typedef enum : uint32_t {
