@@ -119,6 +119,13 @@ func SyncPending(ctx context.Context, outbox *spool.Spool, baseURL string, clien
 		if err := checkUploadedStepsAreOnesThePlaneWillFile(entry); err != nil {
 			return report, fmt.Errorf("local %s: %w", entry.ID, err)
 		}
+		// Beside the step door for the same reason: how a step stopped is
+		// stated by the record, the pair needs no catalog to judge, and a
+		// step the plane cannot file is the same opaque 400 that ends the
+		// sweep.
+		if err := checkUploadedStepEndingsAreOnesThePlaneFiles(entry); err != nil {
+			return report, fmt.Errorf("local %s: %w", entry.ID, err)
+		}
 		body, err := json.Marshal(entry)
 		if err != nil {
 			return report, err
