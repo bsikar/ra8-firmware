@@ -111,14 +111,8 @@ ra8_err_t ra8_vmem_stream_read_checked(ra8_vmem_stream_t* st,
   return k_ra8_ok;
 }
 
-size_t ra8_vmem_stream_read(void* ctx, uint64_t offset, void* buf, size_t len)
+ra8_err_t ra8_vmem_stream_read(void* ctx, uint64_t offset, void* buf, uint32_t len,
+                               uint32_t* out_read)
 {
-  if (len > (size_t)UINT32_MAX) {
-    return 0U;
-  }
-  uint32_t read = 0U;
-  /* The reason the read stopped is exactly what this signature cannot carry, so
-   * the error is discarded here and nowhere else. `read` is set on every path. */
-  (void)ra8_vmem_stream_read_checked((ra8_vmem_stream_t*)ctx, offset, buf, (uint32_t)len, &read);
-  return (size_t)read;
+  return ra8_vmem_stream_read_checked((ra8_vmem_stream_t*)ctx, offset, buf, len, out_read);
 }

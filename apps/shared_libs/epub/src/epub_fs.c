@@ -28,26 +28,33 @@
 #include "epub_fs_internal.h"
 #include "ra8_attributes.h"
 
-RA8_PRIV size_t priv_epub_fs_stream_read(void* ctx, uint64_t offset, void* buf, size_t len)
+RA8_PRIV ra8_err_t
+priv_epub_fs_stream_read(void* ctx, uint64_t offset, void* buf, uint32_t len, uint32_t* out_read)
 {
+  if (out_read == nullptr) {
+    return k_ra8_err_null_ptr;
+  }
+  *out_read                = 0U;
   epub_stream_fs_ctx_t* io = (epub_stream_fs_ctx_t*)ctx;
   if ((io == nullptr) || (io->file == nullptr) || (buf == nullptr)) {
-    return 0U;
+    return k_ra8_err_null_ptr;
   }
   if (offset > (uint64_t)UINT32_MAX) {
-    return 0U; /* GCOVR_EXCL_LINE -- ra8_fs is 32-bit; a >4 GiB .epub is rejected before here */
+    return k_ra8_err_out_of_range; /* GCOVR_EXCL_LINE -- a >4 GiB .epub is rejected before here */
   }
-  if (ra8_fs_seek(io->file, (uint32_t)offset) != k_ra8_ok) {
-    return 0U; /* GCOVR_EXCL_LINE -- seek clamps to size and cannot fail on a live handle */
+  const ra8_err_t serr = ra8_fs_seek(io->file, (uint32_t)offset);
+  if (serr != k_ra8_ok) {
+    return serr; /* GCOVR_EXCL_LINE -- seek clamps to size and cannot fail on a live handle */
   }
-  /* GCOVR_EXCL_BR_START -- len is a bounded miniz IO chunk, never > 4 GiB */
-  const uint32_t want = (len > (size_t)UINT32_MAX) ? UINT32_MAX : (uint32_t)len;
-  /* GCOVR_EXCL_BR_STOP */
-  uint32_t got = 0U;
-  if (ra8_fs_read(io->file, (uint8_t*)buf, want, &got) != k_ra8_ok) {
-    return 0U;
+  uint32_t        got  = 0U;
+  const ra8_err_t rerr = ra8_fs_read(io->file, (uint8_t*)buf, len, &got);
+  if (rerr != k_ra8_ok) {
+    /* The card said no. That is not the end of the book, and the reader is now
+     * told so rather than being handed a short count it would read as EOF. */
+    return rerr;
   }
-  return (size_t)got;
+  *out_read = got;
+  return k_ra8_ok;
 }
 
 [[nodiscard]] ra8_err_t epub_open_streamed_fs(ra8_fs_mount_t*       mount,

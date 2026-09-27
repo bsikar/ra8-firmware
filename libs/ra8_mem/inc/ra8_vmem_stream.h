@@ -17,9 +17,10 @@
  * frame budget, independent of object size -- so a multi-GB object is readable
  * through a few tens of KiB of RAM.
  *
- * The read function's signature (opaque ctx, absolute offset, bytes-read return)
- * is deliberately generic so any streamed consumer can drive it. In particular it
- * is call-compatible with `epub_open_streamed()`'s `epub_stream_read_fn`,
+ * The read function's signature (opaque ctx, absolute offset, an `ra8_err_t`
+ * verdict and a bytes-copied out-param) is deliberately generic so any streamed
+ * consumer can drive it. In particular it is call-compatible with
+ * `epub_open_streamed()`'s `epub_stream_read_fn`,
  * which is how a large `.epub` on the SD card is opened without whole-file
  * residency (#151): register the file as a ::ra8_vsource paged object, front it
  * with a fixed ::ra8_vmem pool (the asserted RAM budget), and hand the resulting
@@ -140,39 +141,42 @@ ra8_vmem_stream_init(ra8_vmem_stream_t* st, ra8_vmem_t* vm, uint32_t object_id, 
                                                      uint32_t*          out_read);
 
 /**
- * @brief Read `len` bytes at absolute `offset`, returning a byte count.
+ * @brief Read `len` bytes at absolute `offset` through an opaque-cookie seam.
  *
- * @details The count-returning binding for callback seams typed as
- *          `size_t (*)(void*, uint64_t, void*, size_t)`, which is what
- *          `epub_open_streamed()` takes. It forwards to
- *          ::ra8_vmem_stream_read_checked and returns the bytes that reached
- *          @p buf, discarding the reason they stopped.
+ * @details The callback binding for seams typed as ::epub_stream_read_fn --
+ *          `ra8_err_t (*)(void*, uint64_t, void*, uint32_t, uint32_t*)` -- which
+ *          is what `epub_open_streamed()` takes. It differs from
+ *          ::ra8_vmem_stream_read_checked only in taking the binding as a void
+ *          cookie; the verdict and the byte count are passed through untouched.
  *
- * @warning This return value cannot distinguish a genuine end of file from a
- *          failed frame: both are a short count. A caller that can afford to know
- *          the difference should call ::ra8_vmem_stream_read_checked directly.
- *          This form exists for the callback seam alone.
+ *          It used to return a bare `size_t`, which is what made a dead card
+ *          indistinguishable from a clean end of file all the way up into the
+ *          book importer (#764). Nothing is discarded here any more.
  *
- * @param[in]  ctx    The ::ra8_vmem_stream_t binding (as a void cookie).
- * @param[in]  offset Absolute byte offset within the object.
- * @param[out] buf    Destination buffer (`len` writable bytes).
- * @param[in]  len    Bytes requested.
+ * @param[in]  ctx      The ::ra8_vmem_stream_t binding (as a void cookie).
+ * @param[in]  offset   Absolute byte offset within the object.
+ * @param[out] buf      Destination buffer (`len` writable bytes).
+ * @param[in]  len      Bytes requested (> 0).
+ * @param[out] out_read Receives the bytes copied, on every return path.
  *
- * @return Bytes actually copied (0 at/after EOF or on the first failing frame).
- * @retval len  The full request was satisfied (every covering frame paged in).
- * @retval 0    `offset` is at/after the object end, or the first frame failed.
- * @retval <len A frame failed mid-span, or the span was clamped at the object end.
+ * @return ra8_err_t Error code, exactly ::ra8_vmem_stream_read_checked's.
+ * @retval k_ra8_ok                Nothing failed; `*out_read` is `len`, or less at EOF.
+ * @retval k_ra8_err_null_ptr      `ctx`, `buf` or `out_read` was NULL.
+ * @retval k_ra8_err_invalid_size  `len` was 0.
+ * @retval k_ra8_err_invalid_state `ctx` was not bound (frame size 0).
+ * @retval other                   The cache's own error for the frame that failed.
  *
  * @pre `ctx` is a bound ::ra8_vmem_stream_t; `buf` is writable for `len` bytes.
  * @pre The bound cache and its source out-live this call.
  * @post At most one cache frame is pinned at any instant during the copy.
- * @post No state outside `buf` and the cache's LRU order is modified.
+ * @post No state outside `buf`, `*out_read` and the cache's LRU order is modified.
  *
  * @note Not thread-safe.
- * @see ra8_vmem_stream_read_checked  The form that reports why a read was short.
+ * @see ra8_vmem_stream_read_checked  The typed door this binds.
  * @since 0.1.0
  */
-size_t ra8_vmem_stream_read(void* ctx, uint64_t offset, void* buf, size_t len);
+[[nodiscard]] ra8_err_t
+ra8_vmem_stream_read(void* ctx, uint64_t offset, void* buf, uint32_t len, uint32_t* out_read);
 
 #ifdef __cplusplus
 }

@@ -74,15 +74,19 @@ RA8_PRIV void priv_epub_dirname(const char* path, char* dst, size_t cap);
 /**
  * @brief Forward one bounded miniz read to streamed EPUB media.
  * @details Test-access form of the callback installed in a streamed ZIP
- * reader. Production callers use ::epub_open_streamed.
+ * reader, and of the adapter the ZIP preflight scanner runs through. It is the
+ * single place an ::epub_stream_read_fn error is collapsed to a byte count,
+ * because miniz's `m_pRead` has nowhere to carry a reason (#764).
+ * Production callers use ::epub_open_streamed.
  * @param[in] opaque Bound ::epub_stream_media_t descriptor.
  * @param[in] file_ofs Absolute archive offset.
  * @param[out] buf Destination for up to @p n bytes.
  * @param[in] n Requested byte count.
  * @return Number of bytes supplied by the media callback, or zero on rejection.
- * @retval 0 The descriptor or callback was null, or the offset reached EOF.
+ * @retval 0 The descriptor or callback was null, the offset reached EOF, or
+ *           the backing callback failed.
  * @retval n The backing callback supplied the full bounded request.
- * @retval <n The backing callback supplied a short read.
+ * @retval <n The backing callback stopped at the archive end.
  * @pre When non-null, @p opaque points to a live ::epub_stream_media_t.
  * @pre When non-null, @p buf is writable for @p n bytes.
  * @post At most @p n bytes are written to @p buf.

@@ -401,19 +401,22 @@ typedef struct {
 static size_t s_peak = 0U;
 
 /** @brief Streamed-media read over a resident buffer (records the peak window). @details Implements the direct read fixture operation used only by this focused test executable. @param[in,out] ctx Fixture argument governed by the exercised interface contract. @param[in] offset Fixture argument governed by the exercised interface contract. @param[out] buf Fixture argument governed by the exercised interface contract. @param[in] len Fixture argument governed by the exercised interface contract. @return The value computed by the fixture helper. @retval value The computed fixture value for the supplied inputs. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
-RA8_INTERNAL static size_t internal_direct_read(void* ctx, uint64_t offset, void* buf, size_t len)
+RA8_INTERNAL static ra8_err_t internal_direct_read(
+  void* ctx, uint64_t offset, void* buf, uint32_t len, uint32_t* out_read)
 {
   const buf_src_t* s = (const buf_src_t*)ctx;
+  *out_read          = 0U;
   if (offset >= (uint64_t)s->size) {
-    return 0U;
+    return k_ra8_ok; /* Clean end of file, not a failure. */
   }
   const uint64_t avail = (uint64_t)s->size - offset;
-  const size_t   n     = (len > (size_t)avail) ? (size_t)avail : len;
+  const size_t   n     = ((uint64_t)len > avail) ? (size_t)avail : (size_t)len;
   (void)memcpy(buf, &s->data[offset], n);
   if (n > s_peak) {
     s_peak = n;
   }
-  return n;
+  *out_read = (uint32_t)n;
+  return k_ra8_ok;
 }
 
 /** @brief Build the tile-cache storage config over the shared static arrays. @details Implements the make storage fixture operation used only by this focused test executable. @return The value computed by the fixture helper. @retval value The computed fixture value for the supplied inputs. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
