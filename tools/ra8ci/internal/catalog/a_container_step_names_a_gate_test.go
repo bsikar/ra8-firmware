@@ -42,7 +42,12 @@ func TestAStepNamingNeitherHalfIsAdmitted(t *testing.T) {
 		{"scripts/ci.sh", "--gate=format"},
 		{"scripts/ci.sh", "--native", "--rebuild"},
 	} {
-		if err := ValidateStepDispatch(companionStep(args...)); err != nil {
+		// This door only, not the whole seam: the last argv here is
+		// one the mode door refuses for a different reason (the native
+		// branch never reads --rebuild, a_flag_the_mode_reads.go), and
+		// what this test pins is that THIS door finds no companion
+		// missing in any of them.
+		if err := checkAScriptStepNamesEveryCompanionItNeeds(companionStep(args...)); err != nil {
 			t.Fatalf("%v names no option needing a companion: %v", args, err)
 		}
 	}
@@ -57,9 +62,15 @@ func TestTheCompanionIsReadInEitherSpelling(t *testing.T) {
 }
 
 func TestASilentlyIgnoredFlagIsNotRefusedHere(t *testing.T) {
+	// A single-gate run IGNORES these rather than refusing them, which the
+	// door comment above called a different slice with a different
+	// message. That slice landed: a_flag_the_mode_reads.go refuses them
+	// now, and the seam therefore does too. What stays pinned is that the
+	// refusal is not THIS door's, so the pair message keeps naming the
+	// pair.
 	for _, flag := range []string{"--fast", "--native", "--rebuild"} {
-		if err := ValidateStepDispatch(companionStep("scripts/ci.sh", "--gate=format", flag)); err != nil {
-			t.Fatalf("a single-gate run ignores %s rather than refusing it; that is a different slice: %v", flag, err)
+		if err := checkAScriptStepNamesEveryCompanionItNeeds(companionStep("scripts/ci.sh", "--gate=format", flag)); err != nil {
+			t.Fatalf("a single-gate run ignores %s rather than refusing it here: %v", flag, err)
 		}
 	}
 }

@@ -176,7 +176,14 @@ func ValidateStepDispatch(step Step) error {
 	// Beside both doors above, which judge one argv element at a time:
 	// this one refuses two the script parses individually and rejects
 	// together. See a_container_step_names_a_gate.go.
-	return checkAScriptStepNamesEveryCompanionItNeeds(step)
+	if err := checkAScriptStepNamesEveryCompanionItNeeds(step); err != nil {
+		return err
+	}
+	// Last on the shell branch, and the only door here that refuses an
+	// argv the script runs happily: an option the mode it selects accepts
+	// and never reads, so the step passes having done something other than
+	// what it names. See a_flag_the_mode_reads.go.
+	return checkNoScriptOptionIsOneTheModeIgnores(step)
 }
 
 // ValidateTaskDispatch applies the seam to every step of a task.
