@@ -12,7 +12,6 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"regexp"
 	"sort"
 	"strings"
 	"unicode/utf8"
@@ -21,7 +20,6 @@ import (
 const minimumScopedFiles = 850
 
 var (
-	banned   = regexp.MustCompile("(?i)^\\s*/\\*\\s*see (the )?(internal )?header for the documented contract\\.\\s*\\*/\\s*$")
 	prefixes = []string{"apps/", "examples/"}
 	suffixes = map[string]bool{".c": true, ".cc": true, ".cpp": true, ".cxx": true, ".h": true, ".hh": true, ".hpp": true, ".hxx": true, ".m": true, ".mm": true}
 )
@@ -122,7 +120,7 @@ func scan(ctx context.Context, root string, paths []string) ([]finding, error) {
 		text := strings.NewReplacer("\r\n", "\n", "\r", "\n", "\v", "\n", "\f", "\n",
 			"\u001c", "\n", "\u001d", "\n", "\u001e", "\n", "\u0085", "\n", "\u2028", "\n", "\u2029", "\n").Replace(string(data))
 		for number, line := range strings.Split(text, "\n") {
-			if banned.MatchString(line) {
+			if lineIsGeneratedPointerComment(line) {
 				out = append(out, finding{path: rel, line: number + 1})
 			}
 		}
@@ -138,12 +136,14 @@ func selfTest(stdout, stderr io.Writer) bool {
 	}{
 		{"/* see header for the documented contract. */", true, "plain generated form"},
 		{"/* See the internal header for the documented contract. */", true, "internal-header form"},
+		{"/* See the public header for the documented contract. */", true, "public-header form"},
+		{"// See the public header for the documented contract.", true, "line-comment form"},
 		{"/* see header for full description */", false, "legacy wording"},
 		{"/* See header for the documented contract -- bounded scan. */", false, "implementation-specific note"},
 		{"const char* text = \"see header for the documented contract.\";", false, "string literal"},
 	}
 	for _, item := range cases {
-		if got := banned.MatchString(item.line); got != item.want {
+		if got := lineIsGeneratedPointerComment(item.line); got != item.want {
 			fmt.Fprintf(stderr, "ra8ci pointer-boilerplate --selftest: FAIL: %s\n", item.label)
 			return false
 		}
