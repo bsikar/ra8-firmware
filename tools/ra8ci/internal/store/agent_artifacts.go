@@ -50,6 +50,7 @@ type heldArtifact struct {
 	Chunks     int64
 	SHA256     string
 	Truncated  bool
+	CapturedAt time.Time
 }
 
 // heldChunk is the stored chunk at the sequence an upload re-presents.
@@ -110,6 +111,11 @@ func artifactClose(manifest protocol.ArtifactManifest, artifact heldArtifact, di
 		// The replay judged against what is on file, including the chunk
 		// count the open path below already refuses to disagree with.
 		if err := closedArtifactMatchesTheManifest(manifest, artifact); err != nil {
+			return "", err
+		}
+		// Beside the bytes the close filed: the one field in the row that
+		// came from the guest rather than from the plane's own clock.
+		if err := checkReplayRepeatsTheCaptureStamp(manifest, artifact); err != nil {
 			return "", err
 		}
 		return ArtifactDuplicate, nil
@@ -293,10 +299,11 @@ func lockHeldArtifact(ctx context.Context, tx pgx.Tx, attemptID, path string) (h
 	var artifact heldArtifact
 	var digest *string
 	var closedAt *time.Time
-	err := tx.QueryRow(ctx, `SELECT step_key, total_bytes, chunk_count, sha256, truncated, closed_at
+	var capturedAt *time.Time
+	err := tx.QueryRow(ctx, `SELECT step_key, total_bytes, chunk_count, sha256, truncated, closed_at, captured_at
 		FROM agent_artifacts WHERE attempt_id=$1 AND path=$2 FOR UPDATE`,
 		attemptID, path).Scan(&artifact.StepKey, &artifact.TotalBytes, &artifact.Chunks,
-		&digest, &artifact.Truncated, &closedAt)
+		&digest, &artifact.Truncated, &closedAt, &capturedAt)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return heldArtifact{}, nil
 	}
@@ -307,6 +314,9 @@ func lockHeldArtifact(ctx context.Context, tx pgx.Tx, attemptID, path string) (h
 	artifact.Closed = closedAt != nil
 	if digest != nil {
 		artifact.SHA256 = *digest
+	}
+	if capturedAt != nil {
+		artifact.CapturedAt = *capturedAt
 	}
 	return artifact, nil
 }
