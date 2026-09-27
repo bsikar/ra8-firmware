@@ -132,6 +132,29 @@ RA8_INTERNAL static ra8_err_t internal_route_req_ok(const ra8_imgdec_req_t* req)
 }
 
 /**
+ * @brief Name the container a buffer carries, or refuse it the way the set does.
+ *
+ * @details Every sniff miss folds to ::k_ra8_err_not_supported, because what
+ * the caller is being told is that this set cannot open these bytes, not which
+ * of the sniff's own refusals applied. Routing a decode and probing before one
+ * ask the same question, so they ask it here rather than each keeping a copy.
+ */
+RA8_INTERNAL static ra8_err_t internal_sniff_format(const uint8_t*       bytes,
+                                                    uint32_t             byte_count,
+                                                    ra8_imgdec_format_t* out) {
+  *out = k_ra8_imgdec_format_none;
+
+  ra8_imgdec_format_t sniffed = k_ra8_imgdec_format_none;
+  const ra8_err_t     err     = ra8_imgdec_sniff(bytes, byte_count, &sniffed);
+  if (err != k_ra8_ok) {
+    return k_ra8_err_not_supported;
+  }
+
+  *out = sniffed;
+  return k_ra8_ok;
+}
+
+/**
  * @brief Settle the container a request is about, sniffing only when unstated.
  */
 RA8_INTERNAL static ra8_err_t internal_resolve(const ra8_imgdec_req_t* req,
@@ -143,14 +166,7 @@ RA8_INTERNAL static ra8_err_t internal_resolve(const ra8_imgdec_req_t* req,
     return k_ra8_ok;
   }
 
-  ra8_imgdec_format_t sniffed = k_ra8_imgdec_format_none;
-  const ra8_err_t     err     = ra8_imgdec_sniff(req->bytes, req->byte_count, &sniffed);
-  if (err != k_ra8_ok) {
-    return k_ra8_err_not_supported;
-  }
-
-  *out = sniffed;
-  return k_ra8_ok;
+  return internal_sniff_format(req->bytes, req->byte_count, out);
 }
 
 /**
@@ -381,4 +397,54 @@ ra8_err_t ra8_imgdec_mux_carve(const ra8_imgdec_mux_t* mux,
     return k_ra8_ok; /* nothing in the set decodes with scratch */
   }
   return ra8_imgdec_scratch_carve(out, arena, bytes, align);
+}
+
+ra8_err_t ra8_imgdec_mux_probe(const ra8_imgdec_mux_t* mux,
+                               const uint8_t*          bytes,
+                               uint32_t                byte_count,
+                               ra8_imgdec_pixel_t      pixel,
+                               ra8_imgdec_geom_t*      out_geom,
+                               const ra8_imgdec_t**    out_member) {
+  if ((bytes == nullptr) || (out_geom == nullptr)) {
+    return k_ra8_err_null_ptr;
+  }
+  *out_geom = (ra8_imgdec_geom_t){};
+  if (out_member != nullptr) {
+    *out_member = nullptr;
+  }
+
+  if (!internal_one_defined_bit((uint32_t)pixel, (uint32_t)k_ra8_imgdec_pixel_mask)) {
+    return k_ra8_err_invalid_arg;
+  }
+  const ra8_err_t usable = internal_usable(mux);
+  if (usable != k_ra8_ok) {
+    return usable;
+  }
+  if (byte_count == 0U) {
+    return k_ra8_err_invalid_size;
+  }
+
+  ra8_imgdec_format_t format      = k_ra8_imgdec_format_none;
+  const ra8_err_t     format_err  = internal_sniff_format(bytes, byte_count, &format);
+  if (format_err != k_ra8_ok) {
+    return format_err;
+  }
+
+  const ra8_imgdec_t* member = nullptr;
+  const ra8_err_t     route  = ra8_imgdec_mux_route(mux, format, pixel, &member);
+  if (route != k_ra8_ok) {
+    return route;
+  }
+
+  ra8_imgdec_geom_t geom = {};
+  const ra8_err_t   err  = ra8_imgdec_probe(member, bytes, byte_count, &geom);
+  if (err != k_ra8_ok) {
+    return err;
+  }
+
+  *out_geom = geom;
+  if (out_member != nullptr) {
+    *out_member = member;
+  }
+  return k_ra8_ok;
 }
