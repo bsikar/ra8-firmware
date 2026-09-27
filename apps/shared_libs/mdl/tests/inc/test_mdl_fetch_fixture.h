@@ -262,7 +262,7 @@ RA8_INTERNAL static ra8_err_t internal_mdl_fetch_test_scripted_response(mock_net
   }
   if ((f->busy_on_file_call != 0U) && (f->get_file_calls == f->busy_on_file_call)) {
     if (resp != nullptr) {
-      resp->status = (long)k_http_unavailable;
+      resp->status = (int32_t)k_http_unavailable;
       (void)__builtin_snprintf(resp->retry_after,
                                sizeof(resp->retry_after),
                                "%s",

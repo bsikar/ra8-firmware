@@ -56,7 +56,7 @@ typedef enum : uint16_t {
  */
 typedef struct {
   ra8_err_t   rc;            /**< Result the fetch call returns.                      */
-  long        status;        /**< HTTP status reported through `resp`.                */
+  int32_t     status;        /**< HTTP status reported through `resp`.                */
   const char* body;          /**< Body copied into the buffer on ok, or NULL.         */
   const char* retry_after;   /**< Raw Retry-After surfaced through `resp`, or NULL.   */
   const char* etag;          /**< Raw ETag surfaced through `resp`, or NULL.          */

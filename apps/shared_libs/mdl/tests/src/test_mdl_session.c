@@ -67,7 +67,7 @@ typedef enum : uint32_t {
 typedef struct {
   const char* body;                /**< robots.txt body served on ok.        */
   ra8_err_t   rc;                  /**< Result the fetch returns.            */
-  long        status;              /**< HTTP status surfaced through `resp`. */
+  int32_t     status;              /**< HTTP status surfaced through `resp`. */
   size_t      calls;               /**< Fetches dispatched.                  */
   char        last_ua[k_rec_max];  /**< User-Agent of the most recent GET.   */
   char        last_url[k_rec_max]; /**< URL of the most recent GET.          */

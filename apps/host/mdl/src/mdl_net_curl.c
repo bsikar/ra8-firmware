@@ -599,7 +599,15 @@ RA8_INTERNAL static void internal_release_req_headers(CURL* curl, const mdl_req_
   (void)curl_easy_setopt(curl, CURLOPT_HTTPHEADER, no_headers);
 }
 
-RA8_PRIV ra8_err_t priv_mdl_net_curl_classify(CURLcode code, bool overflow, long status)
+RA8_PRIV int32_t priv_mdl_net_curl_status(long status)
+{
+  if ((status < (long)k_mdl_http_status_min) || (status > (long)k_mdl_http_status_max)) {
+    return 0;
+  }
+  return (int32_t)status;
+}
+
+RA8_PRIV ra8_err_t priv_mdl_net_curl_classify(CURLcode code, bool overflow, int32_t status)
 {
   if (overflow) {
     return k_ra8_err_no_mem;
@@ -637,8 +645,9 @@ RA8_INTERNAL static ra8_err_t internal_finish_transfer(CURL*             curl,
                                                        const hdr_sink_t* hdr,
                                                        mdl_net_resp_t*   resp)
 {
-  long status = 0;
-  curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &status);
+  long wire_status = 0;
+  curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &wire_status);
+  const int32_t status = priv_mdl_net_curl_status(wire_status);
   if (resp != nullptr) {
     resp->status = status;
     (void)__builtin_snprintf(resp->retry_after, sizeof(resp->retry_after), "%s", hdr->retry_after);

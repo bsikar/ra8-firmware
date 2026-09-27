@@ -424,7 +424,7 @@ RA8_INTERNAL static ra8_err_t internal_mdl_fetch_resolve_not_modified(mdl_fetch_
                                                                       bool*                out_done)
 {
   *out_done = false;
-  if (tx->resp.status != (long)k_http_not_modified) {
+  if (tx->resp.status != (int32_t)k_http_not_modified) {
     return k_ra8_ok;
   }
   ra8_err_t cleanup = priv_mdl_fetch_body_abort(&tx->body);
@@ -457,7 +457,7 @@ RA8_INTERNAL static ra8_err_t internal_mdl_fetch_resolve_not_modified(mdl_fetch_
                                                         tx->jmax,
                                                         &tx->resp,
                                                         &tx->got);
-  if ((rc == k_ra8_ok) && (tx->resp.status != (long)k_http_not_modified)) {
+  if ((rc == k_ra8_ok) && (tx->resp.status != (int32_t)k_http_not_modified)) {
     return k_ra8_ok;
   }
   cleanup                          = priv_mdl_fetch_body_abort(&tx->body);
@@ -509,7 +509,8 @@ RA8_INTERNAL static ra8_err_t internal_mdl_fetch_publish_page(mdl_fetch_ctx_t*  
     priv_mdl_fetch_record_fail(ctx, url, tx->resp.status, error);
     return error;
   }
-  if ((tx->resp.status < (long)k_http_status_min) || (tx->resp.status > (long)k_http_status_max)) {
+  if ((tx->resp.status < (int32_t)k_http_status_min) ||
+      (tx->resp.status > (int32_t)k_http_status_max)) {
     error = priv_mdl_fetch_body_abort(&tx->body);
     error = (error == k_ra8_ok) ? k_ra8_err_protocol_error : error;
     priv_mdl_fetch_record_fail(ctx, url, tx->resp.status, error);
@@ -659,7 +660,7 @@ RA8_INTERNAL static ra8_err_t internal_mdl_fetch_one_page(mdl_fetch_ctx_t*    ct
       stats->pages_failed += 1U;
       return rc;
     }
-    if (resp.status == (long)k_http_not_modified) {
+    if (resp.status == (int32_t)k_http_not_modified) {
       stats->pages_reused += 1U;
       *out = (mdl_page_outcome_t){.bytes      = 0U,
                                   .elapsed_ms = (uint32_t)(internal_mdl_fetch_mono_ms(ctx) - t0),
