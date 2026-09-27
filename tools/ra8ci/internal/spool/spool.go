@@ -218,6 +218,21 @@ func (s *Spool) Finish(entry Entry, result executor.Result, runErr error) (Entry
 	if err := checkEachStepEndedOneWay(result); err != nil {
 		return Entry{}, err
 	}
+	// And beside it: a step's name is the whole of its identity in the row
+	// the plane files it into, and two steps sharing one leave a reader no
+	// way to tell the rows apart. See a_step_the_plane_can_name.go.
+	if err := checkEachStepCanBeNamed(result); err != nil {
+		return Entry{}, err
+	}
+	// Last of the result doors, and the only one that needs the record as
+	// well: a terminal record states its task twice, once frozen before the
+	// first command and once in the executor's own account, and
+	// checkFinishMatchesStart cannot see the disagreement because the
+	// result never takes part in that comparison. See
+	// a_result_naming_the_frozen_task.go.
+	if err := checkTheResultNamesTheFrozenTask(entry, result); err != nil {
+		return Entry{}, err
+	}
 	if err := checkStampsAreInOrder(entry); err != nil {
 		return Entry{}, err
 	}
