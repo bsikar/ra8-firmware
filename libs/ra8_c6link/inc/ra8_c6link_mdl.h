@@ -22,7 +22,7 @@
 
 #include "ra8_c6link.h"
 #include "ra8_err.h"
-#include "ra8_mdl_http.h"
+#include "ra8_mdl_request.h"
 
 /**
  * @struct ra8_mdl_session_t

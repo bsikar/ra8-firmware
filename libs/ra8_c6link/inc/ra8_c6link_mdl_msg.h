@@ -17,7 +17,7 @@
 #include <stdint.h>
 
 #include "ra8_err.h"
-#include "ra8_mdl_http.h"
+#include "ra8_mdl_request.h"
 #include "ra8_mdl_protocol.h"
 
 #ifdef __cplusplus
@@ -85,13 +85,17 @@ typedef struct ra8_mdl_service_backend {
  * @brief Bounded protobuf decode storage one dispatch may consume
  * @details Sized for the largest legal Start request: a maximum URL plus every
  * bounded HTTP header, plus the generated decoder's per-message overhead.
+ * @note Cast to `uint16_t` for the same reason as
+ *       ::k_ra8_mdl_request_bytes_max: the URL bound and the header bounds are
+ *       now two enumeration types, and their sum needs one.
  * @since 0.1.0
  */
 typedef enum : uint16_t {
-  k_ra8_mdl_decode_arena_bytes = k_ra8_mdl_url_max + k_ra8_mdl_user_agent_max +
-                                 k_ra8_mdl_referer_max + k_ra8_mdl_etag_max +
-                                 k_ra8_mdl_http_date_max + 512U, /**< Per-dispatch arena size. */
-  k_ra8_mdl_decode_align       = 8U, /**< Alignment every arena span is issued on. */
+  k_ra8_mdl_decode_arena_bytes =
+      (uint16_t)k_ra8_mdl_url_max + (uint16_t)k_ra8_mdl_user_agent_max +
+      (uint16_t)k_ra8_mdl_referer_max + (uint16_t)k_ra8_mdl_etag_max +
+      (uint16_t)k_ra8_mdl_http_date_max + 512U, /**< Per-dispatch arena size. */
+  k_ra8_mdl_decode_align = 8U, /**< Alignment every arena span is issued on. */
 } ra8_mdl_decode_arena_limit_t;
 
 /**

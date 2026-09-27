@@ -28,6 +28,7 @@ set(RA8_C6LINK_SOUP ${RA8_C6LINK_VENDOR_DIR}/common/proto/esp_hosted_rpc.pb-c.c
 set(RA8_C6LINK_INCLUDE_DIRS
     ${FW_ROOT}/libs/ra8_c6link/inc
     ${FW_ROOT}/libs/ra8_c6link/src
+    ${FW_ROOT}/libs/ra8_mdl/inc
     ${FW_ROOT}/libs/ra8_core/inc
     ${FW_ROOT}/apps/shared_libs/mdl/tests/inc
     ${FW_ROOT}/apps/shared_libs/mdl/inc
