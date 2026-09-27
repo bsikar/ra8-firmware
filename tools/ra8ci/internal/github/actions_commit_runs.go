@@ -129,7 +129,7 @@ func (r *ActionsOutcomeReader) RunsOn(ctx context.Context, headSHA string) (Comm
 			return CommitWorkflowRuns{}, err
 		}
 		runs = append(runs, listed...)
-		if len(listed) == 0 || page*100 >= total {
+		if commitRunPageEndsTheWalk(len(listed), total, page) {
 			return CommitWorkflowRuns{HeadSHA: headSHA, Runs: runs}, nil
 		}
 	}
@@ -143,7 +143,7 @@ func (r *ActionsOutcomeReader) readCommitRuns(ctx context.Context, token, headSH
 	endpoint.Path = path.Join(endpoint.Path, "repos", r.config.Owner, r.config.Repository, "actions", "runs")
 	query := url.Values{}
 	query.Set("head_sha", headSHA)
-	query.Set("per_page", "100")
+	query.Set("per_page", fmt.Sprint(commitRunPageSize))
 	query.Set("page", fmt.Sprint(page))
 	endpoint.RawQuery = query.Encode()
 	body, err := r.get(ctx, token, endpoint, "commit workflow runs")
@@ -151,7 +151,7 @@ func (r *ActionsOutcomeReader) readCommitRuns(ctx context.Context, token, headSH
 		return nil, 0, fmt.Errorf("%w: %s", ErrCommitRunsUnreadable, err)
 	}
 	var listing commitRunsResponse
-	if err := json.Unmarshal(body, &listing); err != nil || listing.TotalCount < 0 || len(listing.Runs) > 100 {
+	if err := json.Unmarshal(body, &listing); err != nil || listing.TotalCount < 0 || len(listing.Runs) > commitRunPageSize {
 		return nil, 0, fmt.Errorf("%w: unreadable runs document", ErrCommitRunsUnreadable)
 	}
 	runs := make([]CommitWorkflowRun, 0, len(listing.Runs))
