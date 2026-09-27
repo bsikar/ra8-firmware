@@ -136,7 +136,13 @@ func ValidateStepDispatch(step Step) error {
 		if err := checkAnAllStepNamesTheWholeTree(step, program); err != nil {
 			return err
 		}
-		return checkToolFlagValuesAreOnesTheToolAccepts(step, program)
+		if err := checkToolFlagValuesAreOnesTheToolAccepts(step, program); err != nil {
+			return err
+		}
+		// Beside the file door, which asks whether the tool reads a path at
+		// all: this one asks how many it can read. See
+		// a_target_count_the_tool_takes.go.
+		return checkTheTargetCountIsOneTheToolTakes(step, program)
 	}
 	if IsFrontDoorProgram(program) {
 		return fmt.Errorf("%w: step %q runs %q: %w, dispatch its reviewed script instead",
