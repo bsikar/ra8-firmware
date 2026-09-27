@@ -243,16 +243,28 @@ ra8_io_vfs_file_read(ra8_io_vfs_file_t* file, void* buf, uint32_t bytes, uint32_
 [[nodiscard]] ra8_err_t
 ra8_io_vfs_file_write(ra8_io_vfs_file_t* file, const void* buf, uint32_t bytes);
 
-/** @brief Seek a format-neutral stream. */
+/**
+ * @brief Seek a format-neutral stream.
+ * @since 0.1.0
+ */
 [[nodiscard]] ra8_err_t ra8_io_vfs_file_seek(ra8_io_vfs_file_t* file, uint64_t offset_bytes);
 
-/** @brief Report a format-neutral stream's current offset. */
+/**
+ * @brief Report a format-neutral stream's current offset.
+ * @since 0.1.0
+ */
 [[nodiscard]] ra8_err_t ra8_io_vfs_file_tell(const ra8_io_vfs_file_t* file, uint64_t* out_offset);
 
-/** @brief Report a format-neutral stream's size. */
+/**
+ * @brief Report a format-neutral stream's size.
+ * @since 0.1.0
+ */
 [[nodiscard]] ra8_err_t ra8_io_vfs_file_size(const ra8_io_vfs_file_t* file, uint64_t* out_bytes);
 
-/** @brief Explicitly sync a stream, or return not-supported when unavailable. */
+/**
+ * @brief Explicitly sync a stream, or return not-supported when unavailable.
+ * @since 0.1.0
+ */
 [[nodiscard]] ra8_err_t ra8_io_vfs_file_sync(ra8_io_vfs_file_t* file);
 
 /**
@@ -417,7 +429,10 @@ ra8_io_vfs_file_write(ra8_io_vfs_file_t* file, const void* buf, uint32_t bytes);
 [[nodiscard]] ra8_err_t
 ra8_io_vfs_dir_next(ra8_io_vfs_dir_t* directory, ra8_fs_dirent_t* out, bool* out_entry);
 
-/** @brief Close and consume one caller-owned VFS directory cursor. */
+/**
+ * @brief Close and consume one caller-owned VFS directory cursor.
+ * @since 0.1.0
+ */
 [[nodiscard]] ra8_err_t ra8_io_vfs_dir_close(ra8_io_vfs_dir_t* directory);
 
 /**
