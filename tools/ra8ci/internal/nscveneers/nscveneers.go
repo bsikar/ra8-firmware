@@ -31,11 +31,10 @@ func Run(ctx context.Context, root string, args []string, stdout, stderr io.Writ
 		fmt.Fprintln(stderr, "usage: ra8ci nsc-veneer-defs [--selftest]")
 		return 2
 	}
-	headerRel := filepath.Join("libs", "ra8_nsc", "inc", "ra8_nsc.h")
 	sourceRel := filepath.Join("libs", "ra8_nsc", "src")
-	data, err := os.ReadFile(filepath.Join(root, headerRel))
-	if err != nil {
-		fmt.Fprintf(stderr, "ra8ci nsc-veneer-defs: header not found: %s\n", filepath.ToSlash(headerRel))
+	headers, err := publicHeaders(root)
+	if err != nil || len(headers) == 0 {
+		fmt.Fprintf(stderr, "ra8ci nsc-veneer-defs: no public header found under %s\n", headerDir)
 		return 1
 	}
 	entries, err := os.ReadDir(filepath.Join(root, sourceRel))
@@ -59,7 +58,28 @@ func Run(ctx context.Context, root string, args []string, stdout, stderr io.Writ
 		}
 		sources = append(sources, source)
 	}
-	veneers := declared(string(data))
+	// Every public header is read, not just the first one: a veneer declared
+	// anywhere under headerDir is the same promise to the non-secure side.
+	var veneers []string
+	declaredIn := make(map[string]string)
+	for _, headerRel := range headers {
+		if err := ctx.Err(); err != nil {
+			fmt.Fprintln(stderr, "ra8ci nsc-veneer-defs: cancelled:", err)
+			return 2
+		}
+		data, err := os.ReadFile(filepath.Join(root, filepath.FromSlash(headerRel)))
+		if err != nil {
+			fmt.Fprintf(stderr, "ra8ci nsc-veneer-defs: cannot read header %s: %v\n", headerRel, err)
+			return 1
+		}
+		for _, name := range declared(string(data)) {
+			if _, seen := declaredIn[name]; seen {
+				continue
+			}
+			declaredIn[name] = headerRel
+			veneers = append(veneers, name)
+		}
+	}
 	var missing []string
 	for _, name := range veneers {
 		if err := ctx.Err(); err != nil {
@@ -74,13 +94,14 @@ func Run(ctx context.Context, root string, args []string, stdout, stderr io.Writ
 		fmt.Fprintln(stdout, "ra8ci nsc-veneer-defs: RA8_NSC_VENEER declared without a definition:")
 		for _, name := range missing {
 			fmt.Fprintf(stdout, "  %s: declared in %s, no definition in %s/*.c\n", name,
-				filepath.ToSlash(headerRel), filepath.ToSlash(sourceRel))
+				declaredIn[name], filepath.ToSlash(sourceRel))
 		}
 		fmt.Fprintln(stdout, "Fix each at the root -- implement the veneer, or delete the declaration.")
 		fmt.Fprintln(stdout, "A phantom NS->S entry point in the public header is a trust hazard.")
 		return 1
 	}
-	fmt.Fprintf(stdout, "ra8ci nsc-veneer-defs: PASS -- all %d RA8_NSC_VENEER declaration(s) defined.\n", len(veneers))
+	fmt.Fprintf(stdout, "ra8ci nsc-veneer-defs: PASS -- all %d RA8_NSC_VENEER declaration(s) across %d header(s) defined.\n",
+		len(veneers), len(headers))
 	return 0
 }
 
