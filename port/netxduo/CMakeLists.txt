@@ -74,3 +74,23 @@ target_include_directories(
 )
 
 set_property(GLOBAL PROPERTY RA8_NETXDUO_IPIF_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/src/ra8_ipif.c)
+
+# The Wi-Fi provider for that facade: `ra8_ipif_wifi_bind`, the
+# `ra8_wifi_ip_bind_fn` the `ra8_wifi` header promises ships "alongside the
+# backend when a stack is available" (#740). It is its own target rather than a
+# second source file on `netxduo_ipif` because it names `nx_ether_driver_c6` and
+# `ra8_c6link_t`: a consumer running the same bring-up over the on-chip MAC
+# takes `netxduo_ipif` alone and links neither. Linking this one implies
+# `netxduo_port_c6` for the driver itself.
+add_library(netxduo_ipif_wifi INTERFACE)
+
+target_link_libraries(netxduo_ipif_wifi INTERFACE netxduo_ipif netxduo_port_c6)
+
+target_include_directories(
+  netxduo_ipif_wifi INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/inc
+                              ${CMAKE_CURRENT_SOURCE_DIR}/../../libs/ra8_c6link/inc
+)
+
+set_property(
+  GLOBAL PROPERTY RA8_NETXDUO_IPIF_WIFI_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/src/ra8_ipif_wifi.c
+)
