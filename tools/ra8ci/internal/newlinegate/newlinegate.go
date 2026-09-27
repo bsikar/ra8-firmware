@@ -175,7 +175,10 @@ func explicitTargets(root string, args []string) ([]string, error) {
 					}
 					return nil
 				}
-				if !isSource(name) || excluded(root, name) {
+				if excluded(root, name) {
+					return nil
+				}
+				if !isSource(name) && !isScriptWithoutSuffix(name) {
 					return nil
 				}
 				targets = append(targets, name)
@@ -184,7 +187,7 @@ func explicitTargets(root string, args []string) ([]string, error) {
 			if err != nil {
 				return nil, err
 			}
-		} else if isSource(path) && !excluded(root, path) {
+		} else if (isSource(path) || isScriptWithoutSuffix(path)) && !excluded(root, path) {
 			targets = append(targets, path)
 		}
 	}
@@ -212,7 +215,10 @@ func derivedTargets(ctx context.Context, root string) ([]string, error) {
 			continue
 		}
 		tracked++
-		if !isSource(rel) || excluded(root, absolute) {
+		if excluded(root, absolute) {
+			continue
+		}
+		if !isSource(rel) && !isScriptWithoutSuffix(absolute) {
 			continue
 		}
 		paths = append(paths, absolute)
@@ -251,14 +257,23 @@ func selfTest(ctx context.Context, root string, stdout, stderr io.Writer) bool {
 		fmt.Fprintf(stderr, "derived scope has %d file(s), floor is %d: %v\n", len(targets), fileFloor, err)
 		return false
 	}
-	var justRoot, infraRoot bool
+	var justRoot, infraRoot, commitHook bool
+	scripts := 0
 	for _, path := range targets {
 		rel := filepath.ToSlash(displayPath(root, path))
 		justRoot = justRoot || strings.HasPrefix(rel, "just/")
 		infraRoot = infraRoot || strings.HasPrefix(rel, "infra/")
+		commitHook = commitHook || rel == "scripts/git/commit-msg"
+		if filepath.Ext(rel) == "" && isScriptWithoutSuffix(path) {
+			scripts++
+		}
 	}
 	if !justRoot || !infraRoot {
 		fmt.Fprintf(stderr, "derived scope roots: just=%t infra=%t\n", justRoot, infraRoot)
+		return false
+	}
+	if scripts < scriptFloor || !commitHook {
+		fmt.Fprintf(stderr, "derived scope holds %d extensionless script(s), floor is %d; commit-msg included=%t\n", scripts, scriptFloor, commitHook)
 		return false
 	}
 	fmt.Fprintln(stdout, "ra8ci final-newline selftest passed (clean, missing and empty files; derived scope).")
