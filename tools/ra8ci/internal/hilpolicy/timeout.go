@@ -42,6 +42,13 @@ type Decision struct {
 	MaximumObservedSeconds float64 `json:"maximum_observed_seconds,omitempty"`
 	StddevSeconds          float64 `json:"stddev_seconds,omitempty"`
 	Censored               int     `json:"censored"`
+	// EvidenceSeconds is what the observations alone demanded, before the
+	// declared floor or the MaximumSeconds ceiling was applied, and the two
+	// flags name whichever of those overruled them. Set on the observed path
+	// only; see what_chose_the_bound.go.
+	EvidenceSeconds  float64 `json:"evidence_seconds,omitempty"`
+	RaisedToFallback bool    `json:"raised_to_fallback,omitempty"`
+	ClippedToMaximum bool    `json:"clipped_to_maximum,omitempty"`
 }
 
 // DeclaredTimeout reads the existing app's HIL_TIMEOUT_S setting without
@@ -158,13 +165,12 @@ func Choose(declaredSeconds int, declaredFound bool, observations []Observation)
 	}
 	stddev := math.Sqrt(variance / float64(decision.Samples))
 	headroom := math.Max(stddev, maxDuration-mean)
-	bound := maxDuration + headroom
+	evidence := maxDuration + headroom
 	if decision.Censored > 0 {
-		bound = math.Max(bound, maxDuration*1.5)
+		evidence = math.Max(evidence, maxDuration*1.5)
 	}
-	bound = math.Max(bound, float64(fallback))
-	bound = math.Min(bound, MaximumSeconds)
-	decision.Seconds = int(math.Ceil(bound))
+	decision.EvidenceSeconds = evidence
+	decision.Seconds, decision.RaisedToFallback, decision.ClippedToMaximum = boundFromEvidence(evidence, fallback)
 	decision.Source = "observed"
 	decision.MeanSeconds = mean
 	decision.MaximumObservedSeconds = maxDuration
