@@ -44,10 +44,15 @@ func TestATaskHistoryCanFileIsAdmitted(t *testing.T) {
 }
 
 func TestTheWidestFilableTaskNameIsAdmitted(t *testing.T) {
+	// This door's own bound, driven directly: a name of exactly
+	// maxFilableNameBytes is one durable history files. ValidateReviewedTask
+	// no longer admits it, because a grant can carry only 64 bytes and the
+	// narrower bound wins at admission (a_task_name_a_grant_can_carry.go);
+	// TestTheGapBetweenTheGrantAndHistoryIsClosed pins that end to end.
 	task := filableTask()
 	task.Name = strings.Repeat("a", maxFilableNameBytes)
-	if err := ValidateReviewedTask(task); err != nil {
-		t.Fatalf("a task name of exactly %d bytes must be admitted: %v", maxFilableNameBytes, err)
+	if err := checkTheTaskIsOneHistoryCanFile(task); err != nil {
+		t.Fatalf("a task name of exactly %d bytes must be filable: %v", maxFilableNameBytes, err)
 	}
 }
 
