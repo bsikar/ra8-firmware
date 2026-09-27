@@ -293,6 +293,113 @@ RA8_INTERNAL static void internal_build_synth_epub(void)
   mz_zip_writer_end(&zip);
 }
 /* --------------------------------------------------------------------- */
+/* Untrusted-name fixture (#749). */
+/* --------------------------------------------------------------------- */
+
+/**
+ * @var s_hostile_opf
+ * @brief A package document whose manifest hrefs are traversal attempts.
+ * @details Every href here is a name the reader did not choose and must not
+ *          silently repair: two spine documents that climb out of the OPF
+ *          directory, one absolute path, and a cover that climbs one level.
+ *          The archive entries behind them are stored under these same names,
+ *          so the fixture is an archive a hostile producer could really emit.
+ * @since 0.1.0
+ */
+static const char* const s_hostile_opf =
+  "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"
+  "<package xmlns=\"http://www.idpf.org/2007/opf\" version=\"3.0\" unique-identifier=\"id\">\n"
+  "  <metadata xmlns:dc=\"http://purl.org/dc/elements/1.1/\">\n"
+  "    <dc:title>Hostile names</dc:title>\n"
+  "    <dc:identifier id=\"id\">urn:test:hostile</dc:identifier>\n"
+  "  </metadata>\n"
+  "  <manifest>\n"
+  "    <item id=\"ch1\" href=\"../../../etc/passwd.xhtml\" "
+  "media-type=\"application/xhtml+xml\"/>\n"
+  "    <item id=\"ch2\" href=\"/absolute/evil.xhtml\" "
+  "media-type=\"application/xhtml+xml\"/>\n"
+  "    <item id=\"cover\" href=\"../cover.png\" media-type=\"image/png\" "
+  "properties=\"cover-image\"/>\n"
+  "  </manifest>\n"
+  "  <spine>\n"
+  "    <itemref idref=\"ch1\"/>\n"
+  "    <itemref idref=\"ch2\"/>\n"
+  "  </spine>\n"
+  "</package>\n";
+
+/** @brief First hostile spine href, verbatim as the manifest declares it. */
+static const char* const s_hostile_href_one = "../../../etc/passwd.xhtml";
+
+/** @brief Second hostile spine href: absolute, so a naive join discards the parent. */
+static const char* const s_hostile_href_two = "/absolute/evil.xhtml";
+
+/** @brief Hostile cover href, one level above the OPF directory. */
+static const char* const s_hostile_href_cover = "../cover.png";
+
+/**
+ * @var s_hostile_buf
+ * @brief Scratch buffer holding the hostile-name archive.
+ * @note Single-threaded; not thread-safe.
+ * @since 0.1.0
+ */
+static uint8_t s_hostile_buf[k_test_epub_buf_bytes];
+
+/** @brief Finalised length of the archive in ::s_hostile_buf. */
+static size_t s_hostile_size;
+
+/** @brief Build an archive whose manifest hrefs are traversal attempts (#749). @details Writes the mimetype, the shared container document, ::s_hostile_opf and the three payload entries under their hostile names into ::s_hostile_buf. @pre Fixed-capacity fixture storage required by this operation is available. @post ::s_hostile_buf holds a complete archive of ::s_hostile_size bytes. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_build_hostile_epub(void)
+{
+  mz_zip_archive zip;
+  (void)memset(&zip, 0, sizeof(zip));
+  s_hostile_size = 0U;
+
+  mz_bool ok = mz_zip_writer_init_heap(&zip, 0U, k_test_epub_buf_bytes);
+  TEST_ASSERT(ok == MZ_TRUE);
+
+  ok = mz_zip_writer_add_mem(&zip,
+                             "mimetype",
+                             s_synth.mimetype,
+                             strlen(s_synth.mimetype),
+                             MZ_NO_COMPRESSION);
+  TEST_ASSERT(ok == MZ_TRUE);
+
+  ok = mz_zip_writer_add_mem(&zip,
+                             "META-INF/container.xml",
+                             s_synth.container_xml,
+                             strlen(s_synth.container_xml),
+                             MZ_DEFAULT_COMPRESSION);
+  TEST_ASSERT(ok == MZ_TRUE);
+
+  ok = mz_zip_writer_add_mem(&zip,
+                             "OEBPS/content.opf",
+                             s_hostile_opf,
+                             strlen(s_hostile_opf),
+                             MZ_DEFAULT_COMPRESSION);
+  TEST_ASSERT(ok == MZ_TRUE);
+
+  ok = mz_zip_writer_add_mem(&zip,
+                             "OEBPS/../cover.png",
+                             s_synth.cover_bytes,
+                             sizeof(s_synth.cover_bytes),
+                             MZ_NO_COMPRESSION);
+  TEST_ASSERT(ok == MZ_TRUE);
+
+  void*  heap_buf  = nullptr;
+  size_t heap_size = 0U;
+  ok               = mz_zip_writer_finalize_heap_archive(&zip, &heap_buf, &heap_size);
+  TEST_ASSERT(ok == MZ_TRUE);
+  TEST_ASSERT(heap_buf != nullptr);
+  TEST_ASSERT(heap_size <= sizeof(s_hostile_buf));
+
+  (void)memcpy(s_hostile_buf, heap_buf, heap_size);
+  s_hostile_size = heap_size;
+
+  mz_free(heap_buf);
+  mz_zip_writer_end(&zip);
+}
+
+/* --------------------------------------------------------------------- */
 /* Test cases. */
 /* --------------------------------------------------------------------- */
 
@@ -726,9 +833,51 @@ RA8_INTERNAL static void internal_test_get_resource(void)
   TEST_END("epub get_resource + the #140 external-stylesheet css-loader");
 }
 
+/**
+ * @test internal_test_untrusted_hrefs_survive_verbatim
+ * @brief The reader hands back archive-supplied names unjudged (#749).
+ * @details `epub.h` states that every name in the book record is copied out of
+ *          archive bytes and is not validated as a filesystem path, and names
+ *          the policy a caller applies before writing one. That contract is
+ *          only true while the reader really does leave the names alone, so
+ *          this case opens an archive whose manifest declares a traversal
+ *          href, an absolute href and a climbing cover href, and asserts each
+ *          arrives byte-identical. A reader that started sanitising or
+ *          rejecting these would fail here, and the header would then be
+ *          wrong.
+ *
+ * @par MC/DC:
+ * (no compound decisions in this test -- it asserts a documented pass-through
+ * contract over the public book record) @brief Verify untrusted hrefs survive verbatim. @details Executes the untrusted-href scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_untrusted_hrefs_survive_verbatim(void)
+{
+  TEST_BEGIN("epub hands back untrusted manifest hrefs verbatim");
+  epub_book_t            book  = {};
+  const epub_mem_media_t media = {.data = s_hostile_buf, .size = s_hostile_size};
+  TEST_ASSERT_EQ(k_ra8_ok, epub_open(&media, "hostile.epub", &book));
+
+  uint16_t chapters = 0U;
+  TEST_ASSERT_EQ(k_ra8_ok, epub_get_chapter_count(&book, &chapters));
+  TEST_ASSERT_EQ(k_test_expected_chapters, chapters);
+
+  TEST_ASSERT_EQ(strlen(s_hostile_href_one), strlen(book.chapter_paths[0]));
+  TEST_ASSERT(
+    internal_bytes_equal(book.chapter_paths[0], s_hostile_href_one, strlen(s_hostile_href_one)));
+  TEST_ASSERT_EQ(strlen(s_hostile_href_two), strlen(book.chapter_paths[1]));
+  TEST_ASSERT(
+    internal_bytes_equal(book.chapter_paths[1], s_hostile_href_two, strlen(s_hostile_href_two)));
+  TEST_ASSERT_EQ(strlen(s_hostile_href_cover), strlen(book.cover_path));
+  TEST_ASSERT(
+    internal_bytes_equal(book.cover_path, s_hostile_href_cover, strlen(s_hostile_href_cover)));
+
+  TEST_ASSERT_EQ(k_ra8_ok, epub_close(&book));
+  TEST_END("epub hands back untrusted manifest hrefs verbatim");
+}
+
 int main(void)
 {
   internal_build_synth_epub();
+  internal_build_hostile_epub();
   internal_test_open_close();
   internal_test_chapter_count();
   internal_test_load_chapter();
@@ -741,5 +890,6 @@ int main(void)
   internal_test_null_arg_guards();
   internal_test_open_invalid_zip();
   internal_test_two_live_books_isolate_miniz_arenas();
+  internal_test_untrusted_hrefs_survive_verbatim();
   return 0;
 }
