@@ -204,6 +204,13 @@ func (s *Spool) Finish(entry Entry, result executor.Result, runErr error) (Entry
 	if err := checkTheEvidenceWasMeasured(result); err != nil {
 		return Entry{}, err
 	}
+	// Beside the evidence door: a result states exit codes twice over, once
+	// for the attempt and once per step, and neither column the plane files
+	// them into carries a CHECK. See exits_a_run_reported.go for why the
+	// freeze asks as well as the sweep.
+	if err := checkTheExitsWereReported(result); err != nil {
+		return Entry{}, err
+	}
 	if err := checkStampsAreInOrder(entry); err != nil {
 		return Entry{}, err
 	}
