@@ -222,6 +222,33 @@ ra8_arena_carve_all(ra8_arena_t* arena, const ra8_arena_slot_t* slots, uint32_t 
   return k_ra8_ok;
 }
 
+ra8_err_t ra8_arena_carve_remaining(ra8_arena_t* arena,
+                                    uint32_t     align,
+                                    void**       out_ptr,
+                                    uint32_t*    out_bytes)
+{
+  RA8_CHECK_NULL_PTR(arena, s_tag, "arena must not be nullptr");
+  RA8_CHECK_NULL_PTR(out_ptr, s_tag, "out_ptr must not be nullptr");
+  RA8_CHECK_NULL_PTR(out_bytes, s_tag, "out_bytes must not be nullptr");
+  if (!internal_is_pow2(align)) {
+    return k_ra8_err_invalid_arg;
+  }
+  const uintptr_t cur     = (uintptr_t)arena->base + (uintptr_t)arena->used;
+  const uintptr_t mask    = (uintptr_t)align - 1U;
+  const uintptr_t aligned = (cur + mask) & ~mask;
+  const uintptr_t end     = (uintptr_t)arena->base + (uintptr_t)arena->size;
+  if (aligned >= end) {
+    return k_ra8_err_no_mem;
+  }
+  const uint32_t  bytes = (uint32_t)(end - aligned);
+  const ra8_err_t err   = ra8_arena_carve(arena, bytes, align, out_ptr);
+  if (err != k_ra8_ok) {
+    return err;
+  }
+  *out_bytes = bytes;
+  return k_ra8_ok;
+}
+
 ra8_err_t ra8_arena_high_water(const ra8_arena_t* arena, uint32_t* out_high_water)
 {
   RA8_CHECK_NULL_PTR(arena, s_tag, "arena must not be nullptr");
