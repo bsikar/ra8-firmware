@@ -80,6 +80,14 @@ static const uint8_t s_bmp[] = {
 };
 
 /** @brief 8x8 VP8L fixture with deterministic RGB ramps. */
+/** @brief A RIFF container that is not WebP; the stb decoder must refuse it. */
+static const uint8_t s_riff_wave[] = {'R', 'I', 'F', 'F', 0x24, 0x00, 0x00, 0x00,
+                                      'W', 'A', 'V', 'E', 'f',  'm',  't',  ' '};
+
+/** @brief A WebP header one byte short of the sniff window. */
+static const uint8_t s_webp_short[] = {'R', 'I', 'F', 'F', 0x0c, 0x00,
+                                       0x00, 0x00, 'W', 'E', 'B'};
+
 static const uint8_t s_webp[] = {
   0x52, 0x49, 0x46, 0x46, 0x2C, 0x00, 0x00, 0x00, 0x57, 0x45, 0x42, 0x50, 0x56,
   0x50, 0x38, 0x4C, 0x1F, 0x00, 0x00, 0x00, 0x2F, 0x07, 0xC0, 0x01, 0x00, 0xCD,
@@ -315,13 +323,18 @@ static void internal_expect_raster_capacity_errors(void)
  * @pre The embedded BMP fixture remains byte-identical to its declaration.
  * @post Both conversions succeed and the image arena is empty.
  * @post The exact gray4 and clamped gray8 bytes match their goldens.
+ * @post A non-WebP RIFF and a truncated WebP header both reach the stb decoder
+ *       and leave the libwebp arena drained.
  * @note Not thread-safe because the fixture buffers are shared statics.
  * @since 0.1.0
  * @par MC/DC:
- * WebP signature decision `(size >= 12) && RIFF && WEBP` receives the BMP
- * vector `(T,F,-)->F`. Companion tests supply valid WebP `(T,T,T)->T` and a
- * three-byte malformed input `(F,-,-)->F`; no `(T,T,F)` vector exists here, so
- * independence of the form-tag comparison is not claimed. Scale decision
+ * WebP routing decision `internal_is_webp(source, source_size)` in
+ * ra8_rabook_raster.c: this module now forwards it to ra8_imgdec_sniff() under
+ * #768, so the condition-level vectors live in
+ * tests/misc/src/test_ra8_imgdec_sniff.c. What is exercised here is the
+ * routing OUTCOME: the BMP vector and the RIFF/WAVE and truncated-WebP vectors
+ * below take the false arm onto the stb decoder, the companion WebP test takes
+ * the true arm onto the libwebp arena. Scale decision
  * `(source_width == out_width) && (source_height == out_height)` sees
  * `(T,T)->T` without a clamp and `(F,-)->F` for the square 2-to-1 clamp; both
  * dimensions change, so neither equality has a complete independence pair.
@@ -364,6 +377,29 @@ RA8_INTERNAL static void internal_test_bmp_gray4_and_clamp(void)
   TEST_ASSERT_EQ(1U, got.height);
   TEST_ASSERT_EQ(1U, got.encoded_size);
   TEST_ASSERT_EQ(76U, s_encoded[0]);
+
+  /* Neither vector is WebP, so both must leave the libwebp arena untouched and
+   * die in the stb decoder rather than in the WebP one. */
+  TEST_ASSERT_EQ(k_ra8_err_validation_failed,
+                 ra8_rabook_raster_encode(s_riff_wave,
+                                          sizeof s_riff_wave,
+                                          0U,
+                                          (uint8_t)k_book_pixfmt_gray4,
+                                          &ws,
+                                          s_encoded,
+                                          sizeof s_encoded,
+                                          &got));
+  TEST_ASSERT_EQ(k_ra8_err_validation_failed,
+                 ra8_rabook_raster_encode(s_webp_short,
+                                          sizeof s_webp_short,
+                                          0U,
+                                          (uint8_t)k_book_pixfmt_gray4,
+                                          &ws,
+                                          s_encoded,
+                                          sizeof s_encoded,
+                                          &got));
+  TEST_ASSERT_EQ(0U, webp.live);
+  TEST_ASSERT_EQ(0U, webp.offset);
   TEST_END("rabook raster: BMP gray4 + clamp");
 }
 

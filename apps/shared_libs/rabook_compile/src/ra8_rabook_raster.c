@@ -18,53 +18,53 @@
 #include <limits.h>
 #include <stddef.h>
 #include <stdint.h>
-#include <string.h>
 
 #include "ra8_attributes.h"
 #include "ra8_img_arena.h"
+#include "ra8_imgdec.h"
 #include "ra8_rabook_gray4.h"
 #include "ra8_webp.h"
 #include "stb_image.h"
 
-/** @brief Raster signature and color-conversion constants. */
+/** @brief Raster color-conversion constants. */
 typedef enum : uint16_t {
-  k_raster_webp_signature_size = 12U,  /**< RIFF size plus WEBP form tag.  */
-  k_raster_webp_form_offset    = 8U,   /**< WEBP form tag byte offset.     */
-  k_raster_webp_bytes_per_px   = 4U,   /**< Decoded RGBA bytes per pixel.  */
-  k_raster_luma_r              = 77U,  /**< stb-compatible red weight.     */
-  k_raster_luma_g              = 150U, /**< stb-compatible green weight.   */
-  k_raster_luma_b              = 29U,  /**< stb-compatible blue weight.    */
-  k_raster_luma_shift          = 8U,   /**< Luminance normalization shift. */
+  k_raster_webp_bytes_per_px = 4U,   /**< Decoded RGBA bytes per pixel.  */
+  k_raster_luma_r            = 77U,  /**< stb-compatible red weight.     */
+  k_raster_luma_g            = 150U, /**< stb-compatible green weight.   */
+  k_raster_luma_b            = 29U,  /**< stb-compatible blue weight.    */
+  k_raster_luma_shift        = 8U,   /**< Luminance normalization shift. */
 } ra8_rabook_raster_consts_t;
 
 /**
- * @brief Return true only for a complete RIFF/WEBP signature.
- * @details Checks both the RIFF container tag and WEBP form tag after proving
- *          the fixed header is readable; other RIFF formats remain on the stb
- *          path and fail its decoder normally.
+ * @brief Return true only for a candidate the shared sniff names as WebP.
+ * @details Forwards the leading bytes to ra8_imgdec_sniff() rather than
+ *          matching the RIFF and WEBP tags in this module, so the routing
+ *          decision follows one container table (#768). Every refusal folds to
+ *          false because the single caller only asks whether the libwebp arena
+ *          path applies; any other answer belongs to the stb decoder, which
+ *          rejects what it cannot read.
  * @param[in] source Encoded candidate bytes.
  * @param[in] source_size Readable byte count at @p source.
  * @return Whether the candidate carries the WebP signature.
- * @retval true Both required tags match.
- * @retval false The header is short or either tag differs.
+ * @retval true The shared sniff resolved the candidate to WebP.
+ * @retval false The header is short, unreadable, or names another container.
  * @pre @p source is non-NULL and spans @p source_size bytes.
  * @pre @p source_size is the complete candidate byte length.
  * @post No input or codec state is modified.
- * @post No byte beyond the twelve-byte signature window is inspected.
+ * @post No byte beyond ::k_ra8_imgdec_sniff_bytes is inspected.
  * @note Pure and thread-safe.
  * @since 0.1.0
  */
 RA8_INTERNAL static bool internal_is_webp(const uint8_t* source, size_t source_size)
 {
-  static const uint8_t k_riff[] = {'R', 'I', 'F', 'F'};
-  static const uint8_t k_webp[] = {'W', 'E', 'B', 'P'};
-  if (source_size < (size_t)k_raster_webp_signature_size) {
+  const uint32_t window = (source_size > (size_t)k_ra8_imgdec_sniff_bytes)
+                            ? (uint32_t)k_ra8_imgdec_sniff_bytes
+                            : (uint32_t)source_size;
+  ra8_imgdec_format_t format = k_ra8_imgdec_format_none;
+  if (ra8_imgdec_sniff(source, window, &format) != k_ra8_ok) {
     return false;
   }
-  if (memcmp(source, k_riff, sizeof k_riff) != 0) {
-    return false;
-  }
-  return memcmp(&source[k_raster_webp_form_offset], k_webp, sizeof k_webp) == 0;
+  return format == k_ra8_imgdec_format_webp;
 }
 
 /**
