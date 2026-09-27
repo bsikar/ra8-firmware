@@ -23,7 +23,7 @@ func (h *historySource) Observations(_ context.Context, workload Workload) ([]Hi
 
 func decisionFixture(t *testing.T) (Spec, Workload, Options) {
 	t.Helper()
-	spec, err := Parse(strings.NewReader("HIL_MODE=uart_scrape\nHIL_TIMEOUT_S=12\nHIL_EXPECT=\"PASS\"\n"),
+	spec, err := Parse(strings.NewReader("HIL_MODE=uart_scrape\nHIL_TIMEOUT_S=12\nHIL_EXPECT=\"demo: verdict=PASS\"\n"),
 		"examples/ek_ra8d2/hw_validated/hil/demo/hil.conf")
 	if err != nil {
 		t.Fatal(err)

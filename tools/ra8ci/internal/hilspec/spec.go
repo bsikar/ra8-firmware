@@ -227,6 +227,12 @@ func Parse(reader io.Reader, path string) (Spec, error) {
 	if err := checkNegativeExpectationCompiles(spec); err != nil {
 		return Spec{}, err
 	}
+	// The other half of the assertion, held to the same place in the run:
+	// a text-capture manifest that cannot produce a verdict is refused
+	// here rather than after a board has been leased and flashed for it.
+	if err := checkPositiveExpectationIsUsable(spec); err != nil {
+		return Spec{}, err
+	}
 	if spec.SafetyMaximumSeconds > 0 && spec.TimeoutDeclared && spec.SafetyMaximumSeconds < spec.TimeoutSeconds {
 		return Spec{}, fmt.Errorf("%w: safety maximum is below declared fallback", ErrInvalidManifest)
 	}
