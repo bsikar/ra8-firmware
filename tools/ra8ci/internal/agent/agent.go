@@ -269,12 +269,17 @@ func (agent *Agent) execute(parent context.Context, assignment protocol.Assignme
 	flushCtx, flushStop := context.WithTimeout(parent, agent.flushWindow())
 	uploader.flushGrace(flushCtx)
 	flushStop()
-	endFacts, err := HostFacts()
-	if err != nil {
-		return err
-	}
+	// The end reading is read for the receipt, never the other way round: a
+	// /proc read that fails here, or a clock stepped back between the two
+	// readings, used to discard the whole report of an attempt that had
+	// already run. See endHostFacts.
+	measured, endErr := HostFacts()
+	endFacts, measuredAtEnd := endHostFacts(startFacts, measured, endErr)
 	sequence, logErr := uploader.status()
 	receipt := terminalReceipt(assignment, result, startFacts, endFacts, sequence, runErr, logErr, artifactErr)
+	if !measuredAtEnd {
+		receipt = withoutEndReading(receipt)
+	}
 	if err := receipt.Validate(); err != nil {
 		return err
 	}
@@ -286,7 +291,7 @@ func (agent *Agent) execute(parent context.Context, assignment protocol.Assignme
 	if err := agent.accept(evidenceCtx, assignment, "/v1/attempts/"+assignment.AttemptID+"/result", receipt); err != nil {
 		return err
 	}
-	return errors.Join(runErr, logErr, artifactErr)
+	return errors.Join(runErr, logErr, artifactErr, endErr)
 }
 
 // assignmentBudget uses only the server's remaining-time hint for a local
