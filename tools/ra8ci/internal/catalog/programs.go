@@ -164,7 +164,13 @@ func ValidateStepDispatch(step Step) error {
 	// dispatches: this one judges what it hands that script, where the
 	// script's own argument contract is stated. See
 	// a_script_option_the_script_parses.go.
-	return checkScriptOptionsAreOnesTheScriptParses(step)
+	if err := checkScriptOptionsAreOnesTheScriptParses(step); err != nil {
+		return err
+	}
+	// Beside the option door, which refuses what the script cannot parse:
+	// this one refuses what it parses perfectly and then returns zero
+	// having done no work. See a_gate_step_runs_a_gate.go.
+	return checkAScriptStepRunsTheWorkItNames(step)
 }
 
 // ValidateTaskDispatch applies the seam to every step of a task.
