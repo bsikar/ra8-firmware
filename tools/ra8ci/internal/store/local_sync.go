@@ -204,7 +204,8 @@ func validateLocalRun(in LocalRunInput) error {
 		in.DeadlineSeconds < 1 || in.DeadlineSeconds > 86400 || len(in.Arguments) > 64 ||
 		!argumentsAJSONBColumnCanHold(in.Arguments) ||
 		in.StartedAt.IsZero() || in.FinishedAt.IsZero() || in.FinishedAt.Before(in.StartedAt) ||
-		in.DurationNS < 0 || len(in.ExecutorError) > 1024 || len(in.Steps) > 128 {
+		in.DurationNS < 0 || len(in.ExecutorError) > 1024 ||
+		!executorErrorATextColumnCanHold(in.ExecutorError) || len(in.Steps) > 128 {
 		return fmt.Errorf("%w: invalid local run metadata", ErrInvalid)
 	}
 	switch in.Result {
