@@ -55,6 +55,12 @@ func SyncPending(ctx context.Context, outbox *spool.Spool, baseURL string, clien
 		if err := checkUploadedSourceIdentityIsStated(entry); err != nil {
 			return report, fmt.Errorf("local %s: %w", entry.ID, err)
 		}
+		// Asked beside the identity door and before the record is marshalled:
+		// both judge what the record says about itself, and neither needs the
+		// bytes to answer.
+		if err := checkUploadedEnvelopeIsReadable(entry); err != nil {
+			return report, fmt.Errorf("local %s: %w", entry.ID, err)
+		}
 		body, err := json.Marshal(entry)
 		if err != nil {
 			return report, err
