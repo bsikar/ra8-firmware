@@ -22,6 +22,8 @@
 #include "ra8_err.h"
 #include "ra8_rabook_comic.h"
 #include "ra8_rabook_container.h"
+#include "ra8_webp_arena.h"
+#include "reflow_image.h"
 #include "unity_minimal.h"
 
 /** @brief Fixed page, builder, codec, and container fixture capacities. */
