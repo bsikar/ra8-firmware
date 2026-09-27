@@ -997,6 +997,12 @@ func Validate(s Snapshot) error {
 		if err := checkDeadlineMatchesItsExtensions(lease); err != nil {
 			return err
 		}
+		// The counter that deadline movement pays for, held to the same
+		// record: a charge only extend can write, checked against what
+		// extend can produce.
+		if err := checkContendedBudgetIsAccountedFor(lease); err != nil {
+			return err
+		}
 
 		if lease.HandoffTarget < 0 || lease.HandoffTarget > MaxHandoffBound {
 			return &Error{Conflict, "retained lease carries an out-of-range handoff target"}
