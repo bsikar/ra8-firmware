@@ -160,7 +160,11 @@ func ValidateStepDispatch(step Step) error {
 		return fmt.Errorf("%w: step %q must dispatch a reviewed script path as its first %s argument",
 			ErrInvalidCatalog, step.Name, DispatchShell)
 	}
-	return nil
+	// Beside the path rule above, which settles WHICH script a step
+	// dispatches: this one judges what it hands that script, where the
+	// script's own argument contract is stated. See
+	// a_script_option_the_script_parses.go.
+	return checkScriptOptionsAreOnesTheScriptParses(step)
 }
 
 // ValidateTaskDispatch applies the seam to every step of a task.
