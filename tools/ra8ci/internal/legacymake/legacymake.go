@@ -153,7 +153,9 @@ func scan(ctx context.Context, root string, paths []string) ([]finding, error) {
 		if !utf8.Valid(data) {
 			continue
 		}
-		active := strings.HasSuffix(rel, ".sh") || strings.HasSuffix(rel, ".yml") || strings.HasSuffix(rel, ".yaml") || filepath.Base(rel) == "Dockerfile"
+		// Judged from the file itself, not a suffix list: the Just recipes this
+		// gate points work at, and the suffixless git hooks, run commands too.
+		active := runsCommands(rel, data)
 		lineBreaks := strings.NewReplacer("\r\n", "\n", "\r", "\n", "\v", "\n", "\f", "\n", "\u001c", "\n", "\u001d", "\n", "\u001e", "\n", "\u0085", "\n", "\u2028", "\n", "\u2029", "\n")
 		lines := strings.Split(lineBreaks.Replace(string(data)), "\n")
 		for n, line := range lines {
