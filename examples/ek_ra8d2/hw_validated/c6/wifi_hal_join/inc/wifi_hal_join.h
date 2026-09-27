@@ -10,7 +10,8 @@
  * The companion to ``main.c``. It holds the build constants, the bounded
  * console serialisers (so the image needs no ``printf`` and no heap), and the
  * one function that is genuinely stack-specific: ::wifi_hal_ip_bind, the
- * ::ra8_wifi_ip_bind_fn that runs a NetX Duo DHCP client to a lease. Everything
+ * ::ra8_wifi_ip_bind_fn that configures the shared NetX Duo bring-up and hands
+ * back a DHCP lease. Everything
  * Wi-Fi lives behind ``ra8_wifi.h`` -- this header adds only what a bench
  * application needs around it.
  *
@@ -259,13 +260,18 @@ typedef struct wifi_hal_run_cfg {
 [[nodiscard]] bool wifi_hal_join_run(const wifi_hal_run_cfg_t* cfg, wifi_hal_result_t* out);
 
 /**
- * @brief The application's IP provider: a NetX Duo DHCP client to a lease.
+ * @brief The application's IP provider: the shared NetX Duo bring-up, configured.
  *
  * @details
- * The ::ra8_wifi_ip_bind_fn ::ra8_wifi_wait_ip calls. It binds the wireless
- * NetX link driver to the open C6 link, creates the packet pool and IP
- * instance, runs the vendored DHCP client to a bound lease, and copies the
- * lease out. From here NetX Duo owns the wire.
+ * The ::ra8_wifi_ip_bind_fn ::ra8_wifi_wait_ip calls. It supplies this
+ * application's buffers and sizes and forwards to ::ra8_ipif_wifi_bind, which
+ * binds the wireless NetX link driver to the open C6 link, stamps the station
+ * MAC, brings the IP interface up and runs the vendored DHCP client to a bound
+ * lease. From here NetX Duo owns the wire.
+ *
+ * The bring-up itself is no longer written here: it is ``port/netxduo``'s
+ * ::ra8_ipif_up and ::ra8_ipif_dhcp, shared with every other application that
+ * wants an address. What stays with the application is the RAM budget.
  *
  * @param[in] ip_ctx The open ``ra8_c6link_t*`` this application passed as
  *                   ::ra8_wifi_cfg::ip_ctx; must be non-null.
@@ -275,13 +281,16 @@ typedef struct wifi_hal_run_cfg {
  * @return ra8_err_t Error code.
  * @retval k_ra8_ok A lease was obtained and copied into @p out.
  * @retval k_ra8_err_null_ptr An argument was null.
+ * @retval k_ra8_err_invalid_size A buffer size in the configuration was refused.
+ * @retval k_ra8_err_invalid_state The interface was already up.
  * @retval k_ra8_err_not_initialized The NetX objects could not be created.
  * @retval k_ra8_err_timeout DHCP did not bind within ::k_wifi_hal_dhcp_wait_ms.
  *
  * @pre The station is associated (::ra8_wifi_connect has succeeded).
  * @pre @p ip_ctx is the same open link the facade drives.
  * @post On success @p out->bound is implied by a non-zero @p out->ip.
- * @post On failure @p out is cleared.
+ * @post On failure @p out is cleared and nothing the call created survives it,
+ *       so a retry starts from a clean interface.
  *
  * @note Runs once, on the worker thread, inside ::ra8_wifi_wait_ip.
  * @warning Blocks up to ::k_wifi_hal_dhcp_wait_ms waiting for the lease.
@@ -292,6 +301,7 @@ typedef struct wifi_hal_run_cfg {
  * cfg.ip_ctx  = &s_link;
  * @endcode
  *
+ * @see ra8_ipif_wifi_bind
  * @see ra8_wifi_wait_ip
  * @since 0.1.0
  */
