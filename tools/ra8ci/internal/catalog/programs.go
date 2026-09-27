@@ -156,7 +156,16 @@ func ValidateStepDispatch(step Step) error {
 		// for the three tools parsing with the flag package, an option
 		// written after a target is not an option, because the parser has
 		// already stopped. See a_tool_flag_the_parser_still_reads.go.
-		return checkNoToolFlagFollowsATarget(step, program)
+		if err := checkNoToolFlagFollowsATarget(step, program); err != nil {
+			return err
+		}
+		// Last on the tool branch, and the mirror of the script companion
+		// door in the exclusive direction: that one refuses an option
+		// missing the companion it needs, this one an option standing
+		// beside one the tool will not take. Every other door here judges
+		// one element against the tool's contract; none can hold a rule
+		// about a pair. See a_scan_option_the_ci_scan_allows.go.
+		return checkNoToolOptionStandsBesideOneItExcludes(step, program)
 	}
 	if IsFrontDoorProgram(program) {
 		return fmt.Errorf("%w: step %q runs %q: %w, dispatch its reviewed script instead",
