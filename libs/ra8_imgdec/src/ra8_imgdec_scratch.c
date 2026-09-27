@@ -24,6 +24,7 @@
 #include <stdint.h>
 #include <string.h>
 
+#include "ra8_arena.h"
 #include "ra8_attributes.h"
 #include "ra8_err.h"
 
@@ -96,6 +97,17 @@ RA8_INTERNAL static void* internal_reserve(ra8_imgdec_scratch_t* scratch, size_t
   }
 
   return block;
+}
+
+/**
+ * @brief Whether @p align is a usable carve alignment for this contract.
+ *
+ * @param[in] align Alignment to test; assumed non-zero.
+ *
+ * @return bool True when @p align is a power of two.
+ */
+RA8_INTERNAL static bool internal_pow2(uint32_t align) {
+  return (align & (align - 1U)) == 0U;
 }
 
 /* =============================================================================
@@ -200,4 +212,36 @@ size_t ra8_imgdec_scratch_high_water(const ra8_imgdec_scratch_t* scratch) {
   }
 
   return scratch->high_water;
+}
+
+ra8_err_t ra8_imgdec_scratch_carve(ra8_imgdec_scratch_t* scratch, ra8_arena_t* arena,
+                                   uint32_t bytes, uint32_t align) {
+  if ((scratch == nullptr) || (arena == nullptr)) {
+    return k_ra8_err_invalid_arg;
+  }
+
+  *scratch = (ra8_imgdec_scratch_t){0};
+
+  if (bytes == 0U) {
+    return k_ra8_err_invalid_size;
+  }
+
+  const uint32_t want = (align == 0U) ? (uint32_t)k_ra8_imgdec_scratch_align : align;
+
+  if (!internal_pow2(want)) {
+    return k_ra8_err_invalid_arg;
+  }
+
+  if (want > (uint32_t)k_ra8_imgdec_scratch_align) {
+    return k_ra8_err_not_supported;
+  }
+
+  void*           block = nullptr;
+  const ra8_err_t err   = ra8_arena_carve(arena, bytes, want, &block);
+
+  if (err != k_ra8_ok) {
+    return err;
+  }
+
+  return ra8_imgdec_scratch_init(scratch, block, (size_t)bytes);
 }
