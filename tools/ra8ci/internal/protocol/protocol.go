@@ -331,6 +331,12 @@ func (receipt TerminalReceipt) Validate() error {
 			return ErrInvalid
 		}
 	}
+	// Before every rule that compares one exit code with another: those
+	// comparisons only mean something once each number is an exit code a child
+	// could have reported, which the loop above never asked.
+	if err := checkExitCodesNameAChildThatRan(receipt); err != nil {
+		return err
+	}
 	// Beside the outcome switch above rather than inside it: the switch judges
 	// the attempt's own fields, this holds its steps to the verdict it reached.
 	if err := checkStepOutcomesAgreeWithTheAttempt(receipt); err != nil {
