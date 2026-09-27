@@ -317,7 +317,10 @@ func (s *Spool) MarkSynced(id, serverRunID string) error {
 	if s == nil || !validID(id) || serverRunID == "" {
 		return errors.New("invalid sync receipt")
 	}
-	if _, err := os.Stat(filepath.Join(s.directory, id+".finished.json")); err != nil {
+	// The record is held to the file kind the rest of this package asks
+	// about rather than stat'ed, because this is the door that retires
+	// evidence for good. See a_record_a_receipt_retires.go.
+	if err := checkTheRetiredRecordIsAFileThisSpoolWrote(filepath.Join(s.directory, id+".finished.json")); err != nil {
 		return err
 	}
 	return s.write(id+".synced.json", map[string]string{"local_id": id, "server_run_id": serverRunID})
