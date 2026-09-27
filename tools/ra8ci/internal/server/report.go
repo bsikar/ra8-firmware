@@ -41,5 +41,13 @@ func (s *Server) slowReport(w http.ResponseWriter, r *http.Request) {
 		writeStoreError(w, err)
 		return
 	}
+	// The rows are judged before the response is started, for the reason
+	// slowReportRowsAddUp gives: after writeJSON has sent 200 there is no
+	// longer a way to tell the reader that the summary underneath it does
+	// not add up.
+	if len(rows) > limit || !slowReportRowsAddUp(rows) {
+		problem(w, http.StatusServiceUnavailable, "unavailable", "stored slow report is inconsistent", true)
+		return
+	}
 	writeJSON(w, http.StatusOK, slowReportResponse{Repository: repository, WindowSeconds: seconds, Tasks: rows})
 }
