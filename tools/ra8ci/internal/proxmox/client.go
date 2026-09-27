@@ -15,7 +15,6 @@ import (
 	"io"
 	"net"
 	"net/http"
-	"net/netip"
 	"net/url"
 	"os"
 	"regexp"
@@ -190,14 +189,6 @@ func checkedBridges(names []string) (map[string]struct{}, error) {
 		checked[name] = struct{}{}
 	}
 	return checked, nil
-}
-
-func isPersonalNetworkHost(host string) bool {
-	if strings.HasSuffix(strings.ToLower(host), ".ts.net") {
-		return true
-	}
-	addr, err := netip.ParseAddr(host)
-	return err == nil && netip.MustParsePrefix("100.64.0.0/10").Contains(addr)
 }
 
 func loadToken(path, envName string) (string, error) {
