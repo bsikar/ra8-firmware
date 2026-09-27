@@ -96,6 +96,13 @@ func SyncPending(ctx context.Context, outbox *spool.Spool, baseURL string, clien
 		if err := checkUploadedClassificationIsOneThePlaneFiles(entry); err != nil {
 			return report, fmt.Errorf("local %s: %w", entry.ID, err)
 		}
+		// Beside the classification door for the same reason: the task
+		// name is stated by the record, the column that holds it bounds
+		// its length and its text with no catalog to read, and a name the
+		// plane will not file is the same opaque 400 that ends the sweep.
+		if err := checkUploadedTaskNameIsOneThePlaneFiles(entry); err != nil {
+			return report, fmt.Errorf("local %s: %w", entry.ID, err)
+		}
 		body, err := json.Marshal(entry)
 		if err != nil {
 			return report, err
