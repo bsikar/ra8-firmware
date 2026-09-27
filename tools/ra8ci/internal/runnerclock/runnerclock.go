@@ -395,6 +395,11 @@ func scan(ctx context.Context, api *actionsAPI, repo string, limit int, hours *i
 	if err != nil {
 		return 2, err
 	}
+	// Read once, before the walk, and hold every job against the same
+	// moment: a scan of a thousand runs takes minutes, and a rule that
+	// re-read the clock per job would judge the last runner against a
+	// later instant than the first for no reason a reader could see.
+	readAt := time.Now().UTC()
 	findings := make([]finding, 0)
 	scannedRuns, scannedJobs, scannedSteps := 0, 0, 0
 	for _, workflow := range recent {
@@ -415,6 +420,7 @@ func scan(ctx context.Context, api *actionsAPI, repo string, limit int, hours *i
 			scannedSteps += len(currentJob.Steps)
 			jobFindings := scanJob(currentJob)
 			jobFindings = append(jobFindings, jobBeganWithinItsRun(currentJob, dispatched, haveDispatched)...)
+			jobFindings = append(jobFindings, stampedAheadOfTheScan(currentJob, readAt)...)
 			for _, found := range jobFindings {
 				found.runner = currentJob.RunnerName
 				if found.runner == "" {
