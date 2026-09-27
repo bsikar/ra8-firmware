@@ -696,7 +696,16 @@ func (c *Client) BeginSegment(ctx context.Context, token LeaseToken, attemptID, 
 		BoundMilliseconds int64  `json:"bound_milliseconds"`
 		RecoveryMarginMS  int64  `json:"recovery_margin_ms"`
 	}{snapshot.Version, token.LeaseID, token.Generation, attemptID, key, bound.Milliseconds(), recoveryMargin.Milliseconds()}, &result)
-	return result, err
+	if err != nil {
+		return store.BoardSegment{}, err
+	}
+	// The identifier in this document is the one the agent unwinds with, on
+	// a path that does no read of its own, so the document is held to the
+	// ask before any of it leaves this call.
+	if !segmentAnswersTheAsk(result, token, attemptID, key) {
+		return store.BoardSegment{}, fmt.Errorf("%w: begun segment does not answer this request", ErrInvalidRequest)
+	}
+	return result, nil
 }
 
 // FinishSegment records a bounded operation's outcome using the same exact
