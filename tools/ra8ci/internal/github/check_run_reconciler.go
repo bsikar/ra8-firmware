@@ -211,6 +211,10 @@ func (r *CheckRunReconciler) PublishedRuns(ctx context.Context, headSHA string) 
 		}
 		runs = append(runs, listed...)
 		if commitCheckRunPageEndsTheWalk(rows, total, page) {
+			// Page numbers address positions, so a run posted
+			// mid-walk can be served on two of them. One run
+			// listed twice would read as a repeated write.
+			runs = onePublishedCheckRunPerID(runs)
 			sort.Slice(runs, func(i, j int) bool {
 				if runs[i].Name != runs[j].Name {
 					return runs[i].Name < runs[j].Name
