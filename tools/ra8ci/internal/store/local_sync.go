@@ -206,7 +206,11 @@ func validateLocalRun(in LocalRunInput) error {
 		!argumentsAJSONBColumnCanHold(in.Arguments) ||
 		in.StartedAt.IsZero() || in.FinishedAt.IsZero() || in.FinishedAt.Before(in.StartedAt) ||
 		in.DurationNS < 0 || len(in.ExecutorError) > 1024 ||
-		!executorErrorATextColumnCanHold(in.ExecutorError) || len(in.Steps) > 128 {
+		!executorErrorATextColumnCanHold(in.ExecutorError) || len(in.Steps) > 128 ||
+		// Every exit code this record states, the run's and each step's, held
+		// to a number a child could have reported. See
+		// an_exit_a_runner_could_report.go for why the store states it too.
+		!exitCodesNameAChildThatRan(in) {
 		return fmt.Errorf("%w: invalid local run metadata", ErrInvalid)
 	}
 	switch in.Result {
