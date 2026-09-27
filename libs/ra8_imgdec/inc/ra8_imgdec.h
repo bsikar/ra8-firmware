@@ -130,6 +130,11 @@ typedef enum : uint32_t {
   k_ra8_imgdec_pixel_mask  = 0x07U,  /**< Every defined pixel bit.  */
   k_ra8_imgdec_sniff_bytes = 12U,    /**< Leading bytes ra8_imgdec_sniff()
                                           needs to answer for every format. */
+  k_ra8_imgdec_dims_bytes  = 30U,    /**< Leading bytes ra8_imgdec_dims()
+                                          needs for every fixed-offset
+                                          container. JPEG is the exception:
+                                          its geometry sits behind a marker
+                                          walk of unbounded length. */
 } ra8_imgdec_limits_t;
 
 /**
@@ -402,6 +407,91 @@ typedef struct {
  */
 [[nodiscard]] ra8_err_t
 ra8_imgdec_decode(const ra8_imgdec_t* dec, const ra8_imgdec_req_t* req, ra8_imgdec_image_t* out);
+
+/**
+ * @struct ra8_imgdec_geom_t
+ * @brief The geometry a container declares about itself, before any decode.
+ *
+ * @details
+ * This is the record behind ::ra8_imgdec_dims. It is deliberately not
+ * ::ra8_imgdec_image_t: that one describes a surface a backend actually
+ * produced, with a stride and a pixel layout the decode chose. This one is
+ * only what the encoded bytes claim, which is what a caller sizing a buffer,
+ * picking an atlas tile or naming a cache key needs before it commits to a
+ * decoder.
+ *
+ * @invariant On success `format` is exactly one defined format bit.
+ * @invariant On success both dimensions are non-zero and at most
+ *            ::k_ra8_imgdec_dim_max.
+ *
+ * @since 0.1.0
+ */
+typedef struct {
+  ra8_imgdec_format_t format;    /**< Container the geometry was read from. */
+  uint32_t            width_px;  /**< Declared width in pixels.             */
+  uint32_t            height_px; /**< Declared height in pixels.            */
+} ra8_imgdec_geom_t;
+
+/**
+ * @brief Read a container's declared geometry without decoding it.
+ *
+ * @details
+ * The companion to ::ra8_imgdec_sniff: that one answers *which* container
+ * this is, this one answers *how big it says it is*. Both are pure functions
+ * of the leading bytes and neither links a decoder, which is what lets a
+ * caller size a destination surface before it has chosen, or even bound, a
+ * backend.
+ *
+ * The tree has carried exactly one geometry probe until now,
+ * `jof_probe_dims()` in `apps/shared_libs/jof`, and three consumers reach up
+ * into the JOF producer to call it: the RABOOK exporter
+ * (`mdl_export_jof.c`), the comic tiler (`comic_tiles.c`) and the host
+ * worker (`jof_worker.c`). None of them is producing a JOF at that moment;
+ * they want the geometry. That is the same ring inversion #768 records for
+ * the arenas, one layer up.
+ *
+ * Each container is read at its own fixed offsets:
+ * - PNG: the IHDR chunk, whose type tag is checked rather than assumed;
+ * - GIF: the logical screen descriptor;
+ * - BMP: the DIB header, both the 12-byte core and the 40-byte info shapes,
+ *   with a negative (top-down) height taken as its magnitude;
+ * - WebP: the first chunk, `VP8 ` lossy, `VP8L` lossless or `VP8X` extended
+ *   canvas, each of which stores its size differently;
+ * - JPEG: a marker walk to the first SOF, the only format here whose
+ *   geometry is not at a fixed offset.
+ *
+ * TGA is not answered. It has no signature for ::ra8_imgdec_sniff to find,
+ * so there is nothing to key a geometry read off, and a caller holding a TGA
+ * knows it by other means.
+ *
+ * @param[in]  bytes      Leading bytes of the encoded image.
+ * @param[in]  byte_count Readable length of @p bytes.
+ * @param[out] out        Receives the container and its declared geometry.
+ *
+ * @return ra8_err_t Error code.
+ * @retval k_ra8_ok                Geometry read and in range.
+ * @retval k_ra8_err_null_ptr      `bytes` or `out` was NULL.
+ * @retval k_ra8_err_invalid_size  `byte_count` was 0, or a declared
+ *                                 dimension is 0 or over
+ *                                 ::k_ra8_imgdec_dim_max.
+ * @retval k_ra8_err_not_found     The bytes carry no recognised signature.
+ * @retval k_ra8_err_not_supported The container was recognised but its
+ *                                 geometry is not readable here: a truncated
+ *                                 header, a WebP chunk that is none of the
+ *                                 three VP8 flavours, a JPEG with no SOF in
+ *                                 the bytes supplied, or TGA.
+ *
+ * @pre @p bytes holds @p byte_count readable bytes.
+ * @post `*out` is zeroed on every non-ok return.
+ * @post The buffer is never written and no decoder is invoked.
+ *
+ * @note Pure apart from `*out`; thread-safe.
+ *
+ * @see ra8_imgdec_sniff()
+ * @since 0.1.0
+ */
+[[nodiscard]] ra8_err_t
+ra8_imgdec_dims(const uint8_t* bytes, uint32_t byte_count, ra8_imgdec_geom_t* out);
 
 #ifdef __cplusplus
 }
