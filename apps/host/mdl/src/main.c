@@ -42,6 +42,7 @@
 #include "mdl_host_credentials_internal.h"
 #include "mdl_sanitize.h"
 #include "mdl_stream_internal.h"
+#include "mdl_host_storage_internal.h"
 #include "ra8_attributes.h"
 #include "ra8_io_stream_posix.h"
 
@@ -49,16 +50,6 @@
 typedef struct {
   alignas(max_align_t) uint8_t bytes[k_export_arena_bytes]; /**< Bounded scratch bytes. */
 } export_arena_storage_t;
-
-/** @brief Maximally aligned storage for one filesystem backend handle. */
-typedef struct {
-  alignas(max_align_t) uint8_t bytes[k_storage_work_bytes]; /**< Opaque backend state. */
-} storage_workspace_t;
-
-/** @brief Maximally aligned storage for one filesystem directory cursor. */
-typedef struct {
-  alignas(max_align_t) uint8_t bytes[k_mdl_storage_io_bytes]; /**< Opaque cursor state. */
-} directory_workspace_t;
 
 /** @brief Explicit host credential input capacities. */
 typedef enum : size_t {
@@ -71,14 +62,6 @@ static export_arena_storage_t s_export_arena;
 /** @brief Host-selected filesystem facade and adapter state. */
 static fw_fs_t             s_fs;
 static fw_fs_posix_state_t s_fs_posix = {.root_fd = -1};
-/** @brief One file and one transaction workspace for single-threaded storage.
- */
-static storage_workspace_t s_fs_file_work;
-static storage_workspace_t s_fs_transaction_work;
-/** @brief One bounded host directory-cursor workspace. */
-static directory_workspace_t s_fs_directory_work;
-/** @brief Caller-owned streaming buffer shared by serial storage operations. */
-static uint8_t s_fs_io_buffer[k_mdl_storage_io_bytes];
 /** @brief Canonical host config path retained through one command run. */
 static char s_config_path[PATH_MAX];
 /** @brief Canonical host library root retained through one command run. */
@@ -400,23 +383,28 @@ RA8_INTERNAL static int internal_exit_from_error(ra8_err_t err, bool usage_error
  */
 RA8_INTERNAL static ra8_err_t internal_storage_init(void)
 {
+  mdl_host_storage_spans_t spans = {};
+  ra8_err_t                err   = mdl_host_storage_carve(&spans);
+  if (err != k_ra8_ok) {
+    return err;
+  }
   const fw_fs_posix_cfg_t cfg = {.root_path = "/", .removable_media = false};
-  ra8_err_t               err = fw_fs_posix_init(&s_fs, &s_fs_posix, &cfg);
+  err                         = fw_fs_posix_init(&s_fs, &s_fs_posix, &cfg);
   if (err != k_ra8_ok) {
     return err;
   }
   err = mdl_storage_init(&s_app.storage,
                          &s_fs,
-                         s_fs_file_work.bytes,
-                         sizeof(s_fs_file_work.bytes),
-                         s_fs_transaction_work.bytes,
-                         sizeof(s_fs_transaction_work.bytes),
-                         s_fs_io_buffer,
-                         sizeof(s_fs_io_buffer));
+                         spans.file_workspace,
+                         (uint32_t)k_host_file_work_bytes,
+                         spans.transaction_workspace,
+                         (uint32_t)k_host_transaction_work_bytes,
+                         spans.io_buffer,
+                         (uint32_t)k_host_io_buffer_bytes);
   if (err == k_ra8_ok) {
     err = mdl_library_workspace_init(&s_app.library_workspace,
-                                     s_fs_directory_work.bytes,
-                                     (uint32_t)sizeof(s_fs_directory_work.bytes));
+                                     spans.directory_workspace,
+                                     (uint32_t)k_host_directory_work_bytes);
   }
   if (err != k_ra8_ok) {
     (void)fw_fs_posix_deinit(&s_fs_posix);
