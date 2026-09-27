@@ -49,5 +49,11 @@ func checkTerminalRecordCarriesItsRun(entry Entry) error {
 	if err := checkStampsAreInOrder(entry); err != nil {
 		return fmt.Errorf("%w: %w", errRecordCannotBeUploaded, err)
 	}
+	// The steps the result carries are uploaded with it and judged by the
+	// same ingest end, so they are held to the record here for the reason
+	// stated above: refused there, the whole outbox waits behind this file.
+	if err := checkStepWindowsFitTheRecord(entry); err != nil {
+		return fmt.Errorf("%w: %w", errRecordCannotBeUploaded, err)
+	}
 	return nil
 }
