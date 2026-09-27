@@ -78,6 +78,13 @@ func yieldSampleRowFor(before board.Snapshot, events []board.Event) (yieldSample
 	if row.LeaseID == "" || row.BoardID == "" || row.RequestedAt.IsZero() {
 		return yieldSampleRow{}, false, fmt.Errorf("%w: yield sample identity", ErrConflict)
 	}
+	// Last, because it is the only check that needs the stamp to be present
+	// and the identity check above is what guarantees that. The request stamp
+	// survives every exclusion and nothing on the way in has judged it against
+	// a clock; the read will, and by then refusing is all it can do.
+	if err := yieldRequestStampFitsTheTransition(row, events); err != nil {
+		return yieldSampleRow{}, false, err
+	}
 	return row, true, nil
 }
 
