@@ -204,7 +204,10 @@ func (s *Spool) Pending() ([]Entry, error) {
 		if !validID(id) {
 			return nil, fmt.Errorf("invalid spool entry %q", file.Name())
 		}
-		synced, err := syncReceiptPresent(filepath.Join(s.directory, id+".synced.json"))
+		// The receipt is the only thing that retires evidence, so it is
+		// held to the record it sits beside rather than trusted for
+		// existing.
+		synced, err := receiptRetiresRecord(filepath.Join(s.directory, id+".synced.json"), id)
 		if err != nil {
 			return nil, err
 		}
