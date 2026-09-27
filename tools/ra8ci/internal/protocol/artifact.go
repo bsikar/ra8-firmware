@@ -122,7 +122,8 @@ func (chunk ArtifactChunk) Validate() error {
 	if chunk.SchemaVersion != Version ||
 		!validGrant(chunk.AssignmentID, chunk.AttemptID, chunk.AssignmentVersion, chunk.FencingToken) ||
 		!validStepName(chunk.StepName) || !ValidArtifactPath(chunk.Path) ||
-		chunk.Sequence < 1 || chunk.Offset < 0 || chunk.Offset >= MaxArtifactBytes ||
+		!chunkCountThePlaneWillStore(chunk.Sequence) ||
+		chunk.Offset < 0 || chunk.Offset >= MaxArtifactBytes ||
 		!ValidSHA256(chunk.SHA256) {
 		return ErrInvalid
 	}
@@ -164,6 +165,12 @@ func (manifest ArtifactManifest) Validate() error {
 		return ErrInvalid
 	}
 	if manifest.FinalSequence < MinArtifactChunks(manifest.TotalBytes) || manifest.FinalSequence > manifest.TotalBytes {
+		return ErrInvalid
+	}
+	// The length rules above bound the count only by the bytes, and a chunk
+	// may carry one byte, so they alone admit a close the far end will not
+	// store.
+	if !chunkCountThePlaneWillStore(manifest.FinalSequence) {
 		return ErrInvalid
 	}
 	return nil
