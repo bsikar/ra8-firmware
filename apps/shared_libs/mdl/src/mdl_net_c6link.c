@@ -31,15 +31,6 @@ typedef struct {
   size_t               length; /**< Bytes accepted so far.        */
 } mdl_c6_output_t;
 
-static_assert((uint32_t)k_mdl_retry_after_max == (uint32_t)k_ra8_mdl_retry_after_max,
-              "C6 and downloader Retry-After capacities must match");
-static_assert((uint32_t)k_mdl_etag_max == (uint32_t)k_ra8_mdl_etag_max,
-              "C6 and downloader ETag capacities must match");
-static_assert((uint32_t)k_mdl_last_mod_max == (uint32_t)k_ra8_mdl_http_date_max,
-              "C6 and downloader HTTP-date capacities must match");
-static_assert((uint32_t)k_mdl_content_type_max == (uint32_t)k_ra8_mdl_content_type_max,
-              "C6 and downloader Content-Type capacities must match");
-
 /**
  * @brief Begin the local half of one transfer transaction.
  * @details Validates the coordinator placeholder and resets only the selected
@@ -187,12 +178,12 @@ RA8_INTERNAL static ra8_err_t internal_c6_output_abort(void* ctx)
  * @note Classification is shared exactly with the curl backend.
  * @since 0.1.0
  */
-RA8_INTERNAL static ra8_err_t internal_c6_get(mdl_net_c6link_t*    backend,
-                                              const char*          url,
-                                              const mdl_net_req_t* req,
-                                              mdl_c6_output_t*     output,
-                                              size_t*              out_len,
-                                              mdl_net_resp_t*      resp)
+RA8_INTERNAL static ra8_err_t internal_c6_get(mdl_net_c6link_t*            backend,
+                                              const char*                  url,
+                                              const ra8_mdl_http_policy_t* req,
+                                              mdl_c6_output_t*             output,
+                                              size_t*                      out_len,
+                                              ra8_mdl_http_response_t*     resp)
 {
   const ra8_mdl_transfer_config_t config = {
     .storage     = {.begin    = internal_c6_output_begin,
@@ -219,13 +210,7 @@ RA8_INTERNAL static ra8_err_t internal_c6_get(mdl_net_c6link_t*    backend,
       return k_ra8_err_invalid_size;
     }
     if (resp != nullptr) {
-      resp->status = transfer.response.status;
-      (void)memcpy(resp->retry_after, transfer.response.retry_after, sizeof(resp->retry_after));
-      (void)memcpy(resp->etag, transfer.response.etag, sizeof(resp->etag));
-      (void)memcpy(resp->last_modified,
-                   transfer.response.last_modified,
-                   sizeof(resp->last_modified));
-      (void)memcpy(resp->content_type, transfer.response.content_type, sizeof(resp->content_type));
+      *resp = transfer.response;
     }
     const ra8_err_t classified = priv_mdl_net_classify_http(transfer.response.status);
     if (classified != k_ra8_ok) {
@@ -240,13 +225,13 @@ RA8_INTERNAL static ra8_err_t internal_c6_get(mdl_net_c6link_t*    backend,
 }
 
 /** @copydoc mdl_net_vtable_t::get_buf */
-RA8_INTERNAL static ra8_err_t internal_c6_get_buf(void*                ctx,
-                                                  const char*          url,
-                                                  const mdl_net_req_t* req,
-                                                  char*                buf,
-                                                  size_t               cap,
-                                                  size_t*              out_len,
-                                                  mdl_net_resp_t*      resp)
+RA8_INTERNAL static ra8_err_t internal_c6_get_buf(void*                        ctx,
+                                                  const char*                  url,
+                                                  const ra8_mdl_http_policy_t* req,
+                                                  char*                        buf,
+                                                  size_t                       cap,
+                                                  size_t*                      out_len,
+                                                  ra8_mdl_http_response_t*     resp)
 {
   mdl_c6_output_t output = {
     .kind   = k_mdl_c6_output_buffer,
@@ -257,12 +242,12 @@ RA8_INTERNAL static ra8_err_t internal_c6_get_buf(void*                ctx,
 }
 
 /** @copydoc mdl_net_vtable_t::get_body */
-RA8_INTERNAL static ra8_err_t internal_c6_get_body(void*                ctx,
-                                                   const char*          url,
-                                                   const mdl_net_req_t* req,
-                                                   mdl_net_body_sink_t* sink,
-                                                   size_t*              out_len,
-                                                   mdl_net_resp_t*      resp)
+RA8_INTERNAL static ra8_err_t internal_c6_get_body(void*                        ctx,
+                                                   const char*                  url,
+                                                   const ra8_mdl_http_policy_t* req,
+                                                   mdl_net_body_sink_t*         sink,
+                                                   size_t*                      out_len,
+                                                   ra8_mdl_http_response_t*     resp)
 {
   mdl_c6_output_t output = {
     .kind = k_mdl_c6_output_sink,

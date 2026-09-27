@@ -37,8 +37,8 @@ typedef enum : uint16_t {
 typedef struct {
   char     url[k_mdl_url_max];                /**< Exact canonical request URL.    */
   char     relative_path[k_mdl_relpath_max];  /**< Body leaf beneath the host dir. */
-  char     etag[k_mdl_etag_max];              /**< Last response ETag, or empty.   */
-  char     last_modified[k_mdl_last_mod_max]; /**< Last-Modified, or empty.        */
+  char     etag[k_ra8_mdl_etag_max];          /**< Last response ETag, or empty.   */
+  char     last_modified[k_ra8_mdl_http_date_max]; /**< Last-Modified, or empty.        */
   uint64_t url_hash;                          /**< FNV identity accelerator.       */
   uint64_t content_hash;                      /**< Exact persisted body identity.  */
   int64_t  fetched_at;                        /**< Completion epoch seconds.       */
@@ -75,13 +75,13 @@ typedef struct {
  * @note The callback retains no argument pointer.
  * @since 0.1.0
  */
-typedef ra8_err_t (*mdl_cache_fetch_fn)(void*                context,
-                                        const char*          url,
-                                        const mdl_net_req_t* request,
-                                        char*                buffer,
-                                        size_t               capacity,
-                                        size_t*              out_length,
-                                        mdl_net_resp_t*      response);
+typedef ra8_err_t (*mdl_cache_fetch_fn)(void*                        context,
+                                        const char*                  url,
+                                        const ra8_mdl_http_policy_t* request,
+                                        char*                        buffer,
+                                        size_t                       capacity,
+                                        size_t*                      out_length,
+                                        ra8_mdl_http_response_t*     response);
 
 /**
  * @struct mdl_cache_t
@@ -122,7 +122,7 @@ typedef struct {
  */
 typedef struct {
   const char*          url;           /**< Exact absolute request URL.         */
-  const mdl_net_req_t* request;       /**< Request identity, referer, timeout. */
+  const ra8_mdl_http_policy_t* request;       /**< Request identity, referer, timeout. */
   mdl_cache_fetch_fn   fetch;         /**< Injected network/governor callback. */
   void*                fetch_context; /**< Context supplied to @ref fetch.     */
   char*                buffer;        /**< Caller-owned body destination.      */
@@ -139,7 +139,7 @@ typedef struct {
  * @since 0.1.0
  */
 typedef struct {
-  mdl_net_resp_t     response; /**< Finished network or retained metadata. */
+  ra8_mdl_http_response_t response; /**< Finished network or retained metadata. */
   mdl_cache_result_t result;   /**< Cache-specific outcome.                */
   size_t             length;   /**< Exact returned body bytes.             */
 } mdl_cache_get_out_t;

@@ -183,13 +183,13 @@ RA8_INTERNAL static ra8_err_t internal_cover_stream(mdl_fetch_ctx_t* ctx,
                                                     uint32_t         minimum_delay,
                                                     uint32_t         maximum_delay)
 {
-  const mdl_net_req_t request = {.user_agent = ctx->session->user_agent,
-                                 .referer    = priv_mdl_app_context()->state.series_url,
-                                 .timeout_ms = ctx->timeout_ms};
+  const ra8_mdl_http_policy_t request = {.user_agent = ctx->session->user_agent,
+                                         .referer    = priv_mdl_app_context()->state.series_url,
+                                         .timeout_ms = ctx->timeout_ms};
   mdl_fetch_body_t    body    = {};
   ra8_err_t error = priv_mdl_fetch_body_init_image(&body, ctx->storage, holding, "cover.download");
   mdl_net_body_sink_t sink     = priv_mdl_fetch_body_sink(&body);
-  mdl_net_resp_t      response = {};
+  ra8_mdl_http_response_t response = {};
   size_t              bytes    = 0U;
   if (error == k_ra8_ok) {
     error = priv_mdl_fetch_with_retry(ctx,
@@ -242,9 +242,9 @@ RA8_INTERNAL static ra8_err_t internal_cover_cached(mdl_fetch_ctx_t* ctx,
   if (!internal_cover_copy(fetch.host, sizeof(fetch.host), host)) {
     return k_ra8_err_invalid_size;
   }
-  const mdl_net_req_t request  = {.user_agent = ctx->session->user_agent,
-                                  .referer    = priv_mdl_app_context()->state.series_url,
-                                  .timeout_ms = ctx->timeout_ms};
+  const ra8_mdl_http_policy_t request = {.user_agent = ctx->session->user_agent,
+                                         .referer    = priv_mdl_app_context()->state.series_url,
+                                         .timeout_ms = ctx->timeout_ms};
   const mdl_cache_get_req_t get = {.url           = priv_mdl_app_context()->state.cover_url,
                                    .request       = &request,
                                    .fetch         = priv_mdl_fetch_cache_get_buf,

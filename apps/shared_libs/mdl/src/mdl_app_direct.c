@@ -348,11 +348,11 @@ RA8_INTERNAL static size_t internal_download_page_image(const char*       url,
       !mdl_path_join(out_dir, holding_leaf, holding, sizeof(holding))) {
     return 1U;
   }
-  const mdl_net_req_t ir   = {.user_agent = priv_mdl_app_context()->session.user_agent,
-                              .referer    = url,
-                              .timeout_ms = timeout};
+  const ra8_mdl_http_policy_t ir   = {.user_agent = priv_mdl_app_context()->session.user_agent,
+                                      .referer    = url,
+                                      .timeout_ms = timeout};
   size_t              got  = 0U;
-  mdl_net_resp_t      resp = {};
+  ra8_mdl_http_response_t     resp = {};
   mdl_fetch_body_t    body = {};
   ra8_err_t           rc =
     priv_mdl_fetch_body_init_image(&body, &priv_mdl_app_context()->storage, holding, holding_leaf);
@@ -610,10 +610,10 @@ RA8_INTERNAL static bool internal_fetch_artifact(const char*           url,
     mdl_net_destroy(&net);
     return false;
   }
-  const mdl_net_req_t        req   = {.user_agent = priv_mdl_app_context()->session.user_agent,
-                                      .referer    = nullptr,
-                                      .timeout_ms = timeout};
-  mdl_net_resp_t             resp  = {};
+  const ra8_mdl_http_policy_t req   = {.user_agent = priv_mdl_app_context()->session.user_agent,
+                                       .referer    = nullptr,
+                                       .timeout_ms = timeout};
+  ra8_mdl_http_response_t     resp  = {};
   mdl_direct_artifact_sink_t state = {.storage     = &priv_mdl_app_context()->storage,
                                       .destination = final_path,
                                       .format      = format};
@@ -705,11 +705,11 @@ int mdl_app_run_artifact(const char*           url,
 RA8_INTERNAL static bool
 internal_extract_page_images(const char* url, const char* attr, uint32_t timeout)
 {
-  const mdl_net_req_t req   = {.user_agent = priv_mdl_app_context()->session.user_agent,
-                               .referer    = nullptr,
-                               .timeout_ms = timeout};
+  const ra8_mdl_http_policy_t req   = {.user_agent = priv_mdl_app_context()->session.user_agent,
+                                       .referer    = nullptr,
+                                       .timeout_ms = timeout};
   size_t              len   = 0U;
-  mdl_net_resp_t      resp  = {};
+  ra8_mdl_http_response_t     resp  = {};
   ra8_err_t           error = mdl_net_get_buf(priv_mdl_app_context()->session.net,
                                               url,
                                               &req,

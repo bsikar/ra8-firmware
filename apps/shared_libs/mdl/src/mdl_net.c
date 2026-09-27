@@ -33,7 +33,7 @@ RA8_PRIV ra8_err_t priv_mdl_net_classify_http(int32_t status)
   if (status == 0) {
     return k_ra8_ok;
   }
-  if ((status < k_mdl_http_status_min) || (status > k_mdl_http_status_max)) {
+  if ((status < k_ra8_mdl_http_status_min) || (status > k_ra8_mdl_http_status_max)) {
     return k_ra8_err_protocol_error;
   }
   if ((status == k_mdl_http_too_many) || (status == k_mdl_http_unavailable)) {
@@ -53,14 +53,14 @@ RA8_PRIV ra8_err_t priv_mdl_net_classify_http(int32_t status)
  * @details Accepts NULL so dispatcher validation paths can reset unconditionally.
  * @param[out] resp Optional response metadata block.
  * @return Nothing.
- * @pre @p resp is NULL or points to writable ::mdl_net_resp_t storage.
+ * @pre @p resp is NULL or points to writable ::ra8_mdl_http_response_t storage.
  * @pre The caller no longer needs the prior metadata.
  * @post A non-NULL response contains only zero bytes.
  * @post NULL input has no effect.
  * @note Not thread-safe when callers share @p resp.
  * @since 0.1.0
  */
-RA8_INTERNAL static void internal_resp_reset(mdl_net_resp_t* resp)
+RA8_INTERNAL static void internal_resp_reset(ra8_mdl_http_response_t* resp)
 {
   if (resp != nullptr) {
     memset(resp, 0, sizeof(*resp));
@@ -81,13 +81,13 @@ ra8_err_t mdl_net_provider_open(const mdl_net_provider_t* provider,
   return provider->open(provider->ctx, policy, out_net);
 }
 
-ra8_err_t mdl_net_get_buf(mdl_net_iface_t*     net,
-                          const char*          url,
-                          const mdl_net_req_t* req,
-                          char*                buf,
-                          size_t               cap,
-                          size_t*              out_len,
-                          mdl_net_resp_t*      resp)
+ra8_err_t mdl_net_get_buf(mdl_net_iface_t*             net,
+                          const char*                  url,
+                          const ra8_mdl_http_policy_t* req,
+                          char*                        buf,
+                          size_t                       cap,
+                          size_t*                      out_len,
+                          ra8_mdl_http_response_t*     resp)
 {
   internal_resp_reset(resp);
   if (net == nullptr) {
@@ -100,12 +100,12 @@ ra8_err_t mdl_net_get_buf(mdl_net_iface_t*     net,
   return net->vtable->get_buf(net->ctx, url, req, buf, cap, out_len, resp);
 }
 
-ra8_err_t mdl_net_get_body(mdl_net_iface_t*     net,
-                           const char*          url,
-                           const mdl_net_req_t* req,
-                           mdl_net_body_sink_t* sink,
-                           size_t*              out_len,
-                           mdl_net_resp_t*      resp)
+ra8_err_t mdl_net_get_body(mdl_net_iface_t*             net,
+                           const char*                  url,
+                           const ra8_mdl_http_policy_t* req,
+                           mdl_net_body_sink_t*         sink,
+                           size_t*                      out_len,
+                           ra8_mdl_http_response_t*     resp)
 {
   internal_resp_reset(resp);
   if (net == nullptr) {

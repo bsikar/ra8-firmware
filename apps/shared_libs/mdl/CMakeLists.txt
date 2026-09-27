@@ -104,7 +104,11 @@ set_source_files_properties(
 # SOUP gets. Compiling them quietly here hid host-only findings the ARM build
 # never sees, which is what a 64-bit host build is for (#309).
 set(FW ${MDL_REPO_ROOT}/libs)
+# `mdl_net.h` states its HTTP request policy and response record in the
+# transport-neutral contract under `libs/ra8_mdl/inc`, so every target that
+# compiles a downloader translation unit needs that include dir (#746).
 set(MDL_PUBLIC_INC ${MDL_CORE_INC} ${MDL_REPO_ROOT}/apps/shared_libs/mdl/inc
+                   ${MDL_REPO_ROOT}/libs/ra8_mdl/inc
                    ${MDL_REPO_ROOT}/libs/ra8_net_policy/inc
                    ${MDL_REPO_ROOT}/libs/ra8_xml/inc)
 set(MDL_FS_SRC

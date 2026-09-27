@@ -200,10 +200,10 @@ RA8_INTERNAL static mdl_robots_fetch_result_t
 internal_session_fetch(void* ctx, const char* robots_url, char* buf, size_t cap, size_t* out_len)
 {
   mdl_session_t*      s    = (mdl_session_t*)ctx;
-  const mdl_net_req_t req  = {.user_agent = s->user_agent,
-                              .referer    = nullptr,
-                              .timeout_ms = k_robots_timeout_ms};
-  mdl_net_resp_t      resp = {};
+  const ra8_mdl_http_policy_t req  = {.user_agent = s->user_agent,
+                                      .referer    = nullptr,
+                                      .timeout_ms = k_robots_timeout_ms};
+  ra8_mdl_http_response_t     resp = {};
   if (mdl_net_get_buf(s->net, robots_url, &req, buf, cap, out_len, &resp) == k_ra8_ok) {
     return k_mdl_robots_fetch_ok;
   }

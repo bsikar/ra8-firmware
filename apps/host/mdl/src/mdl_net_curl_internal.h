@@ -152,12 +152,12 @@ RA8_PRIV ra8_err_t priv_mdl_net_curl_classify(CURLcode code, bool overflow, int3
  * @brief Narrow one `CURLINFO_RESPONSE_CODE` reading to the seam's status type.
  *
  * @details libcurl reports the finished response code as a `long`; the
- * downloader's ::mdl_net_resp_t::status and the shared
+ * downloader's ::ra8_mdl_http_response_t::status and the shared
  * ::priv_mdl_net_classify_http both take `int32_t`, the width the C6 endpoint
  * has always used. This is the one place the conversion happens, so no
  * truncated value can reach either. A reading outside
- * ::k_mdl_http_status_min .. ::k_mdl_http_status_max becomes zero, which
- * ::mdl_net_resp_t already defines as "no HTTP status was observed"; libcurl
+ * ::k_ra8_mdl_http_status_min .. ::k_ra8_mdl_http_status_max becomes zero, which
+ * ::ra8_mdl_http_response_t already defines as "no HTTP status was observed"; libcurl
  * reports zero for exactly that case, and an HTTP transfer cannot report a
  * code outside the range.
  *
