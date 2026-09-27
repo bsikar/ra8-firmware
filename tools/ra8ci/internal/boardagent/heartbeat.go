@@ -108,6 +108,11 @@ func (a *Agent) ReportAlive(ctx context.Context, token boardclient.LeaseToken) (
 // KeepAlive reports this holder alive for as long as ctx runs, on the interval
 // the server hands back with each beat.
 //
+// The cadence is the server's, shortened when the report it said it was
+// expecting falls due before that cadence is up, because NextBeatBy is the
+// number a holder is judged on and the interval is only how often it is
+// asked to answer.
+//
 // A cancelled context is the normal end of a holder's work, so it returns nil.
 // A lease that stopped being this caller's ends the loop with that error,
 // because beating harder at a board somebody else now holds is exactly the
@@ -122,17 +127,25 @@ func (a *Agent) KeepAlive(ctx context.Context, token boardclient.LeaseToken) err
 		return ErrInvalidAgent
 	}
 	interval := defaultHeartbeatInterval
+	// The due stamp the server last gave this holder. It is carried across
+	// a refused beat on purpose: a blip leaves the report still due at the
+	// time it was already due, and waiting a bare interval against it is
+	// how a working holder reports late enough to read as crashed.
+	nextBeatBy := time.Time{}
 	for {
 		liveness, err := a.ReportAlive(ctx, token)
 		switch {
 		case err == nil:
 			interval = beatInterval(liveness.Interval)
+			nextBeatBy = dueStamp(nextBeatBy, liveness, true)
 		case ctx.Err() != nil:
 			return nil
 		case settledBeat(err):
 			return err
+		default:
+			nextBeatBy = dueStamp(nextBeatBy, liveness, false)
 		}
-		if err := waitBeat(ctx, interval); err != nil {
+		if err := waitBeat(ctx, nextBeatWait(interval, nextBeatBy, a.clock())); err != nil {
 			return nil
 		}
 	}
