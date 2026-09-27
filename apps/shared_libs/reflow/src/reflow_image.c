@@ -35,6 +35,7 @@
 #include "ra8_err.h"
 #include "ra8_gfx.h"
 #include "ra8_img_arena.h"
+#include "ra8_imgdec.h"
 #include "ra8_log.h"
 #include "ra8_webp.h"
 #include "reflow_svg.h"
@@ -66,58 +67,50 @@ typedef enum : uint8_t {
 } ra8_img_shift_t;
 
 /**
- * @enum ra8_img_webp_sig_t
- * @brief RIFF/WEBP container signature offsets and lengths (no magic numbers).
+ * @brief Report whether @p bytes opens with a WebP container signature.
  *
- * @details A WebP file is a RIFF container: the four ASCII bytes `RIFF`, a
- * 32-bit chunk size, then the four ASCII bytes `WEBP`. Recognising those twelve
- * bytes is enough to route the buffer away from stb_image (which cannot decode
- * WebP) and into the ra8_webp facade, which then does the real validation.
+ * @details
+ * Forwards to ::ra8_imgdec_sniff(), the one container sniff in the tree (#768).
+ * This module used to carry its own copy of the RIFF/WEBP test -- the `RIFF`
+ * tag at offset 0, the `WEBP` form type at offset 8, and the twelve-byte length
+ * floor that makes both readable. That copy is gone: the offsets, the tags and
+ * the length floor now live in `libs/ra8_imgdec/src/ra8_imgdec_sniff.c`, which
+ * four private copies in this tree disagreed about.
  *
- * @invariant `k_ra8_img_webp_sig_len` covers both tags and the size field.
- * @since 0.1.0
- */
-typedef enum : uint8_t {
-  k_ra8_img_webp_riff_off = 0,  /**< Offset of the `RIFF` tag.           */
-  k_ra8_img_webp_tag_len  = 4,  /**< Length of either four-byte tag.     */
-  k_ra8_img_webp_form_off = 8,  /**< Offset of the `WEBP` form tag.      */
-  k_ra8_img_webp_sig_len  = 12, /**< Bytes needed to test the signature. */
-} ra8_img_webp_sig_t;
-
-/**
- * @brief Report whether @p bytes opens with a RIFF/WEBP container signature.
- *
- * @details Compares the first four bytes against `RIFF` and bytes 8..11 against
- * `WEBP`, the two fixed tags of a WebP file (the four bytes between them are the
- * RIFF chunk size and carry no signature). A buffer shorter than
- * ::k_ra8_img_webp_sig_len cannot hold both tags and is reported as not-WebP, so
- * it falls through to stb_image and is rejected there as a truncated image
- * rather than mis-routed into the WebP facade. The predicate is deliberately
- * cheap: it only decides which decoder sees the bytes, and the facade does the
- * real container and dimension validation. Internal helper for
- * ra8_img_probe_size() and ra8_img_decode_blit().
+ * The predicate stays deliberately cheap and keeps its old meaning: it only
+ * decides *which decoder sees the bytes*, and the ra8_webp facade does the real
+ * container and dimension validation. Anything the sniff does not recognise as
+ * WebP -- including a buffer too short to carry the signature, and a RIFF
+ * container whose form type is something else -- falls through to stb_image and
+ * is rejected there, rather than being mis-routed into the WebP facade.
+ * Internal helper for ra8_img_probe_size() and ra8_img_decode_blit().
  *
  * @param[in] bytes Encoded image bytes; must not be NULL.
  * @param[in] len   Length of @p bytes in bytes.
  *
  * @return bool Whether the buffer is a WebP container.
- * @retval true  Both tags matched and @p len is at least the signature length.
- * @retval false @p len is too short, or either tag did not match.
+ * @retval true  The shared sniff recognised a WebP container.
+ * @retval false Anything else, including a too-short or unrecognised buffer.
  *
  * @pre @p bytes points to at least @p len readable bytes.
  * @post @p bytes is not modified (read-only comparison).
  *
+ * @note A length above `UINT32_MAX` is reported as not-WebP: the sniff reads at
+ *       most ::k_ra8_imgdec_sniff_bytes leading bytes, so such a buffer is
+ *       clamped to the window rather than refused.
  * @note Pure read of @p bytes; thread-safe.
  * @since 0.1.0
  */
 RA8_INTERNAL
 static bool internal_is_webp(const uint8_t* bytes, size_t len)
 {
-  if (len < (size_t)k_ra8_img_webp_sig_len) {
+  const uint32_t window =
+    (len > (size_t)k_ra8_imgdec_sniff_bytes) ? (uint32_t)k_ra8_imgdec_sniff_bytes : (uint32_t)len;
+  ra8_imgdec_format_t format = k_ra8_imgdec_format_none;
+  if (ra8_imgdec_sniff(bytes, window, &format) != k_ra8_ok) {
     return false;
   }
-  return (memcmp(&bytes[k_ra8_img_webp_riff_off], "RIFF", (size_t)k_ra8_img_webp_tag_len) == 0) &&
-         (memcmp(&bytes[k_ra8_img_webp_form_off], "WEBP", (size_t)k_ra8_img_webp_tag_len) == 0);
+  return format == k_ra8_imgdec_format_webp;
 }
 
 /**
