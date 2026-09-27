@@ -894,6 +894,53 @@ RA8_INTERNAL static void internal_test_image_magic_bytes(void)
                                             sizeof(ext),
                                             mime,
                                             sizeof(mime)));
+  /* The shared container sniff (#768) requires the whole eight-byte PNG
+   * signature. This module used to accept the first four, so a file opening
+   * 89 50 4E 47 and continuing with anything at all was named a PNG here and
+   * refused by the decode path handed the same bytes. */
+  static const uint8_t png_short[] = {0x89, 'P', 'N', 'G'};
+  TEST_ASSERT(!mdl_urlname_sniff_image_type(png_short,
+                                            sizeof(png_short),
+                                            nullptr,
+                                            ext,
+                                            sizeof(ext),
+                                            mime,
+                                            sizeof(mime)));
+  static const uint8_t png_bad_tail[] = {0x89, 'P', 'N', 'G', 0x0D, 0x0A, 0x1A, 0x00};
+  TEST_ASSERT(!mdl_urlname_sniff_image_type(png_bad_tail,
+                                            sizeof(png_bad_tail),
+                                            nullptr,
+                                            ext,
+                                            sizeof(ext),
+                                            mime,
+                                            sizeof(mime)));
+  /* A RIFF container whose form type is not WEBP stays not-an-image, and a
+   * WebP one byte short of its form type is not guessed at. */
+  static const uint8_t riff_wave[] = {'R', 'I', 'F', 'F', 0, 0, 0, 0, 'W', 'A', 'V', 'E'};
+  TEST_ASSERT(!mdl_urlname_sniff_image_type(riff_wave,
+                                            sizeof(riff_wave),
+                                            nullptr,
+                                            ext,
+                                            sizeof(ext),
+                                            mime,
+                                            sizeof(mime)));
+  static const uint8_t webp_short[] = {'R', 'I', 'F', 'F', 0, 0, 0, 0, 'W', 'E', 'B'};
+  TEST_ASSERT(!mdl_urlname_sniff_image_type(webp_short,
+                                            sizeof(webp_short),
+                                            nullptr,
+                                            ext,
+                                            sizeof(ext),
+                                            mime,
+                                            sizeof(mime)));
+  /* "GIF8" without the version trailer is not a GIF. */
+  static const uint8_t gif_no_trailer[] = {'G', 'I', 'F', '8', '9', 'b', 0, 0};
+  TEST_ASSERT(!mdl_urlname_sniff_image_type(gif_no_trailer,
+                                            sizeof(gif_no_trailer),
+                                            nullptr,
+                                            ext,
+                                            sizeof(ext),
+                                            mime,
+                                            sizeof(mime)));
   TEST_END("image magic byte & Content-Type typing");
 }
 
