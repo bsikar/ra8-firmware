@@ -102,7 +102,29 @@ void c6_cam_camera_report_last_error(void);
 [[nodiscard]] ra8_err_t
 c6_cam_audio_snapshot_wav(const uint8_t** out_wav, uint32_t* out_bytes, uint32_t* out_timestamp_ms);
 
-/** @brief Bind NetX to an associated raw C6 link and obtain a DHCP lease. */
+/**
+ * @brief Bind NetX to an associated raw C6 link and obtain a DHCP lease.
+ * @details Configures the shared ::ra8_ipif_wifi_bind bring-up rather than
+ * writing one: the packet pool, IP instance, protocol enables and DHCP client
+ * all live in the facade, and this application keeps only its four buffers, the
+ * sizing enum that names them, and the TCP enable the HTTP server needs. The
+ * lease is copied field for field out of ::ra8_wifi_lease_t.
+ * @param[in]  link Open, associated C6 link the NetX driver bridges onto.
+ * @param[in]  mac  Station address to stamp on the interface.
+ * @param[out] out  Lease to fill; zeroed first, and left zeroed on failure.
+ * @return ::k_ra8_ok on a bound lease.
+ * @retval k_ra8_err_null_ptr Any argument is null.
+ * @retval k_ra8_err_invalid_arg The configuration was refused.
+ * @retval k_ra8_err_invalid_size A buffer or payload size was refused.
+ * @retval k_ra8_err_not_initialized A NetX object could not be created.
+ * @retval k_ra8_err_timeout No lease inside ::k_c6_cam_dhcp_wait_ms.
+ * @pre The C6 station is associated and carrying frames.
+ * @post On success the interface is up and `out->bound` is true.
+ * @post On failure nothing this call created survives it.
+ * @note A second call tears the first interface down before bringing one up.
+ * @see ra8_ipif_wifi_bind
+ * @since 0.1.0
+ */
 [[nodiscard]] ra8_err_t
 c6_cam_net_up(ra8_c6link_t* link, const ra8_c6link_mac_t* mac, c6_cam_lease_t* out);
 
