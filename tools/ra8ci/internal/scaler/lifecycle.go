@@ -88,6 +88,13 @@ func (h *Handler) bootstrapRunning(ctx context.Context, vm store.RunnerVM) error
 	}
 	bootstrapCompletedAt := time.Now().UTC()
 	now := time.Now()
+	// Before the field checks below rather than among them: those hold the
+	// receipt to this reservation, and this holds it to this CALL, which is
+	// the one thing a receipt replayed from an earlier bootstrap of the same
+	// reservation carries wrongly.
+	if err := checkPreparationHappenedInThisCall(vm.ID, bootstrapStartedAt, bootstrapCompletedAt, receipt.PreparedAt); err != nil {
+		return err
+	}
 	if receipt.ReservationID != vm.ID || receipt.VMID != vm.VMID || receipt.CommitSHA != vm.CommitSHA ||
 		!store.ValidID(receipt.EvidenceID) || !sha256Pattern.MatchString(receipt.ReadinessSHA256) ||
 		!sha256Pattern.MatchString(receipt.RunnerBinarySHA256) || !sha256Pattern.MatchString(receipt.AgentBinarySHA256) ||
