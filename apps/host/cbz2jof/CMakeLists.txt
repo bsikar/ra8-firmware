@@ -50,6 +50,7 @@ set(CBZ2JOF_FW_SRC
     ${CBZ2JOF_REPO_ROOT}/apps/shared_libs/jof/src/jof_png.c
     ${CBZ2JOF_REPO_ROOT}/apps/shared_libs/jof/src/jof_png_chunk.c
     ${CBZ2JOF_REPO_ROOT}/apps/shared_libs/compress/src/ra8_compress.c
+    ${CBZ2JOF_FW}/ra8_imgdec/src/ra8_imgdec_sniff.c
     ${CBZ2JOF_FW}/ra8_core/src/ra8_log.c
     ${CBZ2JOF_FW}/ra8_core/src/ra8_error_handler.c
     ${CBZ2JOF_FW}/ra8_core/src/ra8_decomp_limits.c
@@ -91,6 +92,7 @@ target_include_directories(
           ${CBZ2JOF_FW}/ra8_jpeg/src
           ${CBZ2JOF_FW}/ra8_io/inc
           ${CBZ2JOF_REPO_ROOT}/apps/shared_libs/compress/inc
+          ${CBZ2JOF_FW}/ra8_imgdec/inc
           ${CBZ2JOF_FW}/ra8_core/inc
           ${CBZ2JOF_REPO_ROOT}/apps/shared_libs/third_party/miniz
 )

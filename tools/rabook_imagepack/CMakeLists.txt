@@ -54,6 +54,7 @@ set(RA8_FMT_FW_SRC
     ${FW_ROOT}/apps/shared_libs/jof/src/jof_png.c
     ${FW_ROOT}/apps/shared_libs/jof/src/jof_png_chunk.c
     ${FW_ROOT}/apps/shared_libs/compress/src/ra8_compress.c
+    ${FW_ROOT}/libs/ra8_imgdec/src/ra8_imgdec_sniff.c
     ${FW_ROOT}/libs/ra8_core/src/ra8_log.c
     ${FW_ROOT}/libs/ra8_core/src/ra8_error_handler.c
     ${FW_ROOT}/libs/ra8_core/src/ra8_decomp_limits.c
@@ -113,6 +114,7 @@ target_include_directories(
           ${FW_ROOT}/apps/shared_libs/jof/src
           ${FW_ROOT}/libs/ra8_io/inc
           ${FW_ROOT}/apps/shared_libs/compress/inc
+          ${FW_ROOT}/libs/ra8_imgdec/inc
           ${FW_ROOT}/apps/shared_libs/book/inc
           ${FW_ROOT}/libs/ra8_mem/inc
           ${FW_ROOT}/apps/shared_libs/third_party/miniz
@@ -215,6 +217,7 @@ if(BUILD_TESTING)
             ${FW_ROOT}/apps/shared_libs/jof/src
             ${FW_ROOT}/libs/ra8_io/inc
             ${FW_ROOT}/apps/shared_libs/compress/inc
+            ${FW_ROOT}/libs/ra8_imgdec/inc
             ${FW_ROOT}/libs/ra8_mem/inc
             ${FW_ROOT}/apps/shared_libs/third_party/miniz
   )
@@ -245,6 +248,7 @@ if(BUILD_TESTING)
             ${FW_ROOT}/apps/shared_libs/jof/src
             ${FW_ROOT}/libs/ra8_io/inc
             ${FW_ROOT}/apps/shared_libs/compress/inc
+            ${FW_ROOT}/libs/ra8_imgdec/inc
             ${FW_ROOT}/libs/ra8_mem/inc
             ${FW_ROOT}/apps/shared_libs/third_party/miniz
   )
