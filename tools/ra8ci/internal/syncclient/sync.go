@@ -111,6 +111,14 @@ func SyncPending(ctx context.Context, outbox *spool.Spool, baseURL string, clien
 		if err := checkUploadedArgumentsAreOnesThePlaneWillFile(entry); err != nil {
 			return report, fmt.Errorf("local %s: %w", entry.ID, err)
 		}
+		// Last of the record-only doors, beside the arguments for the same
+		// reason: the steps are stated by the record, the rows that hold
+		// them bound their count and their key text with no catalog to
+		// read, and steps the plane will not file are the same opaque 400
+		// that ends the sweep.
+		if err := checkUploadedStepsAreOnesThePlaneWillFile(entry); err != nil {
+			return report, fmt.Errorf("local %s: %w", entry.ID, err)
+		}
 		body, err := json.Marshal(entry)
 		if err != nil {
 			return report, err
