@@ -116,16 +116,18 @@ func procTable() map[int]treeProcess {
 	return table
 }
 
-// escapedDescendants returns the descendants of leader that have left the
-// leader's process group, so a group signal will not reach them. Members of
-// the group are deliberately excluded: they are already covered, and
-// signalling them twice would race the group teardown for no gain.
+// escapedDescendants returns the descendants of leader that the teardown's
+// group signal will not reach. Members of the signalled group are
+// deliberately excluded: they are already covered, and signalling them twice
+// would race the group teardown for no gain. Membership is judged against the
+// group that signal actually goes to, which is leader's own pid; see
+// reachedByTheGroupSignal for why the leader's current PGID is not that
+// group.
 func escapedDescendants(leader int, table map[int]treeProcess) []treeProcess {
 	if leader <= 1 || len(table) == 0 {
 		return nil
 	}
-	root, ok := table[leader]
-	if !ok {
+	if _, ok := table[leader]; !ok {
 		return nil
 	}
 	children := make(map[int][]int, len(table))
@@ -148,7 +150,7 @@ func escapedDescendants(leader int, table map[int]treeProcess) []treeProcess {
 			seen[pid] = true
 			queue = append(queue, pid)
 			process := table[pid]
-			if process.PGID == root.PGID {
+			if reachedByTheGroupSignal(process, leader) {
 				continue
 			}
 			escaped = append(escaped, process)
@@ -187,10 +189,10 @@ func childProcesses(pid int) ([]int, bool) {
 // walkEscapedDescendants follows the kernel's child lists down from leader.
 // It touches only the processes below the step, unlike a scan of every entry
 // in /proc, and reports false when the kernel has no children file so the
-// caller can fall back.
+// caller can fall back. Like escapedDescendants it judges each descendant
+// against the group the teardown signals, leader's own pid.
 func walkEscapedDescendants(leader int) ([]treeProcess, bool) {
-	root, ok := readProcess(leader)
-	if !ok || leader <= 1 {
+	if _, ok := readProcess(leader); !ok || leader <= 1 {
 		return nil, false
 	}
 	first, offered := childProcesses(leader)
@@ -213,7 +215,7 @@ func walkEscapedDescendants(leader int) ([]treeProcess, bool) {
 		}
 		children, _ := childProcesses(pid)
 		queue = append(queue, children...)
-		if process.PGID == root.PGID {
+		if reachedByTheGroupSignal(process, leader) {
 			continue
 		}
 		escaped = append(escaped, process)
