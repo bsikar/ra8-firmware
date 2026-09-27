@@ -204,13 +204,13 @@ func (manifest ArtifactManifest) Covers(chunk ArtifactChunk) error {
 	return nil
 }
 
-// ValidateArtifactSet checks what no single manifest can: one entry per path,
-// the per-attempt count, and the total the attempt is allowed to upload.
+// ValidateArtifactSet checks what no single manifest can: paths one host can
+// write, the per-attempt count, and the total the attempt is allowed to upload.
 func ValidateArtifactSet(manifests []ArtifactManifest) error {
 	if len(manifests) > MaxArtifactsPerAttempt {
 		return ErrInvalid
 	}
-	seen := make(map[string]bool, len(manifests))
+	seen := newArtifactPathSet(len(manifests))
 	var total int64
 	for _, manifest := range manifests {
 		if err := manifest.Validate(); err != nil {
@@ -222,10 +222,12 @@ func ValidateArtifactSet(manifests []ArtifactManifest) error {
 		if err := checkArtifactSetNamesOneAttempt(manifests[0], manifest); err != nil {
 			return err
 		}
-		if seen[manifest.Path] {
-			return ErrInvalid
+		// One entry per path is the store's identity for an artifact. It is
+		// not the whole rule for a collection written back out under one
+		// directory, where two entries can be one name on the host.
+		if err := seen.add(manifest.Path); err != nil {
+			return err
 		}
-		seen[manifest.Path] = true
 		total += manifest.TotalBytes
 		if total > MaxArtifactBytes {
 			return ErrInvalid
