@@ -21,12 +21,18 @@ func filableTask() Task {
 	}
 }
 
+// namedStepsFor builds count steps whose names are what these tests are about.
+// Each carries its own ordinal as an argument so no two dispatch the same
+// command: this fixture task is read-only, where a repeated command is its own
+// refusal (a_step_a_read_only_task_runs_once.go), and that refusal is not what
+// a test about the filable step COUNT is asking.
 func namedStepsFor(count int) []Step {
 	steps := make([]Step, 0, count)
 	for i := 0; i < count; i++ {
+		ordinal := stepOrdinalName(i)
 		steps = append(steps, Step{
-			Name: "step-" + stepOrdinalName(i), Program: DispatchShell,
-			Args: []string{"scripts/checks/format_tree" + ScriptPathSuffix},
+			Name: "step-" + ordinal, Program: DispatchShell,
+			Args: []string{"scripts/checks/format_tree" + ScriptPathSuffix, ordinal},
 		})
 	}
 	return steps
