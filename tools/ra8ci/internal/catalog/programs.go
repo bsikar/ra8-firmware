@@ -145,12 +145,18 @@ func ValidateStepDispatch(step Step) error {
 		if err := checkTheTargetCountIsOneTheToolTakes(step, program); err != nil {
 			return err
 		}
-		// Last on the tool branch, and the only door here that judges one
-		// argv element against another rather than against the tool's
-		// parser: a flag the flag package sets twice, keeping the last and
+		// Beside the repeat door, which judges one argv element against
+		// another: a flag the flag package sets twice, keeping the last and
 		// dropping a value review wrote down. See
 		// a_tool_flag_the_tool_reads_once.go.
-		return checkNoToolFlagIsNamedTwice(step, program)
+		if err := checkNoToolFlagIsNamedTwice(step, program); err != nil {
+			return err
+		}
+		// Last on the tool branch, and the only door that reads argv ORDER:
+		// for the three tools parsing with the flag package, an option
+		// written after a target is not an option, because the parser has
+		// already stopped. See a_tool_flag_the_parser_still_reads.go.
+		return checkNoToolFlagFollowsATarget(step, program)
 	}
 	if IsFrontDoorProgram(program) {
 		return fmt.Errorf("%w: step %q runs %q: %w, dispatch its reviewed script instead",
