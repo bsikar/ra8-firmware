@@ -197,6 +197,7 @@ func validateLocalRun(in LocalRunInput) error {
 		in.SourceVerification == "verified" && (in.CommitSHA == "" || in.SnapshotSHA256 == "") ||
 		in.SourceVerification == "unverified" && in.SnapshotSHA256 != "" ||
 		len(in.TaskName) == 0 || len(in.TaskName) > 128 || strings.TrimSpace(in.TaskName) != in.TaskName ||
+		!namesATextColumnCanHold(in.TaskName) ||
 		in.Tier != "required" && in.Tier != "optional" && in.Tier != "nightly" ||
 		in.Scope != "safe-local-read-only" && in.Scope != "safe-local-write-working-tree" ||
 		in.DeadlineSeconds < 1 || in.DeadlineSeconds > 86400 || len(in.Arguments) > 64 ||
@@ -216,6 +217,7 @@ func validateLocalRun(in LocalRunInput) error {
 	seen := make(map[string]bool, len(in.Steps))
 	for i, step := range in.Steps {
 		if step.Ordinal != i || len(step.Key) == 0 || len(step.Key) > 128 || seen[step.Key] ||
+			!namesATextColumnCanHold(step.Key) ||
 			step.StartedAt.IsZero() || step.EndedAt.IsZero() || step.EndedAt.Before(step.StartedAt) ||
 			step.StartedAt.Before(in.StartedAt) || step.EndedAt.After(in.FinishedAt) ||
 			step.DurationNS < 0 || step.TimedOut && step.Cancelled ||
