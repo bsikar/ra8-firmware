@@ -167,8 +167,9 @@ typedef struct {
  * @brief Read a comic page's decoded footprint from its encoded header (#344).
  *
  * @details Sniffs the encoded page's dimensions without decoding its body (via
- *          `jof_probe_dims()`, the exact JPEG/PNG/WebP set the producer
- *          accepts) and reports the worst-case decoded byte count
+ *          ::ra8_imgdec_dims, the shared geometry probe, narrowed here to the
+ *          exact JPEG/PNG/WebP set the producer accepts) and reports the
+ *          worst-case decoded byte count
  *          (`w * h * k_comic_tiles_decoded_bpp`) the whole-decode arena
  *          would have to hold. The caller compares it against its resident
  *          budget with ::comic_tiles_over_budget to choose the tile path or
@@ -184,7 +185,9 @@ typedef struct {
  * @retval k_ra8_ok                Footprint reported; all outputs written.
  * @retval k_ra8_err_null_ptr      A required pointer argument was NULL.
  * @retval k_ra8_err_invalid_size  @p len is 0, or a probed dimension is out of range.
- * @retval k_ra8_err_not_supported The page is not a JPEG/PNG/WebP the producer tiles.
+ * @retval k_ra8_err_not_supported The page carries no signature, or is not a
+ *                                 JPEG/PNG/WebP the producer tiles, or its
+ *                                 container header is truncated.
  * @retval k_ra8_err_*             Propagated from the per-format probe.
  *
  * @pre @p enc holds @p len readable bytes.
