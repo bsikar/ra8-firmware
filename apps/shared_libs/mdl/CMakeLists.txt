@@ -133,6 +133,10 @@ set(MDL_JOF_SRC
 set(MDL_JOF_INC
     ${MDL_REPO_ROOT}/apps/shared_libs/jof/inc
     ${MDL_REPO_ROOT}/apps/shared_libs/jof/src
+    # jof_produce.c sniffs the source container through ra8_imgdec_sniff()
+    # (#768); the TU itself ships in mdl_rabook_runtime, which every target
+    # compiling MDL_JOF_SRC links.
+    ${MDL_REPO_ROOT}/libs/ra8_imgdec/inc
     ${FW}/ra8_jpeg/inc
     ${FW}/ra8_jpeg/src
     ${FW}/ra8_io/inc
