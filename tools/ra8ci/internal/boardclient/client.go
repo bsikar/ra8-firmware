@@ -879,12 +879,14 @@ func (c *Client) Heartbeat(ctx context.Context, token LeaseToken) (board.Snapsho
 			if response.Snapshot.BoardID != token.BoardID || board.Validate(response.Snapshot) != nil {
 				return board.Snapshot{}, HolderLiveness{}, fmt.Errorf("%w: invalid command result", ErrInvalidRequest)
 			}
-			// A report about some other lease is not an answer about
-			// this one, however healthy it looks.
-			if reported := response.Liveness; reported.Held && reported.LeaseID != token.LeaseID {
-				return board.Snapshot{}, HolderLiveness{}, fmt.Errorf("%w: liveness for another lease", ErrInvalidRequest)
+			// Both halves of the answer describe one board, and the
+			// snapshot half is the one the caller carries away, so
+			// both are held to the lease this beat was made under.
+			reported := response.Liveness.liveness()
+			if !beatAnswersThisLease(response.Snapshot, reported, token) {
+				return board.Snapshot{}, HolderLiveness{}, fmt.Errorf("%w: beat answered about another lease", ErrInvalidRequest)
 			}
-			return response.Snapshot, response.Liveness.liveness(), nil
+			return response.Snapshot, reported, nil
 		}
 		if !isConflict(err) {
 			return board.Snapshot{}, HolderLiveness{}, err
