@@ -179,8 +179,16 @@ static bool internal_backing_read(epub_book_t* book, uint64_t archive_ofs, uint8
   if (book->stream_media.read == nullptr) {
     return false; /* GCOVR_EXCL_LINE -- a streamed book always carries a validated read callback */
   }
-  const size_t got = book->stream_media.read(book->stream_media.ctx, archive_ofs, buf, n);
-  return got == n;
+  if (n > (size_t)UINT32_MAX) {
+    return false; /* GCOVR_EXCL_LINE -- entry windows are bounded well below 4 GiB */
+  }
+  uint32_t        got = 0U;
+  const ra8_err_t err =
+    book->stream_media.read(book->stream_media.ctx, archive_ofs, buf, (uint32_t)n, &got);
+  /* A failed backing and a short archive are both "no window" here, but they are
+   * now distinguishable one layer down, which is the point of #764: the caller
+   * that compiles a book sees the error instead of a clean truncation. */
+  return (err == k_ra8_ok) && (got == (uint32_t)n);
 }
 
 /**

@@ -107,9 +107,12 @@ RA8_PRIV ra8_err_t priv_mdl_rabook_epub_close(mdl_rabook_epub_source_t* source);
  * @param[in] offset Absolute archive byte offset.
  * @param[out] destination Writable destination.
  * @param[in] length Exact requested byte count.
- * @return @p length on complete success, otherwise zero.
- * @retval 0 The request was invalid, out of range, short, or faulted.
- * @retval other The exact positive @p length requested by the reader.
+ * @param[out] out_read Receives the bytes copied, on every return path.
+ * @return Read status.
+ * @retval k_ra8_ok Every requested byte was copied; `*out_read` is @p length.
+ * @retval k_ra8_err_invalid_arg @p out_read was NULL.
+ * @retval k_ra8_err_out_of_range The request was invalid or outside the extent.
+ * @retval other The filesystem's own error, or the read-call budget (#764).
  * @pre Pointer arguments are non-NULL and the file remains open.
  * @pre @p destination spans @p length writable bytes.
  * @post Success initializes every requested destination byte.
@@ -117,10 +120,11 @@ RA8_PRIV ra8_err_t priv_mdl_rabook_epub_close(mdl_rabook_epub_source_t* source);
  * @note The callback is serialized by the EPUB reader.
  * @since 0.1.0
  */
-RA8_PRIV size_t priv_mdl_rabook_epub_read(void*    opaque,
-                                          uint64_t offset,
-                                          void*    destination,
-                                          size_t   length);
+RA8_PRIV ra8_err_t priv_mdl_rabook_epub_read(void*     opaque,
+                                             uint64_t  offset,
+                                             void*     destination,
+                                             uint32_t  length,
+                                             uint32_t* out_read);
 
 /**
  * @brief Serve one exact flat-blob read to the RBKC writer.

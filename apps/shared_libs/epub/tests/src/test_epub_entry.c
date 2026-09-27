@@ -248,19 +248,22 @@ static size_t s_peak = 0U;
  * @post ::s_peak tracks the largest window.
  * @note Not thread-safe.
  * @since 0.1.0 @details Implements the direct read fixture operation used only by this focused test executable. @retval value The computed fixture value for the supplied inputs. @pre Fixed-capacity fixture storage required by this operation is available. @post Documented outputs contain the exercised result when the operation succeeds. */
-RA8_INTERNAL static size_t internal_direct_read(void* ctx, uint64_t offset, void* buf, size_t len)
+RA8_INTERNAL static ra8_err_t internal_direct_read(
+  void* ctx, uint64_t offset, void* buf, uint32_t len, uint32_t* out_read)
 {
   const buf_src_t* s = (const buf_src_t*)ctx;
+  *out_read          = 0U;
   if (offset >= (uint64_t)s->size) {
-    return 0U;
+    return k_ra8_ok; /* Clean end of file, not a failure. */
   }
   const uint64_t avail = (uint64_t)s->size - offset;
-  const size_t   n     = (len > (size_t)avail) ? (size_t)avail : len;
+  const size_t   n     = ((uint64_t)len > avail) ? (size_t)avail : (size_t)len;
   (void)memcpy(buf, &s->data[offset], n);
   if (n > s_peak) {
     s_peak = n;
   }
-  return n;
+  *out_read = (uint32_t)n;
+  return k_ra8_ok;
 }
 
 /**

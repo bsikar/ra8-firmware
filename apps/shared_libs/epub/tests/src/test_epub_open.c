@@ -48,9 +48,10 @@ static uint32_t s_stream_reads = 0U;
  * @param[in] offset Starting byte offset in the fixture.
  * @param[out] buf Destination writable for @p len bytes.
  * @param[in] len Number of fixture bytes to copy.
- * @return The exact requested byte count.
- * @retval len The fixture supplied the complete request.
- * @retval 0 The opaque context does not identify the fixture byte array.
+ * @param[out] out_read Receives the bytes copied.
+ * @return Read status.
+ * @retval k_ra8_ok The fixture supplied the complete request.
+ * @retval k_ra8_err_invalid_arg The opaque context does not identify the fixture.
  * @pre @p ctx and @p buf are non-null.
  * @pre The range `offset + len` is inside the fixture.
  * @post When @p ctx identifies the fixture, exactly @p len bytes are written to @p buf.
@@ -59,16 +60,18 @@ static uint32_t s_stream_reads = 0U;
  * @note Reentrant for callers that provide disjoint destination buffers.
  * @since 0.1.0
  */
-RA8_INTERNAL static size_t
-internal_stream_fixture_read(void* ctx, uint64_t offset, void* buf, size_t len)
+RA8_INTERNAL static ra8_err_t
+internal_stream_fixture_read(void* ctx, uint64_t offset, void* buf, uint32_t len,
+                             uint32_t* out_read)
 {
-  size_t result = 0U;
+  *out_read = 0U;
   ++s_stream_reads;
-  if (ctx == s_blob) {
-    (void)memcpy(buf, &s_blob[(size_t)offset], len);
-    result = len;
+  if (ctx != s_blob) {
+    return k_ra8_err_invalid_arg;
   }
-  return result;
+  (void)memcpy(buf, &s_blob[(size_t)offset], (size_t)len);
+  *out_read = len;
+  return k_ra8_ok;
 }
 
 /**
