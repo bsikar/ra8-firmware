@@ -275,6 +275,12 @@ func (c *Client) Logs(ctx context.Context, runID, attemptID string, after int64,
 	if page.NextAfter != expectedSequence || (page.HasMore && len(page.Chunks) != limit) {
 		return store.LogPage{}, errors.New("run log pagination cursor is inconsistent")
 	}
+	// Last, because it is the only judgement here that reads a field the
+	// digest and cursor work does not touch: a chunk's place in the attempt's
+	// own clock, which is what puts stdout and stderr back into one transcript.
+	if err := checkOffsetsTheAttemptCouldStamp(page); err != nil {
+		return store.LogPage{}, err
+	}
 	return page, nil
 }
 
