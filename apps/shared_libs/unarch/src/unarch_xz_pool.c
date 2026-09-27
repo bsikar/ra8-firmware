@@ -6,11 +6,16 @@
  * [Ring 4 / Domain] {World: NS}
  *
  * @details
- * See `unarch_xz_pool.h` for the contract. The arena is three module
- * statics (base, length, cursor); install/reset pairs are strictly nested
- * and the single-threaded reader loop is the only client. Alignment is
- * enforced on install (caller buffer) and on every bump (request rounding),
- * so the vendored decoder's `uint64_t`-bearing structs are always aligned.
+ * See `unarch_xz_pool.h` for the contract. The arena arithmetic is no longer
+ * written here: one module-static ::ra8_imgdec_scratch_t holds the installed
+ * store and every entry point forwards to the shared decoder-scratch
+ * contract (`ra8_imgdec_scratch.h`, issue #768), which is where rounding,
+ * capacity and cursor accounting live for every image-path bump arena in the
+ * tree. What stays local is the policy this seam publishes and the contract
+ * does not have: the install-time alignment precondition, the fail-closed
+ * refusal of a second concurrent install, and the notion of being
+ * *uninstalled* at all (the contract has no unbind, so `reset` drains through
+ * it and then drops the store).
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -20,39 +25,30 @@
 #include "unarch_xz_pool.h"
 
 #include "ra8_check.h"
+#include "ra8_imgdec_scratch.h"
 
 /**
- * @var s_pool_base
- * @brief Start of the installed arena (NULL when uninstalled).
- * @details Set by ::unarch_xz_pool_install, cleared by
- *          ::unarch_xz_pool_reset; every allocation is carved from
- *          `[s_pool_base, s_pool_base + s_pool_len)`.
- * @note Module-private; mutate only through the install/reset API.
- * @warning Never modify directly -- the cursor invariant depends on it.
- * @since Version 0.1.0
+ * @brief The seam's published alignment may never exceed what now keeps it.
+ * @details `unarch_xz_pool.h` promises ::k_unarch_xz_pool_align storage to
+ *          the vendored decoder's `uint64_t`-bearing structs. That promise is
+ *          now kept by the shared contract's rounding, so the two constants
+ *          are pinned against each other rather than left to drift.
  */
-static uint8_t* s_pool_base = nullptr;
+static_assert((uint32_t)k_ra8_imgdec_scratch_align >= (uint32_t)k_unarch_xz_pool_align,
+              "the shared scratch must align at least as strictly as the XZ pool promises");
 
 /**
- * @var s_pool_len
- * @brief Length of the installed arena in bytes (0 when uninstalled).
- * @details Upper bound for the bump cursor ::s_pool_off.
+ * @var s_pool
+ * @brief The installed arena, or an all-zero (uninstalled) scratch.
+ * @details `s_pool.base == nullptr` is the uninstalled state: allocations are
+ *          refused and ::unarch_xz_pool_used reports zero. Installed, every
+ *          bump is served by ::ra8_imgdec_scratch_alloc, so the cursor
+ *          invariant is the contract's, not this file's.
  * @note Module-private; mutate only through the install/reset API.
- * @warning Never modify directly -- the cursor invariant depends on it.
- * @since Version 0.1.0
- */
-static uint32_t s_pool_len = 0U;
-
-/**
- * @var s_pool_off
- * @brief Bump cursor: bytes consumed from the installed arena.
- * @details Invariant `s_pool_off <= s_pool_len`; advances only in
- *          ::unarch_xz_pool_alloc by 8-aligned amounts.
- * @note Module-private; mutate only through the pool API.
  * @warning Never modify directly -- outstanding pointers depend on it.
  * @since Version 0.1.0
  */
-static uint32_t s_pool_off = 0U;
+static ra8_imgdec_scratch_t s_pool = {};
 
 ra8_err_t unarch_xz_pool_install(void* base, uint32_t len)
 {
@@ -65,47 +61,25 @@ ra8_err_t unarch_xz_pool_install(void* base, uint32_t len)
   if ((base_address % (uintptr_t)k_unarch_xz_pool_align) != 0U) {
     return k_ra8_err_invalid_size;
   }
-  if (s_pool_base != nullptr) {
+  if (s_pool.base != nullptr) {
     return k_ra8_err_busy;
   }
-  s_pool_base = (uint8_t*)base;
-  s_pool_len  = len;
-  s_pool_off  = 0U;
-  return k_ra8_ok;
+  return ra8_imgdec_scratch_init(&s_pool, base, (size_t)len);
 }
 
 void unarch_xz_pool_reset(void)
 {
-  s_pool_base = nullptr;
-  s_pool_len  = 0U;
-  s_pool_off  = 0U;
+  ra8_imgdec_scratch_reset(&s_pool);
+  s_pool.base = nullptr;
+  s_pool.cap  = 0U;
 }
 
 void* unarch_xz_pool_alloc(uint32_t size)
 {
-  if (s_pool_base == nullptr) {
-    return nullptr;
-  }
-  if (size == 0U) {
-    return nullptr;
-  }
-  const uint32_t align = (uint32_t)k_unarch_xz_pool_align;
-  if (size > (UINT32_MAX - (align - 1U))) {
-    return nullptr; /* rounding would wrap: refuse */
-  }
-  const uint32_t need = (size + (align - 1U)) & ~(align - 1U);
-  if (need > (s_pool_len - s_pool_off)) {
-    return nullptr; /* arena exhausted: xz-embedded aborts init cleanly */
-  }
-  void* const p = &s_pool_base[s_pool_off];
-  s_pool_off += need;
-  return p;
+  return ra8_imgdec_scratch_alloc(&s_pool, (size_t)size);
 }
 
 uint32_t unarch_xz_pool_used(void)
 {
-  if (s_pool_base == nullptr) {
-    return 0U;
-  }
-  return s_pool_off;
+  return (uint32_t)s_pool.offset;
 }
