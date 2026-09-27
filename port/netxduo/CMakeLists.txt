@@ -54,3 +54,23 @@ target_include_directories(netxduo_port_c6 INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}
 set_property(
   GLOBAL PROPERTY RA8_NETXDUO_C6_PORT_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/src/nx_ether_driver_c6.c
 )
+
+# The IP-interface facade: the packet pool / IP instance / ARP-UDP-ICMP / DHCP
+# bring-up three C6 Wi-Fi apps each carry as a near-verbatim private copy (#740).
+# It names NetX Duo types in its header, which is exactly why it lives here and
+# not in `libs/ra8_wifi`: that facade stays stack-free and host-testable, and its
+# `ra8_wifi_ip_bind_fn` hook exists so an app can take the radio without the IP
+# stack coming with it. A consumer opts in by linking `netxduo_ipif` and
+# splicing RA8_NETXDUO_IPIF_SOURCES into its own glob, the same shape the two
+# link drivers above use. The DHCP client itself is not in the netxduo core
+# glob (it lives under addons/dhcp), so a consumer still names that TU.
+add_library(netxduo_ipif INTERFACE)
+
+target_include_directories(
+  netxduo_ipif INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/inc
+                         ${CMAKE_CURRENT_SOURCE_DIR}/../../libs/ra8_core/inc
+                         ${CMAKE_CURRENT_SOURCE_DIR}/../../libs/ra8_wifi/inc
+                         ${CMAKE_CURRENT_SOURCE_DIR}/../../libs/third_party/netxduo/addons/dhcp
+)
+
+set_property(GLOBAL PROPERTY RA8_NETXDUO_IPIF_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/src/ra8_ipif.c)
