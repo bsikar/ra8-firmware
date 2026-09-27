@@ -140,6 +140,13 @@ func SyncPending(ctx context.Context, outbox *spool.Spool, baseURL string, clien
 		if err := checkUploadedAttemptWindowFitsTheRecord(entry); err != nil {
 			return report, fmt.Errorf("local %s: %w", entry.ID, err)
 		}
+		// Beside the identity door rather than at it: that door asks whether
+		// the record claims a source at all, this one asks whether the two
+		// free-text halves of the claim are text the plane has a column for,
+		// and neither needs the bytes nor a catalog to answer.
+		if err := checkUploadedSourceNamesOneThePlaneFiles(entry); err != nil {
+			return report, fmt.Errorf("local %s: %w", entry.ID, err)
+		}
 		body, err := json.Marshal(entry)
 		if err != nil {
 			return report, err
