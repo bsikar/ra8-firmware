@@ -284,7 +284,10 @@ func walkTargets(target string) ([]string, error) {
 			}
 			return nil
 		}
-		if entry.Type()&os.ModeSymlink != 0 || !entry.Type().IsRegular() || !textExtensions[strings.ToLower(filepath.Ext(path))] || hasExcludedWalkPart(path) {
+		// What is in scope here is what the derived (--all) scope reads, so
+		// a scan of a subtree and the scan CI runs agree about which files
+		// the rule applies to.
+		if entry.Type()&os.ModeSymlink != 0 || !entry.Type().IsRegular() || !inWalkScope(path) || hasExcludedWalkPart(path) {
 			return nil
 		}
 		targets = append(targets, path)
