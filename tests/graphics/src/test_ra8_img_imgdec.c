@@ -66,11 +66,21 @@ static const uint8_t s_gif[] = {
   0x03, 0x44, 0x34, 0x05, 0x00,
 };
 
-/** @brief A PNG signature with an IHDR, to stand in as the wrong container. */
+/**
+ * @brief A 2x2 8-bit truecolour PNG: red, white on top; blue, green below.
+ * @details Both scanlines carry filter type 0 and the IDAT holds one stored
+ *          (uncompressed) deflate block, so the whole body is readable in the
+ *          source and no encoder is needed to produce it. Same four colours as
+ *          the BMP fixture, so a converted consumer can be compared against it.
+ */
 static const uint8_t s_png[] = {
   0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 0x00, 0x00, 0x00, 0x0D,
   0x49, 0x48, 0x44, 0x52, 0x00, 0x00, 0x00, 0x02, 0x00, 0x00, 0x00, 0x02,
-  0x08, 0x02, 0x00, 0x00, 0x00,
+  0x08, 0x02, 0x00, 0x00, 0x00, 0xFD, 0xD4, 0x9A, 0x73, 0x00, 0x00, 0x00,
+  0x19, 0x49, 0x44, 0x41, 0x54, 0x78, 0x01, 0x01, 0x0E, 0x00, 0xF1, 0xFF,
+  0x00, 0xFF, 0x00, 0x00, 0xFF, 0xFF, 0xFF, 0x00, 0x00, 0x00, 0xFF, 0x00,
+  0xFF, 0x00, 0x2D, 0xE0, 0x05, 0xFB, 0xDF, 0xA2, 0xE5, 0x83, 0x00, 0x00,
+  0x00, 0x00, 0x49, 0x45, 0x4E, 0x44, 0xAE, 0x42, 0x60, 0x82,
 };
 
 /** @brief Backing store every decode bumps out of. */
@@ -129,7 +139,7 @@ internal_req(const uint8_t* bytes, uint32_t len, ra8_imgdec_format_t format, ra8
 }
 
 /**
- * @brief The advertised matrix is GIF and BMP, never JPEG, PNG or TGA.
+ * @brief The advertised matrix is PNG, GIF and BMP, never JPEG or TGA.
  * @return None.
  * @pre None.
  * @post No state mutated beyond the local handle.
@@ -138,7 +148,7 @@ internal_req(const uint8_t* bytes, uint32_t len, ra8_imgdec_format_t format, ra8
  */
 RA8_INTERNAL static void internal_test_caps_are_the_residue(void)
 {
-  TEST_BEGIN("caps advertise only the containers nothing else in-tree opens");
+  TEST_BEGIN("caps advertise what stb really decodes, never TGA or JPEG");
 
   ra8_imgdec_t dec = {};
   internal_bind(&dec);
@@ -150,10 +160,15 @@ RA8_INTERNAL static void internal_test_caps_are_the_residue(void)
                  caps.formats & (uint32_t)k_ra8_imgdec_format_gif);
   TEST_ASSERT_EQ((uint32_t)k_ra8_imgdec_format_bmp,
                  caps.formats & (uint32_t)k_ra8_imgdec_format_bmp);
-  /* The first-party codec owns JPEG; claiming it here is the duplicate decode
-   * path #768 exists to remove. TGA is not compiled into stb_image_impl.c. */
+  /* PNG is advertised because stb is the only bindable PNG decoder in the
+   * tree: jof_png.c is RA8_PRIV, pull-based and has no whole-frame entry. A
+   * binder refusing PNG could not stand in for the reflow or RABOOK paths,
+   * which decode PNG through this very stbi call today. */
+  TEST_ASSERT_EQ((uint32_t)k_ra8_imgdec_format_png,
+                 caps.formats & (uint32_t)k_ra8_imgdec_format_png);
+  /* The first-party codec owns JPEG and nothing is blocked by leaving it
+   * there. TGA is not compiled into stb_image_impl.c at all. */
   TEST_ASSERT_EQ(0U, caps.formats & (uint32_t)k_ra8_imgdec_format_jpeg);
-  TEST_ASSERT_EQ(0U, caps.formats & (uint32_t)k_ra8_imgdec_format_png);
   TEST_ASSERT_EQ(0U, caps.formats & (uint32_t)k_ra8_imgdec_format_tga);
   TEST_ASSERT_EQ(0U, caps.formats & (uint32_t)k_ra8_imgdec_format_webp);
 
@@ -161,7 +176,7 @@ RA8_INTERNAL static void internal_test_caps_are_the_residue(void)
   TEST_ASSERT_EQ(0U, caps.scratch_bytes);
   TEST_ASSERT(caps.streams == false);
 
-  TEST_END("caps advertise only the containers nothing else in-tree opens");
+  TEST_END("caps advertise what stb really decodes, never TGA or JPEG");
 }
 
 /**
@@ -250,6 +265,63 @@ RA8_INTERNAL static void internal_test_gif_decodes(void)
   TEST_ASSERT_EQ(0xFFU, s_dst[5]);
 
   TEST_END("a GIF decodes through the shared header probe");
+}
+
+/**
+ * @brief A PNG decodes, because stb is the only bindable PNG decoder in-tree.
+ * @details The case that pins the caps decision. #768 proposes a separate
+ *          `ra8_imgdec_bind_png()` over a promoted `libs/ra8_png`, but
+ *          `priv_jof_png_rows()` is RA8_PRIV, pull-based and has no
+ *          whole-frame entry, so until that promotion happens this backend is
+ *          the seam's only route to a PNG. Refusing one here would leave the
+ *          reflow and RABOOK paths unable to move onto the seam at all.
+ * @return None.
+ * @pre None.
+ * @post No state mutated beyond the fixture buffers.
+ * @note File-local case; no ownership escapes this executable.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_test_png_decodes(void)
+{
+  TEST_BEGIN("a PNG decodes through the advertised backend");
+
+  ra8_imgdec_t dec = {};
+  internal_bind(&dec);
+
+  const ra8_imgdec_req_t req =
+    internal_req(s_png, (uint32_t)sizeof(s_png), k_ra8_imgdec_format_png, k_ra8_imgdec_pixel_rgb888);
+  ra8_imgdec_image_t img = {};
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_imgdec_decode(&dec, &req, &img));
+
+  TEST_ASSERT_EQ((uint32_t)k_t_w, img.width_px);
+  TEST_ASSERT_EQ((uint32_t)k_t_h, img.height_px);
+  TEST_ASSERT_EQ((uint32_t)k_ra8_imgdec_format_png, (uint32_t)img.format);
+  TEST_ASSERT_EQ((uint32_t)k_ra8_imgdec_pixel_rgb888, (uint32_t)img.pixel);
+  /* Colour type 2 carries no alpha channel, so stb reports three. */
+  TEST_ASSERT(img.had_alpha == false);
+
+  /* Row 0 is red then white; row 1 is blue then green. PNG rows are top-down,
+   * so unlike the BMP fixture no vertical flip is involved. */
+  TEST_ASSERT_EQ(0xFFU, s_dst[0]);
+  TEST_ASSERT_EQ(0x00U, s_dst[1]);
+  TEST_ASSERT_EQ(0x00U, s_dst[2]);
+  TEST_ASSERT_EQ(0xFFU, s_dst[3]);
+  TEST_ASSERT_EQ(0xFFU, s_dst[4]);
+  TEST_ASSERT_EQ(0xFFU, s_dst[5]);
+
+  const uint32_t row1 = (uint32_t)k_t_w * (uint32_t)k_t_rgb;
+  TEST_ASSERT_EQ(0x00U, s_dst[row1 + 0U]);
+  TEST_ASSERT_EQ(0x00U, s_dst[row1 + 1U]);
+  TEST_ASSERT_EQ(0xFFU, s_dst[row1 + 2U]);
+  TEST_ASSERT_EQ(0x00U, s_dst[row1 + 3U]);
+  TEST_ASSERT_EQ(0xFFU, s_dst[row1 + 4U]);
+  TEST_ASSERT_EQ(0x00U, s_dst[row1 + 5U]);
+
+  /* The arena drains on the way out, exactly as the other formats do. */
+  TEST_ASSERT_EQ(0U, s_arena.offset);
+  TEST_ASSERT_EQ(0U, s_arena.live);
+
+  TEST_END("a PNG decodes through the advertised backend");
 }
 
 /**
@@ -449,6 +521,7 @@ int main(void)
   internal_test_caps_are_the_residue();
   internal_test_bmp_decodes();
   internal_test_gif_decodes();
+  internal_test_png_decodes();
   internal_test_container_is_verified();
   internal_test_stride_requests();
   internal_test_destination_too_small();

@@ -45,9 +45,10 @@ typedef enum : uint32_t {
   k_stbdec_alpha_c = 4U,    /* stb channel count: RGB + alpha.          */
 } ra8_img_imgdec_const_t;
 
-/** @brief Formats this backend advertises: the two nothing else in-tree opens. */
-#define RA8_IMG_IMGDEC_FORMATS \
-  ((uint32_t)k_ra8_imgdec_format_gif | (uint32_t)k_ra8_imgdec_format_bmp)
+/** @brief Formats this backend advertises. See the header for why PNG is here. */
+#define RA8_IMG_IMGDEC_FORMATS                                                  \
+  ((uint32_t)k_ra8_imgdec_format_png | (uint32_t)k_ra8_imgdec_format_gif | \
+   (uint32_t)k_ra8_imgdec_format_bmp)
 
 /** @brief Destination layouts stb can be asked for directly. */
 #define RA8_IMG_IMGDEC_PIXELS                                                       \
@@ -73,9 +74,9 @@ static_assert(sizeof(int) >= 4, "stb_image's int length must hold a real image")
  *
  * @details Both duties the fabric leaves to a backend are answered by
  * ::ra8_imgdec_dims, so this asks it once rather than sniffing and then
- * probing. The container check is not ceremony: `stb_image` decodes JPEG and
- * PNG as happily as GIF and BMP, so bytes that are secretly a PNG would
- * otherwise decode fine through a handle that advertised neither, and a
+ * probing. The container check is not ceremony: `stb_image` decodes JPEG as
+ * happily as the three formats above, so bytes that are secretly a JPEG would
+ * otherwise decode fine through a handle that does not advertise it, and a
  * consumer routing by format would silently get the wrong decoder.
  *
  * Reading the header first also keeps a refusal cheap. Every reason to say no
@@ -251,7 +252,7 @@ RA8_INTERNAL static ra8_err_t internal_caps(void* ctx, ra8_imgdec_caps_t* out)
 }
 
 /**
- * @brief Decode one GIF or BMP into the request's destination surface.
+ * @brief Decode one PNG, GIF or BMP into the request's destination surface.
  *
  * @details Verifies the container, pre-flights the geometry and the
  * destination, then binds the arena recorded at ::ra8_img_imgdec_bind time and
