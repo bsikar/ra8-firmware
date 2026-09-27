@@ -59,6 +59,12 @@ func SyncPending(ctx context.Context, outbox *spool.Spool, baseURL string, clien
 		if err != nil {
 			return report, err
 		}
+		// Asked once the bytes exist and before any of them are sent: this is
+		// the first point the record's real size is known, and the last point
+		// before the sweep's outcome is decided by a door it cannot see.
+		if err := checkUploadedRecordFitsTheOfflineDoor(body); err != nil {
+			return report, fmt.Errorf("local %s: %w", entry.ID, err)
+		}
 		canonical, err := catalog.CanonicalJSON(body)
 		if err != nil {
 			return report, err
