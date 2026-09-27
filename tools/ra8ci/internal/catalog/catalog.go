@@ -319,6 +319,12 @@ func ValidateReviewedTask(task Task) error {
 	if err := checkTheBoardModelIsOneARecordCanHold(task); err != nil {
 		return err
 	}
+	// Beside the board-model rule above: the other half of the pair a HIL
+	// observation is keyed on, held to the same text a record can carry.
+	// See a_manifest_path_a_record_can_hold.go.
+	if err := checkTheManifestPathIsOneARecordCanHold(task); err != nil {
+		return err
+	}
 	if err := checkArgumentsReachOneStep(task); err != nil {
 		return err
 	}
