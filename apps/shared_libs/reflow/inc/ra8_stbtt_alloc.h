@@ -24,6 +24,12 @@
  * NULL; stb_truetype tolerates this and the offending glyph is skipped
  * rather than corrupting memory.
  *
+ * Since #768 that arithmetic is not written here: both hooks forward to
+ * ::ra8_imgdec_scratch_t, the one bump-scratch contract shared by every
+ * decoder shim in the tree. Only the backing store and the file-static slot
+ * it is reached through stay local, because `STBTT_malloc` / `STBTT_free`
+ * are macros with no context parameter to carry a scratch through.
+ *
  * NASA Power-of-10 Rule 3 (no dynamic allocation after init): the backing
  * store is a single file-scope array.
  *
@@ -45,8 +51,12 @@
  * @details Bumps the arena offset by `n` rounded up to the 16-byte
  * alignment and increments the live-block count. Requests larger than the
  * arena, or that do not fit the remaining capacity, fail with nullptr.
+ * The bump itself is ::ra8_imgdec_scratch_alloc(); this hook adds only the
+ * zero-byte rule above.
  *
- * @param[in] n Byte count requested by stb_truetype.
+ * @param[in] n Byte count requested by stb_truetype. Zero reserves one
+ *              aligned slot rather than being refused, so a zero-byte
+ *              block is still an address of its own.
  * @return 16-byte-aligned pointer into the arena, or nullptr if the
  *         request does not fit the remaining capacity.
  * @retval nullptr The request exceeds the arena or remaining capacity.
