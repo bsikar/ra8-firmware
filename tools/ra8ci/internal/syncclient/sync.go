@@ -61,6 +61,13 @@ func SyncPending(ctx context.Context, outbox *spool.Spool, baseURL string, clien
 		if err := checkUploadedEnvelopeIsReadable(entry); err != nil {
 			return report, fmt.Errorf("local %s: %w", entry.ID, err)
 		}
+		// Last of the three record-only doors, for the same reason as the two
+		// above: it judges what the record says about itself, needs neither the
+		// bytes nor a catalog to answer, and the server refuses the pair with
+		// the same opaque 400 that stops the sweep.
+		if err := checkUploadedResultNamesItsTask(entry); err != nil {
+			return report, fmt.Errorf("local %s: %w", entry.ID, err)
+		}
 		body, err := json.Marshal(entry)
 		if err != nil {
 			return report, err
