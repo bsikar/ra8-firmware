@@ -117,10 +117,16 @@ func declared(header string) []string {
 	return names
 }
 
+// definitionPattern matches the annotated declarator for name. It is the shape
+// declared() looks for, anchored to one name.
+func definitionPattern(name string) *regexp.Regexp {
+	return regexp.MustCompile(`RA8_NSC_VENEER\s+\w[\w\s\*]*?\b` + regexp.QuoteMeta(name) + `\s*\(`)
+}
+
 func isDefined(name string, sources [][]byte) bool {
-	pattern := regexp.MustCompile(`RA8_NSC_VENEER\s+\w[\w\s\*]*?\b` + regexp.QuoteMeta(name) + `\s*\(`)
 	for _, source := range sources {
-		if pattern.Match(source) {
+		// A match is not enough: the occurrence has to open a body.
+		if definesVeneer(name, source) {
 			return true
 		}
 	}
