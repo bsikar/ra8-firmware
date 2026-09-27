@@ -55,6 +55,7 @@ set(RA8_FMT_FW_SRC
     ${FW_ROOT}/apps/shared_libs/jof/src/jof_png_chunk.c
     ${FW_ROOT}/apps/shared_libs/compress/src/ra8_compress.c
     ${FW_ROOT}/libs/ra8_imgdec/src/ra8_imgdec_sniff.c
+    ${FW_ROOT}/libs/ra8_mem/src/ra8_arena.c
     ${FW_ROOT}/libs/ra8_core/src/ra8_log.c
     ${FW_ROOT}/libs/ra8_core/src/ra8_error_handler.c
     ${FW_ROOT}/libs/ra8_core/src/ra8_decomp_limits.c

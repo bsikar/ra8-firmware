@@ -13,6 +13,7 @@
 #include <string.h>
 #include <unistd.h>
 
+#include "ra8_arena.h"
 #include "ra8_attributes.h"
 #include "ra8_fmt_host_fd_internal.h"
 #include "ra8_fmt_portable_main_internal.h"
@@ -237,6 +238,95 @@ static void internal_workspace_error(const ra8_fmt_sink_t*           sink,
 }
 
 /**
+ * @brief Carve the JOF inspect workspace out of the shared CLI block (#757).
+ * @details Declares one slot per workspace member and lets the platform arena
+ * place them, replacing a hand-written offset chain. The carve is all-or-none,
+ * so a block too small for the last slot fails before any pointer is published
+ * rather than handing back a span that runs past the array.
+ * @param[in,out] workspace Shared composition-root storage.
+ * @param[out] out_records Receives the audit-record table.
+ * @param[out] out_tile Receives the decoded-tile buffer.
+ * @param[out] out_scratch Receives the stored-tile buffer.
+ * @return Arena status.
+ * @retval k_ra8_ok Every slot was carved and published.
+ * @retval other The block could not hold the declared slots.
+ * @pre Every pointer argument is non-null.
+ * @post On success the three spans are disjoint and in declaration order.
+ * @post On failure no output pointer was written.
+ * @note Not thread-safe; the CLI is single-threaded.
+ * @since 0.1.0
+ */
+RA8_INTERNAL
+static ra8_err_t internal_carve_jof(ra8_fmt_cli_workspace_t* workspace,
+                                    void**                   out_records,
+                                    void**                   out_tile,
+                                    void**                   out_scratch)
+{
+  ra8_arena_t     arena = {};
+  const ra8_err_t bound =
+    ra8_arena_init(&arena, workspace->bytes, (uint32_t)sizeof workspace->bytes);
+  if (bound != k_ra8_ok) {
+    return bound;
+  }
+  const ra8_arena_slot_t slots[] = {
+    {
+      .bytes   = (uint32_t)(sizeof(jof_audit_record_t) * (size_t)k_ra8_fmt_cli_record_cap),
+      .align   = (uint32_t)alignof(jof_audit_record_t),
+      .out_ptr = out_records,
+    },
+    {.bytes = (uint32_t)k_ra8_fmt_cli_tile_cap, .align = 1U, .out_ptr = out_tile},
+    {.bytes = (uint32_t)k_ra8_fmt_cli_scratch_cap, .align = 1U, .out_ptr = out_scratch},
+  };
+  return ra8_arena_carve_all(&arena, slots, (uint32_t)(sizeof slots / sizeof slots[0]));
+}
+
+/**
+ * @brief Carve the RBKC inspect workspace out of the shared CLI block (#757).
+ * @details The RBKC partition is the one the issue records as unbounded: its
+ * four spans were chained by hand and nothing compared the last one against
+ * the end of the array. Declaring the slots moves that question to the arena,
+ * which answers it before any span is published.
+ * @param[in,out] workspace Shared composition-root storage.
+ * @param[out] out_table Receives the chunk-offset table.
+ * @param[out] out_compressed Receives the stored-chunk buffer.
+ * @param[out] out_chunk Receives the inflated-chunk buffer.
+ * @param[out] out_scratch Receives the semantic-validation buffer.
+ * @return Arena status.
+ * @retval k_ra8_ok Every slot was carved and published.
+ * @retval other The block could not hold the declared slots.
+ * @pre Every pointer argument is non-null.
+ * @post On success the four spans are disjoint and in declaration order.
+ * @post On failure no output pointer was written.
+ * @note Not thread-safe; the CLI is single-threaded.
+ * @since 0.1.0
+ */
+RA8_INTERNAL
+static ra8_err_t internal_carve_rabook(ra8_fmt_cli_workspace_t* workspace,
+                                       void**                   out_table,
+                                       void**                   out_compressed,
+                                       void**                   out_chunk,
+                                       void**                   out_scratch)
+{
+  ra8_arena_t     arena = {};
+  const ra8_err_t bound =
+    ra8_arena_init(&arena, workspace->bytes, (uint32_t)sizeof workspace->bytes);
+  if (bound != k_ra8_ok) {
+    return bound;
+  }
+  const ra8_arena_slot_t slots[] = {
+    {
+      .bytes   = (uint32_t)((size_t)k_ra8_fmt_cli_rbkc_table_cap * sizeof(uint64_t)),
+      .align   = (uint32_t)alignof(uint64_t),
+      .out_ptr = out_table,
+    },
+    {.bytes = (uint32_t)k_ra8_fmt_cli_rbkc_compressed_cap, .align = 1U, .out_ptr = out_compressed},
+    {.bytes = (uint32_t)k_ra8_fmt_cli_rbkc_chunk_cap, .align = 1U, .out_ptr = out_chunk},
+    {.bytes = (uint32_t)k_ra8_fmt_cli_rbkc_scratch_cap, .align = 1U, .out_ptr = out_scratch},
+  };
+  return ra8_arena_carve_all(&arena, slots, (uint32_t)(sizeof slots / sizeof slots[0]));
+}
+
+/**
  * @brief Execute inspection after CLI ownership and source resolution.
  * @details Derives exact needs, checks the named BSS budget, binds caller-owned
  * views, and delegates the complete callback-driven inspection.
@@ -274,13 +364,20 @@ static int internal_run_jof(const ra8_fmt_source_t*  source,
     internal_workspace_error(errors, &need);
     return (int)k_cli_exit_fail;
   }
-  const size_t records_bytes = sizeof(jof_audit_record_t) * (size_t)k_ra8_fmt_cli_record_cap;
+  void*     records = nullptr;
+  void*     tile    = nullptr;
+  void*     scratch = nullptr;
+  ra8_err_t carve   = internal_carve_jof(workspace, &records, &tile, &scratch);
+  if (carve != k_ra8_ok) {
+    internal_error_status(errors, "ra8_fmt: JOF inspect workspace carve FAILED (rc=", carve);
+    return (int)k_cli_exit_fail;
+  }
   ra8_fmt_jof_inspect_workspace_t inspect_workspace = {
-    .records     = (jof_audit_record_t*)workspace->bytes,
+    .records     = (jof_audit_record_t*)records,
     .record_cap  = k_ra8_fmt_cli_record_cap,
-    .tile        = &workspace->bytes[records_bytes],
+    .tile        = (uint8_t*)tile,
     .tile_cap    = k_ra8_fmt_cli_tile_cap,
-    .scratch     = &workspace->bytes[records_bytes + k_ra8_fmt_cli_tile_cap],
+    .scratch     = (uint8_t*)scratch,
     .scratch_cap = k_ra8_fmt_cli_scratch_cap,
   };
   rc = ra8_fmt_jof_inspect_stream(source, verbose, &inspect_workspace, output);
@@ -295,6 +392,7 @@ static int internal_run_jof(const ra8_fmt_source_t*  source,
  * @param[in] verbose Whether to emit the bounded chunk inventory.
  * @param[in,out] workspace Existing named CLI composition storage.
  * @param[in] output Bound report sink.
+ * @param[in] errors Bound diagnostic sink.
  * @return Portable process status.
  * @retval k_cli_exit_ok Strict outer and inner validation succeeded.
  * @retval k_cli_exit_fail Validation or reporting failed.
@@ -309,20 +407,27 @@ RA8_INTERNAL
 static int internal_run_rabook(const ra8_fmt_source_t*  source,
                                bool                     verbose,
                                ra8_fmt_cli_workspace_t* workspace,
-                               const ra8_fmt_sink_t*    output)
+                               const ra8_fmt_sink_t*    output,
+                               const ra8_fmt_sink_t*    errors)
 {
-  const size_t table_bytes = (size_t)k_ra8_fmt_cli_rbkc_table_cap * sizeof(uint64_t);
+  void*     table      = nullptr;
+  void*     compressed = nullptr;
+  void*     chunk      = nullptr;
+  void*     scratch    = nullptr;
+  ra8_err_t carve      = internal_carve_rabook(workspace, &table, &compressed, &chunk, &scratch);
+  if (carve != k_ra8_ok) {
+    internal_error_status(errors, "ra8_fmt: RBKC inspect workspace carve FAILED (rc=", carve);
+    return (int)k_cli_exit_fail;
+  }
   ra8_fmt_rabook_inspect_workspace_t inspect_workspace = {
-    .table          = (uint64_t*)workspace->bytes,
+    .table          = (uint64_t*)table,
     .table_cap      = k_ra8_fmt_cli_rbkc_table_cap,
-    .compressed     = &workspace->bytes[table_bytes],
+    .compressed     = (uint8_t*)compressed,
     .compressed_cap = k_ra8_fmt_cli_rbkc_compressed_cap,
-    .chunk          = &workspace->bytes[table_bytes + k_ra8_fmt_cli_rbkc_compressed_cap],
+    .chunk          = (uint8_t*)chunk,
     .chunk_cap      = k_ra8_fmt_cli_rbkc_chunk_cap,
-    .scratch =
-      &workspace
-         ->bytes[table_bytes + k_ra8_fmt_cli_rbkc_compressed_cap + k_ra8_fmt_cli_rbkc_chunk_cap],
-    .scratch_cap = k_ra8_fmt_cli_rbkc_scratch_cap,
+    .scratch        = (uint8_t*)scratch,
+    .scratch_cap    = k_ra8_fmt_cli_rbkc_scratch_cap,
   };
   const ra8_err_t rc = ra8_fmt_rabook_inspect_stream(source, verbose, &inspect_workspace, output);
   return (rc == k_ra8_ok) ? (int)k_cli_exit_ok : (int)k_cli_exit_fail;
@@ -377,7 +482,7 @@ static int internal_open(const char*              input,
   const ra8_fmt_sink_t   output       = priv_fmt_host_fd_sink(&output_state);
   const int status = (format == k_cli_format_jof)
                        ? internal_run_jof(&host_source.source, verbose, workspace, &output, errors)
-                       : internal_run_rabook(&host_source.source, verbose, workspace, &output);
+                       : internal_run_rabook(&host_source.source, verbose, workspace, &output, errors);
   priv_fmt_host_source_close(&host_source);
   return status;
 }
