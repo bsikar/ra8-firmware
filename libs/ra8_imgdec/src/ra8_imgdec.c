@@ -177,6 +177,28 @@ RA8_INTERNAL static ra8_err_t internal_resolve_format(const ra8_imgdec_req_t* re
   return k_ra8_ok;
 }
 
+/**
+ * @brief Zero a geometry record so no caller reads a half-written one.
+ */
+RA8_INTERNAL static void internal_clear_geom(ra8_imgdec_geom_t* out) {
+  const ra8_imgdec_geom_t empty = {};
+  *out                          = empty;
+}
+
+/**
+ * @brief Collapse what ::ra8_imgdec_dims reports into the seam's own answer.
+ *
+ * @details ::ra8_imgdec_dims distinguishes bytes it does not recognise
+ * (::k_ra8_err_not_found) from a container whose geometry it cannot read
+ * (::k_ra8_err_not_supported). ::ra8_imgdec_decode makes no such distinction:
+ * every sniff miss is ::k_ra8_err_not_supported there, because what the caller
+ * is being told is that the seam cannot open these bytes. Probing and decoding
+ * the same buffer must not answer differently, so the two fold together here.
+ */
+RA8_INTERNAL static ra8_err_t internal_probe_geom_err(ra8_err_t err) {
+  return (err == k_ra8_err_not_found) ? k_ra8_err_not_supported : err;
+}
+
 /* =============================================================================
  * Public API
  * =============================================================================
@@ -274,4 +296,36 @@ ra8_imgdec_decode(const ra8_imgdec_t* dec, const ra8_imgdec_req_t* req, ra8_imgd
     internal_clear_image(out);
   }
   return err;
+}
+
+ra8_err_t ra8_imgdec_probe(const ra8_imgdec_t* dec,
+                           const uint8_t*      bytes,
+                           uint32_t            byte_count,
+                           ra8_imgdec_geom_t*  out) {
+  if ((dec == nullptr) || (bytes == nullptr) || (out == nullptr)) {
+    return k_ra8_err_null_ptr;
+  }
+  internal_clear_geom(out);
+
+  ra8_imgdec_caps_t caps     = {};
+  const ra8_err_t   caps_err = internal_fetch_caps(dec, &caps);
+  if (caps_err != k_ra8_ok) {
+    return caps_err;
+  }
+
+  ra8_imgdec_geom_t geom     = {};
+  const ra8_err_t   geom_err = ra8_imgdec_dims(bytes, byte_count, &geom);
+  if (geom_err != k_ra8_ok) {
+    return internal_probe_geom_err(geom_err);
+  }
+
+  if ((((uint32_t)geom.format) & caps.formats) == 0U) {
+    return k_ra8_err_not_supported;
+  }
+  if ((geom.width_px > caps.dim_max) || (geom.height_px > caps.dim_max)) {
+    return k_ra8_err_not_supported;
+  }
+
+  *out = geom;
+  return k_ra8_ok;
 }
