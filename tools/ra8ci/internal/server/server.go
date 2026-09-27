@@ -281,6 +281,17 @@ func (s *Server) createRun(w http.ResponseWriter, r *http.Request) {
 		problem(w, http.StatusBadRequest, "invalid_argument", "trailing JSON data", false)
 		return
 	}
+	// The repository a submitter states is asked here BEFORE it is carried
+	// into an authorization, for the reason usableRepository already gives:
+	// a denial writes this text to the audit trail as its target, and it is
+	// written before the request has been understood. The offline ingest and
+	// the slow report have held that rule since they were written; run
+	// creation is the last door that takes a caller-stated repository, and
+	// it takes the largest body of the three.
+	if !usableRepository(req.Source.Repository) {
+		problem(w, http.StatusBadRequest, "invalid_argument", "run request states no usable repository", false)
+		return
+	}
 	principal, err := s.auth.Authorize(r, req.Source.Repository, "submit")
 	if err != nil {
 		s.deny(w, r, "run.create", req.Source.Repository, err)
