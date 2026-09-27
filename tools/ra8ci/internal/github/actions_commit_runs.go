@@ -130,7 +130,11 @@ func (r *ActionsOutcomeReader) RunsOn(ctx context.Context, headSHA string) (Comm
 		}
 		runs = append(runs, listed...)
 		if commitRunPageEndsTheWalk(len(listed), total, page) {
-			return CommitWorkflowRuns{HeadSHA: headSHA, Runs: runs}, nil
+			// The same run can be served on two pages while the
+			// commit gains runs underneath the walk, and two
+			// decided rows of one workflow is what the evidence
+			// selection refuses as ambiguous.
+			return CommitWorkflowRuns{HeadSHA: headSHA, Runs: oneCommitWorkflowRunPerID(runs)}, nil
 		}
 	}
 	return CommitWorkflowRuns{}, fmt.Errorf("%w: commit %s carries more runs than this reader lists", ErrCommitRunsUnreadable, headSHA)
