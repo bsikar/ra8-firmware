@@ -493,6 +493,77 @@ typedef struct {
 [[nodiscard]] ra8_err_t
 ra8_imgdec_dims(const uint8_t* bytes, uint32_t byte_count, ra8_imgdec_geom_t* out);
 
+/**
+ * @brief Ask the bound backend whether it can open these bytes, and how big
+ *        the image says it is.
+ *
+ * @details
+ * The one question a consumer actually has before it reserves a destination
+ * surface: *can this decoder take this file, and what size is it*. Answering
+ * it today means calling ::ra8_imgdec_sniff, then ::ra8_imgdec_dims, then
+ * ::ra8_imgdec_get_caps, then testing the format bit and the backend's own
+ * `dim_max` by hand, and getting the four-way error mapping right at every
+ * call site. That is four decode paths' worth of duplicated gating, which is
+ * the duplication #768 exists to remove, so the fabric does it once.
+ *
+ * Nothing is decoded and no backend hook is reached beyond its capability
+ * query, so this stays a pure read of the leading bytes: the answer costs a
+ * header parse, not a decode.
+ *
+ * Two deliberate limits on what this answers:
+ * - It is about the *image*, not the destination layout. Whether the backend
+ *   can write the layout the caller wants is ::ra8_imgdec_supports, which
+ *   needs no bytes at all; keeping them apart means neither query has to
+ *   carry the other's arguments.
+ * - `dim_max` is enforced here and nowhere else in the fabric.
+ *   ::ra8_imgdec_decode cannot enforce it, because it has no geometry until a
+ *   backend has already parsed the header. A caller that wants the bound
+ *   backend's size limit honoured before it commits asks here.
+ *
+ * @param[in]  dec        Bound decoder handle.
+ * @param[in]  bytes      Leading bytes of the encoded image.
+ * @param[in]  byte_count Readable length of @p bytes.
+ * @param[out] out        Receives the container and its declared geometry.
+ *
+ * @return ra8_err_t Error code.
+ * @retval k_ra8_ok                  `*out` holds a container this backend
+ *                                   opens, at a size it accepts.
+ * @retval k_ra8_err_null_ptr        `dec`, `bytes` or `out` was NULL.
+ * @retval k_ra8_err_not_initialized No backend is bound to `dec`.
+ * @retval k_ra8_err_invalid_state   The backend reported an unusable record.
+ * @retval k_ra8_err_invalid_size    `byte_count` was 0, or a declared
+ *                                   dimension is 0 or over
+ *                                   ::k_ra8_imgdec_dim_max.
+ * @retval k_ra8_err_not_supported   The seam cannot open these bytes: no
+ *                                   recognised signature, a container whose
+ *                                   geometry is not readable here, a format
+ *                                   this backend does not advertise, or a
+ *                                   declared size past this backend's own
+ *                                   `dim_max`.
+ *
+ * @pre A backend has been bound into `dec`.
+ * @pre @p bytes holds @p byte_count readable bytes.
+ * @post `*out` is zeroed on every non-ok return.
+ * @post The buffer is never written and no decoder is invoked.
+ *
+ * @note A buffer carrying no recognised signature is reported
+ *       ::k_ra8_err_not_supported, the same code ::ra8_imgdec_decode gives
+ *       it, rather than the ::k_ra8_err_not_found that ::ra8_imgdec_dims
+ *       returns on its own. Two doors into the seam answering the same bytes
+ *       differently is what a consumer then has to paper over; a caller that
+ *       wants the finer distinction still has ::ra8_imgdec_dims.
+ *
+ * @note Thread-safe (pure read of @p bytes and of immutable backend state).
+ *
+ * @see ra8_imgdec_dims()
+ * @see ra8_imgdec_supports()
+ * @since 0.1.0
+ */
+[[nodiscard]] ra8_err_t ra8_imgdec_probe(const ra8_imgdec_t* dec,
+                                         const uint8_t*      bytes,
+                                         uint32_t            byte_count,
+                                         ra8_imgdec_geom_t*  out);
+
 #ifdef __cplusplus
 }
 #endif
