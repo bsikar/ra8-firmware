@@ -196,6 +196,14 @@ func (s *Spool) Finish(entry Entry, result executor.Result, runErr error) (Entry
 	if err := checkTheErrorIsOneThePlaneWillFile(entry.Error); err != nil {
 		return Entry{}, err
 	}
+	// Beside the error door and before the record is written: the four
+	// numbers a step states about what it printed are the whole of what
+	// history can say about its output, and the executor is the only thing
+	// that measures them. See evidence_a_run_measured.go for why the freeze
+	// asks as well as the sweep.
+	if err := checkTheEvidenceWasMeasured(result); err != nil {
+		return Entry{}, err
+	}
 	if err := checkStampsAreInOrder(entry); err != nil {
 		return Entry{}, err
 	}
