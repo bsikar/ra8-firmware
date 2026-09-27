@@ -13,6 +13,18 @@
  * read for *stored* (uncompressed) entries. The implementation lives in
  * `epub_entry.c`.
  *
+ * ## The entry name is untrusted (#749)
+ *
+ * `epub_entry_open()` and `epub_entry_pread()` match @p path against names
+ * taken from the ZIP central directory, which a producer chooses. A caller
+ * that has obtained one of those names from the book record (a chapter,
+ * cover, font or manifest href) and wants to write the entry out applies
+ * `ra8_path_sanitize_segment()` then `ra8_path_join_under()`, or
+ * `ra8_path_contained()` on an already-resolved candidate, before the name
+ * becomes a filesystem path. Neither entry point inspects @p path for
+ * traversal: inside the archive there is nothing to escape. See the
+ * untrusted-name contract in `epub.h` and the policy in `libs/if/inc/ra8_path.h`.
+ *
  * This header depends on `epub.h` (for `epub_book_t`) and includes it,
  * so the dependency is one-directional: `epub.h` does NOT include this
  * header. A translation unit that needs the entry cursor includes this header

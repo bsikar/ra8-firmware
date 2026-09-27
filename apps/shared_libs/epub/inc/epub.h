@@ -32,6 +32,25 @@
  *     mounted filesystem (`ra8_fs_read()`) into a caller-owned buffer
  *     before handing it to `epub_open()`.
  *
+ * ## The names in this record are untrusted (#749)
+ *
+ * Every path this reader publishes is copied out of archive bytes: the
+ * chapter list and the cover, TOC, embedded-font and manifest hrefs all come
+ * from the OPF document inside the .epub, and the OPF's own location comes
+ * from `META-INF/container.xml`. A producer chooses those strings, so any of
+ * them may be absolute, may contain `..` components, or may name something
+ * far outside the OPF directory. This reader does not judge them: it copies
+ * each one out, clamps it to `k_epub_max_path_len`, and hands it back.
+ *
+ * That is deliberate. The reader resolves names inside the archive, where a
+ * `..` is not an escape, and a caller that never touches a filesystem (the
+ * chapter iterator, the resource lookup) is right to see them unaltered.
+ * A caller that turns one of these names into a filesystem path applies the
+ * shared policy first: `ra8_path_sanitize_segment()` to rewrite one segment,
+ * `ra8_path_join_under()` to compose it under a parent and refuse an escape,
+ * or `ra8_path_contained()` on a candidate it has already resolved. All three
+ * live in `libs/if/inc/ra8_path.h`.
+ *
  * ## Static-allocation footprint
  *
  *   - Chapter list:   `k_epub_max_chapters` * `k_epub_max_path_len`
@@ -254,6 +273,10 @@ typedef struct {
  *
  * @invariant All three fields are NUL-terminated; absent attributes are "".
  *
+ * @note `href` is an archive-supplied name and is not validated as a
+ *       filesystem path. See the untrusted-name contract in this file's
+ *       header block before writing anything under it.
+ *
  * @see epub_manifest_count()
  * @see epub_manifest_item()
  */
@@ -279,6 +302,12 @@ typedef struct {
  *
  * @invariant `in_use == 1` while a book is open; cleared by
  *            `epub_close()`.
+ *
+ * @note `chapter_paths`, `cover_path`, `embedded_font_paths`, `toc_path`,
+ *       `opf_dir` and every `manifest[].href` are archive-supplied names,
+ *       copied out unvalidated. See the untrusted-name contract in this
+ *       file's header block.
+ * @see ra8_path_sanitize_segment The policy a caller applies before writing one.
  *
  * @see epub_open()
  * @see epub_close()
