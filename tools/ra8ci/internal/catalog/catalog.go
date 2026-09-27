@@ -311,6 +311,14 @@ func ValidateReviewedTask(task Task) error {
 	if err := checkEachDeclaredArgumentIsOneReviewCanRead(task); err != nil {
 		return err
 	}
+	// Beside the argv rule above, which holds what a step's declared
+	// command line says to text a record can carry: this one holds the
+	// other free-text field a reviewed definition states, the board model
+	// a HIL task's evidence is filed under. See
+	// a_board_model_a_record_can_hold.go.
+	if err := checkTheBoardModelIsOneARecordCanHold(task); err != nil {
+		return err
+	}
 	if err := checkArgumentsReachOneStep(task); err != nil {
 		return err
 	}
