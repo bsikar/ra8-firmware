@@ -38,12 +38,16 @@ typedef struct {
 } epub_probe_source_t;
 
 /** @brief Read one absolute archive span, retrying interrupted host calls. @details Implements the probe read fixture operation used only by this focused test executable. @param[in,out] context Fixture argument governed by the exercised interface contract. @param[in] offset Fixture argument governed by the exercised interface contract. @param[out] destination Fixture argument governed by the exercised interface contract. @param[in] length Fixture argument governed by the exercised interface contract. @return The value computed by the fixture helper. @retval value The computed fixture value for the supplied inputs. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
-RA8_INTERNAL static size_t
-internal_probe_read(void* context, uint64_t offset, void* destination, size_t length)
+RA8_INTERNAL static ra8_err_t internal_probe_read(
+  void* context, uint64_t offset, void* destination, uint32_t length, uint32_t* out_read)
 {
+  if (out_read == nullptr) {
+    return k_ra8_err_null_ptr;
+  }
+  *out_read = 0U;
   if ((context == nullptr) || ((destination == nullptr) && (length != 0U)) ||
       (offset > (uint64_t)INT64_MAX)) {
-    return 0U;
+    return k_ra8_err_null_ptr;
   }
   const epub_probe_source_t* source  = (const epub_probe_source_t*)context;
   size_t                     used    = 0U;
@@ -61,13 +65,18 @@ internal_probe_read(void* context, uint64_t offset, void* destination, size_t le
                     length - used,
                     (off_t)(offset + used));
     } while ((got < 0) && (errno == EINTR));
-    if (got <= 0) {
+    if (got < 0) {
+      /* A host read error is a failure, not the end of the archive (#764). */
+      return k_ra8_err_hw_error;
+    }
+    if (got == 0) {
       reading = false;
     } else {
       used += (size_t)got;
     }
   }
-  return used;
+  *out_read = (uint32_t)used;
+  return k_ra8_ok;
 }
 
 /** @brief Append one label and unsigned value to the injected report. @details Implements the probe u64 fixture operation used only by this focused test executable. @param[out] output Fixture argument governed by the exercised interface contract. @param[in] label Fixture argument governed by the exercised interface contract. @param[in] value Fixture argument governed by the exercised interface contract. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */

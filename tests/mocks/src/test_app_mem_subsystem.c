@@ -596,7 +596,9 @@ static void test_vmem_stream_read_stops_on_get_failure(void)
   TEST_ASSERT_EQ(k_ra8_ok, ra8_vmem_stream_init(&st, &vm, obj_id, (uint64_t)k_fail_obj_bytes));
 
   /* Two frames requested. Frame 0 loads (V1); frame 1 faults (V2). */
-  const size_t got = ra8_vmem_stream_read(&st, 0U, s_out, (size_t)k_fail_read_bytes);
+  uint32_t        got  = 0U;
+  const ra8_err_t gerr = ra8_vmem_stream_read(&st, 0U, s_out, (uint32_t)k_fail_read_bytes, &got);
+  TEST_ASSERT(gerr != k_ra8_ok);
   TEST_ASSERT_EQ(k_vmem_frame_bytes, got);
   /* The bytes that WERE copied are the real ones, so the break happened after
      a genuine copy rather than instead of one. */
@@ -697,10 +699,13 @@ static void test_vmem_stream_read_checked_separates_failure_from_eof(void)
   }
   TEST_ASSERT(bytes_ok);
 
-  /* The count-returning binding still answers exactly as it did before, which is
-     what keeps the epub callback seam unchanged: the same short count, no reason. */
-  TEST_ASSERT_EQ(k_vmem_frame_bytes,
-                 ra8_vmem_stream_read(&st, 0U, s_cout, (size_t)k_fail_read_bytes));
+  /* The cookie binding is the same answer through a void* ctx: the epub callback
+     seam now carries the failed frame's verdict instead of a bare short count. */
+  uint32_t        cookie_read = 0U;
+  const ra8_err_t cookie_err =
+    ra8_vmem_stream_read(&st, 0U, s_cout, (uint32_t)k_fail_read_bytes, &cookie_read);
+  TEST_ASSERT(cookie_err != k_ra8_ok);
+  TEST_ASSERT_EQ(k_vmem_frame_bytes, cookie_read);
 
   /* A read wholly inside frame 0 is a full success. */
   read = 0U;

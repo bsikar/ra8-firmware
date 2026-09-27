@@ -213,22 +213,41 @@ typedef struct {
  * directory + central directory) and one entry at a time are ever fetched, so a
  * multi-GB book opens inside a fixed, small RAM budget.
  *
- * The signature deliberately mirrors miniz's `mz_file_read_func` (offset+length,
- * bytes-actually-read return) so the reader can drive miniz directly with no
- * copy: a return `< len` is treated as end-of-file / read error, exactly as the
- * in-memory path treats a short read.
+ * The signature is the house error shape (#764), not miniz's. A short read is
+ * two different events and the callback must say which:
+ * - **End of file.** `k_ra8_ok` with `*out_read < len`, because the request ran
+ *   past the archive end. `*out_read == 0` when @p offset is already at or
+ *   after the end.
+ * - **A failed backing.** The backing's own `ra8_err_t`, with `*out_read`
+ *   holding the bytes copied before the failure.
  *
- * @param[in]  ctx    Opaque backing context (::epub_stream_media_t::ctx).
- * @param[in]  offset Absolute byte offset within the `.epub` archive.
- * @param[out] buf    Destination buffer (`len` writable bytes).
- * @param[in]  len    Number of bytes requested.
+ * The count-returning shape this replaced could not tell those apart, so a card
+ * pulled mid-import read as a clean truncation and the importer compiled a short
+ * book and reported success. miniz still wants a byte count; the reader adapts
+ * there, at the one seam that genuinely has no error channel, rather than
+ * forcing every backing to throw the reason away.
  *
- * @return Bytes actually read (0 at/after EOF or on error; `< len` aborts).
+ * @param[in]  ctx      Opaque backing context (::epub_stream_media_t::ctx).
+ * @param[in]  offset   Absolute byte offset within the `.epub` archive.
+ * @param[out] buf      Destination buffer (`len` writable bytes).
+ * @param[in]  len      Number of bytes requested (> 0).
+ * @param[out] out_read Receives the bytes copied, on every return path.
+ *
+ * @return ra8_err_t Error code.
+ * @retval k_ra8_ok Nothing failed; `*out_read` is `len`, or less at end of file.
+ * @retval other    The backing's own error; `*out_read` is the partial copy.
+ *
+ * @pre `buf` is writable for `len` bytes; `out_read` is non-NULL.
+ * @post `*out_read <= len`, and the bytes below it are the archive's real bytes.
  *
  * @note Not thread-safe; the reader serialises access.
  * @since 0.1.0
  */
-typedef size_t (*epub_stream_read_fn)(void* ctx, uint64_t offset, void* buf, size_t len);
+typedef ra8_err_t (*epub_stream_read_fn)(void*     ctx,
+                                         uint64_t  offset,
+                                         void*     buf,
+                                         uint32_t  len,
+                                         uint32_t* out_read);
 
 /**
  * @struct epub_stream_media_t
