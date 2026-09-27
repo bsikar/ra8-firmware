@@ -188,7 +188,8 @@ func (s *Store) IngestLocalRun(ctx context.Context, in LocalRunInput) (LocalRunR
 }
 
 func validateLocalRun(in LocalRunInput) error {
-	if len(in.PrincipalID) == 0 || len(in.PrincipalID) > 256 || !localIDPattern.MatchString(in.LocalID) ||
+	if len(in.PrincipalID) == 0 || len(in.PrincipalID) > 256 ||
+		!principalNamesOneReadableActor(in.PrincipalID) || !localIDPattern.MatchString(in.LocalID) ||
 		!hexSHA.MatchString(in.PayloadSHA256) || !hexSHA.MatchString(in.CatalogSHA256) ||
 		len(in.Repository) == 0 || len(in.Repository) > 512 || len(in.Branch) > 512 ||
 		!namesATextColumnCanHold(in.Repository) || !namesATextColumnCanHold(in.Branch) ||
