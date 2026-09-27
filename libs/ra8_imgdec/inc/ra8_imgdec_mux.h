@@ -1,0 +1,290 @@
+/**
+ * @file ra8_imgdec_mux.h
+ * @brief One format matrix over a set of decoder backends (#768).
+ * @ingroup grp_io
+ *
+ * @par Tag
+ * [Ring 3 / Imaging] {World: NS}
+ *
+ * @details
+ * ::ra8_imgdec_t binds exactly one backend, which is the right shape for a
+ * backend and the wrong shape for a consumer. #768 is not really about any one
+ * decoder: it is about four decode paths each reaching a different subset of
+ * the formats, so that whether an app can show a WebP depends on which path it
+ * happened to pick. A consumer needs to name *decode* and have the set of
+ * backends answer as one.
+ *
+ * That is this file. A mux holds up to ::k_ra8_imgdec_mux_max bound handles in
+ * the order they were added, reports the union of what they open, and routes a
+ * request to the first member that advertises both the container and the
+ * destination layout it asks for. Adding WebP to a consumer that had only stb
+ * then becomes one more ::ra8_imgdec_mux_add call rather than a fifth special
+ * case in the consumer, which is the shape #637 needs.
+ *
+ * @code
+ * ra8_imgdec_mux_t mux = {};
+ * (void)ra8_imgdec_mux_init(&mux);
+ * (void)ra8_imgdec_mux_add(&mux, &jpeg_sw);   // preferred for JPEG
+ * (void)ra8_imgdec_mux_add(&mux, &webp);
+ * (void)ra8_imgdec_mux_add(&mux, &stb);       // residual GIF / BMP / TGA
+ *
+ * uint32_t openable = 0U;                     // "what can I show at all?"
+ * (void)ra8_imgdec_mux_formats(&mux, k_ra8_imgdec_pixel_rgba8888, &openable);
+ *
+ * ra8_imgdec_image_t img = {};
+ * (void)ra8_imgdec_mux_decode(&mux, &req, &img);
+ * @endcode
+ *
+ * @par Why a mux is not itself an ra8_imgdec_t
+ * It would be tidy to bind a mux as a backend and let ::ra8_imgdec_get_caps
+ * report the union, and it would be wrong. ::ra8_imgdec_caps_t is a flat pair
+ * of sets, one of formats and one of pixel layouts, which can only describe a
+ * matrix where every format is available in every layout. That holds for a
+ * single backend and does not hold for a set of them: a mux of one backend
+ * doing WebP into RGBA and another doing GIF into grey8 would union to
+ * "{WebP, GIF} x {RGBA, grey8}" and answer yes to WebP-into-grey8, which no
+ * member can do. So the mux publishes its own queries, each of which is
+ * evaluated per member as a *pair*, and never claims a capability by
+ * construction. ::ra8_imgdec_mux_formats takes the layout as an argument for
+ * exactly that reason.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
+ * @since 0.1.0
+ */
+
+#pragma once
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+#include <stdint.h>
+
+#include "ra8_err.h"
+#include "ra8_imgdec.h"
+
+/**
+ * @enum ra8_imgdec_mux_limits_t
+ * @brief Bounds of the member set.
+ *
+ * @since 0.1.0
+ */
+typedef enum : uint32_t {
+  k_ra8_imgdec_mux_max = 4U, /**< Members a mux holds. One per backend named
+                                  in #768: the first-party JPEG, the
+                                  first-party PNG, WebP, and the stb residue
+                                  of GIF/BMP/TGA. */
+} ra8_imgdec_mux_limits_t;
+
+/**
+ * @struct ra8_imgdec_mux_t
+ * @brief Caller-allocated set of bound decoders, in priority order.
+ *
+ * @details
+ * Zero-initialise and pass to ::ra8_imgdec_mux_init. Members are copies of the
+ * handles added, so each backend's own storage still has to outlive the mux;
+ * a handle is two pointers, and copying it is what keeps the mux free of any
+ * allocation of its own.
+ *
+ * @invariant `count` is at most ::k_ra8_imgdec_mux_max.
+ * @invariant Every member below `count` has a non-NULL `iface`.
+ *
+ * @since 0.1.0
+ */
+typedef struct {
+  ra8_imgdec_t members[k_ra8_imgdec_mux_max]; /**< Bound handles (private).  */
+  uint32_t     count;                         /**< Members in use (private). */
+} ra8_imgdec_mux_t;
+
+/**
+ * @brief Empty a mux so it holds no members.
+ *
+ * @param[out] mux Mux to reset.
+ *
+ * @return ra8_err_t Error code.
+ * @retval k_ra8_ok           `*mux` is empty and usable.
+ * @retval k_ra8_err_null_ptr `mux` was NULL.
+ *
+ * @post `*mux` holds no members; any previously added handle is forgotten.
+ *
+ * @note Not thread-safe with respect to the same mux.
+ *
+ * @since 0.1.0
+ */
+[[nodiscard]] ra8_err_t ra8_imgdec_mux_init(ra8_imgdec_mux_t* mux);
+
+/**
+ * @brief Append a bound decoder to the mux.
+ *
+ * @details
+ * Order is priority: routing walks the members in the order they were added
+ * and stops at the first one advertising the pair asked for, so a consumer
+ * that prefers the first-party JPEG over stb's simply adds it first. Overlap
+ * between members is expected rather than refused.
+ *
+ * The member's capability record is fetched and checked here, not at the first
+ * decode, so a backend that was never bound or that reports an unusable record
+ * is rejected while the caller is still assembling the set.
+ *
+ * @param[in,out] mux Mux to append to.
+ * @param[in]     dec Bound decoder handle. Copied, not retained by pointer.
+ *
+ * @return ra8_err_t Error code.
+ * @retval k_ra8_ok                  Member appended.
+ * @retval k_ra8_err_null_ptr        `mux` or `dec` was NULL.
+ * @retval k_ra8_err_no_mem          The mux already holds
+ *                                   ::k_ra8_imgdec_mux_max members.
+ * @retval k_ra8_err_not_initialized No backend is bound to `dec`.
+ * @retval k_ra8_err_invalid_state   `dec` reported an unusable record.
+ *
+ * @post On any non-ok return the member set is unchanged.
+ *
+ * @note Not thread-safe with respect to the same mux.
+ *
+ * @since 0.1.0
+ */
+[[nodiscard]] ra8_err_t ra8_imgdec_mux_add(ra8_imgdec_mux_t* mux, const ra8_imgdec_t* dec);
+
+/**
+ * @brief Report every container the set can open into @p pixel.
+ *
+ * @details
+ * The question the four separate format matrices made unanswerable: given the
+ * surface I want written, what can I show? Only members that advertise
+ * @p pixel contribute their formats, so the answer never promises a pair no
+ * single member can satisfy.
+ *
+ * @param[in]  mux         Mux to query.
+ * @param[in]  pixel       Destination layout. Exactly one defined bit.
+ * @param[out] out_formats OR of ::ra8_imgdec_format_t bits, possibly
+ *                         ::k_ra8_imgdec_format_none.
+ *
+ * @return ra8_err_t Error code.
+ * @retval k_ra8_ok                  `*out_formats` answered.
+ * @retval k_ra8_err_null_ptr        `mux` or `out_formats` was NULL.
+ * @retval k_ra8_err_invalid_arg     `pixel` was not exactly one defined bit.
+ * @retval k_ra8_err_not_initialized The mux holds no members.
+ * @retval other                     Propagated from a member's capability
+ *                                   query.
+ *
+ * @post On any non-ok return `*out_formats` is ::k_ra8_imgdec_format_none.
+ *
+ * @note Thread-safe (pure read of immutable backend state).
+ *
+ * @since 0.1.0
+ */
+[[nodiscard]] ra8_err_t ra8_imgdec_mux_formats(const ra8_imgdec_mux_t* mux,
+                                               ra8_imgdec_pixel_t      pixel,
+                                               uint32_t*               out_formats);
+
+/**
+ * @brief Ask whether any member opens @p format into @p pixel.
+ *
+ * @param[in]  mux    Mux to query.
+ * @param[in]  format Container format. Exactly one defined bit.
+ * @param[in]  pixel  Destination layout. Exactly one defined bit.
+ * @param[out] out_ok Set true only when one member advertises both.
+ *
+ * @return ra8_err_t Error code.
+ * @retval k_ra8_ok                  `*out_ok` answered.
+ * @retval k_ra8_err_null_ptr        `mux` or `out_ok` was NULL.
+ * @retval k_ra8_err_invalid_arg     `format` or `pixel` was not exactly one
+ *                                   defined bit.
+ * @retval k_ra8_err_not_initialized The mux holds no members.
+ * @retval other                     Propagated from a member's capability
+ *                                   query.
+ *
+ * @post On any non-ok return `*out_ok` is false.
+ *
+ * @note Thread-safe (pure read of immutable backend state).
+ *
+ * @since 0.1.0
+ */
+[[nodiscard]] ra8_err_t ra8_imgdec_mux_supports(const ra8_imgdec_mux_t* mux,
+                                                ra8_imgdec_format_t     format,
+                                                ra8_imgdec_pixel_t      pixel,
+                                                bool*                   out_ok);
+
+/**
+ * @brief Name the member that would serve @p format into @p pixel.
+ *
+ * @details
+ * Exposed because a consumer sometimes needs the chosen backend rather than
+ * the decode: to read its ::ra8_imgdec_caps_t and size the arena it will have
+ * to supply. The returned handle points into @p mux and stays valid until the
+ * mux is re-initialised.
+ *
+ * @param[in]  mux    Mux to route through.
+ * @param[in]  format Container format. Exactly one defined bit.
+ * @param[in]  pixel  Destination layout. Exactly one defined bit.
+ * @param[out] out    Receives the first member advertising both.
+ *
+ * @return ra8_err_t Error code.
+ * @retval k_ra8_ok                  `*out` names the member that would serve.
+ * @retval k_ra8_err_null_ptr        `mux` or `out` was NULL.
+ * @retval k_ra8_err_invalid_arg     `format` or `pixel` was not exactly one
+ *                                   defined bit.
+ * @retval k_ra8_err_not_initialized The mux holds no members.
+ * @retval k_ra8_err_not_supported   No member opens that pair.
+ * @retval other                     Propagated from a member's capability
+ *                                   query.
+ *
+ * @post On any non-ok return `*out` is NULL.
+ *
+ * @note Thread-safe (pure read of immutable backend state).
+ *
+ * @since 0.1.0
+ */
+[[nodiscard]] ra8_err_t ra8_imgdec_mux_route(const ra8_imgdec_mux_t* mux,
+                                             ra8_imgdec_format_t     format,
+                                             ra8_imgdec_pixel_t      pixel,
+                                             const ra8_imgdec_t**    out);
+
+/**
+ * @brief Decode @p req through whichever member can serve it.
+ *
+ * @details
+ * The container is settled once, here: a request leaving `format` as
+ * ::k_ra8_imgdec_format_none is sniffed with ::ra8_imgdec_sniff() before any
+ * member is chosen, because the choice depends on the answer. The member then
+ * receives the request with that format already named, so it is sniffed once
+ * per decode however many backends are in the set.
+ *
+ * Everything past the routing decision is the single-backend fabric's job and
+ * is not repeated here: ::ra8_imgdec_decode re-validates the request, gates it
+ * against the chosen backend's own record, checks the arena against that
+ * backend's scratch budget, and clears `*out` on failure.
+ *
+ * @param[in]  mux Mux to route through.
+ * @param[in]  req Decode request.
+ * @param[out] out What the decode produced.
+ *
+ * @return ra8_err_t Error code.
+ * @retval k_ra8_ok                  Image decoded into `req->dst`.
+ * @retval k_ra8_err_null_ptr        `mux`, `req`, `out`, `req->bytes` or
+ *                                   `req->dst` was NULL.
+ * @retval k_ra8_err_invalid_arg     `req->want` was not exactly one defined
+ *                                   bit, or `req->format` was neither
+ *                                   `_none` nor exactly one defined bit.
+ * @retval k_ra8_err_invalid_size    `req->byte_count` was 0.
+ * @retval k_ra8_err_not_initialized The mux holds no members.
+ * @retval k_ra8_err_not_supported   The bytes carry no recognised signature,
+ *                                   or no member opens that container into
+ *                                   that layout.
+ * @retval other                     Propagated from ::ra8_imgdec_decode.
+ *
+ * @post On any non-ok return `*out` is zeroed.
+ *
+ * @note Not thread-safe with respect to the routed member's handle.
+ *
+ * @see ra8_imgdec_decode()
+ * @since 0.1.0
+ */
+[[nodiscard]] ra8_err_t ra8_imgdec_mux_decode(const ra8_imgdec_mux_t* mux,
+                                              const ra8_imgdec_req_t* req,
+                                              ra8_imgdec_image_t*     out);
+
+#ifdef __cplusplus
+}
+#endif
