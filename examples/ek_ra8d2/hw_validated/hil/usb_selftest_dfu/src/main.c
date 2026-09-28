@@ -55,6 +55,7 @@
 #include "ra8_port_utils.h"
 #include "ra8_time.h"
 #include "ra8_usb.h"
+#include "ra8_usb_compose.h"
 #include "ra8_usb_desc.h"
 #include "usb_selftest_dfu_steps.h"
 
@@ -172,7 +173,7 @@ static volatile uint32_t s_dbg_host_err;
  * @var s_device_framework
  * @brief USBX device + DFU descriptors, synthesised at bring-up.
  *
- * @details Built by ::ra8_usb_desc_build_dfu from ::k_demo_usb_dev and
+ * @details Built by ::ra8_usb_device_compose from ::k_demo_usb_dev and
  *          ::k_demo_usb_dfu rather than typed out by hand: a single DFU-mode
  *          interface with no data endpoints, since DFU 1.1 sec 4.1.2 runs
  *          every transfer on the default control pipe, plus the DFU functional
@@ -188,13 +189,14 @@ static ULONG s_device_framework_len;
 
 /** @brief Identity and DFU geometry this app publishes. */
 typedef enum : uint16_t {
-  k_demo_usb_vid        = 0x1209U, /**< idVendor, pid.codes.          */
-  k_demo_usb_pid        = 0x0019U, /**< idProduct.                    */
-  k_demo_usb_bcd_device = 0x0100U, /**< bcdDevice, 1.00.              */
-  k_demo_usb_power_ma   = 100U,    /**< Bus draw in mA.               */
-  k_demo_usb_detach_ms  = 255U,    /**< wDetachTimeOut in ms.         */
-  k_demo_usb_xfer_bytes = 64U,     /**< wTransferSize, bytes a block. */
-  k_demo_usb_bcd_dfu    = 0x0110U, /**< bcdDFUVersion, DFU 1.1.       */
+  k_demo_usb_vid        = 0x1209U, /**< idVendor, pid.codes.            */
+  k_demo_usb_pid        = 0x0019U, /**< idProduct.                      */
+  k_demo_usb_bcd_device = 0x0100U, /**< bcdDevice, 1.00.                */
+  k_demo_usb_power_ma   = 100U,    /**< Bus draw in mA.                 */
+  k_demo_usb_detach_ms  = 255U,    /**< wDetachTimeOut in ms.           */
+  k_demo_usb_xfer_bytes = 64U,     /**< wTransferSize, bytes a block.   */
+  k_demo_usb_bcd_dfu    = 0x0110U, /**< bcdDFUVersion, DFU 1.1.         */
+  k_demo_usb_functions  = 1U,      /**< Functions the device publishes. */
 } demo_usb_desc_t;
 
 /**
@@ -401,8 +403,10 @@ static UINT dfu_notify(VOID* dfu, ULONG notification)
 /**
  * @brief Synthesises the device, string and language-id frameworks.
  *
- * @details Replaces the hand-typed descriptor tables: every byte the host
- * enumerates now comes from ::k_demo_usb_dev through libs/ra8_usb_pal.
+ * @details One ::ra8_usb_device_compose call replaces the three encoder
+ * calls this app used to write out by hand: every byte the host enumerates
+ * comes from ::k_demo_usb_dev and the single class entry below, through
+ * libs/ra8_usb_pal.
  *
  * @return ra8_err_t ::k_ra8_ok on success, propagated builder error otherwise.
  * @retval k_ra8_ok All three frameworks were written.
@@ -415,29 +419,33 @@ static UINT dfu_notify(VOID* dfu, ULONG notification)
  */
 static ra8_err_t dfu_usb_build_frameworks(void)
 {
-  uint32_t        built = 0U;
-  const ra8_err_t dev   = ra8_usb_desc_build_dfu(&k_demo_usb_dev,
-                                                 &k_demo_usb_dfu,
-                                                 s_device_framework,
-                                                 (uint32_t)sizeof(s_device_framework),
-                                                 &built);
-  if (dev != k_ra8_ok) {
-    return dev;
-  }
-  s_device_framework_len = (ULONG)built;
+  const ra8_usb_class_t function = {
+    .kind = k_ra8_usb_class_dfu,
+    .dfu  = k_demo_usb_dfu,
+  };
+  const ra8_usb_device_cfg_t cfg = {
+    .desc        = &k_demo_usb_dev,
+    .classes     = &function,
+    .class_count = (uint8_t)k_demo_usb_functions,
+  };
+  ra8_usb_device_frameworks_t fw = {
+    .device      = s_device_framework,
+    .device_cap  = (uint32_t)sizeof(s_device_framework),
+    .strings     = s_string_framework,
+    .strings_cap = (uint32_t)sizeof(s_string_framework),
+    .langid      = s_language_id_framework,
+    .langid_cap  = (uint32_t)sizeof(s_language_id_framework),
+  };
 
-  const ra8_err_t str = ra8_usb_desc_build_strings(&k_demo_usb_dev,
-                                                   s_string_framework,
-                                                   (uint32_t)sizeof(s_string_framework),
-                                                   &s_string_framework_len);
-  if (str != k_ra8_ok) {
-    return str;
+  const ra8_err_t composed = ra8_usb_device_compose(&cfg, &fw);
+  if (composed != k_ra8_ok) {
+    return composed;
   }
 
-  return ra8_usb_desc_build_langid(k_demo_usb_dev.langid,
-                                   s_language_id_framework,
-                                   (uint32_t)sizeof(s_language_id_framework),
-                                   &s_language_id_framework_len);
+  s_device_framework_len      = (ULONG)fw.device_len;
+  s_string_framework_len      = fw.strings_len;
+  s_language_id_framework_len = fw.langid_len;
+  return k_ra8_ok;
 }
 
 /**
