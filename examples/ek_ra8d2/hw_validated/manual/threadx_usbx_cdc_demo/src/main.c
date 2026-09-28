@@ -76,6 +76,7 @@
 #include "ra8_port_utils.h"
 #include "ra8_time.h"
 #include "ra8_usb.h"
+#include "ra8_usb_compose.h"
 #include "ra8_usb_desc.h"
 
 #ifndef RA8_OFF_TARGET
@@ -238,6 +239,7 @@ typedef enum : uint16_t {
   k_demo_usb_out_ep          = 0x02U, /**< Bulk-OUT data pipe.           */
   k_demo_usb_in_ep           = 0x81U, /**< Bulk-IN data pipe.            */
   k_demo_usb_data_bytes      = 64U,   /**< Bulk max packet size, FS.     */
+  k_demo_usb_functions       = 1U,    /**< Functions in the config.      */
 } demo_usb_endpoint_t;
 
 /**
@@ -322,11 +324,13 @@ static uint32_t s_language_id_framework_len = 0U;
 /**
  * @brief Synthesise the three USB frameworks this demo enumerates with.
  *
- * @details Replaces the three hand-typed byte arrays this app used to carry.
- * Nothing here touches a controller: a synthesised framework is bytes, not an
- * attached device.
+ * @details Replaces the three hand-typed byte arrays this app used to carry,
+ * and now the three encoder calls that replaced them: ::ra8_usb_device_compose
+ * writes all three frameworks from one identity plus one class entry. Nothing
+ * here touches a controller: a synthesised framework is bytes, not an attached
+ * device.
  *
- * @return ra8_err_t Result of the three encodes.
+ * @return ra8_err_t Result of the compose.
  * @retval k_ra8_ok               All three frameworks written.
  * @retval k_ra8_err_invalid_size A destination buffer is too small.
  * @retval k_ra8_err_invalid_arg  An endpoint address or packet size is wrong.
@@ -341,27 +345,36 @@ static uint32_t s_language_id_framework_len = 0U;
  */
 static ra8_err_t demo_usb_build_frameworks(void)
 {
-  ra8_err_t err = ra8_usb_desc_build_cdc_acm(&k_demo_usb_device,
-                                             &k_demo_usb_cdc,
-                                             s_device_framework_fs,
-                                             (uint32_t)sizeof(s_device_framework_fs),
-                                             &s_device_framework_len);
+  const ra8_usb_class_t function = {
+    .kind    = k_ra8_usb_class_cdc_acm,
+    .cdc_acm = k_demo_usb_cdc,
+  };
+
+  const ra8_usb_device_cfg_t cfg = {
+    .desc        = &k_demo_usb_device,
+    .classes     = &function,
+    .class_count = (uint8_t)k_demo_usb_functions,
+  };
+
+  ra8_usb_device_frameworks_t fw = {
+    .device      = s_device_framework_fs,
+    .device_cap  = (uint32_t)sizeof(s_device_framework_fs),
+    .strings     = s_string_framework,
+    .strings_cap = (uint32_t)sizeof(s_string_framework),
+    .langid      = s_language_id_framework,
+    .langid_cap  = (uint32_t)sizeof(s_language_id_framework),
+  };
+
+  const ra8_err_t err = ra8_usb_device_compose(&cfg, &fw);
   if (err != k_ra8_ok) {
     return err;
   }
 
-  err = ra8_usb_desc_build_strings(&k_demo_usb_device,
-                                   s_string_framework,
-                                   (uint32_t)sizeof(s_string_framework),
-                                   &s_string_framework_len);
-  if (err != k_ra8_ok) {
-    return err;
-  }
+  s_device_framework_len      = fw.device_len;
+  s_string_framework_len      = fw.strings_len;
+  s_language_id_framework_len = fw.langid_len;
 
-  return ra8_usb_desc_build_langid(k_demo_usb_device.langid,
-                                   s_language_id_framework,
-                                   (uint32_t)sizeof(s_language_id_framework),
-                                   &s_language_id_framework_len);
+  return k_ra8_ok;
 }
 
 /* -------------------------------------------------------------------------- */
