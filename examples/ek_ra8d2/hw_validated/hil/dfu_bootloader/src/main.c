@@ -67,6 +67,7 @@
 #include "ra8_sci.h"
 #include "ra8_time.h"
 #include "ra8_usb.h"
+#include "ra8_usb_desc.h"
 #ifdef RA8_ENABLE_ROOT_OF_TRUST
 #include "mbedtls/memory_buffer_alloc.h"
 #include "ra8_psa_crypto.h"
@@ -198,61 +199,67 @@ static UCHAR s_usbx_pool[k_blc_usbx_pool_bytes];
 
 /**
  * @var s_device_framework
- * @brief USBX device + DFU descriptors: a DFU-mode interface (bInterfaceProtocol
- *        0x02, enumerates straight into dfuIDLE) + the DFU functional descriptor
- *        (CAN_DNLOAD | CAN_UPLOAD, wTransferSize 64). DFU runs over EP0.
+ * @brief USBX device + DFU descriptors, synthesised at bring-up.
+ *
+ * @details Built by ::ra8_usb_desc_build_dfu from ::k_demo_usb_dev and
+ *          ::k_demo_usb_dfu rather than typed out by hand: a single DFU-mode
+ *          interface with no data endpoints, since DFU 1.1 sec 4.1.2 runs
+ *          every transfer on the default control pipe, plus the DFU functional
+ *          descriptor. ::s_device_framework_len carries the length actually
+ *          written, which is what the stack wants; sizeof() would hand it the
+ *          whole buffer.
  * @since 0.1.0
  */
-static UCHAR s_device_framework[] = {
-  /* Device descriptor (18 bytes). idVendor 0x1209, idProduct 0x0019. */
-  0x12U,
-  0x01U,
-  0x00U,
-  0x02U,
-  0x00U,
-  0x00U,
-  0x00U,
-  0x40U,
-  0x09U,
-  0x12U,
-  0x19U,
-  0x00U,
-  0x00U,
-  0x01U,
-  0x01U,
-  0x02U,
-  0x03U,
-  0x01U,
-  /* Configuration descriptor (wTotalLength 0x1B = 27). */
-  0x09U,
-  0x02U,
-  0x1BU,
-  0x00U,
-  0x01U,
-  0x01U,
-  0x00U,
-  0x80U,
-  0x32U,
-  /* DFU interface (class 0xFE, subclass 0x01, protocol 0x02 = DFU mode). */
-  0x09U,
-  0x04U,
-  0x00U,
-  0x00U,
-  0x00U,
-  0xFEU,
-  0x01U,
-  0x02U,
-  0x00U,
-  /* DFU functional descriptor. bmAttributes 0x07, wTransferSize 64. */
-  0x09U,
-  0x21U,
-  0x07U,
-  0xFFU,
-  0x00U,
-  0x40U,
-  0x00U,
-  0x10U,
-  0x01U,
+static UCHAR s_device_framework[k_ra8_usb_desc_framework_bytes_max];
+
+/** @brief Bytes of ::s_device_framework the builder actually wrote. */
+static ULONG s_device_framework_len;
+
+/** @brief Identity and DFU geometry this app publishes. */
+typedef enum : uint16_t {
+  k_demo_usb_vid        = 0x1209U, /**< idVendor, pid.codes.          */
+  k_demo_usb_pid        = 0x0019U, /**< idProduct.                    */
+  k_demo_usb_bcd_device = 0x0100U, /**< bcdDevice, 1.00.              */
+  k_demo_usb_power_ma   = 100U,    /**< Bus draw in mA.               */
+  k_demo_usb_detach_ms  = 255U,    /**< wDetachTimeOut in ms.         */
+  k_demo_usb_xfer_bytes = 64U,     /**< wTransferSize, bytes a block. */
+  k_demo_usb_bcd_dfu    = 0x0110U, /**< bcdDFUVersion, DFU 1.1.       */
+} demo_usb_desc_t;
+
+/**
+ * @var k_demo_usb_dev
+ * @brief The identity this app publishes.
+ * @since 0.1.0
+ */
+static const ra8_usb_desc_device_t k_demo_usb_dev = {
+  .vid           = (uint16_t)k_demo_usb_vid,
+  .pid           = (uint16_t)k_demo_usb_pid,
+  .bcd_device    = (uint16_t)k_demo_usb_bcd_device,
+  .manufacturer  = "Brighton Sikarskie",
+  .product       = "RA8D2 DFU",
+  .serial        = "00000019",
+  .langid        = 0U,
+  .max_power_ma  = (uint16_t)k_demo_usb_power_ma,
+  .self_powered  = false,
+  .remote_wakeup = false,
+};
+
+/**
+ * @var k_demo_usb_dfu
+ * @brief The DFU function this app publishes: download, upload, tolerant.
+ * @note @c dfu_mode selects bInterfaceProtocol 0x02, so a host enumerates
+ *       straight into dfuIDLE instead of needing a DFU_DETACH first.
+ * @since 0.1.0
+ */
+static const ra8_usb_desc_dfu_t k_demo_usb_dfu = {
+  .can_download           = true,
+  .can_upload             = true,
+  .manifestation_tolerant = true,
+  .will_detach            = false,
+  .dfu_mode               = true,
+  .detach_timeout_ms      = (uint16_t)k_demo_usb_detach_ms,
+  .transfer_bytes         = (uint16_t)k_demo_usb_xfer_bytes,
+  .bcd_dfu                = (uint16_t)k_demo_usb_bcd_dfu,
 };
 
 /**
@@ -576,11 +583,22 @@ static VOID blc_device_worker(ULONG arg)
 {
   (void)arg;
 
+  uint32_t built = 0U;
+  if (ra8_usb_desc_build_dfu(&k_demo_usb_dev,
+                             &k_demo_usb_dfu,
+                             s_device_framework,
+                             (uint32_t)sizeof(s_device_framework),
+                             &built) != k_ra8_ok) {
+    s_dbg_dev_err = (uint32_t)k_ra8_err_invalid_arg;
+    return;
+  }
+  s_device_framework_len = (ULONG)built;
+
   const ra8_err_t e = ra8_dfu_device_start(k_ra8_usb_speed_fs,
                                            s_usbx_pool,
                                            (uint32_t)sizeof(s_usbx_pool),
                                            s_device_framework,
-                                           (uint32_t)sizeof(s_device_framework),
+                                           s_device_framework_len,
                                            s_string_framework,
                                            (uint32_t)sizeof(s_string_framework),
                                            s_language_id_framework,
