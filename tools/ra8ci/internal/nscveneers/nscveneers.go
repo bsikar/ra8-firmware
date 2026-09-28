@@ -18,7 +18,12 @@ var declaration = regexp.MustCompile(`RA8_NSC_VENEER\s+\w[\w\s\*]*?\b(ra8_nsc_\w
 // Run executes the self-test or scans the public header against NSC source definitions.
 func Run(ctx context.Context, root string, args []string, stdout, stderr io.Writer) int {
 	if ctx == nil || root == "" || stdout == nil || stderr == nil {
-		fmt.Fprintln(stderr, "ra8ci nsc-veneer-defs: invalid input")
+		// The refusal cannot be announced down a writer the caller did not
+		// supply: printing first is what turned a missing stderr into a crash
+		// instead of the exit status this gate promises.
+		if stderr != nil {
+			fmt.Fprintln(stderr, "ra8ci nsc-veneer-defs: invalid input")
+		}
 		return 2
 	}
 	if len(args) == 1 && args[0] == "--selftest" {
