@@ -31,6 +31,7 @@ include("${_d}/cmake/ra8_add_app.cmake")
 
 ra8_add_app(
   NAME threadx_canfd_demo
+  THREADX_HEAP SDRAM
   STACK_BYTES 2200
   DESCRIPTION "Eclipse ThreadX CANFD heartbeat / RX-logger demo for RA8D2"
   USES threadx

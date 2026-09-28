@@ -31,6 +31,7 @@ include("${_d}/cmake/ra8_add_app.cmake")
 # Ethernet driver `USES netxduo` also links is dead-stripped.
 ra8_add_app(
   NAME wifi_hal_join
+  THREADX_HEAP SDRAM
   STACK_BYTES 8192
   DESCRIPTION "Join the bench Wi-Fi and get an IP by DHCP, through the ra8_wifi facade"
   USES threadx netxduo esp_hosted

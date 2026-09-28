@@ -575,11 +575,21 @@ def _check_option_setting(path: pathlib.Path, code: str) -> list[Finding]:
 
 
 # A script that owns the option bytes must carry every word in the family; one
-# that does not own them carries none. The complete population is comfortably
-# into the sixties, so this floor sits far below a healthy tree -- low enough
-# never to fight normal churn, high enough that a PROVIDE rename which silently
-# stopped LD007/LD008 matching anything cannot slip past as a clean run.
-OPTION_SETTING_FILE_FLOOR = 40
+# that does not own them carries none. This floor sits below a healthy tree --
+# low enough never to fight normal churn, high enough that a PROVIDE rename
+# which silently stopped LD007/LD008 matching anything cannot slip past as a
+# clean run.
+#
+# Re-pinned 40 -> 25 when #761 landed. The population was comfortably into the
+# sixties because 42 ThreadX apps each carried a full private copy of the board
+# memory map, option-setting family and all. Those apps now compose the board
+# script through ra8_add_app(THREADX_HEAP ...) instead of forking it, so the
+# family is declared once in libs/ra8_board_ek_ra8d2/ld/linker_script.ld and
+# reaches them by INCLUDE. The option bytes did not go anywhere; 42 duplicate
+# declarations of them did. 32 scripts declare the complete family after the
+# conversion, so 25 keeps the same headroom-above-zero the old pin had: a
+# rename still drops the count to 0 and still fails.
+OPTION_SETTING_FILE_FLOOR = 25
 
 
 def option_section(name: str) -> str:

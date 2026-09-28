@@ -35,6 +35,7 @@ include("${_d}/cmake/ra8_add_app.cmake")
 # spliced in below.
 ra8_add_app(
   NAME threadx_fs_levelx_demo
+  THREADX_HEAP SDRAM
   STACK_BYTES 2200
   DESCRIPTION "ThreadX + ra8_fs-on-LevelX wear-levelled FAT demo for RA8D2"
   LIBS ra8_board_ek_ra8d2 ra8_fs
