@@ -6,11 +6,14 @@ programmed through the MACI command sequencer (#258). The FTL turns that into a
 clean free-overwrite block device and spreads wear by relocating every
 logical-block write to a fresh, least-worn physical block (copy-on-write).
 
-The window is a couple of dozen 512-byte blocks. The demo hands the FTL all but
-the last, presents a smaller set of logical blocks so the remainder is relocation
-headroom, and reserves that last physical block as a non-volatile slot for the
-mapping checkpoint. The FTL never touches the reserved block; the demo erases and
-programs it directly through the raw block device.
+The window is a couple of dozen 512-byte blocks. The demo declares two numbers,
+the count of logical blocks to present and a reserved tail of one block, and
+`ra8_ftl_mount()` does the rest: it reads the device's real block count, keeps
+the tail back for the mapping checkpoint, and hands the FTL the blocks below it
+so the remainder is relocation headroom. The reserved block is outside the FTL's
+physical range by construction, and the checkpoint is written by `ra8_ftl_sync()`
+rather than by the app driving raw erases and programs at an LBA it worked out
+itself (#763).
 
 ## The three acts
 
@@ -18,13 +21,19 @@ programs it directly through the raw block device.
    each write `ra8_ftl_phys_of()` reports the physical block now backing it: the
    index migrates while the logical address stays fixed. Each write is read back
    and byte-verified, and the erase-count spread stays tight.
-2. **Checkpoint.** `ra8_ftl_checkpoint_save()` serialises the volatile mapping
-   tables into one block, which is programmed into the reserved MRAM block.
+2. **Checkpoint.** One `ra8_ftl_sync()` call serialises the volatile mapping
+   tables and programs them into the reserved tail. The app names no LBA and
+   sizes no blob; the mount already knows where the checkpoint lives.
 3. **Power-cycle survival.** The demo models a reset by zeroing the FTL handle
    and its caller tables -- SRAM is volatile -- while the MRAM retains its bytes.
-   A naive re-init has lost the mapping, and the logical block reads back the
-   erase value, which is the proof; `ra8_ftl_checkpoint_load()` then restores
-   both the data and the exact physical mapping.
+   A naive `ra8_ftl_init()` has lost the mapping, and the logical block reads
+   back the erase value, which is the proof; mounting the same medium again
+   reports `k_ra8_ftl_mount_resumed` and restores both the data and the exact
+   physical mapping. `ra8_ftl_unmount()` then ends the run in order.
+
+   That naive re-init is kept deliberately as the counter-example. It is the
+   entry point that takes a physical count and knows nothing about a
+   checkpoint, which is what the mount lifecycle exists to replace.
 
 ## Why a checkpoint, and not automatic survival
 
