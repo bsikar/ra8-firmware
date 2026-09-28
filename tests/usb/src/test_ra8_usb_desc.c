@@ -459,6 +459,205 @@ RA8_INTERNAL static void internal_test_msc_refusals(void)
   TEST_END("a framework it cannot encode is refused, not truncated");
 }
 
+/* =============================================================================
+ * Human interface
+ * =============================================================================
+ */
+
+/** @brief Sizes the HID fixtures below share. */
+enum : uint32_t {
+  k_fixture_hid_bytes        = 52U, /**< Length of every HID framework here.  */
+  k_fixture_hid_mouse_report = 52U, /**< usb_hid_device report descriptor.    */
+  k_fixture_hid_plain_report = 21U, /**< usb_selftest_hid report descriptor.  */
+  k_fixture_hid_kbd_report   = 45U, /**< usb_host_keyboard report descriptor. */
+};
+
+/**
+ * @brief The FS device framework of usb_hid_device, byte for byte.
+ *
+ * @details Transcribed from `s_device_framework_fs[]` in that app's `main.c`
+ * at merge-base. A boot mouse: interface subclass 1, protocol 2, an 8-byte
+ * interrupt endpoint polled every 10 ms, and a 0x0034 = 52 byte report
+ * descriptor. The configuration block is 0x0022 = 34 bytes.
+ */
+static const uint8_t k_oracle_hid_mouse[k_fixture_hid_bytes] = {
+  0x12U, 0x01U, 0x00U, 0x02U, 0x00U, 0x00U, 0x00U, 0x40U, 0x09U, 0x12U, 0x01U, 0x00U, 0x00U,
+  0x01U, 0x01U, 0x02U, 0x03U, 0x01U, 0x09U, 0x02U, 0x22U, 0x00U, 0x01U, 0x01U, 0x00U, 0x80U,
+  0x32U, 0x09U, 0x04U, 0x00U, 0x00U, 0x01U, 0x03U, 0x01U, 0x02U, 0x00U, 0x09U, 0x21U, 0x11U,
+  0x01U, 0x00U, 0x01U, 0x22U, 0x34U, 0x00U, 0x07U, 0x05U, 0x81U, 0x03U, 0x08U, 0x00U, 0x0AU,
+};
+
+/**
+ * @brief The FS device framework of usb_selftest_hid, byte for byte.
+ *
+ * @details The same shape with no boot profile at all: subclass and protocol
+ * are both 0, the endpoint carries 64 bytes and is polled every frame, and the
+ * report descriptor is 0x0015 = 21 bytes.
+ */
+static const uint8_t k_oracle_hid_plain[k_fixture_hid_bytes] = {
+  0x12U, 0x01U, 0x00U, 0x02U, 0x00U, 0x00U, 0x00U, 0x40U, 0x09U, 0x12U, 0x18U, 0x00U, 0x00U,
+  0x01U, 0x01U, 0x02U, 0x03U, 0x01U, 0x09U, 0x02U, 0x22U, 0x00U, 0x01U, 0x01U, 0x00U, 0x80U,
+  0x32U, 0x09U, 0x04U, 0x00U, 0x00U, 0x01U, 0x03U, 0x00U, 0x00U, 0x00U, 0x09U, 0x21U, 0x11U,
+  0x01U, 0x00U, 0x01U, 0x22U, 0x15U, 0x00U, 0x07U, 0x05U, 0x81U, 0x03U, 0x40U, 0x00U, 0x01U,
+};
+
+/**
+ * @brief The FS device framework of usb_host_keyboard's device half, byte for byte.
+ *
+ * @details A boot keyboard: subclass 1, protocol 1, and a 0x002D = 45 byte
+ * report descriptor. It shares its PID with usb_selftest_hid, which is what
+ * the tree carries; only the class triple and the report length differ.
+ */
+static const uint8_t k_oracle_hid_keyboard[k_fixture_hid_bytes] = {
+  0x12U, 0x01U, 0x00U, 0x02U, 0x00U, 0x00U, 0x00U, 0x40U, 0x09U, 0x12U, 0x18U, 0x00U, 0x00U,
+  0x01U, 0x01U, 0x02U, 0x03U, 0x01U, 0x09U, 0x02U, 0x22U, 0x00U, 0x01U, 0x01U, 0x00U, 0x80U,
+  0x32U, 0x09U, 0x04U, 0x00U, 0x00U, 0x01U, 0x03U, 0x01U, 0x01U, 0x00U, 0x09U, 0x21U, 0x11U,
+  0x01U, 0x00U, 0x01U, 0x22U, 0x2DU, 0x00U, 0x07U, 0x05U, 0x81U, 0x03U, 0x40U, 0x00U, 0x01U,
+};
+
+/** @brief The identity usb_hid_device publishes. */
+static const ra8_usb_desc_device_t k_fixture_hid_dev = {
+  .vid           = 0x1209U,
+  .pid           = 0x0001U,
+  .bcd_device    = 0x0100U,
+  .manufacturer  = "Brighton Sikarskie",
+  .product       = "EK-RA8D2 HID Mouse",
+  .serial        = "00000001",
+  .langid        = 0U,
+  .max_power_ma  = 100U,
+  .self_powered  = false,
+  .remote_wakeup = false,
+};
+
+/** @brief The boot-mouse endpoint layout that app publishes. */
+static const ra8_usb_desc_hid_t k_fixture_hid_mouse = {
+  .in_ep            = 0x81U,
+  .data_bytes       = 8U,
+  .poll_interval_ms = 10U,
+  .report_bytes     = (uint16_t)k_fixture_hid_mouse_report,
+  .boot_interface   = true,
+  .protocol         = k_ra8_usb_desc_hid_protocol_mouse,
+};
+
+/**
+ * @brief The HID builder reproduces the frameworks three shipped apps carry.
+ *
+ * @details All three at once, because the class triple is the whole difference
+ * between them: a boot mouse, a plain interface with no boot profile, and a
+ * boot keyboard. The report length reaches the wire from a field rather than
+ * from a hand-counted literal, which is the drift this builder exists to stop.
+ */
+RA8_INTERNAL static void internal_test_hid_matches_app(void)
+{
+  TEST_BEGIN("the HID frameworks of usb_hid_device, usb_selftest_hid and usb_host_keyboard");
+  uint8_t  got[k_ra8_usb_desc_framework_bytes_max] = {};
+  uint32_t used                                    = 0U;
+
+  TEST_ASSERT_EQ(k_ra8_ok,
+                 ra8_usb_desc_build_hid(&k_fixture_hid_dev,
+                                        &k_fixture_hid_mouse,
+                                        got,
+                                        (uint32_t)sizeof(got),
+                                        &used));
+  TEST_ASSERT_EQ(k_fixture_hid_bytes, used);
+  for (uint32_t i = 0U; i < k_fixture_hid_bytes; i++) {
+    TEST_ASSERT_EQ(k_oracle_hid_mouse[i], got[i]);
+  }
+
+  ra8_usb_desc_device_t test_dev = k_fixture_hid_dev;
+  test_dev.pid                   = 0x0018U;
+  test_dev.product               = "RA8D2 HID TEST";
+  test_dev.serial                = "00000018";
+
+  ra8_usb_desc_hid_t plain = k_fixture_hid_mouse;
+  plain.data_bytes         = 64U;
+  plain.poll_interval_ms   = 1U;
+  plain.report_bytes       = (uint16_t)k_fixture_hid_plain_report;
+  plain.boot_interface     = false;
+  plain.protocol           = k_ra8_usb_desc_hid_protocol_none;
+
+  used = 0U;
+  TEST_ASSERT_EQ(k_ra8_ok,
+                 ra8_usb_desc_build_hid(&test_dev, &plain, got, (uint32_t)sizeof(got), &used));
+  TEST_ASSERT_EQ(k_fixture_hid_bytes, used);
+  for (uint32_t i = 0U; i < k_fixture_hid_bytes; i++) {
+    TEST_ASSERT_EQ(k_oracle_hid_plain[i], got[i]);
+  }
+
+  ra8_usb_desc_hid_t keyboard = plain;
+  keyboard.report_bytes       = (uint16_t)k_fixture_hid_kbd_report;
+  keyboard.boot_interface     = true;
+  keyboard.protocol           = k_ra8_usb_desc_hid_protocol_keyboard;
+
+  used = 0U;
+  TEST_ASSERT_EQ(k_ra8_ok,
+                 ra8_usb_desc_build_hid(&test_dev, &keyboard, got, (uint32_t)sizeof(got), &used));
+  TEST_ASSERT_EQ(k_fixture_hid_bytes, used);
+  for (uint32_t i = 0U; i < k_fixture_hid_bytes; i++) {
+    TEST_ASSERT_EQ(k_oracle_hid_keyboard[i], got[i]);
+  }
+
+  /* Every HID framework here is one interface and one endpoint, so the
+   * configuration block is 0x0022 = 34 bytes whatever the class triple says. */
+  TEST_ASSERT_EQ(0x22, got[20]);
+  TEST_ASSERT_EQ(0x00, got[21]);
+
+  TEST_END("all three reproduce the shipped bytes");
+}
+
+/**
+ * @brief The HID builder refuses what it cannot encode.
+ *
+ * @details The pairing rule is the interesting one: bInterfaceProtocol is
+ * reserved unless the interface declares the boot subclass, so a boot protocol
+ * on a non-boot interface is refused rather than written out and ignored.
+ */
+RA8_INTERNAL static void internal_test_hid_refusals(void)
+{
+  TEST_BEGIN("the HID builder refuses a config it cannot put on the wire");
+  uint8_t  got[k_ra8_usb_desc_framework_bytes_max] = {};
+  uint32_t used                                    = 0U;
+
+  TEST_ASSERT_EQ(
+    k_ra8_err_null_ptr,
+    ra8_usb_desc_build_hid(nullptr, &k_fixture_hid_mouse, got, (uint32_t)sizeof(got), &used));
+
+  ra8_usb_desc_hid_t out_dir = k_fixture_hid_mouse;
+  out_dir.in_ep              = 0x01U;
+  TEST_ASSERT_EQ(
+    k_ra8_err_invalid_arg,
+    ra8_usb_desc_build_hid(&k_fixture_hid_dev, &out_dir, got, (uint32_t)sizeof(got), &used));
+
+  ra8_usb_desc_hid_t no_report = k_fixture_hid_mouse;
+  no_report.report_bytes       = 0U;
+  TEST_ASSERT_EQ(
+    k_ra8_err_invalid_arg,
+    ra8_usb_desc_build_hid(&k_fixture_hid_dev, &no_report, got, (uint32_t)sizeof(got), &used));
+
+  ra8_usb_desc_hid_t no_poll = k_fixture_hid_mouse;
+  no_poll.poll_interval_ms   = 0U;
+  TEST_ASSERT_EQ(
+    k_ra8_err_invalid_arg,
+    ra8_usb_desc_build_hid(&k_fixture_hid_dev, &no_poll, got, (uint32_t)sizeof(got), &used));
+
+  ra8_usb_desc_hid_t stray_protocol = k_fixture_hid_mouse;
+  stray_protocol.boot_interface     = false;
+  TEST_ASSERT_EQ(
+    k_ra8_err_invalid_arg,
+    ra8_usb_desc_build_hid(&k_fixture_hid_dev, &stray_protocol, got, (uint32_t)sizeof(got), &used));
+
+  TEST_ASSERT_EQ(k_ra8_err_invalid_size,
+                 ra8_usb_desc_build_hid(&k_fixture_hid_dev, &k_fixture_hid_mouse, got, 8U, &used));
+
+  ra8_usb_desc_device_t greedy = k_fixture_hid_dev;
+  greedy.max_power_ma          = 600U;
+  TEST_ASSERT_EQ(
+    k_ra8_err_range_check_failed,
+    ra8_usb_desc_build_hid(&greedy, &k_fixture_hid_mouse, got, (uint32_t)sizeof(got), &used));
+
+  TEST_END("a framework it cannot encode is refused, not truncated");
+}
+
 int main(void)
 {
   internal_test_cdc_matches_app();
@@ -467,5 +666,7 @@ int main(void)
   internal_test_optional_fields();
   internal_test_msc_matches_app();
   internal_test_msc_refusals();
+  internal_test_hid_matches_app();
+  internal_test_hid_refusals();
   return 0;
 }

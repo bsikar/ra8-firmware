@@ -193,6 +193,47 @@ typedef struct {
   bool     high_speed; /**< Emit the device qualifier for an HS app. */
 } ra8_usb_desc_msc_t;
 
+/**
+ * @enum ra8_usb_desc_hid_protocol_t
+ * @brief The boot-interface protocols a HID interface can declare.
+ *
+ * @details bInterfaceProtocol is only meaningful on a boot interface: HID 1.11
+ * appendix B defines the two boot report layouts a BIOS can drive without
+ * parsing a report descriptor, and reserves the field otherwise. A non-boot
+ * interface therefore declares ::k_ra8_usb_desc_hid_protocol_none, and the
+ * builder refuses any other pairing rather than putting a field on the wire
+ * that no host is allowed to read.
+ */
+typedef enum : uint8_t {
+  k_ra8_usb_desc_hid_protocol_none     = 0U, /**< Not a boot interface.  */
+  k_ra8_usb_desc_hid_protocol_keyboard = 1U, /**< Boot keyboard, app. B. */
+  k_ra8_usb_desc_hid_protocol_mouse    = 2U, /**< Boot mouse, app. B.    */
+} ra8_usb_desc_hid_protocol_t;
+
+/**
+ * @struct ra8_usb_desc_hid_t
+ * @brief The endpoint layout of a single-interface human-interface device.
+ *
+ * @details One interrupt-IN endpoint and no OUT endpoint is the shape all
+ * three current copies publish, so the endpoint count is fixed rather than
+ * parameterised. `report_bytes` is the length of the report descriptor the
+ * app hands the class driver separately: it is copied into the HID class
+ * descriptor's `wDescriptorLength`, and it is the field a human counting by
+ * hand gets wrong, because it has to track an array that lives elsewhere in
+ * the file. Passing `sizeof(s_report_descriptor)` keeps the two in step.
+ *
+ * @invariant `in_ep` has bit 7 set; `poll_interval_ms` is at least 1, because
+ * bInterval 0 is not a legal polling period for an interrupt endpoint.
+ */
+typedef struct {
+  uint8_t                     in_ep;            /**< Interrupt-IN address, e.g. 0x81. */
+  uint16_t                    data_bytes;       /**< Interrupt max packet size.       */
+  uint8_t                     poll_interval_ms; /**< bInterval, frames.               */
+  uint16_t                    report_bytes;     /**< Report-descriptor length.        */
+  bool                        boot_interface;   /**< Declare the boot subclass.       */
+  ra8_usb_desc_hid_protocol_t protocol;         /**< Boot protocol, none if not boot. */
+} ra8_usb_desc_hid_t;
+
 /* =============================================================================
  * Builders
  * =============================================================================
@@ -332,6 +373,53 @@ ra8_usb_desc_build_langid(uint16_t langid, uint8_t* out, uint32_t cap, uint32_t*
  */
 [[nodiscard]] ra8_err_t ra8_usb_desc_build_msc(const ra8_usb_desc_device_t* dev,
                                                const ra8_usb_desc_msc_t*    msc,
+                                               uint8_t*                     out,
+                                               uint32_t                     cap,
+                                               uint32_t*                    out_len);
+
+/**
+ * @brief Write the device framework of a single-interface HID device.
+ *
+ * @details The result is the 18-byte device descriptor followed by the whole
+ * configuration block: configuration descriptor, the HID interface, the HID
+ * class descriptor naming one report descriptor, and the single interrupt-IN
+ * endpoint. As with the other builders `wTotalLength` is computed from what
+ * was actually emitted, and the device descriptor advertises class 0 so the
+ * class triple is read off the interface.
+ *
+ * The report descriptor itself is not synthesised. Its bytes are the device's
+ * whole personality, they differ completely between a mouse and a keyboard,
+ * and an app keeps declaring them; this builder only copies their length into
+ * the HID class descriptor so the two cannot drift apart.
+ *
+ * @param[in]  dev      Device identity.
+ * @param[in]  hid      Endpoint layout of the HID function.
+ * @param[out] out      Caller-owned destination buffer.
+ * @param[in]  cap      Capacity of @p out in bytes.
+ * @param[out] out_len  Bytes written on success. Untouched on failure.
+ *
+ * @return ra8_err_t Result of the encode.
+ * @retval k_ra8_ok                 Framework written.
+ * @retval k_ra8_err_null_ptr       @p dev, @p hid, @p out or @p out_len is NULL.
+ * @retval k_ra8_err_invalid_size   @p cap cannot hold the framework.
+ * @retval k_ra8_err_invalid_arg    The endpoint address carries the wrong
+ *                                  direction bit, a max packet size or report
+ *                                  length is zero, the polling interval is
+ *                                  zero, or a boot protocol is declared on a
+ *                                  non-boot interface.
+ * @retval k_ra8_err_range_check_failed @p dev->max_power_ma exceeds what
+ *                                  bMaxPower can encode (500 mA).
+ *
+ * @pre @p out addresses at least @p cap writable bytes.
+ * @post On success @p out holds the framework and @p out_len counts it.
+ * @post On failure @p out_len is unchanged and @p out may be partly written.
+ *
+ * @note Pure; no state is retained between calls. Synthesising a framework
+ *       does not attach a device or touch a controller.
+ * @since 0.1.0
+ */
+[[nodiscard]] ra8_err_t ra8_usb_desc_build_hid(const ra8_usb_desc_device_t* dev,
+                                               const ra8_usb_desc_hid_t*    hid,
                                                uint8_t*                     out,
                                                uint32_t                     cap,
                                                uint32_t*                    out_len);
