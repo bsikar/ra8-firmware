@@ -382,6 +382,69 @@ typedef enum : uint32_t {
  */
 [[nodiscard]] ra8_err_t ra8_board_usbhs_host_init(void);
 
+/**
+ * @brief Which of the two USB controllers a call is about.
+ *
+ * @details
+ * The EK-RA8D2 exposes both: the full-speed peripheral on J11 and the
+ * high-speed peripheral on J7. They differ in more than speed. FS routes
+ * its D+/D- pair through board port pins and straps its role with the
+ * P5_00 VBUSEN GPIO; HS keeps its differential pair inside the chip and
+ * straps its role with PD07 plus, optionally, the U15 SW4-8 override.
+ * ``ra8_board_usb_port_init`` hides that asymmetry.
+ */
+typedef enum : uint8_t {
+  k_ra8_board_usb_port_fs = 0U, /**< J11 full-speed peripheral. UM Table 22 p 30. */
+  k_ra8_board_usb_port_hs = 1U, /**< J7 high-speed peripheral. UM Table 28 p 34.  */
+} ra8_board_usb_port_t;
+
+/** @brief Which end of the cable the port is meant to be. */
+typedef enum : uint8_t {
+  k_ra8_board_usb_role_device = 0U, /**< The board enumerates on somebody else's bus. */
+  k_ra8_board_usb_role_host   = 1U, /**< The board drives the bus and supplies VBUS.  */
+} ra8_board_usb_role_t;
+
+/**
+ * @brief Route a USB port's pins and strap it for the role it is to play.
+ *
+ * @details
+ * The eight-step choreography nineteen example apps write out longhand,
+ * in one call. For @p port ``fs`` it routes P4_07 VBUS sense, P8_14 D+ and
+ * P8_15 D- to ``k_ra8_psel_usb_fs`` and drives the P5_00 VBUSEN GPIO to
+ * match the role. That GPIO is the subtle one: it has to be a GPIO driven
+ * LOW for device mode, because routing it to the peripheral function
+ * instead forces host VBUSEN and the board never enumerates. For @p port
+ * ``hs`` it defers to ``ra8_board_usbhs_device_init`` /
+ * ``ra8_board_usbhs_host_init``, which already own the PD07-versus-U15
+ * subtlety, so no HS logic is restated here.
+ *
+ * FS bring-up stops at the pins. The FS controller clock is
+ * ``ra8_cgc_usbfs_clock_enable`` and stays the caller's call, because
+ * apps order it against ``ra8_cgc_init`` differently and some route the
+ * pins long before they touch the clock tree. The HS arms do bring their
+ * clock up, because the existing helpers they delegate to always have.
+ *
+ * @param[in] port Which controller. Out-of-range values are refused.
+ * @param[in] role Device or host. Out-of-range values are refused.
+ *
+ * @return ``ra8_err_t`` Error code.
+ * @retval k_ra8_ok               Pins routed and the role line strapped.
+ * @retval k_ra8_err_invalid_arg  @p port or @p role is not an enumerator.
+ * @retval k_ra8_err_gpio_conflict A pin this port needs is already owned.
+ *
+ * @pre IOPORT is powered (reset default) and ``ra8_mstp_init`` has run.
+ * @post On success the port's pins carry their peripheral function and the
+ *       role line is driven.
+ * @post On failure routing may be partly applied; the port is not usable.
+ *
+ * @note Not thread-safe; call once per port from the boot context.
+ * @see ra8_board_usbhs_device_init
+ * @see ra8_board_usbhs_host_init
+ * @since 0.1.0
+ */
+[[nodiscard]] ra8_err_t ra8_board_usb_port_init(ra8_board_usb_port_t port,
+                                                ra8_board_usb_role_t role);
+
 /* =============================================================================
  * 8. Camera connector J35 (UM Section 8.3, Tables 35 + 36, p 48 + 49)
  * =============================================================================
