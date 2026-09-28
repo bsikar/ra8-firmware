@@ -41,6 +41,7 @@
 #include "ra8_attributes.h"
 #include "ra8_board_ek_ra8d2_connectors.h"
 #include "ra8_err.h"
+#include "ra8_i2c_bus_ops.h"
 #include "ra8_port_constants.h"
 
 #ifdef __cplusplus
@@ -625,6 +626,30 @@ ra8_board_camera_sccb_write_reg(void* ctx, uint8_t address, uint16_t reg, uint8_
  * @since 0.1.0
  */
 void ra8_board_camera_delay_ms(void* ctx, uint32_t milliseconds);
+
+/**
+ * @brief Expose the J35 camera SCCB bus through the house I2C seam.
+ *
+ * @details
+ * Binds RIIC1 into a board-owned ::ra8_io_i2c_bus_t and publishes it as an
+ * ::ra8_i2c_bus_ops_t, the path ::ra8_board_touch_open already takes. A
+ * sensor driver that consumes the seam (`ra8_ov5640_bind_i2c`) then needs no
+ * board-specific callbacks. The handle backing the ops has static storage
+ * duration, so the ops outlive the call; the bus must already be up.
+ *
+ * @param[out] out Destination ops, filled only on success.
+ * @return Error code.
+ * @retval k_ra8_ok @p out carries the camera bus.
+ * @retval k_ra8_err_null_ptr @p out is nullptr.
+ * @retval k_ra8_err_invalid_arg The camera channel is out of range.
+ * @pre @p out points to writable storage.
+ * @pre RIIC1 has been initialised (`ra8_i2c_init`).
+ * @post On success every ops callback is non-NULL; no bus traffic is issued.
+ * @note Not thread-safe against concurrent calls; the handle is file-scope.
+ * @see ra8_i2c_bus_ops_t  The house seam this fills.
+ * @since 0.1.0
+ */
+[[nodiscard]] ra8_err_t ra8_board_camera_i2c_ops(ra8_i2c_bus_ops_t* out);
 
 /* =============================================================================
  * 9. Octo-SPI flash + SDRAM (UM Section 6.3 + 6.4, Tables 29 + 30, p 35 + 36)
