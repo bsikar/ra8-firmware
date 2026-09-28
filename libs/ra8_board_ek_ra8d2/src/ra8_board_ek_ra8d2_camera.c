@@ -159,40 +159,6 @@ ra8_err_t ra8_board_camera_reset(void)
 }
 
 /* See the public header for the documented contract. */
-ra8_err_t
-ra8_board_camera_sccb_read_reg(void* ctx, uint8_t address, uint16_t reg, uint8_t* out_value)
-{
-  (void)ctx;
-  RA8_CHECK_NULL_PTR(out_value, "board.camera", "read");
-  const uint8_t register_address[k_camera_reg_address_bytes] = {
-    (uint8_t)(reg >> (uint16_t)k_camera_high_byte_shift),
-    (uint8_t)reg,
-  };
-  return ra8_i2c_transfer((uint8_t)k_ra8_board_camera_i2c_channel,
-                          address,
-                          register_address,
-                          (uint32_t)sizeof(register_address),
-                          out_value,
-                          1U);
-}
-
-/* See the public header for the documented contract. */
-ra8_err_t ra8_board_camera_sccb_write_reg(void* ctx, uint8_t address, uint16_t reg, uint8_t value)
-{
-  (void)ctx;
-  const uint8_t payload[k_camera_write_bytes] = {
-    (uint8_t)(reg >> (uint16_t)k_camera_high_byte_shift),
-    (uint8_t)reg,
-    value,
-  };
-  return ra8_i2c_write((uint8_t)k_ra8_board_camera_i2c_channel,
-                       address,
-                       payload,
-                       (uint32_t)sizeof(payload),
-                       true);
-}
-
-/* See the public header for the documented contract. */
 void ra8_board_camera_delay_ms(void* ctx, uint32_t milliseconds)
 {
   (void)ctx;
