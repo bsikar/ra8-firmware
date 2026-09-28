@@ -86,6 +86,7 @@
 #include "ra8_port_utils.h"
 #include "ra8_time.h"
 #include "ra8_usb.h"
+#include "ra8_usb_compose.h"
 #include "ra8_usb_desc.h"
 
 #ifndef RA8_OFF_TARGET
@@ -332,6 +333,7 @@ typedef enum : uint16_t {
   k_demo_usb_poll_ms      = 10U,     /**< bInterval, frames.            */
   k_demo_usb_max_power_ma = 100U,    /**< Bus draw in mA.               */
   k_demo_usb_in_ep        = 0x81U,   /**< Interrupt-IN endpoint.        */
+  k_demo_usb_functions    = 1U,      /**< Functions in the config.      */
 } demo_usb_size_t;
 
 /** @brief The identity this app publishes. */
@@ -494,8 +496,9 @@ static void demo_build_jiggle(demo_phase_t phase, UCHAR* report)
 /**
  * @brief Synthesises the device, string and language-id frameworks.
  *
- * @details Replaces the hand-typed descriptor tables: every byte the host
- * enumerates now comes from ::k_demo_usb_dev through libs/ra8_usb_pal.
+ * @details Replaces the hand-typed descriptor tables, and now the three
+ * encoder calls that replaced them: ::ra8_usb_device_compose writes all three
+ * frameworks from ::k_demo_usb_dev plus one class entry.
  *
  * @return ra8_err_t ::k_ra8_ok on success, propagated builder error otherwise.
  * @retval k_ra8_ok All three frameworks were written.
@@ -508,29 +511,36 @@ static void demo_build_jiggle(demo_phase_t phase, UCHAR* report)
  */
 static ra8_err_t demo_usb_build_frameworks(void)
 {
-  uint32_t        built = 0U;
-  const ra8_err_t dev   = ra8_usb_desc_build_hid(&k_demo_usb_dev,
-                                                 &k_demo_usb_hid,
-                                                 s_device_framework_fs,
-                                                 (uint32_t)sizeof(s_device_framework_fs),
-                                                 &built);
-  if (dev != k_ra8_ok) {
-    return dev;
-  }
-  s_device_framework_len = (ULONG)built;
+  const ra8_usb_class_t function = {
+    .kind = k_ra8_usb_class_hid,
+    .hid  = k_demo_usb_hid,
+  };
 
-  const ra8_err_t str = ra8_usb_desc_build_strings(&k_demo_usb_dev,
-                                                   s_string_framework,
-                                                   (uint32_t)sizeof(s_string_framework),
-                                                   &s_string_framework_len);
-  if (str != k_ra8_ok) {
-    return str;
+  const ra8_usb_device_cfg_t cfg = {
+    .desc        = &k_demo_usb_dev,
+    .classes     = &function,
+    .class_count = (uint8_t)k_demo_usb_functions,
+  };
+
+  ra8_usb_device_frameworks_t fw = {
+    .device      = s_device_framework_fs,
+    .device_cap  = (uint32_t)sizeof(s_device_framework_fs),
+    .strings     = s_string_framework,
+    .strings_cap = (uint32_t)sizeof(s_string_framework),
+    .langid      = s_language_id_framework,
+    .langid_cap  = (uint32_t)sizeof(s_language_id_framework),
+  };
+
+  const ra8_err_t err = ra8_usb_device_compose(&cfg, &fw);
+  if (err != k_ra8_ok) {
+    return err;
   }
 
-  return ra8_usb_desc_build_langid(k_demo_usb_dev.langid,
-                                   s_language_id_framework,
-                                   (uint32_t)sizeof(s_language_id_framework),
-                                   &s_language_id_framework_len);
+  s_device_framework_len      = (ULONG)fw.device_len;
+  s_string_framework_len      = fw.strings_len;
+  s_language_id_framework_len = fw.langid_len;
+
+  return k_ra8_ok;
 }
 
 /**
