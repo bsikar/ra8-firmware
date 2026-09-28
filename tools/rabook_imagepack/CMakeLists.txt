@@ -109,6 +109,7 @@ target_include_directories(
   rabook_imagepack
   PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/inc
           ${FW_ROOT}/libs/ra8_core/inc
+          ${FW_ROOT}/libs/ra8_fmt/inc
           ${FW_ROOT}/apps/shared_libs/jof/inc
           ${FW_ROOT}/libs/ra8_jpeg/inc
           ${FW_ROOT}/libs/ra8_jpeg/src
@@ -145,6 +146,7 @@ if(BUILD_TESTING)
     PRIVATE ${FW_ROOT}/tests/support/inc
             ${CMAKE_CURRENT_SOURCE_DIR}/inc
             ${FW_ROOT}/libs/ra8_core/inc
+            ${FW_ROOT}/libs/ra8_fmt/inc
             ${FW_ROOT}/apps/shared_libs/jof/inc
             ${FW_ROOT}/libs/ra8_io/inc
             ${FW_ROOT}/apps/shared_libs/compress/inc
@@ -172,6 +174,7 @@ if(BUILD_TESTING)
     test_ra8_fmt_stream_inspect
     PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/inc
             ${FW_ROOT}/libs/ra8_core/inc
+            ${FW_ROOT}/libs/ra8_fmt/inc
             ${FW_ROOT}/apps/shared_libs/jof/inc
             ${FW_ROOT}/libs/ra8_io/inc
             ${FW_ROOT}/apps/shared_libs/compress/inc
@@ -185,8 +188,11 @@ if(BUILD_TESTING)
   )
   target_compile_options(test_ra8_fmt_host_fd PRIVATE -Wall -Wextra -Werror)
   target_include_directories(
-    test_ra8_fmt_host_fd PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/inc ${FW_ROOT}/libs/ra8_core/inc
-                                 ${FW_ROOT}/apps/shared_libs/jof/inc
+    test_ra8_fmt_host_fd
+    PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/inc
+            ${FW_ROOT}/libs/ra8_core/inc
+            ${FW_ROOT}/libs/ra8_fmt/inc
+            ${FW_ROOT}/apps/shared_libs/jof/inc
   )
   add_test(NAME ra8_fmt_host_fd COMMAND test_ra8_fmt_host_fd)
 
@@ -212,6 +218,7 @@ if(BUILD_TESTING)
     test_ra8_fmt_stream_convert
     PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/inc
             ${FW_ROOT}/libs/ra8_core/inc
+            ${FW_ROOT}/libs/ra8_fmt/inc
             ${FW_ROOT}/apps/shared_libs/jof/inc
             ${FW_ROOT}/libs/ra8_jpeg/inc
             ${FW_ROOT}/libs/ra8_jpeg/src
@@ -243,6 +250,7 @@ if(BUILD_TESTING)
     test_ra8_fmt_stream_verify
     PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/inc
             ${FW_ROOT}/libs/ra8_core/inc
+            ${FW_ROOT}/libs/ra8_fmt/inc
             ${FW_ROOT}/apps/shared_libs/jof/inc
             ${FW_ROOT}/libs/ra8_jpeg/inc
             ${FW_ROOT}/libs/ra8_jpeg/src
@@ -279,6 +287,7 @@ if(BUILD_TESTING)
             ${FW_ROOT}/apps/shared_libs/rabook_compile/tests/inc
             ${CMAKE_CURRENT_SOURCE_DIR}/inc
             ${FW_ROOT}/libs/ra8_core/inc
+            ${FW_ROOT}/libs/ra8_fmt/inc
             ${FW_ROOT}/apps/shared_libs/book/inc
             ${FW_ROOT}/apps/shared_libs/book/src
             ${FW_ROOT}/libs/ra8_io/inc
