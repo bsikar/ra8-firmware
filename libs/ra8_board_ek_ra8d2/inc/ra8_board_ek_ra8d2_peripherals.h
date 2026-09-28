@@ -570,50 +570,6 @@ typedef enum : uint8_t {
 [[nodiscard]] ra8_err_t ra8_board_camera_reset(void);
 
 /**
- * @brief Read one 16-bit-addressed SCCB register on the J35 camera bus.
- *
- * @details Signature intentionally matches the transport callback used by
- * `ra8_ov5640`; the BSP remains independent of that optional sensor library.
- *
- * @param[in] ctx Unused transport context; may be `nullptr`.
- * @param[in] address 7-bit SCCB target address.
- * @param[in] reg 16-bit sensor register address.
- * @param[out] out_value Register value on success.
- * @return ra8_err_t Forwarded RIIC result.
- * @retval k_ra8_ok One register byte was read.
- * @retval k_ra8_err_null_ptr @p out_value was `nullptr`.
- * @retval other Propagated RIIC transfer error.
- * @pre RIIC1 is initialized for the J35 SCCB bus.
- * @pre The sensor is clocked and released from reset.
- * @post On success @p out_value contains the addressed register byte.
- * @post The RIIC bus is idle after the completed transfer.
- * @note Not thread-safe with respect to RIIC1.
- * @since 0.1.0
- */
-[[nodiscard]] ra8_err_t
-ra8_board_camera_sccb_read_reg(void* ctx, uint8_t address, uint16_t reg, uint8_t* out_value);
-
-/**
- * @brief Write one 16-bit-addressed SCCB register on the J35 camera bus.
- *
- * @param[in] ctx Unused transport context; may be `nullptr`.
- * @param[in] address 7-bit SCCB target address.
- * @param[in] reg 16-bit sensor register address.
- * @param[in] value Register value to write.
- * @return ra8_err_t Forwarded RIIC result.
- * @retval k_ra8_ok The complete address and value payload was written.
- * @retval other Propagated RIIC write error.
- * @pre RIIC1 is initialized for the J35 SCCB bus.
- * @pre The sensor is clocked and released from reset.
- * @post On success the target accepted the addressed register byte.
- * @post The RIIC bus is idle after the completed transfer.
- * @note Not thread-safe with respect to RIIC1.
- * @since 0.1.0
- */
-[[nodiscard]] ra8_err_t
-ra8_board_camera_sccb_write_reg(void* ctx, uint8_t address, uint16_t reg, uint8_t value);
-
-/**
  * @brief Millisecond delay adapter for transport-independent camera drivers.
  * @details Ignores @p ctx and delegates the bounded delay to `ra8_delay_ms`.
  * @param[in] ctx Unused transport context; may be `nullptr`.
