@@ -658,6 +658,153 @@ RA8_INTERNAL static void internal_test_hid_refusals(void)
   TEST_END("a framework it cannot encode is refused, not truncated");
 }
 
+/**
+ * @enum test_fixture_dfu_t
+ * @brief Wire sizes of the DFU framework all five bootloader apps carry.
+ */
+enum : uint16_t {
+  k_fixture_dfu_bytes    = 45U,     /**< Device framework wire length.   */
+  k_fixture_dfu_xfer     = 64U,     /**< wTransferSize, bytes per block. */
+  k_fixture_dfu_detach   = 255U,    /**< wDetachTimeOut, milliseconds.   */
+  k_fixture_dfu_bcd      = 0x0110U, /**< bcdDFUVersion 1.1.              */
+  k_fixture_dfu_vid      = 0x1209U, /**< idVendor.                       */
+  k_fixture_dfu_pid      = 0x0019U, /**< idProduct.                      */
+  k_fixture_dfu_bcd_dev  = 0x0100U, /**< bcdDevice.                      */
+  k_fixture_dfu_power_ma = 100U,    /**< Bus draw.                       */
+};
+
+/**
+ * @brief The device framework all five DFU apps carry, byte for byte.
+ *
+ * @details Transcribed from `s_device_framework[]` at merge-base. dfu_bootloader,
+ * dfu_selftest_boot, dfu_selftest_fs_host, dfu_selftest_hs_host and
+ * usb_selftest_dfu carry this array identically, which is five copies of the
+ * same 45 bytes. The interface declares zero endpoints because DFU runs over
+ * the control pipe, so the configuration block is only 0x001B = 27 bytes.
+ */
+static const uint8_t k_oracle_dfu[k_fixture_dfu_bytes] = {
+  0x12U, 0x01U, 0x00U, 0x02U, 0x00U, 0x00U, 0x00U, 0x40U, 0x09U, 0x12U, 0x19U, 0x00U,
+  0x00U, 0x01U, 0x01U, 0x02U, 0x03U, 0x01U, 0x09U, 0x02U, 0x1BU, 0x00U, 0x01U, 0x01U,
+  0x00U, 0x80U, 0x32U, 0x09U, 0x04U, 0x00U, 0x00U, 0x00U, 0xFEU, 0x01U, 0x02U, 0x00U,
+  0x09U, 0x21U, 0x07U, 0xFFU, 0x00U, 0x40U, 0x00U, 0x10U, 0x01U,
+};
+
+/** @brief The identity the five DFU apps publish. */
+static const ra8_usb_desc_device_t k_fixture_dfu_dev = {
+  .vid           = (uint16_t)k_fixture_dfu_vid,
+  .pid           = (uint16_t)k_fixture_dfu_pid,
+  .bcd_device    = (uint16_t)k_fixture_dfu_bcd_dev,
+  .manufacturer  = "Brighton Sikarskie",
+  .product       = "RA8D2 DFU",
+  .serial        = "00000019",
+  .langid        = 0U,
+  .max_power_ma  = (uint16_t)k_fixture_dfu_power_ma,
+  .self_powered  = false,
+  .remote_wakeup = false,
+};
+
+/** @brief The DFU function those apps publish: download, upload, tolerant. */
+static const ra8_usb_desc_dfu_t k_fixture_dfu = {
+  .can_download           = true,
+  .can_upload             = true,
+  .manifestation_tolerant = true,
+  .will_detach            = false,
+  .dfu_mode               = true,
+  .detach_timeout_ms      = (uint16_t)k_fixture_dfu_detach,
+  .transfer_bytes         = (uint16_t)k_fixture_dfu_xfer,
+  .bcd_dfu                = (uint16_t)k_fixture_dfu_bcd,
+};
+
+/**
+ * @brief The DFU builder reproduces the framework five shipped apps carry.
+ *
+ * @details One case covers all five, because the arrays are byte-identical:
+ * the same vendor, product, serial and capability set in every copy. The
+ * assertions single out the two fields a hand-editor gets wrong, bNumEndpoints
+ * and wTotalLength, since a DFU interface having no endpoints at all is the
+ * one thing that separates this layout from every other in this header.
+ */
+RA8_INTERNAL static void internal_test_dfu_matches_app(void)
+{
+  TEST_BEGIN("the DFU framework of all five bootloader apps");
+  uint8_t  got[k_ra8_usb_desc_framework_bytes_max] = {};
+  uint32_t used                                    = 0U;
+
+  TEST_ASSERT_EQ(
+    k_ra8_ok,
+    ra8_usb_desc_build_dfu(&k_fixture_dfu_dev, &k_fixture_dfu, got, (uint32_t)sizeof(got), &used));
+  TEST_ASSERT_EQ((uint32_t)k_fixture_dfu_bytes, used);
+  for (uint32_t i = 0U; i < (uint32_t)k_fixture_dfu_bytes; i++) {
+    TEST_ASSERT_EQ(k_oracle_dfu[i], got[i]);
+  }
+  TEST_ASSERT_EQ(0U, got[30]);    /* bNumEndpoints                           */
+  TEST_ASSERT_EQ(0x1BU, got[20]); /* wTotalLength low                        */
+  TEST_ASSERT_EQ(0x00U, got[21]); /* wTotalLength high                       */
+  TEST_ASSERT_EQ(0x07U, got[38]); /* bmAttributes, the three capability bits */
+
+  TEST_END("forty-five bytes reproduced, and one array replaces five copies");
+}
+
+/**
+ * @brief The DFU builder refuses a config it cannot put on the wire.
+ *
+ * @details The run-time protocol and the will-detach bit are exercised here
+ * rather than in the oracle case, because no app in the tree publishes them
+ * yet and an encoder with an untested branch is an encoder that will be wrong
+ * the first time someone uses it.
+ */
+RA8_INTERNAL static void internal_test_dfu_refusals(void)
+{
+  TEST_BEGIN("DFU refusals, and the two branches no app exercises yet");
+  uint8_t            got[k_ra8_usb_desc_framework_bytes_max] = {};
+  uint32_t           used                                    = 0U;
+  ra8_usb_desc_dfu_t bad                                     = k_fixture_dfu;
+
+  TEST_ASSERT_EQ(
+    k_ra8_err_null_ptr,
+    ra8_usb_desc_build_dfu(nullptr, &k_fixture_dfu, got, (uint32_t)sizeof(got), &used));
+
+  bad                = k_fixture_dfu;
+  bad.transfer_bytes = 0U;
+  TEST_ASSERT_EQ(
+    k_ra8_err_invalid_arg,
+    ra8_usb_desc_build_dfu(&k_fixture_dfu_dev, &bad, got, (uint32_t)sizeof(got), &used));
+
+  bad         = k_fixture_dfu;
+  bad.bcd_dfu = 0U;
+  TEST_ASSERT_EQ(
+    k_ra8_err_invalid_arg,
+    ra8_usb_desc_build_dfu(&k_fixture_dfu_dev, &bad, got, (uint32_t)sizeof(got), &used));
+
+  bad              = k_fixture_dfu;
+  bad.can_download = false;
+  bad.can_upload   = false;
+  TEST_ASSERT_EQ(
+    k_ra8_err_invalid_arg,
+    ra8_usb_desc_build_dfu(&k_fixture_dfu_dev, &bad, got, (uint32_t)sizeof(got), &used));
+
+  TEST_ASSERT_EQ(k_ra8_err_invalid_size,
+                 ra8_usb_desc_build_dfu(&k_fixture_dfu_dev, &k_fixture_dfu, got, 1U, &used));
+
+  /* Run-time descriptor: bInterfaceProtocol 1, not 2. */
+  bad          = k_fixture_dfu;
+  bad.dfu_mode = false;
+  TEST_ASSERT_EQ(
+    k_ra8_ok,
+    ra8_usb_desc_build_dfu(&k_fixture_dfu_dev, &bad, got, (uint32_t)sizeof(got), &used));
+  TEST_ASSERT_EQ(0x01U, got[34]);
+
+  /* will_detach sets bit 3 and leaves the other three where they were. */
+  bad             = k_fixture_dfu;
+  bad.will_detach = true;
+  TEST_ASSERT_EQ(
+    k_ra8_ok,
+    ra8_usb_desc_build_dfu(&k_fixture_dfu_dev, &bad, got, (uint32_t)sizeof(got), &used));
+  TEST_ASSERT_EQ(0x0FU, got[38]);
+
+  TEST_END("every documented refusal returns its code, both protocols encode");
+}
+
 int main(void)
 {
   internal_test_cdc_matches_app();
@@ -668,5 +815,7 @@ int main(void)
   internal_test_msc_refusals();
   internal_test_hid_matches_app();
   internal_test_hid_refusals();
+  internal_test_dfu_matches_app();
+  internal_test_dfu_refusals();
   return 0;
 }

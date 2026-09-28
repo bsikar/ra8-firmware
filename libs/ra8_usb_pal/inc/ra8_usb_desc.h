@@ -234,6 +234,33 @@ typedef struct {
   ra8_usb_desc_hid_protocol_t protocol;         /**< Boot protocol, none if not boot. */
 } ra8_usb_desc_hid_t;
 
+/**
+ * @struct ra8_usb_desc_dfu_t
+ * @brief The function of a Device Firmware Upgrade interface, DFU 1.1 sec 4.
+
+ *
+ * @details DFU is the one function in this header with no endpoints of its
+ * own: every transfer rides the default control pipe, so the interface
+ * declares zero endpoints and the functional descriptor carries everything a
+ * host needs to drive it. The capability bits are taken as four booleans
+ * rather than a packed bmAttributes byte, because a caller assembling that
+ * byte by hand is exactly the arithmetic this header exists to remove.
+ *
+ * @invariant `transfer_bytes` and `bcd_dfu` are non-zero, and at least one of
+ * `can_download` and `can_upload` is set: a DFU function that can neither
+ * receive nor send firmware has nothing to offer a host.
+ */
+typedef struct {
+  bool     can_download;           /**< bitCanDnload, accepts DFU_DNLOAD.           */
+  bool     can_upload;             /**< bitCanUpload, answers DFU_UPLOAD.           */
+  bool     manifestation_tolerant; /**< Survives manifestation without a bus reset. */
+  bool     will_detach;            /**< Detaches itself on DFU_DETACH.              */
+  bool     dfu_mode;               /**< DFU mode, not the run-time descriptor.      */
+  uint16_t detach_timeout_ms;      /**< wDetachTimeOut, milliseconds.               */
+  uint16_t transfer_bytes;         /**< wTransferSize, bytes per block.             */
+  uint16_t bcd_dfu;                /**< bcdDFUVersion, e.g. 0x0110.                 */
+} ra8_usb_desc_dfu_t;
+
 /* =============================================================================
  * Builders
  * =============================================================================
@@ -420,6 +447,44 @@ ra8_usb_desc_build_langid(uint16_t langid, uint8_t* out, uint32_t cap, uint32_t*
  */
 [[nodiscard]] ra8_err_t ra8_usb_desc_build_hid(const ra8_usb_desc_device_t* dev,
                                                const ra8_usb_desc_hid_t*    hid,
+                                               uint8_t*                     out,
+                                               uint32_t                     cap,
+                                               uint32_t*                    out_len);
+
+/**
+ * @brief Synthesise the device framework of a Device Firmware Upgrade device.
+ *
+ * @details Emits the device descriptor, the configuration, one DFU interface
+ * with zero endpoints, and the DFU functional descriptor, in that order. The
+ * device class is left at 0 so the interface declares the function, matching
+ * the mass-storage builder rather than the CDC one, which only carries the
+ * miscellaneous triple to hold an interface association.
+ *
+ * @param[in]  dev      Device identity and power budget.
+ * @param[in]  dfu      DFU capabilities and transfer geometry.
+ * @param[out] out      Caller-owned destination buffer.
+ * @param[in]  cap      Capacity of @p out in bytes.
+ * @param[out] out_len  Bytes written on success. Untouched on failure.
+ *
+ * @return ra8_err_t Result of the encode.
+ * @retval k_ra8_ok                 Framework written.
+ * @retval k_ra8_err_null_ptr       @p dev, @p dfu, @p out or @p out_len is NULL.
+ * @retval k_ra8_err_invalid_arg    @p dfu->transfer_bytes or @p dfu->bcd_dfu is
+ *                                  zero, or neither capability bit is set.
+ * @retval k_ra8_err_invalid_size   @p cap cannot hold the framework.
+ * @retval k_ra8_err_range_check_failed @p dev->max_power_ma exceeds what
+ *                                  bMaxPower can encode (500 mA).
+ *
+ * @pre @p out addresses at least @p cap writable bytes.
+ * @post On success @p out holds the framework and @p out_len counts it.
+ * @post On failure @p out_len is unchanged and @p out may be partly written.
+ *
+ * @note Pure; no state is retained between calls. Synthesising a framework
+ *       does not attach a device or touch a controller.
+ * @since 0.1.0
+ */
+[[nodiscard]] ra8_err_t ra8_usb_desc_build_dfu(const ra8_usb_desc_device_t* dev,
+                                               const ra8_usb_desc_dfu_t*    dfu,
                                                uint8_t*                     out,
                                                uint32_t                     cap,
                                                uint32_t*                    out_len);
