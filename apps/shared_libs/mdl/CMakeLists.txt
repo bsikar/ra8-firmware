@@ -110,6 +110,7 @@ set(FW ${MDL_REPO_ROOT}/libs)
 set(MDL_PUBLIC_INC ${MDL_CORE_INC} ${MDL_REPO_ROOT}/apps/shared_libs/mdl/inc
                    ${MDL_REPO_ROOT}/libs/ra8_mdl/inc
                    ${MDL_REPO_ROOT}/libs/ra8_net_policy/inc
+                   ${MDL_REPO_ROOT}/libs/ra8_num/inc
                    ${MDL_REPO_ROOT}/libs/ra8_xml/inc)
 set(MDL_FS_SRC
     ${FW}/if/src/fw_if_fs.c
@@ -328,7 +329,7 @@ set(MDL_CORE_SRC
     ${MDL_CORE_SRC_DIR}/mdl_urlname.c
     ${MDL_CORE_SRC_DIR}/mdl_state.c
     ${MDL_CORE_SRC_DIR}/mdl_state_codec.c
-    ${MDL_CORE_SRC_DIR}/mdl_state_decimal.c
+    ${MDL_REPO_ROOT}/libs/ra8_num/src/ra8_num_decimal.c
     ${MDL_CORE_SRC_DIR}/mdl_state_store.c
     ${MDL_CORE_SRC_DIR}/mdl_fetch.c
     ${MDL_CORE_SRC_DIR}/mdl_fetch_body.c
@@ -501,7 +502,7 @@ target_sources(
           ${MDL_CACHE_SRC}
           ${MDL_CORE_SRC_DIR}/mdl_state.c
           ${MDL_CORE_SRC_DIR}/mdl_state_codec.c
-          ${MDL_CORE_SRC_DIR}/mdl_state_decimal.c
+          ${MDL_REPO_ROOT}/libs/ra8_num/src/ra8_num_decimal.c
           ${MDL_CORE_SRC_DIR}/mdl_state_store.c
           ${MDL_CORE_SRC_DIR}/mdl_session.c
           ${MDL_CORE_SRC_DIR}/mdl_pathfs.c
@@ -601,7 +602,7 @@ add_executable(
   ${MDL_CORE_TEST_SRC_DIR}/test_mdl_state_metadata.c
   ${MDL_CORE_SRC_DIR}/mdl_state.c
   ${MDL_CORE_SRC_DIR}/mdl_state_codec.c
-  ${MDL_CORE_SRC_DIR}/mdl_state_decimal.c
+  ${MDL_REPO_ROOT}/libs/ra8_num/src/ra8_num_decimal.c
   ${MDL_CORE_SRC_DIR}/mdl_state_store.c
   ${MDL_CORE_SRC_DIR}/mdl_hash.c
   ${MDL_CORE_SRC_DIR}/mdl_storage.c
@@ -643,7 +644,7 @@ add_executable(
   ${MDL_CACHE_SRC}
   ${MDL_CORE_SRC_DIR}/mdl_state.c
   ${MDL_CORE_SRC_DIR}/mdl_state_codec.c
-  ${MDL_CORE_SRC_DIR}/mdl_state_decimal.c
+  ${MDL_REPO_ROOT}/libs/ra8_num/src/ra8_num_decimal.c
   ${MDL_CORE_SRC_DIR}/mdl_state_store.c
   ${MDL_CORE_SRC_DIR}/mdl_hash.c
   ${MDL_CORE_SRC_DIR}/mdl_storage.c
@@ -692,7 +693,7 @@ add_executable(
   ${MDL_CACHE_SRC}
   ${MDL_CORE_SRC_DIR}/mdl_state.c
   ${MDL_CORE_SRC_DIR}/mdl_state_codec.c
-  ${MDL_CORE_SRC_DIR}/mdl_state_decimal.c
+  ${MDL_REPO_ROOT}/libs/ra8_num/src/ra8_num_decimal.c
   ${MDL_CORE_SRC_DIR}/mdl_state_store.c
   ${MDL_CORE_SRC_DIR}/mdl_hash.c
   ${MDL_CORE_SRC_DIR}/mdl_storage.c
