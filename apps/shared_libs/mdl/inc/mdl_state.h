@@ -57,30 +57,13 @@
  */
 #pragma once
 
-#include <float.h>
 #include <stddef.h>
 #include <stdint.h>
 
-#if !defined(__STDC_IEC_559__) && !defined(__STDC_IEC_60559_BFP__) && !defined(__clang__) &&       \
-  !defined(__GNUC__)
-#error "mdl state v3 requires IEC 60559 binary floating-point"
-#endif
-
-static_assert(sizeof(double) == 8U, "mdl state v3 requires binary64 double");
-static_assert(FLT_RADIX == 2, "mdl state v3 requires radix-2 floating-point");
-/** @brief IEC 60559 binary64 parameters required by the persisted schema. */
-typedef enum : int16_t {
-  k_mdl_binary64_mantissa_bits = 53,    /**< Binary64 significand precision. */
-  k_mdl_binary64_max_exponent  = 1024,  /**< Binary64 maximum exponent.      */
-  k_mdl_binary64_min_exponent  = -1021, /**< Binary64 minimum exponent.      */
-} mdl_binary64_parameter_t;
-
-static_assert(DBL_MANT_DIG == k_mdl_binary64_mantissa_bits,
-              "mdl state requires 53-bit binary64 precision");
-static_assert(DBL_MAX_EXP == k_mdl_binary64_max_exponent,
-              "mdl state requires binary64 exponent range");
-static_assert(DBL_MIN_EXP == k_mdl_binary64_min_exponent,
-              "mdl state requires binary64 exponent range");
+/* The persisted schema stores decimals as binary64, so it inherits the
+ * toolchain requirement rather than restating it: ra8_num.h asserts IEC 60559
+ * binary64 where the platform declares it (#747). */
+#include "ra8_num.h"
 
 #include "mdl_config.h"
 #include "mdl_extract.h"
