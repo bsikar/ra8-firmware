@@ -32,13 +32,20 @@
 #   - linker_script.ld               : the app's local copy if it exists
 #       (divergent maps: dual-core, TrustZone, bootloader banks), else the
 #       selected board's canonical single-core map
-#       libs/ra8_board_<BOARD>/ld/linker_script.ld
+#       libs/ra8_board_<BOARD>/ld/linker_script.ld, optionally composed with a
+#       generated fragment (see THREADX_HEAP below)
 #   - the ra8_* libraries (ra8_secure_app carries the Ring 5 secure substrate)
 #
 # Options:
 #   NAME <n>            (required) app + elf base name
 #   STACK_BYTES <n>     per-function stack-frame budget (default 2200)
 #   DESCRIPTION <s>     project() description for standalone builds
+#   THREADX_HEAP <r>    compose the board linker script with a generated
+#                       fragment that PROVIDEs g_ra8_threadx_unused_memory_start
+#                       at ORIGIN(<r>), e.g. THREADX_HEAP SDRAM. Lets a ThreadX
+#                       app add that one symbol without forking the whole board
+#                       memory map (#761). Rejected if the app also ships its
+#                       own linker_script.ld, which already has full control.
 #   BOARD <b>           board-support layer under libs/ra8_board_<b> (default
 #                       ek_ra8d2). Selects which board layer supplies the fallback
 #                       boot files, the board src glob, the fallback linker script,
@@ -117,7 +124,7 @@ macro(ra8_add_app)
   cmake_parse_arguments(
     _RA8_APP
     "NO_NSC"
-    "NAME;STACK_BYTES;DESCRIPTION;BOARD"
+    "NAME;STACK_BYTES;DESCRIPTION;BOARD;THREADX_HEAP"
     "USES;LIBS;OFF_TARGET_LIBS;NSC_SRCS;EXTRA_SRCS;AUX_SRCS"
     ${ARGN}
   )
@@ -413,7 +420,13 @@ macro(ra8_add_app)
   target_link_libraries(${_ra8_elf} PRIVATE gcc)
 
   target_link_options(${_ra8_elf} PRIVATE -T${_ra8_linker} -Wl,--Map=${_RA8_APP_NAME}.map)
-  set_target_properties(${_ra8_elf} PROPERTIES LINK_DEPENDS ${_ra8_linker})
+  if(_ra8_ld_base)
+    set_target_properties(
+      ${_ra8_elf} PROPERTIES LINK_DEPENDS "${_ra8_linker};${_ra8_ld_base}"
+    )
+  else()
+    set_target_properties(${_ra8_elf} PROPERTIES LINK_DEPENDS ${_ra8_linker})
+  endif()
 
   add_custom_command(
     TARGET ${_ra8_elf}
