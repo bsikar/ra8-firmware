@@ -391,6 +391,8 @@ static void app_bringup_panel(void)
  * @brief Bind ra8_gfx to the panel framebuffer.
  *
  * @details After this, all chrome drawing goes through ra8_gfx primitives.
+ * The binding is made from the PAL's own framebuffer descriptor, row pitch
+ * included, rather than from width and height alone.
  *
  * @pre ``app_bringup_panel`` has run; ``s_fb.pixels`` is reachable.
  * @pre The framebuffer is RGB565.
@@ -402,8 +404,13 @@ static void app_bringup_panel(void)
  */
 static void app_bringup_gfx(void)
 {
-  if (ra8_gfx_init(s_fb.pixels, s_fb.width_px, s_fb.height_px, k_ra8_gfx_format_rgb565) !=
-      k_ra8_ok) {
+  if (ra8_gfx_init_surface(&(const ra8_gfx_surface_t){
+        .pixels       = s_fb.pixels,
+        .w            = s_fb.width_px,
+        .h            = s_fb.height_px,
+        .stride_bytes = s_fb.stride_bytes,
+        .fmt          = k_ra8_gfx_format_rgb565,
+      }) != k_ra8_ok) {
     app_panic_halt();
   }
 }

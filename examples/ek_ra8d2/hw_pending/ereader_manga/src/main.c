@@ -87,11 +87,11 @@ typedef enum : uint32_t {
    * viewport frame can straddle: ceil(extent / tile) tiles, plus one for the
    * viewport not being tile-aligned. The content area is the panel minus the
    * status bar (the render clips there). See the derivation note below. */
-  k_mg_view_cols =
-    (((uint32_t)k_panel_width_px + k_mg_tile_edge - 1U) / k_mg_tile_edge) + 1U, /**< 1:1 cols. */
+  k_mg_view_cols = (((uint32_t)k_panel_width_px + k_mg_tile_edge - 1U) / k_mg_tile_edge) +
+    1U, /**< 1:1 cols. */
   k_mg_view_rows =
-    ((((uint32_t)k_panel_height_px - (uint32_t)k_mg_statusbar_h) + k_mg_tile_edge - 1U) /
-     k_mg_tile_edge) +
+      ((((uint32_t)k_panel_height_px - (uint32_t)k_mg_statusbar_h) + k_mg_tile_edge - 1U) /
+       k_mg_tile_edge) +
     1U,                                                         /**< 1:1 content rows.            */
   k_mg_cells   = (k_mg_view_cols + 1U) * (k_mg_view_rows + 1U), /**< Frame + 1-tile pan margin.   */
   k_mg_buckets = 64U,                                           /**< Hash buckets (>= cells).     */
@@ -337,7 +337,11 @@ static void mg_bringup_clocks(void)
   ra8_isr_globals_enable();
 }
 
-/** @brief Bring up SDRAM + the GLCDC panel, then bind ra8_gfx to the FB. */
+/** @brief Bring up SDRAM + the GLCDC panel, then bind ra8_gfx to the FB.
+ *
+ * @details The graphics layer is bound from the PAL's framebuffer
+ * descriptor, row pitch included, rather than from width and height alone.
+ */
 static void mg_bringup_panel(void)
 {
   ra8_delay_ms((uint32_t)k_mg_settle_ms);
@@ -350,8 +354,13 @@ static void mg_bringup_panel(void)
   if (display_get_framebuffer(s_display, &s_fb) != k_ra8_ok) {
     mg_panic_halt(k_msg_fail, (uint32_t)sizeof(k_msg_fail) - 1U);
   }
-  if (ra8_gfx_init(s_fb.pixels, s_fb.width_px, s_fb.height_px, k_ra8_gfx_format_rgb565) !=
-      k_ra8_ok) {
+  if (ra8_gfx_init_surface(&(const ra8_gfx_surface_t){
+        .pixels       = s_fb.pixels,
+        .w            = s_fb.width_px,
+        .h            = s_fb.height_px,
+        .stride_bytes = s_fb.stride_bytes,
+        .fmt          = k_ra8_gfx_format_rgb565,
+      }) != k_ra8_ok) {
     mg_panic_halt(k_msg_fail, (uint32_t)sizeof(k_msg_fail) - 1U);
   }
 }
