@@ -41,6 +41,7 @@
 #include "ra8_board_ek_ra8d2.h"
 #include "ra8_err.h"
 #include "ra8_usb.h"
+#include "ra8_usb_compose.h"
 #include "ra8_usb_desc.h"
 #include "tx_api.h"
 #include "ux_api.h"
@@ -119,6 +120,7 @@ typedef enum : uint16_t {
   k_demo_usb_out_ep        = 0x02U, /**< Bulk-OUT data pipe.       */
   k_demo_usb_data_bytes_hs = 512U,  /**< Bulk max packet size, HS. */
   k_demo_usb_data_bytes_fs = 64U,   /**< Bulk max packet size, FS. */
+  k_demo_usb_functions     = 1U,    /**< Functions per config.     */
 } demo_usb_endpoint_t;
 
 /**
@@ -559,36 +561,57 @@ UINT selftest_msc_status(VOID* storage, ULONG lun, ULONG media_id, ULONG* media_
  */
 static ra8_err_t selftest_usb_build_frameworks(void)
 {
-  ra8_err_t err = ra8_usb_desc_build_msc(&k_demo_usb_device,
-                                         &k_demo_usb_msc_hs,
-                                         s_device_framework_hs,
-                                         (uint32_t)sizeof(s_device_framework_hs),
-                                         &s_device_framework_hs_len);
+  /* USBX wants one device framework per bus speed, so this composes twice off
+   * one identity. The string and language-id frameworks are written by both
+   * calls, into the same two buffers: the encoders are pure and depend only on
+   * the identity, so the second pass rewrites the same bytes. That costs a few
+   * dozen stores at bring-up and keeps the call shape identical to every
+   * single-speed app in the tree. */
+  const ra8_usb_class_t msc_high_speed = {
+    .kind = k_ra8_usb_class_msc,
+    .msc  = k_demo_usb_msc_hs,
+  };
+
+  const ra8_usb_class_t msc_full_speed = {
+    .kind = k_ra8_usb_class_msc,
+    .msc  = k_demo_usb_msc_fs,
+  };
+
+  ra8_usb_device_cfg_t cfg = {
+    .desc        = &k_demo_usb_device,
+    .classes     = &msc_high_speed,
+    .class_count = (uint8_t)k_demo_usb_functions,
+  };
+
+  ra8_usb_device_frameworks_t fw = {
+    .device      = s_device_framework_hs,
+    .device_cap  = (uint32_t)sizeof(s_device_framework_hs),
+    .strings     = s_string_framework,
+    .strings_cap = (uint32_t)sizeof(s_string_framework),
+    .langid      = s_language_id_framework,
+    .langid_cap  = (uint32_t)sizeof(s_language_id_framework),
+  };
+
+  ra8_err_t err = ra8_usb_device_compose(&cfg, &fw);
   if (err != k_ra8_ok) {
     return err;
   }
+  s_device_framework_hs_len = fw.device_len;
 
-  err = ra8_usb_desc_build_msc(&k_demo_usb_device,
-                               &k_demo_usb_msc_fs,
-                               s_device_framework_fs,
-                               (uint32_t)sizeof(s_device_framework_fs),
-                               &s_device_framework_fs_len);
+  cfg.classes   = &msc_full_speed;
+  fw.device     = s_device_framework_fs;
+  fw.device_cap = (uint32_t)sizeof(s_device_framework_fs);
+
+  err = ra8_usb_device_compose(&cfg, &fw);
   if (err != k_ra8_ok) {
     return err;
   }
+  s_device_framework_fs_len = fw.device_len;
 
-  err = ra8_usb_desc_build_strings(&k_demo_usb_device,
-                                   s_string_framework,
-                                   (uint32_t)sizeof(s_string_framework),
-                                   &s_string_framework_len);
-  if (err != k_ra8_ok) {
-    return err;
-  }
+  s_string_framework_len      = fw.strings_len;
+  s_language_id_framework_len = fw.langid_len;
 
-  return ra8_usb_desc_build_langid(k_demo_usb_device.langid,
-                                   s_language_id_framework,
-                                   (uint32_t)sizeof(s_language_id_framework),
-                                   &s_language_id_framework_len);
+  return k_ra8_ok;
 }
 
 /**
