@@ -93,18 +93,6 @@ void SysTick_Handler(void)
 /* Pinout (FSP-aligned, EK-RA8D2 v1 User's Manual) */
 /* -------------------------------------------------------------------------- */
 
-/** @brief USBFS VBUS sense pin (P4_07, PSEL = 0x13). */
-static const ra8_port_pin_t k_dfu_pin_fs_vbus = (ra8_port_pin_t)k_ra8_board_usbfs_pin_vbus;
-
-/** @brief USBFS VBUSEN (P5_00) -- GPIO LOW for the device role. */
-static const ra8_port_pin_t k_dfu_pin_fs_vbusen = (ra8_port_pin_t)k_ra8_board_usbfs_pin_vbusen;
-
-/** @brief USBFS D+ (P8_14). */
-static const ra8_port_pin_t k_dfu_pin_fs_dp = (ra8_port_pin_t)k_ra8_board_usbfs_pin_dp;
-
-/** @brief USBFS D- (P8_15). */
-static const ra8_port_pin_t k_dfu_pin_fs_dm = (ra8_port_pin_t)k_ra8_board_usbfs_pin_dm;
-
 /** @brief USBHS_VBUS sense pin (P4_08, PSEL = 0x14). */
 static const ra8_port_pin_t k_dfu_pin_hs_vbus = (ra8_port_pin_t)k_ra8_board_usbhs_pin_vbus;
 
@@ -762,7 +750,7 @@ static void dfu_panic_halt(void)
 }
 
 /**
- * @brief Route both ports' pins: FS as device, HS as host.
+ * @brief Open FS in the device role via the board facade, then arm HS as host.
  * @return void.
  * @pre IOPORT and the U15 expander are reachable.
  * @pre Called once from ::dfu_setup_or_halt.
@@ -773,16 +761,11 @@ static void dfu_panic_halt(void)
  */
 static void dfu_route_usb_or_halt(void)
 {
-  if (ra8_pfs_route_peripheral(k_dfu_pin_fs_vbus, k_ra8_psel_usb_fs, "dfu.fs_vbus") != k_ra8_ok) {
-    dfu_panic_halt();
-  }
-  if (ra8_gpio_output_init(k_dfu_pin_fs_vbusen, k_ra8_level_low) != k_ra8_ok) {
-    dfu_panic_halt();
-  }
-  if (ra8_pfs_route_peripheral(k_dfu_pin_fs_dp, k_ra8_psel_usb_fs, "dfu.fs_dp") != k_ra8_ok) {
-    dfu_panic_halt();
-  }
-  if (ra8_pfs_route_peripheral(k_dfu_pin_fs_dm, k_ra8_psel_usb_fs, "dfu.fs_dm") != k_ra8_ok) {
+  /* One board call replaces the four-step FS choreography: it routes VBUS,
+   * D+ and D- to the USBFS function and keeps VBUSEN a GPIO strapped LOW for
+   * the device role. The pin identities are board facts, so they live in
+   * libs/ra8_board_ek_ra8d2 rather than being re-declared here. */
+  if (ra8_board_usb_port_init(k_ra8_board_usb_port_fs, k_ra8_board_usb_role_device) != k_ra8_ok) {
     dfu_panic_halt();
   }
   if (ra8_board_io_expander_set_usbhs_host_mode() != k_ra8_ok) {
