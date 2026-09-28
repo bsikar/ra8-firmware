@@ -443,7 +443,14 @@ static const display_cfg_t k_wc_display_cfg = {
   .panel_timing      = &s_ra8_panel_ek_ra8d2_timing,
 };
 
-/** @brief Bring up the GLCDC panel and bind ra8_gfx to its framebuffer. */
+/**
+ * @brief Bring up the GLCDC panel and bind ra8_gfx to its framebuffer.
+ *
+ * @details The geometry comes from the descriptor the PAL returns, row
+ * pitch included, not from this app's own size constants. The pointer
+ * check stays: the panel is configured to scan out ::s_framebuffer, so a
+ * descriptor naming any other buffer means the bring-up did not take.
+ */
 static bool wc_panel_up(void)
 {
   if (display_init(&k_wc_display_cfg, &s_display) != k_ra8_ok) {
@@ -459,10 +466,14 @@ static bool wc_panel_up(void)
   if (fb.pixels != (void*)s_framebuffer) {
     return false;
   }
-  return (ra8_gfx_init(s_framebuffer,
-                       (uint16_t)k_wc_fb_w,
-                       (uint16_t)k_wc_fb_h,
-                       k_ra8_gfx_format_rgb565) == k_ra8_ok);
+  const ra8_gfx_surface_t surface = {
+    .pixels       = fb.pixels,
+    .w            = fb.width_px,
+    .h            = fb.height_px,
+    .stride_bytes = fb.stride_bytes,
+    .fmt          = k_ra8_gfx_format_rgb565,
+  };
+  return (ra8_gfx_init_surface(&surface) == k_ra8_ok);
 }
 
 /** @brief Map a widget refresh hint to the display PAL refresh hint. */
