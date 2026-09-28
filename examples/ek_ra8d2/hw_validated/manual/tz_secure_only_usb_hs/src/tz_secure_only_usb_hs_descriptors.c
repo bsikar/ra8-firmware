@@ -10,8 +10,8 @@
  * Second sibling translation unit for
  * ``examples/ek_ra8d2/hw_validated/manual/tz_secure_only_usb_hs/src/main.c``.
  * Owns the app's USB identity and endpoint layout and synthesises the four
- * USBX frameworks from it through ``ra8_usb_desc_build_cdc_acm``,
- * ``ra8_usb_desc_build_strings`` and ``ra8_usb_desc_build_langid``. This
+ * USBX frameworks from it through ``ra8_usb_device_compose``, once per bus
+ * speed. This
  * unit used to hold the same four tables hand-typed as 258 lines of byte
  * literals; the bytes are unchanged, they are now derived.
  *
@@ -39,6 +39,7 @@
 #include "tz_secure_only_usb_hs_steps.h"
 
 #ifndef RA8_OFF_TARGET
+#include "ra8_usb_compose.h"
 #include "ra8_usb_desc.h"
 #include "ux_api.h"
 
@@ -83,6 +84,7 @@ typedef enum : uint16_t {
   k_demo_usb_in_ep              = 0x81U, /**< Bulk-IN data pipe.            */
   k_demo_usb_data_bytes_fs      = 64U,   /**< Bulk max packet size at FS.   */
   k_demo_usb_data_bytes_hs      = 512U,  /**< Bulk max packet size at HS.   */
+  k_demo_usb_functions          = 1U,    /**< Functions per config.         */
 } demo_usb_endpoint_t;
 
 /**
@@ -157,36 +159,56 @@ uint32_t s_tz_secure_only_usb_hs_language_id_framework_len;
 
 ra8_err_t tz_secure_only_usb_hs_build_frameworks(void)
 {
-  ra8_err_t err =
-    ra8_usb_desc_build_cdc_acm(&k_demo_usb_device,
-                               &k_demo_usb_cdc_fs,
-                               s_tz_secure_only_usb_hs_device_framework_fs,
-                               (uint32_t)sizeof(s_tz_secure_only_usb_hs_device_framework_fs),
-                               &s_tz_secure_only_usb_hs_device_framework_fs_len);
+  /* USBX wants one device framework per bus speed, so this composes twice off
+   * one identity. The string and language-id frameworks are written by both
+   * calls, into the same two buffers: the encoders are pure and depend only on
+   * the identity, so the second pass rewrites the same bytes. That costs a few
+   * dozen stores at bring-up and keeps the call shape identical to every
+   * single-speed app in the tree. */
+  const ra8_usb_class_t cdc_acm_full_speed = {
+    .kind    = k_ra8_usb_class_cdc_acm,
+    .cdc_acm = k_demo_usb_cdc_fs,
+  };
+
+  const ra8_usb_class_t cdc_acm_high_speed = {
+    .kind    = k_ra8_usb_class_cdc_acm,
+    .cdc_acm = k_demo_usb_cdc_hs,
+  };
+
+  ra8_usb_device_cfg_t cfg = {
+    .desc        = &k_demo_usb_device,
+    .classes     = &cdc_acm_full_speed,
+    .class_count = (uint8_t)k_demo_usb_functions,
+  };
+
+  ra8_usb_device_frameworks_t fw = {
+    .device      = s_tz_secure_only_usb_hs_device_framework_fs,
+    .device_cap  = (uint32_t)sizeof(s_tz_secure_only_usb_hs_device_framework_fs),
+    .strings     = s_tz_secure_only_usb_hs_string_framework,
+    .strings_cap = (uint32_t)sizeof(s_tz_secure_only_usb_hs_string_framework),
+    .langid      = s_tz_secure_only_usb_hs_language_id_framework,
+    .langid_cap  = (uint32_t)sizeof(s_tz_secure_only_usb_hs_language_id_framework),
+  };
+
+  ra8_err_t err = ra8_usb_device_compose(&cfg, &fw);
   if (err != k_ra8_ok) {
     return err;
   }
+  s_tz_secure_only_usb_hs_device_framework_fs_len = fw.device_len;
 
-  err = ra8_usb_desc_build_cdc_acm(&k_demo_usb_device,
-                                   &k_demo_usb_cdc_hs,
-                                   s_tz_secure_only_usb_hs_device_framework_hs,
-                                   (uint32_t)sizeof(s_tz_secure_only_usb_hs_device_framework_hs),
-                                   &s_tz_secure_only_usb_hs_device_framework_hs_len);
+  cfg.classes   = &cdc_acm_high_speed;
+  fw.device     = s_tz_secure_only_usb_hs_device_framework_hs;
+  fw.device_cap = (uint32_t)sizeof(s_tz_secure_only_usb_hs_device_framework_hs);
+
+  err = ra8_usb_device_compose(&cfg, &fw);
   if (err != k_ra8_ok) {
     return err;
   }
+  s_tz_secure_only_usb_hs_device_framework_hs_len = fw.device_len;
 
-  err = ra8_usb_desc_build_strings(&k_demo_usb_device,
-                                   s_tz_secure_only_usb_hs_string_framework,
-                                   (uint32_t)sizeof(s_tz_secure_only_usb_hs_string_framework),
-                                   &s_tz_secure_only_usb_hs_string_framework_len);
-  if (err != k_ra8_ok) {
-    return err;
-  }
+  s_tz_secure_only_usb_hs_string_framework_len      = fw.strings_len;
+  s_tz_secure_only_usb_hs_language_id_framework_len = fw.langid_len;
 
-  return ra8_usb_desc_build_langid(k_demo_usb_device.langid,
-                                   s_tz_secure_only_usb_hs_language_id_framework,
-                                   (uint32_t)sizeof(s_tz_secure_only_usb_hs_language_id_framework),
-                                   &s_tz_secure_only_usb_hs_language_id_framework_len);
+  return k_ra8_ok;
 }
 #endif /* !RA8_OFF_TARGET */
