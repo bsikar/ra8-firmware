@@ -17,17 +17,26 @@
  * Transport abstraction (Dependency Inversion, see CLAUDE.md "SOLID
  * Principles for C"):
  *
- *   - The driver does not call ``ra8_iic_b_*`` or ``ra8_spi_*`` directly.
+ *   - The driver does not call ``ra8_i2c_*``, ``ra8_i3c_*`` or
+ *     ``ra8_spi_*`` directly.
  *   - Instead the caller hands a ``ra8_lsm6dso_bus_t`` interface whose
  *     ``read_regs`` / ``write_regs`` callbacks address the part. The
- *     production firmware wires these to ``ra8_iic_b_transfer`` /
- *     ``ra8_iic_b_write`` (I2C) or ``ra8_spi_xfer8`` (SPI); unit tests
- *     wire them to a software-mock transport in
- *     ``tests/misc/src/test_ra8_lsm6dso.c``.
+ *     register-level shape is kept because the part runs on I2C *or*
+ *     SPI, which the house I2C seam alone cannot express.
+ *   - Production firmware does NOT hand-write those callbacks. It binds
+ *     the house I2C seam ``ra8_i2c_bus_ops_t`` once with
+ *     ``ra8_lsm6dso_bind_i2c``, so the RIIC-versus-I3C choice stays a
+ *     bind-time decision the app makes through ``ra8_io_i2c_bus`` and
+ *     no app writes a peripheral-coupled adapter. Unit tests keep
+ *     filling ``ra8_lsm6dso_bus_t`` directly with a software-mock
+ *     transport in ``tests/misc/src/test_ra8_lsm6dso.c``.
  *
  * Surface (mirrors the deliverables list in the task brief):
  *
  *   - ``ra8_lsm6dso_init``               Bind a bus + cache its handle.
+ *   - ``ra8_lsm6dso_bind_i2c``           Fill that bus from the house
+ *                                       ``ra8_i2c_bus_ops_t`` seam and
+ *                                       init in one call.
  *   - ``ra8_lsm6dso_who_am_i``           Returns ``0x6C`` if the part is
  *                                       alive (DS12140 sec 9.11 WHO_AM_I).
  *   - ``ra8_lsm6dso_set_accel_range``    Configure +-2 / +-4 / +-8 / +-16 g.
@@ -59,6 +68,7 @@ extern "C" {
 #include <stdint.h>
 
 #include "ra8_err.h"
+#include "ra8_i2c_bus_ops.h"
 
 /* =============================================================================
  * Public typed-enum constants
@@ -258,10 +268,14 @@ typedef ra8_err_t (*ra8_lsm6dso_write_fn_t)(void*          ctx,
  * @brief Transport interface bound at ``ra8_lsm6dso_init`` time.
  *
  * @details
- * Production code wires ``read_regs`` and ``write_regs`` to thin
- * adapters over ``ra8_iic_b_transfer`` / ``ra8_iic_b_write`` or
- * ``ra8_spi_xfer8``. Unit tests wire them to a canned-response mock.
- * The ``ctx`` field is passed through to both callbacks unchanged.
+ * On I2C this struct is filled by ``ra8_lsm6dso_bind_i2c`` from the
+ * house ``ra8_i2c_bus_ops_t`` seam, and production code should not
+ * fill it by hand. It stays public because the part also runs on SPI,
+ * where the caller still supplies its own register-level callbacks,
+ * and because unit tests wire it to a canned-response mock. The
+ * ``ctx`` field is passed through to both callbacks unchanged.
+ *
+ * @see ra8_lsm6dso_bind_i2c  The I2C binder that fills this struct.
  */
 typedef struct {
   ra8_lsm6dso_read_fn_t  read_regs;  /**< Read callback.  Non-NULL. */
@@ -321,6 +335,111 @@ typedef struct {
  * @since 0.1.0
  */
 [[nodiscard]] ra8_err_t ra8_lsm6dso_init(ra8_lsm6dso_t* out_dev, const ra8_lsm6dso_bus_t* bus);
+
+/* =============================================================================
+ * House-seam binder (I2C)
+ * =============================================================================
+ */
+
+/**
+ * @enum ra8_lsm6dso_i2c_const_t
+ * @brief Sizing constant for the binder's staged write frame.
+ *
+ * @details
+ * The house seam writes a whole frame in one call, so the binder has to
+ * stage ``[reg][payload]`` contiguously. The driver never writes more
+ * than one payload byte at a time (every write goes through its
+ * single-byte register helper), so the cap is generous; it exists so a
+ * future multi-byte write fails loudly instead of overrunning.
+ */
+typedef enum : uint32_t {
+  k_lsm6dso_i2c_frame_bytes_max = 16U, /**< Staged frame cap: 1 register + 15 payload. */
+} ra8_lsm6dso_i2c_const_t;
+
+/**
+ * @struct ra8_lsm6dso_i2c_ctx_t
+ * @brief Caller-owned binding state for ::ra8_lsm6dso_bind_i2c.
+ *
+ * @details
+ * Holds the house I2C seam by value plus the target address, and is
+ * what the driver's ``ctx`` cookie points at once bound. The caller
+ * owns the storage (NASA Rule 3: the driver allocates nothing), so it
+ * must out-live the ::ra8_lsm6dso_t it was bound to -- file-scope or
+ * the same frame as the device, never a helper's locals.
+ *
+ * @invariant Once bound, ``bus.write`` and ``bus.transfer`` are non-NULL.
+ * @invariant ``target_7b`` is a 7-bit address (0x00..0x7F).
+ *
+ * @see ra8_lsm6dso_bind_i2c
+ * @since 0.1.0
+ */
+typedef struct {
+  ra8_i2c_bus_ops_t bus;       /**< House I2C seam, copied at bind time. */
+  uint8_t           target_7b; /**< 7-bit peripheral address of the part. */
+} ra8_lsm6dso_i2c_ctx_t;
+
+/**
+ * @brief Bind the part to the house I2C seam and initialise it.
+ *
+ * @details
+ * Fills ``out_ctx`` from ``ops`` + ``target_7b``, builds the driver's
+ * register-level ::ra8_lsm6dso_bus_t over it, and hands that to
+ * ::ra8_lsm6dso_init. This is the production path: an app binds a
+ * backend once through ``ra8_io_i2c_bus`` (RIIC or the I3C block's
+ * I2C-compatibility mode), converts it with ``ra8_io_i2c_bus_as_ops``,
+ * and passes the result here, so no app writes a transport adapter and
+ * nothing in the app names a peripheral.
+ *
+ * Reads become one write-RESTART-read transaction against the register
+ * address, which is what the part's auto-increment needs (DS12140
+ * sec 6.1.2). Writes stage ``[reg][payload]`` and go out as one framed
+ * write with STOP.
+ *
+ * Does not touch the wire -- follow with ::ra8_lsm6dso_who_am_i.
+ *
+ * @param[out] out_dev   Driver state, populated on success.
+ * @param[out] out_ctx   Caller-owned binding state; must out-live
+ *                       ``out_dev``.
+ * @param[in]  ops       House I2C seam, already bound to a backend.
+ * @param[in]  target_7b 7-bit address, normally
+ *                       ::k_lsm6dso_i2c_addr_sa0_high on the MikroE
+ *                       6DOF IMU 12 Click.
+ *
+ * @return ``ra8_err_t`` Error code.
+ * @retval k_ra8_ok               Bound and initialised.
+ * @retval k_ra8_err_null_ptr     Any argument is NULL, or ``ops->write``
+ *                               or ``ops->transfer`` is NULL.
+ * @retval k_ra8_err_invalid_arg  ``target_7b`` is above 0x7F.
+ *
+ * @pre The backend behind ``ops`` is brought up (peripheral init and
+ *      bit-rate are the app's job; the seam is transfer-only).
+ * @pre ``out_ctx`` points at storage that out-lives ``out_dev``.
+ * @post On success ``out_dev->initialized == true`` and every driver
+ *       transaction routes through ``ops``.
+ * @post On failure ``*out_dev`` and ``*out_ctx`` are left untouched.
+ *
+ * @note The seam's ``read`` callback is not used, so a binder that
+ *       fills only ``write`` and ``transfer`` is accepted.
+ * @note Not thread-safe. Call once per driver instance from init context.
+ *
+ * @par Example:
+ * @code
+ * static ra8_io_i2c_bus_t     s_bus;
+ * static ra8_lsm6dso_i2c_ctx_t s_imu_ctx;
+ * ra8_i2c_bus_ops_t ops = {};
+ * (void)ra8_io_i2c_bus_bind_i3c_compat(&s_bus, 0U);
+ * (void)ra8_io_i2c_bus_as_ops(&s_bus, &ops);
+ * ra8_lsm6dso_t dev = {};
+ * (void)ra8_lsm6dso_bind_i2c(&dev, &s_imu_ctx, &ops, k_lsm6dso_i2c_addr_sa0_high);
+ * @endcode
+ *
+ * @see ra8_i2c_bus_ops_t  The house seam this binder consumes.
+ * @since 0.1.0
+ */
+[[nodiscard]] ra8_err_t ra8_lsm6dso_bind_i2c(ra8_lsm6dso_t*           out_dev,
+                                             ra8_lsm6dso_i2c_ctx_t*   out_ctx,
+                                             const ra8_i2c_bus_ops_t* ops,
+                                             uint8_t                  target_7b);
 
 /* =============================================================================
  * Identification
