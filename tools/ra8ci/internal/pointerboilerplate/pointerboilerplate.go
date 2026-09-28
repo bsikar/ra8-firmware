@@ -32,7 +32,12 @@ type finding struct {
 // Run executes the self-test or scans the live apps/examples source scope.
 func Run(ctx context.Context, root string, args []string, stdout, stderr io.Writer) int {
 	if ctx == nil || root == "" || stdout == nil || stderr == nil {
-		fmt.Fprintln(stderr, "ra8ci pointer-boilerplate: invalid input")
+		// The refusal cannot be announced down a writer the caller did not
+		// supply: printing first is what turned a missing stderr into a crash
+		// instead of the exit status this gate promises.
+		if stderr != nil {
+			fmt.Fprintln(stderr, "ra8ci pointer-boilerplate: invalid input")
+		}
 		return 2
 	}
 	if len(args) == 1 && args[0] == "--selftest" {
