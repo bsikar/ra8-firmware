@@ -339,74 +339,71 @@ static const ra8_usb_desc_dfu_t k_demo_usb_dfu = {
 
 /**
  * @var s_string_framework
- * @brief USBX string descriptor table (vendor / product / serial).
+ * @brief Synthesised string framework: manufacturer, product, serial.
+ * @note Written once by ::dfu_usb_build_frameworks, then read-only.
  * @since 0.1.0
  */
-static UCHAR s_string_framework[] = {
-  /* idx 1: "Brighton Sikarskie". */
-  0x09U,
-  0x04U,
-  0x01U,
-  0x12U,
-  'B',
-  'r',
-  'i',
-  'g',
-  'h',
-  't',
-  'o',
-  'n',
-  ' ',
-  'S',
-  'i',
-  'k',
-  'a',
-  'r',
-  's',
-  'k',
-  'i',
-  'e',
-  /* idx 2: "RA8D2 DFU". */
-  0x09U,
-  0x04U,
-  0x02U,
-  0x09U,
-  'R',
-  'A',
-  '8',
-  'D',
-  '2',
-  ' ',
-  'D',
-  'F',
-  'U',
-  /* idx 3: serial "00000019". */
-  0x09U,
-  0x04U,
-  0x03U,
-  0x08U,
-  '0',
-  '0',
-  '0',
-  '0',
-  '0',
-  '0',
-  '1',
-  '9',
-};
+static UCHAR s_string_framework[k_ra8_usb_desc_strings_bytes_max];
 
-/* USBX LANGID descriptor 0x0409 (English-US), little-endian byte pair. */
-typedef enum : uint8_t {
-  k_usb_langid_en_us_lo = 0x09U, /**< LANGID 0x0409 low byte.  */
-  k_usb_langid_en_us_hi = 0x04U, /**< LANGID 0x0409 high byte. */
-} usb_langid_byte_t;
+/** @brief Bytes written to ::s_string_framework. */
+static uint32_t s_string_framework_len = 0U;
 
-/** @brief USBX language-id table -- US English. */
-static UCHAR s_language_id_framework[] = {k_usb_langid_en_us_lo, k_usb_langid_en_us_hi};
+/**
+ * @var s_language_id_framework
+ * @brief Synthesised language-id framework -- US English.
+ * @note Written once by ::dfu_usb_build_frameworks, then read-only.
+ * @since 0.1.0
+ */
+static UCHAR s_language_id_framework[k_ra8_usb_desc_langid_bytes];
+
+/** @brief Bytes written to ::s_language_id_framework. */
+static uint32_t s_language_id_framework_len = 0U;
 
 /* -------------------------------------------------------------------------- */
 /* Device side: USBX DFU class callbacks */
 /* -------------------------------------------------------------------------- */
+
+/**
+ * @brief Synthesises the device, string and language-id frameworks.
+ *
+ * @details Replaces the hand-typed descriptor tables: every byte the host
+ * enumerates now comes from ::k_demo_usb_dev through libs/ra8_usb_pal.
+ *
+ * @return ra8_err_t ::k_ra8_ok on success, propagated builder error otherwise.
+ * @retval k_ra8_ok All three frameworks were written.
+ *
+ * @pre Call once before USBX bring-up.
+ * @post On success the framework buffers are read-only.
+ *
+ * @note Single-call; not idempotent.
+ * @since 0.1.0
+ */
+static ra8_err_t dfu_usb_build_frameworks(void)
+{
+  uint32_t        built = 0U;
+  const ra8_err_t dev   = ra8_usb_desc_build_dfu(&k_demo_usb_dev,
+                                                 &k_demo_usb_dfu,
+                                                 s_device_framework,
+                                                 (uint32_t)sizeof(s_device_framework),
+                                                 &built);
+  if (dev != k_ra8_ok) {
+    return dev;
+  }
+  s_device_framework_len = (ULONG)built;
+
+  const ra8_err_t str = ra8_usb_desc_build_strings(&k_demo_usb_dev,
+                                                   s_string_framework,
+                                                   (uint32_t)sizeof(s_string_framework),
+                                                   &s_string_framework_len);
+  if (str != k_ra8_ok) {
+    return str;
+  }
+
+  return ra8_usb_desc_build_langid(k_demo_usb_dev.langid,
+                                   s_language_id_framework,
+                                   (uint32_t)sizeof(s_language_id_framework),
+                                   &s_language_id_framework_len);
+}
 
 /**
  * @brief Device-side worker: bring the DFU device up, then park.
@@ -423,16 +420,10 @@ static VOID dfu_device_worker(ULONG arg)
 {
   (void)arg;
 
-  uint32_t built = 0U;
-  if (ra8_usb_desc_build_dfu(&k_demo_usb_dev,
-                             &k_demo_usb_dfu,
-                             s_device_framework,
-                             (uint32_t)sizeof(s_device_framework),
-                             &built) != k_ra8_ok) {
+  if (dfu_usb_build_frameworks() != k_ra8_ok) {
     s_dbg_host_err = (uint32_t)k_ra8_err_invalid_arg;
     return;
   }
-  s_device_framework_len = (ULONG)built;
 
   /* Config B device half: the HS controller runs the DFU device class wired
    * to real MRAM (libs/ra8_dfu). DFU_DNLOAD programs the inactive Slot B. */
@@ -443,9 +434,9 @@ static VOID dfu_device_worker(ULONG arg)
                                            s_device_framework,
                                            s_device_framework_len,
                                            s_string_framework,
-                                           (uint32_t)sizeof(s_string_framework),
+                                           s_string_framework_len,
                                            s_language_id_framework,
-                                           (uint32_t)sizeof(s_language_id_framework));
+                                           s_language_id_framework_len);
   if (e != k_ra8_ok) {
     s_dbg_host_err = (uint32_t)e;
     return;
