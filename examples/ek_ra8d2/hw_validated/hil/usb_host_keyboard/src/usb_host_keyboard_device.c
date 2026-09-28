@@ -29,6 +29,7 @@
 #include "ra8_board_ek_ra8d2.h"
 #include "ra8_err.h"
 #include "ra8_usb.h"
+#include "ra8_usb_desc.h"
 #include "usb_host_keyboard_steps.h"
 
 #ifndef RA8_OFF_TARGET
@@ -157,70 +158,58 @@ static UCHAR s_report_descriptor[] = {
 /* USB descriptors (HID: one interface, one interrupt-IN endpoint) */
 /* -------------------------------------------------------------------------- */
 
-/* HID config: one HID interface (class 0x03, no boot subclass), one
- * interrupt-IN endpoint EP1 IN (64-byte MPS), no OUT endpoint. Total config
- * blob = 9 (config) + 9 (interface) + 9 (HID class) + 7 (EP IN) = 34 = 0x22.
- * Layout per USB 2.0 sec 9.6 + HID 1.11 sec 6.2.1. PID 0x0018 marks the HID
- * self-test identity. */
-static UCHAR s_device_framework_fs[] = {
-  /* Device descriptor (USB 2.0 sec 9.6.1) -- 18 bytes. */
-  0x12U,
-  0x01U,
-  0x00U,
-  0x02U,
-  0x00U,
-  0x00U,
-  0x00U,
-  0x40U,
-  0x09U,
-  0x12U,
-  0x18U, /* PID = 0x0018 (pid.codes test). */
-  0x00U,
-  0x00U,
-  0x01U,
-  0x01U,
-  0x02U,
-  0x03U,
-  0x01U,
-  /* Configuration descriptor (34 bytes total = 0x22). */
-  0x09U,
-  0x02U,
-  0x22U,
-  0x00U,
-  0x01U,
-  0x01U,
-  0x00U,
-  0x80U,
-  0x32U,
-  /* Interface descriptor -- HID, boot subclass (1), keyboard protocol (1). */
-  0x09U,
-  0x04U,
-  0x00U,
-  0x00U,
-  0x01U,
-  0x03U,
-  0x01U, /* bInterfaceSubClass = 1 (Boot)     */
-  0x01U, /* bInterfaceProtocol = 1 (Keyboard) */
-  0x00U,
-  /* HID class descriptor (HID 1.11 sec 6.2.1) -- 9 bytes. bcdHID 0x0111,
-     one report descriptor of sizeof(s_report_descriptor) = 45 (0x2D). */
-  0x09U,
-  0x21U,
-  0x11U,
-  0x01U,
-  0x00U,
-  0x01U,
-  0x22U,
-  0x2DU, /* wDescriptorLength = 45 (boot-keyboard report descriptor) */
-  0x00U,
-  /* Interrupt-IN endpoint (EP1 IN, 64-byte MPS, 1 ms poll). */
-  0x07U,
-  0x05U,
-  0x81U,
-  0x03U,
-  0x40U,
-  0x00U,
-  0x01U,
+/* -------------------------------------------------------------------------- */
+/* USB descriptors (DEVICE + CONFIG + INTERFACE + HID + EP IN) */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * @var s_device_framework_fs
+ * @brief The device framework, synthesised from ::k_demo_usb_dev and ::k_demo_usb_hid.
+ *
+ * @details The builder emits the 18-byte device descriptor, the configuration, the
+ * boot-keyboard interface, the HID class descriptor naming
+ * ::s_report_descriptor, and the single interrupt-IN endpoint. The report
+ * length reaches the wire from `sizeof`, so it cannot drift from the array.
+ * @since 0.1.0
+ */
+static UCHAR s_device_framework_fs[k_ra8_usb_desc_framework_bytes_max];
+
+/** @brief Bytes of ::s_device_framework_fs the builder actually wrote. */
+static ULONG s_device_framework_len;
+
+/** @brief Identity and wire sizes this app's HID function publishes. */
+typedef enum : uint16_t {
+  k_demo_usb_vid          = 0x1209U, /**< idVendor, pid.codes.          */
+  k_demo_usb_pid          = 0x0018U, /**< idProduct.                    */
+  k_demo_usb_bcd_device   = 0x0100U, /**< bcdDevice, 1.00.              */
+  k_demo_usb_packet_bytes = 64U,     /**< Interrupt-IN max packet size. */
+  k_demo_usb_poll_ms      = 1U,      /**< bInterval, frames.            */
+  k_demo_usb_max_power_ma = 100U,    /**< Bus draw in mA.               */
+  k_demo_usb_in_ep        = 0x81U,   /**< Interrupt-IN endpoint.        */
+} demo_usb_size_t;
+
+/** @brief The identity this app publishes. */
+static const ra8_usb_desc_device_t k_demo_usb_dev = {
+  .vid           = (uint16_t)k_demo_usb_vid,
+  .pid           = (uint16_t)k_demo_usb_pid,
+  .bcd_device    = (uint16_t)k_demo_usb_bcd_device,
+  .manufacturer  = "Brighton Sikarskie",
+  .product       = "RA8D2 HID TEST",
+  .serial        = "00000018",
+  .langid        = 0U,
+  .max_power_ma  = (uint16_t)k_demo_usb_max_power_ma,
+  .self_powered  = false,
+  .remote_wakeup = false,
+};
+
+/** @brief The HID endpoint layout this app publishes. */
+static const ra8_usb_desc_hid_t k_demo_usb_hid = {
+  .in_ep            = (uint8_t)k_demo_usb_in_ep,
+  .data_bytes       = (uint16_t)k_demo_usb_packet_bytes,
+  .poll_interval_ms = (uint8_t)k_demo_usb_poll_ms,
+  .report_bytes     = (uint16_t)sizeof(s_report_descriptor),
+  .boot_interface   = true,
+  .protocol         = k_ra8_usb_desc_hid_protocol_keyboard,
 };
 
 /**
@@ -388,13 +377,23 @@ static VOID hid_deactivate(VOID* hid_instance)
  */
 static UINT hid_usbx_stack_up(void)
 {
+  uint32_t framework_len = 0U;
+  if (ra8_usb_desc_build_hid(&k_demo_usb_dev,
+                             &k_demo_usb_hid,
+                             s_device_framework_fs,
+                             (uint32_t)sizeof(s_device_framework_fs),
+                             &framework_len) != k_ra8_ok) {
+    return UX_ERROR;
+  }
+  s_device_framework_len = (ULONG)framework_len;
+
   if (_ux_system_initialize(s_usbx_pool, k_hid_usbx_pool_bytes, UX_NULL, 0) != UX_SUCCESS) {
     return UX_ERROR;
   }
   return _ux_device_stack_initialize((UCHAR*)UX_NULL,
                                      0,
                                      s_device_framework_fs,
-                                     sizeof(s_device_framework_fs),
+                                     s_device_framework_len,
                                      s_string_framework,
                                      sizeof(s_string_framework),
                                      s_language_id_framework,
