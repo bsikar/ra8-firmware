@@ -105,18 +105,6 @@ void SysTick_Handler(void)
 /* Pinout (FSP-aligned, EK-RA8D2 v1 User's Manual) */
 /* -------------------------------------------------------------------------- */
 
-/** @brief USBFS VBUS sense pin (P4_07, PSEL = 0x13). */
-static const ra8_port_pin_t k_blc_pin_fs_vbus = (ra8_port_pin_t)k_ra8_board_usbfs_pin_vbus;
-
-/** @brief USBFS VBUSEN (P5_00) -- GPIO LOW for the device role. */
-static const ra8_port_pin_t k_blc_pin_fs_vbusen = (ra8_port_pin_t)k_ra8_board_usbfs_pin_vbusen;
-
-/** @brief USBFS D+ (P8_14). */
-static const ra8_port_pin_t k_blc_pin_fs_dp = (ra8_port_pin_t)k_ra8_board_usbfs_pin_dp;
-
-/** @brief USBFS D- (P8_15). */
-static const ra8_port_pin_t k_blc_pin_fs_dm = (ra8_port_pin_t)k_ra8_board_usbfs_pin_dm;
-
 /** @brief J-Link OB CDC TX pin (PD_02 -- SCI8 TX). */
 static const ra8_port_pin_t k_blc_pin_sci_tx = (ra8_port_pin_t)k_ra8_board_uart_console_pin_txd;
 
@@ -675,7 +663,7 @@ VOID tx_application_define(VOID* first_unused_memory)
 }
 
 /**
- * @brief Route the USB-FS device pins (P4_07/P5_00/P8_14/P8_15).
+ * @brief Open the USB-FS port in the device role via the board facade.
  * @return void.
  * @pre IOPORT is reachable.
  * @pre Called once from ::blc_setup_or_halt.
@@ -686,16 +674,11 @@ VOID tx_application_define(VOID* first_unused_memory)
  */
 static void blc_route_usb_or_halt(void)
 {
-  if (ra8_pfs_route_peripheral(k_blc_pin_fs_vbus, k_ra8_psel_usb_fs, "blc.fs_vbus") != k_ra8_ok) {
-    blc_panic_halt();
-  }
-  if (ra8_gpio_output_init(k_blc_pin_fs_vbusen, k_ra8_level_low) != k_ra8_ok) {
-    blc_panic_halt();
-  }
-  if (ra8_pfs_route_peripheral(k_blc_pin_fs_dp, k_ra8_psel_usb_fs, "blc.fs_dp") != k_ra8_ok) {
-    blc_panic_halt();
-  }
-  if (ra8_pfs_route_peripheral(k_blc_pin_fs_dm, k_ra8_psel_usb_fs, "blc.fs_dm") != k_ra8_ok) {
+  /* One board call replaces the four-step FS choreography: it routes VBUS,
+   * D+ and D- to the USBFS function and keeps VBUSEN a GPIO strapped LOW for
+   * the device role. The pin identities are board facts, so they live in
+   * libs/ra8_board_ek_ra8d2 rather than being re-declared here. */
+  if (ra8_board_usb_port_init(k_ra8_board_usb_port_fs, k_ra8_board_usb_role_device) != k_ra8_ok) {
     blc_panic_halt();
   }
 }
