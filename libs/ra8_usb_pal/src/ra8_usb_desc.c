@@ -38,14 +38,15 @@
  * @brief bDescriptorType values, USB 2.0 table 9-5 plus the CDC additions.
  */
 typedef enum : uint8_t {
-  k_internal_type_device   = 0x01U, /**< DEVICE.                */
-  k_internal_type_config   = 0x02U, /**< CONFIGURATION.         */
-  k_internal_type_iface    = 0x04U, /**< INTERFACE.             */
-  k_internal_type_endpoint = 0x05U, /**< ENDPOINT.              */
-  k_internal_type_iad      = 0x0BU, /**< INTERFACE ASSOCIATION. */
-  k_internal_type_cs_iface = 0x24U, /**< CS_INTERFACE (CDC).    */
-  k_internal_type_hid      = 0x21U, /**< HID class descriptor.  */
-  k_internal_type_report   = 0x22U, /**< HID report descriptor. */
+  k_internal_type_device   = 0x01U, /**< DEVICE.                            */
+  k_internal_type_config   = 0x02U, /**< CONFIGURATION.                     */
+  k_internal_type_iface    = 0x04U, /**< INTERFACE.                         */
+  k_internal_type_endpoint = 0x05U, /**< ENDPOINT.                          */
+  k_internal_type_iad      = 0x0BU, /**< INTERFACE ASSOCIATION.             */
+  k_internal_type_cs_iface = 0x24U, /**< CS_INTERFACE (CDC).                */
+  k_internal_type_hid      = 0x21U, /**< HID class descriptor.              */
+  k_internal_type_report   = 0x22U, /**< HID report descriptor.             */
+  k_internal_type_dfu      = 0x21U, /**< DFU functional, DFU 1.1 sec 4.1.3. */
 } internal_desc_type_t;
 
 /**
@@ -89,6 +90,17 @@ typedef enum : uint16_t {
   k_internal_hid_descs       = 1U,      /**< One subordinate report descriptor.      */
   k_internal_hid_endpoints   = 1U,      /**< Interrupt IN only, no OUT endpoint.     */
   k_internal_byte_mask       = 0xFFU,   /**< Low byte of a little-endian field.      */
+  k_internal_class_app_spec  = 0xFEU,   /**< Application-specific interface class.   */
+  k_internal_subclass_dfu    = 0x01U,   /**< Device firmware upgrade subclass.       */
+  k_internal_proto_runtime   = 0x01U,   /**< DFU run-time protocol.                  */
+  k_internal_proto_dfu       = 0x02U,   /**< DFU mode protocol.                      */
+  k_internal_dfu_bytes       = 9U,      /**< DFU functional descriptor length.       */
+  k_internal_dfu_ifaces      = 1U,      /**< One DFU interface.                      */
+  k_internal_dfu_endpoints   = 0U,      /**< DFU rides EP0, no endpoints of its own. */
+  k_internal_dfu_can_dnload  = 0x01U,   /**< bmAttributes bit 0.                     */
+  k_internal_dfu_can_upload  = 0x02U,   /**< bmAttributes bit 1.                     */
+  k_internal_dfu_manif_tol   = 0x04U,   /**< bmAttributes bit 2.                     */
+  k_internal_dfu_will_detach = 0x08U,   /**< bmAttributes bit 3.                     */
 } internal_wire_t;
 
 /**
@@ -824,6 +836,143 @@ ra8_err_t ra8_usb_desc_build_hid(const ra8_usb_desc_device_t* dev,
                         (uint8_t)k_internal_ep_attr_intr,
                         hid->data_bytes,
                         hid->poll_interval_ms);
+
+  if (cur.overflow) {
+    return k_ra8_err_invalid_size;
+  }
+
+  const uint32_t total = cur.len - cfg_at;
+  out[cfg_at + 2U]     = (uint8_t)(total & (uint32_t)k_internal_byte_mask);
+  out[cfg_at + 3U]     = (uint8_t)((total >> 8U) & (uint32_t)k_internal_byte_mask);
+
+  *out_len = cur.len;
+  return k_ra8_ok;
+}
+
+/**
+ * @brief Reject a DFU request that could not produce a usable descriptor.
+ *
+ * @param[in] dev Device identity and power budget.
+ * @param[in] dfu DFU capabilities and transfer geometry.
+ *
+ * @return ra8_err_t Result of the check.
+ * @retval k_ra8_ok                 The request is encodable.
+ * @retval k_ra8_err_invalid_arg    A zero transfer size or version, or neither
+ *                                  capability bit set.
+ * @retval k_ra8_err_range_check_failed The power budget exceeds 500 mA.
+ *
+ * @pre @p dev and @p dfu are non-NULL.
+ * @post Nothing is written; the caller decides what to emit.
+ * @note Internal helper. A function that can neither download nor upload is
+ *       refused because a host enumerating it has no operation left to issue.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static ra8_err_t internal_dfu_check(const ra8_usb_desc_device_t* dev,
+                                                 const ra8_usb_desc_dfu_t*    dfu)
+{
+  if ((dfu->transfer_bytes == 0U) || (dfu->bcd_dfu == 0U)) {
+    return k_ra8_err_invalid_arg;
+  }
+  if (!dfu->can_download && !dfu->can_upload) {
+    return k_ra8_err_invalid_arg;
+  }
+  if (dev->max_power_ma > (uint16_t)k_internal_power_ma_max) {
+    return k_ra8_err_range_check_failed;
+  }
+  return k_ra8_ok;
+}
+
+/**
+ * @brief Pack the four DFU capability booleans into bmAttributes.
+ *
+ * @param[in] dfu DFU capabilities.
+ *
+ * @return uint8_t The bmAttributes byte, DFU 1.1 sec 4.1.3.
+ *
+ * @pre @p dfu is non-NULL.
+ * @post Nothing is written.
+ * @note Internal helper. Bits 4 to 7 are reserved and left clear.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static uint8_t internal_dfu_attributes(const ra8_usb_desc_dfu_t* dfu)
+{
+  uint8_t attr = 0U;
+
+  if (dfu->can_download) {
+    attr |= (uint8_t)k_internal_dfu_can_dnload;
+  }
+  if (dfu->can_upload) {
+    attr |= (uint8_t)k_internal_dfu_can_upload;
+  }
+  if (dfu->manifestation_tolerant) {
+    attr |= (uint8_t)k_internal_dfu_manif_tol;
+  }
+  if (dfu->will_detach) {
+    attr |= (uint8_t)k_internal_dfu_will_detach;
+  }
+  return attr;
+}
+
+/**
+ * @brief Append the DFU functional descriptor, DFU 1.1 sec 4.1.3.
+ *
+ * @param[in,out] cur Cursor to append through.
+ * @param[in]     dfu DFU capabilities and transfer geometry.
+ *
+ * @pre @p cur is non-NULL and owns a valid buffer.
+ * @post Nine bytes have been appended, or the overflow latch is set.
+ * @note Internal helper.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_put_dfu_functional(internal_cursor_t*        cur,
+                                                     const ra8_usb_desc_dfu_t* dfu)
+{
+  internal_put(cur, (uint8_t)k_internal_dfu_bytes);
+  internal_put(cur, (uint8_t)k_internal_type_dfu);
+  internal_put(cur, internal_dfu_attributes(dfu));
+  internal_put16(cur, dfu->detach_timeout_ms);
+  internal_put16(cur, dfu->transfer_bytes);
+  internal_put16(cur, dfu->bcd_dfu);
+}
+
+ra8_err_t ra8_usb_desc_build_dfu(const ra8_usb_desc_device_t* dev,
+                                 const ra8_usb_desc_dfu_t*    dfu,
+                                 uint8_t*                     out,
+                                 uint32_t                     cap,
+                                 uint32_t*                    out_len)
+{
+  if ((dev == nullptr) || (dfu == nullptr) || (out == nullptr) || (out_len == nullptr)) {
+    return k_ra8_err_null_ptr;
+  }
+  ra8_err_t err = internal_dfu_check(dev, dfu);
+  if (err != k_ra8_ok) {
+    return err;
+  }
+
+  bool published[k_ra8_usb_desc_string_slots] = {};
+  err                                         = internal_published_slots(dev, published);
+  if (err != k_ra8_ok) {
+    return err;
+  }
+
+  internal_cursor_t cur = {.buf = out, .cap = cap, .len = 0U, .overflow = false};
+
+  internal_put_device_per_iface(&cur, dev, published);
+
+  const uint32_t cfg_at = cur.len;
+  internal_put_config_open(&cur, dev, (uint8_t)k_internal_dfu_ifaces);
+
+  /* Zero endpoints: DFU 1.1 sec 4.1.2 puts every transfer on the default
+   * control pipe, so the functional descriptor follows the interface with no
+   * endpoint descriptor between them. */
+  internal_put_iface(&cur,
+                     0U,
+                     (uint8_t)k_internal_dfu_endpoints,
+                     (uint8_t)k_internal_class_app_spec,
+                     (uint8_t)k_internal_subclass_dfu,
+                     dfu->dfu_mode ? (uint8_t)k_internal_proto_dfu
+                                   : (uint8_t)k_internal_proto_runtime);
+  internal_put_dfu_functional(&cur, dfu);
 
   if (cur.overflow) {
     return k_ra8_err_invalid_size;
