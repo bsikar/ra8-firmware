@@ -36,6 +36,7 @@ include("${_d}/cmake/ra8_add_app.cmake")
 # which every app links by default.
 ra8_add_app(
   NAME usb_printer_vendor
+  THREADX_HEAP SDRAM
   STACK_BYTES 4000
   DESCRIPTION "Native USB composite printer (7/1/2) + vendor (FF) device, polled chapter-9"
   LIBS ra8_board_ek_ra8d2

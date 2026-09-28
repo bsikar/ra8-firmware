@@ -32,6 +32,7 @@ include("${_d}/cmake/ra8_add_app.cmake")
 # talks to the TLS stack through the ra8_tls_* API instead of raw mbedtls_*.
 ra8_add_app(
   NAME tls_client
+  THREADX_HEAP SDRAM
   STACK_BYTES 4096
   DESCRIPTION "TLS client over ra8_tls + ra8_net_pal (NetX Duo transport) for RA8D2"
   USES threadx netxduo mbedtls

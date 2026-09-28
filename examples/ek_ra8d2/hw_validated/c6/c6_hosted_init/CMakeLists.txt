@@ -38,6 +38,7 @@ include("${_d}/cmake/ra8_add_app.cmake")
 # behind it, none of which this app uses.
 ra8_add_app(
   NAME c6_hosted_init
+  THREADX_HEAP SDRAM
   STACK_BYTES 4096
   DESCRIPTION "Bring the esp-hosted RA8 port up against the ESP32-C6 over SPI"
   USES threadx esp_hosted

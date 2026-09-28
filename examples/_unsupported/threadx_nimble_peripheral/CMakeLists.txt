@@ -31,6 +31,7 @@ include("${_d}/cmake/ra8_add_app.cmake")
 
 ra8_add_app(
   NAME threadx_nimble_peripheral
+  THREADX_HEAP SDRAM
   STACK_BYTES 2200
   DESCRIPTION "ThreadX + NimBLE Battery Service peripheral demo for RA8D2"
   LIBS ra8_board_ek_ra8d2

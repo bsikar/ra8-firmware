@@ -39,6 +39,7 @@ include("${_d}/cmake/ra8_add_app.cmake")
 # app uses.
 ra8_add_app(
   NAME c6_wifi_link
+  THREADX_HEAP SDRAM
   STACK_BYTES 8192
   DESCRIPTION "Bring the ESP32-C6 Wi-Fi station up through the ra8_c6link facade"
   USES threadx esp_hosted

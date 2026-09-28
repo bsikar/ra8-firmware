@@ -31,6 +31,7 @@ include("${_d}/cmake/ra8_add_app.cmake")
 
 ra8_add_app(
   NAME usb_msc_mram_hs
+  THREADX_HEAP SDRAM
   STACK_BYTES 2200
   DESCRIPTION "USB-HS device MSC: onboard MRAM as a read-only drive"
   USES threadx usbx
