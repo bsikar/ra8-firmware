@@ -44,6 +44,8 @@ typedef enum : uint8_t {
   k_internal_type_endpoint = 0x05U, /**< ENDPOINT.              */
   k_internal_type_iad      = 0x0BU, /**< INTERFACE ASSOCIATION. */
   k_internal_type_cs_iface = 0x24U, /**< CS_INTERFACE (CDC).    */
+  k_internal_type_hid      = 0x21U, /**< HID class descriptor.  */
+  k_internal_type_report   = 0x22U, /**< HID report descriptor. */
 } internal_desc_type_t;
 
 /**
@@ -79,6 +81,14 @@ typedef enum : uint16_t {
   k_internal_msc_ifaces      = 1U,      /**< One mass-storage interface.             */
   k_internal_type_qualifier  = 0x06U,   /**< DEVICE QUALIFIER, USB 2.0 sec 9.6.2.    */
   k_internal_qualifier_bytes = 10U,     /**< Device qualifier wire length.           */
+  k_internal_bcd_hid_111     = 0x0111U, /**< bcdHID 1.11.                            */
+  k_internal_class_hid       = 0x03U,   /**< Human interface interface class.        */
+  k_internal_subclass_boot   = 0x01U,   /**< Boot interface subclass, HID app. B.    */
+  k_internal_hid_bytes       = 9U,      /**< HID class descriptor wire length.       */
+  k_internal_hid_ifaces      = 1U,      /**< One human-interface interface.          */
+  k_internal_hid_descs       = 1U,      /**< One subordinate report descriptor.      */
+  k_internal_hid_endpoints   = 1U,      /**< Interrupt IN only, no OUT endpoint.     */
+  k_internal_byte_mask       = 0xFFU,   /**< Low byte of a little-endian field.      */
 } internal_wire_t;
 
 /**
@@ -472,8 +482,8 @@ ra8_err_t ra8_usb_desc_build_cdc_acm(const ra8_usb_desc_device_t*  dev,
   }
 
   const uint32_t total = cur.len - cfg_at;
-  out[cfg_at + 2U]     = (uint8_t)(total & 0xFFU);
-  out[cfg_at + 3U]     = (uint8_t)((total >> 8U) & 0xFFU);
+  out[cfg_at + 2U]     = (uint8_t)(total & (uint32_t)k_internal_byte_mask);
+  out[cfg_at + 3U]     = (uint8_t)((total >> 8U) & (uint32_t)k_internal_byte_mask);
 
   *out_len = cur.len;
   return k_ra8_ok;
@@ -663,8 +673,165 @@ ra8_err_t ra8_usb_desc_build_msc(const ra8_usb_desc_device_t* dev,
   }
 
   const uint32_t total = cur.len - cfg_at;
-  out[cfg_at + 2U]     = (uint8_t)(total & 0xFFU);
-  out[cfg_at + 3U]     = (uint8_t)((total >> 8U) & 0xFFU);
+  out[cfg_at + 2U]     = (uint8_t)(total & (uint32_t)k_internal_byte_mask);
+  out[cfg_at + 3U]     = (uint8_t)((total >> 8U) & (uint32_t)k_internal_byte_mask);
+
+  *out_len = cur.len;
+  return k_ra8_ok;
+}
+
+/* =============================================================================
+ * Human interface
+ * =============================================================================
+ */
+
+/**
+ * @brief Measure the three string slots and report which ones are published.
+ *
+ * @param[in]  dev       Device identity supplying the three strings.
+ * @param[out] published One flag per slot, in manufacturer/product/serial order.
+ *
+ * @return ra8_err_t Result of the measurement.
+ * @retval k_ra8_ok                     Every slot measured.
+ * @retval k_ra8_err_range_check_failed A slot is longer than the published cap.
+ *
+ * @pre @p dev and @p published are non-NULL, @p published holds three flags.
+ * @post On success each flag says whether that slot gets an index on the wire.
+ * @note Internal helper. A NULL or empty slot is not published, so the device
+ *       descriptor writes 0 for its index and the string framework skips it.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static ra8_err_t internal_published_slots(const ra8_usb_desc_device_t* dev,
+                                                       bool                         published[3])
+{
+  const char* const slots[k_ra8_usb_desc_string_slots] = {
+    dev->manufacturer,
+    dev->product,
+    dev->serial,
+  };
+  for (uint32_t i = 0U; i < (uint32_t)k_ra8_usb_desc_string_slots; i++) {
+    uint32_t        len = 0U;
+    const ra8_err_t err = internal_strlen(slots[i], &len);
+    if (err != k_ra8_ok) {
+      return err;
+    }
+    published[i] = (len != 0U);
+  }
+  return k_ra8_ok;
+}
+
+/**
+ * @brief Reject a HID config the encoder cannot put on the wire.
+ *
+ * @param[in] dev Device identity.
+ * @param[in] hid Endpoint layout of the HID function.
+ *
+ * @return ra8_err_t Result of the check.
+ * @retval k_ra8_ok                     The config encodes.
+ * @retval k_ra8_err_invalid_arg        The direction bit is wrong, a size is
+ *                                      zero, or a boot protocol is declared on
+ *                                      a non-boot interface.
+ * @retval k_ra8_err_range_check_failed The power draw exceeds bMaxPower.
+ *
+ * @pre @p dev and @p hid are non-NULL.
+ * @post Nothing is written; the caller decides what to emit.
+ * @note Internal helper. The subclass and protocol pairing is checked because
+ *       bInterfaceProtocol is reserved unless the interface is a boot one, so
+ *       a boot protocol without the boot subclass is a descriptor no host is
+ *       allowed to act on.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static ra8_err_t internal_hid_check(const ra8_usb_desc_device_t* dev,
+                                                 const ra8_usb_desc_hid_t*    hid)
+{
+  if ((hid->in_ep & (uint8_t)k_internal_ep_dir_in) == 0U) {
+    return k_ra8_err_invalid_arg;
+  }
+  if ((hid->data_bytes == 0U) || (hid->report_bytes == 0U) || (hid->poll_interval_ms == 0U)) {
+    return k_ra8_err_invalid_arg;
+  }
+  if (!hid->boot_interface && (hid->protocol != k_ra8_usb_desc_hid_protocol_none)) {
+    return k_ra8_err_invalid_arg;
+  }
+  if (dev->max_power_ma > (uint16_t)k_internal_power_ma_max) {
+    return k_ra8_err_range_check_failed;
+  }
+  return k_ra8_ok;
+}
+
+/**
+ * @brief Append the HID class descriptor, HID 1.11 sec 6.2.1.
+ *
+ * @param[in,out] cur          Cursor to append through.
+ * @param[in]     report_bytes Length of the subordinate report descriptor.
+ *
+ * @pre @p cur is non-NULL and owns a valid buffer.
+ * @post Nine bytes have been appended, or the overflow latch is set.
+ * @note Internal helper. bCountryCode is 0, meaning not localised, which is
+ *       what a device with no country-specific keycaps declares.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_put_hid_class(internal_cursor_t* cur, uint16_t report_bytes)
+{
+  internal_put(cur, (uint8_t)k_internal_hid_bytes);
+  internal_put(cur, (uint8_t)k_internal_type_hid);
+  internal_put16(cur, (uint16_t)k_internal_bcd_hid_111);
+  internal_put(cur, 0U); /* bCountryCode, not localised */
+  internal_put(cur, (uint8_t)k_internal_hid_descs);
+  internal_put(cur, (uint8_t)k_internal_type_report);
+  internal_put16(cur, report_bytes);
+}
+
+ra8_err_t ra8_usb_desc_build_hid(const ra8_usb_desc_device_t* dev,
+                                 const ra8_usb_desc_hid_t*    hid,
+                                 uint8_t*                     out,
+                                 uint32_t                     cap,
+                                 uint32_t*                    out_len)
+{
+  if ((dev == nullptr) || (hid == nullptr) || (out == nullptr) || (out_len == nullptr)) {
+    return k_ra8_err_null_ptr;
+  }
+  ra8_err_t err = internal_hid_check(dev, hid);
+  if (err != k_ra8_ok) {
+    return err;
+  }
+
+  bool published[k_ra8_usb_desc_string_slots] = {};
+  err                                         = internal_published_slots(dev, published);
+  if (err != k_ra8_ok) {
+    return err;
+  }
+
+  internal_cursor_t cur = {.buf = out, .cap = cap, .len = 0U, .overflow = false};
+
+  internal_put_device_per_iface(&cur, dev, published);
+
+  const uint32_t cfg_at = cur.len;
+  internal_put_config_open(&cur, dev, (uint8_t)k_internal_hid_ifaces);
+
+  /* Interface, then the HID class descriptor, then the endpoint. The class
+   * descriptor sits between them rather than after the endpoint, because a
+   * host walking the block takes it as belonging to the interface it follows. */
+  internal_put_iface(&cur,
+                     0U,
+                     (uint8_t)k_internal_hid_endpoints,
+                     (uint8_t)k_internal_class_hid,
+                     hid->boot_interface ? (uint8_t)k_internal_subclass_boot : 0U,
+                     (uint8_t)hid->protocol);
+  internal_put_hid_class(&cur, hid->report_bytes);
+  internal_put_endpoint(&cur,
+                        hid->in_ep,
+                        (uint8_t)k_internal_ep_attr_intr,
+                        hid->data_bytes,
+                        hid->poll_interval_ms);
+
+  if (cur.overflow) {
+    return k_ra8_err_invalid_size;
+  }
+
+  const uint32_t total = cur.len - cfg_at;
+  out[cfg_at + 2U]     = (uint8_t)(total & (uint32_t)k_internal_byte_mask);
+  out[cfg_at + 3U]     = (uint8_t)((total >> 8U) & (uint32_t)k_internal_byte_mask);
 
   *out_len = cur.len;
   return k_ra8_ok;
