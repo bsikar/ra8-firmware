@@ -27,7 +27,8 @@
  * ## Pinout (USB-FS, FSP-aligned, mirrors usb_cdc_echo)
  *
  * P4_07 = VBUS, P5_00 = VBUSEN, P8_14 = D+, P8_15 = D-, all PSEL =
- * ``k_ra8_psel_usb_fs``.
+ * ``k_ra8_psel_usb_fs``. Programmed by ::ra8_board_usb_port_init, not
+ * by this app.
  *
  * ## Verification (macOS)
  *
@@ -98,10 +99,6 @@ void        SysTick_Handler(void)
  * is happy with the otherwise out-of-enum value.
  * @since 0.1.0
  */
-static const ra8_port_pin_t k_demo_pin_vbus   = (ra8_port_pin_t)k_ra8_board_usbfs_pin_vbus;
-static const ra8_port_pin_t k_demo_pin_vbusen = (ra8_port_pin_t)k_ra8_board_usbfs_pin_vbusen;
-static const ra8_port_pin_t k_demo_pin_dp     = (ra8_port_pin_t)k_ra8_board_usbfs_pin_dp;
-static const ra8_port_pin_t k_demo_pin_dm     = (ra8_port_pin_t)k_ra8_board_usbfs_pin_dm;
 
 /* -------------------------------------------------------------------------- */
 /* Tunables */
@@ -653,21 +650,11 @@ static void demo_panic_halt(void)
  */
 [[nodiscard]] static ra8_err_t demo_pins_init(void)
 {
-  ra8_err_t err = ra8_pfs_route_peripheral(k_demo_pin_vbus, k_ra8_psel_usb_fs, "usb_msc.vbus");
-  if (err != k_ra8_ok) {
-    return err;
-  }
-  /* VBUSEN as GPIO output LOW for USB device mode. Peripheral routing
-   * forces VBUSEN HIGH (host mode) which blocks device enumeration. */
-  err = ra8_gpio_output_init(k_demo_pin_vbusen, k_ra8_level_low);
-  if (err != k_ra8_ok) {
-    return err;
-  }
-  err = ra8_pfs_route_peripheral(k_demo_pin_dp, k_ra8_psel_usb_fs, "usb_msc.dp");
-  if (err != k_ra8_ok) {
-    return err;
-  }
-  return ra8_pfs_route_peripheral(k_demo_pin_dm, k_ra8_psel_usb_fs, "usb_msc.dm");
+  /* One board call replaces the four-step FS choreography: it routes VBUS,
+   * D+ and D- to the USBFS function and keeps VBUSEN a GPIO strapped LOW for
+   * the device role. The pin identities are board facts, so they live in
+   * libs/ra8_board_ek_ra8d2 rather than being re-declared here. */
+  return ra8_board_usb_port_init(k_ra8_board_usb_port_fs, k_ra8_board_usb_role_device);
 }
 
 /**

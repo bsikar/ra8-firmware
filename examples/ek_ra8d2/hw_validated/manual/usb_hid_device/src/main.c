@@ -39,11 +39,14 @@
  * | USB_FS_DP     | P8_14  | k_ra8_psel_usb_fs (0x13) |
  * | USB_FS_DM     | P8_15  | k_ra8_psel_usb_fs (0x13) |
  *
+ * These pins are programmed by ::ra8_board_usb_port_init, not by this
+ * app; the table is here to say what the board wires where.
+ *
  * ## Sequence
  *
  *   1. ``ra8_cgc_init()`` -- standard FSP-quickstart clock tree.
  *   2. ``ra8_time_init`` for back-off delays.
- *   3. ``ra8_pfs_route_peripheral`` for the four USB-FS pins.
+ *   3. ``ra8_board_usb_port_init`` for the FS port in the device role.
  *   4. ``ra8_board_led_init(k_ra8_board_led1)`` for visual heartbeat.
  *   5. ThreadX ``tx_kernel_enter()`` -- spins the scheduler.
  *   6. ``tx_application_define`` -- spawns one worker thread that:
@@ -114,10 +117,6 @@
  * is happy with the otherwise out-of-enum value.
  * @since 0.1.0
  */
-static const ra8_port_pin_t k_demo_pin_vbus   = (ra8_port_pin_t)k_ra8_board_usbfs_pin_vbus;
-static const ra8_port_pin_t k_demo_pin_vbusen = (ra8_port_pin_t)k_ra8_board_usbfs_pin_vbusen;
-static const ra8_port_pin_t k_demo_pin_dp     = (ra8_port_pin_t)k_ra8_board_usbfs_pin_dp;
-static const ra8_port_pin_t k_demo_pin_dm     = (ra8_port_pin_t)k_ra8_board_usbfs_pin_dm;
 
 /* -------------------------------------------------------------------------- */
 /* Tunables */
@@ -742,21 +741,11 @@ static void demo_panic_halt(void)
  */
 [[nodiscard]] static ra8_err_t demo_pins_init(void)
 {
-  ra8_err_t err = ra8_pfs_route_peripheral(k_demo_pin_vbus, k_ra8_psel_usb_fs, "usb_hid.vbus");
-  if (err != k_ra8_ok) {
-    return err;
-  }
-  /* VBUSEN as GPIO output LOW for USB device mode. Peripheral routing
-   * forces VBUSEN HIGH (host mode) which blocks device enumeration. */
-  err = ra8_gpio_output_init(k_demo_pin_vbusen, k_ra8_level_low);
-  if (err != k_ra8_ok) {
-    return err;
-  }
-  err = ra8_pfs_route_peripheral(k_demo_pin_dp, k_ra8_psel_usb_fs, "usb_hid.dp");
-  if (err != k_ra8_ok) {
-    return err;
-  }
-  return ra8_pfs_route_peripheral(k_demo_pin_dm, k_ra8_psel_usb_fs, "usb_hid.dm");
+  /* One board call replaces the four-step FS choreography: it routes VBUS,
+   * D+ and D- to the USBFS function and keeps VBUSEN a GPIO strapped LOW for
+   * the device role. The pin identities are board facts, so they live in
+   * libs/ra8_board_ek_ra8d2 rather than being re-declared here. */
+  return ra8_board_usb_port_init(k_ra8_board_usb_port_fs, k_ra8_board_usb_role_device);
 }
 
 /**
