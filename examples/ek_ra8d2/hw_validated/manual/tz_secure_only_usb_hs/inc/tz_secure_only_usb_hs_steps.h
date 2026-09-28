@@ -12,14 +12,15 @@
  * The CDC-ACM activate/deactivate callbacks, the USBX bring-up step
  * routines, the INTENB0 re-arm watchdog and the ThreadX
  * ``tx_application_define`` kernel hook were factored out of ``main.c``
- * verbatim into ``tz_secure_only_usb_hs_steps.c``, and the four USBX
- * descriptor byte arrays into ``tz_secure_only_usb_hs_descriptors.c``, to
- * keep every translation unit under the 1000-line ``check_file_size.py``
- * cap. ``main.c`` retains ``main()``, ``demo_pins_init`` and
+ * verbatim into ``tz_secure_only_usb_hs_steps.c``, and the USB identity
+ * plus the four framework buffers into
+ * ``tz_secure_only_usb_hs_descriptors.c``, to keep every translation unit
+ * under the 1000-line ``check_file_size.py`` cap. ``main.c`` retains ``main()``, ``demo_pins_init`` and
  * ``demo_panic_halt``; it reaches the worker side only through ThreadX's
  * ``tx_kernel_enter`` -> ``tx_application_define`` linkage. ThreadX's
  * ``tx_api.h`` declares that kernel hook, so this header exposes only the
- * descriptor arrays shared between the two sibling implementation units.
+ * framework buffers shared between the two sibling implementation units
+ * and the one call that fills them.
  *
  * This split is a pure, behaviour-preserving code move: no logic was
  * altered.
@@ -36,67 +37,100 @@
 #include <stdint.h>
 
 #ifndef RA8_OFF_TARGET
+#include "ra8_usb_desc.h"
 #include "tx_api.h"
 #include "ux_api.h"
 
 /**
- * @enum tz_secure_only_usb_hs_descriptor_len_t
- * @brief Byte lengths of the four USBX descriptor frameworks.
+ * @brief Synthesise the app's four USBX frameworks into the buffers below.
  *
  * @details
- * The descriptor byte arrays are defined in the sibling translation unit
- * ``tz_secure_only_usb_hs_descriptors.c`` and consumed by
- * ``demo_worker_usbx_init`` in ``tz_secure_only_usb_hs_steps.c``. Because
- * an ``extern UCHAR foo[]`` declaration alone is incomplete in the
- * consuming TU (``sizeof`` would not compile), each array is declared with
- * its explicit dimension below; these enum members name those dimensions
- * so the declarations stay magic-number-free. The defining TU
- * ``static_assert``s each value against the real initializer length, so
- * any drift is caught at compile time.
+ * Encodes one device identity into a full-speed and a high-speed CDC-ACM
+ * device framework, a string table and a language-id table, through
+ * ``ra8_usb_desc_build_cdc_acm``, ``ra8_usb_desc_build_strings`` and
+ * ``ra8_usb_desc_build_langid``. Defined in the sibling unit
+ * ``tz_secure_only_usb_hs_descriptors.c``, which owns the identity and the
+ * two endpoint layouts. Nothing here touches a controller: a synthesised
+ * framework is bytes, not an attached device.
  *
- * @invariant Each value equals ``sizeof`` of the matching array.
+ * @return ra8_err_t Result of the four encodes.
+ * @retval k_ra8_ok               All four frameworks written.
+ * @retval k_ra8_err_invalid_size A destination buffer is too small.
+ * @retval k_ra8_err_invalid_arg  An endpoint address or packet size is wrong.
+ *
+ * @pre Called from thread context before ``_ux_device_stack_initialize``.
+ * @post On success each buffer holds its framework and the matching length
+ *       variable counts it; on failure the lengths of the encodes that did
+ *       not run stay 0.
+ *
+ * @note Single-call; the builders are pure, so a repeat call is harmless.
  * @since 0.1.0
  */
-typedef enum : uint16_t {
-  k_tz_secure_only_usb_hs_device_framework_fs_len   = 93U,  /**< FS framework bytes. */
-  k_tz_secure_only_usb_hs_device_framework_hs_len   = 103U, /**< HS framework bytes. */
-  k_tz_secure_only_usb_hs_string_framework_len      = 60U,  /**< String table bytes. */
-  k_tz_secure_only_usb_hs_language_id_framework_len = 2U,   /**< LANGID table bytes. */
-} tz_secure_only_usb_hs_descriptor_len_t;
+[[nodiscard]] ra8_err_t tz_secure_only_usb_hs_build_frameworks(void);
 
 /**
  * @var s_tz_secure_only_usb_hs_device_framework_fs
  * @brief Full-Speed CDC-ACM composite device framework (64-byte bulk MPS).
- * @details Defined in ``tz_secure_only_usb_hs_descriptors.c``.
+ * @details Written by ::tz_secure_only_usb_hs_build_frameworks, then
+ *          read-only. Sized by the library maximum, so
+ *          ::s_tz_secure_only_usb_hs_device_framework_fs_len, not
+ *          ``sizeof``, is the byte count to hand USBX.
  * @since 0.1.0
  */
-extern UCHAR
-  s_tz_secure_only_usb_hs_device_framework_fs[k_tz_secure_only_usb_hs_device_framework_fs_len];
+extern UCHAR s_tz_secure_only_usb_hs_device_framework_fs[k_ra8_usb_desc_framework_bytes_max];
 
 /**
  * @var s_tz_secure_only_usb_hs_device_framework_hs
  * @brief High-Speed CDC-ACM composite device framework (512-byte bulk MPS).
- * @details Defined in ``tz_secure_only_usb_hs_descriptors.c``.
+ * @details Written by ::tz_secure_only_usb_hs_build_frameworks, then
+ *          read-only. Ten bytes longer than the full-speed framework
+ *          because high speed also publishes the device qualifier.
  * @since 0.1.0
  */
-extern UCHAR
-  s_tz_secure_only_usb_hs_device_framework_hs[k_tz_secure_only_usb_hs_device_framework_hs_len];
+extern UCHAR s_tz_secure_only_usb_hs_device_framework_hs[k_ra8_usb_desc_framework_bytes_max];
 
 /**
  * @var s_tz_secure_only_usb_hs_string_framework
  * @brief USBX string descriptor table (vendor / product / serial).
- * @details Defined in ``tz_secure_only_usb_hs_descriptors.c``.
+ * @details Written by ::tz_secure_only_usb_hs_build_frameworks.
  * @since 0.1.0
  */
-extern UCHAR s_tz_secure_only_usb_hs_string_framework[k_tz_secure_only_usb_hs_string_framework_len];
+extern UCHAR s_tz_secure_only_usb_hs_string_framework[k_ra8_usb_desc_strings_bytes_max];
 
 /**
  * @var s_tz_secure_only_usb_hs_language_id_framework
  * @brief USBX language-id table -- US English (LANGID 0x0409).
- * @details Defined in ``tz_secure_only_usb_hs_descriptors.c``.
+ * @details Written by ::tz_secure_only_usb_hs_build_frameworks.
  * @since 0.1.0
  */
-extern UCHAR
-  s_tz_secure_only_usb_hs_language_id_framework[k_tz_secure_only_usb_hs_language_id_framework_len];
+extern UCHAR s_tz_secure_only_usb_hs_language_id_framework[k_ra8_usb_desc_langid_bytes];
+
+/**
+ * @var s_tz_secure_only_usb_hs_device_framework_fs_len
+ * @brief Bytes written to ::s_tz_secure_only_usb_hs_device_framework_fs.
+ * @since 0.1.0
+ */
+extern uint32_t s_tz_secure_only_usb_hs_device_framework_fs_len;
+
+/**
+ * @var s_tz_secure_only_usb_hs_device_framework_hs_len
+ * @brief Bytes written to ::s_tz_secure_only_usb_hs_device_framework_hs.
+ * @since 0.1.0
+ */
+extern uint32_t s_tz_secure_only_usb_hs_device_framework_hs_len;
+
+/**
+ * @var s_tz_secure_only_usb_hs_string_framework_len
+ * @brief Bytes written to ::s_tz_secure_only_usb_hs_string_framework.
+ * @since 0.1.0
+ */
+extern uint32_t s_tz_secure_only_usb_hs_string_framework_len;
+
+/**
+ * @var s_tz_secure_only_usb_hs_language_id_framework_len
+ * @brief Bytes written to ::s_tz_secure_only_usb_hs_language_id_framework.
+ * @since 0.1.0
+ */
+extern uint32_t s_tz_secure_only_usb_hs_language_id_framework_len;
 
 #endif /* !RA8_OFF_TARGET */
