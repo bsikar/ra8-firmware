@@ -102,18 +102,6 @@ void SysTick_Handler(void)
 /* Pinout (FSP-aligned, EK-RA8D2 v1 User's Manual) */
 /* -------------------------------------------------------------------------- */
 
-/** @brief USBFS VBUS sense pin (P4_07, PSEL = 0x13). */
-static const ra8_port_pin_t k_microsd_pin_fs_vbus = (ra8_port_pin_t)k_ra8_board_usbfs_pin_vbus;
-
-/** @brief USBFS VBUSEN (P5_00) -- GPIO LOW for the device role. */
-static const ra8_port_pin_t k_microsd_pin_fs_vbusen = (ra8_port_pin_t)k_ra8_board_usbfs_pin_vbusen;
-
-/** @brief USBFS D+ (P8_14). */
-static const ra8_port_pin_t k_microsd_pin_fs_dp = (ra8_port_pin_t)k_ra8_board_usbfs_pin_dp;
-
-/** @brief USBFS D- (P8_15). */
-static const ra8_port_pin_t k_microsd_pin_fs_dm = (ra8_port_pin_t)k_ra8_board_usbfs_pin_dm;
-
 /** @brief USBHS_VBUS sense pin (P4_08, PSEL = 0x14). */
 static const ra8_port_pin_t k_microsd_pin_hs_vbus = (ra8_port_pin_t)k_ra8_board_usbhs_pin_vbus;
 
@@ -474,11 +462,10 @@ static void microsd_panic_halt(void)
 }
 
 /**
- * @brief Route both ports' pins: FS as device, HS as host.
+ * @brief Open FS in the device role via the board facade, then arm HS as host.
  *
- * @details FS device: P4_07 VBUS sense, P5_00 VBUSEN GPIO LOW (else
- * peripheral routing forces host VBUSEN and blocks device enum),
- * P8_14/P8_15 data. HS host: SW4-8 to Host via the U15 expander, PD07
+ * @details FS device: opened by ::ra8_board_usb_port_init, which owns the
+ * pin identities and the VBUSEN strap. HS host: SW4-8 to Host via the U15 expander, PD07
  * HIGH (U18 supplies J7), P4_08 VBUS sense.
  *
  * @pre IOPORT and the U15 expander are reachable.
@@ -491,19 +478,11 @@ static void microsd_panic_halt(void)
  */
 static void microsd_route_usb_or_halt(void)
 {
-  if (ra8_pfs_route_peripheral(k_microsd_pin_fs_vbus, k_ra8_psel_usb_fs, "microsd.fs_vbus") !=
-      k_ra8_ok) {
-    microsd_panic_halt();
-  }
-  if (ra8_gpio_output_init(k_microsd_pin_fs_vbusen, k_ra8_level_low) != k_ra8_ok) {
-    microsd_panic_halt();
-  }
-  if (ra8_pfs_route_peripheral(k_microsd_pin_fs_dp, k_ra8_psel_usb_fs, "microsd.fs_dp") !=
-      k_ra8_ok) {
-    microsd_panic_halt();
-  }
-  if (ra8_pfs_route_peripheral(k_microsd_pin_fs_dm, k_ra8_psel_usb_fs, "microsd.fs_dm") !=
-      k_ra8_ok) {
+  /* One board call replaces the four-step FS choreography: it routes VBUS,
+   * D+ and D- to the USBFS function and keeps VBUSEN a GPIO strapped LOW for
+   * the device role. The pin identities are board facts, so they live in
+   * libs/ra8_board_ek_ra8d2 rather than being re-declared here. */
+  if (ra8_board_usb_port_init(k_ra8_board_usb_port_fs, k_ra8_board_usb_role_device) != k_ra8_ok) {
     microsd_panic_halt();
   }
   if (ra8_board_io_expander_set_usbhs_host_mode() != k_ra8_ok) {
