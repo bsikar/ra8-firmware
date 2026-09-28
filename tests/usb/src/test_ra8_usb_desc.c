@@ -302,11 +302,170 @@ RA8_INTERNAL static void internal_test_optional_fields(void)
   TEST_END("the optional-field contracts hold on the wire bytes");
 }
 
+/* =============================================================================
+ * Mass storage
+ * =============================================================================
+ */
+
+/** @brief Sizes the mass-storage fixtures below share. */
+enum : uint32_t {
+  k_fixture_msc_fs_bytes = 50U, /**< Length of the usb_msc_device oracle.  */
+  k_fixture_msc_hs_bytes = 60U, /**< Length of the usb_msc_mram_hs oracle. */
+};
+
+/**
+ * @brief The FS device framework of usb_msc_device, byte for byte.
+ *
+ * @details Transcribed from `s_device_framework_fs[]` in that app's `main.c`
+ * at merge-base. Device class is 0 here, not the MISC / common / IAD triple a
+ * CDC composite publishes, and the configuration block is 0x0020 = 32 bytes.
+ */
+static const uint8_t k_oracle_msc_fs[k_fixture_msc_fs_bytes] = {
+  0x12U, 0x01U, 0x00U, 0x02U, 0x00U, 0x00U, 0x00U, 0x40U, 0x09U, 0x12U, 0x0BU, 0x00U, 0x00U,
+  0x01U, 0x01U, 0x02U, 0x03U, 0x01U, 0x09U, 0x02U, 0x20U, 0x00U, 0x01U, 0x01U, 0x00U, 0x80U,
+  0x32U, 0x09U, 0x04U, 0x00U, 0x00U, 0x02U, 0x08U, 0x06U, 0x50U, 0x00U, 0x07U, 0x05U, 0x81U,
+  0x02U, 0x40U, 0x00U, 0x00U, 0x07U, 0x05U, 0x02U, 0x02U, 0x40U, 0x00U, 0x00U,
+};
+
+/**
+ * @brief The HS device framework of usb_msc_mram_hs, byte for byte.
+ *
+ * @details Same app family at high speed: a ten-byte device qualifier sits
+ * between the device descriptor and the configuration block, and the two bulk
+ * endpoints carry a 512-byte max packet size. The qualifier is outside the
+ * configuration block, so `wTotalLength` stays 0x0020.
+ */
+static const uint8_t k_oracle_msc_hs[k_fixture_msc_hs_bytes] = {
+  0x12U, 0x01U, 0x00U, 0x02U, 0x00U, 0x00U, 0x00U, 0x40U, 0x09U, 0x12U, 0x0DU, 0x00U,
+  0x00U, 0x01U, 0x01U, 0x02U, 0x03U, 0x01U, 0x0AU, 0x06U, 0x00U, 0x02U, 0x00U, 0x00U,
+  0x00U, 0x40U, 0x01U, 0x00U, 0x09U, 0x02U, 0x20U, 0x00U, 0x01U, 0x01U, 0x00U, 0x80U,
+  0x32U, 0x09U, 0x04U, 0x00U, 0x00U, 0x02U, 0x08U, 0x06U, 0x50U, 0x00U, 0x07U, 0x05U,
+  0x81U, 0x02U, 0x00U, 0x02U, 0x00U, 0x07U, 0x05U, 0x02U, 0x02U, 0x00U, 0x02U, 0x00U,
+};
+
+/** @brief The identity usb_msc_device publishes. */
+static const ra8_usb_desc_device_t k_fixture_msc_dev = {
+  .vid           = 0x1209U,
+  .pid           = 0x000BU,
+  .bcd_device    = 0x0100U,
+  .manufacturer  = "Brighton Sikarskie",
+  .product       = "EK-RA8D2 RAM Disk",
+  .serial        = "00000001",
+  .langid        = 0U,
+  .max_power_ma  = 100U,
+  .self_powered  = false,
+  .remote_wakeup = false,
+};
+
+/** @brief The full-speed endpoint layout that app publishes. */
+static const ra8_usb_desc_msc_t k_fixture_msc_fs = {
+  .in_ep      = 0x81U,
+  .out_ep     = 0x02U,
+  .data_bytes = 64U,
+  .high_speed = false,
+};
+
+/**
+ * @brief The mass-storage builder reproduces the framework a shipped app carries.
+ *
+ * @details Both speeds, because the high-speed variant is the only descriptor
+ * in this header that is not a straight-line append: the device qualifier goes
+ * before the configuration block and must stay out of its `wTotalLength`.
+ */
+RA8_INTERNAL static void internal_test_msc_matches_app(void)
+{
+  TEST_BEGIN("the mass-storage framework of usb_msc_device and usb_msc_mram_hs");
+  uint8_t  got[k_ra8_usb_desc_framework_bytes_max] = {};
+  uint32_t used                                    = 0U;
+
+  TEST_ASSERT_EQ(k_ra8_ok,
+                 ra8_usb_desc_build_msc(&k_fixture_msc_dev,
+                                        &k_fixture_msc_fs,
+                                        got,
+                                        (uint32_t)sizeof(got),
+                                        &used));
+  TEST_ASSERT_EQ(k_fixture_msc_fs_bytes, used);
+  for (uint32_t i = 0U; i < k_fixture_msc_fs_bytes; i++) {
+    TEST_ASSERT_EQ(k_oracle_msc_fs[i], got[i]);
+  }
+
+  ra8_usb_desc_device_t hs_dev = k_fixture_msc_dev;
+  hs_dev.pid                   = 0x000DU;
+  hs_dev.product               = "EK-RA8D2 MRAM HS";
+  hs_dev.serial                = "00000003";
+
+  ra8_usb_desc_msc_t hs = k_fixture_msc_fs;
+  hs.data_bytes         = 512U;
+  hs.high_speed         = true;
+
+  used = 0U;
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_desc_build_msc(&hs_dev, &hs, got, (uint32_t)sizeof(got), &used));
+  TEST_ASSERT_EQ(k_fixture_msc_hs_bytes, used);
+  for (uint32_t i = 0U; i < k_fixture_msc_hs_bytes; i++) {
+    TEST_ASSERT_EQ(k_oracle_msc_hs[i], got[i]);
+  }
+
+  /* The qualifier is not part of the configuration, so wTotalLength is the
+   * same 0x0020 at both speeds even though the framework grew by ten bytes. */
+  TEST_ASSERT_EQ(0x20, got[30]);
+  TEST_ASSERT_EQ(0x00, got[31]);
+
+  TEST_END("both speeds reproduce the shipped bytes");
+}
+
+/**
+ * @brief The mass-storage builder refuses what it cannot encode.
+ *
+ * @details The direction-bit rule is the one a converted app is most likely to
+ * get wrong, because the two bulk endpoints differ only in that bit.
+ */
+RA8_INTERNAL static void internal_test_msc_refusals(void)
+{
+  TEST_BEGIN("mass-storage refusals");
+  uint8_t  got[k_ra8_usb_desc_framework_bytes_max] = {};
+  uint32_t used                                    = 0U;
+
+  ra8_usb_desc_msc_t bad = k_fixture_msc_fs;
+  bad.in_ep              = 0x01U;
+  TEST_ASSERT_EQ(
+    k_ra8_err_invalid_arg,
+    ra8_usb_desc_build_msc(&k_fixture_msc_dev, &bad, got, (uint32_t)sizeof(got), &used));
+
+  bad        = k_fixture_msc_fs;
+  bad.out_ep = 0x82U;
+  TEST_ASSERT_EQ(
+    k_ra8_err_invalid_arg,
+    ra8_usb_desc_build_msc(&k_fixture_msc_dev, &bad, got, (uint32_t)sizeof(got), &used));
+
+  bad            = k_fixture_msc_fs;
+  bad.data_bytes = 0U;
+  TEST_ASSERT_EQ(
+    k_ra8_err_invalid_arg,
+    ra8_usb_desc_build_msc(&k_fixture_msc_dev, &bad, got, (uint32_t)sizeof(got), &used));
+
+  TEST_ASSERT_EQ(
+    k_ra8_err_null_ptr,
+    ra8_usb_desc_build_msc(nullptr, &k_fixture_msc_fs, got, (uint32_t)sizeof(got), &used));
+
+  TEST_ASSERT_EQ(k_ra8_err_invalid_size,
+                 ra8_usb_desc_build_msc(&k_fixture_msc_dev, &k_fixture_msc_fs, got, 8U, &used));
+
+  ra8_usb_desc_device_t greedy = k_fixture_msc_dev;
+  greedy.max_power_ma          = 501U;
+  TEST_ASSERT_EQ(
+    k_ra8_err_range_check_failed,
+    ra8_usb_desc_build_msc(&greedy, &k_fixture_msc_fs, got, (uint32_t)sizeof(got), &used));
+
+  TEST_END("a framework it cannot encode is refused, not truncated");
+}
+
 int main(void)
 {
   internal_test_cdc_matches_app();
   internal_test_strings_match_app();
   internal_test_refusals();
   internal_test_optional_fields();
+  internal_test_msc_matches_app();
+  internal_test_msc_refusals();
   return 0;
 }

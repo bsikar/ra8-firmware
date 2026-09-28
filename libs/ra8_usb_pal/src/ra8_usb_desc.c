@@ -51,27 +51,34 @@ typedef enum : uint8_t {
  * @brief Fixed field values the CDC-ACM layout does not parameterise.
  */
 typedef enum : uint16_t {
-  k_internal_bcd_usb_200     = 0x0200U, /**< bcdUSB. IAD needs 2.00 or later.   */
-  k_internal_bcd_cdc_120     = 0x0120U, /**< bcdCDC 1.20.                       */
-  k_internal_bcd_device_dflt = 0x0100U, /**< bcdDevice when the caller says 0.  */
-  k_internal_ep0_max_packet  = 64U,     /**< bMaxPacketSize0.                   */
-  k_internal_class_misc      = 0xEFU,   /**< Miscellaneous device class.        */
-  k_internal_subclass_common = 0x02U,   /**< Common class.                      */
-  k_internal_protocol_iad    = 0x01U,   /**< Interface association protocol.    */
-  k_internal_class_cdc       = 0x02U,   /**< Communications interface class.    */
-  k_internal_subclass_acm    = 0x02U,   /**< Abstract control model.            */
-  k_internal_protocol_at     = 0x01U,   /**< AT command protocol (V.250).       */
-  k_internal_class_cdc_data  = 0x0AU,   /**< CDC data interface class.          */
-  k_internal_ep_attr_bulk    = 0x02U,   /**< bmAttributes, bulk.                */
-  k_internal_ep_attr_intr    = 0x03U,   /**< bmAttributes, interrupt.           */
-  k_internal_cfg_attr_base   = 0x80U,   /**< bmAttributes bit 7, reserved-one.  */
-  k_internal_cfg_attr_self   = 0x40U,   /**< bmAttributes bit 6, self-powered.  */
-  k_internal_cfg_attr_wakeup = 0x20U,   /**< bmAttributes bit 5, remote wakeup. */
-  k_internal_power_ma_max    = 500U,    /**< Largest draw bMaxPower can encode. */
-  k_internal_ep_dir_in       = 0x80U,   /**< Direction bit of an IN endpoint.   */
-  k_internal_cfg_value       = 1U,      /**< bConfigurationValue.               */
-  k_internal_num_configs     = 1U,      /**< bNumConfigurations.                */
-  k_internal_cdc_ifaces      = 2U,      /**< Control plus data interface.       */
+  k_internal_bcd_usb_200     = 0x0200U, /**< bcdUSB. IAD needs 2.00 or later.        */
+  k_internal_bcd_cdc_120     = 0x0120U, /**< bcdCDC 1.20.                            */
+  k_internal_bcd_device_dflt = 0x0100U, /**< bcdDevice when the caller says 0.       */
+  k_internal_ep0_max_packet  = 64U,     /**< bMaxPacketSize0.                        */
+  k_internal_class_misc      = 0xEFU,   /**< Miscellaneous device class.             */
+  k_internal_subclass_common = 0x02U,   /**< Common class.                           */
+  k_internal_protocol_iad    = 0x01U,   /**< Interface association protocol.         */
+  k_internal_class_cdc       = 0x02U,   /**< Communications interface class.         */
+  k_internal_subclass_acm    = 0x02U,   /**< Abstract control model.                 */
+  k_internal_protocol_at     = 0x01U,   /**< AT command protocol (V.250).            */
+  k_internal_class_cdc_data  = 0x0AU,   /**< CDC data interface class.               */
+  k_internal_ep_attr_bulk    = 0x02U,   /**< bmAttributes, bulk.                     */
+  k_internal_ep_attr_intr    = 0x03U,   /**< bmAttributes, interrupt.                */
+  k_internal_cfg_attr_base   = 0x80U,   /**< bmAttributes bit 7, reserved-one.       */
+  k_internal_cfg_attr_self   = 0x40U,   /**< bmAttributes bit 6, self-powered.       */
+  k_internal_cfg_attr_wakeup = 0x20U,   /**< bmAttributes bit 5, remote wakeup.      */
+  k_internal_power_ma_max    = 500U,    /**< Largest draw bMaxPower can encode.      */
+  k_internal_ep_dir_in       = 0x80U,   /**< Direction bit of an IN endpoint.        */
+  k_internal_cfg_value       = 1U,      /**< bConfigurationValue.                    */
+  k_internal_num_configs     = 1U,      /**< bNumConfigurations.                     */
+  k_internal_cdc_ifaces      = 2U,      /**< Control plus data interface.            */
+  k_internal_class_per_iface = 0x00U,   /**< Device class deferred to the interface. */
+  k_internal_class_msc       = 0x08U,   /**< Mass storage interface class.           */
+  k_internal_subclass_scsi   = 0x06U,   /**< SCSI transparent command set.           */
+  k_internal_protocol_bbb    = 0x50U,   /**< Bulk-only transport.                    */
+  k_internal_msc_ifaces      = 1U,      /**< One mass-storage interface.             */
+  k_internal_type_qualifier  = 0x06U,   /**< DEVICE QUALIFIER, USB 2.0 sec 9.6.2.    */
+  k_internal_qualifier_bytes = 10U,     /**< Device qualifier wire length.           */
 } internal_wire_t;
 
 /**
@@ -459,6 +466,197 @@ ra8_err_t ra8_usb_desc_build_cdc_acm(const ra8_usb_desc_device_t*  dev,
   internal_put_iface(&cur, 1U, 2U, (uint8_t)k_internal_class_cdc_data, 0U, 0U);
   internal_put_endpoint(&cur, cdc->out_ep, (uint8_t)k_internal_ep_attr_bulk, cdc->data_bytes, 0U);
   internal_put_endpoint(&cur, cdc->in_ep, (uint8_t)k_internal_ep_attr_bulk, cdc->data_bytes, 0U);
+
+  if (cur.overflow) {
+    return k_ra8_err_invalid_size;
+  }
+
+  const uint32_t total = cur.len - cfg_at;
+  out[cfg_at + 2U]     = (uint8_t)(total & 0xFFU);
+  out[cfg_at + 3U]     = (uint8_t)((total >> 8U) & 0xFFU);
+
+  *out_len = cur.len;
+  return k_ra8_ok;
+}
+
+/**
+ * @brief Reject a mass-storage config the encoder cannot put on the wire.
+ *
+ * @param[in] dev Device identity.
+ * @param[in] msc Endpoint layout of the mass-storage function.
+ *
+ * @return ra8_err_t Result of the check.
+ * @retval k_ra8_ok                     The config encodes.
+ * @retval k_ra8_err_invalid_arg        A direction bit is wrong, or the max
+ *                                      packet size is zero.
+ * @retval k_ra8_err_range_check_failed The power draw exceeds bMaxPower.
+ *
+ * @pre @p dev and @p msc are non-NULL.
+ * @post Nothing is written; the caller decides what to emit.
+ * @note Internal helper; the two bulk endpoints differ only in the direction
+ *       bit, which is the field a converted app is most likely to get wrong.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static ra8_err_t internal_msc_check(const ra8_usb_desc_device_t* dev,
+                                                 const ra8_usb_desc_msc_t*    msc)
+{
+  if (((msc->in_ep & (uint8_t)k_internal_ep_dir_in) == 0U) ||
+      ((msc->out_ep & (uint8_t)k_internal_ep_dir_in) != 0U)) {
+    return k_ra8_err_invalid_arg;
+  }
+  if (msc->data_bytes == 0U) {
+    return k_ra8_err_invalid_arg;
+  }
+  if (dev->max_power_ma > (uint16_t)k_internal_power_ma_max) {
+    return k_ra8_err_range_check_failed;
+  }
+  return k_ra8_ok;
+}
+
+/**
+ * @brief Append the 18-byte device descriptor of a per-interface device.
+ *
+ * @param[in,out] cur     Cursor to append through.
+ * @param[in]     dev     Device identity.
+ * @param[in]     strings Which of the three string slots are published.
+ *
+ * @pre @p cur is non-NULL and owns a valid buffer.
+ * @post Eighteen bytes have been appended, or the overflow latch is set.
+ * @note Internal helper. Class 0 defers the class triple to the interface,
+ *       which is what a single-function device publishes; the MISC / common /
+ *       IAD triple exists only to carry an interface association.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_put_device_per_iface(internal_cursor_t*           cur,
+                                                       const ra8_usb_desc_device_t* dev,
+                                                       const bool                   strings[3])
+{
+  internal_put(cur, (uint8_t)k_ra8_usb_desc_device_bytes);
+  internal_put(cur, (uint8_t)k_internal_type_device);
+  internal_put16(cur, (uint16_t)k_internal_bcd_usb_200);
+  internal_put(cur, (uint8_t)k_internal_class_per_iface);
+  internal_put(cur, 0U); /* bDeviceSubClass */
+  internal_put(cur, 0U); /* bDeviceProtocol */
+  internal_put(cur, (uint8_t)k_internal_ep0_max_packet);
+  internal_put16(cur, dev->vid);
+  internal_put16(cur, dev->pid);
+  internal_put16(cur,
+                 (dev->bcd_device == 0U) ? (uint16_t)k_internal_bcd_device_dflt : dev->bcd_device);
+  internal_put(cur, strings[0] ? (uint8_t)k_ra8_usb_desc_str_manufacturer : 0U);
+  internal_put(cur, strings[1] ? (uint8_t)k_ra8_usb_desc_str_product : 0U);
+  internal_put(cur, strings[2] ? (uint8_t)k_ra8_usb_desc_str_serial : 0U);
+  internal_put(cur, (uint8_t)k_internal_num_configs);
+}
+
+/**
+ * @brief Append the device qualifier, USB 2.0 sec 9.6.2.
+ *
+ * @param[in,out] cur Cursor to append through.
+ *
+ * @pre @p cur is non-NULL and owns a valid buffer.
+ * @post Ten bytes have been appended, or the overflow latch is set.
+ * @note Internal helper. A high-speed device must answer GET_DESCRIPTOR for
+ *       this, describing what it would be at the other speed; a full-speed
+ *       device must not publish one at all.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_put_qualifier(internal_cursor_t* cur)
+{
+  internal_put(cur, (uint8_t)k_internal_qualifier_bytes);
+  internal_put(cur, (uint8_t)k_internal_type_qualifier);
+  internal_put16(cur, (uint16_t)k_internal_bcd_usb_200);
+  internal_put(cur, (uint8_t)k_internal_class_per_iface);
+  internal_put(cur, 0U); /* bDeviceSubClass */
+  internal_put(cur, 0U); /* bDeviceProtocol */
+  internal_put(cur, (uint8_t)k_internal_ep0_max_packet);
+  internal_put(cur, (uint8_t)k_internal_num_configs);
+  internal_put(cur, 0U); /* bReserved */
+}
+
+/**
+ * @brief Append a configuration descriptor with wTotalLength left at zero.
+ *
+ * @param[in,out] cur    Cursor to append through.
+ * @param[in]     dev    Device identity supplying the power and attributes.
+ * @param[in]     ifaces bNumInterfaces this configuration declares.
+ *
+ * @pre @p cur is non-NULL and owns a valid buffer.
+ * @post Nine bytes have been appended, or the overflow latch is set.
+ * @note Internal helper. The caller back-patches wTotalLength from the cursor
+ *       once the whole configuration block is emitted.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void
+internal_put_config_open(internal_cursor_t* cur, const ra8_usb_desc_device_t* dev, uint8_t ifaces)
+{
+  uint8_t attrs = (uint8_t)k_internal_cfg_attr_base;
+  if (dev->self_powered) {
+    attrs = (uint8_t)(attrs | (uint8_t)k_internal_cfg_attr_self);
+  }
+  if (dev->remote_wakeup) {
+    attrs = (uint8_t)(attrs | (uint8_t)k_internal_cfg_attr_wakeup);
+  }
+  internal_put(cur, (uint8_t)k_ra8_usb_desc_config_bytes);
+  internal_put(cur, (uint8_t)k_internal_type_config);
+  internal_put16(cur, 0U);
+  internal_put(cur, ifaces);
+  internal_put(cur, (uint8_t)k_internal_cfg_value);
+  internal_put(cur, 0U); /* iConfiguration */
+  internal_put(cur, attrs);
+  internal_put(cur, (uint8_t)((dev->max_power_ma + 1U) / 2U));
+}
+
+ra8_err_t ra8_usb_desc_build_msc(const ra8_usb_desc_device_t* dev,
+                                 const ra8_usb_desc_msc_t*    msc,
+                                 uint8_t*                     out,
+                                 uint32_t                     cap,
+                                 uint32_t*                    out_len)
+{
+  if ((dev == nullptr) || (msc == nullptr) || (out == nullptr) || (out_len == nullptr)) {
+    return k_ra8_err_null_ptr;
+  }
+  ra8_err_t err = internal_msc_check(dev, msc);
+  if (err != k_ra8_ok) {
+    return err;
+  }
+
+  uint32_t          lens[k_ra8_usb_desc_string_slots]  = {};
+  const char* const slots[k_ra8_usb_desc_string_slots] = {
+    dev->manufacturer,
+    dev->product,
+    dev->serial,
+  };
+  bool published[k_ra8_usb_desc_string_slots] = {};
+  for (uint32_t i = 0U; i < (uint32_t)k_ra8_usb_desc_string_slots; i++) {
+    err = internal_strlen(slots[i], &lens[i]);
+    if (err != k_ra8_ok) {
+      return err;
+    }
+    published[i] = (lens[i] != 0U);
+  }
+
+  internal_cursor_t cur = {.buf = out, .cap = cap, .len = 0U, .overflow = false};
+
+  internal_put_device_per_iface(&cur, dev, published);
+  if (msc->high_speed) {
+    internal_put_qualifier(&cur);
+  }
+
+  /* The qualifier sits outside the configuration block, so wTotalLength is
+   * measured from here rather than from the start of the framework. */
+  const uint32_t cfg_at = cur.len;
+  internal_put_config_open(&cur, dev, (uint8_t)k_internal_msc_ifaces);
+
+  /* The one interface, then its two bulk endpoints IN before OUT, which is the
+   * order every current copy writes and the order the host walks. */
+  internal_put_iface(&cur,
+                     0U,
+                     2U,
+                     (uint8_t)k_internal_class_msc,
+                     (uint8_t)k_internal_subclass_scsi,
+                     (uint8_t)k_internal_protocol_bbb);
+  internal_put_endpoint(&cur, msc->in_ep, (uint8_t)k_internal_ep_attr_bulk, msc->data_bytes, 0U);
+  internal_put_endpoint(&cur, msc->out_ep, (uint8_t)k_internal_ep_attr_bulk, msc->data_bytes, 0U);
 
   if (cur.overflow) {
     return k_ra8_err_invalid_size;
