@@ -174,6 +174,25 @@ typedef struct {
   uint16_t data_bytes;         /**< Bulk max packet size, 64 FS / 512 HS.     */
 } ra8_usb_desc_cdc_acm_t;
 
+/**
+ * @struct ra8_usb_desc_msc_t
+ * @brief The endpoint layout of a single-interface mass-storage device.
+ *
+ * @details Bulk-only transport (SCSI transparent command set over BBB) is the
+ * only mass-storage protocol every current copy publishes, so the class,
+ * subclass and protocol triple is fixed rather than parameterised. Endpoint
+ * addresses carry their direction bit exactly as they appear on the wire, the
+ * same rule ::ra8_usb_desc_cdc_acm_t follows.
+ *
+ * @invariant `in_ep` has bit 7 set; `out_ep` does not.
+ */
+typedef struct {
+  uint8_t  in_ep;      /**< Bulk-IN endpoint address, e.g. 0x81.     */
+  uint8_t  out_ep;     /**< Bulk-OUT endpoint address, e.g. 0x02.    */
+  uint16_t data_bytes; /**< Bulk max packet size, 64 FS / 512 HS.    */
+  bool     high_speed; /**< Emit the device qualifier for an HS app. */
+} ra8_usb_desc_msc_t;
+
 /* =============================================================================
  * Builders
  * =============================================================================
@@ -273,6 +292,49 @@ ra8_usb_desc_build_langid(uint16_t langid, uint8_t* out, uint32_t cap, uint32_t*
                                                    uint8_t*                      out,
                                                    uint32_t                      cap,
                                                    uint32_t*                     out_len);
+
+/**
+ * @brief Write the device framework of a single-interface mass-storage device.
+ *
+ * @details The result is the 18-byte device descriptor, then the device
+ * qualifier when @p msc requests one, then the whole configuration block:
+ * configuration descriptor, the bulk-only mass-storage interface, and the two
+ * bulk endpoints in IN-then-OUT order. As with the CDC builder the
+ * `wTotalLength` field is computed from what was actually emitted.
+ *
+ * The device descriptor advertises class 0 (per-interface) rather than the
+ * MISC / common / IAD triple the CDC builder writes, because a single-function
+ * mass-storage device has no interface association to declare and every
+ * current copy publishes class 0 here.
+ *
+ * @param[in]  dev      Device identity.
+ * @param[in]  msc      Endpoint layout of the mass-storage function.
+ * @param[out] out      Caller-owned destination buffer.
+ * @param[in]  cap      Capacity of @p out in bytes.
+ * @param[out] out_len  Bytes written on success. Untouched on failure.
+ *
+ * @return ra8_err_t Result of the encode.
+ * @retval k_ra8_ok                 Framework written.
+ * @retval k_ra8_err_null_ptr       @p dev, @p msc, @p out or @p out_len is NULL.
+ * @retval k_ra8_err_invalid_size   @p cap cannot hold the framework.
+ * @retval k_ra8_err_invalid_arg    An endpoint address carries the wrong
+ *                                  direction bit, or the max packet size is zero.
+ * @retval k_ra8_err_range_check_failed @p dev->max_power_ma exceeds what
+ *                                  bMaxPower can encode (500 mA).
+ *
+ * @pre @p out addresses at least @p cap writable bytes.
+ * @post On success @p out holds the framework and @p out_len counts it.
+ * @post On failure @p out_len is unchanged and @p out may be partly written.
+ *
+ * @note Pure; no state is retained between calls. Synthesising a framework
+ *       does not attach a device or touch a controller.
+ * @since 0.1.0
+ */
+[[nodiscard]] ra8_err_t ra8_usb_desc_build_msc(const ra8_usb_desc_device_t* dev,
+                                               const ra8_usb_desc_msc_t*    msc,
+                                               uint8_t*                     out,
+                                               uint32_t                     cap,
+                                               uint32_t*                    out_len);
 
 #ifdef __cplusplus
 }
