@@ -327,6 +327,8 @@ type fakeProxmox struct {
 	startCalls        int
 	stopCalls         int
 	deleteCalls       int
+	stopRefused       bool
+	deleteRefused     bool
 }
 
 func (f *fakeProxmox) serve(w http.ResponseWriter, r *http.Request) {
@@ -368,10 +370,18 @@ func (f *fakeProxmox) serve(w http.ResponseWriter, r *http.Request) {
 		respond(w, fakeUPID("qmstart"))
 	case r.Method == http.MethodPost && path == "/api2/json/nodes/pve/qemu/9000/status/stop":
 		f.stopCalls++
+		if f.stopRefused {
+			w.WriteHeader(http.StatusForbidden)
+			return
+		}
 		f.status = "stopped"
 		respond(w, fakeUPID("qmstop"))
 	case r.Method == http.MethodDelete && path == "/api2/json/nodes/pve/qemu/9000":
 		f.deleteCalls++
+		if f.deleteRefused {
+			w.WriteHeader(http.StatusForbidden)
+			return
+		}
 		f.exists = false
 		respond(w, fakeUPID("qmdestroy"))
 	case r.Method == http.MethodGet && strings.HasPrefix(path, "/api2/json/nodes/pve/tasks/UPID:") && strings.HasSuffix(path, "/status"):
