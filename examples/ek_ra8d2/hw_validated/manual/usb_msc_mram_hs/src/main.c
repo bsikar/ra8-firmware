@@ -61,6 +61,7 @@
 #include "ra8_port_utils.h"
 #include "ra8_time.h"
 #include "ra8_usb.h"
+#include "ra8_usb_desc.h"
 #include "usb_msc_mram_hs_steps.h"
 
 #ifndef RA8_OFF_TARGET
@@ -163,231 +164,210 @@ static UCHAR s_msc_product_rev[] = "0001";
 /* USB descriptors (DEVICE + CONFIG + MSC interface + endpoints) */
 /* -------------------------------------------------------------------------- */
 
-/* Single-interface MSC config: bulk-only transport, SCSI command set.
- * Class = 0x08 (Mass Storage), SubClass = 0x06 (SCSI transparent),
- * Protocol = 0x50 (BBB / Bulk-Only). EP1 IN + EP2 OUT, 64-byte MPS.
+/* The three frameworks below are synthesised at start-up from the config
+ * structs by libs/ra8_usb_pal (#766) rather than typed out as raw byte
+ * arrays. Single-interface MSC: bulk-only transport over the SCSI transparent
+ * command set, class 0x08 / subclass 0x06 / protocol 0x50, EP1 IN and EP2 OUT
+ * per BBB rev 1.0 sec 4 + USB 2.0 sec 9.6. The device descriptor advertises
+ * class 0 so the class triple is read off the interface.
  *
- * Layout per USB Mass Storage Class Bulk-Only Transport (BBB) rev 1.0
- * sec 4 + USB 2.0 sec 9.6.
- *
- * Total config-blob length:
- *   9 (config) + 9 (interface) + 7 (EP IN) + 7 (EP OUT) = 32 bytes.
+ * This app publishes BOTH speeds, so the builder runs twice: the high-speed
+ * framework carries 512-byte bulk endpoints and the mandatory device qualifier
+ * (USB 2.0 sec 9.6.2), the full-speed one carries 64-byte endpoints and no
+ * qualifier. The qualifier sits outside the configuration block, so the
+ * configuration's wTotalLength is 32 bytes at both speeds even though the two
+ * frameworks differ in length. That is exactly the sum a human used to keep
+ * right by hand, and it is now derived from what the builder emitted.
  */
-/* High-speed framework: identical layout plus the mandatory Device
- * Qualifier descriptor (USB 2.0 sec 9.6.2) and 512-byte bulk
- * wMaxPacketSize values, which the USB 2.0 spec mandates for HS bulk
- * endpoints. */
-static UCHAR s_device_framework_hs[] = {
-  /* Device descriptor (USB 2.0 sec 9.6.1) -- 18 bytes. */
-  0x12U,
-  0x01U,
-  0x00U,
-  0x02U,
-  0x00U, /* class      = per-interface */
-  0x00U,
-  0x00U,
-  0x40U,
-  0x09U,
-  0x12U,
-  0x0DU, /* PID = 0x000D (pid.codes test). */
-  0x00U,
-  0x00U,
-  0x01U,
-  0x01U,
-  0x02U,
-  0x03U,
-  0x01U,
-  /* Device Qualifier descriptor (USB 2.0 sec 9.6.2) -- 10 bytes:
-   * the device's capabilities at the OTHER speed (FS). */
-  0x0AU,
-  0x06U,
-  0x00U,
-  0x02U,
-  0x00U,
-  0x00U,
-  0x00U,
-  0x40U,
-  0x01U,
-  0x00U,
-  /* Configuration descriptor (32 bytes total). */
-  0x09U,
-  0x02U,
-  0x20U,
-  0x00U,
-  0x01U,
-  0x01U,
-  0x00U,
-  0x80U,
-  0x32U,
-  /* Interface descriptor -- MSC, SCSI, BBB. */
-  0x09U,
-  0x04U,
-  0x00U,
-  0x00U,
-  0x02U,
-  0x08U,
-  0x06U,
-  0x50U,
-  0x00U,
-  /* Bulk-IN endpoint (EP1 IN, 512-byte MPS at HS). */
-  0x07U,
-  0x05U,
-  0x81U,
-  0x02U,
-  0x00U,
-  0x02U,
-  0x00U,
-  /* Bulk-OUT endpoint (EP2 OUT, 512-byte MPS at HS). */
-  0x07U,
-  0x05U,
-  0x02U,
-  0x02U,
-  0x00U,
-  0x02U,
-  0x00U,
+
+/**
+ * @enum demo_usb_identity_t
+ * @brief The device identity this demo publishes.
+ *
+ * @details ::k_demo_usb_max_power_ma is the real milliamp draw, not the
+ * halved bMaxPower encoding; the builder halves it. Bus-powered is the
+ * default, because advertising self-powered alongside a 100 mA draw is the
+ * contradiction this app's own descriptor comment warned about.
+ */
+typedef enum : uint16_t {
+  k_demo_usb_vid          = 0x1209U, /**< idVendor, pid.codes test range. */
+  k_demo_usb_pid          = 0x000DU, /**< idProduct.                      */
+  k_demo_usb_bcd_device   = 0x0100U, /**< bcdDevice, release 1.00.        */
+  k_demo_usb_max_power_ma = 100U,    /**< Bus draw in mA.                 */
+} demo_usb_identity_t;
+
+/**
+ * @enum demo_usb_endpoint_t
+ * @brief The bulk-only endpoint layout, addresses as they appear on the wire.
+ *
+ * @details An IN endpoint carries bit 7 set, so EP1 IN is 0x81, while EP2 OUT
+ * is 0x02. That is how the byte array this block replaces wrote them, which
+ * keeps the two diffable.
+ */
+typedef enum : uint16_t {
+  k_demo_usb_in_ep         = 0x81U, /**< Bulk-IN data pipe.          */
+  k_demo_usb_out_ep        = 0x02U, /**< Bulk-OUT data pipe.         */
+  k_demo_usb_data_bytes_hs = 512U,  /**< Bulk max packet size at HS. */
+  k_demo_usb_data_bytes_fs = 64U,   /**< Bulk max packet size at FS. */
+} demo_usb_endpoint_t;
+
+/**
+ * @var k_demo_usb_device
+ * @brief Device identity handed to the framework builders.
+ * @note The three strings are string-literal storage with static duration;
+ *       the builders copy them and retain no pointer.
+ * @since 0.1.0
+ */
+static const ra8_usb_desc_device_t k_demo_usb_device = {
+  .vid           = (uint16_t)k_demo_usb_vid,
+  .pid           = (uint16_t)k_demo_usb_pid,
+  .bcd_device    = (uint16_t)k_demo_usb_bcd_device,
+  .manufacturer  = "Brighton Sikarskie",
+  .product       = "EK-RA8D2 MRAM HS",
+  .serial        = "00000003",
+  .langid        = (uint16_t)k_ra8_usb_desc_langid_en_us,
+  .max_power_ma  = (uint16_t)k_demo_usb_max_power_ma,
+  .self_powered  = false,
+  .remote_wakeup = false,
 };
 
-static UCHAR s_device_framework_fs[] = {
-  /* Device descriptor (USB 2.0 sec 9.6.1) -- 18 bytes.
-   * bcdUSB = 0x0200 (USB 2.0); hosts may reject USB 1.1 for
-   * modern composite/class drivers. */
-  0x12U,
-  0x01U,
-  0x00U,
-  0x02U,
-  0x00U, /* class      = per-interface */
-  0x00U,
-  0x00U,
-  0x40U,
-  0x09U,
-  0x12U,
-  0x0DU, /* PID = 0x000D (pid.codes test). */
-  0x00U,
-  0x00U,
-  0x01U,
-  0x01U,
-  0x02U,
-  0x03U,
-  0x01U,
-  /* Configuration descriptor (32 bytes total).
-   * bmAttributes = 0x80 (bus-powered); 0xC0 (self-powered)
-   * with bMaxPower=100mA is self-contradictory. */
-  0x09U,
-  0x02U,
-  0x20U,
-  0x00U,
-  0x01U,
-  0x01U,
-  0x00U,
-  0x80U,
-  0x32U,
-  /* Interface descriptor -- MSC, SCSI, BBB. */
-  0x09U,
-  0x04U,
-  0x00U,
-  0x00U,
-  0x02U,
-  0x08U,
-  0x06U,
-  0x50U,
-  0x00U,
-  /* Bulk-IN endpoint (EP1 IN, 64-byte MPS). */
-  0x07U,
-  0x05U,
-  0x81U,
-  0x02U,
-  0x40U,
-  0x00U,
-  0x00U,
-  /* Bulk-OUT endpoint (EP2 OUT, 64-byte MPS). */
-  0x07U,
-  0x05U,
-  0x02U,
-  0x02U,
-  0x40U,
-  0x00U,
-  0x00U,
+/**
+ * @var k_demo_usb_msc_hs
+ * @brief High-speed endpoint layout: 512-byte bulk, device qualifier emitted.
+ * @since 0.1.0
+ */
+static const ra8_usb_desc_msc_t k_demo_usb_msc_hs = {
+  .in_ep      = (uint8_t)k_demo_usb_in_ep,
+  .out_ep     = (uint8_t)k_demo_usb_out_ep,
+  .data_bytes = (uint16_t)k_demo_usb_data_bytes_hs,
+  .high_speed = true,
 };
+
+/**
+ * @var k_demo_usb_msc_fs
+ * @brief Full-speed endpoint layout: 64-byte bulk, no device qualifier.
+ * @since 0.1.0
+ */
+static const ra8_usb_desc_msc_t k_demo_usb_msc_fs = {
+  .in_ep      = (uint8_t)k_demo_usb_in_ep,
+  .out_ep     = (uint8_t)k_demo_usb_out_ep,
+  .data_bytes = (uint16_t)k_demo_usb_data_bytes_fs,
+  .high_speed = false,
+};
+
+/**
+ * @var s_device_framework_hs
+ * @brief Synthesised high-speed framework: device, qualifier, configuration.
+ * @note Written once by ::demo_usb_build_frameworks, then read-only.
+ * @since 0.1.0
+ */
+static uint8_t s_device_framework_hs[k_ra8_usb_desc_framework_bytes_max];
+
+/**
+ * @var s_device_framework_fs
+ * @brief Synthesised full-speed framework: device descriptor + configuration.
+ * @note Written once by ::demo_usb_build_frameworks, then read-only.
+ * @since 0.1.0
+ */
+static uint8_t s_device_framework_fs[k_ra8_usb_desc_framework_bytes_max];
 
 /**
  * @var s_string_framework
- * @brief USBX string descriptor table (vendor / product / serial).
- * @details Each entry: 2 bytes lang-id, 1 byte string index, 1 byte
- *          length, then ASCII bytes.
+ * @brief Synthesised string framework: manufacturer, product, serial.
+ * @note Written once by ::demo_usb_build_frameworks, then read-only.
  * @since 0.1.0
  */
-static UCHAR s_string_framework[] = {
-  /* idx 1: "Brighton Sikarskie". */
-  0x09U,
-  0x04U,
-  0x01U,
-  0x12U,
-  'B',
-  'r',
-  'i',
-  'g',
-  'h',
-  't',
-  'o',
-  'n',
-  ' ',
-  'S',
-  'i',
-  'k',
-  'a',
-  'r',
-  's',
-  'k',
-  'i',
-  'e',
-  /* idx 2: "EK-RA8D2 MRAM HS". */
-  0x09U,
-  0x04U,
-  0x02U,
-  0x10U,
-  'E',
-  'K',
-  '-',
-  'R',
-  'A',
-  '8',
-  'D',
-  '2',
-  ' ',
-  'M',
-  'R',
-  'A',
-  'M',
-  ' ',
-  'H',
-  'S',
-  /* idx 3: serial. */
-  0x09U,
-  0x04U,
-  0x03U,
-  0x08U,
-  '0',
-  '0',
-  '0',
-  '0',
-  '0',
-  '0',
-  '0',
-  '3',
-};
-
-/* USBX LANGID descriptor 0x0409 (English-US), little-endian byte pair. */
-typedef enum : uint8_t {
-  k_usb_langid_en_us_lo = 0x09U, /**< LANGID 0x0409 low byte.  */
-  k_usb_langid_en_us_hi = 0x04U, /**< LANGID 0x0409 high byte. */
-} usb_langid_byte_t;
+static uint8_t s_string_framework[k_ra8_usb_desc_strings_bytes_max];
 
 /**
  * @var s_language_id_framework
- * @brief USBX language-id table -- US English.
+ * @brief Synthesised language-id framework -- US English.
+ * @note Written once by ::demo_usb_build_frameworks, then read-only.
  * @since 0.1.0
  */
-static UCHAR s_language_id_framework[] = {k_usb_langid_en_us_lo, k_usb_langid_en_us_hi};
+static uint8_t s_language_id_framework[k_ra8_usb_desc_langid_bytes];
+
+/**
+ * @var s_device_framework_hs_len
+ * @brief Bytes ::demo_usb_build_frameworks wrote to ::s_device_framework_hs.
+ * @since 0.1.0
+ */
+static uint32_t s_device_framework_hs_len = 0U;
+
+/**
+ * @var s_device_framework_fs_len
+ * @brief Bytes ::demo_usb_build_frameworks wrote to ::s_device_framework_fs.
+ * @since 0.1.0
+ */
+static uint32_t s_device_framework_fs_len = 0U;
+
+/**
+ * @var s_string_framework_len
+ * @brief Bytes ::demo_usb_build_frameworks wrote to ::s_string_framework.
+ * @since 0.1.0
+ */
+static uint32_t s_string_framework_len = 0U;
+
+/**
+ * @var s_language_id_framework_len
+ * @brief Bytes written to ::s_language_id_framework.
+ * @since 0.1.0
+ */
+static uint32_t s_language_id_framework_len = 0U;
+
+/**
+ * @brief Synthesise the three USB frameworks this demo enumerates with.
+ *
+ * @details Replaces the three hand-typed byte arrays this app used to carry.
+ * Nothing here touches a controller: a synthesised framework is bytes, not an
+ * attached device.
+ *
+ * @return ra8_err_t Result of the three encodes.
+ * @retval k_ra8_ok               All three frameworks written.
+ * @retval k_ra8_err_invalid_size A destination buffer is too small.
+ * @retval k_ra8_err_invalid_arg  An endpoint address or packet size is wrong.
+ *
+ * @pre Called from thread context before ``_ux_device_stack_initialize``.
+ * @post On success the three buffers hold the frameworks and the three
+ *       length variables count them.
+ * @post On failure the lengths of the encodes that did not run stay 0.
+ *
+ * @note Single-call; the builders are pure, so a repeat call is harmless.
+ * @since 0.1.0
+ */
+static ra8_err_t demo_usb_build_frameworks(void)
+{
+  ra8_err_t err = ra8_usb_desc_build_msc(&k_demo_usb_device,
+                                         &k_demo_usb_msc_hs,
+                                         s_device_framework_hs,
+                                         (uint32_t)sizeof(s_device_framework_hs),
+                                         &s_device_framework_hs_len);
+  if (err != k_ra8_ok) {
+    return err;
+  }
+
+  err = ra8_usb_desc_build_msc(&k_demo_usb_device,
+                               &k_demo_usb_msc_fs,
+                               s_device_framework_fs,
+                               (uint32_t)sizeof(s_device_framework_fs),
+                               &s_device_framework_fs_len);
+  if (err != k_ra8_ok) {
+    return err;
+  }
+
+  err = ra8_usb_desc_build_strings(&k_demo_usb_device,
+                                   s_string_framework,
+                                   (uint32_t)sizeof(s_string_framework),
+                                   &s_string_framework_len);
+  if (err != k_ra8_ok) {
+    return err;
+  }
+
+  return ra8_usb_desc_build_langid(k_demo_usb_device.langid,
+                                   s_language_id_framework,
+                                   (uint32_t)sizeof(s_language_id_framework),
+                                   &s_language_id_framework_len);
+}
 
 /* -------------------------------------------------------------------------- */
 /* Storage class media callbacks (read / write / status) */
@@ -594,7 +574,7 @@ static VOID demo_usbx_error_cb(UINT system_level, UINT system_context, UINT erro
 }
 
 /**
- * @brief Brings USBX system + FS device stack up.
+ * @brief Synthesises both frameworks, then brings the device stack up.
  *
  * @return UINT UX_SUCCESS on success.
  * @retval UX_SUCCESS Stack ready.
@@ -609,18 +589,21 @@ static VOID demo_usbx_error_cb(UINT system_level, UINT system_context, UINT erro
  */
 static UINT demo_usbx_stack_up(void)
 {
+  if (demo_usb_build_frameworks() != k_ra8_ok) {
+    return UX_ERROR;
+  }
   if (_ux_system_initialize(s_usbx_pool, k_demo_usbx_pool_bytes, UX_NULL, 0) != UX_SUCCESS) {
     return UX_ERROR;
   }
   _ux_utility_error_callback_register(demo_usbx_error_cb);
-  return _ux_device_stack_initialize(s_device_framework_hs,
-                                     sizeof(s_device_framework_hs),
-                                     s_device_framework_fs,
-                                     sizeof(s_device_framework_fs),
-                                     s_string_framework,
-                                     sizeof(s_string_framework),
-                                     s_language_id_framework,
-                                     sizeof(s_language_id_framework),
+  return _ux_device_stack_initialize((UCHAR*)s_device_framework_hs,
+                                     (ULONG)s_device_framework_hs_len,
+                                     (UCHAR*)s_device_framework_fs,
+                                     (ULONG)s_device_framework_fs_len,
+                                     (UCHAR*)s_string_framework,
+                                     (ULONG)s_string_framework_len,
+                                     (UCHAR*)s_language_id_framework,
+                                     (ULONG)s_language_id_framework_len,
                                      UX_NULL);
 }
 
