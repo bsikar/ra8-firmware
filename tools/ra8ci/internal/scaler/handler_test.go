@@ -329,6 +329,8 @@ type fakeProxmox struct {
 	deleteCalls       int
 	stopRefused       bool
 	deleteRefused     bool
+	cloneRefused      bool
+	startRefused      bool
 }
 
 func (f *fakeProxmox) serve(w http.ResponseWriter, r *http.Request) {
@@ -355,6 +357,10 @@ func (f *fakeProxmox) serve(w http.ResponseWriter, r *http.Request) {
 		respond(w, map[string]any{"vmid": 9000, "status": f.status})
 	case r.Method == http.MethodPost && path == "/api2/json/nodes/pve/qemu/9001/clone":
 		f.cloneCalls++
+		if f.cloneRefused {
+			w.WriteHeader(http.StatusForbidden)
+			return
+		}
 		_ = r.ParseForm()
 		f.exists = true
 		f.status = "stopped"
@@ -362,6 +368,10 @@ func (f *fakeProxmox) serve(w http.ResponseWriter, r *http.Request) {
 		respond(w, fakeUPID("qmclone"))
 	case r.Method == http.MethodPost && path == "/api2/json/nodes/pve/qemu/9000/status/start":
 		f.startCalls++
+		if f.startRefused {
+			w.WriteHeader(http.StatusForbidden)
+			return
+		}
 		f.status = "running"
 		if f.startLostResponse {
 			w.WriteHeader(http.StatusInternalServerError)
