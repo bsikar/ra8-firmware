@@ -117,6 +117,69 @@ RA8_INTERNAL static void internal_test_cdc_matches_app(void)
 
 /**
  * @par MC/DC:
+ * (the decision under test is ``cdc->high_speed``: this case covers the true
+ * branch, and ::internal_test_cdc_matches_app covers the false one)
+ * @brief A high-speed CDC-ACM framework carries the device qualifier.
+ *
+ * @details tz_secure_only_usb_hs is the one CDC app in the tree that
+ * negotiates high speed, so it publishes a qualifier the full-speed apps must
+ * not. Asserts the qualifier lands between the device descriptor and the
+ * configuration, that it repeats the device descriptor's MISC / common / IAD
+ * class triple rather than the per-interface zeros a mass-storage device
+ * publishes, and that wTotalLength still counts only the configuration.
+ *
+ * @pre None; the encoder is pure.
+ * @post Both speeds have been encoded from the same device identity.
+ * @note Assertions terminate the hosted test on the first mismatch.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_test_cdc_high_speed(void)
+{
+  TEST_BEGIN("a high-speed CDC framework publishes the device qualifier");
+  uint8_t  got[k_ra8_usb_desc_framework_bytes_max] = {};
+  uint32_t used                                    = 0U;
+  uint32_t fs_used                                 = 0U;
+
+  ra8_usb_desc_cdc_acm_t hs = k_fixture_cdc;
+  hs.high_speed             = true;
+  hs.data_bytes             = 512U;
+  hs.notify_interval_ms     = 0x08U;
+
+  TEST_ASSERT_EQ(k_ra8_ok,
+                 ra8_usb_desc_build_cdc_acm(&k_fixture_dev,
+                                            &k_fixture_cdc,
+                                            got,
+                                            (uint32_t)sizeof(got),
+                                            &fs_used));
+  TEST_ASSERT_EQ(0x09, got[18]); /* configuration follows directly */
+
+  TEST_ASSERT_EQ(
+    k_ra8_ok,
+    ra8_usb_desc_build_cdc_acm(&k_fixture_dev, &hs, got, (uint32_t)sizeof(got), &used));
+  TEST_ASSERT_EQ(fs_used + 10U, used);
+
+  /* The qualifier itself, USB 2.0 sec 9.6.2. */
+  TEST_ASSERT_EQ(0x0A, got[18]);
+  TEST_ASSERT_EQ(0x06, got[19]);
+  TEST_ASSERT_EQ(0x00, got[20]);
+  TEST_ASSERT_EQ(0x02, got[21]);
+  TEST_ASSERT_EQ(got[4], got[22]); /* class triple repeats the device */
+  TEST_ASSERT_EQ(got[5], got[23]);
+  TEST_ASSERT_EQ(got[6], got[24]);
+  TEST_ASSERT_EQ(0x40, got[25]);
+  TEST_ASSERT_EQ(0x01, got[26]);
+  TEST_ASSERT_EQ(0x00, got[27]);
+
+  /* wTotalLength is measured from the configuration, not from byte zero. */
+  TEST_ASSERT_EQ(0x09, got[28]);
+  TEST_ASSERT_EQ(0x4B, got[30]);
+  TEST_ASSERT_EQ(0x00, got[31]);
+
+  TEST_END("the qualifier is the only difference between the two speeds");
+}
+
+/**
+ * @par MC/DC:
  * (no compound decisions in this test -- exercises the string and language-id
  * encoders against committed oracle arrays)
  * @brief The string and language-id frameworks match the app's arrays.
@@ -808,6 +871,7 @@ RA8_INTERNAL static void internal_test_dfu_refusals(void)
 int main(void)
 {
   internal_test_cdc_matches_app();
+  internal_test_cdc_high_speed();
   internal_test_strings_match_app();
   internal_test_refusals();
   internal_test_optional_fields();

@@ -268,6 +268,41 @@ RA8_INTERNAL static ra8_err_t internal_strlen(const char* s, uint32_t* len)
 }
 
 /**
+ * @brief Append the device qualifier, USB 2.0 sec 9.6.2.
+ *
+ * @param[in,out] cur          Cursor to append through.
+ * @param[in]     dev_class    bDeviceClass the device descriptor published.
+ * @param[in]     dev_subclass bDeviceSubClass the device descriptor published.
+ * @param[in]     dev_protocol bDeviceProtocol the device descriptor published.
+ *
+ * @pre @p cur is non-NULL and owns a valid buffer.
+ * @post Ten bytes have been appended, or the overflow latch is set.
+ * @note Internal helper. The qualifier describes the same device at the other
+ *       speed, so its class triple must repeat what the device descriptor
+ *       published: 0/0/0 for a per-interface device, the MISC / common / IAD
+ *       triple for a composite one.
+ * @note A high-speed device must answer GET_DESCRIPTOR for
+ *       this, describing what it would be at the other speed; a full-speed
+ *       device must not publish one at all.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_put_qualifier(internal_cursor_t* cur,
+                                                uint8_t            dev_class,
+                                                uint8_t            dev_subclass,
+                                                uint8_t            dev_protocol)
+{
+  internal_put(cur, (uint8_t)k_internal_qualifier_bytes);
+  internal_put(cur, (uint8_t)k_internal_type_qualifier);
+  internal_put16(cur, (uint16_t)k_internal_bcd_usb_200);
+  internal_put(cur, dev_class);
+  internal_put(cur, dev_subclass);
+  internal_put(cur, dev_protocol);
+  internal_put(cur, (uint8_t)k_internal_ep0_max_packet);
+  internal_put(cur, (uint8_t)k_internal_num_configs);
+  internal_put(cur, 0U); /* bReserved */
+}
+
+/**
  * @brief Append one string-framework entry.
  *
  * @param[in,out] cur    Cursor to append through.
@@ -417,6 +452,16 @@ ra8_err_t ra8_usb_desc_build_cdc_acm(const ra8_usb_desc_device_t*  dev,
   internal_put(&cur, (pro_len == 0U) ? 0U : (uint8_t)k_ra8_usb_desc_str_product);
   internal_put(&cur, (ser_len == 0U) ? 0U : (uint8_t)k_ra8_usb_desc_str_serial);
   internal_put(&cur, (uint8_t)k_internal_num_configs);
+
+  /* A high-speed device publishes what it would look like at the other speed.
+   * The qualifier sits outside the configuration block, so wTotalLength below
+   * is still measured from the configuration descriptor. */
+  if (cdc->high_speed) {
+    internal_put_qualifier(&cur,
+                           (uint8_t)k_internal_class_misc,
+                           (uint8_t)k_internal_subclass_common,
+                           (uint8_t)k_internal_protocol_iad);
+  }
 
   /* Configuration descriptor. wTotalLength is written as zero and patched
    * from the cursor once the whole block is emitted, which is the entire
@@ -571,31 +616,6 @@ RA8_INTERNAL static void internal_put_device_per_iface(internal_cursor_t*       
 }
 
 /**
- * @brief Append the device qualifier, USB 2.0 sec 9.6.2.
- *
- * @param[in,out] cur Cursor to append through.
- *
- * @pre @p cur is non-NULL and owns a valid buffer.
- * @post Ten bytes have been appended, or the overflow latch is set.
- * @note Internal helper. A high-speed device must answer GET_DESCRIPTOR for
- *       this, describing what it would be at the other speed; a full-speed
- *       device must not publish one at all.
- * @since 0.1.0
- */
-RA8_INTERNAL static void internal_put_qualifier(internal_cursor_t* cur)
-{
-  internal_put(cur, (uint8_t)k_internal_qualifier_bytes);
-  internal_put(cur, (uint8_t)k_internal_type_qualifier);
-  internal_put16(cur, (uint16_t)k_internal_bcd_usb_200);
-  internal_put(cur, (uint8_t)k_internal_class_per_iface);
-  internal_put(cur, 0U); /* bDeviceSubClass */
-  internal_put(cur, 0U); /* bDeviceProtocol */
-  internal_put(cur, (uint8_t)k_internal_ep0_max_packet);
-  internal_put(cur, (uint8_t)k_internal_num_configs);
-  internal_put(cur, 0U); /* bReserved */
-}
-
-/**
  * @brief Append a configuration descriptor with wTotalLength left at zero.
  *
  * @param[in,out] cur    Cursor to append through.
@@ -661,7 +681,7 @@ ra8_err_t ra8_usb_desc_build_msc(const ra8_usb_desc_device_t* dev,
 
   internal_put_device_per_iface(&cur, dev, published);
   if (msc->high_speed) {
-    internal_put_qualifier(&cur);
+    internal_put_qualifier(&cur, (uint8_t)k_internal_class_per_iface, 0U, 0U);
   }
 
   /* The qualifier sits outside the configuration block, so wTotalLength is

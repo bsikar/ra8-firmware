@@ -172,6 +172,7 @@ typedef struct {
   uint8_t  out_ep;             /**< Bulk-OUT endpoint address, e.g. 0x02.     */
   uint8_t  in_ep;              /**< Bulk-IN endpoint address, e.g. 0x81.      */
   uint16_t data_bytes;         /**< Bulk max packet size, 64 FS / 512 HS.     */
+  bool     high_speed;         /**< Emit the device qualifier for an HS app.  */
 } ra8_usb_desc_cdc_acm_t;
 
 /**
@@ -331,6 +332,11 @@ ra8_usb_desc_build_langid(uint16_t langid, uint8_t* out, uint32_t cap, uint32_t*
  * the data interface and the two bulk endpoints. The `wTotalLength` field is
  * computed from what was actually emitted, which is the field a human counting
  * by hand gets wrong.
+ *
+ * With `cdc->high_speed` set, a ten-byte device qualifier follows the device
+ * descriptor, exactly as ::ra8_usb_desc_build_msc emits one. It sits outside
+ * the configuration block, so `wTotalLength` still counts only what the
+ * configuration itself spans.
  *
  * @param[in]  dev      Device identity.
  * @param[in]  cdc      Endpoint layout of the CDC function.
