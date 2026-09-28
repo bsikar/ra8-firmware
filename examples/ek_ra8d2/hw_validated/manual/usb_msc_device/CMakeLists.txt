@@ -31,6 +31,7 @@ include("${_d}/cmake/ra8_add_app.cmake")
 
 ra8_add_app(
   NAME usb_msc_device
+  THREADX_HEAP SDRAM
   STACK_BYTES 2200
   DESCRIPTION "ThreadX + USBX MSC RAM-disk demo for RA8D2"
   USES threadx usbx

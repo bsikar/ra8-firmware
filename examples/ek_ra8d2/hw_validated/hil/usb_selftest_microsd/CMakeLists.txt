@@ -31,6 +31,7 @@ include("${_d}/cmake/ra8_add_app.cmake")
 
 ra8_add_app(
   NAME usb_selftest_microsd
+  THREADX_HEAP SDRAM
   STACK_BYTES 4000
   DESCRIPTION "USB self-loop: HS host reads the microSD card exposed read-only as an FS device MSC"
   USES threadx usbx

@@ -35,6 +35,7 @@ include("${_d}/cmake/ra8_add_app.cmake")
 # below (mirrors threadx_fs_levelx_demo).
 ra8_add_app(
   NAME threadx_fs_demo
+  THREADX_HEAP SDRAM
   STACK_BYTES 2200
   DESCRIPTION "ThreadX + ra8_fs file-ops demo on OSPI flash (LevelX) for RA8D2"
   LIBS ra8_fs

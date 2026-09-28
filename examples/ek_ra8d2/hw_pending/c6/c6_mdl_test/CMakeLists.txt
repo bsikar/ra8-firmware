@@ -15,6 +15,7 @@ include("${_d}/cmake/ra8_add_app.cmake")
 
 ra8_add_app(
   NAME c6_mdl_test
+  THREADX_HEAP SDRAM
   STACK_BYTES 8192
   DESCRIPTION "Test media downloader RPC client"
   USES threadx esp_hosted

@@ -31,6 +31,7 @@ include("${_d}/cmake/ra8_add_app.cmake")
 
 ra8_add_app(
   NAME usb_selftest_hid
+  THREADX_HEAP SDRAM
   STACK_BYTES 4000
   DESCRIPTION "USB self-loop: HS host bulk-writes a CDC-ACM FS device and reads the echo"
   USES threadx usbx

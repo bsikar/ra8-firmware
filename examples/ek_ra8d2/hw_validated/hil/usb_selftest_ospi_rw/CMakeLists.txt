@@ -31,6 +31,7 @@ include("${_d}/cmake/ra8_add_app.cmake")
 
 ra8_add_app(
   NAME usb_selftest_ospi_rw
+  THREADX_HEAP SDRAM
   STACK_BYTES 4000
   DESCRIPTION "USB self-loop: HS host WRITE(10)s + reads back a RAM-backed FS device"
   USES threadx usbx

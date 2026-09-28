@@ -18,6 +18,7 @@ include("${_d}/cmake/ra8_add_app.cmake")
 
 ra8_add_app(
   NAME media_download
+  THREADX_HEAP SDRAM
   STACK_BYTES 8192
   DESCRIPTION "C6 HTTPS source to transactional SD strict .rabook publish and read (#665)"
   USES threadx esp_hosted
