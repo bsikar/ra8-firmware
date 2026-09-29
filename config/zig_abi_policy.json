@@ -2905,6 +2905,209 @@
           "ownership": "owns the bounded shared scratch buffer used for streamed OTA verification"
         }
       ]
+    },
+    {
+      "name": "ra8_gfx",
+      "build_root": "libs/ra8_gfx",
+      "public_headers": [
+        {
+          "path": "libs/ra8_gfx/inc/ra8_gfx.h",
+          "compatibility_sha256": "7b395f54b45ccfa7954eeda52e5182e4ef5fa09594d371cb6d9270861aaaa70a",
+          "layout_assertions": [
+            "pub const rgb565: u8 = 2",
+            "pub const rgb888: u8 = 3",
+            "pub const argb8888: u8 = 4",
+            "pub const max: u16 = 4096"
+          ]
+        },
+        {
+          "path": "libs/ra8_gfx/src/ra8_gfx_internal.h",
+          "compatibility_sha256": "08d1dca917123d44120b214b06efc283c66985daf0c3b8b640f304731d3da6a2",
+          "layout_assertions": [
+            "@offsetOf(State, \"fb\") == 0",
+            "@offsetOf(State, \"width\") == ptr",
+            "@offsetOf(State, \"pitch\") == ptr + 4",
+            "@offsetOf(State, \"format\") == ptr + 8",
+            "@offsetOf(State, \"bpp\") == ptr + 9",
+            "@offsetOf(State, \"initialized\") == ptr + 10",
+            "@offsetOf(State, \"clip_x0\") == clip_at"
+          ],
+          "symbol_prefix": "priv_gfx_"
+        }
+      ],
+      "adapters": [
+        {
+          "path": "libs/ra8_gfx/src/ra8_gfx_abi.zig",
+          "symbol_prefixes": [
+            "ra8_gfx_",
+            "priv_gfx_"
+          ]
+        }
+      ],
+      "layout_sources": [
+        "libs/ra8_gfx/src/internal/root.zig"
+      ],
+      "library_name": "ra8_gfx",
+      "symbol_prefix": "ra8_gfx_",
+      "target_class": "host-ra8",
+      "targets": {
+        "host": [],
+        "ra8": [
+          "-Dtarget=thumb-freestanding-eabihf",
+          "-Dcpu=cortex_m85+fp_armv8-d32-fp64"
+        ]
+      },
+      "c_include_dirs": [
+        "libs/ra8_gfx/inc",
+        "libs/ra8_gfx/src",
+        "libs/ra8_core/inc"
+      ],
+      "contract_tests": [
+        {
+          "language": "c",
+          "path": "tests/graphics/src/test_ra8_gfx.c",
+          "symbol_evidence": "libs/ra8_gfx/src/ra8_gfx_abi.zig",
+          "registration": "tests/cmake/unit_tests.cmake"
+        },
+        {
+          "language": "c",
+          "path": "tests/graphics/src/test_ra8_gfx_text.c",
+          "symbol_evidence": "libs/ra8_gfx/src/ra8_gfx_abi.zig",
+          "registration": "tests/cmake/unit_tests.cmake"
+        },
+        {
+          "language": "c",
+          "path": "tests/graphics/src/test_ra8_gfx_text_cov.c",
+          "symbol_evidence": "libs/ra8_gfx/src/ra8_gfx_abi.zig",
+          "registration": "tests/cmake/unit_tests.cmake"
+        },
+        {
+          "language": "c",
+          "path": "tests/graphics/src/test_ra8_gfx_surface.c",
+          "symbol_evidence": "libs/ra8_gfx/src/ra8_gfx_abi.zig",
+          "registration": "tests/cmake/unit_tests.cmake"
+        },
+        {
+          "language": "zig",
+          "path": "libs/ra8_gfx/tests/abi_test.zig",
+          "symbol_evidence": "libs/ra8_gfx/src/ra8_gfx_abi.zig",
+          "registration": "libs/ra8_gfx/.zig-test-contract.json"
+        },
+        {
+          "language": "zig",
+          "path": "libs/ra8_gfx/tests/internal_test.zig",
+          "symbol_evidence": "libs/ra8_gfx/src/ra8_gfx_abi.zig",
+          "registration": "libs/ra8_gfx/.zig-test-contract.json"
+        }
+      ],
+      "exports": [
+        {
+          "name": "priv_gfx_text_pack_565",
+          "calling_context": "task-safe-reentrant",
+          "ownership": "copies no data; packs the caller's colour word into RGB565"
+        },
+        {
+          "name": "priv_gfx_text_plot",
+          "calling_context": "task-only-non-reentrant",
+          "ownership": "writes one pixel into the bound framebuffer and retains no caller resource"
+        },
+        {
+          "name": "ra8_gfx_clear",
+          "calling_context": "task-only-non-reentrant",
+          "ownership": "fills the clipped region of the bound framebuffer and retains no caller resource"
+        },
+        {
+          "name": "ra8_gfx_set_clip",
+          "calling_context": "task-only-non-reentrant",
+          "ownership": "updates the module clip rectangle and retains no caller resource"
+        },
+        {
+          "name": "ra8_gfx_reset_clip",
+          "calling_context": "task-only-non-reentrant",
+          "ownership": "restores the full-surface clip and retains no caller resource"
+        },
+        {
+          "name": "ra8_gfx_pixel",
+          "calling_context": "task-only-non-reentrant",
+          "ownership": "writes one bounds-checked pixel into the bound framebuffer"
+        },
+        {
+          "name": "ra8_gfx_blit_gray8",
+          "calling_context": "task-only-non-reentrant",
+          "ownership": "borrows the gray source for the duration of the call and writes the bound framebuffer"
+        },
+        {
+          "name": "ra8_gfx_line",
+          "calling_context": "task-only-non-reentrant",
+          "ownership": "walks a bounded Bresenham line into the bound framebuffer"
+        },
+        {
+          "name": "ra8_gfx_rect",
+          "calling_context": "task-only-non-reentrant",
+          "ownership": "fills or outlines a rectangle in the bound framebuffer"
+        },
+        {
+          "name": "ra8_gfx_circle",
+          "calling_context": "task-only-non-reentrant",
+          "ownership": "walks a bounded midpoint circle into the bound framebuffer"
+        },
+        {
+          "name": "ra8_gfx_blit",
+          "calling_context": "task-only-non-reentrant",
+          "ownership": "borrows the typed source surface for the call and writes the bound framebuffer"
+        }
+      ],
+      "data_exports": [
+        {
+          "name": "g_gfx_text_state",
+          "header": "libs/ra8_gfx/src/ra8_gfx_internal.h",
+          "adapter": "libs/ra8_gfx/src/ra8_gfx_abi.zig",
+          "calling_context": "task-only-non-reentrant",
+          "ownership": "owns the single module-wide framebuffer binding every ra8_gfx translation unit reads"
+        }
+      ],
+      "c_retained_exports": [
+        {
+          "name": "ra8_gfx_init",
+          "source": "libs/ra8_gfx/src/ra8_gfx_bind.c",
+          "reason": "the lifecycle half of the library, split out of the rasteriser TU by #737 after this port branch was cut; it writes the binding this archive defines rather than being called by it, so it stays C until the bind slice ports it"
+        },
+        {
+          "name": "ra8_gfx_init_surface",
+          "source": "libs/ra8_gfx/src/ra8_gfx_bind.c",
+          "reason": "the pitch-carrying bind form added by #737; same TU and same slice as ra8_gfx_init"
+        },
+        {
+          "name": "ra8_gfx_deinit",
+          "source": "libs/ra8_gfx/src/ra8_gfx_bind.c",
+          "reason": "teardown of the binding, in the same bind TU and the same future slice"
+        },
+        {
+          "name": "priv_gfx_bpp",
+          "source": "libs/ra8_gfx/src/ra8_gfx_bind.c",
+          "reason": "promoted to module-external linkage by #737 so the bind TU and the rasteriser TUs size pixels identically; the C definition stays while the bind TU is C, and the Zig core keeps its own pure equivalent in internal/root.zig"
+        },
+        {
+          "name": "priv_gfx_format_ok",
+          "source": "libs/ra8_gfx/src/ra8_gfx_bind.c",
+          "reason": "promoted alongside priv_gfx_bpp by #737 and defined in the same retained C TU"
+        },
+        {
+          "name": "ra8_gfx_blit_gray4_zoom",
+          "source": "libs/ra8_gfx/src/ra8_gfx_blit_gray4.c",
+          "reason": "the 4bpp zoom blit is its own translation unit and its own later slice; it consumes this archive through priv_gfx_text_plot rather than implementing any of it"
+        },
+        {
+          "name": "ra8_gfx_text_out",
+          "source": "libs/ra8_gfx/src/ra8_gfx_text_glyph.c",
+          "reason": "the glyph rasteriser is its own translation unit and its own later slice; it draws through priv_gfx_text_plot and the shared binding"
+        },
+        {
+          "name": "ra8_gfx_text_size",
+          "source": "libs/ra8_gfx/src/ra8_gfx_text_glyph.c",
+          "reason": "text measurement lives in the same retained glyph TU and ports with it"
+        }
+      ]
     }
   ]
 }

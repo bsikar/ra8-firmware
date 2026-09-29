@@ -365,6 +365,26 @@ set_property(
   PROPERTY INTERFACE_LINK_LIBRARIES ra8_zig::ra8_ui
 )
 
+# Partially migrated: the rasteriser core is Zig now -- the single shared
+# framebuffer binding g_gfx_text_state, the two promoted helpers
+# priv_gfx_text_pack_565 / priv_gfx_text_plot, and the nine drawing entry
+# points of inc/ra8_gfx.h. The lifecycle half is deliberately still C in
+# src/ra8_gfx_bind.c: ra8_gfx_init(), ra8_gfx_init_surface() and
+# ra8_gfx_deinit() write the binding this archive defines, and priv_gfx_bpp() /
+# priv_gfx_format_ok() stay its exports. The other four C translation units
+# (ra8_gfx_dither.c, ra8_gfx_blit_gray4.c, ra8_gfx_text_glyph.c,
+# ra8_gfx_tone.c and the generated ra8_gfx_font_8x16.c) reach into this archive
+# through the unchanged src/ra8_gfx_internal.h, so that header and the
+# libs/ra8_gfx/src include dirs in core_hal.cmake and unit_tests.cmake all stay.
+ra8_add_zig_library(
+  NAME
+  ra8_gfx
+  ZIG_ROOT
+  ${FW_ROOT}/libs/ra8_gfx
+  LIBRARY_NAME
+  ra8_gfx
+)
+
 # ra8_core_hal is the OBJECT library every host test links, so an INTERFACE
 # link here reaches each test executable that pulls in a migrated library.
 # Fully migrated: the protocol core (both CRC generators, command framing,
@@ -453,6 +473,8 @@ target_link_libraries(
          ra8_zig::ra8_sdmmc_spi
          ra8_zig::ra8_display_pal
          ra8_zig::ra8_ota
+  ra8_zig::ra8_gfx
+         ra8_zig::ra8_gfx
 )
 
 link_libraries(ra8_zig::ra8_batt)
