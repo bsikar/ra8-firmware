@@ -298,6 +298,22 @@ ra8_add_zig_library(
   LIBRARY_NAME
   ra8_wifi
 )
+
+# Fully migrated: the fw_if_fs adapter over ra8_io_vfs is Zig now, so
+# libs/if_ra8_vfs/src has no .c left and the RA8_IF_RA8_VFS_SOURCES glob is
+# gone from library_sources.cmake and core_hal.cmake. The private contracts
+# header went with the .c, so libs/if_ra8_vfs/src is no longer an include
+# directory anywhere; only inc/ remains. fw_fs_ra8_vfs_init stays the one
+# exported symbol, with the namespace, stream and transaction vtables
+# file-private exactly as static made them.
+ra8_add_zig_library(
+  NAME
+  if_ra8_vfs
+  ZIG_ROOT
+  ${FW_ROOT}/libs/if_ra8_vfs
+  LIBRARY_NAME
+  if_ra8_vfs
+)
 set_property(
   TARGET ra8_zig::ra8_keyboard
   APPEND
@@ -325,6 +341,7 @@ target_link_libraries(
          ra8_zig::ra8_audio
          ra8_zig::ra8_wifi
          ra8_zig::ra8_ov5640
+         ra8_zig::if_ra8_vfs
 )
 
 link_libraries(ra8_zig::ra8_batt)
@@ -348,4 +365,5 @@ link_libraries(
   ra8_zig::ra8_audio
   ra8_zig::ra8_wifi
   ra8_zig::ra8_ov5640
+  ra8_zig::if_ra8_vfs
 )
