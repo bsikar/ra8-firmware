@@ -16,9 +16,11 @@
  * so the single-world build is unaffected. When it is defined the
  * secure-boot:
  *   1. Programmes the five-region SAU partition.
- *   2. Unlocks ``PRCR_S.PRC4`` and writes ``IPCSAR = 0x00050000``
- *      (SAIPCIR0 + SAIPCIR2 set) so channels 0 and 2 -- the two CPU1
- *      (always-NS) endpoints -- become NS-accessible.
+ *   2. Hands IPC0 channel 0 and IPC1 channel 0 -- the two CPU1
+ *      (always-NS) endpoints -- to the Non-Secure world, by naming
+ *      them in a ``ra8_tz_ipc_attribution_t`` descriptor rather than
+ *      by assembling the CPSCU word. The library unlocks
+ *      ``PRCR_S.PRC4``, encodes, and writes IPCSAR / IPCPAR.
  *   3. Re-locks PRCR_S.
  *   4. BLXNS-es into the NS image starting at ``NS_VECTOR_TABLE``,
  *      which the linker places at the NS-MRAM base (0x02080000).
@@ -40,6 +42,7 @@
 #include "ra8_err.h"             // ra8-keep-include: `ra8_err_t` used directly
 #include "ra8_log.h"             // ra8-keep-include: `ra8_log_error_val` used directly
 #include "ra8_register_protection.h" // ra8-keep-include: `RA8_PROTECTED_WRITE` used directly
+#include "ra8_tz_ipc_attr.h"     // ra8-keep-include: `ra8_tz_ipc_attribution_t` used
 #include "ra8_tz_secure_boot.h"  // ra8-keep-include: `ra8_tz_secure_boot_jump_ns` used
 
 extern uint32_t g_ra8_ls_cpu1_mram_start;
@@ -50,22 +53,22 @@ extern uint32_t g_ra8_ls_cpu1_stack_top;
  * @brief Constants for the cpu1_pingpong_ipc secure boot.
  *
  * @details
- *  - ``k_ipcsar_value`` matches the acceptance criterion of issue #22:
- *    SAIPCIR0 (bit 16) + SAIPCIR2 (bit 18) = 0x00050000.
- *  - ``k_ipcpar_value`` stays at 0 -- channels remain Privileged-only.
- *  - ``k_ns_vector_table_addr`` is the linker-pinned start of NS MRAM
- *    where the NS image's vector table is placed.
+ * ``k_ns_vector_table_addr`` is the linker-pinned start of NS MRAM where
+ * the NS image's vector table is placed.
  *
- * @invariant ``k_ipcsar_value`` must clear bits 17/19 so SAIPCIR1 and
- *            SAIPCIR3 stay Secure (CPU0 owns those channels).
+ * The IPC attribution words used to live here as two hand-assembled
+ * literals. They are now expressed as a descriptor built by
+ * ``ra8_tz_ipc_attribution_cpu1_pingpong()``, which names IPC0 channel 0
+ * and IPC1 channel 0 as Non-Secure and leaves every other target Secure
+ * and Privileged-only. The bit layout is the encoder's, not this app's,
+ * so the invariant that SAIPCIR1 and SAIPCIR3 stay Secure is no longer
+ * a comment asking a reader to check a literal (#735).
  *
  * @see ra8_tz_secure_boot_run
  * @since 0.1.0
  */
 typedef enum : uint32_t {
-  k_ipcsar_value         = 0x00050000UL, /**< IPC security.  */
-  k_ipcpar_value         = 0x00000000UL, /**< IPC privilege. */
-  k_ns_vector_table_addr = 0x02080000UL, /**< NS vectors.    */
+  k_ns_vector_table_addr = 0x02080000UL, /**< NS vectors. */
 } cpu1_pingpong_ipc_tz_const_t;
 
 /**
@@ -189,8 +192,21 @@ void ra8_trustzone_init(void)
     return;
   }
 
-  const ra8_err_t sec_err =
-    ra8_tz_secure_boot_security_init((uint32_t)k_ipcsar_value, (uint32_t)k_ipcpar_value);
+  /* The descriptor is built, not written: the two NS channels are named
+   * by target, and the encoder owns every bit position. It encodes to
+   * IPCSAR 0x00050000 / IPCPAR 0x00000000, the same pair this app used
+   * to spell out, and a descriptor that fails to encode is refused
+   * before PRCR_S is opened. */
+  ra8_tz_ipc_attribution_t ipc_map = {};
+  const ra8_err_t          map_err = ra8_tz_ipc_attribution_cpu1_pingpong(&ipc_map);
+  if (map_err != k_ra8_ok) {
+    ra8_log_error_val("CPU1IPC", "ipc attribution map failed", (uint32_t)map_err);
+    const ra8_tz_secure_boot_step_t step_map = ra8_tz_secure_boot_get_step();
+    g_cpu1_pingpong_ipc_tz_step              = (uint8_t)step_map;
+    return;
+  }
+
+  const ra8_err_t sec_err = ra8_tz_secure_boot_security_init_map(&ipc_map);
   if (sec_err != k_ra8_ok) {
     /* Do NOT release CPU1 or BLXNS when the IPC channel S/NS attribution
      * failed -- the NS core would face Secure-locked IPC channels. */
