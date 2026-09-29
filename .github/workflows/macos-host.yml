@@ -108,8 +108,52 @@ jobs:
             --max-time 600 \
             -o "${RUNNER_TEMP}/zig.tar.xz" \
             "https://ziglang.org/download/${ZIG_VERSION}/zig-aarch64-macos-${ZIG_VERSION}.tar.xz"
-          printf '%s  %s\n' "${ZIG_SHA256_AARCH64_MACOS}" "${RUNNER_TEMP}/zig.tar.xz" \
-            | shasum -a 256 -c -
+          # A MISMATCH HERE IS ALMOST NEVER A BAD DOWNLOAD, and shasum -c's
+          # own wording says it is: "zig.tar.xz: FAILED" and "1 computed
+          # checksum did NOT match" describe corruption or tampering, so the
+          # reader goes looking at mirrors. On this repository the cause has
+          # one overwhelmingly likelier shape: ZIG_VERSION above moved and
+          # ZIG_SHA256_AARCH64_MACOS did not, because the digest sits on its
+          # own env line and a nightly has nobody watching it. The comparison
+          # below is the one shasum -c makes, against the same sha256, byte
+          # for byte; only the diagnosis changes. The two causes want opposite
+          # responses and the tarball itself tells them apart, so its size and
+          # file(1) verdict are printed rather than left to be guessed at.
+          recorded="${ZIG_SHA256_AARCH64_MACOS}"
+          computed="$(shasum -a 256 "${RUNNER_TEMP}/zig.tar.xz" | cut -d ' ' -f 1)"
+          if [ "${computed}" != "${recorded}" ]; then
+            echo "::error::Zig ${ZIG_VERSION} tarball does not match its pinned sha256"
+            {
+              echo "pinned Zig ${ZIG_VERSION}: sha256 mismatch"
+              echo "  recorded: ${recorded:-<empty>}"
+              echo "  computed: ${computed}"
+              echo "  tarball:  zig-aarch64-macos-${ZIG_VERSION}.tar.xz"
+              echo "  bytes:    $(wc -c < "${RUNNER_TEMP}/zig.tar.xz" | tr -d ' ')"
+              echo "  type:     $(file -b "${RUNNER_TEMP}/zig.tar.xz")"
+              echo
+              echo "An XZ archive of a few tens of megabytes means THE PIN IS"
+              echo "STALE: the version moved and the digest did not. Three"
+              echo "places carry the Zig pin, and they move in one commit:"
+              echo "  - ZIG_VERSION + ZIG_SHA256_AARCH64_MACOS, this file"
+              echo "  - ARG ZIG_VERSION, .devcontainer/Dockerfile"
+              echo "  - the RECORDED_DISTS row in"
+              echo "    scripts/checks/check_zig_dist_pins.py"
+              echo "Re-running will not help; it fails identically every night"
+              echo "until the digest moves."
+              if [ "$(printf '%s' "${recorded}" | tr 'A-Z' 'a-z')" \
+                   = "${computed}" ]; then
+                echo
+                echo "The two differ only in case. Digests are recorded"
+                echo "lowercase here; paste the index's value verbatim."
+              fi
+              echo
+              echo "A short, empty or HTML body means THE DOWNLOAD FAILED: a"
+              echo "mirror served an error page or the transfer was cut."
+              echo "Re-running is worth a try, and a second identical failure"
+              echo "means the mirror, not us."
+            } >&2
+            exit 1
+          fi
           sudo rm -rf /usr/local/zig
           sudo mkdir -p /usr/local/zig
           sudo tar -xf "${RUNNER_TEMP}/zig.tar.xz" --strip-components=1 -C /usr/local/zig
