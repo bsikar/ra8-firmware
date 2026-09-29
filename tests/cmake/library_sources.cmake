@@ -105,6 +105,10 @@ file(GLOB_RECURSE RA8_WIDGET_SOURCES CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra8_widge
 # unchanged C suite still covers it via the public header.
 file(GLOB_RECURSE RA8_NSC_SOURCES CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra8_nsc/src/*.c)
 file(GLOB_RECURSE RA8_OTA_SOURCES CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra8_ota/src/*.c)
+# ra8_display_pal is half Zig: the dispatcher and the refresh policy are
+# libs/ra8_display_pal/src/*.zig (built by libs/ra8_display_pal/build.zig),
+# so this glob now matches exactly the two panel backends that stay C,
+# src/ra8_display_pal_lcd.c and src/ra8_display_pal_eink.c.
 file(GLOB_RECURSE RA8_DISPLAY_PAL_SOURCES CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra8_display_pal/src/*.c)
 # ra8_power_profile is implemented in Zig (libs/ra8_power_profile/build.zig).
 # It is linked through cmake/zig_libraries.cmake instead of being globbed as C
