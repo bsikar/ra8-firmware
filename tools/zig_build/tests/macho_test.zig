@@ -7,7 +7,9 @@
 //! machine that produced it.
 
 const std = @import("std");
-const macho = @import("macho");
+// Reached through the archive reader's module: `macho.zig` is a file inside it,
+// and a file can belong to only one module in a compilation.
+const macho = @import("ar").macho;
 
 const Builder = struct {
     bytes: std.ArrayListUnmanaged(u8) = .empty,
