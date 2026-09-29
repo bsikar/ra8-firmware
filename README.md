@@ -44,8 +44,11 @@ host's system Python or package directories.
 
 ## The emulator
 
-[`tools/ra8_emulator`](tools/ra8_emulator/README.md) boots the unmodified
-cross-compiled `.elf` -- the same image that flashes to a board -- on an
+The emulator lives in its own repository,
+[ra8-emulator](https://github.com/bsikar/ra8-emulator), and is pinned here as a
+submodule at `tools/ra8_emulator`; `git submodule update --init` checks it out.
+It boots the unmodified cross-compiled `.elf` -- the same image that flashes
+to a board -- on an
 emulated Cortex-M over a modelled RA8D2 peripheral space, and shows the GLCDC
 framebuffer beside the board LEDs and live USB / UART / IRQ / touch state. The
 live window is macOS-only (Cocoa, provisioned by `just apps::emulator::setup`); booting,
