@@ -240,7 +240,6 @@ def _app_info_uses_canonical_layout() -> list[tuple[str, bool]]:
         "src/trustzone_init.c",
         "inc/trustzone_init.h",
         "linker_script.ld",
-        "ns_image.ld",
     )
     stale = (
         "main.c",
