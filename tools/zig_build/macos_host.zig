@@ -156,6 +156,72 @@ pub const SdkProbe = struct {
 /// The stub target an arm64 Mac needs to see declared in `libSystem.tbd`.
 pub const required_target = "arm64-macos";
 
+/// Where Zig keeps its own `libSystem` stub, relative to the Zig lib
+/// directory (`zig env` reports it as `lib_dir`).
+///
+/// The #899 workaround rests entirely on this file. Pinning an explicit
+/// `aarch64-macos` query is only a fix because Zig links THIS stub instead of
+/// the SDK one, and because this stub declares `arm64-macos`. Nothing in the
+/// tree ever read it, so that was an assumption, not a check.
+pub const bundled_stub_relative_path = "libc/darwin/libSystem.tbd";
+
+/// What Zig's own bundled stub turned out to say.
+///
+/// Kept apart from `Reason` on purpose: `Reason` is about the machine's SDK,
+/// which is the thing #899 reports, while this is about the compiler that is
+/// standing in for it. A run where both go wrong needs to name them
+/// separately, because the fixes are a Command Line Tools install and a Zig
+/// version bump respectively.
+pub const BundledStubState = enum {
+    /// The bundled stub declares `arm64-macos`: the pinned query is a fix.
+    declares,
+    /// The bundled stub has a target list and `arm64-macos` is not in it. The
+    /// pinned query then fails exactly like the SDK one it replaced.
+    omits,
+    /// The bundled stub names no macOS target at all.
+    foreign_platform,
+    /// A file was read but no target list could be found in it.
+    unrecognized,
+    /// The file is not where it should be, or could not be read.
+    unreadable,
+    /// This build runner does not know where the Zig lib directory is, so
+    /// nothing was read. Reported rather than guessed at.
+    lib_dir_unknown,
+
+    /// Can the pinned `aarch64-macos` query actually link against this stub?
+    pub fn linksRequiredTarget(self: BundledStubState) bool {
+        return self == .declares;
+    }
+
+    /// One line, in plain words, for a build log or a gate transcript.
+    pub fn explain(self: BundledStubState) []const u8 {
+        return switch (self) {
+            .declares => "Zig's bundled libSystem stub declares " ++ required_target ++ ", so the pinned query has something to link",
+            .omits => "Zig's bundled libSystem stub lists its targets and " ++ required_target ++ " is not among them, so the pinned query cannot link either (#899)",
+            .foreign_platform => "Zig's bundled libSystem stub names no macOS target at all, so it cannot stand in for the SDK stub",
+            .unrecognized => "Zig's bundled libSystem stub declares no target list in a recognised spelling, so it cannot be trusted to link " ++ required_target,
+            .unreadable => "Zig's bundled libSystem stub could not be read at " ++ bundled_stub_relative_path ++ " under the Zig lib directory",
+            .lib_dir_unknown => "the Zig lib directory is unknown to this build runner, so the bundled libSystem stub was not read",
+        };
+    }
+};
+
+/// Classify Zig's own bundled stub. `tbd_text` is null when there was nothing
+/// to read; `lib_dir_known` separates "I looked and found no file" from "I had
+/// nowhere to look".
+///
+/// The classification itself is `classifyTbd`, the same reader the SDK stub
+/// goes through, so the two stubs are never judged by different rules.
+pub fn classifyBundledStub(tbd_text: ?[]const u8, lib_dir_known: bool) BundledStubState {
+    const text = tbd_text orelse return if (lib_dir_known) .unreadable else .lib_dir_unknown;
+    return switch (classifyTbd(text, required_target)) {
+        .declares => .declares,
+        .omits => .omits,
+        .foreign_platform => .foreign_platform,
+        .unrecognized => .unrecognized,
+    };
+}
+
 /// The `xcrun --sdk` name for the SDK a macOS host build links against.
 ///
 /// This is not a free choice. Zig 0.14.1 resolves its own sysroot with
@@ -343,8 +409,9 @@ fn chunkMatches(chunk: []const u8, query: TargetsQuery) bool {
 /// Only the `targets:` field is read, because `uuids:` repeats target names and
 /// would otherwise answer for it.
 fn targetsFieldMatches(tbd_text: []const u8, query: TargetsQuery) ?bool {
+    const scope = topLevelField(tbd_text, "targets:") orelse tbd_text;
     var seen_field = false;
-    var lines = std.mem.splitScalar(u8, tbd_text, '\n');
+    var lines = std.mem.splitScalar(u8, scope, '\n');
     while (lines.next()) |raw_line| {
         const trimmed = std.mem.trim(u8, raw_line, " \t\r");
         // A block-item marker is the only dash a `targets:` field can carry.
@@ -405,10 +472,12 @@ pub fn archsFieldDeclares(tbd_text: []const u8, arch: []const u8, os_name: []con
 /// the SDK they actually read.
 pub fn platformFieldDeclares(tbd_text: []const u8, os_name: []const u8) ?bool {
     const wanted_platform = if (std.mem.eql(u8, os_name, "macos")) v3_macos_platform else os_name;
+    const scope = topLevelField(tbd_text, "platform:") orelse
+        topLevelField(tbd_text, "platforms:") orelse tbd_text;
     var seen_platform = false;
     var platform_declared = false;
 
-    var lines = std.mem.splitScalar(u8, tbd_text, '\n');
+    var lines = std.mem.splitScalar(u8, scope, '\n');
     while (lines.next()) |raw_line| {
         const line = std.mem.trim(u8, raw_line, " \t\r-");
         if (std.mem.startsWith(u8, line, "platform:")) {
@@ -430,10 +499,11 @@ pub fn platformFieldDeclares(tbd_text: []const u8, os_name: []const u8) ?bool {
 /// `archs:` also appears inside each `exports:` entry, which is exactly the
 /// same question asked per-slice, so any occurrence counts.
 pub fn archsFieldContains(tbd_text: []const u8, arch: []const u8) ?bool {
+    const scope = topLevelField(tbd_text, "archs:") orelse tbd_text;
     var seen_archs = false;
     var arch_declared = false;
 
-    var lines = std.mem.splitScalar(u8, tbd_text, '\n');
+    var lines = std.mem.splitScalar(u8, scope, '\n');
     while (lines.next()) |raw_line| {
         const line = std.mem.trim(u8, raw_line, " \t\r-");
         if (!std.mem.startsWith(u8, line, "archs:")) continue;
@@ -449,6 +519,44 @@ pub fn archsFieldContains(tbd_text: []const u8, arch: []const u8) ?bool {
 /// those repeat `targets:` lists of their own: on the Command Line Tools stub a
 /// re-export declaring `arm64-macos` must not answer for a `libSystem` that does
 /// not, or #899 comes straight back.
+/// The slice of `document` covering its own top-level `name` field: the line
+/// that opens the field plus the indented lines that continue it.
+///
+/// A `.tbd` document repeats `targets:` under `reexported-libraries:` and
+/// `archs:` under `exports:`, once per re-exported library or symbol group.
+/// Those lists say which slices THAT ENTRY covers, not which slices the stub
+/// provides, so a nested list must never answer for the stub: the real
+/// `libSystem.tbd` re-exports arm64-macos in its first document whatever its
+/// own header says. Same rule as `firstDocument`, one level down.
+fn topLevelField(document: []const u8, name: []const u8) ?[]const u8 {
+    var offset: usize = 0;
+    while (offset < document.len) {
+        const newline = std.mem.indexOfScalarPos(u8, document, offset, '\n');
+        const line_end = newline orelse document.len;
+        const next = if (newline) |index| index + 1 else document.len;
+        if (std.mem.startsWith(u8, document[offset..line_end], name)) {
+            return document[offset..fieldEnd(document, next)];
+        }
+        offset = next;
+    }
+    return null;
+}
+
+/// Where a top-level field ends: the next line that opens a key of its own.
+/// Every continuation line of a field, wrapped flow list or block item alike,
+/// is indented.
+fn fieldEnd(document: []const u8, offset: usize) usize {
+    var cursor = offset;
+    while (cursor < document.len) {
+        const newline = std.mem.indexOfScalarPos(u8, document, cursor, '\n');
+        const line_end = newline orelse document.len;
+        const line = document[cursor..line_end];
+        if (line.len != 0 and line[0] != ' ' and line[0] != '\t') return cursor;
+        cursor = if (newline) |index| index + 1 else document.len;
+    }
+    return document.len;
+}
+
 fn firstDocument(tbd_text: []const u8) []const u8 {
     var offset: usize = 0;
     var seen_header = false;

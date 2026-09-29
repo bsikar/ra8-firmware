@@ -20,6 +20,9 @@ const required_target = macos_host.required_target;
 const targetsFieldDeclares = macos_host.targetsFieldDeclares;
 const targetsFieldMentionsOs = macos_host.targetsFieldMentionsOs;
 const platformFieldDeclares = macos_host.platformFieldDeclares;
+const BundledStubState = macos_host.BundledStubState;
+const classifyBundledStub = macos_host.classifyBundledStub;
+const bundled_stub_relative_path = macos_host.bundled_stub_relative_path;
 const archsFieldContains = macos_host.archsFieldContains;
 const tbdDeclaresTarget = macos_host.tbdDeclaresTarget;
 const Selection = macos_host.Selection;
@@ -498,4 +501,150 @@ test "the pinned #899 target is the host on the machine the rule is for" {
         .aarch64,
         .macos,
     ));
+}
+
+// --- Zig's own bundled libSystem stub (#899) -------------------------------
+//
+// The workaround is "pin an explicit aarch64-macos query so Zig links its own
+// stub instead of the SDK one". That is a fix only while Zig's own stub
+// declares arm64-macos, and nothing used to read it.
+
+/// What zig 0.14.1 actually ships, trimmed to the field under test.
+const bundled_tbd =
+    \\--- !tapi-tbd
+    \\tbd-version:     4
+    \\targets:         [ x86_64-macos, x86_64-maccatalyst, arm64-macos, arm64-maccatalyst,
+    \\                   arm64e-macos, arm64e-maccatalyst ]
+    \\install-name:    '/usr/lib/libSystem.B.dylib'
+    \\
+;
+
+test "the bundled stub zig ships declares the pinned target" {
+    try testing.expectEqual(BundledStubState.declares, classifyBundledStub(bundled_tbd, true));
+    try testing.expect(BundledStubState.declares.linksRequiredTarget());
+}
+
+test "a bundled stub that dropped arm64-macos is caught, not assumed away" {
+    // The regression this step exists for: a toolchain bump ships a stub
+    // without our slice, the pinned query links nothing, and the failure is
+    // the same `undefined symbol` #899 reports -- now caused by the fix.
+    const dropped =
+        \\--- !tapi-tbd
+        \\tbd-version:     4
+        \\targets:         [ x86_64-macos, arm64e-macos ]
+        \\
+    ;
+    const state = classifyBundledStub(dropped, true);
+    try testing.expectEqual(BundledStubState.omits, state);
+    try testing.expect(!state.linksRequiredTarget());
+}
+
+test "a bundled stub for another Apple platform is named as one" {
+    const ios =
+        \\--- !tapi-tbd
+        \\tbd-version:     4
+        \\targets:         [ arm64-ios, arm64e-ios ]
+        \\
+    ;
+    try testing.expectEqual(BundledStubState.foreign_platform, classifyBundledStub(ios, true));
+}
+
+test "a bundled stub with no target list is untrusted rather than believed" {
+    try testing.expectEqual(
+        BundledStubState.unrecognized,
+        classifyBundledStub("--- !tapi-tbd\nsomething: else\n", true),
+    );
+}
+
+test "nothing read is reported as where the looking stopped" {
+    // "I looked and the file was not there" and "I had nowhere to look" are
+    // different faults: a broken toolchain install versus a build runner that
+    // does not expose its lib directory.
+    try testing.expectEqual(BundledStubState.unreadable, classifyBundledStub(null, true));
+    try testing.expectEqual(BundledStubState.lib_dir_unknown, classifyBundledStub(null, false));
+    try testing.expect(!BundledStubState.unreadable.linksRequiredTarget());
+    try testing.expect(!BundledStubState.lib_dir_unknown.linksRequiredTarget());
+}
+
+test "every bundled-stub state explains itself distinctly" {
+    // These lines are the gate transcript, and two states that print the same
+    // sentence cannot be told apart by whoever reads a red run.
+    const states = [_]BundledStubState{
+        .declares,     .omits,      .foreign_platform,
+        .unrecognized, .unreadable, .lib_dir_unknown,
+    };
+    for (states, 0..) |state, i| {
+        try testing.expect(state.explain().len > 0);
+        for (states[i + 1 ..]) |other| {
+            try testing.expect(!std.mem.eql(u8, state.explain(), other.explain()));
+        }
+    }
+}
+
+test "both stubs are judged by the same reader" {
+    // classifyBundledStub must not become a second, drifting tbd parser: the
+    // same text has to reach the same verdict through both entry points.
+    try testing.expectEqual(TbdVerdict.declares, classifyTbd(bundled_tbd, required_target));
+    try testing.expectEqual(BundledStubState.declares, classifyBundledStub(bundled_tbd, true));
+}
+
+test "a nested re-export list never answers for the stub that carries it" {
+    // The shape of the real file, and the hole the first end-to-end run fell
+    // through: document one's own `targets:` drops arm64-macos, while the
+    // `reexported-libraries:` entries inside that same document still name it.
+    // Scoping to the first document is not enough; the stub's own field is the
+    // only one that says what the stub provides.
+    const dropped_but_reexported =
+        \\--- !tapi-tbd
+        \\tbd-version:     4
+        \\targets:         [ x86_64-macos, arm64e-macos ]
+        \\install-name:    '/usr/lib/libSystem.B.dylib'
+        \\reexported-libraries:
+        \\  - targets:         [ x86_64-macos, arm64-macos, arm64e-macos ]
+        \\    libraries:       [ '/usr/lib/system/libcache.dylib' ]
+        \\
+    ;
+    const state = classifyBundledStub(dropped_but_reexported, true);
+    try testing.expectEqual(BundledStubState.omits, state);
+    try testing.expect(!state.linksRequiredTarget());
+    try testing.expectEqual(TbdVerdict.omits, classifyTbd(dropped_but_reexported, required_target));
+}
+
+test "a wrapped top-level list is still read whole" {
+    // Scoping must take the field's continuation lines with it: the real stub
+    // wraps its target list, and arm64-macos sits on the second line.
+    const wrapped =
+        \\--- !tapi-tbd
+        \\tbd-version:     4
+        \\targets:         [ x86_64-macos, x86_64-maccatalyst,
+        \\                   arm64-macos, arm64-maccatalyst ]
+        \\install-name:    '/usr/lib/libSystem.B.dylib'
+        \\reexported-libraries:
+        \\  - targets:         [ x86_64-macos ]
+        \\
+    ;
+    try testing.expectEqual(BundledStubState.declares, classifyBundledStub(wrapped, true));
+}
+
+test "a v3 stub's per-export archs list does not widen its header" {
+    // Same rule for the older spelling: `exports:` repeats `archs:` per symbol
+    // group, and a group naming arm64 says nothing about the stub's own set.
+    const v3_dropped =
+        \\--- !tapi-tbd-v3
+        \\archs:           [ x86_64 ]
+        \\platform:        macosx
+        \\exports:
+        \\  - archs:           [ x86_64, arm64 ]
+        \\    symbols:         [ _abort ]
+        \\
+    ;
+    try testing.expectEqual(@as(?bool, false), archsFieldContains(v3_dropped, "arm64"));
+    try testing.expectEqual(TbdVerdict.omits, classifyTbd(v3_dropped, required_target));
+}
+
+test "the bundled stub path is relative to the zig lib directory" {
+    // Joined onto `zig env` lib_dir, so a leading separator would escape it.
+    try testing.expect(bundled_stub_relative_path.len > 0);
+    try testing.expect(!std.fs.path.isAbsolute(bundled_stub_relative_path));
+    try testing.expect(std.mem.endsWith(u8, bundled_stub_relative_path, "libSystem.tbd"));
 }
