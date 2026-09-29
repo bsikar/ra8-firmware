@@ -372,7 +372,7 @@ RA8_INTERNAL static void internal_test_bind_fs_backend_uninitialized_rejected(vo
  *                 (transport->cs == nullptr) ||
  *                 (transport->xfer == nullptr))``
  * (3 conditions;
- * libs/ra8_sdmmc_spi/src/ra8_sdmmc_spi.c@priv_sdmmc_spi_validate_transport) inside
+ * priv_sdmmc_spi_validate_transport (Zig, libs/ra8_sdmmc_spi)) inside
  * ``priv_sdmmc_spi_validate_transport``.
  *
  * Per DO-178C 6.4.4.3 representative-subset, N+1 = 4 vectors. Each
@@ -436,7 +436,7 @@ RA8_INTERNAL static void internal_test_mcdc_validate_transport_or_chain(void)
  * @par MC/DC:
  * Decision: ``if ((block_count == nullptr) || (block_size == nullptr))``
  * (2 conditions;
- * libs/ra8_sdmmc_spi/src/ra8_sdmmc_spi_io.c@internal_fs_get_capacity) inside
+ * internal_fs_get_capacity (Zig, libs/ra8_sdmmc_spi)) inside
  * ``internal_fs_get_capacity``.
  *
  * Per DO-178C 6.4.4.3 N+1 = 3 vectors:
@@ -699,7 +699,7 @@ RA8_INTERNAL static void internal_test_capacity_type_query_guards(void)
 /**
  * @par MC/DC:
  * Decision: `(lba > UINT32_MAX) || (count > UINT32_MAX)` (2 conditions) in
- * `libs/ra8_sdmmc_spi/src/ra8_sdmmc_spi_io.c@internal_fs_erase_block` -- SD
+ * `internal_fs_erase_block` (Zig, libs/ra8_sdmmc_spi) -- SD
  * block numbers are 32-bit, so the 64-bit `ra8_fs` coordinates (#683) are
  * range-checked, never truncated.
  * - V1: lba small, count small (the count == 0 passthrough below) -> F,F ->

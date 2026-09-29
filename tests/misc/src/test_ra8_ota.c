@@ -679,7 +679,7 @@ RA8_INTERNAL static void internal_test_mcdc_download_state_guard(void)
  * @par MC/DC:
  * Decision `(g_ra8_ota_state == k_ra8_ota_state_done) || (g_ra8_ota_state ==
  * k_ra8_ota_state_error)`, cited drift-proof as
- * libs/ra8_ota/src/ra8_ota.c@ra8_ota_run_full_update (terminal-state break).
+ * ra8_ota_run_full_update (Zig, libs/ra8_ota) (terminal-state break).
  * - V1: state=idle  -> C1=F, C2=F -> false (loop continues).
  * - V2: state=done  -> C1=T, short-circuit -> true (loop breaks; varies C1).
  * - V3: state=error -> C1=F, C2=T -> true (loop breaks; varies C2).
