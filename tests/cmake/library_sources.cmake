@@ -190,6 +190,15 @@ file(GLOB_RECURSE RA8_PSA_CRYPTO_SOURCES CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra8_p
 # encoding and the canonical boot attribute map are Zig now, linked via
 # tests/cmake/zig_libraries.cmake.
 file(GLOB RA8_BOARD_EK_RA8D2_SOURCES CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra8_board_ek_ra8d2/src/*.c)
+# ra8_lsm6dso keeps ONE C source: the register-level driver (the CTRL1_XL /
+# CTRL2_G encoders, the little-endian sample decoders, the temperature
+# conversion and the FIFO drain) is Zig now, linked via
+# tests/cmake/zig_libraries.cmake, but src/ra8_lsm6dso_bind.c stays C. That
+# TU is the house-I2C-seam binder added by #760 after this port branch was
+# cut; it is a consumer of the driver's C ABI (it calls ra8_lsm6dso_init),
+# not part of the implementation being ported, so it compiles beside the Zig
+# archive. Dropping this glob would leave ra8_lsm6dso_bind_i2c undefined for
+# imu_lsm6dso_demo and for the four binder cases in test_ra8_lsm6dso.c.
 file(GLOB_RECURSE RA8_LSM6DSO_SOURCES CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra8_lsm6dso/src/*.c)
 file(GLOB_RECURSE RA8_OV5640_SOURCES CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra8_ov5640/src/*.c)
 file(GLOB_RECURSE RA8_TZ_SECURE_BOOT_SOURCES CONFIGURE_DEPENDS
