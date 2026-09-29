@@ -36,7 +36,7 @@ enum : uint32_t {
 };
 
 /** @brief Decode scratch for the image-loader path (bump arena). */
-static uint8_t s_img_scratch[k_img_scratch_bytes];
+[[maybe_unused]] static uint8_t s_img_scratch[k_img_scratch_bytes];
 
 /** @brief Named viewport / font geometry (no magic numbers). */
 enum : uint16_t {
