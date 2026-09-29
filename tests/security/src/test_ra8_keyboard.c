@@ -298,7 +298,7 @@ RA8_INTERNAL static void internal_test_glyph_and_edges(void)
  *
  * @par MC/DC:
  * Decision: `if (frame->w <= 0 || frame->h <= 0)` (2 conditions, OR) in the
- * production entry point libs/ra8_keyboard/src/ra8_keyboard.c@ra8_kbd_layout_init.
+ * production entry point ra8_kbd_layout_init (Zig, libs/ra8_keyboard).
  * The vectors drive the real API (not a hand-copied mirror), so the coverage
  * lands on the production decision. N+1 = 3 vectors for N=2:
  *  - V1: w=1024, h=360 -> F,F -> accept (k_ra8_ok).
@@ -325,7 +325,7 @@ RA8_INTERNAL static void internal_test_frame_reject_mcdc(void)
  *
  * @par MC/DC:
  * Decision: `if (kb == nullptr || key_idx >= kb->count)` (2 conditions, OR) in
- * libs/ra8_keyboard/src/ra8_keyboard.c@ra8_kbd_key_glyph. Driving the real API
+ * ra8_kbd_key_glyph (Zig, libs/ra8_keyboard). Driving the real API
  * lands the coverage on the production guard. N+1 = 3 vectors for N=2:
  *  - V1: kb=laid-out, key_idx='q'      -> F,F -> returns the glyph.
  *  - V2: kb=nullptr,  key_idx=0        -> T,- -> returns 0 (varies kb).

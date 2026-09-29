@@ -612,7 +612,7 @@ RA8_INTERNAL static void internal_test_load_corruption(void)
  *
  * @par MC/DC:
  * Two short-circuit ORs in
- * `libs/ra8_touch_cal/src/ra8_touch_cal.c@ra8_touch_cal_load`:
+ * `ra8_touch_cal_load` (Zig, libs/ra8_touch_cal):
  *   D_magic (line 568, 4-cond OR): magic bytes 0..3 differ from
  *     k_ra8_touch_cal_magic_b0..b3.
  *   D_reserved (line 577, 3-cond OR): reserved bytes 0..2 must all
@@ -668,7 +668,7 @@ RA8_INTERNAL static void internal_test_mcdc_load_magic_and_reserved_byte_pairs(v
  * @par MC/DC:
  * Decision: `if ((n < (uint8_t)k_ra8_touch_cal_min_targets) ||
  *               (n > (uint8_t)k_ra8_touch_cal_max_targets))`
- * (2 conditions, `libs/ra8_touch_cal/src/ra8_touch_cal.c@ra8_touch_cal_compute`)
+ * (2 conditions, `ra8_touch_cal_compute` (Zig, libs/ra8_touch_cal))
  * Standard: DO-178C Table A-7 obj 5; ISO 26262 Part 6 Table 12.
  * - Vector 1: n=2  -> C1=T (short-circuits) -> Decision T (invalid_arg)
  * - Vector 2: n=3  -> C1=F, C2=(3>5)=F -> Decision F (proceeds, returns
@@ -706,7 +706,7 @@ RA8_INTERNAL static void internal_test_compute_n_range_mcdc(void)
  * @par MC/DC:
  * Decision: `if ((margin_total >= (uint32_t)cfg->screen_width) ||
  *               (margin_total >= (uint32_t)cfg->screen_height))`
- * (2 conditions, `libs/ra8_touch_cal/src/ra8_touch_cal.c@ra8_touch_cal_run`)
+ * (2 conditions, `ra8_touch_cal_run` (Zig, libs/ra8_touch_cal))
  * Standard: DO-178C Table A-7 obj 5; IEC 61508-3 SIL 3 Table A.5.
  * - Vector 1: w=100,h=100,inset=60 -> margin=120 >= 100 (C1=T,
  *             short-circuits) -> Decision T (invalid_arg)
@@ -764,7 +764,7 @@ RA8_INTERNAL static void internal_test_run_margin_mcdc(void)
  *
  * @par MC/DC:
  * Decision: ``if ((raw == NULL) || (screen == NULL) || (out_mtx == NULL))``
- * (3 conditions, `libs/ra8_touch_cal/src/ra8_touch_cal.c@ra8_touch_cal_compute`).
+ * (3 conditions, `ra8_touch_cal_compute` (Zig, libs/ra8_touch_cal)).
  *
  * @par DO-178C 6.4.4.3 omission rationale:
  * Full short-circuit MC/DC for N=3 OR requires N+1 = 4 vectors. We use the
@@ -813,7 +813,7 @@ RA8_INTERNAL static void internal_test_mcdc_compute_null_or3(void)
  *
  * @par MC/DC:
  * Decision: ``if ((cfg->draw_target == NULL) || (cfg->read_raw == NULL))``
- * (2 conditions, `libs/ra8_touch_cal/src/ra8_touch_cal.c@ra8_touch_cal_run`).
+ * (2 conditions, `ra8_touch_cal_run` (Zig, libs/ra8_touch_cal)).
  * N+1 = 3 vectors.
  * - V1: draw=ok, read=ok   -> C1=F, C2=F -> dec F (proceeds)
  * - V2: draw=NULL          -> C1=T short -> dec T -> null_ptr
@@ -856,7 +856,7 @@ RA8_INTERNAL static void internal_test_mcdc_run_cb_null_or(void)
  *
  * @par MC/DC:
  * Decision: ``if ((cfg == NULL) || (out_matrix == NULL))``
- * (2 conditions, `libs/ra8_touch_cal/src/ra8_touch_cal.c@ra8_touch_cal_run`).
+ * (2 conditions, `ra8_touch_cal_run` (Zig, libs/ra8_touch_cal)).
  * N+1 = 3.
  * - V1: cfg=ok, out=ok -> C1=F, C2=F -> dec F (proceeds)
  * - V2: cfg=NULL       -> C1=T short -> dec T -> null_ptr
@@ -886,12 +886,12 @@ RA8_INTERNAL static void internal_test_mcdc_run_cfg_out_null_or(void)
  * @test test_mcdc_apply_run_screen_dim_pair
  *
  * @par MC/DC:
- * Decision A (`libs/ra8_touch_cal/src/ra8_touch_cal.c@ra8_touch_cal_apply`):
+ * Decision A (`ra8_touch_cal_apply` (Zig, libs/ra8_touch_cal)):
  *   ``if ((screen_width == 0U) || (screen_height == 0U))``
  * 2-cond OR. test_apply_clip_and_null already supplies V1 (both >0) and
  * V2 (width=0). This adds V3 (height=0) so MC/DC = 100%.
  *
- * Decision B (`libs/ra8_touch_cal/src/ra8_touch_cal.c@ra8_touch_cal_run`):
+ * Decision B (`ra8_touch_cal_run` (Zig, libs/ra8_touch_cal)):
  *   ``if ((cfg->screen_width == 0U) || (cfg->screen_height == 0U))``
  * Same shape; existing tests cover all-non-zero (V1) and width=0 (V2).
  * This adds V3 (height=0).

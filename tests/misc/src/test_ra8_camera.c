@@ -879,24 +879,24 @@ static void test_jpeg_sw_color_clamp(void)
 /**
  * @brief Run the camera facade and backend MC/DC vectors.
  * @par MC/DC:
- * Decisions: libs/ra8_camera/src/ra8_camera.c@ra8_camera_codec_encode,
- * libs/ra8_camera/src/ra8_camera.c@ra8_camera_frame_validate,
- * libs/ra8_camera/src/ra8_camera.c@ra8_camera_source_capture,
- * libs/ra8_camera/src/ra8_camera.c@internal_source_validate,
- * libs/ra8_camera/src/ra8_camera_codec_jpeg_sw.c@internal_jpeg_sw_clamp,
- * libs/ra8_camera/src/ra8_camera_codec_jpeg_sw.c@internal_jpeg_sw_encode,
- * libs/ra8_camera/src/ra8_camera_codec_jpeg_sw.c@internal_jpeg_sw_ycbcr_to_rgb,
- * libs/ra8_camera/src/ra8_camera_codec_jpeg_sw.c@ra8_camera_codec_jpeg_sw_init,
- * libs/ra8_camera/src/ra8_camera_codec_passthrough.c@internal_passthrough_encode,
+ * Decisions: ra8_camera_codec_encode (Zig, libs/ra8_camera),
+ * ra8_camera_frame_validate (Zig, libs/ra8_camera),
+ * ra8_camera_source_capture (Zig, libs/ra8_camera),
+ * internal_source_validate (Zig, libs/ra8_camera),
+ * internal_jpeg_sw_clamp (Zig, libs/ra8_camera),
+ * internal_jpeg_sw_encode (Zig, libs/ra8_camera),
+ * internal_jpeg_sw_ycbcr_to_rgb (Zig, libs/ra8_camera),
+ * ra8_camera_codec_jpeg_sw_init (Zig, libs/ra8_camera),
+ * internal_passthrough_encode (Zig, libs/ra8_camera),
  * libs/ra8_camera/src/ra8_camera_source_ceu.c@internal_ceu_capture,
  * libs/ra8_camera/src/ra8_camera_source_ceu.c@internal_ceu_cfg_valid,
  * libs/ra8_camera/src/ra8_camera_source_ceu.c@internal_ceu_frame_bytes,
  * libs/ra8_camera/src/ra8_camera_source_ceu.c@internal_ceu_get_info,
  * libs/ra8_camera/src/ra8_camera_source_ceu.c@internal_ceu_wait_for_frame,
  * libs/ra8_camera/src/ra8_camera_source_ceu.c@ra8_camera_source_ceu_init,
- * libs/ra8_camera/src/ra8_camera_source_memory.c@internal_memory_capture,
- * libs/ra8_camera/src/ra8_camera_source_memory.c@internal_memory_get_info,
- * libs/ra8_camera/src/ra8_camera_source_memory.c@ra8_camera_source_memory_init,
+ * internal_memory_capture (Zig, libs/ra8_camera),
+ * internal_memory_get_info (Zig, libs/ra8_camera),
+ * ra8_camera_source_memory_init (Zig, libs/ra8_camera),
  * libs/ra8_camera_io/src/ra8_camera_stream.c@ra8_camera_codec_encode_to_stream.
  * @pre Unity test accounting is initialized.
  * @post Every camera vector group has executed once.

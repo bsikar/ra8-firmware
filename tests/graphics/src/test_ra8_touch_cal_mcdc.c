@@ -55,7 +55,7 @@ static const ra8_touch_cal_matrix_t s_tcm_identity = {
  *
  * @par MC/DC:
  * Decision: `if ((matrix == nullptr) || (out_screen == nullptr))`
- * (2 conditions, `libs/ra8_touch_cal/src/ra8_touch_cal.c@ra8_touch_cal_apply`).
+ * (2 conditions, `ra8_touch_cal_apply` (Zig, libs/ra8_touch_cal)).
  * N+1 = 3 vectors; each condition flips with the other held at its masking
  * value (F):
  * - V1: matrix=ok,   out_screen=ok    -> C1=F, C2=F -> dec F (proceeds -> ok)
@@ -93,7 +93,7 @@ RA8_INTERNAL static void internal_test_mcdc_apply_null_or(void)
  *
  * @par MC/DC:
  * Decision: `if ((matrix == nullptr) || (dst == nullptr))`
- * (2 conditions, `libs/ra8_touch_cal/src/ra8_touch_cal.c@ra8_touch_cal_save`).
+ * (2 conditions, `ra8_touch_cal_save` (Zig, libs/ra8_touch_cal)).
  * N+1 = 3 vectors.
  * - V1: matrix=ok,   dst=ok    -> C1=F, C2=F -> dec F (proceeds -> ok)
  * - V2: matrix=NULL, dst=ok    -> C1=T short -> dec T -> null_ptr
@@ -127,7 +127,7 @@ RA8_INTERNAL static void internal_test_mcdc_save_null_or(void)
  *
  * @par MC/DC:
  * Decision: `if ((src == nullptr) || (out_matrix == nullptr))`
- * (2 conditions, `libs/ra8_touch_cal/src/ra8_touch_cal.c@ra8_touch_cal_load`).
+ * (2 conditions, `ra8_touch_cal_load` (Zig, libs/ra8_touch_cal)).
  * N+1 = 3 vectors.
  * - V1: src=ok,   out_matrix=ok    -> C1=F, C2=F -> dec F (proceeds -> ok)
  * - V2: src=NULL, out_matrix=ok    -> C1=T short -> dec T -> null_ptr

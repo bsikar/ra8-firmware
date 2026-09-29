@@ -192,7 +192,7 @@ static void test_blit_gray4_clips_at_edges(void)
  *
  * @par MC/DC:
  * Decision: `if ((src_w <= 0) || (src_h <= 0))` (2 conditions) in
- * libs/ra8_gfx/src/ra8_gfx_blit_gray4.c@ra8_gfx_blit_gray4_zoom
+ * ra8_gfx_blit_gray4_zoom (Zig, libs/ra8_gfx)
  * - Vector 1: src_w=4, src_h=4 -> false (both false; control) -> k_ra8_ok
  * - Vector 2: src_w=0, src_h=4 -> true  (varies src_w only)   -> invalid_arg
  * - Vector 3: src_w=4, src_h=0 -> true  (varies src_h only)   -> invalid_arg
