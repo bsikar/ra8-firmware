@@ -910,8 +910,10 @@ ra8_err_t ra8_jpeg_sw_decode(const uint8_t* jpeg_buf,
 
   /* Decoder context is large (4 Huffman tables + 2 quant tables);
    * allocate as `static` so it doesn't blow the stack budget the
-   * project enforces via `-Wstack-usage`. The codec is documented
-   * as not thread-safe, so the static is fine. */
+   * project enforces via `-Wstack-usage`. Zeroed on entry, so
+   * sequential reuse leaks no state between calls; overlapping calls
+   * are excluded by the documented contract (see the Concurrency
+   * section of ra8_jpeg_sw.h). */
   static ra8_jpeg_dec_ctx_t s_d;
   ra8_jpeg_dec_ctx_t*       d = &s_d;
   memset(d, 0, sizeof(*d));

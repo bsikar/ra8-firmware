@@ -10,7 +10,7 @@
  * rect-extension decision, the final token flush (image-only trailing page),
  * internal_page_has_content, and the reflow_register_face blob validation.
  * All decisions are driven through the public API with crafted markup; the
- * shared engine fixture lives in tests/inc/reflow_layout_test_util.h.
+ * shared engine fixture lives in apps/shared_libs/reflow/tests/inc/reflow_layout_test_util.h.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT

@@ -750,6 +750,28 @@ ra8_err_t ra8_viewer_render_page(ra8_viewer_reader_t* reader, uint32_t page)
            : priv_viewer_render_jof(reader, page);
 }
 
+ra8_err_t
+ra8_viewer_page_container(ra8_viewer_reader_t* reader, uint32_t page, ra8_imgdec_name_t* out)
+{
+  if (out == nullptr) {
+    return k_ra8_err_null_ptr;
+  }
+  *out = (ra8_imgdec_name_t){};
+  if (reader == nullptr) {
+    return k_ra8_err_null_ptr;
+  }
+  if (!reader->is_open) {
+    return k_ra8_err_invalid_state;
+  }
+  if (page >= reader->tile_n) {
+    return k_ra8_err_out_of_range;
+  }
+  if (reader->engine != (uint32_t)k_ra8_viewer_engine_comic) {
+    return k_ra8_err_not_supported;
+  }
+  return priv_viewer_comic_container(reader, page, out);
+}
+
 uint32_t ra8_viewer_tile_count(const ra8_viewer_reader_t* reader)
 {
   return ra8_viewer_page_count(reader);

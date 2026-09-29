@@ -47,6 +47,9 @@ typedef enum : int16_t {
   k_t_damage_inside = 7,   /**< Edge of a damage rect wholly inside the widget.    */
   k_t_damage_small  = 5,   /**< Edge of the smaller damage rect.                   */
   k_t_untouched_h   = 999, /**< Sentinel height a skipped layout must not rewrite. */
+  k_t_frame_tall    = 300, /**< Frame height the measure arms lay out inside.      */
+  k_t_meas_pad      = 5,   /**< Padding that shrinks the measure content box.      */
+  k_t_meas_over     = 512, /**< Measured height larger than any content box.       */
 } t_widget_geom_t;
 
 /**
@@ -101,6 +104,58 @@ static ra8_widget_t make_widget(mock_ctx_t* ctx, int16_t fixed, uint16_t flex, u
   w.fixed        = fixed;
   w.flex         = flex;
   w.action_id    = action;
+  w.visible      = true;
+  return w;
+}
+
+/* --- Measuring mock widget ------------------------------------------------- */
+
+/**
+ * @brief Records what the layout's measure pass handed this widget.
+ * @details `want_h` is what `measure` reports on the main axis of a column
+ *          stack; `calls` proves whether the pass ran at all, which is what
+ *          separates "measured and honoured" from "never asked".
+ */
+typedef struct {
+  uint32_t calls;   /**< Times measure() ran.                 */
+  int32_t  want_w;  /**< Width it reports.                    */
+  int32_t  want_h;  /**< Height it reports.                   */
+  int32_t  avail_w; /**< Last available width it was handed.  */
+  int32_t  avail_h; /**< Last available height it was handed. */
+} meas_ctx_t;
+
+static void meas_measure(ra8_widget_t* w, int32_t aw, int32_t ah, int32_t* ow, int32_t* oh)
+{
+  meas_ctx_t* m = (meas_ctx_t*)w->ctx;
+  m->calls++;
+  m->avail_w = aw;
+  m->avail_h = ah;
+  *ow        = m->want_w;
+  *oh        = m->want_h;
+}
+
+static const ra8_widget_vtable_t k_meas_vt = {
+  .measure  = meas_measure,
+  .render   = nullptr,
+  .on_input = nullptr,
+};
+
+static const ra8_widget_vtable_t k_no_meas_vt = {
+  .measure  = nullptr,
+  .render   = nullptr,
+  .on_input = nullptr,
+};
+
+static ra8_widget_t make_measured(const ra8_widget_vtable_t* vt,
+                                  meas_ctx_t*                ctx,
+                                  int16_t                    fixed,
+                                  uint16_t                   flex)
+{
+  ra8_widget_t w = {};
+  w.vt           = vt;
+  w.ctx          = ctx;
+  w.fixed        = fixed;
+  w.flex         = flex;
   w.visible      = true;
   return w;
 }
@@ -796,9 +851,100 @@ static void test_panel_layout_fail(void)
   TEST_END("ra8_widget_panel: undersized scratch fails layout");
 }
 
+/**
+ * @test ra8_widget_layout_stack honours a widget's `measure` for its extent.
+ *
+ * @par MC/DC:
+ * The measure pass `internal_measured_extent` is written as five single-condition
+ * gates, each driven independently here:
+ * - `flex != 0`    -- a flex child with a `measure` is never asked (calls == 0).
+ * - `vt == nullptr` -- a vtable-less child collapses without a crash.
+ * - `measure == nullptr` -- a child on ::k_no_meas_vt collapses as before.
+ * - `ext <= 0`     -- a child asking for 0, and a child measured against a
+ *                     zero-height frame, both collapse.
+ * - all false      -- a child asking for a positive extent gets it, clamped to
+ *                     the padded content box when it asks for more.
+ * A `fixed` child is never offered the pass at all (the caller's gate), proved
+ * by `calls == 0` while it keeps its pinned extent.
+ */
+static void test_layout_stack_measure(void)
+{
+  TEST_BEGIN("ra8_widget: layout_stack measure pass");
+  ra8_box_t           scratch[8];
+  const ra8_ui_rect_t frame = {.x = 0, .y = 0, .w = k_t_pane_w, .h = k_t_frame_tall};
+
+  /* Vector: measured child takes its asked extent; the flex sibling takes the
+   * rest. Before the measure pass this child collapsed to zero. */
+  meas_ctx_t   m0    = {.want_w = k_t_pane_w, .want_h = k_t_track_mid};
+  mock_ctx_t   c1    = {};
+  ra8_widget_t ws[2] = {make_measured(&k_meas_vt, &m0, 0, 0), make_widget(&c1, 0, 1, 2)};
+  TEST_ASSERT_EQ(k_ra8_ok,
+                 ra8_widget_layout_stack(ws, 2U, &frame, k_ra8_widget_axis_col, 0, 0, scratch, 8U));
+  TEST_ASSERT_EQ(1U, m0.calls);
+  TEST_ASSERT_EQ(k_t_pane_w, m0.avail_w);     /* content box == frame, pad 0 */
+  TEST_ASSERT_EQ(k_t_frame_tall, m0.avail_h);
+  TEST_ASSERT_EQ(k_t_track_mid, ws[0].rect.h);
+  TEST_ASSERT_EQ(k_t_frame_tall - k_t_track_mid, ws[1].rect.h);
+
+  /* Vector: a fixed child is not measured; its pin wins. */
+  meas_ctx_t   mf    = {.want_w = k_t_pane_w, .want_h = k_t_track_mid};
+  ra8_widget_t wf[2] = {make_measured(&k_meas_vt, &mf, k_t_track_tall, 0),
+                        make_widget(&c1, 0, 1, 2)};
+  TEST_ASSERT_EQ(k_ra8_ok,
+                 ra8_widget_layout_stack(wf, 2U, &frame, k_ra8_widget_axis_col, 0, 0, scratch, 8U));
+  TEST_ASSERT_EQ(0U, mf.calls);
+  TEST_ASSERT_EQ(k_t_track_tall, wf[0].rect.h);
+
+  /* Vector: a flex child is not measured either. */
+  meas_ctx_t   mx    = {.want_w = k_t_pane_w, .want_h = k_t_track_mid};
+  ra8_widget_t wx[1] = {make_measured(&k_meas_vt, &mx, 0, 1)};
+  TEST_ASSERT_EQ(k_ra8_ok,
+                 ra8_widget_layout_stack(wx, 1U, &frame, k_ra8_widget_axis_col, 0, 0, scratch, 8U));
+  TEST_ASSERT_EQ(0U, mx.calls);
+  TEST_ASSERT_EQ(k_t_frame_tall, wx[0].rect.h); /* still flexes to the frame */
+
+  /* Vector: measured extent larger than the padded content box is clamped. */
+  meas_ctx_t   mo    = {.want_w = k_t_pane_w, .want_h = k_t_meas_over};
+  ra8_widget_t wo[1] = {make_measured(&k_meas_vt, &mo, 0, 0)};
+  TEST_ASSERT_EQ(k_ra8_ok,
+                 ra8_widget_layout_stack(wo,
+                                         1U,
+                                         &frame,
+                                         k_ra8_widget_axis_col,
+                                         0,
+                                         k_t_meas_pad,
+                                         scratch,
+                                         8U));
+  TEST_ASSERT_EQ(k_t_frame_tall - (2 * k_t_meas_pad), mo.avail_h);
+  TEST_ASSERT_EQ(k_t_frame_tall - (2 * k_t_meas_pad), wo[0].rect.h);
+
+  /* Vector: asking for nothing, no `measure`, and no vtable all collapse. */
+  meas_ctx_t   mz    = {.want_w = 0, .want_h = 0};
+  meas_ctx_t   mn    = {.want_w = k_t_pane_w, .want_h = k_t_track_mid};
+  ra8_widget_t wz[3] = {make_measured(&k_meas_vt, &mz, 0, 0),
+                        make_measured(&k_no_meas_vt, &mn, 0, 0),
+                        make_measured(nullptr, &mn, 0, 0)};
+  TEST_ASSERT_EQ(k_ra8_ok,
+                 ra8_widget_layout_stack(wz, 3U, &frame, k_ra8_widget_axis_col, 0, 0, scratch, 8U));
+  TEST_ASSERT_EQ(1U, mz.calls);
+  TEST_ASSERT_EQ(0, wz[0].rect.h);
+  TEST_ASSERT_EQ(0, wz[1].rect.h);
+  TEST_ASSERT_EQ(0, wz[2].rect.h);
+
+  /* Vector: a zero-height frame leaves nothing to measure into. */
+  meas_ctx_t          me    = {.want_w = k_t_pane_w, .want_h = k_t_track_mid};
+  const ra8_ui_rect_t empty = {.x = 0, .y = 0, .w = k_t_pane_w, .h = 0};
+  ra8_widget_t        we[1] = {make_measured(&k_meas_vt, &me, 0, 0)};
+  TEST_ASSERT_EQ(k_ra8_ok,
+                 ra8_widget_layout_stack(we, 1U, &empty, k_ra8_widget_axis_col, 0, 0, scratch, 8U));
+  TEST_ASSERT_EQ(0, we[0].rect.h);
+  TEST_END("ra8_widget: layout_stack measure pass");
+}
+
 int main(void)
 {
   test_layout_stack();
+  test_layout_stack_measure();
   test_dispatch_touch();
   test_dispatch_button();
   test_invalidate_damage();

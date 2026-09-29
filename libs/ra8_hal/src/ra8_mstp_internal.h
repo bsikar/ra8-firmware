@@ -3,6 +3,9 @@
  * @brief Cross-TU surface for the ra8_mstp module-stop driver (test access).
  * @ingroup grp_hal_system
  *
+ * @par Tag
+ * [Ring 3 / HAL] {World: S}
+ *
  * @details
  * Not part of the public API. Declares two helpers promoted from TU-private
  * statics so the host tests can exercise the TrustZone Non-secure-attribution

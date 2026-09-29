@@ -106,7 +106,7 @@ if "$tool" verify --format jof --in "$tmp/oversize.png" --out "$tmp/oversize.ppm
 fi
 printf 'preserve-oversize' >"$tmp/oversize.expected"
 cmp "$tmp/oversize.expected" "$tmp/oversize.ppm"
-grep '^ra8_fmt: JOF verify workspace too small: required 27058688 supplied 10486016 ' \
+grep '^ra8_fmt: JOF verify workspace too small: supplied 10486016 (producer ' \
   "$tmp/oversize.stderr" >/dev/null
 
 test -z "$(find "$tmp" -maxdepth 1 \( -name '.ra8spool.*' -o -name '.*.ra8tmp.*' \) -print -quit)"

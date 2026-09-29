@@ -173,8 +173,10 @@ ra8_viewer_read_path(
        reflow_link.c
        reflow_parse.c
        reflow_render.c
+       reflow_render_face.c
        reflow_tokenize.c
        reflow_tokenize_attr.c
+       reflow_tokenize_entities.c
        reflow_tokenize_lex.c
        ra8_stbtt_alloc.c
        ra8_stbtt_guard.c
@@ -223,9 +225,8 @@ ra8_viewer_read_path(
 
 ra8_viewer_read_path(
   RA8_MEM_SRC ${FW_ROOT}/libs/ra8_mem/src
-  KEEP ra8_tile_cache.c ra8_keycache.c
-  DROP ra8_arena.c
-       ra8_glyph_atlas.c
+  KEEP ra8_tile_cache.c ra8_keycache.c ra8_arena.c
+  DROP ra8_glyph_atlas.c
        ra8_slab.c
        ra8_vmem.c
        ra8_vmem_stream.c
@@ -236,6 +237,7 @@ ra8_viewer_read_path(
   RA8_CORE_SRC ${FW_ROOT}/libs/ra8_core/src
   KEEP ra8_log.c ra8_error_handler.c ra8_decomp_limits.c
   DROP ra8_crashlog.c
+       ra8_error_sink_log.c
        ra8_exception.c
        ra8_freestanding_math.c
        ra8_freestanding_mem.c
@@ -253,6 +255,19 @@ ra8_viewer_read_path(
 set(RA8_THIRD_PARTY_SRC ${FW_ROOT}/apps/shared_libs/third_party/miniz/miniz.c
                         ${FW_ROOT}/apps/shared_libs/third_party/stb/stb_image_impl.c
 )
+# ra8_img_arena.c forwards stb_image's allocator hooks to the shared decoder
+# scratch, reflow_image.c routes WebP through the shared container sniff, and
+# comic_tiles.c reads a page's footprint through the shared geometry probe
+# (#768), so those three TUs travel with the reader sources kept above.
+# ra8_imgdec_name.c is the one naming table (#748): the comic engine receives
+# page bytes it did not produce, so when a page will not decode it names the
+# container rather than reporting an anonymous refusal. App-side builds
+# enumerate imgdec TUs by path (#754), so it is listed here explicitly.
+set(RA8_IMGDEC_SRC ${FW_ROOT}/libs/ra8_imgdec/src/ra8_imgdec_dims.c
+                   ${FW_ROOT}/libs/ra8_imgdec/src/ra8_imgdec_name.c
+                   ${FW_ROOT}/libs/ra8_imgdec/src/ra8_imgdec_scratch.c
+                   ${FW_ROOT}/libs/ra8_imgdec/src/ra8_imgdec_sniff.c
+)
 set(RA8_STREAM_POSIX_SRC ${FW_ROOT}/port/posix/src/ra8_io_stream_posix.c)
 set(RA8_STREAM_RAM_SRC ${FW_ROOT}/libs/ra8_io/src/ra8_io_stream_ram.c)
 
@@ -269,6 +284,7 @@ add_library(
   ${COMPRESS_SRC}
   ${RA8_MEM_SRC}
   ${RA8_CORE_SRC}
+  ${RA8_IMGDEC_SRC}
   ${RA8_THIRD_PARTY_SRC}
 )
 target_compile_definitions(
@@ -291,6 +307,7 @@ target_include_directories(
          ${FW_ROOT}/apps/shared_libs/compress/inc
          ${FW_ROOT}/libs/ra8_mem/inc
          ${FW_ROOT}/apps/shared_libs/reflow/inc
+         ${FW_ROOT}/libs/ra8_imgdec/inc
          ${FW_ROOT}/apps/shared_libs/unarch/inc
          ${FW_ROOT}/apps/shared_libs/third_party/miniz
          ${FW_ROOT}/apps/shared_libs/third_party/stb

@@ -99,8 +99,10 @@ static inline uint32_t ra8_prot_scope_end(void)
  * @details
  * Expands to a `for`-loop that runs exactly once, with the unlock in
  * the init clause and the re-lock in the increment clause. Using a
- * `for` instead of a plain do-while lets callers `break` or `return`
- * out of the body without leaving PRCR unlocked. The unlock and re-lock
+ * `for` instead of a plain do-while lets callers `break` out of the body
+ * without leaving PRCR unlocked. A `return` does **not** get that guarantee:
+ * it jumps past the increment clause where the re-lock lives, so leave the
+ * scope with `break` and return afterwards. The unlock and re-lock
  * writes are hidden behind ::ra8_prot_scope_begin / ::ra8_prot_scope_end
  * so the expansion carries no comma operator and each clause touches only
  * the loop counter -- MISRA-C 2012 12.3 and 14.2 clean at every call site.

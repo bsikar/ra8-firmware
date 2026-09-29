@@ -5,7 +5,7 @@
 #
 # scripts/ci/lib/snapshot.sh -- materialise committed HEAD for ordinary suites
 # and run the suite inside it. The pre-commit candidate transport is deliberately
-# self-contained in scripts/git/pre-commit and never sources this live file.
+# self-contained in the removed pre-commit hook and never sourced this live file.
 #
 # SOURCED, NEVER EXECUTED. Split out of scripts/ci.sh because that file is THE
 # gate registry: what a gate checks belongs there, and HOW the tree under test
@@ -215,7 +215,7 @@ prepare_head_snapshot() {
   # gates scan "ci.sh snapshot of HEAD" and report PASS, which is #348: the only
   # local enforcement of the attribution-trailer ban and the
   # inclusive-terminology rule, silently reading nothing.
-  export RA8_CI_HISTORY_REPO="$REPO_ROOT"
+  export RA8_CI_HISTORY_REPO="${RA8_CI_HISTORY_REPO:-$REPO_ROOT}"
 }
 
 # Reclaim reproducible build trees once the full suite has consumed them.

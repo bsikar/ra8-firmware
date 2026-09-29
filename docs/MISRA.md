@@ -28,6 +28,36 @@ MISRA-C 2012 categorises every rule as **Mandatory**, **Required** or
 must be either obeyed or formally **deviated** under sec. 5.2, which demands a
 rationale, a scope, an alternative mitigation, and review sign-off.
 
+## Which edition, and why it is not the current one
+
+This document, the deviation register and every emitted finding ID
+(`misra-c2012-X.Y`) target **MISRA C:2012** -- Third Edition, published March
+2013, with Amendments 1-4. That is deliberately not the current edition. MISRA
+C:2023 (Third Edition, Second revision) was published in May 2023 and **MISRA
+C:2025** in March 2025, so this tree audits two editions behind the current one.
+
+The gap is a tooling-budget constraint, not a stale pin. Bumping cppcheck does
+not move the edition: the open-source MISRA add-on states its own scope in its
+first line -- "MISRA C 2012 checkers (including amendment 1 and 2)", 143 rules
+-- so every cppcheck release checks MISRA C:2012 and only MISRA C:2012. A
+current-edition audit needs a commercial checker plus a licensed copy of the
+guidelines document, which is exactly what
+[`docs/adr/0002-cppcheck-only-misra-enforcement.md`](adr/0002-cppcheck-only-misra-enforcement.md)
+rules out under a zero software budget. That ADR's own checker table already
+names MISRA C:2023; the decision it records is what pins the edition.
+[`docs/CERTIFICATION_SCOPE.md`](CERTIFICATION_SCOPE.md) makes a downstream
+adopter responsible for procuring their own qualified checker, and the edition
+is part of what they choose when they do.
+
+**No MISRA edition covers C23.** MISRA C:2012 addresses C90 and C99; C:2023 and
+C:2025 reach C11 and C17/C18. This tree builds at `CMAKE_C_STANDARD 23`
+(`CMakeLists.txt`), so moving to a newer edition would not close the C23 parsing
+gap. It is that gap -- not the edition -- that produces the Rule 9.2 and Rule
+17.3 tooling-gap populations described below, including the 2,102 phantom empty
+initializer findings the pinned-addon correction removes. A baseline row under
+either rule is a parser artefact, not MISRA compliance debt, and the edition
+question changes neither number.
+
 ## The cppcheck-MISRA limitation
 
 cppcheck is the only open-source MISRA-C 2012 checker. The commercial

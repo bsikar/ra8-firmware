@@ -3,6 +3,9 @@
  * @brief Branch-coverage tests for the device-MSC SCSI command
  *        handlers in `libs/ra8_hal/src/ra8_usb_pmsc_scsi.c`
  *
+ * @par Tag
+ * [Ring 3 / HAL] {World: NS}
+ *
  * @details
  * The sibling `test_ra8_usb_pmsc.c` drives the happy paths through the
  * public BOT dispatcher. This companion suite reaches the error /

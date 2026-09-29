@@ -3,6 +3,9 @@
  * @brief Decryption On The Fly (DOTF) register layout for the Renesas RA8D2
  * @ingroup grp_hal_crypto
  *
+ * @par Tag
+ * [Ring 3 / HAL] {World: S}
+ *
  * @details
  * The RA8D2 has two DOTF channels which transparently decrypt read
  * data on the AXI side of the matching xSPI / OSPI controller using

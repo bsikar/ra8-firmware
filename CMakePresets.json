@@ -22,7 +22,8 @@
       "toolchainFile": "${sourceDir}/cmake/toolchain-ra8d2.cmake",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "RelWithDebInfo",
-        "CMAKE_EXPORT_COMPILE_COMMANDS": "ON"
+        "CMAKE_EXPORT_COMPILE_COMMANDS": "ON",
+        "RA8_PRODUCTION_BUILD": "ON"
       }
     },
     {

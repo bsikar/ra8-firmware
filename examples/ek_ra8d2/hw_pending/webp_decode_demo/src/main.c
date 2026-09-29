@@ -25,8 +25,11 @@
  *   4. Print ``"webp: PASS 8x8\r\n"`` on success (banner line for the HIL
  *      scrape) or ``"webp: FAIL\r\n"`` on any mismatch, then park.
  *
- * NOTE(#289): this decodes a whole WebP into one RGBA buffer. The band-tile
- * normalisation + reflow raster dispatch land with #289.
+ * @note This demo decodes a whole WebP into one RGBA buffer, deliberately: it
+ * is a link-and-run smoke test for the facade, not a rendering path. Band-tile
+ * normalisation is not future work -- it shipped with #344 and lives in
+ * ``apps/shared_libs/comic/{inc/comic_tiles.h,src/comic_tiles.c}``. The inline
+ * reflow raster dispatch for small WebP illustrations is tracked by #637.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT

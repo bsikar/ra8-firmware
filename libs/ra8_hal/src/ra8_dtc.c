@@ -43,6 +43,7 @@
 #include "ra8_check.h"
 #include "ra8_dtc_regs.h"
 #include "ra8_err.h"
+#include "ra8_isr.h"
 #include "ra8_log.h"
 #include "ra8_mstp.h"
 
@@ -188,6 +189,152 @@ void ra8_dtc_dispatch(void)
   if (fn != nullptr) {
     fn(ctx, mask);
   }
+}
+
+/* The DTC vector table holds one TI start address per ICU IELSR slot, so the
+ * facade's table geometry must track the ICU's slot count exactly. */
+static_assert((uint16_t)k_ra8_dtc_vector_entries == (uint16_t)k_ra8_isr_slot_count,
+              "DTC vector table must hold one entry per ICU IELSR slot");
+static_assert(sizeof(((ra8_dtc_ti_t*)nullptr)->ti) == (size_t)k_ra8_dtc_xfer_info_size,
+              "TI block must be 16 bytes (HUM Figure 18.4)");
+static_assert(alignof(ra8_dtc_ti_t) == (size_t)k_ra8_dtc_vector_align,
+              "TI block must be 16-byte aligned (HUM Ch 18.3.1)");
+static_assert(alignof(ra8_dtc_vector_table_t) == (size_t)k_ra8_dtc_vector_table_align,
+              "DTC vector table must be 1 KiB aligned (HUM Ch 18.2.2)");
+
+/**
+ * @brief True when @p mode is an encoding this driver emits.
+ * @details Bounded value check over ::ra8_dtc_mode_t; no storage.
+ * @param[in] mode Transfer mode to validate.
+ * @return true when the mode is supported.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static bool internal_dtc_mode_valid(ra8_dtc_mode_t mode)
+{
+  return (mode == k_ra8_dtc_mode_normal) || (mode == k_ra8_dtc_mode_block);
+}
+
+/**
+ * @brief True when @p unit is an encoding this driver emits.
+ * @details Bounded value check over ::ra8_dtc_unit_t; no storage.
+ * @param[in] unit Unit width to validate.
+ * @return true when the unit width is supported.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static bool internal_dtc_unit_valid(ra8_dtc_unit_t unit)
+{
+  return (unit == k_ra8_dtc_unit_byte) || (unit == k_ra8_dtc_unit_half) ||
+         (unit == k_ra8_dtc_unit_word);
+}
+
+/**
+ * @brief True when @p mode is an address mode this driver emits.
+ * @details Bounded value check over ::ra8_dtc_addr_mode_t; no storage.
+ * @param[in] mode Address mode to validate.
+ * @return true when the address mode is supported.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static bool internal_dtc_addr_valid(ra8_dtc_addr_mode_t mode)
+{
+  return (mode == k_ra8_dtc_addr_fixed) || (mode == k_ra8_dtc_addr_inc);
+}
+
+ra8_err_t ra8_dtc_describe(const ra8_dtc_xfer_cfg_t* cfg, ra8_dtc_ti_t* out_ti)
+{
+  RA8_CHECK_NULL_PTR(cfg, s_tag, "cfg must not be nullptr");
+  RA8_CHECK_NULL_PTR(out_ti, s_tag, "out_ti must not be nullptr");
+  RA8_CHECK_NULL_PTR(cfg->src, s_tag, "cfg->src must not be nullptr");
+  RA8_CHECK_NULL_PTR(cfg->dst, s_tag, "cfg->dst must not be nullptr");
+
+  if (!internal_dtc_mode_valid(cfg->mode) || !internal_dtc_unit_valid(cfg->unit) ||
+      !internal_dtc_addr_valid(cfg->src_mode) || !internal_dtc_addr_valid(cfg->dst_mode)) {
+    ra8_log_error(s_tag, "describe: unsupported mode/unit/address encoding");
+    return k_ra8_err_invalid_arg;
+  }
+
+  uint16_t cra = 0U;
+  uint16_t crb = 0U;
+  if (cfg->mode == k_ra8_dtc_mode_block) {
+    /* HUM Ch 18.2.7 "CRA" p 790: in block mode CRAH and CRAL both hold the
+     * block size, and "the transfer count is ... 256 when the set value is
+     * 0x00". HUM Ch 18.2.8 "CRB" p 791: CRB is the block count. */
+    if ((cfg->unit_count == 0U) || (cfg->unit_count > (uint16_t)k_ra8_dtc_block_units_max) ||
+        (cfg->block_count == 0U)) {
+      ra8_log_error(s_tag, "describe: block counts out of range");
+      return k_ra8_err_invalid_arg;
+    }
+    const uint8_t size8 = (uint8_t)(cfg->unit_count & 0xFFU); /* 256 -> 0x00 */
+    cra = (uint16_t)(((uint16_t)size8 << (uint16_t)k_ra8_dtc_cra_high_pos) | (uint16_t)size8);
+    crb = cfg->block_count;
+  } else {
+    if ((cfg->unit_count == 0U) || (cfg->block_count != 0U)) {
+      ra8_log_error(s_tag, "describe: normal mode wants a unit count and no block count");
+      return k_ra8_err_invalid_arg;
+    }
+    cra = cfg->unit_count;
+  }
+
+  /* MR[31:24] = MRA, MR[23:16] = MRB, MR[15:8] = MRC (left 0: no chained
+   * transfer). HUM Ch 18.2.2 p 786 / 18.2.3 p 787, Figure 18.4 p 799. SRAM
+   * write through the caller's TI block, not MMIO. */
+  const uint8_t mra =
+    (uint8_t)((((uint8_t)cfg->mode & (uint8_t)k_ra8_dtc_mr_2bit_msk)
+               << (uint8_t)k_ra8_dtc_mra_md_pos) |
+              (((uint8_t)cfg->unit & (uint8_t)k_ra8_dtc_mr_2bit_msk)
+               << (uint8_t)k_ra8_dtc_mra_sz_pos) |
+              (((uint8_t)cfg->src_mode & (uint8_t)k_ra8_dtc_mr_2bit_msk)
+               << (uint8_t)k_ra8_dtc_mra_sm_pos));
+  const uint8_t mrb = (uint8_t)(((uint8_t)cfg->dst_mode & (uint8_t)k_ra8_dtc_mr_2bit_msk)
+                                << (uint8_t)k_ra8_dtc_mrb_dm_pos);
+
+  out_ti->ti.MR = ((uint32_t)mra << (uint32_t)k_ra8_dtc_mra_byte_pos) |
+                  ((uint32_t)mrb << (uint32_t)k_ra8_dtc_mrb_byte_pos);
+  out_ti->ti.SAR = (uint32_t)(uintptr_t)cfg->src;
+  out_ti->ti.DAR = (uint32_t)(uintptr_t)cfg->dst;
+  out_ti->ti.CRB = crb;
+  out_ti->ti.CRA = cra;
+  return k_ra8_ok;
+}
+
+ra8_err_t ra8_dtc_bind_activation(uint16_t                  icu_slot,
+                                  const ra8_dtc_xfer_cfg_t* cfg,
+                                  ra8_dtc_ti_t*             ti)
+{
+  RA8_CHECK_NULL_PTR(cfg, s_tag, "cfg must not be nullptr");
+  RA8_CHECK_NULL_PTR(ti, s_tag, "ti must not be nullptr");
+  if (s_dtc_vector_base == nullptr) {
+    ra8_log_error(s_tag, "bind_activation: ra8_dtc_init has not run");
+    return k_ra8_err_invalid_state;
+  }
+  if (icu_slot >= (uint16_t)k_ra8_dtc_vector_entries) {
+    ra8_log_error(s_tag, "bind_activation: slot outside the vector table");
+    return k_ra8_err_invalid_arg;
+  }
+
+  const ra8_err_t desc = ra8_dtc_describe(cfg, ti);
+  if (desc != k_ra8_ok) {
+    return desc;
+  }
+
+  /* DTCVBR + slot*4 holds the 16-byte-aligned TI start address; bit 0 is the
+   * privilege attribution (0 = privileged). HUM Ch 18.3.1 p 796 + Figure 18.3
+   * p 798. SRAM vector-table write (not MMIO). */
+  uint32_t* const table = (uint32_t*)s_dtc_vector_base;
+  table[icu_slot]       = (uint32_t)(uintptr_t)&ti->ti;
+
+  /* Cache coherency (M85 L1 D-cache): the engine reads the vector table and,
+   * one indirection on, the TI block straight from RAM. Clean both regions we
+   * just wrote. Non-destructive and an architectural no-op with the D-cache
+   * off. The payload buffers stay the caller's problem: the DTC is
+   * direction-blind, like the DMAC. */
+  (void)ra8_cache_dcache_clean_by_addr(&ti->ti, (uint32_t)k_ra8_dtc_xfer_info_size);
+  (void)ra8_cache_dcache_clean_by_addr(s_dtc_vector_base,
+                                       (uint32_t)k_ra8_dtc_vector_table_align);
+
+  /* HUM Ch 14.2.17 "IELSRn" p 547: DTCE routes the linked event to the DTC.
+   * ra8_isr_set_dtc owns that read-modify-write (issue #579) and rejects a
+   * slot nobody registered. */
+  return ra8_isr_set_dtc(icu_slot, true);
 }
 
 ra8_err_t ra8_dtc_enter_stop(void)

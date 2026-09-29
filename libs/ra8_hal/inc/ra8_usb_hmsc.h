@@ -3,6 +3,9 @@
  * @brief Native USB host-side MSC (Mass Storage Class) class layer
  * @ingroup grp_hal_usb
  *
+ * @par Tag
+ * [Ring 3 / HAL] {World: NS}
+ *
  * @details
  * Glues the host-mode bring-up paths in `ra8_usb` to a USB Mass Storage
  * Class (BBB / Bulk-Only-Transport) peripheral - typically a thumb

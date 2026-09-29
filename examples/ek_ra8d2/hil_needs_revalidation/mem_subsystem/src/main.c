@@ -444,7 +444,8 @@ static ra8_err_t mem_backing_read(void* ctx, uint64_t offset, uint8_t* buf, uint
  * @param[in]     len     Bytes requested.
  * @param[in,out] crc     Running CRC-32 the read bytes are folded into.
  * @param[out]    out_got Bytes the stream actually returned.
- * @return true if every returned byte matched the generator, false otherwise.
+ * @return true if the read succeeded and every returned byte matched the generator.
+ * @retval false The stream reported a failure, or a returned byte did not match.
  */
 static bool
 mem_stream_window(ra8_vmem_stream_t* st, uint64_t off, uint32_t len, uint32_t* crc, size_t* out_got)
@@ -452,14 +453,17 @@ mem_stream_window(ra8_vmem_stream_t* st, uint64_t off, uint32_t len, uint32_t* c
   if (len > (uint32_t)k_mem_win_buf_bytes) {
     return false;
   }
-  const size_t got = ra8_vmem_stream_read(st, off, s_win_buf, (size_t)len);
-  for (size_t i = 0U; i < got; i++) {
+  uint32_t got = 0U;
+  if (ra8_vmem_stream_read_checked(st, off, s_win_buf, len, &got) != k_ra8_ok) {
+    return false; /* A dead card is a reported failure now, not a short window. */
+  }
+  for (uint32_t i = 0U; i < got; i++) {
     if (s_win_buf[i] != mem_gen_byte(off + (uint64_t)i)) {
       return false;
     }
     *crc = mem_crc32_byte(*crc, s_win_buf[i]);
   }
-  *out_got = got;
+  *out_got = (size_t)got;
   return true;
 }
 

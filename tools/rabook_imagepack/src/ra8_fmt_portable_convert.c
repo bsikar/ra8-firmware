@@ -14,6 +14,7 @@
 #include <string.h>
 #include <unistd.h>
 
+#include "ra8_arena.h"
 #include "ra8_attributes.h"
 #include "ra8_fmt_host_fd_internal.h"
 #include "ra8_fmt_portable_main_internal.h"
@@ -28,6 +29,7 @@ typedef enum : uint32_t {
   k_convert_cli_decimal = 20U,        /**< Digits in uint64_t.             */
   k_convert_cli_radix   = 10U,        /**< Diagnostic number radix.        */
   k_convert_cli_align   = 16U,        /**< Producer-arena slice alignment. */
+  k_convert_slot_cap    = 2U,         /**< Producer plus optional WebP.    */
 } convert_cli_const_t;
 
 /** @brief Parsed arguments accepted by the portable convert composition. */
@@ -176,68 +178,102 @@ static bool internal_parse(int argc, char** argv, convert_cli_args_t* args)
 }
 
 /**
- * @brief Round one byte count up to the composition arena alignment.
- * @details Applies checked power-of-two alignment without wrapping size_t.
- * @param[in] value Unaligned byte count.
- * @param[out] aligned Receives the rounded byte count.
- * @return Whether rounding was representable.
- * @retval true @p aligned contains the exact rounded value.
- * @retval false Adding alignment padding would overflow.
- * @pre @p aligned is writable.
+ * @brief Declare one arena slot, or publish a null span for a zero requirement.
+ * @details Keeps an optional slice out of the slot array entirely rather than
+ * carving a zero-byte span, so the arena never sees a requirement of zero.
+ * @param[in,out] slots Slot array being filled in declaration order.
+ * @param[in] count Slots already declared in @p slots.
+ * @param[in] bytes Exact requirement for this slice, possibly zero.
+ * @param[out] out_ptr Receives the carved span, or null when @p bytes is zero.
+ * @return The new slot count.
+ * @retval count The requirement was zero and @p out_ptr was set to null.
+ * @pre @p slots has room for one more entry when @p bytes is non-zero.
  * @pre ::k_convert_cli_align is a non-zero power of two.
- * @post Success writes a multiple of ::k_convert_cli_align not below @p value.
- * @post Failure leaves @p aligned unspecified and performs no I/O.
+ * @post A zero requirement writes null and declares nothing.
+ * @post A non-zero requirement leaves @p out_ptr untouched until the carve.
+ * @note Pure apart from the slot array and the null case.
+ * @since 0.1.0
+ */
+RA8_INTERNAL
+static uint32_t
+internal_slot(ra8_arena_slot_t* slots, uint32_t count, uint32_t bytes, void** out_ptr)
+{
+  if (bytes == 0U) {
+    *out_ptr = nullptr;
+    return count;
+  }
+  slots[count] = (ra8_arena_slot_t){
+    .bytes   = bytes,
+    .align   = (uint32_t)k_convert_cli_align,
+    .out_ptr = out_ptr,
+  };
+  return count + 1U;
+}
+
+/**
+ * @brief Carve one conversion workspace out of the caller composition arena.
+ * @details Declares the producer slice and the optional WebP slice and lets the
+ * platform arena place both, so the inter-slice alignment padding and the
+ * "did the last slice fit?" question are the arena's answers rather than a
+ * hand-written offset chain checked against a hand-written sum.
+ * @param[in,out] arena First byte of the caller composition workspace.
+ * @param[in] arena_cap Exact bytes supplied at @p arena.
+ * @param[in] need Exact producer requirements for the probed source.
+ * @param[out] out Receives the bound spans and their capacities.
+ * @return Canonical carve status.
+ * @retval k_ra8_ok Every required slice was placed inside @p arena_cap.
+ * @retval k_ra8_err_invalid_size @p arena_cap is zero, unrepresentable, or too small.
+ * @retval other The platform arena rejected the region or the declaration.
+ * @pre @p arena is aligned for `max_align_t` and spans @p arena_cap bytes.
+ * @pre @p need was produced by the requirements API.
+ * @post Success binds every non-zero slice; an absent WebP slice is null.
+ * @post A source needing no bytes at all binds nothing and cannot fail.
+ * @post Failure leaves the spans of @p out null and performs no I/O.
  * @note Pure apart from the caller output.
  * @since 0.1.0
  */
 RA8_INTERNAL
-static bool internal_align(size_t value, size_t* aligned)
+static ra8_err_t internal_carve(uint8_t*                                  arena,
+                                size_t                                    arena_cap,
+                                const ra8_fmt_jof_convert_requirements_t* need,
+                                ra8_fmt_jof_convert_workspace_t*          out)
 {
-  const size_t mask = (size_t)k_convert_cli_align - 1U;
-  if (value > (SIZE_MAX - mask)) {
-    return false;
+  *out = (ra8_fmt_jof_convert_workspace_t){
+    .work_cap      = need->work_bytes,
+    .webp_work_cap = need->webp_work_bytes,
+  };
+  if (arena_cap > (size_t)UINT32_MAX) {
+    return k_ra8_err_invalid_size;
   }
-  *aligned = (value + mask) & ~mask;
-  return true;
+  void*            work  = nullptr;
+  void*            webp  = nullptr;
+  ra8_arena_slot_t slots[k_convert_slot_cap] = {};
+  uint32_t         count = internal_slot(slots, 0U, need->work_bytes, &work);
+  count                  = internal_slot(slots, count, need->webp_work_bytes, &webp);
+
+  if (count == 0U) {
+    return k_ra8_ok;
+  }
+  ra8_arena_t arena_state = {};
+  ra8_err_t   rc          = ra8_arena_init(&arena_state, arena, (uint32_t)arena_cap);
+  if (rc == k_ra8_ok) {
+    rc = ra8_arena_carve_all(&arena_state, slots, count);
+  }
+  if (rc != k_ra8_ok) {
+    return rc;
+  }
+  out->work      = (uint8_t*)work;
+  out->webp_work = (uint8_t*)webp;
+  return k_ra8_ok;
 }
 
 /**
- * @brief Compute the exact shared-arena high-water for one conversion.
- * @details Adds the aligned producer slice and optional WebP slice with overflow checks.
- * @param[in] requirements Per-producer arena requirements.
- * @param[out] webp_offset Aligned offset of optional WebP arena.
- * @param[out] total Exact shared arena high-water.
- * @return Whether the sum is representable.
- * @retval true Both outputs contain exact representable byte counts.
- * @retval false Alignment or addition would overflow size_t.
- * @pre Every pointer argument is non-null.
- * @pre @p requirements was produced by the requirements API.
- * @post Success includes inter-arena alignment padding in @p total.
- * @post Failure performs no I/O or output transaction work.
- * @note Pure apart from the two outputs.
- * @since 0.1.0
- */
-RA8_INTERNAL
-static bool internal_high_water(const ra8_fmt_jof_convert_requirements_t* requirements,
-                                size_t*                                   webp_offset,
-                                size_t*                                   total)
-{
-  if (!internal_align(requirements->work_bytes, webp_offset)) {
-    return false;
-  }
-  if ((size_t)requirements->webp_work_bytes > (SIZE_MAX - *webp_offset)) {
-    return false;
-  }
-  *total = *webp_offset + requirements->webp_work_bytes;
-  return true;
-}
-
-/**
- * @brief Emit exact required/supplied workspace evidence.
- * @details Reports total high-water and both component arena requirements.
+ * @brief Emit exact supplied/required workspace evidence.
+ * @details Reports the caller capacity and both component arena requirements.
+ * The arena places the slices, so no separately-computed total is reported;
+ * the component figures are what a caller sizes its block from.
  * @param[in] errors Diagnostic sink.
  * @param[in] requirements Exact producer requirements.
- * @param[in] required Shared-arena high-water including alignment.
  * @param[in] supplied Caller arena capacity.
  * @pre @p errors and its write callback are non-null.
  * @pre @p requirements describes a successfully probed source.
@@ -249,53 +285,56 @@ static bool internal_high_water(const ra8_fmt_jof_convert_requirements_t* requir
 RA8_INTERNAL
 static void internal_capacity(const ra8_fmt_sink_t*                     errors,
                               const ra8_fmt_jof_convert_requirements_t* requirements,
-                              size_t                                    required,
                               size_t                                    supplied)
 {
-  ra8_err_t rc = internal_text(errors, "ra8_fmt: JOF convert workspace too small: required ");
-  internal_field(errors, required, " supplied ", &rc);
+  ra8_err_t rc = internal_text(errors, "ra8_fmt: JOF convert workspace too small: supplied ");
   internal_field(errors, supplied, " (work ", &rc);
   internal_field(errors, requirements->work_bytes, ", webp ", &rc);
   internal_field(errors, requirements->webp_work_bytes, ")\n", &rc);
 }
 
 /**
- * @brief Probe exact producer requirements and confirm the caller arena fits.
- * @details Delegates to the requirements API and the alignment-checked
- * high-water sum, then reports and converts a too-small arena into a
- * canonical sizing failure so the caller need not repeat that branch.
+ * @brief Probe exact producer requirements and carve the caller arena.
+ * @details Delegates to the requirements API, then lets the platform arena
+ * place both slices. A block that cannot hold them fails the carve, so
+ * "did it fit?" is one checked call rather than a hand-computed sum compared
+ * against the capacity, and it is reported and converted into a canonical
+ * sizing failure so the caller need not repeat that branch.
  * @param[in] source Open host source already positioned for probing.
+ * @param[in,out] arena First byte of the caller composition workspace.
  * @param[in] arena_cap Caller-supplied composition arena capacity.
  * @param[in] errors Diagnostic sink.
  * @param[out] requirements Receives the exact producer requirements.
- * @param[out] webp_offset Receives the aligned optional WebP arena offset.
- * @param[out] high_water Receives the exact shared arena high-water.
- * @param[out] sized Receives whether @p high_water is representable.
+ * @param[out] workspace Receives the carved producer and WebP spans.
+ * @param[out] sized Receives whether the requirements probe itself succeeded.
  * @return Canonical requirements or capacity status.
- * @retval k_ra8_ok The arena is large enough for the probed source.
- * @retval k_ra8_err_invalid_size Sizing overflowed or exceeded @p arena_cap.
+ * @retval k_ra8_ok Every required slice was placed inside @p arena_cap.
+ * @retval k_ra8_err_invalid_size The carve did not fit @p arena_cap.
  * @retval other The requirements probe itself failed.
  * @pre Every pointer argument is non-null.
  * @pre @p source remains valid and positioned for the complete probe.
- * @post Success writes representable, in-budget sizing into every output.
+ * @post Success binds every non-zero slice of @p workspace.
  * @post Failure emits one diagnostic through @p errors before returning.
  * @note Thread safety inherits the injected sink and source.
  * @since 0.1.0
  */
 RA8_INTERNAL
 static ra8_err_t internal_size_input(const ra8_fmt_source_t*             source,
+                                     uint8_t*                            arena,
                                      size_t                              arena_cap,
                                      const ra8_fmt_sink_t*               errors,
                                      ra8_fmt_jof_convert_requirements_t* requirements,
-                                     size_t*                             webp_offset,
-                                     size_t*                             high_water,
+                                     ra8_fmt_jof_convert_workspace_t*    workspace,
                                      bool*                               sized)
 {
   ra8_err_t rc = ra8_fmt_jof_convert_requirements(source, requirements);
-  *sized       = (rc == k_ra8_ok) && internal_high_water(requirements, webp_offset, high_water);
-  if ((rc == k_ra8_ok) && (!*sized || (*high_water > arena_cap))) {
-    internal_capacity(errors, requirements, *sized ? *high_water : SIZE_MAX, arena_cap);
-    rc = k_ra8_err_invalid_size;
+  *sized       = (rc == k_ra8_ok);
+  if (rc == k_ra8_ok) {
+    rc = internal_carve(arena, arena_cap, requirements, workspace);
+    if (rc != k_ra8_ok) {
+      internal_capacity(errors, requirements, arena_cap);
+      rc = k_ra8_err_invalid_size;
+    }
   }
   return rc;
 }
@@ -306,14 +345,13 @@ static ra8_err_t internal_size_input(const ra8_fmt_source_t*             source,
  * @param[in] source Open host source.
  * @param[in] output Destination path.
  * @param[in] requirements Exact producer requirements.
- * @param[in,out] arena Caller composition workspace.
- * @param[in] webp_offset Aligned WebP arena offset.
+ * @param[in] workspace Spans already carved out of the caller arena.
  * @param[in] report Standard-output report sink.
  * @return Canonical conversion or host transaction status.
  * @retval k_ra8_ok A complete atlas was durably published and reported.
  * @retval other Transaction creation or the portable engine failed.
  * @pre @p source and @p report remain bound for the complete call.
- * @pre @p arena spans both exact slices at @p webp_offset.
+ * @pre @p workspace was carved by ::internal_carve from the same requirements.
  * @post Any failed conversion preserves the prior destination.
  * @post Every transaction resource acquired here is released.
  * @note Descriptor ownership stays at this host composition edge.
@@ -323,8 +361,7 @@ RA8_INTERNAL
 static ra8_err_t internal_run(const ra8_fmt_source_t*                   source,
                               const char*                               output,
                               const ra8_fmt_jof_convert_requirements_t* requirements,
-                              uint8_t*                                  arena,
-                              size_t                                    webp_offset,
+                              const ra8_fmt_jof_convert_workspace_t*    workspace,
                               const ra8_fmt_sink_t*                     report)
 {
   ra8_fmt_host_transaction_t host_transaction;
@@ -333,13 +370,8 @@ static ra8_err_t internal_run(const ra8_fmt_source_t*                   source,
   if (rc != k_ra8_ok) {
     return rc;
   }
-  ra8_fmt_jof_convert_workspace_t workspace = {
-    .work          = arena,
-    .work_cap      = requirements->work_bytes,
-    .webp_work     = (requirements->webp_work_bytes == 0U) ? nullptr : &arena[webp_offset],
-    .webp_work_cap = requirements->webp_work_bytes,
-  };
-  rc = ra8_fmt_jof_convert_stream(source, requirements, &workspace, &transaction, report, output);
+  ra8_fmt_jof_convert_workspace_t bound = *workspace;
+  rc = ra8_fmt_jof_convert_stream(source, requirements, &bound, &transaction, report, output);
   return rc;
 }
 
@@ -349,13 +381,13 @@ static ra8_err_t internal_run(const ra8_fmt_source_t*                   source,
  * over-budget source so the operator sees the correct rc-bearing line.
  * @param[in] errors Diagnostic sink.
  * @param[in] rc Canonical status returned by the conversion attempt.
- * @param[in] sized Whether sizing produced a representable high-water.
- * @param[in] high_water Exact shared arena high-water, if @p sized.
- * @param[in] arena_cap Caller-supplied composition arena capacity.
+ * @param[in] sized Whether the requirements probe itself succeeded.
+ * @param[in] carved Whether the caller arena held every required slice.
  * @pre @p errors and its write callback are non-null.
- * @pre @p high_water is meaningful only when @p sized is true.
+ * @pre @p carved is meaningful only when @p sized is true.
  * @post A successful @p rc emits no diagnostic.
  * @post A failing @p rc emits exactly one diagnostic line.
+ * @post An over-budget arena stays silent here; the carve already reported it.
  * @note Diagnostic sink failures are intentionally ignored.
  * @since 0.1.0
  */
@@ -363,13 +395,12 @@ RA8_INTERNAL
 static void internal_report_run_failure(const ra8_fmt_sink_t* errors,
                                         ra8_err_t             rc,
                                         bool                  sized,
-                                        size_t                high_water,
-                                        size_t                arena_cap)
+                                        bool                  carved)
 {
   if (rc == k_ra8_ok) {
     return;
   }
-  if (sized && (high_water <= arena_cap)) {
+  if (sized && carved) {
     internal_status(errors, "ra8_fmt: JOF convert failed (rc=", rc);
   } else if (!sized) {
     internal_status(errors, "ra8_fmt: cannot size JOF convert (rc=", rc);
@@ -408,22 +439,22 @@ RA8_PRIV int priv_fmt_try_portable_convert(int      argc,
     return (int)k_convert_cli_fail;
   }
   ra8_fmt_jof_convert_requirements_t requirements = {};
-  size_t                             webp_offset  = 0U;
-  size_t                             high_water   = 0U;
+  ra8_fmt_jof_convert_workspace_t    workspace    = {};
   bool                               sized        = false;
   rc                                              = internal_size_input(&source.source,
+                                                                        arena,
                                                                         arena_cap,
                                                                         &errors,
                                                                         &requirements,
-                                                                        &webp_offset,
-                                                                        &high_water,
+                                                                        &workspace,
                                                                         &sized);
-  ra8_fmt_host_fd_sink_t output_state             = {.fd = STDOUT_FILENO};
-  const ra8_fmt_sink_t   report                   = priv_fmt_host_fd_sink(&output_state);
+  const bool             carved       = (rc == k_ra8_ok);
+  ra8_fmt_host_fd_sink_t output_state = {.fd = STDOUT_FILENO};
+  const ra8_fmt_sink_t   report       = priv_fmt_host_fd_sink(&output_state);
   if (rc == k_ra8_ok) {
-    rc = internal_run(&source.source, args.output, &requirements, arena, webp_offset, &report);
+    rc = internal_run(&source.source, args.output, &requirements, &workspace, &report);
   }
   priv_fmt_host_source_close(&source);
-  internal_report_run_failure(&errors, rc, sized, high_water, arena_cap);
+  internal_report_run_failure(&errors, rc, sized, carved);
   return (rc == k_ra8_ok) ? (int)k_convert_cli_ok : (int)k_convert_cli_fail;
 }

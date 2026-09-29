@@ -1,0 +1,69 @@
+# Copy this file to a local, ignored terraform.tfvars only for an isolated lab.
+# Never put production endpoints, tokens, passwords, or private keys here.
+
+lab_enabled = false
+allow_lxc   = false
+
+# Prefer runtime environment variables so endpoints and OpenBao AppRole
+# credentials do not enter Terraform variable files. The checked-in wrapper
+# loads the OpenBao address from the operator's protected OpenBao config and
+# the AppRole credentials from protected local secret storage.
+# proxmox_endpoint  = "https://proxmox.example.invalid:8006/"
+# openbao_address   = "https://openbao.example.invalid:8200"
+
+lab_linux_vm = {
+  enabled         = false
+  name            = "terraform-lab-vm"
+  run_id          = "0000000000000000"
+  vm_id           = 9000
+  template_vm_id  = 9001
+  pool_id         = "ra8-tf-lab"
+  datastore_id    = "ra8-tf-lab"
+  node_name       = "lab-node"
+  cores           = 2
+  memory_mb       = 4096
+  bridge          = "vmbr9"
+  ipv4_address    = "dhcp"
+  ipv4_gateway    = null
+  ssh_public_keys = []
+  user_name       = "terraform-lab"
+  started         = false
+  network_enabled = false
+}
+
+# Windows Server is intentionally disabled until a reviewed amd64 template
+# with Cloudbase-Init and WinRM policy is prepared. Terraform never stores or
+# injects the Windows password; Ansible credentials belong in OpenBao.
+lab_windows_vm = {
+  enabled         = false
+  name            = "ra8-lab-win-server"
+  run_id          = "0000000000000000"
+  vm_id           = 9011
+  template_vm_id  = 9010
+  pool_id         = "ra8-tf-lab"
+  datastore_id    = "ra8-tf-lab"
+  node_name       = "lab-node"
+  cores           = 4
+  memory_mb       = 8192
+  bridge          = "vmbr9"
+  ipv4_address    = "dhcp"
+  ipv4_gateway    = null
+  started         = false
+  network_enabled = false
+}
+
+lab_container = {
+  enabled         = false
+  hostname        = "terraform-lab-ct"
+  vm_id           = 9002
+  template_ct_id  = 9003
+  pool_id         = "ra8-tf-lab"
+  datastore_id    = "ra8-tf-lab"
+  node_name       = "lab-node"
+  cores           = 2
+  memory_mb       = 2048
+  bridge          = "vmbr9"
+  ipv4_address    = "dhcp"
+  ipv4_gateway    = null
+  ssh_public_keys = []
+}

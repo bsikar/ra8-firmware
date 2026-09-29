@@ -3,6 +3,9 @@
  * @brief Data Operation Circuit (DOC) register layout for the Renesas RA8D2
  * @ingroup grp_hal_system
  *
+ * @par Tag
+ * [Ring 3 / HAL] {World: S}
+ *
  * @details
  * The Data Operation Circuit on the RA8D2 is the **DOC_B** variant.
  * It supports 16- or 32-bit add, subtract, and compare operations.

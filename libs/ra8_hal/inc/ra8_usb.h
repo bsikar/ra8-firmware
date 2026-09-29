@@ -3,6 +3,9 @@
  * @brief Native USB controller driver public API (device + host modes)
  * @ingroup grp_hal_usb
  *
+ * @par Tag
+ * [Ring 3 / HAL] {World: NS}
+ *
  * @details
  * Hand-written, FSP-equivalent driver for the two USB controllers on
  * the Renesas RA8D2 (USBFS @ 0x40250000, USBHS @ 0x40351000). Mirrors

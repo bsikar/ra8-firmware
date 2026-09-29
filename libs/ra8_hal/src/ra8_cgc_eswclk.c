@@ -16,9 +16,9 @@
  * defined in `ra8_cgc_usb.c`. Every protected-register write is wrapped in
  * `RA8_PROTECTED_WRITE` so the PRCR re-lock always happens.
  *
- * @par Tag ring/world:
- * Ring 1 (HAL), World S (secure-callable). Same ring/world as the parent
- * `ra8_cgc.c`.
+ * @par Tag
+ * [Ring 3 / HAL] {World: S}
+ * Secure-callable; same ring and world as the parent `ra8_cgc.c`.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT

@@ -362,9 +362,13 @@ static size_t
 stream_window(ra8_vmem_stream_t* st, uint64_t off, uint32_t len, uint32_t* crc, bool* bytes_ok)
 {
   static uint8_t s_buf[k_win_buf_bytes];
-  const size_t   got = ra8_vmem_stream_read(st, off, s_buf, (size_t)len);
-  bool           ok  = true;
-  for (size_t i = 0U; i < got; i++) {
+  uint32_t       got = 0U;
+  if (ra8_vmem_stream_read_checked(st, off, s_buf, len, &got) != k_ra8_ok) {
+    *bytes_ok = false;
+    return 0U;
+  }
+  bool ok = true;
+  for (uint32_t i = 0U; i < got; i++) {
     if (s_buf[i] != gen_byte(off + (uint64_t)i)) {
       ok = false;
     }
@@ -592,7 +596,9 @@ static void test_vmem_stream_read_stops_on_get_failure(void)
   TEST_ASSERT_EQ(k_ra8_ok, ra8_vmem_stream_init(&st, &vm, obj_id, (uint64_t)k_fail_obj_bytes));
 
   /* Two frames requested. Frame 0 loads (V1); frame 1 faults (V2). */
-  const size_t got = ra8_vmem_stream_read(&st, 0U, s_out, (size_t)k_fail_read_bytes);
+  uint32_t        got  = 0U;
+  const ra8_err_t gerr = ra8_vmem_stream_read(&st, 0U, s_out, (uint32_t)k_fail_read_bytes, &got);
+  TEST_ASSERT(gerr != k_ra8_ok);
   TEST_ASSERT_EQ(k_vmem_frame_bytes, got);
   /* The bytes that WERE copied are the real ones, so the break happened after
      a genuine copy rather than instead of one. */
@@ -606,6 +612,166 @@ static void test_vmem_stream_read_stops_on_get_failure(void)
   TEST_END("mem_subsystem: vmem_stream_read stops at the first unloadable frame");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decision under test here -- the point is the return channel, not a
+ * branch: the same two-frame request that comes back short with `k_ra8_ok` when it
+ * ran off the object end comes back short with the cache's error when a frame
+ * failed, so a caller can finally tell the two apart. #764.)
+ */
+/**
+ * @brief Wire a paged source whose second frame faults, and a stream over it.
+ *
+ * @details
+ * The same three-layer stack as vmem_stream_open_backing(), but over
+ * failing_backing_read() and the small `k_fail_obj_bytes` object: frame 0 loads
+ * and every later frame reports k_ra8_err_hw_error, which is what puts a real
+ * cache failure in the middle of a two-frame request.
+ *
+ * @param[out] vs Receives the initialised paged source.
+ * @param[out] vm Receives the initialised vmem over @p vs.
+ * @param[out] st Receives the stream over the whole faulting object.
+ *
+ * @pre All three out-pointers are non-NULL and outlive @p st.
+ * @pre No other stack is live over the same static pools.
+ * @post @p st covers `k_fail_obj_bytes`, whose frame 1 onward cannot page in.
+ *
+ * @note Not thread-safe; the pools are file-lifetime state.
+ *
+ * @see failing_backing_read()  The backing that faults past frame 0.
+ */
+static void vmem_stream_open_faulting(ra8_vsource_t* vs, ra8_vmem_t* vm, ra8_vmem_stream_t* st)
+{
+  [[gnu::aligned(8)]] static uint8_t s_cfrm[(size_t)k_vmem_frames * (size_t)k_vmem_frame_bytes];
+  static ra8_vmem_frame_t            s_cmeta[k_vmem_frames];
+  static ra8_vmem_key_t              s_ckeys[k_vmem_frames];
+  static int32_t                     s_cbuck[k_vmem_buckets];
+  static ra8_vsource_obj_t           s_cobjs[k_vmem_objs];
+
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_vsource_init(vs, s_cobjs, (uint32_t)k_vmem_objs));
+  uint32_t obj_id = 0U;
+  TEST_ASSERT_EQ(k_ra8_ok,
+                 ra8_vsource_add_paged(vs,
+                                       failing_backing_read,
+                                       nullptr,
+                                       0U,
+                                       (uint64_t)k_fail_obj_bytes,
+                                       &obj_id));
+
+  ra8_vmem_cfg_t vcfg = {};
+  vcfg.frame_mem      = s_cfrm;
+  vcfg.frame_bytes    = (uint32_t)k_vmem_frame_bytes;
+  vcfg.frame_count    = (uint32_t)k_vmem_frames;
+  vcfg.meta           = s_cmeta;
+  vcfg.keys           = s_ckeys;
+  vcfg.buckets        = s_cbuck;
+  vcfg.bucket_count   = (uint32_t)k_vmem_buckets;
+  vcfg.loader         = ra8_vsource_loader;
+  vcfg.loader_ctx     = vs;
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_vmem_init(vm, &vcfg));
+
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_vmem_stream_init(st, vm, obj_id, (uint64_t)k_fail_obj_bytes));
+}
+
+static void test_vmem_stream_read_checked_separates_failure_from_eof(void)
+{
+  TEST_BEGIN("mem_subsystem: read_checked reports a failed frame, not a short EOF");
+  static uint8_t s_cout[k_win_buf_bytes];
+
+  ra8_vsource_t     vs = {};
+  ra8_vmem_t        vm = {};
+  ra8_vmem_stream_t st = {};
+  vmem_stream_open_faulting(&vs, &vm, &st);
+
+  /* Two frames requested. Frame 0 loads, frame 1 faults: the cache's own error
+     comes back, and the bytes that DID arrive are accounted for. This is the
+     case the count-returning form reports as a clean short read. */
+  uint32_t read = 0xFFFFFFFFU;
+  TEST_ASSERT_EQ(
+    k_ra8_err_hw_error,
+    ra8_vmem_stream_read_checked(&st, 0U, s_cout, (uint32_t)k_fail_read_bytes, &read));
+  TEST_ASSERT_EQ(k_vmem_frame_bytes, read);
+  bool bytes_ok = true;
+  for (uint32_t i = 0U; i < read; i++) {
+    if (s_cout[i] != gen_byte((uint64_t)i)) {
+      bytes_ok = false;
+    }
+  }
+  TEST_ASSERT(bytes_ok);
+
+  /* The cookie binding is the same answer through a void* ctx: the epub callback
+     seam now carries the failed frame's verdict instead of a bare short count. */
+  uint32_t        cookie_read = 0U;
+  const ra8_err_t cookie_err =
+    ra8_vmem_stream_read(&st, 0U, s_cout, (uint32_t)k_fail_read_bytes, &cookie_read);
+  TEST_ASSERT(cookie_err != k_ra8_ok);
+  TEST_ASSERT_EQ(k_vmem_frame_bytes, cookie_read);
+
+  /* A read wholly inside frame 0 is a full success. */
+  read = 0U;
+  TEST_ASSERT_EQ(k_ra8_ok,
+                 ra8_vmem_stream_read_checked(&st, 0U, s_cout, (uint32_t)k_vmem_frame_bytes, &read));
+  TEST_ASSERT_EQ(k_vmem_frame_bytes, read);
+  TEST_END("mem_subsystem: read_checked reports a failed frame, not a short EOF");
+}
+
+/**
+ * @par MC/DC:
+ * (argument refusals and the end-of-object path; each is a single condition
+ * checked in isolation, so no compound decision arises.)
+ */
+static void test_vmem_stream_read_checked_contract(void)
+{
+  TEST_BEGIN("mem_subsystem: read_checked argument refusals and clean EOF");
+  static uint8_t s_buf[k_win_buf_bytes];
+  ra8_vsource_t  vs = {};
+  ra8_vmem_t     vm = {};
+
+  ra8_vmem_stream_t st = {};
+  vmem_stream_open_backing(&vs, &vm, &st);
+
+  uint32_t read = 0xFFFFFFFFU;
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr,
+                 ra8_vmem_stream_read_checked(nullptr, 0U, s_buf, sizeof(s_buf), &read));
+  TEST_ASSERT_EQ(0U, read);
+  read = 0xFFFFFFFFU;
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr,
+                 ra8_vmem_stream_read_checked(&st, 0U, nullptr, sizeof(s_buf), &read));
+  TEST_ASSERT_EQ(0U, read);
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr,
+                 ra8_vmem_stream_read_checked(&st, 0U, s_buf, sizeof(s_buf), nullptr));
+
+  read = 0xFFFFFFFFU;
+  TEST_ASSERT_EQ(k_ra8_err_invalid_size,
+                 ra8_vmem_stream_read_checked(&st, 0U, s_buf, 0U, &read));
+  TEST_ASSERT_EQ(0U, read);
+
+  ra8_vmem_stream_t unbound = {.vm = &vm, .object_id = 0U, .frame_bytes = 0U, .size = 1U};
+  read                      = 0xFFFFFFFFU;
+  TEST_ASSERT_EQ(k_ra8_err_invalid_state,
+                 ra8_vmem_stream_read_checked(&unbound, 0U, s_buf, sizeof(s_buf), &read));
+  TEST_ASSERT_EQ(0U, read);
+
+  /* At the object end: nothing copied, and NOT an error. That is the half of the
+     contract a consumer needs to keep treating as end-of-file. */
+  read = 0xFFFFFFFFU;
+  TEST_ASSERT_EQ(
+    k_ra8_ok,
+    ra8_vmem_stream_read_checked(&st, (uint64_t)k_vmem_obj_bytes, s_buf, sizeof(s_buf), &read));
+  TEST_ASSERT_EQ(0U, read);
+
+  /* Straddling the end: the clamp is a short read that is still k_ra8_ok. */
+  read = 0U;
+  TEST_ASSERT_EQ(k_ra8_ok,
+                 ra8_vmem_stream_read_checked(&st,
+                                              (uint64_t)k_vmem_obj_bytes - 1U,
+                                              s_buf,
+                                              sizeof(s_buf),
+                                              &read));
+  TEST_ASSERT_EQ(1U, read);
+  TEST_END("mem_subsystem: read_checked argument refusals and clean EOF");
+}
+
 int main(void)
 {
   test_slab_reset();
@@ -616,5 +782,7 @@ int main(void)
   test_window_ok_mcdc();
   test_vmem_stream_init_rejects_zero_frame();
   test_vmem_stream_read_stops_on_get_failure();
+  test_vmem_stream_read_checked_separates_failure_from_eof();
+  test_vmem_stream_read_checked_contract();
   return 0;
 }

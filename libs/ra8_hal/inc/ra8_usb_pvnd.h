@@ -3,6 +3,9 @@
  * @brief Native USB device-side Vendor-defined class layer
  * @ingroup grp_hal_usb
  *
+ * @par Tag
+ * [Ring 3 / HAL] {World: NS}
+ *
  * @details
  * Glues the device-mode `ra8_usb` controller driver to a vendor-defined
  * USB function so the EK-RA8D2 enumerates with class code 0xFF, ready

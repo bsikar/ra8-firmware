@@ -65,9 +65,9 @@ a local file only when it intentionally overrides that default:
   `examples/ek_ra8d2/<tier>/.../<app>/inc/trustzone_init.h` and
   root-level `examples/ek_ra8d2/<tier>/.../<app>/linker_script.ld`
 
-Product forms follow the same ownership rule; for example, the e-reader's
-exception override is
-`apps/board/stand_alone/ereader/src/secure_exception.c`.
+Product forms follow the same ownership rule. No app currently overrides
+`secure_exception.c`: the e-reader was the last to do so and now links the
+shared board default like every other app.
 
 The canonical EK-RA8D2 defaults are under
 `libs/ra8_board_ek_ra8d2/{src/boot,ld}/`; RA8P1 uses the corresponding
@@ -111,7 +111,7 @@ The canonical EK-RA8D2 defaults are under
 | `scripts/checks/format_code.sh`                   | clang-format wrapper.                                |
 | `scripts/checks/clang_tidy.sh`                    | clang-tidy wrapper.                                  |
 | `scripts/dev/flash.sh`                         | J-Link flash wrapper (HW operations).                |
-| `scripts/git/pre-commit`                   | Pre-commit hook (the authoritative gate suite).      |
+| the `pre-commit-checks` CI gate                   | Pre-commit hook (the authoritative gate suite).      |
 
 ### 1.6 Documentation
 
@@ -196,7 +196,7 @@ component is vendored at the exact version recorded in its
 
 ### 2.4 Pre-commit gate (authoritative configuration of "what cannot land")
 
-The hook at `scripts/git/pre-commit` enforces the following gates on
+The hook at the `pre-commit-checks` CI gate enforces the following gates on
 every commit. Failure of any gate refuses the commit:
 
 1. ASCII-only source files (`fix-encoding.py --check`).
@@ -484,7 +484,7 @@ by the Just devcontainer recipes.
   no-AI-attribution policy, zero-backward-compatibility policy.
 - `docs/QUALIFICATION_ROADMAP.md` -- phase plan and gap analysis.
 - `docs/SOUP/` -- pre-existing software register.
-- `scripts/git/pre-commit` -- authoritative pre-commit gate suite.
+- the `pre-commit-checks` CI gate -- authoritative pre-commit gate suite.
 - `.github/workflows/firmware.yml` -- authoritative CI gate suite.
 - IEC 61508-3:2010 Clause 6.2.3.
 - RTCA DO-178C:2011 Sections 7 and 11.4.

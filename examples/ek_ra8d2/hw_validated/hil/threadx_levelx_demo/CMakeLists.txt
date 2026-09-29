@@ -31,8 +31,8 @@ include("${_d}/cmake/ra8_add_app.cmake")
 
 ra8_add_app(
   NAME threadx_levelx_demo
+  THREADX_HEAP SDRAM
   STACK_BYTES 2200
   DESCRIPTION "ThreadX + LevelX OSPI wear-levelling demo for RA8D2"
   USES threadx levelx
-  LIBS ra8_cache_store
 )

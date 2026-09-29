@@ -74,24 +74,9 @@ typedef enum : uint16_t {
   k_ra8_mipi_phy_spin_budget   = 4096U, /**< Max poll iterations.        */
 } ra8_mipi_phy_limits_t;
 
-/**
- * @enum ra8_mipi_phy_mstpc_bit_t
- * @brief Direct-write fallback for the MIPI PHY module-stop bit.
- *
- * @details
- * The shared ``ra8_mstp_t`` enum in ``libs/ra8_hal/inc/ra8_mstp_regs.h``
- * does NOT yet have a ``k_ra8_mipi_phy`` entry. Per the agent brief
- * we must not extend that file from this driver. As a stop-gap, the
- * driver clears MSTPCRC bit 13 (the MIPI PHY slot in MSTPCRC -- HUM
- * Ch 64.4.2 p 3838 references MSTPCRC for the block) directly.
- *
- * TODO: When ``ra8_mstp_regs.h`` gains an explicit ``k_ra8_mstp_mipi_phy``
- * value (driven by HUM Ch 11.2.8 "MSTPCRC" p 446-447), replace the
- * direct register write below with ``ra8_mstp_enable(k_ra8_mstp_mipi_phy)``.
- */
-typedef enum : uint8_t {
-  k_ra8_mipi_phy_mstpc_bit = 13U, /**< Provisional MSTPC slot. */
-} ra8_mipi_phy_mstpc_bit_t;
+/* ``k_ra8_mipi_phy_mstpc_bit``, the provisional MSTPCRC slot this driver
+ * ungates, is declared in ``ra8_mipi_phy_internal.h`` because the lifecycle
+ * observers in ``ra8_mipi_phy_ops.c`` read the same bit. */
 
 /**
  * @enum ra8_mipi_phy_lane_bit_t
@@ -300,10 +285,15 @@ void priv_mipi_phy_write_timing(const ra8_mipi_phy_timing_t* t)
  * @brief Validate ranges/lane-count for ``ra8_mipi_phy_init``.
  *
  * @details
- * Cites HUM Ch 64.2.1 p 3822 (RFREQ range), Ch 64.2.4 p 3825 (ESCDIV
- * width), Ch 64.1 p 3822 (lane-count support matrix), and Ch 64.2.2
- * p 3823 (PLL parameter range, host mode only). Also rejects
- * nullptrs in ``cfg`` and ``cfg->p_timing``.
+ * Cites HUM Ch 64.2.1 p 3822 (RFREQ range), Ch 64.1 p 3822 (line-rate
+ * range and the lane-count support matrix), Ch 64.2.4 p 3825 (ESCDIV
+ * width), and Ch 64.2.2 p 3823 (PLL parameter range, host mode only).
+ * Also rejects nullptrs in ``cfg`` and ``cfg->p_timing``.
+ *
+ * ``line_rate_mbps`` is bounded here against the same 80..720 window
+ * ``ra8_mipi_phy_select_timing`` applies to its lookup key, so a rate
+ * the DPHYTIM tables cannot serve is refused before the LDO is powered
+ * rather than silently accepted (#1367).
  * @param[in] cfg See declaration: ``const ra8_mipi_phy_config_t* cfg``.
  * @return ::ra8_err_t outcome (or scalar return value).
  * @retval k_ra8_ok Operation completed successfully.
@@ -323,6 +313,12 @@ static ra8_err_t internal_mipi_phy_validate_init_cfg(const ra8_mipi_phy_config_t
   }
   if ((cfg->pclka_mhz < (uint8_t)k_ra8_mipi_phy_pclka_min_mhz) ||
       (cfg->pclka_mhz > (uint8_t)k_ra8_mipi_phy_pclka_max_mhz)) {
+    return k_ra8_err_invalid_arg;
+  }
+  /* HUM Ch 64.1 "Overview" p 3822 -- the D-PHY serves 80..720 Mbps per
+   * lane; the DPHYTIM rows in HUM Tables 64.2 / 64.3 stop there too. */
+  if ((cfg->line_rate_mbps < (uint16_t)k_ra8_mipi_phy_line_rate_min_mbps) ||
+      (cfg->line_rate_mbps > (uint16_t)k_ra8_mipi_phy_line_rate_max_mbps)) {
     return k_ra8_err_invalid_arg;
   }
   if (cfg->escdiv > (uint8_t)k_ra8_mipi_phy_escdiv_max) {

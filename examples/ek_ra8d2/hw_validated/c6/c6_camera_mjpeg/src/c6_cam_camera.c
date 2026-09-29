@@ -21,6 +21,7 @@
 #include "ra8_camera_codec_passthrough.h"
 #include "ra8_camera_source_ceu.h"
 #include "ra8_ceu.h"
+#include "ra8_i2c_bus_ops.h"
 #include "ra8_ov5640.h"
 #include "ra8_time.h"
 
@@ -65,8 +66,18 @@ typedef enum : uint8_t {
   k_sccb_op_write = 2U, /**< Last transfer was a write. */
 } sccb_operation_t;
 
+/** @brief Frame offsets the OV5640 binder stages, decoded for diagnostics. */
+typedef enum : uint32_t {
+  k_sccb_frame_reg_bytes  = 2U, /**< Big-endian register pointer width. */
+  k_sccb_frame_reg_hi     = 0U, /**< Register pointer high-byte index.  */
+  k_sccb_frame_reg_lo     = 1U, /**< Register pointer low-byte index.   */
+  k_sccb_frame_high_shift = 8U, /**< Shift recomposing the high byte.   */
+} sccb_frame_layout_t;
+
 [[gnu::section(".sdram_data"), gnu::aligned(32)]] static uint8_t s_jpeg[k_sensor_jpeg_buffer_bytes];
 static ra8_ov5640_t                                              s_sensor;
+static ra8_ov5640_i2c_ctx_t                                      s_sensor_i2c;
+static ra8_i2c_bus_ops_t                                         s_board_i2c;
 static ra8_camera_source_t                                       s_source;
 static ra8_camera_source_ceu_state_t                             s_source_state;
 static ra8_camera_codec_t                                        s_codec;
@@ -80,59 +91,100 @@ static bool                                                      s_sensor_bound;
 static bool                                                      s_sensor_streaming;
 
 /**
- * @brief Forward one SCCB read while retaining bounded failure diagnostics.
- * @details Delegates transport ownership to the EK-RA8D2 board adapter.
- * @param[in] ctx Opaque board context forwarded unchanged.
- * @param[in] address Sensor SCCB address.
- * @param[in] reg Sensor register address.
- * @param[out] out_value Destination byte.
- * @return Repository error code from the board adapter.
- * @pre Camera SCCB pins and RIIC are initialized by the board adapter.
- * @pre @p out_value points to writable storage.
+ * @brief Recompose the register pointer the binder staged, for diagnostics.
+ * @details The OV5640 binder always sends the 16-bit pointer big-endian as
+ *          the first two bytes of a write or of a transfer's write half, so
+ *          the register is recoverable at the seam without the driver
+ *          exposing it. A frame shorter than the pointer is reported as
+ *          register zero rather than read out of bounds.
+ * @param[in] data Frame bytes as handed to the seam (may be nullptr).
+ * @param[in] len Frame length in bytes.
+ * @return Decoded register address, or zero when the frame is too short.
+ * @pre @p data holds @p len readable bytes when @p len is non-zero.
+ * @post No static diagnostic state is modified.
+ * @note Not thread-safe with a concurrent SCCB transfer.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static uint16_t internal_decode_sccb_reg(const uint8_t* data, uint32_t len)
+{
+  if ((data == nullptr) || (len < (uint32_t)k_sccb_frame_reg_bytes)) {
+    return 0U;
+  }
+  const uint16_t high = (uint16_t)data[k_sccb_frame_reg_hi];
+  const uint16_t low  = (uint16_t)data[k_sccb_frame_reg_lo];
+  return (uint16_t)((uint16_t)(high << (uint16_t)k_sccb_frame_high_shift) | low);
+}
+
+/**
+ * @brief Forward one seam write while retaining bounded failure diagnostics.
+ * @details Wraps the board-published seam rather than a register-level
+ *          adapter, so the sensor driver keeps its own transport and this
+ *          app keeps the failure trail its bring-up report depends on.
+ * @param[in] ctx Wrapped board seam.
+ * @param[in] addr 7-bit sensor address.
+ * @param[in] data Frame bytes staged by the binder.
+ * @param[in] len Frame length in bytes.
+ * @param[in] send_stop True to release the bus after the payload.
+ * @return Repository error code from the board seam.
+ * @pre @p ctx is the board seam captured at bind time.
+ * @pre Camera pins and RIIC are initialized by the board adapter.
  * @post Operation, register, and result are retained in static diagnostics.
- * @post On success @p out_value contains the sensor register byte.
  * @note Not thread-safe with concurrent sensor access.
  * @since 0.1.0
  */
-static ra8_err_t sensor_sccb_read(void* ctx, uint8_t address, uint16_t reg, uint8_t* out_value)
+RA8_INTERNAL static ra8_err_t
+internal_sccb_write(void* ctx, uint8_t addr, const uint8_t* data, uint32_t len, bool send_stop)
 {
-  const ra8_err_t err = ra8_board_camera_sccb_read_reg(ctx, address, reg, out_value);
-  s_last_sccb_op      = k_sccb_op_read;
-  s_last_sccb_reg     = reg;
-  s_last_sccb_err     = err;
+  const ra8_i2c_bus_ops_t* seam = (const ra8_i2c_bus_ops_t*)ctx;
+  const ra8_err_t          err  = seam->write(seam->ctx, addr, data, len, send_stop);
+  s_last_sccb_op                = k_sccb_op_write;
+  s_last_sccb_reg               = internal_decode_sccb_reg(data, len);
+  s_last_sccb_err               = err;
   return err;
 }
 
 /**
- * @brief Forward one SCCB write while retaining bounded failure diagnostics.
- * @details Delegates transport ownership to the EK-RA8D2 board adapter.
- * @param[in] ctx Opaque board context forwarded unchanged.
- * @param[in] address Sensor SCCB address.
- * @param[in] reg Sensor register address.
- * @param[in] value Register byte to write.
- * @return Repository error code from the board adapter.
- * @pre Camera SCCB pins and RIIC are initialized by the board adapter.
- * @pre No other context accesses the sensor concurrently.
+ * @brief Forward one seam transfer while retaining bounded failure diagnostics.
+ * @details The binder reads a register as one write-RESTART-read, so the
+ *          register pointer is the transfer's write half.
+ * @param[in] ctx Wrapped board seam.
+ * @param[in] addr 7-bit sensor address.
+ * @param[in] wr Register pointer bytes staged by the binder.
+ * @param[in] wr_len Register pointer length in bytes.
+ * @param[out] rd Destination buffer for the register byte.
+ * @param[in] rd_len Destination length in bytes.
+ * @return Repository error code from the board seam.
+ * @pre @p ctx is the board seam captured at bind time.
+ * @pre Camera pins and RIIC are initialized by the board adapter.
  * @post Operation, register, and result are retained in static diagnostics.
- * @post On success the sensor accepted @p value for @p reg.
  * @note Not thread-safe with concurrent sensor access.
  * @since 0.1.0
  */
-static ra8_err_t sensor_sccb_write(void* ctx, uint8_t address, uint16_t reg, uint8_t value)
+RA8_INTERNAL static ra8_err_t internal_sccb_transfer(void*          ctx,
+                                                     uint8_t        addr,
+                                                     const uint8_t* wr,
+                                                     uint32_t       wr_len,
+                                                     uint8_t*       rd,
+                                                     uint32_t       rd_len)
 {
-  const ra8_err_t err = ra8_board_camera_sccb_write_reg(ctx, address, reg, value);
-  s_last_sccb_op      = k_sccb_op_write;
-  s_last_sccb_reg     = reg;
-  s_last_sccb_err     = err;
+  const ra8_i2c_bus_ops_t* seam = (const ra8_i2c_bus_ops_t*)ctx;
+  const ra8_err_t          err  = seam->transfer(seam->ctx, addr, wr, wr_len, rd, rd_len);
+  s_last_sccb_op                = k_sccb_op_read;
+  s_last_sccb_reg               = internal_decode_sccb_reg(wr, wr_len);
+  s_last_sccb_err               = err;
   return err;
 }
 
 /**
- * @brief Bind the hardware-JPEG sensor instance to board SCCB callbacks.
- * @details Constructs a transport over the EK-RA8D2 camera bus and delay service.
+ * @brief Bind the hardware-JPEG sensor to the board camera I2C seam.
+ * @details Takes the seam the board publishes, wraps it in this app's
+ *          diagnostic shim, and hands that to the OV5640 binder. The
+ *          register-level adapter this app used to carry is gone; only the
+ *          failure trail is still app-owned.
  * @return Repository error code.
  * @retval k_ra8_ok The sensor instance was initialized.
  * @retval k_ra8_err_null_ptr A required transport dependency was absent.
+ * @retval k_ra8_err_invalid_arg The board camera channel is out of range.
  * @pre Board camera support is linked and its I2C channel can be initialized.
  * @pre No capture concurrently uses `s_sensor`.
  * @post On success, `s_sensor` is initialized at the primary SCCB address.
@@ -142,13 +194,19 @@ static ra8_err_t sensor_sccb_write(void* ctx, uint8_t address, uint16_t reg, uin
  */
 static ra8_err_t sensor_bind(void)
 {
-  const ra8_ov5640_bus_t bus = {
-    .read_reg  = sensor_sccb_read,
-    .write_reg = sensor_sccb_write,
-    .delay_ms  = ra8_board_camera_delay_ms,
-    .ctx       = nullptr,
+  ra8_err_t err = ra8_board_camera_i2c_ops(&s_board_i2c);
+  if (err != k_ra8_ok) {
+    return err;
+  }
+
+  const ra8_i2c_bus_ops_t traced = {
+    .write    = internal_sccb_write,
+    .read     = nullptr,
+    .transfer = internal_sccb_transfer,
+    .ctx      = &s_board_i2c,
   };
-  return ra8_ov5640_init(&s_sensor, &bus);
+  err = ra8_ov5640_bind_i2c(&s_sensor, &s_sensor_i2c, &traced, ra8_board_camera_delay_ms);
+  return err;
 }
 
 /**

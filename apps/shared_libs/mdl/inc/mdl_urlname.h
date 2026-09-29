@@ -50,29 +50,6 @@
 void mdl_urlname_last_segment(const char* url, char* out, size_t cap);
 
 /**
- * @brief Parse a chapter URL's integral chapter number.
- *
- * @details
- * Recognises chapter slugs such as `chapter-137`, `chapter-108-5`, and `ch-5`.
- * Decimal slugs return their integral part here; use
- * ::mdl_urlname_chapter_value when ordering decimal chapters.
- *
- * @param[in] url URL to parse (never NULL).
- *
- * @return The parsed chapter number, or 0 when the URL holds no digits.
- * @retval 0 No decimal digit appears in @p url.
- *
- * @pre @p url is non-NULL and NUL-terminated.
- * @pre The caller treats 0 as "unnumbered", not "chapter zero" specifically.
- * @post @p url is not modified.
- * @post The result is the integral truncation of ::mdl_urlname_chapter_value.
- *
- * @note Thread-safe: depends only on its argument.
- * @since 0.1.0
- */
-long mdl_urlname_chapter_number(const char* url);
-
-/**
  * @brief Parse an explicitly-marked integral or decimal chapter value.
  *
  * @details Recognises `chapter-N`, `/ch-N`, and Pepper&Carrot-style `/epN`
@@ -130,8 +107,8 @@ bool mdl_urlname_chapter_text_parse(const char* text, double* out);
  * decimals while ignoring unrelated digits in the host or earlier path.
  *
  * @param[in] url URL to parse; may be NULL.
- * @return Parsed chapter value, or 0.0 for an unnumbered URL. New callers that
- *         must distinguish an absent number from chapter zero use
+ * @return Parsed chapter value, or 0.0 for an unnumbered URL. A caller that
+ *         must distinguish an absent number from chapter zero uses
  *         ::mdl_urlname_chapter_parse.
  * @retval 0.0 No explicit bounded chapter marker was found.
  * @retval other The non-negative integral or decimal chapter value.
@@ -182,6 +159,16 @@ void mdl_urlname_ext(const char* url, char* out, size_t cap);
  *   - WebP: `RIFF....WEBP` -> `.webp` / `image/webp`
  *   - GIF: `GIF87a` / `GIF89a` -> `.gif` / `image/gif`
  *   - BMP: `BM` -> `.bmp` / `image/bmp`
+ *
+ * This is the wider of the tree's two image-identification tables and the only
+ * one that maps a signature to an extension and a MIME type. The narrower one
+ * is the producer-side probe `jof_probe_dims()` in `apps/shared_libs/jof`,
+ * which accepts exactly the three containers the JOF producer can dispatch on
+ * (JPEG, PNG, WebP) and answers with geometry rather than a name. So a byte
+ * stream this helper names `.gif` or `.bmp` is one no decoder in the tree can
+ * read: recognising a container here is not a claim that the reader pipeline
+ * can render it. The two tables are independent and can drift apart with no
+ * diagnostic; converging them behind one primitive is tracked by #748.
  *
  * @param[in]  buf          Data buffer holding raw magic bytes (may be NULL if buf_len == 0).
  * @param[in]  buf_len      Length of @p buf in bytes.

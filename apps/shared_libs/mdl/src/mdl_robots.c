@@ -11,9 +11,7 @@
  */
 #include "mdl_robots.h"
 
-#include <math.h>
 #include <stdio.h>
-#include <stdlib.h>
 #include <string.h>
 
 #include "ra8_attributes.h"
@@ -330,6 +328,65 @@ internal_add_rule(mdl_robots_t* out, mdl_robots_rule_kind_t kind, const char* va
 }
 
 /**
+ * @brief Parse a bounded non-negative decimal seconds value to milliseconds.
+ * @details Accepts `DIGITS` or `DIGITS.DIGITS` only, folding the fraction at
+ * millisecond resolution and truncating any further digits. Overlong integer
+ * parts saturate at the ceiling rather than overflowing. The grammar is fixed
+ * ASCII, so the result does not depend on the active locale; `mdl_state`'s
+ * schema decoder avoids the C library for the same reason (see issue #747).
+ * @param[in] value NUL-terminated crawl-delay text.
+ * @param[out] out_ms Receives the delay in milliseconds, clamped to the cap.
+ * @param[out] out_positive Receives whether the parsed value exceeds zero.
+ * @return Whether the whole string matched the accepted grammar.
+ * @retval true @p out_ms and @p out_positive were written.
+ * @retval false Malformed text; neither output was written.
+ * @pre @p value, @p out_ms, and @p out_positive are non-NULL.
+ * @pre @p value is NUL-terminated.
+ * @post Outputs are untouched unless the parse succeeds.
+ * @post @p out_ms never exceeds `k_crawl_cap_ms`.
+ * @note Thread-safe: reads @p value and writes only caller storage.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static bool
+internal_parse_crawl_ms(const char* value, uint32_t* out_ms, bool* out_positive)
+{
+  size_t   i        = 0U;
+  uint32_t seconds  = 0U;
+  uint32_t frac_ms  = 0U;
+  bool     positive = false;
+  bool     digits   = false;
+  bool     over_cap = false;
+
+  while ((value[i] >= '0') && (value[i] <= '9')) {
+    digits = true;
+    if (seconds > (k_crawl_cap_ms / k_ms_per_s)) {
+      over_cap = true; /* Already past the ceiling; stop accumulating. */
+    } else {
+      seconds = (seconds * 10U) + (uint32_t)(value[i] - '0');
+    }
+    positive = positive || (value[i] != '0');
+    i++;
+  }
+  if (value[i] == '.') {
+    i++;
+    for (uint32_t place = k_ms_per_s / 10U; (value[i] >= '0') && (value[i] <= '9'); i++) {
+      digits   = true;
+      positive = positive || (value[i] != '0');
+      frac_ms += (uint32_t)(value[i] - '0') * place;
+      place /= 10U; /* Digits past milliseconds contribute zero and are dropped. */
+    }
+  }
+  if (!digits || (value[i] != '\0')) {
+    return false;
+  }
+
+  const bool saturate = over_cap || (seconds >= (k_crawl_cap_ms / k_ms_per_s));
+  *out_ms             = saturate ? (uint32_t)k_crawl_cap_ms : ((seconds * k_ms_per_s) + frac_ms);
+  *out_positive       = positive;
+  return true;
+}
+
+/**
  * @brief Record the strictest Crawl-delay seen (clamped to the ceiling).
  * @details Parses a finite non-negative decimal and retains the largest bounded delay.
  * @param[in,out] out Parsed robots result.
@@ -344,14 +401,12 @@ internal_add_rule(mdl_robots_t* out, mdl_robots_rule_kind_t kind, const char* va
  */
 RA8_INTERNAL static void internal_set_crawl(mdl_robots_t* out, const char* value)
 {
-  char*        end  = nullptr;
-  const double secs = strtod(value, &end);
-  if ((end == value) || (*end != '\0') || !isfinite(secs) || (secs <= 0.0)) {
+  uint32_t ms       = 0U;
+  bool     positive = false;
+
+  if (!internal_parse_crawl_ms(value, &ms, &positive) || !positive) {
     return;
   }
-  uint32_t ms = (secs >= ((double)k_crawl_cap_ms / (double)k_ms_per_s))
-                  ? (uint32_t)k_crawl_cap_ms
-                  : (uint32_t)(secs * (double)k_ms_per_s);
   if (!out->have_crawl_delay || (ms > out->crawl_delay_ms)) {
     out->crawl_delay_ms = ms;
   }

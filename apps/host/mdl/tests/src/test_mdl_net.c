@@ -56,7 +56,7 @@ typedef enum : uint16_t {
  */
 typedef struct {
   ra8_err_t   rc;            /**< Result the fetch call returns.                      */
-  long        status;        /**< HTTP status reported through `resp`.                */
+  int32_t     status;        /**< HTTP status reported through `resp`.                */
   const char* body;          /**< Body copied into the buffer on ok, or NULL.         */
   const char* retry_after;   /**< Raw Retry-After surfaced through `resp`, or NULL.   */
   const char* etag;          /**< Raw ETag surfaced through `resp`, or NULL.          */
@@ -196,7 +196,7 @@ RA8_INTERNAL static mdl_net_body_sink_t internal_net_test_body_sink(net_test_bod
  * @since 0.1.0
  */
 RA8_INTERNAL static void
-internal_fake_record(fake_net_t* f, const char* url, const mdl_net_req_t* req)
+internal_fake_record(fake_net_t* f, const char* url, const ra8_mdl_http_policy_t* req)
 {
   if (f->call < (size_t)k_fake_max_calls) {
     (void)__builtin_snprintf(f->urls[f->call], sizeof(f->urls[f->call]), "%s", url);
@@ -225,7 +225,8 @@ RA8_INTERNAL static const fake_reply_t* internal_fake_next(const fake_net_t* f)
  * @note Host-only and synchronous; assertion failure terminates the test process.
  * @since 0.1.0
  */
-RA8_INTERNAL static void internal_fake_fill_resp(const fake_reply_t* r, mdl_net_resp_t* resp)
+RA8_INTERNAL static void internal_fake_fill_resp(const fake_reply_t*      r,
+                                                 ra8_mdl_http_response_t* resp)
 {
   if (resp != nullptr) {
     resp->status = r->status;
@@ -265,13 +266,13 @@ RA8_INTERNAL static void internal_fake_fill_resp(const fake_reply_t* r, mdl_net_
  * @note Host-only and synchronous; assertion failure terminates the test process.
  * @since 0.1.0
  */
-RA8_INTERNAL static ra8_err_t internal_fake_get_buf(void*                ctx,
-                                                    const char*          url,
-                                                    const mdl_net_req_t* req,
-                                                    char*                buf,
-                                                    size_t               cap,
-                                                    size_t*              out_len,
-                                                    mdl_net_resp_t*      resp)
+RA8_INTERNAL static ra8_err_t internal_fake_get_buf(void*                        ctx,
+                                                    const char*                  url,
+                                                    const ra8_mdl_http_policy_t* req,
+                                                    char*                        buf,
+                                                    size_t                       cap,
+                                                    size_t*                      out_len,
+                                                    ra8_mdl_http_response_t*     resp)
 {
   fake_net_t*         f = (fake_net_t*)ctx;
   const fake_reply_t* r = internal_fake_next(f);
@@ -293,12 +294,12 @@ RA8_INTERNAL static ra8_err_t internal_fake_get_buf(void*                ctx,
 }
 
 /** @copydoc mdl_net_vtable_t::get_body */
-RA8_INTERNAL static ra8_err_t internal_fake_get_body(void*                ctx,
-                                                     const char*          url,
-                                                     const mdl_net_req_t* req,
-                                                     mdl_net_body_sink_t* sink,
-                                                     size_t*              out_len,
-                                                     mdl_net_resp_t*      resp)
+RA8_INTERNAL static ra8_err_t internal_fake_get_body(void*                        ctx,
+                                                     const char*                  url,
+                                                     const ra8_mdl_http_policy_t* req,
+                                                     mdl_net_body_sink_t*         sink,
+                                                     size_t*                      out_len,
+                                                     ra8_mdl_http_response_t*     resp)
 {
   fake_net_t*         f = (fake_net_t*)ctx;
   const fake_reply_t* r = internal_fake_next(f);
@@ -393,7 +394,7 @@ RA8_INTERNAL static void internal_test_net_dispatch_guard(void)
   fake_net_t          f    = {.replies = &ok, .n = 1U};
   mdl_net_iface_t     good = internal_fake_iface(&f);
   mdl_net_iface_t     badv = {.vtable = nullptr, .ctx = nullptr};
-  const mdl_net_req_t req  = {.user_agent = "ua", .referer = nullptr, .timeout_ms = 1000U};
+  const ra8_mdl_http_policy_t req  = {.user_agent = "ua", .referer = nullptr, .timeout_ms = 1000U};
   char                buf[k_net_buf];
   size_t              got = 0U;
   /* V1 control: all conditions false -> the fetch is dispatched to the fake. */
@@ -447,7 +448,7 @@ RA8_INTERNAL static void internal_test_net_get_body_guard(void)
   fake_net_t          f    = {.replies = &ok, .n = 1U};
   mdl_net_iface_t     good = internal_fake_iface(&f);
   mdl_net_iface_t     badv = {.vtable = nullptr, .ctx = nullptr};
-  const mdl_net_req_t req  = {.user_agent = "ua", .referer = nullptr, .timeout_ms = 1000U};
+  const ra8_mdl_http_policy_t req  = {.user_agent = "ua", .referer = nullptr, .timeout_ms = 1000U};
   size_t              got  = 0U;
   net_test_body_t     body = {};
   mdl_net_body_sink_t sink = internal_net_test_body_sink(&body);
@@ -500,11 +501,13 @@ RA8_INTERNAL static void internal_test_net_fake_scripts_and_records(void)
   mdl_net_iface_t     net = internal_fake_iface(&f);
   char                buf[k_net_buf];
   size_t              got  = 0U;
-  mdl_net_resp_t      resp = {};
-  const mdl_net_req_t r0   = {.user_agent = "ua",
-                              .referer    = "http://site/series",
-                              .timeout_ms = 1000U};
-  const mdl_net_req_t r1 = {.user_agent = "ua", .referer = "http://site/ch1", .timeout_ms = 1000U};
+  ra8_mdl_http_response_t     resp = {};
+  const ra8_mdl_http_policy_t r0   = {.user_agent = "ua",
+                                      .referer    = "http://site/series",
+                                      .timeout_ms = 1000U};
+  const ra8_mdl_http_policy_t r1   = {.user_agent = "ua",
+                                      .referer    = "http://site/ch1",
+                                      .timeout_ms = 1000U};
   net_test_body_t     body = {};
   mdl_net_body_sink_t sink = internal_net_test_body_sink(&body);
 
@@ -865,12 +868,12 @@ RA8_INTERNAL static void internal_test_net_conditional_and_response_headers(void
   mdl_net_iface_t     net = internal_fake_iface(&f);
   char                buf[k_net_buf];
   size_t              got  = 0U;
-  mdl_net_resp_t      resp = {};
-  const mdl_net_req_t r0   = {.user_agent        = "ua",
-                              .referer           = "http://site/series",
-                              .if_none_match     = "\"etag-123\"",
-                              .if_modified_since = "Wed, 21 Oct 2015 07:28:00 GMT",
-                              .timeout_ms        = 1000U};
+  ra8_mdl_http_response_t     resp = {};
+  const ra8_mdl_http_policy_t r0   = {.user_agent        = "ua",
+                                      .referer           = "http://site/series",
+                                      .if_none_match     = "\"etag-123\"",
+                                      .if_modified_since = "Wed, 21 Oct 2015 07:28:00 GMT",
+                                      .timeout_ms        = 1000U};
   net_test_body_t     body = {};
   mdl_net_body_sink_t sink = internal_net_test_body_sink(&body);
 

@@ -3,6 +3,9 @@
  * @brief SPI_B register layout for the Renesas RA8D2
  * @ingroup grp_hal_comms
  *
+ * @par Tag
+ * [Ring 3 / HAL] {World: NS}
+ *
  * @details
  * The RA8D2 has two channels of the SPI_B (Type-B SPI) peripheral.
  * HUM Ch 43 "Serial Peripheral Interface (SPI)" (p 2877-2985) opens

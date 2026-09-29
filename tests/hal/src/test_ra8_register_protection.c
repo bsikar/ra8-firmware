@@ -3,7 +3,7 @@
  * @brief Unit tests for the scoped PRCR unlock helper macro
  *
  * @details
- * `libs/ra8_core/inc/ra8_register_protection.h` exposes the
+ * `libs/ra8_hal/inc/ra8_register_protection.h` exposes the
  * `RA8_PROTECTED_WRITE(unlock_val)` block macro. It expands to a
  * `for`-loop that runs exactly once, with the unlock written into
  * SYSTEM.PRCR in the init clause and the re-lock written in the

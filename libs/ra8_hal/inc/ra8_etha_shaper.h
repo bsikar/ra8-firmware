@@ -439,6 +439,37 @@ ra8_etha_read_tas_entry(ra8_etha_port_t port, uint8_t address, ra8_etha_tas_entr
                                                       uint16_t        buffer_size);
 
 /**
+ * @brief Configure the per-port descriptor-ring sizing from a config struct.
+ *
+ * @param[in] channel Port identifier (0..1, mapped to ::ra8_etha_port_t).
+ * @param[in] cfg     Ring sizing; see ::ra8_etha_ring_cfg_t for field ranges.
+ *
+ * @return ::ra8_err_t Error code.
+ * @retval k_ra8_ok               Ring config captured.
+ * @retval k_ra8_err_null_ptr     cfg is nullptr.
+ * @retval k_ra8_err_invalid_arg  channel or any cfg field out of range.
+ *
+ * @pre Port previously brought up via ::ra8_etha_init.
+ * @pre cfg points at a readable ::ra8_etha_ring_cfg_t.
+ * @post Identical to ::ra8_etha_descriptor_ring_init called with the same
+ *       three values: per-port stats reflect ring_tx / ring_rx / ring_buf
+ *       and per-class TX queue depths are clamped to cfg->num_tx.
+ * @post No state is modified when cfg is rejected.
+ *
+ * @note Thin forwarder; the bound checks and register writes live in
+ *       ::ra8_etha_descriptor_ring_init, so the two spellings can never
+ *       drift apart. Mirrors ::ra8_etha_init's const-pointer config
+ *       convention (::ra8_etha_config_t) so a future ring field is an
+ *       additive change rather than a signature break.
+ * @note Per-port; safe to call concurrently for distinct ports.
+ * @see ra8_etha_descriptor_ring_init
+ * @see ra8_etha_ring_cfg_t
+ * @since 0.1.0
+ */
+[[nodiscard]] ra8_err_t ra8_etha_descriptor_ring_init_cfg(ra8_etha_port_t            channel,
+                                                          const ra8_etha_ring_cfg_t* cfg);
+
+/**
  * @brief Snapshot the per-port software-maintained traffic counters.
  *
  * @param[in]  channel    Port identifier.

@@ -7,7 +7,7 @@
  * "corpus fixtures run via `just quality::local::test`; cache produces identical pages to
  * live layout; config change invalidates correctly."
  *
- * Unlike `tests/src/test_reflow_cache.c` (which round-trips a *synthetic*
+ * Unlike `apps/shared_libs/reflow/tests/src/test_reflow_cache.c` (which round-trips a *synthetic*
  * glyph array to unit-test the codec), this test drives the **real**
  * pipeline: it loads the bundled Literata Latin-1 face, runs
  * `reflow_layout_chapter()` over a corpus of representative XHTML
@@ -205,7 +205,7 @@ RA8_INTERNAL static void internal_assert_cache_identical(const char* xhtml)
  * @par MC/DC:
  * (no compound decisions in this test -- it exercises the live layout ->
  * cache -> restore acceptance path; cache guards have `test_mcdc_*`
- * vectors in tests/src/test_reflow_cache.c.)
+ * vectors in apps/shared_libs/reflow/tests/src/test_reflow_cache.c.)
 
  * @details Performs one bounded, deterministic operation for this host test.
  * @pre Pointer arguments, when present, address their documented test storage.
@@ -244,7 +244,7 @@ RA8_INTERNAL static void internal_test_corpus_live_cache_identity(void)
  * @par MC/DC:
  * (no compound decisions in this test -- exercises the invalidation
  * acceptance path; cache guards have `test_mcdc_*` vectors in
- * tests/src/test_reflow_cache.c.)
+ * apps/shared_libs/reflow/tests/src/test_reflow_cache.c.)
 
  * @details Performs one bounded, deterministic operation for this host test.
  * @pre Pointer arguments, when present, address their documented test storage.
@@ -291,7 +291,7 @@ RA8_INTERNAL static void internal_test_corpus_font_size_invalidates(void)
  * @par MC/DC:
  * (no compound decisions in this test -- exercises robustness over
  * malformed inputs; cache guards have `test_mcdc_*` vectors in
- * tests/src/test_reflow_cache.c.)
+ * apps/shared_libs/reflow/tests/src/test_reflow_cache.c.)
 
  * @details Performs one bounded, deterministic operation for this host test.
  * @pre Pointer arguments, when present, address their documented test storage.
@@ -495,7 +495,8 @@ RA8_INTERNAL static int internal_build_gutenberg_epub(void)
  * @par MC/DC:
  * (no compound decisions in this test -- it exercises the container ->
  * layout -> cache acceptance path; epub guards have `test_mcdc_*` vectors
- * in apps/shared_libs/epub/tests/src/test_epub_*.c and cache guards in tests/src/test_reflow_cache.c.)
+ * in apps/shared_libs/epub/tests/src/test_epub_*.c and cache guards in
+ * apps/shared_libs/reflow/tests/src/test_reflow_cache.c.)
 
  * @details Performs one bounded, deterministic operation for this host test.
  * @pre Pointer arguments, when present, address their documented test storage.

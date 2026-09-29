@@ -37,8 +37,8 @@ typedef enum : uint16_t {
 typedef struct {
   char     url[k_mdl_url_max];                /**< Exact canonical request URL.    */
   char     relative_path[k_mdl_relpath_max];  /**< Body leaf beneath the host dir. */
-  char     etag[k_mdl_etag_max];              /**< Last response ETag, or empty.   */
-  char     last_modified[k_mdl_last_mod_max]; /**< Last-Modified, or empty.        */
+  char     etag[k_ra8_mdl_etag_max];          /**< Last response ETag, or empty.   */
+  char     last_modified[k_ra8_mdl_http_date_max]; /**< Last-Modified, or empty.        */
   uint64_t url_hash;                          /**< FNV identity accelerator.       */
   uint64_t content_hash;                      /**< Exact persisted body identity.  */
   int64_t  fetched_at;                        /**< Completion epoch seconds.       */
@@ -75,13 +75,13 @@ typedef struct {
  * @note The callback retains no argument pointer.
  * @since 0.1.0
  */
-typedef ra8_err_t (*mdl_cache_fetch_fn)(void*                context,
-                                        const char*          url,
-                                        const mdl_net_req_t* request,
-                                        char*                buffer,
-                                        size_t               capacity,
-                                        size_t*              out_length,
-                                        mdl_net_resp_t*      response);
+typedef ra8_err_t (*mdl_cache_fetch_fn)(void*                        context,
+                                        const char*                  url,
+                                        const ra8_mdl_http_policy_t* request,
+                                        char*                        buffer,
+                                        size_t                       capacity,
+                                        size_t*                      out_length,
+                                        ra8_mdl_http_response_t*     response);
 
 /**
  * @struct mdl_cache_t
@@ -111,6 +111,40 @@ typedef struct {
 } mdl_cache_result_t;
 
 /**
+ * @struct mdl_cache_get_req_t
+ * @brief One cache lookup request, as a config struct rather than an argument list.
+ * @details Carries the request identity, the injected fetch dependency, and the
+ *          caller-owned body destination. Every field is borrowed for the
+ *          duration of one ::mdl_cache_get call and retained afterwards by
+ *          neither the cache nor the callback.
+ * @invariant @ref url and @ref request describe the same single document.
+ * @since 0.1.0
+ */
+typedef struct {
+  const char*          url;           /**< Exact absolute request URL.         */
+  const ra8_mdl_http_policy_t* request;       /**< Request identity, referer, timeout. */
+  mdl_cache_fetch_fn   fetch;         /**< Injected network/governor callback. */
+  void*                fetch_context; /**< Context supplied to @ref fetch.     */
+  char*                buffer;        /**< Caller-owned body destination.      */
+  size_t               capacity;      /**< Writable bytes at @ref buffer.      */
+} mdl_cache_get_req_t;
+
+/**
+ * @struct mdl_cache_get_out_t
+ * @brief Everything one cache lookup reports back.
+ * @details Groups the three outputs the lookup used to write through three
+ *          separate pointers, so a caller declares one object and a failure
+ *          path cannot leave two of the three uninitialized.
+ * @invariant @ref length is zero unless the call returned ::k_ra8_ok.
+ * @since 0.1.0
+ */
+typedef struct {
+  ra8_mdl_http_response_t response; /**< Finished network or retained metadata. */
+  mdl_cache_result_t result;   /**< Cache-specific outcome.                */
+  size_t             length;   /**< Exact returned body bytes.             */
+} mdl_cache_get_out_t;
+
+/**
  * @brief Fetch one document through the per-host persistent cache.
  * @details Verifies a retained body before reuse, sends saved validators when
  *          available, treats HTTP 304 as a body-free observation, and retries
@@ -119,34 +153,21 @@ typedef struct {
  *          transactionally. A malformed/truncated index is removed and
  *          rebuilt rather than trusted or treated as library state.
  * @param[in,out] cache Initialized cache binding.
- * @param[in] url Exact absolute URL.
- * @param[in] base_request Request identity, referer, and timeout.
- * @param[in] fetch Injected network/governor callback.
- * @param[in,out] fetch_context Context supplied to @p fetch.
- * @param[out] buffer Caller-owned body destination.
- * @param[in] capacity Writable byte capacity.
- * @param[out] out_length Exact returned body bytes.
- * @param[out] response Finished network or retained response metadata.
- * @param[out] result Cache-specific outcome.
+ * @param[in] req Complete lookup request.
+ * @param[out] out Body extent, response metadata, and cache outcome.
  * @return Canonical cache, storage, network, or validation status.
- * @retval k_ra8_ok A nonempty verified body is in @p buffer.
+ * @retval k_ra8_ok A nonempty verified body is in `req->buffer`.
  * @retval k_ra8_err_invalid_arg A binding, path, callback, or URL is invalid.
  * @retval k_ra8_err_invalid_size The response or persistent record is oversized.
  * @retval other The injected storage or fetch operation failed.
- * @pre All required pointers are non-NULL and @p cache is exclusively owned.
- * @pre @p buffer spans @p capacity nonzero writable bytes.
+ * @pre @p cache and @p req are fully populated and @p cache is exclusively owned.
+ * @pre `req->buffer` spans `req->capacity` nonzero writable bytes.
+ * @post Every @p out field is initialized before the first failure can return.
  * @post Success returns complete bytes and a truthful cache result.
  * @post Failure never publishes a partial body or index generation.
  * @note Thread-safe across independent bindings and storage workspaces.
  * @since 0.1.0
  */
-[[nodiscard]] ra8_err_t mdl_cache_get_buf(mdl_cache_t*         cache,
-                                          const char*          url,
-                                          const mdl_net_req_t* base_request,
-                                          mdl_cache_fetch_fn   fetch,
-                                          void*                fetch_context,
-                                          char*                buffer,
-                                          size_t               capacity,
-                                          size_t*              out_length,
-                                          mdl_net_resp_t*      response,
-                                          mdl_cache_result_t*  result);
+[[nodiscard]] ra8_err_t mdl_cache_get(mdl_cache_t*               cache,
+                                      const mdl_cache_get_req_t* req,
+                                      mdl_cache_get_out_t*       out);

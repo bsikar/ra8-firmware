@@ -104,7 +104,14 @@ set_source_files_properties(
 # SOUP gets. Compiling them quietly here hid host-only findings the ARM build
 # never sees, which is what a 64-bit host build is for (#309).
 set(FW ${MDL_REPO_ROOT}/libs)
-set(MDL_PUBLIC_INC ${MDL_CORE_INC} ${MDL_REPO_ROOT}/apps/shared_libs/mdl/inc)
+# `mdl_net.h` states its HTTP request policy and response record in the
+# transport-neutral contract under `libs/ra8_mdl/inc`, so every target that
+# compiles a downloader translation unit needs that include dir (#746).
+set(MDL_PUBLIC_INC ${MDL_CORE_INC} ${MDL_REPO_ROOT}/apps/shared_libs/mdl/inc
+                   ${MDL_REPO_ROOT}/libs/ra8_mdl/inc
+                   ${MDL_REPO_ROOT}/libs/ra8_net_policy/inc
+                   ${MDL_REPO_ROOT}/libs/ra8_num/inc
+                   ${MDL_REPO_ROOT}/libs/ra8_xml/inc)
 set(MDL_FS_SRC
     ${FW}/if/src/fw_if_fs.c
     ${FW}/if/src/fw_if_fs_dir.c
@@ -131,6 +138,10 @@ set(MDL_JOF_SRC
 set(MDL_JOF_INC
     ${MDL_REPO_ROOT}/apps/shared_libs/jof/inc
     ${MDL_REPO_ROOT}/apps/shared_libs/jof/src
+    # jof_produce.c sniffs the source container through ra8_imgdec_sniff()
+    # (#768); the TU itself ships in mdl_rabook_runtime, which every target
+    # compiling MDL_JOF_SRC links.
+    ${MDL_REPO_ROOT}/libs/ra8_imgdec/inc
     ${FW}/ra8_jpeg/inc
     ${FW}/ra8_jpeg/src
     ${FW}/ra8_io/inc
@@ -203,6 +214,8 @@ set(MDL_RABOOK_RUNTIME_SRC
     ${MDL_REPO_ROOT}/apps/shared_libs/rabook_compile/src/ra8_rabook_xml_shim.c
     ${MDL_REPO_ROOT}/apps/shared_libs/compress/src/ra8_compress.c
     ${MDL_REPO_ROOT}/apps/shared_libs/reflow/src/ra8_img_arena.c
+    ${MDL_REPO_ROOT}/libs/ra8_imgdec/src/ra8_imgdec_scratch.c
+    ${MDL_REPO_ROOT}/libs/ra8_imgdec/src/ra8_imgdec_sniff.c
     ${MDL_REPO_ROOT}/apps/shared_libs/reflow/src/ra8_stbtt_alloc.c
     ${MDL_REPO_ROOT}/apps/shared_libs/reflow/src/ra8_stbtt_guard.c
     ${MDL_REPO_ROOT}/apps/shared_libs/third_party/stb/stb_image_impl.c
@@ -229,6 +242,7 @@ target_include_directories(
           ${MDL_REPO_ROOT}/apps/shared_libs/rabook_compile/src
           ${MDL_REPO_ROOT}/apps/shared_libs/reflow/inc
           ${MDL_REPO_ROOT}/apps/shared_libs/reflow/src
+          ${FW}/ra8_imgdec/inc
           ${FW}/ra8_fs/inc
           ${MDL_FS_INC}
 )
@@ -297,8 +311,10 @@ set(MDL_CORE_SRC
     ${MDL_APP_SRC}
     ${MDL_CORE_SRC_DIR}/mdl_stream.c
     ${MDL_CORE_SRC_DIR}/mdl_net.c
-    ${MDL_CORE_SRC_DIR}/mdl_url_guard.c
+    ${MDL_REPO_ROOT}/libs/ra8_net_policy/src/ra8_net_urlguard.c
+    ${MDL_REPO_ROOT}/libs/ra8_xml/src/ra8_xml_writer.c
     ${MDL_CORE_SRC_DIR}/mdl_sanitize.c
+    ${MDL_REPO_ROOT}/libs/if/src/ra8_path.c
     ${MDL_CORE_SRC_DIR}/mdl_pathfs.c
     ${MDL_CORE_SRC_DIR}/mdl_robots.c
     ${MDL_CORE_SRC_DIR}/mdl_session.c
@@ -313,7 +329,7 @@ set(MDL_CORE_SRC
     ${MDL_CORE_SRC_DIR}/mdl_urlname.c
     ${MDL_CORE_SRC_DIR}/mdl_state.c
     ${MDL_CORE_SRC_DIR}/mdl_state_codec.c
-    ${MDL_CORE_SRC_DIR}/mdl_state_decimal.c
+    ${MDL_REPO_ROOT}/libs/ra8_num/src/ra8_num_decimal.c
     ${MDL_CORE_SRC_DIR}/mdl_state_store.c
     ${MDL_CORE_SRC_DIR}/mdl_fetch.c
     ${MDL_CORE_SRC_DIR}/mdl_fetch_body.c
@@ -334,6 +350,7 @@ target_include_directories(
          # takes the host-safe path.
          ${MDL_REPO_ROOT}/libs/ra8_core/inc
          ${MDL_REPO_ROOT}/apps/shared_libs/third_party/miniz
+         ${MDL_REPO_ROOT}/libs/ra8_imgdec/inc
          ${MDL_JOF_INC}
          ${MDL_RABOOK_READER_INC}
          ${MDL_FS_INC}
@@ -357,8 +374,10 @@ set(MDL_CORE_C6LINK_SRC ${MDL_CORE_SRC_DIR}/mdl_net_c6link.c)
 enable_testing()
 
 set(MDL_CORE_TEST_COMMON_SRC
-    ${MDL_CORE_SRC_DIR}/mdl_url_guard.c
+    ${MDL_REPO_ROOT}/libs/ra8_net_policy/src/ra8_net_urlguard.c
+    ${MDL_REPO_ROOT}/libs/ra8_xml/src/ra8_xml_writer.c
     ${MDL_CORE_SRC_DIR}/mdl_sanitize.c
+    ${MDL_REPO_ROOT}/libs/if/src/ra8_path.c
     ${MDL_CORE_SRC_DIR}/mdl_urlname.c
     ${MDL_CORE_SRC_DIR}/mdl_robots.c
     ${MDL_EXTRACT_SRC}
@@ -387,6 +406,7 @@ function(mdl_add_core_test target source)
             ${MDL_CORE_SRC_DIR}
             ${MDL_REPO_ROOT}/libs/ra8_core/inc
             ${MDL_REPO_ROOT}/apps/shared_libs/third_party/miniz
+            ${MDL_REPO_ROOT}/libs/ra8_imgdec/inc
             ${MDL_REPO_ROOT}/tests/support/inc
             ${MDL_REPO_ROOT}/apps/shared_libs/mdl/tests/inc
             ${MDL_REPO_ROOT}/apps/shared_libs/rabook_compile/tests/inc
@@ -434,8 +454,9 @@ target_link_libraries(test_mdl_rabook_verify PRIVATE mdl_rabook_runtime)
 ra8_webp_attach(test_mdl_rabook_verify ${MDL_REPO_ROOT})
 add_test(NAME test_mdl_rabook_verify COMMAND test_mdl_rabook_verify)
 add_executable(
-  test_mdl_verify_stream ${MDL_CORE_TEST_SRC_DIR}/test_mdl_verify_stream.c
-                         ${MDL_CORE_TEST_COMMON_SRC}
+  test_mdl_verify_stream
+  ${MDL_CORE_TEST_SRC_DIR}/test_mdl_verify_stream.c ${MDL_CORE_TEST_COMMON_SRC}
+  ${MDL_REPO_ROOT}/apps/shared_libs/mdl/tests/src/mdl_state_fs_fault.c
 )
 target_include_directories(
   test_mdl_verify_stream
@@ -481,7 +502,7 @@ target_sources(
           ${MDL_CACHE_SRC}
           ${MDL_CORE_SRC_DIR}/mdl_state.c
           ${MDL_CORE_SRC_DIR}/mdl_state_codec.c
-          ${MDL_CORE_SRC_DIR}/mdl_state_decimal.c
+          ${MDL_REPO_ROOT}/libs/ra8_num/src/ra8_num_decimal.c
           ${MDL_CORE_SRC_DIR}/mdl_state_store.c
           ${MDL_CORE_SRC_DIR}/mdl_session.c
           ${MDL_CORE_SRC_DIR}/mdl_pathfs.c
@@ -502,6 +523,7 @@ target_include_directories(
           ${FW}/ra8_core/inc
           ${MDL_REPO_ROOT}/apps/shared_libs/mdl/inc
           ${FW}/ra8_c6link/inc
+          ${FW}/ra8_mdl/inc
           ${MDL_REPO_ROOT}/tests/support/inc
           ${MDL_REPO_ROOT}/apps/shared_libs/mdl/tests/inc
           ${MDL_REPO_ROOT}/apps/shared_libs/rabook_compile/tests/inc
@@ -547,7 +569,8 @@ add_executable(
   ${MDL_CORE_SRC_DIR}/mdl_robots.c
   ${MDL_CORE_SRC_DIR}/mdl_net.c
   ${MDL_CORE_SRC_DIR}/mdl_politeness.c
-  ${MDL_CORE_SRC_DIR}/mdl_url_guard.c
+  ${MDL_REPO_ROOT}/libs/ra8_net_policy/src/ra8_net_urlguard.c
+  ${MDL_REPO_ROOT}/libs/ra8_xml/src/ra8_xml_writer.c
   ${MDL_STREAM_CORE_SRC}
   ${MDL_STREAM_RAM_SRC}
   ${MDL_STREAM_POSIX_SRC}
@@ -579,18 +602,22 @@ add_executable(
   ${MDL_CORE_TEST_SRC_DIR}/test_mdl_state_metadata.c
   ${MDL_CORE_SRC_DIR}/mdl_state.c
   ${MDL_CORE_SRC_DIR}/mdl_state_codec.c
-  ${MDL_CORE_SRC_DIR}/mdl_state_decimal.c
+  ${MDL_REPO_ROOT}/libs/ra8_num/src/ra8_num_decimal.c
   ${MDL_CORE_SRC_DIR}/mdl_state_store.c
   ${MDL_CORE_SRC_DIR}/mdl_hash.c
   ${MDL_CORE_SRC_DIR}/mdl_storage.c
   ${MDL_CORE_SRC_DIR}/mdl_urlname.c
+  # mdl_urlname.c names an image from the shared container sniff (#768).
+  ${MDL_REPO_ROOT}/libs/ra8_imgdec/src/ra8_imgdec_sniff.c
   ${MDL_CORE_SRC_DIR}/mdl_sanitize.c
+  ${MDL_REPO_ROOT}/libs/if/src/ra8_path.c
   ${MDL_FS_SRC}
 )
 target_include_directories(
   test_mdl_state
   PRIVATE ${MDL_PUBLIC_INC}
           ${MDL_REPO_ROOT}/libs/ra8_core/inc
+          ${MDL_REPO_ROOT}/libs/ra8_imgdec/inc
           ${MDL_REPO_ROOT}/tests/support/inc
           ${MDL_REPO_ROOT}/apps/shared_libs/mdl/tests/inc
           ${MDL_REPO_ROOT}/apps/shared_libs/rabook_compile/tests/inc
@@ -617,18 +644,22 @@ add_executable(
   ${MDL_CACHE_SRC}
   ${MDL_CORE_SRC_DIR}/mdl_state.c
   ${MDL_CORE_SRC_DIR}/mdl_state_codec.c
-  ${MDL_CORE_SRC_DIR}/mdl_state_decimal.c
+  ${MDL_REPO_ROOT}/libs/ra8_num/src/ra8_num_decimal.c
   ${MDL_CORE_SRC_DIR}/mdl_state_store.c
   ${MDL_CORE_SRC_DIR}/mdl_hash.c
   ${MDL_CORE_SRC_DIR}/mdl_storage.c
   ${MDL_CORE_SRC_DIR}/mdl_urlname.c
+  # mdl_urlname.c names an image from the shared container sniff (#768).
+  ${MDL_REPO_ROOT}/libs/ra8_imgdec/src/ra8_imgdec_sniff.c
   ${MDL_CORE_SRC_DIR}/mdl_sanitize.c
+  ${MDL_REPO_ROOT}/libs/if/src/ra8_path.c
   ${MDL_CORE_SRC_DIR}/mdl_pathfs.c
   ${MDL_CORE_SRC_DIR}/mdl_session.c
   ${MDL_CORE_SRC_DIR}/mdl_robots.c
   ${MDL_CORE_SRC_DIR}/mdl_net.c
   ${MDL_CORE_SRC_DIR}/mdl_politeness.c
-  ${MDL_CORE_SRC_DIR}/mdl_url_guard.c
+  ${MDL_REPO_ROOT}/libs/ra8_net_policy/src/ra8_net_urlguard.c
+  ${MDL_REPO_ROOT}/libs/ra8_xml/src/ra8_xml_writer.c
   ${MDL_EXTRACT_SRC}
   ${MDL_FS_SRC}
   ${MDL_STREAM_CORE_SRC}
@@ -641,6 +672,7 @@ target_include_directories(
   PRIVATE ${MDL_PUBLIC_INC}
           ${MDL_CORE_SRC_DIR}
           ${MDL_REPO_ROOT}/libs/ra8_core/inc
+          ${MDL_REPO_ROOT}/libs/ra8_imgdec/inc
           ${MDL_REPO_ROOT}/libs/ra8_io/inc
           ${MDL_REPO_ROOT}/tests/support/inc
           ${MDL_REPO_ROOT}/apps/shared_libs/mdl/tests/inc
@@ -661,18 +693,22 @@ add_executable(
   ${MDL_CACHE_SRC}
   ${MDL_CORE_SRC_DIR}/mdl_state.c
   ${MDL_CORE_SRC_DIR}/mdl_state_codec.c
-  ${MDL_CORE_SRC_DIR}/mdl_state_decimal.c
+  ${MDL_REPO_ROOT}/libs/ra8_num/src/ra8_num_decimal.c
   ${MDL_CORE_SRC_DIR}/mdl_state_store.c
   ${MDL_CORE_SRC_DIR}/mdl_hash.c
   ${MDL_CORE_SRC_DIR}/mdl_storage.c
   ${MDL_CORE_SRC_DIR}/mdl_urlname.c
+  # mdl_urlname.c names an image from the shared container sniff (#768).
+  ${MDL_REPO_ROOT}/libs/ra8_imgdec/src/ra8_imgdec_sniff.c
   ${MDL_CORE_SRC_DIR}/mdl_sanitize.c
+  ${MDL_REPO_ROOT}/libs/if/src/ra8_path.c
   ${MDL_CORE_SRC_DIR}/mdl_pathfs.c
   ${MDL_CORE_SRC_DIR}/mdl_session.c
   ${MDL_CORE_SRC_DIR}/mdl_robots.c
   ${MDL_CORE_SRC_DIR}/mdl_net.c
   ${MDL_CORE_SRC_DIR}/mdl_politeness.c
-  ${MDL_CORE_SRC_DIR}/mdl_url_guard.c
+  ${MDL_REPO_ROOT}/libs/ra8_net_policy/src/ra8_net_urlguard.c
+  ${MDL_REPO_ROOT}/libs/ra8_xml/src/ra8_xml_writer.c
   ${MDL_EXTRACT_SRC}
   ${MDL_FS_SRC}
   ${MDL_STREAM_CORE_SRC}
@@ -685,6 +721,7 @@ target_include_directories(
   PRIVATE ${MDL_PUBLIC_INC}
           ${MDL_CORE_SRC_DIR}
           ${MDL_REPO_ROOT}/libs/ra8_core/inc
+          ${MDL_REPO_ROOT}/libs/ra8_imgdec/inc
           ${MDL_REPO_ROOT}/libs/ra8_io/inc
           ${MDL_REPO_ROOT}/tests/support/inc
           ${MDL_REPO_ROOT}/apps/shared_libs/mdl/tests/inc
@@ -706,7 +743,9 @@ add_executable(
   ${MDL_CORE_SRC_DIR}/mdl_hash.c
   ${MDL_CORE_SRC_DIR}/mdl_storage.c
   ${MDL_CORE_SRC_DIR}/mdl_sanitize.c
-  ${MDL_CORE_SRC_DIR}/mdl_url_guard.c
+  ${MDL_REPO_ROOT}/libs/if/src/ra8_path.c
+  ${MDL_REPO_ROOT}/libs/ra8_net_policy/src/ra8_net_urlguard.c
+  ${MDL_REPO_ROOT}/libs/ra8_xml/src/ra8_xml_writer.c
   ${MDL_FS_SRC}
 )
 target_include_directories(
@@ -736,7 +775,10 @@ add_executable(
   ${MDL_CORE_SRC_DIR}/mdl_storage.c
   ${MDL_CORE_SRC_DIR}/mdl_hash.c
   ${MDL_CORE_SRC_DIR}/mdl_urlname.c
+  # mdl_urlname.c names an image from the shared container sniff (#768).
+  ${MDL_REPO_ROOT}/libs/ra8_imgdec/src/ra8_imgdec_sniff.c
   ${MDL_CORE_SRC_DIR}/mdl_sanitize.c
+  ${MDL_REPO_ROOT}/libs/if/src/ra8_path.c
   ${MDL_REPO_ROOT}/apps/shared_libs/mdl/tests/src/mdl_state_fs_fault.c
   ${MDL_FS_SRC}
 )
@@ -745,6 +787,7 @@ target_include_directories(
   PRIVATE ${MDL_PUBLIC_INC}
           ${MDL_CORE_SRC_DIR}
           ${MDL_REPO_ROOT}/libs/ra8_core/inc
+          ${MDL_REPO_ROOT}/libs/ra8_imgdec/inc
           ${MDL_REPO_ROOT}/tests/support/inc
           ${MDL_REPO_ROOT}/apps/shared_libs/mdl/tests/inc
           ${MDL_REPO_ROOT}/apps/shared_libs/rabook_compile/tests/inc
@@ -811,7 +854,10 @@ add_executable(
   ${MDL_EXTRACT_SRC}
   ${MDL_CORE_SRC_DIR}/mdl_search.c
   ${MDL_CORE_SRC_DIR}/mdl_urlname.c
+  # mdl_urlname.c names an image from the shared container sniff (#768).
+  ${MDL_REPO_ROOT}/libs/ra8_imgdec/src/ra8_imgdec_sniff.c
   ${MDL_CORE_SRC_DIR}/mdl_sanitize.c
+  ${MDL_REPO_ROOT}/libs/if/src/ra8_path.c
   ${MDL_CORE_SRC_DIR}/mdl_politeness.c
   ${MDL_CORE_SRC_DIR}/mdl_hash.c
   ${MDL_CORE_SRC_DIR}/mdl_storage.c
@@ -823,6 +869,7 @@ target_include_directories(
   PRIVATE ${MDL_PUBLIC_INC}
           ${MDL_CORE_TEST_INC_DIR}
           ${MDL_REPO_ROOT}/libs/ra8_core/inc
+          ${MDL_REPO_ROOT}/libs/ra8_imgdec/inc
           ${MDL_REPO_ROOT}/tests/support/inc
           ${MDL_REPO_ROOT}/apps/shared_libs/mdl/tests/inc
           ${MDL_REPO_ROOT}/apps/shared_libs/rabook_compile/tests/inc

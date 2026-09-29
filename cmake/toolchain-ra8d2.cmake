@@ -59,6 +59,17 @@ set(CMAKE_CXX_COMPILER_WORKS 1)
 include("${CMAKE_CURRENT_LIST_DIR}/ccache.cmake")
 
 # -----------------------------------------------------------------------------
+# Repo discovery for per-app listfiles (#779)
+# -----------------------------------------------------------------------------
+# Same argument as the ccache include above: the toolchain file is the one place
+# every cross build passes through, and it knows where the repo root is. This
+# puts <repo>/cmake on CMAKE_MODULE_PATH so an app's CMakeLists.txt can say
+# include(ra8_add_app) from any depth instead of open-coding a walk up the
+# directory tree. toolchain-ra8p1.cmake includes this file verbatim, so the
+# RA8P1 cross builds are covered by the same line.
+include("${CMAKE_CURRENT_LIST_DIR}/ra8_bootstrap.cmake")
+
+# -----------------------------------------------------------------------------
 # Pin the cross-compiler major version (#178)
 # -----------------------------------------------------------------------------
 # Codegen correctness on the attacker-facing miniz ZIP inflater is

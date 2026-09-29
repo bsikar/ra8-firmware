@@ -41,6 +41,7 @@
 #include "ra8_err.h"
 #include "ra8_log.h"
 #include "ra8_mstp.h"
+#include "ra8_register_protection.h"
 #include "ra8_sram_internal.h"
 #include "ra8_sram_regs.h"
 
@@ -392,23 +393,32 @@ RA8_INTERNAL static void internal_apply_security(const ra8_sram_security_cfg_t* 
 
   volatile r_sram_cpscu_regs_t* cpscu = ra8_sram_cpscu_regs();
 
-  /* HUM Ch 58.2.2 "SRAMSAR : SRAM Security Attribution Register",
-   * p 3528 -- per-bank register security + SRAMWTSC security. */
-  cpscu->SRAMSAR = sar;
-
-  /* HUM Ch 58.2.3 "SRAMESAR : SRAM ECC region Security Attribute
-   * Register", p 3529 -- ECC region NS bit. */
   uint32_t esar = 0U;
   if (sec->ecc_region_ns) {
     esar = k_ra8_sram_esar_bit_esa;
   }
-  cpscu->SRAMESAR = esar;
 
-  for (uint8_t bank = 0U; bank < k_ra8_sram_bank_count; ++bank) {
-    /* HUM Ch 58.2.1 "SRAMSABARn : SRAM Security Attribute Boundary
-     * Address Register", p 3527 -- boundary value, low 13 bits forced
-     * to zero (4 KB aligned). */
-    cpscu->SRAMSABAR[bank] = sec->boundary_offset[bank] & ~k_ra8_sram_sabar_align_mask;
+  /* All three registers below are security-attribution registers, so they sit
+   * behind PRC4 (HUM Ch 13.1 Table 13.1 p 520-521). Issued with PRC4 locked
+   * the stores are discarded silently -- no bus fault, no status flag -- the
+   * same failure #131 found in `ra8_bkup_security_apply`. One window covers
+   * the whole apply, which is also what the hand-rolled TrustZone apps do. */
+  RA8_PROTECTED_WRITE(k_ra8_prcr_unlock_sar)
+  {
+    /* HUM Ch 58.2.2 "SRAMSAR : SRAM Security Attribution Register",
+     * p 3528 -- per-bank register security + SRAMWTSC security. */
+    cpscu->SRAMSAR = sar;
+
+    /* HUM Ch 58.2.3 "SRAMESAR : SRAM ECC region Security Attribute
+     * Register", p 3529 -- ECC region NS bit. */
+    cpscu->SRAMESAR = esar;
+
+    for (uint8_t bank = 0U; bank < k_ra8_sram_bank_count; ++bank) {
+      /* HUM Ch 58.2.1 "SRAMSABARn : SRAM Security Attribute Boundary
+       * Address Register", p 3527 -- boundary value, low 13 bits forced
+       * to zero (4 KB aligned). */
+      cpscu->SRAMSABAR[bank] = sec->boundary_offset[bank] & ~k_ra8_sram_sabar_align_mask;
+    }
   }
 }
 

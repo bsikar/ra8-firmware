@@ -41,7 +41,7 @@
 #include "mdl_state.h"
 #include "mdl_storage.h"
 #include "mdl_stream_internal.h"
-#include "mdl_url_guard.h"
+#include "ra8_net_urlguard.h"
 #include "mdl_urlname.h"
 #include "mdl_verify.h"
 #include "ra8_attributes.h"
@@ -93,7 +93,7 @@ RA8_PRIV mdl_app_context_t* priv_mdl_app_context(void);
  * @retval k_ra8_ok Every applicable diagnostic was accepted.
  * @retval other The diagnostic stream rejected a write.
  * @pre Both pointers are non-NULL and the application diagnostic is bound.
- * @pre @p result came from one completed ::mdl_cache_get_buf call.
+ * @pre @p result came from one completed ::mdl_cache_get call.
  * @post Reuse emits one complete staleness line.
  * @post Non-reuse emits only a corruption-rebuild warning when applicable.
  * @note Not thread-safe because it uses the bound application context.

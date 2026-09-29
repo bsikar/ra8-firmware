@@ -20,7 +20,8 @@
  * @retval k_ra8_err_busy Status 429 or 503 requires governor backoff.
  * @retval k_ra8_fail Any other status at or above 500.
  * @retval k_ra8_err_not_found Any other status at or above 400.
- * @retval k_ra8_ok Status below 400.
+ * @retval k_ra8_ok Status below 400, or zero for no observed status.
+ * @retval k_ra8_err_protocol_error Nonzero status outside 100..599 inclusive.
  * @pre @p status was obtained from a syntactically valid HTTP response.
  * @pre Transport, capacity, and sink failures were handled before this call.
  * @post The status is classified without mutating caller or backend state.
@@ -28,4 +29,4 @@
  * @note This is private policy shared by curl and C6link backends.
  * @since 0.1.0
  */
-RA8_PRIV ra8_err_t priv_mdl_net_classify_http(long status);
+RA8_PRIV ra8_err_t priv_mdl_net_classify_http(int32_t status);

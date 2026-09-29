@@ -1,0 +1,346 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Brighton Sikarskie
+---
+# Disposable Linux CI guest only. This playbook is deliberately separate from
+# the persistent fleet playbooks: it has no inventory host group overlap, no
+# runner registration, no HIL access, and no production service tasks.
+- name: Prepare and run CI on the disposable Proxmox Linux guest
+  hosts: lab_linux
+  gather_facts: true
+  become: true
+  vars:
+    lab_ci_packages:
+      - ca-certificates
+      - git
+      - git-lfs
+      - podman
+      - uidmap
+      - python3
+      - dbus-user-session
+      - cloud-guest-utils
+      - fuse-overlayfs
+    lab_ci_repo_dir: "/home/{{ lab_ci_user }}/ra8-lab-ci"
+    lab_ci_history_dir: "/home/{{ lab_ci_user }}/ra8-lab-history"
+    lab_ci_tmp_dir: "/home/{{ lab_ci_user }}/ra8-lab-tmp"
+  pre_tasks:
+    - name: Require the controller-supplied lab inputs
+      ansible.builtin.assert:
+        that:
+          - lab_ci_user is match('^[a-z_][a-z0-9_-]{0,31}$')
+          - lab_ci_source_archive is string
+          - lab_ci_source_archive is file
+          - lab_ci_source_archive is not search('\n')
+          - lab_ci_history_archive is string
+          - lab_ci_history_archive is file
+        fail_msg: "The disposable lab playbook requires a valid user and a controller-local source archive."
+      become: false
+
+    - name: Confirm the target user exists before staging the snapshot
+      ansible.builtin.getent:
+        database: passwd
+        key: "{{ lab_ci_user }}"
+
+    - name: Ensure systemd-resolved drop-in directory exists
+      ansible.builtin.file:
+        path: /etc/systemd/resolved.conf.d
+        state: directory
+        owner: root
+        group: root
+        mode: "0755"
+
+    - name: Configure approved DNS server for systemd-resolved
+      ansible.builtin.copy:
+        dest: /etc/systemd/resolved.conf.d/lab-dns.conf
+        content: |
+          [Resolve]
+          DNS=1.1.1.1
+        owner: root
+        group: root
+        mode: "0644"
+
+    - name: Restart systemd-resolved to apply DNS configuration
+      ansible.builtin.systemd:
+        name: systemd-resolved
+        state: restarted
+
+    - name: Update the disposable guest package index
+      ansible.builtin.apt:
+        update_cache: true
+
+    - name: Install the disposable guest CI substrate
+      ansible.builtin.apt:
+        name: "{{ lab_ci_packages }}"
+        state: present
+
+    - name: Expand root partition to the full virtual disk size
+      ansible.builtin.shell:
+        cmd: |
+          set -e
+          root_dev="$(findmnt -n -o SOURCE /)"
+          disk_name="$(lsblk -no PKNAME "$root_dev")"
+          disk_dev="/dev/${disk_name}"
+          part_num="${root_dev#$disk_dev}"
+          part_num="${part_num#p}"
+          growpart "$disk_dev" "$part_num" || true
+          resize2fs "$root_dev"
+        executable: /bin/bash
+      changed_when: true
+
+    - name: Show root filesystem capacity
+      ansible.builtin.command:
+        argv: [df, -h, /]
+      register: lab_ci_df
+      changed_when: false
+
+    - name: Log root filesystem capacity
+      ansible.builtin.debug:
+        var: lab_ci_df.stdout_lines
+
+    - name: Initialize Git LFS system support
+      ansible.builtin.command:
+        argv: [git, lfs, install, --system]
+      changed_when: false
+
+    - name: Allocate subordinate IDs for rootless Podman
+      ansible.builtin.lineinfile:
+        path: "{{ item.path }}"
+        line: "{{ lab_ci_user }}:100000:65536"
+        create: true
+        owner: root
+        group: root
+        mode: "0644"
+      loop:
+        - {path: /etc/subuid}
+        - {path: /etc/subgid}
+
+    - name: Create systemd user service drop-in directory
+      ansible.builtin.file:
+        path: /etc/systemd/system/user@.service.d
+        state: directory
+        owner: root
+        group: root
+        mode: "0755"
+
+    - name: Configure cgroup delegation for rootless Podman
+      ansible.builtin.copy:
+        dest: /etc/systemd/system/user@.service.d/delegate.conf
+        content: |
+          [Service]
+          Delegate=yes
+        owner: root
+        group: root
+        mode: "0644"
+
+    - name: Reload systemd daemon
+      ansible.builtin.systemd:
+        daemon_reload: true
+
+    - name: Enable user lingering for rootless Podman session
+      ansible.builtin.command:
+        argv: [loginctl, enable-linger, "{{ lab_ci_user }}"]
+      changed_when: false
+
+    - name: Ensure systemd user manager is active with delegation
+      ansible.builtin.systemd:
+        name: "user@{{ ansible_facts.getent_passwd[lab_ci_user][1] }}.service"
+        state: restarted
+        enabled: true
+
+    - name: Ensure containers config directory exists
+      ansible.builtin.file:
+        path: "/home/{{ lab_ci_user }}/.config/containers"
+        state: directory
+        owner: "{{ lab_ci_user }}"
+        group: "{{ lab_ci_user }}"
+        mode: "0755"
+
+    - name: Configure Podman containers.conf for rootless user
+      ansible.builtin.copy:
+        dest: "/home/{{ lab_ci_user }}/.config/containers/containers.conf"
+        content: |
+          [containers]
+          [engine]
+          cgroup_manager = "systemd"
+          events_logger = "file"
+        owner: "{{ lab_ci_user }}"
+        group: "{{ lab_ci_user }}"
+        mode: "0644"
+
+    - name: Configure Podman storage.conf for rootless user
+      ansible.builtin.copy:
+        dest: "/home/{{ lab_ci_user }}/.config/containers/storage.conf"
+        content: |
+          [storage]
+          driver = "overlay"
+          [storage.options.overlay]
+          mount_program = "/usr/bin/fuse-overlayfs"
+        owner: "{{ lab_ci_user }}"
+        group: "{{ lab_ci_user }}"
+        mode: "0644"
+
+    - name: Verify subordinate ID allocation
+      ansible.builtin.command:
+        argv: [grep, -Fx, "{{ lab_ci_user }}:100000:65536", "{{ item }}"]
+      changed_when: false
+      loop:
+        - /etc/subuid
+        - /etc/subgid
+
+    - name: Verify the required disposable guest commands
+      ansible.builtin.command:
+        argv: ["{{ item }}", --version]
+      changed_when: false
+      loop:
+        - /usr/bin/git
+        - /usr/bin/git-lfs
+        - /usr/bin/podman
+        - /usr/bin/python3
+
+    - name: Verify that the CI user can run rootless Podman
+      become_user: "{{ lab_ci_user }}"
+      ansible.builtin.command:
+        argv: [podman, info, --format=json]
+      environment:
+        HOME: "/home/{{ lab_ci_user }}"
+        XDG_RUNTIME_DIR: "/run/user/{{ ansible_facts.getent_passwd[lab_ci_user][1] }}"
+        DBUS_SESSION_BUS_ADDRESS: "unix:path=/run/user/{{ ansible_facts.getent_passwd[lab_ci_user][1] }}/bus"
+      register: lab_ci_podman_info
+      changed_when: false
+      failed_when: false
+
+    - name: Refuse a guest without a usable rootless container runtime
+      ansible.builtin.assert:
+        that:
+          - lab_ci_podman_info.rc == 0
+          - (lab_ci_podman_info.stdout | from_json).host.security.rootless | bool
+          - ((lab_ci_podman_info.stdout | from_json).store.graphDriverName | default('')) == "overlay"
+        fail_msg: "The disposable guest CI user cannot use rootless Podman with overlay driver."
+
+    - name: Verify that rootless Podman can execute a container via crun
+      become_user: "{{ lab_ci_user }}"
+      ansible.builtin.command:
+        argv: [podman, run, --rm, "docker.io/library/debian:bookworm-slim", "true"]
+      environment:
+        HOME: "/home/{{ lab_ci_user }}"
+        XDG_RUNTIME_DIR: "/run/user/{{ ansible_facts.getent_passwd[lab_ci_user][1] }}"
+        DBUS_SESSION_BUS_ADDRESS: "unix:path=/run/user/{{ ansible_facts.getent_passwd[lab_ci_user][1] }}/bus"
+      changed_when: false
+
+  tasks:
+    - name: Remove only the previous checkout owned by this disposable guest
+      ansible.builtin.file:
+        path: "{{ lab_ci_repo_dir }}"
+        state: absent
+
+    - name: Recreate the disposable checkout root
+      ansible.builtin.file:
+        path: "{{ lab_ci_repo_dir }}"
+        state: directory
+        owner: "{{ lab_ci_user }}"
+        group: "{{ lab_ci_user }}"
+        mode: "0755"
+
+    - name: Prepare an ext4-backed temporary directory for rootless CI
+      ansible.builtin.file:
+        path: "{{ lab_ci_tmp_dir }}"
+        state: directory
+        owner: "{{ lab_ci_user }}"
+        group: "{{ lab_ci_user }}"
+        # The parent home is private to lab_ci_user. The sticky, world-writable
+        # leaf lets the container's mapped vscode UID use host ext4 semantics.
+        mode: "1777"
+
+    - name: Extract the committed repository snapshot
+      ansible.builtin.unarchive:
+        src: "{{ lab_ci_source_archive }}"
+        dest: "{{ lab_ci_repo_dir }}"
+        copy: true
+        owner: "{{ lab_ci_user }}"
+        group: "{{ lab_ci_user }}"
+
+    - name: Create the separate Git history checkout
+      ansible.builtin.file:
+        path: "{{ lab_ci_history_dir }}"
+        state: directory
+        owner: "{{ lab_ci_user }}"
+        group: "{{ lab_ci_user }}"
+        mode: "0755"
+
+    - name: Extract real commit history outside the source snapshot
+      ansible.builtin.unarchive:
+        src: "{{ lab_ci_history_archive }}"
+        dest: "{{ lab_ci_history_dir }}"
+        copy: true
+        owner: "{{ lab_ci_user }}"
+        group: "{{ lab_ci_user }}"
+
+    - name: Verify the disposable history archive contains real commits
+      become_user: "{{ lab_ci_user }}"
+      ansible.builtin.command:
+        argv: [git, -C, "{{ lab_ci_history_dir }}", rev-list, --count, HEAD]
+      register: lab_ci_history_depth
+      changed_when: false
+      failed_when: lab_ci_history_depth.stdout | int < 2
+
+    - name: Initialize a local Git identity for the extracted CI snapshot
+      become_user: "{{ lab_ci_user }}"
+      ansible.builtin.command:
+        argv: [git, init, --initial-branch=main, "{{ lab_ci_repo_dir }}"]
+      changed_when: true
+
+    - name: Record the extracted snapshot as its immutable local HEAD
+      become_user: "{{ lab_ci_user }}"
+      ansible.builtin.shell:
+        cmd: >-
+          git -C {{ lab_ci_repo_dir | quote }} add --all &&
+          git -C {{ lab_ci_repo_dir | quote }}
+          -c user.name=ra8-lab-ci
+          -c user.email=ci@localhost
+          commit --allow-empty -m 'Disposable CI snapshot'
+      changed_when: true
+
+    - name: Run the repository CI suite inside its pinned Linux container
+      become_user: "{{ lab_ci_user }}"
+      ansible.builtin.command:
+        argv:
+          - /bin/bash
+          - -p
+          - scripts/ci/devcontainer_run.sh
+          - --
+          - just
+          - ci
+        chdir: "{{ lab_ci_repo_dir }}"
+      environment:
+        HOME: "/home/{{ lab_ci_user }}"
+        XDG_RUNTIME_DIR: "/run/user/{{ ansible_facts.getent_passwd[lab_ci_user][1] }}"
+        DBUS_SESSION_BUS_ADDRESS: "unix:path=/run/user/{{ ansible_facts.getent_passwd[lab_ci_user][1] }}/bus"
+        RA8_CI_COMMIT_RANGE: "HEAD~1..HEAD"
+        RA8_CI_CONTAINER_ARGS: "-v {{ lab_ci_history_dir }}:/ra8-ci-history:ro -v {{ lab_ci_tmp_dir }}:/ra8-ci-tmp:rw -e TMPDIR=/ra8-ci-tmp -e RA8_CI_HISTORY_REPO=/ra8-ci-history"
+        RA8_CI_HISTORY_REPO: /ra8-ci-history
+      register: lab_ci_result
+      changed_when: false
+      failed_when: false
+      # The complete Linux CI normally exceeds two hours on the disposable
+      # guest (cross-build and emulator matrices dominate); allow six hours.
+      async: 21600
+      poll: 10
+
+    - name: Display CI execution message on failure
+      ansible.builtin.debug:
+        var: lab_ci_result.msg
+      when: lab_ci_result.rc != 0 and lab_ci_result.msg is defined
+
+    - name: Display CI stdout on failure
+      ansible.builtin.debug:
+        var: lab_ci_result.stdout_lines
+      when: lab_ci_result.rc != 0
+
+    - name: Display CI stderr on failure
+      ansible.builtin.debug:
+        var: lab_ci_result.stderr_lines
+      when: lab_ci_result.rc != 0
+
+    - name: Return the canonical CI result to the lifecycle driver
+      ansible.builtin.assert:
+        that: [lab_ci_result.rc == 0]
+        fail_msg: "The disposable Linux guest CI command failed with exit code {{ lab_ci_result.rc }}."

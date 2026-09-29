@@ -2,6 +2,9 @@
  * @file test_ra8_usb_pvnd.c
  * @brief Unit tests for the native USB device-side Vendor class layer
  *
+ * @par Tag
+ * [Ring 3 / HAL] {World: NS}
+ *
  * @details Exercises vendor request dispatch, handler registration, endpoint I/O, invalid inputs, and stall behavior with bounded fixtures.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie

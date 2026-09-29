@@ -65,12 +65,32 @@ target_include_directories(bench_ra8_jpeg_sw PRIVATE ${FW_ROOT}/libs/ra8_jpeg/in
 
 # The deterministic output golden needs no production object library: it
 # exercises only the caller-owned RAM sink and typed benchmark renderer.
-add_executable(test_ra8_bench_output ${CMAKE_CURRENT_SOURCE_DIR}/src/test_ra8_bench_output.c)
-target_compile_options(test_ra8_bench_output PRIVATE -Wall -Wextra -Werror)
-target_include_directories(
-  test_ra8_bench_output PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/inc ${FW_ROOT}/libs/ra8_core/inc
-)
-add_test(NAME test_ra8_bench_output COMMAND test_ra8_bench_output)
+#
+# src/test_ra8_bench_output.c ALSO matches the ra8_add_test() auto-glob in
+# tests/cmake/unit_tests.cmake (tests/*/src/test_*.c), and tests/CMakeLists.txt
+# includes that file (line 57) long before it adds this directory (line 85). So
+# by the time we get here the target normally exists already, and registering it
+# a second time is a duplicate add_executable() -- a fatal configure error that
+# took every bench binary with it, because the whole -DRA8_BENCH=ON tree stops
+# before `ra8_bench_all` is declared (#1415). Nothing in CI configures with
+# RA8_BENCH=ON, so that break was invisible: the only consumers are
+# `just quality::local::bench` and `just quality::devcontainer::bench`.
+#
+# Reuse the auto-glob's target when it exists (it already compiles this TU with
+# -Wall -Wextra -Werror, adds tests/bench/inc via the unit-dir rule in
+# ra8_add_test(), and registers the ctest entry), and build it here only when
+# the glob did not -- a REMOVE_ITEM, or a future reshuffle of the include order.
+if(NOT TARGET test_ra8_bench_output)
+  add_executable(test_ra8_bench_output ${CMAKE_CURRENT_SOURCE_DIR}/src/test_ra8_bench_output.c)
+  target_compile_options(test_ra8_bench_output PRIVATE -Wall -Wextra -Werror)
+  target_include_directories(
+    test_ra8_bench_output PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/inc ${FW_ROOT}/libs/ra8_core/inc
+  )
+  add_test(NAME test_ra8_bench_output COMMAND test_ra8_bench_output)
+endif()
+
+# The golden rides in the aggregate either way, so `ra8_bench_all` builds
+# everything this directory is responsible for.
 list(APPEND RA8_BENCH_TARGETS test_ra8_bench_output)
 
 # Convenience aggregate target -- `cmake --build . --target ra8_bench_all`.

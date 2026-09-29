@@ -103,7 +103,7 @@ banned patterns and reports each violation as:
 ```
 
 The script exits non-zero on any violation. The pre-commit hook
-(`scripts/git/pre-commit`) runs it after the existing checks; CI runs it
+(the `pre-commit-checks` CI gate) runs it after the existing checks; CI runs it
 on every PR.
 
 Generated, vendored and build-output trees are skipped. The check is

@@ -3,6 +3,9 @@
  * @brief I3C Bus Interface register layout for the Renesas RA8D2
  * @ingroup grp_hal_comms
  *
+ * @par Tag
+ * [Ring 3 / HAL] {World: NS}
+ *
  * @details
  * Two I3C instances are available on the RA8D2 (R_I3C0 at
  * `0x4035F000` and R_I3C1 at `0x4035F100`); this driver only

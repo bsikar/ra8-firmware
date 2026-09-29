@@ -2,6 +2,9 @@
  * @file test_ra8_usb_mcdc.c
  * @brief MC/DC vector tests for the native USB device-mode driver (ra8_usb.c)
  *
+ * @par Tag
+ * [Ring 3 / HAL] {World: NS}
+ *
  * @details
  * Split out of test_ra8_usb.c to keep each test translation unit under the
  * repository file-size cap. This sibling owns the MC/DC vector tests for the

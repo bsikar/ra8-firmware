@@ -31,12 +31,15 @@ extern "C" {
  * @param[in] offset Absolute file offset.
  * @param[out] buf Destination for up to @p len bytes.
  * @param[in] len Requested byte count.
- * @return Number of bytes read, or zero when a guard or filesystem operation fails.
- * @retval 0 An argument guard or filesystem operation rejected the request.
- * @retval len The full request was read.
- * @retval <len A short read reached the end of the file.
+ * @param[out] out_read Receives the bytes read, on every return path.
+ * @return ra8_err_t Error code.
+ * @retval k_ra8_ok The read succeeded; `*out_read` is @p len, or less at end of file.
+ * @retval k_ra8_err_null_ptr An argument guard rejected the request.
+ * @retval k_ra8_err_out_of_range The offset is past the 32-bit filesystem range.
+ * @retval other The filesystem's own seek or read error (#764).
  * @pre When non-null, @p ctx points to a live ::epub_stream_fs_ctx_t.
  * @pre When non-null, @p buf is writable for @p len bytes.
+ * @pre @p out_read is non-null.
  * @post At most @p len bytes are written to @p buf.
  * @post A rejected argument guard performs no filesystem operation.
  * @note Test-access only and not thread-safe; mutates the bound file cursor.
@@ -45,7 +48,8 @@ extern "C" {
  * all-valid vectors in test_epub_fs.c.
  * @since 0.1.0
  */
-RA8_PRIV size_t priv_epub_fs_stream_read(void* ctx, uint64_t offset, void* buf, size_t len);
+RA8_PRIV ra8_err_t
+priv_epub_fs_stream_read(void* ctx, uint64_t offset, void* buf, uint32_t len, uint32_t* out_read);
 
 #ifdef __cplusplus
 }

@@ -1,6 +1,10 @@
 /**
  * @file test_ra8_usb_cdc_data_stage_cov.c
  * @brief White-box coverage for CDC line coding and the EP0 OUT data stage.
+ *
+ * @par Tag
+ * [Ring 3 / HAL] {World: NS}
+ *
  * @details Compiles a private copy of the production CDC layer while replacing
  * only the DCP arm/read and status-response dependencies with deterministic
  * synchronous scripts. No USB controller or live hardware is touched.

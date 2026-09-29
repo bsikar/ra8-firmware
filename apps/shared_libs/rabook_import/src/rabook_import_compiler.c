@@ -364,7 +364,8 @@ internal_dispatch_and_cache(const rabook_import_compiler_m33_ctx_t* ctx,
  * @post The result depends only on @p err.
  * @note Pure; thread-safe.
  * @note The two-condition decision below is the only compound boolean in this
- *       module; its N+1 = 3 MC/DC vectors live in tests/src/test_rabook_import_m33.c
+ *       module; its N+1 = 3 MC/DC vectors live in
+ *       apps/shared_libs/rabook_import/tests/src/test_rabook_import_m33.c
  *       (the fallback-on-timeout / fallback-on-oom / no-fallback-on-other-error
  *       cases), which cite this function in their `@par MC/DC:` blocks.
  * @since Version 0.1.0

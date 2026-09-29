@@ -157,41 +157,49 @@ RA8_PRIV ra8_err_t priv_mdl_rabook_epub_close(mdl_rabook_epub_source_t* source)
   return error;
 }
 
-RA8_PRIV size_t priv_mdl_rabook_epub_read(void*    opaque,
-                                          uint64_t offset,
-                                          void*    destination,
-                                          size_t   length)
+RA8_PRIV ra8_err_t priv_mdl_rabook_epub_read(void*     opaque,
+                                             uint64_t  offset,
+                                             void*     destination,
+                                             uint32_t  length,
+                                             uint32_t* out_read)
 {
+  if (out_read == nullptr) {
+    return k_ra8_err_invalid_arg;
+  }
+  *out_read                        = 0U;
   mdl_rabook_epub_source_t* source = (mdl_rabook_epub_source_t*)opaque;
   if ((source == nullptr) || (destination == nullptr) || !source->file.is_open ||
-      (source->error != k_ra8_ok) || (length > UINT32_MAX) || (offset > source->size_bytes) ||
+      (source->error != k_ra8_ok) || (offset > source->size_bytes) ||
       ((uint64_t)length > (source->size_bytes - offset))) {
     if ((source != nullptr) && (source->error == k_ra8_ok)) {
       source->error = k_ra8_err_out_of_range;
     }
-    return 0U;
+    return k_ra8_err_out_of_range;
   }
   ra8_err_t error = fw_fs_seek(&source->file, offset);
-  size_t    done  = 0U;
+  uint32_t  done  = 0U;
   while ((error == k_ra8_ok) && (done < length)) {
     if (source->calls >= (uint32_t)k_rabook_read_calls) {
       error = k_ra8_err_invalid_size;
       break;
     }
     uint32_t got = 0U;
-    error =
-      fw_fs_read(&source->file, &((uint8_t*)destination)[done], (uint32_t)(length - done), &got);
+    error        = fw_fs_read(&source->file, &((uint8_t*)destination)[done], length - done, &got);
     ++source->calls;
     if ((error == k_ra8_ok) && (got == 0U)) {
       error = k_ra8_err_invalid_state;
     }
     done += got;
   }
+  /* The latched `source->error` stays, because the export path still consults it
+   * after the compile; the return now carries the same verdict to the reader,
+   * which is what stops a faulted export looking like a short book (#764). */
+  *out_read = done;
   if (error != k_ra8_ok) {
     source->error = error;
-    return 0U;
+    return error;
   }
-  return done;
+  return k_ra8_ok;
 }
 
 RA8_PRIV ra8_err_t priv_mdl_rabook_flat_read(void*     opaque,

@@ -12,7 +12,7 @@
  * internal_cell_text space suppression, and the row page-break arms). All
  * decisions are driven through the public API with crafted markup and the DI
  * image loader; the shared engine fixture lives in
- * tests/inc/reflow_layout_test_util.h.
+ * apps/shared_libs/reflow/tests/inc/reflow_layout_test_util.h.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT

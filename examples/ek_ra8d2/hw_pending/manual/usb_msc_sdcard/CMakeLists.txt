@@ -31,6 +31,7 @@ include("${_d}/cmake/ra8_add_app.cmake")
 
 ra8_add_app(
   NAME usb_msc_sdcard
+  THREADX_HEAP SDRAM
   STACK_BYTES 4000
   DESCRIPTION "USB MSC device serving the live full-capacity Pmod2 SD card read/write"
   USES threadx usbx

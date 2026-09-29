@@ -3,6 +3,9 @@
  * @brief Programmable Voltage Detection (PVD / LVD) register layout for the RA8D2
  * @ingroup grp_hal_system
  *
+ * @par Tag
+ * [Ring 3 / HAL] {World: S}
+ *
  * @details
  * Four programmable voltage-monitor channels live inside the SYSC
  * register window at base 0x4001_E000:

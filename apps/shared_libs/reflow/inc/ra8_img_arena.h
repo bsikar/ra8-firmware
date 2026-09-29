@@ -22,6 +22,12 @@
  * returns nullptr; stb_image propagates that as a decode failure rather than
  * corrupting memory.
  *
+ * That policy is not written here any more (#768). ::ra8_img_arena_t is
+ * ::ra8_imgdec_scratch_t and every hook below forwards to
+ * `ra8_imgdec_scratch_*`; what stays in this module is the file-static bound-
+ * arena slot, which the shared contract cannot take because `STBI_MALLOC` and
+ * friends are macros with no context parameter.
+ *
  * NASA Power-of-10 Rule 3 (no dynamic allocation after init): the backing
  * store is caller-owned static/SRAM/SDRAM storage, never `malloc`.
  *
@@ -81,7 +87,12 @@ void ra8_img_arena_unbind(void);
  * is bound, when @p n exceeds the capacity, or when the request does not fit the
  * remaining capacity.
  *
- * @param[in] n Byte count requested by stb_image.
+ * A zero-byte request reserves one byte rather than failing: stb_image does not
+ * promise a non-zero size, and it reads nullptr as out-of-memory. Reserving
+ * something is also what keeps two zero-byte blocks from aliasing each other and
+ * the next real allocation, which is what this shim's own arithmetic did.
+ *
+ * @param[in] n Byte count requested by stb_image; zero reserves one byte.
  * @return 16-byte-aligned pointer into the bound arena, or nullptr.
  * @retval nullptr No arena bound, or the request does not fit.
  * @pre Either an arena is bound (then a decode is in progress) or the call fails.
@@ -122,7 +133,8 @@ void ra8_img_arena_free(void* p);
  *
  * @param[in] p     Existing block (may be nullptr -> behaves as malloc).
  * @param[in] oldsz Current size of @p p in bytes (0 if @p p is nullptr).
- * @param[in] newsz Requested new size in bytes.
+ * @param[in] newsz Requested new size in bytes; zero reserves one byte and
+ *                  leaves @p p alone, matching the malloc hook.
  * @return Pointer to @p newsz bytes with the old contents copied, or nullptr.
  * @retval nullptr No arena bound, or the new request does not fit.
  * @pre @p p was returned by a prior hook call, or is nullptr.

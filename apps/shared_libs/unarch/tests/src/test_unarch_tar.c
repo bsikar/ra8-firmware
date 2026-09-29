@@ -863,6 +863,60 @@ static void internal_test_tar_base256_and_gnu_magic(void)
 }
 
 /**
+ * @test internal_test_tar_untrusted_names_survive
+ * @brief The walker hands back a traversal-bearing member name verbatim.
+ *
+ * @details This is the contract `unarch_tar.h` now states rather than a
+ *          behaviour to fix: the name is untrusted archive data, assembled and
+ *          clamped but never judged, so the caller knows it must apply the
+ *          name policy (`ra8_path_sanitize_segment` / `ra8_path_join_under`)
+ *          before writing a member anywhere. Three shapes an extractor would
+ *          have to defeat go in -- a `..` walk-up, an absolute path, and a
+ *          nested relative path -- and each comes back byte-identical, through
+ *          both the plain ustar name field and the `prefix` join. A future
+ *          change that quietly started rejecting or rewriting names would fail
+ *          here, and the header would then be wrong.
+ */
+RA8_INTERNAL
+static void internal_test_tar_untrusted_names_survive(void)
+{
+  TEST_BEGIN("tar: untrusted member names are returned unjudged");
+  static const char* const hostile[] = {
+    "../../etc/passwd",
+    "/absolute/evil.png",
+    "sub/dir/page.png",
+  };
+  const char data[] = "x";
+  for (size_t i = 0U; i < (sizeof(hostile) / sizeof(hostile[0])); ++i) {
+    const size_t end = internal_tb_add(0U, hostile[i], nullptr, (uint8_t)'0', data, sizeof(data) - 1U);
+    s_arc_len        = internal_tb_end(end);
+
+    unarch_tar_t t   = {};
+    unarch_mem_t mem = {};
+    TEST_ASSERT_EQ(k_ra8_ok, internal_tt_open(&t, &mem, nullptr));
+    unarch_tar_entry_t e = {};
+    (void)memset(s_name, 0, sizeof(s_name));
+    TEST_ASSERT_EQ(k_ra8_ok, unarch_tar_next(&t, 0U, s_name, sizeof(s_name), &e));
+    TEST_ASSERT(e.is_file == 1U);
+    TEST_ASSERT(e.name_len == (uint16_t)strlen(hostile[i]));
+    TEST_ASSERT(internal_chars_equal(s_name, hostile[i], strlen(hostile[i])));
+  }
+
+  /* The prefix join composes an escape out of two individually tame fields. */
+  const size_t end = internal_tb_add(0U, "../passwd", "..", (uint8_t)'0', data, sizeof(data) - 1U);
+  s_arc_len        = internal_tb_end(end);
+  unarch_tar_t t   = {};
+  unarch_mem_t mem = {};
+  TEST_ASSERT_EQ(k_ra8_ok, internal_tt_open(&t, &mem, nullptr));
+  unarch_tar_entry_t e = {};
+  (void)memset(s_name, 0, sizeof(s_name));
+  TEST_ASSERT_EQ(k_ra8_ok, unarch_tar_next(&t, 0U, s_name, sizeof(s_name), &e));
+  TEST_ASSERT(internal_chars_equal(s_name, "../../passwd", strlen("../../passwd")));
+  TEST_ASSERT(e.name_len == (uint16_t)strlen("../../passwd"));
+  TEST_END("tar: untrusted member names are returned unjudged");
+}
+
+/**
  * @brief Test entry point -- runs the tar walker suite in order.
  * @return 0 on success; unity_minimal.h exits non-zero on the first failure.
  */
@@ -878,5 +932,6 @@ int main(void)
   internal_test_tar_policy_bounds();
   internal_test_tar_read_guards();
   internal_test_tar_base256_and_gnu_magic();
+  internal_test_tar_untrusted_names_survive();
   return 0;
 }

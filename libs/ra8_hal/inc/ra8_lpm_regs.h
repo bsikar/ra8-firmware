@@ -3,6 +3,9 @@
  * @brief Low Power Mode (LPM) register layout for the Renesas RA8D2
  * @ingroup grp_hal_system
  *
+ * @par Tag
+ * [Ring 3 / HAL] {World: S}
+ *
  * @details
  * Hand-derived register map covering every register the LPM HAL
  * driver in ``libs/ra8_hal/src/ra8_lpm.c`` touches. Sources:

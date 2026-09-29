@@ -2,6 +2,9 @@
  * @file ra8_doc.c
  * @brief Data Operation Circuit (DOC) driver implementation
  *
+ * @par Tag
+ * [Ring 3 / HAL] {World: S}
+ *
  * @details
  * Thin wrapper that drives the DOC_B block through its add / sub /
  * compare modes. Register writes go through the accessor from

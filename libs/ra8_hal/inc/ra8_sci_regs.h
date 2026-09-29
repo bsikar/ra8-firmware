@@ -4,6 +4,9 @@
  * @ingroup grp_hal_comms
  *        for the RA8D2
  *
+ * @par Tag
+ * [Ring 3 / HAL] {World: NS}
+ *
  * @details
  * The RA8D2 ships the SCI_B variant of the SCI peripheral (HUM Ch 38
  * "Serial Communications Interface (SCI)" intro page literally states

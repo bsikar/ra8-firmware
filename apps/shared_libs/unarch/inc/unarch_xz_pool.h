@@ -23,6 +23,14 @@
  * wrapper install/reset pairs are strictly nested. A second concurrent
  * install is refused fail-closed.
  *
+ * The bump arithmetic behind these calls is the shared decoder-scratch
+ * contract (`ra8_imgdec_scratch.h`, issue #768), not a private copy: this
+ * seam owns the install precondition, the busy refusal and the uninstalled
+ * state, while rounding, capacity and cursor accounting are the contract's.
+ * Blocks are therefore aligned to the contract's (stricter) alignment, which
+ * is pinned against ::k_unarch_xz_pool_align by a static assertion, so a
+ * caller relying on 8-byte storage keeps getting at least that.
+ *
  * @note Not thread-safe; the single-threaded reader loop serialises access.
  *
  * @see unarch_xz.h  The bounded XZ decode wrapper that installs this pool.
@@ -46,9 +54,12 @@ extern "C" {
 /**
  * @enum unarch_xz_pool_dims_t
  * @brief Alignment and sizing constants for the XZ bump arena.
- * @details Every allocation is rounded up to ::k_unarch_xz_pool_align so
- *          the decoder's structs (which hold `uint64_t` fields) are always
- *          correctly aligned regardless of request order.
+ * @details The alignment a caller's scratch buffer must satisfy, and the
+ *          minimum alignment every allocation is guaranteed, so the
+ *          decoder's structs (which hold `uint64_t` fields) are always
+ *          correctly aligned regardless of request order. Requests are
+ *          rounded up to the shared scratch contract's alignment, which is
+ *          asserted to be at least this value.
  * @since Version 0.1.0
  */
 typedef enum : uint32_t {
@@ -86,9 +97,12 @@ typedef enum : uint32_t {
 /**
  * @brief Release the installed arena (invalidates every pool allocation).
  *
- * @details Unbinds the arena and zeroes the bump cursor. Idempotent: calling
- *          with no arena installed is a no-op, so teardown paths may call it
- *          unconditionally.
+ * @details Drains the arena through the shared scratch contract and then
+ *          unbinds the backing store, so the pool reads as uninstalled.
+ *          Idempotent: calling with no arena installed is a no-op, so
+ *          teardown paths may call it unconditionally. The contract's
+ *          high-water mark survives, so a session's peak can still be read
+ *          for sizing after the store is gone.
  *
  * @pre Any pointers previously handed out are dead after this returns.
  * @pre The owning decode (xz_dec_end) has finished with them.
@@ -105,8 +119,9 @@ void unarch_xz_pool_reset(void);
  * @brief Bump-allocate @p size bytes from the installed arena.
  *
  * @details The `kmalloc` / `vmalloc` target for the vendored decoder (via
- *          the first-party `xz_config.h`). Returns 8-aligned storage carved
- *          from the installed scratch, or NULL when no arena is installed,
+ *          the first-party `xz_config.h`). Forwards to the shared scratch
+ *          contract, which returns aligned storage carved from the installed
+ *          scratch, or NULL when no arena is installed,
  *          the request is zero, or the remaining space is too small --
  *          xz-embedded treats a NULL return as allocation failure and
  *          aborts its init cleanly (the wrapper maps that to a bounded
@@ -121,6 +136,7 @@ void unarch_xz_pool_reset(void);
  * @pre @p size is non-zero (else NULL is returned).
  * @post A non-NULL result stays valid until ::unarch_xz_pool_reset.
  * @post The bump cursor advanced by the aligned request size.
+ * @post A zero request is refused without reserving anything.
  *
  * @note Not thread-safe. Frees are no-ops (arena semantics).
  * @see unarch_xz_pool_used()

@@ -32,6 +32,7 @@ include("${_d}/cmake/ra8_add_app.cmake")
 # names `nx_ether_driver_c6` to `nx_ip_create` instead.
 ra8_add_app(
   NAME c6_wifi_join
+  THREADX_HEAP SDRAM
   STACK_BYTES 8192
   DESCRIPTION "Join the bench Wi-Fi over the ESP32-C6 and get an IP by DHCP (#492)"
   USES threadx netxduo esp_hosted

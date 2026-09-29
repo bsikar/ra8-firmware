@@ -199,7 +199,7 @@ RA8_INTERNAL static void internal_test_mcdc_reflow_init_font_px_range(void)
  *   xhtml_buf and xhtml_len are zero -> returns invalid_state.
  * - Vector 2 (F,F): after a successful layout_chapter the cached
  *   pair is non-NULL/non-zero -> set_font_size proceeds (covered by
- *   test_set_font_size_reflows in tests/src/test_reflow.c).
+ *   test_set_font_size_reflows in apps/shared_libs/reflow/tests/src/test_reflow.c).
  * The mixed (T,F)/(F,T) vectors are unreachable: layout_chapter
  * rejects xhtml_len==0 at line 848 before caching, so the cached
  * pair is always (NULL,0) or (non-NULL, non-zero). Recorded as a

@@ -3,6 +3,9 @@
  * @brief Independent Watchdog Timer (IWDT) register layout for the RA8D2
  * @ingroup grp_hal_timers
  *
+ * @par Tag
+ * [Ring 3 / HAL] {World: S}
+ *
  * @details
  * The IWDT is a free-running 14-bit down-counter clocked from the
  * IWDT-dedicated low-speed oscillator (IWDTCLK, ~15 kHz on RA8D2),

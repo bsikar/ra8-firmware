@@ -31,6 +31,7 @@ include("${_d}/cmake/ra8_add_app.cmake")
 
 ra8_add_app(
   NAME threadx_ipc_demo
+  THREADX_HEAP SDRAM
   STACK_BYTES 4096
   DESCRIPTION "Eclipse ThreadX IPC mailbox ping/pong demo for RA8D2"
   LIBS ra8_board_ek_ra8d2

@@ -3,6 +3,9 @@
  * @brief CRC calculator register layout for the Renesas RA8D2
  * @ingroup grp_hal_analog
  *
+ * @par Tag
+ * [Ring 3 / HAL] {World: NS}
+ *
  * @details
  * The RA8D2 CRC unit lives at `0x40310000` (HUM Ch 48 p 3180) and is a
  * single 16-byte register block. The unit supports five hard-wired

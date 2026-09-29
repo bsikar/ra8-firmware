@@ -23,6 +23,7 @@ and a drifted one would have too:
 from __future__ import annotations
 
 import contextlib
+import dataclasses
 import io
 import subprocess
 import sys
@@ -40,10 +41,14 @@ from check_soup_upstream import (
     EXIT_VACUOUS,
     MIN_COMPONENTS,
     MIN_ENTRIES,
+    MIN_RELEASE_BASIS,
     MIN_UPSTREAM_VERIFIED,
     VacuousScanError,
     _resolve_entry,
+    basis_claim_sentence,
+    release_basis_failures,
     run_check,
+    soup_doc_path,
 )
 from git_environment import isolated_git_environment, trusted_git_executable
 from sbom_registry import Component
@@ -441,6 +446,134 @@ def _selftest_format_cases() -> list[tuple[str, bool]]:
     return cases
 
 
+# --------------------------------------------------------------------------- #
+# Release-basis declarations (#804).                                           #
+# --------------------------------------------------------------------------- #
+# The declaration says a bare commit pin sits N commits past a named release.
+# Offline nothing can prove that ancestry, so what is asserted here is that the
+# declaration cannot disagree with the registry version, the purl or the SOUP
+# prose -- the four places that already disagreed once.
+BASIS_TAG = "v9.9.0"
+BASIS_COMMIT = "a" * 40
+BASIS_PIN = "b" * 40
+BASIS_DISTANCE = 7
+# The shipped floor must be a real count, not zero-with-a-comment.
+BASIS_FLOOR_SANITY_MIN = 2
+
+
+def _basis_component(**overrides: object) -> Component:
+    """Build a fixture component carrying a consistent release-basis claim."""
+    base = dataclasses.replace(
+        _fixture_component(upstream_commit=BASIS_PIN),
+        version=BASIS_TAG.lstrip("v"),
+        purl=f"pkg:github/example/fixture@{BASIS_TAG.lstrip('v')}",
+        release_basis=BASIS_TAG,
+        release_basis_commit=BASIS_COMMIT,
+        release_basis_distance=BASIS_DISTANCE,
+    )
+    return dataclasses.replace(base, **overrides)
+
+
+def _write_basis_doc(root: Path, text: str, *, key: str = "fixture") -> None:
+    """Write `text` as the SOUP claim site for `key` under `root`."""
+    path = root / soup_doc_path(key)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(f"# fixture\n\n{text}\n", encoding="utf-8")
+
+
+def _selftest_release_basis_cases() -> list[tuple[str, bool]]:
+    """Assert the release-basis rules fire once each and stay quiet when honest."""
+    good = _basis_component()
+    sentence = basis_claim_sentence(good)
+    with tempfile.TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        _write_basis_doc(root, sentence)
+
+        def failures(comp: Component | None = None) -> list[str]:
+            comps = (good,) if comp is None else (comp,)
+            return release_basis_failures(comps, root, 0)
+
+        wrapped = sentence.replace(" ", "\n", 3)
+        cases: list[tuple[str, bool]] = [
+            ("MUST NOT FIRE: a consistent declaration with its claim site stated", not failures()),
+            (
+                "MUST NOT FIRE: the claim survives a re-wrap of the sentence",
+                not release_basis_failures((good,), _rewrapped_root(root, wrapped), 0),
+            ),
+            (
+                "MUST FIRE: a tag declared with no commit and no distance",
+                bool(
+                    failures(
+                        _basis_component(release_basis_commit=None, release_basis_distance=None)
+                    )
+                ),
+            ),
+            (
+                "MUST FIRE: a distance of zero commits past the release",
+                bool(failures(_basis_component(release_basis_distance=0))),
+            ),
+            (
+                "MUST FIRE: the pin IS the basis tag, so it is not a snapshot",
+                bool(failures(_basis_component(upstream_commit=BASIS_COMMIT))),
+            ),
+            (
+                "MUST FIRE: a version that is not the declared basis tag",
+                bool(failures(_basis_component(version="8.8.8"))),
+            ),
+            (
+                "MUST FIRE: a purl carrying a different version from the record",
+                bool(failures(_basis_component(purl="pkg:github/example/fixture@8.8.8"))),
+            ),
+            (
+                "MUST FIRE: a declaration on a component that is not commit-pinned",
+                bool(failures(_basis_component(provenance="archive-pinned-sha256"))),
+            ),
+            (
+                "MUST FIRE: a SOUP document that does not state the declared basis",
+                bool(release_basis_failures((good,), _bare_doc_root(root), 0)),
+            ),
+            (
+                "MUST FIRE: a SOUP document that is missing altogether",
+                bool(release_basis_failures((good,), root / "absent", 0)),
+            ),
+            (
+                "MUST NOT FIRE: a component declaring no basis is asked for no claim site",
+                not release_basis_failures((_fixture_component(),), root, 0),
+            ),
+            (
+                "MUST FIRE: no component declares a basis while the floor is real",
+                bool(release_basis_failures((_fixture_component(),), root, MIN_RELEASE_BASIS)),
+            ),
+        ]
+    cases.append(
+        (
+            "MUST NOT FIRE: the live registry and the shipped SOUP docs agree",
+            not release_basis_failures(),
+        )
+    )
+    cases.append(
+        (
+            "MUST NOT FIRE: the release-basis floor is a real count, not zero",
+            MIN_RELEASE_BASIS >= BASIS_FLOOR_SANITY_MIN,
+        )
+    )
+    return cases
+
+
+def _rewrapped_root(root: Path, wrapped: str) -> Path:
+    """Return a root whose claim site states the sentence across line breaks."""
+    other = root / "rewrapped"
+    _write_basis_doc(other, wrapped)
+    return other
+
+
+def _bare_doc_root(root: Path) -> Path:
+    """Return a root whose claim site exists but states no release basis."""
+    other = root / "bare"
+    _write_basis_doc(other, "- **Release basis**: not recorded here.")
+    return other
+
+
 def _raises_manifest_error(key: str, text: str) -> bool:
     """Return True when `parse_manifest` rejects `text` for `key`."""
     try:
@@ -468,6 +601,7 @@ def _run_selftest_body() -> int:
         cases.extend(_selftest_registry_cases(root, ours))
     cases.extend(_selftest_resolve_cases())
     cases.extend(_selftest_format_cases())
+    cases.extend(_selftest_release_basis_cases())
     cases.append(
         (
             "MUST NOT FIRE: the shipped floors are below the live tree, not zero",

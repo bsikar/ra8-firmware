@@ -54,6 +54,8 @@ set(RA8_FMT_FW_SRC
     ${FW_ROOT}/apps/shared_libs/jof/src/jof_png.c
     ${FW_ROOT}/apps/shared_libs/jof/src/jof_png_chunk.c
     ${FW_ROOT}/apps/shared_libs/compress/src/ra8_compress.c
+    ${FW_ROOT}/libs/ra8_imgdec/src/ra8_imgdec_sniff.c
+    ${FW_ROOT}/libs/ra8_mem/src/ra8_arena.c
     ${FW_ROOT}/libs/ra8_core/src/ra8_log.c
     ${FW_ROOT}/libs/ra8_core/src/ra8_error_handler.c
     ${FW_ROOT}/libs/ra8_core/src/ra8_decomp_limits.c
@@ -107,12 +109,14 @@ target_include_directories(
   rabook_imagepack
   PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/inc
           ${FW_ROOT}/libs/ra8_core/inc
+          ${FW_ROOT}/libs/ra8_fmt/inc
           ${FW_ROOT}/apps/shared_libs/jof/inc
           ${FW_ROOT}/libs/ra8_jpeg/inc
           ${FW_ROOT}/libs/ra8_jpeg/src
           ${FW_ROOT}/apps/shared_libs/jof/src
           ${FW_ROOT}/libs/ra8_io/inc
           ${FW_ROOT}/apps/shared_libs/compress/inc
+          ${FW_ROOT}/libs/ra8_imgdec/inc
           ${FW_ROOT}/apps/shared_libs/book/inc
           ${FW_ROOT}/libs/ra8_mem/inc
           ${FW_ROOT}/apps/shared_libs/third_party/miniz
@@ -124,8 +128,16 @@ target_compile_options(rabook_imagepack PRIVATE -Wall -Wextra -Werror)
 
 include(CTest)
 if(BUILD_TESTING)
+  # Deliberately NOT named test_jof_audit: the root host-mode build
+  # (-DRA8_HOST_MODE=ON) configures tests/ and this listfile into one project,
+  # and tests/cmake/unit_tests.cmake already registers a test_jof_audit target
+  # for the same test source against ra8_core_hal. Two targets, one name, is a
+  # hard CMP0002 configure error. The two builds are not redundant: that one
+  # links the shared off-target object library, this one compiles the audit
+  # against the imagepack's own minimal closure (jof + compress + miniz, no
+  # HAL), which is what "portable" in the jof_portable_audit test name means.
   add_executable(
-    test_jof_audit
+    test_jof_audit_portable
     ${FW_ROOT}/apps/shared_libs/jof/tests/src/test_jof_audit.c
     ${FW_ROOT}/apps/shared_libs/jof/src/jof_audit.c
     ${FW_ROOT}/apps/shared_libs/jof/src/jof.c
@@ -135,19 +147,22 @@ if(BUILD_TESTING)
     ${FW_ROOT}/libs/ra8_core/src/ra8_decomp_limits.c
     ${RA8_FMT_THIRD_PARTY_SRC}
   )
-  target_compile_definitions(test_jof_audit PRIVATE RA8_OFF_TARGET ${RA8_FMT_MINIZ_DEFINITIONS})
-  target_compile_options(test_jof_audit PRIVATE -Wall -Wextra -Werror)
+  target_compile_definitions(
+    test_jof_audit_portable PRIVATE RA8_OFF_TARGET ${RA8_FMT_MINIZ_DEFINITIONS}
+  )
+  target_compile_options(test_jof_audit_portable PRIVATE -Wall -Wextra -Werror)
   target_include_directories(
-    test_jof_audit
+    test_jof_audit_portable
     PRIVATE ${FW_ROOT}/tests/support/inc
             ${CMAKE_CURRENT_SOURCE_DIR}/inc
             ${FW_ROOT}/libs/ra8_core/inc
+            ${FW_ROOT}/libs/ra8_fmt/inc
             ${FW_ROOT}/apps/shared_libs/jof/inc
             ${FW_ROOT}/libs/ra8_io/inc
             ${FW_ROOT}/apps/shared_libs/compress/inc
             ${FW_ROOT}/apps/shared_libs/third_party/miniz
   )
-  add_test(NAME jof_portable_audit COMMAND test_jof_audit)
+  add_test(NAME jof_portable_audit COMMAND test_jof_audit_portable)
 
   add_executable(
     test_ra8_fmt_stream_inspect
@@ -169,6 +184,7 @@ if(BUILD_TESTING)
     test_ra8_fmt_stream_inspect
     PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/inc
             ${FW_ROOT}/libs/ra8_core/inc
+            ${FW_ROOT}/libs/ra8_fmt/inc
             ${FW_ROOT}/apps/shared_libs/jof/inc
             ${FW_ROOT}/libs/ra8_io/inc
             ${FW_ROOT}/apps/shared_libs/compress/inc
@@ -182,8 +198,11 @@ if(BUILD_TESTING)
   )
   target_compile_options(test_ra8_fmt_host_fd PRIVATE -Wall -Wextra -Werror)
   target_include_directories(
-    test_ra8_fmt_host_fd PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/inc ${FW_ROOT}/libs/ra8_core/inc
-                                 ${FW_ROOT}/apps/shared_libs/jof/inc
+    test_ra8_fmt_host_fd
+    PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/inc
+            ${FW_ROOT}/libs/ra8_core/inc
+            ${FW_ROOT}/libs/ra8_fmt/inc
+            ${FW_ROOT}/apps/shared_libs/jof/inc
   )
   add_test(NAME ra8_fmt_host_fd COMMAND test_ra8_fmt_host_fd)
 
@@ -209,12 +228,14 @@ if(BUILD_TESTING)
     test_ra8_fmt_stream_convert
     PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/inc
             ${FW_ROOT}/libs/ra8_core/inc
+            ${FW_ROOT}/libs/ra8_fmt/inc
             ${FW_ROOT}/apps/shared_libs/jof/inc
             ${FW_ROOT}/libs/ra8_jpeg/inc
             ${FW_ROOT}/libs/ra8_jpeg/src
             ${FW_ROOT}/apps/shared_libs/jof/src
             ${FW_ROOT}/libs/ra8_io/inc
             ${FW_ROOT}/apps/shared_libs/compress/inc
+            ${FW_ROOT}/libs/ra8_imgdec/inc
             ${FW_ROOT}/libs/ra8_mem/inc
             ${FW_ROOT}/apps/shared_libs/third_party/miniz
   )
@@ -239,12 +260,14 @@ if(BUILD_TESTING)
     test_ra8_fmt_stream_verify
     PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/inc
             ${FW_ROOT}/libs/ra8_core/inc
+            ${FW_ROOT}/libs/ra8_fmt/inc
             ${FW_ROOT}/apps/shared_libs/jof/inc
             ${FW_ROOT}/libs/ra8_jpeg/inc
             ${FW_ROOT}/libs/ra8_jpeg/src
             ${FW_ROOT}/apps/shared_libs/jof/src
             ${FW_ROOT}/libs/ra8_io/inc
             ${FW_ROOT}/apps/shared_libs/compress/inc
+            ${FW_ROOT}/libs/ra8_imgdec/inc
             ${FW_ROOT}/libs/ra8_mem/inc
             ${FW_ROOT}/apps/shared_libs/third_party/miniz
   )
@@ -274,6 +297,7 @@ if(BUILD_TESTING)
             ${FW_ROOT}/apps/shared_libs/rabook_compile/tests/inc
             ${CMAKE_CURRENT_SOURCE_DIR}/inc
             ${FW_ROOT}/libs/ra8_core/inc
+            ${FW_ROOT}/libs/ra8_fmt/inc
             ${FW_ROOT}/apps/shared_libs/book/inc
             ${FW_ROOT}/apps/shared_libs/book/src
             ${FW_ROOT}/libs/ra8_io/inc

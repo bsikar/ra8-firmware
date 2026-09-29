@@ -166,13 +166,16 @@ static ra8_err_t internal_webp_decode_impl(const uint8_t*    data,
 
   /*
    * This facade decodes a whole WebP into a caller RGBA8888 buffer. The #290
-   * normalize-on-import path consumes it in the JOF tile producer
-   * (apps/shared_libs/jof/src/jof_produce.c: priv_webp_transcode), which
-   * bands the decoded canvas into JOF tiles so render time touches one codec
-   * regardless of source. TODO(#289): the ra8_reflow / ra8_img inline raster
-   * dispatch (apps/shared_libs/reflow/src/reflow_image.c) does not yet have a WebP
-   * arm for the small-image (non-tiled) path -- that lands with the longstrip
-   * render work; large WebP pages already normalize through the producer above.
+   * normalize-on-import path consumes it in the JOF tile producer's WebP arm
+   * (apps/shared_libs/jof/src/jof_produce_webp.c: priv_jof_webp_transcode,
+   * dispatched from jof_produce.c), which bands the decoded canvas into JOF
+   * tiles so render time touches one codec regardless of source.
+   * TODO(#637): the reflow / ra8_img inline raster dispatch
+   * (apps/shared_libs/reflow/src/reflow_image.c) does not yet have a WebP arm
+   * for the small-image (non-tiled) path. #289, the longstrip render path this
+   * comment used to defer to, closed on 2026-07-20 with only the band-tile
+   * half landed; #637 owns the residual inline arm. Large WebP pages already
+   * normalize through the producer above.
    */
 
   if (out_w != nullptr) {

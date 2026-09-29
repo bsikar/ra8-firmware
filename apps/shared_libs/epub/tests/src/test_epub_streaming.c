@@ -323,20 +323,23 @@ static size_t s_direct_peak = 0U;
  * @post ::s_direct_bytes and ::s_direct_peak updated.
  * @note Not thread-safe.
  * @since 0.1.0 @details Implements the direct read fixture operation used only by this focused test executable. @retval value The computed fixture value for the supplied inputs. @pre Fixed-capacity fixture storage required by this operation is available. @post Documented outputs contain the exercised result when the operation succeeds. */
-RA8_INTERNAL static size_t internal_direct_read(void* ctx, uint64_t offset, void* buf, size_t len)
+RA8_INTERNAL static ra8_err_t internal_direct_read(
+  void* ctx, uint64_t offset, void* buf, uint32_t len, uint32_t* out_read)
 {
   const buf_src_t* s = (const buf_src_t*)ctx;
+  *out_read          = 0U;
   if (offset >= (uint64_t)s->size) {
-    return 0U;
+    return k_ra8_ok; /* Clean end of file, not a failure. */
   }
   const uint64_t avail = (uint64_t)s->size - offset;
-  const size_t   n     = (len > (size_t)avail) ? (size_t)avail : len;
+  const size_t   n     = ((uint64_t)len > avail) ? (size_t)avail : (size_t)len;
   (void)memcpy(buf, &s->data[offset], n);
   s_direct_bytes += (uint64_t)n;
   if (n > s_direct_peak) {
     s_direct_peak = n;
   }
-  return n;
+  *out_read = (uint32_t)n;
+  return k_ra8_ok;
 }
 
 /** @brief Assert the four chapters carry their distinct markers via @p book. @details Implements the assert chapters fixture operation used only by this focused test executable. @param[in,out] book Fixture argument governed by the exercised interface contract. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
@@ -516,8 +519,9 @@ RA8_INTERNAL static void internal_stream_check_churn(ra8_vmem_t* vm, ra8_vmem_st
   for (uint32_t i = 0U; i < (uint32_t)k_churn; ++i) {
     const uint64_t off =
       ((uint64_t)i * (uint64_t)k_churn_stride) % (uint64_t)s_fixture.archive_size;
-    uint8_t      one = 0U;
-    const size_t got = ra8_vmem_stream_read(st, off, &one, 1U);
+    uint8_t  one = 0U;
+    uint32_t got = 0U;
+    TEST_ASSERT_EQ(k_ra8_ok, ra8_vmem_stream_read_checked(st, off, &one, 1U, &got));
     TEST_ASSERT_EQ(1U, got);
     TEST_ASSERT_EQ(s_fixture.archive[off], one); /* byte-correct through the cache */
     TEST_ASSERT(internal_count_valid_frames() <= (uint32_t)k_frames);
@@ -539,7 +543,10 @@ RA8_INTERNAL static void internal_stream_check_span(ra8_vmem_stream_t* st)
 {
   const uint64_t span_off           = (uint64_t)k_frame_bytes - 10U;
   uint8_t        span[k_span_probe] = {};
-  const size_t   span_got = ra8_vmem_stream_read(st, span_off, span, (size_t)k_span_probe);
+  uint32_t       span_got = 0U;
+  TEST_ASSERT_EQ(k_ra8_ok,
+                 ra8_vmem_stream_read_checked(st, span_off, span, (uint32_t)k_span_probe,
+                                              &span_got));
   TEST_ASSERT_EQ(k_span_probe, span_got);
   TEST_ASSERT_EQ(0, memcmp(span, &s_fixture.archive[span_off], (size_t)k_span_probe));
 }
@@ -691,21 +698,29 @@ RA8_INTERNAL static void internal_test_vmem_stream_guards(void)
   /* vm.cfg.frame_bytes is 0 on a zeroed cache; size=0 trips the size guard first. */
   TEST_ASSERT_EQ(k_ra8_err_invalid_size, ra8_vmem_stream_init(&st, &vm, 0U, 0U));
 
-  /* read guards -- all return 0 bytes. */
-  uint8_t buf[4] = {};
-  TEST_ASSERT_EQ(0U, ra8_vmem_stream_read(nullptr, 0U, buf, sizeof(buf)));
+  /* read guards -- each names why it copied nothing, and EOF is not an error. */
+  uint8_t  buf[4] = {};
+  uint32_t got    = 1U;
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_vmem_stream_read(nullptr, 0U, buf, sizeof(buf), &got));
+  TEST_ASSERT_EQ(0U, got);
   ra8_vmem_stream_t bound = {.vm          = &vm,
                              .object_id   = 0U,
                              .frame_bytes = (uint32_t)k_frame_bytes,
                              .size        = k_epub_entry_bytes};
-  TEST_ASSERT_EQ(0U, ra8_vmem_stream_read(&bound, 0U, nullptr, sizeof(buf))); /* NULL buf */
-  TEST_ASSERT_EQ(0U, ra8_vmem_stream_read(&bound, 0U, buf, 0U));              /* len 0    */
-  TEST_ASSERT_EQ(0U, ra8_vmem_stream_read(&bound, 100U, buf, sizeof(buf)));   /* at EOF   */
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr,
+                 ra8_vmem_stream_read(&bound, 0U, nullptr, sizeof(buf), &got)); /* NULL buf */
+  TEST_ASSERT_EQ(k_ra8_err_invalid_size,
+                 ra8_vmem_stream_read(&bound, 0U, buf, 0U, &got)); /* len 0 */
+  got = 1U;
+  TEST_ASSERT_EQ(k_ra8_ok,
+                 ra8_vmem_stream_read(&bound, 100U, buf, sizeof(buf), &got)); /* clean EOF */
+  TEST_ASSERT_EQ(0U, got);
   ra8_vmem_stream_t unbound = {.vm          = &vm,
                                .object_id   = 0U,
                                .frame_bytes = 0U,
                                .size        = k_epub_entry_bytes};
-  TEST_ASSERT_EQ(0U, ra8_vmem_stream_read(&unbound, 0U, buf, sizeof(buf))); /* frame_bytes 0 */
+  TEST_ASSERT_EQ(k_ra8_err_invalid_state,
+                 ra8_vmem_stream_read(&unbound, 0U, buf, sizeof(buf), &got)); /* frame_bytes 0 */
 
   TEST_END("ra8_vmem_stream: init + read guards");
 }

@@ -26,6 +26,10 @@
  *     centi-degC.
  *   - I2C NAK propagation: when the mock returns ``k_ra8_err_nack``,
  *     the driver returns it back unchanged.
+ *   - ``ra8_lsm6dso_bind_i2c`` -- argument rejection, and the framing it
+ *     puts on the wire: a read becomes one write-RESTART-read of the
+ *     register address, a write becomes one ``[reg][payload]`` frame
+ *     terminated with STOP, against a mock ``ra8_i2c_bus_ops_t``.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -37,6 +41,7 @@
 
 #include "ra8_attributes.h"
 #include "ra8_err.h"
+#include "ra8_i2c_bus_ops.h"
 #include "ra8_lsm6dso.h"
 #include "unity_minimal.h"
 
@@ -826,6 +831,322 @@ static void internal_test_fifo_validates_inputs(void)
 }
 
 /* =============================================================================
+ * Tests: house-seam binder (ra8_lsm6dso_bind_i2c)
+ * =============================================================================
+ */
+
+/**
+ * @enum bind_mock_cap_t
+ * @brief Sizing for the frame-level house-seam mock.
+ */
+typedef enum : uint32_t {
+  k_bind_frame_cap = 16U, /**< Longest frame the mock records. */
+  k_bind_log_cap   = 8U,  /**< Frames recorded before the mock stops storing. */
+} bind_mock_cap_t;
+
+/**
+ * @struct bind_frame_t
+ * @brief One recorded house-seam write frame.
+ */
+typedef struct {
+  uint8_t  addr;                   /**< 7-bit address the seam was given. */
+  uint8_t  data[k_bind_frame_cap]; /**< Frame bytes as staged by the binder. */
+  uint32_t len;                    /**< Frame length in bytes. */
+  bool     send_stop;              /**< STOP flag the binder asked for. */
+} bind_frame_t;
+
+/**
+ * @struct bind_mock_t
+ * @brief File-scope state for the frame-level house-seam mock.
+ */
+typedef struct {
+  bind_frame_t writes[k_bind_log_cap]; /**< Recorded write frames. */
+  uint32_t     write_count;            /**< Writes attempted, recorded or not. */
+  uint8_t      last_xfer_addr;         /**< Address of the last transfer. */
+  uint8_t      last_xfer_reg;          /**< Register byte the transfer wrote. */
+  uint32_t     last_xfer_wr_len;       /**< Write half of the last transfer. */
+  uint32_t     last_xfer_rd_len;       /**< Read half of the last transfer. */
+  uint32_t     xfer_count;             /**< Transfers attempted. */
+  uint8_t      regs[0x100];            /**< Register file behind the seam. */
+  ra8_err_t    forced_err;             /**< Fault injected into both calls. */
+} bind_mock_t;
+
+/** @brief File-scope house-seam mock state. */
+static bind_mock_t s_bind_mock;
+
+/** @brief Reset the house-seam mock between vectors.
+ *
+ * @details Clears every recorded frame, the register file and the injected fault.
+ * @pre The mock fixture is exclusively owned by the current test vector.
+ * @post The mock reports no writes, no transfers and no forced error.
+ * @note Test-only and not reentrant because the mock state has file scope.
+ * @since Version 0.1.0
+ */
+RA8_INTERNAL
+static void internal_bind_mock_reset(void)
+{
+  memset(&s_bind_mock, 0, sizeof(s_bind_mock));
+  s_bind_mock.forced_err = k_ra8_ok;
+}
+
+/** @brief Mock ``ra8_i2c_bus_ops_t::write``.
+ *
+ * @details Records the frame verbatim, mirrors it into the register file at the frame's leading register byte, and forwards injected faults.
+ * @param[in] ctx Opaque cookie; unused because the mock is file-scoped.
+ * @param[in] addr 7-bit address supplied by the binder.
+ * @param[in] data Frame bytes.
+ * @param[in] len Frame length.
+ * @param[in] send_stop STOP flag supplied by the binder.
+ * @return Mock transport status.
+ * @retval k_ra8_ok The frame was recorded and mirrored.
+ * @pre The mock fixture is exclusively owned by the current test vector.
+ * @post All writes remain within the bounded mock frame and register arrays.
+ * @note Test-only and not reentrant because the mock state has file scope.
+ * @since Version 0.1.0
+ */
+RA8_INTERNAL
+static ra8_err_t
+internal_bind_write(void* ctx, uint8_t addr, const uint8_t* data, uint32_t len, bool send_stop)
+{
+  (void)ctx;
+  if (s_bind_mock.forced_err != k_ra8_ok) {
+    return s_bind_mock.forced_err;
+  }
+  if (s_bind_mock.write_count < (uint32_t)k_bind_log_cap) {
+    bind_frame_t* f = &s_bind_mock.writes[s_bind_mock.write_count];
+    f->addr         = addr;
+    f->len          = (len > (uint32_t)k_bind_frame_cap) ? (uint32_t)k_bind_frame_cap : len;
+    f->send_stop    = send_stop;
+    for (uint32_t i = 0U; i < f->len; ++i) {
+      f->data[i] = data[i];
+    }
+  }
+  s_bind_mock.write_count++;
+  for (uint32_t i = 1U; i < len; ++i) {
+    const uint32_t idx    = ((uint32_t)data[0] + (i - 1U)) & 0xFFU;
+    s_bind_mock.regs[idx] = data[i];
+  }
+  return k_ra8_ok;
+}
+
+/** @brief Mock ``ra8_i2c_bus_ops_t::read``, which the binder must never call.
+ *
+ * @details Fails loudly so a future binder that reaches for the plain read instead of the combined transfer is caught by the suite.
+ * @param[in] ctx Opaque cookie; unused.
+ * @param[in] addr 7-bit address; unused.
+ * @param[out] data Destination; unused.
+ * @param[in] len Byte count; unused.
+ * @return Always an error.
+ * @retval k_ra8_err_invalid_state The binder used a callback it should not.
+ * @pre The mock fixture is exclusively owned by the current test vector.
+ * @post No mock state changes.
+ * @note Test-only and not reentrant because the mock state has file scope.
+ * @since Version 0.1.0
+ */
+RA8_INTERNAL
+static ra8_err_t internal_bind_read_unused(void* ctx, uint8_t addr, uint8_t* data, uint32_t len)
+{
+  (void)ctx;
+  (void)addr;
+  (void)data;
+  (void)len;
+  return k_ra8_err_invalid_state;
+}
+
+/** @brief Mock ``ra8_i2c_bus_ops_t::transfer``.
+ *
+ * @details Records the write-RESTART-read shape the binder asked for and serves the read half from the register file with auto-increment.
+ * @param[in] ctx Opaque cookie; unused because the mock is file-scoped.
+ * @param[in] addr 7-bit address supplied by the binder.
+ * @param[in] wr Write half (the register address).
+ * @param[in] wr_len Write-half length.
+ * @param[out] rd Read half destination.
+ * @param[in] rd_len Read-half length.
+ * @return Mock transport status.
+ * @retval k_ra8_ok The transaction was recorded and served.
+ * @pre The mock fixture is exclusively owned by the current test vector.
+ * @post All writes remain within the bounded mock register array.
+ * @note Test-only and not reentrant because the mock state has file scope.
+ * @since Version 0.1.0
+ */
+RA8_INTERNAL
+static ra8_err_t internal_bind_transfer(void*          ctx,
+                                        uint8_t        addr,
+                                        const uint8_t* wr,
+                                        uint32_t       wr_len,
+                                        uint8_t*       rd,
+                                        uint32_t       rd_len)
+{
+  (void)ctx;
+  if (s_bind_mock.forced_err != k_ra8_ok) {
+    return s_bind_mock.forced_err;
+  }
+  s_bind_mock.last_xfer_addr   = addr;
+  s_bind_mock.last_xfer_reg    = (wr_len > 0U) ? wr[0] : 0U;
+  s_bind_mock.last_xfer_wr_len = wr_len;
+  s_bind_mock.last_xfer_rd_len = rd_len;
+  s_bind_mock.xfer_count++;
+  for (uint32_t i = 0U; i < rd_len; ++i) {
+    const uint32_t idx = ((uint32_t)s_bind_mock.last_xfer_reg + i) & 0xFFU;
+    rd[i]              = s_bind_mock.regs[idx];
+  }
+  return k_ra8_ok;
+}
+
+/** @brief Build a house seam tied to the file-scope frame-level mock.
+ *
+ * @details Fills all three callbacks so the suite can prove the binder uses transfer rather than the plain read.
+ * @return House I2C seam bound to the mock callbacks.
+ * @retval configured Every callback is non-NULL and the cookie is NULL by design.
+ * @pre The mock fixture is exclusively owned by the current test vector.
+ * @post No mock state changes.
+ * @note Test-only and not reentrant because the mock state has file scope.
+ * @since Version 0.1.0
+ */
+RA8_INTERNAL
+static ra8_i2c_bus_ops_t internal_make_ops(void)
+{
+  const ra8_i2c_bus_ops_t ops = {
+    .write    = internal_bind_write,
+    .read     = internal_bind_read_unused,
+    .transfer = internal_bind_transfer,
+    .ctx      = nullptr,
+  };
+  return ops;
+}
+
+/** @brief ``ra8_lsm6dso_bind_i2c`` rejects every malformed argument.
+ *
+ * @details Walks the four NULL conditions plus the 7-bit address bound, which is the whole refusal surface of the binder.
+ * @pre The mock fixture is exclusively owned by the current test vector.
+ * @post Nothing reached the mock transport.
+ * @note Test-only and not reentrant because the mock state has file scope.
+ * @since Version 0.1.0
+ */
+RA8_INTERNAL
+static void internal_test_bind_validates_inputs(void)
+{
+  internal_bind_mock_reset();
+  TEST_BEGIN("lsm6dso: bind_i2c validates inputs");
+  ra8_lsm6dso_t           dev = {};
+  ra8_lsm6dso_i2c_ctx_t   ctx = {};
+  const ra8_i2c_bus_ops_t ops = internal_make_ops();
+
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr,
+                 ra8_lsm6dso_bind_i2c(nullptr, &ctx, &ops, k_lsm6dso_i2c_addr_sa0_high));
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr,
+                 ra8_lsm6dso_bind_i2c(&dev, nullptr, &ops, k_lsm6dso_i2c_addr_sa0_high));
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr,
+                 ra8_lsm6dso_bind_i2c(&dev, &ctx, nullptr, k_lsm6dso_i2c_addr_sa0_high));
+
+  ra8_i2c_bus_ops_t no_write = ops;
+  no_write.write             = nullptr;
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr,
+                 ra8_lsm6dso_bind_i2c(&dev, &ctx, &no_write, k_lsm6dso_i2c_addr_sa0_high));
+
+  ra8_i2c_bus_ops_t no_xfer = ops;
+  no_xfer.transfer          = nullptr;
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr,
+                 ra8_lsm6dso_bind_i2c(&dev, &ctx, &no_xfer, k_lsm6dso_i2c_addr_sa0_high));
+
+  /* 0x80 is the first value outside the 7-bit address space. */
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_lsm6dso_bind_i2c(&dev, &ctx, &ops, 0x80U));
+
+  TEST_ASSERT_EQ(0U, s_bind_mock.write_count);
+  TEST_ASSERT_EQ(0U, s_bind_mock.xfer_count);
+  TEST_END("lsm6dso: bind_i2c validates inputs");
+}
+
+/** @brief A bound read becomes one write-RESTART-read of the register.
+ *
+ * @details Plants WHO_AM_I behind the seam and proves the binder addresses it with a one-byte write half and the driver's own read length, on the address it was bound to, without touching the seam's plain read callback.
+ * @pre The mock fixture is exclusively owned by the current test vector.
+ * @post Exactly one transfer reached the mock.
+ * @note Test-only and not reentrant because the mock state has file scope.
+ * @since Version 0.1.0
+ */
+RA8_INTERNAL
+static void internal_test_bind_read_uses_transfer(void)
+{
+  internal_bind_mock_reset();
+  TEST_BEGIN("lsm6dso: bound read is one write-RESTART-read");
+  s_bind_mock.regs[k_lsm6dso_reg_who_am_i] = (uint8_t)k_lsm6dso_who_am_i_value;
+
+  ra8_lsm6dso_t           dev = {};
+  ra8_lsm6dso_i2c_ctx_t   ctx = {};
+  const ra8_i2c_bus_ops_t ops = internal_make_ops();
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_lsm6dso_bind_i2c(&dev, &ctx, &ops, k_lsm6dso_i2c_addr_sa0_high));
+
+  uint8_t id = 0U;
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_lsm6dso_who_am_i(&dev, &id));
+  TEST_ASSERT_EQ((uint8_t)k_lsm6dso_who_am_i_value, id);
+
+  TEST_ASSERT_EQ(1U, s_bind_mock.xfer_count);
+  TEST_ASSERT_EQ(0U, s_bind_mock.write_count);
+  TEST_ASSERT_EQ((uint8_t)k_lsm6dso_i2c_addr_sa0_high, s_bind_mock.last_xfer_addr);
+  TEST_ASSERT_EQ((uint8_t)k_lsm6dso_reg_who_am_i, s_bind_mock.last_xfer_reg);
+  TEST_ASSERT_EQ(1U, s_bind_mock.last_xfer_wr_len);
+  TEST_ASSERT_EQ(1U, s_bind_mock.last_xfer_rd_len);
+  TEST_END("lsm6dso: bound read is one write-RESTART-read");
+}
+
+/** @brief A bound write becomes one framed write terminated with STOP.
+ *
+ * @details Drives a full-scale change through the bound driver and proves the frame on the wire is the register byte followed by the payload, on the bound address, with STOP asserted.
+ * @pre The mock fixture is exclusively owned by the current test vector.
+ * @post The recorded frame is two bytes long.
+ * @note Test-only and not reentrant because the mock state has file scope.
+ * @since Version 0.1.0
+ */
+RA8_INTERNAL
+static void internal_test_bind_write_frames_reg_then_payload(void)
+{
+  internal_bind_mock_reset();
+  TEST_BEGIN("lsm6dso: bound write frames reg then payload");
+  ra8_lsm6dso_t           dev = {};
+  ra8_lsm6dso_i2c_ctx_t   ctx = {};
+  const ra8_i2c_bus_ops_t ops = internal_make_ops();
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_lsm6dso_bind_i2c(&dev, &ctx, &ops, k_lsm6dso_i2c_addr_sa0_low));
+
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_lsm6dso_set_accel_range(&dev, k_lsm6dso_xl_fs_8g));
+
+  TEST_ASSERT_EQ(1U, s_bind_mock.write_count);
+  const bind_frame_t* f = &s_bind_mock.writes[0];
+  TEST_ASSERT_EQ((uint8_t)k_lsm6dso_i2c_addr_sa0_low, f->addr);
+  TEST_ASSERT_EQ(2U, f->len);
+  TEST_ASSERT_EQ((uint8_t)k_lsm6dso_reg_ctrl1_xl, f->data[0]);
+  /* FS_XL[1:0] = 0b11 sits in bits [3:2], so +-8 g reads back as 0x0C. */
+  TEST_ASSERT_EQ(0x0CU, f->data[1]);
+  TEST_ASSERT_EQ(true, f->send_stop);
+  TEST_END("lsm6dso: bound write frames reg then payload");
+}
+
+/** @brief A transport fault under the binder reaches the caller unchanged.
+ *
+ * @details Injects a NAK into the house seam and proves the binder forwards it rather than flattening it into a local code.
+ * @pre The mock fixture is exclusively owned by the current test vector.
+ * @post The injected fault is the value the driver returned.
+ * @note Test-only and not reentrant because the mock state has file scope.
+ * @since Version 0.1.0
+ */
+RA8_INTERNAL
+static void internal_test_bind_propagates_fault(void)
+{
+  internal_bind_mock_reset();
+  TEST_BEGIN("lsm6dso: bound transport fault propagates");
+  ra8_lsm6dso_t           dev = {};
+  ra8_lsm6dso_i2c_ctx_t   ctx = {};
+  const ra8_i2c_bus_ops_t ops = internal_make_ops();
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_lsm6dso_bind_i2c(&dev, &ctx, &ops, k_lsm6dso_i2c_addr_sa0_high));
+
+  s_bind_mock.forced_err = k_ra8_err_nack;
+  uint8_t id             = 0U;
+  TEST_ASSERT_EQ(k_ra8_err_nack, ra8_lsm6dso_who_am_i(&dev, &id));
+  TEST_ASSERT_EQ(k_ra8_err_nack, ra8_lsm6dso_set_odr(&dev, k_lsm6dso_odr_104hz));
+  TEST_END("lsm6dso: bound transport fault propagates");
+}
+
+/* =============================================================================
  * main
  * =============================================================================
  */
@@ -847,5 +1168,9 @@ int main(void)
   internal_test_read_temp_converts();
   internal_test_fifo_drains_words();
   internal_test_fifo_validates_inputs();
+  internal_test_bind_validates_inputs();
+  internal_test_bind_read_uses_transfer();
+  internal_test_bind_write_frames_reg_then_payload();
+  internal_test_bind_propagates_fault();
   return 0;
 }

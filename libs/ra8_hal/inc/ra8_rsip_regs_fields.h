@@ -3,6 +3,9 @@
  * @brief RSIP-E50D register field/value enums and the reg32 accessor
  * @ingroup grp_hal_crypto
  *
+ * @par Tag
+ * [Ring 3 / HAL] {World: S}
+ *
  * @details
  * Sub-header of @ref ra8_rsip_regs.h. Carries every register
  * field-position / bit-mask / command-value enum for the RSIP-E50D

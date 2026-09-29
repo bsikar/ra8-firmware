@@ -308,11 +308,20 @@ typedef struct {
  * @details
  * cppcheck cannot see tests/ so it flags every field as unused;
  * each member is read in ``ra8_mipi_phy_init``.
+ *
+ * Most members reach a register: ``mode`` selects DPHYMDC.MASTEREN,
+ * ``pclka_mhz`` encodes DPHYREFCR.RFREQ, ``pll`` packs DPHYPLFCR,
+ * ``escdiv`` writes DPHYESCCR and ``p_timing`` fills DPHYTIM1..6.
+ * ``lane_count``, ``clk_mode`` and ``eotp`` are latched into driver
+ * state for the DSI / CSI layers above. ``line_rate_mbps`` is the one
+ * member no register takes: init bounds it against the 80..720 window
+ * of HUM Ch 64.1 p 3822 and rejects anything outside, which is the
+ * same key range ``ra8_mipi_phy_select_timing`` serves rows for.
  */
 typedef struct {
   ra8_mipi_phy_mode_t          mode;           /**< Host (DSI) or device (CSI).            */
   uint8_t                      pclka_mhz;      /**< PCLKA frequency, MHz (40..125).        */
-  uint16_t                     line_rate_mbps; /**< Per-lane line rate (80..720).          */
+  uint16_t                     line_rate_mbps; /**< Per-lane line rate; 80..720 enforced. */
   ra8_mipi_phy_lane_count_t    lane_count;     /**< 1 or 2 data lanes.                     */
   ra8_mipi_phy_clk_mode_t      clk_mode;       /**< Continuous vs non-continuous HS clock. */
   ra8_mipi_phy_eotp_t          eotp;           /**< Append EoTP (DSI only).                */

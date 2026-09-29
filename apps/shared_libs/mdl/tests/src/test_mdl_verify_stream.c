@@ -18,6 +18,7 @@
 #include <string.h>
 
 #include "mdl_export.h"
+#include "mdl_state_fs_fault.h"
 #include "mdl_storage.h"
 #include "mdl_test_storage.h"
 #include "mdl_verify.h"
@@ -301,6 +302,78 @@ internal_io_open_fixture(mdl_storage_t* storage, mdl_verify_io_t* io, uint64_t s
                                      storage->file_workspace_bytes);
   io->owned             = (error == k_ra8_ok);
   return error;
+}
+
+/** @brief Injected-fault filesystem bound around the process storage backend. */
+static mdl_state_fault_fs_t s_fault;
+
+/**
+ * @brief Validate the accepted archive through the injected-fault filesystem.
+ * @details Publishes the intact fixture with the real backend, then rebinds a copy of the process
+ * storage onto the fault facade so the streamed reader meets deterministic stream failures.
+ * @param[in] flags Fault bits armed for this validation. @param[out] report Candidate report.
+ * @return Publication, open, validation or close status. @retval k_ra8_ok The archive was accepted.
+ * @pre Test storage is initialized and the facade is bound. @pre The shared archive buffer is exclusively owned.
+ * @post Every armed fault bit is cleared before returning. @post The handle is closed whenever it opened.
+ * @note Test-only and serial. @since 0.1.0
+ */
+RA8_INTERNAL static ra8_err_t internal_run_tar_faulted(uint32_t flags, mdl_verify_report_t* report)
+{
+  const size_t  length    = internal_tar_build(&s_tar_shapes[k_fx_valid]);
+  ra8_err_t     error     = mdl_test_storage_publish(s_stream_path, s_tar, (uint32_t)length);
+  mdl_storage_t storage   = *mdl_test_storage_get();
+  storage.fs              = &s_fault.fs;
+  storage.io_buffer       = s_io;
+  storage.io_buffer_bytes = k_fx_io_chunk;
+  mdl_verify_io_t io      = {};
+  if (error == k_ra8_ok) {
+    s_fault.flags = flags;
+    error         = internal_io_open_fixture(&storage, &io, length);
+  }
+  if (error == k_ra8_ok) {
+    const ra8_err_t verified = priv_mdl_verify_tar(&io, report);
+    const ra8_err_t closed   = fw_fs_close(io.file);
+    error                    = (verified != k_ra8_ok) ? verified : closed;
+  }
+  s_fault.flags = 0U;
+  return error;
+}
+
+/**
+ * @brief Exercise the streamed validator's injected stream-fault paths.
+ * @details Drives the accepted archive through the media, open-stream read, short-read and close
+ * faults, so the reader's retry and propagation branches are observed instead of reported
+ * unreachable by construction.
+ * @pre Test storage is initialized and the facade is bound. @pre The fixture path is exclusively owned.
+ * @post Every vector cleared its fault bits. @post A rejected vector left the report at its sentinel.
+ * @note Test-only; assertion failure terminates the process. @since 0.1.0
+ */
+RA8_INTERNAL static void internal_test_stream_io_faults(void)
+{
+  TEST_BEGIN("media cbt streamed io faults");
+  mdl_verify_report_t intact = {.member_count = (size_t)k_fx_sentinel};
+  TEST_ASSERT_EQ(k_ra8_ok, internal_run_tar_faulted((uint32_t)k_mdl_state_fault_none, &intact));
+  TEST_ASSERT_EQ(k_fx_want_pages, intact.page_count);
+  TEST_ASSERT_EQ(k_fx_want_members, intact.member_count);
+  TEST_ASSERT(intact.metadata_present);
+  mdl_verify_report_t chunked = {.member_count = (size_t)k_fx_sentinel};
+  TEST_ASSERT_EQ(k_ra8_ok,
+                 internal_run_tar_faulted((uint32_t)k_mdl_state_fault_short_read, &chunked));
+  TEST_ASSERT_EQ(k_fx_want_pages, chunked.page_count);
+  TEST_ASSERT_EQ(k_fx_want_members, chunked.member_count);
+  mdl_verify_report_t unread = {.member_count = (size_t)k_fx_sentinel};
+  TEST_ASSERT_EQ(k_ra8_err_hw_error,
+                 internal_run_tar_faulted((uint32_t)k_mdl_state_fault_read, &unread));
+  TEST_ASSERT_EQ(k_fx_sentinel, unread.member_count);
+  mdl_verify_report_t unclosed = {.member_count = (size_t)k_fx_sentinel};
+  TEST_ASSERT_EQ(k_ra8_err_hw_error,
+                 internal_run_tar_faulted((uint32_t)k_mdl_state_fault_close, &unclosed));
+  TEST_ASSERT_EQ(k_fx_want_members, unclosed.member_count);
+  mdl_verify_report_t unmounted = {.member_count = (size_t)k_fx_sentinel};
+  TEST_ASSERT_EQ(k_ra8_err_hw_not_ready,
+                 internal_run_tar_faulted((uint32_t)k_mdl_state_fault_media, &unmounted));
+  TEST_ASSERT_EQ(k_fx_sentinel, unmounted.member_count);
+  TEST_END("media cbt streamed io faults");
 }
 
 /**
@@ -657,9 +730,10 @@ RA8_INTERNAL static void internal_test_gzip_payload_faults(void)
 /**
  * @test internal_test_verify_arguments
  * @brief Arena reservation limits and the validator's argument and format contracts.
- * @details Exercises every rejection the bounded arena reservation makes -- a zero request, a zero
- * alignment, a non power-of-two alignment, an alignment walking the cursor past the capacity, an
- * oversized request, and a cursor whose rounding would overflow -- then proves a reserved format is
+ * @details Exercises every rejection the bounded arena reservation makes -- a missing workspace, a
+ * workspace with no arena storage, a zero request, a zero alignment, a non power-of-two alignment,
+ * an alignment walking the cursor past the capacity, an oversized request, and a cursor whose
+ * rounding would overflow -- then proves a reserved format is
  * refused as unsupported, a non-container format as an invalid argument, and that both public entry
  * points reject a missing pointer before touching storage.
  * @pre Storage is initialized and the fixture path is writable. @pre The scratch buffer is owned.
@@ -671,6 +745,10 @@ RA8_INTERNAL static void internal_test_verify_arguments(void)
   mdl_storage_t*         store = mdl_test_storage_get();
   mdl_export_workspace_t ws;
   mdl_export_workspace_init(&ws, s_io, sizeof(s_io));
+  TEST_ASSERT_NULL(priv_mdl_verify_workspace_take(nullptr, k_fx_one, k_fx_one));
+  mdl_export_workspace_t unbound;
+  mdl_export_workspace_init(&unbound, nullptr, sizeof(s_io));
+  TEST_ASSERT_NULL(priv_mdl_verify_workspace_take(&unbound, k_fx_one, k_fx_one));
   TEST_ASSERT_NULL(priv_mdl_verify_workspace_take(&ws, 0U, alignof(max_align_t)));
   TEST_ASSERT_NULL(priv_mdl_verify_workspace_take(&ws, k_fx_one, 0U));
   TEST_ASSERT_NULL(priv_mdl_verify_workspace_take(&ws, k_fx_one, k_fx_odd_align));
@@ -706,9 +784,11 @@ RA8_INTERNAL static void internal_test_verify_arguments(void)
  * @test internal_test_mcdc_workspace_take_overflow
  *
  * @par MC/DC:
- * Decision: `(workspace->used > (UINTPTR_MAX - base)) || ((base +
- * workspace->used) > (UINTPTR_MAX - mask))` cites
- * apps/shared_libs/mdl/src/mdl_verify.c@priv_mdl_verify_workspace_take.
+ * Decision: `(ws->used > (UINTPTR_MAX - base)) || ((base + ws->used) >
+ * (UINTPTR_MAX - mask))` cites
+ * apps/shared_libs/mdl/src/mdl_export_workspace.c@mdl_export_workspace_take,
+ * reached here through the verifier's forwarder
+ * ::priv_mdl_verify_workspace_take (one bump implementation, #757).
  * - Vector 1: used=0, aligned cursor in capacity -> false (both conditions false)
  * - Vector 2: used=SIZE_MAX -> true (varies the first condition)
  * - Vector 3: used=UINTPTR_MAX-base -> true (varies the second condition)
@@ -751,12 +831,14 @@ RA8_INTERNAL static void internal_test_mcdc_workspace_take_overflow(void)
 int main(void)
 {
   TEST_ASSERT_EQ(k_ra8_ok, mdl_test_storage_init());
+  TEST_ASSERT_EQ(k_ra8_ok, mdl_state_fault_fs_init(&s_fault, mdl_test_storage_get()->fs));
   internal_test_tar_shapes();
   internal_test_tar_header_guards();
   internal_test_tar_field_encodings();
   internal_test_gzip_framing();
   internal_test_gzip_stream_bounds();
   internal_test_gzip_payload_faults();
+  internal_test_stream_io_faults();
   internal_test_mcdc_workspace_take_overflow();
   internal_test_verify_arguments();
   TEST_ASSERT_EQ(k_ra8_ok, mdl_test_storage_deinit());

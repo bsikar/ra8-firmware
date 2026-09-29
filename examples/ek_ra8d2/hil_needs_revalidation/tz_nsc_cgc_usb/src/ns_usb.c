@@ -45,6 +45,8 @@
 
 #include "ns_usb_internal.h"
 #include "ra8_usb.h"
+#include "ra8_usb_compose.h"
+#include "ra8_usb_desc.h"
 #include "tx_api.h"
 #include "ux_api.h"
 #include "ux_dcd_ra8_usb.h"
@@ -220,194 +222,174 @@ static UX_SLAVE_CLASS_CDC_ACM* s_ns_cdc_acm = UX_NULL;
  * USB descriptors (DEVICE + CONFIG + IAD + CDC interfaces + endpoints)
  * =============================================================================
  *
- * Verbatim from the validated threadx_usbx_cdc_demo: VID/PID 1209:000a (pid.codes
- * test range), one CDC-ACM communications interface + one CDC data interface,
- * EP3 IN (interrupt) for notifications, EP2 OUT / EP1 IN (bulk, 64-byte MPS).
- * Layout per CDC 1.20 sec 5 + USB 2.0 sec 9.6; bcdUSB 0x0200 (macOS rejects IAD
- * composite devices that advertise USB 1.1).
+ * Same device this image always published, VID/PID 1209:000a in the pid.codes
+ * test range, one CDC-ACM communications interface plus one CDC data
+ * interface, EP3 IN (interrupt) for notifications and EP2 OUT / EP1 IN (bulk,
+ * 64-byte MPS). The bytes used to be written out by hand here; they are
+ * synthesised from the identity below by ra8_usb_device_compose, which
+ * encodes the same CDC 1.20 sec 5 + USB 2.0 sec 9.6 layout, bcdUSB 0x0200
+ * included (macOS rejects IAD composite devices that advertise USB 1.1).
  */
-static UCHAR s_ns_device_framework_fs[] = {
-  /* Device descriptor (18 bytes). idVendor 0x1209, idProduct 0x000A. */
-  0x12U,
-  0x01U,
-  0x00U,
-  0x02U,
-  0xEFU,
-  0x02U,
-  0x01U,
-  0x40U,
-  0x09U,
-  0x12U,
-  0x0AU,
-  0x00U,
-  0x00U,
-  0x01U,
-  0x01U,
-  0x02U,
-  0x03U,
-  0x01U,
-  /* Configuration descriptor (wTotalLength 0x4B = 75). */
-  0x09U,
-  0x02U,
-  0x4BU,
-  0x00U,
-  0x02U,
-  0x01U,
-  0x00U,
-  0x80U,
-  0x32U,
-  /* Interface association (CDC). */
-  0x08U,
-  0x0BU,
-  0x00U,
-  0x02U,
-  0x02U,
-  0x02U,
-  0x01U,
-  0x00U,
-  /* Communications interface (CDC ACM). */
-  0x09U,
-  0x04U,
-  0x00U,
-  0x00U,
-  0x01U,
-  0x02U,
-  0x02U,
-  0x01U,
-  0x00U,
-  /* CDC header functional descriptor (bcdCDC 0x0120). */
-  0x05U,
-  0x24U,
-  0x00U,
-  0x20U,
-  0x01U,
-  /* Call-management functional descriptor. */
-  0x05U,
-  0x24U,
-  0x01U,
-  0x01U,
-  0x01U,
-  /* ACM functional descriptor. */
-  0x04U,
-  0x24U,
-  0x02U,
-  0x02U,
-  /* Union functional descriptor. */
-  0x05U,
-  0x24U,
-  0x06U,
-  0x00U,
-  0x01U,
-  /* Interrupt-IN endpoint (EP3 IN, 8-byte MPS, 255 ms poll). */
-  0x07U,
-  0x05U,
-  0x83U,
-  0x03U,
-  0x08U,
-  0x00U,
-  0xFFU,
-  /* Data-class interface. */
-  0x09U,
-  0x04U,
-  0x01U,
-  0x00U,
-  0x02U,
-  0x0AU,
-  0x00U,
-  0x00U,
-  0x00U,
-  /* Bulk-OUT endpoint (EP2 OUT, 64-byte MPS). */
-  0x07U,
-  0x05U,
-  0x02U,
-  0x02U,
-  0x40U,
-  0x00U,
-  0x00U,
-  /* Bulk-IN endpoint (EP1 IN, 64-byte MPS). */
-  0x07U,
-  0x05U,
-  0x81U,
-  0x02U,
-  0x40U,
-  0x00U,
-  0x00U,
+
+/**
+ * @enum ns_usb_identity_t
+ * @brief The device identity this Non-Secure image publishes.
+ * @since 0.1.0
+ */
+typedef enum : uint16_t {
+  k_ns_usb_vid          = 0x1209U, /**< idVendor, pid.codes test range. */
+  k_ns_usb_pid          = 0x000AU, /**< idProduct.                      */
+  k_ns_usb_bcd_device   = 0x0100U, /**< bcdDevice, release 1.00.        */
+  k_ns_usb_max_power_ma = 100U,    /**< Bus draw in mA.                 */
+} ns_usb_identity_t;
+
+/**
+ * @enum ns_usb_endpoint_t
+ * @brief The CDC-ACM endpoint layout, addresses as they appear on the wire.
+ * @details An IN endpoint carries bit 7 set, so EP1 IN is 0x81 and EP3 IN is
+ * 0x83, while EP2 OUT is 0x02. That is how the byte array this block replaces
+ * wrote them, which keeps the two diffable.
+ * @since 0.1.0
+ */
+typedef enum : uint16_t {
+  k_ns_usb_notify_ep       = 0x83U, /**< Interrupt-IN, notifications.  */
+  k_ns_usb_notify_bytes    = 8U,    /**< Interrupt-IN max packet size. */
+  k_ns_usb_notify_interval = 255U,  /**< bInterval, 255 ms poll.       */
+  k_ns_usb_out_ep          = 0x02U, /**< Bulk-OUT data pipe.           */
+  k_ns_usb_in_ep           = 0x81U, /**< Bulk-IN data pipe.            */
+  k_ns_usb_data_bytes      = 64U,   /**< Bulk max packet size, FS.     */
+  k_ns_usb_functions       = 1U,    /**< Functions in the config.      */
+} ns_usb_endpoint_t;
+
+/**
+ * @var k_ns_usb_device
+ * @brief Device identity handed to the framework builders.
+ * @note The three strings are string-literal storage with static duration;
+ *       the builders copy them and retain no pointer.
+ * @since 0.1.0
+ */
+static const ra8_usb_desc_device_t k_ns_usb_device = {
+  .vid           = (uint16_t)k_ns_usb_vid,
+  .pid           = (uint16_t)k_ns_usb_pid,
+  .bcd_device    = (uint16_t)k_ns_usb_bcd_device,
+  .manufacturer  = "Brighton Sikarskie",
+  .product       = "EK-RA8D2 CDC Echo!",
+  .serial        = "00000001",
+  .langid        = (uint16_t)k_ra8_usb_desc_langid_en_us,
+  .max_power_ma  = (uint16_t)k_ns_usb_max_power_ma,
+  .self_powered  = false,
+  .remote_wakeup = false,
 };
 
 /**
- * @var s_ns_string_framework
- * @brief USBX string descriptor table (vendor / product / serial).
+ * @var k_ns_usb_cdc
+ * @brief CDC-ACM endpoint layout handed to the framework builder.
  * @since 0.1.0
  */
-static UCHAR s_ns_string_framework[] = {
-  /* idx 1: "Brighton Sikarskie". */
-  0x09U,
-  0x04U,
-  0x01U,
-  0x12U,
-  'B',
-  'r',
-  'i',
-  'g',
-  'h',
-  't',
-  'o',
-  'n',
-  ' ',
-  'S',
-  'i',
-  'k',
-  'a',
-  'r',
-  's',
-  'k',
-  'i',
-  'e',
-  /* idx 2: "EK-RA8D2 CDC Echo!". */
-  0x09U,
-  0x04U,
-  0x02U,
-  0x12U,
-  'E',
-  'K',
-  '-',
-  'R',
-  'A',
-  '8',
-  'D',
-  '2',
-  ' ',
-  'C',
-  'D',
-  'C',
-  ' ',
-  'E',
-  'c',
-  'h',
-  'o',
-  '!',
-  /* idx 3: serial "00000001". */
-  0x09U,
-  0x04U,
-  0x03U,
-  0x08U,
-  '0',
-  '0',
-  '0',
-  '0',
-  '0',
-  '0',
-  '0',
-  '1',
+static const ra8_usb_desc_cdc_acm_t k_ns_usb_cdc = {
+  .notify_ep          = (uint8_t)k_ns_usb_notify_ep,
+  .notify_bytes       = (uint16_t)k_ns_usb_notify_bytes,
+  .notify_interval_ms = (uint8_t)k_ns_usb_notify_interval,
+  .out_ep             = (uint8_t)k_ns_usb_out_ep,
+  .in_ep              = (uint8_t)k_ns_usb_in_ep,
+  .data_bytes         = (uint16_t)k_ns_usb_data_bytes,
+  .high_speed         = false,
 };
 
-/** @brief USBX LANGID 0x0409 (English-US), little-endian byte pair. */
-typedef enum : uint8_t {
-  k_ns_usb_langid_lo = 0x09U, /**< LANGID 0x0409 low byte.  */
-  k_ns_usb_langid_hi = 0x04U, /**< LANGID 0x0409 high byte. */
-} ns_usb_langid_t;
+/**
+ * @var s_ns_device_framework_fs
+ * @brief Synthesised device framework: device descriptor + configuration.
+ * @note Written once by ::ns_usb_build_frameworks, then read-only.
+ * @since 0.1.0
+ */
+static UCHAR s_ns_device_framework_fs[k_ra8_usb_desc_framework_bytes_max];
 
-static UCHAR s_ns_language_id_framework[] = {k_ns_usb_langid_lo, k_ns_usb_langid_hi};
+/**
+ * @var s_ns_device_framework_fs_len
+ * @brief Bytes ::ns_usb_build_frameworks wrote to ::s_ns_device_framework_fs.
+ * @since 0.1.0
+ */
+static uint32_t s_ns_device_framework_fs_len;
+
+/**
+ * @var s_ns_string_framework
+ * @brief Synthesised string framework: manufacturer, product, serial.
+ * @note Written once by ::ns_usb_build_frameworks, then read-only.
+ * @since 0.1.0
+ */
+static UCHAR s_ns_string_framework[k_ra8_usb_desc_strings_bytes_max];
+
+/**
+ * @var s_ns_string_framework_len
+ * @brief Bytes ::ns_usb_build_frameworks wrote to ::s_ns_string_framework.
+ * @since 0.1.0
+ */
+static uint32_t s_ns_string_framework_len;
+
+static UCHAR s_ns_language_id_framework[k_ra8_usb_desc_langid_bytes];
+
+/**
+ * @var s_ns_language_id_framework_len
+ * @brief Bytes ::ns_usb_build_frameworks wrote to ::s_ns_language_id_framework.
+ * @since 0.1.0
+ */
+static uint32_t s_ns_language_id_framework_len;
+
+/**
+ * @brief Synthesise the three USBX frameworks this image publishes.
+ *
+ * @details Replaces the three hand-typed byte arrays this app used to carry,
+ * and now the three encoder calls that replaced them: ::ra8_usb_device_compose
+ * writes all three frameworks from one identity plus one class entry. Nothing
+ * here touches a controller: a synthesised framework is bytes, not an attached
+ * device.
+ *
+ * @return ra8_err_t Result of the compose.
+ * @retval k_ra8_ok               All three frameworks written.
+ * @retval k_ra8_err_invalid_size A destination buffer is too small.
+ * @retval k_ra8_err_invalid_arg  An endpoint address or packet size is wrong.
+ *
+ * @pre Called from the worker thread before ``_ux_device_stack_initialize``.
+ * @post On success the three buffers hold the frameworks and the three length
+ *       variables count them; on failure the lengths of the encodes that did
+ *       not run stay 0.
+ *
+ * @note Single-call; the builders are pure, so a repeat call is harmless.
+ * @since 0.1.0
+ */
+static ra8_err_t ns_usb_build_frameworks(void)
+{
+  const ra8_usb_class_t function = {
+    .kind    = k_ra8_usb_class_cdc_acm,
+    .cdc_acm = k_ns_usb_cdc,
+  };
+
+  const ra8_usb_device_cfg_t cfg = {
+    .desc        = &k_ns_usb_device,
+    .classes     = &function,
+    .class_count = (uint8_t)k_ns_usb_functions,
+  };
+
+  ra8_usb_device_frameworks_t fw = {
+    .device      = s_ns_device_framework_fs,
+    .device_cap  = (uint32_t)sizeof(s_ns_device_framework_fs),
+    .strings     = s_ns_string_framework,
+    .strings_cap = (uint32_t)sizeof(s_ns_string_framework),
+    .langid      = s_ns_language_id_framework,
+    .langid_cap  = (uint32_t)sizeof(s_ns_language_id_framework),
+  };
+
+  const ra8_err_t err = ra8_usb_device_compose(&cfg, &fw);
+  if (err != k_ra8_ok) {
+    return err;
+  }
+
+  s_ns_device_framework_fs_len   = fw.device_len;
+  s_ns_string_framework_len      = fw.strings_len;
+  s_ns_language_id_framework_len = fw.langid_len;
+
+  return k_ra8_ok;
+}
 
 /* =============================================================================
  * CDC-ACM activate / deactivate callbacks
@@ -462,7 +444,7 @@ static VOID ns_cdc_deactivate(VOID* cdc_instance)
  */
 
 /**
- * @brief Bring the USBX system + device stack up on the FS framework.
+ * @brief Synthesise the frameworks, then bring the USBX system + device stack up.
  * @return UINT ``UX_SUCCESS`` on success, propagated USBX error otherwise.
  * @retval UX_SUCCESS Stack initialised; class registrations accepted.
  * @pre The USBX pool ::s_ns_usbx_pool is zeroed NS RAM.
@@ -474,17 +456,20 @@ static VOID ns_cdc_deactivate(VOID* cdc_instance)
  */
 static UINT ns_usbx_stack_up(void)
 {
+  if (ns_usb_build_frameworks() != k_ra8_ok) {
+    return UX_ERROR;
+  }
   if (_ux_system_initialize(s_ns_usbx_pool, (ULONG)k_ns_usb_pool_bytes, UX_NULL, 0) != UX_SUCCESS) {
     return UX_ERROR;
   }
   return _ux_device_stack_initialize((UCHAR*)UX_NULL,
                                      0,
                                      s_ns_device_framework_fs,
-                                     sizeof(s_ns_device_framework_fs),
+                                     (ULONG)s_ns_device_framework_fs_len,
                                      s_ns_string_framework,
-                                     sizeof(s_ns_string_framework),
+                                     (ULONG)s_ns_string_framework_len,
                                      s_ns_language_id_framework,
-                                     sizeof(s_ns_language_id_framework),
+                                     (ULONG)s_ns_language_id_framework_len,
                                      UX_NULL);
 }
 

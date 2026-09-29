@@ -5,6 +5,7 @@
 set working-directory := ".."
 
 mod remote 'infra_remote.just'
+mod lab 'infra_lab.just'
 
 clean_env := "/usr/bin/env -i HOME=" + quote(env('HOME')) + " USER=" + quote(env('USER', '')) + " LOGNAME=" + quote(env('LOGNAME', '')) + " LANG=C.UTF-8 LC_ALL=C.UTF-8 PATH=/usr/bin:/bin PYTHONNOUSERSITE=1 RA8_INFRA_SANITIZED=v1"
 infra := clean_env + " /bin/bash --noprofile --norc scripts/dev/infra.sh"
@@ -25,6 +26,10 @@ default:
     @echo "  just infra::ssh_config                             Generate ~/.ssh/config fleet host aliases"
     @echo "  just infra::ssh_config_preview                     Print fleet aliases without installing them"
     @echo "  just infra::remote                                 Explore remote infrastructure operations"
+    @echo "  just infra::lab::check                             Read-only Proxmox lab preflight"
+    @echo "  just infra::lab::ci linux                         Run disposable Linux lab CI and clean up"
+    @echo "  just infra::lab::ssh [cmd]                         SSH into active preserved lab guest"
+    @echo "  just infra::lab::destroy                           Tear down preserved lab guest & network"
     @echo "  just infra::fortigate_config_selftest [python]     Prove declaration checks both ways"
     @echo "  just infra::fortigate_config_lint [path]           Lint the FortiGate declaration offline"
     @echo "  just infra::fortigate_replay_dry_run [path] [lan]  Render its offline replay stream"

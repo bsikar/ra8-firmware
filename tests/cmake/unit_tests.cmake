@@ -94,6 +94,7 @@ function(ra8_add_test name src_file)
             ${FW_ROOT}/libs/ra8_camera_io/inc
             ${FW_ROOT}/libs/ra8_ftl/inc
             ${FW_ROOT}/libs/ra8_mem/inc
+            ${FW_ROOT}/libs/ra8_num/inc
             ${FW_ROOT}/libs/ra8_sdmmc_spi/inc
             ${FW_ROOT}/libs/ra8_sdfont/inc
             ${FW_ROOT}/libs/ra8_gfx/inc
@@ -586,6 +587,7 @@ if(TARGET test_fw_if_fs)
             ${FW_ROOT}/apps/shared_libs/mdl/src/mdl_hash.c
             ${FW_ROOT}/apps/shared_libs/mdl/src/mdl_pathfs.c
             ${FW_ROOT}/apps/shared_libs/mdl/src/mdl_sanitize.c
+            ${FW_ROOT}/libs/if/src/ra8_path.c
             ${FW_ROOT}/apps/shared_libs/mdl/src/mdl_storage.c
   )
   target_include_directories(
@@ -620,6 +622,34 @@ if(TARGET test_fw_if_fs_posix_raw)
   endif()
 endif()
 
+# The host composition root binds the POSIX filesystem, the standard stream
+# pair and the scratch arena in one call. Its test links the hosted port
+# directly for the same reason the conformance tests above do: the POSIX
+# sources must stay out of the firmware object library.
+if(TARGET test_ra8_host)
+  target_sources(
+    test_ra8_host
+    PRIVATE ${FW_ROOT}/port/posix/src/ra8_host.c
+            ${FW_ROOT}/port/posix/src/ra8_io_stream_posix.c
+            ${FW_ROOT}/port/posix/src/fw_if_fs_posix.c
+            ${FW_ROOT}/port/posix/src/fw_if_fs_posix_bind.c
+            ${FW_ROOT}/port/posix/src/fw_if_fs_posix_common.c
+            ${FW_ROOT}/port/posix/src/fw_if_fs_posix_stream.c
+  )
+  target_include_directories(
+    test_ra8_host PRIVATE ${FW_ROOT}/libs/if/inc ${FW_ROOT}/port/posix/inc
+                          ${FW_ROOT}/port/posix/src
+  )
+  target_compile_definitions(test_ra8_host PRIVATE _GNU_SOURCE RA8_OFF_TARGET)
+endif()
+
+# The exact decimal -> binary64 conversion promoted out of the downloader's
+# state codec (#747). The glob builds the case file alone, so the library TU
+# joins it here by path (#754).
+if(TARGET test_ra8_num_decimal)
+  target_sources(test_ra8_num_decimal PRIVATE ${FW_ROOT}/libs/ra8_num/src/ra8_num_decimal.c)
+endif()
+
 # Downloader state persistence runs one journal/recovery/fault vector against
 # both the hosted POSIX adapter and the firmware RAM blockdev -> FAT -> VFS
 # stack. Production state sources are compiled directly into this focused
@@ -633,7 +663,7 @@ if(TARGET test_mdl_state_parity)
             ${FW_ROOT}/port/posix/src/fw_if_fs_posix_stream.c
             ${FW_ROOT}/apps/shared_libs/mdl/src/mdl_state.c
             ${FW_ROOT}/apps/shared_libs/mdl/src/mdl_state_codec.c
-            ${FW_ROOT}/apps/shared_libs/mdl/src/mdl_state_decimal.c
+            ${FW_ROOT}/libs/ra8_num/src/ra8_num_decimal.c
             ${FW_ROOT}/apps/shared_libs/mdl/src/mdl_state_store.c
             ${FW_ROOT}/apps/shared_libs/mdl/src/mdl_storage.c
             ${FW_ROOT}/apps/shared_libs/mdl/src/mdl_hash.c
@@ -663,9 +693,10 @@ if(TARGET test_mdl_library)
             ${FW_ROOT}/port/posix/src/fw_if_fs_posix_stream.c
             ${FW_ROOT}/apps/shared_libs/mdl/src/mdl_library.c
             ${FW_ROOT}/apps/shared_libs/mdl/src/mdl_sanitize.c
+            ${FW_ROOT}/libs/if/src/ra8_path.c
             ${FW_ROOT}/apps/shared_libs/mdl/src/mdl_state.c
             ${FW_ROOT}/apps/shared_libs/mdl/src/mdl_state_codec.c
-            ${FW_ROOT}/apps/shared_libs/mdl/src/mdl_state_decimal.c
+            ${FW_ROOT}/libs/ra8_num/src/ra8_num_decimal.c
             ${FW_ROOT}/apps/shared_libs/mdl/src/mdl_state_store.c
             ${FW_ROOT}/apps/shared_libs/mdl/src/mdl_storage.c
             ${FW_ROOT}/apps/shared_libs/mdl/src/mdl_hash.c
@@ -700,6 +731,7 @@ if(TARGET test_mdl_readers)
             ${FW_ROOT}/apps/shared_libs/mdl/src/mdl_verify_tarball.c
             ${FW_ROOT}/apps/shared_libs/mdl/src/mdl_verify_rabook.c
             ${FW_ROOT}/apps/shared_libs/mdl/src/mdl_sanitize.c
+            ${FW_ROOT}/libs/if/src/ra8_path.c
             ${FW_ROOT}/apps/shared_libs/mdl/src/mdl_storage.c
             ${FW_ROOT}/apps/shared_libs/mdl/src/mdl_hash.c
             ${FW_ROOT}/apps/shared_libs/mdl/src/mdl_politeness.c
@@ -776,8 +808,8 @@ if(TARGET test_mdl_export_parity)
             ${FW_ROOT}/apps/shared_libs/mdl/src/mdl_verify_tarball.c
             ${FW_ROOT}/apps/shared_libs/mdl/src/mdl_verify_rabook.c
             ${FW_ROOT}/apps/shared_libs/mdl/src/mdl_urlname.c
-            ${FW_ROOT}/apps/shared_libs/mdl/src/mdl_url_guard.c
             ${FW_ROOT}/apps/shared_libs/mdl/src/mdl_sanitize.c
+            ${FW_ROOT}/libs/if/src/ra8_path.c
             ${FW_ROOT}/apps/shared_libs/mdl/src/mdl_storage.c
             ${FW_ROOT}/apps/shared_libs/mdl/src/mdl_hash.c
   )

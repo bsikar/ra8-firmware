@@ -18,7 +18,7 @@
 #include "mdl_hash.h"
 #include "mdl_net.h"
 #include "mdl_storage.h"
-#include "mdl_url_guard.h"
+#include "ra8_net_urlguard.h"
 #include "mdl_urlname.h"
 #include "ra8_attributes.h"
 #include "ra8_err.h"
@@ -57,10 +57,10 @@ typedef struct {
   const mdl_page_rec_t* recorded;                 /**< URL-keyed record, including refetch runs. */
   const mdl_page_rec_t* held;                     /**< Record eligible for conditional reuse.    */
   char                  host[k_mdl_gov_host_max]; /**< Parsed governor host key.                 */
-  mdl_net_req_t         req;                      /**< Request metadata and validators.          */
+  ra8_mdl_http_policy_t   req; /**< Request metadata and validators.          */
   mdl_fetch_body_t      body;                     /**< Single portable transaction body sink.    */
   size_t                got;                      /**< Body bytes accepted by the sink.          */
-  mdl_net_resp_t        resp;                     /**< Most recent response metadata.            */
+  ra8_mdl_http_response_t resp; /**< Most recent response metadata.            */
   uint32_t              jmin;                     /**< Governed minimum image delay.             */
   uint32_t              jmax;                     /**< Governed maximum image delay.             */
 } mdl_page_transfer_t;
@@ -87,7 +87,7 @@ RA8_INTERNAL static uint32_t internal_mdl_fetch_page_max_u32(uint32_t a, uint32_
 /** @brief Governor host key for one page URL. */
 RA8_INTERNAL static const char* internal_mdl_fetch_page_host(const char* url, char* buf, size_t cap)
 {
-  return mdl_url_host(url, buf, cap) ? buf : nullptr;
+  return (ra8_net_urlguard_host(url, buf, cap) == k_ra8_ok) ? buf : nullptr;
 }
 
 /**
@@ -366,7 +366,7 @@ RA8_INTERNAL static ra8_err_t internal_mdl_fetch_prepare_page(mdl_fetch_ctx_t*  
   const char* host = internal_mdl_fetch_page_host(url, tx->host, sizeof(tx->host));
   tx->jmin         = internal_mdl_fetch_page_max_u32(ctx->site->img_delay_min, crawl);
   tx->jmax         = internal_mdl_fetch_page_max_u32(ctx->site->img_delay_max, crawl);
-  tx->req          = (mdl_net_req_t){
+  tx->req          = (ra8_mdl_http_policy_t){
     .user_agent    = ctx->session->user_agent,
     .referer       = chapter_url,
     .if_none_match = (tx->held != nullptr && tx->held->etag[0] != '\0') ? tx->held->etag : nullptr,
@@ -424,7 +424,7 @@ RA8_INTERNAL static ra8_err_t internal_mdl_fetch_resolve_not_modified(mdl_fetch_
                                                                       bool*                out_done)
 {
   *out_done = false;
-  if (tx->resp.status != (long)k_http_not_modified) {
+  if (tx->resp.status != (int32_t)k_http_not_modified) {
     return k_ra8_ok;
   }
   ra8_err_t cleanup = priv_mdl_fetch_body_abort(&tx->body);
@@ -445,7 +445,7 @@ RA8_INTERNAL static ra8_err_t internal_mdl_fetch_resolve_not_modified(mdl_fetch_
   }
   tx->req.if_none_match     = nullptr;
   tx->req.if_modified_since = nullptr;
-  tx->resp                  = (mdl_net_resp_t){};
+  tx->resp                  = (ra8_mdl_http_response_t){};
   tx->got                   = 0U;
   mdl_net_body_sink_t sink  = priv_mdl_fetch_body_sink(&tx->body);
   const ra8_err_t     rc    = priv_mdl_fetch_with_retry(ctx,
@@ -457,7 +457,7 @@ RA8_INTERNAL static ra8_err_t internal_mdl_fetch_resolve_not_modified(mdl_fetch_
                                                         tx->jmax,
                                                         &tx->resp,
                                                         &tx->got);
-  if ((rc == k_ra8_ok) && (tx->resp.status != (long)k_http_not_modified)) {
+  if ((rc == k_ra8_ok) && (tx->resp.status != (int32_t)k_http_not_modified)) {
     return k_ra8_ok;
   }
   cleanup                          = priv_mdl_fetch_body_abort(&tx->body);
@@ -509,7 +509,8 @@ RA8_INTERNAL static ra8_err_t internal_mdl_fetch_publish_page(mdl_fetch_ctx_t*  
     priv_mdl_fetch_record_fail(ctx, url, tx->resp.status, error);
     return error;
   }
-  if ((tx->resp.status < (long)k_http_status_min) || (tx->resp.status > (long)k_http_status_max)) {
+  if ((tx->resp.status < (int32_t)k_http_status_min) ||
+      (tx->resp.status > (int32_t)k_http_status_max)) {
     error = priv_mdl_fetch_body_abort(&tx->body);
     error = (error == k_ra8_ok) ? k_ra8_err_protocol_error : error;
     priv_mdl_fetch_record_fail(ctx, url, tx->resp.status, error);
@@ -560,19 +561,19 @@ RA8_INTERNAL static ra8_err_t internal_mdl_fetch_publish_page(mdl_fetch_ctx_t*  
  * @note The function performs no dynamic allocation and retains no caller pointer.
  * @since 0.1.0
  */
-RA8_INTERNAL static ra8_err_t internal_mdl_fetch_do_fetch_page(mdl_fetch_ctx_t* ctx,
-                                                               const char*      chapter_url,
-                                                               const char*      url,
-                                                               const char*      target_abs,
-                                                               const char*      target_rel,
-                                                               size_t*          out_bytes,
-                                                               mdl_net_resp_t*  out_resp)
+RA8_INTERNAL static ra8_err_t internal_mdl_fetch_do_fetch_page(mdl_fetch_ctx_t*         ctx,
+                                                               const char*              chapter_url,
+                                                               const char*              url,
+                                                               const char*              target_abs,
+                                                               const char*              target_rel,
+                                                               size_t*                  out_bytes,
+                                                               ra8_mdl_http_response_t* out_resp)
 {
   if (out_bytes != nullptr) {
     *out_bytes = 0U;
   }
   if (out_resp != nullptr) {
-    *out_resp = (mdl_net_resp_t){};
+    *out_resp = (ra8_mdl_http_response_t){};
   }
   mdl_page_transfer_t tx = {};
   ra8_err_t           rc =
@@ -652,14 +653,14 @@ RA8_INTERNAL static ra8_err_t internal_mdl_fetch_one_page(mdl_fetch_ctx_t*    ct
   } else {
     const int64_t   t0   = internal_mdl_fetch_mono_ms(ctx);
     size_t          got  = 0U;
-    mdl_net_resp_t  resp = {};
+    ra8_mdl_http_response_t resp = {};
     const ra8_err_t rc =
       internal_mdl_fetch_do_fetch_page(ctx, chapter_url, url, target_abs, target_rel, &got, &resp);
     if (rc != k_ra8_ok) {
       stats->pages_failed += 1U;
       return rc;
     }
-    if (resp.status == (long)k_http_not_modified) {
+    if (resp.status == (int32_t)k_http_not_modified) {
       stats->pages_reused += 1U;
       *out = (mdl_page_outcome_t){.bytes      = 0U,
                                   .elapsed_ms = (uint32_t)(internal_mdl_fetch_mono_ms(ctx) - t0),

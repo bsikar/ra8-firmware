@@ -149,15 +149,6 @@ volatile uint32_t g_usb_vendor_loops = 0U;
 /* USB-FS pin identifiers (from the board layer) */
 /* -------------------------------------------------------------------------- */
 
-/** @brief USB_FS VBUS pin, packed ``ra8_port_pin_t``. @since 0.1.0 */
-static const ra8_port_pin_t k_demo_pin_vbus = (ra8_port_pin_t)k_ra8_board_usbfs_pin_vbus;
-/** @brief USB_FS VBUSEN pin, packed ``ra8_port_pin_t``. @since 0.1.0 */
-static const ra8_port_pin_t k_demo_pin_vbusen = (ra8_port_pin_t)k_ra8_board_usbfs_pin_vbusen;
-/** @brief USB_FS D+ pin, packed ``ra8_port_pin_t``. @since 0.1.0 */
-static const ra8_port_pin_t k_demo_pin_dp = (ra8_port_pin_t)k_ra8_board_usbfs_pin_dp;
-/** @brief USB_FS D- pin, packed ``ra8_port_pin_t``. @since 0.1.0 */
-static const ra8_port_pin_t k_demo_pin_dm = (ra8_port_pin_t)k_ra8_board_usbfs_pin_dm;
-
 /* -------------------------------------------------------------------------- */
 /* Console helper */
 /* -------------------------------------------------------------------------- */
@@ -490,19 +481,11 @@ static void demo_panic_halt(void)
  */
 [[nodiscard]] static ra8_err_t demo_pins_init(void)
 {
-  ra8_err_t err = ra8_pfs_route_peripheral(k_demo_pin_vbus, k_ra8_psel_usb_fs, "usbpv.vbus");
-  if (err != k_ra8_ok) {
-    return err;
-  }
-  err = ra8_gpio_output_init(k_demo_pin_vbusen, k_ra8_level_low);
-  if (err != k_ra8_ok) {
-    return err;
-  }
-  err = ra8_pfs_route_peripheral(k_demo_pin_dp, k_ra8_psel_usb_fs, "usbpv.dp");
-  if (err != k_ra8_ok) {
-    return err;
-  }
-  return ra8_pfs_route_peripheral(k_demo_pin_dm, k_ra8_psel_usb_fs, "usbpv.dm");
+  /* One board call replaces the four-step FS choreography: it routes VBUS,
+   * D+ and D- to the USBFS function and keeps VBUSEN a GPIO strapped LOW for
+   * the device role. The pin identities are board facts, so they live in
+   * libs/ra8_board_ek_ra8d2 rather than being re-declared here. */
+  return ra8_board_usb_port_init(k_ra8_board_usb_port_fs, k_ra8_board_usb_role_device);
 }
 
 /**

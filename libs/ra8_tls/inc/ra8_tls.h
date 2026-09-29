@@ -159,48 +159,99 @@ typedef enum : uint8_t {
 } ra8_tls_verify_mode_t;
 
 /* =============================================================================
- * BIO callback signatures
+ * Transport seam
  * =============================================================================
  */
 
 /**
- * @brief BIO send callback signature (write ciphertext to transport).
+ * @brief Transport write callback (hand ciphertext to the network).
  *
  * @details
- * Mirrors the Mbed TLS ``mbedtls_ssl_send_t`` contract: returns the
- * number of bytes accepted by the transport, or a negative Mbed TLS
- * error code on failure (``MBEDTLS_ERR_SSL_WANT_WRITE`` for
- * non-blocking would-block).
+ * The house transport-seam shape, in the house error dialect: the
+ * callback reports how many bytes the transport accepted through
+ * ``out_sent`` and says what happened through ``ra8_err_t``. A
+ * non-blocking transport with no room right now returns
+ * ``k_ra8_err_would_block``; the facade owns the single translation
+ * into the vendor's sentinel constants, so a consumer never includes
+ * an Mbed TLS header to wire up a socket.
  *
- * @param[in,out] ctx Opaque user pointer registered through
- *                    ``ra8_tls_session_cfg_t::bio_ctx``.
- * @param[in]     buf Buffer holding ``len`` bytes of ciphertext.
- * @param[in]     len Length of ``buf`` in bytes.
+ * @param[in,out] ctx      Opaque user pointer registered through
+ *                         ``ra8_tls_transport_t::ctx``.
+ * @param[in]     buf      Buffer holding ``len`` bytes of ciphertext.
+ * @param[in]     len      Length of ``buf`` in bytes.
+ * @param[out]    out_sent Bytes the transport accepted; set to ``0``
+ *                         before any other work and left at ``0`` on
+ *                         every failure path.
  *
- * @return Bytes written, or a negative Mbed TLS error code.
+ * @return ra8_err_t Error code.
+ * @retval k_ra8_ok                Bytes accepted; ``out_sent`` is the count.
+ * @retval k_ra8_err_would_block   Transport full; retry the same bytes later.
+ * @retval k_ra8_err_comm_error    Transport failed; the session is finished.
  *
- * @since 0.1.0
+ * @pre ``out_sent`` is non-NULL.
+ * @post ``*out_sent`` is at most ``len``.
+ *
+ * @note A short write is legal: report it through ``out_sent`` rather
+ *       than looping inside the callback.
+ * @since 0.2.0
  */
-typedef int (*ra8_tls_bio_send_fn)(void* ctx, const uint8_t* buf, size_t len);
+typedef ra8_err_t (*ra8_tls_transport_send_fn)(void*          ctx,
+                                               const uint8_t* buf,
+                                               size_t         len,
+                                               size_t*        out_sent);
 
 /**
- * @brief BIO receive callback signature (read ciphertext from transport).
+ * @brief Transport read callback (take ciphertext off the network).
  *
  * @details
- * Mirrors the Mbed TLS ``mbedtls_ssl_recv_t`` contract: returns the
- * number of bytes consumed, ``0`` on EOF, or a negative Mbed TLS error
- * code (``MBEDTLS_ERR_SSL_WANT_READ`` for non-blocking would-block).
+ * The receive half of the seam. End of stream is reported as
+ * ``k_ra8_ok`` with ``*out_received == 0``, which is how the rest of
+ * the tree spells a clean close; "nothing ready yet" is
+ * ``k_ra8_err_would_block`` and is never confused with EOF.
  *
- * @param[in,out] ctx Opaque user pointer registered through
- *                    ``ra8_tls_session_cfg_t::bio_ctx``.
- * @param[out]    buf Buffer to fill with up to ``len`` bytes.
- * @param[in]     len Capacity of ``buf`` in bytes.
+ * @param[in,out] ctx          Opaque user pointer registered through
+ *                             ``ra8_tls_transport_t::ctx``.
+ * @param[out]    buf          Buffer to fill with up to ``len`` bytes.
+ * @param[in]     len          Capacity of ``buf`` in bytes.
+ * @param[out]    out_received Bytes written into ``buf``; set to ``0``
+ *                             before any other work.
  *
- * @return Bytes read, ``0`` on EOF, or a negative Mbed TLS error code.
+ * @return ra8_err_t Error code.
+ * @retval k_ra8_ok                Bytes read, or EOF when the count is ``0``.
+ * @retval k_ra8_err_would_block   Nothing ready yet; retry later.
+ * @retval k_ra8_err_comm_error    Transport failed; the session is finished.
  *
- * @since 0.1.0
+ * @pre ``out_received`` is non-NULL.
+ * @post ``*out_received`` is at most ``len``.
+ *
+ * @since 0.2.0
  */
-typedef int (*ra8_tls_bio_recv_fn)(void* ctx, uint8_t* buf, size_t len);
+typedef ra8_err_t (*ra8_tls_transport_recv_fn)(void*    ctx,
+                                               uint8_t* buf,
+                                               size_t   len,
+                                               size_t*  out_received);
+
+/**
+ * @struct ra8_tls_transport_t
+ * @brief The transport a session runs over, in the house error dialect.
+ *
+ * @details
+ * One struct in place of the three loose rows the configuration used to
+ * carry, so a transport can be authored once and handed to several
+ * sessions. The facade never inspects ``ctx``; it is handed back
+ * unchanged on every call.
+ *
+ * @invariant ``send`` and ``recv`` are both non-NULL.
+ * @invariant ``ctx`` is owned by the caller for the full session
+ *            lifetime (``open`` -> ``close``).
+ *
+ * @since 0.2.0
+ */
+typedef struct ra8_tls_transport {
+  ra8_tls_transport_send_fn send; /**< Write callback (required).        */
+  ra8_tls_transport_recv_fn recv; /**< Read callback (required).         */
+  void*                     ctx;  /**< Opaque ctx handed back unchanged. */
+} ra8_tls_transport_t;
 
 /* =============================================================================
  * Configuration
@@ -212,23 +263,22 @@ typedef int (*ra8_tls_bio_recv_fn)(void* ctx, uint8_t* buf, size_t len);
  * @brief Per-session configuration handed to ``ra8_tls_session_open``.
  *
  * @details
- * The struct carries the BIO function pointers plus an opaque user
- * context that the facade passes back unchanged on every BIO call.
- * Optional ``server_name`` enables SNI when non-NULL.
+ * The struct carries the transport seam plus the peer-verification
+ * policy. Optional ``server_name`` enables SNI when non-NULL.
  *
- * @invariant ``bio_send`` and ``bio_recv`` are non-NULL.
- * @invariant ``bio_ctx`` is owned by the caller for the full session
- *            lifetime (``open`` -> ``close``).
+ * @invariant ``transport.send`` and ``transport.recv`` are non-NULL.
+ * @invariant ``transport.ctx`` is owned by the caller for the full
+ *            session lifetime (``open`` -> ``close``).
  *
  * @code{.c}
- * static int loop_send(void* ctx, const uint8_t* buf, size_t len) { ... }
- * static int loop_recv(void* ctx, uint8_t* buf, size_t len)       { ... }
+ * static ra8_err_t loop_send(void* ctx, const uint8_t* b, size_t n, size_t* out);
+ * static ra8_err_t loop_recv(void* ctx, uint8_t* b, size_t n, size_t* out);
  *
  * ra8_tls_session_cfg_t cfg = {};
- * cfg.bio_send    = loop_send;
- * cfg.bio_recv    = loop_recv;
- * cfg.bio_ctx     = &my_socket;
- * cfg.server_name = "api.example.com";
+ * cfg.transport.send = loop_send;
+ * cfg.transport.recv = loop_recv;
+ * cfg.transport.ctx  = &my_socket;
+ * cfg.server_name    = "api.example.com";
  *
  * ra8_tls_session_t s;
  * ra8_err_t err = ra8_tls_session_open(&s, &cfg);
@@ -237,9 +287,7 @@ typedef int (*ra8_tls_bio_recv_fn)(void* ctx, uint8_t* buf, size_t len);
  * @since 0.1.0
  */
 typedef struct ra8_tls_session_cfg {
-  ra8_tls_bio_send_fn   bio_send;    /**< Transport write callback (required).       */
-  ra8_tls_bio_recv_fn   bio_recv;    /**< Transport read callback  (required).       */
-  void*                 bio_ctx;     /**< Opaque ctx passed back to BIO callbacks.   */
+  ra8_tls_transport_t   transport;   /**< Transport seam (required).                 */
   const char*           server_name; /**< Optional SNI hostname; NULL disables SNI.  */
   ra8_tls_verify_mode_t verify_mode; /**< Peer-cert policy; 0 == required (default). */
   const char*           ca_pem;      /**< Optional trust anchor, PEM; NULL == none.  */
@@ -326,7 +374,7 @@ typedef struct ra8_tls_session_handle* ra8_tls_session_t;
  * @see ra8_tls_global_deinit()
  * @since 0.1.0
  */
-ra8_err_t ra8_tls_global_init(void);
+[[nodiscard]] ra8_err_t ra8_tls_global_init(void);
 
 /**
  * @brief Symmetric tear-down for ``ra8_tls_global_init``.
@@ -350,7 +398,7 @@ ra8_err_t ra8_tls_global_init(void);
  * @see ra8_tls_global_init()
  * @since 0.1.0
  */
-ra8_err_t ra8_tls_global_deinit(void);
+[[nodiscard]] ra8_err_t ra8_tls_global_deinit(void);
 
 /**
  * @brief Allocate a TLS session from the static pool.
@@ -387,7 +435,7 @@ ra8_err_t ra8_tls_global_deinit(void);
  * @see ra8_tls_handshake()
  * @since 0.1.0
  */
-ra8_err_t ra8_tls_session_open(ra8_tls_session_t* out_session, const ra8_tls_session_cfg_t* cfg);
+[[nodiscard]] ra8_err_t ra8_tls_session_open(ra8_tls_session_t* out_session, const ra8_tls_session_cfg_t* cfg);
 
 /**
  * @brief Release a TLS session back to the pool.
@@ -418,7 +466,7 @@ ra8_err_t ra8_tls_session_open(ra8_tls_session_t* out_session, const ra8_tls_ses
  *
  * @note Not thread-safe unless documented otherwise.
  */
-ra8_err_t ra8_tls_session_close(ra8_tls_session_t session);
+[[nodiscard]] ra8_err_t ra8_tls_session_close(ra8_tls_session_t session);
 
 /**
  * @brief Iterative TLS handshake driver.
@@ -454,7 +502,7 @@ ra8_err_t ra8_tls_session_close(ra8_tls_session_t session);
  *
  * @note Not thread-safe unless documented otherwise.
  */
-ra8_err_t ra8_tls_handshake(ra8_tls_session_t session);
+[[nodiscard]] ra8_err_t ra8_tls_handshake(ra8_tls_session_t session);
 
 /**
  * @brief Encrypt and send application data.
@@ -487,7 +535,7 @@ ra8_err_t ra8_tls_handshake(ra8_tls_session_t session);
  *
  * @note Not thread-safe unless documented otherwise.
  */
-ra8_err_t ra8_tls_send(ra8_tls_session_t session, const uint8_t* buf, size_t len, size_t* out_sent);
+[[nodiscard]] ra8_err_t ra8_tls_send(ra8_tls_session_t session, const uint8_t* buf, size_t len, size_t* out_sent);
 
 /**
  * @brief Decrypt and receive application data.
@@ -520,7 +568,7 @@ ra8_err_t ra8_tls_send(ra8_tls_session_t session, const uint8_t* buf, size_t len
  *
  * @note Not thread-safe unless documented otherwise.
  */
-ra8_err_t ra8_tls_recv(ra8_tls_session_t session, uint8_t* buf, size_t len, size_t* out_received);
+[[nodiscard]] ra8_err_t ra8_tls_recv(ra8_tls_session_t session, uint8_t* buf, size_t len, size_t* out_received);
 
 /* =============================================================================
  * Session introspection
@@ -564,7 +612,7 @@ ra8_err_t ra8_tls_recv(ra8_tls_session_t session, uint8_t* buf, size_t len, size
  * @see ra8_tls_get_verify_result()
  * @since 0.1.0
  */
-ra8_err_t ra8_tls_get_cipher_suite(ra8_tls_session_t session,
+[[nodiscard]] ra8_err_t ra8_tls_get_cipher_suite(ra8_tls_session_t session,
                                    uint16_t*         out_id,
                                    char*             out_name,
                                    size_t            name_cap);
@@ -596,7 +644,7 @@ ra8_err_t ra8_tls_get_cipher_suite(ra8_tls_session_t session,
  * @see ra8_tls_get_cipher_suite()
  * @since 0.1.0
  */
-ra8_err_t ra8_tls_get_verify_result(ra8_tls_session_t session, uint32_t* out_flags);
+[[nodiscard]] ra8_err_t ra8_tls_get_verify_result(ra8_tls_session_t session, uint32_t* out_flags);
 
 /**
  * @brief Compute the TCP MSS that keeps a segment inside one MTU frame.
@@ -637,7 +685,7 @@ ra8_err_t ra8_tls_get_verify_result(ra8_tls_session_t session, uint32_t* out_fla
  *
  * @since 0.1.0
  */
-ra8_err_t ra8_tls_mss_clamp(uint16_t mtu, uint16_t* out_mss);
+[[nodiscard]] ra8_err_t ra8_tls_mss_clamp(uint16_t mtu, uint16_t* out_mss);
 
 #ifdef __cplusplus
 }

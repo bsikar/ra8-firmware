@@ -2,6 +2,9 @@
  * @file test_ra8_usb.c
  * @brief Unit tests for the native USB device-mode driver (ra8_usb.c)
  *
+ * @par Tag
+ * [Ring 3 / HAL] {World: NS}
+ *
  * @details
  * This sibling owns the core happy-path / error-rejection contract tests
  * (init, attach, status, endpoints, FIFO queue paths). The MC/DC vector

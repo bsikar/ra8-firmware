@@ -15,7 +15,7 @@
 #include <string.h>
 
 #include "mdl_stream_internal.h"
-#include "mdl_url_guard.h"
+#include "ra8_net_urlguard.h"
 #include "ra8_attributes.h"
 
 /** @brief robots.txt fetch tunables. */
@@ -200,19 +200,20 @@ RA8_INTERNAL static mdl_robots_fetch_result_t
 internal_session_fetch(void* ctx, const char* robots_url, char* buf, size_t cap, size_t* out_len)
 {
   mdl_session_t*      s    = (mdl_session_t*)ctx;
-  const mdl_net_req_t req  = {.user_agent = s->user_agent,
-                              .referer    = nullptr,
-                              .timeout_ms = k_robots_timeout_ms};
-  mdl_net_resp_t      resp = {};
+  const ra8_mdl_http_policy_t req  = {.user_agent = s->user_agent,
+                                      .referer    = nullptr,
+                                      .timeout_ms = k_robots_timeout_ms};
+  ra8_mdl_http_response_t     resp = {};
   if (mdl_net_get_buf(s->net, robots_url, &req, buf, cap, out_len, &resp) == k_ra8_ok) {
     return k_mdl_robots_fetch_ok;
   }
-  if ((resp.status >= (long)k_http_client_err_min) &&
-      (resp.status <= (long)k_http_client_err_max) && (resp.status != (long)k_http_too_many)) {
+  if ((resp.status >= (int32_t)k_http_client_err_min) &&
+      (resp.status <= (int32_t)k_http_client_err_max) &&
+      (resp.status != (int32_t)k_http_too_many)) {
     return k_mdl_robots_fetch_absent;
   }
-  if ((resp.status >= (long)k_http_server_err_min) &&
-      (resp.status <= (long)k_http_server_err_max)) {
+  if ((resp.status >= (int32_t)k_http_server_err_min) &&
+      (resp.status <= (int32_t)k_http_server_err_max)) {
     return k_mdl_robots_fetch_denied;
   }
   return k_mdl_robots_fetch_denied;
@@ -293,7 +294,7 @@ bool mdl_session_url_allowed(mdl_session_t* session, const char* url, uint32_t* 
     return false;
   }
   char host[k_mdl_robots_host_max];
-  if (!mdl_url_host(url, host, sizeof(host))) {
+  if (ra8_net_urlguard_host(url, host, sizeof(host)) != k_ra8_ok) {
     (void)priv_mdl_stream_text(k_ra8_ok,
                                session->diagnostic,
                                "mdl: cannot identify URL origin for robots.txt; refusing\n");
