@@ -1,0 +1,21 @@
+{
+  "test_roots": [
+    "tests/internal_test.zig",
+    "tests/abi_test.zig",
+    "tests/backends_test.zig"
+  ],
+  "covered_sources": [
+    "src/internal/root.zig",
+    "src/ra8_camera_abi.zig",
+    "src/abi_types.zig",
+    "src/source_memory.zig",
+    "src/codec_passthrough.zig",
+    "src/codec_jpeg_sw.zig",
+    "src/backends.zig",
+    "src/root.zig",
+    "tests/internal_test.zig",
+    "tests/abi_test.zig",
+    "tests/backends_test.zig"
+  ],
+  "minimum_tests": 10
+}

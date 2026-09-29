@@ -314,6 +314,22 @@ ra8_add_zig_library(
   LIBRARY_NAME
   if_ra8_vfs
 )
+
+# libs/ra8_camera keeps one C translation unit: src/ra8_camera_source_ceu.c is
+# white-boxed by tests/misc/src/test_ra8_camera.c and test_ra8_ceu_cov.c with
+# `#include "ra8_camera_source_ceu.c"`, so it stays C and binds the same private
+# vtable from src/ra8_camera_internal.h (which stays for the same reason). The
+# facade, the fixed-frame memory source and both codecs are Zig, so the
+# RA8_CAMERA_SOURCES glob and the libs/ra8_camera/src include directory both
+# stay in place for the one remaining file.
+ra8_add_zig_library(
+  NAME
+  ra8_camera
+  ZIG_ROOT
+  ${FW_ROOT}/libs/ra8_camera
+  LIBRARY_NAME
+  ra8_camera
+)
 set_property(
   TARGET ra8_zig::ra8_keyboard
   APPEND
@@ -342,6 +358,7 @@ target_link_libraries(
          ra8_zig::ra8_wifi
          ra8_zig::ra8_ov5640
          ra8_zig::if_ra8_vfs
+         ra8_zig::ra8_camera
 )
 
 link_libraries(ra8_zig::ra8_batt)
@@ -366,4 +383,5 @@ link_libraries(
   ra8_zig::ra8_wifi
   ra8_zig::ra8_ov5640
   ra8_zig::if_ra8_vfs
+  ra8_zig::ra8_camera
 )
