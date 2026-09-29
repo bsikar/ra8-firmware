@@ -8,8 +8,8 @@
 //! library, so every branch is reachable from a host unit test.
 //!
 //! The framebuffer binding itself (`g_gfx_text_state`) and the exported C
-//! entry points live in `../ra8_gfx_abi.zig`. The two bind entry points and
-//! the teardown stay C in `../ra8_gfx_bind.c`, which writes that same object.
+//! entry points live in `../ra8_gfx_abi.zig`. The lifecycle's own decisions --
+//! the two bind forms and the teardown -- live in `bind.zig`.
 
 const std = @import("std");
 
@@ -56,9 +56,8 @@ const g565_shift_out: u5 = 5;
 pub const rgb565_bpp: usize = 2;
 
 /// `ra8_gfx_state_t` from `src/ra8_gfx_internal.h`, the single module-wide
-/// framebuffer binding. Five C translation units still include that header,
-/// and `ra8_gfx_bind.c` writes the whole object, so the layout is ABI and is
-/// pinned below. `pitch` is the row stride in bytes (#737): every draw path
+/// framebuffer binding. That header is still the record of this object for any
+/// C that includes it, so the layout is ABI and is pinned below. `pitch` is the row stride in bytes (#737): every draw path
 /// addresses rows through it rather than recomputing `width * bpp`.
 pub const State = extern struct {
     fb: ?[*]u8 = null,

@@ -1,13 +1,22 @@
 {
   "test_roots": [
     "tests/internal_test.zig",
+    "tests/tone_test.zig",
+    "tests/dither_test.zig",
+    "tests/bind_test.zig",
     "tests/abi_test.zig"
   ],
   "covered_sources": [
     "src/internal/root.zig",
+    "src/internal/tone.zig",
+    "src/internal/dither.zig",
+    "src/internal/bind.zig",
     "src/ra8_gfx_abi.zig",
     "tests/internal_test.zig",
+    "tests/tone_test.zig",
+    "tests/dither_test.zig",
+    "tests/bind_test.zig",
     "tests/abi_test.zig"
   ],
-  "minimum_tests": 60
+  "minimum_tests": 150
 }

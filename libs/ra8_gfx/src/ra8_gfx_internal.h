@@ -4,10 +4,11 @@
  * @ingroup grp_ereader
  *
  * @details
- * The software pixel-pusher is split across several translation units that all
- * operate on one framebuffer binding. This header exposes the single mutable
- * module state object and the few low-level helpers that more than one TU needs,
- * so the implementation can be partitioned without duplicating mutable state.
+ * The software pixel-pusher lives in the Zig archive now, and this header stays
+ * as the record of its module-private surface: the single mutable state object
+ * and the few low-level helpers, all of them exported by src/ra8_gfx_abi.zig,
+ * so C that links the archive (the generated font table) reaches them without
+ * duplicating mutable state.
  *
  * Read-only colour/format enum constants are intentionally NOT declared here:
  * each TU keeps its own private copy of those compile-time literals.
@@ -48,9 +49,10 @@ typedef struct {
  * @brief Single module-wide framebuffer binding shared by every ra8_gfx TU.
  *
  * @details
- * Defined once in ra8_gfx_text.c (populated by ra8_gfx_init()); the text/glyph TU
- * reads it through this extern declaration. There is exactly one object so all
- * draw entry points observe the same framebuffer, format, and clip rectangle.
+ * Defined once in the Zig archive (src/ra8_gfx_abi.zig) and populated by
+ * ra8_gfx_init() / ra8_gfx_init_surface(); any C that links the archive reads
+ * it through this extern declaration. There is exactly one object so all draw
+ * entry points observe the same framebuffer, format, and clip rectangle.
  *
  * @note Not thread-safe; mutated only by ra8_gfx_init()/ra8_gfx_set_clip().
  * @warning Do not redefine; this is a single shared object, not per-TU state.
@@ -84,7 +86,7 @@ RA8_PRIV uint16_t priv_gfx_text_pack_565(uint32_t color);
  * @details
  * The format enum's low byte is the per-pixel byte stride by construction, so
  * this is the one place that fact is spelled out. Promoted to module-external
- * linkage so the bind TU and the rasteriser TUs size pixels identically.
+ * linkage so every caller sizes pixels identically; implemented in Zig.
  *
  * @param[in] format Pixel format to size.
  * @return uint8_t Bytes occupied by one pixel of `format`.
@@ -102,7 +104,8 @@ RA8_PRIV uint8_t priv_gfx_bpp(ra8_gfx_format_t format);
  *
  * @details
  * Shared by both bind entry points and by the blit source-format check, so a
- * format accepted in one place cannot be rejected in another.
+ * format accepted in one place cannot be rejected in another. Implemented in
+ * Zig alongside the entry points that use it.
  *
  * @param[in] f Format value to validate.
  * @return bool Whether `f` names a supported format.
