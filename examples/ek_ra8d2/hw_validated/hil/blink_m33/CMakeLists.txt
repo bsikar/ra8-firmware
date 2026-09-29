@@ -32,6 +32,7 @@ include("${_d}/cmake/ra8_add_app.cmake")
 
 ra8_add_app(
   NAME blink_m33
+  CPU1_IMAGE
   STACK_BYTES 2200 AUX_SRCS src/cpu1_main.c
   DESCRIPTION "Cortex-M33 secondary-core LED blink template (M85 releases M33) for RA8D2"
 )

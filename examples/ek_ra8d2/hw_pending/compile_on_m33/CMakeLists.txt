@@ -33,6 +33,7 @@ include("${_d}/cmake/ra8_add_app.cmake")
 
 ra8_add_app(
   NAME compile_on_m33
+  CPU1_IMAGE
   STACK_BYTES 4096 AUX_SRCS src/cpu1_main.c
   DESCRIPTION "Dual-core M85 + M33: M33 runs the RABOOK1 emitter, M85 validates (#149b)"
 )

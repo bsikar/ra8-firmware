@@ -33,6 +33,7 @@ include("${_d}/cmake/ra8_add_app.cmake")
 
 ra8_add_app(
   NAME lowpower_holdpage
+  CPU1_IMAGE
   STACK_BYTES 2200 AUX_SRCS src/cpu1_main.c
   DESCRIPTION "Low-power hold-page demo: M85 parks, M33 holds the page (RA8D2)"
 )

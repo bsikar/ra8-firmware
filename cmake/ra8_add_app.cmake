@@ -46,6 +46,15 @@
 #                       app add that one symbol without forking the whole board
 #                       memory map (#761). Rejected if the app also ships its
 #                       own linker_script.ld, which already has full control.
+#   CPU1_IMAGE          compose the board linker script with a generated
+#                       fragment that places .cpu1_image at the board's CPU1
+#                       window and defines g_ra8_ls_cpu1_mram_start /
+#                       g_ra8_ls_cpu1_stack_top. Pass it on any app that also
+#                       calls ra8_add_cpu1_image(). Before this option the only
+#                       way to get those was a per-app linker_script.ld, so nine
+#                       dual-core apps each forked the whole 340-line board map
+#                       to gain one section and two symbols (#742). Rejected if
+#                       the app also ships its own linker_script.ld.
 #   BOARD <b>           board-support layer under libs/ra8_board_<b> (default
 #                       ek_ra8d2). Selects which board layer supplies the fallback
 #                       boot files, the board src glob, the fallback linker script,
@@ -124,7 +133,7 @@ include(${_RA8_ADD_APP_DIR}/ra8_add_ns_image.cmake)
 macro(ra8_add_app)
   cmake_parse_arguments(
     _RA8_APP
-    "NO_NSC"
+    "NO_NSC;CPU1_IMAGE"
     "NAME;STACK_BYTES;DESCRIPTION;BOARD;THREADX_HEAP"
     "USES;LIBS;OFF_TARGET_LIBS;NSC_SRCS;EXTRA_SRCS;AUX_SRCS"
     ${ARGN}
