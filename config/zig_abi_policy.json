@@ -438,6 +438,20 @@
         "ra8_jpeg_sw_encode"
       ],
       "reason": "the backends suite drives the software-JPEG codec through its real vtable row, so it exports a recording fake ra8_jpeg_sw_encode in place of libs/ra8_jpeg, the same substitution tests/misc/src/test_ra8_camera.c makes at link time"
+    },
+    {
+      "path": "libs/ra8_ftl/tests/abi_test.zig",
+      "kind": "test-helper",
+      "build_root": "libs/ra8_ftl",
+      "symbols": [
+        "ra8_io_blockdev_erase",
+        "ra8_io_blockdev_get_caps",
+        "ra8_io_blockdev_read",
+        "ra8_io_blockdev_sync",
+        "ra8_io_blockdev_write",
+        "ra8_log_emit_error"
+      ],
+      "reason": "the ABI suite owns the whole dependency surface the adapter calls into: the five ra8_io_blockdev entry points the FTL drives its raw device through, backed by an in-memory fake medium, plus ra8_log_emit_error, so the Zig test binary links without ra8_core_hal"
     }
   ],
   "libraries": [
@@ -2162,6 +2176,137 @@
           "name": "fw_fs_transaction_abort",
           "calling_context": "task-only-non-reentrant",
           "ownership": "consumes active transaction and removes unpublished staging state"
+        }
+      ]
+    },
+    {
+      "name": "ra8_ftl",
+      "build_root": "libs/ra8_ftl",
+      "public_headers": [
+        {
+          "path": "libs/ra8_ftl/inc/ra8_ftl.h",
+          "compatibility_sha256": "30f51b495119fcf4937786e34e8e42b940d485e9c7c9168be609930173dc096d",
+          "layout_assertions": [
+            "@offsetOf(Blockdev, \"ctx\") == ptr",
+            "@sizeOf(Blockdev) == ptr * 2",
+            "@offsetOf(Ftl, \"logical_blocks\") == ptr * 4",
+            "@offsetOf(Ftl, \"physical_blocks\") == ptr * 4 + 4",
+            "@offsetOf(Ftl, \"erase_value\") == ptr * 4 + 8",
+            "@sizeOf(Ftl) == std.mem.alignForward(usize, ptr * 4 + 9, @alignOf(Ftl))"
+          ]
+        }
+      ],
+      "adapters": [
+        "libs/ra8_ftl/src/ra8_ftl_abi.zig"
+      ],
+      "library_name": "ra8_ftl",
+      "symbol_prefix": "ra8_ftl_",
+      "target_class": "host-ra8",
+      "targets": {
+        "host": [],
+        "ra8": [
+          "-Dtarget=thumb-freestanding-eabihf",
+          "-Dcpu=cortex_m85+fp_armv8-d32-fp64"
+        ]
+      },
+      "run_host_tests_in_all_modes": false,
+      "c_include_dirs": [
+        "libs/ra8_ftl/inc",
+        "libs/ra8_io/inc",
+        "libs/ra8_core/inc",
+        "libs/ra8_fs/inc"
+      ],
+      "contract_tests": [
+        {
+          "language": "c",
+          "path": "tests/storage/src/test_ra8_ftl.c",
+          "registration": "tests/cmake/unit_tests.cmake"
+        },
+        {
+          "language": "c",
+          "path": "tests/storage/src/test_ra8_ftl_cov.c",
+          "registration": "tests/cmake/unit_tests.cmake"
+        },
+        {
+          "language": "c",
+          "path": "tests/storage/src/test_ra8_ftl_persist.c",
+          "registration": "tests/cmake/unit_tests.cmake"
+        },
+        {
+          "language": "zig",
+          "path": "libs/ra8_ftl/tests/abi_test.zig",
+          "registration": "libs/ra8_ftl/.zig-test-contract.json"
+        },
+        {
+          "language": "zig",
+          "path": "libs/ra8_ftl/tests/internal_test.zig",
+          "registration": "libs/ra8_ftl/.zig-test-contract.json",
+          "symbol_evidence": "libs/ra8_ftl/src/ra8_ftl_abi.zig"
+        },
+        {
+          "language": "c",
+          "path": "tests/storage/src/test_ra8_ftl_mount.c",
+          "registration": "tests/cmake/unit_tests.cmake"
+        }
+      ],
+      "exports": [
+        {
+          "name": "ra8_ftl_init",
+          "calling_context": "task-only-non-reentrant",
+          "ownership": "initializes caller-owned handle and tables while borrowing the raw device and scratch storage"
+        },
+        {
+          "name": "ra8_ftl_as_blockdev",
+          "calling_context": "task-only-non-reentrant",
+          "ownership": "binds caller-owned output to the borrowed FTL handle, which must outlive it"
+        },
+        {
+          "name": "ra8_ftl_wear_stats",
+          "calling_context": "task-only-non-reentrant",
+          "ownership": "reads the borrowed FTL metadata and writes caller-owned counters"
+        },
+        {
+          "name": "ra8_ftl_phys_of",
+          "calling_context": "task-only-non-reentrant",
+          "ownership": "reads the borrowed FTL map and writes the caller-owned physical index"
+        }
+      ],
+      "c_retained_exports": [
+        {
+          "name": "ra8_ftl_checkpoint_size",
+          "source": "libs/ra8_ftl/src/ra8_ftl_checkpoint.c",
+          "header": "libs/ra8_ftl/inc/ra8_ftl.h",
+          "reason": "The checkpoint serializer stays C: it is a self-contained encode/decode module over the public handle, this slice ports the FTL core only, and tests/storage/src/test_ra8_ftl_persist.c drives it unchanged against the Zig archive."
+        },
+        {
+          "name": "ra8_ftl_checkpoint_save",
+          "source": "libs/ra8_ftl/src/ra8_ftl_checkpoint.c",
+          "header": "libs/ra8_ftl/inc/ra8_ftl.h",
+          "reason": "The checkpoint serializer stays C: it is a self-contained encode/decode module over the public handle, this slice ports the FTL core only, and tests/storage/src/test_ra8_ftl_persist.c drives it unchanged against the Zig archive."
+        },
+        {
+          "name": "ra8_ftl_checkpoint_load",
+          "source": "libs/ra8_ftl/src/ra8_ftl_checkpoint.c",
+          "header": "libs/ra8_ftl/inc/ra8_ftl.h",
+          "reason": "The checkpoint serializer stays C: it is a self-contained encode/decode module over the public handle, this slice ports the FTL core only, and tests/storage/src/test_ra8_ftl_persist.c drives it unchanged against the Zig archive."
+        },
+        {
+          "name": "ra8_ftl_mount",
+          "source": "libs/ra8_ftl/src/ra8_ftl_mount.c",
+          "header": "libs/ra8_ftl/inc/ra8_ftl.h",
+          "reason": "The mount/sync/unmount module landed on dev in #763 after this port was cut. It is composed entirely from public FTL entry points and reaches into no internals, so it stays C for this slice and is ported on its own once the core has settled."
+        },
+        {
+          "name": "ra8_ftl_sync",
+          "source": "libs/ra8_ftl/src/ra8_ftl_mount.c",
+          "header": "libs/ra8_ftl/inc/ra8_ftl.h",
+          "reason": "The mount/sync/unmount module landed on dev in #763 after this port was cut. It is composed entirely from public FTL entry points and reaches into no internals, so it stays C for this slice and is ported on its own once the core has settled."
+        },
+        {
+          "name": "ra8_ftl_unmount",
+          "source": "libs/ra8_ftl/src/ra8_ftl_mount.c",
+          "header": "libs/ra8_ftl/inc/ra8_ftl.h",
+          "reason": "The mount/sync/unmount module landed on dev in #763 after this port was cut. It is composed entirely from public FTL entry points and reaches into no internals, so it stays C for this slice and is ported on its own once the core has settled."
         }
       ]
     }

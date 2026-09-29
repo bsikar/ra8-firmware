@@ -343,6 +343,22 @@ ra8_add_zig_library(
   LIBRARY_NAME
   fw_if_fs
 )
+
+# Partially migrated: the FTL core (init, the presented free-overwrite vtable,
+# copy-on-write relocation, reclamation and wear-levelling) is Zig now, so
+# libs/ra8_ftl/src/ra8_ftl.c is gone and the RA8_FTL_SOURCES glob finds only
+# ra8_ftl_checkpoint.c and ra8_ftl_mount.c, both of which stay C for now: the
+# mount module arrived on dev in #763 after this port was cut and is composed
+# entirely from public FTL entry points. The archive calls the
+# ra8_io_blockdev_* front door, which lives in ra8_core_hal's own objects.
+ra8_add_zig_library(
+  NAME
+  ra8_ftl
+  ZIG_ROOT
+  ${FW_ROOT}/libs/ra8_ftl
+  LIBRARY_NAME
+  ra8_ftl
+)
 set_property(
   TARGET ra8_zig::ra8_keyboard
   APPEND
@@ -373,6 +389,7 @@ target_link_libraries(
          ra8_zig::if_ra8_vfs
          ra8_zig::ra8_camera
          ra8_zig::fw_if_fs
+         ra8_zig::ra8_ftl
 )
 
 link_libraries(ra8_zig::ra8_batt)
@@ -399,4 +416,5 @@ link_libraries(
   ra8_zig::if_ra8_vfs
   ra8_zig::ra8_camera
   ra8_zig::fw_if_fs
+  ra8_zig::ra8_ftl
 )
