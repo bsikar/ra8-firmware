@@ -88,18 +88,61 @@ typedef enum : uint16_t {
 } ra8_ipc_retry_limits_t;
 
 /**
+ * @enum ra8_ipc_world_t
+ * @brief Which security world an IPC target belongs to.
+ *
+ * @details
+ * The register bit is active-high for the permissive state: IPCSAR.SAIPCIRn
+ * set means the target is Non-Secure. Naming the state rather than the bit
+ * is what keeps a reader from having to negate anything at the point where
+ * getting it backwards hands a Secure channel to NS code.
+ *
+ * @since 0.1.0
+ */
+typedef enum : uint8_t {
+  k_ra8_ipc_world_secure     = 0U, /**< Secure-only (reset default). */
+  k_ra8_ipc_world_non_secure = 1U, /**< Non-Secure accessible.       */
+} ra8_ipc_world_t;
+
+/**
+ * @enum ra8_ipc_access_t
+ * @brief Which privilege level may reach an IPC target.
+ *
+ * @details
+ * IPCPAR.PAIPCIRn set means Unprivileged code may reach the target, so the
+ * permissive state is again the set bit.
+ *
+ * @since 0.1.0
+ */
+typedef enum : uint8_t {
+  k_ra8_ipc_access_privileged   = 0U, /**< Privileged-only (reset default). */
+  k_ra8_ipc_access_unprivileged = 1U, /**< Unprivileged access allowed.     */
+} ra8_ipc_access_t;
+
+/**
  * @struct ra8_ipc_attr_t
  * @brief Snapshot of the security / privilege attribution for one
  *        IPC channel, decoded from IPCSAR / IPCPAR.
  *
  * @details
+ * Both members name the state they hold. The earlier shape carried
+ * ``bool secure`` meaning non-secure and ``bool privileged`` meaning
+ * unprivileged, so every reader had to hold a negation in their head and
+ * the header contract had to spell out "1 = non-secure" to compensate
+ * (#2356).
+ *
+ * The same pair, under the same two names, is what
+ * ``libs/ra8_tz_secure_boot/inc/ra8_tz_ipc_attr.h`` already uses for the
+ * write direction. This is the HAL-local twin rather than that header,
+ * because the secure-boot library depends on the HAL and not the reverse.
+ *
  * cppcheck cannot see tests/ so it flags every field as unused; each
  * member is written by ``ra8_ipc_get_attribution`` in
  * ``libs/ra8_hal/src/ra8_ipc.c`` and read by the unit tests.
  */
 typedef struct {
-  bool secure;     /**< true -> non-secure, false -> secure (IPCSAR.SAIPCIRn).       */
-  bool privileged; /**< true -> unprivileged, false -> privileged (IPCPAR.PAIPCIRn). */
+  ra8_ipc_world_t  world;  /**< Secure or Non-Secure (IPCSAR.SAIPCIRn).       */
+  ra8_ipc_access_t access; /**< Privileged or Unprivileged (IPCPAR.PAIPCIRn). */
 } ra8_ipc_attr_t;
 
 /**
