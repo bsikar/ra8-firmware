@@ -9,5 +9,5 @@
     "tests/macho_test.zig",
     "tests/root.zig"
   ],
-  "minimum_tests": 34
+  "minimum_tests": 39
 }
