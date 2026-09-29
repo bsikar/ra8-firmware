@@ -118,3 +118,30 @@ jobs:
           echo /usr/local/zig >> "${GITHUB_PATH}"
 
       - run: just quality::local::gate macos-host-build
+
+      # THE TRANSCRIPT IS THE FINDING, and until now it died with the
+      # workspace. gate_macos_host_build tees its measurement half to
+      # macos-host.log at the repository root (scripts/ci/gates/manual.sh):
+      # which libSystem stub the build graph pinned and why, what the
+      # forced-SDK leg found, which host root broke. This is the one gate that
+      # runs on hardware nobody here can log into, so that transcript is the
+      # only channel through which an arm64 Mac reports back on #899, and a
+      # hosted runner's own log cannot be attached to an issue, diffed against
+      # last night's, or read at all once the run ages out. The gate writes the
+      # file precisely so a step here can save it. Same shape as
+      # fuzz-nightly.yml's sweep log, deliberately: two nightlies, one habit.
+      - name: Upload the gate transcript
+        # A FAILING RUN IS THE ONE WHOSE TRANSCRIPT MATTERS. Without always()
+        # the artefact would exist only for the nights when there was nothing
+        # to diagnose.
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: macos-host-log
+          path: macos-host.log
+          # The gate's preconditions -- wrong host, Rosetta, no pinned Zig --
+          # refuse BEFORE the tee runs, so a refused run leaves no transcript
+          # at all. That diagnosis is already on the step's stderr, and it must
+          # not be replaced here by a secondary upload-action failure.
+          if-no-files-found: ignore
+          retention-days: 30
