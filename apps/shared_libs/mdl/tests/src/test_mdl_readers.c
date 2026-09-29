@@ -243,7 +243,11 @@ RA8_INTERNAL static void internal_reader_image_vectors(mdl_storage_t*        sto
                                                        mdl_state_fault_fs_t* fault)
 {
   static const uint8_t jpeg[] = {0xFFU, 0xD8U, 0xFFU};
-  static const uint8_t png[]  = {0x89U, 'P', 'N', 'G'};
+  /* The full eight-byte PNG signature. ra8_imgdec_sniff rejects a partial
+   * signature rather than guessing (k_sig_len_png), so the old four-byte
+   * prefix classified as nothing and this vector never reached the
+   * short-read assertion it exists to make. */
+  static const uint8_t png[]  = {0x89U, 0x50U, 0x4EU, 0x47U, 0x0DU, 0x0AU, 0x1AU, 0x0AU};
   static const uint8_t gif[]  = {'G', 'I', 'F', '8', '9', 'a'};
   static const uint8_t webp[] = {'R', 'I', 'F', 'F', 0U, 0U, 0U, 0U, 'W', 'E', 'B', 'P'};
   static const uint8_t bmp[]  = {'B', 'M'};
