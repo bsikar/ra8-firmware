@@ -324,14 +324,16 @@ So `apps/host/image_pyramid` carries a step that reads the emitted image back:
 
     cd apps/host/image_pyramid && zig build verify-host-artifact
 
-It reads the Mach-O header and load commands and checks four things against
-what the build was configured for:
+It reads the Mach-O header and load commands and checks these against what the
+build was configured for:
 
 - the image is a single-architecture 64-bit Mach-O, not a universal archive;
 - its cpu type matches the target architecture;
 - it carries a macOS platform stamp;
 - its minimum OS version equals the target's configured minimum;
-- it links `/usr/lib/libSystem.B.dylib`, listing what it does link when not.
+- it links `/usr/lib/libSystem.B.dylib`, listing what it does link when not;
+- for an arm64 target it carries a usable code signature covering the whole
+  image (see below).
 
 The expectations come from the resolved target, so the step checks the binary
 against what this very build asked for rather than against a hardcoded answer.
@@ -348,6 +350,46 @@ The reader itself is unit tested against synthesised images (`tools/zig_build/
 macho.zig` and its tests), including a universal archive, a 32-bit image, an
 ELF, a truncated load-command region and a dylib name pointing outside its own
 command.
+
+### An arm64 image has to be signed or it cannot run
+
+Apple silicon will not execute an unsigned Mach-O. The kernel kills the process
+at exec, the shell reports `Killed: 9`, and nothing says why. That is the #899
+failure shape exactly: the link succeeds, the artifact looks right, and the host
+test step dies with no diagnostic to read. Zig's own Mach-O linker writes an
+ad-hoc signature, so the check is that what came out still carries one.
+
+For an arm64 macOS target the step now requires:
+
+- an `LC_CODE_SIGNATURE` whose blob is an embedded signature super-blob holding
+  a code directory;
+- a `codeLimit` equal to where the signature blob starts, so the signature
+  covers every byte in front of it. A mismatch means the image was stripped,
+  patched or appended to after the link, which macOS rejects at exec rather
+  than reporting as an edit;
+- the ad-hoc or linker-signed flag, since nothing in this build signs with an
+  identity.
+
+x86_64 macOS still runs unsigned binaries, so for an x86_64 target the absence
+of a signature is reported in the summary line and does not fail the step. What
+a Linux checkout can prove:
+
+    zig build verify-host-artifact -Dtarget=aarch64-macos
+    # ... linking /usr/lib/libSystem.B.dylib, linker ad-hoc signed as
+    # "image_pyramid" over all 1683648 bytes
+
+    zig build verify-host-artifact -Dtarget=x86_64-macos
+    # ... no readable code signature (MissingCodeSignature), which x86_64
+    # does not require
+
+The signature structures are big-endian and their offsets are relative to the
+blob rather than to the file, so they are parsed separately from the load
+commands. Every case is unit tested against blobs built byte by byte: a linker
+ad-hoc signature, an unsigned image, a signature stopping short of its own blob
+and one claiming more bytes than precede it, an identity signature, a
+non-embedded blob, a super-blob with no code directory slot, a wrong directory
+magic, a region pointing past the end of the file and a stripped (zero-length)
+region.
 
 ## The Rust archives are read before they are linked
 
