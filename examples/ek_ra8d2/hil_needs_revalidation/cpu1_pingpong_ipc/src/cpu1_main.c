@@ -18,6 +18,7 @@
 #include "ra8_attributes.h"
 #include "ra8_err.h"
 #include "ra8_ipc.h"
+#include "ra8_sau.h"
 
 extern uint32_t g_ra8_ls_cpu1_stack_top;
 extern uint32_t g_ra8_ls_cpu1_data_start;
@@ -59,43 +60,25 @@ typedef enum : uint32_t {
 } cpu1_ipc_mask_t;
 
 /**
- * @enum cpu1_sau_reg_t
- * @brief Armv8-M SAU programming registers, addressed directly.
- * @details These are Cortex-M33 CPU-architectural registers (Arm v8-M
- *          Architecture Reference Manual, "SAU registers"), not RA8D2
- *          peripheral registers, so they carry an Arm ARM reference rather
- *          than a HUM citation. The M33 HAL accessors are unreachable from
- *          this image, hence the direct addresses.
- * @invariant Every value is a word-aligned address inside the System Control
- *            Space at 0xE000E000.
- * @see cpu1_sau_region_t  The region base/limit values written through them.
- */
-typedef enum : uintptr_t {
-  k_cpu1_sau_ctrl_addr = 0xE000EDD0UL, /**< SAU_CTRL: SAU enable bit.        */
-  k_cpu1_sau_rnr_addr  = 0xE000EDD8UL, /**< SAU_RNR: region number select.   */
-  k_cpu1_sau_rbar_addr = 0xE000EDDCUL, /**< SAU_RBAR: region base address.   */
-  k_cpu1_sau_rlar_addr = 0xE000EDE0UL, /**< SAU_RLAR: region limit + enable. */
-} cpu1_sau_reg_t;
-
-/**
- * @enum cpu1_sau_region_t
- * @brief Base and limit words for the four SAU regions this image programmes.
- * @details Each limit value carries the SAU_RLAR ENABLE bit (bit 0) already
- *          set, which is why every limit ends in 1 rather than 0.
- * @invariant The four regions do not overlap: overlapping SAU regions resolve
+ * @enum cpu1_sau_window_t
+ * @brief Base and size of the four SAU regions this image programmes.
+ * @details Sizes, not RLAR limit words: ::ra8_sau_configure derives
+ *          `base + size - 32` and the ENABLE / NSC bits itself.
+ * @invariant The four windows do not overlap: overlapping SAU regions resolve
  *            to Secure, which a permanent-NS M33 cannot reach.
- * @see cpu1_sau_reg_t  The registers these are written to.
+ * @invariant Every base and size is a multiple of
+ *            ::k_ra8_sau_region_granule.
  */
 typedef enum : uint32_t {
-  k_cpu1_sau_periph_ns_base  = 0x50000000UL, /**< R0 NS base.   */
-  k_cpu1_sau_periph_ns_limit = 0x5FFFFFE1UL, /**< R0 limit.     */
-  k_cpu1_sau_periph_s_base   = 0x40000000UL, /**< R1 S base.    */
-  k_cpu1_sau_periph_s_limit  = 0x4FFFFFE1UL, /**< R1 limit.     */
-  k_cpu1_sau_ns_sram_base    = 0x22100000UL, /**< R2 SRAM base. */
-  k_cpu1_sau_ns_sram_limit   = 0x221FFFE1UL, /**< R2 limit.     */
-  k_cpu1_sau_mram_base       = 0x020C0000UL, /**< R3 MRAM base. */
-  k_cpu1_sau_mram_limit      = 0x020FFFE1UL, /**< R3 limit.     */
-} cpu1_sau_region_t;
+  k_cpu1_sau_periph_ns_base = 0x50000000UL, /**< R0 peripherals NS alias. */
+  k_cpu1_sau_periph_ns_size = 0x10000000UL, /**< R0 size.                 */
+  k_cpu1_sau_periph_s_base  = 0x40000000UL, /**< R1 peripherals S alias.  */
+  k_cpu1_sau_periph_s_size  = 0x10000000UL, /**< R1 size.                 */
+  k_cpu1_sau_ns_sram_base   = 0x22100000UL, /**< R2 NS SRAM window.       */
+  k_cpu1_sau_ns_sram_size   = 0x00100000UL, /**< R2 size.                 */
+  k_cpu1_sau_mram_base      = 0x020C0000UL, /**< R3 MRAM_CPU1 code.       */
+  k_cpu1_sau_mram_size      = 0x00040000UL, /**< R3 size.                 */
+} cpu1_sau_window_t;
 
 /**
  * @enum cpu1_probe_addr_t
@@ -161,31 +144,32 @@ typedef enum : uint32_t {
  */
 RA8_INTERNAL static void internal_cpu1_sau_init(void)
 {
-  /* Region 0: peripherals NS alias (0x50000000-0x5FFFFFE0). */
-  *(volatile uint32_t*)k_cpu1_sau_rnr_addr  = 0x00000000UL;                        /* SAU_RNR  */
-  *(volatile uint32_t*)k_cpu1_sau_rbar_addr = (uint32_t)k_cpu1_sau_periph_ns_base; /* SAU_RBAR */
-  *(volatile uint32_t*)k_cpu1_sau_rlar_addr =
-    (uint32_t)k_cpu1_sau_periph_ns_limit; /* SAU_RLAR limit | enable */
-  /* Region 1: peripherals S alias (0x40000000-0x4FFFFFE0). */
-  *(volatile uint32_t*)k_cpu1_sau_rnr_addr  = 0x00000001UL;
-  *(volatile uint32_t*)k_cpu1_sau_rbar_addr = (uint32_t)k_cpu1_sau_periph_s_base;
-  *(volatile uint32_t*)k_cpu1_sau_rlar_addr = (uint32_t)k_cpu1_sau_periph_s_limit;
-  /* Region 2: NS SRAM range (0x22100000-0x221FFFE0). The CPU1 SRAM bank
-   * (0x22190000-0x2219FFE0) now lives inside this window, so one NS region
-   * covers both the shared markers and the bank -- a separate bank region
-   * would overlap this one, and overlapping SAU regions resolve to Secure,
-   * which the permanent-NS M33 cannot reach. */
-  *(volatile uint32_t*)k_cpu1_sau_rnr_addr  = 0x00000002UL;
-  *(volatile uint32_t*)k_cpu1_sau_rbar_addr = (uint32_t)k_cpu1_sau_ns_sram_base;
-  *(volatile uint32_t*)k_cpu1_sau_rlar_addr = (uint32_t)k_cpu1_sau_ns_sram_limit;
-  /* Region 3: MRAM_CPU1 code (0x020C0000-0x020FFFE0). */
-  *(volatile uint32_t*)k_cpu1_sau_rnr_addr  = 0x00000003UL;
-  *(volatile uint32_t*)k_cpu1_sau_rbar_addr = (uint32_t)k_cpu1_sau_mram_base;
-  *(volatile uint32_t*)k_cpu1_sau_rlar_addr = (uint32_t)k_cpu1_sau_mram_limit;
-  /* Enable SAU (no ALLNS, so unprogrammed defaults to IDAU). */
-  *(volatile uint32_t*)k_cpu1_sau_ctrl_addr = 0x00000001UL;
-  __asm__ volatile("dsb 0xf" ::: "memory");
-  __asm__ volatile("isb 0xf" ::: "memory");
+  /* Region 2 spans the shared NS markers and the CPU1 SRAM bank
+   * (0x22190000..) in one window: a separate bank region would overlap this
+   * one, and overlapping SAU regions resolve to Secure, which the
+   * permanent-NS M33 cannot reach. */
+  static const ra8_sau_region_t k_cpu1_sau_regions[] = {
+    [0] = {.base = (uintptr_t)k_cpu1_sau_periph_ns_base,
+           .size = (uint32_t)k_cpu1_sau_periph_ns_size,
+           .attr = k_ra8_sau_attr_ns},
+    [1] = {.base = (uintptr_t)k_cpu1_sau_periph_s_base,
+           .size = (uint32_t)k_cpu1_sau_periph_s_size,
+           .attr = k_ra8_sau_attr_ns},
+    [2] = {.base = (uintptr_t)k_cpu1_sau_ns_sram_base,
+           .size = (uint32_t)k_cpu1_sau_ns_sram_size,
+           .attr = k_ra8_sau_attr_ns},
+    [3] = {.base = (uintptr_t)k_cpu1_sau_mram_base,
+           .size = (uint32_t)k_cpu1_sau_mram_size,
+           .attr = k_ra8_sau_attr_ns},
+  };
+  static const ra8_sau_cfg_t k_cpu1_sau_cfg = {
+    .regions      = k_cpu1_sau_regions,
+    .region_count = (uint8_t)(sizeof(k_cpu1_sau_regions) / sizeof(k_cpu1_sau_regions[0])),
+    .all_ns       = false,
+  };
+  if (ra8_sau_configure(&k_cpu1_sau_cfg) != k_ra8_ok) {
+    return; /* Probe word stays clear: a bench post-mortem sees the refusal. */
+  }
   *(volatile uint32_t*)k_cpu1_probe_sau_addr = (uint32_t)k_cpu1_probe_sau_val; /* SAU configured */
 }
 
