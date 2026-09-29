@@ -1643,6 +1643,11 @@
           "registration": "tests/cmake/unit_tests.cmake"
         },
         {
+          "language": "c",
+          "path": "tests/wireless/src/test_ra8_wifi_c6link.c",
+          "registration": "tests/cmake/unit_tests.cmake"
+        },
+        {
           "language": "zig",
           "path": "libs/ra8_wifi/tests/abi_test.zig",
           "registration": "libs/ra8_wifi/.zig-test-contract.json"
@@ -1698,6 +1703,45 @@
           "name": "ra8_wifi_get_ap",
           "calling_context": "task-only-non-reentrant",
           "ownership": "copies current access-point data into caller-owned output storage"
+        },
+        {
+          "name": "ra8_wifi_c6link_setup",
+          "calling_context": "task-only-non-reentrant",
+          "ownership": "borrows the board's config while writing the caller-owned handle and the wifi config it points at the vtable"
+        }
+      ],
+      "public_headers": [
+        {
+          "path": "libs/ra8_wifi/inc/ra8_wifi_c6link.h",
+          "compatibility_sha256": "328e39b93cad345f5e7c852b326f451c29759a02c424906ca3ae48d26ba0e6b1",
+          "layout_assertions": [
+            "@sizeOf(Transport) == ptr * 4",
+            "@sizeOf(Event) == 56",
+            "@sizeOf(StaCfg) == 108",
+            "@offsetOf(Handle, \"connected\") == ptr * 8"
+          ]
+        }
+      ],
+      "adapters": [
+        {
+          "path": "libs/ra8_wifi/src/ra8_wifi_c6link_abi.zig",
+          "symbol_prefixes": [
+            "ra8_wifi_c6link_",
+            "k_ra8_wifi_backend_"
+          ]
+        }
+      ],
+      "layout_sources": [
+        "libs/ra8_wifi/src/internal/root.zig",
+        "libs/ra8_wifi/src/internal/c6link.zig"
+      ],
+      "data_exports": [
+        {
+          "name": "k_ra8_wifi_backend_c6link",
+          "header": "libs/ra8_wifi/inc/ra8_wifi_c6link.h",
+          "adapter": "libs/ra8_wifi/src/ra8_wifi_c6link_abi.zig",
+          "calling_context": "task-safe-reentrant",
+          "ownership": "read-only vtable in the archive's rodata; a board stores its address in ra8_wifi_cfg_t and never writes it"
         }
       ]
     },
