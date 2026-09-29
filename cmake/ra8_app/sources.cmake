@@ -145,6 +145,41 @@ macro(_ra8_app_collect_sources)
           "/src/boot/"
         )
       endif()
+      # #908: this expansion only ever globs *.c, so a library that ships its
+      # implementation in anything else contributes NO object code and says
+      # nothing about it. Whether that surfaces as an undefined reference or
+      # as quietly-missing behaviour depends on how the app reaches the
+      # library, and neither failure names the cause -- which is exactly why
+      # every Zig port so far has had to keep its C implementation alongside
+      # the new one. Stop at configure time instead: if the library directory
+      # holds sources this build cannot compile and produced no objects, say
+      # so. A genuinely header-only library has no sources at all and is
+      # unaffected.
+      if(NOT _ra8_lib_one)
+        file(
+          GLOB_RECURSE
+          _ra8_lib_uncompiled
+          CONFIGURE_DEPENDS
+          ${_ra8_lib_path}/src/*.zig
+          ${_ra8_lib_path}/src/*.cpp
+          ${_ra8_lib_path}/src/*.cc
+          ${_ra8_lib_path}/src/*.S
+          ${_ra8_lib_path}/*.zig
+        )
+        if(_ra8_lib_uncompiled)
+          list(JOIN _ra8_lib_uncompiled "\n    " _ra8_lib_uncompiled_pretty)
+          message(
+            FATAL_ERROR
+              "ra8_add_app(): ${_RA8_APP_NAME} declares LIBS ${_ra8_lib}, but "
+              "${_ra8_lib_path}/src holds no C sources and this expansion only "
+              "compiles *.c, so the library would contribute no object code "
+              "(issue #908). Sources found but not compiled:\n    "
+              "${_ra8_lib_uncompiled_pretty}\n  Wire the non-C sources into "
+              "the app build before removing the C implementation, or drop "
+              "${_ra8_lib} from LIBS if it is header-only."
+          )
+        endif()
+      endif()
       list(APPEND _ra8_lib_extra ${_ra8_lib_one})
       list(APPEND _ra8_lib_inc ${_ra8_lib_path}/inc)
     endif()
