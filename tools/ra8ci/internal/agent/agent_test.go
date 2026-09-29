@@ -496,12 +496,35 @@ func TestRunOnceDeadlineReportsTerminal(t *testing.T) {
 	a.DeadlineAt = time.Now().Add(3 * time.Second)
 	var mu sync.Mutex
 	terminal := protocol.TerminalReceipt{}
+	logged := int64(0)
 	agent, server := testAgent(t, func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case "/v1/agents/me/claim":
 			_ = json.NewEncoder(w).Encode(a)
 		case "/v1/assignments/" + a.AssignmentID + "/ack":
 			writeAccepted(w, a)
+		// A timed-out attempt still streams its logs and still beats while
+		// the step runs. Both are endpoints this walk legitimately uses, and
+		// a plane that refused them would end the step through a failed log
+		// write rather than through the deadline under test.
+		case "/v1/attempts/" + a.AttemptID + "/logs":
+			var chunk protocol.LogChunk
+			if err := protocol.DecodeStrict(r.Body, &chunk); err != nil || chunk.Validate() != nil {
+				t.Errorf("bad log chunk: %+v, %v", chunk, err)
+			}
+			mu.Lock()
+			if chunk.Sequence > logged {
+				logged = chunk.Sequence
+			}
+			mu.Unlock()
+			writeAccepted(w, a)
+		case "/v1/agents/me/heartbeat":
+			var beat protocol.Heartbeat
+			if err := protocol.DecodeStrict(r.Body, &beat); err != nil || beat.Validate() != nil {
+				t.Errorf("bad heartbeat: %+v, %v", beat, err)
+			}
+			_ = json.NewEncoder(w).Encode(protocol.HeartbeatResponse{SchemaVersion: protocol.Version,
+				AssignmentVersion: a.AssignmentVersion, FencingToken: a.FencingToken})
 		case "/v1/attempts/" + a.AttemptID + "/result":
 			var receipt protocol.TerminalReceipt
 			if err := protocol.DecodeStrict(r.Body, &receipt); err != nil {
@@ -526,6 +549,12 @@ func TestRunOnceDeadlineReportsTerminal(t *testing.T) {
 	defer mu.Unlock()
 	if terminal.Outcome != "timed_out" || !terminal.TimedOut || terminal.Validate() != nil {
 		t.Fatalf("deadline receipt absent/invalid: %+v", terminal)
+	}
+	// The receipt closes exactly the log the plane was given. A receipt
+	// claiming a sequence the plane never received would leave the operator
+	// waiting for output that is not coming.
+	if terminal.FinalLogSequence != logged {
+		t.Fatalf("receipt closes log sequence %d, plane holds %d", terminal.FinalLogSequence, logged)
 	}
 }
 
