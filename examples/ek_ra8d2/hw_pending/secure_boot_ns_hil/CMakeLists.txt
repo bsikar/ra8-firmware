@@ -108,6 +108,29 @@ target_include_directories(
 # weaken the full project warning profile on the first-party app and RNG shim.
 
 # ---- Non-Secure ELF ------------------------------------------------------
+# Written by hand on purpose: ra8_add_ns_image() does not fit this app.
+#
+# That helper exists to collapse the dual-image boilerplate the other three
+# dual-image apps share, and its core is the CMSE import-library handshake:
+# it asks the Secure target for --out-implib and links that implib into the
+# NS image. This app has no veneers to hand over. Its Secure ELF carries a
+# .gnu.sgstubs section of size 0 and the build produces no import library at
+# all, because the Secure/NS boundary here is not a veneer call at all: the
+# Secure boot verifies a signed NS image and BLXNSes into it (#172), so the
+# only thing crossing is the image itself. Calling ra8_add_ns_image() here
+# would ask the Secure link for an import library with no cmse entry
+# functions behind it, which fails the link outright.
+#
+# The staple below is also not the helper's MERGED_HEX step. That step
+# objcopies both ELFs and merges once. This app signs first: scripts/
+# sign_and_merge.py pads the NS body to the body_len the linker recorded in
+# .ns_rot_header, appends an ECDSA-P256 RoT trailer, and emits TWO hexes, a
+# genuine one and a tampered one that differs only in a flipped body byte, so
+# the bench can prove the gate denies as well as admits.
+#
+# If a second signed-NS app ever appears, that is the point to give the helper
+# an optional staple hook. One app is not enough shape to design against.
+#
 # A standalone minimal image: no libc/RTOS/veneers. Same toolchain ABI as the
 # Secure side (cpu flags from the toolchain, C23 global), but no startup files
 # (the Secure boot copies it and ns_reset_handler is the entry) and its own
