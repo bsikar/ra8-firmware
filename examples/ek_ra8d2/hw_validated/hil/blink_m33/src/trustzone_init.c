@@ -59,212 +59,24 @@
 
 #include <stdint.h>
 
-#include "ra8_attributes.h"
-
 #ifdef RA8_TRUSTZONE_ENABLE
-
-/* =============================================================================
- * SAU register addresses (System Control Space, secure alias)
- * =============================================================================
- */
-
-typedef enum : uintptr_t {
-  k_ra8_sau_ctrl_addr = 0xE000EDD0UL, /**< SAU_CTRL Control Register.    */
-  k_ra8_sau_type_addr = 0xE000EDD4UL, /**< SAU_TYPE Type Register.       */
-  k_ra8_sau_rnr_addr  = 0xE000EDD8UL, /**< SAU_RNR Region Number.        */
-  k_ra8_sau_rbar_addr = 0xE000EDDCUL, /**< SAU_RBAR Region Base Address. */
-  k_ra8_sau_rlar_addr = 0xE000EDE0UL, /**< SAU_RLAR Region Limit + bits. */
-  k_ra8_sfsr_addr     = 0xE000EDE4UL, /**< SecureFault Status Register.  */
-} ra8_tz_sau_addr_t;
-
-/**
- * @enum ra8_tz_sau_ctrl_bit_t
- * @brief SAU_CTRL bit positions.
- */
-typedef enum : uint32_t {
-  k_ra8_sau_ctrl_enable = 1UL << 0, /**< ENABLE: main SAU enable.        */
-  k_ra8_sau_ctrl_allns  = 1UL << 1, /**< ALLNS: default-NS unprogrammed. */
-} ra8_tz_sau_ctrl_bit_t;
-
-/**
- * @enum ra8_tz_sau_rlar_bit_t
- * @brief SAU_RLAR bit positions.
- */
-typedef enum : uint32_t {
-  k_ra8_sau_rlar_enable = 1UL << 0, /**< ENABLE: region active.              */
-  k_ra8_sau_rlar_nsc    = 1UL << 1, /**< NSC: region is Non-Secure Callable. */
-} ra8_tz_sau_rlar_bit_t;
-
-/**
- * @enum ra8_tz_partition_t
- * @brief canonical region addresses.
- *
- * @details
- * SAU regions are 32-byte aligned per ARMv8-M; RLAR holds the
- * upper bound minus 32 OR-ed with the enable bits at write time.
- */
-typedef enum : uint32_t {
-  k_ra8_tz_ns_mram_base    = 0x02080000UL, /**< RA8 TrustZone ns MRAM base.    */
-  k_ra8_tz_ns_mram_limit   = 0x020FFFE0UL, /**< RA8 TrustZone ns MRAM limit.   */
-  k_ra8_tz_ns_sram_base    = 0x22100000UL, /**< RA8 TrustZone ns SRAM base.    */
-  k_ra8_tz_ns_sram_limit   = 0x221FFFE0UL, /**< RA8 TrustZone ns SRAM limit.   */
-  k_ra8_tz_ns_sdram_base   = 0x6A000000UL, /**< RA8 TrustZone ns SDRAM base.   */
-  k_ra8_tz_ns_sdram_limit  = 0x6BFFFFE0UL, /**< RA8 TrustZone ns SDRAM limit.  */
-  k_ra8_tz_nsc_veneer_base = 0x10000000UL, /**< RA8 TrustZone NSC veneer base. */
-  k_ra8_tz_nsc_veneer_lim  = 0x100FFFE0UL, /**< RA8 TrustZone NSC veneer lim.  */
-} ra8_tz_partition_t;
-
-/* =============================================================================
- * Internal helpers
- * =============================================================================
- */
-
-/**
- * @brief Complete all explicit memory accesses before continuing.
- * @details Issues a system-scope data-synchronization barrier with a compiler
- *          memory clobber around SAU programming sequences.
- * @pre Called from secure privileged initialization context.
- * @pre Any register writes that require ordering were issued before this call.
- * @post Earlier explicit memory accesses are globally observed first.
- * @post Later C memory operations remain ordered after the barrier.
- * @note Has no mutable C state and is safe only where DSB is permitted.
- * @since 0.1.0
- */
-RA8_INTERNAL static inline void internal_dsb(void)
-{
-  __asm__ volatile("dsb 0xF" ::: "memory");
-}
-
-/**
- * @brief Flush the instruction pipeline after attribution changes.
- * @details Issues a system-scope instruction-synchronization barrier so later
- *          fetches use the newly programmed SAU configuration.
- * @pre Called from secure privileged initialization context.
- * @pre Required system-register writes and a DSB completed first.
- * @post Subsequent instructions observe prior system-register changes.
- * @post The pipeline no longer contains instructions fetched under old state.
- * @note Has no mutable C state and is safe only where ISB is permitted.
- * @since 0.1.0
- */
-RA8_INTERNAL static inline void internal_isb(void)
-{
-  __asm__ volatile("isb 0xF" ::: "memory");
-}
-
-/**
- * @brief Write one 32-bit memory-mapped system register.
- * @details Performs exactly one volatile store to the supplied address.
- * @param[in] addr Register address, aligned for a 32-bit access.
- * @param[in] value Value to store.
- * @pre ``addr`` identifies a writable secure system register.
- * @pre ``addr`` is aligned for a 32-bit volatile access.
- * @post The volatile store has been issued exactly once.
- * @post No other C object is modified by this helper.
- * @note Not thread-safe with another writer to the same register.
- * @since 0.1.0
- */
-RA8_INTERNAL static void internal_write32(uintptr_t addr, uint32_t value)
-{
-  *(volatile uint32_t*)addr = value;
-}
-
-/**
- * @brief Read one 32-bit memory-mapped system register.
- * @details Performs exactly one volatile load from the supplied address.
- * @param[in] addr Register address, aligned for a 32-bit access.
- * @return Sampled register value.
- * @retval 0..UINT32_MAX Exact value returned by the volatile load.
- * @pre ``addr`` identifies a readable secure system register.
- * @pre ``addr`` is aligned for a 32-bit volatile access.
- * @post No memory-mapped register is modified.
- * @post The returned value is the single sampled register value.
- * @note Not synchronized with concurrent register writers.
- * @since 0.1.0
- */
-RA8_INTERNAL static uint32_t internal_read32(uintptr_t addr)
-{
-  return *(volatile uint32_t*)addr;
-}
-
-/**
- * @brief Programme one SAU region via RNR/RBAR/RLAR.
- * @details Selects the region, writes its aligned base, combines the aligned
- *          limit with ENABLE and optional NSC, then publishes the limit word.
- *
- * @param[in] region Region number 0..(SAU_TYPE.SREGION - 1).
- * @param[in] base Start address (32-byte aligned).
- * @param[in] limit Upper bound minus 32 (32-byte aligned).
- * @param[in] is_nsc ``true`` to mark the region as NSC.
- * @pre Secure privileged code owns the SAU programming sequence.
- * @pre ``base`` and ``limit`` satisfy the documented 32-byte alignment.
- * @post The selected region is enabled with the requested address bounds.
- * @post NSC is set exactly when ``is_nsc`` is true.
- * @note Not thread-safe; callers must serialize SAU configuration.
- * @since 0.1.0
- */
-RA8_INTERNAL static void
-internal_sau_set_region(uint32_t region, uint32_t base, uint32_t limit, bool is_nsc)
-{
-  internal_write32(k_ra8_sau_rnr_addr, region);
-  internal_write32(k_ra8_sau_rbar_addr, base);
-  uint32_t rlar = limit | (uint32_t)k_ra8_sau_rlar_enable;
-  if (is_nsc) {
-    rlar |= (uint32_t)k_ra8_sau_rlar_nsc;
-  }
-  internal_write32(k_ra8_sau_rlar_addr, rlar);
-}
-
-/* =============================================================================
- * Public entry point
- * =============================================================================
- */
-
-#endif /* RA8_TRUSTZONE_ENABLE */
+#include "ra8_err.h"
+#include "ra8_sau.h"
+#endif
 
 void ra8_trustzone_init(void)
 {
 #ifdef RA8_TRUSTZONE_ENABLE
-  /* Sanity check: SAU_TYPE.SREGION must report >= 4 implemented
-   * regions for our partition to fit. The Cortex-M85 always has 8,
-   * but a chip-specific override could trim the count. */
-  const uint32_t sau_type = internal_read32(k_ra8_sau_type_addr);
-  if ((sau_type & 0xFFU) < 4U) {
-    /* Refuse to bring up TrustZone on an SAU we cannot use. The
-     * caller will see SAU_CTRL.ENABLE clear and fall back to the
-     * single-world model. */
+  /* The four canonical windows this file used to poke into RNR / RBAR / RLAR
+   * by hand are the driver's own boot partition (`ra8_sau_boot_map()`), so
+   * this is a call rather than a copy. `ra8_sau_apply_boot_map()` re-checks
+   * SAU_TYPE.SREGION first and programmes nothing when the silicon reports
+   * fewer regions than the partition needs, which is the same refusal this
+   * file used to make; the caller then sees SAU_CTRL.ENABLE clear and falls
+   * back to the single-world model. It touches no `.data` / `.bss`, so it is
+   * safe on the pre-init reset path. */
+  if (ra8_sau_apply_boot_map() != k_ra8_ok) {
     return;
   }
-
-  /* Region 0: NS upper MRAM */
-  internal_sau_set_region(0U,
-                          (uint32_t)k_ra8_tz_ns_mram_base,
-                          (uint32_t)k_ra8_tz_ns_mram_limit,
-                          /*is_nsc=*/false);
-
-  /* Region 1: NS upper SRAM */
-  internal_sau_set_region(1U,
-                          (uint32_t)k_ra8_tz_ns_sram_base,
-                          (uint32_t)k_ra8_tz_ns_sram_limit,
-                          /*is_nsc=*/false);
-
-  /* Region 2: NS upper SDRAM */
-  internal_sau_set_region(2U,
-                          (uint32_t)k_ra8_tz_ns_sdram_base,
-                          (uint32_t)k_ra8_tz_ns_sdram_limit,
-                          /*is_nsc=*/false);
-
-  /* Region 3: NSC veneer alias ( will place .gnu.sgstubs
-   * here via the linker script). */
-  internal_sau_set_region(3U,
-                          (uint32_t)k_ra8_tz_nsc_veneer_base,
-                          (uint32_t)k_ra8_tz_nsc_veneer_lim,
-                          /*is_nsc=*/true);
-
-  /* Enable the SAU. Leave ALLNS clear: anything we have not
-   * explicitly carved out stays secure (default-deny). */
-  internal_dsb();
-  internal_write32(k_ra8_sau_ctrl_addr, (uint32_t)k_ra8_sau_ctrl_enable);
-  internal_dsb();
-  internal_isb();
 #endif
 }
