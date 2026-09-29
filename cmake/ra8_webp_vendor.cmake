@@ -61,9 +61,25 @@ function(ra8_webp_vendor_sources out_var repo_root)
   )
 endfunction()
 
-# The first-party facade (ra8_webp.c) and its bump arena (ra8_webp_arena.c),
-# plus the shared decoder scratch the arena forwards to (#768).
+# The first-party facade (ra8_webp.c), its bump arena (ra8_webp_arena.c), its
+# imgdec backend (ra8_webp_imgdec.c), and the libs/ TUs those three call into.
 # Held to the full project warning bar -- these never take the SOUP flags.
+#
+# The facade is not self-contained, so this list is its link closure, not just
+# its directory. ra8_webp_imgdec.c calls ra8_imgdec_dims() (:115) and
+# ra8_imgdec_pixel_bytes() (:277); the shared decoder scratch this already
+# carried (#768) calls ra8_arena_carve(); ra8_imgdec_dims.c and ra8_imgdec.c in
+# turn call ra8_imgdec_sniff(). Handing a consumer the facade without those
+# definitions hands it a link error rather than a decoder, which is what
+# apps/host/cbz2jof and tools/rabook_imagepack both hit: both linked WebP in,
+# both failed on ra8_imgdec_dims/ra8_imgdec_pixel_bytes.
+#
+# Every entry is an absolute ${repo_root} path, which is what makes this safe
+# for a consumer that already lists one of them (tools/rabook_viewer lists
+# ra8_imgdec_dims.c, tools/rabook_imagepack lists ra8_arena.c, the host test
+# build globs both directories): CMake dedupes identical absolute source paths
+# within a target. That is the same property the scratch entry has relied on
+# since #768.
 function(ra8_webp_facade_sources out_var repo_root)
   set(_root "${repo_root}/apps/shared_libs/webp")
   if(NOT EXISTS "${_root}")
@@ -73,12 +89,20 @@ function(ra8_webp_facade_sources out_var repo_root)
   if(NOT _srcs)
     message(FATAL_ERROR "ra8_webp_facade_sources(): no facade TUs under ${_root}/src")
   endif()
-  set(_scratch "${repo_root}/libs/ra8_imgdec/src/ra8_imgdec_scratch.c")
-  if(NOT EXISTS "${_scratch}")
-    message(FATAL_ERROR "ra8_webp_facade_sources(): shared scratch missing at ${_scratch}")
-  endif()
+  set(_deps
+      ${repo_root}/libs/ra8_imgdec/src/ra8_imgdec.c
+      ${repo_root}/libs/ra8_imgdec/src/ra8_imgdec_dims.c
+      ${repo_root}/libs/ra8_imgdec/src/ra8_imgdec_scratch.c
+      ${repo_root}/libs/ra8_imgdec/src/ra8_imgdec_sniff.c
+      ${repo_root}/libs/ra8_mem/src/ra8_arena.c
+  )
+  foreach(_dep IN LISTS _deps)
+    if(NOT EXISTS "${_dep}")
+      message(FATAL_ERROR "ra8_webp_facade_sources(): facade dependency missing at ${_dep}")
+    endif()
+  endforeach()
   set(${out_var}
-      ${_srcs} ${_scratch}
+      ${_srcs} ${_deps}
       PARENT_SCOPE
   )
 endfunction()
