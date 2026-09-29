@@ -2635,10 +2635,22 @@
             "@offsetOf(Policy, \"clean_every\") == 2",
             "@offsetOf(Decision, \"full_update\") == 1"
           ]
+        },
+        {
+          "path": "libs/ra8_display_pal/inc/ra8_display_pal_lcd.h",
+          "compatibility_sha256": "7e55c02598364787f1970e5bfb3cba25527617a581512fd0657a3ba85d717db2",
+          "layout_assertions": [
+            "@sizeOf(GlcdcTiming) == 16",
+            "@offsetOf(GlcdcConfig, \"format\") == 8",
+            "@offsetOf(GlcdcConfig, \"timing\") == 10",
+            "@offsetOf(FbCfg, \"bytes\") == @sizeOf(usize)",
+            "@offsetOf(FbCfg, \"pixfmt\") == @sizeOf(usize) + 8"
+          ]
         }
       ],
       "adapters": [
-        "libs/ra8_display_pal/src/ra8_display_pal_abi.zig"
+        "libs/ra8_display_pal/src/ra8_display_pal_abi.zig",
+        "libs/ra8_display_pal/src/ra8_display_pal_lcd_abi.zig"
       ],
       "library_name": "ra8_display_pal",
       "symbol_prefix": "display_",
@@ -2675,6 +2687,12 @@
           "language": "zig",
           "path": "libs/ra8_display_pal/tests/internal_test.zig",
           "symbol_evidence": "libs/ra8_display_pal/src/ra8_display_pal_abi.zig",
+          "registration": "libs/ra8_display_pal/.zig-test-contract.json"
+        },
+        {
+          "language": "zig",
+          "path": "libs/ra8_display_pal/tests/lcd_test.zig",
+          "symbol_evidence": "libs/ra8_display_pal/src/ra8_display_pal_lcd_abi.zig",
           "registration": "libs/ra8_display_pal/.zig-test-contract.json"
         }
       ],
@@ -2728,6 +2746,26 @@
           "name": "display_policy_full_rect",
           "calling_context": "task-safe-reentrant",
           "ownership": "writes a caller-owned rectangle from the supplied dimensions and retains no state"
+        },
+        {
+          "name": "display_pal_bind_glcdc",
+          "calling_context": "task-only-non-reentrant",
+          "ownership": "reads caller-owned framebuffer config and panel timing, binds the GLCDC backend to the single live handle"
+        }
+      ],
+      "layout_sources": [
+        "libs/ra8_display_pal/src/internal/root.zig",
+        "libs/ra8_display_pal/src/internal/lcd.zig",
+        "libs/ra8_display_pal/src/ra8_display_pal_abi.zig",
+        "libs/ra8_display_pal/src/ra8_display_pal_lcd_abi.zig"
+      ],
+      "data_exports": [
+        {
+          "name": "k_display_backend_lcd_ra8_glcdc",
+          "header": "libs/ra8_display_pal/inc/ra8_display_pal_lcd.h",
+          "adapter": "libs/ra8_display_pal/src/ra8_display_pal_lcd_abi.zig",
+          "calling_context": "task-only-non-reentrant",
+          "ownership": "read-only backend vtable in rodata, bound by address through display_cfg_t.iface"
         }
       ]
     },

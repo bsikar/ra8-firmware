@@ -219,7 +219,7 @@ static void test_init_rejects_null_arguments(void)
 
 /**
  * @par MC/DC:
- * Decision (libs/ra8_display_pal/src/ra8_display_pal_lcd.c@internal_lcd_validate_cfg):
+ * Decision (libs/ra8_display_pal/src/internal/lcd.zig@validateCfg):
  * ``if (cfg->width_px == 0U || cfg->height_px == 0U)`` -- 2 conditions.
  *
  * - V1: w=64, h=32  -> C1=F, C2=F -> decision F (covered by happy path).
@@ -343,7 +343,7 @@ static void test_lcd_happy_path(void)
 
 /**
  * @par MC/DC:
- * Decision in ``internal_lcd_check_rect``: four sequential bounds
+ * Decision in ``internal/lcd.zig@checkRect``: four sequential bounds
  * checks. Vectors below cover each branch independently.
  */
 static void test_lcd_flush_rejects_out_of_bounds(void)
