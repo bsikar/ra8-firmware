@@ -737,11 +737,21 @@ needed.
 
 ## What runs on a clock
 
-`.github/workflows/macos-host.yml` runs the `macos-host-build` gate nightly on
-a GitHub-hosted `macos-14` (arm64) runner, provisioning the pinned Zig itself,
-and can be started by hand with `workflow_dispatch`. The gate body lives in
-`scripts/ci/gates/manual.sh` and is registered in `scripts/ci.sh`, so the
-workflow schedules it rather than restating it.
+`.github/workflows/macos-host.yml` declares the `macos-host-build` gate on a
+GitHub-hosted `macos-14` (arm64) runner, provisioning the pinned Zig itself.
+The gate body lives in `scripts/ci/gates/manual.sh` and is registered in
+`scripts/ci.sh`, so the workflow schedules it rather than restating it.
+
+Neither of its triggers fires while the file is off the default branch, which
+is where it is today. GitHub runs `schedule` from the latest commit on the
+default branch only, and lists a workflow for `workflow_dispatch` only if it
+exists there; the ref to run is chosen at dispatch time, but an absent file is
+never offered and `gh workflow run` answers that it could not find it. This
+file is landing through the #899 stack into `zig/dev`, so merging that stack
+starts no nightly and produces no Run workflow button. Until `zig/dev` reaches
+the default branch the only way to get a real macOS reading is to run the gate
+by hand on an arm64 Mac, as described under "Running the gate itself on your
+own Mac" above.
 
 That nightly is the only observation of the real SDK stub anywhere in this
 repository: every other job runs on Linux, where an explicit `aarch64-macos`
