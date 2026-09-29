@@ -161,11 +161,28 @@ export fn ra8_io_blockdev_get_caps(bd: *const abi.Blockdev, out: *core.Caps) cor
 }
 
 test "layout: the handle matches the C ABI" {
+    // inc/ra8_ftl.h declares eleven fields: five pointers (raw, map, pblocks,
+    // scratch, checkpoint) then ck_bytes, logical_blocks, physical_blocks,
+    // reserved_lba, reserved_blocks, erase_value. These offsets are read off
+    // that header, not off the Zig struct, which is the whole point: the
+    // mount path writes these fields from the other side of the ABI.
     const ptr = @sizeOf(usize);
-    try expectEqual(ptr * 4, @offsetOf(abi.Ftl, "logical_blocks"));
-    try expectEqual(ptr * 4 + 4, @offsetOf(abi.Ftl, "physical_blocks"));
-    try expectEqual(ptr * 4 + 8, @offsetOf(abi.Ftl, "erase_value"));
+    try expectEqual(ptr * 4, @offsetOf(abi.Ftl, "checkpoint"));
+    try expectEqual(ptr * 5, @offsetOf(abi.Ftl, "ck_bytes"));
+    try expectEqual(ptr * 5 + 4, @offsetOf(abi.Ftl, "logical_blocks"));
+    try expectEqual(ptr * 5 + 8, @offsetOf(abi.Ftl, "physical_blocks"));
+    try expectEqual(ptr * 5 + 12, @offsetOf(abi.Ftl, "reserved_lba"));
+    try expectEqual(ptr * 5 + 16, @offsetOf(abi.Ftl, "reserved_blocks"));
+    try expectEqual(ptr * 5 + 20, @offsetOf(abi.Ftl, "erase_value"));
     try expectEqual(ptr * 2, @sizeOf(abi.Blockdev));
+}
+
+test "layout: the mount config matches the C ABI" {
+    const ptr = @sizeOf(usize);
+    try expectEqual(ptr * 4, @offsetOf(abi.Cfg, "checkpoint"));
+    try expectEqual(ptr * 5, @offsetOf(abi.Cfg, "checkpoint_bytes"));
+    try expectEqual(ptr * 5 + 4, @offsetOf(abi.Cfg, "logical_blocks"));
+    try expectEqual(ptr * 5 + 8, @offsetOf(abi.Cfg, "reserved_tail_blocks"));
 }
 
 test "init: every NULL argument answers null_ptr with its own log line" {
