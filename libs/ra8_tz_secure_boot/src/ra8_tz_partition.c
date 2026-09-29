@@ -23,6 +23,7 @@
 
 #include "ra8_attributes.h"
 #include "ra8_err.h"
+#include "ra8_register_protection.h"
 #include "ra8_sau.h"
 #include "ra8_sram.h"
 
@@ -196,13 +197,26 @@ ra8_err_t ra8_tz_partition_apply(const ra8_tz_partition_t* partition)
   if (partition->sram_boundary == NULL) {
     return k_ra8_ok;
   }
-  for (uint8_t bank = 0U; bank < (uint8_t)k_ra8_tz_partition_sram_bank_count; bank++) {
-    const ra8_err_t sram_err = ra8_sram_set_boundary(bank, partition->sram_boundary[bank]);
-    if (sram_err != k_ra8_ok) {
-      return sram_err;
+
+  /* SRAMSABARn is a security-attribution register, so it sits behind PRC4
+   * rather than the group that guards the rest of the SRAM block (HUM Ch 13.1
+   * Table 13.1 "Association between PRCR bits and use of registers to be
+   * protected" p 520-521). Issued with PRC4 locked the stores are silently
+   * discarded -- no bus fault, no status flag -- which is exactly the failure
+   * #131 found in `ra8_bkup_security_apply` for BBFSAR / VBRSABAR. Leave this
+   * scope by `break`, never by `return`: the re-lock is the loop's increment
+   * clause and a `return` would jump straight past it. */
+  ra8_err_t sram_err = k_ra8_ok;
+  RA8_PROTECTED_WRITE(k_ra8_prcr_unlock_sar)
+  {
+    for (uint8_t bank = 0U; bank < (uint8_t)k_ra8_tz_partition_sram_bank_count; bank++) {
+      sram_err = ra8_sram_set_boundary(bank, partition->sram_boundary[bank]);
+      if (sram_err != k_ra8_ok) {
+        break;
+      }
     }
   }
-  return k_ra8_ok;
+  return sram_err;
 }
 
 const ra8_tz_partition_t* ra8_tz_partition_board_map(void)
