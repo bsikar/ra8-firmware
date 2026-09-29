@@ -61,7 +61,7 @@ ra8_add_cpu1_image(
 )
 
 if(TARGET ereader_m33_cpu1.elf)
-  # The three ra8_gfx TUs come on through ra8_cpu1_add_first_party_sources(),
+  # The four ra8_gfx TUs come on through ra8_cpu1_add_first_party_sources(),
   # which bolts them onto the image AND applies the per-source first-party
   # profile (-Wall -Wextra -Werror ... -Wstack-usage=2048 -fstack-usage), the
   # same set ra8_add_cpu1_image() puts on cpu1_main.c. They compile clean on
@@ -69,6 +69,7 @@ if(TARGET ereader_m33_cpu1.elf)
   # gone from .github/cpu1-warning-profile-baseline.txt (#843 / T1-09).
   ra8_cpu1_add_first_party_sources(
     ereader_m33_cpu1.elf
+    ${RA8_REPO_ROOT}/libs/ra8_gfx/src/ra8_gfx_bind.c
     ${RA8_REPO_ROOT}/libs/ra8_gfx/src/ra8_gfx_text.c
     ${RA8_REPO_ROOT}/libs/ra8_gfx/src/ra8_gfx_text_glyph.c
     ${RA8_REPO_ROOT}/libs/ra8_gfx/src/ra8_gfx_font_8x16.c
