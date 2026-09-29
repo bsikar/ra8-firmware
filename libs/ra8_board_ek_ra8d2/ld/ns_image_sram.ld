@@ -48,13 +48,18 @@ SECTIONS
         KEEP(*(.ns_vectors.*))
     } > NS_SRAM_RUN AT > NS_LOAD
 
-    /* Root-of-trust header: a fixed 8-byte {magic, body_len} record the Secure
+    /* Root-of-trust header: the 8-byte {magic, body_len} record the Secure
      * verifier reads at ns_base + 0x40 (immediately after the 16-slot vector
      * table) to learn the signed-body length WITHOUT a hardcoded trailer
-     * address. magic = "NSR1" (bytes N,S,R,1 -> LE word 0x3152534E). body_len =
-     * whole loaded image (vectors..data) = LMA end - LMA start; scripts/secrets/rot_sign.py
-     * appends the ra8_rot_trailer_t at ns_base + body_len. Keep it in sync with
-     * ra8_ns_rot_header_t / k_ra8_tz_ns_rot_header_* in ra8_tz_secure_boot.h.
+     * address. scripts/secrets/rot_sign.py appends the ra8_rot_trailer_t at
+     * ns_base + body_len.
+     *
+     * The record itself is a C object: g_ra8_ns_rot_header in
+     * libs/ra8_tz_secure_boot/ns/ra8_ns_rot_header.c, so its magic comes from
+     * k_ra8_tz_ns_rot_header_magic and its layout from ra8_ns_rot_header_t
+     * rather than from LONG() words hand-copied into each script. Only the
+     * length is the linker's to know, and it is published below as
+     * g_ra8_ls_ns_signed_body_len.
      *
      * Emitted unconditionally so every NS image on this board has one layout:
      * an app whose Secure side does not verify simply never reads these 8
@@ -62,8 +67,7 @@ SECTIONS
     .ns_rot_header : ALIGN(4)
     {
         g_ra8_ls_ns_rot_header = .;
-        LONG(0x3152534E);
-        LONG(LOADADDR(.data) + SIZEOF(.data) - LOADADDR(.ns_vectors));
+        KEEP(*(.ns_rot_header))
     } > NS_SRAM_RUN AT > NS_LOAD
 
     .text : ALIGN(8)
@@ -101,8 +105,14 @@ SECTIONS
     g_ra8_ls_ns_load_end   = LOADADDR(.data) + SIZEOF(.data);
 
     /* End of the RoT-signed body (== load end); rot_sign.py appends the trailer
-     * here, at ns_base + body_len. Mirrors the body_len emitted in .ns_rot_header. */
+     * here, at ns_base + body_len. */
     g_ra8_ls_ns_signed_body_end = g_ra8_ls_ns_load_end;
+
+    /* body_len for .ns_rot_header, as an ABSOLUTE symbol whose VALUE is the byte
+     * count: the whole loaded image, vectors..data. ra8_ns_rot_header.c takes
+     * this symbol's address as the number, which is why it is never a location
+     * to read from. */
+    g_ra8_ls_ns_signed_body_len = g_ra8_ls_ns_load_end - g_ra8_ls_ns_load_start;
 
     .bss (NOLOAD) : ALIGN(8)
     {
