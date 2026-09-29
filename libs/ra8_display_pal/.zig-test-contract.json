@@ -2,16 +2,20 @@
   "test_roots": [
     "tests/internal_test.zig",
     "tests/lcd_test.zig",
+    "tests/eink_test.zig",
     "tests/abi_test.zig"
   ],
   "covered_sources": [
     "src/internal/root.zig",
     "src/internal/lcd.zig",
+    "src/internal/eink.zig",
     "src/ra8_display_pal_abi.zig",
     "src/ra8_display_pal_lcd_abi.zig",
+    "src/ra8_display_pal_eink_abi.zig",
     "tests/internal_test.zig",
     "tests/lcd_test.zig",
+    "tests/eink_test.zig",
     "tests/abi_test.zig"
   ],
-  "minimum_tests": 40
+  "minimum_tests": 65
 }

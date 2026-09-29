@@ -3,8 +3,9 @@
 //!
 //! Build graph for the Zig implementation of `ra8_display_pal`: the dispatcher
 //! in `inc/ra8_display_pal.h`, the page-turn refresh policy in
-//! `inc/ra8_display_pal_policy.h`, and the GLCDC/LCD backend in
-//! `inc/ra8_display_pal_lcd.h`. CMake consumes the installed static library
+//! `inc/ra8_display_pal_policy.h`, the GLCDC/LCD backend in
+//! `inc/ra8_display_pal_lcd.h` and the IT8951 e-ink backend in
+//! `inc/ra8_display_pal_eink.h`. CMake consumes the installed static library
 //! through those unchanged C headers; the `test` step covers the pure decision
 //! logic and the ABI membrane.
 //!
@@ -70,6 +71,11 @@ pub fn build(b: *std.Build) void {
         .target = target,
         .optimize = optimize,
     });
+    const eink_module = b.createModule(.{
+        .root_source_file = b.path("src/internal/eink.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
 
     const internal_test_module = b.createModule(.{
         .root_source_file = b.path("tests/internal_test.zig"),
@@ -95,11 +101,21 @@ pub fn build(b: *std.Build) void {
     lcd_test_module.addImport("implementation", lcd_module);
     const lcd_tests = b.addTest(.{ .root_module = lcd_test_module });
 
+    const eink_test_module = b.createModule(.{
+        .root_source_file = b.path("tests/eink_test.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    eink_test_module.addImport("implementation", eink_module);
+    const eink_tests = b.addTest(.{ .root_module = eink_test_module });
+
     const run_internal_tests = b.addRunArtifact(internal_tests);
     const run_lcd_tests = b.addRunArtifact(lcd_tests);
+    const run_eink_tests = b.addRunArtifact(eink_tests);
     const run_abi_tests = b.addRunArtifact(abi_tests);
     const test_step = b.step("test", "Run Zig ra8_display_pal tests");
     test_step.dependOn(&run_internal_tests.step);
     test_step.dependOn(&run_lcd_tests.step);
+    test_step.dependOn(&run_eink_tests.step);
     test_step.dependOn(&run_abi_tests.step);
 }

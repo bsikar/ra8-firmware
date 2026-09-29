@@ -9,7 +9,7 @@ const std = @import("std");
 const implementation = @import("implementation");
 const core = implementation.core;
 
-fn goodCfg() implementation.CfgView {
+fn goodCfg() core.CfgView {
     return .{
         .has_framebuffer = true,
         .width_px = 320,
