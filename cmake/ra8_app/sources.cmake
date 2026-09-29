@@ -29,6 +29,53 @@
 # sources does LIBS reflow pull in" would stop being answerable by reading
 # one list. The waiver is per-file; the global ceilings in .cmake-format.yaml
 # stay at cmakelang defaults so no other listfile inherits it.
+# #908: the LIBS expansions below only ever glob *.c, so a library that ships
+# its implementation in anything else contributes NO object code and says
+# nothing about it. Whether that surfaces as an undefined reference or as
+# quietly-missing behaviour depends on how the app reaches the library, and
+# neither failure names the cause -- which is exactly why every Zig port so far
+# has had to keep its C implementation alongside the new one. Stop at configure
+# time instead: if the library directory holds sources this build cannot
+# compile and produced no objects, say so. A genuinely header-only library has
+# no sources at all and is unaffected.
+#
+# A function, not a macro: it needs no variable to survive the return, and the
+# two call sites (LIBS and OFF_TARGET_LIBS) are otherwise identical loops whose
+# only difference is which keyword the app wrote.
+function(
+  _ra8_app_require_compilable_lib
+  _lib
+  _path
+  _why
+  _globbed
+)
+  if(_globbed OR NOT _path)
+    return()
+  endif()
+  file(
+    GLOB_RECURSE
+    _uncompiled
+    CONFIGURE_DEPENDS
+    ${_path}/src/*.zig
+    ${_path}/src/*.cpp
+    ${_path}/src/*.cc
+    ${_path}/src/*.S
+    ${_path}/*.zig
+  )
+  if(NOT _uncompiled)
+    return()
+  endif()
+  list(JOIN _uncompiled "\n    " _uncompiled_pretty)
+  message(
+    FATAL_ERROR
+      "ra8_add_app(): ${_RA8_APP_NAME} ${_why}, but ${_path}/src holds no C "
+      "sources and this expansion only compiles *.c, so ${_lib} would "
+      "contribute no object code (issue #908). Sources found but not "
+      "compiled:\n    ${_uncompiled_pretty}\n  Wire the non-C sources into "
+      "the app build before removing the C implementation."
+  )
+endfunction()
+
 macro(_ra8_app_collect_sources)
   # ---- sources: per-app main, shared-or-local boot ----------------------
   if(NOT EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/src/main.c")
@@ -92,12 +139,27 @@ macro(_ra8_app_collect_sources)
   endif()
 
   file(GLOB_RECURSE _ra8_lib_core CONFIGURE_DEPENDS ${RA8_REPO_ROOT}/libs/ra8_core/src/*.c)
+  _ra8_app_require_compilable_lib(
+    ra8_core "${RA8_REPO_ROOT}/libs/ra8_core" "links ra8_core into every app" "${_ra8_lib_core}"
+  )
   file(GLOB_RECURSE _ra8_lib_hal CONFIGURE_DEPENDS ${RA8_REPO_ROOT}/libs/ra8_hal/src/*.c)
+  _ra8_app_require_compilable_lib(
+    ra8_hal "${RA8_REPO_ROOT}/libs/ra8_hal" "links ra8_hal into every app" "${_ra8_lib_hal}"
+  )
   # ra8_net_pal has no C sources: the library is Zig (#1039) and its objects
-  # come from the Zig static archive, linked separately. Left unset so the
-  # expansion below stays a no-op rather than an empty glob.
+  # come from the Zig static archive, linked separately. Left unglobbed and
+  # deliberately outside the #908 guard, which exists to catch a library whose
+  # objects silently vanish; this one's have a link path of their own.
   file(GLOB_RECURSE _ra8_lib_usb_pal CONFIGURE_DEPENDS ${RA8_REPO_ROOT}/libs/ra8_usb_pal/src/*.c)
+  _ra8_app_require_compilable_lib(
+    ra8_usb_pal "${RA8_REPO_ROOT}/libs/ra8_usb_pal" "links ra8_usb_pal into every app"
+    "${_ra8_lib_usb_pal}"
+  )
   file(GLOB_RECURSE _ra8_lib_board CONFIGURE_DEPENDS ${_ra8_board_dir}/src/*.c)
+  _ra8_app_require_compilable_lib(
+    "ra8_board_${_RA8_APP_BOARD}" "${_ra8_board_dir}" "builds for BOARD ${_RA8_APP_BOARD}"
+    "${_ra8_lib_board}"
+  )
   list(
     FILTER
     _ra8_lib_board
@@ -106,6 +168,10 @@ macro(_ra8_app_collect_sources)
     "/src/boot/"
   )
   file(GLOB_RECURSE _ra8_secure_app CONFIGURE_DEPENDS ${RA8_REPO_ROOT}/libs/ra8_secure_app/src/*.c)
+  _ra8_app_require_compilable_lib(
+    ra8_secure_app "${RA8_REPO_ROOT}/libs/ra8_secure_app" "links ra8_secure_app into every app"
+    "${_ra8_secure_app}"
+  )
   if(_RA8_APP_NO_NSC)
     set(_ra8_lib_nsc "")
   elseif(_RA8_APP_NSC_SRCS)
@@ -119,6 +185,9 @@ macro(_ra8_app_collect_sources)
     endforeach()
   else()
     file(GLOB_RECURSE _ra8_lib_nsc CONFIGURE_DEPENDS ${RA8_REPO_ROOT}/libs/ra8_nsc/src/*.c)
+    _ra8_app_require_compilable_lib(
+      ra8_nsc "${RA8_REPO_ROOT}/libs/ra8_nsc" "links the ra8_nsc veneers" "${_ra8_lib_nsc}"
+    )
   endif()
 
   # Extra first-party libraries (plain + off-target).
@@ -165,41 +234,9 @@ macro(_ra8_app_collect_sources)
           "/src/boot/"
         )
       endif()
-      # #908: this expansion only ever globs *.c, so a library that ships its
-      # implementation in anything else contributes NO object code and says
-      # nothing about it. Whether that surfaces as an undefined reference or
-      # as quietly-missing behaviour depends on how the app reaches the
-      # library, and neither failure names the cause -- which is exactly why
-      # every Zig port so far has had to keep its C implementation alongside
-      # the new one. Stop at configure time instead: if the library directory
-      # holds sources this build cannot compile and produced no objects, say
-      # so. A genuinely header-only library has no sources at all and is
-      # unaffected.
-      if(NOT _ra8_lib_one)
-        file(
-          GLOB_RECURSE
-          _ra8_lib_uncompiled
-          CONFIGURE_DEPENDS
-          ${_ra8_lib_path}/src/*.zig
-          ${_ra8_lib_path}/src/*.cpp
-          ${_ra8_lib_path}/src/*.cc
-          ${_ra8_lib_path}/src/*.S
-          ${_ra8_lib_path}/*.zig
-        )
-        if(_ra8_lib_uncompiled)
-          list(JOIN _ra8_lib_uncompiled "\n    " _ra8_lib_uncompiled_pretty)
-          message(
-            FATAL_ERROR
-              "ra8_add_app(): ${_RA8_APP_NAME} declares LIBS ${_ra8_lib}, but "
-              "${_ra8_lib_path}/src holds no C sources and this expansion only "
-              "compiles *.c, so the library would contribute no object code "
-              "(issue #908). Sources found but not compiled:\n    "
-              "${_ra8_lib_uncompiled_pretty}\n  Wire the non-C sources into "
-              "the app build before removing the C implementation, or drop "
-              "${_ra8_lib} from LIBS if it is header-only."
-          )
-        endif()
-      endif()
+      _ra8_app_require_compilable_lib(
+        "${_ra8_lib}" "${_ra8_lib_path}" "declares LIBS ${_ra8_lib}" "${_ra8_lib_one}"
+      )
       list(APPEND _ra8_lib_extra ${_ra8_lib_one})
       list(APPEND _ra8_lib_inc ${_ra8_lib_path}/inc)
     endif()
@@ -250,6 +287,9 @@ macro(_ra8_app_collect_sources)
           "/src/boot/"
         )
       endif()
+      _ra8_app_require_compilable_lib(
+        "${_ra8_lib}" "${_ra8_lib_path}" "declares OFF_TARGET_LIBS ${_ra8_lib}" "${_ra8_lib_one}"
+      )
       list(APPEND _ra8_lib_extra_off_target ${_ra8_lib_one})
       list(APPEND _ra8_lib_inc ${_ra8_lib_path}/inc)
     endif()
@@ -330,6 +370,10 @@ macro(_ra8_app_collect_sources)
                                                                                _RA8_APP_LIBS)
   )
     file(GLOB_RECURSE _ra8_lib_mem CONFIGURE_DEPENDS ${RA8_REPO_ROOT}/libs/ra8_mem/src/*.c)
+    _ra8_app_require_compilable_lib(
+      ra8_mem "${RA8_REPO_ROOT}/libs/ra8_mem" "pulls in ra8_mem for LIBS reflow/book"
+      "${_ra8_lib_mem}"
+    )
     list(APPEND _ra8_lib_extra ${_ra8_lib_mem})
     list(APPEND _ra8_lib_inc ${RA8_REPO_ROOT}/libs/ra8_mem/inc)
   endif()
@@ -344,6 +388,10 @@ macro(_ra8_app_collect_sources)
   if("ra8_camera" IN_LIST _RA8_APP_LIBS)
     if(NOT "ra8_jpeg" IN_LIST _RA8_APP_LIBS)
       file(GLOB_RECURSE _ra8_camera_jpeg CONFIGURE_DEPENDS ${RA8_REPO_ROOT}/libs/ra8_jpeg/src/*.c)
+      _ra8_app_require_compilable_lib(
+        ra8_jpeg "${RA8_REPO_ROOT}/libs/ra8_jpeg" "pulls in ra8_jpeg for LIBS ra8_camera"
+        "${_ra8_camera_jpeg}"
+      )
       list(APPEND _ra8_lib_extra ${_ra8_camera_jpeg})
     endif()
     list(APPEND _ra8_lib_inc ${RA8_REPO_ROOT}/libs/ra8_jpeg/inc)
@@ -362,6 +410,10 @@ macro(_ra8_app_collect_sources)
 
   if(("epub" IN_LIST _RA8_APP_LIBS) OR ("rabook_compile" IN_LIST _RA8_APP_LIBS))
     file(GLOB_RECURSE _xml CONFIGURE_DEPENDS ${RA8_REPO_ROOT}/apps/shared_libs/xml/src/*.c)
+    _ra8_app_require_compilable_lib(
+      xml "${RA8_REPO_ROOT}/apps/shared_libs/xml" "pulls in xml for LIBS epub/rabook_compile"
+      "${_xml}"
+    )
     list(APPEND _ra8_lib_extra ${_xml})
     list(APPEND _ra8_lib_inc ${RA8_REPO_ROOT}/apps/shared_libs/xml/inc)
   endif()
@@ -397,6 +449,9 @@ macro(_ra8_app_collect_sources)
     # codecs the atlas producer dispatches internally.
     if(NOT "ra8_jpeg" IN_LIST _RA8_APP_LIBS)
       file(GLOB_RECURSE _jof_jpeg CONFIGURE_DEPENDS ${RA8_REPO_ROOT}/libs/ra8_jpeg/src/*.c)
+      _ra8_app_require_compilable_lib(
+        ra8_jpeg "${RA8_REPO_ROOT}/libs/ra8_jpeg" "pulls in ra8_jpeg for LIBS jof" "${_jof_jpeg}"
+      )
       list(APPEND _ra8_lib_extra ${_jof_jpeg})
     endif()
     list(
@@ -421,6 +476,10 @@ macro(_ra8_app_collect_sources)
       file(GLOB_RECURSE _jof_webp_facade CONFIGURE_DEPENDS
            ${RA8_REPO_ROOT}/apps/shared_libs/webp/src/*.c
       )
+      _ra8_app_require_compilable_lib(
+        webp "${RA8_REPO_ROOT}/apps/shared_libs/webp" "pulls in the webp facade for LIBS jof"
+        "${_jof_webp_facade}"
+      )
       list(APPEND _ra8_lib_extra ${_jof_webp_facade})
     endif()
   endif()
@@ -430,6 +489,10 @@ macro(_ra8_app_collect_sources)
     if((NOT "webp" IN_LIST _RA8_APP_LIBS) AND (NOT "jof" IN_LIST _RA8_APP_LIBS))
       file(GLOB_RECURSE _ra8_rabook_webp_facade CONFIGURE_DEPENDS
            ${RA8_REPO_ROOT}/apps/shared_libs/webp/src/*.c
+      )
+      _ra8_app_require_compilable_lib(
+        webp "${RA8_REPO_ROOT}/apps/shared_libs/webp"
+        "pulls in the webp facade for LIBS rabook_compile" "${_ra8_rabook_webp_facade}"
       )
       list(APPEND _ra8_lib_extra ${_ra8_rabook_webp_facade})
     endif()
@@ -449,6 +512,10 @@ macro(_ra8_app_collect_sources)
     )
       file(GLOB_RECURSE _ra8_reflow_webp_facade CONFIGURE_DEPENDS
            ${RA8_REPO_ROOT}/apps/shared_libs/webp/src/*.c
+      )
+      _ra8_app_require_compilable_lib(
+        webp "${RA8_REPO_ROOT}/apps/shared_libs/webp" "pulls in the webp facade for LIBS reflow"
+        "${_ra8_reflow_webp_facade}"
       )
       list(APPEND _ra8_lib_extra ${_ra8_reflow_webp_facade})
     endif()
@@ -548,6 +615,10 @@ macro(_ra8_app_collect_sources)
     if(NOT "unarch" IN_LIST _RA8_APP_LIBS)
       file(GLOB_RECURSE _unarch_srcs CONFIGURE_DEPENDS
            ${RA8_REPO_ROOT}/apps/shared_libs/unarch/src/*.c
+      )
+      _ra8_app_require_compilable_lib(
+        unarch "${RA8_REPO_ROOT}/apps/shared_libs/unarch" "pulls in unarch transitively"
+        "${_unarch_srcs}"
       )
       list(APPEND _ra8_lib_extra ${_unarch_srcs})
     endif()

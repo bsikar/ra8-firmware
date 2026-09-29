@@ -4,6 +4,11 @@
 //! ABI-membrane tests: the nine exported symbols, their guard order and their
 //! `ra8_err_t` codes, driven exactly as the unchanged C suites drive them.
 //!
+//! The per-object RTOS codes (#1231) are driven through the host-only
+//! `ra8_wdt_supervisor_test_force_rtos_failure` symbol rather than an
+//! in-module handle, so these cases also assert that the seam the C suites
+//! link against is actually exported by this archive.
+//!
 //! The image exports its own `ra8_wdt_refresh_deferred`, which is the same
 //! link-time substitution the real build performs against the HAL, so the
 //! default refresh hook is exercised rather than stubbed out of the picture.
@@ -17,6 +22,8 @@ const invalid_arg: u16 = 0x103;
 const not_found: u16 = 0x106;
 const busy: u16 = 0x109;
 const not_initialized: u16 = 0x10F;
+const rtos_thread_create: u16 = 0x302;
+const rtos_mutex: u16 = 0x304;
 const null_ptr: u16 = 0x504;
 const handle_invalid: u8 = 0xFF;
 
@@ -27,6 +34,17 @@ var fake_clock: u32 = 0;
 export fn ra8_wdt_refresh_deferred() void {
     deferred_kicks += 1;
 }
+
+/// Host-only seam, reached by name exactly as `test_ra8_wdt_supervisor_rtos_err.c`
+/// reaches it.
+extern fn ra8_wdt_supervisor_test_force_rtos_failure(call: u32) void;
+
+const tx_call = struct {
+    const none: u32 = 0;
+    const mutex_create: u32 = 1;
+    const mutex_get: u32 = 2;
+    const thread_create: u32 = 3;
+};
 
 fn fakeNow() callconv(.c) u32 {
     return fake_clock;
@@ -368,4 +386,55 @@ test "the config block matches the C layout" {
     try std.testing.expectEqual(@sizeOf(usize), @offsetOf(abi.Cfg, "stack_size_bytes"));
     try std.testing.expectEqual(@sizeOf(usize) + 4, @offsetOf(abi.Cfg, "priority"));
     try std.testing.expectEqual(@sizeOf(usize) + 8, @offsetOf(abi.Cfg, "refresh_period_ms"));
+}
+
+test "init maps a tx_mutex_create failure to k_ra8_err_rtos_mutex" {
+    _ = abi.ra8_wdt_supervisor_deinit();
+    const block = cfg();
+    ra8_wdt_supervisor_test_force_rtos_failure(tx_call.mutex_create);
+    try std.testing.expectEqual(rtos_mutex, abi.ra8_wdt_supervisor_init(&block));
+    // One-shot: the very next init has to succeed.
+    try std.testing.expectEqual(ok, abi.ra8_wdt_supervisor_init(&block));
+}
+
+test "register_thread maps a tx_mutex_get failure to k_ra8_err_rtos_mutex" {
+    try freshInit();
+    var handle: u8 = handle_invalid;
+    ra8_wdt_supervisor_test_force_rtos_failure(tx_call.mutex_get);
+    try std.testing.expectEqual(rtos_mutex, abi.ra8_wdt_supervisor_register_thread("t", 100, &handle));
+    try std.testing.expectEqual(handle_invalid, handle);
+    try std.testing.expectEqual(ok, abi.ra8_wdt_supervisor_register_thread("t", 100, &handle));
+}
+
+test "checkin maps a tx_mutex_get failure to k_ra8_err_rtos_mutex" {
+    try freshInit();
+    const handle = try registerOne("t", 100);
+    ra8_wdt_supervisor_test_force_rtos_failure(tx_call.mutex_get);
+    try std.testing.expectEqual(rtos_mutex, abi.ra8_wdt_supervisor_checkin(handle));
+    try std.testing.expectEqual(ok, abi.ra8_wdt_supervisor_checkin(handle));
+}
+
+test "start maps a tx_thread_create failure to k_ra8_err_rtos_thread_create" {
+    try freshInit();
+    ra8_wdt_supervisor_test_force_rtos_failure(tx_call.thread_create);
+    try std.testing.expectEqual(rtos_thread_create, abi.ra8_wdt_supervisor_start());
+    try std.testing.expectEqual(ok, abi.ra8_wdt_supervisor_start());
+}
+
+test "tick maps a tx_mutex_get failure to k_ra8_err_rtos_mutex and reports no refresh" {
+    try freshInit();
+    _ = try registerOne("t", 100);
+    var did_refresh: bool = true;
+    ra8_wdt_supervisor_test_force_rtos_failure(tx_call.mutex_get);
+    try std.testing.expectEqual(rtos_mutex, abi.ra8_wdt_supervisor_tick(&did_refresh));
+    try std.testing.expectEqual(false, did_refresh);
+    try std.testing.expectEqual(ok, abi.ra8_wdt_supervisor_tick(&did_refresh));
+}
+
+test "a disarmed seam leaves every RTOS path succeeding" {
+    ra8_wdt_supervisor_test_force_rtos_failure(tx_call.none);
+    try freshInit();
+    const handle = try registerOne("t", 100);
+    try std.testing.expectEqual(ok, abi.ra8_wdt_supervisor_checkin(handle));
+    try std.testing.expectEqual(ok, abi.ra8_wdt_supervisor_start());
 }
