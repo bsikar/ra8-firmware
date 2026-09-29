@@ -43,6 +43,7 @@
 #include "ra8_mstp.h"
 #include "ra8_sram.h"
 #include "ra8_sram_regs.h"
+#include "ra8_system_regs.h"
 #include "unity_minimal.h"
 
 /**
@@ -270,6 +271,13 @@ static void test_init_with_security(void)
   TEST_ASSERT_EQ(expected_sar, cpscu->SRAMSAR);
   TEST_ASSERT_EQ(k_ra8_sram_esar_bit_esa, cpscu->SRAMESAR);
   TEST_ASSERT_EQ(k_ra8_sram_test_sabar_off, cpscu->SRAMSABAR[k_ra8_sram_test_bank_one]);
+
+  /* SRAMSAR / SRAMESAR / SRAMSABARn are attribution registers behind PRC4, so
+   * the apply has to open that gate or the stores are discarded silently on
+   * silicon. The hosted register file accepts writes either way, so what is
+   * provable here is that the gate was operated: PRCR holds the re-locked
+   * password afterwards, which only happens if the scoped unlock ran. */
+  TEST_ASSERT_EQ((uint16_t)k_ra8_prcr_lock_all, *ra8_sys_prcr());
   TEST_END("sram init applies SRAMSAR / SRAMESAR / SRAMSABARn");
 }
 
