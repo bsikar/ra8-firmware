@@ -22,7 +22,6 @@ add_library(
   ${RA8_TLS_SOURCES}
   ${RA8_USB_PAL_SOURCES}
   ${RA8_FS_SOURCES}
-  ${RA8_IF_SOURCES}
   ${RA8_NET_POLICY_SOURCES}
   ${RA8_XML_WRITER_SOURCES}
   ${RA8_IMGDEC_SOURCES}
@@ -189,7 +188,6 @@ target_include_directories(
          ${FW_ROOT}/libs/ra8_tls/src
          ${FW_ROOT}/libs/ra8_usb_pal/src
          ${FW_ROOT}/libs/ra8_fs/src
-         ${FW_ROOT}/libs/if/src
          ${FW_ROOT}/libs/ra8_io/src
          ${FW_ROOT}/libs/ra8_audio/src
          ${FW_ROOT}/libs/ra8_camera/src

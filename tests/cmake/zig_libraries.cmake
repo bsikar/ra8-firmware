@@ -333,10 +333,13 @@ ra8_add_zig_library(
   ra8_camera
 )
 
-# libs/if is mixed: the portable filesystem facade is Zig, but src/ra8_path.c
-# (the untrusted-name containment policy, #749) landed after this port was cut
-# and is a separate concern, so the RA8_IF_SOURCES glob and the libs/if/src
-# include directory both stay in place for that one file.
+# Fully migrated: the portable filesystem facade AND the untrusted-name
+# containment policy (#749) are both Zig now, so src/ra8_path.c is gone, the
+# RA8_IF_SOURCES glob is gone from library_sources.cmake and core_hal.cmake,
+# and libs/if/src is no longer an include directory anywhere. The three
+# ra8_path_* symbols ride in this same archive behind the unchanged
+# inc/ra8_path.h, which is why apps/shared_libs/mdl no longer compiles that
+# .c into eight of its targets: it already links ra8_zig::fw_if_fs.
 ra8_add_zig_library(
   NAME
   fw_if_fs

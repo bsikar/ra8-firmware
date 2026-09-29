@@ -5,7 +5,8 @@
 //! interface (`fw_if_fs`). CMake consumes the installed static library
 //! through the unchanged `inc/fw_if_fs.h`, `inc/fw_if_fs_types.h` and
 //! `inc/fw_if_fs_backend.h` C ABI; the `test` step covers the pure guard,
-//! path and coherence core plus the ABI membrane over fake backends.
+//! path and coherence core plus the ABI membrane over fake backends, and
+//! the untrusted-name policy behind `inc/ra8_path.h`.
 //!
 //! No build options: every backend below this interface is a caller-supplied
 //! vtable, so nothing here is configured at compile time.
@@ -58,9 +59,24 @@ pub fn build(b: *std.Build) void {
     abi_test_module.addImport("abi", abi_module);
     const abi_tests = b.addTest(.{ .root_module = abi_test_module });
 
+    const policy_module = b.createModule(.{
+        .root_source_file = b.path("src/internal/path.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    const path_test_module = b.createModule(.{
+        .root_source_file = b.path("tests/path_test.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    path_test_module.addImport("policy", policy_module);
+    const path_tests = b.addTest(.{ .root_module = path_test_module });
+
+    const run_path_tests = b.addRunArtifact(path_tests);
     const run_internal_tests = b.addRunArtifact(internal_tests);
     const run_abi_tests = b.addRunArtifact(abi_tests);
     const test_step = b.step("test", "Run Zig fw_if_fs tests");
     test_step.dependOn(&run_internal_tests.step);
+    test_step.dependOn(&run_path_tests.step);
     test_step.dependOn(&run_abi_tests.step);
 }

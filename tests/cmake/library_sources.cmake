@@ -39,14 +39,12 @@ file(GLOB_RECURSE RA8_TLS_SOURCES CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra8_tls/src/
 # ra8_usb_compose.c) are still C and still belong to this library.
 file(GLOB_RECURSE RA8_USB_PAL_SOURCES CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra8_usb_pal/src/*.c)
 file(GLOB_RECURSE RA8_FS_SOURCES CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra8_fs/src/*.c)
-# libs/if is mixed: the portable filesystem interface (path syntax, workspace
-# and alignment guards, backend-answer coherence, the directory cursor and the
-# staged-publication state machine) is Zig now (libs/if/src/*.zig, built by
-# libs/if/build.zig) behind the unchanged inc/fw_if_fs.h, inc/fw_if_fs_types.h
-# and inc/fw_if_fs_backend.h; see tests/cmake/zig_libraries.cmake. The glob
-# stays for src/ra8_path.c, the untrusted-name containment policy (#749), which
-# is a separate concern under the same roof and is not ported yet.
-file(GLOB_RECURSE RA8_IF_SOURCES CONFIGURE_DEPENDS ${FW_ROOT}/libs/if/src/*.c)
+# libs/if is fully migrated to Zig: the portable filesystem interface and the
+# untrusted-name containment policy (#749) both live in libs/if/src/*.zig,
+# built by libs/if/build.zig behind the unchanged inc/fw_if_fs.h,
+# inc/fw_if_fs_types.h, inc/fw_if_fs_backend.h and inc/ra8_path.h; see
+# tests/cmake/zig_libraries.cmake. There is no RA8_IF_SOURCES glob left, and
+# libs/if/src is no longer an include directory anywhere.
 file(GLOB_RECURSE RA8_NET_POLICY_SOURCES CONFIGURE_DEPENDS
      ${FW_ROOT}/libs/ra8_net_policy/src/*.c)
 file(GLOB_RECURSE RA8_XML_WRITER_SOURCES CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra8_xml/src/*.c)
