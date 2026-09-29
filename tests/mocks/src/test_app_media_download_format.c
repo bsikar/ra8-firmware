@@ -156,13 +156,13 @@ RA8_INTERNAL static ra8_err_t internal_inflate(const void* source,
  * @note Test-only helper; not thread-safe through static storage.
  * @since 0.1.0
  */
-RA8_INTERNAL static media_download_format_workspace_t internal_workspace(ra8_img_arena_t*  stb,
-                                                                         ra8_webp_arena_t* webp)
+RA8_INTERNAL static media_download_format_workspace_t internal_workspace(ra8_imgdec_scratch_t* stb,
+                                                                         ra8_webp_arena_t*     webp)
 {
   (void)memset(s_image, 0, sizeof s_image);
   (void)memset(s_flat, 0, sizeof s_flat);
   (void)memset(s_packed, 0, sizeof s_packed);
-  *stb  = (ra8_img_arena_t){.base = s_stb_arena, .cap = sizeof s_stb_arena};
+  *stb  = (ra8_imgdec_scratch_t){.base = s_stb_arena, .cap = sizeof s_stb_arena};
   *webp = (ra8_webp_arena_t){.base = s_webp_arena, .cap = sizeof s_webp_arena};
   const ra8_rabook_buffers_t         builder = {.chapters       = s_chapters,
                                                 .nodes          = s_nodes,
@@ -293,9 +293,9 @@ RA8_INTERNAL static void internal_test_memory_adapters(void)
 RA8_INTERNAL static void internal_test_formatter_argument_guards(void)
 {
   TEST_BEGIN("media download format: required argument guards");
-  ra8_img_arena_t                      stb    = {};
-  ra8_webp_arena_t                     webp   = {};
-  media_download_format_workspace_t    valid  = internal_workspace(&stb, &webp);
+  ra8_imgdec_scratch_t              stb   = {};
+  ra8_webp_arena_t                  webp  = {};
+  media_download_format_workspace_t valid = internal_workspace(&stb, &webp);
   const media_download_format_config_t config = {
     .page_id        = "page-001.bmp",
     .metadata       = {.title      = "Fetched Page",
@@ -344,9 +344,9 @@ RA8_INTERNAL static void internal_test_formatter_argument_guards(void)
 RA8_INTERNAL static void internal_test_formatter_storage_guards(void)
 {
   TEST_BEGIN("media download format: required storage guards");
-  ra8_img_arena_t                      stb    = {};
-  ra8_webp_arena_t                     webp   = {};
-  media_download_format_workspace_t    valid  = internal_workspace(&stb, &webp);
+  ra8_imgdec_scratch_t              stb   = {};
+  ra8_webp_arena_t                  webp  = {};
+  media_download_format_workspace_t valid = internal_workspace(&stb, &webp);
   const media_download_format_config_t config = {
     .page_id        = "page-001.bmp",
     .metadata       = {.title      = "Fetched Page",
@@ -410,9 +410,9 @@ RA8_INTERNAL static void internal_test_formatter_storage_guards(void)
 RA8_INTERNAL static void internal_test_image_to_rabook(void)
 {
   TEST_BEGIN("media download format: image to rabook");
-  ra8_img_arena_t                      stb       = {};
-  ra8_webp_arena_t                     webp      = {};
-  media_download_format_workspace_t    workspace = internal_workspace(&stb, &webp);
+  ra8_imgdec_scratch_t              stb       = {};
+  ra8_webp_arena_t                  webp      = {};
+  media_download_format_workspace_t workspace = internal_workspace(&stb, &webp);
   const media_download_format_config_t config    = {
     .page_id        = "page-001.bmp",
     .metadata       = {.title      = "Fetched Page",
