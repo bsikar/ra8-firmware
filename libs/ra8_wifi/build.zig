@@ -44,6 +44,12 @@ pub fn build(b: *std.Build) void {
         .optimize = optimize,
     });
 
+    const c6link_module = b.createModule(.{
+        .root_source_file = b.path("src/internal/c6link.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+
     const internal_test_module = b.createModule(.{
         .root_source_file = b.path("tests/internal_test.zig"),
         .target = target,
@@ -65,9 +71,19 @@ pub fn build(b: *std.Build) void {
         .flags = &.{ "-std=c23", "-Wall", "-Wextra", "-Werror" },
     });
 
+    const c6link_test_module = b.createModule(.{
+        .root_source_file = b.path("tests/c6link_test.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    c6link_test_module.addImport("c6link", c6link_module);
+    const c6link_tests = b.addTest(.{ .root_module = c6link_test_module });
+
     const run_internal_tests = b.addRunArtifact(internal_tests);
+    const run_c6link_tests = b.addRunArtifact(c6link_tests);
     const run_abi_tests = b.addRunArtifact(abi_tests);
     const test_step = b.step("test", "Run Zig ra8_wifi tests");
     test_step.dependOn(&run_internal_tests.step);
+    test_step.dependOn(&run_c6link_tests.step);
     test_step.dependOn(&run_abi_tests.step);
 }

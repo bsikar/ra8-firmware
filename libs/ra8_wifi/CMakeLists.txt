@@ -5,10 +5,11 @@
 # Each consumer (app or test) globs the sources it needs directly and adds
 # libs/ra8_wifi/inc to its include path:
 #
-#   * the pure facade (src/ra8_wifi.c) is host-testable with a mock backend, so
-#     the host test build compiles it into ra8_core_hal (tests/cmake/
-#     library_sources.cmake) and test_ra8_wifi.c drives it standalone;
-#   * the ESP32-C6 backend (src/ra8_wifi_c6link.c) rides ra8_c6link, so a cross
-#     app says `LIBS ra8_wifi ra8_c6link` and `USES esp_hosted`, and the host
-#     build compiles it alongside the vendored codec in
+#   * the pure facade is Zig (src/ra8_wifi_abi.zig), host-testable with a mock
+#     backend, and arrives as the archive ra8_zig::ra8_wifi rather than in
+#     ra8_core_hal; test_ra8_wifi.c drives it standalone;
+#   * the ESP32-C6 backend is Zig too (src/ra8_wifi_c6link_abi.zig over
+#     src/internal/c6link.zig) and rides ra8_c6link, so a cross app still says
+#     `LIBS ra8_wifi ra8_c6link` and `USES esp_hosted`, and the host build
+#     links the archive alongside the vendored codec in
 #     tests/cmake/tests_wifi.cmake -- the same shape ra8_c6link uses.
