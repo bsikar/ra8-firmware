@@ -13,7 +13,7 @@ const impl = abi.internal;
 const Surface = struct {
     bytes: [16 * 8 * 4]u8 = [_]u8{0} ** (16 * 8 * 4),
 
-    /// Publish this surface the way `ra8_gfx_init()` in `ra8_gfx_bind.c`
+    /// Publish this surface the way `ra8_gfx_init()`
     /// does: packed rows, full-surface clip. The bind TU stays C, so these
     /// tests write the shared object rather than calling through it.
     fn bind(self: *Surface, w: u16, h: u16, fmt: u8) void {

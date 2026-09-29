@@ -3023,6 +3023,7 @@
       ],
       "layout_sources": [
         "libs/ra8_gfx/src/internal/root.zig",
+        "libs/ra8_gfx/src/internal/bind.zig",
         "libs/ra8_gfx/src/internal/tone.zig",
         "libs/ra8_gfx/src/internal/dither.zig",
         "libs/ra8_gfx/src/internal/dither_mask.zig"
@@ -3093,6 +3094,16 @@
         }
       ],
       "exports": [
+        {
+          "name": "priv_gfx_bpp",
+          "calling_context": "task-safe-reentrant",
+          "ownership": "copies no data; sizes one pixel of the caller's format"
+        },
+        {
+          "name": "priv_gfx_format_ok",
+          "calling_context": "task-safe-reentrant",
+          "ownership": "copies no data; classifies the caller's format value"
+        },
         {
           "name": "priv_gfx_text_pack_565",
           "calling_context": "task-safe-reentrant",
@@ -3207,6 +3218,21 @@
           "name": "ra8_gfx_blit_gray8_dither_tone",
           "calling_context": "task-safe-reentrant",
           "ownership": "as the flat form, plus a borrowed tone map for the call; retains nothing"
+        },
+        {
+          "name": "ra8_gfx_init",
+          "calling_context": "task-only-non-reentrant",
+          "ownership": "installs the caller's framebuffer pointer in the module binding and retains it until teardown; the buffer stays the caller's to free"
+        },
+        {
+          "name": "ra8_gfx_init_surface",
+          "calling_context": "task-only-non-reentrant",
+          "ownership": "copies the caller's surface descriptor into the module binding, pitch included; the pixel buffer stays the caller's"
+        },
+        {
+          "name": "ra8_gfx_deinit",
+          "calling_context": "task-only-non-reentrant",
+          "ownership": "drops the binding and releases nothing; the framebuffer was never owned here"
         }
       ],
       "data_exports": [
@@ -3225,33 +3251,7 @@
           "ownership": "read-only committed curve in the archive's rodata; callers copy from it and never write it"
         }
       ],
-      "c_retained_exports": [
-        {
-          "name": "ra8_gfx_init",
-          "source": "libs/ra8_gfx/src/ra8_gfx_bind.c",
-          "reason": "the lifecycle half of the library, split out of the rasteriser TU by #737 after this port branch was cut; it writes the binding this archive defines rather than being called by it, so it stays C until the bind slice ports it"
-        },
-        {
-          "name": "ra8_gfx_init_surface",
-          "source": "libs/ra8_gfx/src/ra8_gfx_bind.c",
-          "reason": "the pitch-carrying bind form added by #737; same TU and same slice as ra8_gfx_init"
-        },
-        {
-          "name": "ra8_gfx_deinit",
-          "source": "libs/ra8_gfx/src/ra8_gfx_bind.c",
-          "reason": "teardown of the binding, in the same bind TU and the same future slice"
-        },
-        {
-          "name": "priv_gfx_bpp",
-          "source": "libs/ra8_gfx/src/ra8_gfx_bind.c",
-          "reason": "promoted to module-external linkage by #737 so the bind TU and the rasteriser TUs size pixels identically; the C definition stays while the bind TU is C, and the Zig core keeps its own pure equivalent in internal/root.zig"
-        },
-        {
-          "name": "priv_gfx_format_ok",
-          "source": "libs/ra8_gfx/src/ra8_gfx_bind.c",
-          "reason": "promoted alongside priv_gfx_bpp by #737 and defined in the same retained C TU"
-        }
-      ]
+      "c_retained_exports": []
     }
   ]
 }
