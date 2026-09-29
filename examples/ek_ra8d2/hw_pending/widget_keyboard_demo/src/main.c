@@ -46,7 +46,6 @@
 #include "ra8_board_ek_ra8d2.h"
 #include "ra8_boot_entry.h"
 #include "ra8_box.h"
-#include "ra8_cgc.h"
 #include "ra8_display_pal.h"
 #include "ra8_display_pal_lcd.h"
 #include "ra8_err.h"
@@ -659,11 +658,10 @@ static ra8_err_t internal_keyboard_route(void)
  */
 static void internal_bringup_clocks(void)
 {
-  uint32_t cpuclk0_hz = 0U;
-  (void)ra8_cgc_init();
-  (void)ra8_cgc_get_clock_hz(k_ra8_clock_id_cpuclk0, &cpuclk0_hz);
+  ra8_board_clock_rates_t rates = {};
+  (void)ra8_board_clocks_init(&rates);
   (void)ra8_mstp_init();
-  (void)ra8_time_init(cpuclk0_hz);
+  (void)ra8_time_init(rates.cpuclk0_hz);
   (void)ra8_board_uart_console_init((uint32_t)k_wkd_uart_baud);
   ra8_isr_globals_enable();
   ra8_log_init();

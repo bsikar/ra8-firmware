@@ -65,6 +65,7 @@ EXCLUDED_PREFIXES = (
 EXCLUDED_BACKEND_FILES = frozenset(
     {
         "libs/ra8_display_pal/src/ra8_display_pal_lcd.c",
+        "libs/ra8_display_pal/inc/ra8_display_pal_lcd.h",
     }
 )
 
