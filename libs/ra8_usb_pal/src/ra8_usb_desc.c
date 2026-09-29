@@ -448,9 +448,9 @@ ra8_err_t ra8_usb_desc_build_cdc_acm(const ra8_usb_desc_device_t*  dev,
   internal_put16(&cur, dev->pid);
   internal_put16(&cur,
                  (dev->bcd_device == 0U) ? (uint16_t)k_internal_bcd_device_dflt : dev->bcd_device);
-  internal_put(&cur, (man_len == 0U) ? 0U : (uint8_t)k_ra8_usb_desc_str_manufacturer);
-  internal_put(&cur, (pro_len == 0U) ? 0U : (uint8_t)k_ra8_usb_desc_str_product);
-  internal_put(&cur, (ser_len == 0U) ? 0U : (uint8_t)k_ra8_usb_desc_str_serial);
+  internal_put(&cur, (uint8_t)((man_len == 0U) ? 0U : (uint32_t)k_ra8_usb_desc_str_manufacturer));
+  internal_put(&cur, (uint8_t)((pro_len == 0U) ? 0U : (uint32_t)k_ra8_usb_desc_str_product));
+  internal_put(&cur, (uint8_t)((ser_len == 0U) ? 0U : (uint32_t)k_ra8_usb_desc_str_serial));
   internal_put(&cur, (uint8_t)k_internal_num_configs);
 
   /* A high-speed device publishes what it would look like at the other speed.
