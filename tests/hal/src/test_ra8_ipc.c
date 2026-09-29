@@ -634,17 +634,18 @@ static void test_get_attribution_decodes_ipcsar(void)
   TEST_ASSERT_NOT_NULL((void*)par);
   *sar                = (uint32_t)k_ra8_ipcsar_mask_saipcir1;
   *par                = 0U;
-  ra8_ipc_attr_t attr = {.secure = false, .privileged = true};
+  ra8_ipc_attr_t attr = {.world  = k_ra8_ipc_world_secure,
+                         .access = k_ra8_ipc_access_unprivileged};
   TEST_ASSERT_EQ(k_ra8_ok, ra8_ipc_get_attribution(1U, &attr));
-  TEST_ASSERT(attr.secure == true);
-  TEST_ASSERT(attr.privileged == false);
-  attr.secure     = true;
-  attr.privileged = true;
+  TEST_ASSERT(attr.world == k_ra8_ipc_world_non_secure);
+  TEST_ASSERT(attr.access == k_ra8_ipc_access_privileged);
+  attr.world  = k_ra8_ipc_world_non_secure;
+  attr.access = k_ra8_ipc_access_unprivileged;
   *sar            = 0U;
   *par            = (uint32_t)k_ra8_ipcpar_mask_paipcir0;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_ipc_get_attribution(0U, &attr));
-  TEST_ASSERT(attr.secure == false);
-  TEST_ASSERT(attr.privileged == true);
+  TEST_ASSERT(attr.world == k_ra8_ipc_world_secure);
+  TEST_ASSERT(attr.access == k_ra8_ipc_access_unprivileged);
   TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_ipc_get_attribution(0U, nullptr));
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg,
                  ra8_ipc_get_attribution((uint8_t)k_ra8_ipc_test_ch_bad, &attr));
@@ -666,14 +667,15 @@ static void test_get_nmi_attribution(void)
   *sar                   = (uint32_t)k_ra8_ipcsar_mask_saipcnmi1;
   *par                   = (uint32_t)k_ra8_ipcpar_mask_paipcnmi0;
 
-  ra8_ipc_attr_t attr = {.secure = false, .privileged = false};
+  ra8_ipc_attr_t attr = {.world  = k_ra8_ipc_world_secure,
+                         .access = k_ra8_ipc_access_privileged};
   TEST_ASSERT_EQ(k_ra8_ok, ra8_ipc_get_nmi_attribution((uint8_t)k_ra8_ipc_unit_ipc1, &attr));
-  TEST_ASSERT(attr.secure == true);
-  TEST_ASSERT(attr.privileged == false);
+  TEST_ASSERT(attr.world == k_ra8_ipc_world_non_secure);
+  TEST_ASSERT(attr.access == k_ra8_ipc_access_privileged);
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_ipc_get_nmi_attribution((uint8_t)k_ra8_ipc_unit_ipc0, &attr));
-  TEST_ASSERT(attr.secure == false);
-  TEST_ASSERT(attr.privileged == true);
+  TEST_ASSERT(attr.world == k_ra8_ipc_world_secure);
+  TEST_ASSERT(attr.access == k_ra8_ipc_access_unprivileged);
 
   TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_ipc_get_nmi_attribution(0U, nullptr));
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg,
@@ -696,13 +698,14 @@ static void test_get_sem_attribution(void)
   *sar                   = (uint32_t)k_ra8_ipcsar_mask_saipcsem1;
   *par                   = (uint32_t)k_ra8_ipcpar_mask_paipcsem0;
 
-  ra8_ipc_attr_t attr = {.secure = false, .privileged = false};
+  ra8_ipc_attr_t attr = {.world  = k_ra8_ipc_world_secure,
+                         .access = k_ra8_ipc_access_privileged};
   TEST_ASSERT_EQ(k_ra8_ok, ra8_ipc_get_sem_attribution(k_ra8_ipc_sem_group_high, &attr));
-  TEST_ASSERT(attr.secure == true);
-  TEST_ASSERT(attr.privileged == false);
+  TEST_ASSERT(attr.world == k_ra8_ipc_world_non_secure);
+  TEST_ASSERT(attr.access == k_ra8_ipc_access_privileged);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_ipc_get_sem_attribution(k_ra8_ipc_sem_group_low, &attr));
-  TEST_ASSERT(attr.secure == false);
-  TEST_ASSERT(attr.privileged == true);
+  TEST_ASSERT(attr.world == k_ra8_ipc_world_secure);
+  TEST_ASSERT(attr.access == k_ra8_ipc_access_unprivileged);
   TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_ipc_get_sem_attribution(k_ra8_ipc_sem_group_low, nullptr));
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg,
                  ra8_ipc_get_sem_attribution((ra8_ipc_sem_attr_group_t)9U, &attr));
@@ -724,11 +727,12 @@ static void test_can_access(void)
   /* Channel 2 -> non-secure + unprivileged. */
   *sar                = (uint32_t)k_ra8_ipcsar_mask_saipcir2;
   *par                = (uint32_t)k_ra8_ipcpar_mask_paipcir2;
-  ra8_ipc_attr_t want = {.secure = true, .privileged = true};
+  ra8_ipc_attr_t want = {.world  = k_ra8_ipc_world_non_secure,
+                         .access = k_ra8_ipc_access_unprivileged};
   bool           ok   = false;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_ipc_can_access((uint8_t)k_ra8_ipc_test_ch_mid, &want, &ok));
   TEST_ASSERT(ok == true);
-  want.secure = false;
+  want.world = k_ra8_ipc_world_secure;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_ipc_can_access((uint8_t)k_ra8_ipc_test_ch_mid, &want, &ok));
   TEST_ASSERT(ok == false);
   TEST_ASSERT_EQ(k_ra8_err_null_ptr,
