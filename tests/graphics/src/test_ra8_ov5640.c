@@ -859,8 +859,8 @@ RA8_INTERNAL static void internal_test_stream_control(void)
  * @brief Run OV5640 probe and mode-configuration MC/DC vectors.
  * @details Executes every transport, probe, format, status, and stream group.
  * @par MC/DC:
- * Decisions: libs/ra8_ov5640/src/ra8_ov5640.c@ra8_ov5640_configure,
- * libs/ra8_ov5640/src/ra8_ov5640.c@ra8_ov5640_probe.
+ * Decisions: ra8_ov5640_configure (Zig, libs/ra8_ov5640),
+ * ra8_ov5640_probe (Zig, libs/ra8_ov5640).
  * @pre Unity test accounting is initialized.
  * @pre The in-memory register and journal capacities match their enum bounds.
  * @post Every OV5640 transport and mode vector group has executed once.

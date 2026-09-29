@@ -720,22 +720,22 @@ RA8_INTERNAL static void internal_test_memory_backend_dispatch(void)
  * @details Executes each focused fixture group exactly once so the target
  *          covers the facade, memory backend, and PDM validation decisions.
  * @par MC/DC:
- * Decisions: libs/ra8_audio/src/ra8_audio.c@ra8_audio_frame_validate,
- * libs/ra8_audio/src/ra8_audio.c@ra8_audio_source_capture,
- * libs/ra8_audio/src/ra8_audio.c@ra8_audio_source_get_info,
- * libs/ra8_audio/src/ra8_audio.c@ra8_audio_source_stop,
- * libs/ra8_audio/src/ra8_audio.c@ra8_audio_source_stream_start,
- * libs/ra8_audio/src/ra8_audio_source_memory.c@internal_memory_capture,
- * libs/ra8_audio/src/ra8_audio_source_memory.c@internal_memory_get_info,
- * libs/ra8_audio/src/ra8_audio_source_memory.c@ra8_audio_source_memory_init,
- * libs/ra8_audio/src/ra8_audio_source_pdm.c@internal_pdm_capture,
- * libs/ra8_audio/src/ra8_audio_source_pdm.c@internal_pdm_get_info,
- * libs/ra8_audio/src/ra8_audio_source_pdm.c@internal_pdm_prepare_hardware,
- * libs/ra8_audio/src/ra8_audio_source_pdm.c@internal_pdm_stop,
- * libs/ra8_audio/src/ra8_audio_source_pdm.c@internal_pdm_stream_data,
- * libs/ra8_audio/src/ra8_audio_source_pdm.c@internal_pdm_stream_start,
- * libs/ra8_audio/src/ra8_audio_source_pdm.c@internal_pdm_validate_cfg,
- * libs/ra8_audio/src/ra8_audio_source_pdm.c@ra8_audio_source_pdm_init.
+ * Decisions: ra8_audio_frame_validate (Zig, libs/ra8_audio),
+ * ra8_audio_source_capture (Zig, libs/ra8_audio),
+ * ra8_audio_source_get_info (Zig, libs/ra8_audio),
+ * ra8_audio_source_stop (Zig, libs/ra8_audio),
+ * ra8_audio_source_stream_start (Zig, libs/ra8_audio),
+ * internal_memory_capture (Zig, libs/ra8_audio),
+ * internal_memory_get_info (Zig, libs/ra8_audio),
+ * ra8_audio_source_memory_init (Zig, libs/ra8_audio),
+ * internal_pdm_capture (Zig, libs/ra8_audio),
+ * internal_pdm_get_info (Zig, libs/ra8_audio),
+ * internal_pdm_prepare_hardware (Zig, libs/ra8_audio),
+ * internal_pdm_stop (Zig, libs/ra8_audio),
+ * internal_pdm_stream_data (Zig, libs/ra8_audio),
+ * internal_pdm_stream_start (Zig, libs/ra8_audio),
+ * internal_pdm_validate_cfg (Zig, libs/ra8_audio),
+ * ra8_audio_source_pdm_init (Zig, libs/ra8_audio).
  * @pre Unity test accounting is initialized.
  * @pre All fixture helpers are linked into this executable.
  * @post Every audio vector group has executed once.

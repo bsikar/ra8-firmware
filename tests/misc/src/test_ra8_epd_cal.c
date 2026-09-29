@@ -912,7 +912,7 @@ static void test_store_read_fault(void)
  * @test epd_cal_magic_mcdc
  *
  * @par MC/DC:
- * Decision libs/ra8_epd_cal/src/ra8_epd_cal.c@internal_ra8_epd_cal_magic_ok:
+ * Decision internal_ra8_epd_cal_magic_ok (Zig, libs/ra8_epd_cal):
  * ``return (m[0] == 'E') && (m[1] == 'V') && (m[2] == 'C') && (m[3] == 'M')``
  * (4 conditions, ``&&`` short-circuit chain).
  *

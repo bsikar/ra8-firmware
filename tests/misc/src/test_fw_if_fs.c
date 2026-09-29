@@ -830,37 +830,37 @@ RA8_INTERNAL static void internal_check_vfs_adapter_guards(const fw_fs_t* fs)
  * and removes every required namespace, stream, and transaction callback one
  * at a time. That supplies the all-false vector plus one independently true
  * operand for every grouped decision in
- * `libs/if/src/fw_if_fs.c@internal_interfaces`.
- * For `libs/if/src/fw_if_fs.c@fw_fs_bind`, it independently nulls every member
- * of both pointer tuples. For `libs/if/src/fw_if_fs.c@internal_fw_fs_caps_validate`,
+ * `internal_interfaces` (Zig, libs/if).
+ * For `fw_fs_bind` (Zig, libs/if), it independently nulls every member
+ * of both pointer tuples. For `internal_fw_fs_caps_validate` (Zig, libs/if),
  * it toggles space, sync, durable-sync, and transaction capability/table
  * pairs, and sets each directory workspace operand invalid while the others
  * remain valid. The POSIX and VFS initializers supply the
  * truthful all-false vectors, including the three-vector file-sync matrix.
  * Normal conformance calls plus one-null-at-a-time faults cover the tuple
- * decisions in `libs/if/src/fw_if_fs.c@fw_fs_get_caps`,
- * `libs/if/src/fw_if_fs.c@fw_fs_listdir`,
- * `libs/if/src/fw_if_fs.c@fw_fs_open`,
- * `libs/if/src/fw_if_fs.c@fw_fs_read`,
- * `libs/if/src/fw_if_fs.c@fw_fs_write`,
- * `libs/if/src/fw_if_fs.c@fw_fs_transaction_begin`, and
- * `libs/if/src/fw_if_fs.c@fw_fs_transaction_write`.
- * The stat table for `libs/if/src/fw_if_fs.c@fw_fs_stat` supplies coherent
+ * decisions in `fw_fs_get_caps` (Zig, libs/if),
+ * `fw_fs_listdir` (Zig, libs/if),
+ * `fw_fs_open` (Zig, libs/if),
+ * `fw_fs_read` (Zig, libs/if),
+ * `fw_fs_write` (Zig, libs/if),
+ * `fw_fs_transaction_begin` (Zig, libs/if), and
+ * `fw_fs_transaction_write` (Zig, libs/if).
+ * The stat table for `fw_fs_stat` (Zig, libs/if) supplies coherent
  * missing/file/directory outputs and isolates invalid type, missing type,
  * missing size, present-none, and directory-size operands. Root-old,
  * root-new, and ordinary-path vectors cover
- * `libs/if/src/fw_if_fs.c@fw_fs_rename`. Valid accounting, callback failure,
+ * `fw_fs_rename` (Zig, libs/if). Valid accounting, callback failure,
  * excess-free, and excess-used vectors cover both decisions in
- * `libs/if/src/fw_if_fs.c@fw_fs_space`. Finally, success/unpublished,
+ * `fw_fs_space` (Zig, libs/if). Finally, success/unpublished,
  * failure/unpublished, and success/published cover
- * `libs/if/src/fw_if_fs.c@fw_fs_transaction_commit`.
+ * `fw_fs_transaction_commit` (Zig, libs/if).
  * Zero, non-power-two, and valid alignments cover
- * `libs/if/src/fw_if_fs_dir.c@internal_cursor_workspace`. The cursor fault
+ * `internal_cursor_workspace` (Zig, libs/if). The cursor fault
  * table isolates every name length, terminator, node type, and directory-size
- * operand in `libs/if/src/fw_if_fs_dir.c@internal_cursor_entry`; the suffix and
+ * operand in `internal_cursor_entry` (Zig, libs/if); the suffix and
  * embedded-NUL cases cover the structurally coupled termination predicates.
  * One-null output tuples plus success/present, success/absent, and
- * failure/present results cover `libs/if/src/fw_if_fs_dir.c@fw_fs_dir_next`.
+ * failure/present results cover `fw_fs_dir_next` (Zig, libs/if).
  * @details Runs the POSIX conformance and hostile-contract matrices through
  * production filesystem seams and checks observable state.
  * @pre Pointer arguments address their documented readable or writable extents.

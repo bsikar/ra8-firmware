@@ -274,7 +274,7 @@ RA8_INTERNAL static void internal_test_box_grid(void)
  *
  * @par MC/DC:
  * Decision: `(link != k_ra8_box_none) && (guard < count)`
- * (2 conditions, libs/ra8_box/src/ra8_box.c@internal_iter_live)
+ * (2 conditions, internal_iter_live (Zig, libs/ra8_box))
  * Standard: DO-178C Table A-7 obj 5. Exercised indirectly through the
  * child walks in ra8_box_layout:
  * - V1: mid-walk on a 2-child stack -> link!=none=T, guard<count=T
@@ -317,7 +317,7 @@ RA8_INTERNAL static void internal_test_mcdc_iter_live(void)
  * @since 0.1.0
  *
  * @par MC/DC:
- * Decisions in libs/ra8_box/src/ra8_box.c@ra8_box_add:
+ * Decisions in ra8_box_add (Zig, libs/ra8_box):
  * D1 null guard `(tree == nullptr) || (node == nullptr)`:
  * - tree=NULL              -> C1=T            -> none (C1 flips).
  * - tree ok, node=NULL     -> C1=F, C2=T      -> none (C2 flips).
@@ -360,7 +360,7 @@ RA8_INTERNAL static void internal_test_mcdc_box_add(void)
  * @since 0.1.0
  *
  * @par MC/DC:
- * Decision in libs/ra8_box/src/ra8_box.c@ra8_box_layout:
+ * Decision in ra8_box_layout (Zig, libs/ra8_box):
  * `(count == 0) || (root < 0) || (root >= count)`
  * - empty tree (count=0) -> C1=T              -> invalid_arg (C1 flips).
  * - root=-1 on a 1-node  -> C1=F, C2=T        -> invalid_arg (C2 flips).

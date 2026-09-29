@@ -350,9 +350,9 @@ static void test_stop_ceu_backend(void)
 /**
  * @brief Test binary entry point.
  * @par MC/DC:
- * Decisions: libs/ra8_camera/src/ra8_camera.c@ra8_camera_source_stop,
+ * Decisions: ra8_camera_source_stop (Zig, libs/ra8_camera),
  * libs/ra8_camera/src/ra8_camera_source_ceu.c@internal_ceu_stop,
- * libs/ra8_camera/src/ra8_camera_source_memory.c@internal_memory_stop.
+ * internal_memory_stop (Zig, libs/ra8_camera).
  * @return int32_t Zero on success; never returns on failure.
  * @pre Linked against the off-target core/HAL object library.
  * @pre The fake register window is mappable on this host.

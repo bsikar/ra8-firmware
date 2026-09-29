@@ -73,7 +73,7 @@ static uint8_t s_gfx_gray[(size_t)k_gfx_src_dim * (size_t)k_gfx_src_dim];
  *
  * @par MC/DC:
  * Decision: `if ((src == nullptr) || (w <= 0) || (h <= 0))` (3 conditions, OR;
- * libs/ra8_gfx/src/ra8_gfx_text.c@ra8_gfx_blit_gray8).
+ * ra8_gfx_blit_gray8 (Zig, libs/ra8_gfx)).
  * Vectors (N+1 = 4 for N=3):
  *  - V1: src=buf, w>0,  h>0  -> C1 F, C2 F, C3 F -> false (blit proceeds, ok).
  *  - V2: src=nullptr       -> C1 T             -> true  (invalid_arg).
@@ -115,7 +115,7 @@ RA8_INTERNAL static void internal_test_gfx_blit_gray8_arg_guard_mcdc(void)
  *
  * @par MC/DC:
  * Decision: `if ((x0 < x1) && (y0 < y1))` (2 conditions, AND; the RGB565
- * fast-path visible-region guard, libs/ra8_gfx/src/ra8_gfx_text.c@ra8_gfx_blit_gray8).
+ * fast-path visible-region guard, ra8_gfx_blit_gray8 (Zig, libs/ra8_gfx)).
  * `x0/x1/y0/y1` are the clip-resolved block edges.
  * Vectors (N+1 = 3 for N=2):
  *  - V1: on-screen block            -> C1 T, C2 T -> true  (pixel changes).
