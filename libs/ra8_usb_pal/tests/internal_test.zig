@@ -49,24 +49,85 @@ test "epOutOfRange: every 8-bit address against the PAL limit" {
     }
 }
 
-test "translate: zero status is no event" {
-    try std.testing.expectEqual(core.event_none, core.translate(0));
+test "translateEvent: a zero snapshot names nothing" {
+    try std.testing.expectEqual(core.event_none, core.translateEvent(0));
 }
 
-test "translate: any raised bit becomes a controller error" {
-    try std.testing.expectEqual(core.event_error, core.translate(0x0001));
-    try std.testing.expectEqual(core.event_error, core.translate(0x8000));
-    try std.testing.expectEqual(core.event_error, core.translate(0xFFFF));
-}
-
-test "translate: sweep of single-bit masks" {
-    var bit: u4 = 0;
-    while (true) {
-        const mask: u16 = @as(u16, 1) << bit;
-        try std.testing.expectEqual(core.event_error, core.translate(mask));
-        if (bit == 15) break;
-        bit += 1;
+test "translateEvent: one arm per edge bit" {
+    const bits = core.intsts0;
+    const cases = [_]struct { snapshot: u16, expected: u16 }{
+        .{ .snapshot = @as(u16, 1) << bits.bit_sofr, .expected = core.event_sof },
+        .{ .snapshot = @as(u16, 1) << bits.bit_rsme, .expected = core.event_resume },
+        .{ .snapshot = @as(u16, 1) << bits.bit_bemp, .expected = core.event_ep_in },
+        .{ .snapshot = @as(u16, 1) << bits.bit_brdy, .expected = core.event_ep_out },
+        .{ .snapshot = @as(u16, 1) << bits.bit_nrdy, .expected = core.event_error },
+    };
+    for (cases) |case| {
+        try std.testing.expectEqual(case.expected, core.translateEvent(case.snapshot));
     }
+}
+
+test "translateEvent: VBSE reads the cable from VBSTS" {
+    const vbse = @as(u16, 1) << core.intsts0.bit_vbse;
+    try std.testing.expectEqual(
+        core.event_attach,
+        core.translateEvent(vbse | core.intsts0.mask_vbsts),
+    );
+    try std.testing.expectEqual(core.event_detach, core.translateEvent(vbse));
+}
+
+test "translateEvent: DVST names only suspend and reset" {
+    const dvst = @as(u16, 1) << core.intsts0.bit_dvst;
+    try std.testing.expectEqual(
+        core.event_reset,
+        core.translateEvent(dvst | core.intsts0.dvsq_default),
+    );
+    try std.testing.expectEqual(
+        core.event_suspend,
+        core.translateEvent(dvst | core.intsts0.dvsq_suspend),
+    );
+    // Suspend rides alongside the state, so it wins over Configured.
+    try std.testing.expectEqual(
+        core.event_suspend,
+        core.translateEvent(dvst | core.intsts0.dvsq_suspend | 0x0030),
+    );
+    // Address, Configured and Powered have no bit in the taxonomy.
+    for ([_]u16{ 0x0020, 0x0030, 0x0000 }) |state| {
+        try std.testing.expectEqual(core.event_none, core.translateEvent(dvst | state));
+    }
+    // A DVSQ value with no transition bit reports nothing at all.
+    try std.testing.expectEqual(core.event_none, core.translateEvent(core.intsts0.dvsq_default));
+}
+
+test "translateEvent: CTRT reports SETUP only while VALID is latched" {
+    const ctrt = @as(u16, 1) << core.intsts0.bit_ctrt;
+    try std.testing.expectEqual(
+        core.event_setup,
+        core.translateEvent(ctrt | core.intsts0.mask_valid),
+    );
+    try std.testing.expectEqual(core.event_none, core.translateEvent(ctrt));
+    try std.testing.expectEqual(core.event_none, core.translateEvent(core.intsts0.mask_valid));
+    try std.testing.expectEqual(
+        core.event_error,
+        core.translateEvent(ctrt | core.intsts0.ctsq_sqer),
+    );
+    try std.testing.expectEqual(
+        core.event_setup | core.event_error,
+        core.translateEvent(ctrt | core.intsts0.mask_valid | core.intsts0.ctsq_sqer),
+    );
+    // A benign data stage (CTSQ = control read data) is not an error.
+    try std.testing.expectEqual(core.event_none, core.translateEvent(ctrt | 0x0001));
+}
+
+test "translateEvent: one snapshot can raise several bits" {
+    const bits = core.intsts0;
+    const snapshot = (@as(u16, 1) << bits.bit_sofr) |
+        (@as(u16, 1) << bits.bit_bemp) |
+        (@as(u16, 1) << bits.bit_dvst) | bits.dvsq_default;
+    try std.testing.expectEqual(
+        core.event_sof | core.event_ep_in | core.event_reset,
+        core.translateEvent(snapshot),
+    );
 }
 
 test "maskEpAddr: descriptor form and bare number collapse" {

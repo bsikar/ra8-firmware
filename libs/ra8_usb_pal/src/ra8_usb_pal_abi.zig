@@ -79,6 +79,10 @@ pub export fn priv_usb_pal_ep_out_of_range(ep_addr: u8, ep_max: u8) callconv(.c)
     return @intFromBool(core.epOutOfRange(ep_addr, ep_max));
 }
 
+pub export fn priv_usb_pal_translate_event(intsts0: u16) callconv(.c) u16 {
+    return core.translateEvent(intsts0);
+}
+
 // =============================================================================
 // ra8_usb event handler installed at init
 // =============================================================================
@@ -87,7 +91,7 @@ fn internalUsbEvent(ctx: ?*anyopaque, speed: u8, status_mask: u16) callconv(.c) 
     _ = ctx;
     if (!s_state.initialized) return;
     if (speed != s_state.speed) return;
-    const pal_mask = core.translate(status_mask);
+    const pal_mask = core.translateEvent(status_mask);
     if (core.shouldDispatchEvent(
         @as(?*const anyopaque, @ptrCast(s_state.event_fn)),
         pal_mask,

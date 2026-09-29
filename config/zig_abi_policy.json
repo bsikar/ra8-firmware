@@ -1206,6 +1206,12 @@
           "registration": "tests/cmake/unit_tests.cmake"
         },
         {
+          "language": "c",
+          "path": "tests/usb/src/test_ra8_usb_pal_event_map.c",
+          "symbol_evidence": "libs/ra8_usb_pal/src/ra8_usb_pal_abi.zig",
+          "registration": "tests/cmake/unit_tests.cmake"
+        },
+        {
           "language": "zig",
           "path": "libs/ra8_usb_pal/tests/abi_test.zig",
           "registration": "libs/ra8_usb_pal/.zig-test-contract.json"
@@ -1305,6 +1311,11 @@
           "name": "priv_usb_pal_ep_out_of_range",
           "calling_context": "task-safe-reentrant",
           "ownership": "Evaluates its inputs only and retains no caller-owned resource."
+        },
+        {
+          "name": "priv_usb_pal_translate_event",
+          "calling_context": "task-safe-reentrant",
+          "ownership": "copies no data; derives the event bit set from the INTSTS0 snapshot argument alone"
         }
       ]
     },
