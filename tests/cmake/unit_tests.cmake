@@ -127,6 +127,15 @@ function(ra8_add_test name src_file)
             # in ra8_imgdec. Handing a test webp/inc without imgdec/inc hands
             # it a header that does not compile.
             ${FW_ROOT}/libs/ra8_imgdec/inc
+            # The downloader contract headers. mdl_net.h states its HTTP
+            # request policy under libs/ra8_mdl/inc, its URL guard under
+            # libs/ra8_net_policy/inc, and the export path writes through
+            # libs/ra8_xml/inc. ra8_core_hal already carries all three on its
+            # PUBLIC set (tests/cmake/core_hal.cmake:130-132); the tests built
+            # from this list hand-roll their own includes and so did not.
+            ${FW_ROOT}/libs/ra8_mdl/inc
+            ${FW_ROOT}/libs/ra8_net_policy/inc
+            ${FW_ROOT}/libs/ra8_xml/inc
             ${FW_ROOT}/libs/ra8_touch_cal/inc
             ${FW_ROOT}/libs/ra8_epd_cal/inc
             ${FW_ROOT}/libs/ra8_mpu/inc
