@@ -180,8 +180,11 @@ func TestSelfTestPassesOnAScopeThatCarriesInfraAndJust(t *testing.T) {
 	if !strings.Contains(out.String(), "PASS") {
 		t.Errorf("stdout = %q, want the PASS line", out.String())
 	}
-	if !strings.Contains(errs.String(), "scope has") {
-		t.Errorf("stderr = %q, want the scope count", errs.String())
+	if !strings.Contains(out.String(), "scope has") {
+		t.Errorf("stdout = %q, want the scope count", out.String())
+	}
+	if errs.String() != "" {
+		t.Errorf("stderr = %q, want nothing from a self-test that held", errs.String())
 	}
 }
 

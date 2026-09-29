@@ -237,7 +237,7 @@ func selfTest(ctx context.Context, root string, stdout, stderr io.Writer) bool {
 		fmt.Fprintln(stderr, "ra8ci wave-references --selftest: scope error:", err)
 		return false
 	}
-	fmt.Fprintf(stderr, "ra8ci wave-references --selftest: scope has %d file(s), floor %d\n", len(paths), fileFloor)
+	fmt.Fprintf(stdout, "ra8ci wave-references --selftest: scope has %d file(s), floor %d\n", len(paths), fileFloor)
 	hasInfra, hasJust := false, false
 	for _, rel := range paths {
 		hasInfra = hasInfra || strings.HasPrefix(rel, "infra/")
