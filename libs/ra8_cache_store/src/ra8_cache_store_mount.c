@@ -176,9 +176,13 @@ RA8_PRIV ra8_err_t priv_cache_store_super_write(ra8_cache_store_t* store, uint32
 {
   RA8_CHECK_NULL_PTR(store, s_tag, "store");
   RA8_CHECK_NULL_PTR(store->staging, s_tag, "staging");
+  /* One superblock write, one step of the checkpoint counter. It is stamped
+   * into `seq`, which a later reader uses to order two superblocks; `next_seq`
+   * below is the append counter and moves on a different clock. */
+  store->checkpoint_seq += 1U;
   ra8_cs_super_t sb = {.magic           = (uint32_t)k_ra8_cs_super_magic,
                        .version         = (uint32_t)k_ra8_cs_format_version,
-                       .seq             = store->next_seq,
+                       .seq             = store->checkpoint_seq,
                        .clean           = clean,
                        .entry_count     = 0U,
                        .live_sectors    = store->live_sectors,
@@ -229,12 +233,14 @@ RA8_INTERNAL static ra8_err_t internal_super_read(ra8_cache_store_t* store, ra8_
 }
 
 /**
- * @brief True when @p sb is a valid, clean-shutdown superblock.
- * @details Nested single-condition checks (magic, CRC, clean marker) so there is
- *          no compound decision to MC/DC.
+ * @brief True when @p sb parses: right magic and a matching CRC.
+ * @details Nested single-condition checks (magic, then CRC) so there is no
+ *          compound decision to MC/DC. Says nothing about the clean marker --
+ *          ::internal_super_is_clean adds that -- because a dirty record is
+ *          still a parsed one whose fields the mount reads.
  * @param[in] sb Parsed superblock candidate.
- * @return Whether the checkpoint directory may be trusted.
- * @retval true  Magic + CRC valid and the clean marker is set.
+ * @return Whether the record's fields may be read.
+ * @retval true  Magic + CRC valid.
  * @retval false Any check failed.
  * @pre @p sb points at a fully-read record.
  * @pre The caller confirmed the sector was present.
@@ -243,7 +249,7 @@ RA8_INTERNAL static ra8_err_t internal_super_read(ra8_cache_store_t* store, ra8_
  * @note Thread-safe: pure over its argument (no I/O).
  * @since 0.1.0
  */
-RA8_INTERNAL static bool internal_super_is_clean(const ra8_cs_super_t* sb)
+RA8_INTERNAL static bool internal_super_is_valid(const ra8_cs_super_t* sb)
 {
   if (sb == nullptr) {
     return false;
@@ -253,13 +259,26 @@ RA8_INTERNAL static bool internal_super_is_clean(const ra8_cs_super_t* sb)
   }
   uint32_t want =
     priv_cache_store_crc32((const uint8_t*)sb, (uint32_t)(sizeof(*sb) - sizeof(sb->crc)));
-  if (sb->crc != want) {
+  return sb->crc == want;
+}
+
+/**
+ * @brief True when the superblock parses and carries the clean marker.
+ * @details Cleanliness is validity plus ::k_ra8_cs_clean. The two are split
+ *          because a *dirty* superblock is still a parsed record whose `seq`
+ *          the mount has to honour, so the replay path can resume the
+ *          checkpoint counter instead of restarting it at zero.
+ * @param[in] sb Parsed superblock, or NULL.
+ * @return True when @p sb is valid and marked clean.
+ * @post No store or flash state is touched.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static bool internal_super_is_clean(const ra8_cs_super_t* sb)
+{
+  if (!internal_super_is_valid(sb)) {
     return false;
   }
-  if (sb->clean != (uint32_t)k_ra8_cs_clean) {
-    return false;
-  }
-  return true;
+  return sb->clean == (uint32_t)k_ra8_cs_clean;
 }
 
 /* ------------------------------------------------------------------------- */
@@ -681,6 +700,7 @@ RA8_INTERNAL static ra8_err_t internal_open_levelx(ra8_cache_store_t*           
  * @pre @p sb was populated by ::internal_super_read.
  * @pre The LevelX partition is open.
  * @post On `k_ra8_ok` the index reflects flash and `flash_state` is set.
+ * @post `store->checkpoint_seq` is resumed from @p sb when @p sb parses.
  * @post No flash sector is written.
  * @note Not thread-safe; shares the store staging buffer.
  * @since 0.1.0
@@ -689,6 +709,13 @@ RA8_INTERNAL static ra8_err_t internal_recover(ra8_cache_store_t* store, const r
 {
   RA8_CHECK_NULL_PTR(store, s_tag, "store");
   RA8_CHECK_NULL_PTR(sb, s_tag, "sb");
+  /* Resume the checkpoint counter from any record that parses, clean or not,
+   * so the next superblock this store writes carries a higher `seq` than the
+   * one already on the media. A torn or absent record leaves the counter at
+   * its init value and the next write starts the sequence at 1. */
+  if (internal_super_is_valid(sb)) {
+    store->checkpoint_seq = sb->seq;
+  }
   if (internal_super_is_clean(sb)) {
     store->next_seq    = sb->next_seq;
     store->flash_state = (uint8_t)k_ra8_cs_clean;
@@ -757,8 +784,9 @@ RA8_INTERNAL static void internal_init_fields(ra8_cache_store_t*           store
   for (uint16_t i = 0U; i < store->index_cap; i++) {
     store->index[i] = (ra8_cache_store_entry_t){};
   }
-  store->next_seq     = 1U;
-  store->live_sectors = 0U;
+  store->next_seq       = 1U;
+  store->live_sectors   = 0U;
+  store->checkpoint_seq = 0U;
 }
 
 /**

@@ -83,7 +83,7 @@ typedef enum : uint32_t {
 typedef struct {
   uint32_t magic;           /**< ::k_ra8_cs_super_magic.               */
   uint32_t version;         /**< ::k_ra8_cs_format_version.            */
-  uint32_t seq;             /**< Checkpoint sequence (monotonic).      */
+  uint32_t seq;             /**< Superblock-write sequence (monotonic).*/
   uint32_t clean;           /**< ::ra8_cs_clean_t shutdown marker.     */
   uint32_t entry_count;     /**< Directory entries in the checkpoint.  */
   uint32_t live_sectors;    /**< Live sector count at checkpoint time. */
@@ -275,6 +275,11 @@ RA8_PRIV int32_t priv_cache_store_index_add(ra8_cache_store_t* store,
  *          `next_seq`, ...) plus @p clean into ::ra8_cs_super_t, seals it with a
  *          CRC, and writes sector 0 -- the commit point of a checkpoint.
  *
+ *          Advances `store->checkpoint_seq` first and stamps it into
+ *          ::ra8_cs_super_t::seq, so that field counts superblock writes and is
+ *          a different quantity from `next_seq`, which counts appends. The
+ *          counter is resumed from flash on mount, so it never restarts.
+ *
  * @param[in,out] store Store to snapshot.
  * @param[in]     clean ::ra8_cs_clean_t marker to stamp.
  * @return Error code.
@@ -284,6 +289,7 @@ RA8_PRIV int32_t priv_cache_store_index_add(ra8_cache_store_t* store,
  * @pre `store->inited` is true (or mid-init with geometry set).
  * @pre `store->staging` covers one sector.
  * @post On `k_ra8_ok`, sector 0 holds a valid superblock with @p clean.
+ * @post `store->checkpoint_seq` is one greater than on entry.
  * @post On any error sector 0 is unchanged.
  * @note Not thread-safe; shares the store staging buffer.
  * @since 0.1.0
