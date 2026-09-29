@@ -367,6 +367,26 @@ set_property(
 
 # ra8_core_hal is the OBJECT library every host test links, so an INTERFACE
 # link here reaches each test executable that pulls in a migrated library.
+# Part 1 of the migration: the protocol core (both CRC generators, command
+# framing, the R1/R3/R7 response readers, the bounded waits, the transport
+# gate and the CMD0..CMD16 identification sequence) is Zig, and the archive
+# owns the sole definition of g_sdmmc_spi_state. The block-I/O TU
+# (init/deinit, single- and multi-block read/write, erase, the capacity and
+# card-type queries, the ra8_fs backend adapter and the SCI Simple-SPI
+# transport factory) stays in src/ra8_sdmmc_spi_io.c and is compiled into
+# ra8_core_hal, so the libs/ra8_sdmmc_spi/src glob and its include dirs stay:
+# src/ra8_sdmmc_spi_internal.h is also included by
+# tests/storage/src/test_ra8_sdmmc_spi_cov.c and
+# tests/support/inc/sdmmc_spi_cov_test_util.h.
+ra8_add_zig_library(
+  NAME
+  ra8_sdmmc_spi
+  ZIG_ROOT
+  ${FW_ROOT}/libs/ra8_sdmmc_spi
+  LIBRARY_NAME
+  ra8_sdmmc_spi
+)
+
 target_link_libraries(
   ra8_core_hal
   PUBLIC ra8_zig::ra8_box
@@ -390,6 +410,7 @@ target_link_libraries(
          ra8_zig::ra8_camera
          ra8_zig::fw_if_fs
          ra8_zig::ra8_ftl
+         ra8_zig::ra8_sdmmc_spi
 )
 
 link_libraries(ra8_zig::ra8_batt)
@@ -417,4 +438,5 @@ link_libraries(
   ra8_zig::ra8_camera
   ra8_zig::fw_if_fs
   ra8_zig::ra8_ftl
+  ra8_zig::ra8_sdmmc_spi
 )

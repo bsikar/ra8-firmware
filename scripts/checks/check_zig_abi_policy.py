@@ -169,6 +169,64 @@ def _metadata_findings(name: str, metadata: object) -> tuple[list[str], set[str]
     return findings, declared
 
 
+def _data_export_findings(
+    library: dict[str, Any], name: str, repository_root: Path
+) -> tuple[list[str], set[str]]:
+    """Validate exported mutable data at a C/Zig boundary.
+
+    A ported protocol core can own a single shared instance the retained C
+    translation unit still reads: ra8_sdmmc_spi keeps src/ra8_sdmmc_spi_io.c,
+    which drives ``g_sdmmc_spi_state`` the Zig adapter now defines. That is a
+    data symbol, not a function, so the export checks above cannot see it, and
+    a silent second definition would link two card states. Each row names the
+    header that declares it ``extern`` and the adapter that defines it, and
+    both have to still say so.
+    """
+    rows = library.get("data_exports", [])
+    if not isinstance(rows, list):
+        return [f"{name}: data_exports is not a list"], set()
+    findings: list[str] = []
+    declared: set[str] = set()
+    build_root = (repository_root / library.get("build_root", "<missing>")).resolve()
+    for row in rows:
+        if (
+            not isinstance(row, dict)
+            or set(row) != {"name", "header", "adapter", "calling_context", "ownership"}
+            or not all(isinstance(row.get(field), str) for field in row)
+        ):
+            findings.append(f"{name}: malformed data export metadata")
+            continue
+        symbol = row["name"]
+        if symbol in declared:
+            findings.append(f"{name}: duplicate data export: {symbol}")
+            continue
+        declared.add(symbol)
+        if row["calling_context"] not in CONTEXTS:
+            findings.append(f"{name}: undocumented calling context: {symbol}")
+        if len(row["ownership"].strip()) < MIN_OWNERSHIP_LENGTH:
+            findings.append(f"{name}: undocumented ownership: {symbol}")
+        for field in ("header", "adapter"):
+            path = repository_root / row[field]
+            try:
+                path.resolve().relative_to(build_root)
+            except ValueError:
+                findings.append(f"{name}: data export {field} is outside build root: {row[field]}")
+                continue
+            if not path.is_file():
+                findings.append(f"{name}: missing data export {field}: {row[field]}")
+                continue
+            text = _strip_comments(path.read_text(encoding="utf-8"))
+            if field == "header":
+                present = re.search(rf"\bextern\b[^;{{}}]*\b{re.escape(symbol)}\s*;", text)
+            else:
+                present = re.search(rf"\bpub\s+export\s+var\s+{re.escape(symbol)}\s*:", text)
+            if present is None:
+                findings.append(
+                    f"{name}: data export {field} does not declare {symbol}: {row[field]}"
+                )
+    return findings, declared
+
+
 def _c_retained_findings(
     name: str,
     library: dict[str, Any],
@@ -728,6 +786,8 @@ def _library_findings(
     zig_names, zig_heads = _zig_exports(adapter_text)
     metadata_findings, declared = _metadata_findings(name, library.get("exports"))
     findings.extend(metadata_findings)
+    data_findings, _data_exports = _data_export_findings(library, name, repository_root)
+    findings.extend(data_findings)
     allow_c_bool = {
         row["name"]
         for row in library.get("exports", [])
@@ -947,7 +1007,11 @@ def _compiled_findings(
             findings.extend(symbol_findings)
             if symbol_findings:
                 continue
-            expected = {row["name"] for row in library["exports"]}
+            expected = {row["name"] for row in library["exports"]} | {
+                row["name"]
+                for row in library.get("data_exports", [])
+                if isinstance(row, dict) and isinstance(row.get("name"), str)
+            }
             findings.extend(_compiled_symbol_findings(f"{name}: {target}/{mode}", expected, actual))
             counts["zig_matrix"] += 1
             if target == "host":
@@ -1287,7 +1351,48 @@ def _selftest_metadata_policy(base: dict[str, Any], root: Path) -> str | None:
         broken.pop(field)
         if not any(expected in item for item in _library_findings(broken, {"host", "ra8"}, root)):
             return f"must-fire fixture was accepted: {expected}"
+    if issue := _selftest_data_exports(base, root):
+        return issue
     return _selftest_c_retention(base, root)
+
+
+def _selftest_data_exports(base: dict[str, Any], root: Path) -> str | None:
+    """Exercise the exported-data row in both directions."""
+    (root / "build/data.h").write_text("extern DemoState demo_state;\n", encoding="utf-8")
+    adapter = root / "build/adapter.zig"
+    adapter.write_text(
+        adapter.read_text(encoding="utf-8")
+        + "const DemoState = extern struct { value: u32 };\n"
+        + "pub export var demo_state: DemoState = .{ .value = 0 };\n",
+        encoding="utf-8",
+    )
+    quiet = json.loads(json.dumps(base))
+    quiet["data_exports"] = [
+        {
+            "name": "demo_state",
+            "header": "build/data.h",
+            "adapter": "build/adapter.zig",
+            "calling_context": "task-only-non-reentrant",
+            "ownership": "owns one shared mutable demo state",
+        }
+    ]
+    if any(
+        "demo_state" in item or "data export" in item
+        for item in _library_findings(quiet, {"host", "ra8"}, root)
+    ):
+        return "must-stay-quiet fixture failed: declared exported data read as drift"
+    mutations = (
+        ({"adapter": "build/missing.zig"}, "missing data export adapter"),
+        ({"header": "build/build.zig"}, "data export header does not declare"),
+        ({"calling_context": "whenever"}, "undocumented calling context"),
+        ({"ownership": "x"}, "undocumented ownership"),
+    )
+    for patch, expected in mutations:
+        broken = json.loads(json.dumps(quiet))
+        broken["data_exports"][0].update(patch)
+        if not any(expected in item for item in _library_findings(broken, {"host", "ra8"}, root)):
+            return f"must-fire fixture was accepted: {expected}"
+    return None
 
 
 def _selftest_c_retention(base: dict[str, Any], root: Path) -> str | None:
