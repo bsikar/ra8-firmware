@@ -56,6 +56,24 @@ jobs:
   macos-host-build:
     name: macOS arm64 host build (Zig roots, native SDK link)
     runs-on: macos-14
+    # A WEDGED JOB HERE IS THE MOST EXPENSIVE WAY THIS SUITE CAN FAIL. Every
+    # other workflow runs on Linux or on the self-hosted ra8-ci fleet, where a
+    # minute costs nothing; GitHub bills a hosted macOS minute at 10x a Linux
+    # one. With no timeout-minutes the job inherits GitHub's 6 h default, so
+    # one stalled step (a download that hangs on a mirror without closing the
+    # connection, a `zig build test` that deadlocks on the one platform
+    # nothing else in CI exercises) spends 360 macOS minutes -- 3600 billable
+    # -- before anything cancels it, then does it again the next night,
+    # unattended, because a schedule has nobody watching it.
+    #
+    # 60 rather than fuzz-nightly.yml's 300: that gate is a time budget by
+    # construction and runs where minutes are free. This one provisions a
+    # toolchain and builds and tests the Zig host roots on one machine, which
+    # is minutes of work on Linux. An hour is a wide margin for a cold runner
+    # and a slow download while still cutting a hang off inside the hour.
+    # Raise it only against a real run that reports needing more; never to
+    # make a hang look like slowness.
+    timeout-minutes: 60
     steps:
       - uses: extractions/setup-just@v3
         with:
@@ -78,7 +96,16 @@ jobs:
           # .devcontainer/Dockerfile, and it installs to /usr/local/zig so the
           # layout matches the container the other gates run in.
           set -euo pipefail
+          # The download carries its own bounds rather than leaning on the
+          # job's timeout-minutes, because curl's default is no timeout at all
+          # and this is where an unattended nightly stalls most cheaply:
+          # connect inside 20s, abort a transfer that has dropped under
+          # 1 KiB/s for a minute (the shape a dead mirror takes -- socket
+          # open, bytes stopped -- which a plain --max-time cannot tell from a
+          # slow link), and a 10 min hard ceiling over the whole operation.
           curl --proto '=https' --proto-redir '=https' --tlsv1.2 -fsSL \
+            --connect-timeout 20 --speed-limit 1024 --speed-time 60 \
+            --max-time 600 \
             -o "${RUNNER_TEMP}/zig.tar.xz" \
             "https://ziglang.org/download/${ZIG_VERSION}/zig-aarch64-macos-${ZIG_VERSION}.tar.xz"
           printf '%s  %s\n' "${ZIG_SHA256_AARCH64_MACOS}" "${RUNNER_TEMP}/zig.tar.xz" \
