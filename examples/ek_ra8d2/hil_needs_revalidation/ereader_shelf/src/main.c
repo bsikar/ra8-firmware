@@ -530,8 +530,14 @@ static void sh_panel_or_halt(void)
       (display_get_framebuffer(s_display, &fb) != k_ra8_ok)) {
     sh_panic_halt();
   }
-  if (ra8_gfx_init(fb.pixels, (uint16_t)k_sh_fb_w, (uint16_t)k_sh_fb_h, k_ra8_gfx_format_rgb565) !=
-      k_ra8_ok) {
+  const ra8_gfx_surface_t surface = {
+    .pixels       = fb.pixels,
+    .w            = fb.width_px,
+    .h            = fb.height_px,
+    .stride_bytes = fb.stride_bytes,
+    .fmt          = k_ra8_gfx_format_rgb565,
+  };
+  if (ra8_gfx_init_surface(&surface) != k_ra8_ok) {
     sh_panic_halt();
   }
 }
