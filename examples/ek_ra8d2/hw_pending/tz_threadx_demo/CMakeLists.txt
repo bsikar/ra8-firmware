@@ -75,7 +75,6 @@ include(${RA8_REPO_ROOT}/cmake/threadx_ns.cmake)
 ra8_add_ns_image(
   SECURE_TARGET tz_threadx_demo.elf
   NAME tz_threadx_demo_ns
-  LINKER ${RA8_REPO_ROOT}/libs/ra8_board_ek_ra8d2/ld/ns_image_sram.ld
   STACK_BYTES 2200
   IMPLIB ${CMAKE_CURRENT_BINARY_DIR}/tz_threadx_demo_cmse_import.o
   MERGED_HEX tz_threadx_demo.hex

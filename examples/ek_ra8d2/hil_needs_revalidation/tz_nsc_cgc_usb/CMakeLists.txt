@@ -104,7 +104,6 @@ include(${_d}/cmake/threadx_ns.cmake)
 ra8_add_ns_image(
   SECURE_TARGET tz_nsc_cgc_usb.elf
   NAME tz_nsc_cgc_usb_ns
-  LINKER ${RA8_REPO_ROOT}/libs/ra8_board_ek_ra8d2/ld/ns_image_sram.ld
   STACK_BYTES 2200
   IMPLIB ${CMAKE_CURRENT_BINARY_DIR}/tz_nsc_cgc_usb_cmse_import.o
   MERGED_HEX tz_nsc_cgc_usb.hex
