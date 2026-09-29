@@ -255,6 +255,43 @@ skip, and the compile flags are unchanged (`-std=c23 -Wall -Wextra -Werror
 Nothing about Linux CI changes: `clang-18` is first, so wherever it exists it
 is still the compiler of record.
 
+## Checking what the link produced, not just that it succeeded
+
+`zig build` exiting zero says the link succeeded. It says nothing about what
+came out of it, and the #899 rule is entirely a claim about what comes out: a
+native arm64 Mach-O, stamped with the deployment target the build was
+configured for, linked against the system `libSystem`. A build that quietly
+took Zig's default macOS floor instead of the host's version exits zero too.
+
+So `apps/host/image_pyramid` carries a step that reads the emitted image back:
+
+    cd apps/host/image_pyramid && zig build verify-host-artifact
+
+It reads the Mach-O header and load commands and checks four things against
+what the build was configured for:
+
+- the image is a single-architecture 64-bit Mach-O, not a universal archive;
+- its cpu type matches the target architecture;
+- it carries a macOS platform stamp;
+- its minimum OS version equals the target's configured minimum;
+- it links `/usr/lib/libSystem.B.dylib`, listing what it does link when not.
+
+The expectations come from the resolved target, so the step checks the binary
+against what this very build asked for rather than against a hardcoded answer.
+Off macOS it says there is no Mach-O to read and passes, which is what lets a
+Linux checkout run it unchanged.
+
+This is also the one part of the story a Linux host can prove end to end,
+because the reader parses bytes rather than asking the operating system:
+
+    zig build verify-host-artifact -Dtarget=aarch64-macos      # 13.0.0
+    zig build verify-host-artifact -Dtarget=aarch64-macos.15.0 # 15.0.0
+
+The reader itself is unit tested against synthesised images (`tools/zig_build/
+macho.zig` and its tests), including a universal archive, a 32-bit image, an
+ELF, a truncated load-command region and a dylib name pointing outside its own
+command.
+
 ## Not yet automated
 
 No scheduled job runs these commands on macOS today; the checks above are

@@ -45,6 +45,13 @@ pub fn build(b: *std.Build) void {
     const executable = b.addExecutable(.{ .name = "image_pyramid", .root_module = app_module });
     b.installArtifact(executable);
 
+    // Reading the emitted image back is what turns "the link exited zero" into
+    // evidence about the Mach-O the #899 rule is actually about.
+    b.step(
+        "verify-host-artifact",
+        "Check the emitted binary's architecture, deployment target and libSystem linkage (#899)",
+    ).dependOn(ra8_build.addVerifyHostArtifactStep(b, executable));
+
     const run_app = b.addRunArtifact(executable);
     if (b.args) |args| run_app.addArgs(args);
     b.step("run", "Create deliberately degraded JPEG levels").dependOn(&run_app.step);
