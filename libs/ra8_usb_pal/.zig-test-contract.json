@@ -3,7 +3,9 @@
     "tests/internal_test.zig",
     "tests/abi_test.zig",
     "tests/descriptor_test.zig",
-    "tests/desc_abi_test.zig"
+    "tests/desc_abi_test.zig",
+    "tests/compose_test.zig",
+    "tests/compose_abi_test.zig"
   ],
   "covered_sources": [
     "src/internal/root.zig",
@@ -14,7 +16,11 @@
     "src/internal/descriptor.zig",
     "src/ra8_usb_desc_abi.zig",
     "tests/descriptor_test.zig",
-    "tests/desc_abi_test.zig"
+    "tests/desc_abi_test.zig",
+    "src/internal/compose.zig",
+    "src/ra8_usb_compose_abi.zig",
+    "tests/compose_test.zig",
+    "tests/compose_abi_test.zig"
   ],
-  "minimum_tests": 145
+  "minimum_tests": 187
 }
