@@ -244,7 +244,8 @@ ra8_viewer_read_path(
 ra8_viewer_read_path(
   RA8_CORE_SRC ${FW_ROOT}/libs/ra8_core/src
   KEEP ra8_log.c ra8_error_handler.c ra8_decomp_limits.c
-  DROP ra8_crashlog.c
+  DROP ra8_boot_region.c
+       ra8_crashlog.c
        ra8_error_sink_log.c
        ra8_exception.c
        ra8_freestanding_math.c
