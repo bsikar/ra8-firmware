@@ -44,6 +44,8 @@ target_include_directories(
   mkbookimg
   PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/inc ${_repo}/libs/ra8_fs/inc
           ${_repo}/libs/ra8_core/inc ${_repo}/libs/ra8_imgdec/inc
+          # ra8_imgdec.h includes "ra8_arena.h", which lives in ra8_mem.
+          ${_repo}/libs/ra8_mem/inc
 )
 
 # First-party sources carry the project warning bar (NASA Power of 10
