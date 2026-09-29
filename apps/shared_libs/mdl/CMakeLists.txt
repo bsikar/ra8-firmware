@@ -221,6 +221,10 @@ set(MDL_RABOOK_RUNTIME_SRC
     ${MDL_REPO_ROOT}/apps/shared_libs/reflow/src/ra8_img_arena.c
     ${MDL_REPO_ROOT}/libs/ra8_imgdec/src/ra8_imgdec_scratch.c
     ${MDL_REPO_ROOT}/libs/ra8_imgdec/src/ra8_imgdec_sniff.c
+    # mdl_urlname.c calls ra8_imgdec_identify/ra8_imgdec_name, which live only
+    # here. mdl_core compiles the caller, so every target linking these two
+    # libraries needs the name table too (#768).
+    ${MDL_REPO_ROOT}/libs/ra8_imgdec/src/ra8_imgdec_name.c
     ${MDL_REPO_ROOT}/apps/shared_libs/reflow/src/ra8_stbtt_alloc.c
     ${MDL_REPO_ROOT}/apps/shared_libs/reflow/src/ra8_stbtt_guard.c
     ${MDL_REPO_ROOT}/apps/shared_libs/third_party/stb/stb_image_impl.c
