@@ -2281,10 +2281,18 @@
           "layout_assertions": [
             "@offsetOf(Blockdev, \"ctx\") == ptr",
             "@sizeOf(Blockdev) == ptr * 2",
-            "@offsetOf(Ftl, \"logical_blocks\") == ptr * 4",
-            "@offsetOf(Ftl, \"physical_blocks\") == ptr * 4 + 4",
-            "@offsetOf(Ftl, \"erase_value\") == ptr * 4 + 8",
-            "@sizeOf(Ftl) == std.mem.alignForward(usize, ptr * 4 + 9, @alignOf(Ftl))"
+            "@offsetOf(Ftl, \"checkpoint\") == ptr * 4",
+            "@offsetOf(Ftl, \"ck_bytes\") == ptr * 5",
+            "@offsetOf(Ftl, \"logical_blocks\") == ptr * 5 + 4",
+            "@offsetOf(Ftl, \"physical_blocks\") == ptr * 5 + 8",
+            "@offsetOf(Ftl, \"reserved_lba\") == ptr * 5 + 12",
+            "@offsetOf(Ftl, \"reserved_blocks\") == ptr * 5 + 16",
+            "@offsetOf(Ftl, \"erase_value\") == ptr * 5 + 20",
+            "@sizeOf(Ftl) == std.mem.alignForward(usize, ptr * 5 + 21, @alignOf(Ftl))",
+            "@offsetOf(Cfg, \"checkpoint\") == ptr * 4",
+            "@offsetOf(Cfg, \"checkpoint_bytes\") == ptr * 5",
+            "@offsetOf(Cfg, \"logical_blocks\") == ptr * 5 + 4",
+            "@offsetOf(Cfg, \"reserved_tail_blocks\") == ptr * 5 + 8"
           ]
         }
       ],
@@ -2339,6 +2347,12 @@
           "language": "c",
           "path": "tests/storage/src/test_ra8_ftl_mount.c",
           "registration": "tests/cmake/unit_tests.cmake"
+        },
+        {
+          "language": "zig",
+          "path": "libs/ra8_ftl/tests/mount_test.zig",
+          "symbol_evidence": "libs/ra8_ftl/src/ra8_ftl_abi.zig",
+          "registration": "libs/ra8_ftl/.zig-test-contract.json"
         }
       ],
       "exports": [
@@ -2376,27 +2390,27 @@
           "name": "ra8_ftl_checkpoint_load",
           "calling_context": "task-only-non-reentrant",
           "ownership": "borrows the checkpoint buffer and mutates caller-owned FTL mapping tables only on success"
-        }
-      ],
-      "c_retained_exports": [
+        },
         {
           "name": "ra8_ftl_mount",
-          "source": "libs/ra8_ftl/src/ra8_ftl_mount.c",
-          "header": "libs/ra8_ftl/inc/ra8_ftl.h",
-          "reason": "The mount/sync/unmount module landed on dev in #763 after this port was cut. It is composed entirely from public FTL entry points and reaches into no internals, so it stays C for this slice and is ported on its own once the core has settled."
+          "calling_context": "task-only-non-reentrant",
+          "ownership": "reads the caller's cfg, binds the caller-owned tables and staging buffer to the handle, and owns the reserved tail's first read"
         },
         {
           "name": "ra8_ftl_sync",
-          "source": "libs/ra8_ftl/src/ra8_ftl_mount.c",
-          "header": "libs/ra8_ftl/inc/ra8_ftl.h",
-          "reason": "The mount/sync/unmount module landed on dev in #763 after this port was cut. It is composed entirely from public FTL entry points and reaches into no internals, so it stays C for this slice and is ported on its own once the core has settled."
+          "calling_context": "task-only-non-reentrant",
+          "ownership": "writes the caller-owned staging buffer, then erases and programs the reserved tail on the underlying device"
         },
         {
           "name": "ra8_ftl_unmount",
-          "source": "libs/ra8_ftl/src/ra8_ftl_mount.c",
-          "header": "libs/ra8_ftl/inc/ra8_ftl.h",
-          "reason": "The mount/sync/unmount module landed on dev in #763 after this port was cut. It is composed entirely from public FTL entry points and reaches into no internals, so it stays C for this slice and is ported on its own once the core has settled."
+          "calling_context": "task-only-non-reentrant",
+          "ownership": "syncs the reserved tail, then zeroes the caller-allocated handle; owns no storage of its own"
         }
+      ],
+      "layout_sources": [
+        "libs/ra8_ftl/src/internal/root.zig",
+        "libs/ra8_ftl/src/internal/mount.zig",
+        "libs/ra8_ftl/src/ra8_ftl_abi.zig"
       ]
     },
     {

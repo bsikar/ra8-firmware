@@ -7,6 +7,10 @@
 //! allocation, bounds and capability core plus the ABI membrane driven over
 //! a fake underlying block device.
 //!
+//! The mount lifecycle (`inc/ra8_ftl.h`'s ra8_ftl_mount / _sync / _unmount)
+//! is part of the same archive: its decisions are `src/internal/mount.zig`
+//! and its boundary rides the same ABI membrane.
+//!
 //! No build options: the underlying device is a caller-supplied
 //! `ra8_io_blockdev_t`, so nothing here is configured at compile time.
 
@@ -41,6 +45,11 @@ pub fn build(b: *std.Build) void {
         .target = target,
         .optimize = optimize,
     });
+    const mount_module = b.createModule(.{
+        .root_source_file = b.path("src/internal/mount.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
 
     const internal_test_module = b.createModule(.{
         .root_source_file = b.path("tests/internal_test.zig"),
@@ -58,9 +67,19 @@ pub fn build(b: *std.Build) void {
     abi_test_module.addImport("abi", abi_module);
     const abi_tests = b.addTest(.{ .root_module = abi_test_module });
 
+    const mount_test_module = b.createModule(.{
+        .root_source_file = b.path("tests/mount_test.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    mount_test_module.addImport("implementation", mount_module);
+    const mount_tests = b.addTest(.{ .root_module = mount_test_module });
+
     const run_internal_tests = b.addRunArtifact(internal_tests);
+    const run_mount_tests = b.addRunArtifact(mount_tests);
     const run_abi_tests = b.addRunArtifact(abi_tests);
     const test_step = b.step("test", "Run Zig ra8_ftl tests");
     test_step.dependOn(&run_internal_tests.step);
+    test_step.dependOn(&run_mount_tests.step);
     test_step.dependOn(&run_abi_tests.step);
 }
