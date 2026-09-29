@@ -248,6 +248,7 @@ target_include_directories(
           ${FW_ROOT}/apps/shared_libs/webp/inc
           ${FW_ROOT}/apps/shared_libs/third_party/miniz
           ${RA8_C6LINK_INCLUDE_DIRS}
+          ${FW_ROOT}/libs/ra8_imgdec/inc
 )
 add_test(NAME test_app_media_download_format COMMAND test_app_media_download_format)
 
