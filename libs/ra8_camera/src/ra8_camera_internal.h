@@ -29,7 +29,8 @@ struct ra8_camera_source_iface {
   ra8_err_t (*get_info)(void* ctx, ra8_camera_source_info_t* out_info); /**< Query geometry. */
   ra8_err_t (*capture)(void*                      ctx,
                        const ra8_camera_buffer_t* buffer,
-                       ra8_camera_frame_t*        out_frame); /**< Capture one frame. */
+                       ra8_camera_frame_t*        out_frame); /**< Capture one frame.   */
+  ra8_err_t (*stop)(void* ctx);                               /**< Release the backend. */
 };
 
 /** @brief Operation every codec backend supplies. */
