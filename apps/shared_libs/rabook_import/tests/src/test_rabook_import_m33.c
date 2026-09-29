@@ -492,7 +492,8 @@ RA8_INTERNAL static void internal_make_incore_views(void)
     .out            = s_storage.out,
     .out_cap        = (uint32_t)k_ic_out_cap,
   };
-  s_storage.arena = (ra8_img_arena_t){s_storage.img_scratch, sizeof(s_storage.img_scratch), 0U, 0U};
+  s_storage.arena =
+    (ra8_img_arena_t){.base = s_storage.img_scratch, .cap = sizeof(s_storage.img_scratch)};
   s_ic_scr        = (ra8_rabook_pipeline_scratch_t){
     .xhtml         = s_storage.xhtml,
     .xhtml_cap     = sizeof(s_storage.xhtml),

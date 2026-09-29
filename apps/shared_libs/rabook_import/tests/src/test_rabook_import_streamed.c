@@ -417,7 +417,8 @@ RA8_INTERNAL static void internal_bind_compiler_storage(streamed_compiler_storag
     .out            = storage->out,
     .out_cap        = (uint32_t)k_st_out_cap,
   };
-  storage->arena   = (ra8_img_arena_t){storage->img_scratch, sizeof(storage->img_scratch), 0U, 0U};
+  storage->arena =
+    (ra8_img_arena_t){.base = storage->img_scratch, .cap = sizeof(storage->img_scratch)};
   storage->scratch = (ra8_rabook_pipeline_scratch_t){
     .xhtml         = storage->xhtml,
     .xhtml_cap     = sizeof(storage->xhtml),
