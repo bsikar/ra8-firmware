@@ -69,6 +69,7 @@ ra8_add_cpu1_image(
            ${RA8_REPO_ROOT}/apps/shared_libs/epub/src
            ${RA8_REPO_ROOT}/libs/ra8_mem/inc
            ${RA8_REPO_ROOT}/apps/shared_libs/reflow/inc
+           ${RA8_REPO_ROOT}/libs/ra8_imgdec/inc
            ${RA8_REPO_ROOT}/libs/ra8_fs/inc
            ${RA8_REPO_ROOT}/apps/shared_libs/xml/inc
            ${RA8_REPO_ROOT}/apps/shared_libs/third_party/miniz
