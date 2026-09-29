@@ -330,6 +330,19 @@ ra8_add_zig_library(
   LIBRARY_NAME
   ra8_camera
 )
+
+# libs/if is mixed: the portable filesystem facade is Zig, but src/ra8_path.c
+# (the untrusted-name containment policy, #749) landed after this port was cut
+# and is a separate concern, so the RA8_IF_SOURCES glob and the libs/if/src
+# include directory both stay in place for that one file.
+ra8_add_zig_library(
+  NAME
+  fw_if_fs
+  ZIG_ROOT
+  ${FW_ROOT}/libs/if
+  LIBRARY_NAME
+  fw_if_fs
+)
 set_property(
   TARGET ra8_zig::ra8_keyboard
   APPEND
@@ -359,6 +372,7 @@ target_link_libraries(
          ra8_zig::ra8_ov5640
          ra8_zig::if_ra8_vfs
          ra8_zig::ra8_camera
+         ra8_zig::fw_if_fs
 )
 
 link_libraries(ra8_zig::ra8_batt)
@@ -384,4 +398,5 @@ link_libraries(
   ra8_zig::ra8_ov5640
   ra8_zig::if_ra8_vfs
   ra8_zig::ra8_camera
+  ra8_zig::fw_if_fs
 )
