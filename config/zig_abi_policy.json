@@ -3037,6 +3037,11 @@
           "ownership": "borrows the gray source for the duration of the call and writes the bound framebuffer"
         },
         {
+          "name": "ra8_gfx_blit_gray4_zoom",
+          "calling_context": "task-only-non-reentrant",
+          "ownership": "borrows the packed gray4 source for the duration of the call and writes the clipped, magnified destination"
+        },
+        {
           "name": "ra8_gfx_line",
           "calling_context": "task-only-non-reentrant",
           "ownership": "walks a bounded Bresenham line into the bound framebuffer"
@@ -3091,11 +3096,6 @@
           "name": "priv_gfx_format_ok",
           "source": "libs/ra8_gfx/src/ra8_gfx_bind.c",
           "reason": "promoted alongside priv_gfx_bpp by #737 and defined in the same retained C TU"
-        },
-        {
-          "name": "ra8_gfx_blit_gray4_zoom",
-          "source": "libs/ra8_gfx/src/ra8_gfx_blit_gray4.c",
-          "reason": "the 4bpp zoom blit is its own translation unit and its own later slice; it consumes this archive through priv_gfx_text_plot rather than implementing any of it"
         },
         {
           "name": "ra8_gfx_text_out",
