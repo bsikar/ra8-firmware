@@ -215,6 +215,26 @@ ra8_add_zig_library(
   LIBRARY_NAME
   ra8_audio
 )
+
+# The PURE facade only: the lifecycle state machine, the backend-table
+# validation, the bounded association wait and the lease rule are Zig now, so
+# libs/ra8_wifi/src/ra8_wifi.c is gone and the RA8_WIFI_SOURCES entry is gone
+# from library_sources.cmake and core_hal.cmake. The ESP32-C6 backend
+# (src/ra8_wifi_c6link.c) is deliberately still C on this branch: it rides
+# ra8_c6link and the vendored protobuf codec, which ra8_core_hal does not
+# carry, so it keeps its own target in tests_wifi.cmake. The radio stays a
+# caller-supplied vtable, so the host suite's mock backend substitutes for it
+# exactly as before. The two wifi targets in tests_wifi.cmake consume
+# ra8_core_hal through $<TARGET_OBJECTS:>, which carries no link dependencies,
+# so they link this archive by name there rather than through the list below.
+ra8_add_zig_library(
+  NAME
+  ra8_wifi
+  ZIG_ROOT
+  ${FW_ROOT}/libs/ra8_wifi
+  LIBRARY_NAME
+  ra8_wifi
+)
 set_property(
   TARGET ra8_zig::ra8_keyboard
   APPEND
@@ -240,6 +260,7 @@ target_link_libraries(
          ra8_zig::ra8_usb_pal
          ra8_zig::ra8_keyboard
          ra8_zig::ra8_audio
+         ra8_zig::ra8_wifi
 )
 
 link_libraries(ra8_zig::ra8_batt)
@@ -261,4 +282,5 @@ link_libraries(
   ra8_zig::ra8_usb_pal
   ra8_zig::ra8_keyboard
   ra8_zig::ra8_audio
+  ra8_zig::ra8_wifi
 )
