@@ -123,6 +123,10 @@ function(ra8_add_test name src_file)
             ${FW_ROOT}/apps/shared_libs/zoom/inc
             ${FW_ROOT}/apps/shared_libs/reflow/inc
             ${FW_ROOT}/apps/shared_libs/webp/inc
+            # ra8_webp_arena.h:56 includes "ra8_imgdec_scratch.h", which lives
+            # in ra8_imgdec. Handing a test webp/inc without imgdec/inc hands
+            # it a header that does not compile.
+            ${FW_ROOT}/libs/ra8_imgdec/inc
             ${FW_ROOT}/libs/ra8_touch_cal/inc
             ${FW_ROOT}/libs/ra8_epd_cal/inc
             ${FW_ROOT}/libs/ra8_mpu/inc
