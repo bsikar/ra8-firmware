@@ -303,6 +303,17 @@ target_compile_definitions(
 # host-test builds. The vendored decoders below override it with -w, which is
 # where warning suppression legitimately stops.
 target_compile_options(ra8_reader PRIVATE -Wall -Wextra -Werror)
+
+# reflow_image.c (KEEP, above) dispatches a RIFF/WEBP buffer to the ra8_webp
+# facade over the vendored libwebp (#637) -- stb_image cannot decode WebP. Those
+# calls are unconditional, so the viewer needs the decode stack compiled in, not
+# just declared: without it ra8_reader does not even reach the link, because
+# reflow_image.c:40 cannot find ra8_webp.h. The recipe (vendored TUs, facade,
+# include dirs, SOUP warning flags) lives in cmake/ra8_webp_vendor.cmake and is
+# shared with the firmware apps, cbz2jof, rabook_imagepack and the host tests;
+# open-coding any part of it here would fork the flag set.
+include(${FW_ROOT}/cmake/ra8_webp_vendor.cmake)
+ra8_webp_attach(ra8_reader ${FW_ROOT})
 target_include_directories(
   ra8_reader
   PUBLIC ${FW_ROOT}/libs/ra8_core/inc
