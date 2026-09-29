@@ -583,7 +583,7 @@ ra8_ipc_recv_burst(uint8_t channel, uint32_t* out_data, uint32_t capacity, uint3
  * register write that the SAU / IDAU would silently drop.
  *
  * @param[in]  channel  Channel id 0..3.
- * @param[out] out_attr Receives ``secure`` and ``privileged`` flags.
+ * @param[out] out_attr Receives the ``world`` and ``access`` states.
  *
  * @return ``ra8_err_t`` error code.
  * @retval k_ra8_ok              Attribution read.
@@ -592,8 +592,8 @@ ra8_ipc_recv_burst(uint8_t channel, uint32_t* out_data, uint32_t capacity, uint3
  *
  * @pre IPCSAR / IPCPAR are mapped (CPSCU window).
  * @pre ``out_attr`` non-NULL.
- * @post ``out_attr->secure`` reflects SAIPCIRn (1 = non-secure).
- * @post ``out_attr->privileged`` reflects PAIPCIRn (1 = unprivileged).
+ * @post ``out_attr->world`` is the world SAIPCIRn selects.
+ * @post ``out_attr->access`` is the level PAIPCIRn selects.
  *
  * @note Thread safety: re-entrant; pure read.
  * @since 0.1.0
@@ -609,7 +609,7 @@ ra8_ipc_recv_burst(uint8_t channel, uint32_t* out_data, uint32_t capacity, uint3
  * NMI-injection code can pre-flight before issuing IPCnNMISET writes.
  *
  * @param[in]  unit     NMI unit id 0..1 (k_ra8_ipc_unit_ipc0 / ipc1).
- * @param[out] out_attr Receives ``secure`` / ``privileged`` flags.
+ * @param[out] out_attr Receives the ``world`` / ``access`` states.
  *
  * @return ``ra8_err_t`` error code.
  * @retval k_ra8_ok              Attribution read.
@@ -634,7 +634,7 @@ ra8_ipc_recv_burst(uint8_t channel, uint32_t* out_data, uint32_t capacity, uint3
  * group 1 covers IPCSEM8..15 (HUM Ch 3.3.1 p 228).
  *
  * @param[in]  group    Attribution group.
- * @param[out] out_attr Receives ``secure`` / ``privileged`` flags.
+ * @param[out] out_attr Receives the ``world`` / ``access`` states.
  *
  * @return ``ra8_err_t`` error code.
  * @retval k_ra8_ok              Attribution read.

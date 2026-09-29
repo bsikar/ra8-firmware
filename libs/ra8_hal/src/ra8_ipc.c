@@ -655,8 +655,9 @@ ra8_ipc_recv_burst(uint8_t channel, uint32_t* out_data, uint32_t capacity, uint3
   const uint32_t par = *ra8_ipc_ipcpar();
   const uint32_t bit = (uint32_t)1U << ((uint32_t)k_ra8_ipc_attr_shift_ir_base + (uint32_t)channel);
 
-  out_attr->secure     = ((sar & bit) != 0U);
-  out_attr->privileged = ((par & bit) != 0U);
+  out_attr->world  = ((sar & bit) != 0U) ? k_ra8_ipc_world_non_secure : k_ra8_ipc_world_secure;
+  out_attr->access = ((par & bit) != 0U) ? k_ra8_ipc_access_unprivileged
+                                         : k_ra8_ipc_access_privileged;
   return k_ra8_ok;
 }
 
@@ -671,8 +672,9 @@ ra8_ipc_recv_burst(uint8_t channel, uint32_t* out_data, uint32_t capacity, uint3
   const uint32_t sar   = *ra8_ipc_ipcsar();
   const uint32_t par   = *ra8_ipc_ipcpar();
   const uint32_t bit   = (uint32_t)1U << ((uint32_t)k_ra8_ipc_attr_shift_nmi_base + (uint32_t)unit);
-  out_attr->secure     = ((sar & bit) != 0U);
-  out_attr->privileged = ((par & bit) != 0U);
+  out_attr->world  = ((sar & bit) != 0U) ? k_ra8_ipc_world_non_secure : k_ra8_ipc_world_secure;
+  out_attr->access = ((par & bit) != 0U) ? k_ra8_ipc_access_unprivileged
+                                         : k_ra8_ipc_access_privileged;
   return k_ra8_ok;
 }
 
@@ -687,8 +689,9 @@ ra8_ipc_recv_burst(uint8_t channel, uint32_t* out_data, uint32_t capacity, uint3
   const uint32_t sar   = *ra8_ipc_ipcsar();
   const uint32_t par   = *ra8_ipc_ipcpar();
   const uint32_t bit   = (uint32_t)1U << (uint32_t)group;
-  out_attr->secure     = ((sar & bit) != 0U);
-  out_attr->privileged = ((par & bit) != 0U);
+  out_attr->world  = ((sar & bit) != 0U) ? k_ra8_ipc_world_non_secure : k_ra8_ipc_world_secure;
+  out_attr->access = ((par & bit) != 0U) ? k_ra8_ipc_access_unprivileged
+                                         : k_ra8_ipc_access_privileged;
   return k_ra8_ok;
 }
 
@@ -697,14 +700,15 @@ ra8_ipc_can_access(uint8_t channel, ra8_ipc_attr_t const* required, bool* out_ca
 {
   RA8_CHECK_NULL_PTR(required, s_tag, "required must not be nullptr");
   RA8_CHECK_NULL_PTR(out_can_access, s_tag, "out_can_access must not be nullptr");
-  ra8_ipc_attr_t  live = {.secure = false, .privileged = false};
+  ra8_ipc_attr_t  live = {.world  = k_ra8_ipc_world_secure,
+                          .access = k_ra8_ipc_access_privileged};
   const ra8_err_t err  = ra8_ipc_get_attribution(channel, &live);
   if (err != k_ra8_ok) {
     return err;
   }
-  const bool secure_match     = live.secure == required->secure;
-  const bool privileged_match = live.privileged == required->privileged;
-  *out_can_access             = (bool)(secure_match && privileged_match);
+  const bool world_match  = live.world == required->world;
+  const bool access_match = live.access == required->access;
+  *out_can_access         = (bool)(world_match && access_match);
   return k_ra8_ok;
 }
 
