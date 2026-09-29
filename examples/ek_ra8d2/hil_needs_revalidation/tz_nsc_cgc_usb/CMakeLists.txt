@@ -158,7 +158,6 @@ set(_ns_usb_srcs
     ${_ns_usbx_core}
     ${_ns_usbx_cdc}
     ${_ns_ux_dcd}
-    ${RA8_REPO_ROOT}/libs/ra8_usb_pal/src/ra8_usb_compose.c
     ${RA8_REPO_ROOT}/libs/ra8_hal/src/ra8_usb.c
     ${RA8_REPO_ROOT}/libs/ra8_hal/src/ra8_usb_phy.c
     ${RA8_REPO_ROOT}/libs/ra8_hal/src/ra8_usb_device.c

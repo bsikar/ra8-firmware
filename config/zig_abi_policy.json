@@ -1217,14 +1217,6 @@
           "registration": "libs/ra8_usb_pal/.zig-test-contract.json"
         }
       ],
-      "c_retained_exports": [
-        {
-          "name": "ra8_usb_device_compose",
-          "source": "libs/ra8_usb_pal/src/ra8_usb_compose.c",
-          "reason": "the one-call framework facade added to this library by #766 after the port branch was cut; the four builders it dispatches to are Zig in this archive (src/ra8_usb_desc_abi.zig) and it calls them through the unchanged inc/ra8_usb_desc.h, so it stays a C translation unit beside the archive until it is ported in its own slice",
-          "header": "libs/ra8_usb_pal/inc/ra8_usb_compose.h"
-        }
-      ],
       "exports": [
         {
           "name": "ra8_usb_pal_init",
@@ -1310,6 +1302,11 @@
           "name": "ra8_usb_desc_build_dfu",
           "calling_context": "task-safe-reentrant",
           "ownership": "Encodes descriptor bytes into the caller's buffer and retains no pointer; the caller owns the buffer and the strings it names."
+        },
+        {
+          "name": "ra8_usb_device_compose",
+          "calling_context": "task-safe-reentrant",
+          "ownership": "Dispatches one class entry to its descriptor builder and encodes the string and LANGID frameworks beside it; retains no pointer, and the caller owns the three buffers and the strings the device names."
         }
       ],
       "public_headers": [
@@ -1325,6 +1322,19 @@
             "descriptor.Size.device == 18"
           ],
           "symbol_prefix": "ra8_usb_desc_"
+        },
+        {
+          "path": "libs/ra8_usb_pal/inc/ra8_usb_compose.h",
+          "compatibility_sha256": "5b6648105f08b839bedffaf0aa8af4b20283413c091cf49f8b8cf4464787162e",
+          "layout_assertions": [
+            "@offsetOf(CClass, \"body\") == 2",
+            "@sizeOf(CClass) == 14",
+            "@sizeOf(CClassBody) == 12",
+            "@offsetOf(CConfig, \"class_count\") == 2 * pointer_bytes",
+            "@offsetOf(CFrameworks, \"device_cap\") == pointer_bytes",
+            "compose.Limits.classes_max == 1"
+          ],
+          "symbol_prefix": "ra8_usb_device_"
         }
       ],
       "adapters": [
@@ -1332,6 +1342,12 @@
           "path": "libs/ra8_usb_pal/src/ra8_usb_desc_abi.zig",
           "symbol_prefixes": [
             "ra8_usb_desc_"
+          ]
+        },
+        {
+          "path": "libs/ra8_usb_pal/src/ra8_usb_compose_abi.zig",
+          "symbol_prefixes": [
+            "ra8_usb_device_"
           ]
         }
       ]

@@ -37,15 +37,16 @@
 include(${CMAKE_CURRENT_LIST_DIR}/ra8_production_build.cmake)
 
 # Canonical universal first-party source list. MUST stay in lockstep with the
-# _ra8_lib_core / _ra8_lib_hal / _ra8_lib_usb_pal /
-# _ra8_lib_board / _ra8_secure_app globs in cmake/ra8_add_app.cmake -- an app
+# _ra8_lib_core / _ra8_lib_hal / _ra8_lib_board / _ra8_secure_app globs in
+# cmake/ra8_add_app.cmake -- an app
 # that links the archive drops exactly these from its own compile, so a
 # divergence surfaces as a loud undefined-symbol link error, never silent
 # breakage.
 function(ra8_shared_lib_sources out_var repo_root board_dir)
   file(GLOB_RECURSE _core CONFIGURE_DEPENDS ${repo_root}/libs/ra8_core/src/*.c)
   file(GLOB_RECURSE _hal CONFIGURE_DEPENDS ${repo_root}/libs/ra8_hal/src/*.c)
-  file(GLOB_RECURSE _usb_pal CONFIGURE_DEPENDS ${repo_root}/libs/ra8_usb_pal/src/*.c)
+  # No ra8_usb_pal glob: that library is fully Zig (#766) and its objects come
+  # from the Zig static archive, linked separately, as ra8_net_pal's do.
   # Boot composition sources live in src/boot and are selected per image by
   # ra8_app/sources.cmake. The shared archive owns only host-neutral board
   # implementations directly under src/.
@@ -54,7 +55,6 @@ function(ra8_shared_lib_sources out_var repo_root board_dir)
   set(${out_var}
       ${_core}
       ${_hal}
-      ${_usb_pal}
       ${_board}
       ${_secure}
       PARENT_SCOPE

@@ -122,7 +122,9 @@ fn span(text: ?[*:0]const u8) descriptor.Error![]const u8 {
     return ptr[0..len];
 }
 
-fn device(c: *const CDevice) descriptor.Error!descriptor.Device {
+/// `ra8_usb_desc_device_t` as the core's `Device`. Shared with the compose
+/// membrane so both surfaces read a C device exactly the same way.
+pub fn deviceOf(c: *const CDevice) descriptor.Error!descriptor.Device {
     return .{
         .vid = c.vid,
         .pid = c.pid,
@@ -137,7 +139,58 @@ fn device(c: *const CDevice) descriptor.Error!descriptor.Device {
     };
 }
 
-fn outSlice(out: [*]u8, cap: u32) []u8 {
+/// `ra8_usb_desc_cdc_acm_t` as the core's `CdcAcm`.
+pub fn cdcAcmOf(c: *const CCdcAcm) descriptor.CdcAcm {
+    return .{
+        .notify_ep = c.notify_ep,
+        .notify_bytes = c.notify_bytes,
+        .notify_interval_ms = c.notify_interval_ms,
+        .out_ep = c.out_ep,
+        .in_ep = c.in_ep,
+        .data_bytes = c.data_bytes,
+        .high_speed = c.high_speed != 0,
+    };
+}
+
+/// `ra8_usb_desc_msc_t` as the core's `Msc`.
+pub fn mscOf(c: *const CMsc) descriptor.Msc {
+    return .{
+        .in_ep = c.in_ep,
+        .out_ep = c.out_ep,
+        .data_bytes = c.data_bytes,
+        .high_speed = c.high_speed != 0,
+    };
+}
+
+/// `ra8_usb_desc_hid_t` as the core's `Hid`. A protocol byte outside the
+/// three the specification names is refused here rather than encoded.
+pub fn hidOf(c: *const CHid) descriptor.Error!descriptor.Hid {
+    return .{
+        .in_ep = c.in_ep,
+        .data_bytes = c.data_bytes,
+        .poll_interval_ms = c.poll_interval_ms,
+        .report_bytes = c.report_bytes,
+        .boot_interface = c.boot_interface != 0,
+        .protocol = std.meta.intToEnum(descriptor.HidProtocol, c.protocol) catch
+            return descriptor.Error.InvalidArg,
+    };
+}
+
+/// `ra8_usb_desc_dfu_t` as the core's `Dfu`.
+pub fn dfuOf(c: *const CDfu) descriptor.Dfu {
+    return .{
+        .can_download = c.can_download != 0,
+        .can_upload = c.can_upload != 0,
+        .manifestation_tolerant = c.manifestation_tolerant != 0,
+        .will_detach = c.will_detach != 0,
+        .dfu_mode = c.dfu_mode != 0,
+        .detach_timeout_ms = c.detach_timeout_ms,
+        .transfer_bytes = c.transfer_bytes,
+        .bcd_dfu = c.bcd_dfu,
+    };
+}
+
+pub fn outSlice(out: [*]u8, cap: u32) []u8 {
     return out[0..cap];
 }
 
@@ -172,7 +225,7 @@ export fn ra8_usb_desc_build_strings(
     const c_dev = dev orelse return err_null_ptr;
     const buf = out orelse return err_null_ptr;
     const len_out = out_len orelse return err_null_ptr;
-    const model = device(c_dev) catch |err| return code(err);
+    const model = deviceOf(c_dev) catch |err| return code(err);
     const len = descriptor.strings(model, outSlice(buf, cap)) catch |err| return code(err);
     return wrote(len, len_out);
 }
@@ -188,16 +241,8 @@ export fn ra8_usb_desc_build_cdc_acm(
     const c_cdc = cdc orelse return err_null_ptr;
     const buf = out orelse return err_null_ptr;
     const len_out = out_len orelse return err_null_ptr;
-    const port = descriptor.CdcAcm{
-        .notify_ep = c_cdc.notify_ep,
-        .notify_bytes = c_cdc.notify_bytes,
-        .notify_interval_ms = c_cdc.notify_interval_ms,
-        .out_ep = c_cdc.out_ep,
-        .in_ep = c_cdc.in_ep,
-        .data_bytes = c_cdc.data_bytes,
-        .high_speed = c_cdc.high_speed != 0,
-    };
-    const model = device(c_dev) catch |err| return code(err);
+    const port = cdcAcmOf(c_cdc);
+    const model = deviceOf(c_dev) catch |err| return code(err);
     const len = descriptor.cdcAcm(model, port, outSlice(buf, cap)) catch |err| return code(err);
     return wrote(len, len_out);
 }
@@ -213,13 +258,8 @@ export fn ra8_usb_desc_build_msc(
     const c_msc = msc orelse return err_null_ptr;
     const buf = out orelse return err_null_ptr;
     const len_out = out_len orelse return err_null_ptr;
-    const storage = descriptor.Msc{
-        .in_ep = c_msc.in_ep,
-        .out_ep = c_msc.out_ep,
-        .data_bytes = c_msc.data_bytes,
-        .high_speed = c_msc.high_speed != 0,
-    };
-    const model = device(c_dev) catch |err| return code(err);
+    const storage = mscOf(c_msc);
+    const model = deviceOf(c_dev) catch |err| return code(err);
     const len = descriptor.msc(model, storage, outSlice(buf, cap)) catch |err| return code(err);
     return wrote(len, len_out);
 }
@@ -235,16 +275,8 @@ export fn ra8_usb_desc_build_hid(
     const c_hid = hid orelse return err_null_ptr;
     const buf = out orelse return err_null_ptr;
     const len_out = out_len orelse return err_null_ptr;
-    const human = descriptor.Hid{
-        .in_ep = c_hid.in_ep,
-        .data_bytes = c_hid.data_bytes,
-        .poll_interval_ms = c_hid.poll_interval_ms,
-        .report_bytes = c_hid.report_bytes,
-        .boot_interface = c_hid.boot_interface != 0,
-        .protocol = std.meta.intToEnum(descriptor.HidProtocol, c_hid.protocol) catch
-            return err_invalid_arg,
-    };
-    const model = device(c_dev) catch |err| return code(err);
+    const human = hidOf(c_hid) catch |err| return code(err);
+    const model = deviceOf(c_dev) catch |err| return code(err);
     const len = descriptor.hid(model, human, outSlice(buf, cap)) catch |err| return code(err);
     return wrote(len, len_out);
 }
@@ -260,17 +292,8 @@ export fn ra8_usb_desc_build_dfu(
     const c_dfu = dfu orelse return err_null_ptr;
     const buf = out orelse return err_null_ptr;
     const len_out = out_len orelse return err_null_ptr;
-    const upgrade = descriptor.Dfu{
-        .can_download = c_dfu.can_download != 0,
-        .can_upload = c_dfu.can_upload != 0,
-        .manifestation_tolerant = c_dfu.manifestation_tolerant != 0,
-        .will_detach = c_dfu.will_detach != 0,
-        .dfu_mode = c_dfu.dfu_mode != 0,
-        .detach_timeout_ms = c_dfu.detach_timeout_ms,
-        .transfer_bytes = c_dfu.transfer_bytes,
-        .bcd_dfu = c_dfu.bcd_dfu,
-    };
-    const model = device(c_dev) catch |err| return code(err);
+    const upgrade = dfuOf(c_dfu);
+    const model = deviceOf(c_dev) catch |err| return code(err);
     const len = descriptor.dfu(model, upgrade, outSlice(buf, cap)) catch |err| return code(err);
     return wrote(len, len_out);
 }
