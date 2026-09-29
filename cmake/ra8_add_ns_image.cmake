@@ -28,7 +28,7 @@
 #   ra8_add_ns_image(
 #     SECURE_TARGET ra8d2-ereader.elf
 #     NAME          ra8d2-ereader_ns
-#     LINKER        ${CMAKE_CURRENT_SOURCE_DIR}/ns_image.ld
+#     LINKER        ${RA8_REPO_ROOT}/libs/ra8_board_ek_ra8d2/ld/ns_image_sram.ld
 #     STACK_BYTES   2200
 #     SOURCES       src/ns_main.c ...
 #     INCLUDES      ...

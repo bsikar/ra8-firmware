@@ -9,7 +9,7 @@
 #     (ra8_rot + ra8_psa_crypto + tf-psa-crypto) and BLXNS-es via
 #     ra8_tz_secure_boot_jump_ns -- default-deny on a failed signature.
 #   * Non-Secure ELF (secure_boot_ns_hil_ns.elf): a minimal liveness beacon
-#     (ns_main.c) placed at the NS addresses by ns_image.ld, whose .ns_rot_header
+#     (ns_main.c) placed at the NS addresses by ns_image_sram.ld, whose .ns_rot_header
 #     tells the Secure verifier the signed-body length.
 #
 # The NS image is SIGNED (scripts/secrets/rot_sign.py) and merged with the Secure hex into
@@ -150,11 +150,11 @@ target_link_options(
   secure_boot_ns_hil_ns.elf
   PRIVATE
   -nostartfiles
-  -T${CMAKE_CURRENT_SOURCE_DIR}/ns_image.ld
+  -T${RA8_REPO_ROOT}/libs/ra8_board_ek_ra8d2/ld/ns_image_sram.ld
   -Wl,--Map=secure_boot_ns_hil_ns.map
 )
 set_target_properties(
-  secure_boot_ns_hil_ns.elf PROPERTIES LINK_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/ns_image.ld"
+  secure_boot_ns_hil_ns.elf PROPERTIES LINK_DEPENDS "${RA8_REPO_ROOT}/libs/ra8_board_ek_ra8d2/ld/ns_image_sram.ld"
 )
 # The Secure hex is an input to the merge below, so build the Secure ELF first.
 add_dependencies(secure_boot_ns_hil_ns.elf secure_boot_ns_hil.elf)

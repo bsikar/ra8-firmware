@@ -77,7 +77,6 @@ def tool_app_info(args: dict[str, Any]) -> str:
             "inc/trustzone_init.h",
             "linker_script.ld",
             "linker_script_cpu1.ld",
-            "ns_image.ld",
             "ns_image_xip.ld",
             "payload.ld",
             "CMakeLists.txt",

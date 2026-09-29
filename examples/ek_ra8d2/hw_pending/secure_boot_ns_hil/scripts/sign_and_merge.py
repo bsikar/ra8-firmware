@@ -28,7 +28,7 @@ import subprocess
 import sys
 from pathlib import Path
 
-# The NS image is flashed at the Secure MRAM LMA (matches ns_image.ld NS_LOAD).
+# The NS image is flashed at the Secure MRAM LMA (matches ns_image_sram.ld NS_LOAD).
 NS_LOAD_ADDR = 0x02080000
 # Byte flipped to build the tampered case: the first .text byte, immediately
 # after the 64-byte vector table + 8-byte .ns_rot_header. Definitely inside the
@@ -39,7 +39,7 @@ TAMPER_XOR = 0x01
 IMG_VERSION = 1
 
 # The .ns_rot_header the NS linker embeds (matches ra8_tz_secure_boot.h /
-# ns_image.ld): "NSR1" magic + the signed body_len, at this byte offset.
+# ns_image_sram.ld): "NSR1" magic + the signed body_len, at this byte offset.
 NS_ROT_HEADER_OFFSET = 0x40
 NS_ROT_HEADER_MAGIC = 0x3152534E  # "NSR1" little-endian
 
