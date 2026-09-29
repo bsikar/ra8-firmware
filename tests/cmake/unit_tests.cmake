@@ -506,6 +506,7 @@ target_sources(
 )
 target_include_directories(
   test_ra8_net_provision PRIVATE ${FW_ROOT}/examples/ek_ra8d2/common/network_provision/inc
+  ${FW_ROOT}/libs/ra8_imgdec/inc
 )
 
 # Reuse the hosted Alphabet Soup project's complete production-source closure
@@ -680,6 +681,7 @@ if(TARGET test_mdl_state_parity)
             ${FW_ROOT}/apps/shared_libs/mdl/inc
             ${FW_ROOT}/apps/shared_libs/mdl/src
             ${CMAKE_CURRENT_SOURCE_DIR}/support/inc
+            ${FW_ROOT}/libs/ra8_imgdec/inc
   )
   target_compile_definitions(test_mdl_state_parity PRIVATE _GNU_SOURCE)
 endif()
@@ -712,6 +714,7 @@ if(TARGET test_mdl_library)
             ${FW_ROOT}/apps/shared_libs/mdl/inc
             ${FW_ROOT}/apps/shared_libs/mdl/src
             ${CMAKE_CURRENT_SOURCE_DIR}/support/inc
+            ${FW_ROOT}/libs/ra8_imgdec/inc
   )
   target_compile_definitions(test_mdl_library PRIVATE _GNU_SOURCE)
 endif()
@@ -747,6 +750,7 @@ if(TARGET test_mdl_readers)
             ${FW_ROOT}/apps/shared_libs/mdl/inc
             ${FW_ROOT}/apps/shared_libs/mdl/src
             ${CMAKE_CURRENT_SOURCE_DIR}/support/inc
+            ${FW_ROOT}/libs/ra8_imgdec/inc
   )
   target_compile_definitions(test_mdl_readers PRIVATE _GNU_SOURCE)
 endif()
@@ -822,6 +826,7 @@ if(TARGET test_mdl_export_parity)
             ${FW_ROOT}/apps/shared_libs/mdl/inc
             ${FW_ROOT}/apps/shared_libs/mdl/src
             ${FW_ROOT}/apps/shared_libs/mdl/tests/inc
+            ${FW_ROOT}/libs/ra8_imgdec/inc
   )
   target_compile_definitions(test_mdl_export_parity PRIVATE _GNU_SOURCE RA8_OFF_TARGET)
 endif()
