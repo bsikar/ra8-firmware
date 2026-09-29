@@ -416,5 +416,3 @@ ASSERT(g_ra8_ls_ebss + g_ra8_ls_stack_size <= g_ra8_ls_stack_top,
  * this app's CMakeLists.txt -- a linker ASSERT cannot be used because the cmse
  * symbol resolves to __acle_se_* in script context. */
 
-g_ra8_ls_cpu1_mram_start = ORIGIN(MRAM_CPU1);
-g_ra8_ls_cpu1_stack_top  = ORIGIN(SRAM) + LENGTH(SRAM) - 16K;
