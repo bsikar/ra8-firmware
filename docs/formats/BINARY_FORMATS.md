@@ -39,7 +39,7 @@ artifact, and only earns an entry here).
 | `RBKC` | Chunked `.rabook` container | `apps/shared_libs/book` | `tools/epub_compile/src/epub_compile.py` | @ref md_docs_2formats_2RBKC |
 | `NPU1` | `.npub` Ethos-U55 model container | `libs/ra8_hal` | `tools/vela/src/vela_gen.py` | @ref md_docs_2formats_2NPU1 |
 | `ROT1` | Root-of-trust signed-image trailer | `libs/ra8_dfu` | `scripts/secrets/rot_sign.py` | @ref md_docs_2formats_2ROT1 |
-| `NSR1` | Non-Secure image RoT header | `libs/ra8_tz_secure_boot` | `examples/ek_ra8d2/hw_pending/secure_boot_ns_hil/scripts/sign_and_merge.py`, `examples/ek_ra8d2/hw_pending/secure_boot_ns_hil/ns_image.ld` | @ref md_docs_2formats_2NSR1 |
+| `NSR1` | Non-Secure image RoT header | `libs/ra8_tz_secure_boot` | `examples/ek_ra8d2/hw_pending/secure_boot_ns_hil/scripts/sign_and_merge.py`, `libs/ra8_board_ek_ra8d2/ld/ns_image_sram.ld` | @ref md_docs_2formats_2NSR1 |
 
 Each has its own page in this section; they are also listed in the navigation
 sidebar under "Binary format specifications".
