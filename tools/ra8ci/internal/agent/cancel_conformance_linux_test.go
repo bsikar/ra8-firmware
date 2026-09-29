@@ -31,7 +31,7 @@ func TestFakePlaneCancelTearsDownTheStepBeforeTheReceipt(t *testing.T) {
 	// The step announces itself, records its own pid, then outlives the
 	// test by a wide margin: nothing but the cancel can end it in time.
 	root, snapshot := fixtureCheckout(t, fmt.Sprintf(
-		"printf 'agent-log\\n'\necho $$ > %q\nsleep 300\n", pidPath))
+		"echo $$ > %q\nprintf 'agent-log\\n'\nsleep 60\n", pidPath))
 	assignment := testAssignment()
 	definitions, err := catalog.Load()
 	if err != nil {
@@ -53,21 +53,31 @@ func TestFakePlaneCancelTearsDownTheStepBeforeTheReceipt(t *testing.T) {
 	// Armed before the attempt starts, the cancel races the step's own
 	// startup, and on a loaded host it wins: the attempt ends having run
 	// nothing, and the receipt hook reports a pid file that was never
-	// written as though the agent had left a process behind. Waiting for
-	// the step to record itself makes the real property the only thing this
-	// case can fail on.
+	// written as though the agent had left a process behind.
+	//
+	// The step's own pid file is not the signal to wait on. Measured on a
+	// loaded two-core host, the step stamps that file 313ms into the
+	// attempt and this process cannot read it for a further twenty
+	// seconds, until the step exits: the wait then expires against a step
+	// that has already ended, and the case fails for a reason that is not
+	// the property under test. A log chunk the plane has answered is the
+	// same proof that the step is running, arrives in this process, and
+	// cannot be held back by a filesystem view. The fixture writes the pid
+	// before it writes that line, so a chunk here means the pid file is
+	// written too, and it is read only at the receipt, by which point the
+	// step has exited and it is readable.
 	recorded := make(chan bool, 1)
 	go func() {
 		for deadline := time.Now().Add(30 * time.Second); time.Now().Before(deadline); {
-			if stepHasRecordedItself(pidPath) {
+			if _, logs, _, _ := plane.state(); logs > 0 {
 				plane.cancelNextHeartbeat()
 				recorded <- true
 				return
 			}
 			time.Sleep(2 * time.Millisecond)
 		}
-		// Armed regardless, so a step that never records itself ends the
-		// attempt with a clear failure rather than a five minute wait.
+		// Armed regardless, so a step whose output never arrives ends the
+		// attempt with a clear failure rather than a long wait.
 		plane.cancelNextHeartbeat()
 		recorded <- false
 	}()
@@ -82,7 +92,7 @@ func TestFakePlaneCancelTearsDownTheStepBeforeTheReceipt(t *testing.T) {
 		t.Fatalf("attempt ran %v: the cancel did not end the step", elapsed)
 	}
 	if !<-recorded {
-		t.Fatal("the step never recorded itself, so the cancel never had a running step to end")
+		t.Fatal("no step output reached the plane, so the cancel never had a running step to end")
 	}
 
 	_, logs, receipt, violations := plane.state()
@@ -194,16 +204,4 @@ func stepStillAlive(pidPath string) string {
 		return fmt.Sprintf("step process %d was still alive when the terminal receipt arrived", pid)
 	}
 	return ""
-}
-
-// stepHasRecordedItself answers whether the step has written a pid it can be
-// held to. The shell creates the file before it writes into it, so an empty
-// or half-written file is not yet an answer.
-func stepHasRecordedItself(pidPath string) bool {
-	data, err := os.ReadFile(pidPath)
-	if err != nil {
-		return false
-	}
-	pid, err := strconv.Atoi(strings.TrimSpace(string(data)))
-	return err == nil && pid > 1
 }
