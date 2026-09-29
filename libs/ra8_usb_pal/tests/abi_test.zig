@@ -17,6 +17,8 @@ const err_no_data: u16 = 0x10A;
 const err_hw_init_failed: u16 = 0x201;
 const err_null_ptr: u16 = 0x504;
 
+// INTSTS0 NRDY (bit 9): the one edge bit that translates to a bare error.
+const nrdy: u16 = 1 << 9;
 const speed_fs: u8 = 0;
 const speed_hs: u8 = 1;
 
@@ -591,12 +593,20 @@ test "set_event_handler accepts NULL as a detach and logs nothing" {
     try std.testing.expectEqual(@as(u32, 0), pal_event_count);
 }
 
-test "the installed usb handler forwards a raised status as an error event" {
+test "the installed usb handler forwards NRDY as an error event" {
     try bringUp();
     _ = abi.ra8_usb_pal_set_event_handler(palEvent, null);
-    usb_handler.?(null, speed_fs, 0x0004);
+    usb_handler.?(null, speed_fs, nrdy);
     try std.testing.expectEqual(@as(u32, 1), pal_event_count);
     try std.testing.expectEqual(@as(u16, 0x8000), pal_last_mask);
+}
+
+test "the installed usb handler drops a snapshot no bit can name" {
+    try bringUp();
+    _ = abi.ra8_usb_pal_set_event_handler(palEvent, null);
+    // CTSQ / DVSQ sub-state bits with no transition bit beside them.
+    usb_handler.?(null, speed_fs, 0x0004);
+    try std.testing.expectEqual(@as(u32, 0), pal_event_count);
 }
 
 test "the usb handler drops a clear status (dispatch MC/DC condition 2)" {
@@ -608,14 +618,14 @@ test "the usb handler drops a clear status (dispatch MC/DC condition 2)" {
 
 test "the usb handler drops events with no callback installed (condition 1)" {
     try bringUp();
-    usb_handler.?(null, speed_fs, 0x0004);
+    usb_handler.?(null, speed_fs, nrdy);
     try std.testing.expectEqual(@as(u32, 0), pal_event_count);
 }
 
 test "the usb handler drops events from the other controller" {
     try bringUp();
     _ = abi.ra8_usb_pal_set_event_handler(palEvent, null);
-    abi.testUsbEventHandler()(null, speed_hs, 0x0004);
+    abi.testUsbEventHandler()(null, speed_hs, nrdy);
     try std.testing.expectEqual(@as(u32, 0), pal_event_count);
 }
 
@@ -624,7 +634,7 @@ test "the usb handler drops events once the PAL is down" {
     _ = abi.ra8_usb_pal_set_event_handler(palEvent, null);
     const handler = abi.testUsbEventHandler();
     _ = abi.ra8_usb_pal_deinit();
-    handler(null, speed_fs, 0x0004);
+    handler(null, speed_fs, nrdy);
     try std.testing.expectEqual(@as(u32, 0), pal_event_count);
 }
 
@@ -632,7 +642,7 @@ test "the usb handler hands the stored context back" {
     try bringUp();
     var ctx: u32 = 42;
     _ = abi.ra8_usb_pal_set_event_handler(palEvent, &ctx);
-    usb_handler.?(null, speed_fs, 0x0001);
+    usb_handler.?(null, speed_fs, nrdy);
     try std.testing.expectEqual(@as(?*anyopaque, @ptrCast(&ctx)), pal_last_ctx);
 }
 

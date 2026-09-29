@@ -2,7 +2,7 @@
 //! Copyright (c) 2026 Brighton Sikarskie
 //!
 //! Pure core of the USB PAL: the per-endpoint packet ring, the two
-//! MC/DC-promoted predicates, and the ra8_usb status -> PAL event
+//! MC/DC-promoted predicates, and the INTSTS0 -> PAL event
 //! translation. Nothing here touches the C ABI, the ra8_usb driver, or
 //! the logger, so every rule is testable on its own.
 
@@ -78,11 +78,72 @@ pub fn epOutOfRange(ep_addr: u8, limit: u8) bool {
     return (ep_addr == 0) or (ep_addr > limit);
 }
 
-/// ra8_usb status mask -> PAL event mask. Today any raised status bit is
-/// reported as a controller error; later waves fan the bits out.
-pub fn translate(usb_mask: u16) u16 {
-    if (usb_mask != 0) return event_error;
+/// INTSTS0 layout the translation reads (HUM Ch 36.2.14). Positions are bit
+/// indices; the field values are already shifted for a masked compare.
+pub const intsts0 = struct {
+    pub const bit_brdy: u4 = 8;
+    pub const bit_nrdy: u4 = 9;
+    pub const bit_bemp: u4 = 10;
+    pub const bit_ctrt: u4 = 11;
+    pub const bit_dvst: u4 = 12;
+    pub const bit_sofr: u4 = 13;
+    pub const bit_rsme: u4 = 14;
+    pub const bit_vbse: u4 = 15;
+
+    pub const mask_ctsq: u16 = 0x0007;
+    pub const mask_valid: u16 = 0x0008;
+    pub const mask_dvsq: u16 = 0x0070;
+    pub const mask_vbsts: u16 = 0x0080;
+
+    pub const dvsq_default: u16 = 0x0010;
+    pub const dvsq_suspend: u16 = 0x0040;
+    pub const ctsq_sqer: u16 = 0x0006;
+
+    fn raised(snapshot: u16, position: u4) bool {
+        return (snapshot & (@as(u16, 1) << position)) != 0;
+    }
+};
+
+/// DVSQ half of a device-state transition. The suspend flag rides alongside
+/// the three-bit state, so it is tested first; Default is the post-bus-reset
+/// state. Powered, Address and Configured have no bit in the taxonomy, so
+/// they translate to nothing and the caller stays silent rather than
+/// reporting a state change it cannot name.
+fn dvsqEvent(snapshot: u16) u16 {
+    if ((snapshot & intsts0.dvsq_suspend) != 0) return event_suspend;
+    if ((snapshot & intsts0.mask_dvsq) == intsts0.dvsq_default) return event_reset;
     return event_none;
+}
+
+/// CTRT half of a control-transfer stage transition. A transition means a
+/// SETUP packet only while VALID is still latched: the SETUP readers clear
+/// VALID once they drain the request registers, so a transition with VALID
+/// already gone is a data or status step. CTSQ == SQER is the hardware's own
+/// sequence-error report, the one control-path condition called an error.
+fn ctrtEvent(snapshot: u16) u16 {
+    var evt: u16 = event_none;
+    if ((snapshot & intsts0.mask_valid) != 0) evt |= event_setup;
+    if ((snapshot & intsts0.mask_ctsq) == intsts0.ctsq_sqer) evt |= event_error;
+    return evt;
+}
+
+/// Raw INTSTS0 snapshot -> PAL event mask, one arm per source bit. Bits are
+/// ORed, so one snapshot can raise several at once. BRDY is the coarse arm:
+/// it asserts for either direction and reports as `event_ep_out`, because
+/// resolving it per pipe needs BRDYSTS, which the PAL is never given.
+pub fn translateEvent(snapshot: u16) u16 {
+    var evt: u16 = event_none;
+    if (intsts0.raised(snapshot, intsts0.bit_sofr)) evt |= event_sof;
+    if (intsts0.raised(snapshot, intsts0.bit_rsme)) evt |= event_resume;
+    if (intsts0.raised(snapshot, intsts0.bit_vbse)) {
+        evt |= if ((snapshot & intsts0.mask_vbsts) != 0) event_attach else event_detach;
+    }
+    if (intsts0.raised(snapshot, intsts0.bit_dvst)) evt |= dvsqEvent(snapshot);
+    if (intsts0.raised(snapshot, intsts0.bit_ctrt)) evt |= ctrtEvent(snapshot);
+    if (intsts0.raised(snapshot, intsts0.bit_brdy)) evt |= event_ep_out;
+    if (intsts0.raised(snapshot, intsts0.bit_bemp)) evt |= event_ep_in;
+    if (intsts0.raised(snapshot, intsts0.bit_nrdy)) evt |= event_error;
+    return evt;
 }
 
 /// Strip the USB descriptor direction bit so callers may pass either the
