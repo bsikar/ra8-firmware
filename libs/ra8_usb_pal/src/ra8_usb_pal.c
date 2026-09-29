@@ -27,6 +27,7 @@
 #include "ra8_log.h"
 #include "ra8_usb.h"
 #include "ra8_usb_pal_internal.h"
+#include "ra8_usb_regs.h"
 
 /**
  * @brief Pure dispatch-event predicate -- see header for full contract.
@@ -194,34 +195,117 @@ static void internal_reset_eps(void)
 }
 
 /**
- * @brief Translate ra8_usb status mask -> PAL event mask.
+ * @brief Map the INTSTS0.DVSQ field of a DVST event onto PAL event bits.
  *
  * @details
- * Today the mapping is "any non-zero ra8_usb status bit becomes an
- * error event"; later waves will fan the bits out into per-EP and
- * bus-event masks.
+ * Mirrors ``internal_dvst_map_dvsq_to_ux_state`` at
+ * port/usbx/src/ux_dcd_ra8_usb_dvst.c so the PAL and the USBX DCD
+ * bridge read the same register the same way: the suspend flag is
+ * tested first because it rides alongside the three-bit state, then
+ * Default is the post-bus-reset state. Address, Configured and
+ * Powered have no bit in ``ra8_usb_pal_event_t``, so they translate
+ * to ``k_ra8_usb_pal_event_none`` and the caller stays silent rather
+ * than reporting a state change it cannot name.
  *
- * @param[in] usb_mask Raw status mask published by ``ra8_usb``.
+ * @param[in] intsts0 Raw INTSTS0 snapshot carrying the DVSQ field.
  *
- * @return PAL-side event mask suitable for the stack callback.
- * @retval k_ra8_usb_pal_event_none  ``usb_mask`` was zero.
- * @retval k_ra8_usb_pal_event_error ``usb_mask`` had any bit set.
+ * @return PAL event bits implied by the device state.
+ * @retval k_ra8_usb_pal_event_suspend DVSQ suspend flag set.
+ * @retval k_ra8_usb_pal_event_reset   DVSQ == Default (bus reset done).
+ * @retval k_ra8_usb_pal_event_none    Powered / Address / Configured.
  *
- * @pre ``usb_mask`` may take any uint16_t value.
+ * @pre ``intsts0`` is an unmodified INTSTS0 read.
  * @pre No global state is read.
  * @post No state is modified.
- * @post Return value reflects the translation only.
+ * @post Return value depends solely on the input.
  *
  * @note Pure helper; safe from any context.
  * @since 0.1.0
  */
 RA8_INTERNAL
-static uint16_t internal_translate(uint16_t usb_mask)
+static uint16_t internal_dvsq_event(uint16_t intsts0)
 {
-  if (usb_mask != 0U) {
-    return k_ra8_usb_pal_event_error;
+  if ((intsts0 & (uint16_t)k_ra8_dvsq_suspend) != 0U) {
+    return (uint16_t)k_ra8_usb_pal_event_suspend;
   }
-  return k_ra8_usb_pal_event_none;
+  if ((intsts0 & (uint16_t)k_ra8_intsts0_mask_dvsq) == (uint16_t)k_ra8_dvsq_default) {
+    return (uint16_t)k_ra8_usb_pal_event_reset;
+  }
+  return (uint16_t)k_ra8_usb_pal_event_none;
+}
+
+/**
+ * @brief Map the CTRT half of an INTSTS0 snapshot onto PAL event bits.
+ *
+ * @details
+ * A control-transfer stage transition means a SETUP packet only when
+ * VALID is still latched; the SETUP readers
+ * (``ra8_usb_read_setup_if_valid`` / ``_unconditional``) clear VALID
+ * once they drain USBREQ/USBVAL/USBINDX/USBLENG, which is why VALID
+ * and not CTRT alone gates the event. CTSQ == SQER is the hardware's
+ * own sequence-error report and is the one control-path condition the
+ * taxonomy calls an error.
+ *
+ * @param[in] intsts0 Raw INTSTS0 snapshot carrying VALID and CTSQ.
+ *
+ * @return PAL event bits implied by the control-transfer stage.
+ * @retval k_ra8_usb_pal_event_setup VALID latched with the transition.
+ * @retval k_ra8_usb_pal_event_error CTSQ reports a sequence error.
+ * @retval k_ra8_usb_pal_event_none  Ordinary data / status stage step.
+ *
+ * @pre ``intsts0`` is an unmodified INTSTS0 read.
+ * @pre No global state is read.
+ * @post No state is modified.
+ * @post Return value depends solely on the input.
+ *
+ * @note Pure helper; safe from any context. Bits are ORed, so a SETUP
+ *       arriving on a sequence-errored pipe reports both.
+ * @since 0.1.0
+ */
+RA8_INTERNAL
+static uint16_t internal_ctrt_event(uint16_t intsts0)
+{
+  uint16_t evt = (uint16_t)k_ra8_usb_pal_event_none;
+  if ((intsts0 & (uint16_t)k_ra8_intsts0_mask_valid) != 0U) {
+    evt |= (uint16_t)k_ra8_usb_pal_event_setup;
+  }
+  if ((intsts0 & (uint16_t)k_ra8_intsts0_mask_ctsq) == (uint16_t)k_ra8_ctsq_sqer) {
+    evt |= (uint16_t)k_ra8_usb_pal_event_error;
+  }
+  return evt;
+}
+
+uint16_t priv_usb_pal_translate_event(uint16_t intsts0)
+{
+  uint16_t evt = (uint16_t)k_ra8_usb_pal_event_none;
+
+  if ((intsts0 & (uint16_t)(1U << (uint8_t)k_ra8_int0_bit_sofr)) != 0U) {
+    evt |= (uint16_t)k_ra8_usb_pal_event_sof;
+  }
+  if ((intsts0 & (uint16_t)(1U << (uint8_t)k_ra8_int0_bit_rsme)) != 0U) {
+    evt |= (uint16_t)k_ra8_usb_pal_event_resume;
+  }
+  if ((intsts0 & (uint16_t)(1U << (uint8_t)k_ra8_int0_bit_vbse)) != 0U) {
+    evt |= ((intsts0 & (uint16_t)k_ra8_intsts0_mask_vbsts) != 0U)
+             ? (uint16_t)k_ra8_usb_pal_event_attach
+             : (uint16_t)k_ra8_usb_pal_event_detach;
+  }
+  if ((intsts0 & (uint16_t)(1U << (uint8_t)k_ra8_int0_bit_dvst)) != 0U) {
+    evt |= internal_dvsq_event(intsts0);
+  }
+  if ((intsts0 & (uint16_t)(1U << (uint8_t)k_ra8_int0_bit_ctrt)) != 0U) {
+    evt |= internal_ctrt_event(intsts0);
+  }
+  if ((intsts0 & (uint16_t)(1U << (uint8_t)k_ra8_int0_bit_brdy)) != 0U) {
+    evt |= (uint16_t)k_ra8_usb_pal_event_ep_out;
+  }
+  if ((intsts0 & (uint16_t)(1U << (uint8_t)k_ra8_int0_bit_bemp)) != 0U) {
+    evt |= (uint16_t)k_ra8_usb_pal_event_ep_in;
+  }
+  if ((intsts0 & (uint16_t)(1U << (uint8_t)k_ra8_int0_bit_nrdy)) != 0U) {
+    evt |= (uint16_t)k_ra8_usb_pal_event_error;
+  }
+  return evt;
 }
 
 /**
@@ -231,8 +315,8 @@ static uint16_t internal_translate(uint16_t usb_mask)
  * Installed via ``ra8_usb_attach_handler`` during ::ra8_usb_pal_init.
  * Drops events while the PAL is uninitialized or arriving from a
  * different speed than the one negotiated, then translates the raw
- * status mask via ::internal_translate and forwards non-zero
- * results to the stack callback.
+ * status mask via ::priv_usb_pal_translate_event and forwards
+ * non-zero results to the stack callback.
  *
  * @param[in] ctx         Opaque context (unused -- PAL is a singleton).
  * @param[in] speed       Speed reported by the ra8_usb driver.
@@ -257,7 +341,7 @@ static void internal_usb_event(void* ctx, ra8_usb_speed_t speed, uint16_t status
   if (speed != s_state.speed) {
     return;
   }
-  const uint16_t pal_mask = internal_translate(status_mask);
+  const uint16_t pal_mask = priv_usb_pal_translate_event(status_mask);
   if (priv_usb_pal_should_dispatch_event((const void*)s_state.event_fn,
                                          pal_mask,
                                          (uint16_t)k_ra8_usb_pal_event_none)) {
