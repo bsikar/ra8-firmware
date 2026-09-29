@@ -111,7 +111,12 @@ set(MDL_PUBLIC_INC ${MDL_CORE_INC} ${MDL_REPO_ROOT}/apps/shared_libs/mdl/inc
                    ${MDL_REPO_ROOT}/libs/ra8_mdl/inc
                    ${MDL_REPO_ROOT}/libs/ra8_net_policy/inc
                    ${MDL_REPO_ROOT}/libs/ra8_num/inc
-                   ${MDL_REPO_ROOT}/libs/ra8_xml/inc)
+                   ${MDL_REPO_ROOT}/libs/ra8_xml/inc
+                   # `ra8_imgdec.h:72` includes "ra8_arena.h", which lives in
+                   # ra8_mem. mdl_urlname.c and the imgdec sniffer both compile
+                   # into these targets, so handing them imgdec/inc without
+                   # ra8_mem/inc hands them a header that does not compile.
+                   ${MDL_REPO_ROOT}/libs/ra8_mem/inc)
 set(MDL_FS_SRC
     ${FW}/if/src/fw_if_fs.c
     ${FW}/if/src/fw_if_fs_dir.c
@@ -609,6 +614,7 @@ add_executable(
   ${MDL_CORE_SRC_DIR}/mdl_urlname.c
   # mdl_urlname.c names an image from the shared container sniff (#768).
   ${MDL_REPO_ROOT}/libs/ra8_imgdec/src/ra8_imgdec_sniff.c
+  ${MDL_REPO_ROOT}/libs/ra8_imgdec/src/ra8_imgdec_name.c
   ${MDL_CORE_SRC_DIR}/mdl_sanitize.c
   ${MDL_REPO_ROOT}/libs/if/src/ra8_path.c
   ${MDL_FS_SRC}
@@ -651,6 +657,7 @@ add_executable(
   ${MDL_CORE_SRC_DIR}/mdl_urlname.c
   # mdl_urlname.c names an image from the shared container sniff (#768).
   ${MDL_REPO_ROOT}/libs/ra8_imgdec/src/ra8_imgdec_sniff.c
+  ${MDL_REPO_ROOT}/libs/ra8_imgdec/src/ra8_imgdec_name.c
   ${MDL_CORE_SRC_DIR}/mdl_sanitize.c
   ${MDL_REPO_ROOT}/libs/if/src/ra8_path.c
   ${MDL_CORE_SRC_DIR}/mdl_pathfs.c
@@ -700,6 +707,7 @@ add_executable(
   ${MDL_CORE_SRC_DIR}/mdl_urlname.c
   # mdl_urlname.c names an image from the shared container sniff (#768).
   ${MDL_REPO_ROOT}/libs/ra8_imgdec/src/ra8_imgdec_sniff.c
+  ${MDL_REPO_ROOT}/libs/ra8_imgdec/src/ra8_imgdec_name.c
   ${MDL_CORE_SRC_DIR}/mdl_sanitize.c
   ${MDL_REPO_ROOT}/libs/if/src/ra8_path.c
   ${MDL_CORE_SRC_DIR}/mdl_pathfs.c
@@ -777,6 +785,7 @@ add_executable(
   ${MDL_CORE_SRC_DIR}/mdl_urlname.c
   # mdl_urlname.c names an image from the shared container sniff (#768).
   ${MDL_REPO_ROOT}/libs/ra8_imgdec/src/ra8_imgdec_sniff.c
+  ${MDL_REPO_ROOT}/libs/ra8_imgdec/src/ra8_imgdec_name.c
   ${MDL_CORE_SRC_DIR}/mdl_sanitize.c
   ${MDL_REPO_ROOT}/libs/if/src/ra8_path.c
   ${MDL_REPO_ROOT}/apps/shared_libs/mdl/tests/src/mdl_state_fs_fault.c
@@ -856,6 +865,7 @@ add_executable(
   ${MDL_CORE_SRC_DIR}/mdl_urlname.c
   # mdl_urlname.c names an image from the shared container sniff (#768).
   ${MDL_REPO_ROOT}/libs/ra8_imgdec/src/ra8_imgdec_sniff.c
+  ${MDL_REPO_ROOT}/libs/ra8_imgdec/src/ra8_imgdec_name.c
   ${MDL_CORE_SRC_DIR}/mdl_sanitize.c
   ${MDL_REPO_ROOT}/libs/if/src/ra8_path.c
   ${MDL_CORE_SRC_DIR}/mdl_politeness.c
