@@ -69,10 +69,6 @@ target_compile_definitions(tz_nsc_cgc_usb.elf PRIVATE RA8_TRUSTZONE_ENABLE)
 target_compile_options(tz_nsc_cgc_usb.elf PRIVATE -mcmse)
 target_link_options(tz_nsc_cgc_usb.elf PRIVATE -mcmse)
 
-# Emit the CMSE import library so the NS link can bind the veneer names to the
-# Secure-Gateway stubs.
-set(_ra8_tz_implib ${CMAKE_CURRENT_BINARY_DIR}/tz_nsc_cgc_usb_cmse_import.o)
-target_link_options(tz_nsc_cgc_usb.elf PRIVATE -Wl,--cmse-implib -Wl,--out-implib=${_ra8_tz_implib})
 
 # ---- Post-build: verify the NSC SG-veneer slot offsets (T5-08) -------------
 # The NS image reaches each NSC CGC veneer by NAME, through the CMSE import
@@ -97,50 +93,32 @@ add_custom_command(
 # ---- Non-Secure executable ------------------------------------------------
 include(${_d}/cmake/threadx_ns.cmake)
 
-add_executable(
-  tz_nsc_cgc_usb_ns.elf
-  ${CMAKE_CURRENT_SOURCE_DIR}/src/ns_main.c ${CMAKE_CURRENT_SOURCE_DIR}/src/ns_usb.c
-  ${CMAKE_CURRENT_SOURCE_DIR}/src/ns_usb_host.c
-)
-
-# Match the toolchain ABI of the Secure side but build for the NS world: no
-# -mcmse (NS emits no veneers), no startup files (the Secure boot copies .data
-# and ns_reset_handler zeros .bss), and the NS-image linker script.
+# ra8_add_ns_image() owns the CMSE implib handshake at both ends, the NS
+# warning profile, the build ordering, and the merged-hex staple (#759 item 1).
+# The USBX and ra8_usb sources this image also needs are added to the target it
+# creates, below.
 #   RA8_PERIPH_NS_ALIAS -- ra8_usb/ra8_mstp reach the controllers through the IDAU
 #                         bit[28]=1 Non-secure alias (0x5025_0000 / 0x5020_3000).
 #   RA8_USB_POLLED_ONLY -- ux_dcd_ra8_usb skips the Secure-attributed USB NVIC line;
 #                         the worker drives the controller via ra8_usb_dispatch.
-target_compile_definitions(
-  tz_nsc_cgc_usb_ns.elf PRIVATE RA8_TRUSTZONE_ENABLE RA8_PERIPH_NS_ALIAS RA8_USB_POLLED_ONLY
+ra8_add_ns_image(
+  SECURE_TARGET tz_nsc_cgc_usb.elf
+  NAME tz_nsc_cgc_usb_ns
+  LINKER ${CMAKE_CURRENT_SOURCE_DIR}/ns_image.ld
+  STACK_BYTES 2200
+  IMPLIB ${CMAKE_CURRENT_BINARY_DIR}/tz_nsc_cgc_usb_cmse_import.o
+  MERGED_HEX tz_nsc_cgc_usb.hex
+  SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/src/ns_main.c
+          ${CMAKE_CURRENT_SOURCE_DIR}/src/ns_usb.c
+          ${CMAKE_CURRENT_SOURCE_DIR}/src/ns_usb_host.c
+  DEFINES RA8_TRUSTZONE_ENABLE RA8_PERIPH_NS_ALIAS RA8_USB_POLLED_ONLY
+  INCLUDES ${CMAKE_CURRENT_SOURCE_DIR}/inc
+           ${CMAKE_CURRENT_SOURCE_DIR}/src
+           ${RA8_REPO_ROOT}/libs/ra8_core/inc
+           ${RA8_REPO_ROOT}/libs/ra8_hal/inc
+           ${RA8_REPO_ROOT}/libs/ra8_nsc/inc
+  LINK_LIBS threadx_ns
 )
-target_compile_options(tz_nsc_cgc_usb_ns.elf PRIVATE -fshort-enums -ffreestanding)
-# Raw add_executable targets skip the ra8_add_app warning profile, so without
-# this the NS image compiles WITHOUT -Wall/-Wextra/-Werror (the T2-05
-# warnings-scope hole). threadx_ns keeps its own permissive vendor flags.
-ra8_target_enable_project_warnings(tz_nsc_cgc_usb_ns.elf STACK_USAGE_BYTES 2200)
-target_include_directories(
-  tz_nsc_cgc_usb_ns.elf
-  PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/inc
-          ${CMAKE_CURRENT_SOURCE_DIR}/src
-          ${RA8_REPO_ROOT}/libs/ra8_core/inc
-          ${RA8_REPO_ROOT}/libs/ra8_hal/inc
-          ${RA8_REPO_ROOT}/libs/ra8_nsc/inc
-)
-target_link_libraries(tz_nsc_cgc_usb_ns.elf PRIVATE threadx_ns)
-target_link_options(
-  tz_nsc_cgc_usb_ns.elf
-  PRIVATE
-  -nostartfiles
-  -T${CMAKE_CURRENT_SOURCE_DIR}/ns_image.ld
-  -Wl,--Map=tz_nsc_cgc_usb_ns.map
-  ${_ra8_tz_implib}
-)
-set_target_properties(
-  tz_nsc_cgc_usb_ns.elf PROPERTIES LINK_DEPENDS
-                                   "${CMAKE_CURRENT_SOURCE_DIR}/ns_image.ld;${_ra8_tz_implib}"
-)
-# The import library is produced by the Secure link, so build that first.
-add_dependencies(tz_nsc_cgc_usb_ns.elf tz_nsc_cgc_usb.elf)
 
 # ---- USBX + ra8_usb, compiled NS-private into the NS ELF (#96 M2) -----------
 # USBX core + CDC-ACM, the ra8_usb<->USBX DCD bridge, the ra8_usb register driver
@@ -216,22 +194,4 @@ target_include_directories(
   tz_nsc_cgc_usb_ns.elf
   PRIVATE ${RA8_REPO_ROOT}/port/usbx/inc ${RA8_REPO_ROOT}/libs/ra8_usb_pal/inc
           ${RA8_REPO_ROOT}/libs/ra8_board_ek_ra8d2/inc
-)
-
-# ---- Combine: Secure image + NS image -> one flashable hex ----------------
-# objcopy each ELF to ihex (stripping the Secure side's option-setting records,
-# which the J-Link/MRAM flasher cannot write), then merge -- the Secure image
-# lives at 0x0200_0000+ and the NS image's LMA at 0x0208_0000, so they do not
-# overlap. The merged hex overwrites the app hex so the existing flash flow
-# (hil_run_local / flash.sh) picks up BOTH halves.
-add_custom_command(
-  TARGET tz_nsc_cgc_usb_ns.elf
-  POST_BUILD
-  COMMAND ${CMAKE_OBJCOPY} --remove-section=.option_setting* -O ihex
-          $<TARGET_FILE:tz_nsc_cgc_usb.elf> tz_nsc_cgc_usb_secure.hex
-  COMMAND ${CMAKE_OBJCOPY} -O ihex $<TARGET_FILE:tz_nsc_cgc_usb_ns.elf> tz_nsc_cgc_usb_ns.hex
-  COMMAND ${RA8_REPO_ROOT}/scripts/gen/merge_ihex.py tz_nsc_cgc_usb_secure.hex tz_nsc_cgc_usb_ns.hex
-          tz_nsc_cgc_usb.hex
-  VERBATIM
-  COMMENT "Merging Secure + Non-Secure images into tz_nsc_cgc_usb.hex"
 )
