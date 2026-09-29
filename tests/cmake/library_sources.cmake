@@ -117,11 +117,11 @@ file(GLOB_RECURSE RA8_NSC_SOURCES CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra8_nsc/src/
 # validation cluster, the orchestration state machine and the verify cluster.
 # libs/ra8_ota/src carries no C at all, so there is no glob here; the private
 # src/ra8_ota_internal.h stays because three C suites include it.
-# ra8_display_pal is mostly Zig: the dispatcher, the refresh policy and the
-# LCD/GLCDC panel backend are libs/ra8_display_pal/src/*.zig (built by
-# libs/ra8_display_pal/build.zig), so this glob now matches exactly one file,
-# src/ra8_display_pal_eink.c, the last panel backend still in C.
-file(GLOB_RECURSE RA8_DISPLAY_PAL_SOURCES CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra8_display_pal/src/*.c)
+# ra8_display_pal is entirely Zig now: the dispatcher, the refresh policy and
+# both panel backends are libs/ra8_display_pal/src/*.zig (built by
+# libs/ra8_display_pal/build.zig) and linked through cmake/zig_libraries.cmake.
+# No C sources are left to glob, so RA8_DISPLAY_PAL_SOURCES stays empty and the
+# unchanged C suites cover the library through its public headers.
 # ra8_power_profile is implemented in Zig (libs/ra8_power_profile/build.zig).
 # It is linked through cmake/zig_libraries.cmake instead of being globbed as C
 # sources here; the unchanged C suite still covers it via the public header.

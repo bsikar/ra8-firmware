@@ -220,6 +220,7 @@ pub export fn display_policy_full_rect(w: u16, h: u16, out: ?*Rect) callconv(.c)
 /// same archive as the dispatcher. Nothing here calls into it: a caller still
 /// binds it by address through `display_cfg_t.iface`.
 pub const lcd_backend = @import("ra8_display_pal_lcd_abi.zig");
+pub const eink_backend = @import("ra8_display_pal_eink_abi.zig");
 
 /// Test-only reset of the module-static state, so the ABI suite can drive the
 /// init/deinit lifecycle more than once in one process. Not exported.

@@ -442,7 +442,7 @@ static void test_calls_after_deinit_are_rejected(void)
 
 /**
  * @par MC/DC:
- * Decision (libs/ra8_display_pal/src/ra8_display_pal_eink.c@internal_eink_validate_cfg):
+ * Decision (libs/ra8_display_pal/src/internal/eink.zig@validateCfg):
  * ``if (cfg->width_px == 0U || cfg->height_px == 0U)`` -- 2 conditions.
  *
  * - V1: w=64, h=32 -> C1=F, C2=F -> decision F (covered by happy path
@@ -630,7 +630,7 @@ static void test_eink_policy_sequence(void)
 /**
  * @par MC/DC:
  * Drives the four single-condition rejection branches in
- * ``internal_eink_validate_cfg`` that the happy path leaves as the "false"
+ * ``internal/eink.zig@validateCfg`` that the happy path leaves as the "false"
  * leg, by calling the e-ink backend vtable ``init`` directly (the PAL
  * dispatcher forwards the same cfg, but calling the vtable keeps the
  * backend context lifecycle local to this test). Each decision is a single
@@ -677,7 +677,7 @@ static void test_eink_validate_cfg_rejections(void)
 
 /**
  * @par MC/DC:
- * ``internal_eink_check_rect`` is four sequential single-condition bounds
+ * ``internal/eink.zig@checkRect`` is four sequential single-condition bounds
  * checks. ``test_eink_flush_clear_get_fb`` already drives the third
  * (``r.x + r.w > width``). This test drives the remaining three "true"
  * legs independently; the all-false leg is the happy-path flush. Each
@@ -761,9 +761,9 @@ static void test_eink_backend_rejects_double_init(void)
 
 /**
  * @par MC/DC:
- * Decision: ``if (lerr != k_ra8_ok)`` after ``internal_eink_load_rect`` in
+ * Decision: ``if (lerr != k_ra8_ok)`` after ``eink loadRect`` in
  * ``eink_flush`` -- single condition, and the ``if (err != k_ra8_ok)``
- * inside ``internal_eink_load_rect`` after ``ra8_epaper_load_image``. The
+ * inside ``eink loadRect`` after ``ra8_epaper_load_image``. The
  * false legs are the happy-path flush; the true legs are driven here by
  * clearing the primed SPI status flags after init, so the first SPI
  * transfer of the row load times out deterministically (the fake's

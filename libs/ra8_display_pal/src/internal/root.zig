@@ -79,6 +79,18 @@ pub const Fb = extern struct {
 /// `display_policy_t`: caller-owned cadence state. `kind` stays a raw byte,
 /// because a caller's zeroed struct is the only guaranteed initial value and
 /// nothing may assume the byte names a valid enumerator.
+/// The fields of a `display_cfg_t` a panel backend judges, lifted out of the
+/// pointer so the decision is testable without one. Both backends read the
+/// same six.
+pub const CfgView = struct {
+    has_framebuffer: bool,
+    width_px: u16,
+    height_px: u16,
+    pixfmt: u8,
+    has_panel_timing: bool,
+    framebuffer_bytes: u32,
+};
+
 pub const Policy = extern struct {
     kind: u8 = 0,
     clean_every: u16 = 0,
