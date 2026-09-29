@@ -27,8 +27,8 @@ func liveScope(t *testing.T, scripts []string) string {
 	return plantRepo(t, files)
 }
 
-// sevenScripts is the smallest set the self-test accepts, with the commit hook
-// it names among them.
+// sevenScripts is a spread of extensionless scripts with the commit hook the
+// self-test names among them.
 func sevenScripts() []string {
 	return []string{
 		"scripts/git/commit-msg",
@@ -58,35 +58,48 @@ func TestTheSelfTestHoldsOnAScopeThatMeetsItsOwnTerms(t *testing.T) {
 	}
 }
 
-// Seven is a floor, not a target. A repository that has lost its scripts still
-// clears the file floor, so the count is the only thing that catches it.
-func TestTheSelfTestRefusesAScopeThatHasLostItsScripts(t *testing.T) {
-	scripts := sevenScripts()[:6]
-	held, complaint := runSelfTest(t, liveScope(t, scripts))
-	if held {
-		t.Fatal("the self-test accepted a scope holding six extensionless scripts")
+// A hook that exists on disk and never reaches the derived scope is the
+// failure the self-test exists to catch: the file still clears the floor, and
+// nothing else in the run would notice that the gate stopped reading it. Here
+// the hook is ignored by git, which is how a scope quietly loses a file.
+func TestTheSelfTestRefusesAScopeThatOmitsAHookScript(t *testing.T) {
+	files := make(map[string]string, fileFloor+3)
+	for i := 0; i < fileFloor; i++ {
+		files[fmt.Sprintf("docs/unit%04d.md", i)] = "ascii\n"
 	}
-	if !strings.Contains(complaint, "extensionless derived scope has 6 entries") {
-		t.Fatalf("the refusal does not name the count it counted: %s", complaint)
+	files["scripts/git/commit-msg"] = "#!/bin/sh\nexit 0\n"
+	files["scripts/git/pre-push"] = "#!/bin/sh\nexit 0\n"
+	files[".gitignore"] = "scripts/git/pre-push\n"
+	held, complaint := runSelfTest(t, plantRepo(t, files))
+	if held {
+		t.Fatal("the self-test accepted a scope that never derived a hook on disk")
+	}
+	if !strings.Contains(complaint, "omits the hook script scripts/git/pre-push") {
+		t.Fatalf("the refusal does not name the hook it lost: %s", complaint)
 	}
 }
 
-// The commit hook is named rather than counted: a scope can hold plenty of
-// scripts and still have stopped deriving the one the gate exists to reach.
+// The commit hook is named rather than merely counted: a repository can carry
+// plenty of scripts, and hooks the scope reads correctly, and still have
+// stopped deriving the one file this gate exists to reach.
 func TestTheSelfTestRefusesAScopeMissingTheCommitHook(t *testing.T) {
-	scripts := []string{
-		"scripts/build", "scripts/flash", "scripts/lint", "scripts/release",
-		"scripts/sync", "scripts/verify", "scripts/package",
+	files := make(map[string]string, fileFloor+8)
+	for i := 0; i < fileFloor; i++ {
+		files[fmt.Sprintf("docs/unit%04d.md", i)] = "ascii\n"
 	}
-	held, complaint := runSelfTest(t, liveScope(t, scripts))
+	files["scripts/git/pre-push"] = "#!/bin/sh\nexit 0\n"
+	for _, script := range sevenScripts()[1:] {
+		files[script] = "#!/bin/sh\nexit 0\n"
+	}
+	held, complaint := runSelfTest(t, plantRepo(t, files))
 	if held {
 		t.Fatal("the self-test accepted a scope that never derived the commit hook")
 	}
 	if !strings.Contains(complaint, "commit-msg included=false") {
 		t.Fatalf("the refusal does not name the missing hook: %s", complaint)
 	}
-	if !strings.Contains(complaint, "has 7 entries") {
-		t.Fatalf("the refusal should still report the count it held: %s", complaint)
+	if !strings.Contains(complaint, "checked=1") {
+		t.Fatalf("the refusal should report the hooks it did read: %s", complaint)
 	}
 }
 
