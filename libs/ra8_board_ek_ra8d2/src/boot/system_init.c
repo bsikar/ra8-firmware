@@ -48,6 +48,9 @@
 #include "ra8_boot_entry.h"
 #include "ra8_boot_intrinsics.h"
 #include "ra8_cache.h"
+#ifdef RA8_BOOT_MPU_VIA_HAL
+#include "ra8_mpu.h"
+#endif
 #include "trustzone_init.h"
 
 extern const uint32_t g_ra8_vector_table_start[];
@@ -415,8 +418,8 @@ enum : uint32_t {
   k_ra8_mpu_sram_limit = 0x220FFFE0UL, /**< RA8 MPU SRAM limit.                    */
   k_ra8_mpu_shram_base =
     k_ra8_board_shared_ram_base, /**< Shared SRAM2+3: M33 mailbox + CPU1 RAM. */
-  k_ra8_mpu_shram_limit =
-    (uint32_t)k_ra8_board_cpu1_sram_base + (uint32_t)k_ra8_board_cpu1_sram_size_bytes -
+  k_ra8_mpu_shram_limit = (uint32_t)k_ra8_board_cpu1_sram_base +
+    (uint32_t)k_ra8_board_cpu1_sram_size_bytes -
     k_ra8_mpu_region_quantum,           /**< Non-cacheable -> M85<->M33 stays coherent. */
   k_ra8_mpu_sdram_base  = 0x68000000UL, /**< 64 MiB external SDRAM.                     */
   k_ra8_mpu_sdram_limit = 0x6BFFFFE0UL, /**< RA8 MPU SDRAM limit.                       */
@@ -507,6 +510,63 @@ static void internal_mpu_init(void)
   ra8_boot_isb();
 }
 
+#ifdef RA8_BOOT_MPU_VIA_HAL
+/**
+ * @brief Install the canonical boot memory-attribute map, HAL or raw poke.
+ *
+ * @details Issue #591: with ``RA8_BOOT_MPU_VIA_HAL`` set the map goes down
+ *          through ``ra8_mpu_apply_boot_map()`` instead of the hand-rolled
+ *          MAIR / RBAR / RLAR / CTRL pokes in ::internal_mpu_init. The two
+ *          spellings program byte-identical registers for all five regions
+ *          (same bases and limits, MAIR0 ``0x000444FF`` / MAIR1 ``0``, AttrIdx
+ *          0/1/2, ``CTRL = ENABLE | PRIVDEFENA``); the HAL additionally
+ *          disables the MPU before reprogramming and clears stale high-index
+ *          regions, neither of which changes a from-reset boot.
+ *
+ * @return ``true`` when the map is installed, ``false`` otherwise.
+ *
+ * @retval true  The map is live and the caches are safe to enable.
+ * @retval false The part implements fewer regions than the map needs; the
+ *               caller must leave the caches off, because a D-cache enabled
+ *               with no map would see MMIO as Normal cacheable.
+ *
+ * @pre Runs from ``SystemInit()``, before the ``.data`` copy.
+ * @post The MPU is enabled with PRIVDEFENA on success; untouched on failure.
+ *
+ * @note Opting in adds a link dependency on ``ra8_mpu``: an app that defines
+ *       this flag must carry ``ra8_mpu`` in its ``LIBS``.
+ * @since 0.1.0
+ */
+static bool internal_boot_map_install(void)
+{
+  /* Raw path stays compiled just above as the reference spelling. */
+  (void)internal_mpu_init;
+  return ra8_mpu_apply_boot_map() == k_ra8_ok;
+}
+#else
+/**
+ * @brief Install the canonical boot memory-attribute map via the raw pokes.
+ *
+ * @details Default path: ::internal_mpu_init cannot fail, so this always
+ *          reports success and the caller's cache bring-up is unconditional,
+ *          exactly as it was before #591.
+ *
+ * @return ``true`` always.
+ *
+ * @retval true The map is installed.
+ *
+ * @pre Runs from ``SystemInit()``, before the ``.data`` copy.
+ * @post The MPU is enabled with PRIVDEFENA.
+ *
+ * @since 0.1.0
+ */
+static bool internal_boot_map_install(void)
+{
+  internal_mpu_init();
+  return true;
+}
+#endif
+
 /* =============================================================================
  * Public entry point
  * =============================================================================
@@ -537,29 +597,30 @@ void SystemInit(void)
    * caches. Each *_enable does its own architectural invalidate before setting
    * CCR. Region 4 (non-cacheable shared SRAM) keeps M85<->M33 hand-offs
    * coherent with no software maintenance. */
-  internal_mpu_init();
+  if (internal_boot_map_install()) {
 #ifdef RA8_BOOT_CACHE_VIA_HAL
-  /* Issue #577: bring the L1 caches up through the ra8_cache HAL instead of the
-   * hand-rolled internal_enable_icache / internal_enable_dcache pokes. The HAL
-   * primitives encode the identical ICIALLU + CCR.IC / CCR.DC sequence (each
-   * runs its architectural invalidate before setting the enable bit), so this is
-   * a drop-in with no behaviour change. The raw helpers stay compiled just above
-   * as the reference path; exactly the app that opts in takes the HAL route. */
-  ra8_cache_icache_enable();
-  ra8_cache_dcache_enable();
-  (void)internal_enable_icache;
-  (void)internal_enable_dcache;
+    /* Issue #577: bring the L1 caches up through the ra8_cache HAL instead of the
+    * hand-rolled internal_enable_icache / internal_enable_dcache pokes. The HAL
+    * primitives encode the identical ICIALLU + CCR.IC / CCR.DC sequence (each
+    * runs its architectural invalidate before setting the enable bit), so this is
+    * a drop-in with no behaviour change. The raw helpers stay compiled just above
+    * as the reference path; exactly the app that opts in takes the HAL route. */
+    ra8_cache_icache_enable();
+    ra8_cache_dcache_enable();
+    (void)internal_enable_icache;
+    (void)internal_enable_dcache;
 #else
-  internal_enable_icache();
-  internal_enable_dcache();
+    internal_enable_icache();
+    internal_enable_dcache();
 #endif
-  internal_enable_branch_predictor();
+    internal_enable_branch_predictor();
+  }
 #else
   /* Default OFF: caches + MPU stay disabled -- no behaviour change. */
   (void)internal_enable_icache;
   (void)internal_enable_dcache;
   (void)internal_enable_branch_predictor;
-  (void)internal_mpu_init;
+  (void)internal_boot_map_install;
 #endif
   (void)ra8_trustzone_init; /* TrustZone has its own gate (RA8_TRUSTZONE_ENABLE). */
   internal_set_priority_grouping();
