@@ -564,6 +564,18 @@ gate_markdown_references() (
   python3 scripts/checks/check_chapter_map_freshness.py
 )
 
+# --- cmake-source-paths ---------------------------------------------------
+# A library source attached to a target BY PATH survives the source being
+# moved or deleted, because the block that names it is often cross-only and
+# a host configure never evaluates it (#1290). Resolve every repository-
+# rooted path the CMake files name, and prove the resolver first.
+gate_cmake_source_paths() (
+  set -e
+  require_cmd python3 "the CMake path resolver is a Python gate"
+  python3 scripts/checks/check_cmake_source_paths.py --selftest
+  python3 scripts/checks/check_cmake_source_paths.py
+)
+
 # --- copyright ------------------------------------------------------------
 # ONE canonical attribution per file, in the place each comment convention
 # already keeps its metadata -- two forms, because this tree has two
