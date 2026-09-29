@@ -56,6 +56,18 @@ extern uint32_t g_ra8_ls_sidata;    /**< Source of .data in MRAM.           */
 extern uint32_t g_ra8_ls_sbss;      /**< Start of .bss in SRAM.             */
 extern uint32_t g_ra8_ls_ebss;      /**< End of .bss in SRAM.               */
 
+/* `.sram_text` is the run-from-SRAM code region. Only the apps that actually
+ * need it (the DFU / secure-boot HIL family, which reprograms the MRAM it
+ * would otherwise be executing from) define these three symbols in their
+ * linker script. They are declared WEAK so every other app -- whose linker
+ * script has no `.sram_text` at all -- still links: an undefined weak symbol
+ * resolves to address 0, the start/end comparison below is then `0 < 0`, and
+ * the copy loop runs zero times. That keeps one shared boot file correct for
+ * both shapes without a per-app fork or a build flag. */
+[[gnu::weak]] extern uint32_t g_ra8_ls_ssram_text;     /**< Start of .sram_text in SRAM. */
+[[gnu::weak]] extern uint32_t g_ra8_ls_esram_text;     /**< End of .sram_text in SRAM.   */
+[[gnu::weak]] extern uint32_t g_ra8_ls_sram_text_load; /**< Source of .sram_text in MRAM.*/
+
 /* =============================================================================
  * Handler declarations
  * =============================================================================
@@ -469,6 +481,16 @@ void Reset_Handler(void)
   dst = &g_ra8_ls_sbss;
   while (dst < &g_ra8_ls_ebss) {
     *dst++ = 0U;
+  }
+
+  /* Step 3b: copy `.sram_text` from MRAM into SRAM, for the apps that run code
+   * out of SRAM while they reprogram MRAM. Skipped (zero iterations) on every
+   * app whose linker script does not define the region -- see the weak
+   * declarations above. */
+  src = &g_ra8_ls_sram_text_load;
+  dst = &g_ra8_ls_ssram_text;
+  while (dst < &g_ra8_ls_esram_text) {
+    *dst++ = *src++;
   }
 
   /* Step 4: enter C. `main()` is responsible for enabling interrupts
