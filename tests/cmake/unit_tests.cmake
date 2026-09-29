@@ -136,6 +136,11 @@ function(ra8_add_test name src_file)
             ${FW_ROOT}/libs/ra8_mdl/inc
             ${FW_ROOT}/libs/ra8_net_policy/inc
             ${FW_ROOT}/libs/ra8_xml/inc
+            # ra8_path.h is the filesystem path contract under libs/if/inc.
+            # Seven target blocks below add this dir by hand; the tests built
+            # straight off this shared list, test_ra8_path among them, had no
+            # way to reach it.
+            ${FW_ROOT}/libs/if/inc
             ${FW_ROOT}/libs/ra8_touch_cal/inc
             ${FW_ROOT}/libs/ra8_epd_cal/inc
             ${FW_ROOT}/libs/ra8_mpu/inc
