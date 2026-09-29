@@ -82,6 +82,14 @@ THUMB_MASK = 0xFFFFFFFE
 # of the companion symbol is what identifies a veneer in any linked image.
 ACLE_PREFIX = "__acle_se_"
 
+# ld gives .gnu.sgstubs a 32-byte alignment, so the region the linker script
+# bounds is the packed stubs rounded UP to that boundary. A veneer count whose
+# span is not already a multiple of 32 therefore leaves trailing padding that
+# is NOT a missing veneer: tz_nsc_cgc_usb links 3 stubs (24 B) into a 32 B
+# region. Slack below this is alignment; at or above it, a whole slot group is
+# unaccounted for and that is a real finding.
+SG_REGION_ALIGN = 32
+
 # One ARMv8-M secure gateway is SG + B.W: 4 + 4 bytes. ld packs the stubs back
 # to back, so the region size is exactly SG_STUB_BYTES * veneer count.
 SG_STUB_BYTES = 8
@@ -174,12 +182,21 @@ def slot_findings(syms: dict[str, int]) -> list[str]:
             continue
         slots[off] = name
     want = len(veneers) * SG_STUB_BYTES
-    if size != want:
+    if size < want:
         findings.append(
-            f"  region is {size} B for {len(veneers)} veneer(s), expected {want} B: "
-            "either a stub is missing a symbol or something else shares the section"
+            f"  region is {size} B but holds {len(veneers)} veneer(s) needing {want} B: "
+            "the SG region is too small for its own stubs"
         )
-    empty = [off for off in range(0, size, SG_STUB_BYTES) if off not in slots]
+    elif size - want >= SG_REGION_ALIGN:
+        findings.append(
+            f"  region is {size} B for {len(veneers)} veneer(s), expected {want} B "
+            f"plus under {SG_REGION_ALIGN} B of alignment padding: either a stub is "
+            "missing a symbol or something else shares the section"
+        )
+    # Only the OCCUPIED span is slotted. Bytes past it are the section's
+    # alignment padding, checked above, and holding them to one-veneer-per-slot
+    # would fail every link whose stub count is not a multiple of four.
+    empty = [off for off in range(0, want, SG_STUB_BYTES) if off not in slots]
     if empty and not findings:
         findings.append(
             f"  {len(empty)} slot(s) with no veneer symbol, first at sgstubs+{empty[0]}"
@@ -244,7 +261,14 @@ def selftest() -> int:
     collided["ra8_nsc_pdm_init"] = collided["ra8_nsc_acmphs_init"]
 
     oversized = _fixture(wide)
-    oversized[END_SYMBOL] += SG_STUB_BYTES
+    oversized[END_SYMBOL] += SG_REGION_ALIGN
+
+    # The real tz_nsc_cgc_usb shape: 3 stubs, 24 B of stubs, 32 B region.
+    padded = _fixture(tuple(EXPECTED_OFFSETS))
+    padded[END_SYMBOL] = padded[BASE_SYMBOL] + SG_REGION_ALIGN
+
+    undersized = _fixture(wide)
+    undersized[END_SYMBOL] -= SG_STUB_BYTES
 
     empty = {BASE_SYMBOL: base, END_SYMBOL: base + SG_STUB_BYTES}
 
@@ -273,7 +297,15 @@ def selftest() -> int:
         ),
         (
             any("expected" in item for item in slot_findings(oversized)),
-            "a region wider than its veneer count fires",
+            "a region wider than its veneer count plus padding fires",
+        ),
+        (
+            not slot_findings(padded),
+            "alignment padding after the last stub stays quiet (3 stubs, 32 B region)",
+        ),
+        (
+            any("too small" in item for item in slot_findings(undersized)),
+            "a region too small for its own stubs fires",
         ),
         (
             any("gateway is empty" in item for item in slot_findings(empty)),

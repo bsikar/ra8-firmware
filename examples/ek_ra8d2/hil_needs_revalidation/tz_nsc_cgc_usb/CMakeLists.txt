@@ -48,6 +48,27 @@ ra8_add_app(
   NSC_SRCS ra8_nsc_cgc.c
 )
 
+# The Secure side must be built for TrustZone, not merely configured for it.
+# RA8_TRUSTZONE_ENABLE is the switch ra8_add_app() reads to add -mcmse and the
+# RA8_TRUSTZONE_ENABLE define, and it defaults OFF at the repo root
+# (CMakeLists.txt) because 234 of the 238 apps are single-image. The option()
+# above only fires in a STANDALONE configure of this directory; in the
+# aggregate repo build the root has already declared the option, so this app
+# inherited OFF, ra8_nsc_cgc.c compiled with no cmse_nonsecure_entry
+# functions, and the Secure link died:
+#
+#   ld: ...tz_nsc_cgc_usb_cmse_import.o: no symbol found for import library
+#   ld: ...tz_nsc_cgc_usb_cmse_import.o: failed to generate import library
+#   ld: final link failed: no symbols
+#
+# The other dual-image apps never hit this because they set the define and
+# -mcmse on the target directly rather than relying on the option. Do the same
+# here: this app IS the two-project TrustZone build (#96), so TrustZone is not
+# optional for it whichever way it is configured.
+target_compile_definitions(tz_nsc_cgc_usb.elf PRIVATE RA8_TRUSTZONE_ENABLE)
+target_compile_options(tz_nsc_cgc_usb.elf PRIVATE -mcmse)
+target_link_options(tz_nsc_cgc_usb.elf PRIVATE -mcmse)
+
 # Emit the CMSE import library so the NS link can bind the veneer names to the
 # Secure-Gateway stubs.
 set(_ra8_tz_implib ${CMAKE_CURRENT_BINARY_DIR}/tz_nsc_cgc_usb_cmse_import.o)
