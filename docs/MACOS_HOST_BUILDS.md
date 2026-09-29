@@ -99,6 +99,27 @@ report says so instead of attributing the forced choice to the SDK. The
 `macos-host-build` CI gate prints this report before it builds anything, so a
 red run carries its own diagnosis.
 
+## What a forced selection reports
+
+`-Dmacos-libsystem=sdk` and `-Dmacos-libsystem=bundled` change which stub the
+build links. They do not change what is in the SDK stub on this machine, and
+the probe still runs, so `zig build explain-host-target` prints both:
+
+    selection: -Dmacos-libsystem=sdk
+    sdk:       /Library/Developer/CommandLineTools/SDKs/MacOSX.sdk
+    stub:      /Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/lib/libSystem.tbd
+    finding:   the SDK stub lists its targets and arm64-macos is not among them (#899)
+    override:  -Dmacos-libsystem=sdk forced the native query, whatever the SDK stub says
+    note:      this overrides the probe, which would have chosen the pinned aarch64-macos target
+    decision:  native target, linking whatever stub the host resolves
+
+`finding:` is always the reading of the machine; `override:` and `note:` say
+what the force did to it. This matters most in the CI gate's informational
+`-Dmacos-libsystem=sdk` leg, which exists to record what the SDK stub does on
+that runner: reporting the forced choice as the probe's own conclusion is
+exactly what would throw that observation away.
+
+
 ## The pinned target keeps the host's macOS version
 
 Pinning `aarch64-macos` is a stand-in for the native build, so it has to agree
