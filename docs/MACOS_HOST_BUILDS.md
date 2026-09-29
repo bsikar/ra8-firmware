@@ -108,6 +108,32 @@ A Linux checkout cannot exercise the `xcrun` probe, the SDK stub parse against
 a real `.tbd`, the `sdk` failure mode, or any behaviour of the produced
 binaries. Those need a real Mac.
 
+## Keeping the rule applied to new build roots
+
+The rule is only worth having if every Zig build root follows it, and a root
+added later is exactly where it would be forgotten: nothing about a plain
+`b.standardTargetOptions(.{})` looks wrong from Linux, and the failure only
+appears on someone's Mac.
+
+So `scripts/checks/check_zig.py --test` enforces it structurally. For every
+discovered build root, either
+
+- `build.zig` takes its default target from
+  `ra8_build.hostDefaultTargetQuery(b)`, or
+- the root declares an exemption in `.zig-host-target.json`:
+
+      {"rule": "exempt", "reason": "cross-compiles for ARM targets only"}
+
+Anything else is a finding that names #899. Comments are stripped before the
+wiring is read, so a mention of the helper in prose cannot satisfy the rule.
+A root that declares `{"rule": "host_default"}` must really carry the wiring;
+the declaration on its own is not accepted. `--selftest-test` proves both
+directions.
+
+An exemption is the right answer for a graph that never produces host
+binaries, such as a firmware-only cross-build root. It is the wrong answer for
+a host tool, which should carry the rule instead.
+
 ## Not yet automated
 
 No scheduled job runs these commands on macOS today; the checks above are
