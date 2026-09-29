@@ -44,7 +44,9 @@ file(GLOB_RECURSE RA8_NET_POLICY_SOURCES CONFIGURE_DEPENDS
      ${FW_ROOT}/libs/ra8_net_policy/src/*.c)
 file(GLOB_RECURSE RA8_XML_WRITER_SOURCES CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra8_xml/src/*.c)
 file(GLOB_RECURSE RA8_IMGDEC_SOURCES CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra8_imgdec/src/*.c)
-file(GLOB_RECURSE RA8_IF_RA8_VFS_SOURCES CONFIGURE_DEPENDS ${FW_ROOT}/libs/if_ra8_vfs/src/*.c)
+# if_ra8_vfs is fully migrated to Zig; see tests/cmake/zig_libraries.cmake.
+# Its private contracts header went with the .c, so libs/if_ra8_vfs/src is no
+# longer an include directory anywhere.
 file(GLOB_RECURSE RA8_IO_SOURCES CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra8_io/src/*.c)
 file(GLOB_RECURSE COMPRESS_SOURCES CONFIGURE_DEPENDS ${FW_ROOT}/apps/shared_libs/compress/src/*.c)
 # ra8_audio is fully migrated to Zig (facade + memory and PDM backends);
