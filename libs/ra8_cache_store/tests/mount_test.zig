@@ -787,6 +787,110 @@ test "recovery: a clean checkpoint is loaded back into the index" {
     try std.testing.expect(implementation.isPinned(reader.index[@intCast(slot)]));
 }
 
+test "checkpoint seq: counts superblock writes, not appends" {
+    resetMedium();
+    var fixture = Fixture{};
+    fixture.bind();
+    fixture.store.next_seq = 7;
+
+    try std.testing.expectEqual(@as(u32, 0), fixture.store.checkpoint_seq);
+    try std.testing.expectEqual(ok, mount.priv_cache_store_super_write(&fixture.store, 1));
+    try std.testing.expectEqual(@as(u32, 1), fixture.store.checkpoint_seq);
+    try std.testing.expectEqual(@as(u32, 1), readSuper().seq);
+
+    // The append counter stands still while the checkpoint counter moves.
+    try std.testing.expectEqual(ok, mount.priv_cache_store_super_write(&fixture.store, 1));
+    try std.testing.expectEqual(@as(u32, 2), fixture.store.checkpoint_seq);
+    try std.testing.expectEqual(@as(u32, 2), readSuper().seq);
+    try std.testing.expectEqual(@as(u32, 7), fixture.store.next_seq);
+    try std.testing.expectEqual(@as(u32, 7), readSuper().next_seq);
+}
+
+test "checkpoint seq: resumes from the medium across a mount" {
+    resetMedium();
+    var writer = Fixture{};
+    writer.bind();
+    var first = writer.cfg(64, true);
+    try std.testing.expectEqual(ok, mount.ra8_cache_store_init(&writer.store, &first));
+    // Formatting stamps one superblock, so the counter has already moved.
+    try std.testing.expect(writer.store.checkpoint_seq > 0);
+    try std.testing.expectEqual(ok, mount.priv_cache_store_super_write(&writer.store, 1));
+    const at_reboot = writer.store.checkpoint_seq;
+
+    var reader = Fixture{};
+    reader.bind();
+    reader.flash_block = writer.flash_block;
+    var reopen = reader.cfg(64, false);
+    reopen.nor_flash = @ptrCast(&reader.flash_block);
+    try std.testing.expectEqual(ok, mount.ra8_cache_store_init(&reader.store, &reopen));
+
+    // Resumed, not restarted, so the next record outranks the one on the media.
+    try std.testing.expectEqual(at_reboot, reader.store.checkpoint_seq);
+    try std.testing.expectEqual(ok, mount.priv_cache_store_super_write(&reader.store, 1));
+    try std.testing.expect(readSuper().seq > at_reboot);
+}
+
+test "checkpoint seq: a dirty record still hands its seq to the next mount" {
+    resetMedium();
+    var fixture = Fixture{};
+    fixture.bind();
+    var sb = Super{
+        .magic = mount.super_magic,
+        .version = mount.format_version,
+        .seq = 41,
+        .clean = 0,
+        .entry_count = 0,
+        .live_sectors = 0,
+        .next_seq = 1,
+        .log_start = 2,
+        .data_capacity = 32,
+        .logical_sectors = 64,
+        .crc = 0,
+    };
+    writeSuperAt(&sb);
+    // Dirty: the mount replays the log, and still honours the counter it read.
+    try std.testing.expect(!mount.superIsClean(&sb));
+    try std.testing.expect(mount.superIsValid(&sb));
+
+    var cfg = fixture.cfg(64, false);
+    try std.testing.expectEqual(ok, mount.ra8_cache_store_init(&fixture.store, &cfg));
+    try std.testing.expectEqual(@as(u32, 41), fixture.store.checkpoint_seq);
+}
+
+test "checkpoint seq: a torn record leaves the counter at its init value" {
+    resetMedium();
+    var fixture = Fixture{};
+    fixture.bind();
+    var sb = Super{
+        .magic = mount.super_magic,
+        .version = mount.format_version,
+        .seq = 99,
+        .clean = 1,
+        .entry_count = 0,
+        .live_sectors = 0,
+        .next_seq = 1,
+        .log_start = 2,
+        .data_capacity = 32,
+        .logical_sectors = 64,
+        .crc = 0,
+    };
+    writeSuperAt(&sb);
+    // Corrupt the CRC after sealing: the record no longer parses.
+    medium[0][@sizeOf(Super) - 4] ^= 0xFF;
+    var cfg = fixture.cfg(64, false);
+    try std.testing.expectEqual(ok, mount.ra8_cache_store_init(&fixture.store, &cfg));
+    try std.testing.expectEqual(@as(u32, 0), fixture.store.checkpoint_seq);
+}
+
+test "superIsValid: parses a dirty record and rejects a broken one" {
+    var sb = Super{ .magic = mount.super_magic, .version = mount.format_version, .clean = 0 };
+    sb.crc = implementation.crc32(std.mem.asBytes(&sb)[0..mount.super_crc_span]);
+    try std.testing.expect(mount.superIsValid(&sb));
+    try std.testing.expect(!mount.superIsClean(&sb));
+    sb.magic ^= 1;
+    try std.testing.expect(!mount.superIsValid(&sb));
+}
+
 test "recovery: a checkpoint claiming more entries than the index holds is invalid state" {
     resetMedium();
     var fixture = Fixture{};

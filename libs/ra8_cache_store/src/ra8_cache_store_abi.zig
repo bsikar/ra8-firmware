@@ -59,6 +59,7 @@ pub const Store = extern struct {
     data_capacity: u32 = 0,
     live_sectors: u32 = 0,
     next_seq: u32 = 0,
+    checkpoint_seq: u32 = 0,
     flash_state: u8 = 0,
     inited: bool = false,
 };
@@ -84,8 +85,9 @@ comptime {
     std.debug.assert(@offsetOf(Store, "data_capacity") == 3 * word + 12);
     std.debug.assert(@offsetOf(Store, "live_sectors") == 3 * word + 16);
     std.debug.assert(@offsetOf(Store, "next_seq") == 3 * word + 20);
-    std.debug.assert(@offsetOf(Store, "flash_state") == 3 * word + 24);
-    std.debug.assert(@offsetOf(Store, "inited") == 3 * word + 25);
+    std.debug.assert(@offsetOf(Store, "checkpoint_seq") == 3 * word + 24);
+    std.debug.assert(@offsetOf(Store, "flash_state") == 3 * word + 28);
+    std.debug.assert(@offsetOf(Store, "inited") == 3 * word + 29);
     std.debug.assert(@offsetOf(Reader, "store") == 0);
     std.debug.assert(@offsetOf(Reader, "data_start") == word);
     std.debug.assert(@offsetOf(Reader, "data_sectors") == word + 4);

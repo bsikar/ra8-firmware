@@ -355,6 +355,56 @@ RA8_INTERNAL static void internal_test_recovery_clean(void)
 }
 
 /**
+ * @test checkpoint_seq_monotonic
+ * @brief The superblock `seq` counts superblock writes and survives a remount.
+ * @details Puts and closes a store, remounts it, and checks the counter it
+ * resumed is at least what the first store left behind, then checks a second
+ * checkpoint pushes it strictly higher. Pins the #1318 contract: `seq` is a
+ * checkpoint counter, distinct from the append counter `next_seq`, and a later
+ * reader of the media never sees it restart or go backwards.
+ * @pre The fake NOR can be wiped and reopened.
+ * @post Both stores are closed.
+ * @note Reads the counter off the handle, which is where it lives at runtime.
+ * @since 0.1.0
+ * @par MC/DC:
+ * (no compound decisions under test -- a linear put/close/remount/close
+ * sequence with ordering assertions on one counter)
+ */
+RA8_INTERNAL static void internal_test_checkpoint_seq_monotonic(void)
+{
+  TEST_BEGIN("checkpoint seq monotonic across mount");
+  lx_nor_fake_ram_wipe();
+  ra8_cache_store_t     st  = {};
+  ra8_cache_store_cfg_t cfg = internal_cfg(internal_next_flash(), true);
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_cache_store_init(&st, &cfg));
+
+  /* Format stamped one superblock, so the counter has already moved. */
+  TEST_ASSERT(st.checkpoint_seq > 0U);
+  const uint32_t after_format = st.checkpoint_seq;
+
+  uint8_t a[k_cs_bytes_entry_a];
+  internal_fill(a, sizeof(a), k_cs_seed_checkpoint_a);
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_cache_store_put(&st, k_t_key_a, a, sizeof(a)));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_cache_store_close(&st));
+  /* Close checkpoints, so the counter is strictly ahead of format time. */
+  TEST_ASSERT(st.checkpoint_seq > after_format);
+  const uint32_t at_reboot = st.checkpoint_seq;
+
+  /* It is a different quantity from the append counter. */
+  TEST_ASSERT(st.checkpoint_seq != st.next_seq);
+
+  /* Reboot: the counter resumes from flash rather than restarting at zero. */
+  ra8_cache_store_t     st2  = {};
+  ra8_cache_store_cfg_t cfg2 = internal_cfg(internal_next_flash(), false);
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_cache_store_init(&st2, &cfg2));
+  TEST_ASSERT(st2.checkpoint_seq >= at_reboot);
+
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_cache_store_close(&st2));
+  TEST_ASSERT(st2.checkpoint_seq > at_reboot);
+  TEST_END("checkpoint seq monotonic across mount");
+}
+
+/**
  * @test recovery_crash_replay
  * @brief An unclean shutdown replays the log and discards a torn tail.
  * @details Leaves the first store unclosed after planting a payload-only tail,
@@ -859,6 +909,7 @@ int main(void)
   internal_test_evict_reuse();
   internal_test_pin_blocks_evict();
   internal_test_recovery_clean();
+  internal_test_checkpoint_seq_monotonic();
   internal_test_recovery_crash_replay();
   internal_test_helper_guards();
   internal_test_init_validation();

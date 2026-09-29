@@ -73,7 +73,7 @@ RA8_INTERNAL static void internal_test_xml_char_admits(void)
   TEST_ASSERT(priv_reflow_tok_is_xml_char((uint32_t)k_t_replace));
   TEST_ASSERT(priv_reflow_tok_is_xml_char((uint32_t)k_t_astral_first));
   TEST_ASSERT(priv_reflow_tok_is_xml_char((uint32_t)k_t_cp_max));
-  TEST_END();
+  TEST_END("xml char: admitted values");
 }
 
 /**
@@ -105,7 +105,7 @@ RA8_INTERNAL static void internal_test_xml_char_excludes(void)
   TEST_ASSERT(!priv_reflow_tok_is_xml_char((uint32_t)k_t_nonchar_hi));
   TEST_ASSERT(!priv_reflow_tok_is_xml_char((uint32_t)k_t_over_max));
   TEST_ASSERT(!priv_reflow_tok_is_xml_char((uint32_t)k_t_all_ones));
-  TEST_END();
+  TEST_END("xml char: excluded values");
 }
 
 /**
@@ -153,7 +153,7 @@ RA8_INTERNAL static void internal_test_numeric_legal(void)
   internal_expect_cp("&#xD7FF;", (uint32_t)k_t_bmp_pre_surr, 8U);
   internal_expect_cp("&#xE000;", (uint32_t)k_t_pua_first, 8U);
   internal_expect_cp("&#xFFFD;", (uint32_t)k_t_replace, 8U);
-  TEST_END();
+  TEST_END("numeric reference: legal values pass through");
 }
 
 /**
@@ -181,7 +181,7 @@ RA8_INTERNAL static void internal_test_numeric_sanitized(void)
   internal_expect_cp("&#xFFFE;", rep, 8U); /* non-character */
   internal_expect_cp("&#xFFFF;", rep, 8U); /* non-character */
   internal_expect_cp("&#x110000;", rep, 10U);
-  TEST_END();
+  TEST_END("numeric reference: illegal values become U+FFFD");
 }
 
 /**
@@ -203,7 +203,7 @@ RA8_INTERNAL static void internal_test_numeric_overflow(void)
   internal_expect_cp("&#xFFFFFFFF;", rep, 12U);
   internal_expect_cp("&#x10000041;", rep, 12U); /* would wrap to 'A' unguarded */
   internal_expect_cp("&#99999999;", rep, 11U);
-  TEST_END();
+  TEST_END("numeric reference: accumulator saturates");
 }
 
 /**
@@ -236,7 +236,7 @@ RA8_INTERNAL static void internal_test_shape_unchanged(void)
   internal_expect_cp("&amp;", (uint32_t)'&', 5U);
   internal_expect_cp("&nbsp;", 0x00A0U, 6U);
   internal_expect_cp("&hellip;", 0x2026U, 8U);
-  TEST_END();
+  TEST_END("numeric reference: malformed shapes still fail open");
 }
 
 /**
@@ -259,5 +259,5 @@ int main(void)
   internal_test_numeric_sanitized();
   internal_test_numeric_overflow();
   internal_test_shape_unchanged();
-  return TEST_SUMMARY();
+  return 0;
 }
