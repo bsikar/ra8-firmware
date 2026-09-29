@@ -686,7 +686,14 @@ static ra8_err_t internal_bringup_display(void)
     return err;
   }
   (void)display_get_framebuffer(s_display, &s_fb);
-  (void)ra8_gfx_init(s_fb.pixels, s_fb.width_px, s_fb.height_px, k_ra8_gfx_format_rgb565);
+  const ra8_gfx_surface_t surface = {
+    .pixels       = s_fb.pixels,
+    .w            = s_fb.width_px,
+    .h            = s_fb.height_px,
+    .stride_bytes = s_fb.stride_bytes,
+    .fmt          = k_ra8_gfx_format_rgb565,
+  };
+  (void)ra8_gfx_init_surface(&surface);
   (void)ra8_gfx_clear((uint32_t)k_wkd_bg);
   return k_ra8_ok;
 }
