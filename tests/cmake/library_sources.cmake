@@ -70,7 +70,12 @@ file(GLOB_RECURSE RA8_CAMERA_SOURCES CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra8_camer
 file(GLOB_RECURSE RA8_CAMERA_IO_SOURCES CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra8_camera_io/src/*.c)
 file(GLOB_RECURSE RA8_FTL_SOURCES CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra8_ftl/src/*.c)
 file(GLOB_RECURSE RA8_MEM_SOURCES CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra8_mem/src/*.c)
-file(GLOB_RECURSE RA8_SDMMC_SPI_SOURCES CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra8_sdmmc_spi/src/*.c)
+# ra8_sdmmc_spi has no C sources: the protocol core AND the block-I/O TU are
+# both Zig now (libs/ra8_sdmmc_spi/src/*.zig, built by
+# libs/ra8_sdmmc_spi/build.zig) behind the unchanged C header, and
+# tests/cmake/zig_libraries.cmake links that archive into ra8_core_hal.
+# src/ra8_sdmmc_spi_internal.h stays: two host suites include it to reach
+# g_sdmmc_spi_state and the priv_sdmmc_spi_* protocol helpers.
 file(GLOB_RECURSE RA8_GFX_SOURCES CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra8_gfx/src/*.c)
 # ra8_ui has no C sources: the interaction core (hit-testing, screen stack,
 # paging) is Zig (libs/ra8_ui/src/*.zig, built by libs/ra8_ui/build.zig)
