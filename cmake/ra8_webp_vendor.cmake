@@ -85,10 +85,17 @@ endfunction()
 
 # Include roots. libwebp's ROOT (not its src/) is the include dir: the codec
 # includes its own headers as "src/webp/decode.h".
+# libs/ra8_mem/inc is in this list because libs/ra8_imgdec/inc is: the imgdec
+# public headers include "ra8_arena.h" (ra8_imgdec.h:72, ra8_imgdec_scratch.h:55)
+# and that header lives in ra8_mem. Handing out imgdec's include dir without
+# ra8_mem's hands out headers that do not compile.
 function(ra8_webp_includes out_var repo_root)
   set(${out_var}
-      ${repo_root}/apps/shared_libs/third_party/libwebp ${repo_root}/apps/shared_libs/webp/inc
-      ${repo_root}/apps/shared_libs/webp/src ${repo_root}/libs/ra8_imgdec/inc
+      ${repo_root}/apps/shared_libs/third_party/libwebp
+      ${repo_root}/apps/shared_libs/webp/inc
+      ${repo_root}/apps/shared_libs/webp/src
+      ${repo_root}/libs/ra8_imgdec/inc
+      ${repo_root}/libs/ra8_mem/inc
       PARENT_SCOPE
   )
 endfunction()
