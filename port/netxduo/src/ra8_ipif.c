@@ -73,8 +73,8 @@ static void internal_compose_name(CHAR* dst, const char* base, const char* suffi
 /* Reject a configuration that NetX would only reject later, or not at all. */
 static ra8_err_t internal_check_cfg(const ra8_ipif_cfg_t* cfg)
 {
-  if ((cfg->driver == nullptr) || (cfg->pool_mem == nullptr) || (cfg->ip_stack == nullptr)
-      || (cfg->arp_cache == nullptr)) {
+  if ((cfg->driver == nullptr) || (cfg->pool_mem == nullptr) || (cfg->ip_stack == nullptr) ||
+      (cfg->arp_cache == nullptr)) {
     return k_ra8_err_null_ptr;
   }
   if ((cfg->pool_bytes == 0U) || (cfg->ip_stack_bytes == 0U) || (cfg->arp_bytes == 0U)) {
@@ -82,6 +82,10 @@ static ra8_err_t internal_check_cfg(const ra8_ipif_cfg_t* cfg)
   }
   if (cfg->pkt_payload < (uint32_t)k_ra8_ipif_pkt_payload_min) {
     return k_ra8_err_invalid_size;
+  }
+  if ((cfg->ip_address != (uint32_t)k_ra8_ipif_unbound_ip) &&
+      (cfg->ip_netmask == (uint32_t)k_ra8_ipif_unbound_ip)) {
+    return k_ra8_err_invalid_arg;
   }
   return k_ra8_ok;
 }
@@ -93,9 +97,11 @@ static UINT internal_enable_protocols(ra8_ipif_t* ipif, const ra8_ipif_cfg_t* cf
   if (status != NX_SUCCESS) {
     return status;
   }
-  status = nx_udp_enable(&ipif->ip);
-  if (status != NX_SUCCESS) {
-    return status;
+  if (!cfg->disable_udp) {
+    status = nx_udp_enable(&ipif->ip);
+    if (status != NX_SUCCESS) {
+      return status;
+    }
   }
   if (cfg->enable_tcp) {
     status = nx_tcp_enable(&ipif->ip);
@@ -139,8 +145,8 @@ ra8_err_t ra8_ipif_up(ra8_ipif_t* ipif, const ra8_ipif_cfg_t* cfg)
 
   status = nx_ip_create(&ipif->ip,
                         ipif->ip_name,
-                        (ULONG)k_ra8_ipif_unbound_ip,
-                        (ULONG)k_ra8_ipif_unbound_ip,
+                        (ULONG)cfg->ip_address,
+                        (ULONG)cfg->ip_netmask,
                         &ipif->pool,
                         cfg->driver,
                         cfg->ip_stack,
@@ -180,12 +186,11 @@ ra8_err_t ra8_ipif_dhcp(ra8_ipif_t* ipif, ra8_wifi_lease_t* out)
   ipif->dhcp_started = true;
 
   ULONG actual = 0U;
-  if ((nx_dhcp_start(&ipif->dhcp) != NX_SUCCESS)
-      || (nx_ip_status_check(&ipif->ip,
-                             (ULONG)NX_IP_ADDRESS_RESOLVED,
-                             &actual,
-                             (ULONG)ipif->dhcp_wait_ms)
-          != NX_SUCCESS)) {
+  if ((nx_dhcp_start(&ipif->dhcp) != NX_SUCCESS) ||
+      (nx_ip_status_check(&ipif->ip,
+                          (ULONG)NX_IP_ADDRESS_RESOLVED,
+                          &actual,
+                          (ULONG)ipif->dhcp_wait_ms) != NX_SUCCESS)) {
     (void)nx_dhcp_delete(&ipif->dhcp);
     ipif->dhcp_started = false;
     return k_ra8_err_timeout;

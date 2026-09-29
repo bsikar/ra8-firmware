@@ -130,6 +130,21 @@ typedef enum : uint32_t {
  *            must be the driver for a link that is already open and associated.
  * @invariant `pool_bytes` holds at least one `pkt_payload` packet plus NetX
  *            Duo's own per-packet overhead; NetX rejects the pool otherwise.
+ * @invariant A non-zero `ip_address` is accompanied by a non-zero `ip_netmask`.
+ *
+ * @par Addressing
+ * Leaving `ip_address` zero is the DHCP case the three Wi-Fi applications use:
+ * the instance is created unbound and ::ra8_ipif_dhcp binds it. Setting it (with
+ * a mask) is the static case `tls_client`, the TCP echo application and the
+ * HTTPS client hand-roll today, and it binds at ::ra8_ipif_up. The two are
+ * alternatives, not a sequence.
+ *
+ * @par Why `disable_udp` reads backwards
+ * Every other switch here is positive, but UDP was unconditional before this
+ * field existed, and a designated initialiser leaves an unmentioned field zero.
+ * A positive `enable_udp` would therefore have turned UDP off under every caller
+ * that never heard of it. The negative spelling is what keeps `= {}` meaning
+ * what it meant.
  *
  * @par Example:
  * @code
@@ -144,16 +159,19 @@ typedef struct ra8_ipif_cfg {
   const char* name;
   /** @brief NetX Duo link-driver entry point ``nx_ip_create`` is given. @since 0.1.0 */
   VOID (*driver)(NX_IP_DRIVER* driver_req);
-  void*    pool_mem;       /**< Packet-pool backing store.                  */
-  uint32_t pool_bytes;     /**< Octets at `pool_mem`.                       */
-  uint32_t pkt_payload;    /**< Per-packet payload, in octets.              */
-  void*    ip_stack;       /**< NetX IP helper-thread stack.                */
-  uint32_t ip_stack_bytes; /**< Octets at `ip_stack`.                       */
-  uint32_t ip_prio;        /**< NetX IP helper-thread priority.             */
-  void*    arp_cache;      /**< ARP cache backing store.                    */
-  uint32_t arp_bytes;      /**< Octets at `arp_cache`.                      */
-  bool     enable_tcp;     /**< Enable TCP as well as ARP, UDP and ICMP.    */
-  uint32_t dhcp_wait_ms;   /**< How long ::ra8_ipif_dhcp waits for a lease. */
+  void*    pool_mem;       /**< Packet-pool backing store.                           */
+  uint32_t pool_bytes;     /**< Octets at `pool_mem`.                                */
+  uint32_t pkt_payload;    /**< Per-packet payload, in octets.                       */
+  void*    ip_stack;       /**< NetX IP helper-thread stack.                         */
+  uint32_t ip_stack_bytes; /**< Octets at `ip_stack`.                                */
+  uint32_t ip_prio;        /**< NetX IP helper-thread priority.                      */
+  void*    arp_cache;      /**< ARP cache backing store.                             */
+  uint32_t arp_bytes;      /**< Octets at `arp_cache`.                               */
+  uint32_t ip_address;     /**< Static address in host byte order, or zero for DHCP. */
+  uint32_t ip_netmask;     /**< Mask for `ip_address`; ignored when it is zero.      */
+  bool     enable_tcp;     /**< Enable TCP as well as ARP, UDP and ICMP.             */
+  bool     disable_udp;    /**< Skip ``nx_udp_enable``; UDP is enabled by default.   */
+  uint32_t dhcp_wait_ms;   /**< How long ::ra8_ipif_dhcp waits for a lease.          */
 } ra8_ipif_cfg_t;
 
 /**
@@ -199,9 +217,11 @@ typedef struct ra8_ipif {
  * @details
  * Runs the sequence every copy of this bring-up runs: ``nx_system_initialize``,
  * ``nx_packet_pool_create``, ``nx_ip_create`` naming @p cfg->driver, then
- * ``nx_arp_enable``, ``nx_udp_enable``, optionally ``nx_tcp_enable``, and
- * ``nx_icmp_enable``. A failure part-way leaves the handle torn back down rather
- * than half-built, so a caller that retries starts from a clean state.
+ * ``nx_arp_enable``, ``nx_udp_enable`` unless `cfg->disable_udp`, optionally
+ * ``nx_tcp_enable``, and ``nx_icmp_enable``. The instance is created on
+ * `cfg->ip_address` and `cfg->ip_netmask`, which are zero for the DHCP case.
+ * A failure part-way leaves the handle torn back down rather than half-built,
+ * so a caller that retries starts from a clean state.
  *
  * @param[out] ipif Handle to bring up; zero-initialised on first use.
  * @param[in]  cfg  Link driver, buffers and sizes.
@@ -211,11 +231,13 @@ typedef struct ra8_ipif {
  *                                  pointer is null.
  * @retval k_ra8_err_invalid_size   A buffer size is zero, or `pkt_payload` is
  *                                  below ::k_ra8_ipif_pkt_payload_min.
+ * @retval k_ra8_err_invalid_arg    `ip_address` is set and `ip_netmask` is not.
  * @retval k_ra8_err_invalid_state  @p ipif is already up.
  * @retval k_ra8_err_not_initialized A NetX object could not be created.
  *
  * @pre The L2 link @p cfg->driver bridges onto is open and carrying frames.
- * @post On success `ipif->up` is true and `ipif->ip` is a live NetX IP instance.
+ * @post On success `ipif->up` is true and `ipif->ip` is a live NetX IP instance,
+ *       bound to `cfg->ip_address` when that is non-zero.
  * @post On failure nothing created by this call survives it.
  *
  * @note Not thread-safe against itself.
@@ -254,6 +276,8 @@ typedef struct ra8_ipif {
  * @post On failure @p out is all-zero and no DHCP client survives the call.
  *
  * @note Blocks the calling thread for up to the configured wait.
+ * @note For an instance ::ra8_ipif_up already bound to a static address there is
+ *       no lease to take, so this call does not belong in that path.
  *
  * @par Example:
  * @code
