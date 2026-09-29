@@ -71,7 +71,9 @@ RA8_INTERNAL static void internal_test_numeric_base_select(void)
  * lowercase-hex class `(base==hex)&&(c>='a')&&(c<='f')`, the uppercase-hex
  * class `(base==hex)&&(c>='A')&&(c<='F')`, and the final `else -> false`.
  *  - V1 "&#x2a;" -> '2' decimal-class true; 'a' lowercase-hex-class true.
- *  - V2 "&#x1B;" -> '1' decimal-class true; 'B' uppercase-hex-class true.
+ *  - V2 "&#x4B;" -> '4' decimal-class true; 'B' uppercase-hex-class true.
+ *                   0x4B is inside the XML Char production, so the decoded
+ *                   value survives the is_xml_char filter unchanged.
  *  - V3 "&#x1g;" -> '1' true; 'g' fails all three classes -> else -> reject.
  *  - V4 "&#1a;"  -> base is DECIMAL so 'a' fails the base==hex guard of both
  *                   hex classes (decimal-class also false) -> else -> reject.
@@ -93,8 +95,8 @@ RA8_INTERNAL static void internal_test_numeric_digit_classes(void)
   size_t   used = 0U;
   TEST_ASSERT(priv_reflow_tok_decode_entity("&#x2a;", 6U, &cp, &used)); /* V1 dec + lc-hex */
   TEST_ASSERT_EQ(0x2AU, cp);
-  TEST_ASSERT(priv_reflow_tok_decode_entity("&#x1B;", 6U, &cp, &used)); /* V2 dec + uc-hex */
-  TEST_ASSERT_EQ(0x1BU, cp);
+  TEST_ASSERT(priv_reflow_tok_decode_entity("&#x4B;", 6U, &cp, &used)); /* V2 dec + uc-hex */
+  TEST_ASSERT_EQ(0x4BU, cp);
   TEST_ASSERT(!priv_reflow_tok_decode_entity("&#x1g;", 6U, &cp, &used)); /* V3 bad hex digit   */
   TEST_ASSERT(!priv_reflow_tok_decode_entity("&#1a;", 5U, &cp, &used));  /* V4 'a' not decimal */
   TEST_END("priv_decode_numeric digit-class MC/DC");
