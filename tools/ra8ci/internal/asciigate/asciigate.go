@@ -458,18 +458,37 @@ func selfTest(ctx context.Context, root string, stdout, stderr io.Writer) bool {
 		fmt.Fprintf(stderr, "live derived scope has %d files, floor is %d\n", len(targets), fileFloor)
 		return false
 	}
-	extensionlessCount := 0
-	foundCommitHook := false
+	scoped := make(map[string]bool, len(targets))
 	for _, target := range targets {
-		if filepath.Ext(target) == "" && hasShellOrPythonShebang(filepath.Join(root, target)) {
-			extensionlessCount++
+		scoped[filepath.ToSlash(target)] = true
+	}
+	// Every git hook is an extensionless shell script, which is the one
+	// shape the scope admits on its first line rather than its name. Ask
+	// the hook directory what it holds instead of pinning a count: a count
+	// drifts with the tree and starts reporting the gate as broken when a
+	// hook is merely retired.
+	hooks := filepath.Join(root, "scripts", "git")
+	entries, err := os.ReadDir(hooks)
+	if err != nil {
+		fmt.Fprintf(stderr, "cannot read the git hook scripts: %v\n", err)
+		return false
+	}
+	checked := 0
+	for _, entry := range entries {
+		if entry.IsDir() || filepath.Ext(entry.Name()) != "" {
+			continue
 		}
-		if filepath.ToSlash(target) == "scripts/git/commit-msg" {
-			foundCommitHook = true
+		if !hasShellOrPythonShebang(filepath.Join(hooks, entry.Name())) {
+			continue
+		}
+		checked++
+		if !scoped["scripts/git/"+entry.Name()] {
+			fmt.Fprintf(stderr, "derived scope omits the hook script scripts/git/%s\n", entry.Name())
+			return false
 		}
 	}
-	if extensionlessCount < 7 || !foundCommitHook {
-		fmt.Fprintf(stderr, "extensionless derived scope has %d entries; commit-msg included=%t\n", extensionlessCount, foundCommitHook)
+	if checked == 0 || !scoped["scripts/git/commit-msg"] {
+		fmt.Fprintf(stderr, "hook scripts checked=%d; commit-msg included=%t\n", checked, scoped["scripts/git/commit-msg"])
 		return false
 	}
 	return true
