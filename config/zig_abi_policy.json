@@ -1219,45 +1219,9 @@
       ],
       "c_retained_exports": [
         {
-          "name": "ra8_usb_desc_build_langid",
-          "source": "libs/ra8_usb_pal/src/ra8_usb_desc.c",
-          "reason": "USB descriptor builder added to this library by #766 after the port branch was cut; it builds descriptor byte frameworks and does not implement any part of the ra8_usb_pal.h surface the Zig archive owns, so it stays a C translation unit beside the archive until it is ported in its own slice",
-          "header": "libs/ra8_usb_pal/inc/ra8_usb_desc.h"
-        },
-        {
-          "name": "ra8_usb_desc_build_strings",
-          "source": "libs/ra8_usb_pal/src/ra8_usb_desc.c",
-          "reason": "USB descriptor builder added to this library by #766 after the port branch was cut; it builds descriptor byte frameworks and does not implement any part of the ra8_usb_pal.h surface the Zig archive owns, so it stays a C translation unit beside the archive until it is ported in its own slice",
-          "header": "libs/ra8_usb_pal/inc/ra8_usb_desc.h"
-        },
-        {
-          "name": "ra8_usb_desc_build_cdc_acm",
-          "source": "libs/ra8_usb_pal/src/ra8_usb_desc.c",
-          "reason": "USB descriptor builder added to this library by #766 after the port branch was cut; it builds descriptor byte frameworks and does not implement any part of the ra8_usb_pal.h surface the Zig archive owns, so it stays a C translation unit beside the archive until it is ported in its own slice",
-          "header": "libs/ra8_usb_pal/inc/ra8_usb_desc.h"
-        },
-        {
-          "name": "ra8_usb_desc_build_msc",
-          "source": "libs/ra8_usb_pal/src/ra8_usb_desc.c",
-          "reason": "USB descriptor builder added to this library by #766 after the port branch was cut; it builds descriptor byte frameworks and does not implement any part of the ra8_usb_pal.h surface the Zig archive owns, so it stays a C translation unit beside the archive until it is ported in its own slice",
-          "header": "libs/ra8_usb_pal/inc/ra8_usb_desc.h"
-        },
-        {
-          "name": "ra8_usb_desc_build_hid",
-          "source": "libs/ra8_usb_pal/src/ra8_usb_desc.c",
-          "reason": "USB descriptor builder added to this library by #766 after the port branch was cut; it builds descriptor byte frameworks and does not implement any part of the ra8_usb_pal.h surface the Zig archive owns, so it stays a C translation unit beside the archive until it is ported in its own slice",
-          "header": "libs/ra8_usb_pal/inc/ra8_usb_desc.h"
-        },
-        {
-          "name": "ra8_usb_desc_build_dfu",
-          "source": "libs/ra8_usb_pal/src/ra8_usb_desc.c",
-          "reason": "USB descriptor builder added to this library by #766 after the port branch was cut; it builds descriptor byte frameworks and does not implement any part of the ra8_usb_pal.h surface the Zig archive owns, so it stays a C translation unit beside the archive until it is ported in its own slice",
-          "header": "libs/ra8_usb_pal/inc/ra8_usb_desc.h"
-        },
-        {
           "name": "ra8_usb_device_compose",
           "source": "libs/ra8_usb_pal/src/ra8_usb_compose.c",
-          "reason": "USB descriptor builder added to this library by #766 after the port branch was cut; it builds descriptor byte frameworks and does not implement any part of the ra8_usb_pal.h surface the Zig archive owns, so it stays a C translation unit beside the archive until it is ported in its own slice",
+          "reason": "the one-call framework facade added to this library by #766 after the port branch was cut; the four builders it dispatches to are Zig in this archive (src/ra8_usb_desc_abi.zig) and it calls them through the unchanged inc/ra8_usb_desc.h, so it stays a C translation unit beside the archive until it is ported in its own slice",
           "header": "libs/ra8_usb_pal/inc/ra8_usb_compose.h"
         }
       ],
@@ -1316,6 +1280,59 @@
           "name": "priv_usb_pal_translate_event",
           "calling_context": "task-safe-reentrant",
           "ownership": "copies no data; derives the event bit set from the INTSTS0 snapshot argument alone"
+        },
+        {
+          "name": "ra8_usb_desc_build_langid",
+          "calling_context": "task-safe-reentrant",
+          "ownership": "Encodes descriptor bytes into the caller's buffer and retains no pointer; the caller owns the buffer and the strings it names."
+        },
+        {
+          "name": "ra8_usb_desc_build_strings",
+          "calling_context": "task-safe-reentrant",
+          "ownership": "Encodes descriptor bytes into the caller's buffer and retains no pointer; the caller owns the buffer and the strings it names."
+        },
+        {
+          "name": "ra8_usb_desc_build_cdc_acm",
+          "calling_context": "task-safe-reentrant",
+          "ownership": "Encodes descriptor bytes into the caller's buffer and retains no pointer; the caller owns the buffer and the strings it names."
+        },
+        {
+          "name": "ra8_usb_desc_build_msc",
+          "calling_context": "task-safe-reentrant",
+          "ownership": "Encodes descriptor bytes into the caller's buffer and retains no pointer; the caller owns the buffer and the strings it names."
+        },
+        {
+          "name": "ra8_usb_desc_build_hid",
+          "calling_context": "task-safe-reentrant",
+          "ownership": "Encodes descriptor bytes into the caller's buffer and retains no pointer; the caller owns the buffer and the strings it names."
+        },
+        {
+          "name": "ra8_usb_desc_build_dfu",
+          "calling_context": "task-safe-reentrant",
+          "ownership": "Encodes descriptor bytes into the caller's buffer and retains no pointer; the caller owns the buffer and the strings it names."
+        }
+      ],
+      "public_headers": [
+        {
+          "path": "libs/ra8_usb_pal/inc/ra8_usb_desc.h",
+          "compatibility_sha256": "9744c1c568b5f8875743320f5be4b63948b865ea9650c7089049319e470b364f",
+          "layout_assertions": [
+            "@offsetOf(CDevice, \"manufacturer\") == 8",
+            "@sizeOf(CCdcAcm) == 12",
+            "@sizeOf(CMsc) == 6",
+            "@sizeOf(CHid) == 10",
+            "@sizeOf(CDfu) == 12",
+            "descriptor.Size.device == 18"
+          ],
+          "symbol_prefix": "ra8_usb_desc_"
+        }
+      ],
+      "adapters": [
+        {
+          "path": "libs/ra8_usb_pal/src/ra8_usb_desc_abi.zig",
+          "symbol_prefixes": [
+            "ra8_usb_desc_"
+          ]
         }
       ]
     },
