@@ -61,37 +61,55 @@
 #define RENAME_NOREPLACE (1U << 0U)
 #endif
 
+/** @brief Source leaf for the no-replace probe; chosen so it cannot exist. */
+static const char k_probe_absent_source[] = ".ra8_fs_noreplace_probe_src";
+/** @brief Target leaf for the no-replace probe; chosen so it cannot exist. */
+static const char k_probe_absent_target[] = ".ra8_fs_noreplace_probe_dst";
+
 /**
- * @brief Probe whether the host provides an atomic no-replace rename.
- * @details Uses deliberately invalid descriptors so support can be detected
- *          without touching the filesystem namespace.
- * @return True only when the host recognizes the requested operation.
- * @retval true The host recognizes an atomic no-replace rename primitive.
- * @retval false The host does not provide the required primitive.
- * @pre No filesystem state is required.
+ * @brief Probe whether the mounted root supports an atomic no-replace rename.
+ * @details Support is a property of the mounted filesystem, not only of the
+ *          kernel, so the probe is issued against the adapter's own root
+ *          descriptor. Both leaves are names that cannot exist, so a
+ *          filesystem implementing the flag reports `ENOENT` while one that
+ *          rejects the flag reports `EINVAL`, and neither outcome creates,
+ *          renames, or removes an entry. A probe against invalid descriptors
+ *          cannot make this distinction: the kernel validates the descriptor
+ *          before the filesystem ever sees the flag, so such a probe reports
+ *          support on mounts that then fail every real call.
+ * @param[in] root_fd Open root directory descriptor owned by the caller.
+ * @return True only when this mount implements the requested operation.
+ * @retval true The mount implements an atomic no-replace rename primitive.
+ * @retval false The mount does not provide the required primitive.
+ * @pre @p root_fd is live, owned by the caller, and names a directory.
  * @pre The host syscall ABI matches the platform selected at compile time.
  * @post No descriptor or filesystem object is created or consumed.
- * @post The result reflects syscall recognition rather than path existence.
- * @note The invalid-descriptor probe has no namespace side effects.
+ * @post The result reflects this mount's behaviour, not syscall recognition.
+ * @note An unexpected success is treated as unsupported so the adapter fails
+ *       closed rather than advertising a guarantee it has not observed.
  * @since 0.1.0
  */
-RA8_INTERNAL static bool internal_atomic_noreplace_available(void)
+RA8_INTERNAL static bool internal_atomic_noreplace_available(int root_fd)
 {
 #if defined(__linux__) && defined(SYS_renameat2)
   errno             = 0;
-  const long result = syscall(SYS_renameat2, -1, "x", -1, "y", RENAME_NOREPLACE);
+  const long result = syscall(
+    SYS_renameat2, root_fd, k_probe_absent_source, root_fd, k_probe_absent_target,
+    RENAME_NOREPLACE);
   if (result != -1L) {
     return false;
   }
-  return errno == EBADF;
+  return errno == ENOENT;
 #elif defined(__APPLE__)
   errno            = 0;
-  const int result = renameatx_np(-1, "x", -1, "y", RENAME_EXCL);
+  const int result =
+    renameatx_np(root_fd, k_probe_absent_source, root_fd, k_probe_absent_target, RENAME_EXCL);
   if (result != -1) {
     return false;
   }
-  return errno == EBADF;
+  return errno == ENOENT;
 #else
+  (void)root_fd;
   return false;
 #endif
 }
@@ -516,7 +534,7 @@ ra8_err_t fw_fs_posix_init(fw_fs_t* out, fw_fs_posix_state_t* state, const fw_fs
   state->root_fd          = root;
   state->transaction_id   = 0U;
   state->removable_media  = cfg->removable_media;
-  state->atomic_noreplace = internal_atomic_noreplace_available();
+  state->atomic_noreplace = internal_atomic_noreplace_available(root);
   state->initialized      = true;
   fw_fs_caps_t caps       = {};
   internal_caps(state, &caps);
