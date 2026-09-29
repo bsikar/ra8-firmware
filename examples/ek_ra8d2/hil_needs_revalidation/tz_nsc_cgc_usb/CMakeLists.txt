@@ -65,6 +65,12 @@ ra8_add_app(
 # -mcmse on the target directly rather than relying on the option. Do the same
 # here: this app IS the two-project TrustZone build (#96), so TrustZone is not
 # optional for it whichever way it is configured.
+include(${RA8_REPO_ROOT}/libs/ra8_board_ek_ra8d2/ld/ns_memory_map.cmake)
+# The Secure boot copies/jumps to the NS image, so it needs the NS addresses as
+# constants. They come from the same map the NS linker script is generated from
+# rather than being re-typed in trustzone_init.c (#759 item 2).
+ra8_ns_memory_map_defines(tz_nsc_cgc_usb.elf)
+
 target_compile_definitions(tz_nsc_cgc_usb.elf PRIVATE RA8_TRUSTZONE_ENABLE)
 target_compile_options(tz_nsc_cgc_usb.elf PRIVATE -mcmse)
 target_link_options(tz_nsc_cgc_usb.elf PRIVATE -mcmse)
