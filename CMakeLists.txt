@@ -38,7 +38,16 @@ if(RA8_HOST_MODE)
   add_subdirectory(tools/mkbookimg)
   add_subdirectory(tools/rabook_viewer)
   add_subdirectory(tools/ra8_emulator)
-  add_subdirectory(apps/host/alphabet_soup)
+  # tests/cmake/unit_tests.cmake already adds this same listfile, and it has to
+  # be the one that wins: added from the tests scope it inherits the coverage
+  # instrumentation host_config.cmake installs there, so the solver and its CLI
+  # wrapper land in the one tree-wide trace. Adding the directory a second time
+  # here is what CMP0002 rejects (duplicate alphabet_soup / test_alphabet_soup),
+  # so this add is only the fallback for a host configure whose test graph did
+  # not pull it in.
+  if(NOT TARGET alphabet_soup)
+    add_subdirectory(apps/host/alphabet_soup)
+  endif()
   return()
 endif()
 
