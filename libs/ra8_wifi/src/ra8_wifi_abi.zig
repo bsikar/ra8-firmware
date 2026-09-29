@@ -14,6 +14,10 @@
 const std = @import("std");
 const implementation = @import("internal/root.zig");
 
+/// The ESP32-C6 backend membrane, reached from here so its exported vtable
+/// and setup call land in the same archive as the facade.
+pub const c6link = @import("ra8_wifi_c6link_abi.zig");
+
 /// 48-bit station address (`ra8_wifi_mac_t`).
 pub const Mac = implementation.Mac;
 /// DHCP lease record (`ra8_wifi_lease_t`).

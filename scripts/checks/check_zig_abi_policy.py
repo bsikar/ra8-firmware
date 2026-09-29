@@ -223,7 +223,9 @@ def _data_export_findings(
                     text,
                 )
             else:
-                present = re.search(rf"\bpub\s+export\s+var\s+{re.escape(symbol)}\s*:", text)
+                present = re.search(
+                    rf"\bpub\s+export\s+(?:var|const)\s+{re.escape(symbol)}\s*:", text
+                )
             if present is None:
                 findings.append(
                     f"{name}: data export {field} does not declare {symbol}: {row[field]}"

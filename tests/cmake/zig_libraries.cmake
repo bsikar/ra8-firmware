@@ -216,17 +216,19 @@ ra8_add_zig_library(
   ra8_audio
 )
 
-# The PURE facade only: the lifecycle state machine, the backend-table
-# validation, the bounded association wait and the lease rule are Zig now, so
-# libs/ra8_wifi/src/ra8_wifi.c is gone and the RA8_WIFI_SOURCES entry is gone
-# from library_sources.cmake and core_hal.cmake. The ESP32-C6 backend
-# (src/ra8_wifi_c6link.c) is deliberately still C on this branch: it rides
-# ra8_c6link and the vendored protobuf codec, which ra8_core_hal does not
-# carry, so it keeps its own target in tests_wifi.cmake. The radio stays a
-# caller-supplied vtable, so the host suite's mock backend substitutes for it
-# exactly as before. The two wifi targets in tests_wifi.cmake consume
-# ra8_core_hal through $<TARGET_OBJECTS:>, which carries no link dependencies,
-# so they link this archive by name there rather than through the list below.
+# Fully migrated: the lifecycle state machine, the backend-table validation,
+# the bounded association wait and the lease rule went first, and the ESP32-C6
+# backend followed, so libs/ra8_wifi/src has no .c left and the
+# RA8_WIFI_SOURCES entry is gone from library_sources.cmake and core_hal.cmake.
+# The backend is src/ra8_wifi_c6link_abi.zig over src/internal/c6link.zig; it
+# exports k_ra8_wifi_backend_c6link and ra8_wifi_c6link_setup and calls the
+# ra8_c6link entry points the C called, so the c6 host test still needs that
+# stack plus the vendored protobuf codec and keeps its own target in
+# tests_wifi.cmake. The radio stays a caller-supplied vtable, so the host
+# suite's mock backend substitutes for it exactly as before. The two wifi
+# targets in tests_wifi.cmake consume ra8_core_hal through
+# $<TARGET_OBJECTS:>, which carries no link dependencies, so they link this
+# archive by name there rather than through the list below.
 # Partially migrated: the OV5640 register protocol, the board-qualified VGA DVP
 # scene table, the JPEG overlay writes and the JPEG status decode are Zig now,
 # so libs/ra8_ov5640/src/ra8_ov5640.c is gone. The SCCB transport and the
