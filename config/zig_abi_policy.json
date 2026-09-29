@@ -2095,10 +2095,21 @@
             "@sizeOf(TransactionIface) == ptr * 6",
             "@sizeOf(ValidateFn) == ptr"
           ]
+        },
+        {
+          "path": "libs/if/inc/ra8_path.h",
+          "compatibility_sha256": "d85ebccccb427e885c852fa66324b9158129d8f81f2aba8d35afeddd65623a28",
+          "layout_assertions": [
+            "Limits.segment_cap_min == 2",
+            "Limits.path_cap == core.path_cap",
+            "@sizeOf(bool) == 1"
+          ],
+          "symbol_prefix": "ra8_path_"
         }
       ],
       "adapters": [
-        "libs/if/src/fw_if_fs_abi.zig"
+        "libs/if/src/fw_if_fs_abi.zig",
+        "libs/if/src/ra8_path_abi.zig"
       ],
       "library_name": "fw_if_fs",
       "symbol_prefix": "fw_fs_",
@@ -2268,6 +2279,21 @@
           "name": "fw_fs_transaction_abort",
           "calling_context": "task-only-non-reentrant",
           "ownership": "consumes active transaction and removes unpublished staging state"
+        },
+        {
+          "name": "ra8_path_sanitize_segment",
+          "calling_context": "task-safe-reentrant",
+          "ownership": "reads the untrusted candidate and writes only the caller-owned segment buffer and optional verbatim flag"
+        },
+        {
+          "name": "ra8_path_join_under",
+          "calling_context": "task-safe-reentrant",
+          "ownership": "reads the caller-owned parent and segment and writes only the caller-owned output buffer"
+        },
+        {
+          "name": "ra8_path_contained",
+          "calling_context": "task-safe-reentrant",
+          "ownership": "reads both caller-owned paths without retaining them and writes only the verdict"
         }
       ]
     },

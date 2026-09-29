@@ -8,9 +8,16 @@
 //!
 //! There are no external symbols: this interface is pure dispatch over a
 //! caller-supplied vtable, so nothing below it is a link-time dependency.
+//!
+//! `ra8_path_abi.zig` rides in the same archive: it is the other C ABI this
+//! library publishes, and it shares the error codes and the path cap.
 
 const std = @import("std");
 pub const core = @import("internal/root.zig");
+
+/// The untrusted-name policy (`ra8_path.h`), imported so its three exports
+/// land in the same archive the C build already links for `fw_fs_*`.
+pub const path_policy = @import("ra8_path_abi.zig");
 
 const Err = core.Err;
 
