@@ -80,10 +80,19 @@ def _strip_conditional_blocks(text: str) -> str:
 
 
 def _lexical_tokens(text: str) -> list[str]:
-    """Return assertion-relevant C/Zig tokens while ignoring layout."""
-    clean = re.sub(r"(?m)\\\\[^\r\n]*", "", text)
+    """Return assertion-relevant C/Zig tokens while ignoring layout.
+
+    Comments come off FIRST. An apostrophe in prose ("the facade's contract")
+    is not a char literal, but the literal-stripping pass cannot tell, so it
+    pairs that apostrophe with the next one and swallows every line between
+    them, assertions included. ra8_audio's adapter is the case that proved it:
+    two doc comments with apostrophes hid a whole comptime block, and the
+    policy reported twenty-two assertions missing from a file declaring them.
+    """
+    clean = _strip_comments(text)
+    clean = re.sub(r"(?m)\\\\[^\r\n]*", "", clean)
     clean = re.sub(r'"(?:\\.|[^"\\])*"|\'(?:\\.|[^\'\\])*\'', "", clean)
-    clean = _strip_conditional_blocks(_strip_comments(clean))
+    clean = _strip_conditional_blocks(clean)
     return re.findall(
         r"@[A-Za-z_][A-Za-z0-9_]*|[A-Za-z_][A-Za-z0-9_]*|\d+[A-Za-z]*|==|!=|\S", clean
     )
@@ -305,6 +314,43 @@ def _inventory_findings(
     return findings
 
 
+def _boundary_header_rows(library: dict[str, Any]) -> list[dict[str, Any]]:
+    """Return every pinned public-header row for one library, oldest key first.
+
+    A library can front more than one public header: ra8_audio publishes the
+    transport-neutral facade plus one header per backend, and each carries its
+    own normalized digest and representation assertions. The single-header
+    spelling stays valid and reads as a one-row list, so a row written before
+    multi-boundary support keeps its exact meaning.
+    """
+    single = library.get("public_header")
+    rows: list[dict[str, Any]] = []
+    if isinstance(single, str):
+        rows.append(
+            {
+                "path": single,
+                "compatibility_sha256": library.get("compatibility_sha256"),
+                "layout_assertions": library.get("layout_assertions", []),
+            }
+        )
+    extra = library.get("public_headers")
+    if isinstance(extra, list):
+        rows.extend(row for row in extra if isinstance(row, dict))
+    return rows
+
+
+def _boundary_adapter_paths(library: dict[str, Any]) -> list[str]:
+    """Return every adapter path for one library, the single-key spelling first."""
+    paths: list[str] = []
+    single = library.get("adapter")
+    if isinstance(single, str):
+        paths.append(single)
+    extra = library.get("adapters")
+    if isinstance(extra, list):
+        paths.extend(item for item in extra if isinstance(item, str))
+    return paths
+
+
 def _adapter_scope_findings(
     name: str,
     build_root: Path,
@@ -335,7 +381,8 @@ def _repository_inventory_findings(
     registered = {
         (repository_root / value).resolve()
         for library in libraries
-        if isinstance(library, dict) and isinstance((value := library.get("adapter")), str)
+        if isinstance(library, dict)
+        for value in _boundary_adapter_paths(library)
     }
     findings: list[str] = []
     root = repository_root.resolve()
@@ -370,9 +417,9 @@ def _repository_inventory_findings(
             and (root / library["build_root"]).resolve() in path.parents
         ]
         policy_bound = any(
-                isinstance(library.get("adapter"), str)
-                and (root / library["adapter"]).resolve() == path
+                (root / value).resolve() == path
                 for library in owners
+                for value in _boundary_adapter_paths(library)
             )
         inferred_lib = relative_path.parts[1] if len(relative_path.parts) > 2 and relative_path.parts[0] == "libs" else None
         if kind in {"library-adapter", "app-adapter"} and not policy_bound:
@@ -474,17 +521,24 @@ def _source_inventory_for_library(
 
 
 def _compatibility_findings(
-    library: dict[str, Any], name: str, header_text: str, adapter_text: str
+    row: dict[str, Any], name: str, header_text: str, adapter_text: str
 ) -> list[str]:
-    """Check the released normalized header and required representation assertions."""
+    """Check one released normalized header and its representation assertions.
+
+    ``row`` is a pinned header row from :func:`_boundary_header_rows`, so the
+    single-header and multi-header spellings reach identical checks. Findings
+    name the header when a library fronts more than one, because "compatibility
+    drift" against three headers is otherwise unattributable.
+    """
     findings: list[str] = []
-    expected = library.get("compatibility_sha256")
+    label = f"{name} ({row['path']})" if row.get("multi") else name
+    expected = row.get("compatibility_sha256")
     actual = _normalized_header_digest(header_text)
     if expected != actual:
-        findings.append(f"{name}: compatibility drift: expected {expected}, got {actual}")
+        findings.append(f"{label}: compatibility drift: expected {expected}, got {actual}")
     findings.extend(
-        f"{name}: missing representation assertion: {fragment}"
-        for fragment in library.get("layout_assertions", [])
+        f"{label}: missing representation assertion: {fragment}"
+        for fragment in row.get("layout_assertions", [])
         if not isinstance(fragment, str)
         or not (
             _contains_token_sequence(header_text, fragment)
@@ -631,18 +685,45 @@ def _library_findings(
     prefix = library.get("symbol_prefix")
     if not isinstance(prefix, str) or not prefix:
         return [f"{name}: missing symbol_prefix"]
+    header_rows = _boundary_header_rows(library)
+    adapter_paths = _boundary_adapter_paths(library)
+    if not header_rows:
+        findings.append(f"{name}: missing public_header")
+    if not adapter_paths:
+        findings.append(f"{name}: missing adapter")
     paths: dict[str, Path] = {}
-    for field in ("build_root", "public_header", "adapter"):
-        value = library.get(field)
-        path = repository_root / value if isinstance(value, str) else repository_root / "<missing>"
-        paths[field] = path
-        if not path.exists():
-            findings.append(f"{name}: missing {field}: {value}")
+    build_root_value = library.get("build_root")
+    paths["build_root"] = (
+        repository_root / build_root_value
+        if isinstance(build_root_value, str)
+        else repository_root / "<missing>"
+    )
+    if not paths["build_root"].exists():
+        findings.append(f"{name}: missing build_root: {build_root_value}")
+    for row in header_rows:
+        value = row.get("path")
+        if not isinstance(value, str) or not (repository_root / value).exists():
+            findings.append(f"{name}: missing public_header: {value}")
+    for value in adapter_paths:
+        if not (repository_root / value).exists():
+            findings.append(f"{name}: missing adapter: {value}")
     if findings:
         return findings
 
-    header_text = paths["public_header"].read_text(encoding="utf-8")
-    adapter_text = paths["adapter"].read_text(encoding="utf-8")
+    multi_header = len(header_rows) > 1
+    header_texts = {
+        row["path"]: (repository_root / row["path"]).read_text(encoding="utf-8")
+        for row in header_rows
+    }
+    adapter_texts = {
+        value: (repository_root / value).read_text(encoding="utf-8") for value in adapter_paths
+    }
+    # The boundary is the union: a declaration in any pinned header is part of
+    # the C ABI this library fronts, and an export in any registered adapter is
+    # the Zig side of it. Checking them per-file would reject a facade whose
+    # backend header declares what the backend adapter exports.
+    header_text = "\n".join(header_texts.values())
+    adapter_text = "\n".join(adapter_texts.values())
     header_names = _header_exports(header_text, prefix)
     zig_names, zig_heads = _zig_exports(adapter_text)
     metadata_findings, declared = _metadata_findings(name, library.get("exports"))
@@ -670,7 +751,7 @@ def _library_findings(
     )
     declared_sources = _source_inventory_for_library(
         source_inventory or [], library, repository_root
-    ) | {paths["adapter"].resolve()}
+    ) | {(repository_root / value).resolve() for value in adapter_paths}
     findings.extend(
         _adapter_scope_findings(
             name,
@@ -679,7 +760,15 @@ def _library_findings(
             repository_root,
         )
     )
-    findings.extend(_compatibility_findings(library, name, header_text, adapter_text))
+    for row in header_rows:
+        findings.extend(
+            _compatibility_findings(
+                {**row, "multi": multi_header},
+                name,
+                header_texts[row["path"]],
+                adapter_text,
+            )
+        )
     findings.extend(_contract_test_findings(library, name, prefix, repository_root))
     findings.extend(_target_findings(library, name, required_targets))
     return findings
@@ -991,8 +1080,8 @@ def _validate(
         findings.extend(
             _library_findings(library, required_targets, repository_root, source_inventory)
         )
-        counts["headers"] += int(isinstance(library.get("public_header"), str))
-        counts["adapters"] += int(isinstance(library.get("adapter"), str))
+        counts["headers"] += len(_boundary_header_rows(library))
+        counts["adapters"] += len(_boundary_adapter_paths(library))
         counts["exports"] += len(library.get("exports", []))
         counts["tests"] += len(library.get("contract_tests", []))
         if compile_archives and zig is not None and nm is not None:

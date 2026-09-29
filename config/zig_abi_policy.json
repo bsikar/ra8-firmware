@@ -49,6 +49,47 @@
       ]
     },
     {
+      "path": "libs/ra8_audio/src/ra8_audio_abi.zig",
+      "kind": "library-adapter",
+      "symbols": [
+        "ra8_audio_frame_validate",
+        "ra8_audio_source_get_info",
+        "ra8_audio_source_capture",
+        "ra8_audio_source_stream_start",
+        "ra8_audio_source_stop"
+      ]
+    },
+    {
+      "path": "libs/ra8_audio/src/source_memory.zig",
+      "kind": "library-support",
+      "symbols": [
+        "ra8_audio_source_memory_init"
+      ]
+    },
+    {
+      "path": "libs/ra8_audio/src/source_pdm.zig",
+      "kind": "library-support",
+      "symbols": [
+        "ra8_audio_source_pdm_init"
+      ]
+    },
+    {
+      "path": "libs/ra8_audio/tests/pdm_test.zig",
+      "kind": "test-helper",
+      "symbols": [
+        "ra8_pdm_init",
+        "ra8_pdm_deinit",
+        "ra8_pdm_configure",
+        "ra8_pdm_start",
+        "ra8_pdm_read_enable",
+        "ra8_pdm_read",
+        "ra8_pdm_stream_enable",
+        "ra8_pdm_stop",
+        "ra8_time_ms",
+        "ra8_delay_ms"
+      ]
+    },
+    {
       "path": "libs/ra8_batt/src/ra8_batt_abi.zig",
       "kind": "library-adapter",
       "symbols": [
@@ -198,6 +239,28 @@
       ]
     },
     {
+      "path": "libs/ra8_mpu/src/ra8_mpu_abi.zig",
+      "kind": "library-adapter",
+      "symbols": [
+        "ra8_mpu_configure",
+        "ra8_mpu_enable",
+        "ra8_mpu_disable",
+        "ra8_mpu_set_region",
+        "ra8_mpu_boot_map",
+        "ra8_mpu_apply_boot_map",
+        "ra8_mpu_is_enabled"
+      ]
+    },
+    {
+      "path": "libs/ra8_mpu/tests/abi_test.zig",
+      "kind": "test-helper",
+      "symbols": [
+        "ra8_log_emit_error",
+        "ra8_hw_dsb",
+        "ra8_hw_isb"
+      ]
+    },
+    {
       "path": "libs/ra8_power_profile/src/ra8_power_profile_abi.zig",
       "kind": "library-adapter",
       "symbols": [
@@ -251,6 +314,19 @@
       ]
     },
     {
+      "path": "libs/ra8_usb_pal/tests/abi_test.zig",
+      "kind": "test-helper",
+      "symbols": [
+        "ra8_log_emit_error",
+        "ra8_log_emit_error_val",
+        "ra8_log_emit_info",
+        "ra8_usb_attach_handler",
+        "ra8_usb_device_attach",
+        "ra8_usb_device_deinit",
+        "ra8_usb_device_init"
+      ]
+    },
+    {
       "path": "libs/ra8_wdt_supervisor/src/ra8_wdt_supervisor_abi.zig",
       "kind": "library-adapter",
       "symbols": [
@@ -270,28 +346,6 @@
       "kind": "test-helper",
       "symbols": [
         "ra8_wdt_refresh_deferred"
-      ]
-    },
-    {
-      "path": "libs/ra8_mpu/src/ra8_mpu_abi.zig",
-      "kind": "library-adapter",
-      "symbols": [
-        "ra8_mpu_configure",
-        "ra8_mpu_enable",
-        "ra8_mpu_disable",
-        "ra8_mpu_set_region",
-        "ra8_mpu_boot_map",
-        "ra8_mpu_apply_boot_map",
-        "ra8_mpu_is_enabled"
-      ]
-    },
-    {
-      "path": "libs/ra8_mpu/tests/abi_test.zig",
-      "kind": "test-helper",
-      "symbols": [
-        "ra8_log_emit_error",
-        "ra8_hw_dsb",
-        "ra8_hw_isb"
       ]
     },
     {
@@ -318,19 +372,6 @@
         "ra8_abi_fixture_callback_invoke",
         "ra8_abi_fixture_callback_unregister",
         "ra8_abi_fixture_callback_cancel"
-      ]
-    },
-    {
-      "path": "libs/ra8_usb_pal/tests/abi_test.zig",
-      "kind": "test-helper",
-      "symbols": [
-        "ra8_log_emit_error",
-        "ra8_log_emit_error_val",
-        "ra8_log_emit_info",
-        "ra8_usb_attach_handler",
-        "ra8_usb_device_attach",
-        "ra8_usb_device_deinit",
-        "ra8_usb_device_init"
       ]
     }
   ],
@@ -1216,6 +1257,136 @@
           "name": "ra8_kbd_apply",
           "calling_context": "task-only-non-reentrant",
           "ownership": "mutates caller-owned text and keyboard layout state synchronously"
+        }
+      ]
+    },
+    {
+      "name": "ra8_audio",
+      "build_root": "libs/ra8_audio",
+      "public_headers": [
+        {
+          "path": "libs/ra8_audio/inc/ra8_audio.h",
+          "compatibility_sha256": "ec63356b4592f7649c72a98b8b8623516042282937fe5d567c7cf38baa2d6ff6",
+          "layout_assertions": [
+            "@offsetOf(Buffer, \"capacity\") == ptr_bytes",
+            "@sizeOf(Buffer) == std.mem.alignForward(usize, ptr_bytes + 4, ptr_bytes)",
+            "@offsetOf(Frame, \"sample_count\") == ptr_bytes + 4",
+            "@offsetOf(Frame, \"timestamp_ms\") == ptr_bytes + 12",
+            "@offsetOf(Frame, \"channels\") == ptr_bytes + 16",
+            "@offsetOf(Frame, \"format\") == ptr_bytes + 18",
+            "@sizeOf(Frame) == std.mem.alignForward(usize, ptr_bytes + 19, ptr_bytes)",
+            "@sizeOf(Info) == 16",
+            "@sizeOf(Source) == ptr_bytes * 2",
+            "@sizeOf(SourceIface) == ptr_bytes * 4"
+          ]
+        },
+        {
+          "path": "libs/ra8_audio/inc/ra8_audio_source_memory.h",
+          "compatibility_sha256": "af0bd53d3fbecd43e5f6c45fbf825bf59cd8db0444ac8dce12eb1e0ccb07f2a5",
+          "layout_assertions": [
+            "@sizeOf(MemoryState) == @sizeOf(abi.Frame)",
+            "@offsetOf(MemoryState, \"frame\") == 0"
+          ]
+        },
+        {
+          "path": "libs/ra8_audio/inc/ra8_audio_source_pdm.h",
+          "compatibility_sha256": "2074ba0d0c3885f1082a4310841cce40f3f619d5c6990bebfa03b352a6331fe4",
+          "layout_assertions": [
+            "@sizeOf(PdmChannelCfg) == 82",
+            "@alignOf(PdmChannelCfg) == 2",
+            "@offsetOf(PdmChannelCfg, \"hpf_s0\") == 10",
+            "@offsetOf(PdmChannelCfg, \"comp_h\") == 18",
+            "@offsetOf(PdmChannelCfg, \"lpf_h1\") == 42",
+            "@sizeOf(PdmCfg) == 108",
+            "@offsetOf(PdmCfg, \"sample_rate_hz\") == 84",
+            "@offsetOf(PdmCfg, \"irq_priority\") == 106",
+            "@offsetOf(PdmState, \"poll_attempts\") == 16",
+            "@offsetOf(PdmState, \"stream_data\") == std.mem.alignForward(usize, 20, ptr_bytes)",
+            "@offsetOf(PdmState, \"streaming\") == @offsetOf(PdmState, \"channel\") + 3",
+            "@sizeOf(PdmState) == std.mem.alignForward(usize, @offsetOf(PdmState, \"channel\") + 4, ptr_bytes)"
+          ]
+        }
+      ],
+      "adapters": [
+        "libs/ra8_audio/src/ra8_audio_abi.zig",
+        "libs/ra8_audio/src/source_memory.zig",
+        "libs/ra8_audio/src/source_pdm.zig"
+      ],
+      "library_name": "ra8_audio",
+      "symbol_prefix": "ra8_audio_",
+      "target_class": "host-ra8",
+      "targets": {
+        "host": [],
+        "ra8": [
+          "-Dtarget=thumb-freestanding-eabihf",
+          "-Dcpu=cortex_m85+fp_armv8-d32-fp64"
+        ]
+      },
+      "run_host_tests_in_all_modes": false,
+      "c_include_dirs": [
+        "libs/ra8_audio/inc",
+        "libs/ra8_hal/inc",
+        "libs/ra8_core/inc"
+      ],
+      "contract_tests": [
+        {
+          "language": "c",
+          "path": "tests/misc/src/test_ra8_audio.c",
+          "registration": "tests/cmake/unit_tests.cmake"
+        },
+        {
+          "language": "c",
+          "path": "tests/hal/src/test_ra8_pdm.c",
+          "registration": "tests/cmake/unit_tests.cmake"
+        },
+        {
+          "language": "zig",
+          "path": "libs/ra8_audio/tests/abi_test.zig",
+          "symbol_evidence": "libs/ra8_audio/src/ra8_audio_abi.zig",
+          "registration": "libs/ra8_audio/.zig-test-contract.json"
+        },
+        {
+          "language": "zig",
+          "path": "libs/ra8_audio/tests/pdm_test.zig",
+          "symbol_evidence": "libs/ra8_audio/src/source_pdm.zig",
+          "registration": "libs/ra8_audio/.zig-test-contract.json"
+        }
+      ],
+      "exports": [
+        {
+          "name": "ra8_audio_frame_validate",
+          "calling_context": "task-safe-reentrant",
+          "ownership": "reads a borrowed frame for this call and retains no pointer"
+        },
+        {
+          "name": "ra8_audio_source_get_info",
+          "calling_context": "task-only-non-reentrant",
+          "ownership": "borrows the bound source and writes caller-owned output"
+        },
+        {
+          "name": "ra8_audio_source_capture",
+          "calling_context": "task-only-non-reentrant",
+          "ownership": "borrows source and buffer; publishes a caller-owned frame view"
+        },
+        {
+          "name": "ra8_audio_source_stream_start",
+          "calling_context": "task-only-non-reentrant",
+          "ownership": "retains callback context and buffer until the source is stopped"
+        },
+        {
+          "name": "ra8_audio_source_stop",
+          "calling_context": "task-only-non-reentrant",
+          "ownership": "stops backend activity and clears the source only on success"
+        },
+        {
+          "name": "ra8_audio_source_memory_init",
+          "calling_context": "task-only-non-reentrant",
+          "ownership": "copies frame metadata into caller state and borrows its payload until stop"
+        },
+        {
+          "name": "ra8_audio_source_pdm_init",
+          "calling_context": "task-only-non-reentrant",
+          "ownership": "initializes caller-owned state and retains it until the source is stopped"
         }
       ]
     }
