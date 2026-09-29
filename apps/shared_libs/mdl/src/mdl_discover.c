@@ -16,7 +16,7 @@
 #include "mdl_net.h"
 #include "mdl_search.h"
 #include "mdl_stream_internal.h"
-#include "mdl_url_guard.h"
+#include "ra8_net_urlguard.h"
 #include "ra8_attributes.h"
 #include "ra8_err.h"
 
@@ -189,19 +189,20 @@ RA8_INTERNAL static ra8_err_t internal_discover_fetch(const mdl_discover_req_t* 
     return k_ra8_fail; /* robots refused (message already printed) */
   }
   char                hostbuf[k_mdl_gov_host_max];
-  const char*         host = mdl_url_host(url, hostbuf, sizeof(hostbuf)) ? hostbuf : nullptr;
+  const char*         host =
+    (ra8_net_urlguard_host(url, hostbuf, sizeof(hostbuf)) == k_ra8_ok) ? hostbuf : nullptr;
   const uint32_t      jmin = internal_max_u32(req->site->chapter_delay_min, crawl);
   const uint32_t      jmax = internal_max_u32(req->site->chapter_delay_max, crawl);
-  const mdl_net_req_t nreq = {.user_agent = req->session->user_agent,
-                              .referer    = nullptr,
-                              .timeout_ms = req->timeout_ms};
+  const ra8_mdl_http_policy_t nreq = {.user_agent = req->session->user_agent,
+                                      .referer    = nullptr,
+                                      .timeout_ms = req->timeout_ms};
   ra8_err_t           rc   = k_ra8_fail;
   for (uint8_t attempt = 0U; attempt < (uint8_t)k_disc_max_attempts; ++attempt) {
     if (mdl_governor_acquire(req->gov, host, jmin, jmax) == k_ra8_err_would_block) {
       rc = k_ra8_err_would_block;
       continue; /* no slot reserved, so nothing to release */
     }
-    mdl_net_resp_t resp = {};
+    ra8_mdl_http_response_t resp = {};
     rc =
       mdl_net_get_buf(req->session->net, url, &nreq, req->page_buf, req->page_cap, out_len, &resp);
     mdl_governor_observe(req->gov, host, resp.status, resp.retry_after);

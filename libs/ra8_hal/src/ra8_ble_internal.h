@@ -4,6 +4,10 @@
  * @details Declares the bounded capture and injection hooks used to verify HCI
  *          framing and receive dispatch without exposing them as public HAL
  *          operations. Production code must use the API in `ra8_ble.h`.
+ *
+ * @par Tag
+ * [Ring 3 / HAL] {World: NS}
+ *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
  * @since Version 0.1.0

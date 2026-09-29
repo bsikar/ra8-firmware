@@ -5,6 +5,9 @@
  * @details Declares caller-invisible IIC_B state and cross-translation-unit transaction helpers used by the public compatibility API.
  * @ingroup grp_hal_comms
  *
+ * @par Tag
+ * [Ring 3 / HAL] {World: NS}
+ *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
  */

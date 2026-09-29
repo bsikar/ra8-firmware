@@ -33,6 +33,7 @@ typedef struct {
   uint8_t*         fb;          /**< Framebuffer base.                        */
   uint16_t         width;       /**< Width in pixels.                         */
   uint16_t         height;      /**< Height in pixels.                        */
+  uint32_t         pitch;       /**< Row pitch in bytes; >= width * bpp.      */
   ra8_gfx_format_t format;      /**< Pixel format.                            */
   uint8_t          bpp;         /**< Bytes per pixel.                         */
   bool             initialized; /**< Set after a successful init.             */
@@ -76,6 +77,43 @@ extern ra8_gfx_state_t g_gfx_text_state;
  * @since 0.1.0
  */
 RA8_PRIV uint16_t priv_gfx_text_pack_565(uint32_t color);
+
+/**
+ * @brief Bytes per pixel for a pixel format.
+ *
+ * @details
+ * The format enum's low byte is the per-pixel byte stride by construction, so
+ * this is the one place that fact is spelled out. Promoted to module-external
+ * linkage so the bind TU and the rasteriser TUs size pixels identically.
+ *
+ * @param[in] format Pixel format to size.
+ * @return uint8_t Bytes occupied by one pixel of `format`.
+ * @retval 2 For k_ra8_gfx_format_rgb565.
+ * @retval 4 For k_ra8_gfx_format_argb8888.
+ * @pre `format` is a valid ra8_gfx_format_t.
+ * @post No module state is modified.
+ * @note Thread-safe; pure function of its argument.
+ * @since 0.1.0
+ */
+RA8_PRIV uint8_t priv_gfx_bpp(ra8_gfx_format_t format);
+
+/**
+ * @brief Test whether a format enum is one this library renders.
+ *
+ * @details
+ * Shared by both bind entry points and by the blit source-format check, so a
+ * format accepted in one place cannot be rejected in another.
+ *
+ * @param[in] f Format value to validate.
+ * @return bool Whether `f` names a supported format.
+ * @retval true  `f` is RGB565, RGB888 or ARGB8888.
+ * @retval false Any other value.
+ * @pre None.
+ * @post No module state is modified.
+ * @note Thread-safe; pure function of its argument.
+ * @since 0.1.0
+ */
+RA8_PRIV bool priv_gfx_format_ok(ra8_gfx_format_t f);
 
 /**
  * @brief Plot a single pixel with bounds checking against the active clip.

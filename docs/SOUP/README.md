@@ -62,7 +62,10 @@ see [esp-hosted-host.md](esp-hosted-host.md) for how the two halves differ.
 - **TF-PSA-Crypto** -- PSA Crypto API implementation backing TLS, OTA
   signature checks, and the secure-side key vault.
 - **Apache NimBLE** -- Bluetooth 5.4 host + controller stack staged for
-  future BLE bring-up; not yet linked to an example.
+  future BLE bring-up. One consumer declares it,
+  `examples/_unsupported/threadx_nimble_peripheral` (`USES threadx nimble`),
+  which sits in the `_unsupported` tier and so is outside the supported
+  example set; no supported app links it (#631).
 - **litehtml** -- HTML/CSS layout engine for the EPUB reader.
 - **miniz** -- Deflate / inflate / ZIP support behind the EPUB, CBZ, PNG and
   gzip decode paths and the app-owned `compress` VFS composition seam.
@@ -116,9 +119,12 @@ an application/content vertical continues to consume that app-owned vendor.
 - [`../sbom/ra8-firmware.cdx.json`](../sbom/ra8-firmware.cdx.json) -- the
   machine-readable CycloneDX 1.5 SBOM (feed to `osv-scanner`).
 
-Both are generated and validated by
+The SBOM is generated and validated by
 [`../../scripts/gen/gen_sbom.py`](../../scripts/gen/gen_sbom.py)
-(`just quality::local::sbom` / `just quality::local::sbom_check`); the component registry it renders lives in
+(`just quality::local::sbom` / `just quality::local::sbom_check`). The license
+inventory is hand-maintained and cross-checked against the same registry by
+[`../../scripts/checks/check_soup_inventory.py`](../../scripts/checks/check_soup_inventory.py),
+which the same gate runs (#631). The component registry the generator renders lives in
 the sibling module
 [`../../scripts/gen/sbom_registry.py`](../../scripts/gen/sbom_registry.py)
 and is the single

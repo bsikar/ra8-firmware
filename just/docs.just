@@ -9,25 +9,15 @@ default:
     @echo "DOCS - Documentation, Dashboards & Architecture Audits"
     @echo ""
     @echo "COMMANDS:"
-    @echo "  just docs::build          Generate Doxygen HTML documentation"
-    @echo "  just docs::clean          Remove generated Doxygen HTML documentation"
-    @echo "  just docs::push           Build and publish Doxygen to gh-pages"
+    @echo "  just docs::clean          Remove generated documentation"
     @echo "  just docs::record_stats   Refresh historical HAL completion summary"
     @echo "  just docs::sizes          Summarize app .text/.data/.bss footprints"
     @echo "  just docs::audit_init     Audit peripheral init order across apps"
     @echo ""
 
-# Remove generated Doxygen HTML documentation
+# Remove generated documentation
 clean:
     rm -rf build/docs
-
-# Generate Doxygen HTML documentation into build/docs/html/
-build:
-    bash scripts/builders/docs.sh
-
-# Build Doxygen docs and publish to the gh-pages branch
-push: build
-    /bin/bash -p scripts/builders/publish_docs.sh
 
 # Refresh the summary embedded in the historical HAL completion record
 record_stats:

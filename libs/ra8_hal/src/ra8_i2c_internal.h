@@ -5,6 +5,9 @@
  * @details Declares bounded module-private RIIC predicates and transfer helpers shared across the I2C driver translation units.
  * @ingroup grp_hal_comms
  *
+ * @par Tag
+ * [Ring 3 / HAL] {World: NS}
+ *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
  * @since 0.1.0

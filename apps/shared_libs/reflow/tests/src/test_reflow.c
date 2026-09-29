@@ -21,7 +21,7 @@
  *
  * The MC/DC vector tests for the public-API guard decisions live in the
  * split sibling test_reflow_api_mcdc.c; the shared Literata fixture is
- * tests/inc/reflow_v1_test_util.h.
+ * apps/shared_libs/reflow/tests/inc/reflow_v1_test_util.h.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT

@@ -48,7 +48,7 @@
  * This sibling owns the compile happy path and the byte-identical parity
  * tests; the image-transform and error-path tests live in
  * test_ra8_rabook_pipeline_err.c and the synthetic-EPUB builders in
- * tests/inc/rabook_pipeline_fixture.h.
+ * apps/shared_libs/rabook_compile/tests/inc/rabook_pipeline_fixture.h.
  *
  *
  * [Ring 4 / EPUB_Compiler] {World: NS}

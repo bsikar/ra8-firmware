@@ -586,6 +586,11 @@ ra8_sram_self_test(uint8_t bank, uint32_t probe_offset, bool inject_two_bit, boo
  *
  * @note Not thread-safe.
  * @since 0.1.0
+ * @pre  PRCR.PRC4 is unlocked by the caller. This register is a
+ *       security-attribution register and its stores are discarded
+ *       silently while PRC4 is locked; wrap the call in
+ *       ``RA8_PROTECTED_WRITE(k_ra8_prcr_unlock_sar)``. ``ra8_sram_init``
+ *       does this for its own apply and does not cover direct callers.
  */
 [[nodiscard]] ra8_err_t ra8_sram_set_security(uint32_t sa_mask);
 
@@ -602,6 +607,11 @@ ra8_sram_self_test(uint8_t bank, uint32_t probe_offset, bool inject_two_bit, boo
  *
  * @note Not thread-safe.
  * @since 0.1.0
+ * @pre  PRCR.PRC4 is unlocked by the caller. This register is a
+ *       security-attribution register and its stores are discarded
+ *       silently while PRC4 is locked; wrap the call in
+ *       ``RA8_PROTECTED_WRITE(k_ra8_prcr_unlock_sar)``. ``ra8_sram_init``
+ *       does this for its own apply and does not cover direct callers.
  */
 [[nodiscard]] ra8_err_t ra8_sram_set_ecc_security(bool non_secure);
 
@@ -621,6 +631,11 @@ ra8_sram_self_test(uint8_t bank, uint32_t probe_offset, bool inject_two_bit, boo
  *
  * @note Not thread-safe.
  * @since 0.1.0
+ * @pre  PRCR.PRC4 is unlocked by the caller. This register is a
+ *       security-attribution register and its stores are discarded
+ *       silently while PRC4 is locked; wrap the call in
+ *       ``RA8_PROTECTED_WRITE(k_ra8_prcr_unlock_sar)``. ``ra8_sram_init``
+ *       does this for its own apply and does not cover direct callers.
  */
 [[nodiscard]] ra8_err_t ra8_sram_set_boundary(uint8_t bank, uint32_t offset);
 

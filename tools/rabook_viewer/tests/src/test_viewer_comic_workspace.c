@@ -16,6 +16,7 @@
 
 #include "ra8_attributes.h"
 #include "ra8_err.h"
+#include "ra8_imgdec_name.h"
 #include "ra8_viewer_reader.h"
 
 /** @brief Fixed test-only caller storage capacities. */
@@ -94,6 +95,40 @@ RA8_INTERNAL static bool internal_has_content(const uint16_t* pixels, size_t pix
 }
 
 /**
+ * @brief Prove the reader names the container a page actually holds (#748).
+ * @details Every page of the committed fixture is a PNG, so the naming call
+ * must answer `png` / `image/png` for one, refuse an out-of-range index, and
+ * refuse a closed reader. Naming is asserted separately from decoding: this
+ * checks only what the page *is*, never that anything can open it.
+ * @param[in,out] reader Open comic reader.
+ * @return Whether every naming assertion held.
+ * @retval true The page named PNG and both refusals were exact.
+ * @retval false A status, string, or zeroing assertion differed.
+ * @pre @p reader is open over the committed fixture.
+ * @post No reader state is published or closed here.
+ * @note Test-only and single-threaded.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static bool internal_name_page(ra8_viewer_reader_t* reader)
+{
+  ra8_imgdec_name_t name = {};
+  if ((ra8_viewer_page_container(reader, 0U, &name) != k_ra8_ok) ||
+      (name.format != k_ra8_imgdec_format_png) || (name.ext == nullptr) || (name.mime == nullptr) ||
+      (strcmp(name.ext, "png") != 0) || (strcmp(name.mime, "image/png") != 0)) {
+    return false;
+  }
+  ra8_imgdec_name_t past = {};
+  if ((ra8_viewer_page_container(reader, (uint32_t)k_test_page_count, &past) !=
+       k_ra8_err_out_of_range) ||
+      (past.ext != nullptr) || (past.format != k_ra8_imgdec_format_none)) {
+    return false;
+  }
+  ra8_imgdec_name_t none = {};
+  return (ra8_viewer_page_container(nullptr, 0U, &none) == k_ra8_err_null_ptr) &&
+         (none.ext == nullptr);
+}
+
+/**
  * @brief Open and render the committed comic through caller-owned storage.
  * @details Binds after the shortfall proof, checks page geometry, rejects a
  * one-byte-short tile, then renders exact non-white output and closes cleanly.
@@ -119,6 +154,10 @@ RA8_INTERNAL static bool internal_render_comic(const char*                      
       (ra8_viewer_open(reader, path) != k_ra8_ok) ||
       (ra8_viewer_page_count(reader) != (uint32_t)k_test_page_count) ||
       (ra8_viewer_render_page(reader, 0U) != k_ra8_ok)) {
+    ra8_viewer_close(reader);
+    return false;
+  }
+  if (!internal_name_page(reader)) {
     ra8_viewer_close(reader);
     return false;
   }
@@ -158,7 +197,10 @@ RA8_INTERNAL static bool internal_render_comic(const char*                      
                         (height == (uint32_t)k_test_page_height) &&
                         internal_has_content(pixels, (size_t)width * (size_t)height);
   ra8_viewer_close(reader);
-  return rendered && (ra8_viewer_page_count(reader) == 0U);
+  ra8_imgdec_name_t closed = {};
+  return rendered && (ra8_viewer_page_count(reader) == 0U) &&
+         (ra8_viewer_page_container(reader, 0U, &closed) == k_ra8_err_invalid_state) &&
+         (closed.ext == nullptr);
 }
 
 /**

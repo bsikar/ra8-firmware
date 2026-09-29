@@ -11,7 +11,7 @@
  * whitespace before values, boundary rejects), the case-insensitive
  * keyword compare, and the leading-number classifier. Every test drives the
  * real public SVG API with crafted byte strings; the shared framebuffer
- * fixture lives in tests/inc/reflow_svg_test_util.h.
+ * fixture lives in apps/shared_libs/reflow/tests/inc/reflow_svg_test_util.h.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT

@@ -21,6 +21,7 @@
 #include <stdint.h>
 
 #include "ra8_err.h"
+#include "ra8_i2c_bus_ops.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -84,6 +85,92 @@ typedef struct {
   bool     header_output;         /**< JPEG header generation is enabled.   */
   bool     compression_enabled;   /**< Timing pipeline selects JPEG output. */
 } ra8_ov5640_jpeg_status_t;
+
+/**
+ * @enum ra8_ov5640_i2c_const_t
+ * @brief Wire sizes the house-seam binder stages on the stack.
+ */
+typedef enum : uint32_t {
+  k_ra8_ov5640_i2c_reg_bytes   = 2U, /**< SCCB register pointer width.     */
+  k_ra8_ov5640_i2c_frame_bytes = 3U, /**< Register pointer plus one value. */
+} ra8_ov5640_i2c_const_t;
+
+/**
+ * @struct ra8_ov5640_i2c_ctx_t
+ * @brief Caller-owned binding state for ::ra8_ov5640_bind_i2c.
+ *
+ * @details
+ * Holds the house I2C seam by value, and is what the sensor's `ctx`
+ * cookie points at once bound. The caller owns the storage (the driver
+ * allocates nothing), so it must out-live the ::ra8_ov5640_t it was
+ * bound to: file scope, or the same frame as the device, never a
+ * helper's locals. The 7-bit address is not held here; the sensor
+ * already carries its own and hands it to every callback, which is what
+ * lets ::ra8_ov5640_probe walk both legal addresses through one binding.
+ *
+ * @invariant Once bound, `bus.write` and `bus.transfer` are non-NULL.
+ *
+ * @see ra8_ov5640_bind_i2c
+ * @since 0.1.0
+ */
+typedef struct {
+  ra8_i2c_bus_ops_t bus; /**< House I2C seam, copied at bind time. */
+} ra8_ov5640_i2c_ctx_t;
+
+/**
+ * @brief Bind the sensor to the house I2C seam, delay callback included.
+ *
+ * @details
+ * The adapter that used to be written out in every consuming app: the
+ * translation between the part's SCCB transport interface
+ * (::ra8_ov5640_bus_t, 16-bit register addresses) and the house I2C seam
+ * ::ra8_i2c_bus_ops_t, which an app binds to RIIC or to the I3C block's
+ * I2C-compatibility mode through `ra8_io_i2c_bus`. Reads go out as one
+ * write-RESTART-read of the two-byte register pointer; writes stage
+ * `[reg_hi][reg_lo][value]` and go out as one framed write with STOP.
+ * Both are byte-for-byte the transactions the board adapter already
+ * issued.
+ *
+ * The delay stays a separate callback because the seam is transfer-only
+ * by design and the sensor's reset and mode-switch waits are real: there
+ * is no house time seam to take it from.
+ *
+ * @param[out] out_dev   Sensor instance to initialise (zeroed on entry).
+ * @param[out] out_ctx   Caller-owned binding state; must out-live @p out_dev.
+ * @param[in]  ops       House I2C seam, already filled by its binder.
+ * @param[in]  delay_ms  Millisecond delay used by reset and mode switches.
+ *
+ * @return Error code.
+ * @retval k_ra8_ok              Bound; no bus traffic has occurred.
+ * @retval k_ra8_err_null_ptr    An argument, `ops->write`, `ops->transfer`
+ *                               or @p delay_ms was `nullptr`.
+ *
+ * @pre  @p ops was filled by a binder such as `ra8_io_i2c_bus_as_ops`.
+ * @post @p out_dev is ready for ::ra8_ov5640_probe; nothing reached the wire.
+ *
+ * @note The seam's `read` callback is not used, so a binder that fills
+ *       only `write` and `transfer` is accepted.
+ * @note Not thread-safe. Call once per sensor instance from init context.
+ *
+ * @par Example:
+ * @code
+ * static ra8_io_i2c_bus_t      s_bus;
+ * static ra8_ov5640_i2c_ctx_t  s_cam_ctx;
+ * ra8_i2c_bus_ops_t ops = {};
+ * (void)ra8_io_i2c_bus_bind_riic(&s_bus, 1U);
+ * (void)ra8_io_i2c_bus_as_ops(&s_bus, &ops);
+ * ra8_ov5640_t dev = {};
+ * (void)ra8_ov5640_bind_i2c(&dev, &s_cam_ctx, &ops, board_delay_ms);
+ * @endcode
+ *
+ * @see ra8_i2c_bus_ops_t  The house seam this binder consumes.
+ * @see ra8_ov5640_init    The transport-agnostic form underneath it.
+ * @since 0.1.0
+ */
+[[nodiscard]] ra8_err_t ra8_ov5640_bind_i2c(ra8_ov5640_t*            out_dev,
+                                            ra8_ov5640_i2c_ctx_t*    out_ctx,
+                                            const ra8_i2c_bus_ops_t* ops,
+                                            ra8_ov5640_delay_fn_t    delay_ms);
 
 /**
  * @brief Bind a caller-supplied SCCB transport without touching the sensor.

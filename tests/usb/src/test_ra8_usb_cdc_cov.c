@@ -3,6 +3,9 @@
  * @brief Coverage-focused unit tests for the native USB CDC ACM class
  *        layer (`libs/ra8_hal/src/ra8_usb_cdc.c`)
  *
+ * @par Tag
+ * [Ring 3 / HAL] {World: NS}
+ *
  * @details
  * Companion to `test_ra8_usb_cdc.c`. That file covers the public-API
  * happy path and argument rejection; this file drives the remaining

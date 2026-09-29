@@ -33,6 +33,7 @@
 #include "unarch_io.h"
 #include "unarch_xz.h"
 #include "unarch_xz_fixture.h"
+#include "ra8_imgdec_scratch.h"
 #include "unarch_xz_pool.h"
 #include "unity_minimal.h"
 
@@ -46,7 +47,7 @@ typedef enum : uint8_t {
  * @brief Allocation size, corruption mask and the relaxed ratio cap.
  */
 typedef enum : uint32_t {
-  k_t_alloc_exact  = 56U,      /**< Allocation that exactly exhausts the pool,
+  k_t_alloc_exact  = 48U,      /**< Allocation that exactly exhausts the pool,
                                     so the next one must fail rather than wrap. */
   k_t_corrupt_mask = 0xFFU,    /**< XOR that flips a mid-stream byte to break
                                     the CRC64.                                  */
@@ -195,11 +196,11 @@ static void internal_test_xz_pool_edges(void)
   TEST_ASSERT_EQ(k_ra8_ok, unarch_xz_pool_install(s_scratch, 64U));
   TEST_ASSERT_EQ(k_ra8_err_busy, unarch_xz_pool_install(s_scratch, 64U));
 
-  TEST_ASSERT_NULL(unarch_xz_pool_alloc(0U)); /* zero request */
-  void* a = unarch_xz_pool_alloc(3U);         /* rounds to 8  */
+  TEST_ASSERT_NULL(unarch_xz_pool_alloc(0U)); /* zero request           */
+  void* a = unarch_xz_pool_alloc(3U);         /* rounds to the contract */
   TEST_ASSERT_NOT_NULL(a);
   TEST_ASSERT(a == &s_scratch[0]);
-  TEST_ASSERT_EQ(8U, unarch_xz_pool_used());
+  TEST_ASSERT_EQ((uint32_t)k_ra8_imgdec_scratch_align, unarch_xz_pool_used());
   void* b = unarch_xz_pool_alloc(k_t_alloc_exact); /* exactly exhausts the arena */
   TEST_ASSERT_NOT_NULL(b);
   TEST_ASSERT_EQ(64U, unarch_xz_pool_used());
@@ -207,7 +208,8 @@ static void internal_test_xz_pool_edges(void)
   TEST_ASSERT_NULL(unarch_xz_pool_alloc(UINT32_MAX)); /* rounding would wrap */
   unarch_xz_pool_reset();
   TEST_ASSERT_EQ(0U, unarch_xz_pool_used());
-  unarch_xz_pool_reset(); /* idempotent */
+  TEST_ASSERT_NULL(unarch_xz_pool_alloc(1U)); /* uninstalled by reset */
+  unarch_xz_pool_reset();                     /* idempotent           */
   TEST_END("xz pool: install/alloc/reset edges");
 }
 

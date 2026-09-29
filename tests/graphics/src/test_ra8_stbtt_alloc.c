@@ -8,11 +8,16 @@
  * exhaustion -> nullptr, nullptr-free tolerance, partial-free does NOT
  * rewind, full-drain auto-reset, and the high-water diagnostic.
  *
- * The allocator contains no compound boolean decisions; every branch is a
- * single condition. Each test's @par MC/DC block therefore documents the
- * two-vector (true / false) coverage of the single-condition guards it
- * drives -- DO-178C 6.4.4.3 treats a single condition as trivially
- * MC/DC-covered by exercising both outcomes.
+ * Since #768 the hooks forward to ::ra8_imgdec_scratch_t, so the decisions
+ * these vectors drive live in libs/ra8_imgdec/src/ra8_imgdec_scratch.c and
+ * are cited there. The behaviour under test is unchanged, and this file
+ * still drives it through the entry points stb_truetype actually calls.
+ * Every guard reached here is a single condition; each test's @par MC/DC
+ * block documents the two-vector (true / false) coverage of it -- DO-178C
+ * 6.4.4.3 treats a single condition as trivially MC/DC-covered by
+ * exercising both outcomes. The one compound guard behind these hooks,
+ * ra8_imgdec_scratch_free()'s three-condition release test, gets its
+ * independent-influence vectors in test_ra8_img_arena_mcdc.c.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -36,8 +41,8 @@ typedef enum : uint8_t {
 } t_alloc_t;
 
 enum : uint32_t {
-  k_align       = 16,        /**< Mirror of k_ra8_stbtt_align.       */
-  k_arena_bytes = 96 * 1024, /**< Mirror of k_ra8_stbtt_arena_bytes. */
+  k_align       = 16,        /**< Mirror of k_ra8_imgdec_scratch_align. */
+  k_arena_bytes = 96 * 1024, /**< Mirror of k_ra8_stbtt_arena_bytes.    */
 };
 
 /**
@@ -46,9 +51,10 @@ enum : uint32_t {
  * aligned slot; the high-water mark advances monotonically.
  *
  * @par MC/DC:
- * Decision: ``if (s_offset > s_high_water)`` in ra8_stbtt_malloc
- * (1 condition, apps/shared_libs/reflow/src/ra8_stbtt_alloc.c@ra8_stbtt_malloc).
- *  - V1: first malloc, s_offset(16) > s_high_water(0) = T -> high-water
+ * Decision: ``if (scratch->offset > scratch->high_water)`` behind
+ * ra8_stbtt_malloc (1 condition,
+ * libs/ra8_imgdec/src/ra8_imgdec_scratch.c@internal_reserve).
+ *  - V1: first malloc, offset(16) > high_water(0) = T -> high-water
  *    advances.
  * The companion false outcome (no advance once the mark is reached) is
  * driven in test_full_drain_auto_reset when a re-allocation does not
@@ -77,11 +83,12 @@ static void test_alignment_and_high_water(void)
  * for callers (reflow, epub) that never call an explicit reset.
  *
  * @par MC/DC:
- * Decision: ``if (s_live == 0U)`` in ra8_stbtt_free
- * (1 condition, apps/shared_libs/reflow/src/ra8_stbtt_alloc.c@ra8_stbtt_free).
- *  - V1: after freeing both blocks, s_live == 0 = T -> offset rewinds to
+ * Decision: ``if (scratch->live == 0U)`` behind ra8_stbtt_free
+ * (1 condition,
+ * libs/ra8_imgdec/src/ra8_imgdec_scratch.c@ra8_imgdec_scratch_free).
+ *  - V1: after freeing both blocks, live == 0 = T -> offset rewinds to
  *    base (verified: the re-allocation returns the original address).
- * The companion s_high_water decision stays false here (the re-allocation
+ * The companion high_water decision stays false here (the re-allocation
  * does not exceed the prior mark), covering its false outcome.
  */
 static void test_full_drain_auto_reset(void)
@@ -105,9 +112,10 @@ static void test_full_drain_auto_reset(void)
  * block would be handed out twice.
  *
  * @par MC/DC:
- * Decision: ``if (s_live == 0U)`` in ra8_stbtt_free
- * (1 condition, apps/shared_libs/reflow/src/ra8_stbtt_alloc.c@ra8_stbtt_free).
- *  - V2: after one of two blocks is freed, s_live == 0 = F -> offset is
+ * Decision: ``if (scratch->live == 0U)`` behind ra8_stbtt_free
+ * (1 condition,
+ * libs/ra8_imgdec/src/ra8_imgdec_scratch.c@ra8_imgdec_scratch_free).
+ *  - V2: after one of two blocks is freed, live == 0 = F -> offset is
  *    NOT rewound (verified: the next allocation aliases neither live
  *    block). Pairs with V1 in test_full_drain_auto_reset for full MC/DC.
  */
@@ -134,13 +142,15 @@ static void test_partial_free_no_rewind(void)
  * and skips the glyph) without disturbing the live arena.
  *
  * @par MC/DC:
- * Decisions in ra8_stbtt_malloc
- * (apps/shared_libs/reflow/src/ra8_stbtt_alloc.c@ra8_stbtt_malloc), each 1 condition:
- *  - ``if (n > k_ra8_stbtt_arena_bytes)``: V-T request exceeds capacity
- *    outright -> nullptr; V-F normal requests elsewhere proceed.
- *  - ``if (aligned > k_ra8_stbtt_arena_bytes - s_offset)``: V-T the
- *    follow-on 1-byte request after the arena is full -> nullptr; V-F the
- *    whole-arena and post-drain requests succeed.
+ * Decision behind ra8_stbtt_malloc, 1 condition:
+ *  - ``if (want > (scratch->cap - scratch->offset))``
+ *    (libs/ra8_imgdec/src/ra8_imgdec_scratch.c@internal_reserve): V-T both
+ *    the over-capacity request and the follow-on 1-byte request after the
+ *    arena is full -> nullptr; V-F the whole-arena and post-drain requests
+ *    succeed. One fit test now answers both refusals: the shared contract
+ *    does not carry the shim's separate "larger than the arena" pre-check,
+ *    which was there to stop the alignment round-up overflowing and is
+ *    handled inside internal_round_up().
  */
 static void test_exhaustion_returns_null(void)
 {
@@ -162,12 +172,14 @@ static void test_exhaustion_returns_null(void)
  * the auto-reset bookkeeping).
  *
  * @par MC/DC:
- * Decision: ``if (p == nullptr)`` in ra8_stbtt_free
- * (1 condition, apps/shared_libs/reflow/src/ra8_stbtt_alloc.c@ra8_stbtt_free).
- *  - V-T: free(nullptr) returns early, leaving s_live untouched.
- *  - V-F: free of a real block decrements s_live (exercised by every
- *    other test). Verified here: after two nullptr-frees a real
+ * Condition: ``ptr == nullptr`` in the release guard behind ra8_stbtt_free
+ * (libs/ra8_imgdec/src/ra8_imgdec_scratch.c@ra8_imgdec_scratch_free).
+ *  - V-T: free(nullptr) returns early, leaving the live count untouched.
+ *  - V-F: free of a real block decrements it (exercised by every other
+ *    test). Verified here: after two nullptr-frees a real
  *    alloc/free/alloc round-trip still auto-resets to the base address.
+ * The guard's full three-condition independent influence is in
+ * test_ra8_img_arena_mcdc.c.
  */
 static void test_null_free_is_noop(void)
 {

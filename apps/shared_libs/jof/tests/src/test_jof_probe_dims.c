@@ -11,7 +11,8 @@
  * the declared geometry and never the pixel payload.
  *
  * Covered here: the three null-pointer guards, the too-short-to-sniff guard,
- * the JPEG / PNG / WebP dispatch arms, the PNG truncated-IHDR guard, the
+ * the JPEG / PNG / WebP dispatch arms, the PNG truncated-IHDR and foreign-
+ * chunk guards, the
  * unrecognised-magic fallthrough, the "RIFF but not WEBP" half of the WebP
  * fourCC pair, and both halves of the zero / over-cap dimension check.
  *
@@ -47,7 +48,10 @@ enum : uint32_t {
   k_p_filler     = 0x5AU,  /**< Filler byte for the "matches no container
                                 magic" vector; any value that is not the
                                 head of a format the probe knows.          */
-  k_p_form_ofs   = 8U,     /**< Offset of the RIFF form-type fourCC. */
+  k_p_form_ofs   = 8U,     /**< Offset of the RIFF form-type fourCC.  */
+  k_p_type_ofs   = 12U,    /**< Offset of the first chunk's type tag. */
+  k_p_over_plat  = 16385U, /**< One past the shared probe's cap, still
+                                under ::k_jof_max_dim.                 */
 };
 
 /**
@@ -152,20 +156,30 @@ RA8_INTERNAL static void internal_test_probe_too_short(void)
 }
 
 /**
- * @brief The PNG arm reads IHDR, and refuses a truncated one.
- * @details Both halves of the ::priv_png_dims guard: a header long enough to
- *          carry both fields yields the declared geometry, and one cut short
- *          of the height field is refused rather than read out of bounds.
+ * @brief The PNG arm reads IHDR, and refuses a truncated or foreign one.
+ * @details The producer no longer carries its own IHDR field offsets; the arm
+ *          forwards to `ra8_imgdec_dims()` (#768). A header long enough to
+ *          carry both fields yields the declared geometry, one cut short of
+ *          the height field is refused rather than read out of bounds, and a
+ *          first chunk that is not IHDR is refused rather than have four
+ *          foreign bytes read as a size. That last refusal is new: the old
+ *          in-module reader trusted the signature and never checked the tag.
+ *          A source over ::k_ra8_imgdec_dim_max is also refused here now,
+ *          where the looser ::k_jof_max_dim once let it through.
  * @pre None.
  * @pre None.
  * @post A full IHDR produced the declared width and height.
  * @post An IHDR truncated below its end returned ::k_ra8_err_not_supported.
+ * @post A non-IHDR first chunk returned ::k_ra8_err_not_supported.
+ * @post A dimension past the shared cap returned ::k_ra8_err_invalid_size.
  *
  * @par MC/DC:
- * (no compound decisions in this test -- drives the PNG dispatch arm and
- * priv_png_dims's single-condition `len < k_jof_png_ihdr_end` truncation guard
- * (full IHDR -> k_ra8_ok; IHDR cut short -> not_supported). The valid PNG passes
- * through priv_probe_sniff's SOI && and range || decisions in one direction only;
+ * (no compound decisions in this test -- the truncation and chunk-type guards
+ * are single-condition and now live in
+ * libs/ra8_imgdec/src/ra8_imgdec_dims.c@internal_png, whose own vectors are in
+ * tests/misc/src/test_ra8_imgdec_dims.c; this drives the PNG dispatch arm and
+ * asserts the routing this module still owns. The valid PNG passes through
+ * priv_probe_sniff's SOI && and range || decisions in one direction only;
  * their independent-influence MC/DC is owned by internal_test_probe_jpeg_dispatch and
  * internal_test_probe_range_guard.)
  * @note Not thread-safe.
@@ -183,6 +197,16 @@ RA8_INTERNAL static void internal_test_probe_png(void)
   TEST_ASSERT_EQ(k_p_h, h);
   /* One byte short of the height field: sniffable, but the IHDR is cut. */
   TEST_ASSERT_EQ(k_ra8_err_not_supported, jof_probe_dims(hdr, (size_t)(k_p_png_ihdr - 1U), &w, &h));
+  /* Signature intact, first chunk is sRGB: refused rather than read as a size. */
+  internal_make_png(hdr, k_p_w, k_p_h);
+  hdr[k_p_type_ofs]      = (uint8_t)'s';
+  hdr[k_p_type_ofs + 1U] = (uint8_t)'R';
+  hdr[k_p_type_ofs + 2U] = (uint8_t)'G';
+  hdr[k_p_type_ofs + 3U] = (uint8_t)'B';
+  TEST_ASSERT_EQ(k_ra8_err_not_supported, jof_probe_dims(hdr, (size_t)k_p_png_ihdr, &w, &h));
+  /* Past the shared probe's cap but under the container's: refused. */
+  internal_make_png(hdr, k_p_over_plat, k_p_h);
+  TEST_ASSERT_EQ(k_ra8_err_invalid_size, jof_probe_dims(hdr, (size_t)k_p_png_ihdr, &w, &h));
   TEST_END("probe_dims: PNG IHDR arm and its truncation guard");
 }
 

@@ -6,9 +6,11 @@
  * @details Decodes JPEG, PNG, GIF, BMP, and WebP source bytes, optionally
  * downscales them, and emits the exact gray4 or gray8 payload consumed by
  * ::book_image_t. Every byte of working storage is supplied by the caller;
- * the codec adapters use ::ra8_img_arena_t and ::ra8_webp_arena_t rather than
- * the C heap. The API has no filesystem dependency, so host tools and firmware
- * composition roots can share the same normalization path.
+ * both codec adapters draw from ::ra8_imgdec_scratch_t rather than the C heap,
+ * so this header names the shared imaging scratch contract and not either
+ * decoder's own spelling of it (#768). The API has no filesystem dependency, so
+ * host tools and firmware composition roots can share the same normalization
+ * path.
  *
  * [Ring 3 / RABOOK Compiler] {World: NS}
  *
@@ -23,8 +25,7 @@
 
 #include "book.h"
 #include "ra8_err.h"
-#include "ra8_img_arena.h"
-#include "ra8_webp_arena.h"
+#include "ra8_imgdec_scratch.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -43,12 +44,12 @@ extern "C" {
  * @since 0.1.0
  */
 typedef struct {
-  ra8_img_arena_t*  stb_arena;  /**< JPEG/PNG/GIF/BMP decoder arena. */
-  ra8_webp_arena_t* webp_arena; /**< WebP decoder scratch arena.     */
-  uint8_t*          rgba;       /**< WebP RGBA frame storage.        */
-  size_t            rgba_cap;   /**< Capacity of @p rgba in bytes.   */
-  uint8_t*          gray;       /**< Downscaled grayscale storage.   */
-  size_t            gray_cap;   /**< Capacity of @p gray in bytes.   */
+  ra8_imgdec_scratch_t* stb_arena;  /**< JPEG/PNG/GIF/BMP decoder scratch. */
+  ra8_imgdec_scratch_t* webp_arena; /**< WebP decoder scratch.             */
+  uint8_t*          rgba;           /**< WebP RGBA frame storage.          */
+  size_t            rgba_cap;       /**< Capacity of @p rgba in bytes.     */
+  uint8_t*          gray;           /**< Downscaled grayscale storage.     */
+  size_t            gray_cap;       /**< Capacity of @p gray in bytes.     */
 } ra8_rabook_raster_workspace_t;
 
 /**

@@ -3,6 +3,9 @@
  * @brief Native USB host-side HID (Human Interface Device) class layer
  * @ingroup grp_hal_usb
  *
+ * @par Tag
+ * [Ring 3 / HAL] {World: NS}
+ *
  * @details
  * Glues the host-mode bring-up paths in `ra8_usb` to a USB HID
  * peripheral - typically a keyboard, mouse, or gamepad - attached on

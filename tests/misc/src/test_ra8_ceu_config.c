@@ -66,6 +66,8 @@ typedef enum : uint16_t {
   k_test_ceu_width  = 1280U, /**< Test CEU width.  */
   k_test_ceu_height = 720U,  /**< Test CEU height. */
   k_test_ceu_stride = 2560U, /**< Test CEU stride. */
+  k_test_ceu_clip_width =
+    640U, /**< Scale-down filter output width, narrower than the capture window. */
 } test_ceu_dim_t;
 
 typedef enum : uint32_t {
@@ -616,35 +618,18 @@ static void test_frame_drop_set(void)
  * @enum test_board_cam_fixture_t
  * @brief Board constants the camera BSP encodes, restated so a change is caught.
  * @details These mirror private constants in the BSP: the U15 IODIR mask that
- *          overrides SW4-6, the GPT channel driving XCLK, and the SCCB target
- *          and register the transport cases address.
+ *          overrides SW4-6 and the GPT channel driving XCLK. The SCCB address
+ *          and register constants moved to
+ *          `test_ra8_board_ek_ra8d2_camera_seam.c` with the byte-level SCCB
+ *          proof, along with the RIIC bring-up helper they needed.
  * @invariant k_board_cam_sw46_mask has exactly one bit set.
- * @invariant k_board_cam_addr fits seven bits.
  * @since 0.1.0
  */
 typedef enum : uint8_t {
   k_board_cam_sw46_mask   = 0x20U, /**< U15 IODIR bit that overrides SW4-6.   */
   k_board_cam_gpt_channel = 12U,   /**< GPT channel wired to CAM_XCLK.        */
-  k_board_cam_addr        = 0x3CU, /**< 7-bit SCCB address used by the case.  */
-  k_board_cam_reg_hi      = 0x30U, /**< High byte of the addressed register.  */
-  k_board_cam_reg_lo      = 0x0AU, /**< Low byte of the addressed register.   */
-  k_board_cam_value       = 0x5AU, /**< Value written to that register.       */
-  k_board_cam_rx_byte     = 0xC3U, /**< Byte staged in ICDRR for the read.    */
-  k_board_cam_trace_cap   = 8U,    /**< Capacity of the SCCB byte trace.      */
   k_board_cam_xclk_div    = 4U,    /**< PCLKD divisor the XCLK case asks for. */
 } test_board_cam_fixture_t;
-
-/**
- * @enum test_board_cam_reg_t
- * @brief The 16-bit sensor register the SCCB cases address.
- * @details Split into its two transmitted bytes above so the big-endian
- *          address encoding the BSP performs can be asserted byte by byte.
- * @invariant k_board_cam_reg == ((k_board_cam_reg_hi << 8) | k_board_cam_reg_lo).
- * @since 0.1.0
- */
-typedef enum : uint16_t {
-  k_board_cam_reg = 0x300AU, /**< Addressed sensor register. */
-} test_board_cam_reg_t;
 
 /**
  * @enum test_board_cam_clock_t
@@ -658,66 +643,14 @@ typedef enum : uint32_t {
   k_test_board_pclkb_hz = 50000000U, /**< 50 MHz PCLKB. */
 } test_board_cam_clock_t;
 
-/** @brief Distinct consecutive ICDRT values observed on the camera SCCB bus. */
-static uint8_t s_board_cam_trace[k_board_cam_trace_cap];
-
-/** @brief Number of entries recorded in ::s_board_cam_trace. */
-static uint8_t s_board_cam_trace_len;
-
 /**
- * @brief Record each new byte the driver stages in the SCCB transmit register.
- * @details Runs inline on the driver's own poll thread once per bounded status
- *          poll, before the byte for that poll is written, so consecutive equal
- *          samples are folded away and the trace is the transmitted sequence.
- * @pre RIIC channel 1 registers are mapped.
- * @pre The trace was cleared for the case being run.
- * @post A byte differing from the previous sample is appended, bounded by capacity.
- * @post No register is modified.
- * @note Test-only and not thread-safe; the suite is single-threaded.
- * @since 0.1.0
- */
-RA8_INTERNAL static void internal_board_cam_trace_hook(void)
-{
-  volatile const r_i2c_regs_t* reg = ra8_i2c_regs((uint8_t)k_ra8_board_camera_i2c_channel);
-  if (reg == nullptr) {
-    return;
-  }
-  if (s_board_cam_trace_len >= (uint8_t)k_board_cam_trace_cap) {
-    return;
-  }
-  /* HUM Ch 39.2.17 "ICDRT : I2C Bus Transmit Data Register" p 2393 */
-  const uint8_t byte = reg->ICDRT;
-  if ((s_board_cam_trace_len != 0U) && (s_board_cam_trace[s_board_cam_trace_len - 1U] == byte)) {
-    return;
-  }
-  s_board_cam_trace[s_board_cam_trace_len] = byte;
-  s_board_cam_trace_len += 1U;
-}
-
-/**
- * @brief Restore every hosted service the camera BSP touches. @details Zeroes the register window, disarms the MMIO fault seam and the SCCB trace hook, frees every pin claim and reinitialises the module-stop model, so a case cannot inherit a claim or a latched status flag. @pre May be called at any point; no prerequisites. @pre No board operation is in flight. @post No pin is claimed and no MMIO wait is armed. @post The SCCB byte trace is empty. @note Not thread-safe; single-threaded test binary only. @since Version 0.1.0 */
+ * @brief Restore every hosted service the camera BSP touches. @details Zeroes the register window, disarms the MMIO fault seam, frees every pin claim and reinitialises the module-stop model, so a case cannot inherit a claim or a latched status flag. @pre May be called at any point; no prerequisites. @pre No board operation is in flight. @post No pin is claimed and no MMIO wait is armed. @note Not thread-safe; single-threaded test binary only. @since Version 0.1.0 */
 RA8_INTERNAL static void internal_board_cam_prep(void)
 {
   ra8_fake_mmap_reset();
   ra8_fake_mmio_reset();
   ra8_pin_validator_reset();
   (void)ra8_mstp_init();
-  s_board_cam_trace_len = 0U;
-}
-
-/**
- * @brief Bring RIIC1 up and stage the flags every SCCB byte waits on. @details ra8_i2c_init leaves ICSR2 alone and the per-transfer status clear preserves TDRE, TEND and RDRF, so staging them once lets a whole address-plus-data sequence complete without a bounded-wait expiry. @pre The register window was reset for this case. @pre The module-stop model is initialized. @post RIIC1 is enabled at the standard bit rate. @post ICSR2 reports transmit-empty, transmit-end and receive-full. @note Not thread-safe; single-threaded test binary only. @since Version 0.1.0 */
-RA8_INTERNAL static void internal_board_cam_bus_up(void)
-{
-  const ra8_i2c_cfg_t cfg = {
-    .bus_hz   = (uint32_t)k_ra8_i2c_speed_standard,
-    .pclkb_hz = (uint32_t)k_test_board_pclkb_hz,
-  };
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_i2c_init((uint8_t)k_ra8_board_camera_i2c_channel, &cfg));
-  volatile r_i2c_regs_t* reg = ra8_i2c_regs((uint8_t)k_ra8_board_camera_i2c_channel);
-  /* HUM Ch 39.2.10 "ICSR2 : I2C Bus Status Register 2" p 2384 */
-  reg->ICSR2 = (uint8_t)((uint8_t)k_ra8_i2c_msk_icsr2_tdre | (uint8_t)k_ra8_i2c_msk_icsr2_tend |
-                         (uint8_t)k_ra8_i2c_msk_icsr2_rdrf);
 }
 
 /**
@@ -814,58 +747,75 @@ static void test_board_camera_reset_pulses_pin(void)
 }
 
 /**
- * @brief Encode SCCB register transfers as big-endian address plus data. @details The write case must put the peripheral address byte, then the register high byte, then its low byte on the bus and leave the value as the final transmitted byte; the read case must repeat the same two address bytes and hand back the received byte; a null destination is refused before any bus traffic. The delay adapter is exercised alongside them because it shares the transport callback signature. @pre RIIC1 is up with its transmit and receive flags staged. @pre The SCCB byte trace is empty. @post Both transfers report success and the traced bytes match the encoding. @post The delay adapter leaves the millisecond tick source unchanged. @par MC/DC: Single-condition decisions only: the null-destination guard (taken before any bus traffic, not taken on the completed read) runs in both directions; the write and read encodings are value checks, not branches. @note Not thread-safe; single-threaded test binary only. @since Version 0.1.0 */
-static void test_board_camera_sccb_transfers(void)
+ * @brief Cover the CDWDR stride derivation and its rejection leg.
+ *
+ * @details
+ * Regression for #1362: `bytes_per_pixel` was published, documented
+ * as "used to derive scaled stride", and read by nothing, so a
+ * descriptor that left `dst_stride` at zero programmed CDWDR = 0 and
+ * stacked every captured line on the previous one. Four legs: an
+ * explicit stride still lands verbatim (no behaviour change for the
+ * existing callers), a zero stride derives width times
+ * `bytes_per_pixel`, `scale.h_output_clip` takes precedence over
+ * `x_capture_px` because the filter output is what reaches memory,
+ * and a pixel-format descriptor with nothing to derive from is
+ * rejected before the module clock is ungated while data-enable fetch
+ * (which carries no pixel pitch) is admitted.
+ *
+ * @pre `prep` has reset the fake MMIO/MMAP planes.
+ * @post CEU registers hold the last configuration written.
+ * @par MC/DC: Single-condition decisions only. The `dst_stride == 0`
+ * gate runs both ways (explicit and derived legs), the
+ * derived-is-zero gate runs both ways (derived and rejected legs),
+ * and the data-enable exemption runs both ways (rejected and
+ * admitted legs).
+ * @note Not thread-safe; single-threaded test binary only.
+ * @since Version 0.1.0
+ */
+static void test_dst_stride_derivation(void)
 {
-  TEST_BEGIN("board camera: SCCB register transfers");
-  internal_board_cam_prep();
-  uint8_t value = 0U;
-  TEST_ASSERT_EQ(k_ra8_err_null_ptr,
-                 ra8_board_camera_sccb_read_reg(nullptr,
-                                                (uint8_t)k_board_cam_addr,
-                                                (uint16_t)k_board_cam_reg,
-                                                nullptr));
+  TEST_BEGIN("ceu: destination stride derivation");
+  prep();
 
-  internal_board_cam_bus_up();
-  ra8_fake_mmio_set_poll_hook(internal_board_cam_trace_hook);
-  TEST_ASSERT_EQ(k_ra8_ok,
-                 ra8_board_camera_sccb_write_reg(nullptr,
-                                                 (uint8_t)k_board_cam_addr,
-                                                 (uint16_t)k_board_cam_reg,
-                                                 (uint8_t)k_board_cam_value));
-  ra8_fake_mmio_set_poll_hook(nullptr);
-  volatile const r_i2c_regs_t* reg = ra8_i2c_regs((uint8_t)k_ra8_board_camera_i2c_channel);
-  TEST_ASSERT(s_board_cam_trace_len >= 4U);
-  TEST_ASSERT_EQ(k_board_cam_addr << 1U, s_board_cam_trace[1]);
-  TEST_ASSERT_EQ(k_board_cam_reg_hi, s_board_cam_trace[2]);
-  TEST_ASSERT_EQ(k_board_cam_reg_lo, s_board_cam_trace[3]);
-  /* HUM Ch 39.2.17 "ICDRT : I2C Bus Transmit Data Register" p 2393 */
-  TEST_ASSERT_EQ(k_board_cam_value, reg->ICDRT);
+  /* Explicit stride is programmed verbatim. */
+  ra8_ceu_config_t cfg = make_cfg();
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_ceu_init(&cfg));
+  /* HUM Ch 60.2.12 "CDWDR : Capture Destination Width Register" p 3654 */
+  TEST_ASSERT_EQ((uint32_t)k_test_ceu_stride, *ra8_ceu_reg32(k_ra8_ceu_off_cdwdr));
 
-  internal_board_cam_prep();
-  internal_board_cam_bus_up();
-  volatile r_i2c_regs_t* rx = ra8_i2c_regs((uint8_t)k_ra8_board_camera_i2c_channel);
-  /* HUM Ch 39.2.18 "ICDRR : I2C Bus Receive Data Register" p 2393 */
-  rx->ICDRR = (uint8_t)k_board_cam_rx_byte;
-  ra8_fake_mmio_set_poll_hook(internal_board_cam_trace_hook);
-  TEST_ASSERT_EQ(k_ra8_ok,
-                 ra8_board_camera_sccb_read_reg(nullptr,
-                                                (uint8_t)k_board_cam_addr,
-                                                (uint16_t)k_board_cam_reg,
-                                                &value));
-  ra8_fake_mmio_set_poll_hook(nullptr);
-  TEST_ASSERT_EQ(k_board_cam_rx_byte, value);
-  TEST_ASSERT(s_board_cam_trace_len >= 4U);
-  TEST_ASSERT_EQ(k_board_cam_addr << 1U, s_board_cam_trace[1]);
-  TEST_ASSERT_EQ(k_board_cam_reg_hi, s_board_cam_trace[2]);
-  TEST_ASSERT_EQ(k_board_cam_reg_lo, s_board_cam_trace[3]);
+  /* Zero stride derives width_px/x_capture_px times bytes_per_pixel. */
+  prep();
+  cfg            = make_cfg();
+  cfg.dst_stride = 0U;
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_ceu_init(&cfg));
+  TEST_ASSERT_EQ((uint32_t)k_test_ceu_width * 2UL, *ra8_ceu_reg32(k_ra8_ceu_off_cdwdr));
 
-  /* The delay adapter drives the platform delay, which off-target does not
-   * advance the tick source and touches no board state. */
-  const uint32_t before = ra8_time_ms();
-  ra8_board_camera_delay_ms(nullptr, (uint32_t)k_board_cam_value);
-  TEST_ASSERT_EQ(before, ra8_time_ms());
-  TEST_END("board camera: SCCB register transfers");
+  /* A scale-down clip is the width that reaches memory, so it wins. */
+  prep();
+  cfg                     = make_cfg();
+  cfg.dst_stride          = 0U;
+  cfg.scale.h_output_clip = (uint16_t)k_test_ceu_clip_width;
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_ceu_init(&cfg));
+  TEST_ASSERT_EQ((uint32_t)k_test_ceu_clip_width * 2UL, *ra8_ceu_reg32(k_ra8_ceu_off_cdwdr));
+
+  /* Nothing to derive from: rejected before MSTP is touched. */
+  prep();
+  cfg                 = make_cfg();
+  cfg.dst_stride      = 0U;
+  cfg.bytes_per_pixel = 0U;
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_ceu_init(&cfg));
+  TEST_ASSERT_EQ(0UL, *ra8_ceu_reg32(k_ra8_ceu_off_cdwdr));
+
+  /* Data-enable fetch has no pixel pitch and stays admitted. */
+  prep();
+  cfg                 = make_cfg();
+  cfg.dst_stride      = 0U;
+  cfg.bytes_per_pixel = 0U;
+  cfg.capture_format  = k_ra8_ceu_fmt_data_enable;
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_ceu_init(&cfg));
+  TEST_ASSERT_EQ(0UL, *ra8_ceu_reg32(k_ra8_ceu_off_cdwdr));
+
+  TEST_END("ceu: destination stride derivation");
 }
 
 int main(void)
@@ -889,10 +839,10 @@ int main(void)
   test_low_pass_set();
   test_capture_mode_set();
   test_frame_drop_set();
+  test_dst_stride_derivation();
   test_board_camera_xclk_bounds_and_routing();
   test_board_camera_select_parallel();
   test_board_camera_routes_parallel_pins();
   test_board_camera_reset_pulses_pin();
-  test_board_camera_sccb_transfers();
   return 0;
 }

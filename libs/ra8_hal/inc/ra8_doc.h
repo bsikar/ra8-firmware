@@ -3,6 +3,9 @@
  * @brief Data Operation Circuit (DOC) driver header
  * @ingroup grp_hal_system
  *
+ * @par Tag
+ * [Ring 3 / HAL] {World: S}
+ *
  * @details
  * Public API for the 16-bit Data Operation Circuit that performs
  * hardware add / subtract / compare operations. Useful for cheap

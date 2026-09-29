@@ -31,6 +31,7 @@ include("${_d}/cmake/ra8_add_app.cmake")
 
 ra8_add_app(
   NAME threadx_netx_tcp_echo
+  THREADX_HEAP SDRAM
   STACK_BYTES 2200
   DESCRIPTION "ThreadX + NetX Duo TCP echo demo for RA8D2"
   USES threadx netxduo

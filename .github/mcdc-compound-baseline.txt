@@ -155,7 +155,7 @@ apps/shared_libs/mdl/src/mdl_cache.c	internal_cache_prepare	1
 apps/shared_libs/mdl/src/mdl_cache.c	internal_cache_publish	3
 apps/shared_libs/mdl/src/mdl_cache.c	internal_cache_record_response	3
 apps/shared_libs/mdl/src/mdl_cache.c	internal_cache_retry_unconditional	1
-apps/shared_libs/mdl/src/mdl_cache.c	mdl_cache_get_buf	6
+apps/shared_libs/mdl/src/mdl_cache.c	mdl_cache_get	6
 apps/shared_libs/mdl/src/mdl_cache_io.c	internal_cache_decode	7
 apps/shared_libs/mdl/src/mdl_cache_io.c	internal_cache_ensure_directory	1
 apps/shared_libs/mdl/src/mdl_cache_io.c	internal_cache_paths	4
@@ -398,11 +398,11 @@ apps/shared_libs/mdl/src/mdl_state_codec.c	internal_mdl_state_reader_line	3
 apps/shared_libs/mdl/src/mdl_state_codec.c	internal_mdl_state_scan_mantissa	2
 apps/shared_libs/mdl/src/mdl_state_codec.c	internal_mdl_state_split_tabs	2
 apps/shared_libs/mdl/src/mdl_state_codec.c	priv_mdl_state_parse_file	6
-apps/shared_libs/mdl/src/mdl_state_decimal.c	internal_mdl_state_big_bits	1
-apps/shared_libs/mdl/src/mdl_state_decimal.c	internal_mdl_state_big_trim	1
-apps/shared_libs/mdl/src/mdl_state_decimal.c	internal_mdl_state_divide	1
-apps/shared_libs/mdl/src/mdl_state_decimal.c	internal_mdl_state_encode	2
-apps/shared_libs/mdl/src/mdl_state_decimal.c	priv_mdl_state_decimal_to_binary64	1
+libs/ra8_num/src/ra8_num_decimal.c	internal_ra8_num_big_bits	1
+libs/ra8_num/src/ra8_num_decimal.c	internal_ra8_num_big_trim	1
+libs/ra8_num/src/ra8_num_decimal.c	internal_ra8_num_divide	1
+libs/ra8_num/src/ra8_num_decimal.c	internal_ra8_num_encode	2
+libs/ra8_num/src/ra8_num_decimal.c	ra8_num_decimal_to_binary64	1
 apps/shared_libs/mdl/src/mdl_state_store.c	internal_mdl_state_decode_header	4
 apps/shared_libs/mdl/src/mdl_state_store.c	internal_mdl_state_emit	1
 apps/shared_libs/mdl/src/mdl_state_store.c	internal_mdl_state_emit_chapters	1

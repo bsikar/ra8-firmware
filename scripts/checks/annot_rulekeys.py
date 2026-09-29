@@ -15,6 +15,8 @@ the keys and their proof in one file makes the two impossible to edit apart.
 
 from __future__ import annotations
 
+import ast
+import pathlib
 import re
 
 from annot_model import Violation
@@ -30,6 +32,19 @@ ATTRIBUTES_HEADER = repo_root() / "libs" / "ra8_core" / "inc" / "ra8_attributes.
 #: reported but never fail the gate -- there is nothing for a developer to
 #: fix, the entry exists so the value shows up in the build log.
 INFORMATIONAL_RULES = {"ra8_latency_budget_ns", "ra8_reviewed_by", "ra8_register_bank"}
+
+#: Annotation keys that are deliberately markers: the macro exists and is
+#: applied, and NOTHING checks it. Declaring one here is how the gate states
+#: that gap out loud instead of letting the key sit in ANNOTATION_PREFIXES
+#: looking wired. Each entry cites the issue that will give it teeth, and
+#: :func:`check_rule_coverage` fails once a rule implements or reads the key,
+#: so a declaration cannot outlive the gap it describes.
+MARKER_ONLY_RULES = {
+    # ra8_isr_safe: applied to 70 sites, read by nothing. The closure it
+    # implies needs the ISR-entry set derived from the vector tables and a
+    # ruling on inline MMIO accessors first -- issue #1247.
+    "ra8_isr_safe",
+}
 
 ANNOTATION_PREFIXES = (
     "ra8_test_helper",
@@ -133,5 +148,148 @@ def check_rule_keys() -> list[Violation]:
             f"every use of that macro is silently ignored",
         )
         for key in sorted(emitted - known)
+    )
+    return out
+
+
+def _rule_module_paths() -> list[pathlib.Path]:
+    """Return the checker modules a rule can be implemented or read in.
+
+    This module is excluded because it holds the vocabulary itself: every
+    key appears here as a literal, so counting it would make every key look
+    read. ``annot_selftest`` is excluded because its fixtures mention keys
+    in synthetic source strings, and a fixture is not a rule.
+    """
+    here = pathlib.Path(__file__).resolve()
+    return sorted(
+        p
+        for p in here.parent.glob("annot_*.py")
+        if p.name not in {here.name, "annot_selftest.py"}
+    )
+
+
+def _string_literals(source: str) -> list[str]:
+    """Return every string literal in ``source`` except docstrings.
+
+    Comments and docstrings are excluded deliberately. A comment asserting
+    that a key is read is exactly the failure this check exists to catch:
+    ``annot_rules`` carried one for ``ra8_isr_safe`` while no rule read it.
+    Only a literal the interpreter actually evaluates counts as a use, and
+    f-string fragments count too -- ``_rule_owns_resource`` reads its
+    companion key as ``f"ra8_releases_resource:{arg}"``.
+    """
+    try:
+        tree = ast.parse(source)
+    except SyntaxError:
+        return []
+    doc_nodes = set()
+    for node in ast.walk(tree):
+        if not isinstance(node, (ast.Module, ast.ClassDef, ast.FunctionDef, ast.AsyncFunctionDef)):
+            continue
+        body = getattr(node, "body", None)
+        if not body:
+            continue
+        first = body[0]
+        if isinstance(first, ast.Expr) and isinstance(first.value, ast.Constant):
+            if isinstance(first.value.value, str):
+                doc_nodes.add(id(first.value))
+    return [
+        node.value
+        for node in ast.walk(tree)
+        if isinstance(node, ast.Constant)
+        and isinstance(node.value, str)
+        and id(node) not in doc_nodes
+    ]
+
+
+def keys_read_by_rules(modules: list[pathlib.Path] | None = None) -> set[str]:
+    """Return the annotation keys some rule module actually names in code."""
+    paths = _rule_module_paths() if modules is None else modules
+    seen: set[str] = set()
+    for path in paths:
+        try:
+            source = path.read_text(errors="ignore")
+        except OSError:
+            continue
+        for literal in _string_literals(source):
+            seen.update(key for key in ANNOTATION_PREFIXES if literal.startswith(key))
+    return seen
+
+
+def check_rule_coverage(
+    implemented: frozenset[str] | set[str],
+    *,
+    modules: list[pathlib.Path] | None = None,
+) -> list[Violation]:
+    """Fail when a recognised annotation key is wired to nothing.
+
+    :func:`check_rule_keys` proves the vocabulary and the header agree on
+    the SPELLINGS. It says nothing about whether a recognised key reaches
+    any code, and that is a second way for an annotation to be silently
+    decorative: the key is spelled correctly, sits in ANNOTATION_PREFIXES,
+    the dispatch loop in ``annot_rules.enforce_rules`` looks it up, finds
+    no entry and moves on. Every use of the macro is then ignored while the
+    gate reports success, which is what ``ra8_isr_safe`` did while both
+    ``ra8_attributes.h`` and the ``RULE_CHECKS`` comment claimed a
+    call-graph walk enforced it (issue #1247).
+
+    So each recognised key must be one of three things, and the third is a
+    declaration rather than an implementation:
+
+    * implemented in ``annot_rules.RULE_CHECKS`` (passed in as
+      ``implemented``, to keep this module free of that import);
+    * read by name in another rule module, derived from the sources rather
+      than restated -- a restatement is what went stale here;
+    * declared in :data:`MARKER_ONLY_RULES`, which says the gap exists.
+
+    The reverse direction matters just as much: a marker declaration that
+    outlives its gap makes the next reader believe the annotation is still
+    unchecked, so a declared key that is now implemented or read fails too.
+    """
+    paths = _rule_module_paths() if modules is None else modules
+    if not paths:
+        return [
+            Violation(
+                "ra8_rule_coverage",
+                str(pathlib.Path(__file__).resolve().parent),
+                0,
+                "no annot_*.py rule modules found -- the checker was reshaped or "
+                "renamed, so no annotation key can be shown to be enforced",
+            )
+        ]
+    read = keys_read_by_rules(paths)
+    wired = set(implemented) | read
+    out: list[Violation] = []
+    out.extend(
+        Violation(
+            "ra8_rule_coverage",
+            str(ATTRIBUTES_HEADER),
+            0,
+            f"annotation '{key}' has no entry in RULE_CHECKS, is read by no other "
+            f"rule, and is not declared in MARKER_ONLY_RULES; every use of its "
+            f"macro is ignored while the gate reports success",
+        )
+        for key in sorted(set(ANNOTATION_PREFIXES) - wired - MARKER_ONLY_RULES)
+    )
+    out.extend(
+        Violation(
+            "ra8_rule_coverage",
+            str(pathlib.Path(__file__).resolve()),
+            0,
+            f"'{key}' is declared marker-only but is not in ANNOTATION_PREFIXES; "
+            f"the declaration describes a key no macro emits",
+        )
+        for key in sorted(MARKER_ONLY_RULES - set(ANNOTATION_PREFIXES))
+    )
+    out.extend(
+        Violation(
+            "ra8_rule_coverage",
+            str(pathlib.Path(__file__).resolve()),
+            0,
+            f"'{key}' is declared marker-only but a rule now implements or reads "
+            f"it; drop the MARKER_ONLY_RULES entry so the gap is not advertised "
+            f"after it was closed",
+        )
+        for key in sorted(MARKER_ONLY_RULES & wired)
     )
     return out

@@ -17,6 +17,8 @@
 #include "ra8_attributes.h"
 #include "ra8_err.h"
 #include "ra8_rabook_comic.h"
+#include "ra8_webp_arena.h"
+#include "reflow_image.h"
 #include "unity_minimal.h"
 
 /** @brief Bounded capacities for one-page guard fixtures. */

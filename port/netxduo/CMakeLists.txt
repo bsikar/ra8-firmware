@@ -54,3 +54,44 @@ target_include_directories(netxduo_port_c6 INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}
 set_property(
   GLOBAL PROPERTY RA8_NETXDUO_C6_PORT_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/src/nx_ether_driver_c6.c
 )
+
+# The IP-interface facade: the packet pool / IP instance / ARP-UDP-ICMP / DHCP
+# bring-up three C6 Wi-Fi apps each carry as a near-verbatim private copy (#740).
+# It names NetX Duo types in its header, which is exactly why it lives here and
+# not in `libs/ra8_wifi`: that facade stays stack-free and host-testable, and its
+# `ra8_wifi_ip_bind_fn` hook exists so an app can take the radio without the IP
+# stack coming with it. A consumer opts in by linking `netxduo_ipif` and
+# splicing RA8_NETXDUO_IPIF_SOURCES into its own glob, the same shape the two
+# link drivers above use. The DHCP client itself is not in the netxduo core
+# glob (it lives under addons/dhcp), so a consumer still names that TU.
+add_library(netxduo_ipif INTERFACE)
+
+target_include_directories(
+  netxduo_ipif INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/inc
+                         ${CMAKE_CURRENT_SOURCE_DIR}/../../libs/ra8_core/inc
+                         ${CMAKE_CURRENT_SOURCE_DIR}/../../libs/ra8_wifi/inc
+                         ${CMAKE_CURRENT_SOURCE_DIR}/../../libs/third_party/netxduo/addons/dhcp
+)
+
+set_property(GLOBAL PROPERTY RA8_NETXDUO_IPIF_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/src/ra8_ipif.c)
+
+# The Wi-Fi provider for that facade: `ra8_ipif_wifi_bind`, the
+# `ra8_wifi_ip_bind_fn` the `ra8_wifi` header promises ships "alongside the
+# backend when a stack is available" (#740). It is its own target rather than a
+# second source file on `netxduo_ipif` because it names `nx_ether_driver_c6` and
+# `ra8_c6link_t`: a consumer running the same bring-up over the on-chip MAC
+# takes `netxduo_ipif` alone and links neither. Linking this one implies
+# `netxduo_port_c6` for the driver itself.
+add_library(netxduo_ipif_wifi INTERFACE)
+
+target_link_libraries(netxduo_ipif_wifi INTERFACE netxduo_ipif netxduo_port_c6)
+
+target_include_directories(
+  netxduo_ipif_wifi INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/inc
+                              ${CMAKE_CURRENT_SOURCE_DIR}/../../libs/ra8_c6link/inc
+                              ${CMAKE_CURRENT_SOURCE_DIR}/../../libs/ra8_mdl/inc
+)
+
+set_property(
+  GLOBAL PROPERTY RA8_NETXDUO_IPIF_WIFI_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/src/ra8_ipif_wifi.c
+)

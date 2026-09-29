@@ -140,14 +140,82 @@ static uint16_t internal_visible_count(const ra8_widget_t* widgets, uint16_t cou
 }
 
 /**
+ * @enum internal_widget_extent_t
+ * @brief Bound on a measured main-axis extent copied into a box leaf.
+ * @details `ra8_box_t::fixed` is an `int16_t`, so a measured extent is capped
+ *          at its positive range before the copy. In practice the frame's
+ *          content box caps it first; this only stops a widget that reports a
+ *          wildly out-of-range size from wrapping the narrower field.
+ */
+typedef enum : int32_t {
+  k_internal_extent_max = 32767, /**< Largest extent ra8_box_t::fixed holds. */
+} internal_widget_extent_t;
+
+/**
+ * @brief Main-axis extent a widget's `measure` asks for, or 0 for none.
+ * @details The measure pass behind ::ra8_widget_layout_stack. The caller has
+ *          already established that this widget pins no extent (`fixed == 0`),
+ *          so a widget that carries a `flex` weight, no vtable, or no
+ *          `measure` callback reports nothing and keeps its flex sizing. A
+ *          widget that does measure is handed the frame's content box and its
+ *          main-axis answer is clamped to that box (the vtable contract says
+ *          the caller clamps) and to ::k_internal_extent_max.
+ * @param[in,out] w       Widget to measure; its `measure` may touch its ctx.
+ * @param[in]     axis    Stack main axis (picks width or height).
+ * @param[in]     avail_w Content-box width the widget may size within.
+ * @param[in]     avail_h Content-box height the widget may size within.
+ * @return The clamped main-axis extent, or 0 when the widget reports none.
+ * @retval 0 The widget flexes, has no `measure`, or asked for nothing usable.
+ * @pre @p w is non-NULL.
+ * @pre @p avail_w / @p avail_h are the frame inset by its padding.
+ * @post No layout state is written; only `w`'s own `measure` may run.
+ * @post The return value is in `[0, min(avail_main, 32767)]`.
+ * @note Not thread-safe; every decision is a single condition.
+ * @since 0.1.0
+ */
+RA8_INTERNAL
+static int16_t internal_measured_extent(ra8_widget_t*     w,
+                                        ra8_widget_axis_t axis,
+                                        int32_t           avail_w,
+                                        int32_t           avail_h)
+{
+  if (w->flex != 0U) {
+    return 0;
+  }
+  if (w->vt == nullptr) {
+    return 0;
+  }
+  if (w->vt->measure == nullptr) {
+    return 0;
+  }
+  int32_t want_w = 0;
+  int32_t want_h = 0;
+  w->vt->measure(w, avail_w, avail_h, &want_w, &want_h);
+  const bool    is_row = (axis == k_ra8_widget_axis_row);
+  const int32_t want   = is_row ? want_w : want_h;
+  const int32_t avail  = is_row ? avail_w : avail_h;
+  int32_t       ext    = internal_min_i32(want, avail);
+  ext                  = internal_min_i32(ext, (int32_t)k_internal_extent_max);
+  if (ext <= 0) {
+    return 0;
+  }
+  return (int16_t)ext;
+}
+
+/**
  * @brief Build a ra8_box stack tree: one container + a leaf per visible widget.
  * @details Sizes the scratch against the visible count, adds a stack container
  *          (row/column) then one leaf per visible widget carrying its
- *          `fixed`/`flex`. The caller then runs `ra8_box_layout` and copies the
- *          leaf rects back. Split out so ::ra8_widget_layout_stack stays within
- *          the NASA Rule 4 function-size cap.
- * @param[in]  widgets  Widget array.
+ *          `fixed`/`flex`. A visible widget that pins no extent (`fixed == 0`)
+ *          is offered the measure pass (::internal_measured_extent) and its
+ *          answer becomes that leaf's fixed extent, so a content-sized widget
+ *          no longer collapses. The caller then runs `ra8_box_layout` and
+ *          copies the leaf rects back. Split out so
+ *          ::ra8_widget_layout_stack stays within the NASA Rule 4
+ *          function-size cap.
+ * @param[in,out] widgets Widget array; a measured widget's `measure` runs here.
  * @param[in]  count    Number of widgets.
+ * @param[in]  frame    Outer rectangle, for the content box handed to `measure`.
  * @param[in]  axis     Stack main axis.
  * @param[in]  gap      Gap between children.
  * @param[in]  pad      Inner padding.
@@ -159,7 +227,7 @@ static uint16_t internal_visible_count(const ra8_widget_t* widgets, uint16_t cou
  * @retval k_ra8_ok              Tree built; @p out_root is the container.
  * @retval k_ra8_err_invalid_arg Scratch too small or a box add failed.
  * @retval <ra8_box_tree_init's> Forwarded from `ra8_box_tree_init`.
- * @pre @p out_tree / @p out_root non-NULL; @p scratch covers @p cap.
+ * @pre @p out_tree / @p out_root / @p frame non-NULL; @p scratch covers @p cap.
  * @pre @p cap >= visible_count + 1.
  * @post On success @p out_tree holds the container + visible leaves.
  * @post On failure the caller must not use @p out_root.
@@ -167,15 +235,16 @@ static uint16_t internal_visible_count(const ra8_widget_t* widgets, uint16_t cou
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t internal_build_stack_tree(const ra8_widget_t* widgets,
-                                           uint16_t            count,
-                                           ra8_widget_axis_t   axis,
-                                           int16_t             gap,
-                                           int16_t             pad,
-                                           ra8_box_t*          scratch,
-                                           uint16_t            cap,
-                                           ra8_box_tree_t*     out_tree,
-                                           int16_t*            out_root)
+static ra8_err_t internal_build_stack_tree(ra8_widget_t*        widgets,
+                                           uint16_t             count,
+                                           const ra8_ui_rect_t* frame,
+                                           ra8_widget_axis_t    axis,
+                                           int16_t              gap,
+                                           int16_t              pad,
+                                           ra8_box_t*           scratch,
+                                           uint16_t             cap,
+                                           ra8_box_tree_t*      out_tree,
+                                           int16_t*             out_root)
 {
   const uint16_t vis = internal_visible_count(widgets, count);
   if ((uint32_t)cap < ((uint32_t)vis + 1U)) {
@@ -196,6 +265,9 @@ static ra8_err_t internal_build_stack_tree(const ra8_widget_t* widgets,
   if (*out_root == (int16_t)k_ra8_box_none) {
     return k_ra8_err_invalid_arg;
   }
+  const int32_t inset   = 2 * (int32_t)pad;
+  const int32_t avail_w = internal_max_i32(frame->w - inset, 0);
+  const int32_t avail_h = internal_max_i32(frame->h - inset, 0);
   for (uint16_t i = 0U; i < count; ++i) {
     if (!widgets[i].visible) {
       continue;
@@ -203,7 +275,10 @@ static ra8_err_t internal_build_stack_tree(const ra8_widget_t* widgets,
     ra8_box_t leaf = {};
     leaf.kind      = (uint8_t)k_ra8_box_leaf;
     leaf.fixed     = widgets[i].fixed;
-    leaf.flex      = widgets[i].flex;
+    if (leaf.fixed == 0) {
+      leaf.fixed = internal_measured_extent(&widgets[i], axis, avail_w, avail_h);
+    }
+    leaf.flex = widgets[i].flex;
     leaf.tag       = (int16_t)widgets[i].action_id;
     if (ra8_box_add(out_tree, *out_root, &leaf) == (int16_t)k_ra8_box_none) {
       return k_ra8_err_invalid_arg;
@@ -227,8 +302,16 @@ static ra8_err_t internal_build_stack_tree(const ra8_widget_t* widgets,
 
   ra8_box_tree_t  tree = {};
   int16_t         root = (int16_t)k_ra8_box_none;
-  const ra8_err_t berr =
-    internal_build_stack_tree(widgets, count, axis, gap, pad, box_scratch, box_cap, &tree, &root);
+  const ra8_err_t berr = internal_build_stack_tree(widgets,
+                                                  count,
+                                                  frame,
+                                                  axis,
+                                                  gap,
+                                                  pad,
+                                                  box_scratch,
+                                                  box_cap,
+                                                  &tree,
+                                                  &root);
   if (berr != k_ra8_ok) {
     return berr;
   }

@@ -31,6 +31,7 @@ include("${_d}/cmake/ra8_add_app.cmake")
 
 ra8_add_app(
   NAME threadx_https_client
+  THREADX_HEAP SDRAM
   STACK_BYTES 4096
   DESCRIPTION "ThreadX + NetX Duo + Mbed TLS HTTPS client demo for RA8D2"
   USES threadx netxduo mbedtls

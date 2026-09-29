@@ -67,6 +67,8 @@
 #include "ra8_sci.h"
 #include "ra8_time.h"
 #include "ra8_usb.h"
+#include "ra8_usb_compose.h"
+#include "ra8_usb_desc.h"
 #ifdef RA8_ENABLE_ROOT_OF_TRUST
 #include "mbedtls/memory_buffer_alloc.h"
 #include "ra8_psa_crypto.h"
@@ -102,18 +104,6 @@ void SysTick_Handler(void)
 /* -------------------------------------------------------------------------- */
 /* Pinout (FSP-aligned, EK-RA8D2 v1 User's Manual) */
 /* -------------------------------------------------------------------------- */
-
-/** @brief USBFS VBUS sense pin (P4_07, PSEL = 0x13). */
-static const ra8_port_pin_t k_blc_pin_fs_vbus = (ra8_port_pin_t)k_ra8_board_usbfs_pin_vbus;
-
-/** @brief USBFS VBUSEN (P5_00) -- GPIO LOW for the device role. */
-static const ra8_port_pin_t k_blc_pin_fs_vbusen = (ra8_port_pin_t)k_ra8_board_usbfs_pin_vbusen;
-
-/** @brief USBFS D+ (P8_14). */
-static const ra8_port_pin_t k_blc_pin_fs_dp = (ra8_port_pin_t)k_ra8_board_usbfs_pin_dp;
-
-/** @brief USBFS D- (P8_15). */
-static const ra8_port_pin_t k_blc_pin_fs_dm = (ra8_port_pin_t)k_ra8_board_usbfs_pin_dm;
 
 /** @brief J-Link OB CDC TX pin (PD_02 -- SCI8 TX). */
 static const ra8_port_pin_t k_blc_pin_sci_tx = (ra8_port_pin_t)k_ra8_board_uart_console_pin_txd;
@@ -198,129 +188,91 @@ static UCHAR s_usbx_pool[k_blc_usbx_pool_bytes];
 
 /**
  * @var s_device_framework
- * @brief USBX device + DFU descriptors: a DFU-mode interface (bInterfaceProtocol
- *        0x02, enumerates straight into dfuIDLE) + the DFU functional descriptor
- *        (CAN_DNLOAD | CAN_UPLOAD, wTransferSize 64). DFU runs over EP0.
+ * @brief USBX device + DFU descriptors, synthesised at bring-up.
+ *
+ * @details Built by ::ra8_usb_device_compose from ::k_demo_usb_dev and
+ *          ::k_demo_usb_dfu rather than typed out by hand: a single DFU-mode
+ *          interface with no data endpoints, since DFU 1.1 sec 4.1.2 runs
+ *          every transfer on the default control pipe, plus the DFU functional
+ *          descriptor. ::s_device_framework_len carries the length actually
+ *          written, which is what the stack wants; sizeof() would hand it the
+ *          whole buffer.
  * @since 0.1.0
  */
-static UCHAR s_device_framework[] = {
-  /* Device descriptor (18 bytes). idVendor 0x1209, idProduct 0x0019. */
-  0x12U,
-  0x01U,
-  0x00U,
-  0x02U,
-  0x00U,
-  0x00U,
-  0x00U,
-  0x40U,
-  0x09U,
-  0x12U,
-  0x19U,
-  0x00U,
-  0x00U,
-  0x01U,
-  0x01U,
-  0x02U,
-  0x03U,
-  0x01U,
-  /* Configuration descriptor (wTotalLength 0x1B = 27). */
-  0x09U,
-  0x02U,
-  0x1BU,
-  0x00U,
-  0x01U,
-  0x01U,
-  0x00U,
-  0x80U,
-  0x32U,
-  /* DFU interface (class 0xFE, subclass 0x01, protocol 0x02 = DFU mode). */
-  0x09U,
-  0x04U,
-  0x00U,
-  0x00U,
-  0x00U,
-  0xFEU,
-  0x01U,
-  0x02U,
-  0x00U,
-  /* DFU functional descriptor. bmAttributes 0x07, wTransferSize 64. */
-  0x09U,
-  0x21U,
-  0x07U,
-  0xFFU,
-  0x00U,
-  0x40U,
-  0x00U,
-  0x10U,
-  0x01U,
+static UCHAR s_device_framework[k_ra8_usb_desc_framework_bytes_max];
+
+/** @brief Bytes of ::s_device_framework the builder actually wrote. */
+static ULONG s_device_framework_len;
+
+/** @brief Identity and DFU geometry this app publishes. */
+typedef enum : uint16_t {
+  k_demo_usb_vid        = 0x1209U, /**< idVendor, pid.codes.            */
+  k_demo_usb_pid        = 0x0019U, /**< idProduct.                      */
+  k_demo_usb_bcd_device = 0x0100U, /**< bcdDevice, 1.00.                */
+  k_demo_usb_power_ma   = 100U,    /**< Bus draw in mA.                 */
+  k_demo_usb_detach_ms  = 255U,    /**< wDetachTimeOut in ms.           */
+  k_demo_usb_xfer_bytes = 64U,     /**< wTransferSize, bytes a block.   */
+  k_demo_usb_bcd_dfu    = 0x0110U, /**< bcdDFUVersion, DFU 1.1.         */
+  k_demo_usb_functions  = 1U,      /**< Functions the device publishes. */
+} demo_usb_desc_t;
+
+/**
+ * @var k_demo_usb_dev
+ * @brief The identity this app publishes.
+ * @since 0.1.0
+ */
+static const ra8_usb_desc_device_t k_demo_usb_dev = {
+  .vid           = (uint16_t)k_demo_usb_vid,
+  .pid           = (uint16_t)k_demo_usb_pid,
+  .bcd_device    = (uint16_t)k_demo_usb_bcd_device,
+  .manufacturer  = "Brighton Sikarskie",
+  .product       = "RA8D2 DFU",
+  .serial        = "00000019",
+  .langid        = 0U,
+  .max_power_ma  = (uint16_t)k_demo_usb_power_ma,
+  .self_powered  = false,
+  .remote_wakeup = false,
+};
+
+/**
+ * @var k_demo_usb_dfu
+ * @brief The DFU function this app publishes: download, upload, tolerant.
+ * @note @c dfu_mode selects bInterfaceProtocol 0x02, so a host enumerates
+ *       straight into dfuIDLE instead of needing a DFU_DETACH first.
+ * @since 0.1.0
+ */
+static const ra8_usb_desc_dfu_t k_demo_usb_dfu = {
+  .can_download           = true,
+  .can_upload             = true,
+  .manifestation_tolerant = true,
+  .will_detach            = false,
+  .dfu_mode               = true,
+  .detach_timeout_ms      = (uint16_t)k_demo_usb_detach_ms,
+  .transfer_bytes         = (uint16_t)k_demo_usb_xfer_bytes,
+  .bcd_dfu                = (uint16_t)k_demo_usb_bcd_dfu,
 };
 
 /**
  * @var s_string_framework
- * @brief USBX string descriptor table (vendor / product / serial).
+ * @brief Synthesised string framework: manufacturer, product, serial.
+ * @note Written once by ::blc_usb_build_frameworks, then read-only.
  * @since 0.1.0
  */
-static UCHAR s_string_framework[] = {
-  /* idx 1: "Brighton Sikarskie". */
-  0x09U,
-  0x04U,
-  0x01U,
-  0x12U,
-  'B',
-  'r',
-  'i',
-  'g',
-  'h',
-  't',
-  'o',
-  'n',
-  ' ',
-  'S',
-  'i',
-  'k',
-  'a',
-  'r',
-  's',
-  'k',
-  'i',
-  'e',
-  /* idx 2: "RA8D2 DFU". */
-  0x09U,
-  0x04U,
-  0x02U,
-  0x09U,
-  'R',
-  'A',
-  '8',
-  'D',
-  '2',
-  ' ',
-  'D',
-  'F',
-  'U',
-  /* idx 3: serial "00000019". */
-  0x09U,
-  0x04U,
-  0x03U,
-  0x08U,
-  '0',
-  '0',
-  '0',
-  '0',
-  '0',
-  '0',
-  '1',
-  '9',
-};
+static UCHAR s_string_framework[k_ra8_usb_desc_strings_bytes_max];
 
-/** @brief USBX LANGID descriptor 0x0409 (English-US), little-endian byte pair. */
-typedef enum : uint8_t {
-  k_usb_langid_en_us_lo = 0x09U, /**< LANGID 0x0409 low byte.  */
-  k_usb_langid_en_us_hi = 0x04U, /**< LANGID 0x0409 high byte. */
-} usb_langid_byte_t;
+/** @brief Bytes written to ::s_string_framework. */
+static uint32_t s_string_framework_len = 0U;
 
-/** @brief USBX language-id table -- US English. */
-static UCHAR s_language_id_framework[] = {k_usb_langid_en_us_lo, k_usb_langid_en_us_hi};
+/**
+ * @var s_language_id_framework
+ * @brief Synthesised language-id framework -- US English.
+ * @note Written once by ::blc_usb_build_frameworks, then read-only.
+ * @since 0.1.0
+ */
+static UCHAR s_language_id_framework[k_ra8_usb_desc_langid_bytes];
+
+/** @brief Bytes written to ::s_language_id_framework. */
+static uint32_t s_language_id_framework_len = 0U;
 
 #endif /* !RA8_OFF_TARGET */
 
@@ -562,6 +514,54 @@ static void blc_boot_slot(ra8_dfu_slot_t slot)
 }
 
 /**
+ * @brief Synthesises the device, string and language-id frameworks.
+ *
+ * @details One ::ra8_usb_device_compose call replaces the three encoder
+ * calls this app used to write out by hand: every byte the host enumerates
+ * comes from ::k_demo_usb_dev and the single class entry below, through
+ * libs/ra8_usb_pal.
+ *
+ * @return ra8_err_t ::k_ra8_ok on success, propagated builder error otherwise.
+ * @retval k_ra8_ok All three frameworks were written.
+ *
+ * @pre Call once before USBX bring-up.
+ * @post On success the framework buffers are read-only.
+ *
+ * @note Single-call; not idempotent.
+ * @since 0.1.0
+ */
+static ra8_err_t blc_usb_build_frameworks(void)
+{
+  const ra8_usb_class_t function = {
+    .kind = k_ra8_usb_class_dfu,
+    .dfu  = k_demo_usb_dfu,
+  };
+  const ra8_usb_device_cfg_t cfg = {
+    .desc        = &k_demo_usb_dev,
+    .classes     = &function,
+    .class_count = (uint8_t)k_demo_usb_functions,
+  };
+  ra8_usb_device_frameworks_t fw = {
+    .device      = s_device_framework,
+    .device_cap  = (uint32_t)sizeof(s_device_framework),
+    .strings     = s_string_framework,
+    .strings_cap = (uint32_t)sizeof(s_string_framework),
+    .langid      = s_language_id_framework,
+    .langid_cap  = (uint32_t)sizeof(s_language_id_framework),
+  };
+
+  const ra8_err_t composed = ra8_usb_device_compose(&cfg, &fw);
+  if (composed != k_ra8_ok) {
+    return composed;
+  }
+
+  s_device_framework_len      = (ULONG)fw.device_len;
+  s_string_framework_len      = fw.strings_len;
+  s_language_id_framework_len = fw.langid_len;
+  return k_ra8_ok;
+}
+
+/**
  * @brief DFU device worker: bring the DFU class up, drain commits, reset on done.
  * @param[in] arg ThreadX entry argument (unused).
  * @return Never returns.
@@ -576,15 +576,20 @@ static VOID blc_device_worker(ULONG arg)
 {
   (void)arg;
 
+  if (blc_usb_build_frameworks() != k_ra8_ok) {
+    s_dbg_dev_err = (uint32_t)k_ra8_err_invalid_arg;
+    return;
+  }
+
   const ra8_err_t e = ra8_dfu_device_start(k_ra8_usb_speed_fs,
                                            s_usbx_pool,
                                            (uint32_t)sizeof(s_usbx_pool),
                                            s_device_framework,
-                                           (uint32_t)sizeof(s_device_framework),
+                                           s_device_framework_len,
                                            s_string_framework,
-                                           (uint32_t)sizeof(s_string_framework),
+                                           s_string_framework_len,
                                            s_language_id_framework,
-                                           (uint32_t)sizeof(s_language_id_framework));
+                                           s_language_id_framework_len);
   if (e != k_ra8_ok) {
     s_dbg_dev_err = (uint32_t)e;
     (void)blc_print("dfu-bootloader: FAIL device bring-up\r\n");
@@ -658,7 +663,7 @@ VOID tx_application_define(VOID* first_unused_memory)
 }
 
 /**
- * @brief Route the USB-FS device pins (P4_07/P5_00/P8_14/P8_15).
+ * @brief Open the USB-FS port in the device role via the board facade.
  * @return void.
  * @pre IOPORT is reachable.
  * @pre Called once from ::blc_setup_or_halt.
@@ -669,16 +674,11 @@ VOID tx_application_define(VOID* first_unused_memory)
  */
 static void blc_route_usb_or_halt(void)
 {
-  if (ra8_pfs_route_peripheral(k_blc_pin_fs_vbus, k_ra8_psel_usb_fs, "blc.fs_vbus") != k_ra8_ok) {
-    blc_panic_halt();
-  }
-  if (ra8_gpio_output_init(k_blc_pin_fs_vbusen, k_ra8_level_low) != k_ra8_ok) {
-    blc_panic_halt();
-  }
-  if (ra8_pfs_route_peripheral(k_blc_pin_fs_dp, k_ra8_psel_usb_fs, "blc.fs_dp") != k_ra8_ok) {
-    blc_panic_halt();
-  }
-  if (ra8_pfs_route_peripheral(k_blc_pin_fs_dm, k_ra8_psel_usb_fs, "blc.fs_dm") != k_ra8_ok) {
+  /* One board call replaces the four-step FS choreography: it routes VBUS,
+   * D+ and D- to the USBFS function and keeps VBUSEN a GPIO strapped LOW for
+   * the device role. The pin identities are board facts, so they live in
+   * libs/ra8_board_ek_ra8d2 rather than being re-declared here. */
+  if (ra8_board_usb_port_init(k_ra8_board_usb_port_fs, k_ra8_board_usb_role_device) != k_ra8_ok) {
     blc_panic_halt();
   }
 }

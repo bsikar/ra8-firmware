@@ -12,7 +12,7 @@
  * scanning boundaries, the width/height vs viewBox size fallbacks, the
  * image href reader, and the unterminated-document guards. Every test
  * drives the real public SVG API with crafted byte strings; the shared
- * framebuffer fixture lives in tests/inc/reflow_svg_test_util.h.
+ * framebuffer fixture lives in apps/shared_libs/reflow/tests/inc/reflow_svg_test_util.h.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT

@@ -29,13 +29,13 @@
  * @note Series indexes currently require no separate governor.
  * @since 0.1.0
  */
-RA8_INTERNAL static ra8_err_t internal_prepare_cache_fetch(void*                context,
-                                                           const char*          url,
-                                                           const mdl_net_req_t* request,
-                                                           char*                buffer,
-                                                           size_t               capacity,
-                                                           size_t*              out_length,
-                                                           mdl_net_resp_t*      response)
+RA8_INTERNAL static ra8_err_t internal_prepare_cache_fetch(void*                        context,
+                                                           const char*                  url,
+                                                           const ra8_mdl_http_policy_t* request,
+                                                           char*                        buffer,
+                                                           size_t                       capacity,
+                                                           size_t*                      out_length,
+                                                           ra8_mdl_http_response_t*     response)
 {
   return mdl_net_get_buf((mdl_net_iface_t*)context,
                          url,
@@ -553,35 +553,35 @@ RA8_PRIV ra8_err_t priv_mdl_app_prepare_chapters(const mdl_site_t* site,
       !mdl_session_url_allowed(&priv_mdl_app_context()->session, series_url, nullptr)) {
     return k_ra8_fail; /* robots refused the series page (message printed) */
   }
-  const mdl_net_req_t req      = {.user_agent = priv_mdl_app_context()->session.user_agent,
-                                  .referer    = nullptr,
-                                  .timeout_ms = timeout};
-  size_t              len      = 0U;
-  mdl_net_resp_t      response = {};
-  mdl_cache_result_t  cache_result;
-  ra8_err_t           rc = mdl_cache_get_buf(cache,
-                                             series_url,
-                                             &req,
-                                             internal_prepare_cache_fetch,
-                                             priv_mdl_app_context()->session.net,
-                                             priv_mdl_app_context()->page,
-                                             sizeof(priv_mdl_app_context()->page),
-                                             &len,
-                                             &response,
-                                             &cache_result);
+  const ra8_mdl_http_policy_t req = {.user_agent = priv_mdl_app_context()->session.user_agent,
+                                     .referer    = nullptr,
+                                     .timeout_ms = timeout};
+
+  const mdl_cache_get_req_t get = {.url           = series_url,
+                                   .request       = &req,
+                                   .fetch         = internal_prepare_cache_fetch,
+                                   .fetch_context = priv_mdl_app_context()->session.net,
+                                   .buffer        = priv_mdl_app_context()->page,
+                                   .capacity      = sizeof(priv_mdl_app_context()->page)};
+  mdl_cache_get_out_t       got = {};
+
+  ra8_err_t rc = mdl_cache_get(cache, &get, &got);
   if (rc != k_ra8_ok) {
     return rc;
   }
-  rc = priv_mdl_app_report_cache(series_url, &cache_result);
+  rc = priv_mdl_app_report_cache(series_url, &got.result);
   if (rc != k_ra8_ok) {
     return rc;
   }
-  rc = internal_extract_series_metadata(site, series_url, priv_mdl_app_context()->page, len);
+  rc = internal_extract_series_metadata(site,
+                                        series_url,
+                                        priv_mdl_app_context()->page,
+                                        got.length);
   if (rc != k_ra8_ok) {
     return rc;
   }
   rc = mdl_extract_anchors(priv_mdl_app_context()->page,
-                           len,
+                           got.length,
                            series_url,
                            site->chapter_url_contains,
                            &priv_mdl_app_context()->chapters);

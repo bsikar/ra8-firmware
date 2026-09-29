@@ -1,6 +1,6 @@
 /**
  * @file examples/ek_ra8d2/hw_validated/hil/lpm_deep_sleep_demo/src/main.c
- * @brief Deep-Sleep mode (LPMD=0, SCR.SLEEPDEEP=1) one-shot wake demo
+ * @brief Deep-Sleep mode (LPMD=0, SCR.SLEEPDEEP=1) one-shot entry demo
  *
  * @par Tag
  * [Ring 6 / APP] {World: S}
@@ -9,23 +9,32 @@
  * Demonstrates Cortex-M85 Deep Sleep (the second-shallowest LPM
  * state) on the EK-RA8D2. LPSCR.LPMD stays at 0 (System Active) but
  * SCR.SLEEPDEEP is asserted before WFI so the core power-gates more
- * aggressively than plain Sleep. SysTick is the wake source.
+ * aggressively than plain Sleep.
+ *
+ * SysTick does NOT wake the core from Deep-Sleep on RA8D2 under this
+ * demo's LPM config (bench-verified 2026-05-27): once the chip
+ * reaches WFI it stays there until the next Initialize. What this
+ * demo proves is therefore ENTRY, not wake. A real wake-from-
+ * Deep-Sleep demo would need a sub-clock-sourced source (RTC/AGT) or
+ * an external IRQ pin.
  *
  * Sequence:
  *   1. CGC + SysTick + LED1 + SCI8 + LPM bring-up.
- *   2. Emit ``"lpm_deep: boot\r\n"`` over SCI8.
+ *   2. Emit ``"lpm_deep: boot\r\n"`` over SCI8 -- this is the banner
+ *      the HIL gate scrapes (see ``hil.conf``).
  *   3. Bump ``g_lpm_deep_pre_count`` so a JLink probe can confirm
  *      the firmware reached the LPM entry.
  *   4. ``ra8_lpm_enter_sleep(k_ra8_sleep_mode_deep_sleep)`` -- WFI with
- *      SLEEPDEEP=1. SysTick wakes the core ~1 ms later.
- *   5. Bump ``g_lpm_deep_wake_count`` -- proves the chip woke from
- *      Deep-Sleep cleanly.
- *   6. Emit ``"lpm_deep: woke\r\n"`` over SCI8 -- the HIL gate
- *      scrapes for this banner.
+ *      SLEEPDEEP=1. On real silicon the chip does not come back out.
+ *
+ * Steps 5-7 below are the unreached tail, kept so the app still has a
+ * defined post-wake behaviour if a wake source is ever added:
+ *
+ *   5. Bump ``g_lpm_deep_wake_count``.
+ *   6. Emit ``"lpm_deep: woke\r\n"`` over SCI8.
  *   7. Park in a normal infinite loop (LED1 toggle every 500 ms).
- *      The loop is NOT in LPM, so subsequent bench flashes have a
- *      reliable halt window. Re-flashing the demo causes another
- *      boot -> Deep-Sleep -> wake -> banner cycle.
+ *      The loop is NOT in LPM, so subsequent bench flashes would have
+ *      a reliable halt window.
  *
  * @par SCI wedge note
  * Earlier prototypes printed UART traffic INSIDE the Deep-Sleep loop
@@ -91,8 +100,9 @@ volatile uint32_t g_lpm_deep_pre_count = 0U;
  * @var g_lpm_deep_wake_count
  * @brief Counter bumped right AFTER waking from Deep-Sleep.
  *
- * @details Externally readable via SWD memprobe. Non-zero value
- * proves the chip entered Deep-Sleep AND woke cleanly via SysTick.
+ * @details Externally readable via SWD memprobe. Stays 0 on RA8D2
+ * because SysTick does not wake the core from Deep-Sleep; a non-zero
+ * value would prove a wake source was added and worked.
  *
  * @note Read externally by J-Link only.
  * @since 0.1.0
@@ -183,8 +193,9 @@ RA8_INTERNAL static void internal_lpm_deep_setup_or_halt(void)
  * @pre Reset_Handler / SystemInit completed normally.
  * @pre LPM init has not yet been attempted.
  *
- * @post On clean entry the chip emitted both banners and is parked
- *       in a normal blink loop, ready for the next bench flash.
+ * @post On clean entry the chip emitted the boot banner and is
+ *       parked in Deep-Sleep; the woke banner and blink loop are not
+ *       reached without a wake source.
  * @post On any HAL hard error LED1 latches OFF and the chip halts.
  *
  * @since 0.1.0

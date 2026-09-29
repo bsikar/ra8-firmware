@@ -177,7 +177,9 @@ RUN set -eux; \
       *) echo "unsupported host arch $(uname -m) for arm-gnu-toolchain" >&2; exit 1 ;; \
     esac; \
     url="https://developer.arm.com/-/media/Files/downloads/gnu/${ARM_GCC_RELEASE}/binrel/arm-gnu-toolchain-${ARM_GCC_RELEASE}-${tarch}-arm-none-eabi.tar.xz"; \
-    curl -fsSL "$url" -o /tmp/armgcc.tar.xz; \
+    cache_url="http://10.250.9.1:8080/arm-gnu-toolchain-${ARM_GCC_RELEASE}-${tarch}-arm-none-eabi.tar.xz"; \
+    curl -fsSL --connect-timeout 2 "$cache_url" -o /tmp/armgcc.tar.xz || \
+      curl -fsSL --retry 5 --retry-delay 2 "$url" -o /tmp/armgcc.tar.xz; \
     echo "${sha}  /tmp/armgcc.tar.xz" | sha256sum -c -; \
     mkdir -p /opt/arm-gnu-toolchain-13.3; \
     tar xf /tmp/armgcc.tar.xz -C /opt/arm-gnu-toolchain-13.3 --strip-components=1; \
@@ -193,7 +195,11 @@ ENV PATH="/opt/arm-gnu-toolchain-13.3/bin:${PATH}"
 # installed header's UC_API_* version afterwards.
 RUN set -eux; \
     url="https://github.com/unicorn-engine/unicorn/archive/refs/tags/${UNICORN_VERSION}.tar.gz"; \
-    curl -fsSL "$url" -o /tmp/unicorn.tar.gz; \
+    alt_url="https://codeload.github.com/unicorn-engine/unicorn/tar.gz/refs/tags/${UNICORN_VERSION}"; \
+    cache_url="http://10.250.9.1:8080/unicorn-${UNICORN_VERSION}.tar.gz"; \
+    curl -fsSL --connect-timeout 2 "$cache_url" -o /tmp/unicorn.tar.gz || \
+      curl -fsSL --retry 5 --retry-delay 2 "$url" -o /tmp/unicorn.tar.gz || \
+      curl -fsSL --retry 5 --retry-delay 2 "$alt_url" -o /tmp/unicorn.tar.gz; \
     echo "${UNICORN_SHA256}  /tmp/unicorn.tar.gz" | sha256sum -c -; \
     tar -xzf /tmp/unicorn.tar.gz -C /tmp; \
     cmake -S "/tmp/unicorn-${UNICORN_VERSION}" -B /tmp/unicorn-build \
@@ -217,7 +223,9 @@ RUN set -eux; \
 RUN set -eux; \
     if [ "$(uname -m)" = "x86_64" ]; then \
       url="https://github.com/doxygen/doxygen/releases/download/Release_$(echo "${DOXYGEN_VERSION}" | tr . _)/doxygen-${DOXYGEN_VERSION}.linux.bin.tar.gz"; \
-      curl -fsSL "$url" -o /tmp/doxygen.tar.gz; \
+      cache_url="http://10.250.9.1:8080/doxygen-${DOXYGEN_VERSION}.linux.bin.tar.gz"; \
+      curl -fsSL --connect-timeout 2 "$cache_url" -o /tmp/doxygen.tar.gz || \
+        curl -fsSL --retry 5 --retry-delay 2 "$url" -o /tmp/doxygen.tar.gz; \
       echo "${DOXYGEN_SHA256_LINUX_X64}  /tmp/doxygen.tar.gz" | sha256sum -c -; \
       tar -xzf /tmp/doxygen.tar.gz -C /tmp; \
       install -m 0755 "/tmp/doxygen-${DOXYGEN_VERSION}/bin/doxygen" /usr/local/bin/doxygen; \

@@ -60,6 +60,12 @@ product is welcome to do so under the MIT licence. They are
   Polyspace, PVS-Studio) per their assessor's tooling-qualification
   requirements -- see `docs/qualification/MISRA_DEVIATIONS.md`
   Section "Tooling policy".
+- Choosing their **MISRA edition**. The verification evidence here
+  is against MISRA C:2012 (Third Edition, March 2013); the current
+  edition is MISRA C:2025 (March 2025), with MISRA C:2023 between
+  them. The open-source cppcheck add-on implements MISRA C:2012
+  only, so no checker version bump changes this -- see `docs/MISRA.md`
+  section "Which edition, and why it is not the current one".
 - Re-running the verification evidence under their own
   configuration-management baseline.
 - Providing their own warranty, indemnity, and field-issue support.

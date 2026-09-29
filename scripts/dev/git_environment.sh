@@ -39,6 +39,13 @@ _install_git_environment_contract() {
     return 1
   fi
   while IFS=$'\t' read -r action name value extra; do
+    # CPython on Windows writes CRLF even when the contract is consumed by
+    # Git Bash.  Strip the transport carriage return before validating names
+    # or exporting variables.
+    action="${action%$'\r'}"
+    name="${name%$'\r'}"
+    value="${value%$'\r'}"
+    extra="${extra%$'\r'}"
     if [[ ! "$name" =~ ^[A-Z][A-Z0-9_]*$ || -n "${extra:-}" ]]; then
       echo "ERROR: invalid strict Git environment row for '$name'." >&2
       return 1

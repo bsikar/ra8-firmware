@@ -147,9 +147,9 @@ typedef struct {
   const uint8_t*    response_prefix;      /**< Optional binary prefix.           */
   size_t            response_prefix_len;  /**< Bytes in @ref response_prefix.    */
   /** @brief Captured If-None-Match value. */
-  char last_if_none_match[k_mdl_etag_max];
+  char last_if_none_match[k_ra8_mdl_etag_max];
   /** Captured If-Modified-Since value. */
-  char last_if_mod_since[k_mdl_last_mod_max];
+  char last_if_mod_since[k_ra8_mdl_http_date_max];
 } mock_net_t;
 
 /** @brief Minimal supported image signatures used by the scripted file backend.
@@ -162,13 +162,13 @@ typedef struct {
 
 /** @brief Fake get_buf: serve the mapped HTML for a chapter URL. */
 [[maybe_unused]] RA8_INTERNAL static ra8_err_t
-internal_mdl_fetch_test_mock_get_buf(void*                ctx,
-                                     const char*          url,
-                                     const mdl_net_req_t* req,
-                                     char*                buf,
-                                     size_t               cap,
-                                     size_t*              out_len,
-                                     mdl_net_resp_t*      resp)
+internal_mdl_fetch_test_mock_get_buf(void*                        ctx,
+                                     const char*                  url,
+                                     const ra8_mdl_http_policy_t* req,
+                                     char*                        buf,
+                                     size_t                       cap,
+                                     size_t*                      out_len,
+                                     ra8_mdl_http_response_t*     resp)
 {
   (void)req;
   (void)resp;
@@ -187,9 +187,9 @@ internal_mdl_fetch_test_mock_get_buf(void*                ctx,
 }
 
 [[maybe_unused]] RA8_INTERNAL static ra8_err_t
-internal_mdl_fetch_test_prepare_response(mock_net_t*          mock,
-                                         const mdl_net_req_t* req,
-                                         mdl_net_resp_t*      resp)
+internal_mdl_fetch_test_prepare_response(mock_net_t*                  mock,
+                                         const ra8_mdl_http_policy_t* req,
+                                         ra8_mdl_http_response_t*     resp)
 {
   if (req != nullptr) {
     (void)__builtin_snprintf(mock->last_if_none_match,
@@ -244,11 +244,12 @@ internal_mdl_fetch_test_prepare_response(mock_net_t*          mock,
  * @note Test-only helper with no production ABI.
  * @since 0.1.0
  */
-RA8_INTERNAL static ra8_err_t internal_mdl_fetch_test_scripted_response(mock_net_t*     f,
-                                                                        const char*     url,
-                                                                        mdl_net_resp_t* resp,
-                                                                        size_t*         out_len,
-                                                                        bool*           handled)
+RA8_INTERNAL static ra8_err_t
+internal_mdl_fetch_test_scripted_response(mock_net_t*              f,
+                                          const char*              url,
+                                          ra8_mdl_http_response_t* resp,
+                                          size_t*                  out_len,
+                                          bool*                    handled)
 {
   *handled = true;
   if ((f->not_mod_on_file_call != 0U) && (f->get_file_calls == f->not_mod_on_file_call)) {
@@ -262,7 +263,7 @@ RA8_INTERNAL static ra8_err_t internal_mdl_fetch_test_scripted_response(mock_net
   }
   if ((f->busy_on_file_call != 0U) && (f->get_file_calls == f->busy_on_file_call)) {
     if (resp != nullptr) {
-      resp->status = (long)k_http_unavailable;
+      resp->status = (int32_t)k_http_unavailable;
       (void)__builtin_snprintf(resp->retry_after,
                                sizeof(resp->retry_after),
                                "%s",
@@ -283,12 +284,12 @@ RA8_INTERNAL static ra8_err_t internal_mdl_fetch_test_scripted_response(mock_net
 /** @brief Fake get_body: stream the URL's own bytes, unless this call is
  * scripted to fail. */
 [[maybe_unused]] RA8_INTERNAL static ra8_err_t
-internal_mdl_fetch_test_mock_get_body(void*                ctx,
-                                      const char*          url,
-                                      const mdl_net_req_t* req,
-                                      mdl_net_body_sink_t* sink,
-                                      size_t*              out_len,
-                                      mdl_net_resp_t*      resp)
+internal_mdl_fetch_test_mock_get_body(void*                        ctx,
+                                      const char*                  url,
+                                      const ra8_mdl_http_policy_t* req,
+                                      mdl_net_body_sink_t*         sink,
+                                      size_t*                      out_len,
+                                      ra8_mdl_http_response_t*     resp)
 {
   mock_net_t* f = (mock_net_t*)ctx;
   f->get_file_calls += 1U;

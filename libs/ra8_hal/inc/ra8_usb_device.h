@@ -3,6 +3,9 @@
  * @brief Native USB controller driver public API -- shared types + device mode
  * @ingroup grp_hal_usb
  *
+ * @par Tag
+ * [Ring 3 / HAL] {World: NS}
+ *
  * @details
  * Device-mode half of the hand-written, FSP-equivalent driver for the
  * two USB controllers on the Renesas RA8D2 (USBFS @ 0x40250000,

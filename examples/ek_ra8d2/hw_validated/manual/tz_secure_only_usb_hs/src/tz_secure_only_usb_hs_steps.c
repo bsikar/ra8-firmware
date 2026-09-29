@@ -375,8 +375,8 @@ static VOID demo_cdc_deactivate(VOID* cdc_instance)
  * @brief Bring up USBX system + device stack with HS+FS frameworks.
  *
  * @details
- * Initializes the USBX memory pool, then registers both HS and FS device
- * frameworks. With the PHY CLKSEL=24 fix landed (see
+ * Synthesises the frameworks, initializes the USBX memory pool, then
+ * registers both HS and FS device frameworks. With the PHY CLKSEL=24 fix landed (see
  * ra8_usb.c::internal_usbhs_phy_bringup), the HS chirp completes correctly
  * and the host expects HS-conformant descriptors with 512-byte bulk MPS.
  * USBX picks the framework matching the negotiated bus speed
@@ -384,7 +384,8 @@ static VOID demo_cdc_deactivate(VOID* cdc_instance)
  *
  * @return true on success, false on any USBX failure.
  * @retval true Both system and device stacks initialized.
- * @retval false ``_ux_system_initialize`` or ``_ux_device_stack_initialize`` failed.
+ * @retval false A framework encode, ``_ux_system_initialize`` or
+ *               ``_ux_device_stack_initialize`` failed.
  *
  * @pre USBX pool storage exists and is sized k_demo_usbx_pool_bytes.
  * @post On success, the USBX stack is ready for class registration.
@@ -394,19 +395,22 @@ static VOID demo_cdc_deactivate(VOID* cdc_instance)
  */
 static bool demo_worker_usbx_init(void)
 {
+  if (tz_secure_only_usb_hs_build_frameworks() != k_ra8_ok) {
+    return false;
+  }
   s_boot_probe = (uint32_t)k_boot_probe_pre_sys_init;
   if (_ux_system_initialize(s_usbx_pool, k_demo_usbx_pool_bytes, UX_NULL, 0) != UX_SUCCESS) {
     return false;
   }
   s_boot_probe = (uint32_t)k_boot_probe_pre_dev_stack_init;
   return _ux_device_stack_initialize(s_tz_secure_only_usb_hs_device_framework_hs,
-                                     sizeof(s_tz_secure_only_usb_hs_device_framework_hs),
+                                     (ULONG)s_tz_secure_only_usb_hs_device_framework_hs_len,
                                      s_tz_secure_only_usb_hs_device_framework_fs,
-                                     sizeof(s_tz_secure_only_usb_hs_device_framework_fs),
+                                     (ULONG)s_tz_secure_only_usb_hs_device_framework_fs_len,
                                      s_tz_secure_only_usb_hs_string_framework,
-                                     sizeof(s_tz_secure_only_usb_hs_string_framework),
+                                     (ULONG)s_tz_secure_only_usb_hs_string_framework_len,
                                      s_tz_secure_only_usb_hs_language_id_framework,
-                                     sizeof(s_tz_secure_only_usb_hs_language_id_framework),
+                                     (ULONG)s_tz_secure_only_usb_hs_language_id_framework_len,
                                      UX_NULL) == UX_SUCCESS;
 }
 

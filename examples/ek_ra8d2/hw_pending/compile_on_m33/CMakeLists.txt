@@ -84,27 +84,57 @@ ra8_add_cpu1_image(
 # rabook_compile_from_epub is unreferenced and --gc-sections drops it, so
 # ra8_fs.c is not linked either (only ra8_fs.h is on the include path).
 if(TARGET compile_on_m33_cpu1.elf)
+  # The core decompression-limits policy TU and the assertion sink come on
+  # through ra8_cpu1_add_first_party_sources(), which bolts them onto the image
+  # AND applies the per-source first-party profile (-Wall -Wextra -Werror ...
+  # -Wstack-usage=2048 -fstack-usage), the same set ra8_add_cpu1_image() puts on
+  # cpu1_main.c. Both compile clean on it under arm-none-eabi-gcc 13.3.1 at this
+  # image's -Os with RA8_LOG_LEVEL=0, so their rows are gone from
+  # .github/cpu1-warning-profile-baseline.txt (#843 / T1-09).
+  #   - ra8_decomp_limits.c: epub guards its ZIP entries through the shared
+  #     decompression limits policy (epub_zip_guard.c -> ra8_decomp_limits_*),
+  #     and this image hand-picks its sources, so the policy TU is explicit.
+  #   - ra8_error_handler.c: assertion sink -- miniz MZ_ASSERT and core
+  #     assertions route to ra8_fatal_error().
+  #   - ra8_ipc.c: the M33 side of the #150 mode-switch IPC path. It joins the
+  #     bar here now that its channel-regs cast no longer trips
+  #     -Wbad-function-cast; its inventory rows are gone.
+  #   - the rabook_compile emitter and the xml parser: this image's whole
+  #     reason to exist (cpu1_main.c calls rabook_compile_from_epub_to_buffer
+  #     over the parser and emitter). Measured on the profile at this image's
+  #     -Os: all eight compile clean, and none of the parse or emit frames
+  #     reaches -Wstack-usage=2048, so the emitter path now carries real stack
+  #     evidence instead of none. Their rows are gone from the inventory.
+  #   - the epub front end: the ZIP reader, the XHTML/TOC shims and the image
+  #     import path cpu1_main.c drives through
+  #     rabook_compile_from_epub_to_buffer. The glob is still a glob, so a new
+  #     epub TU lands on the profile the day it is written instead of
+  #     escaping it. Measured on the profile at this image's -Os: all ten
+  #     compile clean and none reaches -Wstack-usage=2048, so the EPUB parse
+  #     path now carries real stack evidence. Their rows were the last ten in
+  #     the inventory, which is now empty.
   file(GLOB _c1_epub_c CONFIGURE_DEPENDS ${RA8_REPO_ROOT}/apps/shared_libs/epub/src/*.c)
+  ra8_cpu1_add_first_party_sources(
+    compile_on_m33_cpu1.elf
+    ${RA8_REPO_ROOT}/libs/ra8_core/src/ra8_decomp_limits.c
+    ${RA8_REPO_ROOT}/libs/ra8_core/src/ra8_error_handler.c
+    ${RA8_REPO_ROOT}/libs/ra8_hal/src/ra8_ipc.c
+    ${RA8_REPO_ROOT}/apps/shared_libs/rabook_compile/src/rabook_compile.c
+    ${RA8_REPO_ROOT}/apps/shared_libs/rabook_compile/src/ra8_rabook_finalize.c
+    ${RA8_REPO_ROOT}/apps/shared_libs/rabook_compile/src/ra8_rabook_gray4.c
+    ${RA8_REPO_ROOT}/apps/shared_libs/rabook_compile/src/ra8_rabook_xml_shim.c
+    ${RA8_REPO_ROOT}/apps/shared_libs/rabook_compile/src/ra8_rabook_pipeline.c
+    ${RA8_REPO_ROOT}/apps/shared_libs/xml/src/xml.c
+    ${RA8_REPO_ROOT}/apps/shared_libs/xml/src/xml_decode.c
+    ${RA8_REPO_ROOT}/apps/shared_libs/xml/src/xml_doctype.c
+    ${_c1_epub_c}
+  )
+  # Still plain target_sources(): vendored miniz.c only (SOUP, deliberately
+  # outside the first-party bar). Every first-party TU on this image now goes
+  # through the opt-in above, so the escape inventory holds no rows for it.
   target_sources(
     compile_on_m33_cpu1.elf
-    PRIVATE ${RA8_REPO_ROOT}/libs/ra8_hal/src/ra8_ipc.c
-            # epub now guards its ZIP entries through the shared decompression
-            # limits policy (epub_zip_guard.c -> ra8_decomp_limits_*); the M33
-            # image hand-picks its sources, so link the core policy TU explicitly.
-            ${RA8_REPO_ROOT}/libs/ra8_core/src/ra8_decomp_limits.c
-            # Assertion sink: miniz MZ_ASSERT and core assertions route to
-            # ra8_fatal_error(); RA8_LOG_LEVEL=0 collapses logging to no-ops.
-            ${RA8_REPO_ROOT}/libs/ra8_core/src/ra8_error_handler.c
-            ${RA8_REPO_ROOT}/apps/shared_libs/rabook_compile/src/rabook_compile.c
-            ${RA8_REPO_ROOT}/apps/shared_libs/rabook_compile/src/ra8_rabook_finalize.c
-            ${RA8_REPO_ROOT}/apps/shared_libs/rabook_compile/src/ra8_rabook_gray4.c
-            ${RA8_REPO_ROOT}/apps/shared_libs/rabook_compile/src/ra8_rabook_xml_shim.c
-            ${RA8_REPO_ROOT}/apps/shared_libs/rabook_compile/src/ra8_rabook_pipeline.c
-            ${RA8_REPO_ROOT}/apps/shared_libs/xml/src/xml.c
-            ${RA8_REPO_ROOT}/apps/shared_libs/xml/src/xml_decode.c
-            ${RA8_REPO_ROOT}/apps/shared_libs/xml/src/xml_doctype.c
-            ${_c1_epub_c}
-            ${RA8_REPO_ROOT}/apps/shared_libs/third_party/miniz/miniz.c
+    PRIVATE ${RA8_REPO_ROOT}/apps/shared_libs/third_party/miniz/miniz.c
   )
   # MINIZ_NO_STDIO/NO_TIME on EVERY TU that includes miniz.h (miniz.c + epub)
   # so the header ABI matches and miniz.c's fopen/utime file path (absent on
@@ -123,16 +153,24 @@ if(TARGET compile_on_m33_cpu1.elf)
   #
   # It carries NO -Wno flags, deliberately. It used to carry six, under the note
   # "vendored miniz.c cannot satisfy the first-party -Werror set". There is no
-  # -Werror set on this target to satisfy: ra8_add_cpu1_image() applies the
-  # project warning profile PER-SOURCE to the helper's own SOURCES only, and
-  # this app bolts its CPU1 translation units on with target_sources(), so the
-  # whole CPU1 compile line here is -mcpu=cortex-m33 ... -Os with no -Wall at
-  # all -- for cpu1_main.c too, which is first-party (the gap is the standing
-  # TODO(T1-09) in cmake/ra8_add_app.cmake). Compiling miniz.c with all six
-  # removed, under arm-none-eabi-gcc 13.3.1 at the -Os this image uses, emits
-  # nothing. Six flags that mask nothing are worse than none: they read as
-  # evidence that this image is warning-gated when it is not. When T1-09 lands,
-  # re-measure and re-add whatever actually fires.
+  # -Werror set reaching miniz.c to satisfy: ra8_add_cpu1_image() applies the
+  # project warning profile PER-SOURCE to the helper's own SOURCES, and this app
+  # bolts its CPU1 translation units on with target_sources(), so every bolted-on
+  # source -- miniz.c included -- compiles at -mcpu=cortex-m33 ... -Os with no
+  # -Wall at all (the gap is the standing TODO(T1-09) in
+  # cmake/ra8_add_app.cmake). src/cpu1_main.c is NOT in that gap: it is a helper
+  # SOURCES entry, so it does carry the full profile, which compile_commands.json
+  # confirms. Compiling miniz.c with all six removed, under arm-none-eabi-gcc
+  # 13.3.1 at the -Os this image uses, emits nothing. Six flags that mask nothing
+  # are worse than none: they read as evidence that this image is warning-gated
+  # when it is not. When T1-09 lands, re-measure and re-add whatever actually
+  # fires.
+  #
+  # The first-party TUs this app bolts on are enumerated in
+  # .github/cpu1-warning-profile-baseline.txt and held there by
+  # scripts/checks/check_cpu1_warning_profile.py (#843): adding another
+  # first-party M33 source here without bringing it onto the profile now fails
+  # that gate. miniz.c is classified as SOUP and is deliberately not a row.
   set_property(
     SOURCE ${RA8_REPO_ROOT}/apps/shared_libs/third_party/miniz/miniz.c
     APPEND

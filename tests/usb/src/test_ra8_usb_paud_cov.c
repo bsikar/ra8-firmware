@@ -3,6 +3,9 @@
  * @brief Line-coverage top-up for the native USB device-side Audio (UAC1)
  *        class layer (`libs/ra8_hal/src/ra8_usb_paud.c`).
  *
+ * @par Tag
+ * [Ring 3 / HAL] {World: NS}
+ *
  * @details
  * The sibling functional/MC-DC suite `test_ra8_usb_paud.c` exercises the
  * public contract but only ever drives the descriptor / recv-frame /

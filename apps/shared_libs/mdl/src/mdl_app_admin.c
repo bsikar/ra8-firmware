@@ -142,7 +142,7 @@ RA8_INTERNAL static bool internal_init_site_identity(const char* url,
                                "mdl: --init-site requires a URL\n");
     return false;
   }
-  if (!mdl_url_host(url, host, k_mdl_host_max)) {
+  if (ra8_net_urlguard_host(url, host, k_mdl_host_max) != k_ra8_ok) {
     internal_admin_text3(priv_mdl_app_context()->diagnostic,
                          "mdl: --init-site could not extract host from '",
                          url,

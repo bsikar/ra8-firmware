@@ -74,6 +74,7 @@
 #include "ra8_err.h"
 #include "ra8_gpt.h"
 #include "ra8_i2c.h"
+#include "ra8_i2c_bus_ops.h"
 #include "ra8_isr.h"
 #include "ra8_mstp.h"
 #include "ra8_ov5640.h"
@@ -159,6 +160,9 @@ static const uint8_t k_cam_tag[] = "cam: ";
 /** @brief Transport-independent sensor instance bound to the board SCCB adapter. */
 static ra8_ov5640_t s_camera_sensor;
 
+/** @brief Caller-owned binding state for the house I2C seam. */
+static ra8_ov5640_i2c_ctx_t s_cam_sensor_i2c;
+
 /** @brief Generic CEU source handle and caller-owned backend state. */
 static ra8_camera_source_t           s_camera_source;
 static ra8_camera_source_ceu_state_t s_camera_source_state;
@@ -184,13 +188,12 @@ alignas(k_cam_cache_line) static uint8_t s_camera_capture[k_cam_uyvy_frame_bytes
  */
 static ra8_err_t cam_sensor_bind(void)
 {
-  const ra8_ov5640_bus_t bus = {
-    .read_reg  = ra8_board_camera_sccb_read_reg,
-    .write_reg = ra8_board_camera_sccb_write_reg,
-    .delay_ms  = ra8_board_camera_delay_ms,
-    .ctx       = nullptr,
-  };
-  return ra8_ov5640_init(&s_camera_sensor, &bus);
+  ra8_i2c_bus_ops_t ops     = {};
+  const ra8_err_t   ops_err = ra8_board_camera_i2c_ops(&ops);
+  if (ops_err != k_ra8_ok) {
+    return ops_err;
+  }
+  return ra8_ov5640_bind_i2c(&s_camera_sensor, &s_cam_sensor_i2c, &ops, ra8_board_camera_delay_ms);
 }
 
 /**

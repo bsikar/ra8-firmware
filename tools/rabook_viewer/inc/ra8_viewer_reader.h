@@ -22,6 +22,7 @@
 #include <stdint.h>
 
 #include "ra8_err.h"
+#include "ra8_imgdec_name.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -130,6 +131,39 @@ typedef struct {
  * @return Render status.
  */
 [[nodiscard]] ra8_err_t ra8_viewer_render_page(ra8_viewer_reader_t* reader, uint32_t page);
+
+/**
+ * @brief Name the image container page @p page actually holds (#748).
+ *
+ * @details The comic engine receives page bytes it did not produce, and until
+ * this call the only thing it could say about a page it failed to decode was
+ * the status code: a GIF the bound decoder cannot open and a truncated archive
+ * member both surfaced as ::k_ra8_err_not_supported. This reads the page's
+ * leading bytes and answers from ::ra8_imgdec_identify, the one naming table
+ * this tree publishes, so a caller can report *what* it was handed.
+ *
+ * Naming is not a decode claim. A page this call names may still be one the
+ * bound backend refuses; the two questions are deliberately separate.
+ *
+ * @param[in,out] reader Open reader.
+ * @param[in] page Page index below ::ra8_viewer_page_count.
+ * @param[out] out Receives the container and its borrowed canonical names.
+ * @return Naming status.
+ * @retval k_ra8_ok @p out holds a complete naming record.
+ * @retval k_ra8_err_null_ptr @p reader or @p out is NULL.
+ * @retval k_ra8_err_invalid_state The reader is closed.
+ * @retval k_ra8_err_out_of_range @p page is at or above the page count.
+ * @retval k_ra8_err_not_supported The bound engine holds no foreign container.
+ * @retval k_ra8_err_not_found The page carries no recognised signature.
+ * @pre @p reader came from a successful ::ra8_viewer_open.
+ * @post On any non-ok return `*out` is zeroed.
+ * @post The resident encoded-page slice may be overwritten with @p page.
+ * @note Not thread-safe; it reuses the reader's one resident page slice.
+ * @see ra8_imgdec_identify()
+ * @since 0.1.0
+ */
+[[nodiscard]] ra8_err_t
+ra8_viewer_page_container(ra8_viewer_reader_t* reader, uint32_t page, ra8_imgdec_name_t* out);
 
 /** @brief Number of scroll tiles in @p reader, or zero for NULL/closed. */
 [[nodiscard]] uint32_t ra8_viewer_tile_count(const ra8_viewer_reader_t* reader);

@@ -31,6 +31,7 @@ include("${_d}/cmake/ra8_add_app.cmake")
 
 ra8_add_app(
   NAME usb_selftest_fs_host
+  THREADX_HEAP SDRAM
   STACK_BYTES 4000
   DESCRIPTION "USB self-loop config B: FS host reads the HS device MSC"
   USES threadx usbx

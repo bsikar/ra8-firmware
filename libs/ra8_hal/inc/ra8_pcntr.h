@@ -3,6 +3,9 @@
  * @brief CPU1-safe combined direction+level PORT primitive over PCNTR1/PCNTR2
  * @ingroup grp_hal_system
  *
+ * @par Tag
+ * [Ring 3 / HAL] {World: MIXED}
+ *
  * @details
  * A deliberately tiny, header-only GPIO primitive built directly on the per-port
  * PCNTR registers (`ra8_port_regs.h`). It exists so the secondary Cortex-M33

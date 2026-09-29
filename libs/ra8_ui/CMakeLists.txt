@@ -12,7 +12,7 @@
 #   inc/ra8_ui.h     public API
 #   src/ra8_ui.c     hit-test + screen stack + paging
 #
-# Like the other domain libs in this tree (ra8_reflow, ra8_epub, ra8_fs),
+# Like the other domain libs in this tree (for example ra8_fs),
 # consumers reach into inc/ + src/ directly: firmware apps list `ra8_ui`
 # in ra8_add_app(LIBS ...) and the host unit-test build folds
 # libs/ra8_ui/src/*.c into the ra8_core_hal object library.

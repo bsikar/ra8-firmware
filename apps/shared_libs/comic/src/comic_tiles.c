@@ -43,10 +43,80 @@
 #include "ra8_attributes.h"
 #include "ra8_check.h"
 #include "ra8_err.h"
+#include "ra8_imgdec.h"
 #include "ra8_tile_cache.h"
 
 /** @brief Module log tag. */
 static const char* const s_tag = "comic_tiles";
+
+/**
+ * @enum comic_tiles_probe_t
+ * @brief The container set a tiled page may be, as a format mask (#768).
+ * @details ::ra8_imgdec_dims reads geometry out of six containers; the JOF
+ *          producer this module transcodes through accepts three. Reporting a
+ *          footprint for a GIF or a BMP would promise a page
+ *          ::comic_tiles_import cannot build an atlas for, so the mask is
+ *          applied here rather than inherited from the probe.
+ * @since Version 0.1.0
+ */
+typedef enum : uint32_t {
+  k_comic_tiles_formats = (uint32_t)k_ra8_imgdec_format_jpeg |
+                          (uint32_t)k_ra8_imgdec_format_png |
+                          (uint32_t)k_ra8_imgdec_format_webp, /**< JPEG | PNG | WebP. */
+} comic_tiles_probe_t;
+
+/* The probe refuses a dimension over k_ra8_imgdec_dim_max, which is what makes
+ * the narrowing to the uint16_t the page geometry is carried in total. */
+static_assert((uint32_t)k_ra8_imgdec_dim_max <= (uint32_t)UINT16_MAX,
+              "imgdec dimension cap must fit the page geometry type");
+
+/**
+ * @brief Read the encoded page's declared geometry, without decoding it.
+ * @details Calls ::ra8_imgdec_dims, the one in-tree geometry probe (#768), so
+ *          this module no longer reaches up into the JOF producer for
+ *          `jof_probe_dims()` while producing no JOF. Anything outside
+ *          ::k_comic_tiles_formats is refused here; everything else the probe
+ *          already guarantees (exactly one format bit, both dimensions
+ *          non-zero and within ::k_ra8_imgdec_dim_max).
+ *          The probe's ::k_ra8_err_not_found (no signature at all) is folded
+ *          into ::k_ra8_err_not_supported: this module's published answer to
+ *          "can this page be tiled" is one code, and both mean no.
+ * @param[in]  enc   Encoded page bytes.
+ * @param[in]  len   Readable byte count at @p enc.
+ * @param[out] out_w Receives the page width in pixels.
+ * @param[out] out_h Receives the page height in pixels.
+ * @return Result code.
+ * @retval k_ra8_ok                Geometry read; both outputs written.
+ * @retval k_ra8_err_not_supported No signature, a truncated header, or a
+ *                                 container the producer does not transcode.
+ * @retval k_ra8_err_invalid_size  A declared dimension is zero or over the cap.
+ * @pre @p enc holds @p len readable bytes; @p out_w and @p out_h are writable.
+ * @post On any error neither output is written.
+ * @note Thread-safe: pure read of @p enc.
+ * @see ra8_imgdec_dims()
+ * @since Version 0.1.0
+ */
+RA8_INTERNAL static ra8_err_t internal_page_geometry(const uint8_t* enc,
+                                                     size_t         len,
+                                                     uint16_t*      out_w,
+                                                     uint16_t*      out_h)
+{
+  const uint32_t    n    = (len > (size_t)UINT32_MAX) ? UINT32_MAX : (uint32_t)len;
+  ra8_imgdec_geom_t geom = {};
+  const ra8_err_t   rc   = ra8_imgdec_dims(enc, n, &geom);
+  if (rc == k_ra8_err_not_found) {
+    return k_ra8_err_not_supported; /* no signature at all: still untileable */
+  }
+  if (rc != k_ra8_ok) {
+    return rc;
+  }
+  if (((uint32_t)geom.format & (uint32_t)k_comic_tiles_formats) == 0U) {
+    return k_ra8_err_not_supported; /* readable geometry, untileable container */
+  }
+  *out_w = (uint16_t)geom.width_px;
+  *out_h = (uint16_t)geom.height_px;
+  return k_ra8_ok;
+}
 
 /**
  * @struct comic_tiles_pull_t
@@ -154,7 +224,7 @@ ra8_err_t comic_tiles_footprint(const uint8_t* enc,
   }
   uint16_t        w   = 0U;
   uint16_t        h   = 0U;
-  const ra8_err_t err = jof_probe_dims(enc, len, &w, &h);
+  const ra8_err_t err = internal_page_geometry(enc, len, &w, &h);
   if (err != k_ra8_ok) {
     return err;
   }

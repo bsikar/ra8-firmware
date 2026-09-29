@@ -367,8 +367,23 @@ RA8_PRIV size_t priv_epub_stream_read(void* opaque, mz_uint64 file_ofs, void* bu
     return 0U;
   }
   const uint64_t avail = sm->size - file_ofs;
-  const size_t   want  = ((uint64_t)n > avail) ? (size_t)avail : n;
-  return sm->read(sm->ctx, (uint64_t)file_ofs, buf, want);
+  const uint64_t want  = ((uint64_t)n > avail) ? avail : (uint64_t)n;
+  /* GCOVR_EXCL_BR_START -- miniz IO chunks are bounded well below 4 GiB */
+  if (want > (uint64_t)UINT32_MAX) {
+    return 0U;
+  }
+  /* GCOVR_EXCL_BR_STOP */
+  if (want == 0U) {
+    return 0U;
+  }
+  uint32_t got = 0U;
+  /* This is the one place the reason a read stopped is dropped, because miniz's
+   * `m_pRead` has nowhere to carry it. Every backing above still reports it, and
+   * the per-entry path (epub_entry.c) reads the backing directly and keeps it. */
+  if (sm->read(sm->ctx, (uint64_t)file_ofs, buf, (uint32_t)want, &got) != k_ra8_ok) {
+    return 0U;
+  }
+  return (size_t)got;
 }
 
 RA8_PRIV ra8_err_t priv_epub_finish_open(mz_zip_archive* zip, epub_book_t* out_book)
@@ -462,7 +477,11 @@ epub_open_streamed(const epub_stream_media_t* media, const char* path, epub_book
     return k_ra8_err_invalid_arg;
   }
 
-  const ra8_err_t cap_err = ra8_decomp_zip_entry_preflight(media->read, media->ctx, media->size);
+  /* The preflight scanner is typed in miniz's byte-count shape too, so it runs
+   * through the same adapter rather than a second one of its own. */
+  epub_stream_media_t preflight_stream = *media;
+  const ra8_err_t     cap_err =
+    ra8_decomp_zip_entry_preflight(priv_epub_stream_read, &preflight_stream, media->size);
   if (cap_err != k_ra8_ok) {
     return cap_err;
   }

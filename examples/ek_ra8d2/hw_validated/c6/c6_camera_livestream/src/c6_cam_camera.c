@@ -25,6 +25,7 @@
 #include "ra8_camera_codec_jpeg_sw.h"
 #include "ra8_camera_source_ceu.h"
 #include "ra8_ceu.h"
+#include "ra8_i2c_bus_ops.h"
 #include "ra8_ov5640.h"
 #include "ra8_time.h"
 
@@ -63,7 +64,9 @@ typedef enum : uint32_t {
 [[gnu::section(".sdram_data"), gnu::aligned(8)]] static uint8_t  s_rgb[k_sw_cam_rgb_bytes];
 [[gnu::section(".sdram_data"), gnu::aligned(8)]] static uint8_t  s_jpeg[k_sw_cam_jpeg_bytes];
 /** @brief Transport-independent OV5640 instance bound to the EK-RA8D2 SCCB bus. */
-static ra8_ov5640_t                     s_camera_sensor;
+static ra8_ov5640_t s_camera_sensor;
+/** @brief Caller-owned binding state for the house I2C seam. */
+static ra8_ov5640_i2c_ctx_t             s_c6_cam_sensor_i2c;
 static ra8_camera_source_t              s_source;
 static ra8_camera_source_ceu_state_t    s_source_state;
 static ra8_camera_codec_t               s_codec;
@@ -84,13 +87,15 @@ static ra8_camera_codec_jpeg_sw_state_t s_codec_state;
  */
 RA8_INTERNAL static ra8_err_t internal_c6_cam_sensor_bind(void)
 {
-  const ra8_ov5640_bus_t bus = {
-    .read_reg  = ra8_board_camera_sccb_read_reg,
-    .write_reg = ra8_board_camera_sccb_write_reg,
-    .delay_ms  = ra8_board_camera_delay_ms,
-    .ctx       = nullptr,
-  };
-  return ra8_ov5640_init(&s_camera_sensor, &bus);
+  ra8_i2c_bus_ops_t ops     = {};
+  const ra8_err_t   ops_err = ra8_board_camera_i2c_ops(&ops);
+  if (ops_err != k_ra8_ok) {
+    return ops_err;
+  }
+  return ra8_ov5640_bind_i2c(&s_camera_sensor,
+                             &s_c6_cam_sensor_i2c,
+                             &ops,
+                             ra8_board_camera_delay_ms);
 }
 
 /**

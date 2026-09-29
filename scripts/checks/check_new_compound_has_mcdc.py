@@ -39,7 +39,7 @@ Two selection modes, and NO third silent one:
     a clean scan of nothing.
 
   * ``--staged`` -- audit the git index against HEAD. This is the mode the
-    local ``scripts/git/pre-commit`` hook uses: it gates exactly what is
+    removed local pre-commit hook used: it gates exactly what is
     about to be committed.
 
 Invoked with NEITHER mode, the check FAILS LOUDLY (exit 2) rather than

@@ -13,6 +13,7 @@
 #include "mdl_state.h"
 #include "mdl_state_internal.h"
 #include "ra8_attributes.h"
+#include "ra8_num.h"
 
 static_assert(sizeof(long) <= sizeof(int64_t), "legacy state requires long no wider than int64");
 
@@ -313,7 +314,7 @@ RA8_INTERNAL static bool internal_mdl_state_parse_double_field(const char* text,
   const int32_t scale = exponent - fractional;
   return digit && (*p == '\0') && (scale >= -(int32_t)k_state_decimal_exp_max) &&
          (scale <= (int32_t)k_state_decimal_exp_max) &&
-         priv_mdl_state_decimal_to_binary64(mantissa, scale, negative, out);
+         ra8_num_decimal_to_binary64(mantissa, scale, negative, out);
 }
 
 /**

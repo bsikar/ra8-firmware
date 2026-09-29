@@ -231,7 +231,7 @@ static void sfr_bringup_clocks(void)
   ra8_isr_globals_enable();
 }
 
-/** @brief External SDRAM + GLCDC panel + ra8_gfx binding. */
+/** @brief External SDRAM + GLCDC panel + ra8_gfx binding, row pitch included. */
 static void sfr_bringup_panel(void)
 {
   ra8_delay_ms((uint32_t)k_sfr_settle_ms);
@@ -244,8 +244,13 @@ static void sfr_bringup_panel(void)
   if (display_get_framebuffer(s_display, &s_fb) != k_ra8_ok) {
     sfr_panic_halt(k_sfr_stage_boot);
   }
-  if (ra8_gfx_init(s_fb.pixels, s_fb.width_px, s_fb.height_px, k_ra8_gfx_format_rgb565) !=
-      k_ra8_ok) {
+  if (ra8_gfx_init_surface(&(const ra8_gfx_surface_t){
+        .pixels       = s_fb.pixels,
+        .w            = s_fb.width_px,
+        .h            = s_fb.height_px,
+        .stride_bytes = s_fb.stride_bytes,
+        .fmt          = k_ra8_gfx_format_rgb565,
+      }) != k_ra8_ok) {
     sfr_panic_halt(k_sfr_stage_boot);
   }
   (void)ra8_gfx_clear((uint32_t)k_sfr_paper_argb);

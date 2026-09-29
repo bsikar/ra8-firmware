@@ -3,6 +3,9 @@
  * @brief Watchdog Timer (WDT) register layout for the RA8D2
  * @ingroup grp_hal_timers
  *
+ * @par Tag
+ * [Ring 3 / HAL] {World: S}
+ *
  * @details
  * The WDT is the *software*-clocked companion to the IWDT. Where the
  * IWDT runs from its own oscillator and cannot be stopped, the WDT

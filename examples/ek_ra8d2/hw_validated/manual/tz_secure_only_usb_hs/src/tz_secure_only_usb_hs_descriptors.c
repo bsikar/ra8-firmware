@@ -9,18 +9,23 @@
  * @details
  * Second sibling translation unit for
  * ``examples/ek_ra8d2/hw_validated/manual/tz_secure_only_usb_hs/src/main.c``.
- * Holds the four USBX descriptor tables (HS device framework, FS device
- * framework, string framework, language-id framework). These byte arrays
- * were moved here verbatim from ``main.c`` (a pure, behaviour-preserving
- * code move) so that every translation unit stays under the 1000-line
- * ``check_file_size.py`` cap.
+ * Owns the app's USB identity and endpoint layout and synthesises the four
+ * USBX frameworks from it through ``ra8_usb_device_compose``, once per bus
+ * speed. This
+ * unit used to hold the same four tables hand-typed as 258 lines of byte
+ * literals; the bytes are unchanged, they are now derived.
  *
- * The arrays are consumed by ``demo_worker_usbx_init`` in the companion
- * ``tz_secure_only_usb_hs_steps.c`` translation unit, so they carry the
+ * Two device frameworks are still built because USBX wants one per bus
+ * speed. They come from one identity and two endpoint layouts that differ
+ * only in bulk ``wMaxPacketSize`` and ``bInterval``; the high-speed one
+ * also carries the device qualifier the USB 2.0 spec requires, which is
+ * the whole ten-byte difference between them.
+ *
+ * The buffers are consumed by ``demo_worker_usbx_init`` in the companion
+ * ``tz_secure_only_usb_hs_steps.c`` translation unit, so they keep the
  * cross-TU ``s_tz_secure_only_usb_hs_`` prefix and are declared in
- * ``tz_secure_only_usb_hs_steps.h`` with their explicit dimensions (a
- * ``static_assert`` here cross-checks each declared dimension against the
- * actual initializer length).
+ * ``tz_secure_only_usb_hs_steps.h``. That unit must call
+ * ::tz_secure_only_usb_hs_build_frameworks before it reads them.
  *
  * @author Brighton Sikarskie
  * @date 2026-05-03
@@ -34,357 +39,176 @@
 #include "tz_secure_only_usb_hs_steps.h"
 
 #ifndef RA8_OFF_TARGET
+#include "ra8_usb_compose.h"
+#include "ra8_usb_desc.h"
 #include "ux_api.h"
 
 /* -------------------------------------------------------------------------- */
-/* USB descriptors (DEVICE + CONFIG + IAD + CDC interfaces + endpoints) */
+/* USB identity and endpoint layout */
 /* -------------------------------------------------------------------------- */
 
-/* CDC-ACM composite descriptor frameworks. Two slots are required so
- * USBX can hand the right one to the host based on the negotiated bus
- * speed. The HS slot (s_tz_secure_only_usb_hs_device_framework_hs)
- * carries 512-byte bulk wMaxPacketSize values, which the USB 2.0 spec
- * MANDATES for HS bulk endpoints; the FS fallback keeps 64-byte bulk MPS
- * for FS-only hosts. All other fields (Device, Configuration, IAD, CDC
- * class descriptors, Interrupt EP) are identical between the two -- only
- * the two bulk EP wMaxPacketSize bytes differ. */
-UCHAR s_tz_secure_only_usb_hs_device_framework_fs[] = {
-  /* Device descriptor (USB 2.0 sec 9.6.1) -- 18 bytes. */
-  0x12U,
-  0x01U,
-  0x00U,
-  0x02U,
-  0xEFU,
-  0x02U,
-  0x01U,
-  0x40U,
-  0x09U, /* idVendor  lo: VID = 0x1209 (pid.codes open-source VID). */
-  0x12U, /* idVendor  hi                                            */
-  0x0CU, /* idProduct lo: PID = 0x000C (HS CDC ACM).                */
-  0x00U, /* idProduct hi                                            */
-  0x00U,
-  0x01U,
-  0x01U,
-  0x02U,
-  0x03U,
-  0x01U,
-  /* Configuration descriptor (75 bytes total). */
-  0x09U,
-  0x02U,
-  0x4BU,
-  0x00U,
-  0x02U,
-  0x01U,
-  0x00U,
-  0x80U,
-  0x32U,
-  /* Interface association (CDC). */
-  0x08U,
-  0x0BU,
-  0x00U,
-  0x02U,
-  0x02U,
-  0x02U,
-  0x01U,
-  0x00U,
-  /* Communications interface (CDC ACM). */
-  0x09U,
-  0x04U,
-  0x00U,
-  0x00U,
-  0x01U,
-  0x02U,
-  0x02U,
-  0x01U,
-  0x00U,
-  /* CDC header functional descriptor. bcdCDC = 0x0120 (CDC 1.20). */
-  0x05U,
-  0x24U,
-  0x00U,
-  0x20U,
-  0x01U,
-  /* Call-management functional descriptor. */
-  0x05U,
-  0x24U,
-  0x01U,
-  0x01U,
-  0x01U,
-  /* ACM functional descriptor. */
-  0x04U,
-  0x24U,
-  0x02U,
-  0x02U,
-  /* Union functional descriptor. */
-  0x05U,
-  0x24U,
-  0x06U,
-  0x00U,
-  0x01U,
-  /* Interrupt-IN endpoint (EP3 IN, 8-byte MPS, 255 ms poll). */
-  0x07U,
-  0x05U,
-  0x83U,
-  0x03U,
-  0x08U,
-  0x00U,
-  0xFFU,
-  /* Data-class interface. */
-  0x09U,
-  0x04U,
-  0x01U,
-  0x00U,
-  0x02U,
-  0x0AU,
-  0x00U,
-  0x00U,
-  0x00U,
-  /* Bulk-OUT endpoint (EP2 OUT, 64-byte MPS). */
-  0x07U,
-  0x05U,
-  0x02U,
-  0x02U,
-  0x40U,
-  0x00U,
-  0x00U,
-  /* Bulk-IN endpoint (EP1 IN, 64-byte MPS). */
-  0x07U,
-  0x05U,
-  0x81U,
-  0x02U,
-  0x40U,
-  0x00U,
-  0x00U,
-};
-
-static_assert(sizeof(s_tz_secure_only_usb_hs_device_framework_fs) ==
-                k_tz_secure_only_usb_hs_device_framework_fs_len,
-              "FS device framework length must match the header declaration");
-
-/* HS variant: identical to s_tz_secure_only_usb_hs_device_framework_fs
- * except the bulk endpoints carry wMaxPacketSize = 512 (0x0200) per USB
- * 2.0 sec 5.8.3 ("HS bulk endpoints must use 512-byte MPS"). Includes a
- * DEVICE_QUALIFIER descriptor (USB 2.0 sec 9.6.2), which is
- * mandatory for HS-capable devices -- the host (e.g. macOS)
- * issues GET_DESCRIPTOR(DEVICE_QUALIFIER) during enumeration to
- * learn the device's other-speed capabilities, and a STALL
- * response causes some hosts to abandon enumeration. */
-UCHAR s_tz_secure_only_usb_hs_device_framework_hs[] = {
-  /* Device descriptor (USB 2.0 sec 9.6.1) -- 18 bytes. */
-  0x12U,
-  0x01U,
-  0x00U,
-  0x02U,
-  0xEFU,
-  0x02U,
-  0x01U,
-  0x40U,
-  0x09U, /* idVendor  lo: VID = 0x1209 (pid.codes open-source VID). */
-  0x12U, /* idVendor  hi                                            */
-  0x0CU, /* idProduct lo: PID = 0x000C (HS CDC ACM).                */
-  0x00U, /* idProduct hi                                            */
-  0x00U,
-  0x01U,
-  0x01U,
-  0x02U,
-  0x03U,
-  0x01U,
-  /* Device Qualifier descriptor (USB 2.0 sec 9.6.2) -- 10 bytes.
-   * Reports the device's capabilities at the OTHER speed (FS in this
-   * case). bcdUSB=0x0200, class/subclass/protocol mirror the device
-   * descriptor, MPS0=64, num-configurations=1, reserved=0. */
-  0x0AU,
-  0x06U,
-  0x00U,
-  0x02U,
-  0xEFU,
-  0x02U,
-  0x01U,
-  0x40U,
-  0x01U,
-  0x00U,
-  /* Configuration descriptor (75 bytes total). */
-  0x09U,
-  0x02U,
-  0x4BU,
-  0x00U,
-  0x02U,
-  0x01U,
-  0x00U,
-  0x80U,
-  0x32U,
-  /* Interface association (CDC). */
-  0x08U,
-  0x0BU,
-  0x00U,
-  0x02U,
-  0x02U,
-  0x02U,
-  0x01U,
-  0x00U,
-  /* Communications interface (CDC ACM). */
-  0x09U,
-  0x04U,
-  0x00U,
-  0x00U,
-  0x01U,
-  0x02U,
-  0x02U,
-  0x01U,
-  0x00U,
-  /* CDC header functional descriptor. bcdCDC = 0x0120 (CDC 1.20). */
-  0x05U,
-  0x24U,
-  0x00U,
-  0x20U,
-  0x01U,
-  /* Call-management functional descriptor. */
-  0x05U,
-  0x24U,
-  0x01U,
-  0x01U,
-  0x01U,
-  /* ACM functional descriptor. */
-  0x04U,
-  0x24U,
-  0x02U,
-  0x02U,
-  /* Union functional descriptor. */
-  0x05U,
-  0x24U,
-  0x06U,
-  0x00U,
-  0x01U,
-  /* Interrupt-IN endpoint (EP3 IN, 8-byte MPS, bInterval=8 microframes
-   * = 1 ms poll). HS uses bInterval=2^(n-1)*125us; n=8 -> 16ms. */
-  0x07U,
-  0x05U,
-  0x83U,
-  0x03U,
-  0x08U,
-  0x00U,
-  0x08U,
-  /* Data-class interface. */
-  0x09U,
-  0x04U,
-  0x01U,
-  0x00U,
-  0x02U,
-  0x0AU,
-  0x00U,
-  0x00U,
-  0x00U,
-  /* Bulk-OUT endpoint (EP2 OUT, 512-byte MPS for HS). */
-  0x07U,
-  0x05U,
-  0x02U,
-  0x02U,
-  0x00U,
-  0x02U,
-  0x00U,
-  /* Bulk-IN endpoint (EP1 IN, 512-byte MPS for HS). */
-  0x07U,
-  0x05U,
-  0x81U,
-  0x02U,
-  0x00U,
-  0x02U,
-  0x00U,
-};
-
-static_assert(sizeof(s_tz_secure_only_usb_hs_device_framework_hs) ==
-                k_tz_secure_only_usb_hs_device_framework_hs_len,
-              "HS device framework length must match the header declaration");
-
 /**
- * @var s_tz_secure_only_usb_hs_string_framework
- * @brief USBX string descriptor table (vendor / product / serial).
+ * @enum demo_usb_identity_t
+ * @brief The device identity this app publishes.
+ *
+ * @details These are the values the hand-typed device descriptor carried in
+ * its idVendor / idProduct / bcdDevice / bMaxPower bytes, named rather than
+ * spelled out little-endian.
  * @since 0.1.0
  */
-UCHAR s_tz_secure_only_usb_hs_string_framework[] = {
-  /* idx 1: "Brighton Sikarskie" (18 ASCII bytes). */
-  0x09U,
-  0x04U,
-  0x01U,
-  0x12U,
-  'B',
-  'r',
-  'i',
-  'g',
-  'h',
-  't',
-  'o',
-  'n',
-  ' ',
-  'S',
-  'i',
-  'k',
-  'a',
-  'r',
-  's',
-  'k',
-  'i',
-  'e',
-  /* idx 2: "RA8D2 HS CDC Echo" (17 ASCII bytes). */
-  0x09U,
-  0x04U,
-  0x02U,
-  0x11U,
-  'R',
-  'A',
-  '8',
-  'D',
-  '2',
-  ' ',
-  'H',
-  'S',
-  ' ',
-  'C',
-  'D',
-  'C',
-  ' ',
-  'E',
-  'c',
-  'h',
-  'o',
-  /* idx 3: "RA8D2-CDC-002" (13 ASCII bytes). */
-  0x09U,
-  0x04U,
-  0x03U,
-  0x0DU,
-  'R',
-  'A',
-  '8',
-  'D',
-  '2',
-  '-',
-  'C',
-  'D',
-  'C',
-  '-',
-  '0',
-  '0',
-  '2',
-};
-
-static_assert(sizeof(s_tz_secure_only_usb_hs_string_framework) ==
-                k_tz_secure_only_usb_hs_string_framework_len,
-              "String framework length must match the header declaration");
-
-/* USBX LANGID descriptor 0x0409 (English-US), little-endian byte pair. */
-typedef enum : uint8_t {
-  k_usb_langid_en_us_lo = 0x09U, /**< LANGID 0x0409 low byte.  */
-  k_usb_langid_en_us_hi = 0x04U, /**< LANGID 0x0409 high byte. */
-} usb_langid_byte_t;
+typedef enum : uint16_t {
+  k_demo_usb_vid          = 0x1209U, /**< idVendor, pid.codes test range. */
+  k_demo_usb_pid          = 0x000CU, /**< idProduct.                      */
+  k_demo_usb_bcd_device   = 0x0100U, /**< bcdDevice, release 1.00.        */
+  k_demo_usb_max_power_ma = 100U,    /**< Bus draw in mA.                 */
+} demo_usb_identity_t;
 
 /**
- * @var s_tz_secure_only_usb_hs_language_id_framework
- * @brief USBX language-id table -- US English.
+ * @enum demo_usb_endpoint_t
+ * @brief The CDC-ACM endpoint layout, addresses as they appear on the wire.
+ *
+ * @details An IN endpoint carries bit 7 set, so EP1 IN is 0x81 and EP3 IN is
+ * 0x83, while EP2 OUT is 0x02. The two bulk packet sizes and the two notify
+ * intervals are the only fields that differ between the speeds: USB 2.0
+ * mandates 512-byte bulk endpoints at high speed, and the interrupt endpoint
+ * counts its bInterval in frames at full speed but in 2^(n-1) microframes at
+ * high speed, so 255 ms becomes an 8.
  * @since 0.1.0
  */
-UCHAR s_tz_secure_only_usb_hs_language_id_framework[] = {k_usb_langid_en_us_lo,
-                                                         k_usb_langid_en_us_hi};
+typedef enum : uint16_t {
+  k_demo_usb_notify_ep          = 0x83U, /**< Interrupt-IN, notifications.  */
+  k_demo_usb_notify_bytes       = 8U,    /**< Interrupt-IN max packet size. */
+  k_demo_usb_notify_interval_fs = 255U,  /**< bInterval, 255 frames at FS.  */
+  k_demo_usb_notify_interval_hs = 8U,    /**< bInterval, 2^7 microframes.   */
+  k_demo_usb_out_ep             = 0x02U, /**< Bulk-OUT data pipe.           */
+  k_demo_usb_in_ep              = 0x81U, /**< Bulk-IN data pipe.            */
+  k_demo_usb_data_bytes_fs      = 64U,   /**< Bulk max packet size at FS.   */
+  k_demo_usb_data_bytes_hs      = 512U,  /**< Bulk max packet size at HS.   */
+  k_demo_usb_functions          = 1U,    /**< Functions per config.         */
+} demo_usb_endpoint_t;
 
-static_assert(sizeof(s_tz_secure_only_usb_hs_language_id_framework) ==
-                k_tz_secure_only_usb_hs_language_id_framework_len,
-              "Language-id framework length must match the header declaration");
+/**
+ * @var k_demo_usb_device
+ * @brief Device identity handed to the framework builders.
+ * @note The three strings are string-literal storage with static duration;
+ *       the builders copy them and retain no pointer.
+ * @since 0.1.0
+ */
+static const ra8_usb_desc_device_t k_demo_usb_device = {
+  .vid           = (uint16_t)k_demo_usb_vid,
+  .pid           = (uint16_t)k_demo_usb_pid,
+  .bcd_device    = (uint16_t)k_demo_usb_bcd_device,
+  .manufacturer  = "Brighton Sikarskie",
+  .product       = "RA8D2 HS CDC Echo",
+  .serial        = "RA8D2-CDC-002",
+  .langid        = (uint16_t)k_ra8_usb_desc_langid_en_us,
+  .max_power_ma  = (uint16_t)k_demo_usb_max_power_ma,
+  .self_powered  = false,
+  .remote_wakeup = false,
+};
+
+/**
+ * @var k_demo_usb_cdc_fs
+ * @brief Full-speed endpoint layout: 64-byte bulk, no device qualifier.
+ * @since 0.1.0
+ */
+static const ra8_usb_desc_cdc_acm_t k_demo_usb_cdc_fs = {
+  .notify_ep          = (uint8_t)k_demo_usb_notify_ep,
+  .notify_bytes       = (uint16_t)k_demo_usb_notify_bytes,
+  .notify_interval_ms = (uint8_t)k_demo_usb_notify_interval_fs,
+  .out_ep             = (uint8_t)k_demo_usb_out_ep,
+  .in_ep              = (uint8_t)k_demo_usb_in_ep,
+  .data_bytes         = (uint16_t)k_demo_usb_data_bytes_fs,
+  .high_speed         = false,
+};
+
+/**
+ * @var k_demo_usb_cdc_hs
+ * @brief High-speed endpoint layout: 512-byte bulk plus the device qualifier.
+ * @since 0.1.0
+ */
+static const ra8_usb_desc_cdc_acm_t k_demo_usb_cdc_hs = {
+  .notify_ep          = (uint8_t)k_demo_usb_notify_ep,
+  .notify_bytes       = (uint16_t)k_demo_usb_notify_bytes,
+  .notify_interval_ms = (uint8_t)k_demo_usb_notify_interval_hs,
+  .out_ep             = (uint8_t)k_demo_usb_out_ep,
+  .in_ep              = (uint8_t)k_demo_usb_in_ep,
+  .data_bytes         = (uint16_t)k_demo_usb_data_bytes_hs,
+  .high_speed         = true,
+};
+
+/* -------------------------------------------------------------------------- */
+/* Synthesised frameworks */
+/* -------------------------------------------------------------------------- */
+
+UCHAR s_tz_secure_only_usb_hs_device_framework_fs[k_ra8_usb_desc_framework_bytes_max];
+
+UCHAR s_tz_secure_only_usb_hs_device_framework_hs[k_ra8_usb_desc_framework_bytes_max];
+
+UCHAR s_tz_secure_only_usb_hs_string_framework[k_ra8_usb_desc_strings_bytes_max];
+
+UCHAR s_tz_secure_only_usb_hs_language_id_framework[k_ra8_usb_desc_langid_bytes];
+
+uint32_t s_tz_secure_only_usb_hs_device_framework_fs_len;
+
+uint32_t s_tz_secure_only_usb_hs_device_framework_hs_len;
+
+uint32_t s_tz_secure_only_usb_hs_string_framework_len;
+
+uint32_t s_tz_secure_only_usb_hs_language_id_framework_len;
+
+ra8_err_t tz_secure_only_usb_hs_build_frameworks(void)
+{
+  /* USBX wants one device framework per bus speed, so this composes twice off
+   * one identity. The string and language-id frameworks are written by both
+   * calls, into the same two buffers: the encoders are pure and depend only on
+   * the identity, so the second pass rewrites the same bytes. That costs a few
+   * dozen stores at bring-up and keeps the call shape identical to every
+   * single-speed app in the tree. */
+  const ra8_usb_class_t cdc_acm_full_speed = {
+    .kind    = k_ra8_usb_class_cdc_acm,
+    .cdc_acm = k_demo_usb_cdc_fs,
+  };
+
+  const ra8_usb_class_t cdc_acm_high_speed = {
+    .kind    = k_ra8_usb_class_cdc_acm,
+    .cdc_acm = k_demo_usb_cdc_hs,
+  };
+
+  ra8_usb_device_cfg_t cfg = {
+    .desc        = &k_demo_usb_device,
+    .classes     = &cdc_acm_full_speed,
+    .class_count = (uint8_t)k_demo_usb_functions,
+  };
+
+  ra8_usb_device_frameworks_t fw = {
+    .device      = s_tz_secure_only_usb_hs_device_framework_fs,
+    .device_cap  = (uint32_t)sizeof(s_tz_secure_only_usb_hs_device_framework_fs),
+    .strings     = s_tz_secure_only_usb_hs_string_framework,
+    .strings_cap = (uint32_t)sizeof(s_tz_secure_only_usb_hs_string_framework),
+    .langid      = s_tz_secure_only_usb_hs_language_id_framework,
+    .langid_cap  = (uint32_t)sizeof(s_tz_secure_only_usb_hs_language_id_framework),
+  };
+
+  ra8_err_t err = ra8_usb_device_compose(&cfg, &fw);
+  if (err != k_ra8_ok) {
+    return err;
+  }
+  s_tz_secure_only_usb_hs_device_framework_fs_len = fw.device_len;
+
+  cfg.classes   = &cdc_acm_high_speed;
+  fw.device     = s_tz_secure_only_usb_hs_device_framework_hs;
+  fw.device_cap = (uint32_t)sizeof(s_tz_secure_only_usb_hs_device_framework_hs);
+
+  err = ra8_usb_device_compose(&cfg, &fw);
+  if (err != k_ra8_ok) {
+    return err;
+  }
+  s_tz_secure_only_usb_hs_device_framework_hs_len = fw.device_len;
+
+  s_tz_secure_only_usb_hs_string_framework_len      = fw.strings_len;
+  s_tz_secure_only_usb_hs_language_id_framework_len = fw.langid_len;
+
+  return k_ra8_ok;
+}
 #endif /* !RA8_OFF_TARGET */

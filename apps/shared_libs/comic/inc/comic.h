@@ -46,12 +46,24 @@
  * comic_close(&comic);
  * @endcode
  *
+ * @par Entry names are untrusted, and this facade does not judge them
+ * A page's entry name is whatever the archive author wrote into the ZIP central
+ * directory or the RAR file header. The index copies it into the caller's name
+ * arena and sorts by it; nothing here rejects a leading `/`, a `..` component,
+ * or a control byte, because reading a page in place needs no filesystem
+ * policy and imposing one would rename entries the reader only ever sorts.
+ * A caller that writes a page out under a directory applies the policy the
+ * tree publishes: ::ra8_path_sanitize_segment for the leaf, then
+ * ::ra8_path_join_under, which refuses rather than composes anything that is
+ * not a single safe segment.
+ *
  * @note One comic object is not thread-safe; independent objects share no
  *       miniz allocator state and may remain open simultaneously.
  * @note The CBZ backend needs miniz built with its archive APIs -- pull `epub`
  *       into the app `LIBS` (which compiles miniz with the ZIP reader and supplies
  *       the caller-owned `epub_miniz_alloc` arena used on host and target).
  *
+ * @see ra8_path.h              The untrusted-name policy a caller applies to a name.
  * @see ra8_rar.h                The clean-room RAR walker the CBR backend uses.
  * @see epub.h               The streaming ZIP open this mirrors for CBZ.
  * @see reflow_image.h       `ra8_img_decode_blit`, the page rasteriser.
@@ -321,6 +333,10 @@ static inline comic_kind_t comic_kind(const comic_t* c)
  * @post On any error no output is modified.
  *
  * @note Thread-safe: pure read of an immutable index.
+ * @note The name written to @p name_buf is untrusted archive data, copied and
+ *       clamped but never inspected. A caller that turns it into a filesystem
+ *       path applies ::ra8_path_sanitize_segment and ::ra8_path_join_under.
+ * @see ra8_path.h
  * @see comic_page_read()
  * @since Version 0.1.0
  */

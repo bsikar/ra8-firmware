@@ -12,6 +12,12 @@
  * descriptors, firmware VFS streams, and in-memory tests bind the same
  * contracts.
  *
+ * Those four contracts are format-neutral, so they now live in
+ * `libs/ra8_fmt/inc/ra8_fmt_io.h`, where a product can bind them without
+ * linking anything under `tools/` (#755). What remains here is the part that
+ * is genuinely JOF- and RABOOK-specific: the requirements/workspace protocol
+ * and the engine entry points.
+ *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
  * @since 0.1.0
@@ -25,51 +31,7 @@
 #include "jof.h"
 #include "jof_audit.h"
 #include "ra8_err.h"
-
-/** @brief Revalidate one positioned source against its captured immutable view.
- */
-typedef ra8_err_t (*ra8_fmt_source_validate_fn)(void* ctx, uint64_t expected_size);
-
-/** @brief Immutable, randomly readable input object. */
-typedef struct {
-  jof_pread_fn               read_at;  /**< Positioned-read callback.    */
-  ra8_fmt_source_validate_fn validate; /**< Optional stability callback. */
-  void*                      ctx;      /**< Backend-owned context.       */
-  uint64_t                   size;     /**< Exact object byte length.    */
-} ra8_fmt_source_t;
-
-/** @brief Append text or binary bytes to a bounded backend. */
-typedef ra8_err_t (*ra8_fmt_sink_write_fn)(void* ctx, const uint8_t* bytes, size_t len);
-
-/** @brief Injected append-only sink. */
-typedef struct {
-  ra8_fmt_sink_write_fn write; /**< Exact append callback. */
-  void*                 ctx;   /**< Backend-owned context. */
-} ra8_fmt_sink_t;
-
-/** @brief Seal an exact scratch artifact for immutable positioned reads. */
-typedef ra8_err_t (*ra8_fmt_spool_seal_fn)(void* ctx, uint64_t expected_size);
-
-/** @brief Caller-owned scratch artifact with append, seal, and read seams. */
-typedef struct {
-  jof_pread_fn          read_at; /**< Positioned reader after seal. */
-  ra8_fmt_sink_write_fn append;  /**< Append before seal.           */
-  ra8_fmt_spool_seal_fn seal;    /**< Seal exact produced bytes.    */
-  void*                 ctx;     /**< Backend-owned state.          */
-} ra8_fmt_spool_t;
-
-/** @brief Durable artifact-transaction operations. */
-typedef struct {
-  ra8_fmt_sink_write_fn append;   /**< Append artifact bytes.       */
-  ra8_err_t (*commit)(void* ctx); /**< Sync and atomically install. */
-  void (*abort)(void* ctx);       /**< Discard owned staging data.  */
-} ra8_fmt_transaction_ops_t;
-
-/** @brief One caller-owned artifact transaction. */
-typedef struct {
-  const ra8_fmt_transaction_ops_t* ops; /**< Transaction implementation. */
-  void*                            ctx; /**< Backend-owned state.        */
-} ra8_fmt_transaction_t;
+#include "ra8_fmt_io.h"
 
 /** @brief Source geometry and exact arenas required by one JOF conversion. */
 typedef struct {

@@ -1,6 +1,10 @@
 /**
  * @file test_ra8_usb_cdc.c
  * @brief Unit tests for the native USB CDC ACM class layer
+ *
+ * @par Tag
+ * [Ring 3 / HAL] {World: NS}
+ *
  * @details Drives native device-side CDC setup requests, line coding, endpoints, callbacks, and rejection paths using fake USB registers.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie

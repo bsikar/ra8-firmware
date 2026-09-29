@@ -5,6 +5,9 @@
  * @details Declares the fixed-sequence external SDRAM controller initialization and readiness interface.
  * @ingroup grp_hal_memory
  *
+ * @par Tag
+ * [Ring 3 / HAL] {World: S}
+ *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
  */

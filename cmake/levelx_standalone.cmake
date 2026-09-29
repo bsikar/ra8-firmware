@@ -10,9 +10,11 @@
 #
 #   1. Compiles `libs/third_party/levelx/common/src/lx_nor_*.c` into a single
 #      `levelx_standalone` interface library, built with `LX_STANDALONE_ENABLE`
-#      so LevelX's protection macros compile to no-ops (no `tx_mutex_*`, hence
-#      NO ThreadX dependency). NAND sources and the upstream simulator driver
-#      are excluded -- this firmware uses LevelX's NOR API only.
+#      so `lx_api.h` skips its `#include "tx_api.h"` and defines
+#      `LX_DISABLE` / `LX_RESTORE` as no-ops instead of the `TX_` forms
+#      (`common/inc/lx_api.h:69-72, 122-139`), hence NO ThreadX dependency.
+#      NAND sources and the upstream simulator driver are excluded -- this
+#      firmware uses LevelX's NOR API only.
 #   2. Propagates `LX_STANDALONE_ENABLE` and the LevelX common/inc include path
 #      to every consumer, so an app's own TUs (and any first-party library it
 #      pulls in, e.g. ra8_cache_store) see the standalone `lx_api.h` shape.

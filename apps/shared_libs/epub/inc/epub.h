@@ -32,6 +32,25 @@
  *     mounted filesystem (`ra8_fs_read()`) into a caller-owned buffer
  *     before handing it to `epub_open()`.
  *
+ * ## The names in this record are untrusted (#749)
+ *
+ * Every path this reader publishes is copied out of archive bytes: the
+ * chapter list and the cover, TOC, embedded-font and manifest hrefs all come
+ * from the OPF document inside the .epub, and the OPF's own location comes
+ * from `META-INF/container.xml`. A producer chooses those strings, so any of
+ * them may be absolute, may contain `..` components, or may name something
+ * far outside the OPF directory. This reader does not judge them: it copies
+ * each one out, clamps it to `k_epub_max_path_len`, and hands it back.
+ *
+ * That is deliberate. The reader resolves names inside the archive, where a
+ * `..` is not an escape, and a caller that never touches a filesystem (the
+ * chapter iterator, the resource lookup) is right to see them unaltered.
+ * A caller that turns one of these names into a filesystem path applies the
+ * shared policy first: `ra8_path_sanitize_segment()` to rewrite one segment,
+ * `ra8_path_join_under()` to compose it under a parent and refuse an escape,
+ * or `ra8_path_contained()` on a candidate it has already resolved. All three
+ * live in `libs/if/inc/ra8_path.h`.
+ *
  * ## Static-allocation footprint
  *
  *   - Chapter list:   `k_epub_max_chapters` * `k_epub_max_path_len`
@@ -194,22 +213,41 @@ typedef struct {
  * directory + central directory) and one entry at a time are ever fetched, so a
  * multi-GB book opens inside a fixed, small RAM budget.
  *
- * The signature deliberately mirrors miniz's `mz_file_read_func` (offset+length,
- * bytes-actually-read return) so the reader can drive miniz directly with no
- * copy: a return `< len` is treated as end-of-file / read error, exactly as the
- * in-memory path treats a short read.
+ * The signature is the house error shape (#764), not miniz's. A short read is
+ * two different events and the callback must say which:
+ * - **End of file.** `k_ra8_ok` with `*out_read < len`, because the request ran
+ *   past the archive end. `*out_read == 0` when @p offset is already at or
+ *   after the end.
+ * - **A failed backing.** The backing's own `ra8_err_t`, with `*out_read`
+ *   holding the bytes copied before the failure.
  *
- * @param[in]  ctx    Opaque backing context (::epub_stream_media_t::ctx).
- * @param[in]  offset Absolute byte offset within the `.epub` archive.
- * @param[out] buf    Destination buffer (`len` writable bytes).
- * @param[in]  len    Number of bytes requested.
+ * The count-returning shape this replaced could not tell those apart, so a card
+ * pulled mid-import read as a clean truncation and the importer compiled a short
+ * book and reported success. miniz still wants a byte count; the reader adapts
+ * there, at the one seam that genuinely has no error channel, rather than
+ * forcing every backing to throw the reason away.
  *
- * @return Bytes actually read (0 at/after EOF or on error; `< len` aborts).
+ * @param[in]  ctx      Opaque backing context (::epub_stream_media_t::ctx).
+ * @param[in]  offset   Absolute byte offset within the `.epub` archive.
+ * @param[out] buf      Destination buffer (`len` writable bytes).
+ * @param[in]  len      Number of bytes requested (> 0).
+ * @param[out] out_read Receives the bytes copied, on every return path.
+ *
+ * @return ra8_err_t Error code.
+ * @retval k_ra8_ok Nothing failed; `*out_read` is `len`, or less at end of file.
+ * @retval other    The backing's own error; `*out_read` is the partial copy.
+ *
+ * @pre `buf` is writable for `len` bytes; `out_read` is non-NULL.
+ * @post `*out_read <= len`, and the bytes below it are the archive's real bytes.
  *
  * @note Not thread-safe; the reader serialises access.
  * @since 0.1.0
  */
-typedef size_t (*epub_stream_read_fn)(void* ctx, uint64_t offset, void* buf, size_t len);
+typedef ra8_err_t (*epub_stream_read_fn)(void*     ctx,
+                                         uint64_t  offset,
+                                         void*     buf,
+                                         uint32_t  len,
+                                         uint32_t* out_read);
 
 /**
  * @struct epub_stream_media_t
@@ -254,6 +292,10 @@ typedef struct {
  *
  * @invariant All three fields are NUL-terminated; absent attributes are "".
  *
+ * @note `href` is an archive-supplied name and is not validated as a
+ *       filesystem path. See the untrusted-name contract in this file's
+ *       header block before writing anything under it.
+ *
  * @see epub_manifest_count()
  * @see epub_manifest_item()
  */
@@ -279,6 +321,12 @@ typedef struct {
  *
  * @invariant `in_use == 1` while a book is open; cleared by
  *            `epub_close()`.
+ *
+ * @note `chapter_paths`, `cover_path`, `embedded_font_paths`, `toc_path`,
+ *       `opf_dir` and every `manifest[].href` are archive-supplied names,
+ *       copied out unvalidated. See the untrusted-name contract in this
+ *       file's header block.
+ * @see ra8_path_sanitize_segment The policy a caller applies before writing one.
  *
  * @see epub_open()
  * @see epub_close()

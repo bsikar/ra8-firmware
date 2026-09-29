@@ -13,7 +13,7 @@
  * bold/italic arms), and the face-src output guards. Every test reaches the
  * target decision through a public entry point with crafted CSS / element
  * input; the shared sheet fixture lives in
- * tests/inc/reflow_css_test_util.h.
+ * apps/shared_libs/reflow/tests/inc/reflow_css_test_util.h.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT

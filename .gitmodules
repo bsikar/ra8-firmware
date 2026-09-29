@@ -1,0 +1,3 @@
+[submodule "tools/ra8_emulator"]
+	path = tools/ra8_emulator
+	url = https://github.com/bsikar/ra8-emulator.git

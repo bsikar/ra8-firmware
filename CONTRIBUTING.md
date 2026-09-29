@@ -86,13 +86,13 @@ edit -> just quality::devcontainer::format -> just checks::devcontainer -> git c
 ```
 
 * `just quality::devcontainer::format` applies the pinned formatter to every
-  first-party C/H file. The pre-commit hook rejects formatting drift.
+  first-party C/H file. The `format` CI gate rejects formatting drift.
 * `just checks::devcontainer` runs the focused format, tidy, and unit-test
   checks inside the pinned image. Before pushing, run the full `just ci` suite.
-* `git commit` triggers `scripts/git/pre-commit` (formatting,
-  clang-tidy, ASCII check, doxygen audit, citation check, world-tag
-  check, MC/DC block check, ...). Do **not** bypass with `--no-verify`
-  -- if a hook fails, fix the underlying issue and re-stage.
+* `git commit` runs no gate of its own: there is no pre-commit hook. The
+  same audits (formatting, clang-tidy, ASCII check, doxygen audit, citation
+  check, world-tag check, MC/DC block check, ...) run in `just ci` and in CI,
+  so run `just ci` before you push rather than after a red pipeline.
 
 For cross-compiled firmware iteration:
 
@@ -153,9 +153,9 @@ The short version:
 * Do not introduce dynamic allocation in test scaffolding -- the same
   NASA Power-of-10 Rule 3 budget applies.
 
-## 7. What the pre-commit gate checks
+## 7. What the commit gate suite checks
 
-`scripts/git/pre-commit` is the authority -- it names each gate as it
+The registered CI gates are the authority -- `just ci` names each gate as it
 runs it. They fall into a few families, and each family has a policy
 document; click through before disagreeing with a finding.
 

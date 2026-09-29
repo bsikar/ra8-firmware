@@ -222,14 +222,26 @@ macro(_ra8_app_collect_sources)
     # ra8_img_arena.c. That single-TU build (stb_image_impl.c) is self-contained
     # (the STBI_* macros are defined inside it), so it needs no -include here.
     set(_ra8_stb_img_impl ${RA8_REPO_ROOT}/apps/shared_libs/third_party/stb/stb_image_impl.c)
-    list(APPEND _ra8_lib_extra ${_ra8_stb_impl} ${_ra8_stb_img_impl})
+    # The arena hooks forward to the shared decoder scratch, and reflow_image.c
+    # routes WebP through the shared container sniff (#768), so both of those
+    # TUs travel with the reflow sources wherever they go.
+    list(APPEND _ra8_lib_extra ${_ra8_stb_impl} ${_ra8_stb_img_impl}
+         ${RA8_REPO_ROOT}/libs/ra8_imgdec/src/ra8_imgdec_scratch.c
+         ${RA8_REPO_ROOT}/libs/ra8_imgdec/src/ra8_imgdec_sniff.c
+    )
     list(APPEND _ra8_lib_inc ${RA8_REPO_ROOT}/apps/shared_libs/third_party/stb
          ${RA8_REPO_ROOT}/apps/shared_libs/reflow/src
+         ${RA8_REPO_ROOT}/libs/ra8_imgdec/inc
     )
   elseif("rabook_compile" IN_LIST _RA8_APP_LIBS)
     set(_ra8_stb_img_impl ${RA8_REPO_ROOT}/apps/shared_libs/third_party/stb/stb_image_impl.c)
+    # ra8_rabook_raster.c routes its WebP-or-stb decision through the shared
+    # container sniff (#768), the same way reflow_image.c does above, so the
+    # sniff TU travels with the rabook_compile sources wherever they go.
     list(APPEND _ra8_lib_extra ${_ra8_stb_img_impl}
          ${RA8_REPO_ROOT}/apps/shared_libs/reflow/src/ra8_img_arena.c
+         ${RA8_REPO_ROOT}/libs/ra8_imgdec/src/ra8_imgdec_scratch.c
+         ${RA8_REPO_ROOT}/libs/ra8_imgdec/src/ra8_imgdec_sniff.c
     )
     list(
       APPEND
@@ -237,6 +249,7 @@ macro(_ra8_app_collect_sources)
       ${RA8_REPO_ROOT}/apps/shared_libs/third_party/stb
       ${RA8_REPO_ROOT}/apps/shared_libs/reflow/inc
       ${RA8_REPO_ROOT}/apps/shared_libs/reflow/src
+      ${RA8_REPO_ROOT}/libs/ra8_imgdec/inc
     )
   endif()
 
@@ -374,6 +387,25 @@ macro(_ra8_app_collect_sources)
     endif()
   endif()
 
+  # #637 inline small-image WebP: reflow's ra8_img_decode_blit / ra8_img_probe_size
+  # dispatch a RIFF/WEBP buffer to the ra8_webp facade, because stb_image has no
+  # WebP decoder and an inline EPUB illustration would otherwise render as
+  # nothing. So reflow now pulls the facade the same way jof and rabook_compile
+  # do -- and only when no earlier block already added it, so the sources are
+  # never double-added.
+  if("reflow" IN_LIST _RA8_APP_LIBS)
+    list(APPEND _ra8_lib_inc ${RA8_REPO_ROOT}/apps/shared_libs/webp/inc)
+    if((NOT "webp" IN_LIST _RA8_APP_LIBS)
+       AND (NOT "jof" IN_LIST _RA8_APP_LIBS)
+       AND (NOT "rabook_compile" IN_LIST _RA8_APP_LIBS)
+    )
+      file(GLOB_RECURSE _ra8_reflow_webp_facade CONFIGURE_DEPENDS
+           ${RA8_REPO_ROOT}/apps/shared_libs/webp/src/*.c
+      )
+      list(APPEND _ra8_lib_extra ${_ra8_reflow_webp_facade})
+    endif()
+  endif()
+
   # The webp app library decodes WebP (VP8 / VP8L) through the vendored decoder
   # (apps/shared_libs/third_party/libwebp). The four-part recipe -- which TUs, which
   # include root, -DRA8_WEBP_USE_ARENA, the SOUP warning flags -- lives in
@@ -385,17 +417,40 @@ macro(_ra8_app_collect_sources)
   # Its ra8_webp facade/arena are globbed by the LIBS loop above (or by
   # the jof block); only the vendored TUs + include root are wired
   # here. Wired whenever webp is requested directly OR pulled in
-  # transitively by jof (#290), and only once so the two paths never
-  # double-add the libwebp sources.
+  # transitively by jof (#290), rabook_compile, or reflow (#637 inline
+  # small-image WebP), and only once so those paths never double-add the
+  # libwebp sources.
   set(_ra8_webp_vendor "")
   if(("webp" IN_LIST _RA8_APP_LIBS)
      OR ("jof" IN_LIST _RA8_APP_LIBS)
      OR ("rabook_compile" IN_LIST _RA8_APP_LIBS)
+     OR ("reflow" IN_LIST _RA8_APP_LIBS)
   )
     include(${RA8_REPO_ROOT}/cmake/ra8_webp_vendor.cmake)
     ra8_webp_vendor_sources(_ra8_webp_vendor ${RA8_REPO_ROOT})
     list(APPEND _ra8_lib_extra ${_ra8_webp_vendor})
     list(APPEND _ra8_lib_inc ${RA8_REPO_ROOT}/apps/shared_libs/third_party/libwebp)
+    # ra8_webp_imgdec.c binds the facade as an imgdec backend (#768) and reads
+    # the container's declared geometry through the shared probe, which sniffs
+    # first, so those two TUs and the header travel with this block. The reflow
+    # / rabook_compile / comic blocks may already have added the same TUs, so
+    # each is appended only when absent -- a duplicate source is an error under
+    # some generators and a duplicate symbol under all of them.
+    if(NOT ${RA8_REPO_ROOT}/libs/ra8_imgdec/src/ra8_imgdec_dims.c IN_LIST _ra8_lib_extra)
+      list(APPEND _ra8_lib_extra ${RA8_REPO_ROOT}/libs/ra8_imgdec/src/ra8_imgdec_dims.c)
+    endif()
+    if(NOT ${RA8_REPO_ROOT}/libs/ra8_imgdec/src/ra8_imgdec_sniff.c IN_LIST _ra8_lib_extra)
+      list(APPEND _ra8_lib_extra ${RA8_REPO_ROOT}/libs/ra8_imgdec/src/ra8_imgdec_sniff.c)
+    endif()
+    if(NOT ${RA8_REPO_ROOT}/libs/ra8_imgdec/src/ra8_imgdec_scratch.c IN_LIST _ra8_lib_extra)
+      list(APPEND _ra8_lib_extra ${RA8_REPO_ROOT}/libs/ra8_imgdec/src/ra8_imgdec_scratch.c)
+    endif()
+    if(NOT ${RA8_REPO_ROOT}/libs/ra8_imgdec/src/ra8_imgdec.c IN_LIST _ra8_lib_extra)
+      list(APPEND _ra8_lib_extra ${RA8_REPO_ROOT}/libs/ra8_imgdec/src/ra8_imgdec.c)
+    endif()
+    if(NOT ${RA8_REPO_ROOT}/libs/ra8_imgdec/inc IN_LIST _ra8_lib_inc)
+      list(APPEND _ra8_lib_inc ${RA8_REPO_ROOT}/libs/ra8_imgdec/inc)
+    endif()
   endif()
 
   # unarch decodes wrapped / container archive streams (tar for .cbt,
@@ -423,6 +478,25 @@ macro(_ra8_app_collect_sources)
       ${RA8_REPO_ROOT}/apps/shared_libs/unarch/inc
       ${RA8_REPO_ROOT}/apps/shared_libs/third_party/miniz
     )
+    # unarch_xz_pool.c forwards its bump arithmetic to the shared decoder
+    # scratch, and comic_tiles.c reads a page's footprint through the shared
+    # geometry probe, which sniffs first (#768), so those three TUs and the
+    # header travel with this block. The reflow / rabook_compile blocks above
+    # may already have added the same TUs, so each is appended only when
+    # absent -- a duplicate source is an error under some generators and a
+    # duplicate symbol under all of them.
+    if(NOT ${RA8_REPO_ROOT}/libs/ra8_imgdec/src/ra8_imgdec_scratch.c IN_LIST _ra8_lib_extra)
+      list(APPEND _ra8_lib_extra ${RA8_REPO_ROOT}/libs/ra8_imgdec/src/ra8_imgdec_scratch.c)
+    endif()
+    if(NOT ${RA8_REPO_ROOT}/libs/ra8_imgdec/src/ra8_imgdec_dims.c IN_LIST _ra8_lib_extra)
+      list(APPEND _ra8_lib_extra ${RA8_REPO_ROOT}/libs/ra8_imgdec/src/ra8_imgdec_dims.c)
+    endif()
+    if(NOT ${RA8_REPO_ROOT}/libs/ra8_imgdec/src/ra8_imgdec_sniff.c IN_LIST _ra8_lib_extra)
+      list(APPEND _ra8_lib_extra ${RA8_REPO_ROOT}/libs/ra8_imgdec/src/ra8_imgdec_sniff.c)
+    endif()
+    if(NOT ${RA8_REPO_ROOT}/libs/ra8_imgdec/inc IN_LIST _ra8_lib_inc)
+      list(APPEND _ra8_lib_inc ${RA8_REPO_ROOT}/libs/ra8_imgdec/inc)
+    endif()
     if(NOT "unarch" IN_LIST _RA8_APP_LIBS)
       file(GLOB_RECURSE _unarch_srcs CONFIGURE_DEPENDS
            ${RA8_REPO_ROOT}/apps/shared_libs/unarch/src/*.c
@@ -605,6 +679,46 @@ macro(_ra8_app_collect_sources)
     set(_ra8_linker ${CMAKE_CURRENT_SOURCE_DIR}/linker_script.ld)
   else()
     set(_ra8_linker ${_ra8_board_dir}/ld/linker_script.ld)
+  endif()
+
+  # THREADX_HEAP <region>: compose the board map instead of forking it (#761).
+  #
+  # ThreadX apps need exactly one symbol the board map does not define --
+  # g_ra8_threadx_unused_memory_start, the origin of the region tx_application_
+  # define() carves its pools from. Before this option the only way to add it
+  # was a per-app linker_script.ld, so 42 apps each carried a private copy of
+  # the whole 340-line board map to gain one PROVIDE line. Those copies then
+  # missed every later platform change: the NOINIT crash-log carve-out landed
+  # in the board map and none of the 42 picked it up.
+  #
+  # Instead of copying the map, generate a two-line fragment that INCLUDEs it
+  # by absolute path and adds the PROVIDE. The board map stays the single
+  # source of the region layout, so a future change to it reaches these apps
+  # the same day it lands.
+  #
+  # The INCLUDE path must be absolute: a linker script named by an absolute -T
+  # resolves a relative INCLUDE against the linker's working directory, not
+  # against the including script, so a bare name is not found from the build
+  # tree. LINK_DEPENDS carries both files, so editing either one relinks.
+  if(_RA8_APP_THREADX_HEAP)
+    if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/linker_script.ld")
+      message(
+        FATAL_ERROR
+          "ra8_add_app(): ${_RA8_APP_NAME} passes THREADX_HEAP but also has its "
+          "own linker_script.ld. An app with a local map already has full "
+          "control: add the PROVIDE line to that script, or delete it to "
+          "compose the board map."
+      )
+    endif()
+    set(_ra8_ld_fragment "${CMAKE_CURRENT_BINARY_DIR}/${_RA8_APP_NAME}_composed.ld")
+    file(
+      WRITE "${_ra8_ld_fragment}"
+      "/* Generated by ra8_add_app(THREADX_HEAP ${_RA8_APP_THREADX_HEAP}). Do not edit. */\n"
+      "INCLUDE ${_ra8_linker}\n"
+      "PROVIDE(g_ra8_threadx_unused_memory_start = ORIGIN(${_RA8_APP_THREADX_HEAP}));\n"
+    )
+    set(_ra8_ld_base ${_ra8_linker})
+    set(_ra8_linker ${_ra8_ld_fragment})
   endif()
   set(_ra8_elf ${_RA8_APP_NAME}.elf)
 endmacro()

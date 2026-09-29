@@ -19,8 +19,10 @@
 #include <time.h>
 #include <unistd.h>
 
+#include "ra8_arena.h"
 #include "ra8_attributes.h"
 #include "ra8_err.h"
+#include "ra8_imgdec_name.h"
 #include "ra8_io_stream.h"
 #include "ra8_io_stream_posix.h"
 #include "ra8_log.h"
@@ -128,32 +130,6 @@ RA8_INTERNAL static uint32_t internal_clamp_page(uint32_t page, uint32_t count)
 }
 
 /**
- * @brief Align a composition offset upward.
- * @details Rejects non-power-of-two alignment and addition overflow.
- * @param[in] offset Unaligned byte offset.
- * @param[in] alignment Required power-of-two alignment.
- * @param[out] out Aligned offset.
- * @return Whether alignment succeeded.
- * @retval true @p out is populated.
- * @retval false Inputs were invalid or overflowed.
- * @pre @p out is writable.
- * @pre @p offset is a composition-relative extent.
- * @post Success publishes an offset no smaller than @p offset.
- * @post Failure leaves caller storage untouched.
- * @note Pure apart from @p out.
- * @since 0.1.0
- */
-RA8_INTERNAL static bool internal_align_offset(size_t offset, size_t alignment, size_t* out)
-{
-  const size_t mask = alignment - 1U;
-  if ((alignment == 0U) || ((alignment & mask) != 0U) || (offset > (SIZE_MAX - mask))) {
-    return false;
-  }
-  *out = (offset + mask) & ~mask;
-  return true;
-}
-
-/**
  * @brief Report exact capacity evidence.
  * @details Emits the subject plus exact required and supplied byte counts.
  * @param[in,out] output Bound diagnostic byte stream.
@@ -172,6 +148,31 @@ RA8_INTERNAL static void internal_report_capacity(ra8_io_stream_t*              
 {
   (void)
     priv_viewer_output_capacity(output, subject, report->required_bytes, report->supplied_bytes);
+}
+
+/**
+ * @brief Name the container a failed page holds, when it can be named (#748).
+ * @details A render refusal says the page did not open; it does not say what
+ * the page was. ::ra8_viewer_page_container answers that from the one shared
+ * naming table, so a GIF the bound decoder will not open reads as a GIF rather
+ * than as an anonymous unsupported status. A page with no recognised signature
+ * adds no line: there is nothing truthful to add.
+ * @param[in,out] diagnostic Bound diagnostic byte stream.
+ * @param[in,out] reader Open reader.
+ * @param[in] page Page index that failed.
+ * @pre @p reader is open and @p page is in range.
+ * @post At most one naming line was attempted.
+ * @post No render state is published.
+ * @note Best-effort; a naming failure is silent by design.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void
+internal_report_container(ra8_io_stream_t* diagnostic, ra8_viewer_reader_t* reader, uint32_t page)
+{
+  ra8_imgdec_name_t name = {};
+  if (ra8_viewer_page_container(reader, page, &name) == k_ra8_ok) {
+    (void)priv_viewer_output_container(diagnostic, page, name.ext, name.mime);
+  }
 }
 
 /**
@@ -199,6 +200,7 @@ RA8_INTERNAL static bool internal_render_page(ra8_viewer_reader_t*    reader,
   const ra8_err_t error = ra8_viewer_render_page(reader, page);
   if (error != k_ra8_ok) {
     (void)priv_viewer_output_index_error(diagnostic, "render page ", page, error);
+    internal_report_container(diagnostic, reader, page);
     return false;
   }
   if ((options->dump_ppm != nullptr) &&
@@ -256,6 +258,7 @@ RA8_INTERNAL static bool internal_dump_tile(ra8_viewer_reader_t* reader,
       internal_report_capacity(diagnostic, "tile", &report);
     }
     (void)priv_viewer_output_index_error(diagnostic, "render tile ", tile, error);
+    internal_report_container(diagnostic, reader, tile);
     return false;
   }
   const ra8_err_t write_error = ra8_viewer_write_ppm565(pixels, width, height, path);
@@ -367,8 +370,9 @@ RA8_INTERNAL static ra8_err_t internal_bind_diagnostic(ra8_io_stream_t*         
 
 /**
  * @brief Execute the selected viewer mode over the composition remainder.
- * @details Aligns the scratch slice after the bound reader, then dispatches to
- * tile, fixed-page, or interactive-window rendering without acquiring storage.
+ * @details Carves the composition into the reader's bound span and the scratch
+ * tail through the platform arena, then dispatches to tile, fixed-page, or
+ * interactive-window rendering without acquiring storage.
  * @param[in,out] reader Open reader bound in composition storage.
  * @param[in] requirements Exact reader workspace requirements.
  * @param[in] options Parsed viewer options.
@@ -376,7 +380,7 @@ RA8_INTERNAL static ra8_err_t internal_bind_diagnostic(ra8_io_stream_t*         
  * @param[in,out] diagnostic Bound diagnostic stream.
  * @return Process-style command status.
  * @retval 0 The selected mode completed successfully.
- * @retval 1 Scratch geometry or the selected mode failed.
+ * @retval 1 The composition carve or the selected mode failed.
  * @pre @p reader is open and @p requirements describes its binding.
  * @pre @p options and @p diagnostic remain valid throughout the call.
  * @post The reader remains open and caller-owned.
@@ -390,13 +394,33 @@ RA8_INTERNAL static int internal_execute(ra8_viewer_reader_t*                   
                                          uint32_t                                page,
                                          ra8_io_stream_t*                        diagnostic)
 {
-  size_t scratch_offset = 0U;
-  if (!internal_align_offset(requirements->required_bytes, alignof(max_align_t), &scratch_offset) ||
-      (scratch_offset > sizeof(s_viewer_composition))) {
+  if (requirements->required_bytes > sizeof(s_viewer_composition)) {
     return 1;
   }
-  void*        scratch       = &s_viewer_composition[scratch_offset];
-  const size_t scratch_bytes = sizeof(s_viewer_composition) - scratch_offset;
+  ra8_arena_t composition = {};
+  void*       reader_span = nullptr;
+  void*       scratch     = nullptr;
+  uint32_t    scratch_bytes = 0U;
+  if (ra8_arena_init(&composition,
+                     s_viewer_composition,
+                     (uint32_t)sizeof(s_viewer_composition)) != k_ra8_ok) {
+    return 1;
+  }
+  if (ra8_arena_carve(&composition,
+                      (uint32_t)requirements->required_bytes,
+                      (uint32_t)alignof(max_align_t),
+                      &reader_span) != k_ra8_ok) {
+    return 1;
+  }
+  if (reader_span != (void*)s_viewer_composition) {
+    return 1;
+  }
+  if (ra8_arena_carve_remaining(&composition,
+                                (uint32_t)alignof(max_align_t),
+                                &scratch,
+                                &scratch_bytes) != k_ra8_ok) {
+    return 1;
+  }
   if (options->dump_tile >= 0) {
     const char* output = (options->dump_ppm != nullptr) ? options->dump_ppm : "/tmp/ra8_tile.ppm";
     return internal_dump_tile(reader,

@@ -43,6 +43,24 @@ bool priv_reflow_tok_is_xml_whitespace(char c)
   return (c == ' ') || (c == '\t') || (c == '\n') || (c == '\r') || (c == '\f') || (c == '\v');
 }
 
+bool priv_reflow_tok_is_xml_char(uint32_t cp)
+{
+  if ((cp == (uint32_t)k_priv_uc_tab) || (cp == (uint32_t)k_priv_uc_lf) ||
+      (cp == (uint32_t)k_priv_uc_cr)) {
+    return true;
+  }
+  if (cp < (uint32_t)k_priv_uc_space) {
+    return false; /* every other C0 control, NUL included */
+  }
+  if ((cp >= (uint32_t)k_priv_uc_surr_lo) && (cp <= (uint32_t)k_priv_uc_surr_hi)) {
+    return false; /* UTF-16 surrogate halves are not characters */
+  }
+  if ((cp >= (uint32_t)k_priv_uc_nonchar_lo) && (cp <= (uint32_t)k_priv_uc_nonchar_hi)) {
+    return false; /* U+FFFE / U+FFFF */
+  }
+  return cp <= (uint32_t)k_priv_uc_max;
+}
+
 size_t priv_reflow_tok_utf8_encode(uint32_t cp, uint8_t* dst)
 {
   uint32_t value = cp;
@@ -72,6 +90,66 @@ size_t priv_reflow_tok_utf8_encode(uint32_t cp, uint8_t* dst)
                      ((value >> (uint32_t)k_priv_utf8_sh6) & (uint32_t)k_priv_utf8_mask));
   dst[3] = (uint8_t)((uint32_t)k_priv_utf8_cont | (value & (uint32_t)k_priv_utf8_mask));
   return 4U;
+}
+
+size_t priv_reflow_tok_utf8_decode(const uint8_t* src, size_t avail, uint32_t* out_cp)
+{
+  *out_cp = (uint32_t)k_priv_uc_replace;
+  if (avail == 0U) {
+    return 1U; /* nothing readable: caller still advances, so it cannot stall */
+  }
+
+  const uint32_t b0 = (uint32_t)src[0];
+  if (b0 < (uint32_t)k_priv_uc_2byte) {
+    *out_cp = b0; /* 0xxxxxxx -- ASCII, the overwhelmingly common case */
+    return 1U;
+  }
+
+  /* Classify the lead byte. Anything that is not a well-formed lead (a stray
+   * continuation 0x80..0xBF, or 0xF8..0xFF) falls through to the one-byte
+   * substitution below, which is what keeps the walk in sync. */
+  size_t   need = 0U;
+  uint32_t cp   = 0U;
+  uint32_t least = 0U;
+  if ((b0 & (uint32_t)k_priv_utf8_lead2_msk) == (uint32_t)k_priv_utf8_lead2) {
+    need  = 2U;
+    cp    = b0 & (uint32_t)k_priv_utf8_load2;
+    least = (uint32_t)k_priv_uc_2byte;
+  } else if ((b0 & (uint32_t)k_priv_utf8_lead3_msk) == (uint32_t)k_priv_utf8_lead3) {
+    need  = 3U;
+    cp    = b0 & (uint32_t)k_priv_utf8_load3;
+    least = (uint32_t)k_priv_uc_3byte;
+  } else if ((b0 & (uint32_t)k_priv_utf8_lead4_msk) == (uint32_t)k_priv_utf8_lead4) {
+    need  = 4U;
+    cp    = b0 & (uint32_t)k_priv_utf8_load4;
+    least = (uint32_t)k_priv_uc_4byte;
+  } else {
+    return 1U; /* not a lead byte at all */
+  }
+
+  if (avail < need) {
+    return 1U; /* truncated by the end of the pool */
+  }
+
+  /* Bounded by k_priv_utf8_max_len; `need` is 2, 3 or 4 by construction. */
+  for (size_t k = 1U; k < need; ++k) {
+    if (((uint32_t)src[k] & (uint32_t)k_priv_utf8_cont_msk) != (uint32_t)k_priv_utf8_cont) {
+      return 1U; /* a non-continuation ends the sequence early; resync on it */
+    }
+    cp = (cp << (uint32_t)k_priv_utf8_sh6) | ((uint32_t)src[k] & (uint32_t)k_priv_utf8_mask);
+  }
+
+  /* Structurally complete, so its extent is known: reject the value but
+   * consume the whole sequence rather than re-reading its continuations. */
+  const bool overlong  = (cp < least);
+  const bool surrogate = (cp >= (uint32_t)k_priv_uc_surr_lo) && (cp <= (uint32_t)k_priv_uc_surr_hi);
+  const bool too_big   = (cp > (uint32_t)k_priv_uc_max);
+  if (overlong || surrogate || too_big) {
+    return need;
+  }
+
+  *out_cp = cp;
+  return need;
 }
 
 /**
@@ -166,6 +244,18 @@ reflow_html_tag_t priv_reflow_tok_classify(const char* name, size_t len)
  * @details Assumes `src` begins with "&#". Reads an optional `x`/`X` for
  * hexadecimal, then base-appropriate digits up to a terminating ';'.
  *
+ * A reference whose value the XML 1.0 `Char` production excludes is not
+ * rejected: it is complete in shape, so it is consumed whole and decoded
+ * to U+FFFD. Failing open there would spill the markup itself into the
+ * page, and the walk would then rescan the digits as text. Malformed
+ * *shape* (no digits, a bad digit, no terminator) still fails open, so the
+ * caller emits the literal '&' as before.
+ *
+ * The digit accumulator saturates at k_priv_uc_over_max, which keeps the
+ * multiply free of unsigned wrap locally instead of relying on the
+ * `&...;` scan window to bound the digit count. The sentinel is outside
+ * the `Char` production, so a saturated value decodes to U+FFFD.
+ *
  * @param[in]  src      Buffer positioned at the '&' of "&#...".
  * @param[in]  avail    Bytes available from `src`.
  * @param[out] out_cp   Decoded code point on success.
@@ -176,6 +266,7 @@ reflow_html_tag_t priv_reflow_tok_classify(const char* name, size_t len)
  * @pre `src[0..1]` are "&#".
  * @post On false the output params are unspecified.
  * @post On true *out_used is the index just past ';'.
+ * @post On true `*out_cp` satisfies priv_reflow_tok_is_xml_char().
  * @note Pure aside from writing the output params.
  * @since 0.1.0
  */
@@ -204,7 +295,11 @@ internal_decode_numeric(const char* src, size_t avail, uint32_t* out_cp, size_t*
     } else {
       return false;
     }
-    cp = (cp * base) + d;
+    if (cp > (uint32_t)k_priv_uc_over_max) {
+      cp = (uint32_t)k_priv_uc_over_max; /* saturate: no wrap, still out of range */
+    } else {
+      cp = (cp * base) + d;
+    }
     ++digits;
     ++i;
   }
@@ -212,7 +307,7 @@ internal_decode_numeric(const char* src, size_t avail, uint32_t* out_cp, size_t*
   if ((digits == 0U) || (i >= avail) || (src[i] != ';')) {
     return false;
   }
-  *out_cp   = cp;
+  *out_cp   = priv_reflow_tok_is_xml_char(cp) ? cp : (uint32_t)k_priv_uc_replace;
   *out_used = i + 1U;
   return true;
 }
@@ -230,26 +325,19 @@ bool priv_reflow_tok_decode_entity(const char* src,
   if (src[1] == '#') {
     return internal_decode_numeric(src, window, out_cp, out_used);
   }
-  static const struct {
-    const char* word; /**< Word. */
-    uint32_t    cp;   /**< Cp.   */
-  } k_named[] = {
-    {"amp", (uint32_t)'&'},
-    {"lt", (uint32_t)'<'},
-    {"gt", (uint32_t)'>'},
-    {"quot", (uint32_t)'"'},
-    {"apos", (uint32_t)'\''},
-  };
-  for (size_t e = 0U; e < (sizeof(k_named) / sizeof(k_named[0])); ++e) {
-    const size_t wlen = strlen(k_named[e].word);
-    if (((wlen + 2U) <= window) && (src[1U + wlen] == ';') &&
-        (strncmp(&src[1], k_named[e].word, wlen) == 0)) {
-      *out_cp   = k_named[e].cp;
-      *out_used = wlen + 2U;
-      return true;
-    }
+  size_t end = 1U;
+  while ((end < window) && (src[end] != ';')) {
+    ++end;
   }
-  return false;
+  if ((end >= window) || (src[end] != ';')) {
+    return false; /* no terminator inside the scan window */
+  }
+  const size_t nlen = end - 1U;
+  if (!priv_reflow_tok_lookup_entity(&src[1], nlen, out_cp)) {
+    return false;
+  }
+  *out_used = nlen + 2U;
+  return true;
 }
 
 /* ===========================================================================

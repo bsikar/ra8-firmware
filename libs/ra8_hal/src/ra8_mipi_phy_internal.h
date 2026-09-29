@@ -24,7 +24,14 @@
  *    ``ra8_mipi_phy_timing.c``;
  *  - ``priv_mipi_phy_compute_freq``: defined in
  *    ``ra8_mipi_phy_timing.c`` and used by ``ra8_mipi_phy_validate_pll_band``
- *    in ``ra8_mipi_phy.c``.
+ *    in ``ra8_mipi_phy.c`` and by ``ra8_mipi_phy_compute_pll_freq`` in
+ *    ``ra8_mipi_phy_ops.c``;
+ *  - ``priv_mipi_phy_find_timing``: defined in ``ra8_mipi_phy_timing.c``,
+ *    the register-free half of ``ra8_mipi_phy_select_timing``, shared with
+ *    ``ra8_mipi_phy_lookup_timing`` in ``ra8_mipi_phy_ops.c``;
+ *  - ``k_ra8_mipi_phy_mstpc_bit``: the provisional module-stop slot, written
+ *    by ``ra8_mipi_phy.c`` and read by the lifecycle observers in
+ *    ``ra8_mipi_phy_ops.c``.
  *
  * Read-only constants (the log tag) and the file-scope mutable driver
  * state are intentionally NOT shared: each is confined to the single TU
@@ -87,3 +94,56 @@ RA8_PRIV void priv_mipi_phy_write_timing(const ra8_mipi_phy_timing_t* t);
  * @since 0.1.0
  */
 RA8_PRIV uint32_t priv_mipi_phy_compute_freq(const ra8_mipi_phy_pll_t* pll, uint8_t mosc_mhz);
+
+/**
+ * @enum ra8_mipi_phy_mstpc_bit_t
+ * @brief Direct-write fallback for the MIPI PHY module-stop bit.
+ *
+ * @details
+ * The shared ``ra8_mstp_t`` enum in ``libs/ra8_hal/inc/ra8_mstp_regs.h``
+ * does NOT yet have a ``k_ra8_mipi_phy`` entry, and this driver must not
+ * extend that file. As a stop-gap the driver clears MSTPCRC bit 13 (the
+ * MIPI PHY slot in MSTPCRC -- HUM Ch 64.4.2 p 3838 references MSTPCRC for
+ * the block) directly, and the observers in ``ra8_mipi_phy_ops.c`` read the
+ * same bit to tell "module stopped" from "idle".
+ *
+ * TODO: When ``ra8_mstp_regs.h`` gains an explicit ``k_ra8_mstp_mipi_phy``
+ * value (driven by HUM Ch 11.2.8 "MSTPCRC" p 446-447), replace the direct
+ * register accesses with ``ra8_mstp_enable(k_ra8_mstp_mipi_phy)``.
+ */
+typedef enum : uint8_t {
+  k_ra8_mipi_phy_mstpc_bit = 13U, /**< Provisional MSTPC slot. */
+} ra8_mipi_phy_mstpc_bit_t;
+
+/**
+ * @brief Find the HUM Table 64.2 / 64.3 row for a ``(mode, pclka, rate)``.
+ *
+ * @details
+ * Defined in ``ra8_mipi_phy_timing.c``. The argument validation and the
+ * linear table scan of ``ra8_mipi_phy_select_timing`` without the
+ * DPHYTIM1..6 write, so that the public dry-run entry point
+ * ``ra8_mipi_phy_lookup_timing`` (``ra8_mipi_phy_ops.c``) and the
+ * programming entry point share one matcher.
+ *
+ * @param[in]  mode       Active mode; DSI and CSI use different tables.
+ * @param[in]  pclka_mhz  PCLKA frequency, MHz.
+ * @param[in]  rate_mbps  Per-lane line rate, Mbps.
+ * @param[out] out_timing Non-NULL destination for the matching row.
+ *
+ * @return ``ra8_err_t`` error code.
+ * @retval k_ra8_ok                  Row found, ``*out_timing`` filled.
+ * @retval k_ra8_err_invalid_arg     ``mode`` outside the enum or
+ *                                   ``rate_mbps`` outside 80..720.
+ * @retval k_ra8_err_not_supported   No row matches ``pclka_mhz``.
+ *
+ * @pre ``out_timing`` is a valid, non-NULL ``ra8_mipi_phy_timing_t``.
+ * @post ``*out_timing`` is written only on ``k_ra8_ok``.
+ * @post No register is modified.
+ *
+ * @note Internal helper. Pure lookup over a static table.
+ * @since 0.1.0
+ */
+RA8_PRIV ra8_err_t priv_mipi_phy_find_timing(ra8_mipi_phy_mode_t    mode,
+                                             uint8_t                pclka_mhz,
+                                             uint16_t               rate_mbps,
+                                             ra8_mipi_phy_timing_t* out_timing);

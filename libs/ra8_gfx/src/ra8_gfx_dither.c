@@ -32,6 +32,7 @@
 #include "ra8_err.h"
 #include "ra8_gfx_dither_mask_internal.h"
 #include "ra8_gfx_internal.h"
+#include "ra8_gfx_tone.h"
 #include "ra8_log.h"
 
 /* The runtime index arithmetic assumes the generated mask is exactly one
@@ -109,6 +110,39 @@ static uint8_t internal_quantise(uint8_t gray8, uint8_t thr)
 }
 
 /**
+ * @brief Quantise a sample against either the nominal palette or a prepared curve.
+ *
+ * @details One dispatch, so every path in this file quantises the same way: with
+ *          @p map NULL the closed-form even-palette rule above applies (the
+ *          committed behaviour, and what the pinned goldens hold), and otherwise
+ *          the sample goes through the prepared per-panel tone curve (#479).
+ *          The two are not two rules: prepared from
+ *          ::k_ra8_gfx_tone_lut_nominal the curve reproduces the closed form for
+ *          every (sample, threshold) pair, which
+ *          tests/graphics/src/test_ra8_gfx_tone.c asserts exhaustively.
+ *
+ * @param[in] map   Prepared tone map, or NULL for the nominal even palette.
+ * @param[in] gray8 Source luminance sample, 0 (black) .. 255 (white).
+ * @param[in] thr   Blue-noise threshold for the pixel, 0 .. 255.
+ * @return The dithered 4-bit level, 0 .. @ref k_ra8_gfx_dither_max_level.
+ * @retval 0  The pixel quantised to black.
+ * @retval 15 The pixel quantised to white.
+ * @pre  @p map is NULL or was written by a successful ::ra8_gfx_tone_prepare.
+ * @post The result is in [0, @ref k_ra8_gfx_dither_max_level].
+ * @post No memory is modified (pure function).
+ * @note Thread-safe; reads only its arguments and immutable data.
+ * @since 0.1.0
+ */
+RA8_INTERNAL
+static uint8_t internal_quantise_any(const ra8_gfx_tone_map_t* map, uint8_t gray8, uint8_t thr)
+{
+  if (map == nullptr) {
+    return internal_quantise(gray8, thr);
+  }
+  return ra8_gfx_tone_quantise(map, gray8, thr);
+}
+
+/**
  * @brief Expand a 4-bit panel level to a 0x00RRGGBB gray colour.
  *
  * @details Replicates the nibble into an 8-bit gray (`(n << 4) | n == n * 17`)
@@ -148,6 +182,7 @@ static uint32_t internal_level_to_color(uint8_t level)
  *          (clearing the low nibble) and odd indices OR into it, so no pre-zeroing
  *          is required even for an odd pixel count.
  *
+ * @param[in]  map Prepared tone map, or NULL for the nominal even palette.
  * @param[in]  src Row-major gray8 tile of @p w * @p h bytes.
  * @param[in]  w   Tile width in pixels (> 0; caller-checked).
  * @param[in]  h   Tile height in pixels (> 0; caller-checked).
@@ -162,14 +197,19 @@ static uint32_t internal_level_to_color(uint8_t level)
  * @since 0.1.0
  */
 RA8_INTERNAL
-static void
-internal_pack_tile(const uint8_t* src, int32_t w, int32_t h, int32_t ox, int32_t oy, uint8_t* out)
+static void internal_pack_tile(const ra8_gfx_tone_map_t* map,
+                               const uint8_t*            src,
+                               int32_t                   w,
+                               int32_t                   h,
+                               int32_t                   ox,
+                               int32_t                   oy,
+                               uint8_t*                  out)
 {
   for (int32_t row = 0; row < h; ++row) {
     for (int32_t col = 0; col < w; ++col) {
       const uint32_t i = ((uint32_t)row * (uint32_t)w) + (uint32_t)col;
-      const uint8_t  level =
-        internal_quantise(src[i], s_ra8_gfx_dither_mask[internal_mask_index(ox + col, oy + row)]);
+      const uint8_t  level = internal_quantise_any(
+        map, src[i], s_ra8_gfx_dither_mask[internal_mask_index(ox + col, oy + row)]);
       const uint32_t byte_idx = i / (uint32_t)k_ra8_gfx_dither_ppb;
       if ((i & 1U) == 0U) {
         out[byte_idx] = (uint8_t)(level << (uint8_t)k_ra8_gfx_dither_nib_shift);
@@ -185,6 +225,14 @@ uint8_t ra8_gfx_dither_gray4_level(uint8_t gray8, int32_t x, int32_t y)
   return internal_quantise(gray8, s_ra8_gfx_dither_mask[internal_mask_index(x, y)]);
 }
 
+uint8_t ra8_gfx_dither_gray4_level_tone(const ra8_gfx_tone_map_t* map,
+                                        uint8_t                   gray8,
+                                        int32_t                   x,
+                                        int32_t                   y)
+{
+  return internal_quantise_any(map, gray8, s_ra8_gfx_dither_mask[internal_mask_index(x, y)]);
+}
+
 ra8_err_t ra8_gfx_dither_gray8_to_gray4(const uint8_t* src,
                                         int32_t        w,
                                         int32_t        h,
@@ -193,6 +241,20 @@ ra8_err_t ra8_gfx_dither_gray8_to_gray4(const uint8_t* src,
                                         uint8_t*       out,
                                         uint32_t       out_cap,
                                         uint32_t*      out_size)
+{
+  return ra8_gfx_dither_gray8_to_gray4_tone(
+    nullptr, src, w, h, origin_x, origin_y, out, out_cap, out_size);
+}
+
+ra8_err_t ra8_gfx_dither_gray8_to_gray4_tone(const ra8_gfx_tone_map_t* map,
+                                             const uint8_t*            src,
+                                             int32_t                   w,
+                                             int32_t                   h,
+                                             int32_t                   origin_x,
+                                             int32_t                   origin_y,
+                                             uint8_t*                  out,
+                                             uint32_t                  out_cap,
+                                             uint32_t*                 out_size)
 {
   static const char* const k_tag = "ra8_gfx_dither";
   RA8_CHECK_NULL_PTR(src, k_tag, "src");
@@ -211,13 +273,23 @@ ra8_err_t ra8_gfx_dither_gray8_to_gray4(const uint8_t* src,
     return k_ra8_err_no_mem;
   }
 
-  internal_pack_tile(src, w, h, origin_x, origin_y, out);
+  internal_pack_tile(map, src, w, h, origin_x, origin_y, out);
   *out_size = n_bytes;
   return k_ra8_ok;
 }
 
 ra8_err_t
 ra8_gfx_blit_gray8_dither(const uint8_t* src, int32_t w, int32_t h, int32_t dst_x, int32_t dst_y)
+{
+  return ra8_gfx_blit_gray8_dither_tone(nullptr, src, w, h, dst_x, dst_y);
+}
+
+ra8_err_t ra8_gfx_blit_gray8_dither_tone(const ra8_gfx_tone_map_t* map,
+                                         const uint8_t*            src,
+                                         int32_t                   w,
+                                         int32_t                   h,
+                                         int32_t                   dst_x,
+                                         int32_t                   dst_y)
 {
   if (!g_gfx_text_state.initialized) {
     return k_ra8_err_not_initialized;
@@ -228,9 +300,10 @@ ra8_gfx_blit_gray8_dither(const uint8_t* src, int32_t w, int32_t h, int32_t dst_
 
   for (int32_t row = 0; row < h; ++row) {
     for (int32_t col = 0; col < w; ++col) {
-      const uint8_t level =
-        internal_quantise(src[((size_t)row * (size_t)w) + (size_t)col],
-                          s_ra8_gfx_dither_mask[internal_mask_index(dst_x + col, dst_y + row)]);
+      const uint8_t level = internal_quantise_any(
+        map,
+        src[((size_t)row * (size_t)w) + (size_t)col],
+        s_ra8_gfx_dither_mask[internal_mask_index(dst_x + col, dst_y + row)]);
       priv_gfx_text_plot(dst_x + col, dst_y + row, internal_level_to_color(level));
     }
   }

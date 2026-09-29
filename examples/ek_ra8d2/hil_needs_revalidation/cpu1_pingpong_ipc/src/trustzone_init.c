@@ -33,13 +33,13 @@
 
 #include "trustzone_init.h"
 
-#include <stdint.h>
+#include <stdint.h>  // ra8-keep-include: `uint32_t` used directly
 
-#include "ra8_attributes.h"
-#include "ra8_dual_core.h"
-#include "ra8_err.h"
-#include "ra8_log.h"
-#include "ra8_tz_secure_boot.h"
+#include "ra8_attributes.h"      // ra8-keep-include: `RA8_INTERNAL` used directly
+#include "ra8_dual_core.h"       // ra8-keep-include: `ra8_cpu1_release` used directly
+#include "ra8_err.h"             // ra8-keep-include: `ra8_err_t` used directly
+#include "ra8_log.h"             // ra8-keep-include: `ra8_log_error_val` used directly
+#include "ra8_tz_secure_boot.h"  // ra8-keep-include: `ra8_tz_secure_boot_jump_ns` used
 
 extern uint32_t g_ra8_ls_cpu1_mram_start;
 extern uint32_t g_ra8_ls_cpu1_stack_top;
@@ -62,8 +62,8 @@ extern uint32_t g_ra8_ls_cpu1_stack_top;
  * @since 0.1.0
  */
 typedef enum : uint32_t {
-  k_ipcsar_value         = 0x000F0303UL, /**< IPC security.  */
-  k_ipcpar_value         = 0x000F0303UL, /**< IPC privilege. */
+  k_ipcsar_value         = 0x00050000UL, /**< IPC security.  */
+  k_ipcpar_value         = 0x00000000UL, /**< IPC privilege. */
   k_ns_vector_table_addr = 0x02080000UL, /**< NS vectors.    */
 } cpu1_pingpong_ipc_tz_const_t;
 

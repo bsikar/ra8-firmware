@@ -132,7 +132,7 @@ RA8_PRIV void priv_book_fixture_setup(void);
  * @pre @p dst holds at least @p len bytes.
  * @post The call counter advanced by exactly one.
  * @post A rejected span leaves @p dst untouched.
- * @note Test-target-private; matches ::book_stream_read_fn.
+ * @note Test-target-private; matches ::ra8_vsource_read_fn.
  * @since Version 0.1.0
  */
 RA8_PRIV ra8_err_t priv_book_fixture_read(void* ctx, uint64_t offset, uint8_t* dst, uint32_t len);

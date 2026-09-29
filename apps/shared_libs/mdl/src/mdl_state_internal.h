@@ -1,7 +1,7 @@
 /**
  * @file mdl_state_internal.h
  * @brief Module-private validation shared by the state model and codec.
- * @details Declares bounded validation, exact decimal conversion, and streamed parsing seams.
+ * @details Declares bounded validation and the streamed parsing seam.
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
  */
@@ -76,27 +76,6 @@ RA8_PRIV bool priv_mdl_state_relative_path_valid(const char* path, size_t cap);
  * @since 0.1.0
  */
 RA8_PRIV bool priv_mdl_state_valid(const mdl_state_t* st);
-
-/**
- * @brief Convert one exact bounded decimal rational to binary64.
- * @details Uses fixed-capacity integer division and nearest-even rounding without libc conversion.
- * @param[in] mantissa Unsigned decimal significand (at most 17 digits).
- * @param[in] decimal_scale Signed power of ten applied to @p mantissa.
- * @param[in] negative Whether to set the binary64 sign bit.
- * @param[out] out Converted finite binary64 value.
- * @return Whether the exact value rounds to a non-underflowing finite binary64.
- * @retval false Scale, capacity, overflow, or nonzero underflow is invalid.
- * @pre @p out is non-NULL and @p decimal_scale is in [-400, 400].
- * @pre @p mantissa carries at most 17 decimal digits.
- * @post Success is correctly rounded to nearest, ties to even without locale or libc conversion.
- * @post Failure publishes no numeric result contract.
- * @note Signed zero is preserved.
- * @since 0.1.0
- */
-RA8_PRIV bool priv_mdl_state_decimal_to_binary64(uint64_t mantissa,
-                                                 int32_t  decimal_scale,
-                                                 bool     negative,
-                                                 double*  out);
 
 /**
  * @brief Parse one exact state payload from an open portable file.

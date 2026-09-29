@@ -2,6 +2,9 @@
  * @file test_ra8_usb_hmsc.c
  * @brief Unit tests for the native USB host-side MSC class layer
  *
+ * @par Tag
+ * [Ring 3 / HAL] {World: NS}
+ *
  * @details
  * Exercises the public contract of `ra8_usb_hmsc` against the register
  * fake: lifecycle (init/close), the polled `ra8_usb_hmsc_enumerate`

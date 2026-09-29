@@ -48,7 +48,8 @@ extern void ra8_isr_dispatch(uint16_t slot);
  * Project convention: linker symbols carry the `g_ra8_ls_` prefix so they
  * are not in the reserved leading-underscore namespace that ISO C (and
  * cert-dcl37-c / bugprone-reserved-identifier) reject. The linker script
- * in uart_hello/linker_script.ld defines them with this exact spelling.
+ * in this app's own linker_script.ld defines them with this exact
+ * spelling.
  */
 
 extern uint32_t g_ra8_ls_stack_top;      /**< Top of main stack (linker symbol). */

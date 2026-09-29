@@ -6,12 +6,18 @@
 # Each example app's CMakeLists.txt is reduced to a thin stub:
 #
 #     cmake_minimum_required(VERSION 3.20)
-#     set(_d "${CMAKE_CURRENT_SOURCE_DIR}")
-#     while(NOT EXISTS "${_d}/cmake/ra8_add_app.cmake" AND NOT "${_d}" STREQUAL "/")
-#         get_filename_component(_d "${_d}" DIRECTORY)
-#     endwhile()
-#     include("${_d}/cmake/ra8_add_app.cmake")
+#     get_directory_property(_ra8_has_parent PARENT_DIRECTORY)
+#     if(NOT _ra8_has_parent)
+#       project(blink LANGUAGES C ASM)
+#     endif()
+#     include(ra8_add_app)
 #     ra8_add_app(NAME blink STACK_BYTES 2200 DESCRIPTION "Bare-metal blink firmware")
+#
+# The bare include(ra8_add_app) works from any depth because
+# cmake/ra8_bootstrap.cmake -- included by the toolchain file and by the repo
+# root -- puts <repo>/cmake on CMAKE_MODULE_PATH (#779). Apps still carrying the
+# old open-coded walk up the directory tree keep working unchanged; both forms
+# resolve to this file.
 #
 # ra8_add_app() builds <NAME>.elf/.hex/.bin from:
 #   - src/main.c                     : always taken from the app dir
@@ -26,13 +32,20 @@
 #   - linker_script.ld               : the app's local copy if it exists
 #       (divergent maps: dual-core, TrustZone, bootloader banks), else the
 #       selected board's canonical single-core map
-#       libs/ra8_board_<BOARD>/ld/linker_script.ld
+#       libs/ra8_board_<BOARD>/ld/linker_script.ld, optionally composed with a
+#       generated fragment (see THREADX_HEAP below)
 #   - the ra8_* libraries (ra8_secure_app carries the Ring 5 secure substrate)
 #
 # Options:
 #   NAME <n>            (required) app + elf base name
 #   STACK_BYTES <n>     per-function stack-frame budget (default 2200)
 #   DESCRIPTION <s>     project() description for standalone builds
+#   THREADX_HEAP <r>    compose the board linker script with a generated
+#                       fragment that PROVIDEs g_ra8_threadx_unused_memory_start
+#                       at ORIGIN(<r>), e.g. THREADX_HEAP SDRAM. Lets a ThreadX
+#                       app add that one symbol without forking the whole board
+#                       memory map (#761). Rejected if the app also ships its
+#                       own linker_script.ld, which already has full control.
 #   BOARD <b>           board-support layer under libs/ra8_board_<b> (default
 #                       ek_ra8d2). Selects which board layer supplies the fallback
 #                       boot files, the board src glob, the fallback linker script,
@@ -112,7 +125,7 @@ macro(ra8_add_app)
   cmake_parse_arguments(
     _RA8_APP
     "NO_NSC"
-    "NAME;STACK_BYTES;DESCRIPTION;BOARD"
+    "NAME;STACK_BYTES;DESCRIPTION;BOARD;THREADX_HEAP"
     "USES;LIBS;OFF_TARGET_LIBS;NSC_SRCS;EXTRA_SRCS;AUX_SRCS"
     ${ARGN}
   )
@@ -414,7 +427,13 @@ macro(ra8_add_app)
   target_link_libraries(${_ra8_elf} PRIVATE gcc)
 
   target_link_options(${_ra8_elf} PRIVATE -T${_ra8_linker} -Wl,--Map=${_RA8_APP_NAME}.map)
-  set_target_properties(${_ra8_elf} PROPERTIES LINK_DEPENDS ${_ra8_linker})
+  if(_ra8_ld_base)
+    set_target_properties(
+      ${_ra8_elf} PROPERTIES LINK_DEPENDS "${_ra8_linker};${_ra8_ld_base}"
+    )
+  else()
+    set_target_properties(${_ra8_elf} PROPERTIES LINK_DEPENDS ${_ra8_linker})
+  endif()
 
   add_custom_command(
     TARGET ${_ra8_elf}
@@ -450,6 +469,89 @@ endmacro()
 #     LINKER   linker_script_cpu1.ld  # optional; defaults to this name
 #     INCLUDES ${EXTRA_INC} ...     # optional extra include dirs
 #   )
+# The Cortex-M33 first-party warning / stack-usage profile, in ONE place.
+#
+# ra8_add_cpu1_image() applies it per-source to the sources it owns, and
+# ra8_cpu1_add_first_party_sources() applies the SAME list to the first-party
+# translation units an app bolts onto a CPU1 image. Spelled as a list so no
+# line runs past the 100-column limit; COMPILE_OPTIONS takes the ;-separated
+# list set() builds from these arguments.
+#
+# Parity with cmake/ra8_warnings.cmake (the M85 equivalent) is GATED, not
+# promised: scripts/checks/check_cpu1_warning_profile.py reads both lists and
+# fails when a flag in the M85 first-party set is absent here, when this list
+# loses -Wall / -Wextra / -Werror / -Wstack-usage / -fstack-usage, when the
+# frame budget stops being a positive integer literal, or when either caller
+# below spells its own flags instead of taking them from this one function.
+# A deliberate M33/M85 difference has to be declared with its reason in that
+# checker's DECLARED_DIVERGENCE table, where a reviewer reads it.
+function(ra8_cpu1_warning_profile _out_var)
+  set(${_out_var}
+      -Wall
+      -Wextra
+      -Werror
+      # Was the one flag the M85 first-party set carried and this list did not,
+      # while the comment above claimed the two were kept in step (#843). Every
+      # profiled CPU1 translation unit on both dual-core images compiles clean
+      # under it, so the bar moved up to the claim rather than the claim down.
+      -Wconversion
+      -Wcast-qual
+      -Wcast-align
+      -Wdouble-promotion
+      -Wformat=2
+      -Wpointer-arith
+      -Wshadow
+      -Wundef
+      -Wvla
+      -Wwrite-strings
+      -Wbad-function-cast
+      -Wmissing-declarations
+      -Wmissing-prototypes
+      -Wnested-externs
+      -Wold-style-definition
+      -Wredundant-decls
+      -Wstrict-prototypes
+      -Wduplicated-branches
+      -Wduplicated-cond
+      -Wformat-overflow=2
+      -Wformat-truncation=2
+      -Wlogical-op
+      -Wstack-usage=2048
+      -fstack-usage
+      PARENT_SCOPE
+  )
+endfunction()
+
+# Bolt first-party translation units onto a CPU1 image ON the warning bar.
+#
+#   ra8_cpu1_add_first_party_sources(ereader_m33_cpu1.elf
+#     ${RA8_REPO_ROOT}/libs/ra8_gfx/src/ra8_gfx_text.c
+#   )
+#
+# This is the T1-09 (#843) opt-in. A plain target_sources() on a CPU1 image
+# compiles the source at -mcpu=cortex-m33 ... -Os with NO warning flags and no
+# .su stack data; this call adds the same sources AND puts the per-source
+# profile on them, so an app-added first-party TU is held to exactly the bar
+# the helper's own SOURCES are. Vendored SOUP must NOT come through here: it
+# stays on plain target_sources(), outside the first-party bar, on purpose.
+#
+# scripts/checks/check_cpu1_warning_profile.py reads these calls: a source
+# added here counts as profile-covered, and a source still on plain
+# target_sources() must be an explicit row in
+# .github/cpu1-warning-profile-baseline.txt.
+function(ra8_cpu1_add_first_party_sources _target)
+  if(NOT TARGET ${_target})
+    message(FATAL_ERROR "ra8_cpu1_add_first_party_sources(): no such target ${_target}")
+  endif()
+  if(NOT ARGN)
+    message(FATAL_ERROR "ra8_cpu1_add_first_party_sources(${_target}): no sources given")
+  endif()
+  ra8_cpu1_warning_profile(_c1fp_warnings)
+  target_sources(${_target} PRIVATE ${ARGN})
+  # APPEND, so a source that already carries an app-specific flag keeps it.
+  set_property(SOURCE ${ARGN} APPEND PROPERTY COMPILE_OPTIONS ${_c1fp_warnings})
+endfunction()
+
 function(ra8_add_cpu1_image)
   cmake_parse_arguments(
     C1
@@ -524,37 +626,22 @@ function(ra8_add_cpu1_image)
   # TUs (ra8_gfx / ra8_ipc / ra8_rabook on the M33 side) via per-source opt-in in
   # those apps' own CMakeLists; those TUs are still -Werror-gated in the M85
   # builds where they are also compiled.
+  #
+  # That remaining hole is now MEASURED rather than described. Every app-added
+  # first-party CPU1 translation unit is an explicit row in
+  # .github/cpu1-warning-profile-baseline.txt, judged by
+  # scripts/checks/check_cpu1_warning_profile.py: a new first-party M33 source
+  # outside this profile fails the gate, and a row that stops escaping must be
+  # deleted, so the list can only shrink toward T1-09 (#843). Vendored SOUP is
+  # classified separately and stays outside the first-party bar on purpose.
+  # The checker also scans CPU1 images an app hand-rolls with its own
+  # add_executable() + -mcpu=cortex-m33 instead of this helper (cpu1_pingpong,
+  # cpu1_pingpong_ipc): those give NO source the profile, cpu1_main.c included,
+  # so all of their first-party TUs are inventory rows.
   # The extended warning profile, spelled as a list so no single line runs
   # past the 100-column limit. COMPILE_OPTIONS takes a ;-separated list,
   # which is exactly what set() builds from these arguments.
-  set(_c1_warnings
-      -Wall
-      -Wextra
-      -Werror
-      -Wcast-qual
-      -Wcast-align
-      -Wdouble-promotion
-      -Wformat=2
-      -Wpointer-arith
-      -Wshadow
-      -Wundef
-      -Wvla
-      -Wwrite-strings
-      -Wbad-function-cast
-      -Wmissing-declarations
-      -Wmissing-prototypes
-      -Wnested-externs
-      -Wold-style-definition
-      -Wredundant-decls
-      -Wstrict-prototypes
-      -Wduplicated-branches
-      -Wduplicated-cond
-      -Wformat-overflow=2
-      -Wformat-truncation=2
-      -Wlogical-op
-      -Wstack-usage=2048
-      -fstack-usage
-  )
+  ra8_cpu1_warning_profile(_c1_warnings)
   set_source_files_properties(${_c1_srcs} PROPERTIES COMPILE_OPTIONS "${_c1_warnings}")
   target_link_options(
     ${C1_NAME}.elf

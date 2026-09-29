@@ -169,13 +169,13 @@ RA8_INTERNAL static bool internal_cache_copy(char* destination, size_t capacity,
  * @note A full index evicts its oldest observation.
  * @since 0.1.0
  */
-RA8_INTERNAL static bool internal_cache_record_response(mdl_cache_index_t*    index,
-                                                        mdl_cache_record_t*   existing,
-                                                        const char*           url,
-                                                        uint64_t              url_hash,
-                                                        uint64_t              content_hash,
-                                                        const char*           relative_path,
-                                                        const mdl_net_resp_t* response)
+RA8_INTERNAL static bool internal_cache_record_response(mdl_cache_index_t*  index,
+                                                        mdl_cache_record_t* existing,
+                                                        const char*         url,
+                                                        uint64_t            url_hash,
+                                                        uint64_t            content_hash,
+                                                        const char*         relative_path,
+                                                        const ra8_mdl_http_response_t* response)
 {
   mdl_cache_record_t next = {.url_hash        = url_hash,
                              .content_hash    = content_hash,
@@ -217,23 +217,23 @@ RA8_INTERNAL static bool internal_cache_record_response(mdl_cache_index_t*    in
  * @note Refetch forces this call but still permits conditional revalidation.
  * @since 0.1.0
  */
-RA8_INTERNAL static ra8_err_t internal_cache_fetch(const mdl_cache_record_t* record,
-                                                   const char*               url,
-                                                   const mdl_net_req_t*      base_request,
-                                                   mdl_cache_fetch_fn        fetch,
-                                                   void*                     fetch_context,
-                                                   char*                     buffer,
-                                                   size_t                    capacity,
-                                                   size_t*                   out_length,
-                                                   mdl_net_resp_t*           response)
+RA8_INTERNAL static ra8_err_t internal_cache_fetch(const mdl_cache_record_t*    record,
+                                                   const char*                  url,
+                                                   const ra8_mdl_http_policy_t* base_request,
+                                                   mdl_cache_fetch_fn           fetch,
+                                                   void*                        fetch_context,
+                                                   char*                        buffer,
+                                                   size_t                       capacity,
+                                                   size_t*                      out_length,
+                                                   ra8_mdl_http_response_t*     response)
 {
-  mdl_net_req_t request = *base_request;
+  ra8_mdl_http_policy_t request = *base_request;
   request.if_none_match =
     ((record != nullptr) && (record->etag[0] != '\0')) ? record->etag : nullptr;
   request.if_modified_since =
     ((record != nullptr) && (record->last_modified[0] != '\0')) ? record->last_modified : nullptr;
   *out_length = 0U;
-  *response   = (mdl_net_resp_t){};
+  *response   = (ra8_mdl_http_response_t){};
   return fetch(fetch_context, url, &request, buffer, capacity, out_length, response);
 }
 
@@ -320,23 +320,24 @@ RA8_INTERNAL static ra8_err_t internal_cache_prepare(mdl_cache_t*        cache,
  * @note This prevents a permanent 304 loop after body loss.
  * @since 0.1.0
  */
-RA8_INTERNAL static ra8_err_t internal_cache_retry_unconditional(const char*          url,
-                                                                 const mdl_net_req_t* base_request,
-                                                                 mdl_cache_fetch_fn   fetch,
-                                                                 void*                fetch_context,
-                                                                 char*                buffer,
-                                                                 size_t               capacity,
-                                                                 size_t*              out_length,
-                                                                 mdl_net_resp_t*      response)
+RA8_INTERNAL static ra8_err_t
+internal_cache_retry_unconditional(const char*                  url,
+                                   const ra8_mdl_http_policy_t* base_request,
+                                   mdl_cache_fetch_fn           fetch,
+                                   void*                        fetch_context,
+                                   char*                        buffer,
+                                   size_t                       capacity,
+                                   size_t*                      out_length,
+                                   ra8_mdl_http_response_t*     response)
 {
-  mdl_net_req_t request     = *base_request;
+  ra8_mdl_http_policy_t request = *base_request;
   request.if_none_match     = nullptr;
   request.if_modified_since = nullptr;
   *out_length               = 0U;
-  *response                 = (mdl_net_resp_t){};
+  *response                     = (ra8_mdl_http_response_t){};
   const ra8_err_t error =
     fetch(fetch_context, url, &request, buffer, capacity, out_length, response);
-  return ((error == k_ra8_ok) && (response->status == (long)k_cache_http_not_modified))
+  return ((error == k_ra8_ok) && (response->status == (int32_t)k_cache_http_not_modified))
            ? k_ra8_err_protocol_error
            : error;
 }
@@ -408,18 +409,18 @@ RA8_INTERNAL static ra8_err_t internal_cache_finish_304(mdl_cache_t*            
  * @note New body names include both URL and content identities.
  * @since 0.1.0
  */
-RA8_INTERNAL static ra8_err_t internal_cache_publish(mdl_cache_t*             cache,
-                                                     const mdl_cache_paths_t* paths,
-                                                     mdl_cache_record_t*      existing,
-                                                     const char*              url,
-                                                     const char*              buffer,
-                                                     size_t                   length,
-                                                     const mdl_net_resp_t*    response,
-                                                     mdl_cache_result_t*      result)
+RA8_INTERNAL static ra8_err_t internal_cache_publish(mdl_cache_t*                   cache,
+                                                     const mdl_cache_paths_t*       paths,
+                                                     mdl_cache_record_t*            existing,
+                                                     const char*                    url,
+                                                     const char*                    buffer,
+                                                     size_t                         length,
+                                                     const ra8_mdl_http_response_t* response,
+                                                     mdl_cache_result_t*            result)
 {
-  if ((response->status < (long)k_cache_http_success_min) ||
-      (response->status > (long)k_cache_http_success_max) ||
-      (response->status > (long)k_cache_http_status_max) || (length == 0U)) {
+  if ((response->status < (int32_t)k_cache_http_success_min) ||
+      (response->status > (int32_t)k_cache_http_success_max) ||
+      (response->status > (int32_t)k_cache_http_status_max) || (length == 0U)) {
     return k_ra8_err_protocol_error;
   }
   const uint64_t url_hash     = mdl_hash_str(url);
@@ -477,17 +478,17 @@ RA8_INTERNAL static ra8_err_t internal_cache_publish(mdl_cache_t*             ca
  * @note A valid 304 never opens a body transaction for writing.
  * @since 0.1.0
  */
-RA8_INTERNAL static ra8_err_t internal_cache_network(mdl_cache_t*              cache,
-                                                     const mdl_cache_lookup_t* lookup,
-                                                     const char*               url,
-                                                     const mdl_net_req_t*      base_request,
-                                                     mdl_cache_fetch_fn        fetch,
-                                                     void*                     fetch_context,
-                                                     char*                     buffer,
-                                                     size_t                    capacity,
-                                                     size_t*                   out_length,
-                                                     mdl_net_resp_t*           response,
-                                                     mdl_cache_result_t*       result)
+RA8_INTERNAL static ra8_err_t internal_cache_network(mdl_cache_t*                 cache,
+                                                     const mdl_cache_lookup_t*    lookup,
+                                                     const char*                  url,
+                                                     const ra8_mdl_http_policy_t* base_request,
+                                                     mdl_cache_fetch_fn           fetch,
+                                                     void*                        fetch_context,
+                                                     char*                        buffer,
+                                                     size_t                       capacity,
+                                                     size_t*                      out_length,
+                                                     ra8_mdl_http_response_t*     response,
+                                                     mdl_cache_result_t*          result)
 {
   result->revalidated = true;
   ra8_err_t error     = internal_cache_fetch(lookup->held ? lookup->record : nullptr,
@@ -502,7 +503,7 @@ RA8_INTERNAL static ra8_err_t internal_cache_network(mdl_cache_t*              c
   if (error != k_ra8_ok) {
     return error;
   }
-  if (response->status == (long)k_cache_http_not_modified) {
+  if (response->status == (int32_t)k_cache_http_not_modified) {
     if (lookup->held) {
       return internal_cache_finish_304(cache,
                                        &lookup->paths,
@@ -534,47 +535,41 @@ RA8_INTERNAL static ra8_err_t internal_cache_network(mdl_cache_t*              c
                                 result);
 }
 
-ra8_err_t mdl_cache_get_buf(mdl_cache_t*         cache,
-                            const char*          url,
-                            const mdl_net_req_t* base_request,
-                            mdl_cache_fetch_fn   fetch,
-                            void*                fetch_context,
-                            char*                buffer,
-                            size_t               capacity,
-                            size_t*              out_length,
-                            mdl_net_resp_t*      response,
-                            mdl_cache_result_t*  result)
+ra8_err_t mdl_cache_get(mdl_cache_t*               cache,
+                        const mdl_cache_get_req_t* req,
+                        mdl_cache_get_out_t*       out)
 {
-  if ((cache == nullptr) || (cache->storage == nullptr) || (cache->index == nullptr) ||
-      (cache->root == nullptr) || (url == nullptr) || (base_request == nullptr) ||
-      (fetch == nullptr) || (buffer == nullptr) || (capacity == 0U) || (out_length == nullptr) ||
-      (response == nullptr) || (result == nullptr)) {
+  if ((cache == nullptr) || (req == nullptr) || (out == nullptr)) {
     return k_ra8_err_invalid_arg;
   }
-  *out_length = 0U;
-  *response   = (mdl_net_resp_t){};
-  *result     = (mdl_cache_result_t){.age_seconds = -1};
+  if ((cache->storage == nullptr) || (cache->index == nullptr) || (cache->root == nullptr) ||
+      (req->url == nullptr) || (req->request == nullptr) || (req->fetch == nullptr) ||
+      (req->buffer == nullptr) || (req->capacity == 0U)) {
+    return k_ra8_err_invalid_arg;
+  }
+  *out = (mdl_cache_get_out_t){.result = {.age_seconds = -1}};
   mdl_cache_lookup_t lookup;
-  ra8_err_t          error = internal_cache_prepare(cache, url, buffer, capacity, result, &lookup);
+  ra8_err_t          error =
+    internal_cache_prepare(cache, req->url, req->buffer, req->capacity, &out->result, &lookup);
   if (error != k_ra8_ok) {
     return error;
   }
   const bool validators =
     lookup.held && ((lookup.record->etag[0] != '\0') || (lookup.record->last_modified[0] != '\0'));
   if (lookup.held && !cache->refetch && !validators) {
-    *out_length         = lookup.retained_length;
-    result->body_reused = true;
+    out->length             = lookup.retained_length;
+    out->result.body_reused = true;
     return k_ra8_ok;
   }
   return internal_cache_network(cache,
                                 &lookup,
-                                url,
-                                base_request,
-                                fetch,
-                                fetch_context,
-                                buffer,
-                                capacity,
-                                out_length,
-                                response,
-                                result);
+                                req->url,
+                                req->request,
+                                req->fetch,
+                                req->fetch_context,
+                                req->buffer,
+                                req->capacity,
+                                &out->length,
+                                &out->response,
+                                &out->result);
 }

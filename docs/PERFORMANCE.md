@@ -1,7 +1,16 @@
 # Host-side Performance Benchmarks
 
 `tests/bench/` is a host microbenchmark suite. `just quality::local::bench` builds every bench
-binary and runs it; each binary prints CSV to stdout.
+binary and runs it; each binary prints CSV to stdout. The list it runs is
+`RA8_BENCH_TARGETS` in `tests/bench/CMakeLists.txt`, which is the registry: the
+recipe reads it, and refuses to run when a `tests/bench/src/bench_*.c` is not in
+it, so a harness cannot be added and then silently skipped.
+
+`test_ra8_bench_output`, the deterministic CSV golden, is not a benchmark and is
+not run by that recipe. It is an ordinary ctest case, picked up by the
+`ra8_add_test()` auto-glob in `tests/cmake/unit_tests.cmake`, so it runs in the
+normal `just quality::local::test` flow with `RA8_BENCH=OFF`; the bench build
+reuses that target rather than declaring its own (#1415).
 
 It has no third-party benchmark dependency on purpose -- no Google Benchmark, no
 JSON writer, no plotting. A bench that needs a package installed before it will

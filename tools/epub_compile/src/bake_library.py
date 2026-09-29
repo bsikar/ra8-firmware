@@ -159,7 +159,13 @@ def _load_books(specs: list[str]) -> list[tuple[bytes, str, str, tuple | None]]:
 
 
 def _header_preamble() -> list[str]:
-    """The generated-file banner, include guard and includes."""
+    """The generated-file banner, include guard and includes.
+
+    The `NOLINTBEGIN` line carries its rationale inline, matching the committed
+    header. Emitting the bare pragma meant every regeneration silently deleted
+    that rationale and showed up as diff noise in an otherwise data-only
+    refresh (#782).
+    """
     return [
         "/**",
         " * @file library.h",
@@ -180,7 +186,8 @@ def _header_preamble() -> list[str]:
         "",
         "#include <stdint.h>",
         "",
-        "// NOLINTBEGIN(readability-magic-numbers)",
+        "// NOLINTBEGIN(readability-magic-numbers) -- Generated serialized bytes "
+        "are payload data, not control constants.",
     ]
 
 

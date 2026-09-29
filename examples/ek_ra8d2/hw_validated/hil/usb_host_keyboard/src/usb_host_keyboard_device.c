@@ -29,6 +29,8 @@
 #include "ra8_board_ek_ra8d2.h"
 #include "ra8_err.h"
 #include "ra8_usb.h"
+#include "ra8_usb_compose.h"
+#include "ra8_usb_desc.h"
 #include "usb_host_keyboard_steps.h"
 
 #ifndef RA8_OFF_TARGET
@@ -53,12 +55,6 @@ typedef enum : uint32_t {
   k_hid_dev_step_attach = 4U, /**< Device attached (DPRPU).       */
   k_hid_dev_step_send   = 5U, /**< Report-send loop running.      */
 } hid_dev_step_t;
-
-/* USBX LANGID descriptor 0x0409 (English-US), little-endian byte pair. */
-typedef enum : uint8_t {
-  k_usb_langid_en_us_lo = 0x09U, /**< LANGID 0x0409 low byte.  */
-  k_usb_langid_en_us_hi = 0x04U, /**< LANGID 0x0409 high byte. */
-} usb_langid_byte_t;
 
 /* -------------------------------------------------------------------------- */
 /* Typed keycodes the fake keyboard "types" */
@@ -157,143 +153,82 @@ static UCHAR s_report_descriptor[] = {
 /* USB descriptors (HID: one interface, one interrupt-IN endpoint) */
 /* -------------------------------------------------------------------------- */
 
-/* HID config: one HID interface (class 0x03, no boot subclass), one
- * interrupt-IN endpoint EP1 IN (64-byte MPS), no OUT endpoint. Total config
- * blob = 9 (config) + 9 (interface) + 9 (HID class) + 7 (EP IN) = 34 = 0x22.
- * Layout per USB 2.0 sec 9.6 + HID 1.11 sec 6.2.1. PID 0x0018 marks the HID
- * self-test identity. */
-static UCHAR s_device_framework_fs[] = {
-  /* Device descriptor (USB 2.0 sec 9.6.1) -- 18 bytes. */
-  0x12U,
-  0x01U,
-  0x00U,
-  0x02U,
-  0x00U,
-  0x00U,
-  0x00U,
-  0x40U,
-  0x09U,
-  0x12U,
-  0x18U, /* PID = 0x0018 (pid.codes test). */
-  0x00U,
-  0x00U,
-  0x01U,
-  0x01U,
-  0x02U,
-  0x03U,
-  0x01U,
-  /* Configuration descriptor (34 bytes total = 0x22). */
-  0x09U,
-  0x02U,
-  0x22U,
-  0x00U,
-  0x01U,
-  0x01U,
-  0x00U,
-  0x80U,
-  0x32U,
-  /* Interface descriptor -- HID, boot subclass (1), keyboard protocol (1). */
-  0x09U,
-  0x04U,
-  0x00U,
-  0x00U,
-  0x01U,
-  0x03U,
-  0x01U, /* bInterfaceSubClass = 1 (Boot)     */
-  0x01U, /* bInterfaceProtocol = 1 (Keyboard) */
-  0x00U,
-  /* HID class descriptor (HID 1.11 sec 6.2.1) -- 9 bytes. bcdHID 0x0111,
-     one report descriptor of sizeof(s_report_descriptor) = 45 (0x2D). */
-  0x09U,
-  0x21U,
-  0x11U,
-  0x01U,
-  0x00U,
-  0x01U,
-  0x22U,
-  0x2DU, /* wDescriptorLength = 45 (boot-keyboard report descriptor) */
-  0x00U,
-  /* Interrupt-IN endpoint (EP1 IN, 64-byte MPS, 1 ms poll). */
-  0x07U,
-  0x05U,
-  0x81U,
-  0x03U,
-  0x40U,
-  0x00U,
-  0x01U,
+/* -------------------------------------------------------------------------- */
+/* USB descriptors (DEVICE + CONFIG + INTERFACE + HID + EP IN) */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * @var s_device_framework_fs
+ * @brief The device framework, synthesised from ::k_demo_usb_dev and ::k_demo_usb_hid.
+ *
+ * @details The builder emits the 18-byte device descriptor, the configuration, the
+ * boot-keyboard interface, the HID class descriptor naming
+ * ::s_report_descriptor, and the single interrupt-IN endpoint. The report
+ * length reaches the wire from `sizeof`, so it cannot drift from the array.
+ * @since 0.1.0
+ */
+static UCHAR s_device_framework_fs[k_ra8_usb_desc_framework_bytes_max];
+
+/** @brief Bytes of ::s_device_framework_fs the builder actually wrote. */
+static ULONG s_device_framework_len;
+
+/** @brief Identity and wire sizes this app's HID function publishes. */
+typedef enum : uint16_t {
+  k_demo_usb_vid          = 0x1209U, /**< idVendor, pid.codes.          */
+  k_demo_usb_pid          = 0x0018U, /**< idProduct.                    */
+  k_demo_usb_bcd_device   = 0x0100U, /**< bcdDevice, 1.00.              */
+  k_demo_usb_packet_bytes = 64U,     /**< Interrupt-IN max packet size. */
+  k_demo_usb_poll_ms      = 1U,      /**< bInterval, frames.            */
+  k_demo_usb_max_power_ma = 100U,    /**< Bus draw in mA.               */
+  k_demo_usb_in_ep        = 0x81U,   /**< Interrupt-IN endpoint.        */
+  k_demo_usb_functions    = 1U,      /**< Functions in the config.      */
+} demo_usb_size_t;
+
+/** @brief The identity this app publishes. */
+static const ra8_usb_desc_device_t k_demo_usb_dev = {
+  .vid           = (uint16_t)k_demo_usb_vid,
+  .pid           = (uint16_t)k_demo_usb_pid,
+  .bcd_device    = (uint16_t)k_demo_usb_bcd_device,
+  .manufacturer  = "Brighton Sikarskie",
+  .product       = "RA8D2 HID TEST",
+  .serial        = "00000013",
+  .langid        = 0U,
+  .max_power_ma  = (uint16_t)k_demo_usb_max_power_ma,
+  .self_powered  = false,
+  .remote_wakeup = false,
+};
+
+/** @brief The HID endpoint layout this app publishes. */
+static const ra8_usb_desc_hid_t k_demo_usb_hid = {
+  .in_ep            = (uint8_t)k_demo_usb_in_ep,
+  .data_bytes       = (uint16_t)k_demo_usb_packet_bytes,
+  .poll_interval_ms = (uint8_t)k_demo_usb_poll_ms,
+  .report_bytes     = (uint16_t)sizeof(s_report_descriptor),
+  .boot_interface   = true,
+  .protocol         = k_ra8_usb_desc_hid_protocol_keyboard,
 };
 
 /**
  * @var s_string_framework
- * @brief USBX string descriptor table (vendor / product / serial).
- * @details Each entry: 2 bytes lang-id, 1 byte string index, 1 byte
- *          length, then ASCII bytes.
+ * @brief Synthesised string framework: manufacturer, product, serial.
+ * @note Written once by ::hid_usb_build_frameworks, then read-only.
  * @since 0.1.0
  */
-static UCHAR s_string_framework[] = {
-  /* idx 1: "Brighton Sikarskie". */
-  0x09U,
-  0x04U,
-  0x01U,
-  0x12U,
-  'B',
-  'r',
-  'i',
-  'g',
-  'h',
-  't',
-  'o',
-  'n',
-  ' ',
-  'S',
-  'i',
-  'k',
-  'a',
-  'r',
-  's',
-  'k',
-  'i',
-  'e',
-  /* idx 2: "RA8D2 HID TEST". */
-  0x09U,
-  0x04U,
-  0x02U,
-  0x0EU,
-  'R',
-  'A',
-  '8',
-  'D',
-  '2',
-  ' ',
-  'H',
-  'I',
-  'D',
-  ' ',
-  'T',
-  'E',
-  'S',
-  'T',
-  /* idx 3: serial. */
-  0x09U,
-  0x04U,
-  0x03U,
-  0x08U,
-  '0',
-  '0',
-  '0',
-  '0',
-  '0',
-  '0',
-  '1',
-  '3',
-};
+static UCHAR s_string_framework[k_ra8_usb_desc_strings_bytes_max];
+
+/** @brief Bytes written to ::s_string_framework. */
+static uint32_t s_string_framework_len = 0U;
 
 /**
  * @var s_language_id_framework
- * @brief USBX language-id table -- US English.
+ * @brief Synthesised language-id framework -- US English.
+ * @note Written once by ::hid_usb_build_frameworks, then read-only.
  * @since 0.1.0
  */
-static UCHAR s_language_id_framework[] = {k_usb_langid_en_us_lo, k_usb_langid_en_us_hi};
+static UCHAR s_language_id_framework[k_ra8_usb_desc_langid_bytes];
+
+/** @brief Bytes written to ::s_language_id_framework. */
+static uint32_t s_language_id_framework_len = 0U;
 
 /* -------------------------------------------------------------------------- */
 /* Shared HID report pattern */
@@ -371,6 +306,56 @@ static VOID hid_deactivate(VOID* hid_instance)
 /* -------------------------------------------------------------------------- */
 
 /**
+ * @brief Synthesises the device, string and language-id frameworks.
+ *
+ * @details Replaces the hand-typed descriptor tables, and now the three
+ * encoder calls that replaced them: ::ra8_usb_device_compose writes all three
+ * frameworks from ::k_demo_usb_dev plus one class entry.
+ *
+ * @return ra8_err_t ::k_ra8_ok on success, propagated builder error otherwise.
+ * @retval k_ra8_ok All three frameworks were written.
+ *
+ * @pre Call once before USBX bring-up.
+ * @post On success the framework buffers are read-only.
+ *
+ * @note Single-call; not idempotent.
+ * @since 0.1.0
+ */
+static ra8_err_t hid_usb_build_frameworks(void)
+{
+  const ra8_usb_class_t function = {
+    .kind = k_ra8_usb_class_hid,
+    .hid  = k_demo_usb_hid,
+  };
+
+  const ra8_usb_device_cfg_t cfg = {
+    .desc        = &k_demo_usb_dev,
+    .classes     = &function,
+    .class_count = (uint8_t)k_demo_usb_functions,
+  };
+
+  ra8_usb_device_frameworks_t fw = {
+    .device      = s_device_framework_fs,
+    .device_cap  = (uint32_t)sizeof(s_device_framework_fs),
+    .strings     = s_string_framework,
+    .strings_cap = (uint32_t)sizeof(s_string_framework),
+    .langid      = s_language_id_framework,
+    .langid_cap  = (uint32_t)sizeof(s_language_id_framework),
+  };
+
+  const ra8_err_t err = ra8_usb_device_compose(&cfg, &fw);
+  if (err != k_ra8_ok) {
+    return err;
+  }
+
+  s_device_framework_len      = (ULONG)fw.device_len;
+  s_string_framework_len      = fw.strings_len;
+  s_language_id_framework_len = fw.langid_len;
+
+  return k_ra8_ok;
+}
+
+/**
  * @brief Bring USBX system + device stack up with the HID framework.
  *
  * @details One-shot USBX pool + device-stack init (FS-only framework).
@@ -388,17 +373,21 @@ static VOID hid_deactivate(VOID* hid_instance)
  */
 static UINT hid_usbx_stack_up(void)
 {
+  if (hid_usb_build_frameworks() != k_ra8_ok) {
+    return UX_ERROR;
+  }
+
   if (_ux_system_initialize(s_usbx_pool, k_hid_usbx_pool_bytes, UX_NULL, 0) != UX_SUCCESS) {
     return UX_ERROR;
   }
   return _ux_device_stack_initialize((UCHAR*)UX_NULL,
                                      0,
                                      s_device_framework_fs,
-                                     sizeof(s_device_framework_fs),
+                                     s_device_framework_len,
                                      s_string_framework,
-                                     sizeof(s_string_framework),
+                                     s_string_framework_len,
                                      s_language_id_framework,
-                                     sizeof(s_language_id_framework),
+                                     s_language_id_framework_len,
                                      UX_NULL);
 }
 

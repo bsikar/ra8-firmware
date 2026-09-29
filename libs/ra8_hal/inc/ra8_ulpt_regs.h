@@ -3,6 +3,9 @@
  * @brief Ultra-Low-Power Timer (ULPT) register layout for the Renesas RA8D2
  * @ingroup grp_hal_timers
  *
+ * @par Tag
+ * [Ring 3 / HAL] {World: NS}
+ *
  * @details
  * The Ultra-Low-Power Timer is a 32-bit down-counter that can run on
  * the sub-clock or LOCO in deep-sleep modes. RA8D2 exposes two

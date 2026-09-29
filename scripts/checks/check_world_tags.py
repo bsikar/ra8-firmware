@@ -26,11 +26,21 @@ This script:
        as a Non-Secure entry point, and the project requires that
        only happen in NSC veneers.
 
-Host tooling under tools/ and vendored trees are enumerated but are NOT
-ring3+, so they require no World tag -- a documented scope decision (see
-file_is_in_ring3_plus and _select_targets), not an accident of a tuple. The
-NSC-location and cmse_nonsecure_entry bans (checks 3 and 4) apply to every
-file, everywhere.
+    5. Measures the requirement's own SCOPE against
+       .github/world-tag-scope-declaration.txt (world_tag_scope.py): every
+       first-party root the sweep enumerates carries a row saying whether the
+       World tag is required under it, and the gate reports any disagreement
+       with what file_is_in_ring3_plus() actually classifies.
+
+Which files the requirement reaches was a hand-written set of path shapes in
+file_is_in_ring3_plus(), described here as a documented decision that left out
+only host tooling and vendored code. It left out a great deal more: the
+requirement reaches 7 of 51 first-party roots, while apps/, port/ and 38
+libs/ roots sit outside it, most of them carrying Ring/World tags this gate
+never reads (#842). Those omissions are declared row by row and measured now,
+so they can be paid down instead of being invisible; which files must carry
+tags is unchanged. The NSC-location and cmse_nonsecure_entry bans (checks 3
+and 4) apply to every file, everywhere.
 
 Modes:
 
@@ -38,9 +48,15 @@ Modes:
     --strict (onward) -- exit 1 on any finding
     --selftest -- prove the bans fire and the scope decision holds, then exit
 
-A finite LEGACY_RING3_EXEMPT_PREFIXES list grandfathers the pre-tag-system
-libs/ra8_hal/ and tests/ files: each leaves the exemption automatically the
-moment it grows either tag, so the exemption only ever shrinks.
+A finite EXACT-PATH inventory (.github/world-tag-legacy-inventory.txt)
+grandfathers the pre-tag-system libs/ra8_hal/ and tests/ files. It replaced an
+open-ended PREFIX exemption on those two roots, which let a brand-new untagged
+file under either of them pass the strict gate while the comment beside it said
+new code had no route into the exemption (#842). Membership is by exact path,
+so a file that did not exist when the rule landed cannot be exempt; an
+inventoried file also leaves the exemption the moment it grows either tag, and
+a row whose file is gone or is tagged now is reported as stale. The exemption
+therefore only ever shrinks.
 """
 
 from __future__ import annotations
@@ -54,6 +70,7 @@ from collections.abc import Iterable
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
 
+import world_tag_scope
 from lint_targets import first_party_paths
 from selftest_assert import expect, report
 
@@ -101,20 +118,42 @@ def discover_app_dirs() -> tuple[str, ...]:
 
 APP_DIRS = discover_app_dirs()
 
-# Files that lived in the tree before the world-tag system was
-# introduced (baseline). They are exempt from world-tag
-# enforcement until the wave that retrofits them. As soon as a file
-# under one of these prefixes gains its [Ring N / NAME] +
-# {World: ...} tag pair, it leaves the exemption automatically:
-# the script enforces consistency on any file that already carries
-# at least one of the two tags.
+# Files that lived in the tree before the world-tag system was introduced
+# (baseline). They are exempt from world-tag enforcement until the wave that
+# retrofits them. As soon as an inventoried file gains its [Ring N / NAME] +
+# {World: ...} tag pair, it leaves the exemption automatically: the script
+# enforces consistency on any file that already carries at least one tag.
 #
-# Practical effect: starts with 0 findings; + adds tags
-# incrementally and the script catches any mismatches.
-LEGACY_RING3_EXEMPT_PREFIXES = (
-    "libs/ra8_hal/",
-    "tests/",
-)
+# The inventory is an EXACT-PATH list, not a prefix list (#842). Prefixes
+# ("libs/ra8_hal/", "tests/") exempted every FUTURE file under those roots too,
+# so a brand-new untagged HAL or test file passed the strict gate. An exact
+# list cannot grandfather a file that did not exist when the rule landed.
+LEGACY_INVENTORY_PATH = REPO_ROOT / ".github" / "world-tag-legacy-inventory.txt"
+
+
+def load_legacy_inventory(path: pathlib.Path = LEGACY_INVENTORY_PATH) -> frozenset[str]:
+    """Read the exact set of repo-relative paths grandfathered out of the tag rule.
+
+    A missing inventory yields an EMPTY set rather than an error, which fails
+    CLOSED: every Ring 3+ file is then required to carry its tags. The opposite
+    default would turn a deleted or unreadable inventory into a silently
+    tag-free tree, which is the failure mode this gate exists to prevent.
+
+    Blank lines and ``#`` comments are ignored so the file can explain itself.
+    """
+    try:
+        text = path.read_text(encoding="utf-8")
+    except OSError:
+        return frozenset()
+    entries = set()
+    for line in text.splitlines():
+        entry = line.strip()
+        if entry and not entry.startswith("#"):
+            entries.add(entry)
+    return frozenset(entries)
+
+
+LEGACY_RING3_EXEMPT_PATHS = load_legacy_inventory()
 
 # Header-window size for tag scanning. The tags must appear in the
 # first N lines of the file (just inside the file-level Doxygen
@@ -126,14 +165,202 @@ WORLD_RE = re.compile(r"\{\s*World\s*:\s*(S|NS|NSC|MIXED)\s*\}")
 NSC_ENTRY_RE = re.compile(r"__attribute__\s*\(\s*\(\s*cmse_nonsecure_entry\s*\)\s*\)")
 
 
-def is_legacy_exempt(rel_path: str) -> bool:
+def is_legacy_exempt(rel_path: str, inventory: frozenset[str] | None = None) -> bool:
     """Whether a path predates the World-tag requirement and is grandfathered.
 
-    A prefix list, deliberately finite and not extended: it records what was
-    already in the tree when the rule landed. New code has no route into it,
-    so the exemption shrinks as those files are tagged and never grows.
+    Exact membership of the finite inventory, deliberately not a prefix test:
+    the list records what was already in the tree when the rule landed. New
+    code has no route into it, so the exemption shrinks as those files are
+    tagged and never grows.
     """
-    return any(rel_path.startswith(p) for p in LEGACY_RING3_EXEMPT_PREFIXES)
+    inv = LEGACY_RING3_EXEMPT_PATHS if inventory is None else inventory
+    return rel_path in inv
+
+
+def stale_inventory_entries(inventory: frozenset[str] | None = None) -> list[str]:
+    """Report inventory rows that no longer describe an untagged file on disk.
+
+    Two ways a row goes stale: the file was deleted, or it was tagged and so
+    left the exemption on its own. Either way the row now grants nothing and
+    must come out, which is what keeps the inventory a burn-down list rather
+    than a place debt can hide. Reported as findings, so the shrink-only
+    ratchet is the gate itself and not a habit.
+    """
+    inv = LEGACY_RING3_EXEMPT_PATHS if inventory is None else inventory
+    findings: list[str] = []
+    for rel in sorted(inv):
+        path = REPO_ROOT / rel
+        if not path.is_file():
+            findings.append(
+                f"{rel}: stale world-tag legacy inventory entry -- file does not exist; "
+                f"remove the row from {LEGACY_INVENTORY_PATH.name}"
+            )
+            continue
+        text = path.read_text(encoding="utf-8", errors="replace")
+        head = "\n".join(text.splitlines()[:HEADER_LINE_WINDOW])
+        if RING_RE.search(head) is not None and WORLD_RE.search(head) is not None:
+            findings.append(
+                f"{rel}: stale world-tag legacy inventory entry -- file is tagged now; "
+                f"remove the row from {LEGACY_INVENTORY_PATH.name}"
+            )
+    return findings
+
+
+# ---------------------------------------------------------------------------
+# Inventory census (#842). The inventory header claimed the list "shrinks and
+# can never quietly grow", and nothing measured that claim: stale_inventory_
+# entries only reports rows that stopped granting anything (file deleted, file
+# tagged). A row HAND-ADDED for a brand-new untagged HAL or test file was
+# accepted in silence -- the retired prefix exemption, re-entered one path at a
+# time. The census below makes growth arithmetic the gate can check: the file
+# declares how many rows it holds, in total and per root, and a row that names
+# neither root is a finding, so no row can sit outside the counted set.
+# ---------------------------------------------------------------------------
+
+# Directive prefix. A plain "#" stays prose the gate ignores, so the header's
+# explanation and its machine-read rows cannot be mistaken for one another.
+INVENTORY_DIRECTIVE = "#!"
+
+# The two roots the retired prefix exemption covered wholesale, and therefore
+# the only roots an inventory row may name.
+INVENTORY_ROOTS = ("libs/ra8_hal/", "tests/")
+
+INVENTORY_ROWS_KEY = "rows"
+
+
+def inventory_census_keys() -> tuple[str, ...]:
+    """The census keys an inventory file must declare: the total, then each root."""
+    per_root = tuple(f"{INVENTORY_ROWS_KEY} {root}" for root in INVENTORY_ROOTS)
+    return (INVENTORY_ROWS_KEY, *per_root)
+
+
+def inventory_rows(text: str) -> list[str]:
+    """The membership rows of an inventory file, in file order.
+
+    Exactly what ``load_legacy_inventory`` treats as membership, so the census
+    cannot count a different set of lines than the exemption honours.
+    """
+    rows = []
+    for line in text.splitlines():
+        entry = line.strip()
+        if entry and not entry.startswith("#"):
+            rows.append(entry)
+    return rows
+
+
+def inventory_census(rows: Iterable[str]) -> dict[str, int]:
+    """Count rows in total and per declared root.
+
+    A row under no declared root is counted in the total and in no root, which
+    is what makes the sum check below catch it rather than letting it hide.
+    """
+    rows = list(rows)
+    census = {INVENTORY_ROWS_KEY: len(rows)}
+    for root in INVENTORY_ROOTS:
+        census[f"{INVENTORY_ROWS_KEY} {root}"] = sum(1 for r in rows if r.startswith(root))
+    return census
+
+
+def format_inventory_declaration(census: dict[str, int]) -> str:
+    """Render the census as the directive block the inventory file carries."""
+    rows = (f"{INVENTORY_DIRECTIVE} {key}: {census[key]}" for key in inventory_census_keys())
+    return "".join(f"{row}\n" for row in rows)
+
+
+def _parse_inventory_line(line: str) -> tuple[str, int]:
+    """Parse one ``#! <key>: <count>`` directive, raising on anything else."""
+    body = line[len(INVENTORY_DIRECTIVE) :].strip()
+    key, sep, value = body.partition(":")
+    key = key.strip()
+    if not sep or key not in inventory_census_keys():
+        message = f"unrecognised inventory directive: {line.strip()!r}"
+        raise ValueError(message)
+    try:
+        return key, int(value.strip())
+    except ValueError as exc:
+        message = f"inventory directive is not a count: {line.strip()!r}"
+        raise ValueError(message) from exc
+
+
+def parse_inventory_declaration(text: str) -> dict[str, int]:
+    """Read the declared census from an inventory file's directive block.
+
+    Raises ``ValueError`` on a malformed, duplicated or unknown directive: a
+    declaration the gate cannot read must not read as an absent declaration,
+    which would be a clean run over an unmeasured file.
+    """
+    declared: dict[str, int] = {}
+    for line in text.splitlines():
+        if not line.startswith(INVENTORY_DIRECTIVE):
+            continue
+        key, count = _parse_inventory_line(line)
+        if key in declared:
+            message = f"inventory declares {key!r} twice"
+            raise ValueError(message)
+        declared[key] = count
+    return declared
+
+
+def _inventory_count_failures(declared: dict[str, int], census: dict[str, int]) -> list[str]:
+    """Report a declared count that disagrees with the rows actually present."""
+    failures = []
+    for key in inventory_census_keys():
+        if key not in declared:
+            failures.append(
+                f"{LEGACY_INVENTORY_PATH.name}: missing "
+                f"'{INVENTORY_DIRECTIVE} {key}: N' declaration"
+            )
+            continue
+        if declared[key] != census[key]:
+            failures.append(
+                f"{LEGACY_INVENTORY_PATH.name}: declares {declared[key]} for {key!r} "
+                f"and holds {census[key]}"
+            )
+    return failures
+
+
+def _inventory_row_failures(rows: Iterable[str]) -> list[str]:
+    """Report a row naming no declared root, which no per-root count covers."""
+    roots = ", ".join(INVENTORY_ROOTS)
+    return [
+        f"{LEGACY_INVENTORY_PATH.name}: row {row!r} is under none of the declared "
+        f"roots ({roots}), so no per-root count measures it"
+        for row in rows
+        if not any(row.startswith(root) for root in INVENTORY_ROOTS)
+    ]
+
+
+def inventory_declaration_text_failures(text: str) -> list[str]:
+    """Report every way an inventory file's own census fails to hold."""
+    try:
+        declared = parse_inventory_declaration(text)
+    except ValueError as exc:
+        return [f"{LEGACY_INVENTORY_PATH.name}: {exc}"]
+    rows = inventory_rows(text)
+    census = inventory_census(rows)
+    failures = _inventory_count_failures(declared, census)
+    failures.extend(_inventory_row_failures(rows))
+    per_root = sum(census[f"{INVENTORY_ROWS_KEY} {root}"] for root in INVENTORY_ROOTS)
+    if per_root != census[INVENTORY_ROWS_KEY]:
+        failures.append(
+            f"{LEGACY_INVENTORY_PATH.name}: per-root counts sum to {per_root} "
+            f"but the file holds {census[INVENTORY_ROWS_KEY]} rows"
+        )
+    return failures
+
+
+def inventory_declaration_failures(path: pathlib.Path = LEGACY_INVENTORY_PATH) -> list[str]:
+    """Census findings for the inventory file on disk; a missing file is one.
+
+    Unlike ``load_legacy_inventory``, which fails closed by exempting nothing,
+    an unreadable inventory is reported here too: silence would leave the
+    burn-down list unmeasured while the sweep still passed.
+    """
+    try:
+        text = path.read_text(encoding="utf-8")
+    except OSError as exc:
+        return [f"{path.name}: unreadable world-tag legacy inventory: {exc}"]
+    return inventory_declaration_text_failures(text)
 
 
 def file_is_in_ring1_or_ring2(rel_path: str) -> bool:
@@ -216,18 +443,24 @@ def _to_repo_relative(path: pathlib.Path) -> str:
         return str(path)
 
 
-def check_file(path: pathlib.Path) -> list[str]:
+def check_file(path: pathlib.Path, rel_override: str | None = None) -> list[str]:
     """Report a missing or malformed ``{World: ...}`` tag in one file.
 
     Ring membership decides whether the tag is required at all, so the ring
     tests run before the tag is looked for -- a Ring 2 file with no tag is
     correct, not a finding.
 
+    ``rel_override`` judges the bytes at ``path`` AS the named repo-relative
+    path. Only the selftest passes it: a must-fire fixture for a NEW untagged
+    file has to sit at a real in-tree location (``libs/ra8_hal/...``) without
+    writing one into the working tree, and every scope decision here keys on
+    that path.
+
     Returns one message per finding; an empty list means the file is fine or
     out of scope.
     """
     findings: list[str] = []
-    rel = _to_repo_relative(path)
+    rel = _to_repo_relative(path) if rel_override is None else rel_override
 
     try:
         text = path.read_text(encoding="utf-8", errors="replace")
@@ -318,7 +551,194 @@ def selftest() -> int:
         "tools/ is enumerated (the scan-dir list omitted it before #358)",
         failures,
     )
+    _selftest_legacy_inventory(failures)
+    _selftest_inventory_census(failures)
+    failures.extend(
+        world_tag_scope.selftest_failures(REPO_ROOT, sorted(scope), file_is_in_ring3_plus)
+    )
     return report(failures)
+
+
+TAGGED_FIXTURE = "/* [Ring 3 / HAL] {World: S} */\nvoid f(void) { }\n"
+UNTAGGED_FIXTURE = "void f(void) { }\n"
+NSC_FIXTURE = "void f(void) __attribute__((cmse_nonsecure_entry));\n"
+
+# The two roots the old prefix exemption covered wholesale, and therefore the
+# two roots a brand-new untagged file could hide under.
+NEW_FILE_FIXTURES = (
+    "libs/ra8_hal/inc/ra8_world_tag_fixture.h",
+    "tests/hal/src/test_world_tag_fixture.c",
+)
+
+
+def _judge_as(tmp: pathlib.Path, rel: str, body: str) -> list[str]:
+    """Run the real check over ``body`` as if it were the in-tree file ``rel``.
+
+    The fixture is written outside the repository on purpose: a must-fire test
+    for a BRAND-NEW untagged file cannot create that file in the tree it is
+    guarding, or the sweep two lines later would report it.
+    """
+    fixture = tmp / "fixture.c"
+    fixture.write_text(body, encoding="utf-8")
+    return check_file(fixture, rel_override=rel)
+
+
+def _selftest_new_file_fixtures(tmpdir: pathlib.Path, failures: list[str]) -> None:
+    """Must-fire and must-stay-quiet fixtures for a new file under each legacy root."""
+    for rel in NEW_FILE_FIXTURES:
+        expect(
+            bool(_judge_as(tmpdir, rel, UNTAGGED_FIXTURE)),
+            f"a newly created untagged file at {rel} fires",
+            failures,
+        )
+        expect(
+            not _judge_as(tmpdir, rel, TAGGED_FIXTURE),
+            f"a newly created TAGGED file at {rel} stays quiet",
+            failures,
+        )
+
+
+def _selftest_legacy_inventory(failures: list[str]) -> None:
+    """Prove the exemption is exact: new files fire, inventoried ones stay quiet."""
+    inventory = load_legacy_inventory()
+    expect(
+        bool(inventory),
+        "legacy inventory is non-empty (an unreadable list must not read as clean)",
+        failures,
+    )
+    expect(
+        not is_legacy_exempt("libs/ra8_hal/inc/ra8_world_tag_fixture.h"),
+        "a NEW libs/ra8_hal/ path is not exempt (the prefix exemption was #842)",
+        failures,
+    )
+    with tempfile.TemporaryDirectory() as tmp:
+        tmpdir = pathlib.Path(tmp)
+        _selftest_new_file_fixtures(tmpdir, failures)
+        for rel in sorted(inventory)[:1]:
+            expect(
+                not _judge_as(tmpdir, rel, UNTAGGED_FIXTURE),
+                f"an inventoried legacy file ({rel}) keeps its exemption while untagged",
+                failures,
+            )
+            expect(
+                bool(_judge_as(tmpdir, rel, NSC_FIXTURE)),
+                "the NSC-location ban stays global, inventoried paths included",
+                failures,
+            )
+
+
+CENSUS_FIXTURE_ROWS = ("libs/ra8_hal/inc/ra8_fixture.h", "tests/hal/src/test_fixture.c")
+
+
+def _census_fixture(rows: tuple[str, ...] = CENSUS_FIXTURE_ROWS) -> str:
+    """A minimal inventory file text: prose, a correct declaration, then rows."""
+    census = inventory_census(rows)
+    body = "".join(f"{row}\n" for row in rows)
+    return "# fixture inventory\n" + format_inventory_declaration(census) + body
+
+
+def _selftest_census_counts(failures: list[str]) -> None:
+    """A declaration that disagrees with the rows present must fire, either way."""
+    rows = CENSUS_FIXTURE_ROWS
+    extra = _census_fixture(rows) + "tests/hal/src/test_extra.c\n"
+    expect(
+        bool(inventory_declaration_text_failures(extra)),
+        "one row MORE than declared fires (a hand-added exemption cannot hide)",
+        failures,
+    )
+    fewer = _census_fixture(rows).replace(f"{rows[0]}\n", "")
+    expect(
+        bool(inventory_declaration_text_failures(fewer)),
+        "one row FEWER than declared fires (a stale count is not a clean file)",
+        failures,
+    )
+    hal_swap = _census_fixture(rows).replace(rows[1], "tests/hal/src/test_other.c")
+    expect(
+        not inventory_declaration_text_failures(hal_swap),
+        "renaming a row within its root stays quiet (the census counts, not paths)",
+        failures,
+    )
+    moved = _census_fixture(rows).replace(rows[1], "libs/ra8_hal/src/moved.c")
+    expect(
+        bool(inventory_declaration_text_failures(moved)),
+        "moving a row between roots fires even though the total is unchanged",
+        failures,
+    )
+
+
+def _selftest_census_directives(failures: list[str]) -> None:
+    """Every unreadable or absent declaration must fire rather than read as clean."""
+    text = _census_fixture()
+    for key in inventory_census_keys():
+        dropped = "".join(
+            line + "\n"
+            for line in text.splitlines()
+            if not line.startswith(f"{INVENTORY_DIRECTIVE} {key}:")
+        )
+        expect(
+            bool(inventory_declaration_text_failures(dropped)),
+            f"omitting the '{key}' declaration fires",
+            failures,
+        )
+    expect(
+        bool(inventory_declaration_text_failures("# prose only\ntests/x/src/test_a.c\n")),
+        "an inventory with no declaration at all fires",
+        failures,
+    )
+    expect(
+        bool(
+            inventory_declaration_text_failures(
+                text + f"{INVENTORY_DIRECTIVE} {INVENTORY_ROWS_KEY}: 2\n"
+            )
+        ),
+        "a duplicated declaration fires rather than letting the last one win",
+        failures,
+    )
+    expect(
+        bool(inventory_declaration_text_failures(text + f"{INVENTORY_DIRECTIVE} rows: many\n")),
+        "a declaration that is not a count fires",
+        failures,
+    )
+    expect(
+        bool(inventory_declaration_text_failures(text + f"{INVENTORY_DIRECTIVE} ceiling: 2\n")),
+        "an unknown directive fires (a typo must not be skipped as prose)",
+        failures,
+    )
+
+
+def _selftest_inventory_census(failures: list[str]) -> None:
+    """Prove the census measures growth, and that the committed file satisfies it."""
+    census = inventory_census(CENSUS_FIXTURE_ROWS)
+    expect(
+        parse_inventory_declaration(format_inventory_declaration(census)) == census,
+        "a rendered declaration parses back to the same census (round trip)",
+        failures,
+    )
+    expect(
+        not inventory_declaration_text_failures(_census_fixture()),
+        "a self-consistent inventory fixture stays quiet",
+        failures,
+    )
+    _selftest_census_counts(failures)
+    _selftest_census_directives(failures)
+    stray = _census_fixture() + "libs/ra8_nsc/inc/ra8_nsc_x.h\n"
+    expect(
+        bool(inventory_declaration_text_failures(stray)),
+        "a row under no declared root fires (nothing else would measure it)",
+        failures,
+    )
+    with tempfile.TemporaryDirectory() as tmp:
+        absent = pathlib.Path(tmp) / "no-such-inventory.txt"
+        expect(
+            bool(inventory_declaration_failures(absent)),
+            "a missing inventory file fires (fail closed, not silently unmeasured)",
+            failures,
+        )
+    expect(
+        not inventory_declaration_failures(),
+        f"the committed {LEGACY_INVENTORY_PATH.name} satisfies its own census",
+        failures,
+    )
 
 
 def _build_parser() -> argparse.ArgumentParser:
@@ -346,9 +766,12 @@ def _select_targets(paths: list[str]) -> list[pathlib.Path]:
 
     The old ("libs","tests") + APP_DIRS list silently omitted tools/ and
     port/. Host tooling (tools/) and vendored trees are enumerated but are NOT
-    ring3+, so they require no World tag -- a documented scope decision, not an
-    accident of a tuple; the NSC-location and cmse_nonsecure_entry bans still
-    apply to every file, everywhere.
+    ring3+, so they require no World tag. Which roots are inside the
+    requirement and which are outside it is declared in
+    .github/world-tag-scope-declaration.txt and measured against
+    file_is_in_ring3_plus() on every run, rather than living only in a tuple;
+    the NSC-location and cmse_nonsecure_entry bans still apply to every file,
+    everywhere.
     """
     if paths:
         return [pathlib.Path(p) for p in paths]
@@ -389,6 +812,28 @@ def main(argv: list[str]) -> int:
     for f in iter_source_files(targets):
         file_count += 1
         findings.extend(check_file(f))
+
+    # The census reads only the inventory file, so it runs on every invocation,
+    # narrowed pre-commit hook included: a row added by hand is exactly the edit
+    # a path-scoped run is looking at, and it must not wait for CI to be seen.
+    findings.extend(inventory_declaration_failures())
+
+    # Full sweep only: a narrowed pre-commit run over three paths has no
+    # business ruling on the whole inventory.
+    if not args.paths:
+        findings.extend(stale_inventory_entries())
+
+    # The scope declaration is judged on every invocation, narrowed pre-commit
+    # runs included: it is measured against the whole first-party set rather
+    # than the paths named on the command line, so a narrowed run cannot
+    # report a scope it never looked at.
+    scope_findings, scope_line = world_tag_scope.evaluate(
+        REPO_ROOT,
+        first_party_paths(SOURCE_SUFFIXES),
+        file_is_in_ring3_plus,
+    )
+    findings.extend(scope_findings)
+    print(f"check_world_tags.py: {scope_line}", file=sys.stderr)
 
     if findings:
         for line in findings:

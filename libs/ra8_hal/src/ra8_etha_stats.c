@@ -144,6 +144,15 @@ ra8_err_t ra8_etha_descriptor_ring_init(ra8_etha_port_t channel,
   return k_ra8_ok;
 }
 
+ra8_err_t ra8_etha_descriptor_ring_init_cfg(ra8_etha_port_t channel, const ra8_etha_ring_cfg_t* cfg)
+{
+  RA8_CHECK_NULL_PTR(cfg, s_tag, "etha_descriptor_ring_init_cfg: cfg null");
+  /* Deliberately a forwarder and nothing else: the range checks, the stats
+   * write and the EATDQDC clamp stay in one place so the struct spelling
+   * and the scalar spelling can never diverge. */
+  return ra8_etha_descriptor_ring_init(channel, cfg->num_tx, cfg->num_rx, cfg->buffer_size);
+}
+
 ra8_err_t ra8_etha_get_stats(ra8_etha_port_t channel, ra8_etha_port_stats_t* out_stats)
 {
   RA8_CHECK_NULL_PTR(out_stats, s_tag, "etha_get_stats: out_stats null");

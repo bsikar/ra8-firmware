@@ -885,7 +885,7 @@ internal_c6m_transfer(void* ctx, const uint8_t* tx, uint8_t* rx, uint16_t len)
  * @retval false It is not, so no transaction may start.
  * @pre The model has been reset.
  * @pre The caller polls rather than blocks on this.
- * @post No model state is modified.
+ * @post ::ra8_c6_model_t::hs_quiet_polls counted down by one if it was set.
  * @post The value reflects the scripted flag exactly.
  * @note Not thread-safe.
  * @since 0.1.0
@@ -895,6 +895,13 @@ internal_c6m_transfer(void* ctx, const uint8_t* tx, uint8_t* rx, uint16_t len)
 RA8_INTERNAL static bool internal_c6m_handshake(void* ctx)
 {
   (void)ctx;
+  /* A scripted quiet spell comes first, so a test can model a co-processor that
+     is momentarily busy rather than absent (#594). It is consumed one sample at
+     a time, which is how the host polls it. */
+  if (s_c6.hs_quiet_polls != 0U) {
+    s_c6.hs_quiet_polls = (uint16_t)(s_c6.hs_quiet_polls - 1U);
+    return false;
+  }
   return s_c6.handshake;
 }
 

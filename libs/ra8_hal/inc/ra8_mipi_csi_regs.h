@@ -3,6 +3,9 @@
  * @brief MIPI CSI-2 Receiver register layout for the RA8D2 (HUM Ch 66)
  * @ingroup grp_hal_camera
  *
+ * @par Tag
+ * [Ring 3 / HAL] {World: NS}
+ *
  * @details
  * The RA8D2 exposes a single MIPI CSI-2 receiver block at base
  * `0x40347000` (Secure) / `0x50347000` (Non-Secure). The peripheral

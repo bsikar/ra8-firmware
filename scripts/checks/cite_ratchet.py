@@ -10,7 +10,7 @@ same MANDATORY rule: every register read/write or access must carry an external
 Hardware User's Manual citation immediately above it. The detector for that rule
 exists -- `cite_check.py --require-cites` -- and it ran in NO gate (#534).
 
-Both call sites (the `cite-check` gate and `scripts/git/pre-commit`) invoked
+Both call sites (the `cite-check` gate and the removed pre-commit hook) invoked
 `cite_check.py --strict`, which is the cite-VALIDATION pass: it checks that
 citations which ALREADY EXIST parse and point at a real chapter and page. An
 MMIO write with no citation at all is invisible to it. So the headline half of

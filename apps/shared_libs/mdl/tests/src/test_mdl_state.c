@@ -350,12 +350,10 @@ RA8_INTERNAL static void internal_test_urlname(void)
   mdl_urlname_last_segment("http://s/series/chapter-5/", seg, sizeof(seg));
   TEST_ASSERT(strcmp(seg, "chapter-5") == 0);
 
-  TEST_ASSERT_EQ((int64_t)137, (int64_t)mdl_urlname_chapter_number("http://s/read/ch-137"));
-  TEST_ASSERT_EQ((int64_t)0, (int64_t)mdl_urlname_chapter_number("http://s/read/prologue"));
-  TEST_ASSERT_EQ((int64_t)5, (int64_t)mdl_urlname_chapter_number("http://12s/ch-5"));
-  TEST_ASSERT_EQ(
-    (int64_t)108,
-    (int64_t)mdl_urlname_chapter_number("https://manhwaus.net/webtoon/s/chapter-108-5/"));
+  double chapter = -1.0;
+  TEST_ASSERT(mdl_urlname_chapter_parse("http://s/read/ch-137", &chapter) && (chapter == 137.0));
+  TEST_ASSERT(!mdl_urlname_chapter_parse("http://s/read/prologue", &chapter) && (chapter == 0.0));
+  TEST_ASSERT(mdl_urlname_chapter_parse("http://12s/ch-5", &chapter) && (chapter == 5.0));
   TEST_ASSERT(mdl_urlname_chapter_value("https://manhwaus.net/webtoon/s/chapter-108-5/") == 108.5);
   TEST_ASSERT(mdl_urlname_chapter_value("https://12.example/read/chapter-7.25/") == 7.25);
   TEST_ASSERT(mdl_urlname_chapter_value("https://s.example/read/chapter-7/?next=/chapter-999/") ==
@@ -363,7 +361,6 @@ RA8_INTERNAL static void internal_test_urlname(void)
   TEST_ASSERT(mdl_urlname_chapter_value("https://s.example/read/chapter-8/#chapter-777") == 8.0);
   TEST_ASSERT(mdl_urlname_chapter_value(
                 "https://12.example/read/prologue?next=chapter-999#chapter-777") == 0.0);
-  double chapter = -1.0;
   TEST_ASSERT(mdl_urlname_chapter_parse("https://s.example/read/chapter-0/", &chapter));
   TEST_ASSERT(chapter == 0.0);
   TEST_ASSERT(
@@ -414,14 +411,14 @@ RA8_INTERNAL static void internal_test_state_chapters_and_pages(void)
   mdl_state_init(&s_a);
   TEST_ASSERT_EQ((uint16_t)0, s_a.chapter_count);
 
-  mdl_chapter_rec_t* c1 = mdl_state_add_chapter(&s_a, "c1", "http://s/c1", (long)k_ch_five);
+  mdl_chapter_rec_t* c1 = mdl_state_add_chapter_numbered(&s_a, "c1", "http://s/c1", (double)k_ch_five, true);
   TEST_ASSERT_NOT_NULL(c1);
   TEST_ASSERT(mdl_state_find_chapter(&s_a, "c1") == c1);
   /* A matched-incomplete chapter is not "complete"; pages unknown. */
   TEST_ASSERT(!mdl_state_chapter_complete(&s_a, "c1"));
   TEST_ASSERT_EQ((uint16_t)0, mdl_state_chapter_pages(&s_a, "c1"));
   /* Adding the same id twice returns the SAME record (idempotent). */
-  TEST_ASSERT(mdl_state_add_chapter(&s_a, "c1", "http://s/c1", (long)k_ch_five) == c1);
+  TEST_ASSERT(mdl_state_add_chapter_numbered(&s_a, "c1", "http://s/c1", (double)k_ch_five, true) == c1);
   TEST_ASSERT_EQ((uint16_t)1, s_a.chapter_count);
 
   c1->complete   = true;
@@ -485,11 +482,11 @@ RA8_INTERNAL static void internal_seed_fixture(void)
                        "mysite",
                        "s.example",
                        "sites/mysite.conf");
-  mdl_chapter_rec_t* c1 = mdl_state_add_chapter(&s_a, "chapter-1", "http://s/c1", (long)k_ch_one);
+  mdl_chapter_rec_t* c1 = mdl_state_add_chapter_numbered(&s_a, "chapter-1", "http://s/c1", (double)k_ch_one, true);
   c1->complete          = true;
   c1->page_count        = (uint16_t)k_ch_two;
   c1->pages_done        = (uint16_t)k_ch_two;
-  mdl_chapter_rec_t* c2 = mdl_state_add_chapter(&s_a, "chapter-2", "http://s/c2", (long)k_ch_two);
+  mdl_chapter_rec_t* c2 = mdl_state_add_chapter_numbered(&s_a, "chapter-2", "http://s/c2", (double)k_ch_two, true);
   c2->complete          = false;
   c2->page_count        = (uint16_t)k_ch_one;
   TEST_ASSERT(mdl_state_set_series_metadata(&s_a,
@@ -812,8 +809,8 @@ RA8_INTERNAL static void internal_test_state_rejects_malformed_records(void)
   memset(long_id, 'x', sizeof(long_id));
   long_id[sizeof(long_id) - 1U] = '\0';
   mdl_state_init(&s_a);
-  TEST_ASSERT_NULL(mdl_state_add_chapter(&s_a, long_id, "https://s/c", 1L));
-  TEST_ASSERT_NULL(mdl_state_add_chapter(&s_a, "bad\tid", "https://s/c", 1L));
+  TEST_ASSERT_NULL(mdl_state_add_chapter_numbered(&s_a, long_id, "https://s/c", 1.0, true));
+  TEST_ASSERT_NULL(mdl_state_add_chapter_numbered(&s_a, "bad\tid", "https://s/c", 1.0, true));
   TEST_ASSERT(!mdl_state_add_page(&s_a, 1U, 2U, "bad\tpath", nullptr, nullptr, 0, 0U));
   internal_remove_state_fixture(path);
   TEST_END("state rejects malformed records");
@@ -949,11 +946,11 @@ RA8_INTERNAL static void internal_test_state_coverage(void)
   TEST_ASSERT(strstr(cov, "no chapters complete") != nullptr);
 
   /* Complete chapters 1, 2 and 4 -> span 1..4 with a gap at 3. */
-  mdl_chapter_rec_t* a = mdl_state_add_chapter(&s_a, "c1", "u1", (long)k_ch_one);
+  mdl_chapter_rec_t* a = mdl_state_add_chapter_numbered(&s_a, "c1", "u1", (double)k_ch_one, true);
   a->complete          = true;
-  mdl_chapter_rec_t* b = mdl_state_add_chapter(&s_a, "c2", "u2", (long)k_ch_two);
+  mdl_chapter_rec_t* b = mdl_state_add_chapter_numbered(&s_a, "c2", "u2", (double)k_ch_two, true);
   b->complete          = true;
-  mdl_chapter_rec_t* d = mdl_state_add_chapter(&s_a, "c4", "u4", (long)k_ch_four);
+  mdl_chapter_rec_t* d = mdl_state_add_chapter_numbered(&s_a, "c4", "u4", (double)k_ch_four, true);
   d->complete          = true;
   mdl_state_coverage(&s_a, cov, sizeof(cov));
   TEST_ASSERT(strstr(cov, "3 chapter(s) complete") != nullptr);

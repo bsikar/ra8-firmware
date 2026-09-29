@@ -1,21 +1,33 @@
 /**
  * @file examples/ek_ra8d2/hw_validated/c6/c6_wifi_join/src/c6_join_net.c
- * @brief NetX Duo IP bring-up over the C6 link: DHCP lease + ICMP reachability.
+ * @brief IP bring-up over the C6 link through the shared facade, plus the
+ *        application's own ICMP reachability probe.
  *
  * @par Tag
  * [Ring 6 / APP] {World: S}
  *
  * @details
- * Implements ::c6_join_net_up. Once the C6 station has associated, this creates
- * the NetX Duo packet pool and IP instance on top of ``nx_ether_driver_c6``,
- * enables ARP / UDP / ICMP, runs the vendored DHCP client to a bound lease, and
- * pings the leased gateway. All of it is the host side of the stack: the C6 is
- * a pure L2 bridge, so DHCP, ARP and ICMP are answered by the RA8, not the
+ * Implements ::c6_join_net_up. Once the C6 station has associated, this brings
+ * an IP interface up over ``nx_ether_driver_c6``, takes a DHCP lease, and pings
+ * the leased gateway. All of it is the host side of the stack: the C6 is a pure
+ * L2 bridge, so DHCP, ARP and ICMP are answered by the RA8, not the
  * co-processor.
  *
- * The heavy NetX objects are file-scope statics because this image has no heap
- * (NASA Power of 10 Rule 3). ::c6_join_net_up runs exactly once, on the
- * application worker thread.
+ * @par What this file used to be
+ * The ninety lines of vendor API every application carrying this bring-up wrote
+ * for itself: a packet pool, an IP instance, an ARP cache and a helper-thread
+ * stack created by hand, ARP / UDP / ICMP enabled one call at a time, the
+ * vendored DHCP client run to a bound lease, and four addresses read back out.
+ * That body now lives once, in ``port/netxduo``, and what is left here is this
+ * application's half of it: the buffers, the sizes, and the gateway probe.
+ *
+ * The ping stays. It is application behaviour, not bring-up: this app exists to
+ * prove the bench network answers, and ::ra8_ipif_t publishes its ``NX_IP`` so
+ * a consumer can reach the stack the facade brought up.
+ *
+ * The buffers are file-scope statics because this image has no heap (NASA Power
+ * of 10 Rule 3). ::c6_join_net_up runs exactly once, on the application worker
+ * thread.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -27,10 +39,11 @@
 
 #include "c6_join.h"
 #include "nx_api.h"
-#include "nx_ether_driver_c6.h"
-#include "nxd_dhcp_client.h"
 #include "ra8_c6link.h"
 #include "ra8_err.h"
+#include "ra8_ipif.h"
+#include "ra8_ipif_wifi.h"
+#include "ra8_wifi.h"
 #include "tx_api.h"
 
 /**
@@ -38,8 +51,11 @@
  * @brief Static sizing for the NetX Duo objects this app owns.
  * @details Sized for full 1514-octet Ethernet frames plus DHCP and ICMP working
  * set, with a comfortable packet count so a DHCP retransmit never starves ARP.
+ * These are the figures the hand-written bring-up used; the bring-up moved, the
+ * budget did not.
  * @invariant ::k_c6_join_pkt_payload is at least a full Ethernet frame plus the
- *            two-octet alignment slide the driver applies.
+ *            two-octet alignment slide the driver applies, so it is at least
+ *            ::k_ra8_ipif_pkt_payload_min.
  * @invariant ::k_c6_join_pool_bytes holds several ::k_c6_join_pkt_payload packets.
  * @par Example:
  * @code
@@ -57,93 +73,41 @@ typedef enum : uint32_t {
   k_c6_join_ping_len    = 12U,    /**< ICMP echo payload length, in octets.    */
 } c6_join_net_size_t;
 
-/** @brief NetX packet pool control block. @since 0.1.0 */
-static NX_PACKET_POOL s_pool;
+static_assert((uint32_t)k_c6_join_pkt_payload >= (uint32_t)k_ra8_ipif_pkt_payload_min,
+              "the application packet payload still clears the facade's floor");
+static_assert((uint32_t)k_ra8_c6link_mac_bytes == (uint32_t)k_ra8_wifi_mac_bytes,
+              "the link address and the facade address are the same width");
+
 /** @brief Packet-pool backing store. @since 0.1.0 */
 alignas(4) static uint8_t s_pool_mem[k_c6_join_pool_bytes];
-/** @brief NetX IP instance driven over the C6 link. @since 0.1.0 */
-static NX_IP s_ip;
 /** @brief NetX IP helper-thread stack. @since 0.1.0 */
 alignas(8) static uint8_t s_ip_stack[k_c6_join_ip_stack];
 /** @brief ARP cache backing store. @since 0.1.0 */
 alignas(4) static uint8_t s_arp_cache[k_c6_join_arp_bytes];
-/** @brief NetX DHCP client control block. @since 0.1.0 */
-static NX_DHCP s_dhcp;
 /** @brief Fixed ICMP echo payload. @since 0.1.0 */
 static char s_ping_payload[k_c6_join_ping_len] = "ra8-c6-ping";
-/** @brief Mutable pool name (NetX takes CHAR*). @since 0.1.0 */
-static CHAR s_pool_name[] = "c6_join_pool";
-/** @brief Mutable IP-instance name. @since 0.1.0 */
-static CHAR s_ip_name[] = "c6_join_ip";
-/** @brief Mutable DHCP-client name. @since 0.1.0 */
-static CHAR s_dhcp_name[] = "c6_join_dhcp";
+/** @brief The NetX control blocks and object names the bring-up fills. @since 0.1.0 */
+static ra8_ipif_t s_ipif;
+/** @brief Context the provider is handed as its ``ip_ctx``. @since 0.1.0 */
+static ra8_ipif_wifi_t s_bind;
 
-/* Create the packet pool + IP instance and enable the protocols DHCP needs. */
-static UINT priv_net_create_ip(void)
-{
-  UINT s = nx_packet_pool_create(&s_pool,
-                                 s_pool_name,
-                                 (ULONG)k_c6_join_pkt_payload,
-                                 (VOID*)s_pool_mem,
-                                 (ULONG)sizeof(s_pool_mem));
-  if (s != NX_SUCCESS) {
-    return s;
-  }
-  s = nx_ip_create(&s_ip,
-                   s_ip_name,
-                   IP_ADDRESS(0, 0, 0, 0),
-                   IP_ADDRESS(0, 0, 0, 0),
-                   &s_pool,
-                   nx_ether_driver_c6,
-                   (VOID*)s_ip_stack,
-                   (ULONG)sizeof(s_ip_stack),
-                   (UINT)k_c6_join_ip_prio);
-  if (s != NX_SUCCESS) {
-    return s;
-  }
-  s = nx_arp_enable(&s_ip, (VOID*)s_arp_cache, (ULONG)sizeof(s_arp_cache));
-  if (s != NX_SUCCESS) {
-    return s;
-  }
-  s = nx_udp_enable(&s_ip);
-  if (s != NX_SUCCESS) {
-    return s;
-  }
-  return nx_icmp_enable(&s_ip);
-}
-
-/* Run the DHCP client to a bound lease, then read the lease into out. */
-static UINT priv_net_dhcp(c6_join_lease_t* out)
-{
-  UINT s = nx_dhcp_create(&s_dhcp, &s_ip, s_dhcp_name);
-  if (s != NX_SUCCESS) {
-    return s;
-  }
-  s = nx_dhcp_start(&s_dhcp);
-  if (s != NX_SUCCESS) {
-    return s;
-  }
-  ULONG actual = 0U;
-  s            = nx_ip_status_check(&s_ip,
-                                    (ULONG)NX_IP_ADDRESS_RESOLVED,
-                                    &actual,
-                                    (ULONG)k_c6_join_dhcp_wait_ms);
-  if (s != NX_SUCCESS) {
-    return s;
-  }
-  ULONG ip     = 0U;
-  ULONG mask   = 0U;
-  ULONG gw     = 0U;
-  ULONG server = 0U;
-  (void)nx_ip_address_get(&s_ip, &ip, &mask);
-  (void)nx_ip_gateway_address_get(&s_ip, &gw);
-  (void)nx_dhcp_server_address_get(&s_dhcp, &server);
-  out->ip          = (uint32_t)ip;
-  out->mask        = (uint32_t)mask;
-  out->gateway     = (uint32_t)gw;
-  out->dhcp_server = (uint32_t)server;
-  return NX_SUCCESS;
-}
+/** @brief Buffers, sizes and waits this application brings the interface up with.
+ *  @details `driver` is left null, which is how ::ra8_ipif_wifi_bind is told to
+ *           use the C6 link driver. @since 0.1.0 */
+static const ra8_ipif_cfg_t k_ipif_cfg = {
+  .name           = "c6_join",
+  .driver         = nullptr,
+  .pool_mem       = s_pool_mem,
+  .pool_bytes     = (uint32_t)sizeof(s_pool_mem),
+  .pkt_payload    = (uint32_t)k_c6_join_pkt_payload,
+  .ip_stack       = s_ip_stack,
+  .ip_stack_bytes = (uint32_t)sizeof(s_ip_stack),
+  .ip_prio        = (uint32_t)k_c6_join_ip_prio,
+  .arp_cache      = s_arp_cache,
+  .arp_bytes      = (uint32_t)sizeof(s_arp_cache),
+  .enable_tcp     = false,
+  .dhcp_wait_ms   = (uint32_t)k_c6_join_dhcp_wait_ms,
+};
 
 /* Send bounded ICMP echoes to the gateway; true once one is answered. */
 static bool priv_net_ping(uint32_t gateway)
@@ -153,7 +117,7 @@ static bool priv_net_ping(uint32_t gateway)
   }
   for (uint32_t i = 0U; i < (uint32_t)k_c6_join_ping_tries; i++) {
     NX_PACKET* resp = NX_NULL;
-    UINT       s    = nx_icmp_ping(&s_ip,
+    UINT       s    = nx_icmp_ping(&s_ipif.ip,
                                    (ULONG)gateway,
                                    s_ping_payload,
                                    (ULONG)k_c6_join_ping_len,
@@ -177,17 +141,28 @@ ra8_err_t c6_join_net_up(ra8_c6link_t* link, const ra8_c6link_mac_t* mac, c6_joi
   }
   *out = (c6_join_lease_t){};
 
-  nx_ether_driver_c6_bind(link);
-  nx_ether_driver_c6_set_mac(mac->octet);
-  nx_system_initialize();
+  ra8_wifi_mac_t station = {};
+  (void)memcpy(station.octet, mac->octet, sizeof(station.octet));
 
-  if (priv_net_create_ip() != NX_SUCCESS) {
-    return k_ra8_err_not_initialized;
+  s_bind = (ra8_ipif_wifi_t){
+    .ipif = &s_ipif,
+    .cfg  = &k_ipif_cfg,
+    .link = link,
+  };
+  /* The handle is file-scope, so a second association would otherwise meet an
+     interface still up from the first. Down on a handle that was never up, or
+     is already down, is a no-op. */
+  (void)ra8_ipif_down(&s_ipif);
+
+  ra8_wifi_lease_t lease  = {};
+  const ra8_err_t  leased = ra8_ipif_wifi_bind(&s_bind, &station, &lease);
+  if (leased != k_ra8_ok) {
+    return leased;
   }
-  if (priv_net_dhcp(out) != NX_SUCCESS) {
-    *out = (c6_join_lease_t){};
-    return k_ra8_err_timeout;
-  }
-  out->ping_ok = priv_net_ping(out->gateway);
+  out->ip          = lease.ip;
+  out->mask        = lease.mask;
+  out->gateway     = lease.gateway;
+  out->dhcp_server = lease.dhcp_server;
+  out->ping_ok     = priv_net_ping(out->gateway);
   return k_ra8_ok;
 }

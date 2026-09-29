@@ -3,6 +3,9 @@
  * @brief Coverage top-up for the native USB device-side Printer class
  *        layer (`libs/ra8_hal/src/ra8_usb_pprn.c`)
  *
+ * @par Tag
+ * [Ring 3 / HAL] {World: NS}
+ *
  * @details
  * Companion to `test_ra8_usb_pprn.c`. That suite covers the public-API
  * happy path and the argument-rejection contract; this file drives the

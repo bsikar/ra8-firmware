@@ -4,6 +4,9 @@
  * @ingroup grp_hal_system
  *        for the Renesas RA8D2
  *
+ * @par Tag
+ * [Ring 3 / HAL] {World: S}
+ *
  * @details
  * The RA8D2 reset-cause / reset-control registers physically live
  * inside the System Control (SYSC) block at base ``0x4001_E000``.

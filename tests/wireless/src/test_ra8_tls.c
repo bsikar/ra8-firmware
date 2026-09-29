@@ -77,9 +77,13 @@ RA8_INTERNAL static void internal_loop_reset(void)
  * @brief BIO send callback that buffers ciphertext in ``s_loop``.
  * @copydoc internal_loop_bio_send
  */
-RA8_INTERNAL static int internal_loop_bio_send(void* ctx, const uint8_t* buf, size_t len)
+RA8_INTERNAL static ra8_err_t internal_loop_bio_send(void*          ctx,
+                                                     const uint8_t* buf,
+                                                     size_t         len,
+                                                     size_t*        out_sent)
 {
   (void)ctx;
+  *out_sent           = 0U;
   loop_bio_t* loop    = &s_loop;
   size_t      written = 0U;
   while ((written < len) && (loop->count < (uint16_t)k_loop_buf_capacity)) {
@@ -88,16 +92,21 @@ RA8_INTERNAL static int internal_loop_bio_send(void* ctx, const uint8_t* buf, si
     loop->count++;
     written++;
   }
-  return (int)written;
+  *out_sent = written;
+  return k_ra8_ok;
 }
 
 /**
  * @brief BIO recv callback that drains ciphertext from ``s_loop``.
  * @copydoc internal_loop_bio_recv
  */
-RA8_INTERNAL static int internal_loop_bio_recv(void* ctx, uint8_t* buf, size_t len)
+RA8_INTERNAL static ra8_err_t internal_loop_bio_recv(void*    ctx,
+                                                     uint8_t* buf,
+                                                     size_t   len,
+                                                     size_t*  out_received)
 {
   (void)ctx;
+  *out_received    = 0U;
   loop_bio_t* loop = &s_loop;
   size_t      read = 0U;
   while ((read < len) && (loop->count > 0U)) {
@@ -106,7 +115,8 @@ RA8_INTERNAL static int internal_loop_bio_recv(void* ctx, uint8_t* buf, size_t l
     loop->count--;
     read++;
   }
-  return (int)read;
+  *out_received = read;
+  return k_ra8_ok;
 }
 
 /* =============================================================================
@@ -121,9 +131,9 @@ RA8_INTERNAL static int internal_loop_bio_recv(void* ctx, uint8_t* buf, size_t l
 RA8_INTERNAL static ra8_tls_session_cfg_t internal_make_loopback_cfg(void)
 {
   ra8_tls_session_cfg_t cfg = {};
-  cfg.bio_send              = internal_loop_bio_send;
-  cfg.bio_recv              = internal_loop_bio_recv;
-  cfg.bio_ctx               = &s_loop;
+  cfg.transport.send        = internal_loop_bio_send;
+  cfg.transport.recv        = internal_loop_bio_recv;
+  cfg.transport.ctx         = &s_loop;
   cfg.server_name           = "test.local";
   return cfg;
 }
@@ -184,15 +194,15 @@ RA8_INTERNAL static void internal_test_session_open_invalid_args(void)
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_tls_session_open(&s, nullptr));
   TEST_ASSERT_NULL(s);
 
-  /* NULL bio_send rejected. */
+  /* NULL transport.send rejected. */
   ra8_tls_session_cfg_t bad = internal_make_loopback_cfg();
-  bad.bio_send              = nullptr;
+  bad.transport.send        = nullptr;
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_tls_session_open(&s, &bad));
   TEST_ASSERT_NULL(s);
 
-  /* NULL bio_recv rejected. */
+  /* NULL transport.recv rejected. */
   bad          = internal_make_loopback_cfg();
-  bad.bio_recv = nullptr;
+  bad.transport.recv = nullptr;
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_tls_session_open(&s, &bad));
   TEST_ASSERT_NULL(s);
 
@@ -372,7 +382,7 @@ RA8_INTERNAL static void internal_test_io_arg_validation(void)
  * Two 2-condition decisions in libs/ra8_tls/src/ra8_tls.c:
  *
  * Decision A (line 217, ``ra8_tls_session_open``):
- * ``if ((cfg->bio_send == NULL) || (cfg->bio_recv == NULL))``
+ * ``if ((cfg->transport.send == NULL) || (cfg->transport.recv == NULL))``
  * - V1: send=valid, recv=valid -> C1=F,C2=F -> dec F (open ok)
  * - V2: send=NULL, recv=valid  -> C1=T (short-circuits) -> dec T (invalid_arg)
  * - V3: send=valid, recv=NULL  -> C1=F,C2=T -> dec T (invalid_arg)
@@ -399,12 +409,12 @@ RA8_INTERNAL static void internal_test_mcdc_tls(void)
 
   s                        = nullptr;
   ra8_tls_session_cfg_t v2 = internal_make_loopback_cfg();
-  v2.bio_send              = nullptr;
+  v2.transport.send        = nullptr;
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_tls_session_open(&s, &v2));
 
   s                        = nullptr;
   ra8_tls_session_cfg_t v3 = internal_make_loopback_cfg();
-  v3.bio_recv              = nullptr;
+  v3.transport.recv        = nullptr;
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_tls_session_open(&s, &v3));
 
   /* Decision B vectors. Need a live session. */

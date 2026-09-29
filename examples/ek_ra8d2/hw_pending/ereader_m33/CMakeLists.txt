@@ -61,12 +61,23 @@ ra8_add_cpu1_image(
 )
 
 if(TARGET ereader_m33_cpu1.elf)
-  target_sources(
+  # The three ra8_gfx TUs come on through ra8_cpu1_add_first_party_sources(),
+  # which bolts them onto the image AND applies the per-source first-party
+  # profile (-Wall -Wextra -Werror ... -Wstack-usage=2048 -fstack-usage), the
+  # same set ra8_add_cpu1_image() puts on cpu1_main.c. They compile clean on
+  # it under arm-none-eabi-gcc 13.3.1 at this image's -Os, so their rows are
+  # gone from .github/cpu1-warning-profile-baseline.txt (#843 / T1-09).
+  ra8_cpu1_add_first_party_sources(
     ereader_m33_cpu1.elf
-    PRIVATE ${RA8_REPO_ROOT}/libs/ra8_gfx/src/ra8_gfx_text.c
-            ${RA8_REPO_ROOT}/libs/ra8_gfx/src/ra8_gfx_text_glyph.c
-            ${RA8_REPO_ROOT}/libs/ra8_gfx/src/ra8_gfx_font_8x16.c
-            ${RA8_REPO_ROOT}/libs/ra8_hal/src/ra8_ipc.c
+    ${RA8_REPO_ROOT}/libs/ra8_gfx/src/ra8_gfx_text.c
+    ${RA8_REPO_ROOT}/libs/ra8_gfx/src/ra8_gfx_text_glyph.c
+    ${RA8_REPO_ROOT}/libs/ra8_gfx/src/ra8_gfx_font_8x16.c
+    # ra8_ipc.c now comes on the bar too, and its inventory row is gone. The
+    # two diagnostics that used to hold it back are both fixed in first-party
+    # code, not silenced: the unused s_tag went away when the compiled-out
+    # ra8_log macros started using their arguments, and the channel-regs cast
+    # no longer casts a call expression (-Wbad-function-cast).
+    ${RA8_REPO_ROOT}/libs/ra8_hal/src/ra8_ipc.c
   )
   target_compile_definitions(ereader_m33_cpu1.elf PRIVATE RA8_LOG_LEVEL=0)
 endif()

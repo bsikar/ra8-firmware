@@ -342,7 +342,8 @@ RA8_INTERNAL static void internal_check_fs_byte_roundtrip(ra8_fs_mount_t* mount)
  * vectors are all-valid, null context, null file, and null destination. Each
  * condition alone changes the decision result from false to true.
  * @pre The deterministic FAT16 and EPUB fixtures can be rebuilt in memory.
- * @post The valid vector reads the ZIP signature byte; invalid vectors write nothing.
+ * @post The valid vector reads the ZIP signature byte; invalid vectors write nothing
+ *       and report `k_ra8_err_null_ptr` with `*out_read` cleared.
  * @note File-local filesystem state makes this test single-threaded.
  * @since 0.1.0
  */
@@ -360,11 +361,21 @@ RA8_INTERNAL static void internal_test_epub_fs_stream_read_mcdc(void)
   epub_stream_fs_ctx_t valid   = {.file = file};
   epub_stream_fs_ctx_t no_file = {.file = nullptr};
   uint8_t              byte    = 0U;
-  TEST_ASSERT_EQ(1U, priv_epub_fs_stream_read(&valid, 0U, &byte, 1U));
+  uint32_t             got     = 0U;
+  TEST_ASSERT_EQ(k_ra8_ok, priv_epub_fs_stream_read(&valid, 0U, &byte, 1U, &got));
+  TEST_ASSERT_EQ(1U, got);
   TEST_ASSERT_EQ('P', byte);
-  TEST_ASSERT_EQ(0U, priv_epub_fs_stream_read(nullptr, 0U, &byte, 1U));
-  TEST_ASSERT_EQ(0U, priv_epub_fs_stream_read(&no_file, 0U, &byte, 1U));
-  TEST_ASSERT_EQ(0U, priv_epub_fs_stream_read(&valid, 0U, nullptr, 1U));
+  got = 1U;
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr, priv_epub_fs_stream_read(nullptr, 0U, &byte, 1U, &got));
+  TEST_ASSERT_EQ(0U, got);
+  got = 1U;
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr, priv_epub_fs_stream_read(&no_file, 0U, &byte, 1U, &got));
+  TEST_ASSERT_EQ(0U, got);
+  got = 1U;
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr, priv_epub_fs_stream_read(&valid, 0U, nullptr, 1U, &got));
+  TEST_ASSERT_EQ(0U, got);
+  /* out_read itself is the fourth operand now, and it is rejected on its own. */
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr, priv_epub_fs_stream_read(&valid, 0U, &byte, 1U, nullptr));
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_close(file));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(mount));

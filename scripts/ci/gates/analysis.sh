@@ -131,7 +131,7 @@ gate_cppcheck() (
 #
 # docs/STATIC_ANALYSIS.md claimed "CI runs bash scripts/checks/scan_build.sh
 # --strict" for months while no workflow ran it and RA8_GATE_REGISTRY had no
-# such gate (#532); scripts/git/pre-commit even carried a comment saying so, so
+# such gate (#532); the removed pre-commit hook even carried a comment saying so, so
 # the tree contradicted itself. This row is what makes the sentence true.
 #
 # require_cmd on the PINNED major, not a bare `scan-build`: the CI image
@@ -288,12 +288,15 @@ gate_nsc_cmse() (
 )
 
 # --- sg-offsets -----------------------------------------------------------
-# The only automated guard that the NSC Secure-Gateway veneer slot offsets in
-# the linked SECURE ELF still match the k_sg_off_* enum ns_main.c reaches them
-# by (ld emits the 8-byte stubs in ascending symbol order, so a rename or
-# reorder silently shifts the slots). Reads the build-cross output:
-# tz_nsc_cgc_usb is the app that binds all three ra8_nsc_cgc_* veneers. Its NS
-# image and every non-TZ app carry no veneers and the checker skips them.
+# Guards the NSC Secure-Gateway veneer slot offsets in the linked SECURE ELF:
+# the CMSE import library binds the NS image to those byte offsets, so a rename
+# or reorder silently shifts every NS->Secure call (ld's stub order is not
+# ascending symbol-name order, so it cannot be predicted from the names).
+# Reads the build-cross output: tz_nsc_cgc_usb is the app whose veneer set the
+# pinned EXPECTED_OFFSETS table was derived from. The structural one-veneer-per
+# -slot rule runs on every secure image with an NSC region, and ra8d2-ereader /
+# tz_threadx_demo now run the checker POST_BUILD themselves. Its NS image and
+# every non-TZ app carry no veneers and the checker skips them.
 gate_sg_offsets() (
   set -e
   local elf

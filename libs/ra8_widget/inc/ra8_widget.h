@@ -121,11 +121,19 @@ struct ra8_widget; /* fwd */
 typedef struct {
   /**
    * @brief Report the widget's desired size within an available box.
+   * @details ::ra8_widget_layout_stack runs this for a visible widget that
+   *          pins no extent (`fixed == 0`) and claims no flex weight
+   *          (`flex == 0`), and uses the main-axis answer as that child's
+   *          fixed extent -- so a content-sized widget sizes itself instead of
+   *          collapsing. A widget with a `fixed` extent or a `flex` weight is
+   *          never measured: the caller's own sizing wins. NULL means "size me
+   *          from `fixed` / `flex` alone", which is what every widget in this
+   *          library binds today.
    * @param[in]  w      The widget instance.
-   * @param[in]  avail_w Available width (pixels).
-   * @param[in]  avail_h Available height (pixels).
-   * @param[out] out_w  Desired width (clamped by the caller).
-   * @param[out] out_h  Desired height (clamped by the caller).
+   * @param[in]  avail_w Available width: the frame inset by its padding.
+   * @param[in]  avail_h Available height: the frame inset by its padding.
+   * @param[out] out_w  Desired width; the caller clamps it to `avail_w`.
+   * @param[out] out_h  Desired height; the caller clamps it to `avail_h`.
    */
   void (*measure)(struct ra8_widget* w,
                   int32_t            avail_w,
@@ -153,8 +161,11 @@ typedef struct {
  * @details
  * `fixed` / `flex` drive the container layout the same way `ra8_box` does:
  * `fixed > 0` pins the main-axis extent, otherwise `flex` weight splits the
- * leftover. `visible == false` removes the widget from layout / routing /
- * render entirely (dwm opt-in). `dirty` + `refresh` track pending damage.
+ * leftover. `fixed == 0` with `flex == 0` pins nothing and weights nothing, so
+ * the layout asks the widget's `measure` for its main-axis extent and the
+ * widget collapses only when it has no `measure` (or wants nothing).
+ * `visible == false` removes the widget from layout / routing / render
+ * entirely (dwm opt-in). `dirty` + `refresh` track pending damage.
  */
 typedef struct ra8_widget {
   const ra8_widget_vtable_t* vt;        /**< Behaviour table (non-NULL).     */
@@ -192,6 +203,14 @@ typedef enum : uint8_t {
  * computed rect back into `widget->rect`. Invisible widgets keep their old
  * rect. No allocation: the caller supplies the `ra8_box` scratch.
  *
+ * Before the layout runs, each visible widget that pins no extent
+ * (`fixed == 0`) and claims no flex weight (`flex == 0`) is measured through
+ * its vtable's `measure` with the frame's content box (the frame inset by
+ * @p pad on all four sides) as the available size; the main-axis answer,
+ * clamped to that box, becomes its fixed extent. A widget with a `fixed`
+ * extent, a `flex` weight, or no `measure` is not measured and sizes exactly
+ * as before.
+ *
  * @param[in,out] widgets  Widget array.
  * @param[in]     count    Number of widgets.
  * @param[in]     frame    Outer rectangle the stack fills.
@@ -209,6 +228,7 @@ typedef enum : uint8_t {
  * @pre `widgets` covers `count`; `frame` non-NULL.
  * @pre `box_scratch` holds at least (visible_count + 1) nodes.
  * @post Every visible widget reachable has its `rect` assigned.
+ * @post A measured widget's extent is within the frame's content box.
  *
  * @note Not thread-safe.
  * @since 0.1.0

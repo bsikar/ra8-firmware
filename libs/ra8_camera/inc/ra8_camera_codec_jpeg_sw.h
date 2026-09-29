@@ -76,8 +76,10 @@ typedef struct {
  * @pre No other call mutates them while encoding.
  * @post On success RGB888 and UYVY422 inputs can be encoded as JPEG.
  * @post On error `codec` and `state` are unchanged.
- * @note Independent state objects are thread-safe; `ra8_jpeg_sw_encode` is
- *       re-entrant.
+ * @note Separate state objects do NOT make concurrent encodes safe: the
+ *       backend calls `ra8_jpeg_sw_encode()`, which serialises on
+ *       module-static codec state. See the @par Concurrency section of
+ *       `ra8_jpeg_sw.h`. One encode may be in flight process-wide.
  * @since 0.1.0
  */
 [[nodiscard]] ra8_err_t ra8_camera_codec_jpeg_sw_init(ra8_camera_codec_t*                   codec,

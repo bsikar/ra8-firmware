@@ -1,6 +1,10 @@
 /**
  * @file test_ra8_usb_hhid_pipe_cov.c
  * @brief White-box coverage for host-HID pipe setup error propagation.
+ *
+ * @par Tag
+ * [Ring 3 / HAL] {World: NS}
+ *
  * @details Compiles the production class flow as a private copy and replaces
  * only endpoint configuration with a deterministic synchronous script.
  *

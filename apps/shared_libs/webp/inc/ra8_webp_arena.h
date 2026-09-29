@@ -12,14 +12,16 @@
  * that -- when built with `-DRA8_WEBP_USE_ARENA` -- redirects those three
  * functions to the hooks below, exactly the way `stb_image` is fronted by
  * ::ra8_img_arena (see
- * `apps/shared_libs/third_party/stb/stb_image_impl.c`). This arena is
- * a deliberate sibling of ra8_img_arena rather than a reuse of it: keeping the
- * WebP decoder decoupled from `apps/shared_libs/reflow` until the #289 band-tile render
- * path lands avoids a premature cross-library dependency, and the WebP path
- * additionally needs a zeroing ::ra8_webp_arena_calloc that the stb hooks do
- * not expose.
+ * `apps/shared_libs/third_party/stb/stb_image_impl.c`).
  *
- * The allocator is a bump arena with reference-counted auto-reset: each
+ * @par What is left here (#768)
+ * The arithmetic is not. `libs/ra8_imgdec/inc/ra8_imgdec_scratch.h` carries the
+ * bump-scratch policy the decoder shims share, and ::ra8_webp_arena_t is that
+ * record: this header is now the libwebp-shaped face of it. What stays is the
+ * part libwebp forces: `WebPSafeMalloc` and friends take no context argument,
+ * so the bound-arena slot has to be file-static on this side of the seam.
+ *
+ * The policy is a bump allocator with reference-counted rewind: each
  * ra8_webp_arena_malloc()/_calloc() bumps `offset` and increments `live`; each
  * ra8_webp_arena_free() decrements `live` and, when it reaches zero, rewinds
  * `offset` to the base. A one-shot WebP decode frees all of its scratch before
@@ -27,6 +29,14 @@
  * bookkeeping, robust to any free order, immune to fragmentation. On exhaustion
  * the malloc hook returns nullptr; libwebp propagates that as a decode failure
  * rather than corrupting memory.
+ *
+ * @par Zero-byte requests
+ * A request for nothing is refused with nullptr rather than answered with a
+ * live block, which is the shared contract's rule and a tightening of what
+ * this shim used to do. libwebp asserts `nmemb * size > 0` on the line before
+ * every one of these calls, so a zero-byte request is already a contract
+ * violation on its side; handing back a block that can never be written only
+ * hid it until the matching free.
  *
  * NASA Power-of-10 Rule 3 (no dynamic allocation after init): the backing
  * store is caller-owned static/SRAM/SDRAM storage, never `malloc`.
@@ -43,14 +53,19 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include "ra8_imgdec_scratch.h"
+
 /**
- * @struct ra8_webp_arena_t
+ * @typedef ra8_webp_arena_t
  * @brief Caller-owned bump arena backing a single WebP decode.
  *
- * @details A linear bump allocator over `base[0..cap)` with a live-block count:
- * libwebp's allocations bump `offset`, each free decrements `live`, and the
- * arena auto-resets to empty when `live` reaches 0 -- so it fully drains after
- * each decode with no caller bookkeeping and no fragmentation.
+ * @details The shared decoder scratch record, ::ra8_imgdec_scratch_t, under the
+ * name the libwebp seam uses. A linear bump allocator over `base[0..cap)` with
+ * a live-block count: libwebp's allocations bump `offset`, each free decrements
+ * `live`, and the arena auto-resets to empty when `live` reaches 0 -- so it
+ * fully drains after each decode with no caller bookkeeping and no
+ * fragmentation. It additionally records a `high_water` mark, which is how a
+ * consumer sizes the backing store from a run's peak instead of guessing.
  *
  * @invariant `offset <= cap` at all times.
  * @invariant `live == 0` implies `offset == 0` (fully drained).
@@ -66,14 +81,10 @@
  * @endcode
  *
  * @see ra8_webp_arena_bind()
+ * @see ra8_imgdec_scratch_t
  * @since 0.1.0
  */
-typedef struct {
-  uint8_t* base;   /**< First byte of caller-owned backing store (>= @c cap bytes). */
-  size_t   cap;    /**< Backing-store capacity in bytes.                            */
-  size_t   offset; /**< Bump cursor; next allocation starts here. Managed field.    */
-  uint32_t live;   /**< Count of outstanding (unfreed) allocations. Managed field.  */
-} ra8_webp_arena_t;
+typedef ra8_imgdec_scratch_t ra8_webp_arena_t;
 
 /**
  * @brief Bind @p arena as the active scratch for subsequent decode allocations.

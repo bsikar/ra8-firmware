@@ -658,9 +658,10 @@ static void internal_test_arena_malloc_and_bind(void)
  * apps/shared_libs/webp/src/ra8_webp_arena.c@ra8_webp_arena_calloc).
  *  - V1: size=2,       nmemb=SIZE_MAX -> (T,T) -> NULL (overflow rejected).
  *  - V2: size=4,       nmemb=4        -> (T,F) -> zeroed block (no overflow).
- *  - V3: size=0,       nmemb=8        -> (F,-) -> malloc(0) block (short-circuit).
+ *  - V3: size=0,       nmemb=8        -> (F,-) -> refused, nothing reserved.
  * V1+V2 prove the overflow term independently drives the outcome; V2/V3 vary
- * `size != 0`. `&&` short-circuits so V3 leaves the second condition unevaluated.
+ * `size != 0`. Since #768 the shared scratch refuses a zero-byte request rather
+ * than answering it with a live block that can never be written.
  * @since 0.1.0
  * @pre The test exclusively owns the shared WebP fixture state.
  * @pre All embedded fixture bytes and caller-owned buffers remain valid for the call.
@@ -686,8 +687,10 @@ static void internal_test_arena_calloc_overflow_mcdc(void)
     TEST_ASSERT_EQ(0, z[i]);
   }
 
-  /* V3 (F,-): size == 0 short-circuits; zero-length block, no memset. */
-  TEST_ASSERT_NOT_NULL(ra8_webp_arena_calloc(8U, 0U));
+  /* V3 (F,-): size == 0 is refused, and nothing is reserved for it. */
+  const size_t before = a.offset;
+  TEST_ASSERT_NULL(ra8_webp_arena_calloc(8U, 0U));
+  TEST_ASSERT_EQ(before, a.offset);
 
   ra8_webp_arena_unbind();
   TEST_END("ra8_webp_arena_calloc: overflow MC/DC");

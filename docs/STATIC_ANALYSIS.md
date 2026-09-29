@@ -211,7 +211,7 @@ takes minutes -- too expensive to gate every commit). Instead:
   This section once claimed CI ran `--strict` "on every push" and that the
   gate was "warn-only today". Neither was true: no workflow invoked
   the script, `RA8_GATE_REGISTRY` had no such gate, and
-  `scripts/git/pre-commit` carried a comment saying exactly that -- so the tree
+  the `pre-commit-checks` CI gate carried a comment saying exactly that -- so the tree
   contradicted itself in writing. That was #532.
 
 ## Cross-references

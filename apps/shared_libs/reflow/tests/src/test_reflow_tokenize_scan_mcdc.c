@@ -11,7 +11,7 @@
  * content, emit-pool exhaustion), the end-tag scanner and block-end emission,
  * and the raw-text `<style>` / `<script>` body handling. Every test drives
  * the real tokenizer over crafted byte strings; the shared engine fixture
- * lives in tests/inc/reflow_tokenize_test_util.h.
+ * lives in apps/shared_libs/reflow/tests/inc/reflow_tokenize_test_util.h.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT

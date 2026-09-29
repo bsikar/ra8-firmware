@@ -33,6 +33,7 @@
 #include "ra8_check.h"
 #include "ra8_compress.h"
 #include "ra8_err.h"
+#include "ra8_imgdec.h"
 #include "ra8_jpeg_sw.h"
 #include "ra8_log.h"
 #include "ra8_webp.h"
@@ -46,44 +47,52 @@ static const char* const s_tag = "jof_prod";
  */
 typedef enum : uint32_t {
   k_jof_sniff_bytes     = 12U,    /**< Magic bytes pulled up front (WebP needs 12). */
-  k_jof_png_sig_len     = 8U,     /**< PNG signature length.                        */
   k_jof_jpeg_soi_first  = 0xFFU,  /**< JPEG SOI first byte.                         */
   k_jof_jpeg_soi_second = 0xD8U,  /**< JPEG SOI second byte.                        */
-  k_jof_webp_fourcc_ofs = 8U,     /**< Offset of the "WEBP" fourCC.                 */
   k_jof_png_ring        = 65536U, /**< PNG inflate ring carve (bytes).              */
   k_jof_png_inbuf       = 4096U,  /**< PNG input-buffer carve (bytes).              */
   k_jof_byte_mask       = 0xFFU,  /**< Low-byte mask.                               */
   k_jof_le_sh8          = 8U,     /**< Little-endian shift.                         */
   k_jof_le_sh16         = 16U,    /**< Little-endian shift.                         */
   k_jof_le_sh24         = 24U,    /**< Little-endian shift.                         */
-  k_jof_png_ihdr_w      = 16U,    /**< PNG IHDR width field offset (big-endian).    */
-  k_jof_png_ihdr_h      = 20U,    /**< PNG IHDR height field offset (big-endian).   */
-  k_jof_png_ihdr_end    = 24U,    /**< Bytes needed to read both IHDR fields.       */
 } jof_prod_const_t;
 
-/** @brief Fixed non-ASCII bytes in the PNG signature. */
-typedef enum : uint8_t {
-  k_jof_png_sig_high = 0x89U, /**< High-bit signature byte. */
-  k_jof_png_sig_cr   = 0x0DU, /**< Carriage return byte.    */
-  k_jof_png_sig_lf   = 0x0AU, /**< Line feed byte.          */
-  k_jof_png_sig_sub  = 0x1AU, /**< DOS EOF byte.            */
-} jof_png_signature_t;
+static_assert((uint32_t)k_jof_sniff_bytes == (uint32_t)k_ra8_imgdec_sniff_bytes,
+              "the producer's sniff window must match the shared sniff's");
 
-/** @brief PNG signature for source sniffing (mirrors the PNG decoder unit). */
-static const uint8_t s_prod_png_sig[k_jof_png_sig_len] = {k_jof_png_sig_high,
-                                                          'P',
-                                                          'N',
-                                                          'G',
-                                                          k_jof_png_sig_cr,
-                                                          k_jof_png_sig_lf,
-                                                          k_jof_png_sig_sub,
-                                                          k_jof_png_sig_lf};
+static_assert((uint32_t)k_ra8_imgdec_dim_max <= (uint32_t)k_jof_max_dim,
+              "the shared probe's dimension cap must not exceed the container's");
 
-/** @brief WebP RIFF container tag (source head bytes 0..3). */
-static const uint8_t s_prod_webp_riff[k_jof_magic_len] = {'R', 'I', 'F', 'F'};
-
-/** @brief WebP form-type fourCC (source head bytes 8..11). */
-static const uint8_t s_prod_webp_webp[k_jof_magic_len] = {'W', 'E', 'B', 'P'};
+/**
+ * @brief Name the container the source head carries, or the empty set.
+ * @details Forwards to ::ra8_imgdec_sniff, the one in-tree container sniff
+ *          (#768), so the producer no longer carries its own PNG signature
+ *          and WebP fourCC tables. A refusal is folded into
+ *          ::k_ra8_imgdec_format_none: this producer has exactly one answer
+ *          for "not a container I decode", and the sniff's distinction
+ *          between "too short" and "no signature matched" does not change it.
+ * @param[in] data Source bytes.
+ * @param[in] len  Readable length of @p data in bytes.
+ * @return The single container bit the signature named.
+ * @retval k_ra8_imgdec_format_none Nothing matched, or the head is too short.
+ * @pre @p data holds @p len readable bytes.
+ * @post No state is mutated.
+ * @post The result depends only on the first twelve source bytes.
+ * @note Pure; thread-safe.
+ * @see ra8_imgdec_sniff()
+ * @since 0.1.0
+ */
+RA8_INTERNAL
+RA8_INTERNAL static ra8_imgdec_format_t internal_sniffed(const uint8_t* data, size_t len)
+{
+  ra8_imgdec_format_t     fmt = k_ra8_imgdec_format_none;
+  const uint32_t          n   = (len > (size_t)UINT32_MAX) ? UINT32_MAX : (uint32_t)len;
+  const ra8_err_t         rc  = ra8_imgdec_sniff(data, n, &fmt);
+  if (rc != k_ra8_ok) {
+    return k_ra8_imgdec_format_none;
+  }
+  return fmt;
+}
 
 /** @brief Implementation of `priv_jof_bump_take()` -- aligned linear carve. */
 RA8_PRIV void* priv_jof_bump_take(jof_bump_t* bump, size_t len)
@@ -739,7 +748,8 @@ internal_dispatch(jof_prod_state_t* st, const uint8_t* head, jof_prefix_pull_t* 
                                       priv_jof_on_rows,
                                       st);
   }
-  if (memcmp(head, s_prod_png_sig, sizeof(s_prod_png_sig)) == 0) {
+  const ra8_imgdec_format_t sniffed = internal_sniffed(head, (size_t)k_jof_sniff_bytes);
+  if (sniffed == k_ra8_imgdec_format_png) {
     return priv_jof_png_rows(priv_jof_prefix_pull,
                              pfx,
                              st->bump,
@@ -749,85 +759,10 @@ internal_dispatch(jof_prod_state_t* st, const uint8_t* head, jof_prefix_pull_t* 
                              priv_jof_on_rows,
                              st);
   }
-  if ((memcmp(head, s_prod_webp_riff, sizeof(s_prod_webp_riff)) == 0) &&
-      (memcmp(&head[k_jof_webp_fourcc_ofs], s_prod_webp_webp, sizeof(s_prod_webp_webp)) == 0)) {
+  if (sniffed == k_ra8_imgdec_format_webp) {
     return priv_jof_webp_transcode(st, pfx);
   }
   return k_ra8_err_not_supported; /* not a JPEG/PNG/WebP source */
-}
-
-/**
- * @brief Read a big-endian uint32 (PNG stores its IHDR fields big-endian).
- * @details The JOF container is little-endian throughout, so the little-endian
- *          helpers above do not serve the PNG IHDR probe.
- * @param[in] buf Source bytes (at least 4 readable).
- * @return The decoded value.
- * @retval 0 All four source bytes were zero.
- * @pre @p buf holds 4 readable bytes.
- * @pre The field is big-endian per the PNG specification.
- * @post No state is mutated.
- * @post The result equals the four bytes assembled big-endian.
- * @note Pure; thread-safe.
- * @since 0.1.0
- */
-RA8_INTERNAL
-RA8_INTERNAL static uint32_t internal_rd_be32(const uint8_t* buf)
-{
-  return ((uint32_t)buf[0] << k_jof_le_sh24) | ((uint32_t)buf[1] << k_jof_le_sh16) |
-         ((uint32_t)buf[2] << k_jof_le_sh8) | (uint32_t)buf[3];
-}
-
-/**
- * @brief True if the sniff window carries the WebP RIFF container magic.
- * @details A WebP file is a RIFF container whose form type is "WEBP", so both
- *          fourCCs must match -- a bare "RIFF" is some other RIFF payload.
- * @param[in] data Source bytes (at least ::k_jof_sniff_bytes readable).
- * @return Whether both fourCCs matched.
- * @retval true  The source is a WebP RIFF container.
- * @retval false Either fourCC differs.
- * @pre @p data holds ::k_jof_sniff_bytes readable bytes.
- * @pre The caller has already excluded the JPEG and PNG signatures.
- * @post No state is mutated.
- * @post The result depends only on the first twelve source bytes.
- * @note Pure; thread-safe.
- * @since 0.1.0
- */
-RA8_INTERNAL
-RA8_INTERNAL static bool internal_is_webp(const uint8_t* data)
-{
-  return (memcmp(data, s_prod_webp_riff, sizeof(s_prod_webp_riff)) == 0) &&
-         (memcmp(&data[k_jof_webp_fourcc_ofs], s_prod_webp_webp, sizeof(s_prod_webp_webp)) == 0);
-}
-
-/**
- * @brief Read the pixel geometry out of a PNG IHDR chunk.
- * @details IHDR is fixed at the head of every PNG, so the width and height sit
- *          at constant offsets; both are big-endian per the specification.
- * @param[in]  data  Source bytes beginning with the PNG signature.
- * @param[in]  len   Readable length of @p data in bytes.
- * @param[out] out_w Receives the declared width in pixels.
- * @param[out] out_h Receives the declared height in pixels.
- * @return Result code.
- * @retval k_ra8_ok                Geometry read.
- * @retval k_ra8_err_not_supported The source is too short to hold a full IHDR.
- * @pre @p data starts with the eight-byte PNG signature.
- * @pre @p out_w and @p out_h are writable.
- * @post On success both outputs hold the IHDR fields verbatim, unvalidated.
- * @post On failure neither output is written.
- * @note Pure apart from the outputs; thread-safe.
- * @see internal_rd_be32()
- * @since 0.1.0
- */
-RA8_INTERNAL
-RA8_INTERNAL static ra8_err_t
-internal_png_dims(const uint8_t* data, size_t len, uint32_t* out_w, uint32_t* out_h)
-{
-  if (len < (size_t)k_jof_png_ihdr_end) {
-    return k_ra8_err_not_supported; /* IHDR truncated */
-  }
-  *out_w = internal_rd_be32(&data[k_jof_png_ihdr_w]);
-  *out_h = internal_rd_be32(&data[k_jof_png_ihdr_h]);
-  return k_ra8_ok;
 }
 
 /**
@@ -840,8 +775,12 @@ internal_png_dims(const uint8_t* data, size_t len, uint32_t* out_w, uint32_t* ou
  *          JPEG is answered by ::ra8_jpeg_sw_get_dimensions directly: that
  *          reader already range-checks against its own frame limits and writes
  *          the 16-bit outputs itself, so it returns without a second check.
- *          PNG and WebP yield 32-bit values that still have to be proved
- *          non-zero and within ::k_jof_max_dim before narrowing.
+ *          PNG is answered by ::ra8_imgdec_dims, the one in-tree geometry
+ *          probe (#768), so the producer no longer carries its own IHDR field
+ *          offsets; the shared probe also verifies the first chunk really is
+ *          IHDR, which the offsets alone never did. WebP still yields a
+ *          32-bit pair from ::ra8_webp_get_info. Both are proved non-zero and
+ *          within ::k_jof_max_dim before narrowing.
  * @param[in]  data  Encoded source bytes.
  * @param[in]  len   Readable length of @p data in bytes.
  * @param[out] out_w Receives the source width in pixels.
@@ -856,7 +795,7 @@ internal_png_dims(const uint8_t* data, size_t len, uint32_t* out_w, uint32_t* ou
  * @post On success both outputs hold a non-zero, in-range dimension.
  * @post On any error neither output is written.
  * @note Not thread-safe beyond its arguments.
- * @see internal_png_dims(), internal_is_webp(), ra8_webp_get_info()
+ * @see ra8_imgdec_dims(), internal_sniffed(), ra8_webp_get_info()
  * @since 0.1.0
  */
 RA8_INTERNAL
@@ -871,12 +810,17 @@ internal_probe_sniff(const uint8_t* data, size_t len, uint16_t* out_w, uint16_t*
   if ((data[0] == (uint8_t)k_jof_jpeg_soi_first) && (data[1] == (uint8_t)k_jof_jpeg_soi_second)) {
     return ra8_jpeg_sw_get_dimensions(data, (uint32_t)len, out_w, out_h);
   }
-  if (memcmp(data, s_prod_png_sig, sizeof(s_prod_png_sig)) == 0) {
-    const ra8_err_t rc = internal_png_dims(data, len, &w, &h);
+  const ra8_imgdec_format_t sniffed = internal_sniffed(data, len);
+  if (sniffed == k_ra8_imgdec_format_png) {
+    ra8_imgdec_geom_t geom = {};
+    const uint32_t    n    = (len > (size_t)UINT32_MAX) ? UINT32_MAX : (uint32_t)len;
+    const ra8_err_t   rc   = ra8_imgdec_dims(data, n, &geom);
     if (rc != k_ra8_ok) {
       return rc;
     }
-  } else if (internal_is_webp(data)) {
+    w = geom.width_px;
+    h = geom.height_px;
+  } else if (sniffed == k_ra8_imgdec_format_webp) {
     const ra8_err_t rc = ra8_webp_get_info(data, len, &w, &h);
     if (rc != k_ra8_ok) {
       return rc;

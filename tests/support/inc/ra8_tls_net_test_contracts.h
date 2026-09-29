@@ -19,46 +19,54 @@
 /**
  * @brief Fragment TLS bytes into network-PAL frames.
  * @details Sends bounded chunks until input is consumed or the ring rejects one.
- * @param[in,out] ctx Initialized network BIO fixture.
+ * @param[in,out] ctx Initialized network transport fixture.
  * @param[in] buf Readable TLS byte span.
  * @param[in] len Requested byte count.
- * @return Number of bytes accepted by the network PAL.
- * @retval 0 The request was empty or no frame could be queued.
+ * @param[out] out_sent Number of bytes accepted by the network PAL.
+ * @return ra8_err_t Error code.
+ * @retval k_ra8_ok Between zero and @p len bytes were queued.
  * @pre @p ctx points to an initialized @c np_bio_t.
  * @pre @p buf addresses @p len readable bytes when length is nonzero.
- * @post The return value never exceeds @p len.
+ * @post The accepted count never exceeds @p len.
  * @post Each accepted frame respects the configured MTU.
  * @note A full ring is reported as positive short progress.
  * @since 0.1.0
  */
-RA8_INTERNAL static int internal_np_bio_send(void* ctx, const uint8_t* buf, size_t len);
+RA8_INTERNAL static ra8_err_t internal_np_bio_send(void*          ctx,
+                                                   const uint8_t* buf,
+                                                   size_t         len,
+                                                   size_t*        out_sent);
 
 /**
  * @brief Reassemble network-PAL frames into TLS bytes.
  * @details Retains unread frame bytes across successive callback invocations.
- * @param[in,out] ctx Initialized network BIO fixture.
+ * @param[in,out] ctx Initialized network transport fixture.
  * @param[out] buf Writable TLS destination span.
  * @param[in] len Maximum bytes requested.
- * @return Number of bytes copied into the destination.
- * @retval 0 No frame was ready or the request length was zero.
+ * @param[out] out_received Number of bytes copied into the destination.
+ * @return ra8_err_t Error code.
+ * @retval k_ra8_ok Between zero and @p len bytes were copied.
  * @pre @p ctx points to an initialized @c np_bio_t.
  * @pre @p buf addresses @p len writable bytes when length is nonzero.
- * @post The return value never exceeds @p len.
+ * @post The copied count never exceeds @p len.
  * @post Unreturned frame bytes remain buffered in source order.
  * @note The adapter consumes at most one new frame per call.
  * @since 0.1.0
  */
-RA8_INTERNAL static int internal_np_bio_recv(void* ctx, uint8_t* buf, size_t len);
+RA8_INTERNAL static ra8_err_t internal_np_bio_recv(void*    ctx,
+                                                   uint8_t* buf,
+                                                   size_t   len,
+                                                   size_t*  out_received);
 
 /**
- * @brief Reset the network BIO and build its TLS config.
+ * @brief Reset the network transport and build its TLS config.
  * @details Clears reassembly state, sets the minimum MTU, and binds callbacks.
  * @return Complete TLS session configuration for the network fixture.
- * @retval ra8_tls_session_cfg_t Value referencing the file-local BIO state.
- * @pre The file-local BIO object has static storage duration.
+ * @retval ra8_tls_session_cfg_t Value referencing the file-local adapter state.
+ * @pre The file-local adapter object has static storage duration.
  * @pre The callback functions are linked into the test target.
  * @post Reassembly length and position both equal zero.
- * @post The returned config has nonnull BIO callbacks and context.
+ * @post The returned config has nonnull transport callbacks and context.
  * @note The helper does not initialize the network PAL itself.
  * @since 0.1.0
  */

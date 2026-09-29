@@ -27,7 +27,8 @@
  * ## Pinout (USB-FS, FSP-aligned, mirrors usb_cdc_echo)
  *
  * P4_07 = VBUS, P5_00 = VBUSEN, P8_14 = D+, P8_15 = D-, all PSEL =
- * ``k_ra8_psel_usb_fs``.
+ * ``k_ra8_psel_usb_fs``. Programmed by ::ra8_board_usb_port_init, not
+ * by this app.
  *
  * ## Verification (macOS)
  *
@@ -56,6 +57,8 @@
 #include "ra8_port_utils.h"
 #include "ra8_time.h"
 #include "ra8_usb.h"
+#include "ra8_usb_compose.h"
+#include "ra8_usb_desc.h"
 
 #ifndef RA8_OFF_TARGET
 #include "tx_api.h"
@@ -96,10 +99,6 @@ void        SysTick_Handler(void)
  * is happy with the otherwise out-of-enum value.
  * @since 0.1.0
  */
-static const ra8_port_pin_t k_demo_pin_vbus   = (ra8_port_pin_t)k_ra8_board_usbfs_pin_vbus;
-static const ra8_port_pin_t k_demo_pin_vbusen = (ra8_port_pin_t)k_ra8_board_usbfs_pin_vbusen;
-static const ra8_port_pin_t k_demo_pin_dp     = (ra8_port_pin_t)k_ra8_board_usbfs_pin_dp;
-static const ra8_port_pin_t k_demo_pin_dm     = (ra8_port_pin_t)k_ra8_board_usbfs_pin_dm;
 
 /* -------------------------------------------------------------------------- */
 /* Tunables */
@@ -175,158 +174,174 @@ static UCHAR s_msc_product_rev[] = "0001";
 /* USB descriptors (DEVICE + CONFIG + MSC interface + endpoints) */
 /* -------------------------------------------------------------------------- */
 
-/* Single-interface MSC config: bulk-only transport, SCSI command set.
- * Class = 0x08 (Mass Storage), SubClass = 0x06 (SCSI transparent),
- * Protocol = 0x50 (BBB / Bulk-Only). EP1 IN + EP2 OUT, 64-byte MPS.
- *
- * Layout per USB Mass Storage Class Bulk-Only Transport (BBB) rev 1.0
- * sec 4 + USB 2.0 sec 9.6.
- *
- * Total config-blob length:
- *   9 (config) + 9 (interface) + 7 (EP IN) + 7 (EP OUT) = 32 bytes.
+/* The three frameworks below are synthesised at start-up from the config
+ * structs by libs/ra8_usb_pal (#766) rather than typed out as raw byte
+ * arrays. Single-interface MSC: bulk-only transport over the SCSI transparent
+ * command set, class 0x08 / subclass 0x06 / protocol 0x50, EP1 IN and EP2 OUT
+ * at a 64-byte MPS, per BBB rev 1.0 sec 4 + USB 2.0 sec 9.6. The device
+ * descriptor advertises class 0 so the class triple is read off the interface.
+ * The configuration block's wTotalLength, 32 bytes a human used to add up by
+ * hand, is now derived from what the builder actually emitted.
  */
-static UCHAR s_device_framework_fs[] = {
-  /* Device descriptor (USB 2.0 sec 9.6.1) -- 18 bytes.
-   * bcdUSB = 0x0200 (USB 2.0); hosts may reject USB 1.1 for
-   * modern composite/class drivers. */
-  0x12U,
-  0x01U,
-  0x00U,
-  0x02U,
-  0x00U, /* class      = per-interface */
-  0x00U,
-  0x00U,
-  0x40U,
-  0x09U,
-  0x12U,
-  0x0BU, /* PID = 0x000B (pid.codes test). */
-  0x00U,
-  0x00U,
-  0x01U,
-  0x01U,
-  0x02U,
-  0x03U,
-  0x01U,
-  /* Configuration descriptor (32 bytes total).
-   * bmAttributes = 0x80 (bus-powered); 0xC0 (self-powered)
-   * with bMaxPower=100mA is self-contradictory. */
-  0x09U,
-  0x02U,
-  0x20U,
-  0x00U,
-  0x01U,
-  0x01U,
-  0x00U,
-  0x80U,
-  0x32U,
-  /* Interface descriptor -- MSC, SCSI, BBB. */
-  0x09U,
-  0x04U,
-  0x00U,
-  0x00U,
-  0x02U,
-  0x08U,
-  0x06U,
-  0x50U,
-  0x00U,
-  /* Bulk-IN endpoint (EP1 IN, 64-byte MPS). */
-  0x07U,
-  0x05U,
-  0x81U,
-  0x02U,
-  0x40U,
-  0x00U,
-  0x00U,
-  /* Bulk-OUT endpoint (EP2 OUT, 64-byte MPS). */
-  0x07U,
-  0x05U,
-  0x02U,
-  0x02U,
-  0x40U,
-  0x00U,
-  0x00U,
+
+/**
+ * @enum demo_usb_identity_t
+ * @brief The device identity this demo publishes.
+ *
+ * @details ::k_demo_usb_max_power_ma is the real milliamp draw, not the
+ * halved bMaxPower encoding; the builder halves it. Bus-powered is the
+ * default, because advertising self-powered alongside a 100 mA draw is the
+ * contradiction this app's own descriptor comment warned about.
+ */
+typedef enum : uint16_t {
+  k_demo_usb_vid          = 0x1209U, /**< idVendor, pid.codes test range. */
+  k_demo_usb_pid          = 0x000BU, /**< idProduct.                      */
+  k_demo_usb_bcd_device   = 0x0100U, /**< bcdDevice, release 1.00.        */
+  k_demo_usb_max_power_ma = 100U,    /**< Bus draw in mA.                 */
+} demo_usb_identity_t;
+
+/**
+ * @enum demo_usb_endpoint_t
+ * @brief The bulk-only endpoint layout, addresses as they appear on the wire.
+ *
+ * @details An IN endpoint carries bit 7 set, so EP1 IN is 0x81, while EP2 OUT
+ * is 0x02. That is how the byte array this block replaces wrote them, which
+ * keeps the two diffable.
+ */
+typedef enum : uint16_t {
+  k_demo_usb_in_ep      = 0x81U, /**< Bulk-IN data pipe.              */
+  k_demo_usb_out_ep     = 0x02U, /**< Bulk-OUT data pipe.             */
+  k_demo_usb_data_bytes = 64U,   /**< Bulk max packet size, FS.       */
+  k_demo_usb_functions  = 1U,    /**< Functions the device publishes. */
+} demo_usb_endpoint_t;
+
+/**
+ * @var k_demo_usb_device
+ * @brief Device identity handed to the framework builders.
+ * @note The three strings are string-literal storage with static duration;
+ *       the builders copy them and retain no pointer.
+ * @since 0.1.0
+ */
+static const ra8_usb_desc_device_t k_demo_usb_device = {
+  .vid           = (uint16_t)k_demo_usb_vid,
+  .pid           = (uint16_t)k_demo_usb_pid,
+  .bcd_device    = (uint16_t)k_demo_usb_bcd_device,
+  .manufacturer  = "Brighton Sikarskie",
+  .product       = "EK-RA8D2 RAM Disk",
+  .serial        = "00000001",
+  .langid        = (uint16_t)k_ra8_usb_desc_langid_en_us,
+  .max_power_ma  = (uint16_t)k_demo_usb_max_power_ma,
+  .self_powered  = false,
+  .remote_wakeup = false,
 };
+
+/**
+ * @var k_demo_usb_msc
+ * @brief Bulk-only endpoint layout handed to the framework builder.
+ * @since 0.1.0
+ */
+static const ra8_usb_desc_msc_t k_demo_usb_msc = {
+  .in_ep      = (uint8_t)k_demo_usb_in_ep,
+  .out_ep     = (uint8_t)k_demo_usb_out_ep,
+  .data_bytes = (uint16_t)k_demo_usb_data_bytes,
+  .high_speed = false,
+};
+
+/**
+ * @var s_device_framework_fs
+ * @brief Synthesised device framework: device descriptor + configuration.
+ * @note Written once by ::demo_usb_build_frameworks, then read-only.
+ * @since 0.1.0
+ */
+static uint8_t s_device_framework_fs[k_ra8_usb_desc_framework_bytes_max];
 
 /**
  * @var s_string_framework
- * @brief USBX string descriptor table (vendor / product / serial).
- * @details Each entry: 2 bytes lang-id, 1 byte string index, 1 byte
- *          length, then ASCII bytes.
+ * @brief Synthesised string framework: manufacturer, product, serial.
+ * @note Written once by ::demo_usb_build_frameworks, then read-only.
  * @since 0.1.0
  */
-static UCHAR s_string_framework[] = {
-  /* idx 1: "Brighton Sikarskie". */
-  0x09U,
-  0x04U,
-  0x01U,
-  0x12U,
-  'B',
-  'r',
-  'i',
-  'g',
-  'h',
-  't',
-  'o',
-  'n',
-  ' ',
-  'S',
-  'i',
-  'k',
-  'a',
-  'r',
-  's',
-  'k',
-  'i',
-  'e',
-  /* idx 2: "EK-RA8D2 RAM Disk". */
-  0x09U,
-  0x04U,
-  0x02U,
-  0x11U,
-  'E',
-  'K',
-  '-',
-  'R',
-  'A',
-  '8',
-  'D',
-  '2',
-  ' ',
-  'R',
-  'A',
-  'M',
-  ' ',
-  'D',
-  'i',
-  's',
-  'k',
-  /* idx 3: serial. */
-  0x09U,
-  0x04U,
-  0x03U,
-  0x08U,
-  '0',
-  '0',
-  '0',
-  '0',
-  '0',
-  '0',
-  '0',
-  '1',
-};
-
-/* USBX LANGID descriptor 0x0409 (English-US), little-endian byte pair. */
-typedef enum : uint8_t {
-  k_usb_langid_en_us_lo = 0x09U, /**< LANGID 0x0409 low byte.  */
-  k_usb_langid_en_us_hi = 0x04U, /**< LANGID 0x0409 high byte. */
-} usb_langid_byte_t;
+static uint8_t s_string_framework[k_ra8_usb_desc_strings_bytes_max];
 
 /**
  * @var s_language_id_framework
- * @brief USBX language-id table -- US English.
+ * @brief Synthesised language-id framework -- US English.
+ * @note Written once by ::demo_usb_build_frameworks, then read-only.
  * @since 0.1.0
  */
-static UCHAR s_language_id_framework[] = {k_usb_langid_en_us_lo, k_usb_langid_en_us_hi};
+static uint8_t s_language_id_framework[k_ra8_usb_desc_langid_bytes];
+
+/**
+ * @var s_device_framework_len
+ * @brief Bytes ::demo_usb_build_frameworks wrote to ::s_device_framework_fs.
+ * @since 0.1.0
+ */
+static uint32_t s_device_framework_len = 0U;
+
+/**
+ * @var s_string_framework_len
+ * @brief Bytes ::demo_usb_build_frameworks wrote to ::s_string_framework.
+ * @since 0.1.0
+ */
+static uint32_t s_string_framework_len = 0U;
+
+/**
+ * @var s_language_id_framework_len
+ * @brief Bytes written to ::s_language_id_framework.
+ * @since 0.1.0
+ */
+static uint32_t s_language_id_framework_len = 0U;
+
+/**
+ * @brief Synthesise the three USB frameworks this demo enumerates with.
+ *
+ * @details Replaces the three hand-typed byte arrays this app used to carry.
+ * Nothing here touches a controller: a synthesised framework is bytes, not an
+ * attached device.
+ *
+ * @return ra8_err_t Result of the three encodes.
+ * @retval k_ra8_ok               All three frameworks written.
+ * @retval k_ra8_err_invalid_size A destination buffer is too small.
+ * @retval k_ra8_err_invalid_arg  An endpoint address or packet size is wrong.
+ *
+ * @pre Called from thread context before ``_ux_device_stack_initialize``.
+ * @post On success the three buffers hold the frameworks and the three
+ *       length variables count them.
+ * @post On failure the lengths of the encodes that did not run stay 0.
+ *
+ * @note Single-call; the builders are pure, so a repeat call is harmless.
+ * @since 0.1.0
+ */
+static ra8_err_t demo_usb_build_frameworks(void)
+{
+  const ra8_usb_class_t function = {
+    .kind = k_ra8_usb_class_msc,
+    .msc  = k_demo_usb_msc,
+  };
+  const ra8_usb_device_cfg_t cfg = {
+    .desc        = &k_demo_usb_device,
+    .classes     = &function,
+    .class_count = (uint8_t)k_demo_usb_functions,
+  };
+  ra8_usb_device_frameworks_t fw = {
+    .device      = s_device_framework_fs,
+    .device_cap  = (uint32_t)sizeof(s_device_framework_fs),
+    .strings     = s_string_framework,
+    .strings_cap = (uint32_t)sizeof(s_string_framework),
+    .langid      = s_language_id_framework,
+    .langid_cap  = (uint32_t)sizeof(s_language_id_framework),
+  };
+
+  const ra8_err_t composed = ra8_usb_device_compose(&cfg, &fw);
+  if (composed != k_ra8_ok) {
+    return composed;
+  }
+
+  s_device_framework_len      = fw.device_len;
+  s_string_framework_len      = fw.strings_len;
+  s_language_id_framework_len = fw.langid_len;
+  return k_ra8_ok;
+}
 
 /* -------------------------------------------------------------------------- */
 /* Storage class media callbacks (read / write / status) */
@@ -463,7 +478,7 @@ static UINT demo_msc_status(VOID* storage, ULONG lun, ULONG media_id, ULONG* med
 /* -------------------------------------------------------------------------- */
 
 /**
- * @brief Brings USBX system + FS device stack up.
+ * @brief Synthesises the frameworks, then brings the FS device stack up.
  *
  * @return UINT UX_SUCCESS on success.
  * @retval UX_SUCCESS Stack ready.
@@ -478,17 +493,20 @@ static UINT demo_msc_status(VOID* storage, ULONG lun, ULONG media_id, ULONG* med
  */
 static UINT demo_usbx_stack_up(void)
 {
+  if (demo_usb_build_frameworks() != k_ra8_ok) {
+    return UX_ERROR;
+  }
   if (_ux_system_initialize(s_usbx_pool, k_demo_usbx_pool_bytes, UX_NULL, 0) != UX_SUCCESS) {
     return UX_ERROR;
   }
   return _ux_device_stack_initialize((UCHAR*)UX_NULL,
                                      0,
-                                     s_device_framework_fs,
-                                     sizeof(s_device_framework_fs),
-                                     s_string_framework,
-                                     sizeof(s_string_framework),
-                                     s_language_id_framework,
-                                     sizeof(s_language_id_framework),
+                                     (UCHAR*)s_device_framework_fs,
+                                     (ULONG)s_device_framework_len,
+                                     (UCHAR*)s_string_framework,
+                                     (ULONG)s_string_framework_len,
+                                     (UCHAR*)s_language_id_framework,
+                                     (ULONG)s_language_id_framework_len,
                                      UX_NULL);
 }
 
@@ -632,21 +650,11 @@ static void demo_panic_halt(void)
  */
 [[nodiscard]] static ra8_err_t demo_pins_init(void)
 {
-  ra8_err_t err = ra8_pfs_route_peripheral(k_demo_pin_vbus, k_ra8_psel_usb_fs, "usb_msc.vbus");
-  if (err != k_ra8_ok) {
-    return err;
-  }
-  /* VBUSEN as GPIO output LOW for USB device mode. Peripheral routing
-   * forces VBUSEN HIGH (host mode) which blocks device enumeration. */
-  err = ra8_gpio_output_init(k_demo_pin_vbusen, k_ra8_level_low);
-  if (err != k_ra8_ok) {
-    return err;
-  }
-  err = ra8_pfs_route_peripheral(k_demo_pin_dp, k_ra8_psel_usb_fs, "usb_msc.dp");
-  if (err != k_ra8_ok) {
-    return err;
-  }
-  return ra8_pfs_route_peripheral(k_demo_pin_dm, k_ra8_psel_usb_fs, "usb_msc.dm");
+  /* One board call replaces the four-step FS choreography: it routes VBUS,
+   * D+ and D- to the USBFS function and keeps VBUSEN a GPIO strapped LOW for
+   * the device role. The pin identities are board facts, so they live in
+   * libs/ra8_board_ek_ra8d2 rather than being re-declared here. */
+  return ra8_board_usb_port_init(k_ra8_board_usb_port_fs, k_ra8_board_usb_role_device);
 }
 
 /**

@@ -33,20 +33,7 @@
 #include <stdint.h>
 
 #include "ra8_err.h"
-
-/**
- * @brief Per-request session parameters.
- * @note `user_agent` is chosen once per session and held constant -- rotating
- *       it per request (as the Kotlin original did) looks more bot-like, not
- *       less, so we deliberately do not.
- */
-typedef struct {
-  const char* user_agent;        /**< Session User-Agent; never per-request random.      */
-  const char* referer;           /**< Referer header value, or NULL to omit.             */
-  const char* if_none_match;     /**< If-None-Match conditional header (ETag), or NULL.  */
-  const char* if_modified_since; /**< If-Modified-Since header (Last-Modified), or NULL. */
-  uint32_t    timeout_ms;        /**< Whole-request time budget, milliseconds.           */
-} mdl_net_req_t;
+#include "ra8_mdl_http.h"
 
 /**
  * @struct mdl_net_bytes_t
@@ -87,43 +74,6 @@ typedef struct {
   mdl_net_bytes_t cookies;                   /**< Newline-delimited input cookies.          */
   mdl_net_bytes_t ca_pem;                    /**< Complete PEM CA bundle, or an empty view. */
 } mdl_net_policy_t;
-
-/** @brief Captured-response-field buffer sizes. */
-typedef enum : uint16_t {
-  k_mdl_retry_after_max  = 64U,  /**< Raw `Retry-After` header value buffer bytes.   */
-  k_mdl_etag_max         = 128U, /**< Raw `ETag` header value buffer bytes.          */
-  k_mdl_last_mod_max     = 64U,  /**< Raw `Last-Modified` header value buffer bytes. */
-  k_mdl_content_type_max = 128U, /**< Raw `Content-Type` header value buffer bytes.  */
-} mdl_net_resp_size_t;
-
-/**
- * @struct mdl_net_resp_t
- * @brief Per-transfer response metadata surfaced to the politeness governor.
- *
- * @details
- * The fetch dispatchers fill one of these (when the caller passes a non-NULL
- * pointer) so a caller can distinguish an absent page from a throttle from a
- * server error and, on a throttle, honour the server's own `Retry-After`. It
- * carries the finished transfer's HTTP `status` and the raw `Retry-After`
- * header value verbatim -- the governor parses the header (both delta-seconds
- * and HTTP-date forms) through ::mdl_retry_after_parse, so the network backend
- * never has to. An empty `retry_after` means the header was absent.
- *
- * @invariant `retry_after` is always NUL-terminated; `retry_after[0] == '\0'`
- *            exactly when the header was absent.
- * @invariant `status == 0` means no HTTP status was observed (transport error
- *            before a response, or an argument the dispatcher refused).
- * @see mdl_net_get_buf()
- * @see mdl_retry_after_parse()
- * @since 0.1.0
- */
-typedef struct {
-  long status;                               /**< Finished transfer's HTTP status, 0 if none. */
-  char retry_after[k_mdl_retry_after_max];   /**< Raw `Retry-After` value, "" when absent.    */
-  char etag[k_mdl_etag_max];                 /**< Raw `ETag` value, "" when absent.           */
-  char last_modified[k_mdl_last_mod_max];    /**< Raw `Last-Modified` value, "" when absent.  */
-  char content_type[k_mdl_content_type_max]; /**< Raw `Content-Type` value, "" when absent.   */
-} mdl_net_resp_t;
 
 /**
  * @brief Reset one caller-owned response-body sink before a transfer attempt.
@@ -195,13 +145,13 @@ typedef struct {
    * @param[out] resp    Response metadata (status + Retry-After). May be NULL.
    * @return An ::ra8_err_t per the ::mdl_net_get_buf contract.
    */
-  ra8_err_t (*get_buf)(void*                ctx,
-                       const char*          url,
-                       const mdl_net_req_t* req,
-                       char*                buf,
-                       size_t               cap,
-                       size_t*              out_len,
-                       mdl_net_resp_t*      resp);
+  ra8_err_t (*get_buf)(void*                        ctx,
+                       const char*                  url,
+                       const ra8_mdl_http_policy_t* req,
+                       char*                        buf,
+                       size_t                       cap,
+                       size_t*                      out_len,
+                       ra8_mdl_http_response_t*     resp);
 
   /**
    * @brief GET `url` and stream the body through an injected sink.
@@ -213,12 +163,12 @@ typedef struct {
    * @param[out] resp     Response metadata (status + Retry-After). May be NULL.
    * @return An ::ra8_err_t per the ::mdl_net_get_body contract.
    */
-  ra8_err_t (*get_body)(void*                ctx,
-                        const char*          url,
-                        const mdl_net_req_t* req,
-                        mdl_net_body_sink_t* sink,
-                        size_t*              out_len,
-                        mdl_net_resp_t*      resp);
+  ra8_err_t (*get_body)(void*                        ctx,
+                        const char*                  url,
+                        const ra8_mdl_http_policy_t* req,
+                        mdl_net_body_sink_t*         sink,
+                        size_t*                      out_len,
+                        ra8_mdl_http_response_t*     resp);
 
   /**
    * @brief Release the backend-private state (called by ::mdl_net_destroy).
@@ -376,13 +326,13 @@ void mdl_net_destroy(mdl_net_iface_t* net);
  * @note Not thread-safe: one interface per worker.
  * @since 0.1.0
  */
-ra8_err_t mdl_net_get_buf(mdl_net_iface_t*     net,
-                          const char*          url,
-                          const mdl_net_req_t* req,
-                          char*                buf,
-                          size_t               cap,
-                          size_t*              out_len,
-                          mdl_net_resp_t*      resp);
+ra8_err_t mdl_net_get_buf(mdl_net_iface_t*             net,
+                          const char*                  url,
+                          const ra8_mdl_http_policy_t* req,
+                          char*                        buf,
+                          size_t                       cap,
+                          size_t*                      out_len,
+                          ra8_mdl_http_response_t*     resp);
 
 /**
  * @brief GET `url` and stream its body through a caller-owned sink.
@@ -420,9 +370,9 @@ ra8_err_t mdl_net_get_buf(mdl_net_iface_t*     net,
  * @note Not thread-safe: one interface per worker.
  * @since 0.1.0
  */
-ra8_err_t mdl_net_get_body(mdl_net_iface_t*     net,
-                           const char*          url,
-                           const mdl_net_req_t* req,
-                           mdl_net_body_sink_t* sink,
-                           size_t*              out_len,
-                           mdl_net_resp_t*      resp);
+ra8_err_t mdl_net_get_body(mdl_net_iface_t*             net,
+                           const char*                  url,
+                           const ra8_mdl_http_policy_t* req,
+                           mdl_net_body_sink_t*         sink,
+                           size_t*                      out_len,
+                           ra8_mdl_http_response_t*     resp);

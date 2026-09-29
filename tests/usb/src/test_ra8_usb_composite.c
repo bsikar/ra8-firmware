@@ -2,6 +2,10 @@
  * @file test_ra8_usb_composite.c
  * @brief Unit tests for the native USB device-side composite-class
  *        layer
+ *
+ * @par Tag
+ * [Ring 3 / HAL] {World: NS}
+ *
  * @details Validates composite-device interface routing, descriptor selection, class dispatch, lifecycle, and malformed requests.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie

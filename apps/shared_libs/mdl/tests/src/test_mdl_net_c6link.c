@@ -27,7 +27,7 @@ typedef enum : uint16_t {
 /** @brief Transfer-coordinator script observed by the link-time stub. */
 typedef struct {
   ra8_err_t result;                  /**< Injected transport result.      */
-  long      status;                  /**< Terminal HTTP status.           */
+  int32_t   status;                  /**< Terminal HTTP status.           */
   bool      probe_callbacks;         /**< Exercise rejected begin inputs. */
   bool      commit_fail;             /**< Inject commit failure.          */
   bool      saw_policy;              /**< Request policy matched fixture. */
@@ -64,7 +64,7 @@ static internal_transfer_script_t s_script;   /**< Active coordinator script.   
  */
 RA8_INTERNAL static void internal_script_reset(void)
 {
-  s_script = (internal_transfer_script_t){.result = k_ra8_ok, .status = 200L};
+  s_script = (internal_transfer_script_t){.result = k_ra8_ok, .status = 200};
 }
 
 /**
@@ -263,7 +263,7 @@ ra8_err_t ra8_c6link_mdl_transfer(ra8_c6link_t*                    link,
   *result = (ra8_mdl_transfer_result_t){
     .bytes_stored = sizeof(s_body),
     .format       = k_mdl_format_loose,
-    .response     = {.status        = (int32_t)s_script.status,
+    .response     = {.status        = s_script.status,
                      .retry_after   = "7",
                      .etag          = "\"fixture\"",
                      .last_modified = "Wed, 21 Oct 2015 07:28:00 GMT",
@@ -301,7 +301,7 @@ RA8_INTERNAL static void internal_bind(mdl_net_iface_t* net, mdl_net_c6link_t* b
  * @details Constructs all supported request fields so the transfer stub can
  * prove the adapter forwards each value without rewriting it.
  * @return Complete immutable-by-value request policy.
- * @retval mdl_net_req_t Deterministic header and timeout values.
+ * @retval ra8_mdl_http_policy_t Deterministic header and timeout values.
  * @pre Fixture string literals have static lifetime.
  * @pre Callers do not mutate the returned pointer targets.
  * @post Every optional request header is non-null.
@@ -309,9 +309,9 @@ RA8_INTERNAL static void internal_bind(mdl_net_iface_t* net, mdl_net_c6link_t* b
  * @note Returned by value and safe for independent test vectors.
  * @since 0.1.0
  */
-RA8_INTERNAL static mdl_net_req_t internal_request(void)
+RA8_INTERNAL static ra8_mdl_http_policy_t internal_request(void)
 {
-  return (mdl_net_req_t){
+  return (ra8_mdl_http_policy_t){
     .user_agent        = "coverage-agent",
     .referer           = "https://example.test/index",
     .if_none_match     = "\"prior\"",
@@ -340,10 +340,10 @@ RA8_INTERNAL static void internal_test_buffer_policy_and_status(void)
   mdl_net_iface_t  net;
   mdl_net_c6link_t backend;
   internal_bind(&net, &backend);
-  const mdl_net_req_t request                     = internal_request();
+  const ra8_mdl_http_policy_t request                     = internal_request();
   char                body[k_internal_sink_bytes] = "old";
   size_t              length                      = 99U;
-  mdl_net_resp_t      response;
+  ra8_mdl_http_response_t     response;
   TEST_ASSERT_EQ(k_ra8_ok,
                  mdl_net_get_buf(&net,
                                  "https://example.test/body",
@@ -381,7 +381,7 @@ RA8_INTERNAL static void internal_test_buffer_policy_and_status(void)
 RA8_INTERNAL static void internal_test_stream_and_sink_faults(void)
 {
   TEST_BEGIN("c6 adapter sink faults");
-  const mdl_net_req_t request = internal_request();
+  const ra8_mdl_http_policy_t request = internal_request();
   for (uint8_t vector = 0U; vector < 3U; ++vector) {
     internal_script_reset();
     mdl_net_iface_t  net;
@@ -430,9 +430,9 @@ RA8_INTERNAL static void internal_test_stream_and_sink_faults(void)
 RA8_INTERNAL static void internal_test_http_fail_closed(void)
 {
   TEST_BEGIN("c6 adapter HTTP failures clear output");
-  const long          statuses[] = {404L, 429L, 500L};
+  const int32_t       statuses[] = {404, 429, 500};
   const ra8_err_t     expected[] = {k_ra8_err_not_found, k_ra8_err_busy, k_ra8_fail};
-  const mdl_net_req_t request    = internal_request();
+  const ra8_mdl_http_policy_t request    = internal_request();
   for (size_t index = 0U; index < (sizeof(statuses) / sizeof(statuses[0])); ++index) {
     internal_script_reset();
     s_script.status = statuses[index];
@@ -440,7 +440,7 @@ RA8_INTERNAL static void internal_test_http_fail_closed(void)
     mdl_net_c6link_t backend;
     internal_bind(&net, &backend);
     char           body[k_internal_sink_bytes] = "old";
-    mdl_net_resp_t response;
+    ra8_mdl_http_response_t response;
     TEST_ASSERT_EQ(expected[index],
                    mdl_net_get_buf(&net,
                                    "https://example.test/body",
@@ -471,7 +471,7 @@ RA8_INTERNAL static void internal_test_http_fail_closed(void)
 RA8_INTERNAL static void internal_test_local_failures(void)
 {
   TEST_BEGIN("c6 adapter local failures");
-  const mdl_net_req_t request = internal_request();
+  const ra8_mdl_http_policy_t request = internal_request();
   internal_script_reset();
   mdl_net_iface_t  net;
   mdl_net_c6link_t backend;
@@ -577,11 +577,78 @@ RA8_INTERNAL static void internal_test_constructor_validation(void)
   TEST_END("c6 adapter constructor validation");
 }
 
+/**
+ * @test internal_test_status_range_contract
+ * @brief A status outside 100..599 is refused rather than ranked.
+ * @details ::priv_mdl_net_classify_http ranks a well-formed status and refuses
+ *          anything else, so the two backends agree on what a response even
+ *          is. The C6 endpoint already guards the range on its own side, so
+ *          these vectors reach the classifier only because the coordinator
+ *          stub can script a value the radio cannot produce; that is the
+ *          point, since the host transport's reading is not guarded upstream.
+ *          Zero keeps its published meaning of "no status was observed" and is
+ *          still classified as success.
+ * @pre Static fixture state is exclusively owned.
+ * @pre Each vector binds a fresh adapter.
+ * @post A malformed status yields ::k_ra8_err_protocol_error and no body.
+ * @post A zero status is ranked as success and the body survives.
+ * @note Assertion failure terminates the process.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_test_status_range_contract(void)
+{
+  TEST_BEGIN("c6 adapter status range contract");
+  const int32_t       malformed[] = {99, 600, 700, -1};
+  const ra8_mdl_http_policy_t request     = internal_request();
+  for (size_t index = 0U; index < (sizeof(malformed) / sizeof(malformed[0])); ++index) {
+    internal_script_reset();
+    s_script.status = malformed[index];
+    mdl_net_iface_t  net;
+    mdl_net_c6link_t backend;
+    internal_bind(&net, &backend);
+    char           body[k_internal_sink_bytes] = "old";
+    ra8_mdl_http_response_t response;
+    TEST_ASSERT_EQ(k_ra8_err_protocol_error,
+                   mdl_net_get_buf(&net,
+                                   "https://example.test/body",
+                                   &request,
+                                   body,
+                                   sizeof(body),
+                                   nullptr,
+                                   &response));
+    TEST_ASSERT_EQ('\0', body[0]);
+    TEST_ASSERT_EQ(malformed[index], response.status);
+    mdl_net_destroy(&net);
+  }
+
+  internal_script_reset();
+  s_script.status = 0;
+  mdl_net_iface_t  net;
+  mdl_net_c6link_t backend;
+  internal_bind(&net, &backend);
+  char           body[k_internal_sink_bytes] = "old";
+  size_t         length                      = 0U;
+  ra8_mdl_http_response_t response;
+  TEST_ASSERT_EQ(k_ra8_ok,
+                 mdl_net_get_buf(&net,
+                                 "https://example.test/body",
+                                 &request,
+                                 body,
+                                 sizeof(body),
+                                 &length,
+                                 &response));
+  TEST_ASSERT_EQ(0, response.status);
+  TEST_ASSERT_EQ((size_t)k_internal_body_bytes, length);
+  mdl_net_destroy(&net);
+  TEST_END("c6 adapter status range contract");
+}
+
 int main(void)
 {
   internal_test_buffer_policy_and_status();
   internal_test_stream_and_sink_faults();
   internal_test_http_fail_closed();
+  internal_test_status_range_contract();
   internal_test_local_failures();
   internal_test_constructor_validation();
   return 0;

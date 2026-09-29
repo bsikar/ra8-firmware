@@ -557,6 +557,8 @@ RA8_INTERNAL static void internal_assert_import_cfg_guards(comic_tile_reader_t* 
  * @pre The image-header parser accepts the generated RGB PNG.
  * @post Large and small decoded sizes select tile and flat paths respectively.
  * @post Null, empty, and unsupported-image guards return their precise errors.
+ * @post A GIF or BMP the shared geometry probe can read is still refused, and
+ *       so is a PNG truncated short of its IHDR (#768).
  * @note This vector owns complete MC/DC coverage of the threshold conjunction.
  * @since Version 0.1.0
  *
@@ -602,6 +604,24 @@ RA8_INTERNAL static void internal_test_footprint_and_budget(void)
   TEST_ASSERT_EQ(k_ra8_err_invalid_size, comic_tiles_footprint(s_png, 0U, &w, &h, &db));
   static const uint8_t junk[8] = {'n', 'o', 't', 'i', 'm', 'a', 'g', 'e'};
   TEST_ASSERT_EQ(k_ra8_err_not_supported, comic_tiles_footprint(junk, sizeof junk, &w, &h, &db));
+
+  /* A container the shared probe reads but the producer cannot transcode: the
+   * geometry is right there (64x48) and is still refused, because reporting a
+   * footprint would promise an import this module cannot perform (#768). */
+  static const uint8_t gif[16] = {'G',  'I',  'F',  '8',  '9',  'a',  0x40U, 0x00U,
+                                  0x30U, 0x00U, 0x00U, 0x00U, 0x00U, 0x00U, 0x00U, 0x00U};
+  TEST_ASSERT_EQ(k_ra8_err_not_supported, comic_tiles_footprint(gif, sizeof gif, &w, &h, &db));
+  static const uint8_t bmp[26] = {'B',   'M',   0x00U, 0x00U, 0x00U, 0x00U, 0x00U,
+                                  0x00U, 0x00U, 0x00U, 0x36U, 0x00U, 0x00U, 0x00U,
+                                  0x28U, 0x00U, 0x00U, 0x00U, 0x40U, 0x00U, 0x00U,
+                                  0x00U, 0x30U, 0x00U, 0x00U, 0x00U};
+  TEST_ASSERT_EQ(k_ra8_err_not_supported, comic_tiles_footprint(bmp, sizeof bmp, &w, &h, &db));
+
+  /* A tileable container whose header is truncated short of its geometry. */
+  static const uint8_t png_sig[12] = {0x89U, 'P',   'N',   'G',   0x0DU, 0x0AU,
+                                      0x1AU, 0x0AU, 0x00U, 0x00U, 0x00U, 0x0DU};
+  TEST_ASSERT_EQ(k_ra8_err_not_supported,
+                 comic_tiles_footprint(png_sig, sizeof png_sig, &w, &h, &db));
   TEST_END("comic tiles footprint + budget threshold");
 }
 

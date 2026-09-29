@@ -26,6 +26,7 @@
 
 #include "ra8_tls.h"
 
+#include <limits.h>
 #include <stddef.h>
 #include <stdint.h>
 #include <string.h>
@@ -73,7 +74,8 @@ static const char* const s_ra8_tls_tag = "ra8_tls";
  * One slot per concurrent session. ``in_use`` doubles as the bitmap
  * bit; the array index is the slot index ``[0, k_ra8_tls_max_sessions)``.
  *
- * @invariant ``in_use`` is true if and only if ``cfg.bio_send`` is non-NULL.
+ * @invariant ``in_use`` is true if and only if ``cfg.transport.send`` is
+ *            non-NULL.
  */
 struct ra8_tls_session_handle {
   /* Field order places the aligned cfg block first so the host
@@ -298,13 +300,93 @@ static ra8_err_t internal_session_validate_args(ra8_tls_session_t*           out
   if (cfg == nullptr) {
     return k_ra8_err_invalid_arg;
   }
-  if ((cfg->bio_send == nullptr) || (cfg->bio_recv == nullptr)) {
+  if ((cfg->transport.send == nullptr) || (cfg->transport.recv == nullptr)) {
     return k_ra8_err_invalid_arg;
   }
   return k_ra8_ok;
 }
 
 #ifndef RA8_OFF_TARGET
+/**
+ * @brief Mbed TLS BIO send shim over the house transport seam.
+ *
+ * @details
+ * This is the one place in the tree that speaks Mbed TLS's negative-errno
+ * dialect. It calls the caller's ``ra8_tls_transport_send_fn`` and maps the
+ * house result onto what ``mbedtls_ssl_set_bio`` expects, so an application
+ * never includes an Mbed TLS header to author a transport.
+ *
+ * @param[in,out] ctx Pool slot registered as the BIO context at bind time.
+ * @param[in]     buf Ciphertext to hand to the transport.
+ * @param[in]     len Length of ``buf`` in bytes.
+ *
+ * @return Bytes accepted, or a negative ``MBEDTLS_ERR_*`` code.
+ *
+ * @pre ``ctx`` is a live pool slot whose ``cfg.transport.send`` is non-NULL.
+ * @post The transport sees exactly the bytes Mbed TLS offered.
+ *
+ * @note Not thread-safe; pool serialisation is the caller's job.
+ * @since 0.2.0
+ */
+RA8_INTERNAL
+static int internal_bio_send(void* ctx, const unsigned char* buf, size_t len)
+{
+  struct ra8_tls_session_handle* slot = (struct ra8_tls_session_handle*)ctx;
+  size_t                         sent = 0U;
+
+  const ra8_err_t err = slot->cfg.transport.send(slot->cfg.transport.ctx, buf, len, &sent);
+  if (err == k_ra8_err_would_block) {
+    return MBEDTLS_ERR_SSL_WANT_WRITE;
+  }
+  if (err != k_ra8_ok) {
+    return MBEDTLS_ERR_SSL_INTERNAL_ERROR;
+  }
+  if (sent > (size_t)INT_MAX) {
+    return MBEDTLS_ERR_SSL_INTERNAL_ERROR;
+  }
+  return (int)sent;
+}
+
+/**
+ * @brief Mbed TLS BIO receive shim over the house transport seam.
+ *
+ * @details
+ * The receive half of ::internal_bio_send. End of stream is the house
+ * spelling -- ``k_ra8_ok`` with zero bytes -- and it becomes the plain ``0``
+ * Mbed TLS reads as a clean close, while ``k_ra8_err_would_block`` becomes
+ * ``MBEDTLS_ERR_SSL_WANT_READ``. The two are never confused.
+ *
+ * @param[in,out] ctx Pool slot registered as the BIO context at bind time.
+ * @param[out]    buf Buffer to fill with up to ``len`` bytes.
+ * @param[in]     len Capacity of ``buf`` in bytes.
+ *
+ * @return Bytes read, ``0`` on EOF, or a negative ``MBEDTLS_ERR_*`` code.
+ *
+ * @pre ``ctx`` is a live pool slot whose ``cfg.transport.recv`` is non-NULL.
+ * @post At most ``len`` bytes are written into ``buf``.
+ *
+ * @note Not thread-safe; pool serialisation is the caller's job.
+ * @since 0.2.0
+ */
+RA8_INTERNAL
+static int internal_bio_recv(void* ctx, unsigned char* buf, size_t len)
+{
+  struct ra8_tls_session_handle* slot     = (struct ra8_tls_session_handle*)ctx;
+  size_t                         received = 0U;
+
+  const ra8_err_t err = slot->cfg.transport.recv(slot->cfg.transport.ctx, buf, len, &received);
+  if (err == k_ra8_err_would_block) {
+    return MBEDTLS_ERR_SSL_WANT_READ;
+  }
+  if (err != k_ra8_ok) {
+    return MBEDTLS_ERR_SSL_INTERNAL_ERROR;
+  }
+  if (received > (size_t)INT_MAX) {
+    return MBEDTLS_ERR_SSL_INTERNAL_ERROR;
+  }
+  return (int)received;
+}
+
 /**
  * @brief Apply the caller's verify-mode and optional trust anchor to a slot.
  *
@@ -417,14 +499,10 @@ static ra8_err_t internal_session_mbedtls_setup(struct ra8_tls_session_handle* s
   if (cfg->server_name != nullptr) {
     (void)mbedtls_ssl_set_hostname(&slot->ssl, cfg->server_name);
   }
-  /* Mbed TLS BIO send/recv signatures take ``unsigned char`` buffers; our
-   * facade-public typedefs use ``uint8_t`` so the cast below is layout-safe
-   * (the two types are identical on every supported target). */
-  mbedtls_ssl_set_bio(&slot->ssl,
-                      slot->cfg.bio_ctx,
-                      (mbedtls_ssl_send_t*)cfg->bio_send,
-                      (mbedtls_ssl_recv_t*)cfg->bio_recv,
-                      nullptr);
+  /* The vendor dialect stops here: the BIO pair Mbed TLS sees is the pair of
+   * shims below, and the slot itself is the BIO context so a shim can reach
+   * the caller's ``ra8_tls_transport_t``. */
+  mbedtls_ssl_set_bio(&slot->ssl, slot, internal_bio_send, internal_bio_recv, nullptr);
   return k_ra8_ok;
 }
 #endif
@@ -499,15 +577,19 @@ ra8_err_t ra8_tls_handshake(ra8_tls_session_t session)
   /* Off-target path: drive a single round-trip through the BIO callbacks
    * so the loopback test exercises the function-pointer plumbing without
    * a real TLS handshake. */
-  uint8_t   fake_byte = k_tls_content_handshake;
-  const int send_rc   = session->cfg.bio_send(session->cfg.bio_ctx, &fake_byte, 1U);
-  if (send_rc < 0) {
-    return k_ra8_err_comm_error;
+  uint8_t         fake_byte = k_tls_content_handshake;
+  size_t          sent      = 0U;
+  const ra8_err_t send_rc =
+      session->cfg.transport.send(session->cfg.transport.ctx, &fake_byte, 1U, &sent);
+  if (send_rc != k_ra8_ok) {
+    return (send_rc == k_ra8_err_would_block) ? k_ra8_err_would_block : k_ra8_err_comm_error;
   }
-  uint8_t   recv_byte = 0U;
-  const int recv_rc   = session->cfg.bio_recv(session->cfg.bio_ctx, &recv_byte, 1U);
-  if (recv_rc < 0) {
-    return k_ra8_err_comm_error;
+  uint8_t         recv_byte = 0U;
+  size_t          received  = 0U;
+  const ra8_err_t recv_rc =
+      session->cfg.transport.recv(session->cfg.transport.ctx, &recv_byte, 1U, &received);
+  if (recv_rc != k_ra8_ok) {
+    return (recv_rc == k_ra8_err_would_block) ? k_ra8_err_would_block : k_ra8_err_comm_error;
   }
   session->handshake_done = true;
   return k_ra8_ok;
@@ -545,12 +627,7 @@ ra8_err_t ra8_tls_send(ra8_tls_session_t session, const uint8_t* buf, size_t len
   }
   return k_ra8_err_comm_error;
 #else
-  const int rc = session->cfg.bio_send(session->cfg.bio_ctx, buf, len);
-  if (rc < 0) {
-    return k_ra8_err_comm_error;
-  }
-  *out_sent = (size_t)rc;
-  return k_ra8_ok;
+  return session->cfg.transport.send(session->cfg.transport.ctx, buf, len, out_sent);
 #endif
 }
 
@@ -588,12 +665,7 @@ ra8_err_t ra8_tls_recv(ra8_tls_session_t session, uint8_t* buf, size_t len, size
   }
   return k_ra8_err_comm_error;
 #else
-  const int rc = session->cfg.bio_recv(session->cfg.bio_ctx, buf, len);
-  if (rc < 0) {
-    return k_ra8_err_comm_error;
-  }
-  *out_received = (size_t)rc;
-  return k_ra8_ok;
+  return session->cfg.transport.recv(session->cfg.transport.ctx, buf, len, out_received);
 #endif
 }
 

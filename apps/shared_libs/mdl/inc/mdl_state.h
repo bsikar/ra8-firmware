@@ -57,30 +57,13 @@
  */
 #pragma once
 
-#include <float.h>
 #include <stddef.h>
 #include <stdint.h>
 
-#if !defined(__STDC_IEC_559__) && !defined(__STDC_IEC_60559_BFP__) && !defined(__clang__) &&       \
-  !defined(__GNUC__)
-#error "mdl state v3 requires IEC 60559 binary floating-point"
-#endif
-
-static_assert(sizeof(double) == 8U, "mdl state v3 requires binary64 double");
-static_assert(FLT_RADIX == 2, "mdl state v3 requires radix-2 floating-point");
-/** @brief IEC 60559 binary64 parameters required by the persisted schema. */
-typedef enum : int16_t {
-  k_mdl_binary64_mantissa_bits = 53,    /**< Binary64 significand precision. */
-  k_mdl_binary64_max_exponent  = 1024,  /**< Binary64 maximum exponent.      */
-  k_mdl_binary64_min_exponent  = -1021, /**< Binary64 minimum exponent.      */
-} mdl_binary64_parameter_t;
-
-static_assert(DBL_MANT_DIG == k_mdl_binary64_mantissa_bits,
-              "mdl state requires 53-bit binary64 precision");
-static_assert(DBL_MAX_EXP == k_mdl_binary64_max_exponent,
-              "mdl state requires binary64 exponent range");
-static_assert(DBL_MIN_EXP == k_mdl_binary64_min_exponent,
-              "mdl state requires binary64 exponent range");
+/* The persisted schema stores decimals as binary64, so it inherits the
+ * toolchain requirement rather than restating it: ra8_num.h asserts IEC 60559
+ * binary64 where the platform declares it (#747). */
+#include "ra8_num.h"
 
 #include "mdl_config.h"
 #include "mdl_extract.h"
@@ -152,9 +135,9 @@ typedef struct {
   uint64_t url_hash;                    /**< FNV-1a 64 of the source URL.     */
   uint64_t content_hash;                /**< FNV-1a 64 of the fetched bytes.  */
   char     rel_path[k_mdl_relpath_max]; /**< Path under the series directory. */
-  char     etag[k_mdl_etag_max];        /**< Cached ETag for conditional GET. */
+  char     etag[k_ra8_mdl_etag_max];    /**< Cached ETag for conditional GET. */
   /** @brief Cached Last-Modified response value. */
-  char     last_modified[k_mdl_last_mod_max];
+  char     last_modified[k_ra8_mdl_http_date_max];
   int64_t  fetched_at;      /**< Most recent HTTP result time (epoch s).  */
   uint16_t response_status; /**< Most recent HTTP status; zero if legacy. */
 } mdl_page_rec_t;
@@ -420,35 +403,12 @@ ra8_err_t mdl_state_save(mdl_storage_t*     storage,
 mdl_chapter_rec_t* mdl_state_find_chapter(mdl_state_t* st, const char* id);
 
 /**
- * @brief Find or append a chapter record, returning it.
- *
- * @param[in,out] st     State to update (never NULL).
- * @param[in]     id     Chapter identifier (never NULL).
- * @param[in]     url    Chapter page URL (never NULL).
- * @param[in]     number Parsed chapter number (0 when unnumbered).
- *
- * @return The existing or newly-added record, or NULL when the table is full.
- * @retval NULL A NULL argument, or ::k_mdl_max_chapters already reached.
- *
- * @pre @p st, @p id, @p url are non-NULL and NUL-terminated.
- * @pre The caller treats NULL as "table full" and degrades, never crashes.
- * @post A new record starts incomplete with `page_count == 0`; a nonzero
- *       @p number is marked known and zero retains legacy "unknown" semantics.
- * @post `st->chapter_count` grows by at most one.
- *
- * @note Not thread-safe.
- * @since 0.1.0
- */
-mdl_chapter_rec_t*
-mdl_state_add_chapter(mdl_state_t* st, const char* id, const char* url, long number);
-
-/**
  * @brief Find or append a chapter with explicit parsed-number presence.
  *
  * @details
- * Unlike the source-compatible ::mdl_state_add_chapter wrapper, this API keeps
- * chapter zero distinct from an unknown number and preserves fractional chapter
- * numbers. An unknown number must be supplied canonically as 0.0.
+ * This is the only way to append a chapter, so chapter zero stays distinct from
+ * an unknown number and a fractional chapter number is preserved exactly. An
+ * unknown number must be supplied canonically as 0.0.
  *
  * @param[in,out] st           State to update (never NULL).
  * @param[in]     id           Chapter identifier (never NULL).
