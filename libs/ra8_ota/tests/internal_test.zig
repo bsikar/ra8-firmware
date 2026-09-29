@@ -198,3 +198,129 @@ test "the C ABI struct layouts hold" {
     try std.testing.expectEqual(@as(usize, 0), @offsetOf(impl.Cfg, "manifest_url"));
     try std.testing.expectEqual(@as(usize, 256), @offsetOf(impl.Cfg, "pubkey_handle"));
 }
+
+// =============================================================================
+// Orchestration / verify predicates (ported from ra8_ota.c + ra8_ota_verify.c)
+// =============================================================================
+
+test "chunkWant caps at the chunk size and passes a short tail through" {
+    try std.testing.expectEqual(@as(u32, 0), impl.chunkWant(0));
+    try std.testing.expectEqual(@as(u32, 1), impl.chunkWant(1));
+    try std.testing.expectEqual(impl.chunk_bytes, impl.chunkWant(impl.chunk_bytes));
+    try std.testing.expectEqual(impl.chunk_bytes, impl.chunkWant(impl.chunk_bytes + 1));
+    try std.testing.expectEqual(impl.chunk_bytes, impl.chunkWant(impl.max_image_bytes));
+}
+
+test "manifestPayloadTooLarge fires strictly above the manifest cap" {
+    try std.testing.expect(!impl.manifestPayloadTooLarge(0));
+    try std.testing.expect(!impl.manifestPayloadTooLarge(impl.manifest_max_bytes));
+    try std.testing.expect(impl.manifestPayloadTooLarge(impl.manifest_max_bytes + 1));
+}
+
+test "the drain cap leaves exactly one byte for the NUL terminator" {
+    try std.testing.expectEqual(impl.manifest_max_bytes - 1, impl.manifest_drain_cap);
+}
+
+test "drainFilled is the loop's >= cap early exit" {
+    try std.testing.expect(!impl.drainFilled(0, 1));
+    try std.testing.expect(impl.drainFilled(1, 1));
+    try std.testing.expect(impl.drainFilled(2, 1));
+    // A zero cap is filled before the first read, so no callback ever runs.
+    try std.testing.expect(impl.drainFilled(0, 0));
+}
+
+test "imageExceedsBank is strict, so an exactly-fitting image is allowed" {
+    try std.testing.expect(!impl.imageExceedsBank(4096, 4096));
+    try std.testing.expect(impl.imageExceedsBank(4097, 4096));
+    try std.testing.expect(!impl.imageExceedsBank(0, 0));
+}
+
+test "freshDownload only on a zero byte counter" {
+    try std.testing.expect(impl.freshDownload(0));
+    try std.testing.expect(!impl.freshDownload(1));
+}
+
+test "progressTotal reports zero until a manifest is cached" {
+    try std.testing.expectEqual(@as(u32, 0), impl.progressTotal(false, 9999));
+    try std.testing.expectEqual(@as(u32, 9999), impl.progressTotal(true, 9999));
+}
+
+test "isTerminal covers done and error only" {
+    try std.testing.expect(impl.isTerminal(impl.state.done));
+    try std.testing.expect(impl.isTerminal(impl.state.failed));
+    try std.testing.expect(!impl.isTerminal(impl.state.idle));
+    try std.testing.expect(!impl.isTerminal(impl.state.checking));
+    try std.testing.expect(!impl.isTerminal(impl.state.downloading));
+    try std.testing.expect(!impl.isTerminal(impl.state.verifying));
+    try std.testing.expect(!impl.isTerminal(impl.state.committing));
+    try std.testing.expect(!impl.isTerminal(impl.state.count));
+}
+
+test "sizeLe spreads the image size little-endian across four bytes" {
+    try std.testing.expectEqual([4]u8{ 0, 0, 0, 0 }, impl.sizeLe(0));
+    try std.testing.expectEqual([4]u8{ 0x78, 0x56, 0x34, 0x12 }, impl.sizeLe(0x12345678));
+    try std.testing.expectEqual([4]u8{ 0xFF, 0xFF, 0xFF, 0xFF }, impl.sizeLe(0xFFFFFFFF));
+    try std.testing.expectEqual([4]u8{ 0x00, 0x00, 0x08, 0x00 }, impl.sizeLe(impl.max_image_bytes));
+}
+
+test "the bound material is version + url + size + digest, 324 bytes" {
+    const total = impl.version_str_bytes + impl.url_max_bytes +
+        impl.size_field_bytes + impl.sha256_bytes;
+    try std.testing.expectEqual(@as(u32, 324), total);
+}
+
+test "stepAction resolves every state the C switch covered" {
+    try std.testing.expectEqual(impl.StepAction.check, impl.stepAction(impl.state.idle, false));
+    try std.testing.expectEqual(impl.StepAction.download, impl.stepAction(impl.state.idle, true));
+    try std.testing.expectEqual(
+        impl.StepAction.refuse,
+        impl.stepAction(impl.state.checking, false),
+    );
+    try std.testing.expectEqual(
+        impl.StepAction.download,
+        impl.stepAction(impl.state.checking, true),
+    );
+    try std.testing.expectEqual(
+        impl.StepAction.refuse,
+        impl.stepAction(impl.state.downloading, false),
+    );
+    try std.testing.expectEqual(
+        impl.StepAction.download,
+        impl.stepAction(impl.state.downloading, true),
+    );
+    try std.testing.expectEqual(
+        impl.StepAction.verify,
+        impl.stepAction(impl.state.verifying, false),
+    );
+    try std.testing.expectEqual(
+        impl.StepAction.commit,
+        impl.stepAction(impl.state.committing, false),
+    );
+    try std.testing.expectEqual(impl.StepAction.settle, impl.stepAction(impl.state.done, true));
+    try std.testing.expectEqual(impl.StepAction.settle, impl.stepAction(impl.state.failed, true));
+    try std.testing.expectEqual(impl.StepAction.settle, impl.stepAction(impl.state.count, true));
+    try std.testing.expectEqual(impl.StepAction.settle, impl.stepAction(200, true));
+}
+
+test "the chunk budget matches the image cap over the chunk size" {
+    try std.testing.expectEqual(@as(u32, 129), impl.max_chunks);
+}
+
+test "the state values are the C enum values" {
+    try std.testing.expectEqual(@as(u8, 0), impl.state.idle);
+    try std.testing.expectEqual(@as(u8, 1), impl.state.checking);
+    try std.testing.expectEqual(@as(u8, 2), impl.state.downloading);
+    try std.testing.expectEqual(@as(u8, 3), impl.state.verifying);
+    try std.testing.expectEqual(@as(u8, 4), impl.state.committing);
+    try std.testing.expectEqual(@as(u8, 5), impl.state.done);
+    try std.testing.expectEqual(@as(u8, 6), impl.state.failed);
+    try std.testing.expectEqual(@as(u8, 7), impl.state.count);
+}
+
+test "the progress snapshot layout is ABI" {
+    try std.testing.expectEqual(@as(usize, 16), @sizeOf(impl.Progress));
+    try std.testing.expectEqual(@as(usize, 0), @offsetOf(impl.Progress, "state"));
+    try std.testing.expectEqual(@as(usize, 4), @offsetOf(impl.Progress, "bytes_done"));
+    try std.testing.expectEqual(@as(usize, 8), @offsetOf(impl.Progress, "bytes_total"));
+    try std.testing.expectEqual(@as(usize, 12), @offsetOf(impl.Progress, "last_err"));
+}

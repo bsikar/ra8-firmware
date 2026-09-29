@@ -217,7 +217,11 @@ def _data_export_findings(
                 continue
             text = _strip_comments(path.read_text(encoding="utf-8"))
             if field == "header":
-                present = re.search(rf"\bextern\b[^;{{}}]*\b{re.escape(symbol)}\s*;", text)
+                present = re.search(
+                    rf"\bextern\b[^;{{}}]*\b{re.escape(symbol)}"
+                    r"\s*(?:\[[^\]]*\]\s*)*;",
+                    text,
+                )
             else:
                 present = re.search(rf"\bpub\s+export\s+var\s+{re.escape(symbol)}\s*:", text)
             if present is None:
@@ -397,16 +401,66 @@ def _boundary_header_rows(library: dict[str, Any]) -> list[dict[str, Any]]:
     return rows
 
 
-def _boundary_adapter_paths(library: dict[str, Any]) -> list[str]:
-    """Return every adapter path for one library, the single-key spelling first."""
-    paths: list[str] = []
+def _boundary_adapter_rows(library: dict[str, Any]) -> list[dict[str, Any]]:
+    """Return every adapter as a row, the single-key spelling first.
+
+    A bare path reads as a row whose accepted export prefix is the library's
+    own ``symbol_prefix``, so every row written before prefix-aware adapters
+    keeps its exact meaning. A library whose archive fronts two namespaces
+    spells the wider ones out: ra8_ota exports the public ``ra8_ota_`` API and
+    the promoted ``priv_ota_`` predicates from one adapter, and the parser
+    adapter beside it exports only ``priv_ota_``, which a single library-wide
+    prefix cannot express.
+    """
+    rows: list[dict[str, Any]] = []
     single = library.get("adapter")
     if isinstance(single, str):
-        paths.append(single)
+        rows.append({"path": single})
     extra = library.get("adapters")
     if isinstance(extra, list):
-        paths.extend(item for item in extra if isinstance(item, str))
-    return paths
+        for item in extra:
+            if isinstance(item, str):
+                rows.append({"path": item})
+            elif isinstance(item, dict) and isinstance(item.get("path"), str):
+                rows.append(item)
+    return rows
+
+
+def _boundary_adapter_paths(library: dict[str, Any]) -> list[str]:
+    """Return every adapter path for one library, the single-key spelling first."""
+    return [row["path"] for row in _boundary_adapter_rows(library)]
+
+
+def _adapter_prefix_findings(
+    name: str,
+    library: dict[str, Any],
+    repository_root: Path,
+) -> list[str]:
+    """Reject an adapter export outside the namespaces that adapter declares."""
+    findings: list[str] = []
+    for row in _boundary_adapter_rows(library):
+        if "symbol_prefixes" not in row:
+            continue
+        accepted = row["symbol_prefixes"]
+        if (
+            not isinstance(accepted, list)
+            or not accepted
+            or not all(isinstance(item, str) and item for item in accepted)
+            or len(set(accepted)) != len(accepted)
+        ):
+            findings.append(f"{name}: malformed adapter symbol_prefixes: {row['path']}")
+            continue
+        text = (repository_root / row["path"]).read_text(encoding="utf-8")
+        names, _heads = _zig_exports(text)
+        unexpected = sorted(
+            symbol for symbol in names if not any(symbol.startswith(item) for item in accepted)
+        )
+        if unexpected:
+            findings.append(
+                f"{name}: adapter export prefix mismatch in {row['path']}: "
+                + ", ".join(unexpected)
+            )
+    return findings
 
 
 def _adapter_scope_findings(
@@ -782,7 +836,17 @@ def _library_findings(
     # backend header declares what the backend adapter exports.
     header_text = "\n".join(header_texts.values())
     adapter_text = "\n".join(adapter_texts.values())
-    header_names = _header_exports(header_text, prefix)
+    # A pinned header may front a different namespace than the library's own:
+    # ra8_ota publishes the ra8_ota_ API from inc/ra8_ota.h and the promoted
+    # priv_ota_ predicates from src/ra8_ota_internal.h, and both are ABI the
+    # port has to keep. A row without its own symbol_prefix reads as before.
+    header_names: set[str] = set()
+    for row in header_rows:
+        row_prefix = row.get("symbol_prefix", prefix)
+        if not isinstance(row_prefix, str) or not row_prefix:
+            findings.append(f"{name}: malformed public header symbol_prefix: {row['path']}")
+            continue
+        header_names |= _header_exports(header_texts[row["path"]], row_prefix)
     zig_names, zig_heads = _zig_exports(adapter_text)
     metadata_findings, declared = _metadata_findings(name, library.get("exports"))
     findings.extend(metadata_findings)
@@ -820,13 +884,36 @@ def _library_findings(
             repository_root,
         )
     )
+    # Representation assertions do not have to sit in the adapter: a port that
+    # keeps its layout comptime asserts with the types they describe names
+    # those files here, and they must live inside the build root so a row
+    # cannot claim evidence from another library.
+    assertion_text = adapter_text
+    layout_sources = library.get("layout_sources", [])
+    if not isinstance(layout_sources, list) or not all(
+        isinstance(value, str) for value in layout_sources
+    ):
+        findings.append(f"{name}: layout_sources must be a list of paths")
+    else:
+        for value in layout_sources:
+            path = repository_root / value
+            try:
+                path.resolve().relative_to(paths["build_root"].resolve())
+            except ValueError:
+                findings.append(f"{name}: layout source is outside build root: {value}")
+                continue
+            if not path.is_file():
+                findings.append(f"{name}: missing layout source: {value}")
+                continue
+            assertion_text += "\n" + path.read_text(encoding="utf-8")
+    findings.extend(_adapter_prefix_findings(name, library, repository_root))
     for row in header_rows:
         findings.extend(
             _compatibility_findings(
                 {**row, "multi": multi_header},
                 name,
                 header_texts[row["path"]],
-                adapter_text,
+                assertion_text,
             )
         )
     findings.extend(_contract_test_findings(library, name, prefix, repository_root))
