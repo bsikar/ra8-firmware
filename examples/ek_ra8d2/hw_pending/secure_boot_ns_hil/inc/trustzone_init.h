@@ -30,15 +30,16 @@ extern "C" {
  *
  * @details
  * The NS image is a SEPARATE ELF, so the Secure side has none of its linker
- * symbols and must hard-code these (they mirror ns_memory_map.cmake). It is flashed
+ * symbols and must carry these as constants; they come in as compile
+ * definitions from ra8_ns_memory_map_defines(). It is flashed
  * at the MRAM LMA and copied to the SRAM2 Non-secure alias before BLXNS.
  *
  * @invariant Matches RA8_NS_MRAM_ORIGIN / RA8_NS_SRAM_ORIGIN in
  *             libs/ra8_board_ek_ra8d2/ld/ns_memory_map.cmake.
  */
 typedef enum : uintptr_t {
-  k_sbns_ns_load_base = 0x02080000U, /**< NS image LMA (Secure MRAM).     */
-  k_sbns_ns_run_base  = 0x32100000U, /**< NS image VMA (SRAM2 NS alias).  */
+  k_sbns_ns_load_base = RA8_NS_MRAM_BASE, /**< NS image LMA (Secure MRAM).    */
+  k_sbns_ns_run_base  = RA8_NS_SRAM_BASE, /**< NS image VMA (SRAM2 NS alias). */
   k_sbns_ns_copy_size = 0x00010000U, /**< Bytes copied LMA->VMA (64 KiB). */
 } sbns_ns_image_t;
 

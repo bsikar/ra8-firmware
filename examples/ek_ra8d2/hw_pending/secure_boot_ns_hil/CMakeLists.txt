@@ -96,6 +96,12 @@ target_compile_definitions(
 target_compile_options(tfpsa_sbns PRIVATE -fno-strict-aliasing)
 
 target_link_libraries(secure_boot_ns_hil.elf PRIVATE tfpsa_sbns)
+include(${RA8_REPO_ROOT}/libs/ra8_board_ek_ra8d2/ld/ns_memory_map.cmake)
+# The Secure boot copies/jumps to the NS image, so it needs the NS addresses as
+# constants. They come from the same map the NS linker script is generated from
+# rather than being re-typed in trustzone_init.c (#759 item 2).
+ra8_ns_memory_map_defines(secure_boot_ns_hil.elf)
+
 target_compile_definitions(
   secure_boot_ns_hil.elf PRIVATE RA8_ENABLE_ROOT_OF_TRUST RA8_TRUSTZONE_ENABLE
 )
@@ -200,7 +206,8 @@ add_custom_command(
     secure_boot_ns_hil_secure.hex --ns-elf $<TARGET_FILE:secure_boot_ns_hil_ns.elf> --objcopy
     ${CMAKE_OBJCOPY} --rot-sign ${_d}/scripts/secrets/rot_sign.py --merge
     $<TARGET_FILE:ra8_zig::merge_ihex> --out-genuine secure_boot_ns_hil.hex --out-tampered
-    secure_boot_ns_hil_tampered.hex --key ${_sbns_key}
+    secure_boot_ns_hil_tampered.hex --key ${_sbns_key} --ns-load-addr
+    ${RA8_NS_MRAM_ORIGIN}
   VERBATIM
   COMMENT "Signing NS image + merging Secure+NS -> secure_boot_ns_hil.hex (+_tampered)"
 )
