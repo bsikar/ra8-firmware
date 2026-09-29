@@ -2,12 +2,13 @@
 //! Copyright (c) 2026 Brighton Sikarskie
 //!
 //! C ABI membrane for the `ra8_gfx` software rasteriser: the drawing entry
-//! points and the glyph/text stack alike. Defines the one module-wide
-//! framebuffer binding `g_gfx_text_state`, exports the two promoted helpers
-//! `priv_gfx_text_pack_565` and `priv_gfx_text_plot` that the remaining C
-//! translation units (bind, dither, tone, generated font table) reach through
-//! `src/ra8_gfx_internal.h`, and exports the twelve entry points declared in
-//! `inc/ra8_gfx.h`, both text calls among them.
+//! points, the glyph/text stack and the per-panel tone curve alike. Defines
+//! the one module-wide framebuffer binding `g_gfx_text_state`, exports the two
+//! promoted helpers `priv_gfx_text_pack_565` and `priv_gfx_text_plot` that the
+//! remaining C translation units (bind, dither, generated font table) reach
+//! through `src/ra8_gfx_internal.h`, exports the twelve entry points declared
+//! in `inc/ra8_gfx.h`, both text calls among them, and the three
+//! `inc/ra8_gfx_tone.h` calls with their committed nominal curve.
 //!
 //! The lifecycle half stays C in `ra8_gfx_bind.c`: `ra8_gfx_init()`,
 //! `ra8_gfx_init_surface()` and `ra8_gfx_deinit()` write the binding this file
@@ -17,9 +18,13 @@
 
 const std = @import("std");
 const impl = @import("internal/root.zig");
+const tone_impl = @import("internal/tone.zig");
 
 /// Re-exported so the ABI test binary shares the exact struct types.
 pub const internal = impl;
+
+/// The tone curve's own pure half, re-exported for the same reason.
+pub const tone = tone_impl;
 
 /// `g_gfx_text_state` -- the single shared framebuffer binding. The C
 /// definition initialised only `.format`, so RGB565 is the pre-init format.
@@ -545,4 +550,38 @@ pub export fn ra8_gfx_text_size(
     out_w.?.* = extent.w;
     out_h.?.* = extent.h;
     return impl.err.ok;
+}
+
+/// `k_ra8_gfx_tone_lut_nominal` -- the committed uncalibrated curve, so the
+/// renderer works with no calibration data at all.
+pub export const k_ra8_gfx_tone_lut_nominal: tone_impl.Lut = tone_impl.nominal;
+
+/// `ra8_gfx_tone_lut_validate`
+pub export fn ra8_gfx_tone_lut_validate(lut: ?*const tone_impl.Lut) callconv(.c) u16 {
+    const curve = lut orelse return impl.err.null_ptr;
+    return tone_impl.validateLut(curve);
+}
+
+/// `ra8_gfx_tone_prepare`
+pub export fn ra8_gfx_tone_prepare(
+    lut: ?*const tone_impl.Lut,
+    out: ?*tone_impl.Map,
+) callconv(.c) u16 {
+    const map = out orelse return impl.err.null_ptr;
+    const curve = lut orelse return impl.err.null_ptr;
+    const status = tone_impl.validateLut(curve);
+    if (status != impl.err.ok) {
+        return status;
+    }
+    tone_impl.prepareMap(curve, map);
+    return impl.err.ok;
+}
+
+/// `ra8_gfx_tone_quantise`
+pub export fn ra8_gfx_tone_quantise(
+    map: *const tone_impl.Map,
+    gray8: u8,
+    thr: u8,
+) callconv(.c) u8 {
+    return tone_impl.quantise(map, gray8, thr);
 }

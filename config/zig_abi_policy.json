@@ -2933,6 +2933,20 @@
             "@offsetOf(State, \"clip_x0\") == clip_at"
           ],
           "symbol_prefix": "priv_gfx_"
+        },
+        {
+          "path": "libs/ra8_gfx/inc/ra8_gfx_tone.h",
+          "compatibility_sha256": "12ae3784f58eee4d512cb79016ac9774c80a8076ee0309baa6e1496f0ee6ea47",
+          "layout_assertions": [
+            "pub const knots: u16 = 16",
+            "pub const last_knot: u16 = 15",
+            "pub const domain: u16 = 256",
+            "pub const white: u8 = 255",
+            "pub const scale: u32 = 256",
+            "@sizeOf(Lut) == tone.knots",
+            "@offsetOf(Map, \"level\") == 0",
+            "@offsetOf(Map, \"up_threshold\") == tone.domain"
+          ]
         }
       ],
       "adapters": [
@@ -2940,12 +2954,14 @@
           "path": "libs/ra8_gfx/src/ra8_gfx_abi.zig",
           "symbol_prefixes": [
             "ra8_gfx_",
-            "priv_gfx_"
+            "priv_gfx_",
+            "k_ra8_gfx_tone_"
           ]
         }
       ],
       "layout_sources": [
-        "libs/ra8_gfx/src/internal/root.zig"
+        "libs/ra8_gfx/src/internal/root.zig",
+        "libs/ra8_gfx/src/internal/tone.zig"
       ],
       "library_name": "ra8_gfx",
       "symbol_prefix": "ra8_gfx_",
@@ -2984,6 +3000,12 @@
         {
           "language": "c",
           "path": "tests/graphics/src/test_ra8_gfx_surface.c",
+          "symbol_evidence": "libs/ra8_gfx/src/ra8_gfx_abi.zig",
+          "registration": "tests/cmake/unit_tests.cmake"
+        },
+        {
+          "language": "c",
+          "path": "tests/graphics/src/test_ra8_gfx_tone.c",
           "symbol_evidence": "libs/ra8_gfx/src/ra8_gfx_abi.zig",
           "registration": "tests/cmake/unit_tests.cmake"
         },
@@ -3070,6 +3092,21 @@
           "name": "ra8_gfx_text_size",
           "calling_context": "task-only-non-reentrant",
           "ownership": "measures a caller-owned string and writes the two caller-owned extent words"
+        },
+        {
+          "name": "ra8_gfx_tone_lut_validate",
+          "calling_context": "task-safe-reentrant",
+          "ownership": "reads the caller's curve and retains no reference to it"
+        },
+        {
+          "name": "ra8_gfx_tone_prepare",
+          "calling_context": "task-safe-reentrant",
+          "ownership": "writes the caller's map from the caller's curve and retains neither"
+        },
+        {
+          "name": "ra8_gfx_tone_quantise",
+          "calling_context": "task-safe-reentrant",
+          "ownership": "reads one entry of the caller's prepared map and retains no reference to it"
         }
       ],
       "data_exports": [
@@ -3079,6 +3116,13 @@
           "adapter": "libs/ra8_gfx/src/ra8_gfx_abi.zig",
           "calling_context": "task-only-non-reentrant",
           "ownership": "owns the single module-wide framebuffer binding every ra8_gfx translation unit reads"
+        },
+        {
+          "name": "k_ra8_gfx_tone_lut_nominal",
+          "header": "libs/ra8_gfx/inc/ra8_gfx_tone.h",
+          "adapter": "libs/ra8_gfx/src/ra8_gfx_abi.zig",
+          "calling_context": "task-safe-reentrant",
+          "ownership": "read-only committed curve in the archive's rodata; callers copy from it and never write it"
         }
       ],
       "c_retained_exports": [

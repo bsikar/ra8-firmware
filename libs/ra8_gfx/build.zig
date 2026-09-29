@@ -3,10 +3,10 @@
 //!
 //! Build graph for the Zig implementation of the `ra8_gfx` rasteriser core.
 //! CMake consumes the installed static library through the unchanged
-//! `inc/ra8_gfx.h` and `src/ra8_gfx_internal.h`; the five remaining C
-//! translation units of the library (bind, dither, gray4 blit, text glyph,
-//! tone, plus the generated font table) link against this archive for
-//! `g_gfx_text_state` and the two promoted helpers.
+//! `inc/ra8_gfx.h`, `inc/ra8_gfx_tone.h` and `src/ra8_gfx_internal.h`; the two
+//! remaining C translation units of the library (bind, dither, plus the
+//! generated font table) link against this archive for `g_gfx_text_state`, the
+//! two promoted helpers and `ra8_gfx_tone_quantise()`.
 //!
 //! No build options: nothing in this cluster is configured at compile time.
 
@@ -58,9 +58,25 @@ pub fn build(b: *std.Build) void {
     abi_test_module.addImport("abi", abi_module);
     const abi_tests = b.addTest(.{ .root_module = abi_test_module });
 
+    const tone_module = b.createModule(.{
+        .root_source_file = b.path("src/internal/tone.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+
+    const tone_test_module = b.createModule(.{
+        .root_source_file = b.path("tests/tone_test.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    tone_test_module.addImport("tone", tone_module);
+    const tone_tests = b.addTest(.{ .root_module = tone_test_module });
+
     const run_internal_tests = b.addRunArtifact(internal_tests);
+    const run_tone_tests = b.addRunArtifact(tone_tests);
     const run_abi_tests = b.addRunArtifact(abi_tests);
     const test_step = b.step("test", "Run Zig ra8_gfx tests");
     test_step.dependOn(&run_internal_tests.step);
+    test_step.dependOn(&run_tone_tests.step);
     test_step.dependOn(&run_abi_tests.step);
 }
