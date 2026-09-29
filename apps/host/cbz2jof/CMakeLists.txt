@@ -93,6 +93,8 @@ target_include_directories(
           ${CBZ2JOF_FW}/ra8_io/inc
           ${CBZ2JOF_REPO_ROOT}/apps/shared_libs/compress/inc
           ${CBZ2JOF_FW}/ra8_imgdec/inc
+          # ra8_imgdec.h includes "ra8_arena.h", which lives in ra8_mem.
+          ${CBZ2JOF_FW}/ra8_mem/inc
           ${CBZ2JOF_FW}/ra8_core/inc
           ${CBZ2JOF_REPO_ROOT}/apps/shared_libs/third_party/miniz
 )
