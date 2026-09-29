@@ -51,7 +51,6 @@
 #include "ra8_camera_codec_passthrough.h"
 #include "ra8_camera_source_memory.h"
 #include "ra8_camera_stream.h"
-#include "ra8_cgc.h"
 #include "ra8_err.h"
 #include "ra8_io_log.h"
 #include "ra8_io_stream.h"
@@ -327,7 +326,8 @@ static ra8_err_t internal_run(void)
  */
 void main(void)
 {
-  (void)ra8_cgc_init();
+  ra8_board_clock_rates_t rates = {};
+  (void)ra8_board_clocks_init(&rates);
   (void)ra8_mstp_init();
   (void)ra8_board_uart_console_init(115200U);
   ra8_log_init();
