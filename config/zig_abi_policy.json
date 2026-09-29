@@ -459,9 +459,15 @@
       "build_root": "libs/ra8_sdmmc_spi",
       "symbols": [
         "ra8_log_emit_error",
-        "ra8_log_emit_error_val"
+        "ra8_log_emit_error_val",
+        "ra8_pfs_route_peripheral",
+        "ra8_gpio_output_init",
+        "ra8_gpio_write",
+        "ra8_sci_spi_init",
+        "ra8_sci_spi_set_clock",
+        "ra8_sci_spi_xfer"
       ],
-      "reason": "the ABI suite links the adapter without ra8_core_hal, so it exports the two house log sinks the protocol core reports bounded-wait and protocol faults through"
+      "reason": "the ABI suite links the adapter without ra8_core_hal, so it exports the two house log sinks plus the SCI Simple-SPI, GPIO and PFS entry points the block-I/O paths and the transport factory reach as externs"
     }
   ],
   "libraries": [
@@ -2349,7 +2355,7 @@
           "header": "libs/ra8_sdmmc_spi/src/ra8_sdmmc_spi_internal.h",
           "adapter": "libs/ra8_sdmmc_spi/src/ra8_sdmmc_spi_abi.zig",
           "calling_context": "task-only-non-reentrant",
-          "ownership": "owns the single mutable card state shared with the retained C block-I/O translation unit"
+          "ownership": "owns the single mutable card state the whole library shares and two host suites read through src/ra8_sdmmc_spi_internal.h"
         }
       ],
       "library_name": "ra8_sdmmc_spi",
@@ -2472,63 +2478,61 @@
           "name": "priv_sdmmc_spi_run_init_sequence",
           "calling_context": "task-only-non-reentrant",
           "ownership": "mutates the single shared card state through the active transport"
-        }
-      ],
-      "c_retained_exports": [
+        },
         {
           "name": "ra8_sdmmc_spi_transport_sci",
-          "source": "libs/ra8_sdmmc_spi/src/ra8_sdmmc_spi_io.c",
-          "reason": "block-I/O translation unit src/ra8_sdmmc_spi_io.c is the stacked slice of this port and still implements init/deinit, the single- and multi-block read/write and erase paths, the capacity and card-type queries, the ra8_fs backend adapter and the SCI Simple-SPI transport factory, all of which call the ported core"
+          "calling_context": "task-only-non-reentrant",
+          "ownership": "fills a caller-owned transport descriptor with the SCI Simple-SPI shims and retains no caller memory"
         },
         {
           "name": "ra8_sdmmc_spi_init",
-          "source": "libs/ra8_sdmmc_spi/src/ra8_sdmmc_spi_io.c",
-          "reason": "block-I/O translation unit src/ra8_sdmmc_spi_io.c is the stacked slice of this port and still implements init/deinit, the single- and multi-block read/write and erase paths, the capacity and card-type queries, the ra8_fs backend adapter and the SCI Simple-SPI transport factory, all of which call the ported core"
+          "calling_context": "task-only-non-reentrant",
+          "ownership": "borrows a caller-owned transport descriptor and copies it into the single shared card state"
         },
         {
           "name": "ra8_sdmmc_spi_deinit",
-          "source": "libs/ra8_sdmmc_spi/src/ra8_sdmmc_spi_io.c",
-          "reason": "block-I/O translation unit src/ra8_sdmmc_spi_io.c is the stacked slice of this port and still implements init/deinit, the single- and multi-block read/write and erase paths, the capacity and card-type queries, the ra8_fs backend adapter and the SCI Simple-SPI transport factory, all of which call the ported core"
+          "calling_context": "task-only-non-reentrant",
+          "ownership": "clears the single shared card state and releases the borrowed transport descriptor"
         },
         {
           "name": "ra8_sdmmc_spi_read_block",
-          "source": "libs/ra8_sdmmc_spi/src/ra8_sdmmc_spi_io.c",
-          "reason": "block-I/O translation unit src/ra8_sdmmc_spi_io.c is the stacked slice of this port and still implements init/deinit, the single- and multi-block read/write and erase paths, the capacity and card-type queries, the ra8_fs backend adapter and the SCI Simple-SPI transport factory, all of which call the ported core"
+          "calling_context": "task-only-non-reentrant",
+          "ownership": "writes one block into a caller-owned buffer through the shared card state and retains no caller memory"
         },
         {
           "name": "ra8_sdmmc_spi_read_blocks",
-          "source": "libs/ra8_sdmmc_spi/src/ra8_sdmmc_spi_io.c",
-          "reason": "block-I/O translation unit src/ra8_sdmmc_spi_io.c is the stacked slice of this port and still implements init/deinit, the single- and multi-block read/write and erase paths, the capacity and card-type queries, the ra8_fs backend adapter and the SCI Simple-SPI transport factory, all of which call the ported core"
+          "calling_context": "task-only-non-reentrant",
+          "ownership": "writes a caller-owned multi-block buffer through the shared card state and retains no caller memory"
         },
         {
           "name": "ra8_sdmmc_spi_write_block",
-          "source": "libs/ra8_sdmmc_spi/src/ra8_sdmmc_spi_io.c",
-          "reason": "block-I/O translation unit src/ra8_sdmmc_spi_io.c is the stacked slice of this port and still implements init/deinit, the single- and multi-block read/write and erase paths, the capacity and card-type queries, the ra8_fs backend adapter and the SCI Simple-SPI transport factory, all of which call the ported core"
+          "calling_context": "task-only-non-reentrant",
+          "ownership": "reads one caller-owned block buffer through the shared card state and retains no caller memory"
         },
         {
           "name": "ra8_sdmmc_spi_write_blocks",
-          "source": "libs/ra8_sdmmc_spi/src/ra8_sdmmc_spi_io.c",
-          "reason": "block-I/O translation unit src/ra8_sdmmc_spi_io.c is the stacked slice of this port and still implements init/deinit, the single- and multi-block read/write and erase paths, the capacity and card-type queries, the ra8_fs backend adapter and the SCI Simple-SPI transport factory, all of which call the ported core"
+          "calling_context": "task-only-non-reentrant",
+          "ownership": "reads a caller-owned multi-block buffer through the shared card state and retains no caller memory"
         },
         {
           "name": "ra8_sdmmc_spi_erase_blocks",
-          "source": "libs/ra8_sdmmc_spi/src/ra8_sdmmc_spi_io.c",
-          "reason": "block-I/O translation unit src/ra8_sdmmc_spi_io.c is the stacked slice of this port and still implements init/deinit, the single- and multi-block read/write and erase paths, the capacity and card-type queries, the ra8_fs backend adapter and the SCI Simple-SPI transport factory, all of which call the ported core"
+          "calling_context": "task-only-non-reentrant",
+          "ownership": "mutates card media through the shared card state and borrows no caller memory"
         },
         {
           "name": "ra8_sdmmc_spi_get_capacity",
-          "source": "libs/ra8_sdmmc_spi/src/ra8_sdmmc_spi_io.c",
-          "reason": "block-I/O translation unit src/ra8_sdmmc_spi_io.c is the stacked slice of this port and still implements init/deinit, the single- and multi-block read/write and erase paths, the capacity and card-type queries, the ra8_fs backend adapter and the SCI Simple-SPI transport factory, all of which call the ported core"
+          "calling_context": "task-only-non-reentrant",
+          "ownership": "reads the shared card state and writes one caller-owned out parameter"
         },
         {
           "name": "ra8_sdmmc_spi_get_card_type",
-          "source": "libs/ra8_sdmmc_spi/src/ra8_sdmmc_spi_io.c",
-          "reason": "block-I/O translation unit src/ra8_sdmmc_spi_io.c is the stacked slice of this port and still implements init/deinit, the single- and multi-block read/write and erase paths, the capacity and card-type queries, the ra8_fs backend adapter and the SCI Simple-SPI transport factory, all of which call the ported core"
+          "calling_context": "task-only-non-reentrant",
+          "ownership": "reads the shared card state and writes one caller-owned out parameter"
         },
         {
           "name": "ra8_sdmmc_spi_bind_fs_backend",
-          "source": "libs/ra8_sdmmc_spi/src/ra8_sdmmc_spi_io.c",
-          "reason": "block-I/O translation unit src/ra8_sdmmc_spi_io.c is the stacked slice of this port and still implements init/deinit, the single- and multi-block read/write and erase paths, the capacity and card-type queries, the ra8_fs backend adapter and the SCI Simple-SPI transport factory, all of which call the ported core"
+          "calling_context": "task-only-non-reentrant",
+          "ownership": "fills a caller-owned ra8_fs backend descriptor with static shims and retains no caller memory"
         }
       ]
     }
