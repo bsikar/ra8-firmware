@@ -340,8 +340,20 @@ void SystemInit(void)
    * sees Device-nGnRE MMIO and the non-cacheable shared SRAM, not Normal
    * cacheable), then the caches. Enable the caches only if the map installed. */
   if (ra8_mpu_apply_boot_map() == k_ra8_ok) {
+#ifdef RA8_BOOT_CACHE_VIA_HAL
+    /* Issue #590: same gated arm the shared board copy got in #577 -- the L1
+     * caches come up through the ra8_cache HAL rather than the hand-rolled
+     * pokes. Both spellings emit the identical ICIALLU + CCR.IC / CCR.DC
+     * sequence, so this is a drop-in; with the flag set this app takes the HAL
+     * route on both halves of the boot map demo. */
+    ra8_cache_icache_enable();
+    ra8_cache_dcache_enable();
+    (void)internal_enable_icache;
+    (void)internal_enable_dcache;
+#else
     internal_enable_icache();
     internal_enable_dcache();
+#endif
     internal_enable_branch_predictor();
   }
 #else
