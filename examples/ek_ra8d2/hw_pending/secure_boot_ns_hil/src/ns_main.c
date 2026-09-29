@@ -140,7 +140,7 @@ typedef void (*ns_exc_handler_t)(void);
  * Slot 0 = initial ``MSP_NS``, slot 1 = ``ns_reset_handler``. Every fault slot
  * halts in ::ns_nmi_halt. MUST stay exactly 16 entries (64 bytes): the
  * ``.ns_rot_header`` the Secure verifier reads is placed immediately after it
- * (see ``ns_image.ld`` + ::k_ra8_tz_ns_rot_header_offset). 8-byte aligned per
+ * (see ``ns_image_sram.ld`` + ::k_ra8_tz_ns_rot_header_offset). 8-byte aligned per
  * ARMv8-M B3.10 (``.ns_vectors`` aligns to 8).
  *
  * @invariant Exactly 16 entries so the RoT header lands at ns_base + 0x40.

@@ -48,7 +48,7 @@ option(RA8_EREADER_NS_XIP "Run the Non-Secure e-reader XIP from OSPI flash" OFF)
 if(RA8_EREADER_NS_XIP)
   set(_ra8_ns_linker "${CMAKE_CURRENT_SOURCE_DIR}/ns_image_xip.ld")
 else()
-  set(_ra8_ns_linker "${CMAKE_CURRENT_SOURCE_DIR}/ns_image.ld")
+  set(_ra8_ns_linker "${RA8_REPO_ROOT}/libs/ra8_board_ek_ra8d2/ld/ns_image_sram.ld")
 endif()
 
 # RA8_APP_UART_LOG mirrors ra8_log onto the SCI8 console (in ra8_nsc_periph_init) so
