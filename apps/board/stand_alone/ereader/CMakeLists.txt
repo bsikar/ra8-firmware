@@ -45,10 +45,12 @@ ra8_add_app(
 # ns_reset_handler copies only .data into SRAM. OFF by default so the proven
 # SRAM-run e-reader stays the default build.
 option(RA8_EREADER_NS_XIP "Run the Non-Secure e-reader XIP from OSPI flash" OFF)
+# ra8_add_ns_image() generates the script from the board template; the option
+# selects the read-only home rather than a second copy of the script (#759).
 if(RA8_EREADER_NS_XIP)
-  set(_ra8_ns_linker "${CMAKE_CURRENT_SOURCE_DIR}/ns_image_xip.ld")
+  set(_ra8_ns_xip XIP)
 else()
-  set(_ra8_ns_linker "${RA8_REPO_ROOT}/libs/ra8_board_ek_ra8d2/ld/ns_image_sram.ld")
+  set(_ra8_ns_xip)
 endif()
 
 # RA8_APP_UART_LOG mirrors ra8_log onto the SCI8 console (in ra8_nsc_periph_init) so
@@ -106,7 +108,7 @@ file(GLOB _ra8_ns_wdt_sup CONFIGURE_DEPENDS ${RA8_REPO_ROOT}/libs/ra8_wdt_superv
 ra8_add_ns_image(
   SECURE_TARGET ra8d2-ereader.elf
   NAME ra8d2-ereader_ns
-  LINKER ${_ra8_ns_linker}
+  ${_ra8_ns_xip}
   STACK_BYTES 2200
   IMPLIB ${CMAKE_CURRENT_BINARY_DIR}/ra8d2_cmse_import.o
   MERGED_HEX ra8d2-ereader.hex
