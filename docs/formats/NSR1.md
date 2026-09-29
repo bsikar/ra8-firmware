@@ -2,7 +2,7 @@
 
 **Magic:** `NSR1` (`0x3152534E`) &nbsp;|&nbsp;
 **Library:** `libs/ra8_tz_secure_boot` &nbsp;|&nbsp;
-**Producer:** `apps/board/stand_alone/ereader/ns_image.ld` (the NS linker script) &nbsp;|&nbsp;
+**Producer:** `libs/ra8_board_ek_ra8d2/ld/ns_image_sram.ld` (the NS linker script) &nbsp;|&nbsp;
 **Size:** 8 bytes, fixed, at NS base + `0x40`
 
 ---
@@ -59,7 +59,7 @@ table must remain exactly 16 entries**. Add a 17th and the header moves, the
 Secure world reads the wrong 8 bytes, and the magic check denies the boot.
 
 That is a nasty class of bug -- a silent layout drift discovered only as "the
-device stopped booting" -- so it is not left to convention. `ns_image.ld`
+device stopped booting" -- so it is not left to convention. `ns_image_sram.ld`
 asserts it at link time:
 
 ```
@@ -178,7 +178,7 @@ hexdump of a flashed NS image. See @ref md_docs_2formats_2BINARY__FORMATS.
 
 ### 4.1 Producing (the NS linker script)
 
-`apps/board/stand_alone/ereader/ns_image.ld` places a `.ns_rot_header` section at `ALIGN(4)`
+`libs/ra8_board_ek_ra8d2/ld/ns_image_sram.ld` places a `.ns_rot_header` section at `ALIGN(4)`
 immediately after the vector table, emits the magic word and a `body_len`
 computed from the linker's own symbols (`signed_body_end - ns_run_start`), and
 then asserts the placement. No post-processing step is involved: the header is a
@@ -299,7 +299,7 @@ the deny sentinel, an old Secure world confronted with a new NS image refuses to
 branch rather than misreading the header -- the correct failure direction for a
 boot decision, and it costs no code to get.
 
-Three things must move together for any change here: `ns_image.ld` (producer),
+Three things must move together for any change here: `ns_image_sram.ld` (producer),
 `ra8_tz_secure_boot.h` / its verifier (consumer), and the `0x40` assertion. The
 `ASSERT` is what makes that safe -- a change that breaks the contract fails the
 build instead of the boot.
@@ -310,7 +310,7 @@ build instead of the boot.
 
 - `ra8_tz_secure_boot.h` -- `ra8_ns_rot_header_t`, the offset constant, and
   `ra8_tz_ns_signed_body_len()`
-- `apps/board/stand_alone/ereader/ns_image.ld` -- the producing linker script and its
+- `libs/ra8_board_ek_ra8d2/ld/ns_image_sram.ld` -- the producing linker script and its
   placement assertion
 - @ref md_docs_2formats_2ROT1 -- the trailer this header locates, and the
   verification flow that consumes both
