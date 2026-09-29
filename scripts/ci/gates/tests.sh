@@ -258,11 +258,25 @@ gate_mcdc() (
 # re-running the ~20-minute coverage build. With the report absent the checker
 # FAILS LOUDLY naming the dependency instead of skipping. --selftest runs first, in
 # both directions, so a checker that stopped comparing cannot pass as clean.
+#
+# The media-download codec (#715) rides here too, but by DIGEST rather than by
+# regeneration: scripts/gen/gen_ra8_media_proto.sh --check needs the exact pinned
+# protobuf-c 1.5.2 / libprotoc 35.1 pair, which neither the dev box nor this image has,
+# and a guaranteed-red command is worse than none. check_proto_codec_pairing.py instead
+# re-derives the SHA-256 of the schema and both generated files from the tree and
+# compares them with .github/proto-codec-pairing.txt, which the regenerate script
+# rewrites in the same command. That catches the two drift shapes the issue names -- a
+# hand edit to a generated file, and a schema change with a forgotten regenerate --
+# with no generator installed. It does NOT claim the committed C is what protoc-c would
+# emit today; only a regenerate proves that, and #715 stays open for wiring the pinned
+# generator into the image so it can run here.
 gate_artefact_freshness() (
   set -e
   require_cmd python3 "the artefact-freshness gate regenerates docs via python generators"
   python3 scripts/checks/check_generated_artefacts.py --selftest
   python3 scripts/checks/check_generated_artefacts.py
+  python3 scripts/checks/check_proto_codec_pairing.py --selftest
+  python3 scripts/checks/check_proto_codec_pairing.py
 )
 
 # --- cache-bench ----------------------------------------------------------
