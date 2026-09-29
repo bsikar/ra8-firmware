@@ -41,7 +41,6 @@ func TestFakePlaneCancelTearsDownTheStepBeforeTheReceipt(t *testing.T) {
 	assignment.Source.Commit, assignment.Source.SnapshotSHA256 = snapshot.RootCommit, snapshot.Digest
 
 	plane := newFakePlane(assignment)
-	plane.cancelNextHeartbeat()
 	plane.atReceipt = func() string { return stepStillAlive(pidPath) }
 	agent, closeServer := planeFixture(t, plane)
 	defer closeServer()
@@ -49,6 +48,29 @@ func TestFakePlaneCancelTearsDownTheStepBeforeTheReceipt(t *testing.T) {
 	// The cancel only reaches a running attempt on a heartbeat, so beat
 	// fast enough to observe the teardown inside a test.
 	agent.beat = 200 * time.Millisecond
+
+	// A teardown can only be observed once there is something to tear down.
+	// Armed before the attempt starts, the cancel races the step's own
+	// startup, and on a loaded host it wins: the attempt ends having run
+	// nothing, and the receipt hook reports a pid file that was never
+	// written as though the agent had left a process behind. Waiting for
+	// the step to record itself makes the real property the only thing this
+	// case can fail on.
+	recorded := make(chan bool, 1)
+	go func() {
+		for deadline := time.Now().Add(30 * time.Second); time.Now().Before(deadline); {
+			if stepHasRecordedItself(pidPath) {
+				plane.cancelNextHeartbeat()
+				recorded <- true
+				return
+			}
+			time.Sleep(2 * time.Millisecond)
+		}
+		// Armed regardless, so a step that never records itself ends the
+		// attempt with a clear failure rather than a five minute wait.
+		plane.cancelNextHeartbeat()
+		recorded <- false
+	}()
 
 	started := time.Now()
 	assigned, err := agent.RunOnce(context.Background())
@@ -58,6 +80,9 @@ func TestFakePlaneCancelTearsDownTheStepBeforeTheReceipt(t *testing.T) {
 	}
 	if elapsed > 30*time.Second {
 		t.Fatalf("attempt ran %v: the cancel did not end the step", elapsed)
+	}
+	if !<-recorded {
+		t.Fatal("the step never recorded itself, so the cancel never had a running step to end")
 	}
 
 	_, logs, receipt, violations := plane.state()
@@ -169,4 +194,16 @@ func stepStillAlive(pidPath string) string {
 		return fmt.Sprintf("step process %d was still alive when the terminal receipt arrived", pid)
 	}
 	return ""
+}
+
+// stepHasRecordedItself answers whether the step has written a pid it can be
+// held to. The shell creates the file before it writes into it, so an empty
+// or half-written file is not yet an answer.
+func stepHasRecordedItself(pidPath string) bool {
+	data, err := os.ReadFile(pidPath)
+	if err != nil {
+		return false
+	}
+	pid, err := strconv.Atoi(strings.TrimSpace(string(data)))
+	return err == nil && pid > 1
 }
