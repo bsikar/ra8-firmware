@@ -12,6 +12,7 @@ const std = @import("std");
 /// `ra8_err_t` values this half of the library can answer with.
 pub const err_ok: u16 = 0;
 pub const err_invalid_arg: u16 = 0x103;
+pub const err_not_supported: u16 = 0x107;
 pub const err_busy: u16 = 0x109;
 pub const err_null_ptr: u16 = 0x504;
 
