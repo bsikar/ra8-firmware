@@ -409,7 +409,7 @@ RA8_INTERNAL static inline void internal_make_views(ra8_rabook_buffers_t*       
     .out            = s_pipe.out,
     .out_cap        = (uint32_t)k_out_cap,
   };
-  *arena = (ra8_img_arena_t){s_pipe.img_scratch, sizeof(s_pipe.img_scratch), 0U, 0U};
+  *arena = (ra8_img_arena_t){.base = s_pipe.img_scratch, .cap = sizeof(s_pipe.img_scratch)};
   *scr   = (ra8_rabook_pipeline_scratch_t){
     .xhtml         = s_pipe.xhtml,
     .xhtml_cap     = sizeof(s_pipe.xhtml),
