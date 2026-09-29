@@ -82,7 +82,9 @@ RA8_INTERNAL static void spy_reset(spy_t* spy) {
   spy->caps.streams       = false;
 }
 
-static uint8_t   s_encoded[16];
+/* The eight-byte PNG signature (PNG 5.2), so a `_none` request can sniff.
+   The spy never parses past it; the remaining bytes stay zero. */
+static uint8_t   s_encoded[16] = {0x89U, 0x50U, 0x4EU, 0x47U, 0x0DU, 0x0AU, 0x1AU, 0x0AU};
 static uint8_t   s_surface[256];
 static uint8_t   s_arena_backing[512];
 
