@@ -408,19 +408,22 @@ static void test_mcdc_ra8_ipc(void)
   bool               ok  = false;
   /* Live attribution is read by ra8_ipc_get_attribution from sar/par
    * at bit [k_ra8_ipc_attr_shift_ir_base + channel]. To force
-   * live={secure=T, privileged=T} for V1 we set both bits; V2/V3
+   * live={non_secure, unprivileged} for V1 we set both bits; V2/V3
    * intentionally mismatch to drive the && decision to F. */
   const uint32_t live_bit =
     (uint32_t)1U << ((uint32_t)k_ra8_ipc_attr_shift_ir_base + (uint32_t)k_ra8_ipc_test_ch_mid);
   *sar                   = live_bit;
   *par                   = live_bit;
-  ra8_ipc_attr_t want_v1 = {.secure = true, .privileged = true};
+  ra8_ipc_attr_t want_v1 = {.world  = k_ra8_ipc_world_non_secure,
+                            .access = k_ra8_ipc_access_unprivileged};
   TEST_ASSERT_EQ(k_ra8_ok, ra8_ipc_can_access((uint8_t)k_ra8_ipc_test_ch_mid, &want_v1, &ok));
   TEST_ASSERT(ok == true);
-  ra8_ipc_attr_t want_v2 = {.secure = false, .privileged = true};
+  ra8_ipc_attr_t want_v2 = {.world  = k_ra8_ipc_world_secure,
+                            .access = k_ra8_ipc_access_unprivileged};
   TEST_ASSERT_EQ(k_ra8_ok, ra8_ipc_can_access((uint8_t)k_ra8_ipc_test_ch_mid, &want_v2, &ok));
   TEST_ASSERT(ok == false);
-  ra8_ipc_attr_t want_v3 = {.secure = true, .privileged = false};
+  ra8_ipc_attr_t want_v3 = {.world  = k_ra8_ipc_world_non_secure,
+                            .access = k_ra8_ipc_access_privileged};
   TEST_ASSERT_EQ(k_ra8_ok, ra8_ipc_can_access((uint8_t)k_ra8_ipc_test_ch_mid, &want_v3, &ok));
   TEST_ASSERT(ok == false);
   prep();
