@@ -153,6 +153,56 @@ def _metadata_findings(name: str, metadata: object) -> tuple[list[str], set[str]
     return findings, declared
 
 
+def _c_retained_findings(
+    name: str,
+    library: dict[str, Any],
+    header_names: set[str],
+    repository_root: Path,
+) -> tuple[list[str], set[str]]:
+    """Validate header symbols a port deliberately leaves implemented in C.
+
+    A ported library may keep a support translation unit whose symbols the
+    public header still declares: ra8_lsm6dso keeps src/ra8_lsm6dso_bind.c,
+    the house-I2C-seam binder, which CALLS the ported ABI rather than
+    implementing it. Those names are not Zig exports, so they must not be
+    read as header drift. Each entry has to name the C source that defines
+    it, and that source has to still define it, so a retired or renamed
+    symbol cannot sit here unnoticed.
+    """
+    findings: list[str] = []
+    retained: set[str] = set()
+    rows = library.get("c_retained_exports", [])
+    if not isinstance(rows, list):
+        return [f"{name}: c_retained_exports is not a list"], retained
+    for row in rows:
+        if not isinstance(row, dict):
+            findings.append(f"{name}: c_retained_exports row is not an object")
+            continue
+        symbol = row.get("name")
+        source = row.get("source")
+        reason = row.get("reason")
+        if not isinstance(symbol, str) or not symbol:
+            findings.append(f"{name}: c_retained_exports row lacks a name")
+            continue
+        if not isinstance(reason, str) or len(reason.strip()) < MIN_OWNERSHIP_LENGTH:
+            findings.append(f"{name}: undocumented C retention: {symbol}")
+        if symbol not in header_names:
+            findings.append(f"{name}: stale C retention, absent from the public header: {symbol}")
+            continue
+        if not isinstance(source, str) or not source:
+            findings.append(f"{name}: c_retained_exports lacks a source: {symbol}")
+            continue
+        path = repository_root / source
+        if not path.exists():
+            findings.append(f"{name}: missing C retention source: {source}")
+            continue
+        if not re.search(rf"\b{re.escape(symbol)}\s*\(", _strip_comments(path.read_text(encoding="utf-8"))):
+            findings.append(f"{name}: C retention source does not define {symbol}: {source}")
+            continue
+        retained.add(symbol)
+    return findings, retained
+
+
 def _inventory_findings(
     name: str,
     declared: set[str],
@@ -532,8 +582,14 @@ def _library_findings(
     }
     if allow_c_bool and "bool" not in header_text:
         findings.append(f"{name}: C bool exception lacks a bool declaration in the public header")
+    retention_findings, retained = _c_retained_findings(
+        name, library, header_names, repository_root
+    )
+    findings.extend(retention_findings)
     findings.extend(
-        _inventory_findings(name, declared, header_names, zig_names, zig_heads, allow_c_bool)
+        _inventory_findings(
+            name, declared, header_names - retained, zig_names, zig_heads, allow_c_bool
+        )
     )
     declared_sources = _source_inventory_for_library(
         source_inventory or [], library, repository_root
@@ -1064,6 +1120,54 @@ def _selftest_metadata_policy(base: dict[str, Any], root: Path) -> str | None:
         broken = json.loads(json.dumps(base))
         broken.pop(field)
         if not any(expected in item for item in _library_findings(broken, {"host", "ra8"}, root)):
+            return f"must-fire fixture was accepted: {expected}"
+    return _selftest_c_retention(base, root)
+
+
+def _selftest_c_retention(base: dict[str, Any], root: Path) -> str | None:
+    """Exercise the retained-C exception in both directions."""
+    reason = "support translation unit retained by a later change on the integration branch"
+    (root / "inc/demo.h").write_text(
+        "int demo_run(void);\nint demo_bind(void);\n", encoding="utf-8"
+    )
+    (root / "demo_bind.c").write_text("int demo_bind(void) { return 0; }\n", encoding="utf-8")
+    (root / "demo_other.c").write_text("int demo_other(void) { return 0; }\n", encoding="utf-8")
+    quiet = json.loads(json.dumps(base))
+    quiet["compatibility_sha256"] = _normalized_header_digest(
+        (root / "inc/demo.h").read_text(encoding="utf-8")
+    )
+    quiet["c_retained_exports"] = [
+        {"name": "demo_bind", "source": "demo_bind.c", "reason": reason}
+    ]
+    if any(
+        "unexpected export" in item for item in _library_findings(quiet, {"host", "ra8"}, root)
+    ):
+        return "must-stay-quiet fixture failed: declared C retention read as header drift"
+    if not any(
+        "header unexpected export" in item
+        for item in _library_findings(
+            {**quiet, "c_retained_exports": []}, {"host", "ra8"}, root
+        )
+    ):
+        return "must-fire fixture was accepted: undeclared C-implemented header symbol"
+    mutations = (
+        ([{"name": "demo_absent", "source": "demo_bind.c", "reason": reason}], "stale C retention"),
+        (
+            [{"name": "demo_bind", "source": "demo_gone.c", "reason": reason}],
+            "missing C retention source",
+        ),
+        (
+            [{"name": "demo_bind", "source": "demo_other.c", "reason": reason}],
+            "C retention source does not define",
+        ),
+        ([{"name": "demo_bind", "source": "demo_bind.c", "reason": "x"}], "undocumented C retention"),
+    )
+    for rows, expected in mutations:
+        broken = json.loads(json.dumps(quiet))
+        broken["c_retained_exports"] = rows
+        if not any(
+            expected in item for item in _library_findings(broken, {"host", "ra8"}, root)
+        ):
             return f"must-fire fixture was accepted: {expected}"
     return None
 
