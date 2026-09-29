@@ -97,18 +97,22 @@ typedef void (*exc_handler_t)(void);
 
 void Reset_Handler(void);
 
-void HardFault_Handler(void);
+[[gnu::weak]] void HardFault_Handler(void);
 
-void MemManage_Handler(void);
+[[gnu::weak]] void MemManage_Handler(void);
 
-void BusFault_Handler(void);
+[[gnu::weak]] void BusFault_Handler(void);
 
-void UsageFault_Handler(void);
+[[gnu::weak]] void UsageFault_Handler(void);
 
 /* Core exceptions (Cortex-M85). HardFault / MemManage / BusFault /
  * UsageFault each get a dedicated naked trampoline below which
- * forwards to ra8_exception_report(). The rest are weak-aliased to
- * Default_Handler and may be overridden by application code.
+ * forwards to ra8_exception_report(). Those four are weak, not
+ * weak-aliased: an app that needs to resolve a fault rather than
+ * report it (mpu_partition_simple steps the stacked PC past a
+ * deliberate MPU violation) supplies its own strong definition and
+ * the trampoline drops out. The rest are weak-aliased to
+ * Default_Handler and may be overridden the same way.
  *
  * Mach-O (macOS host) does not support `__attribute__((alias(...)))`.
  * On the host syntax-check / unit-test build we drop the alias and
@@ -573,7 +577,7 @@ typedef enum : uint32_t {
 }
 #endif
 
-[[gnu::naked, noreturn]] void HardFault_Handler(void)
+[[gnu::naked, noreturn, gnu::weak]] void HardFault_Handler(void)
 {
   __asm__ volatile("tst lr, #4          \n"
                    "ite eq              \n"
@@ -595,7 +599,7 @@ typedef enum : uint32_t {
  * @note Runs in fault context and is not thread-callable.
  * @since 0.1.0
  */
-[[gnu::naked, noreturn]] void MemManage_Handler(void)
+[[gnu::naked, noreturn, gnu::weak]] void MemManage_Handler(void)
 {
   __asm__ volatile("tst lr, #4          \n"
                    "ite eq              \n"
@@ -617,7 +621,7 @@ typedef enum : uint32_t {
  * @note Runs in fault context and is not thread-callable.
  * @since 0.1.0
  */
-[[gnu::naked, noreturn]] void BusFault_Handler(void)
+[[gnu::naked, noreturn, gnu::weak]] void BusFault_Handler(void)
 {
   __asm__ volatile("tst lr, #4          \n"
                    "ite eq              \n"
@@ -639,7 +643,7 @@ typedef enum : uint32_t {
  * @note Runs in fault context and is not thread-callable.
  * @since 0.1.0
  */
-[[gnu::naked, noreturn]] void UsageFault_Handler(void)
+[[gnu::naked, noreturn, gnu::weak]] void UsageFault_Handler(void)
 {
   __asm__ volatile("tst lr, #4          \n"
                    "ite eq              \n"
@@ -653,22 +657,22 @@ typedef enum : uint32_t {
  * compiler does not know `ra8_exception_report` is noreturn through
  * the extern declaration, so we add `__builtin_unreachable()` after
  * each call to keep the `noreturn` attribute on the handler valid. */
-[[noreturn]] void HardFault_Handler(void)
+[[noreturn, gnu::weak]] void HardFault_Handler(void)
 {
   ra8_exception_report(nullptr, k_ra8_vector_hardfault);
   __builtin_unreachable();
 }
-[[noreturn]] void MemManage_Handler(void)
+[[noreturn, gnu::weak]] void MemManage_Handler(void)
 {
   ra8_exception_report(nullptr, k_ra8_vector_memmanage);
   __builtin_unreachable();
 }
-[[noreturn]] void BusFault_Handler(void)
+[[noreturn, gnu::weak]] void BusFault_Handler(void)
 {
   ra8_exception_report(nullptr, k_ra8_vector_busfault);
   __builtin_unreachable();
 }
-[[noreturn]] void UsageFault_Handler(void)
+[[noreturn, gnu::weak]] void UsageFault_Handler(void)
 {
   ra8_exception_report(nullptr, k_ra8_vector_usagefault);
   __builtin_unreachable();
