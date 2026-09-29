@@ -6,10 +6,10 @@
 //! symbols, the singleton state, the argument guards in their original order,
 //! the `ra8_err_t` mapping, and the `ra8_eth` seam.
 //!
-//! The Ring-3 driver stays a link-time seam: `ra8_eth_init`, `ra8_eth_deinit`
-//! and `ra8_eth_attach_handler` are declared extern, so the host suite's fake
-//! Ethernet fixture substitutes for the real ESWM block exactly as it did
-//! under the C implementation.
+//! The Ring-3 driver stays a link-time seam: `ra8_eth_init`, `ra8_eth_deinit`,
+//! `ra8_eth_attach_handler` and `ra8_eth_link_status` are declared extern, so
+//! the host suite's fake Ethernet fixture substitutes for the real ESWM block
+//! exactly as it did under the C implementation.
 
 const std = @import("std");
 const implementation = @import("internal/root.zig");
@@ -43,9 +43,18 @@ pub const EventFn = *const fn (ctx: ?*anyopaque, event_mask: u32) callconv(.c) v
 /// Ring-3 driver event callback (`ra8_eth_event_fn_t`).
 const EthEventFn = *const fn (ctx: ?*anyopaque, status_mask: u32) callconv(.c) void;
 
+/// PHY link snapshot (`ra8_eth_link_t`), filled by `ra8_eth_link_status`.
+const EthLink = extern struct {
+    link_up: u8 = 0,
+    speed_mbps: u16 = 0,
+    full_duplex: u8 = 0,
+    bmsr: u16 = 0,
+};
+
 extern fn ra8_eth_init() u16;
 extern fn ra8_eth_deinit() u16;
 extern fn ra8_eth_attach_handler(handler: ?EthEventFn, ctx: ?*anyopaque) void;
+extern fn ra8_eth_link_status(out_status: *EthLink) u16;
 
 /// Singleton PAL state: one ESWM block per chip, so one instance.
 const State = struct {
@@ -67,17 +76,46 @@ fn rejectNull(message: [*:0]const u8) u16 {
     return @intFromEnum(NetPalError.null_ptr);
 }
 
+/// Hand a mask to the stack callback when one is attached.
+fn raise(event_mask: u32) void {
+    const handler = state.event_fn orelse return;
+    handler(state.event_ctx, event_mask);
+}
+
+/// Re-read the PHY and report the link edge, caching what was observed.
+///
+/// A failed read leaves the cache untouched and reports nothing. That is
+/// today's ordinary case rather than an error path: the PAL never calls
+/// `ra8_eth_open`, so until the stack opens the NIC the read answers
+/// `not_initialized` and the PAL keeps reporting the last state it saw.
+///
+/// The read walks MDIO, so this belongs on a poller and not in the driver's
+/// event callback: `ra8_net_pal_link_status` is its only caller.
+fn refreshLink() u32 {
+    var link: EthLink = .{};
+    if (ra8_eth_link_status(&link) != ok) {
+        return implementation.event_none;
+    }
+    const observed: LinkState = if (link.link_up != 0) .up else .down;
+    const edge = implementation.linkEdge(observed, state.link_state);
+    state.link_state = observed;
+    return edge;
+}
+
 /// `ra8_eth` handler installed during init: translate, then fan out.
 ///
-/// Drops events while the PAL is uninitialized, then forwards only a
-/// non-empty translated mask to a callback that is actually attached. Both
-/// conditions of that AND are load-bearing and the C's order is preserved.
+/// Drops events while the PAL is uninitialized, then ORs the controller
+/// half with the ring half and forwards a non-empty mask to a callback that
+/// is actually attached. Both conditions of that AND are load-bearing and
+/// the C's order is preserved. The link half is not read here: BMSR lives
+/// behind MDIO and this runs in ISR context.
 fn ethEvent(ctx: ?*anyopaque, status_mask: u32) callconv(.c) void {
     _ = ctx;
     if (!state.initialized) {
         return;
     }
-    const pal_mask = implementation.translateEvent(status_mask);
+    const pal_mask = implementation.translateEvent(status_mask) |
+        implementation.ringEvent(state.ring.count);
     if (state.event_fn != null and pal_mask != implementation.event_none) {
         state.event_fn.?(state.event_ctx, pal_mask);
     }
@@ -173,9 +211,7 @@ pub export fn ra8_net_pal_send_frame(frame: ?[*]const u8, len: u16) callconv(.c)
         return @intFromEnum(NetPalError.no_mem);
     }
     std.debug.assert(state.ring.push(bytes[0..len]));
-    if (state.event_fn) |handler| {
-        handler(state.event_ctx, implementation.event_tx_done);
-    }
+    raise(implementation.event_tx_done);
     return ok;
 }
 
@@ -199,11 +235,21 @@ pub export fn ra8_net_pal_recv_frame(out_buf: ?[*]u8, inout_len: ?*u16) callconv
     return ok;
 }
 
-/// Read the last observed link state.
+/// Read the link state, refreshing it from the PHY first.
+///
+/// When the PHY disagrees with the cache the cache is updated and the
+/// matching edge is raised on the stack callback, so a stack that only
+/// polls link state still sees the link half of the event set. Guard order
+/// is unchanged: a null output is rejected before the init check, and the
+/// refresh runs only once both guards have passed.
 pub export fn ra8_net_pal_link_status(out_state: ?*LinkState) callconv(.c) u16 {
     const out = out_state orelse return rejectNull("link_status: out_state");
     if (!state.initialized) {
         return @intFromEnum(NetPalError.invalid_state);
+    }
+    const edge = refreshLink();
+    if (edge != implementation.event_none) {
+        raise(edge);
     }
     out.* = state.link_state;
     return ok;
@@ -243,4 +289,10 @@ comptime {
     std.debug.assert(implementation.event_rx_ready == 0x04);
     std.debug.assert(implementation.event_tx_done == 0x08);
     std.debug.assert(implementation.event_error == 0x10);
+    // `ra8_eth_link_t` is filled by the driver, so its layout is the seam.
+    std.debug.assert(@offsetOf(EthLink, "link_up") == 0);
+    std.debug.assert(@offsetOf(EthLink, "speed_mbps") == 2);
+    std.debug.assert(@offsetOf(EthLink, "full_duplex") == 4);
+    std.debug.assert(@offsetOf(EthLink, "bmsr") == 6);
+    std.debug.assert(@sizeOf(EthLink) == 8);
 }

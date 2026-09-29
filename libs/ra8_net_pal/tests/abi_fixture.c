@@ -11,6 +11,9 @@ static uint32_t               s_eth_init_calls;
 static uint32_t               s_eth_deinit_calls;
 static uint32_t               s_eth_attach_calls;
 static ra8_test_eth_handler_t s_attached_handler;
+static uint16_t               s_eth_link_result;
+static uint8_t                s_eth_link_up;
+static uint32_t               s_eth_link_calls;
 static uint32_t               s_log_error_calls;
 static uint32_t               s_log_info_calls;
 static uint32_t               s_log_error_val_calls;
@@ -35,6 +38,27 @@ void ra8_eth_attach_handler(ra8_test_eth_handler_t handler, void* ctx)
   ++s_eth_attach_calls;
   s_attached_handler = handler;
   (void)ctx;
+}
+
+/* Mirrors ra8_eth_link_t from libs/ra8_hal/inc/ra8_eth.h. */
+typedef struct {
+  uint8_t  link_up;
+  uint16_t speed_mbps;
+  uint8_t  full_duplex;
+  uint16_t bmsr;
+} ra8_test_eth_link_t;
+
+uint16_t ra8_eth_link_status(ra8_test_eth_link_t* out_status)
+{
+  ++s_eth_link_calls;
+  if (s_eth_link_result != 0U) {
+    return s_eth_link_result;
+  }
+  out_status->link_up     = s_eth_link_up;
+  out_status->speed_mbps  = 0U;
+  out_status->full_duplex = 0U;
+  out_status->bmsr        = 0U;
+  return 0U;
 }
 
 void ra8_log_emit_error(const char* tag, const char* message)
@@ -67,6 +91,9 @@ void ra8_test_fixture_reset(void)
   s_eth_deinit_calls       = 0U;
   s_eth_attach_calls       = 0U;
   s_attached_handler       = (ra8_test_eth_handler_t)0;
+  s_eth_link_result        = 0x010FU;
+  s_eth_link_up            = 0U;
+  s_eth_link_calls         = 0U;
   s_log_error_calls        = 0U;
   s_log_info_calls         = 0U;
   s_log_error_val_calls    = 0U;
@@ -82,6 +109,21 @@ void ra8_test_set_eth_init_result(uint16_t result)
 void ra8_test_set_eth_deinit_result(uint16_t result)
 {
   s_eth_deinit_result = result;
+}
+
+void ra8_test_set_eth_link_result(uint16_t result)
+{
+  s_eth_link_result = result;
+}
+
+void ra8_test_set_eth_link_up(uint8_t link_up)
+{
+  s_eth_link_up = link_up;
+}
+
+uint32_t ra8_test_eth_link_calls(void)
+{
+  return s_eth_link_calls;
 }
 
 uint32_t ra8_test_eth_init_calls(void)

@@ -9,7 +9,9 @@
 //!
 //! Capturing the handler the PAL installs also reaches the dispatch guard the
 //! C host suite could only cover cross-compiled: both conditions of
-//! `event_fn && pal_mask` can be varied here directly.
+//! `event_fn && pal_mask` can be varied here directly. The same substitution
+//! stages a BMSR the host Ethernet fake cannot, so the link-up edge #1218
+//! left host-unproven is covered here.
 
 const std = @import("std");
 const abi = @import("abi");
@@ -32,6 +34,9 @@ extern fn ra8_test_set_eth_deinit_result(result: u16) void;
 extern fn ra8_test_eth_init_calls() u32;
 extern fn ra8_test_eth_deinit_calls() u32;
 extern fn ra8_test_eth_attach_calls() u32;
+extern fn ra8_test_set_eth_link_result(result: u16) void;
+extern fn ra8_test_set_eth_link_up(link_up: u8) void;
+extern fn ra8_test_eth_link_calls() u32;
 extern fn ra8_test_attached_handler() EthHandler;
 extern fn ra8_test_log_error_calls() u32;
 extern fn ra8_test_log_info_calls() u32;
@@ -399,4 +404,181 @@ test "every pre-init entry point reports invalid_state" {
     try std.testing.expectEqual(invalid_state, abi.ra8_net_pal_recv_frame(&buf, &len));
     try std.testing.expectEqual(invalid_state, abi.ra8_net_pal_set_event_handler(countingEvent, null));
     try std.testing.expectEqual(invalid_state, abi.ra8_net_pal_deinit());
+}
+
+test "dispatch with an empty ring reports the controller half alone" {
+    prep();
+    try std.testing.expectEqual(ok, abi.ra8_net_pal_init(&test_mac));
+    try std.testing.expectEqual(ok, abi.ra8_net_pal_set_event_handler(countingEvent, null));
+    const handler = ra8_test_attached_handler() orelse return error.TestUnexpectedResult;
+
+    event_calls = 0;
+    handler(null, 0x0000_0002);
+    try std.testing.expectEqual(@as(u32, 1), event_calls);
+    try std.testing.expectEqual(@as(u32, 0x10), last_event_mask);
+}
+
+test "dispatch with a queued frame ORs rx_ready into the reported mask" {
+    prep();
+    try std.testing.expectEqual(ok, abi.ra8_net_pal_init(&test_mac));
+    try std.testing.expectEqual(ok, abi.ra8_net_pal_set_event_handler(countingEvent, null));
+    const handler = ra8_test_attached_handler() orelse return error.TestUnexpectedResult;
+
+    var frame = [_]u8{0xA5} ** 64;
+    try std.testing.expectEqual(ok, abi.ra8_net_pal_send_frame(&frame, frame.len));
+
+    event_calls = 0;
+    handler(null, 0x0000_0002);
+    try std.testing.expectEqual(@as(u32, 1), event_calls);
+    try std.testing.expectEqual(@as(u32, 0x10 | 0x04), last_event_mask);
+}
+
+test "a queued frame alone is enough to dispatch on a clear status word" {
+    prep();
+    try std.testing.expectEqual(ok, abi.ra8_net_pal_init(&test_mac));
+    try std.testing.expectEqual(ok, abi.ra8_net_pal_set_event_handler(countingEvent, null));
+    const handler = ra8_test_attached_handler() orelse return error.TestUnexpectedResult;
+
+    var frame = [_]u8{0x5A} ** 64;
+    try std.testing.expectEqual(ok, abi.ra8_net_pal_send_frame(&frame, frame.len));
+
+    event_calls = 0;
+    handler(null, 0);
+    try std.testing.expectEqual(@as(u32, 1), event_calls);
+    try std.testing.expectEqual(@as(u32, 0x04), last_event_mask);
+}
+
+test "draining the ring takes rx_ready back out of the dispatched mask" {
+    prep();
+    try std.testing.expectEqual(ok, abi.ra8_net_pal_init(&test_mac));
+    try std.testing.expectEqual(ok, abi.ra8_net_pal_set_event_handler(countingEvent, null));
+    const handler = ra8_test_attached_handler() orelse return error.TestUnexpectedResult;
+
+    var frame = [_]u8{0x11} ** 64;
+    try std.testing.expectEqual(ok, abi.ra8_net_pal_send_frame(&frame, frame.len));
+    var buf = [_]u8{0} ** frame_max;
+    var len: u16 = frame_max;
+    try std.testing.expectEqual(ok, abi.ra8_net_pal_recv_frame(&buf, &len));
+
+    event_calls = 0;
+    handler(null, 0x0000_0002);
+    try std.testing.expectEqual(@as(u32, 1), event_calls);
+    try std.testing.expectEqual(@as(u32, 0x10), last_event_mask);
+}
+
+test "link_status with an unreadable PHY keeps the cached state and is silent" {
+    prep();
+    try std.testing.expectEqual(ok, abi.ra8_net_pal_init(&test_mac));
+    try std.testing.expectEqual(ok, abi.ra8_net_pal_set_event_handler(countingEvent, null));
+
+    event_calls = 0;
+    var link: abi.LinkState = .up;
+    try std.testing.expectEqual(ok, abi.ra8_net_pal_link_status(&link));
+    try std.testing.expectEqual(abi.LinkState.down, link);
+    try std.testing.expectEqual(@as(u32, 0), event_calls);
+}
+
+test "link_status with a readable PHY that agrees raises nothing" {
+    prep();
+    try std.testing.expectEqual(ok, abi.ra8_net_pal_init(&test_mac));
+    try std.testing.expectEqual(ok, abi.ra8_net_pal_set_event_handler(countingEvent, null));
+    ra8_test_set_eth_link_result(ok);
+    ra8_test_set_eth_link_up(0);
+
+    event_calls = 0;
+    var link: abi.LinkState = .up;
+    try std.testing.expectEqual(ok, abi.ra8_net_pal_link_status(&link));
+    try std.testing.expectEqual(abi.LinkState.down, link);
+    try std.testing.expectEqual(@as(u32, 0), event_calls);
+}
+
+test "link_status raises link_up once when the PHY comes up" {
+    prep();
+    try std.testing.expectEqual(ok, abi.ra8_net_pal_init(&test_mac));
+    try std.testing.expectEqual(ok, abi.ra8_net_pal_set_event_handler(countingEvent, null));
+    ra8_test_set_eth_link_result(ok);
+    ra8_test_set_eth_link_up(1);
+
+    event_calls = 0;
+    var link: abi.LinkState = .down;
+    try std.testing.expectEqual(ok, abi.ra8_net_pal_link_status(&link));
+    try std.testing.expectEqual(abi.LinkState.up, link);
+    try std.testing.expectEqual(@as(u32, 1), event_calls);
+    try std.testing.expectEqual(@as(u32, 0x01), last_event_mask);
+
+    // The edge is a transition, not a level: polling again is silent.
+    event_calls = 0;
+    try std.testing.expectEqual(ok, abi.ra8_net_pal_link_status(&link));
+    try std.testing.expectEqual(abi.LinkState.up, link);
+    try std.testing.expectEqual(@as(u32, 0), event_calls);
+}
+
+test "link_status raises link_down when the PHY drops again" {
+    prep();
+    try std.testing.expectEqual(ok, abi.ra8_net_pal_init(&test_mac));
+    try std.testing.expectEqual(ok, abi.ra8_net_pal_set_event_handler(countingEvent, null));
+    ra8_test_set_eth_link_result(ok);
+    ra8_test_set_eth_link_up(1);
+    var link: abi.LinkState = .down;
+    try std.testing.expectEqual(ok, abi.ra8_net_pal_link_status(&link));
+
+    ra8_test_set_eth_link_up(0);
+    event_calls = 0;
+    try std.testing.expectEqual(ok, abi.ra8_net_pal_link_status(&link));
+    try std.testing.expectEqual(abi.LinkState.down, link);
+    try std.testing.expectEqual(@as(u32, 1), event_calls);
+    try std.testing.expectEqual(@as(u32, 0x02), last_event_mask);
+}
+
+test "a link edge with no handler attached updates the cache anyway" {
+    prep();
+    try std.testing.expectEqual(ok, abi.ra8_net_pal_init(&test_mac));
+    ra8_test_set_eth_link_result(ok);
+    ra8_test_set_eth_link_up(1);
+
+    event_calls = 0;
+    var link: abi.LinkState = .down;
+    try std.testing.expectEqual(ok, abi.ra8_net_pal_link_status(&link));
+    try std.testing.expectEqual(abi.LinkState.up, link);
+    try std.testing.expectEqual(@as(u32, 0), event_calls);
+}
+
+test "link_status rejects a null output before it touches the PHY" {
+    prep();
+    try std.testing.expectEqual(ok, abi.ra8_net_pal_init(&test_mac));
+    ra8_test_set_eth_link_result(ok);
+    ra8_test_set_eth_link_up(1);
+
+    const before = ra8_test_eth_link_calls();
+    try std.testing.expectEqual(null_ptr, abi.ra8_net_pal_link_status(null));
+    try std.testing.expectEqual(before, ra8_test_eth_link_calls());
+}
+
+test "a pre-init link_status never reads the PHY" {
+    prep();
+    ra8_test_set_eth_link_result(ok);
+    ra8_test_set_eth_link_up(1);
+
+    const before = ra8_test_eth_link_calls();
+    var link: abi.LinkState = .up;
+    try std.testing.expectEqual(invalid_state, abi.ra8_net_pal_link_status(&link));
+    try std.testing.expectEqual(before, ra8_test_eth_link_calls());
+}
+
+test "deinit forgets a link the PHY had brought up" {
+    prep();
+    try std.testing.expectEqual(ok, abi.ra8_net_pal_init(&test_mac));
+    ra8_test_set_eth_link_result(ok);
+    ra8_test_set_eth_link_up(1);
+    var link: abi.LinkState = .down;
+    try std.testing.expectEqual(ok, abi.ra8_net_pal_link_status(&link));
+    try std.testing.expectEqual(abi.LinkState.up, link);
+
+    try std.testing.expectEqual(ok, abi.ra8_net_pal_deinit());
+    try std.testing.expectEqual(ok, abi.ra8_net_pal_init(&test_mac));
+    ra8_test_set_eth_link_result(0x010F);
+
+    link = .up;
+    try std.testing.expectEqual(ok, abi.ra8_net_pal_link_status(&link));
+    try std.testing.expectEqual(abi.LinkState.down, link);
 }

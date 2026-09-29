@@ -400,7 +400,12 @@ ra8_err_t comic_open(comic_t*      c,
   if (nerr != k_ra8_ok) {
     return nerr;
   }
-  *c = (comic_t){};
+  /* Zero in place. `*c = (comic_t){}` makes GCC materialise a whole
+   * comic_t (169,408 bytes: the CBZ stream, the RAR and tar walkers and
+   * their window buffers all live inline) as a stack temporary before the
+   * copy, which is a 169,440-byte frame against this profile's
+   * -Wstack-usage=32768. memset touches the caller's object directly. */
+  (void)memset(c, 0, sizeof(*c));
   if (size == 0U) {
     return k_ra8_err_invalid_size;
   }
