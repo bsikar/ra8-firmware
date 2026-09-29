@@ -227,6 +227,24 @@ ra8_add_zig_library(
 # exactly as before. The two wifi targets in tests_wifi.cmake consume
 # ra8_core_hal through $<TARGET_OBJECTS:>, which carries no link dependencies,
 # so they link this archive by name there rather than through the list below.
+# Partially migrated: the OV5640 register protocol, the board-qualified VGA DVP
+# scene table, the JPEG overlay writes and the JPEG status decode are Zig now,
+# so libs/ra8_ov5640/src/ra8_ov5640.c is gone. The SCCB transport and the
+# millisecond delay stay caller-injected seams, so this archive links against
+# no RA8 peripheral. src/ra8_ov5640_bind.c is deliberately still C: it is the
+# house-I2C binder dev added in #760 after this port was written, an adapter
+# over ra8_i2c_bus_ops_t rather than part of the driver being ported, so the
+# RA8_OV5640_SOURCES glob stays in library_sources.cmake and core_hal.cmake
+# exactly as ra8_lsm6dso's binder does.
+ra8_add_zig_library(
+  NAME
+  ra8_ov5640
+  ZIG_ROOT
+  ${FW_ROOT}/libs/ra8_ov5640
+  LIBRARY_NAME
+  ra8_ov5640
+)
+
 ra8_add_zig_library(
   NAME
   ra8_wifi
@@ -261,6 +279,7 @@ target_link_libraries(
          ra8_zig::ra8_keyboard
          ra8_zig::ra8_audio
          ra8_zig::ra8_wifi
+         ra8_zig::ra8_ov5640
 )
 
 link_libraries(ra8_zig::ra8_batt)
@@ -283,4 +302,5 @@ link_libraries(
   ra8_zig::ra8_keyboard
   ra8_zig::ra8_audio
   ra8_zig::ra8_wifi
+  ra8_zig::ra8_ov5640
 )

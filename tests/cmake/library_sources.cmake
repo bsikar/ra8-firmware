@@ -209,6 +209,13 @@ file(GLOB RA8_BOARD_EK_RA8D2_SOURCES CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra8_board
 # archive. Dropping this glob would leave ra8_lsm6dso_bind_i2c undefined for
 # imu_lsm6dso_demo and for the four binder cases in test_ra8_lsm6dso.c.
 file(GLOB_RECURSE RA8_LSM6DSO_SOURCES CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra8_lsm6dso/src/*.c)
+# ra8_ov5640's driver is Zig now (the register protocol, the qualified VGA DVP
+# scene table, the JPEG overlay and the status decode), linked via
+# tests/cmake/zig_libraries.cmake. This glob stays for src/ra8_ov5640_bind.c,
+# the house-I2C binder from #760: an adapter over ra8_i2c_bus_ops_t, not part
+# of the implementation being ported, so it compiles beside the Zig archive.
+# Dropping this glob would leave ra8_ov5640_bind_i2c undefined for the four
+# vectors in tests/graphics/src/test_ra8_ov5640_bind.c.
 file(GLOB_RECURSE RA8_OV5640_SOURCES CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra8_ov5640/src/*.c)
 file(GLOB_RECURSE RA8_TZ_SECURE_BOOT_SOURCES CONFIGURE_DEPENDS
      ${FW_ROOT}/libs/ra8_tz_secure_boot/src/*.c
