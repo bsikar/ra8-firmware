@@ -17,6 +17,7 @@
 #include "ra8_sau.h"
 #include "ra8_sau_regs.h"
 #include "ra8_sram_regs.h"
+#include "ra8_system_regs.h"
 #include "ra8_tz_partition.h"
 #include "unity_minimal.h"
 
@@ -306,6 +307,73 @@ RA8_INTERNAL static void internal_test_board_map(void)
   TEST_END("the canonical board map is applicable and default-deny");
 }
 
+/**
+ * @brief Applying an SRAM boundary operates the PRC4 write-protect gate.
+ *
+ * @details
+ * SRAMSABARn is a security-attribution register behind PRC4. With PRC4 locked
+ * the stores are discarded silently on real silicon, so the gate is part of
+ * the contract, not an optimisation. The hosted register file accepts every
+ * write regardless, so what is provable here is that the gate was operated:
+ * PRCR starts at zero and reads back the re-locked password afterwards, which
+ * only happens if the scoped unlock ran and closed. Whether the four stores
+ * land *inside* that window is not observable without a write-ordering hook.
+ */
+RA8_INTERNAL static void internal_test_sram_write_is_prcr_gated(void)
+{
+  TEST_BEGIN("applying an SRAM boundary operates the PRC4 gate");
+  internal_setup();
+  *ra8_sys_prcr() = 0U;
+
+  const ra8_sau_region_t region     = internal_ns_region();
+  const uint32_t         offsets[4] = {
+    (uint32_t)k_test_tz_sram_split,
+    (uint32_t)k_test_tz_sram_split,
+    (uint32_t)k_test_tz_sram_split,
+    (uint32_t)k_test_tz_sram_split,
+  };
+  const ra8_tz_partition_t partition = {
+    .sau_regions      = &region,
+    .sram_boundary    = offsets,
+    .sau_region_count = 1U,
+    .sau_all_ns       = false,
+  };
+
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_tz_partition_apply(&partition));
+  TEST_ASSERT_EQ((uint16_t)k_ra8_prcr_lock_all, *ra8_sys_prcr());
+  for (uint8_t bank = 0U; bank < (uint8_t)k_test_tz_sram_banks; bank++) {
+    TEST_ASSERT_EQ((uint32_t)k_test_tz_sram_split, ra8_sram_cpscu_regs()->SRAMSABAR[bank]);
+  }
+  TEST_END("applying an SRAM boundary operates the PRC4 gate");
+}
+
+/**
+ * @brief A partition that does not speak for SRAM never opens the gate.
+ *
+ * @details
+ * The unlock window is the one moment attribution registers are writable, so
+ * it should exist only when there is something to write. A NULL
+ * `sram_boundary` leaves PRCR exactly as it was found.
+ */
+RA8_INTERNAL static void internal_test_no_sram_leaves_prcr_alone(void)
+{
+  TEST_BEGIN("a SAU-only partition never opens the PRC4 gate");
+  internal_setup();
+  *ra8_sys_prcr() = 0U;
+
+  const ra8_sau_region_t   region    = internal_ns_region();
+  const ra8_tz_partition_t partition = {
+    .sau_regions      = &region,
+    .sram_boundary    = NULL,
+    .sau_region_count = 1U,
+    .sau_all_ns       = false,
+  };
+
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_tz_partition_apply(&partition));
+  TEST_ASSERT_EQ((uint16_t)0U, *ra8_sys_prcr());
+  TEST_END("a SAU-only partition never opens the PRC4 gate");
+}
+
 int main(void)
 {
   internal_test_rejects_null();
@@ -316,6 +384,8 @@ int main(void)
   internal_test_attr_domain();
   internal_test_rejects_unaligned_sram_boundary();
   internal_test_writes_sram_boundaries();
+  internal_test_sram_write_is_prcr_gated();
+  internal_test_no_sram_leaves_prcr_alone();
   internal_test_board_map();
   return 0;
 }
