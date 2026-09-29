@@ -33,6 +33,7 @@ include("${_d}/cmake/ra8_add_app.cmake")
 
 ra8_add_app(
   NAME cpu1_pingpong
+  CPU1_IMAGE
   STACK_BYTES 2200 AUX_SRCS src/cpu1_main.c
   DESCRIPTION "Bare-metal cpu1_pingpong firmware for RA8D2"
 )
