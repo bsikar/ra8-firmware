@@ -7,8 +7,9 @@
 //! promoted helpers `priv_gfx_text_pack_565` and `priv_gfx_text_plot` that the
 //! remaining C translation units (bind, dither, generated font table) reach
 //! through `src/ra8_gfx_internal.h`, exports the twelve entry points declared
-//! in `inc/ra8_gfx.h`, both text calls among them, and the three
-//! `inc/ra8_gfx_tone.h` calls with their committed nominal curve.
+//! in `inc/ra8_gfx.h`, both text calls among them, the three
+//! `inc/ra8_gfx_tone.h` calls with their committed nominal curve, and the six
+//! `inc/ra8_gfx_dither.h` calls over the committed blue-noise mask.
 //!
 //! The lifecycle half stays C in `ra8_gfx_bind.c`: `ra8_gfx_init()`,
 //! `ra8_gfx_init_surface()` and `ra8_gfx_deinit()` write the binding this file
@@ -19,12 +20,16 @@
 const std = @import("std");
 const impl = @import("internal/root.zig");
 const tone_impl = @import("internal/tone.zig");
+const dither_impl = @import("internal/dither.zig");
 
 /// Re-exported so the ABI test binary shares the exact struct types.
 pub const internal = impl;
 
 /// The tone curve's own pure half, re-exported for the same reason.
 pub const tone = tone_impl;
+
+/// The dither's own pure half, re-exported for the same reason.
+pub const dither = dither_impl;
 
 /// `g_gfx_text_state` -- the single shared framebuffer binding. The C
 /// definition initialised only `.format`, so RGB565 is the pre-init format.
@@ -584,4 +589,104 @@ pub export fn ra8_gfx_tone_quantise(
     thr: u8,
 ) callconv(.c) u8 {
     return tone_impl.quantise(map, gray8, thr);
+}
+
+/// `ra8_gfx_dither_gray4_level`
+pub export fn ra8_gfx_dither_gray4_level(gray8: u8, x: i32, y: i32) callconv(.c) u8 {
+    return dither_impl.quantise(gray8, dither_impl.thresholdAt(x, y));
+}
+
+/// `ra8_gfx_dither_gray4_level_tone`
+pub export fn ra8_gfx_dither_gray4_level_tone(
+    map: ?*const tone_impl.Map,
+    gray8: u8,
+    x: i32,
+    y: i32,
+) callconv(.c) u8 {
+    return dither_impl.quantiseAny(map, gray8, dither_impl.thresholdAt(x, y));
+}
+
+/// `ra8_gfx_dither_gray8_to_gray4`
+pub export fn ra8_gfx_dither_gray8_to_gray4(
+    src: ?[*]const u8,
+    w: i32,
+    h: i32,
+    origin_x: i32,
+    origin_y: i32,
+    out: ?[*]u8,
+    out_cap: u32,
+    out_size: ?*u32,
+) callconv(.c) u16 {
+    return ra8_gfx_dither_gray8_to_gray4_tone(null, src, w, h, origin_x, origin_y, out, out_cap, out_size);
+}
+
+/// `ra8_gfx_dither_gray8_to_gray4_tone`
+pub export fn ra8_gfx_dither_gray8_to_gray4_tone(
+    map: ?*const tone_impl.Map,
+    src: ?[*]const u8,
+    w: i32,
+    h: i32,
+    origin_x: i32,
+    origin_y: i32,
+    out: ?[*]u8,
+    out_cap: u32,
+    out_size: ?*u32,
+) callconv(.c) u16 {
+    const source = src orelse return impl.err.null_ptr;
+    const sink = out orelse return impl.err.null_ptr;
+    const size = out_size orelse return impl.err.null_ptr;
+    if (w <= 0 or h <= 0) {
+        return impl.err.invalid_arg;
+    }
+
+    const width: u32 = @intCast(w);
+    const height: u32 = @intCast(h);
+    const needed = dither_impl.packedBytes(width, height);
+    if (out_cap < needed) {
+        return impl.err.no_mem;
+    }
+
+    dither_impl.packTile(map, source[0 .. width * height], w, h, origin_x, origin_y, sink[0..needed]);
+    size.* = needed;
+    return impl.err.ok;
+}
+
+/// `ra8_gfx_blit_gray8_dither`
+pub export fn ra8_gfx_blit_gray8_dither(
+    src: ?[*]const u8,
+    w: i32,
+    h: i32,
+    dst_x: i32,
+    dst_y: i32,
+) callconv(.c) u16 {
+    return ra8_gfx_blit_gray8_dither_tone(null, src, w, h, dst_x, dst_y);
+}
+
+/// `ra8_gfx_blit_gray8_dither_tone`
+pub export fn ra8_gfx_blit_gray8_dither_tone(
+    map: ?*const tone_impl.Map,
+    src: ?[*]const u8,
+    w: i32,
+    h: i32,
+    dst_x: i32,
+    dst_y: i32,
+) callconv(.c) u16 {
+    if (!g_gfx_text_state.initialized) return impl.err.not_initialized;
+    const source = src orelse return impl.err.invalid_arg;
+    if (w <= 0 or h <= 0) {
+        return impl.err.invalid_arg;
+    }
+
+    var row: i32 = 0;
+    while (row < h) : (row += 1) {
+        var col: i32 = 0;
+        while (col < w) : (col += 1) {
+            const i = (@as(u32, @bitCast(row)) * @as(u32, @bitCast(w))) + @as(u32, @bitCast(col));
+            const x = dst_x +% col;
+            const y = dst_y +% row;
+            const level = dither_impl.quantiseAny(map, source[i], dither_impl.thresholdAt(x, y));
+            priv_gfx_text_plot(x, y, dither_impl.levelToColor(level));
+        }
+    }
+    return impl.err.ok;
 }

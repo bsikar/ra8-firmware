@@ -369,15 +369,15 @@ set_property(
 # framebuffer binding g_gfx_text_state, the two promoted helpers
 # priv_gfx_text_pack_565 / priv_gfx_text_plot, and the twelve entry points of
 # inc/ra8_gfx.h, the packed-gray4 loupe zoom blit and both text calls
-# included, and the three inc/ra8_gfx_tone.h calls with their committed nominal
-# curve. The lifecycle half is deliberately still C in src/ra8_gfx_bind.c:
+# included, the three inc/ra8_gfx_tone.h calls with their committed nominal
+# curve, and the six inc/ra8_gfx_dither.h calls over the committed blue-noise
+# mask. The lifecycle half is deliberately still C in src/ra8_gfx_bind.c:
 # ra8_gfx_init(), ra8_gfx_init_surface() and ra8_gfx_deinit() write the binding
 # this archive defines, and priv_gfx_bpp() / priv_gfx_format_ok() stay its
-# exports. The other two C translation units (ra8_gfx_dither.c and the
-# generated ra8_gfx_font_8x16.c) reach into this archive through the unchanged
-# src/ra8_gfx_internal.h -- the dither now calls ra8_gfx_tone_quantise() there
-# too -- so that header and the libs/ra8_gfx/src include dirs in core_hal.cmake
-# and unit_tests.cmake all stay.
+# exports. The one other C translation unit (the generated
+# ra8_gfx_font_8x16.c) reaches into this archive through the unchanged
+# src/ra8_gfx_internal.h, so that header and the libs/ra8_gfx/src include dirs
+# in core_hal.cmake and unit_tests.cmake all stay.
 ra8_add_zig_library(
   NAME
   ra8_gfx

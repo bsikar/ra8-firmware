@@ -57,11 +57,11 @@ ra8_add_app(
 # archive instead, cross-built for THIS image's core rather than the app's.
 # CPU1 is a Cortex-M33 while the parent app is a cortex-m85, so the archive has
 # to be requested per-core -- see ra8_link_zig_library_for_cpu() in
-# cmake/ra8_app/zig_libs.cmake. The lifecycle binder, the dither pass and the
-# generated font table are still C and reference the archive, which is the safe
-# direction (objects reference the archive, never the reverse). The glyph/text
-# TU joined the archive with #1328 and the tone LUT with #1326, so the binder
-# and the generated font table are the C this image still compiles.
+# cmake/ra8_app/zig_libs.cmake. The lifecycle binder and the generated font
+# table are still C and reference the archive, which is the safe direction
+# (objects reference the archive, never the reverse). The glyph/text TU joined
+# the archive with #1328, the tone LUT with #1326 and the dither with #1402, so
+# the binder and the generated font table are the C this image still compiles.
 #############################################################################
 ra8_add_cpu1_image(
   PARENT ereader_m33

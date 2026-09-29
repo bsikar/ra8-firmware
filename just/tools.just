@@ -139,21 +139,13 @@ rabook_fixture:
 bluenoise_update:
     #!/usr/bin/env bash
     set -euo pipefail
-    formatter="${CLANG_FORMAT:-}"
-    if [ -z "$formatter" ]; then
-        if command -v clang-format-22 >/dev/null 2>&1; then
-            formatter="$(command -v clang-format-22)"
-        elif command -v clang-format >/dev/null 2>&1; then
-            formatter="$(command -v clang-format)"
-        fi
-    fi
-    if [ -z "$formatter" ]; then
-        echo "bluenoise_update: clang-format-22 or clang-format is required" >&2
+    if ! command -v zig >/dev/null 2>&1; then
+        echo "bluenoise_update: zig is required" >&2
         exit 127
     fi
-    mask="libs/ra8_gfx/src/ra8_gfx_dither_mask_internal.h"
+    mask="libs/ra8_gfx/src/internal/dither_mask.zig"
     python3 scripts/gen/gen_bluenoise_mask.py
-    "$formatter" -i "$mask"
+    zig fmt "$mask"
 
 # Build cache_bench host executable
 build_cache_bench:

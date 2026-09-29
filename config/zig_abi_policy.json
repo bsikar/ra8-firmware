@@ -2947,6 +2947,24 @@
             "@offsetOf(Map, \"level\") == 0",
             "@offsetOf(Map, \"up_threshold\") == tone.domain"
           ]
+        },
+        {
+          "path": "libs/ra8_gfx/inc/ra8_gfx_dither.h",
+          "compatibility_sha256": "7e060c0e4cc1fcb385ce88b292b9119ccd0bd33180bdb13055fda6741de4f006",
+          "layout_assertions": [
+            "pub const levels: u8 = 16",
+            "pub const step: u8 = 17",
+            "pub const max_level: u8 = 15",
+            "pub const nib_shift: u3 = 4",
+            "pub const ppb: u8 = 2",
+            "pub const mask_dim: u32 = 64",
+            "pub const mask_index_mask: u32 = 63",
+            "pub const rgb_g_shift: u5 = 8",
+            "pub const rgb_r_shift: u5 = 16",
+            "pub const byte_levels: u16 = 256",
+            "pub const mask_len: u16 = 4096",
+            "mask.len == dither.mask_len"
+          ]
         }
       ],
       "adapters": [
@@ -2961,7 +2979,9 @@
       ],
       "layout_sources": [
         "libs/ra8_gfx/src/internal/root.zig",
-        "libs/ra8_gfx/src/internal/tone.zig"
+        "libs/ra8_gfx/src/internal/tone.zig",
+        "libs/ra8_gfx/src/internal/dither.zig",
+        "libs/ra8_gfx/src/internal/dither_mask.zig"
       ],
       "library_name": "ra8_gfx",
       "symbol_prefix": "ra8_gfx_",
@@ -3006,6 +3026,12 @@
         {
           "language": "c",
           "path": "tests/graphics/src/test_ra8_gfx_tone.c",
+          "symbol_evidence": "libs/ra8_gfx/src/ra8_gfx_abi.zig",
+          "registration": "tests/cmake/unit_tests.cmake"
+        },
+        {
+          "language": "c",
+          "path": "tests/graphics/src/test_ra8_gfx_dither.c",
           "symbol_evidence": "libs/ra8_gfx/src/ra8_gfx_abi.zig",
           "registration": "tests/cmake/unit_tests.cmake"
         },
@@ -3107,6 +3133,36 @@
           "name": "ra8_gfx_tone_quantise",
           "calling_context": "task-safe-reentrant",
           "ownership": "reads one entry of the caller's prepared map and retains no reference to it"
+        },
+        {
+          "name": "ra8_gfx_dither_gray4_level",
+          "calling_context": "task-safe-reentrant",
+          "ownership": "copies no data; returns the 4-bit level for one gray8 sample at a panel coordinate"
+        },
+        {
+          "name": "ra8_gfx_dither_gray4_level_tone",
+          "calling_context": "task-safe-reentrant",
+          "ownership": "borrows the caller's prepared tone map for the call; copies no data"
+        },
+        {
+          "name": "ra8_gfx_dither_gray8_to_gray4",
+          "calling_context": "task-safe-reentrant",
+          "ownership": "reads the caller's gray8 tile and writes the caller's packed buffer; retains neither"
+        },
+        {
+          "name": "ra8_gfx_dither_gray8_to_gray4_tone",
+          "calling_context": "task-safe-reentrant",
+          "ownership": "as the flat form, plus a borrowed tone map for the call; retains nothing"
+        },
+        {
+          "name": "ra8_gfx_blit_gray8_dither",
+          "calling_context": "task-safe-reentrant",
+          "ownership": "reads the caller's gray8 tile and plots through the bound surface; retains nothing"
+        },
+        {
+          "name": "ra8_gfx_blit_gray8_dither_tone",
+          "calling_context": "task-safe-reentrant",
+          "ownership": "as the flat form, plus a borrowed tone map for the call; retains nothing"
         }
       ],
       "data_exports": [
