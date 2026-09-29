@@ -57,11 +57,12 @@ ra8_add_app(
 # archive instead, cross-built for THIS image's core rather than the app's.
 # CPU1 is a Cortex-M33 while the parent app is a cortex-m85, so the archive has
 # to be requested per-core -- see ra8_link_zig_library_for_cpu() in
-# cmake/ra8_app/zig_libs.cmake. The lifecycle binder and the generated font
-# table are still C and reference the archive, which is the safe direction
-# (objects reference the archive, never the reverse). The glyph/text TU joined
-# the archive with #1328, the tone LUT with #1326 and the dither with #1402, so
-# the binder and the generated font table are the C this image still compiles.
+# cmake/ra8_app/zig_libs.cmake. The generated font table is still C and
+# references the archive, which is the safe direction (objects reference the
+# archive, never the reverse). The glyph/text TU joined the archive with #1328,
+# the tone LUT with #1326, the dither with #1402 and the lifecycle binder with
+# this slice, so the generated font table is the only ra8_gfx C left on this
+# image.
 #############################################################################
 ra8_add_cpu1_image(
   PARENT ereader_m33
@@ -72,15 +73,14 @@ ra8_add_cpu1_image(
 )
 
 if(TARGET ereader_m33_cpu1.elf)
-  # The remaining ra8_gfx TUs come on through ra8_cpu1_add_first_party_sources(),
-  # which bolts them onto the image AND applies the per-source first-party
+  # The remaining ra8_gfx C comes on through ra8_cpu1_add_first_party_sources(),
+  # which bolts it onto the image AND applies the per-source first-party
   # profile (-Wall -Wextra -Werror ... -Wstack-usage=2048 -fstack-usage), the
-  # same set ra8_add_cpu1_image() puts on cpu1_main.c. They compile clean on
-  # it under arm-none-eabi-gcc 13.3.1 at this image's -Os, so their rows are
+  # same set ra8_add_cpu1_image() puts on cpu1_main.c. It compiles clean on
+  # it under arm-none-eabi-gcc 13.3.1 at this image's -Os, so its rows are
   # gone from .github/cpu1-warning-profile-baseline.txt (#843 / T1-09).
   ra8_cpu1_add_first_party_sources(
     ereader_m33_cpu1.elf
-    ${RA8_REPO_ROOT}/libs/ra8_gfx/src/ra8_gfx_bind.c
     ${RA8_REPO_ROOT}/libs/ra8_gfx/src/ra8_gfx_font_8x16.c
     # ra8_ipc.c now comes on the bar too, and its inventory row is gone. The
     # two diagnostics that used to hold it back are both fixed in first-party

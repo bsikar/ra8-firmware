@@ -1,26 +1,29 @@
 //! SPDX-License-Identifier: MIT
 //! Copyright (c) 2026 Brighton Sikarskie
 //!
-//! C ABI membrane for the `ra8_gfx` software rasteriser: the drawing entry
-//! points, the glyph/text stack and the per-panel tone curve alike. Defines
-//! the one module-wide framebuffer binding `g_gfx_text_state`, exports the two
-//! promoted helpers `priv_gfx_text_pack_565` and `priv_gfx_text_plot` that the
-//! remaining C translation units (bind, dither, generated font table) reach
-//! through `src/ra8_gfx_internal.h`, exports the twelve entry points declared
-//! in `inc/ra8_gfx.h`, both text calls among them, the three
-//! `inc/ra8_gfx_tone.h` calls with their committed nominal curve, and the six
-//! `inc/ra8_gfx_dither.h` calls over the committed blue-noise mask.
+//! C ABI membrane for the `ra8_gfx` software rasteriser: the lifecycle, the
+//! drawing entry points, the glyph/text stack and the per-panel tone curve
+//! alike. Defines the one module-wide framebuffer binding `g_gfx_text_state`,
+//! exports the four promoted helpers `priv_gfx_text_pack_565`,
+//! `priv_gfx_text_plot`, `priv_gfx_bpp` and `priv_gfx_format_ok` that
+//! `src/ra8_gfx_internal.h` declares, exports the fifteen entry points
+//! declared in `inc/ra8_gfx.h`, the two bind forms and the teardown among
+//! them, the three `inc/ra8_gfx_tone.h` calls with their committed nominal
+//! curve, and the six `inc/ra8_gfx_dither.h` calls over the committed
+//! blue-noise mask.
 //!
-//! The lifecycle half stays C in `ra8_gfx_bind.c`: `ra8_gfx_init()`,
-//! `ra8_gfx_init_surface()` and `ra8_gfx_deinit()` write the binding this file
-//! defines, and `priv_gfx_bpp()` / `priv_gfx_format_ok()` stay its exports.
+//! Nothing of `ra8_gfx` is hand-written C any more: the only C left in the
+//! library is the generated font table `ra8_gfx_font_8x16.c`, which links
+//! against this archive.
 //!
-//! Every decision lives in `internal/root.zig`; this file only moves bytes.
+//! Every decision lives in `internal/root.zig` and, for the lifecycle, in
+//! `internal/bind.zig`; this file only moves bytes.
 
 const std = @import("std");
 const impl = @import("internal/root.zig");
 const tone_impl = @import("internal/tone.zig");
 const dither_impl = @import("internal/dither.zig");
+const bind_impl = @import("internal/bind.zig");
 
 /// Re-exported so the ABI test binary shares the exact struct types.
 pub const internal = impl;
@@ -30,6 +33,9 @@ pub const tone = tone_impl;
 
 /// The dither's own pure half, re-exported for the same reason.
 pub const dither = dither_impl;
+
+/// The lifecycle's own pure half, re-exported for the same reason.
+pub const bind = bind_impl;
 
 /// `g_gfx_text_state` -- the single shared framebuffer binding. The C
 /// definition initialised only `.format`, so RGB565 is the pre-init format.
@@ -55,6 +61,17 @@ fn stride() usize {
 /// `priv_gfx_text_pack_565`
 pub export fn priv_gfx_text_pack_565(color: u32) callconv(.c) u16 {
     return impl.pack565(color);
+}
+
+/// `priv_gfx_bpp`
+pub export fn priv_gfx_bpp(fmt: u8) callconv(.c) u8 {
+    return impl.bppOf(fmt);
+}
+
+/// `priv_gfx_format_ok`. Declared `bool` in the header, so the byte the C
+/// reads is 0 or 1; `bool` itself is not a boundary type this repo allows.
+pub export fn priv_gfx_format_ok(fmt: u8) callconv(.c) u8 {
+    return @intFromBool(impl.formatOk(fmt));
 }
 
 /// `priv_gfx_text_plot`
@@ -131,6 +148,51 @@ fn rectOutline(x: i32, y: i32, w: i32, h: i32, color: u32) void {
         priv_gfx_text_plot(x, y +% row, color);
         priv_gfx_text_plot(x +% w -% 1, y +% row, color);
     }
+}
+
+/// `ra8_gfx_init` -- the positional bind form. No stride parameter, so the
+/// buffer is densely packed by definition and the pitch is one packed row.
+pub export fn ra8_gfx_init(
+    fb: ?*anyopaque,
+    width: u16,
+    height: u16,
+    fmt: u8,
+) callconv(.c) u16 {
+    const base = fb orelse return impl.err.null_ptr;
+    const status = bind_impl.checkDims(width, height, fmt);
+    if (status != impl.err.ok) return status;
+    g_gfx_text_state = bind_impl.bound(
+        @ptrCast(base),
+        width,
+        height,
+        fmt,
+        bind_impl.packedRow(width, fmt),
+    );
+    return impl.err.ok;
+}
+
+/// `ra8_gfx_init_surface` -- the pitch-carrying bind form (#737). The
+/// descriptor is copied, so the caller may reuse the object.
+pub export fn ra8_gfx_init_surface(s: ?*const bind_impl.Surface) callconv(.c) u16 {
+    const surface = s orelse return impl.err.null_ptr;
+    const pixels = surface.pixels orelse return impl.err.null_ptr;
+    const status = bind_impl.checkSurface(surface.*);
+    if (status != impl.err.ok) return status;
+    g_gfx_text_state = bind_impl.bound(
+        @ptrCast(pixels),
+        surface.w,
+        surface.h,
+        surface.fmt,
+        surface.stride_bytes,
+    );
+    return impl.err.ok;
+}
+
+/// `ra8_gfx_deinit`
+pub export fn ra8_gfx_deinit() callconv(.c) u16 {
+    if (!g_gfx_text_state.initialized) return impl.err.not_initialized;
+    g_gfx_text_state = bind_impl.released(g_gfx_text_state);
+    return impl.err.ok;
 }
 
 /// `ra8_gfx_clear`
