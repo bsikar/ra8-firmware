@@ -33,10 +33,10 @@ file(GLOB_RECURSE RA8_JPEG_SOURCES CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra8_jpeg/sr
 # archive into ra8_core_hal. src/ra8_modem_at_internal.h stays: the MC/DC
 # suites include it to reach the promoted priv_modem_* helpers.
 file(GLOB_RECURSE RA8_TLS_SOURCES CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra8_tls/src/*.c)
-# ra8_usb_pal's PAL core is Zig (libs/ra8_usb_pal/src/ra8_usb_pal_abi.zig, see
-# tests/cmake/zig_libraries.cmake). The glob survives the port because the
-# descriptor builders dev added later (#766, ra8_usb_desc.c and
-# ra8_usb_compose.c) are still C and still belong to this library.
+# ra8_usb_pal's PAL core and its four descriptor builders are Zig
+# (libs/ra8_usb_pal/src/*.zig, see tests/cmake/zig_libraries.cmake). The glob
+# survives the port because ra8_usb_compose.c, the one-call facade #766 layered
+# over those builders, is still C and still belongs to this library.
 file(GLOB_RECURSE RA8_USB_PAL_SOURCES CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra8_usb_pal/src/*.c)
 file(GLOB_RECURSE RA8_FS_SOURCES CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra8_fs/src/*.c)
 # libs/if is fully migrated to Zig: the portable filesystem interface and the

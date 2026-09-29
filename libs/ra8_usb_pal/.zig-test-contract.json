@@ -1,13 +1,20 @@
 {
   "test_roots": [
     "tests/internal_test.zig",
-    "tests/abi_test.zig"
+    "tests/abi_test.zig",
+    "tests/descriptor_test.zig",
+    "tests/desc_abi_test.zig"
   ],
   "covered_sources": [
     "src/internal/root.zig",
     "src/ra8_usb_pal_abi.zig",
     "tests/internal_test.zig",
-    "tests/abi_test.zig"
+    "tests/abi_test.zig",
+    "src/internal/wire.zig",
+    "src/internal/descriptor.zig",
+    "src/ra8_usb_desc_abi.zig",
+    "tests/descriptor_test.zig",
+    "tests/desc_abi_test.zig"
   ],
-  "minimum_tests": 10
+  "minimum_tests": 145
 }

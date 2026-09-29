@@ -9,6 +9,11 @@
 const std = @import("std");
 const core = @import("internal/root.zig");
 
+// The descriptor builders of `inc/ra8_usb_desc.h` ship in the same archive.
+comptime {
+    _ = @import("ra8_usb_desc_abi.zig");
+}
+
 const tag: [*:0]const u8 = "USBPAL";
 
 // =============================================================================

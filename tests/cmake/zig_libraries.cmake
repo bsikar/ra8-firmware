@@ -167,9 +167,10 @@ ra8_add_zig_library(
 # Partially migrated. The per-endpoint packet rings, the two MC/DC-promoted
 # predicates, the ra8_usb status -> PAL event translation and the whole public
 # ra8_usb_pal.h surface are Zig now, so src/ra8_usb_pal.c is gone. The
-# RA8_USB_PAL_SOURCES glob STAYS: dev added ra8_usb_desc.c and
-# ra8_usb_compose.c to this library after the port branch was cut (#766), and
-# those two descriptor builders are still C. src/ra8_usb_pal_internal.h stays
+# four descriptor builders behind inc/ra8_usb_desc.h are Zig too, so
+# src/ra8_usb_desc.c is gone. The RA8_USB_PAL_SOURCES glob STAYS:
+# ra8_usb_compose.c, the one-call facade dev layered over those builders
+# (#766), is still C. src/ra8_usb_pal_internal.h stays
 # too: the host suite includes it to drive the two promoted predicates, which
 # the Zig archive exports under the same names. The Ring-3 ra8_usb driver
 # stays a link-time seam.
