@@ -345,11 +345,11 @@ ra8_add_zig_library(
 )
 
 # Partially migrated: the FTL core (init, the presented free-overwrite vtable,
-# copy-on-write relocation, reclamation and wear-levelling) is Zig now, so
-# libs/ra8_ftl/src/ra8_ftl.c is gone and the RA8_FTL_SOURCES glob finds only
-# ra8_ftl_checkpoint.c and ra8_ftl_mount.c, both of which stay C for now: the
-# mount module arrived on dev in #763 after this port was cut and is composed
-# entirely from public FTL entry points. The archive calls the
+# copy-on-write relocation, reclamation and wear-levelling) and the canonical
+# checkpoint codec are both Zig now, so ra8_ftl.c and ra8_ftl_checkpoint.c are
+# gone and the RA8_FTL_SOURCES glob finds only ra8_ftl_mount.c, which stays C
+# for now: the mount module arrived on dev in #763 after this port was cut and
+# is composed entirely from public FTL entry points. The archive calls the
 # ra8_io_blockdev_* front door, which lives in ra8_core_hal's own objects.
 ra8_add_zig_library(
   NAME
