@@ -24,7 +24,6 @@ apps/board/stand_alone/ereader/src/ns_main.c	misra-c2012-14.2	2
 apps/board/stand_alone/ereader/src/ns_main.c	misra-c2012-17.3	9
 apps/board/stand_alone/ereader/src/ns_main.c	misra-c2012-8.4	3
 apps/board/stand_alone/ereader/src/ns_main.c	misra-c2012-8.9	4
-apps/board/stand_alone/ereader/src/secure_exception.c	misra-c2012-8.9	1
 apps/board/stand_alone/ereader/src/system_init.c	misra-c2012-11.4	3
 apps/board/stand_alone/ereader/src/system_init.c	misra-c2012-17.3	1
 apps/board/stand_alone/ereader/src/system_init.c	misra-c2012-8.11	1

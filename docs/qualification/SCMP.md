@@ -65,9 +65,9 @@ a local file only when it intentionally overrides that default:
   `examples/ek_ra8d2/<tier>/.../<app>/inc/trustzone_init.h` and
   root-level `examples/ek_ra8d2/<tier>/.../<app>/linker_script.ld`
 
-Product forms follow the same ownership rule; for example, the e-reader's
-exception override is
-`apps/board/stand_alone/ereader/src/secure_exception.c`.
+Product forms follow the same ownership rule. No app currently overrides
+`secure_exception.c`: the e-reader was the last to do so and now links the
+shared board default like every other app.
 
 The canonical EK-RA8D2 defaults are under
 `libs/ra8_board_ek_ra8d2/{src/boot,ld}/`; RA8P1 uses the corresponding

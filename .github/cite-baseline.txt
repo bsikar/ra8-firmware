@@ -38,7 +38,6 @@
 #
 # file<TAB>count
 apps/board/stand_alone/ereader/src/ns_main.c	3
-apps/board/stand_alone/ereader/src/secure_exception.c	1
 apps/board/stand_alone/ereader/src/system_init.c	2
 examples/ek_ra8d2/hil_needs_revalidation/cpu1_pingpong_ipc/src/cpu1_main.c	29
 examples/ek_ra8d2/hil_needs_revalidation/cpu1_pingpong_ipc/src/ns_main.c	3
