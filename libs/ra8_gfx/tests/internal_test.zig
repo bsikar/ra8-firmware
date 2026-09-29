@@ -442,3 +442,125 @@ test "gray4ZoomArgsOk demands a buffer, a positive zoom, then a non-empty image"
     try std.testing.expect(!impl.gray4ZoomArgsOk(true, 1, 4, 0));
     try std.testing.expect(!impl.gray4ZoomArgsOk(true, 1, -1, -1));
 }
+
+test "font layout matches the C ra8_gfx_font_t" {
+    const ptr = @sizeOf(usize);
+    try std.testing.expectEqual(@as(usize, 0), @offsetOf(impl.Font, "glyph_data"));
+    try std.testing.expectEqual(ptr, @offsetOf(impl.Font, "glyph_width"));
+    try std.testing.expectEqual(ptr + 1, @offsetOf(impl.Font, "glyph_height"));
+    try std.testing.expectEqual(ptr + 2, @offsetOf(impl.Font, "bytes_per_glyph"));
+    try std.testing.expectEqual(ptr + 3, @offsetOf(impl.Font, "first_codepoint"));
+    try std.testing.expectEqual(ptr + 4, @offsetOf(impl.Font, "last_codepoint"));
+}
+
+test "glyphRowBytes rounds a cell width up to whole bytes" {
+    try std.testing.expectEqual(@as(u32, 1), impl.glyphRowBytes(1));
+    try std.testing.expectEqual(@as(u32, 1), impl.glyphRowBytes(8));
+    try std.testing.expectEqual(@as(u32, 2), impl.glyphRowBytes(9));
+    try std.testing.expectEqual(@as(u32, 2), impl.glyphRowBytes(16));
+    try std.testing.expectEqual(@as(u32, 32), impl.glyphRowBytes(255));
+}
+
+test "glyphIndex maps a codepoint to its slot and folds the rest onto space" {
+    try std.testing.expectEqual(@as(u8, 0), impl.glyphIndex(0x20, 0x20, 0x7E));
+    try std.testing.expectEqual(@as(u8, 1), impl.glyphIndex(0x21, 0x20, 0x7E));
+    try std.testing.expectEqual(@as(u8, 0x5E), impl.glyphIndex(0x7E, 0x20, 0x7E));
+    // Below the first stored codepoint and above the last both render slot 0.
+    try std.testing.expectEqual(@as(u8, 0), impl.glyphIndex(0x1F, 0x20, 0x7E));
+    try std.testing.expectEqual(@as(u8, 0), impl.glyphIndex(0x7F, 0x20, 0x7E));
+}
+
+test "glyphDataOffset walks the packed table in whole glyphs" {
+    try std.testing.expectEqual(@as(usize, 0), impl.glyphDataOffset(0, 16));
+    try std.testing.expectEqual(@as(usize, 16), impl.glyphDataOffset(1, 16));
+    try std.testing.expectEqual(@as(usize, 255 * 16), impl.glyphDataOffset(255, 16));
+}
+
+test "glyph bits are MSB-first within each row byte" {
+    const cell = [_]u8{ 0b1000_0001, 0b0100_0010 };
+    try std.testing.expect(impl.glyphBitSet(&cell, 1, 0, 0));
+    try std.testing.expect(!impl.glyphBitSet(&cell, 1, 0, 1));
+    try std.testing.expect(impl.glyphBitSet(&cell, 1, 0, 7));
+    try std.testing.expect(impl.glyphBitSet(&cell, 1, 1, 1));
+    try std.testing.expect(impl.glyphBitSet(&cell, 1, 1, 6));
+}
+
+test "a wide glyph row spans several bytes" {
+    // 12 px wide: two bytes a row, the second holding columns 8..11.
+    const cell = [_]u8{ 0x00, 0b1000_0000, 0x00, 0b0001_0000 };
+    try std.testing.expectEqual(@as(usize, 1), impl.glyphByteIndex(2, 0, 8));
+    try std.testing.expectEqual(@as(usize, 3), impl.glyphByteIndex(2, 1, 11));
+    try std.testing.expect(impl.glyphBitSet(&cell, 2, 0, 8));
+    try std.testing.expect(impl.glyphBitSet(&cell, 2, 1, 11));
+    try std.testing.expect(!impl.glyphBitSet(&cell, 2, 1, 8));
+}
+
+test "glyphWindow intersects a cell with the clip box" {
+    const full = impl.Box{ .x0 = 0, .y0 = 0, .x1 = 64, .y1 = 32 };
+    const w = impl.glyphWindow(8, 4, 8, 16, full).?;
+    try std.testing.expectEqual(@as(i32, 8), w.x0);
+    try std.testing.expectEqual(@as(i32, 4), w.y0);
+    try std.testing.expectEqual(@as(i32, 16), w.x1);
+    try std.testing.expectEqual(@as(i32, 20), w.y1);
+}
+
+test "glyphWindow clamps a cell straddling the clip edges" {
+    const clip = impl.Box{ .x0 = 4, .y0 = 4, .x1 = 12, .y1 = 12 };
+    const w = impl.glyphWindow(0, 0, 8, 16, clip).?;
+    try std.testing.expectEqual(@as(i32, 4), w.x0);
+    try std.testing.expectEqual(@as(i32, 4), w.y0);
+    try std.testing.expectEqual(@as(i32, 8), w.x1);
+    try std.testing.expectEqual(@as(i32, 12), w.y1);
+}
+
+test "glyphWindow refuses a cell fully outside the clip" {
+    const clip = impl.Box{ .x0 = 0, .y0 = 0, .x1 = 8, .y1 = 8 };
+    try std.testing.expect(impl.glyphWindow(64, 0, 8, 16, clip) == null);
+    try std.testing.expect(impl.glyphWindow(0, -16, 8, 16, clip) == null);
+}
+
+test "glyphWindow widens the far edge so a cell cannot wrap into view" {
+    const clip = impl.Box{ .x0 = 0, .y0 = 0, .x1 = 8, .y1 = 8 };
+    // x + gw overflows i32; the C summed in int64 before comparing, so the
+    // far edge saturates on the clip instead of wrapping negative.
+    const w = impl.glyphWindow(std.math.maxInt(i32), 0, 8, 16, clip);
+    try std.testing.expect(w == null);
+}
+
+test "textLength stops at the NUL" {
+    try std.testing.expectEqual(@as(u32, 0), impl.textLength("".ptr));
+    try std.testing.expectEqual(@as(u32, 5), impl.textLength("hello".ptr));
+}
+
+test "textLength caps at the glyph ceiling" {
+    const long = [_]u8{'x'} ** (impl.max_chars + 8);
+    try std.testing.expectEqual(impl.max_chars, impl.textLength(&long));
+}
+
+test "textExtent is one row of n cells" {
+    const e = impl.textExtent(5, 8, 16);
+    try std.testing.expectEqual(@as(u32, 40), e.w);
+    try std.testing.expectEqual(@as(u32, 16), e.h);
+    const empty = impl.textExtent(0, 8, 16);
+    try std.testing.expectEqual(@as(u32, 0), empty.w);
+    try std.testing.expectEqual(@as(u32, 16), empty.h);
+}
+
+test "textOutStatus judges the null pair before the binding" {
+    try std.testing.expectEqual(impl.err.null_ptr, impl.textOutStatus(false, true, false));
+    try std.testing.expectEqual(impl.err.null_ptr, impl.textOutStatus(true, false, true));
+    try std.testing.expectEqual(impl.err.not_initialized, impl.textOutStatus(true, true, false));
+    try std.testing.expectEqual(impl.err.ok, impl.textOutStatus(true, true, true));
+}
+
+test "textSizeStatus wants all four pointers and never the binding" {
+    try std.testing.expectEqual(impl.err.ok, impl.textSizeStatus(true, true, true, true));
+    try std.testing.expectEqual(impl.err.null_ptr, impl.textSizeStatus(false, true, true, true));
+    try std.testing.expectEqual(impl.err.null_ptr, impl.textSizeStatus(true, false, true, true));
+    try std.testing.expectEqual(impl.err.null_ptr, impl.textSizeStatus(true, true, false, true));
+    try std.testing.expectEqual(impl.err.null_ptr, impl.textSizeStatus(true, true, true, false));
+}
+
+test "max_chars is the dimension ceiling both text loops were bounded by" {
+    try std.testing.expectEqual(@as(u32, impl.dim.max), impl.max_chars);
+}

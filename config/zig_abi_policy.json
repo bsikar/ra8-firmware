@@ -3060,6 +3060,16 @@
           "name": "ra8_gfx_blit",
           "calling_context": "task-only-non-reentrant",
           "ownership": "borrows the typed source surface for the call and writes the bound framebuffer"
+        },
+        {
+          "name": "ra8_gfx_text_out",
+          "calling_context": "task-only-non-reentrant",
+          "ownership": "renders a caller-owned string through a caller-owned font into the bound framebuffer"
+        },
+        {
+          "name": "ra8_gfx_text_size",
+          "calling_context": "task-only-non-reentrant",
+          "ownership": "measures a caller-owned string and writes the two caller-owned extent words"
         }
       ],
       "data_exports": [
@@ -3096,16 +3106,6 @@
           "name": "priv_gfx_format_ok",
           "source": "libs/ra8_gfx/src/ra8_gfx_bind.c",
           "reason": "promoted alongside priv_gfx_bpp by #737 and defined in the same retained C TU"
-        },
-        {
-          "name": "ra8_gfx_text_out",
-          "source": "libs/ra8_gfx/src/ra8_gfx_text_glyph.c",
-          "reason": "the glyph rasteriser is its own translation unit and its own later slice; it draws through priv_gfx_text_plot and the shared binding"
-        },
-        {
-          "name": "ra8_gfx_text_size",
-          "source": "libs/ra8_gfx/src/ra8_gfx_text_glyph.c",
-          "reason": "text measurement lives in the same retained glyph TU and ports with it"
         }
       ]
     }

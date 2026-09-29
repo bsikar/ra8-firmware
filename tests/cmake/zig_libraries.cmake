@@ -367,12 +367,12 @@ set_property(
 
 # Partially migrated: the rasteriser core is Zig now -- the single shared
 # framebuffer binding g_gfx_text_state, the two promoted helpers
-# priv_gfx_text_pack_565 / priv_gfx_text_plot, and the ten drawing entry
-# points of inc/ra8_gfx.h, the packed-gray4 loupe zoom blit included. The
-# lifecycle half is deliberately still C in src/ra8_gfx_bind.c: ra8_gfx_init(),
-# ra8_gfx_init_surface() and ra8_gfx_deinit() write the binding this archive
-# defines, and priv_gfx_bpp() / priv_gfx_format_ok() stay its exports. The
-# other four C translation units (ra8_gfx_dither.c, ra8_gfx_text_glyph.c,
+# priv_gfx_text_pack_565 / priv_gfx_text_plot, and the twelve entry points of
+# inc/ra8_gfx.h, the packed-gray4 loupe zoom blit and both text calls
+# included. The lifecycle half is deliberately still C in src/ra8_gfx_bind.c:
+# ra8_gfx_init(), ra8_gfx_init_surface() and ra8_gfx_deinit() write the binding
+# this archive defines, and priv_gfx_bpp() / priv_gfx_format_ok() stay its
+# exports. The other three C translation units (ra8_gfx_dither.c,
 # ra8_gfx_tone.c and the generated ra8_gfx_font_8x16.c) reach into this archive
 # through the unchanged src/ra8_gfx_internal.h, so that header and the
 # libs/ra8_gfx/src include dirs in core_hal.cmake and unit_tests.cmake all stay.

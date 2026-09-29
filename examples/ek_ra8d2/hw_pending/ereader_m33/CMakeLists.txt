@@ -60,7 +60,8 @@ ra8_add_app(
 # cmake/ra8_app/zig_libs.cmake. The lifecycle binder, the glyph/text TU, the
 # dither and tone passes and the generated font table are still C and reference
 # the archive, which is the safe direction (objects reference the archive,
-# never the reverse).
+# never the reverse). The glyph/text TU joined the archive with #1328, so the
+# binder and the generated font table are the C this image still compiles.
 #############################################################################
 ra8_add_cpu1_image(
   PARENT ereader_m33
@@ -80,7 +81,6 @@ if(TARGET ereader_m33_cpu1.elf)
   ra8_cpu1_add_first_party_sources(
     ereader_m33_cpu1.elf
     ${RA8_REPO_ROOT}/libs/ra8_gfx/src/ra8_gfx_bind.c
-    ${RA8_REPO_ROOT}/libs/ra8_gfx/src/ra8_gfx_text_glyph.c
     ${RA8_REPO_ROOT}/libs/ra8_gfx/src/ra8_gfx_font_8x16.c
     # ra8_ipc.c now comes on the bar too, and its inventory row is gone. The
     # two diagnostics that used to hold it back are both fixed in first-party
@@ -92,9 +92,9 @@ if(TARGET ereader_m33_cpu1.elf)
   target_include_directories(
     ereader_m33_cpu1.elf PRIVATE ${RA8_REPO_ROOT}/libs/ra8_gfx/src
   )
-  # g_gfx_text_state, the two promoted helpers and the public draw entry points
-  # live in the Zig archive; the C TUs above reach them through the unchanged
-  # src/ra8_gfx_internal.h.
+  # g_gfx_text_state, the two promoted helpers and the public entry points
+  # (ra8_gfx_text_out included) live in the Zig archive; the C TUs above reach
+  # them through the unchanged src/ra8_gfx_internal.h.
   ra8_link_zig_library_for_cpu(
     TARGET ereader_m33_cpu1.elf
     LIB ra8_gfx
