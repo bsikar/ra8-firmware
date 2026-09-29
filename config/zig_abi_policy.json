@@ -2664,6 +2664,81 @@
           "ownership": "writes a caller-owned rectangle from the supplied dimensions and retains no state"
         }
       ]
+    },
+    {
+      "name": "ra8_ota_parse",
+      "build_root": "libs/ra8_ota",
+      "public_headers": [
+        {
+          "path": "libs/ra8_ota/src/ra8_ota_parse_abi.h",
+          "compatibility_sha256": "176cb3bc9280483a1d512be4e26c6bd7ca41a7cb3b9b8873b9efdcc70ddfbbf6",
+          "layout_assertions": []
+        }
+      ],
+      "adapters": [
+        "libs/ra8_ota/src/ra8_ota_parse_abi.zig"
+      ],
+      "library_name": "ra8_ota",
+      "symbol_prefix": "priv_ota_",
+      "target_class": "host-ra8",
+      "targets": {
+        "host": [],
+        "ra8": [
+          "-Dtarget=thumb-freestanding-eabihf",
+          "-Dcpu=cortex_m85+fp_armv8-d32-fp64"
+        ]
+      },
+      "run_host_tests_in_all_modes": false,
+      "c_include_dirs": [
+        "libs/ra8_ota/inc",
+        "libs/ra8_ota/src",
+        "libs/ra8_core/inc"
+      ],
+      "contract_tests": [
+        {
+          "language": "c",
+          "path": "tests/misc/src/test_ra8_ota_parse_cov.c",
+          "registration": "tests/cmake/unit_tests.cmake"
+        },
+        {
+          "language": "zig",
+          "path": "libs/ra8_ota/tests/abi_test.zig",
+          "registration": "libs/ra8_ota/.zig-test-contract.json"
+        },
+        {
+          "language": "zig",
+          "path": "libs/ra8_ota/tests/internal_test.zig",
+          "symbol_evidence": "libs/ra8_ota/src/ra8_ota_parse_abi.zig",
+          "registration": "libs/ra8_ota/.zig-test-contract.json"
+        }
+      ],
+      "exports": [
+        {
+          "name": "priv_ota_validate_cfg",
+          "calling_context": "task-safe-reentrant",
+          "ownership": "borrows configuration and callbacks for this validation call; retains no pointers"
+        },
+        {
+          "name": "priv_ota_manifest_decode",
+          "calling_context": "task-safe-reentrant",
+          "ownership": "borrows JSON input and caller-owned output manifest for this call"
+        },
+        {
+          "name": "priv_ota_json_u32",
+          "calling_context": "task-safe-reentrant",
+          "ownership": "borrows JSON and key; writes the caller-owned output only on success"
+        },
+        {
+          "name": "priv_ota_char_in_range",
+          "calling_context": "task-safe-reentrant",
+          "ownership": "copies no data; evaluates the character range from call arguments"
+        },
+        {
+          "name": "priv_ota_download_state_invalid",
+          "calling_context": "task-safe-reentrant",
+          "ownership": "copies no data; evaluates the download state from call arguments"
+        }
+      ]
     }
   ]
 }
