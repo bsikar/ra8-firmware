@@ -150,7 +150,7 @@ uint32_t ra8_now_ms(void);
 void ra8_sleep_ms(uint32_t ms);
 
 /* =============================================================================
- * Concrete DI interface instance (defined in ra8_time.c)
+ * Concrete DI interface instance (defined in ra8_time_interface_systick.c)
  * =============================================================================
  */
 
