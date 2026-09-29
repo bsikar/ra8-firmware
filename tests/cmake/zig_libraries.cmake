@@ -197,6 +197,24 @@ ra8_add_zig_library(
   LIBRARY_NAME
   ra8_keyboard
 )
+
+# Fully migrated: the transport-neutral facade, the fixed in-memory replay
+# backend and the PDM-IF backend are all Zig now, so libs/ra8_audio/src holds
+# no .c and the RA8_AUDIO_SOURCES glob is gone from library_sources.cmake and
+# core_hal.cmake. The private vtable header src/ra8_audio_internal.h stays,
+# because tests/misc/src/test_ra8_audio.c includes it to build its own fake
+# backend; the libs/ra8_audio/src include dirs in core_hal.cmake and
+# unit_tests.cmake are still needed for it. The PDM HAL and the millisecond
+# clock stay link-time externs, so tests/hal/src/test_ra8_pdm.c substitutes
+# its fixture exactly as it did for the C.
+ra8_add_zig_library(
+  NAME
+  ra8_audio
+  ZIG_ROOT
+  ${FW_ROOT}/libs/ra8_audio
+  LIBRARY_NAME
+  ra8_audio
+)
 set_property(
   TARGET ra8_zig::ra8_keyboard
   APPEND
@@ -221,6 +239,7 @@ target_link_libraries(
          ra8_zig::ra8_lsm6dso
          ra8_zig::ra8_usb_pal
          ra8_zig::ra8_keyboard
+         ra8_zig::ra8_audio
 )
 
 link_libraries(ra8_zig::ra8_batt)
@@ -241,4 +260,5 @@ link_libraries(
   ra8_zig::ra8_lsm6dso
   ra8_zig::ra8_usb_pal
   ra8_zig::ra8_keyboard
+  ra8_zig::ra8_audio
 )
