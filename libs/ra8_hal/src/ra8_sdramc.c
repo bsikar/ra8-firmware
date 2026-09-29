@@ -26,6 +26,7 @@
 #include <stdint.h>
 
 #include "ra8_attributes.h"
+#include "ra8_boot_region.h"
 #include "ra8_check.h"
 #include "ra8_err.h"
 #include "ra8_gpio_constants.h"
@@ -308,6 +309,18 @@ ra8_err_t ra8_sdramc_init(void)
   reg->SDRFCR = (uint16_t)k_ra8_sdrfcr_init;
   reg->SDRFEN = (uint8_t)k_ra8_sdramc_kick;
   reg->SDCCR  = (uint8_t)k_ra8_sdccr_enable;
+
+  /* The window answers from here on. `Reset_Handler` could not zero
+   * `.sdram_data` (NOLOAD, external SDRAM, dark until the sequence above
+   * finished), so the C zero-init guarantee for objects placed there is
+   * honoured now, at the first moment the fill can land. Images that place
+   * nothing in SDRAM link the two section symbols to the same address and the
+   * call costs nothing. */
+  const ra8_err_t fill_err = ra8_boot_zero_sdram_bss();
+  if (fill_err != k_ra8_ok) {
+    ra8_log_error(s_tag, "sdramc: .sdram_data zero-fill failed");
+    return fill_err;
+  }
 
   ra8_log_info(s_tag, "sdramc_init (64 MiB @ 0x68000000)");
   return k_ra8_ok;
