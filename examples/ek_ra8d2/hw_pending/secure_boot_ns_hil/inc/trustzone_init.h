@@ -10,7 +10,7 @@
  * is live) and the fixed Non-Secure image addresses shared between
  * ``trustzone_init.c`` (which copies the NS image MRAM->SRAM) and ``main.c``
  * (which authenticates it and BLXNS-es to it). The values MUST match
- * ``ns_image_sram.ld``'s ``NS_LOAD`` / ``NS_SRAM_RUN`` origins.
+ * the NS script's ``NS_LOAD`` / ``NS_SRAM_RUN`` origins.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -30,10 +30,11 @@ extern "C" {
  *
  * @details
  * The NS image is a SEPARATE ELF, so the Secure side has none of its linker
- * symbols and must hard-code these (they mirror ``ns_image_sram.ld``). It is flashed
+ * symbols and must hard-code these (they mirror ns_memory_map.cmake). It is flashed
  * at the MRAM LMA and copied to the SRAM2 Non-secure alias before BLXNS.
  *
- * @invariant Matches ORIGIN(NS_LOAD) / ORIGIN(NS_SRAM_RUN) in ns_image_sram.ld.
+ * @invariant Matches RA8_NS_MRAM_ORIGIN / RA8_NS_SRAM_ORIGIN in
+ *             libs/ra8_board_ek_ra8d2/ld/ns_memory_map.cmake.
  */
 typedef enum : uintptr_t {
   k_sbns_ns_load_base = 0x02080000U, /**< NS image LMA (Secure MRAM).     */

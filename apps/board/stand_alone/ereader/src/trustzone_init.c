@@ -78,12 +78,13 @@ extern uint32_t g_ra8_ls_sgstubs_end;   /**< Veneer-region end (NSC).   */
  *
  * @details The NS image is a SEPARATE ELF (tz_nsc_cgc_usb_ns.elf), so the
  *          Secure side has none of its linker symbols. Its load (MRAM) and run
- *          (SRAM2 NS alias) bases are fixed by ns_image_sram.ld; the Secure boot
+ *          (SRAM2 NS alias) bases are fixed by the NS linker script; the Secure boot
  *          copies a fixed window large enough for the NS image (ThreadX + USBX
  *          + ra8_usb fit well under 192 KB) and BLXNS-es to slot 1 of the NS
  *          vector table at the run base.
  *
- * @invariant Matches ORIGIN(NS_LOAD) / ORIGIN(NS_SRAM_RUN) in ns_image_sram.ld.
+ * @invariant Matches RA8_NS_MRAM_ORIGIN / RA8_NS_SRAM_ORIGIN in
+ *             libs/ra8_board_ek_ra8d2/ld/ns_memory_map.cmake.
  */
 typedef enum : uintptr_t {
   k_tz_ns_load_base = 0x02080000U, /**< NS image LMA (Secure MRAM). */
