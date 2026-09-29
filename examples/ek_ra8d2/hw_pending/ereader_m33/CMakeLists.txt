@@ -44,13 +44,23 @@ ra8_add_app(
 #
 # The M33 image walks the baked RABOOK1 book through the header-only book.h
 # inline accessors (pure offset arithmetic) and RENDERS the held page through the
-# production ra8_gfx text stack. ra8_gfx is three dependency-clean, zero-heap,
-# scalar (no-Helium) TUs whose only header dependency is ra8_core's ra8_err.h
+# production ra8_gfx text stack. ra8_gfx is dependency-clean, zero-heap and
+# scalar (no-Helium), and its only header dependency is ra8_core's ra8_err.h
 # (already on the CPU1 include path), so it links cleanly into the freestanding
 # M33 image -- no logging backend, no panel driver, no malloc. For the #150
 # mode-switch it ALSO links the ra8_ipc send path (ra8_ipc.c) so the M33 can poke
 # IPC0ISET0 to wake the parked M85 on a page turn; RA8_LOG_LEVEL=0 collapses
 # ra8_ipc's ra8_log calls to no-ops so no logging backend is dragged in.
+#
+# The rasteriser core of ra8_gfx is Zig now (epic:zig-migration), so this image
+# cannot pick it up by compiling libs/ra8_gfx/src/*.c by path: it links the Zig
+# archive instead, cross-built for THIS image's core rather than the app's.
+# CPU1 is a Cortex-M33 while the parent app is a cortex-m85, so the archive has
+# to be requested per-core -- see ra8_link_zig_library_for_cpu() in
+# cmake/ra8_app/zig_libs.cmake. The lifecycle binder, the glyph/text TU, the
+# dither and tone passes and the generated font table are still C and reference
+# the archive, which is the safe direction (objects reference the archive,
+# never the reverse).
 #############################################################################
 ra8_add_cpu1_image(
   PARENT ereader_m33
@@ -61,7 +71,7 @@ ra8_add_cpu1_image(
 )
 
 if(TARGET ereader_m33_cpu1.elf)
-  # The four ra8_gfx TUs come on through ra8_cpu1_add_first_party_sources(),
+  # The remaining ra8_gfx TUs come on through ra8_cpu1_add_first_party_sources(),
   # which bolts them onto the image AND applies the per-source first-party
   # profile (-Wall -Wextra -Werror ... -Wstack-usage=2048 -fstack-usage), the
   # same set ra8_add_cpu1_image() puts on cpu1_main.c. They compile clean on
@@ -70,7 +80,6 @@ if(TARGET ereader_m33_cpu1.elf)
   ra8_cpu1_add_first_party_sources(
     ereader_m33_cpu1.elf
     ${RA8_REPO_ROOT}/libs/ra8_gfx/src/ra8_gfx_bind.c
-    ${RA8_REPO_ROOT}/libs/ra8_gfx/src/ra8_gfx_text.c
     ${RA8_REPO_ROOT}/libs/ra8_gfx/src/ra8_gfx_text_glyph.c
     ${RA8_REPO_ROOT}/libs/ra8_gfx/src/ra8_gfx_font_8x16.c
     # ra8_ipc.c now comes on the bar too, and its inventory row is gone. The
@@ -79,6 +88,18 @@ if(TARGET ereader_m33_cpu1.elf)
     # ra8_log macros started using their arguments, and the channel-regs cast
     # no longer casts a call expression (-Wbad-function-cast).
     ${RA8_REPO_ROOT}/libs/ra8_hal/src/ra8_ipc.c
+  )
+  target_include_directories(
+    ereader_m33_cpu1.elf PRIVATE ${RA8_REPO_ROOT}/libs/ra8_gfx/src
+  )
+  # g_gfx_text_state, the two promoted helpers and the public draw entry points
+  # live in the Zig archive; the C TUs above reach them through the unchanged
+  # src/ra8_gfx_internal.h.
+  ra8_link_zig_library_for_cpu(
+    TARGET ereader_m33_cpu1.elf
+    LIB ra8_gfx
+    CPU cortex_m33
+    FLOAT hard
   )
   target_compile_definitions(ereader_m33_cpu1.elf PRIVATE RA8_LOG_LEVEL=0)
 endif()
