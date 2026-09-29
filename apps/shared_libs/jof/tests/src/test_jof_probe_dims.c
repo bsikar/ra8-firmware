@@ -52,6 +52,8 @@ enum : uint32_t {
   k_p_type_ofs   = 12U,    /**< Offset of the first chunk's type tag. */
   k_p_over_plat  = 16385U, /**< One past the shared probe's cap, still
                                 under ::k_jof_max_dim.                 */
+  k_p_len_lo_ofs = 11U,    /**< Low byte of the IHDR payload length. */
+  k_p_ihdr_len   = 13U,    /**< IHDR payload length, per PNG 11.2.2. */
 };
 
 /**
@@ -91,8 +93,14 @@ RA8_INTERNAL static void internal_wr_be32(uint8_t* buf, uint32_t v)
 RA8_INTERNAL static void internal_make_png(uint8_t* buf, uint32_t w, uint32_t h)
 {
   static const uint8_t s_png_sig[8] = {0x89U, 'P', 'N', 'G', 0x0DU, 0x0AU, 0x1AU, 0x0AU};
+  static const char    s_ihdr[4]     = {'I', 'H', 'D', 'R'};
   (void)memset(buf, 0, (size_t)k_p_png_ihdr);
   (void)memcpy(buf, s_png_sig, sizeof(s_png_sig));
+  /* The dims reader checks the first chunk's type tag before it reads a size
+   * (libs/ra8_imgdec/src/ra8_imgdec_dims.c@internal_png), so the header has to
+   * carry a real IHDR chunk, not just the signature and the two fields. */
+  buf[k_p_len_lo_ofs] = (uint8_t)k_p_ihdr_len;
+  (void)memcpy(&buf[k_p_type_ofs], s_ihdr, sizeof(s_ihdr));
   internal_wr_be32(&buf[k_p_ihdr_w_ofs], w);
   internal_wr_be32(&buf[k_p_ihdr_h_ofs], h);
 }
