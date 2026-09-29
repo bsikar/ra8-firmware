@@ -545,8 +545,12 @@ macro(_ra8_app_collect_sources)
   # -- unlike the full "ra8_io" -- this needs no ra8_fs / ra8_sdmmc_spi /
   # ra8_usb_pal companions. Mirrors the bare-"miniz" pseudo-lib above; the
   # LIBS loop's libs/ra8_io_bus/src glob is harmlessly empty. Skipped when
-  # the full "ra8_io" is present, which already compiles these TUs.
-  if(("ra8_io_bus" IN_LIST _RA8_APP_LIBS) AND (NOT "ra8_io" IN_LIST _RA8_APP_LIBS))
+  # the full "ra8_io" is present, which already compiles these TUs. A bare
+  # "ra8_camera" gets the same treatment: the board camera adapter it needs
+  # (below) is written against the same I2C facade, and camera_capture
+  # declares only "ra8_camera ra8_ov5640".
+  if((("ra8_io_bus" IN_LIST _RA8_APP_LIBS) OR ("ra8_camera" IN_LIST _RA8_APP_LIBS))
+     AND (NOT "ra8_io" IN_LIST _RA8_APP_LIBS))
     file(
       GLOB
       _ra8_io_bus_srcs
@@ -568,6 +572,10 @@ macro(_ra8_app_collect_sources)
   #                         libs/ra8_io/inc AND the ra8_io_stream TUs at link
   #                         time -> the full "ra8_io". A bare "ra8_io_bus" is
   #                         NOT enough: it compiles the bus facades only.
+  #   ..._camera.c          publishes the J35 SCCB adapter as an
+  #                         ra8_i2c_bus_ops_t over ra8_io_i2c_bus_riic, so it
+  #                         needs libs/ra8_io/inc and the I2C facade TUs ->
+  #                         "ra8_io", "ra8_io_bus", OR "ra8_camera".
   #   ..._touch.c           binds the GT911 bus through the ra8_io I2C facade
   #                         -> "ra8_io" OR "ra8_io_bus", either of which
   #                         compiles ra8_io_i2c_bus*.c.
@@ -603,6 +611,18 @@ macro(_ra8_app_collect_sources)
         EXCLUDE
         REGEX
         "ra8_board_[a-z0-9_]+_touch\\.c$"
+      )
+    endforeach()
+  endif()
+  if(NOT (("ra8_io" IN_LIST _RA8_APP_LIBS) OR ("ra8_io_bus" IN_LIST _RA8_APP_LIBS)
+          OR ("ra8_camera" IN_LIST _RA8_APP_LIBS)))
+    foreach(_ra8_board_list _ra8_lib_board _ra8_lib_extra)
+      list(
+        FILTER
+        ${_ra8_board_list}
+        EXCLUDE
+        REGEX
+        "ra8_board_[a-z0-9_]+_camera\\.c$"
       )
     endforeach()
   endif()
