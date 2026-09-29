@@ -72,11 +72,27 @@ pub fn build(b: *std.Build) void {
     tone_test_module.addImport("tone", tone_module);
     const tone_tests = b.addTest(.{ .root_module = tone_test_module });
 
+    const dither_module = b.createModule(.{
+        .root_source_file = b.path("src/internal/dither.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+
+    const dither_test_module = b.createModule(.{
+        .root_source_file = b.path("tests/dither_test.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    dither_test_module.addImport("dither", dither_module);
+    const dither_tests = b.addTest(.{ .root_module = dither_test_module });
+
     const run_internal_tests = b.addRunArtifact(internal_tests);
     const run_tone_tests = b.addRunArtifact(tone_tests);
+    const run_dither_tests = b.addRunArtifact(dither_tests);
     const run_abi_tests = b.addRunArtifact(abi_tests);
     const test_step = b.step("test", "Run Zig ra8_gfx tests");
     test_step.dependOn(&run_internal_tests.step);
     test_step.dependOn(&run_tone_tests.step);
+    test_step.dependOn(&run_dither_tests.step);
     test_step.dependOn(&run_abi_tests.step);
 }

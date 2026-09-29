@@ -16,6 +16,7 @@ const std = @import("std");
 /// `ra8_err_t` values this library can return.
 pub const err = struct {
     pub const ok: u16 = 0;
+    pub const no_mem: u16 = 0x102;
     pub const invalid_arg: u16 = 0x103;
     pub const not_initialized: u16 = 0x10F;
     pub const range_check_failed: u16 = 0x503;

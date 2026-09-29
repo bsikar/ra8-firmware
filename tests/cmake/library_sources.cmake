@@ -82,10 +82,10 @@ file(GLOB_RECURSE RA8_MEM_SOURCES CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra8_mem/src/
 # included) is Zig now (libs/ra8_gfx/src/*.zig, built by
 # libs/ra8_gfx/build.zig) behind the unchanged C headers, and
 # tests/cmake/zig_libraries.cmake links that archive into ra8_core_hal. This
-# glob now matches exactly the three C translation units left: the bind/teardown
-# TU (which writes the binding the archive defines), the dither and the
-# generated 8x16 font table. The per-panel tone LUT joined the archive with
-# #1326, so the dither reaches ra8_gfx_tone_quantise() through it.
+# glob now matches exactly the two C translation units left: the bind/teardown
+# TU (which writes the binding the archive defines) and the generated 8x16
+# font table. The per-panel tone LUT joined the archive with #1326 and the
+# blue-noise dither with #1402, mask table included.
 file(GLOB_RECURSE RA8_GFX_SOURCES CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra8_gfx/src/*.c)
 # ra8_ui has no C sources: the interaction core (hit-testing, screen stack,
 # paging) is Zig (libs/ra8_ui/src/*.zig, built by libs/ra8_ui/build.zig)

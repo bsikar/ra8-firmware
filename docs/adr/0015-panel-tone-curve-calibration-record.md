@@ -25,7 +25,7 @@ objects and three entry points:
   `ra8_gfx_tone_quantise`.
 * `k_ra8_gfx_tone_lut_nominal` is the committed even palette (level `n`
   renders `n * 17`), which reproduces the closed-form rule in
-  `libs/ra8_gfx/src/ra8_gfx_dither.c` exactly.
+  `libs/ra8_gfx/src/internal/dither.zig` exactly.
 
 So the renderer can consume a measured curve. Nothing can supply one. A
 repository code search for `ra8_gfx_tone`, `tone_lut` and `tone_curve`
@@ -203,7 +203,7 @@ nothing here is a measurement or an estimate of one.
 * Draft pull request #1326 -- the curve format, nominal curve and renderer
   consumption.
 * `libs/ra8_gfx/inc/ra8_gfx_tone.h` -- the curve and its contract.
-* `libs/ra8_gfx/src/ra8_gfx_dither.c` -- the quantiser the curve feeds.
+* `libs/ra8_gfx/src/internal/dither.zig` -- the quantiser the curve feeds.
 * `libs/ra8_epd_cal/inc/ra8_epd_cal.h` -- the per-device VCOM record whose
   record shape, store seam and resolution reporting this record follows,
   and whose fail-closed policy it deliberately does not.
