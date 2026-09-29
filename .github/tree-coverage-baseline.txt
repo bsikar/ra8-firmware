@@ -16,7 +16,6 @@
 # rows: 1065  measured: 523  unmeasured: 542
 apps/board/stand_alone/ereader/src/main.c	UNMEASURED	firmware-composition
 apps/board/stand_alone/ereader/src/ns_main.c	UNMEASURED	firmware-composition
-apps/board/stand_alone/ereader/src/secure_exception.c	UNMEASURED	firmware-composition
 apps/board/stand_alone/ereader/src/system_init.c	UNMEASURED	firmware-composition
 apps/board/stand_alone/ereader/src/trustzone_init.c	UNMEASURED	firmware-composition
 apps/board/stand_alone/ereader/src/vector_table.c	UNMEASURED	firmware-composition
