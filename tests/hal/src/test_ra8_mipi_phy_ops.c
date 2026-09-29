@@ -78,9 +78,9 @@ static void internal_gate(void)
 static ra8_mipi_phy_pll_t internal_pll(void)
 {
   ra8_mipi_phy_pll_t pll = {
-    .idiv     = k_ra8_mipi_phy_pll_idiv_1,
-    .pmul     = k_ra8_mipi_phy_pll_pmul_1,
-    .nfmul    = k_ra8_mipi_phy_pll_nfmul_0,
+    .idiv     = k_ra8_mipi_phy_idiv_1,
+    .pmul     = k_ra8_mipi_phy_pmul_1,
+    .nfmul    = k_ra8_mipi_phy_nfmul_0_00,
     .nmul_int = (uint16_t)k_test_ops_nmul,
   };
   return pll;
@@ -217,7 +217,7 @@ static void test_lookup_timing_touches_no_register(void)
                                             (uint8_t)k_test_ops_pclka_dsi,
                                             (uint16_t)k_test_ops_rate_mbps,
                                             &tim));
-  TEST_ASSERT_NE(0, (int)tim.tinit);
+  TEST_ASSERT(tim.tinit != 0);
   /* The dry run must not have programmed anything. */
   TEST_ASSERT_EQ(0, *ra8_mipi_phy_reg32(k_ra8_mipi_phy_off_tim1));
   TEST_ASSERT_EQ(0, *ra8_mipi_phy_reg32(k_ra8_mipi_phy_off_tim6));
@@ -229,7 +229,7 @@ static void test_lookup_timing_touches_no_register(void)
                                             (uint8_t)k_test_ops_pclka_csi,
                                             (uint16_t)k_test_ops_rate_mbps,
                                             &csi));
-  TEST_ASSERT_NE(0, (int)csi.tinit);
+  TEST_ASSERT(csi.tinit != 0);
 }
 
 /** @brief select_timing still programs the row it shares the matcher with. */
