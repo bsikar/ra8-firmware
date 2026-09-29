@@ -312,23 +312,43 @@ func spentWithTheBudget(ctx context.Context, err error) bool {
 	if ctx == nil || err == nil || !errors.Is(ctx.Err(), context.DeadlineExceeded) {
 		return false
 	}
-	return everyLeafIsTheDeadline(err)
+	return everyLeafIs(err, context.DeadlineExceeded)
 }
 
-func everyLeafIsTheDeadline(err error) bool {
+// endedTheAttempt reports whether err is nothing but the cancellation this
+// attempt was told to take. A cancel reaches a running attempt on a heartbeat
+// and cancels the run context, so the step's own log write fails with it and
+// the executor hands that back joined onto the run error (executor.go: a step
+// whose log writer failed is reported as "execute <step>: ..."). Read plainly,
+// that makes a clean teardown look like an executor failure and clears the
+// evidence flag on a receipt whose evidence is in fact complete.
+//
+// The cancellation itself is not a failure of the evidence, so it is stripped
+// before the receipt is judged. Anything else in the join still is, which is
+// why every leaf has to be the cancellation: errors.Is is satisfied by any one
+// member of a join, so asking it directly would let a real failure ride along
+// beside the cancel and be forgiven with it.
+func endedTheAttempt(result executor.Result, err error) bool {
+	if !result.Cancelled || err == nil {
+		return false
+	}
+	return everyLeafIs(err, context.Canceled)
+}
+
+func everyLeafIs(err error, target error) bool {
 	if joined, ok := err.(interface{ Unwrap() []error }); ok {
 		members := joined.Unwrap()
 		if len(members) == 0 {
 			return false
 		}
 		for _, member := range members {
-			if member != nil && !everyLeafIsTheDeadline(member) {
+			if member != nil && !everyLeafIs(member, target) {
 				return false
 			}
 		}
 		return true
 	}
-	return errors.Is(err, context.DeadlineExceeded)
+	return errors.Is(err, target)
 }
 
 // assignmentBudget uses only the server's remaining-time hint for a local
@@ -579,6 +599,16 @@ func (uploader *logUploader) status() (int64, error) {
 }
 
 func terminalReceipt(assignment protocol.Assignment, result executor.Result, start, end protocol.HostFacts, sequence int64, runErr, logErr, artifactErr error) protocol.TerminalReceipt {
+	// A cancelled attempt reports the cancellation through every writer it
+	// still holds. That is the attempt ending as it was asked to, not an
+	// executor or upload failure, so it neither names an error code nor
+	// costs the receipt its evidence. See endedTheAttempt.
+	if endedTheAttempt(result, runErr) {
+		runErr = nil
+	}
+	if endedTheAttempt(result, logErr) {
+		logErr = nil
+	}
 	steps := make([]protocol.StepSummary, 0, len(result.Steps))
 	for _, step := range result.Steps {
 		steps = append(steps, protocol.StepSummary{Name: step.Name, StartedAt: step.StartedAt,
