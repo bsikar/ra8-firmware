@@ -77,14 +77,15 @@ file(GLOB_RECURSE RA8_MEM_SOURCES CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra8_mem/src/
 # src/ra8_sdmmc_spi_internal.h stays: two host suites include it to reach
 # g_sdmmc_spi_state and the priv_sdmmc_spi_* protocol helpers.
 # ra8_gfx is partially migrated: the rasteriser core (the shared framebuffer
-# binding g_gfx_text_state, both promoted helpers and the nine drawing entry
-# points of inc/ra8_gfx.h) is Zig now (libs/ra8_gfx/src/*.zig, built by
+# binding g_gfx_text_state, both promoted helpers and the ten drawing entry
+# points of inc/ra8_gfx.h, the packed-gray4 loupe zoom blit included) is Zig
+# now (libs/ra8_gfx/src/*.zig, built by
 # libs/ra8_gfx/build.zig) behind the unchanged C headers, and
 # tests/cmake/zig_libraries.cmake links that archive into ra8_core_hal. This
 # glob now matches exactly the five C translation units left: the bind/teardown
-# TU (which writes the binding the archive defines), the dither, the gray4
-# blit, the text/glyph rasteriser, the per-panel tone LUT and the generated
-# 8x16 font table.
+# TU (which writes the binding the archive defines), the dither, the
+# text/glyph rasteriser, the per-panel tone LUT and the generated 8x16 font
+# table.
 file(GLOB_RECURSE RA8_GFX_SOURCES CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra8_gfx/src/*.c)
 # ra8_ui has no C sources: the interaction core (hit-testing, screen stack,
 # paging) is Zig (libs/ra8_ui/src/*.zig, built by libs/ra8_ui/build.zig)

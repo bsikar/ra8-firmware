@@ -364,3 +364,62 @@ pub export fn ra8_gfx_blit(
     }
     return impl.err.ok;
 }
+
+/// `internal_gray4_color`: sample one packed nibble and expand it to gray.
+fn gray4Color(src: [*]const u8, src_w: i32, x: i32, y: i32) u32 {
+    const flat = impl.gray4FlatIndex(src_w, x, y);
+    const nibble = impl.gray4Nibble(src[flat >> 1], flat);
+    return impl.grayToColor(@as(u32, impl.gray4ToGray8(nibble)));
+}
+
+/// `internal_gray4_block`: one magnified source pixel as a solid square.
+///
+/// Every destination pixel goes through the clipped plotter, so a block
+/// straddling a clip edge writes only its visible pixels.
+fn gray4Block(bx: i32, by: i32, zoom: i32, color: u32) void {
+    var dy: i32 = 0;
+    while (dy < zoom) : (dy += 1) {
+        var dx: i32 = 0;
+        while (dx < zoom) : (dx += 1) {
+            priv_gfx_text_plot(bx +% dx, by +% dy, color);
+        }
+    }
+}
+
+/// `ra8_gfx_blit_gray4_zoom`
+pub export fn ra8_gfx_blit_gray4_zoom(
+    src: ?[*]const u8,
+    src_w: i32,
+    src_h: i32,
+    sx: i32,
+    sy: i32,
+    sw: i32,
+    sh: i32,
+    zoom: i32,
+    dst_x: i32,
+    dst_y: i32,
+) callconv(.c) u16 {
+    if (!g_gfx_text_state.initialized) {
+        return impl.err.not_initialized;
+    }
+    if (!impl.gray4ZoomArgsOk(src != null, zoom, src_w, src_h)) {
+        return impl.err.invalid_arg;
+    }
+    const pixels = src.?;
+
+    const window = impl.gray4Window(sx, sy, sw, sh, src_w, src_h);
+    var py = window.y0;
+    while (py < window.y1) : (py += 1) {
+        const by = dst_y +% ((py -% sy) *% zoom);
+        var px = window.x0;
+        while (px < window.x1) : (px += 1) {
+            gray4Block(
+                dst_x +% ((px -% sx) *% zoom),
+                by,
+                zoom,
+                gray4Color(pixels, src_w, px, py),
+            );
+        }
+    }
+    return impl.err.ok;
+}
