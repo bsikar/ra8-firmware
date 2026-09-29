@@ -291,7 +291,44 @@ func (agent *Agent) execute(parent context.Context, assignment protocol.Assignme
 	if err := agent.accept(evidenceCtx, assignment, "/v1/attempts/"+assignment.AttemptID+"/result", receipt); err != nil {
 		return err
 	}
-	return errors.Join(runErr, logErr, artifactErr, endErr)
+	reported := errors.Join(runErr, logErr, artifactErr, endErr)
+	// A log upload that failed because this attempt's own budget ran out is
+	// the deadline, not the plane refusing the attempt. The receipt above
+	// carries the evidence gap and has already been accepted, so ending the
+	// poll loop here would restart the agent after every timed-out attempt
+	// that still had a chunk in flight, for a failure that is the expected
+	// consequence of the timeout being enforced.
+	if result.TimedOut && spentWithTheBudget(ctx, reported) {
+		return nil
+	}
+	return reported
+}
+
+// spentWithTheBudget reports whether the run context's own expiry explains
+// err ENTIRELY. err is a join, and errors.Is is satisfied by any one member,
+// so asking it directly would let a genuine protocol failure ride along beside
+// a deadline and be swallowed with it. Every leaf has to be the deadline.
+func spentWithTheBudget(ctx context.Context, err error) bool {
+	if ctx == nil || err == nil || !errors.Is(ctx.Err(), context.DeadlineExceeded) {
+		return false
+	}
+	return everyLeafIsTheDeadline(err)
+}
+
+func everyLeafIsTheDeadline(err error) bool {
+	if joined, ok := err.(interface{ Unwrap() []error }); ok {
+		members := joined.Unwrap()
+		if len(members) == 0 {
+			return false
+		}
+		for _, member := range members {
+			if member != nil && !everyLeafIsTheDeadline(member) {
+				return false
+			}
+		}
+		return true
+	}
+	return errors.Is(err, context.DeadlineExceeded)
 }
 
 // assignmentBudget uses only the server's remaining-time hint for a local
