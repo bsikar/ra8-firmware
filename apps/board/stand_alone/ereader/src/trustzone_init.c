@@ -66,6 +66,7 @@
 #include "ra8_port_utils.h"
 #include "ra8_register_protection.h"
 #include "ra8_tz_partition.h"
+#include "ra8_tz_psar.h"
 #include "ra8_tz_secure_boot.h"
 
 /* Bounds of the NSC veneer stubs (.gnu.sgstubs) in this (Secure) image. */
@@ -125,7 +126,6 @@ typedef enum : uint32_t {
   k_tz_psarb_usbfs_ns       = 0x00000800U, /**< PSARB11 = 1: USBFS0 Non-secure. */
   k_tz_psarb_usbhs_ns       = 0x00001000U, /**< PSARB12 = 1: USBHS Non-secure.  */
   k_tz_psarb_usb_ns         = 0x00001800U, /**< PSARB11|12: both USB ctrls NS.  */
-  k_tz_psarb_readback_spins = 1000U,       /**< Bounded read-back confirm loop. */
 } tz_field_t;
 
 /**
@@ -162,6 +162,12 @@ typedef enum : uint16_t {
  * @since 0.1.0
  */
 volatile uint32_t g_tz_usb_psarb_readback;
+
+/**
+ * @var g_tz_usb_psarb_err
+ * @brief ra8_tz_psar_set_ns() result for the USB attribution (J-Link probe).
+ */
+volatile uint32_t g_tz_usb_psarb_err;
 
 /**
  * @var g_tz_usb_pins_err
@@ -461,7 +467,7 @@ static ra8_err_t tz_usb_route_pins(void)
 /**
  * @brief Mark BOTH USB controllers Non-secure in PSARB (bits 11 + 12).
  *
- * @details Opens the PRCR_S.PRC4 gate, sets PSARB11 (USBFS0) and PSARB12
+ * @details Via ra8_tz_psar_set_ns(): opens the PRCR_S.PRC4 gate, sets PSARB11
  *          (USBHS) so the NS image reaches them through the 0x5025_0000 /
  *          0x5035_0000 aliases, spins (bounded) on the read-back until the
  *          value confirms, then re-locks PRC4. The confirmed value is stored
@@ -478,28 +484,16 @@ static ra8_err_t tz_usb_route_pins(void)
  */
 static void tz_usb_mark_ns(void)
 {
-  /* HUM Ch 51.8.1 "PSARB : Peripheral Security Attribution Register B" p 3284
-   * -- PSARB11 = USBFS0, PSARB12 = USBHS (+ their MSTPCRB.MSTPB11/12 bits);
-   * 0 = Secure, 1 = Non-secure. PSARx share the PRCR_S.PRC4 write gate with
-   * SRAMSABARn (HUM Ch 13.2.1 "Association between PRCR bits and use of
-   * registers" p 521), so the gate must be open across the write; HUM "Security
-   * or Privilege Bit Write Timing" p 3301 then requires reading back until the
-   * value matches. */
-  uint32_t seen = 0U;
-  /* PRC4 gates the PSARx write as well; same scope, same re-lock on exit.
-   * HUM Ch 13.2.1 "PRCR_S" p 521. */
-  RA8_PROTECTED_WRITE(k_ra8_prcr_unlock_sar)
-  {
-    const uint32_t want = tz_read32(k_tz_psarb_addr) | (uint32_t)k_tz_psarb_usb_ns;
-    tz_write32(k_tz_psarb_addr, want);
-    for (uint32_t spin = 0U; spin < (uint32_t)k_tz_psarb_readback_spins; spin += 1U) {
-      seen = tz_read32(k_tz_psarb_addr);
-      if (seen == want) {
-        break;
-      }
-    }
-  }
+  /* PSARB11 = USBFS0, PSARB12 = USBHS (HUM Ch 51.8.1 p 3284); 0 = Secure,
+   * 1 = Non-secure, so the NS image reaches them through the 0x5025_0000 /
+   * 0x5035_0000 aliases. The PRC4 gate, the mandatory read-back and the
+   * re-lock live in ra8_tz_psar_set_ns(); the confirmed value is kept for a
+   * bench halt to verify. */
+  uint32_t        seen = 0U;
+  const ra8_err_t err =
+      ra8_tz_psar_set_ns((uintptr_t)k_tz_psarb_addr, (uint32_t)k_tz_psarb_usb_ns, &seen);
   g_tz_usb_psarb_readback = seen;
+  g_tz_usb_psarb_err      = (uint32_t)err;
 }
 
 /**
