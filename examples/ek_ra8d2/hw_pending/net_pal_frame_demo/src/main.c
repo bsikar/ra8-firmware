@@ -57,8 +57,8 @@
 
 #include <stdint.h>
 
+#include "ra8_board_ek_ra8d2.h"
 #include "ra8_boot_entry.h"
-#include "ra8_cgc.h"
 #include "ra8_err.h"
 #include "ra8_io_log.h"
 #include "ra8_io_stream.h"
@@ -663,9 +663,10 @@ static void internal_verdict(const char* label, ra8_err_t err, bool* pass)
  */
 static ra8_err_t internal_setup(void)
 {
-  const ra8_err_t cgc_err = ra8_cgc_init();
-  if (cgc_err != k_ra8_ok) {
-    return cgc_err;
+  ra8_board_clock_rates_t rates      = {};
+  const ra8_err_t         clocks_err = ra8_board_clocks_init(&rates);
+  if (clocks_err != k_ra8_ok) {
+    return clocks_err;
   }
   return ra8_mstp_init();
 }
