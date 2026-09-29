@@ -151,6 +151,14 @@ _pcc_migration_contracts() (
   # M33 source outside the profile is red rather than invisible.
   python3 scripts/checks/check_cpu1_warning_profile.py --selftest
   python3 scripts/checks/check_cpu1_warning_profile.py
+
+  # The same escape one image over: a dual-image app builds its Non-Secure
+  # half as a raw add_executable(), which inherits no warning flags, so the
+  # profile call is written by hand in every such app and nothing checked
+  # that it was. --selftest proves the detector fires in both directions
+  # before the tree check runs (#759).
+  python3 scripts/checks/check_ns_image_warning_profile.py --selftest
+  python3 scripts/checks/check_ns_image_warning_profile.py
 )
 
 # The Python project, bootstrap, exports, and managed environment boundaries.
