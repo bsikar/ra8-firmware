@@ -134,7 +134,11 @@ typedef struct {
  *
  * @pre partition != NULL.
  * @pre Caller is in Secure privileged mode, before any Non-Secure code runs.
- * @pre PRCR_S.PRC4 is unlocked when `sram_boundary` is non-NULL.
+ * @pre PRCR_S.PRC4 is NOT already unlocked by the caller. When
+ *      `sram_boundary` is non-NULL this opens and closes its own
+ *      `RA8_PROTECTED_WRITE(k_ra8_prcr_unlock_sar)` window, so wrapping the
+ *      call in an outer one re-locks the gate at the inner scope's exit and
+ *      the caller's remaining protected writes are silently discarded.
  * @post On success SAU_CTRL.ENABLE == 1.
  * @post On a validation failure no register is written.
  *
