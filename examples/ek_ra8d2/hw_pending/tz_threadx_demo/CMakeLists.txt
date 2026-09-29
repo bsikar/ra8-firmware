@@ -33,7 +33,6 @@ ra8_add_app(
   LIBS ra8_tz_secure_boot
 )
 
-set(_ra8_tz_implib ${CMAKE_CURRENT_BINARY_DIR}/tz_threadx_demo_cmse_import.o)
 target_compile_definitions(tz_threadx_demo.elf PRIVATE RA8_TRUSTZONE_ENABLE RA8_APP_UART_LOG)
 target_compile_options(tz_threadx_demo.elf PRIVATE -mcmse -fshort-enums -ffreestanding)
 
@@ -43,8 +42,6 @@ target_link_options(
   -nostartfiles
   -T${CMAKE_CURRENT_SOURCE_DIR}/linker_script.ld
   -Wl,--Map=tz_threadx_demo.map
-  -Wl,--cmse-implib
-  -Wl,--out-implib=${_ra8_tz_implib}
 )
 
 set_target_properties(
@@ -53,13 +50,13 @@ set_target_properties(
 
 # ---- Post-build: verify the NSC SG-veneer layout (T5-08) ------------------
 # tz_threadx_demo_ns.elf is bound to the Secure-Gateway stubs through the CMSE import
-# library emitted above (--out-implib), so the byte offset of each veneer
+# library emitted by ra8_add_ns_image(), so the byte offset of each veneer
 # inside .gnu.sgstubs IS the S/NS ABI: a reorder redirects every NS->Secure
 # call with no diagnostic. This app's linker_script.ld already claims the
 # offsets are "verified AFTER the link ... by scripts/checks/check_sg_offsets.py,
-# run as a POST_BUILD step in this app's CMakeLists.txt" -- until now only
-# tz_nsc_cgc_usb actually ran it. The checker requires one veneer per 8-byte
-# slot across the whole region and self-skips a non-TrustZone link.
+# run as a POST_BUILD step in this app's CMakeLists.txt". The checker requires
+# one veneer per 8-byte slot across the whole region and self-skips a
+# non-TrustZone link.
 # --nm pins the SAME cross nm as the link (CMAKE_NM from the toolchain file).
 add_custom_command(
   TARGET tz_threadx_demo.elf
@@ -71,59 +68,24 @@ add_custom_command(
 )
 
 # ---- Non-Secure Target ----------------------------------------------------
+# ra8_add_ns_image() owns the CMSE implib handshake at both ends, the NS
+# warning profile, the build ordering, and the merged-hex staple (#759 item 1).
 include(${RA8_REPO_ROOT}/cmake/threadx_ns.cmake)
 
-add_executable(tz_threadx_demo_ns.elf ${CMAKE_CURRENT_SOURCE_DIR}/src/ns_main.c)
-
-target_compile_definitions(tz_threadx_demo_ns.elf PRIVATE RA8_TRUSTZONE_ENABLE RA8_PERIPH_NS_ALIAS)
-
-target_compile_options(tz_threadx_demo_ns.elf PRIVATE -fshort-enums -ffreestanding)
-
-# Raw add_executable targets skip the ra8_add_app warning profile, so without
-# this the NS image compiles WITHOUT -Wall/-Wextra/-Werror (the T2-05
-# warnings-scope hole). threadx_ns keeps its own permissive vendor flags.
-ra8_target_enable_project_warnings(tz_threadx_demo_ns.elf STACK_USAGE_BYTES 2200)
-
-target_include_directories(
-  tz_threadx_demo_ns.elf
-  PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/inc
-          ${CMAKE_CURRENT_SOURCE_DIR}/src
-          ${RA8_REPO_ROOT}/libs/ra8_core/inc
-          ${RA8_REPO_ROOT}/libs/ra8_hal/inc
-          ${RA8_REPO_ROOT}/libs/ra8_nsc/inc
-          ${RA8_REPO_ROOT}/libs/ra8_board_ek_ra8d2/inc
-)
-
-target_link_libraries(tz_threadx_demo_ns.elf PRIVATE threadx_ns)
-
-target_link_options(
-  tz_threadx_demo_ns.elf
-  PRIVATE
-  -nostartfiles
-  -T${CMAKE_CURRENT_SOURCE_DIR}/ns_image.ld
-  -Wl,--Map=tz_threadx_demo_ns.map
-  ${_ra8_tz_implib}
-)
-
-set_target_properties(
-  tz_threadx_demo_ns.elf PROPERTIES LINK_DEPENDS
-                                    "${CMAKE_CURRENT_SOURCE_DIR}/ns_image.ld;${_ra8_tz_implib}"
-)
-
-# Ensure the Secure ELF is built before the NS ELF.
-add_dependencies(tz_threadx_demo_ns.elf tz_threadx_demo.elf)
-
-# Combine: Secure image + NS image -> one merged flashable hex
-include("${RA8_REPO_ROOT}/cmake/ra8_zig_tool.cmake")
-ra8_use_merge_ihex(tz_threadx_demo_ns.elf)
-add_custom_command(
-  TARGET tz_threadx_demo_ns.elf
-  POST_BUILD
-  COMMAND ${CMAKE_OBJCOPY} --remove-section=.option_setting* -O ihex
-          $<TARGET_FILE:tz_threadx_demo.elf> tz_threadx_demo_secure.hex
-  COMMAND ${CMAKE_OBJCOPY} -O ihex $<TARGET_FILE:tz_threadx_demo_ns.elf> tz_threadx_demo_ns.hex
-  COMMAND $<TARGET_FILE:ra8_zig::merge_ihex> tz_threadx_demo_secure.hex
-          tz_threadx_demo_ns.hex tz_threadx_demo.hex
-  VERBATIM
-  COMMENT "Merging Secure + Non-Secure images into tz_threadx_demo.hex"
+ra8_add_ns_image(
+  SECURE_TARGET tz_threadx_demo.elf
+  NAME tz_threadx_demo_ns
+  LINKER ${CMAKE_CURRENT_SOURCE_DIR}/ns_image.ld
+  STACK_BYTES 2200
+  IMPLIB ${CMAKE_CURRENT_BINARY_DIR}/tz_threadx_demo_cmse_import.o
+  MERGED_HEX tz_threadx_demo.hex
+  SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/src/ns_main.c
+  DEFINES RA8_TRUSTZONE_ENABLE RA8_PERIPH_NS_ALIAS
+  INCLUDES ${CMAKE_CURRENT_SOURCE_DIR}/inc
+           ${CMAKE_CURRENT_SOURCE_DIR}/src
+           ${RA8_REPO_ROOT}/libs/ra8_core/inc
+           ${RA8_REPO_ROOT}/libs/ra8_hal/inc
+           ${RA8_REPO_ROOT}/libs/ra8_nsc/inc
+           ${RA8_REPO_ROOT}/libs/ra8_board_ek_ra8d2/inc
+  LINK_LIBS threadx_ns
 )

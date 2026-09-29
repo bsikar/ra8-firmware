@@ -65,6 +65,7 @@
 #include "ra8_port_constants.h"
 #include "ra8_port_utils.h"
 #include "ra8_register_protection.h"
+#include "ra8_tz_partition.h"
 #include "ra8_tz_secure_boot.h"
 
 /* Bounds of the NSC veneer stubs (.gnu.sgstubs) in this (Secure) image. */
@@ -104,13 +105,7 @@ typedef enum : uintptr_t {
  *            Secure state and (for SRAMSABAR) an open PRC4 gate.
  */
 typedef enum : uintptr_t {
-  k_tz_sau_ctrl_addr   = 0xE000EDD0U, /**< SAU Control Register.              */
-  k_tz_sau_type_addr   = 0xE000EDD4U, /**< SAU Type (implemented regions).    */
-  k_tz_sau_rnr_addr    = 0xE000EDD8U, /**< SAU Region Number.                 */
-  k_tz_sau_rbar_addr   = 0xE000EDDCU, /**< SAU Region Base Address.           */
-  k_tz_sau_rlar_addr   = 0xE000EDE0U, /**< SAU Region Limit Address.          */
-  k_tz_sramsabar0_addr = 0x40008400U, /**< CPSCU SRAMSABAR0 (+4*n for n>0).   */
-  k_tz_psarb_addr      = 0x40204004U, /**< PSCU PSARB (peripheral S/NS attr). */
+  k_tz_psarb_addr = 0x40204004U, /**< PSCU PSARB (peripheral S/NS attr). */
 } tz_reg_addr_t;
 
 /**
@@ -121,11 +116,7 @@ typedef enum : uintptr_t {
  *            occupies bits [31:5] (ARMv8-M 32-byte region quantum).
  */
 typedef enum : uint32_t {
-  k_tz_sau_ctrl_enable      = 0x00000001U, /**< SAU_CTRL.ENABLE, ALLNS = 0.     */
-  k_tz_sau_rlar_enable      = 0x00000001U, /**< SAU_RLAR.ENABLE.                */
-  k_tz_sau_rlar_nsc         = 0x00000002U, /**< SAU_RLAR.NSC (Non-secure call). */
-  k_tz_sau_limit_mask       = 0xFFFFFFE0U, /**< 32-byte-aligned limit mask.     */
-  k_tz_sau_type_mask        = 0x000000FFU, /**< SAU_TYPE.SREGION field mask.    */
+  k_tz_sau_granule_mask     = 0xFFFFFFE0U, /**< 32-byte SAU quantum mask.       */
   k_tz_psarb_usbfs_ns       = 0x00000800U, /**< PSARB11 = 1: USBFS0 Non-secure. */
   k_tz_psarb_usbhs_ns       = 0x00001000U, /**< PSARB12 = 1: USBHS Non-secure.  */
   k_tz_psarb_usb_ns         = 0x00001800U, /**< PSARB11|12: both USB ctrls NS.  */
@@ -206,37 +197,28 @@ volatile uint32_t g_tz_jump_ns_err;
 
 /**
  * @enum tz_partition_t
- * @brief SAU region count, IDAU-NS range bounds, and the SRAM boundary.
+ * @brief IDAU-NS range geometry and the per-bank SRAM boundary.
  *
- * @details The IDAU-NS ranges are mandated NS-in-SAU by HUM p3267. The
- *          SRAMSABAR offsets place the secure/NS boundary at physical
- *          0x10_0000 so SRAM2 [0x10_0000, 0x18_0000) is the NS aperture.
- *
- * @invariant Region count <= the value SAU_TYPE reports.
+ * @details The IDAU-NS ranges are mandated NS-in-SAU by HUM p3267, expressed
+ *          here as base + size because that is what ``ra8_sau_region_t``
+ *          takes; the driver derives the ``base + size - 32`` RLAR limit once
+ *          so a limit computed one region short cannot leave secure memory
+ *          reachable. The SRAMSABAR offsets place the secure/NS boundary at
+ *          physical 0x10_0000 so SRAM2 [0x10_0000, 0x18_0000) is the NS
+ *          aperture.
  */
 typedef enum : uint32_t {
-  k_tz_sau_min_regions = 4U,          /**< Regions this layout programs.    */
-  k_tz_ns_code_base    = 0x10000000U, /**< IDAU-NS code alias base.         */
-  k_tz_ns_code_limit   = 0x1FFFFFE0U, /**< IDAU-NS code alias limit.        */
-  k_tz_ns_sram_base    = 0x30000000U, /**< IDAU-NS SRAM alias base.         */
-  k_tz_ns_sram_limit   = 0x3FFFFFE0U, /**< IDAU-NS SRAM alias limit.        */
-  k_tz_ns_per_base     = 0x50000000U, /**< IDAU-NS peripheral alias base.   */
-  k_tz_ns_per_limit    = 0xDFFFFFE0U, /**< IDAU-NS peripheral alias limit.  */
-  k_tz_sramsabar0_val  = 0x00080000U, /**< SRAM0 all Secure (>= bank end).  */
-  k_tz_sramsabar1_val  = 0x00100000U, /**< SRAM1 all Secure (>= bank end).  */
-  k_tz_sramsabar2_val  = 0x00100000U, /**< SRAM2 all NS (boundary at base). */
-  k_tz_sramsabar3_val  = 0x001A0000U, /**< SRAM3 all Secure (>= bank end).  */
+  k_tz_ns_code_base   = 0x10000000U, /**< IDAU-NS code alias base.         */
+  k_tz_ns_code_size   = 0x10000000U, /**< IDAU-NS code alias length.       */
+  k_tz_ns_sram_base   = 0x30000000U, /**< IDAU-NS SRAM alias base.         */
+  k_tz_ns_sram_size   = 0x10000000U, /**< IDAU-NS SRAM alias length.       */
+  k_tz_ns_per_base    = 0x50000000U, /**< IDAU-NS peripheral alias base.   */
+  k_tz_ns_per_size    = 0x90000000U, /**< IDAU-NS peripheral alias length. */
+  k_tz_sramsabar0_val = 0x00080000U, /**< SRAM0 all Secure (>= bank end).  */
+  k_tz_sramsabar1_val = 0x00100000U, /**< SRAM1 all Secure (>= bank end).  */
+  k_tz_sramsabar2_val = 0x00100000U, /**< SRAM2 all NS (boundary at base). */
+  k_tz_sramsabar3_val = 0x001A0000U, /**< SRAM3 all Secure (>= bank end).  */
 } tz_partition_t;
-
-/**
- * @brief Region indices for the bit[28] SAU layout.
- */
-typedef enum : uint8_t {
-  k_tz_region_nsc     = 0U, /**< NSC veneers (.gnu.sgstubs in MRAM).    */
-  k_tz_region_ns_code = 1U, /**< 0x1000_0000-0x1FFF_FFFF NS.            */
-  k_tz_region_ns_sram = 2U, /**< 0x3000_0000-0x3FFF_FFFF NS (NS image). */
-  k_tz_region_ns_per  = 3U, /**< 0x5000_0000-0xDFFF_FFFF NS.            */
-} tz_region_t;
 
 /**
  * @brief Write a 32-bit secure MMIO register.
@@ -276,115 +258,85 @@ static inline uint32_t tz_read32(uintptr_t addr)
 }
 
 /**
- * @brief Programme one SAU region (RNR -> RBAR -> RLAR).
- * @param[in] region Region index (0..SAU_TYPE.SREGION-1).
- * @param[in] base   32-byte-aligned region base address.
- * @param[in] limit  32-byte-aligned region limit (last byte, low 5 = 0).
- * @param[in] is_nsc true to set RLAR.NSC (Non-secure-callable).
- * @pre Caller is in Secure state and the SAU is currently disabled.
- * @pre ``base`` <= ``limit`` and both are 32-byte aligned.
- * @post The region's RBAR/RLAR hold the requested bounds with ENABLE = 1.
- * @post The NSC bit matches ``is_nsc``.
- * @note Not thread-safe; secure-boot only.
- * @since 0.1.0
- */
-static void tz_sau_set_region(uint8_t region, uint32_t base, uint32_t limit, bool is_nsc)
-{
-  /* HUM Ch 51.3.3.3 "Secure Attribution Unit (SAU)" p 3266 */
-  tz_write32(k_tz_sau_rnr_addr, (uint32_t)region);
-  tz_write32(k_tz_sau_rbar_addr, base & (uint32_t)k_tz_sau_limit_mask);
-  uint32_t rlar = (limit & (uint32_t)k_tz_sau_limit_mask) | (uint32_t)k_tz_sau_rlar_enable;
-  if (is_nsc) {
-    rlar |= (uint32_t)k_tz_sau_rlar_nsc;
-  }
-  tz_write32(k_tz_sau_rlar_addr, rlar);
-}
-
-/**
- * @brief Mark physical SRAM2 Non-secure via the runtime SRAMSABAR registers.
+ * @brief Build this app's attribution map and hand it to the shared applier.
  *
- * @details Opens the PRCR_S.PRC4 gate, writes SRAMSABAR0..3 so the
- *          secure/NS boundary sits at physical offset 0x10_0000 (SRAM2 and
- *          above Non-secure, lower SRAM Secure), then re-locks PRC4. This
- *          is the RAM-resident NS aperture; it is reset-cleared, so there
- *          is no persistent option-byte / brick exposure.
+ * @details The layout is four SAU regions plus the four SRAMSABAR boundaries:
+ *          region 0 is NSC over the ``.gnu.sgstubs`` veneers (in the
+ *          bit[28]=0 Secure code region, so the IDAU permits NSC) and
+ *          regions 1-3 mark the three IDAU-NS ranges Non-secure as HUM p3267
+ *          mandates. Everything else stays Secure (ALLNS = 0). The veneer
+ *          bounds are linker-placed, so the descriptor is built here rather
+ *          than held as static data.
  *
- * @pre Caller is in Secure state.
- * @pre The Secure stack lives below physical 0x10_0000 (SRAM0/SRAM1).
- * @post SRAM2 [0x10_0000, 0x18_0000) is Non-secure (alias 0x3210_0000).
- * @post PRCR_S.PRC4 is cleared (write-protect restored).
- * @note Not thread-safe; secure-boot only.
- * @since 0.1.0
- */
-static void tz_sram_ns_boundary(void)
-{
-  /* PRC4 gates every CPSCU security-attribution write; the scope opens it
-   * and re-locks all groups on exit. HUM Ch 13.2.1 "PRCR_S" p 521. */
-  RA8_PROTECTED_WRITE(k_ra8_prcr_unlock_sar)
-  {
-    /* HUM Ch 58.2 "SRAMSABARn : SRAM Security Attribute Boundary Address
-     * Register" p 3527 -- boundary = start address of the NS region; below
-     * = Secure, at/above = Non-secure. */
-    tz_write32(k_tz_sramsabar0_addr + (0U * sizeof(uint32_t)), (uint32_t)k_tz_sramsabar0_val);
-    tz_write32(k_tz_sramsabar0_addr + (1U * sizeof(uint32_t)), (uint32_t)k_tz_sramsabar1_val);
-    tz_write32(k_tz_sramsabar0_addr + (2U * sizeof(uint32_t)), (uint32_t)k_tz_sramsabar2_val);
-    tz_write32(k_tz_sramsabar0_addr + (3U * sizeof(uint32_t)), (uint32_t)k_tz_sramsabar3_val);
-  }
-}
-
-/**
- * @brief Programme the bit[28] SAU layout and enable the SAU.
- *
- * @details Region 0 = NSC over the ``.gnu.sgstubs`` veneers (in the
- *          bit[28]=0 Secure code region, so the IDAU permits NSC).
- *          Regions 1-3 mark the three IDAU-NS ranges Non-secure as HUM
- *          p3267 mandates. Everything else stays Secure (ALLNS = 0).
+ *          ``ra8_tz_partition_apply`` validates the whole descriptor before
+ *          its first write, programmes the SAU through ``ra8_sau_configure``
+ *          (which also clears every region above the count, so an enabled
+ *          window cannot be inherited from the boot ROM), and then writes the
+ *          SRAM boundaries inside its own PRCR_S.PRC4 scope. Do not wrap this
+ *          call in ``RA8_PROTECTED_WRITE``: the applier owns that window and
+ *          a nested scope would re-lock every group on the inner exit.
  *
  * @return ra8_err_t Error code.
- * @retval k_ra8_ok                SAU programmed and enabled.
- * @retval k_ra8_err_not_supported SAU_TYPE.SREGION < 4.
+ * @retval k_ra8_ok                 SAU enabled and the four SRAM boundaries
+ *                                  written.
+ * @retval k_ra8_err_invalid_state  The veneer linker symbols bound an empty
+ *                                  range, so region 0 would have no extent.
+ * @retval k_ra8_err_not_supported  SAU_TYPE.SREGION < 4.
+ * @retval k_ra8_err_invalid_arg    A region or boundary failed the geometry
+ *                                  checks; no register was written.
  *
  * @pre Caller is in Secure state with the SAU disabled.
- * @pre The veneer linker symbols bound a non-empty 32-byte-aligned range.
- * @post On success SAU_CTRL.ENABLE = 1 with the four regions above.
- * @post On failure the SAU stays disabled (default-allow Secure).
+ * @post On success SAU_CTRL.ENABLE = 1 and SRAM2 [0x10_0000, 0x18_0000) is
+ *       Non-secure (alias 0x3210_0000).
+ * @post On failure no attribution register was written.
  * @note Not thread-safe; secure-boot only.
  * @since 0.1.0
  */
-static ra8_err_t tz_sau_program(void)
+static ra8_err_t tz_partition_apply(void)
 {
-  /* HUM Ch 51.3.3.3 "Secure Attribution Unit (SAU)" p 3266 -- need at
-   * least 4 implemented regions for this layout. */
-  const uint32_t sau_type = tz_read32(k_tz_sau_type_addr);
-  if ((sau_type & (uint32_t)k_tz_sau_type_mask) < (uint32_t)k_tz_sau_min_regions) {
-    return k_ra8_err_not_supported;
+  /* RBAR/RLAR are 32-byte quantised: round the base down and the last byte
+   * of the block (end - 1) down to the same quantum, then express the pair
+   * as the base + size the SAU driver takes. */
+  const uint32_t nsc_base =
+    (uint32_t)(uintptr_t)&g_ra8_ls_sgstubs_start & (uint32_t)k_tz_sau_granule_mask;
+  const uint32_t nsc_end = (uint32_t)(uintptr_t)&g_ra8_ls_sgstubs_end;
+  if (nsc_end <= nsc_base) {
+    return k_ra8_err_invalid_state;
   }
+  const uint32_t nsc_last = (nsc_end - 1U) & (uint32_t)k_tz_sau_granule_mask;
 
-  /* RLAR limit is the LAST byte of the veneer block (end - 1); the helper
-   * masks it to the 32-byte SAU region quantum. */
-  const uint32_t nsc_base  = (uint32_t)(uintptr_t)&g_ra8_ls_sgstubs_start;
-  const uint32_t nsc_limit = (uint32_t)(uintptr_t)&g_ra8_ls_sgstubs_end - 1U;
-  tz_sau_set_region((uint8_t)k_tz_region_nsc, nsc_base, nsc_limit, /*is_nsc=*/true);
-  tz_sau_set_region((uint8_t)k_tz_region_ns_code,
-                    (uint32_t)k_tz_ns_code_base,
-                    (uint32_t)k_tz_ns_code_limit,
-                    /*is_nsc=*/false);
-  tz_sau_set_region((uint8_t)k_tz_region_ns_sram,
-                    (uint32_t)k_tz_ns_sram_base,
-                    (uint32_t)k_tz_ns_sram_limit,
-                    /*is_nsc=*/false);
-  tz_sau_set_region((uint8_t)k_tz_region_ns_per,
-                    (uint32_t)k_tz_ns_per_base,
-                    (uint32_t)k_tz_ns_per_limit,
-                    /*is_nsc=*/false);
+  const ra8_sau_region_t regions[] = {
+    {.base = (uintptr_t)nsc_base,
+     .size = (nsc_last - nsc_base) + (uint32_t)k_ra8_sau_region_granule,
+     .attr = k_ra8_sau_attr_nsc},
+    {.base = (uintptr_t)k_tz_ns_code_base,
+     .size = (uint32_t)k_tz_ns_code_size,
+     .attr = k_ra8_sau_attr_ns},
+    {.base = (uintptr_t)k_tz_ns_sram_base,
+     .size = (uint32_t)k_tz_ns_sram_size,
+     .attr = k_ra8_sau_attr_ns},
+    {.base = (uintptr_t)k_tz_ns_per_base,
+     .size = (uint32_t)k_tz_ns_per_size,
+     .attr = k_ra8_sau_attr_ns},
+  };
 
-  __asm__ volatile("dsb 0xF" ::: "memory");
-  /* Enable the SAU with ALLNS = 0 (default-deny). */
-  /* HUM Ch 51.3.3.3 "Secure Attribution Unit (SAU)" p 3266 */
-  tz_write32(k_tz_sau_ctrl_addr, (uint32_t)k_tz_sau_ctrl_enable);
-  __asm__ volatile("dsb 0xF" ::: "memory");
-  __asm__ volatile("isb" ::: "memory");
-  return k_ra8_ok;
+  /* HUM Ch 58.2 "SRAMSABARn : SRAM Security Attribute Boundary Address
+   * Register" p 3527 -- boundary = start address of the NS region; below is
+   * Secure, at/above is Non-secure. */
+  const uint32_t sram_boundary[k_ra8_tz_partition_sram_bank_count] = {
+    (uint32_t)k_tz_sramsabar0_val,
+    (uint32_t)k_tz_sramsabar1_val,
+    (uint32_t)k_tz_sramsabar2_val,
+    (uint32_t)k_tz_sramsabar3_val,
+  };
+
+  const ra8_tz_partition_t partition = {
+    .sau_regions      = regions,
+    .sram_boundary    = sram_boundary,
+    .sau_region_count = (uint8_t)(sizeof(regions) / sizeof(regions[0])),
+    .sau_all_ns       = false,
+  };
+  return ra8_tz_partition_apply(&partition);
 }
 
 /**
@@ -397,7 +349,7 @@ static ra8_err_t tz_sau_program(void)
  *          access. A fixed window is used because the NS image is a separate
  *          ELF (#96); copying more than the image is harmless.
  *
- * @pre ``tz_sram_ns_boundary`` and ``tz_sau_program`` have run.
+ * @pre ``tz_partition_apply`` has run and returned k_ra8_ok.
  * @pre The NS image fits within ::k_tz_ns_copy_size.
  * @post The NS vector table + text + rodata + data are live at 0x3210_0000.
  * @post The source MRAM image is unchanged.
@@ -584,11 +536,12 @@ void ra8_trustzone_init(void)
   /* 0. Hand USB-FS (pins + PSARB NS attribution) to the NS world. */
   tz_usb_handoff_prepare();
 
-  /* 1. Carve the SRAM2 NS aperture via the runtime SRAMSABAR boundary. */
-  tz_sram_ns_boundary();
-
-  /* 2. Programme the bit[28] SAU (NSC veneers + IDAU-NS ranges), enable. */
-  if (tz_sau_program() != k_ra8_ok) {
+  /* 1. Apply the attribution map: the bit[28] SAU layout (NSC veneers +
+   *    IDAU-NS ranges) and then the SRAMSABAR boundary that carves the SRAM2
+   *    NS aperture. The SAU goes first because it is the coarse map the SRAM
+   *    boundary refines, and neither is observable until step 3 touches the
+   *    NS alias. */
+  if (tz_partition_apply() != k_ra8_ok) {
     return; /* Fall through to the S-side main() fallback. */
   }
 
