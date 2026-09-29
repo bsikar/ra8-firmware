@@ -585,7 +585,6 @@ if(TARGET test_fw_if_fs)
             ${FW_ROOT}/apps/shared_libs/mdl/src/mdl_hash.c
             ${FW_ROOT}/apps/shared_libs/mdl/src/mdl_pathfs.c
             ${FW_ROOT}/apps/shared_libs/mdl/src/mdl_sanitize.c
-            ${FW_ROOT}/libs/if/src/ra8_path.c
             ${FW_ROOT}/apps/shared_libs/mdl/src/mdl_storage.c
   )
   target_include_directories(
@@ -691,7 +690,6 @@ if(TARGET test_mdl_library)
             ${FW_ROOT}/port/posix/src/fw_if_fs_posix_stream.c
             ${FW_ROOT}/apps/shared_libs/mdl/src/mdl_library.c
             ${FW_ROOT}/apps/shared_libs/mdl/src/mdl_sanitize.c
-            ${FW_ROOT}/libs/if/src/ra8_path.c
             ${FW_ROOT}/apps/shared_libs/mdl/src/mdl_state.c
             ${FW_ROOT}/apps/shared_libs/mdl/src/mdl_state_codec.c
             ${FW_ROOT}/libs/ra8_num/src/ra8_num_decimal.c
@@ -729,7 +727,6 @@ if(TARGET test_mdl_readers)
             ${FW_ROOT}/apps/shared_libs/mdl/src/mdl_verify_tarball.c
             ${FW_ROOT}/apps/shared_libs/mdl/src/mdl_verify_rabook.c
             ${FW_ROOT}/apps/shared_libs/mdl/src/mdl_sanitize.c
-            ${FW_ROOT}/libs/if/src/ra8_path.c
             ${FW_ROOT}/apps/shared_libs/mdl/src/mdl_storage.c
             ${FW_ROOT}/apps/shared_libs/mdl/src/mdl_hash.c
             ${FW_ROOT}/apps/shared_libs/mdl/src/mdl_politeness.c
@@ -807,7 +804,6 @@ if(TARGET test_mdl_export_parity)
             ${FW_ROOT}/apps/shared_libs/mdl/src/mdl_verify_rabook.c
             ${FW_ROOT}/apps/shared_libs/mdl/src/mdl_urlname.c
             ${FW_ROOT}/apps/shared_libs/mdl/src/mdl_sanitize.c
-            ${FW_ROOT}/libs/if/src/ra8_path.c
             ${FW_ROOT}/apps/shared_libs/mdl/src/mdl_storage.c
             ${FW_ROOT}/apps/shared_libs/mdl/src/mdl_hash.c
   )
