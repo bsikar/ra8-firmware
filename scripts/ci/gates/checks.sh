@@ -159,6 +159,15 @@ _pcc_migration_contracts() (
   # before the tree check runs (#759).
   python3 scripts/checks/check_ns_image_warning_profile.py --selftest
   python3 scripts/checks/check_ns_image_warning_profile.py
+
+  # The same shape one layer down, in C rather than CMake: a store to a
+  # security-attribution register with PRCR PRC4 locked is discarded silently,
+  # so the code reports success and the attribution keeps its reset value.
+  # That defect has been found and hand-fixed three times (#131, #759c, #759d)
+  # with nothing stopping a fourth. --selftest proves the detector fires in
+  # both directions before the tree check runs (#759 item a).
+  python3 scripts/checks/check_attribution_gates.py --selftest
+  python3 scripts/checks/check_attribution_gates.py
 )
 
 # The Python project, bootstrap, exports, and managed environment boundaries.
