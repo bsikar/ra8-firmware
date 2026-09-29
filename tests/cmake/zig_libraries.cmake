@@ -413,13 +413,13 @@ ra8_add_zig_library(
 # (argument guards, the one module-static handle, dispatch through the bound
 # vtable) and the page-turn refresh cadence behind
 # inc/ra8_display_pal_policy.h are Zig now, so src/ra8_display_pal.c and
-# src/ra8_display_pal_policy.c are gone. The LCD/GLCDC backend is Zig too now
-# (src/ra8_display_pal_lcd_abi.zig over src/internal/lcd.zig), so
-# src/ra8_display_pal_lcd.c is gone with it; it still calls ra8_glcdc inside
-# ra8_core_hal, just through extern declarations rather than a C include. The
-# IT8951 e-paper backend (src/ra8_display_pal_eink.c) is deliberately still C,
-# so the RA8_DISPLAY_PAL_SOURCES glob stays and now matches exactly that one
-# file. The panel stays a caller-supplied vtable,
+# src/ra8_display_pal_policy.c are gone. Both panel backends followed: the
+# LCD/GLCDC one is src/ra8_display_pal_lcd_abi.zig over src/internal/lcd.zig,
+# and the IT8951 e-paper one is src/ra8_display_pal_eink_abi.zig over
+# src/internal/eink.zig. They still drive ra8_glcdc and ra8_epaper inside
+# ra8_core_hal, through extern declarations rather than a C include. Nothing
+# under libs/ra8_display_pal/src is C any more, so RA8_DISPLAY_PAL_SOURCES is
+# empty. The panel stays a caller-supplied vtable,
 # so the archive names no controller and the host suite's fake backends
 # substitute for one exactly as before. src/ra8_display_pal_internal.h stays
 # too: tests/graphics/src/test_ra8_display_pal.c includes it, so the

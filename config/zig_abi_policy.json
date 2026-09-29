@@ -2646,11 +2646,30 @@
             "@offsetOf(FbCfg, \"bytes\") == @sizeOf(usize)",
             "@offsetOf(FbCfg, \"pixfmt\") == @sizeOf(usize) + 8"
           ]
+        },
+        {
+          "path": "libs/ra8_display_pal/inc/ra8_display_pal_eink.h",
+          "compatibility_sha256": "09bfcba9d4e7c8bcad62c34e8dae2aeafe8f4110f5c6f227cc0abdb69b3fb5e7",
+          "layout_assertions": [
+            "@sizeOf(EpaperArea) == 8",
+            "@offsetOf(EpaperArea, \"width\") == 4",
+            "@offsetOf(EpaperArea, \"height\") == 6",
+            "@intFromEnum(Waveform.gc16) == 2",
+            "@intFromEnum(PixelFormat.bpp4) == 2"
+          ],
+          "symbol_prefix": "ra8_display_pal_eink_"
         }
       ],
       "adapters": [
         "libs/ra8_display_pal/src/ra8_display_pal_abi.zig",
-        "libs/ra8_display_pal/src/ra8_display_pal_lcd_abi.zig"
+        "libs/ra8_display_pal/src/ra8_display_pal_lcd_abi.zig",
+        {
+          "path": "libs/ra8_display_pal/src/ra8_display_pal_eink_abi.zig",
+          "symbol_prefixes": [
+            "ra8_display_pal_eink_",
+            "k_display_backend_eink_"
+          ]
+        }
       ],
       "library_name": "ra8_display_pal",
       "symbol_prefix": "display_",
@@ -2693,6 +2712,12 @@
           "language": "zig",
           "path": "libs/ra8_display_pal/tests/lcd_test.zig",
           "symbol_evidence": "libs/ra8_display_pal/src/ra8_display_pal_lcd_abi.zig",
+          "registration": "libs/ra8_display_pal/.zig-test-contract.json"
+        },
+        {
+          "language": "zig",
+          "path": "libs/ra8_display_pal/tests/eink_test.zig",
+          "symbol_evidence": "libs/ra8_display_pal/src/ra8_display_pal_eink_abi.zig",
           "registration": "libs/ra8_display_pal/.zig-test-contract.json"
         }
       ],
@@ -2751,19 +2776,33 @@
           "name": "display_pal_bind_glcdc",
           "calling_context": "task-only-non-reentrant",
           "ownership": "reads caller-owned framebuffer config and panel timing, binds the GLCDC backend to the single live handle"
+        },
+        {
+          "name": "ra8_display_pal_eink_luma_from_rgb565",
+          "calling_context": "task-safe-reentrant",
+          "ownership": "pure conversion of one caller-supplied RGB565 pixel, owns nothing"
         }
       ],
       "layout_sources": [
         "libs/ra8_display_pal/src/internal/root.zig",
         "libs/ra8_display_pal/src/internal/lcd.zig",
         "libs/ra8_display_pal/src/ra8_display_pal_abi.zig",
-        "libs/ra8_display_pal/src/ra8_display_pal_lcd_abi.zig"
+        "libs/ra8_display_pal/src/ra8_display_pal_lcd_abi.zig",
+        "libs/ra8_display_pal/src/internal/eink.zig",
+        "libs/ra8_display_pal/src/ra8_display_pal_eink_abi.zig"
       ],
       "data_exports": [
         {
           "name": "k_display_backend_lcd_ra8_glcdc",
           "header": "libs/ra8_display_pal/inc/ra8_display_pal_lcd.h",
           "adapter": "libs/ra8_display_pal/src/ra8_display_pal_lcd_abi.zig",
+          "calling_context": "task-only-non-reentrant",
+          "ownership": "read-only backend vtable in rodata, bound by address through display_cfg_t.iface"
+        },
+        {
+          "name": "k_display_backend_eink_it8951",
+          "header": "libs/ra8_display_pal/inc/ra8_display_pal_eink.h",
+          "adapter": "libs/ra8_display_pal/src/ra8_display_pal_eink_abi.zig",
           "calling_context": "task-only-non-reentrant",
           "ownership": "read-only backend vtable in rodata, bound by address through display_cfg_t.iface"
         }

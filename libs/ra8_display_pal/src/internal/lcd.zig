@@ -38,17 +38,6 @@ pub const Ctx = extern struct {
     started: bool = false,
 };
 
-/// The fields of a `display_cfg_t` this backend judges, lifted out of the
-/// pointer so the decision is testable without one.
-pub const CfgView = struct {
-    has_framebuffer: bool,
-    width_px: u16,
-    height_px: u16,
-    pixfmt: u8,
-    has_panel_timing: bool,
-    framebuffer_bytes: u32,
-};
-
 /// One packed RGB565 row.
 pub fn strideBytes(width_px: u16) u32 {
     return @as(u32, width_px) * lcd.rgb565_bpp;
@@ -67,7 +56,7 @@ pub fn neededBytes(width_px: u16, height_px: u16) u64 {
 /// first, then the dimensions, then the pixel format, then the panel timing,
 /// then the buffer size. The order is the contract, because a caller with two
 /// faults sees the first one named.
-pub fn validateCfg(cfg: CfgView) u16 {
+pub fn validateCfg(cfg: core.CfgView) u16 {
     if (!cfg.has_framebuffer) return core.err_null_ptr;
     if (cfg.width_px == 0 or cfg.height_px == 0) return core.err_invalid_arg;
     if (cfg.pixfmt != core.pixfmt_rgb565) return core.err_not_supported;
