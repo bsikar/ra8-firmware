@@ -220,18 +220,30 @@ func TestCancellationTerminatesADescendantThatLeftTheProcessGroup(t *testing.T) 
 		result, err := runCommand(ctx, "/bin/sh", []string{"-c", script}, root, cleanTestEnvironment(), output, output, 50*time.Millisecond)
 		finished <- outcome{result: result, err: err}
 	}()
+	// The window is generous because a saturated host can take seconds to
+	// schedule the inner shell, and a window that expires first turns this
+	// into a skip that proves nothing. It costs nothing on an idle host: the
+	// pid lands in milliseconds. The run ending is the other way out, so a
+	// fixture that never started is answered at once rather than polled for.
 	pid := 0
-	deadline := time.Now().Add(5 * time.Second)
-	for time.Now().Before(deadline) {
-		data, err := os.ReadFile(pidFile)
-		if err == nil && strings.TrimSpace(string(data)) != "" {
-			pid, err = strconv.Atoi(strings.TrimSpace(string(data)))
-			if err != nil {
-				t.Fatalf("escapee pid: %v", err)
+	ended := false
+	deadline := time.Now().Add(30 * time.Second)
+	for pid == 0 && !ended && time.Now().Before(deadline) {
+		data, readErr := os.ReadFile(pidFile)
+		if readErr == nil && strings.TrimSpace(string(data)) != "" {
+			recorded, convErr := strconv.Atoi(strings.TrimSpace(string(data)))
+			if convErr != nil {
+				t.Fatalf("escapee pid: %v", convErr)
 			}
+			pid = recorded
 			break
 		}
-		time.Sleep(10 * time.Millisecond)
+		select {
+		case done := <-finished:
+			finished <- done
+			ended = true
+		case <-time.After(10 * time.Millisecond):
+		}
 	}
 	if pid == 0 {
 		cancel()
