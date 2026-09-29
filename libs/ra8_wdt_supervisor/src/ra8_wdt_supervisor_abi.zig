@@ -26,7 +26,8 @@ const Err = struct {
     const not_found: u16 = 0x106;
     const busy: u16 = 0x109;
     const not_initialized: u16 = 0x10F;
-    const rtos_error: u16 = 0x301;
+    const rtos_thread_create: u16 = 0x302;
+    const rtos_mutex: u16 = 0x304;
     const null_ptr: u16 = 0x504;
 };
 
@@ -82,6 +83,35 @@ const tx = struct {
 
     const object_name: [*:0]const u8 = "ra8_wdt_sup";
 
+    /// Host-only one-shot failure seam.
+    ///
+    /// The off-target stubs below always succeed, which is what left every
+    /// RTOS failure branch in this file unreachable on the host build. A
+    /// test names the call it wants to fail; the next matching stub reports
+    /// a non-success status exactly once and disarms itself, so a forced
+    /// failure never leaks into the following case.
+    pub const Call = enum(u32) {
+        none = 0,
+        mutex_create = 1,
+        mutex_get = 2,
+        thread_create = 3,
+    };
+
+    /// Stand-in for a `TX_*` error: the callers only test against `success`.
+    const forced_error: c_uint = 0xFF;
+
+    var forced_call: Call = .none;
+
+    pub fn arm(call: Call) void {
+        forced_call = call;
+    }
+
+    fn forcedStatus(call: Call) c_uint {
+        if (forced_call != call) return success;
+        forced_call = .none;
+        return forced_error;
+    }
+
     pub const MutexBlock = if (off_target)
         extern struct { magic: u32 = 0 }
     else
@@ -116,6 +146,8 @@ const tx = struct {
 
     pub fn mutexCreate(mutex: *MutexBlock) c_uint {
         if (off_target) {
+            const rc = forcedStatus(.mutex_create);
+            if (rc != success) return rc;
             mutex.magic = mutex_canary;
             return success;
         }
@@ -123,7 +155,7 @@ const tx = struct {
     }
 
     pub fn mutexGet(mutex: *MutexBlock) c_uint {
-        if (off_target) return success;
+        if (off_target) return forcedStatus(.mutex_get);
         return _txe_mutex_get(@ptrCast(mutex), wait_forever);
     }
 
@@ -145,6 +177,8 @@ const tx = struct {
         priority: u32,
     ) c_uint {
         if (off_target) {
+            const rc = forcedStatus(.thread_create);
+            if (rc != success) return rc;
             thread.magic = thread_canary;
             return success;
         }
@@ -198,6 +232,22 @@ const State = struct {
 
 var state: State = .{};
 
+/// Host-only test seam: arm a one-shot ThreadX failure inside this archive.
+///
+/// The deleted C exposed the same entry point under `RA8_OFF_TARGET` because
+/// its shim stubs were `static inline` and each translation unit owned a
+/// private slot. The Zig archive has one slot, but the C suites still need a
+/// way to reach it, so the symbol keeps its name and its host-only linkage.
+fn forceRtosFailure(call: u32) callconv(.c) void {
+    tx.arm(std.meta.intToEnum(tx.Call, call) catch .none);
+}
+
+comptime {
+    if (off_target) {
+        @export(&forceRtosFailure, .{ .name = "ra8_wdt_supervisor_test_force_rtos_failure" });
+    }
+}
+
 /// Default monotonic-time hook: `tx_time_get` scaled by the kernel tick.
 fn defaultNow() callconv(.c) u32 {
     return tx.timeGet() *% core.default_tick_ms;
@@ -250,7 +300,7 @@ pub export fn ra8_wdt_supervisor_init(cfg: ?*const Cfg) callconv(.c) u16 {
     state.refresh = defaultRefresh;
     state.started = false;
 
-    if (tx.mutexCreate(&state.mutex) != tx.success) return Err.rtos_error;
+    if (tx.mutexCreate(&state.mutex) != tx.success) return Err.rtos_mutex;
 
     state.initialized = true;
     return Err.ok;
@@ -280,7 +330,7 @@ pub export fn ra8_wdt_supervisor_register_thread(
     if (deadline_ms == 0) return Err.invalid_arg;
     if (!state.initialized) return Err.not_initialized;
 
-    if (tx.mutexGet(&state.mutex) != tx.success) return Err.rtos_error;
+    if (tx.mutexGet(&state.mutex) != tx.success) return Err.rtos_mutex;
 
     var result: u16 = Err.no_mem;
     if (state.registry.findFree()) |idx| {
@@ -297,7 +347,7 @@ pub export fn ra8_wdt_supervisor_checkin(handle: u8) callconv(.c) u16 {
     if (handle >= core.max_threads) return Err.invalid_arg;
     if (!state.initialized) return Err.not_initialized;
 
-    if (tx.mutexGet(&state.mutex) != tx.success) return Err.rtos_error;
+    if (tx.mutexGet(&state.mutex) != tx.success) return Err.rtos_mutex;
 
     var result: u16 = Err.not_found;
     if (state.registry.isRegistered(handle)) {
@@ -320,7 +370,7 @@ pub export fn ra8_wdt_supervisor_start() callconv(.c) u16 {
         state.cfg.stack_size_bytes,
         state.cfg.priority,
     );
-    if (rc != tx.success) return Err.rtos_error;
+    if (rc != tx.success) return Err.rtos_thread_create;
 
     state.started = true;
     return Err.ok;
@@ -334,7 +384,7 @@ pub export fn ra8_wdt_supervisor_tick(out_did_refresh: ?*bool) callconv(.c) u16 
 
     if (tx.mutexGet(&state.mutex) != tx.success) {
         if (out_did_refresh) |out| out.* = false;
-        return Err.rtos_error;
+        return Err.rtos_mutex;
     }
 
     const verdict = state.registry.verdict(nowMs());
