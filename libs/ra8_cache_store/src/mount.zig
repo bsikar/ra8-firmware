@@ -259,10 +259,14 @@ pub export fn priv_cache_store_index_add(
 pub export fn priv_cache_store_super_write(store_arg: ?*Store, clean: u32) RawErr {
     const store = store_arg orelse return reject("store", abi.err_null_ptr);
     const staging = store.staging orelse return reject("staging", abi.err_null_ptr);
+    // One superblock write, one step of the checkpoint counter. It is stamped
+    // into `seq`, which a later reader uses to order two superblocks; `next_seq`
+    // below is the append counter and moves on a different clock.
+    store.checkpoint_seq += 1;
     var sb = Super{
         .magic = super_magic,
         .version = format_version,
-        .seq = store.next_seq,
+        .seq = store.checkpoint_seq,
         .clean = clean,
         .entry_count = 0,
         .live_sectors = store.live_sectors,
@@ -299,12 +303,19 @@ fn superRead(store: *Store, out_sb: *Super) RawErr {
 /// True when `sb` is a valid, clean-shutdown superblock
 /// (`internal_super_is_clean`). Single-condition checks, so there is no
 /// compound decision to MC/DC.
-pub fn superIsClean(sb: *const Super) bool {
+pub fn superIsValid(sb: *const Super) bool {
     if (sb.magic != super_magic) return false;
     const want = implementation.crc32(std.mem.asBytes(sb)[0..super_crc_span]);
-    if (sb.crc != want) return false;
-    if (sb.clean != abi.clean_clean) return false;
-    return true;
+    return sb.crc == want;
+}
+
+/// True when the superblock parses and carries the clean marker
+/// (`internal_super_is_clean`). Cleanliness is validity plus the marker; the two
+/// are split because a dirty record is still a parsed one whose `seq` the mount
+/// has to honour, so recovery can resume the checkpoint counter.
+pub fn superIsClean(sb: *const Super) bool {
+    if (!superIsValid(sb)) return false;
+    return sb.clean == abi.clean_clean;
 }
 
 // -------------------------------------------------------------------------
@@ -518,6 +529,11 @@ fn openLevelx(store: *Store, cfg: *const Config) RawErr {
 /// Checkpoint load on a clean superblock, log replay on anything else
 /// (`internal_recover`).
 fn recover(store: *Store, sb: *const Super) RawErr {
+    // Resume the checkpoint counter from any record that parses, clean or not,
+    // so the next superblock this store writes carries a higher `seq` than the
+    // one already on the media. A torn or absent record leaves the counter at
+    // its init value and the next write starts the sequence at 1.
+    if (superIsValid(sb)) store.checkpoint_seq = sb.seq;
     if (superIsClean(sb)) {
         store.next_seq = sb.next_seq;
         store.flash_state = @intCast(abi.clean_clean);
@@ -547,6 +563,7 @@ fn initFields(store: *Store, cfg: *const Config) void {
     }
     store.next_seq = 1;
     store.live_sectors = 0;
+    store.checkpoint_seq = 0;
 }
 
 /// Geometry, LevelX open, mount (`internal_bringup`).
