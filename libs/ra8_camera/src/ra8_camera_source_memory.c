@@ -99,10 +99,38 @@ internal_memory_capture(void* ctx, const ra8_camera_buffer_t* buffer, ra8_camera
   return k_ra8_ok;
 }
 
+/**
+ * @brief Release the fixed-frame source.
+ *
+ * @details This backend owns no peripheral, so stopping it only forgets the
+ *          frame view it was handed. The row exists so every source answers
+ *          ::ra8_camera_source_stop the same way and an application can drop a
+ *          source without knowing which backend is behind it.
+ * @param[in,out] ctx Bound memory-source state.
+ * @return ra8_err_t Error code.
+ * @retval k_ra8_ok State cleared.
+ * @retval k_ra8_err_not_initialized `ctx` is NULL.
+ * @pre `ctx` was populated by ::ra8_camera_source_memory_init.
+ * @post `ctx` no longer references the caller's frame storage.
+ * @post No hardware is touched.
+ * @note Not thread-safe with respect to the same state.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static ra8_err_t internal_memory_stop(void* ctx)
+{
+  ra8_camera_source_memory_state_t* state = (ra8_camera_source_memory_state_t*)ctx;
+  if (state == nullptr) {
+    return k_ra8_err_not_initialized;
+  }
+  *state = (ra8_camera_source_memory_state_t){};
+  return k_ra8_ok;
+}
+
 /** @brief Fixed-frame source vtable. */
 static const ra8_camera_source_iface_t s_memory_source_iface = {
   .get_info = internal_memory_get_info,
   .capture  = internal_memory_capture,
+  .stop     = internal_memory_stop,
 };
 
 ra8_err_t ra8_camera_source_memory_init(ra8_camera_source_t*              source,

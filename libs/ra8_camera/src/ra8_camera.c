@@ -184,6 +184,25 @@ ra8_err_t ra8_camera_source_capture(ra8_camera_source_t*       source,
   return valid;
 }
 
+/* See the public header for the documented contract. */
+ra8_err_t ra8_camera_source_stop(ra8_camera_source_t* source)
+{
+  if (source == nullptr) {
+    return k_ra8_err_null_ptr;
+  }
+  if (source->iface == nullptr) {
+    return k_ra8_err_not_initialized;
+  }
+  if (source->iface->stop == nullptr) {
+    return k_ra8_err_not_initialized;
+  }
+  const ra8_err_t err = source->iface->stop(source->ctx);
+  if (err == k_ra8_ok) {
+    *source = (ra8_camera_source_t){};
+  }
+  return err;
+}
+
 ra8_err_t ra8_camera_codec_encode(ra8_camera_codec_t*        codec,
                                   const ra8_camera_frame_t*  input,
                                   const ra8_camera_buffer_t* output_buffer,
