@@ -56,6 +56,12 @@ endif()
 # RA8_APP_UART_LOG mirrors ra8_log onto the SCI8 console (in ra8_nsc_periph_init) so
 # the e-reader's logs appear on the UART -- ra8_emulator's on-screen console panel
 # and a real serial terminal -- not only on the ITM/SWO trace.
+include(${RA8_REPO_ROOT}/libs/ra8_board_ek_ra8d2/ld/ns_memory_map.cmake)
+# The Secure boot copies/jumps to the NS image, so it needs the NS addresses as
+# constants. They come from the same map the NS linker script is generated from
+# rather than being re-typed in trustzone_init.c (#759 item 2).
+ra8_ns_memory_map_defines(ra8d2-ereader.elf)
+
 target_compile_definitions(
   ra8d2-ereader.elf PRIVATE RA8_TRUSTZONE_ENABLE RA8_APP_UART_LOG
                             $<$<BOOL:${RA8_EREADER_NS_XIP}>:RA8_EREADER_NS_XIP>

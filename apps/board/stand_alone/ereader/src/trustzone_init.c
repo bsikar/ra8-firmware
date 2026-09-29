@@ -87,11 +87,11 @@ extern uint32_t g_ra8_ls_sgstubs_end;   /**< Veneer-region end (NSC).   */
  *             libs/ra8_board_ek_ra8d2/ld/ns_memory_map.cmake.
  */
 typedef enum : uintptr_t {
-  k_tz_ns_load_base = 0x02080000U, /**< NS image LMA (Secure MRAM). */
+  k_tz_ns_load_base = RA8_NS_MRAM_BASE, /**< NS image LMA (Secure MRAM). */
 #ifdef RA8_EREADER_NS_XIP
-  k_tz_ns_run_base = 0x90000000U, /**< NS runs XIP from the OSPI NS alias. */
+  k_tz_ns_run_base = RA8_NS_OSPI_BASE, /**< NS runs XIP from the OSPI NS alias. */
 #else
-  k_tz_ns_run_base = 0x32100000U, /**< NS image VMA (SRAM2 NS alias). */
+  k_tz_ns_run_base = RA8_NS_SRAM_BASE, /**< NS image VMA (SRAM2 NS alias). */
 #endif
   k_tz_ns_copy_size = 0x00030000U, /**< Bytes copied LMA->VMA (192 KB). */
 } tz_ns_image_t;
