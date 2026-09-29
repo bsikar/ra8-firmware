@@ -144,7 +144,13 @@ Stated so no one reads this page as a description of the tree:
 
 - `libs/if/` holds one port. Every other neutral seam in the table above is
   still to be written.
-- There is no agnostic-versus-register gate yet, so criterion 5 cannot pass for
-  any peripheral, and the coupling counts can grow between now and then.
-- The coupling counts have no checker behind them. They are a grep, recorded
-  here with its command so the next person gets the same number.
+- The gate exists and runs in CI as `gate_agnostic_registers`
+  (`scripts/checks/check_agnostic_registers.py`), ratcheted against
+  `.github/agnostic-register-baseline.txt`, which may only shrink. So the
+  reach-in counts can no longer grow, and criterion 5 is measurable per
+  peripheral today: `--list` prints every reference tagged with its family.
+  What is still missing for criterion 5 is not the gate but the ports; a
+  family cannot reach zero until the neutral seam it would move to exists.
+- The gate covers four families (clock, display, GPIO, timer). The other rows
+  in the table above are still a grep, recorded here with the command so the
+  next person gets the same number.
