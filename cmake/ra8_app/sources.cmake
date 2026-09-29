@@ -150,11 +150,10 @@ macro(_ra8_app_collect_sources)
   # come from the Zig static archive, linked separately. Left unglobbed and
   # deliberately outside the #908 guard, which exists to catch a library whose
   # objects silently vanish; this one's have a link path of their own.
-  file(GLOB_RECURSE _ra8_lib_usb_pal CONFIGURE_DEPENDS ${RA8_REPO_ROOT}/libs/ra8_usb_pal/src/*.c)
-  _ra8_app_require_compilable_lib(
-    ra8_usb_pal "${RA8_REPO_ROOT}/libs/ra8_usb_pal" "links ra8_usb_pal into every app"
-    "${_ra8_lib_usb_pal}"
-  )
+  # ra8_usb_pal has no C sources either: the PAL core, the descriptor builders
+  # and the compose facade are Zig (#766) and its objects come from the Zig
+  # static archive, linked separately. Left unglobbed and deliberately outside
+  # the #908 guard, for the same reason as ra8_net_pal above.
   file(GLOB_RECURSE _ra8_lib_board CONFIGURE_DEPENDS ${_ra8_board_dir}/src/*.c)
   _ra8_app_require_compilable_lib(
     "ra8_board_${_RA8_APP_BOARD}" "${_ra8_board_dir}" "builds for BOARD ${_RA8_APP_BOARD}"
