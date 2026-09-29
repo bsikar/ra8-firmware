@@ -57,9 +57,37 @@ pub fn build(b: *std.Build) void {
     abi_test_module.addImport("abi", abi_module);
     const abi_tests = b.addTest(.{ .root_module = abi_test_module });
 
+    const descriptor_module = b.createModule(.{
+        .root_source_file = b.path("src/internal/descriptor.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    const descriptor_test_module = b.createModule(.{
+        .root_source_file = b.path("tests/descriptor_test.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    descriptor_test_module.addImport("descriptor", descriptor_module);
+    const descriptor_tests = b.addTest(.{ .root_module = descriptor_test_module });
+
+    const desc_abi_module = b.createModule(.{
+        .root_source_file = b.path("src/ra8_usb_desc_abi.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    const desc_abi_test_module = b.createModule(.{
+        .root_source_file = b.path("tests/desc_abi_test.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    desc_abi_test_module.addImport("desc_abi", desc_abi_module);
+    const desc_abi_tests = b.addTest(.{ .root_module = desc_abi_test_module });
+
     const run_internal_tests = b.addRunArtifact(internal_tests);
     const run_abi_tests = b.addRunArtifact(abi_tests);
     const test_step = b.step("test", "Run Zig ra8_usb_pal tests");
     test_step.dependOn(&run_internal_tests.step);
     test_step.dependOn(&run_abi_tests.step);
+    test_step.dependOn(&b.addRunArtifact(descriptor_tests).step);
+    test_step.dependOn(&b.addRunArtifact(desc_abi_tests).step);
 }
