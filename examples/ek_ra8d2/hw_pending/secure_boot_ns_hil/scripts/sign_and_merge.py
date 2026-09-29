@@ -28,8 +28,10 @@ import subprocess
 import sys
 from pathlib import Path
 
-# The NS image is flashed at the Secure MRAM LMA (matches RA8_NS_MRAM_ORIGIN).
-NS_LOAD_ADDR = 0x02080000
+# The NS image is flashed at the Secure MRAM LMA. The build passes it in from
+# ns_memory_map.cmake (--ns-load-addr) so this is not a fifth hand-copy of the
+# address; the default is the EK-RA8D2 value for a by-hand run of this script.
+NS_LOAD_ADDR_DEFAULT = 0x02080000
 # Byte flipped to build the tampered case: the first .text byte, immediately
 # after the 64-byte vector table + 8-byte .ns_rot_header. Definitely inside the
 # signed body and NOT the header/vectors, so the header still parses but the body
@@ -70,8 +72,8 @@ def _run(cmd: list[str]) -> None:
     subprocess.run(cmd, check=True)  # noqa: S603 -- args are this build's own literals
 
 
-def _bin_to_hex(objcopy: str, bin_path: Path, hex_path: Path) -> None:
-    """Convert a raw binary at NS_LOAD_ADDR into an Intel HEX file."""
+def _bin_to_hex(objcopy: str, bin_path: Path, hex_path: Path, load_addr: int) -> None:
+    """Convert a raw binary at ``load_addr`` into an Intel HEX file."""
     _run(
         [
             objcopy,
@@ -79,7 +81,7 @@ def _bin_to_hex(objcopy: str, bin_path: Path, hex_path: Path) -> None:
             "binary",
             "-O",
             "ihex",
-            f"--change-addresses={NS_LOAD_ADDR:#x}",
+            f"--change-addresses={load_addr:#x}",
             str(bin_path),
             str(hex_path),
         ]
@@ -176,7 +178,13 @@ def main() -> int:
     parser.add_argument("--out-genuine", required=True, help="output genuine merged hex")
     parser.add_argument("--out-tampered", required=True, help="output tampered merged hex")
     parser.add_argument("--key", default="", help="RoT private-key PEM (empty -> degrade)")
+    parser.add_argument(
+        "--ns-load-addr",
+        default=hex(NS_LOAD_ADDR_DEFAULT),
+        help="NS image LMA; the build passes RA8_NS_MRAM_ORIGIN",
+    )
     args = parser.parse_args()
+    load_addr = int(str(args.ns_load_addr), 0)
 
     out_dir = Path(args.out_genuine).parent
     ns_bin = out_dir / "secure_boot_ns_hil_ns.bin"
@@ -206,14 +214,14 @@ def main() -> int:
     signed = out_dir / "secure_boot_ns_hil_ns_signed.bin"
     signed_hex = out_dir / "secure_boot_ns_hil_ns_signed.hex"
     _sign(args.rot_sign, key, body, signed)
-    _bin_to_hex(args.objcopy, signed, signed_hex)
+    _bin_to_hex(args.objcopy, signed, signed_hex, load_addr)
     _merge(args.merge, Path(args.secure_hex), signed_hex, Path(args.out_genuine))
 
     # 3. Tampered: flip one body byte after signing, convert, merge.
     tampered = out_dir / "secure_boot_ns_hil_ns_tampered.bin"
     tampered_hex = out_dir / "secure_boot_ns_hil_ns_tampered.hex"
     _tampered_copy(signed, tampered)
-    _bin_to_hex(args.objcopy, tampered, tampered_hex)
+    _bin_to_hex(args.objcopy, tampered, tampered_hex, load_addr)
     _merge(args.merge, Path(args.secure_hex), tampered_hex, Path(args.out_tampered))
 
     sys.stdout.write(
