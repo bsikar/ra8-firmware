@@ -116,23 +116,38 @@ pub fn hostMacosVersion() ?std.SemanticVersion {
 pub fn probeHostSdk(allocator: std.mem.Allocator) macos_host.SdkProbe {
     if (builtin.os.tag != .macos) return .{};
 
+    // Name the SDK, exactly as the compiler does. Zig resolves its own sysroot
+    // with `xcrun --sdk macosx --show-sdk-path` for a macOS target
+    // (`std.zig.system.darwin.getSdk`). The bare `xcrun --show-sdk-path` this
+    // probe used to run is a different question: it reports the *active* SDK,
+    // which `SDKROOT` in the environment redirects. A shell carrying
+    // `SDKROOT=iphoneos` therefore had the probe read an iOS `libSystem.tbd`,
+    // whose targets are `arm64-ios` and friends, and report `arm64-macos`
+    // absent -- #899's own signature, about an SDK no macOS link would use.
+    const queried_sdk = macos_host.host_sdk_name;
     const sdk_run = std.process.Child.run(.{
         .allocator = allocator,
-        .argv = &.{ "xcrun", "--show-sdk-path" },
-    }) catch return .{};
+        .argv = &.{ "xcrun", "--sdk", queried_sdk, "--show-sdk-path" },
+    }) catch return .{ .queried_sdk = queried_sdk };
     defer allocator.free(sdk_run.stdout);
     defer allocator.free(sdk_run.stderr);
-    if (sdk_run.term != .Exited or sdk_run.term.Exited != 0) return .{};
+    if (sdk_run.term != .Exited or sdk_run.term.Exited != 0) return .{ .queried_sdk = queried_sdk };
 
-    const sdk_path = allocator.dupe(u8, std.mem.trim(u8, sdk_run.stdout, " \t\r\n")) catch return .{};
-    if (sdk_path.len == 0) return .{};
+    const sdk_path = allocator.dupe(u8, std.mem.trim(u8, sdk_run.stdout, " \t\r\n")) catch
+        return .{ .queried_sdk = queried_sdk };
+    if (sdk_path.len == 0) return .{ .queried_sdk = queried_sdk };
 
     const tbd_path = std.fs.path.join(allocator, &.{ sdk_path, "usr", "lib", "libSystem.tbd" }) catch
-        return .{ .sdk_path = sdk_path };
+        return .{ .sdk_path = sdk_path, .queried_sdk = queried_sdk };
 
     const tbd = std.fs.cwd().readFileAlloc(allocator, tbd_path, 4 * 1024 * 1024) catch
-        return .{ .sdk_path = sdk_path, .libsystem_tbd_path = tbd_path };
-    return .{ .sdk_path = sdk_path, .libsystem_tbd_path = tbd_path, .libsystem_tbd = tbd };
+        return .{ .sdk_path = sdk_path, .libsystem_tbd_path = tbd_path, .queried_sdk = queried_sdk };
+    return .{
+        .sdk_path = sdk_path,
+        .libsystem_tbd_path = tbd_path,
+        .libsystem_tbd = tbd,
+        .queried_sdk = queried_sdk,
+    };
 }
 
 /// One phrase naming a `Choice`, for a sentence about a road not taken.
@@ -160,6 +175,9 @@ pub fn describeHostTarget(b: *std.Build, host: HostTarget) []const u8 {
         out.print("  macos:     {d}.{d}.{d}\n", .{ version.major, version.minor, version.patch }) catch @panic("OOM");
     }
     out.print("  selection: -Dmacos-libsystem={s}\n", .{@tagName(host.forced)}) catch @panic("OOM");
+    out.print("  sdk query: {s}\n", .{
+        if (host.probe.queried_sdk) |name| name else "(xcrun not run on this host)",
+    }) catch @panic("OOM");
     out.print("  sdk:       {s}\n", .{host.probe.sdk_path orelse "(none located)"}) catch @panic("OOM");
     out.print("  stub:      {s}\n", .{host.probe.libsystem_tbd_path orelse "(none read)"}) catch @panic("OOM");
 

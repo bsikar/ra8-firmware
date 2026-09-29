@@ -80,6 +80,19 @@ if [ -z "${_RA8_MACOS_SDK_SH:-}" ]; then
     return 1
   }
 
+  # RA8_MACOS_SDK_NAME -- the SDK this host's builds link against, by name.
+  #
+  # Zig resolves its own sysroot with `xcrun --sdk macosx --show-sdk-path` for
+  # a macOS target (std.zig.system.darwin.getSdk). The bare `xcrun
+  # --show-sdk-path` this probe used to run asks a different question: it
+  # reports the ACTIVE SDK, which SDKROOT in the environment redirects. A shell
+  # carrying SDKROOT=iphoneos therefore had the precondition validate an iOS
+  # SDK while the compiler went on to use the macOS one, so a green
+  # precondition said nothing about the SDK the link would actually read.
+  # Naming the SDK is what makes this probe and the compiler resolve the same
+  # one.
+  RA8_MACOS_SDK_NAME="macosx"
+
   # _ra8_macos_sdk_show_sdk_path <bin> -- run the probe the graph runs.
   #
   # stdout is the SDK path. stderr is appended to _RA8_MACOS_SDK_STDERR_FILE
@@ -89,9 +102,9 @@ if [ -z "${_RA8_MACOS_SDK_SH:-}" ]; then
   _ra8_macos_sdk_show_sdk_path() {
     local bin="$1"
     if [ -n "${_RA8_MACOS_SDK_STDERR_FILE:-}" ]; then
-      "${bin}" --show-sdk-path 2>>"${_RA8_MACOS_SDK_STDERR_FILE}"
+      "${bin}" --sdk "${RA8_MACOS_SDK_NAME}" --show-sdk-path 2>>"${_RA8_MACOS_SDK_STDERR_FILE}"
     else
-      "${bin}" --show-sdk-path 2>/dev/null
+      "${bin}" --sdk "${RA8_MACOS_SDK_NAME}" --show-sdk-path 2>/dev/null
     fi
   }
 
@@ -292,7 +305,10 @@ if [ -z "${_RA8_MACOS_SDK_SH:-}" ]; then
       printf '%s\n' "${_RA8_MACOS_SDK_STUB_BIN}"
     }
     _ra8_macos_sdk_show_sdk_path() {
-      printf '%s\n' "$1" >>"${_RA8_MACOS_SDK_CALLLOG}"
+      # Log the whole command line, not just the binary: which SDK was asked
+      # for is the half of this probe that has to match the compiler's own
+      # lookup, and a log of the binary alone cannot show it.
+      printf '%s --sdk %s --show-sdk-path\n' "$1" "${RA8_MACOS_SDK_NAME}" >>"${_RA8_MACOS_SDK_CALLLOG}"
       [ -n "${_RA8_MACOS_SDK_STUB_ERR}" ] &&
         printf '%s\n' "${_RA8_MACOS_SDK_STUB_ERR}" >>"${_RA8_MACOS_SDK_STDERR_FILE:-/dev/null}"
       [ -n "${_RA8_MACOS_SDK_STUB_OUT}" ] && printf '%s\n' "${_RA8_MACOS_SDK_STUB_OUT}"
@@ -339,7 +355,7 @@ if [ -z "${_RA8_MACOS_SDK_SH:-}" ]; then
     got="$(ra8_macos_sdk_state)"
     check "$(eq "${got}" ok)" "a readable SDK with a stub reports ok"
     check "$(yn ra8_macos_sdk_usable ok)" "ok is the usable state"
-    check "$(eq "$(cat "${_RA8_MACOS_SDK_CALLLOG}")" /usr/bin/xcrun)" \
+    check "$(eq "$(cat "${_RA8_MACOS_SDK_CALLLOG}")" '/usr/bin/xcrun --sdk macosx --show-sdk-path')" \
       "the probe really runs xcrun, once, at the resolved path"
     ra8_macos_sdk_state >/dev/null
     check "$(eq "${RA8_MACOS_SDK_PATH}" "${sdk}")" "the SDK path is published to the caller"
@@ -410,6 +426,28 @@ if [ -z "${_RA8_MACOS_SDK_SH:-}" ]; then
     check "$(eq "$(ra8_macos_sdk_state_reason made-up)" "unknown SDK state")" \
       "an unknown state is reported as unknown"
 
+    # The probe asks for the SDK BY NAME, the same question the compiler asks.
+    # Without this the probe reads whatever SDKROOT points at, which can be
+    # another platform's SDK entirely, and its verdict says nothing about the
+    # SDK the link will use.
+    _ra8_macos_sdk_stub_seams Darwin /usr/bin/xcrun "${sdk}" "" 0
+    ra8_macos_sdk_state Darwin >/dev/null
+    check "$(has -- '--sdk macosx --show-sdk-path' "$(cat "${_RA8_MACOS_SDK_CALLLOG}")")" \
+      "the probe runs xcrun --sdk macosx --show-sdk-path"
+    check "$(eq "${RA8_MACOS_SDK_NAME}" macosx)" "the SDK is named macosx, as zig names it"
+
+    # And the build graph asks for the same one. zig maps a .macos target to
+    # this sdk name; tools/zig_build carries the name, and the graph's probe
+    # passes it to xcrun. If those drift apart, this precondition validates an
+    # SDK the link never reads.
+    local graph_rule graph_probe
+    graph_rule="$(cat tools/zig_build/macos_host.zig 2>/dev/null)"
+    graph_probe="$(cat tools/zig_build/build.zig 2>/dev/null)"
+    check "$(has "host_sdk_name = \"${RA8_MACOS_SDK_NAME}\"" "${graph_rule}")" \
+      "the build graph pins the same SDK name"
+    check "$(has '\"xcrun\", \"--sdk\", queried_sdk, \"--show-sdk-path\"' "${graph_probe}")" \
+      "the build graph's probe names the SDK too"
+
     # The gate really consumes this, rather than the old presence check: the
     # body must call ra8_macos_sdk_require and must no longer require_cmd xcrun.
     local gate_body
@@ -436,7 +474,7 @@ if [ -z "${_RA8_MACOS_SDK_SH:-}" ]; then
       printf 'macos_sdk.sh --selftest: %s case(s) FAILED\n' "${fails}" >&2
       return 1
     fi
-    printf 'macos_sdk.sh --selftest: PASS (healthy, no developer dir, licence, absent, empty, missing, stubless, live)\n'
+    printf 'macos_sdk.sh --selftest: PASS (healthy, no developer dir, licence, absent, empty, missing, stubless, sdk-name, live)\n'
   }
 fi
 
