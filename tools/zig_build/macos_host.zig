@@ -60,8 +60,15 @@ pub const Choice = enum {
     }
 };
 
+/// Which libSystem stub the operator asked for. `auto` lets the SDK probe
+/// decide (see `decide`); the other two are escape hatches for a host whose SDK
+/// the probe reads wrongly, and they are surfaced to `zig build` as
+/// `-Dmacos-libsystem=`.
+pub const Selection = enum { auto, sdk, bundled };
+
 /// Why a `Choice` was made. This is the diagnosis the CI gate and the docs
-/// print, so each value names one distinguishable state of the machine.
+/// print, so each value names one distinguishable state of the machine, or
+/// else says plainly that the machine was not what decided.
 pub const Reason = enum {
     /// Not an arm64 Mac: the rule is inert everywhere else.
     not_arm64_macos_host,
@@ -76,6 +83,11 @@ pub const Reason = enum {
     sdk_stub_unreadable,
     /// No SDK could be located at all (no `xcrun`, or it failed).
     sdk_not_probed,
+    /// `-Dmacos-libsystem=sdk` forced the native query. Nothing about the host
+    /// chose this, so it is its own reason rather than a borrowed finding.
+    forced_sdk_stub,
+    /// `-Dmacos-libsystem=bundled` forced the pinned query, same as above.
+    forced_bundled_stub,
 
     /// One line, in plain words, for a build log or a gate transcript.
     pub fn explain(self: Reason) []const u8 {
@@ -86,6 +98,8 @@ pub const Reason = enum {
             .sdk_stub_unrecognized => "the SDK stub declares no target list in a recognised spelling, so it cannot be trusted to link " ++ required_target,
             .sdk_stub_unreadable => "an SDK was located but its libSystem stub could not be read",
             .sdk_not_probed => "no macOS SDK could be located through xcrun",
+            .forced_sdk_stub => "-Dmacos-libsystem=sdk forced the native query, whatever the SDK stub says",
+            .forced_bundled_stub => "-Dmacos-libsystem=bundled forced the pinned query, whatever the SDK stub says",
         };
     }
 };
@@ -153,6 +167,46 @@ pub fn decide(host_arch: std.Target.Cpu.Arch, host_os: std.Target.Os.Tag, probe:
         .omits => .{ .choice = .pinned_macos_arm64, .reason = .sdk_omits_target },
         .unrecognized => .{ .choice = .pinned_macos_arm64, .reason = .sdk_stub_unrecognized },
     };
+}
+
+/// What the build will do, and what the machine actually said.
+///
+/// These come apart whenever `-Dmacos-libsystem=` is used. The probe still
+/// runs, so its finding is still known, and it is the finding worth printing:
+/// the whole point of the forced-SDK leg in the CI gate is to see what the SDK
+/// stub does on that runner. Reporting the forced choice as though the probe
+/// had concluded it throws away the one observation the leg exists to make.
+pub const Resolution = struct {
+    /// The choice the build actually uses, and why.
+    effective: Decision,
+    /// What the SDK probe concluded about this host, regardless of any force.
+    observed: Decision,
+
+    /// True when a force was applied and the probe would have chosen otherwise.
+    pub fn overridesProbe(self: Resolution) bool {
+        return self.effective.choice != self.observed.choice;
+    }
+};
+
+/// Resolve the operator's `selection` against what the probe found.
+///
+/// `observed` is always the honest reading of the machine. `effective` is what
+/// the build uses: the same decision under `auto`, and otherwise the forced
+/// choice carrying a reason that names the force rather than inventing a
+/// finding about the SDK.
+pub fn resolve(
+    selection: Selection,
+    host_arch: std.Target.Cpu.Arch,
+    host_os: std.Target.Os.Tag,
+    probe: SdkProbe,
+) Resolution {
+    const observed = decide(host_arch, host_os, probe);
+    const effective: Decision = switch (selection) {
+        .auto => observed,
+        .sdk => .{ .choice = .native, .reason = .forced_sdk_stub },
+        .bundled => .{ .choice = .pinned_macos_arm64, .reason = .forced_bundled_stub },
+    };
+    return .{ .effective = effective, .observed = observed };
 }
 
 /// What a `.tbd` says about one target triple.
