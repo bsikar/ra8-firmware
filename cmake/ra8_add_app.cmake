@@ -94,6 +94,7 @@ set(_RA8_ADD_APP_DIR "${CMAKE_CURRENT_LIST_DIR}")
 include(${_RA8_ADD_APP_DIR}/ra8_app/sources.cmake)
 include(${_RA8_ADD_APP_DIR}/ra8_app/vendored.cmake)
 include(${_RA8_ADD_APP_DIR}/ra8_app/zig_libs.cmake)
+include(${_RA8_ADD_APP_DIR}/ra8_add_ns_image.cmake)
 
 # Declare one cross-compiled example application.
 #

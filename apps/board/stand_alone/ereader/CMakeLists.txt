@@ -38,9 +38,6 @@ ra8_add_app(
   LIBS ra8_tz_secure_boot AUX_SRCS src/ns_main.c
 )
 
-# Set TrustZone secure-side compiler options and output CMSE import library.
-set(_ra8_tz_implib ${CMAKE_CURRENT_BINARY_DIR}/ra8d2_cmse_import.o)
-
 # ---- OSPI XIP (execute-in-place) variant ----------------------------------
 # RA8_EREADER_NS_XIP=ON links the Non-Secure image to run execute-in-place from
 # OSPI flash (NS alias 0x9000_0000) instead of the default copy-to-SRAM run
@@ -69,8 +66,6 @@ target_link_options(
   -nostartfiles
   -T${CMAKE_CURRENT_SOURCE_DIR}/linker_script.ld
   -Wl,--Map=ra8d2-ereader.map
-  -Wl,--cmse-implib
-  -Wl,--out-implib=${_ra8_tz_implib}
 )
 
 set_target_properties(
@@ -79,7 +74,7 @@ set_target_properties(
 
 # ---- Post-build: verify the NSC SG-veneer layout (T5-08) ------------------
 # ra8d2-ereader_ns.elf is bound to the Secure-Gateway stubs through the CMSE import
-# library emitted above (--out-implib), so the byte offset of each veneer
+# library emitted by ra8_add_ns_image(), so the byte offset of each veneer
 # inside .gnu.sgstubs IS the S/NS ABI: a reorder redirects every NS->Secure
 # call with no diagnostic. This app's linker_script.ld already claims the
 # offsets are "verified AFTER the link ... by scripts/checks/check_sg_offsets.py,
@@ -97,7 +92,9 @@ add_custom_command(
 )
 
 # ---- Non-Secure Target ----------------------------------------------------
-# Configures the Non-Secure ThreadX OS and the e-reader UI.
+# Configures the Non-Secure ThreadX OS and the e-reader UI. ra8_add_ns_image()
+# owns the CMSE implib handshake at both ends, the NS warning profile, the
+# build ordering, and the merged-hex staple (#759 item 1).
 include(${RA8_REPO_ROOT}/cmake/threadx_ns.cmake)
 
 # The NS world runs the ThreadX watchdog supervisor; pull in its sources plus
@@ -106,65 +103,22 @@ include(${RA8_REPO_ROOT}/cmake/threadx_ns.cmake)
 # ns_main routes the hook through the ra8_nsc_wdt_refresh veneer).
 file(GLOB _ra8_ns_wdt_sup CONFIGURE_DEPENDS ${RA8_REPO_ROOT}/libs/ra8_wdt_supervisor/src/*.c)
 
-add_executable(
-  ra8d2-ereader_ns.elf ${CMAKE_CURRENT_SOURCE_DIR}/src/ns_main.c ${_ra8_ns_wdt_sup}
-                       ${RA8_REPO_ROOT}/libs/ra8_hal/src/ra8_wdt.c
-)
-
-target_compile_definitions(
-  ra8d2-ereader_ns.elf PRIVATE RA8_TRUSTZONE_ENABLE RA8_PERIPH_NS_ALIAS RA8_USB_POLLED_ONLY
-                               $<$<BOOL:${RA8_EREADER_NS_XIP}>:RA8_EREADER_NS_XIP>
-)
-
-target_compile_options(ra8d2-ereader_ns.elf PRIVATE -fshort-enums -ffreestanding)
-
-# The NS image is a raw add_executable, so unlike the Secure side (which gets
-# the profile via ra8_add_app) it would otherwise compile WITHOUT
-# -Wall/-Wextra/-Werror -- the T2-05 warnings-scope hole: a discarded
-# [[nodiscard]] ra8_err_t in ns_main.c could never fail the build. Apply the
-# same first-party warning profile; threadx_ns is a separate target and keeps
-# its own permissive vendor flags.
-ra8_target_enable_project_warnings(ra8d2-ereader_ns.elf STACK_USAGE_BYTES 2200)
-
-target_include_directories(
-  ra8d2-ereader_ns.elf
-  PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src
-          ${RA8_REPO_ROOT}/libs/ra8_core/inc
-          ${RA8_REPO_ROOT}/libs/ra8_hal/inc
-          ${RA8_REPO_ROOT}/libs/ra8_nsc/inc
-          ${RA8_REPO_ROOT}/libs/ra8_board_ek_ra8d2/inc
-          ${RA8_REPO_ROOT}/libs/ra8_wdt_supervisor/inc
-)
-
-target_link_libraries(ra8d2-ereader_ns.elf PRIVATE threadx_ns)
-
-target_link_options(
-  ra8d2-ereader_ns.elf
-  PRIVATE
-  -nostartfiles
-  -T${_ra8_ns_linker}
-  -Wl,--Map=ra8d2-ereader_ns.map
-  ${_ra8_tz_implib}
-)
-
-set_target_properties(
-  ra8d2-ereader_ns.elf PROPERTIES LINK_DEPENDS "${_ra8_ns_linker};${_ra8_tz_implib}"
-)
-
-# Ensure the Secure ELF (and its import library) is built before the NS ELF.
-add_dependencies(ra8d2-ereader_ns.elf ra8d2-ereader.elf)
-
-# Combine: Secure image + NS image -> one merged flashable hex
-include("${RA8_REPO_ROOT}/cmake/ra8_zig_tool.cmake")
-ra8_use_merge_ihex(ra8d2-ereader_ns.elf)
-add_custom_command(
-  TARGET ra8d2-ereader_ns.elf
-  POST_BUILD
-  COMMAND ${CMAKE_OBJCOPY} --remove-section=.option_setting* -O ihex
-          $<TARGET_FILE:ra8d2-ereader.elf> ra8d2-ereader_secure.hex
-  COMMAND ${CMAKE_OBJCOPY} -O ihex $<TARGET_FILE:ra8d2-ereader_ns.elf> ra8d2-ereader_ns.hex
-  COMMAND $<TARGET_FILE:ra8_zig::merge_ihex> ra8d2-ereader_secure.hex ra8d2-ereader_ns.hex
-          ra8d2-ereader.hex
-  VERBATIM
-  COMMENT "Merging Secure + Non-Secure images into ra8d2-ereader.hex"
+ra8_add_ns_image(
+  SECURE_TARGET ra8d2-ereader.elf
+  NAME ra8d2-ereader_ns
+  LINKER ${_ra8_ns_linker}
+  STACK_BYTES 2200
+  IMPLIB ${CMAKE_CURRENT_BINARY_DIR}/ra8d2_cmse_import.o
+  MERGED_HEX ra8d2-ereader.hex
+  SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/src/ns_main.c ${_ra8_ns_wdt_sup}
+          ${RA8_REPO_ROOT}/libs/ra8_hal/src/ra8_wdt.c
+  DEFINES RA8_TRUSTZONE_ENABLE RA8_PERIPH_NS_ALIAS RA8_USB_POLLED_ONLY
+          $<$<BOOL:${RA8_EREADER_NS_XIP}>:RA8_EREADER_NS_XIP>
+  INCLUDES ${CMAKE_CURRENT_SOURCE_DIR}/src
+           ${RA8_REPO_ROOT}/libs/ra8_core/inc
+           ${RA8_REPO_ROOT}/libs/ra8_hal/inc
+           ${RA8_REPO_ROOT}/libs/ra8_nsc/inc
+           ${RA8_REPO_ROOT}/libs/ra8_board_ek_ra8d2/inc
+           ${RA8_REPO_ROOT}/libs/ra8_wdt_supervisor/inc
+  LINK_LIBS threadx_ns
 )
