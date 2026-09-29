@@ -296,3 +296,50 @@ test "a full ring drains completely and accepts a fresh round" {
         try std.testing.expect(ring.pop(&out) == null);
     }
 }
+
+test "ringEvent: an empty ring reports no event" {
+    try std.testing.expectEqual(implementation.event_none, implementation.ringEvent(0));
+}
+
+test "ringEvent: one queued frame reports rx_ready" {
+    try std.testing.expectEqual(implementation.event_rx_ready, implementation.ringEvent(1));
+}
+
+test "ringEvent: a full ring still reports the single rx_ready bit" {
+    try std.testing.expectEqual(
+        implementation.event_rx_ready,
+        implementation.ringEvent(implementation.ring_slots),
+    );
+}
+
+test "linkEdge: agreement in the down state raises nothing" {
+    try std.testing.expectEqual(implementation.event_none, implementation.linkEdge(.down, .down));
+}
+
+test "linkEdge: agreement in the up state raises nothing" {
+    try std.testing.expectEqual(implementation.event_none, implementation.linkEdge(.up, .up));
+}
+
+test "linkEdge: down to up is the link_up edge" {
+    try std.testing.expectEqual(implementation.event_link_up, implementation.linkEdge(.up, .down));
+}
+
+test "linkEdge: up to down is the link_down edge" {
+    try std.testing.expectEqual(implementation.event_link_down, implementation.linkEdge(.down, .up));
+}
+
+test "linkEdge: an edge is one bit, never both" {
+    const both = implementation.event_link_up | implementation.event_link_down;
+    try std.testing.expect(implementation.linkEdge(.up, .down) != both);
+    try std.testing.expect(implementation.linkEdge(.down, .up) != both);
+}
+
+test "the ring half and the controller half occupy different bits" {
+    const controller = implementation.translateEvent(0x0000_0002);
+    const ring = implementation.ringEvent(1);
+    try std.testing.expectEqual(@as(u32, 0), controller & ring);
+    try std.testing.expectEqual(
+        implementation.event_error | implementation.event_rx_ready,
+        controller | ring,
+    );
+}

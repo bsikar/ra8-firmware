@@ -2,9 +2,10 @@
 //! Copyright (c) 2026 Brighton Sikarskie
 //!
 //! Pure network-PAL core: the frame ring the stack pushes into and drains,
-//! the ra8_eth status -> PAL event translation, and the two argument
-//! predicates the send / receive contract is written in. No C ABI, no
-//! logging, and no hardware access, so every branch is host-testable.
+//! the three producers of the published event set (controller status, ring
+//! occupancy, PHY link edge), and the two argument predicates the send /
+//! receive contract is written in. No C ABI, no logging, and no hardware
+//! access, so every branch is host-testable.
 //!
 //! The ring is a fixed four-slot FIFO over caller-sized frames: no loop
 //! bound is dynamic, nothing is allocated and nothing recurses (NASA P10
@@ -48,15 +49,45 @@ pub const event_tx_done: u32 = 0x08;
 /// MAC reported a fault.
 pub const event_error: u32 = 0x10;
 
-/// Translate a raw `ra8_eth` status mask into PAL event bits.
+/// Translate a raw `ra8_eth` controller status mask into PAL event bits.
 ///
-/// The C's mapping is deliberately coarse: any status bit at all is an
-/// error event, a clear mask is no event. Later waves fan the bits out.
+/// Deliberately coarse, and it has to be: `ra8_eth` publishes the raw
+/// ESWM_STS word and this tree carries no bit taxonomy for that register
+/// (`r_eswm_regs_t` models STS as one opaque `uint32_t`), so a controller
+/// status bit can only be reported as a fault. The link and RX halves of
+/// the event set are therefore not derived here: `rx_ready` comes from the
+/// PAL's own ring in `ringEvent`, link edges from the PHY in `linkEdge`.
 pub fn translateEvent(eth_mask: u32) u32 {
     if (eth_mask != 0) {
         return event_error;
     }
     return event_none;
+}
+
+/// Report `rx_ready` when the ring holds at least one frame.
+///
+/// `event_rx_ready` is documented as "RX descriptor has data"; the PAL's
+/// descriptor equivalent is its own software ring, so a non-empty ring is
+/// exactly that condition and needs no register read to observe.
+pub fn ringEvent(count: u16) u32 {
+    if (count == 0) {
+        return event_none;
+    }
+    return event_rx_ready;
+}
+
+/// The link edge between what the PHY reports and what the PAL last held.
+///
+/// Agreement is no event, which is what keeps a poll that observes the
+/// state it already cached silent.
+pub fn linkEdge(observed: LinkState, cached: LinkState) u32 {
+    if (observed == cached) {
+        return event_none;
+    }
+    if (observed == .up) {
+        return event_link_up;
+    }
+    return event_link_down;
 }
 
 /// Whether a transmit length is inside the contract: non-zero, <= frame_max.

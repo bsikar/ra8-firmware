@@ -331,7 +331,18 @@ typedef enum : uint32_t {
  */
 
 /**
- * @brief Read the current link state.
+ * @brief Read the current link state, refreshing it from the PHY.
+ *
+ * @details
+ * Re-reads the PHY's BMSR link bit and, when it disagrees with the
+ * state the PAL last reported, updates the cached state and raises
+ * ``k_ra8_net_pal_event_link_up`` or ``k_ra8_net_pal_event_link_down``
+ * on the installed event handler. A stack that only polls link state
+ * therefore still sees the link half of ::ra8_net_pal_event_t.
+ *
+ * The PHY read needs the NIC open (``ra8_eth_open``); until then it
+ * fails and this call answers with the last state actually observed
+ * rather than guessing.
  *
  * @param[out] out_state Receives link up/down.
  *
@@ -342,8 +353,10 @@ typedef enum : uint32_t {
  *
  * @pre ``out_state`` is non-NULL.
  * @pre PAL has been initialized.
+ * @pre Poller context, not ISR context: the refresh walks MDIO.
  *
- * @post No PAL state is modified.
+ * @post The cached link state matches the PHY whenever it could be read.
+ * @post At most one link event has been raised on the handler.
  *
  * @note Thread safety: not thread-safe with respect to the event
  * handler which can update link state from ISR context.
@@ -362,7 +375,16 @@ typedef enum : uint32_t {
  * @details
  * Replaces any previously installed handler. The PAL relays
  * ra8_eth ISR events into this callback after translating them
- * into the PAL-level ``k_ra8_net_pal_event_*`` bit set.
+ * into the PAL-level ``k_ra8_net_pal_event_*`` bit set. Which bit
+ * comes from where:
+ *  - ``error``: any non-zero ``ra8_eth`` controller status word.
+ *    ESWM_STS has no per-bit taxonomy in this tree, so a fault is
+ *    as fine-grained as the controller half can be.
+ *  - ``rx_ready``: the PAL ring holds a frame at event time.
+ *  - ``tx_done``: one per frame accepted by ::ra8_net_pal_send_frame.
+ *  - ``link_up`` / ``link_down``: a PHY link edge observed by
+ *    ::ra8_net_pal_link_status, which is a poller rather than the
+ *    ISR path because BMSR lives behind MDIO.
  *
  * @param[in] fn Callback. Pass NULL to detach.
  * @param[in] ctx Context passed to the callback.
