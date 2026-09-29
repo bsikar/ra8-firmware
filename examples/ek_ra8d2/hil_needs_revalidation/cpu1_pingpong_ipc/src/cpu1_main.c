@@ -60,6 +60,26 @@ typedef enum : uint32_t {
 } cpu1_ipc_mask_t;
 
 /**
+ * @brief Address one register of one IPC channel window.
+ *
+ * @details The channel windows are `uintptr_t` NS aliases and the register
+ * offsets are a `uint8_t` map, so adding one to the other directly is
+ * arithmetic between two unrelated enumerations. Clang says so
+ * (`-Wenum-enum-conversion`) and is right to: nothing about the two types
+ * says they compose. This is the one place that composition is allowed to
+ * happen, and it names both operand types while doing it.
+ *
+ * @param[in] ch  Channel window base.
+ * @param[in] off Register offset within that window.
+ * @return Pointer to the addressed register.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static volatile uint32_t* internal_cpu1_ipc_reg(cpu1_ipc_addr_t ch, cpu1_ipc_off_t off)
+{
+  return (volatile uint32_t*)((uintptr_t)ch + (uintptr_t)off);
+}
+
+/**
  * @enum cpu1_sau_window_t
  * @brief Base and size of the four SAU regions this image programmes.
  * @details Sizes, not RLAR limit words: ::ra8_sau_configure derives
@@ -202,18 +222,18 @@ RA8_INTERNAL static void internal_cpu1_sau_init(void)
     const uint32_t sem                         = *(volatile uint32_t*)k_cpu1_ipcsem0_ns_addr;
     *(volatile uint32_t*)k_cpu1_probe_sem_addr = sem; /* IPCSEM0 read survived */
     /* Poll CH2 RX for ping. */
-    const uint32_t sta = *(volatile uint32_t*)(k_cpu1_ipc_ch2_addr + k_cpu1_ipc_off_sta);
+    const uint32_t sta = *internal_cpu1_ipc_reg(k_cpu1_ipc_ch2_addr, k_cpu1_ipc_off_sta);
     *(volatile uint32_t*)k_cpu1_probe_sta_addr = sta; /* STA read survived */
     if ((sta & (uint32_t)k_cpu1_ipc_sta_rdy) == 0U) {
       continue;
     }
-    const uint32_t got = *(volatile uint32_t*)(k_cpu1_ipc_ch2_addr + k_cpu1_ipc_off_rxd);
+    const uint32_t got = *internal_cpu1_ipc_reg(k_cpu1_ipc_ch2_addr, k_cpu1_ipc_off_rxd);
     *(volatile uint32_t*)k_cpu1_probe_rxd_addr = got; /* most recent rxd */
     if (got != (uint32_t)k_cpu1_pingpong_magic_ping) {
       continue;
     }
     /* Push pong onto CH0 TX. */
-    *(volatile uint32_t*)(k_cpu1_ipc_ch0_addr + k_cpu1_ipc_off_txd) =
+    *internal_cpu1_ipc_reg(k_cpu1_ipc_ch0_addr, k_cpu1_ipc_off_txd) =
       (uint32_t)k_cpu1_pingpong_magic_pong;
     *(volatile uint32_t*)k_cpu1_probe_pong_addr += 1U; /* pong sent counter */
   }

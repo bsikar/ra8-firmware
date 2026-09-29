@@ -136,6 +136,11 @@ function(ra8_add_test name src_file)
             ${FW_ROOT}/libs/ra8_mdl/inc
             ${FW_ROOT}/libs/ra8_net_policy/inc
             ${FW_ROOT}/libs/ra8_xml/inc
+            # ra8_path.h is the filesystem path contract under libs/if/inc.
+            # Seven target blocks below add this dir by hand; the tests built
+            # straight off this shared list, test_ra8_path among them, had no
+            # way to reach it.
+            ${FW_ROOT}/libs/if/inc
             ${FW_ROOT}/libs/ra8_touch_cal/inc
             ${FW_ROOT}/libs/ra8_epd_cal/inc
             ${FW_ROOT}/libs/ra8_mpu/inc
@@ -600,7 +605,6 @@ if(TARGET test_fw_if_fs)
             ${FW_ROOT}/apps/shared_libs/mdl/src/mdl_hash.c
             ${FW_ROOT}/apps/shared_libs/mdl/src/mdl_pathfs.c
             ${FW_ROOT}/apps/shared_libs/mdl/src/mdl_sanitize.c
-            ${FW_ROOT}/libs/if/src/ra8_path.c
             ${FW_ROOT}/apps/shared_libs/mdl/src/mdl_storage.c
   )
   target_include_directories(
@@ -706,7 +710,6 @@ if(TARGET test_mdl_library)
             ${FW_ROOT}/port/posix/src/fw_if_fs_posix_stream.c
             ${FW_ROOT}/apps/shared_libs/mdl/src/mdl_library.c
             ${FW_ROOT}/apps/shared_libs/mdl/src/mdl_sanitize.c
-            ${FW_ROOT}/libs/if/src/ra8_path.c
             ${FW_ROOT}/apps/shared_libs/mdl/src/mdl_state.c
             ${FW_ROOT}/apps/shared_libs/mdl/src/mdl_state_codec.c
             ${FW_ROOT}/libs/ra8_num/src/ra8_num_decimal.c
@@ -744,7 +747,6 @@ if(TARGET test_mdl_readers)
             ${FW_ROOT}/apps/shared_libs/mdl/src/mdl_verify_tarball.c
             ${FW_ROOT}/apps/shared_libs/mdl/src/mdl_verify_rabook.c
             ${FW_ROOT}/apps/shared_libs/mdl/src/mdl_sanitize.c
-            ${FW_ROOT}/libs/if/src/ra8_path.c
             ${FW_ROOT}/apps/shared_libs/mdl/src/mdl_storage.c
             ${FW_ROOT}/apps/shared_libs/mdl/src/mdl_hash.c
             ${FW_ROOT}/apps/shared_libs/mdl/src/mdl_politeness.c
@@ -822,7 +824,6 @@ if(TARGET test_mdl_export_parity)
             ${FW_ROOT}/apps/shared_libs/mdl/src/mdl_verify_rabook.c
             ${FW_ROOT}/apps/shared_libs/mdl/src/mdl_urlname.c
             ${FW_ROOT}/apps/shared_libs/mdl/src/mdl_sanitize.c
-            ${FW_ROOT}/libs/if/src/ra8_path.c
             ${FW_ROOT}/apps/shared_libs/mdl/src/mdl_storage.c
             ${FW_ROOT}/apps/shared_libs/mdl/src/mdl_hash.c
   )
