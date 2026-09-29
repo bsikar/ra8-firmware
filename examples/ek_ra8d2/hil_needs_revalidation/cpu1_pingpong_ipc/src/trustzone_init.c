@@ -39,6 +39,7 @@
 #include "ra8_dual_core.h"       // ra8-keep-include: `ra8_cpu1_release` used directly
 #include "ra8_err.h"             // ra8-keep-include: `ra8_err_t` used directly
 #include "ra8_log.h"             // ra8-keep-include: `ra8_log_error_val` used directly
+#include "ra8_register_protection.h" // ra8-keep-include: `RA8_PROTECTED_WRITE` used directly
 #include "ra8_tz_secure_boot.h"  // ra8-keep-include: `ra8_tz_secure_boot_jump_ns` used
 
 extern uint32_t g_ra8_ls_cpu1_mram_start;
@@ -143,22 +144,29 @@ volatile uint32_t g_cpu1_pingpong_ipc_cpu1_release_err = 0xFFFFFFFFU;
 RA8_INTERNAL static void internal_release_cpu1(void)
 {
   g_cpu1_pingpong_ipc_cpu1_release_err = 0xDEADBEEFUL;
-  *(volatile uint16_t*)0x4001E3FAUL    = (uint16_t)0xA512U; /* key | PRC1 | PRC4 */
 
-  /* Chip-level bus controller security attribution. With these at
-   * cold-reset defaults the M33's view of NS peripherals is gated by
-   * the chip's bus arbiter; the CPU1 SAU init in cpu1_main.c alone is
-   * not sufficient to reach IPCSAR-attributed channels. HUM Ch 9.2.4
-   * "CPSCU" + FSP R_BSP_SecurityInit. */
-  *(volatile uint32_t*)0x40008100UL = 0x00000001UL; /* BUSSARA  */
-  *(volatile uint32_t*)0x40008104UL = 0x00000001UL; /* BUSSARB  */
-  *(volatile uint32_t*)0x40008110UL = 0x00000001UL; /* BUSSARC  */
-  *(volatile uint32_t*)0x40008170UL = 0x00000000UL; /* CPUSAR   */
-  *(volatile uint32_t*)0x40008130UL = 0xFFFFFFFFUL; /* MMPUSARA */
-  *(volatile uint32_t*)0x40008134UL = 0xFFFFFFFFUL; /* MMPUSARB */
+  ra8_err_t rel_err = k_ra8_err_invalid_state;
 
-  const ra8_err_t rel_err = ra8_cpu1_release(&g_ra8_ls_cpu1_mram_start, &g_ra8_ls_cpu1_stack_top);
-  *(volatile uint16_t*)0x4001E3FAUL    = (uint16_t)0xA500U; /* relock all PRCs */
+  /* PRC1 gates the CPU1 control registers, PRC4 the CPSCU security
+   * attribution; both must be open across this whole sequence. The scope
+   * re-locks every group on exit. HUM Ch 13.2.1 "PRCR_S" p 521. */
+  RA8_PROTECTED_WRITE((uint16_t)k_ra8_prcr_unlock_lpm | (uint16_t)k_ra8_prcr_grp4_sar)
+  {
+    /* Chip-level bus controller security attribution. With these at
+     * cold-reset defaults the M33's view of NS peripherals is gated by
+     * the chip's bus arbiter; the CPU1 SAU init in cpu1_main.c alone is
+     * not sufficient to reach IPCSAR-attributed channels. HUM Ch 9.2.4
+     * "CPSCU" + FSP R_BSP_SecurityInit. */
+    *(volatile uint32_t*)0x40008100UL = 0x00000001UL; /* BUSSARA  */
+    *(volatile uint32_t*)0x40008104UL = 0x00000001UL; /* BUSSARB  */
+    *(volatile uint32_t*)0x40008110UL = 0x00000001UL; /* BUSSARC  */
+    *(volatile uint32_t*)0x40008170UL = 0x00000000UL; /* CPUSAR   */
+    *(volatile uint32_t*)0x40008130UL = 0xFFFFFFFFUL; /* MMPUSARA */
+    *(volatile uint32_t*)0x40008134UL = 0xFFFFFFFFUL; /* MMPUSARB */
+
+    rel_err = ra8_cpu1_release(&g_ra8_ls_cpu1_mram_start, &g_ra8_ls_cpu1_stack_top);
+  }
+
   g_cpu1_pingpong_ipc_cpu1_release_err = (uint32_t)rel_err;
 }
 #endif

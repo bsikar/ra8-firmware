@@ -46,6 +46,7 @@
 #include <stdint.h>
 
 #include "ra8_err.h"
+#include "ra8_register_protection.h"
 
 #ifdef RA8_TRUSTZONE_ENABLE
 
@@ -67,7 +68,6 @@ typedef enum : uintptr_t {
   k_tz_sau_rbar_addr   = 0xE000EDDCU, /**< SAU Region Base Address.         */
   k_tz_sau_rlar_addr   = 0xE000EDE0U, /**< SAU Region Limit Address.        */
   k_tz_sramsabar0_addr = 0x40008400U, /**< CPSCU SRAMSABAR0 (+4*n for n>0). */
-  k_tz_prcr_s_addr     = 0x4001E3FAU, /**< SYSC PRCR_S (16-bit).            */
 } tz_reg_addr_t;
 
 /**
@@ -83,17 +83,6 @@ typedef enum : uint32_t {
   k_tz_sau_limit_mask  = 0xFFFFFFE0U, /**< 32-byte-aligned limit mask.  */
   k_tz_sau_type_mask   = 0x000000FFU, /**< SAU_TYPE.SREGION field mask. */
 } tz_field_t;
-
-/**
- * @enum tz_prcr_t
- * @brief PRCR_S unlock/lock key values for the PRC4 (CPSCU) write gate.
- *
- * @invariant The top byte is the 0xA5 key; bit 4 is PRC4.
- */
-typedef enum : uint16_t {
-  k_tz_prcr_s_open  = 0xA510U, /**< Key | PRC4 set (unlock CPSCU writes). */
-  k_tz_prcr_s_close = 0xA500U, /**< Key | PRC4 clear (re-lock).           */
-} tz_prcr_t;
 
 /**
  * @enum tz_partition_t
@@ -204,21 +193,18 @@ static void tz_sau_set_ns_region(uint8_t region, uint32_t base, uint32_t limit)
  */
 static void tz_sram_ns_boundary(void)
 {
-  /* Open PRC4 so the CPSCU SRAMSABAR writes below land. */
-  /* HUM Ch 13.2.1 "PRCR_S" p 521 */
-  *(volatile uint16_t*)k_tz_prcr_s_addr = (uint16_t)k_tz_prcr_s_open;
-
-  /* HUM Ch 58.2 "SRAMSABARn : SRAM Security Attribute Boundary Address
-   * Register" p 3527 -- boundary = start address of the NS region; below =
-   * Secure, at/above = Non-secure. */
-  tz_write32(k_tz_sramsabar0_addr + (0U * sizeof(uint32_t)), (uint32_t)k_tz_sramsabar0_val);
-  tz_write32(k_tz_sramsabar0_addr + (1U * sizeof(uint32_t)), (uint32_t)k_tz_sramsabar1_val);
-  tz_write32(k_tz_sramsabar0_addr + (2U * sizeof(uint32_t)), (uint32_t)k_tz_sramsabar2_val);
-  tz_write32(k_tz_sramsabar0_addr + (3U * sizeof(uint32_t)), (uint32_t)k_tz_sramsabar3_val);
-
-  /* Re-lock PRC4 (restore CPSCU write-protect). */
-  /* HUM Ch 13.2.1 "PRCR_S" p 521 */
-  *(volatile uint16_t*)k_tz_prcr_s_addr = (uint16_t)k_tz_prcr_s_close;
+  /* PRC4 gates every CPSCU security-attribution write; the scope opens it
+   * and re-locks all groups on exit. HUM Ch 13.2.1 "PRCR_S" p 521. */
+  RA8_PROTECTED_WRITE(k_ra8_prcr_unlock_sar)
+  {
+    /* HUM Ch 58.2 "SRAMSABARn : SRAM Security Attribute Boundary Address
+     * Register" p 3527 -- boundary = start address of the NS region; below =
+     * Secure, at/above = Non-secure. */
+    tz_write32(k_tz_sramsabar0_addr + (0U * sizeof(uint32_t)), (uint32_t)k_tz_sramsabar0_val);
+    tz_write32(k_tz_sramsabar0_addr + (1U * sizeof(uint32_t)), (uint32_t)k_tz_sramsabar1_val);
+    tz_write32(k_tz_sramsabar0_addr + (2U * sizeof(uint32_t)), (uint32_t)k_tz_sramsabar2_val);
+    tz_write32(k_tz_sramsabar0_addr + (3U * sizeof(uint32_t)), (uint32_t)k_tz_sramsabar3_val);
+  }
 }
 
 /**
