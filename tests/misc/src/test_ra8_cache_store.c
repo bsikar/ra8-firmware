@@ -741,6 +741,63 @@ RA8_INTERNAL static void internal_test_corrupt_super_replays(void)
 }
 
 /**
+ * @test checkpoint_seq_replay_and_corrupt
+ * @brief The checkpoint counter continues across a replay mount and restarts
+ * from zero when the superblock cannot be parsed.
+ * @details Commits an entry and reopens without closing, then repeats with a
+ * bad-magic superblock planted over sector 0.
+ * @pre Persistent fake-NOR bytes survive an unclean control-block replacement.
+ * @pre The planted superblock defeats magic validation on the second mount.
+ * @post Replay resumes the counter at or above its value at crash time.
+ * @post An unparseable record starts the counter from zero, not from media.
+ * @note Zero is the honest answer there: nothing on media is worth continuing.
+ * @since 0.1.0
+ * @par MC/DC:
+ * (no compound decisions under test -- two linear crash/reopen sequences with
+ * ordering assertions on one counter)
+ */
+RA8_INTERNAL static void internal_test_checkpoint_seq_replay_and_corrupt(void)
+{
+  TEST_BEGIN("checkpoint seq replay and corrupt");
+  uint8_t a[k_cs_bytes_two_sector];
+  internal_fill(a, sizeof(a), k_cs_seed_checkpoint_a);
+
+  /* Unclean mount: the put marked the store dirty, which stamped a super. */
+  lx_nor_fake_ram_wipe();
+  ra8_cache_store_t     st  = {};
+  ra8_cache_store_cfg_t cfg = internal_cfg(internal_next_flash(), true);
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_cache_store_init(&st, &cfg));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_cache_store_put(&st, k_t_key_a, a, sizeof(a)));
+  const uint32_t at_crash = st.checkpoint_seq;
+  TEST_ASSERT(at_crash > 0U);
+
+  ra8_cache_store_t        st2  = {};
+  ra8_cache_store_cfg_t    cfg2 = internal_cfg(internal_next_flash(), false);
+  ra8_cache_store_reader_t rd   = {};
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_cache_store_init(&st2, &cfg2));
+  TEST_ASSERT(st2.checkpoint_seq >= at_crash);
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_cache_store_get(&st2, k_t_key_a, &rd));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_cache_store_close(&st2));
+
+  /* Unparseable super: nothing on media is worth continuing, so start over. */
+  lx_nor_fake_ram_wipe();
+  ra8_cache_store_t     st3  = {};
+  ra8_cache_store_cfg_t cfg3 = internal_cfg(internal_next_flash(), true);
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_cache_store_init(&st3, &cfg3));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_cache_store_put(&st3, k_t_key_a, a, sizeof(a)));
+  TEST_ASSERT(st3.checkpoint_seq > 0U);
+  internal_plant_super(&st3, k_cs_super_magic_corrupt, true);
+
+  ra8_cache_store_t     st4  = {};
+  ra8_cache_store_cfg_t cfg4 = internal_cfg(internal_next_flash(), false);
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_cache_store_init(&st4, &cfg4));
+  TEST_ASSERT_EQ(0U, st4.checkpoint_seq);
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_cache_store_get(&st4, k_t_key_a, &rd));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_cache_store_close(&st4));
+  TEST_END("checkpoint seq replay and corrupt");
+}
+
+/**
  * @brief Plant a hand-built entry header at @p at_sector of an open store.
  * @details Encodes caller-selected start, count, and CRC fields into one log
  * sector so replay validation can reject each malformed shape independently.
@@ -910,6 +967,7 @@ int main(void)
   internal_test_pin_blocks_evict();
   internal_test_recovery_clean();
   internal_test_checkpoint_seq_monotonic();
+  internal_test_checkpoint_seq_replay_and_corrupt();
   internal_test_recovery_crash_replay();
   internal_test_helper_guards();
   internal_test_init_validation();
