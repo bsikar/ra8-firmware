@@ -64,6 +64,7 @@
 #include "ra8_pin_validator.h"
 #include "ra8_port_constants.h"
 #include "ra8_port_utils.h"
+#include "ra8_register_protection.h"
 #include "ra8_tz_secure_boot.h"
 
 /* Bounds of the NSC veneer stubs (.gnu.sgstubs) in this (Secure) image. */
@@ -109,7 +110,6 @@ typedef enum : uintptr_t {
   k_tz_sau_rbar_addr   = 0xE000EDDCU, /**< SAU Region Base Address.           */
   k_tz_sau_rlar_addr   = 0xE000EDE0U, /**< SAU Region Limit Address.          */
   k_tz_sramsabar0_addr = 0x40008400U, /**< CPSCU SRAMSABAR0 (+4*n for n>0).   */
-  k_tz_prcr_s_addr     = 0x4001E3FAU, /**< SYSC PRCR_S (16-bit).              */
   k_tz_psarb_addr      = 0x40204004U, /**< PSCU PSARB (peripheral S/NS attr). */
 } tz_reg_addr_t;
 
@@ -203,17 +203,6 @@ volatile uint32_t g_tz_usb_expander_err;
  * @since 0.1.0
  */
 volatile uint32_t g_tz_jump_ns_err;
-
-/**
- * @enum tz_prcr_t
- * @brief PRCR_S unlock/lock key values for the PRC4 (CPSCU) write gate.
- *
- * @invariant The top byte is the 0xA5 key; bit 4 is PRC4.
- */
-typedef enum : uint16_t {
-  k_tz_prcr_s_open  = 0xA510U, /**< Key | PRC4 set (unlock CPSCU writes). */
-  k_tz_prcr_s_close = 0xA500U, /**< Key | PRC4 clear (re-lock).           */
-} tz_prcr_t;
 
 /**
  * @enum tz_partition_t
@@ -329,21 +318,18 @@ static void tz_sau_set_region(uint8_t region, uint32_t base, uint32_t limit, boo
  */
 static void tz_sram_ns_boundary(void)
 {
-  /* Open PRC4 so the CPSCU SRAMSABAR writes below land. */
-  /* HUM Ch 13.2.1 "PRCR_S" p 521 */
-  *(volatile uint16_t*)k_tz_prcr_s_addr = (uint16_t)k_tz_prcr_s_open;
-
-  /* HUM Ch 58.2 "SRAMSABARn : SRAM Security Attribute Boundary Address
-   * Register" p 3527 -- boundary = start address of the NS region; below
-   * = Secure, at/above = Non-secure. */
-  tz_write32(k_tz_sramsabar0_addr + (0U * sizeof(uint32_t)), (uint32_t)k_tz_sramsabar0_val);
-  tz_write32(k_tz_sramsabar0_addr + (1U * sizeof(uint32_t)), (uint32_t)k_tz_sramsabar1_val);
-  tz_write32(k_tz_sramsabar0_addr + (2U * sizeof(uint32_t)), (uint32_t)k_tz_sramsabar2_val);
-  tz_write32(k_tz_sramsabar0_addr + (3U * sizeof(uint32_t)), (uint32_t)k_tz_sramsabar3_val);
-
-  /* Re-lock PRC4 (restore CPSCU write-protect). */
-  /* HUM Ch 13.2.1 "PRCR_S" p 521 */
-  *(volatile uint16_t*)k_tz_prcr_s_addr = (uint16_t)k_tz_prcr_s_close;
+  /* PRC4 gates every CPSCU security-attribution write; the scope opens it
+   * and re-locks all groups on exit. HUM Ch 13.2.1 "PRCR_S" p 521. */
+  RA8_PROTECTED_WRITE(k_ra8_prcr_unlock_sar)
+  {
+    /* HUM Ch 58.2 "SRAMSABARn : SRAM Security Attribute Boundary Address
+     * Register" p 3527 -- boundary = start address of the NS region; below
+     * = Secure, at/above = Non-secure. */
+    tz_write32(k_tz_sramsabar0_addr + (0U * sizeof(uint32_t)), (uint32_t)k_tz_sramsabar0_val);
+    tz_write32(k_tz_sramsabar0_addr + (1U * sizeof(uint32_t)), (uint32_t)k_tz_sramsabar1_val);
+    tz_write32(k_tz_sramsabar0_addr + (2U * sizeof(uint32_t)), (uint32_t)k_tz_sramsabar2_val);
+    tz_write32(k_tz_sramsabar0_addr + (3U * sizeof(uint32_t)), (uint32_t)k_tz_sramsabar3_val);
+  }
 }
 
 /**
@@ -524,20 +510,21 @@ static void tz_usb_mark_ns(void)
    * registers" p 521), so the gate must be open across the write; HUM "Security
    * or Privilege Bit Write Timing" p 3301 then requires reading back until the
    * value matches. */
-  /* HUM Ch 13.2.1 "PRCR_S" p 521 -- open PRC4. */
-  *(volatile uint16_t*)k_tz_prcr_s_addr = (uint16_t)k_tz_prcr_s_open;
-  const uint32_t want                   = tz_read32(k_tz_psarb_addr) | (uint32_t)k_tz_psarb_usb_ns;
-  tz_write32(k_tz_psarb_addr, want);
   uint32_t seen = 0U;
-  for (uint32_t spin = 0U; spin < (uint32_t)k_tz_psarb_readback_spins; spin += 1U) {
-    seen = tz_read32(k_tz_psarb_addr);
-    if (seen == want) {
-      break;
+  /* PRC4 gates the PSARx write as well; same scope, same re-lock on exit.
+   * HUM Ch 13.2.1 "PRCR_S" p 521. */
+  RA8_PROTECTED_WRITE(k_ra8_prcr_unlock_sar)
+  {
+    const uint32_t want = tz_read32(k_tz_psarb_addr) | (uint32_t)k_tz_psarb_usb_ns;
+    tz_write32(k_tz_psarb_addr, want);
+    for (uint32_t spin = 0U; spin < (uint32_t)k_tz_psarb_readback_spins; spin += 1U) {
+      seen = tz_read32(k_tz_psarb_addr);
+      if (seen == want) {
+        break;
+      }
     }
   }
-  /* HUM Ch 13.2.1 "PRCR_S" p 521 -- re-lock PRC4. */
-  *(volatile uint16_t*)k_tz_prcr_s_addr = (uint16_t)k_tz_prcr_s_close;
-  g_tz_usb_psarb_readback               = seen;
+  g_tz_usb_psarb_readback = seen;
 }
 
 /**
