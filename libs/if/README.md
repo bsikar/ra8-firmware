@@ -57,7 +57,7 @@ symbol: ra8_io_vfs_rename
 symbol: ra8_fs_format
 symbol: ra8_fs_open
 users: ra8_fs = 40
-users: ra8_io = 30
+users: ra8_io = 31
 users: fw_if_fs = 1
 users: if_ra8_vfs = 1
 files: libs/if/src/*.c = 3

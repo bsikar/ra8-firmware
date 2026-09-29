@@ -79,8 +79,8 @@ symbol: ra8_fs_check
 symbol: ra8_fs_set_lock
 symbol: ra8_io_vfs_open
 symbol: ra8_io_blockdev_as_fs_backend
-users: ra8_fs = 32
-users: ra8_io = 22
+users: ra8_fs = 40
+users: ra8_io = 31
 files: libs/ra8_fs/src/*.c = 32
 files: tests/storage/src/test_ra8_fs*.c = 67
 -->
