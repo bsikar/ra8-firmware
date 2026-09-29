@@ -11,8 +11,9 @@
 //! The panel is a caller-supplied seam: every operation dispatches through the
 //! `display_backend_iface` rows a backend exported by address, so this
 //! translation unit names no controller and links against no driver, exactly
-//! as the C did. The LCD/GLCDC and IT8951 e-ink backends stay C on this
-//! branch and bind here at run time through `display_cfg_t.iface`.
+//! as the C did. The GLCDC/LCD backend is Zig in the same archive and is
+//! reached through `lcd_backend` below; the IT8951 e-ink backend is still C on
+//! this branch. Both bind here at run time through `display_cfg_t.iface`.
 
 const std = @import("std");
 const implementation = @import("internal/root.zig");
@@ -214,6 +215,11 @@ pub export fn display_policy_full_rect(w: u16, h: u16, out: ?*Rect) callconv(.c)
     destination.* = .{ .x = 0, .y = 0, .w = w, .h = h };
     return implementation.err_ok;
 }
+
+/// The GLCDC/LCD backend, imported so its vtable and typed bind land in the
+/// same archive as the dispatcher. Nothing here calls into it: a caller still
+/// binds it by address through `display_cfg_t.iface`.
+pub const lcd_backend = @import("ra8_display_pal_lcd_abi.zig");
 
 /// Test-only reset of the module-static state, so the ABI suite can drive the
 /// init/deinit lifecycle more than once in one process. Not exported.
