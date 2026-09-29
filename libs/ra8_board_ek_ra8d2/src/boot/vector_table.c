@@ -68,6 +68,26 @@ extern uint32_t g_ra8_ls_ebss;      /**< End of .bss in SRAM.               */
 [[gnu::weak]] extern uint32_t g_ra8_ls_esram_text;     /**< End of .sram_text in SRAM.   */
 [[gnu::weak]] extern uint32_t g_ra8_ls_sram_text_load; /**< Source of .sram_text in MRAM.*/
 
+#ifdef RA8_ENABLE_ROOT_OF_TRUST
+/* Root-of-Trust anti-rollback reads the counter word out of extra MRAM, and on
+ * a blank part that read faults ON PURPOSE. ra8_dfu recovers it by advancing
+ * the stacked PC, but only if the app's HardFault/BusFault handler routes
+ * there first -- see libs/ra8_dfu/src/ra8_dfu_antirollback.c. Without the
+ * route the deliberate probe fault becomes a real crash at boot.
+ *
+ * Declared here rather than by including ra8_dfu_antirollback.h: the board
+ * layer must not take an include-path dependency on libs/ra8_dfu. Weak, so a
+ * Root-of-Trust app that does not link ra8_dfu still links and the null check
+ * below skips the call. */
+[[gnu::weak]] extern bool ra8_rot_antirollback_on_probe_fault(uint32_t* exc_frame);
+
+/** @brief Branch target for the faults the anti-rollback probe can raise. */
+#define RA8_BOOT_FAULT_TARGET "ra8_boot_fault_dispatch"
+#else
+/** @brief Branch target for the faults the anti-rollback probe can raise. */
+#define RA8_BOOT_FAULT_TARGET "ra8_exception_report"
+#endif
+
 /* =============================================================================
  * Handler declarations
  * =============================================================================
@@ -536,6 +556,23 @@ typedef enum : uint32_t {
  * @note Runs in fault context and is not thread-callable.
  * @since 0.1.0
  */
+#ifdef RA8_ENABLE_ROOT_OF_TRUST
+/**
+ * @brief Give the anti-rollback counter probe a chance to recover, then report.
+ * @details Returns normally (exception return) only when ra8_dfu recognised the
+ *          fault as its own deliberate probe read. Everything else is a real
+ *          fault and tail-calls ra8_exception_report() exactly as before.
+ */
+[[gnu::used]] static void ra8_boot_fault_dispatch(uint32_t* frame, uint32_t exc_number)
+{
+  if (ra8_rot_antirollback_on_probe_fault != nullptr &&
+      ra8_rot_antirollback_on_probe_fault(frame)) {
+    return; /* recovered the anti-rollback counter probe -> exception return */
+  }
+  ra8_exception_report((const ra8_exception_frame_t*)frame, exc_number);
+}
+#endif
+
 [[gnu::naked, noreturn]] void HardFault_Handler(void)
 {
   __asm__ volatile("tst lr, #4          \n"
@@ -543,7 +580,7 @@ typedef enum : uint32_t {
                    "mrseq r0, msp       \n"
                    "mrsne r0, psp       \n"
                    "mov   r1, #3        \n"
-                   "b     ra8_exception_report\n");
+                   "b     " RA8_BOOT_FAULT_TARGET "\n");
 }
 
 /**
@@ -587,7 +624,7 @@ typedef enum : uint32_t {
                    "mrseq r0, msp       \n"
                    "mrsne r0, psp       \n"
                    "mov   r1, #5        \n"
-                   "b     ra8_exception_report\n");
+                   "b     " RA8_BOOT_FAULT_TARGET "\n");
 }
 
 /**
