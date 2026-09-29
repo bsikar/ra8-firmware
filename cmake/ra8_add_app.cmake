@@ -93,6 +93,7 @@ set(_RA8_ADD_APP_DIR "${CMAKE_CURRENT_LIST_DIR}")
 # ra8_add_app() calls, so the expanded result is the code that was inline.
 include(${_RA8_ADD_APP_DIR}/ra8_app/sources.cmake)
 include(${_RA8_ADD_APP_DIR}/ra8_app/vendored.cmake)
+include(${_RA8_ADD_APP_DIR}/ra8_add_ns_image.cmake)
 
 # Declare one cross-compiled example application.
 #
