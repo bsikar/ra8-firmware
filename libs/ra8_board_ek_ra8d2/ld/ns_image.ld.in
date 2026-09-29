@@ -1,6 +1,15 @@
 /*
- * GNU ld linker script for a NON-SECURE image on the EK-RA8D2 board:
- * the SRAM-run layout, shared by every dual-image TrustZone app on this board.
+ * GNU ld linker script TEMPLATE for a NON-SECURE image on the EK-RA8D2 board.
+ *
+ * ra8_add_ns_image() configures this into the build tree, once per NS target,
+ * choosing the read-only home from the XIP option. Until #759 this existed as
+ * two hand-maintained forks -- a shared SRAM-run script and ereader's XIP
+ * variant -- that shared 78 of ~130 lines and drifted on symbol names, so
+ * ns_main.c needed #ifdef RA8_EREADER_NS_XIP just to name what the two scripts
+ * called different things. The section list was never the difference. The
+ * difference is one axis: where .text lives.
+ *
+ * @RA8_NS_MODE_DOC@
  *
  * This is the Non-Secure half of a two-project TrustZone build: it is linked
  * SEPARATELY from the Secure ELF so it gets its own private copies of libc,
@@ -10,12 +19,7 @@
  * side's SG veneers, linked in via --in-implib); an app that makes no such
  * calls simply links without one.
  *
- * Run-time VMA: SRAM2 Non-secure alias 0x3210_0000. Load LMA: Secure MRAM
- * 0x0208_0000 (the Secure boot copies LMA->VMA after SRAMSABAR2 marks SRAM2
- * Non-secure, then BLXNS-es to the reset vector).
- *
- * Apps select this with -T; the OSPI execute-in-place variant is a separate
- * script because its memory map differs, not its section list.
+ * Generated file -- edit ns_image.ld.in, not the copy in the build tree.
  *
  * Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -25,28 +29,28 @@ ENTRY(ns_reset_handler)
 
 MEMORY
 {
-    /* Load home in Secure MRAM (flasher writes physical MRAM here). */
-    NS_LOAD (rx)     : ORIGIN = 0x02080000, LENGTH = 256K
-    /* Run-time home: SRAM2 via the bit[28] Non-secure alias. */
-    NS_SRAM_RUN (rwx): ORIGIN = 0x32100000, LENGTH = 512K
+    /* @RA8_NS_ROM_COMMENT@ */
+    @RA8_NS_ROM_NAME@ (rx)    : ORIGIN = @RA8_NS_ROM_ORIGIN@, LENGTH = @RA8_NS_ROM_LENGTH@
+    /* Writable run-time home: SRAM2 via the bit[28] Non-secure alias. */
+    NS_SRAM_RUN (rwx) : ORIGIN = @RA8_NS_SRAM_ORIGIN@, LENGTH = @RA8_NS_SRAM_LENGTH@
 }
 
-/* NS main stack tops out at the top of NS_SRAM_RUN (0x3218_0000). Slot 0 of
- * the NS vector table holds this; the Secure boot loads it into MSP_NS. */
+/* NS main stack tops out at the top of NS_SRAM_RUN. Slot 0 of the NS vector
+ * table holds this; the Secure boot loads it into MSP_NS. */
 g_ra8_ls_ns_stack_top = ORIGIN(NS_SRAM_RUN) + LENGTH(NS_SRAM_RUN);
 
-/* The Secure boot copies a fixed window from NS_LOAD; the ThreadX port wants
- * the NS vector-table base + a free-RAM sentinel. */
-g_ra8_vector_table_start = ORIGIN(NS_SRAM_RUN);
+/* The NS vector-table base. ns_reset_handler points VTOR_NS here; the ThreadX
+ * port also wants it plus a free-RAM sentinel. */
+g_ra8_vector_table_start = ORIGIN(@RA8_NS_VECTOR_REGION@);
 
 SECTIONS
 {
-    .ns_vectors ORIGIN(NS_SRAM_RUN) : ALIGN(8)
+    .ns_vectors ORIGIN(@RA8_NS_VECTOR_REGION@) : ALIGN(8)
     {
         g_ra8_ls_ns_run_start = .;
         KEEP(*(.ns_vectors))
         KEEP(*(.ns_vectors.*))
-    } > NS_SRAM_RUN AT > NS_LOAD
+    } @RA8_NS_TEXT_PLACE@
 
     /* Root-of-trust header: the 8-byte {magic, body_len} record the Secure
      * verifier reads at ns_base + 0x40 (immediately after the 16-slot vector
@@ -58,8 +62,7 @@ SECTIONS
      * libs/ra8_tz_secure_boot/ns/ra8_ns_rot_header.c, so its magic comes from
      * k_ra8_tz_ns_rot_header_magic and its layout from ra8_ns_rot_header_t
      * rather than from LONG() words hand-copied into each script. Only the
-     * length is the linker's to know, and it is published below as
-     * g_ra8_ls_ns_signed_body_len.
+     * length is the linker's to know, published below.
      *
      * Emitted unconditionally so every NS image on this board has one layout:
      * an app whose Secure side does not verify simply never reads these 8
@@ -68,7 +71,7 @@ SECTIONS
     {
         g_ra8_ls_ns_rot_header = .;
         KEEP(*(.ns_rot_header))
-    } > NS_SRAM_RUN AT > NS_LOAD
+    } @RA8_NS_TEXT_PLACE@
 
     .text : ALIGN(8)
     {
@@ -76,7 +79,7 @@ SECTIONS
         *(.ns_text.*)
         *(.text .text.* .glue_7 .glue_7t)
         *(.gnu.linkonce.t.*)
-    } > NS_SRAM_RUN AT > NS_LOAD
+    } @RA8_NS_TEXT_PLACE@
 
     .rodata : ALIGN(8)
     {
@@ -84,23 +87,32 @@ SECTIONS
         *(.ns_rodata.*)
         *(.rodata .rodata.*)
         *(.gnu.linkonce.r.*)
-    } > NS_SRAM_RUN AT > NS_LOAD
+    } @RA8_NS_TEXT_PLACE@
 
     .ARM.exidx : ALIGN(4)
     {
         *(.ARM.exidx* .gnu.linkonce.armexidx.*)
-    } > NS_SRAM_RUN AT > NS_LOAD
+    } @RA8_NS_TEXT_PLACE@
 
+    /* Writable initialised data: VMA always in SRAM2, LMA in the read-only
+     * home. Under XIP the NS reset handler copies it in; under the SRAM-run
+     * layout the Secure boot's window copy has already placed it. */
     .data : ALIGN(8)
     {
+        g_ra8_ls_ns_data_start = .;
         *(.ns_data)
         *(.ns_data.*)
         *(.data .data.*)
         *(.gnu.linkonce.d.*)
-        g_ra8_ls_ns_run_end = .;
-    } > NS_SRAM_RUN AT > NS_LOAD
+        g_ra8_ls_ns_data_end = .;
+    } @RA8_NS_DATA_PLACE@
 
-    /* LMA bounds of the loaded NS image (in MRAM) for the Secure copy. */
+    /* LMA of .data -- the copy source for the XIP reset handler. */
+    g_ra8_ls_ns_data_load_start = LOADADDR(.data);
+
+    /* LMA bounds of the loaded NS image, for the Secure copy and for signing.
+     * Under XIP the load home IS the run home for everything but .data, so
+     * these are the same two numbers expressed the same way. */
     g_ra8_ls_ns_load_start = LOADADDR(.ns_vectors);
     g_ra8_ls_ns_load_end   = LOADADDR(.data) + SIZEOF(.data);
 
@@ -108,10 +120,11 @@ SECTIONS
      * here, at ns_base + body_len. */
     g_ra8_ls_ns_signed_body_end = g_ra8_ls_ns_load_end;
 
-    /* body_len for .ns_rot_header, as an ABSOLUTE symbol whose VALUE is the byte
-     * count: the whole loaded image, vectors..data. ra8_ns_rot_header.c takes
-     * this symbol's address as the number, which is why it is never a location
-     * to read from. */
+    /* body_len for .ns_rot_header, as an ABSOLUTE symbol whose VALUE is the
+     * byte count: the whole loaded image, vectors..data. ra8_ns_rot_header.c
+     * takes this symbol's address as the number, which is why it is never a
+     * location to read from. One formula for both layouts -- under XIP the
+     * load start IS the region origin, so the subtraction is the same. */
     g_ra8_ls_ns_signed_body_len = g_ra8_ls_ns_load_end - g_ra8_ls_ns_load_start;
 
     .bss (NOLOAD) : ALIGN(8)
@@ -134,8 +147,8 @@ SECTIONS
     }
 }
 
-ASSERT(g_ra8_ls_ns_load_end <= ORIGIN(NS_LOAD) + LENGTH(NS_LOAD),
-       "FATAL: NS image overflows NS_LOAD (MRAM)")
+ASSERT(g_ra8_ls_ns_load_end <= ORIGIN(@RA8_NS_ROM_NAME@) + LENGTH(@RA8_NS_ROM_NAME@),
+       "FATAL: NS image overflows @RA8_NS_ROM_NAME@")
 ASSERT(g_ra8_threadx_unused_memory_start <= ORIGIN(NS_SRAM_RUN) + LENGTH(NS_SRAM_RUN),
        "FATAL: NS image overflows NS_SRAM_RUN (SRAM2)")
 /* The RoT header MUST land at ns_base + 0x40 (== k_ra8_tz_ns_rot_header_offset):

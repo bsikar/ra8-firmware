@@ -42,8 +42,9 @@
  * @brief Linker-defined: signed body length in bytes, carried as an address.
  *
  * @details
- * Defined by the NS linker script (``ns_image_sram.ld`` for the SRAM-run
- * layout, ``ns_image_xip.ld`` for execute-in-place) as an absolute symbol whose
+ * Defined by the NS linker script (generated from ``ns_image.ld.in``, one
+ * template for both the SRAM-run and execute-in-place layouts) as an
+ * absolute symbol whose
  * VALUE is the byte count, so the object taken here is the length itself and
  * never something to dereference. Declared as an incomplete array so no size is
  * implied and no load is ever emitted.

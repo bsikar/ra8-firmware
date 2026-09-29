@@ -28,7 +28,7 @@
 #   ra8_add_ns_image(
 #     SECURE_TARGET ra8d2-ereader.elf
 #     NAME          ra8d2-ereader_ns
-#     LINKER        ${RA8_REPO_ROOT}/libs/ra8_board_ek_ra8d2/ld/ns_image_sram.ld
+#     [XIP]                        # run NS text from OSPI instead of SRAM
 #     STACK_BYTES   2200
 #     SOURCES       src/ns_main.c ...
 #     INCLUDES      ...
@@ -37,18 +37,75 @@
 #     MERGED_HEX    ra8d2-ereader.hex
 #   )
 #
-# An app that needs a layout this does not express keeps writing it by hand;
-# the point is that doing so becomes a deliberate act with a reason.
+# The linker script is generated from the board template rather than named by
+# the caller: ns_image.ld.in, with the read-only home chosen by XIP (#759
+# item 2). LINKER is still accepted and overrides the generated script, for an
+# app whose layout the template does not express -- the point is that doing so
+# becomes a deliberate act with a reason.
 
 include_guard(GLOBAL)
 
+# ra8_ns_linker_script(<out-var> NAME <target-name> [XIP])
+#
+# Configures the board's NS linker-script template into the build tree and sets
+# <out-var> to the generated path. The two layouts differ on one axis -- where
+# .text lives -- so that axis is the substitution and the section list is shared
+# rather than forked (#759 item 2).
+#
+# A separate function because secure_boot_ns_hil links its NS image by hand (it
+# has no CMSE veneers to hand over, so ra8_add_ns_image() does not fit) and must
+# still get the same script rather than a third fork.
+function(ra8_ns_linker_script _out)
+  cmake_parse_arguments(_LD "XIP" "NAME" "" ${ARGN})
+  if(NOT _LD_NAME)
+    message(FATAL_ERROR "ra8_ns_linker_script(): NAME is required")
+  endif()
+
+  set(_ns_ld_dir ${RA8_REPO_ROOT}/libs/ra8_board_ek_ra8d2/ld)
+  include(${_ns_ld_dir}/ns_memory_map.cmake)
+
+  if(_LD_XIP)
+    set(RA8_NS_ROM_NAME NS_XIP)
+    set(RA8_NS_ROM_ORIGIN ${RA8_NS_OSPI_ORIGIN})
+    set(RA8_NS_ROM_LENGTH ${RA8_NS_OSPI_LENGTH})
+    set(RA8_NS_ROM_COMMENT
+        "Execute-in-place home: OSPI flash Non-secure alias (bit[28] = 1)."
+    )
+    set(RA8_NS_VECTOR_REGION NS_XIP)
+    # VMA == LMA: the M85 fetches NS instructions straight from flash.
+    set(RA8_NS_TEXT_PLACE "> NS_XIP")
+    set(RA8_NS_DATA_PLACE "> NS_SRAM_RUN AT > NS_XIP")
+    set(RA8_NS_MODE_DOC
+        "This target runs EXECUTE-IN-PLACE: .ns_vectors/.text/.rodata/.ARM.exidx live in OSPI at VMA == LMA, and ns_reset_handler copies only .data into SRAM. The Secure boot arms XIP and BLXNS-es; it does not copy the image."
+    )
+  else()
+    set(RA8_NS_ROM_NAME NS_LOAD)
+    set(RA8_NS_ROM_ORIGIN ${RA8_NS_MRAM_ORIGIN})
+    set(RA8_NS_ROM_LENGTH ${RA8_NS_MRAM_LENGTH})
+    set(RA8_NS_ROM_COMMENT
+        "Load home in Secure MRAM (flasher writes physical MRAM here)."
+    )
+    set(RA8_NS_VECTOR_REGION NS_SRAM_RUN)
+    # VMA in SRAM2, LMA in MRAM: the Secure boot copies LMA->VMA before BLXNS.
+    set(RA8_NS_TEXT_PLACE "> NS_SRAM_RUN AT > NS_LOAD")
+    set(RA8_NS_DATA_PLACE "> NS_SRAM_RUN AT > NS_LOAD")
+    set(RA8_NS_MODE_DOC
+        "This target runs from SRAM: the Secure boot copies the whole NS image MRAM->SRAM2 (Non-secure alias) after SRAMSABAR2 marks SRAM2 Non-secure, then BLXNS-es to the reset vector."
+    )
+  endif()
+
+  set(_script ${CMAKE_CURRENT_BINARY_DIR}/${_LD_NAME}_ns_image.ld)
+  configure_file(${_ns_ld_dir}/ns_image.ld.in ${_script} @ONLY)
+  set(${_out} ${_script} PARENT_SCOPE)
+endfunction()
+
 function(ra8_add_ns_image)
-  set(_opts)
+  set(_opts XIP)
   set(_one SECURE_TARGET NAME LINKER STACK_BYTES MERGED_HEX IMPLIB)
   set(_multi SOURCES INCLUDES DEFINES LINK_LIBS COMPILE_OPTIONS LINK_OPTIONS)
   cmake_parse_arguments(_NS "${_opts}" "${_one}" "${_multi}" ${ARGN})
 
-  foreach(_req SECURE_TARGET NAME LINKER SOURCES)
+  foreach(_req SECURE_TARGET NAME SOURCES)
     if(NOT _NS_${_req})
       message(FATAL_ERROR "ra8_add_ns_image(): ${_req} is required")
     endif()
@@ -60,7 +117,7 @@ function(ra8_add_ns_image)
         "yet. Call ra8_add_app() for the Secure image first."
     )
   endif()
-  if(NOT EXISTS "${_NS_LINKER}")
+  if(_NS_LINKER AND NOT EXISTS "${_NS_LINKER}")
     message(FATAL_ERROR "ra8_add_ns_image(): LINKER ${_NS_LINKER} does not exist")
   endif()
 
@@ -86,6 +143,15 @@ function(ra8_add_ns_image)
     BYPRODUCTS ${_NS_IMPLIB}
     COMMENT "CMSE import library: ${_NS_IMPLIB}"
   )
+
+  # ---- Linker script ------------------------------------------------------
+  if(NOT _NS_LINKER)
+    if(_NS_XIP)
+      ra8_ns_linker_script(_NS_LINKER NAME ${_NS_NAME} XIP)
+    else()
+      ra8_ns_linker_script(_NS_LINKER NAME ${_NS_NAME})
+    endif()
+  endif()
 
   # ---- Non-Secure image ---------------------------------------------------
   # Every NS image carries the RoT header the Secure verifier looks for at
