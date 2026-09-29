@@ -236,9 +236,46 @@ ra8_err_t ra8_camera_source_ceu_get_last_events(const ra8_camera_source_ceu_stat
   return k_ra8_ok;
 }
 
+/**
+ * @brief Release the CEU claim taken at init and mark the backend closed.
+ * @details Returns the peripheral through `ra8_ceu_deinit`, the Idle to Closed
+ * edge of the CEU state table, so a later `ra8_camera_source_ceu_init` starts
+ * from Closed exactly as a cold boot does. Backend state is cleared only when
+ * the HAL confirms the release, so a refused deinit leaves a still-valid
+ * source rather than a handle pointing at a peripheral nobody owns.
+ * @param[in,out] ctx Bound CEU backend state.
+ * @return Error code.
+ * @retval k_ra8_ok CEU released and backend state cleared.
+ * @retval k_ra8_err_not_initialized Backend state is absent or uninitialized.
+ * @retval other Propagated from `ra8_ceu_deinit`.
+ * @pre No capture is in flight.
+ * @pre @p ctx was bound by `ra8_camera_source_ceu_init`.
+ * @post On success the CEU is closed and @p ctx is zeroed.
+ * @post On failure the CEU claim and @p ctx are both left intact.
+ * @note Not thread-safe with respect to the CEU or @p ctx.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static ra8_err_t internal_ceu_stop(void* ctx)
+{
+  ra8_camera_source_ceu_state_t* state = (ra8_camera_source_ceu_state_t*)ctx;
+  if (state == nullptr) {
+    return k_ra8_err_not_initialized;
+  }
+  if (!state->initialized) {
+    return k_ra8_err_not_initialized;
+  }
+  const ra8_err_t err = ra8_ceu_deinit();
+  if (err != k_ra8_ok) {
+    return err;
+  }
+  *state = (ra8_camera_source_ceu_state_t){};
+  return k_ra8_ok;
+}
+
 static const ra8_camera_source_iface_t s_ceu_source_iface = {
   .get_info = internal_ceu_get_info,
   .capture  = internal_ceu_capture,
+  .stop     = internal_ceu_stop,
 };
 
 /**

@@ -209,6 +209,34 @@ typedef struct {
                                                   ra8_camera_frame_t*        out_frame);
 
 /**
+ * @brief Release a bound source and unbind the handle.
+ *
+ * @details The mirror of ::ra8_audio_source_stop. A capture backend holds a
+ *          hardware claim from its `_init()` onward, so an application that
+ *          finishes capturing has no way to give the peripheral back short of
+ *          reaching past this facade into the HAL. This releases the backend's
+ *          claim and then zeroes the handle, so a stopped source reports
+ *          `k_ra8_err_not_initialized` rather than dispatching into state its
+ *          backend has already torn down.
+ *
+ * @param[in,out] source Bound source handle.
+ * @return ra8_err_t Error code.
+ * @retval k_ra8_ok                  Backend released and handle unbound.
+ * @retval k_ra8_err_null_ptr        `source` was NULL.
+ * @retval k_ra8_err_not_initialized No source is bound, or the bound backend
+ *                                   supplies no stop operation.
+ * @retval other                     Propagated from the source backend; the
+ *                                   handle is left bound so the caller can
+ *                                   retry or report.
+ * @pre No capture is in flight on `source`.
+ * @post On success `source` is zeroed and dispatches nothing.
+ * @post On error `source` is unchanged.
+ * @note Not thread-safe with respect to the same source.
+ * @since 0.1.0
+ */
+[[nodiscard]] ra8_err_t ra8_camera_source_stop(ra8_camera_source_t* source);
+
+/**
  * @brief Encode or transform one frame through a bound codec.
  *
  * @details A codec may fill `output_buffer` or return a zero-copy view which
