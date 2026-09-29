@@ -88,7 +88,15 @@ function(ra8_add_ns_image)
   )
 
   # ---- Non-Secure image ---------------------------------------------------
-  add_executable(${_ns_elf} ${_NS_SOURCES})
+  # Every NS image carries the RoT header the Secure verifier looks for at
+  # k_ra8_tz_ns_rot_header_offset. It is a C object rather than LONG() words in
+  # the linker script (#759), so the magic and layout come from
+  # ra8_ns_rot_header_t, and the link needs the translation unit plus the header
+  # it reads those from. Added here, not asked of every caller: forgetting it is
+  # an undefined g_ra8_ns_rot_header at link, which is loud but pointless.
+  set(_ns_rot_dir ${RA8_REPO_ROOT}/libs/ra8_tz_secure_boot)
+  add_executable(${_ns_elf} ${_NS_SOURCES} ${_ns_rot_dir}/ns/ra8_ns_rot_header.c)
+  target_include_directories(${_ns_elf} PRIVATE ${_ns_rot_dir}/inc)
   if(_NS_DEFINES)
     target_compile_definitions(${_ns_elf} PRIVATE ${_NS_DEFINES})
   endif()
