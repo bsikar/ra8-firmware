@@ -43,9 +43,12 @@ the existing vendor roots. No current dependency qualifies.
 
 ## Run the firmware without a board
 
-[`ra8_emulator`](ra8_emulator/README.md) boots an unmodified cross-compiled
-`.elf` on an emulated Cortex-M over a modelled RA8D2 peripheral space, drives
-the GLCDC panel, and injects touch through the real GT911 path. Because it runs
+[ra8-emulator](https://github.com/bsikar/ra8-emulator) boots an unmodified
+cross-compiled `.elf` on an emulated Cortex-M over a modelled RA8D2 space, drives
+the GLCDC panel, and injects touch through the real GT911 path. It is the one
+entry in this directory that is not a tool source tree: it is a submodule
+pinned at `tools/ra8_emulator`, so its README and `--help` live in that
+repository rather than here. Because it runs
 the real binary, an app renders at the resolution it was *built* for: pointing a
 fixed-panel app at a different panel shows the genuine mismatch rather than a
 re-laid-out screen.
