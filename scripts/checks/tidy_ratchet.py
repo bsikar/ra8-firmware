@@ -143,8 +143,14 @@ def load_baseline() -> Counter:
     return counts
 
 
-def write_baseline(counts: Counter) -> None:
-    """Write `counts` out in the committed, sorted, diffable form."""
+def render_baseline(counts: Counter) -> str:
+    """Return the canonical committed text for `counts`.
+
+    ONE definition of the file's shape: the fixed header, then the non-zero
+    buckets in sorted order, one tab-separated row each. ``write_baseline``
+    emits it and ``attest_baseline`` re-derives it, so "what the tool would
+    have produced" is never a second, drifting opinion (#712).
+    """
     lines = [
         "# clang-tidy ratchet baseline -- per-file-per-check finding counts.",
         "# Consumed by scripts/checks/tidy_ratchet.py --check (CI gate: tidy).",
@@ -165,7 +171,76 @@ def write_baseline(counts: Counter) -> None:
     for (path, check), n in sorted(counts.items()):
         if n:
             lines.append(f"{path}\t{check}\t{n}")
-    BASELINE_FILE.write_text("\n".join(lines) + "\n", encoding="ascii")
+    return "\n".join(lines) + "\n"
+
+
+def write_baseline(counts: Counter) -> None:
+    """Write `counts` out in the committed, sorted, diffable form.
+
+    A ``clang-diagnostic-error`` bucket never reaches the file: it is a compile
+    failure wearing a check name, and #712 is the record of one being baselined
+    for a directory that had no build files at all.
+    """
+    keep = Counter({k: n for k, n in counts.items() if k[1] != DIAGNOSTIC_ERROR_CHECK})
+    BASELINE_FILE.write_text(render_baseline(keep), encoding="ascii")
+
+
+def attest_baseline() -> list[str]:
+    """Return the reasons the committed baseline is not one this tool produced.
+
+    #712: `.github/tidy-baseline.txt` is machine-generated, but nothing asserted
+    it was machine-written. A plain `sort` over the whole file re-ordered the
+    header, added a row the ratchet itself refuses, and survived ten days of CI.
+    ``--check`` read the rows and never noticed, because parseable was the only
+    bar.
+
+    So re-derive the canonical text from the committed rows and demand the file
+    be byte-identical to it. A re-ordered header, a stray blank line, a
+    duplicated or unsorted row, a row with the wrong column count, a CRLF: all
+    of those stop being invisible.
+
+    Also refuse a ``clang-diagnostic-error`` row outright. That check is a
+    PARSE failure, not lint debt (the #387 shape), and baselining one freezes a
+    translation unit that does not compile as the accepted state.
+
+    What this deliberately does NOT claim: it cannot tell a hand-written row
+    whose shape is canonical from one the tool wrote. It proves the file is in
+    the form the tool emits, which is what the ten-day bypass violated.
+    """
+    problems: list[str] = []
+    if not BASELINE_FILE.is_file():
+        return problems
+
+    committed = BASELINE_FILE.read_text(encoding="ascii")
+    counts = load_baseline()
+
+    diag_rows = sorted(path for (path, check) in counts if check == DIAGNOSTIC_ERROR_CHECK)
+    for path in diag_rows:
+        problems.append(
+            f"{path}: {DIAGNOSTIC_ERROR_CHECK} is baselined. That is a compile "
+            "failure, not lint debt: build the target or delete it."
+        )
+
+    if committed != render_baseline(counts):
+        problems.append(
+            f"{BASELINE_FILE.relative_to(REPO_ROOT)} is not what "
+            "tidy_ratchet.py --update would write (header, ordering, spacing or "
+            "row shape differs). Regenerate it with --update; never hand-edit a "
+            "ratchet baseline."
+        )
+    return problems
+
+
+def report_attestation() -> int:
+    """Print the attestation verdict. Returns the process exit code."""
+    problems = attest_baseline()
+    if problems:
+        print("clang-tidy baseline attestation FAILED:", file=sys.stderr)
+        for problem in problems:
+            print(f"  - {problem}", file=sys.stderr)
+        return 1
+    print("clang-tidy baseline: canonical, machine-written form confirmed.")
+    return 0
 
 
 def diagnostic_error_reason(current: Counter) -> str | None:
@@ -327,16 +402,85 @@ def _selftest_diag_guard() -> list[str]:
     return failures
 
 
+def _selftest_attestation() -> list[str]:
+    """Assertions about baseline self-attestation (#712), in both directions."""
+    failures: list[str] = []
+    counts: Counter = Counter(
+        {
+            ("libs/a.c", "readability-magic-numbers"): 2,
+            ("libs/b.c", "bugprone-branch-clone"): 1,
+        }
+    )
+    canonical = render_baseline(counts)
+
+    # The form the tool writes must re-derive to itself ...
+    if render_baseline(load_text(canonical)) != canonical:
+        failures.append("render_baseline() is not a fixed point of its own output")
+
+    # ... a hand sort over the whole file must not ...
+    hand_sorted = "\n".join(sorted(canonical.splitlines())) + "\n"
+    if hand_sorted == canonical:
+        failures.append("the hand-sort fixture is indistinguishable from canonical output")
+    elif render_baseline(load_text(hand_sorted)) == hand_sorted:
+        failures.append("a whole-file sort still re-derives as canonical")
+
+    # ... nor a trailing blank line, an unsorted row, or a duplicated row.
+    for name, mutated in (
+        ("a trailing blank line", canonical + "\n"),
+        ("an unsorted row order", _swap_last_two_rows(canonical)),
+        ("a duplicated row", canonical + canonical.splitlines()[-1] + "\n"),
+    ):
+        if render_baseline(load_text(mutated)) == mutated:
+            failures.append(f"{name} still re-derives as canonical")
+
+    # A clang-diagnostic-error bucket must never be written out.
+    with_diag = Counter(counts)
+    with_diag[("examples/no_build/main.c", DIAGNOSTIC_ERROR_CHECK)] = 1
+    written = render_baseline(
+        Counter({k: n for k, n in with_diag.items() if k[1] != DIAGNOSTIC_ERROR_CHECK})
+    )
+    if DIAGNOSTIC_ERROR_CHECK in written:
+        failures.append("write_baseline() would emit a clang-diagnostic-error row")
+
+    return failures
+
+
+def _swap_last_two_rows(text: str) -> str:
+    """Return `text` with its final two rows transposed, breaking sort order."""
+    lines = text.splitlines()
+    lines[-1], lines[-2] = lines[-2], lines[-1]
+    return "\n".join(lines) + "\n"
+
+
+def load_text(text: str) -> Counter:
+    """Parse baseline `text` into a Counter, the same way the file is read."""
+    counts: Counter = Counter()
+    for raw in text.splitlines():
+        line = raw.strip()
+        if not line or line.startswith("#"):
+            continue
+        parts = line.split("\t")
+        if len(parts) != BASELINE_COLUMNS:
+            continue
+        counts[(parts[0], parts[1])] = int(parts[2])
+    return counts
+
+
 def selftest() -> int:
     """Assert the parser and the ratchet fire, in BOTH directions."""
-    failures = _selftest_parse() + _selftest_ratchet() + _selftest_diag_guard()
+    failures = (
+        _selftest_parse()
+        + _selftest_ratchet()
+        + _selftest_diag_guard()
+        + _selftest_attestation()
+    )
 
     if failures:
         print("SELFTEST FAILED:", file=sys.stderr)
         for problem in failures:
             print(f"  - {problem}", file=sys.stderr)
         return 1
-    print("selftest: clang-tidy ratchet parse + growth detection OK")
+    print("selftest: clang-tidy ratchet parse + growth + attestation detection OK")
     return 0
 
 
@@ -358,12 +502,26 @@ def main() -> int:
     parser.add_argument("--check", action="store_true", help="gate against the baseline")
     parser.add_argument("--update", action="store_true", help="rewrite the baseline")
     parser.add_argument("--selftest", action="store_true", help="assert this gate still fires")
+    parser.add_argument(
+        "--attest",
+        action="store_true",
+        help="assert the committed baseline is the canonical file --update would write",
+    )
     args = parser.parse_args()
 
     if args.selftest:
         return selftest()
+    if args.attest:
+        return report_attestation()
     if not args.log:
-        parser.error("a clang-tidy log path is required unless --selftest is given")
+        parser.error("a clang-tidy log path is required unless --selftest or --attest is given")
+
+    # #712: a baseline the tool would not have written is not evidence of
+    # anything, so attest before either comparing against it or replacing it.
+    # It needs no log and no clang-tidy, which is why --attest also stands
+    # alone for gates that cannot run the analyser.
+    if report_attestation() != 0:
+        return 1
 
     text = Path(args.log).read_text(encoding="utf-8", errors="replace")
     current = parse_log(text)

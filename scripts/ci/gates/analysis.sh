@@ -257,6 +257,10 @@ gate_tidy() (
   require_tool_versions "$pinned_tidy"
   CLANG_TIDY="$pinned_tidy" bash scripts/checks/clang_tidy.sh --selftest
   python3 scripts/checks/tidy_ratchet.py --selftest
+  # #712: prove the committed baseline is the canonical file --update writes
+  # before trusting it. A whole-file hand sort once bypassed the ratchet's own
+  # refusal and survived ten days because "parseable" was the only bar.
+  python3 scripts/checks/tidy_ratchet.py --attest
 
   local log rc
   log="$(mktemp)"
