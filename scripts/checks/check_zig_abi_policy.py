@@ -26,6 +26,7 @@ CONTEXTS = {
     "task-only-reentrancy-guarded",
     "serialized-test-control",
 }
+ADDITIONAL_HEADER_ROLES = {"test-only", "internal"}
 MIN_OWNERSHIP_LENGTH = 12
 MIN_NM_SYMBOL_FIELDS = 3
 REQUIRED_MODES = {"Debug", "ReleaseSafe", "ReleaseSmall"}
@@ -102,6 +103,12 @@ def _normalized_header_digest(text: str) -> str:
     """Hash representation-bearing header text without comments or whitespace."""
     normalized = re.sub(r"\s+", "", _strip_comments(text))
     return hashlib.sha256(normalized.encode()).hexdigest()
+
+
+def _symbol_root(symbol: str) -> str:
+    """Return the ra8_<unit>_ prefix a retained C symbol is declared under."""
+    parts = symbol.split("_")
+    return "_".join(parts[:2]) + "_" if len(parts) > 2 else symbol
 
 
 def _header_exports(text: str, prefix: str) -> set[str]:
@@ -181,12 +188,29 @@ def _c_retained_findings(
         symbol = row.get("name")
         source = row.get("source")
         reason = row.get("reason")
+        sibling_header = row.get("header")
         if not isinstance(symbol, str) or not symbol:
             findings.append(f"{name}: c_retained_exports row lacks a name")
             continue
         if not isinstance(reason, str) or len(reason.strip()) < MIN_OWNERSHIP_LENGTH:
             findings.append(f"{name}: undocumented C retention: {symbol}")
-        if symbol not in header_names:
+        if sibling_header is not None:
+            if not isinstance(sibling_header, str) or not sibling_header:
+                findings.append(f"{name}: c_retained_exports header is not a path: {symbol}")
+                continue
+            header_path = repository_root / sibling_header
+            if not header_path.exists():
+                findings.append(f"{name}: missing C retention header: {sibling_header}")
+                continue
+            declared_here = _header_exports(
+                header_path.read_text(encoding="utf-8"), _symbol_root(symbol)
+            )
+            if symbol not in declared_here:
+                findings.append(
+                    f"{name}: stale C retention, absent from {sibling_header}: {symbol}"
+                )
+                continue
+        elif symbol not in header_names:
             findings.append(f"{name}: stale C retention, absent from the public header: {symbol}")
             continue
         if not isinstance(source, str) or not source:
@@ -201,6 +225,54 @@ def _c_retained_findings(
             continue
         retained.add(symbol)
     return findings, retained
+
+
+def _additional_header_findings(
+    name: str,
+    library: dict[str, Any],
+    repository_root: Path,
+) -> tuple[list[str], set[str]]:
+    """Return findings plus the names declared by a library's non-public headers.
+
+    A port keeps the C ABI it replaced, and for some libraries part of that ABI
+    is an internal header the host suite includes to drive predicates the
+    optimizer would otherwise fold away. ra8_usb_pal is the first: the two
+    priv_usb_pal_* predicates live in src/ra8_usb_pal_internal.h, not in the
+    public header, and the Zig archive exports them under the same names. Each
+    row has to name its role and the prefix it contributes, so an internal
+    header cannot quietly widen the public surface.
+    """
+    findings: list[str] = []
+    declared: set[str] = set()
+    rows = library.get("additional_headers", [])
+    if not isinstance(rows, list):
+        return [f"{name}: additional_headers is not a list"], declared
+    for row in rows:
+        if not isinstance(row, dict):
+            findings.append(f"{name}: additional_headers row is not an object")
+            continue
+        path_value = row.get("path")
+        role = row.get("role")
+        prefix = row.get("symbol_prefix")
+        if not isinstance(path_value, str) or not path_value:
+            findings.append(f"{name}: additional_headers row lacks a path")
+            continue
+        if role not in ADDITIONAL_HEADER_ROLES:
+            findings.append(f"{name}: invalid additional header role: {path_value}")
+            continue
+        if not isinstance(prefix, str) or not prefix:
+            findings.append(f"{name}: additional header lacks a symbol_prefix: {path_value}")
+            continue
+        path = repository_root / path_value
+        if not path.exists():
+            findings.append(f"{name}: missing additional header: {path_value}")
+            continue
+        names = _header_exports(path.read_text(encoding="utf-8"), prefix)
+        if not names:
+            findings.append(f"{name}: additional header declares no {prefix} symbol: {path_value}")
+            continue
+        declared |= names
+    return findings, declared
 
 
 def _inventory_findings(
@@ -582,6 +654,11 @@ def _library_findings(
     }
     if allow_c_bool and "bool" not in header_text:
         findings.append(f"{name}: C bool exception lacks a bool declaration in the public header")
+    additional_findings, additional_names = _additional_header_findings(
+        name, library, repository_root
+    )
+    findings.extend(additional_findings)
+    header_names |= additional_names
     retention_findings, retained = _c_retained_findings(
         name, library, header_names, repository_root
     )

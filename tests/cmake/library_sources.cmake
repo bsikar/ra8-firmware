@@ -28,6 +28,10 @@ file(GLOB_RECURSE RA8_JPEG_SOURCES CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra8_jpeg/sr
 # tests/cmake/zig_libraries.cmake links that archive into ra8_core_hal.
 file(GLOB_RECURSE RA8_MODEM_AT_SOURCES CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra8_modem_at/src/*.c)
 file(GLOB_RECURSE RA8_TLS_SOURCES CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra8_tls/src/*.c)
+# ra8_usb_pal's PAL core is Zig (libs/ra8_usb_pal/src/ra8_usb_pal_abi.zig, see
+# tests/cmake/zig_libraries.cmake). The glob survives the port because the
+# descriptor builders dev added later (#766, ra8_usb_desc.c and
+# ra8_usb_compose.c) are still C and still belong to this library.
 file(GLOB_RECURSE RA8_USB_PAL_SOURCES CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra8_usb_pal/src/*.c)
 file(GLOB_RECURSE RA8_FS_SOURCES CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra8_fs/src/*.c)
 file(GLOB_RECURSE RA8_IF_SOURCES CONFIGURE_DEPENDS ${FW_ROOT}/libs/if/src/*.c)
