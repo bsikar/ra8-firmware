@@ -10,13 +10,12 @@
  *
  * @note The two copies are NO LONGER byte-identical, so do not read one as the
  *       other. Two divergences, both deliberate on the EK-RA8D2 side:
- *       1. `RA8_BOOT_CACHE_VIA_HAL` is NOT honoured here. Issue #577 gave the
- *          EK-RA8D2 copy a gated arm that brings the L1 caches up through
- *          `ra8_cache_icache_enable()` / `ra8_cache_dcache_enable()`; this copy
- *          still always takes the hand-rolled `internal_enable_icache` /
- *          `internal_enable_dcache` pokes, so building an RA8P1 image with
- *          `-DRA8_BOOT_CACHE_VIA_HAL` silently changes nothing. Converting this
- *          copy is tracked by #590.
+ *       1. The region-4 window is derived differently (see 2 below). The
+ *          `RA8_BOOT_CACHE_VIA_HAL` divergence is GONE: issue #590 gave this
+ *          copy the same gated arm the EK-RA8D2 copy got in #577, so an RA8P1
+ *          image built with `-DRA8_BOOT_CACHE_VIA_HAL` now brings the L1 caches
+ *          up through `ra8_cache_icache_enable()` /
+ *          `ra8_cache_dcache_enable()` exactly as the EK-RA8D2 copy does.
  *       2. The region-4 base and limit are spelled as literals below. The
  *          EK-RA8D2 copy derives them from `ra8_board_ek_ra8d2_dualcore.h`,
  *          which is that board's dual-core memory map; this board layer has no
@@ -558,8 +557,22 @@ void SystemInit(void)
    * CCR. Region 4 (non-cacheable shared SRAM) keeps M85<->M33 hand-offs
    * coherent with no software maintenance. */
   internal_mpu_init();
+#ifdef RA8_BOOT_CACHE_VIA_HAL
+  /* Issue #590: bring the L1 caches up through the ra8_cache HAL instead of the
+   * hand-rolled internal_enable_icache / internal_enable_dcache pokes, matching
+   * the arm the EK-RA8D2 copy got in #577. The HAL primitives encode the
+   * identical ICIALLU + CCR.IC / CCR.DC sequence (each runs its architectural
+   * invalidate before setting the enable bit), so this is a drop-in with no
+   * behaviour change. The raw helpers stay compiled just above as the reference
+   * path; only a build that opts in takes the HAL route. */
+  ra8_cache_icache_enable();
+  ra8_cache_dcache_enable();
+  (void)internal_enable_icache;
+  (void)internal_enable_dcache;
+#else
   internal_enable_icache();
   internal_enable_dcache();
+#endif
   internal_enable_branch_predictor();
 #else
   /* Default OFF: caches + MPU stay disabled -- no behaviour change. */
