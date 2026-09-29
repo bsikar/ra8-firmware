@@ -443,7 +443,7 @@ static void internal_test_positioned_read_seam_is_shared(void)
   /* The seam type, named once. Assigning the fixture reader here is the whole
      point: it must be assignment-compatible without a cast. */
   const ra8_vsource_read_fn seam = priv_book_fixture_read;
-  TEST_ASSERT_TRUE(seam != nullptr);
+  TEST_ASSERT_NOT_NULL(seam);
 
   stream_mem_t mem = {
     .data      = (uint8_t*)&g_book,
@@ -472,7 +472,7 @@ static void internal_test_positioned_read_seam_is_shared(void)
                                              sizeof(g_validate_work),
                                              &hdr));
   TEST_ASSERT_EQ(priv_book_fixture_flat_len(), hdr.total_size);
-  TEST_ASSERT_TRUE(mem.calls > calls_before);
+  TEST_ASSERT(mem.calls > calls_before);
 
   /* The error channel survives the collapse: a source fault still propagates
      verbatim out of the validator rather than being flattened to a count. */
