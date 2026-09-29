@@ -68,7 +68,9 @@ file(GLOB_RECURSE COMPRESS_SOURCES CONFIGURE_DEPENDS ${FW_ROOT}/apps/shared_libs
 # the host suites include it to build their own fake source and codec vtables.
 file(GLOB_RECURSE RA8_CAMERA_SOURCES CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra8_camera/src/*.c)
 file(GLOB_RECURSE RA8_CAMERA_IO_SOURCES CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra8_camera_io/src/*.c)
-file(GLOB_RECURSE RA8_FTL_SOURCES CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra8_ftl/src/*.c)
+# ra8_ftl is entirely Zig (libs/ra8_ftl/build.zig): the core, the checkpoint
+# and now the mount lifecycle. No C sources remain to glob, so there is no
+# RA8_FTL_SOURCES; the unchanged C suites cover it through inc/ra8_ftl.h.
 file(GLOB_RECURSE RA8_MEM_SOURCES CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra8_mem/src/*.c)
 # ra8_sdmmc_spi has no C sources: the protocol core AND the block-I/O TU are
 # both Zig now (libs/ra8_sdmmc_spi/src/*.zig, built by

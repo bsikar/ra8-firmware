@@ -1,12 +1,15 @@
 {
   "test_roots": [
     "tests/internal_test.zig",
+    "tests/mount_test.zig",
     "tests/abi_test.zig"
   ],
   "covered_sources": [
     "src/internal/root.zig",
+    "src/internal/mount.zig",
     "src/ra8_ftl_abi.zig",
     "tests/internal_test.zig",
+    "tests/mount_test.zig",
     "tests/abi_test.zig"
   ],
   "standalone_source_args": {
@@ -14,5 +17,5 @@
       "-fno-emit-bin"
     ]
   },
-  "minimum_tests": 10
+  "minimum_tests": 95
 }
