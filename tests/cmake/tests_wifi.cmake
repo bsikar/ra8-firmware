@@ -10,11 +10,12 @@
 # encodes/decodes the vendored esp-hosted `Rpc` protobuf, so it needs the
 # generated codec + the protobuf-c runtime + the esp-hosted include path, none
 # of which ra8_core_hal carries. The pure facade (src/ra8_wifi.c) is a different
-# story -- it names no radio, so it is in ra8_core_hal and its mock-backed test
-# (test_ra8_wifi.c) rides the auto-glob.
+# story -- it names no radio, so it is the Zig archive ra8_zig::ra8_wifi and its
+# mock-backed test (test_ra8_wifi.c) rides the auto-glob.
 #
-# ra8_core_hal is linked in for ra8_err / ra8_log / ra8_check, and it already
-# carries the compiled facade, so this target adds only the c6 backend TU.
+# ra8_core_hal is linked in for ra8_err / ra8_log / ra8_check; the facade is no
+# longer among its objects (it is the Zig archive ra8_zig::ra8_wifi, linked
+# below), so this target adds only the c6 backend TU.
 #
 # Included from tests/CMakeLists.txt. Depends on variables defined in
 # tests_c6link.cmake (RA8_C6LINK_SOUP / RA8_C6LINK_SOURCES / include dirs), so it
@@ -42,6 +43,9 @@ add_executable(
   $<TARGET_OBJECTS:ra8_core_hal>
 )
 set_target_properties(test_ra8_wifi_c6link PROPERTIES LINKER_LANGUAGE CXX)
+# The facade is a Zig archive now and this target takes ra8_core_hal as bare
+# objects, which carry no link dependencies, so name the archive here.
+target_link_libraries(test_ra8_wifi_c6link PRIVATE ra8_zig::ra8_wifi)
 target_compile_options(test_ra8_wifi_c6link PRIVATE -Wall -Wextra)
 target_include_directories(test_ra8_wifi_c6link PRIVATE ${RA8_WIFI_INCLUDE_DIRS})
 add_test(NAME test_ra8_wifi_c6link COMMAND test_ra8_wifi_c6link)
@@ -60,6 +64,8 @@ add_executable(
                          ${RA8_WIFI_APP_DIR}/src/wifi_hal_core.c $<TARGET_OBJECTS:ra8_core_hal>
 )
 set_target_properties(test_app_wifi_hal_join PROPERTIES LINKER_LANGUAGE CXX)
+# Same reason as above: the facade now arrives as ra8_zig::ra8_wifi.
+target_link_libraries(test_app_wifi_hal_join PRIVATE ra8_zig::ra8_wifi)
 target_compile_options(test_app_wifi_hal_join PRIVATE -Wall -Wextra)
 target_include_directories(
   test_app_wifi_hal_join PRIVATE ${RA8_TEST_SHARED_INCLUDE_DIRS} ${FW_ROOT}/libs/ra8_core/inc
