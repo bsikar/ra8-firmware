@@ -26,7 +26,12 @@ file(GLOB_RECURSE RA8_JPEG_SOURCES CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra8_jpeg/sr
 # translation and the event fan-out are Zig (libs/ra8_net_pal/src/*.zig,
 # built by libs/ra8_net_pal/build.zig) behind the unchanged C header, and
 # tests/cmake/zig_libraries.cmake links that archive into ra8_core_hal.
-file(GLOB_RECURSE RA8_MODEM_AT_SOURCES CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra8_modem_at/src/*.c)
+# ra8_modem_at has no C sources left: the line accumulator state machine, the
+# final-result-code table, the capture appender and the URC dispatch table are
+# Zig now (libs/ra8_modem_at/src/*.zig, built by libs/ra8_modem_at/build.zig)
+# behind the unchanged C header, and tests/cmake/zig_libraries.cmake links that
+# archive into ra8_core_hal. src/ra8_modem_at_internal.h stays: the MC/DC
+# suites include it to reach the promoted priv_modem_* helpers.
 file(GLOB_RECURSE RA8_TLS_SOURCES CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra8_tls/src/*.c)
 # ra8_usb_pal's PAL core is Zig (libs/ra8_usb_pal/src/ra8_usb_pal_abi.zig, see
 # tests/cmake/zig_libraries.cmake). The glob survives the port because the
