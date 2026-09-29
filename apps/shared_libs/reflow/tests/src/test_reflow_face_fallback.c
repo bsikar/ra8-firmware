@@ -44,6 +44,7 @@ typedef enum : int32_t {
   k_ff_cp_eacute    = 0xE9,   /**< e-acute: the default face only.         */
   k_ff_cp_alpha     = 0x391,  /**< GREEK CAPITAL ALPHA: face 2 only.       */
   k_ff_cp_omega     = 0x3A9,  /**< GREEK CAPITAL OMEGA: faces 2 and 3.     */
+  k_ff_cp_alef      = 0x5D0,  /**< HEBREW ALEF: face 3 only.               */
   k_ff_cp_cjk       = 0x4E00, /**< CJK IDEOGRAPH-4E00: no face at all.     */
   k_ff_cp_space     = 0x20,   /**< SPACE: blank, never hunted for.         */
   k_ff_cp_zwsp      = 0x200B, /**< ZERO WIDTH SPACE: blank.                */
@@ -92,6 +93,8 @@ RA8_INTERNAL static bool internal_probe(const void* ctx, uint8_t face_idx, int32
       return face_idx == (uint8_t)k_ff_face_greek;
     case (int32_t)k_ff_cp_omega:
       return (face_idx == (uint8_t)k_ff_face_greek) || (face_idx == (uint8_t)k_ff_face_last);
+    case (int32_t)k_ff_cp_alef:
+      return face_idx == (uint8_t)k_ff_face_last;
     default:
       return false; /* Including the CJK ideograph: nothing carries it. */
   }
@@ -197,14 +200,16 @@ RA8_INTERNAL static void internal_test_fallback_order(void)
                                               (int32_t)k_ff_cp_omega));
 
   /* The run's own face is asked exactly once even when the scan walks past
-   * its index: the k != primary arm of the scan decision. */
+   * its index: the k != primary arm of the scan decision. Alef is carried by
+   * face 3 alone, so the scan has to run past the run's own face at k == 2
+   * to reach it. */
   internal_probe_reset();
   TEST_ASSERT_EQ((uint8_t)k_ff_face_last,
                  priv_reflow_render_pick_face(internal_probe,
                                               &s_probe,
                                               (uint8_t)k_ff_faces,
                                               (uint8_t)k_ff_face_greek,
-                                              (int32_t)k_ff_cp_omega));
+                                              (int32_t)k_ff_cp_alef));
   TEST_ASSERT_EQ(1U, (uint32_t)s_probe.asked[k_ff_face_greek]);
   TEST_END("reflow face fallback: default face, then registered order");
 }
