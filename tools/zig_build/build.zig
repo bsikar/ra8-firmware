@@ -150,6 +150,91 @@ pub fn probeHostSdk(allocator: std.mem.Allocator) macos_host.SdkProbe {
     };
 }
 
+/// What Zig's own bundled `libSystem` stub turned out to be.
+pub const BundledStubProbe = struct {
+    /// Where the stub was looked for, when the Zig lib directory is known.
+    path: ?[]const u8 = null,
+    /// The file contents, when it could be read.
+    text: ?[]const u8 = null,
+    /// Whether the build runner knew where the Zig lib directory is.
+    lib_dir_known: bool = false,
+
+    pub fn state(self: BundledStubProbe) macos_host.BundledStubState {
+        return macos_host.classifyBundledStub(self.text, self.lib_dir_known);
+    }
+};
+
+/// Read the `libSystem.tbd` that Zig ships with itself.
+///
+/// This is the other half of the #899 rule and the half nothing checked. The
+/// workaround is "pin an explicit `aarch64-macos` query so Zig links its own
+/// stub rather than the SDK's"; that is a fix only while Zig's own stub
+/// declares `arm64-macos`. If a future toolchain bump ships a stub that does
+/// not, the pinned build fails with the same `undefined symbol: _abort` the
+/// issue is about, now caused by the workaround itself, and the build graph
+/// would still be reporting that it had worked around the problem.
+///
+/// Unlike the SDK probe this runs on every host, because the bundled stub is
+/// also what a Linux checkout links when it cross-builds `-Dtarget=aarch64-macos`:
+/// the assumption is checkable from anywhere, so it is checked from anywhere.
+pub fn probeBundledStub(b: *std.Build) BundledStubProbe {
+    const lib_dir = b.graph.zig_lib_directory.path orelse return .{};
+    const path = std.fs.path.join(
+        b.allocator,
+        &.{ lib_dir, macos_host.bundled_stub_relative_path },
+    ) catch return .{ .lib_dir_known = true };
+    const text = std.fs.cwd().readFileAlloc(b.allocator, path, 8 * 1024 * 1024) catch
+        return .{ .path = path, .lib_dir_known = true };
+    return .{ .path = path, .text = text, .lib_dir_known = true };
+}
+
+/// A step that refuses a toolchain whose bundled `libSystem` stub cannot link
+/// the pinned target (#899).
+///
+/// It runs on every host on purpose. The failure it guards against arrives
+/// with a Zig upgrade, not with a Mac, and a Linux checkout cross-building
+/// `-Dtarget=aarch64-macos` links the very same file: catching it here means
+/// catching it on the machine that does the upgrade, rather than on the next
+/// nightly run of the one Mac in the CI suite.
+pub fn addVerifyBundledStubStep(b: *std.Build) *std.Build.Step {
+    const verify = b.allocator.create(VerifyBundledStub) catch @panic("OOM");
+    verify.* = .{
+        .step = std.Build.Step.init(.{
+            .id = .custom,
+            .name = "verify bundled libSystem stub",
+            .owner = b,
+            .makeFn = VerifyBundledStub.make,
+        }),
+        .probe = probeBundledStub(b),
+    };
+    return &verify.step;
+}
+
+const VerifyBundledStub = struct {
+    step: std.Build.Step,
+    probe: BundledStubProbe,
+
+    fn make(step: *std.Build.Step, options: std.Build.Step.MakeOptions) anyerror!void {
+        _ = options;
+        const self: *VerifyBundledStub = @fieldParentPtr("step", step);
+        const state = self.probe.state();
+        const where = self.probe.path orelse "(the Zig lib directory is unknown)";
+        if (!state.linksRequiredTarget()) {
+            return step.fail(
+                "{s}: {s}. The #899 workaround pins an explicit {s} target so this stub is " ++
+                    "linked instead of the SDK one, so a toolchain whose own stub cannot link " ++
+                    "{s} breaks the pinned path as well as the native one. Check the Zig version " ++
+                    "pin in .devcontainer/Dockerfile and .github/workflows/macos-host.yml.",
+                .{ where, state.explain(), macos_host.required_target, macos_host.required_target },
+            );
+        }
+        std.debug.print(
+            "verify-bundled-stub: {s} declares {s}, so the pinned host target links against it\n",
+            .{ where, macos_host.required_target },
+        );
+    }
+};
+
 /// One phrase naming a `Choice`, for a sentence about a road not taken.
 fn describeChoice(choice: macos_host.Choice) []const u8 {
     return switch (choice) {
@@ -168,6 +253,7 @@ fn describeChoice(choice: macos_host.Choice) []const u8 {
 pub fn describeHostTarget(b: *std.Build, host: HostTarget) []const u8 {
     var text: std.ArrayListUnmanaged(u8) = .empty;
     const out = text.writer(b.allocator);
+    const bundled_probe = probeBundledStub(b);
 
     out.print("ra8 host target (#899)\n", .{}) catch @panic("OOM");
     out.print("  host:      {s}-{s}\n", .{ @tagName(builtin.cpu.arch), @tagName(builtin.os.tag) }) catch @panic("OOM");
@@ -180,6 +266,11 @@ pub fn describeHostTarget(b: *std.Build, host: HostTarget) []const u8 {
     }) catch @panic("OOM");
     out.print("  sdk:       {s}\n", .{host.probe.sdk_path orelse "(none located)"}) catch @panic("OOM");
     out.print("  stub:      {s}\n", .{host.probe.libsystem_tbd_path orelse "(none read)"}) catch @panic("OOM");
+    // The SDK stub is what #899 reports; Zig's own stub is what the fix
+    // links instead. A report that names only the first cannot say whether
+    // the workaround still has anything to stand on.
+    out.print("  bundled:   {s}\n", .{bundled_probe.path orelse "(not located)"}) catch @panic("OOM");
+    out.print("  bundled finding: {s}\n", .{bundled_probe.state().explain()}) catch @panic("OOM");
 
     // The finding is always what the machine said. A force changes what the
     // build does, not what the SDK stub contains, and printing the forced
@@ -604,4 +695,13 @@ pub fn build(b: *std.Build) void {
         "Print how the macOS host target was chosen on this machine (#899)",
     );
     explain_step.dependOn(addExplainHostTargetStep(b, hostTarget(b)));
+
+    // The pinned target is only a workaround while Zig's own libSystem stub
+    // declares arm64-macos, and that is a property of the toolchain, not of
+    // the machine, so this runs on every host rather than only on a Mac.
+    const bundled_step = b.step(
+        "verify-bundled-stub",
+        "Check that this Zig's own libSystem stub can link the pinned host target (#899)",
+    );
+    bundled_step.dependOn(addVerifyBundledStubStep(b));
 }
