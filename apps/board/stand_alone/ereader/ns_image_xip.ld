@@ -51,14 +51,15 @@ SECTIONS
         KEEP(*(.ns_vectors.*))
     } > NS_XIP
 
-    /* Root-of-trust header at ns_base + 0x40 (see the SRAM-run ns_image.ld for
-     * the full rationale). For XIP the whole signed body lives in OSPI (VMA ==
-     * LMA), so body_len spans vectors..data-init: LMA end - OSPI origin. */
+    /* Root-of-trust header at ns_base + 0x40 (see the shared SRAM-run
+     * ns_image_sram.ld for the full rationale). The record is the C object
+     * g_ra8_ns_rot_header; only its body_len is the linker's to compute, and
+     * for XIP the whole signed body lives in OSPI (VMA == LMA), so it spans
+     * vectors..data-init: LMA end - OSPI origin. */
     .ns_rot_header : ALIGN(4)
     {
         g_ra8_ls_ns_rot_header = .;
-        LONG(0x3152534E);
-        LONG(LOADADDR(.data) + SIZEOF(.data) - ORIGIN(NS_XIP));
+        KEEP(*(.ns_rot_header))
     } > NS_XIP
 
     .text : ALIGN(8)
@@ -101,6 +102,10 @@ SECTIONS
     /* End of the RoT-signed body in OSPI (== data LMA end); rot_sign.py appends
      * the trailer here, at ns_base + body_len. Mirrors .ns_rot_header body_len. */
     g_ra8_ls_ns_signed_body_end = LOADADDR(.data) + SIZEOF(.data);
+
+    /* body_len for .ns_rot_header, as an ABSOLUTE symbol whose VALUE is the byte
+     * count. ra8_ns_rot_header.c takes this symbol's address as the number. */
+    g_ra8_ls_ns_signed_body_len = LOADADDR(.data) + SIZEOF(.data) - ORIGIN(NS_XIP);
 
     .bss (NOLOAD) : ALIGN(8)
     {

@@ -135,12 +135,19 @@ target_include_directories(
 # Secure side (cpu flags from the toolchain, C23 global), but no startup files
 # (the Secure boot copies it and ns_reset_handler is the entry) and its own
 # NS-image linker script.
+# ra8_ns_rot_header.c emits the .ns_rot_header record this app's whole point
+# depends on (the Secure side reads it to learn body_len before it will BLXNS).
+# ra8_add_ns_image() adds it for the three apps that use the helper; this
+# hand-rolled link names it itself.
 add_executable(
   secure_boot_ns_hil_ns.elf
   ${CMAKE_CURRENT_SOURCE_DIR}/src/ns_main.c ${_d}/libs/ra8_core/src/ra8_freestanding_mem.c
   ${_d}/libs/ra8_core/src/ra8_freestanding_str.c ${_d}/libs/ra8_core/src/ra8_freestanding_math.c
+  ${_d}/libs/ra8_tz_secure_boot/ns/ra8_ns_rot_header.c
 )
-target_include_directories(secure_boot_ns_hil_ns.elf PRIVATE ${_d}/libs/ra8_core/inc)
+target_include_directories(
+  secure_boot_ns_hil_ns.elf PRIVATE ${_d}/libs/ra8_core/inc ${_d}/libs/ra8_tz_secure_boot/inc
+)
 target_compile_options(secure_boot_ns_hil_ns.elf PRIVATE -fshort-enums -ffreestanding)
 # Raw add_executable targets skip the ra8_add_app warning profile, so without
 # this the NS image compiles WITHOUT -Wall/-Wextra/-Werror (the T2-05
