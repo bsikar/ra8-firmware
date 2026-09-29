@@ -1,0 +1,32 @@
+{
+  "test_roots": [
+    "tests/internal_test.zig",
+    "tests/abi_test.zig"
+  ],
+  "covered_sources": [
+    "src/internal/root.zig",
+    "src/internal/standalone_build_config.zig",
+    "src/ra8_modem_at_abi.zig",
+    "src/ra8_modem_at_test_helpers.zig",
+    "tests/internal_test.zig",
+    "tests/abi_test.zig"
+  ],
+  "standalone_source_args": {
+    "src/ra8_modem_at_abi.zig": [
+      "--dep",
+      "build_options",
+      "-Mroot=src/ra8_modem_at_abi.zig",
+      "-Mbuild_options=src/internal/standalone_build_config.zig"
+    ],
+    "src/ra8_modem_at_test_helpers.zig": [
+      "--dep",
+      "abi",
+      "-Mroot=src/ra8_modem_at_test_helpers.zig",
+      "--dep",
+      "build_options",
+      "-Mabi=src/ra8_modem_at_abi.zig",
+      "-Mbuild_options=src/internal/standalone_build_config.zig"
+    ]
+  },
+  "minimum_tests": 10
+}
