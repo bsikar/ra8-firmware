@@ -262,6 +262,21 @@ def _selftest_migrated_zig_archive_provenance() -> list[str]:
         if core.parse_map_file(mixed, map_dir=build, repo_root=root)["project_zig_archives"]:
             failures.append("external same-name archive gained project approval")
 
+        # A dual-core app links a SECOND archive of the same library, built for
+        # the other core (#1290). The per-cpu path segment is what keeps the two
+        # apart, so recognition must not be pinned to the app's own core.
+        per_core = build / "zig" / "ra8_power_profile" / "cortex_m33" / "lib"
+        per_core.mkdir(parents=True)
+        (per_core / "libra8_power_profile.a").write_bytes(b"archive")
+        m33_member = (
+            "zig/ra8_power_profile/cortex_m33/lib/libra8_power_profile.a(ra8_power_profile.a.o)"
+        )
+        m33_map = f"Memory Map\n .text.zig 0x02000000 0x10 {m33_member}\n"
+        if core.parse_map_file(m33_map, map_dir=build, repo_root=root)["project_zig_archives"] != (
+            expected
+        ):
+            failures.append("per-core Zig archive provenance not recognized")
+
         recipe.unlink()
         if core.parse_map_file(map_content, map_dir=build, repo_root=root)["project_zig_archives"]:
             failures.append("Zig archive without a first-party recipe gained approval")
