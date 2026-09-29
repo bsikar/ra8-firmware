@@ -29,6 +29,54 @@
 # sources does LIBS reflow pull in" would stop being answerable by reading
 # one list. The waiver is per-file; the global ceilings in .cmake-format.yaml
 # stay at cmakelang defaults so no other listfile inherits it.
+# #908: the LIBS expansions below only ever glob *.c, so a library that ships
+# its implementation in anything else contributes NO object code and says
+# nothing about it. Whether that surfaces as an undefined reference or as
+# quietly-missing behaviour depends on how the app reaches the library, and
+# neither failure names the cause -- which is exactly why every Zig port so far
+# has had to keep its C implementation alongside the new one. Stop at configure
+# time instead: if the library directory holds sources this build cannot
+# compile and produced no objects, say so. A genuinely header-only library has
+# no sources at all and is unaffected.
+#
+# A function, not a macro: it needs no variable to survive the return, and the
+# two call sites (LIBS and OFF_TARGET_LIBS) are otherwise identical loops whose
+# only difference is which keyword the app wrote.
+function(
+  _ra8_app_require_compilable_lib
+  _lib
+  _path
+  _keyword
+  _globbed
+)
+  if(_globbed)
+    return()
+  endif()
+  file(
+    GLOB_RECURSE
+    _uncompiled
+    CONFIGURE_DEPENDS
+    ${_path}/src/*.zig
+    ${_path}/src/*.cpp
+    ${_path}/src/*.cc
+    ${_path}/src/*.S
+    ${_path}/*.zig
+  )
+  if(NOT _uncompiled)
+    return()
+  endif()
+  list(JOIN _uncompiled "\n    " _uncompiled_pretty)
+  message(
+    FATAL_ERROR
+      "ra8_add_app(): ${_RA8_APP_NAME} declares ${_keyword} ${_lib}, but "
+      "${_path}/src holds no C sources and this expansion only compiles *.c, "
+      "so the library would contribute no object code (issue #908). Sources "
+      "found but not compiled:\n    ${_uncompiled_pretty}\n  Wire the non-C "
+      "sources into the app build before removing the C implementation, or "
+      "drop ${_lib} from ${_keyword} if it is header-only."
+  )
+endfunction()
+
 macro(_ra8_app_collect_sources)
   # ---- sources: per-app main, shared-or-local boot ----------------------
   if(NOT EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/src/main.c")
@@ -145,41 +193,7 @@ macro(_ra8_app_collect_sources)
           "/src/boot/"
         )
       endif()
-      # #908: this expansion only ever globs *.c, so a library that ships its
-      # implementation in anything else contributes NO object code and says
-      # nothing about it. Whether that surfaces as an undefined reference or
-      # as quietly-missing behaviour depends on how the app reaches the
-      # library, and neither failure names the cause -- which is exactly why
-      # every Zig port so far has had to keep its C implementation alongside
-      # the new one. Stop at configure time instead: if the library directory
-      # holds sources this build cannot compile and produced no objects, say
-      # so. A genuinely header-only library has no sources at all and is
-      # unaffected.
-      if(NOT _ra8_lib_one)
-        file(
-          GLOB_RECURSE
-          _ra8_lib_uncompiled
-          CONFIGURE_DEPENDS
-          ${_ra8_lib_path}/src/*.zig
-          ${_ra8_lib_path}/src/*.cpp
-          ${_ra8_lib_path}/src/*.cc
-          ${_ra8_lib_path}/src/*.S
-          ${_ra8_lib_path}/*.zig
-        )
-        if(_ra8_lib_uncompiled)
-          list(JOIN _ra8_lib_uncompiled "\n    " _ra8_lib_uncompiled_pretty)
-          message(
-            FATAL_ERROR
-              "ra8_add_app(): ${_RA8_APP_NAME} declares LIBS ${_ra8_lib}, but "
-              "${_ra8_lib_path}/src holds no C sources and this expansion only "
-              "compiles *.c, so the library would contribute no object code "
-              "(issue #908). Sources found but not compiled:\n    "
-              "${_ra8_lib_uncompiled_pretty}\n  Wire the non-C sources into "
-              "the app build before removing the C implementation, or drop "
-              "${_ra8_lib} from LIBS if it is header-only."
-          )
-        endif()
-      endif()
+      _ra8_app_require_compilable_lib("${_ra8_lib}" "${_ra8_lib_path}" LIBS "${_ra8_lib_one}")
       list(APPEND _ra8_lib_extra ${_ra8_lib_one})
       list(APPEND _ra8_lib_inc ${_ra8_lib_path}/inc)
     endif()
@@ -227,6 +241,9 @@ macro(_ra8_app_collect_sources)
           "/src/boot/"
         )
       endif()
+      _ra8_app_require_compilable_lib(
+        "${_ra8_lib}" "${_ra8_lib_path}" OFF_TARGET_LIBS "${_ra8_lib_one}"
+      )
       list(APPEND _ra8_lib_extra_off_target ${_ra8_lib_one})
       list(APPEND _ra8_lib_inc ${_ra8_lib_path}/inc)
     endif()
