@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2026 Brighton Sikarskie
-# Regenerate the checked-in RA8 media-download protobuf-c codec.
+# Regenerate the checked-in RA8 media-download protobuf-c codec and the pairing
+# manifest the artefact-freshness gate checks without the pinned generator (#715).
 
 set -euo pipefail
 
@@ -100,10 +101,21 @@ if [[ "$MODE" == "--check" ]]; then
     echo "gen_ra8_media_proto: generated source is stale" >&2
     exit 1
   }
+  python3 "$ROOT/scripts/checks/check_proto_codec_pairing.py" || {
+    echo "gen_ra8_media_proto: pairing manifest is stale; run --write" >&2
+    exit 1
+  }
   echo "gen_ra8_media_proto: generated codec is current"
   exit 0
 fi
 
 install -m 0644 "$TMP/ra8_media_download.pb-c.h" "$HEADER"
 install -m 0644 "$TMP/ra8_media_download.pb-c.c" "$SOURCE"
+
+# The pairing manifest is rewritten in the SAME command that regenerates, so a real
+# regenerate can never leave the artefact-freshness gate red, and only a hand edit or a
+# forgotten regenerate can (#715). The generator is absent from the dev box and the CI
+# image, which is why the digest gate exists alongside this byte-exact one.
+python3 "$ROOT/scripts/checks/check_proto_codec_pairing.py" --write
+
 echo "gen_ra8_media_proto: regenerated codec with protobuf-c 1.5.2 / libprotoc 35.1"
