@@ -403,6 +403,37 @@ synthesised byte by byte: System V and Apple symbol tables, BSD `#1/<len>` long
 names, a truncated member, a malformed size field, a text member, a universal
 Mach-O and a 32-bit ELF.
 
+## Which build roots the gate measures
+
+`macos-host-build` does not build every Zig root in the tree, and the list is
+declared in `scripts/ci/lib/macos_host_roots.sh` rather than inlined in the
+gate. Each row carries the root, whether it is covered, and the reason either
+way; the gate prints the whole thing under `=== gate coverage ===` so a green
+run states what it did *not* measure instead of implying the tree builds on
+macOS.
+
+Covered today: `tools/zig_build` (it defines the selection, so it fails first),
+`apps/host/image_pyramid` (the root whose Mach-O the gate reads back), and
+`tests/zig_abi_fixture`. All three need nothing beyond `zig`.
+
+Deferred today, with the reason in the manifest: `apps/host/reg_gen`, because
+its generated-header contract resolves a C23 front end at run time and the
+`zig cc` fallback leg has never been exercised, so cover it once the nightly
+shows which front end the runner resolves; and `apps/host/firmware_pipeline/zig`,
+`tests/abi_chain_fixture`, `tests/rust_abi_fixture/zig`, because each links a
+cargo-built archive and the macOS workflow provisions no Rust toolchain.
+
+`bash scripts/ci/lib/macos_host_roots.sh --selftest` runs inside `ci-parity`
+and fails when a host build root exists that the manifest does not mention in
+either direction, and when the gate stops reading the list. A *host* root is
+the one `check_zig.py`'s host-target rule describes: it takes its default
+target from `ra8_build.hostDefaultTargetQuery`, or declares an exemption in
+`.zig-host-target.json`. That rule is also what keeps a new host root
+*looking* correct from Linux, where it passes every check and is never built
+on a Mac at all, so adding one is a deliberate edit here: cover it, or write
+down why not. A firmware library cross-compiled for thumb and a check tool
+built plain-native are not host roots and are outside this gate's remit.
+
 ## What runs on a clock
 
 `.github/workflows/macos-host.yml` runs the `macos-host-build` gate nightly on
