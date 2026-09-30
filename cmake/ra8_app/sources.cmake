@@ -58,7 +58,10 @@ function(
   _globbed
   _has_archive
 )
-  if(_globbed OR NOT _path OR _has_archive)
+  if(_globbed
+     OR NOT _path
+     OR _has_archive
+  )
     return()
   endif()
   file(
@@ -168,11 +171,19 @@ macro(_ra8_app_collect_sources)
 
   file(GLOB_RECURSE _ra8_lib_core CONFIGURE_DEPENDS ${RA8_REPO_ROOT}/libs/ra8_core/src/*.c)
   _ra8_app_require_compilable_lib(
-    ra8_core "${RA8_REPO_ROOT}/libs/ra8_core" "links ra8_core into every app" "${_ra8_lib_core}" ""
+    ra8_core
+    "${RA8_REPO_ROOT}/libs/ra8_core"
+    "links ra8_core into every app"
+    "${_ra8_lib_core}"
+    ""
   )
   file(GLOB_RECURSE _ra8_lib_hal CONFIGURE_DEPENDS ${RA8_REPO_ROOT}/libs/ra8_hal/src/*.c)
   _ra8_app_require_compilable_lib(
-    ra8_hal "${RA8_REPO_ROOT}/libs/ra8_hal" "links ra8_hal into every app" "${_ra8_lib_hal}" ""
+    ra8_hal
+    "${RA8_REPO_ROOT}/libs/ra8_hal"
+    "links ra8_hal into every app"
+    "${_ra8_lib_hal}"
+    ""
   )
   # ra8_net_pal has no C sources: the library is Zig (#1039) and its objects
   # come from the Zig static archive, linked separately. Left unglobbed and
@@ -184,8 +195,11 @@ macro(_ra8_app_collect_sources)
   # the #908 guard, for the same reason as ra8_net_pal above.
   file(GLOB_RECURSE _ra8_lib_board CONFIGURE_DEPENDS ${_ra8_board_dir}/src/*.c)
   _ra8_app_require_compilable_lib(
-    "ra8_board_${_RA8_APP_BOARD}" "${_ra8_board_dir}" "builds for BOARD ${_RA8_APP_BOARD}"
+    "ra8_board_${_RA8_APP_BOARD}"
+    "${_ra8_board_dir}"
+    "builds for BOARD ${_RA8_APP_BOARD}"
     "${_ra8_lib_board}"
+    ""
   )
   list(
     FILTER
@@ -196,8 +210,11 @@ macro(_ra8_app_collect_sources)
   )
   file(GLOB_RECURSE _ra8_secure_app CONFIGURE_DEPENDS ${RA8_REPO_ROOT}/libs/ra8_secure_app/src/*.c)
   _ra8_app_require_compilable_lib(
-    ra8_secure_app "${RA8_REPO_ROOT}/libs/ra8_secure_app" "links ra8_secure_app into every app"
+    ra8_secure_app
+    "${RA8_REPO_ROOT}/libs/ra8_secure_app"
+    "links ra8_secure_app into every app"
     "${_ra8_secure_app}"
+    ""
   )
   if(_RA8_APP_NO_NSC)
     set(_ra8_lib_nsc "")
@@ -213,7 +230,11 @@ macro(_ra8_app_collect_sources)
   else()
     file(GLOB_RECURSE _ra8_lib_nsc CONFIGURE_DEPENDS ${RA8_REPO_ROOT}/libs/ra8_nsc/src/*.c)
     _ra8_app_require_compilable_lib(
-      ra8_nsc "${RA8_REPO_ROOT}/libs/ra8_nsc" "links the ra8_nsc veneers" "${_ra8_lib_nsc}"
+      ra8_nsc
+      "${RA8_REPO_ROOT}/libs/ra8_nsc"
+      "links the ra8_nsc veneers"
+      "${_ra8_lib_nsc}"
+      ""
     )
   endif()
 
@@ -264,7 +285,10 @@ macro(_ra8_app_collect_sources)
         )
       endif()
       _ra8_app_require_compilable_lib(
-        "${_ra8_lib}" "${_ra8_lib_path}" "declares LIBS ${_ra8_lib}" "${_ra8_lib_one}"
+        "${_ra8_lib}"
+        "${_ra8_lib_path}"
+        "declares LIBS ${_ra8_lib}"
+        "${_ra8_lib_one}"
         "${_ra8_lib_has_archive}"
       )
       list(APPEND _ra8_lib_extra ${_ra8_lib_one})
@@ -320,7 +344,10 @@ macro(_ra8_app_collect_sources)
         )
       endif()
       _ra8_app_require_compilable_lib(
-        "${_ra8_lib}" "${_ra8_lib_path}" "declares OFF_TARGET_LIBS ${_ra8_lib}" "${_ra8_lib_one}"
+        "${_ra8_lib}"
+        "${_ra8_lib_path}"
+        "declares OFF_TARGET_LIBS ${_ra8_lib}"
+        "${_ra8_lib_one}"
         "${_ra8_lib_has_archive}"
       )
       list(APPEND _ra8_lib_extra_off_target ${_ra8_lib_one})
@@ -346,12 +373,7 @@ macro(_ra8_app_collect_sources)
     # The arena hooks forward to the shared decoder scratch, and reflow_image.c
     # routes WebP through the shared container sniff (#768), so both of those
     # TUs travel with the reflow sources wherever they go.
-    list(
-      APPEND
-      _ra8_lib_extra
-      ${_ra8_stb_impl}
-      ${_ra8_stb_img_impl}
-    )
+    list(APPEND _ra8_lib_extra ${_ra8_stb_impl} ${_ra8_stb_img_impl})
     # ra8_imgdec is a Zig archive now, so the scratch and the sniff arrive as
     # one library rather than two TUs compiled by path.
     list(APPEND _ra8_lib_zig "ra8_imgdec|${RA8_REPO_ROOT}/libs/ra8_imgdec")
@@ -367,11 +389,8 @@ macro(_ra8_app_collect_sources)
     # ra8_rabook_raster.c routes its WebP-or-stb decision through the shared
     # container sniff (#768), the same way reflow_image.c does above, so the
     # sniff TU travels with the rabook_compile sources wherever they go.
-    list(
-      APPEND
-      _ra8_lib_extra
-      ${_ra8_stb_img_impl}
-      ${RA8_REPO_ROOT}/apps/shared_libs/reflow/src/ra8_img_arena.c
+    list(APPEND _ra8_lib_extra ${_ra8_stb_img_impl}
+         ${RA8_REPO_ROOT}/apps/shared_libs/reflow/src/ra8_img_arena.c
     )
     list(APPEND _ra8_lib_zig "ra8_imgdec|${RA8_REPO_ROOT}/libs/ra8_imgdec")
     list(
@@ -414,8 +433,11 @@ macro(_ra8_app_collect_sources)
   )
     file(GLOB_RECURSE _ra8_lib_mem CONFIGURE_DEPENDS ${RA8_REPO_ROOT}/libs/ra8_mem/src/*.c)
     _ra8_app_require_compilable_lib(
-      ra8_mem "${RA8_REPO_ROOT}/libs/ra8_mem" "pulls in ra8_mem for LIBS reflow/book"
+      ra8_mem
+      "${RA8_REPO_ROOT}/libs/ra8_mem"
+      "pulls in ra8_mem for LIBS reflow/book"
       "${_ra8_lib_mem}"
+      ""
     )
     list(APPEND _ra8_lib_extra ${_ra8_lib_mem})
     list(APPEND _ra8_lib_inc ${RA8_REPO_ROOT}/libs/ra8_mem/inc)
@@ -432,8 +454,11 @@ macro(_ra8_app_collect_sources)
     if(NOT "ra8_jpeg" IN_LIST _RA8_APP_LIBS)
       file(GLOB_RECURSE _ra8_camera_jpeg CONFIGURE_DEPENDS ${RA8_REPO_ROOT}/libs/ra8_jpeg/src/*.c)
       _ra8_app_require_compilable_lib(
-        ra8_jpeg "${RA8_REPO_ROOT}/libs/ra8_jpeg" "pulls in ra8_jpeg for LIBS ra8_camera"
+        ra8_jpeg
+        "${RA8_REPO_ROOT}/libs/ra8_jpeg"
+        "pulls in ra8_jpeg for LIBS ra8_camera"
         "${_ra8_camera_jpeg}"
+        ""
       )
       list(APPEND _ra8_lib_extra ${_ra8_camera_jpeg})
     endif()
@@ -454,8 +479,11 @@ macro(_ra8_app_collect_sources)
   if(("epub" IN_LIST _RA8_APP_LIBS) OR ("rabook_compile" IN_LIST _RA8_APP_LIBS))
     file(GLOB_RECURSE _xml CONFIGURE_DEPENDS ${RA8_REPO_ROOT}/apps/shared_libs/xml/src/*.c)
     _ra8_app_require_compilable_lib(
-      xml "${RA8_REPO_ROOT}/apps/shared_libs/xml" "pulls in xml for LIBS epub/rabook_compile"
+      xml
+      "${RA8_REPO_ROOT}/apps/shared_libs/xml"
+      "pulls in xml for LIBS epub/rabook_compile"
       "${_xml}"
+      ""
     )
     list(APPEND _ra8_lib_extra ${_xml})
     list(APPEND _ra8_lib_inc ${RA8_REPO_ROOT}/apps/shared_libs/xml/inc)
@@ -493,7 +521,11 @@ macro(_ra8_app_collect_sources)
     if(NOT "ra8_jpeg" IN_LIST _RA8_APP_LIBS)
       file(GLOB_RECURSE _jof_jpeg CONFIGURE_DEPENDS ${RA8_REPO_ROOT}/libs/ra8_jpeg/src/*.c)
       _ra8_app_require_compilable_lib(
-        ra8_jpeg "${RA8_REPO_ROOT}/libs/ra8_jpeg" "pulls in ra8_jpeg for LIBS jof" "${_jof_jpeg}"
+        ra8_jpeg
+        "${RA8_REPO_ROOT}/libs/ra8_jpeg"
+        "pulls in ra8_jpeg for LIBS jof"
+        "${_jof_jpeg}"
+        ""
       )
       list(APPEND _ra8_lib_extra ${_jof_jpeg})
     endif()
@@ -520,8 +552,11 @@ macro(_ra8_app_collect_sources)
            ${RA8_REPO_ROOT}/apps/shared_libs/webp/src/*.c
       )
       _ra8_app_require_compilable_lib(
-        webp "${RA8_REPO_ROOT}/apps/shared_libs/webp" "pulls in the webp facade for LIBS jof"
+        webp
+        "${RA8_REPO_ROOT}/apps/shared_libs/webp"
+        "pulls in the webp facade for LIBS jof"
         "${_jof_webp_facade}"
+        ""
       )
       list(APPEND _ra8_lib_extra ${_jof_webp_facade})
     endif()
@@ -534,8 +569,11 @@ macro(_ra8_app_collect_sources)
            ${RA8_REPO_ROOT}/apps/shared_libs/webp/src/*.c
       )
       _ra8_app_require_compilable_lib(
-        webp "${RA8_REPO_ROOT}/apps/shared_libs/webp"
-        "pulls in the webp facade for LIBS rabook_compile" "${_ra8_rabook_webp_facade}"
+        webp
+        "${RA8_REPO_ROOT}/apps/shared_libs/webp"
+        "pulls in the webp facade for LIBS rabook_compile"
+        "${_ra8_rabook_webp_facade}"
+        ""
       )
       list(APPEND _ra8_lib_extra ${_ra8_rabook_webp_facade})
     endif()
@@ -557,8 +595,11 @@ macro(_ra8_app_collect_sources)
            ${RA8_REPO_ROOT}/apps/shared_libs/webp/src/*.c
       )
       _ra8_app_require_compilable_lib(
-        webp "${RA8_REPO_ROOT}/apps/shared_libs/webp" "pulls in the webp facade for LIBS reflow"
+        webp
+        "${RA8_REPO_ROOT}/apps/shared_libs/webp"
+        "pulls in the webp facade for LIBS reflow"
         "${_ra8_reflow_webp_facade}"
+        ""
       )
       list(APPEND _ra8_lib_extra ${_ra8_reflow_webp_facade})
     endif()
@@ -643,8 +684,11 @@ macro(_ra8_app_collect_sources)
            ${RA8_REPO_ROOT}/apps/shared_libs/unarch/src/*.c
       )
       _ra8_app_require_compilable_lib(
-        unarch "${RA8_REPO_ROOT}/apps/shared_libs/unarch" "pulls in unarch transitively"
+        unarch
+        "${RA8_REPO_ROOT}/apps/shared_libs/unarch"
+        "pulls in unarch transitively"
         "${_unarch_srcs}"
+        ""
       )
       list(APPEND _ra8_lib_extra ${_unarch_srcs})
     endif()
