@@ -160,13 +160,37 @@ LOCAL_LINE_FRAGMENT_RE = re.compile(r"L\d+(?:-L?\d+)?$", re.IGNORECASE)
 SYMBOL_SUFFIX_RE = re.compile(r"::.*$")
 SOUP_LOCAL_PATH_RE = re.compile(r"^- \*\*Local path\*\*: `([^`]+)`\s*$", re.MULTILINE)
 WORK_FIXTURE_PATH = "../escape"
-SOUP_DECLARED_ABSENCES = {
-    "docs/SOUP/libwebp.md": frozenset({"src/enc/*.c", "src/mux/", "src/demux/"})
-}
-LIBWEBP_ABSENCE_CLAUSE = (
-    "  (`src/enc/*.c`), the muxer/demuxer (`src/mux/`, `src/demux/`), "
-    "`sharpyuv/`, the CLI tools (`examples/`, `imageio/`) and `extras/` are "
-    "**not** vendored"
+SOUP_RECORD_PREFIX = "docs/SOUP/"
+SOUP_RECORD_EXEMPT = frozenset({"docs/SOUP/README.md"})
+# A SOUP record's job is to state the boundary of the vendored subset, so it
+# names upstream files we deliberately do not carry. Such a name is sound only
+# inside a paragraph that says so in as many words, and only when it is not a
+# path into our own tree (which must stay checked hard: see #2334).
+VENDORING_ABSENCE_RE = re.compile(
+    r"(?:never|not)\s+vendored"
+    r"|\bpruned\b"
+    r"|\b(?:is|are|was|were)\s+not\s+supplied\b"
+    r"|\bno\b[^\n]{0,80}?\bis\s+supplied\b"
+    r"|\bcarries\s+its\s+own\b",
+    re.IGNORECASE,
+)
+EMPHASIS_RE = re.compile(r"[*_]{1,3}")
+# Sentence end, never the dot inside a filename: punctuation plus whitespace
+# or end of block. This prose is hard-wrapped, so a bare newline is not one.
+SENTENCE_SPLIT_RE = re.compile(r"(?<=[.;:])(?=\s)|\n\s*(?=[-*+]\s)")
+FIRST_PARTY_ROOTS = (
+    "apps/",
+    "arch/",
+    "cmake/",
+    "coprocessor/",
+    "docs/",
+    "examples/",
+    "infra/",
+    "libs/",
+    "port/",
+    "scripts/",
+    "tests/",
+    "tools/",
 )
 QUALIFICATION_RELEASE_SOURCES = frozenset(
     {
