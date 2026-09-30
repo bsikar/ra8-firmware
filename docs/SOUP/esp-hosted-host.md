@@ -118,8 +118,8 @@ compiles **eight** of the vendored translation units into the
 `c6_camera_mjpeg`, `c6_fw_version`, `c6_hosted_init`, `c6_wifi_join`,
 `c6_wifi_link` and `wifi_hal_join`. The pending consumers are
 `examples/ek_ra8d2/hw_pending/c6/c6_mdl_test` and
-`examples/ek_ra8d2/hw_pending/media_download`; **8** of the nine sit under a
-`c6/` tier, `media_download` being the exception. The cross-build gate covers
+`examples/ek_ra8d2/hw_pending/media_download`; **8** of the nine applications
+sit under a `c6/` tier, `media_download` being the exception. The cross-build gate covers
 all nine on every push.
 
 The two camera applications declare nothing in their own CMakeLists: each
