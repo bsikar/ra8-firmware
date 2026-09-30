@@ -580,6 +580,16 @@ def _check_option_setting(path: pathlib.Path, code: str) -> list[Finding]:
 # which silently stopped LD007/LD008 matching anything cannot slip past as a
 # clean run.
 #
+# Re-pinned 25 -> 13 as #742 lands. Same mechanism as the #761 re-pin above,
+# a tier down: the dual-core, ThreadX and DFU apps that forked the board map
+# are being converted to compose it through ra8_add_app() instead, and each
+# conversion deletes a private copy of the option-setting family along with
+# the other 340 lines it was carrying. 17 scripts declare the complete family
+# after this slice, against 32 when the floor was last pinned; 13 keeps the
+# same headroom-above-zero proportionally. Expect this to be re-pinned again
+# as the remaining forks convert. What the floor is actually defending has not
+# changed: a PROVIDE rename takes the count to 0, and 0 must never read clean.
+
 # Re-pinned 40 -> 25 when #761 landed. The population was comfortably into the
 # sixties because 42 ThreadX apps each carried a full private copy of the board
 # memory map, option-setting family and all. Those apps now compose the board
@@ -589,7 +599,7 @@ def _check_option_setting(path: pathlib.Path, code: str) -> list[Finding]:
 # declarations of them did. 32 scripts declare the complete family after the
 # conversion, so 25 keeps the same headroom-above-zero the old pin had: a
 # rename still drops the count to 0 and still fails.
-OPTION_SETTING_FILE_FLOOR = 25
+OPTION_SETTING_FILE_FLOOR = 13
 
 
 def option_section(name: str) -> str:
