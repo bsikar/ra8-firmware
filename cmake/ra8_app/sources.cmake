@@ -317,9 +317,10 @@ macro(_ra8_app_collect_sources)
       _ra8_lib_extra
       ${_ra8_stb_impl}
       ${_ra8_stb_img_impl}
-      ${RA8_REPO_ROOT}/libs/ra8_imgdec/src/ra8_imgdec_scratch.c
-      ${RA8_REPO_ROOT}/libs/ra8_imgdec/src/ra8_imgdec_sniff.c
     )
+    # ra8_imgdec is a Zig archive now, so the scratch and the sniff arrive as
+    # one library rather than two TUs compiled by path.
+    list(APPEND _ra8_lib_zig "ra8_imgdec|${RA8_REPO_ROOT}/libs/ra8_imgdec")
     list(
       APPEND
       _ra8_lib_inc
@@ -337,9 +338,8 @@ macro(_ra8_app_collect_sources)
       _ra8_lib_extra
       ${_ra8_stb_img_impl}
       ${RA8_REPO_ROOT}/apps/shared_libs/reflow/src/ra8_img_arena.c
-      ${RA8_REPO_ROOT}/libs/ra8_imgdec/src/ra8_imgdec_scratch.c
-      ${RA8_REPO_ROOT}/libs/ra8_imgdec/src/ra8_imgdec_sniff.c
     )
+    list(APPEND _ra8_lib_zig "ra8_imgdec|${RA8_REPO_ROOT}/libs/ra8_imgdec")
     list(
       APPEND
       _ra8_lib_inc
@@ -560,18 +560,9 @@ macro(_ra8_app_collect_sources)
     # / rabook_compile / comic blocks may already have added the same TUs, so
     # each is appended only when absent -- a duplicate source is an error under
     # some generators and a duplicate symbol under all of them.
-    if(NOT ${RA8_REPO_ROOT}/libs/ra8_imgdec/src/ra8_imgdec_dims.c IN_LIST _ra8_lib_extra)
-      list(APPEND _ra8_lib_extra ${RA8_REPO_ROOT}/libs/ra8_imgdec/src/ra8_imgdec_dims.c)
-    endif()
-    if(NOT ${RA8_REPO_ROOT}/libs/ra8_imgdec/src/ra8_imgdec_sniff.c IN_LIST _ra8_lib_extra)
-      list(APPEND _ra8_lib_extra ${RA8_REPO_ROOT}/libs/ra8_imgdec/src/ra8_imgdec_sniff.c)
-    endif()
-    if(NOT ${RA8_REPO_ROOT}/libs/ra8_imgdec/src/ra8_imgdec_scratch.c IN_LIST _ra8_lib_extra)
-      list(APPEND _ra8_lib_extra ${RA8_REPO_ROOT}/libs/ra8_imgdec/src/ra8_imgdec_scratch.c)
-    endif()
-    if(NOT ${RA8_REPO_ROOT}/libs/ra8_imgdec/src/ra8_imgdec.c IN_LIST _ra8_lib_extra)
-      list(APPEND _ra8_lib_extra ${RA8_REPO_ROOT}/libs/ra8_imgdec/src/ra8_imgdec.c)
-    endif()
+    # One archive, and _ra8_lib_zig is de-duplicated at line 296, so the
+    # blocks above may already have named it.
+    list(APPEND _ra8_lib_zig "ra8_imgdec|${RA8_REPO_ROOT}/libs/ra8_imgdec")
     if(NOT ${RA8_REPO_ROOT}/libs/ra8_imgdec/inc IN_LIST _ra8_lib_inc)
       list(APPEND _ra8_lib_inc ${RA8_REPO_ROOT}/libs/ra8_imgdec/inc)
     endif()
@@ -609,15 +600,7 @@ macro(_ra8_app_collect_sources)
     # may already have added the same TUs, so each is appended only when
     # absent -- a duplicate source is an error under some generators and a
     # duplicate symbol under all of them.
-    if(NOT ${RA8_REPO_ROOT}/libs/ra8_imgdec/src/ra8_imgdec_scratch.c IN_LIST _ra8_lib_extra)
-      list(APPEND _ra8_lib_extra ${RA8_REPO_ROOT}/libs/ra8_imgdec/src/ra8_imgdec_scratch.c)
-    endif()
-    if(NOT ${RA8_REPO_ROOT}/libs/ra8_imgdec/src/ra8_imgdec_dims.c IN_LIST _ra8_lib_extra)
-      list(APPEND _ra8_lib_extra ${RA8_REPO_ROOT}/libs/ra8_imgdec/src/ra8_imgdec_dims.c)
-    endif()
-    if(NOT ${RA8_REPO_ROOT}/libs/ra8_imgdec/src/ra8_imgdec_sniff.c IN_LIST _ra8_lib_extra)
-      list(APPEND _ra8_lib_extra ${RA8_REPO_ROOT}/libs/ra8_imgdec/src/ra8_imgdec_sniff.c)
-    endif()
+    list(APPEND _ra8_lib_zig "ra8_imgdec|${RA8_REPO_ROOT}/libs/ra8_imgdec")
     if(NOT ${RA8_REPO_ROOT}/libs/ra8_imgdec/inc IN_LIST _ra8_lib_inc)
       list(APPEND _ra8_lib_inc ${RA8_REPO_ROOT}/libs/ra8_imgdec/inc)
     endif()

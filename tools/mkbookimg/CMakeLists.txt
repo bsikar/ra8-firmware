@@ -20,6 +20,18 @@ set(CMAKE_C_STANDARD_REQUIRED ON)
 # Repo root from this tool dir (tools/mkbookimg -> repo).
 get_filename_component(_repo "${CMAKE_CURRENT_SOURCE_DIR}/../.." ABSOLUTE)
 
+# libs/ra8_imgdec/inc/ra8_imgdec*.h is Zig now, so the targets below that used
+# to compile libs/ra8_imgdec/src/*.c by path link the archive instead.
+if(NOT TARGET ra8_zig::ra8_imgdec)
+  include(${_repo}/tests/cmake/zig_library.cmake)
+  ra8_add_zig_library(
+    NAME ra8_imgdec
+    ZIG_ROOT ${_repo}/libs/ra8_imgdec
+    LIBRARY_NAME ra8_imgdec
+  )
+endif()
+link_libraries(ra8_zig::ra8_imgdec)
+
 # ra8_fs is split across ra8_fs_fat*.c TUs (file-size gate); glob them so the
 # tool keeps linking as the library gains/renames TUs.
 file(GLOB _ra8_fs_srcs CONFIGURE_DEPENDS ${_repo}/libs/ra8_fs/src/*.c)
@@ -27,8 +39,6 @@ file(GLOB _ra8_fs_srcs CONFIGURE_DEPENDS ${_repo}/libs/ra8_fs/src/*.c)
 # Container identification comes from the one shared table (#748), not a
 # private magic-byte list: the sniffer plus its naming rows, named by path
 # because app-side builds enumerate imgdec TUs that way (#754).
-set(_ra8_imgdec_srcs ${_repo}/libs/ra8_imgdec/src/ra8_imgdec_sniff.c
-                     ${_repo}/libs/ra8_imgdec/src/ra8_imgdec_name.c
 )
 
 # The tool is split across two TUs (file-size gate): the host container plus
