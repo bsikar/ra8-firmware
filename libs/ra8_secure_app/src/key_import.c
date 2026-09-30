@@ -43,7 +43,7 @@
 #include "ra8_secure.h"
 #include "sec_cmac_internal.h"
 
-static const char* s_tag = "KEYIMP";
+static const char* const s_tag = "KEYIMP";
 
 /** @brief 5-bit rotate-amount mask (mod 32). */
 typedef enum : uint8_t {

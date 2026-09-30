@@ -26,7 +26,7 @@
 #include "ra8_mstp_regs.h"
 #include "ra8_poeg_regs.h"
 
-static const char* s_tag = "POEG";
+static const char* const s_tag = "POEG";
 
 /**
  * @var s_poeg_mstp_table

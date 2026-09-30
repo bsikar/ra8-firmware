@@ -57,7 +57,7 @@
  * @note Static, file-scope.
  * @since 0.1.0
  */
-static const char* s_tag = "RSIP";
+static const char* const s_tag = "RSIP";
 
 /*
  * The RSIP-E50D asymmetric signature / key-agreement family (ECDSA sign /

@@ -46,7 +46,7 @@
  * @var s_tag
  * @brief Logging tag used by every error path in this TU.
  */
-static const char* s_tag = "EPAPER";
+static const char* const s_tag = "EPAPER";
 
 /* =============================================================================
  * Constants -- typed enums per the no-magic-number rule.

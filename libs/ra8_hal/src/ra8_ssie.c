@@ -44,7 +44,7 @@
  *
  * @note Module-private; never modified at runtime.
  */
-static const char* s_tag = "SSIE";
+static const char* const s_tag = "SSIE";
 
 /**
  * @var s_ssie_mstp_table

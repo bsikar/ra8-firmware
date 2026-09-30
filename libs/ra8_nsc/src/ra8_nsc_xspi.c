@@ -26,7 +26,7 @@
 #include "ra8_nsc_veneer.h"
 #include "ra8_xspi.h"
 
-static const char* s_tag = "NSCXSPI";
+static const char* const s_tag = "NSCXSPI";
 
 typedef enum : uint8_t {
   k_ra8_nsc_xspi_instance = 0U, /**< Only one xspi instance today. */

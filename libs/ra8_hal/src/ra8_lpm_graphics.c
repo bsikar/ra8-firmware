@@ -36,7 +36,7 @@
  * @var s_tag
  * @brief Component tag used in every log line emitted by this driver.
  */
-static const char* s_tag = "LPM";
+static const char* const s_tag = "LPM";
 
 /* =============================================================================
  * Graphics power domain

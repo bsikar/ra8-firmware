@@ -36,7 +36,7 @@
  * @var s_tag
  * @brief Logging tag for the reset driver.
  */
-static const char* s_tag = "RESET";
+static const char* const s_tag = "RESET";
 
 /**
  * @enum ra8_reset_clear_layout_t

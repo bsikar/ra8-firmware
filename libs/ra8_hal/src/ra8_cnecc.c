@@ -77,7 +77,7 @@
  * @brief Logging tag.
  * @note  Static, file-local; never modified after initialisation.
  */
-static const char* s_tag = "CNECC";
+static const char* const s_tag = "CNECC";
 
 /**
  * @var s_cnecc_mstp_table

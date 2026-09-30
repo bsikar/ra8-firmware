@@ -49,7 +49,7 @@
  * @warning Direct modification breaks log correlation.
  * @since 0.1.0
  */
-static const char* s_tag = "DRW";
+static const char* const s_tag = "DRW";
 
 /* =============================================================================
  * Drawing primitives

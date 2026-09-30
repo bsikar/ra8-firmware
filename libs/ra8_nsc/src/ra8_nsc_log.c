@@ -24,7 +24,7 @@
 #include "ra8_nsc.h"
 #include "ra8_nsc_veneer.h"
 
-static const char* s_tag = "NSCLOG";
+static const char* const s_tag = "NSCLOG";
 
 /**
  * @var s_tag_scratch

@@ -43,7 +43,7 @@
 #include "ra8_system_regs.h"
 #include "ra8_time_constants.h"
 
-static const char* s_tag = "CGC";
+static const char* const s_tag = "CGC";
 
 /**
  * @var s_usb60ckcr_probe

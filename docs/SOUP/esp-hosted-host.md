@@ -109,13 +109,27 @@ size, not correctness, and the linker drops what is never referenced.
 
 The first-party port landed at `port/esp-hosted/`, and `cmake/esp_hosted.cmake`
 compiles **eight** of the vendored translation units into the
-`esp_hosted_objs` object library behind the `RA8_USE_ESP_HOSTED` option. Seven
-applications consume it. Five validated consumers live under
-`examples/ek_ra8d2/hw_validated/c6/`: `c6_fw_version`, `c6_hosted_init`,
-`c6_wifi_join`, `c6_wifi_link` and `wifi_hal_join`. The pending consumers are
+`esp_hosted_objs` object library behind the `RA8_USE_ESP_HOSTED` option.
+
+<!-- consumer-census: key=esp_hosted total=9 hw_validated=7 c6=8 -->
+
+**9** applications consume it. **7** validated consumers live under
+`examples/ek_ra8d2/hw_validated/c6/`: `c6_camera_livestream`,
+`c6_camera_mjpeg`, `c6_fw_version`, `c6_hosted_init`, `c6_wifi_join`,
+`c6_wifi_link` and `wifi_hal_join`. The pending consumers are
 `examples/ek_ra8d2/hw_pending/c6/c6_mdl_test` and
-`examples/ek_ra8d2/hw_pending/media_download`. The cross-build gate covers all
-seven on every push.
+`examples/ek_ra8d2/hw_pending/media_download`; **8** of the nine sit under a
+`c6/` tier, `media_download` being the exception. The cross-build gate covers
+all nine on every push.
+
+The two camera applications declare nothing in their own CMakeLists: each
+includes `examples/ek_ra8d2/common/c6_camera_server/c6_camera_server.cmake`
+and delegates to `c6_camera_server_add_app()`, which carries the
+`USES ... esp_hosted` clause for both. The census marker above is re-derived
+through that indirection by `scripts/checks/check_soup_consumer_census.py`,
+which fails when a stated count and the tree disagree, fails again when a
+checked number appears nowhere in this prose, and refuses to count an app
+whose declaration it cannot locate at all.
 
 **Compiled in-tree** -- the SPI transport, the serial (control-plane) lower
 layer, the RPC wire codec and the shared utilities:
@@ -172,10 +186,11 @@ The port's retained silicon evidence is dated 2026-07-27. The probe
 `examples/ek_ra8d2/hw_validated/c6/c6_spi_probe` walked every J26 hole and
 brought the raw link up at SPI mode 3 / 1 MHz with zero bad checksums, driving
 the SCI directly; the first protocol round-trip through the code described
-here landed in `6d7ddb532`. The five validated consumers form their own HIL
+here landed in `6d7ddb532`. The validated consumers form their own HIL
 lane (`just hil::c6`) rather than joining `hw_validated/hil/`, because
-`ra8_emulator` models no ESP32-C6 (#494). The two pending consumers do not
-inherit that historical validation and still require target evidence.
+`ra8_emulator` models no ESP32-C6 (#494). That evidence is dated against the
+five Wi-Fi bring-up applications that existed then; the two camera servers and
+the two pending consumers do not inherit it and still require target evidence.
 
 ## The port contract
 

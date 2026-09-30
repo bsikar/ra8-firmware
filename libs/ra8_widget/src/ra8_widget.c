@@ -14,7 +14,7 @@
 #include "ra8_check.h"
 
 /** @brief Logging / check tag. */
-static const char* s_tag = "ra8_widget";
+static const char* const s_tag = "ra8_widget";
 
 /**
  * @brief True if a rect covers no pixels (used as the union identity).

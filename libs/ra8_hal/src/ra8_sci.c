@@ -75,7 +75,7 @@
 #include "ra8_sci_internal.h"
 #include "ra8_sci_regs.h"
 
-static const char* s_tag = "SCI";
+static const char* const s_tag = "SCI";
 
 /* =============================================================================
  * Per-channel state

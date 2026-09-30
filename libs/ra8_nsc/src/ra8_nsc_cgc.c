@@ -32,7 +32,7 @@
  * @note File-scope only.
  * @since 0.1.0
  */
-static const char* s_tag = "NSCCGC";
+static const char* const s_tag = "NSCCGC";
 
 /**
  * @brief NSC veneer: bring up PLL2 with the given multiplier and divider.

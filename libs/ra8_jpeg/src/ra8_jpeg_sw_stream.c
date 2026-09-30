@@ -38,7 +38,7 @@
 #include "ra8_log.h"
 
 /** @brief Component log tag. */
-static const char* s_tag = "JPEG_SW";
+static const char* const s_tag = "JPEG_SW";
 
 /**
  * @enum ra8_jpeg_stream_const_t

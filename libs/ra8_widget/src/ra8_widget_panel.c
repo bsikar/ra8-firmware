@@ -26,7 +26,7 @@
 #include "ra8_widget.h"
 
 /** @brief Logging / check tag. */
-static const char* s_tag = "ra8_widget_panel";
+static const char* const s_tag = "ra8_widget_panel";
 
 /**
  * @brief Lay a panel's children out inside a rectangle.

@@ -28,7 +28,7 @@
 #include "ra8_mstp.h"
 #include "ra8_tsn_regs.h"
 
-static const char* s_tag = "TSN";
+static const char* const s_tag = "TSN";
 
 /**
  * @enum ra8_tsn_internal_t
