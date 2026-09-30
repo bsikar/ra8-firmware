@@ -113,6 +113,43 @@ ra8_board_clock_profile_to_chip(fw_clock_module_t module, fw_clock_module_t* out
  */
 [[nodiscard]] ra8_err_t ra8_board_clock_profile_bind(fw_clock_t* clk);
 
+/**
+ * @brief The board's own clock handle, bound to the profile above.
+ *
+ * @details
+ * A consumer that only wants to ask this board a clock question should not
+ * have to own storage and a bind call to do it. This returns a handle bound
+ * to ``ra8_board_clock_profile_bind`` on first use and unchanged thereafter,
+ * so a reach-in that used to read a chip domain directly becomes one call:
+ *
+ * @code
+ * uint32_t hz = 0U;
+ * const fw_clock_module_t core = {.kind = k_fw_clock_module_core, .index = 0U};
+ * if (fw_clock_rate_for(ra8_board_clock(), core, &hz) != k_ra8_ok) {
+ *   return err;
+ * }
+ * @endcode
+ *
+ * The binding is stateless and the profile tables are ``const``, so binding
+ * is pure table assignment with nothing to fail: the only way
+ * ``ra8_board_clock_profile_bind`` reports an error is a null handle, and the
+ * handle here is a file-static. The return is therefore never NULL, which is
+ * what lets the call above skip a status check on acquisition.
+ *
+ * @return Bound handle for this board. Never NULL.
+ *
+ * @pre ``ra8_board_clocks_init`` has run, or rates read back as the reset tree.
+ * @pre ``ra8_mstp_init`` has run before any gating call through the handle.
+ * @note Not thread-safe on first call: two threads racing the first
+ *       acquisition both write the same table pointers, which is benign here,
+ *       but no ordering is published. Acquire it once during bring-up, on the
+ *       core that ran bring-up, if that matters to a caller.
+ * @warning One handle for the whole board. A caller must not pass it to
+ *          ``fw_clock_bind`` again or otherwise mutate it.
+ * @since 0.1.0
+ */
+[[nodiscard]] const fw_clock_t* ra8_board_clock(void);
+
 #ifdef __cplusplus
 }
 #endif
