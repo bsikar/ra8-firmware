@@ -57,7 +57,6 @@
 #include "ra8_board_ek_ra8d2.h"
 #include "ra8_board_ek_ra8d2_console_stream.h"
 #include "ra8_boot_entry.h"
-#include "ra8_cgc.h"
 #include "ra8_check.h"
 #include "ra8_err.h"
 #include "ra8_io.h"
@@ -137,13 +136,16 @@ RA8_INTERNAL static void internal_demo_print(const char* msg)
 /**
  * @brief Bring up CGC, SysTick, and the board console; halt on failure.
  *
- * @details Resolves CPUCLK0, initializes the time base, then hands the console
+ * @details Asks the board for its clock tree and rates, initializes the time
+ * base from CPUCLK0, then hands the console
  * over to the BSP -- which owns the channel, the PD02 / PD03 routing and the
  * live-PCLKA bit-rate solve -- and binds it as an ra8_io stream.
  *
  * @pre Reset startup has initialized data and BSS storage.
  * @pre Peripheral register mappings for clocks, pins, and the console are
  *      accessible.
+ * @note The clock tree itself is the board's: this helper never names a
+ *       concrete clock-generator symbol (#693).
  * @post On return, the board console is configured for the requested
  *       diagnostic baud and bound into ::s_uart.
  * @post Any required setup failure parks the application before returning.
@@ -152,10 +154,9 @@ RA8_INTERNAL static void internal_demo_print(const char* msg)
  */
 RA8_INTERNAL static void internal_demo_setup_or_halt(void)
 {
-  uint32_t cpuclk0_hz = 0U;
-  if ((ra8_cgc_init() != k_ra8_ok) ||
-      (ra8_cgc_get_clock_hz(k_ra8_clock_id_cpuclk0, &cpuclk0_hz) != k_ra8_ok) ||
-      (ra8_time_init(cpuclk0_hz) != k_ra8_ok) ||
+  ra8_board_clock_rates_t clock_rates = {};
+  if ((ra8_board_clocks_init(&clock_rates) != k_ra8_ok) ||
+      (ra8_time_init(clock_rates.cpuclk0_hz) != k_ra8_ok) ||
       (ra8_board_uart_console_init((uint32_t)k_demo_uart_baud) != k_ra8_ok) ||
       (ra8_board_console_stream(&s_uart) != k_ra8_ok)) {
     while (true) {
