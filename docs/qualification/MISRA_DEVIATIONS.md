@@ -854,11 +854,13 @@ audit tool is supplementary.
   `<stdarg.h>` shall not be used.
 - **Category**: Required.
 - **Disposition**: Project deviation (formal).
-- **Scope**: three bounded adapters: the five-file esp-hosted bridge
-  (`ra8_esp_hosted_fmt*`, `ra8_esp_hosted_log*`, `ra8_esp_hosted_osi.c`),
-  `tools/ra8_emulator/src/host/emu_host_io*`, and
+- **Scope**: two bounded adapters: the five-file esp-hosted bridge
+  (`ra8_esp_hosted_fmt*`, `ra8_esp_hosted_log*`, `ra8_esp_hosted_osi.c`) and
   `tools/cache_bench/src/cache_bench_io.c` plus
-  `tools/cache_bench/inc/cache_bench_io.h`. Any new user must extend this record.
+  `tools/cache_bench/inc/cache_bench_io.h`. A third adapter, the emulator's
+  host output, left this tree with `tools/ra8_emulator` in `e84437938` and is
+  deviated by github.com/bsikar/ra8-emulator, not here. Any new user must
+  extend this record.
 
 ### Why the variadic interface is not a choice here
 
@@ -877,16 +879,15 @@ A port that refused variadic arguments could therefore only drop the
 driver's diagnostics entirely. On a link that has never been driven on
 hardware, the diagnostics are the bring-up instrument.
 
-The emulator and cache benchmark are hosted diagnostics. Each shares one
-bounded formatter for typed messages or CSV; removing it would duplicate
-formatting without removing the width-mismatch hazard.
+The cache benchmark is a hosted diagnostic. It shares one bounded
+formatter for CSV; removing it would duplicate formatting without removing
+the width-mismatch hazard.
 
 ### Why this is bounded
 
-- **Three bounded adapters.** Every path funnels into
-  `ra8_esp_hosted_log_vwrite`, emulator `internal_vformat`, or
-  `cb_sink_vformat`. Each renders immediately into fixed-capacity,
-  caller-owned storage and retains no `va_list` state.
+- **Two bounded adapters.** Every path funnels into
+  `ra8_esp_hosted_log_vwrite` or `cb_sink_vformat`. Each renders immediately
+  into fixed-capacity, caller-owned storage and retains no `va_list` state.
 - **The formatters are first-party and tested.** The concern behind
   Rule 17.1 is that `va_arg` is unchecked: read at the wrong width and
   every later argument misaligns. `ra8_esp_hosted_fmt.c` addresses that
@@ -894,12 +895,12 @@ formatting without removing the width-mismatch hazard.
   exactly the named width, refuses to consume an argument for a
   conversion it does not implement (copying the specifier through
   verbatim instead, so later arguments stay aligned), and bounds every
-  loop by a compile-time constant. Focused esp-hosted, emulator-output
-  and cache-bench tests pin success, truncation and write-fault paths.
-- **The compiler checks annotated call sites.** The esp-hosted and
-  emulator entry points carry `[[gnu::format(printf, ...)]]`, and the
-  project builds with `-Wformat=2`; cache-bench output is pinned by an
-  exact deterministic golden.
+  loop by a compile-time constant. Focused esp-hosted and cache-bench tests
+  pin success, truncation and write-fault paths.
+- **The compiler checks annotated call sites.** The esp-hosted entry points
+  carry `[[gnu::format(printf, ...)]]`, and the project builds with
+  `-Wformat=2`; cache-bench output is pinned by an exact deterministic
+  golden.
 - **No allocation, bounded output.** The formatter writes only into a
   caller-supplied buffer and never calls the C library's `printf`
   family, whose formatting paths this project cannot admit (NASA Power
