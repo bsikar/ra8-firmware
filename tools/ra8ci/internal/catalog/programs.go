@@ -53,7 +53,19 @@ var ErrFrontDoorProgram = errors.New("task dispatches through a human front door
 // front doors this repository actually has; a task that genuinely needs a
 // compiler or a build system reaches it inside its reviewed gate script, where
 // the pinned toolchain is set up, rather than naming it here.
-var frontDoorPrograms = []string{"just", "make", "gmake", "cmake", "ninja"}
+//
+// zig is on this list for the same reason make and ninja are, and it is the
+// one worth spelling out because it does not look like a front door. `zig
+// build` reads build.zig out of the checkout and decides from there what to
+// compile, with what flags, against which dependencies: the step would pin the
+// word "zig" and nothing about the work. That is the property a reviewed
+// digest exists to hold. It is also a second toolchain on the runner guest
+// whose absence answers as a gate failure rather than a missing tool, exactly
+// the confusion the just entry describes. A Zig task reaches the compiler
+// inside its reviewed script, where the toolchain version is set up and the
+// build line is reviewed text, the same way every C gate reaches its own
+// compiler today.
+var frontDoorPrograms = []string{"just", "make", "gmake", "cmake", "ninja", "zig"}
 
 // IsFrontDoorProgram reports whether a program is a human front door.
 func IsFrontDoorProgram(program string) bool {
