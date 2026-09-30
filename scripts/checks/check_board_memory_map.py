@@ -119,6 +119,34 @@ def eval_ld_expr(expr: str) -> int:
     return total
 
 
+def script_symbol_defaults(body: str) -> dict[str, str]:
+    """Collect `NAME = <expr>;` assignments that appear before the MEMORY block.
+
+    The board maps let an app override a bank size without copying the whole
+    file: a generated fragment is INCLUDEd ahead of MEMORY, and the region
+    reads its length through `DEFINED(__ra8_app_x) ? __ra8_app_x : <default>`.
+    This gate checks the canonical map as written, so it resolves each such
+    symbol to the default arm of the ternary. The override path is an app's
+    business and is proved by the app's own link, not here.
+    """
+    stop = body.find("MEMORY")
+    head = body if stop < 0 else body[:stop]
+    out: dict[str, str] = {}
+    for match in re.finditer(r"^\s*([A-Za-z_][\w]*)\s*=\s*([^;]+);", head, re.MULTILINE):
+        expr = match.group(2).strip()
+        ternary = re.fullmatch(r"DEFINED\s*\([^)]*\)\s*\?[^:]+:\s*(.+)", expr, re.DOTALL)
+        out[match.group(1)] = (ternary.group(1) if ternary else expr).strip()
+    return out
+
+
+def resolve_symbols(expr: str, symbols: dict[str, str]) -> str:
+    """Substitute known script symbols into a MEMORY expression, once."""
+    def sub(match: re.Match[str]) -> str:
+        return symbols.get(match.group(0), match.group(0))
+
+    return re.sub(r"[A-Za-z_][\w]*", sub, expr)
+
+
 def parse_linker_regions(text: str) -> dict[str, Region]:
     """Parse the `MEMORY{}` block of a linker script into regions by name."""
     body = strip_comments(text)
@@ -130,13 +158,14 @@ def parse_linker_regions(text: str) -> dict[str, Region]:
         return {}
     close_brace = body.find("}", open_brace)
     block = body[open_brace + 1 : close_brace if close_brace > 0 else len(body)]
+    symbols = script_symbol_defaults(body)
     regions: dict[str, Region] = {}
     for match in K_REGION_RE.finditer(block):
         name = match.group("name").lower()
         regions[name] = Region(
             name=name,
-            origin=eval_ld_expr(match.group("origin")),
-            length=eval_ld_expr(match.group("length")),
+            origin=eval_ld_expr(resolve_symbols(match.group("origin"), symbols)),
+            length=eval_ld_expr(resolve_symbols(match.group("length"), symbols)),
         )
     return regions
 

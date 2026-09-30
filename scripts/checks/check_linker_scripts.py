@@ -681,6 +681,22 @@ def _check_option_completeness(path: pathlib.Path, code: str) -> list[Finding]:
     return findings
 
 
+# A fragment is INCLUDEd into a complete script rather than linked on its own,
+# so the whole-script rules do not apply to it: it declares no ENTRY and no
+# MEMORY by design, and the regions its placements name are the including
+# script's. Holding it to LD002/LD003/LD004 would report three findings for
+# every fragment and push authors back toward forking a whole map, which is
+# the opposite of what the fragments exist to stop. Everything else -- the
+# licence header, the formatting rules, the option-setting rules -- still
+# applies, because those are about the file itself.
+FRAGMENT_NAMES = frozenset({"linker_append.ld"})
+
+
+def is_fragment(path: pathlib.Path) -> bool:
+    """True for a script meant to be INCLUDEd into a complete map, not linked."""
+    return path.name in FRAGMENT_NAMES
+
+
 def check_file(path: pathlib.Path, raw: bytes) -> list[Finding]:
     """Every linker-script rule, one function per finding code.
 
@@ -688,10 +704,17 @@ def check_file(path: pathlib.Path, raw: bytes) -> list[Finding]:
     LD002 ENTRY, LD003 MEMORY, LD004 region closure, LD009 SRAM fit, LD010
     named-region agreement with ra8_device.h, LD007 option-setting addresses,
     LD008 option-setting completeness.
+
+    A fragment (see FRAGMENT_NAMES) skips the three whole-script rules and is
+    held to the rest.
     """
     findings, text = _check_formatting(path, raw)
     findings += _check_licence(path, text.splitlines())
     code = strip_comments(text)
+    if is_fragment(path):
+        findings += _check_option_setting(path, code)
+        findings += _check_option_completeness(path, code)
+        return findings
     findings += _check_entry(path, code)
     memory_findings, regions = _check_memory(path, code)
     findings += memory_findings
