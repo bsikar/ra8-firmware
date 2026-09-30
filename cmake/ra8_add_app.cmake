@@ -609,7 +609,20 @@ function(ra8_add_cpu1_image)
     set(C1_LINKER linker_script_cpu1.ld)
   endif()
 
-  set(_c1_ld ${CMAKE_CURRENT_SOURCE_DIR}/${C1_LINKER})
+  # App dir if present, else the shared M33 map in the board layer. Eight apps
+  # carried a byte-identical linker_script_cpu1.ld (#742); the fallback lets them
+  # build from one source. Only an app whose M33 image genuinely diverges -- the
+  # two that park a working-set arena in external SDRAM -- keeps its own copy.
+  #
+  # The board is spelled out rather than derived: a CPU1 image is an RA8D2
+  # feature (this helper already pins MRAM_CPU1 at 0x020C0000 and builds for
+  # cortex-m33), and the same board layer already owns cpu1_memory_map.cmake,
+  # which is where the windows in that script come from.
+  if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/${C1_LINKER}")
+    set(_c1_ld ${CMAKE_CURRENT_SOURCE_DIR}/${C1_LINKER})
+  else()
+    set(_c1_ld ${RA8_REPO_ROOT}/libs/ra8_board_ek_ra8d2/ld/${C1_LINKER})
+  endif()
   set(_c1_srcs "")
   foreach(_s ${C1_SOURCES})
     list(APPEND _c1_srcs ${CMAKE_CURRENT_SOURCE_DIR}/${_s})
