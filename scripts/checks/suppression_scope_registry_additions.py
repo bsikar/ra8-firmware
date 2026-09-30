@@ -344,9 +344,8 @@ def _vendor_exemption_literal_7_p1() -> tuple[str, ...]:
     """Reviewed vendor-exemption identities (literal), part 1 of 1."""
     return _identities(
         """
-        checks/markdown_reference_policy.py:LIBWEBP_ABSENCE_CLAUSE
-        checks/markdown_reference_policy.py:SOUP_DECLARED_ABSENCES
         checks/markdown_reference_policy.py:VENDOR_PREFIXES
+        checks/markdown_reference_policy.py:VENDORING_ABSENCE_RE
         """
     )
 
