@@ -569,11 +569,20 @@ gate_markdown_references() (
 # moved or deleted, because the block that names it is often cross-only and
 # a host configure never evaluates it (#1290). Resolve every repository-
 # rooted path the CMake files name, and prove the resolver first.
+#
+# Two rules, one gate, because they are one defect: a source list that
+# outlived its sources. The second is rabook_viewer's KEEP/DROP contract,
+# which ra8_viewer_read_path() already enforces at configure time -- but only
+# under a configure of that one host tool, which the porting lane cannot run
+# (#2610). Both are pure text resolves, so they cost nothing and need no
+# toolchain.
 gate_cmake_source_paths() (
   set -e
   require_cmd python3 "the CMake path resolver is a Python gate"
   python3 scripts/checks/check_cmake_source_paths.py --selftest
   python3 scripts/checks/check_cmake_source_paths.py
+  python3 scripts/checks/check_viewer_read_path.py --selftest
+  python3 scripts/checks/check_viewer_read_path.py
 )
 
 # --- copyright ------------------------------------------------------------
