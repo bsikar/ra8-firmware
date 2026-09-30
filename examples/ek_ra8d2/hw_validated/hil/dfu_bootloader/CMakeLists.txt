@@ -33,7 +33,7 @@ ra8_add_app(
   DESCRIPTION
     "Immutable USB-DFU MRAM bootloader: A/B slot boot + jump, or DFU the inactive slot over USB-FS"
   USES threadx usbx
-  LIBS ra8_dfu
+  LIBS ra8_dfu ra8_psa_crypto
        THREADX_HEAP
        SDRAM
        MRAM_LENGTH
@@ -41,7 +41,6 @@ ra8_add_app(
        SRAM_TEXT
        ra8_flash.c
        ra8_dfu_program.c
-  EXTRA_SRCS ${_d}/libs/ra8_psa_crypto/src/ra8_psa_crypto.c
 )
 
 # --- Root of Trust (RA8_ENABLE_ROOT_OF_TRUST): authenticate every launched slot --

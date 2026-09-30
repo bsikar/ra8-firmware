@@ -554,6 +554,25 @@ ra8_add_zig_library(
 # src/ra8_imgdec_abi.zig names them. Everything under src/internal reaches the
 # arena through an injected seam, which is what lets the whole of the decision
 # logic run in the host suite.
+# Fully migrated: the PSA crypto facade behind inc/ra8_psa_crypto.h is Zig,
+# so libs/ra8_psa_crypto/src has no .c left. The library is one seam with two
+# backends chosen at comptime from build_config.off_target: a deterministic
+# fake (xorshift32 keystream, truncating at the 256-byte scratch) for the host
+# and off-target builds, and a binding to the vendored tf-psa-crypto for ARM.
+#
+# src/ra8_psa_crypto_internal.h is deliberately RETAINED. It is not an
+# implementation, it is the contract tests/security/src/test_ra8_psa_crypto_*.c
+# read for struct ra8_psa_key_handle and k_ra8_psa_fake_scratch_bytes, and
+# those two C suites stay C so they keep testing the archive from the outside.
+ra8_add_zig_library(
+  NAME
+  ra8_psa_crypto
+  ZIG_ROOT
+  ${FW_ROOT}/libs/ra8_psa_crypto
+  LIBRARY_NAME
+  ra8_psa_crypto
+)
+
 ra8_add_zig_library(
   NAME
   ra8_imgdec
@@ -594,6 +613,7 @@ target_link_libraries(
          ra8_zig::ra8_xml
          ra8_zig::ra8_net_policy
          ra8_zig::ra8_imgdec
+         ra8_zig::ra8_psa_crypto
   ra8_zig::ra8_gfx
          ra8_zig::ra8_gfx
 )

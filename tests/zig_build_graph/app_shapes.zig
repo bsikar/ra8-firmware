@@ -739,12 +739,11 @@ pub const uncovered = [_]Uncovered{
         .representative = "dfu_bootloader",
         .shape = .{
             .uses = &.{ "threadx", "usbx" },
-            .extra_srcs = true,
             .threadx_heap = true,
             .sram_text = true,
             .mram_length = true,
         },
-        .note = "1 declaration, and the widest shape in the tree: USBX plus EXTRA_SRCS plus a heap fragment, running its flash driver from SRAM out of a 128K bootloader bank. #742 traded its 361-line linker_script.ld fork for all four keywords at once",
+        .note = "1 declaration: USBX plus a heap fragment, running its flash driver from SRAM out of a 128K bootloader bank. #742 traded its 361-line linker_script.ld fork for three keywords at once; #1114 then took EXTRA_SRCS away again, because the one path it named was ra8_psa_crypto.c and that library is a Zig archive now, reached through LIBS",
     },
     .{
         .representative = "rot_verify_hil",
