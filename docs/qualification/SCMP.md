@@ -86,7 +86,6 @@ The canonical EK-RA8D2 defaults are under
 | `justfile` (root)                 | Authoritative task interface; includes the namespaced modules under `just/`. |
 | `cmake/toolchain-ra8d2.cmake`     | arm-none-eabi cross-compile settings.                        |
 | `cmake/ra8_warnings.cmake`         | Warning + stack-usage gate (`-Wstack-usage=2048` default).   |
-| `Doxyfile`                        | Doxygen configuration (docs site + warning gate).            |
 
 ### 1.4 Test configuration items
 
