@@ -33,9 +33,9 @@ Two selection modes, and NO third silent one:
 
   * ``--range BASE..HEAD [--repo DIR]`` -- audit the files changed in that
     commit range, run against DIR (default ``.``). This is the mode CI uses;
-    ``scripts/ci.sh``'s ``ci_commit_range`` / ``ci_history_repo`` resolve the
-    range and the history repository the same way every other range-aware
-    gate does. A range that does not resolve in the repository is FATAL, not
+    ``scripts/ci/lib/history.sh``'s ``ci_commit_range`` / ``ci_history_repo``
+    resolve the range and the history repository the same way every other
+    range-aware gate does. A range that does not resolve in the repository is FATAL, not
     a clean scan of nothing.
 
   * ``--staged`` -- audit the git index against HEAD. This is the mode the
