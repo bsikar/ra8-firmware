@@ -270,6 +270,14 @@ gate_mcdc() (
 # with no generator installed. It does NOT claim the committed C is what protoc-c would
 # emit today; only a regenerate proves that, and #715 stays open for wiring the pinned
 # generator into the image so it can run here.
+#
+# gen_ra8_media_proto.sh --selftest runs here too, and it is the odd one out: it
+# exercises a --check this gate cannot itself run. That is the reason for it. The
+# byte-exact comparison, the post-processing, the version pin and the missing-generator
+# exit are all code no machine we build on has ever executed, so without the selftest
+# they would first run on the day someone installs the pinned pair -- the worst moment
+# to discover the compare was wrong. It needs no generator: it stubs one inside a
+# throwaway git repo and asserts both directions.
 gate_artefact_freshness() (
   set -e
   require_cmd python3 "the artefact-freshness gate regenerates docs via python generators"
@@ -277,6 +285,7 @@ gate_artefact_freshness() (
   python3 scripts/checks/check_generated_artefacts.py
   python3 scripts/checks/check_proto_codec_pairing.py --selftest
   python3 scripts/checks/check_proto_codec_pairing.py
+  bash scripts/gen/gen_ra8_media_proto.sh --selftest
 )
 
 # --- cache-bench ----------------------------------------------------------
