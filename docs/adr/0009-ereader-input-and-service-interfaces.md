@@ -150,6 +150,6 @@ line under the same IRQ0..15 rule as D2.
 * `libs/ra8_hal/inc/ra8_lpm.h`, `libs/ra8_hal/src/ra8_pwr.c`,
   `libs/ra8_hal/inc/ra8_vreg.h`.
 * `libs/ra8_widget/inc/ra8_widget.h` (`k_ra8_widget_ev_button`).
-* Sibling pre-board records: ADR-0005 (#846, SDRAM interface supply domain) and
-  ADR-0007 (#831, front-light driver interface). Numbers may be reassigned by
-  the merge train if those land in a different order.
+* Sibling pre-board records: ADR-0010 (#846, SDRAM interface supply domain) and
+  ADR-0007 (#831, front-light driver interface). Both have landed under those
+  numbers; the SDRAM record took `0010`, not the `0005` this line first claimed.
