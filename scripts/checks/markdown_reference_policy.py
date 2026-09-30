@@ -178,6 +178,24 @@ EMPHASIS_RE = re.compile(r"[*_]{1,3}")
 # Sentence end, never the dot inside a filename: punctuation plus whitespace
 # or end of block. This prose is hard-wrapped, so a bare newline is not one.
 SENTENCE_SPLIT_RE = re.compile(r"(?<=[.;:])(?=\s)|\n\s*(?=[-*+]\s)")
+# A first-party document may legitimately name a file that lives only in an
+# upstream project. That is sound exactly when the document says where the file
+# was read from precisely enough to re-check: a project path plus the revision
+# it was read at, in the same sentence as the name. A project named without a
+# revision is a lead, not a citation (see docs/reference/ra8p1_vs_ra8d2.md's own
+# rule), so it clears nothing.
+UPSTREAM_PROJECT_RE = re.compile(
+    r"\b(?:github\.com|gitlab\.com|bitbucket\.org|git\.kernel\.org|sourceware\.org)"
+    r"/[\w.-]+/[\w.-]+",
+    re.IGNORECASE,
+)
+UPSTREAM_REVISION_RE = re.compile(
+    r"`(?:[0-9a-f]{7,40}|v\d[\w.+-]*)`"
+    r"|\b(?:commit|revision|tag|release)\s+`[^`]+`",
+    re.IGNORECASE,
+)
+BRACE_ALTERNATION_RE = re.compile(r"\{([^{}]*,[^{}]*)\}")
+MAX_BRACE_EXPANSIONS = 64
 FIRST_PARTY_ROOTS = (
     "apps/",
     "arch/",
@@ -304,10 +322,6 @@ DECLARED_BARE_CODE_FILES = {
         "docs/reference/ra8p1_vs_ra8d2.md",
         "bsp_linker.c",
     ): "upstream RASC-generated source comparison",
-    (
-        "docs/reference/ra8p1_vs_ra8d2.md",
-        "R7KA8{P1,D2}KF_core0.h",
-    ): "upstream FSP device-header brace pattern",
     (
         "examples/ek_ra8d2/hw_pending/ereader_zoom/README.md",
         "dst.h",
@@ -481,9 +495,6 @@ DECLARED_BARE_CONTEXT_SHA256 = {
     ),
     ("docs/qualification/SVR.md", "r_usb_pdriver.c"): (
         "ff3a66bfe8bf027bb3c81c94b68095142e954df77903ae2ae2ff5790d758841e",
-    ),
-    ("docs/reference/ra8p1_vs_ra8d2.md", "R7KA8{P1,D2}KF_core0.h"): (
-        "d984700bdee5ea78d5db166186850fdc22bfe1704fe0f2aa92d08f25833c9717",
     ),
     ("docs/reference/ra8p1_vs_ra8d2.md", "bsp_linker.c"): (
         "d66042eb9df30051ded10cf042539f9b74864eec10168a00a6968585388f1efc",
