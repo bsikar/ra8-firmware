@@ -29,7 +29,7 @@ reads each `core/*/caps.h` answer, and fails in both directions: a flag set to 1
 with no implementation behind it, and an implementation present under a flag
 answered 0. It takes `--selftest`, which proves the detector fires and stays
 quiet on sixteen constructed cases before any tree scan is trusted, and it runs
-in the `arch-caps` gate in `scripts/ci/gates/checks.sh`.
+in the `arch-caps` gate in `scripts/ci/gates/checks_standalone.sh`.
 
 ```sh
 python3 scripts/checks/check_arch_caps.py --selftest
