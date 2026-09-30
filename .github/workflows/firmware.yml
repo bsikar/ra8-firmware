@@ -358,6 +358,8 @@ jobs:
       - if: always()
         run: just quality::local::gate cmake-source-paths
       - if: always()
+        run: just quality::local::gate zig-override-members
+      - if: always()
         run: just quality::local::gate shebangs
       - if: always()
         run: just quality::local::gate entry-points
