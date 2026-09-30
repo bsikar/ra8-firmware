@@ -36,7 +36,8 @@ static const char* const s_tag = "USB";
 /* =============================================================================
  * Host-mode bulk-transfer engine (polled, synchronous)
  *
- * Built on the same host signals the control engine validated on hardware:
+ * Built on the same host signals the `ra8_usb_host_ctrl.c` control engine
+ * validated on hardware:
  * BRDY (a packet landed in the pipe buffer), BEMP (the pipe buffer emptied
  * onto the wire), and PIPECTR.PID for STALL detection. Pipes reuse the CFIFO
  * port (CFIFOSEL.CURPIPE selects the pipe; the data direction is fixed by
