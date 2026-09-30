@@ -93,8 +93,10 @@ if(TARGET compile_on_m33_cpu1.elf)
   # under arm-none-eabi-gcc 13.3.1 at this image's -Os with RA8_LOG_LEVEL=0, so
   # its rows are gone from .github/cpu1-warning-profile-baseline.txt
   # (#843 / T1-09).
-  #   - ra8_error_handler.c: assertion sink -- miniz MZ_ASSERT and core
-  #     assertions route to ra8_fatal_error().
+  # The assertion sink itself is Zig now (#2875): miniz MZ_ASSERT and core
+  # assertions still route to ra8_fatal_error(), but it is a weak export of
+  # the cross-built ra8_core archive ra8_add_cpu1_image() already links for
+  # this core, not a hand-picked TU.
   # epub still guards its ZIP entries through the shared decompression-limits
   # policy (epub_zip_guard.c -> ra8_decomp_limits_*), but that policy is Zig
   # now (#2862), so it arrives in the cross-built ra8_core archive
@@ -120,7 +122,6 @@ if(TARGET compile_on_m33_cpu1.elf)
   file(GLOB _c1_epub_c CONFIGURE_DEPENDS ${RA8_REPO_ROOT}/apps/shared_libs/epub/src/*.c)
   ra8_cpu1_add_first_party_sources(
     compile_on_m33_cpu1.elf
-    ${RA8_REPO_ROOT}/libs/ra8_core/src/ra8_error_handler.c
     ${RA8_REPO_ROOT}/libs/ra8_hal/src/ra8_ipc.c
     ${RA8_REPO_ROOT}/apps/shared_libs/rabook_compile/src/rabook_compile.c
     ${RA8_REPO_ROOT}/apps/shared_libs/rabook_compile/src/ra8_rabook_finalize.c
