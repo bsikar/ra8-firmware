@@ -7,5 +7,6 @@
 
 pub const abi = @import("ra8_camera_abi.zig");
 pub const memory = @import("source_memory.zig");
+pub const ceu = @import("source_ceu.zig");
 pub const passthrough = @import("codec_passthrough.zig");
 pub const jpeg_sw = @import("codec_jpeg_sw.zig");

@@ -71,11 +71,13 @@ file(GLOB_RECURSE COMPRESS_SOURCES CONFIGURE_DEPENDS ${FW_ROOT}/apps/shared_libs
 # ra8_camera is migrated to Zig apart from one file: the facade, the fixed-frame
 # memory source, the JPEG passthrough codec and the software-JPEG codec are Zig
 # (see tests/cmake/zig_libraries.cmake). The glob below therefore finds only
-# src/ra8_camera_source_ceu.c, which stays C because tests/misc/src/
-# test_ra8_camera.c and tests/misc/src/test_ra8_ceu_cov.c white-box it with
-# `#include "ra8_camera_source_ceu.c"`. src/ra8_camera_internal.h stays too:
-# the host suites include it to build their own fake source and codec vtables.
-file(GLOB_RECURSE RA8_CAMERA_SOURCES CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra8_camera/src/*.c)
+# ra8_camera is entirely Zig now (libs/ra8_camera/build.zig): the CEU capture
+# backend was the last C translation unit, and the two suites that used to
+# white-box it with `#include "ra8_camera_source_ceu.c"` call the
+# `priv_cam_ceu_` seams in src/ra8_camera_source_ceu_private.h instead. No .c
+# remains to glob, so there is no RA8_CAMERA_SOURCES. libs/ra8_camera/src stays
+# an include directory: src/ra8_camera_internal.h and that private header are
+# both consumed by the host suites.
 # ra8_camera_io is entirely Zig (libs/ra8_camera_io/build.zig): the one
 # encode-then-write bridge TU behind inc/ra8_camera_stream.h is ported, so
 # src/ has no .c and no private header left. There is no
