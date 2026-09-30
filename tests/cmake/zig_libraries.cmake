@@ -453,6 +453,22 @@ ra8_add_zig_library(
   ra8_ota
 )
 
+# Fully migrated: the one encode-then-write bridge TU behind
+# inc/ra8_camera_stream.h is Zig, so libs/ra8_camera_io/src has no .c left and
+# the RA8_CAMERA_IO_SOURCES glob is gone from library_sources.cmake and
+# core_hal.cmake. The private src include dir went with it: no test includes a
+# private header from this library. The archive deliberately leaves
+# ra8_camera_codec_encode and ra8_io_stream_write unresolved, exactly as the C
+# TU did; ra8_core_hal supplies both.
+ra8_add_zig_library(
+  NAME
+  ra8_camera_io
+  ZIG_ROOT
+  ${FW_ROOT}/libs/ra8_camera_io
+  LIBRARY_NAME
+  ra8_camera_io
+)
+
 # Fully migrated: the secure-boot sequence behind inc/ra8_tz_secure_boot.h,
 # the SAU region partition, the IPC attribution encoder behind
 # inc/ra8_tz_ipc_attr.h, the board partition map behind inc/ra8_tz_partition.h
@@ -499,6 +515,7 @@ target_link_libraries(
          ra8_zig::ra8_display_pal
          ra8_zig::ra8_ota
          ra8_zig::ra8_tz_secure_boot
+         ra8_zig::ra8_camera_io
   ra8_zig::ra8_gfx
          ra8_zig::ra8_gfx
 )
@@ -532,4 +549,5 @@ link_libraries(
   ra8_zig::ra8_display_pal
   ra8_zig::ra8_ota
   ra8_zig::ra8_tz_secure_boot
+  ra8_zig::ra8_camera_io
 )
