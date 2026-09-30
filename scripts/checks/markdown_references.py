@@ -46,7 +46,7 @@ from markdown_reference_policy import (
     FENCE_RE,
     HTML_PATH_SEPARATOR_RE,
     HTML_TARGET_RE,
-    LIBWEBP_ABSENCE_CLAUSE,
+    FIRST_PARTY_ROOTS,
     LINE_CITATION_RE,
     LINK_OUTPUT_SUFFIXES,
     LOCAL_LINE_FRAGMENT_RE,
@@ -63,7 +63,11 @@ from markdown_reference_policy import (
     ROOT_FILE_PATTERN,
     SETEXT_HEADING_RE,
     SHORTCUT_PATH_REFERENCE_RE,
-    SOUP_DECLARED_ABSENCES,
+    SOUP_RECORD_EXEMPT,
+    EMPHASIS_RE,
+    SENTENCE_SPLIT_RE,
+    SOUP_RECORD_PREFIX,
+    VENDORING_ABSENCE_RE,
     SOUP_LOCAL_PATH_RE,
     SYMBOL_SUFFIX_RE,
     SYSTEM_HEADER_BASENAMES,
@@ -549,13 +553,37 @@ def _declared_planned_path(root: Path, source: str, ref: PathRef) -> bool:
     )
 
 
-def _declared_soup_absence(source: str, ref: PathRef) -> bool:
-    """Recognize only exact reviewed SOUP paths in a bounded negative claim."""
-    return (
-        ref.token in SOUP_DECLARED_ABSENCES.get(source, frozenset())
-        and source == "docs/SOUP/libwebp.md"
-        and ref.source_line == LIBWEBP_ABSENCE_CLAUSE
-    )
+def _absence_paragraph(text: str, line: int) -> str:
+    """Return the hard-wrapped block holding ``line``, bounded by blank lines."""
+    lines = text.splitlines()
+    if not 1 <= line <= len(lines):
+        return ""
+    start = line - 1
+    while start > 0 and lines[start - 1].strip():
+        start -= 1
+    end = line
+    while end < len(lines) and lines[end].strip():
+        end += 1
+    return "\n".join(lines[start:end])
+
+
+def _declared_soup_absence(root: Path, source: str, ref: PathRef) -> bool:
+    """Accept an upstream name a SOUP record's own paragraph says we do not carry."""
+    if not source.startswith(SOUP_RECORD_PREFIX) or source in SOUP_RECORD_EXEMPT:
+        return False
+    if ref.token.startswith(FIRST_PARTY_ROOTS):
+        return False
+    text = (root / source).read_text(encoding="utf-8", errors="replace")
+    if SOUP_LOCAL_PATH_RE.search(text) is None:
+        return False
+    paragraph = _absence_paragraph(text, ref.line)
+    quoted = f"`{ref.token}`"
+    for sentence in SENTENCE_SPLIT_RE.split(paragraph):
+        if quoted not in sentence:
+            continue
+        if VENDORING_ABSENCE_RE.search(EMPHASIS_RE.sub("", sentence)) is not None:
+            return True
+    return False
 
 
 def _generated_owner_exists(base: Path, token: str) -> bool:
@@ -751,7 +779,7 @@ def _ordinary_path_reason(root: Path, source: str, ref: PathRef, token: str) -> 
                 exists = (
                     target.exists()
                     or _generated_owner_exists(base, token)
-                    or _declared_soup_absence(source, ref)
+                    or _declared_soup_absence(root, source, ref)
                 )
                 ignore_probe = f"{rel}/.ra8-markdown-reference" if ref.token.endswith("/") else rel
                 if not exists and not _ignore_owner_exists(root, ignore_probe):
@@ -772,6 +800,7 @@ def _path_reason(root: Path, source: str, ref: PathRef) -> str | None:
             _bare_code_file_exists(root, source, token)
             or _declared_bare_code_file(source, ref)
             or _built_link_output(root, source, ref, token)
+            or _declared_soup_absence(root, source, ref)
         ):
             return None
         return f"no tracked file has a basename matching {token}"
