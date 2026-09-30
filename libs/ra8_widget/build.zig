@@ -2,11 +2,11 @@
 //! Copyright (c) 2026 Brighton Sikarskie
 //!
 //! Build graph for the Zig half of `ra8_widget`. The library's public C ABI
-//! (`inc/ra8_widget.h`) is unchanged; this archive currently carries the
-//! module-private paint helpers that `src/ra8_widget_internal.h` declares, so
-//! the sibling widget translation units link them instead of compiling a C
-//! `ra8_widget_paint.c`. The `test` step verifies the pure geometry and the
-//! ABI membrane.
+//! (`inc/ra8_widget.h`) is unchanged; this archive carries the module-private
+//! paint helpers that `src/ra8_widget_internal.h` declares plus the text-label
+//! leaf widget, so the sibling widget translation units link them instead of
+//! compiling `ra8_widget_paint.c` / `ra8_widget_label.c`. The `test` step
+//! verifies the pure geometry, the paint membrane and the label membrane.
 
 const std = @import("std");
 
@@ -18,7 +18,7 @@ pub fn build(b: *std.Build) void {
         .name = "ra8_widget",
         .linkage = .static,
         .root_module = b.createModule(.{
-            .root_source_file = b.path("src/widget_paint_abi.zig"),
+            .root_source_file = b.path("src/ra8_widget_abi.zig"),
             .target = target,
             .optimize = optimize,
         }),
@@ -56,9 +56,24 @@ pub fn build(b: *std.Build) void {
     abi_test_module.addImport("abi", abi_module);
     const abi_tests = b.addTest(.{ .root_module = abi_test_module });
 
+    const label_module = b.createModule(.{
+        .root_source_file = b.path("src/widget_label_abi.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    const label_test_module = b.createModule(.{
+        .root_source_file = b.path("tests/label_test.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    label_test_module.addImport("abi", label_module);
+    const label_tests = b.addTest(.{ .root_module = label_test_module });
+
     const run_internal_tests = b.addRunArtifact(internal_tests);
     const run_abi_tests = b.addRunArtifact(abi_tests);
+    const run_label_tests = b.addRunArtifact(label_tests);
     const test_step = b.step("test", "Run Zig ra8_widget tests");
     test_step.dependOn(&run_internal_tests.step);
     test_step.dependOn(&run_abi_tests.step);
+    test_step.dependOn(&run_label_tests.step);
 }
