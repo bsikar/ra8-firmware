@@ -30,7 +30,9 @@
 #     read OK, independent of stdout text.
 #   * A run cut short by a WALL-CLOCK bound is TRUNCATED -- a distinct third
 #     state, never folded into OK or FAULT. See the determinism note below.
-#   * The _unsupported tier needs external hardware and is listed as SKIPPED.
+#   * The _unsupported tier is listed as SKIPPED, never built or run, and each
+#     app's own UNSUPPORTED.toml reason is printed rather than one blanket
+#     external-hardware line that is untrue for some of them (#401).
 #
 # DETERMINISM (#394). This matrix is a RATCHETED GATE, so the same ELF must
 # yield the same verdict on an idle box and on a loaded one. Two wall-clock
@@ -480,7 +482,8 @@ log "emulator OK -> $emu"
 
 # -- Discover apps. -----------------------------------------------------------
 # Default: every src/main.c under the supported (ek_ra8d2) tier. The _unsupported/
-# tier needs external hardware -- it is listed as SKIPPED below, never run.
+# tier is listed as SKIPPED below, never run; each app states its own reason in
+# its UNSUPPORTED.toml marker.
 #
 # De-dupe by FULL directory path (not by basename) so two examples that happen
 # to share a leaf name are both kept, and log any basename collision so nothing
@@ -509,8 +512,8 @@ else
     fi
     apps+=("$name")
   done
-  # The _unsupported tier: needs external hardware, listed as SKIPPED (matching
-  # the header). Discovered the same way so the report is complete.
+  # The _unsupported tier: listed as SKIPPED (matching the header). Discovered
+  # the same way so the report is complete.
   mapfile -t skipped_apps < <(
     find examples/_unsupported -mindepth 2 -path '*/src/main.c' -not -path '*/build/*' \
       -not -path '*/build-emu/*' 2>/dev/null | sed 's#/src/main.c$##; s#.*/##' | sort -u
@@ -594,7 +597,20 @@ done
 for app in "${skipped_apps[@]}"; do
   [ -z "$app" ] && continue
   n_skipped=$((n_skipped + 1))
-  printf '  %-26s SKIPPED (_unsupported tier -- needs external hardware)\n' "$app"
+  # The per-app reason, read from its machine-readable marker (#401). The blanket
+  # "needs external hardware" line this used to print is false for at least two of
+  # the tier, so the reason comes from the app rather than from this script. An
+  # unmarked app still prints -- check_unsupported_exclusions.py is what fails it,
+  # not the matrix, which must stay a complete report.
+  marker="examples/_unsupported/$app/UNSUPPORTED.toml"
+  reason=""
+  if [ -f "$marker" ]; then
+    reason=$(sed -n 's/^reason[[:space:]]*=[[:space:]]*"\([^"]*\)".*/\1/p' "$marker" | head -n 1)
+  fi
+  [ -n "$reason" ] || reason="UNMARKED -- see scripts/checks/check_unsupported_exclusions.py"
+  printf '  %-26s SKIPPED (_unsupported tier -- %s)\n' "$app" "$reason"
+  # The report row stays exactly two columns: matrix_ratchet.py rejects a row that
+  # is not `app verdict`, and matrix_triage.sh reads it with `read -r app verdict`.
   printf '%-26s SKIPPED\n' "$app" >>"$report"
 done
 
@@ -610,7 +626,7 @@ accounted=$((n_ok + n_fault + n_trunc + n_halt + n_unknown + n_build + n_special
 echo ""
 echo "ra8_emulator matrix coverage:"
 echo "  ek_ra8d2 examples : $n_total   (the tier this gate measures)"
-echo "  + _unsupported    : $n_skipped   (separate tier, needs external hardware -- never booted)"
+echo "  + _unsupported    : $n_skipped   (separate tier, never booted -- per-app reason above)"
 echo "  = report rows     : $((n_total + n_skipped))"
 echo ""
 echo "  build failed      : $n_build"
