@@ -95,14 +95,16 @@ class CheckError(RuntimeError):
 
 
 def repo_root() -> Path:
+    """The work tree whose files every measurement here is counted against."""
     out = subprocess.run(
-        ["git", "rev-parse", "--show-toplevel"],
+        ["git", "rev-parse", "--show-toplevel"],  # noqa: S607 -- trusted: fixed git argv
         capture_output=True,
         text=True,
         check=False,
     )
     if out.returncode != 0:
-        raise CheckError("not inside a git work tree")
+        message = "not inside a git work tree"
+        raise CheckError(message)
     return Path(out.stdout.strip())
 
 
@@ -128,6 +130,7 @@ class Measurement:
         claim_line: int,
         skip_third_party: bool = False,
     ) -> None:
+        """Bind one figure the page claims to the command that reproduces it."""
         self.row = row
         self.qualifier = qualifier
         self.claimed = claimed
@@ -139,9 +142,11 @@ class Measurement:
 
     @property
     def key(self) -> str:
+        """The manifest key: the row label, with its qualifier when it carries one."""
         return f"{self.row} [{self.qualifier}]" if self.qualifier else self.row
 
     def cell_text(self, count: int) -> str:
+        """How `count` must read in the page's own table cell."""
         return f"{count} {self.qualifier}" if self.qualifier else str(count)
 
     def measure(self, tree: dict[str, str]) -> int:
@@ -151,9 +156,8 @@ class Measurement:
             try:
                 matcher = re.compile(self.pattern)
             except re.error as exc:  # pragma: no cover - guarded by a finding
-                raise CheckError(
-                    f"{self.key}: unreadable pattern {self.pattern!r}: {exc}"
-                ) from exc
+                message = f"{self.key}: unreadable pattern {self.pattern!r}: {exc}"
+                raise CheckError(message) from exc
         prefixes = tuple(root.rstrip("/") + "/" for root in self.roots)
         hits = 0
         for path, text in tree.items():
@@ -186,7 +190,8 @@ def read_tree(root: Path, subdirs: set[str], suffixes: set[str]) -> dict[str, st
                     encoding="utf-8", errors="replace"
                 )
             except OSError as exc:
-                raise CheckError(f"cannot read {path}: {exc}") from exc
+                message = f"cannot read {path}: {exc}"
+                raise CheckError(message) from exc
     return tree
 
 
@@ -200,7 +205,8 @@ def parse_manifest(
             start = index
             break
     if start is None:
-        raise CheckError(f"{rel} carries no {BLOCK_MARKER} marker")
+        message = f"{rel} carries no {BLOCK_MARKER} marker"
+        raise CheckError(message)
 
     open_fence = None
     for index in range(start, -1, -1):
@@ -208,7 +214,8 @@ def parse_manifest(
             open_fence = index
             break
     if open_fence is None:
-        raise CheckError(f"the {BLOCK_MARKER} marker is not inside a fenced block")
+        message = f"the {BLOCK_MARKER} marker is not inside a fenced block"
+        raise CheckError(message)
 
     close_fence = None
     for index in range(open_fence + 1, len(lines)):
@@ -216,7 +223,8 @@ def parse_manifest(
             close_fence = index
             break
     if close_fence is None:
-        raise CheckError(f"the {BLOCK_MARKER} block is never closed")
+        message = f"the {BLOCK_MARKER} block is never closed"
+        raise CheckError(message)
 
     measurements: list[Measurement] = []
     unparsable: list[tuple[int, str]] = []
@@ -380,9 +388,8 @@ def rewrite(text: str, tree: dict[str, str]) -> str:
 
 
 def needed_scope(measurements: list[Measurement]) -> tuple[set[str], set[str]]:
-    subdirs = {
-        root.strip("/") for measurement in measurements for root in measurement.roots
-    }
+    """The roots and suffixes the manifests between them ask to have read."""
+    subdirs = {root.strip("/") for measurement in measurements for root in measurement.roots}
     suffixes = {suffix for measurement in measurements for suffix in measurement.suffixes}
     return subdirs, suffixes
 
@@ -400,19 +407,22 @@ def discover_pages(root: Path) -> list[str]:
             try:
                 text = path.read_text(encoding="utf-8", errors="replace")
             except OSError as exc:
-                raise CheckError(f"cannot read {path}: {exc}") from exc
+                message = f"cannot read {path}: {exc}"
+                raise CheckError(message) from exc
             if BLOCK_MARKER in text:
                 pages.append(path.relative_to(root).as_posix())
     return pages
 
 
 def run(root: Path, update: bool) -> int:
+    """Hold every opted-in page against the tree, or re-bank it under --update."""
     pages = discover_pages(root)
     if len(pages) < PAGE_FLOOR:
-        raise CheckError(
+        message = (
             f"found {len(pages)} page(s) carrying a {BLOCK_MARKER}, floor is "
             f"{PAGE_FLOOR}; the discovery, not the tree, is what shrank"
         )
+        raise CheckError(message)
 
     provisional: list[Measurement] = []
     texts: dict[str, str] = {}
@@ -421,21 +431,24 @@ def run(root: Path, update: bool) -> int:
         texts[rel] = text
         entries, _ = parse_manifest(text.splitlines(), rel)
         if not entries:
-            raise CheckError(f"{rel} carries a {BLOCK_MARKER} with no measurement in it")
+            message = f"{rel} carries a {BLOCK_MARKER} with no measurement in it"
+            raise CheckError(message)
         provisional.extend(entries)
     if len(provisional) < MEASUREMENT_FLOOR:
-        raise CheckError(
+        message = (
             f"the manifests hold {len(provisional)} measurement(s), floor is "
             f"{MEASUREMENT_FLOOR}; a block or its grammar collapsed"
         )
+        raise CheckError(message)
 
     subdirs, suffixes = needed_scope(provisional)
     tree = read_tree(root, subdirs, suffixes)
     if len(tree) < SCANNED_FILE_FLOOR:
-        raise CheckError(
+        message = (
             f"scanned {len(tree)} file(s) under {sorted(subdirs)}, floor is "
             f"{SCANNED_FILE_FLOOR}; the scan, not the tree, is what shrank"
         )
+        raise CheckError(message)
 
     findings: list[str] = []
     measured = 0
@@ -487,6 +500,21 @@ _TREE = {
 }
 
 
+# The fixture page declares exactly three measurements. The selftest asserts the
+# reader found all three before it grades a single case.
+_FIXTURE_MEASUREMENTS = 3
+
+# RAW, because these escapes are the PAGE'S OWN BYTES. arch/README.md:191 carries
+# the two characters `\t` and the two characters `\.`, not a tab and not a bare
+# dot. Interpolated into the ordinary f-string below they became a real tab and a
+# deprecated escape, so the fixture had stopped representing any page in the tree
+# -- the grammar under test was never exercised on the bytes it actually parses.
+_SCB_ENTRY_COMMAND = (
+    r"""grep -rlE '#[ \t]*include[ \t]+"ra8_scb\.h"' libs apps """
+    r"""--include=*.c --include=*.h | grep -v /third_party/ | wc -l"""
+)
+
+
 def _page(
     clock_claim: int = 2,
     gpt_claim: int = 2,
@@ -517,7 +545,7 @@ grep -rlE 'ra8_cgc' examples --include=*.c --include=*.h | wc -l
 # timer / counter / capture [GPT] -- {gpt_claim} file(s)
 grep -rlE 'ra8_gpt' examples --include=*.c --include=*.h | wc -l
 # ra8_scb.h -- {scb_claim} file(s)
-grep -rlE '#[ \t]*include[ \t]+"ra8_scb\.h"' libs apps --include=*.c --include=*.h | grep -v /third_party/ | wc -l
+{_SCB_ENTRY_COMMAND}
 {extra_entries}```
 """
 
@@ -551,7 +579,7 @@ def _selftest_cases() -> list[tuple[str, list[str]]]:
 
     findings, _, counts = analyse(_page(), _TREE, "page.md")
     cases.append(("a page that matches the tree is silent", _kinds(findings)))
-    if counts["measurements"] != 3:
+    if counts["measurements"] != _FIXTURE_MEASUREMENTS:
         cases.append(("manifest read", ["wrong-measurement-count"]))
 
     findings, _, _ = analyse(_page(clock_claim=9), _TREE, "page.md")
@@ -566,26 +594,24 @@ def _selftest_cases() -> list[tuple[str, list[str]]]:
     findings, _, _ = analyse(_page(gpt_cell="2"), _TREE, "page.md")
     cases.append(("a qualifier dropped from the cell", _kinds(findings)))
 
-    findings, _, _ = analyse(
-        _page(extra_rows="| serial | 4 |\n"), _TREE, "page.md"
-    )
+    findings, _, _ = analyse(_page(extra_rows="| serial | 4 |\n"), _TREE, "page.md")
     cases.append(("a row nobody can reproduce", _kinds(findings)))
 
     findings, _, _ = analyse(
-        _page(extra_entries="# gpio -- 0 file(s)\ngrep -rlE 'ra8_gpio' examples --include=*.c | wc -l\n"),
+        _page(
+            extra_entries=(
+                "# gpio -- 0 file(s)\ngrep -rlE 'ra8_gpio' examples --include=*.c | wc -l\n"
+            )
+        ),
         _TREE,
         "page.md",
     )
     cases.append(("an entry naming no table row", _kinds(findings)))
 
-    findings, _, _ = analyse(
-        _page(extra_entries="python3 -c 'print(3)'\n"), _TREE, "page.md"
-    )
+    findings, _, _ = analyse(_page(extra_entries="python3 -c 'print(3)'\n"), _TREE, "page.md")
     cases.append(("a command that is not a measurement", _kinds(findings)))
 
-    findings, _, _ = analyse(
-        _page(extra_entries="# display -- 1 file(s)\n"), _TREE, "page.md"
-    )
+    findings, _, _ = analyse(_page(extra_entries="# display -- 1 file(s)\n"), _TREE, "page.md")
     cases.append(("a claim with no command under it", _kinds(findings)))
 
     # Scope: the same pattern outside the named root must not count.
@@ -593,11 +619,15 @@ def _selftest_cases() -> list[tuple[str, list[str]]]:
     cases.append(("a hit outside examples/ is not counted", _kinds(findings)))
 
     # Scope: a suffix the command does not name must not count.
-    findings, _, _ = analyse(_page(), dict(_TREE, **{"examples/e/main.cpp": "ra8_cgc_x();"}), "page.md")
+    findings, _, _ = analyse(
+        _page(), dict(_TREE, **{"examples/e/main.cpp": "ra8_cgc_x();"}), "page.md"
+    )
     cases.append(("a suffix the command excludes is not counted", _kinds(findings)))
 
     # A real hit in scope must move the number, or nothing is being measured.
-    findings, _, _ = analyse(_page(), dict(_TREE, **{"examples/e/main.c": "ra8_cgc_x();"}), "page.md")
+    findings, _, _ = analyse(
+        _page(), dict(_TREE, **{"examples/e/main.c": "ra8_cgc_x();"}), "page.md"
+    )
     cases.append(("a new reach-in fails the page", _kinds(findings)))
 
     # Multi-root: the second root counts, so a hit there must move the number.
@@ -656,6 +686,7 @@ _EXPECTED = [
 
 
 def selftest() -> int:
+    """Prove the reader, every finding kind and --update, in both directions."""
     failures: list[str] = []
     cases = _selftest_cases()
     if len(cases) != len(_EXPECTED):
@@ -665,7 +696,7 @@ def selftest() -> int:
             file=sys.stderr,
         )
         return 1
-    for (label, actual), expected in zip(cases, _EXPECTED):
+    for (label, actual), expected in zip(cases, _EXPECTED, strict=True):
         if actual != expected:
             failures.append(f"{label}: expected {expected}, got {actual}")
 
@@ -697,6 +728,7 @@ def selftest() -> int:
 
 
 def main(argv: list[str]) -> int:
+    """Dispatch --check, --update or --selftest."""
     args = set(argv[1:])
     unknown = args - {"--check", "--update", "--selftest"}
     if unknown:
