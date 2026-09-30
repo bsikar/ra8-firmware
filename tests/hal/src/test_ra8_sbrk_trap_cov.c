@@ -7,19 +7,20 @@
  * [Ring 1 / Core] {World: S}
  *
  * @details
- * `ra8_sbrk_trap.c` provides a strong `_sbrk` that never returns: any accidental
- * newlib heap dependency traps into `ra8_fatal_error` and the firmware
- * halts, enforcing NASA Power of 10 Rule 3 (zero dynamic allocation). On the
- * host the production `_sbrk` is linked from `ra8_core_hal` but is never called
- * (glibc's `malloc` resolves its own program break), so the trap body shows 0%
- * and cannot be reached through any public path.
+ * `src/sbrk_trap_abi.zig` provides a strong `_sbrk` that never returns: any
+ * accidental newlib heap dependency traps into `ra8_fatal_error` and the
+ * firmware halts, enforcing NASA Power of 10 Rule 3 (zero dynamic allocation).
+ * On the host the production `_sbrk` is linked from the `ra8_core_zig` archive
+ * (it was `ra8_core_hal` while the trap was C, #2895) but is never called
+ * (glibc's `malloc` resolves its own program break), so the trap body cannot be
+ * reached through any public path.
  *
- * To cover the three trap lines this TU drives the PRODUCTION `_sbrk` directly
- * (declared `extern` and linked from `ra8_core_hal`), so the coverage lands in
- * the one object gcovr reports for `ra8_sbrk_trap.c`; a renamed white-box copy
- * (`#define _sbrk _sbrk_cov` + include) would not merge into the aggregate. Its
- * one dependency -- the weak `ra8_fatal_error` sink in
- * `ra8_error_handler.c` -- is redirected with a strong definition here (the same
+ * This TU drives the PRODUCTION `_sbrk` directly (declared `extern` and linked
+ * from the Zig archive), which is what makes the death test a test of the
+ * shipped trap rather than of a renamed copy: a white-box duplicate
+ * (`#define _sbrk _sbrk_cov` + include) would prove nothing about the symbol
+ * newlib actually resolves. Its one dependency -- the weak `ra8_fatal_error`
+ * sink in `src/error_handler_abi.zig` -- is redirected with a strong definition here (the same
  * technique as `test_ra8_exception.c`). The mocked sink either `longjmp()`s
  * straight back so the in-process leg records the three lines and inspects the
  * exact policy call, or, inside a forked child, halts via `abort()` so a classic
@@ -126,10 +127,10 @@ RA8_INTERNAL static void internal_death_watchdog(int sig)
   s_watchdog_fired = 1;
 }
 
-/* Drive the PRODUCTION `_sbrk` (the strong newlib trap linked from ra8_core_hal)
- * directly. A renamed white-box copy (`#define _sbrk _sbrk_cov` + include) does
- * NOT merge into the aggregate -- gcovr reports the production ra8_sbrk_trap.o,
- * whose `_sbrk` a renamed copy never touches -- so cover the real symbol here.
+/* Drive the PRODUCTION `_sbrk` (the strong newlib trap the ra8_core_zig archive
+ * exports by that bare name) directly. A renamed white-box copy
+ * (`#define _sbrk _sbrk_cov` + include) would test a symbol nothing resolves,
+ * so drive the real one here.
  * glibc's malloc does not grow the program break during this short test (it
  * mmaps its arena), so the strong `_sbrk` stays dormant except for the explicit
  * calls below, where the mocked sink returns control via longjmp/abort. */

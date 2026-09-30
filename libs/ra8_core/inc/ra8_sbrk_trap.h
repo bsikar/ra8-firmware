@@ -10,8 +10,8 @@
  * NASA Power of 10 Rule 3 forbids dynamic allocation after init, and target
  * firmware has no heap at all. Firmware is freestanding and links with `-nostdlib`
  * without newlib or libnosys. Standard allocator calls fail closed at link time.
- * ``ra8_sbrk_trap.c`` provides a defense-in-depth tripwire so any legacy or
- * external routine attempting to invoke ``_sbrk`` halts safely via ``ra8_fatal_error``.
+ * ``src/sbrk_trap_abi.zig`` provides a defense-in-depth tripwire so any legacy
+ * or external routine invoking ``_sbrk`` halts safely via ``ra8_fatal_error``.
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
  */

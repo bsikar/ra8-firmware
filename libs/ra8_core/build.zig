@@ -3,7 +3,7 @@
 //!
 //! Build graph for `ra8_core`.
 //!
-//! Ten seams of this library are Zig so far: the freestanding runtime
+//! Eleven seams of this library are Zig so far: the freestanding runtime
 //! primitives (#2820) and the deterministic `rand()` / `srand()` override
 //! that joins them (#2890), the pin-claim validator (#2825), the SysTick timebase
 //! with its time-interface binding (#2830), the log backend with
@@ -13,7 +13,8 @@
 //! exception reporter, the cross-reset crash log and the SCB register window
 //! (#2868) and the error sink pair: the weak fatal trap every failed
 //! `RA8_ASSERT` lands on, plus the log-backed non-fatal sink (#2875) and
-//! the application-layer bring-up with its stack-canary sentinel (#2884).
+//! the application-layer bring-up with its stack-canary sentinel (#2884) and
+//! the newlib `_sbrk` heap trap (#2895).
 //! Everything else in `src/` is still C, which
 //! `.github/zig-parallel-tree-allowlist.tsv` records per file.
 //!
@@ -313,6 +314,24 @@ pub fn build(b: *std.Build) void {
     });
     infrastructure_abi.addImport("infrastructure_canary", infrastructure_canary);
 
+    // The newlib heap trap. No internal logic to split out: the policy
+    // constants are the unit, and the membrane is three lines on top of
+    // them. It exports bare `_sbrk` from THIS archive rather than the
+    // freestanding one, because it calls `ra8_fatal_error` and that archive
+    // is a self-contained libc subset with no ra8_* dependency.
+    const heap_sbrk = b.createModule(.{
+        .root_source_file = b.path("src/internal/heap/sbrk.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+
+    const sbrk_trap_abi = b.createModule(.{
+        .root_source_file = b.path("src/sbrk_trap_abi.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    sbrk_trap_abi.addImport("heap_sbrk", heap_sbrk);
+
     const fault_abis = [_][]const u8{ "scb_abi", "exception_abi", "crashlog_abi" };
     var fault_abi_modules = std.StringHashMap(*std.Build.Module).init(b.allocator);
     inline for (fault_abis) |name| {
@@ -345,6 +364,7 @@ pub fn build(b: *std.Build) void {
         root.addImport(name, error_abi_modules.get(name).?);
     }
     root.addImport("infrastructure_abi", infrastructure_abi);
+    root.addImport("sbrk_trap_abi", sbrk_trap_abi);
 
     if (!image_build) {
         const library = b.addLibrary(.{
@@ -374,6 +394,7 @@ pub fn build(b: *std.Build) void {
             image_root.addImport(name, error_abi_modules.get(name).?);
         }
         image_root.addImport("infrastructure_abi", infrastructure_abi);
+        image_root.addImport("sbrk_trap_abi", sbrk_trap_abi);
 
         const image_library = b.addLibrary(.{
             .name = "ra8_core",
@@ -457,4 +478,12 @@ pub fn build(b: *std.Build) void {
     });
     infrastructure_tests.addImport("infrastructure_canary", infrastructure_canary);
     test_step.dependOn(&b.addRunArtifact(b.addTest(.{ .root_module = infrastructure_tests })).step);
+
+    const heap_tests = b.createModule(.{
+        .root_source_file = b.path("tests/heap_test.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    heap_tests.addImport("heap_sbrk", heap_sbrk);
+    test_step.dependOn(&b.addRunArtifact(b.addTest(.{ .root_module = heap_tests })).step);
 }

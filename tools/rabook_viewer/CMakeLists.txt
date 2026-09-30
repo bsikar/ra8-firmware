@@ -279,8 +279,9 @@ link_libraries(ra8_zig::ra8_mem)
 # stack canary followed (#2884), so that file is off the DROP list too: it is
 # gone, not excluded. The rand()/srand() override went the same way (#2890),
 # into the freestanding archive rather than this one, so it drops off the list
-# for the same reason. The rest of the library is still C, so the read-path
-# partition below stays.
+# for the same reason. The newlib _sbrk trap followed (#2895), into this
+# archive rather than that one, because it calls ra8_fatal_error. The rest of
+# the library is still C, so the read-path partition below stays.
 if(NOT TARGET ra8_zig::ra8_core)
   include(${FW_ROOT}/tests/cmake/zig_library.cmake)
   ra8_add_zig_library(
@@ -294,7 +295,6 @@ link_libraries(ra8_zig::ra8_core)
 ra8_viewer_read_path(
   RA8_CORE_SRC ${FW_ROOT}/libs/ra8_core/src
   DROP ra8_boot_region.c
-       ra8_sbrk_trap.c
        ra8_secure.c
 )
 
