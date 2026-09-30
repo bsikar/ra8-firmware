@@ -38,8 +38,18 @@ before the deterministic chunk budget -- the app produced NO verdict. Counting
 a non-verdict as a pass is the #168 mislabel; counting it as a fault invents a
 failure. It is its own bucket so the burn-down can see it.
 
+SELF-ATTESTATION (#712). The ratchet reads the baseline's ROWS; until now
+nothing asserted the FILE is one this tool wrote. A hand edit that kept the
+rows parseable -- a whole-file `sort`, a typed row, an adjusted `# total:` --
+went around the ratchet's own refusal and survived ten days. `--attest`
+re-derives the canonical text from the committed rows and demands byte
+identity, and `--check`/`--update` run it first. It needs no report and no
+emulator, so it runs anywhere. The optional cause column is part of the
+canonical form, not noise to normalise away.
+
 USAGE
     python3 scripts/checks/matrix_ratchet.py --selftest    # assert it fires
+    python3 scripts/checks/matrix_ratchet.py --attest      # baseline is machine-written
     python3 scripts/checks/matrix_ratchet.py --check       # the gate
     python3 scripts/checks/matrix_ratchet.py --update      # re-baseline
 
@@ -71,6 +81,9 @@ would make the gate's own bootstrap output unusable.
 
 BASELINE_COLUMNS = 2
 """Column count of one baseline row: app, verdict."""
+
+ATTESTATION_CASES = 5
+"""Distinct hand-edit shapes `_selftest_attestation` proves are rejected."""
 
 DEBT_VERDICTS = frozenset({"FAULT", "TRUNCATED", "UNKNOWN", "BUILD_FAIL", "NO_ELF"})
 """Verdicts that count as debt -- the set this gate ratchets downward."""
@@ -186,19 +199,21 @@ def _parse_baseline(path: Path) -> tuple[dict[str, str], dict[str, str]]:
     return verdicts, causes
 
 
-def write_baseline(path: Path, debt: dict[str, str], causes: dict[str, str] | None = None) -> None:
-    """Rewrite the baseline from a measured debt map, keeping recorded causes.
+def render_baseline(debt: dict[str, str], causes: dict[str, str] | None = None) -> str:
+    """Return the canonical baseline text for a debt map. THE committed form.
 
-    Each row carries an optional third column naming WHY the app is failing.
-    Without it a future reader sees a bare count and cannot tell recorded debt
-    from an unexamined allowlist -- which is the failure mode this whole gate
-    was built against. `--update` therefore carries the existing cause forward
-    for any app still in debt rather than regenerating a comment-free file.
+    This is the single definition of what a machine-written baseline looks
+    like: fixed header, `# total:` line, then one row per app in sorted order
+    with the optional cause as a third TAB-separated column. `write_baseline`
+    emits it and `attest_baseline` re-derives it, so the file on disk can be
+    compared against what the tool would have produced.
 
     Args:
-        path: The baseline file to write.
         debt: The {app: verdict} debt to record.
         causes: Optional {app: cause} notes to preserve.
+
+    Returns:
+        The full file text, newline-terminated.
     """
     causes = causes or {}
     lines = [
@@ -220,7 +235,108 @@ def write_baseline(path: Path, debt: dict[str, str], causes: dict[str, str] | No
     for app, verdict in sorted(debt.items()):
         cause = causes.get(app, "")
         lines.append(f"{app}\t{verdict}\t{cause}" if cause else f"{app}\t{verdict}")
-    path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+    return "\n".join(lines) + "\n"
+
+
+def write_baseline(path: Path, debt: dict[str, str], causes: dict[str, str] | None = None) -> None:
+    """Rewrite the baseline from a measured debt map, keeping recorded causes.
+
+    Each row carries an optional third column naming WHY the app is failing.
+    Without it a future reader sees a bare count and cannot tell recorded debt
+    from an unexamined allowlist -- which is the failure mode this whole gate
+    was built against. `--update` therefore carries the existing cause forward
+    for any app still in debt rather than regenerating a comment-free file.
+
+    Args:
+        path: The baseline file to write.
+        debt: The {app: verdict} debt to record.
+        causes: Optional {app: cause} notes to preserve.
+    """
+    path.write_text(render_baseline(debt, causes), encoding="utf-8")
+
+
+def _first_difference(committed: str, rendered: str) -> str:
+    """Return a one-line description of where two texts first diverge.
+
+    Args:
+        committed: The text read from disk.
+        rendered: The text the tool would emit.
+
+    Returns:
+        A printable `line N: ...` description.
+    """
+    got = committed.splitlines()
+    want = rendered.splitlines()
+    for number, (a, b) in enumerate(zip(got, want), start=1):
+        if a != b:
+            return f"line {number}: committed {a!r}, tool emits {b!r}"
+    if len(got) > len(want):
+        return f"line {len(want) + 1}: committed has {len(got) - len(want)} extra line(s)"
+    return f"line {len(got) + 1}: committed is missing {len(want) - len(got)} line(s)"
+
+
+def attest_baseline(baseline_file: Path = BASELINE_FILE) -> list[str]:
+    """Return the ways the committed baseline is not what this tool would emit.
+
+    The ratchet reads ROWS; nothing until now asserted the FILE is one
+    `write_baseline` produced. A hand edit that keeps the rows parseable --
+    a whole-file `sort`, a hand-written row, an adjusted `# total:` -- passed
+    silently, which is the ten-day bypass #712 records.
+
+    An ABSENT baseline is not a violation: this gate's documented bootstrap on
+    a new machine is an empty baseline whose first run lists every failing app.
+    A row is, though, if its verdict is not debt: `--update` records only
+    `DEBT_VERDICTS`, so an `OK` row could only have been typed by hand.
+
+    Args:
+        baseline_file: The committed baseline to attest.
+
+    Returns:
+        A list of problem descriptions, empty when the file is canonical.
+    """
+    if not baseline_file.exists():
+        return []
+    committed = baseline_file.read_text(encoding="utf-8")
+    verdicts, causes = _parse_baseline(baseline_file)
+    problems: list[str] = []
+    for app, verdict in sorted(verdicts.items()):
+        if verdict not in KNOWN_VERDICTS:
+            problems.append(f"{app}: verdict {verdict!r} is not one matrix.sh emits")
+        elif verdict not in DEBT_VERDICTS:
+            problems.append(
+                f"{app}: {verdict} is not debt, so --update would never record it "
+                "-- the row was written by hand"
+            )
+    rendered = render_baseline(verdicts, causes)
+    if committed != rendered:
+        problems.append(_first_difference(committed, rendered))
+    return problems
+
+
+def report_attestation(problems: list[str], baseline_file: Path = BASELINE_FILE) -> None:
+    """Print the failure report for a baseline the tool would not have written.
+
+    Args:
+        problems: The descriptions returned by `attest_baseline`.
+        baseline_file: The file they describe.
+    """
+    try:
+        shown = baseline_file.relative_to(REPO_ROOT)
+    except ValueError:
+        shown = baseline_file
+    sys.stderr.write(
+        f"\nmatrix_ratchet.py: FAIL -- {shown} is not what this tool emits.\n\n"
+    )
+    for line in problems[:MAX_DETAIL_LINES]:
+        sys.stderr.write(f"  {line}\n")
+    sys.stderr.write(
+        "\n  A generated baseline is machine-written. Editing it by hand goes\n"
+        "  around the ratchet's own refusal, and a parseable hand edit used to\n"
+        "  survive indefinitely (#712). Regenerate it instead:\n"
+        "      bash scripts/emu/matrix.sh\n"
+        "      python3 scripts/checks/matrix_ratchet.py --update\n"
+        "  Causes are carried forward, so re-baselining does not lose them.\n"
+    )
 
 
 def summarise(verdicts: dict[str, str]) -> str:
@@ -274,6 +390,10 @@ def check(report_file: Path = REPORT_FILE, baseline_file: Path = BASELINE_FILE) 
     Returns:
         A process exit status: 0 when debt did not grow, 1 when it did.
     """
+    problems = attest_baseline(baseline_file)
+    if problems:
+        report_attestation(problems, baseline_file)
+        return 1
     if not report_file.exists():
         sys.stderr.write(
             f"matrix_ratchet.py: FATAL -- no report at {report_file}.\n"
@@ -324,6 +444,12 @@ def update(report_file: Path = REPORT_FILE, baseline_file: Path = BASELINE_FILE)
     Returns:
         A process exit status: 0 on success, 1 when the report is missing.
     """
+    # Attest FIRST: --update carries the committed causes forward, so a
+    # hand-edited file would launder its edits into the regenerated one.
+    problems = attest_baseline(baseline_file)
+    if problems:
+        report_attestation(problems, baseline_file)
+        return 1
     if not report_file.exists():
         sys.stderr.write(f"matrix_ratchet.py: FATAL -- no report at {report_file}.\n")
         return 1
@@ -434,6 +560,56 @@ def _selftest_ratchet(tmp: Path) -> list[str]:
     return failures
 
 
+def _selftest_attestation(tmp: Path) -> list[str]:
+    """Assert a hand-edited baseline is rejected and a written one accepted.
+
+    Every case runs against a throwaway fixture, never the committed file: a
+    selftest that mutated `.github/emulator-matrix-baseline.txt` would be the
+    very hand edit this asserts against.
+
+    Args:
+        tmp: A scratch directory for the fixture baseline.
+
+    Returns:
+        A list of failure descriptions, empty when all cases hold.
+    """
+    failures: list[str] = []
+    fixture = tmp / "attest.txt"
+    debt = {"usb_x": "FAULT", "blink": "TRUNCATED"}
+    causes = {"usb_x": "ra8_emulator has no USBHS model (#170)"}
+
+    # Case 1 -- MUST PASS: a file this tool wrote, cause column and all.
+    write_baseline(fixture, debt, causes)
+    if attest_baseline(fixture):
+        failures.append("a tool-written baseline did not attest clean")
+    if load_baseline_causes(fixture).get("usb_x") != causes["usb_x"]:
+        failures.append("the rendered cause column did not survive a round trip")
+
+    canonical = fixture.read_text(encoding="utf-8")
+    rows = canonical.splitlines()
+
+    # Case 2 -- MUST FAIL: the whole-file `sort` that started #712.
+    fixture.write_text("\n".join(sorted(rows)) + "\n", encoding="utf-8")
+    if not attest_baseline(fixture):
+        failures.append("a whole-file sort attested clean")
+
+    # Case 3 -- MUST FAIL: a hand-written row left where the typist put it.
+    fixture.write_text("\n".join([*rows[:-2], "zz_typed\tFAULT", *rows[-2:]]) + "\n")
+    if not attest_baseline(fixture):
+        failures.append("an out-of-order hand-written row attested clean")
+
+    # Case 4 -- MUST FAIL: the `# total:` line edited to match a hand change.
+    fixture.write_text(canonical.replace("# total: 2", "# total: 3"), encoding="utf-8")
+    if not attest_baseline(fixture):
+        failures.append("a wrong # total: line attested clean")
+
+    # Case 5 -- MUST FAIL: a non-debt verdict, which --update never records.
+    fixture.write_text(canonical.replace("blink\tTRUNCATED", "blink\tOK"), encoding="utf-8")
+    if not attest_baseline(fixture):
+        failures.append("an OK row -- impossible from --update -- attested clean")
+    return failures
+
+
 def selftest() -> int:
     """Assert the gate fires in both directions before it is trusted.
 
@@ -445,12 +621,16 @@ def selftest() -> int:
     failures = _selftest_classification()
     with tempfile.TemporaryDirectory() as td:
         failures.extend(_selftest_ratchet(Path(td)))
+        failures.extend(_selftest_attestation(Path(td)))
     if failures:
         sys.stderr.write("matrix_ratchet.py --selftest: FAILED\n")
         for line in failures:
             sys.stderr.write(f"  {line}\n")
         return 1
-    print("matrix_ratchet.py --selftest: OK (fires on growth, quiet on shrinkage)")
+    print(
+        "matrix_ratchet.py --selftest: OK (fires on growth, quiet on shrinkage; "
+        f"{ATTESTATION_CASES} attestation cases)"
+    )
     return 0
 
 
@@ -465,9 +645,19 @@ def main() -> int:
     mode.add_argument("--check", action="store_true", help="gate against the baseline (default)")
     mode.add_argument("--update", action="store_true", help="rewrite the baseline")
     mode.add_argument("--selftest", action="store_true", help="assert the gate itself fires")
+    mode.add_argument(
+        "--attest", action="store_true", help="assert the baseline is machine-written"
+    )
     args = parser.parse_args()
     if args.selftest:
         return selftest()
+    if args.attest:
+        problems = attest_baseline()
+        if problems:
+            report_attestation(problems)
+            return 1
+        print("matrix_ratchet.py: baseline attested -- byte-identical to what --update emits.")
+        return 0
     if args.update:
         return update()
     return check()
