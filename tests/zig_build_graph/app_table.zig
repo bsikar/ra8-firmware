@@ -443,9 +443,11 @@ pub const cross_apps = [_]CrossApp{
                 // suppressions above: it is ours and keeps the full bar.
                 .{ .dir = "port/usbx/src", .prefix = "ux_dcd_ra8_usb" },
             },
-            // Named one by one, in the app's order. ra8_time.c is deliberately
-            // absent: its ra8_time_init reprograms the SysTick ThreadX owns,
-            // and ns_usb.c supplies the ThreadX-backed ra8_delay_ms instead.
+            // Named one by one, in the app's order. The timebase is absent
+            // here because it is Zig in ra8_core's archive (#2851), and the
+            // NS half overrides its weak ra8_time_ms / ra8_delay_ms with the
+            // ThreadX-backed pair in ns_usb.c rather than reprogramming the
+            // SysTick ThreadX owns.
             .private_sources = &.{
                 "libs/ra8_hal/src/ra8_usb.c",
                 "libs/ra8_hal/src/ra8_usb_phy.c",

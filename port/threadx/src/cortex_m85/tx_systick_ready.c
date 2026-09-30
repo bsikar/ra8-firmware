@@ -4,7 +4,7 @@
  *        _tx_timer_interrupt.
  *
  * @details
- * The shared SysTick handler in libs/ra8_core/src/ra8_time.c takes a
+ * The shared SysTick handler in ra8_core (Zig since #2851) takes a
  * weak external reference to ``_tx_timer_interrupt`` (issue #8 port-
  * level fix) so any app that links ThreadX gets a ticking kernel
  * timer for free. That works fine when ``tx_kernel_enter`` is called
@@ -34,7 +34,7 @@
  * already armed its own SysTick and the timer subsystem is safe
  * to call into.
  *
- * The shared SysTick handler in ra8_time.c declares
+ * That shared SysTick handler declares
  * ``g_ra8_threadx_systick_ready`` as a WEAK EXTERN and skips
  * ``_tx_timer_interrupt`` while the flag reads 0. Non-ThreadX
  * apps never link this TU, so the weak extern resolves to NULL
@@ -51,7 +51,7 @@
  * @var g_ra8_threadx_systick_ready
  * @brief 0 until ``_tx_initialize_low_level`` has armed ThreadX's
  *        SysTick + timer state; 1 afterwards. Read by the shared
- *        SysTick handler in libs/ra8_core/src/ra8_time.c.
+ *        SysTick handler in ra8_core.
  * @note Single-writer (assembly, once); multi-reader (every SysTick).
  * @since 0.1.0
  */
