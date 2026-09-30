@@ -51,6 +51,9 @@ pub const CrossApp = struct {
     /// fragment instead of linking the board's own script unchanged. A link
     /// shape, not a source one, which is why it sits beside linker_script.
     threadx_heap: bool = false,
+    /// The call passes CPU1_IMAGE, so ra8_add_app() composes the board linker
+    /// script with a generated CPU1 memory map instead of taking a fork.
+    cpu1_image: bool = false,
     /// Shared helper translation units the app names in `EXTRA_SRCS`, in the
     /// order it names them, spelled repo-relative. Each one is compiled INTO
     /// this app (so it meets the full project warning profile, unlike a
@@ -211,6 +214,7 @@ pub const cross_apps = [_]CrossApp{
         // the slice that brought it into the graph: see the .cpu1 field below.
         .name = "cpu1_pingpong",
         .dir = "examples/ek_ra8d2/hw_validated/hil/cpu1_pingpong",
+        .cpu1_image = true,
         .board = "libs/ra8_board_ek_ra8d2",
         // The app ships its own linker_script.ld (it pins .cpu1_image at
         // ORIGIN(MRAM_CPU1)), so ra8_add_app() takes that one over the board's.

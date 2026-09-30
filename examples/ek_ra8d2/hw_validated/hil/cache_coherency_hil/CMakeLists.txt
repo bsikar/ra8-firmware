@@ -35,6 +35,7 @@ include("${_d}/cmake/ra8_add_app.cmake")
 
 ra8_add_app(
   NAME cache_coherency_hil
+  CPU1_IMAGE
   STACK_BYTES 2200 AUX_SRCS src/cpu1_main.c
   DESCRIPTION
     "M85<->M33 cache-coherency HIL validator (D-cache ON, non-cacheable shared SRAM) for RA8D2"
