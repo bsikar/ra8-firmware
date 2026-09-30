@@ -11,6 +11,7 @@ pub const regs = @import("regs.zig");
 pub const boot = @import("boot.zig");
 pub const ipc = @import("ipc.zig");
 pub const partition = @import("partition.zig");
+pub const sau = @import("sau.zig");
 pub const nsimage = @import("nsimage.zig");
 pub const psar = @import("psar.zig");
 
