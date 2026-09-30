@@ -133,7 +133,7 @@ def _additional_non_authority_groups_part2() -> tuple[tuple[str, tuple[str, ...]
                     checks/markdown_reference_policy.py:SHORTCUT_PATH_REFERENCE_RE
                     checks/markdown_reference_policy.py:SOUP_LOCAL_PATH_RE
                     checks/markdown_reference_policy.py:SYMBOL_SUFFIX_RE
-                    checks/markdown_references.py:PLACEHOLDER_RE
+                    checks/markdown_reference_paths.py:PLACEHOLDER_RE
                     """
             ),
         ),
