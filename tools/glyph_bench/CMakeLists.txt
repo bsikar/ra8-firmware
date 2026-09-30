@@ -23,6 +23,17 @@ if(NOT TARGET ra8_zig::ra8_mem)
   )
 endif()
 
+# ra8_log is Zig now (#2836), so the bench links ra8_core's archive as well
+# instead of compiling libs/ra8_core/src/ra8_log.c by path.
+if(NOT TARGET ra8_zig::ra8_core)
+  include(${RA8_ROOT}/tests/cmake/zig_library.cmake)
+  ra8_add_zig_library(
+    NAME ra8_core
+    ZIG_ROOT ${RA8_ROOT}/libs/ra8_core
+    LIBRARY_NAME ra8_core_zig
+  )
+endif()
+
 # The archive is a single object, so linking it brings along every extern in it:
 # the four ra8_keycache_* the glyph atlas and the page cache are facades over.
 # libs/ra8_mem is Zig apart from the arena, which this bench does not use, so
@@ -33,9 +44,8 @@ add_executable(
   ${GLYPH_BENCH_SOURCES}
   ${RA8_ROOT}/libs/ra8_io/src/ra8_io_stream.c
   ${RA8_ROOT}/port/posix/src/ra8_io_stream_posix.c
-  ${RA8_ROOT}/libs/ra8_core/src/ra8_log.c
 )
-target_link_libraries(glyph_bench PRIVATE ra8_zig::ra8_mem)
+target_link_libraries(glyph_bench PRIVATE ra8_zig::ra8_mem ra8_zig::ra8_core)
 target_include_directories(
   glyph_bench PRIVATE ${RA8_ROOT}/libs/ra8_core/inc ${RA8_ROOT}/libs/ra8_mem/inc
                       ${RA8_ROOT}/libs/ra8_io/inc ${RA8_ROOT}/port/posix/inc

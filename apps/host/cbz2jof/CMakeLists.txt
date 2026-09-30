@@ -56,6 +56,18 @@ if(NOT TARGET ra8_zig::ra8_jpeg)
 endif()
 link_libraries(ra8_zig::ra8_jpeg)
 
+# ra8_log is Zig now (#2836), so the ra8_core archive replaces the
+# libs/ra8_core/src/ra8_log.c row that used to be compiled by path here.
+if(NOT TARGET ra8_zig::ra8_core)
+  include(${CBZ2JOF_REPO_ROOT}/tests/cmake/zig_library.cmake)
+  ra8_add_zig_library(
+    NAME ra8_core
+    ZIG_ROOT ${CBZ2JOF_REPO_ROOT}/libs/ra8_core
+    LIBRARY_NAME ra8_core_zig
+  )
+endif()
+link_libraries(ra8_zig::ra8_core)
+
 find_program(CBZ2JOF_GO_EXECUTABLE NAMES go)
 
 # ---------------------------------------------------------------------------
@@ -72,7 +84,6 @@ set(CBZ2JOF_FW_SRC
     ${CBZ2JOF_REPO_ROOT}/apps/shared_libs/jof/src/jof_png.c
     ${CBZ2JOF_REPO_ROOT}/apps/shared_libs/jof/src/jof_png_chunk.c
     ${CBZ2JOF_REPO_ROOT}/apps/shared_libs/compress/src/ra8_compress.c
-    ${CBZ2JOF_FW}/ra8_core/src/ra8_log.c
     ${CBZ2JOF_FW}/ra8_core/src/ra8_error_handler.c
     ${CBZ2JOF_FW}/ra8_core/src/ra8_decomp_limits.c
 )

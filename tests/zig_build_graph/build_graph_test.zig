@@ -153,8 +153,8 @@ test "compile database escapes the bytes JSON cannot carry raw" {
 test "compile database leaves an ordinary path untouched" {
     var out = std.ArrayList(u8).init(std.testing.allocator);
     defer out.deinit();
-    db.appendJsonString(&out, "libs/ra8_core/src/ra8_log.c");
-    try std.testing.expectEqualStrings("\"libs/ra8_core/src/ra8_log.c\"", out.items);
+    db.appendJsonString(&out, "libs/ra8_core/src/ra8_scb.c");
+    try std.testing.expectEqualStrings("\"libs/ra8_core/src/ra8_scb.c\"", out.items);
 }
 
 test "ABI negative control passes only on a failure that names its reason" {
@@ -802,7 +802,7 @@ test "OFF_TARGET_LIBS carries the define on its own units and on nothing else" {
     ));
     try std.testing.expect(!sources.isOffTargetSource(
         off_target_app,
-        "libs/ra8_core/src/ra8_log.c",
+        "libs/ra8_core/src/ra8_scb.c",
     ));
     try std.testing.expect(!sources.isOffTargetSource(
         off_target_app,
@@ -877,7 +877,7 @@ test "the NSC set is one decision with three arms, and every app takes one" {
         no_nsc_app,
         "examples/ek_ra8d2/hil_needs_revalidation/cpu1_pingpong_ipc/src/main.c",
     ));
-    try std.testing.expect(sources.nscIsCompiled(no_nsc_app, "libs/ra8_core/src/ra8_log.c"));
+    try std.testing.expect(sources.nscIsCompiled(no_nsc_app, "libs/ra8_core/src/ra8_scb.c"));
     // And only one app in the table takes the NO_NSC arm, so the predicate is
     // a rule rather than a constant.
     var excluding: usize = 0;

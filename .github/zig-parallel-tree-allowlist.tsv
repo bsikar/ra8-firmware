@@ -27,9 +27,8 @@ ra8_dfu	src/ra8_rot.c	Root-of-trust key reader, also compiled directly by three 
 # 
 # ra8_core is partially migrated: the freestanding runtime primitives are
 # Zig (#2820), the other sixteen TUs are still C. Four blocks.
-ra8_core	src/ra8_log.c	The logging core: level gating, the formatter and the sink fan-out, and the largest TU in the library at 745 lines. Every other ra8_core TU calls into it, so porting it early would put the whole library's logging across a language boundary; it goes as its own slice.
 ra8_core	src/ra8_error_handler.c	Central error routing behind RA8_ERR: dispatches to the registered sinks. Shares the sink registry with ra8_error_sink_log.c, so those two port as one block.
-ra8_core	src/ra8_error_sink_log.c	The log-backed error sink. Shares the sink registry with ra8_error_handler.c and calls ra8_log.c's formatter directly, so it ports with those rather than ahead of them.
+ra8_core	src/ra8_error_sink_log.c	The log-backed error sink. Shares the sink registry with ra8_error_handler.c, so the pair ports as one slice; it reaches the Zig log backend through the ra8_log_emit_* ABI like every other caller.
 ra8_core	src/ra8_exception.c	ARM fault handlers: HardFault, MemManage, BusFault and UsageFault entry with the stacked-frame capture. Naked-function prologues and the stack-pointer read are inline asm against a live exception frame; it ports with ra8_scb.c and ra8_crashlog.c once the frame layout is expressed in Zig.
 ra8_core	src/ra8_crashlog.c	Crash record writer driven from the fault handlers. Shares the stacked-frame layout with ra8_exception.c, so splitting them would put that record across a language boundary at the one moment the system is already broken.
 ra8_core	src/ra8_scb.c	System Control Block register access used by the fault path and the reset cause read. MMIO plus the frame layout ra8_exception.c depends on; ports in the same block.

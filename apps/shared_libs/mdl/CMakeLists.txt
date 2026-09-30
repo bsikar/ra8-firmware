@@ -118,6 +118,18 @@ endif()
 link_libraries(ra8_zig::fw_if_fs ra8_zig::ra8_xml ra8_zig::ra8_net_policy
                ra8_zig::ra8_imgdec ra8_zig::ra8_num ra8_zig::ra8_jpeg)
 
+# ra8_log is Zig now (#2836), so the ra8_core archive replaces the
+# libs/ra8_core/src/ra8_log.c row that used to be compiled by path here.
+if(NOT TARGET ra8_zig::ra8_core)
+  include(${MDL_REPO_ROOT}/tests/cmake/zig_library.cmake)
+  ra8_add_zig_library(
+    NAME ra8_core
+    ZIG_ROOT ${MDL_REPO_ROOT}/libs/ra8_core
+    LIBRARY_NAME ra8_core_zig
+  )
+endif()
+link_libraries(ra8_zig::ra8_core)
+
 # The core's own two roots, likewise stated once. Every source path below is
 # absolute through them, because a form consumes these lists from ITS directory
 # scope and a relative path would silently resolve against the form instead.
@@ -202,7 +214,6 @@ set(MDL_JOF_SRC
     ${MDL_REPO_ROOT}/apps/shared_libs/jof/src/jof_png.c
     ${MDL_REPO_ROOT}/apps/shared_libs/jof/src/jof_png_chunk.c
     ${MDL_REPO_ROOT}/apps/shared_libs/compress/src/ra8_compress.c
-    ${FW}/ra8_core/src/ra8_log.c
     ${FW}/ra8_core/src/ra8_error_handler.c
     ${FW}/ra8_core/src/ra8_decomp_limits.c
 )
@@ -636,7 +647,6 @@ add_executable(
   ${MDL_STREAM_CORE_SRC}
   ${MDL_STREAM_RAM_SRC}
   ${MDL_STREAM_POSIX_SRC}
-  ${FW}/ra8_core/src/ra8_log.c
   ${FW}/ra8_core/src/ra8_error_handler.c
 )
 target_include_directories(
@@ -718,7 +728,6 @@ add_executable(
   ${MDL_FS_SRC}
   ${MDL_STREAM_CORE_SRC}
   ${MDL_STREAM_RAM_SRC}
-  ${FW}/ra8_core/src/ra8_log.c
   ${FW}/ra8_core/src/ra8_error_handler.c
 )
 target_include_directories(
@@ -762,7 +771,6 @@ add_executable(
   ${MDL_FS_SRC}
   ${MDL_STREAM_CORE_SRC}
   ${MDL_STREAM_RAM_SRC}
-  ${FW}/ra8_core/src/ra8_log.c
   ${FW}/ra8_core/src/ra8_error_handler.c
 )
 target_include_directories(

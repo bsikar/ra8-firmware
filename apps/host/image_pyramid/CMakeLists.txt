@@ -16,13 +16,12 @@ set(IMAGE_PYRAMID_BUILT ${IMAGE_PYRAMID_PREFIX}/bin/image_pyramid)
 set(IMAGE_PYRAMID_CLI ${CMAKE_CURRENT_BINARY_DIR}/image_pyramid)
 
 # The JPEG codec is Zig now: the encoder moved in #2798 and the decoder plus
-# its stripe driver in #2799, so libs/ra8_jpeg/src holds no .c at all. This
-# object library therefore carries only the two ra8_core sources it still
-# needs; the codec itself reaches the Zig application through build.zig,
-# which links libs/ra8_jpeg's own archive.
+# its stripe driver in #2799, so libs/ra8_jpeg/src holds no .c at all, and
+# ra8_log followed in #2836. This object library therefore carries the one
+# ra8_core source still written in C; the codec and the log both reach the
+# Zig application through build.zig, which links those libraries' archives.
 add_library(
   image_pyramid_codec_c OBJECT
-  ${CMAKE_CURRENT_SOURCE_DIR}/../../../libs/ra8_core/src/ra8_log.c
   ${CMAKE_CURRENT_SOURCE_DIR}/../../../libs/ra8_core/src/ra8_error_handler.c
 )
 target_compile_definitions(image_pyramid_codec_c PRIVATE RA8_FREESTANDING RA8_OFF_TARGET)

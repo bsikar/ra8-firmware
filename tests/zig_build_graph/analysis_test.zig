@@ -20,15 +20,15 @@ const compile_db = graph.compile_db;
 
 test "a command class ignores the file and the object, and nothing else" {
     const base = compile_db.Entry{
-        .file = "libs/ra8_core/src/ra8_log.c",
+        .file = "libs/ra8_core/src/ra8_scb.c",
         .driver = "/opt/arm/bin/arm-none-eabi-gcc",
         .flags = &.{ "-mcpu=cortex-m85", "-std=gnu2x" },
         .include_dirs = &.{"libs/ra8_core/inc"},
-        .object = "arm/blink_hal/ra8_log.c.o",
+        .object = "arm/blink_hal/ra8_scb.c.o",
     };
     var other_file = base;
-    other_file.file = "libs/ra8_core/src/ra8_scb.c";
-    other_file.object = "arm/blink_hal/ra8_scb.c.o";
+    other_file.file = "libs/ra8_core/src/ra8_mstp.c";
+    other_file.object = "arm/blink_hal/ra8_mstp.c.o";
     var other_flags = base;
     other_flags.flags = &.{ "-mcpu=cortex-m33", "-std=gnu2x" };
     var other_includes = base;
