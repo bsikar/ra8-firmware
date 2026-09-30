@@ -93,6 +93,7 @@ import yaml
 REPO_ROOT = Path(__file__).resolve().parents[2]
 WORKFLOW_DIR = REPO_ROOT / ".github" / "workflows"
 CI_SH = REPO_ROOT / "scripts" / "ci.sh"
+GATES_DIR = REPO_ROOT / "scripts" / "ci" / "gates"
 DOCKERFILE = REPO_ROOT / ".devcontainer" / "Dockerfile"
 SETUP_JUST_PREFIX = "extractions/setup-just@"
 MANAGED_RUNNER_LABELS = frozenset({"ra8-ci", "self-hosted"})
@@ -148,6 +149,19 @@ FORBIDDEN_IN_INFRA = (
         "invokes a project-checking `just` recipe",
     ),
 )
+
+# The third drift direction. A gate function with no registry row is invisible
+# to both of the other two checks: they reason over the registry and the
+# workflows, and an unregistered function is in neither, so it reads as
+# perfectly clean while enforcing nothing. gate_cmake_source_paths sat like
+# that from afc903a1 until #2610 -- two checkers, unenforced, for the whole
+# window.
+GATE_DEF_RE = re.compile(r"^gate_([a-z0-9_]+)\(\) \(")
+
+# The deliberate-omission escape hatch, same shape and same mandatory reason as
+# the infra one: a gate can be branch-specific or knowingly parked, but it has
+# to say so in the file rather than just be missing.
+UNREGISTERED_MARKER_RE = re.compile(r"^\s*#\s*ci-parity:\s*unregistered\s*--\s*(\S.*)$")
 
 # Minimum reason length -- "infra -- x" teaches a reader nothing.
 MIN_REASON_CHARS = 12
@@ -517,6 +531,76 @@ def _check_gate_step(
     return errors
 
 
+def unregistered_gate_errors(registry: dict[str, str], gates_dir: Path = GATES_DIR) -> list[str]:
+    """Report every ``gate_*`` function that the registry does not name.
+
+    The other two directions compare the registry against the workflows, so
+    neither can see a gate function that is in neither place. That gate is
+    dead code wearing a gate's name: it passes review, it is never run, and
+    the checks it owns enforce nothing.
+
+    A gate may opt out with ``# ci-parity: unregistered -- <reason>`` on a
+    comment line above its definition, which is how a branch-specific or
+    knowingly parked gate declares itself instead of just going missing.
+
+    Args:
+        registry: ``{gate_name: speed}`` as ci.sh reports it.
+        gates_dir: directory of gate definition files; injectable so the
+            selftest exercises this exact scan against synthetic trees.
+
+    Returns:
+        One message per gate function with neither a row nor a reason.
+    """
+    errors: list[str] = []
+    found = 0
+    for path in sorted(gates_dir.glob("*.sh")):
+        lines = path.read_text(encoding="utf-8").splitlines()
+        for index, line in enumerate(lines):
+            match = GATE_DEF_RE.match(line)
+            if not match:
+                continue
+            found += 1
+            gate = match.group(1).replace("_", "-")
+            if gate in registry:
+                continue
+            reason = None
+            for prior in reversed(lines[:index]):
+                if not prior.lstrip().startswith("#"):
+                    break
+                marker = UNREGISTERED_MARKER_RE.match(prior)
+                if marker:
+                    reason = marker.group(1).strip()
+                    break
+            try:
+                shown = path.relative_to(REPO_ROOT)
+            except ValueError:  # injected tree in a selftest, not under the repo
+                shown = path
+            where = f"{shown}:{index + 1}"
+            if reason is None:
+                errors.append(
+                    f"{where}\n"
+                    f"    defines gate_{match.group(1)}() but RA8_GATE_REGISTRY in\n"
+                    f"    scripts/ci.sh has no '{gate}' row, so nothing can ever run it.\n"
+                    f"    An unregistered gate is invisible to the other parity checks:\n"
+                    f"    they compare the registry against the workflows, and this is in\n"
+                    f"    neither. Add the row and a workflow step, delete the function,\n"
+                    f"    or mark it `# ci-parity: unregistered -- <reason>`."
+                )
+            elif len(reason) < MIN_REASON_CHARS:
+                errors.append(
+                    f"{where}\n"
+                    f"    gate_{match.group(1)}() is marked unregistered with too short a\n"
+                    f"    reason ({len(reason)} chars, minimum {MIN_REASON_CHARS}).\n"
+                    f"    Say why it carries no registry row."
+                )
+    if not found:
+        errors.append(
+            f"no gate definitions found under {gates_dir} -- "
+            "refusing to report parity against nothing"
+        )
+    return errors
+
+
 def reachability_errors(registry: dict[str, str], bindings: Bindings) -> list[str]:
     """Report every gate that is named in the YAML but cannot actually enforce.
 
@@ -671,10 +755,12 @@ def check_workflows(
 def main() -> int:
     """Verify the gate registry and the workflows describe the same set of gates.
 
-    Catches both halves of the drift, which fail in opposite directions: a
-    gate registered but never scheduled passes locally and never runs in CI,
-    while a workflow naming an unregistered gate is a typo or a missing
-    function. Either way the tree looks greener than it is.
+    Catches all three directions of the drift: a gate registered but never
+    scheduled passes locally and never runs in CI; a workflow naming an
+    unregistered gate is a typo or a missing function; and a gate function
+    with no registry row at all is invisible to both of those, so it enforces
+    nothing while reading as clean. Every way, the tree looks greener than it
+    is.
 
     Also rejects raw check bodies written inline in a workflow, since that is
     how a second, drifting home for check logic gets created. A step that only
@@ -709,6 +795,7 @@ def main() -> int:
             f"    or delete the gate."
         )
     errors.extend(reachability_errors(registry, bindings))
+    errors.extend(unregistered_gate_errors(registry))
 
     if errors:
         sys.stderr.write(
@@ -771,6 +858,7 @@ def selftest() -> int:
         print(f"  [{status}] {label}: classified '{kind}', expected '{expected}'")
 
     failures += _infra_smuggling_selftest()
+    failures += _unregistered_gate_selftest()
     failures += _setup_just_pin_selftest()
     failures += _managed_runner_dependencies_selftest()
     # Imported only in the proof mode so production parity scans do not load
@@ -785,6 +873,78 @@ def selftest() -> int:
         return 1
     print("check_ci_parity.py --selftest: all cases pass.")
     return 0
+
+
+def _unregistered_gate_selftest() -> int:
+    """Prove the registry-row direction catches a gate nothing can run.
+
+    Both directions are asserted, and so is the marker's reason floor: a
+    detector that stopped matching reports a clean tree, and so does an
+    escape hatch that accepts anything.
+    """
+    import tempfile  # noqa: PLC0415  # selftest-only temporary fixtures
+
+    cases: list[tuple[str, str, dict[str, str], bool]] = [
+        (
+            "registered gate passes",
+            "gate_ascii() (\n  set -e\n)\n",
+            {"ascii": "fast"},
+            False,
+        ),
+        (
+            "unregistered gate is caught",
+            "gate_orphan() (\n  set -e\n)\n",
+            {"ascii": "fast"},
+            True,
+        ),
+        (
+            "underscores map to the hyphenated row",
+            "gate_arch_caps() (\n  set -e\n)\n",
+            {"arch-caps": "fast"},
+            False,
+        ),
+        (
+            "declared-unregistered gate is allowed",
+            "# ci-parity: unregistered -- zig/dev only, no row on this branch\n"
+            "gate_orphan() (\n  set -e\n)\n",
+            {"ascii": "fast"},
+            False,
+        ),
+        (
+            "marker with a token reason is rejected",
+            "# ci-parity: unregistered -- wip\ngate_orphan() (\n  set -e\n)\n",
+            {"ascii": "fast"},
+            True,
+        ),
+        (
+            "marker detached by a code line does not carry",
+            "# ci-parity: unregistered -- a real reason, long enough\n"
+            "some_other_thing() (\n  :\n)\n"
+            "gate_orphan() (\n  set -e\n)\n",
+            {"ascii": "fast"},
+            True,
+        ),
+    ]
+    failures = 0
+    for label, body, registry, should_fail in cases:
+        with tempfile.TemporaryDirectory() as tmp:
+            gates = Path(tmp)
+            (gates / "fixture.sh").write_text(body, encoding="utf-8")
+            errors = unregistered_gate_errors(registry, gates_dir=gates)
+        failed = bool(errors)
+        status = "ok" if failed == should_fail else "FAIL"
+        if failed != should_fail:
+            failures += 1
+        print(f"  [{status}] unregistered-gate: {label}")
+
+    # A discovery floor: an empty gates tree must not read as clean.
+    with tempfile.TemporaryDirectory() as tmp:
+        errors = unregistered_gate_errors({"ascii": "fast"}, gates_dir=Path(tmp))
+    status = "ok" if errors else "FAIL"
+    if not errors:
+        failures += 1
+    print(f"  [{status}] unregistered-gate: empty gates tree refuses to report clean")
+    return failures
 
 
 def _infra_smuggling_selftest() -> int:
