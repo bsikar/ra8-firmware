@@ -107,11 +107,49 @@ would be lying:
 3. Cache maintenance sequences and SIMD instruction encodings.
 4. Vendor option bytes and the exact vector count.
 
+## What compiles this contract
+
+`scripts/checks/check_arch_compiles.py`, and until it existed nothing did. No
+library, no test and no tool reached `arch/arch.h`, so the contract was a header
+that had never been through a compiler. Two things had already gone wrong in it
+unnoticed: `::K_ARCH_FAULT_RAW_MAX` was referenced in the documentation of
+`arch_fault_info_t` and defined nowhere, with `raw[8]` written as a bare
+literal, and `bool` appeared in five declarations with no `<stdbool.h>` behind
+it. The second is latent rather than live, since `bool` is a keyword in the C23
+this tree pins, but a contract header should not get its types by accident.
+
+The gate compiles the contract at `-std=c23` with `-Wall -Wextra -Wpedantic
+-Wundef -Wconversion -Werror` against four capability states:
+
+| Compiled against | What it proves |
+| --- | --- |
+| `arch/core/cortex_m33/caps.h` | the contract parses for the real M33 answers, and its `static_assert`s hold for that core's values |
+| `arch/core/cortex_m85/caps.h` | the same for the M85, whose cache and SIMD answers differ |
+| a synthetic core, every optional capability **off** | the declaration blocks vanish cleanly, and what remains still compiles |
+| a synthetic core, every optional capability **on** | every gated block parses, including ones no real core enables |
+
+The synthetic pair is the part that earns its keep. Between them the two real
+cores never exercise `ARCH_HAS_MEM_PROTECT (0)`, `ARCH_HAS_RTOS_CONTEXT (0)` or
+`ARCH_HAS_TRUSTZONE_M (0)`, so a mistake inside one of those blocks would have
+waited for the first backend that declines the capability. `-Wundef` is
+deliberate too: a capability is consumed with `#if ARCH_HAS_X`, and a misspelled
+flag evaluates to 0, which reads as a clean decline rather than as the typo it
+is.
+
+The contract also stays **freestanding**. A bare-metal target ships no
+`<assert.h>`, so the assertions use the C23 `static_assert` keyword and the gate
+holds the include list to the C23 freestanding set. It checks that textually
+rather than by cross-compiling, so it needs no target toolchain.
+
+This is a compiler, not a second opinion: the flags a core must ANSWER are
+`scripts/checks/check_arch_caps.py`'s job, and the values that come with a set
+answer are this one's.
+
 ## Status
 
-Contract only. No backend compiles against this header yet, no build reaches
-`arch/`, and the migration out of `ra8_core` has not started. Those are later
-slices of #694.
+Contract only, now compiled. There is still no backend: nothing implements the
+declared symbols, no build reaches `arch/` for linking, and the migration out of
+`ra8_core` has not started. Those are later slices of #694.
 
 ## How the numbers here are measured
 
