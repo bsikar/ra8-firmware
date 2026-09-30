@@ -9,9 +9,10 @@
     "src/internal/boot.zig",
     "src/internal/ipc.zig",
     "src/internal/partition.zig",
+    "src/internal/sau.zig",
     "src/internal/nsimage.zig",
     "src/internal/psar.zig",
     "tests/internal_test.zig"
   ],
-  "minimum_tests": 40
+  "minimum_tests": 47
 }
