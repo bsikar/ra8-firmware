@@ -35,3 +35,6 @@ pub const keyboard = @import("widget_keyboard_abi.zig");
 
 /// The navigation-strip leaf widget: `ra8_widget_nav_bar_vtable` / `_init`.
 pub const nav_bar = @import("widget_nav_bar_abi.zig");
+
+/// The container panel: `ra8_widget_panel_vtable` / `_init` / `_compose`.
+pub const panel = @import("widget_panel_abi.zig");
