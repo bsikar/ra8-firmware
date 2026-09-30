@@ -53,6 +53,10 @@ import subprocess
 import sys
 from dataclasses import dataclass
 
+sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
+
+from lint_targets import repo_files  # noqa: E402 -- sibling import needs the path above
+
 # Reserved windows of the RA8 address map. Both supported parts agree
 # line-for-line: RA8D2 HUM R01UH1065EJ0130 and RA8P1 HUM R01UH1064EJ0130,
 # Ch 3 "Address Space" memory map.
@@ -183,13 +187,11 @@ def repo_root() -> pathlib.Path:
 
 def tracked_sources(root: pathlib.Path) -> list[pathlib.Path]:
     """List tracked first-party C sources and headers, excluding SOUP."""
-    out = subprocess.run(  # noqa: S603  # fixed argv, no shell
-        ["git", "ls-files", "--", *(f"{d}/**/*.[ch]" for d in SCAN_ROOTS)],  # noqa: S607 -- fixed repository Git census
-        capture_output=True,
-        text=True,
-        check=True,
-        cwd=root,
-    ).stdout.split()
+    out = repo_files(
+        tuple(f"{d}/**/*.[ch]" for d in SCAN_ROOTS),
+        root=root,
+        caller="check_reserved_addresses.py",
+    )
     return [root / p for p in out if not p.startswith(THIRD_PARTY_PREFIXES)]
 
 
