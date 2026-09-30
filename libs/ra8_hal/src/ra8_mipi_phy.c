@@ -54,7 +54,7 @@
  * @var s_tag
  * @brief Log tag for ``ra8_log_*`` calls in this driver.
  */
-static const char* s_tag = "MIPI_PHY";
+static const char* const s_tag = "MIPI_PHY";
 
 /**
  * @enum ra8_mipi_phy_limits_t

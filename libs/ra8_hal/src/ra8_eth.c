@@ -53,7 +53,7 @@
  * @var s_tag
  * @brief Logger tag used by every ra8_eth_* call.
  */
-static const char* s_tag = "ETH";
+static const char* const s_tag = "ETH";
 
 /**
  * @var s_eth_fn

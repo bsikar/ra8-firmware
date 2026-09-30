@@ -71,7 +71,7 @@
 #include "ra8_system_regs.h"
 #include "ra8_time_constants.h"
 
-static const char* s_tag = "CGC";
+static const char* const s_tag = "CGC";
 
 /**
  * @enum ra8_cgc_clock_count_t

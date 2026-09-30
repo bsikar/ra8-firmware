@@ -40,7 +40,7 @@
  * @note Read-only literal; never modified.
  * @since 0.1.0
  */
-static const char* s_tag = "NPU-LOAD";
+static const char* const s_tag = "NPU-LOAD";
 
 /**
  * @enum ra8_npu_loader_const_t

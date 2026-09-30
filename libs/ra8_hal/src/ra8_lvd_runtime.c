@@ -36,7 +36,7 @@
  * @warning Do not modify at runtime.
  * @since 0.1.0
  */
-static const char* s_tag = "LVD";
+static const char* const s_tag = "LVD";
 
 /* =============================================================================
  * IRQ / reset / CMPE single-bit toggles

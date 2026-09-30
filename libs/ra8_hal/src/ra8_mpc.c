@@ -24,7 +24,7 @@
 #include "ra8_log.h"
 #include "ra8_pfs_regs.h"
 
-static const char* s_tag = "MPC";
+static const char* const s_tag = "MPC";
 
 /**
  * @brief Bounds-check a ``(port, pin)`` pair.

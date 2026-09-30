@@ -43,7 +43,7 @@
  *       identical literal in ``ra8_ssie.c`` so the split needs no promoted
  *       external symbol for a read-only constant.
  */
-static const char* s_tag = "SSIE";
+static const char* const s_tag = "SSIE";
 
 /**
  * @brief Validate the DMA-attach descriptor against TX/RX intent.

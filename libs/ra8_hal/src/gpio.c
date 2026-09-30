@@ -46,7 +46,7 @@ typedef enum : uint8_t {
   k_ra8_gpio_irq_event_base = 1U,  /**< ELC event for IRQ0.      */
 } ra8_gpio_irq_limits_t;
 
-static const char* s_tag = "GPIO";
+static const char* const s_tag = "GPIO";
 
 /**
  * @brief Claim the pin in the validator and return the port / pin

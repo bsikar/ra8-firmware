@@ -14,7 +14,7 @@
 #include "ra8_check.h"
 
 /** @brief Logging / check tag. */
-static const char* s_tag = "ra8_app";
+static const char* const s_tag = "ra8_app";
 
 [[nodiscard]] ra8_err_t
 ra8_app_registry_init(ra8_app_registry_t* reg, ra8_app_t** storage, uint16_t cap)

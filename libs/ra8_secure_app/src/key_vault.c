@@ -34,7 +34,7 @@
 #include "ra8_err.h"
 #include "ra8_secure.h"
 
-static const char* s_tag = "KEYV";
+static const char* const s_tag = "KEYV";
 
 /*
  * Fail-closed stub-crypto gate (issue #180). The SHA-256 below is real

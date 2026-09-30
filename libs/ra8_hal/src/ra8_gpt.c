@@ -28,7 +28,7 @@
 #include "ra8_log.h"
 #include "ra8_mstp.h"
 
-static const char* s_tag = "GPT";
+static const char* const s_tag = "GPT";
 
 /**
  * @var s_gpt_mstp_table

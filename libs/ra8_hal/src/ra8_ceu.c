@@ -42,7 +42,7 @@
  * @var s_tag
  * @brief Component tag used for `ra8_log_*` calls from this module.
  */
-static const char* s_tag = "CEU";
+static const char* const s_tag = "CEU";
 
 /**
  * @enum ra8_ceu_timing_t

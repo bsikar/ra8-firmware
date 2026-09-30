@@ -43,7 +43,7 @@
  * @var s_tag
  * @brief Logger tag used by every ra8_rmac_* call in this TU.
  */
-static const char* s_tag = "RMAC";
+static const char* const s_tag = "RMAC";
 
 /**
  * @enum ra8_rmac_phy_poll_t

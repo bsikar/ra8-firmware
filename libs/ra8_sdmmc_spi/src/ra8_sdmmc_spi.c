@@ -48,7 +48,7 @@
  * @note File-scope, read-only after init.
  * @since 0.1.0
  */
-static const char* s_tag = "SDSPI";
+static const char* const s_tag = "SDSPI";
 
 /* ---------------------------------------------------------------------------
  * Protocol constants (SD spec PHY v9 section 7)

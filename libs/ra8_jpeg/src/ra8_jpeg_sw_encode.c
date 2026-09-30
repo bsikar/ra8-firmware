@@ -44,7 +44,7 @@
 #include "ra8_log.h"
 
 /** @brief Component log tag. */
-static const char* s_tag = "JPEG_SW";
+static const char* const s_tag = "JPEG_SW";
 
 /* ------------------------------------------------------------------ */
 /* Encoder quantization reference tables (T.81 Annex K.1) */

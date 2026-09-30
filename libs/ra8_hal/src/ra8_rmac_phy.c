@@ -46,7 +46,7 @@ bool priv_ra8_rmac_phy_internal_speed_ok(ra8_err_t err, uint16_t reg_value, uint
   return (err == k_ra8_ok) && ((reg_value & mask) != 0U);
 }
 
-static const char* s_tag = "RMPHY";
+static const char* const s_tag = "RMPHY";
 
 typedef enum : uint8_t {
   k_ra8_rmac_phy_reg_control      = 0U,  /**< RA8 rmac PHY register control.       */

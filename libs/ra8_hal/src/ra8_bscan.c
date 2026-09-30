@@ -36,7 +36,7 @@
  * @var s_tag
  * @brief Log tag used by every ``ra8_log_*`` call in this driver.
  */
-static const char* s_tag = "BSCAN";
+static const char* const s_tag = "BSCAN";
 
 /**
  * @enum ra8_bscan_clear_arg_t

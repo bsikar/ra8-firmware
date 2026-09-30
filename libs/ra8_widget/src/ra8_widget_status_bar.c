@@ -26,7 +26,7 @@
 #include "ra8_widget_internal.h"
 
 /** @brief Logging / check tag. */
-static const char* s_tag = "ra8_widget_status_bar";
+static const char* const s_tag = "ra8_widget_status_bar";
 
 /**
  * @brief No hairline: a `rule_h` at or below this draws no bottom rule.

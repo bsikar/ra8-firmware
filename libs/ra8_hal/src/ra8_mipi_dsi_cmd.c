@@ -53,7 +53,7 @@
  * @warning Do not modify at run time.
  * @since 0.1.0
  */
-static const char* s_tag = "MIPI_DSI";
+static const char* const s_tag = "MIPI_DSI";
 
 /**
  * @enum dsi_cmd_mask_t

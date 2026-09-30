@@ -30,7 +30,7 @@
 #include "ra8_ipc.h"
 #include "ra8_ipc_regs.h"
 
-static const char* s_tag = "IPC";
+static const char* const s_tag = "IPC";
 
 static ra8_ipc_nmi_fn_t s_ipc_nmi_callback;
 static void*            s_ipc_nmi_context;

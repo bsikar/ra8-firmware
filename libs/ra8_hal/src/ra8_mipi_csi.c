@@ -63,7 +63,7 @@
  *
  * @note Module-private; do not expose.
  */
-static const char* s_tag = "MIPI_CSI";
+static const char* const s_tag = "MIPI_CSI";
 
 /**
  * @enum ra8_mipi_csi_intern_t

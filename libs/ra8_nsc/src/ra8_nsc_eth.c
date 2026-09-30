@@ -23,7 +23,7 @@
 #include "ra8_nsc.h"
 #include "ra8_nsc_veneer.h"
 
-static const char* s_tag = "NSCETH";
+static const char* const s_tag = "NSCETH";
 
 /**
  * @brief NSC veneer: transmit an Ethernet frame from Non-Secure code.

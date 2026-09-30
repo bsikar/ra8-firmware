@@ -33,7 +33,7 @@
 #include "ra8_log.h"
 #include "ra8_mstp.h"
 
-static const char* s_tag = "DAC_B";
+static const char* const s_tag = "DAC_B";
 
 /**
  * @enum ra8_dac_b_channel_t

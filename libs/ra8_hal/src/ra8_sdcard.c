@@ -41,7 +41,7 @@
 #include "ra8_sdhi.h"
 
 /** @brief Module log tag. */
-static const char* s_tag = "SDCARD";
+static const char* const s_tag = "SDCARD";
 
 /** @brief SD CSD register field masks, shifts and block size. */
 typedef enum : uint32_t {

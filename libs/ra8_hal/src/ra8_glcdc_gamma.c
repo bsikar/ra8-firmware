@@ -30,7 +30,7 @@
 #include "ra8_glcdc_regs.h"
 #include "ra8_log.h"
 
-static const char* s_tag = "GLCDC";
+static const char* const s_tag = "GLCDC";
 
 /* =============================================================================
  * Module-private constants

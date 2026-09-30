@@ -32,7 +32,7 @@
 #include "ra8_usb_internal.h"
 #include "ra8_usb_regs.h"
 
-static const char* s_tag = "USB";
+static const char* const s_tag = "USB";
 
 /* =============================================================================
  * Device-mode bring-up diagnostic probes (read via JLink)

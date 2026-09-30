@@ -21,7 +21,7 @@
  * @var s_tag
  * @brief Log tag for this module.
  */
-static const char* s_tag = "KBD";
+static const char* const s_tag = "KBD";
 
 /**
  * @enum kbd_geom_t
