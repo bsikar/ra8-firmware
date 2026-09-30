@@ -23,8 +23,13 @@ pub fn build(b: *std.Build) void {
         .optimize = optimize,
     });
 
+    // Named for the CMake library (`libs/if`), not for the C API it exposes
+    // (`fw_fs_*` through `fw_if_fs.h`). The app build composes the archive it
+    // links as `lib<cmake name>.a`, so an artifact called anything else is
+    // simply never found. Every other migrated library already agrees with
+    // its directory; this one did not, and `vfs_port_demo` could not link.
     const library = b.addLibrary(.{
-        .name = "fw_if_fs",
+        .name = "if",
         .linkage = .static,
         .root_module = library_module,
     });
