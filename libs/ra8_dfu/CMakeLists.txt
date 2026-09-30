@@ -9,16 +9,21 @@
 #      No MMIO / no USB -- host-unit-testable.
 #   2. SRAM-resident MRAM program/verify of the inactive slot over
 #      ra8_flash (ra8_dfu_program.c).
-#   3. USBX DFU device class wired to real MRAM + the polled host DFU
-#      driver (ra8_dfu_device.c / ra8_dfu_host.c), each bound to either USB
-#      controller through the ux_dcd_ra8_usb bridge via ra8_usb_speed_t.
-#      These two TUs are firmware-only (guarded by RA8_OFF_TARGET) so
-#      the host test build compiles them away.
+#   3. USBX DFU device class wired to real MRAM (ra8_dfu_device.c), bound to
+#      either USB controller through the ux_dcd_ra8_usb bridge via
+#      ra8_usb_speed_t. Firmware-only (guarded by RA8_OFF_TARGET), so the
+#      host test build compiles it away.
+#   4. The polled host-side DFU driver, which is Zig now (#2809):
+#      src/dfu_host_abi.zig behind the unchanged inc/ra8_dfu_host.h, built by
+#      build.zig. Firmware-only by construction rather than by guard, since
+#      the only HAL binding it names is the real ra8_usb_host_* seam.
 #
 # The module never calls malloc -- all buffers live in static storage.
 #
 # Picked up automatically by tests/CMakeLists.txt globbing; apps pull it
-# in with ra8_add_app(... LIBS ra8_dfu).
+# in with ra8_add_app(... LIBS ra8_dfu), which also registers the Zig
+# archive: libs/ra8_dfu has a build.zig and no src/ra8_dfu.c, which is the
+# condition cmake/ra8_app/sources.cmake keys the archive on.
 #
 #
 
