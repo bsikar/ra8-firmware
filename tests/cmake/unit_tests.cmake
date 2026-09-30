@@ -206,8 +206,7 @@ function(ra8_add_test name src_file)
             ${FW_ROOT}/apps/shared_libs/longstrip/src
             ${FW_ROOT}/apps/shared_libs/zoom/src
             ${FW_ROOT}/apps/shared_libs/reflow/src
-            ${FW_ROOT}/libs/ra8_tz_secure_boot/src
-  )
+     )
   if(REFLOW_USE_LITEHTML)
     # ra8_core_hal is an OBJECT library, so link deps don't propagate
     # automatically; bind litehtml/gumbo directly into each test exe
