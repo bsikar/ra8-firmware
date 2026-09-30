@@ -32,10 +32,27 @@
  *     low-level init, already scoped per-core in the vendored tree, is this
  *     surface.
  *   - **OPTIONAL, capability-gated** -- implement it, or decline it in the
- *     core's `caps.h` with a reason. Silence is not a third option: the
- *     port-completeness gate (epic invariant #4) fails a capability flag that
- *     is set with no backend translation unit behind it, and fails a cleared
- *     flag with no documented decline.
+ *     core's `caps.h` with a reason. Silence is not a third option:
+ *     `scripts/checks/check_arch_caps.py` is the port-completeness gate (epic
+ *     invariant #4) and it fails a capability flag that is set with no backend
+ *     translation unit behind it, and fails a cleared flag with no documented
+ *     decline.
+ *
+ * ## The optional capabilities
+ *
+ * Four of them gate declaration blocks in this header, so a backend that
+ * declines one does not owe the symbols at all: ::ARCH_HAS_RTOS_CONTEXT,
+ * ::ARCH_HAS_MEM_PROTECT, ::ARCH_HAS_CACHE and ::ARCH_HAS_TRUSTZONE_M.
+ *
+ * Three more are answered by every core and gate no block here, because what
+ * they select sits outside this contract. ::ARCH_HAS_NATIVE_ATOMICS says
+ * whether the atomics above are lock-free rather than whether they exist.
+ * ::ARCH_HAS_SIMD selects a compile-time algorithm variant in the libraries
+ * that have one, which is why the flag is a core property and not a function
+ * here. ::ARCH_HAS_MMU is the flag a hosted backend sets; on a
+ * protected-memory-profile core it is the honest decline, not an omission.
+ * Ungated does not mean unchecked: the gate still requires an answer from every
+ * core, and a cleared answer still owes its reason.
  *
  * ## Where the capability flags live
  *

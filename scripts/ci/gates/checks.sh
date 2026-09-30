@@ -937,6 +937,36 @@ gate_hum_register_map() (
   python3 scripts/checks/check_hum_register_map.py
 )
 
+# --- arch-caps ------------------------------------------------------------
+# The port-completeness gate (#692 invariant #4, #694). arch/arch.h gates whole
+# declaration blocks on the capability flags a core answers in
+# arch/core/<core>/caps.h, and it told the reader outright that the gate fails
+# a flag set with no backend translation unit behind it and a cleared flag with
+# no documented decline. Nothing enforced it, and its first real run found two
+# flags -- ARCH_HAS_SIMD and ARCH_HAS_MMU -- that both caps.h files answered
+# and the contract never declared at all.
+#
+# Everything checked is DERIVED from the contract rather than listed here: the
+# gated flags come from its own #if lines, the functions a set flag owes come
+# from the block that flag gates, and the companion constants come from the
+# ::ARCH_* references inside that block. So a fifth capability added to arch.h
+# is checked the moment it is written, with no second place to update.
+#
+# There is no arch backend in this tree yet, so a set flag is satisfied by a
+# MIGRATION note naming the tracked path that implements it today. Those notes
+# retire themselves: once a backend defines the symbols, the note is reported
+# as stale, so the pre-migration map cannot outlive the move.
+#
+# --selftest FIRST, and it carries a population floor for the same reason the
+# other derived gates do: a read that found no cores and no gated flags is also
+# perfectly quiet.
+gate_arch_caps() (
+  set -e
+  require_cmd python3 "the port-completeness gate is a Python source scanner"
+  python3 scripts/checks/check_arch_caps.py --selftest
+  python3 scripts/checks/check_arch_caps.py
+)
+
 # --- hil-eil-parity -------------------------------------------------------
 # EIL==HIL: re-derives each harness's app discovery from hil_all.sh /
 # eil_all.sh and fails if a hil/ app has no hil.conf, sits outside
