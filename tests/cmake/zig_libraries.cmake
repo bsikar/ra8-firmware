@@ -601,6 +601,29 @@ ra8_add_zig_library(
   ra8_secure_app
 )
 
+# Partially migrated: the fixed-cell slab allocator is Zig now, so
+# libs/ra8_mem/src/ra8_slab.c is gone. inc/ra8_slab.h is unchanged and is still
+# the membrane, so tests/core/src/test_ra8_slab.c and mem_subsystem link this
+# archive without knowing the body moved.
+#
+# The rest of libs/ra8_mem is deliberately still C, and the arena is the one
+# that matters: tools/rabook_viewer, tools/rabook_imagepack, apps/host/mdl and
+# cmake/ra8_webp_vendor.cmake each COMPILE libs/ra8_mem/src/ra8_arena.c by
+# absolute path rather than linking the library, and the webp helper hard-errors
+# when the file is missing. Exporting ra8_arena_* from this archive while that
+# .c still compiles into those four targets would define every arena symbol
+# twice, so the arena waits for issue #2601 to move those consumers first. The
+# ra8_mem source glob in cmake/ra8_app/sources.cmake still finds the other seven
+# .c files, so no empty-glob (#908) work is needed here.
+ra8_add_zig_library(
+  NAME
+  ra8_mem
+  ZIG_ROOT
+  ${FW_ROOT}/libs/ra8_mem
+  LIBRARY_NAME
+  ra8_mem
+)
+
 target_link_libraries(
   ra8_core_hal
   PUBLIC ra8_zig::ra8_box
@@ -634,6 +657,7 @@ target_link_libraries(
          ra8_zig::ra8_imgdec
          ra8_zig::ra8_psa_crypto
          ra8_zig::ra8_secure_app
+         ra8_zig::ra8_mem
   ra8_zig::ra8_gfx
          ra8_zig::ra8_gfx
 )
@@ -672,4 +696,5 @@ link_libraries(
   ra8_zig::ra8_net_policy
   ra8_zig::ra8_imgdec
   ra8_zig::ra8_secure_app
+  ra8_zig::ra8_mem
 )
