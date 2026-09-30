@@ -76,7 +76,7 @@ pasted once:
 |---|---:|
 | `ra8_boot_entry.h` | 269 |
 | `ra8_exception.h` | 12 |
-| `ra6_scb.h` | 6 |
+| `ra8_scb.h` | 6 |
 | `ra8_systick.h` | 4 |
 
 The first of those decides the slicing. `ra8_boot_entry.h` is reached by two
