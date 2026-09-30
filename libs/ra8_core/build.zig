@@ -3,7 +3,7 @@
 //!
 //! Build graph for `ra8_core`.
 //!
-//! Eleven seams of this library are Zig so far: the freestanding runtime
+//! Twelve seams of this library are Zig so far: the freestanding runtime
 //! primitives (#2820) and the deterministic `rand()` / `srand()` override
 //! that joins them (#2890), the pin-claim validator (#2825), the SysTick timebase
 //! with its time-interface binding (#2830), the log backend with
@@ -14,7 +14,8 @@
 //! (#2868) and the error sink pair: the weak fatal trap every failed
 //! `RA8_ASSERT` lands on, plus the log-backed non-fatal sink (#2875) and
 //! the application-layer bring-up with its stack-canary sentinel (#2884) and
-//! the newlib `_sbrk` heap trap (#2895).
+//! the newlib `_sbrk` heap trap (#2895) and the startup SDRAM zero-fill
+//! (#2901).
 //! Everything else in `src/` is still C, which
 //! `.github/zig-parallel-tree-allowlist.tsv` records per file.
 //!
@@ -332,6 +333,23 @@ pub fn build(b: *std.Build) void {
     });
     sbrk_trap_abi.addImport("heap_sbrk", heap_sbrk);
 
+    // The startup zero-fill for `.sdram_data`. One internal unit: the
+    // half-open span rule and the byte fill, plus the target/host split over
+    // where the section actually is, which is the same shape the stack
+    // canary uses.
+    const boot_region = b.createModule(.{
+        .root_source_file = b.path("src/internal/boot/region.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+
+    const boot_region_abi = b.createModule(.{
+        .root_source_file = b.path("src/boot_region_abi.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    boot_region_abi.addImport("boot_region", boot_region);
+
     const fault_abis = [_][]const u8{ "scb_abi", "exception_abi", "crashlog_abi" };
     var fault_abi_modules = std.StringHashMap(*std.Build.Module).init(b.allocator);
     inline for (fault_abis) |name| {
@@ -365,6 +383,7 @@ pub fn build(b: *std.Build) void {
     }
     root.addImport("infrastructure_abi", infrastructure_abi);
     root.addImport("sbrk_trap_abi", sbrk_trap_abi);
+    root.addImport("boot_region_abi", boot_region_abi);
 
     if (!image_build) {
         const library = b.addLibrary(.{
@@ -395,6 +414,7 @@ pub fn build(b: *std.Build) void {
         }
         image_root.addImport("infrastructure_abi", infrastructure_abi);
         image_root.addImport("sbrk_trap_abi", sbrk_trap_abi);
+        image_root.addImport("boot_region_abi", boot_region_abi);
 
         const image_library = b.addLibrary(.{
             .name = "ra8_core",
@@ -486,4 +506,12 @@ pub fn build(b: *std.Build) void {
     });
     heap_tests.addImport("heap_sbrk", heap_sbrk);
     test_step.dependOn(&b.addRunArtifact(b.addTest(.{ .root_module = heap_tests })).step);
+
+    const boot_tests = b.createModule(.{
+        .root_source_file = b.path("tests/boot_test.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    boot_tests.addImport("boot_region", boot_region);
+    test_step.dependOn(&b.addRunArtifact(b.addTest(.{ .root_module = boot_tests })).step);
 }
