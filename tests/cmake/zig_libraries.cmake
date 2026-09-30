@@ -602,12 +602,13 @@ ra8_add_zig_library(
 )
 
 # Partially migrated: the fixed-cell slab allocator, the byte-stream adapter
-# over the page cache, the page cache itself, the glyph atlas and the
-# object-source registry are Zig now, so libs/ra8_mem/src/ra8_slab.c,
-# src/ra8_vmem.c, src/ra8_vmem_stream.c, src/ra8_glyph_atlas.c and
-# src/ra8_vsource.c are gone. Their headers are
-# unchanged and are still the membrane, so tests/core/src/test_ra8_slab.c,
-# tests/core/src/test_ra8_vsource.c, tests/mocks/src/test_app_mem_subsystem.c,
+# over the page cache, the page cache itself, the glyph atlas, the image-tile
+# cache and the object-source registry are Zig now, so
+# libs/ra8_mem/src/ra8_slab.c, src/ra8_vmem.c, src/ra8_vmem_stream.c,
+# src/ra8_glyph_atlas.c, src/ra8_tile_cache.c and src/ra8_vsource.c are gone.
+# Their headers are unchanged and are still the membrane, so
+# tests/core/src/test_ra8_slab.c, tests/core/src/test_ra8_vsource.c,
+# tests/graphics/src/test_ra8_tile_cache.c, tests/mocks/src/test_app_mem_subsystem.c,
 # libs/ra8_io/src/ra8_io_blockdev_vsource.c, the book/EPUB/comic/manga suites
 # and rabook_import link this archive without knowing the bodies moved.
 #
@@ -619,10 +620,11 @@ ra8_add_zig_library(
 # inside the archive. tools/glyph_bench, tools/cache_bench and tools/reader_vmem
 # each compiled src/ra8_vmem.c by absolute path only to satisfy those two
 # externs, and no longer do. What they still supply is src/ra8_keycache.c: the
-# page cache and the glyph atlas are both typed facades over that engine, which
-# is still C, so the four ra8_keycache_* stay undefined in this archive and the
-# link resolves them as the C TUs did. Weak externs would trade that link error
-# for a null call at runtime, the failure #764 removed.
+# page cache, the glyph atlas and the tile cache are all typed facades over
+# that engine, which is still C, so five ra8_keycache_* stay undefined in this
+# archive (the tile cache warms through ra8_keycache_prefetch, the fifth) and
+# the link resolves them as the C TUs did. Weak externs would trade that link
+# error for a null call at runtime, the failure #764 removed.
 #
 # tests/core/src/test_ra8_vmem.c and apps/shared_libs/book's huge-book suite are
 # untouched and now exercise the Zig page cache through inc/ra8_vmem.h.
@@ -634,7 +636,7 @@ ra8_add_zig_library(
 # when the file is missing. Exporting ra8_arena_* from this archive while that
 # .c still compiles into those four targets would define every arena symbol
 # twice, so the arena waits for issue #2601 to move those consumers first. The
-# ra8_mem source glob in cmake/ra8_app/sources.cmake still finds the other seven
+# ra8_mem source glob in cmake/ra8_app/sources.cmake still finds the other two
 # .c files, so no empty-glob (#908) work is needed here.
 ra8_add_zig_library(
   NAME

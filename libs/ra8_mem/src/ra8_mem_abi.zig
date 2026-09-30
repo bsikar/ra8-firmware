@@ -3,7 +3,8 @@
 //!
 //! The C membrane for the Zig side of `ra8_mem`: every symbol
 //! `inc/ra8_slab.h`, `inc/ra8_vmem.h`, `inc/ra8_vmem_stream.h`,
-//! `inc/ra8_glyph_atlas.h` and `inc/ra8_vsource.h` declare, and nothing else. Those headers are unchanged,
+//! `inc/ra8_glyph_atlas.h`, `inc/ra8_tile_cache.h` and `inc/ra8_vsource.h`
+//! declare, and nothing else. Those headers are unchanged,
 //! so the host suite, `mem_subsystem`, `reflow`, `glyph_bench`, `cache_bench`,
 //! `reader_vmem` and the rest of `libs/ra8_mem` link against this archive
 //! without knowing the bodies moved.
@@ -16,6 +17,7 @@ const std = @import("std");
 const glyph_atlas = @import("internal/glyph_atlas.zig");
 const keycache = @import("internal/keycache.zig");
 const slab = @import("internal/slab.zig");
+const tile_cache = @import("internal/tile_cache.zig");
 const vmem = @import("internal/vmem.zig");
 const vmem_stream = @import("internal/vmem_stream.zig");
 const vocab = @import("internal/vocab.zig");
@@ -129,9 +131,9 @@ export fn ra8_vmem_stream_read(
 // ra8_glyph_atlas.h
 // ---------------------------------------------------------------------------
 
-/// The keyed-LRU engine, still C (`src/ra8_keycache.c`). The glyph cache is a
-/// typed facade over it, so these four are all it needs; the archive leaves
-/// them undefined and the link resolves them, exactly as the C TU did.
+/// The keyed-LRU engine, still C (`src/ra8_keycache.c`). The three typed
+/// facades over it need these five between them; the archive leaves them
+/// undefined and the link resolves them, exactly as the C TUs did.
 extern fn ra8_keycache_init(kc: *keycache.State, cfg: *const keycache.Cfg) u16;
 extern fn ra8_keycache_get(
     kc: *keycache.State,
@@ -139,6 +141,7 @@ extern fn ra8_keycache_get(
     out_view: *keycache.View,
 ) u16;
 extern fn ra8_keycache_put(kc: *keycache.State, data: [*]const u8) u16;
+extern fn ra8_keycache_prefetch(kc: *keycache.State, key: *const anyopaque) u16;
 extern fn ra8_keycache_stats(
     kc: *const keycache.State,
     out_hits: ?*u32,
@@ -146,8 +149,8 @@ extern fn ra8_keycache_stats(
     out_evictions: ?*u32,
 ) u16;
 
-/// The engine seam the facades are written against. Generic in the key so the
-/// image-tile cache can be the second facade over the same four symbols.
+/// The engine seam the facades are written against. Generic in the key, so
+/// the glyph atlas, the page cache and the tile cache share one seam.
 const Engine = struct {
     pub fn init(state: *keycache.State, cfg: *const keycache.Cfg) Err {
         return Err.from(ra8_keycache_init(state, cfg));
@@ -159,6 +162,10 @@ const Engine = struct {
 
     pub fn put(state: *keycache.State, data: [*]const u8) Err {
         return Err.from(ra8_keycache_put(state, data));
+    }
+
+    pub fn prefetch(state: *keycache.State, key: anytype) Err {
+        return Err.from(ra8_keycache_prefetch(state, @ptrCast(key)));
     }
 
     pub fn stats(
@@ -265,6 +272,116 @@ export fn ra8_glyph_atlas_put(handle: ?*Atlas, bitmap: ?[*]const u8) u16 {
 
 export fn ra8_glyph_atlas_stats(
     handle: ?*const Atlas,
+    out_hits: ?*u32,
+    out_misses: ?*u32,
+    out_evictions: ?*u32,
+) u16 {
+    const self = handle orelse return Err.null_ptr.code();
+    return self.stats(out_hits, out_misses, out_evictions).code();
+}
+
+// ---------------------------------------------------------------------------
+// ra8_tile_cache.h
+// ---------------------------------------------------------------------------
+
+/// The image-tile cache: the third facade over the same engine, LRU like the
+/// glyph atlas but at tile scale, and the only one that warms through the
+/// engine's own prefetch rather than a get/put pair.
+const Tiles = tile_cache.Cache(Engine);
+
+comptime {
+    // `ra8_tile_cache_t` is caller-allocated (a `static` in the manga and
+    // zoom readers, a stack local in the tests), so the engine state in front
+    // of these two fields has to be exactly the width C gives it.
+    std.debug.assert(@offsetOf(Tiles, "kc") == 0);
+    std.debug.assert(@offsetOf(Tiles, "decode") == @sizeOf(keycache.State));
+    std.debug.assert(@sizeOf(Tiles) == @sizeOf(keycache.State) + 2 * @sizeOf(usize));
+}
+
+export fn ra8_tile_rect_of_pixels(
+    px: u32,
+    py: u32,
+    pw: u32,
+    ph: u32,
+    tile_w: u16,
+    tile_h: u16,
+    tile_cols: u16,
+    tile_rows: u16,
+    out: ?*tile_cache.Rect,
+) u16 {
+    const dst = out orelse return Err.null_ptr.code();
+    const grid: tile_cache.geometry.Grid = .{
+        .tile_w = tile_w,
+        .tile_h = tile_h,
+        .cols = tile_cols,
+        .rows = tile_rows,
+    };
+    dst.* = tile_cache.geometry.rectOfPixels(px, py, pw, ph, grid) orelse
+        return Err.invalid_arg.code();
+    return Err.ok.code();
+}
+
+export fn ra8_tile_cache_init(handle: ?*Tiles, cfg: ?*const tile_cache.Cfg) u16 {
+    const self = handle orelse return Err.null_ptr.code();
+    const config = cfg orelse return Err.null_ptr.code();
+    return self.init(config).code();
+}
+
+export fn ra8_tile_cache_get(
+    handle: ?*Tiles,
+    key: ?*const tile_cache.Key,
+    out_tile: ?*tile_cache.Tile,
+) u16 {
+    const self = handle orelse return Err.null_ptr.code();
+    const k = key orelse return Err.null_ptr.code();
+    const dst = out_tile orelse return Err.null_ptr.code();
+    switch (self.get(k)) {
+        .tile => |tile| {
+            dst.* = tile;
+            return Err.ok.code();
+        },
+        .failed => |err| return err.code(),
+    }
+}
+
+export fn ra8_tile_cache_put(handle: ?*Tiles, pixels: ?[*]const u8) u16 {
+    const self = handle orelse return Err.null_ptr.code();
+    const data = pixels orelse return Err.null_ptr.code();
+    return self.put(data).code();
+}
+
+export fn ra8_tile_cache_capacity(handle: ?*const Tiles) u32 {
+    const self = handle orelse return 0;
+    return self.capacity() orelse 0;
+}
+
+export fn ra8_tile_cache_prefetch(handle: ?*Tiles, key: ?*const tile_cache.Key) u16 {
+    const self = handle orelse return Err.null_ptr.code();
+    const k = key orelse return Err.null_ptr.code();
+    return self.prefetch(k).code();
+}
+
+export fn ra8_tile_cache_prefetch_pan(
+    handle: ?*Tiles,
+    req: ?*const tile_cache.PrefetchReq,
+    out_warmed: ?*u16,
+) u16 {
+    const self = handle orelse return Err.null_ptr.code();
+    const request = req orelse return Err.null_ptr.code();
+    // Zeroed before the request is judged, as the C did: a caller that reads
+    // the count after a rejection sees 0 rather than its own stale value.
+    if (out_warmed) |dst| dst.* = 0;
+    switch (self.prefetchPan(request)) {
+        .warmed => |count| {
+            if (out_warmed) |dst| dst.* = count;
+            return Err.ok.code();
+        },
+        .failed => |err| return err.code(),
+    }
+}
+
+export fn ra8_tile_cache_stats(
+    handle: ?*const Tiles,
     out_hits: ?*u32,
     out_misses: ?*u32,
     out_evictions: ?*u32,
