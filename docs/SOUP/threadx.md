@@ -30,12 +30,20 @@ firmware as Software Of Unknown Provenance (SOUP).
 
 ## Use case in this firmware
 
+<!-- consumer-census: key=threadx total=47 hw_validated=39 c6=6 unsupported=3 -->
+<!-- consumer-census: key=usbx total=26 -->
+
 - Cooperative + preemptive RTOS kernel. This is the kernel substrate for the
-  vendored-middleware world, not a demo-corner component: **45 example
+  vendored-middleware world, not a demo-corner component: **47 example
   applications** declare `USES ... threadx`, **39 of them under
-  `examples/ek_ra8d2/hw_validated/`** (measured at `e0ac93111`). They include
-  all 26 applications that link USBX, all five ESP32-C6 Wi-Fi applications and
-  the DFU bootloader family. Beyond the examples, the non-secure e-reader
+  `examples/ek_ra8d2/hw_validated/`** and 3 under `examples/_unsupported/`.
+  They include all 26 applications that link USBX, all 6 ESP32-C6 applications
+  that declare the kernel, and the DFU bootloader family.
+  These counts are not transcribed: the census markers above this bullet are
+  re-derived from every app's own `USES` clause by
+  `scripts/checks/check_soup_consumer_census.py`, which fails when a stated
+  count and the tree disagree, and fails again when a checked number appears
+  nowhere in this prose. Beyond the examples, the non-secure e-reader
   product image enters the kernel directly (`apps/board/stand_alone/ereader/src/ns_main.c`,
   `tx_kernel_enter()`), and the first-party `libs/ra8_wdt_supervisor/` creates
   a ThreadX thread.
