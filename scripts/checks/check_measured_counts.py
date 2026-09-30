@@ -54,6 +54,7 @@ from __future__ import annotations
 import re
 import subprocess
 import sys
+from dataclasses import dataclass
 from pathlib import Path
 
 # Pages opt in by carrying the marker; these are the trees searched for them.
@@ -116,29 +117,22 @@ def strip_markup(text: str) -> str:
     return " ".join(text.split())
 
 
+@dataclass
 class Measurement:
-    """One figure the page claims, with the command that produces it."""
+    """One figure the page claims, with the command that produces it.
 
-    def __init__(
-        self,
-        row: str,
-        qualifier: str | None,
-        claimed: int,
-        pattern: str | None,
-        roots: tuple[str, ...],
-        suffixes: tuple[str, ...],
-        claim_line: int,
-        skip_third_party: bool = False,
-    ) -> None:
-        """Bind one figure the page claims to the command that reproduces it."""
-        self.row = row
-        self.qualifier = qualifier
-        self.claimed = claimed
-        self.pattern = pattern
-        self.roots = roots
-        self.suffixes = suffixes
-        self.claim_line = claim_line
-        self.skip_third_party = skip_third_party
+    Mutable on purpose: `rewrite()` re-banks `claimed` in place once the
+    tree's own count has been measured.
+    """
+
+    row: str
+    qualifier: str | None
+    claimed: int
+    pattern: str | None
+    roots: tuple[str, ...]
+    suffixes: tuple[str, ...]
+    claim_line: int
+    skip_third_party: bool = False
 
     @property
     def key(self) -> str:
@@ -195,10 +189,8 @@ def read_tree(root: Path, subdirs: set[str], suffixes: set[str]) -> dict[str, st
     return tree
 
 
-def parse_manifest(
-    lines: list[str], rel: str = "page"
-) -> tuple[list[Measurement], list[tuple[int, str]]]:
-    """Read the fenced block the page marks as its manifest."""
+def manifest_bounds(lines: list[str], rel: str = "page") -> tuple[int, int]:
+    """Locate the fence the manifest marker sits in, as (open, close) indices."""
     start = None
     for index, line in enumerate(lines):
         if BLOCK_MARKER in line:
@@ -217,14 +209,40 @@ def parse_manifest(
         message = f"the {BLOCK_MARKER} marker is not inside a fenced block"
         raise CheckError(message)
 
-    close_fence = None
     for index in range(open_fence + 1, len(lines)):
         if FENCE_RE.match(lines[index]):
-            close_fence = index
-            break
-    if close_fence is None:
-        message = f"the {BLOCK_MARKER} block is never closed"
+            return open_fence, index
+    message = f"the {BLOCK_MARKER} block is never closed"
+    raise CheckError(message)
+
+
+def entry_scope(
+    command: re.Match[str] | None, population: re.Match[str] | None
+) -> tuple[str | None, tuple[str, ...], tuple[str, ...], bool]:
+    """Read one entry's search scope: (pattern, roots, suffixes, skip_third_party)."""
+    if command is not None:
+        return (
+            command.group("pattern"),
+            tuple(command.group("roots").split()),
+            tuple(INCLUDE_RE.findall(command.group("includes"))),
+            bool(command.group("filter").strip()),
+        )
+    if population is None:  # pragma: no cover - callers screen this out
+        message = "entry is neither a grep command nor a find command"
         raise CheckError(message)
+    return (
+        None,
+        (population.group("root"),),
+        tuple(NAME_RE.findall(population.group("names"))),
+        False,
+    )
+
+
+def parse_manifest(
+    lines: list[str], rel: str = "page"
+) -> tuple[list[Measurement], list[tuple[int, str]]]:
+    """Read the fenced block the page marks as its manifest."""
+    open_fence, close_fence = manifest_bounds(lines, rel)
 
     measurements: list[Measurement] = []
     unparsable: list[tuple[int, str]] = []
@@ -253,16 +271,7 @@ def parse_manifest(
             continue
         claim, claim_index = pending
         pending = None
-        if command is not None:
-            pattern = command.group("pattern")
-            roots = tuple(command.group("roots").split())
-            suffixes = tuple(INCLUDE_RE.findall(command.group("includes")))
-            skip_third_party = bool(command.group("filter").strip())
-        else:
-            pattern = None
-            roots = (population.group("root"),)
-            suffixes = tuple(NAME_RE.findall(population.group("names")))
-            skip_third_party = False
+        pattern, roots, suffixes, skip_third_party = entry_scope(command, population)
         measurements.append(
             Measurement(
                 row=strip_markup(claim.group("row")),
@@ -521,19 +530,31 @@ _SCB_ENTRY_COMMAND = (
 )
 
 
-def _page(
-    clock_claim: int = 2,
-    gpt_claim: int = 2,
-    scb_claim: int = 2,
-    clock_cell: str | None = None,
-    gpt_cell: str | None = None,
-    scb_cell: str | None = None,
-    extra_rows: str = "",
-    extra_entries: str = "",
-) -> str:
-    clock_cell = str(clock_claim) if clock_cell is None else clock_cell
-    gpt_cell = f"{gpt_claim} GPT" if gpt_cell is None else gpt_cell
-    scb_cell = str(scb_claim) if scb_cell is None else scb_cell
+@dataclass
+class _PageSpec:
+    """The knobs the fixture page exposes: three claims, their cells, two tails.
+
+    A cell left None renders the claim itself, so a case that wants a cell to
+    disagree with its claim has to say so explicitly.
+    """
+
+    clock_claim: int = 2
+    gpt_claim: int = 2
+    scb_claim: int = 2
+    clock_cell: str | None = None
+    gpt_cell: str | None = None
+    scb_cell: str | None = None
+    extra_rows: str = ""
+    extra_entries: str = ""
+
+
+def _page(spec: _PageSpec | None = None) -> str:
+    spec = _PageSpec() if spec is None else spec
+    clock_claim, gpt_claim, scb_claim = spec.clock_claim, spec.gpt_claim, spec.scb_claim
+    extra_rows, extra_entries = spec.extra_rows, spec.extra_entries
+    clock_cell = str(clock_claim) if spec.clock_cell is None else spec.clock_cell
+    gpt_cell = f"{gpt_claim} GPT" if spec.gpt_cell is None else spec.gpt_cell
+    scb_cell = str(scb_claim) if spec.scb_cell is None else spec.scb_cell
     return f"""# Port catalog
 
 | Port | Coupled example files |
@@ -588,25 +609,27 @@ def _selftest_cases() -> list[tuple[str, list[str]]]:
     if counts["measurements"] != _FIXTURE_MEASUREMENTS:
         cases.append(("manifest read", ["wrong-measurement-count"]))
 
-    findings, _, _ = analyse(_page(clock_claim=9), _TREE, "page.md")
+    findings, _, _ = analyse(_page(_PageSpec(clock_claim=9)), _TREE, "page.md")
     cases.append(("a stale count is reported", _kinds(findings)))
 
-    findings, _, _ = analyse(_page(clock_claim=1), _TREE, "page.md")
+    findings, _, _ = analyse(_page(_PageSpec(clock_claim=1)), _TREE, "page.md")
     cases.append(("a count below the tree is reported too", _kinds(findings)))
 
-    findings, _, _ = analyse(_page(clock_cell="7"), _TREE, "page.md")
+    findings, _, _ = analyse(_page(_PageSpec(clock_cell="7")), _TREE, "page.md")
     cases.append(("a table cell that drifted from the manifest", _kinds(findings)))
 
-    findings, _, _ = analyse(_page(gpt_cell="2"), _TREE, "page.md")
+    findings, _, _ = analyse(_page(_PageSpec(gpt_cell="2")), _TREE, "page.md")
     cases.append(("a qualifier dropped from the cell", _kinds(findings)))
 
-    findings, _, _ = analyse(_page(extra_rows="| serial | 4 |\n"), _TREE, "page.md")
+    findings, _, _ = analyse(_page(_PageSpec(extra_rows="| serial | 4 |\n")), _TREE, "page.md")
     cases.append(("a row nobody can reproduce", _kinds(findings)))
 
     findings, _, _ = analyse(
         _page(
-            extra_entries=(
-                "# gpio -- 0 file(s)\ngrep -rlE 'ra8_gpio' examples --include=*.c | wc -l\n"
+            _PageSpec(
+                extra_entries=(
+                    "# gpio -- 0 file(s)\ngrep -rlE 'ra8_gpio' examples --include=*.c | wc -l\n"
+                )
             )
         ),
         _TREE,
@@ -614,10 +637,14 @@ def _selftest_cases() -> list[tuple[str, list[str]]]:
     )
     cases.append(("an entry naming no table row", _kinds(findings)))
 
-    findings, _, _ = analyse(_page(extra_entries="python3 -c 'print(3)'\n"), _TREE, "page.md")
+    findings, _, _ = analyse(
+        _page(_PageSpec(extra_entries="python3 -c 'print(3)'\n")), _TREE, "page.md"
+    )
     cases.append(("a command that is not a measurement", _kinds(findings)))
 
-    findings, _, _ = analyse(_page(extra_entries="# display -- 1 file(s)\n"), _TREE, "page.md")
+    findings, _, _ = analyse(
+        _page(_PageSpec(extra_entries="# display -- 1 file(s)\n")), _TREE, "page.md"
+    )
     cases.append(("a claim with no command under it", _kinds(findings)))
 
     # Scope: the same pattern outside the named root must not count.
@@ -707,7 +734,7 @@ def selftest() -> int:
             failures.append(f"{label}: expected {expected}, got {actual}")
 
     # --update has to end the argument, not restate it.
-    banked = rewrite(_page(clock_claim=9, clock_cell="9"), _TREE)
+    banked = rewrite(_page(_PageSpec(clock_claim=9, clock_cell="9")), _TREE)
     findings, _, _ = analyse(banked, _TREE, "page.md")
     if findings:
         failures.append(f"--update left {_kinds(findings)} behind")
@@ -717,7 +744,7 @@ def selftest() -> int:
     # The count cell, never the label. Every header in this tree is named
     # ra8_*, so a single-digit claim shares its characters with the row label
     # and the old substring rewrite corrupted the name instead of the number.
-    relabelled = rewrite(_page(scb_claim=8, scb_cell="8"), _TREE)
+    relabelled = rewrite(_page(_PageSpec(scb_claim=8, scb_cell="8")), _TREE)
     if "| `ra8_scb.h` | 2 |" not in relabelled:
         failures.append("--update did not rewrite the ra8_scb.h count cell to 2")
     if "ra2_scb" in relabelled or "`ra8_scb.h`" not in relabelled:
