@@ -85,6 +85,7 @@ class Finding:
     detail: str
 
     def render(self) -> str:
+        """One line naming the board, the rule it broke, and the detail."""
         return f"{self.board}: {self.rule}: {self.detail}"
 
 
@@ -103,16 +104,17 @@ def eval_ld_expr(expr: str) -> int:
     """
     total = 0
     sign = 1
-    for token in re.findall(r"[+-]|[^\s+-]+", expr.strip()):
-        if token == "+":
+    for term in re.findall(r"[+-]|[^\s+-]+", expr.strip()):
+        if term == "+":
             sign = 1
             continue
-        if token == "-":
+        if term == "-":
             sign = -1
             continue
-        match = re.fullmatch(r"(0[xX][0-9a-fA-F]+|\d+)([KMG]?)", token)
+        match = re.fullmatch(r"(0[xX][0-9a-fA-F]+|\d+)([KMG]?)", term)
         if match is None:
-            raise ValueError(f"unsupported linker expression term: {token!r}")
+            message = f"unsupported linker expression term: {term!r}"
+            raise ValueError(message)
         value = int(match.group(1), 0) * K_SUFFIX_SCALE.get(match.group(2), 1)
         total += sign * value
         sign = 1
@@ -141,6 +143,7 @@ def script_symbol_defaults(body: str) -> dict[str, str]:
 
 def resolve_symbols(expr: str, symbols: dict[str, str]) -> str:
     """Substitute known script symbols into a MEMORY expression, once."""
+
     def sub(match: re.Match[str]) -> str:
         return symbols.get(match.group(0), match.group(0))
 
@@ -193,33 +196,56 @@ def parse_header_regions(text: str) -> tuple[dict[str, Region], list[str]]:
     return regions, unpaired
 
 
-def compare(board: str, linker: dict[str, Region], header: dict[str, Region],
-            unpaired: list[str]) -> list[Finding]:
+def compare(
+    board: str, linker: dict[str, Region], header: dict[str, Region], unpaired: list[str]
+) -> list[Finding]:
     """Apply the four rules to one board package."""
-    findings: list[Finding] = []
-    for name in unpaired:
-        findings.append(Finding(board, "half-published",
-                                f"{K_CONST_PREFIX}{name}_* declares a base or a size, not both"))
+    findings: list[Finding] = [
+        Finding(
+            board, "half-published", f"{K_CONST_PREFIX}{name}_* declares a base or a size, not both"
+        )
+        for name in unpaired
+    ]
     for name in sorted(set(linker) - set(header)):
         region = linker[name]
-        findings.append(Finding(board, "missing-region",
-                                f"linker script declares {name.upper()} "
-                                f"(origin {region.origin:#010x}, length {region.length:#x}) "
-                                f"and the header does not publish it"))
-    for name in sorted(set(header) - set(linker)):
-        findings.append(Finding(board, "stale-region",
-                                f"header publishes {K_CONST_PREFIX}{name}_base and the "
-                                f"linker script declares no {name.upper()} region"))
+        findings.append(
+            Finding(
+                board,
+                "missing-region",
+                f"linker script declares {name.upper()} "
+                f"(origin {region.origin:#010x}, length {region.length:#x}) "
+                f"and the header does not publish it",
+            )
+        )
+    findings.extend(
+        Finding(
+            board,
+            "stale-region",
+            f"header publishes {K_CONST_PREFIX}{name}_base and the "
+            f"linker script declares no {name.upper()} region",
+        )
+        for name in sorted(set(header) - set(linker))
+    )
     for name in sorted(set(header) & set(linker)):
         want, got = linker[name], header[name]
         if want.origin != got.origin:
-            findings.append(Finding(board, "origin-drift",
-                                    f"{name.upper()} origin is {want.origin:#010x} in the linker "
-                                    f"script and {got.origin:#010x} in the header"))
+            findings.append(
+                Finding(
+                    board,
+                    "origin-drift",
+                    f"{name.upper()} origin is {want.origin:#010x} in the linker "
+                    f"script and {got.origin:#010x} in the header",
+                )
+            )
         if want.length != got.length:
-            findings.append(Finding(board, "length-drift",
-                                    f"{name.upper()} length is {want.length:#x} in the linker "
-                                    f"script and {got.length:#x} in the header"))
+            findings.append(
+                Finding(
+                    board,
+                    "length-drift",
+                    f"{name.upper()} length is {want.length:#x} in the linker "
+                    f"script and {got.length:#x} in the header",
+                )
+            )
     return findings
 
 
@@ -256,6 +282,10 @@ MEMORY
     SDRAM (rwx) : ORIGIN = 0x68000000, LENGTH = 64M
 }
 """
+    # Mirrors the MRAM ORIGIN in the fixture above; kept beside it so the two
+    # cannot drift apart silently.
+    fixture_mram_origin = 0x02000000
+
     regions = parse_linker_regions(linker_text)
     failures: list[str] = []
 
@@ -266,7 +296,7 @@ MEMORY
     expect(set(regions) == {"mram", "sram", "sdram"}, "region set")
     expect(regions["sram"].length == 1024 * 1024 - 256, "K-suffix arithmetic")
     expect(regions["sdram"].length == 64 * 1024 * 1024, "M suffix")
-    expect(regions["mram"].origin == 0x02000000, "origin parse")
+    expect(regions["mram"].origin == fixture_mram_origin, "origin parse")
 
     good = """
 typedef enum : uintptr_t {
@@ -284,13 +314,15 @@ typedef enum : uint32_t {
     expect(compare("fixture", regions, header, unpaired) == [], "clean pair is silent")
 
     rules = {
-        "origin-drift": good.replace("k_ra8_board_sram_base  = 0x22000000UL",
-                                     "k_ra8_board_sram_base  = 0x22800000UL"),
-        "length-drift": good.replace("k_ra8_board_sdram_size = 0x04000000UL",
-                                     "k_ra8_board_sdram_size = 0x02000000UL"),
-        "stale-region": good.replace("} u;",
-                                     "  k_ra8_board_ospi_size = 0x100UL,\n} u;").replace(
-                                         "} t;", "  k_ra8_board_ospi_base = 0x80000000UL,\n} t;"),
+        "origin-drift": good.replace(
+            "k_ra8_board_sram_base  = 0x22000000UL", "k_ra8_board_sram_base  = 0x22800000UL"
+        ),
+        "length-drift": good.replace(
+            "k_ra8_board_sdram_size = 0x04000000UL", "k_ra8_board_sdram_size = 0x02000000UL"
+        ),
+        "stale-region": good.replace("} u;", "  k_ra8_board_ospi_size = 0x100UL,\n} u;").replace(
+            "} t;", "  k_ra8_board_ospi_base = 0x80000000UL,\n} t;"
+        ),
     }
     for rule, text in rules.items():
         parsed, unpaired_case = parse_header_regions(text)
@@ -298,13 +330,16 @@ typedef enum : uint32_t {
         expect(rule in fired, f"{rule} fires")
 
     dropped, unpaired_case = parse_header_regions(
-        good.replace("  k_ra8_board_sdram_base = 0x68000000UL,\n", "")
-            .replace("  k_ra8_board_sdram_size = 0x04000000UL,\n", ""))
+        good.replace("  k_ra8_board_sdram_base = 0x68000000UL,\n", "").replace(
+            "  k_ra8_board_sdram_size = 0x04000000UL,\n", ""
+        )
+    )
     fired = {f.rule for f in compare("fixture", regions, dropped, unpaired_case)}
     expect("missing-region" in fired, "missing-region fires")
 
     half, unpaired_case = parse_header_regions(
-        good.replace("  k_ra8_board_sram_size  = 0x000FFF00UL,\n", ""))
+        good.replace("  k_ra8_board_sram_size  = 0x000FFF00UL,\n", "")
+    )
     fired = {f.rule for f in compare("fixture", regions, half, unpaired_case)}
     expect("half-published" in fired, "half-published fires")
 
@@ -317,10 +352,12 @@ typedef enum : uint32_t {
 
 
 def main() -> int:
+    """Scan every board package, or run the selftest, and report findings."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--root", default=".", help="repository root to scan")
-    parser.add_argument("--selftest", action="store_true",
-                        help="prove each rule fires against fixtures, then exit")
+    parser.add_argument(
+        "--selftest", action="store_true", help="prove each rule fires against fixtures, then exit"
+    )
     args = parser.parse_args()
 
     if args.selftest:
@@ -330,13 +367,17 @@ def main() -> int:
     for note in skipped:
         print(f"skipped {note}")
     if findings:
-        print(f"board memory map drifted from the linker script in {len(findings)} place(s):",
-              file=sys.stderr)
+        print(
+            f"board memory map drifted from the linker script in {len(findings)} place(s):",
+            file=sys.stderr,
+        )
         for finding in findings:
             print(f"  {finding.render()}", file=sys.stderr)
-        print("\nThe linker script is authoritative. Correct "
-              "libs/ra8_board_<board>/inc/ra8_board_memmap.h to match it (#758).",
-              file=sys.stderr)
+        print(
+            "\nThe linker script is authoritative. Correct "
+            "libs/ra8_board_<board>/inc/ra8_board_memmap.h to match it (#758).",
+            file=sys.stderr,
+        )
         return 1
     print(f"board memory map: {checked} board package(s) match their linker script")
     return 0
