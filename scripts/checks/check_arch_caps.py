@@ -68,26 +68,30 @@ class CheckError(RuntimeError):
 
 
 def repo_root() -> Path:
+    """The repository root, so the gate reads the same tree git does."""
     out = subprocess.run(
-        ["git", "rev-parse", "--show-toplevel"],
+        ["git", "rev-parse", "--show-toplevel"],  # noqa: S607 -- trusted: fixed git argv
         capture_output=True,
         text=True,
         check=False,
     )
     if out.returncode != 0:
-        raise CheckError("not inside a git work tree")
+        message = "not inside a git work tree"
+        raise CheckError(message)
     return Path(out.stdout.strip())
 
 
 def tracked_paths(root: Path) -> set[str]:
-    out = subprocess.run(
-        ["git", "-C", str(root), "ls-files"],
+    """Every path git tracks, so an untracked stray cannot answer a capability."""
+    out = subprocess.run(  # noqa: S603 -- trusted: fixed git argv, root is our own path
+        ["git", "-C", str(root), "ls-files"],  # noqa: S607 -- trusted: fixed git argv
         capture_output=True,
         text=True,
         check=False,
     )
     if out.returncode != 0:
-        raise CheckError("git ls-files failed")
+        message = "git ls-files failed"
+        raise CheckError(message)
     return {line for line in out.stdout.splitlines() if line}
 
 
@@ -116,8 +120,11 @@ def gated_blocks(text: str) -> dict[str, str]:
 
 
 def contract_capabilities(text: str) -> tuple[dict[str, dict[str, set[str]]], set[str]]:
-    """Derive the gated flags with their companions and functions, plus every
-    flag the contract mentions at all."""
+    """Read the contract's capability surface.
+
+    Returns the gated flags with their companions and functions, plus every
+    flag the contract mentions at all.
+    """
     blocks = gated_blocks(text)
     gated: dict[str, dict[str, set[str]]] = {}
     for flag, body in blocks.items():
@@ -152,6 +159,7 @@ def parse_caps(text: str) -> dict[str, dict[str, str]]:
 
 
 def flag_state(raw: str) -> int | None:
+    """The 1 or 0 a caps.h answer carries, or None when it is neither."""
     match = FLAG_VALUE_RE.match(raw)
     return int(match.group(1)) if match else None
 
@@ -198,8 +206,7 @@ def _check_set_flag(ctx: dict, flag: str, answer: dict) -> list[tuple[str, str, 
             (
                 "stale-migration-home",
                 rel,
-                f"{flag} names `{home}` as its implementation today; that path is "
-                f"not tracked",
+                f"{flag} names `{home}` as its implementation today; that path is not tracked",
             )
         )
     return findings
@@ -242,16 +249,15 @@ def check_core(rel: str, text: str, ctx: dict) -> list[tuple[str, str, str]]:
         "backends": backends,
         "tracked": ctx["tracked"],
     }
-    findings: list[tuple[str, str, str]] = []
-    for name in sorted(answers):
-        if name.startswith("ARCH_HAS_") and name not in known:
-            findings.append(
-                (
-                    "unknown-capability",
-                    rel,
-                    f"{name} is answered here and {CONTRACT_REL} never mentions it",
-                )
-            )
+    findings: list[tuple[str, str, str]] = [
+        (
+            "unknown-capability",
+            rel,
+            f"{name} is answered here and {CONTRACT_REL} never mentions it",
+        )
+        for name in sorted(answers)
+        if name.startswith("ARCH_HAS_") and name not in known
+    ]
     for flag in sorted(gated):
         if flag not in answers:
             findings.append(
@@ -311,9 +317,11 @@ def analyse(
 
 
 def read_tree(root: Path) -> tuple[str, dict[str, str], dict[str, str]]:
+    """Read the contract, every core's caps.h, and every arch backend source."""
     contract_path = root / CONTRACT_REL
     if not contract_path.is_file():
-        raise CheckError(f"{CONTRACT_REL} is missing; the contract is the input")
+        message = f"{CONTRACT_REL} is missing; the contract is the input"
+        raise CheckError(message)
     caps: dict[str, str] = {}
     core_root = root / CORE_DIR_REL
     for path in sorted(core_root.glob("*/caps.h")):
@@ -331,6 +339,7 @@ def read_tree(root: Path) -> tuple[str, dict[str, str], dict[str, str]]:
 
 
 def main(argv: list[str]) -> int:
+    """Run the gate, or its selftest, and print whatever it found."""
     if "--selftest" in argv[1:]:
         return selftest()
     try:
@@ -456,9 +465,7 @@ def _selftest_cases() -> list[tuple[str, list[str]]]:
         ),
         (
             "gated flag this core never answers",
-            _kinds(
-                _caps(doc=_MIGRATION_DOC).replace("#define ARCH_HAS_TRUSTZONE_M (1)", "")
-            ),
+            _kinds(_caps(doc=_MIGRATION_DOC).replace("#define ARCH_HAS_TRUSTZONE_M (1)", "")),
         ),
         (
             "flag the contract never mentions",
@@ -466,11 +473,7 @@ def _selftest_cases() -> list[tuple[str, list[str]]]:
         ),
         (
             "companion the contract reads, unanswered",
-            _kinds(
-                _caps(doc=_MIGRATION_DOC).replace(
-                    "#define ARCH_MEM_PROTECT_REGIONS (16U)", ""
-                )
-            ),
+            _kinds(_caps(doc=_MIGRATION_DOC).replace("#define ARCH_MEM_PROTECT_REGIONS (16U)", "")),
         ),
         (
             "companion answered for a declined flag",
@@ -482,6 +485,10 @@ def _selftest_cases() -> list[tuple[str, list[str]]]:
         ),
     ]
 
+
+# The contract fixture gates exactly these three flags; a read that finds a
+# different number has stopped understanding the fixture, not the tree.
+_EXPECTED_GATING_FLAGS = 3
 
 _EXPECTED = [
     [],
@@ -503,15 +510,24 @@ _EXPECTED = [
 
 
 def selftest() -> int:
+    """Run every planted case in both directions and report the failures."""
     failures: list[str] = []
     cases = _selftest_cases()
-    for (label, actual), expected in zip(cases, _EXPECTED):
+    if len(cases) != len(_EXPECTED):
+        failures.append(
+            f"{len(cases)} case(s) against {len(_EXPECTED)} expectation(s); "
+            f"a case added without its expected kinds would otherwise go unchecked"
+        )
+    for (label, actual), expected in zip(cases, _EXPECTED, strict=False):
         if actual != expected:
             failures.append(f"{label}: expected {expected}, got {actual}")
 
     counts, _ = analyse(_CONTRACT, {"caps.h": _caps(doc=_MIGRATION_DOC)}, {}, _TRACKED)
-    if counts["gating_flags"] != 3:
-        failures.append(f"contract read found {counts['gating_flags']} gated flags, want 3")
+    if counts["gating_flags"] != _EXPECTED_GATING_FLAGS:
+        failures.append(
+            f"contract read found {counts['gating_flags']} gated flags, "
+            f"want {_EXPECTED_GATING_FLAGS}"
+        )
     gated, known = contract_capabilities(_CONTRACT)
     if "ARCH_HAS_SIMD" not in known or "ARCH_HAS_SIMD" in gated:
         failures.append("a described-but-ungated flag must be known and not gated")
