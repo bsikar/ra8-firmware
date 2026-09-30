@@ -27,7 +27,7 @@ include("${RA8_REPO_ROOT}/cmake/ra8_add_app.cmake")
 
 # ---- Secure Target --------------------------------------------------------
 ra8_add_app(
-  NAME tz_threadx_demo
+  NAME tz_threadx_demo BOOT_PROFILE ns_usb_handoff
   STACK_BYTES 2200
   DESCRIPTION "TrustZone ThreadX Demo (Secure side)" AUX_SRCS src/ns_main.c
   LIBS ra8_tz_secure_boot MRAM_LENGTH 512K

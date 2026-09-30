@@ -1,5 +1,5 @@
 /**
- * @file examples/ek_ra8d2/hil_needs_revalidation/tz_nsc_cgc_usb/src/trustzone_init.c
+ * @file libs/ra8_board_ek_ra8d2/src/boot/ns_usb_handoff/trustzone_init.c
  * @brief Single-core TrustZone bring-up for a RAM-resident NS image (#60)
  *
  * @par Tag
