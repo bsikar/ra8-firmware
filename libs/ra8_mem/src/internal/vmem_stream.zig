@@ -14,38 +14,23 @@
 //! carrying the byte count AND the verdict together, and there is no way to
 //! take one without seeing the other.
 //!
-//! The cache is injected at comptime: `ra8_mem_abi.zig` supplies the real one
-//! over `ra8_vmem_get`/`ra8_vmem_put`, the tests supply a fake. The calls stay
-//! direct, and this file holds no `extern`, so it can be a host test root.
+//! The cache is injected at comptime: `ra8_mem_abi.zig` supplies the real page
+//! cache, the tests supply a fake. The calls stay direct, and this file holds
+//! no `extern`, so it can be a host test root.
 
 const std = @import("std");
 
+const vmem = @import("vmem.zig");
 const vocab = @import("vocab.zig");
 
 pub const Err = vocab.Err;
 
-/// `ra8_vmem_cfg_t`, field for field. Only `frame_bytes` is read, at bind
-/// time, but the whole struct is mirrored so a field added to the C ahead of
-/// `frame_bytes` cannot silently shift the offset out from under us.
-pub const Cfg = extern struct {
-    frame_mem: ?[*]u8,
-    frame_bytes: u32,
-    frame_count: u32,
-    meta: ?*anyopaque,
-    keys: ?*anyopaque,
-    buckets: ?[*]i32,
-    bucket_count: u32,
-    loader: ?*const anyopaque,
-    loader_ctx: ?*anyopaque,
-    protected_pct: u8,
-};
-
-/// `ra8_vmem_t` as far as this module needs it: `cfg` is its first member, and
-/// nothing here touches the SLRU engine that follows. Only ever held as a
-/// pointer handed in from C; Zig never allocates one.
-pub const Vmem = extern struct {
-    cfg: Cfg,
-};
+/// The page cache this adapter streams over. One mirror of `ra8_vmem_t` and
+/// `ra8_vmem_cfg_t` exists, in `vmem.zig`, and this is it: a second copy here
+/// would be free to drift from the header the first one tracks. Only
+/// `cfg.frame_bytes` is read, at bind time.
+pub const Cfg = vmem.Cfg;
+pub const Vmem = vmem.State;
 
 /// `ra8_vmem_stream_t`, field for field.
 pub const Stream = extern struct {
