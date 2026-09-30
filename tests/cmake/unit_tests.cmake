@@ -645,6 +645,17 @@ if(TARGET test_fw_if_clock)
   target_include_directories(test_fw_if_clock PRIVATE ${FW_ROOT}/libs/if/inc)
 endif()
 
+# The RA8 chip adapter for that same port. Unlike the port's own vectors this
+# one is *allowed* the chip headers -- bridging to them is its whole job -- and
+# it needs the fake MMIO mock, because ra8_mstp polls a hardware bit for
+# read-back and there is no real peripheral block on a host.
+if(TARGET test_fw_if_clock_ra8)
+  target_include_directories(
+    test_fw_if_clock_ra8 PRIVATE ${FW_ROOT}/libs/if/inc ${FW_ROOT}/libs/if_ra8_cgc/inc
+                                 ${FW_ROOT}/tests/mocks/inc)
+  target_sources(test_fw_if_clock_ra8 PRIVATE ${FW_ROOT}/tests/mocks/src/ra8_fake_mmio.c)
+endif()
+
 # The ThreadX binding of the same seam cannot run on a host -- it needs a
 # scheduler -- but its three mapping functions are pure and live in the port
 # header on purpose, so the host build proves them without ThreadX. Only the
