@@ -38,3 +38,7 @@ pub const nav_bar = @import("widget_nav_bar_abi.zig");
 
 /// The container panel: `ra8_widget_panel_vtable` / `_init` / `_compose`.
 pub const panel = @import("widget_panel_abi.zig");
+
+/// The reflowed-reading-body leaf widget: `ra8_widget_reflow_view_vtable` /
+/// `_init`.
+pub const reflow_view = @import("widget_reflow_view_abi.zig");
