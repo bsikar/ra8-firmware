@@ -223,10 +223,16 @@ SECTIONS
      * single-image build still loads cleanly. */
     .gnu.sgstubs : ALIGN(32)
     {
-        g_ra8_ls_sgstubs_start = .;
         *(.gnu.sgstubs*)
-        g_ra8_ls_sgstubs_end = .;
     } > MRAM
+    /* ld inserts the CMSE secure-gateway veneers into .gnu.sgstubs AFTER any
+     * in-section `.' symbols are evaluated, so bracketing the input statement
+     * with `g_ra8_ls_sgstubs_start = .' / `_end = .' collapses to a ZERO-LENGTH
+     * range: both symbols land on the section start and trustzone_init.c then
+     * programmes an empty SAU NSC region, so every NS->Secure call faults. Take
+     * the bounds from the finished section instead. */
+    g_ra8_ls_sgstubs_start = ADDR(.gnu.sgstubs);
+    g_ra8_ls_sgstubs_end = ADDR(.gnu.sgstubs) + SIZEOF(.gnu.sgstubs);
 
     /* ---- Option setting regions (fixed flash addresses) ----
      *
