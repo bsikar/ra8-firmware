@@ -7,8 +7,8 @@ population is from the EK-RA8D2 v1 User's Manual (R20UT5523EG0101 Rev
 `docs/reference/ek-ra8d2-v1-users-manual.pdf`.
 
 This document only lists addresses that are actually referenced by code
-in this tree (RA8D2 linker overrides under
-`examples/ek_ra8d2/<tier>/.../<app>/linker_script.ld`
+in this tree (the shared RA8D2 board map at
+`libs/ra8_board_ek_ra8d2/ld/linker_script.ld`
 and the typed `_base_addr` enums under `libs/ra8_hal/inc/ra8_*_regs.h`).
 Anything not grounded in the codebase is intentionally omitted.
 
@@ -16,29 +16,29 @@ Anything not grounded in the codebase is intentionally omitted.
 
 | Region        | Base         | Length on RA8D2 | Notes                                        | Code reference                          |
 |---------------|--------------|-----------------|----------------------------------------------|------------------------------------------|
-| ITCM          | `0x00000000` | 64 KiB          | Cortex-M85 instruction tightly-coupled mem   | `examples/ek_ra8d2/hw_validated/hil/blink/linker_script.ld` (`ITCM`) |
-| MRAM (code)   | `0x02000000` | 1 MiB           | Non-volatile code + rodata + vectors + OFS   | `examples/ek_ra8d2/hw_validated/hil/blink/linker_script.ld` (`MRAM`) |
+| ITCM          | `0x00000000` | 64 KiB          | Cortex-M85 instruction tightly-coupled mem   | `libs/ra8_board_ek_ra8d2/ld/linker_script.ld` (`ITCM`) |
+| MRAM (code)   | `0x02000000` | 1 MiB           | Non-volatile code + rodata + vectors + OFS   | `libs/ra8_board_ek_ra8d2/ld/linker_script.ld` (`MRAM`) |
 | Factory cal   | `0x02C1EDA0` | (TSN cal block) | TSN factory-calibration data window          | `libs/ra8_hal/inc/ra8_tsn_regs.h`      |
-| DTCM          | `0x20000000` | 64 KiB          | Cortex-M85 data tightly-coupled mem          | `examples/ek_ra8d2/hw_validated/hil/blink/linker_script.ld` (`DTCM`) |
-| SRAM (ECC)    | `0x22000000` | 1664 KiB        | Main SRAM, ECC-protected, secure alias       | `k_ra8_mem_sram_size` in `libs/ra8_core/inc/ra8_device.h`; `examples/ek_ra8d2/hw_validated/hil/blink/linker_script.ld` (`SRAM`, the 1024 KiB single-core slice) |
-| SRAM NS alias | `0x22100000` | 640 KiB         | Non-secure single-image alias of SRAM        | `examples/ek_ra8d2/hw_validated/hil/blink/linker_script.ld` (`NS_SRAM`) |
-| MRAM NS alias | `0x02080000` | 512 KiB         | Non-secure single-image alias of MRAM        | `examples/ek_ra8d2/hw_validated/hil/blink/linker_script.ld` (`NS_MRAM`) |
-| External SDRAM| `0x68000000` | 64 MiB on EK    | Driven by SDRAMC, EK-RA8D2 v1 populates 64MB | `examples/ek_ra8d2/hw_validated/hil/blink/linker_script.ld` (`SDRAM`) |
+| DTCM          | `0x20000000` | 64 KiB          | Cortex-M85 data tightly-coupled mem          | `libs/ra8_board_ek_ra8d2/ld/linker_script.ld` (`DTCM`) |
+| SRAM (ECC)    | `0x22000000` | 1664 KiB        | Main SRAM, ECC-protected, secure alias       | `k_ra8_mem_sram_size` in `libs/ra8_core/inc/ra8_device.h`; `libs/ra8_board_ek_ra8d2/ld/linker_script.ld` (`SRAM`, the low 1024 KiB less the 256-byte NOINIT carve-out) |
+| SRAM NS alias | `0x22100000` | 640 KiB         | Non-secure single-image alias of SRAM        | `libs/ra8_board_ek_ra8d2/ld/linker_script.ld` (`NS_SRAM`) |
+| MRAM NS alias | `0x02080000` | 512 KiB         | Non-secure single-image alias of MRAM        | `libs/ra8_board_ek_ra8d2/ld/linker_script.ld` (`NS_MRAM`) |
+| External SDRAM| `0x68000000` | 64 MiB on EK    | Driven by SDRAMC, EK-RA8D2 v1 populates 64MB | `libs/ra8_board_ek_ra8d2/ld/linker_script.ld` (`SDRAM`) |
 | System ctrl   | `0xE000ED90` | (MPU/SCS)       | Cortex-M85 MPU control (core MPU)            | `libs/ra8_hal/inc/ra8_mpu_regs.h`      |
 
 Notes on the core memory layout:
 
 - The MRAM secure alias is at `0x02000000` and the non-secure alias is
-  at `0x02080000` (offset `+512K`). Linker scripts in
-  `examples/ek_ra8d2/<tier>/.../<app>/linker_script.ld` define both `MRAM` and `NS_MRAM`
-  regions for the single-image TrustZone build.
+  at `0x02080000` (offset `+512K`). The board map defines both the
+  `MRAM` and `NS_MRAM` regions for the single-image TrustZone build.
 - SRAM is mapped at the secure alias `0x22000000` (also exposed via the
   data alias enum `k_ra8_sram_data_base_addr = 0x22000000` in
   `libs/ra8_hal/inc/ra8_sram_regs.h`). The non-secure alias is at
   `0x22100000`. The part carries 1664 KiB of system SRAM
-  (`k_ra8_mem_sram_size = 0x001A0000`); the single-core linker scripts claim
-  only the low 1024 KiB, leaving the upper banks to the M33 and to the
-  cross-core mailbox.
+  (`k_ra8_mem_sram_size = 0x001A0000`); the board map claims only the
+  low 1024 KiB, and carves the top 256 bytes of that off into the
+  `NOINIT` region holding the warm-reset-surviving crash-log record,
+  leaving the upper banks to the M33 and to the cross-core mailbox.
 - External SDRAM is at `0x68000000` (NOT `0x90000000`). On EK-RA8D2 v1
   the SDRAM controller drives a populated 64 MiB SDRAM at this address;
   see `libs/ra8_hal/src/ra8_sdramc.c`
