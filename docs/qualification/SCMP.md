@@ -62,8 +62,13 @@ a local file only when it intentionally overrides that default:
   `system_init.c`, `secure_exception.c`, `nmi_exception.c`, and
   `trustzone_init.c` -- the exact set `ra8_add_app()` honours
 - optional
-  `examples/ek_ra8d2/<tier>/.../<app>/inc/trustzone_init.h` and
-  root-level `examples/ek_ra8d2/<tier>/.../<app>/linker_script.ld`
+  `examples/ek_ra8d2/<tier>/.../<app>/inc/trustzone_init.h`
+
+`ra8_add_app()` also honours a root-level `linker_script.ld` in an app
+directory, ahead of the board default. No app currently ships one: the
+last four forks were deleted in `a4dc46e32` (#742) once they had gone
+stale against the board map, so every app links
+`libs/ra8_board_ek_ra8d2/ld/linker_script.ld`.
 
 Product forms follow the same ownership rule. No app currently overrides
 `secure_exception.c`: the e-reader was the last to do so and now links the
