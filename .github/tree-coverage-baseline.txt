@@ -666,7 +666,6 @@ libs/ra8_ftl/src/ra8_ftl.c	MEASURED	222	222	130	162
 libs/ra8_ftl/src/ra8_ftl_checkpoint.c	MEASURED	231	248	128	146
 libs/ra8_gfx/src/ra8_gfx_blit_gray4.c	MEASURED	30	30	20	20
 libs/ra8_gfx/src/ra8_gfx_dither.c	MEASURED	55	55	32	32
-libs/ra8_gfx/src/ra8_gfx_font_8x16.c	UNMEASURED	compiled-not-executed
 libs/ra8_gfx/src/ra8_gfx_text.c	MEASURED	304	305	164	172
 libs/ra8_gfx/src/ra8_gfx_text_glyph.c	MEASURED	77	77	48	50
 libs/ra8_hal/src/adc.c	MEASURED	291	300	106	118

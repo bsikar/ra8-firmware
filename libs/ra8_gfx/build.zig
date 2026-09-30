@@ -3,10 +3,10 @@
 //!
 //! Build graph for the Zig implementation of the `ra8_gfx` rasteriser. CMake
 //! consumes the installed static library through the unchanged
-//! `inc/ra8_gfx.h`, `inc/ra8_gfx_tone.h`, `inc/ra8_gfx_dither.h` and
-//! `src/ra8_gfx_internal.h`. The only C translation unit left in the library
-//! is the generated font table, which links against this archive for
-//! `g_gfx_text_state` and the promoted helpers.
+//! `inc/ra8_gfx.h`, `inc/ra8_gfx_font.h`, `inc/ra8_gfx_tone.h` and
+//! `inc/ra8_gfx_dither.h`. No C translation unit is left in the library: the
+//! bundled 8x16 font table joined the archive too, so the descriptor
+//! `ra8_gfx_font_8x16` is exported from here.
 //!
 //! No build options: nothing in this cluster is configured at compile time.
 
@@ -86,6 +86,20 @@ pub fn build(b: *std.Build) void {
     dither_test_module.addImport("dither", dither_module);
     const dither_tests = b.addTest(.{ .root_module = dither_test_module });
 
+    const font_module = b.createModule(.{
+        .root_source_file = b.path("src/ra8_gfx_font_abi.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+
+    const font_test_module = b.createModule(.{
+        .root_source_file = b.path("tests/font_test.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    font_test_module.addImport("font", font_module);
+    const font_tests = b.addTest(.{ .root_module = font_test_module });
+
     const bind_module = b.createModule(.{
         .root_source_file = b.path("src/internal/bind.zig"),
         .target = target,
@@ -104,11 +118,13 @@ pub fn build(b: *std.Build) void {
     const run_tone_tests = b.addRunArtifact(tone_tests);
     const run_dither_tests = b.addRunArtifact(dither_tests);
     const run_bind_tests = b.addRunArtifact(bind_tests);
+    const run_font_tests = b.addRunArtifact(font_tests);
     const run_abi_tests = b.addRunArtifact(abi_tests);
     const test_step = b.step("test", "Run Zig ra8_gfx tests");
     test_step.dependOn(&run_internal_tests.step);
     test_step.dependOn(&run_tone_tests.step);
     test_step.dependOn(&run_dither_tests.step);
     test_step.dependOn(&run_bind_tests.step);
+    test_step.dependOn(&run_font_tests.step);
     test_step.dependOn(&run_abi_tests.step);
 }
