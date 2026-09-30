@@ -15,4 +15,7 @@ comptime {
     _ = @import("time_abi");
     _ = @import("log_abi");
     _ = @import("decomp_abi");
+    _ = @import("scb_abi");
+    _ = @import("exception_abi");
+    _ = @import("crashlog_abi");
 }

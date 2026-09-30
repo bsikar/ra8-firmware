@@ -9,8 +9,9 @@
 //! log lines, and a strong definition here would turn every one of those
 //! links into a duplicate-symbol error.
 //!
-//! `ra8_scb_trace_enabled` stays a call into ra8_scb.c, which is still C,
-//! the same delegation the SysTick port makes for the DEMCR unlock (#588).
+//! `ra8_scb_trace_enabled` stays a call into ra8_scb, Zig too as of the
+//! fault block (#2868), the same delegation the SysTick port makes for the
+//! DEMCR unlock (#588).
 
 const itm = @import("log_itm");
 const line = @import("log_line");
