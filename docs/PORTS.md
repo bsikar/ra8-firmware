@@ -62,7 +62,7 @@ several files name more than one peripheral.
 
 Every count below is measured, not pinned to a commit and not hand-run. The
 manifest in the next section names the command behind each one, and
-`scripts/checks/check_ports_catalog.py` re-runs all of them, so a number here
+`scripts/checks/check_measured_counts.py` re-runs all of them, so a number here
 that has drifted from the tree fails the gate rather than quietly misleading
 the next reader.
 
@@ -93,13 +93,13 @@ Two figures the rows above are read against:
 ### How the numbers were measured
 
 Every figure above is an entry below: the table row it backs, the count it
-claims, and the command that produces it. `scripts/checks/check_ports_catalog.py`
+claims, and the command that produces it. `scripts/checks/check_measured_counts.py`
 re-runs each command against the tree and fails when the count here, or the
 cell it names, has drifted. Add a row to a table and add its entry here; there
 is no third place to keep in step.
 
 ```sh
-# MEASURED BLOCK -- re-run by scripts/checks/check_ports_catalog.py
+# MEASURED BLOCK -- re-run by scripts/checks/check_measured_counts.py
 # clock / CGC -- 227 file(s)
 grep -rlE 'ra8_cgc' examples --include=*.c --include=*.h | wc -l
 # display / framebuffer -- 22 file(s)
