@@ -16,6 +16,7 @@
 //! this branch. Both bind here at run time through `display_cfg_t.iface`.
 
 const std = @import("std");
+const builtin = @import("builtin");
 const implementation = @import("internal/root.zig");
 
 /// `display_rect_t`.
@@ -221,6 +222,27 @@ pub export fn display_policy_full_rect(w: u16, h: u16, out: ?*Rect) callconv(.c)
 /// binds it by address through `display_cfg_t.iface`.
 pub const lcd_backend = @import("ra8_display_pal_lcd_abi.zig");
 pub const eink_backend = @import("ra8_display_pal_eink_abi.zig");
+
+comptime {
+    // The two declarations above are not enough on their own. Zig analyses
+    // lazily, and nothing in this file or in any caller references either
+    // namespace by name, so neither file was ever analysed and neither
+    // backend vtable was emitted into the archive. The C side only ever takes
+    // the vtable's ADDRESS through `display_cfg_t.iface`, which is a link-time
+    // reference to a symbol that was never produced rather than anything the
+    // Zig compiler can see. Referencing both namespaces here is what forces
+    // the analysis, and with it the exports.
+    //
+    // Not in a test binary. Both backends declare the board-level `extern fn`s
+    // they drive (`ra8_glcdc_*`, `ra8_epaper_*`), which the firmware resolves
+    // when the app links against the board library. A host test binary links
+    // no board layer, so forcing the analysis there would only produce
+    // undefined symbols for hardware the test never calls.
+    if (!builtin.is_test) {
+        _ = lcd_backend;
+        _ = eink_backend;
+    }
+}
 
 /// Test-only reset of the module-static state, so the ABI suite can drive the
 /// init/deinit lifecycle more than once in one process. Not exported.
