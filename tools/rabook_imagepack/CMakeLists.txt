@@ -66,6 +66,16 @@ if(NOT TARGET ra8_zig::ra8_mem)
 endif()
 link_libraries(ra8_zig::ra8_mem)
 
+if(NOT TARGET ra8_zig::ra8_jpeg)
+  include(${FW_ROOT}/tests/cmake/zig_library.cmake)
+  ra8_add_zig_library(
+    NAME ra8_jpeg
+    ZIG_ROOT ${FW_ROOT}/libs/ra8_jpeg
+    LIBRARY_NAME ra8_jpeg
+  )
+endif()
+link_libraries(ra8_zig::ra8_jpeg)
+
 # ---------------------------------------------------------------------------
 # The exact firmware members the tool calls: the JOF producer (with its
 # JPEG / PNG / WebP front ends) and reader, plus the compression seam they sit
@@ -83,10 +93,14 @@ set(RA8_FMT_FW_SRC
     ${FW_ROOT}/libs/ra8_core/src/ra8_error_handler.c
     ${FW_ROOT}/libs/ra8_core/src/ra8_decomp_limits.c
 )
-set(RA8_FMT_JPEG_SRC
-    ${FW_ROOT}/libs/ra8_jpeg/src/ra8_jpeg_sw.c ${FW_ROOT}/libs/ra8_jpeg/src/ra8_jpeg_sw_decode.c
-    ${FW_ROOT}/libs/ra8_jpeg/src/ra8_jpeg_sw_stream.c
-)
+# The JPEG codec is Zig now: the encoder moved in #2798 and the decoder plus
+# its stripe driver in #2799, so libs/ra8_jpeg/src holds no .c at all. The
+# hand-authored C23 header under libs/ra8_jpeg/inc is unchanged, so the
+# targets below that used to name the three decoder sources by path link the
+# archive instead. RA8_FMT_JPEG_SRC stays defined and empty: it is still
+# expanded in three source lists below, and emptying it here keeps those
+# lists readable rather than editing each one.
+set(RA8_FMT_JPEG_SRC)
 
 set(RA8_FMT_THIRD_PARTY_SRC ${FW_ROOT}/apps/shared_libs/third_party/miniz/miniz.c)
 set(RA8_FMT_MINIZ_DEFINITIONS MINIZ_NO_ARCHIVE_APIS MINIZ_NO_MALLOC MINIZ_NO_STDIO MINIZ_NO_TIME)
