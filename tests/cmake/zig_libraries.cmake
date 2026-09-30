@@ -582,16 +582,20 @@ ra8_add_zig_library(
   ra8_imgdec
 )
 
-# Partially migrated (#2591): the key vault behind inc/key_vault.h, the entropy
-# read behind src/secure_trng_internal.h, and the OTA bank commit behind
-# inc/ota_commit.h are Zig now, and their three .c files are deleted.
+# Partially migrated (#2591, #2659): the key vault behind inc/key_vault.h, the
+# entropy read behind src/secure_trng_internal.h, the OTA bank commit behind
+# inc/ota_commit.h, and the AES-CMAC behind src/sec_cmac_internal.h are Zig
+# now, and their four .c files are deleted.
 #
-# src/sec_cmac.c and src/key_import.c are deliberately RETAINED as C. The
-# sec_cmac backend footprint is the open question in #619, and key_import is a
-# direct consumer of it, so porting either ahead of that decision would bake a
-# backend choice into Zig that #619 exists to make. They keep reaching the vault
-# through the unchanged inc/key_vault.h, which is why the RA8_SECURE_APP_SOURCES
-# glob in library_sources.cmake stays: it still finds those two.
+# src/key_import.c is the one C source left, and it is deliberately RETAINED
+# for now: it is the wrapped-blob format itself, and it reaches both the vault
+# and the CMAC through unchanged headers, so it links this archive without
+# knowing either body moved. That is why the RA8_SECURE_APP_SOURCES glob in
+# library_sources.cmake stays: it still finds that one file.
+#
+# src/sec_cmac_internal.h is unchanged and is still the membrane:
+# tests/security/src/test_secure_app_sec_cmac.c pins the archive to the
+# published NIST SP 800-38B vectors through it.
 ra8_add_zig_library(
   NAME
   ra8_secure_app

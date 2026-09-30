@@ -2,8 +2,8 @@
 //! Copyright (c) 2026 Brighton Sikarskie
 //!
 //! The C membrane for `ra8_secure_app`: every symbol `inc/key_vault.h`,
-//! `inc/ota_commit.h`, and `src/secure_trng_internal.h` declare, and nothing
-//! else. Those headers are unchanged, so the NSC veneers, the host test
+//! `inc/ota_commit.h`, `src/secure_trng_internal.h`, and
+//! `src/sec_cmac_internal.h` declare, and nothing else. Those headers are unchanged, so the NSC veneers, the host test
 //! suites, and `secure_app_vault_demo` link against this archive without
 //! knowing the bodies moved to Zig.
 //!
@@ -12,6 +12,7 @@
 
 const std = @import("std");
 
+const cmac = @import("internal/cmac.zig");
 const ota = @import("internal/ota.zig");
 const trng = @import("internal/trng.zig");
 const vault = @import("internal/vault.zig");
@@ -114,4 +115,59 @@ export fn ra8_ota_commit_get_bank_config(out_value: ?*u32) u16 {
     const dst = out_value orelse return Err.null_ptr.code();
     dst.* = ota.bankConfig();
     return Err.ok.code();
+}
+
+// ---------------------------------------------------------------------------
+// sec_cmac_internal.h
+// ---------------------------------------------------------------------------
+//
+// `key_import.c` is still C and calls both of these, so they keep the
+// `priv_` names and the pointer-and-length shape the header declares. The
+// header's `msg == NULL` case is only legal with `msg_len == 0`, which is an
+// empty slice on this side.
+
+/// The message slice for a `(ptr, len)` pair, or null when the pair is the
+/// illegal `NULL` with a non-zero length.
+fn messageSlice(msg: ?[*]const u8, msg_len: u32) ?[]const u8 {
+    if (msg) |ptr| return ptr[0..msg_len];
+    return if (msg_len == 0) &.{} else null;
+}
+
+export fn priv_ra8_sec_cmac_compute(
+    key: ?[*]const u8,
+    key_len: u16,
+    msg: ?[*]const u8,
+    msg_len: u32,
+    out_mac: ?[*]u8,
+) u16 {
+    const key_ptr = key orelse return Err.null_ptr.code();
+    const dst = out_mac orelse return Err.null_ptr.code();
+    const message = messageSlice(msg, msg_len) orelse return Err.null_ptr.code();
+    // The key length is validated before it is used to build a slice, so an
+    // out-of-range one never reads past the caller's buffer.
+    if (key_len != cmac.Limits.key_128 and key_len != cmac.Limits.key_256) {
+        return Err.invalid_arg.code();
+    }
+    return cmac.compute(
+        key_ptr[0..key_len],
+        message,
+        dst[0..cmac.Limits.tag_bytes],
+    ).code();
+}
+
+export fn priv_ra8_sec_cmac_verify(
+    key: ?[*]const u8,
+    key_len: u16,
+    msg: ?[*]const u8,
+    msg_len: u32,
+    mac: ?[*]const u8,
+    mac_len: u16,
+) u16 {
+    const key_ptr = key orelse return Err.null_ptr.code();
+    const mac_ptr = mac orelse return Err.null_ptr.code();
+    const message = messageSlice(msg, msg_len) orelse return Err.null_ptr.code();
+    if (key_len != cmac.Limits.key_128 and key_len != cmac.Limits.key_256) {
+        return Err.invalid_arg.code();
+    }
+    return cmac.verify(key_ptr[0..key_len], message, mac_ptr[0..mac_len]).code();
 }

@@ -1,6 +1,6 @@
 /**
  * @file test_secure_app_sec_cmac.c
- * @brief KAT + MC/DC tests for libs/ra8_secure_app/src/sec_cmac.c (AES-CMAC seam)
+ * @brief KAT + MC/DC tests for the AES-CMAC seam (libs/ra8_secure_app, Zig)
  *
  * @details
  * Pins the in-tree AES-CMAC reference backend (the default host build; the
@@ -255,7 +255,8 @@ static void test_cmac_kat_vectors(void)
  * @par MC/DC:
  * Decision: `if ((mac_len != k_ra8_sec_cmac_tag_bytes) ||
  * !ra8_ct_equal(computed, mac, k_ra8_sec_cmac_tag_bytes))` (2 conditions,
- * libs/ra8_secure_app/src/sec_cmac.c priv_ra8_sec_cmac_verify)
+ * libs/ra8_secure_app/src/internal/cmac.zig verify, exported as
+ * priv_ra8_sec_cmac_verify)
  *  - C1 = the supplied tag length is not the expected 16 bytes.
  *  - C2 = the recomputed CMAC does not equal the supplied tag.
  *

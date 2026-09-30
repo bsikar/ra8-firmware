@@ -65,6 +65,8 @@ pub fn build(b: *std.Build) void {
         .{ .name = "vault", .source = "src/internal/vault.zig", .root = "tests/vault_test.zig" },
         .{ .name = "trng", .source = "src/internal/trng.zig", .root = "tests/trng_test.zig" },
         .{ .name = "ota", .source = "src/internal/ota.zig", .root = "tests/ota_test.zig" },
+        .{ .name = "aes", .source = "src/internal/aes.zig", .root = "tests/aes_test.zig" },
+        .{ .name = "cmac", .source = "src/internal/cmac.zig", .root = "tests/cmac_test.zig" },
     };
     for (units) |unit| {
         const under_test = b.createModule(.{
