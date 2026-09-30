@@ -2047,9 +2047,6 @@ libs/ra8_widget/src/ra8_widget_book.c	misra-c2012-10.8	4
 libs/ra8_widget/src/ra8_widget_book.c	misra-c2012-11.5	2
 libs/ra8_widget/src/ra8_widget_book.c	misra-c2012-15.5	11
 libs/ra8_widget/src/ra8_widget_book.c	misra-c2012-8.9	1
-libs/ra8_widget/src/ra8_widget_keyboard.c	misra-c2012-11.5	2
-libs/ra8_widget/src/ra8_widget_keyboard.c	misra-c2012-15.5	12
-libs/ra8_widget/src/ra8_widget_keyboard.c	misra-c2012-8.9	1
 libs/ra8_widget/src/ra8_widget_nav_bar.c	misra-c2012-10.8	1
 libs/ra8_widget/src/ra8_widget_nav_bar.c	misra-c2012-11.5	2
 libs/ra8_widget/src/ra8_widget_nav_bar.c	misra-c2012-15.5	14
