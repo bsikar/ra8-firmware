@@ -276,7 +276,13 @@ comptime {
     std.debug.assert(@offsetOf(State, "cfg") == 0);
     std.debug.assert(@offsetOf(State, "sets") == @sizeOf(Cfg));
     std.debug.assert(@offsetOf(State, "hits") == @sizeOf(Cfg) + 24);
-    std.debug.assert(@sizeOf(State) == @sizeOf(Cfg) + 10 * @sizeOf(u32));
+    // Nine u32 of payload follow `cfg` (six recency words in `sets`, then the
+    // three counters). On LP64 the struct is pointer-aligned, so it carries one
+    // word of tail padding and measures ten u32 past `cfg`; on 32-bit ARM the
+    // alignment is already 4 and there is no tail padding. Spelling both out
+    // rather than the host's number, which is what hid this until ra8_mem was
+    // first cross-compiled for cortex-m85.
+    std.debug.assert(@sizeOf(State) == @sizeOf(Cfg) + (if (ptr == 8) 10 else 9) * @sizeOf(u32));
 
     std.debug.assert(@sizeOf(View) == 2 * ptr);
 }
