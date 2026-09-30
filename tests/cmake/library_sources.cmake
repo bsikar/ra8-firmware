@@ -91,16 +91,17 @@ file(GLOB_RECURSE RA8_MEM_SOURCES CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra8_mem/src/
 # tests/cmake/zig_libraries.cmake links that archive into ra8_core_hal.
 # src/ra8_sdmmc_spi_internal.h stays: two host suites include it to reach
 # g_sdmmc_spi_state and the priv_sdmmc_spi_* protocol helpers.
-# ra8_gfx has no hand-written C sources left: the rasteriser (the shared
-# framebuffer binding g_gfx_text_state, the four promoted helpers and the
-# fifteen entry points of inc/ra8_gfx.h, the two bind forms, the teardown, the
-# packed-gray4 loupe zoom blit and both text calls included) is Zig now
+# ra8_gfx has no C sources at all: the rasteriser (the shared framebuffer
+# binding g_gfx_text_state, the four promoted helpers and the fifteen entry
+# points of inc/ra8_gfx.h, the two bind forms, the teardown, the packed-gray4
+# loupe zoom blit and both text calls included) is Zig now
 # (libs/ra8_gfx/src/*.zig, built by libs/ra8_gfx/build.zig) behind the
 # unchanged C headers, and tests/cmake/zig_libraries.cmake links that archive
-# into ra8_core_hal. This glob now matches exactly one file, the generated 8x16
-# font table. The per-panel tone LUT joined the archive with #1326, the
-# blue-noise dither with #1402 and the lifecycle binder with this slice.
-file(GLOB_RECURSE RA8_GFX_SOURCES CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra8_gfx/src/*.c)
+# into ra8_core_hal. The per-panel tone LUT joined the archive with #1326, the
+# blue-noise dither with #1402, the lifecycle binder with #1466 and the
+# bundled 8x16 font table with #2689, which retired this glob: the descriptor
+# ra8_gfx_font_8x16 is exported from the archive now, so there is no
+# RA8_GFX_SOURCES variable to carry.
 # ra8_ui has no C sources: the interaction core (hit-testing, screen stack,
 # paging) is Zig (libs/ra8_ui/src/*.zig, built by libs/ra8_ui/build.zig)
 # behind the unchanged C header, and tests/cmake/zig_libraries.cmake links

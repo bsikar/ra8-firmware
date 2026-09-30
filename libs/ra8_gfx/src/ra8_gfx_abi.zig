@@ -12,9 +12,10 @@
 //! curve, and the six `inc/ra8_gfx_dither.h` calls over the committed
 //! blue-noise mask.
 //!
-//! Nothing of `ra8_gfx` is hand-written C any more: the only C left in the
-//! library is the generated font table `ra8_gfx_font_8x16.c`, which links
-//! against this archive.
+//! Nothing of `ra8_gfx` is C any more. The bundled 8x16 font table came over
+//! last: its exported descriptor `ra8_gfx_font_8x16` lives in
+//! `ra8_gfx_font_abi.zig`, referenced below so the export lands in this
+//! archive.
 //!
 //! Every decision lives in `internal/root.zig` and, for the lifecycle, in
 //! `internal/bind.zig`; this file only moves bytes.
@@ -24,6 +25,13 @@ const impl = @import("internal/root.zig");
 const tone_impl = @import("internal/tone.zig");
 const dither_impl = @import("internal/dither.zig");
 const bind_impl = @import("internal/bind.zig");
+const font_abi = @import("ra8_gfx_font_abi.zig");
+
+comptime {
+    // An export in a non-root file only reaches the archive when the root
+    // analyses it, and `ra8_gfx_font_8x16` is the whole point of that file.
+    _ = font_abi;
+}
 
 /// Re-exported so the ABI test binary shares the exact struct types.
 pub const internal = impl;

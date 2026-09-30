@@ -25,7 +25,6 @@ add_library(
   ${COMPRESS_SOURCES}
   ${RA8_CAMERA_SOURCES}
   ${RA8_MEM_SOURCES}
-  ${RA8_GFX_SOURCES}
   ${BOOK_SOURCES}
   ${RABOOK_COMPILE_SOURCES}
   ${RABOOK_COMPILE_CPP_SOURCES}
@@ -183,7 +182,6 @@ target_include_directories(
          ${FW_ROOT}/libs/ra8_camera/src
          ${FW_ROOT}/libs/ra8_ftl/src
          ${FW_ROOT}/libs/ra8_sdmmc_spi/src
-         ${FW_ROOT}/libs/ra8_gfx/src
          ${FW_ROOT}/libs/ra8_nsc/src
          ${FW_ROOT}/libs/ra8_ota/src
          ${FW_ROOT}/libs/ra8_dfu/src

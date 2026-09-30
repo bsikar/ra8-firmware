@@ -4,6 +4,7 @@
     "tests/tone_test.zig",
     "tests/dither_test.zig",
     "tests/bind_test.zig",
+    "tests/font_test.zig",
     "tests/abi_test.zig"
   ],
   "covered_sources": [
@@ -11,11 +12,14 @@
     "src/internal/tone.zig",
     "src/internal/dither.zig",
     "src/internal/bind.zig",
+    "src/internal/font_8x16.zig",
     "src/ra8_gfx_abi.zig",
+    "src/ra8_gfx_font_abi.zig",
     "tests/internal_test.zig",
     "tests/tone_test.zig",
     "tests/dither_test.zig",
     "tests/bind_test.zig",
+    "tests/font_test.zig",
     "tests/abi_test.zig"
   ],
   "minimum_tests": 150
