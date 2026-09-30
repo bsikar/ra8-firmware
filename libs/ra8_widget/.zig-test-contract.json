@@ -1,0 +1,13 @@
+{
+  "test_roots": [
+    "tests/internal_test.zig",
+    "tests/abi_test.zig"
+  ],
+  "covered_sources": [
+    "src/internal/paint.zig",
+    "src/widget_paint_abi.zig",
+    "tests/internal_test.zig",
+    "tests/abi_test.zig"
+  ],
+  "minimum_tests": 10
+}
