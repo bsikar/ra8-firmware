@@ -540,6 +540,29 @@ ra8_add_zig_library(
   ra8_net_policy
 )
 
+# Fully migrated: the one image-decoder seam behind inc/ra8_imgdec.h,
+# inc/ra8_imgdec_backend.h, inc/ra8_imgdec_mux.h, inc/ra8_imgdec_name.h and
+# inc/ra8_imgdec_scratch.h is Zig, so libs/ra8_imgdec/src has no .c left.
+# This library had the widest wiring surface of the port so far: the
+# RA8_IMGDEC_SOURCES glob in library_sources.cmake plus twenty-two by-path
+# references across the app source rules, the WebP vendor rule, six mdl
+# targets, cbz2jof, media_download and the three host tools. The archive
+# replaces every one of them.
+#
+# It does NOT resolve every symbol it names: ra8_arena_carve and
+# ra8_arena_remaining are still C in ra8_mem, one ring down, and only
+# src/ra8_imgdec_abi.zig names them. Everything under src/internal reaches the
+# arena through an injected seam, which is what lets the whole of the decision
+# logic run in the host suite.
+ra8_add_zig_library(
+  NAME
+  ra8_imgdec
+  ZIG_ROOT
+  ${FW_ROOT}/libs/ra8_imgdec
+  LIBRARY_NAME
+  ra8_imgdec
+)
+
 target_link_libraries(
   ra8_core_hal
   PUBLIC ra8_zig::ra8_box
@@ -570,6 +593,7 @@ target_link_libraries(
          ra8_zig::ra8_camera_io
          ra8_zig::ra8_xml
          ra8_zig::ra8_net_policy
+         ra8_zig::ra8_imgdec
   ra8_zig::ra8_gfx
          ra8_zig::ra8_gfx
 )
@@ -606,4 +630,5 @@ link_libraries(
   ra8_zig::ra8_camera_io
   ra8_zig::ra8_xml
   ra8_zig::ra8_net_policy
+  ra8_zig::ra8_imgdec
 )

@@ -81,7 +81,16 @@ if(NOT TARGET ra8_zig::ra8_net_policy)
     LIBRARY_NAME ra8_net_policy
   )
 endif()
-link_libraries(ra8_zig::fw_if_fs ra8_zig::ra8_xml ra8_zig::ra8_net_policy)
+if(NOT TARGET ra8_zig::ra8_imgdec)
+  include(${MDL_REPO_ROOT}/tests/cmake/zig_library.cmake)
+  ra8_add_zig_library(
+    NAME ra8_imgdec
+    ZIG_ROOT ${MDL_REPO_ROOT}/libs/ra8_imgdec
+    LIBRARY_NAME ra8_imgdec
+  )
+endif()
+link_libraries(ra8_zig::fw_if_fs ra8_zig::ra8_xml ra8_zig::ra8_net_policy
+               ra8_zig::ra8_imgdec)
 
 # The core's own two roots, likewise stated once. Every source path below is
 # absolute through them, because a form consumes these lists from ITS directory
@@ -253,12 +262,9 @@ set(MDL_RABOOK_RUNTIME_SRC
     ${MDL_REPO_ROOT}/apps/shared_libs/rabook_compile/src/ra8_rabook_xml_shim.c
     ${MDL_REPO_ROOT}/apps/shared_libs/compress/src/ra8_compress.c
     ${MDL_REPO_ROOT}/apps/shared_libs/reflow/src/ra8_img_arena.c
-    ${MDL_REPO_ROOT}/libs/ra8_imgdec/src/ra8_imgdec_scratch.c
-    ${MDL_REPO_ROOT}/libs/ra8_imgdec/src/ra8_imgdec_sniff.c
     # mdl_urlname.c calls ra8_imgdec_identify/ra8_imgdec_name, which live only
     # here. mdl_core compiles the caller, so every target linking these two
     # libraries needs the name table too (#768).
-    ${MDL_REPO_ROOT}/libs/ra8_imgdec/src/ra8_imgdec_name.c
     ${MDL_REPO_ROOT}/apps/shared_libs/reflow/src/ra8_stbtt_alloc.c
     ${MDL_REPO_ROOT}/apps/shared_libs/reflow/src/ra8_stbtt_guard.c
     ${MDL_REPO_ROOT}/apps/shared_libs/third_party/stb/stb_image_impl.c
@@ -643,8 +649,6 @@ add_executable(
   ${MDL_CORE_SRC_DIR}/mdl_storage.c
   ${MDL_CORE_SRC_DIR}/mdl_urlname.c
   # mdl_urlname.c names an image from the shared container sniff (#768).
-  ${MDL_REPO_ROOT}/libs/ra8_imgdec/src/ra8_imgdec_sniff.c
-  ${MDL_REPO_ROOT}/libs/ra8_imgdec/src/ra8_imgdec_name.c
   ${MDL_CORE_SRC_DIR}/mdl_sanitize.c
   ${MDL_FS_SRC}
 )
@@ -685,8 +689,6 @@ add_executable(
   ${MDL_CORE_SRC_DIR}/mdl_storage.c
   ${MDL_CORE_SRC_DIR}/mdl_urlname.c
   # mdl_urlname.c names an image from the shared container sniff (#768).
-  ${MDL_REPO_ROOT}/libs/ra8_imgdec/src/ra8_imgdec_sniff.c
-  ${MDL_REPO_ROOT}/libs/ra8_imgdec/src/ra8_imgdec_name.c
   ${MDL_CORE_SRC_DIR}/mdl_sanitize.c
   ${MDL_CORE_SRC_DIR}/mdl_pathfs.c
   ${MDL_CORE_SRC_DIR}/mdl_session.c
@@ -732,8 +734,6 @@ add_executable(
   ${MDL_CORE_SRC_DIR}/mdl_storage.c
   ${MDL_CORE_SRC_DIR}/mdl_urlname.c
   # mdl_urlname.c names an image from the shared container sniff (#768).
-  ${MDL_REPO_ROOT}/libs/ra8_imgdec/src/ra8_imgdec_sniff.c
-  ${MDL_REPO_ROOT}/libs/ra8_imgdec/src/ra8_imgdec_name.c
   ${MDL_CORE_SRC_DIR}/mdl_sanitize.c
   ${MDL_CORE_SRC_DIR}/mdl_pathfs.c
   ${MDL_CORE_SRC_DIR}/mdl_session.c
@@ -804,8 +804,6 @@ add_executable(
   ${MDL_CORE_SRC_DIR}/mdl_hash.c
   ${MDL_CORE_SRC_DIR}/mdl_urlname.c
   # mdl_urlname.c names an image from the shared container sniff (#768).
-  ${MDL_REPO_ROOT}/libs/ra8_imgdec/src/ra8_imgdec_sniff.c
-  ${MDL_REPO_ROOT}/libs/ra8_imgdec/src/ra8_imgdec_name.c
   ${MDL_CORE_SRC_DIR}/mdl_sanitize.c
   ${MDL_REPO_ROOT}/apps/shared_libs/mdl/tests/src/mdl_state_fs_fault.c
   ${MDL_FS_SRC}
@@ -883,8 +881,6 @@ add_executable(
   ${MDL_CORE_SRC_DIR}/mdl_search.c
   ${MDL_CORE_SRC_DIR}/mdl_urlname.c
   # mdl_urlname.c names an image from the shared container sniff (#768).
-  ${MDL_REPO_ROOT}/libs/ra8_imgdec/src/ra8_imgdec_sniff.c
-  ${MDL_REPO_ROOT}/libs/ra8_imgdec/src/ra8_imgdec_name.c
   ${MDL_CORE_SRC_DIR}/mdl_sanitize.c
   ${MDL_CORE_SRC_DIR}/mdl_politeness.c
   ${MDL_CORE_SRC_DIR}/mdl_hash.c
