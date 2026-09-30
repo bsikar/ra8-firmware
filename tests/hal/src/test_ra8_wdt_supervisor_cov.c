@@ -27,8 +27,9 @@
  *    Linux test runner.
  *
  * All remaining uncovered lines require a ThreadX stub to return a
- * non-zero status code.  The host shim (``ra8_wdt_sup_tx_shim_internal.h``) provides
- * ``static inline`` stubs that unconditionally return ``TX_SUCCESS``; no
+ * non-zero status code.  The ::fw_os host binding
+ * (``tests/support/src/fw_os_host_test.c``) succeeds unless a test arms a
+ * failure with ``fw_os_host_test_fail_next``; no
  * host input can cause them to fail.  Those lines carry ``GCOVR_EXCL_LINE``
  * or ``GCOVR_EXCL_START/STOP`` annotations in the source file.
  *
@@ -139,7 +140,7 @@ static void hook_cov_noop_refresh(void)
  * ``s_state.now()`` so both call-sites inside the default function are
  * confirmed live.
  *
- * ``internal_default_now`` calls the shim ``tx_time_get()``, which
+ * ``internal_default_now`` calls ``fw_os_uptime_ms()``, which
  * returns 0.  With both ``last_checkin_ms`` and ``now_ms`` equal to 0
  * the single registered thread is always within its 200 ms deadline
  * (gap = 0), so ``will_refresh`` is true and the no-op refresh hook
@@ -180,7 +181,7 @@ static void test_default_now_hook_called_by_register(void)
   TEST_ASSERT_EQ(1U, ra8_wdt_supervisor_thread_count());
 
   /* tick also calls s_state.now() = internal_default_now().
-   * tx_time_get() returns 0 -> now=0, last_checkin=0, gap=0 <= 200 -> alive. */
+   * fw_os_uptime_ms() returns 0 -> now=0, last_checkin=0, gap=0 <= 200 -> alive. */
   bool did_refresh = false;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_wdt_supervisor_tick(&did_refresh));
   TEST_ASSERT_EQ(1, did_refresh);
