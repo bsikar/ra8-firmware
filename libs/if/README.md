@@ -118,13 +118,26 @@ did while nothing fed it to a compiler.
 The seam's progress bar. Every row falls as callers move onto `fw_os`; a row
 that grows means a new direct reach-in landed.
 
+Each row counts files with a real call, not files that mention the name: the
+patterns are anchored past a leading comment marker, so the doxygen `@retval`
+prose in `ra8_wdt_supervisor.h`, the `tx_acquire`/`tx_release` example in
+`ra8_fs_seams.h` and the `tx_kernel_enter()` note in `ra8_time.c` are not
+counted as callers. The filter is a line filter, so it drops a comment line
+and not a comment block's continuation text that starts with a word, which
+means these counts are an upper bound rather than an exact one.
+
+Under `libs/`, exactly one file still calls ThreadX: `ra8_wdt_supervisor.c`,
+for `tx_mutex_*`, `tx_thread_*` and `tx_time_get`. The rest of the count is
+examples, apps and tests, which is where the migration ends rather than
+starts.
+
 | Direct RTOS use | First-party files |
 | --- | --- |
-| `tx_thread_ callers` | 67 |
-| `tx_mutex_ callers` | 5 |
+| `tx_thread_ callers` | 66 |
+| `tx_mutex_ callers` | 3 |
 | `tx_semaphore_ callers` | 8 |
-| `tx_queue_ callers` | 2 |
-| `tx_byte_ callers` | 4 |
+| `tx_queue_ callers` | 1 |
+| `tx_byte_ callers` | 2 |
 | `tx_api.h includers` | 81 |
 | `ra8_systick.h includers` | 6 |
 
@@ -137,16 +150,16 @@ direction.
 
 ```sh
 # MEASURED BLOCK -- re-run by scripts/checks/check_measured_counts.py
-# tx_thread_ callers -- 67 file(s)
-grep -rlE '\btx_thread_[a-z_]+\(' libs apps examples tests --include=*.c --include=*.h | grep -v /third_party/ | wc -l
-# tx_mutex_ callers -- 5 file(s)
-grep -rlE '\btx_mutex_[a-z_]+\(' libs apps examples tests --include=*.c --include=*.h | grep -v /third_party/ | wc -l
+# tx_thread_ callers -- 66 file(s)
+grep -rlE '^[^*/]*\btx_thread_[a-z_]+\(' libs apps examples tests --include=*.c --include=*.h | grep -v /third_party/ | wc -l
+# tx_mutex_ callers -- 3 file(s)
+grep -rlE '^[^*/]*\btx_mutex_[a-z_]+\(' libs apps examples tests --include=*.c --include=*.h | grep -v /third_party/ | wc -l
 # tx_semaphore_ callers -- 8 file(s)
-grep -rlE '\btx_semaphore_[a-z_]+\(' libs apps examples tests --include=*.c --include=*.h | grep -v /third_party/ | wc -l
-# tx_queue_ callers -- 2 file(s)
-grep -rlE '\btx_queue_[a-z_]+\(' libs apps examples tests --include=*.c --include=*.h | grep -v /third_party/ | wc -l
-# tx_byte_ callers -- 4 file(s)
-grep -rlE '\btx_byte_[a-z_]+\(' libs apps examples tests --include=*.c --include=*.h | grep -v /third_party/ | wc -l
+grep -rlE '^[^*/]*\btx_semaphore_[a-z_]+\(' libs apps examples tests --include=*.c --include=*.h | grep -v /third_party/ | wc -l
+# tx_queue_ callers -- 1 file(s)
+grep -rlE '^[^*/]*\btx_queue_[a-z_]+\(' libs apps examples tests --include=*.c --include=*.h | grep -v /third_party/ | wc -l
+# tx_byte_ callers -- 2 file(s)
+grep -rlE '^[^*/]*\btx_byte_[a-z_]+\(' libs apps examples tests --include=*.c --include=*.h | grep -v /third_party/ | wc -l
 # tx_api.h includers -- 81 file(s)
 grep -rlE '#[ \t]*include[ \t]+[<"]tx_api\.h[>"]' libs apps examples tests --include=*.c --include=*.h | grep -v /third_party/ | wc -l
 # ra8_systick.h includers -- 6 file(s)
