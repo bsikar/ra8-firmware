@@ -65,6 +65,10 @@ gate_emulator_matrix() (
   bash scripts/emu/matrix.sh --selftest
   bash scripts/emu/matrix_triage.sh --selftest
   python3 scripts/checks/matrix_ratchet.py --selftest
+  # The ratchet reads the baseline's ROWS; --attest asserts the FILE is one
+  # the tool wrote. A parseable hand edit (a whole-file sort, a typed row, an
+  # adjusted total) used to survive indefinitely -- #712. Free, needs no sweep.
+  python3 scripts/checks/matrix_ratchet.py --attest
   # matrix.sh exits non-zero whenever the sweep is not perfectly clean, which is
   # the right default for a human running it by hand but is NOT this gate's
   # verdict -- the ratchet is. Capture the report either way, then judge.
