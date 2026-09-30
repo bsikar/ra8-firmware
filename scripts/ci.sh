@@ -191,6 +191,7 @@ if [[ "$-" == *p* ]]; then
     "disambig-readmes|fast|disambiguation READMEs: every machine-checked claim still holds"
     "pinout-freshness|fast|committed docs/pinouts/ matches a fresh parse of the datasheets"
     "font-coverage|fast|the committed font cmaps cover every declared codepoint"
+    "zig-parallel-trees|fast|no migrated Zig library quietly regrew a C implementation"
     "arch-caps|fast|every gated capability flag is answered by a core and its backends"
     "arch-compiles|fast|arch/arch.h compiles for every core and both capability extremes"
     "measured-counts|fast|every count a MEASURED BLOCK page argues from still matches the tree"
