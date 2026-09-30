@@ -233,6 +233,9 @@ func selfTest(ctx context.Context, root string, stdout, stderr io.Writer) bool {
 	}
 	dir, err := os.MkdirTemp("", "ra8ci-since-selftest-")
 	if err != nil {
+		// A refusal nobody can read is the one an operator retries forever:
+		// say which step could not be staged, not just that the gate said no.
+		fmt.Fprintln(stderr, "selftest fixtures:", err)
 		return false
 	}
 	defer os.RemoveAll(dir)
@@ -242,9 +245,12 @@ func selfTest(ctx context.Context, root string, stdout, stderr io.Writer) bool {
 	if os.WriteFile(bad, []byte("/** @since 9.9.9 */\n"), 0600) != nil ||
 		os.WriteFile(good, []byte("/** @since "+version+" */\n"), 0600) != nil ||
 		os.WriteFile(header, []byte("ra8_err_t ra8_public(void);\n"), 0600) != nil {
+		fmt.Fprintln(stderr, "selftest fixtures: cannot write into", dir)
 		return false
 	}
 	if len(checkValues(bad, version)) == 0 || len(checkValues(good, version)) != 0 || len(checkPresence(header)) == 0 {
+		fmt.Fprintf(stderr, "check selftest: stale=%d current=%d untagged=%d\n",
+			len(checkValues(bad, version)), len(checkValues(good, version)), len(checkPresence(header)))
 		return false
 	}
 	paths, err := collectRepoPaths(ctx, root)
