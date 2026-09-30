@@ -25,6 +25,7 @@ LinkRef = core.LinkRef
 PathRef = core.PathRef
 REPO_ROOT = core.REPO_ROOT
 _bare_declaration_findings = core.bare_declaration_findings
+_built_link_output = core.built_link_output
 _context_sha256 = core.context_sha256
 _declared_bare_code_file = core.declared_bare_code_file
 _declared_work_fixture = core.declared_work_fixture
@@ -384,6 +385,58 @@ def _check_planned_path_cases(root: Path, failures: list[str]) -> None:
         failures.append("tool-private namespace escaped from a non-authority document")
 
 
+def _check_link_output_cases(root: Path, failures: list[str]) -> None:
+    """Prove a bare link output resolves only through its own app's target."""
+    component = root / "demo_app"
+    component.mkdir()
+    (component / "CMakeLists.txt").write_text(
+        "ra8_add_app(demo_app\n  SOURCES src/main.c\n)\n", encoding="ascii"
+    )
+    source = "demo_app/README.md"
+    (component / "README.md").write_text("# Demo\n", encoding="ascii")
+    if _git(root, "add", "demo_app").returncode != 0:
+        _fail("selftest link-output git add failed")
+
+    def ref(line: str, token: str) -> PathRef:
+        return PathRef(token=token, line=1, column=0, source_line=line)
+
+    build_line = "ninja -C cmake-build-debug demo_app.elf"
+    cases = (
+        ("its own target on a build line is sound", source, build_line, "demo_app.elf", True),
+        (
+            "a target this app does not build stays a finding",
+            source,
+            "ninja -C cmake-build-debug other_app.elf",
+            "other_app.elf",
+            False,
+        ),
+        (
+            "the same name in prose stays a finding",
+            source,
+            "Flash demo_app.elf now.",
+            "demo_app.elf",
+            False,
+        ),
+        (
+            "a non-output suffix stays a finding",
+            source,
+            "ninja -C cmake-build-debug demo_app.c",
+            "demo_app.c",
+            False,
+        ),
+        (
+            "a document with no owning component stays a finding",
+            "README.md",
+            build_line,
+            "demo_app.elf",
+            False,
+        ),
+    )
+    for label, doc, line, token, expected in cases:
+        if _built_link_output(root, doc, ref(line, token), token) is not expected:
+            failures.append(f"link-output case wrong: {label}")
+
+
 def _check_bare_declaration_cases(root: Path, failures: list[str]) -> None:
     """Prove exact absent-file declarations cannot linger or broaden."""
     source = "docs/HIL_SUITE.md"
@@ -607,6 +660,7 @@ def selftest() -> int:
         _check_planned_path_cases(root, failures)
         _check_vendor_scope_cases(root, failures)
         _check_bare_declaration_cases(root, failures)
+        _check_link_output_cases(root, failures)
 
     _check_parser_cases(failures)
     _check_bare_parser_cases(failures)
@@ -615,5 +669,5 @@ def selftest() -> int:
         for failure in failures:
             print(f"selftest: check_markdown_references.py FAIL: {failure}", file=sys.stderr)
         return 1
-    print(f"selftest: check_markdown_references.py OK ({len(cases) + 45} both-direction cases)")
+    print(f"selftest: check_markdown_references.py OK ({len(cases) + 50} both-direction cases)")
     return 0
