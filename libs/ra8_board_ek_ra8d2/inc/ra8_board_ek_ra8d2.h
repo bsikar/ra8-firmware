@@ -31,6 +31,10 @@
  *   - ``ra8_board_ek_ra8d2_dualcore.h`` -- where the Cortex-M85 and the
  *     Cortex-M33 meet: the shared SRAM window, CPU1's private bank, and
  *     the MRAM window its image is pinned in.
+ *   - ``ra8_board_ek_ra8d2_clock_profile.h`` -- the board's answer to the
+ *     neutral clock port in ``libs/if``: which chip instance each board
+ *     module index means, and ``ra8_board_clock()``, the one bound handle
+ *     a consumer asks a rate of instead of reaching for ``ra8_cgc``.
  *
  * Authoritative source: ``docs/reference/ek-ra8d2-v1-users-manual.pdf``
  * (Rev 1.01, R20UT5523EG0101, October 2025).
@@ -49,6 +53,7 @@
 
 #include "ra8_board_ek_ra8d2_bringup.h"
 #include "ra8_board_ek_ra8d2_camera_mode.h"
+#include "ra8_board_ek_ra8d2_clock_profile.h"
 #include "ra8_board_ek_ra8d2_connectors.h"
 #include "ra8_board_ek_ra8d2_dualcore.h"
 #include "ra8_board_ek_ra8d2_pdm.h"
