@@ -223,7 +223,6 @@ DECLARED_BARE_CODE_FILES = {
         "wifi.env",
     ): "gitignored local Wi-Fi credentials beside the tracked template",
     ("docs/ARCHITECTURE.md", "crt0.o"): "conceptual toolchain startup-object name",
-    ("docs/DOCS.md", "footer.html"): "discarded doxygen HTML-template output",
     ("docs/IDE.md", "compile_commands.json"): "generated CMake compilation database",
     (
         "docs/INFRASTRUCTURE.md",
@@ -356,9 +355,6 @@ DECLARED_BARE_CONTEXT_SHA256 = {
     ),
     ("docs/COVERAGE.md", "summary.txt"): (
         "f7743a957bc25a7953b672f7b8bf4de3129a55f0954a507db7ee423a5854662e",
-    ),
-    ("docs/DOCS.md", "footer.html"): (
-        "e5ff28637d3b499d8db299fb4417c78d486363c10c0ea503613f00dded8a0084",
     ),
     ("docs/HIL_SUITE.md", "dwf.h"): (
         "429e72c72cbf33e8b2eb17e1756485f6541f159b459688ba974415d9859d76f1",
