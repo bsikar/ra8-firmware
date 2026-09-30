@@ -38,8 +38,9 @@ and has zero directories today.
 `scripts/gen/sbom_registry.py` carries 20 entries: 18 vendored-source
 components (including the nested `esp-hosted/protobuf-c`, vendored at
 `libs/third_party/esp-hosted/common/protobuf-c`), one co-processor firmware
-(`esp-hosted-mcu`, `scope="excluded"`, at `coprocessor/esp32c6/esp-hosted-mcu`)
-and one bundled data asset (`fonts/Literata`, at
+(`esp-hosted-mcu`, `scope="excluded"`, at the git-ignored
+`coprocessor/esp32c6/esp-hosted-mcu`, which `coprocessor/esp32c6/build.sh`
+fetches at build time) and one bundled data asset (`fonts/Literata`, at
 `libs/ra8_fonts/Literata-Regular.ttf`).
 
 ### What `port/` actually contains
