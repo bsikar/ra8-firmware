@@ -1,27 +1,28 @@
 #!/usr/bin/env python3
-"""A coupling count in the port catalog is a measurement, so measure it.
+"""A count written into a document is a measurement, so measure it.
 
-`docs/PORTS.md` is the planning artifact for #693: which ports exist, which
-peripherals portable code still reaches past the board for, and in what order
-the near-term ones get built. The build-first order is argued from the counts,
-so the counts are load-bearing prose.
+Several pages in this tree argue a decision from counts of the tree itself:
+`docs/PORTS.md` argues the build-first port order from how many example files
+reach past the board for each peripheral, and `arch/README.md` argues the
+#694 migration order from how many first-party files include each misfiled
+Armv8-M header. The counts are load-bearing prose, and both pages were written
+the same way: the command run by hand once, the number pasted, the tree left
+free to move underneath it. `docs/PORTS.md` had four figures rot before a gate
+owned them; `arch/README.md` had all four rot inside a week.
 
-They were also hand-run and pasted, against a commit named in the page, and
-they rotted exactly as the page itself predicted they would: it closed with
-"nothing should gate on it until a checker owns the measurement". This is that
-checker.
+So the mechanism is the page's, not this script's. A page opts in by carrying a
+fenced MEASURED BLOCK: one entry per figure, each naming the table row it
+backs, the count it claims, and the command that produces it. This checker
+finds every page carrying that marker, re-runs every entry against the tree,
+and fails when the manifest count, or the table cell it names, has drifted.
+Both directions matter equally: a count that grew silently is a migration
+going backwards, and a count that shrank silently is progress the page is not
+crediting.
 
-The page carries a measurement manifest: one entry per figure, each naming the
-table row it backs, the count it claims, and the command that produces it. The
-checker re-runs every entry against the tree and fails when the manifest count,
-or the table cell it names, has drifted. Both directions matter equally: a
-count that grew silently is a migration going backwards, and a count that
-shrank silently is progress the page is not crediting.
-
-Everything checked is DERIVED from the page. The ports, the patterns, the
-qualifiers and the table rows all come out of the manifest, so a row added to
-the catalog is checked as soon as its entry is written, and there is no second
-place in this script to keep in step.
+Everything checked is DERIVED from the pages. The rows, the patterns, the
+qualifiers and the roots all come out of the manifests, so a new page is
+checked as soon as it carries a block, and there is no second place in this
+script to keep in step.
 
 What it reports:
 
@@ -35,7 +36,7 @@ What it reports:
     measurement, so the block cannot be read as a whole.
 
 Usage:
-  scripts/checks/check_ports_catalog.py [--check] [--update] [--selftest]
+  scripts/checks/check_measured_counts.py [--check] [--update] [--selftest]
 
 `--update` rewrites the manifest counts and the table cells to what the tree
 says, for the case where the drift is real progress being banked.
@@ -50,10 +51,13 @@ import subprocess
 import sys
 from pathlib import Path
 
-CATALOG_REL = "docs/PORTS.md"
+# Pages opt in by carrying the marker; these are the trees searched for them.
+PAGE_ROOTS = ("docs", "arch", "libs", "apps", "scripts")
+SKIP_DIRS = frozenset({"third_party", "node_modules"})
 
-# A read that finds fewer than this did not find a tidier page; it collapsed.
+# A read that finds fewer than this did not find tidier pages; it collapsed.
 MEASUREMENT_FLOOR = 8
+PAGE_FLOOR = 2
 SCANNED_FILE_FLOOR = 100
 
 BLOCK_MARKER = "MEASURED BLOCK"
@@ -64,8 +68,9 @@ CLAIM_RE = re.compile(
 )
 # The command is the specification, so it is parsed rather than trusted.
 COMMAND_RE = re.compile(
-    r"^grep -rlE '(?P<pattern>[^']+)' (?P<root>[A-Za-z0-9_./-]+)"
-    r"(?P<includes>(?: --include=\*\.[A-Za-z0-9]+)+) \| wc -l\s*$"
+    r"^grep -rlE '(?P<pattern>[^']+)' (?P<roots>[A-Za-z0-9_./-]+(?: [A-Za-z0-9_./-]+)*)"
+    r"(?P<includes>(?: --include=\*\.[A-Za-z0-9]+)+)"
+    r"(?P<filter>(?: \| grep -v /third_party/)?) \| wc -l\s*$"
 )
 # The population rows are a file count, not a match count, so the page states
 # them as the find that produces them.
@@ -113,17 +118,19 @@ class Measurement:
         qualifier: str | None,
         claimed: int,
         pattern: str | None,
-        root: str,
+        roots: tuple[str, ...],
         suffixes: tuple[str, ...],
         claim_line: int,
+        skip_third_party: bool = False,
     ) -> None:
         self.row = row
         self.qualifier = qualifier
         self.claimed = claimed
         self.pattern = pattern
-        self.root = root
+        self.roots = roots
         self.suffixes = suffixes
         self.claim_line = claim_line
+        self.skip_third_party = skip_third_party
 
     @property
     def key(self) -> str:
@@ -142,10 +149,12 @@ class Measurement:
                 raise CheckError(
                     f"{self.key}: unreadable pattern {self.pattern!r}: {exc}"
                 ) from exc
-        prefix = self.root.rstrip("/") + "/"
+        prefixes = tuple(root.rstrip("/") + "/" for root in self.roots)
         hits = 0
         for path, text in tree.items():
-            if not path.startswith(prefix):
+            if not path.startswith(prefixes):
+                continue
+            if self.skip_third_party and "/third_party/" in path:
                 continue
             if not any(path.endswith(suffix) for suffix in self.suffixes):
                 continue
@@ -173,7 +182,9 @@ def read_tree(root: Path, subdirs: set[str], suffixes: set[str]) -> dict[str, st
     return tree
 
 
-def parse_manifest(lines: list[str]) -> tuple[list[Measurement], list[tuple[int, str]]]:
+def parse_manifest(
+    lines: list[str], rel: str = "page"
+) -> tuple[list[Measurement], list[tuple[int, str]]]:
     """Read the fenced block the page marks as its manifest."""
     start = None
     for index, line in enumerate(lines):
@@ -181,7 +192,7 @@ def parse_manifest(lines: list[str]) -> tuple[list[Measurement], list[tuple[int,
             start = index
             break
     if start is None:
-        raise CheckError(f"{CATALOG_REL} carries no {BLOCK_MARKER} marker")
+        raise CheckError(f"{rel} carries no {BLOCK_MARKER} marker")
 
     open_fence = None
     for index in range(start, -1, -1):
@@ -228,21 +239,24 @@ def parse_manifest(lines: list[str]) -> tuple[list[Measurement], list[tuple[int,
         pending = None
         if command is not None:
             pattern = command.group("pattern")
-            root = command.group("root")
+            roots = tuple(command.group("roots").split())
             suffixes = tuple(INCLUDE_RE.findall(command.group("includes")))
+            skip_third_party = bool(command.group("filter").strip())
         else:
             pattern = None
-            root = population.group("root")
+            roots = (population.group("root"),)
             suffixes = tuple(NAME_RE.findall(population.group("names")))
+            skip_third_party = False
         measurements.append(
             Measurement(
                 row=strip_markup(claim.group("row")),
                 qualifier=claim.group("qual"),
                 claimed=int(claim.group("count")),
                 pattern=pattern,
-                root=root,
+                roots=roots,
                 suffixes=suffixes,
                 claim_line=claim_index,
+                skip_third_party=skip_third_party,
             )
         )
     if pending is not None:
@@ -267,16 +281,16 @@ def parse_tables(lines: list[str]) -> list[tuple[int, str, list[str]]]:
 
 
 def analyse(
-    text: str, tree: dict[str, str]
+    text: str, tree: dict[str, str], rel: str = "page"
 ) -> tuple[list[str], list[Measurement], dict[str, int]]:
     """Report every drift between the page, its manifest and the tree."""
     lines = text.splitlines()
-    measurements, unparsable = parse_manifest(lines)
+    measurements, unparsable = parse_manifest(lines, rel)
     rows = parse_tables(lines)
 
     findings: list[str] = []
     for line_no, detail in unparsable:
-        findings.append(f"{CATALOG_REL}:{line_no}: unparsable-measurement: {detail}")
+        findings.append(f"{rel}:{line_no}: unparsable-measurement: {detail}")
 
     by_row: dict[str, list[tuple[int, list[str]]]] = {}
     for index, label, cells in rows:
@@ -288,14 +302,14 @@ def analyse(
         measured[measurement.key] = actual
         if actual != measurement.claimed:
             findings.append(
-                f"{CATALOG_REL}:{measurement.claim_line + 1}: miscounted-measurement: "
+                f"{rel}:{measurement.claim_line + 1}: miscounted-measurement: "
                 f"{measurement.key} claims {measurement.claimed}, the tree says {actual}"
             )
 
         candidates = by_row.get(measurement.row)
         if not candidates:
             findings.append(
-                f"{CATALOG_REL}:{measurement.claim_line + 1}: unbound-measurement: "
+                f"{rel}:{measurement.claim_line + 1}: unbound-measurement: "
                 f"no table row named {measurement.row!r}"
             )
             continue
@@ -305,7 +319,7 @@ def analyse(
         ):
             index = candidates[0][0]
             findings.append(
-                f"{CATALOG_REL}:{index + 1}: contradicted-row: {measurement.row} "
+                f"{rel}:{index + 1}: contradicted-row: {measurement.row} "
                 f"does not carry {wanted!r} the manifest claims for it"
             )
 
@@ -317,7 +331,7 @@ def analyse(
             bare = strip_markup(cell)
             if CELL_COUNT_RE.fullmatch(bare) or re.fullmatch(r"\d+ [A-Za-z0-9/_-]+", bare):
                 findings.append(
-                    f"{CATALOG_REL}:{index + 1}: undocumented-row: {label} carries "
+                    f"{rel}:{index + 1}: undocumented-row: {label} carries "
                     f"the count {bare!r} with no manifest entry behind it"
                 )
                 break
@@ -358,23 +372,55 @@ def rewrite(text: str, tree: dict[str, str]) -> str:
 
 
 def needed_scope(measurements: list[Measurement]) -> tuple[set[str], set[str]]:
-    subdirs = {measurement.root.strip("/") for measurement in measurements}
+    subdirs = {
+        root.strip("/") for measurement in measurements for root in measurement.roots
+    }
     suffixes = {suffix for measurement in measurements for suffix in measurement.suffixes}
     return subdirs, suffixes
 
 
-def run(root: Path, update: bool) -> int:
-    path = root / CATALOG_REL
-    if not path.is_file():
-        raise CheckError(f"{CATALOG_REL} is missing")
-    text = path.read_text(encoding="utf-8")
+def discover_pages(root: Path) -> list[str]:
+    """Every markdown page that opted in by carrying the marker."""
+    pages: list[str] = []
+    for top in PAGE_ROOTS:
+        base = root / top
+        if not base.is_dir():
+            continue
+        for path in sorted(base.rglob("*.md")):
+            if SKIP_DIRS & set(path.relative_to(root).parts):
+                continue
+            try:
+                text = path.read_text(encoding="utf-8", errors="replace")
+            except OSError as exc:
+                raise CheckError(f"cannot read {path}: {exc}") from exc
+            if BLOCK_MARKER in text:
+                pages.append(path.relative_to(root).as_posix())
+    return pages
 
-    provisional, _ = parse_manifest(text.splitlines())
+
+def run(root: Path, update: bool) -> int:
+    pages = discover_pages(root)
+    if len(pages) < PAGE_FLOOR:
+        raise CheckError(
+            f"found {len(pages)} page(s) carrying a {BLOCK_MARKER}, floor is "
+            f"{PAGE_FLOOR}; the discovery, not the tree, is what shrank"
+        )
+
+    provisional: list[Measurement] = []
+    texts: dict[str, str] = {}
+    for rel in pages:
+        text = (root / rel).read_text(encoding="utf-8")
+        texts[rel] = text
+        entries, _ = parse_manifest(text.splitlines(), rel)
+        if not entries:
+            raise CheckError(f"{rel} carries a {BLOCK_MARKER} with no measurement in it")
+        provisional.extend(entries)
     if len(provisional) < MEASUREMENT_FLOOR:
         raise CheckError(
-            f"the manifest holds {len(provisional)} measurement(s), floor is "
-            f"{MEASUREMENT_FLOOR}; the block or its grammar collapsed"
+            f"the manifests hold {len(provisional)} measurement(s), floor is "
+            f"{MEASUREMENT_FLOOR}; a block or its grammar collapsed"
         )
+
     subdirs, suffixes = needed_scope(provisional)
     tree = read_tree(root, subdirs, suffixes)
     if len(tree) < SCANNED_FILE_FLOOR:
@@ -383,35 +429,36 @@ def run(root: Path, update: bool) -> int:
             f"{SCANNED_FILE_FLOOR}; the scan, not the tree, is what shrank"
         )
 
-    if update:
-        path.write_text(rewrite(text, tree), encoding="utf-8")
-        findings, measurements, counts = analyse(
-            path.read_text(encoding="utf-8"), tree
-        )
-        print(
-            f"ports-catalog: re-pinned {counts['measurements']} measurement(s) "
-            f"against {counts['scanned']} scanned file(s)."
-        )
-        for finding in findings:
-            print(finding, file=sys.stderr)
-        return 1 if findings else 0
+    findings: list[str] = []
+    measured = 0
+    rows = 0
+    for rel in pages:
+        text = texts[rel]
+        if update:
+            (root / rel).write_text(rewrite(text, tree), encoding="utf-8")
+            text = (root / rel).read_text(encoding="utf-8")
+        page_findings, _, counts = analyse(text, tree, rel)
+        findings.extend(page_findings)
+        measured += counts["measurements"]
+        rows += counts["rows"]
 
-    findings, measurements, counts = analyse(text, tree)
+    verb = "re-pinned" if update else "checked"
     print(
-        f"ports-catalog: {counts['measurements']} measurement(s) over "
-        f"{counts['scanned']} scanned file(s) in {counts['rows']} table row(s)."
+        f"measured-counts: {verb} {measured} measurement(s) across {len(pages)} "
+        f"page(s) over {len(tree)} scanned file(s) in {rows} table row(s)."
     )
     if findings:
         for finding in findings:
             print(finding, file=sys.stderr)
-        print(
-            f"ports-catalog: {len(findings)} finding(s). Re-run the command each "
-            "entry names; if the drift is real, "
-            "`scripts/checks/check_ports_catalog.py --update` banks it.",
-            file=sys.stderr,
-        )
+        if not update:
+            print(
+                f"measured-counts: {len(findings)} finding(s). Re-run the command "
+                "each entry names; if the drift is real, "
+                "`scripts/checks/check_measured_counts.py --update` banks it.",
+                file=sys.stderr,
+            )
         return 1
-    print("ports-catalog: every documented count matches the tree.")
+    print("measured-counts: every documented count matches the tree.")
     return 0
 
 
@@ -426,25 +473,32 @@ _TREE = {
     "examples/c/main.h": "void none(void);",
     "examples/d/main.c": "ra8_gpt_close();",
     "docs/elsewhere.c": "ra8_cgc_start();",
+    "libs/one/src/a.c": '#include "ra8_scb.h"',
+    "libs/third_party/vendor/b.c": '#include "ra8_scb.h"',
+    "apps/two/main.c": '#include "ra8_scb.h"',
 }
 
 
 def _page(
     clock_claim: int = 2,
     gpt_claim: int = 2,
+    scb_claim: int = 2,
     clock_cell: str | None = None,
     gpt_cell: str | None = None,
+    scb_cell: str | None = None,
     extra_rows: str = "",
     extra_entries: str = "",
 ) -> str:
     clock_cell = str(clock_claim) if clock_cell is None else clock_cell
     gpt_cell = f"{gpt_claim} GPT" if gpt_cell is None else gpt_cell
+    scb_cell = str(scb_claim) if scb_cell is None else scb_cell
     return f"""# Port catalog
 
 | Port | Coupled example files |
 | --- | ---: |
 | clock / CGC | {clock_cell} |
 | timer / counter / capture | {gpt_cell} |
+| `ra8_scb.h` | {scb_cell} |
 {extra_rows}
 ### How the numbers were measured
 
@@ -454,6 +508,8 @@ def _page(
 grep -rlE 'ra8_cgc' examples --include=*.c --include=*.h | wc -l
 # timer / counter / capture [GPT] -- {gpt_claim} file(s)
 grep -rlE 'ra8_gpt' examples --include=*.c --include=*.h | wc -l
+# ra8_scb.h -- {scb_claim} file(s)
+grep -rlE '#[ \t]*include[ \t]+"ra8_scb\.h"' libs apps --include=*.c --include=*.h | grep -v /third_party/ | wc -l
 {extra_entries}```
 """
 
@@ -469,55 +525,70 @@ def _kinds(findings: list[str]) -> list[str]:
 def _selftest_cases() -> list[tuple[str, list[str]]]:
     cases: list[tuple[str, list[str]]] = []
 
-    findings, _, counts = analyse(_page(), _TREE)
+    findings, _, counts = analyse(_page(), _TREE, "page.md")
     cases.append(("a page that matches the tree is silent", _kinds(findings)))
-    if counts["measurements"] != 2:
+    if counts["measurements"] != 3:
         cases.append(("manifest read", ["wrong-measurement-count"]))
 
-    findings, _, _ = analyse(_page(clock_claim=9), _TREE)
+    findings, _, _ = analyse(_page(clock_claim=9), _TREE, "page.md")
     cases.append(("a stale count is reported", _kinds(findings)))
 
-    findings, _, _ = analyse(_page(clock_claim=1), _TREE)
+    findings, _, _ = analyse(_page(clock_claim=1), _TREE, "page.md")
     cases.append(("a count below the tree is reported too", _kinds(findings)))
 
-    findings, _, _ = analyse(_page(clock_cell="7"), _TREE)
+    findings, _, _ = analyse(_page(clock_cell="7"), _TREE, "page.md")
     cases.append(("a table cell that drifted from the manifest", _kinds(findings)))
 
-    findings, _, _ = analyse(_page(gpt_cell="2"), _TREE)
+    findings, _, _ = analyse(_page(gpt_cell="2"), _TREE, "page.md")
     cases.append(("a qualifier dropped from the cell", _kinds(findings)))
 
     findings, _, _ = analyse(
-        _page(extra_rows="| serial | 4 |\n"), _TREE
+        _page(extra_rows="| serial | 4 |\n"), _TREE, "page.md"
     )
     cases.append(("a row nobody can reproduce", _kinds(findings)))
 
     findings, _, _ = analyse(
         _page(extra_entries="# gpio -- 0 file(s)\ngrep -rlE 'ra8_gpio' examples --include=*.c | wc -l\n"),
         _TREE,
+        "page.md",
     )
     cases.append(("an entry naming no table row", _kinds(findings)))
 
     findings, _, _ = analyse(
-        _page(extra_entries="python3 -c 'print(3)'\n"), _TREE
+        _page(extra_entries="python3 -c 'print(3)'\n"), _TREE, "page.md"
     )
     cases.append(("a command that is not a measurement", _kinds(findings)))
 
     findings, _, _ = analyse(
-        _page(extra_entries="# display -- 1 file(s)\n"), _TREE
+        _page(extra_entries="# display -- 1 file(s)\n"), _TREE, "page.md"
     )
     cases.append(("a claim with no command under it", _kinds(findings)))
 
     # Scope: the same pattern outside the named root must not count.
-    findings, _, _ = analyse(_page(), dict(_TREE, **{"docs/more.c": "ra8_cgc_x();"}))
+    findings, _, _ = analyse(_page(), dict(_TREE, **{"docs/more.c": "ra8_cgc_x();"}), "page.md")
     cases.append(("a hit outside examples/ is not counted", _kinds(findings)))
 
     # Scope: a suffix the command does not name must not count.
-    findings, _, _ = analyse(_page(), dict(_TREE, **{"examples/e/main.cpp": "ra8_cgc_x();"}))
+    findings, _, _ = analyse(_page(), dict(_TREE, **{"examples/e/main.cpp": "ra8_cgc_x();"}), "page.md")
     cases.append(("a suffix the command excludes is not counted", _kinds(findings)))
 
     # A real hit in scope must move the number, or nothing is being measured.
-    findings, _, _ = analyse(_page(), dict(_TREE, **{"examples/e/main.c": "ra8_cgc_x();"}))
+    findings, _, _ = analyse(_page(), dict(_TREE, **{"examples/e/main.c": "ra8_cgc_x();"}), "page.md")
     cases.append(("a new reach-in fails the page", _kinds(findings)))
+
+    # Multi-root: the second root counts, so a hit there must move the number.
+    findings, _, _ = analyse(
+        _page(), dict(_TREE, **{"apps/three/main.c": '#include "ra8_scb.h"'}), "page.md"
+    )
+    cases.append(("a hit in the second root is counted", _kinds(findings)))
+
+    # The documented `| grep -v /third_party/` stage has to actually exclude.
+    findings, _, _ = analyse(
+        _page(),
+        dict(_TREE, **{"libs/third_party/other/c.c": '#include "ra8_scb.h"'}),
+        "page.md",
+    )
+    cases.append(("a vendored hit is excluded as the command says", _kinds(findings)))
 
     return cases
 
@@ -535,6 +606,8 @@ _EXPECTED = [
     [],
     [],
     ["miscounted-measurement"],
+    ["miscounted-measurement"],
+    [],
 ]
 
 
@@ -554,17 +627,20 @@ def selftest() -> int:
 
     # --update has to end the argument, not restate it.
     banked = rewrite(_page(clock_claim=9, clock_cell="9"), _TREE)
-    findings, _, _ = analyse(banked, _TREE)
+    findings, _, _ = analyse(banked, _TREE, "page.md")
     if findings:
         failures.append(f"--update left {_kinds(findings)} behind")
     if "-- 2 file(s)" not in banked or "| clock / CGC | 2 |" not in banked:
         failures.append("--update did not rewrite both the manifest and the row")
 
     # The floor is the guard against a grammar that stopped matching.
-    empty = _page().replace("# clock / CGC -- 2 file(s)", "").replace(
-        "# timer / counter / capture [GPT] -- 2 file(s)", ""
+    empty = (
+        _page()
+        .replace("# clock / CGC -- 2 file(s)", "")
+        .replace("# timer / counter / capture [GPT] -- 2 file(s)", "")
+        .replace("# ra8_scb.h -- 2 file(s)", "")
     )
-    measurements, unparsable = parse_manifest(empty.splitlines())
+    measurements, unparsable = parse_manifest(empty.splitlines(), "page.md")
     if measurements or not unparsable:
         failures.append("a manifest with no claims must read as empty, not as clean")
 
@@ -587,7 +663,7 @@ def main(argv: list[str]) -> int:
     try:
         return run(repo_root(), update="--update" in args)
     except CheckError as exc:
-        print(f"ports-catalog: {exc}", file=sys.stderr)
+        print(f"measured-counts: {exc}", file=sys.stderr)
         return 2
 
 
