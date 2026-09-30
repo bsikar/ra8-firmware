@@ -66,3 +66,89 @@ files: libs/if_ra8_vfs/src/*.c = 1
 files: libs/ra8_fs/src/*.c = 32
 files: libs/ra8_io/src/*.c = 25
 -->
+
+## The OSAL seam: `fw_os`
+
+`fw_os.h` is child (c) of epic #692, the OS port of #693. Portable libraries
+state what they need of an operating system there; a binding chosen by the
+composition root supplies it. Nothing above the header names ThreadX.
+
+The surface is derived from what this tree actually calls, not from what an
+RTOS offers. Two facts from the measurement below shaped it.
+
+The coupling is almost entirely in `examples/`. Of the 76 first-party files
+that call `tx_*`, only five sit in `libs/`: `ra8_wdt_supervisor` (header and
+source), `ra8_modem_at`, `ra8_core/src/ra8_time.c`, and the `ra8_fs` seam
+header. So the seam's job is to free those five and give the examples one thing
+to call, not to wrap ThreadX completely.
+
+The surface is small. Threads, mutexes, semaphores and a clock read cover
+nearly all of it. Queues appear in two files and byte pools in four, so queues
+are capability-gated behind `FW_OS_HAS_QUEUE` and declined by default, and byte
+pools are not in the contract at all: four callers is not enough evidence to
+fix an allocator shape into a portable port, and three of the four are USB
+examples that could take caller-owned memory instead.
+
+Three design calls worth naming, since they are choices rather than readings:
+
+- **Milliseconds, not ticks.** `tx_time_get` returns ticks and the tick rate is
+  an RTOS build constant, so a tick count means nothing to a portable caller
+  without a second fact. Durations and instants are milliseconds;
+  `fw_os_tick_hz` is there for the callers that genuinely need the resolution.
+- **A four-level priority band, not a number.** RTOS priority scales disagree
+  on direction and width. Four levels is what this tree's threads actually
+  distinguish, and a caller needing finer control is expressing a scheduling
+  policy that belongs in the composition root.
+- **ThreadX's preemption threshold, time slice, trace hooks and FPU
+  enable/disable pair are deliberately absent.** They are real features with no
+  portable meaning, and a seam carrying them is a ThreadX header with a new
+  prefix. A binding that wants them exposes them in its own binding header,
+  which the composition root may name, because it already knows which RTOS it
+  picked.
+
+There is no binding yet, so the contract carries its own storage-size defaults
+behind `#ifndef` rather than including a `fw_os_caps.h` that does not exist. A
+binding overrides them from its build. `src/fw_os_contract.c` is a translation
+unit with no code in it whose only job is to be compiled by the ordinary
+`libs/if/src/*.c` discovery, so the contract cannot rot the way `arch/arch.h`
+did while nothing fed it to a compiler.
+
+## What still reaches an RTOS directly
+
+The seam's progress bar. Every row falls as callers move onto `fw_os`; a row
+that grows means a new direct reach-in landed.
+
+| Direct RTOS use | First-party files |
+| --- | --- |
+| `tx_thread_ callers` | 67 |
+| `tx_mutex_ callers` | 5 |
+| `tx_semaphore_ callers` | 8 |
+| `tx_queue_ callers` | 2 |
+| `tx_byte_ callers` | 4 |
+| `tx_api.h includers` | 81 |
+| `ra8_systick.h includers` | 6 |
+
+## How the numbers here are measured
+
+Every count above is one entry in the block below: the claim it backs and the
+command that produces it. `scripts/checks/check_measured_counts.py` re-runs all
+of them, so a number here cannot drift from the tree without failing, in either
+direction.
+
+```sh
+# MEASURED BLOCK -- re-run by scripts/checks/check_measured_counts.py
+# tx_thread_ callers -- 67 file(s)
+grep -rlE '\btx_thread_[a-z_]+\(' libs apps examples tests --include=*.c --include=*.h | grep -v /third_party/ | wc -l
+# tx_mutex_ callers -- 5 file(s)
+grep -rlE '\btx_mutex_[a-z_]+\(' libs apps examples tests --include=*.c --include=*.h | grep -v /third_party/ | wc -l
+# tx_semaphore_ callers -- 8 file(s)
+grep -rlE '\btx_semaphore_[a-z_]+\(' libs apps examples tests --include=*.c --include=*.h | grep -v /third_party/ | wc -l
+# tx_queue_ callers -- 2 file(s)
+grep -rlE '\btx_queue_[a-z_]+\(' libs apps examples tests --include=*.c --include=*.h | grep -v /third_party/ | wc -l
+# tx_byte_ callers -- 4 file(s)
+grep -rlE '\btx_byte_[a-z_]+\(' libs apps examples tests --include=*.c --include=*.h | grep -v /third_party/ | wc -l
+# tx_api.h includers -- 81 file(s)
+grep -rlE '#[ \t]*include[ \t]+[<"]tx_api\.h[>"]' libs apps examples tests --include=*.c --include=*.h | grep -v /third_party/ | wc -l
+# ra8_systick.h includers -- 6 file(s)
+grep -rlE '#[ \t]*include[ \t]+"ra8_systick\.h"' libs apps examples tests --include=*.c --include=*.h | grep -v /third_party/ | wc -l
+```
