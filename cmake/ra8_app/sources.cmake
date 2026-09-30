@@ -208,14 +208,12 @@ macro(_ra8_app_collect_sources)
     REGEX
     "/src/boot/"
   )
-  file(GLOB_RECURSE _ra8_secure_app CONFIGURE_DEPENDS ${RA8_REPO_ROOT}/libs/ra8_secure_app/src/*.c)
-  _ra8_app_require_compilable_lib(
-    ra8_secure_app
-    "${RA8_REPO_ROOT}/libs/ra8_secure_app"
-    "links ra8_secure_app into every app"
-    "${_ra8_secure_app}"
-    ""
-  )
+  # ra8_secure_app has no C sources either: the sealed-key vault, the CMAC
+  # core, the OTA commit gate and the secure TRNG are Zig (#2591, #2659,
+  # #2670) and its objects come from the Zig static archive registered below.
+  # Left unglobbed and deliberately outside the #908 guard, for the same
+  # reason as ra8_net_pal above.
+  set(_ra8_secure_app "")
   if(_RA8_APP_NO_NSC)
     set(_ra8_lib_nsc "")
   elseif(_RA8_APP_NSC_SRCS)
@@ -252,6 +250,13 @@ macro(_ra8_app_collect_sources)
                                                  "${_ra8_net_pal_path}/src/ra8_net_pal.c"
   )
     list(APPEND _ra8_lib_zig "ra8_net_pal|${_ra8_net_pal_path}")
+  endif()
+  # ra8_secure_app is universal in exactly the same way, and its last C
+  # translation unit is gone (#2670), so its archive is registered here
+  # rather than through the LIBS loop below, which only sees named libraries.
+  set(_ra8_secure_app_path "${RA8_REPO_ROOT}/libs/ra8_secure_app")
+  if(EXISTS "${_ra8_secure_app_path}/build.zig")
+    list(APPEND _ra8_lib_zig "ra8_secure_app|${_ra8_secure_app_path}")
   endif()
   set(_ra8_lib_inc "")
   foreach(_ra8_lib ${_RA8_APP_LIBS})
