@@ -897,7 +897,6 @@ libs/ra8_usb_pal/src/ra8_usb_pal.c	MEASURED	142	149	86	94
 libs/ra8_wdt_supervisor/src/ra8_wdt_supervisor.c	MEASURED	137	137	74	82
 libs/ra8_widget/src/ra8_widget.c	MEASURED	125	129	87	98
 libs/ra8_widget/src/ra8_widget_book.c	MEASURED	94	94	39	40
-libs/ra8_widget/src/ra8_widget_keyboard.c	MEASURED	56	56	38	38
 libs/ra8_widget/src/ra8_widget_nav_bar.c	MEASURED	66	66	36	36
 libs/ra8_widget/src/ra8_widget_panel.c	MEASURED	68	70	43	48
 libs/ra8_widget/src/ra8_widget_reflow_view.c	MEASURED	65	65	36	36
