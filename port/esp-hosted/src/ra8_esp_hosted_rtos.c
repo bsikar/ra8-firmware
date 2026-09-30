@@ -22,8 +22,9 @@
 #include <stdint.h>
 #include <string.h>
 
+#include "fw_if_clock.h"
 #include "ra8_attributes.h"
-#include "ra8_cgc.h"
+#include "ra8_board_ek_ra8d2_clock_profile.h"
 #include "ra8_check.h"
 #include "ra8_err.h"
 #include "ra8_esp_hosted_port.h"
@@ -773,8 +774,9 @@ ra8_err_t priv_ra8_esp_hosted_rtos_init(void)
   (void)memset(&s_rtos, 0, sizeof(s_rtos));
   RA8_RETURN_ON_ERROR(priv_ra8_esp_hosted_rtos_pool_init(), s_tag, "byte pools refused");
   RA8_RETURN_ON_ERROR(priv_ra8_esp_hosted_rtos_sync_init(), s_tag, "sync tables refused");
-  uint32_t cpu_hz = 0U;
-  if (ra8_cgc_get_clock_hz(k_ra8_clock_id_cpuclk0, &cpu_hz) != k_ra8_ok) {
+  uint32_t                cpu_hz = 0U;
+  const fw_clock_module_t core   = {.kind = k_fw_clock_module_core, .index = 0U};
+  if (fw_clock_rate_for(ra8_board_clock(), core, &cpu_hz) != k_ra8_ok) {
     cpu_hz = (uint32_t)k_ra8_esp_hosted_default_cpu_hz;
     ra8_log_warn(s_tag, "core rate query failed; usleep uses the fallback rate");
   }

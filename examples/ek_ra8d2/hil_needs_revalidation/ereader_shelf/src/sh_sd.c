@@ -27,8 +27,8 @@
 
 #include "epub.h"
 #include "epub_fs.h"
+#include "fw_if_clock.h"
 #include "ra8_board_ek_ra8d2.h"
-#include "ra8_cgc.h"
 #include "ra8_check.h"
 #include "ra8_fs.h"
 #include "ra8_port_constants.h"
@@ -40,7 +40,10 @@
 
 /** @enum sh_sd_const_t @brief SD bus constants. */
 typedef enum : uint32_t {
-  k_sd_spi_chan = 0U, /**< Pmod2 / J25 SCI0 Simple-SPI channel. */
+  /** @brief Pmod2 / J25 Simple-SPI channel, as the chip numbers SCI blocks. */
+  k_sd_spi_chan = (uint32_t)k_ra8_board_pmod2_sci_channel,
+  /** @brief The same block, as the board's clock profile numbers its uarts. */
+  k_sd_spi_module_index = 0U,
 } sh_sd_const_t;
 
 static const ra8_port_pin_t k_sd_pin_sck  = (ra8_port_pin_t)k_ra8_board_pmod2_spi_sck;
@@ -96,7 +99,11 @@ static ra8_err_t sh_sd_xfer(void* ctx, const uint8_t* tx, uint8_t* rx, uint32_t 
 
 bool sh_sd_mount(void)
 {
-  if (ra8_cgc_get_clock_hz(k_ra8_clock_id_pclka, &s_pclka_hz) != k_ra8_ok) {
+  /* The divisor wants the rate feeding this SCI block, which the board answers
+   * for its own uart index rather than by naming a chip clock domain. */
+  const fw_clock_module_t spi_block = {.kind = k_fw_clock_module_uart,
+                                       .index = (uint8_t)k_sd_spi_module_index};
+  if (fw_clock_rate_for(ra8_board_clock(), spi_block, &s_pclka_hz) != k_ra8_ok) {
     return false;
   }
   if (sh_sd_bus_init() != k_ra8_ok) {
