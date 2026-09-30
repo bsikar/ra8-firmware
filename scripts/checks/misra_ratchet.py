@@ -136,8 +136,19 @@ def load_baseline(path: Path) -> tuple[Counter[tuple[str, str]], str]:
     return counts, version
 
 
-def write_baseline(path: Path, counts: Counter[tuple[str, str]]) -> None:
-    """Serialize `counts` (sorted by file, then rule) with a provenance header."""
+def render_baseline(counts: Counter[tuple[str, str]], version: str) -> str:
+    """Return the canonical committed text for `counts` under cppcheck `version`.
+
+    ONE definition of the file's shape: the fixed header, the audited migration
+    provenance, the recorded producer version and total, then the non-zero
+    buckets in sorted order, one tab-separated row each. ``write_baseline``
+    emits it and ``attest_baseline`` re-derives it, so "what the tool would
+    have produced" is never a second, drifting opinion (#712).
+
+    `version` is a parameter rather than a `cppcheck_version()` call because
+    attestation must re-derive the file as the machine that WROTE it did, on
+    boxes with a different cppcheck or none at all.
+    """
     total = sum(counts.values())
     lines = [
         "# MISRA-C 2012 ratchet baseline -- per-file-per-rule finding counts.",
@@ -148,12 +159,90 @@ def write_baseline(path: Path, counts: Counter[tuple[str, str]]) -> None:
         "# fix those at the root or record a deviation in",
         "# docs/qualification/MISRA_DEVIATIONS.md first.",
         *MIGRATION_PROVENANCE_HEADER,
-        f"# cppcheck: {cppcheck_version()}",
+        f"# cppcheck: {version}",
         f"# total findings: {total}",
         "# columns: file<TAB>rule<TAB>count",
     ]
-    lines += [f"{fname}\t{rule}\t{count}" for (fname, rule), count in sorted(counts.items())]
-    path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+    lines += [
+        f"{fname}\t{rule}\t{count}"
+        for (fname, rule), count in sorted(counts.items())
+        if count
+    ]
+    return "\n".join(lines) + "\n"
+
+
+def write_baseline(path: Path, counts: Counter[tuple[str, str]]) -> None:
+    """Serialize `counts` (sorted by file, then rule) with a provenance header.
+
+    A zero-count bucket never reaches the file: it is burned-down debt wearing
+    a row, and leaving it behind keeps a dead (file, rule) pair alive as
+    headroom nobody audited.
+    """
+    keep = Counter({key: n for key, n in counts.items() if n})
+    path.write_text(render_baseline(keep, cppcheck_version()), encoding="utf-8")
+
+
+def attest_baseline(path: Path = BASELINE_FILE) -> list[str]:
+    """Return the reasons the committed baseline is not one this tool produced.
+
+    #712: the ratchet baselines are machine-generated, but nothing asserted
+    they were machine-written. A plain `sort` over the whole clang-tidy
+    baseline re-ordered its header, added a row the ratchet itself refuses,
+    and survived ten days of CI. ``--check`` read the rows and never noticed,
+    because parseable was the only bar. This file is 2,700+ rows of frozen
+    debt, so the same hand edit here would be even harder to spot in review.
+
+    So re-derive the canonical text from the committed rows, reusing the
+    version the file itself records, and demand byte-identity. A re-ordered or
+    truncated header, dropped migration provenance, a stale `total findings`
+    line, a stray blank line, a duplicated or unsorted row, a wrong column
+    count, a CRLF: all of those stop being invisible.
+
+    Also refuse a zero-count row outright. Zero findings is burn-down, and a
+    frozen zero is headroom for a bucket nobody is watching.
+
+    What this deliberately does NOT claim: it cannot tell a hand-written row
+    whose shape is canonical from one cppcheck produced. It proves the file is
+    in the form the tool emits, which is what the ten-day bypass violated.
+    """
+    problems: list[str] = []
+    if not path.is_file():
+        return problems
+
+    committed = path.read_text(encoding="utf-8")
+    counts, version = load_baseline(path)
+
+    for fname, rule in sorted(key for key, n in counts.items() if not n):
+        problems.append(
+            f"{fname}\t{rule}: baselined at zero findings. That is burn-down, "
+            "not frozen debt: drop the row rather than keeping the headroom."
+        )
+
+    if committed != render_baseline(counts, version):
+        try:
+            shown = path.relative_to(REPO_ROOT)
+        except ValueError:  # a selftest fixture outside the repo
+            shown = path
+        problems.append(
+            f"{shown} is not what misra_ratchet.py "
+            "--update would write (header, provenance, recorded total, "
+            "ordering, spacing or row shape differs). Regenerate it with "
+            "`just quality::local::misra_baseline`; never hand-edit a ratchet "
+            "baseline."
+        )
+    return problems
+
+
+def report_attestation(path: Path = BASELINE_FILE) -> int:
+    """Print any attestation problems with `path`; return the exit code."""
+    problems = attest_baseline(path)
+    if not problems:
+        print(f"misra_ratchet.py: PASS -- {path.name} attests as machine-written.")
+        return 0
+    print("misra baseline attestation FAILED:", file=sys.stderr)
+    for problem in problems:
+        print(f"  - {problem}", file=sys.stderr)
+    return 1
 
 
 def report_regressions(
@@ -200,6 +289,47 @@ def find_missing_baseline_files(
     return sorted({fname for fname, _rule in baseline if fname not in existing_files})
 
 
+ATTESTATION_CASES = 5
+"""Number of both-direction attestation assertions `_selftest_attestation` makes."""
+
+
+def _mutate(path: Path, transform) -> str:
+    """Apply `transform` to `path`'s text, write it back, and return the original."""
+    original = path.read_text(encoding="utf-8")
+    path.write_text(transform(original), encoding="utf-8")
+    return original
+
+
+def _selftest_attestation(generated: Path) -> list[str]:
+    """Prove attestation accepts the tool's own output and rejects hand edits.
+
+    Every case runs against a throwaway fixture, never the committed baseline:
+    the #712 bypass is exactly a file being edited in place, so a selftest that
+    rewrites the real one would be reproducing the bug it is meant to catch.
+    """
+    failures: list[str] = []
+    if attest_baseline(generated):
+        failures.append("freshly written baseline attests clean")
+
+    # A whole-file sort: the literal #712 bypass, header and rows alike.
+    mutations = {
+        "a whole-file sort fires": lambda s: "\n".join(sorted(s.splitlines())) + "\n",
+        "a trailing blank line fires": lambda s: s + "\n",
+        "a hand-raised count fires": lambda s: s.replace("\t2\n", "\t9\n"),
+        "a stale total findings line fires": lambda s: s.replace(
+            "# total findings: 2", "# total findings: 99"
+        ),
+    }
+    for name, transform in mutations.items():
+        original = _mutate(generated, transform)
+        try:
+            if not attest_baseline(generated):
+                failures.append(name)
+        finally:
+            generated.write_text(original, encoding="utf-8")
+    return failures
+
+
 def selftest() -> int:
     """Prove the count ratchet fires on growth and stays quiet on burn-down."""
     key = ("apps/shared_libs/mdl/src/mdl_fetch.c", "misra-c2012-15.5")
@@ -227,13 +357,15 @@ def selftest() -> int:
         expected = "\n".join(MIGRATION_PROVENANCE_HEADER) + "\n"
         if expected not in generated.read_text(encoding="utf-8"):
             failures.append("baseline regeneration preserves migration provenance")
+        attest_cases = _selftest_attestation(generated)
+        failures += attest_cases
     if failures:
         for name in failures:
             print(f"misra_ratchet.py --selftest: FAIL: {name}", file=sys.stderr)
         return 1
     print(
         f"misra_ratchet.py --selftest: PASS ({len(cases) + 2} both-direction cases; "
-        "1 provenance assertion)"
+        f"1 provenance assertion; {ATTESTATION_CASES} attestation cases)"
     )
     return 0
 
@@ -311,10 +443,24 @@ def main() -> int:
         action="store_true",
         help="prove the ratchet fires and stays quiet, then exit",
     )
+    mode.add_argument(
+        "--attest",
+        action="store_true",
+        help="prove the committed baseline is one this tool wrote, then exit",
+    )
     args = parser.parse_args()
 
     if args.selftest:
         return selftest()
+
+    # Attestation needs no results.txt and no cppcheck, so it runs anywhere.
+    if args.attest:
+        return report_attestation()
+
+    # #712: read the rows only after proving the file is machine-written.
+    attest_rc = report_attestation()
+    if attest_rc:
+        return attest_rc
 
     if not RESULTS_TSV.is_file():
         print(
