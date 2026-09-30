@@ -82,6 +82,10 @@ import sys
 import tempfile
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+
+from lint_targets import repo_files  # noqa: E402 -- sibling import needs the path above
+
 REPO_ROOT = Path(__file__).resolve().parents[2]
 
 # First-party scope: everything git tracks, minus vendored / generated / binary
@@ -384,23 +388,8 @@ def tracked_files(explicit: list[str]) -> list[Path]:
     """
     if explicit:
         return [Path(p) for p in explicit]
-    try:
-        listed = subprocess.run(
-            ["git", "ls-files", "-z"],  # noqa: S607  # trusted: fixed git argv
-            capture_output=True,
-            text=True,
-            check=True,
-            cwd=REPO_ROOT,
-        ).stdout
-    except (OSError, subprocess.CalledProcessError) as exc:
-        sys.exit(
-            f"check_no_antirecovery.py: FATAL -- cannot list tracked files: {exc}\n"
-            "  This gate enumerates via git and must not fall back to a glob."
-        )
     out: list[Path] = []
-    for name in listed.split("\0"):
-        if not name:
-            continue
+    for name in repo_files(root=REPO_ROOT, caller="check_no_antirecovery.py"):
         if name in EXCLUDED_FILES:
             continue
         if any(name.startswith(pfx) for pfx in EXCLUDED_PREFIXES):
