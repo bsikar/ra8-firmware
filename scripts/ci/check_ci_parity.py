@@ -163,6 +163,10 @@ GATE_DEF_RE = re.compile(r"^gate_([a-z0-9_]+)\(\) \(")
 # to say so in the file rather than just be missing.
 UNREGISTERED_MARKER_RE = re.compile(r"^\s*#\s*ci-parity:\s*unregistered\s*--\s*(\S.*)$")
 
+# A command-position `echo`/`printf`: its arguments name things rather than
+# run them, so a path inside them is a mention, not an invocation.
+ECHO_COMMAND_RE = re.compile(r"^(\s*(?:\{\s*)?)(echo|printf)\b(.*)$")
+
 # Minimum reason length -- "infra -- x" teaches a reader nothing.
 MIN_REASON_CHARS = 12
 
@@ -647,6 +651,54 @@ def reachability_errors(registry: dict[str, str], bindings: Bindings) -> list[st
     return errors
 
 
+def _executing_text(body: str) -> str:
+    """Return ``body`` with text that names a path without running it removed.
+
+    The forbidden-shape patterns below look for a script path anywhere in the
+    step, which cannot tell an invocation from a mention. A provisioning step
+    that fails and prints where the real pin lives -- as macos-host.yml's
+    sha256 diagnostic does, echoing
+    ``scripts/checks/check_zig_dist_pins.py`` as advice to the reader -- was
+    reported as smuggling a check it never runs.
+
+    Two kinds of text are neutralised: whole-line comments, and the arguments
+    of a command-position ``echo`` or ``printf`` up to the first unquoted
+    command separator. Anything past a separator is still scanned, so
+    ``echo hi && python3 scripts/checks/x.py`` is caught on the second
+    command, and a quoted path handed to any other command -- ``bash -c
+    "scripts/checks/x.py"`` -- is untouched and still caught.
+    """
+    kept: list[str] = []
+    for raw in body.splitlines():
+        if raw.lstrip().startswith("#"):
+            kept.append("")
+            continue
+        match = ECHO_COMMAND_RE.match(raw)
+        if not match:
+            kept.append(raw)
+            continue
+        rest = match.group(3)
+        quote: str | None = None
+        cut = len(rest)
+        index = 0
+        while index < len(rest):
+            char = rest[index]
+            if quote:
+                if char == "\\" and quote == '"':
+                    index += 2
+                    continue
+                if char == quote:
+                    quote = None
+            elif char in "'\"":
+                quote = char
+            elif char in ";|&":
+                cut = index
+                break
+            index += 1
+        kept.append(match.group(1) + rest[cut:])
+    return "\n".join(kept)
+
+
 def _check_infra_step(where: str, body: str, reason: str | None) -> list[str]:
     """Check one step that claims to be infrastructure rather than a check.
 
@@ -662,8 +714,9 @@ def _check_infra_step(where: str, body: str, reason: str | None) -> list[str]:
             f"    too terse. Write what the step provisions and why it runs no\n"
             f"    project check."
         )
+    executing = _executing_text(body)
     for pattern, why in FORBIDDEN_IN_INFRA:
-        hit = pattern.search(body)
+        hit = pattern.search(executing)
         if hit:
             errors.append(
                 f"{where}\n"
@@ -858,6 +911,7 @@ def selftest() -> int:
         print(f"  [{status}] {label}: classified '{kind}', expected '{expected}'")
 
     failures += _infra_smuggling_selftest()
+    failures += _infra_mention_selftest()
     failures += _unregistered_gate_selftest()
     failures += _setup_just_pin_selftest()
     failures += _managed_runner_dependencies_selftest()
@@ -944,6 +998,39 @@ def _unregistered_gate_selftest() -> int:
     if not errors:
         failures += 1
     print(f"  [{status}] unregistered-gate: empty gates tree refuses to report clean")
+    return failures
+
+
+def _infra_mention_selftest() -> int:
+    """Prove a path a provisioning step only NAMES is not read as running it.
+
+    Both directions, because the fix is a narrowing: an echoed path must stop
+    firing, and every real invocation shape must keep firing.
+    """
+    prefix = "# ci-parity: infra -- installs the pinned compiler on the runner\n"
+    cases = [
+        ("echoed path is a mention", 'echo "    scripts/checks/check_zig_dist_pins.py"', False),
+        ("printf'd path is a mention", "printf '%s\\n' 'scripts/checks/x.py'", False),
+        ("indented echo inside a brace group", '{ echo "scripts/checks/x.py"; }', False),
+        ("comment naming a path is a mention", "# see scripts/checks/x.py for the pin", False),
+        ("real invocation still fires", "python3 scripts/checks/x.py", True),
+        ("echo then a real invocation still fires", "echo hi && python3 scripts/checks/x.py", True),
+        (
+            "echo then invocation after a semicolon fires",
+            "echo hi; python3 scripts/checks/x.py",
+            True,
+        ),
+        ("quoted path given to another command fires", 'bash -c "scripts/checks/x.py"', True),
+        ("host-test driver still fires", "tests/run_all.sh", True),
+    ]
+    failures = 0
+    for label, body, should_fire in cases:
+        errors = _check_infra_step("w", prefix + body, "installs the pinned compiler on the runner")
+        fired = bool(errors)
+        status = "ok" if fired == should_fire else "FAIL"
+        if fired != should_fire:
+            failures += 1
+        print(f"  [{status}] infra-mention: {label}")
     return failures
 
 
