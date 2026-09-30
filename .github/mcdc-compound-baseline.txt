@@ -907,10 +907,6 @@ libs/ra8_usb_pal/src/ra8_usb_pal.c	ra8_usb_pal_ep_open	2
 libs/ra8_usb_pal/src/ra8_usb_pal.c	ra8_usb_pal_ep_send	1
 libs/ra8_usb_pal/src/ra8_usb_pal.c	ra8_usb_pal_init	1
 libs/ra8_wdt_supervisor/src/ra8_wdt_supervisor.c	ra8_wdt_supervisor_tick	2
-libs/ra8_widget/src/ra8_widget.c	internal_rect_empty	1
-libs/ra8_widget/src/ra8_widget.c	ra8_widget_damage	2
-libs/ra8_widget/src/ra8_widget.c	ra8_widget_dispatch	2
-libs/ra8_widget/src/ra8_widget.c	ra8_widget_render_dirty	3
 libs/ra8_widget/src/ra8_widget_keyboard.c	internal_kbd_on_input	2
 libs/ra8_widget/src/ra8_widget_keyboard.c	internal_kbd_render	1
 libs/ra8_widget/src/ra8_widget_nav_bar.c	internal_nav_hit	1
