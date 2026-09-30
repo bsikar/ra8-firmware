@@ -71,6 +71,26 @@ pub fn build(b: *std.Build) void {
             .source = "src/internal/tile_cache.zig",
             .root = "tests/tile_cache_test.zig",
         },
+        .{
+            .name = "keycache_list",
+            .source = "src/internal/keycache_list.zig",
+            .root = "tests/keycache_list_test.zig",
+        },
+        .{
+            .name = "keycache_index",
+            .source = "src/internal/keycache_index.zig",
+            .root = "tests/keycache_index_test.zig",
+        },
+        .{
+            .name = "keycache_policy",
+            .source = "src/internal/keycache_policy.zig",
+            .root = "tests/keycache_policy_test.zig",
+        },
+        .{
+            .name = "keycache",
+            .source = "src/internal/keycache.zig",
+            .root = "tests/keycache_test.zig",
+        },
     };
     for (units) |unit| {
         const under_test = b.createModule(.{

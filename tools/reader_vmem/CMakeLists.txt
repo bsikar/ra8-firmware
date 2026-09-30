@@ -28,7 +28,7 @@ endif()
 
 add_executable(
   reader_vmem
-  ${READER_VMEM_SOURCES} ${RA8_ROOT}/libs/ra8_mem/src/ra8_keycache.c
+  ${READER_VMEM_SOURCES}
 )
 target_link_libraries(reader_vmem PRIVATE ra8_zig::ra8_mem)
 target_include_directories(
