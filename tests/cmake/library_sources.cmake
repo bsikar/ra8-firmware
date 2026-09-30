@@ -130,7 +130,8 @@ file(GLOB_RECURSE RABOOK_IMPORT_SOURCES CONFIGURE_DEPENDS
 # widgets (text label, push button, progress bar) are libs/ra8_widget/src/*.zig
 # (linked as ra8_zig::ra8_widget), and src/ra8_widget_paint.c,
 # src/ra8_widget_label.c, src/ra8_widget_button.c and
-# src/ra8_widget_progress_bar.c are deleted. The remaining widgets are still C
+# src/ra8_widget_progress_bar.c and src/ra8_widget_status_bar.c are deleted. The
+# remaining widgets are still C
 # and still globbed here; they call the paint helpers through the unchanged
 # src/ra8_widget_internal.h.
 file(GLOB_RECURSE RA8_WIDGET_SOURCES CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra8_widget/src/*.c)
