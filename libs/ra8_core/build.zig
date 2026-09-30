@@ -3,14 +3,16 @@
 //!
 //! Build graph for `ra8_core`.
 //!
-//! Seven seams of this library are Zig so far: the freestanding runtime
+//! Eight seams of this library are Zig so far: the freestanding runtime
 //! primitives (#2820), the pin-claim validator (#2825), the SysTick timebase
 //! with its time-interface binding (#2830), the log backend with
 //! `ra8_err_to_str` (#2836), the millisecond tick counter, delay policy and
 //! SysTick IRQ body (#2851), the decompression-limits policy every archive
 //! and stream decoder charges against (#2862) and the fault block: the
 //! exception reporter, the cross-reset crash log and the SCB register window
-//! (#2868). Everything else in `src/` is still C, which
+//! (#2868) and the error sink pair: the weak fatal trap every failed
+//! `RA8_ASSERT` lands on, plus the log-backed non-fatal sink (#2875).
+//! Everything else in `src/` is still C, which
 //! `.github/zig-parallel-tree-allowlist.tsv` records per file.
 //!
 //! WHAT THIS LIBRARY SHIPS DEPENDS ON WHO LINKS IT.
@@ -263,6 +265,35 @@ pub fn build(b: *std.Build) void {
     fault_modules_by_unit.get("crashlog").?.addImport("fault_record", fault_record);
     fault_modules_by_unit.get("crashlog").?.addImport("fault_crc32", fault_modules_by_unit.get("crc32").?);
 
+    // The error sink pair. `ra8_fatal_error` is where every failed check
+    // ends and `g_ra8_error_sink_log` is the non-fatal counterpart; the
+    // allow-list already paired them, because both reach the same log
+    // backend and neither is meaningful without the other's contract.
+    const error_units = [_][]const u8{ "fatal", "sink" };
+    var error_modules_by_unit = std.StringHashMap(*std.Build.Module).init(b.allocator);
+    inline for (error_units) |unit| {
+        const module = b.createModule(.{
+            .root_source_file = b.path(b.fmt("src/internal/error/{s}.zig", .{unit})),
+            .target = target,
+            .optimize = optimize,
+        });
+        error_modules_by_unit.put(unit, module) catch @panic("OOM");
+    }
+
+    const error_abis = [_][]const u8{ "error_handler_abi", "error_sink_abi" };
+    var error_abi_modules = std.StringHashMap(*std.Build.Module).init(b.allocator);
+    inline for (error_abis) |name| {
+        const module = b.createModule(.{
+            .root_source_file = b.path(b.fmt("src/{s}.zig", .{name})),
+            .target = target,
+            .optimize = optimize,
+        });
+        inline for (error_units) |unit| {
+            module.addImport(b.fmt("error_{s}", .{unit}), error_modules_by_unit.get(unit).?);
+        }
+        error_abi_modules.put(name, module) catch @panic("OOM");
+    }
+
     const fault_abis = [_][]const u8{ "scb_abi", "exception_abi", "crashlog_abi" };
     var fault_abi_modules = std.StringHashMap(*std.Build.Module).init(b.allocator);
     inline for (fault_abis) |name| {
@@ -291,6 +322,9 @@ pub fn build(b: *std.Build) void {
     inline for (fault_abis) |name| {
         root.addImport(name, fault_abi_modules.get(name).?);
     }
+    inline for (error_abis) |name| {
+        root.addImport(name, error_abi_modules.get(name).?);
+    }
 
     if (!image_build) {
         const library = b.addLibrary(.{
@@ -315,6 +349,9 @@ pub fn build(b: *std.Build) void {
         image_root.addImport("decomp_abi", decomp_abi);
         inline for (fault_abis) |name| {
             image_root.addImport(name, fault_abi_modules.get(name).?);
+        }
+        inline for (error_abis) |name| {
+            image_root.addImport(name, error_abi_modules.get(name).?);
         }
 
         const image_library = b.addLibrary(.{
@@ -381,4 +418,14 @@ pub fn build(b: *std.Build) void {
         fault_tests.addImport(b.fmt("fault_{s}", .{unit}), fault_modules_by_unit.get(unit).?);
     }
     test_step.dependOn(&b.addRunArtifact(b.addTest(.{ .root_module = fault_tests })).step);
+
+    const error_tests = b.createModule(.{
+        .root_source_file = b.path("tests/error_test.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    inline for (error_units) |unit| {
+        error_tests.addImport(b.fmt("error_{s}", .{unit}), error_modules_by_unit.get(unit).?);
+    }
+    test_step.dependOn(&b.addRunArtifact(b.addTest(.{ .root_module = error_tests })).step);
 }

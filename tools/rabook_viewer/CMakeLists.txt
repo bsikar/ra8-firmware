@@ -274,8 +274,9 @@ link_libraries(ra8_zig::ra8_mem)
 
 # ra8_core's log backend is Zig now (#2836), so the viewer takes the
 # ra8_log_emit_* surface and ra8_err_to_str out of the general ra8_core archive
-# instead of compiling ra8_log.c. The rest of the library is still C, so the
-# read-path partition below stays.
+# instead of compiling ra8_log.c. The fatal sink went the same way with the
+# error pair (#2875), which is why there is no KEEP list left. The rest of the
+# library is still C, so the read-path partition below stays.
 if(NOT TARGET ra8_zig::ra8_core)
   include(${FW_ROOT}/tests/cmake/zig_library.cmake)
   ra8_add_zig_library(
@@ -288,9 +289,7 @@ link_libraries(ra8_zig::ra8_core)
 
 ra8_viewer_read_path(
   RA8_CORE_SRC ${FW_ROOT}/libs/ra8_core/src
-  KEEP ra8_error_handler.c
   DROP ra8_boot_region.c
-       ra8_error_sink_log.c
        ra8_infrastructure.c
        ra8_rand_stub.c
        ra8_sbrk_trap.c

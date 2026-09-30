@@ -96,21 +96,19 @@ const shared_include_paths = [_][]const u8{
 /// under test. Under CMake these arrive through ra8_core_hal.
 ///
 /// This list is what the Zig ports EXTERN, not what the suites call. It held
-/// `ra8_log.c` until #2836, `ra8_time.c` until #2851 and `ra8_scb.c` until the
-/// fault block (#2868); all three are Zig now and arrive in ra8_core's general
-/// archive, which every suite links below.
+/// `ra8_log.c` until #2836, `ra8_time.c` until #2851, `ra8_scb.c` until the
+/// fault block (#2868) and `ra8_error_handler.c` until the error pair
+/// (#2875), which is the one that emptied it.
 ///
-/// `ra8_error_handler.c` replaces them, and the fault block is why. That
-/// archive is one compilation unit, so linking it for any port also pulls in
-/// `exception_abi.zig`, whose host halt path calls `ra8_fatal_error()` -- the
-/// weak default implementation that still lives in C. Without it these three
-/// suites fail to link on a symbol none of their own code mentions. Under
-/// CMake it arrives through ra8_core_hal, and it is the real implementation
-/// rather than a stub, so a regression in it fails this graph exactly as it
-/// fails CMake.
-const support_c_sources = [_][]const u8{
-    "libs/ra8_core/src/ra8_error_handler.c",
-};
+/// The fault block is why that last entry existed: the general archive is one
+/// compilation unit, so linking it for any port also pulls in
+/// `exception_abi.zig`, whose host halt path calls `ra8_fatal_error()`. That
+/// symbol is now a weak export of the same archive, so the suites resolve it
+/// without a C translation unit on the side.
+///
+/// Empty is the expected steady state, not an oversight. A future port that
+/// externs into C adds its TU here and takes it out again when that C goes.
+const support_c_sources = [_][]const u8{};
 
 /// The host C dialect and warning set from tests/cmake/host_config.cmake.
 /// `RA8_OFF_TARGET` and `UNIT_TEST` are the two definitions that file adds to
