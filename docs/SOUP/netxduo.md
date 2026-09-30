@@ -27,8 +27,12 @@ firmware as Software Of Unknown Provenance (SOUP).
 
 ## Use case in this firmware
 
+<!-- consumer-census: key=netxduo total=7 hw_validated=5 c6=4 unsupported=1 -->
+
 - Dual IPv4/IPv6 TCP/IP stack. **The TCP/IP core only** -- see "What is not
-  built" below. Two driver bindings carry it:
+  built" below. Seven example applications declare it, **5** of them under
+  `examples/ek_ra8d2/hw_validated/` and **1** under `examples/_unsupported/`.
+  Two driver bindings carry it:
   - Wired, over the on-chip Ethernet MAC:
     `port/netxduo/src/nx_ether_driver_ra8_eth.c`, used by
     `examples/ek_ra8d2/hw_validated/hil/threadx_netx_tcp_echo` and by the two
@@ -37,10 +41,15 @@ firmware as Software Of Unknown Provenance (SOUP).
     Mbed TLS, not from this component.
   - Wireless, over the ESP32-C6 co-processor:
     `port/netxduo/src/nx_ether_driver_c6.c` (the `netxduo_port_c6` target),
-    used by the two hw_validated Wi-Fi apps
-    `examples/ek_ra8d2/hw_validated/c6/{c6_wifi_join,wifi_hal_join}`, which
-    additionally compile the vendored DHCP client
-    (`addons/dhcp/nxd_dhcp_client.c`) to take an address on the bench network.
+    used by the four hw_validated apps under
+    `examples/ek_ra8d2/hw_validated/c6/`: `c6_wifi_join` and `wifi_hal_join`,
+    which additionally compile the vendored DHCP client
+    (`addons/dhcp/nxd_dhcp_client.c`) to take an address on the bench network,
+    plus `c6_camera_livestream` and `c6_camera_mjpeg`. Those two declare their
+    middleware through the shared
+    `examples/ek_ra8d2/common/c6_camera_server/c6_camera_server.cmake`
+    wrapper rather than in their own `CMakeLists.txt`, which is why an earlier
+    read of this record missed them.
 - Integrity claim category: data-handling (frame parsing).
 
 ### What is not built
