@@ -10,6 +10,10 @@
  * the 64 KiB SRAM_CPU1; it is parked in external SDRAM via .sdram_bss below. The
  * M85 brings up the SDRAM controller before ra8_cpu1_release.
  *
+ * DIVERGES from the shared libs/ra8_board_ek_ra8d2/ld/linker_script_cpu1.ld
+ * on purpose (a 96 KiB miniz arena in external SDRAM and a 24 KiB stack), so this app keeps its own
+ * script and overrides the board one (#742).
+ *
  * Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
  */
