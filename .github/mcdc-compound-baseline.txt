@@ -836,7 +836,6 @@ libs/ra8_jpeg/src/ra8_jpeg_sw_decode.c	priv_jpeg_sw_parse_dqt	2
 libs/ra8_jpeg/src/ra8_jpeg_sw_decode.c	priv_jpeg_sw_parse_sof0	2
 libs/ra8_jpeg/src/ra8_jpeg_sw_decode.c	priv_jpeg_sw_parse_sos	2
 libs/ra8_jpeg/src/ra8_jpeg_sw_decode.c	priv_jpeg_sw_skip_segment	1
-libs/ra8_jpeg/src/ra8_jpeg_sw_encode.c	ra8_jpeg_sw_encode	2
 libs/ra8_jpeg/src/ra8_jpeg_sw_stream.c	internal_js_parse_markers	1
 libs/ra8_jpeg/src/ra8_jpeg_sw_stream.c	internal_js_refill	1
 libs/ra8_jpeg/src/ra8_jpeg_sw_stream.c	internal_js_scan_margin	1
