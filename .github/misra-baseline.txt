@@ -2043,10 +2043,6 @@ libs/ra8_wdt_supervisor/src/ra8_wdt_supervisor.c	misra-c2012-8.4	8
 libs/ra8_widget/src/ra8_widget.c	misra-c2012-14.2	4
 libs/ra8_widget/src/ra8_widget.c	misra-c2012-15.5	28
 libs/ra8_widget/src/ra8_widget.c	misra-c2012-17.3	2
-libs/ra8_widget/src/ra8_widget_book.c	misra-c2012-10.8	4
-libs/ra8_widget/src/ra8_widget_book.c	misra-c2012-11.5	2
-libs/ra8_widget/src/ra8_widget_book.c	misra-c2012-15.5	11
-libs/ra8_widget/src/ra8_widget_book.c	misra-c2012-8.9	1
 libs/ra8_wifi/src/ra8_wifi.c	misra-c2012-15.5	64
 libs/ra8_wifi/src/ra8_wifi.c	misra-c2012-8.4	10
 libs/ra8_wifi/src/ra8_wifi_c6link.c	misra-c2012-11.5	11
