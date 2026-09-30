@@ -283,6 +283,7 @@ DECLARED_BARE_CODE_FILES = {
     ("apps/host/cbz2jof/README.md", "page-0002.jof"): "illustrative generated page-atlas name",
     ("CLAUDE.md", "_internal.h"): "documented internal-header naming convention",
     ("PHILOSOPHIES.md", "sqlite3.c"): "linked upstream SQLite amalgamation example",
+    ("PHILOSOPHIES.md", "config.h"): "suckless configuration-header convention",
     ("docs/HIL_SUITE.md", "dwf.h"): "header installed from the external WaveForms package",
     ("docs/COVERAGE.md", "summary.json"): "generated coverage report",
     ("docs/COVERAGE.md", "compile_commands.json"): "generated CMake compilation database",
@@ -523,6 +524,9 @@ DECLARED_BARE_CONTEXT_SHA256 = {
     ),
     ("docs/qualification/SVR.md", "r_usb_pdriver.c"): (
         "ff3a66bfe8bf027bb3c81c94b68095142e954df77903ae2ae2ff5790d758841e",
+    ),
+    ("PHILOSOPHIES.md", "config.h"): (
+        "26aeeb143b9ad4bb5d162a2feb02e2d5823c42fe9b84fdbd8ca779b25466d06e",
     ),
     ("docs/reference/ra8p1_vs_ra8d2.md", "bsp_linker.c"): (
         "d66042eb9df30051ded10cf042539f9b74864eec10168a00a6968585388f1efc",

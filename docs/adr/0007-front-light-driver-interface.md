@@ -290,8 +290,8 @@ Firmware side, not implemented here, recorded so it is not discovered late:
 * ADR-0010 (PR #1225, issue #846): SDRAM interface supply domain, the
   3.00..3.35 V envelope with >= 55 mV guaranteed read-high margin.
 * Tree, at dev 013631d: `libs/ra8_board_ra8p1/inc/ra8_board_ra8p1.h` and
-  `src/ra8_board_ra8p1.c` (three provisional GPIO user LEDs, no
-  illumination channel); no `frontlight` / `front_light` symbol anywhere in
-  the repository.
+  `libs/ra8_board_ra8p1/src/ra8_board_ra8p1.c` (three provisional GPIO user
+  LEDs, no illumination channel); no `frontlight` / `front_light` symbol
+  anywhere in the repository.
 * Issues: #831 (this decision), #821 (parent epic), #822, #823, #825,
   #830, #834, #835, #836, #846.
