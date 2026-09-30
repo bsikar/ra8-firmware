@@ -1,0 +1,13 @@
+.{
+    .name = .ra8_dfu,
+    .version = "0.1.0",
+    .fingerprint = 0x7b1a045ee877e984,
+    .minimum_zig_version = "0.14.1",
+    .dependencies = .{},
+    .paths = .{
+        "build.zig",
+        "build.zig.zon",
+        "src",
+        "tests",
+    },
+}
