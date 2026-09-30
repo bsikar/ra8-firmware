@@ -58,6 +58,28 @@ function(
   _globbed
   _has_archive
 )
+  # A library that has finished its ARM flip contributes nothing but the Zig
+  # archive, so being pulled in without one registered is always the #908
+  # defect -- even when the *.c glob came back non-empty. That case is the one
+  # the _globbed early return below cannot see: a lib that keeps support C past
+  # its flip (ra8_mem kept ra8_arena.c) leaves _globbed truthy, so the check
+  # returns clean while every symbol the port moved into Zig leaves the link
+  # silently. Judge the flip directly instead of inferring it from the glob.
+  if(_path
+     AND NOT _has_archive
+     AND EXISTS "${_path}/build.zig"
+     AND NOT EXISTS "${_path}/src/${_lib}.c"
+  )
+    message(
+      FATAL_ERROR
+        "ra8_add_app(): ${_RA8_APP_NAME} ${_why}, but ${_lib} has completed "
+        "its ARM flip (${_path}/build.zig exists and ${_path}/src/${_lib}.c "
+        "does not) and this expansion registered no Zig archive for it, so "
+        "every symbol the port moved into Zig would leave the link (issue "
+        "#908). Register the archive on this path the way the LIBS loop does, "
+        "with list(APPEND _ra8_lib_zig \"${_lib}|${_path}\")."
+    )
+  endif()
   if(_globbed
      OR NOT _path
      OR _has_archive
