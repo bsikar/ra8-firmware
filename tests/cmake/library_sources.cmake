@@ -126,11 +126,12 @@ file(GLOB_RECURSE RABOOK_IMPORT_SOURCES CONFIGURE_DEPENDS
      ${FW_ROOT}/apps/shared_libs/rabook_import/src/*.c
 )
 # ra8_batt is implemented in Zig (libs/ra8_batt/build.zig).
-# ra8_widget is partly Zig: the RA8_PRIV paint helpers and the two leaf widgets
-# (text label, push button) are libs/ra8_widget/src/*.zig (linked as
-# ra8_zig::ra8_widget), and src/ra8_widget_paint.c, src/ra8_widget_label.c and
-# src/ra8_widget_button.c are deleted. The remaining widgets are still C and
-# still globbed here; they call the paint helpers through the unchanged
+# ra8_widget is partly Zig: the RA8_PRIV paint helpers and the three leaf
+# widgets (text label, push button, progress bar) are libs/ra8_widget/src/*.zig
+# (linked as ra8_zig::ra8_widget), and src/ra8_widget_paint.c,
+# src/ra8_widget_label.c, src/ra8_widget_button.c and
+# src/ra8_widget_progress_bar.c are deleted. The remaining widgets are still C
+# and still globbed here; they call the paint helpers through the unchanged
 # src/ra8_widget_internal.h.
 file(GLOB_RECURSE RA8_WIDGET_SOURCES CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra8_widget/src/*.c)
 # ra8_app is implemented in Zig (libs/ra8_app/build.zig). It is linked through

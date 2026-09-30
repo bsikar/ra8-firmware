@@ -20,3 +20,6 @@ pub const label = @import("widget_label_abi.zig");
 
 /// The push-button leaf widget: `ra8_widget_button_vtable` / `_init`.
 pub const button = @import("widget_button_abi.zig");
+
+/// The progress-bar leaf widget: `ra8_widget_progress_bar_vtable` / `_init`.
+pub const progress_bar = @import("widget_progress_bar_abi.zig");
