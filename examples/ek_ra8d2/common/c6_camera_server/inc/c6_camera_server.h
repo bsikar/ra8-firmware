@@ -56,7 +56,7 @@ typedef enum : uint32_t {
   k_c6_cam_net_ip_prio     = 3U,        /**< NetX IP thread priority.               */
 } c6_cam_cfg_t;
 
-/** @brief DHCP lease returned by the raw, bench-validated C6/NetX path. */
+/** @brief DHCP lease returned by the raw C6/NetX path `wifi_hal_join` proved. */
 typedef struct {
   uint32_t ip;          /**< Assigned IPv4 address.         */
   uint32_t mask;        /**< Assigned IPv4 network mask.    */
