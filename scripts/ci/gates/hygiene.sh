@@ -751,3 +751,20 @@ gate_format() (
   require_tool_versions cmake-format
   CLANG_FORMAT=clang-format-22 bash scripts/checks/format_tree.sh --check
 )
+
+# --- zig-parallel-trees ----------------------------------------------------
+# A port that replaces C with Zig is supposed to say whether it deletes the C
+# or deliberately keeps it, so the tree never carries two implementations of
+# one library forever. Nothing enforced that: a .c surviving inside a library
+# that already has a build.zig was invisible.
+#
+# --selftest FIRST, because the audit's whole value is that it REFUSES: it
+# asserts a stray .c in src/ is caught, that a C test fixture under tests/ is
+# not (those are how the Zig is held to the C ABI), and that a malformed
+# allow-list row or a missing tree errors rather than passing.
+gate_zig_parallel_trees() (
+  set -e
+  require_cmd python3 "the zig-parallel-trees gate walks libs/ for build.zig and .c files"
+  python3 scripts/checks/check_zig_parallel_trees.py --selftest
+  python3 scripts/checks/check_zig_parallel_trees.py
+)

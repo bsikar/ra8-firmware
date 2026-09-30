@@ -1,0 +1,10 @@
+# C files deliberately kept inside a library that already has a build.zig.
+# Enforced by scripts/checks/check_zig_parallel_trees.py, so a port that
+# leaves C behind has to say so here instead of leaving a parallel tree.
+#
+# A .c under a library's tests/ needs no row: C test fixtures are how the Zig
+# is held to the C ABI, and they are deliberately C.
+#
+# lib	path	reason
+if	src/fw_os_contract.c	Compile-time conformance TU for the fw_os port contract; a header with no translation unit behind it is never compiled and rots.
+ra8_tz_secure_boot	ns/ra8_ns_rot_header.c	Emits the NS image's ra8_ns_rot_header_t record; stays C on purpose, as tests/cmake/zig_libraries.cmake records, so the magic word and struct shape are compiler-checked instead of hand-assembled in the NS linker scripts.
