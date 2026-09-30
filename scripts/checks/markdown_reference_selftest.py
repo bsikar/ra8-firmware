@@ -32,6 +32,7 @@ _fail = core.fail
 _git = core.git
 _is_vendor = core.is_vendor
 _path_reason = core.path_reason
+_enforce_population = core.enforce_population
 _tracked_basename_index = core.tracked_basename_index
 check_tree = core.check_tree
 parse_document = core.parse_document
@@ -820,6 +821,24 @@ _FIXTURE_CASES = (
 )
 
 
+def _check_census_guidance_cases(failures: list[str]) -> None:
+    """Prove a collapsed census names both resolutions, not just the numbers."""
+    try:
+        _enforce_population(["docs/only.md"])
+    except core.CheckError as failure:
+        message = str(failure)
+    else:
+        failures.append("a one-document tree passed the census floors")
+        return
+    if "census collapsed" not in message:
+        failures.append("the census failure stopped naming the collapse")
+    for expected in ("enumeration", "re-pin", "naming the commit"):
+        if expected not in message:
+            failures.append(f"the census failure does not tell a reader to {expected}")
+    if "darkens the whole" not in message:
+        failures.append("the census failure does not say it blocks every other check")
+
+
 def selftest() -> int:
     """Prove every detector in both directions, including end-to-end scope."""
     failures: list[str] = []
@@ -844,6 +863,7 @@ def selftest() -> int:
         _check_bare_declaration_cases(root, failures)
         _check_link_output_cases(root, failures)
 
+    _check_census_guidance_cases(failures)
     _check_parser_cases(failures)
     _check_bare_parser_cases(failures)
 
@@ -851,5 +871,5 @@ def selftest() -> int:
         for failure in failures:
             print(f"selftest: check_markdown_references.py FAIL: {failure}", file=sys.stderr)
         return 1
-    print(f"selftest: check_markdown_references.py OK ({len(cases) + 78} both-direction cases)")
+    print(f"selftest: check_markdown_references.py OK ({len(cases) + 82} both-direction cases)")
     return 0
