@@ -92,8 +92,25 @@ SKIP_PREFIXES = (
 )
 
 TEXT_SUFFIXES = {
-    ".c", ".h", ".cpp", ".hpp", ".py", ".sh", ".bash", ".md", ".cmake", ".conf",
-    ".env", ".yml", ".yaml", ".just", ".txt", ".toml", ".json", ".ld", ".s",
+    ".c",
+    ".h",
+    ".cpp",
+    ".hpp",
+    ".py",
+    ".sh",
+    ".bash",
+    ".md",
+    ".cmake",
+    ".conf",
+    ".env",
+    ".yml",
+    ".yaml",
+    ".just",
+    ".txt",
+    ".toml",
+    ".json",
+    ".ld",
+    ".s",
 }
 
 # A collapsed read (a bad path argument, a changed layout) must not pass as
@@ -102,19 +119,25 @@ CLAIM_FLOOR = 40
 
 
 def repo_root() -> Path:
+    """The repository root, so the gate reads the same tree git does."""
     here = Path(__file__).resolve()
     return here.parent.parent.parent
 
 
 def tracked_files(root: Path) -> list[str]:
+    """Every path git would show, so an untracked stray still gets scanned."""
     out = subprocess.run(
-        ["git", "ls-files", "--cached", "--others", "--exclude-standard", "-z"],
-        cwd=root, capture_output=True, text=True, check=False,
+        ["git", "ls-files", "--cached", "--others", "--exclude-standard", "-z"],  # noqa: S607 -- trusted: fixed git argv
+        cwd=root,
+        capture_output=True,
+        text=True,
+        check=False,
     ).stdout
     return [p for p in out.split("\0") if p]
 
 
 def is_candidate(rel: str) -> bool:
+    """Whether a tracked path is first-party prose this gate should read."""
     if rel.startswith(SKIP_PREFIXES):
         return False
     suffix = Path(rel).suffix
@@ -151,7 +174,7 @@ def scan_text(rel: str, text: str) -> tuple[int, list[tuple[str, int, str]]]:
         if HEDGE_RE.search(line):
             continue
         start, end = block_bounds(lines, idx)
-        block = "\n".join(lines[start:end + 1])
+        block = "\n".join(lines[start : end + 1])
         if LOCATOR_RE.search(block):
             continue
         findings.append((rel, idx + 1, line.strip()))
@@ -159,6 +182,7 @@ def scan_text(rel: str, text: str) -> tuple[int, list[tuple[str, int, str]]]:
 
 
 def scan(root: Path, rels: list[str] | None = None) -> tuple[int, list[tuple[str, int, str]]]:
+    """Count verification claims across the tree and collect the unevidenced ones."""
     if rels is None:
         rels = [r for r in tracked_files(root) if is_candidate(r)]
     total = 0
@@ -194,8 +218,7 @@ _CASES: list[tuple[str, str, str, int]] = [
     (
         "a backticked app is a locator",
         "README.md",
-        "The activation path is byte-identical to the\n"
-        "silicon-validated `dtc_transfer_demo`.\n",
+        "The activation path is byte-identical to the\nsilicon-validated `dtc_transfer_demo`.\n",
         0,
     ),
     (
@@ -271,14 +294,14 @@ _CASES: list[tuple[str, str, str, int]] = [
     (
         "two bare claims in one block report once each",
         "main.c",
-        "/* Bench-proven rate.\n"
-        " * Silicon-verified window. */\n",
+        "/* Bench-proven rate.\n * Silicon-verified window. */\n",
         2,
     ),
 ]
 
 
 def selftest() -> int:
+    """Run every planted case and report which assertions failed."""
     failures = 0
     checked = 0
     for name, filename, body, expect in _CASES:
@@ -320,6 +343,7 @@ def selftest() -> int:
 
 
 def main(argv: list[str]) -> int:
+    """Run the gate over the tree, or the paths given, or its selftest."""
     args = argv[1:]
     if "--selftest" in args:
         return selftest()
@@ -342,8 +366,7 @@ def main(argv: list[str]) -> int:
 
     if findings:
         print(
-            f"{Path(__file__).name}: {len(findings)} verification claim(s) name no "
-            f"evidence:",
+            f"{Path(__file__).name}: {len(findings)} verification claim(s) name no evidence:",
             file=sys.stderr,
         )
         for rel, line, text in findings:
@@ -358,8 +381,7 @@ def main(argv: list[str]) -> int:
         return 1
 
     print(
-        f"{Path(__file__).name}: clean -- {total} verification claim(s), "
-        f"each naming its evidence"
+        f"{Path(__file__).name}: clean -- {total} verification claim(s), each naming its evidence"
     )
     return 0
 
