@@ -42,6 +42,7 @@
 extern "C" {
 #endif
 
+#include <stdbool.h>
 #include <stdint.h>
 
 #include "fw_os.h"
@@ -60,17 +61,79 @@ enum : uint32_t {
 };
 
 /**
+ * @enum fw_os_host_test_call_t
+ * @brief The seam calls this binding can be told to fail.
+ *
+ * @details
+ * A caller with an RTOS-error branch cannot reach it on the host unless the
+ * binding under it can be made to fail on demand. Without this, every such
+ * branch is dead code in the host build, and the usual workaround is a
+ * per-caller shim that re-declares the RTOS API, which is exactly the
+ * coupling ::fw_os exists to remove.
+ */
+typedef enum : uint32_t {
+  k_fw_os_host_test_call_none = 0U,     /**< Nothing armed.         */
+  k_fw_os_host_test_call_thread_create, /**< ::fw_os_thread_create. */
+  k_fw_os_host_test_call_thread_delete, /**< ::fw_os_thread_delete. */
+  k_fw_os_host_test_call_mutex_init,    /**< ::fw_os_mutex_init.    */
+  k_fw_os_host_test_call_mutex_deinit,  /**< ::fw_os_mutex_deinit.  */
+  k_fw_os_host_test_call_mutex_lock,    /**< ::fw_os_mutex_lock.    */
+  k_fw_os_host_test_call_mutex_unlock,  /**< ::fw_os_mutex_unlock.  */
+  k_fw_os_host_test_call_sem_init,      /**< ::fw_os_sem_init.      */
+  k_fw_os_host_test_call_sem_deinit,    /**< ::fw_os_sem_deinit.    */
+  k_fw_os_host_test_call_sem_take,      /**< ::fw_os_sem_take.      */
+  k_fw_os_host_test_call_sem_give,      /**< ::fw_os_sem_give.      */
+} fw_os_host_test_call_t;
+
+/**
+ * @brief Make the next @p call fail once, with @p err.
+ *
+ * @details
+ * One-shot: the arming is consumed by the first matching call, so a test
+ * cannot leak a forced failure into the next case. Arming
+ * ::k_fw_os_host_test_call_none disarms. The failure is injected before the
+ * call does anything, so no state changes on a forced failure.
+ *
+ * @param[in] call Seam call whose next invocation must fail.
+ * @param[in] err  Error the forced call returns. Must not be ::k_ra8_ok.
+ *
+ * @return ::k_ra8_ok when armed.
+ * @retval k_ra8_err_invalid_arg @p err is ::k_ra8_ok, or @p call is out of
+ *         range.
+ *
+ * @pre None.
+ * @post The next matching seam call returns @p err and changes nothing.
+ * @note Not thread-safe; the host build is single-threaded.
+ * @since 0.1.0
+ */
+ra8_err_t fw_os_host_test_fail_next(fw_os_host_test_call_t call, ra8_err_t err);
+
+/**
+ * @brief Report whether an armed failure is still waiting to be consumed.
+ *
+ * @return True when a forced failure is armed.
+ *
+ * @pre None.
+ * @post No state is mutated.
+ * @note Not thread-safe; the host build is single-threaded.
+ * @since 0.1.0
+ */
+bool fw_os_host_test_failure_armed(void);
+
+/**
  * @brief Return this binding to its just-started state.
  *
  * @details
  * Forgets every recorded thread and resets the millisecond counter and the
- * yield count. Mutexes and semaphores live in caller-owned storage, so they
- * are unaffected: a test re-initialises those itself.
+ * yield count, and disarms any forced failure. Mutexes and semaphores live in
+ * caller-owned storage, so they are unaffected: a test re-initialises those
+ * itself.
  *
  * @return Nothing.
  *
  * @pre None.
- * @post No thread is recorded, the uptime is zero and no yield is counted.
+ * @post No thread is recorded, the uptime is zero, no yield is counted and
+ *       no forced failure is armed.
  * @note Not thread-safe; the host build is single-threaded.
  * @since 0.1.0
  */
