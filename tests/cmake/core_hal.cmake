@@ -15,7 +15,6 @@
 
 add_library(
   ra8_core_hal OBJECT
-  ${RA8_CORE_SOURCES}
   ${XML_SOURCES}
   ${RA8_HAL_SOURCES}
   ${RA8_TLS_SOURCES}

@@ -18,7 +18,14 @@ get_filename_component(FW_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/.." ABSOLUTE)
 # Collect every library source. Each .c file becomes part of the
 # `ra8_core_hal` static library. clang-tidy then walks the associated
 # compile_commands.json.
-file(GLOB_RECURSE RA8_CORE_SOURCES CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra8_core/src/*.c)
+# libs/ra8_core has no C sources left: the log backend, time, decomp limits,
+# the fault block, the error pair, bring-up and the stack canary, the
+# freestanding runtime, the newlib _sbrk trap, the startup SDRAM zero-fill and
+# the secure-comparison primitives (#2908) are Zig now, linked via
+# tests/cmake/zig_libraries.cmake. inc/ is unchanged and is still the
+# membrane, so tests/core, tests/security and every other C suite include the
+# same headers and link the archive without knowing the bodies moved. There is
+# no RA8_CORE_SOURCES glob any more.
 file(GLOB_RECURSE XML_SOURCES CONFIGURE_DEPENDS ${FW_ROOT}/apps/shared_libs/xml/src/*.c)
 file(GLOB_RECURSE RA8_HAL_SOURCES CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra8_hal/src/*.c)
 # libs/ra8_jpeg has no C sources left: the imgdec backend, the encoder

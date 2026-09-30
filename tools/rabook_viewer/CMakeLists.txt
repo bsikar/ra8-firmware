@@ -281,8 +281,10 @@ link_libraries(ra8_zig::ra8_mem)
 # into the freestanding archive rather than this one, so it drops off the list
 # for the same reason. The newlib _sbrk trap followed (#2895), into this
 # archive rather than that one, because it calls ra8_fatal_error. The startup
-# SDRAM zero-fill followed (#2901). The rest of the library is still C, so the
-# read-path partition below stays.
+# SDRAM zero-fill followed (#2901), and the secure-comparison primitives
+# (#2908) were the last C in the library. libs/ra8_core/src now holds no .c at
+# all, so there is no partition left to prove and the ra8_viewer_read_path()
+# call for it is gone: the archive above supplies the whole read path.
 if(NOT TARGET ra8_zig::ra8_core)
   include(${FW_ROOT}/tests/cmake/zig_library.cmake)
   ra8_add_zig_library(
@@ -292,11 +294,6 @@ if(NOT TARGET ra8_zig::ra8_core)
   )
 endif()
 link_libraries(ra8_zig::ra8_core)
-
-ra8_viewer_read_path(
-  RA8_CORE_SRC ${FW_ROOT}/libs/ra8_core/src
-  DROP ra8_secure.c
-)
 
 set(RA8_THIRD_PARTY_SRC ${FW_ROOT}/apps/shared_libs/third_party/miniz/miniz.c
                         ${FW_ROOT}/apps/shared_libs/third_party/stb/stb_image_impl.c
