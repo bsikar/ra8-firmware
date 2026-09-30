@@ -76,6 +76,18 @@ if(NOT TARGET ra8_zig::ra8_jpeg)
 endif()
 link_libraries(ra8_zig::ra8_jpeg)
 
+# ra8_log is Zig now (#2836), so the ra8_core archive replaces the
+# libs/ra8_core/src/ra8_log.c row that used to be compiled by path here.
+if(NOT TARGET ra8_zig::ra8_core)
+  include(${FW_ROOT}/tests/cmake/zig_library.cmake)
+  ra8_add_zig_library(
+    NAME ra8_core
+    ZIG_ROOT ${FW_ROOT}/libs/ra8_core
+    LIBRARY_NAME ra8_core_zig
+  )
+endif()
+link_libraries(ra8_zig::ra8_core)
+
 # ---------------------------------------------------------------------------
 # The exact firmware members the tool calls: the JOF producer (with its
 # JPEG / PNG / WebP front ends) and reader, plus the compression seam they sit
@@ -89,7 +101,6 @@ set(RA8_FMT_FW_SRC
     ${FW_ROOT}/apps/shared_libs/jof/src/jof_png.c
     ${FW_ROOT}/apps/shared_libs/jof/src/jof_png_chunk.c
     ${FW_ROOT}/apps/shared_libs/compress/src/ra8_compress.c
-    ${FW_ROOT}/libs/ra8_core/src/ra8_log.c
     ${FW_ROOT}/libs/ra8_core/src/ra8_error_handler.c
     ${FW_ROOT}/libs/ra8_core/src/ra8_decomp_limits.c
 )
@@ -179,7 +190,6 @@ if(BUILD_TESTING)
     ${FW_ROOT}/apps/shared_libs/jof/src/jof_audit.c
     ${FW_ROOT}/apps/shared_libs/jof/src/jof.c
     ${FW_ROOT}/apps/shared_libs/compress/src/ra8_compress.c
-    ${FW_ROOT}/libs/ra8_core/src/ra8_log.c
     ${FW_ROOT}/libs/ra8_core/src/ra8_error_handler.c
     ${FW_ROOT}/libs/ra8_core/src/ra8_decomp_limits.c
     ${RA8_FMT_THIRD_PARTY_SRC}
@@ -208,7 +218,6 @@ if(BUILD_TESTING)
     ${FW_ROOT}/apps/shared_libs/jof/src/jof_audit.c
     ${FW_ROOT}/apps/shared_libs/jof/src/jof.c
     ${FW_ROOT}/apps/shared_libs/compress/src/ra8_compress.c
-    ${FW_ROOT}/libs/ra8_core/src/ra8_log.c
     ${FW_ROOT}/libs/ra8_core/src/ra8_error_handler.c
     ${FW_ROOT}/libs/ra8_core/src/ra8_decomp_limits.c
     ${RA8_FMT_THIRD_PARTY_SRC}
@@ -320,7 +329,6 @@ if(BUILD_TESTING)
     ${FW_ROOT}/apps/shared_libs/rabook_compile/src/ra8_rabook_container.c
     ${RA8_FMT_BOOK_SRC}
     ${FW_ROOT}/apps/shared_libs/compress/src/ra8_compress.c
-    ${FW_ROOT}/libs/ra8_core/src/ra8_log.c
     ${FW_ROOT}/libs/ra8_core/src/ra8_error_handler.c
     ${RA8_FMT_THIRD_PARTY_SRC}
   )

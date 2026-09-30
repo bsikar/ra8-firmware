@@ -9,6 +9,8 @@
         // The JPEG encoder is Zig as of #2795, so it is linked as an archive
         // rather than compiled from C sources here.
         .ra8_jpeg = .{ .path = "../../../libs/ra8_jpeg" },
+        // ra8_log is Zig as of #2836, so ra8_core arrives as an archive too.
+        .ra8_core = .{ .path = "../../../libs/ra8_core" },
     },
     .paths = .{
         "build.zig",

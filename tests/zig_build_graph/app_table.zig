@@ -243,7 +243,6 @@ pub const cross_apps = [_]CrossApp{
             .entry_source = "src/cpu1_main.c",
             .shared_sources = &.{
                 "libs/ra8_hal/src/ra8_ipc.c",
-                "libs/ra8_core/src/ra8_log.c",
                 "libs/ra8_core/src/ra8_scb.c",
             },
             .linker_script = "linker_script_cpu1.ld",
@@ -456,7 +455,6 @@ pub const cross_apps = [_]CrossApp{
                 "libs/ra8_hal/src/ra8_usb_host_ctrl.c",
                 "libs/ra8_hal/src/ra8_usb_host_bulk.c",
                 "libs/ra8_hal/src/ra8_mstp.c",
-                "libs/ra8_core/src/ra8_log.c",
                 "libs/ra8_core/src/ra8_scb.c",
             },
             // RA8_PERIPH_NS_ALIAS routes ra8_usb/ra8_mstp at the IDAU
@@ -607,7 +605,6 @@ pub const cross_apps = [_]CrossApp{
             .entry_source = "src/cpu1_main.c",
             .shared_sources = &.{
                 "libs/ra8_hal/src/ra8_ipc.c",
-                "libs/ra8_core/src/ra8_log.c",
                 "libs/ra8_core/src/ra8_scb.c",
             },
             .linker_script = "linker_script_cpu1.ld",

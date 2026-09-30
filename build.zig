@@ -93,17 +93,26 @@ const shared_include_paths = [_][]const u8{
 };
 
 /// C translation units every suite in the slice needs on top of the archive
-/// under test. Under CMake these arrive through ra8_core_hal; the Zig archives
-/// reference `ra8_log_emit_*`, which `ra8_core` defines weakly, so the same
-/// file has to be in the link here. It is the real implementation, not a stub:
-/// a stub would let a logging regression pass this graph and fail CMake.
+/// under test. Under CMake these arrive through ra8_core_hal.
+///
+/// It held `ra8_log.c` until #2836: the Zig archives reference
+/// `ra8_log_emit_*`, and that file was the only definition of them. The log
+/// backend is Zig itself now and arrives as ra8_core's general archive, linked
+/// below. That archive is one object, so linking it also pulls the SysTick and
+/// time-interface ports (#2830) in, and those call back into the two ra8_core
+/// TUs still written in C. So this list is now what those Zig ports extern
+/// rather than what the suites call directly. Under CMake all of it arrives
+/// through ra8_core_hal; the real implementations, not stubs, so a regression
+/// in any of them fails this graph exactly as it fails CMake.
 const support_c_sources = [_][]const u8{
-    "libs/ra8_core/src/ra8_log.c",
+    "libs/ra8_core/src/ra8_scb.c",
+    "libs/ra8_core/src/ra8_time.c",
 };
 
 /// The host C dialect and warning set from tests/cmake/host_config.cmake.
 /// `RA8_OFF_TARGET` and `UNIT_TEST` are the two definitions that file adds to
-/// every host TU; without them `ra8_log.c` reaches for Cortex-M `mrs`.
+/// every host TU; without them the C that reads system registers, such as
+/// `ra8_exception.c`, reaches for Cortex-M `mrs`.
 /// `-Werror` stays on: a suite that only compiles under a looser dialect here
 /// than it does under CMake would make the parity claim meaningless.
 pub const c_flags = [_][]const u8{
@@ -193,6 +202,11 @@ pub fn build(b: *std.Build) void {
     const graph_tests = b.addTest(.{ .root_module = graph_test_module });
     zig_test_step.dependOn(&b.addRunArtifact(graph_tests).step);
 
+    const core_archive = b.dependency("ra8_core", .{
+        .target = target,
+        .optimize = optimize,
+    }).artifact("ra8_core_zig");
+
     for (slice) |member| {
         const dependency = b.dependency(member.dependency_name, .{
             .target = target,
@@ -231,6 +245,8 @@ pub fn build(b: *std.Build) void {
             .root_module = suite_module,
         });
         suite.linkLibrary(archive);
+        // The log backend the archives call into (#2836).
+        suite.linkLibrary(core_archive);
 
         const run_suite = b.addRunArtifact(suite);
         run_suite.expectExitCode(0);
@@ -705,7 +721,6 @@ const vendored_first_party_sources = [_][]const u8{
     "apps/shared_libs/unarch/src/unarch_xz_pool.c",
     "apps/shared_libs/unarch/src/unarch_io.c",
     "libs/ra8_core/src/ra8_decomp_limits.c",
-    "libs/ra8_core/src/ra8_log.c",
     // The pool stopped being its own bump arena in #768: it draws blocks from
     // the shared decoder scratch now, so the arena under it is part of this
     // slice rather than something CMake links from elsewhere. The scratch
@@ -784,6 +799,11 @@ fn addVendoredCSuite(
         .target = target,
         .optimize = optimize,
     }).artifact("ra8_imgdec"));
+    // ra8_decomp_limits.c logs through ra8_log_emit_*, which is Zig now (#2836).
+    suite.linkLibrary(b.dependency("ra8_core", .{
+        .target = target,
+        .optimize = optimize,
+    }).artifact("ra8_core_zig"));
 
     const run_suite = b.addRunArtifact(suite);
     run_suite.expectExitCode(0);

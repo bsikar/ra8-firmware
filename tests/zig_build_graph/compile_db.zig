@@ -51,11 +51,11 @@ pub fn arguments(b: *std.Build, entry: Entry) []const []const u8 {
 }
 
 /// Everything in an entry except its object path, joined. Two entries with the
-/// same signature are the same compile command written twice: `ra8_log.c` is
+/// same signature are the same compile command written twice: `ra8_scb.c` is
 /// compiled into each of the three host suite modules identically, and one
 /// command is what CMake's database would carry for it too. Two entries that
 /// differ are a real difference and both stay -- which is how the vendored
-/// slice's asymmetry survives into the database, `ra8_log.c` appearing once at
+/// slice's asymmetry survives into the database, `ra8_scb.c` appearing once at
 /// the host bar and again at the stricter -Wconversion bar the SOUP drivers
 /// take.
 pub fn signature(b: *std.Build, entry: Entry) []const u8 {

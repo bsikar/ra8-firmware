@@ -41,7 +41,7 @@ fn indexOf(haystack: []const []const u8, needle: []const u8) ?usize {
     return null;
 }
 
-test "the second image compiles exactly the four units its executable names" {
+test "the second image compiles exactly the three units its executable names" {
     const allocator = std.testing.allocator;
     const image = dual_core_app.cpu1 orelse return error.MissingCpu1Image;
     const app = cpu1App(dual_core_app);
@@ -49,7 +49,7 @@ test "the second image compiles exactly the four units its executable names" {
     const units = cpu1.sources(allocator, app, image);
     defer allocator.free(units);
     defer allocator.free(units[0]);
-    try std.testing.expectEqual(@as(usize, 4), units.len);
+    try std.testing.expectEqual(@as(usize, 3), units.len);
     try std.testing.expectEqualStrings(
         "examples/ek_ra8d2/hw_validated/hil/cpu1_pingpong/src/cpu1_main.c",
         units[0],
