@@ -778,21 +778,42 @@ ra8_add_zig_library(
 )
 link_libraries(ra8_zig::ra8_jpeg)
 
-# ra8_core is partially migrated: the freestanding runtime primitives are Zig
-# (#2820), the other sixteen TUs are still C and keep their rows in
-# .github/zig-parallel-tree-allowlist.tsv. The plain archive is deliberately
-# NOT registered here. Its exported names are the bare standard ones an image
-# needs (memcpy, memset, strlen, abs), and a host test binary already has a
-# real libc defining every one of them.
+# ra8_core is partially migrated and ships TWO archives, because one of its
+# two Zig seams exports bare libc names and the other does not.
+#
+# ra8_zig::ra8_core is the general one (libra8_core_zig.a). It holds every
+# ported TU whose exported names are ordinary ra8_* ones: the pin-claim
+# validator so far. Nothing in a host test binary defines those, so it is
+# link_libraries()'d like the other migrated libraries and the untouched C
+# suites reach the Zig object code with no test edit. New ra8_core slices
+# belong in this archive.
+#
+# The freestanding runtime primitives (#2820) are the exception and stay in
+# their own archive (libra8_core.a), which is deliberately NOT registered
+# here. Its exported names are the bare standard ones an image needs (memcpy,
+# memset, strlen, abs), and a host test binary already has a real libc
+# defining every one of them.
 #
 # tests/core/src/test_ra8_freestanding.c is the one suite that has to reach
-# these implementations, and it does it the way the C did: it defines
+# those implementations, and it does it the way the C did: it defines
 # RA8_TEST_FREESTANDING, whose block in libs/ra8_core/inc/ra8_freestanding.h
 # rewrites its bare calls to ra8_memset / ra8_strlen / ra8_abs. So the suite
-# links a copy of the archive built with -Dabi-prefix=ra8_, which exports
-# exactly those names and collides with nothing. unit_tests.cmake attaches it
-# to that one target; it is not link_libraries()'d, because no other test
-# should pick these symbols up.
+# links a copy of the freestanding archive built with -Dabi-prefix=ra8_,
+# which exports exactly those names and collides with nothing.
+# unit_tests.cmake attaches it to that one target; it is not
+# link_libraries()'d, because no other test should pick these symbols up.
+# That archive carries no pin_validator symbols, so a target that links both
+# gets one definition of each, not two.
+ra8_add_zig_library(
+  NAME
+  ra8_core
+  ZIG_ROOT
+  ${FW_ROOT}/libs/ra8_core
+  LIBRARY_NAME
+  ra8_core_zig
+)
+link_libraries(ra8_zig::ra8_core)
+
 set(_ra8_core_prefixed_dir "${CMAKE_CURRENT_BINARY_DIR}/zig_libs/ra8_core_freestanding_prefixed")
 set(_ra8_core_prefixed_library
     "${_ra8_core_prefixed_dir}/lib/${CMAKE_STATIC_LIBRARY_PREFIX}ra8_core${CMAKE_STATIC_LIBRARY_SUFFIX}"
