@@ -12,11 +12,29 @@
 //! C did. That is what keeps it host-testable against a mock table.
 
 const std = @import("std");
+const builtin = @import("builtin");
 const implementation = @import("internal/root.zig");
 
 /// The ESP32-C6 backend membrane, reached from here so its exported vtable
 /// and setup call land in the same archive as the facade.
 pub const c6link = @import("ra8_wifi_c6link_abi.zig");
+
+comptime {
+    // The declaration above is not enough on its own. Zig analyses lazily, and
+    // nothing references `c6link` by name, so the file was never analysed and
+    // neither `k_ra8_wifi_backend_c6link` nor `ra8_wifi_c6link_setup` was
+    // emitted into the archive. C binds the vtable by ADDRESS, which is a
+    // link-time reference to a symbol that was never produced, so the archive
+    // built clean and the failure only showed at the final app link.
+    //
+    // Not in a test binary: the backend declares the transport `extern fn`s it
+    // drives, which the firmware resolves when an app links the board layer.
+    // A host test links no board layer, so forcing the analysis there would
+    // only produce undefined symbols for hardware the test never calls.
+    if (!builtin.is_test) {
+        _ = c6link;
+    }
+}
 
 /// 48-bit station address (`ra8_wifi_mac_t`).
 pub const Mac = implementation.Mac;
