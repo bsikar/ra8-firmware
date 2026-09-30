@@ -36,4 +36,9 @@ ra8_add_app(
     "Copy-to-run HIL proof: launch one embedded image at the SRAM run base via ra8_dfu_launch"
     AUX_SRCS src/payload.c
   LIBS ra8_dfu
+       MRAM_LENGTH
+       128K
+       SRAM_TEXT
+       ra8_flash.c
+       ra8_dfu_program.c
 )

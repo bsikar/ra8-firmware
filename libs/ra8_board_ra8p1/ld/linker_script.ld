@@ -35,9 +35,26 @@
 
 ENTRY(Reset_Handler)
 
+/* Per-app injection point, ahead of the MEMORY block below.
+ *
+ * An INCLUDEd script's MEMORY block cannot be amended by the script that
+ * includes it, so an app that needs a different bank size had no way to say so
+ * except by copying this whole file. That is why the bootloader-bank apps
+ * carried a 344-line fork to change one number.
+ *
+ * ra8_add_app() always generates this file into the app's build dir and puts
+ * that dir on the linker's search path, so it is found by bare name. It is
+ * empty unless the app asked for something; see MRAM_LENGTH. Each overridable
+ * region below reads its value through DEFINED(), so an empty file leaves the
+ * canonical map exactly as it was.
+ */
+INCLUDE ra8_app_pre_memory.ld
+
+__ra8_mram_length = DEFINED(__ra8_app_mram_length) ? __ra8_app_mram_length : 1024K;
+
 MEMORY
 {
-    MRAM (rx) : ORIGIN = 0x02000000, LENGTH = 1024K
+    MRAM (rx) : ORIGIN = 0x02000000, LENGTH = __ra8_mram_length
     /* Option-setting memory lives in the extra MRAM in two disjoint blocks
      * (HUM Ch 7 Figure 7.1 p 279): the configuration words at 0x02C9_F0xx and
      * the OTP / anti-rollback area at 0x02E0_7600.. . Placed at their real
