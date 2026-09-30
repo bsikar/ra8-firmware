@@ -67,6 +67,9 @@ file(GLOB_RECURSE RA8_FS_SOURCES CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra8_fs/src/*.
 # if_ra8_vfs is fully migrated to Zig; see tests/cmake/zig_libraries.cmake.
 # Its private contracts header went with the .c, so libs/if_ra8_vfs/src is no
 # longer an include directory anywhere.
+# if_ra8_cgc arrived from dev in a43342038 (#693) as C and has not been ported
+# yet, so unlike the migrated libraries above it still needs its glob.
+file(GLOB_RECURSE RA8_IF_RA8_CGC_SOURCES CONFIGURE_DEPENDS ${FW_ROOT}/libs/if_ra8_cgc/src/*.c)
 file(GLOB_RECURSE RA8_IO_SOURCES CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra8_io/src/*.c)
 file(GLOB_RECURSE COMPRESS_SOURCES CONFIGURE_DEPENDS ${FW_ROOT}/apps/shared_libs/compress/src/*.c)
 # ra8_audio is fully migrated to Zig (facade + memory and PDM backends);
