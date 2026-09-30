@@ -20,25 +20,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/bsikar/ra8-firmware/tools/ra8ci/internal/asciigate"
-	"github.com/bsikar/ra8-firmware/tools/ra8ci/internal/assertcasts"
 	"github.com/bsikar/ra8-firmware/tools/ra8ci/internal/catalog"
-	"github.com/bsikar/ra8-firmware/tools/ra8ci/internal/committerms"
-	"github.com/bsikar/ra8-firmware/tools/ra8ci/internal/driverasmguard"
-	"github.com/bsikar/ra8-firmware/tools/ra8ci/internal/gnuattribute"
-	"github.com/bsikar/ra8-firmware/tools/ra8ci/internal/gotosetjmp"
-	"github.com/bsikar/ra8-firmware/tools/ra8ci/internal/legacymake"
-	"github.com/bsikar/ra8-firmware/tools/ra8ci/internal/newlinegate"
-	"github.com/bsikar/ra8-firmware/tools/ra8ci/internal/nscveneers"
-	"github.com/bsikar/ra8-firmware/tools/ra8ci/internal/nullgate"
-	"github.com/bsikar/ra8-firmware/tools/ra8ci/internal/pointerboilerplate"
-	"github.com/bsikar/ra8-firmware/tools/ra8ci/internal/runnerclock"
-	"github.com/bsikar/ra8-firmware/tools/ra8ci/internal/sincegate"
-	"github.com/bsikar/ra8-firmware/tools/ra8ci/internal/stubcryptoguard"
-	"github.com/bsikar/ra8-firmware/tools/ra8ci/internal/testsreadme"
-	"github.com/bsikar/ra8-firmware/tools/ra8ci/internal/tzdiscard"
-	"github.com/bsikar/ra8-firmware/tools/ra8ci/internal/unsafeinstall"
-	"github.com/bsikar/ra8-firmware/tools/ra8ci/internal/waverefs"
 )
 
 const stopGrace = 30 * time.Second
@@ -214,7 +196,7 @@ func runStep(ctx context.Context, root string, env []string, step catalog.Step, 
 		result.EndedAt = end.UTC()
 		result.Duration = end.Sub(started)
 	}()
-	if step.Program == "ra8ci:ascii" || step.Program == "ra8ci:since" || step.Program == "ra8ci:final-newline" || step.Program == "ra8ci:runner-clock" || step.Program == "ra8ci:tests-readme" || step.Program == "ra8ci:inclusive-terminology-commits" || step.Program == "ra8ci:legacy-make" || step.Program == "ra8ci:no-unsafe-python-install" || step.Program == "ra8ci:wave-references" || step.Program == "ra8ci:pointer-boilerplate" || step.Program == "ra8ci:nsc-veneer-defs" || step.Program == "ra8ci:stub-crypto-guard" || step.Program == "ra8ci:tz-boundary-discard" || step.Program == "ra8ci:driver-asm-guard" || step.Program == "ra8ci:no-goto-setjmp" || step.Program == "ra8ci:gnu-attribute" || step.Program == "ra8ci:assert-casts" || step.Program == "ra8ci:no-null" {
+	if gate, found := dispatchedGate(step.Program); found {
 		stdoutLog := newDigestWriter(stdout)
 		stderrLog := newDigestWriter(stderr)
 		if refusal, spent := gateRefusedBeforeStart(ctx); spent {
@@ -225,43 +207,7 @@ func runStep(ctx context.Context, root string, env []string, step catalog.Step, 
 			result.StderrSHA256, result.StderrBytes = stderrLog.digest()
 			return result, nil
 		}
-		if step.Program == "ra8ci:ascii" {
-			result.ExitCode = asciigate.Run(ctx, root, step.Args, stdoutLog, stderrLog)
-		} else if step.Program == "ra8ci:since" {
-			result.ExitCode = sincegate.Run(ctx, root, step.Args, stdoutLog, stderrLog)
-		} else if step.Program == "ra8ci:final-newline" {
-			result.ExitCode = newlinegate.Run(ctx, root, step.Args, stdoutLog, stderrLog)
-		} else if step.Program == "ra8ci:runner-clock" {
-			result.ExitCode = runnerclock.Run(ctx, step.Args, stdoutLog, stderrLog)
-		} else if step.Program == "ra8ci:tests-readme" {
-			result.ExitCode = testsreadme.Run(ctx, root, step.Args, stdoutLog, stderrLog)
-		} else if step.Program == "ra8ci:inclusive-terminology-commits" {
-			result.ExitCode = committerms.Run(ctx, step.Args, os.Stdin, stdoutLog, stderrLog)
-		} else if step.Program == "ra8ci:legacy-make" {
-			result.ExitCode = legacymake.Run(ctx, root, step.Args, stdoutLog, stderrLog)
-		} else if step.Program == "ra8ci:no-unsafe-python-install" {
-			result.ExitCode = unsafeinstall.Run(ctx, root, step.Args, stdoutLog, stderrLog)
-		} else if step.Program == "ra8ci:wave-references" {
-			result.ExitCode = waverefs.Run(ctx, root, step.Args, stdoutLog, stderrLog)
-		} else if step.Program == "ra8ci:pointer-boilerplate" {
-			result.ExitCode = pointerboilerplate.Run(ctx, root, step.Args, stdoutLog, stderrLog)
-		} else if step.Program == "ra8ci:nsc-veneer-defs" {
-			result.ExitCode = nscveneers.Run(ctx, root, step.Args, stdoutLog, stderrLog)
-		} else if step.Program == "ra8ci:stub-crypto-guard" {
-			result.ExitCode = stubcryptoguard.Run(ctx, root, step.Args, stdoutLog, stderrLog)
-		} else if step.Program == "ra8ci:tz-boundary-discard" {
-			result.ExitCode = tzdiscard.Run(ctx, root, step.Args, stdoutLog, stderrLog)
-		} else if step.Program == "ra8ci:driver-asm-guard" {
-			result.ExitCode = driverasmguard.Run(ctx, root, step.Args, stdoutLog, stderrLog)
-		} else if step.Program == "ra8ci:no-goto-setjmp" {
-			result.ExitCode = gotosetjmp.Run(ctx, root, step.Args, stdoutLog, stderrLog)
-		} else if step.Program == "ra8ci:gnu-attribute" {
-			result.ExitCode = gnuattribute.Run(ctx, root, step.Args, stdoutLog, stderrLog)
-		} else if step.Program == "ra8ci:assert-casts" {
-			result.ExitCode = assertcasts.Run(ctx, root, step.Args, stdoutLog, stderrLog)
-		} else if step.Program == "ra8ci:no-null" {
-			result.ExitCode = nullgate.Run(ctx, root, step.Args, stdoutLog, stderrLog)
-		}
+		result.ExitCode = gate(ctx, root, step.Args, stdoutLog, stderrLog)
 		if expiration := contextExpiration(ctx); expiration != nil {
 			result.TimedOut = errors.Is(expiration, context.DeadlineExceeded)
 			result.Cancelled = !result.TimedOut
