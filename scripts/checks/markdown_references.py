@@ -982,7 +982,15 @@ def _enforce_population(tracked: list[str]) -> tuple[list[str], list[str]]:
     )
     for label, actual, minimum in populations:
         if actual < minimum:
-            _fail(f"{label} census collapsed: {actual} < {minimum}")
+            _fail(
+                f"{label} census collapsed: {actual} < {minimum}. "
+                "Either the enumeration broke, which is the defect this floor "
+                "exists to catch, or documents were deliberately removed and "
+                "the floor is stale: re-pin it naming the commit that removed "
+                "them. Do not leave it failing, because this check runs before "
+                "any reference is examined and a stale floor darkens the whole "
+                "gate."
+            )
     return first_party, vendored
 
 
@@ -1102,6 +1110,7 @@ built_link_output = _built_link_output
 context_sha256 = _context_sha256
 declared_bare_code_file = _declared_bare_code_file
 declared_work_fixture = _declared_work_fixture
+enforce_population = _enforce_population
 fail = _fail
 git = _git
 is_vendor = _is_vendor
