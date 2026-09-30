@@ -33,8 +33,12 @@
  * @brief Clocking, pacing and RAM budgets the application sets.
  *
  * @details
- * The SPI bit rate and boot wait are the bench-proven figures the c6 examples
- * settled on. The arena and worker stack size the one link and the one worker
+ * The SPI bit rate and boot wait are the figures the c6 examples settled on:
+ * 5 MHz is the rate upstream esp-hosted recommends, carried here from
+ * `c6_hosted_init`, and this app is the one that ran the link at it. The
+ * dated bring-up evidence in `coprocessor/esp32c6/pins.env` is a separate,
+ * slower measurement (SPI mode 3 at 1 MHz), so it does not qualify this
+ * figure. The arena and worker stack size the one link and the one worker
  * thread this image owns.
  *
  * @invariant ::k_wifi_hal_arena_bytes is at least ::k_ra8_c6link_arena_min.

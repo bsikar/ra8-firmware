@@ -163,7 +163,9 @@ ra8_doc_set_window(uint16_t lower, uint16_t upper, ra8_doc_window_polarity_t pol
  * The window decision itself is made by the silicon comparator. The
  * RAM-backed host register file has no comparator engine, so host unit
  * tests stage DOSR.DOPCF before the call to drive both flag legs; the
- * inside/outside/boundary semantics are proven on silicon.
+ * inside/outside/boundary semantics are proven on silicon by `doc_demo`,
+ * whose `hil.conf` probe asserts the peripheral computed the right answer
+ * rather than that the firmware merely looped.
  *
  * @param[in]  value    16-bit data value to compare against the window.
  *                      Range: 0..65535.

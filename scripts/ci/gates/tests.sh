@@ -290,6 +290,19 @@ gate_mcdc() (
 # nothing, or filtered empty, is a finding too: a class must not stay claimed by a
 # pattern that quietly stopped resolving.
 #
+# check_bench_claims.py (#710) closes the same class in prose rather than in a
+# build recipe. coprocessor/esp32c6/build.sh asserted the recipe had been "built,
+# flashed and booted on the bench" in a comment written BEFORE the media component
+# existed: true when written, silently widened to cover code added 19 days later,
+# and nothing in the tree could tell. A claim that names no evidence cannot go
+# stale, because there is nothing to check it against. So the checker asks one
+# mechanical question of every completed bench/silicon verification claim in
+# first-party sources -- does its own comment or prose block name a locator (a
+# date, a commit, an issue, a file path, or a backticked app/symbol/artifact) --
+# and leaves negated and forward-looking statements alone, since those are the
+# honest shape. "On the bench" on its own is not a claim: this tree uses it
+# constantly as a location (the bench host, the bench Pi).
+#
 # gen_ra8_media_proto.sh --selftest runs here too, and it is the odd one out: it
 # exercises a --check this gate cannot itself run. That is the reason for it. The
 # byte-exact comparison, the post-processing, the version pin and the missing-generator
@@ -309,6 +322,8 @@ gate_artefact_freshness() (
   python3 scripts/checks/check_soup_consumer_census.py
   python3 scripts/checks/check_usbx_class_claims.py --selftest
   python3 scripts/checks/check_usbx_class_claims.py
+  python3 scripts/checks/check_bench_claims.py --selftest
+  python3 scripts/checks/check_bench_claims.py
 )
 
 # --- cache-bench ----------------------------------------------------------
