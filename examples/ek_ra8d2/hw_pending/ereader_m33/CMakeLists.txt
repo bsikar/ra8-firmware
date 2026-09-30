@@ -32,7 +32,14 @@ include("${_d}/cmake/ra8_add_app.cmake")
 
 ra8_add_app(
   NAME ereader_m33
-  STACK_BYTES 2200 AUX_SRCS src/cpu1_main.c
+  STACK_BYTES
+    2200
+    AUX_SRCS
+    src/cpu1_main.c
+    # The M33 image is flashed at 0x020C0000, so the M85's own MRAM stops there.
+    MRAM_LENGTH
+    768K
+    CPU1_IMAGE
   DESCRIPTION "Dual-core (M85 + M33) e-reader: M33 runs the page-turn loop while the M85 parks"
 )
 

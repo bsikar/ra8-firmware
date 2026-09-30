@@ -667,8 +667,8 @@ pub const Uncovered = struct {
 pub const uncovered = [_]Uncovered{
     .{
         .representative = "ereader_m33",
-        .shape = .{ .aux_srcs = true },
-        .note = "1 declaration: a single-image app that names an extra source of its own. cpu1_pingpong used to cross-build this kind; #742 moved it and the two dualcore apps onto CPU1_IMAGE, then took dfu_copy_to_run, tz_threadx_demo and finally ra8d2-ereader onto MRAM_LENGTH, leaving the M33 ereader alone here",
+        .shape = .{ .aux_srcs = true, .cpu1_image = true, .mram_length = true },
+        .note = "1 declaration: the last app-local linker_script.ld in the tree, retired by #742. It now composes the same way the other dual-core apps do, CPU1_IMAGE for the M33 window plus MRAM_LENGTH 768K to stop the M85's own bank at 0x020C0000, and names an extra source of its own on top. cpu1_pingpong_ipc cross-builds CPU1_IMAGE but without AUX_SRCS or MRAM_LENGTH, so this combination is still one declaration",
     },
     .{
         .representative = "dfu_copy_to_run",
