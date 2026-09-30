@@ -320,6 +320,66 @@ def _check_soup_cases(root: Path, failures: list[str]) -> None:
         failures.append("absent SOUP local source escaped")
 
 
+def _check_upstream_source_cases(root: Path, failures: list[str]) -> None:
+    """Prove an upstream citation clears a name only with a project and a revision."""
+    source = "docs/UPSTREAM.md"
+    page = root / source
+    cited = (
+        "FSP `github.com/renesas/fsp` (`R7KA8{P1,D2}KF_core0.h` and "
+        "`R7KA8P1KF_core1.h` read at commit `6e26753`).\n"
+    )
+    table = "| `R7KA8D2KF_core0.h` | primary core |\n"
+    page.write_text(table + "\n" + cited, encoding="ascii")
+    brace = PathRef(1, 0, "R7KA8{P1,D2}KF_core0.h", cited)
+    expanded = PathRef(1, 0, "R7KA8D2KF_core0.h", table)
+    literal = PathRef(3, 0, "R7KA8P1KF_core1.h", cited)
+    if _path_reason(root, source, brace) is not None:
+        failures.append("an upstream brace pattern cited at a revision was rejected")
+    if _path_reason(root, source, expanded) is not None:
+        failures.append("a brace expansion of an upstream citation was rejected")
+    if _path_reason(root, source, literal) is not None:
+        failures.append("a literal upstream name cited at a revision was rejected")
+
+    # A project without a revision is a lead, not a citation, and clears nothing.
+    page.write_text("FSP `github.com/renesas/fsp` defines `R7KA8P1KF_core1.h`.\n", encoding="ascii")
+    if _path_reason(root, source, literal) is None:
+        failures.append("an upstream name escaped on a project named with no revision")
+
+    # A revision without a project is not a citation either.
+    page.write_text(
+        "Read at commit `6e26753`: `R7KA8P1KF_core1.h` sets the FPU.\n", encoding="ascii"
+    )
+    if _path_reason(root, source, literal) is None:
+        failures.append("an upstream name escaped on a revision with no project")
+
+    # Project and revision must meet in one sentence, not merely in one document.
+    page.write_text(
+        "FSP lives at `github.com/renesas/fsp`. "
+        "We read `R7KA8P1KF_core1.h` at commit `6e26753`.\n",
+        encoding="ascii",
+    )
+    if _path_reason(root, source, literal) is None:
+        failures.append("an upstream name escaped on a split project and revision")
+
+    # A first-party path is never cleared by an upstream citation beside it.
+    ours = (
+        "FSP `github.com/renesas/fsp` at commit `6e26753` feeds "
+        "`cmake/GONE.cmake` and `R7KA8P1KF_core1.h`.\n"
+    )
+    page.write_text(ours, encoding="ascii")
+    first_party = PathRef(1, 0, "cmake/GONE.cmake", ours)
+    if _path_reason(root, source, first_party) is None:
+        failures.append("a first-party path escaped through an upstream citation")
+    if _path_reason(root, source, literal) is not None:
+        failures.append("an upstream name beside a first-party path was rejected")
+
+    # A name the document never cites is not covered by another sentence's citation.
+    if _path_reason(root, source, PathRef(1, 0, "R7KA8D2KF_core9.h", ours)) is None:
+        failures.append("an uncited upstream name escaped through a neighbouring citation")
+
+    page.unlink()
+
+
 def _check_soup_absence_cases(root: Path, failures: list[str]) -> None:
     """Prove a vendoring-absence paragraph clears only its own upstream names."""
     source = "docs/SOUP/sample.md"
@@ -701,6 +761,7 @@ def selftest() -> int:
         _check_tests_path_hostile_cases(root, failures)
         _check_soup_cases(root, failures)
         _check_soup_absence_cases(root, failures)
+        _check_upstream_source_cases(root, failures)
         _check_planned_path_cases(root, failures)
         _check_vendor_scope_cases(root, failures)
         _check_bare_declaration_cases(root, failures)
@@ -713,5 +774,5 @@ def selftest() -> int:
         for failure in failures:
             print(f"selftest: check_markdown_references.py FAIL: {failure}", file=sys.stderr)
         return 1
-    print(f"selftest: check_markdown_references.py OK ({len(cases) + 59} both-direction cases)")
+    print(f"selftest: check_markdown_references.py OK ({len(cases) + 69} both-direction cases)")
     return 0

@@ -37,6 +37,7 @@ from markdown_reference_policy import (
     AUTHORED_VENDOR_INDEXES,
     BARE_CODE_FILE_RE,
     BARE_MARKDOWN_PATTERN,
+    BRACE_ALTERNATION_RE,
     COMPONENT_RELATIVE_PREFIXES,
     BUILD_INVOCATION_RE,
     CMAKE_TARGET_NAME_RE,
@@ -54,6 +55,7 @@ from markdown_reference_policy import (
     MIN_LINK_REFERENCES,
     MIN_PATH_REFERENCES,
     MIN_TRACKED_MARKDOWN,
+    MAX_BRACE_EXPANSIONS,
     MIN_VENDOR_MARKDOWN,
     PATH_RE,
     QUALIFICATION_RELEASE_SOURCES,
@@ -67,6 +69,8 @@ from markdown_reference_policy import (
     EMPHASIS_RE,
     SENTENCE_SPLIT_RE,
     SOUP_RECORD_PREFIX,
+    UPSTREAM_PROJECT_RE,
+    UPSTREAM_REVISION_RE,
     VENDORING_ABSENCE_RE,
     SOUP_LOCAL_PATH_RE,
     SYMBOL_SUFFIX_RE,
@@ -586,6 +590,47 @@ def _declared_soup_absence(root: Path, source: str, ref: PathRef) -> bool:
     return False
 
 
+def _brace_expansions(token: str) -> tuple[str, ...]:
+    """Expand ``a{x,y}b`` into every literal it names, bounded and order-stable."""
+    results = [token]
+    while BRACE_ALTERNATION_RE.search(results[0]) is not None:
+        expanded: list[str] = []
+        for candidate in results:
+            hit = BRACE_ALTERNATION_RE.search(candidate)
+            if hit is None:
+                expanded.append(candidate)
+                continue
+            head, tail = candidate[: hit.start()], candidate[hit.end() :]
+            expanded.extend(head + option.strip() + tail for option in hit.group(1).split(","))
+        if len(expanded) > MAX_BRACE_EXPANSIONS:
+            return (token,)
+        results = expanded
+    return tuple(results)
+
+
+def _cited_upstream_names(text: str) -> frozenset[str]:
+    """Collect names the document cites to an upstream project at a read revision."""
+    names: set[str] = set()
+    for sentence in SENTENCE_SPLIT_RE.split(text):
+        flat = EMPHASIS_RE.sub("", sentence)
+        if UPSTREAM_PROJECT_RE.search(flat) is None:
+            continue
+        if UPSTREAM_REVISION_RE.search(flat) is None:
+            continue
+        for quoted in re.findall(r"`([^`\n]+)`", sentence):
+            names.add(quoted)
+            names.update(_brace_expansions(quoted))
+    return frozenset(names)
+
+
+def _declared_upstream_source(root: Path, source: str, ref: PathRef) -> bool:
+    """Accept a name the document cites to an upstream project at a read revision."""
+    if ref.token.startswith(FIRST_PARTY_ROOTS):
+        return False
+    text = (root / source).read_text(encoding="utf-8", errors="replace")
+    return ref.token in _cited_upstream_names(text)
+
+
 def _generated_owner_exists(base: Path, token: str) -> bool:
     """Check the committed authority for a build output or named placeholder."""
     if _before_build_output(token) is not None and _build_owner_exists(base, token):
@@ -780,6 +825,7 @@ def _ordinary_path_reason(root: Path, source: str, ref: PathRef, token: str) -> 
                     target.exists()
                     or _generated_owner_exists(base, token)
                     or _declared_soup_absence(root, source, ref)
+                    or _declared_upstream_source(root, source, ref)
                 )
                 ignore_probe = f"{rel}/.ra8-markdown-reference" if ref.token.endswith("/") else rel
                 if not exists and not _ignore_owner_exists(root, ignore_probe):
@@ -801,6 +847,7 @@ def _path_reason(root: Path, source: str, ref: PathRef) -> str | None:
             or _declared_bare_code_file(source, ref)
             or _built_link_output(root, source, ref, token)
             or _declared_soup_absence(root, source, ref)
+            or _declared_upstream_source(root, source, ref)
         ):
             return None
         return f"no tracked file has a basename matching {token}"
