@@ -1,13 +1,17 @@
 {
   "test_roots": [
     "tests/internal_test.zig",
-    "tests/abi_test.zig"
+    "tests/abi_test.zig",
+    "tests/label_test.zig"
   ],
   "covered_sources": [
+    "src/ra8_widget_abi.zig",
     "src/internal/paint.zig",
     "src/widget_paint_abi.zig",
+    "src/widget_label_abi.zig",
     "tests/internal_test.zig",
-    "tests/abi_test.zig"
+    "tests/abi_test.zig",
+    "tests/label_test.zig"
   ],
-  "minimum_tests": 10
+  "minimum_tests": 18
 }

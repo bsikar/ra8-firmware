@@ -667,13 +667,16 @@ ra8_add_zig_library(
 )
 
 # Partially migrated: the paint helpers (text placement, proportional fill
-# width, box fill) are Zig now and libs/ra8_widget/src/ra8_widget_paint.c is
-# deleted on this branch. The remaining C in this library (label, book,
-# nav_bar, status_bar, list, chrome) still calls the three RA8_PRIV helpers
-# through the unchanged private header src/ra8_widget_internal.h, so those
-# translation units resolve them out of this archive instead of a sibling
-# object. The RA8_WIDGET_SOURCES glob in library_sources.cmake therefore stays:
-# it is smaller, not gone.
+# width, box fill) and the text-label leaf widget are Zig now, and both
+# libs/ra8_widget/src/ra8_widget_paint.c and src/ra8_widget_label.c are deleted
+# on this branch. The remaining C in this library (book, nav_bar, panel,
+# keyboard, toolbar, button, status_bar, progress_bar, reflow_view, chrome)
+# still calls the three RA8_PRIV helpers through the unchanged private header
+# src/ra8_widget_internal.h, so those translation units resolve them out of
+# this archive instead of a sibling object. ra8_widget_label_vtable /
+# ra8_widget_label_init are published C ABI and now come from here too. The
+# RA8_WIDGET_SOURCES glob in library_sources.cmake therefore stays: it is
+# smaller, not gone.
 ra8_add_zig_library(
   NAME
   ra8_widget
