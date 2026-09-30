@@ -1,5 +1,5 @@
 /**
- * @file examples/ek_ra8d2/hw_pending/tz_threadx_demo/src/system_init.c
+ * @file libs/ra8_board_ek_ra8d2/src/boot/ns_usb_handoff/system_init.c
  * @brief Cortex-M85 / RA8D2 core bring-up (called from Reset_Handler)
  *
  * @par Tag
@@ -12,12 +12,12 @@
  * the ``cmse_nonsecure_entry`` veneers in ``libs/ra8_nsc/``.
  *
  * @details
- * `SystemInit()` follows the CMSIS naming convention. `Reset_Handler`
- * calls it *after* it has initialised the C runtime (copied .data,
- * zeroed .bss), so it may read and write globals freely. It performs
- * the CPU-core bring-up (VTOR / FPU / priority grouping) and then the
- * Secure peripheral bring-up (clock tree + SAU + the BLXNS into the NS
- * image), which does not return on hardware.
+ * `SystemInit()` follows the CMSIS naming convention and runs as the
+ * first C function out of reset, *before* `Reset_Handler` copies
+ * .data or zeroes .bss. Its responsibilities are strictly CPU-core
+ * level -- anything peripheral-bus-side belongs in
+ * `ra8_infrastructure_init()` called from `main()` after the C
+ * runtime is live.
  *
  * ## Bring-up sequence
  *
@@ -37,12 +37,18 @@
  * mirrors CMSIS convention. `main()` re-enables via
  * `__enable_irq()` once all drivers are up.
  *
- * The function is C, not naked asm, so the stack, .data, and .bss must
- * already be usable. `Reset_Handler` loads SP from the vector table and
- * initialises the C runtime (.data copy + .bss zero) before calling
- * `SystemInit()`, so reads and writes of initialised globals here are
- * safe -- which matters because the Secure clock + TrustZone bring-up it
- * performs touches .data-resident driver state (e.g. log-tag pointers).
+ * The function is C, not naked asm, so the stack must already be
+ * usable. `Reset_Handler` loads SP from the vector table before
+ * calling `SystemInit()`, so the stack is fine.
+ *
+ * .data and .bss are NOT yet initialised here: `Reset_Handler` runs
+ * `SystemInit()` at step 1 and only copies .data / zeroes .bss at
+ * steps 2-3 (see `libs/ra8_board_ek_ra8d2/src/boot/vector_table.c`).
+ * `SystemInit()` itself writes no globals, but it is not currently
+ * free of them either: `ra8_cgc_init()` logs through the CGC
+ * driver's `s_tag`, a .data-resident `const char*`, so that read
+ * lands on uninitialised SRAM on the real part. Tracked separately;
+ * do not add new global reads on this path.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -351,9 +357,10 @@ static void internal_mpu_init(void)
  * Public entry point
  * =============================================================================
  *
- * Called from `Reset_Handler` after the C runtime is live (.data
- * copied, .bss zeroed). It may therefore read and write globals
- * freely; the Secure clock + TrustZone bring-up below relies on that.
+ * Called from `Reset_Handler` before the .data copy and .bss zero,
+ * so this path must not touch global variables: everything here
+ * should run on the stack and write to CPU / SCB memory only. The
+ * `ra8_cgc_init()` log tag is a known violation of that rule.
  */
 
 void SystemInit(void)
