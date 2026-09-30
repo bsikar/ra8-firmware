@@ -14,4 +14,5 @@ comptime {
     _ = @import("time_interface_systick_abi");
     _ = @import("time_abi");
     _ = @import("log_abi");
+    _ = @import("decomp_abi");
 }
