@@ -188,7 +188,6 @@ tests/hal/src/test_ra8_wdt.c
 tests/hal/src/test_ra8_wdt_extended.c
 tests/hal/src/test_ra8_wdt_ofs.c
 tests/hal/src/test_ra8_wdt_regs_cov.c
-tests/hal/src/test_ra8_wdt_sup_tx_shim_cov.c
 tests/hal/src/test_ra8_wdt_supervisor.c
 tests/hal/src/test_ra8_wdt_supervisor_cov.c
 tests/hal/src/test_ra8_wdt_supervisor_extended.c
