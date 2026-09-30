@@ -35,4 +35,5 @@ comptime {
     _ = @import("error_sink_abi");
     _ = @import("infrastructure_abi");
     _ = @import("sbrk_trap_abi");
+    _ = @import("boot_region_abi");
 }
