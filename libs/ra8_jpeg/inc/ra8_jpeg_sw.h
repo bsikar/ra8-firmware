@@ -45,8 +45,8 @@
  *   - `ra8_jpeg_sw_decode()`, `ra8_jpeg_sw_encode()` and
  *     `ra8_jpeg_sw_decode_stripes()` are **not** thread-safe and **not**
  *     re-entrant. Each owns module-static working state
- *     (`ra8_jpeg_sw_decode.c:s_d`, `ra8_jpeg_sw_encode.c:s_e` plus the
- *     `s_*_strip` / `s_tmp_rgb` buffers, `ra8_jpeg_sw_stream.c:s_js`),
+ *     (`ra8_jpeg_sw_decode.c:s_d`, `jpeg_encode_abi.zig:state` plus its
+ *     strip buffers, `ra8_jpeg_sw_stream.c:s_js`),
  *     so two calls that overlap in time corrupt each other. This
  *     includes a nested call made from a `pull` / `on_geom` / `on_rows`
  *     callback of `ra8_jpeg_sw_decode_stripes()`.

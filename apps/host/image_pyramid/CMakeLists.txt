@@ -20,8 +20,6 @@ add_library(
   ${CMAKE_CURRENT_SOURCE_DIR}/../../../libs/ra8_jpeg/src/ra8_jpeg_sw.c
   ${CMAKE_CURRENT_SOURCE_DIR}/../../../libs/ra8_jpeg/src/ra8_jpeg_sw_decode.c
   ${CMAKE_CURRENT_SOURCE_DIR}/../../../libs/ra8_jpeg/src/ra8_jpeg_sw_stream.c
-  ${CMAKE_CURRENT_SOURCE_DIR}/../../../libs/ra8_jpeg/src/ra8_jpeg_sw_encode.c
-  ${CMAKE_CURRENT_SOURCE_DIR}/../../../libs/ra8_jpeg/src/ra8_jpeg_sw_encode_emit.c
   ${CMAKE_CURRENT_SOURCE_DIR}/../../../libs/ra8_core/src/ra8_log.c
   ${CMAKE_CURRENT_SOURCE_DIR}/../../../libs/ra8_core/src/ra8_error_handler.c
 )
