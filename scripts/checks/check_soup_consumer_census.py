@@ -25,6 +25,17 @@ The derivation parses ``USES`` the way ``ra8_add_app()`` does: the clause runs
 until the next recognised keyword or the closing paren, so a multi-line ``USES``
 (``wifi_hal_join``) counts the same as a single-line one.
 
+An app does not have to call ``ra8_add_app()`` in its own CMakeLists. Two do
+not: ``c6_camera_livestream`` and ``c6_camera_mjpeg`` each ``include()`` a
+shared ``c6_camera_server.cmake`` and delegate to the
+``c6_camera_server_add_app()`` wrapper that declares ``USES`` on their behalf.
+A sweep that reads only each app's own file walks past them and reports a
+clean, self-consistent under-count, which is the defect this gate exists to
+prevent. So the derivation follows one ``include()`` hop into a wrapper that
+calls ``ra8_add_app()`` and attributes its clause to the including app, and
+``UNRESOLVED`` makes an app whose declaration it cannot find anywhere a
+finding rather than a silent zero.
+
 Run::
 
     check_soup_consumer_census.py             # scan every SOUP record
@@ -85,6 +96,16 @@ USES_STOP_WORDS = (
 TOKEN_RE = re.compile(r"\A[a-z0-9_]+\Z")
 """A middleware name. Anything else in the clause is punctuation or a variable."""
 
+ADD_APP_RE = re.compile(r"\bra8_add_app\s*\(")
+"""The call that actually declares an app. An app CMakeLists either makes this
+call itself or reaches it through a wrapper it includes."""
+
+INCLUDE_RE = re.compile(r'\binclude\s*\(\s*"?([^")\s]+)"?')
+"""An ``include()`` target. Only ones resolving to a file in the tree matter."""
+
+CMAKE_VAR_RE = re.compile(r"\$\{[A-Za-z_][A-Za-z0-9_]*\}")
+"""A CMake variable reference inside an include path, e.g. ``${_d}``."""
+
 
 def uses_of(text: str) -> set[str]:
     """Return the middleware named in every ``USES`` clause of one CMakeLists."""
@@ -101,15 +122,73 @@ def uses_of(text: str) -> set[str]:
     return found
 
 
-def consumers(root: Path, key: str) -> list[Path]:
-    """Return every app CMakeLists under ``examples/`` that declares ``key``."""
+def _included_wrappers(app: Path, root: Path) -> list[Path]:
+    """Return the files ``app`` includes that themselves call ``ra8_add_app()``.
+
+    An include path is written against CMake variables the build expands
+    (``${_d}`` is the discovered repo root, ``${CMAKE_CURRENT_SOURCE_DIR}`` the
+    app directory). Rather than emulate CMake, take the literal tail after the
+    last variable and look for it under the repo root and under the app.
+    """
+    wrappers: list[Path] = []
+    for raw in INCLUDE_RE.findall(app.read_text(errors="replace")):
+        tail = CMAKE_VAR_RE.split(raw)[-1].lstrip("/")
+        if not tail.endswith(".cmake"):
+            continue
+        for base in (root, app.parent):
+            candidate = base / tail
+            if candidate.is_file() and ADD_APP_RE.search(
+                candidate.read_text(errors="replace")
+            ):
+                wrappers.append(candidate)
+                break
+    return wrappers
+
+
+def declared_uses(app: Path, root: Path) -> tuple[set[str], bool]:
+    """Return (middleware ``app`` declares, whether its declaration was found).
+
+    The second element is False for an app that neither calls ``ra8_add_app()``
+    nor reaches a wrapper that does: its ``USES`` is somewhere this sweep cannot
+    read, so counting it as zero would under-report silently.
+    """
+    text = app.read_text(errors="replace")
+    found = uses_of(text)
+    resolved = bool(ADD_APP_RE.search(text))
+    for wrapper in _included_wrappers(app, root):
+        found |= uses_of(wrapper.read_text(errors="replace"))
+        resolved = True
+    return found, resolved
+
+
+def app_files(root: Path) -> list[Path]:
+    """Return every CMakeLists under ``examples/`` that stands for an app.
+
+    Every app reaches ``ra8_add_app()`` somehow: by naming it, by including
+    ``cmake/ra8_add_app.cmake``, or by including a wrapper that calls it. A
+    file mentioning none of those is a subdirectory aggregator, not an app.
+    """
     apps = sorted((root / APPS_DIR).rglob("CMakeLists.txt"))
-    return [p for p in apps if key in uses_of(p.read_text(errors="replace"))]
+    return [
+        p
+        for p in apps
+        if "ra8_add_app" in p.read_text(errors="replace") or _included_wrappers(p, root)
+    ]
+
+
+def consumers(root: Path, key: str) -> list[Path]:
+    """Return every app under ``examples/`` that declares ``key``, wrappers followed."""
+    return [p for p in app_files(root) if key in declared_uses(p, root)[0]]
+
+
+def unresolved_apps(root: Path) -> list[Path]:
+    """Return the apps whose ``USES`` declaration this sweep could not locate."""
+    return [p for p in app_files(root) if not declared_uses(p, root)[1]]
 
 
 def app_count(root: Path) -> int:
     """Return how many app CMakeLists the sweep saw at all, for the floor."""
-    return len(list((root / APPS_DIR).rglob("CMakeLists.txt")))
+    return len(app_files(root))
 
 
 def parse_marker(fields: str) -> tuple[dict[str, int], str | None, str | None]:
@@ -173,16 +252,54 @@ def scan(root: Path) -> tuple[list[str], int, int]:
         for match in MARKER_RE.finditer(body):
             seen += 1
             findings.extend(check_marker(doc, root, match.group("fields"), prose))
+    if seen:
+        findings.extend(
+            f"UNRESOLVED: {p.parent.relative_to(root)} declares an app but neither calls "
+            "ra8_add_app() nor includes a wrapper that does; every census count is "
+            "under-reporting it"
+            for p in unresolved_apps(root)
+        )
     return findings, seen, app_count(root)
 
 
 def _seed(root: Path) -> None:
-    """Build a throwaway tree: three apps, two of which declare ``demolib``."""
+    """Build a throwaway tree: three direct apps plus one that delegates.
+
+    App ``d`` never calls ``ra8_add_app()`` itself; it includes a shared wrapper
+    that does, exactly like ``c6_camera_livestream``. A sweep that reads only
+    each app's own file counts two consumers here instead of three.
+    """
     for name, uses in (("a", "demolib"), ("b", "demolib other"), ("c", "other")):
         app = root / APPS_DIR / "ek_ra8d2" / "hw_validated" / name
         app.mkdir(parents=True)
         (app / "CMakeLists.txt").write_text(f"ra8_add_app(\n  NAME {name}\n  USES {uses}\n)\n")
+
+    shared = root / APPS_DIR / "ek_ra8d2" / "common" / "server"
+    shared.mkdir(parents=True)
+    (shared / "server.cmake").write_text(
+        "function(server_add_app)\n"
+        "  ra8_add_app(\n    NAME ${APP_NAME}\n    USES demolib\n    LIBS shared\n  )\n"
+        "endfunction()\n"
+    )
+    delegating = root / APPS_DIR / "ek_ra8d2" / "hw_validated" / "d"
+    delegating.mkdir(parents=True)
+    (delegating / "CMakeLists.txt").write_text(
+        'include("${_d}/cmake/ra8_add_app.cmake")\n'
+        'include("${_d}/examples/ek_ra8d2/common/server/server.cmake")\n'
+        "server_add_app(NAME d)\n"
+    )
     (root / SOUP_DIR).mkdir(parents=True)
+
+
+def _seed_unreadable(root: Path) -> Path:
+    """Add an app whose declaration is nowhere this sweep can read it."""
+    orphan = root / APPS_DIR / "ek_ra8d2" / "hw_validated" / "e"
+    orphan.mkdir(parents=True)
+    (orphan / "CMakeLists.txt").write_text(
+        'include("${_d}/cmake/ra8_add_app.cmake")\n'
+        "generated_add_app(NAME e)\n"
+    )
+    return orphan
 
 
 def _write_doc(root: Path, marker: str, prose: str) -> Path:
@@ -195,8 +312,8 @@ def _write_doc(root: Path, marker: str, prose: str) -> Path:
 def selftest() -> int:
     """Prove the gate fires on a stale count and stays quiet on a current one."""
     failures: list[str] = []
-    good = "<!-- consumer-census: key=demolib total=2 hw_validated=2 -->"
-    prose = "Two apps declare it: 2 of them under hw_validated."
+    good = "<!-- consumer-census: key=demolib total=3 hw_validated=3 -->"
+    prose = "Three apps declare it: 3 of them under hw_validated."
     with tempfile.TemporaryDirectory() as tmp:
         root = Path(tmp)
         _seed(root)
@@ -206,13 +323,27 @@ def selftest() -> int:
         expect(not findings, "a current census is quiet", failures)
         expect(seen == 1, "the marker is discovered", failures)
 
-        _write_doc(root, "<!-- consumer-census: key=demolib total=3 -->", "Three: 3 apps.")
-        findings, _, _ = scan(root)
-        expect(any("the tree holds 2" in f for f in findings), "a stale total fires", failures)
+        expect(
+            any(p.parent.name == "d" for p in consumers(root, "demolib")),
+            "an app that declares USES through an included wrapper is counted",
+            failures,
+        )
 
-        _write_doc(root, "<!-- consumer-census: key=demolib total=2 hw_validated=1 -->", prose)
+        _write_doc(root, "<!-- consumer-census: key=demolib total=2 -->", "Two: 2 apps.")
         findings, _, _ = scan(root)
-        expect(any("the tree holds 2" in f for f in findings), "a stale tier count fires", failures)
+        expect(
+            any("the tree holds 3" in f for f in findings),
+            "the count a wrapper-blind sweep would report fires",
+            failures,
+        )
+
+        _write_doc(root, "<!-- consumer-census: key=demolib total=4 -->", "Four: 4 apps.")
+        findings, _, _ = scan(root)
+        expect(any("the tree holds 3" in f for f in findings), "a stale total fires", failures)
+
+        _write_doc(root, "<!-- consumer-census: key=demolib total=3 hw_validated=1 -->", prose)
+        findings, _, _ = scan(root)
+        expect(any("the tree holds 3" in f for f in findings), "a stale tier count fires", failures)
 
         _write_doc(root, good, "No numerals here at all.")
         findings, _, _ = scan(root)
@@ -233,6 +364,17 @@ def selftest() -> int:
         _write_doc(root, "<!-- consumer-census: key=demolib hw_validated=2 -->", prose)
         findings, _, _ = scan(root)
         expect(any("states no total=" in f for f in findings), "a totalless marker fires", failures)
+
+        orphan = _seed_unreadable(root)
+        _write_doc(root, good, prose)
+        findings, _, _ = scan(root)
+        expect(
+            any("UNRESOLVED" in f for f in findings),
+            "an app whose declaration cannot be located fires",
+            failures,
+        )
+        (orphan / "CMakeLists.txt").unlink()
+        orphan.rmdir()
 
         (root / SOUP_DIR / "demolib.md").unlink()
         findings, seen, _ = scan(root)
