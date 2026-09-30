@@ -603,6 +603,14 @@ if(TARGET test_fw_if_fs)
   )
 endif()
 
+# The OSAL conformance test drives the fw_os contract through its first real
+# binding. The binding is a host-only, single-threaded implementation kept in
+# tests/support so no firmware object library picks it up.
+if(TARGET test_fw_os)
+  target_sources(test_fw_os PRIVATE ${FW_ROOT}/tests/support/src/fw_os_host_test.c)
+  target_include_directories(test_fw_os PRIVATE ${FW_ROOT}/libs/if/inc)
+endif()
+
 # The raw POSIX directory test compiles the hosted adapter with a private read
 # injection seam. Production builds do not define RA8_POSIX_TEST and therefore
 # contain neither the mutable seam nor its setter.

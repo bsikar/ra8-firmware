@@ -133,9 +133,9 @@ extern "C" {
  * policy and belongs in the composition root, not in a portable library.
  */
 typedef enum : uint8_t {
-    k_fw_os_priority_idle = 0U,     /**< Runs only when nothing else can. */
-    k_fw_os_priority_low = 1U,      /**< Background work, no deadline. */
-    k_fw_os_priority_normal = 2U,   /**< The default for application threads. */
+    k_fw_os_priority_idle = 0U,     /**< Runs only when nothing else can.      */
+    k_fw_os_priority_low = 1U,      /**< Background work, no deadline.         */
+    k_fw_os_priority_normal = 2U,   /**< The default for application threads.  */
     k_fw_os_priority_high = 3U,     /**< Latency-sensitive, still preemptible. */
 } fw_os_priority_t;
 
@@ -175,11 +175,11 @@ typedef struct fw_os_sem_s {
  */
 typedef struct fw_os_thread_cfg_s {
     const char *name;          /**< Borrowed, NUL-terminated, may be NULL. */
-    void (*entry)(void *arg);  /**< Thread body. */
-    void *arg;                 /**< Single argument handed to `entry`. */
-    void *stack;               /**< Caller-owned stack, 8-byte aligned. */
-    size_t stack_bytes;        /**< Size of `stack`. */
-    fw_os_priority_t priority; /**< Portable band, mapped by the binding. */
+    void (*entry)(void *arg);  /**< Thread body.                           */
+    void *arg;                 /**< Single argument handed to `entry`.     */
+    void *stack;               /**< Caller-owned stack, 8-byte aligned.    */
+    size_t stack_bytes;        /**< Size of `stack`.                       */
+    fw_os_priority_t priority; /**< Portable band, mapped by the binding.  */
 } fw_os_thread_cfg_t;
 
 /**
@@ -196,7 +196,7 @@ typedef struct fw_os_thread_cfg_s {
  * @param[out] thread Caller-owned storage, uninitialised on entry.
  * @param[in]  cfg    Thread description. Not retained beyond this call, except
  *                    `stack` and `name`, which are borrowed for the thread's life.
- * @return ::k_ra8_err_none, ::k_ra8_err_invalid_arg for a malformed `cfg`, or
+ * @return ::k_ra8_ok, ::k_ra8_err_invalid_arg for a malformed `cfg`, or
  *         ::k_ra8_err_no_mem when the binding has no thread slot left.
  *
  * @details
@@ -209,7 +209,7 @@ ra8_err_t fw_os_thread_create(fw_os_thread_t *thread, const fw_os_thread_cfg_t *
 /**
  * @brief Stop and release a thread created by ::fw_os_thread_create.
  * @param[in,out] thread The thread to release.
- * @return ::k_ra8_err_none, or ::k_ra8_err_invalid_state when a thread tries to
+ * @return ::k_ra8_ok, or ::k_ra8_err_invalid_state when a thread tries to
  *         delete itself and the binding cannot.
  */
 ra8_err_t fw_os_thread_delete(fw_os_thread_t *thread);
@@ -245,7 +245,7 @@ void fw_os_thread_yield(void);
  * @brief Initialise a mutex.
  * @param[out] mutex     Caller-owned storage.
  * @param[in]  recursive True when the owner may lock it again without blocking.
- * @return ::k_ra8_err_none, or ::k_ra8_err_not_supported when the binding has
+ * @return ::k_ra8_ok, or ::k_ra8_err_not_supported when the binding has
  *         no recursive mode and one was asked for.
  */
 ra8_err_t fw_os_mutex_init(fw_os_mutex_t *mutex, bool recursive);
@@ -253,7 +253,7 @@ ra8_err_t fw_os_mutex_init(fw_os_mutex_t *mutex, bool recursive);
 /**
  * @brief Release a mutex initialised by ::fw_os_mutex_init.
  * @param[in,out] mutex The mutex to release.
- * @return ::k_ra8_err_none, or ::k_ra8_err_busy when it is still held.
+ * @return ::k_ra8_ok, or ::k_ra8_err_busy when it is still held.
  */
 ra8_err_t fw_os_mutex_deinit(fw_os_mutex_t *mutex);
 
@@ -261,7 +261,7 @@ ra8_err_t fw_os_mutex_deinit(fw_os_mutex_t *mutex);
  * @brief Acquire a mutex.
  * @param[in,out] mutex      The mutex to acquire.
  * @param[in]     timeout_ms ::K_FW_OS_NO_WAIT, ::K_FW_OS_WAIT_FOREVER, or a bound.
- * @return ::k_ra8_err_none, ::k_ra8_err_timeout, or ::k_ra8_err_would_block
+ * @return ::k_ra8_ok, ::k_ra8_err_timeout, or ::k_ra8_err_would_block
  *         when ::K_FW_OS_NO_WAIT was given and the mutex was held.
  */
 ra8_err_t fw_os_mutex_lock(fw_os_mutex_t *mutex, uint32_t timeout_ms);
@@ -269,7 +269,7 @@ ra8_err_t fw_os_mutex_lock(fw_os_mutex_t *mutex, uint32_t timeout_ms);
 /**
  * @brief Release a mutex the calling thread holds.
  * @param[in,out] mutex The mutex to release.
- * @return ::k_ra8_err_none, or ::k_ra8_err_access_denied when the caller is not
+ * @return ::k_ra8_ok, or ::k_ra8_err_access_denied when the caller is not
  *         the owner.
  */
 ra8_err_t fw_os_mutex_unlock(fw_os_mutex_t *mutex);
@@ -287,14 +287,14 @@ ra8_err_t fw_os_mutex_unlock(fw_os_mutex_t *mutex);
  * @brief Initialise a counting semaphore.
  * @param[out] sem           Caller-owned storage.
  * @param[in]  initial_count Starting count.
- * @return ::k_ra8_err_none or ::k_ra8_err_invalid_arg.
+ * @return ::k_ra8_ok or ::k_ra8_err_invalid_arg.
  */
 ra8_err_t fw_os_sem_init(fw_os_sem_t *sem, uint32_t initial_count);
 
 /**
  * @brief Release a semaphore initialised by ::fw_os_sem_init.
  * @param[in,out] sem The semaphore to release.
- * @return ::k_ra8_err_none, or ::k_ra8_err_busy when a thread is waiting on it.
+ * @return ::k_ra8_ok, or ::k_ra8_err_busy when a thread is waiting on it.
  */
 ra8_err_t fw_os_sem_deinit(fw_os_sem_t *sem);
 
@@ -302,14 +302,14 @@ ra8_err_t fw_os_sem_deinit(fw_os_sem_t *sem);
  * @brief Take one count, blocking until one is available or the bound passes.
  * @param[in,out] sem        The semaphore.
  * @param[in]     timeout_ms ::K_FW_OS_NO_WAIT, ::K_FW_OS_WAIT_FOREVER, or a bound.
- * @return ::k_ra8_err_none, ::k_ra8_err_timeout, or ::k_ra8_err_would_block.
+ * @return ::k_ra8_ok, ::k_ra8_err_timeout, or ::k_ra8_err_would_block.
  */
 ra8_err_t fw_os_sem_take(fw_os_sem_t *sem, uint32_t timeout_ms);
 
 /**
  * @brief Add one count, waking a waiter if there is one.
  * @param[in,out] sem The semaphore.
- * @return ::k_ra8_err_none. Safe from an interrupt handler on every binding;
+ * @return ::k_ra8_ok. Safe from an interrupt handler on every binding;
  *         this is the only call in this header for which that is promised.
  */
 ra8_err_t fw_os_sem_give(fw_os_sem_t *sem);
@@ -367,7 +367,7 @@ typedef struct fw_os_queue_s {
  * @param[in]  buffer       Caller-owned backing memory, valid for the queue's life.
  * @param[in]  buffer_bytes Size of `buffer`.
  * @param[in]  msg_bytes    Size of one message; every send and receive uses it.
- * @return ::k_ra8_err_none, or ::k_ra8_err_invalid_size when `buffer_bytes` is
+ * @return ::k_ra8_ok, or ::k_ra8_err_invalid_size when `buffer_bytes` is
  *         not a whole number of messages.
  */
 ra8_err_t fw_os_queue_init(fw_os_queue_t *queue, void *buffer, size_t buffer_bytes,
@@ -376,7 +376,7 @@ ra8_err_t fw_os_queue_init(fw_os_queue_t *queue, void *buffer, size_t buffer_byt
 /**
  * @brief Release a queue initialised by ::fw_os_queue_init.
  * @param[in,out] queue The queue to release.
- * @return ::k_ra8_err_none, or ::k_ra8_err_busy when a thread is waiting on it.
+ * @return ::k_ra8_ok, or ::k_ra8_err_busy when a thread is waiting on it.
  */
 ra8_err_t fw_os_queue_deinit(fw_os_queue_t *queue);
 
@@ -385,7 +385,7 @@ ra8_err_t fw_os_queue_deinit(fw_os_queue_t *queue);
  * @param[in,out] queue      The queue.
  * @param[in]     msg        Message to copy, `msg_bytes` long.
  * @param[in]     timeout_ms ::K_FW_OS_NO_WAIT, ::K_FW_OS_WAIT_FOREVER, or a bound.
- * @return ::k_ra8_err_none, ::k_ra8_err_timeout, or ::k_ra8_err_would_block.
+ * @return ::k_ra8_ok, ::k_ra8_err_timeout, or ::k_ra8_err_would_block.
  */
 ra8_err_t fw_os_queue_send(fw_os_queue_t *queue, const void *msg, uint32_t timeout_ms);
 
@@ -394,7 +394,7 @@ ra8_err_t fw_os_queue_send(fw_os_queue_t *queue, const void *msg, uint32_t timeo
  * @param[in,out] queue      The queue.
  * @param[out]    msg        Receives `msg_bytes`.
  * @param[in]     timeout_ms ::K_FW_OS_NO_WAIT, ::K_FW_OS_WAIT_FOREVER, or a bound.
- * @return ::k_ra8_err_none, ::k_ra8_err_timeout, or ::k_ra8_err_would_block.
+ * @return ::k_ra8_ok, ::k_ra8_err_timeout, or ::k_ra8_err_would_block.
  */
 ra8_err_t fw_os_queue_receive(fw_os_queue_t *queue, void *msg, uint32_t timeout_ms);
 
