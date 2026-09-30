@@ -1,13 +1,16 @@
 //! SPDX-License-Identifier: MIT
 //! Copyright (c) 2026 Brighton Sikarskie
 //!
-//! Build graph for the Zig implementation of the `ra8_mem` slab. CMake
-//! consumes the installed static library through the unchanged
-//! `inc/ra8_slab.h`.
+//! Build graph for the Zig side of `ra8_mem`: the slab allocator and the
+//! byte-stream adapter over the page cache. CMake consumes the installed
+//! static library through the unchanged `inc/ra8_slab.h` and
+//! `inc/ra8_vmem_stream.h`.
 //!
-//! Only the slab lives here. The rest of `libs/ra8_mem` (arena, keycache, tile
-//! cache, vmem, glyph atlas, vmem stream, vsource) is still C and still built
-//! by CMake from `src/`.
+//! The stream adapter calls `ra8_vmem_get`/`ra8_vmem_put`, which are still C.
+//! The archive leaves those two undefined and the link resolves them, exactly
+//! as the C translation unit did. The rest of `libs/ra8_mem` (arena, keycache,
+//! tile cache, vmem, glyph atlas, vsource) is still C and still built by CMake
+//! from `src/`.
 
 const std = @import("std");
 
@@ -36,6 +39,11 @@ pub fn build(b: *std.Build) void {
     const units = [_]struct { name: []const u8, source: []const u8, root: []const u8 }{
         .{ .name = "vocab", .source = "src/internal/vocab.zig", .root = "tests/vocab_test.zig" },
         .{ .name = "slab", .source = "src/internal/slab.zig", .root = "tests/slab_test.zig" },
+        .{
+            .name = "vmem_stream",
+            .source = "src/internal/vmem_stream.zig",
+            .root = "tests/vmem_stream_test.zig",
+        },
     };
     for (units) |unit| {
         const under_test = b.createModule(.{
