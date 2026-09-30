@@ -14,6 +14,7 @@
 
 const std = @import("std");
 
+const arena = @import("internal/arena.zig");
 const glyph_atlas = @import("internal/glyph_atlas.zig");
 const keycache = @import("internal/keycache.zig");
 const slab = @import("internal/slab.zig");
@@ -29,6 +30,72 @@ comptime {
     // `ra8_err.h` spells `ra8_err_t` as `enum : uint16_t`, so the return width
     // has to match on every target the archive is built for.
     std.debug.assert(@sizeOf(Err) == 2);
+}
+
+// ---------------------------------------------------------------------------
+// ra8_arena.h
+// ---------------------------------------------------------------------------
+
+export fn ra8_arena_init(handle: ?*arena.Arena, base: ?*anyopaque, size: u32) u16 {
+    const self = handle orelse return Err.null_ptr.code();
+    const region = base orelse return Err.null_ptr.code();
+    return arena.init(self, @ptrCast(region), size).code();
+}
+
+export fn ra8_arena_carve(
+    handle: ?*arena.Arena,
+    bytes: u32,
+    alignment: u32,
+    out_ptr: ?*?*anyopaque,
+) u16 {
+    const self = handle orelse return Err.null_ptr.code();
+    const dst = out_ptr orelse return Err.null_ptr.code();
+    return arena.carve(self, bytes, alignment, dst).code();
+}
+
+export fn ra8_arena_remaining(handle: ?*const arena.Arena, out_remaining: ?*u32) u16 {
+    const self = handle orelse return Err.null_ptr.code();
+    const dst = out_remaining orelse return Err.null_ptr.code();
+    dst.* = arena.remaining(self);
+    return Err.ok.code();
+}
+
+export fn ra8_arena_carve_all(
+    handle: ?*arena.Arena,
+    slots: ?[*]const arena.Slot,
+    slot_count: u32,
+) u16 {
+    const self = handle orelse return Err.null_ptr.code();
+    const table = slots orelse return Err.null_ptr.code();
+    // The count is bounded inside, so the slice is only formed once the cap
+    // has been honoured: a forged count cannot make a slice out of nothing.
+    if (slot_count == 0 or slot_count > arena.Limits.slot_cap) return Err.invalid_arg.code();
+    return arena.carveAll(self, table[0..slot_count]).code();
+}
+
+export fn ra8_arena_carve_remaining(
+    handle: ?*arena.Arena,
+    alignment: u32,
+    out_ptr: ?*?*anyopaque,
+    out_bytes: ?*u32,
+) u16 {
+    const self = handle orelse return Err.null_ptr.code();
+    const dst = out_ptr orelse return Err.null_ptr.code();
+    const len = out_bytes orelse return Err.null_ptr.code();
+    return arena.carveRemaining(self, alignment, dst, len).code();
+}
+
+export fn ra8_arena_high_water(handle: ?*const arena.Arena, out_high_water: ?*u32) u16 {
+    const self = handle orelse return Err.null_ptr.code();
+    const dst = out_high_water orelse return Err.null_ptr.code();
+    dst.* = arena.highWater(self);
+    return Err.ok.code();
+}
+
+export fn ra8_arena_reset(handle: ?*arena.Arena) u16 {
+    const self = handle orelse return Err.null_ptr.code();
+    arena.reset(self);
+    return Err.ok.code();
 }
 
 // ---------------------------------------------------------------------------

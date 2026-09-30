@@ -613,7 +613,7 @@ ra8_add_zig_library(
   ra8_secure_app
 )
 
-# Partially migrated: the fixed-cell slab allocator, the byte-stream adapter
+# Fully migrated (#2601): the fixed-cell slab allocator, the byte-stream adapter
 # over the page cache, the page cache itself, the glyph atlas, the image-tile
 # cache and the object-source registry are Zig now, so
 # libs/ra8_mem/src/ra8_slab.c, src/ra8_vmem.c, src/ra8_vmem_stream.c,
@@ -634,20 +634,29 @@ ra8_add_zig_library(
 # calls the page cache the same way. tools/glyph_bench, tools/cache_bench and
 # tools/reader_vmem each compiled src/ra8_vmem.c and src/ra8_keycache.c by
 # absolute path only to satisfy those externs; none of them does now, and
-# tools/rabook_viewer keeps only ra8_arena.c in its read-path KEEP list.
+# tools/rabook_viewer no longer partitions this directory at all.
 #
 # tests/core/src/test_ra8_vmem.c and apps/shared_libs/book's huge-book suite are
 # untouched and now exercise the Zig page cache through inc/ra8_vmem.h.
 #
-# The rest of libs/ra8_mem is deliberately still C, and the arena is the one
-# that matters: tools/rabook_viewer, tools/rabook_imagepack, apps/host/mdl and
-# cmake/ra8_webp_vendor.cmake each COMPILE libs/ra8_mem/src/ra8_arena.c by
-# absolute path rather than linking the library, and the webp helper hard-errors
-# when the file is missing. Exporting ra8_arena_* from this archive while that
-# .c still compiles into those four targets would define every arena symbol
-# twice, so the arena waits for issue #2601 to move those consumers first. The
-# ra8_mem source glob in cmake/ra8_app/sources.cmake still finds the other two
-# .c files, so no empty-glob (#908) work is needed here.
+# The init-time bump arena was the last C translation unit here and it is Zig
+# now, so libs/ra8_mem/src has no .c left and this archive exports ra8_arena_*
+# like every other ra8_mem symbol. What blocked that was never the port, it was
+# the double definition: tools/rabook_viewer, tools/rabook_imagepack,
+# apps/host/mdl and cmake/ra8_webp_vendor.cmake each COMPILED
+# libs/ra8_mem/src/ra8_arena.c by absolute path instead of linking the library,
+# so exporting the symbols would have defined each of them twice. All four now
+# link ra8_zig::ra8_mem, which is the form that dedupes: CMake collapses a
+# repeated imported target where it cannot collapse a repeated source.
+#
+# inc/ra8_arena.h is unchanged and is still the membrane:
+# tests/misc/src/test_ra8_arena.c stays C and tests the archive from outside,
+# alongside the Zig unit suite in src/arena_test.zig.
+#
+# The ra8_mem *.c glob in cmake/ra8_app/sources.cmake is empty from here on,
+# which is the #908 shape: its transitive reflow/book path already registers
+# this archive explicitly and judges the flip on build.zig rather than on the
+# glob, so an empty glob is correct there rather than a missing library.
 ra8_add_zig_library(
   NAME
   ra8_mem

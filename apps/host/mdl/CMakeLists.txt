@@ -146,10 +146,8 @@ add_executable(
   ${MDL_STREAM_POSIX_SRC}
   ${MDL_MINIZ}
   # The composition root carves its four filesystem spans out of one block
-  # through the platform arena (#757), so main.c needs the arena itself. No
-  # other target here compiles main.c, and mdl_core/mdl_rabook_runtime name
-  # ra8_mem only as an include directory, never as a source.
-  ${MDL_REPO_ROOT}/libs/ra8_mem/src/ra8_arena.c
+  # through the platform arena (#757). The arena is Zig now (#2601), so it
+  # arrives as ra8_zig::ra8_mem on the link line below rather than as a source.
 )
 
 target_include_directories(
@@ -170,7 +168,15 @@ target_include_directories(
 
 target_compile_definitions(mdl PRIVATE _GNU_SOURCE MINIZ_NO_TIME RA8_OFF_TARGET)
 target_compile_options(mdl PRIVATE -Wall -Wextra -Werror)
-target_link_libraries(mdl PRIVATE CURL::libcurl mdl_core mdl_rabook_runtime)
+if(NOT TARGET ra8_zig::ra8_mem)
+  include(${MDL_REPO_ROOT}/tests/cmake/zig_library.cmake)
+  ra8_add_zig_library(
+    NAME ra8_mem
+    ZIG_ROOT ${MDL_REPO_ROOT}/libs/ra8_mem
+    LIBRARY_NAME ra8_mem
+  )
+endif()
+target_link_libraries(mdl PRIVATE CURL::libcurl mdl_core mdl_rabook_runtime ra8_zig::ra8_mem)
 ra8_webp_attach(mdl ${MDL_REPO_ROOT})
 
 # ---------------------------------------------------------------------------
