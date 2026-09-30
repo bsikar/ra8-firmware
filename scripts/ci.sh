@@ -179,6 +179,7 @@ if [[ "$-" == *p* ]]; then
     "suppressions|fast|every suppression bound to a reviewed ledger decision"
     "markdown-references|fast|first-party Markdown links, anchors, and repository paths"
     "cmake-source-paths|fast|every repository-rooted path the CMake files name resolves, and the viewer KEEP/DROP partition"
+    "zig-override-members|fast|every overridable Zig default is reachable from the member that overrides it"
     "shebangs|fast|first-party shell scripts carry an env-based shebang"
     "entry-points|fast|hosted vs freestanding main() contract per build domain"
     "tier-imports|fast|the platform never imports apps/; apps/shared_libs never imports a form"
