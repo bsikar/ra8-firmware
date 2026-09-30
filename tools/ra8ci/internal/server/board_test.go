@@ -24,6 +24,7 @@ const (
 type fakeBoardStore struct {
 	authorizeErr error
 	auditErr     error
+	getBoardErr  error
 	applyErr     error
 	challengeErr error
 	board        board.Snapshot
@@ -47,7 +48,7 @@ func (f *fakeBoardStore) AuthorizeBoardPeer(_ context.Context, peer *tls.Connect
 
 func (f *fakeBoardStore) GetBoard(_ context.Context, _ string) (board.Snapshot, error) {
 	f.reads++
-	return f.board, nil
+	return f.board, f.getBoardErr
 }
 
 func (f *fakeBoardStore) ApplyBoardCommand(_ context.Context, _ store.BoardActor, cmd board.Command, version uint64, neutral *store.NeutralSubmission, verifier store.NeutralReceiptVerifier, _ time.Time) (board.Snapshot, []board.Event, error) {
