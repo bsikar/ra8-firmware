@@ -214,6 +214,44 @@ def parse_marker(fields: str) -> tuple[dict[str, int], str | None, str | None]:
     return counts, key, None
 
 
+# A count is "stated in prose" only where the sentence is talking about
+# consumers. Searching the whole document for the bare number was unsound: a
+# netxduo total of 7 was satisfied by "IEC 61508-3 Section 7.4.2.12" in the
+# boilerplate, so the prose half of this check passed on a document that never
+# tells the reader the number at all. That is the self-agreeing gate this epic
+# exists to remove, and it was in the gate itself.
+CONSUMER_NOUN_RE = re.compile(
+    r"\b(app|apps|application|applications|consumer|consumers|example|examples"
+    r"|demo|demos|image|images|target|targets)\b",
+    re.IGNORECASE,
+)
+
+WORD_NUMBERS = {
+    1: "one", 2: "two", 3: "three", 4: "four", 5: "five", 6: "six", 7: "seven",
+    8: "eight", 9: "nine", 10: "ten", 11: "eleven", 12: "twelve",
+}
+
+# A sentence, loosely: prose is wrapped, so a bare newline does not end one,
+# but a blank line or a bullet boundary does.
+_SENTENCE_SPLIT_RE = re.compile(r"(?:\n\s*\n|(?<=[.:;])\s+|\n\s*[-*]\s)")
+
+
+def stated_in_prose(count: int, prose: str) -> bool:
+    """True when ``count`` appears in a sentence that is about consumers.
+
+    Both spellings count: "7" and "seven". The consumer noun must sit in the
+    same sentence, so a section number or a version string elsewhere in the
+    record cannot satisfy a consumer count.
+    """
+    word = WORD_NUMBERS.get(count)
+    forms = rf"\b{count}\b" if word is None else rf"(\b{count}\b|\b{word}\b)"
+    number_re = re.compile(forms, re.IGNORECASE)
+    for sentence in _SENTENCE_SPLIT_RE.split(prose):
+        if number_re.search(sentence) and CONSUMER_NOUN_RE.search(sentence):
+            return True
+    return False
+
+
 def check_marker(doc: Path, root: Path, fields: str, prose: str) -> list[str]:
     """Return the findings for one census marker, checked against the document's prose.
 
@@ -233,7 +271,7 @@ def check_marker(doc: Path, root: Path, fields: str, prose: str) -> list[str]:
                 f"{doc.name}: key={key} {name}={count} but the tree holds {actual}; "
                 f"re-derive the marker and the prose together"
             )
-        elif not re.search(rf"\b{count}\b", prose):
+        elif not stated_in_prose(count, prose):
             findings.append(
                 f"{doc.name}: key={key} {name}={count} matches the tree but the number "
                 "appears nowhere in the prose; the marker is checking a claim no reader sees"
@@ -309,6 +347,33 @@ def _write_doc(root: Path, marker: str, prose: str) -> Path:
     return doc
 
 
+def _selftest_prose(root: Path, good: str, failures: list[str]) -> None:
+    """Assert the prose half of the check, both directions.
+
+    Its own bug is the reason these exist: searching the whole record for the
+    bare number let "Section 7.4.2.12" stand in for a consumer count of 7.
+    """
+    for prose, want_finding, label in (
+        ("No numerals here at all.", True, "a marker the prose does not state fires"),
+        (
+            "Per IEC 61508-3 Section 3.4.2.12 this record is accepted.",
+            True,
+            "a section number carrying the count does not satisfy the prose check",
+        ),
+        ("Three apps declare it.", False, "the count spelled as a word satisfies the check"),
+        ("3 consumers declare it.", False, "the count as a digit satisfies the check"),
+        (
+            "Three trees are vendored.\n\nSome apps declare it.",
+            True,
+            "the count and the consumer noun must share a sentence",
+        ),
+    ):
+        _write_doc(root, good, prose)
+        findings, _, _ = scan(root)
+        hit = any("appears nowhere in the prose" in f for f in findings)
+        expect(hit if want_finding else not findings, label, failures)
+
+
 def selftest() -> int:
     """Prove the gate fires on a stale count and stays quiet on a current one."""
     failures: list[str] = []
@@ -345,13 +410,7 @@ def selftest() -> int:
         findings, _, _ = scan(root)
         expect(any("the tree holds 3" in f for f in findings), "a stale tier count fires", failures)
 
-        _write_doc(root, good, "No numerals here at all.")
-        findings, _, _ = scan(root)
-        expect(
-            any("appears nowhere in the prose" in f for f in findings),
-            "a marker the prose does not state fires",
-            failures,
-        )
+        _selftest_prose(root, good, failures)
 
         _write_doc(root, "<!-- consumer-census: key=demolib total=2 tier=2 -->", prose)
         findings, _, _ = scan(root)
