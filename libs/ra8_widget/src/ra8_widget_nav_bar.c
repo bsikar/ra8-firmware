@@ -27,7 +27,7 @@
 #include "ra8_widget_internal.h"
 
 /** @brief Logging / check tag. */
-static const char* s_tag = "ra8_widget_nav_bar";
+static const char* const s_tag = "ra8_widget_nav_bar";
 
 /**
  * @brief Empty sentinel: an empty strip (no items) draws / routes nothing.

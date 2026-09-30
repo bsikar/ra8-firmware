@@ -38,7 +38,7 @@
 #include "ra8_sdramc_regs.h"
 #include "ra8_system_regs.h"
 
-static const char* s_tag = "SDRAM";
+static const char* const s_tag = "SDRAM";
 
 /**
  * @enum ra8_sdramc_reg_val_t

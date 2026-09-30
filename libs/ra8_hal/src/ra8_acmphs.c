@@ -29,7 +29,7 @@
 #include "ra8_mstp.h"
 #include "ra8_port_constants.h"
 
-static const char* s_tag = "ACMPHS";
+static const char* const s_tag = "ACMPHS";
 
 /**
  * @enum ra8_acmphs_mstp_limit_t

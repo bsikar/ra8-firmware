@@ -47,7 +47,7 @@
 #include "ra8_log.h"
 #include "ra8_mstp.h"
 
-static const char* s_tag = "ADC";
+static const char* const s_tag = "ADC";
 
 /**
  * @enum ra8_adc_default_group_t

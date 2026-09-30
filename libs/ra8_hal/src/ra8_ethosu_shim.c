@@ -42,7 +42,7 @@
  * @note Read-only literal; never modified.
  * @since 0.1.0
  */
-static const char* s_tag = "ETHOSU";
+static const char* const s_tag = "ETHOSU";
 
 /**
  * @enum ra8_ethosu_ret_t

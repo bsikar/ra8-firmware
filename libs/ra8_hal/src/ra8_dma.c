@@ -28,7 +28,7 @@
 #include "ra8_mstp.h"
 #include "ra8_mstp_regs.h"
 
-static const char* s_tag = "DMA";
+static const char* const s_tag = "DMA";
 
 /* =============================================================================
  * State

@@ -23,7 +23,7 @@
 #include "ra8_log.h"
 #include "ra8_port_constants.h"
 
-static const char* s_tag = "PINVAL";
+static const char* const s_tag = "PINVAL";
 
 /**
  * @var s_claimed

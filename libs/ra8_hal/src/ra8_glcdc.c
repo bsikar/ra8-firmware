@@ -51,7 +51,7 @@
 #include "ra8_log.h"
 #include "ra8_mstp.h"
 
-static const char* s_tag = "GLCDC";
+static const char* const s_tag = "GLCDC";
 
 /* =============================================================================
  * Local constants

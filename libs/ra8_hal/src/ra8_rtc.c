@@ -40,7 +40,7 @@
 #include "ra8_system_regs.h"
 #include "ra8_time.h"
 
-static const char* s_tag = "RTC";
+static const char* const s_tag = "RTC";
 
 typedef enum : uint8_t {
   k_ra8_bcd_digit_mask  = 0x0FU, /**< RA8 bcd digit mask.  */

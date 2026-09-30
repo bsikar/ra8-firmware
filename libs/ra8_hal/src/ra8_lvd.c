@@ -84,7 +84,7 @@ bool priv_ra8_lvd_internal_set_ri_bit(uint32_t reset_val,
  * @var s_tag
  * @brief Logging tag used by every error path in this TU.
  */
-static const char* s_tag = "LVD";
+static const char* const s_tag = "LVD";
 
 /* =============================================================================
  * Channel-map helpers

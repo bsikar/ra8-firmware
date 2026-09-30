@@ -42,7 +42,7 @@
 #include "ra8_i3c_i2c_regs.h"
 
 /** @brief Log tag for this driver's control-plane TU. */
-static const char* s_tag = "IIC_B";
+static const char* const s_tag = "IIC_B";
 
 /**
  * @enum internal_i3c_i2c_control_t

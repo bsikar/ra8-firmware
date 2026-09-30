@@ -28,7 +28,7 @@
 #include "ra8_widget_internal.h"
 
 /** @brief Logging / check tag. */
-static const char* s_tag = "ra8_widget_toolbar";
+static const char* const s_tag = "ra8_widget_toolbar";
 
 /**
  * @brief Compute the search-field sub-rectangle inside a toolbar band.

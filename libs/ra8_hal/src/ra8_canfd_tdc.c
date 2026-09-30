@@ -31,7 +31,7 @@
 #include "ra8_hal_internal.h"
 #include "ra8_log.h"
 
-static const char* s_tag = "CANFD";
+static const char* const s_tag = "CANFD";
 
 /** @brief Implementation of `ra8_canfd_set_tdc()` -- RMW CFDCnFDCFG in CH_RESET. */
 ra8_err_t ra8_canfd_set_tdc(uint8_t channel, const ra8_canfd_tdc_cfg_t* cfg)

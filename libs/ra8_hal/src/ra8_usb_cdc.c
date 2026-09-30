@@ -36,7 +36,7 @@
 #include "ra8_usb.h"
 #include "ra8_usb_cdc_internal.h"
 
-static const char* s_tag = "USBCDC";
+static const char* const s_tag = "USBCDC";
 
 /**
  * @enum ra8_usb_cdc_setup_field_t

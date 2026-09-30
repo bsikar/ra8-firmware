@@ -28,7 +28,7 @@
 #include "ra8_log.h"
 #include "ra8_mstp.h"
 
-static const char* s_tag = "AGT";
+static const char* const s_tag = "AGT";
 
 /**
  * @enum ra8_agt_mstp_limit_t

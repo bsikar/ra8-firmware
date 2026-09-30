@@ -29,7 +29,7 @@
 #include "ra8_log.h"
 #include "ra8_mstp.h"
 
-static const char* s_tag = "CAC";
+static const char* const s_tag = "CAC";
 
 typedef enum : uint8_t {
   k_ra8_cacr0_cfme  = 0U, /**< CFME: clock frequency measurement en. */

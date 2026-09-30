@@ -25,7 +25,7 @@
 #include "ra8_icu_regs.h"
 #include "ra8_log.h"
 
-static const char* s_tag = "ISR";
+static const char* const s_tag = "ISR";
 
 /**
  * @enum ra8_isr_nvic_t

@@ -36,7 +36,7 @@
 #include "ra8_log.h"
 #include "ra8_mstp.h"
 
-static const char* s_tag = "CRC";
+static const char* const s_tag = "CRC";
 
 /** @brief Byte-3 shift for little-endian word assembly. */
 typedef enum : uint8_t {

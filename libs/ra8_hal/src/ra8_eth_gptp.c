@@ -36,7 +36,7 @@
  * @warning Do not modify: the HIL log scrapers key on this exact string.
  * @since 0.1.0
  */
-static const char* s_tag = "ETHGPT";
+static const char* const s_tag = "ETHGPT";
 
 /**
  * @var s_gptp_configured

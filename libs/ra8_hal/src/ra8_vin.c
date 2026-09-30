@@ -54,7 +54,7 @@
  * @note Read-only after init; safe from any context.
  * @since 0.1.0
  */
-static const char* s_tag = "VIN";
+static const char* const s_tag = "VIN";
 
 /**
  * @var s_vin_fn

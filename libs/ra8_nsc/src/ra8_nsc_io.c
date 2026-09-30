@@ -28,7 +28,7 @@
 #include "ra8_nsc_veneer.h"
 #include "ra8_pdm.h"
 
-static const char* s_tag = "NSCIO";
+static const char* const s_tag = "NSCIO";
 
 /**
  * @brief NSC veneer: bring up a GPT channel.

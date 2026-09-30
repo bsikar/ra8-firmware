@@ -33,7 +33,7 @@
 #include "ra8_usb_internal.h"
 #include "ra8_usb_regs.h"
 
-static const char* s_tag = "USB";
+static const char* const s_tag = "USB";
 
 /* =============================================================================
  * Host-mode control-transfer engine (polled, synchronous)

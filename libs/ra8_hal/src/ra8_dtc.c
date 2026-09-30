@@ -47,7 +47,7 @@
 #include "ra8_log.h"
 #include "ra8_mstp.h"
 
-static const char* s_tag = "DTC";
+static const char* const s_tag = "DTC";
 
 static ra8_dtc_event_fn_t s_dtc_fn;
 static void*              s_dtc_ctx;
