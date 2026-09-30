@@ -15,10 +15,19 @@ pub const Err = enum(u16) {
     invalid_state = 0x104,
     invalid_size = 0x105,
     null_ptr = 0x504,
+    /// `ra8_err.h` publishes more codes than this library raises, and the page
+    /// cache hands its own back through `ra8_vmem_get`. They pass through
+    /// untouched rather than being collapsed into one of the names above.
+    _,
 
     /// The value the C membrane returns.
     pub fn code(self: Err) u16 {
         return @intFromEnum(self);
+    }
+
+    /// A code arriving from C.
+    pub fn from(code_value: u16) Err {
+        return @enumFromInt(code_value);
     }
 };
 

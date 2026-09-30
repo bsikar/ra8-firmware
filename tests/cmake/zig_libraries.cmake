@@ -601,10 +601,16 @@ ra8_add_zig_library(
   ra8_secure_app
 )
 
-# Partially migrated: the fixed-cell slab allocator is Zig now, so
-# libs/ra8_mem/src/ra8_slab.c is gone. inc/ra8_slab.h is unchanged and is still
-# the membrane, so tests/core/src/test_ra8_slab.c and mem_subsystem link this
-# archive without knowing the body moved.
+# Partially migrated: the fixed-cell slab allocator and the byte-stream adapter
+# over the page cache are Zig now, so libs/ra8_mem/src/ra8_slab.c and
+# src/ra8_vmem_stream.c are gone. inc/ra8_slab.h and inc/ra8_vmem_stream.h are
+# unchanged and are still the membrane, so tests/core/src/test_ra8_slab.c,
+# tests/mocks/src/test_app_mem_subsystem.c, the EPUB streaming suite and
+# rabook_import link this archive without knowing the bodies moved.
+#
+# The stream adapter still calls ra8_vmem_get/ra8_vmem_put, which are C in
+# src/ra8_vmem.c. The archive leaves those two undefined and the link resolves
+# them from the same glob that always compiled them, exactly as the C TU did.
 #
 # The rest of libs/ra8_mem is deliberately still C, and the arena is the one
 # that matters: tools/rabook_viewer, tools/rabook_imagepack, apps/host/mdl and
