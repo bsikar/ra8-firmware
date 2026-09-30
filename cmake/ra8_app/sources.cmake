@@ -354,7 +354,6 @@ macro(_ra8_app_collect_sources)
       list(APPEND _ra8_lib_inc ${_ra8_lib_path}/inc)
     endif()
   endforeach()
-  list(REMOVE_DUPLICATES _ra8_lib_zig)
 
   # reflow rasterises glyphs through the vendored stb_truetype. Its
   # implementation TU lives under third_party (not apps/shared_libs/reflow/src), and
@@ -635,8 +634,9 @@ macro(_ra8_app_collect_sources)
     # / rabook_compile / comic blocks may already have added the same TUs, so
     # each is appended only when absent -- a duplicate source is an error under
     # some generators and a duplicate symbol under all of them.
-    # One archive, and _ra8_lib_zig is de-duplicated at line 296, so the
-    # blocks above may already have named it.
+    # One archive, and _ra8_lib_zig is de-duplicated where it is consumed
+    # (_ra8_app_link_zig_libraries), so the blocks above may already have
+    # named it.
     list(APPEND _ra8_lib_zig "ra8_imgdec|${RA8_REPO_ROOT}/libs/ra8_imgdec")
     if(NOT ${RA8_REPO_ROOT}/libs/ra8_imgdec/inc IN_LIST _ra8_lib_inc)
       list(APPEND _ra8_lib_inc ${RA8_REPO_ROOT}/libs/ra8_imgdec/inc)
