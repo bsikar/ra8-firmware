@@ -66,6 +66,8 @@ typedef struct {
   fw_os_host_test_thread_t threads[k_fw_os_host_test_max_threads]; /* Recorded threads. */
   uint32_t                 uptime_ms;                              /* Injected clock.   */
   uint32_t                 yields;                                 /* Yield count.      */
+  fw_os_host_test_call_t   forced_call;                            /* Armed call.       */
+  ra8_err_t                forced_err;                             /* Its error.        */
 } fw_os_host_test_state_t;
 
 static fw_os_host_test_state_t s_state;
@@ -114,6 +116,33 @@ RA8_INTERNAL static fw_os_host_test_sem_t *internal_sem_block(fw_os_sem_t *sem)
 }
 
 /**
+ * @brief Consume the armed failure when it names @p call.
+ *
+ * @details
+ * One-shot. Called first in every seam call that can fail, before the call
+ * touches any state, so a forced failure leaves the binding as it was.
+ *
+ * @param[in]  call    The seam call asking.
+ * @param[out] out_err Set to the forced error when this returns true.
+ *
+ * @return True when @p call was armed and the arming has been consumed.
+ *
+ * @pre @p out_err is non-NULL.
+ * @post The arming is cleared when it matched @p call.
+ * @note Not thread-safe; the host build is single-threaded.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static bool internal_forced(fw_os_host_test_call_t call, ra8_err_t *out_err)
+{
+  if (s_state.forced_call != call) {
+    return false;
+  }
+  s_state.forced_call = k_fw_os_host_test_call_none;
+  *out_err            = s_state.forced_err;
+  return true;
+}
+
+/**
  * @brief Report the failure a wait that cannot be satisfied deserves.
  *
  * @details
@@ -139,6 +168,24 @@ RA8_INTERNAL static ra8_err_t internal_wait_failed(uint32_t timeout_ms)
 void fw_os_host_test_reset(void)
 {
   s_state = (fw_os_host_test_state_t){};
+}
+
+ra8_err_t fw_os_host_test_fail_next(fw_os_host_test_call_t call, ra8_err_t err)
+{
+  if (err == k_ra8_ok) {
+    return k_ra8_err_invalid_arg;
+  }
+  if (call > k_fw_os_host_test_call_sem_give) {
+    return k_ra8_err_invalid_arg;
+  }
+  s_state.forced_call = call;
+  s_state.forced_err  = err;
+  return k_ra8_ok;
+}
+
+bool fw_os_host_test_failure_armed(void)
+{
+  return s_state.forced_call != k_fw_os_host_test_call_none;
 }
 
 ra8_err_t fw_os_host_test_run_thread(uint32_t index)
@@ -168,6 +215,11 @@ uint32_t fw_os_host_test_yield_count(void)
 
 ra8_err_t fw_os_thread_create(fw_os_thread_t *thread, const fw_os_thread_cfg_t *cfg)
 {
+  ra8_err_t forced = k_ra8_ok;
+  if (internal_forced(k_fw_os_host_test_call_thread_create, &forced)) {
+    return forced;
+  }
+
   if ((thread == nullptr) || (cfg == nullptr) || (cfg->entry == nullptr) ||
       (cfg->stack == nullptr) || (cfg->stack_bytes == 0U)) {
     return k_ra8_err_invalid_arg;
@@ -187,6 +239,11 @@ ra8_err_t fw_os_thread_create(fw_os_thread_t *thread, const fw_os_thread_cfg_t *
 
 ra8_err_t fw_os_thread_delete(fw_os_thread_t *thread)
 {
+  ra8_err_t forced = k_ra8_ok;
+  if (internal_forced(k_fw_os_host_test_call_thread_delete, &forced)) {
+    return forced;
+  }
+
   if (thread == nullptr) {
     return k_ra8_err_invalid_arg;
   }
@@ -215,6 +272,11 @@ void fw_os_thread_yield(void)
 
 ra8_err_t fw_os_mutex_init(fw_os_mutex_t *mutex, bool recursive)
 {
+  ra8_err_t forced = k_ra8_ok;
+  if (internal_forced(k_fw_os_host_test_call_mutex_init, &forced)) {
+    return forced;
+  }
+
   if (mutex == nullptr) {
     return k_ra8_err_invalid_arg;
   }
@@ -229,6 +291,11 @@ ra8_err_t fw_os_mutex_init(fw_os_mutex_t *mutex, bool recursive)
 
 ra8_err_t fw_os_mutex_deinit(fw_os_mutex_t *mutex)
 {
+  ra8_err_t forced = k_ra8_ok;
+  if (internal_forced(k_fw_os_host_test_call_mutex_deinit, &forced)) {
+    return forced;
+  }
+
   if (mutex == nullptr) {
     return k_ra8_err_invalid_arg;
   }
@@ -245,6 +312,11 @@ ra8_err_t fw_os_mutex_deinit(fw_os_mutex_t *mutex)
 
 ra8_err_t fw_os_mutex_lock(fw_os_mutex_t *mutex, uint32_t timeout_ms)
 {
+  ra8_err_t forced = k_ra8_ok;
+  if (internal_forced(k_fw_os_host_test_call_mutex_lock, &forced)) {
+    return forced;
+  }
+
   if (mutex == nullptr) {
     return k_ra8_err_invalid_arg;
   }
@@ -261,6 +333,11 @@ ra8_err_t fw_os_mutex_lock(fw_os_mutex_t *mutex, uint32_t timeout_ms)
 
 ra8_err_t fw_os_mutex_unlock(fw_os_mutex_t *mutex)
 {
+  ra8_err_t forced = k_ra8_ok;
+  if (internal_forced(k_fw_os_host_test_call_mutex_unlock, &forced)) {
+    return forced;
+  }
+
   if (mutex == nullptr) {
     return k_ra8_err_invalid_arg;
   }
@@ -277,6 +354,11 @@ ra8_err_t fw_os_mutex_unlock(fw_os_mutex_t *mutex)
 
 ra8_err_t fw_os_sem_init(fw_os_sem_t *sem, uint32_t initial_count)
 {
+  ra8_err_t forced = k_ra8_ok;
+  if (internal_forced(k_fw_os_host_test_call_sem_init, &forced)) {
+    return forced;
+  }
+
   if (sem == nullptr) {
     return k_ra8_err_invalid_arg;
   }
@@ -290,6 +372,11 @@ ra8_err_t fw_os_sem_init(fw_os_sem_t *sem, uint32_t initial_count)
 
 ra8_err_t fw_os_sem_deinit(fw_os_sem_t *sem)
 {
+  ra8_err_t forced = k_ra8_ok;
+  if (internal_forced(k_fw_os_host_test_call_sem_deinit, &forced)) {
+    return forced;
+  }
+
   if (sem == nullptr) {
     return k_ra8_err_invalid_arg;
   }
@@ -303,6 +390,11 @@ ra8_err_t fw_os_sem_deinit(fw_os_sem_t *sem)
 
 ra8_err_t fw_os_sem_take(fw_os_sem_t *sem, uint32_t timeout_ms)
 {
+  ra8_err_t forced = k_ra8_ok;
+  if (internal_forced(k_fw_os_host_test_call_sem_take, &forced)) {
+    return forced;
+  }
+
   if (sem == nullptr) {
     return k_ra8_err_invalid_arg;
   }
@@ -319,6 +411,11 @@ ra8_err_t fw_os_sem_take(fw_os_sem_t *sem, uint32_t timeout_ms)
 
 ra8_err_t fw_os_sem_give(fw_os_sem_t *sem)
 {
+  ra8_err_t forced = k_ra8_ok;
+  if (internal_forced(k_fw_os_host_test_call_sem_give, &forced)) {
+    return forced;
+  }
+
   if (sem == nullptr) {
     return k_ra8_err_invalid_arg;
   }
