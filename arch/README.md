@@ -74,7 +74,7 @@ pasted once:
 
 | Header in Ring-1 `libs/ra8_core/` | First-party files including it |
 |---|---:|
-| `ra8_boot_entry.h` | 266 |
+| `ra8_boot_entry.h` | 269 |
 | `ra8_exception.h` | 12 |
 | `ra8_scb.h` | 8 |
 | `ra8_systick.h` | 6 |
@@ -183,7 +183,7 @@ that shrank is progress this page has to credit.
 
 ```sh
 # MEASURED BLOCK -- re-run by scripts/checks/check_measured_counts.py
-# ra8_boot_entry.h -- 266 file(s)
+# ra8_boot_entry.h -- 269 file(s)
 grep -rlE '#[ \t]*include[ \t]+"ra8_boot_entry\.h"' libs apps examples tests --include=*.c --include=*.h | grep -v /third_party/ | wc -l
 # ra8_exception.h -- 12 file(s)
 grep -rlE '#[ \t]*include[ \t]+"ra8_exception\.h"' libs apps examples tests --include=*.c --include=*.h | grep -v /third_party/ | wc -l

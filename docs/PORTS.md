@@ -69,7 +69,7 @@ the next reader.
 | Port | Status | Coupled example files | Priority | Note |
 | --- | --- | ---: | --- | --- |
 | `fw_os` (mutex / time / yield) | three reinventions, no port | -- | P0 | Splits to its own child issue; do first. |
-| clock / CGC | coupled, no port | 227 | P0 | Wants an intent API, not a portable register API. |
+| clock / CGC | coupled, no port | 226 | P0 | Wants an intent API, not a portable register API. |
 | display / framebuffer | facade exists, caps, two backends | 22 | P0 | Enforcement plus backends; see the population rows below. |
 | GPIO | coupled, free functions only | 49 | P0 | Extract the vtable; the board owns the pin map. |
 | timebase / monotonic `now()` | non-injectable singleton in `libs/ra8_core/` | 237 | P1 | Foundational. `ra8_time_interface.h` is the nearest thing today. |
@@ -100,7 +100,7 @@ is no third place to keep in step.
 
 ```sh
 # MEASURED BLOCK -- re-run by scripts/checks/check_measured_counts.py
-# clock / CGC -- 227 file(s)
+# clock / CGC -- 226 file(s)
 grep -rlE 'ra8_cgc' examples --include=*.c --include=*.h | wc -l
 # display / framebuffer -- 22 file(s)
 grep -rlE 'ra8_glcdc|ra8_epaper|ra8_drw' examples --include=*.c --include=*.h | wc -l
