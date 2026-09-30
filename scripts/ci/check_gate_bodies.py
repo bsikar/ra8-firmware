@@ -63,9 +63,10 @@ directory``.  That took win-ci -- the fleet's second verification host, where
 ``ci-gate-container`` is the normal path -- out of ever reporting a full green.
 
 There is no legitimate use, so there is no exception list: a gate needing the
-host repository's *history* calls ``ci_history_repo`` (which ``ci.sh`` points
-at the real repo deliberately, because a snapshot cannot carry commit
-messages), and a gate needing a path uses ``$PWD``.
+host repository's *history* calls ``ci_history_repo`` (defined in
+``scripts/ci/lib/history.sh``, which points at the real repo deliberately,
+because a snapshot cannot carry commit messages), and a gate needing a path
+uses ``$PWD``.
 
 Three rules, all purely structural:
 
