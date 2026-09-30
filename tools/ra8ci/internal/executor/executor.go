@@ -296,6 +296,13 @@ func cleanEnvironment(root string) ([]string, error) {
 		if !ok || !allowed[key] {
 			continue
 		}
+		// Defence in depth that cannot fire from here: Go clears duplicate
+		// keys out of its environment on first access, so os.Environ() never
+		// yields the same key twice even when the kernel handed this process
+		// two of them (verified by execve'ing a child with a duplicate:
+		// /proc/self/environ carried both, os.Environ() carried one). The
+		// check stays for a future caller that builds its own list, and it is
+		// why no test provokes it.
 		if seen[key] {
 			return nil, fmt.Errorf("%w: duplicate environment key %s", ErrUnsafeEnvironment, key)
 		}
