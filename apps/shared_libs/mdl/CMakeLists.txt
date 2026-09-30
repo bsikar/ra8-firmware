@@ -89,8 +89,21 @@ if(NOT TARGET ra8_zig::ra8_imgdec)
     LIBRARY_NAME ra8_imgdec
   )
 endif()
+# The exact decimal -> binary64 conversion behind libs/ra8_num/inc/ra8_num.h is
+# Zig now, so the five targets below that used to compile
+# libs/ra8_num/src/ra8_num_decimal.c by path link the archive instead.
+# Registered here rather than assumed, because this core also configures
+# standalone.
+if(NOT TARGET ra8_zig::ra8_num)
+  include(${MDL_REPO_ROOT}/tests/cmake/zig_library.cmake)
+  ra8_add_zig_library(
+    NAME ra8_num
+    ZIG_ROOT ${MDL_REPO_ROOT}/libs/ra8_num
+    LIBRARY_NAME ra8_num
+  )
+endif()
 link_libraries(ra8_zig::fw_if_fs ra8_zig::ra8_xml ra8_zig::ra8_net_policy
-               ra8_zig::ra8_imgdec)
+               ra8_zig::ra8_imgdec ra8_zig::ra8_num)
 
 # The core's own two roots, likewise stated once. Every source path below is
 # absolute through them, because a form consumes these lists from ITS directory
@@ -375,7 +388,6 @@ set(MDL_CORE_SRC
     ${MDL_CORE_SRC_DIR}/mdl_urlname.c
     ${MDL_CORE_SRC_DIR}/mdl_state.c
     ${MDL_CORE_SRC_DIR}/mdl_state_codec.c
-    ${MDL_REPO_ROOT}/libs/ra8_num/src/ra8_num_decimal.c
     ${MDL_CORE_SRC_DIR}/mdl_state_store.c
     ${MDL_CORE_SRC_DIR}/mdl_fetch.c
     ${MDL_CORE_SRC_DIR}/mdl_fetch_body.c
@@ -545,7 +557,6 @@ target_sources(
           ${MDL_CACHE_SRC}
           ${MDL_CORE_SRC_DIR}/mdl_state.c
           ${MDL_CORE_SRC_DIR}/mdl_state_codec.c
-          ${MDL_REPO_ROOT}/libs/ra8_num/src/ra8_num_decimal.c
           ${MDL_CORE_SRC_DIR}/mdl_state_store.c
           ${MDL_CORE_SRC_DIR}/mdl_session.c
           ${MDL_CORE_SRC_DIR}/mdl_pathfs.c
@@ -643,7 +654,6 @@ add_executable(
   ${MDL_CORE_TEST_SRC_DIR}/test_mdl_state_metadata.c
   ${MDL_CORE_SRC_DIR}/mdl_state.c
   ${MDL_CORE_SRC_DIR}/mdl_state_codec.c
-  ${MDL_REPO_ROOT}/libs/ra8_num/src/ra8_num_decimal.c
   ${MDL_CORE_SRC_DIR}/mdl_state_store.c
   ${MDL_CORE_SRC_DIR}/mdl_hash.c
   ${MDL_CORE_SRC_DIR}/mdl_storage.c
@@ -683,7 +693,6 @@ add_executable(
   ${MDL_CACHE_SRC}
   ${MDL_CORE_SRC_DIR}/mdl_state.c
   ${MDL_CORE_SRC_DIR}/mdl_state_codec.c
-  ${MDL_REPO_ROOT}/libs/ra8_num/src/ra8_num_decimal.c
   ${MDL_CORE_SRC_DIR}/mdl_state_store.c
   ${MDL_CORE_SRC_DIR}/mdl_hash.c
   ${MDL_CORE_SRC_DIR}/mdl_storage.c
@@ -728,7 +737,6 @@ add_executable(
   ${MDL_CACHE_SRC}
   ${MDL_CORE_SRC_DIR}/mdl_state.c
   ${MDL_CORE_SRC_DIR}/mdl_state_codec.c
-  ${MDL_REPO_ROOT}/libs/ra8_num/src/ra8_num_decimal.c
   ${MDL_CORE_SRC_DIR}/mdl_state_store.c
   ${MDL_CORE_SRC_DIR}/mdl_hash.c
   ${MDL_CORE_SRC_DIR}/mdl_storage.c
