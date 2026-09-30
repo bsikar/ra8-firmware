@@ -1,13 +1,17 @@
 {
   "test_roots": [
     "tests/internal_test.zig",
-    "tests/abi_test.zig"
+    "tests/abi_test.zig",
+    "tests/bind_test.zig"
   ],
   "covered_sources": [
     "src/internal/root.zig",
+    "src/internal/i2c_bind.zig",
     "src/ra8_lsm6dso_abi.zig",
+    "src/ra8_lsm6dso_bind_abi.zig",
     "tests/internal_test.zig",
-    "tests/abi_test.zig"
+    "tests/abi_test.zig",
+    "tests/bind_test.zig"
   ],
   "minimum_tests": 10
 }

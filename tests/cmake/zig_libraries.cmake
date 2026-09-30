@@ -149,12 +149,16 @@ ra8_add_zig_library(
   ra8_net_pal
 )
 
-# Fully migrated: the CTRL1_XL / CTRL2_G bit-field encoders, the little-endian
-# sample decoders, the temperature conversion and the FIFO drain are Zig now,
-# so libs/ra8_lsm6dso/src has no .c left and the RA8_LSM6DSO_SOURCES glob is
-# gone from library_sources.cmake and core_hal.cmake. The transport stays a
-# caller-supplied seam, so the host suite's canned-response mock substitutes
-# for the I2C / SPI bus exactly as before.
+# Fully migrated (#1109, #2682): the CTRL1_XL / CTRL2_G bit-field encoders, the
+# little-endian sample decoders, the temperature conversion, the FIFO drain AND
+# the house-I2C binder from #760 are all Zig now, so libs/ra8_lsm6dso/src has
+# no .c left, the RA8_LSM6DSO_SOURCES glob is gone from library_sources.cmake
+# and core_hal.cmake, and libs/ra8_lsm6dso/src is no longer an include
+# directory anywhere. The transport stays a caller-supplied seam, so the host
+# suite's canned-response mock substitutes for the I2C / SPI bus exactly as
+# before; ra8_lsm6dso_bind_i2c rides in this same archive behind the unchanged
+# inc/ra8_lsm6dso.h, which is what the binder cases in test_ra8_lsm6dso.c and
+# the imu_lsm6dso_demo app link against.
 ra8_add_zig_library(
   NAME
   ra8_lsm6dso

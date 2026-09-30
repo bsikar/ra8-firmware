@@ -46,7 +46,6 @@ add_library(
   ${RA8_WEBP_THIRD_PARTY}
   ${RA8_WEBP_SOURCES}
   ${RA8_BOARD_EK_RA8D2_SOURCES}
-  ${RA8_LSM6DSO_SOURCES}
   ${RA8_DFU_SOURCES}
   # ThreadX SysTick retune (issue #287). Lives under port/threadx (not
   # libs/), so it is not caught by the libs/ globs above -- add it by
@@ -197,7 +196,6 @@ target_include_directories(
          ${FW_ROOT}/libs/ra8_psa_crypto/src
          ${FW_ROOT}/libs/ra8_wdt_supervisor/src
          ${FW_ROOT}/libs/ra8_board_ek_ra8d2/src
-         ${FW_ROOT}/libs/ra8_lsm6dso/src
          ${FW_ROOT}/apps/shared_libs/epub/src
          ${FW_ROOT}/apps/shared_libs/comic/src
          ${FW_ROOT}/apps/shared_libs/unarch/src
