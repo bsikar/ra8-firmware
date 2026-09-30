@@ -377,9 +377,15 @@ def rewrite(text: str, tree: dict[str, str]) -> str:
         for index, label, cells in parse_tables(lines):
             if label != measurement.row:
                 continue
-            updated = [
-                cell.replace(old_cell, new_cell) if old_cell in cell else cell for cell in cells
-            ]
+            # The cell that IS the count, by exact match -- never a cell that
+            # merely contains it. Substring containment rewrote the first cell
+            # holding those characters, and for a single-digit count that is
+            # the digit inside the row's own label: `ra8_scb.h` claiming 8
+            # became `ra2_scb.h`, and the count cell was left untouched.
+            # Matching exactly means a row whose count cell cannot be found is
+            # left alone and reported by --check, rather than silently edited
+            # somewhere else on the line.
+            updated = [new_cell if cell == old_cell else cell for cell in cells]
             if updated != cells:
                 lines[index] = "| " + " | ".join(updated) + " |"
                 break
@@ -708,6 +714,15 @@ def selftest() -> int:
     if "-- 2 file(s)" not in banked or "| clock / CGC | 2 |" not in banked:
         failures.append("--update did not rewrite both the manifest and the row")
 
+    # The count cell, never the label. Every header in this tree is named
+    # ra8_*, so a single-digit claim shares its characters with the row label
+    # and the old substring rewrite corrupted the name instead of the number.
+    relabelled = rewrite(_page(scb_claim=8, scb_cell="8"), _TREE)
+    if "| `ra8_scb.h` | 2 |" not in relabelled:
+        failures.append("--update did not rewrite the ra8_scb.h count cell to 2")
+    if "ra2_scb" in relabelled or "`ra8_scb.h`" not in relabelled:
+        failures.append("--update rewrote the row label instead of its count cell")
+
     # The floor is the guard against a grammar that stopped matching.
     empty = (
         _page()
@@ -723,7 +738,7 @@ def selftest() -> int:
         for failure in failures:
             print(f"selftest: {Path(__file__).name} FAIL: {failure}", file=sys.stderr)
         return 1
-    print(f"selftest: {Path(__file__).name} OK ({len(cases) + 3} both-direction cases)")
+    print(f"selftest: {Path(__file__).name} OK ({len(cases) + 5} both-direction cases)")
     return 0
 
 
