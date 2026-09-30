@@ -69,6 +69,16 @@ EXCLUDED_BACKEND_FILES = frozenset(
     }
 )
 
+CHIP_ADAPTER_PREFIXES = ("libs/if_ra8_cgc/",)
+"""Adapter trees that exist to bind a neutral ``fw_if_*`` port to one chip.
+
+A ``libs/if_ra8_*`` tree is the named backend for its port: translating board
+module indices into concrete driver calls is the whole job the port delegates
+to it, so its reach-ins are the seam working rather than debt to burn down.
+Exempting the tree keeps the ratchet aimed at the consumers that should be
+asking the port instead.
+"""
+
 FAMILY_PATTERNS: dict[str, re.Pattern[str]] = {
     family: re.compile(rf"\bra8_{prefix}_[A-Za-z0-9_]+\b")
     for family, prefix in (
@@ -110,6 +120,7 @@ def is_policy_source(rel: str) -> bool:
     if (
         not rel.endswith(SOURCE_SUFFIXES)
         or rel.startswith(EXCLUDED_PREFIXES)
+        or rel.startswith(CHIP_ADAPTER_PREFIXES)
         or rel in EXCLUDED_BACKEND_FILES
     ):
         return False
