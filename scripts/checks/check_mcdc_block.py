@@ -59,6 +59,14 @@ import sys
 import tempfile
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+
+from lint_targets import (  # noqa: E402 -- sibling import needs the path above
+    announce_unscanned,
+    repo_files,
+    untracked_in_scope,
+)
+
 MAX_DISPLAYED_FINDINGS = 50  # Max number of findings to print before summarizing the rest.
 
 # A test function: a Google-Test-style ``TEST(suite, name)`` / ``TEST_F`` or a
@@ -114,15 +122,17 @@ def _is_test_c(path: str) -> bool:
 def all_test_files(repo: str = ".") -> list[Path]:
     """Every tracked ``tests/**/*.c`` file, index-independent.
 
-    Prefers ``git ls-files`` (the tracked set) when ``repo`` is a git
-    checkout, and falls back to a filesystem walk otherwise. Neither path
-    consults the index, so the finding count is the same whether or not
-    anything is staged -- the whole point of the #325 fix.
+    Enumerates via ``repo_files`` (tracked plus untracked-not-ignored) when
+    ``repo`` is a git checkout, and falls back to a filesystem walk
+    otherwise. Neither path consults the index, so the finding count is the
+    same whether or not anything is staged -- the point of the #325 fix --
+    and a brand-new test file counts before anyone ``git add``s it (#713).
     """
-    ok, out = _git_ok("ls-files", "--", "tests", repo=repo)
     root = Path(repo)
-    if ok and out.strip():
-        return [root / p for p in out.splitlines() if _is_test_c(p) and (root / p).is_file()]
+    ok, _out = _git_ok("rev-parse", "--git-dir", repo=repo)
+    if ok:
+        listed = repo_files(("tests",), root=root, caller="check_mcdc_block.py")
+        return [root / p for p in listed if _is_test_c(p)]
     tests_dir = root / "tests"
     if not tests_dir.is_dir():
         return []
@@ -137,6 +147,12 @@ def staged_test_files(repo: str = ".") -> list[Path]:
     """
     out = _git("diff", "--cached", "--name-only", "--diff-filter=ACMR", repo=repo)
     root = Path(repo)
+    announce_unscanned(
+        [p for p in untracked_in_scope(("tests",), root=root, caller="check_mcdc_block.py")
+         if _is_test_c(p)],
+        caller="check_mcdc_block.py",
+        why="staged mode judges the index only; `git add` them to include them",
+    )
     return [root / p for p in out.splitlines() if _is_test_c(p) and (root / p).is_file()]
 
 
