@@ -913,10 +913,17 @@ def _scope_failures() -> list[str]:
     """Prove the census, the floors and the project-claim guard all still bite."""
     live = census_paths()
     out: list[str] = []
-    if census_floor_failures(live):
-        out.append("the live census must clear every root floor")
-    if not census_floor_failures([rel for rel in live if not rel.startswith("tools/")]):
+    # Carry the root and the numbers out. "a floor failed" with no figure in it
+    # is what let #2638 sit red for 13 days: it could not say whether code had
+    # left tools/ or the enumeration had broken.
+    collapsed = census_floor_failures([rel for rel in live if not rel.startswith("tools/")])
+    out += [
+        f"the live census must clear every root floor: {m}" for m in census_floor_failures(live)
+    ]
+    if not collapsed:
         out.append("a census with tools/ removed must fail its root floor")
+    elif not any("re-pin this floor" in m for m in collapsed):
+        out.append("a census failure must tell the reader which way to resolve it")
     if unclaimed_coverage_projects(["tests", "apps/shared_libs/mdl"]):
         out.append("a claimed coverage project must not be reported unclaimed")
     if not unclaimed_coverage_projects(["tools/unwired"]):

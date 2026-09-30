@@ -306,7 +306,14 @@ ROOT_CENSUS_FLOORS: dict[str, int] = {
     # floors together so the move cannot turn either root's guard vacuous.
     "libs": 315,  # measured 362
     "examples": 300,  # measured 370
-    "tools": 110,  # measured 134
+    # tools/ held 134 units until e84437938 (2026-09-17) moved
+    # tools/ra8_emulator/ to its own repository: 151 files, 102 of them .c,
+    # taking tracked tools/**/*.c from 149 to 48 and this census from 134 to
+    # 38. The old 110 then failed every run, and because tests.sh runs this
+    # selftest BEFORE the coverage build, the whole coverage-tree leg exited
+    # here for 13 days (#2638). Re-pinned under the population that is
+    # actually left, so the guard bites again instead of being permanently red.
+    "tools": 30,  # measured 38
     "apps": 120,  # measured 150
     "port": 28,  # measured 35
 }
@@ -317,14 +324,26 @@ drop past this means the measurement, not the tests, came apart."""
 
 
 def census_floor_failures(paths: list[str]) -> list[str]:
-    """Return one message per root whose census fell below its floor."""
+    """Return one message per root whose census fell below its floor.
+
+    The message carries the decision, not just the verdict. A floor this low
+    has exactly two causes and they have opposite fixes: code genuinely left
+    the tree, in which case the floor is stale and gets re-pinned with the
+    commit that removed it; or the enumeration broke and the floor is the only
+    thing that noticed. The reader cannot tell which from "a floor failed", and
+    #2638 is what that costs: this fired for 13 days on a deliberate deletion
+    while the coverage leg never reached a measurement.
+    """
     counts = dict.fromkeys(ROOT_CENSUS_FLOORS, 0)
     for rel in paths:
         root = root_of(rel)
         if root in counts:
             counts[root] += 1
     return [
-        f"census for root {root}/ collapsed to {counts[root]} unit(s), floor is {floor}"
+        f"census for root {root}/ is {counts[root]} unit(s), floor is {floor}: "
+        f"if code left {root}/ deliberately, re-pin this floor in "
+        f"tree_coverage_model.py naming the commit that removed it; if {root}/ "
+        f"is unchanged, the enumeration is broken and this floor caught it"
         for root, floor in sorted(ROOT_CENSUS_FLOORS.items())
         if counts[root] < floor
     ]
