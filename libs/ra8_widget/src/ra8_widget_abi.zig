@@ -23,3 +23,6 @@ pub const button = @import("widget_button_abi.zig");
 
 /// The progress-bar leaf widget: `ra8_widget_progress_bar_vtable` / `_init`.
 pub const progress_bar = @import("widget_progress_bar_abi.zig");
+
+/// The status-bar leaf widget: `ra8_widget_status_bar_vtable` / `_init`.
+pub const status_bar = @import("widget_status_bar_abi.zig");
