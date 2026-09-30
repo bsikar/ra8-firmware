@@ -7,9 +7,9 @@
 # HAL implementations, named backend translation units, board composition
 # libraries, tests, vendored code, and generated code are outside this ratchet.
 #
-# clock: 508 reference(s)
+# clock: 504 reference(s)
 # display: 9 reference(s)
-# gpio: 82 reference(s)
+# gpio: 78 reference(s)
 # timer: 51 reference(s)
 #
 # path<TAB>family<TAB>count
@@ -69,9 +69,6 @@ examples/ek_ra8d2/hil_needs_revalidation/rtc_alarm/src/main.c	clock	2
 examples/ek_ra8d2/hil_needs_revalidation/rtc_periodic_demo/src/main.c	clock	2
 examples/ek_ra8d2/hil_needs_revalidation/touch_cal/src/main.c	clock	2
 examples/ek_ra8d2/hil_needs_revalidation/touch_demo/src/main.c	clock	2
-examples/ek_ra8d2/hil_needs_revalidation/tz_nsc_cgc_usb/src/system_init.c	clock	1
-examples/ek_ra8d2/hil_needs_revalidation/tz_nsc_cgc_usb/src/trustzone_init.c	clock	1
-examples/ek_ra8d2/hil_needs_revalidation/tz_nsc_cgc_usb/src/trustzone_init.c	gpio	2
 examples/ek_ra8d2/hil_needs_revalidation/usb_selftest_wlun/src/main.c	clock	4
 examples/ek_ra8d2/hil_needs_revalidation/usb_selftest_wlun/src/main.c	gpio	1
 examples/ek_ra8d2/hw_pending/adc_diag_tsn_demo/src/main.c	clock	2
@@ -114,9 +111,6 @@ examples/ek_ra8d2/hw_pending/scb_diag_demo/src/main.c	clock	2
 examples/ek_ra8d2/hw_pending/secure_boot_ns_hil/src/system_init.c	clock	1
 examples/ek_ra8d2/hw_pending/smbus_demo/src/main.c	clock	3
 examples/ek_ra8d2/hw_pending/tls_client/src/main.c	clock	2
-examples/ek_ra8d2/hw_pending/tz_threadx_demo/src/system_init.c	clock	1
-examples/ek_ra8d2/hw_pending/tz_threadx_demo/src/trustzone_init.c	clock	1
-examples/ek_ra8d2/hw_pending/tz_threadx_demo/src/trustzone_init.c	gpio	2
 examples/ek_ra8d2/hw_pending/webp_decode_demo/src/main.c	clock	2
 examples/ek_ra8d2/hw_validated/c6/c6_fw_version/src/main.c	clock	3
 examples/ek_ra8d2/hw_validated/c6/c6_hosted_init/src/main.c	clock	3
