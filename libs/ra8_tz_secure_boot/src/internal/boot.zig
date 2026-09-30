@@ -32,6 +32,11 @@ pub const Host = struct {
     blxns_target: u32 = 0,
     blxns_msp_ns: u32 = 0,
     vtor_ns: u32 = 0,
+    /// The last peripheral-security register written, and its value. PSAR
+    /// addresses are a caller's argument rather than a fixed set, so the
+    /// capture shadows whichever one the gate was pointed at.
+    psar_addr: usize = 0,
+    psar_value: u32 = 0,
 
     /// Record a 32-bit store. Addresses outside the documented set are
     /// ignored: no other 32-bit register is written through this path.
@@ -40,8 +45,18 @@ pub const Host = struct {
             regs.Addr.ipcsar => self.ipcsar_value = value,
             regs.Addr.ipcpar => self.ipcpar_value = value,
             regs.Addr.vtor_ns => self.vtor_ns = value,
-            else => {},
+            else => {
+                self.psar_addr = addr;
+                self.psar_value = value;
+            },
         }
+    }
+
+    /// Read a 32-bit register back. Only the PSAR shadow is readable: it is
+    /// the one register this library reads after writing.
+    pub fn read32(self: Host, addr: usize) u32 {
+        if (addr == self.psar_addr) return self.psar_value;
+        return 0;
     }
 
     /// Record a 16-bit store. PRCR_S is the only 16-bit writer, so the PRC4
@@ -86,11 +101,19 @@ test "a full gate cycle leaves the capture balanced" {
     try std.testing.expectEqual(regs.Prcr.close, host.prcr_s_last);
 }
 
-test "an unrelated address changes nothing" {
+test "an address outside the documented set lands in the PSAR shadow" {
     reset();
     host.write32(0x4000_0000, 0xDEAD);
     try std.testing.expectEqual(@as(u32, 0), host.ipcsar_value);
     try std.testing.expectEqual(@as(u32, 0), host.vtor_ns);
+    try std.testing.expectEqual(@as(u32, 0xDEAD), host.read32(0x4000_0000));
+}
+
+test "the PSAR shadow reads back only the address it was written at" {
+    reset();
+    host.write32(0x4000_8000, 0x30);
+    try std.testing.expectEqual(@as(u32, 0x30), host.read32(0x4000_8000));
+    try std.testing.expectEqual(@as(u32, 0), host.read32(0x4000_9000));
 }
 
 test "reset clears a dirtied capture" {
