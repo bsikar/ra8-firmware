@@ -1,6 +1,13 @@
 # ADR-0005: Multi-language documentation architecture
 
-* **Status:** Accepted
+* **Status:** Superseded on 2026-09-18 by `a67c04f3e`, "ci(docs): dismantle
+  Doxygen, MkDocs, and HTML site generation infrastructure". Nothing this
+  record decided is in the tree. That commit removed both generators that
+  existed, their configuration, their theme, their provisioning and publishing
+  builders, the prose-reachability checker, and the three generator scripts:
+  24 files, -5948 lines; `git show a67c04f3e --stat` is the list. No site is
+  published and no documentation generator runs. The record is kept for the
+  reasoning, not as a description of the tree.
 * **Date:** 2026-09-16
 * **Issue:** [#900](https://github.com/bsikar/ra8-firmware/issues/900)
 
@@ -25,15 +32,17 @@ tells Doxygen to try C's grammar on a language that does not have it.
 Hand-maintaining Markdown mirrors of Zig and Rust APIs produces documentation
 that drifts from the source the first time someone is in a hurry.
 
-## Decision
+## Decision (superseded)
 
 Four generators, each scoped to what it can actually read, assembled into one
-published site.
+published site. None of the four was ever wired; `a67c04f3e` removed the two
+that existed.
 
 1. **Markdown hub: MkDocs with the Material theme.** Owns every prose page
    under `docs/`: architecture, ADRs, toolchain and CI manuals, qualification
-   evidence, the SOUP inventory. Configured by the top-level `mkdocs.yml`,
-   built by `just docs::hub` into `build/docs/hub/`.
+   evidence, the SOUP inventory. Configured by a top-level MkDocs
+   configuration, built by `just docs::hub` into `build/docs/hub/`. Both the
+   configuration and the recipe were deleted in `a67c04f3e`.
 2. **C ABI: Doxygen.** Scoped to the public headers (`libs/*/inc/*.h`) and the
    remaining C sources. It stays authoritative for the ABI, and it keeps the
    `@since` audit and the doc-attachment gate, because the C headers stay
@@ -87,7 +96,10 @@ it extends unchanged to the other three.
 
 ### No blind spots
 
-The existing gates are preserved rather than replaced:
+The existing gates were to be preserved rather than replaced. Read the right
+column as what this record intended, not as what runs: `a67c04f3e` took the
+Doxygen warning gate, the `@since` audit, and the doc-attachment gate with it,
+and the three Markdown, Zig and Rust columns were never wired at all.
 
 | Gate | Today | Under this ADR |
 | --- | --- | --- |
@@ -95,7 +107,7 @@ The existing gates are preserved rather than replaced:
 | `@since` audit | Doxygen tags | unchanged, C headers stay hand-authored |
 | doc-attachment | C declarations | unchanged |
 | Prose link integrity | not checked | `mkdocs build --strict` |
-| Prose reachability | not checked | `scripts/checks/check_docs_hub_nav.py` |
+| Prose reachability | not checked | a nav-completeness checker (deleted unwired) |
 | Zig doc comments | not checked | autodoc build, in the CI job slice |
 | Rust doc warnings | not checked | `cargo doc` with warnings denied, same slice |
 
@@ -107,10 +119,11 @@ The existing gates are preserved rather than replaced:
 * Four generators is four version pins, four provisioning paths, and four
   ways for CI to break. The pinned-tool cache the Doxygen build already uses
   is the model for the other three.
-* The prose nav becomes a file someone has to update. That is deliberate:
-  `check_docs_hub_nav.py` fails when a Markdown file under `docs/` is neither
-  in the nav nor explicitly excluded, so the cost of forgetting is a red
-  check rather than an orphaned page nobody ever finds.
+* The prose nav becomes a file someone has to update. That was deliberate: the
+  nav-completeness checker was to fail when a Markdown file under `docs/` was
+  neither in the nav nor explicitly excluded, so the cost of forgetting would
+  be a red check rather than an orphaned page nobody ever finds. It was
+  deleted unwired, so forgetting costs nothing today.
 * Doxygen stops being the documentation system and becomes one generator
   among four. Its scope narrows to the C ABI in a later slice; nothing about
   its gates weakens in the process.
