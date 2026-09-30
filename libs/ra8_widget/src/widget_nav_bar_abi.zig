@@ -6,8 +6,9 @@
 //! `ra8_widget_nav_bar_init`.
 //!
 //! The strip is `count` equal-width cells, each a centred label and each a tap
-//! target. Both halves read the same two pure helpers below, `cellRect` and
-//! `hitCell`, so a tap lands in the cell it looks like it lands in.
+//! target. Drawing and hit-testing both derive from one boundary helper,
+//! `cellStart`, so a tap lands in the cell it looks like it lands in even on a
+//! width the cell count does not divide.
 
 const types = @import("widget_abi_types.zig");
 const paint_abi = @import("widget_paint_abi.zig");
@@ -56,28 +57,41 @@ pub const NavBar = extern struct {
     selected: u16,
 };
 
-/// Cell `idx` of a `count`-cell strip laid inside `strip`.
+/// Offset of cell `idx`'s left edge from the strip's own left edge.
 ///
-/// Rounded prefix widths (`w * i / count`) mean the cells tile the strip with
-/// no gap and the remainder lands deterministically, which is what lets the
-/// hit maths below be the exact inverse.
+/// The single source of truth for where one cell ends and the next begins:
+/// rounded prefix widths, so the cells tile the strip with no gap and the
+/// remainder lands deterministically. `cellRect` draws from these boundaries
+/// and `hitCell` routes from them, which is what keeps the two in step on a
+/// width the cell count does not divide.
+pub fn cellStart(width: i32, idx: u16, count: u16) i32 {
+    return @divTrunc(width * @as(i32, @intCast(idx)), @as(i32, @intCast(count)));
+}
+
+/// Cell `idx` of a `count`-cell strip laid inside `strip`.
 pub fn cellRect(strip: Rect, idx: u16, count: u16) Rect {
-    const span: i32 = @intCast(count);
-    const x0 = @divTrunc(strip.w * @as(i32, @intCast(idx)), span);
-    const x1 = @divTrunc(strip.w * @as(i32, @intCast(idx)) + strip.w, span);
+    const x0 = cellStart(strip.w, idx, count);
+    const x1 = cellStart(strip.w, idx + 1, count);
     return .{ .x = strip.x + x0, .y = strip.y, .w = x1 - x0, .h = strip.h };
 }
 
 /// Cell index `px` lands on, or null for an empty strip, a degenerate width,
 /// or a tap outside the strip.
 ///
-/// The in-range guard makes `px - x < w`, so the proportional index is always
-/// strictly below `count` and needs no clamp.
+/// Proportional division alone is not the inverse of rounded prefix widths, so
+/// it serves only as a first guess: it never overshoots the cell the tap is
+/// drawn inside, and advancing while the next boundary has already been passed
+/// lands on that cell exactly. A cell the rounding left zero pixels wide is
+/// stepped over rather than routed to.
 pub fn hitCell(strip: Rect, count: u16, px: i32) ?u16 {
     if (count == geometry.no_cells) return null;
     if (strip.w <= geometry.degenerate_width) return null;
     if (px < strip.x or px >= strip.x + strip.w) return null;
-    return @intCast(@divTrunc((px - strip.x) * @as(i32, @intCast(count)), strip.w));
+
+    const offset = px - strip.x;
+    var idx: u16 = @intCast(@divTrunc(offset * @as(i32, @intCast(count)), strip.w));
+    while (idx + 1 < count and cellStart(strip.w, idx + 1, count) <= offset) idx += 1;
+    return idx;
 }
 
 /// Draw one item's label centred in its cell. An item with no label is a gap.
