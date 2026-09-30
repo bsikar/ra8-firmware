@@ -260,7 +260,6 @@ tests/misc/src/test_ra8_drw_render.c
 tests/misc/src/test_ra8_dtc.c
 tests/misc/src/test_ra8_dual_core_cov.c
 tests/misc/src/test_ra8_elc.c
-tests/misc/src/test_ra8_emulator_mstp_gate.c
 tests/misc/src/test_ra8_epaper.c
 tests/misc/src/test_ra8_epaper_pure.c
 tests/misc/src/test_ra8_epaper_waits.c
