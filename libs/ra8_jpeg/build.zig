@@ -4,13 +4,12 @@
 //! Build graph for `ra8_jpeg`.
 //!
 //! Two of the library's seams are Zig: the `ra8_imgdec` backend (#2786) and
-//! the baseline encoder (#2795). The decoder half (the marker walk, the
-//! whole-buffer decoder and the striped driver) is still C behind
-//! `src/ra8_jpeg_sw_internal.h` and ports in a later slice, so the archive's
-//! root is `src/root.zig`, which exists only to pull both membranes in.
+//! the baseline encoder (#2795) and the decoder (#2799). No C implementation
+//! is left in this library, so the archive's root is `src/root.zig`, which
+//! exists only to pull the three ABI membranes in.
 //!
-//! The encoder's decision units are declared as modules here and imported by
-//! name rather than by relative path, so the same declarations wire both the
+//! The decision units are declared as modules here and imported by name
+//! rather than by relative path, so the same declarations wire both the
 //! archive and the tests and no file belongs to two modules.
 
 const std = @import("std");
@@ -27,6 +26,18 @@ const internal_modules = [_]struct { name: []const u8, deps: []const []const u8 
     .{ .name = "sink", .deps = &.{"spec"} },
     .{ .name = "headers", .deps = &.{ "spec", "huffman", "sink" } },
     .{ .name = "entropy", .deps = &.{ "spec", "dct", "quant", "huffman", "sink" } },
+    .{ .name = "bitreader", .deps = &.{"spec"} },
+    .{ .name = "huffdec", .deps = &.{"spec"} },
+    .{ .name = "idct", .deps = &.{ "spec", "dct" } },
+    .{ .name = "ycc", .deps = &.{"spec"} },
+    .{ .name = "dims", .deps = &.{"spec"} },
+    .{ .name = "dec_ctx", .deps = &.{ "spec", "huffdec" } },
+    .{ .name = "segments", .deps = &.{ "spec", "dec_ctx" } },
+    .{ .name = "dispatch", .deps = &.{ "spec", "dec_ctx", "segments" } },
+    .{ .name = "block", .deps = &.{ "spec", "bitreader", "dec_ctx", "huffdec", "idct", "ycc" } },
+    .{ .name = "mcu", .deps = &.{ "spec", "bitreader", "block", "dec_ctx" } },
+    .{ .name = "whole", .deps = &.{ "spec", "bitreader", "dec_ctx", "dispatch", "mcu", "ycc" } },
+    .{ .name = "stream", .deps = &.{ "spec", "bitreader", "dec_ctx", "dispatch", "mcu", "ycc" } },
 };
 
 pub fn build(b: *std.Build) void {
@@ -88,4 +99,19 @@ pub fn build(b: *std.Build) void {
     }
     const encoder_tests = b.addTest(.{ .root_module = encoder_test_module });
     test_step.dependOn(&b.addRunArtifact(encoder_tests).step);
+
+    const decoder_test_module = b.createModule(.{
+        .root_source_file = b.path("tests/decode_test.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    for ([_][]const u8{
+        "spec", "bitreader", "huffdec",  "idct",     "ycc",
+        "dims", "dec_ctx",   "segments", "dispatch", "block",
+        "mcu",  "whole",     "stream",
+    }) |name| {
+        decoder_test_module.addImport(name, built.get(name).?);
+    }
+    const decoder_tests = b.addTest(.{ .root_module = decoder_test_module });
+    test_step.dependOn(&b.addRunArtifact(decoder_tests).step);
 }

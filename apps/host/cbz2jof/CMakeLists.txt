@@ -46,6 +46,16 @@ if(NOT TARGET ra8_zig::ra8_imgdec)
 endif()
 link_libraries(ra8_zig::ra8_imgdec)
 
+if(NOT TARGET ra8_zig::ra8_jpeg)
+  include(${CBZ2JOF_REPO_ROOT}/tests/cmake/zig_library.cmake)
+  ra8_add_zig_library(
+    NAME ra8_jpeg
+    ZIG_ROOT ${CBZ2JOF_REPO_ROOT}/libs/ra8_jpeg
+    LIBRARY_NAME ra8_jpeg
+  )
+endif()
+link_libraries(ra8_zig::ra8_jpeg)
+
 find_program(CBZ2JOF_GO_EXECUTABLE NAMES go)
 
 # ---------------------------------------------------------------------------
@@ -66,10 +76,11 @@ set(CBZ2JOF_FW_SRC
     ${CBZ2JOF_FW}/ra8_core/src/ra8_error_handler.c
     ${CBZ2JOF_FW}/ra8_core/src/ra8_decomp_limits.c
 )
-set(CBZ2JOF_JPEG_SRC
-    ${CBZ2JOF_FW}/ra8_jpeg/src/ra8_jpeg_sw.c ${CBZ2JOF_FW}/ra8_jpeg/src/ra8_jpeg_sw_decode.c
-    ${CBZ2JOF_FW}/ra8_jpeg/src/ra8_jpeg_sw_stream.c
-)
+# The JPEG codec is Zig now (encoder #2798, decoder and stripe driver #2799),
+# so libs/ra8_jpeg/src holds no .c. The C23 public header is unchanged; the
+# archive is linked below. Kept defined and empty because the variable is
+# still expanded in the jof-worker source list.
+set(CBZ2JOF_JPEG_SRC)
 set(CBZ2JOF_MINIZ_SRC ${CBZ2JOF_REPO_ROOT}/apps/shared_libs/third_party/miniz/miniz.c)
 set(CBZ2JOF_MINIZ_DEFINITIONS MINIZ_NO_ARCHIVE_APIS MINIZ_NO_MALLOC MINIZ_NO_STDIO MINIZ_NO_TIME)
 
