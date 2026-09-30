@@ -202,7 +202,7 @@ pub export fn ra8_tz_ipc_attribution_encode(
 }
 
 /// The map the cpu1_pingpong app runs.
-pub export fn ra8_tz_ipc_cpu1_pingpong(out_cfg: ?*ipc.Attribution) callconv(.c) u32 {
+pub export fn ra8_tz_ipc_attribution_cpu1_pingpong(out_cfg: ?*ipc.Attribution) callconv(.c) u32 {
     const out = out_cfg orelse return regs.Err.null_ptr;
     out.* = ipc.cpu1Pingpong();
     return regs.Err.ok;
