@@ -160,9 +160,23 @@ mkdir -p ~/ra8-bake
 tar -xf /tmp/source.tar -C ~/ra8-bake
 rm -f /tmp/source.tar
 
-# Build ra8-ci:latest with root Podman so it's baked into root's container storage
+# Build ra8-ci:latest through THE blessed builder, never a raw `podman build`.
+# #521 makes the image carry its build context's sha256 as an OCI label, and
+# scripts/ci/devcontainer_image.sh is the only thing that stamps it; #528 made
+# that script the sole builder so the staleness guarantee cannot be bypassed.
+# It matters most here of all places: a raw build would bake a label-less
+# ra8-ci:latest into the golden template every lab runner clones, so every
+# runner would start from an image the staleness check cannot judge, and
+# `just ci` on it would reuse that image forever.
+#
+# Root Podman, for two reasons the script already supports: rootless Podman
+# cannot build the devcontainer in this guest, and the image has to land in
+# root's container storage to survive into the template. RA8_IMAGE_LOCK_DIR
+# stays unset on purpose -- /var/cache/ra8-devcontainer-image-lock does not
+# exist in a fresh baker VM, so discovery takes the documented private
+# fallback and makes its own caller-owned 0700 lock.
 cd ~/ra8-bake
-sudo podman build -t ra8-ci:latest -f .devcontainer/Dockerfile .
+RA8_CONTAINER_RUNTIME="sudo podman" scripts/ci/devcontainer_image.sh ensure
 
 # Cleanup
 rm -rf ~/ra8-bake /tmp/*
