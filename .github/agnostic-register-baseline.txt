@@ -7,7 +7,7 @@
 # HAL implementations, named backend translation units, board composition
 # libraries, tests, vendored code, and generated code are outside this ratchet.
 #
-# clock: 504 reference(s)
+# clock: 502 reference(s)
 # display: 9 reference(s)
 # gpio: 78 reference(s)
 # timer: 51 reference(s)
@@ -31,7 +31,6 @@ examples/ek_ra8d2/hil_needs_revalidation/epub_parse/src/main.c	clock	2
 examples/ek_ra8d2/hil_needs_revalidation/epub_toc/src/main.c	clock	3
 examples/ek_ra8d2/hil_needs_revalidation/epub_toc/src/main.c	gpio	2
 examples/ek_ra8d2/hil_needs_revalidation/ereader_shelf/src/main.c	clock	2
-examples/ek_ra8d2/hil_needs_revalidation/ereader_shelf/src/sh_sd.c	clock	1
 examples/ek_ra8d2/hil_needs_revalidation/ereader_shelf/src/sh_sd.c	gpio	2
 examples/ek_ra8d2/hil_needs_revalidation/gpt_irq_demo/src/main.c	clock	2
 examples/ek_ra8d2/hil_needs_revalidation/gpt_irq_demo/src/main.c	timer	3
@@ -289,5 +288,4 @@ libs/ra8_sdfont/src/ra8_sdfont.c	gpio	2
 libs/ra8_sdmmc_spi/src/ra8_sdmmc_spi_io.c	gpio	2
 port/esp-hosted/src/ra8_esp_hosted_gpio.c	gpio	6
 port/esp-hosted/src/ra8_esp_hosted_gpio_edge.c	gpio	3
-port/esp-hosted/src/ra8_esp_hosted_rtos.c	clock	1
 port/esp-hosted/src/ra8_esp_hosted_spi.c	gpio	4
