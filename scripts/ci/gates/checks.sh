@@ -15,7 +15,7 @@
 #
 # Gates in this file: pre-commit-checks, agnostic-registers, annotations,
 # doc-attachment, tests-readme, disambig-readmes,
-# cite-check, hil-eil-parity, measured-counts
+# cite-check, hil-eil-parity, measured-counts, arch-compiles
 
 # --- pre-commit-checks ----------------------------------------------------
 # The check_*.py gate suite. Each entry runs in its default mode -- the same
@@ -965,6 +965,44 @@ gate_arch_caps() (
   require_cmd python3 "the port-completeness gate is a Python source scanner"
   python3 scripts/checks/check_arch_caps.py --selftest
   python3 scripts/checks/check_arch_caps.py
+)
+
+# --- arch-compiles --------------------------------------------------------
+# The compiler-side twin of arch-caps (#694). arch/arch.h is the contract every
+# arch/<isa>/ backend implements, and nothing in this tree compiled it: no
+# library, no test, no tool. A header nobody compiles rots the way an unmeasured
+# number rots, and it had ::K_ARCH_FAULT_RAW_MAX referenced in the docs of
+# arch_fault_info_t and defined nowhere, with raw[8] written as a bare literal.
+# A text checker cannot see that; a compiler sees it immediately.
+#
+# What this gate compiles, all at the -std=c23 the tree pins with -Wall -Wextra
+# -Wpedantic -Wundef -Wconversion -Werror:
+#   - the contract against each real core's caps.h, which also evaluates the
+#     static_asserts the contract now carries against that core's capability
+#     VALUES (a priority-bit width outside 1..8, say);
+#   - the contract against two SYNTHETIC cores, every optional capability off
+#     and every one on. The two real cores between them never exercise
+#     ARCH_HAS_MEM_PROTECT (0), ARCH_HAS_RTOS_CONTEXT (0) or
+#     ARCH_HAS_TRUSTZONE_M (0), so a syntax error inside one of those blocks
+#     would wait undiscovered for the first backend that declines it.
+# -Wundef earns its place here: a capability is consumed with #if ARCH_HAS_X,
+# and a misspelled flag evaluates to 0, which reads as a clean decline.
+#
+# It also holds the contract FREESTANDING. A bare-metal target ships no
+# <assert.h>, so the include list is checked against the C23 freestanding set
+# textually rather than by cross-compiling, and the gate needs no target
+# toolchain to enforce it.
+#
+# Derived, not listed: the gated capability names come from the contract's own
+# #if lines and the companion constants the synthetic cores need come from
+# whichever real core defines them, so a fifth optional capability is exercised
+# in both states the moment it is written. --selftest first, and a core-count
+# floor, because a discovery that found nothing is also perfectly quiet.
+gate_arch_compiles() (
+  set -e
+  require_cmd python3 "the arch-contract compile gate is driven from Python"
+  python3 scripts/checks/check_arch_compiles.py --selftest
+  python3 scripts/checks/check_arch_compiles.py
 )
 
 # --- measured-counts ------------------------------------------------------
