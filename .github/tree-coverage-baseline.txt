@@ -901,7 +901,6 @@ libs/ra8_widget/src/ra8_widget_keyboard.c	MEASURED	56	56	38	38
 libs/ra8_widget/src/ra8_widget_nav_bar.c	MEASURED	66	66	36	36
 libs/ra8_widget/src/ra8_widget_panel.c	MEASURED	68	70	43	48
 libs/ra8_widget/src/ra8_widget_reflow_view.c	MEASURED	65	65	36	36
-libs/ra8_widget/src/ra8_widget_toolbar.c	MEASURED	56	56	22	22
 libs/ra8_wifi/src/ra8_wifi.c	MEASURED	190	192	123	136
 libs/ra8_wifi/src/ra8_wifi_c6link.c	MEASURED	122	122	68	68
 port/esp-hosted/src/ra8_esp_hosted_c6link.c	UNMEASURED	platform-cross-only
