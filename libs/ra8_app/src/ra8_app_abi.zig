@@ -15,6 +15,8 @@
 
 const std = @import("std");
 const implementation = @import("internal/root.zig");
+const appimg = @import("internal/appimg.zig");
+const appimg_verify = @import("internal/appimg_verify.zig");
 
 /// Lifecycle state of one app (`ra8_app_state_t`).
 pub const AppState = implementation.AppState;
@@ -26,11 +28,15 @@ pub const AppError = enum(u16) {
     ok = 0,
     no_mem = 0x102,
     invalid_arg = 0x103,
+    invalid_size = 0x105,
     not_found = 0x106,
     not_supported = 0x107,
     busy = 0x109,
+    access_denied = 0x112,
     out_of_range = 0x208,
+    crc_mismatch = 0x405,
     conflict = 0x408,
+    validation_failed = 0x501,
     null_ptr = 0x504,
 };
 
@@ -420,5 +426,237 @@ pub export fn ra8_app_uninstall(reg: ?*Registry, id: u16) callconv(.c) u16 {
     Table.compactAt(liveSlots(registry), position);
     registry.count -%= 1;
     registry.active = implementation.adjustActive(registry.active, position);
+    return code(.ok);
+}
+
+// ============================================================================
+// `.ra8app` container format (`inc/ra8_appimg.h`)
+// ============================================================================
+
+/// The `.ra8app` file header, as laid out on disk (`ra8_appimg_header_t`).
+pub const AppImgHeader = appimg.Header;
+
+/// A byte range within the file image (`ra8_appimg_span_t`).
+pub const AppImgSpan = extern struct {
+    offset: u32 = 0,
+    length: u32 = 0,
+};
+
+/// Signed material as two runs (`ra8_appimg_msg_t`).
+///
+/// Field order is the C's: the two pointers, then the two lengths.
+pub const AppImgMsg = extern struct {
+    head: ?[*]const u8 = null,
+    tail: ?[*]const u8 = null,
+    head_len: u32 = 0,
+    tail_len: u32 = 0,
+};
+
+/// Ed25519 verify backend as the C declares it (`ra8_appimg_verify_fn`).
+pub const AppImgVerifyFn = *const fn (
+    ctx: ?*anyopaque,
+    msg: *const AppImgMsg,
+    signature: [*]const u8,
+    public_key: [*]const u8,
+) callconv(.c) u16;
+
+/// Admission gate configuration (`ra8_appimg_verifier_t`).
+pub const AppImgVerifier = extern struct {
+    verify: ?AppImgVerifyFn = null,
+    verify_ctx: ?*anyopaque = null,
+    public_key: ?[*]const u8 = null,
+    granted: u32 = 0,
+};
+
+// The on-disk header and the three caller-owned structs above are published C
+// ABI. The header's layout is the file format itself, so it is asserted in
+// absolute bytes; the rest in pointer-width multiples so they hold on the
+// 64-bit host and on 32-bit Arm.
+comptime {
+    const word = @sizeOf(usize);
+
+    std.debug.assert(@sizeOf(AppImgHeader) == 160);
+    std.debug.assert(@offsetOf(AppImgHeader, "capabilities") == 28);
+    std.debug.assert(@offsetOf(AppImgHeader, "app_id") == 32);
+    std.debug.assert(@offsetOf(AppImgHeader, "display_name") == 64);
+    std.debug.assert(@offsetOf(AppImgHeader, "signature") == 96);
+
+    std.debug.assert(@sizeOf(AppImgSpan) == 8);
+    std.debug.assert(@offsetOf(AppImgSpan, "length") == 4);
+
+    std.debug.assert(@offsetOf(AppImgMsg, "tail") == word);
+    std.debug.assert(@offsetOf(AppImgMsg, "head_len") == 2 * word);
+    std.debug.assert(@offsetOf(AppImgMsg, "tail_len") == 2 * word + 4);
+
+    std.debug.assert(@offsetOf(AppImgVerifier, "verify_ctx") == word);
+    std.debug.assert(@offsetOf(AppImgVerifier, "public_key") == 2 * word);
+    std.debug.assert(@offsetOf(AppImgVerifier, "granted") == 3 * word);
+}
+
+/// Map a format refusal onto the `ra8_err_t` the C returned for it.
+fn imageCode(err: appimg.Error) u16 {
+    return code(switch (err) {
+        appimg.Error.Validation => .validation_failed,
+        appimg.Error.Unsupported => .not_supported,
+        appimg.Error.OutOfRange => .out_of_range,
+        appimg.Error.ShortImage => .invalid_size,
+    });
+}
+
+/// Map an admission refusal onto the `ra8_err_t` the C returned for it.
+///
+/// A failed signature reports `crc_mismatch`, as the C did: the gate tells a
+/// caller the image did not authenticate without telling an attacker which of
+/// the backend's refusals produced that.
+fn admissionCode(err: appimg_verify.Error) u16 {
+    return switch (err) {
+        appimg_verify.Error.AccessDenied => code(.access_denied),
+        appimg_verify.Error.BadSignature => code(.crc_mismatch),
+        else => imageCode(@errorCast(err)),
+    };
+}
+
+/// Read and validate a `.ra8app` header from the head of a file image.
+pub export fn ra8_appimg_parse(
+    bytes: ?[*]const u8,
+    len: usize,
+    out: ?*AppImgHeader,
+) callconv(.c) u16 {
+    const base = bytes orelse return rejectNull("bytes must not be nullptr");
+    const sink = out orelse return rejectNull("out must not be nullptr");
+
+    const header = appimg.parse(base[0..len]) catch |err| return imageCode(err);
+    sink.* = header;
+    return code(.ok);
+}
+
+/// Report the byte range an `.ra8app` signature covers.
+pub export fn ra8_appimg_signed_span(
+    header: ?*const AppImgHeader,
+    len: usize,
+    out: ?*AppImgSpan,
+) callconv(.c) u16 {
+    if (out) |sink| sink.* = .{};
+    if (header == null) return rejectNull("header must not be nullptr");
+    const sink = out orelse return rejectNull("out must not be nullptr");
+
+    const span = appimg.signedSpan(len) catch |err| return imageCode(err);
+    sink.* = .{ .offset = span.offset, .length = span.length };
+    return code(.ok);
+}
+
+/// Report the byte range the module payload occupies.
+pub export fn ra8_appimg_payload_span(
+    header: ?*const AppImgHeader,
+    len: usize,
+    out: ?*AppImgSpan,
+) callconv(.c) u16 {
+    if (out) |sink| sink.* = .{};
+    const image = header orelse return rejectNull("header must not be nullptr");
+    const sink = out orelse return rejectNull("out must not be nullptr");
+
+    const span = appimg.payloadSpan(image.*, len) catch |err| return imageCode(err);
+    sink.* = .{ .offset = span.offset, .length = span.length };
+    return code(.ok);
+}
+
+/// Decide whether a host grant satisfies an app's declared manifest.
+pub export fn ra8_appimg_capabilities_permitted(
+    header: ?*const AppImgHeader,
+    granted: u32,
+) callconv(.c) u16 {
+    const image = header orelse return rejectNull("header must not be nullptr");
+
+    const refusal = appimg.capabilitiesPermitted(image.*, granted) orelse return code(.ok);
+    return switch (refusal) {
+        .malformed_grant => code(.validation_failed),
+        .withheld => code(.access_denied),
+    };
+}
+
+// ============================================================================
+// `.ra8app` admission gate (`inc/ra8_appimg_verify.h`)
+// ============================================================================
+
+/// Describe the signed material of an already-parsed image.
+pub export fn ra8_appimg_signed_message(
+    header: ?*const AppImgHeader,
+    bytes: ?[*]const u8,
+    len: usize,
+    out: ?*AppImgMsg,
+) callconv(.c) u16 {
+    if (out) |sink| sink.* = .{};
+    const image = header orelse return rejectNull("header must not be nullptr");
+    const base = bytes orelse return rejectNull("bytes must not be nullptr");
+    const sink = out orelse return rejectNull("out must not be nullptr");
+
+    const msg = appimg_verify.signedMessage(image.*, base[0..len]) catch |err|
+        return imageCode(err);
+    sink.* = .{
+        .head = msg.head.ptr,
+        .tail = msg.tail.ptr,
+        .head_len = @intCast(msg.head.len),
+        .tail_len = @intCast(msg.tail.len),
+    };
+    return code(.ok);
+}
+
+/// Bridge from the Zig `Backend` seam to the C function pointer.
+///
+/// The C backend answers with an open `ra8_err_t`, and only success is an
+/// admission: every other code, recognised or not, is a refusal. Exactly one
+/// of them is distinguished, `not_supported`, because a platform with no
+/// Ed25519 at all is a different fact from an image that failed to verify.
+const CBackend = struct {
+    call: AppImgVerifyFn,
+    ctx: ?*anyopaque,
+
+    fn verify(
+        ctx: ?*anyopaque,
+        msg: appimg_verify.Message,
+        signature: *const [appimg.Width.signature]u8,
+        public_key: *const [appimg_verify.pubkey_bytes]u8,
+    ) appimg_verify.Verdict {
+        const self: *const CBackend = @ptrCast(@alignCast(ctx.?));
+        const wire = AppImgMsg{
+            .head = msg.head.ptr,
+            .tail = msg.tail.ptr,
+            .head_len = @intCast(msg.head.len),
+            .tail_len = @intCast(msg.tail.len),
+        };
+        const verdict = self.call(self.ctx, &wire, signature, public_key);
+        if (verdict == code(.ok)) return .good;
+        if (verdict == code(.not_supported)) return .unsupported;
+        return .bad;
+    }
+};
+
+/// Parse, check the grant, then verify the signature, in that order.
+pub export fn ra8_appimg_verify(
+    verifier: ?*const AppImgVerifier,
+    bytes: ?[*]const u8,
+    len: usize,
+    out_header: ?*AppImgHeader,
+) callconv(.c) u16 {
+    if (out_header) |sink| sink.* = std.mem.zeroes(AppImgHeader);
+    const gate = verifier orelse return rejectNull("verifier must not be nullptr");
+    const base = bytes orelse return rejectNull("bytes must not be nullptr");
+    const sink = out_header orelse return rejectNull("out_header must not be nullptr");
+
+    const call = gate.verify orelse return rejectNull("verifier->verify must not be nullptr");
+    const key = gate.public_key orelse
+        return rejectNull("verifier->public_key must not be nullptr");
+
+    var bridge = CBackend{ .call = call, .ctx = gate.verify_ctx };
+    const backend = appimg_verify.Backend{
+        .verify = CBackend.verify,
+        .ctx = &bridge,
+        .public_key = key[0..appimg_verify.pubkey_bytes],
+        .granted = gate.granted,
+    };
+
+    const header = appimg_verify.verify(backend, base[0..len]) catch |err|
+        return admissionCode(err);
+    sink.* = header;
     return code(.ok);
 }
