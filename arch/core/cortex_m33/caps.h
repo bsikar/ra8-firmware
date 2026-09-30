@@ -33,9 +33,27 @@
 #define ARCH_IRQ_PRIORITY_BITS (4U)
 /** @brief Native load-exclusive/store-exclusive atomics are present. */
 #define ARCH_HAS_NATIVE_ATOMICS (1)
-/** @brief ThreadX ports this core, so the RTOS context surface is required. */
+/**
+ * @brief ThreadX ports this core, so the RTOS context surface is required.
+ *
+ * @details
+ * MIGRATION: the surface exists at
+ * `libs/third_party/threadx/ports/cortex_m33/gnu/src`, vendored and not yet
+ * selected by `cmake/threadx.cmake`, which wires the Cortex-M85 port only. The
+ * flag records that this core has a port to implement the contract with, not
+ * that a CPU1 RTOS image is built today; #694's migration slice is where the
+ * two stop being different answers.
+ */
 #define ARCH_HAS_RTOS_CONTEXT (1)
-/** @brief PMSAv8 memory protection unit is present. */
+/**
+ * @brief PMSAv8 memory protection unit is present.
+ *
+ * @details
+ * MIGRATION: implemented today by `libs/ra8_mpu/src/ra8_mpu.c`, shared with
+ * CPU0. Same PMSAv8 programming model, half the regions, which is why the
+ * count is answered per core below. Moves to `arch/armv8m/` in a later slice
+ * of #694.
+ */
 #define ARCH_HAS_MEM_PROTECT (1)
 /** @brief Protection flavour, as `arch.h` documents the term. */
 #define ARCH_MEM_PROTECT_FLAVOUR "pmsav8"
@@ -61,7 +79,13 @@
  * algorithm variant, so a build for this core takes the scalar one.
  */
 #define ARCH_HAS_SIMD (0)
-/** @brief Armv8-M Security Extension is present; the SAU is programmable. */
+/**
+ * @brief Armv8-M Security Extension is present; the SAU is programmable.
+ *
+ * @details
+ * MIGRATION: implemented today by `libs/ra8_hal/src/ra8_sau.c`. Moves to
+ * `arch/armv8m/trustzone/` in a later slice of #694.
+ */
 #define ARCH_HAS_TRUSTZONE_M (1)
 /** @brief Number of SAU regions this core implements. */
 #define ARCH_TRUSTZONE_REGIONS (8U)
