@@ -109,11 +109,14 @@ class CheckError(RuntimeError):
 
 @dataclass(frozen=True)
 class Finding:
+    """One thing wrong with the arch contract, ready to print."""
+
     where: str
     kind: str
     detail: str
 
     def render(self) -> str:
+        """The one-line form the gate prints."""
         return f"{self.where}: {self.kind}: {self.detail}"
 
 
@@ -125,8 +128,7 @@ def find_compiler(explicit: str | None) -> list[str]:
     env_cc = os.environ.get("CC", "").strip()
     if env_cc:
         candidates.append(env_cc.split())
-    for name in ("cc", "gcc", "clang"):
-        candidates.append([name])
+    candidates.extend([name] for name in ("cc", "gcc", "clang"))
     # zig ships a complete C frontend; it is what makes this gate runnable in a
     # container that has no system compiler.
     candidates.append(["zig", "cc"])
@@ -134,10 +136,11 @@ def find_compiler(explicit: str | None) -> list[str]:
     for candidate in candidates:
         if shutil.which(candidate[0]):
             return candidate
-    raise CheckError(
+    message = (
         "no C compiler found; tried --cc, $CC, cc, gcc, clang and zig cc. "
         "This gate compiles the arch contract and cannot run without one."
     )
+    raise CheckError(message)
 
 
 def discover_cores(root: Path) -> list[Path]:
@@ -215,7 +218,11 @@ def compile_against(
         "-I",
         str(caps_dir),
     ]
-    done = subprocess.run(cmd, capture_output=True, text=True, check=False)
+    # Suppression rationale: argv is fixed flags plus the compiler this gate
+    # resolved itself and paths it built; nothing here comes from the tree.
+    done = subprocess.run(  # noqa: S603 -- trusted: resolved compiler, built argv
+        cmd, capture_output=True, text=True, check=False
+    )
     if done.returncode == 0:
         return None
     diagnostic = (done.stderr or done.stdout).strip()
@@ -230,60 +237,63 @@ def compile_against(
     )
 
 
-def check_freestanding(root: Path, arch_text: str) -> list[Finding]:
+def check_freestanding(arch_text: str) -> list[Finding]:
     """The contract may only reach for headers a bare-metal target ships."""
-    findings: list[Finding] = []
-    for header in sorted(set(SYSTEM_INCLUDE_RE.findall(arch_text))):
-        if header not in FREESTANDING_HEADERS:
-            findings.append(
-                Finding(
-                    where=ARCH_REL,
-                    kind="nonfreestanding-include",
-                    detail=(
-                        f"<{header}> is not in the C23 freestanding set, so a bare-metal "
-                        f"backend cannot include this contract. Use a freestanding "
-                        f"equivalent ({', '.join(sorted(FREESTANDING_HEADERS)[:4])}, ...) "
-                        f"or a language keyword."
-                    ),
-                )
-            )
-    for header in sorted(set(LOCAL_INCLUDE_RE.findall(arch_text))):
-        if header != "caps.h":
-            findings.append(
-                Finding(
-                    where=ARCH_REL,
-                    kind="contract-reaches-upward",
-                    detail=(
-                        f'"{header}" is not part of the arch tier. The contract is the '
-                        f"lowest tier and may include only the selected core's caps.h."
-                    ),
-                )
-            )
+    findings: list[Finding] = [
+        Finding(
+            where=ARCH_REL,
+            kind="nonfreestanding-include",
+            detail=(
+                f"<{header}> is not in the C23 freestanding set, so a bare-metal "
+                f"backend cannot include this contract. Use a freestanding "
+                f"equivalent ({', '.join(sorted(FREESTANDING_HEADERS)[:4])}, ...) "
+                f"or a language keyword."
+            ),
+        )
+        for header in sorted(set(SYSTEM_INCLUDE_RE.findall(arch_text)))
+        if header not in FREESTANDING_HEADERS
+    ]
+    findings.extend(
+        Finding(
+            where=ARCH_REL,
+            kind="contract-reaches-upward",
+            detail=(
+                f'"{header}" is not part of the arch tier. The contract is the '
+                f"lowest tier and may include only the selected core's caps.h."
+            ),
+        )
+        for header in sorted(set(LOCAL_INCLUDE_RE.findall(arch_text)))
+        if header != "caps.h"
+    )
     return findings
 
 
 def run(root: Path, cc: list[str]) -> list[Finding]:
+    """Compile the arch contract against every discovered core and report."""
     arch_path = root / ARCH_REL
     if not arch_path.is_file():
-        raise CheckError(f"{ARCH_REL} is missing; the arch tier contract is the thing this gate checks")
+        message = f"{ARCH_REL} is missing; the arch tier contract is the thing this gate checks"
+        raise CheckError(message)
     arch_text = arch_path.read_text(encoding="utf-8")
 
-    findings = check_freestanding(root, arch_text)
+    findings = check_freestanding(arch_text)
 
     cores = discover_cores(root)
     if len(cores) < CORE_FLOOR:
-        raise CheckError(
+        message = (
             f"discovered {len(cores)} core(s) under {CORE_GLOB}, floor is {CORE_FLOOR}; "
             f"a discovery that stops finding cores reads exactly like a tree in which "
             f"every core compiles"
         )
+        raise CheckError(message)
 
     gated = gated_capabilities(arch_text)
     if not gated:
-        raise CheckError(
+        message = (
             "no capability-gated block found in the contract; either the contract lost "
             "its optional surface or the '#if ARCH_HAS_*' grammar this gate reads has changed"
         )
+        raise CheckError(message)
     values = capability_values(cores)
 
     with tempfile.TemporaryDirectory() as tmp:
@@ -299,9 +309,7 @@ def run(root: Path, cc: list[str]) -> list[Finding]:
             label = f"synthetic-{'on' if state else 'off'}"
             caps_dir = workdir / label
             caps_dir.mkdir(exist_ok=True)
-            (caps_dir / "caps.h").write_text(
-                synthetic_caps(state, gated, values), encoding="utf-8"
-            )
+            (caps_dir / "caps.h").write_text(synthetic_caps(state, gated, values), encoding="utf-8")
             finding = compile_against(cc, root, caps_dir, workdir, label)
             if finding:
                 findings.append(finding)
@@ -345,7 +353,10 @@ _CAPS_B = """#pragma once
 """
 
 
-def _plant(root: Path, arch: str = _GOOD_ARCH, caps_a: str = _CAPS_A, caps_b: str = _CAPS_B) -> None:
+def _plant(
+    root: Path, arch: str = _GOOD_ARCH, caps_a: str = _CAPS_A, caps_b: str = _CAPS_B
+) -> None:
+    """Write a two-core arch tree under `root` for one selftest case."""
     (root / "arch" / "core" / "a").mkdir(parents=True, exist_ok=True)
     (root / "arch" / "core" / "b").mkdir(parents=True, exist_ok=True)
     (root / "arch" / "arch.h").write_text(arch, encoding="utf-8")
@@ -354,16 +365,25 @@ def _plant(root: Path, arch: str = _GOOD_ARCH, caps_a: str = _CAPS_A, caps_b: st
 
 
 def selftest(cc: list[str]) -> int:
+    """Plant a known-broken contract per case and assert the gate catches it."""
     cases: list[tuple[str, dict[str, str], str | None]] = [
         ("a clean contract passes on both cores", {}, None),
         (
             "a non-freestanding include is rejected",
-            {"arch": _GOOD_ARCH.replace("#include <stdbool.h>", "#include <assert.h>\n#include <stdbool.h>")},
+            {
+                "arch": _GOOD_ARCH.replace(
+                    "#include <stdbool.h>", "#include <assert.h>\n#include <stdbool.h>"
+                )
+            },
             "nonfreestanding-include",
         ),
         (
             "reaching up out of the arch tier is rejected",
-            {"arch": _GOOD_ARCH.replace('#include "caps.h"', '#include "caps.h"\n#include "ra8_scb.h"')},
+            {
+                "arch": _GOOD_ARCH.replace(
+                    '#include "caps.h"', '#include "caps.h"\n#include "ra8_scb.h"'
+                )
+            },
             "contract-reaches-upward",
         ),
         (
@@ -381,7 +401,12 @@ def selftest(cc: list[str]) -> int:
         ),
         (
             "a syntax error inside an enabled gated block is caught",
-            {"arch": _GOOD_ARCH.replace("void arch_cache_clean(uintptr_t base, uint32_t size);", "void arch_cache_clean(")},
+            {
+                "arch": _GOOD_ARCH.replace(
+                    "void arch_cache_clean(uintptr_t base, uint32_t size);",
+                    "void arch_cache_clean(",
+                )
+            },
             "contract-does-not-compile",
         ),
         (
@@ -391,15 +416,24 @@ def selftest(cc: list[str]) -> int:
             # block by leaving the #if unterminated for the disabled state.
             {
                 "arch": _GOOD_ARCH.replace(
-                    "#if ARCH_HAS_TRUSTZONE_M\nbool arch_trustzone_region_set(uint8_t index, uintptr_t base);\n#endif\n",
-                    "#if ARCH_HAS_TRUSTZONE_M\nbool arch_trustzone_region_set(uint8_t index, uintptr_t base);\n#else\nvoid arch_trustzone_absent(\n#endif\n",
+                    "#if ARCH_HAS_TRUSTZONE_M\n"
+                    "bool arch_trustzone_region_set(uint8_t index, uintptr_t base);\n"
+                    "#endif\n",
+                    "#if ARCH_HAS_TRUSTZONE_M\n"
+                    "bool arch_trustzone_region_set(uint8_t index, uintptr_t base);\n"
+                    "#else\n"
+                    "void arch_trustzone_absent(\n"
+                    "#endif\n",
                 )
             },
             "contract-does-not-compile",
         ),
         (
             "an unconditional narrowing conversion is caught by -Wconversion",
-            {"arch": _GOOD_ARCH + "static inline uint8_t arch_narrow(uint32_t v) { uint8_t r = v; return r; }\n"},
+            {
+                "arch": _GOOD_ARCH
+                + "static inline uint8_t arch_narrow(uint32_t v) { uint8_t r = v; return r; }\n"
+            },
             "contract-does-not-compile",
         ),
     ]
@@ -432,9 +466,7 @@ def selftest(cc: list[str]) -> int:
     with tempfile.TemporaryDirectory() as tmp:
         root = Path(tmp)
         _plant(root)
-        import shutil as _sh
-
-        _sh.rmtree(root / "arch" / "core" / "b")
+        shutil.rmtree(root / "arch" / "core" / "b")
         try:
             run(root, cc)
         except CheckError:
@@ -452,9 +484,14 @@ def selftest(cc: list[str]) -> int:
 
 
 def main(argv: list[str]) -> int:
+    """Parse arguments, run the gate or its selftest, and print the findings."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--root", default=".", help="repository root")
-    parser.add_argument("--cc", default=None, help="C compiler to use (default: $CC, then cc/gcc/clang/zig cc)")
+    parser.add_argument(
+        "--cc",
+        default=None,
+        help="C compiler to use (default: $CC, then cc/gcc/clang/zig cc)",
+    )
     parser.add_argument("--selftest", action="store_true", help="run the built-in cases and exit")
     args = parser.parse_args(argv)
 
