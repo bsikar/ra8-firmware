@@ -6,10 +6,12 @@ Proposed. The electrical decision below is analysis only; every photometric
 and thermal number it depends on needs bench confirmation on Rev 1 hardware
 (see Open questions). Tracks #831 (parent #821).
 
-Numbering note: `0005` is claimed by two open pull requests at the time of
-writing (#1225 SDRAM interface supply domain, #1227 usb_cdc example
-duplication). This ADR takes `0007` to leave room for both; renumber on the
-merge train if either lands differently.
+Numbering note: `0005` was claimed by two open pull requests when this was
+written (#1225 SDRAM interface supply domain, #1227 usb_cdc example
+duplication). Both have since landed elsewhere -- the SDRAM supply domain as
+ADR-0010, the usb_cdc example as ADR-0016 -- and `0005` went to the
+multi-language documentation architecture. This ADR keeps `0007`; the
+cross-references below name the numbers those decisions actually took.
 
 ## Context
 
@@ -31,7 +33,7 @@ Three facts about the current tree shape this decision.
    Those are indicator LEDs on GPIO, not an illumination channel. So no
    firmware assumption constrains the choice yet, and whatever is chosen
    has to arrive with a board-layer seam rather than slot into one.
-2. **The main rail is already spoken for.** ADR-0005 (#846, PR #1225)
+2. **The main rail is already spoken for.** ADR-0010 (#846, PR #1225)
    bounds any MCU domain carrying SDRAM DQ bits to a complete envelope
    inside 3.00 V..3.35 V, leaving >= 55 mV of guaranteed read-high margin
    at the ceiling. A front light is the largest dynamic load on a reader,
@@ -143,12 +145,12 @@ shading of it, not efficiency at our operating point.
 
 That arithmetic is the decision: a load that steps to a few hundred
 milliamps, switching at 500 kHz or 1 MHz, must not share the regulated
-domain that ADR-0005 holds inside 3.00..3.35 V with >= 55 mV of guaranteed
+domain that ADR-0010 holds inside 3.00..3.35 V with >= 55 mV of guaranteed
 read-high margin. The input-current ripple and the step load would be spent
 straight out of that 55 mV. Feeding the driver from VBAT keeps the
 disturbance on the cell and out of VCC/VCC2. If #825 later insists the
 front light hang off a regulated rail, that rail is a separate regulator
-from VCC/VCC2, and ADR-0005's envelope stands unchanged.
+from VCC/VCC2, and ADR-0010's envelope stands unchanged.
 
 Sleep leakage, for the #831 acceptance criterion: 4 uA maximum with HWEN
 low, plus the part's true shutdown isolation on the LED strings, so the
@@ -230,7 +232,7 @@ Firmware side, not implemented here, recorded so it is not discovered late:
   is a vendor conversation, not something to discover at ERC.
 * #825's power tree gains a VBAT-fed branch that can pull several hundred
   milliamps at the ceiling, and does not gain a front-light load on
-  VCC/VCC2. ADR-0005's 3.00..3.35 V envelope is unaffected by this
+  VCC/VCC2. ADR-0010's 3.00..3.35 V envelope is unaffected by this
   decision, which is the point of it.
 * #830's touch design inherits the 0x36 / 0x38 address constraint and a
   45 V-capable island near the FPC and sense lines.
@@ -285,7 +287,7 @@ Firmware side, not implemented here, recorded so it is not discovered late:
   Conditions; Electrical Characteristics (ISHDN, ILED_MIN, IHVLED,
   IMATCH_HV, VREG_CS, VOVP); PWM Input Frequency Range; 11-bit code
   calculation.
-* ADR-0005 (PR #1225, issue #846): SDRAM interface supply domain, the
+* ADR-0010 (PR #1225, issue #846): SDRAM interface supply domain, the
   3.00..3.35 V envelope with >= 55 mV guaranteed read-high margin.
 * Tree, at dev 013631d: `libs/ra8_board_ra8p1/inc/ra8_board_ra8p1.h` and
   `src/ra8_board_ra8p1.c` (three provisional GPIO user LEDs, no
