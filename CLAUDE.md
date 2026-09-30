@@ -514,11 +514,15 @@ patterns:
   parameters at all counts: `ra8_thing(void) { return k_ra8_err_not_supported; }`
   is the same stub in its shortest form.
 
-Legitimate no-ops are outside both rules by construction: platform
-alternatives (the headless `board_view_stub.c` standing in for the Cocoa
-window layer), vtable / ISR callbacks with genuinely nothing to do, the
-fail-closed `#else` half of the placeholder-crypto guard, and MMIO handlers
-returning module state. Run `check_no_silent_stubs.py --selftest` to see both
+Legitimate no-ops are outside both rules by construction: vtable / ISR
+callbacks with genuinely nothing to do, the fail-closed `#else` half of the
+placeholder-crypto guard, and MMIO handlers returning module state. A platform
+alternative is the same shape, and the clearest example now sits outside this
+tree, the headless `board_view_stub.c` standing in for the Cocoa window layer,
+which left with the emulator in `e84437938` and lives in
+github.com/bsikar/ra8-emulator at `f6061b1dc9a5dde07a6b113d23b4dbbe6a40e828`.
+
+Run `check_no_silent_stubs.py --selftest` to see both
 directions asserted; CI runs the selftest before the scan, so a detector that
 quietly stopped matching cannot pass as clean.
 
