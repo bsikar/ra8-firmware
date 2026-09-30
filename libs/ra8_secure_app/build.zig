@@ -3,7 +3,8 @@
 //!
 //! Build graph for the Zig implementation of `ra8_secure_app`. CMake consumes
 //! the installed static library through the unchanged `inc/key_vault.h`,
-//! `inc/ota_commit.h`, and `src/secure_trng_internal.h`.
+//! `inc/ota_commit.h`, `src/secure_trng_internal.h`,
+//! `src/sec_cmac_internal.h` and `src/key_import_internal.h`.
 //!
 //! Two build options carry the C's preprocessor switches:
 //!
@@ -67,6 +68,8 @@ pub fn build(b: *std.Build) void {
         .{ .name = "ota", .source = "src/internal/ota.zig", .root = "tests/ota_test.zig" },
         .{ .name = "aes", .source = "src/internal/aes.zig", .root = "tests/aes_test.zig" },
         .{ .name = "cmac", .source = "src/internal/cmac.zig", .root = "tests/cmac_test.zig" },
+        .{ .name = "key_handle", .source = "src/internal/key_handle.zig", .root = "tests/key_handle_test.zig" },
+        .{ .name = "key_import", .source = "src/internal/key_import.zig", .root = "tests/key_import_test.zig" },
     };
     for (units) |unit| {
         const under_test = b.createModule(.{
