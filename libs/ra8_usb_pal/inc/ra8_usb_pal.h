@@ -18,9 +18,11 @@
  * - Translate ra8_usb status masks into PAL-level event bits.
  * - Hide the MSTP / clock-gate dance behind ``ra8_usb_pal_init``.
  *
- * The PAL is intentionally stack-agnostic. CherryUSB's
- * ``usb_dc_ra8d2_*.c`` port (added) wraps this API;
- * no CherryUSB types appear in this header.
+ * The PAL is intentionally stack-agnostic, and currently has no stack
+ * consumer at all: no ``usb_dc_ra8d2_*.c`` port exists in this tree, and
+ * the USBX bridges in ``port/usbx/`` sit on ``ra8_usb.h`` directly
+ * rather than on this API. The diagram below is the intended layering
+ * for a CherryUSB port, not a description of code that is here.
  *
  * ## Layering
  *
