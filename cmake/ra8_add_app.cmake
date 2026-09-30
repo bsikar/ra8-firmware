@@ -119,6 +119,7 @@ include(${_RA8_ADD_APP_DIR}/ra8_add_ns_image.cmake)
 #   BOARD       <lib>          board support library
 #   NO_NSC                     skip the TrustZone NSC veneer objects
 #   SRAM_TEXT   <file.c>...    run these sources' .text from SRAM, loaded from MRAM
+#   MRAM_LENGTH <size>         override the board's MRAM bank size (bootloader banks)
 #   USES/LIBS/OFF_TARGET_LIBS  extra link libraries (firmware / ra8_emulator)
 #   NSC_SRCS/EXTRA_SRCS        extra sources
 #   AUX_SRCS                   src/ files owned by auxiliary image targets
@@ -136,7 +137,7 @@ macro(ra8_add_app)
   cmake_parse_arguments(
     _RA8_APP
     "NO_NSC;CPU1_IMAGE"
-    "NAME;STACK_BYTES;DESCRIPTION;BOARD;THREADX_HEAP"
+    "NAME;STACK_BYTES;DESCRIPTION;BOARD;THREADX_HEAP;MRAM_LENGTH"
     "USES;LIBS;OFF_TARGET_LIBS;NSC_SRCS;EXTRA_SRCS;AUX_SRCS;SRAM_TEXT"
     ${ARGN}
   )
@@ -448,10 +449,17 @@ macro(ra8_add_app)
   )
   if(_ra8_ld_base)
     set_target_properties(
-      ${_ra8_elf} PROPERTIES LINK_DEPENDS "${_ra8_linker};${_ra8_ld_base};${_ra8_ld_pre_text}"
+      ${_ra8_elf}
+      PROPERTIES
+        LINK_DEPENDS
+        "${_ra8_linker};${_ra8_ld_base};${_ra8_ld_pre_text};${_ra8_ld_pre_memory};${_ra8_ld_extra_deps}"
     )
   else()
-    set_target_properties(${_ra8_elf} PROPERTIES LINK_DEPENDS "${_ra8_linker};${_ra8_ld_pre_text}")
+    set_target_properties(
+      ${_ra8_elf}
+      PROPERTIES LINK_DEPENDS
+                 "${_ra8_linker};${_ra8_ld_pre_text};${_ra8_ld_pre_memory};${_ra8_ld_extra_deps}"
+    )
   endif()
 
   add_custom_command(

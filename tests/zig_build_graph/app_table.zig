@@ -54,6 +54,14 @@ pub const CrossApp = struct {
     /// The call passes CPU1_IMAGE, so ra8_add_app() composes the board linker
     /// script with a generated CPU1 memory map instead of taking a fork.
     cpu1_image: bool = false,
+    /// Sources the app names in `SRAM_TEXT`, spelled as the call spells them.
+    /// Their .text is placed through the pre-.text injection point and copied
+    /// out of MRAM at startup, so naming one is a link shape, not a source one.
+    sram_text: []const []const u8 = &.{},
+    /// The MRAM bank size the app names in `MRAM_LENGTH`, verbatim (`"128K"`),
+    /// or null to take the board's own. Only the bootloader-bank apps override
+    /// it; #742 added the keyword so they could stop forking the whole map.
+    mram_length: ?[]const u8 = null,
     /// Shared helper translation units the app names in `EXTRA_SRCS`, in the
     /// order it names them, spelled repo-relative. Each one is compiled INTO
     /// this app (so it meets the full project warning profile, unlike a
@@ -320,6 +328,10 @@ pub const cross_apps = [_]CrossApp{
         .libraries = &.{"ra8_board_ek_ra8d2"},
         .zig_libraries = &.{},
         .stack_bytes = 32768,
+        // #742: the bootloader bank, and the two sources that run from SRAM.
+        // Both replaced its 377-line linker_script.ld fork.
+        .mram_length = "128K",
+        .sram_text = &.{ "ra8_flash.c", "ra8_dfu_program.c" },
         // Neither build system links this app in a Debug configure: measured
         // 122.79% of MRAM under CMake (overflow 29868 bytes) and the same
         // failure from the graph (overflow 29860 bytes), same linker, same
