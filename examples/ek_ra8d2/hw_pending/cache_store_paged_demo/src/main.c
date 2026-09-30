@@ -55,7 +55,6 @@
 #include "ra8_board_ek_ra8d2.h"
 #include "ra8_boot_entry.h"
 #include "ra8_cache_store.h"
-#include "ra8_cgc.h"
 #include "ra8_err.h"
 #include "ra8_isr.h"
 #include "ra8_time.h"
@@ -812,9 +811,11 @@ RA8_INTERNAL static void internal_csp_panic_halt(void)
 }
 
 /**
- * @brief Bring CGC, the time base, and the J-Link VCOM console up, or halt.
- * @details Initialises the clock generator, resolves CPUCLK0, starts SysTick,
- *          and configures the board console, in dependency order.
+ * @brief Bring the board clock tree, the time base, and the console up, or halt.
+ * @details Asks the board to initialise its clock tree and publish its rates,
+ *          starts SysTick from CPUCLK0, and configures the board console, in
+ *          dependency order. The clock tree is the board's: this helper never
+ *          names a concrete clock-generator symbol (#693).
  * @return Nothing.
  * @pre Reset startup has initialised .data and zeroed .bss.
  * @pre The board clock and console register mappings are accessible.
@@ -825,14 +826,11 @@ RA8_INTERNAL static void internal_csp_panic_halt(void)
  */
 RA8_INTERNAL static void internal_csp_setup_or_halt(void)
 {
-  uint32_t cpuclk0_hz = 0U;
-  if (ra8_cgc_init() != k_ra8_ok) {
+  ra8_board_clock_rates_t clock_rates = {};
+  if (ra8_board_clocks_init(&clock_rates) != k_ra8_ok) {
     internal_csp_panic_halt();
   }
-  if (ra8_cgc_get_clock_hz(k_ra8_clock_id_cpuclk0, &cpuclk0_hz) != k_ra8_ok) {
-    internal_csp_panic_halt();
-  }
-  if (ra8_time_init(cpuclk0_hz) != k_ra8_ok) {
+  if (ra8_time_init(clock_rates.cpuclk0_hz) != k_ra8_ok) {
     internal_csp_panic_halt();
   }
   if (ra8_board_uart_console_init((uint32_t)k_csp_baud) != k_ra8_ok) {
