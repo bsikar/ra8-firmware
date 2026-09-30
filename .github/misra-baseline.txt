@@ -2060,9 +2060,6 @@ libs/ra8_widget/src/ra8_widget_panel.c	misra-c2012-8.9	2
 libs/ra8_widget/src/ra8_widget_reflow_view.c	misra-c2012-11.5	2
 libs/ra8_widget/src/ra8_widget_reflow_view.c	misra-c2012-15.5	15
 libs/ra8_widget/src/ra8_widget_reflow_view.c	misra-c2012-8.9	1
-libs/ra8_widget/src/ra8_widget_toolbar.c	misra-c2012-11.5	2
-libs/ra8_widget/src/ra8_widget_toolbar.c	misra-c2012-15.5	9
-libs/ra8_widget/src/ra8_widget_toolbar.c	misra-c2012-8.9	1
 libs/ra8_wifi/src/ra8_wifi.c	misra-c2012-15.5	64
 libs/ra8_wifi/src/ra8_wifi.c	misra-c2012-8.4	10
 libs/ra8_wifi/src/ra8_wifi_c6link.c	misra-c2012-11.5	11

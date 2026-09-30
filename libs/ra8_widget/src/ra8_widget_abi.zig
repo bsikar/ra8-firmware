@@ -26,3 +26,6 @@ pub const progress_bar = @import("widget_progress_bar_abi.zig");
 
 /// The status-bar leaf widget: `ra8_widget_status_bar_vtable` / `_init`.
 pub const status_bar = @import("widget_status_bar_abi.zig");
+
+/// The toolbar leaf widget: `ra8_widget_toolbar_vtable` / `_init`.
+pub const toolbar = @import("widget_toolbar_abi.zig");
