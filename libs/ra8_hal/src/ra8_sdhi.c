@@ -53,7 +53,7 @@
 #include "ra8_mstp_regs.h"
 #include "ra8_sdhi_regs.h"
 
-static const char* s_tag = "SDHI";
+static const char* const s_tag = "SDHI";
 
 /**
  * @var s_sdhi_mstp_table

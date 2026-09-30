@@ -35,7 +35,7 @@
  * @note Read-only literal; never modified.
  * @since 0.1.0
  */
-static const char* s_tag = "NPUQ";
+static const char* const s_tag = "NPUQ";
 
 /**
  * @var s_quant_round_cap

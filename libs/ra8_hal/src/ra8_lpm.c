@@ -55,7 +55,7 @@
  * @var s_tag
  * @brief Component tag used in every log line emitted by this driver.
  */
-static const char* s_tag = "LPM";
+static const char* const s_tag = "LPM";
 
 /** @brief Low-byte mask for the PRCR protect register. */
 typedef enum : uint16_t {

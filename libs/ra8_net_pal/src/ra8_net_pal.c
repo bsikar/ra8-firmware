@@ -81,7 +81,7 @@ static void internal_zero_bytes(uint8_t* dst, uint16_t len)
   }
 }
 
-static const char* s_tag = "NETPAL";
+static const char* const s_tag = "NETPAL";
 
 /* =============================================================================
  * Ring buffer sizing

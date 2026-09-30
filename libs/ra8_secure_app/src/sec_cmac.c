@@ -45,7 +45,7 @@
 #include "sec_cmac_internal.h"
 
 /** @brief Logging / error tag prefix for this module. */
-static const char* s_tag = "SECMAC";
+static const char* const s_tag = "SECMAC";
 
 /**
  * @brief Shared precondition check for both CMAC entry points.

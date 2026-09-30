@@ -27,7 +27,7 @@
 #include "ra8_widget_internal.h"
 
 /** @brief Logging / check tag. */
-static const char* s_tag = "ra8_widget_keyboard";
+static const char* const s_tag = "ra8_widget_keyboard";
 
 /**
  * @enum ra8_widget_kbd_geom_t

@@ -43,7 +43,7 @@
  * @warning Do not modify.
  * @since   0.1.0
  */
-static const char* s_tag = "TZBOOT";
+static const char* const s_tag = "TZBOOT";
 
 /**
  * @var s_step

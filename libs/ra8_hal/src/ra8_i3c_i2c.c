@@ -99,7 +99,7 @@ bool priv_i3c_i2c_should_dispatch(uint8_t mask, const void* cb)
 }
 
 /** @brief Log tag for this driver's transaction-engine TU. */
-static const char* s_tag = "IIC_B";
+static const char* const s_tag = "IIC_B";
 
 /**
  * @enum internal_i3c_i2c_t

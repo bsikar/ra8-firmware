@@ -59,7 +59,7 @@
  * @warning Not safe to mutate.
  * @since 0.1.0
  */
-static const char* s_tag = "ETHA";
+static const char* const s_tag = "ETHA";
 
 /**
  * @enum ra8_etha_tas_poll_t

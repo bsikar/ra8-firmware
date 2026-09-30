@@ -38,7 +38,7 @@
  * @note Static, file-scope.
  * @since 0.1.0
  */
-static const char* s_tag = "RSIP_P";
+static const char* const s_tag = "RSIP_P";
 
 /** @brief RSA modulus / ECC private-scalar byte counts. */
 typedef enum : uint16_t {

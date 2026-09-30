@@ -37,7 +37,7 @@
 #include "ra8_isr.h"
 #include "ra8_log.h"
 
-static const char* s_tag = "IPC";
+static const char* const s_tag = "IPC";
 
 /** @brief Secure->Non-secure address alias offset. */
 typedef enum : uintptr_t {

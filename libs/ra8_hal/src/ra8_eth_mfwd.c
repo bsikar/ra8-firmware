@@ -27,7 +27,7 @@
 #include "ra8_mstp.h"
 #include "ra8_mstp_regs.h"
 
-static const char* s_tag = "ETHMFW";
+static const char* const s_tag = "ETHMFW";
 
 static ra8_eth_mfwd_event_fn_t s_mfwd_fn;
 static void*                   s_mfwd_ctx;

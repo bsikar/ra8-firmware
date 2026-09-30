@@ -27,7 +27,7 @@
 #include "ra8_i2c_bus_ops.h"
 
 /** @brief Log tag. */
-static const char* s_tag = "FUELGAUGE";
+static const char* const s_tag = "FUELGAUGE";
 
 /**
  * @enum ra8_fuelgauge_internal_t

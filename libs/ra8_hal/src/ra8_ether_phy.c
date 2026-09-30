@@ -28,7 +28,7 @@
 #include "ra8_log.h"
 
 /** @brief Module log tag. */
-static const char* s_tag = "EPHY";
+static const char* const s_tag = "EPHY";
 
 typedef enum : uint8_t {
   k_ra8_ether_phy_reg_max        = 31U, /**< RA8 ether PHY register maximum.   */

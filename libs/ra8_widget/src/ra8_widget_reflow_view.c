@@ -28,7 +28,7 @@
 #include "ra8_widget_internal.h"
 
 /** @brief Logging / check tag. */
-static const char* s_tag = "ra8_widget_reflow_view";
+static const char* const s_tag = "ra8_widget_reflow_view";
 
 /**
  * @enum ra8_widget_rv_geom_t

@@ -45,7 +45,7 @@
 #include "ra8_usb.h"
 #include "ra8_usb_regs.h"
 
-static const char* s_tag = "USBHHID";
+static const char* const s_tag = "USBHHID";
 
 /* =============================================================================
  * Internal constants

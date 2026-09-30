@@ -30,7 +30,7 @@
 #include "ra8_hw_err.h"
 #include "ra8_log.h"
 
-static const char* s_tag = "ETHGWC";
+static const char* const s_tag = "ETHGWC";
 
 /**
  * @brief Compose the GWDCC[i] 32-bit value from a queue config.

@@ -54,7 +54,7 @@
  * @note Static, file-scope.
  * @since 0.1.0
  */
-static const char* s_tag = "RSIP";
+static const char* const s_tag = "RSIP";
 
 /*
  * RSIP-E50D RSA (RSASSA sign / verify, RSAES-OAEP / PKCS1 encrypt / decrypt) is

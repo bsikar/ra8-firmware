@@ -31,7 +31,7 @@
 #include "ra8_hw_intrinsics.h"
 #include "ra8_mpu_regs.h"
 
-static const char* s_tag = "MPU";
+static const char* const s_tag = "MPU";
 
 /**
  * @enum ra8_mpu_ap_t

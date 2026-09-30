@@ -87,7 +87,7 @@
  * @warning Never modify directly -- declared `const` to enforce.
  * @since 0.1.0
  */
-static const char* s_tag = "MIPI_DSI";
+static const char* const s_tag = "MIPI_DSI";
 
 /**
  * @var s_mipi_dsi_event_fn

@@ -33,7 +33,7 @@
 #include "ra8_err.h"
 #include "ra8_log.h"
 
-static const char* s_tag = "ADC";
+static const char* const s_tag = "ADC";
 
 /* The public ra8_adc_internal_chan_t values must mirror the register-header
  * CNVCS codes so ra8_adc_b_adexdr_index_for_chan() maps them correctly. */

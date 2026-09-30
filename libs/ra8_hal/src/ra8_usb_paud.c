@@ -36,7 +36,7 @@
 #include "ra8_log.h"
 #include "ra8_usb.h"
 
-static const char* s_tag = "USBPAUD";
+static const char* const s_tag = "USBPAUD";
 
 /* =============================================================================
  * Internal constants

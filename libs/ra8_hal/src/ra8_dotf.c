@@ -113,7 +113,7 @@ typedef struct {
  * @var s_tag
  * @brief Logging tag for ra8_log_* calls.
  */
-static const char* s_tag = "DOTF";
+static const char* const s_tag = "DOTF";
 
 /**
  * @var s_dotf_fn

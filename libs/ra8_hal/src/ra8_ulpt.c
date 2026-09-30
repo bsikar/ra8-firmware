@@ -33,7 +33,7 @@
 #include "ra8_mstp.h"
 #include "ra8_ulpt_regs.h"
 
-static const char* s_tag = "ULPT";
+static const char* const s_tag = "ULPT";
 
 /**
  * @enum ra8_ulpt_poll_t

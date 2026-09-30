@@ -48,7 +48,7 @@
 #include "ra8_register_protection.h"
 #include "ra8_system_regs.h"
 
-static const char* s_tag = "CANFD";
+static const char* const s_tag = "CANFD";
 
 /**
  * @enum ra8_canfd_internal_t
