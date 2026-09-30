@@ -33,8 +33,8 @@ The script also accepts a list of explicit file arguments. With no
 arguments it scans every first-party C file, derived from git ls-files
 via lint_targets (#358) -- so tools/ra8_emulator (which models RA8
 registers and cites the RA8 HUM) and port/usbx were previously omitted
-and their citations went unvalidated. Vendored C under port/threadx and both
-canonical third-party roots is dropped automatically.
+and their citations went unvalidated. Vendored C under both canonical
+third-party roots is dropped automatically; port/threadx is first-party.
 
 The chapter map is parsed from CHAPTER_MAP.md so the page-range
 truth lives in exactly one place. The pre-commit hook invokes this
@@ -704,8 +704,8 @@ def main(argv: list[str]) -> int:
         # a short fixed root list. tools/ra8_emulator models RA8
         # registers and cites the RA8 HUM, and port/usbx holds first-party RA8
         # USB glue -- both were silently omitted, so their cites went
-        # unvalidated. Vendored C under port/threadx and both canonical
-        # third-party roots is already dropped by first_party_paths.
+        # unvalidated. Vendored C under both canonical third-party roots is
+        # already dropped by first_party_paths; port/threadx is first-party.
         targets = [REPO_ROOT / rel for rel in first_party_paths(SOURCE_SUFFIXES)]
 
     findings: list[str] = []

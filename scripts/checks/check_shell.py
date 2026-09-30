@@ -112,7 +112,6 @@ EXCLUDE_FRAGMENTS = (
     "libs/third_party/",
     "apps/shared_libs/third_party/",
     "libs/ra8_fonts/",
-    "port/threadx/",
 )
 
 # A tree this size cannot legitimately collapse to a handful of scripts. If the
