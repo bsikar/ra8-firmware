@@ -1,0 +1,161 @@
+//! SPDX-License-Identifier: MIT
+//! Copyright (c) 2026 Brighton Sikarskie
+//!
+//! C ABI membrane for the navigation-strip leaf widget declared in
+//! `inc/ra8_widget_nav_bar.h`: `ra8_widget_nav_bar_vtable` and
+//! `ra8_widget_nav_bar_init`.
+//!
+//! The strip is `count` equal-width cells, each a centred label and each a tap
+//! target. Both halves read the same two pure helpers below, `cellRect` and
+//! `hitCell`, so a tap lands in the cell it looks like it lands in.
+
+const types = @import("widget_abi_types.zig");
+const paint_abi = @import("widget_paint_abi.zig");
+
+/// Rectangle of the published ABI (`ra8_ui_rect_t`).
+pub const Rect = types.Rect;
+/// Draw backend of the published ABI (`ra8_widget_paint_t`).
+pub const Paint = types.Paint;
+/// Widget instance of the published ABI (`ra8_widget_t`).
+pub const Widget = types.Widget;
+/// Behaviour table of the published ABI (`ra8_widget_vtable_t`).
+pub const Vtable = types.Vtable;
+/// One input event of the published ABI (`ra8_widget_event_t`).
+pub const Event = types.Event;
+/// E-ink-style refresh hint of the published ABI (`ra8_widget_refresh_t`).
+pub const Refresh = types.Refresh;
+/// The `ra8_err_t` values this membrane answers with.
+pub const err = types.err;
+
+/// Fixed geometry of the strip and its cells.
+pub const geometry = struct {
+    /// A strip of this many cells draws and routes nothing.
+    pub const no_cells: u16 = 0;
+    /// A cell rect is already the text box, so its label gets no inset.
+    pub const no_pad: i16 = 0;
+    /// A strip this wide (or narrower) cannot be divided into cells.
+    pub const degenerate_width: i32 = 0;
+};
+
+const tag: [*:0]const u8 = "ra8_widget_nav_bar";
+
+/// Caller-owned navigation-strip descriptor (`ra8_widget_nav_bar_t`).
+///
+/// `items` is the C `const char* const*`: a bare pointer to `count` label
+/// strings. It becomes a slice at the top of `render`, so the rest of this
+/// file indexes a bounded thing rather than a raw pointer.
+pub const NavBar = extern struct {
+    paint: ?*const Paint,
+    items: ?[*]const ?[*:0]const u8,
+    on_select: ?*const fn (w: *Widget, index: u16) callconv(.c) void,
+    bg: u32,
+    fg_active: u32,
+    fg_muted: u32,
+    count: u16,
+    active: u16,
+    selected: u16,
+};
+
+/// Cell `idx` of a `count`-cell strip laid inside `strip`.
+///
+/// Rounded prefix widths (`w * i / count`) mean the cells tile the strip with
+/// no gap and the remainder lands deterministically, which is what lets the
+/// hit maths below be the exact inverse.
+pub fn cellRect(strip: Rect, idx: u16, count: u16) Rect {
+    const span: i32 = @intCast(count);
+    const x0 = @divTrunc(strip.w * @as(i32, @intCast(idx)), span);
+    const x1 = @divTrunc(strip.w * @as(i32, @intCast(idx)) + strip.w, span);
+    return .{ .x = strip.x + x0, .y = strip.y, .w = x1 - x0, .h = strip.h };
+}
+
+/// Cell index `px` lands on, or null for an empty strip, a degenerate width,
+/// or a tap outside the strip.
+///
+/// The in-range guard makes `px - x < w`, so the proportional index is always
+/// strictly below `count` and needs no clamp.
+pub fn hitCell(strip: Rect, count: u16, px: i32) ?u16 {
+    if (count == geometry.no_cells) return null;
+    if (strip.w <= geometry.degenerate_width) return null;
+    if (px < strip.x or px >= strip.x + strip.w) return null;
+    return @intCast(@divTrunc((px - strip.x) * @as(i32, @intCast(count)), strip.w));
+}
+
+/// Draw one item's label centred in its cell. An item with no label is a gap.
+fn drawItem(backend: *const Paint, cell: Rect, label: ?[*:0]const u8, fg: u32, bg: u32) void {
+    const text = label orelse return;
+    const draw_text = backend.draw_text orelse return;
+
+    var pen_x: i32 = 0;
+    var pen_y: i32 = 0;
+    paint_abi.priv_widget_text_pos(backend, &cell, text, geometry.no_pad, .center, &pen_x, &pen_y);
+    draw_text(backend.user, pen_x, pen_y, text, fg, bg);
+}
+
+/// Fill the strip, then centre each item's label in its own cell.
+fn render(w: *Widget) callconv(.c) void {
+    const nav: *const NavBar = @ptrCast(@alignCast(w.ctx orelse return));
+    const backend = nav.paint orelse return;
+
+    paint_abi.priv_widget_fill_box(backend, &w.rect, nav.bg, nav.bg, geometry.no_pad);
+
+    if (nav.count == geometry.no_cells) return;
+    if (backend.draw_text == null) return;
+    const items = nav.items orelse return;
+
+    for (items[0..nav.count], 0..) |label, i| {
+        const idx: u16 = @intCast(i);
+        const fg = if (idx == nav.active) nav.fg_active else nav.fg_muted;
+        drawItem(backend, cellRect(w.rect, idx, nav.count), label, fg, nav.bg);
+    }
+}
+
+/// Route a touch to the cell it hit; a tap off the strip is declined so it can
+/// keep travelling.
+fn onInput(w: *Widget, event: *const Event) callconv(.c) bool {
+    const nav: *NavBar = @ptrCast(@alignCast(w.ctx orelse return false));
+    if (event.kind != .touch) return false;
+
+    const idx = hitCell(w.rect, nav.count, event.x) orelse return false;
+
+    nav.selected = idx;
+    _ = types.ra8_widget_invalidate(w, .fast);
+    if (nav.on_select) |notify| notify(w, idx);
+    return true;
+}
+
+const vtable: Vtable = .{
+    .measure = null,
+    .render = render,
+    .on_input = onInput,
+};
+
+/// Return the one immutable vtable shared by every navigation strip.
+pub export fn ra8_widget_nav_bar_vtable() callconv(.c) *const Vtable {
+    return &vtable;
+}
+
+/// Bind `w` to navigation strip `nav`: vtable, context, visible.
+pub export fn ra8_widget_nav_bar_init(w: ?*Widget, nav: ?*NavBar) callconv(.c) u16 {
+    const widget = w orelse return types.refuseNull(tag, "w must not be nullptr");
+    const descriptor = nav orelse return types.refuseNull(tag, "nav must not be nullptr");
+
+    widget.vt = &vtable;
+    widget.ctx = descriptor;
+    widget.visible = true;
+    return err.ok;
+}
+
+comptime {
+    const ptr = @sizeOf(usize);
+
+    if (@offsetOf(NavBar, "paint") != 0) @compileError("ra8_widget_nav_bar_t paint offset");
+    if (@offsetOf(NavBar, "items") != ptr) @compileError("ra8_widget_nav_bar_t items offset");
+    if (@offsetOf(NavBar, "on_select") != 2 * ptr) @compileError("ra8_widget_nav_bar_t on_select offset");
+    if (@offsetOf(NavBar, "bg") != 3 * ptr) @compileError("ra8_widget_nav_bar_t bg offset");
+    if (@offsetOf(NavBar, "fg_active") != 3 * ptr + 4) @compileError("ra8_widget_nav_bar_t fg_active offset");
+    if (@offsetOf(NavBar, "fg_muted") != 3 * ptr + 8) @compileError("ra8_widget_nav_bar_t fg_muted offset");
+    if (@offsetOf(NavBar, "count") != 3 * ptr + 12) @compileError("ra8_widget_nav_bar_t count offset");
+    if (@offsetOf(NavBar, "active") != 3 * ptr + 14) @compileError("ra8_widget_nav_bar_t active offset");
+    if (@offsetOf(NavBar, "selected") != 3 * ptr + 16) @compileError("ra8_widget_nav_bar_t selected offset");
+    if (@alignOf(NavBar) != @alignOf(usize)) @compileError("ra8_widget_nav_bar_t alignment");
+}
