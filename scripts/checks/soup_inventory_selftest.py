@@ -43,8 +43,12 @@ BASE_COMPONENTS = (
     FakeComponent("doxygen-awesome", "docs/doxygen_theme"),
 )
 
-THEME_ROW = "| doxygen-awesome | 2.4.2 | MIT | `docs/doxygen_theme/` | <https://example.invalid> |\n"
-MINIZ_ROW = "| miniz | 3.0.2 | MIT | `apps/shared_libs/third_party/miniz/` | <https://example.invalid> |"
+THEME_ROW = (
+    "| doxygen-awesome | 2.4.2 | MIT | `docs/doxygen_theme/` | <https://example.invalid> |\n"
+)
+MINIZ_ROW = (
+    "| miniz | 3.0.2 | MIT | `apps/shared_libs/third_party/miniz/` | <https://example.invalid> |"
+)
 GHOST_ROW = "| ghost | 1.0 | MIT | `libs/third_party/ghost/` | <https://example.invalid> |"
 ESP_LINK = "| esp-hosted | [esp-hosted.md](esp-hosted.md) |"
 BLE_LINK = "| BLE patch | [ble_patch_image.md](ble_patch_image.md) |"
@@ -117,12 +121,40 @@ def _agreement_cases() -> tuple[tuple[str, tuple, str, str, tuple[str, ...], boo
     dangling = BASE_INDEX.replace(ESP_LINK, f"{ESP_LINK}\n{BLE_LINK}")
     orphan_docs = (*BASE_DOCS, "orphan.md")
     return (
-        ("agreeing catalogues stay quiet", BASE_COMPONENTS, BASE_LICENSES, BASE_INDEX, BASE_DOCS, False),
-        ("R1 component named by no row fires", BASE_COMPONENTS, no_theme, BASE_INDEX, BASE_DOCS, True),
-        ("R1 one-segment ancestor is not a naming", BASE_COMPONENTS, dir_only, BASE_INDEX, BASE_DOCS, True),
+        (
+            "agreeing catalogues stay quiet",
+            BASE_COMPONENTS,
+            BASE_LICENSES,
+            BASE_INDEX,
+            BASE_DOCS,
+            False,
+        ),
+        (
+            "R1 component named by no row fires",
+            BASE_COMPONENTS,
+            no_theme,
+            BASE_INDEX,
+            BASE_DOCS,
+            True,
+        ),
+        (
+            "R1 one-segment ancestor is not a naming",
+            BASE_COMPONENTS,
+            dir_only,
+            BASE_INDEX,
+            BASE_DOCS,
+            True,
+        ),
         ("R2 orphan inventory row fires", BASE_COMPONENTS, orphan_row, BASE_INDEX, BASE_DOCS, True),
         ("R3 dangling index link fires", BASE_COMPONENTS, BASE_LICENSES, dangling, BASE_DOCS, True),
-        ("R4 unindexed record fires", BASE_COMPONENTS, BASE_LICENSES, BASE_INDEX, orphan_docs, True),
+        (
+            "R4 unindexed record fires",
+            BASE_COMPONENTS,
+            BASE_LICENSES,
+            BASE_INDEX,
+            orphan_docs,
+            True,
+        ),
     )
 
 
