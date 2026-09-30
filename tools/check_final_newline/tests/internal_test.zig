@@ -123,15 +123,16 @@ test "vendored SOUP and generated tables are excluded for every language" {
     try std.testing.expect(implementation.isExcludedRel("tools/vela/generated/model.c", null));
 }
 
-test "the threadx exclusion is C-only, so its build glue stays in scope" {
-    try std.testing.expect(implementation.isExcludedRel("port/threadx/src/vendor.c", "c"));
+test "no tree is excluded for C alone any more" {
+    try std.testing.expect(!implementation.isExcludedRel("port/threadx/src/tx_systick_ready.c", "c"));
     try std.testing.expect(!implementation.isExcludedRel("port/threadx/CMakeLists.txt", "cmake"));
-    try std.testing.expect(!implementation.isExcludedRel("port/threadx/src/vendor.c", null));
+    try std.testing.expect(!implementation.isExcludedRel("port/threadx/src/tx_systick_ready.c", null));
 }
 
 test "first-party keeps ordinary source and drops vendored C" {
     try std.testing.expect(implementation.isFirstParty("libs/ra8_mpu/src/mpu.c"));
-    try std.testing.expect(!implementation.isFirstParty("port/threadx/src/vendor.c"));
+    try std.testing.expect(!implementation.isFirstParty("libs/third_party/x/a.c"));
+    try std.testing.expect(implementation.isFirstParty("port/threadx/src/fw_os_threadx.c"));
     try std.testing.expect(implementation.isFirstParty("port/threadx/CMakeLists.txt"));
 }
 
@@ -212,24 +213,32 @@ test "derived scope deduplicates a repeated census entry" {
     try std.testing.expectEqual(@as(usize, 1), scope.len);
 }
 
-test "derived scope keeps vendored threadx build glue but not its C" {
+test "derived scope keeps every threadx file, C included" {
     const allocator = std.testing.allocator;
-    const census = [_][]const u8{ "port/threadx/src/tx.c", "port/threadx/CMakeLists.txt" };
+    const census = [_][]const u8{ "port/threadx/src/fw_os_threadx.c", "port/threadx/CMakeLists.txt" };
+    const scope = try implementation.derivedScope(allocator, &census);
+    defer allocator.free(scope);
+    try std.testing.expectEqual(@as(usize, 2), scope.len);
+}
+
+test "derived scope still drops genuinely vendored C" {
+    const allocator = std.testing.allocator;
+    const census = [_][]const u8{ "libs/third_party/threadx/tx_thread.c", "libs/a/x.c" };
     const scope = try implementation.derivedScope(allocator, &census);
     defer allocator.free(scope);
     try std.testing.expectEqual(@as(usize, 1), scope.len);
-    try std.testing.expectEqualStrings("port/threadx/CMakeLists.txt", scope[0]);
+    try std.testing.expectEqualStrings("libs/a/x.c", scope[0]);
 }
 
 test "the gate's own fragments match anywhere in an absolute path" {
-    try std.testing.expect(implementation.hasExcludedFragment("/repo/port/threadx/CMakeLists.txt"));
+    try std.testing.expect(implementation.hasExcludedFragment("/repo/libs/third_party/x/a.c"));
     try std.testing.expect(implementation.hasExcludedFragment("/repo/apps/_unsupported/x.c"));
     try std.testing.expect(!implementation.hasExcludedFragment("/repo/libs/ra8_ui/src/ui.c"));
 }
 
-test "the fragment subtraction is what removes threadx build glue from this gate" {
+test "the fragment subtraction no longer touches threadx" {
     try std.testing.expect(implementation.isFirstParty("port/threadx/CMakeLists.txt"));
-    try std.testing.expect(implementation.hasExcludedFragment("/repo/port/threadx/CMakeLists.txt"));
+    try std.testing.expect(!implementation.hasExcludedFragment("/repo/port/threadx/CMakeLists.txt"));
 }
 
 test "display paths are repo-relative under the root and untouched outside it" {

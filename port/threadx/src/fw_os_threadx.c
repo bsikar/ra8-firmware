@@ -69,12 +69,18 @@ static_assert((uint32_t)k_fw_os_tx_not_owned == TX_NOT_OWNED, "TX_NOT_OWNED mirr
  * checked rather than assumed. */
 static_assert(sizeof(ULONG) >= sizeof(void *), "a ULONG cannot carry a pointer on this port");
 
-/** @brief Marks an ::fw_os_thread_t whose block this binding created. */
-static const uint32_t k_thread_magic = 0x74784F53U;
-/** @brief Marks an ::fw_os_mutex_t whose block this binding created. */
-static const uint32_t k_mutex_magic = 0x74784D58U;
-/** @brief Marks an ::fw_os_sem_t whose block this binding created. */
-static const uint32_t k_sem_magic = 0x74785345U;
+/**
+ * @brief Marks a block this binding created, per object kind.
+ *
+ * @details
+ * Spelled "txOS", "txMX" and "txSE" so a memory dump says which binding
+ * and which object it is looking at without a symbol table.
+ */
+enum : uint32_t {
+    k_thread_magic = 0x74784F53U, /**< "txOS": an ::fw_os_thread_t. */
+    k_mutex_magic  = 0x74784D58U, /**< "txMX": an ::fw_os_mutex_t.  */
+    k_sem_magic    = 0x74785345U, /**< "txSE": an ::fw_os_sem_t.    */
+};
 
 /** @brief Name handed to ThreadX when the caller supplied none. */
 static char s_unnamed[] = "fw_os";
@@ -84,10 +90,10 @@ static char s_unnamed[] = "fw_os";
  * @brief What this binding keeps inside a caller's ::fw_os_thread_t storage.
  */
 typedef struct {
-    TX_THREAD tx;             /**< The ThreadX control block.        */
+    TX_THREAD tx;             /**< The ThreadX control block.          */
     void (*entry)(void *arg); /**< The portable entry the caller gave. */
-    void *arg;                /**< Its single argument.               */
-    uint32_t magic;           /**< ::k_thread_magic once created.     */
+    void *arg;                /**< Its single argument.                */
+    uint32_t magic;           /**< ::k_thread_magic once created.      */
 } internal_thread_t;
 
 /**

@@ -14,7 +14,8 @@ This script:
     1. Walks every first-party C file, derived from git ls-files via
        lint_targets (#358) rather than a hardcoded ("libs","tests")
        + example-app list that silently omitted tools/ and port/. Vendored
-       trees (libs/third_party/, port/threadx/) are dropped automatically.
+       trees (libs/third_party/) are dropped automatically; port/threadx is
+       first-party glue and stays in scope.
     2. For Ring 3+ files (anything outside Ring 1 BSP and Ring 2 Core),
        requires both a [Ring N / ...] tag and a {World: ...} tag in
        the first ~80 lines of the file.

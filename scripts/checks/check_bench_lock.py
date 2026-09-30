@@ -90,7 +90,6 @@ SCANNED_BASENAMES = ("justfile", "Justfile")
 EXCLUDE_FRAGMENTS = (
     "libs/third_party/",
     "apps/shared_libs/third_party/",
-    "port/threadx/",
     "coprocessor/esp32c6/esp-hosted-mcu/",
     "recon/",
 )

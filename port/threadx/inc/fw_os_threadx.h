@@ -67,22 +67,40 @@ extern "C" {
  * ::k_ra8_err_rtos_error, because a binding that invented a specific
  * ra8_err_t for a code it has never reasoned about would be guessing.
  */
+/**
+ * @brief Numbers this binding converts with, named so the conversions read.
+ *
+ * @details
+ * ThreadX counts priorities DOWN, so a portable band maps to a number that
+ * gets smaller as the band gets more urgent. The urgent band lands on 8
+ * rather than 0 on purpose: 0..7 stays reserved for the composition root,
+ * so an application thread can still outrank anything a portable library
+ * starts underneath it.
+ */
+enum : uint32_t {
+    k_fw_os_tx_ms_per_second      = 1000U, /**< Milliseconds in one second. */
+    k_fw_os_tx_priority_for_idle  = 31U,   /**< Lowest ThreadX priority.    */
+    k_fw_os_tx_priority_for_low   = 24U,   /**< Background work.            */
+    k_fw_os_tx_priority_for_norm  = 16U,   /**< Application default.        */
+    k_fw_os_tx_priority_for_high  = 8U,    /**< Above portable libraries.   */
+};
+
 typedef enum : uint32_t {
-    k_fw_os_tx_success = 0x00U,        /**< `TX_SUCCESS`.        */
-    k_fw_os_tx_deleted = 0x01U,        /**< `TX_DELETED`.        */
-    k_fw_os_tx_ptr_error = 0x03U,      /**< `TX_PTR_ERROR`.      */
-    k_fw_os_tx_wait_error = 0x04U,     /**< `TX_WAIT_ERROR`.     */
-    k_fw_os_tx_size_error = 0x05U,     /**< `TX_SIZE_ERROR`.     */
+    k_fw_os_tx_success = 0x00U,         /**< `TX_SUCCESS`.         */
+    k_fw_os_tx_deleted = 0x01U,         /**< `TX_DELETED`.         */
+    k_fw_os_tx_ptr_error = 0x03U,       /**< `TX_PTR_ERROR`.       */
+    k_fw_os_tx_wait_error = 0x04U,      /**< `TX_WAIT_ERROR`.      */
+    k_fw_os_tx_size_error = 0x05U,      /**< `TX_SIZE_ERROR`.      */
     k_fw_os_tx_semaphore_error = 0x0CU, /**< `TX_SEMAPHORE_ERROR`. */
-    k_fw_os_tx_no_instance = 0x0DU,    /**< `TX_NO_INSTANCE`.    */
-    k_fw_os_tx_thread_error = 0x0EU,   /**< `TX_THREAD_ERROR`.   */
-    k_fw_os_tx_priority_error = 0x0FU, /**< `TX_PRIORITY_ERROR`. */
-    k_fw_os_tx_delete_error = 0x11U,   /**< `TX_DELETE_ERROR`.   */
-    k_fw_os_tx_caller_error = 0x13U,   /**< `TX_CALLER_ERROR`.   */
-    k_fw_os_tx_wait_aborted = 0x1AU,   /**< `TX_WAIT_ABORTED`.   */
-    k_fw_os_tx_mutex_error = 0x1CU,    /**< `TX_MUTEX_ERROR`.    */
-    k_fw_os_tx_not_available = 0x1DU,  /**< `TX_NOT_AVAILABLE`.  */
-    k_fw_os_tx_not_owned = 0x1EU,      /**< `TX_NOT_OWNED`.      */
+    k_fw_os_tx_no_instance = 0x0DU,     /**< `TX_NO_INSTANCE`.     */
+    k_fw_os_tx_thread_error = 0x0EU,    /**< `TX_THREAD_ERROR`.    */
+    k_fw_os_tx_priority_error = 0x0FU,  /**< `TX_PRIORITY_ERROR`.  */
+    k_fw_os_tx_delete_error = 0x11U,    /**< `TX_DELETE_ERROR`.    */
+    k_fw_os_tx_caller_error = 0x13U,    /**< `TX_CALLER_ERROR`.    */
+    k_fw_os_tx_wait_aborted = 0x1AU,    /**< `TX_WAIT_ABORTED`.    */
+    k_fw_os_tx_mutex_error = 0x1CU,     /**< `TX_MUTEX_ERROR`.     */
+    k_fw_os_tx_not_available = 0x1DU,   /**< `TX_NOT_AVAILABLE`.   */
+    k_fw_os_tx_not_owned = 0x1EU,       /**< `TX_NOT_OWNED`.       */
 } fw_os_threadx_status_t;
 
 /** @} */
@@ -120,7 +138,7 @@ static inline uint32_t fw_os_threadx_ticks_for(uint32_t timeout_ms, uint32_t tic
     }
 
     const uint64_t scaled = ((uint64_t)timeout_ms * (uint64_t)ticks_per_second);
-    const uint64_t rounded_up = (scaled + 999ULL) / 1000ULL;
+    const uint64_t rounded_up = (scaled + (uint64_t)(k_fw_os_tx_ms_per_second - 1U)) / (uint64_t)k_fw_os_tx_ms_per_second;
     const uint64_t at_least_one = (rounded_up == 0ULL) ? 1ULL : rounded_up;
     const uint64_t ceiling = (uint64_t)K_FW_OS_TX_WAIT_FOREVER - 1ULL;
 
@@ -140,8 +158,8 @@ static inline uint32_t fw_os_threadx_ms_for(uint32_t ticks, uint32_t ticks_per_s
     if (ticks_per_second == 0U) {
         return 0U;
     }
-    const uint64_t ms = ((uint64_t)ticks * 1000ULL) / (uint64_t)ticks_per_second;
-    return (uint32_t)(ms & 0xFFFFFFFFULL);
+    const uint64_t ms = ((uint64_t)ticks * (uint64_t)k_fw_os_tx_ms_per_second) / (uint64_t)ticks_per_second;
+    return (uint32_t)(ms & (uint64_t)UINT32_MAX);
 }
 
 /**
@@ -164,13 +182,13 @@ static inline uint32_t fw_os_threadx_priority_for(uint32_t band)
 {
     switch (band) {
         case 0U:
-            return 31U;
+            return k_fw_os_tx_priority_for_idle;
         case 1U:
-            return 24U;
+            return k_fw_os_tx_priority_for_low;
         case 3U:
-            return 8U;
+            return k_fw_os_tx_priority_for_high;
         default:
-            return 16U;
+            return k_fw_os_tx_priority_for_norm;
     }
 }
 
