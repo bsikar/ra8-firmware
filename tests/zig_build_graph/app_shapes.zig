@@ -660,7 +660,7 @@ pub const uncovered = [_]Uncovered{
     .{
         .representative = "ra8d2-ereader",
         .shape = .{ .aux_srcs = true },
-        .note = "3 declarations: single-image apps that name an extra source of their own. cpu1_pingpong used to cross-build this kind; #742 moved it and the two dualcore apps onto CPU1_IMAGE, then took dfu_copy_to_run onto MRAM_LENGTH, which is why the representative is an ereader now",
+        .note = "2 declarations: single-image apps that name an extra source of their own. cpu1_pingpong used to cross-build this kind; #742 moved it and the two dualcore apps onto CPU1_IMAGE, then took dfu_copy_to_run and tz_threadx_demo onto MRAM_LENGTH, which is why the representative is an ereader now",
     },
     .{
         .representative = "dfu_copy_to_run",
@@ -671,6 +671,11 @@ pub const uncovered = [_]Uncovered{
         .representative = "usb_selftest_wlun",
         .shape = .{ .uses = &.{ "threadx", "usbx" }, .threadx_heap = true },
         .note = "22 declarations, the largest uncovered kind by a long way: USBX device classes on top of ThreadX, linked against a generated heap fragment. #742 folded the secure-only pair in here by giving them THREADX_HEAP, retiring the kind that linked the board script with no heap fragment. middleware.zig already compiles ThreadX; USBX is the next middleware to teach it",
+    },
+    .{
+        .representative = "tz_threadx_demo",
+        .shape = .{ .aux_srcs = true, .mram_length = true },
+        .note = "1 declaration: a TrustZone secure image that names its own Non-Secure sources as AUX_SRCS. #742 dropped its 418-line script fork for the board's own plus a 512K secure bank, which split it off the plain AUX_SRCS kind",
     },
     .{
         .representative = "c6_mdl_test",

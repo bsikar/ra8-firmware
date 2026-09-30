@@ -402,10 +402,11 @@ pub const cross_apps = [_]CrossApp{
         .name = "tz_nsc_cgc_usb",
         .dir = "examples/ek_ra8d2/hil_needs_revalidation/tz_nsc_cgc_usb",
         .board = "libs/ra8_board_ek_ra8d2",
-        // This app ships its own script: the secure image is 512K of MRAM
-        // with the NS image's load home carved out of the rest, which the
-        // board's canonical single-core map has no notion of.
-        .linker_script = "examples/ek_ra8d2/hil_needs_revalidation/tz_nsc_cgc_usb/linker_script.ld",
+        // #742 dropped this app's 418-line script fork for the board's own
+        // plus MRAM_LENGTH: the secure image is 512K of MRAM with the NS
+        // image's load home carved out of the rest.
+        .linker_script = "libs/ra8_board_ek_ra8d2/ld/linker_script.ld",
+        .mram_length = "512K",
         .libraries = &.{"ra8_tz_secure_boot"},
         .zig_libraries = &.{},
         .aux_srcs = &.{ "src/ns_main.c", "src/ns_usb.c", "src/ns_usb_host.c" },
