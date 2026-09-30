@@ -854,7 +854,6 @@ libs/ra8_jpeg/src/ra8_jpeg_sw_encode_emit.c	MEASURED	155	155	32	34
 libs/ra8_jpeg/src/ra8_jpeg_sw_stream.c	MEASURED	151	160	76	90
 libs/ra8_keyboard/src/ra8_keyboard.c	MEASURED	137	140	49	53
 libs/ra8_lsm6dso/src/ra8_lsm6dso.c	MEASURED	143	149	69	92
-libs/ra8_mem/src/ra8_arena.c	MEASURED	35	36	23	24
 libs/ra8_mem/src/ra8_glyph_atlas.c	MEASURED	52	53	20	24
 libs/ra8_mem/src/ra8_keycache.c	MEASURED	241	248	120	142
 libs/ra8_mem/src/ra8_slab.c	MEASURED	61	63	35	38

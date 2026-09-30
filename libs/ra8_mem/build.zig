@@ -2,21 +2,22 @@
 //! Copyright (c) 2026 Brighton Sikarskie
 //!
 //! Build graph for the Zig side of `ra8_mem`: the slab allocator, the page
-//! cache, the byte-stream adapter over it, the glyph cache, the tile cache and
-//! the object-source registry. CMake consumes the installed static library
-//! through the unchanged `inc/ra8_slab.h`, `inc/ra8_vmem.h`,
+//! cache, the byte-stream adapter over it, the glyph cache, the tile cache,
+//! the object-source registry and the init-time bump arena. CMake consumes
+//! the installed static library
+//! through the unchanged `inc/ra8_arena.h`, `inc/ra8_slab.h`, `inc/ra8_vmem.h`,
 //! `inc/ra8_vmem_stream.h`, `inc/ra8_glyph_atlas.h`, `inc/ra8_tile_cache.h`
 //! and `inc/ra8_vsource.h`.
 //!
 //! The page cache, the glyph atlas and the tile cache are typed facades over
-//! `ra8_keycache`, which is still C, so the archive leaves five
-//! `ra8_keycache_*` symbols undefined and the link resolves them exactly as
-//! the C translation units did. `ra8_vmem_get`/`ra8_vmem_put` are no longer
-//! among them: the stream adapter now calls the Zig page cache in the same
-//! archive. The source registry adds no extern of its own: a paged object's
-//! read callback is a pointer it is handed, not a link-time symbol. The rest
-//! of `libs/ra8_mem` (arena, keycache) is still C and still built by CMake
-//! from `src/`.
+//! the Zig `keycache` in this same archive, so no `ra8_keycache_*` symbol is
+//! left undefined and `ra8_vmem_get`/`ra8_vmem_put` resolve in-archive too.
+//! The source registry adds no extern of its own: a paged object's read
+//! callback is a pointer it is handed, not a link-time symbol.
+//!
+//! `libs/ra8_mem/src` has no C left. The arena was the last translation unit
+//! in it, and its seven `ra8_arena_*` symbols now come out of this archive
+//! through the unchanged `inc/ra8_arena.h` (#2601).
 
 const std = @import("std");
 
@@ -43,6 +44,7 @@ pub fn build(b: *std.Build) void {
     const test_step = b.step("test", "Run Zig ra8_mem tests");
 
     const units = [_]struct { name: []const u8, source: []const u8, root: []const u8 }{
+        .{ .name = "arena", .source = "src/internal/arena.zig", .root = "tests/arena_test.zig" },
         .{ .name = "vocab", .source = "src/internal/vocab.zig", .root = "tests/vocab_test.zig" },
         .{ .name = "slab", .source = "src/internal/slab.zig", .root = "tests/slab_test.zig" },
         .{

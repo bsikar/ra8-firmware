@@ -1870,11 +1870,6 @@ libs/ra8_keyboard/src/ra8_keyboard.c	misra-c2012-8.9	11
 libs/ra8_lsm6dso/src/ra8_lsm6dso.c	misra-c2012-10.8	4
 libs/ra8_lsm6dso/src/ra8_lsm6dso.c	misra-c2012-15.5	45
 libs/ra8_lsm6dso/src/ra8_lsm6dso.c	misra-c2012-8.4	9
-libs/ra8_mem/src/ra8_arena.c	misra-c2012-11.4	3
-libs/ra8_mem/src/ra8_arena.c	misra-c2012-11.5	1
-libs/ra8_mem/src/ra8_arena.c	misra-c2012-11.6	1
-libs/ra8_mem/src/ra8_arena.c	misra-c2012-15.5	12
-libs/ra8_mem/src/ra8_arena.c	misra-c2012-8.4	3
 libs/ra8_mem/src/ra8_glyph_atlas.c	misra-c2012-11.5	4
 libs/ra8_mem/src/ra8_glyph_atlas.c	misra-c2012-11.8	2
 libs/ra8_mem/src/ra8_glyph_atlas.c	misra-c2012-15.5	12

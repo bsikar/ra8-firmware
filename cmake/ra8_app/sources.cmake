@@ -62,9 +62,9 @@ function(
   # archive, so being pulled in without one registered is always the #908
   # defect -- even when the *.c glob came back non-empty. That case is the one
   # the _globbed early return below cannot see: a lib that keeps support C past
-  # its flip (ra8_mem kept ra8_arena.c) leaves _globbed truthy, so the check
-  # returns clean while every symbol the port moved into Zig leaves the link
-  # silently. Judge the flip directly instead of inferring it from the glob.
+  # its flip leaves _globbed truthy, so the check returns clean while every
+  # symbol the port moved into Zig leaves the link silently. Judge the flip
+  # directly instead of inferring it from the glob.
   if(_path
      AND NOT _has_archive
      AND EXISTS "${_path}/build.zig"
@@ -457,27 +457,14 @@ macro(_ra8_app_collect_sources)
   if((("reflow" IN_LIST _RA8_APP_LIBS) OR ("book" IN_LIST _RA8_APP_LIBS)) AND (NOT "ra8_mem" IN_LIST
                                                                                _RA8_APP_LIBS)
   )
-    file(GLOB_RECURSE _ra8_lib_mem CONFIGURE_DEPENDS ${RA8_REPO_ROOT}/libs/ra8_mem/src/*.c)
-    # ra8_mem is a Zig archive now, and this transitive path has to register it
-    # exactly as the LIBS loop above does. It cannot rely on the #908 guard to
-    # notice: ra8_arena.c survives the port as support C, so the glob above is
-    # non-empty and the guard returns early while every Zig-provided symbol
-    # (ra8_glyph_atlas_*, ra8_vmem_*, ra8_slab_*, ...) silently leaves the link.
-    set(_ra8_lib_mem_has_archive "")
-    if(EXISTS "${RA8_REPO_ROOT}/libs/ra8_mem/build.zig"
-       AND NOT EXISTS "${RA8_REPO_ROOT}/libs/ra8_mem/src/ra8_mem.c"
-    )
-      list(APPEND _ra8_lib_zig "ra8_mem|${RA8_REPO_ROOT}/libs/ra8_mem")
-      set(_ra8_lib_mem_has_archive ON)
-    endif()
-    _ra8_app_require_compilable_lib(
-      ra8_mem
-      "${RA8_REPO_ROOT}/libs/ra8_mem"
-      "pulls in ra8_mem for LIBS reflow/book"
-      "${_ra8_lib_mem}"
-      "${_ra8_lib_mem_has_archive}"
-    )
-    list(APPEND _ra8_lib_extra ${_ra8_lib_mem})
+    # ra8_mem has no C left (#2601: the init-time arena was its last .c), so
+    # this transitive path contributes no sources at all and every symbol it
+    # needs -- ra8_glyph_atlas_*, ra8_vmem_*, ra8_slab_*, ra8_arena_* -- arrives
+    # only from the Zig archive. Register it exactly as the LIBS loop above
+    # does. No glob and no compilable-lib check: there is nothing left to judge
+    # on this path, and a *.c glob that matches nothing is precisely the
+    # unresolved-path shape scripts/checks/check_cmake_source_paths.py fails.
+    list(APPEND _ra8_lib_zig "ra8_mem|${RA8_REPO_ROOT}/libs/ra8_mem")
     list(APPEND _ra8_lib_inc ${RA8_REPO_ROOT}/libs/ra8_mem/inc)
   endif()
 

@@ -257,15 +257,11 @@ ra8_viewer_read_path(
   DROP ra8_vfs_compress.c
 )
 
-# The tile cache and the keycache engine under it are Zig now
-# (libs/ra8_mem/src/internal/), so the viewer links the ra8_mem archive for them
-# instead of compiling them by path. ra8_arena.c is the one file left: it is
-# still C and still compiled here, because the archive cannot export
-# ra8_arena_* while this target compiles the same .c (issue #2601).
-ra8_viewer_read_path(
-  RA8_MEM_SRC ${FW_ROOT}/libs/ra8_mem/src
-  KEEP ra8_arena.c
-)
+# libs/ra8_mem has no C left (#2601): the arena was its last translation unit,
+# so the read-path partition that used to KEEP ra8_arena.c is retired with the
+# sources it partitioned, and every ra8_mem symbol the viewer needs -- the
+# arena, the tile cache, the keycache engine under it -- comes out of the
+# archive.
 if(NOT TARGET ra8_zig::ra8_mem)
   include(${FW_ROOT}/tests/cmake/zig_library.cmake)
   ra8_add_zig_library(
