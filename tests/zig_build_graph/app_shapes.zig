@@ -658,9 +658,9 @@ pub const Uncovered = struct {
 
 pub const uncovered = [_]Uncovered{
     .{
-        .representative = "ra8d2-ereader",
+        .representative = "ereader_m33",
         .shape = .{ .aux_srcs = true },
-        .note = "2 declarations: single-image apps that name an extra source of their own. cpu1_pingpong used to cross-build this kind; #742 moved it and the two dualcore apps onto CPU1_IMAGE, then took dfu_copy_to_run and tz_threadx_demo onto MRAM_LENGTH, which is why the representative is an ereader now",
+        .note = "1 declaration: a single-image app that names an extra source of its own. cpu1_pingpong used to cross-build this kind; #742 moved it and the two dualcore apps onto CPU1_IMAGE, then took dfu_copy_to_run, tz_threadx_demo and finally ra8d2-ereader onto MRAM_LENGTH, leaving the M33 ereader alone here",
     },
     .{
         .representative = "dfu_copy_to_run",
@@ -675,7 +675,7 @@ pub const uncovered = [_]Uncovered{
     .{
         .representative = "tz_threadx_demo",
         .shape = .{ .aux_srcs = true, .mram_length = true },
-        .note = "1 declaration: a TrustZone secure image that names its own Non-Secure sources as AUX_SRCS. #742 dropped its 418-line script fork for the board's own plus a 512K secure bank, which split it off the plain AUX_SRCS kind",
+        .note = "2 declarations: Secure images that name their own Non-Secure sources as AUX_SRCS. #742 dropped each one's 418-line script fork for the board's own plus a 512K secure bank, which split them off the plain AUX_SRCS kind; ra8d2-ereader joined when its fork went the same way",
     },
     .{
         .representative = "c6_mdl_test",
