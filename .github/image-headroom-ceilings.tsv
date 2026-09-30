@@ -1,0 +1,8 @@
+# Headroom canary ceilings for linked images. Fires BELOW the hard region
+# size so the last few KB are spent deliberately, not discovered by a link
+# failure on someone else's PR. Enforced by scripts/checks/check_image_headroom.py.
+#
+# Re-pin in the same PR that grows the image, and say why in the PR body.
+#
+# app	region	base	region_bytes	ceiling_bytes
+ereader_shelf	MRAM	0x02000000	1048576	1036288
