@@ -25,9 +25,9 @@
 #
 # No regeneration step: tag the file, drop its line, lower the two counts it
 # was in.
-#! rows: 594
+#! rows: 592
 #! rows libs/ra8_hal/: 8
-#! rows tests/: 586
+#! rows tests/: 584
 libs/ra8_hal/inc/ra8_drw_dlist.h
 libs/ra8_hal/inc/ra8_ether_regs.h
 libs/ra8_hal/inc/ra8_mpu_regs.h
