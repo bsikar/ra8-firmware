@@ -66,12 +66,22 @@ func TestFakePlaneCancelTearsDownTheStepBeforeTheReceipt(t *testing.T) {
 	// before it writes that line, so a chunk here means the pid file is
 	// written too, and it is read only at the receipt, by which point the
 	// step has exited and it is readable.
-	recorded := make(chan bool, 1)
+	//
+	// When this case does fail it fails slowly, and a bare elapsed time
+	// cannot tell the two reasons apart: a cancel that was armed promptly
+	// and did not end the step is a defect in the teardown, while a cancel
+	// armed at the far end of the wait is a loaded host starving the
+	// fixture and says nothing about the teardown at all. So the arming is
+	// timed here and reported with any failure, which is the evidence the
+	// next run needs and cannot recover after the fact.
+	started := time.Now()
+	recorded := make(chan cancelArming, 1)
 	go func() {
-		for deadline := time.Now().Add(30 * time.Second); time.Now().Before(deadline); {
+		for deadline := started.Add(30 * time.Second); time.Now().Before(deadline); {
 			if _, logs, _, _ := plane.state(); logs > 0 {
 				plane.cancelNextHeartbeat()
-				recorded <- true
+				recorded <- cancelArming{sawOutput: true,
+					armedAt: time.Since(started), beats: plane.beats()}
 				return
 			}
 			time.Sleep(2 * time.Millisecond)
@@ -79,28 +89,28 @@ func TestFakePlaneCancelTearsDownTheStepBeforeTheReceipt(t *testing.T) {
 		// Armed regardless, so a step whose output never arrives ends the
 		// attempt with a clear failure rather than a long wait.
 		plane.cancelNextHeartbeat()
-		recorded <- false
+		recorded <- cancelArming{armedAt: time.Since(started), beats: plane.beats()}
 	}()
 
-	started := time.Now()
 	assigned, err := agent.RunOnce(context.Background())
 	elapsed := time.Since(started)
+	arming := <-recorded
 	if !assigned {
 		t.Fatalf("claim = %v, %v", assigned, err)
 	}
 	if elapsed > 30*time.Second {
-		t.Fatalf("attempt ran %v: the cancel did not end the step", elapsed)
+		t.Fatalf("attempt ran %v: the cancel did not end the step (%s)", elapsed, arming)
 	}
-	if !<-recorded {
-		t.Fatal("no step output reached the plane, so the cancel never had a running step to end")
+	if !arming.sawOutput {
+		t.Fatalf("no step output reached the plane, so the cancel never had a running step to end (%s)", arming)
 	}
 
 	_, logs, receipt, violations := plane.state()
 	if len(violations) != 0 {
-		t.Fatalf("the agent broke the contract under cancellation: %v", violations)
+		t.Fatalf("the agent broke the contract under cancellation: %v (%s)", violations, arming)
 	}
 	if receipt == nil {
-		t.Fatal("a cancelled attempt still owes the plane a terminal receipt")
+		t.Fatalf("a cancelled attempt still owes the plane a terminal receipt (%s)", arming)
 	}
 	if receipt.Outcome != "cancelled" || !receipt.Cancelled || receipt.TimedOut {
 		t.Fatalf("receipt does not report the cancellation: %+v", receipt)
@@ -117,7 +127,7 @@ func TestFakePlaneCancelTearsDownTheStepBeforeTheReceipt(t *testing.T) {
 		t.Fatalf("step summary does not report the cancellation: %+v", receipt.Steps)
 	}
 	if plane.beats() == 0 {
-		t.Fatal("no heartbeat arrived, so the cancel was never carried")
+		t.Fatalf("no heartbeat arrived, so the cancel was never carried (%s)", arming)
 	}
 	// A cancelled attempt hands the runner back rather than spending the
 	// fence window uploading files nobody asked for.
@@ -171,6 +181,26 @@ func TestCancelledAttemptUploadsNoArtifactsThePlaneWouldTake(t *testing.T) {
 			}
 		})
 	}
+}
+
+// cancelArming is what the cancel's own arming leaves behind for a failure to
+// quote: whether the step had announced itself first, how far into the attempt
+// the plane was told to ask for its runner back, and the beat the plane
+// answered it on. A failure that quotes this can be read; one that reports
+// only an elapsed time cannot.
+type cancelArming struct {
+	sawOutput bool
+	armedAt   time.Duration
+	beats     int
+}
+
+func (a cancelArming) String() string {
+	output := "no step output yet"
+	if a.sawOutput {
+		output = "step output had reached the plane"
+	}
+	return fmt.Sprintf("cancel armed %v into the attempt after %d beats, %s",
+		a.armedAt.Round(time.Millisecond), a.beats, output)
 }
 
 // checkoutWithOutput is a root holding the one declared output of outputTask.
