@@ -57,7 +57,7 @@ const FakeEngine = struct {
         if (Seen.init_err != .ok) return Seen.init_err;
         state.* = std.mem.zeroes(vmem.keycache.State);
         state.cfg = cfg.*;
-        state.protected_cap = Seen.protected_cap;
+        state.sets.protected_cap = Seen.protected_cap;
         return .ok;
     }
 
