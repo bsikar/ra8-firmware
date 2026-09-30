@@ -666,19 +666,18 @@ ra8_add_zig_library(
   ra8_mem
 )
 
-# Partially migrated: the paint helpers (text placement, proportional fill
-# width, box fill) and the three leaf widgets (text label, push button,
-# progress bar) are Zig now, and libs/ra8_widget/src/ra8_widget_paint.c,
-# src/ra8_widget_label.c, src/ra8_widget_button.c and
-# src/ra8_widget_progress_bar.c are deleted on this branch. The remaining C in
-# this library (ra8_widget.c, book) still calls the three RA8_PRIV helpers
-# through the
-# unchanged private header src/ra8_widget_internal.h, so those translation
-# units resolve them out of this archive instead of a sibling object. The
-# label's, button's and progress bar's vtable / init entry points are published
-# C ABI and now come from here too, and the Zig button calls back into the
-# still-C ra8_widget_invalidate in the same library. The RA8_WIDGET_SOURCES glob
-# in library_sources.cmake therefore stays: it is smaller, not gone.
+# Nearly fully migrated: the paint helpers (text placement, proportional fill
+# width, box fill), the seven leaf widgets, the container panel, the paged
+# reflow view and the book-card grid are Zig now, and every widget .c under
+# libs/ra8_widget/src is deleted on this branch. The one C translation unit
+# left is ra8_widget.c, the flat op core (rect maths, invalidate, the dispatch
+# every widget routes through); it still calls the three RA8_PRIV helpers
+# through the unchanged private header src/ra8_widget_internal.h, so it
+# resolves them out of this archive instead of a sibling object. Every widget
+# vtable / init entry point is published C ABI and comes from here now, and the
+# Zig widgets call back into the still-C ra8_widget_invalidate in the same
+# library. The RA8_WIDGET_SOURCES glob in library_sources.cmake therefore
+# stays for that one file: it is smaller, not gone.
 ra8_add_zig_library(
   NAME
   ra8_widget
