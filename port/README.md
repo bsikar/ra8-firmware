@@ -9,7 +9,7 @@ Each port carries one fact worth knowing before you open it:
 
 | Port | Bridges |
 |---|---|
-| [`threadx/`](threadx/) | Eclipse ThreadX to the RA8 clock tree -- it retunes the kernel tick, because the vendored assembly start-up programs SysTick from a compile-time clock constant. |
+| [`threadx/`](threadx/) | Eclipse ThreadX to the RA8 clock tree -- it retunes the kernel tick, because the vendored assembly start-up programs SysTick from a compile-time clock constant. It also binds the [`fw_os`](../libs/if/inc/fw_os.h) port contract onto ThreadX, so a portable library never names a `tx_*` symbol. |
 | [`netxduo/`](netxduo/) | NetX Duo to a link layer: the Ethernet driver over `ra8_net_pal`, and its wireless twin over the ESP32-C6. |
 | [`usbx/`](usbx/) | USBX's device stack to the hand-written `ra8_usb` controller driver. |
 | [`levelx/`](levelx/) | A LevelX wear-levelled NOR partition up to an `ra8_fs` block device. |

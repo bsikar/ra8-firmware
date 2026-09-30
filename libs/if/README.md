@@ -106,12 +106,24 @@ Three design calls worth naming, since they are choices rather than readings:
   which the composition root may name, because it already knows which RTOS it
   picked.
 
-There is no binding yet, so the contract carries its own storage-size defaults
-behind `#ifndef` rather than including a `fw_os_caps.h` that does not exist. A
-binding overrides them from its build. `src/fw_os_contract.c` is a translation
-unit with no code in it whose only job is to be compiled by the ordinary
+The contract carries its own storage-size defaults behind `#ifndef` rather than
+including a per-binding capability header, and a binding raises one from its
+own build if its control block does not fit. `src/fw_os_contract.c` is a translation unit with
+no code in it whose only job is to be compiled by the ordinary
 `libs/if/src/*.c` discovery, so the contract cannot rot the way `arch/arch.h`
 did while nothing fed it to a compiler.
+
+Two bindings satisfy the seam today, and neither is a caller:
+
+| Binding | Where | What it is for |
+|---|---|---|
+| Host test | [`tests/support/src/fw_os_host_test.c`](../../tests/support/src/fw_os_host_test.c) | Single-threaded, runs in the host unit-test build. Waits never block and a created thread is run by hand, so the conformance vectors can drive every failure answer without a scheduler. |
+| Eclipse ThreadX | [`port/threadx/src/fw_os_threadx.c`](../../port/threadx/src/fw_os_threadx.c) | The real one. Places a `TX_THREAD` / `TX_MUTEX` / `TX_SEMAPHORE` inside the caller's storage and forwards to `tx_*`. Declines the queue block. |
+
+Both decline `FW_OS_HAS_QUEUE`, which is what an optional surface is for. The
+ThreadX binding is the one that proves the storage sizes were not guessed: it
+static_asserts a real `TX_THREAD` into `K_FW_OS_THREAD_STORAGE_WORDS`, so the
+default stops compiling the day it stops being big enough.
 
 ## What still reaches an RTOS directly
 
