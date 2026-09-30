@@ -67,7 +67,7 @@ app	epub_stress	examples/ek_ra8d2/hw_pending/epub_stress/CMakeLists.txt	ek_ra8d2
 app	ereader_comic	examples/ek_ra8d2/hw_pending/ereader_comic/CMakeLists.txt	ek_ra8d2	-	-	32768
 app	ereader_cover	examples/ek_ra8d2/hw_pending/ereader_cover/CMakeLists.txt	ek_ra8d2	-	-	16384
 app	ereader_longstrip	examples/ek_ra8d2/hw_pending/ereader_longstrip/CMakeLists.txt	ek_ra8d2	-	-	16384
-app	ereader_m33	examples/ek_ra8d2/hw_pending/ereader_m33/CMakeLists.txt	ek_ra8d2	-	aux_srcs	2200
+app	ereader_m33	examples/ek_ra8d2/hw_pending/ereader_m33/CMakeLists.txt	ek_ra8d2	-	aux_srcs,cpu1_image,mram_length	2200
 app	ereader_manga	examples/ek_ra8d2/hw_pending/ereader_manga/CMakeLists.txt	ek_ra8d2	-	-	32768
 app	ereader_zoom	examples/ek_ra8d2/hw_pending/ereader_zoom/CMakeLists.txt	ek_ra8d2	-	-	32768
 app	eth_gptp_timestamp_demo	examples/ek_ra8d2/hw_pending/eth_gptp_timestamp_demo/CMakeLists.txt	ek_ra8d2	-	-	2200

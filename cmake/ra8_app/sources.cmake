@@ -943,22 +943,12 @@ macro(_ra8_app_collect_sources)
   if(_RA8_APP_CPU1_IMAGE)
     list(APPEND _ra8_ld_why "CPU1_IMAGE")
     include(${_ra8_board_dir}/ld/cpu1_memory_map.cmake)
-    string(
-      APPEND
-      _ra8_ld_lines
-      "SECTIONS\n"
-      "{\n"
-      "    .cpu1_image ${RA8_CPU1_IMAGE_ORIGIN} : ALIGN(4)\n"
-      "    {\n"
-      "        KEEP(*(.cpu1_image))\n"
-      "        KEEP(*(.cpu1_image.*))\n"
-      "    }\n"
-      "}\n"
-      "g_ra8_ls_cpu1_mram_start = ${RA8_CPU1_IMAGE_ORIGIN};\n"
-      "g_ra8_ls_cpu1_stack_top  = ${RA8_CPU1_STACK_TOP_EXPR};\n"
-      "ASSERT(LOADADDR(.dtcm_data) + SIZEOF(.dtcm_data) <= ${RA8_CPU1_IMAGE_ORIGIN},\n"
-      "       \"FATAL: the M85 image overran the CPU1 image window\")\n"
-    )
+    # Read from a tracked template rather than built as a string here, so the
+    # two g_ra8_ls_cpu1_* symbols are declared in a file the linker-script
+    # checkers scan. See cpu1_image.ld.in for why the section is addressed.
+    file(READ ${_ra8_board_dir}/ld/cpu1_image.ld.in _ra8_cpu1_tpl)
+    string(CONFIGURE "${_ra8_cpu1_tpl}" _ra8_cpu1_frag @ONLY)
+    string(APPEND _ra8_ld_lines "${_ra8_cpu1_frag}")
   endif()
   if(_RA8_APP_NS_INLINE_IMAGE)
     list(APPEND _ra8_ld_why "NS_INLINE_IMAGE")
