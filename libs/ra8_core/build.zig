@@ -3,7 +3,7 @@
 //!
 //! Build graph for `ra8_core`.
 //!
-//! Twelve seams of this library are Zig so far: the freestanding runtime
+//! Every seam of this library is Zig now: the freestanding runtime
 //! primitives (#2820) and the deterministic `rand()` / `srand()` override
 //! that joins them (#2890), the pin-claim validator (#2825), the SysTick timebase
 //! with its time-interface binding (#2830), the log backend with
@@ -14,9 +14,10 @@
 //! (#2868) and the error sink pair: the weak fatal trap every failed
 //! `RA8_ASSERT` lands on, plus the log-backed non-fatal sink (#2875) and
 //! the application-layer bring-up with its stack-canary sentinel (#2884) and
-//! the newlib `_sbrk` heap trap (#2895) and the startup SDRAM zero-fill
-//! (#2901).
-//! Everything else in `src/` is still C, which
+//! the newlib `_sbrk` heap trap (#2895), the startup SDRAM zero-fill
+//! (#2901) and the secure-comparison primitives (#2908), which were the last
+//! C in the library.
+//! `src/` holds no `.c` at all any more, which
 //! `.github/zig-parallel-tree-allowlist.tsv` records per file.
 //!
 //! WHAT THIS LIBRARY SHIPS DEPENDS ON WHO LINKS IT.
@@ -333,6 +334,29 @@ pub fn build(b: *std.Build) void {
     });
     sbrk_trap_abi.addImport("heap_sbrk", heap_sbrk);
 
+    // The two security primitives, kept apart because they are two
+    // purposes: a compare whose work cannot depend on the bytes, and a
+    // scrub the optimiser is not allowed to delete.
+    const secure_compare = b.createModule(.{
+        .root_source_file = b.path("src/internal/secure/compare.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+
+    const secure_scrub = b.createModule(.{
+        .root_source_file = b.path("src/internal/secure/scrub.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+
+    const secure_abi = b.createModule(.{
+        .root_source_file = b.path("src/secure_abi.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    secure_abi.addImport("secure_compare", secure_compare);
+    secure_abi.addImport("secure_scrub", secure_scrub);
+
     // The startup zero-fill for `.sdram_data`. One internal unit: the
     // half-open span rule and the byte fill, plus the target/host split over
     // where the section actually is, which is the same shape the stack
@@ -384,6 +408,7 @@ pub fn build(b: *std.Build) void {
     root.addImport("infrastructure_abi", infrastructure_abi);
     root.addImport("sbrk_trap_abi", sbrk_trap_abi);
     root.addImport("boot_region_abi", boot_region_abi);
+    root.addImport("secure_abi", secure_abi);
 
     if (!image_build) {
         const library = b.addLibrary(.{
@@ -415,6 +440,7 @@ pub fn build(b: *std.Build) void {
         image_root.addImport("infrastructure_abi", infrastructure_abi);
         image_root.addImport("sbrk_trap_abi", sbrk_trap_abi);
         image_root.addImport("boot_region_abi", boot_region_abi);
+        image_root.addImport("secure_abi", secure_abi);
 
         const image_library = b.addLibrary(.{
             .name = "ra8_core",
@@ -514,4 +540,13 @@ pub fn build(b: *std.Build) void {
     });
     boot_tests.addImport("boot_region", boot_region);
     test_step.dependOn(&b.addRunArtifact(b.addTest(.{ .root_module = boot_tests })).step);
+
+    const secure_tests = b.createModule(.{
+        .root_source_file = b.path("tests/secure_test.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    secure_tests.addImport("secure_compare", secure_compare);
+    secure_tests.addImport("secure_scrub", secure_scrub);
+    test_step.dependOn(&b.addRunArtifact(b.addTest(.{ .root_module = secure_tests })).step);
 }

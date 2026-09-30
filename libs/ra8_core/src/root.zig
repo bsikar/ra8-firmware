@@ -23,4 +23,5 @@ comptime {
     _ = @import("infrastructure_abi");
     _ = @import("sbrk_trap_abi");
     _ = @import("boot_region_abi");
+    _ = @import("secure_abi");
 }
