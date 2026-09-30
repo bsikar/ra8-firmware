@@ -203,15 +203,41 @@ def is_build_output_path(path: object) -> bool:
     return is_build_output(text)
 
 
-def _tracked() -> list[str]:
-    """Existing tracked plus untracked-but-not-ignored paths, from git itself.
+def repo_files(
+    pathspec: tuple[str, ...] = (), *, root: Path = REPO_ROOT, caller: str = "lint_targets.py"
+) -> list[str]:
+    """Every present repository file in scope, tracked OR untracked-not-ignored.
 
-    ``git ls-files --cached`` also prints tracked paths deleted in the working
-    tree.  Those are part of the index until the next commit, but they are not
-    lint targets: passing them to a formatter makes every local check fail with
-    ``ENOENT`` during an ordinary deletion.  Filter on filesystem existence so
-    working-tree checks describe the tree that is actually present; committed
-    CI snapshots are unchanged by this distinction.
+    THE enumeration primitive for gates (#713). A checker that shells out to a
+    bare ``git ls-files`` sees the INDEX, not the working tree, so a source
+    file nobody has ``git add``ed yet is invisible to it -- and the checker
+    reports PASS over code it never read.  That is not hypothetical: it turned
+    ``dev`` red once, after a local run of the very gates that should have
+    caught it came back clean.  ``--others --exclude-standard`` closes the hole
+    while keeping ``.gitignore``d build output out of scope, so the cost of the
+    fix is nothing.
+
+    Deleted-but-still-tracked paths are dropped: ``--cached`` prints a path the
+    index still carries after ``rm``, and handing it to a formatter fails with
+    ``ENOENT`` during an ordinary deletion.  Filtering on existence makes the
+    result describe the tree that is actually on disk, which is what every
+    working-tree checker means by "the files".  A committed CI snapshot has no
+    deletions pending, so the distinction never changes a CI verdict.
+
+    Args:
+        pathspec: Optional git pathspec words (``"*.c"``, ``"tests"``) narrowing
+            the enumeration.  Empty means the whole repository.
+        root: Repository to enumerate.  Defaults to this checkout; the selftest
+            passes a throwaway fixture.
+        caller: Script name for the FATAL diagnostic, so a failure names the
+            gate that hit it rather than this module.
+
+    Returns:
+        Repo-relative paths of existing files, sorted.
+
+    Raises:
+        SystemExit: When git fails.  An enumeration that cannot run must never
+            read as an empty -- that is, clean -- tree.
     """
     proc = subprocess.run(
         [  # noqa: S607 -- trusted: fixed git argv
@@ -221,17 +247,24 @@ def _tracked() -> list[str]:
             "--cached",
             "--others",
             "--exclude-standard",
+            "--",
+            *pathspec,
         ],
-        cwd=REPO_ROOT,
+        cwd=root,
         capture_output=True,
         text=True,
         check=False,
     )
     if proc.returncode != 0:
         sys.stderr.write(proc.stderr)
-        sys.stderr.write("lint_targets.py: FATAL -- `git ls-files` failed\n")
+        sys.stderr.write(f"{caller}: FATAL -- `git ls-files` failed\n")
         sys.exit(2)
-    return [rel for rel in proc.stdout.split("\0") if rel and (REPO_ROOT / rel).is_file()]
+    return sorted({rel for rel in proc.stdout.split("\0") if rel and (root / rel).is_file()})
+
+
+def _tracked() -> list[str]:
+    """Every present first-party candidate path in this checkout."""
+    return repo_files()
 
 
 def _excluded(rel: str, lang: str | None = None) -> bool:
@@ -420,10 +453,53 @@ def firmware_app_dirs(paths: list[str] | None = None) -> tuple[str, ...]:
     return tuple(sorted(scripts & vectors))
 
 
+def _seed_enumeration_fixture(root: Path) -> None:
+    """Build a throwaway git repo carrying one file of every enumeration class."""
+    (root / "libs/ra8_new/src").mkdir(parents=True)
+    (root / "build").mkdir()
+    (root / ".gitignore").write_text("build/\n", encoding="ascii")
+    (root / "libs/ra8_new/src/tracked.c").write_text("int tracked(void);\n", encoding="ascii")
+    (root / "libs/ra8_new/src/deleted.c").write_text("int gone(void);\n", encoding="ascii")
+    (root / "libs/ra8_new/src/untracked.c").write_text("int fresh(void);\n", encoding="ascii")
+    (root / "build/generated.c").write_text("int built(void);\n", encoding="ascii")
+    for argv in (
+        ("init", "-q"),
+        ("add", ".gitignore", "libs/ra8_new/src/tracked.c", "libs/ra8_new/src/deleted.c"),
+        ("-c", "user.name=t", "-c", "user.email=t@t", "commit", "-qm", "seed"),
+    ):
+        subprocess.run(  # noqa: S603, S607 -- fixed git argv against a temporary fixture
+            ["git", *argv], cwd=root, check=True, capture_output=True
+        )
+    (root / "libs/ra8_new/src/deleted.c").unlink()
+
+
+def _enumeration_cases(root: Path) -> tuple[tuple[bool, str], ...]:
+    """Both directions of the #713 contract, against a fixture repo.
+
+    The must-fire case is the one that matters: a source file written but never
+    ``git add``ed has to appear, because a gate that cannot see it reports
+    clean over code it never read.  The must-stay-quiet cases keep the fix from
+    being bought with a worse bug -- sweeping ignored build output into every
+    gate's scope, or handing a formatter a path the working tree no longer has.
+    """
+    _seed_enumeration_fixture(root)
+    seen = repo_files(root=root)
+    scoped = repo_files(("libs",), root=root)
+    return (
+        ("libs/ra8_new/src/untracked.c" in seen, "untracked, non-ignored source IS enumerated"),
+        ("libs/ra8_new/src/tracked.c" in seen, "tracked source is still enumerated"),
+        ("build/generated.c" not in seen, "gitignored build output stays out of scope"),
+        ("libs/ra8_new/src/deleted.c" not in seen, "tracked-but-deleted path is not a target"),
+        ("libs/ra8_new/src/untracked.c" in scoped, "pathspec narrowing keeps the untracked file"),
+        (".gitignore" not in scoped, "pathspec narrowing still narrows"),
+    )
+
+
 def selftest() -> int:
     """Prove source classification includes tricky code and excludes real outputs/SOUP."""
     with tempfile.TemporaryDirectory(prefix="lint-targets-selftest-") as raw:
         root = Path(raw)
+        (root / "enumeration").mkdir()
         hook = root / "scripts/git/commit-msg"
         hook.parent.mkdir(parents=True)
         hook.write_text("#!/usr/bin/env bash\nexit 0\n", encoding="ascii")
@@ -454,6 +530,7 @@ def selftest() -> int:
                 == ("apps/board/reader",),
                 "firmware product needs linker and vector markers",
             ),
+            *_enumeration_cases(root / "enumeration"),
         )
     failed = [label for passed, label in cases if not passed]
     for passed, label in cases:

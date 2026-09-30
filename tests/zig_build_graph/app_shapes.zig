@@ -68,6 +68,7 @@ pub const default_stack_bytes: u32 = 2200;
 pub const Keyword = enum {
     no_nsc,
     cpu1_image,
+    ns_inline_image,
     name,
     stack_bytes,
     description,
@@ -87,6 +88,7 @@ pub const Keyword = enum {
         return switch (self) {
             .no_nsc => "NO_NSC",
             .cpu1_image => "CPU1_IMAGE",
+            .ns_inline_image => "NS_INLINE_IMAGE",
             .name => "NAME",
             .stack_bytes => "STACK_BYTES",
             .description => "DESCRIPTION",
@@ -110,7 +112,7 @@ pub const Keyword = enum {
 
     pub fn group(self: Keyword) Group {
         return switch (self) {
-            .no_nsc, .cpu1_image => .option,
+            .no_nsc, .cpu1_image, .ns_inline_image => .option,
             .name, .stack_bytes, .description, .board, .threadx_heap, .mram_length => .one_value,
             .uses, .libs, .off_target_libs, .nsc_srcs, .extra_srcs, .aux_srcs, .sram_text => .multi_value,
         };
@@ -155,6 +157,7 @@ pub const Shape = struct {
     off_target_libs: bool = false,
     threadx_heap: bool = false,
     cpu1_image: bool = false,
+    ns_inline_image: bool = false,
     sram_text: bool = false,
     mram_length: bool = false,
 
@@ -171,6 +174,7 @@ pub const Shape = struct {
             self.off_target_libs == other.off_target_libs and
             self.threadx_heap == other.threadx_heap and
             self.cpu1_image == other.cpu1_image and
+            self.ns_inline_image == other.ns_inline_image and
             self.sram_text == other.sram_text and
             self.mram_length == other.mram_length;
     }
@@ -199,12 +203,12 @@ pub const Shape = struct {
     }
 
     pub fn flagValues(self: Shape) [flag_names.len]bool {
-        return .{ self.no_nsc, self.nsc_srcs, self.extra_srcs, self.aux_srcs, self.off_target_libs, self.threadx_heap, self.cpu1_image, self.sram_text, self.mram_length };
+        return .{ self.no_nsc, self.nsc_srcs, self.extra_srcs, self.aux_srcs, self.off_target_libs, self.threadx_heap, self.cpu1_image, self.ns_inline_image, self.sram_text, self.mram_length };
     }
 };
 
 /// The flag half of a shape, in the order `Shape.flagValues` returns it.
-pub const flag_names = [_][]const u8{ "no_nsc", "nsc_srcs", "extra_srcs", "aux_srcs", "off_target_libs", "threadx_heap", "cpu1_image", "sram_text", "mram_length" };
+pub const flag_names = [_][]const u8{ "no_nsc", "nsc_srcs", "extra_srcs", "aux_srcs", "off_target_libs", "threadx_heap", "cpu1_image", "ns_inline_image", "sram_text", "mram_length" };
 
 /// One app that parsed.
 pub const Row = struct {
@@ -380,6 +384,9 @@ pub fn parseBlock(allocator: std.mem.Allocator, listfile: []const u8, body: []co
                 } else if (keyword == .cpu1_image) {
                     shape.cpu1_image = true;
                     current = null;
+                } else if (keyword == .ns_inline_image) {
+                    shape.ns_inline_image = true;
+                    current = null;
                 } else {
                     current = keyword;
                     awaiting_value = keyword.group() == .one_value;
@@ -419,7 +426,7 @@ pub fn parseBlock(allocator: std.mem.Allocator, listfile: []const u8, body: []co
             .threadx_heap => shape.threadx_heap = true,
             .mram_length => shape.mram_length = true,
             .description, .libs => {},
-            .no_nsc, .cpu1_image => unreachable,
+            .no_nsc, .cpu1_image, .ns_inline_image => unreachable,
         }
     }
 
@@ -564,8 +571,9 @@ pub fn parseLedger(allocator: std.mem.Allocator, text: []const u8) ![]Entry {
         shape.off_target_libs = flag_values[4];
         shape.threadx_heap = flag_values[5];
         shape.cpu1_image = flag_values[6];
-        shape.sram_text = flag_values[7];
-        shape.mram_length = flag_values[8];
+        shape.ns_inline_image = flag_values[7];
+        shape.sram_text = flag_values[8];
+        shape.mram_length = flag_values[9];
         const stack = std.fmt.parseInt(u32, stack_field, 10) catch return LedgerError.BadStackBytes;
         try out.append(.{ .row = .{
             .name = app_name,

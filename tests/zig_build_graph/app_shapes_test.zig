@@ -83,6 +83,7 @@ fn shapeOfTableApp(allocator: std.mem.Allocator, app: app_table.CrossApp) !Shape
         .off_target_libs = app.off_target_libs.len != 0,
         .threadx_heap = app.threadx_heap,
         .cpu1_image = app.cpu1_image,
+        .ns_inline_image = app.ns_inline_image,
         .sram_text = app.sram_text.len != 0,
         .mram_length = app.mram_length != null,
     };
