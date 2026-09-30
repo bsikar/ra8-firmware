@@ -55,54 +55,99 @@ Rules that hold for every port:
 
 ## The catalog
 
-Status as measured against `dev` at `26bb09c`. "Coupled" means portable code
-reaches a concrete `libs/ra8_hal/` symbol directly, with no neutral header in
-between. The coupling counts are files under `examples/`, measured by the
-commands in the next section; they are a coupling indicator, not a work
-estimate, and several files name more than one peripheral.
+"Coupled" means portable code reaches a concrete `libs/ra8_hal/` symbol
+directly, with no neutral header in between. The coupling counts are files
+under `examples/`; they are a coupling indicator, not a work estimate, and
+several files name more than one peripheral.
+
+Every count below is measured, not pinned to a commit and not hand-run. The
+manifest in the next section names the command behind each one, and
+`scripts/checks/check_ports_catalog.py` re-runs all of them, so a number here
+that has drifted from the tree fails the gate rather than quietly misleading
+the next reader.
 
 | Port | Status | Coupled example files | Priority | Note |
 | --- | --- | ---: | --- | --- |
 | `fw_os` (mutex / time / yield) | three reinventions, no port | -- | P0 | Splits to its own child issue; do first. |
-| clock / CGC | coupled, no port | 240 | P0 | Wants an intent API, not a portable register API. |
-| display / framebuffer | facade exists, caps, two backends | 22 | P0 | Enforcement plus backends; see the bypass count below. |
-| GPIO | coupled, free functions only | 52 | P0 | Extract the vtable; the board owns the pin map. |
-| timebase / monotonic `now()` | non-injectable singleton in `libs/ra8_core/` | 247 | P1 | Foundational. `ra8_time_interface.h` is the nearest thing today. |
+| clock / CGC | coupled, no port | 227 | P0 | Wants an intent API, not a portable register API. |
+| display / framebuffer | facade exists, caps, two backends | 22 | P0 | Enforcement plus backends; see the population rows below. |
+| GPIO | coupled, free functions only | 49 | P0 | Extract the vtable; the board owns the pin map. |
+| timebase / monotonic `now()` | non-injectable singleton in `libs/ra8_core/` | 237 | P1 | Foundational. `ra8_time_interface.h` is the nearest thing today. |
 | timer / counter / capture | coupled | 13 GPT, 3 AGT | P1 | Split from PWM. |
 | PWM | coupled to GPT output | -- | P1 | Duty semantics; its own port. |
-| serial (full-duplex UART) | output half done via stream | 26 | P1 | The receive half and baud / flow control are the gap. |
+| serial (full-duplex UART) | output half done via stream | 27 | P1 | The receive half and baud / flow control are the gap. |
 | SPI bus, I2C bus, blockdev, stream | **done** -- reference implementations | -- | P3 | Copy the caps discipline from here. |
 | filesystem | **done** -- `libs/if/` | -- | P3 | The only port under `libs/if/` today. |
-| flash / NVM, ADC, RTC, watchdog | coupled | 10 / 2 / 6 / 4 | P2 | Want `_get_caps()` and `_power()`; re-seat dfu and devcfg. |
+| flash / NVM, ADC, RTC, watchdog | coupled | 4 flash, 2 ADC, 6 RTC, 6 watchdog | P2 | Want `_get_caps()` and `_power()`; re-seat dfu and devcfg. |
 | DMA-intent, IRQ-controller, reset | coupled | 6 DMA, 13 ICU/ELC | P2 | Intent only. The two-level RA8 routing does not generalize. |
 | SPI-device, CAN, audio, camera | gap or niche | -- | P3 | Design when a board needs one. |
 | crypto / RNG | `libs/ra8_psa_crypto/` exists | -- | P2 | PSA Crypto is the one standard adopted as a port. |
 
+Two figures the rows above are read against:
+
+| Measured population | Files |
+| --- | ---: |
+| `examples/` C and header files | 452 |
+| `examples/` files naming `ra8_display_pal` | 22 |
+
 ### How the numbers were measured
 
-Reproduce any row from the repository root:
+Every figure above is an entry below: the table row it backs, the count it
+claims, and the command that produces it. `scripts/checks/check_ports_catalog.py`
+re-runs each command against the tree and fails when the count here, or the
+cell it names, has drifted. Add a row to a table and add its entry here; there
+is no third place to keep in step.
 
 ```sh
-grep -rlE 'ra8_cgc' examples --include=*.c --include=*.h | wc -l   # 240
-grep -rlE 'ra8_gpio|ra8_ioport' examples --include=*.c --include=*.h | wc -l   # 52
-grep -rlE 'ra8_glcdc|ra8_epaper|ra8_drw' examples --include=*.c --include=*.h | wc -l   # 22
-grep -rlE 'ra8_systick|ra8_time' examples --include=*.c --include=*.h | wc -l   # 247
+# MEASURED BLOCK -- re-run by scripts/checks/check_ports_catalog.py
+# clock / CGC -- 227 file(s)
+grep -rlE 'ra8_cgc' examples --include=*.c --include=*.h | wc -l
+# display / framebuffer -- 22 file(s)
+grep -rlE 'ra8_glcdc|ra8_epaper|ra8_drw' examples --include=*.c --include=*.h | wc -l
+# GPIO -- 49 file(s)
+grep -rlE 'ra8_gpio|ra8_ioport' examples --include=*.c --include=*.h | wc -l
+# timebase / monotonic now() -- 237 file(s)
+grep -rlE 'ra8_systick|ra8_time' examples --include=*.c --include=*.h | wc -l
+# timer / counter / capture [GPT] -- 13 file(s)
+grep -rlE 'ra8_gpt' examples --include=*.c --include=*.h | wc -l
+# timer / counter / capture [AGT] -- 3 file(s)
+grep -rlE 'ra8_agt' examples --include=*.c --include=*.h | wc -l
+# serial (full-duplex UART) -- 27 file(s)
+grep -rlE 'ra8_sci|ra8_uart' examples --include=*.c --include=*.h | wc -l
+# flash / NVM, ADC, RTC, watchdog [flash] -- 4 file(s)
+grep -rlE 'ra8_flash|ra8_nvm' examples --include=*.c --include=*.h | wc -l
+# flash / NVM, ADC, RTC, watchdog [ADC] -- 2 file(s)
+grep -rlE 'ra8_adc' examples --include=*.c --include=*.h | wc -l
+# flash / NVM, ADC, RTC, watchdog [RTC] -- 6 file(s)
+grep -rlE 'ra8_rtc' examples --include=*.c --include=*.h | wc -l
+# flash / NVM, ADC, RTC, watchdog [watchdog] -- 6 file(s)
+grep -rlE 'ra8_wdt|ra8_iwdt' examples --include=*.c --include=*.h | wc -l
+# DMA-intent, IRQ-controller, reset [DMA] -- 6 file(s)
+grep -rlE 'ra8_dmac|ra8_dtc' examples --include=*.c --include=*.h | wc -l
+# DMA-intent, IRQ-controller, reset [ICU/ELC] -- 13 file(s)
+grep -rlE 'ra8_icu|ra8_elc' examples --include=*.c --include=*.h | wc -l
+# examples/ C and header files -- 452 file(s)
+find examples \( -name '*.c' -o -name '*.h' \) -type f | wc -l
+# examples/ files naming ra8_display_pal -- 22 file(s)
+grep -rlE 'ra8_display_pal' examples --include=*.c --include=*.h | wc -l
 ```
 
-Out of 470 `.c` / `.h` files under `examples/`. Two caveats worth stating
-plainly, because the figures move:
+Three things worth stating plainly, because the figures move:
 
 1. These are *file* counts naming a concrete symbol, not call-site counts. A
    file that calls `ra8_cgc_*` forty times counts once.
 2. They differ from the figures quoted when #693 was filed (494 clock, 227
    display, 158 GPIO). Those were call-site counts over a wider file set. The
-   ratio between ports is the durable signal; the absolute number is not, and
-   nothing should gate on it until a checker owns the measurement.
+   ratio between ports is the durable signal; the absolute number is not.
+3. The flash, ADC, RTC, watchdog, DMA and interrupt-controller rows carried
+   numbers no documented command reproduced. They now carry the pattern that
+   produces them, which is why some moved: the watchdog row counts both `wdt`
+   and `iwdt`, and the flash row counts what `ra8_flash` and `ra8_nvm`
+   actually name.
 
-The display row needs one more fact to read correctly: 22 example files name a
-concrete display symbol and 22 name `ra8_display_pal`. The port exists and is
-used; the concrete reach-ins are alongside it, not instead of it. That is an
-enforcement problem, not a missing-port problem.
+The display row and the `ra8_display_pal` population row carry the same count.
+The port exists and is used; the concrete reach-ins sit alongside it, not
+instead of it. That is an enforcement problem, not a missing-port problem.
 
 ## Acceptance criteria, per port
 
