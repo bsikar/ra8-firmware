@@ -247,7 +247,6 @@ ra8_viewer_read_path(
   RA8_MEM_SRC ${FW_ROOT}/libs/ra8_mem/src
   KEEP ra8_tile_cache.c ra8_keycache.c ra8_arena.c
   DROP ra8_glyph_atlas.c
-       ra8_slab.c
        ra8_vmem.c
        ra8_vmem_stream.c
        ra8_vsource.c
