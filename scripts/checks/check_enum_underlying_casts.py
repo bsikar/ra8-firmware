@@ -40,7 +40,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from annot_clang import tu_args
 from check_c23_headers import _strip_comments_and_strings
-from lint_targets import is_build_output_path
+from lint_targets import is_build_output_path, repo_files
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 DIAGNOSTIC_NAME = "ra8-enum-underlying-cast"
@@ -93,17 +93,8 @@ def _is_in_scope(path: Path) -> bool:
 
 def _tracked_sources() -> list[Path]:
     """Return every tracked, maintained C source path."""
-    tracked_result = subprocess.run(
-        ["/usr/bin/git", "ls-files", "-z", "--", "*.c", "*.h"],
-        cwd=REPO_ROOT,
-        capture_output=True,
-        check=False,
-    )
-    if tracked_result.returncode != 0:
-        message = "git ls-files failed while enumerating C sources"
-        raise RuntimeError(message)
-    paths = [REPO_ROOT / raw.decode() for raw in tracked_result.stdout.split(b"\0") if raw]
-    return [path for path in paths if _is_in_scope(path)]
+    rels = repo_files(("*.c", "*.h"), root=REPO_ROOT, caller="check_enum_underlying_casts.py")
+    return [REPO_ROOT / rel for rel in rels if _is_in_scope(REPO_ROOT / rel)]
 
 
 def _contains_fixed_enum(text: str) -> bool:
