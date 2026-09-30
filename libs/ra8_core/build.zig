@@ -3,7 +3,7 @@
 //!
 //! Build graph for `ra8_core`.
 //!
-//! Eight seams of this library are Zig so far: the freestanding runtime
+//! Nine seams of this library are Zig so far: the freestanding runtime
 //! primitives (#2820), the pin-claim validator (#2825), the SysTick timebase
 //! with its time-interface binding (#2830), the log backend with
 //! `ra8_err_to_str` (#2836), the millisecond tick counter, delay policy and
@@ -11,7 +11,8 @@
 //! and stream decoder charges against (#2862) and the fault block: the
 //! exception reporter, the cross-reset crash log and the SCB register window
 //! (#2868) and the error sink pair: the weak fatal trap every failed
-//! `RA8_ASSERT` lands on, plus the log-backed non-fatal sink (#2875).
+//! `RA8_ASSERT` lands on, plus the log-backed non-fatal sink (#2875) and
+//! the application-layer bring-up with its stack-canary sentinel (#2884).
 //! Everything else in `src/` is still C, which
 //! `.github/zig-parallel-tree-allowlist.tsv` records per file.
 //!
@@ -294,6 +295,22 @@ pub fn build(b: *std.Build) void {
         error_abi_modules.put(name, module) catch @panic("OOM");
     }
 
+    // Application-layer bring-up. One internal unit, because the canary
+    // region is the only thing here with any logic in it; the order of the
+    // three bring-up calls is the membrane's own contract.
+    const infrastructure_canary = b.createModule(.{
+        .root_source_file = b.path("src/internal/infrastructure/canary.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+
+    const infrastructure_abi = b.createModule(.{
+        .root_source_file = b.path("src/infrastructure_abi.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    infrastructure_abi.addImport("infrastructure_canary", infrastructure_canary);
+
     const fault_abis = [_][]const u8{ "scb_abi", "exception_abi", "crashlog_abi" };
     var fault_abi_modules = std.StringHashMap(*std.Build.Module).init(b.allocator);
     inline for (fault_abis) |name| {
@@ -325,6 +342,7 @@ pub fn build(b: *std.Build) void {
     inline for (error_abis) |name| {
         root.addImport(name, error_abi_modules.get(name).?);
     }
+    root.addImport("infrastructure_abi", infrastructure_abi);
 
     if (!image_build) {
         const library = b.addLibrary(.{
@@ -353,6 +371,7 @@ pub fn build(b: *std.Build) void {
         inline for (error_abis) |name| {
             image_root.addImport(name, error_abi_modules.get(name).?);
         }
+        image_root.addImport("infrastructure_abi", infrastructure_abi);
 
         const image_library = b.addLibrary(.{
             .name = "ra8_core",
@@ -428,4 +447,12 @@ pub fn build(b: *std.Build) void {
         error_tests.addImport(b.fmt("error_{s}", .{unit}), error_modules_by_unit.get(unit).?);
     }
     test_step.dependOn(&b.addRunArtifact(b.addTest(.{ .root_module = error_tests })).step);
+
+    const infrastructure_tests = b.createModule(.{
+        .root_source_file = b.path("tests/infrastructure_test.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    infrastructure_tests.addImport("infrastructure_canary", infrastructure_canary);
+    test_step.dependOn(&b.addRunArtifact(b.addTest(.{ .root_module = infrastructure_tests })).step);
 }
