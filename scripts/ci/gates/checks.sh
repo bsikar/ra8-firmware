@@ -15,7 +15,7 @@
 #
 # Gates in this file: pre-commit-checks, agnostic-registers, annotations,
 # doc-attachment, tests-readme, disambig-readmes,
-# cite-check, hil-eil-parity
+# cite-check, hil-eil-parity, ports-catalog
 
 # --- pre-commit-checks ----------------------------------------------------
 # The check_*.py gate suite. Each entry runs in its default mode -- the same
@@ -965,6 +965,32 @@ gate_arch_caps() (
   require_cmd python3 "the port-completeness gate is a Python source scanner"
   python3 scripts/checks/check_arch_caps.py --selftest
   python3 scripts/checks/check_arch_caps.py
+)
+
+# --- ports-catalog --------------------------------------------------------
+# docs/PORTS.md is the planning artifact for #693, and its build-first order is
+# argued from coupling counts. Those counts were hand-run against a commit
+# named in the page, and they had rotted: clock read 240 against a tree of 227,
+# GPIO 52 against 49, timebase 247 against 237, and the population denominator
+# 470 against 452. The page itself said "nothing should gate on it until a
+# checker owns the measurement", so now one does.
+#
+# Everything checked is DERIVED from the page. Its manifest block names, per
+# figure, the table row it backs and the command that produces it; the gate
+# re-runs each command and fails when the manifest count or the cell it names
+# has drifted, in either direction. A count that grew silently is a migration
+# going backwards; one that shrank silently is progress nobody credited. A
+# table row carrying a count with no entry behind it fails too, because an
+# unreproducible number is the thing this gate exists to stop.
+#
+# --selftest FIRST, with a measurement floor and a scanned-file floor, for the
+# same reason the other derived gates carry them: a page whose grammar stopped
+# matching reads as perfectly clean.
+gate_ports_catalog() (
+  set -e
+  require_cmd python3 "the ports-catalog gate is a Python source scanner"
+  python3 scripts/checks/check_ports_catalog.py --selftest
+  python3 scripts/checks/check_ports_catalog.py --check
 )
 
 # --- hil-eil-parity -------------------------------------------------------
