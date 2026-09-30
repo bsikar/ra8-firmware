@@ -312,23 +312,33 @@ macro(_ra8_app_collect_sources)
     # The arena hooks forward to the shared decoder scratch, and reflow_image.c
     # routes WebP through the shared container sniff (#768), so both of those
     # TUs travel with the reflow sources wherever they go.
-    list(APPEND _ra8_lib_extra ${_ra8_stb_impl} ${_ra8_stb_img_impl}
-         ${RA8_REPO_ROOT}/libs/ra8_imgdec/src/ra8_imgdec_scratch.c
-         ${RA8_REPO_ROOT}/libs/ra8_imgdec/src/ra8_imgdec_sniff.c
+    list(
+      APPEND
+      _ra8_lib_extra
+      ${_ra8_stb_impl}
+      ${_ra8_stb_img_impl}
+      ${RA8_REPO_ROOT}/libs/ra8_imgdec/src/ra8_imgdec_scratch.c
+      ${RA8_REPO_ROOT}/libs/ra8_imgdec/src/ra8_imgdec_sniff.c
     )
-    list(APPEND _ra8_lib_inc ${RA8_REPO_ROOT}/apps/shared_libs/third_party/stb
-         ${RA8_REPO_ROOT}/apps/shared_libs/reflow/src
-         ${RA8_REPO_ROOT}/libs/ra8_imgdec/inc
+    list(
+      APPEND
+      _ra8_lib_inc
+      ${RA8_REPO_ROOT}/apps/shared_libs/third_party/stb
+      ${RA8_REPO_ROOT}/apps/shared_libs/reflow/src
+      ${RA8_REPO_ROOT}/libs/ra8_imgdec/inc
     )
   elseif("rabook_compile" IN_LIST _RA8_APP_LIBS)
     set(_ra8_stb_img_impl ${RA8_REPO_ROOT}/apps/shared_libs/third_party/stb/stb_image_impl.c)
     # ra8_rabook_raster.c routes its WebP-or-stb decision through the shared
     # container sniff (#768), the same way reflow_image.c does above, so the
     # sniff TU travels with the rabook_compile sources wherever they go.
-    list(APPEND _ra8_lib_extra ${_ra8_stb_img_impl}
-         ${RA8_REPO_ROOT}/apps/shared_libs/reflow/src/ra8_img_arena.c
-         ${RA8_REPO_ROOT}/libs/ra8_imgdec/src/ra8_imgdec_scratch.c
-         ${RA8_REPO_ROOT}/libs/ra8_imgdec/src/ra8_imgdec_sniff.c
+    list(
+      APPEND
+      _ra8_lib_extra
+      ${_ra8_stb_img_impl}
+      ${RA8_REPO_ROOT}/apps/shared_libs/reflow/src/ra8_img_arena.c
+      ${RA8_REPO_ROOT}/libs/ra8_imgdec/src/ra8_imgdec_scratch.c
+      ${RA8_REPO_ROOT}/libs/ra8_imgdec/src/ra8_imgdec_sniff.c
     )
     list(
       APPEND
@@ -668,7 +678,8 @@ macro(_ra8_app_collect_sources)
   # (below) is written against the same I2C facade, and camera_capture
   # declares only "ra8_camera ra8_ov5640".
   if((("ra8_io_bus" IN_LIST _RA8_APP_LIBS) OR ("ra8_camera" IN_LIST _RA8_APP_LIBS))
-     AND (NOT "ra8_io" IN_LIST _RA8_APP_LIBS))
+     AND (NOT "ra8_io" IN_LIST _RA8_APP_LIBS)
+  )
     file(
       GLOB
       _ra8_io_bus_srcs
@@ -732,8 +743,11 @@ macro(_ra8_app_collect_sources)
       )
     endforeach()
   endif()
-  if(NOT (("ra8_io" IN_LIST _RA8_APP_LIBS) OR ("ra8_io_bus" IN_LIST _RA8_APP_LIBS)
-          OR ("ra8_camera" IN_LIST _RA8_APP_LIBS)))
+  if(NOT
+     (("ra8_io" IN_LIST _RA8_APP_LIBS)
+      OR ("ra8_io_bus" IN_LIST _RA8_APP_LIBS)
+      OR ("ra8_camera" IN_LIST _RA8_APP_LIBS))
+  )
     foreach(_ra8_board_list _ra8_lib_board _ra8_lib_extra)
       list(
         FILTER
@@ -853,13 +867,74 @@ macro(_ra8_app_collect_sources)
   # It measures the load end of .dtcm_data, the last section the board map
   # places AT > MRAM, so it catches an M85 image that grew into the CPU1
   # window. Without it that overlap would be silent.
+  #
+  # SRAM_TEXT <file.c>... is the third case (#742), and it does NOT compose by
+  # appending. Flash-writing code cannot execute from the MRAM it is erasing,
+  # so the DFU apps run ra8_flash.c and ra8_dfu_program.c from an SRAM-resident
+  # .sram_text section loaded from MRAM at boot. Appending that section after
+  # the INCLUDE links and produces an EMPTY section: ld assigns each input
+  # section to the first output section in script order that matches, and the
+  # board map's .text catch-all has already claimed those objects. The link is
+  # clean and the flash loop silently runs from MRAM, which is why the three
+  # forks spliced an EXCLUDE_FILE list into their private copy of .text.
+  #
+  # So the board map carries an injection point instead: an INCLUDE of
+  # ra8_app_pre_text.ld sitting between .vectors and .text. This macro always
+  # writes that file into the app's build dir and puts the dir on the linker
+  # search path, so a bare name resolves. Sitting ahead of .text, the
+  # generated .sram_text claims the named objects by the same first-match rule
+  # and no EXCLUDE_FILE is needed anywhere.
+  #
+  # The option names sources rather than taking a boolean because which code
+  # must run from SRAM is an app decision, not a board one. Both .obj and .o
+  # spellings are emitted: the object suffix follows the generator, and naming
+  # only one would silently place nothing under the other. The bare
+  # *(.sram_text) wildcards come first so the
+  # __attribute__((section(".sram_text"))) route that ra8_flash.h documents
+  # lands in the same section instead of being placed as an orphan.
+  set(_ra8_ld_pre_text "${CMAKE_CURRENT_BINARY_DIR}/ra8_app_pre_text.ld")
+  if(_RA8_APP_SRAM_TEXT)
+    if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/linker_script.ld")
+      message(
+        FATAL_ERROR
+          "ra8_add_app(): ${_RA8_APP_NAME} passes SRAM_TEXT but also has its "
+          "own linker_script.ld, which carries no injection point. An app "
+          "with a local map already has full control: put the .sram_text "
+          "section in that script, or delete it to compose the board map."
+      )
+    endif()
+    set(_ra8_sram_text_body "")
+    foreach(_ra8_src IN LISTS _RA8_APP_SRAM_TEXT)
+      string(APPEND _ra8_sram_text_body "        *${_ra8_src}.obj(.text .text.*)\n"
+             "        *${_ra8_src}.o(.text .text.*)\n"
+      )
+    endforeach()
+    list(JOIN _RA8_APP_SRAM_TEXT " " _ra8_sram_text_why)
+    file(
+      WRITE "${_ra8_ld_pre_text}"
+      "/* Generated by ra8_add_app(SRAM_TEXT ${_ra8_sram_text_why}). Do not edit. */\n"
+      "    .sram_text : ALIGN(4)\n"
+      "    {\n"
+      "        g_ra8_ls_ssram_text = .;\n"
+      "        *(.sram_text)\n"
+      "        *(.sram_text.*)\n"
+      "${_ra8_sram_text_body}"
+      "        g_ra8_ls_esram_text = .;\n"
+      "    } > SRAM AT > MRAM\n"
+      "    g_ra8_ls_sram_text_load = LOADADDR(.sram_text);\n"
+    )
+  else()
+    file(WRITE "${_ra8_ld_pre_text}"
+         "/* Generated by ra8_add_app(). Nothing to inject ahead of .text. */\n"
+    )
+  endif()
+
   set(_ra8_ld_lines "")
   set(_ra8_ld_why "")
   if(_RA8_APP_THREADX_HEAP)
     list(APPEND _ra8_ld_why "THREADX_HEAP ${_RA8_APP_THREADX_HEAP}")
-    string(
-      APPEND _ra8_ld_lines
-      "PROVIDE(g_ra8_threadx_unused_memory_start = ORIGIN(${_RA8_APP_THREADX_HEAP}));\n"
+    string(APPEND _ra8_ld_lines
+           "PROVIDE(g_ra8_threadx_unused_memory_start = ORIGIN(${_RA8_APP_THREADX_HEAP}));\n"
     )
   endif()
   if(_RA8_APP_CPU1_IMAGE)
@@ -889,16 +964,13 @@ macro(_ra8_app_collect_sources)
         FATAL_ERROR
           "ra8_add_app(): ${_RA8_APP_NAME} passes ${_ra8_ld_why} but also has "
           "its own linker_script.ld. An app with a local map already has full "
-          "control: add those lines to that script, or delete it to compose "
-          "the board map."
+          "control: add those lines to that script, or delete it to compose " "the board map."
       )
     endif()
     set(_ra8_ld_fragment "${CMAKE_CURRENT_BINARY_DIR}/${_RA8_APP_NAME}_composed.ld")
-    file(
-      WRITE "${_ra8_ld_fragment}"
-      "/* Generated by ra8_add_app(${_ra8_ld_why}). Do not edit. */\n"
-      "INCLUDE ${_ra8_linker}\n"
-      "${_ra8_ld_lines}"
+    file(WRITE "${_ra8_ld_fragment}"
+         "/* Generated by ra8_add_app(${_ra8_ld_why}). Do not edit. */\n"
+         "INCLUDE ${_ra8_linker}\n" "${_ra8_ld_lines}"
     )
     set(_ra8_ld_base ${_ra8_linker})
     set(_ra8_linker ${_ra8_ld_fragment})

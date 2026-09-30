@@ -31,5 +31,11 @@ ra8_add_app(
   STACK_BYTES 4000
   DESCRIPTION "USB self-loop B: FS host DFU-programs the inactive MRAM slot, verifies"
   USES threadx usbx
-  LIBS ra8_dfu ra8_board_ek_ra8d2
+  LIBS ra8_dfu
+       ra8_board_ek_ra8d2
+       THREADX_HEAP
+       SDRAM
+       SRAM_TEXT
+       ra8_flash.c
+       ra8_dfu_program.c
 )

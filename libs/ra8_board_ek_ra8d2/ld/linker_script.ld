@@ -122,6 +122,21 @@ SECTIONS
         KEEP(*(.vectors.*))
     } > MRAM
 
+    /* Per-app injection point, ahead of the .text catch-all below.
+     *
+     * ld assigns each input section to the FIRST output section in script
+     * order that matches it, so an app cannot add a "claim these objects
+     * instead" rule by appending to this map: .text has already taken them.
+     * The old way round that was a private copy of this whole file with an
+     * EXCLUDE_FILE list spliced into .text, which is how three apps ended up
+     * carrying a 344-line fork to move two translation units.
+     *
+     * ra8_add_app() always generates this file into the app's build dir and
+     * puts that dir on the linker's search path, so it is found by bare name.
+     * It is empty unless the app asked for something; see SRAM_TEXT.
+     */
+    INCLUDE ra8_app_pre_text.ld
+
     /* ---- Code + const data ---- */
     .text : ALIGN(4)
     {

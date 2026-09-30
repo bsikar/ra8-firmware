@@ -398,11 +398,6 @@ apps/shared_libs/mdl/src/mdl_state_codec.c	internal_mdl_state_reader_line	3
 apps/shared_libs/mdl/src/mdl_state_codec.c	internal_mdl_state_scan_mantissa	2
 apps/shared_libs/mdl/src/mdl_state_codec.c	internal_mdl_state_split_tabs	2
 apps/shared_libs/mdl/src/mdl_state_codec.c	priv_mdl_state_parse_file	6
-libs/ra8_num/src/ra8_num_decimal.c	internal_ra8_num_big_bits	1
-libs/ra8_num/src/ra8_num_decimal.c	internal_ra8_num_big_trim	1
-libs/ra8_num/src/ra8_num_decimal.c	internal_ra8_num_divide	1
-libs/ra8_num/src/ra8_num_decimal.c	internal_ra8_num_encode	2
-libs/ra8_num/src/ra8_num_decimal.c	ra8_num_decimal_to_binary64	1
 apps/shared_libs/mdl/src/mdl_state_store.c	internal_mdl_state_decode_header	4
 apps/shared_libs/mdl/src/mdl_state_store.c	internal_mdl_state_emit	1
 apps/shared_libs/mdl/src/mdl_state_store.c	internal_mdl_state_emit_chapters	1
@@ -864,6 +859,11 @@ libs/ra8_net_pal/src/ra8_net_pal.c	ra8_net_pal_send_frame	1
 libs/ra8_nsc/src/ra8_nsc_eth.c	ra8_nsc_eth_send	1
 libs/ra8_nsc/src/ra8_nsc_ota.c	ra8_nsc_ota_commit	1
 libs/ra8_nsc/src/ra8_nsc_xspi.c	ra8_nsc_xspi_read	1
+libs/ra8_num/src/ra8_num_decimal.c	internal_ra8_num_big_bits	1
+libs/ra8_num/src/ra8_num_decimal.c	internal_ra8_num_big_trim	1
+libs/ra8_num/src/ra8_num_decimal.c	internal_ra8_num_divide	1
+libs/ra8_num/src/ra8_num_decimal.c	internal_ra8_num_encode	2
+libs/ra8_num/src/ra8_num_decimal.c	ra8_num_decimal_to_binary64	1
 libs/ra8_ota/src/ra8_ota_parse.c	internal_hex_decode	1
 libs/ra8_ota/src/ra8_ota_parse.c	internal_hex_nibble	2
 libs/ra8_ota/src/ra8_ota_parse.c	priv_ota_char_in_range	1

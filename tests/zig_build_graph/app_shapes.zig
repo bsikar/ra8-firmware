@@ -79,6 +79,7 @@ pub const Keyword = enum {
     nsc_srcs,
     extra_srcs,
     aux_srcs,
+    sram_text,
 
     /// How cmake/ra8_add_app.cmake spells it.
     pub fn spelling(self: Keyword) []const u8 {
@@ -96,6 +97,7 @@ pub const Keyword = enum {
             .nsc_srcs => "NSC_SRCS",
             .extra_srcs => "EXTRA_SRCS",
             .aux_srcs => "AUX_SRCS",
+            .sram_text => "SRAM_TEXT",
         };
     }
 
@@ -108,7 +110,7 @@ pub const Keyword = enum {
         return switch (self) {
             .no_nsc, .cpu1_image => .option,
             .name, .stack_bytes, .description, .board, .threadx_heap => .one_value,
-            .uses, .libs, .off_target_libs, .nsc_srcs, .extra_srcs, .aux_srcs => .multi_value,
+            .uses, .libs, .off_target_libs, .nsc_srcs, .extra_srcs, .aux_srcs, .sram_text => .multi_value,
         };
     }
 };
@@ -151,6 +153,7 @@ pub const Shape = struct {
     off_target_libs: bool = false,
     threadx_heap: bool = false,
     cpu1_image: bool = false,
+    sram_text: bool = false,
 
     pub fn eql(self: Shape, other: Shape) bool {
         if (!std.mem.eql(u8, self.board, other.board)) return false;
@@ -164,7 +167,8 @@ pub const Shape = struct {
             self.aux_srcs == other.aux_srcs and
             self.off_target_libs == other.off_target_libs and
             self.threadx_heap == other.threadx_heap and
-            self.cpu1_image == other.cpu1_image;
+            self.cpu1_image == other.cpu1_image and
+            self.sram_text == other.sram_text;
     }
 
     /// `board=<b> uses=<a,b|-> flags=<a,b|->`, the spelling the ledger and the
@@ -191,12 +195,12 @@ pub const Shape = struct {
     }
 
     pub fn flagValues(self: Shape) [flag_names.len]bool {
-        return .{ self.no_nsc, self.nsc_srcs, self.extra_srcs, self.aux_srcs, self.off_target_libs, self.threadx_heap, self.cpu1_image };
+        return .{ self.no_nsc, self.nsc_srcs, self.extra_srcs, self.aux_srcs, self.off_target_libs, self.threadx_heap, self.cpu1_image, self.sram_text };
     }
 };
 
 /// The flag half of a shape, in the order `Shape.flagValues` returns it.
-pub const flag_names = [_][]const u8{ "no_nsc", "nsc_srcs", "extra_srcs", "aux_srcs", "off_target_libs", "threadx_heap", "cpu1_image" };
+pub const flag_names = [_][]const u8{ "no_nsc", "nsc_srcs", "extra_srcs", "aux_srcs", "off_target_libs", "threadx_heap", "cpu1_image", "sram_text" };
 
 /// One app that parsed.
 pub const Row = struct {
@@ -406,6 +410,7 @@ pub fn parseBlock(allocator: std.mem.Allocator, listfile: []const u8, body: []co
             .nsc_srcs => shape.nsc_srcs = true,
             .extra_srcs => shape.extra_srcs = true,
             .aux_srcs => shape.aux_srcs = true,
+            .sram_text => shape.sram_text = true,
             .off_target_libs => shape.off_target_libs = true,
             .threadx_heap => shape.threadx_heap = true,
             .description, .libs => {},
@@ -554,6 +559,7 @@ pub fn parseLedger(allocator: std.mem.Allocator, text: []const u8) ![]Entry {
         shape.off_target_libs = flag_values[4];
         shape.threadx_heap = flag_values[5];
         shape.cpu1_image = flag_values[6];
+        shape.sram_text = flag_values[7];
         const stack = std.fmt.parseInt(u32, stack_field, 10) catch return LedgerError.BadStackBytes;
         try out.append(.{ .row = .{
             .name = app_name,
@@ -676,9 +682,14 @@ pub const uncovered = [_]Uncovered{
         .note = "2 declarations: C6 Wi-Fi with NetX Duo, and the first uncovered kind that also compiles EXTRA_SRCS",
     },
     .{
-        .representative = "dfu_selftest_boot",
+        .representative = "tz_secure_only_usb_fs",
         .shape = .{ .uses = &.{ "threadx", "usbx" } },
-        .note = "5 declarations: USBX on ThreadX linking the board's own linker script, the DFU and TrustZone-only pairs, which is what separates them from the 20 that compose a heap fragment",
+        .note = "2 declarations: USBX on ThreadX linking the board's own linker script and composing no heap fragment, the TrustZone-only pair. #742 moved the three dfu_selftest apps off this kind and onto SRAM_TEXT",
+    },
+    .{
+        .representative = "dfu_selftest_boot",
+        .shape = .{ .uses = &.{ "threadx", "usbx" }, .threadx_heap = true, .sram_text = true },
+        .note = "3 declarations: the dfu_selftest trio. #742 dropped their three forked linker scripts for the board's own plus a pre-.text injection point, so they now name SRAM_TEXT and compose a heap fragment; the SRAM_TEXT sources are what make this a different link shape from the 20 USBX-on-ThreadX apps",
     },
     .{
         .representative = "usb_printer_vendor",

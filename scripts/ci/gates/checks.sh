@@ -469,6 +469,11 @@ _pcc_mcdc_discipline() (
   # genuinely new uncovered decision fails the push. --selftest first, both
   # directions, so a ratchet that stopped detecting growth cannot pass clean.
   python3 scripts/checks/mcdc_compound_ratchet.py --selftest
+  # #712: this baseline's own header sanctions a hand-rename (renaming a
+  # function reads as growth, so the row is rewritten by hand). That is the
+  # edit most likely to drift, because a hand-written row keeps the old
+  # row's position. Prove the file is still in the form --update writes.
+  python3 scripts/checks/mcdc_compound_ratchet.py --attest
   python3 scripts/checks/mcdc_compound_ratchet.py --check
 )
 
