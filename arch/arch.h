@@ -72,6 +72,7 @@
 extern "C" {
 #endif
 
+#include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
 
@@ -128,14 +129,44 @@ typedef enum arch_fault_kind_e : uint8_t {
  * needs eight (CFSR, HFSR, DFSR, MMFAR, BFAR, AFSR, SFSR, SFAR), which is what
  * ::K_ARCH_FAULT_RAW_MAX is sized for.
  */
+/**
+ * @brief Number of raw ISA cause words ::arch_fault_info_t carries.
+ *
+ * @details
+ * Sized for the widest taxonomy in this tree: Armv8-M needs eight (CFSR, HFSR,
+ * DFSR, MMFAR, BFAR, AFSR, SFSR, SFAR). A backend with fewer fills a prefix and
+ * says how many in ::arch_fault_info_t::raw_count; a backend that needs more
+ * raises this constant, which is why callers bound their loop by it rather than
+ * by a literal.
+ */
+#define K_ARCH_FAULT_RAW_MAX (8U)
+
 typedef struct arch_fault_info_s {
-    arch_fault_kind_t kind;  /**< Portable class of the trap.                       */
-    bool address_valid;      /**< True when `address` was captured, not inferred.   */
-    uint32_t address;        /**< Faulting address when `address_valid`.            */
-    uint32_t pc;             /**< Program counter of the faulting instruction.      */
-    uint8_t raw_count;       /**< Number of populated entries in `raw`.             */
-    uint32_t raw[8];         /**< Verbatim ISA cause registers, oldest field first. */
+    arch_fault_kind_t kind;            /**< Portable class of the trap.                       */
+    bool address_valid;                /**< True when `address` was captured, not inferred.   */
+    uint32_t address;                  /**< Faulting address when `address_valid`.            */
+    uint32_t pc;                       /**< Program counter of the faulting instruction.      */
+    uint8_t raw_count;                 /**< Number of populated entries in `raw`.             */
+    uint32_t raw[K_ARCH_FAULT_RAW_MAX]; /**< Verbatim ISA cause registers, oldest first.      */
 } arch_fault_info_t;
+
+/*
+ * The contract's own invariants, checked against whichever core's `caps.h` the
+ * build selected. `static_assert` is the C23 keyword, so this header stays
+ * freestanding: no `<assert.h>`, which a bare-metal target does not ship.
+ * The header is C23 either way -- the fixed underlying type on
+ * ::arch_fault_kind_t already requires it, and the tree pins
+ * `CMAKE_C_STANDARD 23`. `scripts/checks/check_arch_caps.py` reads the capability
+ * ANSWERS out of the text; these assertions check the VALUES that come with a
+ * set answer, which only a compiler can do. A core whose caps.h contradicts the
+ * contract fails to build rather than producing a backend nobody can call.
+ */
+static_assert(K_ARCH_IRQ_PRIORITY_HIGHEST < K_ARCH_IRQ_PRIORITY_LOWEST,
+              "priority 0 must be the most urgent end of the range");
+static_assert(ARCH_IRQ_PRIORITY_BITS >= 1U && ARCH_IRQ_PRIORITY_BITS <= 8U,
+              "caps.h: ARCH_IRQ_PRIORITY_BITS is out of the 1..8 range arch_irq_priority_bits() promises");
+static_assert(K_ARCH_FAULT_RAW_MAX <= 255U,
+              "arch_fault_info_t::raw_count is uint8_t and must be able to count every raw word");
 
 /**
  * @name MUST: C runtime and core bring-up
