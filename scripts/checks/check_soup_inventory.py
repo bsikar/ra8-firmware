@@ -108,6 +108,27 @@ def code_span_paths(text: str) -> set[str]:
     return found
 
 
+def code_span_root_files(text: str) -> set[str]:
+    """Every code span naming a file at the repository root.
+
+    ``code_span_paths`` deliberately requires a ``/``: R2 reads its output and
+    filters on ``VENDOR_PREFIXES``, so a bare filename there would be noise.
+    R1 asks a different question -- is this component catalogued at all -- and
+    a component pinned at ``pyproject.toml`` is catalogued by that name.
+    """
+    found: set[str] = set()
+    for match in _CODE_SPAN_RE.finditer(text):
+        span = match.group(1).strip()
+        if "/" in span or " " in span or "." not in span or span.startswith(("http", "<")):
+            continue
+        # A filename, not a version string: the licence file is full of spans
+        # like `v5.5.4` and `ethos-u-vela==5.1.0`, and those name no file.
+        if not span.rpartition(".")[2].isalpha():
+            continue
+        found.add(span)
+    return found
+
+
 def section_text(text: str, heading: str) -> str:
     """The body of the ``## <heading>`` section, or "" when it is absent."""
     marks = [(m.group(1), m.start(), m.end()) for m in _SECTION_RE.finditer(text)]
@@ -122,17 +143,23 @@ def section_text(text: str, heading: str) -> str:
 def naming_candidates(path: str) -> set[str]:
     """``path`` plus every ancestor of at least two segments.
 
-    Two segments is the floor on purpose.  ``coprocessor/esp32c6/`` is how the
-    licence file catalogues the C6 firmware, and that is a real, specific
-    location; ``docs/`` standing in for ``docs/doxygen_theme`` is not.
+    Two segments is the floor for ANCESTORS on purpose.  ``coprocessor/esp32c6/``
+    is how the licence file catalogues the C6 firmware, and that is a real,
+    specific location; ``docs/`` standing in for ``docs/doxygen_theme`` is not.
+
+    The path itself is always a candidate, whatever its depth.  Deriving the
+    set from ``range(2, ...)`` alone returned nothing at all for a one-segment
+    path, so a component catalogued at a repo-root file (``pyproject.toml``,
+    the pinned-dependency components) could never be named and R1 fired on it
+    forever.
     """
     parts = path.split("/")
-    return {"/".join(parts[:n]) for n in range(2, len(parts) + 1)}
+    return {path} | {"/".join(parts[:n]) for n in range(2, len(parts))}
 
 
 def registry_path_failures(components: tuple, licenses_text: str) -> list[str]:
     """R1: a registry component the attribution inventory never names."""
-    named = code_span_paths(licenses_text)
+    named = code_span_paths(licenses_text) | code_span_root_files(licenses_text)
     failures: list[str] = []
     for comp in components:
         if naming_candidates(comp.path) & named:
@@ -150,9 +177,7 @@ def inventory_claimed_paths(licenses_text: str) -> set[str]:
     return {
         p
         for p in code_span_paths(body)
-        if p.startswith(VENDOR_PREFIXES)
-        and "*" not in p
-        and not p.endswith(NOT_A_COMPONENT_SUFFIX)
+        if p.startswith(VENDOR_PREFIXES) and "*" not in p and not p.endswith(NOT_A_COMPONENT_SUFFIX)
     }
 
 
