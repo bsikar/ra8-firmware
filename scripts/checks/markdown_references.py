@@ -456,18 +456,6 @@ def _build_owner_exists(base: Path, token: str) -> bool:
     return _glob_matches(base, _dynamic_glob(owner_token))
 
 
-def _brace_expansions(pattern: str) -> tuple[str, ...]:
-    """Expand comma braces without invoking a shell."""
-    match = re.search(r"\{([^{}]*,[^{}]*)}", pattern)
-    if match is None:
-        return (pattern,)
-    expanded: list[str] = []
-    for choice in match.group(1).split(","):
-        candidate = pattern[: match.start()] + choice + pattern[match.end() :]
-        expanded.extend(_brace_expansions(candidate))
-    return tuple(expanded)
-
-
 def _glob_matches(base: Path, token: str) -> bool:
     """Require a glob or brace pattern to select at least one current path."""
     brace_glob = re.search(r"\{[^{}]*,[^{}]*}", token) is not None
