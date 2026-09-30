@@ -32,12 +32,22 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "dev"))
 from git_environment import trusted_git_executable
 from line_citation_lex import CITES_OK_RE
 from markdown_link_lex import inline_link_targets, mask_inline_link_targets, split_link_destination
+from markdown_reference_paths import (
+    PLACEHOLDER_RE,
+    _base_for_path,
+    _brace_expansions,
+    _build_owner_exists,
+    _component_root,
+    _dynamic_glob,
+    _generated_owner_exists,
+    _has_only_supported_dynamic_syntax,
+    _normalized_path_token,
+    _soup_local_root,
+)
 from markdown_reference_policy import (
     ATX_HEADING_RE,
     AUTHORED_VENDOR_INDEXES,
     BARE_CODE_FILE_RE,
-    BARE_MARKDOWN_PATTERN,
-    BRACE_ALTERNATION_RE,
     COMPONENT_RELATIVE_PREFIXES,
     BUILD_INVOCATION_RE,
     CMAKE_TARGET_NAME_RE,
@@ -48,14 +58,12 @@ from markdown_reference_policy import (
     HTML_PATH_SEPARATOR_RE,
     HTML_TARGET_RE,
     FIRST_PARTY_ROOTS,
-    LINE_CITATION_RE,
     LINK_OUTPUT_SUFFIXES,
     LOCAL_LINE_FRAGMENT_RE,
     MIN_FIRST_PARTY_MARKDOWN,
     MIN_LINK_REFERENCES,
     MIN_PATH_REFERENCES,
     MIN_TRACKED_MARKDOWN,
-    MAX_BRACE_EXPANSIONS,
     MIN_VENDOR_MARKDOWN,
     ABSENCE_CLAIM_TEMPLATES,
     PATH_RE,
@@ -74,7 +82,6 @@ from markdown_reference_policy import (
     UPSTREAM_REVISION_RE,
     VENDORING_ABSENCE_RE,
     SOUP_LOCAL_PATH_RE,
-    SYMBOL_SUFFIX_RE,
     SYSTEM_HEADER_BASENAMES,
     TOOL_PRIVATE_CLAUSE_PATTERNS,
     TOOL_PRIVATE_OWNERSHIP_INDEXES,
@@ -403,71 +410,10 @@ def _resolve_link(root: Path, source: str, raw: str) -> tuple[Path | None, str, 
     return target, fragment, "local"
 
 
-PLACEHOLDER_RE = re.compile(
-    r"(?:<[a-z][a-z0-9_-]*>|\$\{[A-Z][A-Z0-9_]*}|\{[a-z][a-z0-9_]*}|\.\.\.)"
-)
-
-
 def _is_well_formed_dynamic_segment(segment: str) -> bool:
     """Accept only named, exact placeholder grammars inside a path segment."""
     replaced, count = PLACEHOLDER_RE.subn("value", segment)
     return count > 0 and not any(char in replaced for char in "*?{}$<>")
-
-
-def _has_only_supported_dynamic_syntax(token: str) -> bool:
-    """Reject unnamed interpolation while permitting checked glob syntax."""
-    remaining = PLACEHOLDER_RE.sub("", token)
-    remaining = re.sub(r"\{[A-Za-z0-9_./-]*(?:,[A-Za-z0-9_./-]*)+}", "", remaining)
-    remaining = remaining.replace("*", "").replace("?", "")
-    return not any(char in remaining for char in "{}$<>")
-
-
-def _dynamic_glob(token: str) -> str:
-    """Map exact named placeholders to an equivalent filesystem glob."""
-    return PLACEHOLDER_RE.sub(lambda match: "**" if match.group(0) == "..." else "*", token)
-
-
-def _before_build_output(token: str) -> str | None:
-    """Return the owner prefix of a generated build path, if present."""
-    segments = token.split("/")
-    for index, segment in enumerate(segments):
-        if segment == "build" or re.fullmatch(r"build(?:[-*?].*)", segment):
-            return "/".join(segments[:index])
-    return None
-
-
-def _build_owner_exists(base: Path, token: str) -> bool:
-    """Require the nearest static/dynamic owner before a build directory."""
-    segments = token.rstrip("/").split("/")
-    build_index = next(
-        (index for index, segment in enumerate(segments) if segment.startswith("build")),
-        None,
-    )
-    if build_index is None:
-        return False
-    owner_token = "/".join(segments[:build_index])
-    if not owner_token:
-        return (base / ".git").exists()
-    owner = base / owner_token
-    if owner.is_dir():
-        return True
-    if not _has_only_supported_dynamic_syntax(owner_token):
-        return False
-    return _glob_matches(base, _dynamic_glob(owner_token))
-
-
-def _glob_matches(base: Path, token: str) -> bool:
-    """Require a glob or brace pattern to select at least one current path."""
-    brace_glob = re.search(r"\{[^{}]*,[^{}]*}", token) is not None
-    if not any(char in token for char in "*?") and not brace_glob:
-        return False
-    for pattern in _brace_expansions(token.rstrip("/")):
-        try:
-            if next(base.glob(pattern), None) is not None:
-                return True
-        except (OSError, ValueError):
-            return False
-    return False
 
 
 def _ignore_owner_exists(root: Path, rel: str) -> bool:
@@ -640,24 +586,6 @@ def _claim_contradicted(root: Path, source: str, ref: PathRef) -> str | None:
     return f'says it is absent, but it exists: "{collapsed}"'
 
 
-def _brace_expansions(token: str) -> tuple[str, ...]:
-    """Expand ``a{x,y}b`` into every literal it names, bounded and order-stable."""
-    results = [token]
-    while BRACE_ALTERNATION_RE.search(results[0]) is not None:
-        expanded: list[str] = []
-        for candidate in results:
-            hit = BRACE_ALTERNATION_RE.search(candidate)
-            if hit is None:
-                expanded.append(candidate)
-                continue
-            head, tail = candidate[: hit.start()], candidate[hit.end() :]
-            expanded.extend(head + option.strip() + tail for option in hit.group(1).split(","))
-        if len(expanded) > MAX_BRACE_EXPANSIONS:
-            return (token,)
-        results = expanded
-    return tuple(results)
-
-
 def _cited_upstream_names(text: str) -> frozenset[str]:
     """Collect names the document cites to an upstream project at a read revision."""
     names: set[str] = set()
@@ -679,27 +607,6 @@ def _declared_upstream_source(root: Path, source: str, ref: PathRef) -> bool:
         return False
     text = (root / source).read_text(encoding="utf-8", errors="replace")
     return ref.token in _cited_upstream_names(text)
-
-
-def _generated_owner_exists(base: Path, token: str) -> bool:
-    """Check the committed authority for a build output or named placeholder."""
-    if _before_build_output(token) is not None and _build_owner_exists(base, token):
-        return True
-    if _glob_matches(base, token):
-        return True
-    return _has_only_supported_dynamic_syntax(token) and _glob_matches(base, _dynamic_glob(token))
-
-
-@functools.lru_cache(maxsize=1024)
-def _component_root(root: Path, source: str) -> Path | None:
-    """Return the closest enclosing CMake component for one document."""
-    current = (root / source).parent
-    resolved_root = root.resolve()
-    while current.resolve() != resolved_root:
-        if (current / "CMakeLists.txt").is_file():
-            return current
-        current = current.parent
-    return None
 
 
 @functools.lru_cache(maxsize=8)
@@ -768,32 +675,6 @@ def _context_sha256(source_line: str) -> str:
     return hashlib.sha256(normalized).hexdigest()
 
 
-def _soup_local_root(root: Path, source: str) -> Path | None:
-    """Read a SOUP document's explicit, checked local-vendor authority."""
-    if not source.startswith("docs/SOUP/"):
-        return None
-    match = SOUP_LOCAL_PATH_RE.search((root / source).read_text(encoding="utf-8", errors="replace"))
-    if match is None:
-        return None
-    rel = match.group(1).rstrip("/")
-    if not rel.startswith(VENDOR_PREFIXES):
-        return None
-    candidate = (root / rel).resolve()
-    return candidate if candidate.is_dir() else None
-
-
-def _normalized_path_token(ref: PathRef) -> tuple[str, bool]:
-    """Strip citation/symbol syntax and report whether a line citation existed."""
-    token = ref.token
-    had_line_citation = LINE_CITATION_RE.search(token) is not None
-    token = LINE_CITATION_RE.sub("", token)
-    token = SYMBOL_SUFFIX_RE.sub("", token)
-    token = token.partition("@")[0]
-    while token.startswith("./"):
-        token = token[2:]
-    return token, had_line_citation
-
-
 def _reference_is_declared(root: Path, source: str, ref: PathRef, had_line_citation: bool) -> bool:
     """Return whether an exact policy declaration owns this absent reference."""
     return (
@@ -803,45 +684,6 @@ def _reference_is_declared(root: Path, source: str, ref: PathRef, had_line_citat
         or _declared_work_fixture(source, ref)
         or _declared_planned_path(root, source, ref)
     )
-
-
-def _path_claimed(base: Path, token: str) -> bool:
-    """Return whether one authority owns an in-bounds exact or generated path."""
-    target = (base / token.rstrip("/")).resolve()
-    try:
-        target.relative_to(base.resolve())
-    except ValueError:
-        return False
-    return target.exists() or _generated_owner_exists(base, token)
-
-
-def _base_for_path(
-    root: Path, source: str, token: str, soup_root: Path | None
-) -> tuple[Path, str | None]:
-    """Select one path authority, rejecting traversal and ambiguous ownership."""
-    error = None
-    if "/" not in token and re.fullmatch(BARE_MARKDOWN_PATTERN, token):
-        base = (root / source).parent
-    elif token.startswith("tests/"):
-        local = soup_root or _component_root(root, source)
-        base = local or root
-        if ".." in Path(token).parts:
-            error = "component-relative path contains traversal"
-        else:
-            bases = tuple(item for item in (root, local) if item is not None)
-            claimed = tuple(item for item in bases if _path_claimed(item, token))
-            if len({item.resolve() for item in claimed}) > 1:
-                owners = ", ".join(item.relative_to(root).as_posix() or "." for item in claimed)
-                error = f"is ambiguous between path authorities: {owners}"
-            elif claimed:
-                base = claimed[0]
-    elif token.startswith(COMPONENT_RELATIVE_PREFIXES):
-        base = soup_root or _component_root(root, source) or (root / source).parent
-    elif token.startswith("../"):
-        base = (root / source).parent
-    else:
-        base = root
-    return base, error
 
 
 def _root_or_soup_file_exists(root: Path, source: str, token: str, soup_root: Path | None) -> bool:
