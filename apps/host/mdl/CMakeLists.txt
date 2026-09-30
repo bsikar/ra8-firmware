@@ -83,7 +83,7 @@ add_subdirectory(${MDL_REPO_ROOT}/apps/shared_libs/mdl ${CMAKE_CURRENT_BINARY_DI
 
 # Some form tests compile the POSIX filesystem adapter directly instead of
 # linking mdl_core; all such targets need the migrated facade archive.
-link_libraries(ra8_zig::fw_if_fs)
+link_libraries(ra8_zig::fw_if_fs ra8_zig::ra8_xml)
 
 # Per-source properties are DIRECTORY-scoped, so the SOUP flags the core sets on
 # miniz do not follow the file into this listfile. Every target below that
@@ -217,7 +217,6 @@ add_executable(
   ${MDL_FORM_SRC_DIR}/mdl_net_curl_credentials.c
   ${MDL_CORE_SRC_DIR}/mdl_politeness.c
   ${MDL_REPO_ROOT}/libs/ra8_net_policy/src/ra8_net_urlguard.c
-  ${MDL_REPO_ROOT}/libs/ra8_xml/src/ra8_xml_writer.c
   ${MDL_FS_SRC}
 )
 target_include_directories(
@@ -245,7 +244,6 @@ add_executable(
   ${MDL_FORM_SRC_DIR}/mdl_net_curl_credentials.c
   ${MDL_FORM_SRC_DIR}/mdl_host_credentials.c
   ${MDL_REPO_ROOT}/libs/ra8_net_policy/src/ra8_net_urlguard.c
-  ${MDL_REPO_ROOT}/libs/ra8_xml/src/ra8_xml_writer.c
 )
 target_include_directories(
   test_mdl_credentials
