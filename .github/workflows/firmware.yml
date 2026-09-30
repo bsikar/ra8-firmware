@@ -376,6 +376,8 @@ jobs:
       - if: always()
         run: just quality::local::gate arch-caps
       - if: always()
+        run: just quality::local::gate arch-compiles
+      - if: always()
         run: just quality::local::gate measured-counts
       - if: always()
         run: just quality::local::gate bench-lock

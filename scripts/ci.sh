@@ -192,6 +192,7 @@ if [[ "$-" == *p* ]]; then
     "pinout-freshness|fast|committed docs/pinouts/ matches a fresh parse of the datasheets"
     "font-coverage|fast|the committed font cmaps cover every declared codepoint"
     "arch-caps|fast|every gated capability flag is answered by a core and its backends"
+    "arch-compiles|fast|arch/arch.h compiles for every core and both capability extremes"
     "measured-counts|fast|every count a MEASURED BLOCK page argues from still matches the tree"
     "unused-includes|fast|speculative compilation unused include checker"
     "lint-py-shell|fast|ruff check + shellcheck"
