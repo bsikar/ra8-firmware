@@ -54,6 +54,13 @@ pub const CrossApp = struct {
     /// The call passes CPU1_IMAGE, so ra8_add_app() composes the board linker
     /// script with a generated CPU1 memory map instead of taking a fork.
     cpu1_image: bool = false,
+    /// The call passes NS_INLINE_IMAGE, so ra8_add_app() composes the board
+    /// linker script with a generated block placing .ns_vectors / .ns_text /
+    /// .ns_rodata / .ns_bss. The in-image counterpart to cpu1_image, and only
+    /// for an app whose NS world rides INSIDE the Secure ELF in sections the
+    /// SAU later reclassifies -- an app that links a separate NS ELF calls
+    /// ra8_add_ns_image() instead and uses a different window (#742).
+    ns_inline_image: bool = false,
     /// Sources the app names in `SRAM_TEXT`, spelled as the call spells them.
     /// Their .text is placed through the pre-.text injection point and copied
     /// out of MRAM at startup, so naming one is a link shape, not a source one.
@@ -578,9 +585,16 @@ pub const cross_apps = [_]CrossApp{
         .name = "cpu1_pingpong_ipc",
         .dir = "examples/ek_ra8d2/hil_needs_revalidation/cpu1_pingpong_ipc",
         .board = "libs/ra8_board_ek_ra8d2",
-        // Its own script: .cpu1_image is pinned at ORIGIN(MRAM_CPU1) and the
-        // Non-Secure world's load home is carved out besides.
-        .linker_script = "examples/ek_ra8d2/hil_needs_revalidation/cpu1_pingpong_ipc/linker_script.ld",
+        // #742 took this app's 394-line fork away last of all, and it needed
+        // BOTH composition keywords to go: CPU1_IMAGE for the M33 image's
+        // window and NS_INLINE_IMAGE for the Non-Secure sections that ride
+        // inside this same ELF. It is the only app in the tree that names the
+        // pair, which is what makes the two generated blocks observably
+        // independent rather than one feature wearing two names.
+        .linker_script = "libs/ra8_board_ek_ra8d2/ld/linker_script.ld",
+        .cpu1_image = true,
+        .ns_inline_image = true,
+        .mram_length = "512K",
         .libraries = &.{"ra8_tz_secure_boot"},
         .zig_libraries = &.{},
         .aux_srcs = &.{"src/cpu1_main.c"},
