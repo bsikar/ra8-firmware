@@ -215,6 +215,53 @@ static void test_bind(void)
 }
 
 /**
+ * @brief The board handle answers the same questions as a hand-bound one.
+ */
+static void test_board_handle_matches_a_hand_bound_one(void)
+{
+  TEST_BEGIN("board clock profile: shared handle matches a hand-bound one");
+  fw_clock_t mine = {};
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_board_clock_profile_bind(&mine));
+
+  const fw_clock_t* shared = ra8_board_clock();
+  TEST_ASSERT_NOT_NULL(shared);
+  TEST_ASSERT(shared->bound);
+  TEST_ASSERT_EQ(mine.iface, shared->iface);
+  TEST_ASSERT_EQ(mine.ctx, shared->ctx);
+
+  bool                    present   = false;
+  bool                    present_2 = false;
+  const fw_clock_module_t mikrobus  = {.kind = k_fw_clock_module_uart, .index = 2U};
+  TEST_ASSERT_EQ(k_ra8_ok, fw_clock_has_module(&mine, mikrobus, &present));
+  TEST_ASSERT_EQ(k_ra8_ok, fw_clock_has_module(shared, mikrobus, &present_2));
+  TEST_ASSERT(present);
+  TEST_ASSERT_EQ(present, present_2);
+  TEST_END("board clock profile: shared handle matches a hand-bound one");
+}
+
+/**
+ * @brief Repeated acquisition hands back the one handle, already bound.
+ */
+static void test_board_handle_is_one_handle(void)
+{
+  TEST_BEGIN("board clock profile: acquisition is idempotent");
+  const fw_clock_t* first  = ra8_board_clock();
+  const fw_clock_t* second = ra8_board_clock();
+  TEST_ASSERT_NOT_NULL(first);
+  TEST_ASSERT_EQ(first, second);
+  TEST_ASSERT(first->bound);
+
+  /* A port entry point refuses an unbound handle, so a bound answer here is
+   * the observable proof that acquisition really did the bind and that the
+   * second acquisition did not reset it. */
+  bool                    present = false;
+  const fw_clock_module_t core    = {.kind = k_fw_clock_module_core, .index = 0U};
+  TEST_ASSERT_EQ(k_ra8_ok, fw_clock_has_module(second, core, &present));
+  TEST_ASSERT(present);
+  TEST_END("board clock profile: acquisition is idempotent");
+}
+
+/**
  * @brief Entry point.
  * @return Process exit status.
  */
@@ -230,5 +277,7 @@ int main(void)
   test_kind_bounds();
   test_null_output_is_refused();
   test_bind();
+  test_board_handle_matches_a_hand_bound_one();
+  test_board_handle_is_one_handle();
   return 0;
 }

@@ -207,3 +207,19 @@ ra8_err_t ra8_board_clock_profile_bind(fw_clock_t* clk)
 {
   return fw_clock_bind(clk, &k_internal_iface, nullptr);
 }
+
+/** @brief The board's one handle, bound on first acquisition. */
+static fw_clock_t internal_board_clock = {};
+
+const fw_clock_t* ra8_board_clock(void)
+{
+  if (!internal_board_clock.bound) {
+    /* Cannot fail: the argument is this file-static, and a non-null handle with
+     * a fully populated ops struct is the only thing fw_clock_bind checks. The
+     * status is discarded deliberately rather than surfaced, because there is
+     * no failure for a caller to handle and a handle-returning accessor that
+     * could answer NULL would make every call site carry a dead branch. */
+    (void)ra8_board_clock_profile_bind(&internal_board_clock);
+  }
+  return &internal_board_clock;
+}
