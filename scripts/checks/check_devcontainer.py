@@ -74,6 +74,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from lint_coverage_rules import EXT_CLASS, NAME_CLASS
+from lint_targets import repo_files
 from selftest_assert import expect, report
 
 # Vendored SOUP is governed by its upstream boundary, never by this checker.
@@ -126,18 +127,11 @@ def classify(rel: str) -> str | None:
 
 def targets() -> list[str]:
     """Every first-party Dockerfile and zsh file, repo-relative and sorted."""
-    proc = subprocess.run(
-        ["git", "ls-files", "-z"],  # noqa: S607 -- git from PATH is intended
-        cwd=REPO_ROOT,
-        capture_output=True,
-        text=True,
-        check=True,
-    )
     # The vendored powerlevel10k theme config is not a project script; the same
     # exemption lint_coverage_rules.py records for it.
     return sorted(
         rel
-        for rel in proc.stdout.split("\0")
+        for rel in repo_files(root=REPO_ROOT, caller="check_devcontainer.py")
         if rel
         and not rel.startswith(THIRD_PARTY_PREFIXES)
         and rel != ".devcontainer/p10k.zsh"

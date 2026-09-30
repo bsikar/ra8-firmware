@@ -977,6 +977,71 @@ macro(_ra8_app_collect_sources)
       "       \"FATAL: the M85 image overran the CPU1 image window\")\n"
     )
   endif()
+  if(_RA8_APP_NS_INLINE_IMAGE)
+    list(APPEND _ra8_ld_why "NS_INLINE_IMAGE")
+    include(${_ra8_board_dir}/ld/ns_inline_memory_map.cmake)
+    # Placed at absolute addresses rather than into MEMORY regions, exactly as
+    # CPU1_IMAGE is: the board map's MEMORY block is INCLUDEd, and an INCLUDEd
+    # MEMORY cannot be amended by a later fragment. The board map does carry
+    # NS_MRAM / NS_SRAM placeholders, but at 512K / 640K they are the wrong
+    # size for a dual-core app -- see ns_inline_memory_map.cmake, where the
+    # 576K SRAM bound is a silicon fix and not a tidy-up.
+    #
+    # EVERY section here carries an explicit address, and the two that follow
+    # .ns_vectors derive theirs with ADDR()+SIZEOF() rather than riding the
+    # location counter. Both cheaper-looking spellings were tried and both
+    # mislaid the image, measured on cpu1_pingpong_ipc:
+    #
+    #   * address on .ns_vectors only, .ns_text/.ns_rodata bare -- ld places
+    #     the addressed section, then resumes the REGION-LESS counter it was
+    #     already carrying, so .ns_text landed at 0x02001570, inside Secure
+    #     MRAM just past .bss's load address, while .ns_vectors sat correctly
+    #     at 0x02080000.
+    #   * `. = <origin>;` ahead of a bare .ns_vectors -- a dot assignment in a
+    #     SECTIONS block appended after the board map does not carry, and the
+    #     whole NS group slid to 0x02001570 with .ns_bss at 0.
+    #
+    # An appended SECTIONS block gets no usable counter from the board map, so
+    # anything that must land at a fixed address has to say so itself. This is
+    # also why CPU1_IMAGE above spells .cpu1_image's address out.
+    string(
+      APPEND
+      _ra8_ld_lines
+      "SECTIONS\n"
+      "{\n"
+      "    .ns_vectors ${RA8_NS_INLINE_MRAM_ORIGIN} : ALIGN(8)\n"
+      "    {\n"
+      "        KEEP(*(.ns_vectors))\n"
+      "        KEEP(*(.ns_vectors.*))\n"
+      "    }\n"
+      "    .ns_text ADDR(.ns_vectors) + SIZEOF(.ns_vectors) : ALIGN(4)\n"
+      "    {\n"
+      "        *(.ns_text)\n"
+      "        *(.ns_text.*)\n"
+      "    }\n"
+      "    .ns_rodata ADDR(.ns_text) + SIZEOF(.ns_text) : ALIGN(4)\n"
+      "    {\n"
+      "        *(.ns_rodata)\n"
+      "        *(.ns_rodata.*)\n"
+      "    }\n"
+      "    .ns_bss ${RA8_NS_INLINE_SRAM_ORIGIN} (NOLOAD) : ALIGN(4)\n"
+      "    {\n"
+      "        g_ra8_ls_ns_bss_start = .;\n"
+      "        *(.ns_bss)\n"
+      "        *(.ns_bss.*)\n"
+      "        g_ra8_ls_ns_bss_end = .;\n"
+      "    }\n"
+      "}\n"
+      # Slot 0 of the NS vector table is the initial MSP_NS; BLXNS in
+      # ra8_tz_secure_boot_jump_ns issues `msr msp_ns` with this value.
+      "g_ra8_ls_ns_stack_top = ${RA8_NS_INLINE_SRAM_ORIGIN} + ${RA8_NS_INLINE_SRAM_LENGTH};\n"
+      "ASSERT(ADDR(.ns_rodata) + SIZEOF(.ns_rodata)\n"
+      "       <= ${RA8_NS_INLINE_MRAM_ORIGIN} + ${RA8_NS_INLINE_MRAM_LENGTH},\n"
+      "       \"FATAL: the NS image overran its window\")\n"
+      "ASSERT(g_ra8_ls_ns_bss_end <= g_ra8_ls_ns_stack_top,\n"
+      "       \"FATAL: NS .bss collided with the NS stack\")\n"
+    )
+  endif()
   # linker_append.ld: the escape hatch for a section only one app needs, so that
   # wanting one does not cost a fork of the whole map. dfu_copy_to_run pins two
   # probe words at a fixed SRAM address for the DFU host to read; that is six

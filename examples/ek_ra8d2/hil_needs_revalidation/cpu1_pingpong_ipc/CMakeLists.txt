@@ -42,9 +42,9 @@ endif()
 
 ra8_add_app(
   NAME cpu1_pingpong_ipc
-  STACK_BYTES 2200
+  STACK_BYTES 2200 MRAM_LENGTH 512K
   DESCRIPTION "Bare-metal cpu1_pingpong_ipc firmware for RA8D2" AUX_SRCS src/cpu1_main.c
-  NO_NSC
+  NO_NSC CPU1_IMAGE NS_INLINE_IMAGE
   LIBS ra8_tz_secure_boot
 )
 
@@ -56,8 +56,10 @@ if(CMAKE_C_COMPILER_ID STREQUAL "GNU" AND CMAKE_SYSTEM_NAME STREQUAL "Generic")
   set(CPU1_NAME cpu1_pingpong_ipc_cpu1)
   add_executable(
     ${CPU1_NAME}.elf
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/cpu1_main.c ${RA8_REPO_ROOT}/libs/ra8_hal/src/ra8_ipc.c
-    ${RA8_REPO_ROOT}/libs/ra8_hal/src/ra8_sau.c ${RA8_REPO_ROOT}/libs/ra8_core/src/ra8_log.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/cpu1_main.c
+    ${RA8_REPO_ROOT}/libs/ra8_hal/src/ra8_ipc.c
+    ${RA8_REPO_ROOT}/libs/ra8_hal/src/ra8_sau.c
+    ${RA8_REPO_ROOT}/libs/ra8_core/src/ra8_log.c
     ${RA8_REPO_ROOT}/libs/ra8_core/src/ra8_scb.c
   )
   target_compile_definitions(${CPU1_NAME}.elf PRIVATE RA8_BUILD_FOR_CPU1)
