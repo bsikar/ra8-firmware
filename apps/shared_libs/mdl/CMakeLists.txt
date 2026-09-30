@@ -215,7 +215,6 @@ set(MDL_JOF_SRC
     ${MDL_REPO_ROOT}/apps/shared_libs/jof/src/jof_png_chunk.c
     ${MDL_REPO_ROOT}/apps/shared_libs/compress/src/ra8_compress.c
     ${FW}/ra8_core/src/ra8_error_handler.c
-    ${FW}/ra8_core/src/ra8_decomp_limits.c
 )
 set(MDL_JOF_INC
     ${MDL_REPO_ROOT}/apps/shared_libs/jof/inc
