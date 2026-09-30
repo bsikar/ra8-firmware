@@ -23,16 +23,15 @@ if(NOT TARGET ra8_zig::ra8_mem)
   )
 endif()
 
-# The archive is a single object, so linking it brings along every extern in it,
-# including ra8_vmem_get / ra8_vmem_put from the ported ra8_vmem_stream module.
-# The bench never touches vmem, but it has to supply that C half until
-# ra8_vmem.c is ported too. Weak externs would trade this link error for a null
-# call at runtime, which is the failure #764 removed.
+# The archive is a single object, so linking it brings along every extern in it:
+# the four ra8_keycache_* the glyph atlas and the page cache are facades over.
+# ra8_vmem.c is gone (the page cache is Zig in this archive now), so the bench
+# supplies only that keycache C half. Weak externs would trade this link error
+# for a null call at runtime, which is the failure #764 removed.
 add_executable(
   glyph_bench
   ${GLYPH_BENCH_SOURCES}
   ${RA8_ROOT}/libs/ra8_mem/src/ra8_keycache.c
-  ${RA8_ROOT}/libs/ra8_mem/src/ra8_vmem.c
   ${RA8_ROOT}/libs/ra8_io/src/ra8_io_stream.c
   ${RA8_ROOT}/port/posix/src/ra8_io_stream_posix.c
   ${RA8_ROOT}/libs/ra8_core/src/ra8_log.c
