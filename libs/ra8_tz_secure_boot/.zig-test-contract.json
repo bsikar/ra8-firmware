@@ -1,0 +1,17 @@
+{
+  "test_roots": [
+    "src/internal/root.zig",
+    "tests/internal_test.zig"
+  ],
+  "covered_sources": [
+    "src/internal/root.zig",
+    "src/internal/regs.zig",
+    "src/internal/boot.zig",
+    "src/internal/ipc.zig",
+    "src/internal/partition.zig",
+    "src/internal/nsimage.zig",
+    "src/internal/psar.zig",
+    "tests/internal_test.zig"
+  ],
+  "minimum_tests": 40
+}
