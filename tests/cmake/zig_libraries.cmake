@@ -582,6 +582,25 @@ ra8_add_zig_library(
   ra8_imgdec
 )
 
+# Partially migrated (#2591): the key vault behind inc/key_vault.h, the entropy
+# read behind src/secure_trng_internal.h, and the OTA bank commit behind
+# inc/ota_commit.h are Zig now, and their three .c files are deleted.
+#
+# src/sec_cmac.c and src/key_import.c are deliberately RETAINED as C. The
+# sec_cmac backend footprint is the open question in #619, and key_import is a
+# direct consumer of it, so porting either ahead of that decision would bake a
+# backend choice into Zig that #619 exists to make. They keep reaching the vault
+# through the unchanged inc/key_vault.h, which is why the RA8_SECURE_APP_SOURCES
+# glob in library_sources.cmake stays: it still finds those two.
+ra8_add_zig_library(
+  NAME
+  ra8_secure_app
+  ZIG_ROOT
+  ${FW_ROOT}/libs/ra8_secure_app
+  LIBRARY_NAME
+  ra8_secure_app
+)
+
 target_link_libraries(
   ra8_core_hal
   PUBLIC ra8_zig::ra8_box
@@ -614,6 +633,7 @@ target_link_libraries(
          ra8_zig::ra8_net_policy
          ra8_zig::ra8_imgdec
          ra8_zig::ra8_psa_crypto
+         ra8_zig::ra8_secure_app
   ra8_zig::ra8_gfx
          ra8_zig::ra8_gfx
 )
@@ -651,4 +671,5 @@ link_libraries(
   ra8_zig::ra8_xml
   ra8_zig::ra8_net_policy
   ra8_zig::ra8_imgdec
+  ra8_zig::ra8_secure_app
 )
