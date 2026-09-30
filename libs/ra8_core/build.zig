@@ -9,7 +9,9 @@
 //! is still C, which `.github/zig-parallel-tree-allowlist.tsv` records per
 //! file.
 //!
-//! THIS LIBRARY SHIPS TWO ARCHIVES, and the split is the point.
+//! WHAT THIS LIBRARY SHIPS DEPENDS ON WHO LINKS IT.
+//!
+//! A HOST build gets TWO archives, and the split is the point.
 //!
 //! `ra8_core` holds the freestanding primitives alone. Its exported names are
 //! the bare standard ones an image needs (`memcpy`, `memset`, `strlen`,
@@ -23,6 +25,20 @@
 //! links it into every host test the way it links the other migrated
 //! libraries. New ra8_core slices belong here; only a libc-named primitive
 //! belongs in the other one.
+//!
+//! A FREESTANDING build gets ONE archive, `ra8_core`, holding both roots
+//! (`src/image_root.zig`). An image has no libc, so it needs the bare names
+//! and the ports together and nothing it links defines either twice; the host
+//! hazard the split exists for is not present there.
+//!
+//! The one archive is also what makes the ports REACHABLE from an image.
+//! `_ra8_zig_build_archive()` in cmake/ra8_app/zig_libs.cmake names a
+//! cross-built archive `lib<lib>.a`, so `ra8_link_zig_library_for_cpu(LIB
+//! ra8_core)` can only ever fetch `libra8_core.a`. Applying the host split to
+//! an image build leaves every cross-target consumer looking at the
+//! freestanding half alone, so an image could not take an ra8_core port at
+//! all: the three ARM images that still compile `ra8_log.c` by path had no
+//! archive to move to until these two were composed.
 //!
 //! `bundle_compiler_rt` is OFF on both. Zig's compiler_rt carries its own
 //! `memcpy` / `memset` / `memmove` / `memcmp`: in the freestanding archive
@@ -78,13 +94,19 @@ pub fn build(b: *std.Build) void {
     });
     freestanding_root.addImport("freestanding_abi", freestanding_abi);
 
-    const freestanding_library = b.addLibrary(.{
-        .name = "ra8_core",
-        .linkage = .static,
-        .root_module = freestanding_root,
-    });
-    freestanding_library.bundle_compiler_rt = false;
-    b.installArtifact(freestanding_library);
+    // A freestanding target takes the one composed archive below instead, so
+    // only a host build installs the split halves.
+    const image_build = target.result.os.tag == .freestanding;
+
+    if (!image_build) {
+        const freestanding_library = b.addLibrary(.{
+            .name = "ra8_core",
+            .linkage = .static,
+            .root_module = freestanding_root,
+        });
+        freestanding_library.bundle_compiler_rt = false;
+        b.installArtifact(freestanding_library);
+    }
 
     const freestanding_tests = b.createModule(.{
         .root_source_file = b.path("tests/freestanding_test.zig"),
@@ -145,13 +167,33 @@ pub fn build(b: *std.Build) void {
     root.addImport("systick_abi", systick_abi);
     root.addImport("time_interface_systick_abi", time_interface_systick_abi);
 
-    const library = b.addLibrary(.{
-        .name = "ra8_core_zig",
-        .linkage = .static,
-        .root_module = root,
-    });
-    library.bundle_compiler_rt = false;
-    b.installArtifact(library);
+    if (!image_build) {
+        const library = b.addLibrary(.{
+            .name = "ra8_core_zig",
+            .linkage = .static,
+            .root_module = root,
+        });
+        library.bundle_compiler_rt = false;
+        b.installArtifact(library);
+    } else {
+        const image_root = b.createModule(.{
+            .root_source_file = b.path("src/image_root.zig"),
+            .target = target,
+            .optimize = optimize,
+        });
+        image_root.addImport("freestanding_abi", freestanding_abi);
+        image_root.addImport("pin_validator_abi", pin_validator_abi);
+        image_root.addImport("systick_abi", systick_abi);
+        image_root.addImport("time_interface_systick_abi", time_interface_systick_abi);
+
+        const image_library = b.addLibrary(.{
+            .name = "ra8_core",
+            .linkage = .static,
+            .root_module = image_root,
+        });
+        image_library.bundle_compiler_rt = false;
+        b.installArtifact(image_library);
+    }
 
     const pin_validator_tests = b.createModule(.{
         .root_source_file = b.path("tests/pin_validator_test.zig"),
