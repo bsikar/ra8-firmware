@@ -304,20 +304,23 @@ person extending this section does the same thing:
   is opaque in a pull request and rots silently when the format changes. A dot
   block sits three lines below the prose it illustrates, and changing a field
   name in the diagram shows up in the diff exactly like changing it in a table.
-- **It renders today.** `HAVE_DOT`, `DOT_IMAGE_FORMAT = svg` and
-  `INTERACTIVE_SVG` are set in the `Doxyfile`, graphviz is provisioned on the
-  documentation runners, and the `docs` gate hard-requires `dot`, so a missing
-  graphviz fails loudly instead of quietly dropping every diagram.
-- **`IMAGE_PATH` is empty on purpose.** Nothing here depends on a committed
-  binary image asset. If you ever add one, set `IMAGE_PATH` in the `Doxyfile` in
-  the same commit -- otherwise `@image` silently finds nothing.
+- **Nothing renders them.** `a67c04f3e` removed Doxygen, the vendored theme,
+  the MkDocs configuration and the publish pipeline, so there is no generated
+  site and no Doxygen configuration in the tree. These blocks are read as
+  source today. They stay as `@dot` because the reason above still holds and
+  because it is the form a future renderer would consume.
+- **Nothing here depends on a committed binary image asset.** Keep it that
+  way. `@image` resolves against a configured image path, and there is no
+  Doxygen configuration left to set one in.
 
 **Do not use `@startuml` anywhere in the tree.** `PLANTUML_JAR_PATH` is not
 configured and no JVM is provisioned, so doxygen ignores every `@startuml`
 block -- they render nowhere. Use `@dot`, which does.
-`scripts/checks/check_doc_diagrams.py` enforces both halves: it rejects
-`@startuml` outright, and it fails when the number of authored `@dot` blocks
-does not match the number of diagrams that actually reached the generated HTML.
+`scripts/checks/check_doc_diagrams.py` holds the authored half: it rejects
+`@startuml` outright. Its other half counted authored `@dot` blocks against the
+diagrams that reached the generated HTML, and there is no generated HTML any
+more; the script is also wired into no gate body, so neither half runs today.
+#2660 tracks deciding what it should check in a tree that renders nothing.
 
 ---
 
