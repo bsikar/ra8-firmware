@@ -671,10 +671,11 @@ if(TARGET test_ra8_host)
 endif()
 
 # The exact decimal -> binary64 conversion promoted out of the downloader's
-# state codec (#747). The glob builds the case file alone, so the library TU
-# joins it here by path (#754).
+# state codec (#747). The glob builds the case file alone, so the implementation
+# joins it here (#754). It is Zig now, so the archive is linked rather than a
+# library TU compiled in by path.
 if(TARGET test_ra8_num_decimal)
-  target_sources(test_ra8_num_decimal PRIVATE ${FW_ROOT}/libs/ra8_num/src/ra8_num_decimal.c)
+  target_link_libraries(test_ra8_num_decimal PRIVATE ra8_zig::ra8_num)
 endif()
 
 # Downloader state persistence runs one journal/recovery/fault vector against
@@ -690,7 +691,6 @@ if(TARGET test_mdl_state_parity)
             ${FW_ROOT}/port/posix/src/fw_if_fs_posix_stream.c
             ${FW_ROOT}/apps/shared_libs/mdl/src/mdl_state.c
             ${FW_ROOT}/apps/shared_libs/mdl/src/mdl_state_codec.c
-            ${FW_ROOT}/libs/ra8_num/src/ra8_num_decimal.c
             ${FW_ROOT}/apps/shared_libs/mdl/src/mdl_state_store.c
             ${FW_ROOT}/apps/shared_libs/mdl/src/mdl_storage.c
             ${FW_ROOT}/apps/shared_libs/mdl/src/mdl_hash.c
@@ -723,7 +723,6 @@ if(TARGET test_mdl_library)
             ${FW_ROOT}/apps/shared_libs/mdl/src/mdl_sanitize.c
             ${FW_ROOT}/apps/shared_libs/mdl/src/mdl_state.c
             ${FW_ROOT}/apps/shared_libs/mdl/src/mdl_state_codec.c
-            ${FW_ROOT}/libs/ra8_num/src/ra8_num_decimal.c
             ${FW_ROOT}/apps/shared_libs/mdl/src/mdl_state_store.c
             ${FW_ROOT}/apps/shared_libs/mdl/src/mdl_storage.c
             ${FW_ROOT}/apps/shared_libs/mdl/src/mdl_hash.c

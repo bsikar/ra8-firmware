@@ -453,6 +453,23 @@ ra8_add_zig_library(
   ra8_ota
 )
 
+# Fully migrated: the exact decimal -> binary64 conversion behind inc/ra8_num.h
+# is Zig, so libs/ra8_num/src has no .c left. This library was never in the
+# RA8_*_SOURCES glob set at all: three test targets named
+# src/ra8_num_decimal.c directly by path (test_ra8_num_decimal,
+# test_mdl_state_parity, test_mdl_library), so the archive replaces those three
+# by-path references in unit_tests.cmake rather than a glob. The archive
+# resolves every symbol it names: the conversion is pure arithmetic with no
+# driver call, no MMIO and no libc conversion.
+ra8_add_zig_library(
+  NAME
+  ra8_num
+  ZIG_ROOT
+  ${FW_ROOT}/libs/ra8_num
+  LIBRARY_NAME
+  ra8_num
+)
+
 # Fully migrated: the one encode-then-write bridge TU behind
 # inc/ra8_camera_stream.h is Zig, so libs/ra8_camera_io/src has no .c left and
 # the RA8_CAMERA_IO_SOURCES glob is gone from library_sources.cmake and
