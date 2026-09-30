@@ -36,7 +36,21 @@ from git_environment import (
 
 SOURCE_ROOTS = ("libs/", "examples/", "tools/")
 SOURCE_SUFFIXES = (".c", ".cc", ".cpp", ".cxx")
-MIN_SOURCE_UNITS = 879
+# A tree this size cannot legitimately collapse to a handful of translation
+# units. git_paths() shelling out to a Git that fails, a renamed SOURCE_ROOTS
+# entry, or a narrowed language_of() would all hand cppcheck a near-empty
+# manifest and report a clean analysis over nothing.
+#
+# Measured 2026-09-30 on dev: 813 first-party C units (403 libs/, 362
+# examples/, 48 tools/) after SOUP exclusion. The floor sits below that with
+# the headroom every sibling floor here carries, so ordinary deletion does
+# not turn the gate red while a collapsed census still does.
+#
+# It was 879 from the day it was introduced (93cffbc8), which is ABOVE the
+# census of the tree it landed on (817 units at that commit), so this
+# checker has refused on every run since -- selftest and real -- and the
+# cppcheck manifest it authorises was never produced.
+MIN_SOURCE_UNITS = 650
 
 
 class CensusError(RuntimeError):
