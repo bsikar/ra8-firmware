@@ -37,9 +37,9 @@ function(_ra8_zig_target_for_toolchain _out_target _out_cpu)
   if(NOT _cpu)
     message(
       FATAL_ERROR
-      "ra8: cannot derive a zig -Dcpu value: no -mcpu in CMAKE_C_FLAGS "
-      "('${CMAKE_C_FLAGS}'). A migrated Zig library cannot be cross-built "
-      "for an unknown core."
+        "ra8: cannot derive a zig -Dcpu value: no -mcpu in CMAKE_C_FLAGS "
+        "('${CMAKE_C_FLAGS}'). A migrated Zig library cannot be cross-built "
+        "for an unknown core."
     )
   endif()
   # Unicorn models the M85 board as M33 and cannot execute Zig's M85 cset/csel.
@@ -49,11 +49,20 @@ function(_ra8_zig_target_for_toolchain _out_target _out_cpu)
   endif()
   string(REPLACE "-" "_" _zig_cpu "${_cpu}")
   if(_hard_float)
-    set(${_out_target} "thumb-freestanding-eabihf" PARENT_SCOPE)
+    set(${_out_target}
+        "thumb-freestanding-eabihf"
+        PARENT_SCOPE
+    )
   else()
-    set(${_out_target} "thumb-freestanding-eabi" PARENT_SCOPE)
+    set(${_out_target}
+        "thumb-freestanding-eabi"
+        PARENT_SCOPE
+    )
   endif()
-  set(${_out_cpu} "${_zig_cpu}" PARENT_SCOPE)
+  set(${_out_cpu}
+      "${_zig_cpu}"
+      PARENT_SCOPE
+  )
 endfunction()
 
 # Build one migrated library for an EXPLICITLY named zig target and cpu, and
@@ -66,13 +75,20 @@ endfunction()
 # keeps the two archives of one library apart, and the guard below keeps a
 # second request for the same (library, cpu) pair from declaring a duplicate
 # OUTPUT rule.
-function(_ra8_zig_build_archive _lib _lib_path _zig_target _zig_cpu _out_archive)
+function(
+  _ra8_zig_build_archive
+  _lib
+  _lib_path
+  _zig_target
+  _zig_cpu
+  _out_archive
+)
   if(NOT RA8_ZIG_EXECUTABLE)
     message(
       FATAL_ERROR
-      "ra8: '${_lib}' is a Zig library (libs/${_lib}/build.zig) but no zig "
-      "binary was found on PATH. Install the pinned toolchain "
-      "(just setup) before configuring an app that links it."
+        "ra8: '${_lib}' is a Zig library (libs/${_lib}/build.zig) but no zig "
+        "binary was found on PATH. Install the pinned toolchain "
+        "(just setup) before configuring an app that links it."
     )
   endif()
 
@@ -88,40 +104,64 @@ function(_ra8_zig_build_archive _lib _lib_path _zig_target _zig_cpu _out_archive
   # One OUTPUT rule per (library, cpu) pair, however many targets ask for it.
   get_property(_declared GLOBAL PROPERTY "ra8_zig_archive_${_lib}_${_zig_cpu}")
   if(_declared)
-    set(${_out_archive} "${_archive}" PARENT_SCOPE)
+    set(${_out_archive}
+        "${_archive}"
+        PARENT_SCOPE
+    )
     return()
   endif()
   set_property(GLOBAL PROPERTY "ra8_zig_archive_${_lib}_${_zig_cpu}" ON)
 
-  file(GLOB_RECURSE _zig_srcs CONFIGURE_DEPENDS
-       ${_lib_path}/src/*.zig ${_lib_path}/build.zig)
+  file(
+    GLOB_RECURSE
+    _zig_srcs
+    CONFIGURE_DEPENDS
+    ${_lib_path}/src/*.zig
+    ${_lib_path}/build.zig
+  )
 
   add_custom_command(
     OUTPUT ${_archive}
     COMMAND
-      ${CMAKE_COMMAND} -E env ${RA8_ZIG_EXECUTABLE} build
-      --build-file ${_lib_path}/build.zig
-      --prefix ${_prefix}
-      --cache-dir ${CMAKE_CURRENT_BINARY_DIR}/zig/.cache
-      -Dtarget=${_zig_target}
-      -Dcpu=${_zig_cpu}
-      -Doptimize=${_zig_optimize}
+      ${CMAKE_COMMAND} -E env ${RA8_ZIG_EXECUTABLE} build --build-file ${_lib_path}/build.zig
+      --prefix ${_prefix} --cache-dir ${CMAKE_CURRENT_BINARY_DIR}/zig/.cache -Dtarget=${_zig_target}
+      -Dcpu=${_zig_cpu} -Doptimize=${_zig_optimize}
     DEPENDS ${_zig_srcs}
-    COMMENT
-      "Building Zig library ${_lib} for ${_zig_target} ${_zig_cpu} (${_zig_optimize})"
+    COMMENT "Building Zig library ${_lib} for ${_zig_target} ${_zig_cpu} (${_zig_optimize})"
     VERBATIM
   )
 
-  set(${_out_archive} "${_archive}" PARENT_SCOPE)
+  set(${_out_archive}
+      "${_archive}"
+      PARENT_SCOPE
+  )
 endfunction()
 
 # Build one migrated library for THIS app's own target (core and float ABI
 # derived from the toolchain flags) and return the archive path.
-function(_ra8_app_zig_library _lib _lib_path _out_archive _out_stamp)
+function(
+  _ra8_app_zig_library
+  _lib
+  _lib_path
+  _out_archive
+  _out_stamp
+)
   _ra8_zig_target_for_toolchain(_zig_target _zig_cpu)
-  _ra8_zig_build_archive(${_lib} ${_lib_path} ${_zig_target} ${_zig_cpu} _archive)
-  set(${_out_archive} "${_archive}" PARENT_SCOPE)
-  set(${_out_stamp} "${_archive}" PARENT_SCOPE)
+  _ra8_zig_build_archive(
+    ${_lib}
+    ${_lib_path}
+    ${_zig_target}
+    ${_zig_cpu}
+    _archive
+  )
+  set(${_out_archive}
+      "${_archive}"
+      PARENT_SCOPE
+  )
+  set(${_out_stamp}
+      "${_archive}"
+      PARENT_SCOPE
+  )
 endfunction()
 
 # Build a migrated library for an explicitly named core and link it into
@@ -138,37 +178,84 @@ endfunction()
 # CPU is the zig -Dcpu spelling (underscores, e.g. cortex_m33), which is what
 # the image's -mcpu=cortex-m33 maps onto. FLOAT is hard (the default) or soft
 # and picks the eabihf / eabi suffix, matching the image's -mfloat-abi.
-function(ra8_link_zig_library_for_cpu)
-  cmake_parse_arguments(ZL "" "TARGET;LIB;CPU;FLOAT" "" ${ARGN})
-  foreach(_required TARGET LIB CPU)
-    if(NOT ZL_${_required})
-      message(FATAL_ERROR "ra8_link_zig_library_for_cpu(): ${_required} is required")
+# Declare the build rule for a migrated library on an explicitly named core and
+# hand back the archive PATH, without linking it anywhere.
+#
+#   ra8_zig_archive_for_cpu(_archive LIB ra8_wdt_supervisor CPU cortex_m85)
+#
+# ra8_link_zig_library_for_cpu() below appends the archive to the END of a
+# target's link line, which is correct whenever the archive's undefined symbols
+# are satisfied by objects already ahead of it. It is wrong for a library that
+# calls INTO another static library: the ThreadX watchdog supervisor references
+# _tx_time_get and the _txe_* entry points, so an archive appended after
+# libthreadx.a leaves all seven unresolved -- ld had already passed the library
+# that defines them. Only the caller knows the order it needs, so this hands
+# back the path for it to position (e.g. in an image's LINK_LIBS ahead of
+# threadx_ns) instead of choosing a position on its behalf.
+function(ra8_zig_archive_for_cpu _out_archive)
+  cmake_parse_arguments(
+    ZA
+    ""
+    "LIB;CPU;FLOAT"
+    ""
+    ${ARGN}
+  )
+  foreach(_required LIB CPU)
+    if(NOT ZA_${_required})
+      message(FATAL_ERROR "ra8_zig_archive_for_cpu(): ${_required} is required")
     endif()
   endforeach()
-  if(NOT ZL_FLOAT)
-    set(ZL_FLOAT hard)
+  if(NOT ZA_FLOAT)
+    set(ZA_FLOAT hard)
   endif()
-  if(ZL_FLOAT STREQUAL "hard")
+  if(ZA_FLOAT STREQUAL "hard")
     set(_zig_target "thumb-freestanding-eabihf")
-  elseif(ZL_FLOAT STREQUAL "soft")
+  elseif(ZA_FLOAT STREQUAL "soft")
     set(_zig_target "thumb-freestanding-eabi")
   else()
-    message(
-      FATAL_ERROR
-      "ra8_link_zig_library_for_cpu(): FLOAT must be hard or soft, got '${ZL_FLOAT}'"
-    )
+    message(FATAL_ERROR "ra8_zig_archive_for_cpu(): FLOAT must be hard or soft, got '${ZA_FLOAT}'")
   endif()
 
-  set(_lib_path "${RA8_REPO_ROOT}/libs/${ZL_LIB}")
+  set(_lib_path "${RA8_REPO_ROOT}/libs/${ZA_LIB}")
   if(NOT EXISTS "${_lib_path}/build.zig")
-    message(
-      FATAL_ERROR
-      "ra8_link_zig_library_for_cpu(): '${ZL_LIB}' has no build.zig at "
-      "${_lib_path}; it is not a migrated Zig library."
+    message(FATAL_ERROR "ra8_zig_archive_for_cpu(): '${ZA_LIB}' has no build.zig at "
+                        "${_lib_path}; it is not a migrated Zig library."
     )
   endif()
 
-  _ra8_zig_build_archive(${ZL_LIB} ${_lib_path} ${_zig_target} ${ZL_CPU} _archive)
+  _ra8_zig_build_archive(
+    ${ZA_LIB}
+    ${_lib_path}
+    ${_zig_target}
+    ${ZA_CPU}
+    _archive
+  )
+  set(${_out_archive}
+      "${_archive}"
+      PARENT_SCOPE
+  )
+endfunction()
+
+function(ra8_link_zig_library_for_cpu)
+  cmake_parse_arguments(
+    ZL
+    ""
+    "TARGET;LIB;CPU;FLOAT"
+    ""
+    ${ARGN}
+  )
+  if(NOT ZL_TARGET)
+    message(FATAL_ERROR "ra8_link_zig_library_for_cpu(): TARGET is required")
+  endif()
+  ra8_zig_archive_for_cpu(
+    _archive
+    LIB
+    ${ZL_LIB}
+    CPU
+    ${ZL_CPU}
+    FLOAT
+    ${ZL_FLOAT}
+  )
   add_custom_target(${ZL_TARGET}_zig_${ZL_LIB}_${ZL_CPU} DEPENDS ${_archive})
   add_dependencies(${ZL_TARGET} ${ZL_TARGET}_zig_${ZL_LIB}_${ZL_CPU})
   target_link_libraries(${ZL_TARGET} PRIVATE ${_archive})
