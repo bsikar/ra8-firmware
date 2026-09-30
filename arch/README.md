@@ -40,6 +40,28 @@ There is no backend directory yet, and that is deliberate: this slice of #694
 fixes the target before anything moves, so each migration that follows is a move
 plus an adapter rather than a design argument held one file at a time.
 
+## The timebase target
+
+`arch.h` now declares the monotonic timebase as a MUST: `arch_timebase_configure`,
+`arch_timebase_now` and `arch_timebase_hz`. It had no slot before, which is the
+concrete reason "de-middleware the SysTick" (#693 step 0) was a design question
+rather than a move: `ra8_systick.h` was the only declaration of a timebase
+anywhere in the tree, so every consumer that wanted the time reached into a
+Ring-1 register header, and there was nowhere else to point them.
+
+The timebase is a MUST and not a capability because every architecture in scope
+mandates a core timekeeping block: SysTick on Armv8-M, `mtime` on RISC-V, the
+host clock on a hosted backend. `arch_tick_configure`, in the RTOS-gated block,
+is the scheduler's claim on that same block rather than a second one; a
+bare-metal build owes a monotonic `now()` and owes no scheduler tick, which is
+why the two are separated by a gate instead of merged.
+
+`arch_timebase_configure` returns the rate it achieved rather than `void`. A
+24-bit SysTick reload cannot divide a fast core clock to an arbitrary tick rate,
+so a refused request is a routine outcome; `ra8_systick_reload_for` already
+range-checks exactly this for Armv8-M, and the contract keeps that honesty
+rather than programming the nearest value silently.
+
 ## What is misfiled today
 
 The arch primitives exist. They are in the wrong tier, which is why the "Ring 1
