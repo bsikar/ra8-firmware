@@ -228,9 +228,9 @@ test "build output is dropped from an argv directory expansion" {
 test "the sweep drops vendored trees the census still carries" {
     var harness = try Harness.init(std.testing.allocator);
     defer harness.deinit();
-    try harness.write("port/threadx/CMakeLists.txt", "project(tx)");
+    try harness.write("libs/third_party/x/vendor.c", "int v;");
     try harness.write("libs/a/x.c", "int x;\n");
-    const census = [_][]const u8{ "port/threadx/CMakeLists.txt", "libs/a/x.c" };
+    const census = [_][]const u8{ "libs/third_party/x/vendor.c", "libs/a/x.c" };
 
     const status = try harness.run(&.{}, &census, relaxed);
     try std.testing.expectEqual(@as(u8, 0), status);

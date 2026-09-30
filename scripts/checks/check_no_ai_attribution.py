@@ -299,7 +299,7 @@ def _iter_files() -> Iterable[Path]:
     The universal AI-attribution ban has no directory allowlist by design: the
     scope is the whole tree minus vendored SOUP, generated tables and build
     output. ``respect_language_excludes=False`` keeps a vendored tree's *build
-    glue* (e.g. a first-party CMakeLists under port/threadx/) in view; the file
+    glue* in view; the file
     the ban actually cares about is any tracked prose, wherever it lives.
     """
     text_suffixes = tuple(sorted(TEXT_EXTS))

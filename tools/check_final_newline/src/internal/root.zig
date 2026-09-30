@@ -36,7 +36,6 @@ pub const exclude_fragments = [_][]const u8{
     "libs/third_party/",
     "apps/shared_libs/third_party/",
     "libs/ra8_fonts/",
-    "port/threadx/",
     "_unsupported/",
 };
 
@@ -48,9 +47,14 @@ pub const excluded_prefixes = [_][]const u8{
     "tools/vela/generated/",
 };
 
-/// Excluded for C only. A vendored tree is SOUP for the language whose
-/// sources it carries, while the build glue that compiles it is ours.
-pub const c_excluded_prefixes = [_][]const u8{"port/threadx/"};
+/// Excluded for C only: a vendored tree is SOUP for the language whose
+/// sources it carries, while the build glue that compiles it is ours. Empty
+/// since dev's 46248b41 put `port/threadx/` back in scope: it was the only
+/// entry, and the three .c files under it (`tx_systick_ready.c`,
+/// `tx_systick_retune.c`, `fw_os_threadx.c`) are first-party glue, not the
+/// vendored Eclipse ThreadX, which lives at `libs/third_party/threadx/`.
+/// The mechanism stays because the next vendored-C tree will want it.
+pub const c_excluded_prefixes = [_][]const u8{};
 
 /// Top-level roots beneath which a build tree legitimately appears at any
 /// depth. Deliberately not "any directory anywhere": `scripts/build/` is

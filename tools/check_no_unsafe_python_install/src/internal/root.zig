@@ -30,7 +30,6 @@ pub const excluded_prefixes = [_][]const u8{
     "apps/shared_libs/third_party/",
     "port/netxduo/",
     "port/nimble/",
-    "port/threadx/",
     "port/usbx/",
     "tests/fixtures/",
 };

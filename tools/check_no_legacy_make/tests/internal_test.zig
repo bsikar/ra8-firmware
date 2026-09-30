@@ -269,7 +269,8 @@ test "selection covers exact files, authored trees, docs and Dockerfiles" {
 
 test "vendored and fixture trees are excluded" {
     try testing.expect(implementation.isExcluded("libs/third_party/x/README.md"));
-    try testing.expect(implementation.isExcluded("port/threadx/a.md"));
+    try testing.expect(implementation.isExcluded("port/usbx/a.md"));
+    try testing.expect(!implementation.isExcluded("port/threadx/a.md"));
     try testing.expect(implementation.isExcluded("tests/fixtures/a.md"));
     try testing.expect(!implementation.isExcluded("tests/host/a.md"));
 }

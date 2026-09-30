@@ -28,7 +28,8 @@ test "the census floor and self source are the inherited scope policy" {
 
 test "vendored upstream trees are excluded" {
     try std.testing.expect(implementation.isExcluded("libs/third_party/lvgl/lv_conf.h"));
-    try std.testing.expect(implementation.isExcluded("port/threadx/tx_api.h"));
+    try std.testing.expect(implementation.isExcluded("port/usbx/ux_api.h"));
+    try std.testing.expect(!implementation.isExcluded("port/threadx/inc/tx_user.h"));
     try std.testing.expect(implementation.isExcluded("apps/shared_libs/third_party/x.c"));
 }
 

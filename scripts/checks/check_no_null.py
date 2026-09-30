@@ -16,7 +16,7 @@ and rejects bare ``NULL`` tokens in code positions. It allows NULL in:
 Scope is DERIVED from git ls-files (#358), so tools/ -- host tooling held to
 the same C23 bar, and silently omitted by the old ROOT_DIRS tuple -- is now in
 scope, along with every future top-level directory. Vendored SOUP
-(libs/third_party/, libs/ra8_fonts/, port/threadx/, ...) is skipped wholesale, and
+(libs/third_party/, libs/ra8_fonts/, ...) is skipped wholesale, and
 one first-party tree is exempt for a stated reason (see EXEMPT_PREFIXES):
 tests/ (NULL is deliberate null-guard stimulus).
 
@@ -54,7 +54,6 @@ SOUP_PREFIXES = (
     "apps/shared_libs/third_party/",
     "libs/ra8_fonts/",
     "tools/vela/generated/",
-    "port/threadx/",
 )
 
 # Scope recorded here, NOT as a directory allowlist (#358). Enumeration is
@@ -225,8 +224,8 @@ def iter_all_files() -> Iterable[pathlib.Path]:
     """Every first-party C file the rule governs, for the ``--all`` sweep.
 
     Derived from git ls-files via first_party_paths (which already removes
-    vendored SOUP, generated tables, build output and the vendored port/threadx
-    tree), minus the two documented EXEMPT_PREFIXES. A newly-added top-level
+    vendored SOUP, generated tables and build output), minus the two
+    documented EXEMPT_PREFIXES. A newly-added top-level
     directory of first-party C is covered the day it lands -- no allowlist.
     """
     for rel in first_party_paths(EXTENSIONS):
