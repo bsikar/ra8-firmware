@@ -777,3 +777,40 @@ ra8_add_zig_library(
   ra8_jpeg
 )
 link_libraries(ra8_zig::ra8_jpeg)
+
+# ra8_core is partially migrated: the freestanding runtime primitives are Zig
+# (#2820), the other sixteen TUs are still C and keep their rows in
+# .github/zig-parallel-tree-allowlist.tsv. The plain archive is deliberately
+# NOT registered here. Its exported names are the bare standard ones an image
+# needs (memcpy, memset, strlen, abs), and a host test binary already has a
+# real libc defining every one of them.
+#
+# tests/core/src/test_ra8_freestanding.c is the one suite that has to reach
+# these implementations, and it does it the way the C did: it defines
+# RA8_TEST_FREESTANDING, whose block in libs/ra8_core/inc/ra8_freestanding.h
+# rewrites its bare calls to ra8_memset / ra8_strlen / ra8_abs. So the suite
+# links a copy of the archive built with -Dabi-prefix=ra8_, which exports
+# exactly those names and collides with nothing. unit_tests.cmake attaches it
+# to that one target; it is not link_libraries()'d, because no other test
+# should pick these symbols up.
+set(_ra8_core_prefixed_dir "${CMAKE_CURRENT_BINARY_DIR}/zig_libs/ra8_core_freestanding_prefixed")
+set(_ra8_core_prefixed_library
+    "${_ra8_core_prefixed_dir}/lib/${CMAKE_STATIC_LIBRARY_PREFIX}ra8_core${CMAKE_STATIC_LIBRARY_SUFFIX}"
+)
+add_custom_target(
+  ra8_core_freestanding_prefixed_zig_library ALL
+  COMMAND "${ZIG_EXECUTABLE}" build -Dabi-prefix=ra8_ -Doptimize=Debug --prefix
+          "${_ra8_core_prefixed_dir}" --cache-dir "${_ra8_core_prefixed_dir}/cache"
+          --global-cache-dir "${_ra8_core_prefixed_dir}/global-cache"
+  WORKING_DIRECTORY "${FW_ROOT}/libs/ra8_core"
+  BYPRODUCTS "${_ra8_core_prefixed_library}"
+  COMMENT "Building ra8_ prefixed ra8_core archive for test_ra8_freestanding"
+  VERBATIM
+)
+add_library(ra8_zig::ra8_core_freestanding_prefixed STATIC IMPORTED GLOBAL)
+set_target_properties(
+  ra8_zig::ra8_core_freestanding_prefixed
+  PROPERTIES IMPORTED_LOCATION "${_ra8_core_prefixed_library}"
+             INTERFACE_INCLUDE_DIRECTORIES "${FW_ROOT}/libs/ra8_core/inc"
+)
+add_dependencies(ra8_zig::ra8_core_freestanding_prefixed ra8_core_freestanding_prefixed_zig_library)

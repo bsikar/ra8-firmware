@@ -634,18 +634,23 @@ function(ra8_add_cpu1_image)
   foreach(_s ${C1_SOURCES})
     list(APPEND _c1_srcs ${CMAKE_CURRENT_SOURCE_DIR}/${_s})
   endforeach()
-  list(
-    APPEND
-    _c1_srcs
-    ${RA8_REPO_ROOT}/libs/ra8_core/src/ra8_freestanding_mem.c
-    ${RA8_REPO_ROOT}/libs/ra8_core/src/ra8_freestanding_str.c
-    ${RA8_REPO_ROOT}/libs/ra8_core/src/ra8_freestanding_math.c
-  )
+
 
   # The M33 image: -mcpu=cortex-m33, no M85 startup (own cpu1_reset_handler),
   # freestanding, size-optimised to fit the 256 KiB MRAM_CPU1 region.
   add_executable(${C1_NAME}.elf ${_c1_srcs})
   target_compile_definitions(${C1_NAME}.elf PRIVATE RA8_BUILD_FOR_CPU1 RA8_FREESTANDING)
+  # The freestanding runtime primitives (memcpy / memset / str* / abs) are Zig
+  # now (#2820). The M33 image links ra8_core's archive built for its own core
+  # rather than the M85 one the main expansion registers, because the compiler
+  # emits calls to these names from ordinary struct assignment and they have
+  # to be present in this image's own instruction set.
+  ra8_link_zig_library_for_cpu(
+    TARGET ${C1_NAME}.elf
+    LIB ra8_core
+    CPU cortex_m33
+    FLOAT hard
+  )
   target_compile_options(
     ${C1_NAME}.elf
     PRIVATE -mcpu=cortex-m33
