@@ -28,11 +28,11 @@
 # rather than a moved line. Widening the requirement means moving a root to
 # "required" and tagging what is under it; it is never an edit to this file
 # alone.
-#! roots: 56
+#! roots: 59
 #! required: 7
 #! partial: 1
 #! exempt: 3
-#! unscoped: 45
+#! unscoped: 48
 unscoped apps/: first-party app and shared-library code; tags present by convention, not required
 unscoped arch/: CPU-architecture contract headers (Ring A); no Ring-3+ file and no backend translation unit exists yet, so nothing is inside the requirement
 partial examples/: only <app>/src/main.c is inside (Ring 6); every other app TU, boot files included, is not
@@ -54,6 +54,7 @@ unscoped libs/ra8_devcfg/: first-party library; tags present by convention, not 
 unscoped libs/ra8_dfu/: first-party library; tags present by convention, not required or read
 required libs/ra8_display_pal/
 unscoped libs/ra8_epd_cal/: first-party library; tags present by convention, not required or read
+unscoped libs/ra8_fmt/: first-party library; tags present by convention, not required or read
 unscoped libs/ra8_fs/: first-party library; no file carries a tag and nothing requires one
 unscoped libs/ra8_ftl/: first-party library; tags present by convention, not required or read
 unscoped libs/ra8_gfx/: first-party library; no file carries a tag and nothing requires one
@@ -63,12 +64,14 @@ unscoped libs/ra8_io/: first-party library; tags present by convention, not requ
 unscoped libs/ra8_jpeg/: first-party library; tags present by convention, not required or read
 unscoped libs/ra8_keyboard/: first-party library; tags present by convention, not required or read
 unscoped libs/ra8_lsm6dso/: first-party library; tags present by convention, not required or read
+unscoped libs/ra8_mdl/: first-party library; tags present by convention, not required or read
 unscoped libs/ra8_mem/: first-party library; tags present by convention, not required or read
 unscoped libs/ra8_modem_at/: first-party library; tags present by convention, not required or read
 unscoped libs/ra8_mpu/: first-party library; no file carries a tag and nothing requires one
 required libs/ra8_net_pal/
 unscoped libs/ra8_net_policy/: first-party library; tags present by convention, not required or read
 required libs/ra8_nsc/
+unscoped libs/ra8_num/: first-party library; tags present by convention, not required or read
 unscoped libs/ra8_ota/: first-party library; tags present by convention, not required or read
 unscoped libs/ra8_ov5640/: first-party library; tags present by convention, not required or read
 unscoped libs/ra8_power_profile/: first-party library; tags present by convention, not required or read
