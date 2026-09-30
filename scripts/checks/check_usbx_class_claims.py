@@ -63,7 +63,8 @@ def _read(path: Path) -> str:
     try:
         return path.read_text(encoding="utf-8")
     except OSError as exc:  # pragma: no cover - surfaced as a finding
-        raise SystemExit(f"{path}: unreadable ({exc})")
+        message = f"{path}: unreadable ({exc})"
+        raise SystemExit(message) from exc
 
 
 def compiled_device_classes(root: Path) -> tuple[set[str], list[str]]:
@@ -117,6 +118,7 @@ def compiled_host_classes(root: Path) -> set[str]:
 
 
 def vendored_host_class_files(root: Path) -> int:
+    """How many host-class sources are vendored, compiled or not."""
     src = root / HOST_CLS_SRC_REL
     return len(sorted(src.glob("*.c"))) if src.is_dir() else 0
 
@@ -134,18 +136,18 @@ def stated_claim(root: Path) -> tuple[set[str], set[str]] | None:
 
 
 def prose_without_markers(root: Path) -> str:
+    """The SOUP prose with the machine markers removed, so only claims remain."""
     return MARKER_RE.sub("", _read(root / SOUP_REL))
 
 
 def scan(root: Path) -> list[str]:
-    findings: list[str] = []
+    """Compare what the recipe compiles against what the SOUP entry claims."""
     device, vacuous = compiled_device_classes(root)
     host = compiled_host_classes(root)
 
-    for glob in vacuous:
-        findings.append(
-            f"{CMAKE_REL}: glob {glob} matches no source under {DEV_CLS_SRC_REL}"
-        )
+    findings: list[str] = [
+        f"{CMAKE_REL}: glob {glob} matches no source under {DEV_CLS_SRC_REL}" for glob in vacuous
+    ]
     if len(device) < CLASS_FLOOR and not vacuous:
         findings.append(
             f"{CMAKE_REL}: only {len(device)} device class(es) parsed out of the "
@@ -168,8 +170,7 @@ def scan(root: Path) -> list[str]:
         )
     if said_host != host:
         findings.append(
-            f"{SOUP_REL}: marker says host={_fmt(said_host)} but the recipe "
-            f"compiles {_fmt(host)}"
+            f"{SOUP_REL}: marker says host={_fmt(said_host)} but the recipe compiles {_fmt(host)}"
         )
 
     prose = prose_without_markers(root)
@@ -180,12 +181,12 @@ def scan(root: Path) -> list[str]:
             f"while the recipe compiles zero of the {count} vendored host-class "
             "sources"
         )
-    for stem in sorted(device):
-        if stem.replace("_", "") not in prose.lower().replace("-", "").replace("_", ""):
-            findings.append(
-                f"{SOUP_REL}: device class {stem} is compiled but named nowhere in "
-                "the prose"
-            )
+    flattened_prose = prose.lower().replace("-", "").replace("_", "")
+    findings.extend(
+        f"{SOUP_REL}: device class {stem} is compiled but named nowhere in the prose"
+        for stem in sorted(device)
+        if stem.replace("_", "") not in flattened_prose
+    )
     return findings
 
 
@@ -202,7 +203,7 @@ def _seed(root: Path, *, marker: str, prose: str, classes: tuple[str, ...]) -> N
     (root / HOST_CLS_SRC_REL / "ux_host_class_hub_entry.c").write_text("/* f */\n")
     (root / "cmake").mkdir(parents=True, exist_ok=True)
     globs = "\n".join(
-        f'file(GLOB _RA8_USBX_{stem.upper()}_SOURCES CONFIGURE_DEPENDS '
+        f"file(GLOB _RA8_USBX_{stem.upper()}_SOURCES CONFIGURE_DEPENDS "
         f'"${{_RA8_USBX_DEV_CLS_SRC}}/ux_device_class_{stem}_*.c")'
         for stem in classes
     )
@@ -257,9 +258,7 @@ def _marker_and_prose_cases() -> list[tuple[str, bool, str]]:
     ]
     cases: list[tuple[str, bool, str]] = []
     for name, expect_clean, marker, prose in specs:
-        ok, detail = _run_case(
-            expect_clean, marker=marker, prose=prose, classes=FIXTURE_CLASSES
-        )
+        ok, detail = _run_case(expect_clean, marker=marker, prose=prose, classes=FIXTURE_CLASSES)
         cases.append((name, ok, detail))
     return cases
 
@@ -268,12 +267,10 @@ def _host_glob_case() -> tuple[str, bool, str]:
     """A recipe that really globs the host tree must contradict host=none."""
     with tempfile.TemporaryDirectory() as tmp:
         root = Path(tmp)
-        _seed(
-            root, marker=GOOD_MARKER, prose=GOOD_PROSE, classes=FIXTURE_CLASSES
-        )
+        _seed(root, marker=GOOD_MARKER, prose=GOOD_PROSE, classes=FIXTURE_CLASSES)
         with (root / CMAKE_REL).open("a", encoding="utf-8") as handle:
             handle.write(
-                'file(GLOB _H CONFIGURE_DEPENDS '
+                "file(GLOB _H CONFIGURE_DEPENDS "
                 '"${_RA8_USBX_VENDOR_DIR}/common/usbx_host_classes/src/'
                 'ux_host_class_hub_*.c")\n'
             )
@@ -289,9 +286,7 @@ def _vacuous_glob_case() -> tuple[str, bool, str]:
     """A glob whose sources vanished must not pass as a satisfied claim."""
     with tempfile.TemporaryDirectory() as tmp:
         root = Path(tmp)
-        _seed(
-            root, marker=GOOD_MARKER, prose=GOOD_PROSE, classes=FIXTURE_CLASSES
-        )
+        _seed(root, marker=GOOD_MARKER, prose=GOOD_PROSE, classes=FIXTURE_CLASSES)
         for stale in (root / DEV_CLS_SRC_REL).glob("ux_device_class_dfu_*.c"):
             stale.unlink()
         found = scan(root)
@@ -306,12 +301,10 @@ def _filtered_empty_case() -> tuple[str, bool, str]:
     """A filter that removes every match drops the class, unlike one TU."""
     with tempfile.TemporaryDirectory() as tmp:
         root = Path(tmp)
-        _seed(
-            root, marker=GOOD_MARKER, prose=GOOD_PROSE, classes=FIXTURE_CLASSES
-        )
+        _seed(root, marker=GOOD_MARKER, prose=GOOD_PROSE, classes=FIXTURE_CLASSES)
         with (root / CMAKE_REL).open("a", encoding="utf-8") as handle:
             handle.write(
-                'list(FILTER _RA8_USBX_DFU_SOURCES EXCLUDE REGEX '
+                "list(FILTER _RA8_USBX_DFU_SOURCES EXCLUDE REGEX "
                 '".*/ux_device_class_dfu_.*\\.c$")\n'
             )
         found = scan(root)
@@ -326,14 +319,12 @@ def _single_tu_filter_case() -> tuple[str, bool, str]:
     """The real INQUIRY shape: one TU filtered, the class still compiled."""
     with tempfile.TemporaryDirectory() as tmp:
         root = Path(tmp)
-        _seed(
-            root, marker=GOOD_MARKER, prose=GOOD_PROSE, classes=FIXTURE_CLASSES
-        )
+        _seed(root, marker=GOOD_MARKER, prose=GOOD_PROSE, classes=FIXTURE_CLASSES)
         src = root / DEV_CLS_SRC_REL
         (src / "ux_device_class_dfu_inquiry.c").write_text("/* fixture */\n")
         with (root / CMAKE_REL).open("a", encoding="utf-8") as handle:
             handle.write(
-                'list(FILTER _RA8_USBX_DFU_SOURCES EXCLUDE REGEX '
+                "list(FILTER _RA8_USBX_DFU_SOURCES EXCLUDE REGEX "
                 '".*/ux_device_class_dfu_inquiry\\.c$")\n'
             )
         found = scan(root)
@@ -345,6 +336,7 @@ def _single_tu_filter_case() -> tuple[str, bool, str]:
 
 
 def selftest() -> int:
+    """Run every planted case and report which assertions failed."""
     cases = _marker_and_prose_cases()
     cases.append(_host_glob_case())
     cases.append(_vacuous_glob_case())
@@ -366,6 +358,7 @@ def selftest() -> int:
 
 
 def main() -> int:
+    """Run the gate, or its selftest, and print whatever it found."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--selftest", action="store_true")
     parser.add_argument("--root", type=Path, default=REPO_ROOT)
