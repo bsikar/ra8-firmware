@@ -61,17 +61,25 @@ void sh_decode_cover(uint16_t idx, const book_src_t* src)
 
 void sh_shelf_build_thumbs(void)
 {
-  /* Baked covers are pre-decoded in library.h, so boot just copies the gray8
-   * thumbnail -- no per-book decode (which dominated boot time). SD covers
-   * still load lazily on first open. */
+  /* Baked covers are pre-decoded in library.h and stored deflated, so boot only
+   * inflates the gray8 thumbnail -- no per-book image decode (which dominated
+   * boot time). SD covers still load lazily on first open. */
   for (uint16_t i = 0U; i < g_sh.book_count; ++i) {
     g_sh.thumb_w[i]           = 0U;
     g_sh.thumb_h[i]           = 0U;
     const sh_entry_t* const e = &g_sh.entry[i];
-    if (e->from_sd || (e->thumb == nullptr)) {
+    if (e->from_sd || (e->thumb == nullptr) || (e->thumb_len == 0U)) {
       continue; /* SD entries get their cover from sh_book_open on first tap */
     }
-    (void)memcpy(g_sh.thumb[i], e->thumb, (size_t)e->thumb_w * (size_t)e->thumb_h);
+    const size_t want = (size_t)e->thumb_w * (size_t)e->thumb_h;
+    size_t       got  = 0U;
+    if (sh_inflate(e->thumb, (size_t)e->thumb_len, g_sh.thumb[i], sizeof g_sh.thumb[i], &got)
+        != k_ra8_ok) {
+      continue; /* leave thumb_w 0 so the card draws its placeholder */
+    }
+    if (got != want) {
+      continue; /* short or over-long cover: fail closed rather than blit garbage */
+    }
     g_sh.thumb_w[i] = e->thumb_w;
     g_sh.thumb_h[i] = e->thumb_h;
   }

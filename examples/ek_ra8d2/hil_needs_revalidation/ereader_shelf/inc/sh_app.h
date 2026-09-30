@@ -143,7 +143,8 @@ typedef struct {
   sh_book_fmt_t  fmt;                     /**< Container format (rabook / epub).                */
   const uint8_t* blob;                    /**< Baked RBKC bytes (MRAM), or NULL when SD.        */
   uint32_t       blob_len;                /**< Baked length, or SD file size in bytes.          */
-  const uint8_t* thumb;                   /**< Pre-baked gray8 cover thumbnail, or NULL.        */
+  const uint8_t* thumb;                   /**< Deflated pre-baked gray8 cover, or NULL.        */
+  uint32_t       thumb_len;               /**< Deflated cover length in bytes, 0 when none.     */
   uint16_t       thumb_w;                 /**< Pre-baked thumbnail width.                       */
   uint16_t       thumb_h;                 /**< Pre-baked thumbnail height.                      */
   char           sd_name[k_sh_name_cap];  /**< SD file name, e.g. "Meditations.rabook".         */
@@ -429,7 +430,7 @@ uint16_t* sh_fb_pixels(void);
 /** @brief Decode the open rabook source's 4bpp cover into thumbnail slot @p idx. */
 void sh_decode_cover(uint16_t idx, const book_src_t* src);
 
-/** @brief Copy the baked books' pre-decoded covers into ::sh_state_t::thumb at boot. */
+/** @brief Inflate the baked books' deflated covers into ::sh_state_t::thumb at boot. */
 void sh_shelf_build_thumbs(void);
 
 /** @brief Render the shelf grid (cover cards) into the framebuffer. */
