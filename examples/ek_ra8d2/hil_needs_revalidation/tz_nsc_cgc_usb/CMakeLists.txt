@@ -176,10 +176,20 @@ set(_ns_usb_srcs
     ${RA8_REPO_ROOT}/libs/ra8_hal/src/ra8_usb_host_ctrl.c
     ${RA8_REPO_ROOT}/libs/ra8_hal/src/ra8_usb_host_bulk.c
     ${RA8_REPO_ROOT}/libs/ra8_hal/src/ra8_mstp.c
-    ${RA8_REPO_ROOT}/libs/ra8_core/src/ra8_log.c
     ${RA8_REPO_ROOT}/libs/ra8_core/src/ra8_scb.c
 )
 target_sources(tz_nsc_cgc_usb_ns.elf PRIVATE ${_ns_usb_srcs})
+# ra8_log is Zig now (#2836), so the NS image takes it from ra8_core's archive
+# instead of compiling libs/ra8_core/src/ra8_log.c by path. The NS world runs
+# on the same Cortex-M85 as the Secure image, and a freestanding build of
+# ra8_core composes its two roots into one archive (#2842), so this is the
+# same call secure_boot_ns_hil already makes.
+ra8_link_zig_library_for_cpu(
+  TARGET tz_nsc_cgc_usb_ns.elf
+  LIB ra8_core
+  CPU cortex_m85
+  FLOAT hard
+)
 # Quiet only the vendored USBX sources. The first-party USBX bridge, HAL, and
 # core sources remain on the full project warning profile. Measured on all 187
 # USBX TUs this app compiles, under arm-none-eabi-gcc 13.3.1 at -O0, one flag

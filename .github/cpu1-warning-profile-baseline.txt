@@ -68,10 +68,8 @@
 # matching declaration and still fails closed.
 #! rows: 8
 cpu1_pingpong_cpu1.elf  examples/ek_ra8d2/hw_validated/hil/cpu1_pingpong/src/cpu1_main.c
-cpu1_pingpong_cpu1.elf  libs/ra8_core/src/ra8_log.c
 cpu1_pingpong_cpu1.elf  libs/ra8_core/src/ra8_scb.c
 cpu1_pingpong_cpu1.elf  libs/ra8_hal/src/ra8_ipc.c
 cpu1_pingpong_ipc_cpu1.elf  examples/ek_ra8d2/hil_needs_revalidation/cpu1_pingpong_ipc/src/cpu1_main.c
-cpu1_pingpong_ipc_cpu1.elf  libs/ra8_core/src/ra8_log.c
 cpu1_pingpong_ipc_cpu1.elf  libs/ra8_core/src/ra8_scb.c
 cpu1_pingpong_ipc_cpu1.elf  libs/ra8_hal/src/ra8_ipc.c

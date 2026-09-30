@@ -152,8 +152,8 @@ link_libraries(ra8_zig::ra8_gfx)
 # Partial-read-path libraries -- the viewer links only the read members. The JOF
 # strip parses through jof (DEFLATE tiles inflate via ra8_compress over
 # the already-linked miniz) and pages through the ra8_mem tile cache (+ its
-# keycache); ra8_core supplies logging, the error handler and the shared
-# decompression-limits policy. Each DROP is producer / encoder / HAL code the
+# keycache); ra8_core supplies the error handler and the shared
+# decompression-limits policy, with logging now coming from its Zig archive. Each DROP is producer / encoder / HAL code the
 # viewer must not link; ra8_viewer_read_path() proves the split is complete.
 ra8_viewer_read_path(
   JOF_SRC ${FW_ROOT}/apps/shared_libs/jof/src
@@ -272,9 +272,23 @@ if(NOT TARGET ra8_zig::ra8_mem)
 endif()
 link_libraries(ra8_zig::ra8_mem)
 
+# ra8_core's log backend is Zig now (#2836), so the viewer takes the
+# ra8_log_emit_* surface and ra8_err_to_str out of the general ra8_core archive
+# instead of compiling ra8_log.c. The rest of the library is still C, so the
+# read-path partition below stays.
+if(NOT TARGET ra8_zig::ra8_core)
+  include(${FW_ROOT}/tests/cmake/zig_library.cmake)
+  ra8_add_zig_library(
+    NAME ra8_core
+    ZIG_ROOT ${FW_ROOT}/libs/ra8_core
+    LIBRARY_NAME ra8_core_zig
+  )
+endif()
+link_libraries(ra8_zig::ra8_core)
+
 ra8_viewer_read_path(
   RA8_CORE_SRC ${FW_ROOT}/libs/ra8_core/src
-  KEEP ra8_log.c ra8_error_handler.c ra8_decomp_limits.c
+  KEEP ra8_error_handler.c ra8_decomp_limits.c
   DROP ra8_boot_region.c
        ra8_crashlog.c
        ra8_error_sink_log.c

@@ -20,10 +20,20 @@ if(NOT TARGET ra8_zig::fw_if_fs)
   )
 endif()
 
+# ra8_log is Zig now (#2836), so the ra8_core archive replaces the
+# libs/ra8_core/src/ra8_log.c row that used to be compiled by path here.
+if(NOT TARGET ra8_zig::ra8_core)
+  include(${ALPHABET_SOUP_REPO_ROOT}/tests/cmake/zig_library.cmake)
+  ra8_add_zig_library(
+    NAME ra8_core
+    ZIG_ROOT ${FW}/ra8_core
+    LIBRARY_NAME ra8_core_zig
+  )
+endif()
+
 set(ALPHABET_SOUP_PORT_SRC
     ${FW}/ra8_io/src/ra8_io_stream.c
     ${FW}/ra8_io/src/ra8_io_stream_ram.c
-    ${FW}/ra8_core/src/ra8_log.c
     ${ALPHABET_SOUP_REPO_ROOT}/port/posix/src/fw_if_fs_posix.c
     ${ALPHABET_SOUP_REPO_ROOT}/port/posix/src/fw_if_fs_posix_bind.c
     ${ALPHABET_SOUP_REPO_ROOT}/port/posix/src/fw_if_fs_posix_common.c
@@ -52,7 +62,7 @@ target_include_directories(
 )
 
 target_compile_definitions(alphabet_soup PRIVATE RA8_OFF_TARGET)
-target_link_libraries(alphabet_soup PRIVATE ra8_zig::fw_if_fs)
+target_link_libraries(alphabet_soup PRIVATE ra8_zig::fw_if_fs ra8_zig::ra8_core)
 
 target_compile_options(
   alphabet_soup
@@ -91,7 +101,7 @@ target_include_directories(
 )
 
 target_compile_definitions(test_alphabet_soup PRIVATE RA8_OFF_TARGET)
-target_link_libraries(test_alphabet_soup PRIVATE ra8_zig::fw_if_fs)
+target_link_libraries(test_alphabet_soup PRIVATE ra8_zig::fw_if_fs ra8_zig::ra8_core)
 
 target_compile_options(
   test_alphabet_soup

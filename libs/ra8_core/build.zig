@@ -3,11 +3,11 @@
 //!
 //! Build graph for `ra8_core`.
 //!
-//! Three seams of this library are Zig so far: the freestanding runtime
-//! primitives (#2820), the pin-claim validator (#2825) and the SysTick
-//! timebase with its time-interface binding (#2830). Everything else in `src/`
-//! is still C, which `.github/zig-parallel-tree-allowlist.tsv` records per
-//! file.
+//! Four seams of this library are Zig so far: the freestanding runtime
+//! primitives (#2820), the pin-claim validator (#2825), the SysTick timebase
+//! with its time-interface binding (#2830) and the log backend with
+//! `ra8_err_to_str` (#2836). Everything else in `src/` is still C, which
+//! `.github/zig-parallel-tree-allowlist.tsv` records per file.
 //!
 //! WHAT THIS LIBRARY SHIPS DEPENDS ON WHO LINKS IT.
 //!
@@ -158,6 +158,40 @@ pub fn build(b: *std.Build) void {
         .optimize = optimize,
     });
 
+    const log_format = b.createModule(.{
+        .root_source_file = b.path("src/internal/log/format.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+
+    const log_err_names = b.createModule(.{
+        .root_source_file = b.path("src/internal/log/err_names.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+
+    const log_itm = b.createModule(.{
+        .root_source_file = b.path("src/internal/log/itm.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+
+    const log_line = b.createModule(.{
+        .root_source_file = b.path("src/internal/log/line.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    log_line.addImport("log_format", log_format);
+
+    const log_abi = b.createModule(.{
+        .root_source_file = b.path("src/log_abi.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    log_abi.addImport("log_itm", log_itm);
+    log_abi.addImport("log_line", log_line);
+    log_abi.addImport("log_err_names", log_err_names);
+
     const root = b.createModule(.{
         .root_source_file = b.path("src/root.zig"),
         .target = target,
@@ -166,6 +200,7 @@ pub fn build(b: *std.Build) void {
     root.addImport("pin_validator_abi", pin_validator_abi);
     root.addImport("systick_abi", systick_abi);
     root.addImport("time_interface_systick_abi", time_interface_systick_abi);
+    root.addImport("log_abi", log_abi);
 
     if (!image_build) {
         const library = b.addLibrary(.{
@@ -185,6 +220,7 @@ pub fn build(b: *std.Build) void {
         image_root.addImport("pin_validator_abi", pin_validator_abi);
         image_root.addImport("systick_abi", systick_abi);
         image_root.addImport("time_interface_systick_abi", time_interface_systick_abi);
+        image_root.addImport("log_abi", log_abi);
 
         const image_library = b.addLibrary(.{
             .name = "ra8_core",
@@ -210,4 +246,14 @@ pub fn build(b: *std.Build) void {
     });
     systick_tests.addImport("systick_reload", systick_reload);
     test_step.dependOn(&b.addRunArtifact(b.addTest(.{ .root_module = systick_tests })).step);
+
+    const log_tests = b.createModule(.{
+        .root_source_file = b.path("tests/log_test.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    log_tests.addImport("log_format", log_format);
+    log_tests.addImport("log_line", log_line);
+    log_tests.addImport("log_err_names", log_err_names);
+    test_step.dependOn(&b.addRunArtifact(b.addTest(.{ .root_module = log_tests })).step);
 }

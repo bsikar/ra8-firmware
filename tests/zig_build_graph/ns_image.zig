@@ -25,7 +25,8 @@
 //!    `TX_SINGLE_MODE_NON_SECURE`. Same 185 kernel sources, a different
 //!    kernel, and not one diagnostic if the define goes missing.
 //! 3. First-party TUs the secure side also compiles are recompiled NS-private
-//!    (`ra8_log.c`, `ra8_scb.c`, `ra8_mstp.c`, the `ra8_usb*` driver). A
+//!    (`ra8_scb.c`, `ra8_mstp.c`, the `ra8_usb*` driver; `ra8_log` is Zig as of
+//!    #2836 and arrives as ra8_core's archive). A
 //!    single shared copy links fine and faults INVTRAN across the S/NS
 //!    boundary at run time.
 //! 4. A second vendored tree (USBX) with suppressions measured per set: the

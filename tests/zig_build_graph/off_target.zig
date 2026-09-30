@@ -82,6 +82,6 @@ test "the define is the one CMake hangs on those sources, and it is scoped to th
     const declared: []const []const u8 = &.{"ra8_psa_crypto"};
     try std.testing.expect(isOffTargetSource(declared, "libs/ra8_psa_crypto/src/ra8_psa_crypto.c"));
     try std.testing.expect(!isOffTargetSource(declared, "libs/ra8_psa_crypto/inc/ra8_psa_crypto.h"));
-    try std.testing.expect(!isOffTargetSource(declared, "libs/ra8_core/src/ra8_log.c"));
+    try std.testing.expect(!isOffTargetSource(declared, "libs/ra8_core/src/ra8_scb.c"));
     try std.testing.expect(!isOffTargetSource(&.{}, "libs/ra8_psa_crypto/src/ra8_psa_crypto.c"));
 }
