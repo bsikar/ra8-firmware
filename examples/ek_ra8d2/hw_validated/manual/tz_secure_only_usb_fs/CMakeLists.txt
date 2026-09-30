@@ -35,7 +35,7 @@ include("${_d}/cmake/ra8_add_app.cmake")
 # anything, which leaves the ThreadX unused-memory sentinel as the only
 # thing the old 299-line linker fork was actually carrying (#742).
 ra8_add_app(
-  NAME tz_secure_only_usb_fs
+  NAME tz_secure_only_usb_fs BOOT_PROFILE secure_only
   STACK_BYTES 2200
   DESCRIPTION "Secure-world-only USB CDC ACM echo experiment for RA8D2"
   USES threadx usbx THREADX_HEAP SDRAM

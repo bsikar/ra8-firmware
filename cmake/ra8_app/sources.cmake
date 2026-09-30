@@ -78,6 +78,21 @@ endfunction()
 
 macro(_ra8_app_collect_sources)
   # ---- sources: per-app main, shared-or-local boot ----------------------
+  #
+  # Each boot file resolves in three rungs: the app's own src/<file>.c, then
+  # the board's src/boot/<BOOT_PROFILE>/<file>.c, then the board default
+  # src/boot/<file>.c. The middle rung exists because a boot file is often
+  # shared by a FAMILY of apps rather than by all of them or by one: two apps
+  # hand off to a Non-Secure USB image and two are deliberately secure-only,
+  # and each pair carried a byte-identical trustzone_init.c differing only in
+  # the @file line (#742). BOOT_PROFILE lets the pair name one shared copy
+  # without promoting it to the board default, which would change every other
+  # app on the board.
+  #
+  # A profile directory holds only the boot files that profile overrides; any
+  # it omits fall through to the board default. The board library glob below
+  # excludes /src/boot/ wholesale, so profile files are compiled into the apps
+  # that select them and into nothing else.
   if(NOT EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/src/main.c")
     message(FATAL_ERROR "${CMAKE_CURRENT_SOURCE_DIR} must provide src/main.c")
   endif()
@@ -96,6 +111,10 @@ macro(_ra8_app_collect_sources)
     if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/src/${_ra8_boot}")
       list(APPEND _ra8_src "${CMAKE_CURRENT_SOURCE_DIR}/src/${_ra8_boot}")
       list(REMOVE_ITEM _ra8_app_local "${CMAKE_CURRENT_SOURCE_DIR}/src/${_ra8_boot}")
+    elseif(_RA8_APP_BOOT_PROFILE
+           AND EXISTS "${_ra8_board_dir}/src/boot/${_RA8_APP_BOOT_PROFILE}/${_ra8_boot}"
+    )
+      list(APPEND _ra8_src "${_ra8_board_dir}/src/boot/${_RA8_APP_BOOT_PROFILE}/${_ra8_boot}")
     else()
       list(APPEND _ra8_src "${_ra8_board_dir}/src/boot/${_ra8_boot}")
     endif()
