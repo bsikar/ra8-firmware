@@ -1,0 +1,277 @@
+#!/usr/bin/env python3
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Brighton Sikarskie
+"""Gate: every consumer count a SOUP record states shall be re-derived from the tree.
+
+A SOUP record's "how widely is this used here" sentence is the number a reader
+trusts when deciding how much of the firmware a vendored component sits under.
+Those numbers were transcribed by hand and then left: ``docs/SOUP/threadx.md``
+claimed 45 example applications against a tree that held 47, and
+``sbom_registry.py`` restated the same 45 in its component description (#624).
+Nothing recomputed either one, so both aged quietly and a stale count read
+exactly like a current one.
+
+Each stated count now sits behind a machine-readable census marker::
+
+    <!-- consumer-census: key=threadx total=47 hw_validated=39 c6=6 -->
+
+This gate re-derives every field from ``examples/**/CMakeLists.txt`` -- the same
+``USES`` clause the build itself consumes -- and fails on any disagreement. It
+also asserts each number in the marker appears literally in the document body,
+so the prose a person actually reads cannot drift away from the marker that is
+being checked.
+
+The derivation parses ``USES`` the way ``ra8_add_app()`` does: the clause runs
+until the next recognised keyword or the closing paren, so a multi-line ``USES``
+(``wifi_hal_join``) counts the same as a single-line one.
+
+Run::
+
+    check_soup_consumer_census.py             # scan every SOUP record
+    check_soup_consumer_census.py --selftest  # prove both directions
+
+Exit 0 when every stated count matches the tree, 1 on any finding, 2 when the
+sweep collapses below a floor (a read that saw nothing must not report success).
+"""
+
+from __future__ import annotations
+
+import argparse
+import re
+import sys
+import tempfile
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+
+from selftest_assert import expect, report  # noqa: E402
+
+REPO_ROOT = Path(__file__).resolve().parents[2]
+
+SOUP_DIR = "docs/SOUP"
+"""Where the records this gate reads live."""
+
+APPS_DIR = "examples"
+"""The tree the counts are derived from."""
+
+MARKER_RE = re.compile(r"<!--\s*consumer-census:\s*(?P<fields>[^>]*?)\s*-->")
+"""The census marker. One per stated component, any number per document."""
+
+TIER_FIELDS = {
+    "total": "",
+    "hw_validated": "/hw_validated/",
+    "c6": "/c6/",
+    "unsupported": "/_unsupported/",
+}
+"""Marker field -> the path fragment an app must contain to be counted in it.
+``total`` counts every app that declares the component at all."""
+
+APP_FLOOR = 100
+"""Fewest app CMakeLists a healthy sweep may see. The tree held far more when
+this gate landed; a read finding fewer has collapsed (wrong cwd, sparse
+checkout) and is fatal rather than clean."""
+
+USES_STOP_WORDS = (
+    ")",
+    "LIBS",
+    "OFF_TARGET_LIBS",
+    "NSC_SRCS",
+    "EXTRA_SRCS",
+    "AUX_SRCS",
+    "SRAM_TEXT",
+)
+"""Keywords that end a ``USES`` clause, mirroring ra8_add_app's argument list."""
+
+TOKEN_RE = re.compile(r"\A[a-z0-9_]+\Z")
+"""A middleware name. Anything else in the clause is punctuation or a variable."""
+
+
+def uses_of(text: str) -> set[str]:
+    """Return the middleware named in every ``USES`` clause of one CMakeLists."""
+    found: set[str] = set()
+    for match in re.finditer(r"\bUSES\b", text):
+        tail = text[match.end() :]
+        stop = len(tail)
+        for word in USES_STOP_WORDS:
+            index = tail.find(word)
+            if index != -1:
+                stop = min(stop, index)
+        clause = " ".join(line.split("#", 1)[0] for line in tail[:stop].splitlines())
+        found.update(token for token in clause.split() if TOKEN_RE.match(token))
+    return found
+
+
+def consumers(root: Path, key: str) -> list[Path]:
+    """Return every app CMakeLists under ``examples/`` that declares ``key``."""
+    apps = sorted((root / APPS_DIR).rglob("CMakeLists.txt"))
+    return [p for p in apps if key in uses_of(p.read_text(errors="replace"))]
+
+
+def app_count(root: Path) -> int:
+    """Return how many app CMakeLists the sweep saw at all, for the floor."""
+    return len(list((root / APPS_DIR).rglob("CMakeLists.txt")))
+
+
+def parse_marker(fields: str) -> tuple[dict[str, int], str | None, str | None]:
+    """Return (counts, key, error) for one marker's field list."""
+    counts: dict[str, int] = {}
+    key: str | None = None
+    for item in fields.split():
+        if "=" not in item:
+            return counts, key, f"field {item!r} is not name=value"
+        name, _, value = item.partition("=")
+        if name == "key":
+            key = value
+            continue
+        if name not in TIER_FIELDS:
+            return counts, key, f"unknown field {name!r} (known: {' '.join(TIER_FIELDS)})"
+        if not value.isdigit():
+            return counts, key, f"field {name}={value!r} is not a count"
+        counts[name] = int(value)
+    if key is None:
+        return counts, key, "no key= field; the marker must name its component"
+    if "total" not in counts:
+        return counts, key, f"key={key} states no total="
+    return counts, key, None
+
+
+def check_marker(doc: Path, root: Path, fields: str, prose: str) -> list[str]:
+    """Return the findings for one census marker, checked against the document's prose.
+
+    ``prose`` is the body with every marker stripped out: a marker must not
+    satisfy its own prose-appearance check by quoting its own number.
+    """
+    counts, key, error = parse_marker(fields)
+    if error is not None:
+        return [f"{doc.name}: {error}"]
+    paths = [str(p) for p in consumers(root, str(key))]
+    findings: list[str] = []
+    for name, count in sorted(counts.items()):
+        fragment = TIER_FIELDS[name]
+        actual = sum(1 for p in paths if fragment in p) if fragment else len(paths)
+        if actual != count:
+            findings.append(
+                f"{doc.name}: key={key} {name}={count} but the tree holds {actual}; "
+                f"re-derive the marker and the prose together"
+            )
+        elif not re.search(rf"\b{count}\b", prose):
+            findings.append(
+                f"{doc.name}: key={key} {name}={count} matches the tree but the number "
+                "appears nowhere in the prose; the marker is checking a claim no reader sees"
+            )
+    return findings
+
+
+def scan(root: Path) -> tuple[list[str], int, int]:
+    """Return (findings, markers_seen, apps_seen) for the SOUP records under ``root``."""
+    findings: list[str] = []
+    seen = 0
+    soup = root / SOUP_DIR
+    for doc in sorted(soup.glob("*.md")) if soup.is_dir() else []:
+        body = doc.read_text(errors="replace")
+        prose = MARKER_RE.sub(" ", body)
+        for match in MARKER_RE.finditer(body):
+            seen += 1
+            findings.extend(check_marker(doc, root, match.group("fields"), prose))
+    return findings, seen, app_count(root)
+
+
+def _seed(root: Path) -> None:
+    """Build a throwaway tree: three apps, two of which declare ``demolib``."""
+    for name, uses in (("a", "demolib"), ("b", "demolib other"), ("c", "other")):
+        app = root / APPS_DIR / "ek_ra8d2" / "hw_validated" / name
+        app.mkdir(parents=True)
+        (app / "CMakeLists.txt").write_text(f"ra8_add_app(\n  NAME {name}\n  USES {uses}\n)\n")
+    (root / SOUP_DIR).mkdir(parents=True)
+
+
+def _write_doc(root: Path, marker: str, prose: str) -> Path:
+    """Write the fixture SOUP record and return its path."""
+    doc = root / SOUP_DIR / "demolib.md"
+    doc.write_text(f"# demolib\n\n{marker}\n\n{prose}\n")
+    return doc
+
+
+def selftest() -> int:
+    """Prove the gate fires on a stale count and stays quiet on a current one."""
+    failures: list[str] = []
+    good = "<!-- consumer-census: key=demolib total=2 hw_validated=2 -->"
+    prose = "Two apps declare it: 2 of them under hw_validated."
+    with tempfile.TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        _seed(root)
+
+        _write_doc(root, good, prose)
+        findings, seen, _ = scan(root)
+        expect(not findings, "a current census is quiet", failures)
+        expect(seen == 1, "the marker is discovered", failures)
+
+        _write_doc(root, "<!-- consumer-census: key=demolib total=3 -->", "Three: 3 apps.")
+        findings, _, _ = scan(root)
+        expect(any("the tree holds 2" in f for f in findings), "a stale total fires", failures)
+
+        _write_doc(root, "<!-- consumer-census: key=demolib total=2 hw_validated=1 -->", prose)
+        findings, _, _ = scan(root)
+        expect(any("the tree holds 2" in f for f in findings), "a stale tier count fires", failures)
+
+        _write_doc(root, good, "No numerals here at all.")
+        findings, _, _ = scan(root)
+        expect(
+            any("appears nowhere in the prose" in f for f in findings),
+            "a marker the prose does not state fires",
+            failures,
+        )
+
+        _write_doc(root, "<!-- consumer-census: key=demolib total=2 tier=2 -->", prose)
+        findings, _, _ = scan(root)
+        expect(any("unknown field" in f for f in findings), "an unknown field fires", failures)
+
+        _write_doc(root, "<!-- consumer-census: total=2 -->", prose)
+        findings, _, _ = scan(root)
+        expect(any("no key=" in f for f in findings), "a keyless marker fires", failures)
+
+        _write_doc(root, "<!-- consumer-census: key=demolib hw_validated=2 -->", prose)
+        findings, _, _ = scan(root)
+        expect(any("states no total=" in f for f in findings), "a totalless marker fires", failures)
+
+        (root / SOUP_DIR / "demolib.md").unlink()
+        findings, seen, _ = scan(root)
+        expect(seen == 0 and not findings, "a tree with no markers is quiet", failures)
+    return report(failures)
+
+
+def main(argv: list[str]) -> int:
+    """Re-derive every stated consumer count and compare it with the tree.
+
+    Returns 0 when every count matches, 1 on findings, 2 when the sweep
+    collapsed below ``APP_FLOOR``.
+    """
+    ap = argparse.ArgumentParser(description="Re-derive SOUP consumer counts from the tree")
+    ap.add_argument("--selftest", action="store_true", help="assert both directions")
+    args = ap.parse_args(argv[1:])
+    if args.selftest:
+        return selftest()
+
+    findings, seen, apps = scan(REPO_ROOT)
+    if apps < APP_FLOOR:
+        print(
+            f"check_soup_consumer_census.py: FATAL -- only {apps} app CMakeLists discovered "
+            f"under {APPS_DIR}/, floor is {APP_FLOOR}. A collapsed read reports success "
+            "because it saw nothing.",
+            file=sys.stderr,
+        )
+        return 2
+    if findings:
+        print(f"\n{len(findings)} consumer-census finding(s):\n", file=sys.stderr)
+        for finding in findings:
+            print(f"  {finding}", file=sys.stderr)
+        return 1
+    print(
+        f"check_soup_consumer_census.py: {seen} census marker(s) re-derived from "
+        f"{apps} app CMakeLists, every stated count current."
+    )
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main(sys.argv))

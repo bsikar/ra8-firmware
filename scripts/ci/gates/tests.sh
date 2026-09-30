@@ -271,6 +271,14 @@ gate_mcdc() (
 # emit today; only a regenerate proves that, and #715 stays open for wiring the pinned
 # generator into the image so it can run here.
 #
+# The SOUP consumer counts (#624) ride here for the same reason the artefacts do:
+# they are a DERIVED number stated in prose, and nothing recomputed them. The
+# threadx record claimed 45 example apps against a tree holding 47, and
+# sbom_registry.py restated the same 45. check_soup_consumer_census.py re-derives
+# every stated count from each app's own USES clause and fails on disagreement,
+# and fails again when a checked number appears nowhere in the prose -- so the
+# marker being checked cannot drift away from the sentence a reader actually sees.
+#
 # gen_ra8_media_proto.sh --selftest runs here too, and it is the odd one out: it
 # exercises a --check this gate cannot itself run. That is the reason for it. The
 # byte-exact comparison, the post-processing, the version pin and the missing-generator
@@ -286,6 +294,8 @@ gate_artefact_freshness() (
   python3 scripts/checks/check_proto_codec_pairing.py --selftest
   python3 scripts/checks/check_proto_codec_pairing.py
   bash scripts/gen/gen_ra8_media_proto.sh --selftest
+  python3 scripts/checks/check_soup_consumer_census.py --selftest
+  python3 scripts/checks/check_soup_consumer_census.py
 )
 
 # --- cache-bench ----------------------------------------------------------
