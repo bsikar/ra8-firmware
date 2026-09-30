@@ -31,7 +31,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from lint_targets import language_of
+from lint_targets import language_of, repo_files
 
 #: Source extensions carrying C/C++ comments.
 SOURCE_EXTS = (".c", ".h", ".cpp", ".hpp", ".cc")
@@ -67,13 +67,7 @@ def all_tracked_files() -> list[str]:
     hook's. They differ only in this enumeration, so a rule can never apply
     in one and not the other.
     """
-    out = subprocess.run(
-        ["git", "ls-files"],  # noqa: S607  # trusted: fixed git argv
-        check=True,
-        capture_output=True,
-        text=True,
-    ).stdout
-    return [line for line in out.splitlines() if line]
+    return repo_files(caller="line_citation_lex.py")
 
 
 def is_in_scope(path: str, exclude_prefixes: tuple[str, ...]) -> bool:

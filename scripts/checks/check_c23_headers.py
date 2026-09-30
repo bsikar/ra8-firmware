@@ -70,7 +70,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from lint_targets import is_build_output_path
+from lint_targets import is_build_output_path, repo_files
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 
@@ -328,7 +328,7 @@ def all_files() -> list[Path]:
         Absolute paths of tracked ``.c`` / ``.h`` / ``.cpp`` / ``.hpp`` files
         that are not vendored, generated, or build output.
     """
-    names = _git_lines(["ls-files", "--", "*.c", "*.h", "*.cpp", "*.hpp"])
+    names = repo_files(("*.c", "*.h", "*.cpp", "*.hpp"), caller="check_c23_headers.py")
     return [REPO_ROOT / name for name in names if _in_scope(REPO_ROOT / name)]
 
 
