@@ -670,7 +670,7 @@ pub const uncovered = [_]Uncovered{
     .{
         .representative = "usb_selftest_wlun",
         .shape = .{ .uses = &.{ "threadx", "usbx" }, .threadx_heap = true },
-        .note = "20 declarations, the largest uncovered kind by a long way: USBX device classes on top of ThreadX, linked against a generated heap fragment. middleware.zig already compiles ThreadX; USBX is the next middleware to teach it",
+        .note = "22 declarations, the largest uncovered kind by a long way: USBX device classes on top of ThreadX, linked against a generated heap fragment. #742 folded the secure-only pair in here by giving them THREADX_HEAP, retiring the kind that linked the board script with no heap fragment. middleware.zig already compiles ThreadX; USBX is the next middleware to teach it",
     },
     .{
         .representative = "c6_mdl_test",
@@ -691,11 +691,6 @@ pub const uncovered = [_]Uncovered{
         .representative = "c6_wifi_join",
         .shape = .{ .uses = &.{ "esp_hosted", "netxduo", "threadx" }, .extra_srcs = true, .threadx_heap = true },
         .note = "2 declarations: C6 Wi-Fi with NetX Duo, and the first uncovered kind that also compiles EXTRA_SRCS",
-    },
-    .{
-        .representative = "tz_secure_only_usb_fs",
-        .shape = .{ .uses = &.{ "threadx", "usbx" } },
-        .note = "2 declarations: USBX on ThreadX linking the board's own linker script and composing no heap fragment, the TrustZone-only pair. #742 moved the three dfu_selftest apps off this kind and onto SRAM_TEXT",
     },
     .{
         .representative = "dfu_selftest_boot",
