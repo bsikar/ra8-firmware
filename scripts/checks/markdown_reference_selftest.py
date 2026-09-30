@@ -16,7 +16,6 @@ import markdown_references as core
 from git_environment import isolated_git_environment
 from markdown_reference_policy import (
     BARE_FILE_SUFFIXES,
-    LIBWEBP_ABSENCE_CLAUSE,
     PARSER_RUNTIME_LIMIT_SECONDS,
 )
 
@@ -300,39 +299,83 @@ def _check_bare_parser_cases(failures: list[str]) -> None:
         failures.append(f"bare-filename parser is non-linear ({elapsed:.3f}s)")
 
 
+def _soup_record(root: Path, source: str, body: str) -> None:
+    """Write one SOUP record whose local-path line binds upstream-relative paths."""
+    (root / source).write_text(
+        "# Sample\n\n- **Local path**: `libs/third_party/sample/`\n\n" + body,
+        encoding="ascii",
+    )
+
+
 def _check_soup_cases(root: Path, failures: list[str]) -> None:
     """Prove upstream-relative paths bind to the declared local vendor root."""
     (root / "docs" / "SOUP").mkdir()
     source = "docs/SOUP/libwebp.md"
-    (root / source).write_text(
-        "# Sample\n\n- **Local path**: `libs/third_party/sample/`\n",
-        encoding="ascii",
-    )
+    _soup_record(root, source, "")
     live = PathRef(3, 0, "src/live.c", "`src/live.c`")
     absent = PathRef(3, 0, "src/ABSENT.c", "`src/ABSENT.c`")
-    declared_absent = PathRef(3, 0, "src/enc/*.c", LIBWEBP_ABSENCE_CLAUSE)
-    malicious_absent = PathRef(
-        3,
-        0,
-        "src/ABSENT.c",
-        "`src/ABSENT.c` is required; `src/enc/*.c` are **not** vendored",
-    )
     if _path_reason(root, source, live) is not None:
         failures.append("declared SOUP local source was rejected")
     if _path_reason(root, source, absent) is None:
         failures.append("absent SOUP local source escaped")
-    if _path_reason(root, source, declared_absent) is not None:
-        failures.append("exact declared SOUP absence was rejected")
-    if _path_reason(root, source, malicious_absent) is None:
+
+
+def _check_soup_absence_cases(root: Path, failures: list[str]) -> None:
+    """Prove a vendoring-absence paragraph clears only its own upstream names."""
+    source = "docs/SOUP/sample.md"
+    clause = "The encoder (`src/enc/*.c`) and `Doxyfile` are **not** vendored."
+    _soup_record(root, source, clause + "\n")
+    declared = PathRef(5, 0, "src/enc/*.c", clause)
+    bare_declared = PathRef(5, 0, "Doxyfile", clause)
+    if _path_reason(root, source, declared) is not None:
+        failures.append("a SOUP path its own paragraph calls unvendored was rejected")
+    if _path_reason(root, source, bare_declared) is not None:
+        failures.append("a SOUP bare name its own paragraph calls unvendored was rejected")
+
+    # The paragraph, not the document, has to carry the claim: a record that
+    # says "not vendored" anywhere must not clear a name stated elsewhere.
+    _soup_record(root, source, clause + "\n\nSeparately, `src/ABSENT.c` is built.\n")
+    far = PathRef(7, 0, "src/ABSENT.c", "Separately, `src/ABSENT.c` is built.")
+    if _path_reason(root, source, far) is None:
+        failures.append("a SOUP path escaped on a claim from another paragraph")
+
+    # A first-party path stays checked hard however the paragraph is worded:
+    # that is the blinding this derivation exists to avoid.
+    ours = "Our `cmake/GONE.cmake` drives it; upstream `tools/` was never vendored."
+    _soup_record(root, source, ours + "\n")
+    first_party = PathRef(5, 0, "cmake/GONE.cmake", ours)
+    if _path_reason(root, source, first_party) is None:
+        failures.append("a first-party path escaped through a vendoring-absence paragraph")
+
+    # An unrelated absent name in the same paragraph is not covered by it.
+    mixed = "`src/ABSENT.c` is required; `src/enc/*.c` are **not** vendored."
+    _soup_record(root, source, mixed + "\n")
+    unrelated = PathRef(5, 0, "src/ABSENT.c", mixed)
+    if _path_reason(root, source, unrelated) is None:
         failures.append("an unrelated SOUP path escaped through a negative claim")
-    malicious_whitelisted = PathRef(
-        3,
-        0,
-        "src/enc/*.c",
-        "`src/enc/*.c` is required; documentation files are **not** vendored",
-    )
-    if _path_reason(root, source, malicious_whitelisted) is None:
-        failures.append("a whitelisted SOUP token escaped through an unrelated negative clause")
+
+    # No absence claim at all, no exemption.
+    plain = "The decoder lives in `src/dec/` and `src/GONE.c` feeds it."
+    _soup_record(root, source, plain + "\n")
+    plain_ref = PathRef(5, 0, "src/GONE.c", plain)
+    if _path_reason(root, source, plain_ref) is None:
+        failures.append("a SOUP path escaped without any vendoring-absence claim")
+
+    # The grammar is scoped to SOUP records: the same sentence elsewhere is not
+    # a licence, and neither is a docs/SOUP file with no local-path binding.
+    outside = root / "docs" / "OTHER.md"
+    outside.write_text("`src/enc/*.c` are **not** vendored.\n", encoding="ascii")
+    if _path_reason(root, "docs/OTHER.md", PathRef(1, 0, "src/enc/*.c", clause)) is None:
+        failures.append("the vendoring-absence grammar leaked outside docs/SOUP")
+    unbound = root / "docs" / "SOUP" / "unbound.md"
+    unbound.write_text("`src/enc/*.c` are **not** vendored.\n", encoding="ascii")
+    if _path_reason(root, "docs/SOUP/unbound.md", PathRef(1, 0, "src/enc/*.c", clause)) is None:
+        failures.append("a SOUP page with no local-path binding cleared an absent path")
+
+    # These records are scratch: later whole-tree assertions must not see them.
+    outside.unlink()
+    unbound.unlink()
+    (root / source).unlink()
 
 
 def _check_planned_path_cases(root: Path, failures: list[str]) -> None:
@@ -657,6 +700,7 @@ def selftest() -> int:
         _check_tests_path_ambiguous_cases(root, failures)
         _check_tests_path_hostile_cases(root, failures)
         _check_soup_cases(root, failures)
+        _check_soup_absence_cases(root, failures)
         _check_planned_path_cases(root, failures)
         _check_vendor_scope_cases(root, failures)
         _check_bare_declaration_cases(root, failures)
@@ -669,5 +713,5 @@ def selftest() -> int:
         for failure in failures:
             print(f"selftest: check_markdown_references.py FAIL: {failure}", file=sys.stderr)
         return 1
-    print(f"selftest: check_markdown_references.py OK ({len(cases) + 50} both-direction cases)")
+    print(f"selftest: check_markdown_references.py OK ({len(cases) + 59} both-direction cases)")
     return 0
