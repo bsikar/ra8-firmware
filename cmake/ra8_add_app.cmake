@@ -117,6 +117,7 @@ include(${_RA8_ADD_APP_DIR}/ra8_add_ns_image.cmake)
 #   DESCRIPTION <text>         project() description
 #   BOARD       <lib>          board support library
 #   NO_NSC                     skip the TrustZone NSC veneer objects
+#   SRAM_TEXT   <file.c>...    run these sources' .text from SRAM, loaded from MRAM
 #   USES/LIBS/OFF_TARGET_LIBS  extra link libraries (firmware / ra8_emulator)
 #   NSC_SRCS/EXTRA_SRCS        extra sources
 #   AUX_SRCS                   src/ files owned by auxiliary image targets
@@ -135,7 +136,7 @@ macro(ra8_add_app)
     _RA8_APP
     "NO_NSC;CPU1_IMAGE"
     "NAME;STACK_BYTES;DESCRIPTION;BOARD;THREADX_HEAP"
-    "USES;LIBS;OFF_TARGET_LIBS;NSC_SRCS;EXTRA_SRCS;AUX_SRCS"
+    "USES;LIBS;OFF_TARGET_LIBS;NSC_SRCS;EXTRA_SRCS;AUX_SRCS;SRAM_TEXT"
     ${ARGN}
   )
 
@@ -429,13 +430,21 @@ macro(ra8_add_app)
   endforeach()
   target_link_libraries(${_ra8_elf} PRIVATE gcc)
 
-  target_link_options(${_ra8_elf} PRIVATE -T${_ra8_linker} -Wl,--Map=${_RA8_APP_NAME}.map)
+  # -L: the board map finds ra8_app_pre_text.ld, generated below into this
+  # app's build dir, by bare name off the linker's search path.
+  target_link_options(
+    ${_ra8_elf}
+    PRIVATE
+    -T${_ra8_linker}
+    -L${CMAKE_CURRENT_BINARY_DIR}
+    -Wl,--Map=${_RA8_APP_NAME}.map
+  )
   if(_ra8_ld_base)
     set_target_properties(
-      ${_ra8_elf} PROPERTIES LINK_DEPENDS "${_ra8_linker};${_ra8_ld_base}"
+      ${_ra8_elf} PROPERTIES LINK_DEPENDS "${_ra8_linker};${_ra8_ld_base};${_ra8_ld_pre_text}"
     )
   else()
-    set_target_properties(${_ra8_elf} PROPERTIES LINK_DEPENDS ${_ra8_linker})
+    set_target_properties(${_ra8_elf} PROPERTIES LINK_DEPENDS "${_ra8_linker};${_ra8_ld_pre_text}")
   endif()
 
   add_custom_command(
@@ -552,7 +561,11 @@ function(ra8_cpu1_add_first_party_sources _target)
   ra8_cpu1_warning_profile(_c1fp_warnings)
   target_sources(${_target} PRIVATE ${ARGN})
   # APPEND, so a source that already carries an app-specific flag keeps it.
-  set_property(SOURCE ${ARGN} APPEND PROPERTY COMPILE_OPTIONS ${_c1fp_warnings})
+  set_property(
+    SOURCE ${ARGN}
+    APPEND
+    PROPERTY COMPILE_OPTIONS ${_c1fp_warnings}
+  )
 endfunction()
 
 function(ra8_add_cpu1_image)
