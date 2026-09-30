@@ -73,6 +73,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 import runner_image_cleanup_policy as runner_cleanup
+from lint_targets import repo_files
 from selftest_assert import expect, report
 
 # The single blessed builder, repo-relative. If this file is renamed, update
@@ -302,14 +303,7 @@ def in_scope(rel: str) -> bool:
 
 def scoped_files(root: Path) -> list[str]:
     """Every in-scope git-tracked file, repo-relative and sorted."""
-    proc = subprocess.run(
-        ["git", "ls-files", "-z"],  # noqa: S607 -- git from PATH is intended
-        cwd=root,
-        capture_output=True,
-        text=True,
-        check=True,
-    )
-    return sorted(rel for rel in proc.stdout.split("\0") if rel and in_scope(rel))
+    return sorted(rel for rel in repo_files(root=root, caller="check_ci_image_single_builder.py") if in_scope(rel))
 
 
 def find_builders(root: Path, rels: list[str]) -> dict[str, list[str]]:
