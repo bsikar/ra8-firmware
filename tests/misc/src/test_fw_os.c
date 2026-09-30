@@ -318,6 +318,134 @@ RA8_INTERNAL static void internal_check_time(void)
 }
 
 /**
+ * @test test_forced_failure_is_one_shot
+ *
+ * @brief An armed failure fires once, on its own call, and then clears.
+ */
+static void test_forced_failure_is_one_shot(void)
+{
+  TEST_BEGIN("fw_os host: a forced failure fires once and clears");
+  fw_os_host_test_reset();
+
+  fw_os_mutex_t mutex = {0};
+  TEST_ASSERT(fw_os_host_test_failure_armed() == false);
+  TEST_ASSERT(fw_os_host_test_fail_next(k_fw_os_host_test_call_mutex_init,
+                                        k_ra8_err_rtos_mutex) == k_ra8_ok);
+  TEST_ASSERT(fw_os_host_test_failure_armed() == true);
+
+  TEST_ASSERT(fw_os_mutex_init(&mutex, false) == k_ra8_err_rtos_mutex);
+  TEST_ASSERT(fw_os_host_test_failure_armed() == false);
+  TEST_ASSERT(fw_os_mutex_init(&mutex, false) == k_ra8_ok);
+  TEST_ASSERT(fw_os_mutex_deinit(&mutex) == k_ra8_ok);
+
+  TEST_END("fw_os host: a forced failure fires once and clears");
+}
+
+/**
+ * @test test_forced_failure_hits_only_its_own_call
+ *
+ * @brief Arming one call leaves every other call working.
+ */
+static void test_forced_failure_hits_only_its_own_call(void)
+{
+  TEST_BEGIN("fw_os host: a forced failure hits only the call it names");
+  fw_os_host_test_reset();
+
+  fw_os_mutex_t mutex = {0};
+  fw_os_sem_t   sem   = {0};
+  TEST_ASSERT(fw_os_host_test_fail_next(k_fw_os_host_test_call_sem_take,
+                                        k_ra8_err_rtos_semaphore) == k_ra8_ok);
+
+  TEST_ASSERT(fw_os_mutex_init(&mutex, false) == k_ra8_ok);
+  TEST_ASSERT(fw_os_mutex_lock(&mutex, K_FW_OS_NO_WAIT) == k_ra8_ok);
+  TEST_ASSERT(fw_os_mutex_unlock(&mutex) == k_ra8_ok);
+  TEST_ASSERT(fw_os_sem_init(&sem, 1U) == k_ra8_ok);
+  TEST_ASSERT(fw_os_host_test_failure_armed() == true);
+
+  TEST_ASSERT(fw_os_sem_take(&sem, K_FW_OS_NO_WAIT) == k_ra8_err_rtos_semaphore);
+  TEST_ASSERT(fw_os_sem_take(&sem, K_FW_OS_NO_WAIT) == k_ra8_ok);
+
+  TEST_ASSERT(fw_os_sem_deinit(&sem) == k_ra8_ok);
+  TEST_ASSERT(fw_os_mutex_deinit(&mutex) == k_ra8_ok);
+  TEST_END("fw_os host: a forced failure hits only the call it names");
+}
+
+/**
+ * @test test_forced_failure_changes_no_state
+ *
+ * @brief A forced failure returns before the call touches anything.
+ */
+static void test_forced_failure_changes_no_state(void)
+{
+  TEST_BEGIN("fw_os host: a forced failure leaves state untouched");
+  fw_os_host_test_reset();
+
+  static uint8_t stack[256];
+  const fw_os_thread_cfg_t cfg = {
+    .name        = "forced",
+    .entry       = nullptr,
+    .arg         = nullptr,
+    .stack       = stack,
+    .stack_bytes = sizeof stack,
+    .priority    = k_fw_os_priority_normal,
+  };
+  fw_os_thread_t thread = {0};
+
+  TEST_ASSERT(fw_os_host_test_thread_count() == 0U);
+  TEST_ASSERT(fw_os_host_test_fail_next(k_fw_os_host_test_call_thread_create,
+                                        k_ra8_err_rtos_thread_create) == k_ra8_ok);
+  TEST_ASSERT(fw_os_thread_create(&thread, &cfg) == k_ra8_err_rtos_thread_create);
+  TEST_ASSERT(fw_os_host_test_thread_count() == 0U);
+
+  TEST_END("fw_os host: a forced failure leaves state untouched");
+}
+
+/**
+ * @test test_forced_failure_rejects_a_useless_arming
+ *
+ * @brief Arming success, or a call outside the enum, is refused.
+ */
+static void test_forced_failure_rejects_a_useless_arming(void)
+{
+  TEST_BEGIN("fw_os host: arming refuses k_ra8_ok and an unknown call");
+  fw_os_host_test_reset();
+
+  TEST_ASSERT(fw_os_host_test_fail_next(k_fw_os_host_test_call_mutex_lock,
+                                        k_ra8_ok) == k_ra8_err_invalid_arg);
+  TEST_ASSERT(fw_os_host_test_failure_armed() == false);
+
+  const fw_os_host_test_call_t past_end =
+    (fw_os_host_test_call_t)((uint32_t)k_fw_os_host_test_call_sem_give + 1U);
+  TEST_ASSERT(fw_os_host_test_fail_next(past_end, k_ra8_err_rtos_error) ==
+              k_ra8_err_invalid_arg);
+  TEST_ASSERT(fw_os_host_test_failure_armed() == false);
+
+  TEST_END("fw_os host: arming refuses k_ra8_ok and an unknown call");
+}
+
+/**
+ * @test test_reset_disarms_a_forced_failure
+ *
+ * @brief Reset clears an arming, so no case leaks into the next.
+ */
+static void test_reset_disarms_a_forced_failure(void)
+{
+  TEST_BEGIN("fw_os host: reset disarms a forced failure");
+  fw_os_host_test_reset();
+
+  TEST_ASSERT(fw_os_host_test_fail_next(k_fw_os_host_test_call_mutex_init,
+                                        k_ra8_err_rtos_mutex) == k_ra8_ok);
+  fw_os_host_test_reset();
+  TEST_ASSERT(fw_os_host_test_failure_armed() == false);
+
+  fw_os_mutex_t mutex = {0};
+  TEST_ASSERT(fw_os_mutex_init(&mutex, false) == k_ra8_ok);
+  TEST_ASSERT(fw_os_mutex_deinit(&mutex) == k_ra8_ok);
+
+  TEST_END("fw_os host: reset disarms a forced failure");
+}
+
+/**
  * @brief A reset returns the binding to its just-started state.
  *
  * @return Nothing.
@@ -360,5 +488,10 @@ int main(void)
   internal_check_threads();
   internal_check_time();
   internal_check_reset();
+  test_forced_failure_is_one_shot();
+  test_forced_failure_hits_only_its_own_call();
+  test_forced_failure_changes_no_state();
+  test_forced_failure_rejects_a_useless_arming();
+  test_reset_disarms_a_forced_failure();
   return 0;
 }
