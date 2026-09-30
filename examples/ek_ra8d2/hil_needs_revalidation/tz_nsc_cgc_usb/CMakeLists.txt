@@ -40,7 +40,7 @@ endif()
 # Secure boot + NSC CGC veneers. ns_main / ThreadX are NOT here -- they are the
 # Non-Secure executable below.
 ra8_add_app(
-  NAME tz_nsc_cgc_usb
+  NAME tz_nsc_cgc_usb BOOT_PROFILE ns_usb_handoff
   STACK_BYTES 2200
   DESCRIPTION "TrustZone two-project: Secure side (CGC veneers + NS boot)"
               AUX_SRCS src/ns_main.c src/ns_usb.c src/ns_usb_host.c

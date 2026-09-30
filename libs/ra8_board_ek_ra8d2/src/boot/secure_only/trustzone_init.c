@@ -1,5 +1,5 @@
 /**
- * @file examples/ek_ra8d2/hw_validated/manual/tz_secure_only_usb_hs/src/trustzone_init.c
+ * @file libs/ra8_board_ek_ra8d2/src/boot/secure_only/trustzone_init.c
  * @brief No-op TrustZone bring-up for the secure-only USB experiment
  *
  * @par Tag
