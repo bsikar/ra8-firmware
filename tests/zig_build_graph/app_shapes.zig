@@ -750,8 +750,8 @@ pub const uncovered = [_]Uncovered{
     },
     .{
         .representative = "secure_boot_ns_hil",
-        .shape = .{ .extra_srcs = true, .aux_srcs = true },
-        .note = "1 declaration, and the cheapest one to add: no middleware at all, just EXTRA_SRCS and AUX_SRCS together, which secure_boot_hil and cpu1_pingpong each take one half of",
+        .shape = .{ .extra_srcs = true, .aux_srcs = true, .mram_length = true },
+        .note = "1 declaration, and still the cheapest kind to add: no middleware at all, just EXTRA_SRCS and AUX_SRCS together, which secure_boot_hil and cpu1_pingpong each take one half of. #742 retired the last dual-image script fork here too, so the Secure bank is a 512K MRAM_LENGTH rather than a forked script",
     },
 };
 
