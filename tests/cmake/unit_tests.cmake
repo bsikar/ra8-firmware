@@ -616,6 +616,14 @@ if(TARGET test_fw_os)
   target_include_directories(test_fw_os PRIVATE ${FW_ROOT}/libs/if/inc)
 endif()
 
+# The clock-intent port has no chip adapter yet (#693 step 1), so its vectors
+# drive the facade through a fake binding declared in the test itself. Only the
+# interface include directory is added: these vectors must not reach a
+# ra8_cgc_* header, which is the whole point of the seam.
+if(TARGET test_fw_if_clock)
+  target_include_directories(test_fw_if_clock PRIVATE ${FW_ROOT}/libs/if/inc)
+endif()
+
 # The ThreadX binding of the same seam cannot run on a host -- it needs a
 # scheduler -- but its three mapping functions are pure and live in the port
 # header on purpose, so the host build proves them without ThreadX. Only the
