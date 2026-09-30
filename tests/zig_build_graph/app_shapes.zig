@@ -73,6 +73,7 @@ pub const Keyword = enum {
     description,
     board,
     threadx_heap,
+    mram_length,
     uses,
     libs,
     off_target_libs,
@@ -91,6 +92,7 @@ pub const Keyword = enum {
             .description => "DESCRIPTION",
             .board => "BOARD",
             .threadx_heap => "THREADX_HEAP",
+            .mram_length => "MRAM_LENGTH",
             .uses => "USES",
             .libs => "LIBS",
             .off_target_libs => "OFF_TARGET_LIBS",
@@ -109,7 +111,7 @@ pub const Keyword = enum {
     pub fn group(self: Keyword) Group {
         return switch (self) {
             .no_nsc, .cpu1_image => .option,
-            .name, .stack_bytes, .description, .board, .threadx_heap => .one_value,
+            .name, .stack_bytes, .description, .board, .threadx_heap, .mram_length => .one_value,
             .uses, .libs, .off_target_libs, .nsc_srcs, .extra_srcs, .aux_srcs, .sram_text => .multi_value,
         };
     }
@@ -154,6 +156,7 @@ pub const Shape = struct {
     threadx_heap: bool = false,
     cpu1_image: bool = false,
     sram_text: bool = false,
+    mram_length: bool = false,
 
     pub fn eql(self: Shape, other: Shape) bool {
         if (!std.mem.eql(u8, self.board, other.board)) return false;
@@ -168,7 +171,8 @@ pub const Shape = struct {
             self.off_target_libs == other.off_target_libs and
             self.threadx_heap == other.threadx_heap and
             self.cpu1_image == other.cpu1_image and
-            self.sram_text == other.sram_text;
+            self.sram_text == other.sram_text and
+            self.mram_length == other.mram_length;
     }
 
     /// `board=<b> uses=<a,b|-> flags=<a,b|->`, the spelling the ledger and the
@@ -195,12 +199,12 @@ pub const Shape = struct {
     }
 
     pub fn flagValues(self: Shape) [flag_names.len]bool {
-        return .{ self.no_nsc, self.nsc_srcs, self.extra_srcs, self.aux_srcs, self.off_target_libs, self.threadx_heap, self.cpu1_image, self.sram_text };
+        return .{ self.no_nsc, self.nsc_srcs, self.extra_srcs, self.aux_srcs, self.off_target_libs, self.threadx_heap, self.cpu1_image, self.sram_text, self.mram_length };
     }
 };
 
 /// The flag half of a shape, in the order `Shape.flagValues` returns it.
-pub const flag_names = [_][]const u8{ "no_nsc", "nsc_srcs", "extra_srcs", "aux_srcs", "off_target_libs", "threadx_heap", "cpu1_image", "sram_text" };
+pub const flag_names = [_][]const u8{ "no_nsc", "nsc_srcs", "extra_srcs", "aux_srcs", "off_target_libs", "threadx_heap", "cpu1_image", "sram_text", "mram_length" };
 
 /// One app that parsed.
 pub const Row = struct {
@@ -413,6 +417,7 @@ pub fn parseBlock(allocator: std.mem.Allocator, listfile: []const u8, body: []co
             .sram_text => shape.sram_text = true,
             .off_target_libs => shape.off_target_libs = true,
             .threadx_heap => shape.threadx_heap = true,
+            .mram_length => shape.mram_length = true,
             .description, .libs => {},
             .no_nsc, .cpu1_image => unreachable,
         }
@@ -560,6 +565,7 @@ pub fn parseLedger(allocator: std.mem.Allocator, text: []const u8) ![]Entry {
         shape.threadx_heap = flag_values[5];
         shape.cpu1_image = flag_values[6];
         shape.sram_text = flag_values[7];
+        shape.mram_length = flag_values[8];
         const stack = std.fmt.parseInt(u32, stack_field, 10) catch return LedgerError.BadStackBytes;
         try out.append(.{ .row = .{
             .name = app_name,
@@ -652,9 +658,14 @@ pub const Uncovered = struct {
 
 pub const uncovered = [_]Uncovered{
     .{
-        .representative = "dfu_copy_to_run",
+        .representative = "ra8d2-ereader",
         .shape = .{ .aux_srcs = true },
-        .note = "4 declarations: single-image apps that name an extra source of their own. cpu1_pingpong used to cross-build this kind; #742 moved it and the two dualcore apps onto CPU1_IMAGE, which is a different link shape",
+        .note = "3 declarations: single-image apps that name an extra source of their own. cpu1_pingpong used to cross-build this kind; #742 moved it and the two dualcore apps onto CPU1_IMAGE, then took dfu_copy_to_run onto MRAM_LENGTH, which is why the representative is an ereader now",
+    },
+    .{
+        .representative = "dfu_copy_to_run",
+        .shape = .{ .aux_srcs = true, .sram_text = true, .mram_length = true },
+        .note = "1 declaration: the copy-to-run HIL proof, and the first app to name MRAM_LENGTH. #742 traded its 377-line linker_script.ld fork for the 128K bootloader bank plus a linker_append.ld, so the bank size and the SRAM-resident flash driver are both link shape now",
     },
     .{
         .representative = "usb_selftest_wlun",
@@ -720,6 +731,11 @@ pub const uncovered = [_]Uncovered{
         .representative = "dfu_bootloader",
         .shape = .{ .uses = &.{ "threadx", "usbx" }, .extra_srcs = true },
         .note = "1 declaration: USBX plus EXTRA_SRCS, so it is not covered by usb_selftest_wlun's shape",
+    },
+    .{
+        .representative = "rot_verify_hil",
+        .shape = .{ .extra_srcs = true },
+        .note = "1 declaration: no middleware, just shared helper sources compiled into the app. secure_boot_hil cross-built this kind until #742 moved it onto MRAM_LENGTH and SRAM_TEXT",
     },
     .{
         .representative = "media_download",
