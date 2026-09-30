@@ -131,41 +131,29 @@ export fn ra8_vmem_stream_read(
 // ra8_glyph_atlas.h
 // ---------------------------------------------------------------------------
 
-/// The keyed-LRU engine, still C (`src/ra8_keycache.c`). The three typed
-/// facades over it need these five between them; the archive leaves them
-/// undefined and the link resolves them, exactly as the C TUs did.
-extern fn ra8_keycache_init(kc: *keycache.State, cfg: *const keycache.Cfg) u16;
-extern fn ra8_keycache_get(
-    kc: *keycache.State,
-    key: *const anyopaque,
-    out_view: *keycache.View,
-) u16;
-extern fn ra8_keycache_put(kc: *keycache.State, data: [*]const u8) u16;
-extern fn ra8_keycache_prefetch(kc: *keycache.State, key: *const anyopaque) u16;
-extern fn ra8_keycache_stats(
-    kc: *const keycache.State,
-    out_hits: ?*u32,
-    out_misses: ?*u32,
-    out_evictions: ?*u32,
-) u16;
-
 /// The engine seam the facades are written against. Generic in the key, so
 /// the glyph atlas, the page cache and the tile cache share one seam.
+///
+/// The engine is Zig now (`internal/keycache.zig`), so these are direct calls
+/// rather than the five `extern fn` the archive used to leave undefined. Past
+/// this seam the engine works in slices: a facade hands over a typed key
+/// pointer and the seam widens it to the bytes the engine compares, rather
+/// than every caller casting to `*const anyopaque`.
 const Engine = struct {
     pub fn init(state: *keycache.State, cfg: *const keycache.Cfg) Err {
-        return Err.from(ra8_keycache_init(state, cfg));
+        return keycache.init(state, cfg);
     }
 
     pub fn get(state: *keycache.State, key: anytype, out_view: *keycache.View) Err {
-        return Err.from(ra8_keycache_get(state, @ptrCast(key), out_view));
+        return keycache.get(state, std.mem.asBytes(key), out_view);
     }
 
     pub fn put(state: *keycache.State, data: [*]const u8) Err {
-        return Err.from(ra8_keycache_put(state, data));
+        return keycache.put(state, data);
     }
 
     pub fn prefetch(state: *keycache.State, key: anytype) Err {
-        return Err.from(ra8_keycache_prefetch(state, @ptrCast(key)));
+        return keycache.prefetch(state, std.mem.asBytes(key));
     }
 
     pub fn stats(
@@ -174,9 +162,61 @@ const Engine = struct {
         out_misses: ?*u32,
         out_evictions: ?*u32,
     ) Err {
-        return Err.from(ra8_keycache_stats(state, out_hits, out_misses, out_evictions));
+        return keycache.stats(state, out_hits, out_misses, out_evictions);
     }
 };
+
+// ---------------------------------------------------------------------------
+// ra8_keycache.h
+// ---------------------------------------------------------------------------
+
+/// The key blob a C caller handed in, as the engine's `key_bytes` of it.
+fn keyBytes(state: *const keycache.State, key: *const anyopaque) []const u8 {
+    return @as([*]const u8, @ptrCast(key))[0..state.cfg.key_bytes];
+}
+
+export fn ra8_keycache_init(kc: ?*keycache.State, cfg: ?*const keycache.Cfg) u16 {
+    const self = kc orelse return Err.null_ptr.code();
+    const config = cfg orelse return Err.null_ptr.code();
+    return keycache.init(self, config).code();
+}
+
+export fn ra8_keycache_get(
+    kc: ?*keycache.State,
+    key: ?*const anyopaque,
+    out_view: ?*keycache.View,
+) u16 {
+    const self = kc orelse return Err.null_ptr.code();
+    const blob = key orelse return Err.null_ptr.code();
+    const dst = out_view orelse return Err.null_ptr.code();
+    return keycache.get(self, keyBytes(self, blob), dst).code();
+}
+
+export fn ra8_keycache_prefetch(kc: ?*keycache.State, key: ?*const anyopaque) u16 {
+    const self = kc orelse return Err.null_ptr.code();
+    const blob = key orelse return Err.null_ptr.code();
+    return keycache.prefetch(self, keyBytes(self, blob)).code();
+}
+
+export fn ra8_keycache_put(kc: ?*keycache.State, data: ?[*]const u8) u16 {
+    const self = kc orelse return Err.null_ptr.code();
+    const cell = data orelse return Err.null_ptr.code();
+    return keycache.put(self, cell).code();
+}
+
+export fn ra8_keycache_stats(
+    kc: ?*const keycache.State,
+    out_hits: ?*u32,
+    out_misses: ?*u32,
+    out_evictions: ?*u32,
+) u16 {
+    const self = kc orelse return Err.null_ptr.code();
+    return keycache.stats(self, out_hits, out_misses, out_evictions).code();
+}
+
+// ---------------------------------------------------------------------------
+// ra8_glyph_atlas.h (continued)
+// ---------------------------------------------------------------------------
 
 const Atlas = glyph_atlas.Atlas(Engine);
 

@@ -51,7 +51,6 @@ endif()
 add_executable(
   cache_bench
   ${CACHE_BENCH_SOURCES}
-  ${RA8_ROOT}/libs/ra8_mem/src/ra8_keycache.c
   ${RA8_ROOT}/apps/shared_libs/book/src/book.c
   ${RA8_ROOT}/apps/shared_libs/book/src/book_chunked.c
   ${RA8_ROOT}/apps/shared_libs/third_party/miniz/miniz.c
@@ -104,8 +103,7 @@ if(BUILD_TESTING)
     src/sweep_block_payload.c
     src/sweep_block_report.c
     src/trace.c
-      ${RA8_ROOT}/libs/ra8_mem/src/ra8_keycache.c
-    ${RA8_ROOT}/apps/shared_libs/book/src/book.c
+        ${RA8_ROOT}/apps/shared_libs/book/src/book.c
     ${RA8_ROOT}/apps/shared_libs/book/src/book_chunked.c
     ${RA8_ROOT}/apps/shared_libs/third_party/miniz/miniz.c
   )

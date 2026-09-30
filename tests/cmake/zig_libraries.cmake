@@ -615,16 +615,14 @@ ra8_add_zig_library(
 # The source registry adds no extern of its own: a paged object reads through a
 # callback pointer it is handed, not a link-time symbol.
 #
-# The page cache is Zig too, so ra8_vmem_get/ra8_vmem_put are DEFINED here now
-# rather than left undefined: the stream adapter calls the facade directly
-# inside the archive. tools/glyph_bench, tools/cache_bench and tools/reader_vmem
-# each compiled src/ra8_vmem.c by absolute path only to satisfy those two
-# externs, and no longer do. What they still supply is src/ra8_keycache.c: the
-# page cache, the glyph atlas and the tile cache are all typed facades over
-# that engine, which is still C, so five ra8_keycache_* stay undefined in this
-# archive (the tile cache warms through ra8_keycache_prefetch, the fifth) and
-# the link resolves them as the C TUs did. Weak externs would trade that link
-# error for a null call at runtime, the failure #764 removed.
+# The cache engine is Zig now, so this archive has NO undefined ra8_mem symbol
+# left: ra8_keycache_init/get/prefetch/put/stats are exported from here, the
+# three typed facades over the engine (the page cache, the glyph atlas, the
+# tile cache) call it directly inside the archive, and the stream adapter
+# calls the page cache the same way. tools/glyph_bench, tools/cache_bench and
+# tools/reader_vmem each compiled src/ra8_vmem.c and src/ra8_keycache.c by
+# absolute path only to satisfy those externs; none of them does now, and
+# tools/rabook_viewer keeps only ra8_arena.c in its read-path KEEP list.
 #
 # tests/core/src/test_ra8_vmem.c and apps/shared_libs/book's huge-book suite are
 # untouched and now exercise the Zig page cache through inc/ra8_vmem.h.

@@ -133,7 +133,7 @@ pub fn Vmem(comptime KC: type) type {
                 self.* = .{};
                 return err;
             }
-            self.protected_cap = self.kc.protected_cap;
+            self.protected_cap = self.kc.sets.protected_cap;
             return .ok;
         }
 
