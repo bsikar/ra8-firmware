@@ -156,10 +156,18 @@ ra8_ns_linker_script(_sbnh_ns_linker NAME secure_boot_ns_hil_ns)
 add_executable(
   secure_boot_ns_hil_ns.elf
   ${CMAKE_CURRENT_SOURCE_DIR}/src/ns_main.c
-  ${_d}/libs/ra8_core/src/ra8_freestanding_mem.c
-  ${_d}/libs/ra8_core/src/ra8_freestanding_str.c
-  ${_d}/libs/ra8_core/src/ra8_freestanding_math.c
   ${_d}/libs/ra8_tz_secure_boot/ns/ra8_ns_rot_header.c
+)
+# The freestanding runtime primitives (memcpy / memset / str* / abs) are Zig
+# now (#2820), so the NS image takes them from ra8_core's archive built for
+# this core instead of compiling the three deleted .c files. This image is a
+# raw add_executable(), outside the ra8_add_app() expansion that registers a
+# migrated library's archive automatically, so it asks for the archive here.
+ra8_link_zig_library_for_cpu(
+  TARGET secure_boot_ns_hil_ns.elf
+  LIB ra8_core
+  CPU cortex_m85
+  FLOAT hard
 )
 target_include_directories(
   secure_boot_ns_hil_ns.elf PRIVATE ${_d}/libs/ra8_core/inc ${_d}/libs/ra8_tz_secure_boot/inc
