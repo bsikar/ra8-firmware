@@ -42,7 +42,6 @@ EXCLUDED_PREFIXES = (
     "apps/shared_libs/third_party/",
     "port/netxduo/",
     "port/nimble/",
-    "port/threadx/",
     "port/usbx/",
     "tests/fixtures/",
 )
