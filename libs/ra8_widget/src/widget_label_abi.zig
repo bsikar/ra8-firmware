@@ -2,28 +2,28 @@
 //! Copyright (c) 2026 Brighton Sikarskie
 //!
 //! C ABI membrane for the text-label leaf widget: what used to be
-//! `src/ra8_widget_label.c`. It owns the extern mirrors of the widget
-//! instance, its vtable and the label descriptor, the layout assertions that
-//! pin them, the one immutable label vtable, and the two published entry
-//! points. All the geometry it paints with already lives in the sibling paint
-//! membrane, so this file is binding plus dispatch and nothing else.
+//! `src/ra8_widget_label.c`. It owns the label descriptor, the one immutable
+//! label vtable, and the two published entry points. The widget tree's shared
+//! types live in `widget_abi_types.zig` and the geometry in `internal/paint.zig`,
+//! so this file is binding plus dispatch and nothing else.
 //!
 //! Guard order, log lines and error codes are the C's, byte for byte.
 
+const types = @import("widget_abi_types.zig");
 const paint_abi = @import("widget_paint_abi.zig");
 
 /// Rectangle of the published ABI (`ra8_ui_rect_t`).
-pub const Rect = paint_abi.Rect;
+pub const Rect = types.Rect;
 /// Alignment selector of the published ABI (`ra8_widget_align_t`).
-pub const Alignment = paint_abi.Alignment;
+pub const Alignment = types.Alignment;
 /// Draw backend of the published ABI (`ra8_widget_paint_t`).
-pub const Paint = paint_abi.Paint;
-
+pub const Paint = types.Paint;
+/// Widget instance of the published ABI (`ra8_widget_t`).
+pub const Widget = types.Widget;
+/// Behaviour table of the published ABI (`ra8_widget_vtable_t`).
+pub const Vtable = types.Vtable;
 /// The `ra8_err_t` values this membrane answers with.
-pub const err = struct {
-    pub const ok: u16 = 0;
-    pub const null_ptr: u16 = 0x504;
-};
+pub const err = types.err;
 
 /// A plain label paints exactly one fill, so it asks the shared box helper for
 /// no frame at all. The bordered face belongs to the button, not here.
@@ -33,45 +33,6 @@ pub const geometry = struct {
 
 /// The C names this literal `s_tag`.
 const tag: [*:0]const u8 = "ra8_widget_label";
-
-extern fn ra8_log_emit_error(tag: [*:0]const u8, message: [*:0]const u8) void;
-
-/// `RA8_CHECK_NULL_PTR(ptr, s_tag, message)`: log then answer null_ptr.
-fn refuseNull(message: [*:0]const u8) u16 {
-    ra8_log_emit_error(tag, message);
-    return err.null_ptr;
-}
-
-/// `ra8_widget_event_t` is opaque to a label: its vtable never consumes input,
-/// so the mirror only has to make the pointer the right width.
-pub const Event = opaque {};
-
-/// Behaviour table of the published ABI (`ra8_widget_vtable_t`). Every member
-/// is optional because a vtable leaves out whatever its widget does not do.
-pub const Vtable = extern struct {
-    measure: ?*const fn (
-        w: *Widget,
-        avail_w: i32,
-        avail_h: i32,
-        out_w: *i32,
-        out_h: *i32,
-    ) callconv(.c) void,
-    render: ?*const fn (w: *Widget) callconv(.c) void,
-    on_input: ?*const fn (w: *Widget, event: *const Event) callconv(.c) bool,
-};
-
-/// Widget instance of the published ABI (`ra8_widget_t`).
-pub const Widget = extern struct {
-    vt: ?*const Vtable,
-    ctx: ?*anyopaque,
-    rect: Rect,
-    fixed: i16,
-    flex: u16,
-    action_id: u16,
-    refresh: u8,
-    visible: bool,
-    dirty: bool,
-};
 
 /// Label descriptor of the published ABI (`ra8_widget_label_t`). Caller-owned
 /// plain data: a null `paint` draws nothing and a null `text` fills only.
@@ -87,22 +48,6 @@ pub const Label = extern struct {
 
 comptime {
     const ptr = @sizeOf(usize);
-
-    if (@sizeOf(Vtable) != 3 * ptr) @compileError("ra8_widget_vtable_t size");
-    if (@offsetOf(Vtable, "measure") != 0) @compileError("ra8_widget_vtable_t measure offset");
-    if (@offsetOf(Vtable, "render") != ptr) @compileError("ra8_widget_vtable_t render offset");
-    if (@offsetOf(Vtable, "on_input") != 2 * ptr) @compileError("ra8_widget_vtable_t on_input offset");
-
-    if (@alignOf(Widget) != @alignOf(usize)) @compileError("ra8_widget_t alignment");
-    if (@offsetOf(Widget, "vt") != 0) @compileError("ra8_widget_t vt offset");
-    if (@offsetOf(Widget, "ctx") != ptr) @compileError("ra8_widget_t ctx offset");
-    if (@offsetOf(Widget, "rect") != 2 * ptr) @compileError("ra8_widget_t rect offset");
-    if (@offsetOf(Widget, "fixed") != 2 * ptr + 16) @compileError("ra8_widget_t fixed offset");
-    if (@offsetOf(Widget, "flex") != 2 * ptr + 18) @compileError("ra8_widget_t flex offset");
-    if (@offsetOf(Widget, "action_id") != 2 * ptr + 20) @compileError("ra8_widget_t action_id offset");
-    if (@offsetOf(Widget, "refresh") != 2 * ptr + 22) @compileError("ra8_widget_t refresh offset");
-    if (@offsetOf(Widget, "visible") != 2 * ptr + 23) @compileError("ra8_widget_t visible offset");
-    if (@offsetOf(Widget, "dirty") != 2 * ptr + 24) @compileError("ra8_widget_t dirty offset");
 
     if (@alignOf(Label) != @alignOf(usize)) @compileError("ra8_widget_label_t alignment");
     if (@offsetOf(Label, "paint") != 0) @compileError("ra8_widget_label_t paint offset");
@@ -158,8 +103,8 @@ pub export fn ra8_widget_label_vtable() callconv(.c) *const Vtable {
 /// `ra8_widget_label_init`: bind `w` to render `label`. The caller still sets
 /// `w`'s `fixed` / `flex` for its parent's layout.
 pub export fn ra8_widget_label_init(w: ?*Widget, label: ?*Label) callconv(.c) u16 {
-    const widget = w orelse return refuseNull("w must not be nullptr");
-    const descriptor = label orelse return refuseNull("label must not be nullptr");
+    const widget = w orelse return types.refuseNull(tag, "w must not be nullptr");
+    const descriptor = label orelse return types.refuseNull(tag, "label must not be nullptr");
 
     widget.vt = ra8_widget_label_vtable();
     widget.ctx = descriptor;

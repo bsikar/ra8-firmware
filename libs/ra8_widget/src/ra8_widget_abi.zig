@@ -9,8 +9,14 @@
 //! The library's public C ABI (`inc/ra8_widget.h`) is unchanged; the widget
 //! translation units still written in C link these symbols out of the archive.
 
+/// The widget tree's shared published C types, mirrored once.
+pub const types = @import("widget_abi_types.zig");
+
 /// The module-private paint helpers of `src/ra8_widget_internal.h`.
 pub const paint = @import("widget_paint_abi.zig");
 
 /// The text-label leaf widget: `ra8_widget_label_vtable` / `_init`.
 pub const label = @import("widget_label_abi.zig");
+
+/// The push-button leaf widget: `ra8_widget_button_vtable` / `_init`.
+pub const button = @import("widget_button_abi.zig");
