@@ -33,7 +33,7 @@ and no cross build to catch a path that has gone stale.
 
 WHAT IT ENFORCES, PRECISELY
 ---------------------------
-  * A ``${RA8_REPO_ROOT}/<path>`` token with no variable and no wildcard must
+  * A ``${<root>}/<path>`` token with no variable and no wildcard must
     resolve to a file or directory that exists.  A dangling one FAILS.
   * A token carrying a wildcard is a glob and must match at least one path.
     A glob matching nothing FAILS: that is how a whole directory disappears
@@ -48,14 +48,40 @@ WHAT IT ENFORCES, PRECISELY
   * Vendored trees are out of scope: their build files are upstream's and are
     not ours to hold to this.
 
+WHICH ROOTS ARE RESOLVED
+------------------------
+``${RA8_REPO_ROOT}`` is the tree-wide spelling and is always the repository
+root.  It is not the only one: this tree reaches across build units through
+six more names, each defined by the listfile that uses it, and #2610 is what
+resolving only the first one cost.  ``libs/ra8_num/src/ra8_num_decimal.c``
+went Zig and left five dangling paths in ``apps/shared_libs/mdl``, spelled
+``${MDL_REPO_ROOT}/...``.  This gate scanned that very file and reported it
+clean, because the prefix was not the one name it knew.
+
+So a root is also resolved when the SAME listfile defines it from its own
+location::
+
+    get_filename_component(FW_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/../.." ABSOLUTE)
+    set(MDL_REPO_ROOT ${CMAKE_CURRENT_SOURCE_DIR}/../../..)
+
+``CMAKE_CURRENT_SOURCE_DIR`` is honoured only in a ``CMakeLists.txt``, where
+the directory scope is that file's own directory.  In an included ``.cmake``
+it is the INCLUDING directory, which is configure-time state, so a root
+defined that way is not resolved: that is why the eleven ``tests/cmake``
+files using ``${FW_ROOT}`` are left alone, since ``FW_ROOT`` is defined for
+them in ``library_sources.cmake`` against whoever includes it.
+``CMAKE_CURRENT_LIST_DIR`` is the listfile's own directory in either kind of
+file, so it is honoured in both.
+
+A name defined twice in one file with two different values is dropped rather
+than guessed at.
+
 SCOPE, HONESTLY
 ---------------
-This resolves ``${RA8_REPO_ROOT}``-rooted paths and nothing else.  A relative
-path, a path built from ``CMAKE_CURRENT_SOURCE_DIR``, or one assembled across
+A relative path, a root defined in another file, or a path assembled across
 two lines is not seen.  That is not a claim those forms are safe; it is the
 boundary of what a single-line text resolve can check without pretending to
-be CMake.  ``${RA8_REPO_ROOT}`` is the form the tree actually uses to reach
-across build units, which is exactly where the stale-path risk lives.
+be CMake.
 
 A vacuity guard fails the gate closed if the scan stops finding tokens: a
 parser that has quietly stopped matching would otherwise report a clean tree
@@ -72,19 +98,35 @@ from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 
-#: The only prefix this gate resolves.  See SCOPE, HONESTLY.
+#: Always the repository root, tree-wide.  See WHICH ROOTS ARE RESOLVED.
 ROOT_VARIABLE = "RA8_REPO_ROOT"
 
-#: A token runs to the first character that cannot be part of a CMake path
-#: argument.  ``)`` is stripped afterwards so a path closing a command reads
-#: correctly.
-TOKEN_PATTERN = re.compile(r"\$\{" + ROOT_VARIABLE + r"\}/([^\s\"')]+)")
+#: Trailing characters that close a path argument rather than belong to it:
+#: ``)`` ends the command, ``\\`` is the string escape that ``string(CONCAT ...)``
+#: puts straight after a path.  Stripped before the path is resolved.
+PATH_ARGUMENT_TRAILERS = ")\\"
+
+#: A listfile may define its own root from its own location.  Captured:
+#: the name, the anchor variable, and the relative suffix (if any).
+ROOT_DEFINITION = re.compile(
+    r"^\s*(?:set|get_filename_component)\(\s*"
+    r"([A-Za-z][A-Za-z0-9_]*)\s+"
+    r"\"?\$\{(CMAKE_CURRENT_SOURCE_DIR|CMAKE_CURRENT_LIST_DIR)\}"
+    r"(/[^\s\"')]*)?\"?"
+)
+
+
+def token_pattern(names: list[str]) -> re.Pattern[str]:
+    """Return the token matcher for one file's set of root names."""
+    alternatives = "|".join(sorted(names, key=len, reverse=True))
+    return re.compile(r"\$\{(" + alternatives + r")\}/([^\s\"')]+)")
+
 
 #: Path fragments whose build files belong to upstream.
 VENDOR_MARKERS = ("third_party/", "/build/")
 
 #: Below this the parse is assumed broken rather than the tree clean.
-MIN_RESOLVED_TOKENS = 120
+MIN_RESOLVED_TOKENS = 400
 
 
 @dataclass(frozen=True)
@@ -93,12 +135,13 @@ class Finding:
 
     path: str
     line: int
+    variable: str
     token: str
     reason: str
 
     def render(self) -> str:
         """Return the one-line human form."""
-        return f"{self.path}:{self.line}: {self.reason}: ${{{ROOT_VARIABLE}}}/{self.token}"
+        return f"{self.path}:{self.line}: {self.reason}: ${{{self.variable}}}/{self.token}"
 
 
 def is_scannable(relative: str) -> bool:
@@ -127,6 +170,45 @@ def classify(token: str) -> str:
     return "literal"
 
 
+def discover_roots(root: Path, path: Path, text: str) -> dict[str, Path]:
+    """Return the root names this listfile defines from its own location.
+
+    ``CMAKE_CURRENT_SOURCE_DIR`` is the file's own directory only in a
+    ``CMakeLists.txt``; in an included ``.cmake`` it is the including
+    directory, which this gate does not model.  A name defined twice with two
+    values is dropped rather than guessed at.
+    """
+    own_directory_scope = path.name == "CMakeLists.txt"
+    resolved: dict[str, Path] = {}
+    ambiguous: set[str] = set()
+    for line in text.splitlines():
+        if line.lstrip().startswith("#"):
+            continue
+        match = ROOT_DEFINITION.match(line)
+        if match is None:
+            continue
+        name, anchor, suffix = match.group(1), match.group(2), match.group(3) or ""
+        if name == ROOT_VARIABLE:
+            continue
+        if anchor == "CMAKE_CURRENT_SOURCE_DIR" and not own_directory_scope:
+            continue
+        target = (path.parent / suffix.lstrip("/")).resolve()
+        if not target.is_dir():
+            ambiguous.add(name)
+            continue
+        try:
+            target.relative_to(root.resolve())
+        except ValueError:
+            ambiguous.add(name)
+            continue
+        if name in resolved and resolved[name] != target:
+            ambiguous.add(name)
+        resolved[name] = target
+    for name in ambiguous:
+        resolved.pop(name, None)
+    return resolved
+
+
 def scan_file(root: Path, path: Path) -> tuple[list[Finding], dict[str, int]]:
     """Resolve every token in one CMake file."""
     counts = {"literal": 0, "glob": 0, "variable": 0}
@@ -137,21 +219,27 @@ def scan_file(root: Path, path: Path) -> tuple[list[Finding], dict[str, int]]:
     except (OSError, UnicodeDecodeError):
         return findings, counts
 
+    roots: dict[str, Path] = {ROOT_VARIABLE: root}
+    roots.update(discover_roots(root, path, text))
+    pattern = token_pattern(list(roots))
+
     for number, line in enumerate(text.splitlines(), start=1):
         if line.lstrip().startswith("#"):
             continue
-        for match in TOKEN_PATTERN.finditer(line):
-            token = match.group(1).rstrip(")")
+        for match in pattern.finditer(line):
+            name = match.group(1)
+            base = roots[name]
+            token = match.group(2).rstrip(PATH_ARGUMENT_TRAILERS)
             kind = classify(token)
             counts[kind] += 1
             if kind == "variable":
                 continue
             if kind == "glob":
-                if not list(root.glob(token)):
-                    findings.append(Finding(relative, number, token, "glob matches nothing"))
+                if not list(base.glob(token)):
+                    findings.append(Finding(relative, number, name, token, "glob matches nothing"))
                 continue
-            if not (root / token).exists():
-                findings.append(Finding(relative, number, token, "path does not exist"))
+            if not (base / token).exists():
+                findings.append(Finding(relative, number, name, token, "path does not exist"))
     return findings, counts
 
 
@@ -223,6 +311,57 @@ def selftest(tmp_root: Path) -> list[str]:
         if len(findings) != expected:
             failures.append(f"{label}: expected {expected} finding(s), got {len(findings)}")
 
+    # --- roots the listfile defines itself (#2610) ------------------------
+    nested = tmp_root / "apps" / "shared_libs" / "mdl"
+    nested.mkdir(parents=True)
+    alias_cases: dict[str, tuple[str, int]] = {
+        "set(MDL_REPO_ROOT ${CMAKE_CURRENT_SOURCE_DIR}/../../..)\n"
+        "target_sources(m PRIVATE ${MDL_REPO_ROOT}/libs/ra8_gfx/src/ra8_gfx_blit.c)\n": (
+            "a self-defined root resolving an existing path is clean",
+            0,
+        ),
+        "set(MDL_REPO_ROOT ${CMAKE_CURRENT_SOURCE_DIR}/../../..)\n"
+        "target_sources(m PRIVATE ${MDL_REPO_ROOT}/libs/ra8_num/src/ra8_num_decimal.c)\n": (
+            "a self-defined root resolving a deleted path fires",
+            1,
+        ),
+        'get_filename_component(FW_ROOT "${CMAKE_CURRENT_LIST_DIR}/../../.." ABSOLUTE)\n'
+        "target_sources(m PRIVATE ${FW_ROOT}/libs/ra8_num/src/ra8_num_decimal.c)\n": (
+            "CMAKE_CURRENT_LIST_DIR is the listfile's own directory",
+            1,
+        ),
+        "set(MDL_REPO_ROOT ${CMAKE_CURRENT_SOURCE_DIR}/../../..)\n"
+        "set(MDL_REPO_ROOT ${CMAKE_CURRENT_SOURCE_DIR}/..)\n"
+        "target_sources(m PRIVATE ${MDL_REPO_ROOT}/libs/ra8_num/src/ra8_num_decimal.c)\n": (
+            "a root defined twice with two values is not judged",
+            0,
+        ),
+        "target_sources(m PRIVATE ${MDL_REPO_ROOT}/libs/ra8_num/src/ra8_num_decimal.c)\n": (
+            "an undefined root is not judged",
+            0,
+        ),
+    }
+    for body, (label, expected) in alias_cases.items():
+        listing = nested / "CMakeLists.txt"
+        listing.write_text(body)
+        findings, _ = scan_file(tmp_root, listing)
+        if len(findings) != expected:
+            failures.append(f"{label}: expected {expected} finding(s), got {len(findings)}")
+    (nested / "CMakeLists.txt").unlink()
+
+    included = nested / "included.cmake"
+    included.write_text(
+        "set(MDL_REPO_ROOT ${CMAKE_CURRENT_SOURCE_DIR}/../../..)\n"
+        "target_sources(m PRIVATE ${MDL_REPO_ROOT}/libs/ra8_num/src/ra8_num_decimal.c)\n"
+    )
+    findings, _ = scan_file(tmp_root, included)
+    if findings:
+        failures.append(
+            "CMAKE_CURRENT_SOURCE_DIR in an included .cmake must not be resolved: "
+            f"got {len(findings)} finding(s)"
+        )
+    included.unlink()
+
     listing = tmp_root / "CMakeLists.txt"
     listing.unlink()
     vendored = tmp_root / "libs" / "third_party" / "zlib"
@@ -249,7 +388,7 @@ def run_selftest() -> int:
         for failure in failures:
             print(f"  {failure}", file=sys.stderr)
         return 1
-    print("selftest: check_cmake_source_paths.py OK (9 both-direction cases)")
+    print("selftest: check_cmake_source_paths.py OK (15 both-direction cases)")
     return 0
 
 
@@ -282,14 +421,16 @@ def main(argv: list[str]) -> int:
         print(
             "\nEvery repository-rooted path a CMake file names must resolve. A source "
             "moved or deleted by a port leaves the path behind, and no host configure "
-            "evaluates a cross-only block (#1290). Update the path, or drop the line.",
+            "evaluates a cross-only block (#1290, #2610). Update the path, or drop the "
+            "line.",
             file=sys.stderr,
         )
         return 1
 
     print(
         f"check_cmake_source_paths.py: {counts['files']} CMake file(s); "
-        f"{counts['literal']} literal path(s) and {counts['glob']} glob(s) all resolve; "
+        f"{counts['literal']} literal path(s) and {counts['glob']} glob(s) all resolve "
+        f"against {ROOT_VARIABLE} and the roots each listfile defines itself; "
         f"{counts['variable']} variable-interpolated path(s) not judged."
     )
     return 0
