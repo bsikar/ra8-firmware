@@ -4,9 +4,10 @@
 //! Build graph for the Zig half of `ra8_widget`. The library's public C ABI
 //! (`inc/ra8_widget.h`) is unchanged; this archive carries the module-private
 //! paint helpers that `src/ra8_widget_internal.h` declares plus the text-label,
-//! push-button, progress-bar and status-bar leaf widgets, so the sibling widget
-//! translation units link them instead of compiling `ra8_widget_paint.c` /
-//! `_label.c` / `_button.c` / `_progress_bar.c` / `_status_bar.c`.
+//! push-button, progress-bar, status-bar and toolbar leaf widgets, so the
+//! sibling widget translation units link them instead of compiling
+//! `ra8_widget_paint.c` / `_label.c` / `_button.c` / `_progress_bar.c` /
+//! `_status_bar.c` / `_toolbar.c`.
 //! The `test` step verifies the pure geometry and each membrane.
 
 const std = @import("std");
@@ -109,12 +110,26 @@ pub fn build(b: *std.Build) void {
     status_bar_test_module.addImport("abi", status_bar_module);
     const status_bar_tests = b.addTest(.{ .root_module = status_bar_test_module });
 
+    const toolbar_module = b.createModule(.{
+        .root_source_file = b.path("src/widget_toolbar_abi.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    const toolbar_test_module = b.createModule(.{
+        .root_source_file = b.path("tests/toolbar_test.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    toolbar_test_module.addImport("abi", toolbar_module);
+    const toolbar_tests = b.addTest(.{ .root_module = toolbar_test_module });
+
     const run_internal_tests = b.addRunArtifact(internal_tests);
     const run_abi_tests = b.addRunArtifact(abi_tests);
     const run_label_tests = b.addRunArtifact(label_tests);
     const run_button_tests = b.addRunArtifact(button_tests);
     const run_progress_bar_tests = b.addRunArtifact(progress_bar_tests);
     const run_status_bar_tests = b.addRunArtifact(status_bar_tests);
+    const run_toolbar_tests = b.addRunArtifact(toolbar_tests);
     const test_step = b.step("test", "Run Zig ra8_widget tests");
     test_step.dependOn(&run_internal_tests.step);
     test_step.dependOn(&run_abi_tests.step);
@@ -122,4 +137,5 @@ pub fn build(b: *std.Build) void {
     test_step.dependOn(&run_button_tests.step);
     test_step.dependOn(&run_progress_bar_tests.step);
     test_step.dependOn(&run_status_bar_tests.step);
+    test_step.dependOn(&run_toolbar_tests.step);
 }
