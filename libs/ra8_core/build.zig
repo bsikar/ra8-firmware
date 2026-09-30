@@ -3,10 +3,11 @@
 //!
 //! Build graph for `ra8_core`.
 //!
-//! Four seams of this library are Zig so far: the freestanding runtime
+//! Five seams of this library are Zig so far: the freestanding runtime
 //! primitives (#2820), the pin-claim validator (#2825), the SysTick timebase
-//! with its time-interface binding (#2830) and the log backend with
-//! `ra8_err_to_str` (#2836). Everything else in `src/` is still C, which
+//! with its time-interface binding (#2830), the log backend with
+//! `ra8_err_to_str` (#2836) and the millisecond tick counter, delay policy and
+//! SysTick IRQ body (#2851). Everything else in `src/` is still C, which
 //! `.github/zig-parallel-tree-allowlist.tsv` records per file.
 //!
 //! WHAT THIS LIBRARY SHIPS DEPENDS ON WHO LINKS IT.
@@ -158,6 +159,30 @@ pub fn build(b: *std.Build) void {
         .optimize = optimize,
     });
 
+    const time_units = [_][]const u8{ "reload", "tick", "cpu", "delay", "hooks" };
+    var time_modules_by_unit = std.StringHashMap(*std.Build.Module).init(b.allocator);
+    inline for (time_units) |unit| {
+        const module = b.createModule(.{
+            .root_source_file = b.path(b.fmt("src/internal/time/{s}.zig", .{unit})),
+            .target = target,
+            .optimize = optimize,
+        });
+        time_modules_by_unit.put(unit, module) catch @panic("OOM");
+    }
+    const time_cpu = time_modules_by_unit.get("cpu").?;
+    time_modules_by_unit.get("delay").?.addImport("time_cpu", time_cpu);
+    time_modules_by_unit.get("delay").?.addImport("time_tick", time_modules_by_unit.get("tick").?);
+    time_modules_by_unit.get("hooks").?.addImport("time_cpu", time_cpu);
+
+    const time_abi = b.createModule(.{
+        .root_source_file = b.path("src/time_abi.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    inline for (time_units) |unit| {
+        time_abi.addImport(b.fmt("time_{s}", .{unit}), time_modules_by_unit.get(unit).?);
+    }
+
     const log_format = b.createModule(.{
         .root_source_file = b.path("src/internal/log/format.zig"),
         .target = target,
@@ -200,6 +225,7 @@ pub fn build(b: *std.Build) void {
     root.addImport("pin_validator_abi", pin_validator_abi);
     root.addImport("systick_abi", systick_abi);
     root.addImport("time_interface_systick_abi", time_interface_systick_abi);
+    root.addImport("time_abi", time_abi);
     root.addImport("log_abi", log_abi);
 
     if (!image_build) {
@@ -220,6 +246,7 @@ pub fn build(b: *std.Build) void {
         image_root.addImport("pin_validator_abi", pin_validator_abi);
         image_root.addImport("systick_abi", systick_abi);
         image_root.addImport("time_interface_systick_abi", time_interface_systick_abi);
+        image_root.addImport("time_abi", time_abi);
         image_root.addImport("log_abi", log_abi);
 
         const image_library = b.addLibrary(.{
@@ -246,6 +273,16 @@ pub fn build(b: *std.Build) void {
     });
     systick_tests.addImport("systick_reload", systick_reload);
     test_step.dependOn(&b.addRunArtifact(b.addTest(.{ .root_module = systick_tests })).step);
+
+    const time_tests = b.createModule(.{
+        .root_source_file = b.path("tests/time_test.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    inline for (time_units) |unit| {
+        time_tests.addImport(b.fmt("time_{s}", .{unit}), time_modules_by_unit.get(unit).?);
+    }
+    test_step.dependOn(&b.addRunArtifact(b.addTest(.{ .root_module = time_tests })).step);
 
     const log_tests = b.createModule(.{
         .root_source_file = b.path("tests/log_test.zig"),

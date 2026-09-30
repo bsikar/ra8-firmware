@@ -154,10 +154,13 @@ file(GLOB _ns_usbx_cdc CONFIGURE_DEPENDS
      "${_ra8_usbx_root}/common/usbx_device_classes/src/ux_device_class_cdc_acm_*.c"
 )
 
-# ra8_time.c is intentionally NOT linked: its ra8_time_init reprograms the SysTick
-# ThreadX owns, and its delay path waits on a tick the ThreadX SysTick handler
-# never bumps. ns_usb.c provides a ThreadX-backed ra8_delay_ms instead (the only
-# ra8_time symbol ra8_usb references).
+# The timebase is Zig in ra8_core's archive since #2851, so the NS image can no
+# longer decline it by leaving a TU out of this list. It does not have to: the
+# port exports ra8_time_init / ra8_time_ms / ra8_delay_ms WEAK, and the strong
+# ThreadX-backed ra8_delay_ms and ra8_time_ms in ns_usb.c win over them. That
+# override is the point, not a convenience: ra8_time_init would reprogram the
+# SysTick ThreadX owns, and the default delay waits on a tick the ThreadX
+# SysTick handler never bumps.
 # ux_dcd_ra8_usb.c and ra8_usb.c were each split into sub-1000-line TUs for the
 # file-size cap. Glob the ux_dcd_ra8_usb*.c family (the DCD split: ep / xfer /
 # isr / setup / dvst / dvst_default / irq) and list the seven ra8_usb*.c TUs of

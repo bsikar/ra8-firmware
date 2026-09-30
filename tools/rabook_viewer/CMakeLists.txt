@@ -298,7 +298,6 @@ ra8_viewer_read_path(
        ra8_sbrk_trap.c
        ra8_scb.c
        ra8_secure.c
-       ra8_time.c
 )
 
 set(RA8_THIRD_PARTY_SRC ${FW_ROOT}/apps/shared_libs/third_party/miniz/miniz.c

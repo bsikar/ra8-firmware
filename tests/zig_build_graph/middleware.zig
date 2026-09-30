@@ -111,11 +111,11 @@ pub const threadx = Middleware{
     // port/threadx/inc/tx_user.h: a different tick rate, different stack
     // sizes, different feature set, and not one diagnostic about it.
     .public_defines = &.{"-DTX_INCLUDE_USER_DEFINE_FILE"},
-    // Issue #8. The shared SysTick_Handler in libs/ra8_core/src/ra8_time.c
-    // takes a WEAK reference to _tx_timer_interrupt so non-ThreadX apps still
-    // link; a weak reference does not pull the archive member, so the weak
-    // symbol resolves to NULL and the ThreadX time base never advances. The
-    // link succeeds either way, which is exactly why this belongs in the
+    // Issue #8. The shared SysTick_Handler, Zig in ra8_core's archive since
+    // #2851, takes a WEAK reference to _tx_timer_interrupt so non-ThreadX apps
+    // still link; a weak reference does not pull the archive member, so the
+    // weak symbol resolves to NULL and the ThreadX time base never advances.
+    // The link succeeds either way, which is exactly why this belongs in the
     // graph rather than in a comment.
     .link_options = &.{
         "-Wl,--undefined=_tx_timer_interrupt",
