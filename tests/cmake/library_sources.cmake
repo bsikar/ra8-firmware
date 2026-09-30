@@ -47,8 +47,10 @@ file(GLOB_RECURSE RA8_FS_SOURCES CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra8_fs/src/*.
 # inc/fw_if_fs_types.h, inc/fw_if_fs_backend.h and inc/ra8_path.h; see
 # tests/cmake/zig_libraries.cmake. There is no RA8_IF_SOURCES glob left, and
 # libs/if/src is no longer an include directory anywhere.
-file(GLOB_RECURSE RA8_NET_POLICY_SOURCES CONFIGURE_DEPENDS
-     ${FW_ROOT}/libs/ra8_net_policy/src/*.c)
+# ra8_net_policy is fully migrated to Zig: the URL and peer-address safety
+# policy behind inc/ra8_net_urlguard.h lives in libs/ra8_net_policy/src/*.zig,
+# built by libs/ra8_net_policy/build.zig; see tests/cmake/zig_libraries.cmake.
+# There is no RA8_NET_POLICY_SOURCES glob left.
 # ra8_xml is fully migrated to Zig: the bounded XML emitter behind
 # inc/ra8_xml_writer.h lives in libs/ra8_xml/src/*.zig, built by
 # libs/ra8_xml/build.zig; see tests/cmake/zig_libraries.cmake. There is no

@@ -83,7 +83,20 @@ add_subdirectory(${MDL_REPO_ROOT}/apps/shared_libs/mdl ${CMAKE_CURRENT_BINARY_DI
 
 # Some form tests compile the POSIX filesystem adapter directly instead of
 # linking mdl_core; all such targets need the migrated facade archive.
-link_libraries(ra8_zig::fw_if_fs ra8_zig::ra8_xml)
+# The URL and peer-address safety policy behind
+# libs/ra8_net_policy/inc/ra8_net_urlguard.h is Zig now, so the two targets
+# below that used to compile libs/ra8_net_policy/src/*.c by path link the
+# archive instead. Registered here rather than assumed, because this core also
+# configures standalone.
+if(NOT TARGET ra8_zig::ra8_net_policy)
+  include(${MDL_REPO_ROOT}/tests/cmake/zig_library.cmake)
+  ra8_add_zig_library(
+    NAME ra8_net_policy
+    ZIG_ROOT ${MDL_REPO_ROOT}/libs/ra8_net_policy
+    LIBRARY_NAME ra8_net_policy
+  )
+endif()
+link_libraries(ra8_zig::fw_if_fs ra8_zig::ra8_xml ra8_zig::ra8_net_policy)
 
 # Per-source properties are DIRECTORY-scoped, so the SOUP flags the core sets on
 # miniz do not follow the file into this listfile. Every target below that
@@ -216,7 +229,6 @@ add_executable(
   ${MDL_FORM_SRC_DIR}/mdl_net_curl.c
   ${MDL_FORM_SRC_DIR}/mdl_net_curl_credentials.c
   ${MDL_CORE_SRC_DIR}/mdl_politeness.c
-  ${MDL_REPO_ROOT}/libs/ra8_net_policy/src/ra8_net_urlguard.c
   ${MDL_FS_SRC}
 )
 target_include_directories(
@@ -243,7 +255,6 @@ add_executable(
   ${MDL_FORM_SRC_DIR}/mdl_net_curl.c
   ${MDL_FORM_SRC_DIR}/mdl_net_curl_credentials.c
   ${MDL_FORM_SRC_DIR}/mdl_host_credentials.c
-  ${MDL_REPO_ROOT}/libs/ra8_net_policy/src/ra8_net_urlguard.c
 )
 target_include_directories(
   test_mdl_credentials
