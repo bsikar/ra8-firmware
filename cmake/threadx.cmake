@@ -108,6 +108,7 @@ add_library(
   ${RA8_THREADX_PROJECT_LOW_LEVEL}
   "${RA8_THREADX_PORT_DIR}/src/cortex_m85/tx_systick_ready.c"
   "${RA8_THREADX_PORT_DIR}/src/cortex_m85/tx_systick_retune.c"
+  "${RA8_THREADX_PORT_DIR}/src/fw_os_threadx.c"
 )
 
 # tx_systick_retune.c reprograms SysTick from the live CGC clock, so it
@@ -119,6 +120,12 @@ add_library(
 target_include_directories(
   threadx PRIVATE "${RA8_REPO_ROOT}/libs/ra8_core/inc" "${RA8_REPO_ROOT}/libs/ra8_hal/inc"
 )
+
+# fw_os_threadx.c binds the libs/if `fw_os` port contract onto ThreadX, so it
+# needs the seam's own header. PRIVATE for the same reason as above: only this
+# library's TU includes it. The fw_os_* symbols land in their own object file,
+# so an app that never calls the seam does not pull them out of the archive.
+target_include_directories(threadx PRIVATE "${RA8_REPO_ROOT}/libs/if/inc")
 
 # Vendor headers + project tx_user.h. Public so app TUs can #include
 # "tx_api.h" without re-stating the include dirs.
