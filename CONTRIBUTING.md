@@ -89,6 +89,14 @@ edit -> just quality::devcontainer::format -> just checks::devcontainer -> git c
   first-party C/H file. The `format` CI gate rejects formatting drift.
 * `just checks::devcontainer` runs the focused format, tidy, and unit-test
   checks inside the pinned image. Before pushing, run the full `just ci` suite.
+* Never hand-edit a generated ratchet baseline under `.github/`. Move or
+  rename a file and you regenerate the baseline with the tool's `--update`,
+  never `sed` the paths in place: an in-place rewrite keeps the rows at their
+  old sort position, which reads as clean in review and is invisible to the
+  gate. Where a hand-edit IS sanctioned (the cite and MC/DC-compound baselines
+  document a by-hand rename so a move is not mistaken for growth), re-sort the
+  file afterwards. Every one of these tools now has an `--attest` mode that
+  re-derives the canonical text and fails on anything else; the gates run it.
 * `git commit` runs no gate of its own: there is no pre-commit hook. The
   same audits (formatting, clang-tidy, ASCII check, doxygen audit, citation
   check, world-tag check, MC/DC block check, ...) run in `just ci` and in CI,

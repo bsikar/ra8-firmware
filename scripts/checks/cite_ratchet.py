@@ -104,6 +104,9 @@ MAX_DETAIL_LINES = 10
 BASELINE_COLUMNS = 2
 """Column count of one baseline row: file, count."""
 
+ATTESTATION_CASES = 5
+"""Distinct hand-edit shapes `_selftest_attestation` proves are rejected."""
+
 MIN_SCANNED_FILES = 1700
 """Refuse to ratchet a scan that saw implausibly few source files.
 
@@ -199,12 +202,21 @@ def load_baseline() -> Counter[str]:
     return counts
 
 
-def write_baseline(counts: Counter[str]) -> None:
-    """Write `counts` out in the committed, sorted, diffable form.
+def render_baseline(counts: Counter[str]) -> str:
+    """Return the canonical baseline text for `counts`. THE committed form.
+
+    This is the single definition of what a machine-written baseline looks
+    like: the fixed header, the derived totals, then one sorted `file<TAB>count`
+    row per non-zero bucket. `write_baseline` emits it and `attest_baseline`
+    re-derives it, so the committed file can be compared against what this
+    tool would have produced.
 
     Args:
-        counts: The ``file -> count`` map to freeze. Zero-valued buckets are
+        counts: The ``file -> count`` map to render. Zero-valued buckets are
             dropped so a burned-down file leaves the file entirely.
+
+    Returns:
+        The full file text, newline-terminated.
     """
     total = sum(counts.values())
     lines = [
@@ -251,7 +263,93 @@ def write_baseline(counts: Counter[str]) -> None:
     for path, n in sorted(counts.items()):
         if n:
             lines.append(f"{path}\t{n}")
-    BASELINE_FILE.write_text("\n".join(lines) + "\n", encoding="ascii")
+    return "\n".join(lines) + "\n"
+
+
+def write_baseline(counts: Counter[str]) -> None:
+    """Write `counts` out in the committed, sorted, diffable form.
+
+    Args:
+        counts: The ``file -> count`` map to freeze.
+    """
+    BASELINE_FILE.write_text(render_baseline(counts), encoding="ascii")
+
+
+def _first_difference(committed: str, rendered: str) -> str:
+    """Return a one-line description of where two texts first diverge.
+
+    Args:
+        committed: The text read from disk.
+        rendered: The text this tool would emit.
+
+    Returns:
+        A printable ``line N: ...`` description.
+    """
+    got = committed.splitlines()
+    want = rendered.splitlines()
+    for number, (a, b) in enumerate(zip(got, want), start=1):
+        if a != b:
+            return f"line {number}: committed {a!r}, tool emits {b!r}"
+    if len(got) > len(want):
+        return f"line {len(want) + 1}: committed has {len(got) - len(want)} extra line(s)"
+    return f"line {len(got) + 1}: committed is missing {len(want) - len(got)} line(s)"
+
+
+def attest_baseline() -> list[str]:
+    """Return the ways the committed baseline is not what this tool would emit.
+
+    The ratchet reads the baseline's ROWS; nothing until now asserted the FILE
+    is one `write_baseline` produced. A hand edit that kept the rows parseable
+    -- a whole-file `sort`, a typed row, an adjusted total, a stale header line
+    -- went around the tool's own refusal and survived ten days (#712).
+
+    `load_baseline` also SKIPS a row whose column count is wrong, so a mangled
+    row silently stops being debt. Re-deriving the whole text catches that: a
+    skipped row cannot round-trip.
+
+    An ABSENT baseline is not a violation. Zero rows and deletion is this
+    ratchet's documented end state.
+
+    Returns:
+        A list of problem descriptions, empty when the file is canonical.
+    """
+    if not BASELINE_FILE.is_file():
+        return []
+    committed = BASELINE_FILE.read_text(encoding="ascii")
+    problems: list[str] = []
+    for raw in committed.splitlines():
+        line = raw.strip()
+        if not line or line.startswith("#"):
+            continue
+        parts = line.split("\t")
+        if len(parts) != BASELINE_COLUMNS or not parts[1].isdigit():
+            problems.append(f"unparseable row silently skipped by the gate: {raw!r}")
+    rendered = render_baseline(load_baseline())
+    if committed != rendered:
+        problems.append(_first_difference(committed, rendered))
+    return problems
+
+
+def report_attestation(problems: list[str]) -> None:
+    """Print the failure report for a baseline the tool would not have written.
+
+    Args:
+        problems: The descriptions returned by `attest_baseline`.
+    """
+    rel = BASELINE_FILE.relative_to(REPO_ROOT)
+    print(f"\ncite_ratchet.py: FAIL -- {rel} is not what this tool emits.\n", file=sys.stderr)
+    for line in problems[:MAX_DETAIL_LINES]:
+        print(f"  {line}", file=sys.stderr)
+    print(
+        "\n  A generated baseline is machine-written. Editing it by hand goes\n"
+        "  around the ratchet's own refusal, and a parseable hand edit used to\n"
+        "  survive indefinitely (#712). Regenerate it:\n"
+        "      python3 scripts/checks/cite_ratchet.py --update\n"
+        "\n  A row RENAMED by hand -- which this baseline's header sanctions for a\n"
+        "  moved file -- is still fine, but it must end up sorted into position.\n"
+        "  Sort the rows, keep the counts identical, leave the header alone.",
+        file=sys.stderr,
+    )
 
 
 def scope_reason(files: int, access_lines: int) -> str | None:
@@ -488,6 +586,60 @@ def _selftest_scope_guard() -> list[str]:
     return failures
 
 
+def _selftest_attestation(tmp: pathlib.Path) -> list[str]:
+    """Assert a hand-edited baseline is rejected and a written one accepted.
+
+    Every case runs against a throwaway copy of `BASELINE_FILE`, restored
+    before returning: a selftest that mutated the committed baseline would be
+    the very hand edit this asserts against.
+
+    Args:
+        tmp: A scratch directory holding the saved committed text.
+
+    Returns:
+        A list of failure descriptions, empty when all cases hold.
+    """
+    failures: list[str] = []
+    saved = BASELINE_FILE.read_text(encoding="ascii") if BASELINE_FILE.is_file() else None
+    keep = tmp / "committed.txt"
+    if saved is not None:
+        keep.write_text(saved, encoding="ascii")
+    try:
+        fixture = Counter({"a/src/one.c": 3, "b/src/two.c": 1})
+        write_baseline(fixture)
+        canonical = BASELINE_FILE.read_text(encoding="ascii")
+        rows = canonical.splitlines()
+
+        # Case 1 -- MUST PASS: a file this tool just wrote.
+        if attest_baseline():
+            failures.append("a tool-written baseline did not attest clean")
+
+        cases = (
+            # Case 2 -- the whole-file `sort` that started #712.
+            ("a whole-file sort", "\n".join(sorted(rows)) + "\n"),
+            # Case 3 -- a renamed row left where the typist put it. The header
+            # sanctions the rename; leaving it unsorted is what this catches.
+            ("an unsorted hand-renamed row", canonical.replace("a/src/one.c", "z/src/one.c")),
+            # Case 4 -- a recorded total edited to match a hand change.
+            ("a wrong recorded total", canonical.replace("Total at this baseline: 4", "5")),
+            # Case 5 -- a mangled row, which load_baseline silently SKIPS.
+            (
+                "a mangled row the gate would skip",
+                canonical.replace("b/src/two.c\t1", "b/src/two.c 1"),
+            ),
+        )
+        for name, text in cases:
+            BASELINE_FILE.write_text(text, encoding="ascii")
+            if not attest_baseline():
+                failures.append(f"{name} attested clean")
+    finally:
+        if saved is None:
+            BASELINE_FILE.unlink(missing_ok=True)
+        else:
+            BASELINE_FILE.write_text(saved, encoding="ascii")
+    return failures
+
+
 def selftest() -> int:
     """Assert the measurement and the ratchet fire, in BOTH directions.
 
@@ -501,6 +653,7 @@ def selftest() -> int:
     """
     with tempfile.TemporaryDirectory() as td:
         failures = _selftest_scan(pathlib.Path(td))
+        failures += _selftest_attestation(pathlib.Path(td))
     failures += _selftest_ratchet() + _selftest_scope_guard()
 
     if failures:
@@ -512,7 +665,7 @@ def selftest() -> int:
         "selftest: HUM citation-coverage ratchet OK "
         "(counts an uncited access; ignores a cited one; fails on growth and on "
         "an unseen file, passes on equal and on shrinkage; refuses an "
-        "implausible scope)."
+        f"implausible scope; rejects {ATTESTATION_CASES - 1} shapes of hand edit)."
     )
     return 0
 
@@ -585,14 +738,32 @@ def main() -> int:
     parser.add_argument("--update", action="store_true", help="rewrite the baseline")
     parser.add_argument("--list", action="store_true", help="print the whole backlog")
     parser.add_argument("--selftest", action="store_true", help="assert this gate still fires")
+    parser.add_argument(
+        "--attest", action="store_true", help="assert the baseline is machine-written"
+    )
     args = parser.parse_args()
 
     if args.selftest:
         return selftest()
+    # Attestation needs no scan at all, so it runs anywhere and costs nothing.
+    if args.attest:
+        problems = attest_baseline()
+        if problems:
+            report_attestation(problems)
+            return 1
+        print("cite_ratchet.py: baseline attested -- byte-identical to what --update emits.")
+        return 0
     if args.list:
         return _list_backlog()
     if not (args.check or args.update):
         parser.error("one of --check / --update / --list / --selftest is required")
+
+    # Attest BEFORE scanning or writing: --update carries nothing forward from
+    # a hand-edited file, but --check would happily gate against one.
+    problems = attest_baseline()
+    if problems:
+        report_attestation(problems)
+        return 1
 
     current, files, access_lines = scan_tree()
 
