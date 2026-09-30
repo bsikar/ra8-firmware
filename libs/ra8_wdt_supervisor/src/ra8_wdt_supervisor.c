@@ -6,7 +6,8 @@
  * [Ring 4 / Service] {World: NS}
  *
  * @details
- * Static-allocation registry with a TX_MUTEX guard and a single TX_THREAD
+ * Static-allocation registry with a ::fw_os_mutex_t guard and a single
+ * ::fw_os_thread_t
  * that wakes every ``refresh_period_ms``. See ``ra8_wdt_supervisor.h`` for
  * the design rationale.
  *
@@ -22,11 +23,7 @@
 #include "ra8_attributes.h"
 #include "ra8_err.h"
 #include "ra8_wdt.h"
-#ifdef RA8_OFF_TARGET
-#include "ra8_wdt_sup_tx_shim_internal.h"
-#else
-#include "tx_api.h"
-#endif
+#include "fw_os.h"
 
 /**
  * @enum ra8_wdt_sup_internal_t
@@ -54,18 +51,33 @@ typedef struct {
 } ra8_wdt_sup_slot_t;
 
 /**
+ * @enum ra8_wdt_sup_band_bound_t
+ * @brief Quartile bounds that bucket a 0..31 priority into an ::fw_os band.
+ *
+ * @details
+ * The legal numeric range is 0..``k_ra8_wdt_sup_max_priority`` (31), so the
+ * quartiles fall at 8, 16 and 24. Named rather than literal per the
+ * repository's no-magic-number rule.
+ */
+typedef enum : uint32_t {
+  k_ra8_wdt_sup_band_high_max   = 8U,  /**< Below this is k_fw_os_priority_high.   */
+  k_ra8_wdt_sup_band_normal_max = 16U, /**< Below this is k_fw_os_priority_normal. */
+  k_ra8_wdt_sup_band_low_max    = 24U, /**< Below this is k_fw_os_priority_low.    */
+} ra8_wdt_sup_band_bound_t;
+
+/**
  * @struct ra8_wdt_sup_state_t
  * @brief Module state -- entirely static.
  */
 typedef struct {
-  bool                 initialized;                      /**< True after successful init.      */
-  bool                 started;                          /**< True once the thread is spawned. */
-  ra8_wdt_sup_cfg_t    cfg;                              /**< Cached configuration.            */
-  ra8_wdt_sup_slot_t   slots[k_ra8_wdt_sup_max_threads]; /**< Registry.                        */
-  TX_MUTEX             mutex;                            /**< Guards ``slots``.                */
-  TX_THREAD            thread;                           /**< Supervisor thread control block. */
-  ra8_wdt_sup_now_fn_t now;                              /**< Monotonic-time hook.             */
-  ra8_wdt_sup_refresh_fn_t refresh;                      /**< WDT-refresh hook.                */
+  bool                     initialized;                      /**< True after init succeeded. */
+  bool                     started;                          /**< True once the thread runs. */
+  ra8_wdt_sup_cfg_t        cfg;                              /**< Cached configuration.      */
+  ra8_wdt_sup_slot_t       slots[k_ra8_wdt_sup_max_threads]; /**< Registry.                  */
+  fw_os_mutex_t            mutex;                            /**< Guards ``slots``.          */
+  fw_os_thread_t           thread;                           /**< Supervisor thread block.   */
+  ra8_wdt_sup_now_fn_t     now;                              /**< Monotonic-time hook.       */
+  ra8_wdt_sup_refresh_fn_t refresh;                          /**< WDT-refresh hook.          */
 } ra8_wdt_sup_state_t;
 
 /**
@@ -77,12 +89,51 @@ typedef struct {
 static ra8_wdt_sup_state_t s_state;
 
 /**
- * @brief Default monotonic-time hook -- scales tx_time_get to ms.
+ * @brief Map the caller's numeric priority onto a portable ::fw_os band.
  *
  * @details
- * Assumes a 1 kHz kernel tick (the most common ThreadX default for
- * Cortex-M cores). Override via ``ra8_wdt_supervisor_set_now_hook`` if
- * the kernel runs at a different rate.
+ * ``ra8_wdt_sup_cfg_t::priority`` predates the ::fw_os seam: it is a
+ * ThreadX priority number, 0 (most urgent) to 31, and the public contract
+ * still validates that range. ::fw_os takes one of four bands instead, so
+ * the number is bucketed by quartile. The mapping is deliberately lossy
+ * and deliberately monotonic: a smaller number never yields a lower band,
+ * so relative urgency between two configured supervisors survives.
+ *
+ * Retiring the numeric field in favour of ::fw_os_priority_t is a separate
+ * change: it would break every caller that passes a ThreadX number today,
+ * including ``wdt_supervisor_demo`` and the extended test's
+ * out-of-range rejection case.
+ *
+ * @param[in] priority Numeric priority from the cached configuration.
+ *
+ * @return Portable ::fw_os band for @p priority.
+ *
+ * @pre @p priority has passed ::internal_validate_cfg.
+ * @post No state is mutated.
+ * @note Thread-safe; pure function.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static fw_os_priority_t internal_band_for(uint32_t priority)
+{
+  if (priority < (uint32_t)k_ra8_wdt_sup_band_high_max) {
+    return k_fw_os_priority_high;
+  }
+  if (priority < (uint32_t)k_ra8_wdt_sup_band_normal_max) {
+    return k_fw_os_priority_normal;
+  }
+  if (priority < (uint32_t)k_ra8_wdt_sup_band_low_max) {
+    return k_fw_os_priority_low;
+  }
+  return k_fw_os_priority_idle;
+}
+
+/**
+ * @brief Default monotonic-time hook -- reads the ::fw_os uptime.
+ *
+ * @details
+ * ::fw_os_uptime_ms already reports milliseconds whatever rate the
+ * underlying kernel ticks at, so nothing is scaled here. Override via
+ * ``ra8_wdt_supervisor_set_now_hook`` to inject a test clock.
  *
  * @return Current monotonic time in milliseconds.
  *
@@ -97,7 +148,7 @@ static ra8_wdt_sup_state_t s_state;
  */
 RA8_INTERNAL static uint32_t internal_default_now(void)
 {
-  return (uint32_t)tx_time_get() * (uint32_t)k_ra8_wdt_sup_default_tick_ms;
+  return fw_os_uptime_ms();
 }
 
 /**
@@ -187,7 +238,7 @@ RA8_INTERNAL static bool internal_is_overdue(uint32_t now, uint32_t last_checkin
   return gap > deadline;
 }
 
-/* GCOVR_EXCL_START -- host shim tx_thread_create does not invoke the entry callback */
+/* GCOVR_EXCL_START -- the host binding does not run the entry callback itself */
 /**
  * @brief The supervisor thread's entry point.
  *
@@ -196,7 +247,7 @@ RA8_INTERNAL static bool internal_is_overdue(uint32_t now, uint32_t last_checkin
  * iteration calls ``ra8_wdt_supervisor_tick`` to evaluate the registry
  * and conditionally refresh the WDT.
  *
- * @param[in] arg Unused (ThreadX entry-fn signature requires a ULONG).
+ * @param[in] arg Unused (::fw_os hands the thread a single void*).
  *
  * @pre ``s_state.initialized`` is true.
  * @post Loops forever (NASA Rule 2: bounded body, unbounded outer).
@@ -206,7 +257,7 @@ RA8_INTERNAL static bool internal_is_overdue(uint32_t now, uint32_t last_checkin
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
-RA8_INTERNAL static void internal_thread_entry(ULONG arg)
+RA8_INTERNAL static void internal_thread_entry(void* arg)
 {
   (void)arg;
   /* NASA Rule 2: outer loop is the canonical "main control loop"
@@ -214,9 +265,7 @@ RA8_INTERNAL static void internal_thread_entry(ULONG arg)
   while (true) {
     bool refreshed = false;
     (void)ra8_wdt_supervisor_tick(&refreshed);
-    /* tx_thread_sleep takes ticks. Convert ms->ticks at the default
-     * 1 kHz rate; non-default rates can override the now hook. */
-    (void)tx_thread_sleep((ULONG)s_state.cfg.refresh_period_ms);
+    fw_os_thread_sleep_ms(s_state.cfg.refresh_period_ms);
   }
 }
 /* GCOVR_EXCL_STOP */
@@ -242,8 +291,8 @@ ra8_err_t ra8_wdt_supervisor_init(const ra8_wdt_sup_cfg_t* cfg)
   s_state.refresh = internal_default_refresh;
   s_state.started = false;
 
-  const UINT mx = tx_mutex_create(&s_state.mutex, (CHAR*)(uintptr_t)"ra8_wdt_sup", TX_NO_INHERIT);
-  if (mx != TX_SUCCESS) {
+  const ra8_err_t mx = fw_os_mutex_init(&s_state.mutex, false);
+  if (mx != k_ra8_ok) {
     return k_ra8_err_rtos_mutex;
   }
 
@@ -255,10 +304,9 @@ ra8_err_t ra8_wdt_supervisor_deinit(void)
 {
   if (s_state.initialized) {
     if (s_state.started) {
-      (void)tx_thread_terminate(&s_state.thread);
-      (void)tx_thread_delete(&s_state.thread);
+      (void)fw_os_thread_delete(&s_state.thread);
     }
-    (void)tx_mutex_delete(&s_state.mutex);
+    (void)fw_os_mutex_deinit(&s_state.mutex);
   }
   (void)memset(&s_state, 0, sizeof s_state);
   return k_ra8_ok;
@@ -320,8 +368,8 @@ ra8_wdt_supervisor_register_thread(const char* name, uint32_t deadline_ms, uint8
     return k_ra8_err_not_initialized;
   }
 
-  const UINT mx = tx_mutex_get(&s_state.mutex, TX_WAIT_FOREVER);
-  if (mx != TX_SUCCESS) {
+  const ra8_err_t mx = fw_os_mutex_lock(&s_state.mutex, K_FW_OS_WAIT_FOREVER);
+  if (mx != k_ra8_ok) {
     return k_ra8_err_rtos_mutex;
   }
 
@@ -335,7 +383,7 @@ ra8_wdt_supervisor_register_thread(const char* name, uint32_t deadline_ms, uint8
     }
   }
 
-  (void)tx_mutex_put(&s_state.mutex);
+  (void)fw_os_mutex_unlock(&s_state.mutex);
   return result;
 }
 
@@ -348,8 +396,8 @@ ra8_err_t ra8_wdt_supervisor_checkin(uint8_t handle)
     return k_ra8_err_not_initialized;
   }
 
-  const UINT mx = tx_mutex_get(&s_state.mutex, TX_WAIT_FOREVER);
-  if (mx != TX_SUCCESS) {
+  const ra8_err_t mx = fw_os_mutex_lock(&s_state.mutex, K_FW_OS_WAIT_FOREVER);
+  if (mx != k_ra8_ok) {
     return k_ra8_err_rtos_mutex;
   }
 
@@ -359,7 +407,7 @@ ra8_err_t ra8_wdt_supervisor_checkin(uint8_t handle)
     result                                = k_ra8_ok;
   }
 
-  (void)tx_mutex_put(&s_state.mutex);
+  (void)fw_os_mutex_unlock(&s_state.mutex);
   return result;
 }
 
@@ -372,17 +420,16 @@ ra8_err_t ra8_wdt_supervisor_start(void)
     return k_ra8_err_busy;
   }
 
-  const UINT tx = tx_thread_create(&s_state.thread,
-                                   (CHAR*)(uintptr_t)"ra8_wdt_sup",
-                                   internal_thread_entry,
-                                   0UL,
-                                   s_state.cfg.stack,
-                                   (ULONG)s_state.cfg.stack_size_bytes,
-                                   (UINT)s_state.cfg.priority,
-                                   (UINT)s_state.cfg.priority,
-                                   TX_NO_TIME_SLICE,
-                                   TX_AUTO_START);
-  if (tx != TX_SUCCESS) {
+  const fw_os_thread_cfg_t thread_cfg = {
+    .name        = "ra8_wdt_sup",
+    .entry       = internal_thread_entry,
+    .arg         = nullptr,
+    .stack       = s_state.cfg.stack,
+    .stack_bytes = (size_t)s_state.cfg.stack_size_bytes,
+    .priority    = internal_band_for(s_state.cfg.priority),
+  };
+  const ra8_err_t started = fw_os_thread_create(&s_state.thread, &thread_cfg);
+  if (started != k_ra8_ok) {
     return k_ra8_err_rtos_thread_create;
   }
 
@@ -399,8 +446,8 @@ ra8_err_t ra8_wdt_supervisor_tick(bool* out_did_refresh)
     return k_ra8_err_not_initialized;
   }
 
-  const UINT mx = tx_mutex_get(&s_state.mutex, TX_WAIT_FOREVER);
-  if (mx != TX_SUCCESS) {
+  const ra8_err_t mx = fw_os_mutex_lock(&s_state.mutex, K_FW_OS_WAIT_FOREVER);
+  if (mx != k_ra8_ok) {
     if (out_did_refresh != nullptr) {
       *out_did_refresh = false;
     }
@@ -423,7 +470,7 @@ ra8_err_t ra8_wdt_supervisor_tick(bool* out_did_refresh)
     }
   }
 
-  (void)tx_mutex_put(&s_state.mutex);
+  (void)fw_os_mutex_unlock(&s_state.mutex);
 
   /* Only refresh if at least one thread is registered AND every
    * registered thread is alive. With zero workers we deliberately do
@@ -463,28 +510,4 @@ uint8_t ra8_wdt_supervisor_thread_count(void)
 }
 
 #ifdef RA8_OFF_TARGET
-/**
- * @brief Arm a one-shot ThreadX failure inside this translation unit.
- *
- * @details
- * The host shim's stubs are ``static inline``, so every including TU owns
- * its own forced-failure slot. A unit test cannot reach the copy the
- * supervisor's own ``tx_*`` calls resolve to without this seam, which is
- * why the RTOS failure branches above were unreachable on the host build.
- * Host build only; the target build links the real ThreadX.
- *
- * @param[in] call ThreadX call whose next invocation must fail, or
- *                 ``k_ra8_wdt_sup_tx_call_none`` to disarm.
- *
- * @return Nothing.
- *
- * @pre None.
- * @post The supervisor's next matching ThreadX call fails once.
- * @note Not thread-safe; host unit-test context is single-threaded.
- * @since 0.1.0
- */
-void ra8_wdt_supervisor_test_force_rtos_failure(ra8_wdt_sup_tx_call_t call)
-{
-  internal_tx_shim_arm_failure(call);
-}
 #endif /* RA8_OFF_TARGET */
