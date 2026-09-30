@@ -24,6 +24,11 @@ qualifiers and the roots all come out of the manifests, so a new page is
 checked as soon as it carries a block, and there is no second place in this
 script to keep in step.
 
+A pattern is matched the way `grep -rlE` matches it, line by line, so a page
+that cares about real calls rather than mentions can anchor one: the five
+ThreadX rows in `libs/if/README.md` use `^[^*/]*` to drop the doc comments and
+prose that name a function without calling it.
+
 What it reports:
 
   - miscounted-measurement: the manifest claims N, the tree says M.
@@ -158,7 +163,10 @@ class Measurement:
                 continue
             if not any(path.endswith(suffix) for suffix in self.suffixes):
                 continue
-            if matcher is None or matcher.search(text):
+            # `grep -rlE` tests one line at a time, so this does too: an
+            # anchored pattern then anchors to a line here as well, which is
+            # what lets a page ask for real calls rather than mentions.
+            if matcher is None or any(matcher.search(line) for line in text.splitlines()):
                 hits += 1
         return hits
 
@@ -514,6 +522,22 @@ grep -rlE '#[ \t]*include[ \t]+"ra8_scb\.h"' libs apps --include=*.c --include=*
 """
 
 
+def _anchored_page(claim: int) -> str:
+    """A one-entry page whose pattern is anchored to the start of a line."""
+    return f"""# Anchored
+
+| Direct use | First-party files |
+| --- | ---: |
+| clock / CGC | {claim} |
+
+```sh
+# {BLOCK_MARKER}
+# clock / CGC -- {claim} file(s)
+grep -rlE '^[^*/]*ra8_cgc' examples --include=*.c --include=*.h | wc -l
+```
+"""
+
+
 def _kinds(findings: list[str]) -> list[str]:
     kinds = []
     for finding in findings:
@@ -590,6 +614,24 @@ def _selftest_cases() -> list[tuple[str, list[str]]]:
     )
     cases.append(("a vendored hit is excluded as the command says", _kinds(findings)))
 
+    # A pattern is matched line by line, the way `grep -rlE` matches it, so a
+    # page can anchor one to skip the doc comments and prose that name a
+    # function without calling it.
+    commented = dict(
+        _TREE,
+        **{"examples/e/main.c": " * calls ra8_cgc_start() on the way up\nvoid f(void);"},
+    )
+    findings, _, _ = analyse(_anchored_page(claim=2), commented, "page.md")
+    cases.append(("an anchored pattern skips a comment-only mention", _kinds(findings)))
+
+    # And the other direction: the same page must still see a real call.
+    findings, _, _ = analyse(
+        _anchored_page(claim=2),
+        dict(commented, **{"examples/f/main.c": "    ra8_cgc_start();"}),
+        "page.md",
+    )
+    cases.append(("an anchored pattern still counts a real call", _kinds(findings)))
+
     return cases
 
 
@@ -608,6 +650,8 @@ _EXPECTED = [
     ["miscounted-measurement"],
     ["miscounted-measurement"],
     [],
+    [],
+    ["miscounted-measurement"],
 ]
 
 
