@@ -849,8 +849,6 @@ libs/ra8_io/src/ra8_io_vfs.c	MEASURED	282	289	176	212
 libs/ra8_io/src/ra8_io_vfs_namespace.c	MEASURED	137	139	93	108
 libs/ra8_jpeg/src/ra8_jpeg_sw.c	MEASURED	182	182	125	126
 libs/ra8_jpeg/src/ra8_jpeg_sw_decode.c	MEASURED	338	339	218	230
-libs/ra8_jpeg/src/ra8_jpeg_sw_encode.c	MEASURED	203	209	100	106
-libs/ra8_jpeg/src/ra8_jpeg_sw_encode_emit.c	MEASURED	155	155	32	34
 libs/ra8_jpeg/src/ra8_jpeg_sw_stream.c	MEASURED	151	160	76	90
 libs/ra8_keyboard/src/ra8_keyboard.c	MEASURED	137	140	49	53
 libs/ra8_lsm6dso/src/ra8_lsm6dso.c	MEASURED	143	149	69	92

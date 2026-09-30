@@ -4,6 +4,10 @@
 const std = @import("std");
 const ra8_build = @import("ra8_zig_build");
 
+/// The decoder half of the codec is still C and is compiled straight in; the
+/// encoder is Zig as of #2795 and arrives as the `ra8_jpeg` archive, which
+/// also carries the `ra8_imgdec` backend. The C this app compiles supplies the
+/// decode symbols that backend externs, so the two halves resolve each other.
 fn addCodec(module: *std.Build.Module, b: *std.Build) void {
     module.addIncludePath(b.path("../../../libs/ra8_jpeg/inc"));
     module.addIncludePath(b.path("../../../libs/ra8_jpeg/src"));
@@ -13,8 +17,6 @@ fn addCodec(module: *std.Build.Module, b: *std.Build) void {
             "../../../libs/ra8_jpeg/src/ra8_jpeg_sw.c",
             "../../../libs/ra8_jpeg/src/ra8_jpeg_sw_decode.c",
             "../../../libs/ra8_jpeg/src/ra8_jpeg_sw_stream.c",
-            "../../../libs/ra8_jpeg/src/ra8_jpeg_sw_encode.c",
-            "../../../libs/ra8_jpeg/src/ra8_jpeg_sw_encode_emit.c",
             "../../../libs/ra8_core/src/ra8_log.c",
             "../../../libs/ra8_core/src/ra8_error_handler.c",
         },
@@ -41,6 +43,9 @@ pub fn build(b: *std.Build) void {
         .optimize = optimize,
     });
     addCodec(app_module, b);
+
+    const jpeg = b.dependency("ra8_jpeg", .{ .target = target, .optimize = optimize });
+    app_module.linkLibrary(jpeg.artifact("ra8_jpeg"));
 
     const executable = b.addExecutable(.{ .name = "image_pyramid", .root_module = app_module });
     b.installArtifact(executable);

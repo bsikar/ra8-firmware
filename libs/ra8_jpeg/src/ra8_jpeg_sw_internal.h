@@ -18,8 +18,9 @@
  *                             `ra8_jpeg_sw_get_dimensions()` public API.
  *   - `ra8_jpeg_sw_decode.c` -- the marker parser, MCU scan loop and
  *                             the `ra8_jpeg_sw_decode()` public API.
- *   - `ra8_jpeg_sw_encode.c` -- the forward DCT, quantization, Huffman
- *                             code emission and `ra8_jpeg_sw_encode()`.
+ *   - the encoder, which is Zig as of #2795 and no longer shares this
+ *     header; it carries its own copies of the spec constants and the
+ *     DCT basis, which were `static` here and so never shared anyway.
  *
  * Every symbol referenced by more than one of those units lives in
  * this header: the shared C23 typed-enum constant blocks, the two

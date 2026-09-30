@@ -16,7 +16,7 @@
  * The decoder-driver half (marker parser, MCU scan loop and
  * `ra8_jpeg_sw_decode()`) lives in `ra8_jpeg_sw_decode.c`; the encoder
  * (forward DCT, quantization, Huffman code emission and
- * `ra8_jpeg_sw_encode()`) lives in `ra8_jpeg_sw_encode.c`. Every symbol
+ * `ra8_jpeg_sw_encode()`) is Zig, in `jpeg_encode_abi.zig`. Every symbol
  * referenced by more than one of those units -- the C23 typed-enum
  * constant blocks, the shared DSP look-up tables, the inline byte
  * helpers, the bit-reader / Huffman-table types and the prototypes for
