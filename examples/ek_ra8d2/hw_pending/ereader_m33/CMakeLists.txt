@@ -59,17 +59,17 @@ ra8_add_app(
 # IPC0ISET0 to wake the parked M85 on a page turn; RA8_LOG_LEVEL=0 collapses
 # ra8_ipc's ra8_log calls to no-ops so no logging backend is dragged in.
 #
-# The rasteriser core of ra8_gfx is Zig now (epic:zig-migration), so this image
-# cannot pick it up by compiling libs/ra8_gfx/src/*.c by path: it links the Zig
-# archive instead, cross-built for THIS image's core rather than the app's.
-# CPU1 is a Cortex-M33 while the parent app is a cortex-m85, so the archive has
-# to be requested per-core -- see ra8_link_zig_library_for_cpu() in
-# cmake/ra8_app/zig_libs.cmake. The generated font table is still C and
-# references the archive, which is the safe direction (objects reference the
-# archive, never the reverse). The glyph/text TU joined the archive with #1328,
-# the tone LUT with #1326, the dither with #1402 and the lifecycle binder with
-# this slice, so the generated font table is the only ra8_gfx C left on this
-# image.
+# ra8_gfx is Zig now (epic:zig-migration), so this image cannot pick it up by
+# compiling libs/ra8_gfx/src/*.c by path: it links the Zig archive instead,
+# cross-built for THIS image's core rather than the app's. CPU1 is a
+# Cortex-M33 while the parent app is a cortex-m85, so the archive has to be
+# requested per-core -- see ra8_link_zig_library_for_cpu() in
+# cmake/ra8_app/zig_libs.cmake. The glyph/text TU joined the archive with
+# #1328, the tone LUT with #1326, the dither with #1402, the lifecycle binder
+# with #1466 and the bundled 8x16 font table with #2689, so no ra8_gfx C is
+# left on this image: cpu1_main.c reaches ra8_gfx_text_out and the
+# ra8_gfx_font_8x16 descriptor alike through the archive, with inc/ra8_gfx.h
+# and inc/ra8_gfx_font.h unchanged.
 #############################################################################
 ra8_add_cpu1_image(
   PARENT ereader_m33
@@ -80,28 +80,23 @@ ra8_add_cpu1_image(
 )
 
 if(TARGET ereader_m33_cpu1.elf)
-  # The remaining ra8_gfx C comes on through ra8_cpu1_add_first_party_sources(),
-  # which bolts it onto the image AND applies the per-source first-party
-  # profile (-Wall -Wextra -Werror ... -Wstack-usage=2048 -fstack-usage), the
-  # same set ra8_add_cpu1_image() puts on cpu1_main.c. It compiles clean on
-  # it under arm-none-eabi-gcc 13.3.1 at this image's -Os, so its rows are
-  # gone from .github/cpu1-warning-profile-baseline.txt (#843 / T1-09).
+  # ra8_ipc.c comes on through ra8_cpu1_add_first_party_sources(), which bolts
+  # it onto the image AND applies the per-source first-party profile
+  # (-Wall -Wextra -Werror ... -Wstack-usage=2048 -fstack-usage), the same set
+  # ra8_add_cpu1_image() puts on cpu1_main.c. It compiles clean under
+  # arm-none-eabi-gcc 13.3.1 at this image's -Os, so its rows are gone from
+  # .github/cpu1-warning-profile-baseline.txt (#843 / T1-09). The two
+  # diagnostics that used to hold it back are both fixed in first-party code,
+  # not silenced: the unused s_tag went away when the compiled-out ra8_log
+  # macros started using their arguments, and the channel-regs cast no longer
+  # casts a call expression (-Wbad-function-cast).
   ra8_cpu1_add_first_party_sources(
     ereader_m33_cpu1.elf
-    ${RA8_REPO_ROOT}/libs/ra8_gfx/src/ra8_gfx_font_8x16.c
-    # ra8_ipc.c now comes on the bar too, and its inventory row is gone. The
-    # two diagnostics that used to hold it back are both fixed in first-party
-    # code, not silenced: the unused s_tag went away when the compiled-out
-    # ra8_log macros started using their arguments, and the channel-regs cast
-    # no longer casts a call expression (-Wbad-function-cast).
     ${RA8_REPO_ROOT}/libs/ra8_hal/src/ra8_ipc.c
   )
-  target_include_directories(
-    ereader_m33_cpu1.elf PRIVATE ${RA8_REPO_ROOT}/libs/ra8_gfx/src
-  )
-  # g_gfx_text_state, the two promoted helpers and the public entry points
-  # (ra8_gfx_text_out included) live in the Zig archive; the C TUs above reach
-  # them through the unchanged src/ra8_gfx_internal.h.
+  # g_gfx_text_state, the promoted helpers, the public entry points
+  # (ra8_gfx_text_out included) and the ra8_gfx_font_8x16 descriptor all live
+  # in the Zig archive, so no libs/ra8_gfx/src include path is needed here.
   ra8_link_zig_library_for_cpu(
     TARGET ereader_m33_cpu1.elf
     LIB ra8_gfx

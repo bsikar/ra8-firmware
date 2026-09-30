@@ -381,10 +381,13 @@ set_property(
 # bind forms, the teardown, the packed-gray4 loupe zoom blit and both text
 # calls among them, the three inc/ra8_gfx_tone.h calls with their committed
 # nominal curve, and the six inc/ra8_gfx_dither.h calls over the committed
-# blue-noise mask. The one C translation unit left in the library (the
-# generated ra8_gfx_font_8x16.c) reaches into this archive through the
-# unchanged src/ra8_gfx_internal.h, so that header and the libs/ra8_gfx/src
-# include dirs in core_hal.cmake and unit_tests.cmake all stay.
+# blue-noise mask. Fully migrated (#1466, #2689): the bundled 8x16 font table
+# came over last, so the exported descriptor ra8_gfx_font_8x16 that
+# inc/ra8_gfx_font.h declares is in this archive too and the library has no C
+# translation unit at all. src/ra8_gfx_internal.h stays as the written record
+# of the module-private surface, but no C includes it any more, so the
+# libs/ra8_gfx/src include dirs are gone from core_hal.cmake and
+# unit_tests.cmake.
 ra8_add_zig_library(
   NAME
   ra8_gfx

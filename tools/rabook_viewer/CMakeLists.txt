@@ -130,10 +130,24 @@ endfunction()
 # Whole-read-path libraries -- every src/ member is part of the reader path, so
 # a glob is the single source of truth (the host-test build and ra8_emulator
 # consume their firmware libraries the same way). longstrip renders the
-# firmware-native `.jof` vertical-scroll tile atlas.
+# firmware-native `.jof` vertical-scroll tile atlas. ra8_gfx used to be globbed
+# here too; it is a Zig archive now, linked just above.
 file(GLOB LONGSTRIP_SRC CONFIGURE_DEPENDS ${FW_ROOT}/apps/shared_libs/longstrip/src/*.c)
 file(GLOB COMIC_SRC CONFIGURE_DEPENDS ${FW_ROOT}/apps/shared_libs/comic/src/*.c)
-file(GLOB RA8_GFX_SRC CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra8_gfx/src/*.c)
+
+# ra8_gfx is Zig now, the bundled 8x16 font table included (#2689), so
+# libs/ra8_gfx/src holds no .c for this build to glob. ra8_viewer_comic.c calls
+# ra8_gfx_init / ra8_gfx_clear, so the viewer links the archive the way it
+# already links ra8_imgdec and ra8_mem.
+if(NOT TARGET ra8_zig::ra8_gfx)
+  include(${FW_ROOT}/tests/cmake/zig_library.cmake)
+  ra8_add_zig_library(
+    NAME ra8_gfx
+    ZIG_ROOT ${FW_ROOT}/libs/ra8_gfx
+    LIBRARY_NAME ra8_gfx
+  )
+endif()
+link_libraries(ra8_zig::ra8_gfx)
 
 # Partial-read-path libraries -- the viewer links only the read members. The JOF
 # strip parses through jof (DEFLATE tiles inflate via ra8_compress over
@@ -301,7 +315,6 @@ set(RA8_STREAM_RAM_SRC ${FW_ROOT}/libs/ra8_io/src/ra8_io_stream_ram.c)
 add_library(
   ra8_reader STATIC
   ${COMIC_SRC}
-  ${RA8_GFX_SRC}
   ${UNARCH_SRC}
   ${LONGSTRIP_SRC}
   ${EPUB_SRC}
