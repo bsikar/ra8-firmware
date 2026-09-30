@@ -10,4 +10,6 @@
 
 comptime {
     _ = @import("pin_validator_abi");
+    _ = @import("systick_abi");
+    _ = @import("time_interface_systick_abi");
 }

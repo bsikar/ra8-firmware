@@ -3,8 +3,9 @@
 //!
 //! Build graph for `ra8_core`.
 //!
-//! Two seams of this library are Zig so far: the freestanding runtime
-//! primitives (#2820) and the pin-claim validator (#2825). Everything else in `src/`
+//! Three seams of this library are Zig so far: the freestanding runtime
+//! primitives (#2820), the pin-claim validator (#2825) and the SysTick
+//! timebase with its time-interface binding (#2830). Everything else in `src/`
 //! is still C, which `.github/zig-parallel-tree-allowlist.tsv` records per
 //! file.
 //!
@@ -109,12 +110,40 @@ pub fn build(b: *std.Build) void {
     });
     pin_validator_abi.addImport("pin_validator_registry", pin_validator_registry);
 
+    const systick_reload = b.createModule(.{
+        .root_source_file = b.path("src/internal/systick/reload.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+
+    const systick_regs = b.createModule(.{
+        .root_source_file = b.path("src/internal/systick/regs.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+
+    const systick_abi = b.createModule(.{
+        .root_source_file = b.path("src/systick_abi.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    systick_abi.addImport("systick_reload", systick_reload);
+    systick_abi.addImport("systick_regs", systick_regs);
+
+    const time_interface_systick_abi = b.createModule(.{
+        .root_source_file = b.path("src/time_interface_systick_abi.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+
     const root = b.createModule(.{
         .root_source_file = b.path("src/root.zig"),
         .target = target,
         .optimize = optimize,
     });
     root.addImport("pin_validator_abi", pin_validator_abi);
+    root.addImport("systick_abi", systick_abi);
+    root.addImport("time_interface_systick_abi", time_interface_systick_abi);
 
     const library = b.addLibrary(.{
         .name = "ra8_core_zig",
@@ -131,4 +160,12 @@ pub fn build(b: *std.Build) void {
     });
     pin_validator_tests.addImport("pin_validator_registry", pin_validator_registry);
     test_step.dependOn(&b.addRunArtifact(b.addTest(.{ .root_module = pin_validator_tests })).step);
+
+    const systick_tests = b.createModule(.{
+        .root_source_file = b.path("tests/systick_test.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    systick_tests.addImport("systick_reload", systick_reload);
+    test_step.dependOn(&b.addRunArtifact(b.addTest(.{ .root_module = systick_tests })).step);
 }
