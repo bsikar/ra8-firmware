@@ -75,6 +75,7 @@ pub const Keyword = enum {
     board,
     threadx_heap,
     mram_length,
+    boot_profile,
     uses,
     libs,
     off_target_libs,
@@ -95,6 +96,7 @@ pub const Keyword = enum {
             .board => "BOARD",
             .threadx_heap => "THREADX_HEAP",
             .mram_length => "MRAM_LENGTH",
+            .boot_profile => "BOOT_PROFILE",
             .uses => "USES",
             .libs => "LIBS",
             .off_target_libs => "OFF_TARGET_LIBS",
@@ -113,7 +115,7 @@ pub const Keyword = enum {
     pub fn group(self: Keyword) Group {
         return switch (self) {
             .no_nsc, .cpu1_image, .ns_inline_image => .option,
-            .name, .stack_bytes, .description, .board, .threadx_heap, .mram_length => .one_value,
+            .name, .stack_bytes, .description, .board, .threadx_heap, .mram_length, .boot_profile => .one_value,
             .uses, .libs, .off_target_libs, .nsc_srcs, .extra_srcs, .aux_srcs, .sram_text => .multi_value,
         };
     }
@@ -160,6 +162,7 @@ pub const Shape = struct {
     ns_inline_image: bool = false,
     sram_text: bool = false,
     mram_length: bool = false,
+    boot_profile: bool = false,
 
     pub fn eql(self: Shape, other: Shape) bool {
         if (!std.mem.eql(u8, self.board, other.board)) return false;
@@ -176,7 +179,8 @@ pub const Shape = struct {
             self.cpu1_image == other.cpu1_image and
             self.ns_inline_image == other.ns_inline_image and
             self.sram_text == other.sram_text and
-            self.mram_length == other.mram_length;
+            self.mram_length == other.mram_length and
+            self.boot_profile == other.boot_profile;
     }
 
     /// `board=<b> uses=<a,b|-> flags=<a,b|->`, the spelling the ledger and the
@@ -203,12 +207,12 @@ pub const Shape = struct {
     }
 
     pub fn flagValues(self: Shape) [flag_names.len]bool {
-        return .{ self.no_nsc, self.nsc_srcs, self.extra_srcs, self.aux_srcs, self.off_target_libs, self.threadx_heap, self.cpu1_image, self.ns_inline_image, self.sram_text, self.mram_length };
+        return .{ self.no_nsc, self.nsc_srcs, self.extra_srcs, self.aux_srcs, self.off_target_libs, self.threadx_heap, self.cpu1_image, self.ns_inline_image, self.sram_text, self.mram_length, self.boot_profile };
     }
 };
 
 /// The flag half of a shape, in the order `Shape.flagValues` returns it.
-pub const flag_names = [_][]const u8{ "no_nsc", "nsc_srcs", "extra_srcs", "aux_srcs", "off_target_libs", "threadx_heap", "cpu1_image", "ns_inline_image", "sram_text", "mram_length" };
+pub const flag_names = [_][]const u8{ "no_nsc", "nsc_srcs", "extra_srcs", "aux_srcs", "off_target_libs", "threadx_heap", "cpu1_image", "ns_inline_image", "sram_text", "mram_length", "boot_profile" };
 
 /// One app that parsed.
 pub const Row = struct {
@@ -425,6 +429,7 @@ pub fn parseBlock(allocator: std.mem.Allocator, listfile: []const u8, body: []co
             .off_target_libs => shape.off_target_libs = true,
             .threadx_heap => shape.threadx_heap = true,
             .mram_length => shape.mram_length = true,
+            .boot_profile => shape.boot_profile = true,
             .description, .libs => {},
             .no_nsc, .cpu1_image, .ns_inline_image => unreachable,
         }
