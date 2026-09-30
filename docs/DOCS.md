@@ -33,8 +33,10 @@ Three gates, all runnable locally, none of which needs a doxygen binary:
 | `scripts/checks/check_doc_attachment.py` | A block actually describes the symbol it is attached to, which the tag audit cannot see |
 | `scripts/checks/check_markdown_references.py` | Every link, anchor and repository path named in first-party Markdown resolves |
 
-The first two run in the `pre-commit-checks` and `doc-attachment` gates in
-`scripts/ci/gates/checks.sh`; the third runs in `scripts/ci/gates/hygiene.sh`.
+The first runs in the `pre-commit-checks` gate in `scripts/ci/gates/checks.sh`,
+the second in the `doc-attachment` gate in
+`scripts/ci/gates/checks_standalone.sh`, and the third in
+`scripts/ci/gates/hygiene.sh`.
 Each takes `--selftest`, which proves the detector fires and stays quiet in
 both directions before any tree scan is trusted.
 
