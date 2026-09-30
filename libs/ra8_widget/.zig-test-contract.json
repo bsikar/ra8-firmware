@@ -8,7 +8,8 @@
     "tests/status_bar_test.zig",
     "tests/toolbar_test.zig",
     "tests/keyboard_test.zig",
-    "tests/nav_bar_test.zig"
+    "tests/nav_bar_test.zig",
+    "tests/panel_test.zig"
   ],
   "covered_sources": [
     "src/ra8_widget_abi.zig",
@@ -22,6 +23,7 @@
     "src/widget_toolbar_abi.zig",
     "src/widget_keyboard_abi.zig",
     "src/widget_nav_bar_abi.zig",
+    "src/widget_panel_abi.zig",
     "tests/internal_test.zig",
     "tests/abi_test.zig",
     "tests/label_test.zig",
@@ -30,7 +32,8 @@
     "tests/status_bar_test.zig",
     "tests/toolbar_test.zig",
     "tests/keyboard_test.zig",
-    "tests/nav_bar_test.zig"
+    "tests/nav_bar_test.zig",
+    "tests/panel_test.zig"
   ],
-  "minimum_tests": 103
+  "minimum_tests": 160
 }
