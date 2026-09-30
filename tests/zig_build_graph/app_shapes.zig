@@ -67,6 +67,7 @@ pub const default_stack_bytes: u32 = 2200;
 /// declares them by app_shapes_test.zig.
 pub const Keyword = enum {
     no_nsc,
+    cpu1_image,
     name,
     stack_bytes,
     description,
@@ -83,6 +84,7 @@ pub const Keyword = enum {
     pub fn spelling(self: Keyword) []const u8 {
         return switch (self) {
             .no_nsc => "NO_NSC",
+            .cpu1_image => "CPU1_IMAGE",
             .name => "NAME",
             .stack_bytes => "STACK_BYTES",
             .description => "DESCRIPTION",
@@ -104,7 +106,7 @@ pub const Keyword = enum {
 
     pub fn group(self: Keyword) Group {
         return switch (self) {
-            .no_nsc => .option,
+            .no_nsc, .cpu1_image => .option,
             .name, .stack_bytes, .description, .board, .threadx_heap => .one_value,
             .uses, .libs, .off_target_libs, .nsc_srcs, .extra_srcs, .aux_srcs => .multi_value,
         };
@@ -148,6 +150,7 @@ pub const Shape = struct {
     aux_srcs: bool = false,
     off_target_libs: bool = false,
     threadx_heap: bool = false,
+    cpu1_image: bool = false,
 
     pub fn eql(self: Shape, other: Shape) bool {
         if (!std.mem.eql(u8, self.board, other.board)) return false;
@@ -160,7 +163,8 @@ pub const Shape = struct {
             self.extra_srcs == other.extra_srcs and
             self.aux_srcs == other.aux_srcs and
             self.off_target_libs == other.off_target_libs and
-            self.threadx_heap == other.threadx_heap;
+            self.threadx_heap == other.threadx_heap and
+            self.cpu1_image == other.cpu1_image;
     }
 
     /// `board=<b> uses=<a,b|-> flags=<a,b|->`, the spelling the ledger and the
@@ -187,12 +191,12 @@ pub const Shape = struct {
     }
 
     pub fn flagValues(self: Shape) [flag_names.len]bool {
-        return .{ self.no_nsc, self.nsc_srcs, self.extra_srcs, self.aux_srcs, self.off_target_libs, self.threadx_heap };
+        return .{ self.no_nsc, self.nsc_srcs, self.extra_srcs, self.aux_srcs, self.off_target_libs, self.threadx_heap, self.cpu1_image };
     }
 };
 
 /// The flag half of a shape, in the order `Shape.flagValues` returns it.
-pub const flag_names = [_][]const u8{ "no_nsc", "nsc_srcs", "extra_srcs", "aux_srcs", "off_target_libs", "threadx_heap" };
+pub const flag_names = [_][]const u8{ "no_nsc", "nsc_srcs", "extra_srcs", "aux_srcs", "off_target_libs", "threadx_heap", "cpu1_image" };
 
 /// One app that parsed.
 pub const Row = struct {
@@ -365,6 +369,9 @@ pub fn parseBlock(allocator: std.mem.Allocator, listfile: []const u8, body: []co
                 if (keyword == .no_nsc) {
                     shape.no_nsc = true;
                     current = null;
+                } else if (keyword == .cpu1_image) {
+                    shape.cpu1_image = true;
+                    current = null;
                 } else {
                     current = keyword;
                     awaiting_value = keyword.group() == .one_value;
@@ -402,7 +409,7 @@ pub fn parseBlock(allocator: std.mem.Allocator, listfile: []const u8, body: []co
             .off_target_libs => shape.off_target_libs = true,
             .threadx_heap => shape.threadx_heap = true,
             .description, .libs => {},
-            .no_nsc => unreachable,
+            .no_nsc, .cpu1_image => unreachable,
         }
     }
 
@@ -546,6 +553,7 @@ pub fn parseLedger(allocator: std.mem.Allocator, text: []const u8) ![]Entry {
         shape.aux_srcs = flag_values[3];
         shape.off_target_libs = flag_values[4];
         shape.threadx_heap = flag_values[5];
+        shape.cpu1_image = flag_values[6];
         const stack = std.fmt.parseInt(u32, stack_field, 10) catch return LedgerError.BadStackBytes;
         try out.append(.{ .row = .{
             .name = app_name,
@@ -637,6 +645,11 @@ pub const Uncovered = struct {
 };
 
 pub const uncovered = [_]Uncovered{
+    .{
+        .representative = "dfu_copy_to_run",
+        .shape = .{ .aux_srcs = true },
+        .note = "4 declarations: single-image apps that name an extra source of their own. cpu1_pingpong used to cross-build this kind; #742 moved it and the two dualcore apps onto CPU1_IMAGE, which is a different link shape",
+    },
     .{
         .representative = "usb_selftest_wlun",
         .shape = .{ .uses = &.{ "threadx", "usbx" }, .threadx_heap = true },
