@@ -46,6 +46,11 @@ pub const CrossApp = struct {
     /// cmake/ra8_warnings.cmake falls back to: ra8_add_app() always passes the
     /// keyword, so its own default is the one an app gets by saying nothing.
     stack_bytes: u32 = 2200,
+    /// True when the app names `THREADX_HEAP <region>`, which makes
+    /// ra8_add_app() compose the board linker script with a generated heap
+    /// fragment instead of linking the board's own script unchanged. A link
+    /// shape, not a source one, which is why it sits beside linker_script.
+    threadx_heap: bool = false,
     /// Shared helper translation units the app names in `EXTRA_SRCS`, in the
     /// order it names them, spelled repo-relative. Each one is compiled INTO
     /// this app (so it meets the full project warning profile, unlike a
@@ -246,6 +251,7 @@ pub const cross_apps = [_]CrossApp{
         .libraries = &.{},
         .zig_libraries = &.{},
         .uses = &.{"threadx"},
+        .threadx_heap = true,
     },
     .{
         // The fifth app, for a rule the graph has been treating as a CONSTANT.
