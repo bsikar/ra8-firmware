@@ -604,6 +604,20 @@ gate_cmake_source_paths() (
   python3 scripts/checks/check_viewer_read_path.py
 )
 
+# --- zig-override-members -------------------------------------------------
+# A Zig static library compiles its whole module graph into ONE object, so
+# moving a definition to another .zig file does NOT move it to another archive
+# member; only an explicit b.addObject() does. A default the image overrides
+# (libs/ra8_ota/src/reset_hook.zig) therefore has to be its own member, or the
+# caller binds to it locally and the override silently stops being reached.
+# Nothing fails to build and nothing warns, so it is checked here.
+gate_zig_override_members() (
+  set -e
+  require_cmd python3 "the Zig override-member check is a Python gate"
+  python3 scripts/checks/check_zig_override_members.py --selftest
+  python3 scripts/checks/check_zig_override_members.py
+)
+
 # --- copyright ------------------------------------------------------------
 # ONE canonical attribution per file, in the place each comment convention
 # already keeps its metadata -- two forms, because this tree has two
