@@ -761,11 +761,13 @@ link_libraries(
   ra8_zig::ra8_widget
 )
 
-# Partially migrated: the `ra8_imgdec` backend (inc/ra8_jpeg_imgdec.h) is Zig,
-# so src/ra8_jpeg_imgdec.c is gone. The codec itself is still C -- the marker
-# walk, the whole-buffer decoder, the encoder and the streaming driver share
-# src/ra8_jpeg_sw_internal.h -- so the RA8_JPEG_SOURCES glob stays and simply
-# picks up one fewer file.
+# Fully migrated: the `ra8_imgdec` backend (inc/ra8_jpeg_imgdec.h) moved
+# first, then the encoder (#2798), then the marker walk, the whole-buffer
+# decoder and the streaming driver (#2799). libs/ra8_jpeg/src holds no .c at
+# all now, so the RA8_JPEG_SOURCES glob in library_sources.cmake matches
+# nothing and ra8_core_hal gets the codec only from this archive. The
+# hand-authored C23 headers under libs/ra8_jpeg/inc are unchanged, so every C
+# suite that includes them is untouched.
 ra8_add_zig_library(
   NAME
   ra8_jpeg
@@ -774,3 +776,4 @@ ra8_add_zig_library(
   LIBRARY_NAME
   ra8_jpeg
 )
+link_libraries(ra8_zig::ra8_jpeg)

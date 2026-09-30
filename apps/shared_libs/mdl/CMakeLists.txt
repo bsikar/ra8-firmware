@@ -102,8 +102,21 @@ if(NOT TARGET ra8_zig::ra8_num)
     LIBRARY_NAME ra8_num
   )
 endif()
+# The JPEG codec is Zig now: the encoder in #2798 and the decoder plus its
+# stripe driver in #2799 left libs/ra8_jpeg/src with no .c at all. The C23
+# public header under libs/ra8_jpeg/inc is unchanged, so MDL_JOF_SRC no
+# longer names the three decoder sources and the archive is linked instead.
+if(NOT TARGET ra8_zig::ra8_jpeg)
+  include(${MDL_REPO_ROOT}/tests/cmake/zig_library.cmake)
+  ra8_add_zig_library(
+    NAME ra8_jpeg
+    ZIG_ROOT ${MDL_REPO_ROOT}/libs/ra8_jpeg
+    LIBRARY_NAME ra8_jpeg
+  )
+endif()
+
 link_libraries(ra8_zig::fw_if_fs ra8_zig::ra8_xml ra8_zig::ra8_net_policy
-               ra8_zig::ra8_imgdec ra8_zig::ra8_num)
+               ra8_zig::ra8_imgdec ra8_zig::ra8_num ra8_zig::ra8_jpeg)
 
 # The core's own two roots, likewise stated once. Every source path below is
 # absolute through them, because a form consumes these lists from ITS directory
@@ -188,9 +201,6 @@ set(MDL_JOF_SRC
     ${MDL_REPO_ROOT}/apps/shared_libs/jof/src/jof_produce_webp.c
     ${MDL_REPO_ROOT}/apps/shared_libs/jof/src/jof_png.c
     ${MDL_REPO_ROOT}/apps/shared_libs/jof/src/jof_png_chunk.c
-    ${FW}/ra8_jpeg/src/ra8_jpeg_sw.c
-    ${FW}/ra8_jpeg/src/ra8_jpeg_sw_decode.c
-    ${FW}/ra8_jpeg/src/ra8_jpeg_sw_stream.c
     ${MDL_REPO_ROOT}/apps/shared_libs/compress/src/ra8_compress.c
     ${FW}/ra8_core/src/ra8_log.c
     ${FW}/ra8_core/src/ra8_error_handler.c
