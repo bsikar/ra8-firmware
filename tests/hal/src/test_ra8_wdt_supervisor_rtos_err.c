@@ -7,17 +7,17 @@
  *
  * @details
  * Covers the five ThreadX failure branches in ``ra8_wdt_supervisor.c``
- * that no host input could reach before the shim gained a one-shot
+ * that no host input could reach before the ::fw_os host binding gained a one-shot
  * forced-failure slot (issue #1231). Each case arms one ThreadX call to
  * fail, drives the public entry point that makes that call, and asserts
  * the published per-object code rather than the old catch-all
  * ``k_ra8_err_rtos_error``:
  *
- *  - ``ra8_wdt_supervisor_init``            -> ``tx_mutex_create``
- *  - ``ra8_wdt_supervisor_register_thread`` -> ``tx_mutex_get``
- *  - ``ra8_wdt_supervisor_checkin``         -> ``tx_mutex_get``
- *  - ``ra8_wdt_supervisor_start``           -> ``tx_thread_create``
- *  - ``ra8_wdt_supervisor_tick``            -> ``tx_mutex_get``
+ *  - ``ra8_wdt_supervisor_init``            -> ``fw_os_mutex_init``
+ *  - ``ra8_wdt_supervisor_register_thread`` -> ``fw_os_mutex_lock``
+ *  - ``ra8_wdt_supervisor_checkin``         -> ``fw_os_mutex_lock``
+ *  - ``ra8_wdt_supervisor_start``           -> ``fw_os_thread_create``
+ *  - ``ra8_wdt_supervisor_tick``            -> ``fw_os_mutex_lock``
  *
  * The forced failure is one-shot, so each case also asserts that the
  * immediately following call succeeds; that is what keeps a forced
@@ -33,7 +33,7 @@
 #include <stdint.h>
 
 #include "ra8_err.h"
-#include "ra8_wdt_sup_tx_shim_internal.h"
+#include "fw_os_host_test.h"
 #include "ra8_wdt_supervisor.h"
 #include "unity_minimal.h"
 
@@ -119,7 +119,7 @@ static void bring_up(uint8_t* out_handle)
 }
 
 /**
- * @brief init reports the mutex code when tx_mutex_create fails.
+ * @brief init reports the mutex code when fw_os_mutex_init fails.
  *
  * @return Nothing.
  *
@@ -130,7 +130,7 @@ static void bring_up(uint8_t* out_handle)
  */
 static void test_init_mutex_create_failure(void)
 {
-  TEST_BEGIN("init maps tx_mutex_create failure to k_ra8_err_rtos_mutex");
+  TEST_BEGIN("init maps fw_os_mutex_init failure to k_ra8_err_rtos_mutex");
 
   (void)ra8_wdt_supervisor_deinit();
 
@@ -141,14 +141,14 @@ static void test_init_mutex_create_failure(void)
     .refresh_period_ms = (uint32_t)k_t_rtos_period_ms,
   };
 
-  ra8_wdt_supervisor_test_force_rtos_failure(k_ra8_wdt_sup_tx_call_mutex_create);
+  fw_os_host_test_fail_next(k_fw_os_host_test_call_mutex_init, k_ra8_err_rtos_error);
   TEST_ASSERT_EQ(k_ra8_err_rtos_mutex, ra8_wdt_supervisor_init(&cfg));
 
   /* The forced failure is one-shot: the retry must come up clean, and the
    * failed attempt must not have latched s_state.initialized. */
   TEST_ASSERT_EQ(k_ra8_ok, ra8_wdt_supervisor_init(&cfg));
 
-  TEST_END("init maps tx_mutex_create failure to k_ra8_err_rtos_mutex");
+  TEST_END("init maps fw_os_mutex_init failure to k_ra8_err_rtos_mutex");
 }
 
 /**
@@ -163,13 +163,13 @@ static void test_init_mutex_create_failure(void)
  */
 static void test_register_mutex_get_failure(void)
 {
-  TEST_BEGIN("register_thread maps tx_mutex_get failure to k_ra8_err_rtos_mutex");
+  TEST_BEGIN("register_thread maps fw_os_mutex_lock failure to k_ra8_err_rtos_mutex");
 
   uint8_t h = (uint8_t)k_ra8_wdt_sup_handle_invalid;
   bring_up(&h);
 
   uint8_t h2 = (uint8_t)k_ra8_wdt_sup_handle_invalid;
-  ra8_wdt_supervisor_test_force_rtos_failure(k_ra8_wdt_sup_tx_call_mutex_get);
+  fw_os_host_test_fail_next(k_fw_os_host_test_call_mutex_lock, k_ra8_err_rtos_error);
   TEST_ASSERT_EQ(
     k_ra8_err_rtos_mutex,
     ra8_wdt_supervisor_register_thread("rtos_w2", (uint32_t)k_t_rtos_deadline_ms, &h2));
@@ -181,7 +181,7 @@ static void test_register_mutex_get_failure(void)
     k_ra8_ok,
     ra8_wdt_supervisor_register_thread("rtos_w2", (uint32_t)k_t_rtos_deadline_ms, &h2));
 
-  TEST_END("register_thread maps tx_mutex_get failure to k_ra8_err_rtos_mutex");
+  TEST_END("register_thread maps fw_os_mutex_lock failure to k_ra8_err_rtos_mutex");
 }
 
 /**
@@ -196,16 +196,16 @@ static void test_register_mutex_get_failure(void)
  */
 static void test_checkin_mutex_get_failure(void)
 {
-  TEST_BEGIN("checkin maps tx_mutex_get failure to k_ra8_err_rtos_mutex");
+  TEST_BEGIN("checkin maps fw_os_mutex_lock failure to k_ra8_err_rtos_mutex");
 
   uint8_t h = (uint8_t)k_ra8_wdt_sup_handle_invalid;
   bring_up(&h);
 
-  ra8_wdt_supervisor_test_force_rtos_failure(k_ra8_wdt_sup_tx_call_mutex_get);
+  fw_os_host_test_fail_next(k_fw_os_host_test_call_mutex_lock, k_ra8_err_rtos_error);
   TEST_ASSERT_EQ(k_ra8_err_rtos_mutex, ra8_wdt_supervisor_checkin(h));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_wdt_supervisor_checkin(h));
 
-  TEST_END("checkin maps tx_mutex_get failure to k_ra8_err_rtos_mutex");
+  TEST_END("checkin maps fw_os_mutex_lock failure to k_ra8_err_rtos_mutex");
 }
 
 /**
@@ -220,19 +220,19 @@ static void test_checkin_mutex_get_failure(void)
  */
 static void test_start_thread_create_failure(void)
 {
-  TEST_BEGIN("start maps tx_thread_create failure to k_ra8_err_rtos_thread_create");
+  TEST_BEGIN("start maps fw_os_thread_create failure to k_ra8_err_rtos_thread_create");
 
   uint8_t h = (uint8_t)k_ra8_wdt_sup_handle_invalid;
   bring_up(&h);
 
-  ra8_wdt_supervisor_test_force_rtos_failure(k_ra8_wdt_sup_tx_call_thread_create);
+  fw_os_host_test_fail_next(k_fw_os_host_test_call_thread_create, k_ra8_err_rtos_error);
   TEST_ASSERT_EQ(k_ra8_err_rtos_thread_create, ra8_wdt_supervisor_start());
 
   /* A failed spawn must not latch s_state.started, otherwise the retry
    * would answer k_ra8_err_busy instead of starting the supervisor. */
   TEST_ASSERT_EQ(k_ra8_ok, ra8_wdt_supervisor_start());
 
-  TEST_END("start maps tx_thread_create failure to k_ra8_err_rtos_thread_create");
+  TEST_END("start maps fw_os_thread_create failure to k_ra8_err_rtos_thread_create");
 }
 
 /**
@@ -247,14 +247,14 @@ static void test_start_thread_create_failure(void)
  */
 static void test_tick_mutex_get_failure(void)
 {
-  TEST_BEGIN("tick maps tx_mutex_get failure to k_ra8_err_rtos_mutex");
+  TEST_BEGIN("tick maps fw_os_mutex_lock failure to k_ra8_err_rtos_mutex");
 
   uint8_t h = (uint8_t)k_ra8_wdt_sup_handle_invalid;
   bring_up(&h);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_wdt_supervisor_checkin(h));
 
   bool did_refresh = true;
-  ra8_wdt_supervisor_test_force_rtos_failure(k_ra8_wdt_sup_tx_call_mutex_get);
+  fw_os_host_test_fail_next(k_fw_os_host_test_call_mutex_lock, k_ra8_err_rtos_error);
   TEST_ASSERT_EQ(k_ra8_err_rtos_mutex, ra8_wdt_supervisor_tick(&did_refresh));
   TEST_ASSERT_EQ(0, did_refresh);
 
@@ -263,11 +263,11 @@ static void test_tick_mutex_get_failure(void)
   TEST_ASSERT_EQ(k_ra8_ok, ra8_wdt_supervisor_tick(&did_refresh));
   TEST_ASSERT_EQ(1, did_refresh);
 
-  TEST_END("tick maps tx_mutex_get failure to k_ra8_err_rtos_mutex");
+  TEST_END("tick maps fw_os_mutex_lock failure to k_ra8_err_rtos_mutex");
 }
 
 /**
- * @brief A disarmed shim never injects a failure.
+ * @brief A disarmed binding never injects a failure.
  *
  * @return Nothing.
  *
@@ -276,12 +276,12 @@ static void test_tick_mutex_get_failure(void)
  * @note Not thread-safe; single-threaded test context.
  * @since 0.1.0
  */
-static void test_disarmed_shim_is_transparent(void)
+static void test_disarmed_binding_is_transparent(void)
 {
-  TEST_BEGIN("disarmed shim leaves every ThreadX call succeeding");
+  TEST_BEGIN("a disarmed binding leaves every fw_os call succeeding");
 
   uint8_t h = (uint8_t)k_ra8_wdt_sup_handle_invalid;
-  ra8_wdt_supervisor_test_force_rtos_failure(k_ra8_wdt_sup_tx_call_none);
+  fw_os_host_test_reset();
   bring_up(&h);
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_wdt_supervisor_checkin(h));
@@ -291,7 +291,7 @@ static void test_disarmed_shim_is_transparent(void)
   TEST_ASSERT_EQ(k_ra8_ok, ra8_wdt_supervisor_tick(&did_refresh));
   TEST_ASSERT_EQ(1, did_refresh);
 
-  TEST_END("disarmed shim leaves every ThreadX call succeeding");
+  TEST_END("a disarmed binding leaves every fw_os call succeeding");
 }
 
 int main(void)
@@ -301,7 +301,7 @@ int main(void)
   test_checkin_mutex_get_failure();
   test_start_thread_create_failure();
   test_tick_mutex_get_failure();
-  test_disarmed_shim_is_transparent();
+  test_disarmed_binding_is_transparent();
   (void)ra8_wdt_supervisor_deinit();
   return 0;
 }

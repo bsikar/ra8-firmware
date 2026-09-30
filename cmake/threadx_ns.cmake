@@ -57,6 +57,11 @@ add_library(
   ${RA8_THREADX_NS_PORT_C}
   ${RA8_THREADX_NS_PROJECT_LOW_LEVEL}
   "${RA8_THREADX_PORT_DIR}/src/cortex_m85/tx_systick_ready.c"
+  # fw_os_threadx.c binds the libs/if `fw_os` port contract onto ThreadX.
+  # cmake/threadx.cmake already compiles it into the secure-world library;
+  # the NS world needs it too now that libs/ra8_wdt_supervisor calls
+  # fw_os_* instead of tx_* and the ereader app globs that source in.
+  "${RA8_THREADX_PORT_DIR}/src/fw_os_threadx.c"
   "${RA8_REPO_ROOT}/libs/ra8_core/src/ra8_freestanding_mem.c"
   "${RA8_REPO_ROOT}/libs/ra8_core/src/ra8_freestanding_str.c"
   "${RA8_REPO_ROOT}/libs/ra8_core/src/ra8_freestanding_math.c"
