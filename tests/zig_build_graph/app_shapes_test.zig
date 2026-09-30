@@ -81,6 +81,7 @@ fn shapeOfTableApp(allocator: std.mem.Allocator, app: app_table.CrossApp) !Shape
         .extra_srcs = app.extra_srcs.len != 0,
         .aux_srcs = app.aux_srcs.len != 0,
         .off_target_libs = app.off_target_libs.len != 0,
+        .threadx_heap = app.threadx_heap,
     };
 }
 
@@ -431,7 +432,8 @@ test "distinct shapes collapse duplicates and keep genuinely different kinds apa
 }
 
 test "the uncovered table is keyed by shape, not by name" {
-    const usbx = uncoveredFor(.{ .uses = &.{ "threadx", "usbx" } }) orelse return error.TestUnexpectedResult;
+    const usbx = uncoveredFor(.{ .uses = &.{ "threadx", "usbx" }, .threadx_heap = true }) orelse
+        return error.TestUnexpectedResult;
     try std.testing.expectEqualStrings("usb_selftest_wlun", usbx.representative);
     // The same middleware plus EXTRA_SRCS is a DIFFERENT kind of app, and has
     // its own entry.

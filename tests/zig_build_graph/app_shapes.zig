@@ -71,6 +71,7 @@ pub const Keyword = enum {
     stack_bytes,
     description,
     board,
+    threadx_heap,
     uses,
     libs,
     off_target_libs,
@@ -86,6 +87,7 @@ pub const Keyword = enum {
             .stack_bytes => "STACK_BYTES",
             .description => "DESCRIPTION",
             .board => "BOARD",
+            .threadx_heap => "THREADX_HEAP",
             .uses => "USES",
             .libs => "LIBS",
             .off_target_libs => "OFF_TARGET_LIBS",
@@ -103,7 +105,7 @@ pub const Keyword = enum {
     pub fn group(self: Keyword) Group {
         return switch (self) {
             .no_nsc => .option,
-            .name, .stack_bytes, .description, .board => .one_value,
+            .name, .stack_bytes, .description, .board, .threadx_heap => .one_value,
             .uses, .libs, .off_target_libs, .nsc_srcs, .extra_srcs, .aux_srcs => .multi_value,
         };
     }
@@ -145,6 +147,7 @@ pub const Shape = struct {
     extra_srcs: bool = false,
     aux_srcs: bool = false,
     off_target_libs: bool = false,
+    threadx_heap: bool = false,
 
     pub fn eql(self: Shape, other: Shape) bool {
         if (!std.mem.eql(u8, self.board, other.board)) return false;
@@ -156,7 +159,8 @@ pub const Shape = struct {
             self.nsc_srcs == other.nsc_srcs and
             self.extra_srcs == other.extra_srcs and
             self.aux_srcs == other.aux_srcs and
-            self.off_target_libs == other.off_target_libs;
+            self.off_target_libs == other.off_target_libs and
+            self.threadx_heap == other.threadx_heap;
     }
 
     /// `board=<b> uses=<a,b|-> flags=<a,b|->`, the spelling the ledger and the
@@ -183,12 +187,12 @@ pub const Shape = struct {
     }
 
     pub fn flagValues(self: Shape) [flag_names.len]bool {
-        return .{ self.no_nsc, self.nsc_srcs, self.extra_srcs, self.aux_srcs, self.off_target_libs };
+        return .{ self.no_nsc, self.nsc_srcs, self.extra_srcs, self.aux_srcs, self.off_target_libs, self.threadx_heap };
     }
 };
 
 /// The flag half of a shape, in the order `Shape.flagValues` returns it.
-pub const flag_names = [_][]const u8{ "no_nsc", "nsc_srcs", "extra_srcs", "aux_srcs", "off_target_libs" };
+pub const flag_names = [_][]const u8{ "no_nsc", "nsc_srcs", "extra_srcs", "aux_srcs", "off_target_libs", "threadx_heap" };
 
 /// One app that parsed.
 pub const Row = struct {
@@ -348,6 +352,10 @@ pub fn parseBlock(allocator: std.mem.Allocator, listfile: []const u8, body: []co
     var uses = std.ArrayList([]const u8).init(allocator);
     var shape = Shape{};
     var current: ?Keyword = null;
+    // A one-value keyword's value is whatever token follows it, even when that
+    // token is shouty enough to look like a keyword itself: `THREADX_HEAP
+    // SDRAM` names a linker region, not a second keyword.
+    var awaiting_value = false;
 
     var tokens = Tokenizer{ .text = body };
     while (tokens.next()) |token| {
@@ -359,10 +367,11 @@ pub fn parseBlock(allocator: std.mem.Allocator, listfile: []const u8, body: []co
                     current = null;
                 } else {
                     current = keyword;
+                    awaiting_value = keyword.group() == .one_value;
                 }
                 continue;
             }
-            if (keywordLike(token.text)) {
+            if (!awaiting_value and keywordLike(token.text)) {
                 return .{ .refusal = .{
                     .listfile = listfile,
                     .reason = try std.fmt.allocPrint(
@@ -381,6 +390,7 @@ pub fn parseBlock(allocator: std.mem.Allocator, listfile: []const u8, body: []co
                 .{token.text},
             ),
         } };
+        awaiting_value = false;
         switch (keyword) {
             .name => app_name = app_name orelse token.text,
             .board => board = board orelse token.text,
@@ -390,6 +400,7 @@ pub fn parseBlock(allocator: std.mem.Allocator, listfile: []const u8, body: []co
             .extra_srcs => shape.extra_srcs = true,
             .aux_srcs => shape.aux_srcs = true,
             .off_target_libs => shape.off_target_libs = true,
+            .threadx_heap => shape.threadx_heap = true,
             .description, .libs => {},
             .no_nsc => unreachable,
         }
@@ -534,6 +545,7 @@ pub fn parseLedger(allocator: std.mem.Allocator, text: []const u8) ![]Entry {
         shape.extra_srcs = flag_values[2];
         shape.aux_srcs = flag_values[3];
         shape.off_target_libs = flag_values[4];
+        shape.threadx_heap = flag_values[5];
         const stack = std.fmt.parseInt(u32, stack_field, 10) catch return LedgerError.BadStackBytes;
         try out.append(.{ .row = .{
             .name = app_name,
@@ -627,32 +639,42 @@ pub const Uncovered = struct {
 pub const uncovered = [_]Uncovered{
     .{
         .representative = "usb_selftest_wlun",
-        .shape = .{ .uses = &.{ "threadx", "usbx" } },
-        .note = "25 declarations, the largest uncovered kind by a long way: USBX device classes on top of ThreadX. middleware.zig already compiles ThreadX; USBX is the next middleware to teach it",
+        .shape = .{ .uses = &.{ "threadx", "usbx" }, .threadx_heap = true },
+        .note = "20 declarations, the largest uncovered kind by a long way: USBX device classes on top of ThreadX, linked against a generated heap fragment. middleware.zig already compiles ThreadX; USBX is the next middleware to teach it",
     },
     .{
         .representative = "c6_mdl_test",
-        .shape = .{ .uses = &.{ "esp_hosted", "threadx" } },
+        .shape = .{ .uses = &.{ "esp_hosted", "threadx" }, .threadx_heap = true },
         .note = "4 declarations: the C6 co-processor host stack, which brings its own generated sources",
     },
     .{
         .representative = "threadx_fs_demo",
-        .shape = .{ .uses = &.{ "levelx", "threadx" } },
+        .shape = .{ .uses = &.{ "levelx", "threadx" }, .threadx_heap = true },
         .note = "3 declarations: LevelX over ThreadX, the flash-translation stack",
     },
     .{
         .representative = "threadx_https_client",
-        .shape = .{ .uses = &.{ "mbedtls", "netxduo", "threadx" } },
+        .shape = .{ .uses = &.{ "mbedtls", "netxduo", "threadx" }, .threadx_heap = true },
         .note = "2 declarations: the TLS stack, three middlewares deep",
     },
     .{
         .representative = "c6_wifi_join",
-        .shape = .{ .uses = &.{ "esp_hosted", "netxduo", "threadx" }, .extra_srcs = true },
+        .shape = .{ .uses = &.{ "esp_hosted", "netxduo", "threadx" }, .extra_srcs = true, .threadx_heap = true },
         .note = "2 declarations: C6 Wi-Fi with NetX Duo, and the first uncovered kind that also compiles EXTRA_SRCS",
     },
     .{
+        .representative = "dfu_selftest_boot",
+        .shape = .{ .uses = &.{ "threadx", "usbx" } },
+        .note = "5 declarations: USBX on ThreadX linking the board's own linker script, the DFU and TrustZone-only pairs, which is what separates them from the 20 that compose a heap fragment",
+    },
+    .{
+        .representative = "usb_printer_vendor",
+        .shape = .{ .threadx_heap = true },
+        .note = "1 declaration: a USBX vendor-class app that names no USES at all, so the only thing making it its own kind is the generated heap fragment",
+    },
+    .{
         .representative = "threadx_nimble_peripheral",
-        .shape = .{ .uses = &.{ "nimble", "threadx" } },
+        .shape = .{ .uses = &.{ "nimble", "threadx" }, .threadx_heap = true },
         .note = "1 declaration: the NimBLE host",
     },
     .{
@@ -662,12 +684,12 @@ pub const uncovered = [_]Uncovered{
     },
     .{
         .representative = "threadx_netx_tcp_echo",
-        .shape = .{ .uses = &.{ "netxduo", "threadx" } },
+        .shape = .{ .uses = &.{ "netxduo", "threadx" }, .threadx_heap = true },
         .note = "1 declaration: NetX Duo without TLS",
     },
     .{
         .representative = "npu_infer",
-        .shape = .{ .uses = &.{"tflite_micro"} },
+        .shape = .{ .board = "ra8p1", .uses = &.{"tflite_micro"} },
         .note = "1 declaration: the only C++ middleware in the tree",
     },
     .{
@@ -677,7 +699,7 @@ pub const uncovered = [_]Uncovered{
     },
     .{
         .representative = "media_download",
-        .shape = .{ .uses = &.{ "esp_hosted", "threadx" }, .extra_srcs = true },
+        .shape = .{ .uses = &.{ "esp_hosted", "threadx" }, .extra_srcs = true, .threadx_heap = true },
         .note = "1 declaration: C6 host plus EXTRA_SRCS",
     },
     .{
