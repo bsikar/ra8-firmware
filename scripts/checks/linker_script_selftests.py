@@ -42,6 +42,7 @@ sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1] / "dev"))
 
 from check_linker_scripts import (
+    DEFINING_SCRIPT_PATTERNS,
     DEVICE_MEM,
     OPTION_SETTING_ADDR,
     SRAM_WINDOW_BASE,
@@ -276,6 +277,46 @@ def _selftest_worktree_inventory() -> int:
     return 0
 
 
+def _selftest_template_scope() -> int:
+    """LD006 sees a .ld.in template; the per-file scan scope still does not.
+
+    The bug this pins (#2524): `ra8_add_ns_image()` configures `ns_image.ld.in`
+    and links the result, so its symbols are real, but the closure globbed
+    `*.ld` alone and reported every one of them as defined by nothing. The two
+    scopes must stay different -- a template is judged on the symbols it
+    defines, never on its syntax, because `@VAR@` is not valid ld.
+    """
+    with tempfile.TemporaryDirectory() as td:
+        root = pathlib.Path(td)
+        subprocess.run(  # noqa: S603 -- fixed Git argv and private fixture path
+            [trusted_git_executable(), "init", "-q", str(root)],
+            check=True,
+        )
+        (root / "plain.ld").write_text("g_ra8_ls_plain_start = 0x1000;\n", encoding="utf-8")
+        (root / "gen.ld.in").write_text(
+            "MEMORY { @REGION@ (rx) : ORIGIN = @ORIGIN@, LENGTH = 4K }\n"
+            "g_ra8_ls_templated_start = ORIGIN(@REGION@);\n",
+            encoding="utf-8",
+        )
+
+        narrow = sorted(p.name for p in repo_files(root, "*.ld"))
+        if narrow != ["plain.ld"]:
+            print(f"SELFTEST FAIL: per-file scope pulled in a template -> {narrow}")
+            return 1
+        print("selftest: per-file scan scope excludes .ld.in templates OK")
+
+        wide: set[str] = set()
+        for pattern in DEFINING_SCRIPT_PATTERNS:
+            for path in repo_files(root, pattern):
+                wide |= defined_symbols(path.read_text(encoding="ascii"))
+        want = {"g_ra8_ls_plain_start", "g_ra8_ls_templated_start"}
+        if wide != want:
+            print(f"SELFTEST FAIL: closure scope -> {sorted(wide)}")
+            return 1
+        print("selftest: closure scope defines symbols from a .ld.in template OK")
+    return 0
+
+
 def _sram_fixture(ns_sram_len: str) -> str:
     """A board-shaped script whose NS_SRAM placeholder is sized `ns_sram_len`.
 
@@ -439,4 +480,6 @@ def run_selftests() -> int:
     rc |= _selftest_device_map()
     rc |= _selftest_device_region_fit()
     scan_rc, got_def, got_ref = _selftest_symbol_scan()
-    return rc | scan_rc | _selftest_closure(got_def, got_ref) | _selftest_worktree_inventory()
+    rc |= _selftest_closure(got_def, got_ref)
+    rc |= _selftest_worktree_inventory()
+    return rc | scan_rc | _selftest_template_scope()
