@@ -2,8 +2,8 @@
 //! Copyright (c) 2026 Brighton Sikarskie
 //!
 //! The C membrane for the Zig side of `ra8_mem`: every symbol
-//! `inc/ra8_slab.h`, `inc/ra8_vmem_stream.h`, `inc/ra8_glyph_atlas.h` and
-//! `inc/ra8_vsource.h` declare, and nothing else. Those headers are unchanged,
+//! `inc/ra8_slab.h`, `inc/ra8_vmem.h`, `inc/ra8_vmem_stream.h`,
+//! `inc/ra8_glyph_atlas.h` and `inc/ra8_vsource.h` declare, and nothing else. Those headers are unchanged,
 //! so the host suite, `mem_subsystem`, `reflow`, `glyph_bench`, `cache_bench`,
 //! `reader_vmem` and the rest of `libs/ra8_mem` link against this archive
 //! without knowing the bodies moved.
@@ -16,6 +16,7 @@ const std = @import("std");
 const glyph_atlas = @import("internal/glyph_atlas.zig");
 const keycache = @import("internal/keycache.zig");
 const slab = @import("internal/slab.zig");
+const vmem = @import("internal/vmem.zig");
 const vmem_stream = @import("internal/vmem_stream.zig");
 const vocab = @import("internal/vocab.zig");
 const vsource = @import("internal/vsource.zig");
@@ -64,31 +65,24 @@ export fn ra8_slab_stats(handle: ?*const slab.Slab, out_free: ?*u32, out_total: 
 // ra8_vmem_stream.h
 // ---------------------------------------------------------------------------
 
-/// The page cache, still C (`src/ra8_vmem.c`). These are the only two symbols
-/// the stream adapter needs from it; the archive leaves them undefined and the
-/// link resolves them, exactly as the C TU did.
-extern fn ra8_vmem_get(
-    vm: ?*vmem_stream.Vmem,
-    object_id: u32,
-    offset: u64,
-    out_page: *?*anyopaque,
-) u16;
-extern fn ra8_vmem_put(vm: ?*vmem_stream.Vmem, page: ?*anyopaque) u16;
-
-/// Adapts those two into what the implementation works in: a frame arrives as
-/// a slice of its real length, so the in-frame copy is bounds-checked rather
-/// than trusted the way `(const uint8_t*)page + in_frame` was.
+/// Adapts the page cache into what the stream adapter works in: a frame
+/// arrives as a slice of its real length, so the in-frame copy is
+/// bounds-checked rather than trusted the way `(const uint8_t*)page +
+/// in_frame` was. Both sides are Zig in this archive now, so the calls are
+/// direct rather than through the two `ra8_vmem_*` externs the C TU needed.
 const Cache = struct {
     pub fn get(vm: ?*vmem_stream.Vmem, object_id: u32, offset: u64, frame_bytes: u32) vmem_stream.Frame {
+        const cache = vm orelse return .{ .failed = .null_ptr };
         var page: ?*anyopaque = null;
-        const code = ra8_vmem_get(vm, object_id, offset, &page);
-        if (code != Err.ok.code()) return .{ .failed = Err.from(code) };
+        const err = Pages.get(cache, object_id, offset, &page);
+        if (err != .ok) return .{ .failed = err };
         const frame = page orelse return .{ .failed = .null_ptr };
         return .{ .page = @as([*]const u8, @ptrCast(frame))[0..frame_bytes] };
     }
 
     pub fn put(vm: ?*vmem_stream.Vmem, page: []const u8) Err {
-        return Err.from(ra8_vmem_put(vm, @constCast(@as(*const anyopaque, @ptrCast(page.ptr)))));
+        const cache = vm orelse return .null_ptr;
+        return Pages.put(cache, page.ptr);
     }
 };
 
@@ -178,6 +172,58 @@ const Engine = struct {
 };
 
 const Atlas = glyph_atlas.Atlas(Engine);
+
+// ---------------------------------------------------------------------------
+// ra8_vmem.h
+// ---------------------------------------------------------------------------
+
+/// The byte-range page cache: the second facade over the same four symbols,
+/// SLRU rather than LRU, keyed on (object id, frame-aligned offset).
+const Pages = vmem.Vmem(Engine);
+
+comptime {
+    // The stream adapter streams over this same handle, so there is one mirror
+    // of `ra8_vmem_t` rather than two that could drift.
+    std.debug.assert(vmem.State == vmem_stream.Vmem);
+}
+
+export fn ra8_vmem_init(handle: ?*vmem.State, cfg: ?*const vmem.Cfg) u16 {
+    const self = handle orelse return Err.null_ptr.code();
+    const config = cfg orelse return Err.null_ptr.code();
+    return Pages.init(self, config).code();
+}
+
+export fn ra8_vmem_get(
+    handle: ?*vmem.State,
+    object_id: u32,
+    offset: u64,
+    out_page: ?*?*anyopaque,
+) u16 {
+    const self = handle orelse return Err.null_ptr.code();
+    const dst = out_page orelse return Err.null_ptr.code();
+    return Pages.get(self, object_id, offset, dst).code();
+}
+
+export fn ra8_vmem_put(handle: ?*vmem.State, page: ?*anyopaque) u16 {
+    const self = handle orelse return Err.null_ptr.code();
+    const frame = page orelse return Err.null_ptr.code();
+    return Pages.put(self, @ptrCast(frame)).code();
+}
+
+export fn ra8_vmem_prefetch(handle: ?*vmem.State, object_id: u32, offset: u64) u16 {
+    const self = handle orelse return Err.null_ptr.code();
+    return Pages.prefetch(self, object_id, offset).code();
+}
+
+export fn ra8_vmem_stats(
+    handle: ?*const vmem.State,
+    out_hits: ?*u32,
+    out_misses: ?*u32,
+    out_evictions: ?*u32,
+) u16 {
+    const self = handle orelse return Err.null_ptr.code();
+    return Pages.stats(self, out_hits, out_misses, out_evictions).code();
+}
 
 comptime {
     // `ra8_glyph_atlas_t` is caller-allocated (a `static` in the ereader UI, a
