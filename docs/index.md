@@ -20,7 +20,9 @@ can actually read each language, and are mounted beside it.
 A library that has moved to Zig keeps its hand-authored C header, so a caller
 reading the C ABI reference sees the same contract it always had. The Zig
 reference is for someone working *inside* that library. ADR-0005 records why
-the split is drawn there and which generator owns which artifact.
+the split is drawn there and which generator owns which artifact, though it is
+superseded: `a67c04f3e` removed the generators it decided on, so read it for
+the reasoning rather than as a description of the tree.
 
 !!! note "Mount points land with their generators"
 
