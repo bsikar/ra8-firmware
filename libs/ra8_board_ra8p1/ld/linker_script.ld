@@ -7,9 +7,9 @@
  *
  * This map is byte-identical to the EK-RA8D2 canonical single-core script:
  * the RA8P1 shares the RA8D2 memory map (see libs/ra8_core/inc/ra8_device.h,
- * which mirrors this MEMORY block). The RA8P1 foundation apps
- * (examples/ra8p1_foundation) override this with an app-local linker_script.ld;
- * this canonical copy serves future RA8P1 apps that do not.
+ * which mirrors this MEMORY block). Every RA8P1 app uses this map; the four
+ * foundation apps (examples/ra8p1_foundation) each carried an identical
+ * 310-line copy until #742 deleted them.
  *
  * Memory map (byte-identical on RA8D2 HUM R01UH1065EJ / RA8P1 HUM R01UH1064EJ):
  *
@@ -18,7 +18,9 @@
  * MRAM 0x02000000 1 MiB Code + rodata + vectors + OFS
  * ITCM 0x00000000 64 KiB Instruction tightly-coupled mem
  * DTCM 0x20000000 64 KiB Data tightly-coupled mem
- * SRAM (ECC) 0x22000000 2 MiB .data, .bss, main stack (no heap)
+ * SRAM (ECC) 0x22000000 1664 KiB SRAM0 1024K + SRAM1 640K (k_ra8_mem_sram_size).
+ *            SRAM below is SRAM0 only, less the 256-byte crash-log
+ *            reserve; SRAM1 is exposed separately as NS_SRAM.
  * SDRAM 0x68000000 64 MiB External SDRAM (EK board)
  *
  * =====================================================================

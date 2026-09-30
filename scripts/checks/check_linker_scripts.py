@@ -600,12 +600,20 @@ def _check_option_setting(path: pathlib.Path, code: str) -> list[Finding]:
 #
 # This floor therefore RATCHETS DOWN as #742 retires the remaining app-local
 # forks, and a re-pin here is expected work on such a PR, not a warning sign.
-# It has gone 25 -> 13 -> 9 -> 6 as the population went 32 -> 17 -> 12 -> 8.
+# It has gone 25 -> 13 -> 9 -> 6 -> 2 as the population went 32 -> 17 -> 12 ->
+# 8 -> 3. The previous pins all sat a few below a population that still had
+# forks left to retire; this one is different, and deliberately so. Only three
+# scripts declare the family now -- the two board maps and ereader_m33's fork --
+# and when that last fork converts the population reaches its FLOOR-OF-THE-TREE
+# value of 2, one per board package. There is nowhere further down for it to go:
+# every RA8 app reaches the option bytes by INCLUDEing one of those two maps, so
+# a third declaration would mean a new board package, not a new fork. Pinning 2
+# now is therefore the terminal pin, not another way-station, and it is why this
+# one is pinned AT the eventual population rather than below it.
 # What it still catches is the thing it was built for: if the PROVIDE spelling is
-# renamed, LD007/LD008 match nothing and the count goes to 0, which is far
-# below any of these pins and still fails. Pin it a few below the live
-# population, never at it, so an ordinary conversion does not trip it.
-OPTION_SETTING_FILE_FLOOR = 6
+# renamed, LD007/LD008 match nothing and the count goes to 0, which is below
+# this pin and still fails.
+OPTION_SETTING_FILE_FLOOR = 2
 
 
 def option_section(name: str) -> str:
