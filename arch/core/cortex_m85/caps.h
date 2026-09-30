@@ -33,22 +33,52 @@
 #define ARCH_IRQ_PRIORITY_BITS (4U)
 /** @brief Native load-exclusive/store-exclusive atomics are present. */
 #define ARCH_HAS_NATIVE_ATOMICS (1)
-/** @brief ThreadX ports this core, so the RTOS context surface is required. */
+/**
+ * @brief ThreadX ports this core, so the RTOS context surface is required.
+ *
+ * @details
+ * MIGRATION: implemented today by `port/threadx/src/cortex_m85`, the
+ * project-tuned half of the vendored Cortex-M85 GNU port that
+ * `cmake/threadx.cmake` selects. Moves behind ::arch_context_init,
+ * ::arch_context_switch and ::arch_tick_configure in a later slice of #694.
+ */
 #define ARCH_HAS_RTOS_CONTEXT (1)
-/** @brief PMSAv8 memory protection unit is present. */
+/**
+ * @brief PMSAv8 memory protection unit is present.
+ *
+ * @details
+ * MIGRATION: implemented today by `libs/ra8_mpu/src/ra8_mpu_abi.zig`, a Ring-1
+ * library rather than an arch backend. Moves to `arch/armv8m/` in a later
+ * slice of #694.
+ */
 #define ARCH_HAS_MEM_PROTECT (1)
 /** @brief Protection flavour, as `arch.h` documents the term. */
 #define ARCH_MEM_PROTECT_FLAVOUR "pmsav8"
 
 /** @brief Number of MPU regions this core implements. */
 #define ARCH_MEM_PROTECT_REGIONS (16U)
-/** @brief L1 data and instruction caches are present and maintainable. */
+/**
+ * @brief L1 data and instruction caches are present and maintainable.
+ *
+ * @details
+ * MIGRATION: implemented today by `libs/ra8_hal/src/ra8_cache.c`, filed under
+ * the HAL as though L1 maintenance were a peripheral. It is a core block, and
+ * one CPU1 does not have, so it moves to `arch/armv8m/` with the cache flag in
+ * a later slice of #694.
+ */
 #define ARCH_HAS_CACHE (1)
 /** @brief Cache line size in bytes, the granularity of every maintenance call. */
 #define ARCH_CACHE_LINE_BYTES (32U)
 /** @brief Helium (MVE) is present, so the SIMD algorithm variant is buildable. */
 #define ARCH_HAS_SIMD (1)
-/** @brief Armv8-M Security Extension is present; the SAU is programmable. */
+/**
+ * @brief Armv8-M Security Extension is present; the SAU is programmable.
+ *
+ * @details
+ * MIGRATION: implemented today by `libs/ra8_hal/src/ra8_sau.c`. Moves to
+ * `arch/armv8m/trustzone/` in a later slice of #694, where it stays gated by
+ * this flag because no other ISA has an analogue.
+ */
 #define ARCH_HAS_TRUSTZONE_M (1)
 /** @brief Number of SAU regions this core implements. */
 #define ARCH_TRUSTZONE_REGIONS (8U)

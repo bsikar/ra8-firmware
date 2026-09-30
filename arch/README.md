@@ -15,6 +15,26 @@ The contract, and only the contract.
 | `core/cortex_m85/caps.h` | RA8D2 CPU0 capability answers. |
 | `core/cortex_m33/caps.h` | RA8D2 CPU1 capability answers. |
 | `hosted/README.md` | Why the host build is already a second architecture. |
+| `../scripts/checks/check_arch_caps.py` | The gate holding those answers to their word. |
+
+## What enforces the capability contract
+
+`arch.h` says an optional capability is a compile-time fact: a core answers
+`ARCH_HAS_<CAP>` with 1 only when the operations that capability names are
+actually implemented for it. Nothing checked that until now, so a core could
+claim a capability and fail to link, or implement one and never advertise it.
+
+`scripts/checks/check_arch_caps.py` reads the gated operations out of `arch.h`,
+reads each `core/*/caps.h` answer, and fails in both directions: a flag set to 1
+with no implementation behind it, and an implementation present under a flag
+answered 0. It takes `--selftest`, which proves the detector fires and stays
+quiet on sixteen constructed cases before any tree scan is trusted, and it runs
+in the `arch-caps` gate in `scripts/ci/gates/checks.sh`.
+
+```sh
+python3 scripts/checks/check_arch_caps.py --selftest
+python3 scripts/checks/check_arch_caps.py
+```
 
 There is no backend directory yet, and that is deliberate: this slice of #694
 fixes the target before anything moves, so each migration that follows is a move
