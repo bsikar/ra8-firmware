@@ -17,6 +17,42 @@
 
 find_program(RA8_ZIG_EXECUTABLE zig)
 
+# Zig's optimize mode for the ported libraries, and why it is not simply
+# CMAKE_BUILD_TYPE.
+#
+# -Doptimize=Debug builds compiler_rt at Debug too, and zig emits compiler_rt
+# as ONE archive member, so a link that needs any builtin takes all of it.
+# Measured on ereader_shelf for cortex_m85, allocatable bytes only:
+#
+#   compiler_rt   Debug 169348   ReleaseSafe ~120K   ReleaseSmall 91658
+#   ra8_box own     4654                                       1075
+#
+# That is 77690 bytes of flash bought by nothing the linker can drop, on a
+# part with 1 MB of MRAM. ereader_shelf overflowed by 127236 bytes at Debug
+# and links with 1046110 bytes at ReleaseSmall (#2696). The C side never had
+# this cliff because C debug codegen costs a fraction of it and the linker
+# can drop unreferenced objects.
+#
+# So ReleaseSmall is the default for every build type, and a caller who wants
+# Zig-level debug info asks for it explicitly and accepts the size:
+#
+#   cmake -DRA8_ZIG_OPTIMIZE=Debug ...
+#
+# Safety checks are NOT lost by default: ReleaseSmall keeps zig's panic
+# handlers, it drops the debug-mode codegen around them.
+set(RA8_ZIG_OPTIMIZE
+    "ReleaseSmall"
+    CACHE STRING "zig -Doptimize mode for the ported libraries"
+)
+set_property(
+  CACHE RA8_ZIG_OPTIMIZE
+  PROPERTY STRINGS
+           "Debug"
+           "ReleaseSafe"
+           "ReleaseSmall"
+           "ReleaseFast"
+)
+
 # Translate the toolchain's -mcpu into the name zig's -Dcpu expects
 # (cortex-m85 -> cortex_m85). Float ABI picks the eabi/eabihf suffix.
 function(_ra8_zig_target_for_toolchain _out_target _out_cpu)
@@ -92,11 +128,7 @@ function(
     )
   endif()
 
-  if(CMAKE_BUILD_TYPE STREQUAL "Debug")
-    set(_zig_optimize Debug)
-  else()
-    set(_zig_optimize ReleaseSmall)
-  endif()
+  set(_zig_optimize "${RA8_ZIG_OPTIMIZE}")
 
   set(_prefix "${CMAKE_CURRENT_BINARY_DIR}/zig/${_lib}/${_zig_cpu}")
   set(_archive "${_prefix}/lib/lib${_lib}.a")
