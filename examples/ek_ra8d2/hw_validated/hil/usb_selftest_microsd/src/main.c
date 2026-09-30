@@ -515,6 +515,11 @@ static void microsd_setup_or_halt(void)
 {
   uint32_t cpuclk0_hz = 0U;
   uint32_t pclka_hz   = 0U;
+  const fw_clock_module_t core_module = {.kind = k_fw_clock_module_core, .index = 0U};
+  /* The card hangs off SCI0 in Simple-SPI mode, so the block that clocks it is
+     the Pmod2 SCI, not SDHI0. */
+  const fw_clock_module_t sd_spi_module = {.kind  = k_fw_clock_module_uart,
+                                           .index = (uint8_t)k_ra8_board_pmod2_sci_channel};
   if (ra8_cgc_init() != k_ra8_ok) {
     microsd_panic_halt();
   }
@@ -524,10 +529,10 @@ static void microsd_setup_or_halt(void)
   if (ra8_cgc_usbhs_pll_enable() != k_ra8_ok) {
     microsd_panic_halt();
   }
-  if (ra8_cgc_get_clock_hz(k_ra8_clock_id_cpuclk0, &cpuclk0_hz) != k_ra8_ok) {
+  if (fw_clock_rate_for(ra8_board_clock(), core_module, &cpuclk0_hz) != k_ra8_ok) {
     microsd_panic_halt();
   }
-  if (ra8_cgc_get_clock_hz(k_ra8_clock_id_pclka, &pclka_hz) != k_ra8_ok) {
+  if (fw_clock_rate_for(ra8_board_clock(), sd_spi_module, &pclka_hz) != k_ra8_ok) {
     microsd_panic_halt();
   }
   s_pclka_hz = pclka_hz;

@@ -7,7 +7,7 @@
 # HAL implementations, named backend translation units, board composition
 # libraries, tests, vendored code, and generated code are outside this ratchet.
 #
-# clock: 502 reference(s)
+# clock: 489 reference(s)
 # display: 9 reference(s)
 # gpio: 78 reference(s)
 # timer: 51 reference(s)
@@ -226,29 +226,29 @@ examples/ek_ra8d2/hw_validated/hil/tz_secure_only_sd/src/main.c	gpio	2
 examples/ek_ra8d2/hw_validated/hil/uart_hello/src/main.c	clock	2
 examples/ek_ra8d2/hw_validated/hil/uart_irq_echo/src/main.c	clock	3
 examples/ek_ra8d2/hw_validated/hil/ulpt_demo/src/main.c	clock	2
-examples/ek_ra8d2/hw_validated/hil/usb_host_keyboard/src/main.c	clock	4
+examples/ek_ra8d2/hw_validated/hil/usb_host_keyboard/src/main.c	clock	3
 examples/ek_ra8d2/hw_validated/hil/usb_host_keyboard/src/main.c	gpio	1
-examples/ek_ra8d2/hw_validated/hil/usb_host_msc_browse/src/main.c	clock	4
+examples/ek_ra8d2/hw_validated/hil/usb_host_msc_browse/src/main.c	clock	3
 examples/ek_ra8d2/hw_validated/hil/usb_host_msc_browse/src/main.c	gpio	1
-examples/ek_ra8d2/hw_validated/hil/usb_selftest_cdc/src/main.c	clock	4
+examples/ek_ra8d2/hw_validated/hil/usb_selftest_cdc/src/main.c	clock	3
 examples/ek_ra8d2/hw_validated/hil/usb_selftest_cdc/src/main.c	gpio	1
-examples/ek_ra8d2/hw_validated/hil/usb_selftest_dfu/src/main.c	clock	4
+examples/ek_ra8d2/hw_validated/hil/usb_selftest_dfu/src/main.c	clock	3
 examples/ek_ra8d2/hw_validated/hil/usb_selftest_dfu/src/main.c	gpio	1
-examples/ek_ra8d2/hw_validated/hil/usb_selftest_fs_host/src/main.c	clock	4
+examples/ek_ra8d2/hw_validated/hil/usb_selftest_fs_host/src/main.c	clock	3
 examples/ek_ra8d2/hw_validated/hil/usb_selftest_fs_host/src/main.c	gpio	1
-examples/ek_ra8d2/hw_validated/hil/usb_selftest_hid/src/main.c	clock	4
+examples/ek_ra8d2/hw_validated/hil/usb_selftest_hid/src/main.c	clock	3
 examples/ek_ra8d2/hw_validated/hil/usb_selftest_hid/src/main.c	gpio	1
-examples/ek_ra8d2/hw_validated/hil/usb_selftest_hs_host/src/main.c	clock	4
+examples/ek_ra8d2/hw_validated/hil/usb_selftest_hs_host/src/main.c	clock	3
 examples/ek_ra8d2/hw_validated/hil/usb_selftest_hs_host/src/main.c	gpio	1
-examples/ek_ra8d2/hw_validated/hil/usb_selftest_microsd/src/main.c	clock	5
+examples/ek_ra8d2/hw_validated/hil/usb_selftest_microsd/src/main.c	clock	3
 examples/ek_ra8d2/hw_validated/hil/usb_selftest_microsd/src/main.c	gpio	3
-examples/ek_ra8d2/hw_validated/hil/usb_selftest_mlun/src/main.c	clock	4
+examples/ek_ra8d2/hw_validated/hil/usb_selftest_mlun/src/main.c	clock	3
 examples/ek_ra8d2/hw_validated/hil/usb_selftest_mlun/src/main.c	gpio	1
-examples/ek_ra8d2/hw_validated/hil/usb_selftest_ospi/src/main.c	clock	4
+examples/ek_ra8d2/hw_validated/hil/usb_selftest_ospi/src/main.c	clock	3
 examples/ek_ra8d2/hw_validated/hil/usb_selftest_ospi/src/main.c	gpio	1
-examples/ek_ra8d2/hw_validated/hil/usb_selftest_ospi_rw/src/main.c	clock	4
+examples/ek_ra8d2/hw_validated/hil/usb_selftest_ospi_rw/src/main.c	clock	3
 examples/ek_ra8d2/hw_validated/hil/usb_selftest_ospi_rw/src/main.c	gpio	1
-examples/ek_ra8d2/hw_validated/hil/usb_selftest_soak/src/main.c	clock	4
+examples/ek_ra8d2/hw_validated/hil/usb_selftest_soak/src/main.c	clock	3
 examples/ek_ra8d2/hw_validated/hil/usb_selftest_soak/src/main.c	gpio	1
 examples/ek_ra8d2/hw_validated/hil/watchdog_demo/src/main.c	clock	2
 examples/ek_ra8d2/hw_validated/hil/wdt_reset_recovery_demo/src/main.c	clock	2
