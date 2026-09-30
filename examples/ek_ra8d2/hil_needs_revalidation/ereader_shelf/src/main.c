@@ -194,6 +194,7 @@ static void sh_seed_baked(void)
     e->blob       = k_library[i].blob;
     e->blob_len   = k_library[i].len;
     e->thumb      = k_library[i].thumb;
+    e->thumb_len  = k_library[i].thumb_len;
     e->thumb_w    = k_library[i].thumb_w;
     e->thumb_h    = k_library[i].thumb_h;
     (void)strncpy(e->title, k_library[i].title, sizeof e->title - 1U);
