@@ -279,6 +279,17 @@ gate_mcdc() (
 # and fails again when a checked number appears nowhere in the prose -- so the
 # marker being checked cannot drift away from the sentence a reader actually sees.
 #
+# check_usbx_class_claims.py (#626) is the same defect one layer down: not a count
+# but a CAPABILITY list. docs/SOUP/usbx.md advertised CDC-ACM, HID and MSC as
+# "device + host" while cmake/usbx.cmake globs nothing at all out of
+# common/usbx_host_classes/, and it omitted the DFU device class five HIL apps
+# depend on. The checker resolves each file(GLOB) against the vendored sources and
+# applies that variable's own list(FILTER EXCLUDE REGEX) lines the way CMake does,
+# so the single-TU INQUIRY override does not read as dropping the whole MSC class,
+# then compares the surviving set with the record's marker. A glob left matching
+# nothing, or filtered empty, is a finding too: a class must not stay claimed by a
+# pattern that quietly stopped resolving.
+#
 # gen_ra8_media_proto.sh --selftest runs here too, and it is the odd one out: it
 # exercises a --check this gate cannot itself run. That is the reason for it. The
 # byte-exact comparison, the post-processing, the version pin and the missing-generator
@@ -296,6 +307,8 @@ gate_artefact_freshness() (
   bash scripts/gen/gen_ra8_media_proto.sh --selftest
   python3 scripts/checks/check_soup_consumer_census.py --selftest
   python3 scripts/checks/check_soup_consumer_census.py
+  python3 scripts/checks/check_usbx_class_claims.py --selftest
+  python3 scripts/checks/check_usbx_class_claims.py
 )
 
 # --- cache-bench ----------------------------------------------------------

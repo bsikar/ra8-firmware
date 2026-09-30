@@ -24,13 +24,19 @@
 #     simulator DCD / HCD (ux_dcd_sim_slave_*.c and
 #     ux_hcd_sim_host_*.c) -- our own DCD / HCD bridges live in
 #     port/usbx/ and replace those.
-#   - Compiles the CDC-ACM device class under
-#     usbx_device_classes/src/ux_device_class_cdc_acm_*.c.
+#   - Compiles the CDC-ACM, HID, MSC (storage) and DFU DEVICE classes
+#     under usbx_device_classes/src/. Nothing is compiled out of
+#     common/usbx_host_classes/; USBX host classes are not built.
 #   - Vendor headers + Cortex-M33/GNU port headers go on the public
 #     interface so the bridge + apps can `#include "ux_api.h"`.
-#   - Forces UX_INCLUDE_USER_DEFINE_FILE so a project-supplied
-#     ux_user.h (currently in port/usbx/) shapes USBX's compile-time
-#     options.
+#   - Does NOT supply a ux_user.h. There is no first-party ux_user.h in
+#     the tree and UX_INCLUDE_USER_DEFINE_FILE is never defined here, so
+#     USBX compiles against the stock ports/cortex_m33/gnu/inc/ux_port.h
+#     defaults plus exactly two -D overrides set below,
+#     UX_MAX_SLAVE_LUN and UX_SLAVE_REQUEST_DATA_MAX_LENGTH. Add a real
+#     ux_user.h (and the define) before claiming a config layer; the
+#     vendored libs/third_party/usbx/CMakeLists.txt that would set it is
+#     never add_subdirectory'd.
 #
 # Requires `RA8_USE_THREADX=ON` because USBX's tx_api.h dependency
 # (memory pools, semaphores, threads) cannot be satisfied otherwise.
