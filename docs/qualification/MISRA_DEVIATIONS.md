@@ -140,8 +140,8 @@ embeds them in the dumps handed to `misra.py`, so a suppressed finding
 never reaches the results (verified on the pinned binary, 2026-08-15) --
 then `misra_ratchet.py` freezes that population in the baseline below.
 
-Baseline: 20014 findings across 2710 file/rule rows (Cppcheck 2.13.0).
-Residual (no deviation record): 51 rules, 2375 findings, 1007 rows.
+Baseline: 20012 findings across 2708 file/rule rows (Cppcheck 2.13.0).
+Residual (no deviation record): 51 rules, 2373 findings, 1005 rows.
 The 2026-08-27 refresh removed 2,102 C23 Rule 9.2 false positives,
 four POSIX Rule 17.3 false positives, and 53 genuine findings through reviewed
 source fixes. The resulting 2,159-finding reduction had zero bucket growth
