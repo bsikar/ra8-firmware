@@ -48,6 +48,7 @@ ra8_add_app(
                                                                                   src/ns_main.c
   LIBS ra8_tz_secure_boot
   EXTRA_SRCS ${_d}/libs/ra8_psa_crypto/src/ra8_psa_crypto.c ${_d}/libs/ra8_dfu/src/ra8_rot.c
+             MRAM_LENGTH 512K
 )
 
 # tf-psa-crypto software crypto for ARM (same recipe as rot_verify_hil /
@@ -154,8 +155,10 @@ ra8_ns_linker_script(_sbnh_ns_linker NAME secure_boot_ns_hil_ns)
 
 add_executable(
   secure_boot_ns_hil_ns.elf
-  ${CMAKE_CURRENT_SOURCE_DIR}/src/ns_main.c ${_d}/libs/ra8_core/src/ra8_freestanding_mem.c
-  ${_d}/libs/ra8_core/src/ra8_freestanding_str.c ${_d}/libs/ra8_core/src/ra8_freestanding_math.c
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/ns_main.c
+  ${_d}/libs/ra8_core/src/ra8_freestanding_mem.c
+  ${_d}/libs/ra8_core/src/ra8_freestanding_str.c
+  ${_d}/libs/ra8_core/src/ra8_freestanding_math.c
   ${_d}/libs/ra8_tz_secure_boot/ns/ra8_ns_rot_header.c
 )
 target_include_directories(
@@ -173,9 +176,7 @@ target_link_options(
   -T${_sbnh_ns_linker}
   -Wl,--Map=secure_boot_ns_hil_ns.map
 )
-set_target_properties(
-  secure_boot_ns_hil_ns.elf PROPERTIES LINK_DEPENDS "${_sbnh_ns_linker}"
-)
+set_target_properties(secure_boot_ns_hil_ns.elf PROPERTIES LINK_DEPENDS "${_sbnh_ns_linker}")
 # The Secure hex is an input to the merge below, so build the Secure ELF first.
 add_dependencies(secure_boot_ns_hil_ns.elf secure_boot_ns_hil.elf)
 
@@ -203,8 +204,7 @@ add_custom_command(
     secure_boot_ns_hil_secure.hex --ns-elf $<TARGET_FILE:secure_boot_ns_hil_ns.elf> --objcopy
     ${CMAKE_OBJCOPY} --rot-sign ${_d}/scripts/secrets/rot_sign.py --merge
     ${_d}/scripts/gen/merge_ihex.py --out-genuine secure_boot_ns_hil.hex --out-tampered
-    secure_boot_ns_hil_tampered.hex --key ${_sbns_key} --ns-load-addr
-    ${RA8_NS_MRAM_ORIGIN}
+    secure_boot_ns_hil_tampered.hex --key ${_sbns_key} --ns-load-addr ${RA8_NS_MRAM_ORIGIN}
   VERBATIM
   COMMENT "Signing NS image + merging Secure+NS -> secure_boot_ns_hil.hex (+_tampered)"
 )
