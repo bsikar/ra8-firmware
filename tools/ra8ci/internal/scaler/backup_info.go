@@ -45,8 +45,6 @@ func ParseLatestFullBackupInfo(raw []byte, stanza string) (time.Time, error) {
 	var trailing any
 	if err := decoder.Decode(&trailing); err != io.EOF {
 		return time.Time{}, errors.New("pgBackRest info response has trailing JSON")
-	} else if err == nil {
-		return time.Time{}, errors.New("pgBackRest info response has trailing JSON")
 	}
 	var latest time.Time
 	var errored bool
