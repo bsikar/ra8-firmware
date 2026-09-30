@@ -249,7 +249,12 @@ include(${FW_ROOT}/cmake/ra8_webp_vendor.cmake)
 ra8_webp_vendor_sources(RA8_WEBP_THIRD_PARTY ${FW_ROOT})
 ra8_webp_facade_sources(RA8_WEBP_SOURCES ${FW_ROOT})
 file(GLOB_RECURSE RA8_SECURE_APP_SOURCES CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra8_secure_app/src/*.c)
-file(GLOB_RECURSE RA8_PSA_CRYPTO_SOURCES CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra8_psa_crypto/src/*.c)
+# ra8_psa_crypto has no C sources left: the key-slot pool, the guard order,
+# the PSA vocabulary mapping and both backends (the deterministic off-target
+# fake and the on-target tf-psa-crypto binding) are Zig now, linked via
+# tests/cmake/zig_libraries.cmake. inc/ and src/ra8_psa_crypto_internal.h
+# stay: the two C security suites include the internal header for
+# struct ra8_psa_key_handle and k_ra8_psa_fake_scratch_bytes.
 # ra8_wdt_supervisor has no C sources left: the registry, the deadline policy
 # and the ThreadX seam are Zig now, linked via tests/cmake/zig_libraries.cmake.
 # ra8_mpu has no C sources left: the descriptor validation, the RBAR/RLAR

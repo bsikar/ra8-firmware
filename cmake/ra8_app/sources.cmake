@@ -42,14 +42,23 @@
 # A function, not a macro: it needs no variable to survive the return, and the
 # two call sites (LIBS and OFF_TARGET_LIBS) are otherwise identical loops whose
 # only difference is which keyword the app wrote.
+#
+# A library whose implementation has finished migrating is the one case that
+# looks exactly like the defect and is not one: src holds .zig and no .c, so
+# the *.c glob is empty, but the objects are not missing -- they arrive in the
+# Zig static archive the caller has just registered in _ra8_lib_zig. That is
+# the same reasoning the ra8_net_pal block below states in prose; _has_archive
+# carries it to the two keyword loops so a fully-ported library can be named in
+# LIBS at all.
 function(
   _ra8_app_require_compilable_lib
   _lib
   _path
   _why
   _globbed
+  _has_archive
 )
-  if(_globbed OR NOT _path)
+  if(_globbed OR NOT _path OR _has_archive)
     return()
   endif()
   file(
@@ -140,11 +149,11 @@ macro(_ra8_app_collect_sources)
 
   file(GLOB_RECURSE _ra8_lib_core CONFIGURE_DEPENDS ${RA8_REPO_ROOT}/libs/ra8_core/src/*.c)
   _ra8_app_require_compilable_lib(
-    ra8_core "${RA8_REPO_ROOT}/libs/ra8_core" "links ra8_core into every app" "${_ra8_lib_core}"
+    ra8_core "${RA8_REPO_ROOT}/libs/ra8_core" "links ra8_core into every app" "${_ra8_lib_core}" ""
   )
   file(GLOB_RECURSE _ra8_lib_hal CONFIGURE_DEPENDS ${RA8_REPO_ROOT}/libs/ra8_hal/src/*.c)
   _ra8_app_require_compilable_lib(
-    ra8_hal "${RA8_REPO_ROOT}/libs/ra8_hal" "links ra8_hal into every app" "${_ra8_lib_hal}"
+    ra8_hal "${RA8_REPO_ROOT}/libs/ra8_hal" "links ra8_hal into every app" "${_ra8_lib_hal}" ""
   )
   # ra8_net_pal has no C sources: the library is Zig (#1039) and its objects
   # come from the Zig static archive, linked separately. Left unglobbed and
@@ -215,11 +224,13 @@ macro(_ra8_app_collect_sources)
     endif()
     if(_ra8_lib_path)
       file(GLOB_RECURSE _ra8_lib_one CONFIGURE_DEPENDS ${_ra8_lib_path}/src/*.c)
+      set(_ra8_lib_has_archive "")
       if(EXISTS "${_ra8_lib_path}/build.zig" AND NOT EXISTS "${_ra8_lib_path}/src/${_ra8_lib}.c")
         # A first-half port retains its primary C implementation for ARM.
         # The later ARM flip removes that file; support C sources may remain.
         # Only then link the Zig archive beside any support C objects.
         list(APPEND _ra8_lib_zig "${_ra8_lib}|${_ra8_lib_path}")
+        set(_ra8_lib_has_archive ON)
       endif()
       if(_ra8_lib MATCHES "^ra8_board_")
         # Board boot sources are image-composition fallbacks selected above.
@@ -235,6 +246,7 @@ macro(_ra8_app_collect_sources)
       endif()
       _ra8_app_require_compilable_lib(
         "${_ra8_lib}" "${_ra8_lib_path}" "declares LIBS ${_ra8_lib}" "${_ra8_lib_one}"
+        "${_ra8_lib_has_archive}"
       )
       list(APPEND _ra8_lib_extra ${_ra8_lib_one})
       list(APPEND _ra8_lib_inc ${_ra8_lib_path}/inc)
@@ -274,8 +286,10 @@ macro(_ra8_app_collect_sources)
     endif()
     if(_ra8_lib_path)
       file(GLOB_RECURSE _ra8_lib_one CONFIGURE_DEPENDS ${_ra8_lib_path}/src/*.c)
+      set(_ra8_lib_has_archive "")
       if(EXISTS "${_ra8_lib_path}/build.zig" AND NOT EXISTS "${_ra8_lib_path}/src/${_ra8_lib}.c")
         list(APPEND _ra8_lib_zig "${_ra8_lib}|${_ra8_lib_path}")
+        set(_ra8_lib_has_archive ON)
       endif()
       if(_ra8_lib MATCHES "^ra8_board_")
         list(
@@ -288,6 +302,7 @@ macro(_ra8_app_collect_sources)
       endif()
       _ra8_app_require_compilable_lib(
         "${_ra8_lib}" "${_ra8_lib_path}" "declares OFF_TARGET_LIBS ${_ra8_lib}" "${_ra8_lib_one}"
+        "${_ra8_lib_has_archive}"
       )
       list(APPEND _ra8_lib_extra_off_target ${_ra8_lib_one})
       list(APPEND _ra8_lib_inc ${_ra8_lib_path}/inc)
