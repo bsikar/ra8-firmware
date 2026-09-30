@@ -29,7 +29,7 @@
 #include "ra8_widget_internal.h"
 
 /** @brief Logging / check tag. */
-static const char* s_tag = "ra8_widget_book_grid";
+static const char* const s_tag = "ra8_widget_book_grid";
 
 /**
  * @enum ra8_widget_book_geom_t

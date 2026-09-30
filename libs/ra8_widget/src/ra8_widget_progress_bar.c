@@ -27,7 +27,7 @@
 #include "ra8_widget_internal.h"
 
 /** @brief Logging / check tag. */
-static const char* s_tag = "ra8_widget_progress_bar";
+static const char* const s_tag = "ra8_widget_progress_bar";
 
 /**
  * @brief Empty-bar sentinel: at or below this fill width, no fill is painted.

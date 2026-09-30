@@ -58,7 +58,7 @@
 #include "ra8_usb.h"
 #include "ra8_usb_hmsc_internal.h"
 
-static const char* s_tag = "USBHMSC";
+static const char* const s_tag = "USBHMSC";
 
 /* =============================================================================
  * Internal constants

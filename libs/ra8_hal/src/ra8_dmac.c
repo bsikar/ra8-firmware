@@ -91,7 +91,7 @@ bool priv_ra8_dmac_internal_dmint_extra_irq(bool     irq_each,
   return irq_each && (mode != mode_repeat_block_val);
 }
 
-static const char* s_tag = "DMAC";
+static const char* const s_tag = "DMAC";
 
 /* =============================================================================
  * Local helpers

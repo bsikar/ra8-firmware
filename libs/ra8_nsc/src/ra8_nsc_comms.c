@@ -27,7 +27,7 @@
 #include "ra8_spi.h"
 #include "ra8_usb.h"
 
-static const char* s_tag = "NSCCOM";
+static const char* const s_tag = "NSCCOM";
 
 /* =============================================================================
  * SCI

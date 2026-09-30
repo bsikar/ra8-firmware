@@ -43,7 +43,7 @@
  * =============================================================================
  */
 
-static const char* s_tag = "PWR";
+static const char* const s_tag = "PWR";
 
 /** @brief Low-byte mask for register/bit decomposition. */
 typedef enum : uint16_t {

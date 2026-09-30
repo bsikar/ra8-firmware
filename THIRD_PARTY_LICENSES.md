@@ -257,8 +257,13 @@ RA8D2, and ships no code into the RA8 firmware image, so it is carried in the
 SBOM component list with `scope: excluded` rather than as linked SOUP:
 
 - **Espressif esp-hosted-mcu** -- Apache-2.0. Espressif Systems. The
-  `network_adapter` co-processor firmware that gives the RA8D2 Wi-Fi and
-  Bluetooth over a SPI link. This **C6 image** is NOT vendored into the tree:
+  `network_adapter` co-processor firmware that gives the RA8D2 Wi-Fi over a
+  SPI link. Bluetooth over the same link is **planned, not currently
+  enabled**: `cmake/esp_hosted.cmake` excludes the host `drivers/bt/` bridge,
+  `coprocessor/esp32c6/sdkconfig.defaults` says nothing about the BT stack so
+  what the C6 image contains is undetermined, and the RA8-side BLE work is
+  still open (#493). See [`docs/SOUP/esp-hosted.md`](docs/SOUP/esp-hosted.md).
+  This **C6 image** is NOT vendored into the tree:
   it is built from the
   pinned upstream commit `949bb30` with esp-idf `v5.5.4` and flashed onto
   the C6 by `coprocessor/esp32c6/build.sh` / `flash.sh`. Recipe and pins in

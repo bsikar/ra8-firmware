@@ -119,7 +119,7 @@ bool priv_ra8_drw_internal_rect_above_max(uint16_t max_w,
  * @warning Direct modification breaks log correlation.
  * @since 0.1.0
  */
-static const char* s_tag = "DRW";
+static const char* const s_tag = "DRW";
 
 /**
  * @var s_drw_fn

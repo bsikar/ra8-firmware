@@ -65,7 +65,7 @@
 #include "ra8_spi.h"
 #include "ra8_spi_regs.h"
 
-static const char* s_tag = "SPI_B_TGT";
+static const char* const s_tag = "SPI_B_TGT";
 
 /* =============================================================================
  * Constants

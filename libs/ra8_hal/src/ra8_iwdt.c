@@ -35,7 +35,7 @@
 #include "ra8_iwdt_regs.h"
 #include "ra8_log.h"
 
-static const char* s_tag = "IWDT";
+static const char* const s_tag = "IWDT";
 
 /**
  * @struct ra8_iwdt_state_t

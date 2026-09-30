@@ -61,7 +61,7 @@
 #include "ra8_mstp.h"
 #include "ra8_pdg_regs.h"
 
-static const char* s_tag = "PDG";
+static const char* const s_tag = "PDG";
 
 /**
  * @enum ra8_pdg_internal_t

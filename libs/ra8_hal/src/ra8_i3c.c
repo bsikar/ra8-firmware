@@ -86,7 +86,7 @@ bool priv_ra8_i3c_internal_hdr_mode_invalid(uint32_t sdr_val,
 }
 
 /** @brief Logging tag for this module. */
-static const char* s_tag = "I3C";
+static const char* const s_tag = "I3C";
 
 /** @brief Currently registered IRQ callback (NULL when detached). */
 static ra8_i3c_event_fn_t s_i3c_fn;

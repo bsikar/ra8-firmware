@@ -45,7 +45,7 @@
  * @note Read-only literal; never modified.
  * @since 0.1.0
  */
-static const char* s_tag = "NPU";
+static const char* const s_tag = "NPU";
 
 /**
  * @enum ra8_npu_mstp_enc_t

@@ -43,7 +43,7 @@
 #include "ra8_hal_internal.h"
 #include "ra8_log.h"
 
-static const char* s_tag = "CANFD";
+static const char* const s_tag = "CANFD";
 
 /**
  * @enum ra8_canfd_timing_search_t

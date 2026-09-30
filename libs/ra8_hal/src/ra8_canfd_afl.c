@@ -39,7 +39,7 @@
 #include "ra8_check.h"
 #include "ra8_err.h"
 
-static const char* s_tag = "CANFD";
+static const char* const s_tag = "CANFD";
 
 /**
  * @enum ra8_canfd_afl_local_t

@@ -25,7 +25,7 @@
 #include "ra8_systick.h"
 #include "ra8_time_constants.h"
 
-static const char* s_tag = "TIME";
+static const char* const s_tag = "TIME";
 
 static volatile uint32_t s_tick_ms = 0U;
 

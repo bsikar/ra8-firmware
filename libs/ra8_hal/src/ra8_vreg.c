@@ -69,7 +69,7 @@
  * @var s_tag
  * @brief Logging tag for ra8_log_* calls.
  */
-static const char* s_tag = "VREG";
+static const char* const s_tag = "VREG";
 
 /**
  * @struct ra8_vreg_state_t

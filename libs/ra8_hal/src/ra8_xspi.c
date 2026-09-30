@@ -69,7 +69,7 @@
 #include "ra8_xspi_internal.h"
 
 /** @brief Logging tag for this driver. */
-static const char* s_tag = "XSPI";
+static const char* const s_tag = "XSPI";
 
 /**
  * @enum ra8_xspi_cmd_limits_t

@@ -40,7 +40,7 @@
 #include "ra8_system_regs.h"
 #include "ra8_time_constants.h"
 
-static const char* s_tag = "CGC";
+static const char* const s_tag = "CGC";
 
 typedef enum : uint8_t {
   k_ra8_eswckdivcr_div1  = 0U, /**< /1                                          */

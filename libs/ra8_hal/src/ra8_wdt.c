@@ -76,7 +76,7 @@
  *
  * @note Read-only; do not modify.
  */
-static const char* s_tag = "WDT";
+static const char* const s_tag = "WDT";
 
 /**
  * @struct ra8_wdt_sub_t

@@ -33,7 +33,7 @@
 #include "ra8_mstp.h"
 #include "ra8_mstp_regs.h"
 
-static const char* s_tag = "ETHGWC";
+static const char* const s_tag = "ETHGWC";
 
 static ra8_eth_gwca_event_fn_t s_gwca_fn;
 static void*                   s_gwca_ctx;

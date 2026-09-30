@@ -43,7 +43,7 @@
 #include "ra8_sci.h"
 #include "ra8_sci_regs.h"
 
-static const char* s_tag = "LIN";
+static const char* const s_tag = "LIN";
 
 /* =============================================================================
  * File-local constants

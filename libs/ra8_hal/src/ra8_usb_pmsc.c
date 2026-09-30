@@ -52,7 +52,7 @@
 #include "ra8_usb.h"
 #include "ra8_usb_pmsc_internal.h"
 
-static const char* s_tag = "USBPMSC";
+static const char* const s_tag = "USBPMSC";
 
 /* =============================================================================
  * Internal constants

@@ -31,7 +31,7 @@
 #include "ra8_log.h"
 
 /** @brief Log tag for this driver. */
-static const char* s_tag = "SMBUS";
+static const char* const s_tag = "SMBUS";
 
 /** @brief SMBus scratch buffer sizes (max 255-byte payload + overhead). */
 typedef enum : uint16_t {

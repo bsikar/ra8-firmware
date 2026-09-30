@@ -26,7 +26,7 @@
 #include "ra8_widget_internal.h"
 
 /** @brief Logging / check tag. */
-static const char* s_tag = "ra8_widget_label";
+static const char* const s_tag = "ra8_widget_label";
 
 /**
  * @brief No border on a plain label -- a single background fill.

@@ -65,7 +65,7 @@ RA8_INTERNAL static inline void internal_byte_copy(uint8_t* dst, const uint8_t* 
   }
 }
 
-static const char* s_tag = "BLE";
+static const char* const s_tag = "BLE";
 
 /* =============================================================================
  * Driver-internal tunables and limits

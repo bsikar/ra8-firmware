@@ -36,7 +36,7 @@
 #include "ra8_mstp_regs.h"
 #include "ra8_sci_regs.h"
 
-static const char* s_tag = "SCI_SPI";
+static const char* const s_tag = "SCI_SPI";
 
 /**
  * @enum ra8_sci_spi_dim_t
