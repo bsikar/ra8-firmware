@@ -265,16 +265,14 @@ ra8_webp_facade_sources(RA8_WEBP_SOURCES ${FW_ROOT})
 # encoding and the canonical boot attribute map are Zig now, linked via
 # tests/cmake/zig_libraries.cmake.
 file(GLOB RA8_BOARD_EK_RA8D2_SOURCES CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra8_board_ek_ra8d2/src/*.c)
-# ra8_lsm6dso keeps ONE C source: the register-level driver (the CTRL1_XL /
+# ra8_lsm6dso has no C sources left: the register-level driver (the CTRL1_XL /
 # CTRL2_G encoders, the little-endian sample decoders, the temperature
-# conversion and the FIFO drain) is Zig now, linked via
-# tests/cmake/zig_libraries.cmake, but src/ra8_lsm6dso_bind.c stays C. That
-# TU is the house-I2C-seam binder added by #760 after this port branch was
-# cut; it is a consumer of the driver's C ABI (it calls ra8_lsm6dso_init),
-# not part of the implementation being ported, so it compiles beside the Zig
-# archive. Dropping this glob would leave ra8_lsm6dso_bind_i2c undefined for
-# imu_lsm6dso_demo and for the four binder cases in test_ra8_lsm6dso.c.
-file(GLOB_RECURSE RA8_LSM6DSO_SOURCES CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra8_lsm6dso/src/*.c)
+# conversion and the FIFO drain) AND the house-I2C binder from #760 are all
+# Zig now, linked via tests/cmake/zig_libraries.cmake. The four binder cases
+# in test_ra8_lsm6dso.c take ra8_lsm6dso_bind_i2c from that archive, which
+# ra8_core_hal links PUBLIC and which is attached at directory scope for the
+# object-library consumers; imu_lsm6dso_demo names ra8_lsm6dso in LIBS, so the
+# app recipe registers the same archive for it.
 # ra8_ov5640 has no C sources left: the register protocol, the qualified VGA
 # DVP scene table, the JPEG overlay, the status decode AND the house-I2C binder
 # from #760 are all Zig now, linked via tests/cmake/zig_libraries.cmake. The
