@@ -163,6 +163,63 @@ def run_objdump(objdump: str, elf: Path) -> str:
     return proc.stdout
 
 
+def app_dir(app: str) -> Path:
+    """Resolve an app's source directory through the repo's own discovery helper."""
+    helper = REPO_ROOT / "scripts" / "dev" / "ra8_apps.py"
+    try:
+        proc = subprocess.run(  # noqa: S603 -- fixed argv, in-repo helper
+            [sys.executable, str(helper), "dir", app],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+    except OSError as exc:
+        msg = f"{app}: cannot run {helper.name} to resolve its directory"
+        raise HeadroomError(msg) from exc
+    out = proc.stdout.strip()
+    if proc.returncode != 0 or not out:
+        msg = (
+            f"{app}: {helper.name} could not resolve a directory "
+            f"({proc.stderr.strip() or 'no output'}). A pinned row must name a real app."
+        )
+        raise HeadroomError(msg)
+    return REPO_ROOT / out
+
+
+def check_all(objdump: str) -> int:
+    """Measure every pinned row against the image the cross-build produced.
+
+    The ceiling file is the only place an app needs adding: this walks it, so
+    pinning a new app never means editing a gate.
+    """
+    if not CEILINGS.exists():
+        msg = f"{CEILINGS} is missing; cannot report a pass"
+        raise HeadroomError(msg)
+    rows = parse_ceilings(CEILINGS.read_text())
+    worst = 0
+    for app, row in sorted(rows.items()):
+        elf = app_dir(app) / "build" / f"{app}.elf"
+        if not elf.exists():
+            msg = (
+                f"{app}: {elf} does not exist. This runs after the cross-build; "
+                f"an absent image is a failed build, not a pass."
+            )
+            raise HeadroomError(msg)
+        used, err = evaluate(app, row, run_objdump(objdump, elf))
+        if err:
+            print(f"image-headroom: {err}", file=sys.stderr)
+            worst = max(worst, 1)
+        else:
+            ceiling = int(row["ceiling_bytes"])
+            region_bytes = int(row["region_bytes"])
+            print(
+                f"image-headroom: {app} {row['region']} {used} B, "
+                f"{ceiling - used} B under the {ceiling} B ceiling "
+                f"({region_bytes - used} B under the hard region limit)"
+            )
+    return worst
+
+
 def _resolve(args: argparse.Namespace) -> tuple[str, dict[str, object], Path]:
     """Validate inputs and return (app, ceiling row, elf path)."""
     if args.elf is None:
@@ -286,11 +343,24 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--elf", type=Path, help="linked ELF to measure")
     parser.add_argument("--app", help="ceiling row to use; defaults to the ELF stem")
     parser.add_argument("--objdump", default=DEFAULT_OBJDUMP)
+    parser.add_argument(
+        "--all",
+        action="store_true",
+        dest="check_every_pinned_row",
+        help="measure every app pinned in the ceiling file",
+    )
     parser.add_argument("--selftest", action="store_true")
     args = parser.parse_args(argv)
 
     if args.selftest:
         return selftest()
+
+    if args.check_every_pinned_row:
+        try:
+            return check_all(args.objdump)
+        except HeadroomError as exc:
+            print(f"image-headroom: {exc}", file=sys.stderr)
+            return 2
 
     try:
         app, row, elf = _resolve(args)

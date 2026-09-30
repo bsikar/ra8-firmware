@@ -268,9 +268,9 @@ gate_build_cross() (
   # Headroom canary: the cross-build is the only place an app is actually
   # linked, so it is the only place the image can be measured. The checker is
   # fail-closed, so a missing ELF here fails the gate rather than passing quietly.
-  shelf_dir="$(python3 scripts/dev/ra8_apps.py dir ereader_shelf)"
-  python3 scripts/checks/check_image_headroom.py \
-    --elf "$shelf_dir/build/ereader_shelf.elf" --app ereader_shelf
+  # --all walks .github/image-headroom-ceilings.tsv, so pinning another app is a
+  # one-line change to that file and never an edit to this gate.
+  python3 scripts/checks/check_image_headroom.py --all
 )
 
 # --- build-cross-union ----------------------------------------------------
