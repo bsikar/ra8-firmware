@@ -136,8 +136,14 @@ def load_baseline(baseline_file: Path = BASELINE_FILE) -> Counter:
     return counts
 
 
-def write_baseline(counts: Counter, baseline_file: Path = BASELINE_FILE) -> None:
-    """Write `counts` out in the committed, sorted, diffable form."""
+def render_baseline(counts: Counter) -> str:
+    """Return the canonical committed text for `counts`.
+
+    ONE definition of the file's shape: the fixed header, the recorded totals,
+    then the non-zero buckets in sorted order, one tab-separated row each.
+    ``write_baseline`` emits it and ``attest_baseline`` re-derives it, so "what
+    the tool would have produced" is never a second, drifting opinion (#712).
+    """
     total = sum(counts.values())
     lines = [
         "# MC/DC compound-decision ratchet baseline -- per-file-per-function counts.",
@@ -180,7 +186,89 @@ def write_baseline(counts: Counter, baseline_file: Path = BASELINE_FILE) -> None
     for (path, function), n in sorted(counts.items()):
         if n:
             lines.append(f"{path}\t{function}\t{n}")
-    baseline_file.write_text("\n".join(lines) + "\n", encoding="ascii")
+    return "\n".join(lines) + "\n"
+
+
+def write_baseline(counts: Counter, baseline_file: Path = BASELINE_FILE) -> None:
+    """Write `counts` out in the committed, sorted, diffable form.
+
+    A zero-count bucket never reaches the file: it is burned-down debt wearing
+    a row, and leaving it behind keeps a dead (file, function) pair alive as
+    headroom nobody audited.
+    """
+    keep = Counter({key: n for key, n in counts.items() if n})
+    baseline_file.write_text(render_baseline(keep), encoding="ascii")
+
+
+def attest_baseline(baseline_file: Path = BASELINE_FILE) -> list[str]:
+    """Return the reasons the committed baseline is not one this tool produced.
+
+    #712: the ratchet baselines are machine-generated, but nothing asserted
+    they were machine-written. A plain `sort` over the clang-tidy baseline
+    re-ordered its header, added a row the ratchet itself refuses, and survived
+    ten days of green CI; attesting the MISRA baseline then caught an in-place
+    `sed` rename that left eight rows out of sort order. ``--check`` read the
+    rows and never noticed, because parseable was the only bar.
+
+    This file is the one where that matters most. Its own header TELLS you to
+    hand-edit it: renaming a function reads as growth, so the documented
+    procedure is to rewrite the row by hand keeping the count identical. That
+    is a deliberate, reviewable exception, and it is exactly the edit that can
+    drift, because a hand-written row lands wherever the old one sat rather
+    than where sorting puts it.
+
+    So re-derive the canonical text from the committed rows and demand
+    byte-identity. A re-ordered or truncated header, a stale total, a stray
+    blank line, a duplicated or unsorted row, a wrong column count, a CRLF:
+    none of those stay invisible. The sanctioned hand-rename still works; it
+    just has to leave the file in the form the tool would have written, which
+    is a re-sort away and shows up in review as the same one-line diff.
+
+    Also refuse a zero-count row: zero findings is burn-down, and a frozen zero
+    is headroom for a bucket nobody is watching.
+
+    What this deliberately does NOT claim: it cannot tell a hand-written row
+    whose shape is canonical from one the scanner produced. It proves the file
+    is in the form the tool emits, which is what the bypass violated.
+    """
+    problems: list[str] = []
+    if not baseline_file.is_file():
+        return problems
+
+    committed = baseline_file.read_text(encoding="ascii")
+    counts = load_baseline(baseline_file)
+
+    for path, function in sorted(key for key, n in counts.items() if not n):
+        problems.append(
+            f"{path}\t{function}: baselined at zero decisions. That is "
+            "burn-down, not frozen debt: drop the row rather than keeping the "
+            "headroom."
+        )
+
+    if committed != render_baseline(counts):
+        try:
+            shown = baseline_file.relative_to(REPO_ROOT)
+        except ValueError:  # a selftest fixture outside the repo
+            shown = baseline_file
+        problems.append(
+            f"{shown} is not what mcdc_compound_ratchet.py --update would "
+            "write (header, recorded totals, ordering, spacing or row shape "
+            "differs). Regenerate it with --update. A sanctioned hand-rename "
+            "is fine, but leave the rows sorted."
+        )
+    return problems
+
+
+def report_attestation(baseline_file: Path = BASELINE_FILE) -> int:
+    """Print any attestation problems with `baseline_file`; return the exit code."""
+    problems = attest_baseline(baseline_file)
+    if not problems:
+        print(f"mcdc_compound_ratchet.py: {baseline_file.name} attests as machine-written.")
+        return 0
+    print("MC/DC compound baseline attestation FAILED:", file=sys.stderr)
+    for problem in problems:
+        print(f"  - {problem}", file=sys.stderr)
+    return 1
 
 
 def scope_reason(files: int, citations: int) -> str | None:
@@ -446,6 +534,49 @@ def _selftest_ratchet(tmp: Path) -> list[str]:
     return failures
 
 
+ATTESTATION_CASES = 5
+"""Number of both-direction attestation assertions `_selftest_attestation` makes."""
+
+
+def _selftest_attestation(tmp: Path) -> list[str]:
+    """Prove attestation accepts the tool's own output and rejects hand edits.
+
+    Every case runs against a throwaway fixture, never the committed baseline:
+    the #712 bypass is exactly a file edited in place, so a selftest that
+    rewrote the real one would be reproducing the bug it is meant to catch.
+    """
+    failures: list[str] = []
+    fixture = tmp / "attest-baseline.txt"
+    if fixture.resolve() == BASELINE_FILE.resolve():
+        return ["attestation fixture resolved to the committed baseline"]
+
+    write_baseline(Counter({("libs/a.c", "fn_x"): 3, ("libs/b.c", "fn_y"): 1}), fixture)
+    if attest_baseline(fixture):
+        failures.append("freshly written baseline attests clean")
+
+    mutations = {
+        "a whole-file sort fires": lambda s: "\n".join(sorted(s.splitlines())) + "\n",
+        "a trailing blank line fires": lambda s: s + "\n",
+        # The documented hand-rename, done carelessly: the new name keeps the
+        # old row's position instead of being re-sorted into place.
+        "an out-of-order hand rename fires": lambda s: s.replace(
+            "libs/a.c\tfn_x\t3", "libs/z.c\tfn_x\t3"
+        ),
+        "a stale recorded total fires": lambda s: s.replace(
+            "# Total at this baseline: 4 ", "# Total at this baseline: 9 "
+        ),
+    }
+    for name, transform in mutations.items():
+        original = fixture.read_text(encoding="ascii")
+        fixture.write_text(transform(original), encoding="ascii")
+        try:
+            if not attest_baseline(fixture):
+                failures.append(name)
+        finally:
+            fixture.write_text(original, encoding="ascii")
+    return failures
+
+
 def _selftest_scope_guard() -> list[str]:
     """Assertions about the scope guards, in both directions."""
     failures: list[str] = []
@@ -497,6 +628,7 @@ def selftest() -> int:
         tmp = Path(td)
         failures = _selftest_scan(tmp) + _selftest_ratchet(tmp)
         failures += _selftest_citation_resolution(tmp)
+        failures += _selftest_attestation(tmp)
     failures += _selftest_scope_guard()
 
     if failures:
@@ -543,15 +675,28 @@ def main() -> int:
     parser.add_argument("--update", action="store_true", help="rewrite the baseline")
     parser.add_argument("--list", action="store_true", help="print the whole backlog")
     parser.add_argument("--selftest", action="store_true", help="assert this gate still fires")
+    parser.add_argument(
+        "--attest",
+        action="store_true",
+        help="prove the committed baseline is one this tool wrote, then exit",
+    )
     args = parser.parse_args()
 
     if args.selftest:
         return selftest()
+    # Attestation needs no scan at all, so it runs anywhere and runs first.
+    if args.attest:
+        return report_attestation()
     root = Path(args.root).resolve()
     if args.list:
         return _list_backlog(root)
     if not (args.check or args.update):
-        parser.error("one of --check / --update / --list / --selftest is required")
+        parser.error("one of --check / --update / --list / --attest / --selftest is required")
+
+    # #712: read the rows only after proving the file is machine-written.
+    attest_rc = report_attestation()
+    if attest_rc:
+        return attest_rc
 
     current, files, citations = scan(root)
     stale = stale_tree_citations(root)
