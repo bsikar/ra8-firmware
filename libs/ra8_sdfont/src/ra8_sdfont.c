@@ -48,7 +48,7 @@
  * @note File-scope, read-only after init.
  * @since 0.1.0
  */
-static const char* s_tag = "SDFONT";
+static const char* const s_tag = "SDFONT";
 
 /**
  * @var s_default_name

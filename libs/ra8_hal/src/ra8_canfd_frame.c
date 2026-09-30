@@ -42,7 +42,7 @@
 #include "ra8_err.h"
 #include "ra8_hw_err.h"
 
-static const char* s_tag = "CANFD";
+static const char* const s_tag = "CANFD";
 
 /**
  * @enum ra8_canfd_frame_spin_t

@@ -37,7 +37,7 @@
 #include "ra8_board_ek_ra8d2.h"
 #endif
 
-static const char* s_tag = "NSCPRH";
+static const char* const s_tag = "NSCPRH";
 
 static bool s_initialized = false;
 

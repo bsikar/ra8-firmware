@@ -36,7 +36,7 @@
 #include "ra8_log.h"
 #include "ra8_mstp.h"
 
-static const char* s_tag = "DOC";
+static const char* const s_tag = "DOC";
 
 /**
  * @brief Write `mode` into `DOCR.OMS[1:0]`, clearing DOBW for 16-bit ops.

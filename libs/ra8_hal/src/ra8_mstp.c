@@ -37,7 +37,7 @@
  * =============================================================================
  */
 
-static const char* s_tag = "MSTP";
+static const char* const s_tag = "MSTP";
 
 /**
  * @enum ra8_mstp_dim_t

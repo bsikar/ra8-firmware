@@ -38,7 +38,7 @@
  * @note Static, file-scope.
  * @since 0.1.0
  */
-static const char* s_tag = "RSIP_KI";
+static const char* const s_tag = "RSIP_KI";
 
 /*
  * Fail-closed stub-crypto gate (issue #180). The key-wrap and MAC below use a

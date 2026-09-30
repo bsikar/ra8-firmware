@@ -27,7 +27,7 @@
 #include "ra8_widget_internal.h"
 
 /** @brief Logging / check tag. */
-static const char* s_tag = "ra8_widget_button";
+static const char* const s_tag = "ra8_widget_button";
 
 /**
  * @brief Pick the face fill colour for the button's current state.

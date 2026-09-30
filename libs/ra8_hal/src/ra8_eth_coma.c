@@ -26,7 +26,7 @@
 #include "ra8_mstp.h"
 #include "ra8_mstp_regs.h"
 
-static const char* s_tag = "ETHCMA";
+static const char* const s_tag = "ETHCMA";
 
 /**
  * @enum ra8_eth_coma_delay_t

@@ -81,7 +81,7 @@ static uint32_t s_fake_ar_counter = (uint32_t)k_ra8_rot_ar_erased;
  * @warning Do not modify.
  * @since   0.1.0
  */
-static const char* s_tag = "ROLLBACK";
+static const char* const s_tag = "ROLLBACK";
 
 ra8_err_t ra8_rot_antirollback_check(uint32_t image_version, uint32_t stored_min_version)
 {

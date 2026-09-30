@@ -22,7 +22,7 @@
 #include "ra8_icu_regs.h"
 #include "ra8_log.h"
 
-static const char* s_tag = "ICU";
+static const char* const s_tag = "ICU";
 
 /**
  * @enum ra8_icu_clear_val_t

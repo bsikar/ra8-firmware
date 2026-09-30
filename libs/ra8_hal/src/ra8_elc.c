@@ -28,7 +28,7 @@
 #include "ra8_mstp.h"
 #include "ra8_mstp_regs.h"
 
-static const char* s_tag = "ELC";
+static const char* const s_tag = "ELC";
 
 /* =============================================================================
  * Internal register accessors

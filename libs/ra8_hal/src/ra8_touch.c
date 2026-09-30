@@ -31,7 +31,7 @@
 #include "ra8_touch_gt911_regs.h"
 
 /** @brief Log tag. */
-static const char* s_tag = "TOUCH";
+static const char* const s_tag = "TOUCH";
 
 /**
  * @enum ra8_touch_internal_t

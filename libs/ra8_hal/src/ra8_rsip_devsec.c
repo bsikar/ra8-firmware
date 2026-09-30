@@ -79,7 +79,7 @@
  */
 /* The fail-closed rebuild (test_ra8_rsip_devsec_failclosed) compiles this TU
  * with RA8_LOG_LEVEL=0, where the check macros discard their tag operand. */
-[[maybe_unused]] static const char* s_tag = "RSIP";
+[[maybe_unused]] static const char* const s_tag = "RSIP";
 
 /*
  * The device-security registers modelled below (lifecycle state, debug level,

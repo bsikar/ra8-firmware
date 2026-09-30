@@ -20,7 +20,7 @@
 #include "ra8_nsc.h"
 #include "ra8_nsc_veneer.h"
 
-static const char* s_tag = "NSCKV";
+static const char* const s_tag = "NSCKV";
 
 /**
  * @brief NSC veneer: SHA-256(slot_key XOR challenge) for a stored slot.

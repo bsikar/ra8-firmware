@@ -62,7 +62,7 @@
  * @warning Never modify directly -- declared `const` to enforce.
  * @since 0.1.0
  */
-static const char* s_tag = "MIPI_DSI";
+static const char* const s_tag = "MIPI_DSI";
 
 /**
  * @brief Decode an RXRSS slot register into a struct.

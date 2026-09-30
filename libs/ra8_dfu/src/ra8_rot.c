@@ -44,7 +44,7 @@
  * @warning Do not modify.
  * @since   0.1.0
  */
-static const char* s_tag = "ROT";
+static const char* const s_tag = "ROT";
 
 /**
  * @var s_rot_root_pubkey

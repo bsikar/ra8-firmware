@@ -30,7 +30,7 @@
 #include "ra8_mstp_regs.h"
 #include "ra8_pdm_regs.h"
 
-static const char* s_tag = "PDM";
+static const char* const s_tag = "PDM";
 
 /** @brief Per-channel interrupt callback binding. */
 typedef struct {

@@ -31,7 +31,7 @@
 #include "ra8_hw_intrinsics.h"
 #include "ra8_log.h"
 
-static const char* s_tag = "ETHGWC";
+static const char* const s_tag = "ETHGWC";
 
 /**
  * @brief Reconstruct the 12-bit DS (descriptor size) field from a basic descriptor.

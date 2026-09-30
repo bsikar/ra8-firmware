@@ -38,7 +38,7 @@
 #include "ra8_jpeg_sw_internal.h"
 
 /** @brief Component log tag. */
-static const char* s_tag = "JPEG_SW";
+static const char* const s_tag = "JPEG_SW";
 
 /* ------------------------------------------------------------------ */
 /* Decoder */

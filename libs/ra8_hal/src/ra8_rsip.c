@@ -89,7 +89,7 @@ static void internal_sw_sha256(const uint8_t* msg, uint32_t msg_len, uint8_t* di
  * @note Static, file-scope.
  * @since 0.1.0
  */
-static const char* s_tag = "RSIP";
+static const char* const s_tag = "RSIP";
 
 /**
  * @var s_rsip_fn

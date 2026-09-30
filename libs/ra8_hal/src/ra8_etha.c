@@ -69,7 +69,7 @@
  * @note Read-only after init; treat as immutable.
  * @since 0.1.0
  */
-static const char* s_tag = "ETHA";
+static const char* const s_tag = "ETHA";
 
 /**
  * @var g_ra8_etha_diag_last_eams

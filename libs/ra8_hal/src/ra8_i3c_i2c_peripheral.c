@@ -39,7 +39,7 @@
 #include "ra8_mstp.h"
 #include "ra8_mstp_regs.h"
 
-static const char* s_tag = "IICBP";
+static const char* const s_tag = "IICBP";
 
 /**
  * @enum ra8_i3c_i2c_peripheral_internal_t

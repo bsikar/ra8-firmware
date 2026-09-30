@@ -42,7 +42,7 @@
 #include "ra8_spi.h"
 #include "ra8_spi_regs.h"
 
-static const char* s_tag = "SPI_B";
+static const char* const s_tag = "SPI_B";
 
 /**
  * @brief Report whether a DMA entry point's channel index and length are usable.

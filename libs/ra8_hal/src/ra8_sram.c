@@ -51,7 +51,7 @@
  */
 
 /** @brief Module log tag. */
-static const char* s_tag = "SRAM";
+static const char* const s_tag = "SRAM";
 
 /**
  * @enum ra8_sram_local_t

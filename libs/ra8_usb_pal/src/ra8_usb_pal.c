@@ -70,7 +70,7 @@ bool priv_usb_pal_ep_out_of_range(uint8_t ep_addr, uint8_t ep_max)
   return (ep_addr == 0U) || (ep_addr > ep_max);
 }
 
-static const char* s_tag = "USBPAL";
+static const char* const s_tag = "USBPAL";
 
 /* =============================================================================
  * Ring sizing

@@ -28,7 +28,7 @@
 #include "ra8_check.h"
 #include "ra8_err.h"
 
-static const char* s_tag = "OTACMT";
+static const char* const s_tag = "OTACMT";
 
 /**
  * @var s_pending

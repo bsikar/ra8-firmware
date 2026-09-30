@@ -21,7 +21,7 @@
 #include "ra8_err.h"
 #include "secure_trng_internal.h"
 
-static const char* s_tag = "SECTRNG";
+static const char* const s_tag = "SECTRNG";
 
 /*
  * Fail-closed stub-crypto gate (issue #180). The xorshift64* core below is a

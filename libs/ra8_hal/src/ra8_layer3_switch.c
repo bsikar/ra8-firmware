@@ -22,7 +22,7 @@
 #include "ra8_err.h"
 #include "ra8_log.h"
 
-static const char* s_tag = "L3SW";
+static const char* const s_tag = "L3SW";
 
 typedef struct {
   bool opened;      /**< Opened.      */
