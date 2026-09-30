@@ -21,6 +21,7 @@ pub const Paint = paint_abi.Paint;
 /// The `ra8_err_t` values these membranes answer with.
 pub const err = struct {
     pub const ok: u16 = 0;
+    pub const invalid_arg: u16 = 0x103;
     pub const null_ptr: u16 = 0x504;
 };
 
