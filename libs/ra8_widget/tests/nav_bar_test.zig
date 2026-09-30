@@ -166,6 +166,17 @@ test "cells tile the strip with no gap and no overlap" {
     try std.testing.expectEqual(strip.x + strip.w, x);
 }
 
+test "cellStart is the boundary both halves are built from" {
+    // cellRect's edges ARE cellStart's values, which is the property the hit
+    // maths leans on; a second expression here would defeat the point.
+    for (0..5) |i| {
+        const idx: u16 = @intCast(i);
+        try std.testing.expectEqual(abi.cellStart(odd_strip.w, idx, 4), abi.cellRect(odd_strip, idx, 4).x - odd_strip.x);
+    }
+    try std.testing.expectEqual(0, abi.cellStart(odd_strip.w, 0, 4));
+    try std.testing.expectEqual(odd_strip.w, abi.cellStart(odd_strip.w, 4, 4));
+}
+
 test "an indivisible width absorbs the remainder without a gap" {
     var x = odd_strip.x;
     var widths: [4]i32 = undefined;
@@ -180,29 +191,64 @@ test "an indivisible width absorbs the remainder without a gap" {
     try std.testing.expectEqual(101, widths[0] + widths[1] + widths[2] + widths[3]);
 }
 
-test "on a divisible width the hit maths is the exact inverse of the cell maths" {
+/// Every pixel column of every cell routes to the cell it is drawn in.
+fn expectHitsMatchCells(rect: abi.Rect, count: u16) !void {
+    for (0..count) |i| {
+        const idx: u16 = @intCast(i);
+        const cell = abi.cellRect(rect, idx, count);
+        if (cell.w == 0) continue; // rounded out of existence; nothing to hit
+        var px = cell.x;
+        while (px < cell.x + cell.w) : (px += 1) {
+            try std.testing.expectEqual(idx, abi.hitCell(rect, count, px).?);
+        }
+    }
+}
+
+test "on a divisible width every cell's first and last pixel route to it" {
     for (0..4) |i| {
         const idx: u16 = @intCast(i);
         const cell = abi.cellRect(strip, idx, 4);
         try std.testing.expectEqual(idx, abi.hitCell(strip, 4, cell.x).?);
         try std.testing.expectEqual(idx, abi.hitCell(strip, 4, cell.x + cell.w - 1).?);
     }
+    try expectHitsMatchCells(strip, 4);
 }
 
-test "an indivisible width puts each cell's first pixel in the cell before it" {
-    // Inherited C behaviour, pinned rather than fixed: the cell maths rounds
-    // prefix widths down (`w * i / count`) while the hit maths divides the
-    // offset (`(px - x) * count / w`), and the two only agree exactly when
-    // `count` divides `w`. So on a 101-wide strip cell 1 is drawn from x = 25
-    // but a tap at x = 25 routes to cell 0. Every cell's last pixel is right.
-    for (1..4) |i| {
+test "an indivisible width routes each cell's first pixel to that same cell" {
+    // #2750. The C this was ported from computed cell rects one way (`w * i /
+    // count`) and hit-tested another (`(px - x) * count / w`), two expressions
+    // that only coincide when `count` divides `w`: on a 101-wide strip cell 1
+    // was drawn from x = 25 but a tap at x = 25 activated cell 0. Both halves
+    // now derive from `cellStart`, so the leading edge belongs to its own cell.
+    for (0..4) |i| {
         const idx: u16 = @intCast(i);
         const cell = abi.cellRect(odd_strip, idx, 4);
-        try std.testing.expectEqual(idx - 1, abi.hitCell(odd_strip, 4, cell.x).?);
+        try std.testing.expectEqual(idx, abi.hitCell(odd_strip, 4, cell.x).?);
         try std.testing.expectEqual(idx, abi.hitCell(odd_strip, 4, cell.x + cell.w - 1).?);
     }
-    const first = abi.cellRect(odd_strip, 0, 4);
-    try std.testing.expectEqual(0, abi.hitCell(odd_strip, 4, first.x).?);
+    try expectHitsMatchCells(odd_strip, 4);
+}
+
+test "widths that divide and widths that do not all route pixel for pixel" {
+    // The remainder lands in a different place for each of these, so every one
+    // is a distinct rounding pattern rather than the same case restated.
+    for ([_]i32{ 1, 2, 3, 7, 37, 99, 100, 101, 102, 103, 240, 241 }) |w| {
+        for ([_]u16{ 1, 2, 3, 4, 5, 8 }) |count| {
+            try expectHitsMatchCells(.{ .x = 17, .y = 0, .w = w, .h = 40 }, count);
+        }
+    }
+}
+
+test "a cell the rounding left zero pixels wide is never routed to" {
+    // 3 pixels over 4 cells: boundaries 0, 0, 1, 2, so cell 0 is empty and the
+    // strip's first pixel belongs to cell 1. Every tap still lands on a cell
+    // that has pixels, and the strip stays fully covered.
+    const thin: abi.Rect = .{ .x = 0, .y = 0, .w = 3, .h = 40 };
+    try std.testing.expectEqual(0, abi.cellRect(thin, 0, 4).w);
+    try std.testing.expectEqual(1, abi.hitCell(thin, 4, 0).?);
+    try std.testing.expectEqual(2, abi.hitCell(thin, 4, 1).?);
+    try std.testing.expectEqual(3, abi.hitCell(thin, 4, 2).?);
+    try expectHitsMatchCells(thin, 4);
 }
 
 test "a tap off the strip, an empty strip and a degenerate width all miss" {

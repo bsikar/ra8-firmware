@@ -35,5 +35,5 @@
     "tests/nav_bar_test.zig",
     "tests/panel_test.zig"
   ],
-  "minimum_tests": 160
+  "minimum_tests": 163
 }
