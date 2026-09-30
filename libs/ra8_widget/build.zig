@@ -3,9 +3,10 @@
 //!
 //! Build graph for the Zig half of `ra8_widget`. The library's public C ABI
 //! (`inc/ra8_widget.h`) is unchanged; this archive carries the module-private
-//! paint helpers that `src/ra8_widget_internal.h` declares plus the text-label
-//! and push-button leaf widgets, so the sibling widget translation units link
-//! them instead of compiling `ra8_widget_paint.c` / `_label.c` / `_button.c`.
+//! paint helpers that `src/ra8_widget_internal.h` declares plus the text-label,
+//! push-button and progress-bar leaf widgets, so the sibling widget translation
+//! units link them instead of compiling `ra8_widget_paint.c` / `_label.c` /
+//! `_button.c` / `_progress_bar.c`.
 //! The `test` step verifies the pure geometry and each membrane.
 
 const std = @import("std");
@@ -82,13 +83,28 @@ pub fn build(b: *std.Build) void {
     button_test_module.addImport("abi", button_module);
     const button_tests = b.addTest(.{ .root_module = button_test_module });
 
+    const progress_bar_module = b.createModule(.{
+        .root_source_file = b.path("src/widget_progress_bar_abi.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    const progress_bar_test_module = b.createModule(.{
+        .root_source_file = b.path("tests/progress_bar_test.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    progress_bar_test_module.addImport("abi", progress_bar_module);
+    const progress_bar_tests = b.addTest(.{ .root_module = progress_bar_test_module });
+
     const run_internal_tests = b.addRunArtifact(internal_tests);
     const run_abi_tests = b.addRunArtifact(abi_tests);
     const run_label_tests = b.addRunArtifact(label_tests);
     const run_button_tests = b.addRunArtifact(button_tests);
+    const run_progress_bar_tests = b.addRunArtifact(progress_bar_tests);
     const test_step = b.step("test", "Run Zig ra8_widget tests");
     test_step.dependOn(&run_internal_tests.step);
     test_step.dependOn(&run_abi_tests.step);
     test_step.dependOn(&run_label_tests.step);
     test_step.dependOn(&run_button_tests.step);
+    test_step.dependOn(&run_progress_bar_tests.step);
 }
