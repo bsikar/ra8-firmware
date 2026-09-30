@@ -96,9 +96,9 @@ ra8_add_zig_library(
 )
 
 # Fully migrated: the registry, the focus lifecycle, input / tick / render
-# routing and the navigation back-stack are Zig now, so libs/ra8_app/src has no
-# .c left and the RA8_APP_SOURCES glob is gone from library_sources.cmake and
-# core_hal.cmake.
+# routing, the navigation back-stack and the .ra8app container and admission
+# gate (#2668) are Zig now, so libs/ra8_app/src has no .c left and the
+# RA8_APP_SOURCES glob is gone from library_sources.cmake and core_hal.cmake.
 ra8_add_zig_library(
   NAME
   ra8_app
