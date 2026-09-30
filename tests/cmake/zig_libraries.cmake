@@ -601,12 +601,20 @@ ra8_add_zig_library(
   ra8_secure_app
 )
 
-# Partially migrated: the fixed-cell slab allocator and the byte-stream adapter
-# over the page cache are Zig now, so libs/ra8_mem/src/ra8_slab.c and
-# src/ra8_vmem_stream.c are gone. inc/ra8_slab.h and inc/ra8_vmem_stream.h are
+# Partially migrated: the fixed-cell slab allocator, the byte-stream adapter
+# over the page cache, the glyph atlas and the object-source registry are Zig
+# now, so libs/ra8_mem/src/ra8_slab.c, src/ra8_vmem_stream.c,
+# src/ra8_glyph_atlas.c and src/ra8_vsource.c are gone. Their headers are
 # unchanged and are still the membrane, so tests/core/src/test_ra8_slab.c,
-# tests/mocks/src/test_app_mem_subsystem.c, the EPUB streaming suite and
-# rabook_import link this archive without knowing the bodies moved.
+# tests/core/src/test_ra8_vsource.c, tests/mocks/src/test_app_mem_subsystem.c,
+# libs/ra8_io/src/ra8_io_blockdev_vsource.c, the book/EPUB/comic/manga suites
+# and rabook_import link this archive without knowing the bodies moved.
+#
+# The source registry adds no extern of its own: a paged object reads through a
+# callback pointer it is handed, not a link-time symbol. tools/cache_bench and
+# tools/reader_vmem compiled src/ra8_vsource.c by absolute path and now link
+# this archive instead; both already compile ra8_vmem.c and ra8_keycache.c, so
+# the archive's existing externs resolve there.
 #
 # The stream adapter still calls ra8_vmem_get/ra8_vmem_put, which are C in
 # src/ra8_vmem.c. The archive leaves those two undefined and the link resolves

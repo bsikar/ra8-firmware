@@ -14,6 +14,8 @@ pub const Err = enum(u16) {
     invalid_arg = 0x103,
     invalid_state = 0x104,
     invalid_size = 0x105,
+    not_supported = 0x107,
+    out_of_range = 0x208,
     null_ptr = 0x504,
     /// `ra8_err.h` publishes more codes than this library raises, and the page
     /// cache hands its own back through `ra8_vmem_get`. They pass through
