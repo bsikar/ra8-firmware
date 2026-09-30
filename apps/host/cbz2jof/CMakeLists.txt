@@ -34,6 +34,18 @@ set(CBZ2JOF_REPO_ROOT ${CMAKE_CURRENT_SOURCE_DIR}/../../..)
 get_filename_component(CBZ2JOF_REPO_ROOT "${CBZ2JOF_REPO_ROOT}" ABSOLUTE)
 set(CBZ2JOF_FW ${CBZ2JOF_REPO_ROOT}/libs)
 
+# libs/ra8_imgdec/inc/ra8_imgdec*.h is Zig now, so the targets below that used
+# to compile libs/ra8_imgdec/src/*.c by path link the archive instead.
+if(NOT TARGET ra8_zig::ra8_imgdec)
+  include(${CBZ2JOF_REPO_ROOT}/tests/cmake/zig_library.cmake)
+  ra8_add_zig_library(
+    NAME ra8_imgdec
+    ZIG_ROOT ${CBZ2JOF_REPO_ROOT}/libs/ra8_imgdec
+    LIBRARY_NAME ra8_imgdec
+  )
+endif()
+link_libraries(ra8_zig::ra8_imgdec)
+
 find_program(CBZ2JOF_GO_EXECUTABLE NAMES go)
 
 # ---------------------------------------------------------------------------
@@ -50,7 +62,6 @@ set(CBZ2JOF_FW_SRC
     ${CBZ2JOF_REPO_ROOT}/apps/shared_libs/jof/src/jof_png.c
     ${CBZ2JOF_REPO_ROOT}/apps/shared_libs/jof/src/jof_png_chunk.c
     ${CBZ2JOF_REPO_ROOT}/apps/shared_libs/compress/src/ra8_compress.c
-    ${CBZ2JOF_FW}/ra8_imgdec/src/ra8_imgdec_sniff.c
     ${CBZ2JOF_FW}/ra8_core/src/ra8_log.c
     ${CBZ2JOF_FW}/ra8_core/src/ra8_error_handler.c
     ${CBZ2JOF_FW}/ra8_core/src/ra8_decomp_limits.c

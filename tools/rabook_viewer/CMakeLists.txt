@@ -35,6 +35,18 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 #Firmware root(two directories up from tools / rabook_viewer /).
 get_filename_component(FW_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/../.." ABSOLUTE)
 
+# libs/ra8_imgdec/inc/ra8_imgdec*.h is Zig now, so the targets below that used
+# to compile libs/ra8_imgdec/src/*.c by path link the archive instead.
+if(NOT TARGET ra8_zig::ra8_imgdec)
+  include(${FW_ROOT}/tests/cmake/zig_library.cmake)
+  ra8_add_zig_library(
+    NAME ra8_imgdec
+    ZIG_ROOT ${FW_ROOT}/libs/ra8_imgdec
+    LIBRARY_NAME ra8_imgdec
+  )
+endif()
+link_libraries(ra8_zig::ra8_imgdec)
+
 # ---------------------------------------------------------------------------
 # ra8_viewer_read_path(<out> <lib_src_dir> KEEP <files...> DROP <files...>)
 #
@@ -273,10 +285,6 @@ set(RA8_THIRD_PARTY_SRC ${FW_ROOT}/apps/shared_libs/third_party/miniz/miniz.c
 # page bytes it did not produce, so when a page will not decode it names the
 # container rather than reporting an anonymous refusal. App-side builds
 # enumerate imgdec TUs by path (#754), so it is listed here explicitly.
-set(RA8_IMGDEC_SRC ${FW_ROOT}/libs/ra8_imgdec/src/ra8_imgdec_dims.c
-                   ${FW_ROOT}/libs/ra8_imgdec/src/ra8_imgdec_name.c
-                   ${FW_ROOT}/libs/ra8_imgdec/src/ra8_imgdec_scratch.c
-                   ${FW_ROOT}/libs/ra8_imgdec/src/ra8_imgdec_sniff.c
 )
 set(RA8_STREAM_POSIX_SRC ${FW_ROOT}/port/posix/src/ra8_io_stream_posix.c)
 set(RA8_STREAM_RAM_SRC ${FW_ROOT}/libs/ra8_io/src/ra8_io_stream_ram.c)

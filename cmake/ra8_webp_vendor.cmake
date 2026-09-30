@@ -90,10 +90,6 @@ function(ra8_webp_facade_sources out_var repo_root)
     message(FATAL_ERROR "ra8_webp_facade_sources(): no facade TUs under ${_root}/src")
   endif()
   set(_deps
-      ${repo_root}/libs/ra8_imgdec/src/ra8_imgdec.c
-      ${repo_root}/libs/ra8_imgdec/src/ra8_imgdec_dims.c
-      ${repo_root}/libs/ra8_imgdec/src/ra8_imgdec_scratch.c
-      ${repo_root}/libs/ra8_imgdec/src/ra8_imgdec_sniff.c
       ${repo_root}/libs/ra8_mem/src/ra8_arena.c
   )
   foreach(_dep IN LISTS _deps)
