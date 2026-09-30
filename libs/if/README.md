@@ -151,7 +151,7 @@ starts.
 | `tx_queue_ callers` | 1 |
 | `tx_byte_ callers` | 2 |
 | `tx_api.h includers` | 80 |
-| `ra8_systick.h includers` | 6 |
+| `ra8_systick.h includers` | 4 |
 
 ## How the numbers here are measured
 
@@ -174,6 +174,6 @@ grep -rlE '^[^*/]*\btx_queue_[a-z_]+\(' libs apps examples tests --include=*.c -
 grep -rlE '^[^*/]*\btx_byte_[a-z_]+\(' libs apps examples tests --include=*.c --include=*.h | grep -v /third_party/ | wc -l
 # tx_api.h includers -- 80 file(s)
 grep -rlE '#[ \t]*include[ \t]+[<"]tx_api\.h[>"]' libs apps examples tests --include=*.c --include=*.h | grep -v /third_party/ | wc -l
-# ra8_systick.h includers -- 6 file(s)
+# ra8_systick.h includers -- 4 file(s)
 grep -rlE '#[ \t]*include[ \t]+"ra8_systick\.h"' libs apps examples tests --include=*.c --include=*.h | grep -v /third_party/ | wc -l
 ```

@@ -76,8 +76,8 @@ pasted once:
 |---|---:|
 | `ra8_boot_entry.h` | 269 |
 | `ra8_exception.h` | 12 |
-| `ra8_scb.h` | 8 |
-| `ra8_systick.h` | 6 |
+| `ra6_scb.h` | 6 |
+| `ra8_systick.h` | 4 |
 
 The first of those decides the slicing. `ra8_boot_entry.h` is reached by two
 orders of magnitude more files than the other three combined, so it moves on its
@@ -187,9 +187,9 @@ that shrank is progress this page has to credit.
 grep -rlE '#[ \t]*include[ \t]+"ra8_boot_entry\.h"' libs apps examples tests --include=*.c --include=*.h | grep -v /third_party/ | wc -l
 # ra8_exception.h -- 12 file(s)
 grep -rlE '#[ \t]*include[ \t]+"ra8_exception\.h"' libs apps examples tests --include=*.c --include=*.h | grep -v /third_party/ | wc -l
-# ra8_scb.h -- 8 file(s)
+# ra8_scb.h -- 6 file(s)
 grep -rlE '#[ \t]*include[ \t]+"ra8_scb\.h"' libs apps examples tests --include=*.c --include=*.h | grep -v /third_party/ | wc -l
-# ra8_systick.h -- 6 file(s)
+# ra8_systick.h -- 4 file(s)
 grep -rlE '#[ \t]*include[ \t]+"ra8_systick\.h"' libs apps examples tests --include=*.c --include=*.h | grep -v /third_party/ | wc -l
 ```
 
