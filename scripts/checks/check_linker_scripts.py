@@ -732,6 +732,18 @@ def check_file(path: pathlib.Path, raw: bytes) -> list[Finding]:
     return findings
 
 
+# Which scripts can DEFINE a g_ra8_ls_* symbol, for the LD006 closure only.
+#
+# Wider than the per-file scan scope on purpose. A `.ld.in` is a CMake template:
+# `ra8_add_ns_image()` runs configure_file() over `ns_image.ld.in` and links the
+# result, so every symbol it defines is real at link time -- but the file on disk
+# holds `@RA8_NS_ROM_NAME@` where a region name belongs and is not valid ld
+# syntax, so the per-file rules (LD001-LD005, LD009-LD010) and the
+# option-setting family floor must NOT see it. Splitting the two scopes is the
+# whole point: judge a template on the symbols it defines, never on its syntax.
+DEFINING_SCRIPT_PATTERNS = ("*.ld", "*.ld.in")
+
+
 def defined_symbols(text: str) -> set[str]:
     """Linker symbols this script DEFINES, in any of the three spellings.
 
@@ -776,18 +788,24 @@ def closure_problems(defined: dict[str, list[str]], referenced: dict[str, list[s
 
 
 def check_symbol_closure(root: pathlib.Path) -> list[str]:
-    """LD006 -- cross-check symbols defined in .ld files against their uses in C.
+    """LD006 -- cross-check symbols defined in linker scripts against C uses.
 
     A whole-tree question by nature: a symbol is defined in one file and used
     in another, so unlike the per-file rules this cannot be answered from a
     staged subset and always scans everything.
 
+    Scans ``DEFINING_SCRIPT_PATTERNS``, which is WIDER than the per-file scan
+    scope: a ``.ld.in`` template defines real symbols once CMake configures it,
+    so ignoring templates reports a symbol as undefined that every link
+    resolves. The per-file rules still skip templates -- see the constant.
+
     Returns one message per problem; an empty list means the closure holds.
     """
     defined: dict[str, list[str]] = {}
-    for p in repo_files(root, "*.ld"):
-        for s in defined_symbols(p.read_text(encoding="ascii", errors="replace")):
-            defined.setdefault(s, []).append(str(p.relative_to(root)))
+    for pattern in DEFINING_SCRIPT_PATTERNS:
+        for p in repo_files(root, pattern):
+            for s in defined_symbols(p.read_text(encoding="ascii", errors="replace")):
+                defined.setdefault(s, []).append(str(p.relative_to(root)))
 
     referenced: dict[str, list[str]] = {}
     for pattern in ("*.c", "*.h", "*.cpp", "*.hpp"):
