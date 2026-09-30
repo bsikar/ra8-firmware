@@ -179,7 +179,17 @@ function(_ra8_app_link_zig_libraries _target)
   if(NOT _ra8_lib_zig)
     return()
   endif()
-  foreach(_entry ${_ra8_lib_zig})
+  # De-duplicate here rather than at the producer. sources.cmake names a
+  # migrated library from several independent blocks -- reflow, rabook_compile,
+  # jof and the comic path all pull ra8_imgdec transitively -- so an app that
+  # matches two of them names it twice. One archive wants one custom target, so
+  # the second registration is a hard "target already exists" configure error.
+  # The producer cannot own this: a dedupe there is a point in the file, and any
+  # block appended below it silently escapes. This is the one point every entry
+  # passes through.
+  set(_entries ${_ra8_lib_zig})
+  list(REMOVE_DUPLICATES _entries)
+  foreach(_entry ${_entries})
     string(REPLACE "|" ";" _pair "${_entry}")
     list(GET _pair 0 _lib)
     list(GET _pair 1 _lib_path)
