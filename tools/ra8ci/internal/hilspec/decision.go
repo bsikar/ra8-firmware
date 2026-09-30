@@ -24,11 +24,11 @@ type Workload struct {
 }
 
 type HistoricalObservation struct {
-	Workload         Workload       `json:"workload"`
-	Duration         time.Duration  `json:"duration"`
-	Succeeded        bool           `json:"succeeded"`
-	EvidenceComplete bool           `json:"evidence_complete"`
-	TimedOut         bool           `json:"timed_out"`
+	Workload         Workload      `json:"workload"`
+	Duration         time.Duration `json:"duration"`
+	Succeeded        bool          `json:"succeeded"`
+	EvidenceComplete bool          `json:"evidence_complete"`
+	TimedOut         bool          `json:"timed_out"`
 }
 
 // ObservationSource returns historical rows; Decide independently filters
