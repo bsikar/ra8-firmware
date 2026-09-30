@@ -417,6 +417,10 @@ macro(ra8_add_app)
             ${RA8_REPO_ROOT}/libs/ra8_usb_pal/inc
             ${RA8_REPO_ROOT}/libs/ra8_nsc/inc
             ${RA8_REPO_ROOT}/libs/ra8_secure_app/inc
+            # The neutral fw_if_* port contracts. The board umbrella publishes
+            # the board's clock profile, which is written against fw_if_clock.h,
+            # so every app that speaks board coordinates needs this on the path.
+            ${RA8_REPO_ROOT}/libs/if/inc
             ${_ra8_board_dir}/inc
             ${_ra8_lib_inc}
             ${_ra8_extra_inc}
