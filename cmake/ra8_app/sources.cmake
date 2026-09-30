@@ -436,12 +436,24 @@ macro(_ra8_app_collect_sources)
                                                                                _RA8_APP_LIBS)
   )
     file(GLOB_RECURSE _ra8_lib_mem CONFIGURE_DEPENDS ${RA8_REPO_ROOT}/libs/ra8_mem/src/*.c)
+    # ra8_mem is a Zig archive now, and this transitive path has to register it
+    # exactly as the LIBS loop above does. It cannot rely on the #908 guard to
+    # notice: ra8_arena.c survives the port as support C, so the glob above is
+    # non-empty and the guard returns early while every Zig-provided symbol
+    # (ra8_glyph_atlas_*, ra8_vmem_*, ra8_slab_*, ...) silently leaves the link.
+    set(_ra8_lib_mem_has_archive "")
+    if(EXISTS "${RA8_REPO_ROOT}/libs/ra8_mem/build.zig"
+       AND NOT EXISTS "${RA8_REPO_ROOT}/libs/ra8_mem/src/ra8_mem.c"
+    )
+      list(APPEND _ra8_lib_zig "ra8_mem|${RA8_REPO_ROOT}/libs/ra8_mem")
+      set(_ra8_lib_mem_has_archive ON)
+    endif()
     _ra8_app_require_compilable_lib(
       ra8_mem
       "${RA8_REPO_ROOT}/libs/ra8_mem"
       "pulls in ra8_mem for LIBS reflow/book"
       "${_ra8_lib_mem}"
-      ""
+      "${_ra8_lib_mem_has_archive}"
     )
     list(APPEND _ra8_lib_extra ${_ra8_lib_mem})
     list(APPEND _ra8_lib_inc ${RA8_REPO_ROOT}/libs/ra8_mem/inc)
