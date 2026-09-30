@@ -30,7 +30,7 @@ ra8_add_app(
   NAME tz_threadx_demo
   STACK_BYTES 2200
   DESCRIPTION "TrustZone ThreadX Demo (Secure side)" AUX_SRCS src/ns_main.c
-  LIBS ra8_tz_secure_boot
+  LIBS ra8_tz_secure_boot MRAM_LENGTH 512K
 )
 
 include(${RA8_REPO_ROOT}/libs/ra8_board_ek_ra8d2/ld/ns_memory_map.cmake)
@@ -41,18 +41,6 @@ ra8_ns_memory_map_defines(tz_threadx_demo.elf)
 
 target_compile_definitions(tz_threadx_demo.elf PRIVATE RA8_TRUSTZONE_ENABLE RA8_APP_UART_LOG)
 target_compile_options(tz_threadx_demo.elf PRIVATE -mcmse -fshort-enums -ffreestanding)
-
-target_link_options(
-  tz_threadx_demo.elf
-  PRIVATE
-  -nostartfiles
-  -T${CMAKE_CURRENT_SOURCE_DIR}/linker_script.ld
-  -Wl,--Map=tz_threadx_demo.map
-)
-
-set_target_properties(
-  tz_threadx_demo.elf PROPERTIES LINK_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/linker_script.ld"
-)
 
 # ---- Post-build: verify the NSC SG-veneer layout (T5-08) ------------------
 # tz_threadx_demo_ns.elf is bound to the Secure-Gateway stubs through the CMSE import
@@ -67,8 +55,8 @@ set_target_properties(
 add_custom_command(
   TARGET tz_threadx_demo.elf
   POST_BUILD
-  COMMAND ${RA8_REPO_ROOT}/scripts/checks/check_sg_offsets.py
-          $<TARGET_FILE:tz_threadx_demo.elf> --nm ${CMAKE_NM}
+  COMMAND ${RA8_REPO_ROOT}/scripts/checks/check_sg_offsets.py $<TARGET_FILE:tz_threadx_demo.elf>
+          --nm ${CMAKE_NM}
   VERBATIM
   COMMENT "check_sg_offsets: verifying NSC SG-veneer slot offsets (T5-08)"
 )
@@ -79,18 +67,28 @@ add_custom_command(
 include(${RA8_REPO_ROOT}/cmake/threadx_ns.cmake)
 
 ra8_add_ns_image(
-  SECURE_TARGET tz_threadx_demo.elf
-  NAME tz_threadx_demo_ns
-  STACK_BYTES 2200
-  IMPLIB ${CMAKE_CURRENT_BINARY_DIR}/tz_threadx_demo_cmse_import.o
-  MERGED_HEX tz_threadx_demo.hex
-  SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/src/ns_main.c
-  DEFINES RA8_TRUSTZONE_ENABLE RA8_PERIPH_NS_ALIAS
-  INCLUDES ${CMAKE_CURRENT_SOURCE_DIR}/inc
-           ${CMAKE_CURRENT_SOURCE_DIR}/src
-           ${RA8_REPO_ROOT}/libs/ra8_core/inc
-           ${RA8_REPO_ROOT}/libs/ra8_hal/inc
-           ${RA8_REPO_ROOT}/libs/ra8_nsc/inc
-           ${RA8_REPO_ROOT}/libs/ra8_board_ek_ra8d2/inc
-  LINK_LIBS threadx_ns
+  SECURE_TARGET
+  tz_threadx_demo.elf
+  NAME
+  tz_threadx_demo_ns
+  STACK_BYTES
+  2200
+  IMPLIB
+  ${CMAKE_CURRENT_BINARY_DIR}/tz_threadx_demo_cmse_import.o
+  MERGED_HEX
+  tz_threadx_demo.hex
+  SOURCES
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/ns_main.c
+  DEFINES
+  RA8_TRUSTZONE_ENABLE
+  RA8_PERIPH_NS_ALIAS
+  INCLUDES
+  ${CMAKE_CURRENT_SOURCE_DIR}/inc
+  ${CMAKE_CURRENT_SOURCE_DIR}/src
+  ${RA8_REPO_ROOT}/libs/ra8_core/inc
+  ${RA8_REPO_ROOT}/libs/ra8_hal/inc
+  ${RA8_REPO_ROOT}/libs/ra8_nsc/inc
+  ${RA8_REPO_ROOT}/libs/ra8_board_ek_ra8d2/inc
+  LINK_LIBS
+  threadx_ns
 )
