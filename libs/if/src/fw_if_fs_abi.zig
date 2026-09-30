@@ -19,6 +19,19 @@ pub const core = @import("internal/root.zig");
 /// land in the same archive the C build already links for `fw_fs_*`.
 pub const path_policy = @import("ra8_path_abi.zig");
 
+comptime {
+    // The declaration above is not enough on its own. Zig analyses lazily, and
+    // nothing references `path_policy` by name, so the file was never analysed
+    // and none of its three exports reached the archive. C calls them by name
+    // from `ra8_path.h`, so the archive built clean and the failure only
+    // showed at the final link.
+    //
+    // Unconditional, unlike the backend membranes elsewhere: this file drives
+    // no hardware and declares no `extern fn`, so there is nothing a host test
+    // binary would be left unable to resolve.
+    _ = path_policy;
+}
+
 const Err = core.Err;
 
 // ---------------------------------------------------------------------------
