@@ -136,7 +136,7 @@ app	crc_demo	examples/ek_ra8d2/hw_validated/hil/crc_demo/CMakeLists.txt	ek_ra8d2
 app	crypto_aes_demo	examples/ek_ra8d2/hw_validated/hil/crypto_aes_demo/CMakeLists.txt	ek_ra8d2	-	off_target_libs	2200
 app	dac_b_demo	examples/ek_ra8d2/hw_validated/hil/dac_b_demo/CMakeLists.txt	ek_ra8d2	-	-	2200
 app	dac_waveform	examples/ek_ra8d2/hw_validated/hil/dac_waveform/CMakeLists.txt	ek_ra8d2	-	-	2200
-app	dfu_bootloader	examples/ek_ra8d2/hw_validated/hil/dfu_bootloader/CMakeLists.txt	ek_ra8d2	threadx,usbx	extra_srcs	32768
+app	dfu_bootloader	examples/ek_ra8d2/hw_validated/hil/dfu_bootloader/CMakeLists.txt	ek_ra8d2	threadx,usbx	extra_srcs,threadx_heap,sram_text,mram_length	32768
 app	dfu_copy_to_run	examples/ek_ra8d2/hw_validated/hil/dfu_copy_to_run/CMakeLists.txt	ek_ra8d2	-	aux_srcs,sram_text,mram_length	2200
 app	dfu_selftest_boot	examples/ek_ra8d2/hw_validated/hil/dfu_selftest_boot/CMakeLists.txt	ek_ra8d2	threadx,usbx	threadx_heap,sram_text	4000
 app	dfu_selftest_fs_host	examples/ek_ra8d2/hw_validated/hil/dfu_selftest_fs_host/CMakeLists.txt	ek_ra8d2	threadx,usbx	threadx_heap,sram_text	4000
