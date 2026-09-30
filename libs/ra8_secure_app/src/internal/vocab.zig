@@ -12,6 +12,7 @@ const std = @import("std");
 /// The `ra8_err_t` subset this library returns.
 pub const Err = enum(u16) {
     ok = 0,
+    no_mem = 0x102,
     invalid_arg = 0x103,
     invalid_state = 0x104,
     invalid_size = 0x105,

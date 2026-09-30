@@ -248,7 +248,11 @@ set(EPUB_THIRD_PARTY
 include(${FW_ROOT}/cmake/ra8_webp_vendor.cmake)
 ra8_webp_vendor_sources(RA8_WEBP_THIRD_PARTY ${FW_ROOT})
 ra8_webp_facade_sources(RA8_WEBP_SOURCES ${FW_ROOT})
-file(GLOB_RECURSE RA8_SECURE_APP_SOURCES CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra8_secure_app/src/*.c)
+# ra8_secure_app has no C sources left: the key vault, the entropy read, the
+# OTA bank commit, the AES-CMAC and the sealed-key import (#2670) are Zig
+# now, linked via tests/cmake/zig_libraries.cmake. inc/ and the three
+# src/*_internal.h headers stay: the NSC veneers and the C security suites
+# include them for the constants and the priv_ declarations.
 # ra8_psa_crypto has no C sources left: the key-slot pool, the guard order,
 # the PSA vocabulary mapping and both backends (the deterministic off-target
 # fake and the on-target tf-psa-crypto binding) are Zig now, linked via

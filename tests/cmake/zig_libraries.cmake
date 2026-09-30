@@ -582,20 +582,18 @@ ra8_add_zig_library(
   ra8_imgdec
 )
 
-# Partially migrated (#2591, #2659): the key vault behind inc/key_vault.h, the
-# entropy read behind src/secure_trng_internal.h, the OTA bank commit behind
-# inc/ota_commit.h, and the AES-CMAC behind src/sec_cmac_internal.h are Zig
-# now, and their four .c files are deleted.
+# Fully migrated (#2591, #2659, #2670): the key vault behind inc/key_vault.h,
+# the entropy read behind src/secure_trng_internal.h, the OTA bank commit
+# behind inc/ota_commit.h, the AES-CMAC behind src/sec_cmac_internal.h and the
+# sealed-key import behind src/key_import_internal.h are Zig now, so
+# libs/ra8_secure_app/src has no .c left and the RA8_SECURE_APP_SOURCES glob is
+# gone from library_sources.cmake and core_hal.cmake.
 #
-# src/key_import.c is the one C source left, and it is deliberately RETAINED
-# for now: it is the wrapped-blob format itself, and it reaches both the vault
-# and the CMAC through unchanged headers, so it links this archive without
-# knowing either body moved. That is why the RA8_SECURE_APP_SOURCES glob in
-# library_sources.cmake stays: it still finds that one file.
-#
-# src/sec_cmac_internal.h is unchanged and is still the membrane:
+# The four headers are unchanged and are still the membrane:
 # tests/security/src/test_secure_app_sec_cmac.c pins the archive to the
-# published NIST SP 800-38B vectors through it.
+# published NIST SP 800-38B vectors through src/sec_cmac_internal.h, and
+# test_secure_app_key_import.c drives the sealed-blob format and the handle
+# allocator through src/key_import_internal.h.
 ra8_add_zig_library(
   NAME
   ra8_secure_app

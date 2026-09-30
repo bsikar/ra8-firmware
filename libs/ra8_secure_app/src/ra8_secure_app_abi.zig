@@ -2,9 +2,10 @@
 //! Copyright (c) 2026 Brighton Sikarskie
 //!
 //! The C membrane for `ra8_secure_app`: every symbol `inc/key_vault.h`,
-//! `inc/ota_commit.h`, `src/secure_trng_internal.h`, and
-//! `src/sec_cmac_internal.h` declare, and nothing else. Those headers are unchanged, so the NSC veneers, the host test
-//! suites, and `secure_app_vault_demo` link against this archive without
+//! `inc/ota_commit.h`, `src/secure_trng_internal.h`,
+//! `src/sec_cmac_internal.h` and `src/key_import_internal.h` declare, and
+//! nothing else. Those headers are unchanged, so the NSC veneers, the host
+//! test suites, and `secure_app_vault_demo` link against this archive without
 //! knowing the bodies moved to Zig.
 //!
 //! NUL-terminated strings and raw pointers stop here. Everything past this file
@@ -13,6 +14,7 @@
 const std = @import("std");
 
 const cmac = @import("internal/cmac.zig");
+const key_import = @import("internal/key_import.zig");
 const ota = @import("internal/ota.zig");
 const trng = @import("internal/trng.zig");
 const vault = @import("internal/vault.zig");
@@ -121,10 +123,10 @@ export fn ra8_ota_commit_get_bank_config(out_value: ?*u32) u16 {
 // sec_cmac_internal.h
 // ---------------------------------------------------------------------------
 //
-// `key_import.c` is still C and calls both of these, so they keep the
-// `priv_` names and the pointer-and-length shape the header declares. The
-// header's `msg == NULL` case is only legal with `msg_len == 0`, which is an
-// empty slice on this side.
+// The in-tree caller is Zig now, and reaches `cmac` directly. These stay
+// because `src/sec_cmac_internal.h` publishes them: the NSC veneer and the
+// KAT-pinned C suite are the callers. The header's `msg == NULL` case is only
+// legal with `msg_len == 0`, which is an empty slice on this side.
 
 /// The message slice for a `(ptr, len)` pair, or null when the pair is the
 /// illegal `NULL` with a non-zero length.
@@ -170,4 +172,42 @@ export fn priv_ra8_sec_cmac_verify(
         return Err.invalid_arg.code();
     }
     return cmac.verify(key_ptr[0..key_len], message, mac_ptr[0..mac_len]).code();
+}
+
+// ---------------------------------------------------------------------------
+// key_import_internal.h
+// ---------------------------------------------------------------------------
+//
+// The blob is a fixed 48 bytes, so the header passes a bare pointer and a
+// length that it then requires to equal that. The length check happens here,
+// before the pointer becomes a sized slice, so a short buffer is never read
+// past.
+
+export fn priv_ra8_key_import_reset() u16 {
+    return key_import.reset().code();
+}
+
+export fn priv_ra8_key_import_seal(
+    blob: ?[*]const u8,
+    blob_len: u32,
+    out_handle: ?*u32,
+) u16 {
+    const src = blob orelse return Err.null_ptr.code();
+    const dst = out_handle orelse return Err.null_ptr.code();
+    if (blob_len != key_import.Blob.bytes) return Err.invalid_size.code();
+    return key_import.seal(src[0..key_import.Blob.bytes], dst).code();
+}
+
+export fn priv_ra8_key_import_resolve(handle: u32, out_slot: ?*u16) u16 {
+    const dst = out_slot orelse return Err.null_ptr.code();
+    return key_import.resolve(handle, dst).code();
+}
+
+export fn priv_ra8_key_import_build_blob(material: ?[*]const u8, out_blob: ?[*]u8) u16 {
+    const src = material orelse return Err.null_ptr.code();
+    const dst = out_blob orelse return Err.null_ptr.code();
+    return key_import.buildBlob(
+        src[0..key_import.Blob.key_bytes],
+        dst[0..key_import.Blob.bytes],
+    ).code();
 }
