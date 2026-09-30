@@ -112,7 +112,7 @@ static void test_camera_rejects_short_packed_buffer(void)
 
 /**
  * @test test_camera_uyvy_matches_bench_descriptor
- * @brief Packed VGA UYVY matches the bench-proven application literal.
+ * @brief Packed VGA UYVY matches the literal `c6_camera_livestream` runs.
  * @pre None.
  * @post No hardware state changes.
  * @note Single-threaded host test.
