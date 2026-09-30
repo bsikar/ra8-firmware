@@ -20,4 +20,5 @@ comptime {
     _ = @import("crashlog_abi");
     _ = @import("error_handler_abi");
     _ = @import("error_sink_abi");
+    _ = @import("infrastructure_abi");
 }
