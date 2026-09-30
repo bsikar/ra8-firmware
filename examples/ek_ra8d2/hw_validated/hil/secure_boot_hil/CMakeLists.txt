@@ -28,6 +28,11 @@ ra8_add_app(
   STACK_BYTES 32768
   DESCRIPTION "On-silicon enforcing secure boot (verify + anti-rollback via ra8_dfu_launch)"
   LIBS ra8_board_ek_ra8d2
+       MRAM_LENGTH
+       128K
+       SRAM_TEXT
+       ra8_flash.c
+       ra8_dfu_program.c
   EXTRA_SRCS ${_d}/libs/ra8_psa_crypto/src/ra8_psa_crypto.c
              ${_d}/libs/ra8_dfu/src/ra8_rot.c
              ${_d}/libs/ra8_dfu/src/ra8_dfu_antirollback.c
