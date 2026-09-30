@@ -149,7 +149,7 @@ fn lcdInit(cfg: ?*const pal.Config, out_ctx: ?*?*anyopaque) callconv(.c) u16 {
     const config = cfg orelse return nullPtr("cfg");
     const out = out_ctx orelse return nullPtr("out_ctx");
 
-    const view: impl.CfgView = .{
+    const view: core.CfgView = .{
         .has_framebuffer = config.framebuffer != null,
         .width_px = config.width_px,
         .height_px = config.height_px,
