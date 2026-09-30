@@ -55,6 +55,16 @@
 #                       dual-core apps each forked the whole 340-line board map
 #                       to gain one section and two symbols (#742). Rejected if
 #                       the app also ships its own linker_script.ld.
+#   NS_INLINE_IMAGE     compose the board linker script with a generated
+#                       fragment that places the .ns_vectors / .ns_text /
+#                       .ns_rodata / .ns_bss sections of a SINGLE-IMAGE
+#                       TrustZone app, and defines g_ra8_ls_ns_bss_start /
+#                       g_ra8_ls_ns_bss_end / g_ra8_ls_ns_stack_top. For an app
+#                       whose NS world rides inside the Secure ELF in sections
+#                       the SAU later reclassifies -- NOT for one that links a
+#                       separate NS ELF, which is ra8_add_ns_image()'s job and
+#                       uses a different window (#742). Rejected if the app
+#                       also ships its own linker_script.ld.
 #   BOARD <b>           board-support layer under libs/ra8_board_<b> (default
 #                       ek_ra8d2). Selects which board layer supplies the fallback
 #                       boot files, the board src glob, the fallback linker script,
@@ -135,7 +145,7 @@ include(${_RA8_ADD_APP_DIR}/ra8_add_ns_image.cmake)
 macro(ra8_add_app)
   cmake_parse_arguments(
     _RA8_APP
-    "NO_NSC;CPU1_IMAGE"
+    "NO_NSC;CPU1_IMAGE;NS_INLINE_IMAGE"
     "NAME;STACK_BYTES;DESCRIPTION;BOARD;THREADX_HEAP;MRAM_LENGTH"
     "USES;LIBS;OFF_TARGET_LIBS;NSC_SRCS;EXTRA_SRCS;AUX_SRCS;SRAM_TEXT"
     ${ARGN}
