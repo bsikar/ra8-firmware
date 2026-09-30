@@ -49,7 +49,10 @@ file(GLOB_RECURSE RA8_FS_SOURCES CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra8_fs/src/*.
 # libs/if/src is no longer an include directory anywhere.
 file(GLOB_RECURSE RA8_NET_POLICY_SOURCES CONFIGURE_DEPENDS
      ${FW_ROOT}/libs/ra8_net_policy/src/*.c)
-file(GLOB_RECURSE RA8_XML_WRITER_SOURCES CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra8_xml/src/*.c)
+# ra8_xml is fully migrated to Zig: the bounded XML emitter behind
+# inc/ra8_xml_writer.h lives in libs/ra8_xml/src/*.zig, built by
+# libs/ra8_xml/build.zig; see tests/cmake/zig_libraries.cmake. There is no
+# RA8_XML_WRITER_SOURCES glob left.
 file(GLOB_RECURSE RA8_IMGDEC_SOURCES CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra8_imgdec/src/*.c)
 # if_ra8_vfs is fully migrated to Zig; see tests/cmake/zig_libraries.cmake.
 # Its private contracts header went with the .c, so libs/if_ra8_vfs/src is no

@@ -55,7 +55,20 @@ if(NOT TARGET ra8_zig::fw_if_fs)
     LIBRARY_NAME fw_if_fs
   )
 endif()
-link_libraries(ra8_zig::fw_if_fs)
+
+# The bounded XML emitter behind libs/ra8_xml/inc/ra8_xml_writer.h is Zig now,
+# so the six targets below that used to compile libs/ra8_xml/src/*.c by path
+# link the archive instead. Registered here rather than assumed, because this
+# core also configures standalone.
+if(NOT TARGET ra8_zig::ra8_xml)
+  include(${MDL_REPO_ROOT}/tests/cmake/zig_library.cmake)
+  ra8_add_zig_library(
+    NAME ra8_xml
+    ZIG_ROOT ${MDL_REPO_ROOT}/libs/ra8_xml
+    LIBRARY_NAME ra8_xml
+  )
+endif()
+link_libraries(ra8_zig::fw_if_fs ra8_zig::ra8_xml)
 
 # The core's own two roots, likewise stated once. Every source path below is
 # absolute through them, because a form consumes these lists from ITS directory
@@ -329,7 +342,6 @@ set(MDL_CORE_SRC
     ${MDL_CORE_SRC_DIR}/mdl_stream.c
     ${MDL_CORE_SRC_DIR}/mdl_net.c
     ${MDL_REPO_ROOT}/libs/ra8_net_policy/src/ra8_net_urlguard.c
-    ${MDL_REPO_ROOT}/libs/ra8_xml/src/ra8_xml_writer.c
     ${MDL_CORE_SRC_DIR}/mdl_sanitize.c
     ${MDL_CORE_SRC_DIR}/mdl_pathfs.c
     ${MDL_CORE_SRC_DIR}/mdl_robots.c
@@ -391,7 +403,6 @@ enable_testing()
 
 set(MDL_CORE_TEST_COMMON_SRC
     ${MDL_REPO_ROOT}/libs/ra8_net_policy/src/ra8_net_urlguard.c
-    ${MDL_REPO_ROOT}/libs/ra8_xml/src/ra8_xml_writer.c
     ${MDL_CORE_SRC_DIR}/mdl_sanitize.c
     ${MDL_CORE_SRC_DIR}/mdl_urlname.c
     ${MDL_CORE_SRC_DIR}/mdl_robots.c
@@ -585,7 +596,6 @@ add_executable(
   ${MDL_CORE_SRC_DIR}/mdl_net.c
   ${MDL_CORE_SRC_DIR}/mdl_politeness.c
   ${MDL_REPO_ROOT}/libs/ra8_net_policy/src/ra8_net_urlguard.c
-  ${MDL_REPO_ROOT}/libs/ra8_xml/src/ra8_xml_writer.c
   ${MDL_STREAM_CORE_SRC}
   ${MDL_STREAM_RAM_SRC}
   ${MDL_STREAM_POSIX_SRC}
@@ -674,7 +684,6 @@ add_executable(
   ${MDL_CORE_SRC_DIR}/mdl_net.c
   ${MDL_CORE_SRC_DIR}/mdl_politeness.c
   ${MDL_REPO_ROOT}/libs/ra8_net_policy/src/ra8_net_urlguard.c
-  ${MDL_REPO_ROOT}/libs/ra8_xml/src/ra8_xml_writer.c
   ${MDL_EXTRACT_SRC}
   ${MDL_FS_SRC}
   ${MDL_STREAM_CORE_SRC}
@@ -723,7 +732,6 @@ add_executable(
   ${MDL_CORE_SRC_DIR}/mdl_net.c
   ${MDL_CORE_SRC_DIR}/mdl_politeness.c
   ${MDL_REPO_ROOT}/libs/ra8_net_policy/src/ra8_net_urlguard.c
-  ${MDL_REPO_ROOT}/libs/ra8_xml/src/ra8_xml_writer.c
   ${MDL_EXTRACT_SRC}
   ${MDL_FS_SRC}
   ${MDL_STREAM_CORE_SRC}
@@ -759,7 +767,6 @@ add_executable(
   ${MDL_CORE_SRC_DIR}/mdl_storage.c
   ${MDL_CORE_SRC_DIR}/mdl_sanitize.c
   ${MDL_REPO_ROOT}/libs/ra8_net_policy/src/ra8_net_urlguard.c
-  ${MDL_REPO_ROOT}/libs/ra8_xml/src/ra8_xml_writer.c
   ${MDL_FS_SRC}
 )
 target_include_directories(
