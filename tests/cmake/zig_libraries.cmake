@@ -505,6 +505,23 @@ ra8_add_zig_library(
   ra8_tz_secure_boot
 )
 
+# Fully migrated: the bounded XML emitter behind inc/ra8_xml_writer.h is Zig,
+# so libs/ra8_xml/src has no .c left. This library sat in BOTH wiring worlds:
+# RA8_XML_WRITER_SOURCES was globbed in library_sources.cmake (#908) and eight
+# by-path references compiled the TU directly into the mdl builds (six in
+# apps/shared_libs/mdl, two in apps/host/mdl). The archive replaces the glob
+# entry and all eight by-path references. It resolves every symbol it names:
+# the emitter is pure string construction over caller-owned storage with no
+# allocation, no driver call and no MMIO.
+ra8_add_zig_library(
+  NAME
+  ra8_xml
+  ZIG_ROOT
+  ${FW_ROOT}/libs/ra8_xml
+  LIBRARY_NAME
+  ra8_xml
+)
+
 target_link_libraries(
   ra8_core_hal
   PUBLIC ra8_zig::ra8_box
@@ -533,6 +550,7 @@ target_link_libraries(
          ra8_zig::ra8_ota
          ra8_zig::ra8_tz_secure_boot
          ra8_zig::ra8_camera_io
+         ra8_zig::ra8_xml
   ra8_zig::ra8_gfx
          ra8_zig::ra8_gfx
 )
@@ -567,4 +585,5 @@ link_libraries(
   ra8_zig::ra8_ota
   ra8_zig::ra8_tz_secure_boot
   ra8_zig::ra8_camera_io
+  ra8_zig::ra8_xml
 )
