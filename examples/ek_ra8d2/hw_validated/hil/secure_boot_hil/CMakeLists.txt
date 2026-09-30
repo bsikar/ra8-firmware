@@ -56,7 +56,8 @@ file(
 add_library(tfpsa_sb STATIC ${_TF_SRC})
 target_include_directories(
   tfpsa_sb SYSTEM
-  PUBLIC ${_TF}/include
+  PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/inc
+         ${_TF}/include
          ${_TF}/drivers/builtin/include
          ${_TF}/core
          ${_TF}/dispatch
@@ -69,8 +70,9 @@ target_include_directories(
 )
 target_compile_definitions(
   tfpsa_sb
-  PUBLIC MBEDTLS_CONFIG_FILE="mbedtls_config.h" TF_PSA_CRYPTO_CONFIG_FILE="tf_psa_crypto_config.h"
-         MBEDTLS_PLATFORM_MEMORY MBEDTLS_MEMORY_BUFFER_ALLOC_C
+  PUBLIC MBEDTLS_CONFIG_FILE="mbedtls_config.h"
+         TF_PSA_CRYPTO_CONFIG_FILE="tf_psa_crypto_config_sb.h" MBEDTLS_PLATFORM_MEMORY
+         MBEDTLS_MEMORY_BUFFER_ALLOC_C
 )
 # No warning suppression: this OBJECT library has no warning profile to suppress.
 # ra8_add_app() applies the project profile to the app target, not to this
