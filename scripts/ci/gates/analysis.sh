@@ -211,6 +211,11 @@ gate_misra() (
   # a drifted cppcheck ratchets against the wrong findings (#333).
   require_tool_versions cppcheck
   python3 scripts/checks/misra_ratchet.py --selftest
+  # #712: the baseline is machine-generated, so prove it is machine-WRITTEN
+  # before trusting its rows. A hand sort of the clang-tidy baseline once
+  # survived ten days of green CI; this file is 2,700+ rows of frozen debt,
+  # where the same edit is harder still to spot in review. Needs no cppcheck.
+  python3 scripts/checks/misra_ratchet.py --attest
   python3 scripts/checks/check_misra_deviations.py --selftest
   python3 scripts/checks/check_misra_deviations.py --check
   # The scan excludes BUILD OUTPUT, and only where build output can live:
