@@ -6,8 +6,10 @@
 //! membrane below stays a single-purpose file and porting the next widget
 //! translation unit adds one line here instead of growing a sibling.
 //!
-//! The library's public C ABI (`inc/ra8_widget.h`) is unchanged; the widget
-//! translation units still written in C link these symbols out of the archive.
+//! The library's public C ABI (`inc/ra8_widget.h`) is unchanged. With the
+//! flat container ops below, no C translation unit is left in this library;
+//! its C consumers elsewhere in the tree link every one of these symbols out
+//! of the archive.
 
 /// The widget tree's shared published C types, mirrored once.
 pub const types = @import("widget_abi_types.zig");
@@ -45,3 +47,7 @@ pub const reflow_view = @import("widget_reflow_view_abi.zig");
 
 /// The book-grid leaf widget: `ra8_widget_book_grid_vtable` / `_init`.
 pub const book = @import("widget_book_abi.zig");
+
+/// The flat container ops: `ra8_widget_layout_stack`, `_dispatch`,
+/// `_invalidate`, `_damage`, `_render_dirty`.
+pub const core = @import("widget_core_abi.zig");
