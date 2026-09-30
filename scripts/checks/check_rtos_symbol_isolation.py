@@ -60,11 +60,13 @@ OPTION_ARG_COUNT = 2
 # The ledger floors track the ledger down as leaks genuinely burn down: #693
 # moved the watchdog supervisor onto the fw_os seam and took two sites and
 # eighteen symbols with it, so they were re-pinned from 6/40 to the surviving
-# 5/28. They are a tripwire against a gutted ledger, never a target to edit
-# toward: shrink the ledger by burning a leak down, then re-pin here.
+# 5/28 on dev. On this branch #981 then reimplemented ra8_cache_store's mount
+# path in Zig and its two C sites went too, so the floors sit at 3/20 here.
+# They are a tripwire against a gutted ledger, never a target to edit toward:
+# shrink the ledger by burning a leak down, then re-pin here.
 FILE_FLOOR = 600
-LEDGER_SITE_FLOOR = 5
-LEDGER_SYMBOL_FLOOR = 28
+LEDGER_SITE_FLOOR = 3
+LEDGER_SYMBOL_FLOOR = 20
 
 # Vendor namespaces. The leading-underscore forms are the middleware's own
 # internal entry points; the bare forms are its published API.
@@ -162,20 +164,6 @@ NAME_TOKENS: dict[str, str] = {
 # The declared inventory: what libs/ names today, verified on dev @73a62d3.
 # Shrink an entry in the same change that removes the symbol.
 DECLARED_SITES: dict[str, frozenset[str]] = {
-    # LevelX reached directly by the cache store; #616 owns the standalone-mode
-    # question for this dependency.
-    "libs/ra8_cache_store/src/ra8_cache_store.c": frozenset({"lx_nor_flash_close"}),
-    "libs/ra8_cache_store/src/ra8_cache_store_mount.c": frozenset(
-        {
-            "internal_open_levelx",
-            "lx_nor_flash_format",
-            "lx_nor_flash_initialize",
-            "lx_nor_flash_open",
-            "lx_nor_flash_sector_read",
-            "lx_nor_flash_sector_release",
-            "lx_nor_flash_sector_write",
-        }
-    ),
     # The Ring-1 leak #695 names: the SysTick handler dispatches into ThreadX
     # and USBX through weak externs.
     "libs/ra8_core/src/ra8_time.c": frozenset(
