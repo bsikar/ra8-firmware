@@ -16,7 +16,10 @@
  * "Ring 1 is host==target" claim in `docs/RING_AND_WORLD.md` is not true yet.
  * Migrating those translation units is a later slice of #694; this slice fixes
  * the target they migrate to, so the moves that follow are mechanical rather
- * than a design argument per file.
+ * than a design argument per file. The timebase block below is the first of
+ * those targets to be filled in: `ra8_systick.h` had no declaration here to
+ * move onto, which is what made "de-middleware the SysTick" a design argument
+ * instead of a move.
  *
  * ## The four requirement classes
  *
@@ -304,6 +307,82 @@ void arch_barrier_mem(void);
 
 /** @brief Instruction synchronisation barrier: flush the fetched pipeline. */
 void arch_barrier_inst_sync(void);
+
+/** @} */
+
+/**
+ * @name MUST: monotonic timebase
+ *
+ * Every architecture this tree would target carries a core timekeeping block,
+ * mandated rather than optional: SysTick on Armv8-M, `mtime`/`mcycle` on
+ * RISC-V, a hosted backend's monotonic clock. So the timebase is a MUST, not a
+ * capability, and it is declared here rather than left to whichever library
+ * happens to reach the registers first.
+ *
+ * Armv8-M's shape of this is `libs/ra8_core/inc/ra8_systick.h`: SysTick as the
+ * periodic source plus the DWT cycle counter as the fine-grained one, filed in
+ * Ring-1 `libs/ra8_core/` today and reached by six first-party translation
+ * units. That header is the thing the `fw_os` OSAL seam (#693 step 0) exists to
+ * stop everyone reaching into, and this block is the target it reaches instead.
+ *
+ * ::arch_tick_configure in the RTOS block below is NOT a second timebase. It is
+ * the scheduler's claim on this same hardware block, gated separately because a
+ * bare-metal build owes a monotonic `now()` and owes no scheduler tick. A
+ * backend that answers ::ARCH_HAS_RTOS_CONTEXT implements both over one block
+ * and is responsible for the interaction; a backend without an RTOS implements
+ * only these three.
+ * @{
+ */
+
+/**
+ * @brief Programme the core timebase and report the rate actually achieved.
+ *
+ * @param[in] source_hz Frequency of the clock feeding the block, in hertz.
+ * @param[in] tick_hz   Requested tick rate, in hertz.
+ *
+ * @return The rate actually programmed, which may differ when the block cannot
+ *         divide `source_hz` to `tick_hz` exactly, or zero when the request is
+ *         outside the range the block can express. Zero is a refusal, not a
+ *         stopped counter: the caller reads the return rather than assuming the
+ *         request was honoured.
+ *
+ * @details
+ * The 24-bit SysTick reload is why this returns a rate instead of `void`: a
+ * request the divider cannot reach is a routine outcome on a fast core, and
+ * silently programming the nearest value would hand the caller a clock that is
+ * wrong by a factor it never sees. `ra8_systick_reload_for` already performs
+ * exactly this range check for Armv8-M.
+ */
+uint32_t arch_timebase_configure(uint32_t source_hz, uint32_t tick_hz);
+
+/**
+ * @brief Sample the monotonic counter.
+ *
+ * @return The current count, in the units ::arch_timebase_hz reports. Wraps at
+ *         the backend's counter width without notice, so callers difference two
+ *         samples in unsigned arithmetic rather than comparing them for order.
+ *
+ * @details
+ * Monotonic within one wrap and immune to interrupt masking, which is the
+ * property that makes it usable from a fault handler and from inside a critical
+ * section. On Armv8-M the DWT cycle counter supplies this; the SysTick
+ * down-counter does not, because it reloads.
+ */
+uint32_t arch_timebase_now(void);
+
+/**
+ * @brief The rate ::arch_timebase_now advances at, in hertz.
+ *
+ * @return Counts per second. Never zero on a backend that implements this
+ *         block, because a counter whose rate is unknown cannot be turned into
+ *         a duration.
+ *
+ * @details
+ * Separate from the `tick_hz` handed to ::arch_timebase_configure: that is the
+ * periodic interrupt rate, this is the resolution of the free-running counter,
+ * and on Armv8-M they differ by three orders of magnitude.
+ */
+uint32_t arch_timebase_hz(void);
 
 /** @} */
 
