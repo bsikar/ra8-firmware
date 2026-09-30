@@ -61,12 +61,20 @@ OPTION_ARG_COUNT = 2
 # moved the watchdog supervisor onto the fw_os seam and took two sites and
 # eighteen symbols with it, so they were re-pinned from 6/40 to the surviving
 # 5/28 on dev. On this branch #981 then reimplemented ra8_cache_store's mount
-# path in Zig and its two C sites went too, so the floors sit at 3/20 here.
+# path in Zig and its two C sites went too, which put the floors at 3/20.
+#
+# 2/17 since #2851, and this one is NOT a burn-down: the SysTick leak #695
+# names moved into Zig with the timebase port, so a C-only scan stopped seeing
+# it. The three symbols are still there, in
+# libs/ra8_core/src/internal/time/hooks.zig, which is why #2854 is open to put
+# Zig in scope. Re-pinning here keeps the tripwire live for the C that is left
+# rather than reporting a tree this gate can no longer measure.
+#
 # They are a tripwire against a gutted ledger, never a target to edit toward:
 # shrink the ledger by burning a leak down, then re-pin here.
 FILE_FLOOR = 600
-LEDGER_SITE_FLOOR = 3
-LEDGER_SYMBOL_FLOOR = 20
+LEDGER_SITE_FLOOR = 2
+LEDGER_SYMBOL_FLOOR = 17
 
 # Vendor namespaces. The leading-underscore forms are the middleware's own
 # internal entry points; the bare forms are its published API.
@@ -163,16 +171,18 @@ NAME_TOKENS: dict[str, str] = {
 
 # The declared inventory: what libs/ names today, verified on dev @73a62d3.
 # Shrink an entry in the same change that removes the symbol.
+#
+# The scan is C-only, so a leak that moves into Zig leaves it. #2851 moved the
+# Ring-1 SysTick leak #695 names: the weak externs for `_tx_timer_interrupt`,
+# `g_ra8_threadx_systick_ready` and `ux_dcd_ra8_usb_irq_reenable` now live in
+# libs/ra8_core/src/internal/time/hooks.zig, so the entry that declared them
+# here is gone with the C file. The leak itself is unchanged, and this gate no
+# longer measures it. Covering Zig is its own change (#2854): the symbol names
+# arrive as @extern string literals, which strip_non_code removes, and the
+# already-migrated libraries would add ~19 undeclared sites of their own.
 DECLARED_SITES: dict[str, frozenset[str]] = {
     # The Ring-1 leak #695 names: the SysTick handler dispatches into ThreadX
     # and USBX through weak externs.
-    "libs/ra8_core/src/ra8_time.c": frozenset(
-        {
-            "_tx_timer_interrupt",
-            "g_ra8_threadx_systick_ready",
-            "ux_dcd_ra8_usb_irq_reenable",
-        }
-    ),
     # USBX device stack in the DFU library, including one field of its PUBLIC
     # header, so a DFU consumer inherits the middleware name.
     "libs/ra8_dfu/inc/ra8_dfu_device.h": frozenset({"usbx_pool"}),

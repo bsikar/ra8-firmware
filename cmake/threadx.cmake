@@ -141,7 +141,7 @@ target_compile_definitions(threadx PUBLIC TX_INCLUDE_USER_DEFINE_FILE)
 
 # Force-pull `_tx_timer_interrupt` out of libthreadx.a even when no
 # strong reference exists in the app's directly-compiled .obj files.
-# The shared SysTick_Handler in libs/ra8_core/src/ra8_time.c only takes a
+# The shared SysTick_Handler in ra8_core (Zig since #2851) only takes a
 # WEAK reference to it (so non-ThreadX apps still link), and that weak
 # reference is satisfied with NULL if nothing else pulls the symbol in.
 # Without this --undefined the ThreadX time base never advances when an

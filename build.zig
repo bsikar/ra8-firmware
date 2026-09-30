@@ -95,18 +95,15 @@ const shared_include_paths = [_][]const u8{
 /// C translation units every suite in the slice needs on top of the archive
 /// under test. Under CMake these arrive through ra8_core_hal.
 ///
-/// It held `ra8_log.c` until #2836: the Zig archives reference
-/// `ra8_log_emit_*`, and that file was the only definition of them. The log
-/// backend is Zig itself now and arrives as ra8_core's general archive, linked
-/// below. That archive is one object, so linking it also pulls the SysTick and
-/// time-interface ports (#2830) in, and those call back into the two ra8_core
-/// TUs still written in C. So this list is now what those Zig ports extern
-/// rather than what the suites call directly. Under CMake all of it arrives
-/// through ra8_core_hal; the real implementations, not stubs, so a regression
-/// in any of them fails this graph exactly as it fails CMake.
+/// It held `ra8_log.c` until #2836 and `ra8_time.c` until #2851; both are Zig
+/// now and arrive as ra8_core's general archive, linked below. What is left is
+/// what those Zig ports extern rather than what the suites call directly:
+/// ra8_scb.c owns the DEMCR trace gate the SysTick and log ports both reach
+/// for (#588). Under CMake it arrives through ra8_core_hal; the real
+/// implementation, not a stub, so a regression in it fails this graph exactly
+/// as it fails CMake.
 const support_c_sources = [_][]const u8{
     "libs/ra8_core/src/ra8_scb.c",
-    "libs/ra8_core/src/ra8_time.c",
 };
 
 /// The host C dialect and warning set from tests/cmake/host_config.cmake.
