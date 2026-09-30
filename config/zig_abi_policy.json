@@ -1985,13 +1985,31 @@
           "path": "libs/ra8_camera/inc/ra8_camera_source_ceu.h",
           "compatibility_sha256": "e261f6140b24c32171085a34731baa7a8bcc7503051157e6880eec7f53993560",
           "layout_assertions": []
+        },
+        {
+          "path": "libs/ra8_camera/src/ra8_camera_source_ceu_private.h",
+          "compatibility_sha256": "9b7265458575878000eb5fa2fc014d9a1d4d183b3675bbb77549d06f0d05ef17",
+          "layout_assertions": [
+            "@sizeOf(Cfg) == 84",
+            "@offsetOf(Cfg, \"output\") == 60",
+            "@offsetOf(Cfg, \"poll_interval_ms\") == 76",
+            "@offsetOf(Cfg, \"poll_attempts\") == 80",
+            "@sizeOf(State) == 36",
+            "@offsetOf(State, \"capture_format\") == 16",
+            "@offsetOf(State, \"last_events\") == 28",
+            "@offsetOf(State, \"initialized\") == 32"
+          ],
+          "symbol_prefix": "priv_cam_ceu_"
         }
       ],
       "adapters": [
         "libs/ra8_camera/src/ra8_camera_abi.zig",
         "libs/ra8_camera/src/source_memory.zig",
         "libs/ra8_camera/src/codec_passthrough.zig",
-        "libs/ra8_camera/src/codec_jpeg_sw.zig"
+        "libs/ra8_camera/src/codec_jpeg_sw.zig",
+        "libs/ra8_camera/src/source_ceu.zig",
+        "libs/ra8_camera/src/ceu_abi.zig",
+        "libs/ra8_camera/src/internal/source_ceu.zig"
       ],
       "library_name": "ra8_camera",
       "symbol_prefix": "ra8_camera_",
@@ -2076,22 +2094,29 @@
           "name": "ra8_camera_codec_jpeg_sw_init",
           "calling_context": "task-only-non-reentrant",
           "ownership": "initializes caller-owned state and borrows workspace until codec use ends"
-        }
-      ],
-      "c_retained_exports": [
+        },
         {
           "name": "ra8_camera_source_ceu_init",
-          "source": "libs/ra8_camera/src/ra8_camera_source_ceu.c",
-          "reason": "the CEU backend stays C because tests/misc/src/test_ra8_camera.c and test_ra8_ceu_cov.c white-box it with `#include \"ra8_camera_source_ceu.c\"`; it binds the same private source vtable from src/ra8_camera_internal.h and calls the ported facade rather than implementing it",
-          "header": "libs/ra8_camera/inc/ra8_camera_source_ceu.h"
+          "calling_context": "task-only-non-reentrant",
+          "ownership": "initializes caller-owned state and binds it into the caller's source handle for the capture lifetime"
         },
         {
           "name": "ra8_camera_source_ceu_get_last_events",
-          "source": "libs/ra8_camera/src/ra8_camera_source_ceu.c",
-          "reason": "the diagnostic snapshot reader lives in the retained CEU translation unit alongside ra8_camera_source_ceu_init, reading that backend's own event counters, so it stays C for as long as the white-boxed CEU source does",
-          "header": "libs/ra8_camera/inc/ra8_camera_source_ceu.h"
+          "calling_context": "task-safe-reentrant",
+          "ownership": "copies no data; reports the state's own latched event word"
+        },
+        {
+          "name": "priv_cam_ceu_wait_for_frame",
+          "calling_context": "task-only-non-reentrant",
+          "ownership": "polls the caller's state and writes one captured byte count; borrows nothing past return"
+        },
+        {
+          "name": "priv_cam_ceu_capture",
+          "calling_context": "task-only-non-reentrant",
+          "ownership": "arms the CEU from the caller's buffer and fills the caller's frame view; borrows the buffer for the capture only"
         }
-      ]
+      ],
+      "c_retained_exports": []
     },
     {
       "name": "if",

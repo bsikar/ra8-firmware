@@ -1,16 +1,18 @@
 //! SPDX-License-Identifier: MIT
 //! Copyright (c) 2026 Brighton Sikarskie
 //!
-//! Build graph for the Zig implementation of the `ra8_camera` facade and its
-//! memory source, JPEG passthrough codec, and software-JPEG codec. CMake
-//! consumes the installed static library through the unchanged
-//! `inc/ra8_camera*.h` C ABI.
+//! Build graph for the Zig implementation of the `ra8_camera` facade and every
+//! backend behind it: the fixed-frame memory source, the CEU capture source,
+//! the JPEG passthrough codec, and the software-JPEG codec. CMake consumes the
+//! installed static library through the unchanged `inc/ra8_camera*.h` C ABI.
 //!
 //! The archive root is `src/root.zig`: the facade and each backend live in
 //! separate files, so each needs an explicit reference to reach the archive.
 //!
-//! No build options. The only link-time seam is `ra8_jpeg_sw_encode`, supplied
-//! by `libs/ra8_jpeg` on every target, exactly as it was for the C backend.
+//! No build options. The link-time seams are `ra8_jpeg_sw_encode`, supplied by
+//! `libs/ra8_jpeg` on every target, and the Ring-3 CEU HAL plus cache and delay
+//! calls the capture source makes, supplied by `ra8_core_hal`; both were the
+//! same seams the C backends relied on.
 
 const std = @import("std");
 
@@ -39,6 +41,7 @@ pub fn build(b: *std.Build) void {
     const archive_roots = [_][]const u8{
         "src/ra8_camera_abi.zig",
         "src/source_memory.zig",
+        "src/source_ceu.zig",
         "src/codec_passthrough.zig",
         "src/codec_jpeg_sw.zig",
     };
@@ -75,6 +78,22 @@ pub fn build(b: *std.Build) void {
         .optimize = optimize,
     });
 
+    // The CEU backend gets its own test module: its binary exports the C
+    // symbols of the modelled peripheral, which must not be linked into the
+    // other test binaries.
+    const source_ceu_module = b.createModule(.{
+        .root_source_file = b.path("src/source_ceu.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    const source_ceu_test_module = b.createModule(.{
+        .root_source_file = b.path("tests/source_ceu_test.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    source_ceu_test_module.addImport("source_ceu", source_ceu_module);
+    const source_ceu_tests = b.addTest(.{ .root_module = source_ceu_test_module });
+
     const internal_test_module = b.createModule(.{
         .root_source_file = b.path("tests/internal_test.zig"),
         .target = target,
@@ -99,6 +118,7 @@ pub fn build(b: *std.Build) void {
     backends_test_module.addImport("camera", backends_module);
     const backends_tests = b.addTest(.{ .root_module = backends_test_module });
 
+    const run_source_ceu_tests = b.addRunArtifact(source_ceu_tests);
     const run_internal_tests = b.addRunArtifact(internal_tests);
     const run_abi_tests = b.addRunArtifact(abi_tests);
     const run_backends_tests = b.addRunArtifact(backends_tests);
@@ -106,4 +126,5 @@ pub fn build(b: *std.Build) void {
     test_step.dependOn(&run_internal_tests.step);
     test_step.dependOn(&run_abi_tests.step);
     test_step.dependOn(&run_backends_tests.step);
+    test_step.dependOn(&run_source_ceu_tests.step);
 }

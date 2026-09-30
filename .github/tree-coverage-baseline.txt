@@ -597,7 +597,6 @@ libs/ra8_cache_store/src/ra8_cache_store_mount.c	MEASURED	278	299	165	218
 libs/ra8_camera/src/ra8_camera.c	MEASURED	105	105	76	76
 libs/ra8_camera/src/ra8_camera_codec_jpeg_sw.c	MEASURED	101	101	52	52
 libs/ra8_camera/src/ra8_camera_codec_passthrough.c	MEASURED	15	15	8	8
-libs/ra8_camera/src/ra8_camera_source_ceu.c	MEASURED	126	127	72	74
 libs/ra8_camera/src/ra8_camera_source_memory.c	MEASURED	41	41	20	20
 libs/ra8_camera_io/src/ra8_camera_stream.c	MEASURED	16	16	11	12
 libs/ra8_core/src/ra8_crashlog.c	MEASURED	55	56	23	24

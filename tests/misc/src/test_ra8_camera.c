@@ -20,6 +20,7 @@
 #include "ra8_camera_codec_passthrough.h"
 #include "ra8_camera_internal.h"
 #include "ra8_camera_source_ceu.h"
+#include "ra8_camera_source_ceu_private.h"
 #include "ra8_camera_source_memory.h"
 #include "ra8_camera_stream.h"
 #include "ra8_ceu_regs.h"
@@ -29,16 +30,6 @@
 #include "ra8_io_stream_ram.h"
 #include "ra8_jpeg_sw.h"
 #include "unity_minimal.h"
-
-/* White-box the CEU wait helper while keeping its public symbols distinct from
- * the production copy linked through ra8_core_hal. */
-// NOLINTBEGIN(readability-identifier-naming) -- external ABI or interposition seam fixes these symbol spellings.
-/** @brief Rename the CEU event accessor in the white-box coverage copy. */
-#define ra8_camera_source_ceu_get_last_events ra8_camera_source_ceu_get_last_events_cov
-/** @brief Rename the CEU initializer in the white-box coverage copy. */
-#define ra8_camera_source_ceu_init ra8_camera_source_ceu_init_cov
-// NOLINTEND(readability-identifier-naming)
-#include "ra8_camera_source_ceu.c" // NOLINT(bugprone-suspicious-include) -- white-box copy
 
 /** @brief Fixture dimensions and storage bounds. */
 typedef enum : uint32_t {
@@ -467,7 +458,7 @@ static void test_ceu_vbp_overrides_capture_end(void)
     .initialized      = true,
   };
   uint32_t captured_bytes = 0U;
-  TEST_ASSERT_EQ(k_ra8_err_hw_error, internal_ceu_wait_for_frame(&state, &captured_bytes));
+  TEST_ASSERT_EQ(k_ra8_err_hw_error, priv_cam_ceu_wait_for_frame(&state, &captured_bytes));
   TEST_ASSERT_EQ(0U, captured_bytes);
   TEST_ASSERT_EQ(events, state.last_events);
   TEST_END("camera CEU VBP overrides CPE");
@@ -888,12 +879,12 @@ static void test_jpeg_sw_color_clamp(void)
  * internal_jpeg_sw_ycbcr_to_rgb (Zig, libs/ra8_camera),
  * ra8_camera_codec_jpeg_sw_init (Zig, libs/ra8_camera),
  * internal_passthrough_encode (Zig, libs/ra8_camera),
- * libs/ra8_camera/src/ra8_camera_source_ceu.c@internal_ceu_capture,
- * libs/ra8_camera/src/ra8_camera_source_ceu.c@internal_ceu_cfg_valid,
- * libs/ra8_camera/src/ra8_camera_source_ceu.c@internal_ceu_frame_bytes,
- * libs/ra8_camera/src/ra8_camera_source_ceu.c@internal_ceu_get_info,
- * libs/ra8_camera/src/ra8_camera_source_ceu.c@internal_ceu_wait_for_frame,
- * libs/ra8_camera/src/ra8_camera_source_ceu.c@ra8_camera_source_ceu_init,
+ * priv_cam_ceu_capture (Zig, libs/ra8_camera),
+ * validateCfg (Zig, libs/ra8_camera),
+ * frameBytes (Zig, libs/ra8_camera),
+ * internal_ceu_get_info (Zig, libs/ra8_camera),
+ * priv_cam_ceu_wait_for_frame (Zig, libs/ra8_camera),
+ * ra8_camera_source_ceu_init (Zig, libs/ra8_camera),
  * internal_memory_capture (Zig, libs/ra8_camera),
  * internal_memory_get_info (Zig, libs/ra8_camera),
  * ra8_camera_source_memory_init (Zig, libs/ra8_camera),

@@ -322,13 +322,15 @@ ra8_add_zig_library(
   if_ra8_vfs
 )
 
-# libs/ra8_camera keeps one C translation unit: src/ra8_camera_source_ceu.c is
-# white-boxed by tests/misc/src/test_ra8_camera.c and test_ra8_ceu_cov.c with
-# `#include "ra8_camera_source_ceu.c"`, so it stays C and binds the same private
-# vtable from src/ra8_camera_internal.h (which stays for the same reason). The
-# facade, the fixed-frame memory source and both codecs are Zig, so the
-# RA8_CAMERA_SOURCES glob and the libs/ra8_camera/src include directory both
-# stay in place for the one remaining file.
+# libs/ra8_camera is fully migrated: the CEU capture backend
+# (src/source_ceu.zig) was its last C translation unit, so the
+# RA8_CAMERA_SOURCES glob is gone from library_sources.cmake and
+# core_hal.cmake. The two suites that white-boxed the .c now call the
+# `priv_cam_ceu_wait_for_frame` and `priv_cam_ceu_capture` seams the archive
+# exports, declared in src/ra8_camera_source_ceu_private.h. The
+# libs/ra8_camera/src include directory therefore stays: that private header
+# and src/ra8_camera_internal.h (the fake source and codec vtables the host
+# suites build) both live there.
 ra8_add_zig_library(
   NAME
   ra8_camera
