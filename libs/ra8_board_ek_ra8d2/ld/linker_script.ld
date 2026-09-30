@@ -368,5 +368,24 @@ ASSERT(g_ra8_ls_etext <= ORIGIN(MRAM) + LENGTH(MRAM),
        "FATAL: MRAM overflow -- .text + .rodata too large")
 ASSERT(g_ra8_ls_ebss + g_ra8_ls_stack_size <= g_ra8_ls_stack_top,
        "FATAL: SRAM overflow -- .bss + stack won't fit")
+
+/* ---- SRAM_TEXT bounds: always defined, even when no app asked ----
+ *
+ * ra8_add_app(SRAM_TEXT ...) generates a .sram_text placement into
+ * ra8_app_pre_text.ld and that assigns these three. An app that asked for
+ * nothing gets an empty fragment, and then these names have no definition at
+ * all: vector_table.c declares them [[gnu::weak]], so the copy loop reads
+ * three zeroes and does not run.
+ *
+ * That worked, but it left the contract implicit and it left check_linker_scripts
+ * with no in-tree script defining them once the last hand-written fork that did
+ * was retired (#742), which reads as LD006 "referenced by C but no linker script
+ * defines it". PROVIDE the same zeroes here instead: PROVIDE yields to the real
+ * assignment whenever a fragment makes one, so this changes no image that uses
+ * SRAM_TEXT and reproduces the exact undefined-weak behaviour for every image
+ * that does not. */
+PROVIDE(g_ra8_ls_ssram_text = 0);
+PROVIDE(g_ra8_ls_esram_text = 0);
+PROVIDE(g_ra8_ls_sram_text_load = 0);
 ASSERT(g_ra8_ls_noinit_end <= ORIGIN(NOINIT) + LENGTH(NOINIT),
        "FATAL: .noinit crash-log record overran its 256-byte NOINIT region")

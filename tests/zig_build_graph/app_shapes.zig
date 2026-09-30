@@ -724,8 +724,14 @@ pub const uncovered = [_]Uncovered{
     },
     .{
         .representative = "dfu_bootloader",
-        .shape = .{ .uses = &.{ "threadx", "usbx" }, .extra_srcs = true },
-        .note = "1 declaration: USBX plus EXTRA_SRCS, so it is not covered by usb_selftest_wlun's shape",
+        .shape = .{
+            .uses = &.{ "threadx", "usbx" },
+            .extra_srcs = true,
+            .threadx_heap = true,
+            .sram_text = true,
+            .mram_length = true,
+        },
+        .note = "1 declaration, and the widest shape in the tree: USBX plus EXTRA_SRCS plus a heap fragment, running its flash driver from SRAM out of a 128K bootloader bank. #742 traded its 361-line linker_script.ld fork for all four keywords at once",
     },
     .{
         .representative = "rot_verify_hil",
