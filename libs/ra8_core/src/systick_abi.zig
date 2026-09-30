@@ -9,7 +9,8 @@
 //! through `ra8_log_emit_error` in ra8_log.c, which is still C.
 //!
 //! `ra8_dwt_cyccnt_enable` delegates the DEMCR.TRCENA unlock to ra8_scb
-//! rather than poking DEMCR a second time (#588); ra8_scb.c is still C too.
+//! rather than poking DEMCR a second time (#588); ra8_scb is Zig too as of
+//! the fault block (#2868).
 
 const regs = @import("systick_regs");
 const reload_math = @import("systick_reload");

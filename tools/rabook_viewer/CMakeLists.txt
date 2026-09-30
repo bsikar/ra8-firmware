@@ -290,13 +290,10 @@ ra8_viewer_read_path(
   RA8_CORE_SRC ${FW_ROOT}/libs/ra8_core/src
   KEEP ra8_error_handler.c
   DROP ra8_boot_region.c
-       ra8_crashlog.c
        ra8_error_sink_log.c
-       ra8_exception.c
        ra8_infrastructure.c
        ra8_rand_stub.c
        ra8_sbrk_trap.c
-       ra8_scb.c
        ra8_secure.c
 )
 

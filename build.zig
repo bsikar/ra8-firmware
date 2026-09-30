@@ -95,21 +95,27 @@ const shared_include_paths = [_][]const u8{
 /// C translation units every suite in the slice needs on top of the archive
 /// under test. Under CMake these arrive through ra8_core_hal.
 ///
-/// It held `ra8_log.c` until #2836 and `ra8_time.c` until #2851; both are Zig
-/// now and arrive as ra8_core's general archive, linked below. What is left is
-/// what those Zig ports extern rather than what the suites call directly:
-/// ra8_scb.c owns the DEMCR trace gate the SysTick and log ports both reach
-/// for (#588). Under CMake it arrives through ra8_core_hal; the real
-/// implementation, not a stub, so a regression in it fails this graph exactly
-/// as it fails CMake.
+/// This list is what the Zig ports EXTERN, not what the suites call. It held
+/// `ra8_log.c` until #2836, `ra8_time.c` until #2851 and `ra8_scb.c` until the
+/// fault block (#2868); all three are Zig now and arrive in ra8_core's general
+/// archive, which every suite links below.
+///
+/// `ra8_error_handler.c` replaces them, and the fault block is why. That
+/// archive is one compilation unit, so linking it for any port also pulls in
+/// `exception_abi.zig`, whose host halt path calls `ra8_fatal_error()` -- the
+/// weak default implementation that still lives in C. Without it these three
+/// suites fail to link on a symbol none of their own code mentions. Under
+/// CMake it arrives through ra8_core_hal, and it is the real implementation
+/// rather than a stub, so a regression in it fails this graph exactly as it
+/// fails CMake.
 const support_c_sources = [_][]const u8{
-    "libs/ra8_core/src/ra8_scb.c",
+    "libs/ra8_core/src/ra8_error_handler.c",
 };
 
 /// The host C dialect and warning set from tests/cmake/host_config.cmake.
 /// `RA8_OFF_TARGET` and `UNIT_TEST` are the two definitions that file adds to
-/// every host TU; without them the C that reads system registers, such as
-/// `ra8_exception.c`, reaches for Cortex-M `mrs`.
+/// every host TU; without them the C that reads system registers reaches for
+/// Cortex-M `mrs`.
 /// `-Werror` stays on: a suite that only compiles under a looser dialect here
 /// than it does under CMake would make the parity claim meaningless.
 pub const c_flags = [_][]const u8{
