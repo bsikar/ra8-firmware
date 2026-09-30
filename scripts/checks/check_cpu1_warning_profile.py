@@ -137,6 +137,7 @@ import re
 import sys
 import tempfile
 import textwrap
+from dataclasses import dataclass
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
@@ -339,21 +340,26 @@ def parse_listfile(root: Path, rel: str) -> list[Image]:
             else:
                 image.covered += hits
         images.append(image)
-    images += handrolled_images(text, app_dir, globs, setvars, rel, {i.target for i in images})
+    listfile = Listfile(text, app_dir, globs, setvars, rel)
+    images += handrolled_images(listfile, {i.target for i in images})
     for image in images:
         collect_opt_in(text, app_dir, globs, image)
         collect_added(text, app_dir, globs, image)
     return images
 
 
-def handrolled_images(
-    text: str,
-    app_dir: str,
-    globs: dict[str, list[str]],
-    setvars: dict[str, str],
-    rel: str,
-    helper_owned: set[str],
-) -> list[Image]:
+@dataclass(frozen=True)
+class Listfile:
+    """One parsed CMakeLists: its text and the three lookups derived from it."""
+
+    text: str
+    app_dir: str
+    globs: dict[str, list[str]]
+    setvars: dict[str, str]
+    rel: str
+
+
+def handrolled_images(listfile: Listfile, helper_owned: set[str]) -> list[Image]:
     """CPU1 images an app builds with its own add_executable() instead of the helper.
 
     Nothing here is profile-covered: the per-source warning set lives in
@@ -361,28 +367,30 @@ def handrolled_images(
     NONE of its translation units the bar, its own ``cpu1_main.c`` included.
     """
     images: list[Image] = []
-    m33 = m33_targets(text, setvars)
-    for match in re.finditer(r"add_executable\s*\(", text):
-        tokens = call_block(text, match.start()).split()
+    m33 = m33_targets(listfile.text, listfile.setvars)
+    for match in re.finditer(r"add_executable\s*\(", listfile.text):
+        tokens = call_block(listfile.text, match.start()).split()
         if not tokens:
             continue
-        name = expand_vars(tokens[0], setvars)
+        name = expand_vars(tokens[0], listfile.setvars)
         if name in helper_owned:
             continue
         if name not in m33:
             # An unexpanded target name in a listfile that does build for the
             # M33 is a parse this checker cannot vouch for: say so, do not
             # silently drop the image.
-            if "$" in name and M33_FLAG in text:
-                unknown = Image(name, rel)
+            if "$" in name and M33_FLAG in listfile.text:
+                unknown = Image(name, listfile.rel)
                 unknown.unresolved.append(tokens[0])
                 images.append(unknown)
             continue
-        image = Image(name, rel)
+        image = Image(name, listfile.rel)
         for token in tokens[1:]:
             if token in EXE_KEYWORDS:
                 continue
-            hits = resolve_source(expand_vars(token, setvars), app_dir, globs)
+            hits = resolve_source(
+                expand_vars(token, listfile.setvars), listfile.app_dir, listfile.globs
+            )
             if hits is None:
                 image.unresolved.append(token)
             else:
@@ -590,6 +598,7 @@ HANDROLLED_EXTRA = """\
     """
 
 ROLLED_ROW = "rolled_cpu1.elf libs/ra8_core/src/ra8_log.c\n"
+_SOUP_SRC = "apps/shared_libs/third_party/miniz/miniz.c"
 
 
 def selftest_cases() -> list[tuple[str, str, str, str]]:
@@ -603,12 +612,27 @@ def selftest_cases() -> list[tuple[str, str, str, str]]:
         ("unlisted escape fires", "#! rows: 0\n# nothing\n", "not in .github", FIXTURE_LISTFILE),
         ("undeclared empty inventory fails closed", "", "declaration", FIXTURE_LISTFILE),
         ("undeclared inventory with rows fails closed", ipc_row, "declaration", FIXTURE_LISTFILE),
-        ("row count below the declaration fires", two + ipc_row, "does not match", FIXTURE_LISTFILE),
-        ("row count above the declaration fires", one + ipc_row + "demo_cpu1.elf a/b.c\n", "does not match", FIXTURE_LISTFILE),
-        ("stale row fires", two + ipc_row + "demo_cpu1.elf libs/ra8_core/src/gone.c\n", "stale", FIXTURE_LISTFILE),
+        (
+            "row count below the declaration fires",
+            two + ipc_row,
+            "does not match",
+            FIXTURE_LISTFILE,
+        ),
+        (
+            "row count above the declaration fires",
+            one + ipc_row + "demo_cpu1.elf a/b.c\n",
+            "does not match",
+            FIXTURE_LISTFILE,
+        ),
+        (
+            "stale row fires",
+            two + ipc_row + "demo_cpu1.elf libs/ra8_core/src/gone.c\n",
+            "stale",
+            FIXTURE_LISTFILE,
+        ),
         (
             "soup row fires",
-            two + ipc_row + "apps/shared_libs/third_party/miniz/miniz.c".join(("demo_cpu1.elf ", "\n")),
+            two + ipc_row + f"demo_cpu1.elf {_SOUP_SRC}\n",
             "must not sit in",
             FIXTURE_LISTFILE,
         ),
