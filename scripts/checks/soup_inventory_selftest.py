@@ -41,6 +41,9 @@ BASE_COMPONENTS = (
     FakeComponent("miniz", "apps/shared_libs/third_party/miniz"),
     FakeComponent("esp-hosted-mcu", "coprocessor/esp32c6/esp-hosted-mcu"),
     FakeComponent("doxygen-awesome", "docs/doxygen_theme"),
+    # Catalogued at a repo-root file rather than a vendored tree, the shape
+    # every pinned-dependency component has (#631).
+    FakeComponent("vela", "pyproject.toml"),
 )
 
 THEME_ROW = (
@@ -50,6 +53,7 @@ MINIZ_ROW = (
     "| miniz | 3.0.2 | MIT | `apps/shared_libs/third_party/miniz/` | <https://example.invalid> |"
 )
 GHOST_ROW = "| ghost | 1.0 | MIT | `libs/third_party/ghost/` | <https://example.invalid> |"
+VELA_PROSE = "- **Vela** -- Apache-2.0. Pinned at the `vela` group in `pyproject.toml`.\n"
 ESP_LINK = "| esp-hosted | [esp-hosted.md](esp-hosted.md) |"
 BLE_LINK = "| BLE patch | [ble_patch_image.md](ble_patch_image.md) |"
 
@@ -69,7 +73,10 @@ Vendored SOUP under `libs/third_party/` and `apps/shared_libs/third_party/`.
 ## Co-processor firmware
 
 - Built from `coprocessor/esp32c6/` and flashed onto the companion part.
-"""
+
+## Build-time host tools
+
+{VELA_PROSE}"""
 
 BASE_INDEX = f"""# SOUP Catalog
 
@@ -120,6 +127,8 @@ def _agreement_cases() -> tuple[tuple[str, tuple, str, str, tuple[str, ...], boo
     orphan_row = BASE_LICENSES.replace(MINIZ_ROW, f"{MINIZ_ROW}\n{GHOST_ROW}")
     dangling = BASE_INDEX.replace(ESP_LINK, f"{ESP_LINK}\n{BLE_LINK}")
     orphan_docs = (*BASE_DOCS, "orphan.md")
+    no_vela = BASE_LICENSES.replace(VELA_PROSE, "")
+    prose_vela = BASE_LICENSES.replace("`pyproject.toml`", "pyproject.toml")
     return (
         (
             "agreeing catalogues stay quiet",
@@ -153,6 +162,30 @@ def _agreement_cases() -> tuple[tuple[str, tuple, str, str, tuple[str, ...], boo
             BASE_LICENSES,
             BASE_INDEX,
             orphan_docs,
+            True,
+        ),
+        (
+            "R1 root-file component catalogued stays quiet",
+            BASE_COMPONENTS,
+            BASE_LICENSES,
+            BASE_INDEX,
+            BASE_DOCS,
+            False,
+        ),
+        (
+            "R1 root-file component named nowhere fires",
+            BASE_COMPONENTS,
+            no_vela,
+            BASE_INDEX,
+            BASE_DOCS,
+            True,
+        ),
+        (
+            "R1 root file without a code span is not a naming",
+            BASE_COMPONENTS,
+            prose_vela,
+            BASE_INDEX,
+            BASE_DOCS,
             True,
         ),
     )
