@@ -980,18 +980,21 @@ foreach(rabook_compile_test IN ITEMS test_rabook_compile test_rabook_compile_str
   endif()
 endforeach()
 
-# test_ra8_freestanding: standalone executable compiling the project-owned
-# freestanding C runtime implementations directly with RA8_TEST_FREESTANDING,
-# proving execution of project primitives without host libc substitution.
+# test_ra8_freestanding: standalone executable linking the project-owned
+# freestanding runtime primitives, proving execution of project primitives
+# without host libc substitution. The implementations are Zig now (#2820), so
+# the three .c files this used to compile are gone and the suite links the
+# ra8_ prefixed copy of ra8_core's archive instead (see
+# ra8_zig::ra8_core_freestanding_prefixed in zig_libraries.cmake). The suite
+# still defines RA8_TEST_FREESTANDING itself, which is what turns its bare
+# memset / strlen / abs calls into the ra8_ names that archive exports; a bare
+# memset from the archive would collide with this host's real libc.
 # -fno-builtin keeps the host compiler from folding direct primitive calls
 # into builtins, which would bypass the implementations under test.
 add_executable(
-  test_ra8_freestanding
-  ${CMAKE_CURRENT_SOURCE_DIR}/core/src/test_ra8_freestanding.c
-  ${FW_ROOT}/libs/ra8_core/src/ra8_freestanding_mem.c
-  ${FW_ROOT}/libs/ra8_core/src/ra8_freestanding_str.c
-  ${FW_ROOT}/libs/ra8_core/src/ra8_freestanding_math.c
+  test_ra8_freestanding ${CMAKE_CURRENT_SOURCE_DIR}/core/src/test_ra8_freestanding.c
 )
+target_link_libraries(test_ra8_freestanding PRIVATE ra8_zig::ra8_core_freestanding_prefixed)
 target_compile_definitions(test_ra8_freestanding PRIVATE RA8_TEST_FREESTANDING)
 target_compile_options(test_ra8_freestanding PRIVATE -Wall -Wextra -Werror -fno-builtin)
 target_include_directories(

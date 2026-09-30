@@ -7,6 +7,7 @@
 #
 # lib	path	reason
 if	src/fw_os_contract.c	Compile-time conformance TU for the fw_os port contract; a header with no translation unit behind it is never compiled and rots.
+if	src/fw_if_clock.c	The neutral clock-intent port, landed on dev in #693 and carried onto this branch by the zig/dev sync below it. libs/if is migrated here but not on dev, so dev can add C to it without seeing this checker; the row is what the sync owes. Ports with the rest of the if surface.
 ra8_tz_secure_boot	ns/ra8_ns_rot_header.c	Emits the NS image's ra8_ns_rot_header_t record; stays C on purpose, as tests/cmake/zig_libraries.cmake records, so the magic word and struct shape are compiler-checked instead of hand-assembled in the NS linker scripts.
 #
 # ra8_jpeg is partially migrated: the ra8_imgdec backend binding is Zig
@@ -23,3 +24,22 @@ ra8_dfu	src/ra8_dfu_device.c	USBX DFU device class bound to real MRAM through th
 ra8_dfu	src/ra8_dfu_launch.c	Copy-to-run launch gate: verifies the slot's ECDSA-P256 signature via ra8_psa_crypto, then branches to the run base. Shares the anti-rollback counter with ra8_dfu_antirollback.c and ra8_rot.c, so those three port as one block.
 ra8_dfu	src/ra8_dfu_antirollback.c	Monotonic anti-rollback counter behind the launch gate. Shares its record layout with ra8_dfu_launch.c and ra8_rot.c; splitting it would put that record across a language boundary mid-port.
 ra8_dfu	src/ra8_rot.c	Root-of-trust key reader, also compiled directly by three HIL examples through EXTRA_SRCS rather than through the library. Ports with ra8_dfu_launch.c and ra8_dfu_antirollback.c once those examples can take an archive.
+# 
+# ra8_core is partially migrated: the freestanding runtime primitives are
+# Zig (#2820), the other sixteen TUs are still C. Four blocks.
+ra8_core	src/ra8_log.c	The logging core: level gating, the formatter and the sink fan-out, and the largest TU in the library at 745 lines. Every other ra8_core TU calls into it, so porting it early would put the whole library's logging across a language boundary; it goes as its own slice.
+ra8_core	src/ra8_error_handler.c	Central error routing behind RA8_ERR: dispatches to the registered sinks. Shares the sink registry with ra8_error_sink_log.c, so those two port as one block.
+ra8_core	src/ra8_error_sink_log.c	The log-backed error sink. Shares the sink registry with ra8_error_handler.c and calls ra8_log.c's formatter directly, so it ports with those rather than ahead of them.
+ra8_core	src/ra8_exception.c	ARM fault handlers: HardFault, MemManage, BusFault and UsageFault entry with the stacked-frame capture. Naked-function prologues and the stack-pointer read are inline asm against a live exception frame; it ports with ra8_scb.c and ra8_crashlog.c once the frame layout is expressed in Zig.
+ra8_core	src/ra8_crashlog.c	Crash record writer driven from the fault handlers. Shares the stacked-frame layout with ra8_exception.c, so splitting them would put that record across a language boundary at the one moment the system is already broken.
+ra8_core	src/ra8_scb.c	System Control Block register access used by the fault path and the reset cause read. MMIO plus the frame layout ra8_exception.c depends on; ports in the same block.
+ra8_core	src/ra8_systick.c	SysTick driver: the MMIO reload/current registers and the tick ISR. Provides the timebase ra8_time.c and ra8_time_interface_systick.c sit on, so the three port together.
+ra8_core	src/ra8_time.c	Millisecond timebase and the monotonic tick accessors. Reads the counter ra8_systick.c owns; ports in that block.
+ra8_core	src/ra8_time_interface_systick.c	Binds the SysTick timebase to the injectable time interface (#1013). It is the seam between the other two, so it ports with them.
+ra8_core	src/ra8_decomp_limits.c	Decompression bound table shared with ra8_imgdec and the rabook viewer, which compiles this TU directly from tools/rabook_viewer rather than through the library. Ports once that tool can take an archive.
+ra8_core	src/ra8_pin_validator.c	Compile-time-checked pin assignment validation against the board tables. Pure logic with host tests behind it, so it is a clean standalone slice and is next in this library after the blocks above.
+ra8_core	src/ra8_boot_region.c	Reset-time region descriptor read, placed in a .boot_text section by the linker script so it runs before the MRAM regions it describes are mapped. A Zig object has to be placed the same way, which is a linker-script change no ra8_core slice has made yet.
+ra8_core	src/ra8_infrastructure.c	Startup wiring that calls into every other ra8_core TU in a fixed order. It is the last thing in the library that should move, because until then it is the single file that still has to see both languages.
+ra8_core	src/ra8_secure.c	TrustZone secure-world entry veneers. The cmse non-secure-call attributes have no Zig spelling yet, and #591 left the secure-world seam Brighton's call rather than this lane's.
+ra8_core	src/ra8_rand_stub.c	Deterministic RNG stub the host suites substitute for the hardware TRNG. Its whole purpose is being swapped at link time by the test build, so it ports with the TRNG driver rather than alone.
+ra8_core	src/ra8_sbrk_trap.c	Traps any heap allocation the toolchain emits, so a newlib _sbrk call fails the link loudly instead of silently growing a heap. It exists to answer a libc symbol at link time and is a five-line TU; it ports with whatever slice retires the last libc seam.
