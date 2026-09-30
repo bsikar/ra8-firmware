@@ -3,8 +3,9 @@
 //!
 //! Build graph for `ra8_core`.
 //!
-//! Nine seams of this library are Zig so far: the freestanding runtime
-//! primitives (#2820), the pin-claim validator (#2825), the SysTick timebase
+//! Ten seams of this library are Zig so far: the freestanding runtime
+//! primitives (#2820) and the deterministic `rand()` / `srand()` override
+//! that joins them (#2890), the pin-claim validator (#2825), the SysTick timebase
 //! with its time-interface binding (#2830), the log backend with
 //! `ra8_err_to_str` (#2836), the millisecond tick counter, delay policy and
 //! SysTick IRQ body (#2851), the decompression-limits policy every archive
@@ -22,10 +23,11 @@
 //!
 //! `ra8_core` holds the freestanding primitives alone. Its exported names are
 //! the bare standard ones an image needs (`memcpy`, `memset`, `strlen`,
-//! `abs`), so it cannot be linked into a host test binary, which already has
-//! a real libc defining every one of them. `-Dabi-prefix=ra8_` renames that
-//! whole surface for the one host suite that does test it,
-//! `tests/core/src/test_ra8_freestanding.c`.
+//! `abs`, `rand`), so it cannot be linked into a host test binary, which
+//! already has a real libc defining every one of them. `-Dabi-prefix=ra8_`
+//! renames that whole surface for the two host suites that do test it,
+//! `tests/core/src/test_ra8_freestanding.c` and
+//! `tests/core/src/test_ra8_rand_stub.c`.
 //!
 //! `ra8_core_zig` holds every other ported TU. Those export ordinary `ra8_*`
 //! names that collide with nothing, so `tests/cmake/zig_libraries.cmake`
@@ -57,7 +59,7 @@ const std = @import("std");
 
 /// Units under `src/internal/freestanding/`. Each is its own module so the
 /// tests can import the same module objects the archive does.
-const freestanding_units = [_][]const u8{ "mem", "str", "math" };
+const freestanding_units = [_][]const u8{ "mem", "str", "math", "rand" };
 
 pub fn build(b: *std.Build) void {
     const target = b.standardTargetOptions(.{});

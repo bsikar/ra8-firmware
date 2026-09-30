@@ -41,6 +41,8 @@ extern "C" {
 #undef strcpy
 #undef strncpy
 #undef abs
+#undef rand
+#undef srand
 
 /** @brief Redirect memset calls to the freestanding implementation. */
 #define memset ra8_memset
@@ -72,6 +74,10 @@ extern "C" {
 #define strncpy ra8_strncpy
 /** @brief Redirect abs calls to the freestanding implementation. */
 #define abs ra8_abs
+/** @brief Redirect rand calls to the freestanding implementation. */
+#define rand ra8_rand
+/** @brief Redirect srand calls to the freestanding implementation. */
+#define srand ra8_srand
 #endif /* RA8_TEST_FREESTANDING */
 
 /**
@@ -333,6 +339,40 @@ char* strncpy(char* dst, const char* src, size_t n);
  * @since 0.1.0
  */
 int abs(int j);
+
+/**
+ * @brief Seed the deterministic pseudo-random generator.
+ * @details Strong override for newlib's srand(). Writes the xorshift32 state
+ *          word directly, so no heap allocation happens and ra8_sbrk_trap is
+ *          never reached. A zero seed is remapped to a non-zero default,
+ *          because an all-zero xorshift state never advances again.
+ * @param[in] seed Initial state. Zero is rewritten to the default seed.
+ * @return Nothing.
+ * @pre The link line places this archive ahead of -lc.
+ * @pre No other thread is calling rand() concurrently.
+ * @post The generator state is non-zero.
+ * @post Subsequent rand() results follow the new seed.
+ * @note Not thread-safe: one shared state word. Never allocates.
+ * @since 0.1.0
+ */
+void srand(unsigned int seed);
+
+/**
+ * @brief Draw the next deterministic pseudo-random value.
+ * @details Strong override for newlib's rand(). One xorshift32 advance with
+ *          Marsaglia's 13/17/5 constants, masked to RAND_MAX. NOT
+ *          cryptographically secure: a caller needing a CSPRNG goes through
+ *          the ra8_rsip TRNG.
+ * @return Pseudo-random value in [0, RAND_MAX].
+ * @retval 0..RAND_MAX Next xorshift32 output.
+ * @pre The link line places this archive ahead of -lc.
+ * @pre srand() has been called, or the default seed is acceptable.
+ * @post The generator state has advanced by one step.
+ * @post The returned value lies in [0, RAND_MAX].
+ * @note Not thread-safe: one shared state word. Never allocates.
+ * @since 0.1.0
+ */
+int rand(void);
 
 #ifdef __cplusplus
 }

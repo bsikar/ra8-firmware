@@ -277,7 +277,9 @@ link_libraries(ra8_zig::ra8_mem)
 # instead of compiling ra8_log.c. The fatal sink went the same way with the
 # error pair (#2875), which is why there is no KEEP list left. Bring-up and the
 # stack canary followed (#2884), so that file is off the DROP list too: it is
-# gone, not excluded. The rest of the library is still C, so the read-path
+# gone, not excluded. The rand()/srand() override went the same way (#2890),
+# into the freestanding archive rather than this one, so it drops off the list
+# for the same reason. The rest of the library is still C, so the read-path
 # partition below stays.
 if(NOT TARGET ra8_zig::ra8_core)
   include(${FW_ROOT}/tests/cmake/zig_library.cmake)
@@ -292,7 +294,6 @@ link_libraries(ra8_zig::ra8_core)
 ra8_viewer_read_path(
   RA8_CORE_SRC ${FW_ROOT}/libs/ra8_core/src
   DROP ra8_boot_region.c
-       ra8_rand_stub.c
        ra8_sbrk_trap.c
        ra8_secure.c
 )

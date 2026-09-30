@@ -22,6 +22,7 @@ const builtin = @import("builtin");
 const options = @import("build_options");
 const math = @import("freestanding_math");
 const mem = @import("freestanding_mem");
+const rng = @import("freestanding_rand");
 const str = @import("freestanding_str");
 
 // -- memory ----------------------------------------------------------------
@@ -116,6 +117,14 @@ fn abs(j: c_int) callconv(.c) c_int {
     return math.absolute(j);
 }
 
+fn srand(value: c_uint) callconv(.c) void {
+    rng.seed(@intCast(value));
+}
+
+fn rand() callconv(.c) c_int {
+    return @intCast(rng.next());
+}
+
 fn errnoLocation() callconv(.c) *i32 {
     return &math.errno_slot;
 }
@@ -139,6 +148,8 @@ const surface = .{
     .{ "strcpy", &strcpy },
     .{ "strncpy", &strncpy },
     .{ "abs", &abs },
+    .{ "srand", &srand },
+    .{ "rand", &rand },
 };
 
 comptime {
