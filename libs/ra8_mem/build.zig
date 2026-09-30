@@ -2,20 +2,21 @@
 //! Copyright (c) 2026 Brighton Sikarskie
 //!
 //! Build graph for the Zig side of `ra8_mem`: the slab allocator, the page
-//! cache, the byte-stream adapter over it, the glyph cache, and the
-//! object-source registry. CMake consumes the installed static library through
-//! the unchanged `inc/ra8_slab.h`, `inc/ra8_vmem.h`, `inc/ra8_vmem_stream.h`,
-//! `inc/ra8_glyph_atlas.h` and `inc/ra8_vsource.h`.
+//! cache, the byte-stream adapter over it, the glyph cache, the tile cache and
+//! the object-source registry. CMake consumes the installed static library
+//! through the unchanged `inc/ra8_slab.h`, `inc/ra8_vmem.h`,
+//! `inc/ra8_vmem_stream.h`, `inc/ra8_glyph_atlas.h`, `inc/ra8_tile_cache.h`
+//! and `inc/ra8_vsource.h`.
 //!
-//! The page cache and the glyph atlas are typed facades over `ra8_keycache`,
-//! which is still C, so the archive leaves the four `ra8_keycache_*` symbols
-//! undefined and the link resolves them exactly as the C translation units
-//! did. `ra8_vmem_get`/`ra8_vmem_put` are no longer among them: the stream
-//! adapter now calls the Zig page cache in the same archive. The source
-//! registry adds no extern of its own: a paged object's read callback is a
-//! pointer it is handed, not a link-time symbol. The rest of `libs/ra8_mem`
-//! (arena, keycache, tile cache) is still C and still built by CMake from
-//! `src/`.
+//! The page cache, the glyph atlas and the tile cache are typed facades over
+//! `ra8_keycache`, which is still C, so the archive leaves five
+//! `ra8_keycache_*` symbols undefined and the link resolves them exactly as
+//! the C translation units did. `ra8_vmem_get`/`ra8_vmem_put` are no longer
+//! among them: the stream adapter now calls the Zig page cache in the same
+//! archive. The source registry adds no extern of its own: a paged object's
+//! read callback is a pointer it is handed, not a link-time symbol. The rest
+//! of `libs/ra8_mem` (arena, keycache) is still C and still built by CMake
+//! from `src/`.
 
 const std = @import("std");
 
@@ -60,6 +61,16 @@ pub fn build(b: *std.Build) void {
             .root = "tests/vsource_test.zig",
         },
         .{ .name = "vmem", .source = "src/internal/vmem.zig", .root = "tests/vmem_test.zig" },
+        .{
+            .name = "tile_geometry",
+            .source = "src/internal/tile_geometry.zig",
+            .root = "tests/tile_geometry_test.zig",
+        },
+        .{
+            .name = "tile_cache",
+            .source = "src/internal/tile_cache.zig",
+            .root = "tests/tile_cache_test.zig",
+        },
     };
     for (units) |unit| {
         const under_test = b.createModule(.{

@@ -243,10 +243,23 @@ ra8_viewer_read_path(
   DROP ra8_vfs_compress.c
 )
 
+# ra8_tile_cache.c is Zig now (libs/ra8_mem/src/internal/tile_cache.zig), so the
+# viewer links the ra8_mem archive for it instead of compiling it by path. The
+# keycache engine underneath it and the arena are still C and still compiled
+# here, which is what resolves the archive's five ra8_keycache_* references.
 ra8_viewer_read_path(
   RA8_MEM_SRC ${FW_ROOT}/libs/ra8_mem/src
-  KEEP ra8_tile_cache.c ra8_keycache.c ra8_arena.c
+  KEEP ra8_keycache.c ra8_arena.c
 )
+if(NOT TARGET ra8_zig::ra8_mem)
+  include(${FW_ROOT}/tests/cmake/zig_library.cmake)
+  ra8_add_zig_library(
+    NAME ra8_mem
+    ZIG_ROOT ${FW_ROOT}/libs/ra8_mem
+    LIBRARY_NAME ra8_mem
+  )
+endif()
+link_libraries(ra8_zig::ra8_mem)
 
 ra8_viewer_read_path(
   RA8_CORE_SRC ${FW_ROOT}/libs/ra8_core/src
