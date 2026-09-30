@@ -53,6 +53,30 @@ extern "C" {
 #endif
 
 /**
+ * @brief The UART instances this board wires, by board index.
+ *
+ * @details
+ * ``fw_clock_module_t::index`` is the board's dense numbering, not the chip's.
+ * For every other kind this board wires exactly one instance and the index is
+ * 0, but UART has four and they are not the four lowest SCI channels, so the
+ * two numberings differ here and only here. The console is the trap: it is
+ * SCI8 on the silicon and UART 3 through this profile, and a caller that
+ * passed the SCI channel as the index would be asking for an instance this
+ * board does not wire.
+ *
+ * These names exist so an application never writes either number. Pass one of
+ * them as the index and the profile translates it.
+ *
+ * @since 0.1.0
+ */
+typedef enum {
+  k_ra8_board_clock_uart_pmod2    = 0, /**< Pmod2 J25, SCI0 on this board. */
+  k_ra8_board_clock_uart_pmod1    = 1, /**< Pmod1 J26, SCI2 on this board. */
+  k_ra8_board_clock_uart_mikrobus = 2, /**< mikroBUS, SCI7 on this board.  */
+  k_ra8_board_clock_uart_console  = 3, /**< J-Link OB VCOM, SCI8.          */
+} ra8_board_clock_uart_index_t;
+
+/**
  * @brief Translate a board-numbered module to the chip instance behind it.
  *
  * @details

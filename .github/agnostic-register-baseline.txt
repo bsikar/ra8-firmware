@@ -7,7 +7,7 @@
 # HAL implementations, named backend translation units, board composition
 # libraries, tests, vendored code, and generated code are outside this ratchet.
 #
-# clock: 481 reference(s)
+# clock: 471 reference(s)
 # display: 9 reference(s)
 # gpio: 78 reference(s)
 # timer: 51 reference(s)
@@ -54,12 +54,12 @@ examples/ek_ra8d2/hil_needs_revalidation/poeg_safe_shutoff/src/main.c	timer	4
 examples/ek_ra8d2/hil_needs_revalidation/power_profiler/src/main.c	clock	2
 examples/ek_ra8d2/hil_needs_revalidation/psa_crypto_hil/src/main.c	clock	2
 examples/ek_ra8d2/hil_needs_revalidation/ra8_cache_store_demo/src/main.c	clock	2
-examples/ek_ra8d2/hil_needs_revalidation/ra8_io_cache_demo/src/main.c	clock	2
-examples/ek_ra8d2/hil_needs_revalidation/ra8_io_demo/src/main.c	clock	2
-examples/ek_ra8d2/hil_needs_revalidation/ra8_io_fsfmt_demo/src/main.c	clock	3
-examples/ek_ra8d2/hil_needs_revalidation/ra8_io_sd_demo/src/main.c	clock	3
-examples/ek_ra8d2/hil_needs_revalidation/ra8_io_sdram_demo/src/main.c	clock	3
-examples/ek_ra8d2/hil_needs_revalidation/ra8_io_xspi_demo/src/main.c	clock	3
+examples/ek_ra8d2/hil_needs_revalidation/ra8_io_cache_demo/src/main.c	clock	1
+examples/ek_ra8d2/hil_needs_revalidation/ra8_io_demo/src/main.c	clock	1
+examples/ek_ra8d2/hil_needs_revalidation/ra8_io_fsfmt_demo/src/main.c	clock	1
+examples/ek_ra8d2/hil_needs_revalidation/ra8_io_sd_demo/src/main.c	clock	1
+examples/ek_ra8d2/hil_needs_revalidation/ra8_io_sdram_demo/src/main.c	clock	1
+examples/ek_ra8d2/hil_needs_revalidation/ra8_io_xspi_demo/src/main.c	clock	1
 examples/ek_ra8d2/hil_needs_revalidation/reflow_content/src/main.c	clock	2
 examples/ek_ra8d2/hil_needs_revalidation/rng_demo/src/main.c	clock	2
 examples/ek_ra8d2/hil_needs_revalidation/rot_verify_hil/src/main.c	clock	2
