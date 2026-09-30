@@ -596,10 +596,16 @@ def _check_option_setting(path: pathlib.Path, code: str) -> list[Finding]:
 # script through ra8_add_app(THREADX_HEAP ...) instead of forking it, so the
 # family is declared once in libs/ra8_board_ek_ra8d2/ld/linker_script.ld and
 # reaches them by INCLUDE. The option bytes did not go anywhere; 42 duplicate
-# declarations of them did. 32 scripts declare the complete family after the
-# conversion, so 25 keeps the same headroom-above-zero the old pin had: a
-# rename still drops the count to 0 and still fails.
-OPTION_SETTING_FILE_FLOOR = 13
+# declarations of them did.
+#
+# This floor therefore RATCHETS DOWN as #742 retires the remaining app-local
+# forks, and a re-pin here is expected work on such a PR, not a warning sign.
+# It has gone 25 -> 13 -> 9 as the population went 32 -> 17 -> 12. What it
+# still catches is the thing it was built for: if the PROVIDE spelling is
+# renamed, LD007/LD008 match nothing and the count goes to 0, which is far
+# below any of these pins and still fails. Pin it a few below the live
+# population, never at it, so an ordinary conversion does not trip it.
+OPTION_SETTING_FILE_FLOOR = 9
 
 
 def option_section(name: str) -> str:
