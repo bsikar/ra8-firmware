@@ -278,6 +278,16 @@ list(REMOVE_ITEM RA8_TEST_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/misc/src/test_lx_f
 # rather than host libc. Registered by hand below with direct sources.
 list(REMOVE_ITEM RA8_TEST_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/core/src/test_ra8_freestanding.c)
 
+# test_ra8_rand_stub.c tests the freestanding rand()/srand() override, Zig since
+# #2890, and it reaches the unit under test through bare rand()/srand() calls.
+# Those only bound to project code while the host glob compiled ra8_rand_stub.c
+# into ra8_core_hal, where the strong definitions beat libc. With the C gone the
+# same calls would resolve to glibc's rand(), which passes every assertion in
+# the file while testing nothing of ours, so the suite follows
+# test_ra8_freestanding instead: registered by hand below against the ra8_
+# prefixed archive, with RA8_TEST_FREESTANDING rewriting its call sites.
+list(REMOVE_ITEM RA8_TEST_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/core/src/test_ra8_rand_stub.c)
+
 # test_cache_store_demo.c (issue #257) compiles the ra8_cache_store_demo example
 # core + RAM NOR driver from examples/ plus the vendored LevelX NOR sources with
 # LX_STANDALONE_ENABLE, so it is registered by hand below rather than through the
@@ -1024,3 +1034,20 @@ target_include_directories(
   test_ra8_freestanding PRIVATE ${RA8_TEST_SHARED_INCLUDE_DIRS} ${FW_ROOT}/libs/ra8_core/inc
 )
 add_test(NAME test_ra8_freestanding COMMAND test_ra8_freestanding)
+
+# test_ra8_rand_stub: the same standalone shape for the same reason (#2890).
+# rand() and srand() are libc-named primitives, so they live in the
+# freestanding archive beside memset and abs rather than in ra8_core_zig, and a
+# host binary that link_libraries()'d the bare-name archive would collide with
+# its own libc. RA8_TEST_FREESTANDING turns this suite's rand()/srand() into
+# ra8_rand()/ra8_srand(), which is what the prefixed archive exports.
+# -fno-builtin matches the sibling suite: nothing here should be folded away
+# before it reaches the implementation under test.
+add_executable(test_ra8_rand_stub ${CMAKE_CURRENT_SOURCE_DIR}/core/src/test_ra8_rand_stub.c)
+target_link_libraries(test_ra8_rand_stub PRIVATE ra8_zig::ra8_core_freestanding_prefixed)
+target_compile_definitions(test_ra8_rand_stub PRIVATE RA8_TEST_FREESTANDING)
+target_compile_options(test_ra8_rand_stub PRIVATE -Wall -Wextra -Werror -fno-builtin)
+target_include_directories(
+  test_ra8_rand_stub PRIVATE ${RA8_TEST_SHARED_INCLUDE_DIRS} ${FW_ROOT}/libs/ra8_core/inc
+)
+add_test(NAME test_ra8_rand_stub COMMAND test_ra8_rand_stub)

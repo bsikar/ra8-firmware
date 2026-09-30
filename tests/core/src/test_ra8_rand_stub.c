@@ -1,14 +1,6 @@
 /**
  * @file test_ra8_rand_stub.c
- * @brief Unit tests for libs/ra8_core/src/ra8_rand_stub.c
- *
- * @details
- * The unit under test IS the freestanding rand()/srand() replacement the
- * firmware links instead of libc, so every test here has to call rand() and
- * seed it with a fixed value -- a fixed seed is what makes the sequence
- * reproducible and therefore assertable. The per-call NOLINTs below waive the
- * weak-PRNG and constant-seed checks for that reason; nothing in this file
- * uses rand() for anything security-relevant.
+ * @brief Unit tests for ra8_core's freestanding rand()/srand() (#2890)
  *
  * @details
  * The unit under test IS the freestanding rand()/srand() replacement the
@@ -24,6 +16,15 @@
 
 #include <stdint.h>
 #include <stdlib.h>
+
+/* RA8_TEST_FREESTANDING is on for this suite, so the block in this header
+ * rewrites the bare rand()/srand() calls below to ra8_rand()/ra8_srand() --
+ * the prefixed names the freestanding archive exports. Without it the calls
+ * would bind to the host's libc and this file would assert nothing about the
+ * implementation it names. Include it after <stdlib.h> so RAND_MAX is still
+ * the libc one and the macros land on the call sites, not on the header's
+ * own declarations. */
+#include "ra8_freestanding.h"
 
 #include "unity_minimal.h"
 
