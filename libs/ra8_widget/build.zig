@@ -3,11 +3,12 @@
 //!
 //! Build graph for the Zig half of `ra8_widget`. The library's public C ABI
 //! (`inc/ra8_widget.h`) is unchanged; this archive carries the module-private
-//! paint helpers that `src/ra8_widget_internal.h` declares plus the text-label,
-//! push-button, progress-bar, status-bar, toolbar and on-screen-keyboard leaf
-//! widgets, so the sibling widget translation units link them instead of
-//! compiling `ra8_widget_paint.c` / `_label.c` / `_button.c` /
-//! `_progress_bar.c` / `_status_bar.c` / `_toolbar.c` / `_keyboard.c`.
+//! paint helpers that `src/ra8_widget_internal.h` declares plus seven leaf
+//! widgets (text label, push button, progress bar, status bar, toolbar,
+//! on-screen keyboard, navigation strip), so the sibling widget translation
+//! units link them instead of compiling `ra8_widget_paint.c` / `_label.c` /
+//! `_button.c` / `_progress_bar.c` / `_status_bar.c` / `_toolbar.c` /
+//! `_keyboard.c` / `_nav_bar.c`.
 //! The `test` step verifies the pure geometry and each membrane.
 
 const std = @import("std");
@@ -136,6 +137,19 @@ pub fn build(b: *std.Build) void {
     keyboard_test_module.addImport("abi", keyboard_module);
     const keyboard_tests = b.addTest(.{ .root_module = keyboard_test_module });
 
+    const nav_bar_module = b.createModule(.{
+        .root_source_file = b.path("src/widget_nav_bar_abi.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    const nav_bar_test_module = b.createModule(.{
+        .root_source_file = b.path("tests/nav_bar_test.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    nav_bar_test_module.addImport("abi", nav_bar_module);
+    const nav_bar_tests = b.addTest(.{ .root_module = nav_bar_test_module });
+
     const run_internal_tests = b.addRunArtifact(internal_tests);
     const run_abi_tests = b.addRunArtifact(abi_tests);
     const run_label_tests = b.addRunArtifact(label_tests);
@@ -144,6 +158,7 @@ pub fn build(b: *std.Build) void {
     const run_status_bar_tests = b.addRunArtifact(status_bar_tests);
     const run_toolbar_tests = b.addRunArtifact(toolbar_tests);
     const run_keyboard_tests = b.addRunArtifact(keyboard_tests);
+    const run_nav_bar_tests = b.addRunArtifact(nav_bar_tests);
     const test_step = b.step("test", "Run Zig ra8_widget tests");
     test_step.dependOn(&run_internal_tests.step);
     test_step.dependOn(&run_abi_tests.step);
@@ -153,4 +168,5 @@ pub fn build(b: *std.Build) void {
     test_step.dependOn(&run_status_bar_tests.step);
     test_step.dependOn(&run_toolbar_tests.step);
     test_step.dependOn(&run_keyboard_tests.step);
+    test_step.dependOn(&run_nav_bar_tests.step);
 }

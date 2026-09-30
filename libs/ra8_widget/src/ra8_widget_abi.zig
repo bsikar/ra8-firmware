@@ -32,3 +32,6 @@ pub const toolbar = @import("widget_toolbar_abi.zig");
 
 /// The on-screen-keyboard leaf widget: `ra8_widget_keyboard_vtable` / `_init`.
 pub const keyboard = @import("widget_keyboard_abi.zig");
+
+/// The navigation-strip leaf widget: `ra8_widget_nav_bar_vtable` / `_init`.
+pub const nav_bar = @import("widget_nav_bar_abi.zig");
