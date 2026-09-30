@@ -671,8 +671,8 @@ ra8_add_zig_library(
 # progress bar) are Zig now, and libs/ra8_widget/src/ra8_widget_paint.c,
 # src/ra8_widget_label.c, src/ra8_widget_button.c and
 # src/ra8_widget_progress_bar.c are deleted on this branch. The remaining C in
-# this library (ra8_widget.c, book, nav_bar, panel, keyboard, toolbar,
-# status_bar, reflow_view) still calls the three RA8_PRIV helpers through the
+# this library (ra8_widget.c, book) still calls the three RA8_PRIV helpers
+# through the
 # unchanged private header src/ra8_widget_internal.h, so those translation
 # units resolve them out of this archive instead of a sibling object. The
 # label's, button's and progress bar's vtable / init entry points are published

@@ -5,11 +5,12 @@
 //! (`inc/ra8_widget.h`) is unchanged; this archive carries the module-private
 //! paint helpers that `src/ra8_widget_internal.h` declares, seven leaf
 //! widgets (text label, push button, progress bar, status bar, toolbar,
-//! on-screen keyboard, navigation strip) and the container panel that nests
-//! them into a tree, so the sibling widget translation units link them
-//! instead of compiling `ra8_widget_paint.c` / `_label.c` / `_button.c` /
-//! `_progress_bar.c` / `_status_bar.c` / `_toolbar.c` / `_keyboard.c` /
-//! `_nav_bar.c` / `_panel.c`.
+//! on-screen keyboard, navigation strip, reflowed reading body) and the
+//! container panel that nests them into a tree, so the sibling widget
+//! translation units link them instead of compiling `ra8_widget_paint.c` /
+//! `_label.c` / `_button.c` / `_progress_bar.c` / `_status_bar.c` /
+//! `_toolbar.c` / `_keyboard.c` / `_nav_bar.c` / `_panel.c` /
+//! `_reflow_view.c`.
 //! The `test` step verifies the pure geometry and each membrane.
 
 const std = @import("std");
@@ -164,6 +165,19 @@ pub fn build(b: *std.Build) void {
     panel_test_module.addImport("abi", panel_module);
     const panel_tests = b.addTest(.{ .root_module = panel_test_module });
 
+    const reflow_view_module = b.createModule(.{
+        .root_source_file = b.path("src/widget_reflow_view_abi.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    const reflow_view_test_module = b.createModule(.{
+        .root_source_file = b.path("tests/reflow_view_test.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    reflow_view_test_module.addImport("abi", reflow_view_module);
+    const reflow_view_tests = b.addTest(.{ .root_module = reflow_view_test_module });
+
     const run_internal_tests = b.addRunArtifact(internal_tests);
     const run_abi_tests = b.addRunArtifact(abi_tests);
     const run_label_tests = b.addRunArtifact(label_tests);
@@ -174,6 +188,7 @@ pub fn build(b: *std.Build) void {
     const run_keyboard_tests = b.addRunArtifact(keyboard_tests);
     const run_nav_bar_tests = b.addRunArtifact(nav_bar_tests);
     const run_panel_tests = b.addRunArtifact(panel_tests);
+    const run_reflow_view_tests = b.addRunArtifact(reflow_view_tests);
     const test_step = b.step("test", "Run Zig ra8_widget tests");
     test_step.dependOn(&run_internal_tests.step);
     test_step.dependOn(&run_abi_tests.step);
@@ -185,4 +200,5 @@ pub fn build(b: *std.Build) void {
     test_step.dependOn(&run_keyboard_tests.step);
     test_step.dependOn(&run_nav_bar_tests.step);
     test_step.dependOn(&run_panel_tests.step);
+    test_step.dependOn(&run_reflow_view_tests.step);
 }

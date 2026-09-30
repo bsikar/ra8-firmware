@@ -897,7 +897,6 @@ libs/ra8_usb_pal/src/ra8_usb_pal.c	MEASURED	142	149	86	94
 libs/ra8_wdt_supervisor/src/ra8_wdt_supervisor.c	MEASURED	137	137	74	82
 libs/ra8_widget/src/ra8_widget.c	MEASURED	125	129	87	98
 libs/ra8_widget/src/ra8_widget_book.c	MEASURED	94	94	39	40
-libs/ra8_widget/src/ra8_widget_reflow_view.c	MEASURED	65	65	36	36
 libs/ra8_wifi/src/ra8_wifi.c	MEASURED	190	192	123	136
 libs/ra8_wifi/src/ra8_wifi_c6link.c	MEASURED	122	122	68	68
 port/esp-hosted/src/ra8_esp_hosted_c6link.c	UNMEASURED	platform-cross-only
