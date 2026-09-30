@@ -632,6 +632,16 @@ if(TARGET test_fw_os)
   target_include_directories(test_fw_os PRIVATE ${FW_ROOT}/libs/if/inc)
 endif()
 
+# The ThreadX binding of the same seam cannot run on a host -- it needs a
+# scheduler -- but its three mapping functions are pure and live in the port
+# header on purpose, so the host build proves them without ThreadX. Only the
+# port include directory is added: these vectors must not reach a tx_* header.
+if(TARGET test_fw_os_threadx)
+  target_include_directories(
+    test_fw_os_threadx PRIVATE ${FW_ROOT}/libs/if/inc ${FW_ROOT}/port/threadx/inc
+  )
+endif()
+
 # The raw POSIX directory test compiles the hosted adapter with a private read
 # injection seam. Production builds do not define RA8_POSIX_TEST and therefore
 # contain neither the mutable seam nor its setter.
