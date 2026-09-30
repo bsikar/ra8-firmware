@@ -741,9 +741,10 @@ finished until `git branch -r` shows three.
 To prove a branch holds nothing unlanded, do NOT trust the merge graph. Match
 each commit by SUBJECT against `dev`, then compare DIFFSTATS, and where they
 disagree diff the actual file contents. That sequence has caught a real
-discrepancy that subject-matching alone called clean (a `Doxyfile` change that
-had landed in a *different* commit -- content identical, so genuinely safe, but
-only a content probe could show it).
+discrepancy that subject-matching alone called clean: a change to the root
+Doxygen configuration, since deleted with the rest of the docs pipeline in
+`a67c04f3e`, had landed in a *different* commit. Content identical, so
+genuinely safe, but only a content probe could show it.
 
 ```sh
 git log --format='%h|%s' origin/dev..origin/<branch> | while IFS='|' read -r h s; do
