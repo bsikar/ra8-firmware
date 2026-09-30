@@ -91,7 +91,7 @@ test "every pointer the C ABI may pass as NULL is refused, not dereferenced" {
     try std.testing.expectEqual(regs.Err.null_ptr, abi.ra8_tz_secure_boot_run(0, 0, null));
     try std.testing.expectEqual(regs.Err.null_ptr, abi.ra8_tz_partition_validate(null));
     try std.testing.expectEqual(regs.Err.null_ptr, abi.ra8_tz_partition_apply(null));
-    try std.testing.expectEqual(regs.Err.null_ptr, abi.ra8_tz_ipc_cpu1_pingpong(null));
+    try std.testing.expectEqual(regs.Err.null_ptr, abi.ra8_tz_ipc_attribution_cpu1_pingpong(null));
     try std.testing.expectEqual(@as(u32, 0), abi.ra8_tz_ns_signed_body_len(null));
 }
 

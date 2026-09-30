@@ -54,7 +54,6 @@ add_library(
   ${RA8_BOARD_EK_RA8D2_SOURCES}
   ${RA8_LSM6DSO_SOURCES}
   ${RA8_OV5640_SOURCES}
-  ${RA8_TZ_SECURE_BOOT_SOURCES}
   ${RA8_DFU_SOURCES}
   # ThreadX SysTick retune (issue #287). Lives under port/threadx (not
   # libs/), so it is not caught by the libs/ globs above -- add it by
@@ -214,7 +213,6 @@ target_include_directories(
          ${FW_ROOT}/apps/shared_libs/longstrip/src
          ${FW_ROOT}/apps/shared_libs/zoom/src
          ${FW_ROOT}/apps/shared_libs/reflow/src
-         ${FW_ROOT}/libs/ra8_tz_secure_boot/src
          ${CMAKE_CURRENT_SOURCE_DIR}/support/inc
          ${CMAKE_CURRENT_SOURCE_DIR}/mocks/inc
 )

@@ -261,9 +261,11 @@ file(GLOB_RECURSE RA8_LSM6DSO_SOURCES CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra8_lsm6
 # Dropping this glob would leave ra8_ov5640_bind_i2c undefined for the four
 # vectors in tests/graphics/src/test_ra8_ov5640_bind.c.
 file(GLOB_RECURSE RA8_OV5640_SOURCES CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra8_ov5640/src/*.c)
-file(GLOB_RECURSE RA8_TZ_SECURE_BOOT_SOURCES CONFIGURE_DEPENDS
-     ${FW_ROOT}/libs/ra8_tz_secure_boot/src/*.c
-)
+# ra8_tz_secure_boot has no C sources left: the secure-boot sequence, the SAU
+# and IPC partitioning, the PSAR gate and the NS root-of-trust reader are all
+# Zig now, linked via tests/cmake/zig_libraries.cmake. The NS-side
+# ns/ra8_ns_rot_header.c is a different artifact: it is data compiled into the
+# Non-Secure image by ra8_add_ns_image.cmake, never into this library.
 file(GLOB_RECURSE RA8_DFU_SOURCES CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra8_dfu/src/*.c)
 # ra8_devcfg has no C sources left: both the record core and the production
 # extra-MRAM store binding are Zig now, linked via tests/cmake/zig_libraries.cmake.

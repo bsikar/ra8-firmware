@@ -453,6 +453,25 @@ ra8_add_zig_library(
   ra8_ota
 )
 
+# Fully migrated: the secure-boot sequence behind inc/ra8_tz_secure_boot.h,
+# the SAU region partition, the IPC attribution encoder behind
+# inc/ra8_tz_ipc_attr.h, the board partition map behind inc/ra8_tz_partition.h
+# and the PSAR gate behind inc/ra8_tz_psar.h are all Zig now, so
+# libs/ra8_tz_secure_boot/src has no .c left and the RA8_TZ_SECURE_BOOT_SOURCES
+# glob is gone from library_sources.cmake and core_hal.cmake. The private src
+# include dir went with the .c files: no test includes a private header from
+# this library. ns/ra8_ns_rot_header.c stays C and is untouched here, because
+# it is not part of this library at all: ra8_add_ns_image.cmake compiles it
+# into the Non-Secure image as its root-of-trust header data.
+ra8_add_zig_library(
+  NAME
+  ra8_tz_secure_boot
+  ZIG_ROOT
+  ${FW_ROOT}/libs/ra8_tz_secure_boot
+  LIBRARY_NAME
+  ra8_tz_secure_boot
+)
+
 target_link_libraries(
   ra8_core_hal
   PUBLIC ra8_zig::ra8_box
@@ -479,6 +498,7 @@ target_link_libraries(
          ra8_zig::ra8_sdmmc_spi
          ra8_zig::ra8_display_pal
          ra8_zig::ra8_ota
+         ra8_zig::ra8_tz_secure_boot
   ra8_zig::ra8_gfx
          ra8_zig::ra8_gfx
 )
@@ -511,4 +531,5 @@ link_libraries(
   ra8_zig::ra8_sdmmc_spi
   ra8_zig::ra8_display_pal
   ra8_zig::ra8_ota
+  ra8_zig::ra8_tz_secure_boot
 )

@@ -3,10 +3,15 @@
 //!
 //! Build graph for the Zig implementation of `ra8_tz_secure_boot`.
 //!
-//! Two roots: the decision core under `src/internal/`, and the C ABI membrane
-//! over it. No static library is installed yet, so CMake still compiles the C
-//! translation units and the #908 archive switch does not fire; the deletion
-//! lands as its own visible change.
+//! The library CMake links, plus the tests. The membrane
+//! (`src/ra8_tz_secure_boot_abi.zig`) is the archive's root: it owns every
+//! symbol `inc/` declares, so the four C translation units are gone and both
+//! the host suite and the ARM cross build consume this archive behind the
+//! unchanged C headers.
+//!
+//! One build option, `enable-root-of-trust`, carries the C's
+//! `RA8_ENABLE_ROOT_OF_TRUST` switch: whether the NS image must authenticate
+//! before BLXNS. It defaults off, exactly as the C did.
 
 const std = @import("std");
 
@@ -22,6 +27,22 @@ pub fn build(b: *std.Build) void {
 
     const options = b.addOptions();
     options.addOption(bool, "root_of_trust", root_of_trust);
+
+    const library_module = b.createModule(.{
+        .root_source_file = b.path("src/ra8_tz_secure_boot_abi.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    library_module.addOptions("build_options", options);
+
+    const library = b.addLibrary(.{
+        .name = "ra8_tz_secure_boot",
+        .linkage = .static,
+        .root_module = library_module,
+    });
+    library.bundle_compiler_rt = true;
+    library.root_module.pic = true;
+    b.installArtifact(library);
 
     const implementation_module = b.createModule(.{
         .root_source_file = b.path("src/internal/root.zig"),
