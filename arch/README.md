@@ -44,14 +44,22 @@ plus an adapter rather than a design argument held one file at a time.
 
 The arch primitives exist. They are in the wrong tier, which is why the "Ring 1
 is host == target" claim in [`docs/RING_AND_WORLD.md`](../docs/RING_AND_WORLD.md)
-is not true yet. Measured on `dev`:
+is not true yet. Each count below is measured by the command the manifest at the
+foot of this page names, and re-run by
+[`scripts/checks/check_measured_counts.py`](../scripts/checks/check_measured_counts.py),
+so the migration order is argued from the tree rather than from a number someone
+pasted once:
 
 | Header in Ring-1 `libs/ra8_core/` | First-party files including it |
 |---|---:|
-| `ra8_boot_entry.h` | 278 |
-| `ra8_exception.h` | 30 |
-| `ra8_scb.h` | 9 |
-| `ra8_systick.h` | 8 |
+| `ra8_boot_entry.h` | 266 |
+| `ra8_exception.h` | 12 |
+| `ra8_scb.h` | 8 |
+| `ra8_systick.h` | 6 |
+
+The first of those decides the slicing. `ra8_boot_entry.h` is reached by two
+orders of magnitude more files than the other three combined, so it moves on its
+own, behind a compatibility header, after the small three have proved the shape.
 
 `ra8_core` is two libraries wearing one name: pure-C utilities that genuinely do
 compile identically on host and target (err, check, log, the pin validator) and
@@ -104,3 +112,28 @@ would be lying:
 Contract only. No backend compiles against this header yet, no build reaches
 `arch/`, and the migration out of `ra8_core` has not started. Those are later
 slices of #694.
+
+## How the numbers here are measured
+
+Every count on this page is one entry in the block below: the table row it
+backs, the count it claims, and the command that produces it. The gate re-runs
+all of them, so a number here cannot drift from the tree without failing, in
+either direction. A count that grew means the migration went backwards; a count
+that shrank is progress this page has to credit.
+
+```sh
+# MEASURED BLOCK -- re-run by scripts/checks/check_measured_counts.py
+# ra8_boot_entry.h -- 266 file(s)
+grep -rlE '#[ \t]*include[ \t]+"ra8_boot_entry\.h"' libs apps examples tests --include=*.c --include=*.h | grep -v /third_party/ | wc -l
+# ra8_exception.h -- 12 file(s)
+grep -rlE '#[ \t]*include[ \t]+"ra8_exception\.h"' libs apps examples tests --include=*.c --include=*.h | grep -v /third_party/ | wc -l
+# ra8_scb.h -- 8 file(s)
+grep -rlE '#[ \t]*include[ \t]+"ra8_scb\.h"' libs apps examples tests --include=*.c --include=*.h | grep -v /third_party/ | wc -l
+# ra8_systick.h -- 6 file(s)
+grep -rlE '#[ \t]*include[ \t]+"ra8_systick\.h"' libs apps examples tests --include=*.c --include=*.h | grep -v /third_party/ | wc -l
+```
+
+```sh
+python3 scripts/checks/check_measured_counts.py --selftest
+python3 scripts/checks/check_measured_counts.py --check
+```

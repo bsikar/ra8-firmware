@@ -15,7 +15,7 @@
 #
 # Gates in this file: pre-commit-checks, agnostic-registers, annotations,
 # doc-attachment, tests-readme, disambig-readmes,
-# cite-check, hil-eil-parity, ports-catalog
+# cite-check, hil-eil-parity, measured-counts
 
 # --- pre-commit-checks ----------------------------------------------------
 # The check_*.py gate suite. Each entry runs in its default mode -- the same
@@ -967,30 +967,33 @@ gate_arch_caps() (
   python3 scripts/checks/check_arch_caps.py
 )
 
-# --- ports-catalog --------------------------------------------------------
-# docs/PORTS.md is the planning artifact for #693, and its build-first order is
-# argued from coupling counts. Those counts were hand-run against a commit
-# named in the page, and they had rotted: clock read 240 against a tree of 227,
-# GPIO 52 against 49, timebase 247 against 237, and the population denominator
-# 470 against 452. The page itself said "nothing should gate on it until a
-# checker owns the measurement", so now one does.
+# --- measured-counts ------------------------------------------------------
+# Two planning pages argue a decision from counts of this tree, and both had
+# rotted. docs/PORTS.md (#693) argues the build-first port order from coupling
+# counts: clock read 240 against a tree of 227, GPIO 52 against 49, timebase
+# 247 against 237, population 470 against 452. arch/README.md (#694) argues the
+# migration order from how many first-party files include each misfiled
+# Armv8-M header: boot_entry read 278 against 266, exception 30 against 12, scb
+# 9 against 8, systick 8 against 6, all four inside a week of being written.
 #
-# Everything checked is DERIVED from the page. Its manifest block names, per
-# figure, the table row it backs and the command that produces it; the gate
-# re-runs each command and fails when the manifest count or the cell it names
-# has drifted, in either direction. A count that grew silently is a migration
-# going backwards; one that shrank silently is progress nobody credited. A
-# table row carrying a count with no entry behind it fails too, because an
-# unreproducible number is the thing this gate exists to stop.
+# So the mechanism belongs to the page, not to one script. A page opts in by
+# carrying a fenced MEASURED BLOCK naming, per figure, the table row it backs
+# and the command that produces it; the gate finds every such page, re-runs
+# each command and fails when the manifest count or the cell it names has
+# drifted, in either direction. A count that grew silently is a migration going
+# backwards; one that shrank silently is progress nobody credited. A table row
+# carrying a count with no entry behind it fails too, because an unreproducible
+# number is the thing this gate exists to stop.
 #
-# --selftest FIRST, with a measurement floor and a scanned-file floor, for the
-# same reason the other derived gates carry them: a page whose grammar stopped
-# matching reads as perfectly clean.
-gate_ports_catalog() (
+# --selftest FIRST, with a page floor, a measurement floor and a scanned-file
+# floor, for the same reason the other derived gates carry them: a page whose
+# grammar stopped matching reads as perfectly clean, and so does a discovery
+# that stopped finding pages.
+gate_measured_counts() (
   set -e
-  require_cmd python3 "the ports-catalog gate is a Python source scanner"
-  python3 scripts/checks/check_ports_catalog.py --selftest
-  python3 scripts/checks/check_ports_catalog.py --check
+  require_cmd python3 "the measured-counts gate is a Python source scanner"
+  python3 scripts/checks/check_measured_counts.py --selftest
+  python3 scripts/checks/check_measured_counts.py --check
 )
 
 # --- hil-eil-parity -------------------------------------------------------
