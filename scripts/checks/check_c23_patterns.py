@@ -56,7 +56,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from lint_targets import is_build_output_path
+from lint_targets import is_build_output_path, repo_files
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 
@@ -392,27 +392,7 @@ def _git_lines(*pathspec: str) -> list[str]:
     Returns:
         Repo-relative path strings; exits 2 on a git failure.
     """
-    # subprocess-security waivers for this one call:
-    #   S603 -- the argv is a fixed literal list and shell is never used;
-    #           `pathspec` contributes further git pathspec words only, never
-    #           an executable name.
-    #   S607 -- "git" is left partial deliberately. The gate must run whichever
-    #           git the surrounding toolchain resolves (Homebrew on macOS,
-    #           /usr/bin/git on the Ubuntu runners, a third path inside the
-    #           devcontainer image), and infra/fleet.yml pins no absolute git
-    #           path for any declared host.
-    proc = subprocess.run(  # noqa: S603 -- fixed literal argv, shell is never used
-        ["git", "ls-files", "-z", "--", *pathspec],  # noqa: S607 -- PATH-resolved git is intended
-        cwd=REPO_ROOT,
-        capture_output=True,
-        text=True,
-        check=False,
-    )
-    if proc.returncode != 0:
-        sys.stderr.write(proc.stderr)
-        sys.stderr.write(f"git ls-files failed (exit {proc.returncode})\n")
-        sys.exit(2)
-    return [p for p in proc.stdout.split("\0") if p]
+    return repo_files(pathspec, root=REPO_ROOT, caller="check_c23_patterns.py")
 
 
 def iter_all_files() -> list[Path]:
