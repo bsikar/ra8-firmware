@@ -5,14 +5,15 @@
 //! separate files, so each needs an explicit comptime reference or its exports
 //! never reach the static library.
 //!
-//! `src/ra8_camera_source_ceu.c` is deliberately NOT here: two host suites
-//! (`tests/misc/src/test_ra8_camera.c`, `tests/misc/src/test_ra8_ceu_cov.c`)
-//! white-box that file with `#include "ra8_camera_source_ceu.c"`, so it stays a
-//! C translation unit and binds the same private vtable.
+//! The CEU capture source is in here too now, so the library has no C
+//! translation unit left. The two host suites that used to white-box a copy of
+//! the C file reach its poll loop and capture entry through the `priv_cam_ceu_`
+//! symbols declared in `src/ra8_camera_source_ceu_private.h`.
 
 comptime {
     _ = @import("ra8_camera_abi.zig");
     _ = @import("source_memory.zig");
+    _ = @import("source_ceu.zig");
     _ = @import("codec_passthrough.zig");
     _ = @import("codec_jpeg_sw.zig");
 }

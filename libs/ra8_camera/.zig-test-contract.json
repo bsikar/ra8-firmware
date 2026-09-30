@@ -2,7 +2,8 @@
   "test_roots": [
     "tests/internal_test.zig",
     "tests/abi_test.zig",
-    "tests/backends_test.zig"
+    "tests/backends_test.zig",
+    "tests/source_ceu_test.zig"
   ],
   "covered_sources": [
     "src/internal/root.zig",
@@ -15,7 +16,11 @@
     "src/root.zig",
     "tests/internal_test.zig",
     "tests/abi_test.zig",
-    "tests/backends_test.zig"
+    "tests/backends_test.zig",
+    "src/source_ceu.zig",
+    "src/ceu_abi.zig",
+    "src/internal/source_ceu.zig",
+    "tests/source_ceu_test.zig"
   ],
-  "minimum_tests": 10
+  "minimum_tests": 30
 }
