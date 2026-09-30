@@ -262,6 +262,68 @@ def repo_files(
     return sorted({rel for rel in proc.stdout.split("\0") if rel and (root / rel).is_file()})
 
 
+def untracked_in_scope(
+    pathspec: tuple[str, ...] = (), *, root: Path = REPO_ROOT, caller: str = "lint_targets.py"
+) -> list[str]:
+    """Present files in scope that git does not track and does not ignore.
+
+    The set a deliberately index-scoped gate cannot see.  Such a gate is not
+    wrong to be index-scoped -- a pre-commit hook judges the prospective
+    commit, not the tree -- but it must not report clean without saying what
+    it declined to read (#713).
+
+    Args:
+        pathspec: Optional git pathspec words narrowing the enumeration.
+        root: Repository to enumerate.
+        caller: Script name for the FATAL diagnostic.
+
+    Returns:
+        Repo-relative paths of existing untracked, non-ignored files, sorted.
+    """
+    proc = subprocess.run(
+        [  # noqa: S607 -- trusted: fixed git argv
+            "git",
+            "ls-files",
+            "-z",
+            "--others",
+            "--exclude-standard",
+            "--",
+            *pathspec,
+        ],
+        cwd=root,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    if proc.returncode != 0:
+        sys.stderr.write(proc.stderr)
+        sys.stderr.write(f"{caller}: FATAL -- `git ls-files --others` failed\n")
+        sys.exit(2)
+    return sorted({rel for rel in proc.stdout.split("\0") if rel and (root / rel).is_file()})
+
+
+def announce_unscanned(paths: list[str], *, caller: str, why: str, limit: int = 10) -> None:
+    """Say on stderr which in-scope files this run did not read.
+
+    Silence over unread code is the defect #713 exists to kill.  A gate that
+    must stay index-scoped keeps its scope and pays for it with this line,
+    every run, so a clean verdict is never mistaken for a complete one.
+
+    Args:
+        paths: Repo-relative paths the run skipped.  Empty prints nothing.
+        caller: Script name to lead the notice with.
+        why: Short phrase naming why they are out of scope.
+        limit: Paths to name before summarising the remainder.
+    """
+    if not paths:
+        return
+    shown = ", ".join(paths[:limit])
+    rest = len(paths) - limit
+    if rest > 0:
+        shown += f", and {rest} more"
+    sys.stderr.write(f"{caller}: {len(paths)} untracked file(s) not scanned ({why}): {shown}\n")
+
+
 def _tracked() -> list[str]:
     """Every present first-party candidate path in this checkout."""
     return repo_files()

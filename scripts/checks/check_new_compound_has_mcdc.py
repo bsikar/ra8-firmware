@@ -87,7 +87,12 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from lint_targets import firmware_app_dirs, is_build_output_path
+from lint_targets import (
+    announce_unscanned,
+    firmware_app_dirs,
+    is_build_output_path,
+    untracked_in_scope,
+)
 from mcdc_compound_delta import (
     COMPOUND_OP_RE,
     NO_ENCLOSING_FUNCTION,
@@ -348,6 +353,17 @@ def collect_staged_citations() -> list[tuple[str, str]]:
     added with the decision must count immediately.
     """
     cites: list[tuple[str, str]] = []
+    announce_unscanned(
+        [
+            p
+            for p in untracked_in_scope(
+                ("tests", "apps"), caller="check_new_compound_has_mcdc.py"
+            )
+            if _is_test_source_name(p.rsplit("/", 1)[-1]) and not is_build_output_path(p)
+        ],
+        caller="check_new_compound_has_mcdc.py",
+        why="staged mode judges the index only; `git add` them to include them",
+    )
     listing = _git("ls-files", "--cached", "--", "tests", "apps")
     for path in listing.splitlines():
         name = path.rsplit("/", 1)[-1]
