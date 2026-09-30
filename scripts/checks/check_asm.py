@@ -80,6 +80,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
+from lint_targets import repo_files
 from selftest_assert import expect, report
 
 REPO_ROOT = Path(
@@ -245,15 +246,10 @@ def check_file(rel: str, raw: bytes) -> list[Finding]:
 
 def targets() -> list[str]:
     """Every first-party assembly source, repo-relative and sorted."""
-    proc = subprocess.run(
-        ["git", "ls-files", "-z", "*.S", "*.s"],  # noqa: S607 -- git from PATH is intended
-        cwd=REPO_ROOT,
-        capture_output=True,
-        text=True,
-        check=True,
-    )
     return sorted(
-        rel for rel in proc.stdout.split("\0") if rel and not rel.startswith(EXCLUDED_PREFIXES)
+        rel
+        for rel in repo_files(("*.S", "*.s"), root=REPO_ROOT, caller="check_asm.py")
+        if not rel.startswith(EXCLUDED_PREFIXES)
     )
 
 
