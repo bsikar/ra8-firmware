@@ -656,6 +656,18 @@ if(TARGET test_fw_if_clock_ra8)
   target_sources(test_fw_if_clock_ra8 PRIVATE ${FW_ROOT}/tests/mocks/src/ra8_fake_mmio.c)
 endif()
 
+# The board's own answer to that same port: which chip instance each board-level
+# module index lands on. It reaches the adapter and therefore ra8_mstp, so it
+# wants the same fake MMIO mock for the module-stop read-back.
+if(TARGET test_ra8_board_ek_ra8d2_clock_profile)
+  target_include_directories(
+    test_ra8_board_ek_ra8d2_clock_profile
+    PRIVATE ${FW_ROOT}/libs/if/inc ${FW_ROOT}/libs/if_ra8_cgc/inc
+            ${FW_ROOT}/libs/ra8_board_ek_ra8d2/inc ${FW_ROOT}/tests/mocks/inc)
+  target_sources(test_ra8_board_ek_ra8d2_clock_profile
+                 PRIVATE ${FW_ROOT}/tests/mocks/src/ra8_fake_mmio.c)
+endif()
+
 # The ThreadX binding of the same seam cannot run on a host -- it needs a
 # scheduler -- but its three mapping functions are pure and live in the port
 # header on purpose, so the host build proves them without ThreadX. Only the
