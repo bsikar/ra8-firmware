@@ -21,6 +21,10 @@
  * compile_on_m33 image uses. On ra8_emulator the SDRAM window is always mapped; on
  * silicon the M85 brings up the SDRAM controller before releasing the M33.
  *
+ * DIVERGES from the shared libs/ra8_board_ek_ra8d2/ld/linker_script_cpu1.ld
+ * on purpose (the RGB565 page framebuffer in external SDRAM), so this app keeps its own
+ * script and overrides the board one (#742).
+ *
  * Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
  */
