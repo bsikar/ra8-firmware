@@ -45,7 +45,7 @@ ra8_add_app(
   DESCRIPTION "TrustZone two-project: Secure side (CGC veneers + NS boot)"
               AUX_SRCS src/ns_main.c src/ns_usb.c src/ns_usb_host.c
   LIBS ra8_tz_secure_boot
-  NSC_SRCS ra8_nsc_cgc.c
+  NSC_SRCS ra8_nsc_cgc.c MRAM_LENGTH 512K
 )
 
 # The Secure side must be built for TrustZone, not merely configured for it.
@@ -74,7 +74,6 @@ ra8_ns_memory_map_defines(tz_nsc_cgc_usb.elf)
 target_compile_definitions(tz_nsc_cgc_usb.elf PRIVATE RA8_TRUSTZONE_ENABLE)
 target_compile_options(tz_nsc_cgc_usb.elf PRIVATE -mcmse)
 target_link_options(tz_nsc_cgc_usb.elf PRIVATE -mcmse)
-
 
 # ---- Post-build: verify the NSC SG-veneer slot offsets (T5-08) -------------
 # The NS image reaches each NSC CGC veneer by NAME, through the CMSE import
@@ -108,21 +107,32 @@ include(${_d}/cmake/threadx_ns.cmake)
 #   RA8_USB_POLLED_ONLY -- ux_dcd_ra8_usb skips the Secure-attributed USB NVIC line;
 #                         the worker drives the controller via ra8_usb_dispatch.
 ra8_add_ns_image(
-  SECURE_TARGET tz_nsc_cgc_usb.elf
-  NAME tz_nsc_cgc_usb_ns
-  STACK_BYTES 2200
-  IMPLIB ${CMAKE_CURRENT_BINARY_DIR}/tz_nsc_cgc_usb_cmse_import.o
-  MERGED_HEX tz_nsc_cgc_usb.hex
-  SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/src/ns_main.c
-          ${CMAKE_CURRENT_SOURCE_DIR}/src/ns_usb.c
-          ${CMAKE_CURRENT_SOURCE_DIR}/src/ns_usb_host.c
-  DEFINES RA8_TRUSTZONE_ENABLE RA8_PERIPH_NS_ALIAS RA8_USB_POLLED_ONLY
-  INCLUDES ${CMAKE_CURRENT_SOURCE_DIR}/inc
-           ${CMAKE_CURRENT_SOURCE_DIR}/src
-           ${RA8_REPO_ROOT}/libs/ra8_core/inc
-           ${RA8_REPO_ROOT}/libs/ra8_hal/inc
-           ${RA8_REPO_ROOT}/libs/ra8_nsc/inc
-  LINK_LIBS threadx_ns
+  SECURE_TARGET
+  tz_nsc_cgc_usb.elf
+  NAME
+  tz_nsc_cgc_usb_ns
+  STACK_BYTES
+  2200
+  IMPLIB
+  ${CMAKE_CURRENT_BINARY_DIR}/tz_nsc_cgc_usb_cmse_import.o
+  MERGED_HEX
+  tz_nsc_cgc_usb.hex
+  SOURCES
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/ns_main.c
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/ns_usb.c
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/ns_usb_host.c
+  DEFINES
+  RA8_TRUSTZONE_ENABLE
+  RA8_PERIPH_NS_ALIAS
+  RA8_USB_POLLED_ONLY
+  INCLUDES
+  ${CMAKE_CURRENT_SOURCE_DIR}/inc
+  ${CMAKE_CURRENT_SOURCE_DIR}/src
+  ${RA8_REPO_ROOT}/libs/ra8_core/inc
+  ${RA8_REPO_ROOT}/libs/ra8_hal/inc
+  ${RA8_REPO_ROOT}/libs/ra8_nsc/inc
+  LINK_LIBS
+  threadx_ns
 )
 
 # ---- USBX + ra8_usb, compiled NS-private into the NS ELF (#96 M2) -----------
