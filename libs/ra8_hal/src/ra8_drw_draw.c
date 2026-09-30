@@ -89,7 +89,9 @@ static const char* const s_tag = "DRW";
   /* ORIGIN both POSITIONS the bounding box and TRIGGERS the render, so it is
    * written last and points at the rectangle's own top-left pixel rather
    * than the framebuffer base. Without the trigger the engine never
-   * rasterizes (silicon-verified: the demo framebuffer stayed zero-filled). */
+   * rasterizes (silicon-verified: `drw_fill_demo`'s framebuffer stayed
+   * zero-filled without it, and a J-Link savebin of g_drw_fb now shows the
+   * asked-for rect -- see that app's hil.conf). */
   *ra8_drw_reg32(k_ra8_drw_off_origin) = priv_ra8_drw_internal_rect_origin(rect);
 
   return k_ra8_ok;

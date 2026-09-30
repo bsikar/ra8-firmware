@@ -223,7 +223,8 @@ void main(void)
 
   ra8_log_info("M85", "M33 released -- it now blinks LED1 (BLUE, P600)");
   /* Additive HIL banner: the M33 has been released (its blink is visually
-   * confirmed on the bench); mirror the verdict to VCOM for uart_scrape. */
+   * confirmed on the bench, per this app's own `hil.conf` probe); mirror
+   * the verdict to VCOM for uart_scrape. */
   internal_emit_pass();
   ra8_log_info("M85", "M85 entering WFI idle -- low-power co-processor model");
   internal_idle_forever();
