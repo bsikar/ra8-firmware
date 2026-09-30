@@ -208,13 +208,29 @@ macro(_ra8_app_collect_sources)
     REGEX
     "/src/boot/"
   )
-  file(GLOB_RECURSE _ra8_secure_app CONFIGURE_DEPENDS ${RA8_REPO_ROOT}/libs/ra8_secure_app/src/*.c)
+  # Migrated (Zig) libraries, as "<lib>|<path>" entries. Declared here rather
+  # than beside the LIBS loop below: ra8_secure_app is linked into every app
+  # ahead of that loop and, now that it is fully ported, has an archive to
+  # register of its own.
+  set(_ra8_lib_zig "")
+  # ra8_secure_app is part of every app's universal source set, so applications
+  # do not name it in LIBS. Once its C implementation is gone, register the
+  # replacement archive here exactly as ra8_net_pal and the LIBS loop do.
+  set(_ra8_secure_app_path "${RA8_REPO_ROOT}/libs/ra8_secure_app")
+  file(GLOB_RECURSE _ra8_secure_app CONFIGURE_DEPENDS ${_ra8_secure_app_path}/src/*.c)
+  set(_ra8_secure_app_archive "")
+  if(EXISTS "${_ra8_secure_app_path}/build.zig" AND NOT EXISTS
+                                                    "${_ra8_secure_app_path}/src/ra8_secure_app.c"
+  )
+    list(APPEND _ra8_lib_zig "ra8_secure_app|${_ra8_secure_app_path}")
+    set(_ra8_secure_app_archive ON)
+  endif()
   _ra8_app_require_compilable_lib(
     ra8_secure_app
-    "${RA8_REPO_ROOT}/libs/ra8_secure_app"
+    "${_ra8_secure_app_path}"
     "links ra8_secure_app into every app"
     "${_ra8_secure_app}"
-    ""
+    "${_ra8_secure_app_archive}"
   )
   if(_RA8_APP_NO_NSC)
     set(_ra8_lib_nsc "")
@@ -241,8 +257,6 @@ macro(_ra8_app_collect_sources)
   # Extra first-party libraries (plain + off-target).
   set(_ra8_lib_extra "")
   set(_ra8_lib_extra_off_target "")
-  # Migrated (Zig) libraries, as "<lib>|<path>" entries.
-  set(_ra8_lib_zig "")
   # ra8_net_pal is part of every app's universal source set, so applications
   # do not normally name it in LIBS. Once its primary C implementation is
   # gone, register the replacement archive here just as the LIBS loop below

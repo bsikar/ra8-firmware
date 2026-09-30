@@ -92,11 +92,23 @@ add_custom_command(
 # build ordering, and the merged-hex staple (#759 item 1).
 include(${RA8_REPO_ROOT}/cmake/threadx_ns.cmake)
 
-# The NS world runs the ThreadX watchdog supervisor; pull in its sources plus
-# ra8_wdt.c (the supervisor's default refresh hook references
-# ra8_wdt_refresh_deferred, so the symbol must resolve -- it is dead code once
-# ns_main routes the hook through the ra8_nsc_wdt_refresh veneer).
-file(GLOB _ra8_ns_wdt_sup CONFIGURE_DEPENDS ${RA8_REPO_ROOT}/libs/ra8_wdt_supervisor/src/*.c)
+# The NS world runs the ThreadX watchdog supervisor. Its implementation is Zig
+# now, so the archive replaces the src/*.c glob that used to feed SOURCES. It
+# is named in LINK_LIBS ahead of threadx_ns because the supervisor calls into
+# ThreadX (_tx_time_get, the _txe_* entry points): after threadx_ns those
+# symbols would already be past. ra8_wdt.c stays a source -- the supervisor's
+# default refresh hook references ra8_wdt_refresh_deferred, so the symbol must
+# resolve, and it is dead code once ns_main routes the hook through the
+# ra8_nsc_wdt_refresh veneer.
+ra8_zig_archive_for_cpu(
+  _ra8_ns_wdt_sup
+  LIB
+  ra8_wdt_supervisor
+  CPU
+  cortex_m85
+  FLOAT
+  hard
+)
 
 ra8_add_ns_image(
   SECURE_TARGET
@@ -112,7 +124,6 @@ ra8_add_ns_image(
   ra8d2-ereader.hex
   SOURCES
   ${CMAKE_CURRENT_SOURCE_DIR}/src/ns_main.c
-  ${_ra8_ns_wdt_sup}
   ${RA8_REPO_ROOT}/libs/ra8_hal/src/ra8_wdt.c
   DEFINES
   RA8_TRUSTZONE_ENABLE
@@ -127,5 +138,13 @@ ra8_add_ns_image(
   ${RA8_REPO_ROOT}/libs/ra8_board_ek_ra8d2/inc
   ${RA8_REPO_ROOT}/libs/ra8_wdt_supervisor/inc
   LINK_LIBS
+  ${_ra8_ns_wdt_sup}
   threadx_ns
 )
+
+# The archive is produced by a rule in this directory and named by full path on
+# the link line, so ninja already orders the two. State it anyway: the image is
+# also reachable as a bare `ninja <name>.elf`, and an explicit edge is cheaper
+# than rediscovering why a clean build of just that target raced.
+add_custom_target(ra8d2-ereader_ns_zig_wdt_supervisor DEPENDS ${_ra8_ns_wdt_sup})
+add_dependencies(ra8d2-ereader_ns.elf ra8d2-ereader_ns_zig_wdt_supervisor)
