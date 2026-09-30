@@ -7,7 +7,7 @@
 # HAL implementations, named backend translation units, board composition
 # libraries, tests, vendored code, and generated code are outside this ratchet.
 #
-# clock: 489 reference(s)
+# clock: 481 reference(s)
 # display: 9 reference(s)
 # gpio: 78 reference(s)
 # timer: 51 reference(s)
@@ -34,14 +34,14 @@ examples/ek_ra8d2/hil_needs_revalidation/ereader_shelf/src/main.c	clock	2
 examples/ek_ra8d2/hil_needs_revalidation/ereader_shelf/src/sh_sd.c	gpio	2
 examples/ek_ra8d2/hil_needs_revalidation/gpt_irq_demo/src/main.c	clock	2
 examples/ek_ra8d2/hil_needs_revalidation/gpt_irq_demo/src/main.c	timer	3
-examples/ek_ra8d2/hil_needs_revalidation/lpm_deep_standby_1_demo/src/main.c	clock	2
-examples/ek_ra8d2/hil_needs_revalidation/lpm_deep_standby_2_demo/src/main.c	clock	2
-examples/ek_ra8d2/hil_needs_revalidation/lpm_deep_standby_3_demo/src/main.c	clock	2
-examples/ek_ra8d2/hil_needs_revalidation/lpm_idle_demo/src/main.c	clock	2
-examples/ek_ra8d2/hil_needs_revalidation/lpm_periodic_idle/src/main.c	clock	2
-examples/ek_ra8d2/hil_needs_revalidation/lpm_software_standby_demo/src/main.c	clock	2
-examples/ek_ra8d2/hil_needs_revalidation/lpm_ulpt_standby/src/main.c	clock	2
-examples/ek_ra8d2/hil_needs_revalidation/lpm_wake_matrix_demo/src/main.c	clock	2
+examples/ek_ra8d2/hil_needs_revalidation/lpm_deep_standby_1_demo/src/main.c	clock	1
+examples/ek_ra8d2/hil_needs_revalidation/lpm_deep_standby_2_demo/src/main.c	clock	1
+examples/ek_ra8d2/hil_needs_revalidation/lpm_deep_standby_3_demo/src/main.c	clock	1
+examples/ek_ra8d2/hil_needs_revalidation/lpm_idle_demo/src/main.c	clock	1
+examples/ek_ra8d2/hil_needs_revalidation/lpm_periodic_idle/src/main.c	clock	1
+examples/ek_ra8d2/hil_needs_revalidation/lpm_software_standby_demo/src/main.c	clock	1
+examples/ek_ra8d2/hil_needs_revalidation/lpm_ulpt_standby/src/main.c	clock	1
+examples/ek_ra8d2/hil_needs_revalidation/lpm_wake_matrix_demo/src/main.c	clock	1
 examples/ek_ra8d2/hil_needs_revalidation/lvd_monitor_demo/src/main.c	clock	2
 examples/ek_ra8d2/hil_needs_revalidation/mem_ecc_fault_demo/src/main.c	clock	2
 examples/ek_ra8d2/hil_needs_revalidation/mem_subsystem/src/main.c	clock	2
