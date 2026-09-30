@@ -6,7 +6,8 @@
     "tests/button_test.zig",
     "tests/progress_bar_test.zig",
     "tests/status_bar_test.zig",
-    "tests/toolbar_test.zig"
+    "tests/toolbar_test.zig",
+    "tests/keyboard_test.zig"
   ],
   "covered_sources": [
     "src/ra8_widget_abi.zig",
@@ -18,13 +19,15 @@
     "src/widget_progress_bar_abi.zig",
     "src/widget_status_bar_abi.zig",
     "src/widget_toolbar_abi.zig",
+    "src/widget_keyboard_abi.zig",
     "tests/internal_test.zig",
     "tests/abi_test.zig",
     "tests/label_test.zig",
     "tests/button_test.zig",
     "tests/progress_bar_test.zig",
     "tests/status_bar_test.zig",
-    "tests/toolbar_test.zig"
+    "tests/toolbar_test.zig",
+    "tests/keyboard_test.zig"
   ],
-  "minimum_tests": 62
+  "minimum_tests": 81
 }
