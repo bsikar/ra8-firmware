@@ -57,9 +57,14 @@ PROGRAM = "check_rtos_symbol_isolation.py"
 OPTION_ARG_COUNT = 2
 
 # Floors. A sweep that has stopped matching must not report a clean tree.
+# The ledger floors track the ledger down as leaks genuinely burn down: #693
+# moved the watchdog supervisor onto the fw_os seam and took two sites and
+# eighteen symbols with it, so they were re-pinned from 6/40 to the surviving
+# 5/28. They are a tripwire against a gutted ledger, never a target to edit
+# toward: shrink the ledger by burning a leak down, then re-pin here.
 FILE_FLOOR = 600
-LEDGER_SITE_FLOOR = 6
-LEDGER_SYMBOL_FLOOR = 40
+LEDGER_SITE_FLOOR = 5
+LEDGER_SYMBOL_FLOOR = 28
 
 # Vendor namespaces. The leading-underscore forms are the middleware's own
 # internal entry points; the bare forms are its published API.
@@ -201,33 +206,6 @@ DECLARED_SITES: dict[str, frozenset[str]] = {
             "ux_slave_class_dfu_parameter_read",
             "ux_slave_class_dfu_parameter_will_detach",
             "ux_slave_class_dfu_parameter_write",
-        }
-    ),
-    # ThreadX mutex/thread/time services behind a library-local shim header.
-    "libs/ra8_wdt_supervisor/src/ra8_wdt_sup_tx_shim_internal.h": frozenset(
-        {
-            "tx_mutex_create",
-            "tx_mutex_delete",
-            "tx_mutex_get",
-            "tx_mutex_put",
-            "tx_thread_create",
-            "tx_thread_delete",
-            "tx_thread_sleep",
-            "tx_thread_terminate",
-            "tx_time_get",
-        }
-    ),
-    "libs/ra8_wdt_supervisor/src/ra8_wdt_supervisor.c": frozenset(
-        {
-            "tx_mutex_create",
-            "tx_mutex_delete",
-            "tx_mutex_get",
-            "tx_mutex_put",
-            "tx_thread_create",
-            "tx_thread_delete",
-            "tx_thread_sleep",
-            "tx_thread_terminate",
-            "tx_time_get",
         }
     ),
 }
