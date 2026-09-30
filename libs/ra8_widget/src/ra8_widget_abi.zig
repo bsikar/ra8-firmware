@@ -42,3 +42,6 @@ pub const panel = @import("widget_panel_abi.zig");
 /// The reflowed-reading-body leaf widget: `ra8_widget_reflow_view_vtable` /
 /// `_init`.
 pub const reflow_view = @import("widget_reflow_view_abi.zig");
+
+/// The book-grid leaf widget: `ra8_widget_book_grid_vtable` / `_init`.
+pub const book = @import("widget_book_abi.zig");

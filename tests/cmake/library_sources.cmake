@@ -126,18 +126,19 @@ file(GLOB_RECURSE RABOOK_IMPORT_SOURCES CONFIGURE_DEPENDS
      ${FW_ROOT}/apps/shared_libs/rabook_import/src/*.c
 )
 # ra8_batt is implemented in Zig (libs/ra8_batt/build.zig).
-# ra8_widget is partly Zig: the RA8_PRIV paint helpers, seven leaf widgets
+# ra8_widget is nearly all Zig: the RA8_PRIV paint helpers, seven leaf widgets
 # (text label, push button, progress bar, status bar, toolbar, on-screen
-# keyboard, navigation strip), the container panel that nests them into a tree
-# and the paged reflow view are libs/ra8_widget/src/*.zig (linked as
-# ra8_zig::ra8_widget), and src/ra8_widget_paint.c, src/ra8_widget_label.c,
-# src/ra8_widget_button.c, src/ra8_widget_progress_bar.c,
-# src/ra8_widget_status_bar.c, src/ra8_widget_toolbar.c,
-# src/ra8_widget_keyboard.c, src/ra8_widget_nav_bar.c,
-# src/ra8_widget_panel.c and src/ra8_widget_reflow_view.c are deleted. The
-# remaining widgets are still C and still globbed here; they call the paint
-# helpers through the unchanged src/ra8_widget_internal.h, and the panel and
-# the reflow view call the flat ops still compiled from src/ra8_widget.c.
+# keyboard, navigation strip), the container panel that nests them into a tree,
+# the paged reflow view and the book-card grid are libs/ra8_widget/src/*.zig
+# (linked as ra8_zig::ra8_widget), and src/ra8_widget_paint.c,
+# src/ra8_widget_label.c, src/ra8_widget_button.c,
+# src/ra8_widget_progress_bar.c, src/ra8_widget_status_bar.c,
+# src/ra8_widget_toolbar.c, src/ra8_widget_keyboard.c,
+# src/ra8_widget_nav_bar.c, src/ra8_widget_panel.c,
+# src/ra8_widget_reflow_view.c and src/ra8_widget_book.c are deleted. The one
+# remaining C translation unit is src/ra8_widget.c, the flat op core every
+# widget calls into; it is still globbed here and still resolves the paint
+# helpers through the unchanged src/ra8_widget_internal.h.
 file(GLOB_RECURSE RA8_WIDGET_SOURCES CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra8_widget/src/*.c)
 # ra8_app is implemented in Zig (libs/ra8_app/build.zig). It is linked through
 # cmake/zig_libraries.cmake instead of being globbed as C sources here; the
