@@ -13,6 +13,7 @@ const testing = std.testing;
 
 const math = @import("freestanding_math");
 const mem = @import("freestanding_mem");
+const rng = @import("freestanding_rand");
 const str = @import("freestanding_str");
 
 test "set fills the whole span and nothing past it" {
@@ -161,4 +162,38 @@ test "the errno slot is one stable location" {
     math.errno_slot = 7;
     try testing.expectEqual(@as(i32, 7), first.*);
     math.errno_slot = 0;
+}
+
+test "a zero seed is remapped so the generator still advances" {
+    rng.seed(0);
+    try testing.expect(rng.next() != 0);
+}
+
+test "the same seed replays the same sequence" {
+    rng.seed(42);
+    const first = rng.next();
+    rng.seed(42);
+    try testing.expectEqual(first, rng.next());
+}
+
+test "different seeds diverge" {
+    rng.seed(1);
+    const one = rng.next();
+    rng.seed(2);
+    try testing.expect(one != rng.next());
+}
+
+test "each draw advances the state" {
+    rng.seed(1);
+    const a = rng.next();
+    const b = rng.next();
+    const c = rng.next();
+    try testing.expect(a != b or b != c);
+}
+
+test "every draw stays inside RAND_MAX" {
+    rng.seed(7);
+    for (0..64) |_| {
+        try testing.expect(rng.next() <= rng.rand_max);
+    }
 }
