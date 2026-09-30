@@ -53,6 +53,19 @@ if(NOT TARGET ra8_zig::ra8_imgdec)
 endif()
 link_libraries(ra8_zig::ra8_imgdec)
 
+# The arena the JOF producer carves its scratch from is Zig (#2601), so it is
+# linked as an archive rather than named as a source. ra8_webp_attach() below
+# relies on the same archive for the decoder scratch.
+if(NOT TARGET ra8_zig::ra8_mem)
+  include(${FW_ROOT}/tests/cmake/zig_library.cmake)
+  ra8_add_zig_library(
+    NAME ra8_mem
+    ZIG_ROOT ${FW_ROOT}/libs/ra8_mem
+    LIBRARY_NAME ra8_mem
+  )
+endif()
+link_libraries(ra8_zig::ra8_mem)
+
 # ---------------------------------------------------------------------------
 # The exact firmware members the tool calls: the JOF producer (with its
 # JPEG / PNG / WebP front ends) and reader, plus the compression seam they sit
@@ -66,7 +79,6 @@ set(RA8_FMT_FW_SRC
     ${FW_ROOT}/apps/shared_libs/jof/src/jof_png.c
     ${FW_ROOT}/apps/shared_libs/jof/src/jof_png_chunk.c
     ${FW_ROOT}/apps/shared_libs/compress/src/ra8_compress.c
-    ${FW_ROOT}/libs/ra8_mem/src/ra8_arena.c
     ${FW_ROOT}/libs/ra8_core/src/ra8_log.c
     ${FW_ROOT}/libs/ra8_core/src/ra8_error_handler.c
     ${FW_ROOT}/libs/ra8_core/src/ra8_decomp_limits.c

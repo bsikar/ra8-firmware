@@ -34,7 +34,8 @@
 #
 # API:
 #   ra8_webp_vendor_sources(<out> <repo_root>)   vendored libwebp decoder TUs
-#   ra8_webp_facade_sources(<out> <repo_root>)   first-party ra8_webp facade + arena
+#   ra8_webp_facade_sources(<out> <repo_root>)   first-party ra8_webp facade
+#   ra8_webp_link_deps(<target> <repo_root>)     the Zig ra8_mem archive it calls
 #   ra8_webp_includes(<out> <repo_root>)         include roots for both of the above
 #   ra8_webp_apply_soup_flags(<sources>...)      per-source SOUP flags for part 3 + 4
 #   ra8_webp_attach(<target> <repo_root>)        all of the above, applied to a target
@@ -76,10 +77,15 @@ endfunction()
 #
 # Every entry is an absolute ${repo_root} path, which is what makes this safe
 # for a consumer that already lists one of them (tools/rabook_viewer lists
-# ra8_imgdec_dims.c, tools/rabook_imagepack lists ra8_arena.c, the host test
-# build globs both directories): CMake dedupes identical absolute source paths
-# within a target. That is the same property the scratch entry has relied on
-# since #768.
+# ra8_imgdec_dims.c, the host test build globs both directories): CMake dedupes
+# identical absolute source paths within a target. That is the same property
+# the scratch entry has relied on since #768.
+#
+# The arena the scratch carves from left this list in #2601: it is Zig now, so
+# the closure is completed by a LINK rather than by a source, through
+# ra8_webp_link_deps() below. Linking the same imported target twice is
+# harmless in a way that compiling the same .c twice is not, so the dedupe
+# property the source list needed is simply not a question for it.
 function(ra8_webp_facade_sources out_var repo_root)
   set(_root "${repo_root}/apps/shared_libs/webp")
   if(NOT EXISTS "${_root}")
@@ -89,18 +95,25 @@ function(ra8_webp_facade_sources out_var repo_root)
   if(NOT _srcs)
     message(FATAL_ERROR "ra8_webp_facade_sources(): no facade TUs under ${_root}/src")
   endif()
-  set(_deps
-      ${repo_root}/libs/ra8_mem/src/ra8_arena.c
-  )
-  foreach(_dep IN LISTS _deps)
-    if(NOT EXISTS "${_dep}")
-      message(FATAL_ERROR "ra8_webp_facade_sources(): facade dependency missing at ${_dep}")
-    endif()
-  endforeach()
   set(${out_var}
-      ${_srcs} ${_deps}
+      ${_srcs}
       PARENT_SCOPE
   )
+endfunction()
+
+# The non-source half of the facade's link closure: the Zig ra8_mem archive,
+# which defines the ra8_arena_* the shared decoder scratch calls (#768, #2601).
+# Defined on demand so a standalone host tool needs no other include.
+function(ra8_webp_link_deps target repo_root)
+  if(NOT TARGET ra8_zig::ra8_mem)
+    include(${repo_root}/tests/cmake/zig_library.cmake)
+    ra8_add_zig_library(
+      NAME ra8_mem
+      ZIG_ROOT ${repo_root}/libs/ra8_mem
+      LIBRARY_NAME ra8_mem
+    )
+  endif()
+  target_link_libraries(${target} PRIVATE ra8_zig::ra8_mem)
 endfunction()
 
 # Include roots. libwebp's ROOT (not its src/) is the include dir: the codec
@@ -187,5 +200,6 @@ function(ra8_webp_attach target repo_root)
   ra8_webp_includes(_incs ${repo_root})
   target_sources(${target} PRIVATE ${_vendor} ${_facade})
   target_include_directories(${target} PRIVATE ${_incs})
+  ra8_webp_link_deps(${target} ${repo_root})
   ra8_webp_apply_soup_flags(${_vendor})
 endfunction()
