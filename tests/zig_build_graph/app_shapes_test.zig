@@ -438,10 +438,15 @@ test "the uncovered table is keyed by shape, not by name" {
     const usbx = uncoveredFor(.{ .uses = &.{ "threadx", "usbx" }, .threadx_heap = true }) orelse
         return error.TestUnexpectedResult;
     try std.testing.expectEqualStrings("usb_selftest_wlun", usbx.representative);
-    // The same middleware plus EXTRA_SRCS is a DIFFERENT kind of app, and has
-    // its own entry.
-    const dfu = uncoveredFor(.{ .uses = &.{ "threadx", "usbx" }, .extra_srcs = true }) orelse
-        return error.TestUnexpectedResult;
+    // The same middleware plus EXTRA_SRCS and the bootloader-bank keywords is
+    // a DIFFERENT kind of app, and has its own entry.
+    const dfu = uncoveredFor(.{
+        .uses = &.{ "threadx", "usbx" },
+        .extra_srcs = true,
+        .threadx_heap = true,
+        .sram_text = true,
+        .mram_length = true,
+    }) orelse return error.TestUnexpectedResult;
     try std.testing.expectEqualStrings("dfu_bootloader", dfu.representative);
     // A shape the table cross-builds is not in here at all.
     try std.testing.expect(uncoveredFor(.{}) == null);
