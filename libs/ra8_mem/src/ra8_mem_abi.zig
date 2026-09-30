@@ -2,10 +2,11 @@
 //! Copyright (c) 2026 Brighton Sikarskie
 //!
 //! The C membrane for the Zig side of `ra8_mem`: every symbol
-//! `inc/ra8_slab.h`, `inc/ra8_vmem_stream.h` and `inc/ra8_glyph_atlas.h`
-//! declare, and nothing else. Those headers are unchanged, so the host suite,
-//! `mem_subsystem`, `reflow`, `glyph_bench` and the rest of `libs/ra8_mem` link
-//! against this archive without knowing the bodies moved.
+//! `inc/ra8_slab.h`, `inc/ra8_vmem_stream.h`, `inc/ra8_glyph_atlas.h` and
+//! `inc/ra8_vsource.h` declare, and nothing else. Those headers are unchanged,
+//! so the host suite, `mem_subsystem`, `reflow`, `glyph_bench`, `cache_bench`,
+//! `reader_vmem` and the rest of `libs/ra8_mem` link against this archive
+//! without knowing the bodies moved.
 //!
 //! Raw pointers stop here. Everything past this file works in slices, typed
 //! enums and non-optional references.
@@ -17,6 +18,7 @@ const keycache = @import("internal/keycache.zig");
 const slab = @import("internal/slab.zig");
 const vmem_stream = @import("internal/vmem_stream.zig");
 const vocab = @import("internal/vocab.zig");
+const vsource = @import("internal/vsource.zig");
 
 const Err = vocab.Err;
 
@@ -223,4 +225,78 @@ export fn ra8_glyph_atlas_stats(
 ) u16 {
     const self = handle orelse return Err.null_ptr.code();
     return self.stats(out_hits, out_misses, out_evictions).code();
+}
+
+// ---------------------------------------------------------------------------
+// ra8_vsource.h
+// ---------------------------------------------------------------------------
+
+export fn ra8_vsource_init(
+    handle: ?*vsource.Registry,
+    objs: ?[*]vsource.Obj,
+    cap: u32,
+) u16 {
+    const self = handle orelse return Err.null_ptr.code();
+    const slots = objs orelse return Err.null_ptr.code();
+    if (cap == 0) return Err.invalid_size.code();
+    return vsource.init(self, slots[0..cap]).code();
+}
+
+export fn ra8_vsource_add_paged(
+    handle: ?*vsource.Registry,
+    read: ?vsource.ReadFn,
+    ctx: ?*anyopaque,
+    base: u64,
+    size: u64,
+    out_id: ?*u32,
+) u16 {
+    const self = handle orelse return Err.null_ptr.code();
+    const backing = read orelse return Err.null_ptr.code();
+    const dst = out_id orelse return Err.null_ptr.code();
+    return vsource.addPaged(self, backing, ctx, base, size, dst).code();
+}
+
+export fn ra8_vsource_add_xip(
+    handle: ?*vsource.Registry,
+    xip_base: ?[*]const u8,
+    size: u64,
+    out_id: ?*u32,
+) u16 {
+    const self = handle orelse return Err.null_ptr.code();
+    const mapped = xip_base orelse return Err.null_ptr.code();
+    const dst = out_id orelse return Err.null_ptr.code();
+    return vsource.addXip(self, mapped, size, dst).code();
+}
+
+/// The `ra8_vmem_loader_fn` the page cache calls on a miss: `ctx` is the
+/// registry, arriving as the cache's opaque `loader_ctx` cookie.
+export fn ra8_vsource_loader(
+    ctx: ?*anyopaque,
+    object_id: u32,
+    offset: u64,
+    frame: ?[*]u8,
+    frame_bytes: u32,
+) u16 {
+    const self: *const vsource.Registry = @ptrCast(@alignCast(ctx orelse
+        return Err.null_ptr.code()));
+    const dst = frame orelse return Err.null_ptr.code();
+    return vsource.load(self, object_id, offset, dst[0..frame_bytes]).code();
+}
+
+export fn ra8_vsource_xip_ptr(
+    handle: ?*const vsource.Registry,
+    object_id: u32,
+    offset: u64,
+    len: u32,
+    out_ptr: ?*?[*]const u8,
+) u16 {
+    const self = handle orelse return Err.null_ptr.code();
+    const dst = out_ptr orelse return Err.null_ptr.code();
+    switch (vsource.xipPtr(self, object_id, offset, len)) {
+        .ptr => |p| {
+            dst.* = p;
+            return Err.ok.code();
+        },
+        .failed => |err| return err.code(),
+    }
 }
