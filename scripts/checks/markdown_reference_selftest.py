@@ -380,6 +380,82 @@ def _check_upstream_source_cases(root: Path, failures: list[str]) -> None:
     page.unlink()
 
 
+def _check_absence_claim_cases(root: Path, failures: list[str]) -> None:
+    """Prove a self-verifying absence claim clears its own path and nothing else."""
+    source = "docs/ABSENT.md"
+    page = root / source
+
+    # A claim whose object IS the token clears it, first-party roots included:
+    # the path being missing is exactly what makes the sentence true.
+    claim = "Nine directories, and **there is no `port/filex/`**: `port/posix/`.\n"
+    page.write_text(claim, encoding="ascii")
+    filex = PathRef(1, 0, "port/filex/", claim)
+    if _path_reason(root, source, filex) is not None:
+        failures.append("a path the document says is absent was reported missing")
+
+    # The emphasis stripper must not eat an underscore out of the token.
+    under = "A third root, `tools/<tool>/third_party/`, has zero directories today.\n"
+    page.write_text(under, encoding="ascii")
+    third = PathRef(1, 0, "tools/<tool>/third_party/", under)
+    if _path_reason(root, source, third) is not None:
+        failures.append("an absence claim failed to bind a token carrying an underscore")
+
+    # "git-ignored `X`" is the same claim about a build-time tree.
+    ignored = "Fetched at build time into the git-ignored `coprocessor/gone/fw`.\n"
+    page.write_text(ignored, encoding="ascii")
+    fetched = PathRef(1, 0, "coprocessor/gone/fw", ignored)
+    if _path_reason(root, source, fetched) is not None:
+        failures.append("a git-ignored build-time tree was reported missing")
+
+    # A claim about a NEIGHBOUR reaches this token no further than one a
+    # paragraph away does. Each of these names a real absent thing that is not
+    # the token, so the token stays reported.
+    qualifier = "`fonts/Literata` has an SBOM row but no `docs/GONE/` record.\n"
+    page.write_text(qualifier, encoding="ascii")
+    if _path_reason(root, source, PathRef(1, 0, "docs/GONE/", qualifier)) is None:
+        failures.append("a token used as a qualifier escaped as the absent thing")
+
+    elsewhere = "There is no standalone LICENSE file in `libs/gone/stb/`.\n"
+    page.write_text(elsewhere, encoding="ascii")
+    if _path_reason(root, source, PathRef(1, 0, "libs/gone/stb/", elsewhere)) is None:
+        failures.append("a path named as a location escaped as the absent thing")
+
+    split = "There is no public header per se; the set is `libs/gone/a.h`.\n"
+    page.write_text(split, encoding="ascii")
+    if _path_reason(root, source, PathRef(1, 0, "libs/gone/a.h", split)) is None:
+        failures.append("a path beside an unrelated absence claim escaped")
+
+    far = "There is no `port/filex/`.\n\nWe also build `libs/gone/b.c`.\n"
+    page.write_text(far, encoding="ascii")
+    if _path_reason(root, source, PathRef(3, 0, "libs/gone/b.c", far)) is None:
+        failures.append("an absence claim leaked across a paragraph boundary")
+
+    # The other direction: a claim contradicted by the tree is itself a finding,
+    # which is what keeps this grammar from being a blanket exemption.
+    real = root / "docs/kept"
+    real.mkdir(parents=True, exist_ok=True)
+    (real / "keep.md").write_text("# Kept\n", encoding="ascii")
+    present = "Nothing reads it, so there is no `docs/kept/`.\n"
+    page.write_text(present, encoding="ascii")
+    findings, _, _ = check_tree(root, enforce_census=False)
+    contradicted = [item for item in findings if item.kind == "contradicted-absence-claim"]
+    if not any(item.path == source and item.value == "docs/kept/" for item in contradicted):
+        failures.append("an absence claim contradicted by the tree was not reported")
+
+    # A bare basename claim is about this document's own directory, not the tree.
+    bare = "It has not run yet, so there is no `hil.conf`.\n"
+    page.write_text(bare, encoding="ascii")
+    (real / "hil.conf").write_text("MODE=none\n", encoding="ascii")
+    findings, _, _ = check_tree(root, enforce_census=False)
+    if any(item.kind == "contradicted-absence-claim" and item.path == source for item in findings):
+        failures.append("a bare absence claim was contradicted by a file in another directory")
+
+    page.unlink()
+    (real / "hil.conf").unlink()
+    (real / "keep.md").unlink()
+    real.rmdir()
+
+
 def _check_soup_absence_cases(root: Path, failures: list[str]) -> None:
     """Prove a vendoring-absence paragraph clears only its own upstream names."""
     source = "docs/SOUP/sample.md"
@@ -761,6 +837,7 @@ def selftest() -> int:
         _check_tests_path_hostile_cases(root, failures)
         _check_soup_cases(root, failures)
         _check_soup_absence_cases(root, failures)
+        _check_absence_claim_cases(root, failures)
         _check_upstream_source_cases(root, failures)
         _check_planned_path_cases(root, failures)
         _check_vendor_scope_cases(root, failures)
@@ -774,5 +851,5 @@ def selftest() -> int:
         for failure in failures:
             print(f"selftest: check_markdown_references.py FAIL: {failure}", file=sys.stderr)
         return 1
-    print(f"selftest: check_markdown_references.py OK ({len(cases) + 69} both-direction cases)")
+    print(f"selftest: check_markdown_references.py OK ({len(cases) + 78} both-direction cases)")
     return 0

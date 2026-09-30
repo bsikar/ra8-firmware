@@ -57,6 +57,7 @@ from markdown_reference_policy import (
     MIN_TRACKED_MARKDOWN,
     MAX_BRACE_EXPANSIONS,
     MIN_VENDOR_MARKDOWN,
+    ABSENCE_CLAIM_TEMPLATES,
     PATH_RE,
     QUALIFICATION_RELEASE_SOURCES,
     REFERENCE_DEF_RE,
@@ -590,6 +591,67 @@ def _declared_soup_absence(root: Path, source: str, ref: PathRef) -> bool:
     return False
 
 
+def _absence_claim_patterns(token: str) -> tuple[re.Pattern[str], ...]:
+    """Compile the absence grammars bound to one quoted token."""
+    quoted = re.escape(f"`{token}`")
+    return tuple(
+        re.compile(template.format(token=quoted), re.IGNORECASE)
+        for template in ABSENCE_CLAIM_TEMPLATES
+    )
+
+
+def _unemphasized(sentence: str) -> str:
+    """Drop emphasis runs from prose while leaving code spans byte-exact.
+
+    ``EMPHASIS_RE`` strips ``*`` and ``_``, and an underscore is ordinary inside
+    a path, so stripping a whole sentence turns ``third_party`` into
+    ``thirdparty`` and a token-anchored pattern can no longer find its own token.
+    """
+    parts = sentence.split("`")
+    return "`".join(
+        part if index % 2 else EMPHASIS_RE.sub("", part) for index, part in enumerate(parts)
+    )
+
+
+def _absence_claim_sentence(root: Path, source: str, ref: PathRef) -> str | None:
+    """Return the sentence in which this document says this path is not there."""
+    text = (root / source).read_text(encoding="utf-8", errors="replace")
+    paragraph = _absence_paragraph(text, ref.line)
+    quoted = f"`{ref.token}`"
+    patterns = _absence_claim_patterns(ref.token)
+    for sentence in SENTENCE_SPLIT_RE.split(paragraph):
+        if quoted not in sentence:
+            continue
+        plain = _unemphasized(sentence)
+        if any(pattern.search(plain) is not None for pattern in patterns):
+            return sentence.strip()
+    return None
+
+
+def _claimed_absent(root: Path, source: str, ref: PathRef) -> bool:
+    """Accept a path the document's own sentence says the tree does not hold."""
+    return _absence_claim_sentence(root, source, ref) is not None
+
+
+def _claim_contradicted(root: Path, source: str, ref: PathRef) -> str | None:
+    """Report a sentence that says a path is absent while the path is there."""
+    sentence = _absence_claim_sentence(root, source, ref)
+    if sentence is None:
+        return None
+    token, _ = _normalized_path_token(ref)
+    if BARE_CODE_FILE_RE.fullmatch(token):
+        present = ((root / source).parent / token).exists()
+    else:
+        base, error = _base_for_path(root, source, token, _soup_local_root(root, source))
+        if error is not None:
+            return None
+        present = (base / token.rstrip("/")).resolve().exists()
+    if not present:
+        return None
+    collapsed = " ".join(sentence.split())
+    return f'says it is absent, but it exists: "{collapsed}"'
+
+
 def _brace_expansions(token: str) -> tuple[str, ...]:
     """Expand ``a{x,y}b`` into every literal it names, bounded and order-stable."""
     results = [token]
@@ -826,6 +888,7 @@ def _ordinary_path_reason(root: Path, source: str, ref: PathRef, token: str) -> 
                     or _generated_owner_exists(base, token)
                     or _declared_soup_absence(root, source, ref)
                     or _declared_upstream_source(root, source, ref)
+                    or _claimed_absent(root, source, ref)
                 )
                 ignore_probe = f"{rel}/.ra8-markdown-reference" if ref.token.endswith("/") else rel
                 if not exists and not _ignore_owner_exists(root, ignore_probe):
@@ -848,6 +911,7 @@ def _path_reason(root: Path, source: str, ref: PathRef) -> str | None:
             or _built_link_output(root, source, ref, token)
             or _declared_soup_absence(root, source, ref)
             or _declared_upstream_source(root, source, ref)
+            or _claimed_absent(root, source, ref)
         ):
             return None
         return f"no tracked file has a basename matching {token}"
@@ -984,6 +1048,16 @@ def _check_documents(root: Path, parsed: dict[str, Document]) -> tuple[list[Find
             if reason := _path_reason(root, source, path_ref):
                 findings.append(
                     Finding("missing-code-path", source, path_ref.line, path_ref.token, reason)
+                )
+            elif detail := _claim_contradicted(root, source, path_ref):
+                findings.append(
+                    Finding(
+                        "contradicted-absence-claim",
+                        source,
+                        path_ref.line,
+                        path_ref.token,
+                        detail,
+                    )
                 )
     return findings, links, paths
 

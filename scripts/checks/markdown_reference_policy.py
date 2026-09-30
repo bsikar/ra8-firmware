@@ -174,6 +174,34 @@ VENDORING_ABSENCE_RE = re.compile(
     r"|\bcarries\s+its\s+own\b",
     re.IGNORECASE,
 )
+# A document may also name a path in order to say it is NOT there: a root that
+# holds nothing today, a shim the tree does not have, a tree fetched at build
+# time into an ignored directory. That claim is the one claim this checker can
+# settle by itself, because a missing path is exactly what makes it true. So the
+# grammar below clears such a name (first-party roots included, unlike the SOUP
+# absence grammar, which has to take the record's word for an upstream tree it
+# cannot see), and the same grammar runs in the other direction: a sentence that
+# says a path is absent while the path exists is reported as a contradicted
+# claim. See #2334.
+# The claim has to be ABOUT the named path, not merely in the same sentence as
+# one. A sentence may say "there is no public header" and then name five headers
+# that do exist, or "no standalone LICENSE file in `stb/`" where the absent thing
+# is the LICENSE and `stb/` is where it is missing FROM. So each template below
+# binds to the token itself: the claim either governs it directly or predicates
+# over it, and a claim about a neighbour reaches it no more than a claim in the
+# next paragraph does.
+# A leading claim must also END at the token, or the token is a qualifier and
+# something else is the absent thing: "no `docs/SOUP/` record" says the record is
+# missing, not the directory, and "no standalone `LICENSE` file in `stb/`" says
+# it of the LICENSE. So a following noun disqualifies the match.
+ABSENCE_CLAIM_OBJECT_END = r"(?=\s*(?:[.,;:)\]]|$))"
+ABSENCE_CLAIM_TEMPLATES = (
+    r"\bno\b(?:\s+(?:standalone|separate|second|third|top-level|public|current"
+    r"|committed|vendored|tracked))*\s+{token}" + ABSENCE_CLAIM_OBJECT_END,
+    r"\bgit-ignored\s+{token}" + ABSENCE_CLAIM_OBJECT_END,
+    r"{token}[^.;:]{{0,90}}?\b(?:does\s+not\s+exist|returns\s+nothing"
+    r"|has\s+zero|is\s+not\s+vendored)\b",
+)
 EMPHASIS_RE = re.compile(r"[*_]{1,3}")
 # Sentence end, never the dot inside a filename: punctuation plus whitespace
 # or end of block. This prose is hard-wrapped, so a bare newline is not one.
