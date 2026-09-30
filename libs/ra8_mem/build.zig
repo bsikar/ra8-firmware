@@ -2,15 +2,18 @@
 //! Copyright (c) 2026 Brighton Sikarskie
 //!
 //! Build graph for the Zig side of `ra8_mem`: the slab allocator, the
-//! byte-stream adapter over the page cache, and the glyph cache. CMake consumes
-//! the installed static library through the unchanged `inc/ra8_slab.h`,
-//! `inc/ra8_vmem_stream.h` and `inc/ra8_glyph_atlas.h`.
+//! byte-stream adapter over the page cache, the glyph cache, and the
+//! object-source registry. CMake consumes the installed static library through
+//! the unchanged `inc/ra8_slab.h`, `inc/ra8_vmem_stream.h`,
+//! `inc/ra8_glyph_atlas.h` and `inc/ra8_vsource.h`.
 //!
 //! The stream adapter calls `ra8_vmem_get`/`ra8_vmem_put`, which are still C.
 //! The archive leaves those two undefined and the link resolves them, exactly
 //! as the C translation unit did. The glyph atlas does the same with the four
-//! `ra8_keycache_*` symbols. The rest of `libs/ra8_mem` (arena, keycache, tile
-//! cache, vmem, vsource) is still C and still built by CMake from `src/`.
+//! `ra8_keycache_*` symbols. The source registry adds no extern of its own: a
+//! paged object's read callback is a pointer it is handed, not a link-time
+//! symbol. The rest of `libs/ra8_mem` (arena, keycache, tile cache, vmem) is
+//! still C and still built by CMake from `src/`.
 
 const std = @import("std");
 
@@ -48,6 +51,11 @@ pub fn build(b: *std.Build) void {
             .name = "glyph_atlas",
             .source = "src/internal/glyph_atlas.zig",
             .root = "tests/glyph_atlas_test.zig",
+        },
+        .{
+            .name = "vsource",
+            .source = "src/internal/vsource.zig",
+            .root = "tests/vsource_test.zig",
         },
     };
     for (units) |unit| {

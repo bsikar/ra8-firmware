@@ -34,16 +34,30 @@ set(RA8_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/../..")
 # no edit here or there.
 file(GLOB CACHE_BENCH_SOURCES CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/src/*.c")
 
+# ra8_vsource is Zig now, so the bench links the ra8_mem archive instead of
+# compiling that file by path. The archive is a single object, so it brings
+# along every extern in it (ra8_vmem_get/ra8_vmem_put from the ported stream
+# adapter, the four ra8_keycache_* from the glyph atlas); both C halves are
+# already in these targets, so they resolve.
+if(NOT TARGET ra8_zig::ra8_mem)
+  include(${RA8_ROOT}/tests/cmake/zig_library.cmake)
+  ra8_add_zig_library(
+    NAME ra8_mem
+    ZIG_ROOT ${RA8_ROOT}/libs/ra8_mem
+    LIBRARY_NAME ra8_mem
+  )
+endif()
+
 add_executable(
   cache_bench
   ${CACHE_BENCH_SOURCES}
   ${RA8_ROOT}/libs/ra8_mem/src/ra8_vmem.c
   ${RA8_ROOT}/libs/ra8_mem/src/ra8_keycache.c
-  ${RA8_ROOT}/libs/ra8_mem/src/ra8_vsource.c
   ${RA8_ROOT}/apps/shared_libs/book/src/book.c
   ${RA8_ROOT}/apps/shared_libs/book/src/book_chunked.c
   ${RA8_ROOT}/apps/shared_libs/third_party/miniz/miniz.c
 )
+target_link_libraries(cache_bench PRIVATE ra8_zig::ra8_mem)
 
 target_include_directories(
   cache_bench
@@ -93,7 +107,6 @@ if(BUILD_TESTING)
     src/trace.c
     ${RA8_ROOT}/libs/ra8_mem/src/ra8_vmem.c
     ${RA8_ROOT}/libs/ra8_mem/src/ra8_keycache.c
-    ${RA8_ROOT}/libs/ra8_mem/src/ra8_vsource.c
     ${RA8_ROOT}/apps/shared_libs/book/src/book.c
     ${RA8_ROOT}/apps/shared_libs/book/src/book_chunked.c
     ${RA8_ROOT}/apps/shared_libs/third_party/miniz/miniz.c
