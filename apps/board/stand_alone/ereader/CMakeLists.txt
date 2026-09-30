@@ -33,7 +33,7 @@ include("${RA8_REPO_ROOT}/cmake/ra8_add_app.cmake")
 # ra8_board_ek_ra8d2, and compiles the Ring 5 libs/ra8_secure_app/ sources.
 ra8_add_app(
   NAME ra8d2-ereader
-  STACK_BYTES 2200
+  STACK_BYTES 2200 MRAM_LENGTH 512K
   DESCRIPTION "Main e-reader Secure application (Bootloader + Vault)"
   LIBS ra8_tz_secure_boot AUX_SRCS src/ns_main.c
 )
@@ -68,33 +68,20 @@ target_compile_definitions(
 )
 target_compile_options(ra8d2-ereader.elf PRIVATE -mcmse -fshort-enums -ffreestanding)
 
-target_link_options(
-  ra8d2-ereader.elf
-  PRIVATE
-  -nostartfiles
-  -T${CMAKE_CURRENT_SOURCE_DIR}/linker_script.ld
-  -Wl,--Map=ra8d2-ereader.map
-)
-
-set_target_properties(
-  ra8d2-ereader.elf PROPERTIES LINK_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/linker_script.ld"
-)
-
 # ---- Post-build: verify the NSC SG-veneer layout (T5-08) ------------------
 # ra8d2-ereader_ns.elf is bound to the Secure-Gateway stubs through the CMSE import
 # library emitted by ra8_add_ns_image(), so the byte offset of each veneer
 # inside .gnu.sgstubs IS the S/NS ABI: a reorder redirects every NS->Secure
-# call with no diagnostic. This app's linker_script.ld already claims the
-# offsets are "verified AFTER the link ... by scripts/checks/check_sg_offsets.py,
-# run as a POST_BUILD step in this app's CMakeLists.txt" -- until now only
-# tz_nsc_cgc_usb actually ran it. The checker requires one veneer per 8-byte
-# slot across the whole region and self-skips a non-TrustZone link.
+# call with no diagnostic. The board map derives the veneer bounds from the
+# finished .gnu.sgstubs section, and this POST_BUILD step is what proves the
+# slot layout the NS side is bound to. The checker requires one veneer per
+# 8-byte slot across the whole region and self-skips a non-TrustZone link.
 # --nm pins the SAME cross nm as the link (CMAKE_NM from the toolchain file).
 add_custom_command(
   TARGET ra8d2-ereader.elf
   POST_BUILD
-  COMMAND ${RA8_REPO_ROOT}/scripts/checks/check_sg_offsets.py
-          $<TARGET_FILE:ra8d2-ereader.elf> --nm ${CMAKE_NM}
+  COMMAND ${RA8_REPO_ROOT}/scripts/checks/check_sg_offsets.py $<TARGET_FILE:ra8d2-ereader.elf> --nm
+          ${CMAKE_NM}
   VERBATIM
   COMMENT "check_sg_offsets: verifying NSC SG-veneer slot offsets (T5-08)"
 )
@@ -112,21 +99,33 @@ include(${RA8_REPO_ROOT}/cmake/threadx_ns.cmake)
 file(GLOB _ra8_ns_wdt_sup CONFIGURE_DEPENDS ${RA8_REPO_ROOT}/libs/ra8_wdt_supervisor/src/*.c)
 
 ra8_add_ns_image(
-  SECURE_TARGET ra8d2-ereader.elf
-  NAME ra8d2-ereader_ns
+  SECURE_TARGET
+  ra8d2-ereader.elf
+  NAME
+  ra8d2-ereader_ns
   ${_ra8_ns_xip}
-  STACK_BYTES 2200
-  IMPLIB ${CMAKE_CURRENT_BINARY_DIR}/ra8d2_cmse_import.o
-  MERGED_HEX ra8d2-ereader.hex
-  SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/src/ns_main.c ${_ra8_ns_wdt_sup}
-          ${RA8_REPO_ROOT}/libs/ra8_hal/src/ra8_wdt.c
-  DEFINES RA8_TRUSTZONE_ENABLE RA8_PERIPH_NS_ALIAS RA8_USB_POLLED_ONLY
-          $<$<BOOL:${RA8_EREADER_NS_XIP}>:RA8_EREADER_NS_XIP>
-  INCLUDES ${CMAKE_CURRENT_SOURCE_DIR}/src
-           ${RA8_REPO_ROOT}/libs/ra8_core/inc
-           ${RA8_REPO_ROOT}/libs/ra8_hal/inc
-           ${RA8_REPO_ROOT}/libs/ra8_nsc/inc
-           ${RA8_REPO_ROOT}/libs/ra8_board_ek_ra8d2/inc
-           ${RA8_REPO_ROOT}/libs/ra8_wdt_supervisor/inc
-  LINK_LIBS threadx_ns
+  STACK_BYTES
+  2200
+  IMPLIB
+  ${CMAKE_CURRENT_BINARY_DIR}/ra8d2_cmse_import.o
+  MERGED_HEX
+  ra8d2-ereader.hex
+  SOURCES
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/ns_main.c
+  ${_ra8_ns_wdt_sup}
+  ${RA8_REPO_ROOT}/libs/ra8_hal/src/ra8_wdt.c
+  DEFINES
+  RA8_TRUSTZONE_ENABLE
+  RA8_PERIPH_NS_ALIAS
+  RA8_USB_POLLED_ONLY
+  $<$<BOOL:${RA8_EREADER_NS_XIP}>:RA8_EREADER_NS_XIP>
+  INCLUDES
+  ${CMAKE_CURRENT_SOURCE_DIR}/src
+  ${RA8_REPO_ROOT}/libs/ra8_core/inc
+  ${RA8_REPO_ROOT}/libs/ra8_hal/inc
+  ${RA8_REPO_ROOT}/libs/ra8_nsc/inc
+  ${RA8_REPO_ROOT}/libs/ra8_board_ek_ra8d2/inc
+  ${RA8_REPO_ROOT}/libs/ra8_wdt_supervisor/inc
+  LINK_LIBS
+  threadx_ns
 )

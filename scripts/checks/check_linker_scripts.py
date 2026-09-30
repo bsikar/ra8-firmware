@@ -600,12 +600,12 @@ def _check_option_setting(path: pathlib.Path, code: str) -> list[Finding]:
 #
 # This floor therefore RATCHETS DOWN as #742 retires the remaining app-local
 # forks, and a re-pin here is expected work on such a PR, not a warning sign.
-# It has gone 25 -> 13 -> 9 as the population went 32 -> 17 -> 12. What it
-# still catches is the thing it was built for: if the PROVIDE spelling is
+# It has gone 25 -> 13 -> 9 -> 6 as the population went 32 -> 17 -> 12 -> 8.
+# What it still catches is the thing it was built for: if the PROVIDE spelling is
 # renamed, LD007/LD008 match nothing and the count goes to 0, which is far
 # below any of these pins and still fails. Pin it a few below the live
 # population, never at it, so an ordinary conversion does not trip it.
-OPTION_SETTING_FILE_FLOOR = 9
+OPTION_SETTING_FILE_FLOOR = 6
 
 
 def option_section(name: str) -> str:
