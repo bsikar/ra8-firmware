@@ -83,6 +83,7 @@ CI_POLICY_ROWS: tuple[ShellPolicyRow, ...] = (
     ("scripts/ci/lib/container.sh", "portable", "sourced-only", "bash", False, False),
     ("scripts/ci/lib/host_arch.sh", "portable", "dual-use", "bash", True, False),
     ("scripts/ci/lib/host_tool_path.sh", "portable", "dual-use", "bash", False, False),
+    ("scripts/ci/lib/history.sh", "portable", "sourced-only", "bash", False, False),
     ("scripts/ci/lib/lang_toolchains.sh", "portable", "sourced-only", "bash", False, False),
     ("scripts/ci/lib/macos_host_roots.sh", "portable", "dual-use", "bash", True, False),
     ("scripts/ci/lib/macos_sdk.sh", "portable", "dual-use", "bash", True, False),
