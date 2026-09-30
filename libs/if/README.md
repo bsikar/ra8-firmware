@@ -145,12 +145,12 @@ starts.
 
 | Direct RTOS use | First-party files |
 | --- | --- |
-| `tx_thread_ callers` | 66 |
-| `tx_mutex_ callers` | 3 |
+| `tx_thread_ callers` | 64 |
+| `tx_mutex_ callers` | 2 |
 | `tx_semaphore_ callers` | 8 |
 | `tx_queue_ callers` | 1 |
 | `tx_byte_ callers` | 2 |
-| `tx_api.h includers` | 81 |
+| `tx_api.h includers` | 80 |
 | `ra8_systick.h includers` | 6 |
 
 ## How the numbers here are measured
@@ -162,9 +162,9 @@ direction.
 
 ```sh
 # MEASURED BLOCK -- re-run by scripts/checks/check_measured_counts.py
-# tx_thread_ callers -- 66 file(s)
+# tx_thread_ callers -- 64 file(s)
 grep -rlE '^[^*/]*\btx_thread_[a-z_]+\(' libs apps examples tests --include=*.c --include=*.h | grep -v /third_party/ | wc -l
-# tx_mutex_ callers -- 3 file(s)
+# tx_mutex_ callers -- 2 file(s)
 grep -rlE '^[^*/]*\btx_mutex_[a-z_]+\(' libs apps examples tests --include=*.c --include=*.h | grep -v /third_party/ | wc -l
 # tx_semaphore_ callers -- 8 file(s)
 grep -rlE '^[^*/]*\btx_semaphore_[a-z_]+\(' libs apps examples tests --include=*.c --include=*.h | grep -v /third_party/ | wc -l
@@ -172,7 +172,7 @@ grep -rlE '^[^*/]*\btx_semaphore_[a-z_]+\(' libs apps examples tests --include=*
 grep -rlE '^[^*/]*\btx_queue_[a-z_]+\(' libs apps examples tests --include=*.c --include=*.h | grep -v /third_party/ | wc -l
 # tx_byte_ callers -- 2 file(s)
 grep -rlE '^[^*/]*\btx_byte_[a-z_]+\(' libs apps examples tests --include=*.c --include=*.h | grep -v /third_party/ | wc -l
-# tx_api.h includers -- 81 file(s)
+# tx_api.h includers -- 80 file(s)
 grep -rlE '#[ \t]*include[ \t]+[<"]tx_api\.h[>"]' libs apps examples tests --include=*.c --include=*.h | grep -v /third_party/ | wc -l
 # ra8_systick.h includers -- 6 file(s)
 grep -rlE '#[ \t]*include[ \t]+"ra8_systick\.h"' libs apps examples tests --include=*.c --include=*.h | grep -v /third_party/ | wc -l
