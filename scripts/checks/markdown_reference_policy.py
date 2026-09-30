@@ -107,6 +107,21 @@ BARE_CODE_FILE_RE = re.compile(
     r"(?![A-Za-z0-9_./*?{}<>$-])"
 )
 
+# A README that documents how to build its own app names the linker output as a
+# build target ("ninja -C cmake-build-debug vfs_port_demo.elf"). That artifact is
+# never tracked, so the bare-basename rule cannot resolve it; #2334. Recognising
+# it needs all three of these to agree, so the suffix alone waves nothing
+# through: the suffix is a link output, the line is a build invocation, and the
+# document's own CMake component names that target.
+LINK_OUTPUT_SUFFIXES = frozenset({"bin", "elf", "hex", "map", "srec"})
+BUILD_INVOCATION_RE = re.compile(
+    r"(?:\bninja\b|\bmake\b|\bcmake\s+--build\b|\bjust\s+[a-z0-9-]*build\b)"
+)
+CMAKE_TARGET_NAME_RE = re.compile(
+    r"(?:^|[^A-Za-z0-9_])(?:project|ra8_add_app|ra8_add_test)\s*\(\s*([A-Za-z0-9_-]+)",
+    re.MULTILINE,
+)
+
 MIN_TRACKED_MARKDOWN = 450
 MIN_FIRST_PARTY_MARKDOWN = 370
 MIN_VENDOR_MARKDOWN = 75

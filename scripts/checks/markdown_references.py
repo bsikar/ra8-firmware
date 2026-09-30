@@ -38,6 +38,8 @@ from markdown_reference_policy import (
     BARE_CODE_FILE_RE,
     BARE_MARKDOWN_PATTERN,
     COMPONENT_RELATIVE_PREFIXES,
+    BUILD_INVOCATION_RE,
+    CMAKE_TARGET_NAME_RE,
     DECLARED_BARE_CODE_FILES,
     DECLARED_BARE_CONTEXT_SHA256,
     EXPLICIT_ANCHOR_RE,
@@ -46,6 +48,7 @@ from markdown_reference_policy import (
     HTML_TARGET_RE,
     LIBWEBP_ABSENCE_CLAUSE,
     LINE_CITATION_RE,
+    LINK_OUTPUT_SUFFIXES,
     LOCAL_LINE_FRAGMENT_RE,
     MIN_FIRST_PARTY_MARKDOWN,
     MIN_LINK_REFERENCES,
@@ -609,6 +612,21 @@ def _bare_code_file_exists(root: Path, source: str, token: str) -> bool:
     return any(name in index for name in names)
 
 
+def _built_link_output(root: Path, source: str, ref: PathRef, token: str) -> bool:
+    """Accept a bare link output only when this document's own app builds it."""
+    stem, _, suffix = token.rpartition(".")
+    if not stem or suffix.lower() not in LINK_OUTPUT_SUFFIXES:
+        return False
+    if BUILD_INVOCATION_RE.search(ref.source_line) is None:
+        return False
+    component = _component_root(root, source)
+    if component is None:
+        return False
+    listfile = component / "CMakeLists.txt"
+    text = listfile.read_text(encoding="utf-8", errors="replace")
+    return stem in CMAKE_TARGET_NAME_RE.findall(text)
+
+
 def _declared_bare_code_file(source: str, ref: PathRef) -> str | None:
     """Return the reason an exact absent bare filename is intentionally cited."""
     if ref.token in SYSTEM_HEADER_BASENAMES and f"<{ref.token}>" in ref.source_line:
@@ -750,7 +768,11 @@ def _path_reason(root: Path, source: str, ref: PathRef) -> str | None:
         return "uses a rot-prone line-number citation; cite a symbol instead"
 
     if BARE_CODE_FILE_RE.fullmatch(token):
-        if _bare_code_file_exists(root, source, token) or _declared_bare_code_file(source, ref):
+        if (
+            _bare_code_file_exists(root, source, token)
+            or _declared_bare_code_file(source, ref)
+            or _built_link_output(root, source, ref, token)
+        ):
             return None
         return f"no tracked file has a basename matching {token}"
     return _ordinary_path_reason(root, source, ref, token)
@@ -926,6 +948,7 @@ def check_tree(
 # Public selftest seam.  Production uses ``check_tree``; the companion
 # both-direction test module uses these aliases without importing private APIs.
 bare_declaration_findings = _bare_declaration_findings
+built_link_output = _built_link_output
 context_sha256 = _context_sha256
 declared_bare_code_file = _declared_bare_code_file
 declared_work_fixture = _declared_work_fixture
