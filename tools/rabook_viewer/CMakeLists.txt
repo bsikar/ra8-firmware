@@ -288,7 +288,7 @@ link_libraries(ra8_zig::ra8_core)
 
 ra8_viewer_read_path(
   RA8_CORE_SRC ${FW_ROOT}/libs/ra8_core/src
-  KEEP ra8_error_handler.c ra8_decomp_limits.c
+  KEEP ra8_error_handler.c
   DROP ra8_boot_region.c
        ra8_crashlog.c
        ra8_error_sink_log.c

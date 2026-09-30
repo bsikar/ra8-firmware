@@ -15,7 +15,7 @@ OUT="$(mktemp -d)"
 INC=(-Iapps/shared_libs/epub/inc -Iapps/shared_libs/epub/src -Iapps/shared_libs/xml/inc
   -Iapps/shared_libs/xml/src -Ilibs/ra8_core/inc -Iapps/shared_libs/third_party/miniz
   -Iapps/shared_libs/third_party/stb -Iapps/shared_libs/reflow/inc -Itests/support/inc)
-# No -w. This loop compiles fifteen translation units, thirteen of them
+# No -w. This loop compiles fourteen translation units, twelve of them
 # first-party, and -w switched every diagnostic off for all of them. Measured
 # with it removed under clang-22 and gcc-14 (this script's own two compiler
 # choices): the entire set is silent except for ONE informational line, the
@@ -37,7 +37,6 @@ C_SRCS=(apps/shared_libs/epub/tests/src/epub_probe.c
   apps/shared_libs/epub/src/epub_xml_shim.c
   apps/shared_libs/epub/src/epub_xml_toc.c
   apps/shared_libs/epub/src/epub_zip_guard.c
-  libs/ra8_core/src/ra8_decomp_limits.c
   apps/shared_libs/xml/src/xml.c
   apps/shared_libs/xml/src/xml_decode.c
   apps/shared_libs/xml/src/xml_doctype.c
@@ -49,6 +48,11 @@ C_SRCS=(apps/shared_libs/epub/tests/src/epub_probe.c
 for c in "${C_SRCS[@]}"; do
   "$CC_BIN" -std=gnu2x "${D[@]}" "${INC[@]}" -c "$c" -o "$OUT/$(basename "$c").o"
 done
-"$CC_BIN" "$OUT"/*.o -lm -o "$OUT/epub_probe"
+# epub_zip_guard.c charges the shared decompression-limits policy, which is Zig
+# now (#2862), so the probe links ra8_core's archive instead of compiling that
+# TU above. Built here rather than assumed present: this script is a standalone
+# diagnostic that never runs under the CMake or zig build graphs.
+zig build --build-file libs/ra8_core/build.zig --prefix "$OUT/ra8_core" >/dev/null
+"$CC_BIN" "$OUT"/*.o "$OUT/ra8_core/lib/libra8_core_zig.a" -lm -o "$OUT/epub_probe"
 "$OUT/epub_probe" "$EPUB"
 rm -rf "$OUT"

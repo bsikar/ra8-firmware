@@ -717,7 +717,6 @@ const vendored_first_party_sources = [_][]const u8{
     "apps/shared_libs/unarch/src/unarch_xz.c",
     "apps/shared_libs/unarch/src/unarch_xz_pool.c",
     "apps/shared_libs/unarch/src/unarch_io.c",
-    "libs/ra8_core/src/ra8_decomp_limits.c",
     // The pool stopped being its own bump arena in #768: it draws blocks from
     // the shared decoder scratch now, so the arena under it is part of this
     // slice rather than something CMake links from elsewhere. The scratch
@@ -796,7 +795,8 @@ fn addVendoredCSuite(
         .target = target,
         .optimize = optimize,
     }).artifact("ra8_imgdec"));
-    // ra8_decomp_limits.c logs through ra8_log_emit_*, which is Zig now (#2836).
+    // The suite's bound checks (ra8_decomp_*) and the log backend under them
+    // are both Zig now (#2862, #2836), so they arrive as this archive.
     suite.linkLibrary(b.dependency("ra8_core", .{
         .target = target,
         .optimize = optimize,

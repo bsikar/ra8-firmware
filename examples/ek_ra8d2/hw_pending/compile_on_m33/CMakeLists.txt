@@ -86,18 +86,20 @@ ra8_add_cpu1_image(
 # rabook_compile_from_epub is unreferenced and --gc-sections drops it, so
 # ra8_fs.c is not linked either (only ra8_fs.h is on the include path).
 if(TARGET compile_on_m33_cpu1.elf)
-  # The core decompression-limits policy TU and the assertion sink come on
-  # through ra8_cpu1_add_first_party_sources(), which bolts them onto the image
-  # AND applies the per-source first-party profile (-Wall -Wextra -Werror ...
-  # -Wstack-usage=2048 -fstack-usage), the same set ra8_add_cpu1_image() puts on
-  # cpu1_main.c. Both compile clean on it under arm-none-eabi-gcc 13.3.1 at this
-  # image's -Os with RA8_LOG_LEVEL=0, so their rows are gone from
-  # .github/cpu1-warning-profile-baseline.txt (#843 / T1-09).
-  #   - ra8_decomp_limits.c: epub guards its ZIP entries through the shared
-  #     decompression limits policy (epub_zip_guard.c -> ra8_decomp_limits_*),
-  #     and this image hand-picks its sources, so the policy TU is explicit.
+  # The assertion sink comes on through ra8_cpu1_add_first_party_sources(),
+  # which bolts it onto the image AND applies the per-source first-party
+  # profile (-Wall -Wextra -Werror ... -Wstack-usage=2048 -fstack-usage), the
+  # same set ra8_add_cpu1_image() puts on cpu1_main.c. It compiles clean on it
+  # under arm-none-eabi-gcc 13.3.1 at this image's -Os with RA8_LOG_LEVEL=0, so
+  # its rows are gone from .github/cpu1-warning-profile-baseline.txt
+  # (#843 / T1-09).
   #   - ra8_error_handler.c: assertion sink -- miniz MZ_ASSERT and core
   #     assertions route to ra8_fatal_error().
+  # epub still guards its ZIP entries through the shared decompression-limits
+  # policy (epub_zip_guard.c -> ra8_decomp_limits_*), but that policy is Zig
+  # now (#2862), so it arrives in the cross-built ra8_core archive
+  # ra8_add_cpu1_image() already links for this core rather than as a
+  # hand-picked TU.
   #   - ra8_ipc.c: the M33 side of the #150 mode-switch IPC path. It joins the
   #     bar here now that its channel-regs cast no longer trips
   #     -Wbad-function-cast; its inventory rows are gone.
@@ -118,7 +120,6 @@ if(TARGET compile_on_m33_cpu1.elf)
   file(GLOB _c1_epub_c CONFIGURE_DEPENDS ${RA8_REPO_ROOT}/apps/shared_libs/epub/src/*.c)
   ra8_cpu1_add_first_party_sources(
     compile_on_m33_cpu1.elf
-    ${RA8_REPO_ROOT}/libs/ra8_core/src/ra8_decomp_limits.c
     ${RA8_REPO_ROOT}/libs/ra8_core/src/ra8_error_handler.c
     ${RA8_REPO_ROOT}/libs/ra8_hal/src/ra8_ipc.c
     ${RA8_REPO_ROOT}/apps/shared_libs/rabook_compile/src/rabook_compile.c

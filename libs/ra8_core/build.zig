@@ -3,11 +3,12 @@
 //!
 //! Build graph for `ra8_core`.
 //!
-//! Five seams of this library are Zig so far: the freestanding runtime
+//! Six seams of this library are Zig so far: the freestanding runtime
 //! primitives (#2820), the pin-claim validator (#2825), the SysTick timebase
 //! with its time-interface binding (#2830), the log backend with
-//! `ra8_err_to_str` (#2836) and the millisecond tick counter, delay policy and
-//! SysTick IRQ body (#2851). Everything else in `src/` is still C, which
+//! `ra8_err_to_str` (#2836), the millisecond tick counter, delay policy and
+//! SysTick IRQ body (#2851) and the decompression-limits policy every
+//! archive and stream decoder charges against (#2862). Everything else in `src/` is still C, which
 //! `.github/zig-parallel-tree-allowlist.tsv` records per file.
 //!
 //! WHAT THIS LIBRARY SHIPS DEPENDS ON WHO LINKS IT.
@@ -217,6 +218,31 @@ pub fn build(b: *std.Build) void {
     log_abi.addImport("log_line", log_line);
     log_abi.addImport("log_err_names", log_err_names);
 
+    const decomp_units = [_][]const u8{ "policy", "ratio", "budget", "zip_eocd" };
+    var decomp_modules_by_unit = std.StringHashMap(*std.Build.Module).init(b.allocator);
+    inline for (decomp_units) |unit| {
+        const module = b.createModule(.{
+            .root_source_file = b.path(b.fmt("src/internal/decomp/{s}.zig", .{unit})),
+            .target = target,
+            .optimize = optimize,
+        });
+        decomp_modules_by_unit.put(unit, module) catch @panic("OOM");
+    }
+    const decomp_policy = decomp_modules_by_unit.get("policy").?;
+    const decomp_ratio = decomp_modules_by_unit.get("ratio").?;
+    decomp_ratio.addImport("decomp_policy", decomp_policy);
+    decomp_modules_by_unit.get("budget").?.addImport("decomp_policy", decomp_policy);
+    decomp_modules_by_unit.get("budget").?.addImport("decomp_ratio", decomp_ratio);
+
+    const decomp_abi = b.createModule(.{
+        .root_source_file = b.path("src/decomp_abi.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    inline for (decomp_units) |unit| {
+        decomp_abi.addImport(b.fmt("decomp_{s}", .{unit}), decomp_modules_by_unit.get(unit).?);
+    }
+
     const root = b.createModule(.{
         .root_source_file = b.path("src/root.zig"),
         .target = target,
@@ -227,6 +253,7 @@ pub fn build(b: *std.Build) void {
     root.addImport("time_interface_systick_abi", time_interface_systick_abi);
     root.addImport("time_abi", time_abi);
     root.addImport("log_abi", log_abi);
+    root.addImport("decomp_abi", decomp_abi);
 
     if (!image_build) {
         const library = b.addLibrary(.{
@@ -248,6 +275,7 @@ pub fn build(b: *std.Build) void {
         image_root.addImport("time_interface_systick_abi", time_interface_systick_abi);
         image_root.addImport("time_abi", time_abi);
         image_root.addImport("log_abi", log_abi);
+        image_root.addImport("decomp_abi", decomp_abi);
 
         const image_library = b.addLibrary(.{
             .name = "ra8_core",
@@ -293,4 +321,14 @@ pub fn build(b: *std.Build) void {
     log_tests.addImport("log_line", log_line);
     log_tests.addImport("log_err_names", log_err_names);
     test_step.dependOn(&b.addRunArtifact(b.addTest(.{ .root_module = log_tests })).step);
+
+    const decomp_tests = b.createModule(.{
+        .root_source_file = b.path("tests/decomp_test.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    inline for (decomp_units) |unit| {
+        decomp_tests.addImport(b.fmt("decomp_{s}", .{unit}), decomp_modules_by_unit.get(unit).?);
+    }
+    test_step.dependOn(&b.addRunArtifact(b.addTest(.{ .root_module = decomp_tests })).step);
 }

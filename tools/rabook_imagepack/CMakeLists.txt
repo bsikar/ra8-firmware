@@ -102,7 +102,6 @@ set(RA8_FMT_FW_SRC
     ${FW_ROOT}/apps/shared_libs/jof/src/jof_png_chunk.c
     ${FW_ROOT}/apps/shared_libs/compress/src/ra8_compress.c
     ${FW_ROOT}/libs/ra8_core/src/ra8_error_handler.c
-    ${FW_ROOT}/libs/ra8_core/src/ra8_decomp_limits.c
 )
 # The JPEG codec is Zig now: the encoder moved in #2798 and the decoder plus
 # its stripe driver in #2799, so libs/ra8_jpeg/src holds no .c at all. The
@@ -191,7 +190,6 @@ if(BUILD_TESTING)
     ${FW_ROOT}/apps/shared_libs/jof/src/jof.c
     ${FW_ROOT}/apps/shared_libs/compress/src/ra8_compress.c
     ${FW_ROOT}/libs/ra8_core/src/ra8_error_handler.c
-    ${FW_ROOT}/libs/ra8_core/src/ra8_decomp_limits.c
     ${RA8_FMT_THIRD_PARTY_SRC}
   )
   target_compile_definitions(
@@ -219,7 +217,6 @@ if(BUILD_TESTING)
     ${FW_ROOT}/apps/shared_libs/jof/src/jof.c
     ${FW_ROOT}/apps/shared_libs/compress/src/ra8_compress.c
     ${FW_ROOT}/libs/ra8_core/src/ra8_error_handler.c
-    ${FW_ROOT}/libs/ra8_core/src/ra8_decomp_limits.c
     ${RA8_FMT_THIRD_PARTY_SRC}
   )
   target_compile_definitions(
