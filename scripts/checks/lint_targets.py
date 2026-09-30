@@ -39,6 +39,7 @@ mistake a broken enumeration for a clean tree.
 
 from __future__ import annotations
 
+import re
 import subprocess
 import sys
 import tempfile
@@ -477,14 +478,31 @@ def first_party_paths(
 PRODUCTS_ROOT = "apps/"
 
 #: Proof that a directory is linked into an image rather than started by a C
-#: runtime. Any ``.ld`` counts -- the e-reader carries three.
+#: runtime. Any ``.ld`` counts.
 _IMAGE_MARKER_SUFFIX = ".ld"
 
 #: Proof that a directory owns a reset path.
 _IMAGE_MARKER_NAME = "vector_table.c"
 
+#: The second, now primary, proof. #742 and #759 moved the linker scripts and
+#: the reset path OUT of the app directories and into the board libraries: one
+#: generated NS template per target, one shared vector table. That left every
+#: app directory without the marker pair, so the pair rule alone derives the
+#: EMPTY set over the live tree -- a discriminator that classifies nothing and
+#: reports agreement forever. What still distinguishes an image is the macro
+#: the app's CMakeLists invokes: these two cross-compile and link, while a host
+#: program reaches for plain ``add_executable``. Both rules are kept, ORed: the
+#: pair is still sufficient on its own, so an app that carries its own script
+#: and vector table is classified the day it lands, with no allowlist.
+_IMAGE_MACROS = ("ra8_add_app", "ra8_add_ns_image")
 
-def firmware_app_dirs(paths: list[str] | None = None) -> tuple[str, ...]:
+#: Where a directory declares how it is built.
+_BUILD_FILE = "CMakeLists.txt"
+
+_IMAGE_MACRO_RE = re.compile(r"^[ \t]*(?:" + "|".join(_IMAGE_MACROS) + r")[ \t]*\(", re.MULTILINE)
+
+
+def firmware_app_dirs(paths: list[str] | None = None, root: Path | None = None) -> tuple[str, ...]:
     """Every directory under ``apps/`` that builds a cross-compiled image.
 
     Args:
@@ -492,14 +510,20 @@ def firmware_app_dirs(paths: list[str] | None = None) -> tuple[str, ...]:
             which is what every caller wants; the parameter exists so a
             selftest can drive the rule with a fixture instead of the live
             tree.
+        root: Directory the paths are relative to, for reading the build file
+            of a candidate. Defaults to the repository root. A fixture that
+            does not list a ``CMakeLists.txt`` never reaches it.
 
     Returns:
         The matching repo-relative directories, sorted, with no trailing slash.
     """
     if paths is None:
         paths = [rel for rel in _tracked() if not is_build_output(rel)]
+    if root is None:
+        root = REPO_ROOT
     scripts: set[str] = set()
     vectors: set[str] = set()
+    builders: set[str] = set()
     for rel in paths:
         if not rel.startswith(PRODUCTS_ROOT):
             continue
@@ -512,7 +536,22 @@ def firmware_app_dirs(paths: list[str] | None = None) -> tuple[str, ...]:
             app_dir, separator, leaf = head.rpartition("/")
             if separator and leaf == "src":
                 vectors.add(app_dir)
-    return tuple(sorted(scripts & vectors))
+        elif name == _BUILD_FILE and _links_an_image(root / rel):
+            builders.add(head)
+    return tuple(sorted((scripts & vectors) | builders))
+
+
+def _links_an_image(build_file: Path) -> bool:
+    """Does this ``CMakeLists.txt`` invoke a macro that links a firmware image?
+
+    Unreadable is False rather than an error: ``paths`` may name a fixture file
+    that was never written, and the pair rule still classifies such a tree.
+    """
+    try:
+        text = build_file.read_text(encoding="utf-8", errors="replace")
+    except OSError:
+        return False
+    return bool(_IMAGE_MACRO_RE.search(text))
 
 
 def _seed_enumeration_fixture(root: Path) -> None:
