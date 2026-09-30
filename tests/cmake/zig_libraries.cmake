@@ -522,6 +522,24 @@ ra8_add_zig_library(
   ra8_xml
 )
 
+# Fully migrated: the URL and peer-address safety policy behind
+# inc/ra8_net_urlguard.h is Zig, so libs/ra8_net_policy/src has no .c left.
+# Like ra8_xml this library sat in BOTH wiring worlds: RA8_NET_POLICY_SOURCES
+# was globbed in library_sources.cmake and eight by-path references compiled
+# the TU directly into the mdl builds (six in apps/shared_libs/mdl, two in
+# apps/host/mdl). The archive replaces the glob entry and all eight. It
+# resolves every symbol it names: the policy is pure lexical and numeric work
+# over caller-owned storage, with no allocation, no name resolution and no
+# network call.
+ra8_add_zig_library(
+  NAME
+  ra8_net_policy
+  ZIG_ROOT
+  ${FW_ROOT}/libs/ra8_net_policy
+  LIBRARY_NAME
+  ra8_net_policy
+)
+
 target_link_libraries(
   ra8_core_hal
   PUBLIC ra8_zig::ra8_box
@@ -551,6 +569,7 @@ target_link_libraries(
          ra8_zig::ra8_tz_secure_boot
          ra8_zig::ra8_camera_io
          ra8_zig::ra8_xml
+         ra8_zig::ra8_net_policy
   ra8_zig::ra8_gfx
          ra8_zig::ra8_gfx
 )
@@ -586,4 +605,5 @@ link_libraries(
   ra8_zig::ra8_tz_secure_boot
   ra8_zig::ra8_camera_io
   ra8_zig::ra8_xml
+  ra8_zig::ra8_net_policy
 )
