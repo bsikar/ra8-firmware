@@ -1,0 +1,11 @@
+[Unit]
+Description=Daily ra8ci PostgreSQL full backup
+
+[Timer]
+OnCalendar=*-*-* 02:00:00 UTC
+Persistent=true
+RandomizedDelaySec=10m
+Unit=ra8ci-pgbackrest-backup.service
+
+[Install]
+WantedBy=timers.target

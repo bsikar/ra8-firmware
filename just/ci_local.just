@@ -58,8 +58,15 @@ check:
 
 # Check file encodings for non-ASCII characters
 ascii:
-    python3 scripts/fix/fix-encoding.py --selftest
-    python3 scripts/fix/fix-encoding.py --check --all
+    cd tools/ra8ci && GOWORK=off go run . ascii
+
+# Verify @since version tags
+version:
+    cd tools/ra8ci && GOWORK=off go run . since
+
+# Verify every first-party source file ends in a newline
+final_newline:
+    cd tools/ra8ci && GOWORK=off go run . final-newline
 
 # Run host unit tests
 test ubsan="0":
@@ -151,6 +158,7 @@ vela_compile tflite out="build/vela":
 
 # Run host microbenchmarks. RA8_BENCH_TARGETS in tests/bench/CMakeLists.txt is
 # the harness registry, so read it rather than restating it here: a harness
+
 # added to the registry must RUN, not just build (#1415).
 bench:
     #!/usr/bin/env bash

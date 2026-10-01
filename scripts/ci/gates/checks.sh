@@ -72,8 +72,7 @@ _pcc_banned_constructs() (
   python3 scripts/checks/check_no_ai_attribution.py
   # C23 nullptr-only in first-party code. Vendor macros UX_NULL / TX_NULL /
   # FX_NULL / NX_NULL are exempted.
-  python3 scripts/checks/check_no_null.py --selftest
-  python3 scripts/checks/check_no_null.py --all
+  (cd tools/ra8ci && GOWORK=off go run . no-null)
   # NASA P10 Rule 1 -- no goto/setjmp/longjmp in firmware. A parse-independent
   # textual backstop: goto/setjmp were enforced only indirectly via the MISRA
   # cppcheck ratchet, which runs at --std=c11 (cppcheck 2.13 cannot parse C23)
@@ -82,8 +81,7 @@ _pcc_banned_constructs() (
   # (Recursion needs a call graph -- covered by annot_rules.py RA8_NO_RECURSION
   # and MISRA 17.2.) --selftest asserts the detector both fires on code and
   # stays silent on comment/string occurrences before the tree is trusted.
-  python3 scripts/checks/check_no_goto_setjmp.py --selftest
-  python3 scripts/checks/check_no_goto_setjmp.py --all
+  (cd tools/ra8ci && GOWORK=off go run . no-goto-setjmp)
 )
 
 # The two size caps. NASA P10 Rule 4 -- every function fits in <=60 lines --
@@ -122,12 +120,10 @@ _pcc_migration_contracts() (
   python3 scripts/checks/check_shell_just_invocations.py
   # CI/checker user surfaces may depend on GNU Make as a build tool, but may
   # not resurrect it as the repository task runner.
-  bash scripts/builders/check_no_legacy_make.sh --selftest
-  bash scripts/builders/check_no_legacy_make.sh
+  (cd tools/ra8ci && GOWORK=off go run . legacy-make)
   # Python-managed tools belong in venvs. Reject the system-pip override in
   # active automation and in copy-pasteable developer guidance.
-  bash scripts/builders/check_no_unsafe_python_install.sh --selftest
-  bash scripts/builders/check_no_unsafe_python_install.sh
+  (cd tools/ra8ci && GOWORK=off go run . no-unsafe-python-install)
   # Release bootstrap paths must pin both the upstream version and per-arch
   # bytes. Prove the container, native dev box, and macOS paths all download to
   # disk and verify before executing, parsing, or installing anything.
@@ -346,8 +342,7 @@ _pcc_source_form() (
   # .clang-format InsertNewlineAtEOF (C/C++ only) by covering scripts and
   # config-as-code. --selftest proves the detector fires and that the derived
   # scope reaches the roots a hardcoded list had dropped (#549).
-  bash scripts/builders/check_final_newline.sh --selftest
-  bash scripts/builders/check_final_newline.sh
+  (cd tools/ra8ci && GOWORK=off go run . final-newline)
   # No magic numbers. clang-tidy's readability-magic-numbers only sees files
   # in the host compile-db (no example main.c, no ARM-only #ifdef paths),
   # which is how ra8_delay_ms(500U) slipped past CI.
@@ -356,8 +351,7 @@ _pcc_source_form() (
   # C23 [[...]] attribute syntax tree-wide (GNU __attribute__((...)) is
   # rejected except for interrupt / cmse_nonsecure_entry / cmse_nonsecure_call,
   # which clang has no portable [[gnu::]] spelling for).
-  bash scripts/builders/check_no_gnu_attribute.sh --selftest
-  bash scripts/builders/check_no_gnu_attribute.sh
+  (cd tools/ra8ci && GOWORK=off go run . gnu-attribute)
   # The four C23 source patterns (_Static_assert -> static_assert, = {0} ->
   # = {}, no <stdbool.h>, paren-wrapped numeric #define values). These lived
   # ONLY as inline grep loops in the removed pre-commit hook and were never run by
@@ -370,13 +364,11 @@ _pcc_source_form() (
   # No silent ra8_err_t discards at TrustZone boot boundaries. A C23
   # (void)-cast silences [[nodiscard]] by ISO rule, so -Werror can never catch
   # a discarded ra8_cgc_init() right before a BLXNS (#191).
-  python3 scripts/checks/check_tz_boundary_discard.py --selftest
-  python3 scripts/checks/check_tz_boundary_discard.py
+  (cd tools/ra8ci && GOWORK=off go run . tz-boundary-discard)
   # Ban the numbered session-bookkeeping tags from comments and docs.
   # --selftest proves the detector fires and that the derived scope reaches the
   # roots a hardcoded list had dropped (#549).
-  python3 scripts/checks/check_no_wave_references.py --selftest
-  python3 scripts/checks/check_no_wave_references.py
+  (cd tools/ra8ci && GOWORK=off go run . wave-references)
   # C23 typed enums (every enum names an explicit underlying type) and
   # pragma-once headers (no classic #ifndef include guards). Both were
   # CLAUDE.md mandates with no checker until #409; the --selftest asserts the
@@ -392,15 +384,13 @@ _pcc_security_invariants() (
   # Every RA8_NSC_VENEER declared in ra8_nsc.h must have a definition -- a
   # decl with no def advertises an NS->S trust-boundary entry point that does
   # not exist.
-  bash scripts/builders/check_nsc_veneer_defs.sh --selftest
-  bash scripts/builders/check_nsc_veneer_defs.sh
+  (cd tools/ra8ci && GOWORK=off go run . nsc-veneer-defs)
   # Every insecure placeholder-crypto body (deterministic TRNG, forgeable
   # key-import MAC, plain-SRAM key vault, non-cryptographic RSIP key-wrap)
   # must sit behind the RA8_INSECURE_STUB_CRYPTO / RA8_OFF_TARGET guard
   # with a fail-closed #else, so a release image that forgot to swap in real
   # crypto fails closed instead of shipping the stub (#180).
-  bash scripts/builders/check_stub_crypto_guarded.sh --selftest
-  bash scripts/builders/check_stub_crypto_guarded.sh
+  (cd tools/ra8ci && GOWORK=off go run . stub-crypto-guard)
   # No function may exist only to satisfy the linker. Two narrowly-calibrated
   # rules: SHADOW (a do-nothing second definition of a symbol implemented for
   # real elsewhere -- the tools/*/webp_stub.c case, which made both host tools
@@ -419,8 +409,7 @@ _pcc_security_invariants() (
   # route through libs/ra8_hal/inc/ra8_hw_intrinsics.h +
   # tests/mocks/src/ra8_host_asm_stub.c so the driver stays branch-free and
   # coverage lands on the shipping path (#293).
-  bash scripts/builders/check_no_driver_asm_guard.sh --selftest
-  bash scripts/builders/check_no_driver_asm_guard.sh
+  (cd tools/ra8ci && GOWORK=off go run . driver-asm-guard)
   # No first-party file may introduce a permanent anti-recovery brick ACTION
   # (setting the ce "Disable Initialize" security flag, or transitioning the DLM
   # to a terminal LCK_BOOT lock). Owner policy 2026-07-23: this project must
@@ -539,8 +528,7 @@ _pcc_docs_and_tests() (
   # widens both args to int64_t, so an outer (int)/(uint32_t) cast is
   # redundant and latently buggy (a (int) cast on a uint32_t enum truncates
   # before the widening).
-  bash scripts/builders/check_assert_casts.sh --selftest
-  bash scripts/builders/check_assert_casts.sh --all
+  (cd tools/ra8ci && GOWORK=off go run . assert-casts)
 )
 
 _pcc_run_all() {

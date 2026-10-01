@@ -31,7 +31,7 @@ files are inputs or configuration rather than compiled source/header units.
 
 ## Subdirectories
 
-The `tests-readme` gate (`scripts/checks/check_tests_readme.py`) reads the first
+The `tests-readme` gate (`ra8ci tests-readme`) reads the first
 cell of each row below and fails if it drifts from the tree in either direction
 -- an undescribed subdirectory, or a row whose subdirectory is gone.
 
@@ -44,6 +44,7 @@ cell of each row below and fails if it drifts from the tree in either direction
 | `fuzz/` | libFuzzer harnesses under `src/`, one `fuzz_ra8_*.c` per target (contract in `fuzz/inc/fuzz_entry.h`). Built only under `RA8_FUZZ`; the registry is `RA8_FUZZ_TARGETS`, and `scripts/checks/run_fuzz.sh` drives a run. |
 | `golden/` | Pinned reference renders. Currently gzipped PPM framebuffers of the `ereader_ui` example, produced deterministically by `tools/ra8_emulator` and compared by `just apps::emulator::golden`. |
 | `graphics/` | Graphics subsystem and display pipeline unit tests: GLCDC display controller, DRW2D vector accelerator, E-Ink refresh, and pixel format transforms. |
+| `if/` | Host vectors for the `fw_if` intent ports (clock, PWM, timer): each port is tested through a fake binding for its facade behaviour, and against its RA8 adapter in a separate `*_ra8.c` file. |
 | `hal/` | Hardware Abstraction Layer peripheral tests: GPIO, Timer, RTC, WDT, SPI, I2C, SCI, DMAC, DTC, CAC, and POEG. |
 | `host/` | Tests that deliberately link a narrow source subset -- `host/src/exfat_fs_test.c` links only `ra8_fs_fat`, so it builds on macOS as well as Linux. Registered by `tests/cmake/tests_storage.cmake`, not the glob. |
 | `misc/` | Miscellaneous subsystem and helper unit tests. |
@@ -54,6 +55,7 @@ cell of each row below and fails if it drifts from the tree in either direction
 | `support/` | Shared test utilities: reusable implementations in `src/` and their authored contracts/fixtures in `inc/`. These are linked explicitly where needed and are not discovered as standalone tests. |
 | `usb/` | USB controller and class tests: USBFS/USBHS controllers, device mode, host stack, CDC-ACM, MSC, and HID classes. |
 | `wireless/` | Wireless and coprocessor interface tests: ESP32-C6 link protocol, Wi-Fi command framing, and BLE transport. |
+| `zig_build_graph/` | Zig tests for the root build graph itself, imported from `build.zig`: the analysis compile commands, the ABI contract, the compile database, app-local modules, the CPU1 image and the app-shape ledger. |
 | `zig_abi_fixture/` | Host-only Zig C-ABI reference fixture: one Zig static library, hand-authored C23 header, C and Rust consumers, and negative layout/symbol fixtures exercised through the reusable CMake helper. |
 | `rust_abi_fixture/` | Host-only Rust C-ABI provider fixture: safe Rust logic, a narrow `extern "C"` adapter, authoritative C23 header, native Rust tests, C and Zig consumer vectors, and exact namespaced-symbol enforcement. |
 | `abi_chain_fixture/` | Host-only integration proof that C enters a Zig adapter which calls the Rust provider through a second documented C ABI membrane. |

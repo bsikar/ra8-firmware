@@ -1,0 +1,11 @@
+[Unit]
+Description=Check ra8ci PostgreSQL WAL archival every fifteen minutes
+
+[Timer]
+OnBootSec=10m
+OnUnitActiveSec=15m
+Persistent=true
+Unit=ra8ci-pgbackrest-check.service
+
+[Install]
+WantedBy=timers.target

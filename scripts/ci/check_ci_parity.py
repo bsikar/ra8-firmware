@@ -122,6 +122,7 @@ FORBIDDEN_MANAGED_SETUP_ACTIONS = (
 # A step body that calls a gate. Tolerates the line continuations and leading
 # whitespace a block scalar carries.
 GATE_CALL_RE = re.compile(r"^\s*just\s+quality::local::gate\s+\s*([A-Za-z0-9._-]+)\s*$")
+RA8CI_TASK_CALL_RE = re.compile(r'^\s*"\$RUNNER_TEMP/ra8ci"\s+([A-Za-z0-9._-]+)\s*$')
 
 # The infra escape hatch. The trailing reason is mandatory: an unexplained
 # exemption is how an exemption list rots into a dumping ground.
@@ -478,6 +479,8 @@ def classify_step(body: str) -> tuple[str, list[str], str | None]:
         if line.lstrip().startswith("#"):
             continue
         call = GATE_CALL_RE.match(line)
+        if call is None:
+            call = RA8CI_TASK_CALL_RE.match(line)
         if call:
             gates.append(call.group(1))
             continue
@@ -893,6 +896,16 @@ def selftest() -> int:
         (
             "gate call with trailing smuggled command",
             "just quality::local::gate ascii\npython3 scripts/checks/cite_check.py --strict",
+            "raw",
+        ),
+        (
+            "ra8ci task gate call",
+            '"$RUNNER_TEMP/ra8ci" test-go',
+            "gate",
+        ),
+        (
+            "ra8ci task call with trailing command",
+            '"$RUNNER_TEMP/ra8ci" test-go && echo bypass',
             "raw",
         ),
         (

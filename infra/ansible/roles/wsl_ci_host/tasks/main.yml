@@ -353,8 +353,8 @@
     # does nothing about a step that happens at 07:13 on a host that booted
     # hours earlier -- and that is what the fleet was measured doing. Scanning
     # the 100 most recent completed workflow runs for a step whose recorded
-    # completed_at precedes its own started_at (scripts/checks/
-    # check_runner_clock.py, now a gate) found 16 such steps, all three
+    # completed_at precedes its own started_at (the runner-clock gate) found
+    # 16 such steps, all three
     # runners on THIS host, none anywhere else in the fleet:
     #
     #   win-ci-3: 8   win-ci-1: 5   win-ci-2: 3

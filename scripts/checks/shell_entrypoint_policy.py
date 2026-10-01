@@ -139,20 +139,6 @@ _BASE_SHELL_POLICIES: dict[str, ShellPolicy] = {
         executable=True,
         source_requires_privileged_parent=False,
     ),
-    "infra/network/ap_openwrt.sh": ShellPolicy(
-        ShellSecurity.PRIVILEGED,
-        ShellUsage.ENTRY,
-        ShellDialect.BASH,
-        executable=True,
-        source_requires_privileged_parent=False,
-    ),
-    "infra/network/verify_bench_wifi.sh": ShellPolicy(
-        ShellSecurity.PRIVILEGED,
-        ShellUsage.ENTRY,
-        ShellDialect.BASH,
-        executable=True,
-        source_requires_privileged_parent=False,
-    ),
     "scripts/builders/all_examples.sh": ShellPolicy(
         ShellSecurity.PORTABLE,
         ShellUsage.ENTRY,
@@ -273,13 +259,6 @@ _BASE_SHELL_POLICIES: dict[str, ShellPolicy] = {
         source_requires_privileged_parent=False,
     ),
     "scripts/checks/check_nsc_cmse.sh": ShellPolicy(
-        ShellSecurity.PORTABLE,
-        ShellUsage.ENTRY,
-        ShellDialect.BASH,
-        executable=True,
-        source_requires_privileged_parent=False,
-    ),
-    "scripts/checks/check_stack_usage.sh": ShellPolicy(
         ShellSecurity.PORTABLE,
         ShellUsage.ENTRY,
         ShellDialect.BASH,
@@ -545,13 +524,6 @@ _BASE_SHELL_POLICIES: dict[str, ShellPolicy] = {
         executable=True,
         source_requires_privileged_parent=False,
     ),
-    "scripts/git/github_askpass.sh": ShellPolicy(
-        ShellSecurity.PORTABLE,
-        ShellUsage.ENTRY,
-        ShellDialect.BASH,
-        executable=True,
-        source_requires_privileged_parent=False,
-    ),
     "scripts/git/hook-launcher": ShellPolicy(
         ShellSecurity.PRIVILEGED,
         ShellUsage.ENTRY,
@@ -596,13 +568,6 @@ _BASE_SHELL_POLICIES: dict[str, ShellPolicy] = {
     ),
     "scripts/report/tree_coverage.sh": ShellPolicy(
         ShellSecurity.PORTABLE,
-        ShellUsage.ENTRY,
-        ShellDialect.BASH,
-        executable=True,
-        source_requires_privileged_parent=False,
-    ),
-    "scripts/secrets/openbao_configure.sh": ShellPolicy(
-        ShellSecurity.PRIVILEGED,
         ShellUsage.ENTRY,
         ShellDialect.BASH,
         executable=True,
