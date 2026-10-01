@@ -345,7 +345,7 @@ RA8_INTERNAL static void internal_test_join_credentials(void)
  * Vectors 1+2 and 1+3 prove each condition independently decides.
  * N+1 = 3 vectors for N=2: minimal MC/DC.
  * Decisions: libs/ra8_c6link/src/ra8_c6link_wifi_sta.c@ra8_c6link_sta_cfg_set
- * Decisions: libs/ra8_c6link/src/ra8_c6link_wifi_sta.c@internal_c6link_sta_len @brief Verify sta cfg set behavior. @details Executes the sta cfg set scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+ * Decisions: libs/ra8_c6link/src/internal/sta_cfg.zig@length @brief Verify sta cfg set behavior. @details Executes the sta cfg set scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
 RA8_INTERNAL static void internal_test_sta_cfg_set(void)
 {
   TEST_BEGIN("c6link station configuration builder");

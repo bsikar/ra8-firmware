@@ -23,6 +23,7 @@ const mdl_envelope = @import("internal/mdl_envelope.zig");
 const mdl_take = @import("internal/mdl_take.zig");
 const mdl_issue = @import("internal/mdl_issue.zig");
 const rpc_wait = @import("internal/rpc_wait.zig");
+const sta_cfg = @import("internal/sta_cfg.zig");
 pub const mdl_types = @import("internal/mdl_types.zig");
 const storage_ram = @import("internal/storage_ram.zig");
 const tlv = @import("internal/tlv.zig");
@@ -560,4 +561,19 @@ pub export fn priv_c6link_rpc_answers(
         .{ .uid = wait_uid, .resp_id = wait_resp_id, .armed = armed },
         .{ .uid = msg_uid, .msg_id = msg_id },
     );
+}
+
+/// `priv_c6link_sta_len`: measure a credential that may not be terminated.
+///
+/// Returns `cap` when no terminator was found inside the buffer, which the
+/// caller refuses on length rather than reading further.
+pub export fn priv_c6link_sta_len(text: ?[*]const u8, cap: u8) callconv(.c) u8 {
+    const buf = text orelse return 0;
+    return sta_cfg.length(buf[0..cap]);
+}
+
+/// `priv_c6link_sta_credentials_valid`: are these one joinable network's lengths?
+pub export fn priv_c6link_sta_credentials_valid(ssid_len: u8, pass_len: u8) callconv(.c) bool {
+    sta_cfg.credentialsValid(ssid_len, pass_len) catch return false;
+    return true;
 }
