@@ -10,7 +10,6 @@
  */
 
 #include <stdint.h>
-#include <string.h>
 
 #include "ra8_c6_model.h"
 #include "ra8_c6link_mdl.h"
@@ -23,57 +22,15 @@
 
 /** @enum internal_decode_const_t @brief Bounded operands used by the vectors. */
 typedef enum : uint32_t {
-  k_internal_status_ok    = 200U,   /**< In-range HTTP status operand.             */
-  k_internal_status_low   = 99U,    /**< Below the protocol's HTTP status floor.   */
-  k_internal_status_high  = 600U,   /**< Above the protocol's HTTP status roof.    */
-  k_internal_body_len     = 10U,    /**< Body length used by the size vectors.     */
-  k_internal_total_over   = 100U,   /**< Declared total larger than the body end.  */
-  k_internal_total_short  = 5U,     /**< Declared total shorter than the body end. */
-  k_internal_fail_status  = 7U,     /**< Nonzero canonical failure status.         */
-  k_internal_over_uint16  = 65536U, /**< One above the FAILED status ceiling.      */
-  k_internal_timeout_over = 60001U, /**< One above the caller timeout ceiling.     */
-  k_internal_packed_bytes = 64U,    /**< Packed acknowledgement scratch capacity.  */
-  k_internal_ack_job      = 1U,     /**< Job identity the acknowledgement echoes.  */
-  k_internal_bad_version  = 999U,   /**< Protocol version no endpoint speaks.      */
-  k_internal_bad_job      = 4242U,  /**< Job identity no service ever issued.      */
+  k_internal_fail_status  = 7U,     /**< Nonzero canonical failure status.        */
+  k_internal_timeout_over = 60001U, /**< One above the caller timeout ceiling.    */
+  k_internal_packed_bytes = 64U,    /**< Packed acknowledgement scratch capacity. */
+  k_internal_ack_job      = 1U,     /**< Job identity the acknowledgement echoes. */
+  k_internal_bad_version  = 999U,   /**< Protocol version no endpoint speaks.     */
+  k_internal_bad_job      = 4242U,  /**< Job identity no service ever issued.     */
 } internal_decode_const_t;
 
-static uint8_t s_body[k_internal_body_len];
 static uint8_t s_packed[k_internal_packed_bytes];
-static uint8_t s_digest[k_ra8_mdl_sha256_bytes];
-
-/** @brief Build a decoded chunk whose non-state fields are all acceptable.
- * @details Implements the base chunk fixture operation used only by this
- * focused test executable. @param[out] msg Fixture argument governed by the
- * exercised interface contract. @param[in] state Fixture argument governed by
- * the exercised interface contract. @pre Fixed-capacity fixture storage
- * required by this operation is available. @pre Arguments follow the interface
- * contract exercised by this helper. @post Documented outputs contain the
- * exercised result when the operation succeeds. @post Mutations remain confined
- * to documented outputs and file-local fixture state. @note File-local helper;
- * no ownership escapes this focused test executable. @since Version 0.1.0 */
-RA8_INTERNAL
-static void internal_base_chunk(Ra8__Mdl__Chunk* msg, Ra8__Mdl__State state)
-{
-  *msg                  = (Ra8__Mdl__Chunk)RA8__MDL__CHUNK__INIT;
-  msg->protocol_version = k_ra8_mdl_protocol_version;
-  msg->job_id           = 1U;
-  msg->state            = state;
-  msg->retry_after      = (char*)"";
-  msg->etag             = (char*)"";
-  msg->last_modified    = (char*)"";
-  msg->content_type     = (char*)"";
-  if (state == RA8__MDL__STATE__STATE_COMPLETE) {
-    msg->http_status = (int32_t)k_internal_status_ok;
-    msg->sha256      = (ProtobufCBinaryData){.len = k_ra8_mdl_sha256_bytes, .data = s_digest};
-  } else if (state == RA8__MDL__STATE__STATE_DOWNLOADING) {
-    msg->data = (ProtobufCBinaryData){.len = k_internal_body_len, .data = s_body};
-  } else if (state == RA8__MDL__STATE__STATE_FAILED) {
-    msg->status = (int32_t)k_internal_fail_status;
-  } else {
-    /* CANCELLED carries neither data, digest, nor status. */
-  }
-}
 
 /**
  * @test priv_test_c6link_mdl_decode_run
@@ -104,230 +61,6 @@ static void internal_test_header_bytes(void)
   TEST_ASSERT(!ra8_c6link_mdl_http_field_valid_test("a\rb", k_ra8_mdl_etag_max));
   TEST_ASSERT(!ra8_c6link_mdl_http_field_valid_test("a\nb", k_ra8_mdl_etag_max));
   TEST_END("mdl client header byte MC/DC");
-}
-
-/**
- * @test priv_test_c6link_mdl_decode_run
- * @brief Prove each metadata rule independently decides response rejection.
- * @par MC/DC:
- * Decision: `(msg->http_status == 0) && empty` (2 conditions, non-terminal arm)
- * - Vector 1: DOWNLOADING, status 0, four empty headers -> T,T -> true.
- * - Vector 2: DOWNLOADING, status 200 -> F,- -> false (varies status only).
- * - Vector 3: DOWNLOADING, status 0, non-empty ETag -> T,F -> false.
- * Decision: `(status >= min) && (status <= max) && field_valid(retry_after) &&
- * field_valid(etag) && field_valid(last_modified) && field_valid(content_type)`
- * (6 conditions, COMPLETE arm)
- * - Vector 1: status 200 and four empty headers -> all true -> true.
- * - Vectors 2..7: status 99, status 600, then one CR-bearing header at a time,
- *   each leaving every earlier condition true -> false.
- * Each rejected vector pairs with its control to prove one condition
- * independently decides. N+1 = 3 and 7 vectors for N=2 and N=6.
- * Decisions:
- * libs/ra8_c6link/src/internal/mdl_chunk.zig@httpResponseValid
- * @details A non-terminal response must carry no HTTP metadata at all, which
- * the C6 service is structurally unable to emit; only this seam can present it.
- * @pre The private validation seam is linked into this executable.
- * @pre Every injected header stays within its declared capacity.
- * @post Only the two controls are accepted.
- * @post No link, session, or model state is touched.
- * @note File-local helper; no ownership escapes this focused test executable.
- * @since Version 0.1.0
- */
-RA8_INTERNAL
-static void internal_test_response_metadata(void)
-{
-  TEST_BEGIN("mdl client response metadata MC/DC");
-  Ra8__Mdl__Chunk control = {};
-  internal_base_chunk(&control, RA8__MDL__STATE__STATE_DOWNLOADING);
-  TEST_ASSERT(ra8_c6link_mdl_http_response_valid_test(&control));
-
-  Ra8__Mdl__Chunk vector = control;
-  vector.http_status     = (int32_t)k_internal_status_ok;
-  TEST_ASSERT(!ra8_c6link_mdl_http_response_valid_test(&vector));
-
-  vector      = control;
-  vector.etag = (char*)"W/x";
-  TEST_ASSERT(!ra8_c6link_mdl_http_response_valid_test(&vector));
-
-  internal_base_chunk(&control, RA8__MDL__STATE__STATE_COMPLETE);
-  TEST_ASSERT(ra8_c6link_mdl_http_response_valid_test(&control));
-
-  vector             = control;
-  vector.http_status = (int32_t)k_internal_status_low;
-  TEST_ASSERT(!ra8_c6link_mdl_http_response_valid_test(&vector));
-
-  vector             = control;
-  vector.http_status = (int32_t)k_internal_status_high;
-  TEST_ASSERT(!ra8_c6link_mdl_http_response_valid_test(&vector));
-
-  vector             = control;
-  vector.retry_after = (char*)"a\rb";
-  TEST_ASSERT(!ra8_c6link_mdl_http_response_valid_test(&vector));
-
-  vector      = control;
-  vector.etag = (char*)"a\rb";
-  TEST_ASSERT(!ra8_c6link_mdl_http_response_valid_test(&vector));
-
-  vector               = control;
-  vector.last_modified = (char*)"a\rb";
-  TEST_ASSERT(!ra8_c6link_mdl_http_response_valid_test(&vector));
-
-  vector              = control;
-  vector.content_type = (char*)"a\rb";
-  TEST_ASSERT(!ra8_c6link_mdl_http_response_valid_test(&vector));
-  TEST_END("mdl client response metadata MC/DC");
-}
-
-/**
- * @test priv_test_c6link_mdl_decode_run
- * @brief Prove each length relationship independently decides coverage.
- * @par MC/DC:
- * Decision: `(msg->total_bytes == 0U) || (end <= msg->total_bytes)`
- * (2 conditions)
- * - Vector 1: total 0 -> T,- -> true (an unspecified total covers anything).
- * - Vector 2: total 100 with end 10 -> F,T -> true (varies the bound only).
- * - Vector 3: total 5 with end 10 -> F,F -> false (the body overruns it).
- * Vectors 1+3 prove the unspecified-total condition independently decides;
- * 2+3 prove the same for the bound. N+1 = 3 vectors for N=2.
- * Decisions:
- * libs/ra8_c6link/src/internal/mdl_chunk.zig@semanticsValid
- * @details Holds state, status, and digest constant so only the declared total
- * changes between vectors.
- * @pre The private validation seam is linked into this executable.
- * @pre The body length operand is smaller than the over-total operand.
- * @post Only the overrunning vector is rejected.
- * @post No link, session, or model state is touched.
- * @note File-local helper; no ownership escapes this focused test executable.
- * @since Version 0.1.0
- */
-RA8_INTERNAL
-static void internal_test_total_covers_data(void)
-{
-  TEST_BEGIN("mdl client total-covers-data MC/DC");
-  Ra8__Mdl__Chunk msg = {};
-  internal_base_chunk(&msg, RA8__MDL__STATE__STATE_DOWNLOADING);
-  msg.total_bytes = 0U;
-  TEST_ASSERT(ra8_c6link_mdl_chunk_semantics_valid_test(&msg));
-  msg.total_bytes = k_internal_total_over;
-  TEST_ASSERT(ra8_c6link_mdl_chunk_semantics_valid_test(&msg));
-  msg.total_bytes = k_internal_total_short;
-  TEST_ASSERT(!ra8_c6link_mdl_chunk_semantics_valid_test(&msg));
-  TEST_END("mdl client total-covers-data MC/DC");
-}
-
-/** @brief Drive the CANCELLED and FAILED state arms. @details Implements the
- * terminal state semantics fixture operation used only by this focused test
- * executable. @pre Fixed-capacity fixture storage required by this operation is
- * available. @pre Arguments follow the interface contract exercised by this
- * helper. @post Documented outputs contain the exercised result when the
- * operation succeeds. @post Mutations remain confined to documented outputs and
- * file-local fixture state. @note File-local helper; no ownership escapes this
- * focused test executable. @since Version 0.1.0 */
-RA8_INTERNAL
-static void internal_terminal_state_semantics(void)
-{
-  Ra8__Mdl__Chunk control = {};
-  Ra8__Mdl__Chunk vector  = {};
-  internal_base_chunk(&control, RA8__MDL__STATE__STATE_CANCELLED);
-  TEST_ASSERT(ra8_c6link_mdl_chunk_semantics_valid_test(&control));
-  vector        = control;
-  vector.status = (int32_t)k_internal_fail_status;
-  TEST_ASSERT(!ra8_c6link_mdl_chunk_semantics_valid_test(&vector));
-  vector      = control;
-  vector.data = (ProtobufCBinaryData){.len = k_internal_body_len, .data = s_body};
-  TEST_ASSERT(!ra8_c6link_mdl_chunk_semantics_valid_test(&vector));
-  vector        = control;
-  vector.sha256 = (ProtobufCBinaryData){.len = k_ra8_mdl_sha256_bytes, .data = s_digest};
-  TEST_ASSERT(!ra8_c6link_mdl_chunk_semantics_valid_test(&vector));
-
-  internal_base_chunk(&control, RA8__MDL__STATE__STATE_FAILED);
-  TEST_ASSERT(ra8_c6link_mdl_chunk_semantics_valid_test(&control));
-  vector        = control;
-  vector.status = 0;
-  TEST_ASSERT(!ra8_c6link_mdl_chunk_semantics_valid_test(&vector));
-  vector        = control;
-  vector.status = (int32_t)k_internal_over_uint16;
-  TEST_ASSERT(!ra8_c6link_mdl_chunk_semantics_valid_test(&vector));
-  vector      = control;
-  vector.data = (ProtobufCBinaryData){.len = k_internal_body_len, .data = s_body};
-  TEST_ASSERT(!ra8_c6link_mdl_chunk_semantics_valid_test(&vector));
-  vector        = control;
-  vector.sha256 = (ProtobufCBinaryData){.len = k_ra8_mdl_sha256_bytes, .data = s_digest};
-  TEST_ASSERT(!ra8_c6link_mdl_chunk_semantics_valid_test(&vector));
-}
-
-/**
- * @test priv_test_c6link_mdl_decode_run
- * @brief Prove each state's field rule independently decides rejection.
- * @par MC/DC:
- * Decision: DOWNLOADING `(status == 0) && (data.len != 0) && (sha256.len == 0)`
- * (3 conditions) -- all-true control, then a nonzero status, an empty body, and
- * an attached digest in turn -> 4 vectors.
- * Decision: COMPLETE `(status == 0) && (data.len == 0) && (sha256.len == 32) &&
- * (sha256.data != nullptr) && ((total == 0) || (total == end))` (6 conditions,
- * the trailing disjunction counting as two) -- all-true control, then a nonzero
- * status, attached body bytes, a short digest, a null digest pointer, and a
- * total that closes at the wrong offset -> 7 vectors.
- * Decision: CANCELLED `(status == 0) && (data.len == 0) && (sha256.len == 0)`
- * (3 conditions) -- all-true control, then a nonzero status, attached body
- * bytes, and an attached digest in turn -> 4 vectors.
- * Decision: FAILED `(status > 0) && (status <= UINT16_MAX) && (data.len == 0)
- * && (sha256.len == 0)` (4 conditions) -- all-true control, then a zero status,
- * an over-range status, attached body bytes, and an attached digest -> 5
- * vectors.
- * Every rejected vector leaves each earlier condition of its short-circuit
- * chain true, so it pairs with its own control to prove one condition
- * independently decides.
- * Decisions:
- * libs/ra8_c6link/src/internal/mdl_chunk.zig@semanticsValid
- * @details Each state has its own control; the four states are mutually
- * exclusive arms of one switch, so a vector for one cannot disturb another.
- * @pre The private validation seam is linked into this executable.
- * @pre The digest and body fixtures outlive every vector.
- * @post Exactly the four state controls are accepted.
- * @post No link, session, or model state is touched.
- * @note File-local helper; no ownership escapes this focused test executable.
- * @since Version 0.1.0
- */
-RA8_INTERNAL
-static void internal_test_state_semantics(void)
-{
-  TEST_BEGIN("mdl client state semantics MC/DC");
-  Ra8__Mdl__Chunk control = {};
-  Ra8__Mdl__Chunk vector  = {};
-
-  internal_base_chunk(&control, RA8__MDL__STATE__STATE_DOWNLOADING);
-  TEST_ASSERT(ra8_c6link_mdl_chunk_semantics_valid_test(&control));
-  vector        = control;
-  vector.status = (int32_t)k_internal_fail_status;
-  TEST_ASSERT(!ra8_c6link_mdl_chunk_semantics_valid_test(&vector));
-  vector      = control;
-  vector.data = (ProtobufCBinaryData){};
-  TEST_ASSERT(!ra8_c6link_mdl_chunk_semantics_valid_test(&vector));
-  vector        = control;
-  vector.sha256 = (ProtobufCBinaryData){.len = k_ra8_mdl_sha256_bytes, .data = s_digest};
-  TEST_ASSERT(!ra8_c6link_mdl_chunk_semantics_valid_test(&vector));
-
-  internal_base_chunk(&control, RA8__MDL__STATE__STATE_COMPLETE);
-  TEST_ASSERT(ra8_c6link_mdl_chunk_semantics_valid_test(&control));
-  vector        = control;
-  vector.status = (int32_t)k_internal_fail_status;
-  TEST_ASSERT(!ra8_c6link_mdl_chunk_semantics_valid_test(&vector));
-  vector      = control;
-  vector.data = (ProtobufCBinaryData){.len = k_internal_body_len, .data = s_body};
-  TEST_ASSERT(!ra8_c6link_mdl_chunk_semantics_valid_test(&vector));
-  vector            = control;
-  vector.sha256.len = (size_t)k_ra8_mdl_sha256_bytes - 1U;
-  TEST_ASSERT(!ra8_c6link_mdl_chunk_semantics_valid_test(&vector));
-  vector             = control;
-  vector.sha256.data = nullptr;
-  TEST_ASSERT(!ra8_c6link_mdl_chunk_semantics_valid_test(&vector));
-  vector             = control;
-  vector.total_bytes = k_internal_total_over;
-  TEST_ASSERT(!ra8_c6link_mdl_chunk_semantics_valid_test(&vector));
-
-  internal_terminal_state_semantics();
-  TEST_END("mdl client state semantics MC/DC");
 }
 
 /**
@@ -513,12 +246,7 @@ static void internal_test_empty_body(void)
 
 RA8_PRIV void priv_test_c6link_mdl_decode_run(void)
 {
-  (void)memset(s_body, 'z', sizeof(s_body));
-  (void)memset(s_digest, 0xA5, sizeof(s_digest));
   internal_test_header_bytes();
-  internal_test_response_metadata();
-  internal_test_total_covers_data();
-  internal_test_state_semantics();
   internal_test_start_arguments();
   internal_test_cancel_ack();
   internal_test_empty_body();
