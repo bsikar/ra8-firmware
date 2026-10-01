@@ -677,4 +677,26 @@ pub const cross_apps = [_]CrossApp{
         .libraries = &.{ "ra8_power_profile", "ra8_board_ek_ra8d2" },
         .zig_libraries = &.{"ra8_power_profile"},
     },
+    .{
+        // The first app with USBX, and the largest kind the table did not
+        // cover: 22 declarations of USBX device classes on ThreadX with a
+        // generated heap fragment. usbx is a middleware.zig record measured
+        // from this app's own cross configure. Two rules come with it that
+        // ThreadX never needed: its 247 vendored TUs reach the link as
+        // objects, not an archive, and its 10 port/usbx/src TUs are the APP's
+        // units, held to the app's -Werror bar.
+        //
+        // main.c calls ra8_usb_device_compose, Zig in ra8_usb_pal's archive
+        // since 3c676497. The app does not name ra8_usb_pal in LIBS and need
+        // not: it is universal, so cross_image.zig links it for every app.
+        .name = "usb_selftest_cdc",
+        .dir = "examples/ek_ra8d2/hw_validated/hil/usb_selftest_cdc",
+        .board = "libs/ra8_board_ek_ra8d2",
+        .linker_script = "libs/ra8_board_ek_ra8d2/ld/linker_script.ld",
+        .libraries = &.{"ra8_board_ek_ra8d2"},
+        .zig_libraries = &.{},
+        .uses = &.{ "threadx", "usbx" },
+        .threadx_heap = "SDRAM",
+        .stack_bytes = 4000,
+    },
 };

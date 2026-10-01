@@ -438,9 +438,9 @@ test "distinct shapes collapse duplicates and keep genuinely different kinds apa
 }
 
 test "the uncovered table is keyed by shape, not by name" {
-    const usbx = uncoveredFor(.{ .uses = &.{ "threadx", "usbx" }, .threadx_heap = true }) orelse
+    const usbx = uncoveredFor(.{ .uses = &.{ "threadx", "usbx" }, .threadx_heap = true, .sram_text = true }) orelse
         return error.TestUnexpectedResult;
-    try std.testing.expectEqualStrings("usb_selftest_wlun", usbx.representative);
+    try std.testing.expectEqualStrings("dfu_selftest_boot", usbx.representative);
     // The same middleware plus the bootloader-bank keywords is a DIFFERENT
     // kind of app, and has its own entry.
     const dfu = uncoveredFor(.{

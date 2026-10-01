@@ -632,7 +632,10 @@ fn compileDbEntries(b: *std.Build) []const compile_db.Entry {
             off_target_flags.appendSlice(app_flags.items[0..defines_end]) catch @panic("OOM");
             off_target_flags.append(cross_sources.off_target_define) catch @panic("OOM");
             off_target_flags.appendSlice(app_flags.items[defines_end..]) catch @panic("OOM");
-            for (cross_sources.crossSources(b, app)) |source| {
+            var app_sources = std.ArrayList([]const u8).init(b.allocator);
+            app_sources.appendSlice(cross_sources.crossSources(b, app)) catch @panic("OOM");
+            app_sources.appendSlice(middleware.appSources(b.allocator, middlewares)) catch @panic("OOM");
+            for (app_sources.items) |source| {
                 candidates.append(.{
                     .file = source,
                     .driver = tools.gcc,

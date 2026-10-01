@@ -78,7 +78,55 @@ pub const Middleware = struct {
     /// convention is exactly the kind of assumption that reads fine and puts
     /// the rows in the wrong order.
     public_include_dirs_first: bool = false,
+
+    /// Vendored `*.c` selected by basename prefix rather than taken whole,
+    /// the shape a `file(GLOB dir/<prefix>*.c)` plus `list(FILTER ... EXCLUDE
+    /// REGEX)` pair has. Compiled at the same no-warning bar as soup_c_dirs.
+    soup_c_globs: []const SoupGlob = &.{},
+
+    /// Middlewares this one compiles against: its own TUs get their PUBLIC
+    /// defines and include directories, the way `target_link_libraries(<mw>
+    /// PRIVATE <dep>)` hands them over. The app names the dependency in USES
+    /// itself; nothing here adds it to the link.
+    requires: []const []const u8 = &.{},
+
+    /// True when CMake hands the app this middleware's OBJECTS rather than an
+    /// archive (an INTERFACE library over `$<TARGET_OBJECTS:...>`). Every
+    /// object then joins the link whether or not anything references it, so
+    /// archiving them here would link a smaller, different image.
+    link_objects: bool = false,
+
+    /// Project-owned sources the middleware adds to the APP's own sources
+    /// (a `RA8_<NAME>_PORT_SOURCES` global property). They are compiled at
+    /// the app's bar, -Werror and all, not at the middleware's.
+    app_sources: []const []const u8 = &.{},
+
+    /// `-I` directories the middleware's port library adds to the app only,
+    /// after its public ones. Its own TUs never see them.
+    app_include_dirs: []const []const u8 = &.{},
 };
+
+/// One prefix-selected glob over a vendored source directory.
+pub const SoupGlob = struct {
+    dir: []const u8,
+    /// Basename prefixes the glob selects. Empty means every `*.c`.
+    prefixes: []const []const u8 = &.{},
+    /// Basename prefixes the listfile filters back out afterwards.
+    excluded_prefixes: []const []const u8 = &.{},
+};
+
+/// True when `glob` selects `basename`.
+pub fn globSelects(glob: SoupGlob, basename: []const u8) bool {
+    if (!std.mem.endsWith(u8, basename, ".c")) return false;
+    for (glob.excluded_prefixes) |prefix| {
+        if (std.mem.startsWith(u8, basename, prefix)) return false;
+    }
+    if (glob.prefixes.len == 0) return true;
+    for (glob.prefixes) |prefix| {
+        if (std.mem.startsWith(u8, basename, prefix)) return true;
+    }
+    return false;
+}
 
 /// Eclipse ThreadX on the Cortex-M85, from cmake/threadx.cmake.
 pub const threadx = Middleware{
@@ -176,7 +224,65 @@ pub const threadx_ns = Middleware{
     .public_include_dirs_first = true,
 };
 
-const known = [_]Middleware{ threadx, threadx_ns };
+/// Eclipse USBX device stack, from cmake/usbx.cmake and port/usbx/CMakeLists.txt.
+/// Measured from usb_selftest_cdc's own cross configure (#766): 247 vendored
+/// TUs in usbx_objs, 10 port TUs compiled into the app.
+pub const usbx = Middleware{
+    .name = "usbx",
+    .soup_c_dirs = &.{},
+    .soup_asm_dirs = &.{},
+    .replaced_basenames = &.{},
+    .project_sources = &.{},
+    .private_include_dirs = &.{},
+    .public_include_dirs = &.{},
+    .soup_c_globs = &.{
+        // The simulator host and device controllers are dropped; the RA8
+        // bridges in port/usbx/src replace them. 172 of 221 core TUs.
+        .{
+            .dir = "libs/third_party/usbx/common/core/src",
+            .excluded_prefixes = &.{ "ux_dcd_sim_slave_", "ux_hcd_sim_host_" },
+        },
+        // Four device classes, 75 of 225 TUs. PIMA is not storage, and the
+        // stock inquiry handler is replaced by the port's own copy.
+        .{
+            .dir = "libs/third_party/usbx/common/usbx_device_classes/src",
+            .prefixes = &.{
+                "ux_device_class_cdc_acm_",
+                "ux_device_class_hid_",
+                "ux_device_class_storage_",
+                "ux_device_class_dfu_",
+            },
+            .excluded_prefixes = &.{ "ux_device_class_pima_storage_", "ux_device_class_storage_inquiry.c" },
+        },
+    },
+    .public_system_include_dirs = &.{
+        "libs/third_party/usbx/common/core/inc",
+        "libs/third_party/usbx/common/usbx_device_classes/inc",
+        "libs/third_party/usbx/ports/cortex_m33/gnu/inc",
+    },
+    // RA8_USBX_MAX_PERIPHERAL_LUN and RA8_USBX_REQUEST_DATA_MAX_LENGTH, at
+    // their cache defaults. Both size structures the app shares with the
+    // stack, so a mismatch is an ABI break nothing reports.
+    .public_defines = &.{ "-DUX_MAX_SLAVE_LUN=2", "-DUX_SLAVE_REQUEST_DATA_MAX_LENGTH=4096" },
+    .link_options = &.{},
+    .requires = &.{"threadx"},
+    .link_objects = true,
+    .app_sources = &.{
+        "port/usbx/src/ux_dcd_ra8_usb.c",
+        "port/usbx/src/ux_dcd_ra8_usb_ep.c",
+        "port/usbx/src/ux_dcd_ra8_usb_xfer.c",
+        "port/usbx/src/ux_dcd_ra8_usb_isr.c",
+        "port/usbx/src/ux_dcd_ra8_usb_setup.c",
+        "port/usbx/src/ux_dcd_ra8_usb_dvst.c",
+        "port/usbx/src/ux_dcd_ra8_usb_dvst_default.c",
+        "port/usbx/src/ux_dcd_ra8_usb_irq.c",
+        "port/usbx/src/ux_hcd_ra8_usb.c",
+        "port/usbx/src/ux_device_class_storage_inquiry.c",
+    },
+    .app_include_dirs = &.{"port/usbx/inc"},
+};
+
+const known = [_]Middleware{ threadx, threadx_ns, usbx };
 
 /// The middleware record for one `USES` entry, or null when the graph does not
 /// know it yet. An app naming an unknown middleware is a build error rather
@@ -214,7 +320,17 @@ pub fn appDefines(allocator: std.mem.Allocator, mws: []const Middleware) []const
 /// `crossIncludeDirs` already put there.
 pub fn appIncludeDirs(allocator: std.mem.Allocator, mws: []const Middleware) []const []const u8 {
     var out = std.ArrayList([]const u8).init(allocator);
-    for (mws) |mw| out.appendSlice(mw.public_include_dirs) catch @panic("OOM");
+    for (mws) |mw| {
+        out.appendSlice(mw.public_include_dirs) catch @panic("OOM");
+        out.appendSlice(mw.app_include_dirs) catch @panic("OOM");
+    }
+    return out.items;
+}
+
+/// The project-owned sources the middleware set adds to the app's own.
+pub fn appSources(allocator: std.mem.Allocator, mws: []const Middleware) []const []const u8 {
+    var out = std.ArrayList([]const u8).init(allocator);
+    for (mws) |mw| out.appendSlice(mw.app_sources) catch @panic("OOM");
     return out.items;
 }
 
@@ -244,7 +360,30 @@ pub fn includeDirs(allocator: std.mem.Allocator, mw: Middleware) []const []const
         out.appendSlice(mw.private_include_dirs) catch @panic("OOM");
         out.appendSlice(mw.public_include_dirs) catch @panic("OOM");
     }
+    for (required(allocator, mw)) |dep| out.appendSlice(dep.public_include_dirs) catch @panic("OOM");
     return out.items;
+}
+
+/// The middleware's own `-isystem` path: its directories, then each required
+/// middleware's, the order the usbx_objs compile line has.
+pub fn systemIncludeDirs(allocator: std.mem.Allocator, mw: Middleware) []const []const u8 {
+    var out = std.ArrayList([]const u8).init(allocator);
+    out.appendSlice(mw.public_system_include_dirs) catch @panic("OOM");
+    for (required(allocator, mw)) |dep| out.appendSlice(dep.public_system_include_dirs) catch @panic("OOM");
+    return out.items;
+}
+
+/// The defines on the middleware's own TUs: each required middleware's
+/// PUBLIC ones first, then its own.
+pub fn unitDefines(allocator: std.mem.Allocator, mw: Middleware) []const []const u8 {
+    var out = std.ArrayList([]const u8).init(allocator);
+    for (required(allocator, mw)) |dep| out.appendSlice(dep.public_defines) catch @panic("OOM");
+    out.appendSlice(mw.public_defines) catch @panic("OOM");
+    return out.items;
+}
+
+fn required(allocator: std.mem.Allocator, mw: Middleware) []const Middleware {
+    return resolve(allocator, mw.requires);
 }
 
 /// True when `basename` is one the project replaces, so the vendored glob must
@@ -299,11 +438,36 @@ fn collect(
     }
 }
 
+fn collectGlob(b: *std.Build, glob: SoupGlob, out: *std.ArrayList(Unit)) void {
+    var dir = b.build_root.handle.openDir(glob.dir, .{ .iterate = true }) catch |err| {
+        std.debug.panic("ra8: cannot read middleware directory '{s}': {s}", .{ glob.dir, @errorName(err) });
+    };
+    defer dir.close();
+
+    var names = std.ArrayList([]const u8).init(b.allocator);
+    var it = dir.iterate();
+    while (it.next() catch |err| {
+        std.debug.panic("ra8: cannot walk '{s}': {s}", .{ glob.dir, @errorName(err) });
+    }) |entry| {
+        if (entry.kind != .file or !globSelects(glob, entry.name)) continue;
+        names.append(b.dupe(entry.name)) catch @panic("OOM");
+    }
+    std.mem.sort([]const u8, names.items, {}, struct {
+        fn lessThan(_: void, a: []const u8, c: []const u8) bool {
+            return std.mem.lessThan(u8, a, c);
+        }
+    }.lessThan);
+    for (names.items) |name| {
+        out.append(.{ .path = b.fmt("{s}/{s}", .{ glob.dir, name }), .language = .c }) catch @panic("OOM");
+    }
+}
+
 /// Every translation unit compiled into the middleware archive: the vendored
 /// globs with the replaced basenames dropped, then the project-owned sources.
 pub fn units(b: *std.Build, mw: Middleware) []const Unit {
     var out = std.ArrayList(Unit).init(b.allocator);
     for (mw.soup_c_dirs) |dir_path| collect(b, dir_path, ".c", mw, &out);
+    for (mw.soup_c_globs) |glob| collectGlob(b, glob, &out);
     for (mw.soup_asm_dirs) |dir_path| collect(b, dir_path, ".S", mw, &out);
     for (mw.project_sources) |source| {
         out.append(.{
@@ -352,17 +516,28 @@ pub fn unitFlags(tc: Toolchain, mw: Middleware, unit: Unit) []const []const u8 {
 /// references, and several of the hand-written assembly units carry sections
 /// `--gc-sections` would otherwise keep.
 pub fn add(b: *std.Build, mw: Middleware, tc: Toolchain) std.Build.LazyPath {
+    const archive_step = b.addSystemCommand(&.{ tc.ar, "rcs" });
+    const archive = archive_step.addOutputFileArg(b.fmt("lib{s}.a", .{mw.name}));
+    for (addObjects(b, mw, tc)) |object| archive_step.addFileArg(object);
+    return archive;
+}
+
+/// Compile every unit and hand back the objects, for a middleware whose
+/// objects go straight onto the app link (`link_objects`), and for `add`.
+pub fn addObjects(b: *std.Build, mw: Middleware, tc: Toolchain) []const std.Build.LazyPath {
     const include_dirs = includeDirs(b.allocator, mw);
+    const defines = unitDefines(b.allocator, mw);
+    const system_dirs = systemIncludeDirs(b.allocator, mw);
 
     var objects = std.ArrayList(std.Build.LazyPath).init(b.allocator);
     for (units(b, mw)) |unit| {
         const compile = b.addSystemCommand(&.{tc.gcc});
         compile.addArgs(tc.global_defines);
-        compile.addArgs(mw.public_defines);
+        compile.addArgs(defines);
         for (include_dirs) |include_dir| {
             compile.addPrefixedDirectoryArg("-I", b.path(include_dir));
         }
-        for (mw.public_system_include_dirs) |include_dir| {
+        for (system_dirs) |include_dir| {
             compile.addArg("-isystem");
             compile.addDirectoryArg(b.path(include_dir));
         }
@@ -373,11 +548,7 @@ pub fn add(b: *std.Build, mw: Middleware, tc: Toolchain) std.Build.LazyPath {
         const object_name = b.fmt("{s}.o", .{std.fs.path.basename(unit.path)});
         objects.append(compile.addOutputFileArg(object_name)) catch @panic("OOM");
     }
-
-    const archive_step = b.addSystemCommand(&.{ tc.ar, "rcs" });
-    const archive = archive_step.addOutputFileArg(b.fmt("lib{s}.a", .{mw.name}));
-    for (objects.items) |object| archive_step.addFileArg(object);
-    return archive;
+    return objects.items;
 }
 
 /// Append this middleware's compile commands to the database. They are their
@@ -394,14 +565,14 @@ pub fn appendCompileDbEntries(
     for (units(b, mw)) |unit| {
         var flags = std.ArrayList([]const u8).init(b.allocator);
         flags.appendSlice(tc.global_defines) catch @panic("OOM");
-        flags.appendSlice(mw.public_defines) catch @panic("OOM");
+        flags.appendSlice(unitDefines(b.allocator, mw)) catch @panic("OOM");
         flags.appendSlice(unitFlags(tc, mw, unit)) catch @panic("OOM");
         out.append(.{
             .file = unit.path,
             .driver = tc.gcc,
             .flags = flags.items,
             .include_dirs = include_dirs,
-            .system_include_dirs = mw.public_system_include_dirs,
+            .system_include_dirs = systemIncludeDirs(b.allocator, mw),
             .object = b.fmt("middleware/{s}/{s}.o", .{ mw.name, std.fs.path.basename(unit.path) }),
         }) catch @panic("OOM");
     }
