@@ -688,7 +688,7 @@ pub const uncovered = [_]Uncovered{
     .{
         .representative = "tz_threadx_demo",
         .shape = .{ .aux_srcs = true, .mram_length = true },
-        .note = "2 declarations: Secure images that name their own Non-Secure sources as AUX_SRCS. #742 dropped each one's 418-line script fork for the board's own plus a 512K secure bank, which split them off the plain AUX_SRCS kind; ra8d2-ereader joined when its fork went the same way",
+        .note = "3 declarations: Secure images that name their own Non-Secure sources as AUX_SRCS. #742 dropped each one's 418-line script fork for the board's own plus a 512K secure bank, which split them off the plain AUX_SRCS kind; ra8d2-ereader joined when its fork went the same way, and secure_boot_ns_hil joined on #2943 when its EXTRA_SRCS pair became the ra8_rot archive, retiring the EXTRA_SRCS+AUX_SRCS kind entirely",
     },
     .{
         .representative = "c6_mdl_test",
@@ -751,19 +751,9 @@ pub const uncovered = [_]Uncovered{
         .note = "1 declaration: USBX plus a heap fragment, running its flash driver from SRAM out of a 128K bootloader bank. #742 traded its 361-line linker_script.ld fork for three keywords at once; #1114 then took EXTRA_SRCS away again, because the one path it named was ra8_psa_crypto.c and that library is a Zig archive now, reached through LIBS",
     },
     .{
-        .representative = "rot_verify_hil",
-        .shape = .{ .extra_srcs = true },
-        .note = "1 declaration: no middleware, just shared helper sources compiled into the app. secure_boot_hil cross-built this kind until #742 moved it onto MRAM_LENGTH and SRAM_TEXT",
-    },
-    .{
         .representative = "media_download",
         .shape = .{ .uses = &.{ "esp_hosted", "threadx" }, .extra_srcs = true, .threadx_heap = true },
         .note = "1 declaration: C6 host plus EXTRA_SRCS",
-    },
-    .{
-        .representative = "secure_boot_ns_hil",
-        .shape = .{ .extra_srcs = true, .aux_srcs = true, .mram_length = true },
-        .note = "1 declaration, and still the cheapest kind to add: no middleware at all, just EXTRA_SRCS and AUX_SRCS together, which secure_boot_hil and cpu1_pingpong each take one half of. #742 retired the last dual-image script fork here too, so the Secure bank is a 512K MRAM_LENGTH rather than a forked script",
     },
 };
 

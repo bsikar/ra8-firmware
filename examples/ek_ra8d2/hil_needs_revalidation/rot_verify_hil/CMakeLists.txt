@@ -21,15 +21,15 @@ while(NOT EXISTS "${_d}/cmake/ra8_add_app.cmake" AND NOT "${_d}" STREQUAL "/")
 endwhile()
 include("${_d}/cmake/ra8_add_app.cmake")
 
-# ra8_rot.c is compiled straight into the app; ra8_psa_crypto is the Zig archive,
-# app via EXTRA_SRCS; the whole root of trust is behind RA8_ENABLE_ROOT_OF_TRUST,
-# defined below. ra8_rsip (software SHA-256) is auto-globbed from ra8_hal.
+# ra8_rot is the Zig root-of-trust archive (#2943), linked via LIBS like
+# ra8_psa_crypto; linking it IS the opt-in that RA8_ENABLE_ROOT_OF_TRUST used
+# to be, and the define below still gates the C callers. ra8_rsip (software
+# SHA-256) is auto-globbed from ra8_hal.
 ra8_add_app(
   NAME rot_verify_hil
   STACK_BYTES 32768
   DESCRIPTION "On-silicon root-of-trust image verify (ECDSA-P256 via tf-psa-crypto)"
-  LIBS ra8_board_ek_ra8d2 ra8_psa_crypto
-  EXTRA_SRCS ${_d}/libs/ra8_dfu/src/ra8_rot.c
+  LIBS ra8_board_ek_ra8d2 ra8_psa_crypto ra8_rot
 )
 
 # --- tf-psa-crypto software crypto, compiled standalone for ARM (SOUP) ---

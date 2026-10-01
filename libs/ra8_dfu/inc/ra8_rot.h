@@ -7,14 +7,15 @@
  * [Ring 4 / Service] {World: S}
  *
  * @details
- * The shared authenticity gate placed at the firmware's two trust boundaries:
+ * The shared authenticity gate. Its one production caller today is
+ * **copy-to-run** (``libs/ra8_dfu/src/ra8_dfu_launch.c``): the bootloader must
+ * authenticate a slot image before copying it to SRAM and branching into it.
  *
- *  - **copy-to-run** (``libs/ra8_dfu/src/ra8_dfu_launch.c``): the bootloader
- *    must authenticate a slot image before copying it to SRAM and branching
- *    into it.
- *  - **BLXNS** (``libs/ra8_tz_secure_boot/src/ra8_tz_secure_boot.c``): the
- *    Secure world must authenticate the Non-Secure image before handing
- *    control to it.
+ * The **BLXNS** boundary (``libs/ra8_tz_secure_boot/src/ra8_tz_secure_boot.c``)
+ * is the gate's other intended home -- the Secure world authenticating the
+ * Non-Secure image before handing control to it -- but that source calls
+ * nothing from this header today, so the second boundary is a plan, not a
+ * wiring. #2932 records the finding.
  *
  * Historically both boundaries trusted a CRC32 only (integrity, not
  * authenticity): a CRC-correct image of any origin would launch. This module
@@ -47,19 +48,24 @@
  * The whole root of trust is gated behind the ``RA8_ENABLE_ROOT_OF_TRUST``
  * build flag (default OFF), mirroring ``RA8_BOOT_ENABLE_CACHE_MPU``:
  *
- *  - **Flag OFF (default):** ``ra8_rot.c`` compiles to nothing and pulls in no
- *    crypto libraries; the launch boundaries do NOT verify. Existing apps --
+ *  - **Opted out (default):** the app does not link the ``ra8_rot`` archive and
+ *    does not define the flag; nothing here is reachable, no crypto library is
+ *    pulled in, and the launch boundaries do NOT verify. Existing apps --
  *    including unsigned images (``dfu_copy_to_run``, ``dfu_bootloader``, and
  *    the current Non-Secure images) -- are unchanged and launch as before.
- *  - **Flag ON:** the app opts in via ``target_compile_definitions(<app>
- *    PRIVATE RA8_ENABLE_ROOT_OF_TRUST)`` and MUST then also (a) link
+ *  - **Opted in:** the app names ``ra8_rot`` in ``LIBS``, defines
+ *    ``target_compile_definitions(<app> PRIVATE RA8_ENABLE_ROOT_OF_TRUST)`` so
+ *    its C callers compile their gate arms, and MUST then also (a) link
  *    ``ra8_psa_crypto`` + the RSIP HAL, and (b) sign its DFU / Non-Secure
  *    images with an ::ra8_rot_trailer_t -- otherwise every launch
  *    **default-denies**.
  *
- * The declarations below are always visible (they reference no external
- * symbols, so a flag-off translation unit has zero extra link dependencies);
- * only the *implementation* in ``ra8_rot.c`` is flag-gated.
+ * The implementation is Zig (``src/internal/rot.zig`` + ``src/rot_abi.zig``,
+ * #2943) and ships as its own static archive. A prebuilt archive cannot see an
+ * app's compile definitions, so *linking it* is the opt-in that the flag alone
+ * used to express; the flag still gates the C callers' own arms. The
+ * declarations below are always visible and reference no external symbol, so a
+ * TU that does not opt in gains no link dependency.
  *
  * @note On silicon, the ECDSA-P256 + SHA-256 known-answer tests pass on the M85
  *       (hil_needs_revalidation/psa_crypto_hil, rsip_sha256_kat), the real root public
