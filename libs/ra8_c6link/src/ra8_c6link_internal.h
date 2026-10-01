@@ -237,7 +237,7 @@ RA8_PRIV void priv_c6link_arena_reset(ra8_c6link_t* link);
 RA8_PRIV void priv_c6link_arena_bind(ProtobufCAllocator* out, ra8_c6link_t* link);
 
 /* ==========================================================================
- * ra8_c6link_frame.c -- the twelve-byte payload header
+ * src/internal/frame.zig -- the twelve-byte payload header (Zig)
  * ==========================================================================
  */
 

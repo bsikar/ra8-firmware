@@ -266,8 +266,8 @@ RA8_INTERNAL static void internal_test_frame_filler(void)
  * - Vector 3: offset=12, len=1600 -> true  (varies len only)
  * Vectors 1+2 prove offset independently decides; 1+3 prove the same for len.
  * N+1 = 3 vectors for N=2: minimal MC/DC.
- * Decisions: libs/ra8_c6link/src/ra8_c6link_frame.c@priv_c6link_frame_classify
- * Decisions: libs/ra8_c6link/src/ra8_c6link_frame.c@priv_c6link_frame_seal @brief Verify frame classify behavior. @details Executes the frame classify scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+ * Decisions: libs/ra8_c6link/src/ra8_c6link_abi.zig@priv_c6link_frame_classify
+ * Decisions: libs/ra8_c6link/src/ra8_c6link_abi.zig@priv_c6link_frame_seal @brief Verify frame classify behavior. @details Executes the frame classify scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
 RA8_INTERNAL static void internal_test_frame_classify(void)
 {
   TEST_BEGIN("c6link frame classification");
@@ -533,8 +533,8 @@ RA8_INTERNAL static void internal_test_wire_literals(void)
  * independently decides. N+1 vectors per decision: minimal MC/DC.
  * Each control paired with each varied vector proves that condition
  * independently decides. N+1 vectors per decision: minimal MC/DC.
- * Decisions: libs/ra8_c6link/src/ra8_c6link_frame.c@priv_c6link_frame_seal
- * Decisions: libs/ra8_c6link/src/ra8_c6link_frame.c@priv_c6link_frame_classify
+ * Decisions: libs/ra8_c6link/src/ra8_c6link_abi.zig@priv_c6link_frame_seal
+ * Decisions: libs/ra8_c6link/src/ra8_c6link_abi.zig@priv_c6link_frame_classify
  * Decisions: libs/ra8_c6link/src/internal/tlv.zig@named
  * Decisions: libs/ra8_c6link/src/ra8_c6link.c@priv_c6link_copy_str @brief Verify mcdc wire guards behavior. @details Executes the mcdc wire guards scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
 RA8_INTERNAL static void internal_test_mcdc_wire_guards(void)
@@ -595,7 +595,7 @@ RA8_INTERNAL static void internal_test_mcdc_wire_guards(void)
  * - Vector 3: out valid, cap one short -> true  (varies cap only)
  * Each control paired with each varied vector proves that condition
  * independently decides. N+1 = 3 vectors for N=2 conditions: minimal MC/DC.
- * Decisions: libs/ra8_c6link/src/ra8_c6link_frame.c@priv_c6link_caps @brief Verify mcdc caps guard behavior. @details Executes the mcdc caps guard scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+ * Decisions: libs/ra8_c6link/src/ra8_c6link_abi.zig@priv_c6link_caps @brief Verify mcdc caps guard behavior. @details Executes the mcdc caps guard scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
 RA8_INTERNAL static void internal_test_mcdc_caps_guard(void)
 {
   TEST_BEGIN("c6link caps guard vectors");
