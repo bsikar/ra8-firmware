@@ -33,6 +33,7 @@ const units = [_]struct { name: []const u8, imports: []const []const u8 }{
     .{ .name = "verify", .imports = &.{ "download", "err", "hal", "proto" } },
     .{ .name = "session", .imports = &.{ "attach", "control", "download", "err", "hal", "proto", "verify" } },
     .{ .name = "rot", .imports = &.{} },
+    .{ .name = "antirollback", .imports = &.{} },
 };
 
 pub fn build(b: *std.Build) void {
@@ -122,7 +123,15 @@ pub fn build(b: *std.Build) void {
         .target = target,
         .optimize = optimize,
     });
+    const antirollback_abi_module = b.createModule(.{
+        .root_source_file = b.path("src/antirollback_abi.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    antirollback_abi_module.addImport("antirollback", modules.get("antirollback").?);
+
     rot_root_module.addImport("rot_abi", rot_abi_module);
+    rot_root_module.addImport("antirollback_abi", antirollback_abi_module);
     const rot_library = b.addLibrary(.{
         .name = "ra8_rot",
         .linkage = .static,
@@ -156,6 +165,13 @@ pub fn build(b: *std.Build) void {
     });
     rot_test_module.addImport("rot", modules.get("rot").?);
 
+    const antirollback_test_module = b.createModule(.{
+        .root_source_file = b.path("tests/antirollback_test.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    antirollback_test_module.addImport("antirollback", modules.get("antirollback").?);
+
     const test_step = b.step("test", "Run Zig ra8_dfu tests");
     const tests = b.addTest(.{ .root_module = test_module });
     test_step.dependOn(&b.addRunArtifact(tests).step);
@@ -163,4 +179,6 @@ pub fn build(b: *std.Build) void {
     test_step.dependOn(&b.addRunArtifact(boot_tests).step);
     const rot_tests = b.addTest(.{ .root_module = rot_test_module });
     test_step.dependOn(&b.addRunArtifact(rot_tests).step);
+    const antirollback_tests = b.addTest(.{ .root_module = antirollback_test_module });
+    test_step.dependOn(&b.addRunArtifact(antirollback_tests).step);
 }

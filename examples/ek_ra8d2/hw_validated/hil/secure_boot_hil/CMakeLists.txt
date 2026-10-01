@@ -38,7 +38,6 @@ ra8_add_app(
        ra8_flash.c
        ra8_dfu_program.c
   EXTRA_SRCS
-             ${_d}/libs/ra8_dfu/src/ra8_dfu_antirollback.c
              ${_d}/libs/ra8_dfu/src/ra8_dfu_launch.c
 )
 
