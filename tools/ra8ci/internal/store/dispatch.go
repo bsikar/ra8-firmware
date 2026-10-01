@@ -75,6 +75,21 @@ func agentMayExecute(ctx context.Context, tx pgx.Tx, agent agentIdentity, reposi
 
 // ClaimAgentTask issues at most one fenced assignment to an idle agent. The
 // checkout, task definition and OS are rechecked by the agent before ACK.
+// claimableRunQuery selects the oldest run holding work this agent is granted
+// and equipped to take. The caller appends the row-locking clause: the same
+// predicate is asked twice, once skipping held rows and once willing to wait.
+const claimableRunQuery = `SELECT r.id::text, r.state, r.repository, r.commit_sha,
+	r.snapshot_sha256, r.catalog_sha256 FROM runs r
+	WHERE r.state IN ('queued','running') AND r.cancel_requested_at IS NULL
+	AND r.catalog_sha256=$1 AND r.commit_sha=$4
+	AND EXISTS (SELECT 1 FROM api_grants g WHERE g.principal_id=$2
+		AND g.repository=r.repository AND g.role='agent_executor')
+	AND EXISTS (SELECT 1 FROM tasks t WHERE t.run_id=r.id AND t.state='scheduled'
+		AND t.scope='safe-local-read-only' AND t.name=ANY($3)
+		AND NOT EXISTS (SELECT 1 FROM task_edges e JOIN tasks d
+			ON d.id=e.depends_on_task_id WHERE e.task_id=t.id AND d.state<>'succeeded'))
+	ORDER BY r.created_at, r.id LIMIT 1 FOR UPDATE OF r`
+
 func (s *Store) ClaimAgentTask(ctx context.Context, certDER []byte, facts protocol.HostFacts, tasks *catalog.Catalog, trustedCommit string) (*protocol.Assignment, error) {
 	if err := facts.Validate(); err != nil || tasks == nil || tasks.Digest() == "" || !protocol.ValidCommit(trustedCommit) {
 		return nil, fmt.Errorf("%w: claim facts or catalog", ErrInvalid)
@@ -166,19 +181,21 @@ func (s *Store) ClaimAgentTask(ctx context.Context, certDER []byte, facts protoc
 		return nil, fmt.Errorf("%w: check agent capacity: %v", ErrUnavailable, err)
 	}
 	var runID, runState, repository, commitSHA, snapshotSHA, catalogSHA string
-	err = tx.QueryRow(ctx, `SELECT r.id::text, r.state, r.repository, r.commit_sha,
-		r.snapshot_sha256, r.catalog_sha256 FROM runs r
-		WHERE r.state IN ('queued','running') AND r.cancel_requested_at IS NULL
-		AND r.catalog_sha256=$1 AND r.commit_sha=$4
-		AND EXISTS (SELECT 1 FROM api_grants g WHERE g.principal_id=$2
-			AND g.repository=r.repository AND g.role='agent_executor')
-		AND EXISTS (SELECT 1 FROM tasks t WHERE t.run_id=r.id AND t.state='scheduled'
-			AND t.scope='safe-local-read-only' AND t.name=ANY($3)
-			AND NOT EXISTS (SELECT 1 FROM task_edges e JOIN tasks d
-				ON d.id=e.depends_on_task_id WHERE e.task_id=t.id AND d.state<>'succeeded'))
-		ORDER BY r.created_at, r.id LIMIT 1 FOR UPDATE OF r SKIP LOCKED`,
-		tasks.Digest(), agent.Principal, names, trustedCommit).Scan(&runID, &runState,
-		&repository, &commitSHA, &snapshotSHA, &catalogSHA)
+	scanRun := func(locking string) error {
+		return tx.QueryRow(ctx, claimableRunQuery+locking,
+			tasks.Digest(), agent.Principal, names, trustedCommit).Scan(&runID, &runState,
+			&repository, &commitSHA, &snapshotSHA, &catalogSHA)
+	}
+	// Prefer a run no other agent is claiming from, so a fleet spreads across
+	// runs instead of queueing on the oldest one. When every candidate run is
+	// held, wait for one rather than walking away: skipping there told an
+	// agent there was no work when there was, and a run carrying more tasks
+	// than its claimers could only ever issue one assignment per poll however
+	// many agents asked.
+	err = scanRun(" SKIP LOCKED")
+	if errors.Is(err, pgx.ErrNoRows) {
+		err = scanRun("")
+	}
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, nil
 	}
