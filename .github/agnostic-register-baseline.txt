@@ -7,7 +7,7 @@
 # HAL implementations, named backend translation units, board composition
 # libraries, tests, vendored code, and generated code are outside this ratchet.
 #
-# clock: 322 reference(s)
+# clock: 321 reference(s)
 # display: 9 reference(s)
 # gpio: 78 reference(s)
 # timer: 51 reference(s)
@@ -137,7 +137,7 @@ examples/ek_ra8d2/hw_validated/hil/camera_capture/src/main.c	timer	2
 examples/ek_ra8d2/hw_validated/hil/can_classic_loopback/src/main.c	clock	1
 examples/ek_ra8d2/hw_validated/hil/canfd_filter_demo/src/main.c	clock	1
 examples/ek_ra8d2/hw_validated/hil/canfd_loopback/src/main.c	clock	1
-examples/ek_ra8d2/hw_validated/hil/clock_check/src/main.c	clock	3
+examples/ek_ra8d2/hw_validated/hil/clock_check/src/main.c	clock	2
 examples/ek_ra8d2/hw_validated/hil/crc_demo/src/main.c	clock	1
 examples/ek_ra8d2/hw_validated/hil/crypto_aes_demo/src/main.c	clock	1
 examples/ek_ra8d2/hw_validated/hil/dac_b_demo/src/main.c	clock	1

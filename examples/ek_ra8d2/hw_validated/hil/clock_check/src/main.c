@@ -15,9 +15,9 @@
  *   1. ``ra8_cgc_init()`` -- HOCO on, PLL1 locked, CPUCLK0 + bus
  *      clocks live. This is the first time the CGC driver runs on
  *      real silicon end-to-end.
- *   2. ``ra8_cgc_get_clock_hz(k_ra8_clock_id_cpuclk0, &hz)`` -- read
- *      back the configured rate so SysTick can use the actual value
- *      rather than a hardcoded constant.
+ *   2. ``fw_clock_rate_for(ra8_board_clock(), {core, 0}, &hz)`` --
+ *      read back the configured rate so SysTick can use the actual
+ *      value rather than a hardcoded constant.
  *   3. ``ra8_time_init(hz)`` -- programme SysTick for a 1 ms tick at
  *      the new clock rate.
  *   4. ``ra8_gpio_output_init()`` for each LED, then a 1 Hz toggle
@@ -169,8 +169,9 @@ void main(void)
     internal_clock_check_panic_halt();
   }
 
-  uint32_t cpuclk0_hz = 0U;
-  if (ra8_cgc_get_clock_hz(k_ra8_clock_id_cpuclk0, &cpuclk0_hz) != k_ra8_ok) {
+  uint32_t                cpuclk0_hz = 0U;
+  const fw_clock_module_t clk_core   = {.kind = k_fw_clock_module_core, .index = 0U};
+  if (fw_clock_rate_for(ra8_board_clock(), clk_core, &cpuclk0_hz) != k_ra8_ok) {
     internal_clock_check_panic_halt();
   }
 
@@ -280,6 +281,11 @@ void main(void)
  */
 [[nodiscard]] RA8_INTERNAL static bool internal_clock_check_verify_all(void)
 {
+  /* Deliberately reads the CGC driver directly rather than the board clock
+   * profile (issue #693). This walk is the thing under test: it proves the
+   * driver's readback agrees with the configured tree on real silicon. Going
+   * through the profile would test the profile's adapter instead, and the
+   * profile only describes the domains the board wires up, not all ten. */
   const clock_check_expected_t kExpected[] = {
     {k_ra8_clock_id_cpuclk0, (uint32_t)k_ra8_cpuclk0_hz},
     {k_ra8_clock_id_cpuclk1, (uint32_t)k_ra8_cpuclk1_hz},
