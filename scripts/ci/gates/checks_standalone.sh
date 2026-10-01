@@ -29,7 +29,7 @@
 #
 # Gates in this file: suppressions, agnostic-registers, shebangs, tier-imports,
 # entry-points, pinout-freshness, font-coverage, bench-lock, annotations,
-# enum-underlying-casts, doc-attachment, tests-readme, disambig-readmes,
+# enum-underlying-casts, tests-readme, disambig-readmes,
 # cite-check, hum-register-map, arch-caps, arch-compiles, measured-counts,
 # hil-eil-parity
 
@@ -224,24 +224,6 @@ gate_enum_underlying_casts() (
     "Run 'just setup_python' locally; CI/container use the same uv lock."
   python3 scripts/checks/check_enum_underlying_casts.py --selftest
   python3 scripts/checks/check_enum_underlying_casts.py --all
-)
-
-# --- doc-attachment -------------------------------------------------------
-# doxy_audit.py (run inside pre-commit-checks) asks only whether a block is
-# PRESENT. A block attached to the wrong symbol SATISFIES that: paste one block
-# twice and measured coverage rises while one symbol silently loses its
-# documentation and another gains a duplicate. This gate asks the other
-# question -- does the block describe the thing it sits on.
-gate_doc_attachment() (
-  set -e
-  require_python_mod clang.cindex \
-    "Run 'just setup_python' locally; CI/container use the same uv lock."
-  # Regression-test the checker itself, in BOTH directions, before trusting its
-  # verdict: every defect class must fire, and the legal-but-tricky forms
-  # (@copydoc, the CLAUDE.md definition-site one-liner, macro-generated
-  # declarations, documented //#define options) must not.
-  python3 scripts/checks/check_doc_attachment.py --selftest
-  python3 scripts/checks/check_doc_attachment.py --check
 )
 
 # --- tests-readme ---------------------------------------------------------

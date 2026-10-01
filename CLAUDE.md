@@ -1036,8 +1036,8 @@ in the `.c`** must NOT duplicate that block.
 
 ### Required Tags by Code Element
 
-**Functions - Minimum Required Tags** (gated by `doxy_audit.py --check`, and
-the `@param` direction bracket by `doxy_audit.py --style`):
+**Functions - Minimum Required Tags** (a convention for the C that stays; no
+longer gated since the Doxygen audits were removed):
 - `@brief` - One-line summary
 - `@details` - Multi-paragraph explanation with algorithm description
 - `@param[in/out/in,out]` - ALL parameters with direction, valid range, units, constraints

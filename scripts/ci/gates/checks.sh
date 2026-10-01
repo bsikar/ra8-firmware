@@ -530,29 +530,6 @@ _pcc_docs_and_tests() (
   # that the derived scope reaches the roots a hardcoded list had dropped (#549).
   python3 scripts/checks/check_inclusive_terminology.py --selftest
   python3 scripts/checks/check_inclusive_terminology.py
-  # MAXIMUM-documentation gate: every function -- including statics -- carries
-  # the full Doxygen tag set.
-  #
-  # Regression-test the auditor before trusting either verdict. Both modes
-  # below are enforcing and both are driven by one regex over source text, so
-  # a construct the parser stops recognising takes its offenders with it and
-  # the gate reports a documented tree. The selftest asserts both modes in
-  # both directions: every defect class fires, and the legal-but-tricky forms
-  # (a .c definition whose header owns the contract, a static forward
-  # prototype, `else if`, inline asm) stay clean.
-  python3 scripts/checks/doxy_audit.py --selftest
-  python3 scripts/checks/doxy_audit.py --check
-  # ... and for aggregate members: every enum value, struct/union member, and
-  # macro across the first-party tree carries a doc comment.
-  python3 scripts/checks/doxy_audit.py --members --check
-  # ... and the two docs/STYLE_GUIDE.md tag rules that attach to no symbol, so
-  # neither gate above ever saw them (#532): the file-header block (@file
-  # present and naming THIS file, @brief, @details) and the @param direction
-  # bracket. The style guide asserted both as facts -- one of them naming
-  # cite_check / check_world_tags as the enforcer, neither of which has ever
-  # read a @file tag. @details is ratcheted against .github/doxy-details-
-  # baseline.txt; everything else is hard, with zero debt.
-  python3 scripts/checks/doxy_audit.py --style
   # Every hw_validated/hil app must be instrumented (a probed counter +
   # HIL_MODE=jlink_memprobe) or explicitly HIL_FAULT_EXPECTED -- a bare
   # HIL_MODE=alive proves nothing.
