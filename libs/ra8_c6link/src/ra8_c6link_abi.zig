@@ -27,6 +27,7 @@ const sta_cfg = @import("internal/sta_cfg.zig");
 const rx_route = @import("internal/rx_route.zig");
 const field_copy = @import("internal/field_copy.zig");
 const tx_admit = @import("internal/tx_admit.zig");
+const wifi_init = @import("internal/wifi_init.zig");
 pub const mdl_types = @import("internal/mdl_types.zig");
 const storage_ram = @import("internal/storage_ram.zig");
 const tlv = @import("internal/tlv.zig");
@@ -611,4 +612,13 @@ pub export fn priv_c6link_tx_admit(open: bool, len: u16, tx_len: u16) callconv(.
         };
     };
     return Err.ok;
+}
+
+/// `priv_c6link_wifi_init_cfg`: the configuration `Req_WifiInit` carries.
+///
+/// Writes the validated set into @p out, which the caller copies field by
+/// field into the generated `WifiInitConfig`.
+pub export fn priv_c6link_wifi_init_cfg(out: ?*wifi_init.Cfg) callconv(.c) void {
+    const dst = out orelse return;
+    dst.* = wifi_init.cfg();
 }
