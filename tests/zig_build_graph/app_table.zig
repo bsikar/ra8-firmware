@@ -50,7 +50,11 @@ pub const CrossApp = struct {
     /// ra8_add_app() compose the board linker script with a generated heap
     /// fragment instead of linking the board's own script unchanged. A link
     /// shape, not a source one, which is why it sits beside linker_script.
-    threadx_heap: bool = false,
+    ///
+    /// The REGION the call names (`THREADX_HEAP SDRAM` -> `"SDRAM"`), not a
+    /// flag: the fragment is one PROVIDE of ORIGIN(<region>), so the region
+    /// IS the content. Null means the app takes the board map as written.
+    threadx_heap: ?[]const u8 = null,
     /// The call passes CPU1_IMAGE, so ra8_add_app() composes the board linker
     /// script with a generated CPU1 memory map instead of taking a fork.
     cpu1_image: bool = false,
@@ -273,7 +277,7 @@ pub const cross_apps = [_]CrossApp{
         .libraries = &.{},
         .zig_libraries = &.{},
         .uses = &.{"threadx"},
-        .threadx_heap = true,
+        .threadx_heap = "SDRAM",
     },
     .{
         // The fifth app, for a rule the graph has been treating as a CONSTANT.

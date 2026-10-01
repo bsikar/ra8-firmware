@@ -369,8 +369,16 @@ fn addCrossApp(
     // the directory the link runs in. There is no such directory here, so the
     // pair is written into a generated one and that goes on the search path.
     // Ahead of -T, because ld resolves an INCLUDE as it reads the script.
-    link.addPrefixedDirectoryArg("-L", ld_fragments.directory(b, app));
-    link.addPrefixedFileArg("-T", b.path(app.linker_script));
+    const fragments = ld_fragments.directory(b, app);
+    link.addPrefixedDirectoryArg("-L", fragments);
+    // THREADX_HEAP / CPU1_IMAGE do not inject through those two INCLUDE
+    // points: ra8_add_app() writes a third script that INCLUDEs the board map
+    // and appends to it, and -T takes that one (sources.cmake:1235-1238).
+    if (ld_fragments.composes(app)) {
+        link.addPrefixedFileArg("-T", fragments.path(b, ld_fragments.composed_name));
+    } else {
+        link.addPrefixedFileArg("-T", b.path(app.linker_script));
+    }
     const map = link.addPrefixedOutputFileArg("-Wl,--Map=", b.fmt("{s}.map", .{app.name}));
     // The import library the Non-Secure link binds veneer names against. It
     // is an OUTPUT of the secure link, so it is declared as one: a follow-up
