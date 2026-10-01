@@ -15,6 +15,7 @@ const caps = @import("internal/caps.zig");
 const frame = @import("internal/frame.zig");
 const mdl_transfer = @import("internal/mdl_transfer.zig");
 const mdl_request = @import("internal/mdl_request.zig");
+const mdl_chunk = @import("internal/mdl_chunk.zig");
 pub const mdl_types = @import("internal/mdl_types.zig");
 const storage_ram = @import("internal/storage_ram.zig");
 const tlv = @import("internal/tlv.zig");
@@ -295,4 +296,35 @@ pub export fn priv_c6link_mdl_stage_headers(
     const policy = http orelse return;
     const storage = out orelse return;
     mdl_request.stageHeaders(policy, storage);
+}
+
+/// `priv_c6link_mdl_http_response_valid`: terminal HTTP metadata, checked.
+pub export fn priv_c6link_mdl_http_response_valid(
+    view: ?*const mdl_chunk.View,
+) callconv(.c) bool {
+    const chunk = view orelse return false;
+    return mdl_chunk.httpResponseValid(chunk);
+}
+
+/// `priv_c6link_mdl_chunk_semantics_valid`: the state-specific chunk rules.
+pub export fn priv_c6link_mdl_chunk_semantics_valid(
+    view: ?*const mdl_chunk.View,
+) callconv(.c) bool {
+    const chunk = view orelse return false;
+    return mdl_chunk.semanticsValid(chunk);
+}
+
+/// `priv_c6link_mdl_accept_chunk`: copy a validated chunk, advance the session.
+///
+/// Returns the remote's own status on a FAILED chunk and ok otherwise, which
+/// is the value the caller propagates.
+pub export fn priv_c6link_mdl_accept_chunk(
+    view: ?*const mdl_chunk.View,
+    session: ?*mdl_types.Session,
+    chunk: ?*mdl_types.Chunk,
+) callconv(.c) u16 {
+    const decoded = view orelse return Err.null_ptr;
+    const active = session orelse return Err.null_ptr;
+    const out = chunk orelse return Err.null_ptr;
+    return mdl_chunk.accept(decoded, active, out);
 }
