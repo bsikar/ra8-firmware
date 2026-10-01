@@ -302,7 +302,7 @@ static ra8_err_t internal_route_data_pins(void)
 RA8_INTERNAL
 static void internal_release_pins(void)
 {
-  const ra8_pin_interface_t* pin_if = internal_pin_interface();
+  const ra8_pin_interface_t* pin_if = internal_pin_if();
   (void)pin_if->release(pin_if->ctx, (ra8_port_pin_t)k_ra8_board_pmod1_spi_sck);
   (void)pin_if->release(pin_if->ctx, (ra8_port_pin_t)k_ra8_board_pmod1_spi_copi);
   (void)pin_if->release(pin_if->ctx, (ra8_port_pin_t)k_ra8_board_pmod1_spi_cipo);
