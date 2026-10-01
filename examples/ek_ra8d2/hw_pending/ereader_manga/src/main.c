@@ -45,9 +45,11 @@
 #include "mg_page_fixture.h"
 #include "mg_reader.h"
 #include "ra8_board_ek_ra8d2.h"
+#include "ra8_board_ek_ra8d2_clock_profile.h"
 #include "ra8_board_ek_ra8d2_touch.h"
 #include "ra8_boot_entry.h"
 #include "ra8_cgc.h"
+#include "fw_if_clock.h"
 #include "ra8_display_pal.h"
 #include "ra8_display_pal_lcd.h"
 #include "ra8_err.h"
@@ -321,7 +323,8 @@ static void mg_bringup_clocks(void)
   if ((ra8_cgc_init() != k_ra8_ok) || (ra8_mstp_init() != k_ra8_ok)) {
     mg_panic_halt(k_msg_fail, (uint32_t)sizeof(k_msg_fail) - 1U);
   }
-  if (ra8_cgc_get_clock_hz(k_ra8_clock_id_cpuclk0, &cpuclk0_hz) != k_ra8_ok) {
+  const fw_clock_module_t clk_core = {.kind = k_fw_clock_module_core, .index = 0U};
+  if (fw_clock_rate_for(ra8_board_clock(), clk_core, &cpuclk0_hz) != k_ra8_ok) {
     mg_panic_halt(k_msg_fail, (uint32_t)sizeof(k_msg_fail) - 1U);
   }
   if (ra8_time_init(cpuclk0_hz) != k_ra8_ok) {

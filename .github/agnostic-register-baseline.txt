@@ -7,7 +7,7 @@
 # HAL implementations, named backend translation units, board composition
 # libraries, tests, vendored code, and generated code are outside this ratchet.
 #
-# clock: 321 reference(s)
+# clock: 307 reference(s)
 # display: 9 reference(s)
 # gpio: 74 reference(s)
 # timer: 51 reference(s)
@@ -70,23 +70,23 @@ examples/ek_ra8d2/hil_needs_revalidation/touch_cal/src/main.c	clock	1
 examples/ek_ra8d2/hil_needs_revalidation/touch_demo/src/main.c	clock	1
 examples/ek_ra8d2/hil_needs_revalidation/usb_selftest_wlun/src/main.c	clock	3
 examples/ek_ra8d2/hil_needs_revalidation/usb_selftest_wlun/src/main.c	gpio	1
-examples/ek_ra8d2/hw_pending/adc_diag_tsn_demo/src/main.c	clock	2
-examples/ek_ra8d2/hw_pending/battery_monitor_demo/src/main.c	clock	3
+examples/ek_ra8d2/hw_pending/adc_diag_tsn_demo/src/main.c	clock	1
+examples/ek_ra8d2/hw_pending/battery_monitor_demo/src/main.c	clock	2
 examples/ek_ra8d2/hw_pending/blink_m33_hal/src/main.c	clock	1
 examples/ek_ra8d2/hw_pending/cache_hal_enable_demo/src/main.c	clock	1
-examples/ek_ra8d2/hw_pending/dtc_isr_arm_demo/src/main.c	clock	2
-examples/ek_ra8d2/hw_pending/epaper_refresh/src/main.c	clock	3
+examples/ek_ra8d2/hw_pending/dtc_isr_arm_demo/src/main.c	clock	1
+examples/ek_ra8d2/hw_pending/epaper_refresh/src/main.c	clock	2
 examples/ek_ra8d2/hw_pending/epaper_refresh/src/main.c	gpio	2
-examples/ek_ra8d2/hw_pending/epub_stress/src/main.c	clock	2
-examples/ek_ra8d2/hw_pending/ereader_comic/src/main.c	clock	2
-examples/ek_ra8d2/hw_pending/ereader_cover/src/main.c	clock	2
-examples/ek_ra8d2/hw_pending/ereader_longstrip/src/main.c	clock	2
-examples/ek_ra8d2/hw_pending/ereader_manga/src/main.c	clock	2
-examples/ek_ra8d2/hw_pending/ereader_zoom/src/main.c	clock	2
-examples/ek_ra8d2/hw_pending/eth_gptp_timestamp_demo/src/main.c	clock	4
-examples/ek_ra8d2/hw_pending/eth_hal_bringup/src/main.c	clock	3
-examples/ek_ra8d2/hw_pending/eth_l3switch_forward_demo/src/main.c	clock	2
-examples/ek_ra8d2/hw_pending/eth_tsn_tas_demo/src/main.c	clock	4
+examples/ek_ra8d2/hw_pending/epub_stress/src/main.c	clock	1
+examples/ek_ra8d2/hw_pending/ereader_comic/src/main.c	clock	1
+examples/ek_ra8d2/hw_pending/ereader_cover/src/main.c	clock	1
+examples/ek_ra8d2/hw_pending/ereader_longstrip/src/main.c	clock	1
+examples/ek_ra8d2/hw_pending/ereader_manga/src/main.c	clock	1
+examples/ek_ra8d2/hw_pending/ereader_zoom/src/main.c	clock	1
+examples/ek_ra8d2/hw_pending/eth_gptp_timestamp_demo/src/main.c	clock	3
+examples/ek_ra8d2/hw_pending/eth_hal_bringup/src/main.c	clock	2
+examples/ek_ra8d2/hw_pending/eth_l3switch_forward_demo/src/main.c	clock	1
+examples/ek_ra8d2/hw_pending/eth_tsn_tas_demo/src/main.c	clock	3
 examples/ek_ra8d2/hw_pending/gpt_edge_capture_count/src/main.c	clock	2
 examples/ek_ra8d2/hw_pending/gpt_edge_capture_count/src/main.c	timer	10
 examples/ek_ra8d2/hw_pending/hal_timebase_demo/src/main.c	clock	2
