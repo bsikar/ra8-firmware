@@ -23,6 +23,7 @@ const build_type = @import("build_type.zig");
 const cpu1_image = @import("cpu1_image.zig");
 const core_archive = @import("core_archive.zig");
 const board_archive = @import("board_archive.zig");
+const interface_archive = @import("interface_archive.zig");
 const migrated_libs = @import("migrated_libs.zig");
 const cross_build = @import("cross_build.zig");
 const cross_sources = @import("cross_sources.zig");
@@ -173,6 +174,32 @@ fn addCrossApp(
         }
         if (!names_adapter) {
             archives.append(board_archive.chipClockAdapterForTarget(
+                b,
+                arm_target,
+                globals.configuration.zig_optimize,
+            )) catch @panic("OOM");
+        }
+    }
+
+    // The portable interface archive, on the same unconditional footing and
+    // for the same reason. `fw_clock_bind` and `fw_clock_rate_for` are called
+    // from around twenty-five example main.c files; both are defined in
+    // `libs/if`, which no cross app names in LIBS, so the sweep below cannot
+    // reach it. Before #2791 the definitions were in
+    // `libs/if/src/fw_if_clock.c`, which nothing in the tree compiles --
+    // library_sources.cmake:60 records the RA8_IF_SOURCES glob being removed
+    // when libs/if was declared fully migrated -- so the symbols had no
+    // definition anywhere and every image calling them linked short.
+    if (interface_archive.has(b)) {
+        var names_interface = false;
+        for (app.zig_libraries) |lib_name| {
+            if (std.mem.eql(u8, lib_name, interface_archive.name)) names_interface = true;
+        }
+        for (app.libraries) |lib_name| {
+            if (std.mem.eql(u8, lib_name, interface_archive.name)) names_interface = true;
+        }
+        if (!names_interface) {
+            archives.append(interface_archive.forTarget(
                 b,
                 arm_target,
                 globals.configuration.zig_optimize,

@@ -53,8 +53,9 @@ file(GLOB_RECURSE RA8_HAL_SOURCES CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra8_hal/src/
 # left. src/ra8_usb_pal_internal.h stays: the MC/DC suites include it to reach
 # the promoted priv_usb_pal_* predicates.
 file(GLOB_RECURSE RA8_FS_SOURCES CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra8_fs/src/*.c)
-# libs/if is fully migrated to Zig: the portable filesystem interface and the
-# untrusted-name containment policy (#749) both live in libs/if/src/*.zig,
+# libs/if is fully migrated to Zig: the portable filesystem interface, the
+# untrusted-name containment policy (#749) and the clock-intent facade (#2791)
+# all live in libs/if/src/*.zig,
 # built by libs/if/build.zig behind the unchanged inc/fw_if_fs.h,
 # inc/fw_if_fs_types.h, inc/fw_if_fs_backend.h and inc/ra8_path.h; see
 # tests/cmake/zig_libraries.cmake. There is no RA8_IF_SOURCES glob left, and

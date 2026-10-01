@@ -1,8 +1,9 @@
 //! SPDX-License-Identifier: MIT
 //! Copyright (c) 2026 Brighton Sikarskie
 //!
-//! Build graph for the Zig implementation of the portable filesystem
-//! interface (`fw_if_fs`). CMake consumes the installed static library
+//! Build graph for the Zig implementation of the portable interfaces in
+//! `libs/if`: the filesystem facade (`fw_if_fs`), the untrusted-name policy
+//! (`ra8_path`) and the clock-intent facade (`fw_clock`). CMake consumes the installed static library
 //! through the unchanged `inc/fw_if_fs.h`, `inc/fw_if_fs_types.h` and
 //! `inc/fw_if_fs_backend.h` C ABI; the `test` step covers the pure guard,
 //! path and coherence core plus the ABI membrane over fake backends, and
@@ -77,11 +78,26 @@ pub fn build(b: *std.Build) void {
     path_test_module.addImport("policy", policy_module);
     const path_tests = b.addTest(.{ .root_module = path_test_module });
 
+    const clock_abi_module = b.createModule(.{
+        .root_source_file = b.path("src/fw_if_clock_abi.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    const clock_test_module = b.createModule(.{
+        .root_source_file = b.path("tests/clock_test.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    clock_test_module.addImport("abi", clock_abi_module);
+    const clock_tests = b.addTest(.{ .root_module = clock_test_module });
+
     const run_path_tests = b.addRunArtifact(path_tests);
     const run_internal_tests = b.addRunArtifact(internal_tests);
     const run_abi_tests = b.addRunArtifact(abi_tests);
+    const run_clock_tests = b.addRunArtifact(clock_tests);
     const test_step = b.step("test", "Run Zig fw_if_fs tests");
     test_step.dependOn(&run_internal_tests.step);
     test_step.dependOn(&run_path_tests.step);
     test_step.dependOn(&run_abi_tests.step);
+    test_step.dependOn(&run_clock_tests.step);
 }
