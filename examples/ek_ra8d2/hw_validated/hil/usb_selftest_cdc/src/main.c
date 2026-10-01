@@ -221,7 +221,7 @@ static volatile uint32_t s_dbg_dev_err;
  * MPS) for the data pipes, per CDC 1.20 sec 5 + USB 2.0 sec 9.6. The host
  * half of this self-loop drives only the bulk pipes. The wTotalLength a
  * human used to count by hand is now derived from what the builder actually
- * emitted.
+ * emitted. */
 
 /**
  * @enum cdc_usb_identity_t
