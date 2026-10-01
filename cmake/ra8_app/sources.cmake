@@ -50,6 +50,22 @@
 # the same reasoning the ra8_net_pal block below states in prose; _has_archive
 # carries it to the two keyword loops so a fully-ported library can be named in
 # LIBS at all.
+# The "<lib>|<path>" entry for ra8_jpeg, or empty when it still has a C
+# implementation. Two blocks below pull ra8_jpeg in transitively (ra8_camera
+# and jof) and both need the same answer; a function keeps the flip test in
+# one place instead of two copies that can drift.
+function(_ra8_app_jpeg_zig_entry _out)
+  set(_path "${RA8_REPO_ROOT}/libs/ra8_jpeg")
+  set(_entry "")
+  if(EXISTS "${_path}/build.zig" AND NOT EXISTS "${_path}/src/ra8_jpeg.c")
+    set(_entry "ra8_jpeg|${_path}")
+  endif()
+  set(${_out}
+      "${_entry}"
+      PARENT_SCOPE
+  )
+endfunction()
+
 function(
   _ra8_app_require_compilable_lib
   _lib
@@ -191,13 +207,26 @@ macro(_ra8_app_collect_sources)
     list(REMOVE_DUPLICATES _ra8_extra_inc)
   endif()
 
-  file(GLOB_RECURSE _ra8_lib_core CONFIGURE_DEPENDS ${RA8_REPO_ROOT}/libs/ra8_core/src/*.c)
+  # ra8_core finished its ARM flip in #2820: libs/ra8_core/src holds .zig and
+  # no .c at all, so the *.c glob this block used to run can never match again.
+  # It is deleted rather than left to rot, which is what cmake-source-paths was
+  # reporting (#2936). The objects are not missing: they arrive in the Zig
+  # archive registered with the other universal archives below, the same path
+  # ra8_net_pal takes. The #908 guard stays live and is handed the archive
+  # entry itself rather than a literal, so deleting the registration below
+  # brings the guard straight back.
+  set(_ra8_core_path "${RA8_REPO_ROOT}/libs/ra8_core")
+  set(_ra8_lib_core "")
+  set(_ra8_core_zig "")
+  if(EXISTS "${_ra8_core_path}/build.zig" AND NOT EXISTS "${_ra8_core_path}/src/ra8_core.c")
+    set(_ra8_core_zig "ra8_core|${_ra8_core_path}")
+  endif()
   _ra8_app_require_compilable_lib(
     ra8_core
-    "${RA8_REPO_ROOT}/libs/ra8_core"
+    "${_ra8_core_path}"
     "links ra8_core into every app"
     "${_ra8_lib_core}"
-    ""
+    "${_ra8_core_zig}"
   )
   file(GLOB_RECURSE _ra8_lib_hal CONFIGURE_DEPENDS ${RA8_REPO_ROOT}/libs/ra8_hal/src/*.c)
   _ra8_app_require_compilable_lib(
@@ -272,6 +301,12 @@ macro(_ra8_app_collect_sources)
                                                  "${_ra8_net_pal_path}/src/ra8_net_pal.c"
   )
     list(APPEND _ra8_lib_zig "ra8_net_pal|${_ra8_net_pal_path}")
+  endif()
+  # ra8_core, decided one block above. Registered here because this is where
+  # _ra8_lib_zig begins its life; an append before the set() above would be
+  # silently discarded.
+  if(_ra8_core_zig)
+    list(APPEND _ra8_lib_zig "${_ra8_core_zig}")
   endif()
   # ra8_secure_app is universal in exactly the same way, and its last C
   # translation unit is gone (#2670), so its archive is registered here
@@ -477,15 +512,20 @@ macro(_ra8_app_collect_sources)
   # driver's business, not the application's.
   if("ra8_camera" IN_LIST _RA8_APP_LIBS)
     if(NOT "ra8_jpeg" IN_LIST _RA8_APP_LIBS)
-      file(GLOB_RECURSE _ra8_camera_jpeg CONFIGURE_DEPENDS ${RA8_REPO_ROOT}/libs/ra8_jpeg/src/*.c)
+      # ra8_jpeg is Zig too (#2820): no .c under its src, so the glob that
+      # used to collect it is gone for the reason ra8_core's is, and the
+      # archive is registered instead.
+      _ra8_app_jpeg_zig_entry(_ra8_jpeg_zig)
       _ra8_app_require_compilable_lib(
         ra8_jpeg
         "${RA8_REPO_ROOT}/libs/ra8_jpeg"
         "pulls in ra8_jpeg for LIBS ra8_camera"
-        "${_ra8_camera_jpeg}"
         ""
+        "${_ra8_jpeg_zig}"
       )
-      list(APPEND _ra8_lib_extra ${_ra8_camera_jpeg})
+      if(_ra8_jpeg_zig)
+        list(APPEND _ra8_lib_zig "${_ra8_jpeg_zig}")
+      endif()
     endif()
     list(APPEND _ra8_lib_inc ${RA8_REPO_ROOT}/libs/ra8_jpeg/inc)
   endif()
@@ -544,15 +584,18 @@ macro(_ra8_app_collect_sources)
     # that dependency, so applications do not need to know which source image
     # codecs the atlas producer dispatches internally.
     if(NOT "ra8_jpeg" IN_LIST _RA8_APP_LIBS)
-      file(GLOB_RECURSE _jof_jpeg CONFIGURE_DEPENDS ${RA8_REPO_ROOT}/libs/ra8_jpeg/src/*.c)
+      # Same call as the ra8_camera block above, same reason (#2820/#2936).
+      _ra8_app_jpeg_zig_entry(_ra8_jpeg_zig)
       _ra8_app_require_compilable_lib(
         ra8_jpeg
         "${RA8_REPO_ROOT}/libs/ra8_jpeg"
         "pulls in ra8_jpeg for LIBS jof"
-        "${_jof_jpeg}"
         ""
+        "${_ra8_jpeg_zig}"
       )
-      list(APPEND _ra8_lib_extra ${_jof_jpeg})
+      if(_ra8_jpeg_zig)
+        list(APPEND _ra8_lib_zig "${_ra8_jpeg_zig}")
+      endif()
     endif()
     list(
       APPEND
