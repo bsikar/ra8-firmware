@@ -15,3 +15,4 @@ pub const mdl_request = @import("mdl_request.zig");
 pub const mdl_chunk = @import("mdl_chunk.zig");
 pub const mdl_service_rules = @import("mdl_service_rules.zig");
 pub const mdl_session = @import("mdl_session.zig");
+pub const mdl_pull = @import("mdl_pull.zig");
