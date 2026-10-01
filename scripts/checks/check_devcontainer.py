@@ -7,7 +7,7 @@ WHY THESE TWO FILES, TOGETHER
 =============================
 `.devcontainer/Dockerfile` pins every tool version CI resolves -- clang-format
 22, the ARM toolchain by sha256, ruff, shellcheck, shfmt, cmake-format,
-yamllint, actionlint. A defect in it changes what every other gate in this
+yamllint. A defect in it changes what every other gate in this
 repository runs. It was, until #371, linted and formatted by nothing at all.
 `.devcontainer/zshrc` is copied to ~/.zshrc at image build time and is the
 other half of the same artefact. They are checked as one unit because they are
@@ -16,8 +16,8 @@ one deliverable: the container.
 THE TOOLS, AND WHY EACH ONE
 ---------------------------
 Dockerfile -> hadolint (pinned 2.14.0). The obvious and only serious candidate:
-  a single static binary, the same provisioning shape actionlint and shfmt
-  already use. It found a real defect on its first run -- DL4006, eight
+  a single static binary, the same provisioning shape shfmt
+  already uses. It found a real defect on its first run -- DL4006, eight
   `curl -fsSL <url> | tar -x` pipelines running under `/bin/sh -c`, where the
   pipeline's status is that of `tar` alone. A failed download produced an empty
   tarball, tar succeeded on it, and the image was built with the pinned tool

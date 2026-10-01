@@ -152,10 +152,10 @@ def _check_board_interface(name: str, host: dict[str, Any]) -> list[str]:
 
 
 def _check_identity(name: str, declared: dict[str, Any]) -> list[str]:
-    """Validate a native listener's registration and workflow identity."""
+    """Validate a native listener's registration identity."""
     bad = [
         f"{name}: hil_runner.{key} must be a non-empty string"
-        for key in ("name", "repository", "workflow")
+        for key in ("name", "repository")
         if not isinstance(declared.get(key), str) or not declared[key].strip()
     ]
     labels = declared.get("labels")
@@ -172,20 +172,6 @@ def _check_identity(name: str, declared: dict[str, Any]) -> list[str]:
             f"{name}: hil_runner.labels declares the implicit 'self-hosted' label; "
             "list only the listener's custom labels"
         )
-
-    workflow = declared.get("workflow")
-    if isinstance(workflow, str) and workflow.strip():
-        workflow_path = Path(workflow)
-        if (
-            workflow_path.is_absolute()
-            or ".." in workflow_path.parts
-            or workflow_path.parts[:2] != (".github", "workflows")
-            or workflow_path.suffix not in {".yml", ".yaml"}
-        ):
-            bad.append(
-                f"{name}: hil_runner.workflow '{workflow}' is not a repository-relative "
-                ".github/workflows/*.yml path"
-            )
 
     repository = declared.get("repository")
     if (
@@ -250,16 +236,16 @@ def check_runner(name: str, host: dict[str, Any], hosts: dict[str, Any]) -> list
 
 
 def check_uniqueness(hosts: dict[str, Any]) -> list[str]:
-    """Reject duplicate native listener registrations or workflow ownership.
+    """Reject duplicate native listener registrations.
 
     Args:
         hosts: Complete fleet host mapping.
 
     Returns:
-        One message per duplicated registration name or workflow path.
+        One message per duplicated registration name.
     """
     problems = []
-    for key in ("name", "workflow"):
+    for key in ("name",):
         owners: dict[str, str] = {}
         for host_name, host in hosts.items():
             declared = host.get("hil_runner")

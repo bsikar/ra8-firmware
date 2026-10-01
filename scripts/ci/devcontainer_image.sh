@@ -16,7 +16,7 @@
 #
 # The shared verification box was in exactly that state: the image it booted
 # was built on 2026-07-20 and lacked cmake-format, cmake-lint, yamllint,
-# actionlint, hadolint, gcc-14 and g++-14, so toolchain-parity, lint-cmake,
+# hadolint, gcc-14 and g++-14, so toolchain-parity, lint-cmake,
 # lint-yaml and lint-devcontainer FAILED inside the container and PASSED
 # natively on the same box, on the same commit (#521). That is the most
 # expensive shape a failure can take: `just ci` is what CLAUDE.md tells every

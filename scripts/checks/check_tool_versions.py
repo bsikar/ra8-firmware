@@ -25,7 +25,7 @@ dependencies in ``pyproject.toml`` and their transitive closure is committed in
 Comparison modes
 ----------------
 * ``exact``     -- version string must equal the pin (just, ruff, shellcheck, shfmt,
-                   cmakelang, yamllint, actionlint, hadolint).
+                   cmakelang, yamllint, hadolint).
                    These are the tools whose findings drift with the
                    exact version.
 * ``major``     -- major must equal the pin (clang-format-22,
@@ -293,7 +293,6 @@ def build_specs() -> list[ToolSpec]:
         _python_spec("cmake-format", "cmakelang"),
         _python_spec("cmake-lint", "cmakelang"),
         _python_spec("yamllint", "yamllint"),
-        _spec(args, "actionlint", "ACTIONLINT_VERSION", MODE_EXACT),
         _spec(args, "hadolint", "HADOLINT_VERSION", MODE_EXACT),
         # `go --version` is not a thing: the toolchain spells it `go version`.
         ToolSpec("go", _arg(args, "GO_VERSION"), MODE_EXACT, "ARG GO_VERSION", ("version",)),

@@ -328,7 +328,6 @@ hosts:
       name: dev-hil
       repository: "https://github.com/bsikar/ra8-firmware"
       labels: [hil, ra8d2]
-      workflow: .github/workflows/hil.yml
       bench:
         host: star
         aliases: [star.local]

@@ -329,33 +329,11 @@ RUN set -eux; \
     rm -rf /tmp/shellcheck /tmp/shellcheck.tar.xz /tmp/shfmt; \
     ruff --version; shellcheck --version | grep '^version:'; shfmt --version
 
-# cmake-format / cmake-lint / yamllint / actionlint -- the tools the lint-cmake
-# and lint-yaml gates need. Same reasoning as the block above: both gates call
-# require_cmd and FAIL rather than skip, so without these the containerised
-# `just ci` could never pass while CI stayed green on the self-hosted runners
-# that have them natively.
-#
-# Versions are pinned to what the runners install (see the "Install the
-# config-as-code linters" step in .github/workflows/firmware.yml). Keep the
-# three in step.
-ARG ACTIONLINT_VERSION=1.7.7
-ARG ACTIONLINT_SHA256_AMD64=023070a287cd8cccd71515fedc843f1985bf96c436b7effaecce67290e7e0757
-ARG ACTIONLINT_SHA256_ARM64=401942f9c24ed71e4fe71b76c7d638f66d8633575c4016efd2977ce7c28317d0
+# cmake-format / cmake-lint / yamllint -- the tools the lint-cmake and lint-yaml
+# gates need. Both gates call require_cmd and FAIL rather than skip, so without
+# these the containerised `just ci` could never pass.
 RUN set -eux; \
-    case "$(uname -m)" in \
-      x86_64)  alarch=amd64; alsha="${ACTIONLINT_SHA256_AMD64}" ;; \
-      aarch64) alarch=arm64; alsha="${ACTIONLINT_SHA256_ARM64}" ;; \
-      *) echo "unsupported host arch $(uname -m) for actionlint" >&2; exit 1 ;; \
-    esac; \
-    curl --proto '=https' --proto-redir '=https' --tlsv1.2 -fsSL -o /tmp/actionlint.tar.gz \
-      "https://github.com/rhysd/actionlint/releases/download/v${ACTIONLINT_VERSION}/actionlint_${ACTIONLINT_VERSION}_linux_${alarch}.tar.gz"; \
-    printf '%s  %s\n' "${alsha}" /tmp/actionlint.tar.gz | sha256sum -c -; \
-    mkdir /tmp/actionlint; \
-    tar -xzf /tmp/actionlint.tar.gz -C /tmp/actionlint actionlint; \
-    install -m 0755 /tmp/actionlint/actionlint /usr/local/bin/actionlint; \
-    rm -rf /tmp/actionlint /tmp/actionlint.tar.gz; \
-    cmake-format --version; cmake-lint --version; \
-    yamllint --version; actionlint --version
+    cmake-format --version; cmake-lint --version; yamllint --version
 
 # Go -- the host CLI toolchain. apps/host/cbz2jof is Go: its CMake
 # find_program(go REQUIRED), the lint-go gate (gofmt + go vet), and the
