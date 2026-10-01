@@ -22,6 +22,7 @@ const mdl_pull = @import("internal/mdl_pull.zig");
 const mdl_envelope = @import("internal/mdl_envelope.zig");
 const mdl_take = @import("internal/mdl_take.zig");
 const mdl_issue = @import("internal/mdl_issue.zig");
+const rpc_wait = @import("internal/rpc_wait.zig");
 pub const mdl_types = @import("internal/mdl_types.zig");
 const storage_ram = @import("internal/storage_ram.zig");
 const tlv = @import("internal/tlv.zig");
@@ -33,6 +34,8 @@ const Err = struct {
     pub const invalid_arg: u16 = 0x103;
     pub const invalid_state: u16 = 0x104;
     pub const invalid_size: u16 = 0x105;
+    pub const busy: u16 = 0x109;
+    pub const not_initialized: u16 = 0x10F;
     pub const null_ptr: u16 = 0x504;
 
     /// Flatten one refused storage transition.
@@ -529,4 +532,32 @@ pub export fn priv_c6link_mdl_chunk_admissible(
 ) callconv(.c) bool {
     const chunk = view orelse return false;
     return mdl_take.chunkAdmissible(key, chunk, session, requested_bytes);
+}
+
+/// `priv_c6link_rpc_issuable`: may another request go out on this link?
+///
+/// Returns `k_ra8_ok`, `k_ra8_err_not_initialized`, or `k_ra8_err_busy`, so
+/// the caller returns the verdict as it stands.
+pub export fn priv_c6link_rpc_issuable(open: bool, armed: bool, tx_len: u16) callconv(.c) u16 {
+    rpc_wait.issuable(open, .{ .uid = 0, .resp_id = 0, .armed = armed }, tx_len) catch |e| {
+        return switch (e) {
+            error.NotInitialized => Err.not_initialized,
+            error.Busy => Err.busy,
+        };
+    };
+    return Err.ok;
+}
+
+/// `priv_c6link_rpc_answers`: is this decoded response the outstanding answer?
+pub export fn priv_c6link_rpc_answers(
+    armed: bool,
+    wait_uid: u32,
+    wait_resp_id: u32,
+    msg_uid: u32,
+    msg_id: u32,
+) callconv(.c) bool {
+    return rpc_wait.answers(
+        .{ .uid = wait_uid, .resp_id = wait_resp_id, .armed = armed },
+        .{ .uid = msg_uid, .msg_id = msg_id },
+    );
 }
