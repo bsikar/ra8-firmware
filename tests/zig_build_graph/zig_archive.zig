@@ -13,15 +13,20 @@
 //!
 //! Losing the archive fails closed, so it needs no rule here: every one of the
 //! app's own units still compiles against the unchanged header, and the link
-//! then names the missing symbols. The OPTIMISATION is the silent half.
-//! zig_libs.cmake maps a Debug configure onto a Debug archive and every other
-//! configure onto ReleaseSmall; a graph that picks one of the two and keeps it
-//! links a perfectly good image that is simply not the artifact CMake
-//! produces, at three of the repo's four configure sites.
+//! then names the missing symbols. The OPTIMISATION is the silent half: a
+//! graph that builds a migrated archive at one mode while CMake builds it at
+//! another links a perfectly good image that is simply not the artifact CMake
+//! produces, and nothing fails.
 //!
 //! So the mapping is read out of that listfile's own text rather than copied
 //! into a table here. A table agrees with a listfile exactly once, on the day
-//! it was copied.
+//! it was copied, which is precisely what happened across #2696: the listfile
+//! stopped branching on CMAKE_BUILD_TYPE and started reading one cache
+//! variable, every configuration now builds ReleaseSmall unless a configure
+//! passes -DRA8_ZIG_OPTIMIZE=, and the rules here went on asserting the old
+//! shape until #2924. Reading the text is what makes that a failing test
+//! rather than a quiet disagreement; following one level of variable
+//! indirection is what makes it readable at all.
 
 const std = @import("std");
 
@@ -84,6 +89,38 @@ fn buildTypeArm(text: []const u8) ?[]const u8 {
     return text[open + 1 .. close];
 }
 
+/// The variable name a `${NAME}` reference wraps, or null when the text is
+/// not one. CMake dereferences at use; this graph reads text, so it has to.
+fn referencedVariable(value: []const u8) ?[]const u8 {
+    if (!std.mem.startsWith(u8, value, "${")) return null;
+    if (!std.mem.endsWith(u8, value, "}")) return null;
+    const name = value[2 .. value.len - 1];
+    return if (name.len == 0) null else name;
+}
+
+/// The default of a `set(<name> "<value>" CACHE <type> "<doc>")` declaration,
+/// read across however many lines the formatter broke it over. Null when the
+/// listfile has no cache declaration of that name, so a reference this graph
+/// cannot resolve stays as loud as a mode it cannot spell.
+pub fn cacheDefault(source: []const u8, name: []const u8) ?[]const u8 {
+    var buffer: [128]u8 = undefined;
+    const needle = std.fmt.bufPrint(&buffer, "set({s}", .{name}) catch return null;
+    const at = std.mem.indexOf(u8, source, needle) orelse return null;
+    const rest = source[at + needle.len ..];
+    // The declaration ends at its own close paren: no nested call appears
+    // between a cache variable's name and its doc string.
+    const close = std.mem.indexOfScalar(u8, rest, ')') orelse return null;
+    const body = rest[0..close];
+    // Without CACHE this is an ordinary assignment, which a caller resolving a
+    // configure-time knob must not read as one.
+    if (std.mem.indexOf(u8, body, "CACHE") == null) return null;
+    const open_quote = std.mem.indexOfScalar(u8, body, '"') orelse return null;
+    const after = body[open_quote + 1 ..];
+    const close_quote = std.mem.indexOfScalar(u8, after, '"') orelse return null;
+    const value = std.mem.trim(u8, after[0..close_quote], " \t");
+    return if (value.len == 0) null else value;
+}
+
 /// Read the optimisation mapping out of a listfile's own text. Null when the
 /// listfile carries no mapping this can see, when it names a mode this graph
 /// does not know, or when it has no `else()` arm left: each of those means the
@@ -113,7 +150,14 @@ pub fn parse(allocator: std.mem.Allocator, source: []const u8, variable: []const
             in_else = false;
             continue;
         }
-        const value = setValue(text, variable) orelse continue;
+        const raw = setValue(text, variable) orelse continue;
+        // `set(_zig_optimize "${RA8_ZIG_OPTIMIZE}")` is the shape #2696 left
+        // behind: the answer is the knob's own default, one hop away in the
+        // same listfile.
+        const value = if (referencedVariable(raw)) |name|
+            cacheDefault(source, name) orelse return null
+        else
+            raw;
         const mode = optimizeFromName(value) orelse return null;
         if (in_else) {
             fallback = mode;
@@ -209,6 +253,48 @@ test "a mapping this graph cannot read is null, not a guess" {
         \\
     ;
     try std.testing.expect(parse(std.testing.allocator, no_else, "_zig_optimize") == null);
+}
+
+test "a set through a cache knob resolves to the knob's default" {
+    // The shape #2696 left in zig_libs.cmake, formatter line breaks and all.
+    const source =
+        \\set(RA8_ZIG_OPTIMIZE
+        \\    "ReleaseSmall"
+        \\    CACHE STRING "zig -Doptimize mode for the ported libraries"
+        \\)
+        \\function(_ra8_zig_build_archive _lib)
+        \\  set(_zig_optimize "${RA8_ZIG_OPTIMIZE}")
+        \\endfunction()
+        \\
+    ;
+    const mapping = parse(std.testing.allocator, source, "_zig_optimize").?;
+    defer std.testing.allocator.free(mapping.named);
+    try std.testing.expectEqual(@as(usize, 0), mapping.named.len);
+    try std.testing.expectEqual(std.builtin.OptimizeMode.ReleaseSmall, mapping.forName("Debug"));
+    try std.testing.expectEqual(std.builtin.OptimizeMode.ReleaseSmall, mapping.forName("RelWithDebInfo"));
+}
+
+test "a reference this graph cannot resolve is null, not a guess" {
+    // A knob that is not declared in this listfile at all.
+    const dangling = "set(_zig_optimize \"${RA8_ZIG_OPTIMIZE}\")\n";
+    try std.testing.expect(parse(std.testing.allocator, dangling, "_zig_optimize") == null);
+
+    // Declared, but as a plain assignment rather than a configure-time knob:
+    // not what a -D override reaches, so not an answer about one.
+    const not_cached =
+        \\set(RA8_ZIG_OPTIMIZE "ReleaseSmall")
+        \\set(_zig_optimize "${RA8_ZIG_OPTIMIZE}")
+        \\
+    ;
+    try std.testing.expect(parse(std.testing.allocator, not_cached, "_zig_optimize") == null);
+
+    // Declared as a knob, defaulted to a mode this graph does not spell.
+    const unknown_default =
+        \\set(RA8_ZIG_OPTIMIZE "ReleaseTurbo" CACHE STRING "doc")
+        \\set(_zig_optimize "${RA8_ZIG_OPTIMIZE}")
+        \\
+    ;
+    try std.testing.expect(parse(std.testing.allocator, unknown_default, "_zig_optimize") == null);
 }
 
 test "an unconditional set answers for every configuration" {

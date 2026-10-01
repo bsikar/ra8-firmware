@@ -42,10 +42,13 @@ pub const Configuration = struct {
     /// debug level alone, no optimisation level and no NDEBUG, so a middleware
     /// port's `.S` units differ from the C units beside them in exactly this.
     asm_flags: []const []const u8,
-    /// What cmake/ra8_app/zig_libs.cmake maps this configuration onto when it
-    /// builds a migrated Zig archive: Debug stays Debug, everything else is
-    /// ReleaseSmall. An archive built at a different optimisation than the
-    /// objects beside it is not the artifact CMake links.
+    /// What cmake/ra8_app/zig_libs.cmake builds a migrated Zig archive at for
+    /// this configuration. Since #2696 that is RA8_ZIG_OPTIMIZE's default for
+    /// all three: a Debug configure gets a ReleaseSmall archive unless the
+    /// configure passes -DRA8_ZIG_OPTIMIZE=, because -Doptimize=Debug emits a
+    /// compiler_rt the images cannot carry. An archive built at a different
+    /// optimisation than the listfile asks for is not the artifact CMake
+    /// links, which is what zig_archive_test holds these against.
     zig_optimize: std.builtin.OptimizeMode,
 };
 
@@ -56,7 +59,9 @@ pub const configurations = [_]Configuration{
         .cmake_name = "Debug",
         .c_flags = &.{ "-O0", "-g3", "-DDEBUG" },
         .asm_flags = &.{"-g3"},
-        .zig_optimize = .Debug,
+        // NOT .Debug: the C units of a Debug configure are -O0, the migrated
+        // archive beside them is not, and #2696 made that deliberate.
+        .zig_optimize = .ReleaseSmall,
     },
     .{
         .build_type = .release,
@@ -201,14 +206,18 @@ test "the assembler set is not the C set" {
     }
 }
 
-test "only Debug builds a Debug Zig archive" {
+test "the Zig archive does not vary by configuration" {
+    // #2696: one mode for every configure, behind RA8_ZIG_OPTIMIZE. Held here
+    // as a property rather than three literals so that a row changed on its
+    // own fails, and zig_archive_test holds the whole set against the
+    // listfile's own text.
     for (configurations) |configuration| {
-        const expected: std.builtin.OptimizeMode = if (configuration.build_type == .debug)
-            .Debug
-        else
-            .ReleaseSmall;
-        try std.testing.expectEqual(expected, configuration.zig_optimize);
+        try std.testing.expectEqual(
+            configurations[0].zig_optimize,
+            configuration.zig_optimize,
+        );
     }
+    try std.testing.expectEqual(std.builtin.OptimizeMode.ReleaseSmall, configurations[0].zig_optimize);
 }
 
 test "RelWithDebInfo carries neither DEBUG nor NDEBUG" {
