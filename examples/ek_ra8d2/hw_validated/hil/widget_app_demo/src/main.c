@@ -868,7 +868,8 @@ static void wd_setup_or_halt(void)
   if ((ra8_cgc_init() != k_ra8_ok) || (ra8_mstp_init() != k_ra8_ok)) {
     wd_fail_halt(k_wd_msg_finit, (uint32_t)sizeof(k_wd_msg_finit) - 1U);
   }
-  if (ra8_cgc_get_clock_hz(k_ra8_clock_id_cpuclk0, &cpuclk0_hz) != k_ra8_ok) {
+  const fw_clock_module_t clk_core = {.kind = k_fw_clock_module_core, .index = 0U};
+  if (fw_clock_rate_for(ra8_board_clock(), clk_core, &cpuclk0_hz) != k_ra8_ok) {
     wd_fail_halt(k_wd_msg_finit, (uint32_t)sizeof(k_wd_msg_finit) - 1U);
   }
   if (ra8_time_init(cpuclk0_hz) != k_ra8_ok) {
