@@ -20,6 +20,7 @@ const mdl_service_rules = @import("internal/mdl_service_rules.zig");
 const mdl_session = @import("internal/mdl_session.zig");
 const mdl_pull = @import("internal/mdl_pull.zig");
 const mdl_envelope = @import("internal/mdl_envelope.zig");
+const mdl_take = @import("internal/mdl_take.zig");
 const mdl_issue = @import("internal/mdl_issue.zig");
 pub const mdl_types = @import("internal/mdl_types.zig");
 const storage_ram = @import("internal/storage_ram.zig");
@@ -508,4 +509,24 @@ pub export fn priv_c6link_mdl_envelope_accept(
 ) u8 {
     const kind = mdl_envelope.accept(view) orelse return 0;
     return @intFromEnum(kind);
+}
+
+/// `priv_c6link_mdl_take_selected`: the extractor this reply may run, 0 for none.
+pub export fn priv_c6link_mdl_take_selected(
+    view: *const mdl_envelope.ResponseView,
+    expected: u8,
+) callconv(.c) u8 {
+    const kind = mdl_take.selected(view, expected) orelse return 0;
+    return @intFromEnum(kind);
+}
+
+/// `priv_c6link_mdl_chunk_admissible`: may this decoded chunk reach the session?
+pub export fn priv_c6link_mdl_chunk_admissible(
+    key: *const mdl_session.ChunkKeyView,
+    view: ?*const mdl_chunk.View,
+    session: *const mdl_types.Session,
+    requested_bytes: u32,
+) callconv(.c) bool {
+    const chunk = view orelse return false;
+    return mdl_take.chunkAdmissible(key, chunk, session, requested_bytes);
 }

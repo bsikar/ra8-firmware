@@ -11,7 +11,8 @@
     "tests/mdl_request_test.zig",
     "tests/mdl_pull_test.zig",
     "tests/mdl_envelope_test.zig",
-    "tests/mdl_issue_test.zig"
+    "tests/mdl_issue_test.zig",
+    "tests/mdl_take_test.zig"
   ],
   "covered_sources": [
     "src/internal/caps.zig",
@@ -36,7 +37,8 @@
     "tests/storage_ram_test.zig",
     "src/internal/mdl_pull.zig",
     "src/internal/mdl_envelope.zig",
-    "src/internal/mdl_issue.zig"
+    "src/internal/mdl_issue.zig",
+    "src/internal/mdl_take.zig"
   ],
-  "minimum_tests": 223
+  "minimum_tests": 236
 }

@@ -580,6 +580,47 @@ typedef struct mdl_envelope_view_t {
 [[nodiscard]] RA8_PRIV uint8_t priv_c6link_mdl_envelope_accept(const mdl_envelope_view_t* view);
 
 /**
+ * @brief Decide which response extractor an outer CustomRpc reply may run
+ * @details Zig implementation; the C declaration is the membrane, not a
+ *          reimplementation of it. Folds the envelope decision and the
+ *          caller's expectation into one answer, so a refused envelope and a
+ *          reply carrying a different media response are the same outcome.
+ * @param[in] view Flattened outer response.
+ * @param[in] expected ::mdl_take_kind_t the initiating call selected.
+ * @return Extractor to run as an ::mdl_take_kind_t value, or zero for none.
+ * @retval 0 The reply is undecodable or is not the expected inner response.
+ * @pre @p view is non-null.
+ * @post No state is observed or changed.
+ * @note Pure predicate; thread-safe.
+ * @since 0.1.0
+ */
+[[nodiscard]] RA8_PRIV uint8_t priv_c6link_mdl_take_selected(const mdl_envelope_view_t* view,
+                                                             uint8_t                    expected);
+
+/**
+ * @brief Decide whether a decoded chunk may reach the caller's session
+ * @details Zig implementation; the C declaration is the membrane, not a
+ *          reimplementation of it. Correlation and the state-specific chunk
+ *          rules both have to hold, so the call site copies a chunk or
+ *          refuses it on one answer.
+ * @param[in] key Flattened correlation fields of the decoded chunk.
+ * @param[in] view Flattened decoded chunk.
+ * @param[in] session Active caller session.
+ * @param[in] requested_bytes Largest body the caller asked for.
+ * @return Admissibility of the decoded chunk.
+ * @retval true The chunk correlates and its semantics hold.
+ * @retval false Either half failed.
+ * @pre @p key, @p view and @p session are non-null.
+ * @post No input or global state is modified.
+ * @note Pure and reentrant.
+ * @since 0.1.0
+ */
+[[nodiscard]] RA8_PRIV bool priv_c6link_mdl_chunk_admissible(const mdl_chunk_key_view_t* key,
+                                                             const mdl_chunk_view_t*     view,
+                                                             const ra8_mdl_session_t*    session,
+                                                             uint32_t requested_bytes);
+
+/**
  * @brief Decide whether a cancel may be issued for a session
  * @details Zig implementation; the C declaration is the membrane, not a
  *          reimplementation of it. An active session always carries a
