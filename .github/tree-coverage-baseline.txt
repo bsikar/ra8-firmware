@@ -621,7 +621,6 @@ libs/ra8_dfu/src/ra8_dfu_antirollback.c	MEASURED	32	32	21	22
 libs/ra8_dfu/src/ra8_dfu_boot.c	MEASURED	38	38	48	48
 libs/ra8_dfu/src/ra8_dfu_device.c	UNMEASURED	compiled-not-executed
 libs/ra8_dfu/src/ra8_dfu_host.c	UNMEASURED	compiled-not-executed
-libs/ra8_dfu/src/ra8_dfu_program.c	MEASURED	95	103	53	63
 libs/ra8_dfu/src/ra8_rot.c	MEASURED	74	76	55	66
 libs/ra8_display_pal/src/ra8_display_pal.c	MEASURED	62	66	29	36
 libs/ra8_display_pal/src/ra8_display_pal_eink.c	MEASURED	138	138	54	66

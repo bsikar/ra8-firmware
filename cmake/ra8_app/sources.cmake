@@ -1000,8 +1000,10 @@ macro(_ra8_app_collect_sources)
   #
   # SRAM_TEXT <file.c>... is the third case (#742), and it does NOT compose by
   # appending. Flash-writing code cannot execute from the MRAM it is erasing,
-  # so the DFU apps run ra8_flash.c and ra8_dfu_program.c from an SRAM-resident
-  # .sram_text section loaded from MRAM at boot. Appending that section after
+  # so the DFU apps run ra8_flash.c from an SRAM-resident .sram_text section
+  # loaded from MRAM at boot. (The DFU programmer beside it is Zig since
+  # #2968 and places its own exports with linksection, so it is claimed by
+  # the wildcards below rather than named here.) Appending that section after
   # the INCLUDE links and produces an EMPTY section: ld assigns each input
   # section to the first output section in script order that matches, and the
   # board map's .text catch-all has already claimed those objects. The link is

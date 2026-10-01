@@ -3,10 +3,14 @@
 //!
 //! Build graph for `ra8_dfu`.
 //!
-//! Two seams of this library are Zig: the polled USB-DFU host driver
-//! (#2809) and the pure boot logic the bootloader runs at reset (#2918). The
-//! rest of the library is still C, which
-//! `.github/zig-parallel-tree-allowlist.tsv` records per file.
+//! Three seams of this library are Zig: the polled USB-DFU host driver
+//! (#2809), the pure boot logic the bootloader runs at reset (#2918), and
+//! the MRAM slot programmer (#2968). Only the USBX device class is still C,
+//! which `.github/zig-parallel-tree-allowlist.tsv` records per file.
+//!
+//! The slot programmer is the one unit with a placement requirement: its
+//! exports are in `.sram_text` so the program loop does not execute from the
+//! array it is writing. See src/program_abi.zig.
 //!
 //! The root of trust moved out to `libs/ra8_rot` (#2951): it is its own
 //! archive, and an archive is only linkable where cmake can find a
@@ -28,6 +32,7 @@ const units = [_]struct { name: []const u8, imports: []const []const u8 }{
     .{ .name = "image", .imports = &.{} },
     .{ .name = "launch", .imports = &.{"image"} },
     .{ .name = "slot", .imports = &.{} },
+    .{ .name = "program", .imports = &.{ "image", "slot" } },
     .{ .name = "proto", .imports = &.{} },
     .{ .name = "tune", .imports = &.{} },
     .{ .name = "hal", .imports = &.{"err"} },
@@ -84,6 +89,15 @@ pub fn build(b: *std.Build) void {
         launch_abi_module.addImport(name, modules.get(name).?);
     }
 
+    const program_abi_module = b.createModule(.{
+        .root_source_file = b.path("src/program_abi.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    inline for (.{ "image", "program", "slot" }) |name| {
+        program_abi_module.addImport(name, modules.get(name).?);
+    }
+
     const root_module = b.createModule(.{
         .root_source_file = b.path("src/root.zig"),
         .target = target,
@@ -92,6 +106,7 @@ pub fn build(b: *std.Build) void {
     root_module.addImport("dfu_host_abi", abi_module);
     root_module.addImport("dfu_boot_abi", boot_abi_module);
     root_module.addImport("launch_abi", launch_abi_module);
+    root_module.addImport("program_abi", program_abi_module);
 
     const library = b.addLibrary(.{
         .name = "ra8_dfu",
@@ -148,6 +163,15 @@ pub fn build(b: *std.Build) void {
         launch_test_module.addImport(name, modules.get(name).?);
     }
 
+    const program_test_module = b.createModule(.{
+        .root_source_file = b.path("tests/program_test.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    inline for (.{ "image", "program", "slot" }) |name| {
+        program_test_module.addImport(name, modules.get(name).?);
+    }
+
     const test_step = b.step("test", "Run Zig ra8_dfu tests");
     const tests = b.addTest(.{ .root_module = test_module });
     test_step.dependOn(&b.addRunArtifact(tests).step);
@@ -155,4 +179,6 @@ pub fn build(b: *std.Build) void {
     test_step.dependOn(&b.addRunArtifact(boot_tests).step);
     const launch_tests = b.addTest(.{ .root_module = launch_test_module });
     test_step.dependOn(&b.addRunArtifact(launch_tests).step);
+    const program_tests = b.addTest(.{ .root_module = program_test_module });
+    test_step.dependOn(&b.addRunArtifact(program_tests).step);
 }

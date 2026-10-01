@@ -336,7 +336,7 @@ pub const cross_apps = [_]CrossApp{
         // #742: the bootloader bank, and the two sources that run from SRAM.
         // Both replaced its 377-line linker_script.ld fork.
         .mram_length = "128K",
-        .sram_text = &.{ "ra8_flash.c", "ra8_dfu_program.c" },
+        .sram_text = &.{"ra8_flash.c"},
         // Neither build system links this app in a Debug configure: measured
         // 122.79% of MRAM under CMake (overflow 29868 bytes) and the same
         // failure from the graph (overflow 29860 bytes), same linker, same
