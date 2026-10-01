@@ -318,11 +318,9 @@ func taskResultForHIL(in BoardHILCompletion, runCancelled bool) string {
 func completeHILReplay(ctx context.Context, tx pgx.Tx, in BoardHILCompletion, attemptState,
 	taskID, runID, taskResult string, exit sql.NullInt32, hitDeadline, evidence bool,
 	reason sql.NullString) error {
-	expectedState := in.Result
-	if expectedState == "preempted" {
-		expectedState = "preempted"
-	}
-	if attemptState != expectedState || exit.Valid != (in.ChildExitCode != nil) ||
+	// A cancelled run has already rewritten a preempted result upstream,
+	// so the state a replay has to match is simply the result it carries.
+	if attemptState != in.Result || exit.Valid != (in.ChildExitCode != nil) ||
 		(exit.Valid && int(exit.Int32) != *in.ChildExitCode) || hitDeadline != in.HitDeadline ||
 		evidence != in.EvidenceComplete || reason.Valid != (in.Reason != "") ||
 		(reason.Valid && reason.String != in.Reason) {
