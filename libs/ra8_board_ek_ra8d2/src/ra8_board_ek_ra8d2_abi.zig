@@ -22,6 +22,7 @@ const dualcore = @import("internal/dualcore.zig");
 const ethernet = @import("internal/ethernet.zig");
 const hal = @import("internal/hal.zig");
 const stream = @import("internal/stream.zig");
+const touch = @import("internal/touch.zig");
 const uart_console = @import("internal/uart_console.zig");
 const usb_port = @import("internal/usb_port.zig");
 const vocab = @import("internal/vocab.zig");
@@ -136,6 +137,11 @@ export fn ra8_board_camera_reset() u32 {
 
 export fn ra8_board_camera_delay_ms(ctx: ?*anyopaque, milliseconds: u32) void {
     camera.delayMs(ctx, milliseconds);
+}
+
+export fn ra8_board_touch_open(cfg: ?*const touch.Cfg) u32 {
+    const src = cfg orelse return vocab.Err.null_ptr;
+    return touch.open(src);
 }
 
 export fn ra8_board_camera_i2c_ops(out: ?*camera.I2cBusOps) u32 {
