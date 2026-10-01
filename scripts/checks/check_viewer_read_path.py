@@ -49,6 +49,7 @@ from __future__ import annotations
 
 import argparse
 import sys
+import tempfile
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -266,8 +267,6 @@ def selftest(tmp_root: Path) -> list[str]:
 
 def run_selftest() -> int:
     """Run the selftest in a throwaway tree."""
-    import tempfile
-
     with tempfile.TemporaryDirectory() as raw:
         failures = selftest(Path(raw))
     if failures:
