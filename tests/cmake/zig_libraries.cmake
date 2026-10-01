@@ -172,7 +172,7 @@ ra8_add_zig_library(
 # shared-RAM descriptor, the USB full-speed port routing, the board bringup
 # sequence, the VCOM console stream handle and the clock-profile binding are
 # Zig; libs/ra8_board_ek_ra8d2/src still holds the pin/LED/switch core, the
-# camera, comms, ethernet, audio-USB, touch and PDM layers and src/boot, so
+# camera, MIPI panel, ethernet, audio-USB, touch and PDM layers and src/boot, so
 # unlike ra8_board_ra8p1 the RA8_BOARD_EK_RA8D2_SOURCES glob stays and this
 # archive links BESIDE those objects rather than replacing them.
 #

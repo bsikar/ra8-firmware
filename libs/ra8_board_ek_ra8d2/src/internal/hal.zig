@@ -15,11 +15,32 @@ pub const ClockRates = extern struct {
     pclka_hz: u32,
 };
 
+/// `ra8_sci_cfg_t`. The three mode fields are `enum : uint8_t` in the header.
+pub const SciCfg = extern struct {
+    baud: u32,
+    data_bits: u8,
+    parity: u8,
+    stop_bits: u8,
+    pclk_hz: u32,
+};
+
+/// `ra8_sci_cfg_t` field values this layer asks for.
+pub const Sci = struct {
+    pub const data_8: u8 = 8;
+    pub const parity_none: u8 = 0;
+    pub const stop_1: u8 = 0;
+};
+
 pub extern fn ra8_mstp_init() u32;
 pub extern fn ra8_time_init(cpu_hz: u32) u32;
+pub extern fn ra8_cgc_init() u32;
 pub extern fn ra8_cgc_get_clock_hz(id: u32, out_hz: *u32) u32;
 pub extern fn ra8_isr_globals_enable() void;
 
+/// `clocks.zig` and `uart_console.zig` define these two; they stay on the
+/// extern seam rather than being imported directly so a suite rooted at
+/// `bringup.zig` can stand a fake behind either without dragging the real
+/// CGC and SCI calls into its link.
 pub extern fn ra8_board_clocks_init(out_rates: *ClockRates) u32;
 pub extern fn ra8_board_uart_console_init(baud: u32) u32;
 pub extern fn ra8_board_led_init(led: u32) u32;
@@ -27,10 +48,16 @@ pub extern fn ra8_board_led_init(led: u32) u32;
 pub extern fn ra8_pfs_route_peripheral(pin: u16, psel: u32, owner: [*:0]const u8) u32;
 pub extern fn ra8_gpio_output_init(pin: u16, init_level: u32) u32;
 
+pub extern fn ra8_sci_init(channel: u8, cfg: *const SciCfg) u32;
+pub extern fn ra8_sci_write_polling(channel: u8, data: [*]const u8, len: u32) u32;
+pub extern fn ra8_sci_getc_polling(channel: u8, out_byte: *u8) u32;
+pub extern fn ra8_sci_flush(channel: u8) u32;
+
 pub extern fn ra8_board_usbhs_device_init() u32;
 pub extern fn ra8_board_usbhs_host_init() u32;
 
-/// Lives in the board's `ra8_board_ek_ra8d2_comms.c`, which is still C.
+/// `uart_console.zig` defines this; same extern seam, same reason, so the
+/// `console_stream.zig` suite can answer it without an SCI behind it.
 pub extern fn priv_ra8_board_uart_console_is_up() bool;
 
 /// `ra8_io_stream_uart_init`, the one symbol in this seam that an app may

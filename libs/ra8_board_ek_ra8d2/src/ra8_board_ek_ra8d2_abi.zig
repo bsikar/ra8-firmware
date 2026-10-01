@@ -11,12 +11,16 @@
 //! of it and a prefix would buy nothing.
 
 const bringup = @import("internal/bringup.zig");
+const clocks = @import("internal/clocks.zig");
 const clock_profile = @import("internal/clock_profile.zig");
 const clock_types = @import("internal/clock_types.zig");
 const console_stream = @import("internal/console_stream.zig");
 const dualcore = @import("internal/dualcore.zig");
+const hal = @import("internal/hal.zig");
 const stream = @import("internal/stream.zig");
+const uart_console = @import("internal/uart_console.zig");
 const usb_port = @import("internal/usb_port.zig");
+const vocab = @import("internal/vocab.zig");
 
 export fn ra8_board_shared_ram(out: ?*dualcore.SharedRam) u32 {
     return dualcore.describe(out);
@@ -51,4 +55,39 @@ export fn ra8_board_clock_profile_bind(clk: ?*clock_types.FwClock) u32 {
 
 export fn ra8_board_clock() *const clock_types.FwClock {
     return clock_profile.handle();
+}
+
+export fn ra8_board_clocks_init(out_rates: ?*hal.ClockRates) u32 {
+    return clocks.init(out_rates);
+}
+
+export fn ra8_board_uart_console_init(baud: u32) u32 {
+    return uart_console.init(baud);
+}
+
+// The pointer-and-length unwrapping stays here, in the C shape, so the console
+// itself speaks slices. Order matters and matches the header: an empty write
+// succeeds whatever `data` is, and only then does a null pointer fail.
+export fn ra8_board_uart_console_write(data: ?[*]const u8, len: usize) u32 {
+    if (len == 0) return vocab.Err.ok;
+    const bytes = data orelse return vocab.Err.invalid_arg;
+    return uart_console.write(bytes[0..len]);
+}
+
+export fn ra8_board_uart_console_read(out: ?[*]u8, cap: usize, out_len: ?*usize) u32 {
+    const filled = out_len orelse return vocab.Err.invalid_arg;
+    filled.* = 0;
+    if (cap == 0) return vocab.Err.ok;
+    const buf = out orelse return vocab.Err.invalid_arg;
+    const result = uart_console.read(buf[0..cap]);
+    filled.* = result.filled;
+    return result.err;
+}
+
+export fn ra8_board_uart_console_flush() u32 {
+    return uart_console.flush();
+}
+
+export fn priv_ra8_board_uart_console_is_up() bool {
+    return uart_console.isUp();
 }

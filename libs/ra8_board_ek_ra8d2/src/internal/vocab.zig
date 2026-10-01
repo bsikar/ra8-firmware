@@ -30,6 +30,7 @@ pub const ClockId = struct {
 
 /// `ra8_psel_t` members this layer routes.
 pub const Psel = struct {
+    pub const sci_async: u32 = 0x04;
     pub const usb_fs: u32 = 0x13;
 };
 
