@@ -61,6 +61,7 @@
 #include "ra8_mstp.h"
 #include "ra8_panel.h"
 #include "ra8_panel_timing.h"
+#include "ra8_pin_interface.h"
 #include "ra8_port_constants.h"
 #include "ra8_port_utils.h"
 #include "ra8_time.h"
@@ -655,8 +656,9 @@ static void wd_render_active(void)
 /** @brief Read a user switch (active-low); true == pressed. */
 static bool wd_sw_pressed(ra8_port_pin_t pin)
 {
-  ra8_level_t level = k_ra8_level_high;
-  if (ra8_gpio_read(pin, &level) != k_ra8_ok) {
+  ra8_level_t                      level = k_ra8_level_high;
+  const ra8_pin_interface_t* const pins  = ra8_pin_interface_default();
+  if (pins->read(pins->ctx, pin, &level) != k_ra8_ok) {
     return false;
   }
   return (level == k_ra8_level_low);
