@@ -157,14 +157,20 @@ func (s *Store) moveDemandRow(ctx context.Context, tx pgx.Tx, key string,
 	if outcome != DemandSuperseded {
 		return outcome, nil
 	}
+	// The queue time is the earliest any delivery reported for this unit of
+	// demand. Keeping the held one unconditionally would let a completion
+	// whose own times agree land before it and fail the row's
+	// completed_at >= queued_at check, wedging the row at its old phase
+	// behind an error GitHub retries forever.
 	tag, err := tx.Exec(ctx, `UPDATE demand_events SET phase=$2, adapter=$3, delivery_id=$4,
 		workflow=$5, job_name=$6, labels=$7, runner_name=$8, conclusion=$9,
-		started_at=$10, completed_at=$11, observed_at=$12,
+		started_at=$10, completed_at=$11, observed_at=$12, queued_at=LEAST(queued_at, $14),
 		updated_at=clock_timestamp(), version=version+1
 		WHERE demand_key=$1 AND phase=$13`,
 		key, string(event.Phase), event.Adapter, event.DeliveryID, event.Workflow, event.JobName,
 		labels, nullableText(event.RunnerName), nullableText(event.Conclusion),
-		nullableTime(event.StartedAt), nullableTime(event.CompletedAt), event.ObservedAt, heldPhase)
+		nullableTime(event.StartedAt), nullableTime(event.CompletedAt), event.ObservedAt, heldPhase,
+		event.QueuedAt)
 	if err != nil {
 		return "", fmt.Errorf("%w: demand update: %v", ErrUnavailable, err)
 	}
