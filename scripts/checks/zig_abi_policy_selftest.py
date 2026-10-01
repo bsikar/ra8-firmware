@@ -24,14 +24,13 @@ from check_zig_abi_policy import (
     _archive_symbol_names,
     _compatibility_findings,
     _compiled_findings,
-    _contains_token_sequence,
     _library_findings,
     _matrix_jobs,
     _mode_test_policy_findings,
-    _normalized_header_digest,
     _repository_inventory_findings,
     _validate,
 )
+from zig_abi_lexer import _contains_token_sequence, _normalized_header_digest
 
 
 def _selftest_fixture(root: Path, header: str, adapter: str) -> dict[str, Any]:
