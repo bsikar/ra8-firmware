@@ -9,7 +9,7 @@
 #
 # clock: 280 reference(s)
 # display: 6 reference(s)
-# gpio: 12 reference(s)
+# gpio: 8 reference(s)
 # timer: 47 reference(s)
 #
 # path<TAB>family<TAB>count
@@ -71,7 +71,6 @@ examples/ek_ra8d2/hw_pending/blink_m33_hal/src/main.c	clock	1
 examples/ek_ra8d2/hw_pending/cache_hal_enable_demo/src/main.c	clock	1
 examples/ek_ra8d2/hw_pending/dtc_isr_arm_demo/src/main.c	clock	1
 examples/ek_ra8d2/hw_pending/epaper_refresh/src/main.c	clock	2
-examples/ek_ra8d2/hw_pending/epaper_refresh/src/main.c	gpio	2
 examples/ek_ra8d2/hw_pending/epub_stress/src/main.c	clock	1
 examples/ek_ra8d2/hw_pending/ereader_comic/src/main.c	clock	1
 examples/ek_ra8d2/hw_pending/ereader_cover/src/main.c	clock	1
@@ -124,7 +123,6 @@ examples/ek_ra8d2/hw_validated/hil/bscan_selftest/src/main.c	clock	1
 examples/ek_ra8d2/hw_validated/hil/cac_accuracy_demo/src/main.c	clock	1
 examples/ek_ra8d2/hw_validated/hil/cache_coherency_hil/src/main.c	clock	1
 examples/ek_ra8d2/hw_validated/hil/cache_mpu_hil/src/main.c	clock	1
-examples/ek_ra8d2/hw_validated/hil/camera_capture/src/cam_ceu.c	gpio	2
 examples/ek_ra8d2/hw_validated/hil/camera_capture/src/main.c	clock	1
 examples/ek_ra8d2/hw_validated/hil/camera_capture/src/main.c	timer	2
 examples/ek_ra8d2/hw_validated/hil/can_classic_loopback/src/main.c	clock	1
