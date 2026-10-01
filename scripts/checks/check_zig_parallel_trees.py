@@ -25,6 +25,13 @@ correct state, not something to complain about. An allow-list row for a library
 that is not migrated on this branch is tolerated for the same reason, since the
 C tree and the Zig tree are different branches.
 
+A row for a library that IS migrated here, naming a path that does not exist, is
+an error. The walk above only consults a row when a .c file points at it, so a
+row whose file has since been ported is never read and never complained about:
+the allow-list keeps asserting that C is deliberately kept long after it is
+gone. That matters because this file is the only written record of why a library
+still has C, and a reader cannot tell a settled question from an open one.
+
 Usage:
     check_zig_parallel_trees.py
     check_zig_parallel_trees.py --root <path>
@@ -94,6 +101,23 @@ def stray_c_files(lib: Path) -> list[str]:
     return out
 
 
+def stale_rows(allowed: dict[tuple[str, str], str], libs: list[Path]) -> list[str]:
+    """Return an error for each row of a migrated library whose file is gone."""
+    migrated = {lib.name: lib for lib in libs}
+    out = []
+    for lib_name, rel in sorted(allowed):
+        lib = migrated.get(lib_name)
+        if lib is None:
+            continue
+        if not (lib / rel).is_file():
+            out.append(
+                f"{lib_name}/{rel}: allow-list row for a file that is not on this "
+                f"branch. The C this row keeps has been ported, so the row is a "
+                f"stale claim about what is left. Delete the row."
+            )
+    return out
+
+
 def audit(root: Path) -> tuple[list[str], int, int]:
     """Return (errors, migrated library count, allowed-C count)."""
     allowlist_path = root / ".github" / ALLOWLIST_NAME
@@ -117,6 +141,7 @@ def audit(root: Path) -> tuple[list[str], int, int]:
                 f"Delete it, or add a row to .github/{ALLOWLIST_NAME} saying why "
                 f"the C stays."
             )
+    errors.extend(stale_rows(allowed, libs))
     return errors, len(libs), kept
 
 
@@ -184,6 +209,26 @@ def _check_exemptions(record: Callable[[str, bool], None]) -> None:
         record("a row for a library not migrated here is tolerated", errors == [] and libs == 0)
 
 
+def _check_stale_rows(record: Callable[[str, bool], None]) -> None:
+    """A row of a migrated library whose file has been ported must fail."""
+    with tempfile.TemporaryDirectory() as td:
+        tmp = _scaffold(Path(td), f"ra8_thing\tsrc/thing.c\t{REASON}\n")
+        _lib(tmp, "ra8_thing", migrated=True, files=("src/thing.zig",))
+        errors, _, kept = audit(tmp)
+        record("a row whose .c was ported is an error", len(errors) == 1 and kept == 0)
+        record("the error names the row", bool(errors) and "ra8_thing/src/thing.c" in errors[0])
+
+        _lib(tmp, "ra8_thing", migrated=True, files=("src/thing.c",))
+        errors, _, kept = audit(tmp)
+        record("the same row passes while the .c is there", errors == [] and kept == 1)
+
+    with tempfile.TemporaryDirectory() as td:
+        tmp = _scaffold(Path(td), f"ra8_thing\ttests/fixture.c\t{REASON}\n")
+        _lib(tmp, "ra8_thing", migrated=True, files=("tests/fixture.c",))
+        errors, _, _ = audit(tmp)
+        record("a row for an existing test fixture is not stale", errors == [])
+
+
 def _check_refusals(record: Callable[[str, bool], None]) -> None:
     """Malformed input and a missing tree must error, never pass."""
 
@@ -216,6 +261,7 @@ def selftest() -> int:
 
     _check_src_c(record)
     _check_exemptions(record)
+    _check_stale_rows(record)
     _check_refusals(record)
 
     print(f"selftest: {len(failures)} failure(s)")
