@@ -89,9 +89,6 @@ pub extern fn ra8_rmac_init(port: u8, cfg: *const RmacConfig) u32;
 pub extern fn ra8_rmac_mdio_c22_read(port: u8, phy_addr: u8, reg_addr: u8, out_value: *u16) u32;
 pub extern fn ra8_rmac_mdio_c22_write(port: u8, phy_addr: u8, reg_addr: u8, value: u16) u32;
 
-pub extern fn ra8_board_usbhs_device_init() u32;
-pub extern fn ra8_board_usbhs_host_init() u32;
-
 /// `uart_console.zig` defines this; same extern seam, same reason, so the
 /// `console_stream.zig` suite can answer it without an SCI behind it.
 pub extern fn priv_ra8_board_uart_console_is_up() bool;
@@ -146,7 +143,6 @@ pub const GptPwmPinCfg = extern struct {
 pub extern fn ra8_gpt_init(channel: u8, cfg: *const GptCfg) u32;
 pub extern fn ra8_gpt_pwm_pin_configure(channel: u8, pin: u8, cfg: *const GptPwmPinCfg) u32;
 pub extern fn ra8_delay_ms(milliseconds: u32) void;
-pub extern fn ra8_board_io_expander_apply_sw4_mask(output_byte: u8, output_mask: u8) u32;
 
 /// `ra8_i2c_bus_ops_t`, the Ring-3 facade the sensor driver is handed.
 pub const I2cBusOps = extern struct {
@@ -262,3 +258,42 @@ pub const PdmMicConfig = extern struct {
     channel: u8,
     valid_bits: u8,
 };
+
+/// `ra8_ssie_cfg_t`. Mirrored because the board builds one and hands it over;
+/// the SSIE driver reads every field.
+pub const SsieCfg = extern struct {
+    role: u32,
+    format: u32,
+    data_word: u32,
+    system_word: u32,
+    bclk_div: u32,
+    use_gpt_clk: bool,
+    long_frame: bool,
+    bckp_rising: bool,
+    lrckp_low: bool,
+    spdp_high: bool,
+    byte_swap: bool,
+    lr_continue: bool,
+    bck_idle_stop: bool,
+    enable_aucke: bool,
+    tx_threshold: u8,
+    rx_threshold: u8,
+};
+
+/// `ra8_i2c_cfg_t`.
+pub const I2cCfg = extern struct {
+    bus_hz: u32,
+    pclkb_hz: u32,
+};
+
+pub extern fn ra8_ssie_init(channel: u8, cfg: *const SsieCfg) u32;
+pub extern fn ra8_ssie_write_buffer(channel: u8, data: [*]const u32, len: u16, out_written: *u16) u32;
+pub extern fn ra8_i2c_init(channel: u8, cfg: *const I2cCfg) u32;
+pub extern fn ra8_i2c_write(channel: u8, addr_7b: u8, data: [*]const u8, len: usize, send_stop: bool) u32;
+pub extern fn ra8_gpio_input_init(pin: u16, pull: u32) u32;
+pub extern fn ra8_gpio_read(pin: u16, out_level: *u32) u32;
+pub extern fn ra8_gpio_release(pin: u16) u32;
+pub extern fn ra8_mpc_set_open_drain(port: u32, pin_index: u32, enable: bool) u32;
+pub extern fn ra8_cgc_usbhs_pll_enable() u32;
+pub extern fn ra8_usb_device_init(speed: u32) u32;
+pub extern fn ra8_usb_host_init(speed: u32) u32;

@@ -111,6 +111,36 @@ pub fn build(b: *std.Build) void {
             .needs_config = false,
         },
         .{
+            .name = "audio",
+            .source = "src/internal/audio.zig",
+            .root = "tests/audio_test.zig",
+            .needs_config = false,
+        },
+        .{
+            .name = "audio_word",
+            .source = "src/internal/audio_word.zig",
+            .root = "tests/audio_word_test.zig",
+            .needs_config = false,
+        },
+        .{
+            .name = "io_expander",
+            .source = "src/internal/io_expander.zig",
+            .root = "tests/io_expander_test.zig",
+            .needs_config = false,
+        },
+        .{
+            .name = "io_exp_bus",
+            .source = "src/internal/io_exp_bus.zig",
+            .root = "tests/io_exp_bus_test.zig",
+            .needs_config = false,
+        },
+        .{
+            .name = "usbhs",
+            .source = "src/internal/usbhs.zig",
+            .root = "tests/usbhs_test.zig",
+            .needs_config = false,
+        },
+        .{
             .name = "pdm_mic",
             .source = "src/internal/pdm_mic.zig",
             .root = "tests/pdm_mic_test.zig",
