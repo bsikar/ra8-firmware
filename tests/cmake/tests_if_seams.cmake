@@ -71,6 +71,16 @@ if(TARGET test_fw_if_clock_ra8)
   target_sources(test_fw_if_clock_ra8 PRIVATE ${FW_ROOT}/tests/mocks/src/ra8_fake_mmio.c)
 endif()
 
+# The RA8 GPT adapter behind the timer port. Allowed the chip headers like the
+# clock adapter, and it reads register state back through the fake memory map
+# the GPT driver tests use, plus the fake MMIO mock for the module-stop poll.
+if(TARGET test_fw_if_timer_ra8)
+  target_include_directories(
+    test_fw_if_timer_ra8 PRIVATE ${FW_ROOT}/libs/if/inc ${FW_ROOT}/libs/if_ra8_gpt/inc
+                                 ${FW_ROOT}/tests/mocks/inc)
+  target_sources(test_fw_if_timer_ra8 PRIVATE ${FW_ROOT}/tests/mocks/src/ra8_fake_mmio.c)
+endif()
+
 # The board's own answer to that same port: which chip instance each board-level
 # module index lands on. It reaches the adapter and therefore ra8_mstp, so it
 # wants the same fake MMIO mock for the module-stop read-back.
