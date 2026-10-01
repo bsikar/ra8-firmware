@@ -42,7 +42,7 @@ default:
     @echo "  just hil               Remote Pi hardware-in-the-loop bench"
     @echo "  just quality           CI gates, static analysis, and sanitizers"
     @echo "  just tools             Desktop utilities and developer tooling"
-    @echo "  just docs              Doxygen HTML docs and audits"
+    @echo "  just docs              Dashboards and architecture audits"
     @echo "  just workspace         Isolated git agent workspaces"
     @echo "  just work              Plans and canonical task workspaces"
     @echo "  just zig               Root Zig build graph (parity slice of CMake)"

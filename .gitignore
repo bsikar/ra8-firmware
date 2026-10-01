@@ -100,19 +100,6 @@ coverage.out
 # GCC RTL dump files
 *.expand
 
-# Doxygen generated output (build/ is already ignored above; listed
-# explicitly here so a future change to the build-tree policy still
-# keeps the generated HTML out of git). docs/doxygen/ was the output
-# directory of the retired Doxyfile.main; kept ignored so stale local
-# builds never get committed.
-/build/docs/
-/build/docs-gate/
-/docs/doxygen/
-doxygen.log
-# Generated Doxygen navigation trees (scripts/gen/gen_doxygen_nav.py, run by
-# build_docs.sh). Regenerated on every `just docs`, so kept out of git.
-docs/generated/
-
 # Per-page PDF splits of the reference manuals (local browsing aid;
 # derived from the committed parent PDFs, 2+ GB if expanded).
 docs/reference/ra8d2-datasheet/

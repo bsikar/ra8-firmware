@@ -71,15 +71,9 @@ dev_box_apt_base:
 
 # Gate-specific dependencies. Each one is a gate that FAILS (never skips)
 # without it, so an absent package is an unrunnable gate, not a degraded one.
-#   doxygen + graphviz -- the `docs` gate, and @dot state diagrams. apt's
-#                      doxygen is the floor, not the pin: the dev-box toolchain
-#                      provisioner installs the pinned release over it in
-#                      /usr/local/bin, the way .devcontainer/Dockerfile does,
-#                      and toolchain-parity compares that version (#522).
 #   libcapstone-dev    -- the header tools/ra8_emulator includes
 #   gdb-multiarch, openocd -- the on-desk flash/debug inner loop
 dev_box_apt_gates:
-  - doxygen
   - gdb-multiarch
   - graphviz
   - libcapstone-dev
