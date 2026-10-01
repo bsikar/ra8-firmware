@@ -146,7 +146,6 @@ RA8_INTERNAL static void internal_test_filesystem_request(void)
  * handle, which is the case every host binary hand-wrote before.
  * @pre The process can open the root directory and write both std streams.
  * @post All three handles are published, then all three are withdrawn.
- * @note This is the replacement for the three staging functions in `mdl`.
  * @since 0.1.0
  *
  * @par MC/DC:

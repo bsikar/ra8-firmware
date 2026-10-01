@@ -17,151 +17,13 @@
 #include <string.h>
 
 #include "ra8_attributes.h"
-#include "ra8_c6_model_mdl_fault_internal.h"
 #include "ra8_c6link.h"
 #include "ra8_c6link_internal.h"
-#include "ra8_c6link_mdl_msg.h"
 #include "ra8_err.h"
-#include "ra8_media_download.pb-c.h"
 #include "unity_minimal.h"
 
 /** @brief The one modelled co-processor. */
 static ra8_c6_model_t s_c6;
-
-/** @brief Deterministic media bytes served through the modelled custom RPC. */
-static const uint8_t s_mdl_bytes[] = {'a', 'b', 'c', 'd', 'e', 'f'};
-
-/** @brief State behind the modelled C6 media backend. */
-typedef struct {
-  const uint8_t* data;                           /**< Borrowed source bytes.          */
-  size_t         len;                            /**< Complete source length.         */
-  size_t         at;                             /**< Offset of the next byte.        */
-  uint8_t        digest[k_ra8_mdl_sha256_bytes]; /**< Caller-supplied SHA-256.        */
-  mdl_format_t   format;                         /**< Most recently requested format. */
-} c6m_mdl_backend_t;
-
-static c6m_mdl_backend_t s_mdl_backend;
-static ra8_mdl_service_t s_mdl_service;
-
-/**
- * @brief Start one modelled media download at the requested URL.
- * @details Accepts only the deterministic fixture URL and rewinds the bound
- * backend cursor.
- * @param[in,out] ctx Model media-backend context supplied by the service.
- * @param[in] request Complete typed HTTP request from the host.
- * @return Bounded media-backend status.
- * @retval k_ra8_ok The fixture URL was accepted and rewound.
- * @retval k_ra8_err_invalid_arg The URL is not the deterministic fixture URL.
- * @pre @p ctx points to initialized backend state. @pre @p request is non-null
- * and already bounded by the portable service.
- * @post Success sets the next-byte offset to zero and records @p request.
- * @post Failure leaves backend state unchanged.
- * @note The fake intentionally models a single stable origin.
- * @since 0.1.0
- */
-RA8_INTERNAL static ra8_err_t internal_c6m_mdl_begin(void* ctx, const ra8_mdl_request_t* request)
-{
-  c6m_mdl_backend_t* backend = (c6m_mdl_backend_t*)ctx;
-  if (strcmp(request->url, "https://example.test/book") != 0) {
-    return k_ra8_err_invalid_arg;
-  }
-  backend->at                    = 0U;
-  backend->format                = request->format;
-  ra8_c6_model()->mdl_format     = request->format;
-  ra8_c6_model()->mdl_timeout_ms = request->http.timeout_ms;
-  (void)memcpy(ra8_c6_model()->mdl_user_agent,
-               request->http.user_agent,
-               strlen(request->http.user_agent) + 1U);
-  (void)memcpy(ra8_c6_model()->mdl_referer,
-               request->http.referer,
-               strlen(request->http.referer) + 1U);
-  (void)memcpy(ra8_c6_model()->mdl_if_none_match,
-               request->http.if_none_match,
-               strlen(request->http.if_none_match) + 1U);
-  (void)memcpy(ra8_c6_model()->mdl_if_modified_since,
-               request->http.if_modified_since,
-               strlen(request->http.if_modified_since) + 1U);
-  return k_ra8_ok;
-}
-
-/**
- * @brief Read the next bounded media slice from the modelled backend.
- * @details Copies at most @p cap bytes, advances the cursor, and publishes the
- * digest at completion.
- * @param[in,out] ctx Model media-backend context supplied by the service.
- * @param[out] out Destination buffer or response envelope populated on success.
- * @param[in] cap Writable byte capacity of @p out.
- * @param[out] got Receives the number of media bytes copied.
- * @param[out] total_bytes Receives the complete fixture-media length.
- * @param[out] complete Receives whether the stream has reached its terminal
- * read.
- * @param[out] sha256 Receives the terminal fixture digest when @p complete is
- * true.
- * @param[out] response Receives terminal HTTP status and selected headers.
- * @return Bounded media-backend status.
- * @retval k_ra8_ok The deterministic backend operation completed.
- * @pre All output pointers are non-null and @p ctx is initialized. @pre @p out
- * spans @p cap bytes.
- * @post The cursor advances by @p got. @post The digest is written only on the
- * terminal read.
- * @note A final data-bearing chunk is followed by one zero-byte terminal read.
- * @since 0.1.0
- */
-RA8_INTERNAL static ra8_err_t internal_c6m_mdl_read(void*     ctx,
-                                                    uint8_t*  out,
-                                                    uint16_t  cap,
-                                                    uint16_t* got,
-                                                    uint64_t* total_bytes,
-                                                    bool*     complete,
-                                                    uint8_t   sha256[k_ra8_mdl_sha256_bytes],
-                                                    ra8_mdl_http_response_t* response)
-{
-  c6m_mdl_backend_t* backend = (c6m_mdl_backend_t*)ctx;
-  *response                  = (ra8_mdl_http_response_t){};
-  const size_t left          = backend->len - backend->at;
-  const size_t take          = (left < cap) ? left : cap;
-  if (take != 0U) {
-    (void)memcpy(out, &backend->data[backend->at], take);
-    backend->at += take;
-  }
-  *got         = (uint16_t)take;
-  *total_bytes = backend->len;
-  *complete    = (take == 0U);
-  if (*complete) {
-    (void)memcpy(sha256, backend->digest, k_ra8_mdl_sha256_bytes);
-    response->status = ra8_c6_model()->mdl_http_status;
-    (void)memcpy(response->retry_after, "5", sizeof("5"));
-    (void)memcpy(response->etag, "\"c6-model-etag\"", sizeof("\"c6-model-etag\""));
-    (void)memcpy(response->last_modified,
-                 "Wed, 21 Oct 2015 07:28:00 GMT",
-                 sizeof("Wed, 21 Oct 2015 07:28:00 GMT"));
-    (void)memcpy(response->content_type,
-                 "application/octet-stream",
-                 sizeof("application/octet-stream"));
-  }
-  return k_ra8_ok;
-}
-
-/**
- * @brief Record cancellation of the current modelled media job.
- * @details Counts cancellation only when the service supplies its bound backend
- * context.
- * @param[in,out] ctx Model media-backend context supplied by the service.
- * @return Bounded media-backend status.
- * @retval k_ra8_ok The deterministic backend operation completed.
- * @pre The singleton model remains alive. @pre Any non-null @p ctx is the
- * initialized backend.
- * @post Non-null context increments `mdl_cancels`. @post Null context leaves
- * counters unchanged.
- * @note Cancellation does not erase the source binding or digest.
- * @since 0.1.0
- */
-RA8_INTERNAL static ra8_err_t internal_c6m_mdl_cancel(void* ctx)
-{
-  c6m_mdl_backend_t* backend = (c6m_mdl_backend_t*)ctx;
-  ra8_c6_model()->mdl_cancels += (backend != nullptr) ? 1U : 0U;
-  return k_ra8_ok;
-}
 
 ra8_c6_model_t* ra8_c6_model(void)
 {
@@ -170,32 +32,8 @@ ra8_c6_model_t* ra8_c6_model(void)
 
 void ra8_c6_model_reset(void)
 {
-  s_c6                 = (ra8_c6_model_t){};
-  s_c6.handshake       = true;
-  s_c6.mdl_http_status = 200;
-  s_mdl_backend        = (c6m_mdl_backend_t){.data = s_mdl_bytes, .len = sizeof(s_mdl_bytes)};
-  (void)memset(s_mdl_backend.digest, k_c6m_mdl_digest_fill, sizeof(s_mdl_backend.digest));
-  const ra8_mdl_service_backend_t backend = {.begin  = internal_c6m_mdl_begin,
-                                             .read   = internal_c6m_mdl_read,
-                                             .cancel = internal_c6m_mdl_cancel,
-                                             .ctx    = &s_mdl_backend};
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_mdl_service_init(&s_mdl_service, &backend));
-}
-
-ra8_err_t ra8_c6_model_mdl_source(const uint8_t* data,
-                                  uint32_t       len,
-                                  const uint8_t  sha256[k_ra8_mdl_sha256_bytes])
-{
-  if ((data == nullptr) || (sha256 == nullptr)) {
-    return k_ra8_err_null_ptr;
-  }
-  if (len == 0U) {
-    return k_ra8_err_invalid_size;
-  }
-  c6m_mdl_backend_t next = {.data = data, .len = len};
-  (void)memcpy(next.digest, sha256, sizeof(next.digest));
-  s_mdl_backend = next;
-  return k_ra8_ok;
+  s_c6           = (ra8_c6_model_t){};
+  s_c6.handshake = true;
 }
 
 uint8_t* ra8_c6_model_slot(void)
@@ -642,63 +480,6 @@ RA8_INTERNAL static bool internal_c6m_rich_answer(Rpc* out, uint32_t req_id, int
   return true;
 }
 
-/** @brief Run an inner media message through the portable C6 service.
- * @details Dispatches one inner media request through the portable bounded
- * service and returns its packed generated response.
- * @param[out] out Destination buffer or response envelope populated on success.
- * @param[in] req Decoded outer request whose custom payload is dispatched.
- * @param[in] scripted_resp Forced outer result code, or zero to dispatch
- * normally.
- * @return Whether this request was recognized and answered.
- * @retval true A custom RPC response was prepared.
- * @retval false The request is not a custom RPC request.
- * @pre @p out and @p req are initialized. @pre The model media service has been
- * reset.
- * @post True leaves response storage valid through packing. @post False leaves
- * @p out unchanged.
- * @note Static response storage is safe because model exchanges are serialized.
- * @since 0.1.0
- */
-RA8_INTERNAL static bool internal_c6m_custom_answer(Rpc* out, const Rpc* req, int32_t scripted_resp)
-{
-  if ((uint32_t)req->msg_id != (uint32_t)RPC_ID__Req_CustomRpc) {
-    return false;
-  }
-  static uint8_t          s_response_bytes[k_c6m_custom_response_bytes];
-  static RpcRespCustomRpc s_response_body;
-  rpc__resp__custom_rpc__init(&s_response_body);
-  out->msg_id          = RPC_ID__Resp_CustomRpc;
-  out->payload_case    = RPC__PAYLOAD_RESP_CUSTOM_RPC;
-  out->resp_custom_rpc = &s_response_body;
-  if (req->req_custom_rpc == nullptr) {
-    s_response_body.resp = (int32_t)k_ra8_err_protocol_error;
-    return true;
-  }
-  s_response_body.custom_msg_id = req->req_custom_rpc->custom_msg_id;
-  if (scripted_resp != 0) {
-    s_response_body.resp = scripted_resp;
-    return true;
-  }
-  size_t response_len  = 0U;
-  s_response_body.resp = (int32_t)ra8_mdl_service_dispatch(&s_mdl_service,
-                                                           s_response_body.custom_msg_id,
-                                                           req->req_custom_rpc->data.data,
-                                                           req->req_custom_rpc->data.len,
-                                                           s_response_bytes,
-                                                           sizeof(s_response_bytes),
-                                                           &response_len);
-  s_response_body.data = (ProtobufCBinaryData){.len = response_len, .data = s_response_bytes};
-  if (s_response_body.resp == (int32_t)k_ra8_ok) {
-    priv_c6_model_mdl_fault_apply(&s_c6.mdl_fault,
-                                  out,
-                                  &s_response_body,
-                                  s_response_bytes,
-                                  sizeof(s_response_bytes),
-                                  &response_len);
-  }
-  return true;
-}
-
 /**
  * @brief Build and queue the answer to one decoded request.
  * @param[in] req The decoded request; must be non-null.
@@ -739,9 +520,7 @@ RA8_INTERNAL static void internal_c6m_answer(const Rpc* req)
   }
 
   RpcRespWifiStart bare;
-  if (!internal_c6m_custom_answer(&out, req, resp) &&
-      !internal_c6m_rich_answer(&out, req_id, resp) &&
-      !internal_c6m_bare(&out, req_id, &bare, resp)) {
+  if (!internal_c6m_rich_answer(&out, req_id, resp) && !internal_c6m_bare(&out, req_id, &bare, resp)) {
     return;
   }
 

@@ -161,9 +161,9 @@ typedef enum : uint32_t {
  * The container sniff is the other half of the duplication #768 is about. The
  * format *matrix* was four-way, and so was the signature test that feeds it:
  * `reflow_image.c` carries a RIFF/WEBP predicate, `jof_produce.c` carries the
- * JPEG SOI plus PNG signature plus the same RIFF/WEBP pair, `mdl_export_jof.c`
- * carries the RIFF/WEBP pair again, and `mdl_urlname.c` carries all of those
- * plus GIF and BMP to pick a file extension. One buffer could therefore be
+ * JPEG SOI plus PNG signature plus the same RIFF/WEBP pair, and the removed
+ * downloader carried two more copies, one with GIF and BMP added. One buffer
+ * could therefore be
  * "a WebP" to one path and "not an image" to the next.
  *
  * This is that test, written once, as a pure function of the bytes. It reads
@@ -444,8 +444,8 @@ typedef struct {
  *
  * The tree has carried exactly one geometry probe until now,
  * `jof_probe_dims()` in `apps/shared_libs/jof`, and three consumers reach up
- * into the JOF producer to call it: the RABOOK exporter
- * (`mdl_export_jof.c`), the comic tiler (`comic_tiles.c`) and the host
+ * into the JOF producer to call it: the RABOOK exporter,
+ * the comic tiler (`comic_tiles.c`) and the host
  * worker (`jof_worker.c`). None of them is producing a JOF at that moment;
  * they want the geometry. That is the same ring inversion #768 records for
  * the arenas, one layer up.

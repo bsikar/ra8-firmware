@@ -127,13 +127,9 @@ function(ra8_add_test name src_file)
             # in ra8_imgdec. Handing a test webp/inc without imgdec/inc hands
             # it a header that does not compile.
             ${FW_ROOT}/libs/ra8_imgdec/inc
-            # The downloader contract headers. mdl_net.h states its HTTP
-            # request policy under libs/ra8_mdl/inc, its URL guard under
-            # libs/ra8_net_policy/inc, and the export path writes through
-            # libs/ra8_xml/inc. ra8_core_hal already carries all three on its
-            # PUBLIC set (tests/cmake/core_hal.cmake:130-132); the tests built
-            # from this list hand-roll their own includes and so did not.
-            ${FW_ROOT}/libs/ra8_mdl/inc
+            # The URL guard under libs/ra8_net_policy/inc and the XML writer
+            # under libs/ra8_xml/inc. ra8_core_hal carries both on its PUBLIC
+            # set; the tests built from this list hand-roll their own includes.
             ${FW_ROOT}/libs/ra8_net_policy/inc
             ${FW_ROOT}/libs/ra8_xml/inc
             # ra8_path.h is the filesystem path contract under libs/if/inc.
@@ -348,46 +344,7 @@ list(REMOVE_ITEM RA8_TEST_SOURCES
 list(REMOVE_ITEM RA8_TEST_SOURCES
      ${CMAKE_CURRENT_SOURCE_DIR}/wireless/src/test_ra8_c6link_transport.c
 )
-list(REMOVE_ITEM RA8_TEST_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/wireless/src/test_ra8_c6link_media.c)
-list(REMOVE_ITEM RA8_TEST_SOURCES
-     ${CMAKE_CURRENT_SOURCE_DIR}/wireless/src/test_ra8_c6link_media_decoder.c
-)
-list(REMOVE_ITEM RA8_TEST_SOURCES
-     ${CMAKE_CURRENT_SOURCE_DIR}/wireless/src/test_ra8_c6link_media_http.c
-)
-list(REMOVE_ITEM RA8_TEST_SOURCES
-     ${CMAKE_CURRENT_SOURCE_DIR}/wireless/src/test_ra8_c6link_transfer_coordinator.c
-)
-list(REMOVE_ITEM RA8_TEST_SOURCES
-     ${FW_ROOT}/apps/shared_libs/mdl/tests/src/test_ra8_c6link_mdl_decode.c
-)
 list(REMOVE_ITEM RA8_TEST_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/wireless/src/test_ra8_c6link_wire.c)
-list(REMOVE_ITEM RA8_TEST_SOURCES ${FW_ROOT}/apps/shared_libs/mdl/tests/src/test_ra8_c6link_mdl.c)
-list(REMOVE_ITEM RA8_TEST_SOURCES
-     ${FW_ROOT}/apps/shared_libs/mdl/tests/src/test_ra8_c6link_mdl_policy.c
-)
-list(REMOVE_ITEM RA8_TEST_SOURCES
-     ${FW_ROOT}/apps/shared_libs/mdl/tests/src/test_ra8_c6link_mdl_codec.c
-)
-list(REMOVE_ITEM RA8_TEST_SOURCES
-     ${FW_ROOT}/apps/shared_libs/mdl/tests/src/test_ra8_c6link_mdl_guards.c
-)
-list(REMOVE_ITEM RA8_TEST_SOURCES
-     ${FW_ROOT}/apps/shared_libs/rabook_compile/tests/src/test_ra8_c6link_rabook.c
-)
-list(REMOVE_ITEM RA8_TEST_SOURCES
-     ${CMAKE_CURRENT_SOURCE_DIR}/mocks/src/test_app_media_download_format.c
-)
-list(REMOVE_ITEM RA8_TEST_SOURCES
-     ${FW_ROOT}/apps/shared_libs/mdl/tests/src/test_mdl_net_c6link_mock.c
-)
-list(REMOVE_ITEM RA8_TEST_SOURCES
-     ${FW_ROOT}/apps/shared_libs/mdl/tests/src/test_ra8_esp32_c6_mdl_service.c
-)
-list(REMOVE_ITEM RA8_TEST_SOURCES ${FW_ROOT}/apps/shared_libs/mdl/tests/src/test_mdl_storage_ram.c)
-list(REMOVE_ITEM RA8_TEST_SOURCES
-     ${FW_ROOT}/apps/shared_libs/mdl_storage_vfs/tests/src/test_mdl_storage_vfs.c
-)
 
 # test_ra8_wifi_c6link.c drives the ESP32-C6 ra8_wifi backend, which -- like the
 # c6link tests above -- links libs/ra8_c6link + the vendored codec against the
@@ -433,33 +390,6 @@ file(
   ${FW_ROOT}/apps/shared_libs/*/tests/src/test_*.c
 )
 
-# The downloader's canonical listfile composes its focused test executables
-# from deliberately different production-source closures. Treating every
-# test_*.c there as a standalone ra8_core_hal test loses those closures and
-# also splits helper translation units out of their owning executable. Keep
-# only the five firmware/POSIX parity tests that are defined by this root suite;
-# the downloader's own targets are added from its listfile below.
-set(MDL_ROOT_PARITY_TEST_SOURCES
-    "${FW_ROOT}/apps/shared_libs/mdl/tests/src/test_mdl_app_storage.c"
-    "${FW_ROOT}/apps/shared_libs/mdl/tests/src/test_mdl_export_parity.c"
-    "${FW_ROOT}/apps/shared_libs/mdl/tests/src/test_mdl_library.c"
-    "${FW_ROOT}/apps/shared_libs/mdl/tests/src/test_mdl_readers.c"
-    "${FW_ROOT}/apps/shared_libs/mdl/tests/src/test_mdl_state_parity.c"
-)
-list(
-  FILTER
-  APP_TEST_SOURCES
-  EXCLUDE
-  REGEX
-  "/apps/shared_libs/mdl/tests/src/test_.*\\.c$"
-)
-list(APPEND APP_TEST_SOURCES ${MDL_ROOT_PARITY_TEST_SOURCES})
-list(REMOVE_ITEM APP_TEST_SOURCES
-     "${FW_ROOT}/apps/shared_libs/mdl_storage_vfs/tests/src/test_mdl_storage_vfs.c"
-)
-list(REMOVE_ITEM APP_TEST_SOURCES
-     "${FW_ROOT}/apps/shared_libs/rabook_compile/tests/src/test_ra8_c6link_rabook.c"
-)
 foreach(src ${APP_TEST_SOURCES})
   get_filename_component(name ${src} NAME_WE)
   if(NOT TARGET ${name})
@@ -520,14 +450,6 @@ target_include_directories(
 # data to the one tree-wide trace instead of remaining a separate local build.
 if(NOT TARGET test_alphabet_soup)
   add_subdirectory(${FW_ROOT}/apps/host/alphabet_soup ${CMAKE_BINARY_DIR}/_alphabet_soup)
-endif()
-
-# Reuse the downloader core's source-of-truth target composition so the root
-# suite runs those tests without duplicating their private includes, fixtures,
-# generated-code dependencies, or production-source closures.
-set(MDL_REPO_ROOT "${FW_ROOT}")
-if(NOT TARGET mdl_core)
-  add_subdirectory(${FW_ROOT}/apps/shared_libs/mdl ${CMAKE_BINARY_DIR}/_mdl_core)
 endif()
 
 # This test deliberately forges logical source names with #line directives to
@@ -593,10 +515,6 @@ if(TARGET test_fw_if_fs)
             ${FW_ROOT}/port/posix/src/fw_if_fs_posix_bind.c
             ${FW_ROOT}/port/posix/src/fw_if_fs_posix_common.c
             ${FW_ROOT}/port/posix/src/fw_if_fs_posix_stream.c
-            ${FW_ROOT}/apps/shared_libs/mdl/src/mdl_hash.c
-            ${FW_ROOT}/apps/shared_libs/mdl/src/mdl_pathfs.c
-            ${FW_ROOT}/apps/shared_libs/mdl/src/mdl_sanitize.c
-            ${FW_ROOT}/apps/shared_libs/mdl/src/mdl_storage.c
   )
   target_include_directories(
     test_fw_if_fs
@@ -604,7 +522,6 @@ if(TARGET test_fw_if_fs)
             ${FW_ROOT}/libs/if_ra8_vfs/inc
             ${FW_ROOT}/port/posix/inc
             ${FW_ROOT}/port/posix/src
-            ${FW_ROOT}/apps/shared_libs/mdl/inc
   )
 endif()
 
@@ -657,182 +574,6 @@ endif()
 # library TU compiled in by path.
 if(TARGET test_ra8_num_decimal)
   target_link_libraries(test_ra8_num_decimal PRIVATE ra8_zig::ra8_num)
-endif()
-
-# Downloader state persistence runs one journal/recovery/fault vector against
-# both the hosted POSIX adapter and the firmware RAM blockdev -> FAT -> VFS
-# stack. Production state sources are compiled directly into this focused
-# executable so the portable contract is identical to the media tool build.
-if(TARGET test_mdl_state_parity)
-  target_sources(
-    test_mdl_state_parity
-    PRIVATE ${FW_ROOT}/port/posix/src/fw_if_fs_posix.c
-            ${FW_ROOT}/port/posix/src/fw_if_fs_posix_bind.c
-            ${FW_ROOT}/port/posix/src/fw_if_fs_posix_common.c
-            ${FW_ROOT}/port/posix/src/fw_if_fs_posix_stream.c
-            ${FW_ROOT}/apps/shared_libs/mdl/src/mdl_state.c
-            ${FW_ROOT}/apps/shared_libs/mdl/src/mdl_state_codec.c
-            ${FW_ROOT}/apps/shared_libs/mdl/src/mdl_state_store.c
-            ${FW_ROOT}/apps/shared_libs/mdl/src/mdl_storage.c
-            ${FW_ROOT}/apps/shared_libs/mdl/src/mdl_hash.c
-            ${FW_ROOT}/apps/shared_libs/mdl/tests/src/mdl_state_fs_fault.c
-  )
-  target_include_directories(
-    test_mdl_state_parity
-    PRIVATE ${FW_ROOT}/libs/if/inc
-            ${FW_ROOT}/libs/if_ra8_vfs/inc
-            ${FW_ROOT}/port/posix/inc
-            ${FW_ROOT}/port/posix/src
-            ${FW_ROOT}/apps/shared_libs/mdl/inc
-            ${FW_ROOT}/apps/shared_libs/mdl/src
-            ${CMAKE_CURRENT_SOURCE_DIR}/support/inc
-            ${FW_ROOT}/libs/ra8_imgdec/inc
-  )
-  target_compile_definitions(test_mdl_state_parity PRIVATE _GNU_SOURCE)
-endif()
-
-# Portable downloader library enumeration/removal runs identical authenticated,
-# bounded, and fault-injected vectors over POSIX and RAM blockdev/FAT/VFS.
-if(TARGET test_mdl_library)
-  target_sources(
-    test_mdl_library
-    PRIVATE ${FW_ROOT}/port/posix/src/fw_if_fs_posix.c
-            ${FW_ROOT}/port/posix/src/fw_if_fs_posix_bind.c
-            ${FW_ROOT}/port/posix/src/fw_if_fs_posix_common.c
-            ${FW_ROOT}/port/posix/src/fw_if_fs_posix_stream.c
-            ${FW_ROOT}/apps/shared_libs/mdl/src/mdl_library.c
-            ${FW_ROOT}/apps/shared_libs/mdl/src/mdl_sanitize.c
-            ${FW_ROOT}/apps/shared_libs/mdl/src/mdl_state.c
-            ${FW_ROOT}/apps/shared_libs/mdl/src/mdl_state_codec.c
-            ${FW_ROOT}/apps/shared_libs/mdl/src/mdl_state_store.c
-            ${FW_ROOT}/apps/shared_libs/mdl/src/mdl_storage.c
-            ${FW_ROOT}/apps/shared_libs/mdl/src/mdl_hash.c
-            ${FW_ROOT}/apps/shared_libs/mdl/tests/src/mdl_state_fs_fault.c
-  )
-  target_include_directories(
-    test_mdl_library
-    PRIVATE ${FW_ROOT}/libs/if/inc
-            ${FW_ROOT}/libs/if_ra8_vfs/inc
-            ${FW_ROOT}/port/posix/inc
-            ${FW_ROOT}/port/posix/src
-            ${FW_ROOT}/apps/shared_libs/mdl/inc
-            ${FW_ROOT}/apps/shared_libs/mdl/src
-            ${CMAKE_CURRENT_SOURCE_DIR}/support/inc
-            ${FW_ROOT}/libs/ra8_imgdec/inc
-  )
-  target_compile_definitions(test_mdl_library PRIVATE _GNU_SOURCE)
-endif()
-
-# Downloader config and image readers execute identical bounded/fault vectors
-# over the hosted POSIX port and the firmware RAM blockdev -> FAT -> VFS stack.
-if(TARGET test_mdl_readers)
-  target_sources(
-    test_mdl_readers
-    PRIVATE ${FW_ROOT}/port/posix/src/fw_if_fs_posix.c
-            ${FW_ROOT}/port/posix/src/fw_if_fs_posix_bind.c
-            ${FW_ROOT}/port/posix/src/fw_if_fs_posix_common.c
-            ${FW_ROOT}/port/posix/src/fw_if_fs_posix_stream.c
-            ${FW_ROOT}/apps/shared_libs/mdl/src/mdl_config.c
-            ${FW_ROOT}/apps/shared_libs/mdl/src/mdl_urlname.c
-            ${FW_ROOT}/apps/shared_libs/mdl/src/mdl_export_workspace.c
-            ${FW_ROOT}/apps/shared_libs/mdl/src/mdl_verify.c
-            ${FW_ROOT}/apps/shared_libs/mdl/src/mdl_verify_tarball.c
-            ${FW_ROOT}/apps/shared_libs/mdl/src/mdl_verify_rabook.c
-            ${FW_ROOT}/apps/shared_libs/mdl/src/mdl_sanitize.c
-            ${FW_ROOT}/apps/shared_libs/mdl/src/mdl_storage.c
-            ${FW_ROOT}/apps/shared_libs/mdl/src/mdl_hash.c
-            ${FW_ROOT}/apps/shared_libs/mdl/src/mdl_politeness.c
-            ${FW_ROOT}/apps/shared_libs/mdl/tests/src/mdl_state_fs_fault.c
-  )
-  target_include_directories(
-    test_mdl_readers
-    PRIVATE ${FW_ROOT}/libs/if/inc
-            ${FW_ROOT}/libs/if_ra8_vfs/inc
-            ${FW_ROOT}/apps/shared_libs/mdl/inc
-            ${FW_ROOT}/port/posix/inc
-            ${FW_ROOT}/port/posix/src
-            ${FW_ROOT}/apps/shared_libs/mdl/inc
-            ${FW_ROOT}/apps/shared_libs/mdl/src
-            ${CMAKE_CURRENT_SOURCE_DIR}/support/inc
-            ${FW_ROOT}/libs/ra8_imgdec/inc
-  )
-  target_compile_definitions(test_mdl_readers PRIVATE _GNU_SOURCE)
-endif()
-
-# Portable media application storage uses the same directory, regular-file
-# removal, and validated create-new transaction policies over POSIX and the
-# real RAM blockdev -> FAT -> VFS stack. The fault wrapper injects every
-# publication phase while production code preserves pre-existing destinations.
-if(TARGET test_mdl_app_storage)
-  target_sources(
-    test_mdl_app_storage
-    PRIVATE ${FW_ROOT}/port/posix/src/fw_if_fs_posix.c
-            ${FW_ROOT}/port/posix/src/fw_if_fs_posix_bind.c
-            ${FW_ROOT}/port/posix/src/fw_if_fs_posix_common.c
-            ${FW_ROOT}/port/posix/src/fw_if_fs_posix_stream.c
-            ${FW_ROOT}/apps/shared_libs/mdl/src/mdl_app_storage.c
-            ${FW_ROOT}/apps/shared_libs/mdl/src/mdl_storage.c
-            ${FW_ROOT}/apps/shared_libs/mdl/src/mdl_hash.c
-            ${FW_ROOT}/apps/shared_libs/mdl/tests/src/mdl_state_fs_fault.c
-  )
-  # mdl_app_storage is the application layer's own portable storage policy, and
-  # it followed its subject down into apps/shared_libs/ with the rest of that layer
-  # (#725), so this target now names no build form at all.
-  target_include_directories(
-    test_mdl_app_storage
-    PRIVATE ${FW_ROOT}/libs/if/inc
-            ${FW_ROOT}/libs/if_ra8_vfs/inc
-            ${FW_ROOT}/port/posix/inc
-            ${FW_ROOT}/port/posix/src
-            ${FW_ROOT}/apps/shared_libs/mdl/inc
-            ${FW_ROOT}/apps/shared_libs/mdl/src
-            ${CMAKE_CURRENT_SOURCE_DIR}/support/inc
-  )
-  target_compile_definitions(test_mdl_app_storage PRIVATE _GNU_SOURCE)
-endif()
-
-# Every media exporter runs unchanged over both the hosted POSIX adapter and
-# the real RAM blockdev -> FAT -> VFS firmware stack. Format readers validate
-# each borrowed transaction stage before publication and again after commit.
-if(TARGET test_mdl_export_parity)
-  target_sources(
-    test_mdl_export_parity
-    PRIVATE ${FW_ROOT}/port/posix/src/fw_if_fs_posix.c
-            ${FW_ROOT}/port/posix/src/fw_if_fs_posix_bind.c
-            ${FW_ROOT}/port/posix/src/fw_if_fs_posix_common.c
-            ${FW_ROOT}/port/posix/src/fw_if_fs_posix_stream.c
-            ${FW_ROOT}/apps/shared_libs/mdl/src/mdl_export.c
-            ${FW_ROOT}/apps/shared_libs/mdl/src/mdl_export_workspace.c
-            ${FW_ROOT}/apps/shared_libs/mdl/src/mdl_export_io.c
-            ${FW_ROOT}/apps/shared_libs/mdl/src/mdl_export_meta.c
-            ${FW_ROOT}/apps/shared_libs/mdl/src/mdl_export_zip.c
-            ${FW_ROOT}/apps/shared_libs/mdl/src/mdl_export_tar.c
-            ${FW_ROOT}/apps/shared_libs/mdl/src/mdl_export_epub.c
-            ${FW_ROOT}/apps/shared_libs/mdl/src/mdl_export_epub_meta.c
-            ${FW_ROOT}/apps/shared_libs/mdl/src/mdl_export_jof.c
-            ${FW_ROOT}/apps/shared_libs/mdl/src/mdl_export_rabook.c
-            ${FW_ROOT}/apps/shared_libs/mdl/src/mdl_export_rabook_io.c
-            ${FW_ROOT}/apps/shared_libs/mdl/src/mdl_verify.c
-            ${FW_ROOT}/apps/shared_libs/mdl/src/mdl_verify_tarball.c
-            ${FW_ROOT}/apps/shared_libs/mdl/src/mdl_verify_rabook.c
-            ${FW_ROOT}/apps/shared_libs/mdl/src/mdl_urlname.c
-            ${FW_ROOT}/apps/shared_libs/mdl/src/mdl_sanitize.c
-            ${FW_ROOT}/apps/shared_libs/mdl/src/mdl_storage.c
-            ${FW_ROOT}/apps/shared_libs/mdl/src/mdl_hash.c
-  )
-  target_include_directories(
-    test_mdl_export_parity
-    PRIVATE ${FW_ROOT}/libs/if/inc
-            ${FW_ROOT}/libs/if_ra8_vfs/inc
-            ${FW_ROOT}/apps/shared_libs/mdl/inc
-            ${FW_ROOT}/port/posix/inc
-            ${FW_ROOT}/port/posix/src
-            ${FW_ROOT}/apps/shared_libs/mdl/inc
-            ${FW_ROOT}/apps/shared_libs/mdl/src
-            ${FW_ROOT}/apps/shared_libs/mdl/tests/inc
-            ${FW_ROOT}/libs/ra8_imgdec/inc
-  )
-  target_compile_definitions(test_mdl_export_parity PRIVATE _GNU_SOURCE RA8_OFF_TARGET)
 endif()
 
 # ---------------------------------------------------------------------------

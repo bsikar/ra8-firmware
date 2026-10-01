@@ -41,7 +41,6 @@ class BuildConfig(TypedDict):
 
 DEFAULT_BUILD_VARIANT = "default"
 EREADER_NS_XIP_VARIANT = "ns-xip"
-MEDIA_DOWNLOAD_SOURCE_IMAGE_VARIANT = "source-image"
 APP_SETTINGS_VARIANT = "app-settings"
 
 # Apps that declare a plain option() of their own, which no default configure
@@ -52,7 +51,6 @@ APP_SETTINGS_VARIANT = "app-settings"
 # variant rows below are the only thing that compiles the code behind these
 # options.
 EREADER_REL_DIR = "apps/board/stand_alone/ereader"
-MEDIA_DOWNLOAD_REL_DIR = "examples/ek_ra8d2/hw_pending/media_download"
 EREADER_UI_REL_DIR = "examples/ek_ra8d2/hw_validated/hil/ereader_ui"
 
 
@@ -191,16 +189,6 @@ def build_configs(app: AppRecord) -> list[BuildConfig]:
                 "variant": EREADER_NS_XIP_VARIANT,
                 "cmake_args": ("-DRA8_EREADER_NS_XIP=ON",),
                 "build_suffix": "build-ns-xip",
-            }
-        )
-    if rel_dir == MEDIA_DOWNLOAD_REL_DIR:
-        configs.append(
-            {
-                "id": f"{app_id(app)}@{MEDIA_DOWNLOAD_SOURCE_IMAGE_VARIANT}",
-                "app": app,
-                "variant": MEDIA_DOWNLOAD_SOURCE_IMAGE_VARIANT,
-                "cmake_args": ("-DRA8_MEDIA_DOWNLOAD_SOURCE_IMAGE=ON",),
-                "build_suffix": "build-source-image",
             }
         )
     if rel_dir == EREADER_UI_REL_DIR:
@@ -465,12 +453,10 @@ def _selftest_discovery(root: Path, failures: list[str]) -> None:
     _selftest_write_app(root, "examples/tier/partial", main=False)
     _selftest_write_app(root, "examples/tier/alpha/build/ghost")
     _selftest_write_app(root, "apps/board/stand_alone/ereader")
-    _selftest_write_app(root, "examples/ek_ra8d2/hw_pending/media_download")
     _selftest_write_app(root, EREADER_UI_REL_DIR)
     identifiers = [app_id(app) for app in get_apps()]
     expected = [
         "board::stand_alone::ra8d2-ereader",
-        "ek_ra8d2::hw_pending::media_download",
         "ek_ra8d2::hw_validated::hil::ereader_ui",
         "tier::alpha",
     ]
@@ -480,8 +466,6 @@ def _selftest_discovery(root: Path, failures: list[str]) -> None:
     expected_configs = [
         "board::stand_alone::ra8d2-ereader",
         "board::stand_alone::ra8d2-ereader@ns-xip",
-        "ek_ra8d2::hw_pending::media_download",
-        "ek_ra8d2::hw_pending::media_download@source-image",
         "ek_ra8d2::hw_validated::hil::ereader_ui",
         "ek_ra8d2::hw_validated::hil::ereader_ui@app-settings",
         "tier::alpha",
@@ -495,8 +479,6 @@ def _selftest_resolution(root: Path, failures: list[str]) -> None:
     _selftest_write_app(root, "examples/other/alpha")
     if find_app("tier::alpha") is None or find_build_config("ereader@ns-xip") is None:
         failures.append("namespaced or board-alias selector did not resolve")
-    if find_build_config("media_download@source-image") is None:
-        failures.append("media_download source-image selector did not resolve")
     if find_build_config("ereader_ui@app-settings") is None:
         failures.append("optional-Settings build variant did not resolve")
     if find_app("alpha") is not None:

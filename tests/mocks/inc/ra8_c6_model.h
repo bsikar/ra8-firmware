@@ -23,11 +23,9 @@
 
 #include <stdint.h>
 
-#include "mdl_format.h"
 #include "ra8_c6link.h"
 #include "ra8_c6link_wifi.h"
 #include "ra8_err.h"
-#include "ra8_mdl_protocol.h"
 
 /**
  * @enum ra8_c6_model_const_t
@@ -69,8 +67,6 @@ rest ascend from it.                        */
 the rest descend from it.                   */
   k_c6m_eth_first             = 0x80U, /**< First octet of the modelled 802.3 frame.      */
   k_c6m_caps_bytes            = 17U,   /**< Octets in the host-capabilities announcement. */
-  k_c6m_mdl_digest_fill       = 0xA5U, /**< Deterministic media digest test octet.        */
-  k_c6m_custom_response_bytes = 1200U, /**< CustomRpc response scratch capacity.          */
 } ra8_c6_model_const_t;
 
 /**
@@ -97,42 +93,6 @@ typedef enum : int32_t {
   k_c6m_esp_fail = -1, /**< The refusal code the model reports. */
 } ra8_c6_model_err_t;
 
-/** @brief Test-only corruption applied to the next media response. */
-typedef enum : uint8_t {
-  k_c6m_mdl_fault_none = 0U,             /**< Leave the next chunk unchanged.   */
-  k_c6m_mdl_fault_complete_no_sha,       /**< Omit the terminal digest.         */
-  k_c6m_mdl_fault_complete_bad_total,    /**< Corrupt the terminal total.       */
-  k_c6m_mdl_fault_failed,                /**< Emit a coherent failure.          */
-  k_c6m_mdl_fault_failed_zero_status,    /**< Emit failure with zero status.    */
-  k_c6m_mdl_fault_cancelled,             /**< Emit coherent cancellation.       */
-  k_c6m_mdl_fault_cancelled_with_data,   /**< Attach data to cancellation.      */
-  k_c6m_mdl_fault_downloading_error,     /**< Attach error to active data.      */
-  k_c6m_mdl_fault_out_of_order,          /**< Increment the response sequence.  */
-  k_c6m_mdl_fault_corrupt_data,          /**< Corrupt one data response byte.   */
-  k_c6m_mdl_fault_data_http_status,      /**< Status on a nonterminal chunk.    */
-  k_c6m_mdl_fault_data_retry_after,      /**< Retry-After on active data.       */
-  k_c6m_mdl_fault_data_etag,             /**< ETag on active data.              */
-  k_c6m_mdl_fault_data_last_modified,    /**< Last-Modified on active data.     */
-  k_c6m_mdl_fault_data_content_type,     /**< Content-Type on active data.      */
-  k_c6m_mdl_fault_complete_low_status,   /**< Terminal status below 100.        */
-  k_c6m_mdl_fault_complete_high_status,  /**< Terminal status above 599.        */
-  k_c6m_mdl_fault_complete_split_retry,  /**< CR inside terminal Retry-After.   */
-  k_c6m_mdl_fault_complete_split_etag,   /**< LF inside the terminal ETag.      */
-  k_c6m_mdl_fault_complete_split_date,   /**< CR inside terminal Last-Modified. */
-  k_c6m_mdl_fault_complete_split_type,   /**< LF inside terminal Content-Type.  */
-  k_c6m_mdl_fault_unknown_field,         /**< Append an unknown protobuf field. */
-  k_c6m_mdl_fault_accepted_bad_version,  /**< Change the accepted protocol.     */
-  k_c6m_mdl_fault_accepted_zero_job,     /**< Clear the accepted job id.        */
-  k_c6m_mdl_fault_accepted_zero_max,     /**< Clear the accepted chunk cap.     */
-  k_c6m_mdl_fault_accepted_large_max,    /**< Exceed the client chunk cap.      */
-  k_c6m_mdl_fault_accepted_wrong_format, /**< Echo a different artifact format.
-                                          */
-  k_c6m_mdl_fault_response_no_body,      /**< Omit the outer custom body.     */
-  k_c6m_mdl_fault_response_wrong_id,     /**< Corrupt the outer operation id. */
-  k_c6m_mdl_fault_response_empty_data,   /**< Omit the inner response bytes.  */
-  k_c6m_mdl_fault_response_zero_len,     /**< Present but empty inner body.   */
-} ra8_c6_model_mdl_fault_t;
-
 /**
  * @struct ra8_c6_model
  * @brief The modelled co-processor's whole observable state.
@@ -158,7 +118,6 @@ typedef struct ra8_c6_model {
   bool                     handshake;        /**< What HANDSHAKE reads.                      */
   bool                     fail_transfer;    /**< Make every transfer report a bus fault.    */
   uint32_t                 fail_req;         /**< Request id to refuse, or zero for none.    */
-  ra8_c6_model_mdl_fault_t mdl_fault;        /**< Corrupt the next modelled media response.  */
   bool                     wrong_uid;        /**< Answer with a UID the host did not send.   */
   bool                     wrong_id;         /**< Answer with a message id nobody asked for. */
   bool                     mute;             /**< Answer nothing at all.                     */
@@ -166,10 +125,6 @@ typedef struct ra8_c6_model {
   uint16_t                 hs_quiet_polls;   /**< HANDSHAKE samples to read inactive first.  */
   uint16_t                 transfers;        /**< Transactions the host has clocked.         */
   uint32_t                 delays;           /**< Times the host asked the seam to wait.     */
-  uint16_t                 mdl_cancels;      /**< Media cancel operations accepted.          */
-  mdl_format_t             mdl_format;       /**< Artifact identity observed by the service. */
-  int32_t                  mdl_http_status;  /**< Terminal HTTP status emitted by the model. */
-  uint32_t                 mdl_timeout_ms;   /**< HTTP timeout observed by the service.      */
   uint16_t                 last_delay_ms;    /**< Milliseconds the newest wait asked for.    */
   uint32_t                 seen[k_c6m_seen]; /**< Request ids observed, in order.            */
   uint8_t                  seen_n;           /**< Entries in `seen`.                         */
@@ -182,10 +137,6 @@ typedef struct ra8_c6_model {
   bool     caps_seen;                                      /**< Caps observed.  */
   uint8_t  caps[k_c6m_caps_bytes];                         /**< Caps bytes.     */
   uint8_t  caps_len;                                       /**< Caps length.    */
-  char     mdl_user_agent[k_ra8_mdl_user_agent_max];       /**< User-Agent.     */
-  char     mdl_referer[k_ra8_mdl_referer_max];             /**< Referer.        */
-  char     mdl_if_none_match[k_ra8_mdl_etag_max];          /**< ETag condition. */
-  char     mdl_if_modified_since[k_ra8_mdl_http_date_max]; /**< Date condition. */
   uint16_t eth_tx_len;                                     /**< Frame length.   */
   uint8_t  eth_tx[k_c6m_eth_len];                          /**< Frame bytes.    */
   /** Frames to send. */
@@ -213,8 +164,7 @@ ra8_c6_model_t* ra8_c6_model(void);
 
 /**
  * @brief Clear the model and arm HANDSHAKE.
- * @details Restores deterministic transport defaults, rebinds the built-in
- * media artifact, and discards all queued frames and observations.
+ * @details Restores deterministic transport defaults and discards all queued frames and observations.
  * @return Nothing.
  * @pre No link is mid-transaction against the model.
  * @pre The caller re-opens its link afterwards if it held one.
@@ -224,30 +174,6 @@ ra8_c6_model_t* ra8_c6_model(void);
  * @since 0.1.0
  */
 void ra8_c6_model_reset(void);
-
-/**
- * @brief Bind caller-owned bytes and their SHA-256 to the modelled C6 service.
- * @details Replaces the default six-byte media source until the next model
- * reset. The model borrows both spans and serves them through the real portable
- * C6 service dispatcher, so RA-side tests can exercise arbitrarily generated
- * artifacts without a second protocol fake.
- * @param[in] data Immutable source bytes.
- * @param[in] len Nonzero readable source length.
- * @param[in] sha256 Digest of exactly @p data.
- * @return Binding status.
- * @retval k_ra8_ok The next Start reads the supplied artifact.
- * @retval k_ra8_err_null_ptr A required pointer is null.
- * @retval k_ra8_err_invalid_size @p len is zero.
- * @pre The supplied spans outlive every media Start/Next/Cancel exchange.
- * @pre No modelled media job is active while the binding changes.
- * @post Success resets the source read offset to zero.
- * @post Failure leaves the prior source binding unchanged.
- * @note Test-only, no allocation, not thread-safe.
- * @since 0.1.0
- */
-[[nodiscard]] ra8_err_t ra8_c6_model_mdl_source(const uint8_t* data,
-                                                uint32_t       len,
-                                                const uint8_t  sha256[k_ra8_mdl_sha256_bytes]);
 
 /**
  * @brief Fill a transport seam with the model's rows.

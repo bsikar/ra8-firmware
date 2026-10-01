@@ -88,9 +88,6 @@ target_include_directories(
             # the facade's public headers travel with the port rather than
             # depending on every consuming app remembering `LIBS ra8_c6link`.
             ${_RA8_ESP_HOSTED_PORT_REPO_ROOT}/libs/ra8_c6link/inc
-            # ra8_mdl_request.h, which ra8_c6link_mdl.h publishes, is built on
-            # the transport-neutral HTTP contract that lives in libs/ra8_mdl.
-            ${_RA8_ESP_HOSTED_PORT_REPO_ROOT}/libs/ra8_mdl/inc
 )
 
 target_link_libraries(esp_hosted_port_ra8_spi INTERFACE esp_hosted threadx)

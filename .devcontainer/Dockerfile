@@ -30,7 +30,7 @@
 # compiles the first-party host tools under clang-18 AND gcc-14 so the warning
 # families each catches but the other misses are both held: gcc-14's
 # -Wformat-truncation found a silent PATH_MAX path-join truncation in
-# apps/host/mdl that clang-18 did not flag. Like the clang family it tracks the
+# a host app that clang-18 did not flag. Like the clang family it tracks the
 # major-version package name (gcc-14) rather than an exact string, and
 # check_tool_versions.py reads that major from here.
 #
@@ -92,9 +92,8 @@ ARG DOXYGEN_VERSION=1.16.1
 ARG DOXYGEN_SHA256_LINUX_X64=a56f885d37e3aae08a99f638d17bbb381224c03a878d9e2dda4f9fa4baf1d8bd
 
 # libcapstone-dev is the Capstone header that tools/ra8_emulator includes (for
-# disassembly only -- NOT the decode variable), and libcurl4-openssl-dev is the
-# libcurl header apps/host/mdl's network backend includes. `just ci` lints
-# tools/ (issue #296), so the tidy gate needs those headers present inside the
+# disassembly only -- NOT the decode variable). `just ci` lints
+# tools/ (issue #296), so the tidy gate needs that header present inside the
 # container even though the tidy pass builds neither tool. A missing header does
 # not fail loudly -- clang-tidy emits clang-diagnostic-error and never lints
 # that TU -- so keep this list in step with the runner install step in
@@ -110,11 +109,9 @@ ARG DOXYGEN_SHA256_LINUX_X64=a56f885d37e3aae08a99f638d17bbb381224c03a878d9e2dda4
 # after `gh` and `jq`, and the first one found by a check instead of a person.
 #
 # openssl is the fourth, and it arrived through a route runner-image-deps
-# cannot see: apps/host/mdl/CMakeLists.txt find_program()s the openssl CLI as
-# REQUIRED for its HTTPS integration test, so the tools-build gate depended on
-# a binary no require_cmd declared and this list never carried. Every developer
-# box has it; ubuntu:24.04 plus the list above does not, so the gate failed at
-# `cmake -S apps/host/mdl` on the runner and nowhere else. A CMake
+# cannot see: a host app's CMakeLists find_program()ed the openssl CLI as
+# REQUIRED, so the tools-build gate depended on a binary no require_cmd
+# declared and this list never carried. A CMake
 # find_program(... REQUIRED) is a host-tool declaration too -- if you add one,
 # add the package here.
 #

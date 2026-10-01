@@ -182,7 +182,7 @@ ra8_viewer_read_path(
 # ra8_img_imgdec.c is DROP: it is the ra8_imgdec vtable backend over the stb
 # residue (#768), and nothing the viewer links binds it. The viewer's image
 # path calls stb_image directly from reflow_image.c and takes container
-# identity from the shared sniff/name tables in RA8_IMGDEC_SRC below;
+# identity from the shared sniff/name tables in the ra8_imgdec archive;
 # ra8_img_imgdec_bind() has no caller outside its own unit test. Keeping it
 # would add an unbound backend (and its ra8_imgdec core dependency) to the
 # archive without changing a single decode the viewer performs.
@@ -298,15 +298,6 @@ link_libraries(ra8_zig::ra8_core)
 set(RA8_THIRD_PARTY_SRC ${FW_ROOT}/apps/shared_libs/third_party/miniz/miniz.c
                         ${FW_ROOT}/apps/shared_libs/third_party/stb/stb_image_impl.c
 )
-# ra8_img_arena.c forwards stb_image's allocator hooks to the shared decoder
-# scratch, reflow_image.c routes WebP through the shared container sniff, and
-# comic_tiles.c reads a page's footprint through the shared geometry probe
-# (#768), so those three TUs travel with the reader sources kept above.
-# ra8_imgdec_name.c is the one naming table (#748): the comic engine receives
-# page bytes it did not produce, so when a page will not decode it names the
-# container rather than reporting an anonymous refusal. App-side builds
-# enumerate imgdec TUs by path (#754), so it is listed here explicitly.
-)
 set(RA8_STREAM_POSIX_SRC ${FW_ROOT}/port/posix/src/ra8_io_stream_posix.c)
 set(RA8_STREAM_RAM_SRC ${FW_ROOT}/libs/ra8_io/src/ra8_io_stream_ram.c)
 
@@ -322,7 +313,6 @@ add_library(
   ${COMPRESS_SRC}
   ${RA8_MEM_SRC}
   ${RA8_CORE_SRC}
-  ${RA8_IMGDEC_SRC}
   ${RA8_THIRD_PARTY_SRC}
 )
 target_compile_definitions(

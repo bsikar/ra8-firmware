@@ -193,11 +193,11 @@ test "shared resolves to apps/shared_libs/*/tests" {
 test "host resolves to apps/host/*/tests" {
     var tmp = testing.tmpDir(.{});
     defer tmp.cleanup();
-    try writeSource(tmp.dir, "apps/host/mdl/tests/test_mdl.c", "/** @brief mdl */\n");
+    try writeSource(tmp.dir, "apps/host/cbz2jof/tests/test_cbz2jof.c", "/** @brief cbz2jof */\n");
     var capture = try invoke(tmp.dir, &[_][]const u8{ "list_tests", "host" }, null);
     defer capture.deinit();
     try testing.expectEqual(cli.exit_ok, capture.status);
-    try testing.expect(std.mem.indexOf(u8, capture.out, "mdl") != null);
+    try testing.expect(std.mem.indexOf(u8, capture.out, "cbz2jof") != null);
 }
 
 test "tools resolves to tools/*/tests" {

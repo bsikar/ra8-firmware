@@ -52,7 +52,7 @@ test lib="all":
 
     if [ "{{ lib }}" = "all" ]; then
         echo "==> Testing all shared libraries..."
-        bash tests/run_tests.sh -R "test_(ra8_)?(reflow|rabook|xml|css|svg|rar|unarch|shelf|manga|gfx|ui|widget|tile|zoom|longstrip|jpeg|webp|jof|img_arena|glyph|touch|vin|ov5640|mdl|app_media|epub|book|comic|format)"
+        bash tests/run_tests.sh -R "test_(ra8_)?(reflow|rabook|xml|css|svg|rar|unarch|shelf|manga|gfx|ui|widget|tile|zoom|longstrip|jpeg|webp|jof|img_arena|glyph|touch|vin|ov5640|epub|book|comic|format)"
     else
         if [ ! -d "apps/shared_libs/{{ lib }}" ]; then
             echo "Error: Shared lib '{{ lib }}' not found."

@@ -459,7 +459,7 @@ the program links clean, advertises the capability, and fails at runtime or,
 worse, silently succeeds having done nothing.
 
 The motivating case: the former `tools/rabook_imagepack/src/webp_stub.c` and
-the former `apps/host/mdl/src/webp_stub.c` each defined the real symbol
+a former host-app `webp_stub.c` each defined the real symbol
 `jof_priv_webp_transcode()`, threw away both arguments and returned
 `k_ra8_err_not_supported` -- while a complete WebP decoder sat vendored,
 wrapped, tested and fuzzed in this same repository. Both tools offered WebP
