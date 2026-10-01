@@ -79,12 +79,25 @@ pub fn preText(b: *std.Build, app: CrossApp) []const u8 {
 
 /// Does this app link a COMPOSED script rather than the board map directly?
 ///
-/// `THREADX_HEAP` and `CPU1_IMAGE` do not inject through the two INCLUDE
-/// points above: sources.cmake:1235 writes a third script that INCLUDEs the
-/// board map and appends to it, and points -T at that instead. The two
-/// fragments above are pulled IN BY the board map; this one WRAPS it.
-pub fn composes(app: CrossApp) bool {
-    return app.threadx_heap != null or app.cpu1_image;
+/// The composing keywords do not inject through the two INCLUDE points above:
+/// sources.cmake:1235 writes a third script that INCLUDEs the board map and
+/// appends to it, and points -T at that instead. The two fragments above are
+/// pulled IN BY the board map; this one WRAPS it.
+pub fn composes(b: *std.Build, app: CrossApp) bool {
+    return app.threadx_heap != null or
+        app.cpu1_image or
+        app.ns_inline_image or
+        hasLinkerAppend(b, app);
+}
+
+/// `linker_append.ld` in the app's own directory: the escape hatch for a
+/// section exactly one app needs, so that wanting one does not cost a fork of
+/// the whole map. Presence IS the option, which is why it is read off disk
+/// here rather than carried as a table field.
+fn hasLinkerAppend(b: *std.Build, app: CrossApp) bool {
+    const path = b.fmt("{s}/linker_append.ld", .{app.dir});
+    b.build_root.handle.access(path, .{}) catch return false;
+    return true;
 }
 
 /// `THREADX_HEAP <region>`. One PROVIDE: the origin of the region
@@ -133,6 +146,63 @@ fn cpu1Image(b: *std.Build, board: []const u8) []const u8 {
     ) catch @panic("OOM");
 }
 
+/// `NS_INLINE_IMAGE`. The .ns_* sections of a SINGLE-IMAGE TrustZone app,
+/// whose Non-Secure world rides inside the Secure ELF in sections the SAU
+/// later reclassifies. Distinct from ra8_add_ns_image(), which links a
+/// separate NS ELF off a different window; an app uses one or the other.
+///
+/// EVERY section carries an explicit address, and the two after .ns_vectors
+/// derive theirs with ADDR()+SIZEOF() rather than riding the location
+/// counter. sources.cmake:1150-1168 records both cheaper spellings being
+/// tried and both mislaying the image on cpu1_pingpong_ipc: an appended
+/// SECTIONS block gets no usable counter from the board map.
+fn nsInlineImage(b: *std.Build, board: []const u8) []const u8 {
+    const map_path = b.fmt("{s}/ld/ns_inline_memory_map.cmake", .{board});
+    const vars = cmake_vars.parse(b.allocator, read(b, map_path));
+
+    const mram_origin = vars.get("RA8_NS_INLINE_MRAM_ORIGIN", map_path);
+    const mram_length = vars.get("RA8_NS_INLINE_MRAM_LENGTH", map_path);
+    const sram_origin = vars.get("RA8_NS_INLINE_SRAM_ORIGIN", map_path);
+    const sram_length = vars.get("RA8_NS_INLINE_SRAM_LENGTH", map_path);
+
+    return b.fmt(
+        "SECTIONS\n" ++
+            "{{\n" ++
+            "    .ns_vectors {s} : ALIGN(8)\n" ++
+            "    {{\n" ++
+            "        KEEP(*(.ns_vectors))\n" ++
+            "        KEEP(*(.ns_vectors.*))\n" ++
+            "    }}\n" ++
+            "    .ns_text ADDR(.ns_vectors) + SIZEOF(.ns_vectors) : ALIGN(4)\n" ++
+            "    {{\n" ++
+            "        *(.ns_text)\n" ++
+            "        *(.ns_text.*)\n" ++
+            "    }}\n" ++
+            "    .ns_rodata ADDR(.ns_text) + SIZEOF(.ns_text) : ALIGN(4)\n" ++
+            "    {{\n" ++
+            "        *(.ns_rodata)\n" ++
+            "        *(.ns_rodata.*)\n" ++
+            "    }}\n" ++
+            "    .ns_bss {s} (NOLOAD) : ALIGN(4)\n" ++
+            "    {{\n" ++
+            "        g_ra8_ls_ns_bss_start = .;\n" ++
+            "        *(.ns_bss)\n" ++
+            "        *(.ns_bss.*)\n" ++
+            "        g_ra8_ls_ns_bss_end = .;\n" ++
+            "    }}\n" ++
+            "}}\n" ++
+            // Slot 0 of the NS vector table is the initial MSP_NS; BLXNS in
+            // ra8_tz_secure_boot_jump_ns issues `msr msp_ns` with this value.
+            "g_ra8_ls_ns_stack_top = {s} + {s};\n" ++
+            "ASSERT(ADDR(.ns_rodata) + SIZEOF(.ns_rodata)\n" ++
+            "       <= {s} + {s},\n" ++
+            "       \"FATAL: the NS image overran its window\")\n" ++
+            "ASSERT(g_ra8_ls_ns_bss_end <= g_ra8_ls_ns_stack_top,\n" ++
+            "       \"FATAL: NS .bss collided with the NS stack\")\n",
+        .{ mram_origin, sram_origin, sram_origin, sram_length, mram_origin, mram_length },
+    );
+}
+
 fn read(b: *std.Build, path: []const u8) []const u8 {
     return b.build_root.handle.readFileAlloc(b.allocator, path, 1 << 20) catch |err|
         std.debug.panic("ld_fragments: cannot read {s}: {s}", .{ path, @errorName(err) });
@@ -146,6 +216,19 @@ fn read(b: *std.Build, path: []const u8) []const u8 {
 /// its own search path. The bare-name INCLUDEs inside the board map still
 /// resolve: the -L already points at this same directory.
 pub fn composed(b: *std.Build, app: CrossApp) []const u8 {
+    // sources.cmake:1224-1231 makes this combination a configure error: an app
+    // with a local map already has full control, so composing one as well
+    // would leave two places claiming the same placement. Ported as a stop
+    // rather than left implicit, because the graph would otherwise compose a
+    // script around a fork and link something CMake refuses to configure.
+    if (std.mem.startsWith(u8, app.linker_script, app.dir)) {
+        std.debug.panic(
+            "ra8_add_app(): {s} composes the board map but also has its own " ++
+                "{s}. Add those lines to that script, or delete it.",
+            .{ app.name, app.linker_script },
+        );
+    }
+
     var body = std.ArrayList(u8).init(b.allocator);
     const writer = body.writer();
 
@@ -160,10 +243,15 @@ pub fn composed(b: *std.Build, app: CrossApp) []const u8 {
     if (app.cpu1_image) {
         writer.writeAll(cpu1Image(b, app.board)) catch @panic("OOM");
     }
-    // NS_INLINE_IMAGE is the third composition sources.cmake:1143 appends and
-    // is not written here yet; cpu1_pingpong_ipc, the only app in this table
-    // that names it, does not link today for an unrelated reason (undefined
-    // ra8_sau_configure).
+    if (app.ns_inline_image) {
+        writer.writeAll(nsInlineImage(b, app.board)) catch @panic("OOM");
+    }
+    if (hasLinkerAppend(b, app)) {
+        writer.print(
+            "INCLUDE {s}/linker_append.ld\n",
+            .{b.pathFromRoot(app.dir)},
+        ) catch @panic("OOM");
+    }
 
     return body.items;
 }
@@ -175,6 +263,6 @@ pub fn directory(b: *std.Build, app: CrossApp) std.Build.LazyPath {
     const files = b.addWriteFiles();
     _ = files.add(pre_memory_name, preMemory(b, app));
     _ = files.add(pre_text_name, preText(b, app));
-    if (composes(app)) _ = files.add(composed_name, composed(b, app));
+    if (composes(b, app)) _ = files.add(composed_name, composed(b, app));
     return files.getDirectory();
 }
