@@ -14,7 +14,7 @@ import subprocess
 import sys
 import tempfile
 from pathlib import Path
-from typing import Any
+from typing import Any, NamedTuple
 
 ROOT = Path(__file__).resolve().parents[2]
 POLICY = ROOT / "config/zig_abi_policy.json"
@@ -40,6 +40,9 @@ LIBRARY_SRC_PATH_PARTS = 4
 GLOBBED_TEST_PATH_PARTS = 4
 # nm's archive form, "archive.a:member.o:address", carries two colons.
 MIN_NM_MEMBER_COLONS = 2
+INVENTORY_SOURCE_KINDS = {"library-adapter", "library-support", "test-helper", "app-adapter"}
+# The two kinds that publish symbols across the C boundary; the rest are internal.
+ADAPTER_SOURCE_KINDS = {"library-adapter", "app-adapter"}
 REQUIRED_MODES = {"Debug", "ReleaseSafe", "ReleaseSmall"}
 MODE_C_FLAGS = {"Debug": "-O0", "ReleaseSafe": "-O2", "ReleaseSmall": "-Oz"}
 RA8_ZIG_ARGUMENTS = (
@@ -497,6 +500,186 @@ def _adapter_scope_findings(
     return findings
 
 
+class _InventorySource(NamedTuple):
+    """One export-inventory row resolved against the tree it claims to describe.
+
+    ``declared`` is the path exactly as the policy spells it, because every
+    finding quotes that spelling rather than the resolved one.
+    """
+
+    declared: str
+    path: Path
+    relative: Path
+    root: Path
+    owners: list[dict[str, Any]]
+    inferred_lib: str | None
+    policy_bound: bool
+
+
+def _resolved_inventory_source(
+    row: dict[str, Any], libraries: list[dict[str, Any]], root: Path
+) -> _InventorySource:
+    """Resolve an inventory row to its owning build roots and inferred library."""
+    path = (root / row["path"]).resolve()
+    owners = [
+        library
+        for library in libraries
+        if isinstance(library, dict)
+        and isinstance(library.get("build_root"), str)
+        and isinstance(library.get("name"), str)
+        and (root / library["build_root"]).resolve() in path.parents
+    ]
+    relative = path.relative_to(root)
+    return _InventorySource(
+        declared=row["path"],
+        path=path,
+        relative=relative,
+        root=root,
+        owners=owners,
+        inferred_lib=(
+            relative.parts[1]
+            if len(relative.parts) > LIBS_SOURCE_MIN_PARTS and relative.parts[0] == "libs"
+            else None
+        ),
+        policy_bound=any(
+            (root / value).resolve() == path
+            for library in owners
+            for value in _boundary_adapter_paths(library)
+        ),
+    )
+
+
+def _adapter_binding_findings(source: _InventorySource) -> list[str]:
+    """Check an adapter no policy row binds against its library's public header."""
+    if source.inferred_lib is None or source.relative.parts[2] != "src":
+        return [
+            f"{source.declared}: adapter must be bound to a policy row or a libs/<name>/src header"
+        ]
+    header_dir = source.root / "libs" / source.inferred_lib / "inc"
+    headers = list(header_dir.glob("*.h")) if header_dir.is_dir() else []
+    source_names, _ = _zig_exports(source.path.read_text(encoding="utf-8"))
+    header_symbols = (
+        set().union(
+            *(
+                _header_exports(header.read_text(encoding="utf-8"), f"{source.inferred_lib}_")
+                for header in headers
+            )
+        )
+        if headers
+        else set()
+    )
+    if not headers or not source_names <= header_symbols:
+        return [f"{source.declared}: adapter exports are not declared by its public C header"]
+    return []
+
+
+def _contract_registers(contract: Path, path: Path) -> bool:
+    """Report whether one Zig test contract names this path among its sources."""
+    try:
+        data = json.loads(contract.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return False
+    registered = set(data.get("test_roots", [])) | set(data.get("covered_sources", []))
+    return path.relative_to(contract.parent).as_posix() in registered
+
+
+def _test_helper_findings(source: _InventorySource) -> list[str]:
+    """Require a test helper to sit under tests/ and be named by a test contract."""
+    findings: list[str] = []
+    if "tests" not in source.relative.parts:
+        findings.append(f"{source.declared}: test-helper is outside tests/")
+    contract_roots = [
+        source.root / owner["build_root"]
+        for owner in source.owners
+        if isinstance(owner.get("build_root"), str)
+    ]
+    if source.inferred_lib is not None:
+        contract_roots.append(source.root / "libs" / source.inferred_lib)
+    # Every contract is read, not just up to the first match, so that a contract
+    # outside this source's own tree still raises the way it always has.
+    matches = [
+        _contract_registers(contract_root / ".zig-test-contract.json", source.path)
+        for contract_root in contract_roots
+    ]
+    if not any(matches):
+        findings.append(f"{source.declared}: test-helper is not declared by a Zig test contract")
+    return findings
+
+
+def _inventory_row_findings(
+    row: object, libraries: list[dict[str, Any]], root: Path
+) -> tuple[list[str], Path | None]:
+    """Classify one declared export source, and return the path it registers.
+
+    ``row`` is deliberately untyped: the malformed-entry finding exists precisely
+    because the policy file can carry something that is not a row at all.
+    """
+    if not isinstance(row, dict) or not isinstance(row.get("path"), str):
+        return ["malformed Zig export source inventory entry"], None
+    path = (root / row["path"]).resolve()
+    try:
+        path.relative_to(root)
+    except ValueError:
+        return [f"export source path escapes repository: {row['path']}"], None
+    findings: list[str] = []
+    kind = row.get("kind")
+    symbols = row.get("symbols")
+    if kind not in INVENTORY_SOURCE_KINDS:
+        findings.append(f"{row['path']}: invalid export source kind: {kind}")
+    if not isinstance(symbols, list) or not all(isinstance(item, str) for item in symbols):
+        findings.append(f"{row['path']}: symbols must be an explicit string list")
+        symbols = []
+    if not path.is_file():
+        findings.append(f"registered Zig export source is missing: {row['path']}")
+        return findings, None
+    source = _resolved_inventory_source(row, libraries, root)
+    if kind in ADAPTER_SOURCE_KINDS and not source.policy_bound:
+        findings.extend(_adapter_binding_findings(source))
+    elif (
+        kind in {"library-support", "test-helper"}
+        and source.inferred_lib is None
+        and len(source.owners) != 1
+    ):
+        findings.append(f"{row['path']}: source must belong to exactly one library build root")
+    if kind == "library-support" and (
+        len(source.relative.parts) < LIBRARY_SRC_PATH_PARTS or source.relative.parts[-2] != "src"
+    ):
+        findings.append(f"{row['path']}: library-support source must be under a library src/")
+    names, _ = _zig_exports(path.read_text(encoding="utf-8"))
+    if set(symbols) != names:
+        findings.append(
+            f"{row['path']}: declared symbol inventory differs: "
+            f"missing={', '.join(sorted(names - set(symbols)))}; "
+            f"unexpected={', '.join(sorted(set(symbols) - names))}"
+        )
+    if kind == "test-helper":
+        findings.extend(_test_helper_findings(source))
+    return findings, path
+
+
+def _discovered_export_sources(repository_root: Path) -> tuple[set[Path], list[str]]:
+    """Find every Zig source in the tree that exports across the C boundary."""
+    discovered: set[Path] = set()
+    findings: list[str] = []
+    for source in repository_root.rglob("*.zig"):
+        if any(part in REPOSITORY_EXCLUDED_PATH_PARTS for part in source.parts):
+            continue
+        relative_parts = source.relative_to(repository_root).parts
+        if relative_parts[: len(PROVISIONED_TOOLCHAIN_PREFIX)] == PROVISIONED_TOOLCHAIN_PREFIX:
+            continue
+        text = source.read_text(encoding="utf-8")
+        names, _ = _zig_exports(text)
+        dynamic_export = re.search(r"\b@export\s*\(", _strip_comments(text))
+        if names or dynamic_export:
+            discovered.add(source.resolve())
+        if dynamic_export:
+            findings.append(
+                "dynamic @export is prohibited at ABI boundaries: "
+                f"{source.relative_to(repository_root)}"
+            )
+    return discovered, findings
+
+
 def _repository_inventory_findings(
     libraries: list[dict[str, Any]],
     source_inventory: list[dict[str, Any]] | None = None,
@@ -512,127 +695,12 @@ def _repository_inventory_findings(
     findings: list[str] = []
     root = repository_root.resolve()
     for row in source_inventory or []:
-        if not isinstance(row, dict) or not isinstance(row.get("path"), str):
-            findings.append("malformed Zig export source inventory entry")
-            continue
-        candidate = repository_root / row["path"]
-        path = candidate.resolve()
-        try:
-            relative_path = path.relative_to(root)
-        except ValueError:
-            findings.append(f"export source path escapes repository: {row['path']}")
-            continue
-        kind = row.get("kind")
-        symbols = row.get("symbols")
-        allowed_kinds = {"library-adapter", "library-support", "test-helper", "app-adapter"}
-        if kind not in allowed_kinds:
-            findings.append(f"{row['path']}: invalid export source kind: {kind}")
-        if not isinstance(symbols, list) or not all(isinstance(item, str) for item in symbols):
-            findings.append(f"{row['path']}: symbols must be an explicit string list")
-            symbols = []
-        if not path.is_file():
-            findings.append(f"registered Zig export source is missing: {row['path']}")
-            continue
-        owners = [
-            library
-            for library in libraries
-            if isinstance(library, dict)
-            and isinstance(library.get("build_root"), str)
-            and isinstance(library.get("name"), str)
-            and (root / library["build_root"]).resolve() in path.parents
-        ]
-        policy_bound = any(
-            (root / value).resolve() == path
-            for library in owners
-            for value in _boundary_adapter_paths(library)
-        )
-        inferred_lib = (
-            relative_path.parts[1]
-            if len(relative_path.parts) > LIBS_SOURCE_MIN_PARTS and relative_path.parts[0] == "libs"
-            else None
-        )
-        if kind in {"library-adapter", "app-adapter"} and not policy_bound:
-            if inferred_lib is None or relative_path.parts[2] != "src":
-                findings.append(
-                    f"{row['path']}: adapter must be bound to a policy row "
-                    "or a libs/<name>/src header"
-                )
-            else:
-                header_dir = root / "libs" / inferred_lib / "inc"
-                headers = list(header_dir.glob("*.h")) if header_dir.is_dir() else []
-                source_names, _ = _zig_exports(path.read_text(encoding="utf-8"))
-                header_symbols = (
-                    set().union(
-                        *(
-                            _header_exports(header.read_text(encoding="utf-8"), f"{inferred_lib}_")
-                            for header in headers
-                        )
-                    )
-                    if headers
-                    else set()
-                )
-                if not headers or not source_names <= header_symbols:
-                    findings.append(
-                        f"{row['path']}: adapter exports are not declared by its public C header"
-                    )
-        elif (
-            kind in {"library-support", "test-helper"} and inferred_lib is None and len(owners) != 1
-        ):
-            findings.append(f"{row['path']}: source must belong to exactly one library build root")
-        if kind == "library-support" and (
-            len(relative_path.parts) < LIBRARY_SRC_PATH_PARTS or relative_path.parts[-2] != "src"
-        ):
-            findings.append(f"{row['path']}: library-support source must be under a library src/")
-        names, _ = _zig_exports(path.read_text(encoding="utf-8"))
-        if set(symbols) != names:
-            findings.append(
-                f"{row['path']}: declared symbol inventory differs: "
-                f"missing={', '.join(sorted(names - set(symbols)))}; "
-                f"unexpected={', '.join(sorted(set(symbols) - names))}"
-            )
-        if kind == "test-helper":
-            if "tests" not in relative_path.parts:
-                findings.append(f"{row['path']}: test-helper is outside tests/")
-            contract_roots = [
-                root / owner["build_root"]
-                for owner in owners
-                if isinstance(owner.get("build_root"), str)
-            ]
-            if inferred_lib is not None:
-                contract_roots.append(root / "libs" / inferred_lib)
-            contract_registered = False
-            for contract_root in contract_roots:
-                contract = contract_root / ".zig-test-contract.json"
-                try:
-                    data = json.loads(contract.read_text(encoding="utf-8"))
-                except (OSError, json.JSONDecodeError):
-                    continue
-                registered_paths = set(data.get("test_roots", [])) | set(
-                    data.get("covered_sources", [])
-                )
-                if path.relative_to(contract.parent).as_posix() in registered_paths:
-                    contract_registered = True
-            if not contract_registered:
-                findings.append(
-                    f"{row['path']}: test-helper is not declared by a Zig test contract"
-                )
-        registered.add(path.resolve())
-    discovered: set[Path] = set()
-    for source in repository_root.rglob("*.zig"):
-        if any(part in REPOSITORY_EXCLUDED_PATH_PARTS for part in source.parts):
-            continue
-        relative_parts = source.relative_to(repository_root).parts
-        if relative_parts[: len(PROVISIONED_TOOLCHAIN_PREFIX)] == PROVISIONED_TOOLCHAIN_PREFIX:
-            continue
-        text = source.read_text(encoding="utf-8")
-        names, _ = _zig_exports(text)
-        if names or re.search(r"\b@export\s*\(", _strip_comments(text)):
-            discovered.add(source.resolve())
-        if re.search(r"\b@export\s*\(", _strip_comments(text)):
-            findings.append(
-                "dynamic @export is prohibited at ABI boundaries: "
-                f"{source.relative_to(repository_root)}"
-            )
+        row_findings, declared = _inventory_row_findings(row, libraries, root)
+        findings.extend(row_findings)
+        if declared is not None:
+            registered.add(declared)
+    discovered, discovery_findings = _discovered_export_sources(repository_root)
+    findings.extend(discovery_findings)
     findings.extend(
         f"unregistered Zig export adapter: {source.relative_to(repository_root)}"
         for source in sorted(discovered - registered)
