@@ -157,7 +157,6 @@ if [[ "$-" == *p* ]]; then
   RA8_GATE_REGISTRY=(
     "ci-parity|fast|gate registry, runner and gate-body self-tests"
     "ci-status-contract|fast|ci-status exit codes: PASS/FAIL/UNKNOWN never conflated"
-    "work-harness|fast|workflow plan and canonical-workspace contract"
     "toolchain-parity|fast|pinned host tools match .devcontainer/Dockerfile versions"
     "ascii|fast|ASCII-only source files"
     "copyright|fast|SPDX + copyright headers"

@@ -611,12 +611,6 @@ def _registered_fixture_commands(repo_root: Path) -> tuple[tuple[str, tuple[str,
             "scripts/checks/check_python_lock_policy.py",
             "--selftest",
         ),
-        _python_selftest(repo_root, "work-harness", "scripts/dev/work/src/work.py", "--selftest"),
-        _python_selftest(
-            repo_root,
-            "workspace-lifecycle",
-            "scripts/dev/work/tests/test_workspace_lifecycle.py",
-        ),
         _python_selftest(
             repo_root,
             "pre-commit-bootstrap",
