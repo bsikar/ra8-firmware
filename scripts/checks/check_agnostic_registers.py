@@ -69,7 +69,7 @@ EXCLUDED_BACKEND_FILES = frozenset(
     }
 )
 
-CHIP_ADAPTER_PREFIXES = ("libs/if_ra8_cgc/",)
+CHIP_ADAPTER_PREFIXES = ("libs/if_ra8_cgc/", "libs/ra8_nsc/")
 """Adapter trees that exist to bind a neutral ``fw_if_*`` port to one chip.
 
 A ``libs/if_ra8_*`` tree is the named backend for its port: translating board
@@ -77,6 +77,15 @@ module indices into concrete driver calls is the whole job the port delegates
 to it, so its reach-ins are the seam working rather than debt to burn down.
 Exempting the tree keeps the ratchet aimed at the consumers that should be
 asking the port instead.
+
+``libs/ra8_nsc/`` is here for the same reason from the other direction. Every
+file in it is a ``cmse_nonsecure_entry`` veneer whose entire body validates
+pointers and forwards to the secure driver of the same name. The CGC, GPT and
+GLCDC register blocks are permanently Secure on the RA8D2, so a veneer is the
+only path Non-Secure code has to reach them: there is no port for it to ask
+instead, and routing a veneer through ``fw_if_*`` would just add a hop on the
+Secure side of the boundary. Counting those forwards as debt aims the ratchet
+at the one tree that cannot burn it down.
 """
 
 FAMILY_PATTERNS: dict[str, re.Pattern[str]] = {
