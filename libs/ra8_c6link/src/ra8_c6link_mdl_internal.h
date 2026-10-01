@@ -101,6 +101,130 @@ typedef struct {
 } mdl_chunk_view_t;
 
 /**
+ * @struct mdl_accepted_view_t
+ * @brief One decoded accepted response as flat values.
+ * @details The layout is stated by `src/internal/mdl_session.zig@AcceptedView`.
+ *          The generated message layout is protoc-c output, so it is flattened
+ *          here once rather than mirrored in Zig where a regeneration could
+ *          drift the copy silently.
+ * @since 0.1.0
+ */
+typedef struct {
+  uint32_t protocol_version; /**< Claimed protocol version.            */
+  uint32_t job_id;           /**< Granted remote job identifier.       */
+  uint32_t max_chunk_bytes;  /**< Largest chunk the remote will send.  */
+  uint32_t format;           /**< Generated format enumerator echoed.  */
+  uint32_t unknown_fields;   /**< Count of undecoded generated fields. */
+} mdl_accepted_view_t;
+
+/**
+ * @struct mdl_chunk_key_view_t
+ * @brief The correlation fields of one decoded chunk, as flat values.
+ * @details The layout is stated by `src/internal/mdl_session.zig@ChunkKeyView`.
+ *          Separate from ::mdl_chunk_view_t because correlation runs before the
+ *          body is examined and needs no borrowed spans.
+ * @since 0.1.0
+ */
+typedef struct {
+  uint32_t protocol_version; /**< Claimed protocol version.            */
+  uint32_t job_id;           /**< Claimed remote job identifier.       */
+  uint32_t sequence;         /**< Claimed response sequence.           */
+  uint64_t offset;           /**< Claimed offset of the body bytes.    */
+  uint32_t data_len;         /**< Decoded body length.                 */
+  bool     data_present;     /**< Whether a body pointer was decoded.  */
+  uint32_t unknown_fields;   /**< Count of undecoded generated fields. */
+} mdl_chunk_key_view_t;
+
+/**
+ * @struct mdl_cancelled_view_t
+ * @brief One decoded cancellation acknowledgement as flat values.
+ * @details The layout is stated by `src/internal/mdl_session.zig@CancelledView`.
+ * @since 0.1.0
+ */
+typedef struct {
+  uint32_t protocol_version; /**< Claimed protocol version.            */
+  uint32_t job_id;           /**< Acknowledged remote job identifier.  */
+  int32_t  status;           /**< Remote cancellation status.          */
+  uint32_t unknown_fields;   /**< Count of undecoded generated fields. */
+} mdl_cancelled_view_t;
+
+/**
+ * @brief Decide whether an accepted response opens a usable job.
+ * @details Implemented by `src/internal/mdl_session.zig@acceptedValid`.
+ * @param[in] view Flattened decoded accepted response.
+ * @param[in] requested_format Format the response must echo.
+ * @return Acceptance validity.
+ * @retval true Protocol, job, chunk bound and format all hold.
+ * @retval false Any one of them is wrong.
+ * @pre @p view is non-null.
+ * @post No input or global state is modified.
+ * @note Pure and reentrant.
+ * @since 0.1.0
+ */
+[[nodiscard]] RA8_PRIV bool priv_c6link_mdl_accepted_valid(const mdl_accepted_view_t* view,
+                                                           uint32_t requested_format);
+
+/**
+ * @brief Open the session an accepted response granted.
+ * @details Implemented by `src/internal/mdl_session.zig@activate`.
+ * @param[in] view Flattened decoded accepted response.
+ * @param[out] session Caller session to initialize.
+ * @param[in] requested_format Format recorded on the session.
+ * @pre @p view and @p session are non-null and @p view already validated.
+ * @post @p session is active at sequence and offset zero.
+ * @note Not thread-safe for a shared session.
+ * @since 0.1.0
+ */
+RA8_PRIV void priv_c6link_mdl_session_activate(const mdl_accepted_view_t* view,
+                                               ra8_mdl_session_t*         session,
+                                               uint8_t                    requested_format);
+
+/**
+ * @brief Decide whether a chunk sits where the session is waiting.
+ * @details Implemented by `src/internal/mdl_session.zig@chunkCorrelates`.
+ * @param[in] view Flattened correlation fields of the decoded chunk.
+ * @param[in] session Active caller session.
+ * @param[in] requested_bytes Largest body the caller asked for.
+ * @return Correlation validity.
+ * @retval true Job, sequence, offset and body bound all match.
+ * @retval false Any one of them is wrong.
+ * @pre @p view and @p session are non-null.
+ * @post No input or global state is modified.
+ * @note Pure and reentrant.
+ * @since 0.1.0
+ */
+[[nodiscard]] RA8_PRIV bool priv_c6link_mdl_chunk_correlates(const mdl_chunk_key_view_t* view,
+                                                             const ra8_mdl_session_t*    session,
+                                                             uint32_t requested_bytes);
+
+/**
+ * @brief Decide whether a cancellation acknowledges the active job.
+ * @details Implemented by `src/internal/mdl_session.zig@cancelledValid`.
+ * @param[in] view Flattened decoded cancellation.
+ * @param[in] session Active caller session.
+ * @return Acknowledgement validity.
+ * @retval true Protocol, job and status all hold.
+ * @retval false Any one of them is wrong.
+ * @pre @p view and @p session are non-null.
+ * @post No input or global state is modified.
+ * @note Pure and reentrant.
+ * @since 0.1.0
+ */
+[[nodiscard]] RA8_PRIV bool priv_c6link_mdl_cancelled_valid(const mdl_cancelled_view_t* view,
+                                                            const ra8_mdl_session_t*    session);
+
+/**
+ * @brief Close a session whose cancellation was acknowledged.
+ * @details Implemented by `src/internal/mdl_session.zig@deactivate`.
+ * @param[in,out] session Session to deactivate.
+ * @pre @p session is non-null.
+ * @post @p session is inactive.
+ * @note Not thread-safe for a shared session.
+ * @since 0.1.0
+ */
+RA8_PRIV void priv_c6link_mdl_session_deactivate(ra8_mdl_session_t* session);
+
+/**
  * @brief Validate terminal HTTP metadata carried by one decoded chunk.
  * @details Implemented by `src/internal/mdl_chunk.zig@httpResponseValid`.
  *          Requires a real status only on COMPLETE and bounds every selected
