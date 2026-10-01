@@ -40,7 +40,6 @@ ra8_add_app(
        128K
        SRAM_TEXT
        ra8_flash.c
-       ra8_dfu_program.c
 )
 
 # --- Root of Trust (RA8_ENABLE_ROOT_OF_TRUST): authenticate every launched slot --

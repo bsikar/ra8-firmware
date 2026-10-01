@@ -40,5 +40,4 @@ ra8_add_app(
        128K
        SRAM_TEXT
        ra8_flash.c
-       ra8_dfu_program.c
 )
