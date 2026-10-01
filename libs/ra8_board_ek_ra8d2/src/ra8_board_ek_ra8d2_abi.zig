@@ -30,6 +30,15 @@ const touch = @import("internal/touch.zig");
 const uart_console = @import("internal/uart_console.zig");
 const usb_port = @import("internal/usb_port.zig");
 const usbhs = @import("internal/usbhs.zig");
+const arduino = @import("internal/arduino.zig");
+const board_info = @import("internal/board_info.zig");
+const glcdc = @import("internal/glcdc.zig");
+const glcdc_pins = @import("internal/glcdc_pins.zig");
+const leds = @import("internal/leds.zig");
+const panel = @import("internal/panel.zig");
+const sdhi_pins = @import("internal/sdhi_pins.zig");
+const switches = @import("internal/switches.zig");
+const xspi_pins = @import("internal/xspi_pins.zig");
 const vocab = @import("internal/vocab.zig");
 
 export fn ra8_board_shared_ram(out: ?*dualcore.SharedRam) u32 {
@@ -210,3 +219,119 @@ export fn ra8_board_camera_i2c_ops(out: ?*camera.I2cBusOps) u32 {
     const dst = out orelse return vocab.Err.null_ptr;
     return camera.i2cOps(dst);
 }
+
+export fn ra8_board_get_info(out: ?*hal.BoardInfo) u32 {
+    const dst = out orelse return vocab.Err.invalid_arg;
+    return board_info.fill(dst);
+}
+
+export fn ra8_board_led_pin(led: u8, out_pin: ?*u16) u32 {
+    const dst = out_pin orelse return vocab.Err.null_ptr;
+    return leds.readPin(led, dst);
+}
+
+export fn ra8_board_led_on(led: u8) u32 {
+    return leds.on(led);
+}
+
+export fn ra8_board_led_off(led: u8) u32 {
+    return leds.off(led);
+}
+
+export fn ra8_board_led_toggle(led: u8) u32 {
+    return leds.toggle(led);
+}
+
+export fn ra8_board_sw_pin(sw: u8, out_pin: ?*u16) u32 {
+    const dst = out_pin orelse return vocab.Err.null_ptr;
+    return switches.readPin(sw, dst);
+}
+
+export fn ra8_board_sw_init(sw: u8) u32 {
+    return switches.init(sw);
+}
+
+export fn ra8_board_sw_read(sw: u8, out_pressed: ?*u8) u32 {
+    const dst = out_pressed orelse return vocab.Err.null_ptr;
+    return switches.read(sw, dst);
+}
+
+export fn ra8_board_sw_attach_irq(
+    sw: u8,
+    cb: ?*const fn (?*anyopaque) callconv(.c) void,
+    ctx: ?*anyopaque,
+) u32 {
+    return switches.attachIrq(sw, cb, ctx);
+}
+
+export fn ra8_board_glcdc_init(fmt: u8) u32 {
+    return glcdc.init(fmt);
+}
+
+export fn ra8_board_lcd_panel_power_on() u32 {
+    return panel.powerOn();
+}
+
+export fn ra8_board_backlight_set(on: bool) u32 {
+    return panel.backlight(on);
+}
+
+export fn ra8_board_xspi_pins_init() u32 {
+    return xspi_pins.init();
+}
+
+export fn ra8_board_sdhi_pins_init() u32 {
+    return sdhi_pins.init();
+}
+
+export fn ra8_board_arduino_pin_init(pin: u16, mode: u8) u32 {
+    return arduino.pinInit(pin, mode);
+}
+
+export fn ra8_board_arduino_gpio_write(pin: u16, level: u32) u32 {
+    return arduino.write(pin, level);
+}
+
+export fn ra8_board_arduino_gpio_read(pin: u16, out_level: ?*u32) u32 {
+    const dst = out_level orelse return vocab.Err.null_ptr;
+    return arduino.read(pin, dst);
+}
+
+comptime {
+    // The identity strings and the three GLCDC pin tables are read by name
+    // from C: tests/misc/src/test_ra8_board_ek_ra8d2.c walks the tables and
+    // the connectors header declares all six as extern.
+    @export(&c_board_name, .{ .name = "k_ra8_board_name" });
+    @export(&c_board_doc_rev, .{ .name = "k_ra8_board_doc_rev" });
+    @export(&c_board_mcu, .{ .name = "k_ra8_board_mcu" });
+
+    @export(&c_glcdc_rgb888_pins, .{ .name = "g_ra8_board_glcdc_rgb888_pins" });
+    @export(&c_glcdc_rgb666_pins, .{ .name = "g_ra8_board_glcdc_rgb666_pins" });
+    @export(&c_glcdc_rgb565_pins, .{ .name = "g_ra8_board_glcdc_rgb565_pins" });
+    @export(&c_glcdc_rgb888_pin_count, .{ .name = "g_ra8_board_glcdc_rgb888_pin_count" });
+    @export(&c_glcdc_rgb666_pin_count, .{ .name = "g_ra8_board_glcdc_rgb666_pin_count" });
+    @export(&c_glcdc_rgb565_pin_count, .{ .name = "g_ra8_board_glcdc_rgb565_pin_count" });
+}
+
+const c_board_name: [*:0]const u8 = board_info.name.ptr;
+const c_board_doc_rev: [*:0]const u8 = board_info.doc_rev.ptr;
+const c_board_mcu: [*:0]const u8 = board_info.mcu.ptr;
+
+/// `ra8_board_glcdc_pin_t`: a borrowed signal name and a packed pin.
+const CGlcdcPin = extern struct {
+    signal: [*:0]const u8,
+    pin: u16,
+};
+
+fn cTable(comptime table: []const glcdc_pins.Entry) [table.len]CGlcdcPin {
+    var out: [table.len]CGlcdcPin = undefined;
+    for (table, 0..) |entry, i| out[i] = .{ .signal = entry.signal.ptr, .pin = entry.pin };
+    return out;
+}
+
+const c_glcdc_rgb888_pins = cTable(&glcdc_pins.rgb888);
+const c_glcdc_rgb666_pins = cTable(&glcdc_pins.rgb666);
+const c_glcdc_rgb565_pins = cTable(&glcdc_pins.rgb565);
+const c_glcdc_rgb888_pin_count: u32 = glcdc_pins.rgb888.len;
+const c_glcdc_rgb666_pin_count: u32 = glcdc_pins.rgb666.len;
+const c_glcdc_rgb565_pin_count: u32 = glcdc_pins.rgb565.len;

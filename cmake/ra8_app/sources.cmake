@@ -250,25 +250,39 @@ macro(_ra8_app_collect_sources)
   # library. Register it whenever the build.zig is there, whether the flip is
   # finished or only partway:
   #
-  #   FINISHED (build.zig, no src/ra8_board_<board>.c): every object comes from
-  #   the archive. The glob above can still be non-empty for such a board
-  #   because src/boot/ is globbed with it and filtered out a few lines down,
-  #   so _ra8_board_zig tells the #908 guard the library has a link path --
+  #   FINISHED (no C left outside src/boot/): every object comes from the
+  #   archive. The glob above can still be non-empty for such a board because
+  #   src/boot/ is globbed with it and filtered out a few lines down, so
+  #   _ra8_board_zig tells the #908 guard the library has a link path --
   #   without it the guard would see a compilable library and let the archive
   #   fall out of the link. ra8_board_ra8p1 is the first board in that state
   #   (#2984).
   #
-  #   PARTIAL (build.zig AND src/ra8_board_<board>.c): the archive links BESIDE
-  #   the remaining C objects. _ra8_board_zig stays off, because the glob is
-  #   genuinely non-empty and the #908 guard should keep checking it on the C
-  #   side. Registering the archive is still required, and gating it on the
-  #   absence of the board .c -- as this did before -- silently dropped the
-  #   ported half of such a board out of the link. ra8_board_ek_ra8d2 is the
-  #   first board in that state (#2998).
+  #   PARTIAL (some non-boot C left): the archive links BESIDE the remaining C
+  #   objects. _ra8_board_zig stays off, because the glob is genuinely
+  #   non-empty and the #908 guard should keep checking it on the C side.
+  #   Registering the archive is still required, and gating it on the absence
+  #   of the board .c -- as this did before -- silently dropped the ported
+  #   half of such a board out of the link. ra8_board_ek_ra8d2 is the first
+  #   board in that state (#2998).
+  #
+  #   The flag is read off the filtered source list rather than off
+  #   src/ra8_board_<board>.c by name: with that file ported (#3033) the board
+  #   still has ra8_board_ek_ra8d2_mipi_panel.c compiling beside the archive,
+  #   so a filename test would have declared the board finished and waved the
+  #   guard off a library that is still half C.
   set(_ra8_board_zig "")
   if(EXISTS "${_ra8_board_dir}/build.zig")
     list(APPEND _ra8_lib_zig "ra8_board_${_RA8_APP_BOARD}|${_ra8_board_dir}")
-    if(NOT EXISTS "${_ra8_board_dir}/src/ra8_board_${_RA8_APP_BOARD}.c")
+    set(_ra8_board_c_outside_boot "${_ra8_lib_board}")
+    list(
+      FILTER
+      _ra8_board_c_outside_boot
+      EXCLUDE
+      REGEX
+      "/src/boot/"
+    )
+    if(NOT _ra8_board_c_outside_boot)
       set(_ra8_board_zig ON)
     endif()
   endif()
