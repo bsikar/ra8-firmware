@@ -8,7 +8,7 @@
  *
  * @details
  * The shared authenticity gate. Its one production caller today is
- * **copy-to-run** (``libs/ra8_dfu/src/ra8_dfu_launch.c``): the bootloader must
+ * **copy-to-run** (``libs/ra8_rot_launch`` (``ra8_dfu_launch``)): the bootloader must
  * authenticate a slot image before copying it to SRAM and branching into it.
  *
  * The **BLXNS** boundary (``libs/ra8_tz_secure_boot/src/ra8_tz_secure_boot.c``)
@@ -252,6 +252,23 @@ ra8_rot_verify_image(const uint8_t* body, uint32_t body_len, const ra8_rot_trail
  * @since 0.1.0
  */
 const ra8_rot_trailer_t* ra8_rot_trailer_after(const void* image_base, uint32_t body_len);
+
+/**
+ * @brief The image version an authenticated trailer records.
+ *
+ * The anti-rollback gate reads the version through this accessor rather than
+ * through the struct, so an archive on the other side of the C ABI needs no
+ * copy of the trailer's layout.
+ *
+ * @param[in] trailer Trailer to read; may be `NULL`.
+ * @return The recorded `img_version`, or `0` when @p trailer is `NULL`.
+ *
+ * @note `0` is the lowest version, which the anti-rollback policy rejects on
+ *       any device that has already accepted an image.
+ *
+ * @see ra8_rot_trailer_after
+ */
+uint32_t ra8_rot_trailer_image_version(const ra8_rot_trailer_t* trailer);
 
 /**
  * @brief Expose the provisioned root public key (host / test only).

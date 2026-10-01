@@ -315,6 +315,37 @@ bool ra8_dfu_run_target_valid(uint32_t entry, uint32_t img_len);
 void ra8_dfu_launch(uintptr_t src, uint32_t img_len, uint32_t entry);
 
 /**
+ * @brief Copy-to-run hand-off with NO authentication.
+ *
+ * Checks @p src and cross-checks @p entry with ::ra8_dfu_run_target_valid,
+ * copies @p img_len bytes from @p src to the trusted ::k_ra8_dfu_run_base,
+ * sets the Secure VTOR to the run base and branches to the image's reset
+ * entry. It does not return on a launch.
+ *
+ * This is the whole of ::ra8_dfu_launch minus the root of trust. It lives in
+ * the `ra8_dfu` archive; ::ra8_dfu_launch lives in `ra8_rot_launch` and calls
+ * this one once the image's signature and version have passed.
+ *
+ * @param[in] src     Address of the image body; `0` returns without copying.
+ * @param[in] img_len Body length in bytes; must satisfy
+ *                    ::ra8_dfu_run_target_valid with @p entry.
+ * @param[in] entry   The image's recorded run base; must equal
+ *                    ::k_ra8_dfu_run_base.
+ *
+ * @return Nothing; returns to the caller only when the guards reject the
+ *         image, in which case nothing was copied.
+ *
+ * @warning Launches whatever is at @p src. An app that must authenticate the
+ *          image links `ra8_rot_launch` and calls ::ra8_dfu_launch instead;
+ *          naming this symbol is how an app records that it deliberately
+ *          launches an unauthenticated image (`dfu_copy_to_run`).
+ *
+ * @see ra8_dfu_launch
+ * @see ra8_dfu_run_target_valid
+ */
+void ra8_dfu_launch_unverified(uintptr_t src, uint32_t img_len, uint32_t entry);
+
+/**
  * @brief Pick the active slot from the two slots' validity + sequence.
  *
  * @details

@@ -14,6 +14,7 @@
         .ra8_mem = .{ .path = "libs/ra8_mem" },
         .ra8_dfu = .{ .path = "libs/ra8_dfu" },
         .ra8_rot = .{ .path = "libs/ra8_rot" },
+        .ra8_rot_launch = .{ .path = "libs/ra8_rot_launch" },
         .ra8_psa_crypto = .{ .path = "libs/ra8_psa_crypto" },
         .ra8_abi_fixture = .{ .path = "tests/zig_abi_fixture" },
     },

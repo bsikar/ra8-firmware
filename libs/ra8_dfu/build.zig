@@ -26,6 +26,7 @@ const units = [_]struct { name: []const u8, imports: []const []const u8 }{
     .{ .name = "crc32", .imports = &.{} },
     .{ .name = "err", .imports = &.{} },
     .{ .name = "image", .imports = &.{} },
+    .{ .name = "launch", .imports = &.{"image"} },
     .{ .name = "slot", .imports = &.{} },
     .{ .name = "proto", .imports = &.{} },
     .{ .name = "tune", .imports = &.{} },
@@ -74,6 +75,15 @@ pub fn build(b: *std.Build) void {
         boot_abi_module.addImport(name, modules.get(name).?);
     }
 
+    const launch_abi_module = b.createModule(.{
+        .root_source_file = b.path("src/launch_abi.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    inline for (.{ "image", "launch" }) |name| {
+        launch_abi_module.addImport(name, modules.get(name).?);
+    }
+
     const root_module = b.createModule(.{
         .root_source_file = b.path("src/root.zig"),
         .target = target,
@@ -81,6 +91,7 @@ pub fn build(b: *std.Build) void {
     });
     root_module.addImport("dfu_host_abi", abi_module);
     root_module.addImport("dfu_boot_abi", boot_abi_module);
+    root_module.addImport("launch_abi", launch_abi_module);
 
     const library = b.addLibrary(.{
         .name = "ra8_dfu",
@@ -101,6 +112,7 @@ pub fn build(b: *std.Build) void {
         .optimize = optimize,
     });
     boot_root_module.addImport("dfu_boot_abi", boot_abi_module);
+    boot_root_module.addImport("launch_abi", launch_abi_module);
     const boot_library = b.addLibrary(.{
         .name = "ra8_dfu_boot",
         .linkage = .static,
@@ -127,9 +139,20 @@ pub fn build(b: *std.Build) void {
         boot_test_module.addImport(name, modules.get(name).?);
     }
 
+    const launch_test_module = b.createModule(.{
+        .root_source_file = b.path("tests/launch_test.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    inline for (.{ "image", "launch" }) |name| {
+        launch_test_module.addImport(name, modules.get(name).?);
+    }
+
     const test_step = b.step("test", "Run Zig ra8_dfu tests");
     const tests = b.addTest(.{ .root_module = test_module });
     test_step.dependOn(&b.addRunArtifact(tests).step);
     const boot_tests = b.addTest(.{ .root_module = boot_test_module });
     test_step.dependOn(&b.addRunArtifact(boot_tests).step);
+    const launch_tests = b.addTest(.{ .root_module = launch_test_module });
+    test_step.dependOn(&b.addRunArtifact(launch_tests).step);
 }
