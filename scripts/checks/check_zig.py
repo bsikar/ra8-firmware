@@ -420,7 +420,20 @@ def _calls_host_default_target(root: Path) -> bool:
     """True when `build.zig` takes its default target from the shared helper."""
     build_text = _without_zig_comments((root / "build.zig").read_text(encoding="utf-8"))
     pattern = rf"standardTargetOptions\s*\(\s*\.\{{[^}}]*{HOST_TARGET_HELPER}"
-    return re.search(pattern, build_text, re.S) is not None
+    return re.search(pattern, build_text, re.DOTALL) is not None
+
+
+def _host_target_declaration_error(raw: object) -> str | None:
+    """Why a parsed declaration is not a usable contract, or None when it is."""
+    if not isinstance(raw, dict):
+        return f"{HOST_TARGET_CONTRACT_NAME} must be a JSON object"
+    if raw.get("rule") not in {"host_default", "exempt"}:
+        return f'{HOST_TARGET_CONTRACT_NAME} rule must be "host_default" or "exempt"'
+    if raw.get("rule") == "exempt":
+        reason = raw.get("reason")
+        if not isinstance(reason, str) or not reason.strip():
+            return f"{HOST_TARGET_CONTRACT_NAME} exemption needs a non-empty reason"
+    return None
 
 
 def _host_target_exemption(root: Path) -> tuple[bool, list[str]]:
@@ -432,16 +445,10 @@ def _host_target_exemption(root: Path) -> tuple[bool, list[str]]:
         raw = json.loads(path.read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError) as exc:
         return False, [f"invalid {HOST_TARGET_CONTRACT_NAME}: {exc}"]
-    if not isinstance(raw, dict):
-        return False, [f"{HOST_TARGET_CONTRACT_NAME} must be a JSON object"]
-    if raw.get("rule") not in {"host_default", "exempt"}:
-        return False, [f'{HOST_TARGET_CONTRACT_NAME} rule must be "host_default" or "exempt"']
-    if raw.get("rule") == "host_default":
-        return False, []
-    reason = raw.get("reason")
-    if not isinstance(reason, str) or not reason.strip():
-        return False, [f"{HOST_TARGET_CONTRACT_NAME} exemption needs a non-empty reason"]
-    return True, []
+    error = _host_target_declaration_error(raw)
+    if error:
+        return False, [error]
+    return raw.get("rule") == "exempt", []
 
 
 def _host_target_errors(root: Path) -> list[str]:
