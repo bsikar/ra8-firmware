@@ -225,6 +225,141 @@ RA8_PRIV void priv_c6link_mdl_session_activate(const mdl_accepted_view_t* view,
 RA8_PRIV void priv_c6link_mdl_session_deactivate(ra8_mdl_session_t* session);
 
 /**
+ * @struct mdl_job_view_t
+ * @brief Correlation state of the one job a service may be running
+ * @details Flat read-only copy of the service fields a request is checked
+ * against, so the rules never reach into ::ra8_mdl_service_t.
+ * @since 0.1.0
+ */
+typedef struct mdl_job_view_t {
+  uint64_t next_offset;   /**< Byte offset the next pull must acknowledge. */
+  uint32_t active_job_id; /**< Correlation id of the running job.          */
+  bool     active;        /**< Whether Next or Cancel is currently valid.  */
+} mdl_job_view_t;
+
+/**
+ * @struct mdl_next_request_view_t
+ * @brief Decoded NextRequest fields the correlation rules read
+ * @since 0.1.0
+ */
+typedef struct mdl_next_request_view_t {
+  uint64_t acknowledged_offset; /**< Offset the peer confirms it has.  */
+  uint32_t protocol_version;    /**< Wire version the peer speaks.     */
+  uint32_t job_id;              /**< Job the peer believes is running. */
+  uint32_t max_bytes;           /**< Body bytes the peer will accept.  */
+} mdl_next_request_view_t;
+
+/**
+ * @struct mdl_cancel_request_view_t
+ * @brief Decoded CancelRequest fields the correlation rules read
+ * @since 0.1.0
+ */
+typedef struct mdl_cancel_request_view_t {
+  uint32_t protocol_version; /**< Wire version the peer speaks. */
+  uint32_t job_id;           /**< Job the peer wants cancelled. */
+} mdl_cancel_request_view_t;
+
+/**
+ * @struct mdl_pull_view_t
+ * @brief One backend pull with the service state it must agree with
+ * @since 0.1.0
+ */
+typedef struct mdl_pull_view_t {
+  uint64_t next_offset;     /**< Offset this pull starts at.            */
+  uint64_t total;           /**< Declared artifact size, 0 if unknown.  */
+  uint32_t next_sequence;   /**< Sequence this pull would be packed as. */
+  uint32_t max_data;        /**< Body bytes the peer permitted.         */
+  uint16_t got;             /**< Body bytes the backend returned.       */
+  bool     complete;        /**< Whether the pull is terminal.          */
+  bool     response_valid;  /**< Whether terminal metadata is sane.     */
+  int32_t  response_status; /**< HTTP status the backend reported.      */
+} mdl_pull_view_t;
+
+/**
+ * @struct mdl_advance_t
+ * @brief Job state after one pull has been read, packed, and sent
+ * @since 0.1.0
+ */
+typedef struct mdl_advance_t {
+  uint64_t next_offset;   /**< Offset the following pull must start at. */
+  uint32_t next_sequence; /**< Sequence the following pull must carry.  */
+  bool     active;        /**< Whether the job outlived this pull.      */
+} mdl_advance_t;
+
+/**
+ * @brief Whether a NextRequest may act on the service's active job
+ * @param[in] request Decoded request fields.
+ * @param[in] job Live service correlation state.
+ * @return Whether version, job id, acknowledged offset, and the requested
+ * bound all agree with the running job.
+ * @pre @p request and @p job are non-null.
+ * @post No input is modified.
+ * @note Pure and reentrant.
+ * @since 0.1.0
+ */
+[[nodiscard]] RA8_PRIV bool priv_c6link_mdl_pull_next_correlates(
+  const mdl_next_request_view_t* request,
+  const mdl_job_view_t*          job);
+
+/**
+ * @brief Whether a CancelRequest may act on the service's active job
+ * @param[in] request Decoded request fields.
+ * @param[in] job Live service correlation state.
+ * @return Whether version and job id agree with the running job.
+ * @pre @p request and @p job are non-null.
+ * @post No input is modified.
+ * @note Pure and reentrant.
+ * @since 0.1.0
+ */
+[[nodiscard]] RA8_PRIV bool priv_c6link_mdl_pull_cancel_correlates(
+  const mdl_cancel_request_view_t* request,
+  const mdl_job_view_t*            job);
+
+/**
+ * @brief Offset just past a returned body
+ * @param[in] next_offset Offset the pull started at.
+ * @param[in] got Body bytes returned.
+ * @param[out] overflowed Set when the sum would wrap.
+ * @return The end offset, or zero when @p overflowed is set.
+ * @pre @p overflowed is non-null.
+ * @post Only @p overflowed is written.
+ * @note Pure and reentrant.
+ * @since 0.1.0
+ */
+[[nodiscard]] RA8_PRIV uint64_t priv_c6link_mdl_pull_end_offset(uint64_t next_offset,
+                                                                uint16_t got,
+                                                                bool*    overflowed);
+
+/**
+ * @brief Whether a backend pull is coherent enough to pack
+ * @param[in] view The pull and the service state it must agree with.
+ * @return Whether byte count, terminal shape, sequence room, declared total,
+ * and response metadata are all consistent.
+ * @pre @p view is non-null.
+ * @post No input is modified.
+ * @note Pure and reentrant.
+ * @since 0.1.0
+ */
+[[nodiscard]] RA8_PRIV bool priv_c6link_mdl_pull_coherent(const mdl_pull_view_t* view);
+
+/**
+ * @brief Job state after one pull was read, packed, and sent
+ * @param[in] next_offset Offset the pull started at.
+ * @param[in] next_sequence Sequence the pull was packed as.
+ * @param[in] got Body bytes returned.
+ * @param[in] complete Whether the pull was terminal.
+ * @return The offset, sequence, and active flag the service adopts.
+ * @pre The pull passed ::priv_c6link_mdl_pull_coherent.
+ * @post No input is modified.
+ * @note Pure and reentrant.
+ * @since 0.1.0
+ */
+[[nodiscard]] RA8_PRIV mdl_advance_t priv_c6link_mdl_pull_advance(uint64_t next_offset,
+                                                                  uint32_t next_sequence,
+                                                                  uint16_t got,
+                                                                  bool     complete);
+
+/**
  * @brief Validate terminal HTTP metadata carried by one decoded chunk.
  * @details Implemented by `src/internal/mdl_chunk.zig@httpResponseValid`.
  *          Requires a real status only on COMPLETE and bounds every selected

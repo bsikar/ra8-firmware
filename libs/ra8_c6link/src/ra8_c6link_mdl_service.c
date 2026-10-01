@@ -444,19 +444,21 @@ static ra8_err_t internal_mdl_read_next(ra8_mdl_service_t*        service,
   if (read != k_ra8_ok) {
     return internal_mdl_fail_job(service, read);
   }
-  const bool offset_overflow = service->next_offset > (UINT64_MAX - result->got);
-  result->end_offset         = offset_overflow ? 0U : service->next_offset + result->got;
-  bool total_invalid         = false;
-  if (result->complete) {
-    total_invalid = result->end_offset != result->total;
-  } else if (result->total != 0U) {
-    total_invalid = result->end_offset > result->total;
-  }
-  if ((result->got > max_data) || ((!result->complete) && (result->got == 0U)) ||
-      (result->complete && (result->got != 0U)) || offset_overflow || total_invalid ||
-      (service->next_sequence == UINT32_MAX) ||
-      (result->complete && !priv_c6link_mdl_service_response_valid(&result->response)) ||
-      (!result->complete && (result->response.status != 0))) {
+  bool           overflowed = false;
+  const uint64_t end = priv_c6link_mdl_pull_end_offset(service->next_offset, result->got,
+                                                       &overflowed);
+  result->end_offset = end;
+  const mdl_pull_view_t view = {
+    .next_offset     = service->next_offset,
+    .total           = result->total,
+    .next_sequence   = service->next_sequence,
+    .max_data        = max_data,
+    .got             = result->got,
+    .complete        = result->complete,
+    .response_valid  = priv_c6link_mdl_service_response_valid(&result->response),
+    .response_status = result->response.status,
+  };
+  if (!priv_c6link_mdl_pull_coherent(&view)) {
     return internal_mdl_fail_job(service, k_ra8_err_protocol_error);
   }
   return k_ra8_ok;
@@ -541,10 +543,18 @@ RA8_INTERNAL static ra8_err_t internal_mdl_dispatch_next(ra8_mdl_service_t*  ser
   if (req->base.n_unknown_fields != 0U) {
     return k_ra8_err_protocol_error;
   }
-  if ((req->protocol_version != k_ra8_mdl_protocol_version) || !service->active ||
-      (req->job_id != service->active_job_id) ||
-      (req->acknowledged_offset != service->next_offset) || (req->max_bytes == 0U) ||
-      (req->max_bytes > k_ra8_mdl_chunk_data_max)) {
+  const mdl_next_request_view_t next_view = {
+    .acknowledged_offset = req->acknowledged_offset,
+    .protocol_version    = req->protocol_version,
+    .job_id              = req->job_id,
+    .max_bytes           = req->max_bytes,
+  };
+  const mdl_job_view_t next_job = {
+    .next_offset   = service->next_offset,
+    .active_job_id = service->active_job_id,
+    .active        = service->active,
+  };
+  if (!priv_c6link_mdl_pull_next_correlates(&next_view, &next_job)) {
     return k_ra8_err_invalid_state;
   }
 
@@ -566,11 +576,12 @@ RA8_INTERNAL static ra8_err_t internal_mdl_dispatch_next(ra8_mdl_service_t*  ser
   if (packed != k_ra8_ok) {
     return internal_mdl_fail_job(service, packed);
   }
-  service->next_offset += result.got;
-  service->next_sequence += 1U;
-  if (result.complete) {
-    service->active = false;
-  }
+  const mdl_advance_t advanced =
+    priv_c6link_mdl_pull_advance(service->next_offset, service->next_sequence, result.got,
+                                 result.complete);
+  service->next_offset   = advanced.next_offset;
+  service->next_sequence = advanced.next_sequence;
+  service->active        = advanced.active;
   return k_ra8_ok;
 }
 
@@ -615,8 +626,16 @@ RA8_INTERNAL static ra8_err_t internal_mdl_dispatch_cancel(ra8_mdl_service_t*  s
   if (req->base.n_unknown_fields != 0U) {
     return k_ra8_err_protocol_error;
   }
-  if ((req->protocol_version != k_ra8_mdl_protocol_version) || !service->active ||
-      (req->job_id != service->active_job_id)) {
+  const mdl_cancel_request_view_t cancel_view = {
+    .protocol_version = req->protocol_version,
+    .job_id           = req->job_id,
+  };
+  const mdl_job_view_t cancel_job = {
+    .next_offset   = service->next_offset,
+    .active_job_id = service->active_job_id,
+    .active        = service->active,
+  };
+  if (!priv_c6link_mdl_pull_cancel_correlates(&cancel_view, &cancel_job)) {
     return k_ra8_err_invalid_state;
   }
   Ra8__Mdl__Cancelled out  = RA8__MDL__CANCELLED__INIT;

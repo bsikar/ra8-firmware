@@ -18,6 +18,7 @@ const mdl_request = @import("internal/mdl_request.zig");
 const mdl_chunk = @import("internal/mdl_chunk.zig");
 const mdl_service_rules = @import("internal/mdl_service_rules.zig");
 const mdl_session = @import("internal/mdl_session.zig");
+const mdl_pull = @import("internal/mdl_pull.zig");
 pub const mdl_types = @import("internal/mdl_types.zig");
 const storage_ram = @import("internal/storage_ram.zig");
 const tlv = @import("internal/tlv.zig");
@@ -415,4 +416,46 @@ pub export fn priv_c6link_mdl_service_response_size_ok(
     response_cap: usize,
 ) callconv(.c) bool {
     return mdl_service_rules.responseSizeOk(len, response_cap);
+}
+
+/// `priv_c6link_mdl_pull_next_correlates`: a NextRequest against the live job.
+pub export fn priv_c6link_mdl_pull_next_correlates(
+    request: *const mdl_pull.NextRequestView,
+    job: *const mdl_pull.JobView,
+) bool {
+    return mdl_pull.nextCorrelates(request, job);
+}
+
+/// `priv_c6link_mdl_pull_cancel_correlates`: a CancelRequest against the job.
+pub export fn priv_c6link_mdl_pull_cancel_correlates(
+    request: *const mdl_pull.CancelRequestView,
+    job: *const mdl_pull.JobView,
+) bool {
+    return mdl_pull.cancelCorrelates(request, job);
+}
+
+/// `priv_c6link_mdl_pull_end_offset`: offset past the body, 0 on overflow.
+pub export fn priv_c6link_mdl_pull_end_offset(
+    next_offset: u64,
+    got: u16,
+    overflowed: *bool,
+) u64 {
+    const end = mdl_pull.endOffset(next_offset, got);
+    overflowed.* = end == null;
+    return end orelse 0;
+}
+
+/// `priv_c6link_mdl_pull_coherent`: whether a backend pull may be packed.
+pub export fn priv_c6link_mdl_pull_coherent(view: *const mdl_pull.PullView) bool {
+    return mdl_pull.pullCoherent(view);
+}
+
+/// `priv_c6link_mdl_pull_advance`: job state after one packed pull.
+pub export fn priv_c6link_mdl_pull_advance(
+    next_offset: u64,
+    next_sequence: u32,
+    got: u16,
+    complete: bool,
+) mdl_pull.Advance {
+    return mdl_pull.advance(next_offset, next_sequence, got, complete);
 }
