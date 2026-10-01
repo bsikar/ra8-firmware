@@ -343,8 +343,8 @@ def parse_listfile(root: Path, rel: str) -> list[Image]:
     listfile = Listfile(text, app_dir, globs, setvars, rel)
     images += handrolled_images(listfile, {i.target for i in images})
     for image in images:
-        collect_opt_in(text, app_dir, globs, image)
-        collect_added(text, app_dir, globs, image)
+        collect_opt_in(listfile, image)
+        collect_added(listfile, image)
     return images
 
 
@@ -399,37 +399,50 @@ def handrolled_images(listfile: Listfile, helper_owned: set[str]) -> list[Image]
     return images
 
 
-def collect_opt_in(text: str, app_dir: str, globs: dict[str, list[str]], image: Image) -> None:
+def collect_opt_in(listfile: Listfile, image: Image) -> None:
     """Attach ``ra8_cpu1_add_first_party_sources()`` tokens to ``image`` as COVERED.
 
     That helper does the ``target_sources()`` AND puts the per-source warning
     profile on the same files, so a source routed through it is on the bar.
     An unresolvable token still fails: a blind parse must not read as coverage.
+
+    The target token is expanded before it is matched, exactly as
+    ``handrolled_images()`` expands the ``add_executable()`` one: an app that
+    names its image ``${CPU1_NAME}.elf`` would otherwise match nothing here and
+    its opt-in would read as no coverage at all.
     """
-    for match in re.finditer(rf"{FIRST_PARTY_HELPER}\s*\(", text):
-        block = call_block(text, match.start())
+    for match in re.finditer(rf"{FIRST_PARTY_HELPER}\s*\(", listfile.text):
+        block = call_block(listfile.text, match.start())
         tokens = block.split()
-        if not tokens or tokens[0] != image.target:
+        if not tokens or expand_vars(tokens[0], listfile.setvars) != image.target:
             continue
         for token in tokens[1:]:
-            hits = resolve_source(token, app_dir, globs)
+            hits = resolve_source(
+                expand_vars(token, listfile.setvars), listfile.app_dir, listfile.globs
+            )
             if hits is None:
                 image.unresolved.append(token)
             else:
                 image.covered += hits
 
 
-def collect_added(text: str, app_dir: str, globs: dict[str, list[str]], image: Image) -> None:
-    """Attach the app's own ``target_sources()`` tokens to ``image``."""
-    for match in re.finditer(r"target_sources\s*\(", text):
-        block = call_block(text, match.start())
+def collect_added(listfile: Listfile, image: Image) -> None:
+    """Attach the app's own ``target_sources()`` tokens to ``image``.
+
+    Target and source tokens are expanded, for the same reason as in
+    ``collect_opt_in()``: a ``${CPU1_NAME}.elf`` image must not go unseen.
+    """
+    for match in re.finditer(r"target_sources\s*\(", listfile.text):
+        block = call_block(listfile.text, match.start())
         tokens = block.split()
-        if not tokens or tokens[0] != image.target:
+        if not tokens or expand_vars(tokens[0], listfile.setvars) != image.target:
             continue
         for token in tokens[1:]:
             if token in ("PRIVATE", "PUBLIC", "INTERFACE"):
                 continue
-            hits = resolve_source(token, app_dir, globs)
+            hits = resolve_source(
+                expand_vars(token, listfile.setvars), listfile.app_dir, listfile.globs
+            )
             if hits is None:
                 image.unresolved.append(token)
             else:
@@ -598,6 +611,25 @@ HANDROLLED_EXTRA = """\
     """
 
 ROLLED_ROW = "rolled_cpu1.elf libs/ra8_core/src/ra8_log.c\n"
+
+# The hand-rolled image again, with its opt-in call naming the target by
+# VARIABLE and handing it a source that does not exist. An unresolvable token
+# is reported ONLY once the call has been matched to the image, so this fixture
+# stays silent unless collect_opt_in() expands ${CPU1_NAME} before comparing.
+# Silence is what a skipped call and a covered source look like alike, which is
+# why the assertion hangs on UNRESOLVED rather than on coverage.
+ROLLED_OPT_IN_EXTRA = """\
+    set(CPU1_NAME rolled_cpu1)
+    add_executable(
+      ${CPU1_NAME}.elf
+      ${RA8_REPO_ROOT}/libs/ra8_core/src/ra8_log.c
+    )
+    ra8_cpu1_add_first_party_sources(
+      ${CPU1_NAME}.elf
+      ${NOT_A_VARIABLE}/ghost.c
+    )
+    target_compile_options(${CPU1_NAME}.elf PRIVATE -mcpu=cortex-m33 -Os)
+    """
 _SOUP_SRC = "apps/shared_libs/third_party/miniz/miniz.c"
 
 
@@ -605,6 +637,7 @@ def selftest_cases() -> list[tuple[str, str, str, str]]:
     """(name, inventory text, substring the findings must contain, listfile) tuples."""
     ipc_row = "demo_cpu1.elf libs/ra8_hal/src/ra8_ipc.c\n"
     rolled = FIXTURE_LISTFILE + textwrap.dedent(HANDROLLED_EXTRA)
+    rolled_opt_in = FIXTURE_LISTFILE + textwrap.dedent(ROLLED_OPT_IN_EXTRA)
     one = "#! rows: 1\n"
     two = "#! rows: 2\n"
     return [
@@ -638,6 +671,12 @@ def selftest_cases() -> list[tuple[str, str, str, str]]:
         ),
         ("hand-rolled CPU1 escape fires", one + ipc_row, "not in .github", rolled),
         ("hand-rolled CPU1 escape inventoried is quiet", two + ipc_row + ROLLED_ROW, "", rolled),
+        (
+            "opt-in naming a ${VAR} target is matched to that image",
+            two + ipc_row + ROLLED_ROW,
+            "${NOT_A_VARIABLE}/ghost.c",
+            rolled_opt_in,
+        ),
     ]
 
 
