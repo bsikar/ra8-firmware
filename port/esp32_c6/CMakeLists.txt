@@ -31,3 +31,9 @@ idf_component_register(
 # the 9 + 2 findings the RA8-side flags exist for. Both flags were therefore
 # masking nothing on this target and are deleted.
 target_compile_options(${COMPONENT_LIB} PRIVATE -std=gnu23)
+
+# The service rules ra8_c6link_mdl_service.c calls are Zig (#3080 on);
+# coprocessor/esp32c6/build.sh builds them with `zig build c6-service` and
+# stages the archive here (#3195).
+add_prebuilt_library(ra8_c6link_mdl_service_zig "lib/libra8_c6link_mdl_service.a")
+target_link_libraries(${COMPONENT_LIB} PRIVATE ra8_c6link_mdl_service_zig)
