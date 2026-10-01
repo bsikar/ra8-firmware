@@ -374,7 +374,7 @@ fn addCrossApp(
     // THREADX_HEAP / CPU1_IMAGE do not inject through those two INCLUDE
     // points: ra8_add_app() writes a third script that INCLUDEs the board map
     // and appends to it, and -T takes that one (sources.cmake:1235-1238).
-    if (ld_fragments.composes(app)) {
+    if (ld_fragments.composes(b, app)) {
         link.addPrefixedFileArg("-T", fragments.path(b, ld_fragments.composed_name));
     } else {
         link.addPrefixedFileArg("-T", b.path(app.linker_script));
