@@ -7,7 +7,7 @@
 # HAL implementations, named backend translation units, board composition
 # libraries, tests, vendored code, and generated code are outside this ratchet.
 #
-# clock: 436 reference(s)
+# clock: 424 reference(s)
 # display: 9 reference(s)
 # gpio: 78 reference(s)
 # timer: 51 reference(s)
@@ -111,14 +111,14 @@ examples/ek_ra8d2/hw_pending/secure_boot_ns_hil/src/system_init.c	clock	1
 examples/ek_ra8d2/hw_pending/smbus_demo/src/main.c	clock	3
 examples/ek_ra8d2/hw_pending/tls_client/src/main.c	clock	2
 examples/ek_ra8d2/hw_pending/webp_decode_demo/src/main.c	clock	2
-examples/ek_ra8d2/hw_validated/c6/c6_fw_version/src/main.c	clock	3
-examples/ek_ra8d2/hw_validated/c6/c6_hosted_init/src/main.c	clock	3
+examples/ek_ra8d2/hw_validated/c6/c6_fw_version/src/main.c	clock	1
+examples/ek_ra8d2/hw_validated/c6/c6_hosted_init/src/main.c	clock	1
 examples/ek_ra8d2/hw_validated/c6/c6_spi_probe/src/c6_sideband.c	gpio	17
 examples/ek_ra8d2/hw_validated/c6/c6_spi_probe/src/c6_xfer.c	gpio	2
-examples/ek_ra8d2/hw_validated/c6/c6_spi_probe/src/main.c	clock	3
-examples/ek_ra8d2/hw_validated/c6/c6_wifi_join/src/main.c	clock	3
-examples/ek_ra8d2/hw_validated/c6/c6_wifi_link/src/main.c	clock	3
-examples/ek_ra8d2/hw_validated/c6/wifi_hal_join/src/main.c	clock	3
+examples/ek_ra8d2/hw_validated/c6/c6_spi_probe/src/main.c	clock	1
+examples/ek_ra8d2/hw_validated/c6/c6_wifi_join/src/main.c	clock	1
+examples/ek_ra8d2/hw_validated/c6/c6_wifi_link/src/main.c	clock	1
+examples/ek_ra8d2/hw_validated/c6/wifi_hal_join/src/main.c	clock	1
 examples/ek_ra8d2/hw_validated/hil/acmphs_compare/src/main.c	clock	2
 examples/ek_ra8d2/hw_validated/hil/adc_b_demo/src/main.c	clock	2
 examples/ek_ra8d2/hw_validated/hil/agt_cascade_demo/src/main.c	clock	2
