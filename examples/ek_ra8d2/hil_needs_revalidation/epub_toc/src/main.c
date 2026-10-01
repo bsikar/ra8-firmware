@@ -83,12 +83,6 @@ typedef enum : uint32_t {
   k_etoc_entry0    = 0U,          /**< Entry-0 -> spine index 0.      */
 } etoc_expect_t;
 
-/** @brief Pmod2 SPI pins (J25) -- SCI0 Simple-SPI; CS held by GPIO. */
-static const ra8_port_pin_t k_etoc_pin_sck  = (ra8_port_pin_t)k_ra8_board_pmod2_spi_sck;
-static const ra8_port_pin_t k_etoc_pin_cipo = (ra8_port_pin_t)k_ra8_board_pmod2_spi_cipo;
-static const ra8_port_pin_t k_etoc_pin_copi = (ra8_port_pin_t)k_ra8_board_pmod2_spi_copi;
-static const ra8_port_pin_t k_etoc_pin_cs   = (ra8_port_pin_t)k_ra8_board_pmod2_spi_cs;
-
 /** @brief SD paths for the three baked books (8.3 short names; ra8_fs root-only). */
 static const char k_etoc_path_ncx[] = "TOCNCX.EPB";
 static const char k_etoc_path_nav[] = "TOCNAV.EPB";
@@ -210,7 +204,7 @@ static ra8_err_t etoc_spi_set_clock(void* ctx, uint32_t hz)
 static ra8_err_t etoc_spi_cs(void* ctx, bool asserted)
 {
   (void)ctx;
-  return ra8_gpio_write(k_etoc_pin_cs, asserted ? k_ra8_level_low : k_ra8_level_high);
+  return ra8_board_pmod2_spi_cs_set(asserted);
 }
 
 /** @brief ra8_sdmmc_spi_transport_t::xfer over ra8_sci_spi_xfer. */
@@ -223,19 +217,7 @@ static ra8_err_t etoc_spi_xfer(void* ctx, const uint8_t* tx, uint8_t* rx, uint32
 /** @brief Route Pmod2 SPI pins and claim CS as a GPIO output (idle high). */
 [[nodiscard]] static ra8_err_t etoc_spi_pins_init(void)
 {
-  ra8_err_t err = ra8_pfs_route_peripheral(k_etoc_pin_sck, k_ra8_psel_sci_async, "etoc.sck");
-  if (err != k_ra8_ok) {
-    return err;
-  }
-  err = ra8_pfs_route_peripheral(k_etoc_pin_cipo, k_ra8_psel_sci_async, "etoc.cipo");
-  if (err != k_ra8_ok) {
-    return err;
-  }
-  err = ra8_pfs_route_peripheral(k_etoc_pin_copi, k_ra8_psel_sci_async, "etoc.copi");
-  if (err != k_ra8_ok) {
-    return err;
-  }
-  return ra8_gpio_output_init(k_etoc_pin_cs, k_ra8_level_high);
+  return ra8_board_pmod2_spi_bus_init();
 }
 
 /** @brief Bring up CGC + SysTick + console SCI + SPI + CS GPIO; halt on fail. */

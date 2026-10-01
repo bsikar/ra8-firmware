@@ -83,42 +83,6 @@ typedef enum : uint32_t {
 } pc_consts_t;
 
 /**
- * @var s_pc_pin_sck
- * @brief Pmod2 SCI clock pin used by the SD-card transport.
- * @details Resolves the board manifest's J25 clock route once at compile time.
- * @note Immutable for the lifetime of the application.
- * @since 0.1.0
- */
-static const ra8_port_pin_t s_pc_pin_sck = (ra8_port_pin_t)k_ra8_board_pmod2_spi_sck;
-
-/**
- * @var s_pc_pin_cipo
- * @brief Pmod2 controller-input/peripheral-output pin.
- * @details Carries SD-card data toward SCI0 during SPI transfers.
- * @note Immutable for the lifetime of the application.
- * @since 0.1.0
- */
-static const ra8_port_pin_t s_pc_pin_cipo = (ra8_port_pin_t)k_ra8_board_pmod2_spi_cipo;
-
-/**
- * @var s_pc_pin_copi
- * @brief Pmod2 controller-output/peripheral-input pin.
- * @details Carries SCI0 command and payload data toward the SD card.
- * @note Immutable for the lifetime of the application.
- * @since 0.1.0
- */
-static const ra8_port_pin_t s_pc_pin_copi = (ra8_port_pin_t)k_ra8_board_pmod2_spi_copi;
-
-/**
- * @var s_pc_pin_cs
- * @brief GPIO-driven active-low SD-card chip-select pin.
- * @details Uses the board manifest's Pmod2 chip-select route outside SCI0.
- * @note Initialized high before the SD transport is invoked.
- * @since 0.1.0
- */
-static const ra8_port_pin_t s_pc_pin_cs = (ra8_port_pin_t)k_ra8_board_pmod2_spi_cs;
-
-/**
  * @var s_pc_font_path
  * @brief Root-directory 8.3 name for the persisted font.
  * @details The filesystem layer is root-only, so no directory prefix is used.
@@ -370,7 +334,7 @@ RA8_INTERNAL static ra8_err_t internal_pc_spi_set_clock(void* ctx, uint32_t hz)
 RA8_INTERNAL static ra8_err_t internal_pc_spi_cs(void* ctx, bool asserted)
 {
   (void)ctx;
-  return ra8_gpio_write(s_pc_pin_cs, asserted ? k_ra8_level_low : k_ra8_level_high);
+  return ra8_board_pmod2_spi_cs_set(asserted);
 }
 
 /**
@@ -414,19 +378,7 @@ internal_pc_spi_xfer(void* ctx, const uint8_t* tx, uint8_t* rx, uint32_t len)
  */
 [[nodiscard]] RA8_INTERNAL static ra8_err_t internal_pc_spi_pins_init(void)
 {
-  ra8_err_t err = ra8_pfs_route_peripheral(s_pc_pin_sck, k_ra8_psel_sci_async, "pc.sck");
-  if (err != k_ra8_ok) {
-    return err;
-  }
-  err = ra8_pfs_route_peripheral(s_pc_pin_cipo, k_ra8_psel_sci_async, "pc.cipo");
-  if (err != k_ra8_ok) {
-    return err;
-  }
-  err = ra8_pfs_route_peripheral(s_pc_pin_copi, k_ra8_psel_sci_async, "pc.copi");
-  if (err != k_ra8_ok) {
-    return err;
-  }
-  return ra8_gpio_output_init(s_pc_pin_cs, k_ra8_level_high);
+  return ra8_board_pmod2_spi_bus_init();
 }
 
 /**
