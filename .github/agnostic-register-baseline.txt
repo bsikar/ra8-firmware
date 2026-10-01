@@ -9,7 +9,7 @@
 #
 # clock: 280 reference(s)
 # display: 6 reference(s)
-# gpio: 59 reference(s)
+# gpio: 45 reference(s)
 # timer: 47 reference(s)
 #
 # path<TAB>family<TAB>count
@@ -26,12 +26,9 @@ examples/_unsupported/usb_audio_device/src/main.c	clock	1
 examples/ek_ra8d2/hil_needs_revalidation/bkup_survival_demo/src/main.c	clock	1
 examples/ek_ra8d2/hil_needs_revalidation/compress_demo/src/main.c	clock	1
 examples/ek_ra8d2/hil_needs_revalidation/epub_open/src/main.c	clock	1
-examples/ek_ra8d2/hil_needs_revalidation/epub_open/src/main.c	gpio	2
 examples/ek_ra8d2/hil_needs_revalidation/epub_parse/src/main.c	clock	1
 examples/ek_ra8d2/hil_needs_revalidation/epub_toc/src/main.c	clock	1
-examples/ek_ra8d2/hil_needs_revalidation/epub_toc/src/main.c	gpio	2
 examples/ek_ra8d2/hil_needs_revalidation/ereader_shelf/src/main.c	clock	1
-examples/ek_ra8d2/hil_needs_revalidation/ereader_shelf/src/sh_sd.c	gpio	2
 examples/ek_ra8d2/hil_needs_revalidation/gpt_irq_demo/src/main.c	clock	1
 examples/ek_ra8d2/hil_needs_revalidation/gpt_irq_demo/src/main.c	timer	3
 examples/ek_ra8d2/hil_needs_revalidation/lpm_deep_standby_1_demo/src/main.c	clock	1
@@ -47,7 +44,6 @@ examples/ek_ra8d2/hil_needs_revalidation/mem_ecc_fault_demo/src/main.c	clock	1
 examples/ek_ra8d2/hil_needs_revalidation/mem_subsystem/src/main.c	clock	1
 examples/ek_ra8d2/hil_needs_revalidation/mpu_partition_simple/src/main.c	clock	1
 examples/ek_ra8d2/hil_needs_revalidation/pagecache/src/main.c	clock	1
-examples/ek_ra8d2/hil_needs_revalidation/pagecache/src/main.c	gpio	2
 examples/ek_ra8d2/hil_needs_revalidation/pdg_delay_demo/src/main.c	clock	1
 examples/ek_ra8d2/hil_needs_revalidation/poeg_safe_shutoff/src/main.c	clock	1
 examples/ek_ra8d2/hil_needs_revalidation/poeg_safe_shutoff/src/main.c	timer	4
@@ -177,7 +173,6 @@ examples/ek_ra8d2/hw_validated/hil/fault_crashlog_hil/src/main.c	clock	1
 examples/ek_ra8d2/hw_validated/hil/fault_div0_hil/src/main.c	clock	1
 examples/ek_ra8d2/hw_validated/hil/flash_journal/src/main.c	clock	1
 examples/ek_ra8d2/hw_validated/hil/fs_format_mount/src/main.c	clock	1
-examples/ek_ra8d2/hw_validated/hil/fs_format_mount/src/main.c	gpio	2
 examples/ek_ra8d2/hw_validated/hil/glcdc_render/src/main.c	clock	1
 examples/ek_ra8d2/hw_validated/hil/glcdc_render/src/main.c	display	1
 examples/ek_ra8d2/hw_validated/hil/gpio_input_demo/src/main.c	clock	1
@@ -218,7 +213,6 @@ examples/ek_ra8d2/hw_validated/hil/threadx_systick_retune/src/main.c	clock	1
 examples/ek_ra8d2/hw_validated/hil/timer_capture_demo/src/main.c	clock	1
 examples/ek_ra8d2/hw_validated/hil/timer_capture_demo/src/main.c	timer	3
 examples/ek_ra8d2/hw_validated/hil/tz_secure_only_sd/src/main.c	clock	1
-examples/ek_ra8d2/hw_validated/hil/tz_secure_only_sd/src/main.c	gpio	2
 examples/ek_ra8d2/hw_validated/hil/uart_hello/src/main.c	clock	1
 examples/ek_ra8d2/hw_validated/hil/uart_irq_echo/src/main.c	clock	1
 examples/ek_ra8d2/hw_validated/hil/ulpt_demo/src/main.c	clock	1
@@ -230,7 +224,6 @@ examples/ek_ra8d2/hw_validated/hil/usb_selftest_fs_host/src/main.c	clock	3
 examples/ek_ra8d2/hw_validated/hil/usb_selftest_hid/src/main.c	clock	3
 examples/ek_ra8d2/hw_validated/hil/usb_selftest_hs_host/src/main.c	clock	3
 examples/ek_ra8d2/hw_validated/hil/usb_selftest_microsd/src/main.c	clock	3
-examples/ek_ra8d2/hw_validated/hil/usb_selftest_microsd/src/main.c	gpio	2
 examples/ek_ra8d2/hw_validated/hil/usb_selftest_mlun/src/main.c	clock	3
 examples/ek_ra8d2/hw_validated/hil/usb_selftest_ospi/src/main.c	clock	3
 examples/ek_ra8d2/hw_validated/hil/usb_selftest_ospi_rw/src/main.c	clock	3
