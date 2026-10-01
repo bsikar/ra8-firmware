@@ -49,38 +49,6 @@ typedef struct {
 } mdl_take_ctx_t;
 
 /**
- * @brief Validate one optional HTTP field against its protocol bound.
- * @details Treats null as absent and rejects CR/LF header injection.
- * @param[in] text Optional NUL-terminated field.
- * @param[in] cap Maximum extent including NUL.
- * @return Field validity.
- * @retval true Field is absent or bounded and single-line.
- * @retval false Field is unterminated, too large, or contains CR/LF.
- * @pre @p cap is nonzero.
- * @pre Non-null @p text is readable through its first NUL or @p cap bytes.
- * @post No input or global state is modified.
- * @post True guarantees the field can be encoded within its fixed bound.
- * @note Pure and reentrant.
- * @since 0.1.0
- */
-RA8_INTERNAL static bool internal_mdl_http_field_valid(const char* text, size_t cap)
-{
-  if (text == nullptr) {
-    return true;
-  }
-  const size_t length = strnlen(text, cap);
-  if (length >= cap) {
-    return false;
-  }
-  for (size_t index = 0U; index < length; index++) {
-    if ((text[index] == '\r') || (text[index] == '\n')) {
-      return false;
-    }
-  }
-  return true;
-}
-
-/**
  * @brief Validate terminal HTTP metadata carried by a generated Chunk.
  * @details Requires a real status only on COMPLETE and bounds every selected
  * response header before any caller copy.
@@ -106,10 +74,10 @@ RA8_INTERNAL static bool internal_mdl_http_response_valid(const Ra8__Mdl__Chunk*
   }
   return (msg->http_status >= (int32_t)k_ra8_mdl_http_status_min) &&
          (msg->http_status <= (int32_t)k_ra8_mdl_http_status_max) &&
-         internal_mdl_http_field_valid(msg->retry_after, k_ra8_mdl_retry_after_max) &&
-         internal_mdl_http_field_valid(msg->etag, k_ra8_mdl_etag_max) &&
-         internal_mdl_http_field_valid(msg->last_modified, k_ra8_mdl_http_date_max) &&
-         internal_mdl_http_field_valid(msg->content_type, k_ra8_mdl_content_type_max);
+         priv_c6link_mdl_http_field_valid(msg->retry_after, k_ra8_mdl_retry_after_max) &&
+         priv_c6link_mdl_http_field_valid(msg->etag, k_ra8_mdl_etag_max) &&
+         priv_c6link_mdl_http_field_valid(msg->last_modified, k_ra8_mdl_http_date_max) &&
+         priv_c6link_mdl_http_field_valid(msg->content_type, k_ra8_mdl_content_type_max);
 }
 
 /**
@@ -453,7 +421,7 @@ RA8_TEST_HELPER ra8_err_t ra8_c6link_mdl_take_cancelled_test(ra8_c6link_t*      
 
 RA8_TEST_HELPER bool ra8_c6link_mdl_http_field_valid_test(const char* text, size_t cap)
 {
-  return internal_mdl_http_field_valid(text, cap);
+  return priv_c6link_mdl_http_field_valid(text, cap);
 }
 
 RA8_TEST_HELPER bool ra8_c6link_mdl_http_response_valid_test(const Ra8__Mdl__Chunk* msg)
@@ -466,112 +434,6 @@ RA8_TEST_HELPER bool ra8_c6link_mdl_chunk_semantics_valid_test(const Ra8__Mdl__C
   return internal_mdl_chunk_semantics_valid(msg);
 }
 
-/**
- * @brief Validate every caller-supplied start-request field before staging.
- *
- * @details
- * Split out of `ra8_c6link_mdl_start_request()` so the argument contract and
- * the wire encoding are separately reviewable and each stays inside the NASA
- * Power of 10 Rule 4 length cap. The validation checks and their order are
- * unchanged; the null-pointer guards are split between the caller and this
- * helper, and every one of them still yields `k_ra8_err_null_ptr`.
- *
- * @param[in] request Caller request; may be null.
- * @param[out] out_url_len Receives the validated URL length on success, so the
- *                        caller copies exactly the length that was bounded here
- *                        rather than re-deriving it from caller-owned memory.
- *                        The single call site passes the address of a local, so
- *                        this pointer is not re-checked here.
- * @return Validation status.
- * @retval k_ra8_ok Every field satisfies the documented contract.
- * @retval k_ra8_err_null_ptr @p request or its URL is null.
- * @retval k_ra8_err_invalid_arg A field is out of range or malformed.
- * @pre The caller has already rejected a null link and session.
- * @pre @p out_url_len is non-null.
- * @pre @p request is readable for the whole structure.
- * @post @p out_url_len holds the bounded URL length on success only.
- * @post The return value is one of the documented retvals.
- * @note Not thread-safe for a shared request structure.
- * @since 0.1.0
- */
-RA8_INTERNAL static ra8_err_t internal_mdl_start_request_valid(const ra8_mdl_request_t* request,
-                                                               size_t*                  out_url_len)
-{
-  if ((request == nullptr) || (request->url == nullptr)) {
-    return k_ra8_err_null_ptr;
-  }
-  const size_t https_prefix_len = sizeof("https://") - 1U;
-  const size_t url_len          = strnlen(request->url, k_ra8_mdl_url_max);
-  if ((url_len == 0U) || (url_len >= k_ra8_mdl_url_max) ||
-      (strncmp(request->url, "https://", https_prefix_len) != 0) ||
-      (request->url[https_prefix_len] == '\0')) {
-    return k_ra8_err_invalid_arg;
-  }
-  if (((uint32_t)request->format > (uint32_t)k_mdl_format_rabook) ||
-      (request->http.timeout_ms > k_ra8_mdl_timeout_ms_max) ||
-      !internal_mdl_http_field_valid(request->http.user_agent, k_ra8_mdl_user_agent_max) ||
-      !internal_mdl_http_field_valid(request->http.referer, k_ra8_mdl_referer_max) ||
-      !internal_mdl_http_field_valid(request->http.if_none_match, k_ra8_mdl_etag_max) ||
-      !internal_mdl_http_field_valid(request->http.if_modified_since, k_ra8_mdl_http_date_max)) {
-    return k_ra8_err_invalid_arg;
-  }
-  *out_url_len = url_len;
-  return k_ra8_ok;
-}
-
-/**
- * @struct mdl_http_headers_t
- * @brief Fixed-capacity storage for the four optional MDL HTTP request headers.
- * @details Each buffer is sized by its own protocol maximum and zero-initialized,
- *          so an absent header is transmitted as an empty string rather than as
- *          a dangling pointer into caller memory.
- * @invariant Every member is NUL-terminated for its whole declared capacity.
- * @see internal_mdl_stage_headers()
- * @since 0.1.0
- */
-typedef struct {
-  char user_agent[k_ra8_mdl_user_agent_max];       /**< User-Agent staging.        */
-  char referer[k_ra8_mdl_referer_max];             /**< Referer staging.           */
-  char if_none_match[k_ra8_mdl_etag_max];          /**< If-None-Match staging.     */
-  char if_modified_since[k_ra8_mdl_http_date_max]; /**< If-Modified-Since staging. */
-} mdl_http_headers_t;
-
-/**
- * @brief Copy every present optional HTTP header into bounded local storage.
- *
- * @details
- * Split out of `ra8_c6link_mdl_start_request()` so that entry point stays under
- * the reviewed statement-count threshold. Each field was already length-checked
- * by `internal_mdl_start_request_valid()`, so each copy is bounded by its own
- * protocol maximum; an absent field keeps the zero-initialized empty string.
- *
- * @param[in] http Caller-supplied optional headers; individual members may be null.
- * @param[out] out Zero-initialized staging storage to fill.
- * @return Nothing.
- * @pre @p http and @p out are non-null.
- * @pre Every non-null member of @p http fits its protocol maximum.
- * @post Every present member is copied and NUL-terminated in @p out.
- * @post Absent members are left as the caller's zero initialization.
- * @note Not thread-safe for a shared @p out.
- * @since 0.1.0
- */
-RA8_INTERNAL static void internal_mdl_stage_headers(const ra8_mdl_http_policy_t* http,
-                                                    mdl_http_headers_t*          out)
-{
-  if (http->user_agent != nullptr) {
-    memcpy(out->user_agent, http->user_agent, strlen(http->user_agent) + 1U);
-  }
-  if (http->referer != nullptr) {
-    memcpy(out->referer, http->referer, strlen(http->referer) + 1U);
-  }
-  if (http->if_none_match != nullptr) {
-    memcpy(out->if_none_match, http->if_none_match, strlen(http->if_none_match) + 1U);
-  }
-  if (http->if_modified_since != nullptr) {
-    memcpy(out->if_modified_since, http->if_modified_since, strlen(http->if_modified_since) + 1U);
-  }
-}
-
 ra8_err_t ra8_c6link_mdl_start_request(ra8_c6link_t*            link,
                                        const ra8_mdl_request_t* request,
                                        ra8_mdl_session_t*       session)
@@ -580,7 +442,7 @@ ra8_err_t ra8_c6link_mdl_start_request(ra8_c6link_t*            link,
     return k_ra8_err_null_ptr;
   }
   size_t          url_len = 0U;
-  const ra8_err_t valid   = internal_mdl_start_request_valid(request, &url_len);
+  const ra8_err_t valid   = priv_c6link_mdl_start_request_valid(request, &url_len);
   if (valid != k_ra8_ok) {
     return valid;
   }
@@ -588,7 +450,7 @@ ra8_err_t ra8_c6link_mdl_start_request(ra8_c6link_t*            link,
   char url_copy[k_ra8_mdl_url_max];
   memcpy(url_copy, request->url, url_len + 1U);
   mdl_http_headers_t headers = {};
-  internal_mdl_stage_headers(&request->http, &headers);
+  priv_c6link_mdl_stage_headers(&request->http, &headers);
   Ra8__Mdl__StartRequest inner;
   ra8__mdl__start_request__init(&inner);
   inner.protocol_version  = k_ra8_mdl_protocol_version;

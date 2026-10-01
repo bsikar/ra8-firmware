@@ -340,7 +340,7 @@ RA8_INTERNAL static void internal_test_media_download_rejects_unknown_response_f
  * true values are structurally infeasible for the initialized bounded schema
  * because its encoded URL is nonempty, its maximum packed size is below the
  * fixed request buffer, and protobuf-c pack returns that computed size.
- * Decisions: libs/ra8_c6link/src/ra8_c6link_mdl.c@internal_mdl_start_request_valid
+ * Decisions: libs/ra8_c6link/src/internal/mdl_request.zig@startRequestValid
  * libs/ra8_c6link/src/ra8_c6link_mdl.c@ra8_c6link_mdl_start_request
  * @details Runs every public pre-transport Start validation against the real
  * modelled link, then cancels the one accepted control job.
