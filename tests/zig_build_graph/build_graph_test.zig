@@ -123,7 +123,7 @@ test "vendored suppression is narrow and ordered" {
     // is empty. Order is the whole content of the rule, so assert on it.
     var enabled_at: ?usize = null;
     var suppressed_at: ?usize = null;
-    for (graph.vendored_soup_flags, 0..) |flag, index| {
+    for (graph.vendored_soup.soup_flags, 0..) |flag, index| {
         if (std.mem.eql(u8, flag, "-Wconversion")) enabled_at = index;
         if (std.mem.eql(u8, flag, "-Wno-conversion")) suppressed_at = index;
     }
@@ -133,11 +133,11 @@ test "vendored suppression is narrow and ordered" {
 
     // Everything else stays at the first-party bar on an attacker-facing
     // decoder: no blanket -w, and -Werror survives.
-    for (graph.vendored_soup_flags) |flag| {
+    for (graph.vendored_soup.soup_flags) |flag| {
         try std.testing.expect(!std.mem.eql(u8, flag, "-w"));
     }
     var has_werror = false;
-    for (graph.vendored_soup_flags) |flag| {
+    for (graph.vendored_soup.soup_flags) |flag| {
         if (std.mem.eql(u8, flag, "-Werror")) has_werror = true;
     }
     try std.testing.expect(has_werror);

@@ -56,6 +56,8 @@ pub const ns_image = @import("tests/zig_build_graph/ns_image.zig");
 pub const command_surface = @import("tests/zig_build_graph/command_surface.zig");
 pub const zig_archive = @import("tests/zig_build_graph/zig_archive.zig");
 pub const app_shapes = @import("tests/zig_build_graph/app_shapes.zig");
+pub const host_flags = @import("tests/zig_build_graph/host_flags.zig");
+pub const vendored_soup = @import("tests/zig_build_graph/vendored_soup.zig");
 
 /// One member of the migrated-library slice: the Zig archive, its public C
 /// header directory, and the C suite CMake links against that archive today.
@@ -141,21 +143,10 @@ const shared_include_paths = [_][]const u8{
 /// externs into C adds its TU here and takes it out again when that C goes.
 const support_c_sources = [_][]const u8{};
 
-/// The host C dialect and warning set from tests/cmake/host_config.cmake.
-/// `RA8_OFF_TARGET` and `UNIT_TEST` are the two definitions that file adds to
-/// every host TU; without them the C that reads system registers reaches for
-/// Cortex-M `mrs`.
-/// `-Werror` stays on: a suite that only compiles under a looser dialect here
-/// than it does under CMake would make the parity claim meaningless.
-pub const c_flags = [_][]const u8{
-    "-std=c23",
-    "-Wall",
-    "-Wextra",
-    "-Wpedantic",
-    "-Werror",
-    "-DRA8_OFF_TARGET",
-    "-DUNIT_TEST",
-};
+/// The host C dialect and warning set every first-party host TU in this
+/// graph compiles at, shared with the vendored SOUP slice. Defined in
+/// tests/zig_build_graph/host_flags.zig.
+pub const c_flags = host_flags.c_flags;
 
 /// The root graph's own Zig test root, declared in .zig-test-contract.json
 /// so `scripts/checks/check_zig.py --test` covers this build root too.
@@ -295,7 +286,7 @@ pub fn build(b: *std.Build) void {
         "test-soup",
         "Compile the vendored third-party C (xz-embedded) and run its C suite",
     );
-    addVendoredCSuite(b, soup_step, target, optimize);
+    vendored_soup.addSuite(b, soup_step, target, optimize);
     test_step.dependOn(soup_step);
 
     const arm_step = b.step("arm", b.fmt(
@@ -366,9 +357,9 @@ pub fn build(b: *std.Build) void {
     // The vendored-C slice's own manifest row: the SOUP tree, the porting
     // header that configures it, and the C suite that exercises it.
     const print_soup = b.addSystemCommand(&.{ "printf", "%s\t%s\t%s\n" });
-    print_soup.addArg(vendored_slice.name);
-    print_soup.addArg(vendored_slice.porting_header);
-    print_soup.addArg(vendored_slice.c_suite_path);
+    print_soup.addArg(vendored_soup.slice.name);
+    print_soup.addArg(vendored_soup.slice.porting_header);
+    print_soup.addArg(vendored_soup.slice.c_suite_path);
     parity_step.dependOn(&print_soup.step);
 
     const abi_step = b.step("abi", "Prove the Zig-to-C ABI contract, negative controls included");
@@ -700,162 +691,6 @@ fn objcopyTo(
     return run.addOutputFileArg(output_name);
 }
 
-// ===========================================================================
-// Third-party (SOUP) C compilation slice
-// ===========================================================================
-// The third slice of #857: a vendored third-party C tree compiled by the root
-// build graph, with no CMake in the loop, and held to the SAME per-TU flag
-// discipline CMake applies to it.
-//
-// xz-embedded is the right first one. It is four translation units, it is
-// decode-only, and it is the vendored tree whose CMake treatment is the most
-// precisely specified: tests/cmake/core_hal.cmake gives it exactly
-// `-Wno-conversion -fno-strict-aliasing` and nothing else, with a comment
-// recording that the set was measured one flag at a time on all four TUs
-// (only -Wconversion ever fires, from the size_t -> uint32_t narrowing in the
-// first-party porting header). A blanket `-w` would have made this slice
-// meaningless, which is the whole point: the vendored TUs get the narrow
-// suppression and the first-party wrapper beside them keeps the full bar.
-//
-// The suite is `apps/shared_libs/unarch/tests/src/test_unarch_xz.c`,
-// unmodified, over the committed real .xz fixtures. It is the behavioural
-// contract for the decoder's integration: honest streams decode byte-exactly,
-// and every hostile shape (SHA-256 check, an 8 MiB declared dictionary,
-// corruption, truncation, trailing bytes, a 3690:1 zeros bomb) is rejected
-// fail-closed. A build graph that compiled the SOUP but got the porting header
-// or the mode selection wrong would fail those cases rather than pass quietly.
-//
-// Nothing in CMake is changed or deleted; CMake stays authoritative.
-
-const VendoredSlice = struct {
-    name: []const u8,
-    porting_header: []const u8,
-    c_suite_path: []const u8,
-};
-
-const vendored_slice = VendoredSlice{
-    .name = "xz_embedded",
-    .porting_header = "apps/shared_libs/unarch/inc/xz_config.h",
-    .c_suite_path = "apps/shared_libs/unarch/tests/src/test_unarch_xz.c",
-};
-
-/// The vendored decode-only TUs, exactly the set
-/// `RA8_XZ_THIRD_PARTY` in tests/cmake/library_sources.cmake lists. The
-/// upstream tree carries more (the BCJ filters, the single-call decoder); this
-/// firmware enables neither, so compiling them would be dead weight the CMake
-/// build does not carry either.
-const vendored_c_sources = [_][]const u8{
-    "apps/shared_libs/third_party/xz_embedded/xz_crc32.c",
-    "apps/shared_libs/third_party/xz_embedded/xz_crc64.c",
-    "apps/shared_libs/third_party/xz_embedded/xz_dec_lzma2.c",
-    "apps/shared_libs/third_party/xz_embedded/xz_dec_stream.c",
-};
-
-/// The first-party sources that drive the SOUP: the bounded XZ wrapper, its
-/// zero-heap pool arena, and the flat-memory read seam the wrapper decodes
-/// through. These are NOT vendored, so they take the full warning bar below.
-const vendored_first_party_sources = [_][]const u8{
-    "apps/shared_libs/unarch/src/unarch_xz.c",
-    "apps/shared_libs/unarch/src/unarch_xz_pool.c",
-    "apps/shared_libs/unarch/src/unarch_io.c",
-    // The pool stopped being its own bump arena in #768: it draws blocks from
-    // the shared decoder scratch now, so the arena under it belongs to this
-    // slice rather than to something CMake links from elsewhere. Both the
-    // scratch and the arena are Zig now, so they arrive as archives below
-    // rather than as TUs here.
-};
-
-/// Include path for the slice. `apps/shared_libs/unarch/inc` has to be on it
-/// for the VENDORED TUs too: xz_private.h includes "xz_config.h", and that
-/// porting header is first-party and lives there. Getting this wrong is not a
-/// compile error, it is a different decoder (upstream's kernel-allocator
-/// defaults instead of the zero-heap pool), which is why the suite matters.
-const vendored_include_paths = [_][]const u8{
-    "apps/shared_libs/third_party/xz_embedded",
-    "apps/shared_libs/unarch/inc",
-    "apps/shared_libs/unarch/tests/inc",
-    "libs/ra8_core/inc",
-    // unarch_xz_pool.c includes "ra8_imgdec_scratch.h", which in turn includes
-    // "ra8_arena.h" (#768), so both headers have to be reachable here.
-    "libs/ra8_imgdec/inc",
-    "libs/ra8_mem/inc",
-    "tests/support/inc",
-    "tests/fixtures/inc",
-    "tests/mocks/inc",
-};
-
-/// First-party bar for this slice: the host set plus `-Wconversion`, which is
-/// the one class CMake's measurement found the vendored TUs trip. Without it
-/// on the first-party TUs the narrow suppression below would be suppressing
-/// nothing, and the parity claim would be empty.
-pub const vendored_first_party_flags = c_flags ++ [_][]const u8{"-Wconversion"};
-
-/// The vendored bar, from tests/cmake/core_hal.cmake: the first-party set with
-/// `-Wconversion` suppressed for the porting header's fixed-width narrowing,
-/// plus `-fno-strict-aliasing` because the decoder type-puns through byte
-/// buffers. -Werror stays in force for every other class, including the
-/// memory-safety ones, on an attacker-facing decoder.
-pub const vendored_soup_flags = vendored_first_party_flags ++ [_][]const u8{
-    "-Wno-conversion",
-    "-fno-strict-aliasing",
-};
-
-fn addVendoredCSuite(
-    b: *std.Build,
-    step: *std.Build.Step,
-    target: std.Build.ResolvedTarget,
-    optimize: std.builtin.OptimizeMode,
-) void {
-    const module = b.createModule(.{
-        .target = target,
-        .optimize = optimize,
-        .link_libc = true,
-    });
-    for (vendored_include_paths) |include_path| {
-        module.addIncludePath(b.path(include_path));
-    }
-    module.addCSourceFiles(.{
-        .files = &vendored_c_sources,
-        .flags = &vendored_soup_flags,
-    });
-    module.addCSourceFiles(.{
-        .files = &vendored_first_party_sources,
-        .flags = &vendored_first_party_flags,
-    });
-    module.addCSourceFile(.{
-        .file = b.path(vendored_slice.c_suite_path),
-        .flags = &c_flags,
-    });
-
-    const suite = b.addExecutable(.{
-        .name = "c_suite_unarch_xz",
-        .root_module = module,
-    });
-    // unarch_xz_pool.c calls ra8_imgdec_scratch_*, which is Zig now.
-    suite.linkLibrary(b.dependency("ra8_imgdec", .{
-        .target = target,
-        .optimize = optimize,
-    }).artifact("ra8_imgdec"));
-    // The suite's bound checks (ra8_decomp_*) and the log backend under them
-    // are both Zig now (#2862, #2836), so they arrive as this archive.
-    suite.linkLibrary(b.dependency("ra8_core", .{
-        .target = target,
-        .optimize = optimize,
-    }).artifact("ra8_core_zig"));
-    // And the bump arena the pool carves from: ra8_mem's last C went in #2601
-    // (ra8_arena.c), so the seven ra8_arena_* entry points this suite resolves
-    // are ra8_mem_abi.zig's exports now.
-    suite.linkLibrary(b.dependency("ra8_mem", .{
-        .target = target,
-        .optimize = optimize,
-    }).artifact("ra8_mem"));
-
-    const run_suite = b.addRunArtifact(suite);
-    run_suite.expectExitCode(0);
-    step.dependOn(&run_suite.step);
-}
-
-// ===========================================================================
 // Analysis-input slice (#959): compile_commands.json
 // ===========================================================================
 // The fourth slice of #857, and the one #859 most depends on, because the
@@ -946,33 +781,33 @@ fn compileDbEntries(b: *std.Build) []const compile_db.Entry {
     }
 
     // --- the vendored slice (#950) ----------------------------------------
-    // Three bars, in the order addVendoredCSuite passes them: the vendored TUs
+    // Three bars, in the order vendored_soup.addSuite passes them: the vendored TUs
     // with the narrow SOUP suppression, the first-party drivers beside them at
     // the stricter bar, then the suite at the plain host set.
-    for (vendored_c_sources) |source| {
+    for (vendored_soup.c_sources) |source| {
         candidates.append(.{
             .file = source,
             .driver = host_c_driver,
-            .flags = &vendored_soup_flags,
-            .include_dirs = &vendored_include_paths,
+            .flags = &vendored_soup.soup_flags,
+            .include_dirs = &vendored_soup.include_paths,
             .object = b.fmt("soup/{s}.o", .{std.fs.path.basename(source)}),
         }) catch @panic("OOM");
     }
-    for (vendored_first_party_sources) |source| {
+    for (vendored_soup.first_party_sources) |source| {
         candidates.append(.{
             .file = source,
             .driver = host_c_driver,
-            .flags = &vendored_first_party_flags,
-            .include_dirs = &vendored_include_paths,
+            .flags = &vendored_soup.first_party_flags,
+            .include_dirs = &vendored_soup.include_paths,
             .object = b.fmt("soup/{s}.o", .{std.fs.path.basename(source)}),
         }) catch @panic("OOM");
     }
     candidates.append(.{
-        .file = vendored_slice.c_suite_path,
+        .file = vendored_soup.slice.c_suite_path,
         .driver = host_c_driver,
         .flags = &c_flags,
-        .include_dirs = &vendored_include_paths,
-        .object = b.fmt("soup/{s}.o", .{std.fs.path.basename(vendored_slice.c_suite_path)}),
+        .include_dirs = &vendored_soup.include_paths,
+        .object = b.fmt("soup/{s}.o", .{std.fs.path.basename(vendored_soup.slice.c_suite_path)}),
     }) catch @panic("OOM");
 
     // --- the ABI-contract slice (#1007) ------------------------------------
