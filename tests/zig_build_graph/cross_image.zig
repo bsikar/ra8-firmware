@@ -30,6 +30,9 @@ const cross_sources = @import("cross_sources.zig");
 const device = @import("device.zig");
 const ld_fragments = @import("ld_fragments.zig");
 const middleware = @import("middleware.zig");
+
+/// The universal library whose C left the universal glob for a Zig archive.
+const universal_usb_pal = "ra8_usb_pal";
 const ns_image = @import("ns_image.zig");
 
 const CrossApp = cross_sources.CrossApp;
@@ -133,6 +136,24 @@ fn addCrossApp(
             arm_target,
             globals.configuration.zig_optimize,
         )) catch @panic("OOM");
+    }
+
+    // ra8_usb_pal, universal in the same way: libs/ra8_usb_pal/src is in the
+    // universal glob every app compiles, and once that directory holds no C
+    // (#766) the archive is the only place ra8_usb_device_compose lives. All
+    // 22 USBX-on-ThreadX apps call it without naming the library in LIBS.
+    // sources.cmake registers it beside ra8_net_pal. An app that never calls
+    // it pulls no member, so linking it everywhere changes no other image.
+    var names_usb_pal = false;
+    for (app.zig_libraries) |lib_name| {
+        if (std.mem.eql(u8, lib_name, universal_usb_pal)) names_usb_pal = true;
+    }
+    if (!names_usb_pal and migrated_libs.contributesArchive(b, universal_usb_pal)) {
+        const dependency = b.dependency(universal_usb_pal, .{
+            .target = arm_target,
+            .optimize = globals.configuration.zig_optimize,
+        });
+        archives.append(dependency.artifact(universal_usb_pal).getEmittedBin()) catch @panic("OOM");
     }
 
     // The selected board's own archive, on the same unconditional footing.
@@ -268,9 +289,17 @@ fn addCrossApp(
     // app compiled without them gets a different kernel configuration and no
     // diagnostic about it.
     const middlewares = middleware.resolve(b.allocator, app.uses);
-    const middleware_archives = b.allocator.alloc(std.Build.LazyPath, middlewares.len) catch @panic("OOM");
-    for (middlewares, 0..) |mw, index| {
-        middleware_archives[index] = middleware.add(b, mw, cross_build.middlewareToolchain(tools, globals, &arm_global_defines));
+    // Most hand the app an archive. USBX hands it its objects, every one of
+    // which joins the link (middleware.Middleware.link_objects).
+    var middleware_archives = std.ArrayList(std.Build.LazyPath).init(b.allocator);
+    var middleware_objects = std.ArrayList(std.Build.LazyPath).init(b.allocator);
+    for (middlewares) |mw| {
+        const mw_toolchain = cross_build.middlewareToolchain(tools, globals, &arm_global_defines);
+        if (mw.link_objects) {
+            middleware_objects.appendSlice(middleware.addObjects(b, mw, mw_toolchain)) catch @panic("OOM");
+        } else {
+            middleware_archives.append(middleware.add(b, mw, mw_toolchain)) catch @panic("OOM");
+        }
     }
     const middleware_defines = middleware.appDefines(b.allocator, middlewares);
     const middleware_include_dirs = middleware.appIncludeDirs(b.allocator, middlewares);
@@ -290,8 +319,14 @@ fn addCrossApp(
     include_dirs.appendSlice(cross_sources.crossIncludeDirs(b, app)) catch @panic("OOM");
     include_dirs.appendSlice(middleware_include_dirs) catch @panic("OOM");
 
+    // The middleware's port sources (port/usbx/src) are the app's own TUs as
+    // far as CMake is concerned, compiled at the app's -Werror bar.
+    var app_sources = std.ArrayList([]const u8).init(b.allocator);
+    app_sources.appendSlice(cross_sources.crossSources(b, app)) catch @panic("OOM");
+    app_sources.appendSlice(middleware.appSources(b.allocator, middlewares)) catch @panic("OOM");
+
     var objects = std.ArrayList(std.Build.LazyPath).init(b.allocator);
-    for (cross_sources.crossSources(b, app)) |source| {
+    for (app_sources.items) |source| {
         const compile = b.addSystemCommand(&.{tools.gcc});
         compile.addArgs(&arm_cpu_flags);
         // The device tail, where the toolchain file's *_INIT append puts it:
@@ -409,9 +444,10 @@ fn addCrossApp(
     const elf = link.addOutputFileArg(b.fmt("{s}.elf", .{app.name}));
     if (cpu1_blob) |blob| link.addFileArg(blob);
     for (objects.items) |object| link.addFileArg(object);
+    for (middleware_objects.items) |object| link.addFileArg(object);
     // Archives after the objects that reference them, then libgcc last, the
     // order CMake's link line uses.
-    for (middleware_archives) |archive| link.addFileArg(archive);
+    for (middleware_archives.items) |archive| link.addFileArg(archive);
     for (archives.items) |archive| link.addFileArg(archive);
     link.addArg("-lgcc");
     // After -lgcc, which is where CMake puts it: target_link_libraries() in
