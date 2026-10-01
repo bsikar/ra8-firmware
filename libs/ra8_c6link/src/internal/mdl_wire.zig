@@ -14,6 +14,14 @@ pub const Wire = struct {
 
 pub const Error = error{NoSpace};
 
+/// Bytes `value` takes as a base-128 varint.
+pub fn varintLen(value: u64) usize {
+    var rest = value;
+    var length: usize = 1;
+    while (rest >= 0x80) : (rest >>= 7) length += 1;
+    return length;
+}
+
 /// Appends encoded bytes to a caller-owned buffer, refusing to overrun it.
 pub const Writer = struct {
     buf: []u8,
@@ -52,6 +60,12 @@ pub const Writer = struct {
         if (value == 0) return;
         try self.tag(field, Wire.varint);
         try self.varint(value);
+    }
+
+    /// A proto3 int32: zero is not written, and a negative value is
+    /// sign-extended to ten bytes, as protobuf requires.
+    pub fn int32(self: *Writer, field: u32, value: i32) Error!void {
+        try self.uint(field, @bitCast(@as(i64, value)));
     }
 
     /// A proto3 string or bytes field: empty is the default and is not
