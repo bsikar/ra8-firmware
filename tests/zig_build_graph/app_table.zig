@@ -639,10 +639,10 @@ pub const cross_apps = [_]CrossApp{
         // compiles, because the C ABI lives in the unchanged header, and the
         // link then reports the missing ra8_power_profile_* symbols by name.
         // Building the archive at the WRONG optimisation fails nothing at
-        // all: zig_libs.cmake maps a Debug configure onto a Debug archive and
-        // every other configure onto ReleaseSmall, so a graph that picks one
-        // of the two and keeps it links a perfectly good image that is simply
-        // not the artifact CMake produces. See build_type.zig's zig_optimize.
+        // all: zig_libs.cmake builds every configure's archive at
+        // RA8_ZIG_OPTIMIZE's default (#2696), so a graph that asks for some
+        // other mode links a perfectly good image that is simply not the
+        // artifact CMake produces. See build_type.zig's zig_optimize.
         //
         // Otherwise it is blink_hal's shape: no USES, no EXTRA_SRCS, no
         // app-local CMake, no AUX_SRCS, the default 2200-byte frame budget

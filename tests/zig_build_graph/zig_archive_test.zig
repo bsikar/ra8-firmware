@@ -51,21 +51,49 @@ test "every configuration builds the archive CMake's own rule asks for" {
     }
 }
 
-test "the listfile's mapping still varies by configuration" {
+test "the listfile answers every configuration, from the knob it documents" {
     const allocator = std.testing.allocator;
     const listfile = try mapping(allocator);
     defer allocator.free(listfile.named);
 
-    // Refuse to report clean against nothing. The rule above passes just as
-    // well against a listfile that stopped branching, because the graph would
-    // then be agreeing with a constant; one named arm plus an else is the
-    // shape that makes it a real comparison.
-    try std.testing.expect(listfile.named.len >= 1);
-    var varies = false;
-    for (listfile.named) |arm| {
-        if (arm.optimize != listfile.fallback) varies = true;
+    // Until #2696 this rule read the other way round: the listfile branched on
+    // CMAKE_BUILD_TYPE, and a mapping that stopped varying was the defect to
+    // catch. It now holds one mode for every configure deliberately, so what
+    // is worth refusing is a listfile that answers SOME configuration
+    // differently without the graph's table having moved with it.
+    for (build_type.configurations) |configuration| {
+        const declared = listfile.forName(configuration.cmake_name);
+        if (declared != listfile.forName(build_type.configurations[0].cmake_name)) {
+            std.debug.print(
+                "zig_libs.cmake answers {s} with {s} but {s} with {s};" ++
+                    " the single-mode rule #2696 introduced no longer holds\n",
+                .{
+                    configuration.cmake_name,
+                    @tagName(declared),
+                    build_type.configurations[0].cmake_name,
+                    @tagName(listfile.forName(build_type.configurations[0].cmake_name)),
+                },
+            );
+            return error.ArchiveOptimizationVaries;
+        }
     }
-    try std.testing.expect(varies);
+
+    // And refuse to report clean against nothing: the answer has to be a mode
+    // this graph spells, reached through the documented knob rather than
+    // guessed. RA8_ZIG_OPTIMIZE's own default is what a configure with no -D
+    // override gets, so that is the value the rule above is comparing.
+    const knob = zig_archive.cacheDefault(zig_libs_cmake_source, "RA8_ZIG_OPTIMIZE") orelse {
+        std.debug.print(
+            "zig_libs.cmake no longer declares RA8_ZIG_OPTIMIZE as a cache variable;" ++
+                " nothing documents what a migrated archive is built at\n",
+            .{},
+        );
+        return error.NoOptimizeKnobInListfile;
+    };
+    try std.testing.expectEqual(
+        zig_archive.optimizeFromName(knob).?,
+        listfile.forName("RelWithDebInfo"),
+    );
 }
 
 test "the cross-build asks for the selected configuration, not a fixed mode" {
