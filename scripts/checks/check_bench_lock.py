@@ -201,10 +201,6 @@ CARVE_OUTS: dict[str, str] = {
     "scripts/checks/check_python_lock_policy.py": (
         "the dependency consumer catalogue names tapo_control.py as data; it invokes nothing"
     ),
-    "scripts/checks/hil_convergence_safety_roles.py": (
-        "the role checker compares the exact J-Link health-check command as data; "
-        "it invokes nothing"
-    ),
     "scripts/checks/lint_coverage_rules.py": (
         "the lint ownership registry names privileged helper artefacts as data; it invokes nothing"
     ),

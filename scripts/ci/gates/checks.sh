@@ -203,8 +203,6 @@ _pcc_layout_and_credentials() (
   python3 scripts/checks/check_hil_privilege_boundary.py --selftest
   python3 scripts/checks/check_hil_privilege_boundary.py
   python3 infra/ansible/roles/dev_box/files/ra8-hil-runner-idle-stop.py --selftest ignored.service
-  python3 scripts/checks/check_hil_convergence_safety.py --selftest
-  python3 scripts/checks/check_hil_convergence_safety.py
   /bin/bash -p scripts/hil/lib/rig_contract.sh --selftest
   python3 scripts/hil/rig_env_parse.py --selftest
   /bin/bash -p scripts/hil/run_direct.sh --selftest

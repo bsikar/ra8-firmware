@@ -627,9 +627,7 @@ it: `scripts/ci/devcontainer_image.sh` stamps a sha256 of the whole
 so a cached image built from a different Dockerfile is rebuilt rather than
 reused. `just ci` calls it on every run -- which is what covers the Mac, where
 no Ansible play ever lands -- and the `dev_box` role calls the same script so
-`just infra::apply dev` leaves the box warm and asserts, with
-`check_runner_image_deps.py`, that every tool the gates declare resolves inside
-it. Before that, the box booted a stale image under a newer tree and reported
+`just infra::apply dev` leaves the box warm. Before that, the box booted a stale image under a newer tree and reported
 gates red that passed natively on the same commit (#521).
 
 Image-build serialization has a separate managed lock authority at

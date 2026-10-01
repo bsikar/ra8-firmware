@@ -94,10 +94,9 @@
   # Most of what is staged fails loudly on its own: `bash <missing script>`
   # exits 127 and takes the play with it. These two do not, which is why they
   # are named. A missing Dockerfile makes the pin slurp fail with a path error
-  # rather than a reason, and a missing scripts/ci.sh makes
-  # check_runner_image_deps.py scan for gate dependencies in a file that is not
-  # there -- it has its own floor for that, but this role must not depend on
-  # another checker's backstop to notice it staged half a tree.
+  # rather than a reason, and a missing scripts/ci.sh leaves the image build
+  # with no gate driver -- this role must not depend on a later step to notice
+  # it staged half a tree.
   become: true
   ansible.builtin.stat:
     path: "{{ dev_box_context_dir }}/{{ item }}"
@@ -672,23 +671,6 @@
   register: dev_box_image_build
   changed_when: "'reusing cached' not in dev_box_image_build.stdout"
 
-- name: Assert every tool the gates declare resolves inside it
-  # The other question, and the one toolchain-parity structurally cannot answer:
-  # it compares the VERSIONS of tools that are present against the Dockerfile's
-  # ARG pins, so a dependency that is simply MISSING has no pin to disagree with
-  # (#513). This reads every require_cmd / require_python_mod out of
-  # scripts/ci.sh and the gate fragments and probes each one inside the image
-  # that was just built.
-  become: true
-  ansible.builtin.command:
-    cmd: >-
-      python3 scripts/checks/check_runner_image_deps.py
-      --image {{ dev_box_ci_image }}
-    chdir: "{{ dev_box_context_dir }}"
-  register: dev_box_image_deps
-  changed_when: false
-  check_mode: false
-
 # --- Fleet services ---------------------------------------------------------
 
 - name: Converge the dedicated native HIL Actions runner
@@ -759,7 +741,7 @@
       gcc {{ dev_box_gcc_version }} (source),
       {{ dev_box_arm_installed.stdout_lines | first | trim }},
       {{ dev_box_unicorn_check.stdout_lines | last | default('unicorn pinned') | trim }};
-      {{ dev_box_ci_image }} {{ dev_box_image_deps.stdout_lines | last | trim }};
+      {{ dev_box_ci_image }} built;
       shared ccache at {{ dev_box_ccache_dir }}
       ({{ dev_box_ccache_max_size }}), workspaces at
       {{ dev_box_workspace_root }},

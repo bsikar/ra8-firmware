@@ -146,7 +146,7 @@ dev_box_image_lock_dir: /var/cache/ra8-devcontainer-image-lock
 # EVERY script and pin this role consumes is staged here, out of the checkout
 # the operator ran `just infra::apply` in, and read from here -- the Dockerfile
 # ARGs, install_unicorn.sh, provision_dev_box_toolchain.sh,
-# devcontainer_image.sh, check_tool_versions.py, check_runner_image_deps.py,
+# devcontainer_image.sh, check_tool_versions.py,
 # and the .devcontainer build context itself.
 #
 # Not from dev_box_base_checkout. That tree is `update: false` on purpose --
