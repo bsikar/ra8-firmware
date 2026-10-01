@@ -82,14 +82,13 @@ ARG UNICORN_SHA256=ea8863f095a0136388694e5a6063afd9bb7650e30243dd6251af59c5ce560
 # build below (docs/TOOLCHAIN.md), not an apt package.
 #
 # THE INVARIANT (#513): this list is a SUPERSET of every tool the gates declare
-# with require_cmd / require_python_mod. The `runner-image-deps` gate asserts it
-# against the DEPLOYED image rather than against this file, because the two are
-# free to disagree and have. openssh-client is here for exactly that reason and
+# with require_cmd / require_python_mod. Nothing asserts it automatically any
+# more, so keep it true by hand when a gate gains a tool. openssh-client is here for exactly that reason and
 # no other: gate_bench_lock_selftest declares `ssh` and the image carried none
 # -- the third case of "a gate asserts a tool the image lacks" inside two days,
 # after `gh` and `jq`, and the first one found by a check instead of a person.
 #
-# openssl is the fourth, and it arrived through a route runner-image-deps
+# openssl is the fourth, and it arrived through a route a require_cmd scan
 # cannot see: a host app's CMakeLists find_program()ed the openssl CLI as
 # REQUIRED, so the tools-build gate depended on a binary no require_cmd
 # declared and this list never carried. A CMake

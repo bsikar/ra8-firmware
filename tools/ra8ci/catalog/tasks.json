@@ -2181,38 +2181,6 @@
       "resource_hints": {}
     },
     {
-      "name": "runner-image-deps",
-      "version": 1,
-      "tier": "optional",
-      "scope": "safe-local-read-only",
-      "os": [
-        "linux"
-      ],
-      "capabilities": [],
-      "args_schema": {
-        "positional": [],
-        "flags": []
-      },
-      "deadline_seconds": 1800,
-      "board_policy": "none",
-      "steps": [
-        {
-          "name": "runner-image-deps",
-          "program": "bash",
-          "args": [
-            "scripts/ci.sh",
-            "--gate",
-            "runner-image-deps"
-          ]
-        }
-      ],
-      "outputs": [],
-      "retry": {
-        "max_attempts": 1
-      },
-      "resource_hints": {}
-    },
-    {
       "name": "sbom",
       "version": 1,
       "tier": "required",

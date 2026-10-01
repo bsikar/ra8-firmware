@@ -24,8 +24,8 @@ Two kinds of region, because they answer different questions:
         measure 0 B.
 
 It never skips. A missing ELF, a missing ceiling row, a missing objdump or a
-region with no section in it is an error, not a pass, for the same reason
-check_runner_image_deps.py refuses to report a scan it did not perform.
+region with no section in it is an error, not a pass: a scan that was not
+performed is never reported as clean.
 
 Usage:
     check_image_headroom.py --all
