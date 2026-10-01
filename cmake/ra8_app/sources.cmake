@@ -126,6 +126,9 @@ function(
   )
 endfunction()
 
+# The board's chip adapters (#693): _ra8_app_board_adapter_sources/_includes.
+include(${CMAKE_CURRENT_LIST_DIR}/board_adapters.cmake)
+
 macro(_ra8_app_collect_sources)
   # ---- sources: per-app main, shared-or-local boot ----------------------
   #
@@ -300,6 +303,7 @@ macro(_ra8_app_collect_sources)
     REGEX
     "/src/boot/"
   )
+  _ra8_app_board_adapter_sources()
   # ra8_secure_app has no C sources either: the sealed-key vault, the CMAC
   # core, the OTA commit gate and the secure TRNG are Zig (#2591, #2659,
   # #2670) and its objects come from the Zig static archive registered below.
@@ -357,14 +361,8 @@ macro(_ra8_app_collect_sources)
     list(APPEND _ra8_lib_zig "ra8_secure_app|${_ra8_secure_app_path}")
   endif()
   set(_ra8_lib_inc "")
-  # The clock adapter's header rides with the board: the board's public
-  # ra8_board_ek_ra8d2_clock_profile.h includes fw_if_clock_ra8.h, and no app
-  # names if_ra8_cgc in LIBS (#693). On dev the adapter's C units travel with
-  # the board as well; here both are Zig archives, linked by the graph beside
-  # the board archive (board_archive.chip_clock_adapter).
-  if(EXISTS "${RA8_REPO_ROOT}/libs/if_ra8_cgc/inc")
-    list(APPEND _ra8_lib_inc ${RA8_REPO_ROOT}/libs/if_ra8_cgc/inc)
-  endif()
+  # Chip adapter headers ride with the board (#693); see board_adapters.cmake.
+  _ra8_app_board_adapter_includes()
   foreach(_ra8_lib ${_RA8_APP_LIBS})
     if(EXISTS "${RA8_REPO_ROOT}/libs/${_ra8_lib}")
       set(_ra8_lib_path "${RA8_REPO_ROOT}/libs/${_ra8_lib}")
