@@ -217,11 +217,10 @@ add_test(NAME test_mdl_storage_vfs COMMAND test_mdl_storage_vfs)
 
 # test_mdl_storage_ram: the raw-source transaction used when the RA8 must
 # transform verified C6 response bytes before publishing a reader artifact.
-# It compiles only the caller-buffer adapter and does not need protobuf or VFS.
-add_executable(
-  test_mdl_storage_ram ${FW_ROOT}/apps/shared_libs/mdl/tests/src/test_mdl_storage_ram.c
-                       ${FW_ROOT}/libs/ra8_c6link/src/ra8_mdl_storage_ram.c
-)
+# The adapter itself is Zig; the suite picks it up from ra8_zig::ra8_c6link,
+# attached at directory scope in zig_libraries.cmake, and needs no protobuf or
+# VFS.
+add_executable(test_mdl_storage_ram ${FW_ROOT}/apps/shared_libs/mdl/tests/src/test_mdl_storage_ram.c)
 target_compile_options(test_mdl_storage_ram PRIVATE -Wall -Wextra -Werror)
 target_include_directories(test_mdl_storage_ram PRIVATE ${RA8_C6LINK_INCLUDE_DIRS})
 add_test(NAME test_mdl_storage_ram COMMAND test_mdl_storage_ram)

@@ -8,3 +8,4 @@ pub const vocab = @import("vocab.zig");
 pub const tlv = @import("tlv.zig");
 pub const frame = @import("frame.zig");
 pub const caps = @import("caps.zig");
+pub const storage_ram = @import("storage_ram.zig");

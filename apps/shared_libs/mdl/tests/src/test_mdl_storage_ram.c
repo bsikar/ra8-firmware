@@ -155,9 +155,9 @@ RA8_INTERNAL static void internal_test_lifecycle_guards(void)
  * @details Uses a valid constructor/begin control, then nulls each required
  *          output, buffer, callback context, and destination in isolation.
  * @par MC/DC:
- * `libs/ra8_c6link/src/ra8_mdl_storage_ram.c@ra8_mdl_storage_ram_init`
+ * `libs/ra8_c6link/src/ra8_c6link_abi.zig@ra8_mdl_storage_ram_init`
  * receives `(F,F,F)->F`, `(T,-,-)->T`, `(F,T,-)->T`, `(F,F,T)->T`.
- * `libs/ra8_c6link/src/ra8_mdl_storage_ram.c@internal_ram_begin` receives
+ * `libs/ra8_c6link/src/ra8_c6link_abi.zig@ramBegin` receives
  * `(F,F)->F`, `(T,-)->T`, and `(F,T)->T`.
  * @pre Shared fixture storage is exclusively owned.
  * @pre Stack outputs are writable for every non-null vector.
@@ -189,10 +189,10 @@ RA8_INTERNAL static void internal_test_mcdc_init_and_begin(void)
  * @details Begins one transaction, varies callback inputs without corrupting
  *          it, publishes one byte, then constructs each invalid commit state.
  * @par MC/DC:
- * `libs/ra8_c6link/src/ra8_mdl_storage_ram.c@internal_ram_write` receives
+ * `libs/ra8_c6link/src/ra8_c6link_abi.zig@ramWrite` receives
  * `(F,F)->F`, `(T,-)->T`, `(F,T)->T` for its pointer OR and `(F,F)->F`,
  * `(T,F)->F`, `(T,T)->T` for its data/length AND.
- * `libs/ra8_c6link/src/ra8_mdl_storage_ram.c@internal_ram_commit` receives
+ * `libs/ra8_c6link/src/ra8_c6link_abi.zig@ramCommit` receives
  * `(F,F)->F`, `(T,-)->T`, and `(F,T)->T`.
  * @pre Shared fixture storage is exclusively owned.
  * @pre The valid byte remains readable throughout the callback vectors.
@@ -229,7 +229,7 @@ RA8_INTERNAL static void internal_test_mcdc_write_and_commit(void)
  * @details Rejects each null output independently, then mutates only the public
  *          lifecycle fields to isolate committed, active, and length terms.
  * @par MC/DC:
- * `libs/ra8_c6link/src/ra8_mdl_storage_ram.c@ra8_mdl_storage_ram_view`
+ * `libs/ra8_c6link/src/ra8_c6link_abi.zig@ra8_mdl_storage_ram_view`
  * receives `(F,F,F)->F` plus each one-true pointer vector, and state vectors
  * `(F,F,F)->F`, `(T,-,-)->T`, `(F,T,-)->T`, `(F,F,T)->T`.
  * @pre Shared fixture storage is exclusively owned.
