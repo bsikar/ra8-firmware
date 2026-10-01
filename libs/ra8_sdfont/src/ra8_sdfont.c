@@ -37,6 +37,7 @@
 #include "ra8_err.h"
 #include "ra8_fs.h"
 #include "ra8_gpio_constants.h"
+#include "ra8_pin_interface.h"
 #include "ra8_port_utils.h"
 #include "ra8_sci_spi.h"
 #include "ra8_sdmmc_spi.h"
@@ -121,7 +122,7 @@ RA8_INTERNAL static ra8_err_t internal_set_clock(void* ctx, uint32_t hz)
  *          chip-select GPIO from the bus context (active-low select).
  * @param[in] ctx      Bus context (::sdfont_ctx_t*); must be non-NULL.
  * @param[in] asserted true to select (CS low), false to release (CS high).
- * @return ra8_err_t passthrough from `ra8_gpio_write`.
+ * @return ra8_err_t passthrough from the pin interface's `write` row.
  * @retval k_ra8_err_null_ptr @p ctx is NULL.
  * @pre @p ctx points to the live ::s_ctx.
  * @pre The CS pin was claimed as a GPIO output by ::internal_bringup_spi.
@@ -134,8 +135,9 @@ RA8_INTERNAL static ra8_err_t internal_set_clock(void* ctx, uint32_t hz)
 RA8_INTERNAL static ra8_err_t internal_cs(void* ctx, bool asserted)
 {
   RA8_CHECK_NULL_PTR(ctx, s_tag, "ctx");
-  const sdfont_ctx_t* c = (const sdfont_ctx_t*)ctx;
-  return ra8_gpio_write(c->cs, asserted ? k_ra8_level_low : k_ra8_level_high);
+  const sdfont_ctx_t*              c    = (const sdfont_ctx_t*)ctx;
+  const ra8_pin_interface_t* const pins = ra8_pin_interface_default();
+  return pins->write(pins->ctx, c->cs, asserted ? k_ra8_level_low : k_ra8_level_high);
 }
 
 /**
@@ -205,7 +207,8 @@ RA8_INTERNAL static ra8_err_t internal_bringup_spi(const ra8_sdfont_cfg_t* cfg)
   if (err != k_ra8_ok) {
     return err;
   }
-  err = ra8_gpio_output_init(cfg->cs, k_ra8_level_high);
+  const ra8_pin_interface_t* const pins = ra8_pin_interface_default();
+  err = pins->output_init(pins->ctx, cfg->cs, k_ra8_level_high);
   if (err != k_ra8_ok) {
     return err;
   }
