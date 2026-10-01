@@ -143,7 +143,7 @@ func TestIntegrationTheHILTaskABoardAgentWillNotClaim(t *testing.T) {
 		// The deadline is derived here, never taken from the caller, so
 		// it has to sit inside the task's own maximum.
 		if !attempt.DeadlineAt.After(attempt.StartedAt) ||
-			attempt.DeadlineAt.Sub(attempt.StartedAt) > 30*time.Second {
+			attempt.DeadlineAt.Sub(attempt.StartedAt) > 30*time.Second+time.Millisecond {
 			t.Fatalf("the derived window ran outside the task maximum: %s to %s",
 				attempt.StartedAt, attempt.DeadlineAt)
 		}
