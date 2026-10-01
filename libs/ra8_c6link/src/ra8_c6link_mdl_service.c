@@ -27,11 +27,6 @@ static_assert((uint32_t)k_mdl_format_jof == RA8__MDL__FORMAT__FORMAT_JOF);
 static_assert((uint32_t)k_mdl_format_rabook == RA8__MDL__FORMAT__FORMAT_RABOOK);
 static_assert((uint32_t)k_mdl_format_invalid == RA8__MDL__FORMAT__FORMAT_INVALID);
 
-/** @brief Rounding mask derived from the arena's published alignment. */
-typedef enum : uint16_t {
-  k_mdl_decode_align_mask = k_ra8_mdl_decode_align - 1U, /**< Mask used to round sizes. */
-} mdl_svc_const_t;
-
 /* The worst-case response sizing below reads one bounded run of filler through
  * four header pointers of different lengths, so the run must be at least as
  * long as the longest of them. */
@@ -55,23 +50,6 @@ static_assert(k_ra8_mdl_content_type_max <= k_ra8_mdl_etag_max);
  * @note Empty strings are valid and mean header absent.
  * @since 0.1.0
  */
-RA8_INTERNAL static bool internal_mdl_request_field_valid(const char* text, size_t cap)
-{
-  if (text == nullptr) {
-    return false;
-  }
-  const size_t length = strnlen(text, cap);
-  if (length >= cap) {
-    return false;
-  }
-  for (size_t index = 0U; index < length; index++) {
-    if ((text[index] == '\r') || (text[index] == '\n')) {
-      return false;
-    }
-  }
-  return true;
-}
-
 /**
  * @brief Validate fixed terminal response metadata returned by a backend.
  * @details Requires an HTTP-shaped status and independently bounds every
@@ -87,25 +65,6 @@ RA8_INTERNAL static bool internal_mdl_request_field_valid(const char* text, size
  * @note Pure and reentrant.
  * @since 0.1.0
  */
-RA8_INTERNAL static bool internal_mdl_response_valid(const ra8_mdl_http_response_t* response)
-{
-  return (response->status >= (int32_t)k_ra8_mdl_http_status_min) &&
-         (response->status <= (int32_t)k_ra8_mdl_http_status_max) &&
-         internal_mdl_request_field_valid(response->retry_after, sizeof(response->retry_after)) &&
-         internal_mdl_request_field_valid(response->etag, sizeof(response->etag)) &&
-         internal_mdl_request_field_valid(response->last_modified,
-                                          sizeof(response->last_modified)) &&
-         internal_mdl_request_field_valid(response->content_type, sizeof(response->content_type));
-}
-
-RA8_PRIV bool priv_c6link_mdl_decode_allocation_fits(size_t used, size_t len, size_t capacity)
-{
-  if (len > (SIZE_MAX - k_mdl_decode_align_mask)) {
-    return false;
-  }
-  const size_t aligned = (len + k_mdl_decode_align_mask) & ~(size_t)k_mdl_decode_align_mask;
-  return (aligned <= capacity) && (used <= (capacity - aligned));
-}
 
 /**
  * @brief Allocate one aligned span from a per-dispatch bounded arena
@@ -126,7 +85,7 @@ RA8_INTERNAL static void* internal_mdl_decode_alloc(void* data, size_t len)
   if (!priv_c6link_mdl_decode_allocation_fits(arena->used, len, sizeof(arena->bytes))) {
     return nullptr;
   }
-  const size_t aligned = (len + k_mdl_decode_align_mask) & ~(size_t)k_mdl_decode_align_mask;
+  const size_t aligned = priv_c6link_mdl_decode_aligned_size(len);
   void*        out     = &arena->bytes[arena->used];
   arena->used += aligned;
   return out;
@@ -168,10 +127,8 @@ RA8_INTERNAL static void internal_mdl_decode_free(void* data, void* ptr)
  */
 RA8_INTERNAL static ra8_err_t internal_mdl_check_response_size(size_t len, size_t response_cap)
 {
-  if ((len == 0U) || (len > response_cap)) {
-    return k_ra8_err_invalid_size;
-  }
-  return k_ra8_ok;
+  return priv_c6link_mdl_service_response_size_ok(len, response_cap) ? k_ra8_ok
+                                                                    : k_ra8_err_invalid_size;
 }
 
 /**
@@ -261,21 +218,17 @@ RA8_INTERNAL static ra8_err_t internal_mdl_pack_chunk(const Ra8__Mdl__Chunk* msg
  */
 RA8_INTERNAL static bool internal_mdl_start_valid(const Ra8__Mdl__StartRequest* request)
 {
-  if (request->url == nullptr) {
-    return false;
-  }
-  const size_t https_prefix_len = sizeof("https://") - 1U;
-  const size_t url_len          = strnlen(request->url, k_ra8_mdl_url_max);
-  return (request->protocol_version == k_ra8_mdl_protocol_version) && (url_len != 0U) &&
-         (url_len < k_ra8_mdl_url_max) &&
-         (strncmp(request->url, "https://", https_prefix_len) == 0) &&
-         (request->url[https_prefix_len] != '\0') &&
-         ((uint32_t)request->format <= (uint32_t)RA8__MDL__FORMAT__FORMAT_RABOOK) &&
-         (request->timeout_ms <= k_ra8_mdl_timeout_ms_max) &&
-         internal_mdl_request_field_valid(request->user_agent, k_ra8_mdl_user_agent_max) &&
-         internal_mdl_request_field_valid(request->referer, k_ra8_mdl_referer_max) &&
-         internal_mdl_request_field_valid(request->if_none_match, k_ra8_mdl_etag_max) &&
-         internal_mdl_request_field_valid(request->if_modified_since, k_ra8_mdl_http_date_max);
+  const mdl_start_view_t view = {
+    .protocol_version  = request->protocol_version,
+    .url               = request->url,
+    .format            = (uint32_t)request->format,
+    .timeout_ms        = request->timeout_ms,
+    .user_agent        = request->user_agent,
+    .referer           = request->referer,
+    .if_none_match     = request->if_none_match,
+    .if_modified_since = request->if_modified_since,
+  };
+  return priv_c6link_mdl_service_start_valid(&view);
 }
 
 /**
@@ -502,7 +455,7 @@ static ra8_err_t internal_mdl_read_next(ra8_mdl_service_t*        service,
   if ((result->got > max_data) || ((!result->complete) && (result->got == 0U)) ||
       (result->complete && (result->got != 0U)) || offset_overflow || total_invalid ||
       (service->next_sequence == UINT32_MAX) ||
-      (result->complete && !internal_mdl_response_valid(&result->response)) ||
+      (result->complete && !priv_c6link_mdl_service_response_valid(&result->response)) ||
       (!result->complete && (result->response.status != 0))) {
     return internal_mdl_fail_job(service, k_ra8_err_protocol_error);
   }
@@ -689,12 +642,12 @@ RA8_INTERNAL static ra8_err_t internal_mdl_dispatch_cancel(ra8_mdl_service_t*  s
 
 RA8_TEST_HELPER bool ra8_mdl_service_field_valid_test(const char* text, size_t cap)
 {
-  return internal_mdl_request_field_valid(text, cap);
+  return priv_c6link_mdl_service_field_valid(text, cap);
 }
 
 RA8_TEST_HELPER bool ra8_mdl_service_response_valid_test(const ra8_mdl_http_response_t* response)
 {
-  return internal_mdl_response_valid(response);
+  return priv_c6link_mdl_service_response_valid(response);
 }
 
 RA8_TEST_HELPER ra8_err_t ra8_mdl_service_check_size_test(size_t len, size_t response_cap)
