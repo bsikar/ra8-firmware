@@ -7,7 +7,7 @@
 # HAL implementations, named backend translation units, board composition
 # libraries, tests, vendored code, and generated code are outside this ratchet.
 #
-# clock: 399 reference(s)
+# clock: 384 reference(s)
 # display: 9 reference(s)
 # gpio: 78 reference(s)
 # timer: 51 reference(s)
@@ -140,25 +140,25 @@ examples/ek_ra8d2/hw_validated/hil/canfd_loopback/src/main.c	clock	1
 examples/ek_ra8d2/hw_validated/hil/clock_check/src/main.c	clock	3
 examples/ek_ra8d2/hw_validated/hil/crc_demo/src/main.c	clock	1
 examples/ek_ra8d2/hw_validated/hil/crypto_aes_demo/src/main.c	clock	1
-examples/ek_ra8d2/hw_validated/hil/dac_b_demo/src/main.c	clock	2
-examples/ek_ra8d2/hw_validated/hil/dac_waveform/src/main.c	clock	2
-examples/ek_ra8d2/hw_validated/hil/dfu_bootloader/src/main.c	clock	4
-examples/ek_ra8d2/hw_validated/hil/dfu_selftest_boot/src/main.c	clock	4
+examples/ek_ra8d2/hw_validated/hil/dac_b_demo/src/main.c	clock	1
+examples/ek_ra8d2/hw_validated/hil/dac_waveform/src/main.c	clock	1
+examples/ek_ra8d2/hw_validated/hil/dfu_bootloader/src/main.c	clock	2
+examples/ek_ra8d2/hw_validated/hil/dfu_selftest_boot/src/main.c	clock	3
 examples/ek_ra8d2/hw_validated/hil/dfu_selftest_boot/src/main.c	gpio	1
-examples/ek_ra8d2/hw_validated/hil/dfu_selftest_fs_host/src/main.c	clock	4
+examples/ek_ra8d2/hw_validated/hil/dfu_selftest_fs_host/src/main.c	clock	3
 examples/ek_ra8d2/hw_validated/hil/dfu_selftest_fs_host/src/main.c	gpio	1
-examples/ek_ra8d2/hw_validated/hil/dfu_selftest_hs_host/src/main.c	clock	4
+examples/ek_ra8d2/hw_validated/hil/dfu_selftest_hs_host/src/main.c	clock	3
 examples/ek_ra8d2/hw_validated/hil/dfu_selftest_hs_host/src/main.c	gpio	1
 examples/ek_ra8d2/hw_validated/hil/dma_coherency_hil/src/main.c	clock	1
-examples/ek_ra8d2/hw_validated/hil/dma_memcopy_demo/src/main.c	clock	2
-examples/ek_ra8d2/hw_validated/hil/dma_memcopy_hal/src/main.c	clock	2
-examples/ek_ra8d2/hw_validated/hil/doc_demo/src/main.c	clock	2
-examples/ek_ra8d2/hw_validated/hil/dotf_selftest_demo/src/main.c	clock	2
-examples/ek_ra8d2/hw_validated/hil/drw_blend_demo/src/main.c	clock	2
-examples/ek_ra8d2/hw_validated/hil/drw_dlist_demo/src/main.c	clock	2
-examples/ek_ra8d2/hw_validated/hil/drw_fill_demo/src/main.c	clock	2
+examples/ek_ra8d2/hw_validated/hil/dma_memcopy_demo/src/main.c	clock	1
+examples/ek_ra8d2/hw_validated/hil/dma_memcopy_hal/src/main.c	clock	1
+examples/ek_ra8d2/hw_validated/hil/doc_demo/src/main.c	clock	1
+examples/ek_ra8d2/hw_validated/hil/dotf_selftest_demo/src/main.c	clock	1
+examples/ek_ra8d2/hw_validated/hil/drw_blend_demo/src/main.c	clock	1
+examples/ek_ra8d2/hw_validated/hil/drw_dlist_demo/src/main.c	clock	1
+examples/ek_ra8d2/hw_validated/hil/drw_fill_demo/src/main.c	clock	1
 examples/ek_ra8d2/hw_validated/hil/dtc_coherency_hil/src/main.c	clock	1
-examples/ek_ra8d2/hw_validated/hil/dtc_transfer_demo/src/main.c	clock	2
+examples/ek_ra8d2/hw_validated/hil/dtc_transfer_demo/src/main.c	clock	1
 examples/ek_ra8d2/hw_validated/hil/dualcore_background_m33/src/main.c	clock	1
 examples/ek_ra8d2/hw_validated/hil/dualcore_mailbox/src/main.c	clock	1
 examples/ek_ra8d2/hw_validated/hil/ecc_monitor_demo/src/main.c	clock	2
