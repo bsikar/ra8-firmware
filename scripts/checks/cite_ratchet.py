@@ -287,7 +287,7 @@ def _first_difference(committed: str, rendered: str) -> str:
     """
     got = committed.splitlines()
     want = rendered.splitlines()
-    for number, (a, b) in enumerate(zip(got, want), start=1):
+    for number, (a, b) in enumerate(zip(got, want, strict=False), start=1):
         if a != b:
             return f"line {number}: committed {a!r}, tool emits {b!r}"
     if len(got) > len(want):

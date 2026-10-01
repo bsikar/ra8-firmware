@@ -78,7 +78,7 @@ def trusted_git_executable() -> str:
                 # Git Bash can pass a POSIX-shaped PATH to native Python.  The
                 # Windows PATH entry is still authoritative, so also check
                 # the pinned portable Git location used by the lab runner.
-                program_data = os.environ.get("ProgramData", r"C:\ProgramData")
+                program_data = os.environ.get("PROGRAMDATA", r"C:\ProgramData")
                 fallback = Path(program_data) / "ra8" / "mingit" / "cmd" / "git.exe"
                 if fallback.is_file():
                     resolved = str(fallback)
