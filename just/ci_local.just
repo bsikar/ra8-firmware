@@ -13,7 +13,6 @@ default:
     @echo "  just quality::local::check                        Verify formatting without modifying files"
     @echo "  just quality::local::test                         Run host unit test suite"
     @echo "  just quality::local::coverage                     Run whole-tree coverage gate"
-    @echo "  just quality::local::mcdc                         Generate DO-178C MC/DC coverage report"
     @echo "  just quality::local::fuzz [seconds] [runs]        Smoke-run every libFuzzer harness"
     @echo "  just quality::local::stack_usage                  Build firmware and enforce stack budgets"
     @echo "  just quality::local::sbom                         Regenerate the committed CycloneDX SBOM"
@@ -114,8 +113,6 @@ test-zig:
     "{{ just_executable() }}" quality::local::gate test-zig
 
 # Generate DO-178C Level B MC/DC coverage report
-mcdc:
-    CC=clang-18 CXX=clang++-18 RA8_MCDC_THRESHOLD=0 bash scripts/report/mcdc_report.sh
 
 # Keep this welded to the registered gate so its self-tests and compiler pin
 # cannot drift from CI.

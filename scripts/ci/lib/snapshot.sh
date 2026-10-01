@@ -233,8 +233,6 @@ prepare_head_snapshot() {
 RA8_CI_RECLAIM_BOUNDARIES=(
   "unit-tests"
   "ubsan"
-  "coverage-tree"
-  "mcdc"
   "cache-bench"
 )
 
@@ -248,8 +246,6 @@ suite_reclaim_targets() {
         build/tidy-reflow-v2 build/xtidy
       ;;
     ubsan) printf '%s\n' tests/build ;;
-    coverage-tree) printf '%s\n' tests/build-ubsan ;;
-    mcdc) printf '%s\n' tests/build-cov build/tree-coverage ;;
     cache-bench) printf '%s\n' tests/build-cov build/mcdc-report ;;
     *) return 0 ;;
   esac

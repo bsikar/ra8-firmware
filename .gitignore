@@ -23,11 +23,6 @@
 # nobody can author a source directory called that (the checker's
 # RESERVED_DIR_NAMES records that judgement).
 /build/
-# The mcdc gate's transcript. It is written under build/ now, so this line
-# is a second line of defence rather than the fix: a stale root-level copy
-# from an older tree once rode into a commit and failed the lint-coverage
-# gate, and an ignore rule stops any other producer repeating that.
-/mcdc-output.log
 # The macos-host-build gate's transcript (#899). That gate runs on the one
 # machine in this suite nobody here can log into, so it tees its output to a
 # file the workflow can upload and a human can attach to a bug report. The
@@ -89,10 +84,6 @@ tests/fixtures/epub/real/*.epub
 *.gcda
 *.gcno
 *.gcov.json.gz
-
-# Coverage report outputs (already covered by build/ above; listed
-# explicitly so the directory is greppable)
-/build/tree-coverage/
 
 # Go coverage profiles
 coverage.out

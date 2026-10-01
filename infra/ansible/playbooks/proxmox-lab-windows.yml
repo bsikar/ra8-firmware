@@ -49,7 +49,6 @@
     lab_ci_python_packages:
       - "PyYAML==6.0.3"
       - "cmakelang==0.6.13"
-      - "gcovr==7.0"
       - "libclang==18.1.1"
       - "ruff==0.15.19"
       - "yamllint==1.37.1"

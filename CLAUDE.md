@@ -76,7 +76,6 @@ These are **reference-only** -- do not copy code from them into this repo withou
 - **List discovered firmware examples**: `just apps::example::list`
 - **Run host unit tests**: `just quality::gate::run unit-tests` (portable);
   `just quality::local::test` only when the native host is CI-compatible
-- **Check MC/DC coverage**: `just quality::local::mcdc`
 - **Code formatter**: `just quality::local::format` (apply) or `just quality::local::check` (dry run)
 - **Run linter (clang-tidy)**: `just quality::local::tidy`
 - **Inventory lint/policy suppressions**: `just checks::suppressions markdown`
@@ -378,7 +377,7 @@ This repository utilizes specialized custom project subagents under `.claude/age
 - **Safety & MC/DC Compliance (`@safety-reviewer`)**:
   - **Purpose**: Audits safety compliance (DO-178C Level B), compound boolean decision MC/DC test vector coverage, SOLID design principles, and NASA Power of 10 rules.
   - **When to Trigger**: On any modification to core logic, state machines, control flow, or host unit tests under `tests/`.
-  - **Scope**: Audits logic structures, loop bounds, return value validation, and test adequacy. Uses the powerful `sonnet` model and is equipped with the `Bash` tool to run tests and coverage checks via `just quality::local::test` or `just quality::local::mcdc`.
+  - **Scope**: Audits logic structures, loop bounds, return value validation, and test adequacy. Uses the powerful `sonnet` model and is equipped with the `Bash` tool to run tests and coverage checks via `just quality::local::test`.
 - **HUM Citations Validation (`@citation-reviewer`)**:
   - **Purpose**: Meticulously audits direct register accesses to verify that each is immediately preceded by a valid Hardware User's Manual (HUM) citation, and strictly bans in-tree line-number citations.
   - **When to Trigger**: On any modification to register structures, inline register accessors, or HAL drivers interacting with MMIO (e.g. under `libs/ra8_hal/`).
