@@ -190,24 +190,10 @@ and the run printed a FAIL table describing nothing about the tree under test
    themed fragment under `scripts/ci/gates/` that fits it. Those files are
    SOURCED by `ci.sh`, never executed, and hold bodies only: a second registry
    in one of them would recreate exactly the drift this design prevents.
-3. Add `run: just quality::local::gate <name>` to a workflow job.
 
-`scripts/ci/check_ci_parity.py` (the `ci-parity` gate) fails if you do
-either half without the other: a registered-but-unscheduled gate would pass
-locally and never run in CI, and an unregistered gate name in a workflow is a
-typo or a missing function. It also rejects any raw `run:` check body in a
-workflow -- that is how a second, drifting home for check logic gets created.
-A step that genuinely only provisions the runner declares itself:
-
-```yaml
-run: |
-  # ci-parity: infra -- installs libcapstone; runs no project check
-  sudo apt-get install -y libcapstone-dev
-```
-
-and an infra step may not invoke anything under `scripts/`, a `tests/*.sh`
-driver, or a gate-ish `just` target. A check does not become infrastructure by
-being labelled one.
+A registry row with no function behind it fails `scripts/ci.sh --list-gates`.
+There are no GitHub Actions workflows any more; CI moves to `tools/ra8ci`,
+which reads the same registry, so a gate is scheduled by being registered.
 
 ### Gates fail loudly on a missing tool -- they never skip
 

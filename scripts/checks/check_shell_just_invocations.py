@@ -48,10 +48,6 @@ SENSITIVE_BOUNDARY_LINES = (
         (('["/bin/bash", "-p", "scripts/ci.sh", "--list-gates"],', 1),),
     ),
     (
-        "scripts/ci/check_ci_parity.py",
-        (('["/bin/bash", "-p", str(CI_SH), "--list-gates"],', 1),),
-    ),
-    (
         "just/hw.just",
         (
             ("#!/bin/bash -p", 4),

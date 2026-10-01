@@ -28,22 +28,15 @@
 # A check written down once cannot disagree with itself. Re-syncing the lists a
 # fifth time would only reset the clock; removing the second copy ends it.
 #
-# The residual hole is someone adding a raw `run:` step straight to a workflow,
-# re-creating a second home for check logic. scripts/ci/check_ci_parity.py
-# closes it: it parses every workflow and fails when a step runs anything other
-# than a registered gate, unless the step is explicitly tagged
-# `# ci-parity: infra` -- and infra steps may not invoke checkers. It runs as
-# the `ci-parity` gate below, so the guard guards itself.
+# GitHub Actions workflows are gone (CI moves to tools/ra8ci), so this registry
+# is the only list of gates; ra8ci and `just quality::local::gate` both read it.
 #
 # ADDING A NEW GATE (the whole procedure)
 # ---------------------------------------------------------------------------
 #   1. Add one row to RA8_GATE_REGISTRY.
 #   2. Write the matching `gate_<name>` function (dashes become underscores).
-#   3. Add a step `run: just quality::local::gate <name>` to a workflow.
 #
-# Steps 1+2 without 3 fail the ci-parity gate ("registered but never
-# scheduled"). Step 3 without 1+2 fails it too ("unknown gate"). There is no
-# order in which doing half the work passes.
+# A row with no function fails `--list-gates`, so half the work cannot pass.
 #
 # ---------------------------------------------------------------------------
 # RUNNING IT
@@ -162,7 +155,7 @@ if [[ "$-" == *p* ]]; then
   # must follow it here.
   # ===========================================================================
   RA8_GATE_REGISTRY=(
-    "ci-parity|fast|workflow <-> gate-registry parity guard"
+    "ci-parity|fast|gate registry, runner and gate-body self-tests"
     "ci-status-contract|fast|ci-status exit codes: PASS/FAIL/UNKNOWN never conflated"
     "work-harness|fast|workflow plan and canonical-workspace contract"
     "toolchain-parity|fast|pinned host tools match .devcontainer/Dockerfile versions"
@@ -422,7 +415,7 @@ if [[ "$-" == *p* ]]; then
     done
   }
 
-  # Machine-readable dump consumed by scripts/ci/check_ci_parity.py. Also
+  # Machine-readable gate dump (ra8ci and just/ci_gate.just read it). Also
   # self-verifies that every registered name has a function behind it, so a
   # typo'd registry row is caught here rather than at gate-run time.
   list_gates() {
