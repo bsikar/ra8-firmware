@@ -300,27 +300,6 @@ macro(_ra8_app_collect_sources)
     REGEX
     "/src/boot/"
   )
-  # The RA8 clock adapter travels with the board layer. Since d0ec9994 (#693)
-  # ra8_board_ek_ra8d2_clock_profile.c includes fw_if_clock_ra8.h and calls
-  # fw_clock_ra8_iface(), whose only definition is libs/if_ra8_cgc. No app
-  # names if_ra8_cgc in LIBS, and none should: it is the adapter the board
-  # binds to, not a library an app picks. Without this block every app for
-  # the board stopped compiling at that #include. The Zig graph links the
-  # same adapter beside the board archive (board_archive.chip_clock_adapter).
-  #
-  # The port it implements comes along for the same reason: the board's
-  # ra8_board_clock_profile_bind() calls fw_clock_bind(), and since 950d187b
-  # the HIL examples call fw_clock_rate_for(ra8_board_clock(), ...). Both are
-  # defined in libs/if/src/fw_if_clock.c, which no app compiled unless it
-  # named `if` in LIBS. Only that one unit, not the whole of libs/if; an app
-  # that does name `if` lists the same path again and CMake builds it once.
-  if(EXISTS "${RA8_REPO_ROOT}/libs/if_ra8_cgc/src")
-    file(GLOB _ra8_lib_clock_adapter CONFIGURE_DEPENDS ${RA8_REPO_ROOT}/libs/if_ra8_cgc/src/*.c)
-    list(APPEND _ra8_lib_board ${_ra8_lib_clock_adapter})
-    if(EXISTS "${RA8_REPO_ROOT}/libs/if/src/fw_if_clock.c")
-      list(APPEND _ra8_lib_board ${RA8_REPO_ROOT}/libs/if/src/fw_if_clock.c)
-    endif()
-  endif()
   # ra8_secure_app has no C sources either: the sealed-key vault, the CMAC
   # core, the OTA commit gate and the secure TRNG are Zig (#2591, #2659,
   # #2670) and its objects come from the Zig static archive registered below.
@@ -378,9 +357,11 @@ macro(_ra8_app_collect_sources)
     list(APPEND _ra8_lib_zig "ra8_secure_app|${_ra8_secure_app_path}")
   endif()
   set(_ra8_lib_inc "")
-  # The clock adapter's header rides with the board too: both the board's
-  # clock_profile.c and its public clock_profile.h include fw_if_clock_ra8.h
-  # (see the adapter block above).
+  # The clock adapter's header rides with the board: the board's public
+  # ra8_board_ek_ra8d2_clock_profile.h includes fw_if_clock_ra8.h, and no app
+  # names if_ra8_cgc in LIBS (#693). On dev the adapter's C units travel with
+  # the board as well; here both are Zig archives, linked by the graph beside
+  # the board archive (board_archive.chip_clock_adapter).
   if(EXISTS "${RA8_REPO_ROOT}/libs/if_ra8_cgc/inc")
     list(APPEND _ra8_lib_inc ${RA8_REPO_ROOT}/libs/if_ra8_cgc/inc)
   endif()
