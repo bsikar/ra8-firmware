@@ -19,9 +19,12 @@
 
 cmake_minimum_required(VERSION 3.20)
 
+# The board implementation itself is Zig (build.zig, issue #2984): src/ holds
+# no .c any more, so there is nothing to glob here. The objects arrive in the
+# Zig static archive, which the per-app build registers on the board path in
+# cmake/ra8_app/sources.cmake. src/boot/ stays C and is selected by
+# ra8_add_app's boot fallback, not by this target.
 if(NOT TARGET ra8_board_ra8p1)
   add_library(ra8_board_ra8p1 INTERFACE)
   target_include_directories(ra8_board_ra8p1 INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/inc)
-  file(GLOB RA8_BOARD_RA8P1_SOURCES CONFIGURE_DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/src/*.c)
-  target_sources(ra8_board_ra8p1 INTERFACE ${RA8_BOARD_RA8P1_SOURCES})
 endif()

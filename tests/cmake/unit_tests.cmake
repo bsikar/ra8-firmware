@@ -467,34 +467,18 @@ foreach(src ${APP_TEST_SOURCES})
   endif()
 endforeach()
 
-# RA8P1 deliberately exports the same substitutable BSP names as EK-RA8D2.
-# Compile its source into one focused test under private symbol spellings so the
-# default EK-RA8D2 host object library can remain linked without duplicate
-# definitions while the RA8P1 console path still contributes real coverage.
-target_sources(
-  test_ra8_board_ra8p1_cov PRIVATE ${FW_ROOT}/libs/ra8_board_ra8p1/src/ra8_board_ra8p1.c
-)
+# RA8P1 deliberately exports the same substitutable BSP names as EK-RA8D2, so
+# one focused test links it under private symbol spellings and the default
+# EK-RA8D2 host object library can stay linked without duplicate definitions
+# while the RA8P1 console path still contributes real coverage.
+#
+# The implementation is Zig now (#2984), so the renaming moved from a wall of
+# per-symbol -D defines to the archive's own -Dabi-prefix=ra8p1_test_ build,
+# registered as ra8_zig::ra8_board_ra8p1_prefixed in zig_libraries.cmake. Same
+# mechanism ra8_zig::ra8_core_freestanding_prefixed already uses, and the same
+# test_* spellings the defines produced, so the suite's calls are unchanged.
+target_link_libraries(test_ra8_board_ra8p1_cov PRIVATE ra8_zig::ra8_board_ra8p1_prefixed)
 target_include_directories(test_ra8_board_ra8p1_cov PRIVATE ${FW_ROOT}/libs/ra8_board_ra8p1/inc)
-target_compile_definitions(
-  test_ra8_board_ra8p1_cov
-  PRIVATE k_ra8_board_name=k_ra8p1_test_board_name
-          k_ra8_board_doc_rev=k_ra8p1_test_board_doc_rev
-          k_ra8_board_mcu=k_ra8p1_test_board_mcu
-          ra8_board_get_info=ra8p1_test_board_get_info
-          ra8_board_led_pin=ra8p1_test_board_led_pin
-          ra8_board_led_init=ra8p1_test_board_led_init
-          ra8_board_led_on=ra8p1_test_board_led_on
-          ra8_board_led_off=ra8p1_test_board_led_off
-          ra8_board_led_toggle=ra8p1_test_board_led_toggle
-          ra8_board_sw_pin=ra8p1_test_board_sw_pin
-          ra8_board_sw_init=ra8p1_test_board_sw_init
-          ra8_board_sw_read=ra8p1_test_board_sw_read
-          ra8_board_sw_attach_irq=ra8p1_test_board_sw_attach_irq
-          ra8_board_uart_console_init=ra8p1_test_board_uart_console_init
-          ra8_board_uart_console_write=ra8p1_test_board_uart_console_write
-          ra8_board_uart_console_read=ra8p1_test_board_uart_console_read
-          ra8_board_uart_console_flush=ra8p1_test_board_uart_console_flush
-)
 target_link_options(
   test_ra8_board_ra8p1_cov
   PRIVATE
