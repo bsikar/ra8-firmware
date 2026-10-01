@@ -386,16 +386,15 @@ ra8_err_t ra8_c6link_mdl_next(ra8_c6link_t*      link,
   if (allowed != k_ra8_ok) {
     return allowed;
   }
-  *chunk                      = (ra8_mdl_chunk_t){};
-  Ra8__Mdl__NextRequest inner = RA8__MDL__NEXT_REQUEST__INIT;
-  inner.protocol_version      = k_ra8_mdl_protocol_version;
-  inner.job_id                = session->job_id;
-  inner.acknowledged_offset   = session->next_offset;
-  inner.max_bytes             = max_bytes;
-  uint8_t* const data         = link->mdl_request;
-  const size_t   packed       = ra8__mdl__next_request__get_packed_size(&inner);
-  const size_t written = ra8__mdl__next_request__pack(&inner, data);
-  if (!priv_c6link_mdl_packed_coherent(packed, written, sizeof(link->mdl_request))) {
+  *chunk                = (ra8_mdl_chunk_t){};
+  uint8_t* const data   = link->mdl_request;
+  size_t         packed = 0U;
+  if (!priv_c6link_mdl_encode_next(session->job_id,
+                                   session->next_offset,
+                                   max_bytes,
+                                   data,
+                                   sizeof(link->mdl_request),
+                                   &packed)) {
     return k_ra8_err_invalid_size;
   }
   mdl_take_ctx_t take = {.session         = session,
@@ -414,13 +413,9 @@ ra8_err_t ra8_c6link_mdl_cancel(ra8_c6link_t* link, ra8_mdl_session_t* session)
   if (allowed != k_ra8_ok) {
     return allowed;
   }
-  Ra8__Mdl__CancelRequest inner = RA8__MDL__CANCEL_REQUEST__INIT;
-  inner.protocol_version        = k_ra8_mdl_protocol_version;
-  inner.job_id                  = session->job_id;
-  uint8_t* const data           = link->mdl_request;
-  const size_t   packed         = ra8__mdl__cancel_request__get_packed_size(&inner);
-  const size_t written = ra8__mdl__cancel_request__pack(&inner, data);
-  if (!priv_c6link_mdl_packed_coherent(packed, written, sizeof(link->mdl_request))) {
+  uint8_t* const data   = link->mdl_request;
+  size_t         packed = 0U;
+  if (!priv_c6link_mdl_encode_cancel(session->job_id, data, sizeof(link->mdl_request), &packed)) {
     return k_ra8_err_invalid_size;
   }
   mdl_take_ctx_t take = {.session = session, .kind = k_mdl_take_cancelled};
