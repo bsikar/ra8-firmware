@@ -31,11 +31,37 @@ pub const Sci = struct {
     pub const stop_1: u8 = 0;
 };
 
+/// `ra8_glcdc_timing_t`. Describes the panel, not the controller: active
+/// size plus the porches and sync widths the driver turns into line and
+/// frame totals.
+pub const GlcdcTiming = extern struct {
+    h_active: u16,
+    h_front: u16,
+    h_back: u16,
+    h_sync: u16,
+    v_active: u16,
+    v_front: u16,
+    v_back: u16,
+    v_sync: u16,
+};
+
+/// `ra8_glcdc_config_t`. `format` is an `enum : uint8_t` in the header.
+pub const GlcdcCfg = extern struct {
+    framebuffer_addr: u32,
+    width_px: u16,
+    height_px: u16,
+    format: u8,
+    timing: GlcdcTiming,
+};
+
 pub extern fn ra8_mstp_init() u32;
 pub extern fn ra8_time_init(cpu_hz: u32) u32;
 pub extern fn ra8_cgc_init() u32;
 pub extern fn ra8_cgc_get_clock_hz(id: u32, out_hz: *u32) u32;
 pub extern fn ra8_isr_globals_enable() void;
+pub extern fn ra8_glcdc_init(cfg: *const GlcdcCfg) u32;
+pub extern fn ra8_glcdc_set_background_color(argb: u32) u32;
+pub extern fn ra8_glcdc_start(enable: bool) u32;
 
 /// `clocks.zig` and `uart_console.zig` define these two; they stay on the
 /// extern seam rather than being imported directly so a suite rooted at

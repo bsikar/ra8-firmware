@@ -195,6 +195,12 @@ pub fn build(b: *std.Build) void {
             .needs_config = false,
         },
         .{
+            .name = "backdrop",
+            .source = "src/internal/backdrop.zig",
+            .root = "tests/backdrop_test.zig",
+            .needs_config = false,
+        },
+        .{
             .name = "panel",
             .source = "src/internal/panel.zig",
             .root = "tests/panel_test.zig",
