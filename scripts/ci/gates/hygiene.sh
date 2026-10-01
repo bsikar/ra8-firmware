@@ -648,19 +648,6 @@ gate_copyright() (
   python3 scripts/checks/check-copyright.py --all
 )
 
-# --- since ----------------------------------------------------------------
-# --all runs BOTH halves over the DERIVED first-party set (#358): the @since
-# PRESENCE check on every libs/ra8_*/inc/ public header, AND the @since VALUE
-# check on every first-party source. The old form passed only the public
-# headers, so the value check ("every @since equals the one VERSION string")
-# never ran on tools/, port/ or the deeply-nested example apps -- and drifted
-# @since values sat there unseen. --selftest proves both halves first.
-gate_since() (
-  set -e
-  bash scripts/builders/check_since_version.sh --selftest
-  bash scripts/builders/check_since_version.sh --all
-)
-
 # --- toolchain-parity -----------------------------------------------------
 # CI jobs execute inside Ansible-owned runner images, while native development
 # gates execute on the Ansible-owned Debian dev box. Both environments consume

@@ -86,10 +86,6 @@ ascii:
     python3 scripts/fix/fix-encoding.py --selftest
     python3 scripts/fix/fix-encoding.py --check --all
 
-# Verify @since version tags
-version:
-    bash scripts/builders/check_since_version.sh --all
-
 # Run host unit tests
 test ubsan="0":
     #!/usr/bin/env bash

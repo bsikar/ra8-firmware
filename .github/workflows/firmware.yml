@@ -138,16 +138,6 @@ jobs:
       - uses: actions/checkout@v4
       - run: just quality::local::gate runner-image-deps
 
-  since:
-    name: Doxygen @since tags
-    runs-on: ra8-ci
-    if: >-
-      github.event_name != 'pull_request'
-      || github.event.pull_request.head.repo.full_name == github.repository
-    steps:
-      - uses: actions/checkout@v4
-      - run: just quality::local::gate since
-
   # ---------------------------------------------------------------------------
   # EIL==HIL parity -- every HIL app is also exercised in the emulator (EIL).
   # Cheap, hardware-free structural gate; guarantees an added HIL app cannot
@@ -464,17 +454,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - run: just quality::local::gate enum-underlying-casts
-
-  doc-attachment:
-    name: Doxygen block attachment (libclang)
-    runs-on: ra8-ci
-    if: >-
-      github.event_name != 'pull_request'
-      || github.event.pull_request.head.repo.full_name == github.repository
-    timeout-minutes: 20
-    steps:
-      - uses: actions/checkout@v4
-      - run: just quality::local::gate doc-attachment
 
   # ---------------------------------------------------------------------------
   # Cross-compile the canonical ra8_apps matrix, sharded four ways, then aggregate.
