@@ -37,7 +37,7 @@ func TestRecordDemandEventDeduplicatesDeliveries(t *testing.T) {
 	defer pool.Close()
 	ctx := context.Background()
 	jobID := time.Now().UnixNano() % 1000000000
-	event := demandFixture(t, jobID, 1, demand.PhaseQueued, "delivery-a")
+	event := demandFixture(t, jobID, 1, demand.PhaseQueued, demandDeliveryID(jobID, "delivery-a"))
 
 	outcome, err := store.RecordDemandEvent(ctx, event)
 	if err != nil || outcome != DemandAccepted {
@@ -69,11 +69,11 @@ func TestRecordDemandEventOutOfOrderDeliveries(t *testing.T) {
 	ctx := context.Background()
 	jobID := time.Now().UnixNano()%1000000000 + 1
 
-	completed := demandFixture(t, jobID, 1, demand.PhaseCompleted, "delivery-completed")
+	completed := demandFixture(t, jobID, 1, demand.PhaseCompleted, demandDeliveryID(jobID, "delivery-completed"))
 	if outcome, err := store.RecordDemandEvent(ctx, completed); err != nil || outcome != DemandAccepted {
 		t.Fatalf("completed first: %s, %v", outcome, err)
 	}
-	queued := demandFixture(t, jobID, 1, demand.PhaseQueued, "delivery-queued")
+	queued := demandFixture(t, jobID, 1, demand.PhaseQueued, demandDeliveryID(jobID, "delivery-queued"))
 	if outcome, err := store.RecordDemandEvent(ctx, queued); err != nil || outcome != DemandStale {
 		t.Fatalf("late queued: %s, %v", outcome, err)
 	}
@@ -106,7 +106,7 @@ func TestRecordDemandEventAdvancesOneRow(t *testing.T) {
 	ctx := context.Background()
 	jobID := time.Now().UnixNano()%1000000000 + 2
 
-	queued := demandFixture(t, jobID, 1, demand.PhaseQueued, "delivery-q")
+	queued := demandFixture(t, jobID, 1, demand.PhaseQueued, demandDeliveryID(jobID, "delivery-q"))
 	if _, err := store.RecordDemandEvent(ctx, queued); err != nil {
 		t.Fatal(err)
 	}
@@ -127,7 +127,7 @@ func TestRecordDemandEventAdvancesOneRow(t *testing.T) {
 		phase    demand.Phase
 		delivery string
 	}{{demand.PhaseInProgress, "delivery-p"}, {demand.PhaseCompleted, "delivery-c"}} {
-		outcome, err := store.RecordDemandEvent(ctx, demandFixture(t, jobID, 1, step.phase, step.delivery))
+		outcome, err := store.RecordDemandEvent(ctx, demandFixture(t, jobID, 1, step.phase, demandDeliveryID(jobID, step.delivery)))
 		if err != nil || outcome != DemandSuperseded {
 			t.Fatalf("%s: %s, %v", step.phase, outcome, err)
 		}
@@ -163,11 +163,11 @@ func TestRecordDemandEventSeparatesRunAttempts(t *testing.T) {
 	ctx := context.Background()
 	jobID := time.Now().UnixNano()%1000000000 + 3
 
-	first := demandFixture(t, jobID, 1, demand.PhaseCompleted, "delivery-first")
+	first := demandFixture(t, jobID, 1, demand.PhaseCompleted, demandDeliveryID(jobID, "delivery-first"))
 	if _, err := store.RecordDemandEvent(ctx, first); err != nil {
 		t.Fatal(err)
 	}
-	retry := demandFixture(t, jobID, 2, demand.PhaseQueued, "delivery-retry")
+	retry := demandFixture(t, jobID, 2, demand.PhaseQueued, demandDeliveryID(jobID, "delivery-retry"))
 	outcome, err := store.RecordDemandEvent(ctx, retry)
 	if err != nil || outcome != DemandAccepted {
 		t.Fatalf("retry attempt: %s, %v", outcome, err)
@@ -189,11 +189,11 @@ func TestRecordDemandEventRejectsReusedDeliveryID(t *testing.T) {
 	ctx := context.Background()
 	jobID := time.Now().UnixNano()%1000000000 + 4
 
-	first := demandFixture(t, jobID, 1, demand.PhaseQueued, "delivery-reused")
+	first := demandFixture(t, jobID, 1, demand.PhaseQueued, demandDeliveryID(jobID, "delivery-reused"))
 	if _, err := store.RecordDemandEvent(ctx, first); err != nil {
 		t.Fatal(err)
 	}
-	other := demandFixture(t, jobID+500, 1, demand.PhaseQueued, "delivery-reused")
+	other := demandFixture(t, jobID+500, 1, demand.PhaseQueued, demandDeliveryID(jobID, "delivery-reused"))
 	if _, err := store.RecordDemandEvent(ctx, other); !errors.Is(err, ErrConflict) {
 		t.Fatalf("got %v, want ErrConflict", err)
 	}
@@ -211,9 +211,9 @@ func TestRecordDemandEventConcurrentDeliveries(t *testing.T) {
 	jobID := time.Now().UnixNano()%1000000000 + 5
 
 	events := []demand.Event{
-		demandFixture(t, jobID, 1, demand.PhaseQueued, "race-q"),
-		demandFixture(t, jobID, 1, demand.PhaseInProgress, "race-p"),
-		demandFixture(t, jobID, 1, demand.PhaseCompleted, "race-c"),
+		demandFixture(t, jobID, 1, demand.PhaseQueued, demandDeliveryID(jobID, "race-q")),
+		demandFixture(t, jobID, 1, demand.PhaseInProgress, demandDeliveryID(jobID, "race-p")),
+		demandFixture(t, jobID, 1, demand.PhaseCompleted, demandDeliveryID(jobID, "race-c")),
 	}
 	const copies = 4
 	start := make(chan struct{})
