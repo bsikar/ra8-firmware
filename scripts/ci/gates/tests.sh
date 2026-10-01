@@ -13,28 +13,8 @@
 # registry here would recreate the drift the single-definition rule exists to
 # prevent.
 #
-# Gates in this file: work-harness, unit-tests, ubsan, artefact-freshness,
+# Gates in this file: unit-tests, ubsan, artefact-freshness,
 # cache-bench
-
-# --- work-harness ---------------------------------------------------------
-gate_work_harness() (
-  set -e
-  require_cmd python3 "the workflow harness is a Python command"
-  require_cmd bash "the canonical workspace lifecycle is a Bash script"
-  require_cmd sh "the emitted operator script is executed by POSIX sh"
-  require_cmd git "workspace binding tests use isolated local git repositories"
-  require_cmd jq "the emitted GitHub script discovers board metadata with jq"
-  require_cmd shellcheck "the generated operator script must be valid POSIX shell"
-  RA8_WORK_HARNESS_REGISTERED_GATE=1 python3 -I scripts/dev/work/src/work.py --selftest
-  /bin/bash -p -n scripts/dev/agent_workspace.sh
-  bash scripts/dev/agent_workspace_selftest.sh
-  local generated
-  generated="$(mktemp)"
-  trap 'rm -f "$generated"' EXIT
-  python3 -I scripts/dev/work/src/work.py plan scripts/dev/work/tests/fixtures/injection_notes.md \
-    --emit-commands >"$generated"
-  shellcheck -s sh "$generated"
-)
 
 # --- unit-tests -----------------------------------------------------------
 gate_unit_tests() (

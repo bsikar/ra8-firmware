@@ -317,7 +317,7 @@ def _selftest_ci_driver() -> tuple[int, str | None]:
             "separate native and fast switches stay valid",
         ),
         (
-            "    /bin/bash -p scripts/ci.sh --gate work-harness\n",
+            "    /bin/bash -p scripts/ci.sh --gate unit-tests\n",
             False,
             "gate value stays valid",
         ),
