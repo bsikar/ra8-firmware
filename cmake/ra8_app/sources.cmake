@@ -376,6 +376,12 @@ macro(_ra8_app_collect_sources)
         list(APPEND _ra8_lib_zig "${_ra8_lib}|${_ra8_lib_path}")
         set(_ra8_lib_has_archive ON)
       endif()
+      if(_ra8_lib STREQUAL "ra8_c6link")
+        # The media-download wire format is Zig on the RA8 (#3199); the
+        # generated codec stays in the tree only for the C6 component and the
+        # C test fixtures.
+        list(FILTER _ra8_lib_one EXCLUDE REGEX "/ra8_media_download\\.pb-c\\.c$")
+      endif()
       if(_ra8_lib MATCHES "^ra8_board_")
         # Board boot sources are image-composition fallbacks selected above.
         # A board named explicitly in LIBS must not re-add src/boot after an
@@ -399,29 +405,11 @@ macro(_ra8_app_collect_sources)
       list(APPEND _ra8_lib_inc ${_ra8_lib_path}/inc)
     endif()
   endforeach()
-  # Generated protobuf-c output contains casts required by its runtime ABI.
-  # Keep warnings enabled for the handwritten client and service while
-  # treating this one generated translation unit like the vendored codec.
-  # The file is produced by scripts/gen/gen_ra8_media_proto.sh (protoc-c 1.5.2),
-  # so neither cast can be fixed at the site without hand-editing generated
-  # output. Both flags were measured on this TU under arm-none-eabi-gcc 13.3.1
-  # at -O0 by removing one at a time: -Wcast-qual fires on the
-  # RA8__MDL__*__INIT initialisers in ra8_media_download.pb-c.h, which cast away
-  # const on protobuf_c_empty_string, and -Wcast-align fires on the
-  # ProtobufCMessage* -> Ra8__Mdl__* downcasts protobuf-c's unpack API returns.
   if("ra8_c6link" IN_LIST _RA8_APP_LIBS)
     # The media RPC carries the canonical mdl_format_t in its public
     # request contract. Consumers need the declaration even when they use
     # c6link only for Wi-Fi and do not otherwise compile mdl sources.
     list(APPEND _ra8_lib_inc ${RA8_REPO_ROOT}/apps/shared_libs/mdl/inc)
-    set(_ra8_media_proto_warnings
-        -Wno-cast-qual # protoc-c initialisers cast away const from its empty-string singleton.
-        -Wno-cast-align # protobuf-c unpack downcasts a base pointer to the generated message.
-    )
-    set_source_files_properties(
-      ${RA8_REPO_ROOT}/libs/ra8_c6link/src/ra8_media_download.pb-c.c
-      PROPERTIES COMPILE_OPTIONS "${_ra8_media_proto_warnings}"
-    )
   endif()
   foreach(_ra8_lib ${_RA8_APP_OFF_TARGET_LIBS})
     if(EXISTS "${RA8_REPO_ROOT}/libs/${_ra8_lib}")
