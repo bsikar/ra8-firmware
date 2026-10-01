@@ -1,5 +1,5 @@
 /*
- * GNU ld linker script for ra8-firmware -- ra8_board_ra8p1 default (issue #226)
+ * GNU ld linker script for ra8-firmware -- ra8_board_ra8p1 default (issue RA8FW-260)
  *
  * Target: Renesas R7KA8P1KFLCAC (RA8P1)
  * - Arm Cortex-M85 primary core (double-precision FPU) + Arm Ethos-U55 NPU
@@ -9,7 +9,7 @@
  * the RA8P1 shares the RA8D2 memory map (see libs/ra8_core/inc/ra8_device.h,
  * which mirrors this MEMORY block). Every RA8P1 app uses this map; the four
  * foundation apps (examples/ra8p1_foundation) each carried an identical
- * 310-line copy until #742 deleted them.
+ * 310-line copy until RA8FW-309 deleted them.
  *
  * Memory map (byte-identical on RA8D2 HUM R01UH1065EJ / RA8P1 HUM R01UH1064EJ):
  *

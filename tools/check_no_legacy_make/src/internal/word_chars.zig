@@ -1,7 +1,7 @@
 //! SPDX-License-Identifier: MIT
 //! Copyright (c) 2026 Brighton Sikarskie
 //!
-//! Unicode word-character table for the legacy-task-runner gate (#858).
+//! Unicode word-character table for the legacy-task-runner gate (RA8FW-335).
 //!
 //! The gate it replaces anchored every banned term with the regular-expression
 //! word boundary `\b`, and Python's `\b` is Unicode-aware: `\w` there is

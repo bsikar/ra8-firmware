@@ -1,7 +1,7 @@
 //! SPDX-License-Identifier: MIT
 //! Copyright (c) 2026 Brighton Sikarskie
 //!
-//! Build graph for the `roadmap_stats` host tool (#858). One executable,
+//! Build graph for the `roadmap_stats` host tool (RA8FW-335). One executable,
 //! plus the test step `scripts/checks/check_zig.py --test` runs: the parser
 //! and renderer quirks, and the exit-status contract
 //! `scripts/builders/roadmap_stats.sh` passes through.

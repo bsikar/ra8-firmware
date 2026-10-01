@@ -385,7 +385,7 @@ ASSERT(g_ra8_ls_ebss + g_ra8_ls_stack_size <= g_ra8_ls_stack_top,
  *
  * That worked, but it left the contract implicit and it left check_linker_scripts
  * with no in-tree script defining them once the last hand-written fork that did
- * was retired (#742), which reads as LD006 "referenced by C but no linker script
+ * was retired (RA8FW-309), which reads as LD006 "referenced by C but no linker script
  * defines it". PROVIDE the same zeroes here instead: PROVIDE yields to the real
  * assignment whenever a fragment makes one, so this changes no image that uses
  * SRAM_TEXT and reproduces the exact undefined-weak behaviour for every image

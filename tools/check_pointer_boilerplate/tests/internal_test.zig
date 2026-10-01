@@ -1,7 +1,7 @@
 //! SPDX-License-Identifier: MIT
 //! Copyright (c) 2026 Brighton Sikarskie
 //!
-//! Detector and scope algebra of the pointer-only comment gate (#858). Every
+//! Detector and scope algebra of the pointer-only comment gate (RA8FW-335). Every
 //! case here is the behaviour the Python gate had, pinned so the migration
 //! cannot quietly widen or narrow it.
 

@@ -4,7 +4,7 @@
 //! The one Unicode character class CPython's `re` module applies to the
 //! patterns `roadmap_stats.py` carried, generated from the interpreter this
 //! repository pins and checked in so the Zig tool needs no Python at runtime
-//! (#858).
+//! (RA8FW-335).
 //!
 //! `space_intervals` is `\s` for a str pattern, which CPython resolves to
 //! `Py_UNICODE_ISSPACE`. That is also what `str.isspace` tests, and therefore

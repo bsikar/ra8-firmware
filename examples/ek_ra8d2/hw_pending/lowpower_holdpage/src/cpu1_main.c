@@ -7,7 +7,7 @@
  *
  * @details
  * This is the firmware that runs on the RA8D2's *second* core, the Cortex-M33,
- * for the #150 low-power-mode demo. It is compiled as a wholly separate ELF
+ * for the RA8FW-250 low-power-mode demo. It is compiled as a wholly separate ELF
  * (`-mcpu=cortex-m33`) and embedded into the M85 ELF as a `.cpu1_image` blob;
  * the M85 "renders" page 0, releases this core via `ra8_cpu1_release` (HUM
  * Ch 2.9.1), and PARKS. From then on the M33 is the live core.
@@ -27,7 +27,7 @@
  *
  * Re-rendering a new page is M85-heavy work (ra8_gfx is Helium-tuned, 1 GHz-
  * assuming); the M33 holds the existing page and advances the page number, and
- * waking the M85 for the heavy re-render is the remaining piece tracked in #150.
+ * waking the M85 for the heavy re-render is the remaining piece tracked in RA8FW-250.
  *
  * @note The M33 deliberately does NOT call `ra8_log`. ra8_emulator echoes only the
  *       primary core's ITM, so an M33 `ra8_log` line would be invisible; the

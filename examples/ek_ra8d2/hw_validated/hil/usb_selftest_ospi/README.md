@@ -35,7 +35,7 @@ cover card readback and per-LUN addressing. A general host-formatted OSPI
 filesystem that survives power cycles would still need a
 read-modify-erase-write backing (4 KiB erase granularity against 512-byte LBAs);
 that general filesystem mode is outside this read-only app's contract.
-WRITE(10) STALL recovery is tracked by open issue #92.
+WRITE(10) STALL recovery is tracked by open issue RA8FW-253.
 
 ## Pinout
 

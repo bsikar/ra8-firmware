@@ -11,7 +11,7 @@ over: ``justfile`` sets ``shell := ["/bin/bash", "-puc"]`` and ``scripts/ci.sh``
 carries ``#!/bin/bash -p``.  Every Linux box in this suite runs bash 5.
 
 So a bash-4 construct in the CI shell is invisible everywhere it is written and
-fails only on the one machine #899 exists to serve.  That is the same shape as
+fails only on the one machine RA8FW-330 exists to serve.  That is the same shape as
 the issue itself -- Linux-green, Mac-red -- and the macOS gate is the only gate
 whose whole purpose is to be believed when it is the only thing that ran.
 
@@ -536,7 +536,7 @@ def main() -> int:
         sys.stderr.write(
             f"{len(findings)} finding(s). macOS ships bash 3.2.57 as /bin/bash, which\n"
             "justfile and scripts/ci.sh both pin, so these read as correct on every\n"
-            "Linux box in this suite and break only the one machine #899 is about.\n"
+            "Linux box in this suite and break only the one machine RA8FW-330 is about.\n"
         )
         return 1
     return 0

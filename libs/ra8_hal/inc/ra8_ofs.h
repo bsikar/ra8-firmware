@@ -112,7 +112,7 @@ typedef enum : uint8_t {
  *       `OPTION_SETTING_ADDR` in `scripts/checks/check_linker_scripts.py`
  *       normalises every word to the secure alias because it governs
  *       *programming*; `OFS3` therefore reads `0x02C9F4C4` there and
- *       `0x12C9_F4C4` here. Both are correct for their direction. See #543,
+ *       `0x12C9_F4C4` here. Both are correct for their direction. See RA8FW-275,
  *       which tracks whether the programming side should move to the
  *       non-secure alias the HUM prints.
  *

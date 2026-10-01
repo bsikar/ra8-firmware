@@ -1,7 +1,7 @@
 //! SPDX-License-Identifier: MIT
 //! Copyright (c) 2026 Brighton Sikarskie
 //!
-//! Pure host-build-entrypoint contract logic (#858), replacing
+//! Pure host-build-entrypoint contract logic (RA8FW-335), replacing
 //! scripts/checks/check_host_build_entrypoints.py.
 //!
 //! Nothing here touches the file system, the environment, argv or a child

@@ -2,7 +2,7 @@
 //! Copyright (c) 2026 Brighton Sikarskie
 //!
 //! Minimal baseline JPEG construction for the `gen_jpeg_fixture` build tool
-//! (#858), replacing the Python implementation this change deletes.
+//! (RA8FW-335), replacing the Python implementation this change deletes.
 //!
 //! Dimensions in, bytes out: no file system and no process state, so the blob
 //! the libFuzzer corpora are seeded with is provable without writing a file.

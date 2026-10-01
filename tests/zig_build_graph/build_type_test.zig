@@ -2,7 +2,7 @@
 //! Copyright (c) 2026 Brighton Sikarskie
 //!
 //! The configurations build_type.zig declares, held against the REAL root
-//! CMakeLists.txt (#1179, part of #857).
+//! CMakeLists.txt (#1179, part of RA8FW-339).
 //!
 //! The listfile arrives as an anonymous import declared in build.zig, so it is
 //! read at COMPILE time from the path the build graph itself names. A test
@@ -71,7 +71,7 @@ test "the graph knows every configuration the listfile declares flags for" {
 
     // The other direction, which is the one that rots: a configuration added
     // to the listfile that the graph cannot build would be a CMake-only
-    // configuration all over again, and #859 cannot retire a build system over
+    // configuration all over again, and RA8FW-332 cannot retire a build system over
     // one of those.
     var lines = std.mem.splitScalar(u8, root_cmakelists_source, '\n');
     var found: usize = 0;

@@ -14,7 +14,7 @@
  * ::ra8_img_arena (see
  * `apps/shared_libs/third_party/stb/stb_image_impl.c`).
  *
- * @par What is left here (#768)
+ * @par What is left here (RA8FW-308)
  * The arithmetic is not. `libs/ra8_imgdec/inc/ra8_imgdec_scratch.h` carries the
  * bump-scratch policy the decoder shims share, and ::ra8_webp_arena_t is that
  * record: this header is now the libwebp-shaped face of it. What stays is the

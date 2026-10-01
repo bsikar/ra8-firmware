@@ -1,7 +1,7 @@
 //! SPDX-License-Identifier: MIT
 //! Copyright (c) 2026 Brighton Sikarskie
 //!
-//! Exit-status contract tests for the trailing-newline gate (#858). Every
+//! Exit-status contract tests for the trailing-newline gate (RA8FW-335). Every
 //! status the launcher can pass through is proved here with a census supplied
 //! by the test and a temporary tree on disk, so no real repository and no
 //! process are involved.

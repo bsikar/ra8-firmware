@@ -1,7 +1,7 @@
 //! SPDX-License-Identifier: MIT
 //! Copyright (c) 2026 Brighton Sikarskie
 //!
-//! Gate: examples shall not hand-encode board connector pins (#858, replacing
+//! Gate: examples shall not hand-encode board connector pins (RA8FW-335, replacing
 //! the Python `scripts/checks/check_example_board_pins.py`).  PATHREF-OK: the
 //! predecessor this names is deleted in the same change.
 //!

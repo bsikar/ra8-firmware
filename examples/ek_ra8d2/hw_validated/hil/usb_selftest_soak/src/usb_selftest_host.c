@@ -241,7 +241,7 @@ static const char* selftest_fs_type_name(ra8_fs_type_t type)
  * the BOT transport afterwards (Bulk-Only Mass Storage Reset + Clear
  * Feature ENDPOINT_HALT on both bulk pipes) is not yet implemented in
  * the host class. That STALL/ClearFeature recovery path is tracked as
- * GitHub issue #92's robustness sweep; this pass parks on success, so
+ * GitHub issue RA8FW-253's robustness sweep; this pass parks on success, so
  * the post-STALL desync does not affect the verdict.
  *
  * @return ra8_err_t verdict.

@@ -1,7 +1,7 @@
 //! SPDX-License-Identifier: MIT
 //! Copyright (c) 2026 Brighton Sikarskie
 //!
-//! Argv membrane and exit-status contract for the redundant-cast gate (#858).
+//! Argv membrane and exit-status contract for the redundant-cast gate (RA8FW-335).
 //!
 //! Exit 0 clean, 1 findings (or an empty argv target set, or an unreadable
 //! source), 2 unknown or incompatible arguments. `run` is parameterised on a

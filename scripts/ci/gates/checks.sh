@@ -153,7 +153,7 @@ _pcc_migration_contracts() (
   # The same shape one layer down, in C rather than CMake: a store to a
   # security-attribution register with PRCR PRC4 locked is discarded silently,
   # so the code reports success and the attribution keeps its reset value.
-  # That defect has been found and hand-fixed three times (#131, #759c, #759d)
+  # That defect has been found and hand-fixed three times (RA8FW-254, #759c, #759d)
   # with nothing stopping a fourth. --selftest proves the detector fires in
   # both directions before the tree check runs (#759 item a).
   python3 scripts/checks/check_attribution_gates.py --selftest
@@ -244,7 +244,7 @@ _pcc_board_and_layering() (
   # identifiers (tx_len, tx_pool), and judges the ledger in both directions.
   python3 scripts/checks/check_rtos_symbol_isolation.py --selftest
   python3 scripts/checks/check_rtos_symbol_isolation.py
-  # A board's memory map is a board fact too, and until #758 it was readable
+  # A board's memory map is a board fact too, and until RA8FW-306 it was readable
   # only by the linker: three host-side consumers retyped it under three sets
   # of names. libs/ra8_board_<board>/inc/ra8_board_memmap.h publishes it, and
   # this pins the published copy to the MEMORY{} block next door so it can be
@@ -351,7 +351,7 @@ _pcc_source_form() (
   python3 scripts/checks/check_c23_patterns.py --all
   # No silent ra8_err_t discards at TrustZone boot boundaries. A C23
   # (void)-cast silences [[nodiscard]] by ISO rule, so -Werror can never catch
-  # a discarded ra8_cgc_init() right before a BLXNS (#191).
+  # a discarded ra8_cgc_init() right before a BLXNS (RA8FW-255).
   (cd tools/ra8ci && GOWORK=off go run . tz-boundary-discard)
   # Ban the numbered session-bookkeeping tags from comments and docs.
   # --selftest proves the detector fires and that the derived scope reaches the

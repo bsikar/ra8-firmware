@@ -126,7 +126,7 @@ function(
   )
 endfunction()
 
-# The board's chip adapters (#693): _ra8_app_board_adapter_sources/_includes.
+# The board's chip adapters (RA8FW-299): _ra8_app_board_adapter_sources/_includes.
 include(${CMAKE_CURRENT_LIST_DIR}/board_adapters.cmake)
 
 macro(_ra8_app_collect_sources)
@@ -138,7 +138,7 @@ macro(_ra8_app_collect_sources)
   # shared by a FAMILY of apps rather than by all of them or by one: two apps
   # hand off to a Non-Secure USB image and two are deliberately secure-only,
   # and each pair carried a byte-identical trustzone_init.c differing only in
-  # the @file line (#742). BOOT_PROFILE lets the pair name one shared copy
+  # the @file line (RA8FW-309). BOOT_PROFILE lets the pair name one shared copy
   # without promoting it to the board default, which would change every other
   # app on the board.
   #
@@ -244,7 +244,7 @@ macro(_ra8_app_collect_sources)
   # deliberately outside the #908 guard, which exists to catch a library whose
   # objects silently vanish; this one's have a link path of their own.
   # ra8_usb_pal has no C sources either: the PAL core, the descriptor builders
-  # and the compose facade are Zig (#766) and its objects come from the Zig
+  # and the compose facade are Zig (RA8FW-317) and its objects come from the Zig
   # static archive, linked separately. Left unglobbed and deliberately outside
   # the #908 guard, for the same reason as ra8_net_pal above.
   file(GLOB_RECURSE _ra8_lib_board CONFIGURE_DEPENDS ${_ra8_board_dir}/src/*.c)
@@ -253,7 +253,7 @@ macro(_ra8_app_collect_sources)
   # library. Register it whenever the build.zig is there, whether the flip is
   # finished (no C left outside src/boot/, ra8_board_ra8p1, #2984) or only
   # partway (support C such as ra8_board_ek_ra8d2_mipi_panel.c still compiles
-  # beside the archive, ra8_board_ek_ra8d2, #2998/#3033).
+  # beside the archive, ra8_board_ek_ra8d2, RA8FW-365/#3033).
   #
   # Either way the archive is the board's link path, so _ra8_board_zig tells
   # the #908 guard so. Leaving it off for a partial board made the guard's
@@ -326,7 +326,7 @@ macro(_ra8_app_collect_sources)
   endif()
   # ...and the chip adapters that ride with it (board_adapters.cmake).
   list(APPEND _ra8_lib_zig ${_ra8_board_adapter_zig})
-  # ra8_usb_pal is universal the same way as ra8_net_pal, and Zig since #766:
+  # ra8_usb_pal is universal the same way as ra8_net_pal, and Zig since RA8FW-317:
   # every USBX app calls ra8_usb_device_compose without naming it in LIBS.
   set(_ra8_usb_pal_path "${RA8_REPO_ROOT}/libs/ra8_usb_pal")
   if(EXISTS "${_ra8_usb_pal_path}/build.zig")
@@ -356,7 +356,7 @@ macro(_ra8_app_collect_sources)
     list(APPEND _ra8_lib_zig "ra8_secure_app|${_ra8_secure_app_path}")
   endif()
   set(_ra8_lib_inc "")
-  # Chip adapter headers ride with the board (#693); see board_adapters.cmake.
+  # Chip adapter headers ride with the board (RA8FW-299); see board_adapters.cmake.
   _ra8_app_board_adapter_includes()
   foreach(_ra8_lib ${_RA8_APP_LIBS})
     if(EXISTS "${RA8_REPO_ROOT}/libs/${_ra8_lib}")
@@ -450,7 +450,7 @@ macro(_ra8_app_collect_sources)
     # (the STBI_* macros are defined inside it), so it needs no -include here.
     set(_ra8_stb_img_impl ${RA8_REPO_ROOT}/apps/shared_libs/third_party/stb/stb_image_impl.c)
     # The arena hooks forward to the shared decoder scratch, and reflow_image.c
-    # routes WebP through the shared container sniff (#768), so both of those
+    # routes WebP through the shared container sniff (RA8FW-308), so both of those
     # TUs travel with the reflow sources wherever they go.
     list(APPEND _ra8_lib_extra ${_ra8_stb_impl} ${_ra8_stb_img_impl})
     # ra8_imgdec is a Zig archive now, so the scratch and the sniff arrive as
@@ -466,7 +466,7 @@ macro(_ra8_app_collect_sources)
   elseif("rabook_compile" IN_LIST _RA8_APP_LIBS)
     set(_ra8_stb_img_impl ${RA8_REPO_ROOT}/apps/shared_libs/third_party/stb/stb_image_impl.c)
     # ra8_rabook_raster.c routes its WebP-or-stb decision through the shared
-    # container sniff (#768), the same way reflow_image.c does above, so the
+    # container sniff (RA8FW-308), the same way reflow_image.c does above, so the
     # sniff TU travels with the rabook_compile sources wherever they go.
     list(APPEND _ra8_lib_extra ${_ra8_stb_img_impl}
          ${RA8_REPO_ROOT}/apps/shared_libs/reflow/src/ra8_img_arena.c
@@ -714,7 +714,7 @@ macro(_ra8_app_collect_sources)
     ra8_webp_vendor_sources(_ra8_webp_vendor ${RA8_REPO_ROOT})
     list(APPEND _ra8_lib_extra ${_ra8_webp_vendor})
     list(APPEND _ra8_lib_inc ${RA8_REPO_ROOT}/apps/shared_libs/third_party/libwebp)
-    # ra8_webp_imgdec.c binds the facade as an imgdec backend (#768) and reads
+    # ra8_webp_imgdec.c binds the facade as an imgdec backend (RA8FW-308) and reads
     # the container's declared geometry through the shared probe, which sniffs
     # first, so those two TUs and the header travel with this block. The reflow
     # / rabook_compile / comic blocks may already have added the same TUs, so
@@ -756,7 +756,7 @@ macro(_ra8_app_collect_sources)
     )
     # unarch_xz_pool.c forwards its bump arithmetic to the shared decoder
     # scratch, and comic_tiles.c reads a page's footprint through the shared
-    # geometry probe, which sniffs first (#768), so those three TUs and the
+    # geometry probe, which sniffs first (RA8FW-308), so those three TUs and the
     # header travel with this block. The reflow / rabook_compile blocks above
     # may already have added the same TUs, so each is appended only when
     # absent -- a duplicate source is an error under some generators and a
@@ -1000,7 +1000,7 @@ macro(_ra8_app_collect_sources)
   # against the including script, so a bare name is not found from the build
   # tree. LINK_DEPENDS carries both files, so editing either one relinks.
   #
-  # CPU1_IMAGE composes the same way (#742). A dual-core app needs one output
+  # CPU1_IMAGE composes the same way (RA8FW-309). A dual-core app needs one output
   # section and two symbols the board map does not carry, and the only way to
   # get them used to be a private linker_script.ld -- so nine apps forked the
   # whole 340-line map for 9 lines of content, and then missed the NOINIT
@@ -1015,7 +1015,7 @@ macro(_ra8_app_collect_sources)
   # places AT > MRAM, so it catches an M85 image that grew into the CPU1
   # window. Without it that overlap would be silent.
   #
-  # SRAM_TEXT <file.c>... is the third case (#742), and it does NOT compose by
+  # SRAM_TEXT <file.c>... is the third case (RA8FW-309), and it does NOT compose by
   # appending. Flash-writing code cannot execute from the MRAM it is erasing,
   # so the DFU apps run ra8_flash.c from an SRAM-resident .sram_text section
   # loaded from MRAM at boot. (The DFU programmer beside it is Zig since

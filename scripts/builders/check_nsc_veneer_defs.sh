@@ -6,7 +6,7 @@
 # declared in the public header has a definition in the ra8_nsc sources.
 #
 # This is a minimal trusted launcher, not an implementation: the detector is
-# the Zig host tool tools/check_nsc_veneer_defs (#858), which replaced the
+# the Zig host tool tools/check_nsc_veneer_defs (RA8FW-335), which replaced the
 # Python scripts/checks/check_nsc_veneer_defs.py  PATHREF-OK: the predecessor
 # this names was deleted in the same change.
 #

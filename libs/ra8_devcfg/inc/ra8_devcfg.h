@@ -193,7 +193,7 @@ typedef enum : uint32_t {
  *
  * @note ``device_key_id`` is an IDENTIFIER ONLY, never key material: there is
  *       no working key-wrapping engine on this silicon and the debug port is
- *       open (#244), so a private key here would be plaintext to anyone with
+ *       open (RA8FW-263), so a private key here would be plaintext to anyone with
  *       physical access. Adding real key storage later is a ``schema_version``
  *       bump, not a redesign.
  *
@@ -426,8 +426,8 @@ typedef struct {
  * True exactly when the most recent ``ra8_devcfg_load`` found neither copy
  * valid (UNPROVISIONED), and also before any load has run. One half of the
  * provisioning-mode entry condition; the other half (a factory token) lives
- * with the writer (#317). Blank-alone is not a sufficient gate while the debug
- * port is open (#244).
+ * with the writer (RA8FW-266). Blank-alone is not a sufficient gate while the debug
+ * port is open (RA8FW-263).
  *
  * @return bool True iff the unit is UNPROVISIONED (or load never ran).
  * @retval true  Both copies were invalid, or ``ra8_devcfg_load`` never ran.
@@ -446,7 +446,7 @@ typedef struct {
  * @brief Commit a new record to the stale copy slot with header-last ordering.
  *
  * @details
- * The provisioning-writer primitive (consumed by #317). Serialises ``rec`` (its
+ * The provisioning-writer primitive (consumed by RA8FW-266). Serialises ``rec`` (its
  * body, ``flags`` and a ``seq`` one past the newest existing copy), then
  * programs the target slot -- the older / invalid copy, so the newest good
  * record is never overwritten -- body bytes first and the header page LAST. A

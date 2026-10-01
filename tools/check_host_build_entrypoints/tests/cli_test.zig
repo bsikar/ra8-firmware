@@ -2,7 +2,7 @@
 //! Copyright (c) 2026 Brighton Sikarskie
 //!
 //! Behavioural tests for the argv membrane and the exit-status contract of the
-//! host-build-entrypoint gate (#1335, part of #858).
+//! host-build-entrypoint gate (#1335, part of RA8FW-335).
 //!
 //! Every case pins a status, a stream or an enumeration that
 //! `scripts/ci/gates/checks.sh` and the trusted launcher depend on. Two

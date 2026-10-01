@@ -2,7 +2,7 @@
 //! Copyright (c) 2026 Brighton Sikarskie
 //!
 //! Behavioural regression tests for the decidable half of
-//! `check_host_build_entrypoints` (#1335, part of #858). Every case here pins a
+//! `check_host_build_entrypoints` (#1335, part of RA8FW-335). Every case here pins a
 //! behaviour of the deleted Python, including the regex quirks that a tidier
 //! matcher would silently widen: the anchored RECIPE match, the backtracking
 //! `\s+` in RAW_CMAKE_CONFIGURE, and the separator RAW_COMPILER eats before its

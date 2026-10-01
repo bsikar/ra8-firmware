@@ -1,7 +1,7 @@
 //! SPDX-License-Identifier: MIT
 //! Copyright (c) 2026 Brighton Sikarskie
 //!
-//! Build graph for the `check_no_gnu_attribute` host tool (#858, #1178). One
+//! Build graph for the `check_no_gnu_attribute` host tool (RA8FW-335, #1178). One
 //! executable, plus the test step `scripts/checks/check_zig.py --test` runs:
 //! the detector, Python's line and whitespace semantics and the build-output
 //! predicate in the internal module, and the enumeration, the selftest and

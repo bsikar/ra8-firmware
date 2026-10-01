@@ -15,7 +15,7 @@ of zero. A second defect was geometry: the engine paints the bounding box that
 ORIGIN anchors, so the fill anchors ORIGIN at the rectangle's own top-left
 rather than trying to place it with the spatial limiters, and sets
 `CONTROL2.WRITEALPHA = 01` because its reset value takes alpha from COLOR2,
-which is zero for a solid fill (#170). `tools/ra8_emulator` rasterizes the same
+which is zero for a solid fill (RA8FW-251). `tools/ra8_emulator` rasterizes the same
 bounding box, so the verdict holds in the emulator and on hardware alike.
 
 This is the register/immediate path. For a loop-stable clear+fill where the DRW

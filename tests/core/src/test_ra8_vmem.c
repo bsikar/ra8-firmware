@@ -433,7 +433,7 @@ RA8_INTERNAL static uint32_t internal_t_split_hot_set_survival(ra8_vmem_t* vm)
 
 /**
  * @test protected_split_knob
- * @brief The `cfg.protected_pct` SLRU split knob (#232): rejects an over-range
+ * @brief The `cfg.protected_pct` SLRU split knob (RA8FW-257): rejects an over-range
  *        split, sizes `protected_cap`, and changes how much of the hot set
  *        survives a page-turn flood.
  * @details Compares invalid, fifty-percent, and twenty-five-percent

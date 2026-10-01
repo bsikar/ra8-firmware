@@ -7,7 +7,7 @@
   record frames it and names the constraint that narrows it.
 * **Date** -- 2026-09-17
 * **Issue** -- #787 (Platform-arch (h): portable C23 compiler / ABI /
-  data-model contract), parent epic #692.
+  data-model contract), parent epic RA8FW-298.
 
 ## Context
 
@@ -190,7 +190,7 @@ data model is real would be structure ahead of evidence.
 ## References
 
 * #787 -- Platform-arch (h): portable C23 compiler / ABI / data-model contract.
-* #692 -- EPIC: platform architecture.
+* RA8FW-298 -- EPIC: platform architecture.
 * #788 -- Platform-arch (i): C23 / MISRA / analyzer coverage and deviation
   audit, which owns the analyzer half of the same question.
 * #178 -- the codegen reason the cross compiler version is pinned.

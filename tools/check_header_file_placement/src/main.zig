@@ -1,7 +1,7 @@
 //! SPDX-License-Identifier: MIT
 //! Copyright (c) 2026 Brighton Sikarskie
 //!
-//! Process shell for `check_header_file_placement` (#858, #1219). It owns the
+//! Process shell for `check_header_file_placement` (RA8FW-335, #1219). It owns the
 //! allocator, the real file system, the environment and the exit status, and
 //! nothing else: every decision is in `src/cli.zig` and
 //! `src/internal/root.zig`, so the tests drive the gate without a process.
@@ -9,7 +9,7 @@
 //! The predecessor derived REPO_ROOT from its own location (`parents[2]`),
 //! which a compiled binary in tools/<name>/build/bin cannot do meaningfully,
 //! so the root is `RA8_REPO_ROOT` when set and the working directory
-//! otherwise, the same resolution the other tools migrated under #858 use.
+//! otherwise, the same resolution the other tools migrated under RA8FW-335 use.
 
 const std = @import("std");
 const cli = @import("cli.zig");

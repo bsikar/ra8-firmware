@@ -4,7 +4,7 @@
     .fingerprint = 0xb8d192dea519ce2f,
     .minimum_zig_version = "0.14.1",
     .dependencies = .{
-        // Shared host-target selection (see tools/zig_build/macos_host.zig, #899).
+        // Shared host-target selection (see tools/zig_build/macos_host.zig, RA8FW-330).
         .ra8_zig_build = .{ .path = "../../../tools/zig_build" },
     },
     .paths = .{

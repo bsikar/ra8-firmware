@@ -13,7 +13,7 @@
 #     xcrun: error: invalid active developer path (/Library/Developer/CommandLineTools),
 #            missing xcrun at: /Library/Developer/CommandLineTools/usr/bin/xcrun
 #
-# Why this matters here (#899): gate_macos_host_build used `require_cmd xcrun`
+# Why this matters here (RA8FW-330): gate_macos_host_build used `require_cmd xcrun`
 # as its SDK precondition. That check passes on a Mac with no SDK at all, and
 # then the gate goes GREEN having measured nothing it claims to measure. The
 # build graph probes the SDK with `xcrun --show-sdk-path`; when the probe comes
@@ -215,7 +215,7 @@ if [ -z "${_RA8_MACOS_SDK_SH:-}" ]; then
     case "$1" in
       not_macos)
         printf 'Run the macos-host-build gate on an arm64 macOS host; a Linux checkout\n'
-        printf 'cannot exercise the SDK link path at all (#899).\n'
+        printf 'cannot exercise the SDK link path at all (RA8FW-330).\n'
         ;;
       xcrun_absent | developer_dir_invalid)
         printf 'Install the Command Line Tools and point xcode-select at them:\n'
@@ -238,7 +238,7 @@ if [ -z "${_RA8_MACOS_SDK_SH:-}" ]; then
         printf '    sudo xcode-select --reset\n'
         ;;
       stub_missing)
-        printf 'This SDK cannot answer the #899 question. Reinstall the Command Line Tools,\n'
+        printf 'This SDK cannot answer the RA8FW-330 question. Reinstall the Command Line Tools,\n'
         printf 'or select an SDK that ships usr/lib/libSystem.tbd:\n'
         printf '    xcode-select --install\n'
         ;;
@@ -277,7 +277,7 @@ if [ -z "${_RA8_MACOS_SDK_SH:-}" ]; then
     printf 'error: macos-host-build needs a readable active SDK: %s.\n' \
       "$(ra8_macos_sdk_state_reason "${state}")" >&2
     printf 'error: without one the graph pins the bundled libSystem stub, every root\n' >&2
-    printf 'error: builds, and the gate reports green for a link path it never took (#899).\n' >&2
+    printf 'error: builds, and the gate reports green for a link path it never took (RA8FW-330).\n' >&2
     ra8_macos_sdk_state_advice "${state}" >&2
     return 1
   }
@@ -375,7 +375,7 @@ if [ -z "${_RA8_MACOS_SDK_SH:-}" ]; then
     got="$(ra8_macos_sdk_state_advice developer_dir_invalid)"
     check "$(has 'xcode-select --install' "${got}")" "the advice names xcode-select --install"
     got="$(ra8_macos_sdk_require 2>&1 >/dev/null)"
-    check "$(has '#899' "${got}")" "the refusal says why a green run would be vacuous"
+    check "$(has 'RA8FW-330' "${got}")" "the refusal says why a green run would be vacuous"
     got="$(ra8_macos_sdk_state; ra8_macos_sdk_report developer_dir_invalid)"
     check "$(has 'invalid active developer path' "${got}")" "the report quotes what xcrun said"
 

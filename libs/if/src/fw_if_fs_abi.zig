@@ -22,7 +22,7 @@ pub const path_policy = @import("ra8_path_abi.zig");
 
 /// The clock-intent facade (`fw_if_clock.h`), imported for the same reason:
 /// its six `fw_clock_*` exports belong in this archive. `libs/if/src` holds
-/// no C the build compiles, so before #2791 nothing in the tree defined them
+/// no C the build compiles, so before RA8FW-362 nothing in the tree defined them
 /// at all and every image calling `fw_clock_bind` linked short.
 pub const clock_facade = @import("fw_if_clock_abi.zig");
 

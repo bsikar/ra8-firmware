@@ -174,7 +174,7 @@ if [[ "$-" == *p* ]]; then
   # tracked in #513. Depending on a toolchain the tree provisions itself removes
   # the failure mode instead of provisioning around it, and makes
   # `just quality::local::gate ci-status-contract` work on a bare machine with no jq at all.
-  # The reader was a python script until #1144 moved it to Zig under the #858
+  # The reader was a python script until #1144 moved it to Zig under the RA8FW-335
   # migration; zig is provisioned by the same setup path that provisions the
   # rest of the host tooling, and a missing zig is FATAL in the launcher rather
   # than a silent fallback.
@@ -200,7 +200,7 @@ if [[ "$-" == *p* ]]; then
   # a NON-result (unlike `in_progress`, which keeps the sha UNDECIDED).
   #
   # One reader, one place: every field and rendered view comes from here. The
-  # reader is the Zig host tool tools/ci_status (#858, #1144), reached through
+  # reader is the Zig host tool tools/ci_status (RA8FW-335, #1144), reached through
   # its trusted launcher scripts/builders/ci_status.sh; the daemon never calls
   # this path, so its stand-alone copy omits it.
   _status_read() {

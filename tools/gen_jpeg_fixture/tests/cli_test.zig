@@ -1,7 +1,7 @@
 //! SPDX-License-Identifier: MIT
 //! Copyright (c) 2026 Brighton Sikarskie
 //!
-//! Exit-status contract of `gen_jpeg_fixture` (#858).
+//! Exit-status contract of `gen_jpeg_fixture` (RA8FW-335).
 //!
 //! `scripts/builders/init_fuzz_corpora.sh` runs under `set -e`, so a status
 //! this tool gets wrong stops the fuzz sweep or, worse, leaves a truncated

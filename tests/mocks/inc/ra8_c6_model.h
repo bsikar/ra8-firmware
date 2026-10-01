@@ -215,7 +215,7 @@ uint8_t* ra8_c6_model_slot(void);
  * @post One `Event_ESPInit` frame is queued.
  * @post No other model state is modified.
  * @note This is the usable boot signal; the privileged INIT frame upstream
- *       normally uses is unusable on this co-processor build (#529).
+ *       normally uses is unusable on this co-processor build (RA8FW-276).
  * @since 0.1.0
  */
 void ra8_c6_model_emit_boot(void);

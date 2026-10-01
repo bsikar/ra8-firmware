@@ -24,7 +24,7 @@
  * install is refused fail-closed.
  *
  * The bump arithmetic behind these calls is the shared decoder-scratch
- * contract (`ra8_imgdec_scratch.h`, issue #768), not a private copy: this
+ * contract (`ra8_imgdec_scratch.h`, issue RA8FW-308), not a private copy: this
  * seam owns the install precondition, the busy refusal and the uninstalled
  * state, while rounding, capacity and cursor accounting are the contract's.
  * Blocks are therefore aligned to the contract's (stricter) alignment, which

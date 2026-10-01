@@ -2,7 +2,7 @@
 //! Copyright (c) 2026 Brighton Sikarskie
 //!
 //! The argv membrane and exit-status contract for the example board-pin gate
-//! (#858).  Everything that touches argv, the tree or the two output streams
+//! (RA8FW-335).  Everything that touches argv, the tree or the two output streams
 //! lives here; `internal/root.zig` holds the decisions.  `run` is
 //! parameterised on the repository directory, the repository root path and
 //! both writers, so the tests drive the whole contract without a process.

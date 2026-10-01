@@ -22,7 +22,7 @@ pub const macho = ar.macho;
 /// unit tests can reason about a forced selection without a build graph.
 pub const MacosLibSystem = macos_host.Selection;
 
-/// Everything the #899 rule worked out about this host, kept together so the
+/// Everything the RA8FW-330 rule worked out about this host, kept together so the
 /// choice and the evidence for it can be printed as one story.
 pub const HostTarget = struct {
     forced: MacosLibSystem,
@@ -50,7 +50,7 @@ pub const HostTarget = struct {
 var cached_owner: ?*std.Build = null;
 var cached_host_target: HostTarget = undefined;
 
-/// The #899 decision for this host, with the evidence behind it.
+/// The RA8FW-330 decision for this host, with the evidence behind it.
 pub fn hostTarget(b: *std.Build) HostTarget {
     if (cached_owner) |owner| {
         if (owner == b) return cached_host_target;
@@ -85,7 +85,7 @@ pub fn hostTarget(b: *std.Build) HostTarget {
 /// Off macOS this is the plain native query and nothing else happens. On an
 /// arm64 Mac it may resolve to an explicit `aarch64-macos` query so that Zig
 /// links its own `libSystem.tbd` instead of the Command Line Tools stub that
-/// omits `arm64-macos` (#899). That pinned query carries the host's own macOS
+/// omits `arm64-macos` (RA8FW-330). That pinned query carries the host's own macOS
 /// version, so it keeps the deployment target a native build would have used.
 /// `-Dtarget=...` still overrides it, and `-Dmacos-libsystem=sdk` forces the old
 /// native behaviour back.
@@ -123,7 +123,7 @@ pub fn probeHostSdk(allocator: std.mem.Allocator) macos_host.SdkProbe {
     // which `SDKROOT` in the environment redirects. A shell carrying
     // `SDKROOT=iphoneos` therefore had the probe read an iOS `libSystem.tbd`,
     // whose targets are `arm64-ios` and friends, and report `arm64-macos`
-    // absent -- #899's own signature, about an SDK no macOS link would use.
+    // absent -- RA8FW-330's own signature, about an SDK no macOS link would use.
     const queried_sdk = macos_host.host_sdk_name;
     const sdk_run = std.process.Child.run(.{
         .allocator = allocator,
@@ -166,7 +166,7 @@ pub const BundledStubProbe = struct {
 
 /// Read the `libSystem.tbd` that Zig ships with itself.
 ///
-/// This is the other half of the #899 rule and the half nothing checked. The
+/// This is the other half of the RA8FW-330 rule and the half nothing checked. The
 /// workaround is "pin an explicit `aarch64-macos` query so Zig links its own
 /// stub rather than the SDK's"; that is a fix only while Zig's own stub
 /// declares `arm64-macos`. If a future toolchain bump ships a stub that does
@@ -189,7 +189,7 @@ pub fn probeBundledStub(b: *std.Build) BundledStubProbe {
 }
 
 /// A step that refuses a toolchain whose bundled `libSystem` stub cannot link
-/// the pinned target (#899).
+/// the pinned target (RA8FW-330).
 ///
 /// It runs on every host on purpose. The failure it guards against arrives
 /// with a Zig upgrade, not with a Mac, and a Linux checkout cross-building
@@ -221,7 +221,7 @@ const VerifyBundledStub = struct {
         const where = self.probe.path orelse "(the Zig lib directory is unknown)";
         if (!state.linksRequiredTarget()) {
             return step.fail(
-                "{s}: {s}. The #899 workaround pins an explicit {s} target so this stub is " ++
+                "{s}: {s}. The RA8FW-330 workaround pins an explicit {s} target so this stub is " ++
                     "linked instead of the SDK one, so a toolchain whose own stub cannot link " ++
                     "{s} breaks the pinned path as well as the native one. Check the Zig version " ++
                     "pin in .devcontainer/Dockerfile.",
@@ -255,7 +255,7 @@ pub fn describeHostTarget(b: *std.Build, host: HostTarget) []const u8 {
     const out = text.writer(b.allocator);
     const bundled_probe = probeBundledStub(b);
 
-    out.print("ra8 host target (#899)\n", .{}) catch @panic("OOM");
+    out.print("ra8 host target (RA8FW-330)\n", .{}) catch @panic("OOM");
     out.print("  host:      {s}-{s}\n", .{ @tagName(builtin.cpu.arch), @tagName(builtin.os.tag) }) catch @panic("OOM");
     if (host.host_macos_version) |version| {
         out.print("  macos:     {d}.{d}.{d}\n", .{ version.major, version.minor, version.patch }) catch @panic("OOM");
@@ -266,7 +266,7 @@ pub fn describeHostTarget(b: *std.Build, host: HostTarget) []const u8 {
     }) catch @panic("OOM");
     out.print("  sdk:       {s}\n", .{host.probe.sdk_path orelse "(none located)"}) catch @panic("OOM");
     out.print("  stub:      {s}\n", .{host.probe.libsystem_tbd_path orelse "(none read)"}) catch @panic("OOM");
-    // The SDK stub is what #899 reports; Zig's own stub is what the fix
+    // The SDK stub is what RA8FW-330 reports; Zig's own stub is what the fix
     // links instead. A report that names only the first cannot say whether
     // the workaround still has anything to stand on.
     out.print("  bundled:   {s}\n", .{bundled_probe.path orelse "(not located)"}) catch @panic("OOM");
@@ -333,7 +333,7 @@ const ExplainHostTarget = struct {
 /// proves what it can.
 ///
 /// The host apps default to an explicit `aarch64-macos` query on Apple silicon
-/// (#899), and that same query is how a Linux checkout exercises the Mach-O
+/// (RA8FW-330), and that same query is how a Linux checkout exercises the Mach-O
 /// link path. Compiling and linking works from anywhere; running the result
 /// does not, and a plain `b.addRunArtifact` turns that into a hard failure
 /// ("the host system (x86_64-linux) is unable to execute binaries from the
@@ -367,7 +367,7 @@ pub fn addHostTestRun(
         builtin.cpu.arch,
         builtin.os.tag,
     );
-    // Linking is the property #899 is about, so it must happen even on a host
+    // Linking is the property RA8FW-330 is about, so it must happen even on a host
     // that cannot execute the result.
     test_step.dependOn(&tests.step);
     test_step.dependOn(&run.step);
@@ -375,7 +375,7 @@ pub fn addHostTestRun(
 }
 
 /// Check what a host build actually produced, rather than trusting that a
-/// zero exit means the right thing was linked (#899).
+/// zero exit means the right thing was linked (RA8FW-330).
 ///
 /// The rule this package implements is a claim about the emitted Mach-O: on an
 /// arm64 Mac it must be a native arm64 image, stamped with the deployment
@@ -472,7 +472,7 @@ const VerifyHostArtifact = struct {
             if (!sameVersion(actual, expected)) {
                 return step.fail(
                     "{s} is stamped for macOS {d}.{d}.{d} but the build was configured for {d}.{d}.{d}; " ++
-                        "the pinned target and the emitted deployment target have drifted apart (#899)",
+                        "the pinned target and the emitted deployment target have drifted apart (RA8FW-330)",
                     .{
                         path,           actual.major,   actual.minor,   actual.patch,
                         expected.major, expected.minor, expected.patch,
@@ -508,7 +508,7 @@ const VerifyHostArtifact = struct {
             }
             return step.fail(
                 "{s} carries no usable code signature ({s}); arm64 macOS refuses to execute an " ++
-                    "unsigned image, so this binary links but cannot run on the host it was built for (#899)",
+                    "unsigned image, so this binary links but cannot run on the host it was built for (RA8FW-330)",
                 .{ path, @errorName(err) },
             );
         };
@@ -516,7 +516,7 @@ const VerifyHostArtifact = struct {
         if (!signature.coversImage()) {
             return step.fail(
                 "{s} has a code signature covering {d} bytes while the signature itself starts at {d}; " ++
-                    "the image was modified after the link, so macOS will reject the signature at exec (#899)",
+                    "the image was modified after the link, so macOS will reject the signature at exec (RA8FW-330)",
                 .{ path, signature.code_limit, signature.region.data_offset },
             );
         }
@@ -525,7 +525,7 @@ const VerifyHostArtifact = struct {
             return step.fail(
                 "{s} carries a code signature with neither the ad-hoc nor the linker-signed flag " ++
                     "(flags 0x{x:0>8}); nothing in this build signs with an identity, so this is not " ++
-                    "the signature the link should have produced (#899)",
+                    "the signature the link should have produced (RA8FW-330)",
                 .{ path, signature.flags },
             );
         }
@@ -560,7 +560,7 @@ fn signatureRequired(arch: std.Target.Cpu.Arch) bool {
 }
 
 /// Refuse a static archive that this build's target cannot link, and say why
-/// (#899).
+/// (RA8FW-330).
 ///
 /// The three host roots that consume a Rust archive get it from a separate
 /// `cargo` invocation. `cargo` with no `--target` builds for the machine it
@@ -632,7 +632,7 @@ const RequireArchiveForTarget = struct {
             return step.fail(
                 "{s} holds {s} {s} objects, but {s} is linked for {s}, which needs {s} {s} objects. " ++
                     "The archive was built for a different host than this build targets; " ++
-                    "build it for {s}, or point {s} at one that is (#899).",
+                    "build it for {s}, or point {s} at one that is (RA8FW-330).",
                 .{
                     self.archive_path,
                     description.format.label(),
@@ -662,7 +662,7 @@ const RequireArchiveForTarget = struct {
 
 pub fn build(b: *std.Build) void {
     // This package's own test graph is a host build like any other, so it takes
-    // the same macOS host target rule it hands to the apps (#899).
+    // the same macOS host target rule it hands to the apps (RA8FW-330).
     const target = b.standardTargetOptions(.{ .default_target = hostDefaultTargetQuery(b) });
     const optimize = b.standardOptimizeOption(.{});
 
@@ -692,7 +692,7 @@ pub fn build(b: *std.Build) void {
     _ = addHostTestRun(b, test_step, tests);
     const explain_step = b.step(
         "explain-host-target",
-        "Print how the macOS host target was chosen on this machine (#899)",
+        "Print how the macOS host target was chosen on this machine (RA8FW-330)",
     );
     explain_step.dependOn(addExplainHostTargetStep(b, hostTarget(b)));
 
@@ -701,7 +701,7 @@ pub fn build(b: *std.Build) void {
     // the machine, so this runs on every host rather than only on a Mac.
     const bundled_step = b.step(
         "verify-bundled-stub",
-        "Check that this Zig's own libSystem stub can link the pinned host target (#899)",
+        "Check that this Zig's own libSystem stub can link the pinned host target (RA8FW-330)",
     );
     bundled_step.dependOn(addVerifyBundledStubStep(b));
 }

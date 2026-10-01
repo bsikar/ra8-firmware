@@ -193,7 +193,7 @@ static void test_word_bad_args(void)
 }
 
 /**
- * @brief Regression for #131: ra8_bkup_init must arm VBTBER.VBAE before access.
+ * @brief Regression for RA8FW-254: ra8_bkup_init must arm VBTBER.VBAE before access.
  *
  * @details
  * The silicon RW window failed because the bkup_survival_demo touched
@@ -212,7 +212,7 @@ static void test_word_bad_args(void)
  */
 static void test_word_access_requires_vbae_arm(void)
 {
-  TEST_BEGIN("bkup #131: init arms VBTBER.VBAE for VBTBKRn access");
+  TEST_BEGIN("bkup RA8FW-254: init arms VBTBER.VBAE for VBTBKRn access");
   prep();
 
   /* enable_backup == true -> VBAE armed, window open. */
@@ -234,7 +234,7 @@ static void test_word_access_requires_vbae_arm(void)
   TEST_ASSERT_EQ(k_ra8_ok, ra8_bkup_init(&cfg));
   /* HUM Ch 12.2.6 "VBTBER : VBATT Backup Enable Register", p 504 */
   TEST_ASSERT((*ra8_bkup_vbtber() & (uint8_t)k_ra8_bkup_vbtber_mask_vbae) == 0U);
-  TEST_END("bkup #131: init arms VBTBER.VBAE for VBTBKRn access");
+  TEST_END("bkup RA8FW-254: init arms VBTBER.VBAE for VBTBKRn access");
 }
 
 /**

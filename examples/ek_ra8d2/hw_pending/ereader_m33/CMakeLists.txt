@@ -54,7 +54,7 @@ ra8_add_app(
 # production ra8_gfx text stack. ra8_gfx is dependency-clean, zero-heap and
 # scalar (no-Helium), and its only header dependency is ra8_core's ra8_err.h
 # (already on the CPU1 include path), so it links cleanly into the freestanding
-# M33 image -- no logging backend, no panel driver, no malloc. For the #150
+# M33 image -- no logging backend, no panel driver, no malloc. For the RA8FW-250
 # mode-switch it ALSO links the ra8_ipc send path (ra8_ipc.c) so the M33 can poke
 # IPC0ISET0 to wake the parked M85 on a page turn; RA8_LOG_LEVEL=0 collapses
 # ra8_ipc's ra8_log calls to no-ops so no logging backend is dragged in.

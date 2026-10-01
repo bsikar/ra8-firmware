@@ -2,7 +2,7 @@
 // Copyright (c) 2026 Brighton Sikarskie
 //
 // Behavioural regression tests for the argv membrane, the discovery walk and
-// the exit-status contract of the cross-build shard-union gate (#858, #1159).
+// the exit-status contract of the cross-build shard-union gate (RA8FW-335, #1159).
 //
 // Every status asserted here is the status the Python returned: 0 clean or a
 // passing selftest, 1 a discrepancy or an unreadable manifest, 2 a usage

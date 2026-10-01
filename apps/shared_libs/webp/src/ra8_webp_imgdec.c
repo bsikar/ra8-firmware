@@ -1,6 +1,6 @@
 /**
  * @file ra8_webp_imgdec.c
- * @brief `ra8_imgdec` backend over the vendored libwebp facade (#768).
+ * @brief `ra8_imgdec` backend over the vendored libwebp facade (RA8FW-308).
  * @ingroup grp_ereader
  *
  * @par Tag

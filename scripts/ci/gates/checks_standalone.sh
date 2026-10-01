@@ -35,7 +35,7 @@
 
 # --- agnostic-registers --------------------------------------------------
 # The existing clock, display, GPIO and timer reach-ins are migration debt
-# under #693. Freeze it before that migration starts: a new concrete symbol
+# under RA8FW-299. Freeze it before that migration starts: a new concrete symbol
 # outside the HAL, a named backend TU, or a board composition library fails
 # now, while a removed reference passes and can be ratcheted into the baseline. The
 # selftest drives the same scanner first and asserts both directions plus the
@@ -306,7 +306,7 @@ gate_hum_register_map() (
 )
 
 # --- arch-caps ------------------------------------------------------------
-# The port-completeness gate (#692 invariant #4, #694). arch/arch.h gates whole
+# The port-completeness gate (RA8FW-298 invariant #4, RA8FW-300). arch/arch.h gates whole
 # declaration blocks on the capability flags a core answers in
 # arch/core/<core>/caps.h, and it told the reader outright that the gate fails
 # a flag set with no backend translation unit behind it and a cleared flag with
@@ -336,7 +336,7 @@ gate_arch_caps() (
 )
 
 # --- arch-compiles --------------------------------------------------------
-# The compiler-side twin of arch-caps (#694). arch/arch.h is the contract every
+# The compiler-side twin of arch-caps (RA8FW-300). arch/arch.h is the contract every
 # arch/<isa>/ backend implements, and nothing in this tree compiled it: no
 # library, no test, no tool. A header nobody compiles rots the way an unmeasured
 # number rots, and it had ::K_ARCH_FAULT_RAW_MAX referenced in the docs of
@@ -375,9 +375,9 @@ gate_arch_compiles() (
 
 # --- measured-counts ------------------------------------------------------
 # Two planning pages argue a decision from counts of this tree, and both had
-# rotted. docs/PORTS.md (#693) argues the build-first port order from coupling
+# rotted. docs/PORTS.md (RA8FW-299) argues the build-first port order from coupling
 # counts: clock read 240 against a tree of 227, GPIO 52 against 49, timebase
-# 247 against 237, population 470 against 452. arch/README.md (#694) argues the
+# 247 against 237, population 470 against 452. arch/README.md (RA8FW-300) argues the
 # migration order from how many first-party files include each misfiled
 # Armv8-M header: boot_entry read 278 against 266, exception 30 against 12, scb
 # 9 against 8, systick 8 against 6, all four inside a week of being written.

@@ -2,7 +2,7 @@
 //! Copyright (c) 2026 Brighton Sikarskie
 //!
 //! Behavioural regression suite for the argv membrane and the exit contract
-//! of `roadmap_stats` (#858). The parser quirks live next door in
+//! of `roadmap_stats` (RA8FW-335). The parser quirks live next door in
 //! `internal_test.zig`; everything here is about what argv resolves to, what
 //! status the tool exits with, which stream carries each line, and whether a
 //! rewrite actually reaches the disk.

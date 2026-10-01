@@ -402,7 +402,7 @@ test "translation: every fault enum has an ra8_err_t" {
 
 test "layouts: the vtables and handles match the private C header" {
     const ptr_bytes = @sizeOf(usize);
-    // three rows since #751 gave the source vtable its optional stop
+    // three rows since RA8FW-320 gave the source vtable its optional stop
     try std.testing.expectEqual(ptr_bytes * 3, @sizeOf(abi.SourceIface));
     try std.testing.expectEqual(ptr_bytes * 2, @offsetOf(abi.SourceIface, "stop"));
     try std.testing.expectEqual(ptr_bytes, @sizeOf(abi.CodecIface));

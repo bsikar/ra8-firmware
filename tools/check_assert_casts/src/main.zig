@@ -1,7 +1,7 @@
 //! SPDX-License-Identifier: MIT
 //! Copyright (c) 2026 Brighton Sikarskie
 //!
-//! Process shell for the redundant-cast gate (#858): resolve the repository
+//! Process shell for the redundant-cast gate (RA8FW-335): resolve the repository
 //! root, hand argv and the real streams to `cli.run`, return its status.
 
 const std = @import("std");

@@ -1,7 +1,7 @@
 //! SPDX-License-Identifier: MIT
 //! Copyright (c) 2026 Brighton Sikarskie
 //!
-//! Exit-status contract tests for the PEP 668 override gate (#858).
+//! Exit-status contract tests for the PEP 668 override gate (RA8FW-335).
 //!
 //! `cli.run` takes the directory, the census and both streams, so 0, 1 and 2
 //! are all provable here with no process and no real repository. Fixtures

@@ -26,7 +26,7 @@ the gate.
 (`PVDAS = 0`, `VDSEL0 = 000` = 2.85 V: below VCC 3.3 V so no spurious reset,
 above the 2.80 V `VDETBATT` switch level per HUM Ch 12.3.2).
 
-That override cannot currently reach this board, which is the blocker (#131).
+That override cannot currently reach this board, which is the blocker (RA8FW-254).
 The option bytes live in the `.option_setting_*` sections at `0x0300A100+`; the
 HIL flasher strips them because J-Link RAMCode times out on option bytes,
 `rfp-cli -p` rejects the region, and `JLinkExe loadfile` fails because the board

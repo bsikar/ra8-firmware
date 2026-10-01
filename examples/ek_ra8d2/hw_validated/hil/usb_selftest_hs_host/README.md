@@ -31,7 +31,7 @@ returns the chip's flash byte for byte with no external host in the loop.
    while enumeration still works, since device SETUP is ISR-driven. That was the
    `0x203` mount timeout.
 
-## Known limitation (#92)
+## Known limitation (RA8FW-253)
 
 The WRITE(10) rejection leaves the bulk-OUT endpoint STALLed. Recovering the BOT
 transport afterwards (Bulk-Only Mass Storage Reset + Clear Feature

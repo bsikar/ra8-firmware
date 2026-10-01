@@ -1,6 +1,6 @@
 /**
  * @file ra8_img_arena.c
- * @brief stb_image's allocator hooks, forwarded to the shared scratch (#768).
+ * @brief stb_image's allocator hooks, forwarded to the shared scratch (RA8FW-308).
  *
  * @details
  * See ra8_img_arena.h for the rationale. The bump arithmetic that used to live

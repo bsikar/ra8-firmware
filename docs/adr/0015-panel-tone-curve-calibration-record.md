@@ -198,7 +198,7 @@ nothing here is a measurement or an estimate of one.
 
 * Issue #479 -- per-panel gray-level LUT (perceptual 16-level tone mapping),
   labelled `needs-bench`.
-* Issue #475 -- the e-ink render-quality epic this sits under.
+* Issue RA8FW-267 -- the e-ink render-quality epic this sits under.
 * Issue #315 -- rewritable-medium home for per-device records.
 * Draft pull request #1326 -- the curve format, nominal curve and renderer
   consumption.

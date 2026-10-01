@@ -17,7 +17,7 @@ through :mod:`lint_targets`, matching every other provider.
   target. Each root must also resolve its default target through
   ``ra8_build.hostDefaultTargetQuery`` or declare an exemption in
   ``.zig-host-target.json``, so a new root cannot silently reintroduce the
-  arm64 macOS link failure of #899 (see ``docs/MACOS_HOST_BUILDS.md``).
+  arm64 macOS link failure of RA8FW-330 (see ``docs/MACOS_HOST_BUILDS.md``).
 - **List files** (``--list-files``): reports every tracked first-party ``*.zig``
   path for the lint-coverage matrix.
 
@@ -455,7 +455,7 @@ def _host_target_errors(root: Path) -> list[str]:
 
     A root that calls `b.standardTargetOptions` with a plain native default builds
     against the Command Line Tools `libSystem.tbd` on an arm64 Mac, which omits
-    `arm64-macos` and fails to link (#899). The rule is therefore structural: take
+    `arm64-macos` and fails to link (RA8FW-330). The rule is therefore structural: take
     the default target from `ra8_build.hostDefaultTargetQuery`, or say in
     `.zig-host-target.json` why this root does not build host binaries. Comments are
     stripped before the wiring is read, so a mention in prose cannot satisfy it.
@@ -467,7 +467,7 @@ def _host_target_errors(root: Path) -> list[str]:
         return []
     return [
         f"build.zig does not take its default target from ra8_build.{HOST_TARGET_HELPER}"
-        " (#899): a native arm64 macOS build of this root links the Command Line Tools"
+        " (RA8FW-330): a native arm64 macOS build of this root links the Command Line Tools"
         " libSystem stub and fails. Wire the helper, or declare"
         f' {{"rule": "exempt", "reason": "..."}} in {HOST_TARGET_CONTRACT_NAME}.'
     ]

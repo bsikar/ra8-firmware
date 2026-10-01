@@ -1,6 +1,6 @@
 /**
  * @file test_ra8_gfx_surface.c
- * @brief Unit tests for the ra8_gfx surface bind (#737) and its teardown.
+ * @brief Unit tests for the ra8_gfx surface bind (RA8FW-304) and its teardown.
  *
  * @details
  * The positional ra8_gfx_init() cannot carry a row pitch, so a padded
@@ -89,7 +89,7 @@ static void test_surface_clear_skips_row_padding(void)
  * @details
  * With a packed-row assumption row 1 would start at byte 16; the surface bind
  * has to put it at byte 22. Writing white at (0,1) and (0,2) and reading the
- * raw bytes is the whole finding of #737 in one assertion.
+ * raw bytes is the whole finding of RA8FW-304 in one assertion.
  */
 static void test_surface_row_origin_follows_stride(void)
 {

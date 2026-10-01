@@ -57,7 +57,7 @@ pub const rgb565_bpp: usize = 2;
 
 /// `ra8_gfx_state_t` from `src/ra8_gfx_internal.h`, the single module-wide
 /// framebuffer binding. That header is still the record of this object for any
-/// C that includes it, so the layout is ABI and is pinned below. `pitch` is the row stride in bytes (#737): every draw path
+/// C that includes it, so the layout is ABI and is pinned below. `pitch` is the row stride in bytes (RA8FW-304): every draw path
 /// addresses rows through it rather than recomputing `width * bpp`.
 pub const State = extern struct {
     fb: ?[*]u8 = null,
@@ -75,7 +75,7 @@ pub const State = extern struct {
 
 comptime {
     const ptr = @sizeOf(usize);
-    // fb, then width/height, then the 4-aligned pitch #737 added, then the
+    // fb, then width/height, then the 4-aligned pitch RA8FW-304 added, then the
     // three packed byte-ish fields, then the clip box realigned to 4. Written
     // as alignment arithmetic so the assert holds on both the 8-byte-pointer
     // host and 32-bit Arm, where `ptr * N` does not.

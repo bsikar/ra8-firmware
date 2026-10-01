@@ -52,7 +52,7 @@ ra8_add_app(
 # Second (Cortex-M33 / CPU1) image, embedded into the M85 ELF
 #############################################################################
 if(CMAKE_C_COMPILER_ID STREQUAL "GNU" AND CMAKE_SYSTEM_NAME STREQUAL "Generic")
-  # The shared M33 map (#742) -- this app's copy was byte-identical to it.
+  # The shared M33 map (RA8FW-309) -- this app's copy was byte-identical to it.
   set(CPU1_LINKER_SCRIPT ${RA8_REPO_ROOT}/libs/ra8_board_ek_ra8d2/ld/linker_script_cpu1.ld)
   set(CPU1_NAME cpu1_pingpong_ipc_cpu1)
   add_executable(${CPU1_NAME}.elf ${CMAKE_CURRENT_SOURCE_DIR}/src/cpu1_main.c)

@@ -139,7 +139,7 @@ static void sd_setup_or_halt(uint32_t* out_pclka_hz)
     sd_panic_halt(k_msg_fail, (uint32_t)sizeof(k_msg_fail) - 1U);
   }
   const fw_clock_module_t clk_core = {.kind = k_fw_clock_module_core, .index = 0U};
-  /* The second read stays on the driver on purpose (issue #693): k_sd_iic_chan
+  /* The second read stays on the driver on purpose (issue RA8FW-299): k_sd_iic_chan
    * is the mikrobus IIC_B channel 0, while the board clock profile's i2c slot
    * is RIIC1 (J35 SCCB), so routing it would name the wrong peripheral. */
   if ((fw_clock_rate_for(ra8_board_clock(), clk_core, &cpuclk0_hz) != k_ra8_ok) ||

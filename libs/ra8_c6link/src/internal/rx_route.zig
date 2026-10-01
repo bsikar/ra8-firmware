@@ -32,7 +32,7 @@ pub const If = struct {
 /// `counted` is the real answer for everything unrouted, not an error: the
 /// privileged interface lands here because this co-processor build seals its
 /// only privileged frame with a checksum computed as if `if_num` were zero
-/// (#529), so a conformant host never sees a valid one.
+/// (RA8FW-276), so a conformant host never sees a valid one.
 pub const Route = enum(u8) {
     rpc = 0,
     ethernet = 1,

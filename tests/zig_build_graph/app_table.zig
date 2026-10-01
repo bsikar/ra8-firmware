@@ -63,7 +63,7 @@ pub const CrossApp = struct {
     /// .ns_rodata / .ns_bss. The in-image counterpart to cpu1_image, and only
     /// for an app whose NS world rides INSIDE the Secure ELF in sections the
     /// SAU later reclassifies -- an app that links a separate NS ELF calls
-    /// ra8_add_ns_image() instead and uses a different window (#742).
+    /// ra8_add_ns_image() instead and uses a different window (RA8FW-309).
     ns_inline_image: bool = false,
     /// Sources the app names in `SRAM_TEXT`, spelled as the call spells them.
     /// Their .text is placed through the pre-.text injection point and copied
@@ -71,7 +71,7 @@ pub const CrossApp = struct {
     sram_text: []const []const u8 = &.{},
     /// The MRAM bank size the app names in `MRAM_LENGTH`, verbatim (`"128K"`),
     /// or null to take the board's own. Only the bootloader-bank apps override
-    /// it; #742 added the keyword so they could stop forking the whole map.
+    /// it; RA8FW-309 added the keyword so they could stop forking the whole map.
     mram_length: ?[]const u8 = null,
     /// Shared helper translation units the app names in `EXTRA_SRCS`, in the
     /// order it names them, spelled repo-relative. Each one is compiled INTO
@@ -235,7 +235,7 @@ pub const cross_apps = [_]CrossApp{
         .dir = "examples/ek_ra8d2/hw_validated/hil/cpu1_pingpong",
         .cpu1_image = true,
         .board = "libs/ra8_board_ek_ra8d2",
-        // The fork this used to name was dropped by a365204a (#742, "drop
+        // The fork this used to name was dropped by a365204a (RA8FW-309, "drop
         // eight dual-core linker script forks"): the board's single-core map
         // pins .cpu1_image at ORIGIN(MRAM_CPU1) itself, so the eight apps that
         // carried a byte-identical copy now share it. ra8_add_app()'s app-dir
@@ -337,7 +337,7 @@ pub const cross_apps = [_]CrossApp{
         .dir = "examples/ek_ra8d2/hw_validated/hil/secure_boot_hil",
         .board = "libs/ra8_board_ek_ra8d2",
         // STALE PATH, left deliberately. The fork was dropped by af7c00ee
-        // (#742, "compose the 128K bootloader bank"), and what replaced it is
+        // (RA8FW-309, "compose the 128K bootloader bank"), and what replaced it is
         // not the plain board script but a bank composed at configure time,
         // which the graph cannot yet express. The link never runs today (the
         // image overflows MRAM in a Debug configure), so nothing is hidden by
@@ -346,7 +346,7 @@ pub const cross_apps = [_]CrossApp{
         .libraries = &.{"ra8_board_ek_ra8d2"},
         .zig_libraries = &.{},
         .stack_bytes = 32768,
-        // #742: the bootloader bank, and the two sources that run from SRAM.
+        // RA8FW-309: the bootloader bank, and the two sources that run from SRAM.
         // Both replaced its 377-line linker_script.ld fork.
         .mram_length = "128K",
         .sram_text = &.{"ra8_flash.c"},
@@ -420,7 +420,7 @@ pub const cross_apps = [_]CrossApp{
         .name = "tz_nsc_cgc_usb",
         .dir = "examples/ek_ra8d2/hil_needs_revalidation/tz_nsc_cgc_usb",
         .board = "libs/ra8_board_ek_ra8d2",
-        // #742 dropped this app's 418-line script fork for the board's own
+        // RA8FW-309 dropped this app's 418-line script fork for the board's own
         // plus MRAM_LENGTH: the secure image is 512K of MRAM with the NS
         // image's load home carved out of the rest.
         .linker_script = "libs/ra8_board_ek_ra8d2/ld/linker_script.ld",
@@ -525,7 +525,7 @@ pub const cross_apps = [_]CrossApp{
         .name = "blink_ra8p1",
         .dir = "examples/ra8p1_foundation/blink_ra8p1",
         .board = "libs/ra8_board_ra8p1",
-        // Its linker_script.ld fork went with 6c3f5e9a (#742's last five).
+        // Its linker_script.ld fork went with 6c3f5e9a (RA8FW-309's last five).
         // The board fallback lands on the RA8P1 layer's own map, not the
         // EK-RA8D2 one: this is the only row where .board changes the answer.
         .linker_script = "libs/ra8_board_ra8p1/ld/linker_script.ld",
@@ -603,7 +603,7 @@ pub const cross_apps = [_]CrossApp{
         .name = "cpu1_pingpong_ipc",
         .dir = "examples/ek_ra8d2/hil_needs_revalidation/cpu1_pingpong_ipc",
         .board = "libs/ra8_board_ek_ra8d2",
-        // #742 took this app's 394-line fork away last of all, and it needed
+        // RA8FW-309 took this app's 394-line fork away last of all, and it needed
         // BOTH composition keywords to go: CPU1_IMAGE for the M33 image's
         // window and NS_INLINE_IMAGE for the Non-Secure sections that ride
         // inside this same ELF. It is the only app in the tree that names the

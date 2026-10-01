@@ -6,7 +6,7 @@ const ra8_build = @import("ra8_zig_build");
 
 pub fn build(b: *std.Build) void {
     // Default target comes from the shared host probe so a native arm64 macOS
-    // build links Zig's bundled libSystem stub instead of the SDK's (#899).
+    // build links Zig's bundled libSystem stub instead of the SDK's (RA8FW-330).
     const target = b.standardTargetOptions(.{ .default_target = ra8_build.hostDefaultTargetQuery(b) });
     const optimize = b.standardOptimizeOption(.{});
     const adapter = b.createModule(.{
@@ -58,7 +58,7 @@ pub fn build(b: *std.Build) void {
     executable.addObjectFile(.{ .cwd_relative = rust_archive });
     // `cargo` builds for the machine it runs on, so read the archive before
     // the link and refuse a mismatch by name rather than by linker error
-    // (#899).
+    // (RA8FW-330).
     const require_archive_for_executable = ra8_build.addRequireArchiveForTargetStep(b, executable, rust_archive, "-Drust-lib-dir=");
     executable.step.dependOn(require_archive_for_executable);
     switch (target.result.os.tag) {

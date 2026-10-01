@@ -2,7 +2,7 @@
 //! Copyright (c) 2026 Brighton Sikarskie
 //!
 //! Comment stripper, conditional walk and inline-asm detector for the HAL
-//! driver asm-guard gate (#858).
+//! driver asm-guard gate (RA8FW-335).
 //!
 //! Every function here is pure: text in, findings out, no file system and no
 //! argv, so the detector is provable with no repository on disk. The four

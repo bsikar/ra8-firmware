@@ -1,7 +1,7 @@
 //! SPDX-License-Identifier: MIT
 //! Copyright (c) 2026 Brighton Sikarskie
 //!
-//! Command-line membrane for `gen_jpeg_fixture` (#858), replacing the Python
+//! Command-line membrane for `gen_jpeg_fixture` (RA8FW-335), replacing the Python
 //! implementation this change deletes.
 //!
 //! `scripts/builders/init_fuzz_corpora.sh` runs this once per seed and reads

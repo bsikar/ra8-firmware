@@ -576,7 +576,7 @@ def _selftest_attestation(tmp: Path) -> list[str]:
     failures: list[str] = []
     fixture = tmp / "attest.txt"
     debt = {"usb_x": "FAULT", "blink": "TRUNCATED"}
-    causes = {"usb_x": "ra8_emulator has no USBHS model (#170)"}
+    causes = {"usb_x": "ra8_emulator has no USBHS model (RA8FW-251)"}
 
     # Case 1 -- MUST PASS: a file this tool wrote, cause column and all.
     write_baseline(fixture, debt, causes)

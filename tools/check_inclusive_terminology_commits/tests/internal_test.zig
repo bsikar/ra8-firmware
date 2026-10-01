@@ -1,7 +1,7 @@
 //! SPDX-License-Identifier: MIT
 //! Copyright (c) 2026 Brighton Sikarskie
 //!
-//! Behavioural tests for the commit-message terminology detector (#858).
+//! Behavioural tests for the commit-message terminology detector (RA8FW-335).
 //!
 //! Every rule the predecessor's five regular expressions and paragraph-scoped
 //! opt-out carried is pinned here, including the ones that only show up in

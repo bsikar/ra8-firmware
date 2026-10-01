@@ -1,6 +1,6 @@
 # arch/hosted/
 
-The design note #694 asks for: **MMU / Linux-class is a degenerate architecture,
+The design note RA8FW-300 asks for: **MMU / Linux-class is a degenerate architecture,
 not a sibling tier.**
 
 A hosted backend satisfies the same `arch.h` contract as a bare-metal one by
@@ -26,12 +26,12 @@ selection.
 
 ## What this note is not committing to
 
-- **No second arch backend is being written in #694.** The work here is the
+- **No second arch backend is being written in RA8FW-300.** The work here is the
   contract plus the migration of the Armv8-M primitives out of `ra8_core`. A real
   `arch/hosted/` backend is a follow-on, and it should be filed as one once the
   Armv8-M backend exists to be the second implementation of the same header.
 - **No decision about the OSAL seam.** How `fw_os` splits is an architecture call
-  that belongs to the owner, not to the tier layout. It is noted in #693 for the
+  that belongs to the owner, not to the tier layout. It is noted in RA8FW-299 for the
   same reason.
 
 ## Why this shape and not a hosted "port"

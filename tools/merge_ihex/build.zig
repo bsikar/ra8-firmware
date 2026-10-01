@@ -1,7 +1,7 @@
 //! SPDX-License-Identifier: MIT
 //! Copyright (c) 2026 Brighton Sikarskie
 //!
-//! Build graph for the `merge_ihex` host tool (#858). One executable, plus the
+//! Build graph for the `merge_ihex` host tool (RA8FW-335). One executable, plus the
 //! test step `scripts/checks/check_zig.py --test` runs: the record algebra and
 //! the exit-status contract the firmware builds depend on.
 

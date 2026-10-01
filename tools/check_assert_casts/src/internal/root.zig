@@ -1,7 +1,7 @@
 //! SPDX-License-Identifier: MIT
 //! Copyright (c) 2026 Brighton Sikarskie
 //!
-//! Detection algebra for the redundant-cast gate on TEST_ASSERT_EQ (#858).
+//! Detection algebra for the redundant-cast gate on TEST_ASSERT_EQ (RA8FW-335).
 //!
 //! TEST_ASSERT_EQ widens both arguments to int64_t internally, so an OUTER
 //! cast is redundant, and an `(int)` applied to a uint32_t enum truncates to

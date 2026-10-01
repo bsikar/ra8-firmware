@@ -1,6 +1,6 @@
 /**
  * @file test_ra8_board_ek_ra8d2_usb_port.c
- * @brief Host tests for the USB port role facade (#765)
+ * @brief Host tests for the USB port role facade (RA8FW-305)
  *
  * @details
  * ``ra8_board_usb_port_init`` replaces the eight-step pin choreography

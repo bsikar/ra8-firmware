@@ -1,7 +1,7 @@
 //! SPDX-License-Identifier: MIT
 //! Copyright (c) 2026 Brighton Sikarskie
 //!
-//! Detector and scope algebra for the pointer-only comment gate (#858).
+//! Detector and scope algebra for the pointer-only comment gate (RA8FW-335).
 //!
 //! Application and example definitions inherit their contracts from their
 //! declarations, so the generated sentence

@@ -118,8 +118,8 @@ fn threadxHeap(b: *std.Build, region: []const u8) []const u8 {
 /// Template and addresses are both READ, never transcribed: cpu1_image.ld.in
 /// is where the linker-script checkers see g_ra8_ls_cpu1_mram_start and
 /// g_ra8_ls_cpu1_stack_top declared, and cpu1_memory_map.cmake is the one
-/// definition of the window since #742. Copying either into Zig would create
-/// the second copy that #742 existed to delete.
+/// definition of the window since RA8FW-309. Copying either into Zig would create
+/// the second copy that RA8FW-309 existed to delete.
 fn cpu1Image(b: *std.Build, board: []const u8) []const u8 {
     const template_path = b.fmt("{s}/ld/cpu1_image.ld.in", .{board});
     const map_path = b.fmt("{s}/ld/cpu1_memory_map.cmake", .{board});

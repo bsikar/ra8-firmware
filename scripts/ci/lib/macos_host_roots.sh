@@ -10,7 +10,7 @@
 # `for` loop. Two things were wrong with that. A host root added later is
 # silently outside the gate: it takes its default target from
 # ra8_build.hostDefaultTargetQuery (check_zig.py's host-target rule makes sure
-# of that, #899/#989), so it looks correct from Linux and nothing ever builds
+# of that, RA8FW-330/#989), so it looks correct from Linux and nothing ever builds
 # it on a Mac. And the four roots the gate skips looked like an oversight
 # rather than a decision, so the log could not say why a root was absent and a
 # reviewer could not tell a deliberate deferral from a forgotten one.
@@ -109,7 +109,7 @@ _ra8_macos_host_repo_root() {
 }
 
 # Does this build.zig build binaries for the machine it runs on? That is what
-# makes a root a *host* root, and check_zig.py's host-target rule (#899) owns
+# makes a root a *host* root, and check_zig.py's host-target rule (RA8FW-330) owns
 # the definition: take the default target from `ra8_build.hostDefaultTargetQuery`,
 # or declare an exemption in `.zig-host-target.json`. A firmware library
 # cross-compiled for thumb and a check tool built plain-native are neither, so

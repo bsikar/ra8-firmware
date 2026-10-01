@@ -1,6 +1,6 @@
 /**
  * @file ra8_imgdec_mux.h
- * @brief One format matrix over a set of decoder backends (#768).
+ * @brief One format matrix over a set of decoder backends (RA8FW-308).
  * @ingroup grp_io
  *
  * @par Tag
@@ -8,7 +8,7 @@
  *
  * @details
  * ::ra8_imgdec_t binds exactly one backend, which is the right shape for a
- * backend and the wrong shape for a consumer. #768 is not really about any one
+ * backend and the wrong shape for a consumer. RA8FW-308 is not really about any one
  * decoder: it is about four decode paths each reaching a different subset of
  * the formats, so that whether an app can show a WebP depends on which path it
  * happened to pick. A consumer needs to name *decode* and have the set of
@@ -73,7 +73,7 @@ extern "C" {
  */
 typedef enum : uint32_t {
   k_ra8_imgdec_mux_max = 4U, /**< Members a mux holds. One per backend named
-                                  in #768: the first-party JPEG, the
+                                  in RA8FW-308: the first-party JPEG, the
                                   first-party PNG, WebP, and the stb residue
                                   of GIF/BMP/TGA. */
 } ra8_imgdec_mux_limits_t;
@@ -378,7 +378,7 @@ typedef struct {
  * it by hand means ::ra8_imgdec_sniff, then ::ra8_imgdec_mux_route, then
  * ::ra8_imgdec_probe on whatever came back, with the error mapping written out
  * again at every call site. Four decode paths' worth of that is the
- * duplication #768 exists to remove, so the mux does it once.
+ * duplication RA8FW-308 exists to remove, so the mux does it once.
  *
  * Nothing is decoded: the answer costs a signature read plus a header parse,
  * not a decode, and no backend hook beyond its capability query is reached.

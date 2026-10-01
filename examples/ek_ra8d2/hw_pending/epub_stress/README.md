@@ -12,7 +12,7 @@ On the bench it prints its boot line and then fails on the TOC: the NCX navPoint
 extraction this gate exists to hold comes back short on the real part. The UART
 reader was attached before the reset, so the #390 print-once race cannot explain
 it, and the fixture is baked in memory -- no SD card, no external hardware, no
-provisioning -- so this is a firmware defect rather than a rig gap (#170).
+provisioning -- so this is a firmware defect rather than a rig gap (RA8FW-251).
 `ra8_emulator` cannot arbitrate it either: it stops on an Armv8.1-M encoding the
 Unicorn M33 model has no seam for. `hil.conf` holds the capture. Re-promote only
 from a bench capture showing the PASS banner.

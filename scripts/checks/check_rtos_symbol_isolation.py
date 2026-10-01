@@ -57,7 +57,7 @@ PROGRAM = "check_rtos_symbol_isolation.py"
 OPTION_ARG_COUNT = 2
 
 # Floors. A sweep that has stopped matching must not report a clean tree.
-# The ledger floors track the ledger down as leaks genuinely burn down: #693
+# The ledger floors track the ledger down as leaks genuinely burn down: RA8FW-299
 # moved the watchdog supervisor onto the fw_os seam and took two sites and
 # eighteen symbols with it, so they were re-pinned from 6/40 to the surviving
 # 5/28 on dev. On this branch #981 then reimplemented ra8_cache_store's mount
@@ -66,7 +66,7 @@ OPTION_ARG_COUNT = 2
 # 2/17 since #2851, and this one is NOT a burn-down: the SysTick leak #695
 # names moved into Zig with the timebase port, so a C-only scan stopped seeing
 # it. The three symbols are still there, in
-# libs/ra8_core/src/internal/time/hooks.zig, which is why #2854 is open to put
+# libs/ra8_core/src/internal/time/hooks.zig, which is why RA8FW-363 is open to put
 # Zig in scope. Re-pinning here keeps the tripwire live for the C that is left
 # rather than reporting a tree this gate can no longer measure.
 #
@@ -177,7 +177,7 @@ NAME_TOKENS: dict[str, str] = {
 # `g_ra8_threadx_systick_ready` and `ux_dcd_ra8_usb_irq_reenable` now live in
 # libs/ra8_core/src/internal/time/hooks.zig, so the entry that declared them
 # here is gone with the C file. The leak itself is unchanged, and this gate no
-# longer measures it. Covering Zig is its own change (#2854): the symbol names
+# longer measures it. Covering Zig is its own change (RA8FW-363): the symbol names
 # arrive as @extern string literals, which strip_non_code removes, and the
 # already-migrated libraries would add ~19 undeclared sites of their own.
 DECLARED_SITES: dict[str, frozenset[str]] = {

@@ -6,7 +6,7 @@
 # carry a command-shaped invocation of the legacy repository task runner.
 #
 # This is a minimal trusted launcher, not an implementation: the detector is
-# the Zig host tool tools/check_no_legacy_make (#858), which replaced the
+# the Zig host tool tools/check_no_legacy_make (RA8FW-335), which replaced the
 # Python scripts/checks/check_no_legacy_make.py  PATHREF-OK: the predecessor
 # this names was deleted in the same change.
 #

@@ -97,7 +97,7 @@ extern bool s_bkup_initialized;
  *
  * @warning The store is only durable inside the unlock window: a write
  *          issued while @p reg's PRCR group is locked is discarded
- *          silently, with no bus fault and no status flag (issue #131).
+ *          silently, with no bus fault and no status flag (issue RA8FW-254).
  *          Do not separate the write from its unlock.
  *
  * @note Thread safety: not thread-safe; caller must serialise.

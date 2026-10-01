@@ -1,7 +1,7 @@
 /**
  * @file test_ra8_img_imgdec.c
  * @brief Host tests for the stb_image residue bound as an `ra8_imgdec`
- *        backend (#768).
+ *        backend (RA8FW-308).
  *
  * @details Every case drives the backend through ::ra8_imgdec_decode rather
  * than calling the vtable directly, because the division of labour is the
@@ -269,7 +269,7 @@ RA8_INTERNAL static void internal_test_gif_decodes(void)
 
 /**
  * @brief A PNG decodes, because stb is the only bindable PNG decoder in-tree.
- * @details The case that pins the caps decision. #768 proposes a separate
+ * @details The case that pins the caps decision. RA8FW-308 proposes a separate
  *          `ra8_imgdec_bind_png()` over a promoted `libs/ra8_png`, but
  *          `priv_jof_png_rows()` is RA8_PRIV, pull-based and has no
  *          whole-frame entry, so until that promotion happens this backend is

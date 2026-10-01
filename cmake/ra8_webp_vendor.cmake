@@ -69,7 +69,7 @@ endfunction()
 # The facade is not self-contained, so this list is its link closure, not just
 # its directory. ra8_webp_imgdec.c calls ra8_imgdec_dims() (:115) and
 # ra8_imgdec_pixel_bytes() (:277); the shared decoder scratch this already
-# carried (#768) calls ra8_arena_carve(); ra8_imgdec_dims.c and ra8_imgdec.c in
+# carried (RA8FW-308) calls ra8_arena_carve(); ra8_imgdec_dims.c and ra8_imgdec.c in
 # turn call ra8_imgdec_sniff(). Handing a consumer the facade without those
 # definitions hands it a link error rather than a decoder, which is what
 # apps/host/cbz2jof and tools/rabook_imagepack both hit: both linked WebP in,
@@ -79,7 +79,7 @@ endfunction()
 # for a consumer that already lists one of them (tools/rabook_viewer lists
 # ra8_imgdec_dims.c, the host test build globs both directories): CMake dedupes
 # identical absolute source paths within a target. That is the same property
-# the scratch entry has relied on since #768.
+# the scratch entry has relied on since RA8FW-308.
 #
 # The arena the scratch carves from left this list in #2601: it is Zig now, so
 # the closure is completed by a LINK rather than by a source, through
@@ -102,7 +102,7 @@ function(ra8_webp_facade_sources out_var repo_root)
 endfunction()
 
 # The non-source half of the facade's link closure: the Zig ra8_mem archive,
-# which defines the ra8_arena_* the shared decoder scratch calls (#768, #2601).
+# which defines the ra8_arena_* the shared decoder scratch calls (RA8FW-308, #2601).
 # Defined on demand so a standalone host tool needs no other include.
 function(ra8_webp_link_deps target repo_root)
   if(NOT TARGET ra8_zig::ra8_mem)

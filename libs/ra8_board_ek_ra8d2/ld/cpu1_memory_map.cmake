@@ -3,7 +3,7 @@
 #
 # The EK-RA8D2 CPU1 (Cortex-M33) image window: ONE definition of the two
 # addresses that were repeated across nine hand-maintained linker scripts
-# (#742).
+# (RA8FW-309).
 #
 # These are the same numbers as k_ra8_board_cpu1_image_base and
 # k_ra8_board_cpu1_image_size_bytes in ra8_board_ek_ra8d2_dualcore.h. The

@@ -13,7 +13,7 @@
 # The public LED / switch / console API is deliberately identical to
 # ra8_board_ek_ra8d2 so an app is a pure board substitution (SOLID-L). Only one
 # board layer is ever compiled into a given app, so the shared symbol names
-# never collide. See issue #226.
+# never collide. See issue RA8FW-260.
 #
 #
 

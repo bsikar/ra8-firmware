@@ -1,6 +1,6 @@
 /**
  * @file test_ra8_host.c
- * @brief Unit tests for the POSIX host composition root (#753).
+ * @brief Unit tests for the POSIX host composition root (RA8FW-313).
  *
  * @details
  * Exercises the request-shaped configuration (each binding independently

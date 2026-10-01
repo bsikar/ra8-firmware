@@ -1,6 +1,6 @@
 /**
  * @file test_ra8_usb_compose.c
- * @brief Host tests for the one-call framework composition (#766).
+ * @brief Host tests for the one-call framework composition (RA8FW-317).
  *
  * @par Tag
  * [Ring 4 / PAL] {World: NS}

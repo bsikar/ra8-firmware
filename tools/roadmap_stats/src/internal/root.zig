@@ -1,7 +1,7 @@
 //! SPDX-License-Identifier: MIT
 //! Copyright (c) 2026 Brighton Sikarskie
 //!
-//! Pure half of the `roadmap_stats` host tool (#858): the ROADMAP.md parser,
+//! Pure half of the `roadmap_stats` host tool (RA8FW-335): the ROADMAP.md parser,
 //! the summary renderer and the marker substitution, reimplemented from the
 //! Python `scripts/report/roadmap_stats.py`.  PATHREF-OK: the predecessor
 //! this names is deleted in the same change.  No file system and no argv in

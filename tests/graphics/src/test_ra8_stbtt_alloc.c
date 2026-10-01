@@ -8,7 +8,7 @@
  * exhaustion -> nullptr, nullptr-free tolerance, partial-free does NOT
  * rewind, full-drain auto-reset, and the high-water diagnostic.
  *
- * Since #768 the hooks forward to ::ra8_imgdec_scratch_t, so the decisions
+ * Since RA8FW-308 the hooks forward to ::ra8_imgdec_scratch_t, so the decisions
  * these vectors drive live in libs/ra8_imgdec/src/ra8_imgdec_scratch.c and
  * are cited there. The behaviour under test is unchanged, and this file
  * still drives it through the entry points stb_truetype actually calls.

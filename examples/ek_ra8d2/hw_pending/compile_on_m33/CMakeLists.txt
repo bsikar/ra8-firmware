@@ -102,7 +102,7 @@ if(TARGET compile_on_m33_cpu1.elf)
   # now (#2862), so it arrives in the cross-built ra8_core archive
   # ra8_add_cpu1_image() already links for this core rather than as a
   # hand-picked TU.
-  #   - ra8_ipc.c: the M33 side of the #150 mode-switch IPC path. It joins the
+  #   - ra8_ipc.c: the M33 side of the RA8FW-250 mode-switch IPC path. It joins the
   #     bar here now that its channel-regs cast no longer trips
   #     -Wbad-function-cast; its inventory rows are gone.
   #   - the rabook_compile emitter and the xml parser: this image's whole

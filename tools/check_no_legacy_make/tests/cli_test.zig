@@ -1,7 +1,7 @@
 //! SPDX-License-Identifier: MIT
 //! Copyright (c) 2026 Brighton Sikarskie
 //!
-//! Exit-status contract tests for the legacy-task-runner gate (#858).
+//! Exit-status contract tests for the legacy-task-runner gate (RA8FW-335).
 //!
 //! `cli.run` takes a directory handle, a census and both streams, so every
 //! status the predecessor could return is provable here with no process, no

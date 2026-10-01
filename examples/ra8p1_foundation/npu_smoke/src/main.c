@@ -19,7 +19,7 @@
  * @endcode
  *
  * The SCI8 console is provided by the dedicated ``ra8_board_ra8p1`` board layer
- * (issue #226), whose LED/switch/console pins are provisional (mirrored from the
+ * (issue RA8FW-260), whose LED/switch/console pins are provisional (mirrored from the
  * pin-compatible EK-RA8D2) until an RA8P1 board is defined -- see that layer's
  * header for the ``TODO(EK-RA8P1 UM / ra8p1_kicad)`` rationale.
  *

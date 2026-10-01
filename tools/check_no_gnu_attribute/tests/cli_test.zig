@@ -1,7 +1,7 @@
 //! SPDX-License-Identifier: MIT
 //! Copyright (c) 2026 Brighton Sikarskie
 //!
-//! Exit-status and enumeration tests for the GNU-attribute gate (#858,
+//! Exit-status and enumeration tests for the GNU-attribute gate (RA8FW-335,
 //! #1178). Each case drives `cli.run` against a temporary tree with both
 //! streams captured, so the contract
 //! `scripts/builders/check_no_gnu_attribute.sh` passes through is pinned

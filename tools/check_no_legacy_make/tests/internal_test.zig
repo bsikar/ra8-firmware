@@ -1,7 +1,7 @@
 //! SPDX-License-Identifier: MIT
 //! Copyright (c) 2026 Brighton Sikarskie
 //!
-//! Behavioural tests for the legacy-task-runner detector (#858).
+//! Behavioural tests for the legacy-task-runner detector (RA8FW-335).
 //!
 //! Every expectation here was taken from the predecessor by running it, not
 //! from reading its regular expressions: the command forms that fire, the

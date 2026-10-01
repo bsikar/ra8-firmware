@@ -12,7 +12,7 @@
 //! why the registration is unconditional rather than gated on the board being
 //! fully ported: a PARTIALLY ported board links the archive BESIDE its
 //! remaining C objects, and gating on the absence of board `.c` "silently
-//! dropped the ported half of such a board out of the link" (#2998).
+//! dropped the ported half of such a board out of the link" (RA8FW-365).
 //!
 //! That is exactly the state the Zig cross graph was in. It globs the board's
 //! `src/*.c` (cross_sources.zig, the board layer line) but linked no board

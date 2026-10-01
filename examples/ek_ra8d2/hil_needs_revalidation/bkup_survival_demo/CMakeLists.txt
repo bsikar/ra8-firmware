@@ -36,7 +36,7 @@ ra8_add_app(
   DESCRIPTION "bkup_survival_demo firmware for RA8D2"
 )
 
-# Issue #131: the VBATT battery-backup function is inoperative unless voltage
+# Issue RA8FW-254: the VBATT battery-backup function is inoperative unless voltage
 # monitor 0 (LVD0) reset is enabled. HUM Ch 12.1.3 p 499: "It is necessary to
 # enable voltage monitor 0 resets to use the battery backup function"; HUM
 # Ch 12.3.2 p 514: "The battery backup function should be used after the

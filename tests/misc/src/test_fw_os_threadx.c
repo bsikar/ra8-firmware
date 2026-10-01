@@ -6,7 +6,7 @@
  * [Ring 3 / Test] {World: NS}
  *
  * @details
- * The ThreadX binding of the `fw_os` seam (#693) cannot run on a host: it
+ * The ThreadX binding of the `fw_os` seam (RA8FW-299) cannot run on a host: it
  * needs a scheduler, and proving it end to end needs the bench. What it does
  * not need the bench for is the arithmetic, and that is where a binding
  * actually goes wrong. Three maps carry all of it, and all three live in

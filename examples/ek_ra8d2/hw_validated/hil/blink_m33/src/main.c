@@ -19,7 +19,7 @@
  *   2. The co-processor / low-power model. The M85 releases the M33 with
  *      `ra8_cpu1_release` (HUM Ch 2.9.1 "CPU control registers"), then drops into
  *      a WFI idle loop. With the heavy M85 asleep and the lean M33 doing the
- *      work, this *is* the low-power posture issue #150 builds on.
+ *      work, this *is* the low-power posture issue RA8FW-250 builds on.
  *
  * Everything the M85 does is logged with `ra8_log`, which the emulator echoes as
  * `[itm]` lines (the J-Link SWO trace analog). The M33's proof-of-life is the

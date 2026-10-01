@@ -1,7 +1,7 @@
 //! SPDX-License-Identifier: MIT
 //! Copyright (c) 2026 Brighton Sikarskie
 //!
-//! Behavioural regression suite for the pure half of `roadmap_stats` (#858).
+//! Behavioural regression suite for the pure half of `roadmap_stats` (RA8FW-335).
 //! Every case here pins what `scripts/report/roadmap_stats.py` did.  PATHREF-OK:
 //! the predecessor this names is deleted in the same change.  Quirks are
 //! included, because the committed summary block in `docs/ROADMAP.md` is only

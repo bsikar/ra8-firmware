@@ -111,7 +111,7 @@ gate_ubsan() (
 # and fails again when a checked number appears nowhere in the prose -- so the
 # marker being checked cannot drift away from the sentence a reader actually sees.
 #
-# check_usbx_class_claims.py (#626) is the same defect one layer down: not a count
+# check_usbx_class_claims.py (RA8FW-287) is the same defect one layer down: not a count
 # but a CAPABILITY list. docs/SOUP/usbx.md advertised CDC-ACM, HID and MSC as
 # "device + host" while cmake/usbx.cmake globs nothing at all out of
 # common/usbx_host_classes/, and it omitted the DFU device class five HIL apps

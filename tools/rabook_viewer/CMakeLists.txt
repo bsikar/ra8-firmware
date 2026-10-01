@@ -180,7 +180,7 @@ ra8_viewer_read_path(
 )
 
 # ra8_img_imgdec.c is DROP: it is the ra8_imgdec vtable backend over the stb
-# residue (#768), and nothing the viewer links binds it. The viewer's image
+# residue (RA8FW-308), and nothing the viewer links binds it. The viewer's image
 # path calls stb_image directly from reflow_image.c and takes container
 # identity from the shared sniff/name tables in the ra8_imgdec archive;
 # ra8_img_imgdec_bind() has no caller outside its own unit test. Keeping it

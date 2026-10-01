@@ -4,7 +4,7 @@
 Several pages in this tree argue a decision from counts of the tree itself:
 `docs/PORTS.md` argues the build-first port order from how many example files
 reach past the board for each peripheral, and `arch/README.md` argues the
-#694 migration order from how many first-party files include each misfiled
+RA8FW-300 migration order from how many first-party files include each misfiled
 Armv8-M header. The counts are load-bearing prose, and both pages were written
 the same way: the command run by hand once, the number pasted, the tree left
 free to move underneath it. `docs/PORTS.md` had four figures rot before a gate

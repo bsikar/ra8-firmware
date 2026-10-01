@@ -34,7 +34,7 @@
 # Step 3, and only step 3, is LINUX ONLY, and deliberately so. The pins live in
 # .devcontainer/Dockerfile, which describes a Linux image, so the only release
 # archives this file can name AND sha256-verify are the Linux ones. On a macOS
-# host (the arm64 runner #899 adds, and any developer Mac) the binary must
+# host (the arm64 runner RA8FW-330 adds, and any developer Mac) the binary must
 # already be there, on PATH or in the cache; the provisioner says so and stops
 # rather than downloading. It used
 # to fall through to the Linux URL, download ~50 MB of unrunnable ELF on every
@@ -450,7 +450,7 @@ if [ -z "${_RA8_LANG_TOOLCHAINS_SH:-}" ]; then
   }
 
   # Direction 3: the Mac that IS set up correctly still passes, and the entry
-  # point stays non-fatal there. That is the #899 case: the arm64 macOS gate
+  # point stays non-fatal there. That is the RA8FW-330 case: the arm64 macOS gate
   # runs after its workflow installs the pin, and this file must not stop it.
   _ra8_lang_selftest_macos_path_hit() {
     local scratch="$1"

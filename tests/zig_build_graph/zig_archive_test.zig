@@ -3,7 +3,7 @@
 //!
 //! The archive optimisation rules, held against the REAL
 //! cmake/ra8_app/zig_libs.cmake and the REAL cross-image wiring in
-//! tests/zig_build_graph/cross_image.zig (#1244, part of #857).
+//! tests/zig_build_graph/cross_image.zig (#1244, part of RA8FW-339).
 //!
 //! Both files arrive as anonymous imports declared in build.zig, so they are
 //! read at COMPILE time from the paths the build graph itself names. A test

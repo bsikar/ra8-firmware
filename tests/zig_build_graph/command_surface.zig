@@ -3,7 +3,7 @@
 //!
 //! The command surface of the root Zig build graph: the steps `build.zig`
 //! declares, the `just/zig.just` recipes that dispatch to them, and the help
-//! menu that advertises those recipes (#1165, part of #857).
+//! menu that advertises those recipes (#1165, part of RA8FW-339).
 //!
 //! Three hand-maintained lists of the same thing, and until this module
 //! nothing compared them. A slice that adds a step and forgets the recipe

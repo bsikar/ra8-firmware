@@ -44,7 +44,7 @@ ${_fuzz_targets}
 EOF
 
 # -----------------------------------------------------------------------------
-# The JPEG seed generator is a Zig host tool (#858), built once here and reused
+# The JPEG seed generator is a Zig host tool (RA8FW-335), built once here and reused
 # for every seed below. A missing zig is FATAL rather than a skipped corpus: a
 # harness whose corpus directory exists but holds no seed still runs, and it
 # runs from zero coverage, which looks like a passing fuzz sweep.

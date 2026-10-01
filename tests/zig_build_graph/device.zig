@@ -15,7 +15,7 @@
 //! -mfpu to fpv5-d16 unconditionally; #225 settled that the RA8P1 primary M85
 //! declares `__FPU_DP 0` in FSP's own CMSIS header, byte-identical to the RA8D2,
 //! so both parts build fpv5-sp-d16 and fpv5-d16 is reachable only through the
-//! opt-in `-DRA8P1_DP_FPU=ON` bench switch for #229 (which also defines
+//! opt-in `-DRA8P1_DP_FPU=ON` bench switch for RA8FW-261 (which also defines
 //! `RA8_FPU_DP_ENABLED`). Emitting fpv5-d16 by default is not a harmless
 //! surplus: `libs/ra8_hal/inc/ra8_fpu_probe.h` refuses a double-precision
 //! -mfpu without that define, and on silicon the .f64 opcodes would be

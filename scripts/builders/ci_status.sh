@@ -6,7 +6,7 @@
 # file.
 #
 # This is a minimal trusted launcher, not an implementation: the reader is the
-# Zig host tool tools/ci_status (#858, #1144), which replaced the Python
+# Zig host tool tools/ci_status (RA8FW-335, #1144), which replaced the Python
 # scripts/ci/ci_status.py  PATHREF-OK: the predecessor this names was deleted
 # in the same change.
 #

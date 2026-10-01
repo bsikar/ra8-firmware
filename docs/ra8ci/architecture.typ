@@ -50,7 +50,7 @@ The board remains one-at-a-time. A human can request it with a reason and durati
 - *GitHub integration:* ra8ci uses GitHub's Go Actions Runner Scale Set Client as the controller for an ephemeral runner scale set. Each disposable Linux or Windows guest runs the official GitHub Actions runner for one job plus ra8ci agent for our task, telemetry, and board contracts. ra8ci does not reimplement the GitHub job worker.
 - *Transport:* Authenticated HTTPS between CLI, server, and outbound-connecting agents. Use server-sent events or chunked HTTP for live logs at first; a versioned bidirectional stream can be added only if measured needs justify it.
 - *Provisioning:* ra8ci owns the run state and authorizes every create or destroy. Terraform remains the declarative guest mechanism; Ansible remains guest and fleet provisioning. The direct qm lifecycle is retired when parity is proven.
-- *Build path:* Semantic ra8ci task names invoke the current build implementation. As epic #857 completes, those implementations move to zig build steps. just remains the convenient wrapper; ra8ci does not implement another build graph.
+- *Build path:* Semantic ra8ci task names invoke the current build implementation. As epic RA8FW-339 completes, those implementations move to zig build steps. just remains the convenient wrapper; ra8ci does not implement another build graph.
 - *Deployment:* One protected, persistent control VM on Proxmox (VM ID in the 9000+ range) runs ra8ci server and PostgreSQL together; use a Unix socket for their local database connection. Agents run in disposable Linux and Windows guests and at the board boundary. Repository jobs never run on the control VM or Proxmox host. No ra8ci agent listens for inbound jobs.
 
 == Why this shape
@@ -74,7 +74,7 @@ The first version should not claim automatic optimal scheduling, arbitrary inter
 
 == Non-goals
 
-- Implementing the Zig build graph, porting firmware libraries, or changing epic #857.
+- Implementing the Zig build graph, porting firmware libraries, or changing epic RA8FW-339.
 - Replacing Terraform state, Ansible roles, OpenBao, or the persistent runner fleet declaration before a proven cutover.
 - Reimplementing the official GitHub Actions worker or executing arbitrary `uses:` actions inside the control VM.
 - Giving an agent general-purpose shell access to the Proxmox host.
@@ -193,7 +193,7 @@ A task name is not a source file name. For example, format, unit-test, cross-bui
 
 ra8ci invokes selected zig build steps with a pinned Zig toolchain, explicit target/configuration, and an out-of-tree cache/prefix. It does not parse build.zig to recreate the dependency graph. Zig is responsible for parallel build steps and caching within a build. ra8ci is responsible for cross-task placement, deadlines, board access, and longitudinal evidence.
 
-The task identity and schema survive the CMake retirement. Historical records include engine=cmake or engine=zig, Zig/CMake version, target, configuration, and build-graph digest. Reports compare like with like; a change of engine is a segmentation boundary rather than an unexplained speedup. The #857 parity gates remain authoritative until the Zig route preserves analysis databases, coverage, stack-usage, and other required artifacts.
+The task identity and schema survive the CMake retirement. Historical records include engine=cmake or engine=zig, Zig/CMake version, target, configuration, and build-graph digest. Reports compare like with like; a change of engine is a segmentation boundary rather than an unexplained speedup. The RA8FW-339 parity gates remain authoritative until the Zig route preserves analysis databases, coverage, stack-usage, and other required artifacts.
 
 == just remains the front door
 
@@ -345,7 +345,7 @@ The planner AI decides issues, MR batches, and ordering. This is the approved te
 2. *Board lease.* Move bench.sh semantics into the server, add durable queue and audit, then delete the script and repoint its just recipes in the same MR. Prove cooperative checkpoint and recovery behavior before hardware use.
 3. *Dispatch and GitHub capacity.* Introduce the internal demand-source interface first, then implement and shadow-run `workflow_job` intake: verify signatures, deduplicate deliveries, persist delivery order, and reconcile against the Actions jobs API. Take just-in-time registration to a disposable Linux guest first, then Windows, whose longer boot and provisioning time exposes stale-demand and cancellation races. Ship the unclaimed-runner reaper in the same batch as the first credential mint, and put bench-aware admission ahead of minting so scarce Windows capacity is not consumed while the board is unavailable. Enroll agents in the guests, start an official ephemeral runner with that configuration, and replace both Proxmox CI dispatch scripts with one ra8ci-owned lifecycle that invokes Terraform and Ansible. Prove label matching, one-job teardown, identity-checked cleanup, result propagation, cancellation, failed provisioning, GitHub and server reconnect, and restart reconciliation. Keep the current ARC/Docker/HIL fleet until matching gates are green; do not route the same job class to two competing dispatch paths during cutover.
 4. *Absorb checks.* Replace each used script's behavior, repoint every caller, delete the old script in that MR, and require a non-skipped gate. Prioritize frequent/slow checks using real task-step data.
-5. *Entry points.* Hooks, workflows, and just recipes call stable ra8ci task names. GitHub workflows may remain thin native Actions entry points: `runs-on` selects the ra8ci scale set, while required setup or third-party `uses:` actions still execute in the official runner. Keep required Zig build-parity and analysis coverage; only retire CMake-facing paths when #857's acceptance evidence is complete.
+5. *Entry points.* Hooks, workflows, and just recipes call stable ra8ci task names. GitHub workflows may remain thin native Actions entry points: `runs-on` selects the ra8ci scale set, while required setup or third-party `uses:` actions still execute in the official runner. Keep required Zig build-parity and analysis coverage; only retire CMake-facing paths when RA8FW-339's acceptance evidence is complete.
 
 A migration ledger maps old path, callers, new task, behavior proof, deletion MR, and fallback policy. A task is not "ported" because ra8ci shells out to the old script. The final state must preserve exact exit semantics, artifacts, selftests, and safety checks.
 
@@ -386,7 +386,7 @@ Workflow inventory measured on dev for this revision, by parsing `.github/workfl
 
 Runner-specific repository evidence on that published dev tip: infra/fleet.yml declares ARC on k3s, NAS Docker, Windows/WSL Docker, and a dedicated HIL listener; infra/ansible/roles/ci_runner/tasks/main.yml installs the ARC scale set and official runner; infra/ansible/roles/ci_runner_docker/tasks/deploy.yml configures per-instance registration and documents Runner.Listener / Runner.Worker; infra/ansible/roles/dev_box/tasks/hil_runner_transaction.yml installs the dedicated listener. GitHub workflows select those runners with `runs-on` labels. These are current-state observations, not authority to alter Brighton's active dev work.
 
-- Build and storage: #link("https://github.com/bsikar/ra8-firmware/issues/857")[Epic #857], #link("https://ziglang.org/learn/build-system/")[Zig build system], and #link("https://www.postgresql.org/docs/current/sql-select.html")[PostgreSQL row locking].
+- Build and storage: Epic RA8FW-339, #link("https://ziglang.org/learn/build-system/")[Zig build system], and #link("https://www.postgresql.org/docs/current/sql-select.html")[PostgreSQL row locking].
 - Execution: #link("https://pkg.go.dev/os/exec")[Go os/exec] and #link("https://pkg.go.dev/context")[Go context].
 - GitHub runner model: #link("https://docs.github.com/en/actions/reference/runners/self-hosted-runners")[self-hosted runners and autoscaling], #link("https://github.com/actions/scaleset/blob/main/README.md")[scale-set client], #link("https://github.com/actions/runner/blob/main/docs/design/auth.md")[runner authentication], and #link("https://docs.github.com/en/actions/concepts/runners/actions-runner-controller")[ARC concepts].
 - Demand signal and gating: #link("https://github.blog/changelog/2023-06-02-github-actions-just-in-time-self-hosted-runners/")[just-in-time runners], #link("https://docs.github.com/en/rest/actions/workflow-jobs")[workflow jobs REST], #link("https://docs.github.com/en/apps/creating-github-apps/writing-code-for-a-github-app/building-ci-checks-with-a-github-app")[CI checks with a GitHub App], and #link("https://docs.github.com/en/rest/branches/branch-protection")[branch protection].

@@ -56,7 +56,7 @@ set_property(
 )
 
 # The IP-interface facade: the packet pool / IP instance / ARP-UDP-ICMP / DHCP
-# bring-up three C6 Wi-Fi apps each carry as a near-verbatim private copy (#740).
+# bring-up three C6 Wi-Fi apps each carry as a near-verbatim private copy (RA8FW-319).
 # It names NetX Duo types in its header, which is exactly why it lives here and
 # not in `libs/ra8_wifi`: that facade stays stack-free and host-testable, and its
 # `ra8_wifi_ip_bind_fn` hook exists so an app can take the radio without the IP
@@ -77,7 +77,7 @@ set_property(GLOBAL PROPERTY RA8_NETXDUO_IPIF_SOURCES ${CMAKE_CURRENT_SOURCE_DIR
 
 # The Wi-Fi provider for that facade: `ra8_ipif_wifi_bind`, the
 # `ra8_wifi_ip_bind_fn` the `ra8_wifi` header promises ships "alongside the
-# backend when a stack is available" (#740). It is its own target rather than a
+# backend when a stack is available" (RA8FW-319). It is its own target rather than a
 # second source file on `netxduo_ipif` because it names `nx_ether_driver_c6` and
 # `ra8_c6link_t`: a consumer running the same bring-up over the on-chip MAC
 # takes `netxduo_ipif` alone and links neither. Linking this one implies

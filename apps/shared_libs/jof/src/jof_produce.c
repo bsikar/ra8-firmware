@@ -66,7 +66,7 @@ static_assert((uint32_t)k_ra8_imgdec_dim_max <= (uint32_t)k_jof_max_dim,
 /**
  * @brief Name the container the source head carries, or the empty set.
  * @details Forwards to ::ra8_imgdec_sniff, the one in-tree container sniff
- *          (#768), so the producer no longer carries its own PNG signature
+ *          (RA8FW-308), so the producer no longer carries its own PNG signature
  *          and WebP fourCC tables. A refusal is folded into
  *          ::k_ra8_imgdec_format_none: this producer has exactly one answer
  *          for "not a container I decode", and the sniff's distinction
@@ -776,7 +776,7 @@ internal_dispatch(jof_prod_state_t* st, const uint8_t* head, jof_prefix_pull_t* 
  *          reader already range-checks against its own frame limits and writes
  *          the 16-bit outputs itself, so it returns without a second check.
  *          PNG is answered by ::ra8_imgdec_dims, the one in-tree geometry
- *          probe (#768), so the producer no longer carries its own IHDR field
+ *          probe (RA8FW-308), so the producer no longer carries its own IHDR field
  *          offsets; the shared probe also verifies the first chunk really is
  *          IHDR, which the offsets alone never did. WebP still yields a
  *          32-bit pair from ::ra8_webp_get_info. Both are proved non-zero and

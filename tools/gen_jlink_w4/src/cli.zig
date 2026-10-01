@@ -1,7 +1,7 @@
 //! SPDX-License-Identifier: MIT
 //! Copyright (c) 2026 Brighton Sikarskie
 //!
-//! The argv membrane and the exit contract for `gen_jlink_w4` (#858). One
+//! The argv membrane and the exit contract for `gen_jlink_w4` (RA8FW-335). One
 //! function, `run`, is parameterised on a directory handle and both output
 //! streams, so every branch of the contract is reachable from a test without
 //! touching the real process.

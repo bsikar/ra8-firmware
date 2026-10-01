@@ -1,7 +1,7 @@
 //! SPDX-License-Identifier: MIT
 //! Copyright (c) 2026 Brighton Sikarskie
 //!
-//! Host-target selection for the Zig host applications on Apple Silicon (#899).
+//! Host-target selection for the Zig host applications on Apple Silicon (RA8FW-330).
 //!
 //! On macOS 15+ / Darwin 26 the Command Line Tools SDK ships a `libSystem.tbd`
 //! whose `targets:` list omits `arm64-macos`:
@@ -74,7 +74,7 @@ pub const Reason = enum {
     not_arm64_macos_host,
     /// The stub's target list includes `arm64-macos`; nothing to work around.
     sdk_declares_target,
-    /// The stub lists targets and `arm64-macos` is not among them. This is #899.
+    /// The stub lists targets and `arm64-macos` is not among them. This is RA8FW-330.
     sdk_omits_target,
     /// The stub was read but declares no target list in a spelling we parse, so
     /// it cannot be trusted either way.
@@ -97,7 +97,7 @@ pub const Reason = enum {
         return switch (self) {
             .not_arm64_macos_host => "this host is not an arm64 Mac, so the SDK stub rule does not apply",
             .sdk_declares_target => "the SDK stub declares " ++ required_target ++ ", so the native query links against it",
-            .sdk_omits_target => "the SDK stub lists its targets and " ++ required_target ++ " is not among them (#899)",
+            .sdk_omits_target => "the SDK stub lists its targets and " ++ required_target ++ " is not among them (RA8FW-330)",
             .sdk_stub_unrecognized => "the SDK stub declares no target list in a recognised spelling, so it cannot be trusted to link " ++ required_target,
             .sdk_stub_foreign_platform => "the stub read declares no macOS target at all, so it belongs to another Apple platform's SDK rather than this host's (check SDKROOT and xcrun --sdk " ++ host_sdk_name ++ ")",
             .sdk_stub_unreadable => "an SDK was located but its libSystem stub could not be read",
@@ -159,7 +159,7 @@ pub const required_target = "arm64-macos";
 /// Where Zig keeps its own `libSystem` stub, relative to the Zig lib
 /// directory (`zig env` reports it as `lib_dir`).
 ///
-/// The #899 workaround rests entirely on this file. Pinning an explicit
+/// The RA8FW-330 workaround rests entirely on this file. Pinning an explicit
 /// `aarch64-macos` query is only a fix because Zig links THIS stub instead of
 /// the SDK one, and because this stub declares `arm64-macos`. Nothing in the
 /// tree ever read it, so that was an assumption, not a check.
@@ -168,7 +168,7 @@ pub const bundled_stub_relative_path = "libc/darwin/libSystem.tbd";
 /// What Zig's own bundled stub turned out to say.
 ///
 /// Kept apart from `Reason` on purpose: `Reason` is about the machine's SDK,
-/// which is the thing #899 reports, while this is about the compiler that is
+/// which is the thing RA8FW-330 reports, while this is about the compiler that is
 /// standing in for it. A run where both go wrong needs to name them
 /// separately, because the fixes are a Command Line Tools install and a Zig
 /// version bump respectively.
@@ -197,7 +197,7 @@ pub const BundledStubState = enum {
     pub fn explain(self: BundledStubState) []const u8 {
         return switch (self) {
             .declares => "Zig's bundled libSystem stub declares " ++ required_target ++ ", so the pinned query has something to link",
-            .omits => "Zig's bundled libSystem stub lists its targets and " ++ required_target ++ " is not among them, so the pinned query cannot link either (#899)",
+            .omits => "Zig's bundled libSystem stub lists its targets and " ++ required_target ++ " is not among them, so the pinned query cannot link either (RA8FW-330)",
             .foreign_platform => "Zig's bundled libSystem stub names no macOS target at all, so it cannot stand in for the SDK stub",
             .unrecognized => "Zig's bundled libSystem stub declares no target list in a recognised spelling, so it cannot be trusted to link " ++ required_target,
             .unreadable => "Zig's bundled libSystem stub could not be read at " ++ bundled_stub_relative_path ++ " under the Zig lib directory",
@@ -238,7 +238,7 @@ pub const host_sdk_name = "macosx";
 /// Anything that is not an arm64 Mac keeps the native query untouched. On an
 /// arm64 Mac an unreadable, absent or unparsable SDK stub counts as "cannot
 /// link us": the bundled stub is correct for libc-only host tools either way, so
-/// an unknown SDK should not reintroduce the #899 link failure. The reason field
+/// an unknown SDK should not reintroduce the RA8FW-330 link failure. The reason field
 /// keeps those three states apart for whoever reads the log.
 pub fn decide(host_arch: std.Target.Cpu.Arch, host_os: std.Target.Os.Tag, probe: SdkProbe) Decision {
     if (host_os != .macos or host_arch != .aarch64) {
@@ -302,7 +302,7 @@ pub const TbdVerdict = enum {
     declares,
     /// A target list was found, it names the wanted OS, and the wanted triple
     /// is not among its entries. On an arm64 Mac reading the macOS stub, this
-    /// is #899 itself.
+    /// is RA8FW-330 itself.
     omits,
     /// No target list was found in any spelling this parser knows.
     unrecognized,
@@ -377,9 +377,9 @@ pub fn targetsFieldDeclares(tbd_text: []const u8, wanted: []const u8) ?bool {
 /// Does the `targets:` list name ANY target for `os_name`? Null when the file
 /// carries no `targets:` field at all.
 ///
-/// This is what separates "the macOS stub omits us" (#899) from "that was not
+/// This is what separates "the macOS stub omits us" (RA8FW-330) from "that was not
 /// a macOS stub". An iOS `libSystem.tbd` lists `arm64-ios` and friends, so the
-/// triple question alone answers "absent" and reads exactly like #899 while
+/// triple question alone answers "absent" and reads exactly like RA8FW-330 while
 /// saying nothing about the SDK a macOS link would actually use.
 pub fn targetsFieldMentionsOs(tbd_text: []const u8, os_name: []const u8) ?bool {
     return targetsFieldMatches(tbd_text, .{ .os = os_name });
@@ -468,7 +468,7 @@ pub fn archsFieldDeclares(tbd_text: []const u8, arch: []const u8, os_name: []con
 ///
 /// Asked separately from `archs:` because the two answer different questions.
 /// `platform: iphoneos` means the file is not this host's stub at all, and
-/// reporting that as "arm64 is absent" points the reader at #899 instead of at
+/// reporting that as "arm64 is absent" points the reader at RA8FW-330 instead of at
 /// the SDK they actually read.
 pub fn platformFieldDeclares(tbd_text: []const u8, os_name: []const u8) ?bool {
     const wanted_platform = if (std.mem.eql(u8, os_name, "macos")) v3_macos_platform else os_name;
@@ -518,7 +518,7 @@ pub fn archsFieldContains(tbd_text: []const u8, arch: []const u8) ?bool {
 /// against. A `.tbd` can carry one further document per re-exported library, and
 /// those repeat `targets:` lists of their own: on the Command Line Tools stub a
 /// re-export declaring `arm64-macos` must not answer for a `libSystem` that does
-/// not, or #899 comes straight back.
+/// not, or RA8FW-330 comes straight back.
 /// The slice of `document` covering its own top-level `name` field: the line
 /// that opens the field plus the indented lines that continue it.
 ///

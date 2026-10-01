@@ -6,7 +6,7 @@
 //! The contract test compiles every generated header with a real C23 compiler.
 //! It used to spawn the bare name `clang-18`, which is the compiler the Linux
 //! CI image installs. On any other host -- an arm64 macOS workstation in
-//! particular (#899) -- that name does not exist, so std.process.Child.spawn
+//! particular (RA8FW-330) -- that name does not exist, so std.process.Child.spawn
 //! failed with FileNotFound and the whole reg_gen `zig build test` step could
 //! not run off the CI image.
 //!

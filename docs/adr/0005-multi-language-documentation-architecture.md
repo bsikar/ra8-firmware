@@ -131,6 +131,6 @@ and the three Markdown, Zig and Rust columns were never wired at all.
 ## References
 
 * #900, this architecture
-* #855 `epic:zig-migration`, #857 build-graph parity
+* #855 `epic:zig-migration`, RA8FW-339 build-graph parity
 * `docs/DOCS.md`, the Doxygen pin and theme
 * [MkDocs configuration](https://www.mkdocs.org/user-guide/configuration/)

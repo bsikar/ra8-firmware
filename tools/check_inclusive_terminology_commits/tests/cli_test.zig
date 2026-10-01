@@ -1,7 +1,7 @@
 //! SPDX-License-Identifier: MIT
 //! Copyright (c) 2026 Brighton Sikarskie
 //!
-//! Exit-status contract tests for the commit-message terminology gate (#858).
+//! Exit-status contract tests for the commit-message terminology gate (RA8FW-335).
 //!
 //! `cli.run` takes the input text and both streams, so every status and every
 //! printed line below is proved with no process, no pipe and no repository.

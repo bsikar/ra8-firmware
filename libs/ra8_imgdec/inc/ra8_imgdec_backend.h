@@ -1,6 +1,6 @@
 /**
  * @file ra8_imgdec_backend.h
- * @brief Implementer-facing vtable for an `ra8_imgdec` backend (#768).
+ * @brief Implementer-facing vtable for an `ra8_imgdec` backend (RA8FW-308).
  * @ingroup grp_io
  *
  * @par Tag

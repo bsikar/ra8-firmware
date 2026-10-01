@@ -1,7 +1,7 @@
 //! SPDX-License-Identifier: MIT
 //! Copyright (c) 2026 Brighton Sikarskie
 //!
-//! The dispatch behind `ra8_usb_device_compose` (#766): one class entry plus
+//! The dispatch behind `ra8_usb_device_compose` (RA8FW-317): one class entry plus
 //! a device identity become the three framework buffers an enumerating stack
 //! hands to the host. Every byte still comes out of `descriptor.zig`; this
 //! file adds only the choice of encoder and the order the three encodes run
