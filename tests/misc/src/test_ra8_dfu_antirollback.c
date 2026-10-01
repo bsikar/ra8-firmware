@@ -22,18 +22,17 @@
  */
 
 /*
- * Anti-rollback is opt-in behind RA8_ENABLE_ROOT_OF_TRUST (default OFF, see
- * ra8_dfu_antirollback.h). The globbed ``ra8_dfu_antirollback.c`` therefore
- * compiles to nothing in the default host build, so its symbols are not
- * otherwise linked. Enable the flag for this test and pull the flag-gated
- * implementation in directly (the test include path covers libs/ra8_dfu/src),
- * keeping the gate exercisable -- mirroring tests/security/src/test_ra8_root_of_trust.c.
+ * Anti-rollback is a Zig archive since #2947: this suite links ``ra8_rot``
+ * and drives the gate through the declarations in ra8_dfu_antirollback.h.
+ * It used to #define RA8_ENABLE_ROOT_OF_TRUST and #include the .c, because
+ * the implementation compiled to an empty translation unit with the flag
+ * off. The opt-in is a link decision now -- which apps link the archive --
+ * so neither the define nor the white-box include has anything left to do.
  */
-#define RA8_ENABLE_ROOT_OF_TRUST
 
 #include <stdint.h>
 
-#include "ra8_dfu_antirollback.c" // NOLINT(bugprone-suspicious-include) -- pull in flag-gated impl
+#include "ra8_dfu_antirollback.h"
 #include "ra8_err.h"
 #include "unity_minimal.h"
 
@@ -335,11 +334,10 @@ static void test_default_store_nv_backed(void)
   TEST_ASSERT(store->read != nullptr);
   TEST_ASSERT(store->commit != nullptr);
 
-  /* Simulate a fresh device: force the durable counter (host RAM shadow) to its
-   * erased value. The store must map erased -> version 0, and the null guard
-   * still fires. */
-  s_fake_ar_counter = (uint32_t)k_ra8_rot_ar_erased;
-  uint32_t stored   = k_test_arb_stored;
+  /* A fresh device: nothing else in this suite touches the default store and
+   * this case runs last, so the durable counter is still unprogrammed here.
+   * The store must map erased -> version 0, and the null guard still fires. */
+  uint32_t stored = k_test_arb_stored;
   TEST_ASSERT_EQ(k_ra8_ok, store->read(&stored));
   TEST_ASSERT_EQ(0U, stored);
   TEST_ASSERT_EQ(k_ra8_err_null_ptr, store->read(nullptr));

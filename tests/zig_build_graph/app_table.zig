@@ -323,8 +323,7 @@ pub const cross_apps = [_]CrossApp{
         //   app_local.zig for why three of those four effects are silent.
         //
         // No USES, so the first-party set is the same shape as blink_hal's and
-        // everything differing IS the two rules above. It names no migrated
-        // Zig archive, so #948 does not block it. STACK_BYTES 32768 is the
+        // everything differing IS the two rules above. STACK_BYTES 32768 is the
         // second non-default frame budget in the table (#1068).
         .name = "secure_boot_hil",
         .dir = "examples/ek_ra8d2/hw_validated/hil/secure_boot_hil",
@@ -343,13 +342,12 @@ pub const cross_apps = [_]CrossApp{
         // failure from the graph (overflow 29860 bytes), same linker, same
         // message. Filed separately; every TU still compiles here.
         .links_in_debug = false,
-        .extra_srcs = &.{
-            "libs/ra8_psa_crypto/src/ra8_psa_crypto.c",
-            "libs/ra8_dfu/src/ra8_rot.c",
-            "libs/ra8_dfu/src/ra8_dfu_antirollback.c",
-            "libs/ra8_dfu/src/ra8_dfu_boot.c",
-            "libs/ra8_dfu/src/ra8_dfu_launch.c",
-        },
+        // Four of the five units this app used to name here are Zig archives
+        // now and reached through LIBS instead: ra8_psa_crypto (#1114),
+        // ra8_rot (#2943), ra8_dfu_boot, and ra8_dfu_antirollback, which
+        // joined the ra8_rot archive. The keyword survives on the one unit
+        // that is still C, which is what the app's own CMakeLists declares.
+        .extra_srcs = &.{"libs/ra8_dfu/src/ra8_dfu_launch.c"},
         .local = .{
             .defines = &.{"-DRA8_ENABLE_ROOT_OF_TRUST"},
             .include_dirs = &.{

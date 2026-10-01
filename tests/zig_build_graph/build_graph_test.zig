@@ -485,15 +485,16 @@ fn indexOf(haystack: []const []const u8, needle: []const u8) ?usize {
 }
 
 test "EXTRA_SRCS helpers are compiled in, in the order the app names them" {
-    // Five helpers out of two libraries the app does NOT name in LIBS. The
-    // graph has to take them from the app's own declaration; nothing about
-    // libs/ra8_dfu/src says four of its units belong to this image and the
-    // rest do not.
+    // One helper out of a library the app does NOT name in LIBS. The graph has
+    // to take it from the app's own declaration; nothing about libs/ra8_dfu/src
+    // says this unit belongs to the image and the rest do not.
+    //
+    // It was five until the ports took the other four into Zig archives the app
+    // reaches through LIBS. The ordering this case is named for is therefore no
+    // longer observable here, and no other app in the table uses the keyword;
+    // what is still worth holding is that a named unit arrives without its
+    // library arriving with it, which is the pair of expectations below.
     const expected = [_][]const u8{
-        "libs/ra8_psa_crypto/src/ra8_psa_crypto.c",
-        "libs/ra8_dfu/src/ra8_rot.c",
-        "libs/ra8_dfu/src/ra8_dfu_antirollback.c",
-        "libs/ra8_dfu/src/ra8_dfu_boot.c",
         "libs/ra8_dfu/src/ra8_dfu_launch.c",
     };
     try std.testing.expectEqual(expected.len, extra_srcs_app.extra_srcs.len);

@@ -1,7 +1,8 @@
 //! SPDX-License-Identifier: MIT
 //! Copyright (c) 2026 Brighton Sikarskie
 //!
-//! Archive root for the root of trust alone.
+//! Archive root for the root of trust alone: the verifier and the
+//! anti-rollback counter behind it.
 //!
 //! `ra8_rot.c` compiled to an empty translation unit unless the app defined
 //! `RA8_ENABLE_ROOT_OF_TRUST`, which is how an app that links `ra8_dfu`
@@ -13,4 +14,5 @@
 
 comptime {
     _ = @import("rot_abi");
+    _ = @import("antirollback_abi");
 }
