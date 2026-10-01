@@ -4,7 +4,7 @@
  *        opens and zooms through the JOF tile path.
  *
  * @details
- * Turns the #344 requirement into CI gates. A large RGB page is synthesized in
+ * Turns the requirement into CI gates. A large RGB page is synthesized in
  * test, packed into a real CBZ, opened by `comic`, and paged the two ways a
  * reader chooses between:
  *   - the whole-decode fast path (`ra8_img_decode_blit`) genuinely FAILS
@@ -45,7 +45,7 @@
 
 /**
  * @enum comic_tiles_geom_t
- * @brief Page + tile + cache geometry driving the #344 invariants.
+ * @brief Page + tile + cache geometry driving the invariants.
  * @details The big page (700x480 RGB) is deliberately not tile-aligned, so the
  *          right column and bottom row are clamped edge tiles; at 4 bpp its
  *          decoded footprint is 1.34 MiB, ~5x the ::k_budget_bytes threshold and

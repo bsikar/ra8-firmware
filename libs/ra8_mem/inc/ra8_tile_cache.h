@@ -7,7 +7,7 @@
  * [Ring 2 / Core] {World: NS}
  *
  * @details
- * The image counterpart of the #147 glyph atlas: a tile cache so the reader can
+ * The image counterpart of the glyph atlas: a tile cache so the reader can
  * pan/zoom a comic page or a large illustration far bigger than RAM (CBZ/CBR,
  * full-bleed covers) while resident decoded-pixel memory stays bounded. A tile is
  * keyed by `(image_id, tile_x, tile_y, zoom)` and the cache returns a pinned view

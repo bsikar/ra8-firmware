@@ -17,7 +17,7 @@
  * engine reproduces the live layout **glyph-for-glyph and page-for-page**,
  * and that bumping the font size invalidates the cached blob.
  *
- * It also drives the **full container pipeline** for #79's real-book corpus:
+ * It also drives the **full container pipeline** for the real-book corpus:
  * a real EPUB (public-domain Project Gutenberg prose -- H.G. Wells'
  * *The Time Machine*) is assembled in memory with miniz (the
  * `apps/shared_libs/epub/tests/src/test_epub.c` pattern), opened with `epub_open()`, and each
@@ -489,7 +489,7 @@ RA8_INTERNAL static int internal_build_gutenberg_epub(void)
  * @test internal_test_corpus_real_epub_pipeline
  * @brief Open a real EPUB container, then for every spine chapter prove the
  *        live layout caches and restores glyph/page-identically -- the full
- *        epub -> reflow -> reflow_cache pipeline for #79's real-book
+ *        epub -> reflow -> reflow_cache pipeline for the real-book
  *        corpus.
  *
  * @par MC/DC:
@@ -549,7 +549,7 @@ RA8_INTERNAL static void internal_test_corpus_real_epub_pipeline(void)
 /**
  * @test internal_test_corpus_truncated_epub_rejected
  * @brief A truncated/garbage archive is rejected by epub_open without a
- *        crash (the malformed-file half of #79's corpus).
+ *        crash (the malformed-file half of the corpus).
  *
  * @par MC/DC:
  * (no compound decisions in this test -- robustness of the container open

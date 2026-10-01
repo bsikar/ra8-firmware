@@ -193,7 +193,7 @@ test "a read starting at or past the end copies nothing and does not fail" {
     try std.testing.expectEqual(@as(i32, 0), max_pinned);
 }
 
-// The #764 case: a failing frame must not read as a clean end of file.
+// The case: a failing frame must not read as a clean end of file.
 test "a failed frame reports the cache's error with the bytes copied so far" {
     reset();
     fail_at = 32;

@@ -4,7 +4,7 @@
  *
  * @details
  * Drives the replay engine in src/cache_bench.c across the RAM-budget axis and
- * prints the markdown report the #147 decision record quotes: one hit-rate
+ * prints the markdown report the decision record quotes: one hit-rate
  * matrix per workload (policies x cache sizes), then a cross-workload summary
  * carrying the worst per-eviction scan depth (a WCET proxy) and each policy's
  * per-frame metadata cost. It also owns the command line -- the optional

@@ -3,7 +3,7 @@
  * @brief RABOOK1 builder implementation (see rabook_compile.h).
  *
  * @details
- * Zero-heap builder back-end of the #149 on-device EPUB -> `.rabook` compiler.
+ * Zero-heap builder back-end of the on-device EPUB -> `.rabook` compiler.
  * Each builder call appends into a caller-provided arena and latches capacity
  * failures in the context. The sibling finalizer module owns canonical layout,
  * CRC-32, and output publication. Keeping construction separate from

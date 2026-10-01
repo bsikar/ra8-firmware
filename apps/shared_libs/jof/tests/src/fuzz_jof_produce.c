@@ -1,6 +1,6 @@
 /**
  * @file fuzz_jof_produce.c
- * @brief libFuzzer harness for the #231 import-time transcode producer.
+ * @brief libFuzzer harness for the import-time transcode producer.
  *
  * @details
  * The producer's source bytes are an image inside a downloaded EPUB -- fully

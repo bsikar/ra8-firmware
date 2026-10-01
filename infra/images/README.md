@@ -82,7 +82,7 @@ sudo k3s ctr -n k8s.io images ls "name==localhost/ra8-ci-runner:v2"
 sudo k3s kubectl -n arc-runners get pods
 ```
 
-Gotchas, all of them observed during the #484 outage:
+Gotchas, all of them observed during the outage:
 
 - **Do not import an archive from somewhere else.** The fleet declaration names
   the one canonical archive and the role rejects it before publication unless

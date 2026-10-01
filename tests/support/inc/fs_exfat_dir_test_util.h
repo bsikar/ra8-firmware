@@ -30,7 +30,7 @@
  * validates what it can REACH from the root, so a cluster the bitmap calls used
  * that no entry set references is invisible to it: hand-retiring a whole entry
  * set while leaving its bitmap bits alone still reports `clean`. That leak is
- * exactly the #603 failure mode, and catching it is this scanner's job.
+ * exactly the failure mode, and catching it is this scanner's job.
  *
  * **An image dumper** -- ::internal_exfat_dump. With `RA8_FS_EXFAT_DUMP` set to a
  * directory, every scenario writes the volume out as `<tag>.img`, sliced from

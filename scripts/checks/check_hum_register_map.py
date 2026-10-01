@@ -51,7 +51,7 @@ Being precise about the edge is part of not crying wolf:
 
 * **Bit fields.** Only register-level symbols are cross-checked. A driver
   writing the right register with the wrong field -- which is exactly what
-  #539's third defect was, ``EATASGL0`` receiving a gate state instead of an
+  the third defect was, ``EATASGL0`` receiving a gate state instead of an
   entry address -- is invisible here and always will be. Nothing mechanical
   substitutes for reading the field table.
 * **Citations that name no register.** ``/* HUM Ch 32.4 "Error Interrupt
@@ -76,7 +76,7 @@ Being precise about the edge is part of not crying wolf:
 
 WHAT MAKES THIS GATE ABLE TO FAIL
 ---------------------------------
-Both acceptance properties the #190 audit distilled are designed in, because
+Both acceptance properties the audit distilled are designed in, because
 they are precisely what a gate like this gets wrong:
 
 * **No check compares a constant to itself.** The authority is always the

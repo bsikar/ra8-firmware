@@ -7,7 +7,7 @@
  *
  * @details
  * This is the firmware that runs on the RA8D2's *primary* core, the Cortex-M85,
- * out of reset. It demonstrates the #149 compiler offload: the M85 stages a book
+ * out of reset. It demonstrates the compiler offload: the M85 stages a book
  * and hands the full EPUB->`.rabook` conversion to the M33 @ 250 MHz, so on a real
  * import the M85 @ 1 GHz stays free to keep the UI live while the slow core grinds.
  *

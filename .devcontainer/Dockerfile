@@ -67,7 +67,7 @@ ARG ARM_GCC_SHA256_DARWIN_ARM64=fb6921db95d345dc7e5e487dd43b745e3a5b4d5c0c7ca4f7
 
 # Unicorn CPU emulator -- pinned by URL + sha256 (built from source below) so
 # ra8_emulator decodes Armv8.1-M (Helium/MVE) IDENTICALLY to the self-hosted
-# runner. An unpinned Unicorn is exactly the #354 skew (runner 2.1.4 vs an old
+# runner. An unpinned Unicorn is exactly the skew (runner 2.1.4 vs an old
 # 2.0.1). Keep these two in step with RA8_UNICORN_* in scripts/ci/unicorn_pin.sh.
 ARG UNICORN_VERSION=2.1.4
 ARG UNICORN_SHA256=ea8863f095a0136388694e5a6063afd9bb7650e30243dd6251af59c5ce5601f4

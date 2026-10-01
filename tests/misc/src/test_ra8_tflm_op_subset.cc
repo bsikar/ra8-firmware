@@ -4,7 +4,7 @@
  *        first-party Ethos-U custom-op registration seam
  *
  * @details
- * Issue #228's residual is the runtime half of the RA8P1 Ethos-U55 story: the
+ * The residual is the runtime half of the RA8P1 Ethos-U55 story: the
  * `MicroInterpreter` model-driven path has never executed, and the CPU-fallback
  * leg -- what happens to a graph node the NPU cannot take -- is unexercised.
  * Both of those ultimately need a real Vela command stream and RA8P1

@@ -81,7 +81,7 @@ def _build_arg_parser() -> argparse.ArgumentParser:
     ap.add_argument(
         "--selftest",
         action="store_true",
-        help="compile the fixed-layout fixture and run the #196 self-check, then exit",
+        help="compile the fixed-layout fixture and run the self-check, then exit",
     )
     return ap
 

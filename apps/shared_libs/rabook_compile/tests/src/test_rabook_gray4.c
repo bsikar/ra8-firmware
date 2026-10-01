@@ -3,7 +3,7 @@
  * @brief Host unit tests for the gray4 transcode stage (ra8_rabook_gray4).
  *
  * @details
- * Verifies the independently-testable pieces of the #149 image transcode:
+ * Verifies the independently-testable pieces of the image transcode:
  *
  *  - @ref ra8_rabook_gray4_output_dims -- dimension-clamping arithmetic
  *  - @ref ra8_rabook_gray4_encode      -- quantise + nibble-pack (4-bpp)

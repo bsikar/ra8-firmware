@@ -14,7 +14,7 @@
 # differently -- notably the Helium/MVE store family the Cortex-M85 executes.
 # So the emulator's verdict for an identical .elf depends on which Unicorn is
 # installed. If that version is unpinned, "the same commit passes here and
-# faults there" is structurally guaranteed, which is exactly the #354 skew:
+# faults there" is structurally guaranteed, which is exactly the skew:
 # the self-hosted runner ran a source-built 2.1.4 while the dev box + the
 # devcontainer ran 2.0.1, and 2.0.1 raises spurious EXCP_NOCP on MVE stores.
 #

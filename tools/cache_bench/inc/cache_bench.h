@@ -1,6 +1,6 @@
 /**
  * @file inc/cache_bench.h
- * @brief Eviction-policy comparison harness for the #147 memory-hierarchy
+ * @brief Eviction-policy comparison harness for the memory-hierarchy
  *        decision record: the DIP seam every replacement policy implements, the
  *        fixed-frame cache it drives, and the per-run metrics it reports.
  *

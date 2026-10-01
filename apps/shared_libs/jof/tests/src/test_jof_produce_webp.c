@@ -5,7 +5,7 @@
  *        fail-closed hostile handling.
  *
  * @details
- * The #290 goal is that every source codec converges on one on-device format:
+ * The goal is that every source codec converges on one on-device format:
  * these tests drive a committed lossless (VP8L) and lossy (VP8) WebP through
  * `jof_produce()` and prove:
  *
@@ -460,7 +460,7 @@ RA8_INTERNAL static void internal_test_webp_lossless_golden(void)
 
 /**
  * @test internal_test_webp_png_byte_identical
- * @brief The #290 convergence proof: a lossless WebP and an RGBA PNG of the
+ * @brief The convergence proof: a lossless WebP and an RGBA PNG of the
  *        same pixels produce a **byte-identical** JOF atlas -- the reader sees
  *        one normalized format regardless of source codec.
  *

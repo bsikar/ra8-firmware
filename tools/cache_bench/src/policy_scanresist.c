@@ -1,6 +1,6 @@
 /**
  * @file src/policy_scanresist.c
- * @brief Scan-resistant eviction policies for the #147 benchmark: Segmented-LRU
+ * @brief Scan-resistant eviction policies for the benchmark: Segmented-LRU
  *        and SRRIP -- the deterministic, low-metadata candidates a DO-178C page
  *        cache can actually ship (no ghost lists, bounded eviction scan).
  *

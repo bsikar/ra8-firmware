@@ -139,7 +139,7 @@ select = [
   # --- added by #372 -------------------------------------------------------
   # Type annotations. Measured 431 at selection time (ANN001 265, ANN201 106,
   # ANN202 47, ANN204 9, ANN401 4) -- higher than the 377 #363 recorded,
-  # because #359's decomposition created new signatures. All 431 were
+  # because the decomposition created new signatures. All 431 were
   # annotated; none suppressed.
   #
   # The recorded reason for dropping this was scheduling, not merit, and the

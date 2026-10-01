@@ -358,7 +358,7 @@ RA8_INTERNAL static void internal_test_recovery_clean(void)
  * @brief The superblock `seq` counts superblock writes and survives a remount.
  * @details Puts and closes a store, remounts it, and checks the counter it
  * resumed is at least what the first store left behind, then checks a second
- * checkpoint pushes it strictly higher. Pins the #1318 contract: `seq` is a
+ * checkpoint pushes it strictly higher. Pins the contract: `seq` is a
  * checkpoint counter, distinct from the append counter `next_seq`, and a later
  * reader of the media never sees it restart or go backwards.
  * @pre The fake NOR can be wiped and reopened.

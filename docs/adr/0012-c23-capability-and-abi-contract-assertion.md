@@ -117,7 +117,7 @@ Deferred to the owner. Four options, with what each costs.
 
 **A. Configure-time compile probes for the cross build.** A probe module
 included by both toolchain files, testing each required C23 construct with
-`check_c_source_compiles`. Matches #787's wording directly and reuses the idiom
+`check_c_source_compiles`. Matches the wording directly and reuses the idiom
 in section 6. Cost: with `CMAKE_C_COMPILER_WORKS` forced and `-nostdlib` in the
 link flags, a probe must be compile-only, so the module has to set
 `CMAKE_TRY_COMPILE_TARGET_TYPE` to `STATIC_LIBRARY` for every check. That is a

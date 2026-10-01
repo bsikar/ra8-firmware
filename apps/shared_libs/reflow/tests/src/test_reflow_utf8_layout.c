@@ -218,7 +218,7 @@ static void internal_test_utf8_decode_never_stalls(void)
 /**
  * @test internal_test_layout_emits_one_glyph_per_code_point
  *
- * @brief The #686 regression itself: a paragraph of typographic punctuation
+ * @brief The regression itself: a paragraph of typographic punctuation
  *        lays out as one glyph per CHARACTER, carrying the real code points.
  *        Against the old byte-walk this paragraph produced 13 glyphs (each
  *        multi-byte character split into its bytes) instead of 7.

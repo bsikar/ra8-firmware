@@ -215,7 +215,7 @@ RA8_INTERNAL static void internal_test_pipeline_undecodable_cover_skipped(void)
  * @brief Assert the on-device compiler is byte-identical to the desktop tool.
  *
  * @details
- * The #151 acceptance proof: @ref rabook_compile_from_epub must emit a
+ * The acceptance proof: @ref rabook_compile_from_epub must emit a
  * RABOOK1 flat blob byte-for-byte identical to tools/epub_compile/src/epub_compile.py
  * for the text-only slice the pipeline fully supports. Opens the baked fixture
  * @c s_parity_epub from memory, compiles it onto a RAM FAT volume, reads the
@@ -282,7 +282,7 @@ RA8_INTERNAL static void internal_test_pipeline_parity_byte_identical(const uint
  * @brief Assert the skip-images compile equals the desktop --no-images golden.
  *
  * @details
- * The #151 skip-images acceptance proof: compiling the SAME parity fixture with
+ * The skip-images acceptance proof: compiling the SAME parity fixture with
  * @ref ra8_rabook_pipeline_scratch_t::skip_images set must emit a RABOOK1 blob
  * byte-for-byte identical to tools/epub_compile/src/epub_compile.py run with its
  * @c --no-images flag. The fixture carries an SVG cover, so the default compile
@@ -355,7 +355,7 @@ RA8_INTERNAL static void internal_test_pipeline_parity_noimg_byte_identical(cons
  * @brief Assert a real-book skip-images compile equals the desktop golden.
  *
  * @details
- * The #151 real-book acceptance proof: a trimmed fixture of REAL Standard Ebooks
+ * The real-book acceptance proof: a trimmed fixture of REAL Standard Ebooks
  * Walden chapters -- @c visitors and @c conclusion, vendored verbatim under
  * tests/rabook_realbook/ -- is compiled on-device with
  * @ref ra8_rabook_pipeline_scratch_t::skip_images set and must emit a RABOOK1

@@ -448,7 +448,7 @@ static ra8_err_t internal_exfat_mkdir_check(const ra8_fs_mount_t* m,
    * The third verdict is the one that is easy to drop: a BACKEND FAILURE is not
    * "the name is absent". Testing only for k_ra8_ok would turn an unreadable
    * directory into a green light to create, and the volume would then hold two
-   * entry sets for one name -- the #603 duplicate, reintroduced through the
+   * entry sets for one name -- the duplicate, reintroduced through the
    * error path instead of the happy one. */
   const ra8_err_t fe = priv_exfat_find(m, parent, leaf, strm, &attr);
   if (fe == k_ra8_ok) {

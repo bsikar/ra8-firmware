@@ -1,7 +1,7 @@
 /**
  * @file test_ra8_tls_net.c
  * @brief Unit tests for the ``ra8_tls`` TLS-over-network glue: cipher /
- *        verify introspection, the #21 MSS clamp, and an end-to-end
+ *        verify introspection, the MSS clamp, and an end-to-end
  *        handshake + record exchange driven over ``ra8_net_pal`` frames.
  *
  * @details

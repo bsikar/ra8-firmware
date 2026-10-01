@@ -35,7 +35,7 @@ which the shared linker script emits ahead of every `-fdata-sections` `.bss.*`.
 Growing it slides the HAL's whole GWCA block -- the state struct, both
 descriptor chains and both buffer pools -- that far up SRAM and changes nothing
 else about the program, which makes "where the Ethernet DMA structures live" a
-single build-time variable. The default reproduces #524's reported layout byte
+single build-time variable. The default reproduces the reported layout byte
 for byte, with `s_gwca_state` at `0x22060474` and `s_tx_chain` at `0x220664B0`.
 
 Whether a given layout tripped the marginal read was perfectly repeatable but

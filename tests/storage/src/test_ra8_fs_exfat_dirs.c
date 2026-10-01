@@ -407,7 +407,7 @@ RA8_INTERNAL static void internal_test_rmdir_empty_frees_its_cluster(void)
  *          must be free. Both the census AND the file's contents are checked
  *          afterwards: a `rmdir` that freed the directory's cluster before
  *          discovering the file would strand the file's own clusters, which is
- *          the #604 failure mode one level up.
+ *          the failure mode one level up.
  *
  * @par MC/DC:
  * No compound decision lies on this path. The vectors it contributes are
@@ -557,7 +557,7 @@ RA8_INTERNAL static void internal_test_mkdir_refuses_an_existing_name(void)
  * @test test_wrong_verb_for_the_kind
  * @brief `unlink` refuses a real directory; `rmdir` refuses a file.
  *
- * @details The #604 guards were written against a directory forged by flipping
+ * @details The guards were written against a directory forged by flipping
  *          an attribute bit on a set the driver had written, because there was
  *          no way to make a real one. This is the same pair of assertions
  *          against a directory `mkdir` actually created -- and, crucially,
@@ -709,7 +709,7 @@ RA8_INTERNAL static void internal_test_long_directory_name(void)
 
 /**
  * @test test_replace_inside_a_subdirectory
- * @brief The #603 replace semantics hold at depth, and leak nothing there.
+ * @brief The replace semantics hold at depth, and leak nothing there.
  *
  * @details `ra8_fs_write_file()` over an existing name releases the old entry
  *          set and its clusters before writing the new one. That used to be a

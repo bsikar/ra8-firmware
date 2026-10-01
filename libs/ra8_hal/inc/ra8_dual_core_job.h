@@ -7,7 +7,7 @@
  * [Ring 3 / HAL] {World: NS}
  *
  * @details
- * The #149 EPUB->`.rabook` offload runs the heavy compile on the Cortex-M33
+ * The EPUB->`.rabook` offload runs the heavy compile on the Cortex-M33
  * secondary core while the Cortex-M85 keeps the UI live. This header is the
  * reusable Dependency-Inversion seam between the part that decides WHAT to
  * compile (the import library) and the cross-core transport that moves the work

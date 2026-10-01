@@ -1,6 +1,6 @@
 /**
  * @file src/policies.c
- * @brief Reference eviction policies + the registry for the #147 benchmark.
+ * @brief Reference eviction policies + the registry for the benchmark.
  *
  * @details Baselines the scan-resistant candidates must beat: FIFO and Random
  * (no recency), true LRU (good on locality, thrashes on linear scan), and CLOCK

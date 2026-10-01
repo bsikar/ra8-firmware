@@ -129,7 +129,7 @@ this quarter, and it is compatible with either B1 or B2 afterwards.
 
 ## Consequences
 
-* Until a reproducible target exists, #711's headline numbers stay
+* Until a reproducible target exists, the headline numbers stay
   unverifiable and should be quoted with their 2026-08-16 date
   attached, exactly as the issue already does for the peak-versus-later
   pair.

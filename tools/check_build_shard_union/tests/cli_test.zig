@@ -216,7 +216,7 @@ test "the e-reader contributes its board configuration and its XIP variant" {
     try testing.expect(std.mem.indexOf(u8, got.out, "all 3 firmware configuration(s)") != null);
 }
 
-test "omitting the XIP variant fails, which is the #530 shape of a gate checking less" {
+test "omitting the XIP variant fails, which is the shape of a gate checking less" {
     // The matrix a shard wrote is checked BEFORE the union is audited, so a
     // tree whose all-configs.txt is missing the variant fails on the
     // disagreement and never reaches the count lines. That ordering is the

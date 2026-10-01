@@ -513,7 +513,7 @@ JQ
     # Overall verdict covers only the newest sha seen, so a stale older red does
     # not mask a current green (or vice versa).
     #
-    # The all-skipped arm is the #530 fix and must stay AHEAD of the success
+    # The all-skipped arm is the fix and must stay AHEAD of the success
     # arm. `all(... =="success" or =="skipped")` alone scored a run in which
     # every job skipped -- the fork-guard case, where no gate executed at all --
     # as PASS. Nothing ran, so there is no verdict: that is UNKNOWN. A partially

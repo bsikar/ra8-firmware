@@ -40,7 +40,7 @@
  *   5. Print the verdict line and idle.
  *
  * Reaching the verdict line proves the open path completed; a HardFault
- * dump instead of it is the #524 signature.
+ * dump instead of it is the signature.
  *
  * @note **Headless-emulator status.** `tools/ra8_emulator` models enough
  * of the ESWM register file for the open path to run, so an EIL run
@@ -364,7 +364,7 @@ static void eop_setup_or_halt(uint32_t* out_cpuclk_hz)
  * Narrates both status codes so a transcript distinguishes "the board
  * layer refused" from "the HAL open path refused" from "the CPU faulted
  * inside the open path and never returned a code at all" -- the last of
- * which is the #524 signature and is why every line is flushed before
+ * which is the signature and is why every line is flushed before
  * the call rather than after it.
  *
  * @return ra8_err_t Status of the last call attempted.

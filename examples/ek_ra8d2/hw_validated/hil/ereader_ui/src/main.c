@@ -8,7 +8,7 @@
  * @details
  * E-reader UI chrome. The application
  * shell is laid out by the bounded box-model engine ``libs/ra8_box``
- * (the #80 box model: stacks, a fixed-column grid, padding/gap, fixed
+ * (the box model: stacks, a fixed-column grid, padding/gap, fixed
  * vs flex sizing), rendered into the GLCDC framebuffer through
  * ``libs/ra8_gfx`` in the flat 16-level-grayscale language of the verified
  * "PAPYR" proof-of-concept, and navigated through the ``libs/ra8_ui``

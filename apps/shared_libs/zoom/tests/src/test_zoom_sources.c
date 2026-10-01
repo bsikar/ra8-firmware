@@ -371,7 +371,7 @@ static void t_tile_read_edges_and_failclosed(ra8_tile_cache_t* cache, zoom_tile_
   TEST_ASSERT(misses <= ((uint32_t)k_t_cols * (uint32_t)k_t_rows));
 
   /* V9 / V10: a decoder that reports the wrong extent fails closed rather than
-   * misrendering -- the #339 colour-atlas trap. Each extent is mangled on its
+   * misrendering -- the colour-atlas trap. Each extent is mangled on its
    * own, so each condition of the guard is shown to flip the outcome by itself. */
   t_tiles_open(cache, ts);
   s_bad_width = true;

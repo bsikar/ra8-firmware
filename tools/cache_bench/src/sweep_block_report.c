@@ -1,6 +1,6 @@
 /**
  * @file src/sweep_block_report.c
- * @brief Reporting for the #208 sweep: machine-parseable rows, per-leg
+ * @brief Reporting for the sweep: machine-parseable rows, per-leg
  *        summary tables, and the measured knee / crossover verdict.
  *
  * @details

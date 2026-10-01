@@ -7,7 +7,7 @@
  *
  * @details
  * This is the firmware that runs on the RA8D2's *second* core, the Cortex-M33,
- * for the #149 compiler offload. It is compiled as a wholly separate ELF
+ * for the compiler offload. It is compiled as a wholly separate ELF
  * (`-mcpu=cortex-m33`) and embedded into the M85 ELF as a `.cpu1_image` blob;
  * the M85 hands the work to this core via `ra8_cpu1_release` (HUM Ch 2.9.1) and
  * PARKS while the slow core compiles the book.

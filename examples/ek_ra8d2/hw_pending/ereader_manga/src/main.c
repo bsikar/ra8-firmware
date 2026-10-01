@@ -6,7 +6,7 @@
  * [Ring 7 / App] {World: NS}
  *
  * @details
- * The viewable counterpart of the #231 tile pipeline. Where the old headless
+ * The viewable counterpart of the tile pipeline. Where the old headless
  * gate rendered a 160x120 crop into an internal buffer, this app brings up the
  * real 1024x600 GLCDC panel and lets the user pan and zoom a page far bigger
  * than the screen:

@@ -8,7 +8,7 @@ an RGB565 framebuffer and hashes the output. The demo book's first chapter is
 short and its second much longer, so one run covers small-to-large pagination.
 Headless -- no panel, SD or touch.
 
-A second one-image book in the same gate is the #476 proof: a raster retained at
+A second one-image book in the same gate is the proof: a raster retained at
 full source resolution in continuous-tone gray8 and blitted 1:1. More than
 sixteen distinct tones is impossible for a 4bpp store, so that check cannot pass
 on a quantised copy.

@@ -6,7 +6,7 @@
  * [Ring 7 / App] {World: NS}
  *
  * @details
- * The #289 continuous vertical-scroll engine (`longstrip`) made VIEWABLE on
+ * The continuous vertical-scroll engine (`longstrip`) made VIEWABLE on
  * the stock EK-RA8D2 1024x600 GLCDC panel: the headless sibling scrolled a
  * strip into a 160x120 scratch buffer and printed a CRC; this app binds the
  * engine's band-composite blit sink to the LIVE panel framebuffer, so

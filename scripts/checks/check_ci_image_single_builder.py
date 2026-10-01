@@ -363,7 +363,7 @@ GOOD_SOLE = (
     '  "$CONTEXT_DIR"\n'
 )
 
-# A resurrected standalone builder, the #528 threat, literal tag.
+# A resurrected standalone builder, the threat, literal tag.
 BAD_LITERAL = (
     "#!/usr/bin/env bash\ndocker build -t ra8-ci:latest -f .devcontainer/Dockerfile .devcontainer\n"
 )

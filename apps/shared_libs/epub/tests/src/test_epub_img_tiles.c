@@ -4,7 +4,7 @@
  *        the import-time transcode wiring, and the real reflow `<img>` loader.
  *
  * @details
- * Turns the #231 invariants into CI gates. Atlases are produced in-test by the
+ * Turns the invariants into CI gates. Atlases are produced in-test by the
  * real transcode producer (`jof_produce`) from synthesized PNG
  * sources, stored (uncompressed) inside an EPUB opened by *streaming*, and
  * paged through a deliberately tiny 8-cell tile cache with byte parity against

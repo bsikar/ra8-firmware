@@ -578,7 +578,7 @@ def _check_option_setting(path: pathlib.Path, code: str) -> list[Finding]:
 # which silently stopped LD007/LD008 matching anything cannot slip past as a
 # clean run.
 #
-# Re-pinned 25 -> 13 as RA8FW-309 lands. Same mechanism as the #761 re-pin above,
+# Re-pinned 25 -> 13 as RA8FW-309 lands. Same mechanism as the re-pin above,
 # a tier down: the dual-core, ThreadX and DFU apps that forked the board map
 # are being converted to compose it through ra8_add_app() instead, and each
 # conversion deletes a private copy of the option-setting family along with

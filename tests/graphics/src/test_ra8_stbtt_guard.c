@@ -1,6 +1,6 @@
 /**
  * @file test_ra8_stbtt_guard.c
- * @brief Host unit tests for the #217 sfnt table-directory bounds guard.
+ * @brief Host unit tests for the sfnt table-directory bounds guard.
  *
  * @details
  * `ra8_stbtt_sfnt_dir_in_bounds()` (apps/shared_libs/reflow/src/ra8_stbtt_guard.c) is the
@@ -446,7 +446,7 @@ static const uint8_t s_oob_loca_font[276] = {
  * @test test_epub_render_glyph_oob_loca_safe
  *
  * @details
- * Regression for the `fuzz_ra8_stbtt` crash that survived the #217 directory
+ * Regression for the `fuzz_ra8_stbtt` crash that survived the directory
  * guard: a font can pass the directory bounds check and `stbtt_InitFont`, yet
  * still drive an out-of-bounds read when a `loca` entry resolves a glyph to a
  * `glyf` offset past the buffer. Asserts that (1) the font DOES pass the

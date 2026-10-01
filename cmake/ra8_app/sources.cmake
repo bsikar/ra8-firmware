@@ -215,7 +215,7 @@ macro(_ra8_app_collect_sources)
   # It is deleted rather than left to rot, which is what cmake-source-paths was
   # reporting. The objects are not missing: they arrive in the Zig
   # archive registered with the other universal archives below, the same path
-  # ra8_net_pal takes. The #908 guard stays live and is handed the archive
+  # ra8_net_pal takes. The guard stays live and is handed the archive
   # entry itself rather than a literal, so deleting the registration below
   # brings the guard straight back.
   set(_ra8_core_path "${RA8_REPO_ROOT}/libs/ra8_core")
@@ -241,12 +241,12 @@ macro(_ra8_app_collect_sources)
   )
   # ra8_net_pal has no C sources: the library is Zig and its objects
   # come from the Zig static archive, linked separately. Left unglobbed and
-  # deliberately outside the #908 guard, which exists to catch a library whose
+  # deliberately outside the guard, which exists to catch a library whose
   # objects silently vanish; this one's have a link path of their own.
   # ra8_usb_pal has no C sources either: the PAL core, the descriptor builders
   # and the compose facade are Zig (RA8FW-317) and its objects come from the Zig
   # static archive, linked separately. Left unglobbed and deliberately outside
-  # the #908 guard, for the same reason as ra8_net_pal above.
+  # the guard, for the same reason as ra8_net_pal above.
   file(GLOB_RECURSE _ra8_lib_board CONFIGURE_DEPENDS ${_ra8_board_dir}/src/*.c)
   # A board layer with a build.zig contributes its objects through the Zig
   # archive, exactly as the two LIBS loops below do for any other ported
@@ -256,7 +256,7 @@ macro(_ra8_app_collect_sources)
   # beside the archive, ra8_board_ek_ra8d2, RA8FW-365/#3033).
   #
   # Either way the archive is the board's link path, so _ra8_board_zig tells
-  # the #908 guard so. Leaving it off for a partial board made the guard's
+  # the guard so. Leaving it off for a partial board made the guard's
   # flip test fire as soon as src/ra8_board_<board>.c was ported, even with
   # the archive registered (every ek_ra8d2 app failed configure on zig/dev).
   # The guard's C-side check is unaffected: a partial board's glob is
@@ -290,7 +290,7 @@ macro(_ra8_app_collect_sources)
   # ra8_secure_app has no C sources either: the sealed-key vault, the CMAC
   # core, the OTA commit gate and the secure TRNG are Zig (#2591, #2659,
   # #2670) and its objects come from the Zig static archive registered below.
-  # Left unglobbed and deliberately outside the #908 guard, for the same
+  # Left unglobbed and deliberately outside the guard, for the same
   # reason as ra8_net_pal above.
   set(_ra8_secure_app "")
   if(_RA8_APP_NO_NSC)

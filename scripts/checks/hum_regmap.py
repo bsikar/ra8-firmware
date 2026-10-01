@@ -32,7 +32,7 @@ register-list tables (Table X.Y), because the subsection heading carries the
 page number the register is actually described on, which is exactly what the
 "plausible but false citation" defects got wrong.
 
-Two properties this module is built around, both distilled by the #190 audit
+Two properties this module is built around, both distilled by the audit
 and both easy to get wrong here:
 
 * **No check may compare a constant to itself.** A committed snapshot of the
