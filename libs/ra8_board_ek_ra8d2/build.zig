@@ -6,7 +6,7 @@
 //! consumer include path moves.
 //!
 //! This board is only partly ported: `src/*.c` still holds the pin/LED/switch
-//! core, the camera, comms, ethernet and audio-USB layers, and `src/boot/`.
+//! core, the camera, MIPI panel, ethernet and audio-USB layers, and `src/boot/`.
 //! Those stay C and are recorded in the parallel-tree allowlist. The archive
 //! and the remaining objects link side by side, which is why
 //! `cmake/ra8_app/sources.cmake` grew a partial-port case.
@@ -84,6 +84,18 @@ pub fn build(b: *std.Build) void {
             .name = "clock_profile",
             .source = "src/internal/clock_profile.zig",
             .root = "tests/clock_profile_test.zig",
+            .needs_config = false,
+        },
+        .{
+            .name = "clocks",
+            .source = "src/internal/clocks.zig",
+            .root = "tests/clocks_test.zig",
+            .needs_config = false,
+        },
+        .{
+            .name = "uart_console",
+            .source = "src/internal/uart_console.zig",
+            .root = "tests/uart_console_test.zig",
             .needs_config = false,
         },
         .{
