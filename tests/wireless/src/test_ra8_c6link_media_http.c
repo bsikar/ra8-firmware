@@ -132,10 +132,10 @@ static void internal_mdl_expect_policy_rejections(const ra8_mdl_request_t* contr
  * conjuncts independently decide. The final absent-policy request leaves all
  * four pointers null, executing the `text == nullptr` early return that makes
  * an omitted header valid.
- * Decisions: libs/ra8_c6link/src/ra8_c6link_mdl.c@internal_mdl_start_request_valid
+ * Decisions: libs/ra8_c6link/src/internal/mdl_request.zig@startRequestValid
  * libs/ra8_c6link/src/ra8_c6link_mdl.c@ra8_c6link_mdl_start_request
  * Decisions:
- * libs/ra8_c6link/src/ra8_c6link_mdl.c@internal_mdl_http_field_valid
+ * libs/ra8_c6link/src/internal/mdl_request.zig@httpFieldValid
  * @details Drives the request-taking Start entry point against the real
  * modelled link and asserts the C6 service observed each accepted field.
  * @pre The shared C6 model fixture can be reset and brought up.
@@ -242,7 +242,7 @@ static void internal_mdl_expect_metadata_rejection(ra8_c6_model_mdl_fault_t faul
  * - V6 status 99 -> only `http_status >= min` false.
  * - V7 status 600 -> only `http_status <= max` false.
  * - V8..V11 inject one CR or LF into exactly one selected header -> only that
- *   header's ::internal_mdl_http_field_valid result false. V8 and V10 carry
+ *   header's `mdl_request.zig@httpFieldValid` result false. V8 and V10 carry
  *   CR and V9 and V11 carry LF, so the inner
  *   `(text[index] == '\\r') || (text[index] == '\\n')` decision executes F,F
  *   over every valid byte, T,-/true on V8 and V10, and F,T/true on V9 and
@@ -254,7 +254,7 @@ static void internal_mdl_expect_metadata_rejection(ra8_c6_model_mdl_fault_t faul
  * Decisions:
  * libs/ra8_c6link/src/ra8_c6link_mdl.c@internal_mdl_http_response_valid
  * Decisions:
- * libs/ra8_c6link/src/ra8_c6link_mdl.c@internal_mdl_http_field_valid
+ * libs/ra8_c6link/src/internal/mdl_request.zig@httpFieldValid
  * Decisions:
  * libs/ra8_c6link/src/ra8_c6link_mdl.c@internal_mdl_chunk_semantics_valid
  * @details Repacks each modelled response through the same generated codec the

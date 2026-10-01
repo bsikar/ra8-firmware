@@ -86,7 +86,7 @@ static void internal_base_chunk(Ra8__Mdl__Chunk* msg, Ra8__Mdl__State state)
  * Vectors 1+2 prove CR independently decides; 1+3 prove the same for LF.
  * N+1 = 3 vectors for N=2.
  * Decisions:
- * libs/ra8_c6link/src/ra8_c6link_mdl.c@internal_mdl_http_field_valid
+ * libs/ra8_c6link/src/internal/mdl_request.zig@httpFieldValid
  * @details Uses the private seam: reaching one byte class at a time through
  * the modelled transport needs a distinct hand-packed terminal response each.
  * @pre The private validation seams are linked into this executable.
@@ -337,7 +337,7 @@ static void internal_test_state_semantics(void)
  * Decisions: `(link == nullptr) || (session == nullptr)` in
  * `ra8_c6link_mdl_start_request()` (2 conditions) and
  * `(request == nullptr) || (request->url == nullptr) || (out_url_len == nullptr)`
- * in `internal_mdl_start_request_valid()` (3 conditions)
+ * in `mdl_request.zig@startRequestValid` (3 conditions)
  * - Vector 1: every argument present -> F,F,F,F -> false (the request reaches
  *   the modelled service and is accepted).
  * - Vectors 2..5: exactly one argument nulled in turn -> `k_ra8_err_null_ptr`.
@@ -352,7 +352,7 @@ static void internal_test_state_semantics(void)
  * Each rejected vector pairs with its control to prove one condition
  * independently decides. N+1 = 5 and 7 vectors for N=4 and N=6.
  * Decisions:
- * libs/ra8_c6link/src/ra8_c6link_mdl.c@internal_mdl_start_request_valid
+ * libs/ra8_c6link/src/internal/mdl_request.zig@startRequestValid
  * libs/ra8_c6link/src/ra8_c6link_mdl.c@ra8_c6link_mdl_start_request
  * @details Drives the public entry point against the shared C6 model, so the
  * accepted controls exercise the real encode and correlation path.

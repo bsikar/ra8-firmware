@@ -14,6 +14,7 @@ const std = @import("std");
 const caps = @import("internal/caps.zig");
 const frame = @import("internal/frame.zig");
 const mdl_transfer = @import("internal/mdl_transfer.zig");
+const mdl_request = @import("internal/mdl_request.zig");
 pub const mdl_types = @import("internal/mdl_types.zig");
 const storage_ram = @import("internal/storage_ram.zig");
 const tlv = @import("internal/tlv.zig");
@@ -258,4 +259,40 @@ pub export fn ra8_c6link_mdl_transfer_commit_test(
 
     var state = mdl_transfer.State{ .config = settings, .storage_active = true };
     return mdl_transfer.commit(&state, terminal, bytes_stored, chunks_received, out);
+}
+
+/// `priv_c6link_mdl_http_field_valid`: one optional HTTP field, checked.
+pub export fn priv_c6link_mdl_http_field_valid(
+    text: ?[*:0]const u8,
+    cap: usize,
+) callconv(.c) bool {
+    return mdl_request.httpFieldValid(text, cap);
+}
+
+/// `priv_c6link_mdl_start_request_valid`: the whole caller argument contract.
+///
+/// Reports the bounded URL length through `out_url_len` so the encoder copies
+/// exactly the length that was checked here rather than measuring caller
+/// memory a second time.
+pub export fn priv_c6link_mdl_start_request_valid(
+    request: ?*const mdl_types.Request,
+    out_url_len: ?*usize,
+) callconv(.c) u16 {
+    const length = mdl_request.startRequestValid(request) catch |err| return switch (err) {
+        error.NullPtr => Err.null_ptr,
+        error.InvalidArg => Err.invalid_arg,
+    };
+    const out = out_url_len orelse return Err.null_ptr;
+    out.* = length;
+    return Err.ok;
+}
+
+/// `priv_c6link_mdl_stage_headers`: park the optional headers for the wire.
+pub export fn priv_c6link_mdl_stage_headers(
+    http: ?*const mdl_types.HttpPolicy,
+    out: ?*mdl_request.Headers,
+) callconv(.c) void {
+    const policy = http orelse return;
+    const storage = out orelse return;
+    mdl_request.stageHeaders(policy, storage);
 }

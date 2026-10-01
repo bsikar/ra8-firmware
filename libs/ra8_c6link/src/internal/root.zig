@@ -11,3 +11,4 @@ pub const caps = @import("caps.zig");
 pub const storage_ram = @import("storage_ram.zig");
 pub const mdl_types = @import("mdl_types.zig");
 pub const mdl_transfer = @import("mdl_transfer.zig");
+pub const mdl_request = @import("mdl_request.zig");

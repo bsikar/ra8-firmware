@@ -5,7 +5,8 @@
     "tests/frame_test.zig",
     "tests/caps_test.zig",
     "tests/storage_ram_test.zig",
-    "tests/mdl_transfer_test.zig"
+    "tests/mdl_transfer_test.zig",
+    "tests/mdl_request_test.zig"
   ],
   "covered_sources": [
     "src/internal/root.zig",
@@ -23,7 +24,9 @@
     "src/internal/mdl_types.zig",
     "src/internal/mdl_transfer.zig",
     "tests/mdl_transfer_test.zig",
-    "tests/mdl_rpc_stub.zig"
+    "tests/mdl_rpc_stub.zig",
+    "src/internal/mdl_request.zig",
+    "tests/mdl_request_test.zig"
   ],
-  "minimum_tests": 89
+  "minimum_tests": 104
 }
