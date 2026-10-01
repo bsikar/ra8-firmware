@@ -199,3 +199,33 @@ pub const ra8_io_i2c_bus_as_ops: ?*const IoI2cAsOps = @extern(
     ?*const IoI2cAsOps,
     .{ .name = "ra8_io_i2c_bus_as_ops", .linkage = .weak },
 );
+
+/// `ra8_i3c_cfg_t`. The bit-rate divider is solved inside `ra8_i3c` against
+/// the `pclka_hz` handed in, which is why this side reads the live clock.
+pub const I3cCfg = extern struct {
+    mode: u8,
+    bus_hz: u32,
+    pclka_hz: u32,
+};
+
+/// `ra8_touch_cfg_t`, the GT911 driver's open config.
+pub const TouchCfg = extern struct {
+    bus: I2cBusOps,
+    target_7b: u8,
+    irq_pin: u8,
+    max_points: u8,
+};
+
+pub extern fn ra8_i3c_init(channel: u8, cfg: *const I3cCfg) u32;
+pub extern fn ra8_touch_open(cfg: *const TouchCfg) u32;
+
+/// The third `ra8_io` sink, weak for the same reason as the two above: the C
+/// build dropped `..._touch.c` from the board glob unless the app named
+/// `ra8_io` or `ra8_io_bus` in LIBS, and a Zig archive has nowhere to hang
+/// that per-file gate.
+pub const IoI2cBindI3cCompat = fn (bus: *IoI2cBus, channel: u8) callconv(.c) u32;
+
+pub const ra8_io_i2c_bus_bind_i3c_compat: ?*const IoI2cBindI3cCompat = @extern(
+    ?*const IoI2cBindI3cCompat,
+    .{ .name = "ra8_io_i2c_bus_bind_i3c_compat", .linkage = .weak },
+);

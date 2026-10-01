@@ -69,6 +69,25 @@ pub const Gpt = struct {
 
 /// `ra8_mstp_t` members this layer releases. Register index in the high byte,
 /// bit number in the low byte.
+pub const I3c = struct {
+    /// Legacy I2C-compatibility controller.
+    pub const mode_i2c: u8 = 1;
+};
+
+/// The three board facts about the GT911, plus the driver's own caps.
+pub const Touch = struct {
+    /// IIC_B / I3C channel 0 carries the GT911.
+    pub const i3c_channel: u8 = 0;
+    /// GT911 default 7-bit target address.
+    pub const target_7b: u8 = 0x5D;
+    /// Fast-mode I2C rate for the touch bus.
+    pub const bus_hz: u32 = 400_000;
+    /// Hard cap, matching GT911 capacity.
+    pub const max_points: u8 = 5;
+    /// Sentinel for "no IRQ pin attached".
+    pub const irq_pin_unset: u8 = 32;
+};
+
 pub const Mstp = struct {
     const reg_c: u16 = 2;
     /// MSTPC30 ESWM.
