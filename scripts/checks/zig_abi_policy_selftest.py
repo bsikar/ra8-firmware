@@ -21,14 +21,16 @@ from typing import Any
 from check_zig_abi_policy import (
     RA8_ZIG_ARGUMENTS,
     REQUIRED_MODES,
-    _archive_symbol_names,
     _compatibility_findings,
-    _compiled_findings,
     _library_findings,
-    _matrix_jobs,
-    _mode_test_policy_findings,
     _repository_inventory_findings,
     _validate,
+)
+from zig_abi_compile import (
+    _archive_symbol_names,
+    _compiled_findings,
+    _matrix_jobs,
+    _mode_test_policy_findings,
 )
 from zig_abi_lexer import _contains_token_sequence, _normalized_header_digest
 
