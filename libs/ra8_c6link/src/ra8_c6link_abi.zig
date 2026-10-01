@@ -21,6 +21,7 @@ const mdl_session = @import("internal/mdl_session.zig");
 const mdl_pull = @import("internal/mdl_pull.zig");
 const mdl_envelope = @import("internal/mdl_envelope.zig");
 const mdl_take = @import("internal/mdl_take.zig");
+const mdl_decode = @import("internal/mdl_decode.zig");
 const mdl_encode = @import("internal/mdl_encode.zig");
 const mdl_issue = @import("internal/mdl_issue.zig");
 const rpc_wait = @import("internal/rpc_wait.zig");
@@ -378,6 +379,38 @@ pub export fn priv_c6link_mdl_next_allowed(
         error.InvalidSize => Err.invalid_size,
     };
     return Err.ok;
+}
+
+/// A caller's (pointer, length) pair as a slice. NULL is only an empty body.
+fn body(data: ?[*]const u8, len: usize) ?[]const u8 {
+    if (data) |ptr| return ptr[0..len];
+    return if (len == 0) &.{} else null;
+}
+
+/// `priv_c6link_mdl_decode_accepted`: decode an Accepted response into its
+/// flat view. False when the bytes are malformed or an argument is NULL.
+pub export fn priv_c6link_mdl_decode_accepted(
+    data: ?[*]const u8,
+    len: usize,
+    out: ?*mdl_session.AcceptedView,
+) callconv(.c) bool {
+    const view = out orelse return false;
+    const bytes = body(data, len) orelse return false;
+    view.* = mdl_decode.accepted(bytes) catch return false;
+    return true;
+}
+
+/// `priv_c6link_mdl_decode_cancelled`: decode a Cancelled response into its
+/// flat view. False when the bytes are malformed or an argument is NULL.
+pub export fn priv_c6link_mdl_decode_cancelled(
+    data: ?[*]const u8,
+    len: usize,
+    out: ?*mdl_session.CancelledView,
+) callconv(.c) bool {
+    const view = out orelse return false;
+    const bytes = body(data, len) orelse return false;
+    view.* = mdl_decode.cancelled(bytes) catch return false;
+    return true;
 }
 
 /// `priv_c6link_mdl_encode_start`: encode a checked StartRequest into the

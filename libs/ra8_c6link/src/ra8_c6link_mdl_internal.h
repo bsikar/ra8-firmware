@@ -625,6 +625,42 @@ typedef struct mdl_envelope_view_t {
                                                               uint16_t max_bytes);
 
 /**
+ * @brief Decode a media-download Accepted response
+ * @details Zig implementation in `src/internal/mdl_decode.zig`, following
+ *          protobuf-c's scan rules: unknown fields are skipped and counted,
+ *          and a known field on the wrong wire type is malformed.
+ * @param[in] data Packed response bytes; may be NULL only when @p len is 0.
+ * @param[in] len Valid bytes at @p data.
+ * @param[out] out Flat view to fill.
+ * @return Whether @p out was filled.
+ * @retval false The bytes are malformed or an argument was NULL.
+ * @pre None.
+ * @post @p out is unchanged on failure.
+ * @note Pure function of its arguments; thread-safe.
+ * @since 0.1.0
+ */
+[[nodiscard]] RA8_PRIV bool
+priv_c6link_mdl_decode_accepted(const uint8_t* data, size_t len, mdl_accepted_view_t* out);
+
+/**
+ * @brief Decode a media-download Cancelled response
+ * @details Zig implementation in `src/internal/mdl_decode.zig`, following
+ *          protobuf-c's scan rules: unknown fields are skipped and counted,
+ *          and a known field on the wrong wire type is malformed.
+ * @param[in] data Packed response bytes; may be NULL only when @p len is 0.
+ * @param[in] len Valid bytes at @p data.
+ * @param[out] out Flat view to fill.
+ * @return Whether @p out was filled.
+ * @retval false The bytes are malformed or an argument was NULL.
+ * @pre None.
+ * @post @p out is unchanged on failure.
+ * @note Pure function of its arguments; thread-safe.
+ * @since 0.1.0
+ */
+[[nodiscard]] RA8_PRIV bool
+priv_c6link_mdl_decode_cancelled(const uint8_t* data, size_t len, mdl_cancelled_view_t* out);
+
+/**
  * @brief Encode a checked media-download StartRequest
  * @details Zig implementation in `src/internal/mdl_encode.zig`; byte-identical
  *          to the reference protobuf encoder, empty and zero fields omitted per
