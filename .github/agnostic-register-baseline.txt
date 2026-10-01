@@ -10,7 +10,7 @@
 # clock: 280 reference(s)
 # display: 1 reference(s)
 # gpio: 3 reference(s)
-# timer: 47 reference(s)
+# timer: 42 reference(s)
 #
 # path<TAB>family<TAB>count
 apps/board/stand_alone/ereader/src/system_init.c	clock	1
@@ -174,7 +174,6 @@ examples/ek_ra8d2/hw_validated/hil/gpt_capture_input/src/main.c	timer	3
 examples/ek_ra8d2/hw_validated/hil/gpt_dma_demo/src/main.c	clock	1
 examples/ek_ra8d2/hw_validated/hil/gpt_dma_demo/src/main.c	timer	3
 examples/ek_ra8d2/hw_validated/hil/gpt_one_shot_demo/src/main.c	clock	1
-examples/ek_ra8d2/hw_validated/hil/gpt_one_shot_demo/src/main.c	timer	5
 examples/ek_ra8d2/hw_validated/hil/gpt_pwm_demo/src/main.c	clock	1
 examples/ek_ra8d2/hw_validated/hil/gpt_pwm_demo/src/main.c	timer	4
 examples/ek_ra8d2/hw_validated/hil/gpt_three_phase_demo/src/main.c	clock	1
