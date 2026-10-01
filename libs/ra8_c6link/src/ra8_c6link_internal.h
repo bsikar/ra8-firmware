@@ -1144,6 +1144,50 @@ typedef enum {
  */
 uint16_t priv_c6link_tx_admit(bool open, uint16_t len, uint16_t tx_len);
 
+/**
+ * @struct priv_c6link_wifi_init_cfg
+ * @brief The `Req_WifiInit` scalars, owned by Zig.
+ *
+ * @details
+ * Zig implementation, `internal/wifi_init.zig`, where every value is
+ * documented and tested. The 64-bit field leads so both sides lay the object
+ * out identically with no interior pad, and the one boolean travels as a word
+ * rather than relying on a C `bool`'s width.
+ *
+ * @invariant The field order matches `wifi_init.Cfg` exactly.
+ * @since 0.1.0
+ */
+typedef struct priv_c6link_wifi_init_cfg {
+  uint64_t feature_caps;           /**< Feature bitmap; bit zero is WPA3-SAE. */
+  int32_t  static_rx_buf_num;      /**< Static receive buffers.               */
+  int32_t  dynamic_rx_buf_num;     /**< Dynamic receive buffers.              */
+  int32_t  tx_buf_type;            /**< Transmit buffer type.                 */
+  int32_t  static_tx_buf_num;      /**< Static transmit buffers.              */
+  int32_t  dynamic_tx_buf_num;     /**< Dynamic transmit buffers.             */
+  int32_t  rx_mgmt_buf_type;       /**< Management receive buffer type.       */
+  int32_t  rx_mgmt_buf_num;        /**< Management receive buffers.           */
+  int32_t  ampdu_rx_enable;        /**< Receive aggregation.                  */
+  int32_t  ampdu_tx_enable;        /**< Transmit aggregation.                 */
+  int32_t  nvs_enable;             /**< Co-processor persists calibration.    */
+  int32_t  rx_ba_win;              /**< Block-ack window.                     */
+  int32_t  beacon_max_len;         /**< Longest beacon the AP path builds.    */
+  int32_t  mgmt_sbuf_num;          /**< Management short-buffer count.        */
+  int32_t  sta_disconnected_pm;    /**< Power-save while disconnected.        */
+  int32_t  espnow_max_encrypt_num; /**< ESP-NOW encrypted peer slots.         */
+  int32_t  tx_hetb_queue_num;      /**< HE trigger-based queues.              */
+  int32_t  magic;                  /**< `WIFI_INIT_CONFIG_MAGIC`.             */
+} priv_c6link_wifi_init_cfg_t;
+
+/**
+ * @brief Read the configuration `Req_WifiInit` carries.
+ *
+ * Zig implementation, `internal/wifi_init.zig`. The caller copies the fields
+ * into the generated `WifiInitConfig`; nothing here depends on link state.
+ *
+ * @param[out] out Receives the set; a null pointer is ignored.
+ */
+void priv_c6link_wifi_init_cfg(priv_c6link_wifi_init_cfg_t* out);
+
 [[nodiscard]] RA8_PRIV uint8_t priv_c6link_rx_route(uint8_t if_type);
 
 [[nodiscard]] RA8_PRIV uint8_t priv_c6link_sta_len(const char* text, uint8_t cap);
