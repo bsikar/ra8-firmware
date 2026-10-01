@@ -790,7 +790,7 @@ static ra8_err_t internal_mdl_transfer_run(const ra8_mdl_transfer_config_t* conf
  * independently, and sets max_chunks to zero independently; every fault is
  * rejected before begin.
  * Decisions:
- * libs/ra8_c6link/src/ra8_c6link_mdl_transfer.c@internal_mdl_transfer_validate
+ * libs/ra8_c6link/src/internal/mdl_transfer.zig@validate
  * @details Supplies the production media fixture's valid configuration to a
  * responsibility-split validation matrix.
  * @pre The model fixture can provide a complete transfer configuration.
@@ -889,9 +889,9 @@ static void internal_test_media_transfer_aborts_storage_failures(void)
  * failure select their respective single decisions.
  * Decisions: libs/ra8_c6link/src/ra8_c6link_mdl.c@internal_mdl_take_chunk
  * Decisions:
- * libs/ra8_c6link/src/ra8_c6link_mdl_transfer.c@internal_mdl_transfer_commit
+ * libs/ra8_c6link/src/internal/mdl_transfer.zig@commit
  * Decisions:
- * libs/ra8_c6link/src/ra8_c6link_mdl_transfer.c@ra8_c6link_mdl_transfer
+ * libs/ra8_c6link/src/ra8_c6link_abi.zig@ra8_c6link_mdl_transfer
  * @details Executes the media transfer aborts integrity failures scenario with
  * bounded fixture state and asserts the contract-specific result. @pre
  * Fixed-capacity fixture storage required by this operation is available. @pre
@@ -939,8 +939,8 @@ static void internal_test_media_transfer_aborts_integrity_failures(void)
  * This vector also leaves the remote session active for the abort path, proving
  * remote cancel and local temporary-storage abort both occur before return.
  * Decisions:
- * libs/ra8_c6link/src/ra8_c6link_mdl_transfer.c@ra8_c6link_mdl_transfer
- * Decisions: libs/ra8_c6link/src/ra8_c6link_mdl_transfer.c@internal_mdl_transfer_abort
+ * libs/ra8_c6link/src/ra8_c6link_abi.zig@ra8_c6link_mdl_transfer
+ * Decisions: libs/ra8_c6link/src/internal/mdl_transfer.zig@unwind
  * @details Executes the media transfer cancellation is atomic scenario with
  * bounded fixture state and asserts the contract-specific result. @pre
  * Fixed-capacity fixture storage required by this operation is available. @pre
