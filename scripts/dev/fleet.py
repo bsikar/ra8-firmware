@@ -566,8 +566,8 @@ def cmd_converge(data: dict[str, Any], args: argparse.Namespace) -> int:
     if rc:
         return rc
     # Some tag sets cannot stop, start or recreate a container -- `capacity`
-    # refreshes the drain script and the quiet-hours timer, `dev-slice` tunes a
-    # cgroup beside them. Draining the host for either would cost it every
+    # refreshes the drain script and the quiet-hours timer. Draining the host
+    # for it would cost it every
     # running job's worth of runner time to protect against a change that
     # cannot touch them. The whitelist lives in fleet_model.NO_DRAIN_TAGS so
     # adding a tag is a deliberate act with the rule in front of you.

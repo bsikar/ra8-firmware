@@ -31,7 +31,7 @@
 # ----------------------------------
 # Not even in a probe. Every ssh command this script runs is asked for with
 # `fleet.py ssh-target <host>`, which builds it from the declaration's address,
-# user and jump. Spelling `ssh truenas` would have quietly re-introduced #526:
+# user and jump. Spelling `ssh k3s-pve` would have quietly re-introduced #526:
 # those aliases lived in one laptop's ~/.ssh/config, so `just infra::status` from
 # the dev box reported the entire estate unreachable when in fact every machine
 # answered on its address.
@@ -199,7 +199,7 @@ ssh_argv() {
 #
 # This one takes a raw ssh destination rather than a fleet host, and the only
 # caller left is the Proxmox hypervisor -- deliberately not in the declaration,
-# because it is not a machine CI runs on (docs/CI_FLEET.md section 8). Every
+# because it is not a machine CI runs on (docs/CI_FLEET.md section 6). Every
 # DECLARED host is probed by `fleet reach`, over its declared transport.
 probe_ssh() {
   local host="$1" label="$2" required="${3:-yes}"
@@ -266,7 +266,7 @@ built from it:
 
 Then `just infra::setup` writes the git-ignored inventory, and
 `just infra::ssh_config` names the machines in your ~/.ssh/config so `ssh
-truenas` works too. A host still reported MISS above is one your key is not
+k3s-pve` works too. A host still reported MISS above is one your key is not
 authorised on, or one that is genuinely down -- not one you cannot resolve.
 EOF
   else

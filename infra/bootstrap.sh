@@ -126,7 +126,7 @@ if [[ "$-" == *p* ]]; then
   #
   # The declaration carries every machine's real address, so nothing here NEEDS
   # an alias -- but the docs, the runbooks and everyone's fingers say `ssh dev`
-  # and `ssh truenas`, and those names used to exist on exactly one laptop. This
+  # and `ssh k3s-pve`, and those names used to exist on exactly one laptop. This
   # generates them from the same declaration, so a fresh control node has them
   # too.
   say "SSH aliases"

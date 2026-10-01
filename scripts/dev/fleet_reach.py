@@ -4,13 +4,13 @@
 """How a control node REACHES the machines ``infra/fleet.yml`` declares.
 
 One responsibility, and it is the one the fleet was missing. Every host used to
-be addressed by a bare ssh alias -- ``ssh: truenas``, ``ssh: star`` -- which
+be addressed by a bare ssh alias -- ``ssh: k3s-pve``, ``ssh: star`` -- which
 resolves only through one machine's private ``~/.ssh/config``. The two things a
 control node needs were then split so that neither half had both: the Mac had
 the aliases and no ansible, the dev box had ansible and could resolve none of
-them, so ``fleet.py status truenas`` from the dev box died on
-*Could not resolve hostname truenas* while the machine answered fine on
-``10.10.10.1``. A naming gap, not a routing one -- and it cost a NAS running at
+them, so ``fleet.py status <host>`` from the dev box died on
+*Could not resolve hostname* while the machine answered fine on its
+address. A naming gap, not a routing one -- and it cost a host running at
 half its declared capacity with nothing able to converge it back.
 
 So a host declares an ADDRESS (an IP or a name a resolver can answer), a login
@@ -121,7 +121,7 @@ def ssh_target(data: dict[str, Any], name: str) -> list[str]:
     Every element comes from the declaration, so this command works on a
     machine whose ``~/.ssh/config`` is empty. That is the whole point: the
     generated fragment (:func:`render_ssh_config`) is a convenience for people
-    typing ``ssh truenas``, and nothing in this tooling depends on it.
+    typing ``ssh k3s-pve``, and nothing in this tooling depends on it.
 
     Args:
         data: The parsed declaration.
@@ -144,7 +144,7 @@ def render_ssh_config(data: dict[str, Any]) -> str:
     This is what turns any machine into a control node with one command
     instead of a hand-copied ``~/.ssh/config``. It is deliberately NOT what
     this tooling reads: :func:`ssh_target` passes literal addresses, so the
-    fragment is a convenience for a person typing ``ssh truenas`` -- and for
+    fragment is a convenience for a person typing ``ssh k3s-pve`` -- and for
     the scripts and docs that already spell a host that way -- rather than a
     prerequisite anything can be broken by omitting.
 

@@ -64,17 +64,9 @@ ci_runner_namespace: "arc-runners"
 #      thrashing failure mode #485 exists to fix. That contention is
 #      physical-host-level; raising ci_runner_max does not relieve it, it
 #      adds to it.
-#   2. The fleet answering the `ra8-ci` label is no longer this node alone.
-#      `gh api repos/.../actions/runners` lists `truenas-ci-1` (a NAS box) and
-#      `win-ci-1`/`win-ci-2`/`win-ci-3` (three instances on a separate Ryzen 9
-#      7900X) carrying the same label GitHub schedules `runs-on: ra8-ci`
-#      against. Fleet-wide concurrency for that label is therefore roughly
-#      max=6 here + 1 NAS + 3 Windows = 10 -- the same total this node used to
-#      try to carry alone -- spread across four independent machines instead
-#      of piled onto the one that is already oversubscribed at the hypervisor
-#      level. Bumping this node's max back up does not add capacity the other
-#      three hosts have not already added; it only re-concentrates load onto
-#      the host least able to absorb it.
+#   2. More pods here re-concentrate load onto the host least able to absorb
+#      it. Real capacity has to come from another machine, not from this
+#      node's max.
 #
 # If this node's own headroom genuinely improves later, the number to
 # re-check first is vCPU commitment on the physical host (this node's 16 plus

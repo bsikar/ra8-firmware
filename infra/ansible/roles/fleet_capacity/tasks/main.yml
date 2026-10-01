@@ -129,13 +129,10 @@
 # quiet-hours window, and that is the fix for a measured outage rather than a
 # generalisation for its own sake.
 #
-# `just infra::scale HOST=truenas N=1` drained ra8-ci-runner-2 during a bench
-# session. `restart: unless-stopped` deliberately does not undo an explicit
-# stop; truenas declares no window, so under the old shape it got no timer; so
-# nothing ever re-asked what the host should be. The NAS then served CI at half
-# its declared capacity, and the only thing in the tree that knew was
-# `just infra::status`, which prints the drift and exits 0. win-ci, which does
-# declare a window, would have healed the identical fault within ten minutes.
+# A manual scale-down on a host with no window once left it at half its
+# declared capacity for hours, because nothing re-asked what the host should be
+# and `just infra::status` prints the drift and exits 0. A host with a window
+# healed the identical fault within ten minutes.
 #
 # fleet_capacity.sh `window` answers "what should this host be right now" on a
 # host with no window too -- its declared capacity -- so the timer converges
@@ -152,19 +149,17 @@
 
 # A capacity timer that cannot be installed is capacity nothing re-asserts, so
 # this fails rather than converging a host into that state. The case it was
-# written for is an appliance with a read-only root (TrueNAS SCALE mounts `/`
-# ro) -- though on SCALE 25 /etc/systemd/system is writable and the NAS does
-# hold the timer, which is why the condition is measured here rather than
-# inferred from the distribution.
+# written for is an appliance with a read-only root; the condition is measured
+# here rather than inferred from the distribution.
 - name: Fail loud when this host cannot hold the capacity timer
   when: not (fleet_capacity_units_stat.stat.writeable | default(false))
   ansible.builtin.fail:
     msg: >-
       {{ fleet_capacity_units_dir }} is not writable on {{ inventory_hostname }}
-      (a read-only appliance root, e.g. an older TrueNAS SCALE). The capacity
+      (a read-only appliance root). The capacity
       timer cannot be installed there, so nothing would ever restore this host's
       declared instance count after a drain -- the failure #513's sibling
-      investigation found on the NAS. The capacity script and the manual
+      investigation found on a runner host. The capacity script and the manual
       `just infra::scale` path still work; only the unattended convergence does
       not. Give the host a writable unit directory, or remove it from the
       fleet declaration.
