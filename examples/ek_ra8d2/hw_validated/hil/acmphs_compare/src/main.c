@@ -118,11 +118,12 @@ RA8_INTERNAL static void internal_acmphs_demo_panic_halt(void)
 [[nodiscard]] RA8_INTERNAL static ra8_err_t internal_acmphs_demo_setup(void)
 {
   uint32_t  cpuclk0_hz = 0U;
+  const fw_clock_module_t core_module = {.kind = k_fw_clock_module_core, .index = 0U};
   ra8_err_t err        = ra8_cgc_init();
   if (err != k_ra8_ok) {
     return err;
   }
-  err = ra8_cgc_get_clock_hz(k_ra8_clock_id_cpuclk0, &cpuclk0_hz);
+  err = fw_clock_rate_for(ra8_board_clock(), core_module, &cpuclk0_hz);
   if (err != k_ra8_ok) {
     return err;
   }
