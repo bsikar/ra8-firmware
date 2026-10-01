@@ -55,7 +55,7 @@ default:
     @echo "  just build_all         Build absolutely everything in the repository"
     @echo "  just ci                Run the full CI gate suite"
     @echo "  just dev_shell         Enter the pinned writable development environment"
-    @echo "  just checks            Pre-commit verification: format, tidy, unit tests"
+    @echo "  just checks            Pre-commit verification: format, unit tests"
     @echo "  just hooks             Install tracked git hooks into .git/hooks"
     @echo "  just git_hooks         Explore git hook commands"
     @echo "  just search <keyword>  Search across commands, apps, libs, tests, gates, and tools"

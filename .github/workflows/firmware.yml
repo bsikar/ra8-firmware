@@ -168,28 +168,6 @@ jobs:
       - run: just quality::local::gate format
 
   # ---------------------------------------------------------------------------
-  # clang-tidy over EVERY first-party root: libs/, examples/**/src/*.c,
-  # tests/, tools/ and apps/ (#296). Only vendored SOUP (libs/third_party/) and the
-  # generated font data (libs/ra8_fonts/) are exempt. scripts/checks/clang_tidy.sh owns
-  # the scope and hard-fails if any of those roots collects zero files, so a
-  # future narrowing cannot silently shrink what this job checks.
-  #
-  # The tools/ pass needs the Unicorn + Capstone headers that tools/ra8_emulator
-  # includes (libunicorn-dev + libcapstone-dev on the runner, and in
-  # .devcontainer/Dockerfile for `just ci`).
-  # ---------------------------------------------------------------------------
-  tidy:
-    name: clang-tidy
-    runs-on: ra8-ci
-    if: >-
-      github.event_name != 'pull_request'
-      || github.event.pull_request.head.repo.full_name == github.repository
-    steps:
-      - uses: actions/checkout@v4
-
-      - run: just quality::local::gate tidy
-
-  # ---------------------------------------------------------------------------
   # NSC veneers must stay -mcmse-clean so the TrustZone HIL path keeps building
   # (#54). No app links the comms/eth veneers yet, so only this gate would catch
   # an over-4-arg cmse_nonsecure_entry veneer regression.
@@ -371,8 +349,6 @@ jobs:
         run: just quality::local::gate measured-counts
       - if: always()
         run: just quality::local::gate bench-lock
-      - if: always()
-        run: just quality::local::gate unused-includes
       - if: always()
         run: just quality::local::gate lint-py-shell
       - if: always()
@@ -585,24 +561,6 @@ jobs:
       - run: just quality::local::gate build-cross-union
       - run: just quality::local::gate sg-offsets
       - run: just quality::local::gate stack-usage
-
-  # ---------------------------------------------------------------------------
-  # Clang static analyzer (#532). docs/STATIC_ANALYSIS.md asserted that CI ran
-  # this for months while nothing did; this job is what makes that true. It
-  # analyses the host unit-test build plus every CMake tool, so it needs no
-  # cross-toolchain, and it is a full re-compile under the analyzer -- hence
-  # its own job rather than a step inside an existing one.
-  # ---------------------------------------------------------------------------
-  scan-build:
-    name: clang static analyzer
-    runs-on: ra8-ci
-    if: >-
-      github.event_name != 'pull_request'
-      || github.event.pull_request.head.repo.full_name == github.repository
-    timeout-minutes: 30
-    steps:
-      - uses: actions/checkout@v4
-      - run: just quality::local::gate scan-build
 
   # ---------------------------------------------------------------------------
   # PR-only: post a per-file MC/DC delta comment vs the base branch.

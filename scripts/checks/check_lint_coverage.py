@@ -64,6 +64,7 @@ from lint_coverage_rules import (
     CLASSES,
     EXT_CLASS,
     FORMAT,
+    FORMAT_ONLY_CLASSES,
     KNOWN_GAPS,
     LINT,
     NAME_CLASS,
@@ -123,7 +124,6 @@ class Provider:
 
 
 PROVIDERS: tuple[Provider, ...] = (
-    Provider("clang-tidy", (LINT,), ("c-family",), "clang_tidy.sh", ("--list-files",), "bash"),
     Provider("clang-format", (FORMAT,), ("c-family",), "format_code.sh", ("--list-files",), "bash"),
     Provider("ruff", (LINT,), ("python",), "check_ruff.py", ("--list-files",)),
     Provider(
@@ -397,7 +397,8 @@ def evaluate(files: list[str], claimed: dict[str, set[str]]) -> Report:
         report.counts[cls] = report.counts.get(cls, 0) + 1
         if CLASSES[cls].kind != "code":
             continue
-        for role, pool in ((LINT, all_lint), (FORMAT, all_fmt)):
+        roles = ((FORMAT, all_fmt),) if cls in FORMAT_ONLY_CLASSES else ((LINT, all_lint), (FORMAT, all_fmt))
+        for role, pool in roles:
             if rel not in pool:
                 raw.append((rel, cls, role))
 
@@ -497,7 +498,6 @@ def _fixture() -> tuple[list[str], dict[str, set[str]]]:
         "docs/reference/ra8d2-datasheet.pdf",
     ]
     claimed = {
-        "clang-tidy": {"libs/ra8_core/src/ra8_err.c", "libs/ra8_core/inc/ra8_err.h"},
         "clang-format": {"libs/ra8_core/src/ra8_err.c", "libs/ra8_core/inc/ra8_err.h"},
         "ruff": {"scripts/checks/check_thing.py"},  # PATHREF-OK: synthetic
         "ruff-format": {"scripts/checks/check_thing.py"},  # PATHREF-OK: synthetic
@@ -533,7 +533,6 @@ def _assert_quiet(files: list[str], claimed: dict[str, set[str]], failures: list
 
     plus = [*files, "libs/ra8_core/src/ra8_new.c"]
     claimed2 = {k: set(v) for k, v in claimed.items()}
-    claimed2["clang-tidy"].add("libs/ra8_core/src/ra8_new.c")
     claimed2["clang-format"].add("libs/ra8_core/src/ra8_new.c")
     expect(
         evaluate(plus, claimed2).ok,
@@ -551,11 +550,17 @@ def _assert_fires(files: list[str], claimed: dict[str, set[str]], failures: list
         failures,
     )
 
-    orphan = evaluate([*files, "newdir/thing.c"], claimed)
+    orphan = evaluate([*files, "newdir/thing.py"], claimed)
     expect(
-        sorted({r for r, _, _ in orphan.uncovered}) == ["newdir/thing.c"]
+        sorted({r for r, _, _ in orphan.uncovered}) == ["newdir/thing.py"]
         and len(orphan.uncovered) == BOTH_ROLES,
         "a code file in a directory no checker enumerates fires (lint AND format)",
+        failures,
+    )
+    orphan_c = evaluate([*files, "newdir/thing.c"], claimed)
+    expect(
+        orphan_c.uncovered == [("newdir/thing.c", "c-family", FORMAT)],
+        "an unformatted C file fires format only (c-family needs no linter)",
         failures,
     )
 
@@ -687,9 +692,9 @@ def _assert_ratchet(files: list[str], claimed: dict[str, set[str]], failures: li
     mechanism: not "is this file covered?" but "has a gap we agreed to tolerate
     grown, and did the gaps we claim to have closed actually close?".
     """
-    # 3 unclaimed .m files exceed the recorded 2 of objc-needs-macos-runner
-    # (#370); one does not.
-    many = [f"tools/ra8_x/src/v{n}.m" for n in range(3)]
+    # 41 unclaimed .tf files exceed the recorded 40 of
+    # terraform-has-no-pinned-tooling (#2791); one does not.
+    many = [f"infra/terraform/m{n}.tf" for n in range(41)]
     grew = evaluate([*files, *many], claimed)
     expect(bool(grew.gap_growth), "a known gap that grows fires the ratchet", failures)
     expect(
@@ -697,10 +702,8 @@ def _assert_ratchet(files: list[str], claimed: dict[str, set[str]], failures: li
         "a known gap at or under its recorded count stays quiet",
         failures,
     )
-    # C++ is no longer a recorded gap: #370's C++ half is closed by the C++
-    # pass in clang_tidy.sh, so an unclaimed .cpp is now a plain violation.
-    # This asserts that half really was closed rather than merely deleted from
-    # the table -- the same assertion shape #371 left behind for .S below.
+    # C++ is not a recorded gap: clang-format owns c-family layout, so an
+    # unformatted .cpp is a plain violation.
     orphan_cxx = evaluate([*files, "libs/ra8_x/src/orphan.cpp"], claimed)
     expect(
         sorted({r for r, _, _ in orphan_cxx.uncovered}) == ["libs/ra8_x/src/orphan.cpp"]

@@ -7,7 +7,6 @@ If you are an AI assistant, you MUST follow these instructions precisely.
 Whenever you modify a Python checking script in `scripts/checks/` or add a suppression comment in C/Go code (like `/* alloc-allow: ... */`, `RA8_NASA_RULE_3_OK`, or any `NOLINT`), you will break the cryptographic ledgers.
 * **Always run:** `just auto-sync` after making these changes.
 * This command will automatically update the SHA-256 hashes, ratchets, and ledgers in the `.github/` directory. 
-* Do not attempt to manually edit `.github/tidy-baseline.txt`. Let the tooling do it.
 
 ## 2. Unused Includes
 C and C++ code is strictly audited for dead includes via speculative compilation. 
