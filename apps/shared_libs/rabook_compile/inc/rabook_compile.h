@@ -5,7 +5,7 @@
  *
  * @details
  * `rabook_compile` is the serialization back-end of the on-device EPUB ->
- * `.rabook` compiler (issue #149). It takes an in-memory book model -- a DOM of
+ * `.rabook` compiler. It takes an in-memory book model -- a DOM of
  * element/text nodes with attributes, spine chapters, a string pool, transcoded
  * images and preserved stylesheets, plus metadata -- and lays it out as the exact
  * binary RABOOK1 blob that the desktop tool `tools/epub_compile/src/epub_compile.py`

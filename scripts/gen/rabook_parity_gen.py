@@ -390,7 +390,7 @@ def _main_downscale(argv: list[str]) -> int:
 # Synthetic colour-parity source: a 16x16 RGB grid whose channels advance by
 # co-prime steps, so pure primaries and mixed hues all appear -- including many
 # triples where PIL's ITU-R 601-2 convert("L") and the divergent gray8 quantiser
-# values would disagree with the device's stb decode (issue #337). The point is a
+# values would disagree with the device's stb decode. The point is a
 # COLOUR source: the golden below is the production add_raster_image output (host
 # stb_luma8 + gray4_encode), and the firmware test decodes the SAME PNG with
 # stb_image and encodes with the SAME kernel -- byte-identity proves host and
@@ -430,7 +430,7 @@ def _render_color(png: bytes, golden: bytes, sha_hex: str, crc: int) -> str:
         " *            decodes the SAME PNG with stb_image and encodes with the SAME\n"
         " *            firmware kernel, asserting byte-identity -- so the no-downscale\n"
         " *            default path is one luma and one quantiser host-vs-device,\n"
-        " *            decode included (issue #337).\n"
+        " *            decode included.\n"
         " *\n"
         " * @copyright Copyright (c) 2026 Brighton Sikarskie\n"
         " * SPDX-License-Identifier: MIT\n"

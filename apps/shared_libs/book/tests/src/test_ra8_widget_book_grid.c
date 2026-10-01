@@ -1,6 +1,6 @@
 /**
  * @file test_ra8_widget_book_grid.c
- * @brief Unit tests for the ra8_widget book-grid leaf (#145 Phase 2).
+ * @brief Unit tests for the ra8_widget book-grid leaf.
  *
  * @details
  * Covers the shelf's book grid: card layout across the grid's columns and rows,

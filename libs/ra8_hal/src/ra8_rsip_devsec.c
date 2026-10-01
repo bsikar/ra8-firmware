@@ -9,7 +9,7 @@
  * Device-security slice of the RA8D2 RSIP-E50D HAL: the device-lifecycle
  * state, the three debug-authorisation levels (AL0/AL1/AL2), the tamper
  * subsystem, and the SPA / DPA side-channel arm. It was split out of
- * ``ra8_rsip_asym.c`` (issue #216) both to keep every translation unit under
+ * ``ra8_rsip_asym.c`` both to keep every translation unit under
  * the file-size budget and because this cluster is FAIL-CLOSED for a reason
  * distinct from the hash / key fiction in ``ra8_rsip_asym.c``.
  *

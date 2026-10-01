@@ -5,11 +5,11 @@
  *
  * @details
  * `ra8_app` makes each major function a first-class **app** with a lifecycle,
- * launched from the chrome (issue #146): opening a book launches the EPUB
+ * launched from the chrome: opening a book launches the EPUB
  * reader app; the library organizer is an app; settings is an app. The
  * framework owns nothing but the routing -- it calls the active app's
  * lifecycle, forwards input + render, and tracks focus. Each app builds its UI
- * by composing `ra8_widget`s (issue #145), so an "app = a widget tree".
+ * by composing `ra8_widget`s, so an "app = a widget tree".
  *
  * Zero-heap (NASA Rule 3): apps are static instances registered into a
  * caller-owned pointer array. Nothing is allocated; the registry is a fixed

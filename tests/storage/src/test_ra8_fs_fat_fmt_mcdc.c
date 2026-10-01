@@ -3,7 +3,7 @@
  * @brief MC/DC vectors for the FAT format-time and BPB-parse compound decisions.
  *
  * @details
- * Dedicated N+1 independent-influence vector sets (issue #426) for the
+ * Dedicated N+1 independent-influence vector sets for the
  * TU-internal helpers behind mount/format that are driven either directly (they
  * are declared in `ra8_fs_fat_internal.h`) or through the byte fields they read:
  *

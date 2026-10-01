@@ -1,6 +1,6 @@
 /**
  * @file examples/ek_ra8d2/hil_needs_revalidation/ra8_io_demo/src/main.c
- * @brief End-to-end demo of the ra8_io fabric (epic #155) over a RAM block device.
+ * @brief End-to-end demo of the ra8_io fabric over a RAM block device.
  *
  * @par Tag
  * [Ring 6 / APP] {World: S}
@@ -11,7 +11,7 @@
  * nested round-trip) lives in this app's self-contained
  * `ra8_io_roundtrip.{h,c}` (the SDRAM, OSPI/xSPI, and SD demos carry their own
  * copy under the hw_pending tree); this app differs only by the ONE backend bind
- * line -- here `ra8_io_blockdev_ram_init` over an in-SRAM buffer (Phase 1, #156)
+ * line -- here `ra8_io_blockdev_ram_init` over an in-SRAM buffer
  * -- plus its own PASS banners.
  *
  * The ra8_emulator captures the SCI8 console, so the PASS/FAIL line and

@@ -160,7 +160,7 @@ typedef void (*ra8_ble_acl_fn_t)(void* ctx, uint16_t handle, const uint8_t* payl
  * @return ``k_ra8_err_invalid_arg`` if either flag is outside 0..1.
  * @return ``k_ra8_err_not_supported`` if ``cfg->use_external_osc`` or
  *         ``cfg->deep_sleep_enable`` is set; both are C6-side knobs
- *         this transport has no channel to programme (issue #1348).
+ *         this transport has no channel to programme.
  * @return ``k_ra8_err_invalid_arg`` if the transport is already open.
  * @return ``k_ra8_ok`` on success.
  *

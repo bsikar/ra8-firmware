@@ -10,7 +10,7 @@
  * run base (::k_ra8_dfu_run_base = 0x22020000, see payload.ld). A copy-to-run
  * launcher (::ra8_dfu_launch) copies this image to that base and branches here,
  * so the IDENTICAL `.bin` is bootable from Slot A or Slot B -- the proof that
- * copy-to-run removes the per-slot build (issue #97). It backs both the
+ * copy-to-run removes the per-slot build. It backs both the
  * `dfu_copy_to_run` HIL demo (which embeds and launches it) and the bench
  * staging of `../dfu_bootloader` (which stages it into a real slot).
  *

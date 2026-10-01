@@ -3,7 +3,7 @@
  * @brief App-level test: the blink_m33_hal example's CPU1 blink step drives LED1
  *
  * @details
- * Exercises the actual blink logic of the `blink_m33_hal` example (issue #580) --
+ * Exercises the actual blink logic of the `blink_m33_hal` example --
  * not a re-implementation. The example's CPU1 loop (`cpu1_main.c`) advances the
  * blink by calling `blink_m33_hal_step()` from the app's own header
  * (`examples/.../blink_m33_hal/inc/blink_m33_hal.h`); this test drives that SAME

@@ -1,7 +1,7 @@
 //! SPDX-License-Identifier: MIT
 //! Copyright (c) 2026 Brighton Sikarskie
 //!
-//! The SysTick binding of the injectable time interface (#1013, ported in #2830).
+//! The SysTick binding of the injectable time interface.
 //!
 //! `libs/ra8_core/inc/ra8_time_interface.h` publishes a two-call vtable so a
 //! caller can be handed a fake clock in a test. This file is the production

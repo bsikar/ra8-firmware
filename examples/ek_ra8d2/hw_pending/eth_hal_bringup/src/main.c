@@ -1,13 +1,13 @@
 /**
  * @file examples/ek_ra8d2/hw_pending/eth_hal_bringup/src/main.c
- * @brief HAL-based ESWM/COMA Ethernet media bring-up demo (issue #581)
+ * @brief HAL-based ESWM/COMA Ethernet media bring-up demo
  *
  * @par Tag
  * [Ring 6 / APP] {World: S}
  *
  * @details
  * Demonstrates the two chip-generic ETH HAL primitives extracted from the
- * EK-RA8D2 board Ethernet bring-up (issue #581), driven directly instead of
+ * EK-RA8D2 board Ethernet bring-up, driven directly instead of
  * through ``ra8_board_ethernet_init``:
  *
  *   1. ``ra8_eth_coma_bringup`` -- pulses COMA.RRC, enables the switch clock

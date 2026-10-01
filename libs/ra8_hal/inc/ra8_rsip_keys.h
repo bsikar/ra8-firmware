@@ -99,7 +99,7 @@ typedef struct {
  * @post On success, ``out->body_words == k_ra8_rsip_handle_words_aes128``.
  *
  * @note Thread safety: not thread-safe.
- * @note Fail-closed in production (HUM Ch 52 documents no RSIP backend); the fake/stub command path never ships. Real crypto: tf-psa-crypto (issues #214 / #187 / #181).
+ * @note Fail-closed in production (HUM Ch 52 documents no RSIP backend); the fake/stub command path never ships. Real crypto: tf-psa-crypto.
  * @see ra8_rsip_aes192_install_plain
  * @since 0.1.0
  */
@@ -124,7 +124,7 @@ typedef struct {
  * @post ``out->body_words == k_ra8_rsip_handle_words_aes192``.
  *
  * @note Thread safety: not thread-safe.
- * @note Fail-closed in production (HUM Ch 52 documents no RSIP backend); the fake/stub command path never ships. Real crypto: tf-psa-crypto (issues #214 / #187 / #181).
+ * @note Fail-closed in production (HUM Ch 52 documents no RSIP backend); the fake/stub command path never ships. Real crypto: tf-psa-crypto.
  * @since 0.1.0
  */
 [[nodiscard]] ra8_err_t ra8_rsip_aes192_install_plain(const uint8_t*         key,
@@ -148,7 +148,7 @@ typedef struct {
  * @post ``out->body_words == k_ra8_rsip_handle_words_aes256``.
  *
  * @note Thread safety: not thread-safe.
- * @note Fail-closed in production (HUM Ch 52 documents no RSIP backend); the fake/stub command path never ships. Real crypto: tf-psa-crypto (issues #214 / #187 / #181).
+ * @note Fail-closed in production (HUM Ch 52 documents no RSIP backend); the fake/stub command path never ships. Real crypto: tf-psa-crypto.
  * @since 0.1.0
  */
 [[nodiscard]] ra8_err_t ra8_rsip_aes256_install_plain(const uint8_t*         key,
@@ -172,7 +172,7 @@ typedef struct {
  * @post ``out->body_words == k_ra8_rsip_handle_words_chacha20``.
  *
  * @note Thread safety: not thread-safe.
- * @note Fail-closed in production (HUM Ch 52 documents no RSIP backend); the fake/stub command path never ships. Real crypto: tf-psa-crypto (issues #214 / #187 / #181).
+ * @note Fail-closed in production (HUM Ch 52 documents no RSIP backend); the fake/stub command path never ships. Real crypto: tf-psa-crypto.
  * @since 0.1.0
  */
 [[nodiscard]] ra8_err_t ra8_rsip_chacha20_install_plain(const uint8_t*         key,
@@ -184,7 +184,7 @@ typedef struct {
  * @details
  * The wrapped-key body size depends on the underlying SHA flavour;
  * the selector is derived from ``alg``. HUM Ch 52 documents no HMAC
- * key-wrap register map (issue #215); production is fail-closed.
+ * key-wrap register map; production is fail-closed.
  *
  * @param[in] alg One of ``k_ra8_rsip_oem_cmd_hmac_sha*``.
  * @param[in] key Plaintext HMAC key.
@@ -205,7 +205,7 @@ typedef struct {
  * @post On success ``out->body_words`` matches the algo's handle size.
  *
  * @note Thread safety: not thread-safe.
- * @note Fail-closed in production (HUM Ch 52 documents no RSIP backend); the fake/stub command path never ships. Real crypto: tf-psa-crypto (issues #214 / #187 / #181).
+ * @note Fail-closed in production (HUM Ch 52 documents no RSIP backend); the fake/stub command path never ships. Real crypto: tf-psa-crypto.
  * @since 0.1.0
  */
 [[nodiscard]] ra8_err_t ra8_rsip_hmac_install_plain(ra8_rsip_oem_cmd_t     alg,
@@ -248,7 +248,7 @@ typedef struct {
  * @post On success ``out->body_words`` matches the algo's handle size.
  *
  * @note Thread safety: not thread-safe.
- * @note Fail-closed in production (HUM Ch 52 documents no RSIP backend); the fake/stub command path never ships. Real crypto: tf-psa-crypto (issues #214 / #187 / #181).
+ * @note Fail-closed in production (HUM Ch 52 documents no RSIP backend); the fake/stub command path never ships. Real crypto: tf-psa-crypto.
  * @since 0.1.0
  */
 [[nodiscard]] ra8_err_t ra8_rsip_oem_install(ra8_rsip_oem_cmd_t     cmd,
@@ -295,7 +295,7 @@ typedef struct {
  * @post Engine SYM_STATUS.DONE has been observed and acked.
  *
  * @note Thread safety: not thread-safe.
- * @note Fail-closed in production (HUM Ch 52 documents no RSIP backend); the fake/stub command path never ships. Real crypto: tf-psa-crypto (issues #214 / #187 / #181).
+ * @note Fail-closed in production (HUM Ch 52 documents no RSIP backend); the fake/stub command path never ships. Real crypto: tf-psa-crypto.
  * @see ra8_rsip_aes_gcm
  * @since 0.1.0
  */
@@ -346,7 +346,7 @@ typedef struct {
  * @post On decrypt success, ``out[0..in_len-1]`` is plaintext.
  *
  * @note Thread safety: not thread-safe.
- * @note Fail-closed in production (HUM Ch 52 documents no RSIP backend); the fake/stub command path never ships. Real crypto: tf-psa-crypto (issues #214 / #187 / #181).
+ * @note Fail-closed in production (HUM Ch 52 documents no RSIP backend); the fake/stub command path never ships. Real crypto: tf-psa-crypto.
  * @since 0.1.0
  */
 [[nodiscard]] ra8_err_t ra8_rsip_aes_gcm(const ra8_rsip_key_handle_t* key,
@@ -386,7 +386,7 @@ typedef struct {
  * @post On decrypt success, ``out[0..in_len-1]`` is plaintext.
  *
  * @note Thread safety: not thread-safe.
- * @note Fail-closed in production (HUM Ch 52 documents no RSIP backend); the fake/stub command path never ships. Real crypto: tf-psa-crypto (issues #214 / #187 / #181).
+ * @note Fail-closed in production (HUM Ch 52 documents no RSIP backend); the fake/stub command path never ships. Real crypto: tf-psa-crypto.
  * @since 0.1.0
  */
 [[nodiscard]] ra8_err_t ra8_rsip_aes_ccm(const ra8_rsip_key_handle_t* key,
@@ -426,7 +426,7 @@ typedef struct {
  * @post On success, ``out[0..len-1]`` holds the transformed bytes.
  *
  * @note Thread safety: not thread-safe.
- * @note Fail-closed in production (HUM Ch 52 documents no RSIP backend); the fake/stub command path never ships. Real crypto: tf-psa-crypto (issues #214 / #187 / #181).
+ * @note Fail-closed in production (HUM Ch 52 documents no RSIP backend); the fake/stub command path never ships. Real crypto: tf-psa-crypto.
  * @since 0.1.0
  */
 [[nodiscard]] ra8_err_t ra8_rsip_chacha20(const ra8_rsip_key_handle_t* key,
@@ -463,7 +463,7 @@ typedef struct {
  * @post On decrypt success, ``out[0..in_len-1]`` is plaintext.
  *
  * @note Thread safety: not thread-safe.
- * @note Fail-closed in production (HUM Ch 52 documents no RSIP backend); the fake/stub command path never ships. Real crypto: tf-psa-crypto (issues #214 / #187 / #181).
+ * @note Fail-closed in production (HUM Ch 52 documents no RSIP backend); the fake/stub command path never ships. Real crypto: tf-psa-crypto.
  * @since 0.1.0
  */
 [[nodiscard]] ra8_err_t ra8_rsip_chacha20_poly1305(const ra8_rsip_key_handle_t* key,
@@ -495,7 +495,7 @@ typedef struct {
  * @post On success, ``tag[0..15]`` is the Poly1305 MAC.
  *
  * @note Thread safety: not thread-safe.
- * @note Fail-closed in production (HUM Ch 52 documents no RSIP backend); the fake/stub command path never ships. Real crypto: tf-psa-crypto (issues #214 / #187 / #181).
+ * @note Fail-closed in production (HUM Ch 52 documents no RSIP backend); the fake/stub command path never ships. Real crypto: tf-psa-crypto.
  * @since 0.1.0
  */
 [[nodiscard]] ra8_err_t
@@ -601,7 +601,7 @@ ra8_rsip_poly1305(const uint8_t* one_time_key, const uint8_t* msg, uint32_t msg_
  * @post On success, ``signature[0..modulus_bytes-1]`` is the RSA sig.
  *
  * @note Thread safety: not thread-safe.
- * @note Fail-closed in production (HUM Ch 52 documents no RSIP backend); the fake/stub command path never ships. Real crypto: tf-psa-crypto (issues #214 / #187 / #181).
+ * @note Fail-closed in production (HUM Ch 52 documents no RSIP backend); the fake/stub command path never ships. Real crypto: tf-psa-crypto.
  * @since 0.1.0
  */
 [[nodiscard]] ra8_err_t ra8_rsip_rsa_sign(const ra8_rsip_key_handle_t* key,
@@ -632,7 +632,7 @@ ra8_rsip_poly1305(const uint8_t* one_time_key, const uint8_t* msg, uint32_t msg_
  * @post On success, the signature has been validated by the engine.
  *
  * @note Thread safety: not thread-safe.
- * @note Fail-closed in production (HUM Ch 52 documents no RSIP backend); the fake/stub command path never ships. Real crypto: tf-psa-crypto (issues #214 / #187 / #181).
+ * @note Fail-closed in production (HUM Ch 52 documents no RSIP backend); the fake/stub command path never ships. Real crypto: tf-psa-crypto.
  * @since 0.1.0
  */
 [[nodiscard]] ra8_err_t ra8_rsip_rsa_verify(const ra8_rsip_key_handle_t* key,
@@ -674,7 +674,7 @@ ra8_rsip_poly1305(const uint8_t* one_time_key, const uint8_t* msg, uint32_t msg_
  * @post No engine key state persists beyond the call.
  *
  * @note Thread safety: not thread-safe.
- * @note Fail-closed in production (HUM Ch 52 documents no RSIP backend); the fake/stub command path never ships. Real crypto: tf-psa-crypto (issues #214 / #187 / #181).
+ * @note Fail-closed in production (HUM Ch 52 documents no RSIP backend); the fake/stub command path never ships. Real crypto: tf-psa-crypto.
  * @see ra8_rsip_rsa_decrypt
  * @since 0.1.0
  */
@@ -719,7 +719,7 @@ ra8_rsip_poly1305(const uint8_t* one_time_key, const uint8_t* msg, uint32_t msg_
  * @post On success, ``*recovered_len <= plaintext_cap``.
  *
  * @note Thread safety: not thread-safe.
- * @note Fail-closed in production (HUM Ch 52 documents no RSIP backend); the fake/stub command path never ships. Real crypto: tf-psa-crypto (issues #214 / #187 / #181).
+ * @note Fail-closed in production (HUM Ch 52 documents no RSIP backend); the fake/stub command path never ships. Real crypto: tf-psa-crypto.
  * @see ra8_rsip_rsa_encrypt
  * @since 0.1.0
  */
@@ -756,7 +756,7 @@ ra8_rsip_poly1305(const uint8_t* one_time_key, const uint8_t* msg, uint32_t msg_
  * @post On success, ``signature`` holds (r || s).
  *
  * @note Thread safety: not thread-safe.
- * @note Fail-closed in production (HUM Ch 52 documents no RSIP backend); the fake/stub command path never ships. Real crypto: tf-psa-crypto (issues #214 / #187 / #181).
+ * @note Fail-closed in production (HUM Ch 52 documents no RSIP backend); the fake/stub command path never ships. Real crypto: tf-psa-crypto.
  * @note Ed25519 is rejected here; route it through ``ra8_rsip_eddsa_sign``.
  * @see ra8_rsip_eddsa_sign
  * @since 0.1.0
@@ -793,7 +793,7 @@ ra8_rsip_poly1305(const uint8_t* one_time_key, const uint8_t* msg, uint32_t msg_
  * @post On success, the engine has validated the signature.
  *
  * @note Thread safety: not thread-safe.
- * @note Fail-closed in production (HUM Ch 52 documents no RSIP backend); the fake/stub command path never ships. Real crypto: tf-psa-crypto (issues #214 / #187 / #181).
+ * @note Fail-closed in production (HUM Ch 52 documents no RSIP backend); the fake/stub command path never ships. Real crypto: tf-psa-crypto.
  * @note Ed25519 is rejected here; route it through ``ra8_rsip_eddsa_verify``.
  * @see ra8_rsip_eddsa_verify
  * @since 0.1.0
@@ -924,7 +924,7 @@ ra8_rsip_poly1305(const uint8_t* one_time_key, const uint8_t* msg, uint32_t msg_
  * @post On success ``out->alg`` matches the curve's HMAC opcode.
  *
  * @note Thread safety: not thread-safe.
- * @note Fail-closed in production (HUM Ch 52 documents no RSIP backend); the fake/stub command path never ships. Real crypto: tf-psa-crypto (issues #214 / #187 / #181).
+ * @note Fail-closed in production (HUM Ch 52 documents no RSIP backend); the fake/stub command path never ships. Real crypto: tf-psa-crypto.
  * @since 0.1.0
  */
 [[nodiscard]] ra8_err_t ra8_rsip_ecdh_compute(const ra8_rsip_key_handle_t* key,

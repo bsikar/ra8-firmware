@@ -7,7 +7,7 @@
  * The EPUB half of the tap-to-zoom viewer. A reflow page lays a figure out at
  * whatever size the column allows; tapping it should open the *retained* image,
  * not the laid-out thumbnail, and let the reader magnify into it -- which is the
- * whole reason `.rabook` import stopped downscaling (#210-213, #476).
+ * whole reason `.rabook` import stopped downscaling.
  *
  * This adapter is deliberately thin, because the work is already done:
  * ::book_src_image_rect owns the image-pool addressing contract, serves both

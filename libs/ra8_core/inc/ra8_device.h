@@ -120,7 +120,7 @@ typedef enum : uint16_t {
  * primary sources; every other peripheral, base address, and memory region is
  * identical across the two parts.
  *
- * NOTE (issue #224): an earlier draft of this delta set listed a "legacy
+ * NOTE: an earlier draft of this delta set listed a "legacy
  * ETHERC/EDMAC MAC at 0x40354000" as an RA8P1-only addition. That was a misread
  * and is deliberately absent here. The RA8P1 Hardware User's Manual
  * (R01UH1064EJ0130) and datasheet (R01DS0439EJ0130) contain no ETHERC block,
@@ -133,7 +133,7 @@ typedef enum : uint16_t {
  * the RA8D2 (identical HUM chapters 30-36 and register bases), so there is no
  * ETHERC feature flag. Do not re-add one without a primary-source register map.
  *
- * NOTE (issue #516): an earlier draft also listed "OFS3 / WDT1 option register"
+ * NOTE: an earlier draft also listed "OFS3 / WDT1 option register"
  * as RA8D2-only, behind an `RA8_HAS_OFS3` flag. That was a misread of Renesas
  * FSP metadata and is deliberately absent here. BOTH parts have OFS3: RA8P1 HUM
  * R01UH1064EJ0130 Ch 7.2.6 "OFS3, OFS3_SEC : Option Function Select Register 3"

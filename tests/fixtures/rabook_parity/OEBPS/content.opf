@@ -12,7 +12,7 @@
          decode and PIL's decode + palette quantize diverge for real pixels, so a
          full-path raster cannot be byte-identical here. The downscale KERNEL
          itself is proven byte-identical separately by
-         rabook_downscale_parity_fixture.h (issue #213), which feeds both sides an
+         rabook_downscale_parity_fixture.h, which feeds both sides an
          identical baked source. The image LOOP still handles raster; only this
          fixture is pinned to SVG. -->
     <item id="cover" href="cover.svg" media-type="image/svg+xml" properties="cover-image"/>

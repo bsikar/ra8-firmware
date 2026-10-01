@@ -33,5 +33,5 @@ ra8_add_app(
   NAME eth_hal_bringup
   STACK_BYTES 2048
   LIBS ra8_board_ek_ra8d2
-  DESCRIPTION "HAL-based ESWM/COMA + RGMII media bring-up demo (issue #581)"
+  DESCRIPTION "HAL-based ESWM/COMA + RGMII media bring-up demo"
 )

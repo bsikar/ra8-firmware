@@ -3,7 +3,7 @@
  * @brief App-shell chrome: launch reader / library / settings apps (#146 Ph2).
  *
  * @details
- * The chrome / "shell" increment of the app framework (issue #146, Phase 2). It
+ * The chrome / "shell" increment of the app framework. It
  * builds on the Phase-1 `ra8_app` registry + per-app vtable + navigation
  * back-stack (`app_launch_demo`) and adds the piece a home screen needs: a small
  * launcher that lists the registered apps and launches the one the user picks,

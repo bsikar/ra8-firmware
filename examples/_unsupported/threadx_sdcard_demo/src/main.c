@@ -321,7 +321,7 @@ void tx_application_define(void* first_unused_memory)
    * ra8_cgc_init() in main()). tx_initialize_low_level.S already
    * programmed the reload from the same compile-time 1 GHz assumption,
    * but this makes the 1 ms kernel tick correct-by-construction for
-   * whatever clock the app actually brought up (issue #287). Runs after
+   * whatever clock the app actually brought up. Runs after
    * _tx_initialize_low_level and before the first scheduling decision. */
   if ((ra8_threadx_clock_bind(ra8_board_clock()) != k_ra8_ok) ||
       (ra8_threadx_systick_retune() != k_ra8_ok)) {

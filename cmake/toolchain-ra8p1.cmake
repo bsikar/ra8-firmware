@@ -33,7 +33,7 @@
 # unchanged, so it is deliberately left untouched).
 #
 # -----------------------------------------------------------------------------
-# FPU precision -- SETTLED: the RA8P1 FPU is NOT a delta vs the RA8D2 (issue #225)
+# FPU precision -- SETTLED: the RA8P1 FPU is NOT a delta vs the RA8D2
 # -----------------------------------------------------------------------------
 # This file used to override -mfpu to fpv5-d16 unconditionally, on the strength
 # of the RA8P1 datasheet's Cortex-M85 FPU line, with a [CONFIRM] marker left in

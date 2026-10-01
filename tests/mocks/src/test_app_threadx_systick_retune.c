@@ -1,6 +1,6 @@
 /**
  * @file test_app_threadx_systick_retune.c
- * @brief Unit tests for the ThreadX SysTick retune (issue #287)
+ * @brief Unit tests for the ThreadX SysTick retune
  *
  * @details
  * The production app at

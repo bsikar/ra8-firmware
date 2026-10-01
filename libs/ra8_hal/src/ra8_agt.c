@@ -71,7 +71,7 @@ static const ra8_mstp_t s_agt_mstp_table[k_ra8_agt_mstp_id_count] = {
 static bool s_agt_mstp_held[k_ra8_agt_mstp_id_count];
 
 /**
- * @brief Acquire the per-channel AGT MSTP reference exactly once (issue #68).
+ * @brief Acquire the per-channel AGT MSTP reference exactly once.
  *
  * @details
  * Idempotent: enables the AGT0/AGT1 module stop reference only when the channel
@@ -113,7 +113,7 @@ RA8_INTERNAL static ra8_err_t internal_agt_mstp_acquire(uint8_t channel)
 }
 
 /**
- * @brief Release the per-channel AGT MSTP reference if held (issue #68).
+ * @brief Release the per-channel AGT MSTP reference if held.
  *
  * @details
  * Mirror of ::internal_agt_mstp_acquire: drops the AGT0/AGT1 module-stop reference only
@@ -153,7 +153,7 @@ RA8_INTERNAL static ra8_err_t internal_agt_mstp_release(uint8_t channel)
   volatile r_agt_regs_t* reg = ra8_agt(channel);
   RA8_CHECK_NULL_PTR(reg, s_tag, "channel out of range");
 
-  /* Acquire the per-channel MSTP reference once (issue #68). */
+  /* Acquire the per-channel MSTP reference once. */
   const ra8_err_t mst_err = internal_agt_mstp_acquire(channel);
   RA8_RETURN_ON_ERROR(mst_err, s_tag, "agt_start: mstp enable");
 
@@ -655,7 +655,7 @@ ra8_err_t ra8_agt_start_pulse_output(uint8_t channel, const ra8_agt_pulse_cfg_t*
   const ra8_err_t verr = internal_agt_pulse_validate_cfg(cfg);
   RA8_RETURN_ON_ERROR(verr, s_tag, "agt_pulse: cfg validation");
 
-  /* Acquire the per-channel MSTP reference once (issue #68). */
+  /* Acquire the per-channel MSTP reference once. */
   const ra8_err_t mst_err = internal_agt_mstp_acquire(channel);
   /* GCOVR_EXCL_BR_START -- MSTP HW readback */
   RA8_RETURN_ON_ERROR(mst_err, s_tag, "agt_pulse: mstp enable");
@@ -796,7 +796,7 @@ typedef enum : uint32_t {
  */
 RA8_INTERNAL static ra8_err_t internal_agt_cascade_mstp_enable_both(void)
 {
-  /* One MSTP reference per channel (issue #68): re-arming the cascade every
+  /* One MSTP reference per channel: re-arming the cascade every
    * AGT1 underflow must not leak a fresh AGT0/AGT1 reference per period. */
   const ra8_err_t m0 = internal_agt_mstp_acquire((uint8_t)k_ra8_agt_cascade_lo_channel);
   RA8_RETURN_ON_ERROR(m0, s_tag, "cascade: mstp AGT0");

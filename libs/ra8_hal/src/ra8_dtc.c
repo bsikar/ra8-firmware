@@ -332,7 +332,7 @@ ra8_err_t ra8_dtc_bind_activation(uint16_t                  icu_slot,
                                        (uint32_t)k_ra8_dtc_vector_table_align);
 
   /* HUM Ch 14.2.17 "IELSRn" p 547: DTCE routes the linked event to the DTC.
-   * ra8_isr_set_dtc owns that read-modify-write (issue #579) and rejects a
+   * ra8_isr_set_dtc owns that read-modify-write and rejects a
    * slot nobody registered. */
   return ra8_isr_set_dtc(icu_slot, true);
 }

@@ -21,12 +21,12 @@
  * The demo exercises the backend directly through the ra8_io block-device layer,
  * which is the right level for this special-purpose non-volatile store (the FAT
  * layer is already proven over the RAM / SD / OSPI / SDRAM backends):
- *   1. ra8_flash_init() brings up the MRAM controller (Phase 1, #156).
+ *   1. ra8_flash_init() brings up the MRAM controller.
  *   2. ra8_io_blockdev_mram_init() binds a block device over the fenced window.
  *   3. Erase a 512-byte logical block, program a deterministic pattern into it,
  *      read it back, and byte-compare -- the full erase + program + read path.
  *   4. Report on the SCI8 console through a ra8_io UART stream sink; ra8_log is
- *      routed into the same stream so any failing step is visible (Phase 2 #157).
+ *      routed into the same stream so any failing step is visible.
  *
  * ra8_emulator models the MACI program/erase sequence (board_periph_mram.c), so the
  * round-trip runs headless: a successful run prints

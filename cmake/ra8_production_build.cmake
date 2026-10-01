@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2026 Brighton Sikarskie
 #
-# cmake/ra8_production_build.cmake -- the shipping-image marker (issue #1085).
+# cmake/ra8_production_build.cmake -- the shipping-image marker.
 #
 # `RA8_PRODUCTION_BUILD` declares that the image being configured is one that
 # ships. It arms the fail-closed guards that only a shipping image may trip.

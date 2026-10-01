@@ -1,6 +1,6 @@
 /**
  * @file ra8_widget_reflow_view.h
- * @brief Reflowed-reading-body leaf widget for the ra8_widget tree (#145 Phase 2).
+ * @brief Reflowed-reading-body leaf widget for the ra8_widget tree.
  * @ingroup grp_ereader
  *
  * @details

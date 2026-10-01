@@ -234,7 +234,7 @@ def check_rule_coverage(
     no entry and moves on. Every use of the macro is then ignored while the
     gate reports success, which is what ``ra8_isr_safe`` did while both
     ``ra8_attributes.h`` and the ``RULE_CHECKS`` comment claimed a
-    call-graph walk enforced it (issue #1247).
+    call-graph walk enforced it.
 
     So each recognised key must be one of three things, and the third is a
     declaration rather than an implementation:

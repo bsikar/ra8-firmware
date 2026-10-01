@@ -1,6 +1,6 @@
 /**
  * @file test_ra8_io_fsfmt.c
- * @brief End-to-end filesystem-format dispatch tests (issue #159).
+ * @brief End-to-end filesystem-format dispatch tests.
  *
  * @details Proves native FAT/exFAT byte identity through the operations layer
  * and mounts a registered read-only foreign stub that serves one file without

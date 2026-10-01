@@ -74,7 +74,7 @@ typedef void (*ra8_eth_coma_event_fn_t)(void* ctx, uint32_t status_mask);
  * @post On success the per-port RMAC / ETHA register windows are accessible.
  *
  * @note Not thread-safe; call from a single-threaded init context.
- * @note eth is HW-blocked on silicon (issue #21); this path is host-tested
+ * @note eth is HW-blocked on silicon; this path is host-tested
  *       and sim-modeled, not hardware-validated.
  *
  * @see ra8_eth_rgmii_select

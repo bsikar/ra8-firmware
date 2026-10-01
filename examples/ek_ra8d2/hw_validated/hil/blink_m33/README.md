@@ -1,6 +1,6 @@
 # blink_m33
 
-The canonical "put the work on the M33" template (issue #152). The Cortex-M85
+The canonical "put the work on the M33" template. The Cortex-M85
 does the minimum -- release the Cortex-M33, then sleep -- and the M33 owns the
 application. Here that application is blinking LED1; anything portable drops
 into `src/cpu1_main.c` the same way.

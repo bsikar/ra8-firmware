@@ -9,7 +9,7 @@ exact layout apps/shared_libs/book/inc/book.h reads back.
 
 Raster images are the one thing whose FORM changes: the panel is physically
 4bpp grayscale, so images are transcoded here. Resolution is preserved by
-default; downscaling is opt-in via --max-edge (issue #210).
+default; downscaling is opt-in via --max-edge.
 
 @copyright Copyright (c) 2026 Brighton Sikarskie
 SPDX-License-Identifier: MIT
@@ -54,7 +54,7 @@ def _stb_gray8(im: Image.Image) -> tuple[int, int, bytes]:
     The on-device pipeline calls ``stbi_load_from_memory(..., req_comp=1)``, so
     every raster is reduced to a single 8-bit gray channel before the gray4/gray8
     encode. Mirroring that reduction here is what makes the host emit the same
-    bytes (issue #337):
+    bytes:
 
     * a 16-bit single channel keeps its high byte (``v >> 8``), like
       ``stbi__convert_16_to_8``;
@@ -267,10 +267,10 @@ class BlobBuilder:
             href: Manifest href, interned as the lookup id the DOM's `<img
                 src>` is matched against.
             data: Encoded source bytes in any format Pillow opens.
-            max_image_edge: Opt-in long-edge cap in pixels (issue #210). 0 --
+            max_image_edge: Opt-in long-edge cap in pixels. 0 --
                 the default -- preserves source resolution, which is what makes
                 the manga zoom loupe possible.
-            pixel_format: Device-profile raster depth (issue #343). PIXFMT_GRAY4
+            pixel_format: Device-profile raster depth. PIXFMT_GRAY4
                 (the default, 4bpp packed -- half the storage, and exactly right
                 for a 16-level e-ink panel) or PIXFMT_GRAY8 (8bpp, lossless for a
                 deeper panel).
@@ -359,7 +359,7 @@ class BlobBuilder:
         for id_off, w, h, fmt, data, raw, pixfmt in self.images:
             data_off = len(pool)
             pool += data
-            # The second B is book_image_t.pixel_format (issue #343); the H
+            # The second B is book_image_t.pixel_format; the H
             # after it is the still-reserved padding (0).
             records.append(
                 struct.pack("<IHHBBHIII", id_off, w, h, fmt, pixfmt, 0, data_off, len(data), raw)

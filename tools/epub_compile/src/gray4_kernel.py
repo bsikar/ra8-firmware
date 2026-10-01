@@ -11,7 +11,7 @@ This is a pure-Python, integer-exact port of the on-device 4-bpp transcode in
   * :func:`gray4_encode`       mirrors ``ra8_rabook_gray4_encode`` (round-to-nearest
                                16-level quantise + two-nibbles-per-byte pack).
 
-Why this file exists (issue #213): the .rabook image pipeline downscales rasters
+Why this file exists: the .rabook image pipeline downscales rasters
 with the firmware's integer bilinear kernel, but the desktop compiler used to
 resample with PIL LANCZOS.  The two kernels produce different pixels, so a
 downscaled image was NOT byte-identical host-vs-device.  Downscale is opt-in
@@ -48,7 +48,7 @@ _NIB_PER_BYTE = 2  # Pixels packed per output byte.
 # RGB -> gray8 luma coefficients (mirror stbi__compute_y in
 # apps/shared_libs/third_party/stb/stb_image.h). The DEVICE decodes every raster with
 # stb_image at req_comp=1, so the host MUST fold colour the same way or the same
-# source compiles to different .rabook bytes host-vs-device (issue #337). These
+# source compiles to different .rabook bytes host-vs-device. These
 # are stb's exact integer weights and its truncating >>8 -- NOT PIL's ITU-R
 # 601-2 convert("L"), which rounds and weights green/blue differently and so
 # disagrees with the device on ~48% of the RGB cube.
@@ -65,7 +65,7 @@ def stb_compute_y(r: int, g: int, b: int) -> int:
     ``apps/shared_libs/third_party/stb/stb_image.h``:
     ``(r*77 + g*150 + b*29) >> 8`` with a truncating shift. This is the single
     host luma the device shares; using PIL's ``convert("L")`` here instead would
-    diverge from the on-device stb decode on most colour inputs (issue #337).
+    diverge from the on-device stb decode on most colour inputs.
 
     Args:
         r: Red channel, 0-255.

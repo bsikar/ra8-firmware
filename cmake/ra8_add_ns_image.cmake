@@ -7,7 +7,7 @@
 # the author has had to hand-write the same ~108 lines in every app: the CMSE
 # import-library handshake at both ends, the NS target's warning profile, the
 # build ordering, and the objcopy-twice plus merge_ihex staple with its
-# --remove-section=.option_setting* flag (issue #759 item 1).
+# --remove-section=.option_setting* flag.
 #
 # Two of those were not merely repetitive, they were wrong per app:
 #
@@ -50,7 +50,7 @@ include_guard(GLOBAL)
 # Configures the board's NS linker-script template into the build tree and sets
 # <out-var> to the generated path. The two layouts differ on one axis -- where
 # .text lives -- so that axis is the substitution and the section list is shared
-# rather than forked (#759 item 2).
+# rather than forked.
 #
 # A separate function because secure_boot_ns_hil links its NS image by hand (it
 # has no CMSE veneers to hand over, so ra8_add_ns_image() does not fit) and must

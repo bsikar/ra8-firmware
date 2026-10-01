@@ -1,6 +1,6 @@
 /**
  * @file ra8_widget_toolbar.h
- * @brief Toolbar leaf widget for the ra8_widget tree model (#145 Phase 2).
+ * @brief Toolbar leaf widget for the ra8_widget tree model.
  * @ingroup grp_ereader
  *
  * @details

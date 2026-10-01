@@ -8,7 +8,7 @@
  * @details
  * Enumerates the EK-RA8D2 USB-FS port as a **composite** device that exposes
  * two interfaces in a single configuration so one enumeration exercises both
- * native class layers (issue #265):
+ * native class layers:
  *
  *  - IF0: USB **Printer** class 0x07 / subclass 0x01 / protocol 0x02
  *    (bi-directional), driven by ``ra8_usb_pprn``. Bulk OUT EP 0x01 carries

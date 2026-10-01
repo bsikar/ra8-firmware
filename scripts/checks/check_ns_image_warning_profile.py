@@ -46,7 +46,7 @@ rather than implying more.  It also does not read the stack-usage argument;
 the bar per app is a judgement call, and the profile being applied at all is
 what this gate is for.
 
-The real fix is ``ra8_add_ns_image()`` (#759 item 1), which would own the NS
+The real fix is ``ra8_add_ns_image()``, which would own the NS
 target's profile the way ``ra8_add_app()`` owns the Secure one, and close the
 hole by construction instead of by inspection.  Until that lands, this is the
 measurement.

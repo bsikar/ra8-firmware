@@ -1,6 +1,6 @@
 /**
  * @file test_ra8_ftl.c
- * @brief Unit tests for the Flash Translation Layer (issue #165).
+ * @brief Unit tests for the Flash Translation Layer.
  *
  * @details
  * Builds a RAM-backed FAKE erase-before-write block device whose write

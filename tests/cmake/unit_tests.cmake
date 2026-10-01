@@ -283,13 +283,13 @@ list(REMOVE_ITEM RA8_TEST_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/core/src/test_ra8_
 # prefixed archive, with RA8_TEST_FREESTANDING rewriting its call sites.
 list(REMOVE_ITEM RA8_TEST_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/core/src/test_ra8_rand_stub.c)
 
-# test_cache_store_demo.c (issue #257) compiles the ra8_cache_store_demo example
+# test_cache_store_demo.c compiles the ra8_cache_store_demo example
 # core + RAM NOR driver from examples/ plus the vendored LevelX NOR sources with
 # LX_STANDALONE_ENABLE, so it is registered by hand below rather than through the
 # ra8_add_test() auto-glob.
 list(REMOVE_ITEM RA8_TEST_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/misc/src/test_cache_store_demo.c)
 
-# test_ra8_rsip_devsec_failclosed.c (issue #216) must compile ra8_rsip_devsec.c
+# test_ra8_rsip_devsec_failclosed.c must compile ra8_rsip_devsec.c
 # with the stub-crypto guard flags UNDEFINED so the production fail-closed #else
 # is the body under test. The rest of the host build force-defines
 # RA8_OFF_TARGET, so it is registered by hand below rather than through the
@@ -304,7 +304,7 @@ list(REMOVE_ITEM RA8_TEST_SOURCES
 # the production callback body.
 list(REMOVE_ITEM RA8_TEST_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/security/src/test_mbedtls_psa_rng.c)
 
-# test_ra8_npu.c (issue #221) drives the Arm Ethos-U55 NPU driver, whose body in
+# test_ra8_npu.c drives the Arm Ethos-U55 NPU driver, whose body in
 # ra8_npu.c is device-gated behind RA8_HAS_NPU (RA8P1-only). The shared ra8_core_hal
 # object library is compiled for the default RA8D2, so its ra8_npu.c is an EMPTY
 # TU with no NPU symbols. It is registered by hand below with -DRA8_DEVICE_RA8P1
@@ -314,7 +314,7 @@ list(REMOVE_ITEM RA8_TEST_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/security/src/test_
 # as test_ra8_rsip_devsec_failclosed above.
 list(REMOVE_ITEM RA8_TEST_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/misc/src/test_ra8_npu.c)
 
-# test_ra8_ethosu_shim.c (issue #228) drives the Arm ethos-u-core-driver -> ra8_npu
+# test_ra8_ethosu_shim.c drives the Arm ethos-u-core-driver -> ra8_npu
 # adapter (ra8_ethosu_shim.c), whose body -- like ra8_npu.c -- is device-gated behind
 # RA8_HAS_NPU (RA8P1-only). The shared ra8_core_hal object library is compiled for the
 # default RA8D2, so its ra8_ethosu_shim.c / ra8_npu.c are EMPTY TUs. It is registered by
@@ -323,7 +323,7 @@ list(REMOVE_ITEM RA8_TEST_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/misc/src/test_ra8_
 # fail to resolve the ethosu_* / ra8_npu_* API.
 list(REMOVE_ITEM RA8_TEST_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/misc/src/test_ra8_ethosu_shim.c)
 
-# test_ra8_npu_loader.c (issue #227) drives the .npub Vela-blob loader
+# test_ra8_npu_loader.c drives the .npub Vela-blob loader
 # (ra8_npu_loader.c), which -- like ra8_npu.c -- is device-gated behind
 # RA8_HAS_NPU (RA8P1-only) and turns a committed golden model container
 # (tools/vela/generated/ra8_npu_model_addk_fake.h) into an ra8_npu_job_t. It is
@@ -630,7 +630,7 @@ endif()
 # LED1 PCNTR1 effect it asserts comes out of the PRODUCTION step rather than a
 # re-implementation. ra8_pcntr.h / the PORT layer already come from the
 # ra8_core_hal object library the auto-glob linked; only the app's include dir
-# is added so blink_m33_hal.h resolves (issue #580).
+# is added so blink_m33_hal.h resolves.
 # ---------------------------------------------------------------------------
 if(TARGET test_app_blink_m33_hal)
   target_include_directories(

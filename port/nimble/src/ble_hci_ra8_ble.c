@@ -20,11 +20,11 @@
  * ``ble_transport_to_hs_evt`` / ``ble_transport_to_hs_acl`` so they
  * land in NimBLE's host-side input queue.
  *
- * @warning UNVALIDATED SCAFFOLD (issue #286): this NimBLE port and its
+ * @warning UNVALIDATED SCAFFOLD: this NimBLE port and its
  * ThreadX Native Porting Layer link and pass the static gates, but have
  * NEVER been hardware-validated and are NOT emulator-gated -- ra8_emulator models
  * no RA8D2 BLE controller / HCI mailbox, and the underlying ra8_ble
- * transport is itself unproven on this board (see #86, #91). Treat every
+ * transport is itself unproven on this board. Treat every
  * symbol here as a link-only stub, not a working BLE stack. Consumers stay
  * under ``examples/_unsupported/`` until a NimBLE app is driven to real
  * hardware validation and promoted out of that tier.

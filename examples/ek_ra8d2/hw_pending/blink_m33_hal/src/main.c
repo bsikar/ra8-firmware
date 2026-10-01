@@ -11,7 +11,7 @@
  * clock tree, release the secondary Cortex-M33 with `ra8_cpu1_release`
  * (HUM Ch 2.9.1 "CPU control registers"), then idle in WFI -- and the M33 owns
  * the work. Here that work is blinking LED1 through the CPU1-safe HAL primitive
- * `ra8_pcntr_set_output()` (issue #580) rather than a raw PCNTR poke.
+ * `ra8_pcntr_set_output()` rather than a raw PCNTR poke.
  *
  * This is `hw_pending`: the raw `blink_m33` is the HIL-validated reference; this
  * HAL variant is behaviourally identical (same LED1 blink, same PCNTR1 effect)

@@ -116,7 +116,7 @@ typedef enum : uint8_t {
  * @details
  * The MRA/MRB field encoding, the CRA "0x0000 means 256" quirk, the TI and
  * vector-table alignments and the ``IELSRn.DTCE`` write all moved into
- * ``ra8_dtc_describe()`` / ``ra8_dtc_bind_activation()`` (issue #774), so
+ * ``ra8_dtc_describe()`` / ``ra8_dtc_bind_activation()``, so
  * this app no longer transcribes HUM Ch 18.2. What is left is the block
  * shape it wants: 256 32-bit words, one block.
  */

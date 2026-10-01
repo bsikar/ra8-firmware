@@ -1,6 +1,6 @@
 /**
  * @file test_ra8_io_blockdev_backends.c
- * @brief Unit tests for the ra8_io hardware block-device backends (issue #156).
+ * @brief Unit tests for the ra8_io hardware block-device backends.
  *
  * @details
  * Exercises the backends that are reachable under `RA8_OFF_TARGET`:

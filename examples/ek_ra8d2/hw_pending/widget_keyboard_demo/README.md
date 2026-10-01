@@ -8,7 +8,7 @@ injected `ra8_widget_keyboard_ops_t` seam (`count` / `key_info` / `hit` /
 `apply`). Until this app the widget was named only by its own header, its own
 translation unit, and one host test whose seam is a recording mock, so both
 sides of the pairing were fakes and nothing checked the widget against the real
-`ra8_keyboard` engine (issue #1336). The one screen in the tree that shows a
+`ra8_keyboard` engine. The one screen in the tree that shows a
 keyboard, `ereader_ui`, drives `ra8_keyboard` directly and hand-rolls its own
 key chrome, bypassing the widget entirely.
 

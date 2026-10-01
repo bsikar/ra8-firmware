@@ -4,7 +4,7 @@
  *
  * @details
  * Exercises the sealed-key import + opaque-handle vending API now that the
- * blob is authenticated by a real AES-CMAC (issue #291) keyed from the vault
+ * blob is authenticated by a real AES-CMAC keyed from the vault
  * key-authentication key (KAK). Covers the happy path, CMAC tamper rejection,
  * blob truncation rejection, the missing-KAK path, and the targeted MC/DC
  * vector set for the compound decision in ``priv_ra8_key_import_resolve``.

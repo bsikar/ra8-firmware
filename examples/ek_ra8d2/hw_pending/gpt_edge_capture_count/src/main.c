@@ -9,14 +9,14 @@
  * Demonstrates the two GPT edge-driven driver features that
  * ``gpt_capture_input`` only *approximates* in software:
  *
- * - **Input capture (issue #185)**: GPT0 runs as a free-running 32-bit
+ * - **Input capture**: GPT0 runs as a free-running 32-bit
  *   up-counter. ``ra8_gpt_capture_configure`` arms GTICASR so that each
  *   rising edge on the GTIOC0A pin latches the live GTCNT value into
  *   GTCCRA (hardware timestamp -- no CPU jitter). The loop polls the
  *   GTST.TCFA capture flag, reads the latch with ``ra8_gpt_capture_read``,
  *   and the delta between two consecutive latches is the measured signal
  *   period in counter ticks.
- * - **External event / pulse counting (issue #186)**: GPT1 is switched
+ * - **External event / pulse counting**: GPT1 is switched
  *   out of internal-clock counting by ``ra8_gpt_event_count_configure``
  *   (GTUPSR = GTIOC1A rising). GTCNT then increments once per external
  *   rising edge, so ``ra8_gpt_read`` returns an accumulated pulse count.

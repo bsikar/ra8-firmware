@@ -56,7 +56,7 @@ static void prep_open(void)
   /* If a previous test left the driver open, force-close. */
   (void)ra8_ble_close();
   /* Both flags must be 0: they are C6-side knobs this transport
-   * refuses rather than silently swallows (issue #1348). */
+   * refuses rather than silently swallows. */
   const ra8_ble_config_t cfg = {.use_external_osc = 0U, .deep_sleep_enable = 0U};
   TEST_ASSERT_EQ(k_ra8_ok, ra8_ble_open(&cfg));
   ra8_ble_test_reset_capture();
@@ -526,7 +526,7 @@ static void test_mcdc_ble_acl_inject_args(void)
 }
 
 /**
- * @brief The open descriptor is validated, not ignored (issue #1348).
+ * @brief The open descriptor is validated, not ignored.
  *
  * @details
  * ``use_external_osc`` and ``deep_sleep_enable`` are controller-side

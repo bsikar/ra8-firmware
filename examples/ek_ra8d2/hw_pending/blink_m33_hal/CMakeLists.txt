@@ -10,7 +10,7 @@
 # the header-only HAL primitive ra8_pcntr_set_output() (ra8_pcntr.h) instead of a
 # raw PCNTR poke; ra8_add_cpu1_image() puts libs/ra8_hal/inc on the M33 include
 # path so that freestanding-clean header resolves without linking any ra8_hal
-# object (issue #580). Kept ALONGSIDE the raw `blink_m33`, which stays the
+# object. Kept ALONGSIDE the raw `blink_m33`, which stays the
 # deliberate raw-MMIO reference.
 #
 # Standalone:  cmake -S . -B build -DCMAKE_TOOLCHAIN_FILE=<repo>/cmake/toolchain-ra8d2.cmake

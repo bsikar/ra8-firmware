@@ -163,7 +163,7 @@ The ESP32-C6 link is the notable exception, and it is mutually exclusive
 with this default: it needs **SW4-1 OFF + SW4-2 OFF** (Pmod1 = SPI, not
 UART) and **SW4-4 OFF**, which takes the Arduino and mikroBUS connectors
 offline. Those are mechanical DIP positions -- the U15 expander cannot
-override the Pmod1 SPI mux (issue #44) -- so the bank has to be flipped by
+override the Pmod1 SPI mux -- so the bank has to be flipped by
 hand and flipped back. See
 [`design/c6_wireless_architecture.md`](design/c6_wireless_architecture.md)
 and `examples/ek_ra8d2/hw_validated/c6/README.md`.

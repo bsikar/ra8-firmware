@@ -1,7 +1,7 @@
 # ereader_zoom
 
 The other half of a decision already made. `.rabook` import deliberately does
-**not** downscale images (#210-213, #476): the pixels are kept so the reader can
+**not** downscale images: the pixels are kept so the reader can
 magnify into them. This app makes that magnifier viewable, and is the demo for
 `apps/shared_libs/zoom`.
 

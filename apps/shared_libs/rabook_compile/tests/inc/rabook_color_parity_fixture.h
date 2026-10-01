@@ -13,7 +13,7 @@
  *            decodes the SAME PNG with stb_image and encodes with the SAME
  *            firmware kernel, asserting byte-identity -- so the no-downscale
  *            default path is one luma and one quantiser host-vs-device,
- *            decode included (issue #337).
+ *            decode included.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT

@@ -473,7 +473,7 @@ static void test_irq_fault_and_timeout(void)
 }
 
 /* --------------------------------------------------------------------------
- * Execution-model coverage (issue #222): drive the FULL submit -> run ->
+ * Execution-model coverage: drive the FULL submit -> run ->
  * poll -> read-output path through a host-side MOCK of the ra8_emulator NPU
  * execution model. The mock decodes the command stream via the SHARED
  * ra8_npu_fake_cmd.h convention (so it can never drift from

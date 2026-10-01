@@ -1,6 +1,6 @@
 /**
  * @file test_ra8_io_vfs.c
- * @brief Unit tests for the ra8_io VFS mount table + path router (issue #158).
+ * @brief Unit tests for the ra8_io VFS mount table + path router.
  *
  * @details
  * Sets up a FAT16 volume on a RAM block device, registers it under a name, and

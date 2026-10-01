@@ -1,6 +1,6 @@
 /**
  * @file test_ra8_io_blockdev.c
- * @brief Unit tests for the ra8_io block-device fabric (Phase 1, issue #156).
+ * @brief Unit tests for the ra8_io block-device fabric.
  *
  * @details
  * Exercises the RAM backend, the dispatcher's optional-callback handling

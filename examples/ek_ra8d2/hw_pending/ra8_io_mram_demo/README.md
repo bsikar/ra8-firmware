@@ -7,7 +7,7 @@ vtable as the other `ra8_io` demos; only the backend differs
 block, programs a deterministic pattern, reads it back and byte-compares -- the
 full erase + program + read path through the vtable -- and reports through a
 `ra8_io` UART stream sink with `ra8_log` routed into the same stream, so a
-failing step is visible (phase #157).
+failing step is visible.
 
 ## Why raw block, not FAT
 

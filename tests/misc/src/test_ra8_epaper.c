@@ -11,7 +11,7 @@
  * ``ra8_io_spi_bus_as_ops``), and hands the resulting seam to
  * ``ra8_epaper_init`` -- exercising the exact production wiring.
  * The HRDY busy-poll, the /RESET GPIO pulse, and the LUT-idle poll in
- * ``display_area`` all run for real on host (issues #177 / #238): the
+ * ``display_area`` all run for real on host: the
  * two polls are driven through the ``ra8_fake_mmio`` fault seam (the
  * LUT poll keyed on the seam's ctx cookie, the bound bus handle) and
  * the reset pulse drives the RAM-backed PORT block.

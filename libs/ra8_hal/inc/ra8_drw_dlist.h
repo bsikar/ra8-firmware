@@ -5,7 +5,7 @@
  *
  * @details
  * A display list lets the DRW clear and repaint a framebuffer end to end with
- * no CPU framebuffer writes (issue #247). This header carries the caller-side
+ * no CPU framebuffer writes. This header carries the caller-side
  * builder API that composes such a list into a caller-owned word buffer:
  * ::ra8_drw_dlist_begin binds the builder, ::ra8_drw_dlist_add_fill appends
  * solid-rectangle primitives, ::ra8_drw_dlist_end terminates the list, and

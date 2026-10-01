@@ -68,7 +68,7 @@ ra8_add_app(
 include(${RA8_REPO_ROOT}/libs/ra8_board_ek_ra8d2/ld/ns_memory_map.cmake)
 # The Secure boot copies/jumps to the NS image, so it needs the NS addresses as
 # constants. They come from the same map the NS linker script is generated from
-# rather than being re-typed in trustzone_init.c (#759 item 2).
+# rather than being re-typed in trustzone_init.c.
 ra8_ns_memory_map_defines(tz_nsc_cgc_usb.elf)
 
 target_compile_definitions(tz_nsc_cgc_usb.elf PRIVATE RA8_TRUSTZONE_ENABLE)
@@ -99,7 +99,7 @@ add_custom_command(
 include(${_d}/cmake/threadx_ns.cmake)
 
 # ra8_add_ns_image() owns the CMSE implib handshake at both ends, the NS
-# warning profile, the build ordering, and the merged-hex staple (#759 item 1).
+# warning profile, the build ordering, and the merged-hex staple.
 # The USBX and ra8_usb sources this image also needs are added to the target it
 # creates, below.
 #   RA8_PERIPH_NS_ALIAS -- ra8_usb/ra8_mstp reach the controllers through the IDAU

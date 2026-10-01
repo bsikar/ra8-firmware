@@ -33,7 +33,7 @@
  *
  * The host unit-test build runs every register access through
  * ``ra8_fake_mmap``-backed pages and routes the bounded BIST / DONE
- * polls through the ``ra8_fake_mmio`` wait seam (issue #238): an
+ * polls through the ``ra8_fake_mmio`` wait seam: an
  * unarmed register satisfies its wait on the first poll, and a test
  * arms ``ra8_fake_mmio_fail_wait`` / ``ra8_fake_mmio_satisfy_after``
  * to drive the timeout / continuation legs of the real loop. The

@@ -82,7 +82,7 @@ static ra8_isr_slot_t s_slots[k_ra8_isr_slot_count];
  * no ICU event route. Pin the two capacity constants together so they
  * cannot silently diverge. */
 static_assert((uint16_t)k_ra8_isr_slot_count == (uint16_t)k_ra8_icu_num_ielsr,
-              "ra8_isr slot pool must equal the ICU IELSR capacity (see #237)");
+              "ra8_isr slot pool must equal the ICU IELSR capacity");
 
 /* =============================================================================
  * NVIC pokes (no-op on host)

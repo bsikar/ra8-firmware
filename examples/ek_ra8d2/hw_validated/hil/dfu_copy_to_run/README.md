@@ -1,6 +1,6 @@
 # dfu_copy_to_run
 
-Unattended proof of the `dfu_bootloader`'s copy-to-run scheme (issue #97): an
+Unattended proof of the `dfu_bootloader`'s copy-to-run scheme: an
 image linked **once** at the SRAM run base runs from wherever it is staged, so
 there is no per-slot build and no "which slot am I building for?" footgun.
 

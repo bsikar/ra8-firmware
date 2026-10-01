@@ -7,7 +7,7 @@
  * primitives on the `ra8_fake_mmap` peripheral-RAM backing, the same way
  * `test_ra8_gpio.c` covers the high-level PORT + PFS driver. The primitive is
  * the one the freestanding Cortex-M33 (CPU1) images use, so these host tests
- * are the off-target proof of its register behaviour (issue #580).
+ * are the off-target proof of its register behaviour.
  *
  * The primitive contains no compound boolean decisions (every guard is a single
  * condition; the `if (level == high)` and the `? :` in the reader are single

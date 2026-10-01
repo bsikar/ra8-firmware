@@ -811,7 +811,7 @@ to afford it -- a deliberate, explicit choice rather than a silent one.
 resolution, losslessly recompressed. Shrinking an oversized page to fit the
 arena is *not* an available mitigation and will not be added: full-resolution
 pixels are what make a zoom loupe on a manga page possible, which is the
-product requirement the format exists to serve (issues #210-#213).
+product requirement the format exists to serve.
 
 #### Import on the device
 

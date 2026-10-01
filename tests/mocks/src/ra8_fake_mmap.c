@@ -308,7 +308,7 @@ static uint8_t s_ra8_fake_mapped = 0U;
  * AddressSanitizer (::RA8_FAKE_UNDER_ASAN), the single window flagged
  * ``asan_shadow_gap`` -- the 0xE0000000 SCB/MPU region -- lands in ASan's
  * reserved shadow gap, where a ``MAP_FIXED`` (and the subsequent memset,
- * intercepted by ASan) aborts the process before ``main()`` (issue #193).
+ * intercepted by ASan) aborts the process before ``main()``.
  * Only the peripheral-bus fuzz harnesses that link this mock exercise the
  * host MMIO store, and none of them touch SCB/MPU, so skipping exactly that
  * region under ASan is safe.
