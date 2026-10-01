@@ -231,9 +231,12 @@ pub const cross_apps = [_]CrossApp{
         .dir = "examples/ek_ra8d2/hw_validated/hil/cpu1_pingpong",
         .cpu1_image = true,
         .board = "libs/ra8_board_ek_ra8d2",
-        // The app ships its own linker_script.ld (it pins .cpu1_image at
-        // ORIGIN(MRAM_CPU1)), so ra8_add_app() takes that one over the board's.
-        .linker_script = "examples/ek_ra8d2/hw_validated/hil/cpu1_pingpong/linker_script.ld",
+        // The fork this used to name was dropped by a365204a (#742, "drop
+        // eight dual-core linker script forks"): the board's single-core map
+        // pins .cpu1_image at ORIGIN(MRAM_CPU1) itself, so the eight apps that
+        // carried a byte-identical copy now share it. ra8_add_app()'s app-dir
+        // -else-board rule resolves to the board script here.
+        .linker_script = "libs/ra8_board_ek_ra8d2/ld/linker_script.ld",
         .libraries = &.{},
         .zig_libraries = &.{},
         .aux_srcs = &.{"src/cpu1_main.c"},
@@ -264,7 +267,9 @@ pub const cross_apps = [_]CrossApp{
         .name = "threadx_blink",
         .dir = "examples/ek_ra8d2/hw_validated/hil/threadx_blink",
         .board = "libs/ra8_board_ek_ra8d2",
-        .linker_script = "examples/ek_ra8d2/hw_validated/hil/threadx_blink/linker_script.ld",
+        // Fork dropped by 9dd9f1d1 (#761, "convert the 42 forked ThreadX app
+        // maps onto the board script"), so this resolves to the board's.
+        .linker_script = "libs/ra8_board_ek_ra8d2/ld/linker_script.ld",
         .libraries = &.{},
         .zig_libraries = &.{},
         .uses = &.{"threadx"},
@@ -327,7 +332,12 @@ pub const cross_apps = [_]CrossApp{
         .name = "secure_boot_hil",
         .dir = "examples/ek_ra8d2/hw_validated/hil/secure_boot_hil",
         .board = "libs/ra8_board_ek_ra8d2",
-        // This app ships its own linker_script.ld, so no board fallback.
+        // STALE PATH, left deliberately. The fork was dropped by af7c00ee
+        // (#742, "compose the 128K bootloader bank"), and what replaced it is
+        // not the plain board script but a bank composed at configure time,
+        // which the graph cannot yet express. The link never runs today (the
+        // image overflows MRAM in a Debug configure), so nothing is hidden by
+        // leaving it; modelling the composed bank is its own slice.
         .linker_script = "examples/ek_ra8d2/hw_validated/hil/secure_boot_hil/linker_script.ld",
         .libraries = &.{"ra8_board_ek_ra8d2"},
         .zig_libraries = &.{},
@@ -500,14 +510,17 @@ pub const cross_apps = [_]CrossApp{
         // for why both are silent when missed.
         //
         // No LIBS, no USES, no EXTRA_SRCS, no migrated Zig archive (so #948
-        // does not block it), and it ships its own linker_script.ld and its
-        // own src/vector_table.c -- the second app in the table to override a
+        // does not block it), and it ships its own src/vector_table.c -- the
+        // second app in the table to override a
         // boot unit, and the first to override one on a board layer whose
         // src/boot does not carry that file at all.
         .name = "blink_ra8p1",
         .dir = "examples/ra8p1_foundation/blink_ra8p1",
         .board = "libs/ra8_board_ra8p1",
-        .linker_script = "examples/ra8p1_foundation/blink_ra8p1/linker_script.ld",
+        // Its linker_script.ld fork went with 6c3f5e9a (#742's last five).
+        // The board fallback lands on the RA8P1 layer's own map, not the
+        // EK-RA8D2 one: this is the only row where .board changes the answer.
+        .linker_script = "libs/ra8_board_ra8p1/ld/linker_script.ld",
         .libraries = &.{},
         .zig_libraries = &.{},
     },
