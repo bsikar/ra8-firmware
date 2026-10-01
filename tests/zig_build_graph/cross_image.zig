@@ -22,6 +22,7 @@ const arm_flags = @import("arm_flags.zig");
 const build_type = @import("build_type.zig");
 const cpu1_image = @import("cpu1_image.zig");
 const core_archive = @import("core_archive.zig");
+const board_archive = @import("board_archive.zig");
 const cross_build = @import("cross_build.zig");
 const cross_sources = @import("cross_sources.zig");
 const device = @import("device.zig");
@@ -101,8 +102,11 @@ fn addCrossApp(
     // optimisation links perfectly well.
     var archives = std.ArrayList(std.Build.LazyPath).init(b.allocator);
     var names_core = false;
+    var names_board = false;
+    const board_lib = board_archive.nameFor(app.board);
     for (app.zig_libraries) |lib_name| {
         if (std.mem.eql(u8, lib_name, core_archive.lib_name)) names_core = true;
+        if (std.mem.eql(u8, lib_name, board_lib)) names_board = true;
         const dependency = b.dependency(lib_name, .{
             .target = arm_target,
             .optimize = globals.configuration.zig_optimize,
@@ -124,6 +128,28 @@ fn addCrossApp(
     if (!names_core) {
         archives.append(core_archive.forTarget(
             b,
+            arm_target,
+            globals.configuration.zig_optimize,
+        )) catch @panic("OOM");
+    }
+
+    // The selected board's own archive, on the same unconditional footing.
+    // cmake/ra8_app/sources.cmake:276 registers it as soon as the board layer
+    // has a build.zig, deliberately NOT gated on the board being fully
+    // ported: a partly-ported board links the archive beside its remaining C
+    // objects, and gating on the absence of board .c "silently dropped the
+    // ported half of such a board out of the link" (#2998). This graph globs
+    // the board's src/*.c but linked no archive, so every board symbol
+    // already moved to Zig -- ra8_board_uart_console_write, the four
+    // ra8_board_led_* entries, ra8_board_clock and the rest of the board ABI
+    // -- was undefined at link with no .c definition left to satisfy it.
+    //
+    // Same dedupe as ra8_core, for the same reason: a board named in LIBS
+    // would otherwise be linked twice.
+    if (!names_board and board_archive.has(b, app.board)) {
+        archives.append(board_archive.forTarget(
+            b,
+            app.board,
             arm_target,
             globals.configuration.zig_optimize,
         )) catch @panic("OOM");
