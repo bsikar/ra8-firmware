@@ -102,7 +102,12 @@ pub const threadx = Middleware{
     // middleware's own TUs need the first-party headers. PRIVATE: the symbols
     // resolve at final-app link time against ra8_core / ra8_hal.
     .private_include_dirs = &.{ "libs/ra8_core/inc", "libs/ra8_hal/inc" },
-    .public_include_dirs = &.{"port/threadx/inc"},
+    // fw_os_threadx.c binds the libs/if `fw_os` contract onto ThreadX and
+    // ra8_threadx.h takes a `fw_clock_t*` in its own API, so the seam's headers
+    // are this target's public interface, not an implementation detail.
+    // cmake/threadx.cmake adds it PUBLIC ahead of the port directory, and the
+    // order is the one on the command line.
+    .public_include_dirs = &.{ "libs/if/inc", "port/threadx/inc" },
     .public_system_include_dirs = &.{
         "libs/third_party/threadx/common/inc",
         "libs/third_party/threadx/ports/cortex_m85/gnu/inc",

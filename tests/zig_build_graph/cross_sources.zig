@@ -288,6 +288,13 @@ pub const cross_include_dirs = [_][]const u8{
     "libs/ra8_usb_pal/inc",
     "libs/ra8_nsc/inc",
     "libs/ra8_secure_app/inc",
+    // The neutral fw_if_* port contracts. The board umbrella publishes the
+    // board's clock profile, which is written against fw_if_clock.h, so every
+    // app that speaks board coordinates needs this on the path.
+    // cmake/ra8_add_app.cmake spells it here, after ra8_secure_app and ahead
+    // of the board directory, and the order is load-bearing: a board header
+    // shadows a same-named one from this set.
+    "libs/if/inc",
     // `<app.board>/inc` closes this list, appended per app by
     // crossIncludeDirs() below rather than spelled here: see the note on
     // cross_source_dirs. It is LAST of the universal set and ahead of every
