@@ -48,8 +48,10 @@
 #include <stdint.h>
 
 #include "ra8_board_ek_ra8d2.h"
+#include "ra8_board_ek_ra8d2_clock_profile.h"
 #include "ra8_boot_entry.h"
 #include "ra8_cgc.h"
+#include "fw_if_clock.h"
 #include "ra8_display_pal.h"
 #include "ra8_display_pal_eink.h"
 #include "ra8_epaper.h"
@@ -432,9 +434,12 @@ static void ep_bringup_core(uint32_t* out_pclka_hz)
   if (ra8_cgc_init() != k_ra8_ok) {
     ep_panic_halt();
   }
-  if (ra8_cgc_get_clock_hz(k_ra8_clock_id_cpuclk0, &cpuclk0_hz) != k_ra8_ok) {
+  const fw_clock_module_t clk_core = {.kind = k_fw_clock_module_core, .index = 0U};
+  if (fw_clock_rate_for(ra8_board_clock(), clk_core, &cpuclk0_hz) != k_ra8_ok) {
     ep_panic_halt();
   }
+  /* Direct driver read on purpose (issue #693): k_ep_spi_channel is SPI_B
+   * channel 0, and the board clock profile's wiring table has no spi slot. */
   if (ra8_cgc_get_clock_hz(k_ra8_clock_id_pclka, out_pclka_hz) != k_ra8_ok) {
     ep_panic_halt();
   }
