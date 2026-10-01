@@ -73,7 +73,7 @@ the next reader.
 | display / framebuffer | facade exists, caps, two backends | 22 | P0 | Enforcement plus backends; see the population rows below. |
 | GPIO | coupled, free functions only | 42 | P0 | Extract the vtable; the board owns the pin map. |
 | timebase / monotonic `now()` | non-injectable singleton in `libs/ra8_core/` | 237 | P1 | Foundational. `ra8_time_interface.h` is the nearest thing today. |
-| timer / counter / capture | coupled | 13 GPT, 3 AGT | P1 | Split from PWM. |
+| timer / counter / capture | coupled | 12 GPT, 3 AGT | P1 | Split from PWM. |
 | PWM | coupled to GPT output | -- | P1 | Duty semantics; its own port. |
 | serial (full-duplex UART) | output half done via stream | 27 | P1 | The receive half and baud / flow control are the gap. |
 | SPI bus, I2C bus, blockdev, stream | **done** -- reference implementations | -- | P3 | Copy the caps discipline from here. |
@@ -108,7 +108,7 @@ grep -rlE 'ra8_glcdc|ra8_epaper|ra8_drw' examples --include=*.c --include=*.h | 
 grep -rlE 'ra8_gpio|ra8_ioport' examples --include=*.c --include=*.h | wc -l
 # timebase / monotonic now() -- 237 file(s)
 grep -rlE 'ra8_systick|ra8_time' examples --include=*.c --include=*.h | wc -l
-# timer / counter / capture [GPT] -- 13 file(s)
+# timer / counter / capture [GPT] -- 12 file(s)
 grep -rlE 'ra8_gpt' examples --include=*.c --include=*.h | wc -l
 # timer / counter / capture [AGT] -- 3 file(s)
 grep -rlE 'ra8_agt' examples --include=*.c --include=*.h | wc -l
