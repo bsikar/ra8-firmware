@@ -13,6 +13,7 @@
 //!   ra8_box            tests/misc/src/test_ra8_box.c
 //!   ra8_power_profile  tests/misc/src/test_ra8_power_profile.c
 //!   ra8_epd_cal        tests/misc/src/test_ra8_epd_cal.c
+//!   ra8_dfu            tests/misc/src/test_ra8_dfu_boot.c
 //!
 //! Under CMake the same three archives are produced by
 //! tests/cmake/zig_library.cmake shelling out to `zig build`, then linked into
@@ -81,6 +82,12 @@ const slice = [_]SliceMember{
         .artifact_name = "ra8_epd_cal",
         .include_path = "libs/ra8_epd_cal/inc",
         .c_suite_path = "tests/misc/src/test_ra8_epd_cal.c",
+    },
+    .{
+        .dependency_name = "ra8_dfu",
+        .artifact_name = "ra8_dfu_boot",
+        .include_path = "libs/ra8_dfu/inc",
+        .c_suite_path = "tests/misc/src/test_ra8_dfu_boot.c",
     },
 };
 

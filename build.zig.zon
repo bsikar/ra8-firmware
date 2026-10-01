@@ -11,6 +11,7 @@
         .ra8_epd_cal = .{ .path = "libs/ra8_epd_cal" },
         .ra8_imgdec = .{ .path = "libs/ra8_imgdec" },
         .ra8_core = .{ .path = "libs/ra8_core" },
+        .ra8_dfu = .{ .path = "libs/ra8_dfu" },
         .ra8_abi_fixture = .{ .path = "tests/zig_abi_fixture" },
     },
     .paths = .{

@@ -3,9 +3,10 @@
 //!
 //! Build graph for `ra8_dfu`.
 //!
-//! One seam of this library is Zig so far: the polled USB-DFU host driver
-//! (#2809). The rest of the library is still C, which
-//! `.github/zig-parallel-tree-allowlist.tsv` records per file.
+//! Two seams of this library are Zig: the polled USB-DFU host driver (#2809)
+//! and the pure boot logic the bootloader runs at reset (#2918). The rest of
+//! the library is still C, which `.github/zig-parallel-tree-allowlist.tsv`
+//! records per file.
 //!
 //! Each unit is its own module so the tests can import the same module
 //! objects the archive does. That is what lets the tests drive the DFU
@@ -18,7 +19,10 @@ const std = @import("std");
 /// Every unit under `src/internal/`, in dependency order, with the units it
 /// imports. Adding a unit means adding one row here.
 const units = [_]struct { name: []const u8, imports: []const []const u8 }{
+    .{ .name = "crc32", .imports = &.{} },
     .{ .name = "err", .imports = &.{} },
+    .{ .name = "image", .imports = &.{} },
+    .{ .name = "slot", .imports = &.{} },
     .{ .name = "proto", .imports = &.{} },
     .{ .name = "tune", .imports = &.{} },
     .{ .name = "hal", .imports = &.{"err"} },
@@ -57,12 +61,22 @@ pub fn build(b: *std.Build) void {
         abi_module.addImport(name, modules.get(name).?);
     }
 
+    const boot_abi_module = b.createModule(.{
+        .root_source_file = b.path("src/dfu_boot_abi.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    inline for (.{ "crc32", "image", "slot" }) |name| {
+        boot_abi_module.addImport(name, modules.get(name).?);
+    }
+
     const root_module = b.createModule(.{
         .root_source_file = b.path("src/root.zig"),
         .target = target,
         .optimize = optimize,
     });
     root_module.addImport("dfu_host_abi", abi_module);
+    root_module.addImport("dfu_boot_abi", boot_abi_module);
 
     const library = b.addLibrary(.{
         .name = "ra8_dfu",
@@ -75,6 +89,22 @@ pub fn build(b: *std.Build) void {
     library.bundle_compiler_rt = true;
     b.installArtifact(library);
 
+    // The boot logic on its own, for links that cannot resolve the host
+    // driver's `ra8_usb_host_*` seam. See src/boot_root.zig.
+    const boot_root_module = b.createModule(.{
+        .root_source_file = b.path("src/boot_root.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    boot_root_module.addImport("dfu_boot_abi", boot_abi_module);
+    const boot_library = b.addLibrary(.{
+        .name = "ra8_dfu_boot",
+        .linkage = .static,
+        .root_module = boot_root_module,
+    });
+    boot_library.bundle_compiler_rt = true;
+    b.installArtifact(boot_library);
+
     const test_module = b.createModule(.{
         .root_source_file = b.path("tests/dfu_host_test.zig"),
         .target = target,
@@ -84,7 +114,18 @@ pub fn build(b: *std.Build) void {
         test_module.addImport(unit.name, modules.get(unit.name).?);
     }
 
+    const boot_test_module = b.createModule(.{
+        .root_source_file = b.path("tests/boot_test.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    inline for (.{ "crc32", "image", "slot" }) |name| {
+        boot_test_module.addImport(name, modules.get(name).?);
+    }
+
     const test_step = b.step("test", "Run Zig ra8_dfu tests");
     const tests = b.addTest(.{ .root_module = test_module });
     test_step.dependOn(&b.addRunArtifact(tests).step);
+    const boot_tests = b.addTest(.{ .root_module = boot_test_module });
+    test_step.dependOn(&b.addRunArtifact(boot_tests).step);
 }
