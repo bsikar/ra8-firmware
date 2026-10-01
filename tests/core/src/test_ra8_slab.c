@@ -1,6 +1,6 @@
 /**
  * @file test_ra8_slab.c
- * @brief Unit tests for the ra8_mem fixed-cell slab allocator (Layer 0, #147).
+ * @brief Unit tests for the ra8_mem fixed-cell slab allocator (Layer 0).
  *
  * @details
  * Exercises init geometry, O(1) alloc/exhaust/free/reuse, freelist integrity

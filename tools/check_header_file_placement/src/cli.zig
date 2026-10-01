@@ -2,7 +2,7 @@
 //! Copyright (c) 2026 Brighton Sikarskie
 //!
 //! The argv membrane and exit contract for `check_header_file_placement`
-//! (RA8FW-335, #1219). Everything that touches the file system or argv lives here;
+//! (RA8FW-335). Everything that touches the file system or argv lives here;
 //! the rules themselves are in `src/internal/root.zig`. The entry point is
 //! parameterised on the directory to resolve against, the repository root and
 //! both output streams, so the CLI tests drive it over a temporary tree

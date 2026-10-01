@@ -160,7 +160,7 @@ extern char __executable_start[];
  *        AddressSanitizer; left undefined otherwise.
  *
  * @details
- * Only the libFuzzer harnesses (see tests/fuzz/, issue #193) compile this
+ * Only the libFuzzer harnesses (see tests/fuzz/) compile this
  * mock with `-fsanitize=address`; the ordinary host unit-test build does
  * not. clang exposes ASan through `__has_feature(address_sanitizer)`,
  * while gcc and recent clang additionally predefine `__SANITIZE_ADDRESS__`.

@@ -498,7 +498,7 @@ typedef struct {
   /* --- content CSS cascade ------------------------------------ */
   ra8_css_sheet_t css; /**< Parsed `<style>` rules for the chapter. */
 
-  /* --- glyph atlas (Layer-3 cache, #164) ----------------------------- */
+  /* --- glyph atlas (Layer-3 cache) ----------------------------- */
   ra8_glyph_atlas_t* glyph_atlas; /**< Glyph bitmap cache, or NULL for direct raster. */
 
   /* --- lifecycle ------------------------------------------------------ */

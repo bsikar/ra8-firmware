@@ -548,7 +548,7 @@ ra8_fs_write_file(ra8_fs_mount_t* handle, const char* path, const uint8_t* data,
 /** @brief Report the current offset (64-bit; see ::ra8_fs_seek). @since 0.1.0 */
 [[nodiscard]] ra8_err_t ra8_fs_tell(const ra8_fs_file_t* file, uint64_t* out_offset);
 
-/** @brief Report the file's size in bytes (64-bit on exFAT, #676). @since 0.1.0 */
+/** @brief Report the file's size in bytes (64-bit on exFAT). @since 0.1.0 */
 [[nodiscard]] ra8_err_t ra8_fs_size(const ra8_fs_file_t* file, uint64_t* out_bytes);
 
 /* =============================================================================
@@ -624,7 +624,7 @@ ra8_fs_stat(const ra8_fs_mount_t* handle, const char* path, ra8_fs_stat_t* out);
  * @brief Enumerate directory entries; invoke `cb` once per visible entry.
  *
  * @details Every supported filesystem enumerates any directory by path (`"/"`
- * for the root, `"/books"` for a subdirectory) -- exFAT included since #605.
+ * for the root, `"/books"` for a subdirectory) -- exFAT included.
  * FAT's synthetic "." and ".." entries are not reported; exFAT has none to
  * report. A subdirectory appears in its parent's listing like any other entry,
  * with the directory bit set in the `attr` argument.

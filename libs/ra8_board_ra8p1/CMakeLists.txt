@@ -19,7 +19,7 @@
 
 cmake_minimum_required(VERSION 3.20)
 
-# The board implementation itself is Zig (build.zig, issue #2984): src/ holds
+# The board implementation itself is Zig (build.zig): src/ holds
 # no .c any more, so there is nothing to glob here. The objects arrive in the
 # Zig static archive, which the per-app build registers on the board path in
 # cmake/ra8_app/sources.cmake. src/boot/ stays C and is selected by

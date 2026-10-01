@@ -4,7 +4,7 @@
  *        _tx_timer_interrupt.
  *
  * @details
- * The shared SysTick handler in ra8_core (Zig since #2851) takes a
+ * The shared SysTick handler in ra8_core (Zig) takes a
  * weak external reference to ``_tx_timer_interrupt`` (issue #8 port-
  * level fix) so any app that links ThreadX gets a ticking kernel
  * timer for free. That works fine when ``tx_kernel_enter`` is called

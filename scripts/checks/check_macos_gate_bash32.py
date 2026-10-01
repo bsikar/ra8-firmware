@@ -35,7 +35,7 @@ The parse set starts at ``scripts/ci.sh``, adds the gate bodies it sources with
 an unconditional glob, adds the libraries ``just/ci_gate.just`` sources, and
 follows every statically resolvable ``source`` / ``.`` from there.  The run set
 is the body of each gate declared in ``RA8_NATIVE_HOST_GATES``
-(``scripts/ci/lib/native_host_gates.sh``, #1073) plus the libraries that body
+(``scripts/ci/lib/native_host_gates.sh``) plus the libraries that body
 and ``ci.sh``'s startup source.  Add a native-host gate row and its body is
 gated the same day; nothing has to be remembered.
 

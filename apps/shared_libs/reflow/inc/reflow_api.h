@@ -579,7 +579,7 @@ reflow_render_page(const reflow_t* engine, uint32_t page_idx, void* framebuffer)
  *
  * Per-run family / bold / italic face *selection* across multiple embedded faces
  * is intentionally out of scope here and tracked on #109 (blocked on the
- * `@font-face` / `font-family` resolution prerequisite, #142).
+ * `@font-face` / `font-family` resolution prerequisite).
  *
  * @param[in,out] engine    Initialised engine.
  * @param[in]     font_data TTF/OTF blob; must outlive the engine.

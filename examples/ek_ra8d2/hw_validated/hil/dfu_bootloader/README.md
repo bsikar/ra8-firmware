@@ -42,7 +42,7 @@ SRAM-resident program loop, writes the header on end-of-download, and
 soft-resets so the next boot decision picks the freshly written slot. The host
 sends the body only; the bootloader writes the header.
 
-## One image, either slot (copy-to-run, issue #97)
+## One image, either slot (copy-to-run)
 
 A slot is staging only. On a valid-slot boot the bootloader copies the body to a
 single fixed SRAM run base and launches it there via the shared

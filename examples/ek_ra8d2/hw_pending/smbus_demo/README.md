@@ -1,6 +1,6 @@
 # smbus_demo
 
-Standalone demo and gate for the SMBus 3.2 protocol layer (`ra8_smbus`, #128),
+Standalone demo and gate for the SMBus 3.2 protocol layer (`ra8_smbus`),
 which frames Send Byte / Receive Byte / Read Byte Data / Block transactions on
 top of the IIC_B (I3C-in-I2C-mode) controller and delegates raw byte movement to
 `ra8_i3c`. It previously had no example and no gate.

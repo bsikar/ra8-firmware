@@ -680,7 +680,7 @@ internal_cap_bad_block_size(void* ctx, uint64_t* block_count, uint32_t* block_si
  * @par MC/DC:
  * Decision: `if ((priv_bps_valid(block_size) == 0U) || (block_count == 0U))` in
  * `libs/ra8_fs/src/ra8_fs_fat_mount.c@internal_format_locked` (2 conditions), after
- * `get_capacity`; sizes 512..4096 are all supported since #683.
+ * `get_capacity`; sizes 512..4096 are all supported.
  * - control: a valid 512-byte card -> C1=F, C2=F -> the format proceeds (the
  *   FAT16 round-trips in sibling tests). Re-asserted here as the both-false leg.
  * - C1=T: a backend reporting 8192-byte sectors -> rejected with invalid_arg

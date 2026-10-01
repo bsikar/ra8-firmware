@@ -8,7 +8,7 @@
  *
  * @details
  * An immediate-mode on-screen keyboard for text entry (e-reader search /
- * filter, #105), modelled on the iOS keyboard. Pure, rendering-free logic:
+ * filter), modelled on the iOS keyboard. Pure, rendering-free logic:
  *
  * - ::ra8_kbd_layout_init lays the **letters** layer into a caller frame:
  *   `qwertyuiop` / `asdfghjkl` (inset) / SHIFT + `zxcvbnm` + BACKSPACE /

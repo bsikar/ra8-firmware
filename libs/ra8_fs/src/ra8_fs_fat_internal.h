@@ -18,7 +18,7 @@
  * - `ra8_fs_fat_bytes_internal.h`    -- the little-endian byte codec and the
  *                             runtime sector-geometry accessors.
  * - `ra8_fs_fat_gpt_internal.h`      -- the GPT partition locators (64-bit
- *                             LBAs, #683).
+ *                             LBAs).
  * - `ra8_fs_fat_protos_a_internal.h` -- cross-TU helper prototypes, part A of 2.
  * - `ra8_fs_fat_protos_b_internal.h` -- cross-TU helper prototypes, part B of 2.
  * - `ra8_fs_fat_time_internal.h`     -- timestamp field offsets, the FAT/exFAT

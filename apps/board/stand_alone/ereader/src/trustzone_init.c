@@ -76,7 +76,7 @@ extern uint32_t g_ra8_ls_sgstubs_end;   /**< Veneer-region end (NSC).   */
 
 /**
  * @enum tz_ns_image_t
- * @brief Fixed NS-image addresses (two-project build, #96).
+ * @brief Fixed NS-image addresses (two-project build).
  *
  * @details The NS image is a SEPARATE ELF (tz_nsc_cgc_usb_ns.elf), so the
  *          Secure side has none of its linker symbols. Its load (MRAM) and run

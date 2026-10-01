@@ -87,7 +87,7 @@ typedef struct {
  *
  * @details Signature matches @ref rabook_import_compile_fn. Opens the source
  *          file, fronts it with the cookie's bounded `ra8_vmem` page cache, opens
- *          the book with `epub_open_streamed` (no whole-file residency, #230),
+ *          the book with `epub_open_streamed` (no whole-file residency),
  *          runs `rabook_compile_from_epub` to @p out_path, and closes the
  *          book and the source file on every path.
  *

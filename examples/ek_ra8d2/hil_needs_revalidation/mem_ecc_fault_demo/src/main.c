@@ -1,6 +1,6 @@
 /**
  * @file examples/ek_ra8d2/hil_needs_revalidation/mem_ecc_fault_demo/src/main.c
- * @brief SRAM ECC fault-injection + detection demo (EK-RA8D2, issue #130)
+ * @brief SRAM ECC fault-injection + detection demo (EK-RA8D2)
  *
  * @par Tag
  * [Ring 6 / APP] {World: S}

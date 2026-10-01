@@ -327,7 +327,7 @@ RA8_PRIV ra8_err_t priv_jof_on_rows(void*          ctx,
                                     uint8_t        channels);
 
 /**
- * @brief Transcode a WebP source into the JOF tile path (whole-frame, #290).
+ * @brief Transcode a WebP source into the JOF tile path (whole-frame).
  *
  * @details Pulls the whole compressed source into `cfg->webp_work`, reads its
  *          geometry, binds it as a 4-bpp source through ::priv_jof_on_geom,

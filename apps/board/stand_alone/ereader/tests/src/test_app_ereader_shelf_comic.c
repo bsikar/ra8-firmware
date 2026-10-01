@@ -1,6 +1,6 @@
 /**
  * @file test_app_ereader_shelf_comic.c
- * @brief Host twin of the ereader_shelf comic reader (sh_comic.c, #236).
+ * @brief Host twin of the ereader_shelf comic reader (sh_comic.c).
  *
  * @details
  * Two things are pinned here, so a change to the shelf's comic integration is

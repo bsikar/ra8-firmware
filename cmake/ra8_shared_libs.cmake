@@ -28,7 +28,7 @@
 #
 #
 
-# The shipping-image marker (cmake/ra8_production_build.cmake, issue #1085).
+# The shipping-image marker (cmake/ra8_production_build.cmake).
 # It is pulled in here because this is the one file BOTH paths that compile
 # first-party library sources include before they create a target: the per-app
 # recipe (cmake/ra8_add_app.cmake) and the archive builder above

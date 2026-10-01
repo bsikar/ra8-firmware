@@ -1,6 +1,6 @@
 /**
  * @file test_ra8_fs_attr.c
- * @brief File-attribute honor + set/clear (`ra8_fs_set_attr()`, #681) on FAT and exFAT.
+ * @brief File-attribute honor + set/clear (`ra8_fs_set_attr()`) on FAT and exFAT.
  *
  * @details
  * Two halves of #681, proven on both filesystems:

@@ -265,7 +265,7 @@ RA8_INTERNAL static ra8_err_t internal_book_image_row(const book_src_t*   src,
  *
  * @details The per-row worker of ::book_src_image_rect for a
  *          @ref k_book_pixfmt_gray8 raster (the full-resolution, continuous-tone
- *          representation the compiled `.rabook` retains for zoomable content, #476).
+ *          representation the compiled `.rabook` retains for zoomable content).
  *          At 8bpp there is no nibble packing: pixel `(px, py)` is one byte at flat
  *          index `py * width + px`, so the run maps to a single contiguous pool span
  *          `[image_pool_off + data_off + (ry * width + x), + w)` that is copied

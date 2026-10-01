@@ -69,7 +69,7 @@ typedef enum : uint32_t {
   k_pc_uart_baud = 115200U, /**< Console baud.                */
   k_pc_spi_chan  = 0U,      /**< Pmod2 / J25 SCI0 Simple-SPI. */
   k_pc_font_cap =
-    98304U, /**< Font read buffer (OTF is ~57 KiB; trimmed from 128 KiB when the fs sector arena grew .bss, #683). */
+    98304U, /**< Font read buffer (OTF is ~57 KiB; trimmed from 128 KiB when the fs sector arena grew .bss). */
   k_pc_blob_cap    = 16384U,      /**< Cache-blob buffer capacity, bytes.   */
   k_pc_view_w      = 600U,        /**< Reflow viewport width, px.           */
   k_pc_view_h      = 800U,        /**< Reflow viewport height, px.          */

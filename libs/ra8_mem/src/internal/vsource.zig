@@ -1,7 +1,7 @@
 //! SPDX-License-Identifier: MIT
 //! Copyright (c) 2026 Brighton Sikarskie
 //!
-//! The object-source registry (Layer 1, #147): the map from an `object_id` to
+//! The object-source registry (Layer 1): the map from an `object_id` to
 //! the backing that holds its bytes, and the loader the Layer-2 page cache
 //! calls on a miss.
 //!

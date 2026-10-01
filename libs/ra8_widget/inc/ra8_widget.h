@@ -7,7 +7,7 @@
  * `ra8_widget` is the composable-UI layer issue #145 asks for: render
  * *everything* as widgets the way a tiling WM (dwm) composes a screen from
  * opt-in pieces. A status bar is a widget; a book view is a widget; an
- * on-screen keyboard is a widget. A screen (or an app, issue #146) is just an
+ * on-screen keyboard is a widget. A screen (or an app) is just an
  * array of widgets laid out by a container.
  *
  * The split that keeps this testable on the host AND zero-heap on the RA8D2

@@ -15,7 +15,7 @@ Why this file exists: the .rabook image pipeline downscales rasters
 with the firmware's integer bilinear kernel, but the desktop compiler used to
 resample with PIL LANCZOS.  The two kernels produce different pixels, so a
 downscaled image was NOT byte-identical host-vs-device.  Downscale is opt-in
-(default off, issue #210), yet whenever ``--max-edge`` is requested the divergence
+(default off), yet whenever ``--max-edge`` is requested the divergence
 was reachable.  ``epub_compile.py`` now calls this module for the resample step so
 the desktop tool and the device emit the same bytes; "green means correct" needs
 one deterministic kernel, not a documented exception.

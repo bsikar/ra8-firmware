@@ -1,6 +1,6 @@
 /**
  * @file ra8_vsource.h
- * @brief Virtual-memory object sources -- the page-cache storage seam (Layer 1, #147).
+ * @brief Virtual-memory object sources -- the page-cache storage seam (Layer 1).
  * @ingroup grp_ereader
  *
  * @details

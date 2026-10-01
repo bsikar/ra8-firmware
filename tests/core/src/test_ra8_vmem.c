@@ -1,6 +1,6 @@
 /**
  * @file test_ra8_vmem.c
- * @brief Unit tests for the ra8_mem unified page cache (Layer 2, #147).
+ * @brief Unit tests for the ra8_mem unified page cache (Layer 2).
  *
  * @details
  * Exercises miss-load + hit, loaded-page content, capacity-bounded eviction,

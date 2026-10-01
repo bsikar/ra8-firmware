@@ -22,7 +22,7 @@
  */
 
 /*
- * Anti-rollback is a Zig archive since #2947: this suite links ``ra8_rot``
+ * Anti-rollback is a Zig archive: this suite links ``ra8_rot``
  * and drives the gate through the declarations in ra8_dfu_antirollback.h.
  * It used to #define RA8_ENABLE_ROOT_OF_TRUST and #include the .c, because
  * the implementation compiled to an empty translation unit with the flag

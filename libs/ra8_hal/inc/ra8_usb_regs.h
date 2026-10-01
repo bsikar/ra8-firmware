@@ -89,7 +89,7 @@ extern "C" {
  */
 typedef enum : uintptr_t {
 #ifdef RA8_PERIPH_NS_ALIAS
-  /* TrustZone Non-secure build (two-project NS image, #96): reach the
+  /* TrustZone Non-secure build (two-project NS image): reach the
    * controllers through the IDAU bit[28]=1 Non-secure alias (HUM "PSCU_NS =
    * 0x5020_4000" pattern, +0x1000_0000) so the SAU NS peripheral region
    * (0x5000_0000-0xDFFF_FFFF) permits the access. The Secure side marks USBFS0
