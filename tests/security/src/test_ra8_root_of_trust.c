@@ -43,7 +43,7 @@
 
 #include "ra8_err.h"
 #include "ra8_psa_crypto.h"
-#include "ra8_rot.c" // NOLINT(bugprone-suspicious-include) -- pull in the flag-gated impl
+#include "ra8_rot.h"
 #include "unity_minimal.h"
 
 /**
@@ -144,12 +144,26 @@ static void build_signed_trailer(const uint8_t* body, uint32_t body_len, ra8_rot
   uint8_t sig[k_ra8_rot_sig_bytes] = {};
   size_t  siglen                   = 0U;
   /* Sign the version-bound material SHA-256(img_version_le || digest) -- the
-   * exact bytes ra8_rot_verify_image reconstructs via internal_bind_version (the
-   * white-box include gives us the same helper), so the anti-rollback version
-   * is authenticated (T5-05). */
+   * exact bytes ra8_rot_verify_image reconstructs, so the anti-rollback version
+   * is authenticated (T5-05). Built here from the wire format rather than by
+   * calling the verifier's own helper: the test must not take its expected
+   * input from the implementation under test. */
+  uint8_t combined[sizeof(uint32_t) + k_ra8_rot_digest_bytes] = {};
+  for (uint32_t i = 0U; i < (uint32_t)sizeof(uint32_t); ++i) {
+    combined[i] = (uint8_t)(((uint32_t)k_test_rot_img_ver) >> (i * k_test_octet_bits));
+  }
+  for (uint32_t i = 0U; i < (uint32_t)k_ra8_rot_digest_bytes; ++i) {
+    combined[sizeof(uint32_t) + i] = digest[i];
+  }
   uint8_t signed_material[k_ra8_rot_digest_bytes] = {};
+  size_t  bound_len                               = 0U;
   TEST_ASSERT_EQ(k_ra8_ok,
-                 internal_bind_version((uint32_t)k_test_rot_img_ver, digest, signed_material));
+                 ra8_psa_hash_compute(k_ra8_psa_alg_sha_256,
+                                      combined,
+                                      sizeof(combined),
+                                      signed_material,
+                                      sizeof(signed_material),
+                                      &bound_len));
   TEST_ASSERT_EQ(k_ra8_ok,
                  ra8_psa_sign_hash(signer,
                                    k_ra8_psa_alg_ecdsa_sha_256,
@@ -292,7 +306,7 @@ static void test_rot_forged_version_denied(void)
  * @brief A tampered body (digest mismatch) is DENIED.
  *
  * @par MC/DC:
- * Decision: digest pre-check ``!internal_ct_equal(computed, trailer.digest)``
+ * Decision: the digest pre-check, recomputed vs ``trailer.digest``
  * (1 condition).
  * - Vector 1: body unchanged -> equal -> false -> proceed (valid-image test).
  * - Vector 2: one body byte flipped after signing -> not equal -> true ->
@@ -562,7 +576,7 @@ static void test_rot_helpers(void)
  * @brief body_len-from-header path: the BLXNS layout the secure boot now uses.
  *
  * @details
- * Mirrors ``internal_ns_verify_or_deny``: an NS-image-shaped buffer carries a
+ * Mirrors the NS-image verify-or-deny shape: an NS-image-shaped buffer carries a
  * ``{ magic, body_len }`` header at a fixed offset (``ns_base + 0x40``) INSIDE
  * the signed body; the verifier reads ``body_len`` from that header, locates the
  * trailer via ``ra8_rot_trailer_after(base, body_len)`` (== base + body_len), and
@@ -576,7 +590,7 @@ static void test_rot_helpers(void)
  * a header-derived length:
  * - genuine  (V1): correct body_len -> trailer at base+len -> ALLOW (control).
  * - tampered (V2): flip a body byte -> digest pre-check
- *   ``!internal_ct_equal(...)`` true -> DENY (k_ra8_err_checksum_mismatch).
+ *   the digests differ -> DENY (k_ra8_err_checksum_mismatch).
  * - lied len (V3): wrong header body_len -> trailer_after points at body bytes ->
  *   trailer magic decision ``magic != MAGIC`` true -> DENY
  *   (k_ra8_err_validation_failed).
@@ -627,60 +641,12 @@ static void test_rot_body_len_from_header(void)
   TEST_END("ra8_rot: body_len-from-header path (genuine / tampered / lied len)");
 }
 
-/**
- * @brief ``internal_ct_equal`` NULL-guard OR decision, with MC/DC vectors.
- *
- * @par MC/DC:
- * Decision: ``(a == nullptr) || (b == nullptr)`` (2 conditions, ``||``) -- the
- * constant-time digest compare's NULL guard.
- * - V1: a!=NULL, b!=NULL -> F,F -> false (proceeds; equal buffers -> true).
- * - V2: a==NULL, b!=NULL -> T,. -> true  (returns false; varies a).
- * - V3: a!=NULL, b==NULL -> F,T -> true  (returns false; varies b).
- * N+1 = 3 vectors for N=2 conditions: minimal MC/DC. The static helper is
- * reached white-box via this file's ``#include "ra8_rot.c"``; the guard's true
- * arms are defensive and not presentable through ``ra8_rot_verify_image`` (which
- * only ever passes two live stack buffers), so a direct call is the only path.
- *
- * @pre None.
- * @pre None.
- * @post No persistent side effects.
- * @post No global state changes.
- * @note Test-only.
- * @since 0.1.0
- */
-static void test_rot_ct_equal_mcdc(void)
-{
-  TEST_BEGIN("ra8_rot: internal_ct_equal NULL guard (MC/DC)");
-
-  uint8_t a[k_ra8_rot_digest_bytes];
-  uint8_t b[k_ra8_rot_digest_bytes];
-  for (uint32_t i = 0U; i < (uint32_t)k_ra8_rot_digest_bytes; ++i) {
-    a[i] = (uint8_t)i;
-    b[i] = (uint8_t)i;
-  }
-
-  /* V1 control: both non-NULL, equal buffers -> guard false -> true. */
-  TEST_ASSERT(internal_ct_equal(a, b, (uint32_t)k_ra8_rot_digest_bytes));
-  /* V2: a == NULL -> guard true -> false (varies the first condition). */
-  TEST_ASSERT(!internal_ct_equal(nullptr, b, (uint32_t)k_ra8_rot_digest_bytes));
-  /* V3: b == NULL -> guard true -> false (varies the second condition). */
-  TEST_ASSERT(!internal_ct_equal(a, nullptr, (uint32_t)k_ra8_rot_digest_bytes));
-  /* Non-compound branches: zero length is rejected, a single differing byte
-   * makes the constant-time fold report inequality. */
-  TEST_ASSERT(!internal_ct_equal(a, b, 0U));
-  b[0] = (uint8_t)(b[0] ^ k_t_byte_mask);
-  TEST_ASSERT(!internal_ct_equal(a, b, (uint32_t)k_ra8_rot_digest_bytes));
-
-  TEST_END("ra8_rot: internal_ct_equal NULL guard (MC/DC)");
-}
-
 int main(void)
 {
   /* The verifier ensures the PSA facade is ready, but the test's signing
    * helpers need it too; initialize once up front. */
   (void)ra8_psa_crypto_init();
 
-  test_rot_ct_equal_mcdc();
   test_rot_valid_image_allowed();
   test_rot_invalid_signature_denied();
   test_rot_forged_version_denied();

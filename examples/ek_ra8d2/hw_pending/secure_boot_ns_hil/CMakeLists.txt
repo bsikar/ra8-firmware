@@ -46,8 +46,7 @@ ra8_add_app(
   STACK_BYTES 32768
   DESCRIPTION "TrustZone BLXNS root-of-trust proof (Secure verify + NS liveness)" AUX_SRCS
                                                                                   src/ns_main.c
-  LIBS ra8_tz_secure_boot ra8_psa_crypto
-  EXTRA_SRCS ${_d}/libs/ra8_dfu/src/ra8_rot.c
+  LIBS ra8_tz_secure_boot ra8_psa_crypto ra8_rot
              MRAM_LENGTH 512K
 )
 
