@@ -11,8 +11,6 @@ default:
     @echo "  just quality::local::gate <name>                  Run a specific CI gate natively by name"
     @echo "  just quality::local::format                       Auto-format source code in place"
     @echo "  just quality::local::check                        Verify formatting without modifying files"
-    @echo "  just quality::local::tidy                         Run clang-tidy static analysis"
-    @echo "  just quality::local::scan_build                   Run Clang Static Analyzer"
     @echo "  just quality::local::test                         Run host unit test suite"
     @echo "  just quality::local::coverage                     Run whole-tree coverage gate"
     @echo "  just quality::local::mcdc                         Generate DO-178C MC/DC coverage report"
@@ -27,7 +25,6 @@ default:
     @echo "  just quality::local::ascii                        Check ASCII encoding across files"
     @echo "  just quality::local::version                      Verify @since version annotations"
     @echo "  just quality::local::test_go                      Run Go tests through the CI gate"
-    @echo "  just quality::local::unused_includes              Check for unused C includes"
     @echo "  just quality::local::lint-c                       Lint C sources"
     @echo "  just quality::local::format-c                     Format C sources"
     @echo "  just quality::local::test-c                       Test C sources"
@@ -49,9 +46,6 @@ default:
 format:
     bash scripts/checks/format_tree.sh
 
-lint-c:
-    "{{ just_executable() }}" quality::local::gate tidy
-
 format-c:
     bash scripts/checks/format_code.sh
 
@@ -61,14 +55,6 @@ test-c:
 # Verify every language is formatted without modifying files
 check:
     bash scripts/checks/format_tree.sh --check
-
-# Run clang-tidy through the registered gate with CI/ratchet return semantics
-tidy:
-    "{{ just_executable() }}" quality::local::gate tidy
-
-# Check for genuinely unused C includes via speculative compilation
-unused_includes:
-    "{{ just_executable() }}" quality::local::gate unused-includes
 
 # Check file encodings for non-ASCII characters
 ascii:
@@ -162,16 +148,6 @@ vela_regen:
 
 vela_compile tflite out="build/vela":
     python3 tools/vela/src/vela_gen.py compile "{{ tflite }}" -o "{{ out }}"
-
-# Run Clang Static Analyzer (scan-build)
-scan_build strict="0":
-    #!/usr/bin/env bash
-    set -euo pipefail
-    if [ "{{ strict }}" = "1" ]; then
-        bash scripts/checks/scan_build.sh --strict
-    else
-        bash scripts/checks/scan_build.sh
-    fi
 
 # Run host microbenchmarks. RA8_BENCH_TARGETS in tests/bench/CMakeLists.txt is
 # the harness registry, so read it rather than restating it here: a harness

@@ -304,7 +304,6 @@ NAME_CLASS: dict[str, str] = {
     "NOTICE": "text",
     "mimetype": "fixture",
     ".clang-format": "tool-config",
-    ".clang-tidy": "tool-config",
     ".clangd": "tool-config",
     ".editorconfig": "tool-config",
     ".dockerignore": "tool-config",
@@ -398,6 +397,13 @@ class GapCtx:
     """File contents, read lazily and only for files already known uncovered."""
 
 
+# Classes that need a formatter but no separate linter. C lost its linter when
+# clang-tidy left with the rest of the C-era CI: the C that stays (ra8_nsc, the
+# usbx device side, the MIPI panel) is compiled -Werror by zig cc in the zig
+# build, and clang-format still owns its layout.
+FORMAT_ONLY_CLASSES: frozenset[str] = frozenset({"c-family"})
+
+
 @dataclass(frozen=True)
 class Gap:
     """One recorded hole in lint/format coverage."""
@@ -410,18 +416,6 @@ class Gap:
 
 
 KNOWN_GAPS: tuple[Gap, ...] = (
-    Gap(
-        "objc-needs-macos-runner",
-        2,
-        "#436",
-        "the two Objective-C host views (ra8_emulator, ra8_viewer) are AppKit / "
-        "CoreGraphics code. clang-tidy can only parse them against the macOS "
-        "SDK, so clang_tidy.sh claims them on Darwin and not on Linux -- where "
-        "CI runs. The C++ half of #370 is fully closed: every .cpp/.cc finding "
-        "is fixed and its tidy-baseline rows are gone. Closing this one needs a "
-        "macOS lint job, which is a runner decision, not a code change",
-        lambda c: c.cls == "c-family" and c.rel.endswith(".m"),
-    ),
     Gap(
         "terraform-has-no-pinned-tooling",
         40,
@@ -436,22 +430,6 @@ KNOWN_GAPS: tuple[Gap, ...] = (
         "means pinning the tool in the devcontainer and claiming the class "
         "from a provider, not raising this number",
         lambda c: c.cls == "terraform",
-    ),
-    Gap(
-        "arch-headers-outside-tidy-roots",
-        3,
-        "#2962",
-        "scripts/checks/tidy/collect.sh filters the tracked list through a root "
-        "allowlist -- libs, tests, tools, apps, examples, port -- and arch/ "
-        "landed as a top-level directory after that line was written, so "
-        "clang-tidy enumerates none of it. clang-format does cover all three "
-        "headers, and the code is analysed transitively because libs/if "
-        "includes it, but nothing claims the files. None of the three is an "
-        "include-fragment, so each has a standalone TU and the fix is one word "
-        "in that allowlist plus whatever tidy then reports. Closing it needs a "
-        "run of clang-tidy, which is a tool this gate cannot assume; a fourth "
-        "file under arch/ fails here first",
-        lambda c: c.cls == "c-family" and c.rel.startswith("arch/"),
     ),
 )
 

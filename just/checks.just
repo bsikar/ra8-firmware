@@ -14,12 +14,11 @@ default:
 # Local pre-commit verification natively (macOS/Linux)
 local:
     "{{ just_executable() }}" quality::local::gate format
-    "{{ just_executable() }}" quality::local::gate tidy
     "{{ just_executable() }}" quality::local::gate unit-tests
 
 # Focused pre-commit verification against the current writable tree. Gate
-# bodies stay in scripts/ci.sh; this recipe only selects the three developer
+# bodies stay in scripts/ci.sh; this recipe only selects the two developer
 
 # feedback gates and the helper owns all container transport.
 devcontainer:
-    bash scripts/ci/devcontainer_run.sh -- bash -uc 'just quality::local::gate format && just quality::local::gate tidy && just quality::local::gate unit-tests'
+    bash scripts/ci/devcontainer_run.sh -- bash -uc 'just quality::local::gate format && just quality::local::gate unit-tests'
