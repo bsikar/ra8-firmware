@@ -53,8 +53,10 @@
 #include <string.h>
 
 #include "ra8_attributes.h"
+#include "ra8_board_ek_ra8d2_clock_profile.h"
 #include "ra8_boot_entry.h"
 #include "ra8_cgc.h"
+#include "fw_if_clock.h"
 #include "ra8_check.h"
 #include "ra8_err.h"
 #include "ra8_io.h"
@@ -482,9 +484,12 @@ RA8_INTERNAL static void internal_demo_setup_or_halt(void)
 {
   uint32_t cpuclk0_hz = 0U;
   uint32_t pclka_hz   = 0U;
+  const fw_clock_module_t clk_core = {.kind = k_fw_clock_module_core, .index = 0U};
+  const fw_clock_module_t clk_sci  = {.kind  = k_fw_clock_module_uart,
+                                      .index = (uint8_t)k_ra8_board_clock_uart_console};
   if ((ra8_cgc_init() != k_ra8_ok) ||
-      (ra8_cgc_get_clock_hz(k_ra8_clock_id_cpuclk0, &cpuclk0_hz) != k_ra8_ok) ||
-      (ra8_cgc_get_clock_hz(k_ra8_clock_id_pclka, &pclka_hz) != k_ra8_ok) ||
+      (fw_clock_rate_for(ra8_board_clock(), clk_core, &cpuclk0_hz) != k_ra8_ok) ||
+      (fw_clock_rate_for(ra8_board_clock(), clk_sci, &pclka_hz) != k_ra8_ok) ||
       (ra8_time_init(cpuclk0_hz) != k_ra8_ok) ||
       (ra8_pfs_route_peripheral(s_swap_txd, k_ra8_psel_sci_async, "swap.txd") != k_ra8_ok) ||
       (ra8_pfs_route_peripheral(s_swap_rxd, k_ra8_psel_sci_async, "swap.rxd") != k_ra8_ok)) {
