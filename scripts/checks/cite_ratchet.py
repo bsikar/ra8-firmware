@@ -720,6 +720,25 @@ def _do_update(current: Counter[str], files: int) -> int:
     return 0
 
 
+def _early_mode(args: argparse.Namespace, parser: argparse.ArgumentParser) -> int | None:
+    """Run the modes that need no scan, or None when the tree must be scanned."""
+    if args.selftest:
+        return selftest()
+    # Attestation needs no scan at all, so it runs anywhere and costs nothing.
+    if args.attest:
+        problems = attest_baseline()
+        if problems:
+            report_attestation(problems)
+            return 1
+        print("cite_ratchet.py: baseline attested -- byte-identical to what --update emits.")
+        return 0
+    if args.list:
+        return _list_backlog()
+    if not (args.check or args.update):
+        parser.error("one of --check / --update / --list / --selftest is required")
+    return None
+
+
 def main() -> int:
     """Ratchet uncited MMIO accesses against the committed baseline.
 
@@ -743,20 +762,9 @@ def main() -> int:
     )
     args = parser.parse_args()
 
-    if args.selftest:
-        return selftest()
-    # Attestation needs no scan at all, so it runs anywhere and costs nothing.
-    if args.attest:
-        problems = attest_baseline()
-        if problems:
-            report_attestation(problems)
-            return 1
-        print("cite_ratchet.py: baseline attested -- byte-identical to what --update emits.")
-        return 0
-    if args.list:
-        return _list_backlog()
-    if not (args.check or args.update):
-        parser.error("one of --check / --update / --list / --selftest is required")
+    early = _early_mode(args, parser)
+    if early is not None:
+        return early
 
     # Attest BEFORE scanning or writing: --update carries nothing forward from
     # a hand-edited file, but --check would happily gate against one.
