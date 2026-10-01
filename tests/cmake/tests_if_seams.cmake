@@ -88,6 +88,15 @@ if(TARGET test_fw_if_timer_ra8)
   target_sources(test_fw_if_timer_ra8 PRIVATE ${FW_ROOT}/tests/mocks/src/ra8_fake_mmio.c)
 endif()
 
+# The PWM twin of that adapter, in the same library. Same includes and mock;
+# it binds the timer adapter too, to prove one GPT channel has one owner.
+if(TARGET test_fw_if_pwm_ra8)
+  target_include_directories(
+    test_fw_if_pwm_ra8 PRIVATE ${FW_ROOT}/libs/if/inc ${FW_ROOT}/libs/if_ra8_gpt/inc
+                               ${FW_ROOT}/tests/mocks/inc)
+  target_sources(test_fw_if_pwm_ra8 PRIVATE ${FW_ROOT}/tests/mocks/src/ra8_fake_mmio.c)
+endif()
+
 # The board's own answer to that same port: which chip instance each board-level
 # module index lands on. It reaches the adapter and therefore ra8_mstp, so it
 # wants the same fake MMIO mock for the module-stop read-back.
