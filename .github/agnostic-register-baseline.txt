@@ -7,7 +7,7 @@
 # HAL implementations, named backend translation units, board composition
 # libraries, tests, vendored code, and generated code are outside this ratchet.
 #
-# clock: 299 reference(s)
+# clock: 290 reference(s)
 # display: 9 reference(s)
 # gpio: 74 reference(s)
 # timer: 51 reference(s)
@@ -95,15 +95,15 @@ examples/ek_ra8d2/hw_pending/i3c_i2c_peripheral_demo/src/main.c	clock	1
 examples/ek_ra8d2/hw_pending/import_reader/src/main.c	clock	1
 examples/ek_ra8d2/hw_pending/imu_lsm6dso_demo/src/main.c	clock	2
 examples/ek_ra8d2/hw_pending/lin_commander_hil/src/main.c	clock	1
-examples/ek_ra8d2/hw_pending/manual/usb_msc_sdcard/src/main.c	clock	4
+examples/ek_ra8d2/hw_pending/manual/usb_msc_sdcard/src/main.c	clock	2
 examples/ek_ra8d2/hw_pending/manual/usb_msc_sdcard/src/main.c	gpio	1
-examples/ek_ra8d2/hw_pending/manual/usb_printer_vendor/src/main.c	clock	3
-examples/ek_ra8d2/hw_pending/modem_at_demo/src/main.c	clock	3
+examples/ek_ra8d2/hw_pending/manual/usb_printer_vendor/src/main.c	clock	2
+examples/ek_ra8d2/hw_pending/modem_at_demo/src/main.c	clock	1
 examples/ek_ra8d2/hw_pending/mpu_boot_map_hal/src/main.c	clock	1
 examples/ek_ra8d2/hw_pending/ota_ab_orchestration/src/main.c	clock	1
-examples/ek_ra8d2/hw_pending/ra8_ftl_demo/src/main.c	clock	3
-examples/ek_ra8d2/hw_pending/ra8_io_mram_demo/src/main.c	clock	2
-examples/ek_ra8d2/hw_pending/ra8_io_sdhi_demo/src/main.c	clock	2
+examples/ek_ra8d2/hw_pending/ra8_ftl_demo/src/main.c	clock	1
+examples/ek_ra8d2/hw_pending/ra8_io_mram_demo/src/main.c	clock	1
+examples/ek_ra8d2/hw_pending/ra8_io_sdhi_demo/src/main.c	clock	1
 examples/ek_ra8d2/hw_pending/ra8_io_swap_demo/src/main.c	clock	3
 examples/ek_ra8d2/hw_pending/ra8_sdhi_card_demo/src/main.c	clock	2
 examples/ek_ra8d2/hw_pending/scb_diag_demo/src/main.c	clock	2
