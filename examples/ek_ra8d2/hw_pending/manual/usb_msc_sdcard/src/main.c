@@ -60,6 +60,7 @@
 #include "ra8_err.h"
 #include "ra8_gpio_constants.h"
 #include "ra8_isr.h"
+#include "ra8_pin_interface.h"
 #include "ra8_port_constants.h"
 #include "ra8_port_utils.h"
 #include "ra8_sdmmc_spi.h"
@@ -280,7 +281,8 @@ static void sdmsc_route_usb_or_halt(void)
       k_ra8_ok) {
     sdmsc_panic_halt();
   }
-  if (ra8_gpio_output_init(k_sdmsc_pin_fs_vbusen, k_ra8_level_low) != k_ra8_ok) {
+  const ra8_pin_interface_t* const pins = ra8_pin_interface_default();
+  if (pins->output_init(pins->ctx, k_sdmsc_pin_fs_vbusen, k_ra8_level_low) != k_ra8_ok) {
     sdmsc_panic_halt();
   }
   if (ra8_pfs_route_peripheral(k_sdmsc_pin_fs_dp, k_ra8_psel_usb_fs, "sdmsc.fs_dp") != k_ra8_ok) {
