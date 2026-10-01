@@ -105,7 +105,7 @@ line under the same IRQ0..15 rule as D2.
 
 * Five buttons claim five of the sixteen standby-capable IRQ channels, which
   the touch interrupt, the radio link, the charger and gauge
-  (#825) and the accelerometer all also want. The pin allocation done under
+  and the accelerometer all also want. The pin allocation done under
   #823 and #824 has to treat IRQ0..15 as a scarce resource; this ADR is the
   reason it is scarce.
 * `libs/ra8_board_ra8p1` grows from two switch ids to five once the board is

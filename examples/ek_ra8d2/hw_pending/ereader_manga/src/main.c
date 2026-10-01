@@ -109,8 +109,8 @@ typedef enum : uint32_t {
 } mg_atlas_t;
 
 /*
- * ::k_mg_cells is DERIVED from the panel + tile geometry, never hand-picked
- * (#338). The reader pages the atlas one tile at a time (get / blit / put), so
+ * ::k_mg_cells is DERIVED from the panel + tile geometry, never hand-picked.
+ * The reader pages the atlas one tile at a time (get / blit / put), so
  * the cache does not need every on-screen tile pinned at once -- but it must
  * still be able to *hold* the tiles a frame touches, or a one-tile pan evicts
  * tiles that are still on screen and re-inflates them next frame. That is the

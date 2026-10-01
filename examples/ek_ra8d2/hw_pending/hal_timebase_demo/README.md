@@ -1,8 +1,8 @@
 # hal_timebase_demo
 
 Exercises the `ra8_systick` SysTick + DWT cycle-counter primitive **alongside**
-the `ra8_time` millisecond-tick path, so the two can be diffed on the bench
-(#582). Both now share the same primitive; this demo is the on-silicon
+the `ra8_time` millisecond-tick path, so the two can be diffed on the bench.
+Both now share the same primitive; this demo is the on-silicon
 confirmation.
 
 `ra8_time` historically programmed SysTick (`SYST_CSR` / `SYST_RVR` / `SYST_CVR`)

@@ -362,8 +362,8 @@ typedef void (*ns_exc_handler_t)(void);
  * @var g_ra8_ns_vector_table
  * @brief Non-Secure vector table; run-time VMA ``NS_SRAM_RUN`` (0x32100000).
  * @details Slot 0 = initial ``MSP_NS``, slot 1 = ``ns_reset_handler``. Slots
- *          14 (PendSV) and 15 (SysTick) drive the NS-resident ThreadX kernel
- *          (#96); fault slots halt. 8-byte aligned per ARMv8-M B3.10
+ *          14 (PendSV) and 15 (SysTick) drive the NS-resident ThreadX kernel;
+ * fault slots halt. 8-byte aligned per ARMv8-M B3.10
  *          (``.ns_vectors`` aligns to 8).
  * @since 0.1.0
  */

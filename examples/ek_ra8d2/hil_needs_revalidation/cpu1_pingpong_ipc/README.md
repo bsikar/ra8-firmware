@@ -1,7 +1,7 @@
 # cpu1_pingpong_ipc
 
-Dual-core IPC ping-pong across the full TrustZone secure-boot scaffolding
-(#22). CPU0 (M85) runs Secure only long enough to programme the SAU, unlock
+Dual-core IPC ping-pong across the full TrustZone secure-boot scaffolding.
+CPU0 (M85) runs Secure only long enough to programme the SAU, unlock
 `PRCR_S.PRC4`, write `IPCSAR = 0x00050000` and `BLXNS` into the Non-Secure
 image; the steady-state ping/pong loop runs entirely in NS.
 

@@ -1,8 +1,7 @@
 # usb_printer_vendor
 
 Native, bare-metal USB **composite** device that enumerates two interfaces in one
-configuration, so a single plug-in exercises both native device-class layers
-(#265):
+configuration, so a single plug-in exercises both native device-class layers:
 
 | IF | Class            | EPs                          | Layer            |
 |----|------------------|------------------------------|------------------|

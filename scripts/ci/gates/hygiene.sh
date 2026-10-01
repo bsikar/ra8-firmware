@@ -556,8 +556,8 @@ commit_range_selftest() (
 # Scope is DERIVED from git ls-files, never a directory list. This gate used to
 # loop over `src libs tests examples port scripts tools docs`, so the encoding
 # policy never saw the repo root, .github/, cmake/, coprocessor/, infra/ or
-# just/ -- 106 files, including CLAUDE.md, the file that STATES the policy
-# (#533). A hardcoded root list does not fail when it goes stale; it reports
+# just/ -- 106 files, including CLAUDE.md, the file that STATES the policy.
+# A hardcoded root list does not fail when it goes stale; it reports
 # success over a shrinking slice. --selftest proves the detector fires on a
 # non-ASCII byte before a clean run is believed.
 gate_ascii() (
@@ -588,8 +588,8 @@ gate_markdown_references() (
 # Two rules, one gate, because they are one defect: a source list that
 # outlived its sources. The second is rabook_viewer's KEEP/DROP contract,
 # which ra8_viewer_read_path() already enforces at configure time -- but only
-# under a configure of that one host tool, which the porting lane cannot run
-# (#2610). Both are pure text resolves, so they cost nothing and need no
+# under a configure of that one host tool, which the porting lane cannot run.
+# Both are pure text resolves, so they cost nothing and need no
 # toolchain.
 gate_cmake_source_paths() (
   set -e

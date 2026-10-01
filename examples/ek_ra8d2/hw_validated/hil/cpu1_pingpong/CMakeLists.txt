@@ -49,12 +49,12 @@ if(CMAKE_C_COMPILER_ID STREQUAL "GNU" AND CMAKE_SYSTEM_NAME STREQUAL "Generic")
     ${CMAKE_CURRENT_SOURCE_DIR}/src/cpu1_main.c ${RA8_REPO_ROOT}/libs/ra8_hal/src/ra8_ipc.c
   )
   target_compile_definitions(${CPU1_NAME}.elf PRIVATE RA8_BUILD_FOR_CPU1)
-  # ra8_log is Zig now and ra8_scb followed with the fault block
-  # (#2868), so this image cannot pick either up by compiling
+  # ra8_log is Zig now and ra8_scb followed with the fault block,
+  # so this image cannot pick either up by compiling
   # libs/ra8_core/src/*.c by path: it links ra8_core's archive instead,
   # cross-built for THIS image's core rather than the parent app's. A
-  # freestanding build of ra8_core composes its two roots into one archive
-  # (#2842), so this one call brings the log backend, ra8_err_to_str and the
+  # freestanding build of ra8_core composes its two roots into one archive,
+  # so this one call brings the log backend, ra8_err_to_str and the
   # freestanding primitives together.
   ra8_link_zig_library_for_cpu(
     TARGET ${CPU1_NAME}.elf

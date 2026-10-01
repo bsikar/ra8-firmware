@@ -86,8 +86,7 @@ git ignores silently, so no vendored file's checkout behaviour changes.
 
 Declared in `scripts/gen/sbom_registry.py` as `patched_files` and pinned by
 content in `docs/sbom/upstream/levelx.manifest`; every other file in this
-component is verified byte-identical to the upstream pin on each CI run
-(#548).
+component is verified byte-identical to the upstream pin on each CI run.
 
 The edit is from 2026-07-13 and went unrecorded here until #548 found it two
 weeks later, which is the point: "the vendored tree is unmodified" was prose,
@@ -96,8 +95,8 @@ and prose does not notice a tree-wide sweep reaching into `libs/third_party/`.
 ## Last review date
 
 - Reviewed: 2026-05-02
-- Use case + risk mitigation re-verified against the tree and corrected
-  (#616): 2026-08-04. The driver shim was recorded in `libs/ra8_fs/`, which
+- Use case + risk mitigation re-verified against the tree and corrected:
+  2026-08-04. The driver shim was recorded in `libs/ra8_fs/`, which
   holds no LevelX code, and the standalone / `ra8_cache_store` path was
   missing entirely.
 - Expected re-review by: 2027-05-02

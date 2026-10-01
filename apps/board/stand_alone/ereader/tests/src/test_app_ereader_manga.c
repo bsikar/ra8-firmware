@@ -888,8 +888,7 @@ static void assert_tile_resident(uint16_t tx, uint16_t ty)
  * @test test_manga_pan_prefetch
  * @brief After a right pan + render, ::mg_reader_prefetch has warmed the next
  *        column of tiles into the cache, so they are resident before the
- * follow- on pan needs them -- and the read-ahead evicts no on-screen tile
- * (#341).
+ * follow- on pan needs them -- and the read-ahead evicts no on-screen tile.
  *
  * @details The panned 1:1 frame straddles tile columns 1..4, rows 0..2; the
  *          prefetch warms column 5 (rows 0..2) one step ahead in the pan

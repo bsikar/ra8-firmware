@@ -54,8 +54,7 @@
  * - DMA-descriptor-ring management hooks for TX (queue-depth + monitor)
  *
  * There is no per-port security-gate register: HUM Ch 32 publishes none,
- * and the ``EASCR`` the driver used to write was an FSP header artefact
- * (#539).
+ * and the ``EASCR`` the driver used to write was an FSP header artefact.
  *
  * Per-port state is kept in a small fixed-size table; both port
  * instances (m = 0, 1) share this driver via the::ra8_etha_port_t

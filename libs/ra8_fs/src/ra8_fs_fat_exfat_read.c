@@ -478,8 +478,8 @@ ra8_err_t priv_exfat_open(ra8_fs_mount_t* handle,
 {
   /* Writing modes need the file's entry-set coordinates, its allocation and
    * its ValidDataLength -- none of which a read open has any use for -- so
-   * they get their own path rather than a second half bolted onto this one
-   * (#602). */
+   * they get their own path rather than a second half bolted onto this one.
+   * */
   if (mode != k_ra8_fs_mode_read) {
     return priv_exfat_open_write(handle, path, mode, out_file);
   }

@@ -7,7 +7,7 @@ SPDX-License-Identifier: MIT
 
 Maintained consumer for the `ra8_io` caching block device, the write-through LRU
 sector-cache decorator declared in `libs/ra8_io/inc/ra8_io_blockdev_cache.h`.
-Closes the gap in [#983](https://github.com/bsikar/ra8-firmware/issues/983): the
+It closes a gap: the
 cache compiles into every image that links `ra8_io`, but its only non-test
 caller was the parked `hil_needs_revalidation/ra8_io_cache_demo`.
 

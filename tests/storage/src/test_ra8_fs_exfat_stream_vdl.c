@@ -466,8 +466,8 @@ RA8_INTERNAL static void internal_test_stream_oversized_set_refused(void)
  *
  * @details The old adapter refused a `DataLength` whose high word was non-zero
  *          because every handle length was 32 bits and the first flush would
- *          have written the LOW word back. The length model is 64-bit now
- *          (#676): the same fixture opens, reports its real size, and a
+ *          have written the LOW word back. The length model is 64-bit now:
+ * the same fixture opens, reports its real size, and a
  *          truncate DOWN through the 4 GiB boundary lands exactly where it was
  *          told to. The volume behind the fixture is far smaller than the
  *          claimed length, so nothing is read or written through the fictional

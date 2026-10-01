@@ -385,8 +385,8 @@ ra8_fs_mount_partition(const ra8_fs_backend_t* backend, uint8_t index, ra8_fs_mo
  * unreachable. In read mode it prevents handing back the zero-byte handle a
  * directory's `DIR_FileSize` of 0 would otherwise describe.
  *
- * All three modes work on every filesystem this adapter mounts, exFAT included
- * (#602). An exFAT write grows the file one cluster at a time out of the
+ * All three modes work on every filesystem this adapter mounts, exFAT included.
+ * An exFAT write grows the file one cluster at a time out of the
  * allocation bitmap, so the size a caller can create is bounded by the volume's
  * free space rather than by RAM, and a fragmented volume is written the way the
  * format intends: the entry set keeps `NoFatChain` while the run stays

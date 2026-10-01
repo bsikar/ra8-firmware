@@ -277,7 +277,7 @@ if [[ "$-" == *p* ]]; then
   # then makes the wrong version fail loudly. One home for the policy, sourced the
   # same way as parallelism.sh.
   # export_tools_cache() lives there too: the persistent pinned-tool cache
-  # (#326) is part of the same "how a gate reaches its pinned tools"
+  # is part of the same "how a gate reaches its pinned tools"
   # contract, and keeping it beside use_pinned_tool_path holds this file
   # under the 1000-line maintainability cap check_file_size.py enforces.
   # shellcheck source=scripts/ci/lib/tool_env.sh

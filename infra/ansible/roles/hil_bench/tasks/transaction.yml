@@ -219,8 +219,8 @@
   failed_when: false
 
 - name: Assert the board-facing interface has a PTP hardware clock
-  # This is the whole reason the Ethernet cable moved off the USB adapter
-  # (#292): the adapter reports "PTP Hardware Clock: none" and software-receive
+  # This is the whole reason the Ethernet cable moved off the USB adapter:
+  # the adapter reports "PTP Hardware Clock: none" and software-receive
   # only, so any offset measured through it is dominated by host scheduling
   # jitter rather than by the board. Asserting the capability keeps a future
   # re-cable from silently degrading every timing result.

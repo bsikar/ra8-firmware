@@ -359,8 +359,8 @@ ra8_err_t priv_write_into_sector(const ra8_fs_mount_t* m,
  *
  * @details Without it every sector of a long write re-walked the chain from
  *          the head, which is O(K^2) FAT lookups over a K-cluster file -- the
- *          same quadratic as the allocation scan and worth the same fix
- *          (#607). One write's offset only ever moves forward, so the
+ *          same quadratic as the allocation scan and worth the same fix.
+ * One write's offset only ever moves forward, so the
  *          waypoint is always at or behind the cluster being written.
  *
  * @invariant `index` is the chain index of `cluster`.
@@ -555,8 +555,8 @@ static ra8_err_t internal_write_locked(ra8_fs_file_t* file, const uint8_t* buf, 
   priv_entry_set_cluster_size(&dirsec[file->dir_entry_idx],
                               file->first_cluster,
                               (uint32_t)file->size_bytes);
-  /* The contents just changed, so the modification time has to move with them
-   * (#601). Doing it here as well as at close means a writer that is cut off
+  /* The contents just changed, so the modification time has to move with them.
+   * Doing it here as well as at close means a writer that is cut off
    * mid-stream still leaves an mtime describing what is actually on the card,
    * rather than whatever a PC wrote when it created the file. */
   priv_fat_entry_stamp_write(&dirsec[file->dir_entry_idx]);

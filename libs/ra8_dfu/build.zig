@@ -3,8 +3,8 @@
 //!
 //! Build graph for `ra8_dfu`.
 //!
-//! Three seams of this library are Zig: the polled USB-DFU host driver
-//! (#2809), the pure boot logic the bootloader runs at reset, and
+//! Three seams of this library are Zig: the polled USB-DFU host driver,
+//! the pure boot logic the bootloader runs at reset, and
 //! the MRAM slot programmer. Only the USBX device class is still C,
 //! which `.github/zig-parallel-tree-allowlist.tsv` records per file.
 //!

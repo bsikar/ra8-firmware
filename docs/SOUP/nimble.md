@@ -163,8 +163,8 @@ falsifying this section.
 
 A digest over our own tree would still not have caught the drift at
 vendor-in -- it would have hashed the rewritten URL faithfully and reported
-clean forever. So the claim above is also checked against upstream itself
-(#548): `docs/sbom/upstream/nimble.manifest` records the blob SHA-1 upstream
+clean forever. So the claim above is also checked against upstream itself:
+`docs/sbom/upstream/nimble.manifest` records the blob SHA-1 upstream
 publishes for each of the 615 vendored files at `nimble_1_10_0_tag`, fetched
 from `apache/mynewt-nimble` rather than derived here, and the `soup-upstream`
 gate compares our index against it on every push. Under that check the tree

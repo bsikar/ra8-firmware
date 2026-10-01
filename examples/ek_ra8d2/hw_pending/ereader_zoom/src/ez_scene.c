@@ -33,8 +33,8 @@
 static const char* const s_tag = "ereader_zoom";
 
 /*
- * ::k_ez_cells is DERIVED from the panel and tile geometry, never hand-picked
- * (#338). At 1:1 the 1024x552 content window over 256x256 tiles straddles at
+ * ::k_ez_cells is DERIVED from the panel and tile geometry, never hand-picked.
+ * At 1:1 the 1024x552 content window over 256x256 tiles straddles at
  * most ceil(1024/256)+1 = 5 columns and ceil(552/256)+1 = 4 rows; the enum
  * carries one more column than that so a horizontal pan step (which is nearly a
  * whole viewport) still finds the union of before/after resident. Sizing the

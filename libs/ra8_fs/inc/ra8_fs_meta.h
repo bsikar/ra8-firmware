@@ -274,8 +274,8 @@ typedef struct {
  * prefix so the format serves the gap as zero (and converts a run that outgrows
  * its contiguous space to a real FAT chain). The offset is left where it was,
  * pulled down only by a shrink that lands below it. Lengths are 64-bit: an
- * exFAT file truncates to any size the volume can hold, past 4 GiB included
- * (#676). On FAT12/16/32 a @p new_size above ::k_ra8_fs_fat_max_file_bytes is
+ * exFAT file truncates to any size the volume can hold, past 4 GiB included.
+ * On FAT12/16/32 a @p new_size above ::k_ra8_fs_fat_max_file_bytes is
  * refused with ::k_ra8_err_invalid_size -- `DIR_FileSize` is 32-bit, so the
  * format itself cannot express it.
  *

@@ -128,8 +128,7 @@ typedef enum : uint8_t {
  * Both members name the state they hold. The earlier shape carried
  * ``bool secure`` meaning non-secure and ``bool privileged`` meaning
  * unprivileged, so every reader had to hold a negation in their head and
- * the header contract had to spell out "1 = non-secure" to compensate
- * (#2356).
+ * the header contract had to spell out "1 = non-secure" to compensate.
  *
  * The same pair, under the same two names, is what
  * ``libs/ra8_tz_secure_boot/inc/ra8_tz_ipc_attr.h`` already uses for the

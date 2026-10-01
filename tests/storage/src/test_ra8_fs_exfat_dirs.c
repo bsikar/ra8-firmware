@@ -504,8 +504,8 @@ RA8_INTERNAL static void internal_test_rmdir_after_unlink_inside(void)
  * @test test_mkdir_refuses_an_existing_name
  * @brief `mkdir` never replaces -- not a directory, and not a file either.
  *
- * @details `ra8_fs_write_file()` is this library's create-or-REPLACE verb
- *          (#603); `mkdir` is not. Both collisions are checked, because the
+ * @details `ra8_fs_write_file()` is this library's create-or-REPLACE verb;
+ * `mkdir` is not. Both collisions are checked, because the
  *          lookup that finds them cannot tell the two kinds apart on its own --
  *          a directory answers a name lookup exactly like a file does, which is
  *          the property #604 exists because of.

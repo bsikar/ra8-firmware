@@ -1,7 +1,7 @@
 # ra8_sdhi_card_demo
 
-A raw 512-byte block round-trip through the native SDHI 4-bit host controller
-(#123). This app intentionally links **neither `ra8_io` nor `ra8_fs`** -- no
+A raw 512-byte block round-trip through the native SDHI 4-bit host controller.
+This app intentionally links **neither `ra8_io` nor `ra8_fs`** -- no
 block-device vtable, no mount, no FAT parsing -- targeting the `ra8_sdcard` /
 `ra8_sdhi` HAL layer directly so that layer is exercised in isolation. That
 distinct regression value is why it exists alongside `ra8_io_sdhi_demo`, which

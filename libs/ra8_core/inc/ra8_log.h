@@ -339,8 +339,7 @@ void ra8_log_emit_debug_val(const char* tag, const char* message, int32_t value)
  *          variable, and a parameter that is only logged is otherwise an unused
  *          parameter. Under `-Wall -Wextra -Werror` that turns a correct source
  *          file into a build failure purely because logging is compiled out,
- *          which is one reason first-party sources sat off the warning bar
- *          (#843).
+ *          which is one reason first-party sources sat off the warning bar.
  *
  *          Each argument is placed in a `sizeof` operand. `sizeof` does not
  *          evaluate its operand (C17 6.5.3.4p2), so side effects still do not
