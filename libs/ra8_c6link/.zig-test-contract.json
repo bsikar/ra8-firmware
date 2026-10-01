@@ -60,5 +60,5 @@
     "src/internal/mdl_wire.zig",
     "tests/mdl_encode_test.zig"
   ],
-  "minimum_tests": 340
+  "minimum_tests": 341
 }

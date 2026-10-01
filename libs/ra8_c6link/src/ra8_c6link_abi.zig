@@ -305,16 +305,6 @@ pub export fn priv_c6link_mdl_start_request_valid(
     return Err.ok;
 }
 
-/// `priv_c6link_mdl_stage_headers`: park the optional headers for the wire.
-pub export fn priv_c6link_mdl_stage_headers(
-    http: ?*const mdl_types.HttpPolicy,
-    out: ?*mdl_request.Headers,
-) callconv(.c) void {
-    const policy = http orelse return;
-    const storage = out orelse return;
-    mdl_request.stageHeaders(policy, storage);
-}
-
 /// `priv_c6link_mdl_http_response_valid`: terminal HTTP metadata, checked.
 pub export fn priv_c6link_mdl_http_response_valid(
     view: ?*const mdl_chunk.View,
@@ -390,13 +380,24 @@ pub export fn priv_c6link_mdl_next_allowed(
     return Err.ok;
 }
 
-/// `priv_c6link_mdl_packed_coherent`: did the codec agree with itself?
-pub export fn priv_c6link_mdl_packed_coherent(
-    sized: usize,
-    written: usize,
+/// `priv_c6link_mdl_encode_start`: encode a checked StartRequest into the
+/// request buffer. `url_len` is the length `priv_c6link_mdl_start_request_valid`
+/// reported. False when an argument is NULL or the encode does not fit.
+pub export fn priv_c6link_mdl_encode_start(
+    request: ?*const mdl_types.Request,
+    url_len: usize,
+    buf: ?[*]u8,
     capacity: usize,
+    out_len: ?*usize,
 ) callconv(.c) bool {
-    return mdl_issue.packedCoherent(sized, written, capacity);
+    const len = out_len orelse return false;
+    len.* = 0;
+    const req = request orelse return false;
+    const dst = (buf orelse return false)[0..capacity];
+    const fields = mdl_request.startFields(req, url_len);
+    const bytes = mdl_encode.start(dst, fields) catch return false;
+    len.* = bytes.len;
+    return true;
 }
 
 /// `priv_c6link_mdl_encode_next`: encode a NextRequest into the request

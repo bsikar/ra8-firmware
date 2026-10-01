@@ -49,16 +49,3 @@ pub fn nextAllowed(session: *const types.Session, max_bytes: u16) Refusal!void {
     if (max_bytes > session.max_chunk_bytes) return Refusal.InvalidSize;
     if (max_bytes > Bound.chunk_data_max) return Refusal.InvalidSize;
 }
-
-/// Did the codec agree with itself about one encoded request?
-///
-/// Fail-closed backstop against a codec defect rather than an input class:
-/// a sized message is never empty, a message whose fields were all bounded
-/// first fits the request buffer, and `pack` writes exactly what
-/// `get_packed_size` counted. Each of the three is constant-false on every
-/// reachable path, and all three are checked anyway.
-pub fn packedCoherent(sized: usize, written: usize, capacity: usize) bool {
-    if (sized == 0) return false;
-    if (sized > capacity) return false;
-    return written == sized;
-}

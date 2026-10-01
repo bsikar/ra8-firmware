@@ -2,8 +2,9 @@
 //! Copyright (c) 2026 Brighton Sikarskie
 //!
 //! The protobuf wire primitives the media-download requests are built from:
-//! a base-128 varint, a field tag, and a proto3 scalar that is left out when
-//! it holds its default. Only what the request encoders use, nothing more.
+//! a base-128 varint, a field tag, a proto3 scalar and a length-delimited
+//! string, each left out when it holds its default. Only what the request
+//! encoders use, nothing more.
 
 /// Protobuf wire types this file writes.
 pub const Wire = struct {
@@ -51,5 +52,16 @@ pub const Writer = struct {
         if (value == 0) return;
         try self.tag(field, Wire.varint);
         try self.varint(value);
+    }
+
+    /// A proto3 string or bytes field: empty is the default and is not
+    /// written. The payload is refused whole rather than truncated.
+    pub fn bytes(self: *Writer, field: u32, data: []const u8) Error!void {
+        if (data.len == 0) return;
+        try self.tag(field, Wire.len);
+        try self.varint(data.len);
+        if (data.len > self.buf.len - self.pos) return error.NoSpace;
+        @memcpy(self.buf[self.pos..][0..data.len], data);
+        self.pos += data.len;
     }
 };

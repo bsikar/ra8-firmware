@@ -3,7 +3,7 @@
 //!
 //! Contract tests for the caller-facing half of the media download client:
 //! the optional-header bounds, the start-request argument contract, and the
-//! staging storage the encoder reads.
+//! slices the encoder reads.
 
 const std = @import("std");
 
@@ -113,40 +113,39 @@ test "a header carrying a newline is refused" {
     try std.testing.expectError(error.InvalidArg, req.startRequestValid(&r));
 }
 
-test "staging copies every present header and terminates it" {
-    const policy = types.HttpPolicy{
+test "start fields carry every present header as a slice" {
+    var r = request(z("https://example.test/x"));
+    r.format = types.Format.rabook;
+    r.http = .{
         .user_agent = z("ra8/1.0"),
         .referer = z("https://example.test/"),
         .if_none_match = z("\"abc\""),
         .if_modified_since = z("Thu, 01 Oct 2026 00:00:00 GMT"),
+        .timeout_ms = 1500,
     };
-    var out: req.Headers = undefined;
-    req.stageHeaders(&policy, &out);
-    try std.testing.expectEqualStrings("ra8/1.0", std.mem.sliceTo(&out.user_agent, 0));
-    try std.testing.expectEqualStrings("https://example.test/", std.mem.sliceTo(&out.referer, 0));
-    try std.testing.expectEqualStrings("\"abc\"", std.mem.sliceTo(&out.etag, 0));
-    try std.testing.expectEqualStrings(
-        "Thu, 01 Oct 2026 00:00:00 GMT",
-        std.mem.sliceTo(&out.http_date, 0),
-    );
+    const length = try req.startRequestValid(&r);
+    const fields = req.startFields(&r, length);
+    try std.testing.expectEqualStrings("https://example.test/x", fields.url);
+    try std.testing.expectEqual(@as(u8, types.Format.rabook), fields.format);
+    try std.testing.expectEqualStrings("ra8/1.0", fields.user_agent);
+    try std.testing.expectEqualStrings("https://example.test/", fields.referer);
+    try std.testing.expectEqualStrings("\"abc\"", fields.if_none_match);
+    try std.testing.expectEqualStrings("Thu, 01 Oct 2026 00:00:00 GMT", fields.if_modified_since);
+    try std.testing.expectEqual(@as(u32, 1500), fields.timeout_ms);
 }
 
-test "an absent header stages as an empty string, not as stale bytes" {
-    var out: req.Headers = undefined;
-    @memset(std.mem.asBytes(&out), 0xAA);
-    const policy = types.HttpPolicy{ .user_agent = z("ra8/1.0") };
-    req.stageHeaders(&policy, &out);
-    try std.testing.expectEqualStrings("ra8/1.0", std.mem.sliceTo(&out.user_agent, 0));
-    try std.testing.expectEqual(@as(u8, 0), out.referer[0]);
-    try std.testing.expectEqual(@as(u8, 0), out.etag[0]);
-    try std.testing.expectEqual(@as(u8, 0), out.http_date[0]);
-    for (std.mem.asBytes(&out)) |byte| try std.testing.expect(byte != 0xAA);
+test "an absent header is an empty slice, never a dangling pointer" {
+    var r = request(z("https://example.test/x"));
+    r.http.user_agent = z("ra8/1.0");
+    const fields = req.startFields(&r, try req.startRequestValid(&r));
+    try std.testing.expectEqualStrings("ra8/1.0", fields.user_agent);
+    try std.testing.expectEqual(@as(usize, 0), fields.referer.len);
+    try std.testing.expectEqual(@as(usize, 0), fields.if_none_match.len);
+    try std.testing.expectEqual(@as(usize, 0), fields.if_modified_since.len);
 }
 
-test "the staging storage is exactly the protocol bounds wide" {
-    try std.testing.expectEqual(@as(usize, 256), @sizeOf(@FieldType(req.Headers, "user_agent")));
-    try std.testing.expectEqual(@as(usize, 512), @sizeOf(@FieldType(req.Headers, "referer")));
-    try std.testing.expectEqual(@as(usize, 128), @sizeOf(@FieldType(req.Headers, "etag")));
-    try std.testing.expectEqual(@as(usize, 64), @sizeOf(@FieldType(req.Headers, "http_date")));
-    try std.testing.expectEqual(@as(usize, 960), @sizeOf(req.Headers));
+test "the url is the length the check measured, not a second scan" {
+    const r = request(z("https://example.test/abc"));
+    const fields = req.startFields(&r, 20);
+    try std.testing.expectEqualStrings("https://example.test", fields.url);
 }

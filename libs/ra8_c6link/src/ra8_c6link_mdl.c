@@ -11,7 +11,6 @@
 
 #include <stddef.h>
 #include <stdint.h>
-#include <string.h>
 
 #include "ra8_attributes.h"
 #include "ra8_c6link_internal.h"
@@ -339,24 +338,9 @@ ra8_err_t ra8_c6link_mdl_start_request(ra8_c6link_t*            link,
     return valid;
   }
   *session = (ra8_mdl_session_t){};
-  char url_copy[k_ra8_mdl_url_max];
-  memcpy(url_copy, request->url, url_len + 1U);
-  mdl_http_headers_t headers = {};
-  priv_c6link_mdl_stage_headers(&request->http, &headers);
-  Ra8__Mdl__StartRequest inner;
-  ra8__mdl__start_request__init(&inner);
-  inner.protocol_version  = k_ra8_mdl_protocol_version;
-  inner.url               = url_copy;
-  inner.format            = (Ra8__Mdl__Format)request->format;
-  inner.user_agent        = headers.user_agent;
-  inner.referer           = headers.referer;
-  inner.if_none_match     = headers.if_none_match;
-  inner.if_modified_since = headers.if_modified_since;
-  inner.timeout_ms        = request->http.timeout_ms;
-  uint8_t* const data     = link->mdl_request;
-  const size_t   packed   = ra8__mdl__start_request__get_packed_size(&inner);
-  const size_t written = ra8__mdl__start_request__pack(&inner, data);
-  if (!priv_c6link_mdl_packed_coherent(packed, written, sizeof(link->mdl_request))) {
+  uint8_t* const data = link->mdl_request;
+  size_t         packed = 0U;
+  if (!priv_c6link_mdl_encode_start(request, url_len, data, sizeof(link->mdl_request), &packed)) {
     return k_ra8_err_invalid_size;
   }
   mdl_take_ctx_t take = {.session          = session,
