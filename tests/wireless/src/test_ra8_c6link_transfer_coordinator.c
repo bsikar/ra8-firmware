@@ -315,7 +315,7 @@ static ra8_err_t internal_run(const ra8_mdl_transfer_config_t* config,
  * budget exhaustion, and every response that deactivates the session either
  * returns from inside the loop or sets a cause.
  * Decisions:
- * libs/ra8_c6link/src/ra8_c6link_mdl_transfer.c@ra8_c6link_mdl_transfer
+ * libs/ra8_c6link/src/ra8_c6link_abi.zig@ra8_c6link_mdl_transfer
  * @details Serves a six-byte object through the model in four-byte pulls under
  * a one-pull budget, so the coordinator must report a timeout, cancel the still
  * active remote job, and destroy the temporary object without publishing it.
@@ -367,7 +367,7 @@ static void internal_test_budget_exhaustion_times_out(void)
  * `mcdc-deactivated` rationale in the source: DOWNLOADING and COMPLETE are
  * consumed by the preceding arms, and FAILED must carry a nonzero status.
  * Decisions:
- * libs/ra8_c6link/src/ra8_c6link_mdl_transfer.c@ra8_c6link_mdl_transfer
+ * libs/ra8_c6link/src/ra8_c6link_abi.zig@ra8_c6link_mdl_transfer
  * @details Makes the model answer the first pull with a coherent CANCELLED
  * record. That response deactivates the session inside the client, so the
  * coordinator must abort local temporary state without sending a second,
@@ -436,7 +436,7 @@ static void internal_terminal_chunk(void)
  * Vectors 1+2 prove digest presence independently decides; 1+3 prove the same
  * for length agreement. N+1 = 3 vectors for N=2.
  * Decisions:
- * libs/ra8_c6link/src/ra8_c6link_mdl_transfer.c@internal_mdl_transfer_commit
+ * libs/ra8_c6link/src/internal/mdl_transfer.zig@commit
  * @details Reaches the stage through its private test seam because the
  * chunk-semantics validator in `ra8_c6link_mdl.c` requires a 32-byte digest on
  * every COMPLETE response, so no public-API transfer can present vector 2.

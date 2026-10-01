@@ -4,7 +4,7 @@
  * @details Exposes the terminal verify/validate/publish stage to focused host
  * tests so its metadata guard can be driven with terminal shapes the wire
  * validator rejects upstream. Production sequencing, the pull budget, and every
- * cleanup path stay private to `ra8_c6link_mdl_transfer.c`.
+ * cleanup path stay private to `src/internal/mdl_transfer.zig`.
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
  */
