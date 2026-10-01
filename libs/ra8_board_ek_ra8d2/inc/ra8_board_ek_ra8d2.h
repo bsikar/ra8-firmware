@@ -31,6 +31,10 @@
  *   - ``ra8_board_ek_ra8d2_pmod.h`` -- Pmod2 (J25) Simple-SPI bus
  *     bring-up: the pin routing and the active-low chip-select every
  *     microSD-over-Pmod2 consumer used to open-code.
+ *   - ``ra8_board_ek_ra8d2_backdrop.h`` -- lighting the J1 panel with a
+ *     flat colour and no framebuffer at all, for bring-up, test and
+ *     panic paths that need the glass to show something before any
+ *     graphics stack exists.
  *   - ``ra8_board_ek_ra8d2_dualcore.h`` -- where the Cortex-M85 and the
  *     Cortex-M33 meet: the shared SRAM window, CPU1's private bank, and
  *     the MRAM window its image is pinned in.
@@ -54,6 +58,7 @@
 
 #pragma once
 
+#include "ra8_board_ek_ra8d2_backdrop.h"
 #include "ra8_board_ek_ra8d2_bringup.h"
 #include "ra8_board_ek_ra8d2_camera_mode.h"
 #include "ra8_board_ek_ra8d2_clock_profile.h"

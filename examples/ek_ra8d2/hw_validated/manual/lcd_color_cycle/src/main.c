@@ -27,7 +27,9 @@
  *   2. The GLCDC output stage composes `BG x GR2 x GR1`.  Both GR1
  *      and GR2 must be configured + VEN-asserted even when only the
  *      BG plane is in use.  Handled by `ra8_glcdc_init` /
- *      `ra8_glcdc_start` in `libs/ra8_hal/src/ra8_glcdc.c`.
+ *      `ra8_glcdc_start` in `libs/ra8_hal/src/ra8_glcdc.c`, and the
+ *      whole no-framebuffer sequence now sits behind the board's
+ *      `ra8_board_panel_backdrop_begin` so this demo just picks colours.
  *
  *   3. The Parallel Graphics Expansion Board's BLEN signal (P514)
  *      is active-HIGH.  Exposed as `k_ra8_board_lcd_blen` in the BSP.
@@ -51,17 +53,10 @@
 #include "ra8_boot_entry.h"
 #include "ra8_cgc.h"
 #include "ra8_err.h"
-#include "ra8_glcdc.h"
 #include "ra8_isr.h"
 #include "ra8_mstp.h"
-#include "ra8_panel_timing.h"
 #include "ra8_sdramc.h"
 #include "ra8_time.h"
-
-typedef enum : uint16_t {
-  k_lcd_panel_w = 1024U, /**< LCD panel w. */
-  k_lcd_panel_h = 600U,  /**< LCD panel h. */
-} lcd_panel_dim_t;
 
 typedef enum : uint32_t {
   k_lcd_cycle_ms        = 500U, /**< Per-color dwell time in the cycle loop. */
@@ -162,18 +157,18 @@ RA8_INTERNAL static uint32_t internal_lcd_bringup_clocks(void)
 }
 
 /**
- * @brief Bring up SDRAM, panel power, GLCDC and prime the BG plane.
+ * @brief Bring up SDRAM, panel power, J1 routing and the panel backdrop.
  *
  * @details
  * Second phase of the demo's startup sequence. Mirrors the original
  * inline sequence exactly: 500 ms PLL/panel settle, SDRAM init for
  * follow-on apps, panel power-on, GLCDC pin/clock setup, then the
- * GLCDC controller itself with an initial red background. Any failure
+ * board's panel backdrop with an initial red background. Any failure
  * halts in the red-LED panic loop.
  *
  * @pre ::internal_lcd_bringup_clocks has run successfully.
  * @pre Interrupts are globally enabled.
- * @post GLCDC is running and driving the panel with the initial colour.
+ * @post The panel backdrop is running and showing the initial colour.
  * @post Panel back-light and 3.3 V rail are on.
  *
  * @return None.
@@ -204,23 +199,9 @@ RA8_INTERNAL static void internal_lcd_bringup_panel(void)
   }
   ra8_delay_ms(k_lcd_pin_settle_ms); /* let pins settle in output mode */
 
-  /* GLCDC: BG plane drives the panel on its own with both graphics
-   * layers held invisible by the driver, so the framebuffer pointer
-   * is never dereferenced -- leave it null. */
-  const ra8_glcdc_config_t cfg = {
-    .framebuffer_addr = 0UL,
-    .width_px         = (uint16_t)k_lcd_panel_w,
-    .height_px        = (uint16_t)k_lcd_panel_h,
-    .format           = k_ra8_glcdc_fmt_rgb565,
-    .timing           = s_ra8_panel_ek_ra8d2_timing,
-  };
-  if (ra8_glcdc_init(&cfg) != k_ra8_ok) {
-    internal_lcd_panic_halt();
-  }
-  if (ra8_glcdc_set_background_color(k_bgc_red) != k_ra8_ok) {
-    internal_lcd_panic_halt();
-  }
-  if (ra8_glcdc_start(true) != k_ra8_ok) {
+  /* The board's backdrop seam owns the panel geometry, its RGB timing
+   * and the no-framebuffer convention, so the demo only picks colours. */
+  if (ra8_board_panel_backdrop_begin((uint32_t)k_bgc_red) != k_ra8_ok) {
     internal_lcd_panic_halt();
   }
 }
@@ -232,7 +213,7 @@ void main(void)
 
   uint8_t i = 0U;
   while (1) {
-    (void)ra8_glcdc_set_background_color(s_lcd_bgc_cycle[i & (k_bgc_cycle_count - 1U)]);
+    (void)ra8_board_panel_backdrop_set(s_lcd_bgc_cycle[i & (k_bgc_cycle_count - 1U)]);
     (void)ra8_board_led_toggle(k_ra8_board_led_blue);
     ra8_delay_ms(k_lcd_cycle_ms);
     i++;
