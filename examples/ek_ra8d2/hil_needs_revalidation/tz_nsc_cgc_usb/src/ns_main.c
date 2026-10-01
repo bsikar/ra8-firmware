@@ -257,7 +257,9 @@ typedef enum : uintptr_t {
  * @note Single-threaded; IRQs stay masked (no ThreadX/USBX yet).
  * @since 0.1.0
  */
-[[gnu::section(".ns_text"), noreturn]] static void ns_reset_handler(void)
+[[gnu::section(".ns_text"), noreturn]] void ns_reset_handler(void);
+
+[[gnu::section(".ns_text"), noreturn]] void ns_reset_handler(void)
 {
   /* Zero the NS BSS via uintptr_t arithmetic (cppcheck flags pointer
    * comparison between two distinct externs as ISO C UB even though the
