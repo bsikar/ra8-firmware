@@ -16,6 +16,9 @@ pub const Err = struct {
     pub const not_supported: u32 = 0x107;
     pub const null_ptr: u32 = 0x504;
     pub const hw_timeout: u32 = 0x203;
+    pub const hw_init_failed: u32 = 0x201;
+    pub const gpio_conflict: u32 = 0x205;
+    pub const nack: u32 = 0x407;
 };
 
 /// `ra8_level_t`.
@@ -43,6 +46,10 @@ pub const Psel = struct {
     pub const ceu: u32 = 0x0F;
     /// 11011b: PDM-IF (PDMCLKn / PDMDATn). HUM 20.6.
     pub const pdm: u32 = 0x1B;
+    /// 00111b: IIC / I3C controller-peripheral. HUM 20.6.
+    pub const iic: u32 = 0x07;
+    /// 10010b: SSIE I2S audio. HUM 20.6.
+    pub const ssie: u32 = 0x12;
 };
 
 /// `ra8_pfs_dscr_t` drive strengths this layer sets.
@@ -108,6 +115,66 @@ pub const Pdm = struct {
     pub const edge_rising: u8 = 0;
     /// INPSEL: falling edge of channel n-1.
     pub const edge_falling: u8 = 1;
+};
+
+/// GPIO drive levels and input pull selection, as `ra8_port_constants.h`
+/// numbers them.
+pub const Io = struct {
+    pub const level_low: u32 = 0;
+    pub const level_high: u32 = 1;
+    pub const pull_up: u32 = 1;
+};
+
+/// The DA7212 CODEC link over SSIE0, as the board wires it.
+pub const Audio = struct {
+    pub const ssie_channel: u8 = 0;
+    pub const channels_mono: u8 = 1;
+    pub const channels_stereo: u8 = 2;
+    /// Two int16 samples pack into one 32-bit SSIE FIFO word.
+    pub const samples_per_word: u32 = 2;
+};
+
+/// The U15 PI4IOE5V6408 that overrides the SW4 configuration switches.
+/// UM Section 5.5.3.
+pub const IoExpander = struct {
+    pub const addr_7b: u8 = 0x43;
+    pub const iic_channel: u8 = 1;
+    pub const bus_hz: u32 = 100_000;
+    /// PCLKB = PLL1P/16 post-CGC.
+    pub const pclkb_hz: u32 = 62_500_000;
+
+    /// Register map, from Renesas's `board_cfg_switch.c` for the sister
+    /// EK-RA8T2, which wires U15 identically.
+    pub const reg_devid: u8 = 0x01;
+    pub const reg_iodir: u8 = 0x03;
+    pub const reg_output: u8 = 0x05;
+    pub const reg_hiz: u8 = 0x07;
+    pub const reg_pud_sel: u8 = 0x0D;
+    pub const reg_input_lvl: u8 = 0x0F;
+
+    /// Output polarity is OFF == bit HIGH, per the FSP reference.
+    pub const iodir_all_outputs: u8 = 0xFF;
+    pub const output_all_high: u8 = 0xFF;
+    pub const hiz_none: u8 = 0x00;
+    /// SW4-1 ON, SW4-2 OFF (Pmod1 UART), SW4-3 ON, SW4-4 ON, SW4-5 OFF (I2C).
+    pub const output_project_default: u8 = 0xF2;
+    pub const output_usbhs_host: u8 = 0x72;
+    pub const output_octospi_active: u8 = 0xF8;
+
+    /// Bit-bang recovery: nine SCL clocks flush one stuck byte plus its ACK.
+    pub const recover_pulses: u32 = 9;
+    /// Busy-loop iterations that come to roughly one SCL half-period.
+    pub const recover_spins: u32 = 2000;
+};
+
+/// USB-HS bring-up: the MSTP gate, the PHY speed and the J7 role strap.
+pub const Usb = struct {
+    /// MSTPB12 USBHS.
+    pub const mstp_usbhs: u16 = (1 << 8) | 12;
+    pub const speed_hs: u32 = 1;
+    /// PD07 selects the J7 role: low is Device, high is Host. UM 6.2 p 34.
+    pub const role_pin_port: u16 = 13;
+    pub const role_pin_index: u16 = 7;
 };
 
 pub const Mstp = struct {

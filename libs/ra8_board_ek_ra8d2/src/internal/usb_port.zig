@@ -7,6 +7,7 @@
 //! enumeration never completes, so the role is strapped by driving P5_00.
 
 const hal = @import("hal.zig");
+const usbhs = @import("usbhs.zig");
 const vocab = @import("vocab.zig");
 
 pub const Err = vocab.Err;
@@ -64,9 +65,9 @@ pub fn init(port: u32, role: u32) u32 {
     }
     if (port == Port.hs) {
         return if (role == Role.host)
-            hal.ra8_board_usbhs_host_init()
+            usbhs.hostInit()
         else
-            hal.ra8_board_usbhs_device_init();
+            usbhs.deviceInit();
     }
     return Err.invalid_arg;
 }

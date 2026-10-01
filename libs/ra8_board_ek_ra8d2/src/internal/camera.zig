@@ -6,6 +6,7 @@
 //! sensor driver talks over.
 
 const hal = @import("hal.zig");
+const io_expander = @import("io_expander.zig");
 const pins = @import("camera_pins.zig");
 const vocab = @import("vocab.zig");
 
@@ -36,7 +37,7 @@ var camera_bus: hal.IoI2cBus = .{ .iface = null, .ctx = null };
 
 /// Throw the U15 latch so the parallel DVP reaches the CEU.
 pub fn selectParallel() u32 {
-    return hal.ra8_board_io_expander_apply_sw4_mask(Latch.sw46_output, Latch.sw46_mask);
+    return io_expander.applyMask(Latch.sw46_output, Latch.sw46_mask);
 }
 
 /// Route every CEU pin. Stops at the first refusal so a conflicting route is
