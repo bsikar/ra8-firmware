@@ -12,6 +12,7 @@
 #include <stddef.h>
 
 #include "ra8_attributes.h"
+#include "ra8_c6link_mdl_msg.h"
 #include "ra8_err.h"
 #include "ra8_mdl_request.h"
 
@@ -36,29 +37,6 @@ extern "C" {
  * @note Pure, reentrant, and exposed only for focused private tests.
  * @since 0.1.0
  */
-/**
- * @struct mdl_start_view_t
- * @brief One decoded Start request as flat values, with no generated types.
- * @details The layout is stated by
- *          `src/internal/mdl_service_rules.zig@StartView`, which holds every
- *          rule about these values. The generated message layout is protoc-c
- *          output, so it is flattened here once rather than mirrored in Zig
- *          where a regeneration could drift it silently.
- * @invariant Every span borrows the per-dispatch decode arena and stays valid
- *            only for the dispatch that decoded it.
- * @since 0.1.0
- */
-typedef struct {
-  uint32_t    protocol_version;  /**< Claimed protocol version.           */
-  const char* url;               /**< Decoded request URL.                */
-  uint32_t    format;            /**< Generated format enumerator.        */
-  uint32_t    timeout_ms;        /**< Caller-selected HTTP timeout.       */
-  const char* user_agent;        /**< Decoded User-Agent or empty.        */
-  const char* referer;           /**< Decoded Referer or empty.           */
-  const char* if_none_match;     /**< Decoded If-None-Match or empty.     */
-  const char* if_modified_since; /**< Decoded If-Modified-Since or empty. */
-} mdl_start_view_t;
-
 RA8_PRIV bool priv_c6link_mdl_decode_allocation_fits(size_t used, size_t len, size_t capacity);
 
 /**
@@ -111,21 +89,56 @@ RA8_PRIV bool priv_c6link_mdl_decode_allocation_fits(size_t used, size_t len, si
   const ra8_mdl_http_response_t* response);
 
 /**
- * @brief Decide whether one decoded Start request may begin a job.
- * @details Implemented by `src/internal/mdl_service_rules.zig@startValid`.
- *          Requires an https URL with something after the scheme, since a bare
- *          scheme decodes fine and would reach the backend as a request for
- *          nothing.
- * @param[in] request Flattened decoded Start request.
- * @return Request validity.
- * @retval true Version, URL, format, timeout, and every header are valid.
- * @retval false Any one of those rules is violated.
- * @pre @p request borrows spans that stay live for the call.
- * @post No service state is modified.
- * @note Pure and reentrant.
+ * @brief Decode, check, and copy one StartRequest for the backend
+ * @details Implemented by `src/internal/mdl_service_start.zig@admit`. Refuses
+ * any unknown field, then the request rules (https URL with something after
+ * the scheme, version, format, timeout, every header bounded single-line
+ * text with no NUL), then any Start while a job is active. Only once all of
+ * those pass is the text copied, terminated, into @p text.
+ * @param[in] request Packed StartRequest bytes.
+ * @param[in] request_len Request length in bytes.
+ * @param[in] active Whether the service is running a job.
+ * @param[out] text Service-owned storage the backend request points into.
+ * @param[out] out Backend request; all-null on every refusal.
+ * @return Admission status.
+ * @retval k_ra8_ok The request may be begun.
+ * @retval k_ra8_err_null_ptr A pointer argument is null.
+ * @retval k_ra8_err_protocol_error Decode failed or an unknown field was present.
+ * @retval k_ra8_err_invalid_arg A request rule is violated.
+ * @retval k_ra8_err_busy A job is already active.
+ * @pre @p request is readable for @p request_len bytes.
+ * @post A refusal leaves @p text untouched.
+ * @note Not reentrant for a shared @p text.
  * @since 0.1.0
  */
-[[nodiscard]] RA8_PRIV bool priv_c6link_mdl_service_start_valid(const mdl_start_view_t* request);
+[[nodiscard]] RA8_PRIV ra8_err_t priv_c6link_mdl_service_start_admit(const uint8_t*        request,
+                                                                    size_t                request_len,
+                                                                    bool                  active,
+                                                                    ra8_mdl_start_text_t* text,
+                                                                    ra8_mdl_request_t*    out);
+
+/**
+ * @brief Encode the Accepted reply for one admitted Start
+ * @details Implemented by `src/internal/mdl_service_start.zig@accepted`.
+ * Grants @p job_id and the largest chunk this service sends.
+ * @param[in] job_id Job id the reply grants.
+ * @param[in] format Artifact identity the request named.
+ * @param[out] response Caller-owned reply buffer.
+ * @param[in] response_cap Response capacity in bytes.
+ * @param[out] response_len Bytes written; zero on every refusal.
+ * @return Encode status.
+ * @retval k_ra8_ok The reply was written.
+ * @retval k_ra8_err_null_ptr A pointer argument is null.
+ * @retval k_ra8_err_invalid_size The reply does not fit.
+ * @post A refusal leaves @p response untouched.
+ * @note Reentrant.
+ * @since 0.1.0
+ */
+[[nodiscard]] RA8_PRIV ra8_err_t priv_c6link_mdl_service_accepted(uint32_t     job_id,
+                                                                 mdl_format_t format,
+                                                                 uint8_t*     response,
+                                                                 size_t       response_cap,
+                                                                 size_t*      response_len);
 
 /**
  * @brief Decide whether a whole packed response fits caller storage.

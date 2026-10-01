@@ -13,101 +13,6 @@
 #include "ra8_attributes.h"
 #include "ra8_c6link_mdl_msg.h"
 #include "ra8_c6link_mdl_service_internal.h"
-#include "ra8_media_download.pb-c.h"
-
-static_assert((uint32_t)k_mdl_format_loose == RA8__MDL__FORMAT__FORMAT_LOOSE);
-static_assert((uint32_t)k_mdl_format_cbz == RA8__MDL__FORMAT__FORMAT_CBZ);
-static_assert((uint32_t)k_mdl_format_cbt == RA8__MDL__FORMAT__FORMAT_CBT);
-static_assert((uint32_t)k_mdl_format_cbr == RA8__MDL__FORMAT__FORMAT_CBR);
-static_assert((uint32_t)k_mdl_format_cbt_xz == RA8__MDL__FORMAT__FORMAT_CBT_XZ);
-static_assert((uint32_t)k_mdl_format_cbt_gz == RA8__MDL__FORMAT__FORMAT_CBT_GZ);
-static_assert((uint32_t)k_mdl_format_epub == RA8__MDL__FORMAT__FORMAT_EPUB);
-static_assert((uint32_t)k_mdl_format_jof == RA8__MDL__FORMAT__FORMAT_JOF);
-static_assert((uint32_t)k_mdl_format_rabook == RA8__MDL__FORMAT__FORMAT_RABOOK);
-static_assert((uint32_t)k_mdl_format_invalid == RA8__MDL__FORMAT__FORMAT_INVALID);
-
-/* The worst-case response sizing below reads one bounded run of filler through
- * four header pointers of different lengths, so the run must be at least as
- * long as the longest of them. */
-static_assert(k_ra8_mdl_retry_after_max <= k_ra8_mdl_etag_max);
-static_assert(k_ra8_mdl_http_date_max <= k_ra8_mdl_etag_max);
-static_assert(k_ra8_mdl_content_type_max <= k_ra8_mdl_etag_max);
-
-/**
- * @brief Validate one decoded optional request header.
- * @details Requires bounded single-line text so a remote request cannot inject
- * additional ESP-IDF headers.
- * @param[in] text Decoded protobuf string.
- * @param[in] cap Maximum extent including NUL.
- * @return Header validity.
- * @retval true Text terminates before @p cap and contains no CR/LF.
- * @retval false Pointer, bound, termination, or line discipline is invalid.
- * @pre @p cap is nonzero.
- * @pre Non-null @p text belongs to the current decode arena.
- * @post No decoded or service state is modified.
- * @post True authorizes passing the string to the backend.
- * @note Empty strings are valid and mean header absent.
- * @since 0.1.0
- */
-/**
- * @brief Validate fixed terminal response metadata returned by a backend.
- * @details Requires an HTTP-shaped status and independently bounds every
- * selected header before any generated response points at backend storage.
- * @param[in] response Candidate status and selected headers.
- * @return Response validity.
- * @retval true Status is HTTP-shaped and every array is bounded single-line text.
- * @retval false Status or a selected header violates the protocol contract.
- * @pre @p response is non-null and fully initialized by the backend.
- * @pre Every array is readable for its declared extent.
- * @post No response or service state is modified.
- * @post True authorizes protobuf packing of every selected header.
- * @note Pure and reentrant.
- * @since 0.1.0
- */
-
-/**
- * @brief Allocate one aligned span from a per-dispatch bounded arena
- * @param[in,out] data ::ra8_mdl_decode_arena_t owned by the current dispatch.
- * @param[in] len Requested bytes.
- * @return Allocated span or null when the arena is exhausted.
- * @retval nullptr The aligned request exceeds remaining arena capacity.
- * @pre @p data is non-null and exclusively owned.
- * @pre `used` is no larger than the arena byte capacity.
- * @post Success advances `used` by the aligned size.
- * @post Failure leaves `used` unchanged.
- * @note Reentrant for independent arenas.
- * @since 0.1.0
- */
-RA8_INTERNAL static void* internal_mdl_decode_alloc(void* data, size_t len)
-{
-  ra8_mdl_decode_arena_t* arena = (ra8_mdl_decode_arena_t*)data;
-  if (!priv_c6link_mdl_decode_allocation_fits(arena->used, len, sizeof(arena->bytes))) {
-    return nullptr;
-  }
-  const size_t aligned = priv_c6link_mdl_decode_aligned_size(len);
-  void*        out     = &arena->bytes[arena->used];
-  arena->used += aligned;
-  return out;
-}
-
-/**
- * @brief Ignore individual protobuf frees for the linear dispatch arena
- * @details The complete arena is discarded when dispatch returns.
- * @param[in] data Arena context retained for allocator ABI compatibility.
- * @param[in] ptr Previously returned span retained for allocator ABI
- * compatibility.
- * @pre @p data identifies the current dispatch arena.
- * @pre @p ptr is null or belongs to that arena.
- * @post Arena state is unchanged.
- * @post No system allocator is invoked.
- * @note Reentrant for independent arenas.
- * @since 0.1.0
- */
-RA8_INTERNAL static void internal_mdl_decode_free(void* data, void* ptr)
-{
-  (void)data;
-  (void)ptr;
-}
 
 /**
  * @brief Reject a response that cannot fit before invoking the backend
@@ -131,137 +36,50 @@ RA8_INTERNAL static ra8_err_t internal_mdl_check_response_size(size_t len, size_
 }
 
 /**
- * @brief Pack an Accepted response into a bounded caller buffer
- * @details Verifies encoded size before invoking the generated packer.
- * @param[in] msg Valid generated Accepted message.
- * @param[out] response Caller-owned packed bytes.
- * @param[in] response_cap Capacity of @p response.
- * @param[out] response_len Exact packed length.
- * @return Packing status.
- * @retval k_ra8_ok Response was packed exactly.
- * @retval k_ra8_err_invalid_size Response does not fit.
- * @retval k_ra8_err_validation_failed Codec length and write disagree.
- * @pre Every pointer is non-null.
- * @pre @p response_len is writable and response spans do not overlap @p msg.
- * @post Success sets @p response_len within capacity.
- * @post Failure does not report a successful length.
- * @note Reentrant for independent buffers.
- * @since 0.1.0
- */
-RA8_INTERNAL static ra8_err_t internal_mdl_pack_accepted(const Ra8__Mdl__Accepted* msg,
-                                                         uint8_t*                  response,
-                                                         size_t                    response_cap,
-                                                         size_t*                   response_len)
-{
-  const size_t    len      = ra8__mdl__accepted__get_packed_size(msg);
-  const ra8_err_t capacity = internal_mdl_check_response_size(len, response_cap);
-  if (capacity != k_ra8_ok) {
-    return capacity;
-  }
-  if (ra8__mdl__accepted__pack(msg, response) != len) {
-    return k_ra8_err_validation_failed;
-  }
-  *response_len = len;
-  return k_ra8_ok;
-}
-
-/**
- * @brief Validate every generated Start field before backend activation
- * @details Checks the protocol version, HTTPS URL, format, timeout, and each
- * optional request header before constructing the portable backend request.
- * @param[in] request Decoded generated request.
- * @return Field validity.
- * @retval true Version, URL, format, timeout, and headers are bounded.
- * @retval false At least one field is absent, malformed, or unsupported.
- * @pre @p request is non-null and owns decoded string pointers.
- * @pre The bounded protobuf arena remains live.
- * @post No request, service, or backend state is modified.
- * @post True authorizes construction of ::ra8_mdl_request_t.
- * @note HTTPS is the only accepted transport scheme.
- * @since 0.1.0
- */
-RA8_INTERNAL static bool internal_mdl_start_valid(const Ra8__Mdl__StartRequest* request)
-{
-  const mdl_start_view_t view = {
-    .protocol_version  = request->protocol_version,
-    .url               = request->url,
-    .format            = (uint32_t)request->format,
-    .timeout_ms        = request->timeout_ms,
-    .user_agent        = request->user_agent,
-    .referer           = request->referer,
-    .if_none_match     = request->if_none_match,
-    .if_modified_since = request->if_modified_since,
-  };
-  return priv_c6link_mdl_service_start_valid(&view);
-}
-
-/**
- * @brief Validate and begin one typed-artifact service job
- * @details Pre-packs the bounded response before allowing backend side effects.
+ * @brief Admit and begin one typed-artifact service job
+ * @details Encodes the bounded reply before allowing backend side effects.
  * @param[in,out] service Initialised portable service.
- * @param[in,out] alloc Bounded per-dispatch protobuf allocator.
  * @param[in] request Packed StartRequest.
  * @param[in] request_len Valid request bytes.
  * @param[out] response Caller-owned Accepted bytes.
  * @param[in] response_cap Response capacity.
- * @param[out] response_len Packed response length.
+ * @param[out] response_len Encoded response length.
  * @return Start status.
  * @retval k_ra8_ok Backend accepted a correlated job.
  * @retval k_ra8_err_protocol_error Decode failed or unknown fields were
  * present.
- * @retval k_ra8_err_invalid_arg Version or URL is invalid.
+ * @retval k_ra8_err_invalid_arg Version, URL, format, timeout, or a header is
+ * invalid.
  * @retval k_ra8_err_busy A job is already active.
+ * @retval k_ra8_err_invalid_size The reply does not fit.
  * @pre All pointers are non-null and service access is exclusive.
- * @pre @p alloc owns a fresh bounded arena.
  * @post Success activates exactly one non-zero job id.
  * @post Backend failure leaves the service inactive and response length zero.
  * @note Not thread-safe for a shared service.
  * @since 0.1.0
  */
-RA8_INTERNAL static ra8_err_t internal_mdl_dispatch_start(ra8_mdl_service_t*  service,
-                                                          ProtobufCAllocator* alloc,
-                                                          const uint8_t*      request,
-                                                          size_t              request_len,
-                                                          uint8_t*            response,
-                                                          size_t              response_cap,
-                                                          size_t*             response_len)
+RA8_INTERNAL static ra8_err_t internal_mdl_dispatch_start(ra8_mdl_service_t* service,
+                                                          const uint8_t*     request,
+                                                          size_t             request_len,
+                                                          uint8_t*           response,
+                                                          size_t             response_cap,
+                                                          size_t*            response_len)
 {
-  Ra8__Mdl__StartRequest* req = ra8__mdl__start_request__unpack(alloc, request_len, request);
-  if (req == nullptr) {
-    return k_ra8_err_protocol_error;
-  }
-  if (req->base.n_unknown_fields != 0U) {
-    return k_ra8_err_protocol_error;
-  }
-  if (!internal_mdl_start_valid(req)) {
-    return k_ra8_err_invalid_arg;
-  }
-  if (service->active) {
-    return k_ra8_err_busy;
+  ra8_mdl_request_t backend_request = {};
+  const ra8_err_t   admitted        = priv_c6link_mdl_service_start_admit(
+    request, request_len, service->active, &service->start_text, &backend_request);
+  if (admitted != k_ra8_ok) {
+    return admitted;
   }
   uint32_t next_job_id = service->next_job_id + 1U;
   if (next_job_id == 0U) {
     next_job_id = 1U;
   }
-  Ra8__Mdl__Accepted out = RA8__MDL__ACCEPTED__INIT;
-  out.protocol_version   = k_ra8_mdl_protocol_version;
-  out.job_id             = next_job_id;
-  out.max_chunk_bytes    = k_ra8_mdl_chunk_data_max;
-  out.format             = req->format;
-  const ra8_err_t prepacked =
-    internal_mdl_pack_accepted(&out, response, response_cap, response_len);
-  if (prepacked != k_ra8_ok) {
-    return prepacked;
+  const ra8_err_t replied = priv_c6link_mdl_service_accepted(
+    next_job_id, backend_request.format, response, response_cap, response_len);
+  if (replied != k_ra8_ok) {
+    return replied;
   }
-  const ra8_mdl_request_t backend_request = {
-    .url    = req->url,
-    .format = (mdl_format_t)req->format,
-    .http   = {.user_agent        = req->user_agent,
-               .referer           = req->referer,
-               .if_none_match     = req->if_none_match,
-               .if_modified_since = req->if_modified_since,
-               .timeout_ms        = req->timeout_ms},
-  };
   const ra8_err_t begun = service->backend.begin(service->backend.ctx, &backend_request);
   if (begun != k_ra8_ok) {
     *response_len = 0U;
@@ -271,7 +89,7 @@ RA8_INTERNAL static ra8_err_t internal_mdl_dispatch_start(ra8_mdl_service_t*  se
   service->active_job_id = service->next_job_id;
   service->next_sequence = 0U;
   service->next_offset   = 0U;
-  service->active_format = (mdl_format_t)req->format;
+  service->active_format = backend_request.format;
   service->active        = true;
   return k_ra8_ok;
 }
@@ -525,17 +343,9 @@ ra8_err_t ra8_mdl_service_dispatch(void*          ctx,
   }
   *response_len              = 0U;
   ra8_mdl_service_t* service = (ra8_mdl_service_t*)ctx;
-  /* Cleared here, not declared here: an automatic arena of this size put this
-   * function over the 2048-byte first-party frame budget. Clearing the whole
-   * object gives every dispatch the same empty arena the automatic one did. */
-  service->arena           = (ra8_mdl_decode_arena_t){};
-  ProtobufCAllocator alloc = {.alloc          = internal_mdl_decode_alloc,
-                              .free           = internal_mdl_decode_free,
-                              .allocator_data = &service->arena};
   switch (operation) {
     case k_ra8_mdl_rpc_start:
       return internal_mdl_dispatch_start(service,
-                                         &alloc,
                                          request,
                                          request_len,
                                          response,

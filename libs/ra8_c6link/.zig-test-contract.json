@@ -26,7 +26,8 @@
     "tests/mdl_chunk_decode_test.zig",
     "tests/mdl_chunk_mcdc_test.zig",
     "tests/mdl_service_cancel_test.zig",
-    "tests/mdl_service_next_test.zig"
+    "tests/mdl_service_next_test.zig",
+    "tests/mdl_service_start_test.zig"
   ],
   "covered_sources": [
     "src/internal/bare_rpc.zig",
@@ -47,6 +48,8 @@
     "src/internal/mdl_service_cancel.zig",
     "src/internal/mdl_service_next.zig",
     "src/internal/mdl_service_rules.zig",
+    "src/internal/mdl_service_start.zig",
+    "src/internal/mdl_start_text.zig",
     "src/internal/mdl_take.zig",
     "src/internal/mdl_transfer.zig",
     "src/internal/mdl_types.zig",
@@ -76,5 +79,5 @@
     "tests/mdl_transfer_test.zig",
     "tests/storage_ram_test.zig"
   ],
-  "minimum_tests": 400
+  "minimum_tests": 412
 }

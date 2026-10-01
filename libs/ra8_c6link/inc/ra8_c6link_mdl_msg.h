@@ -87,48 +87,26 @@ typedef struct ra8_mdl_service_backend {
 } ra8_mdl_service_backend_t;
 
 /**
- * @brief Bounded protobuf decode storage one dispatch may consume
- * @details Sized for the largest legal Start request: a maximum URL plus every
- * bounded HTTP header, plus the generated decoder's per-message overhead.
- * @note Cast to `uint16_t` for the same reason as
- *       ::k_ra8_mdl_request_bytes_max: the URL bound and the header bounds are
- *       now two enumeration types, and their sum needs one.
+ * @struct ra8_mdl_start_text
+ * @brief Terminated copies of the text of the Start request being begun
+ * @details The decoded request text is borrowed, unterminated, from the
+ * request bytes, while ::ra8_mdl_request_t hands the backend C strings. The
+ * service copies each piece here, terminated, and points the backend request
+ * at these buffers. Each buffer is the protocol bound for its field, which
+ * already counts the terminator, so a validated field always fits. It lives in
+ * ::ra8_mdl_service rather than on the dispatch stack for the same 2048-byte
+ * first-party frame budget the decode arena it replaces was moved for.
+ * @invariant Every field holds a terminated string once a Start was admitted.
+ * @note The backend must copy what it keeps: the next Start overwrites these.
  * @since 0.1.0
  */
-typedef enum : uint16_t {
-  k_ra8_mdl_decode_arena_bytes =
-      (uint16_t)k_ra8_mdl_url_max + (uint16_t)k_ra8_mdl_user_agent_max +
-      (uint16_t)k_ra8_mdl_referer_max + (uint16_t)k_ra8_mdl_etag_max +
-      (uint16_t)k_ra8_mdl_http_date_max + 512U, /**< Per-dispatch arena size. */
-  k_ra8_mdl_decode_align = 8U, /**< Alignment every arena span is issued on. */
-} ra8_mdl_decode_arena_limit_t;
-
-/**
- * @struct ra8_mdl_decode_arena
- * @brief Linear allocator storage the generated decoder draws one dispatch from
- * @details A bump allocator with no free list: ::ra8_mdl_service_dispatch
- * clears the whole object before it decodes, so every dispatch starts from an
- * empty arena and nothing survives the call that produced it. It lives in
- * ::ra8_mdl_service rather than on the dispatch stack because a two-kilobyte
- * automatic object put ::ra8_mdl_service_dispatch over the 2048-byte
- * first-party frame budget on the Cortex-M85 (`-fstack-usage`); the service is
- * caller-owned and single-job, so the move changes no ownership or reentrancy
- * property.
- * @invariant `used` never exceeds `sizeof(bytes)`.
- * @invariant Every live decoded pointer refers into `bytes`.
- * @code
- * ra8_mdl_service_t service = {};
- * @endcode
- * @see ra8_mdl_service_dispatch
- * @since 0.1.0
- */
-typedef struct ra8_mdl_decode_arena {
-  alignas(k_ra8_mdl_decode_align) uint8_t bytes[k_ra8_mdl_decode_arena_bytes];
-  /**< Fixed protobuf decode storage. The allocator rounds every span it issues
-       up to ::k_ra8_mdl_decode_align, which only yields aligned spans if the
-       base is aligned too -- decoded messages carry 64-bit fields. */
-  size_t used; /**< Bytes already allocated. */
-} ra8_mdl_decode_arena_t;
+typedef struct ra8_mdl_start_text {
+  char url[k_ra8_mdl_url_max];                     /**< Source URL.                 */
+  char user_agent[k_ra8_mdl_user_agent_max];       /**< User-Agent or empty.        */
+  char referer[k_ra8_mdl_referer_max];             /**< Referer or empty.           */
+  char if_none_match[k_ra8_mdl_etag_max];          /**< If-None-Match or empty.     */
+  char if_modified_since[k_ra8_mdl_http_date_max]; /**< If-Modified-Since or empty. */
+} ra8_mdl_start_text_t;
 
 /**
  * @struct ra8_mdl_service
@@ -148,7 +126,7 @@ typedef struct ra8_mdl_service {
   uint64_t                  next_offset;   /**< Byte offset required from the next pull.   */
   mdl_format_t              active_format; /**< Artifact identity of the active job.       */
   bool                      active;        /**< Whether Next or Cancel is currently valid. */
-  ra8_mdl_decode_arena_t    arena;         /**< Decode storage for the running dispatch.   */
+  ra8_mdl_start_text_t      start_text;    /**< Text the backend request points into.      */
 } ra8_mdl_service_t;
 
 /**
