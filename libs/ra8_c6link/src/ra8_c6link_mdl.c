@@ -82,41 +82,30 @@ RA8_INTERNAL static mdl_chunk_view_t internal_mdl_view(const Ra8__Mdl__Chunk* ms
 
 /**
  * @brief Decode and validate one accepted-job response
- * @details Uses the link-owned bounded arena and updates the session only after
- * validation.
+ * @details Decodes in Zig and updates the session only after validation.
  * @param[in,out] take Response extraction context.
- * @param[in] data Packed generated Accepted response.
+ * @param[in] data Packed Accepted response.
+ * @param[in] len Valid bytes at @p data; the decoder reads no further.
  * @return Decode status.
  * @retval k_ra8_ok Session was activated with bounded correlation state.
  * @retval k_ra8_err_protocol_error Decode or field validation failed.
- * @pre @p take, its link/session, and @p data are non-null.
- * @pre The link arena is exclusively owned for this synchronous callback.
+ * @pre @p take, its session, and @p data are non-null.
  * @post Success initializes an active session.
  * @post Failure leaves the caller's session unchanged.
- * @note Not thread-safe for a shared c6link arena.
+ * @note Not thread-safe for a shared session.
  * @since 0.1.0
  */
-RA8_INTERNAL static ra8_err_t internal_mdl_take_accepted(mdl_take_ctx_t*            take,
-                                                         const ProtobufCBinaryData* data)
+RA8_INTERNAL static ra8_err_t
+internal_mdl_take_accepted(mdl_take_ctx_t* take, const uint8_t* data, size_t len)
 {
-  ProtobufCAllocator alloc = {};
-  priv_c6link_arena_bind(&alloc, take->link);
-  Ra8__Mdl__Accepted* msg = ra8__mdl__accepted__unpack(&alloc, data->len, data->data);
-  if (msg == nullptr) {
+  mdl_accepted_view_t view = {};
+  if (!priv_c6link_mdl_decode_accepted(data, len, &view)) {
     return k_ra8_err_protocol_error;
   }
-  const mdl_accepted_view_t view = {
-    .protocol_version = msg->protocol_version,
-    .job_id           = msg->job_id,
-    .max_chunk_bytes  = msg->max_chunk_bytes,
-    .format           = (uint32_t)msg->format,
-    .unknown_fields   = (uint32_t)msg->base.n_unknown_fields,
-  };
   const bool valid = priv_c6link_mdl_accepted_valid(&view, (uint32_t)take->requested_format);
   if (valid) {
     priv_c6link_mdl_session_activate(&view, take->session, (uint8_t)take->requested_format);
   }
-  ra8__mdl__accepted__free_unpacked(msg, &alloc);
   return valid ? k_ra8_ok : k_ra8_err_protocol_error;
 }
 
@@ -165,40 +154,31 @@ RA8_INTERNAL static ra8_err_t internal_mdl_take_chunk(mdl_take_ctx_t*           
 
 /**
  * @brief Decode a cancellation acknowledgement for the active job
- * @details Rejects acknowledgements for another job or protocol version.
+ * @details Decodes in Zig; rejects acknowledgements for another job or
+ * protocol version.
  * @param[in,out] take Active extraction/session context.
- * @param[in] data Packed generated Cancelled response.
+ * @param[in] data Packed Cancelled response.
  * @param[in] len Valid bytes at @p data; the decoder reads no further.
  * @return Decode status.
  * @retval k_ra8_ok Matching cancellation deactivated the session.
  * @retval k_ra8_err_protocol_error Decode or correlation validation failed.
  * @pre @p take and its active session are non-null.
- * @pre The link arena is exclusively owned for this callback.
  * @post Success makes the session inactive.
  * @post Failure preserves session activity for caller recovery.
- * @note Not thread-safe for a shared session or c6link arena.
+ * @note Not thread-safe for a shared session.
  * @since 0.1.0
  */
 RA8_INTERNAL static ra8_err_t
 internal_mdl_take_cancelled(mdl_take_ctx_t* take, const uint8_t* data, size_t len)
 {
-  ProtobufCAllocator alloc = {};
-  priv_c6link_arena_bind(&alloc, take->link);
-  Ra8__Mdl__Cancelled* msg = ra8__mdl__cancelled__unpack(&alloc, len, data);
-  if (msg == nullptr) {
+  mdl_cancelled_view_t view = {};
+  if (!priv_c6link_mdl_decode_cancelled(data, len, &view)) {
     return k_ra8_err_protocol_error;
   }
-  const mdl_cancelled_view_t view = {
-    .protocol_version = msg->protocol_version,
-    .job_id           = msg->job_id,
-    .status           = msg->status,
-    .unknown_fields   = (uint32_t)msg->base.n_unknown_fields,
-  };
   const bool valid = priv_c6link_mdl_cancelled_valid(&view, take->session);
   if (valid) {
     priv_c6link_mdl_session_deactivate(take->session);
   }
-  ra8__mdl__cancelled__free_unpacked(msg, &alloc);
   return valid ? k_ra8_ok : k_ra8_err_protocol_error;
 }
 
@@ -242,7 +222,7 @@ RA8_INTERNAL static ra8_err_t internal_mdl_take_response(void* ctx, const void* 
   }
   switch ((mdl_take_kind_t)selected) {
     case k_mdl_take_accepted:
-      return internal_mdl_take_accepted(take, &body->data);
+      return internal_mdl_take_accepted(take, body->data.data, body->data.len);
     case k_mdl_take_chunk:
       return internal_mdl_take_chunk(take, &body->data);
     case k_mdl_take_cancelled:
