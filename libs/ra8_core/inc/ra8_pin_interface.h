@@ -92,6 +92,27 @@ typedef struct {
   void* ctx;
 } ra8_pin_interface_t;
 
+/**
+ * @brief Return the interface that drives this part's own pins.
+ *
+ * @details
+ * The production vtable is defined in `libs/ra8_hal/src/gpio.c` as
+ * `g_ra8_gpio_pin_interface`. Naming that object at a call site puts
+ * the chip's GPIO block back into code that was supposed to be free
+ * of it, so consumers ask for it by this chip-agnostic name instead
+ * and a port for another part supplies its own definition. Callers
+ * that accept an injected interface should keep doing so; this is
+ * for the composition root that has to name a default.
+ *
+ * @return Pointer to the part's pin interface. Never NULL.
+ *
+ * @post The returned vtable has every row populated.
+ *
+ * @note Thread-safe: the returned object is immutable.
+ * @since 0.1.0
+ */
+const ra8_pin_interface_t* ra8_pin_interface_default(void);
+
 #ifdef __cplusplus
 }
 #endif
