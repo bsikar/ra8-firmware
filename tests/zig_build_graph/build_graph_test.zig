@@ -774,7 +774,13 @@ test "the NS image's own sources are exactly the AUX_SRCS the secure image exclu
     // image really does name the NS middleware variant rather than the secure
     // one, which does not carry the shims.
     try std.testing.expectEqualStrings("threadx_ns", ns_image_of.uses);
-    try std.testing.expectEqualStrings("ns_image.ld", ns_image_of.linker_script);
+    // No LINKER override and no XIP: this image's script is CONFIGURED from
+    // libs/ra8_board_ek_ra8d2/ld/ns_image.ld.in for the SRAM-run layout, so
+    // there is no path in the source tree to name. Both substituted values
+    // come off the board map, and the configured script carries no leftover
+    // @RA8_NS_*@ placeholder.
+    try std.testing.expect(ns_image_of.linker_script == null);
+    try std.testing.expect(!ns_image_of.xip);
     try std.testing.expectEqualStrings("-nostartfiles", ns_image_of.link_flags[0]);
 }
 test "OFF_TARGET_LIBS carries the define on its own units and on nothing else" {

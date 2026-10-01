@@ -44,6 +44,7 @@
 
 const std = @import("std");
 const middleware_mod = @import("middleware.zig");
+const ns_linker_script = @import("ns_linker_script.zig");
 
 /// One vendored tree the NS image compiles into itself, as the app's own
 /// `file(GLOB)` selects it.
@@ -98,14 +99,42 @@ pub const NsImage = struct {
     /// so in as many words. Without that call the NS image would compile with
     /// no `-Wall`/`-Werror` at all.
     stack_bytes: u32 = 2200,
-    /// The NS-image linker script, app-relative. It places this image at the
-    /// Non-Secure addresses; the Secure image's own script is a different file.
-    linker_script: []const u8,
+    /// `XIP`: run the read-only half from OSPI flash instead of copying it to
+    /// SRAM2. The one axis `ns_image.ld.in` substitutes on, so it is one bool
+    /// here rather than a second script.
+    xip: bool = false,
+    /// `LINKER`: an app-relative script that OVERRIDES the generated one, for a
+    /// layout the board template does not express.
+    ///
+    /// Null is the ordinary case and means the script is CONFIGURED from
+    /// `ns_image.ld.in` (ns_linker_script.zig), which is what
+    /// `ra8_add_ns_image.cmake:148-154` does when the caller names no `LINKER`.
+    /// It is optional rather than a path because the generated script has no
+    /// path in the source tree at all: CMake writes it into the app's binary
+    /// directory, and this build has no such directory.
+    linker_script: ?[]const u8 = null,
     /// Link options the target adds ahead of the script. `-nostartfiles`
     /// because the Secure boot copies `.data` and `ns_reset_handler` zeroes
     /// `.bss`, so there is no C runtime startup to link.
     link_flags: []const []const u8,
 };
+
+/// The RoT header translation unit every NS image carries, and the include
+/// directory it reads `ra8_ns_rot_header_t` from.
+///
+/// `ra8_add_ns_image.cmake:163-165` adds both to the target it creates rather
+/// than asking each caller for them: the record is a C object so that its magic
+/// comes from `k_ra8_tz_ns_rot_header_magic` and its layout from the struct,
+/// instead of `LONG()` words hand-copied into each script. Forgetting it is an
+/// undefined `g_ra8_ns_rot_header` at link, which is loud but pointless, so the
+/// graph adds it by construction too.
+///
+/// It sits outside `libs/ra8_tz_secure_boot/src` deliberately: `ra8_add_app()`
+/// globs that directory into the four apps that name the library for their
+/// SECURE image, and a `.ns_rot_header` section in a Secure ELF is an orphan
+/// its script never places.
+pub const rot_header_source = "libs/ra8_tz_secure_boot/ns/ra8_ns_rot_header.c";
+pub const rot_header_include_dir = "libs/ra8_tz_secure_boot/inc";
 
 /// `-fshort-enums -ffreestanding`, in the order the NS target declares them
 /// and in the position CMake puts them: before the warning profile, because
@@ -171,6 +200,9 @@ pub fn units(b: *std.Build, app_dir: []const u8, image: NsImage) []const Unit {
     for (image.app_sources) |source| {
         out.append(.{ .path = b.pathJoin(&.{ app_dir, source }) }) catch @panic("OOM");
     }
+    // Last argument of the same `add_executable`, so it follows the app's own
+    // sources and precedes every `target_sources` append below.
+    out.append(.{ .path = rot_header_source }) catch @panic("OOM");
     for (image.vendored) |set| collectVendored(b, set, &out);
     for (image.private_sources) |source| out.append(.{ .path = source }) catch @panic("OOM");
     return out.items;
@@ -221,6 +253,9 @@ pub fn includeDirs(
     mw: middleware_mod.Middleware,
 ) []const []const u8 {
     var out = std.ArrayList([]const u8).init(b.allocator);
+    // First: ra8_add_ns_image.cmake:165 makes this call before it forwards the
+    // caller's own INCLUDES.
+    out.append(rot_header_include_dir) catch @panic("OOM");
     for (image.app_include_dirs) |dir_path| {
         out.append(b.pathJoin(&.{ app_dir, dir_path })) catch @panic("OOM");
     }
@@ -315,6 +350,16 @@ fn objcopyTo(
     return run.addOutputFileArg(output_name);
 }
 
+/// The script this image links with: the app's own override when it names one,
+/// otherwise the board template configured for its layout.
+pub fn linkerScript(b: *std.Build, app_dir: []const u8, image: NsImage) std.Build.LazyPath {
+    if (image.linker_script) |named| {
+        return b.path(b.pathJoin(&.{ app_dir, named }));
+    }
+    const layout: ns_linker_script.Layout = if (image.xip) .xip else .sram_run;
+    return ns_linker_script.path(b, image.name, layout);
+}
+
 /// Compile, link and merge the Non-Secure image, and install what CMake's own
 /// build writes: the NS ELF, bin and map, the two intermediate hex files, and
 /// the merged hex that overwrites the app's.
@@ -344,7 +389,7 @@ pub fn add(b: *std.Build, arm_step: *std.Build.Step, ctx: Context) void {
     const link = b.addSystemCommand(&.{ctx.gcc});
     link.addArgs(ctx.global_link_flags);
     link.addArgs(image.link_flags);
-    link.addPrefixedFileArg("-T", b.path(b.pathJoin(&.{ ctx.app_dir, image.linker_script })));
+    link.addPrefixedFileArg("-T", linkerScript(b, ctx.app_dir, image));
     const map = link.addPrefixedOutputFileArg("-Wl,--Map=", b.fmt("{s}.map", .{image.name}));
     // The import library sits here, as a positional input between the map and
     // the middleware's --undefined options: CMake carries it in LINK_FLAGS,
