@@ -137,6 +137,14 @@ pub fn build(b: *std.Build) void {
     mdl_pull_test_module.addImport("implementation", implementation_module);
     const mdl_pull_tests = b.addTest(.{ .root_module = mdl_pull_test_module });
 
+    const mdl_envelope_test_module = b.createModule(.{
+        .root_source_file = b.path("tests/mdl_envelope_test.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    mdl_envelope_test_module.addImport("implementation", implementation_module);
+    const mdl_envelope_tests = b.addTest(.{ .root_module = mdl_envelope_test_module });
+
     const mdl_transfer_test_module = b.createModule(.{
         .root_source_file = b.path("tests/mdl_transfer_test.zig"),
         .target = target,
@@ -146,6 +154,7 @@ pub fn build(b: *std.Build) void {
     mdl_transfer_test_module.addImport("mdl_rpc_stub", rpc_stub_internal);
     const mdl_transfer_tests = b.addTest(.{ .root_module = mdl_transfer_test_module });
 
+    const run_mdl_envelope_tests = b.addRunArtifact(mdl_envelope_tests);
     const run_internal_tests = b.addRunArtifact(internal_tests);
     const run_frame_tests = b.addRunArtifact(frame_tests);
     const run_caps_tests = b.addRunArtifact(caps_tests);
@@ -167,6 +176,7 @@ pub fn build(b: *std.Build) void {
     test_step.dependOn(&run_mdl_chunk_tests.step);
     test_step.dependOn(&run_mdl_session_tests.step);
     test_step.dependOn(&run_mdl_pull_tests.step);
+    test_step.dependOn(&run_mdl_envelope_tests.step);
     test_step.dependOn(&run_mdl_transfer_tests.step);
     test_step.dependOn(&run_abi_tests.step);
 }
