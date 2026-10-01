@@ -664,70 +664,32 @@ substitutes.
 
 ---
 
-## The project board is the tracker -- keep it true
+## YouTrack is the tracker -- keep it true
 
-Every open issue lives on the board at
-<https://github.com/users/bsikar/projects/5> (project id
-`PVT_kwHOA-DryM4Beoy9`). The board is not decoration: it is how work is found,
-so an issue that is not on it, or whose lane is stale, is invisible.
+Work is tracked in a private YouTrack instance, never in GitHub issues or a
+GitHub project board (both are retired). Project RA8 is this repository and
+project EMU is ra8-emulator. Each project has one kanban board, columned by
+State: `To Do`, `In Progress`, `Peer Review`, `Completed`. New tickets land on
+the board automatically.
 
-**Open the `All - Status` view.** It is the kanban, columned by Status. The
-other views were inherited when the project was seeded by copying a public
-project (GitHub exposes no API for creating views) and several are inert.
-
-### Every issue carries four things
-
-| What | Where | Values |
-|---|---|---|
-| **Status** | board field | `Needs you` / `Ready` / `In flight` / `Bench-blocked` / `Landed` |
-| **Track** | board field | `C6 wireless` / `Bench + infra` / `CI health` / `Codebase` / `Product` |
-| **Priority** | board field + `priority:P0..P3` label | mirror each other |
-| **Labels** | the issue | one `priority:`, one `epic:`, plus `area:` / `effort:` / `needs-bench` etc. |
-
-Lane meanings that are easy to get wrong: **`Needs you`** is reserved for work
-blocked on the OWNER -- a decision only they can make, or a physical action at
-the bench. Do not park your own work there. **`Bench-blocked`** means it needs
-hardware, a bench lane, or parts that have not arrived (`needs-bench` /
-`needs-purchase`). **`Landed`** means on `dev` AND CI-green, not "pushed".
+Do not write the YouTrack host name into this repository, a commit message, or
+any pull request text. Refer to tickets by key only (`RA8-12`, `EMU-3`).
 
 ### What an agent must do
 
-1. **Starting work** -> set Status `In flight`. If no issue exists for what you
-   are doing, create one first; work that exists only in a chat log is work
-   nobody else can find.
-2. **Landing** -> set Status `Landed`, then close the issue citing the squash
-   SHA. `Closes #N` does NOT auto-close from `dev` (only the default branch
-   does), so close it by hand.
-3. **Blocked** -> move to `Bench-blocked` or `Needs you` and say in a comment
-   exactly what would unblock it. A blocked card with no stated blocker is a
-   dead card.
-4. **Discovering a defect while doing something else** -> file it, label it,
-   add it to the board. Do not bury it in a commit message or a report.
-5. **New issue** -> always add it to the board and set all three fields.
-
-### The commands
-
-The board API needs the `project` scope, which the DEV BOX TOKEN DOES NOT HAVE
--- run project calls from the Mac (`gh auth status` there shows `project`).
-Issue calls work from either.
-
-```sh
-# add an issue to the board
-gh api graphql -f query='mutation($p:ID!,$c:ID!){addProjectV2ItemById(
-  input:{projectId:$p,contentId:$c}){item{id}}}' \
-  -f p=PVT_kwHOA-DryM4Beoy9 \
-  -f c="$(gh api repos/bsikar/ra8-firmware/issues/<N> --jq .node_id)"
-
-# field ids: Status PVTSSF_lAHOA-DryM4Beoy9zhZBgHQ
-#            Track  PVTSSF_lAHOA-DryM4Beoy9zhZBgiA
-#            Prio   PVTSSF_lAHOA-DryM4Beoy9zhZBgiE
-# option ids: gh api graphql -f query='query($p:ID!){node(id:$p){
-#   ... on ProjectV2{fields(first:30){nodes{... on ProjectV2SingleSelectField{
-#   name options{id name}}}}}}}' -f p=PVT_kwHOA-DryM4Beoy9
-```
+1. **Starting work** -> move the ticket to `In Progress`. If no ticket exists
+   for what you are doing, create one first; work that exists only in a chat
+   log is work nobody else can find.
+2. **Review** -> move it to `Peer Review` while the change is waiting to land.
+3. **Landing** -> move it to `Completed` and comment with the commit SHA on
+   `dev` and the evidence that it is green.
+4. **Blocked** -> leave it where it is and say in a comment exactly what would
+   unblock it. A blocked ticket with no stated blocker is a dead ticket.
+5. **Discovering a defect while doing something else** -> file a ticket. Do not
+   bury it in a commit message or a report.
 
 Rule of thumb: if a human would have to read this conversation to know the
-state of the work, the board is wrong -- fix the board, not the conversation.
+state of the work, the ticket is wrong -- fix the ticket, not the conversation.
 
 ### `origin` carries exactly THREE branches
 
@@ -761,33 +723,22 @@ Use ONE push for several deletions: each `git push --delete` fires the pre-push
 hook, and a hook running the full suite per branch is how a cleanup turns into
 a ten-minute stall.
 
-### An issue is not closed by the work being done
-
-Closing is a separate act and `dev` is not the default branch, so `Closes #N`
-never fires. When work lands: set Status `Landed`, then close the issue by hand
-citing the squash SHA and the evidence.
-
-Audit this periodically rather than trusting it: every OPEN issue should be
-genuinely open, every CLOSED one should sit in `Landed`, and every open issue
-should be on the board with all three fields set. Drift here is silent -- an
-issue fixed weeks ago but still open sends someone to redo it.
-
 ---
 
 ## Documentation Policy: docs/ is for reference, not scratch
 
-Use GitHub issues for TODO lists, roadmaps, status boards, and follow-up work.
+Use YouTrack tickets for TODO lists, roadmaps, status boards, and follow-up work.
 Do NOT create markdown files in `docs/` for transient state.
 `docs/` is for architecture, policy, reference, and certification artifacts only.
 Anything that would otherwise be a `docs/SOMETHING_TODO.md` or
 `docs/SOMETHING_ROADMAP.md` or `docs/SOMETHING_TICKET.md` must be a
-GitHub issue instead.
+YouTrack ticket instead.
 
 Concretely, the following types of file MUST NOT be added to `docs/`:
 
 - Incident reports / brick stories / recovery transcripts (the fix
   belongs in a script under `scripts/`; the incident itself goes in
-  a GitHub issue closed by the script).
+  a YouTrack ticket closed by the script).
 - Renesas / vendor support-ticket evidence (the ticket is the
   authoritative record; the public gist preserves it).
 - One-off measurement notes / benchmark snapshots that are not

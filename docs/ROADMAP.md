@@ -38,8 +38,8 @@ file to keep the committed historical record internally consistent.
 
 For the at-a-glance driver-vs-FSP-parity matrix see
 `docs/DRIVER_STATUS.md`. For the residual hardware-blob gap list see
-`docs/VENDOR_BLOBS.md`. Post-baseline work is tracked only in GitHub issues
-and the project board, using the `roadmap` label where appropriate.
+`docs/VENDOR_BLOBS.md`. Post-baseline work is tracked only in YouTrack
+(project RA8).
 
 Historical marker meanings:
 
