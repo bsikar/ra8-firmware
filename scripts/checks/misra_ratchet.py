@@ -51,6 +51,7 @@ import subprocess
 import sys
 import tempfile
 from collections import Counter
+from collections.abc import Callable
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -293,7 +294,7 @@ ATTESTATION_CASES = 5
 """Number of both-direction attestation assertions `_selftest_attestation` makes."""
 
 
-def _mutate(path: Path, transform) -> str:
+def _mutate(path: Path, transform: Callable[[str], str]) -> str:
     """Apply `transform` to `path`'s text, write it back, and return the original."""
     original = path.read_text(encoding="utf-8")
     path.write_text(transform(original), encoding="utf-8")

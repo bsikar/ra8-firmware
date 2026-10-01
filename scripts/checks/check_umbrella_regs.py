@@ -115,9 +115,9 @@ def _audit(regs_dir: Path) -> tuple[int, list[tuple[str, str]]]:
             continue
         if name not in exported_set:
             findings.append(("missing-re-export", name))
-    for name in exported:
-        if not (regs_dir / name).is_file():
-            findings.append(("stale-re-export", name))
+    findings.extend(
+        ("stale-re-export", name) for name in exported if not (regs_dir / name).is_file()
+    )
     return len(present), sorted(set(findings))
 
 

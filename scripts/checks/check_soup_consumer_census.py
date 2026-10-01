@@ -55,7 +55,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from selftest_assert import expect, report  # noqa: E402
+from selftest_assert import expect, report
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 

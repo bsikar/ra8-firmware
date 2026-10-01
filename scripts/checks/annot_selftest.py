@@ -796,18 +796,18 @@ def _check_rule_coverage(tmp: pathlib.Path) -> list[str]:
     modules = sorted(fake.glob("annot_*.py"))
     found = check_rule_coverage(frozenset(), modules=modules)
     reported = {key for key in ANNOTATION_PREFIXES for v in found if f"'{key}'" in v.message}
-    for key in ("ra8_no_recursion", "ra8_owns_resource"):
-        if key in reported:
-            failures.append(
-                f"rule coverage reported '{key}', which the fixture names as a "
-                f"string literal, so a real rule reading a key would be flagged"
-            )
-    for key in ("ra8_reviewed_by", "ra8_validates"):
-        if key not in reported:
-            failures.append(
-                f"rule coverage accepted '{key}' on a comment/docstring mention "
-                f"alone, which is the exact shape of the defect it guards"
-            )
+    failures.extend(
+        f"rule coverage reported '{key}', which the fixture names as a "
+        f"string literal, so a real rule reading a key would be flagged"
+        for key in ("ra8_no_recursion", "ra8_owns_resource")
+        if key in reported
+    )
+    failures.extend(
+        f"rule coverage accepted '{key}' on a comment/docstring mention "
+        f"alone, which is the exact shape of the defect it guards"
+        for key in ("ra8_reviewed_by", "ra8_validates")
+        if key not in reported
+    )
     if "ra8_isr_safe" in reported:
         failures.append(
             "rule coverage reported 'ra8_isr_safe' despite its MARKER_ONLY_RULES "

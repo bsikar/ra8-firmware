@@ -303,7 +303,8 @@ def in_scope(rel: str) -> bool:
 
 def scoped_files(root: Path) -> list[str]:
     """Every in-scope git-tracked file, repo-relative and sorted."""
-    return sorted(rel for rel in repo_files(root=root, caller="check_ci_image_single_builder.py") if in_scope(rel))
+    rels = repo_files(root=root, caller="check_ci_image_single_builder.py")
+    return sorted(rel for rel in rels if in_scope(rel))
 
 
 def find_builders(root: Path, rels: list[str]) -> dict[str, list[str]]:

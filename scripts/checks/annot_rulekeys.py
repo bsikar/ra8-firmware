@@ -190,9 +190,12 @@ def _string_literals(source: str) -> list[str]:
         if not body:
             continue
         first = body[0]
-        if isinstance(first, ast.Expr) and isinstance(first.value, ast.Constant):
-            if isinstance(first.value.value, str):
-                doc_nodes.add(id(first.value))
+        if (
+            isinstance(first, ast.Expr)
+            and isinstance(first.value, ast.Constant)
+            and isinstance(first.value.value, str)
+        ):
+            doc_nodes.add(id(first.value))
     return [
         node.value
         for node in ast.walk(tree)
