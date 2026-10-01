@@ -116,13 +116,11 @@ import pathlib
 import re
 import subprocess
 import sys
-import tempfile
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1] / "dev"))
 
 from git_environment import isolated_git_environment, trusted_git_executable
-from linker_script_fixtures import MALFORMED, OFS_BAD, OFS_GOOD, TRICKY
 
 SYMBOL_PREFIX = "g_ra8_ls_"
 EXCLUDED_PREFIXES = ("libs/third_party/", "apps/shared_libs/third_party/", "libs/ra8_fonts/")
@@ -835,7 +833,7 @@ def selftest() -> int:
     would be a cycle, and the plain scan would pay to build fixtures it never
     runs.
     """
-    from linker_script_selftests import run_selftests
+    from linker_script_selftests import run_selftests  # noqa: PLC0415 -- import cycle
 
     with isolated_git_environment():
         return run_selftests()
