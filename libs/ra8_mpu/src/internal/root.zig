@@ -170,7 +170,7 @@ pub fn dregionOf(type_word: u32) u8 {
 }
 
 // =============================================================================
-// Canonical boot memory-attribute map (issue #576)
+// Canonical boot memory-attribute map
 // =============================================================================
 
 /// Regions in the canonical boot map (`k_ra8_mpu_boot_region_count`).

@@ -7,7 +7,7 @@
  *
  * @details
  * This is the firmware that runs on the RA8D2's *primary* core, the Cortex-M85,
- * out of reset. It is the canonical "target the M33" template (issue #152): the
+ * out of reset. It is the canonical "target the M33" template: the
  * M85 does the minimum -- release the secondary Cortex-M33 and then sleep -- and
  * the M33 owns the work. Here the work is blinking LED1, but any portable app
  * drops into `cpu1_main.c` the same way.

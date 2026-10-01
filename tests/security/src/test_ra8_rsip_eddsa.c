@@ -9,7 +9,7 @@
  * fix two defects in ``ra8_rsip_asym.c``:
  *
  * 1. Ed25519 was being mis-routed through the ECDSA-sign opcode, which
- *    cannot produce a valid RFC 8032 PureEdDSA signature (issue #181).
+ *    cannot produce a valid RFC 8032 PureEdDSA signature.
  *    The RSIP-E50D on this silicon exposes no documented Ed25519 register
  *    interface, so ``ra8_rsip_eddsa_sign`` / ``ra8_rsip_eddsa_verify`` are
  *    FAIL-CLOSED in a production build (return ``k_ra8_err_not_supported``)

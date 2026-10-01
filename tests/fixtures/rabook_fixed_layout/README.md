@@ -1,4 +1,4 @@
-# Fixed-layout / image-only EPUB3 fixture (issue #196)
+# Fixed-layout / image-only EPUB3 fixture
 
 An unzipped, redistributable, fully-synthetic fixed-layout EPUB3 -- a comic /
 manga "CBZ-in-EPUB-clothing": three pre-paginated spine documents, each a

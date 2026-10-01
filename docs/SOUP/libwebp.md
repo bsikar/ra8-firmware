@@ -123,7 +123,7 @@ module that owns the vendored-source recipe, called from
 `tests/cmake/core_hal.cmake` for the host tests. (It lived inline in
 `tests/CMakeLists.txt` and `cmake/ra8_add_app.cmake` until `1171d656d`; neither
 file mentions WebP now.) Unlike the narrow `-Wno-<class>` set used for
-`stb` / `miniz` (issue #179), per-TU warning tuning is not tractable across
+`stb` / `miniz`, per-TU warning tuning is not tractable across
 libwebp's 60+ decoder + per-arch SIMD-stub TUs; the libFuzzer/ASan/UBSan
 harness is the memory-safety net instead. `-fno-strict-aliasing` matches the
 project's SOUP-decoder policy (these codecs type-pun through byte buffers).

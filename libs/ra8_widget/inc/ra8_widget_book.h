@@ -1,6 +1,6 @@
 /**
  * @file ra8_widget_book.h
- * @brief Book-card + book-grid leaf widget for the ra8_widget tree (#145 Phase 2).
+ * @brief Book-card + book-grid leaf widget for the ra8_widget tree.
  * @ingroup grp_ereader
  *
  * @details

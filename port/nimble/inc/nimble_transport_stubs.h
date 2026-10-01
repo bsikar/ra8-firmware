@@ -29,7 +29,7 @@
  * Signatures here are copied from the upstream headers named above and
  * must stay identical to them.
  *
- * @warning UNVALIDATED SCAFFOLD (issue #286). Every symbol declared here
+ * @warning UNVALIDATED SCAFFOLD. Every symbol declared here
  * is a link-only no-op, not a working BLE transport.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie

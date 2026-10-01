@@ -30,7 +30,7 @@
  *
  * @note **Headless-emulator status.** ``tools/ra8_emulator`` models the DRW engine
  * as INERT (``board_periph_drw.c``), faithful to real silicon where the D/AVE 2D
- * engine never rasterizes (issue #247): register writes are accepted, STATUS
+ * engine never rasterizes: register writes are accepted, STATUS
  * reads idle so ``ra8_drw_wait_idle`` returns, HWREVISION reads 0, and the
  * ORIGIN render trigger synthesises no pixel. The framebuffer therefore stays
  * zero, so the FNV-1a-32 hash is ``0x76EFDDC5`` -- the SAME value a real board

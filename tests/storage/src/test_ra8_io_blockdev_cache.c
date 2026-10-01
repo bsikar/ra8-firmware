@@ -1,6 +1,6 @@
 /**
  * @file test_ra8_io_blockdev_cache.c
- * @brief Unit tests for the ra8_io caching block device (issue #160).
+ * @brief Unit tests for the ra8_io caching block device.
  *
  * @details
  * Wraps a RAM block device with a 2-slot LRU cache and checks: read hit vs miss

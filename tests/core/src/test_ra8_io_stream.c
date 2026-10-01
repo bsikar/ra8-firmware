@@ -1,6 +1,6 @@
 /**
  * @file test_ra8_io_stream.c
- * @brief Unit tests for the ra8_io targetable byte-stream layer (issue #157).
+ * @brief Unit tests for the ra8_io targetable byte-stream layer.
  *
  * @details
  * Covers the RAM sink, the no-varargs formatted helpers, the block-device sink

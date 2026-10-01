@@ -1,6 +1,6 @@
 /**
  * @file examples/ek_ra8d2/hw_validated/hil/widget_chrome_demo/src/main.c
- * @brief Concrete ereader chrome widgets composited on the live GLCDC panel (#145 Phase 2).
+ * @brief Concrete ereader chrome widgets composited on the live GLCDC panel.
  *
  * @details
  * The sibling `widget_compose_demo` proves the ::ra8_widget_panel compositor

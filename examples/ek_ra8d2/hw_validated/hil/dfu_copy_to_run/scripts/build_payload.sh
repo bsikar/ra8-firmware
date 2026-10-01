@@ -6,7 +6,7 @@
 #
 # Produces ONE position-fixed image (linked at the SRAM run base
 # k_ra8_dfu_run_base = 0x22020000) that a copy-to-run launcher copies to SRAM and
-# runs, so the same .bin runs wherever it was staged (issue #97). Integer-only
+# runs, so the same .bin runs wherever it was staged. Integer-only
 # and freestanding, so -mfloat-abi=soft links with no libc/libm.
 #
 # Also (re)generates inc/payload_image.h -- the committed C-array form of

@@ -7,9 +7,9 @@
  * DIFFERENT bytes: two RGB->gray8 luma transforms (PIL ITU-R 601-2 vs stb_image's
  * integer `stbi__compute_y`) and two gray8->nibble quantisers (PIL palette-snap on
  * the host default path vs the device kernel `(v + 8) / 17`). Since the default is
- * the no-downscale path (issue #210), the divergent path was the one that ran, so
+ * the no-downscale path, the divergent path was the one that ran, so
  * a colour raster was not round-trip-verifiable byte-identical -- breaking the
- * golden-render regression model (issue #337).
+ * golden-render regression model.
  *
  * The fix routes BOTH host and device through one luma and one quantiser: the host
  * `tools/epub_compile` decodes with the SAME integer luma stb_image applies
@@ -91,7 +91,7 @@ RA8_INTERNAL static void internal_check(bool cond, const char* name)
  *          encodes the resulting gray8 with the firmware gray4 kernel, and diffs
  *          the packed bytes against the host golden the desktop compiler emits for
  *          the same PNG on its default no-downscale path. A match proves the luma
- *          and the quantiser are one algorithm host-vs-device (issue #337).
+ *          and the quantiser are one algorithm host-vs-device.
  *
  * @par MC/DC:
  * No compound boolean decision is under test here -- the assertions are

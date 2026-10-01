@@ -78,10 +78,10 @@
  * -mfpu to disagree with. */
 #ifdef __ARM_FP
 #if defined(RA8_FPU_DP_ENABLED) && (RA8_FPU_DP_SELECTED == 0)
-#error "RA8_FPU_DP_ENABLED is set but -mfpu selected no double-precision FPU (see #225)"
+#error "RA8_FPU_DP_ENABLED is set but -mfpu selected no double-precision FPU"
 #endif
 #if !defined(RA8_FPU_DP_ENABLED) && (RA8_FPU_DP_SELECTED == 1)
-#error "-mfpu selected a double-precision FPU without RA8P1_DP_FPU=ON (see #225)"
+#error "-mfpu selected a double-precision FPU without RA8P1_DP_FPU=ON"
 #endif
 #endif
 

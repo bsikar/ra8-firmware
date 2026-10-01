@@ -119,7 +119,7 @@ typedef enum : uint8_t {
  * @brief Transport-sizing constants used by ``ra8_tls_mss_clamp``.
  *
  * @details
- * The RA8D2 ESWM has a documented large-frame egress defect (issue #21):
+ * The RA8D2 ESWM has a documented large-frame egress defect:
  * frames over roughly half a KiB corrupt on the wire, so the whole
  * networking stack is pinned to a 128-byte MTU. A TLS client that dials
  * over TCP must therefore clamp its TCP Maximum Segment Size (MSS) so

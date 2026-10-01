@@ -2,7 +2,7 @@
 # Copyright (c) 2026 Brighton Sikarskie
 #
 # The EK-RA8D2 Non-Secure memory map: ONE definition of the addresses that were
-# repeated across two hand-maintained linker scripts (#759 item 2).
+# repeated across two hand-maintained linker scripts.
 #
 # Two consumers, one definition:
 #   * ra8_add_ns_image() configures ns_image.ld.in into the build tree with

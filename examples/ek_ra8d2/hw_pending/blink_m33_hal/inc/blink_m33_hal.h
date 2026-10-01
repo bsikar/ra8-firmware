@@ -11,7 +11,7 @@
  * firmware runs, not a re-implementation that could drift from it.
  *
  * LED1 (BLUE) is `k_ra8_pin_led1` = P600 = PORT6 pin 0; the step drives it through
- * the CPU1-safe HAL primitive `ra8_pcntr_set_output()` (issue #580) -- no raw
+ * the CPU1-safe HAL primitive `ra8_pcntr_set_output()` -- no raw
  * MMIO, no `ra8_hal` object linked.
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT

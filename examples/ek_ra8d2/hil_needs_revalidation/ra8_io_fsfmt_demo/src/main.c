@@ -1,6 +1,6 @@
 /**
  * @file examples/ek_ra8d2/hil_needs_revalidation/ra8_io_fsfmt_demo/src/main.c
- * @brief ra8_io pluggable filesystem-format registry demo (Phase 4, #159).
+ * @brief ra8_io pluggable filesystem-format registry demo.
  *
  * @par Tag
  * [Ring 6 / APP] {World: S}

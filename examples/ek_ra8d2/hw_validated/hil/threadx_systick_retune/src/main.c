@@ -1,6 +1,6 @@
 /**
  * @file examples/ek_ra8d2/hw_validated/hil/threadx_systick_retune/src/main.c
- * @brief Eclipse ThreadX SysTick retune-to-live-CPUCLK0 demo (issue #287)
+ * @brief Eclipse ThreadX SysTick retune-to-live-CPUCLK0 demo
  *
  * @par Tag
  * [Ring 6 / APP] {World: S}
@@ -234,7 +234,7 @@ void tx_application_define(void* first_unused_memory)
    * app hands it the board's bound handle first (issue RA8FW-299). */
   const ra8_err_t bind_err = ra8_threadx_clock_bind(ra8_board_clock());
 
-  /* Reprogram SysTick.LOAD from the live CPUCLK0 (issue #287). */
+  /* Reprogram SysTick.LOAD from the live CPUCLK0. */
   const ra8_err_t retune_err =
     (bind_err == k_ra8_ok) ? ra8_threadx_systick_retune() : bind_err;
 

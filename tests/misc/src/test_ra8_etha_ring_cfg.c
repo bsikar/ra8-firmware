@@ -1,6 +1,6 @@
 /**
  * @file test_ra8_etha_ring_cfg.c
- * @brief Unit tests for ::ra8_etha_descriptor_ring_init_cfg (issue #1028).
+ * @brief Unit tests for ::ra8_etha_descriptor_ring_init_cfg.
  *
  * @par Tag
  * [Ring 3 / Test] {World: NS}

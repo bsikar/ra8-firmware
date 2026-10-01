@@ -1,6 +1,6 @@
 /**
  * @file ra8_host_asm_stub.c
- * @brief Host-safe definitions of the bare CPU intrinsics (issue #293)
+ * @brief Host-safe definitions of the bare CPU intrinsics
  *
  * @par Tag
  * [Ring 6 / APP] {World: NS}

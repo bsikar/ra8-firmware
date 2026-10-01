@@ -175,7 +175,7 @@ typedef enum : uint8_t {
  * @post On k_ra8_err_invalid_arg no register was written.
  *
  * @note Not thread-safe; call from a single-threaded init context.
- * @note eth is HW-blocked on silicon (issue #21); this path is host-tested
+ * @note eth is HW-blocked on silicon; this path is host-tested
  *       and sim-modeled, not hardware-validated.
  *
  * @par Example:

@@ -1,6 +1,6 @@
 /**
  * @file examples/ek_ra8d2/hil_needs_revalidation/ra8_io_cache_demo/src/main.c
- * @brief ra8_io caching block device demo (Phase 5, #160).
+ * @brief ra8_io caching block device demo.
  *
  * @par Tag
  * [Ring 6 / APP] {World: S}
@@ -10,11 +10,11 @@
  * any backend so repeated reads of the same blocks (filesystem metadata, a
  * re-read page) skip the slow medium. The cache sits between the filesystem/VFS
  * and the media:
- *   1. Build a RAM block device as the slow backend (Phase 1, #156).
+ *   1. Build a RAM block device as the slow backend.
  *   2. Wrap it with `ra8_io_blockdev_cache_init` over a fixed set of cached
- *      sectors (Phase 5, #160).
+ *      sectors.
  *   3. Bridge the *cached* device to ra8_fs, format/mount a FAT12 volume, and
- *      register it in the VFS as `"ram"` (Phase 3, #158) -- so every FAT access
+ *      register it in the VFS as `"ram"` -- so every FAT access
  *      now flows through the cache.
  *   4. Write a file, then read it back repeatedly through `"ram:/HELLO.TXT"`.
  *      The first pass fills the cache; the re-reads touch the same metadata and

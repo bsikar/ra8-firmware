@@ -236,7 +236,7 @@ macro(ra8_add_app)
     endif()
   endforeach()
 
-  # ---- insecure placeholder-crypto opt-in (issue #180) ------------------
+  # ---- insecure placeholder-crypto opt-in ------------------
   # Several secure-side TUs (libs/ra8_secure_app/src/{secure_trng,key_import,
   # key_vault}.c
   # and libs/ra8_hal/src/ra8_rsip_key_injection.c) ship an INSECURE placeholder

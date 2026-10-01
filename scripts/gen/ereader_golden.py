@@ -3,7 +3,7 @@
 # Copyright (c) 2026 Brighton Sikarskie
 """ereader_golden.py -- golden-image regression gate for the e-reader chrome.
 
-The ``ereader_ui`` example (issue #80) paints its Library and Reading screens
+The ``ereader_ui`` example paints its Library and Reading screens
 into the GLCDC framebuffer. ``tools/ra8_emulator`` renders that firmware
 framebuffer deterministically, so we can pin the chrome with checked-in golden
 images and fail CI (or the local ``just apps::emulator::golden`` recipe) when an unrelated

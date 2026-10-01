@@ -770,7 +770,7 @@ def _check_rule_coverage(tmp: pathlib.Path) -> list[str]:
     ignored while the gate prints success. ``ra8_isr_safe`` was in that
     state across 70 annotated sites while ``ra8_attributes.h`` promised a
     call-graph walk and the RULE_CHECKS comment listed it among the keys
-    other rules read (issue #1247).
+    other rules read.
 
     Asserting only that the real tree is clean would pass just as happily
     with the check defanged, so the mechanism is driven over a synthetic

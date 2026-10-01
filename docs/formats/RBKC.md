@@ -271,7 +271,7 @@ clamp is an opt-in compile knob -- at a depth chosen by the descriptor's
   is destructive -- the discarded tones cannot be recovered.
 - **`gray8`** (1 byte/pixel): the **full-resolution, continuous-tone** source, kept
   verbatim. This is the representation the compiler retains for any image that may
-  be zoomed (issue #476), because both the tap-to-zoom loupe and the
+  be zoomed, because both the tap-to-zoom loupe and the
   blue-noise e-ink dither need the 256-level source that `gray4` throws away.
 
 **Why full-resolution gray8 and not an embedded tiled JOF atlas.** The live-EPUB

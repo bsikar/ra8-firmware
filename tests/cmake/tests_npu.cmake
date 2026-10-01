@@ -13,7 +13,7 @@
 # to the driver and to the fragments included after it.
 
 # ---------------------------------------------------------------------------
-# test_ra8_npu (issue #221): Arm Ethos-U55 NPU command/queue driver foundation.
+# test_ra8_npu: Arm Ethos-U55 NPU command/queue driver foundation.
 # ra8_npu.c is device-gated behind RA8_HAS_NPU, so it is recompiled here with
 # -DRA8_DEVICE_RA8P1 (ra8_device.h then defines RA8_HAS_NPU) to make the driver body
 # live. It links ra8_core_hal for ra8_mstp / ra8_log / ra8_err and the host MMIO
@@ -41,7 +41,7 @@ endif()
 add_test(NAME test_ra8_npu COMMAND test_ra8_npu)
 
 # ---------------------------------------------------------------------------
-# test_ra8_ethosu_shim (issue #228): Arm ethos-u-core-driver C API adapter over
+# test_ra8_ethosu_shim: Arm ethos-u-core-driver C API adapter over
 # ra8_npu. Both ra8_ethosu_shim.c and ra8_npu.c are device-gated behind RA8_HAS_NPU,
 # so both are recompiled here with -DRA8_DEVICE_RA8P1 (ra8_device.h then defines
 # RA8_HAS_NPU) to make the adapter + driver bodies live. It links ra8_core_hal for
@@ -71,7 +71,7 @@ endif()
 add_test(NAME test_ra8_ethosu_shim COMMAND test_ra8_ethosu_shim)
 
 # ---------------------------------------------------------------------------
-# test_ra8_npu_loader (issue #227): the .npub Vela-blob loader. ra8_npu_loader.c
+# test_ra8_npu_loader: the .npub Vela-blob loader. ra8_npu_loader.c
 # and ra8_npu.c are device-gated behind RA8_HAS_NPU, so both are recompiled here
 # with -DRA8_DEVICE_RA8P1 (ra8_device.h then defines RA8_HAS_NPU) to make the
 # loader + driver bodies live. It includes the committed golden model header
@@ -105,7 +105,7 @@ endif()
 add_test(NAME test_ra8_npu_loader COMMAND test_ra8_npu_loader)
 
 # ---------------------------------------------------------------------------
-# test_ra8_tflm_op_subset (issue #228): the vendored TFLite-micro operator
+# test_ra8_tflm_op_subset: the vendored TFLite-micro operator
 # subset and the first-party Ethos-U custom-op registration seam.
 #
 # The only C++ host test in the suite, because the thing under test is a C++
@@ -205,7 +205,7 @@ else()
   endif()
   add_test(NAME test_ra8_tflm_op_subset COMMAND test_ra8_tflm_op_subset)
   # -------------------------------------------------------------------------
-  # test_ra8_tflm_interpreter (issue #228): the model-driven MicroInterpreter
+  # test_ra8_tflm_interpreter: the model-driven MicroInterpreter
   # path, which had never executed anywhere in this tree.
   #
   # test_ra8_tflm_op_subset above pins which operators RESOLVE. This one builds

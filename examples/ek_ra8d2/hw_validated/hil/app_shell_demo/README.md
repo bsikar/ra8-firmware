@@ -5,7 +5,7 @@ SPDX-License-Identifier: MIT
 
 # app_shell_demo
 
-The chrome / launcher increment of the `ra8_app` framework (issue #146). It
+The chrome / launcher increment of the `ra8_app` framework. It
 builds on `app_launch_demo` by adding what a home screen actually needs: a
 launcher that enumerates the registry and starts an app **by its position**,
 with back unwinding the navigation trail. Still no display and no widgets.

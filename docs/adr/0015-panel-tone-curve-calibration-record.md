@@ -176,7 +176,7 @@ asked to take on trust.
 
 1. Per-unit or per-panel-model. Step 4 of the bench procedure decides it,
    and a per-model answer retires decisions 1, 5 and 6 entirely.
-2. Where a rewritable per-device record actually lives (issue #315).
+2. Where a rewritable per-device record actually lives.
 3. Temperature: one curve, or a small family plus a compensation term.
    Nothing in this record assumes either.
 4. Ageing: whether the response drifts enough over the life of a panel to

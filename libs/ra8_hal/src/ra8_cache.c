@@ -16,7 +16,7 @@
  * used by ::ra8_cache_dcache_disable -- mirroring the CMSIS `SCB_*DCache` idioms.
  * The enable/disable primitives read-modify-write SCB.CCR (bits IC / DC) and the
  * I-cache path writes ICIALLU, encoding the exact sequences the boot
- * `system_init.c` copies previously hand-rolled (issue #577).
+ * `system_init.c` copies previously hand-rolled.
  *
  * These are Arm-architecture registers, so the inline comments reference the
  * Arm v8-M Architecture Reference Manual (the "Arm v8-M ARM") rather than the

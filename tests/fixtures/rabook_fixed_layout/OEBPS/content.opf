@@ -21,7 +21,7 @@
     <item id="p3" href="text/page3.xhtml" media-type="application/xhtml+xml"/>
     <!-- Cover declared the modern EPUB3 way ONLY (properties="cover-image"), with
          no legacy <meta name="cover">: this is how fixed-layout comics ship, and
-         it is the case the desktop compiler used to miss (issue #196). -->
+         it is the case the desktop compiler used to miss. -->
     <item id="img1" href="images/page1.png" media-type="image/png" properties="cover-image"/>
     <item id="img2" href="images/page2.png" media-type="image/png"/>
     <item id="img3" href="images/page3.png" media-type="image/png"/>

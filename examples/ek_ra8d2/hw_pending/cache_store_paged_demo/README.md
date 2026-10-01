@@ -1,6 +1,6 @@
 # cache_store_paged_demo
 
-Maintained consumer for `libs/ra8_cache_store` (issue #937): the persistent
+Maintained consumer for `libs/ra8_cache_store`: the persistent
 key(CRC-32) -> blob cache had no application driving it on `dev`. Its only
 caller lived under `examples/ek_ra8d2/hil_needs_revalidation/`, and
 `threadx_levelx_demo` links the lib without ever calling it.

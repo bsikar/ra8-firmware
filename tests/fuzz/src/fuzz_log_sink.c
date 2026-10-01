@@ -7,7 +7,7 @@
  * emits through the Cortex-M85 ITM stimulus registers at 0xE0000000. The
  * host unit-test build backs that window with anonymous RAM via
  * `tests/mocks/src/ra8_fake_mmap.c`, so those reads are harmless there. The
- * libFuzzer harnesses (issue #193) run under AddressSanitizer, where that
+ * libFuzzer harnesses run under AddressSanitizer, where that
  * address is inside ASan's reserved shadow gap and cannot be mapped: the
  * pure-computation harnesses omit `ra8_fake_mmap.c` entirely, and the two
  * MMIO harnesses that keep it skip exactly the shadow-gap region. An

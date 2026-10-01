@@ -74,7 +74,7 @@ NPU driver and Ethos-U adapter. On-silicon NPU clock, interrupt and
 Vela-compiled-model validation remain tracked by issue RA8FW-261 because they
 require an RA8P1 evaluation kit.
 
-## Correction: the DP-FPU is not an RA8P1 delta (issue #225)
+## Correction: the DP-FPU is not an RA8P1 delta
 
 Delta 3 above used to read "M85 double-precision-capable FPU (datasheet) vs FSP
 CMSIS `__FPU_DP=0`", resolved in the datasheet's favour, and
@@ -123,7 +123,7 @@ silicon executes `.f64` at all. That measurement is RA8FW-261's, on an RA8P1 EK.
 (`k_ra8_adc_res_{16,14,12,10}bit` mapped to `ADDOPCRCn.ADPRC[1:0]`, HUM Ch 53.2.3.4
 p 3339) and is untouched here.
 
-## Correction: no legacy ETHERC/EDMAC MAC on the RA8P1 (issue #224)
+## Correction: no legacy ETHERC/EDMAC MAC on the RA8P1
 
 An earlier revision of this reference (and roadmap issues RA8FW-258 / #224) claimed the
 RA8P1 adds a classic single-port ETHERC/EDMAC Ethernet MAC at `0x40354000`, in
@@ -150,7 +150,7 @@ ra8_emulator ETHERC model to add. Because the "MAC" that motivated the "#21 larg
 frame TX defect is a different IP" angle does not exist, that angle is moot: the
 RA8P1's clean-vs-defect Ethernet story is identical to the RA8D2's R-Switch.
 
-## Correction: the RA8P1 DOES have OFS3 (issue #516)
+## Correction: the RA8P1 DOES have OFS3
 
 An earlier revision of this reference claimed `**RA8P1 has no OFS3/WDT1 option
 register**`, and issue #223 acted on it -- deleting the OFS3 / OFS3_SEC /

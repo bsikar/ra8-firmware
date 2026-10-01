@@ -72,7 +72,7 @@ endif()
 #
 # ra8_fake_mmap.c is excluded from that library because its load-time
 # MAP_FIXED constructor maps 0xE0000000, which lands in ASan's shadow gap
-# and aborts the process before main() (issue #193). The pure-computation
+# and aborts the process before main(). The pure-computation
 # harnesses -- parsers/codecs driven purely by their input buffer or by
 # injected dependencies -- never touch peripheral MMIO, so they simply omit
 # it. Only the harnesses in RA8_FUZZ_MMIO_TARGETS dereference real

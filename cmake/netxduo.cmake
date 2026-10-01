@@ -20,7 +20,7 @@
 # engine. The RSIP-E50D symmetric-cipher and hash blocks are not
 # backed by a documented register interface on this silicon (HUM Ch 52
 # is a six-page feature overview with no command-register map), so the
-# RSIP HAL fail-closes in production (issues #214 / #215). NetX Crypto
+# RSIP HAL fail-closes in production. NetX Crypto
 # therefore uses its own built-in software AES / SHA-256 directly, and
 # the shipping crypto path is tf-psa-crypto on the M85. There is no
 # `--wrap` redirection and no ALT shim: the upstream crypto methods are

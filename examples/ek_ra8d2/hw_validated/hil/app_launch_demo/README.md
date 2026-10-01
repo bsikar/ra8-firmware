@@ -6,7 +6,7 @@ SPDX-License-Identifier: MIT
 # app_launch_demo
 
 Exercises the `ra8_app` registry, the per-app lifecycle vtable and the
-navigation back-stack end to end on the real Cortex-M85 image (issue #146).
+navigation back-stack end to end on the real Cortex-M85 image.
 There is deliberately no display and no widgets, so the launch path is
 observable from the log alone.
 

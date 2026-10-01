@@ -216,7 +216,7 @@ REMOTE
   scp -q "$STRIPPED_FW" "${PI_HOST}:${REMOTE_FW}"
 
   # ---- 3. Flash, then read UART for the expected string ------------------------
-  # ORDERING (issue #390): the UART reader MUST be live BEFORE the core is
+  # ORDERING: the UART reader MUST be live BEFORE the core is
   # released from reset. A "print-once" app emits its banner within a few
   # milliseconds of "g" (go) and then parks; if the tty is opened only AFTER
   # JLinkExe returns, those bytes are already gone and the app reads as a silent

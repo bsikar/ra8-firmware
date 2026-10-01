@@ -74,7 +74,7 @@ ARG UNICORN_SHA256=ea8863f095a0136388694e5a6063afd9bb7650e30243dd6251af59c5ce560
 
 # libcapstone-dev is the Capstone header that tools/ra8_emulator includes (for
 # disassembly only -- NOT the decode variable). `just ci` lints
-# tools/ (issue #296), so the tidy gate needs that header present inside the
+# tools/, so the tidy gate needs that header present inside the
 # container even though the tidy pass builds neither tool. A missing header does
 # not fail loudly -- clang-tidy emits clang-diagnostic-error and never lints
 # that TU -- so keep this list in step with the runner install step in

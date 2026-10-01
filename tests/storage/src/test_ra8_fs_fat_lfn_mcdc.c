@@ -3,7 +3,7 @@
  * @brief MC/DC vectors for the compound decisions in ra8_fs_fat_lfn.c.
  *
  * @details
- * Dedicated N+1 independent-influence vector sets (issue #426) for the
+ * Dedicated N+1 independent-influence vector sets for the
  * directory / long-name helpers:
  *
  *   - `priv_lfn_name_for`        -- the "no reassembled name yet" guard, driven

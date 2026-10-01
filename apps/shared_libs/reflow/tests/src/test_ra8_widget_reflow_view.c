@@ -1,6 +1,6 @@
 /**
  * @file test_ra8_widget_reflow_view.c
- * @brief Unit tests for the ra8_widget reflow-view leaf (#145 Phase 2).
+ * @brief Unit tests for the ra8_widget reflow-view leaf.
  *
  * @details
  * The reflow view owns the reading-body paging state (current page, page count,

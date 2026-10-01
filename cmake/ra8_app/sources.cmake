@@ -120,7 +120,7 @@ function(
     FATAL_ERROR
       "ra8_add_app(): ${_RA8_APP_NAME} ${_why}, but ${_path}/src holds no C "
       "sources and this expansion only compiles *.c, so ${_lib} would "
-      "contribute no object code (issue #908). Sources found but not "
+      "contribute no object code. Sources found but not "
       "compiled:\n    ${_uncompiled_pretty}\n  Wire the non-C sources into "
       "the app build before removing the C implementation."
   )
@@ -925,7 +925,7 @@ macro(_ra8_app_collect_sources)
     set_source_files_properties(${_ra8_soup_tu} PROPERTIES COMPILE_OPTIONS -fno-strict-aliasing)
   endif()
 
-  # Narrow warning suppression for the vendored SOUP parsers (issue #179).
+  # Narrow warning suppression for the vendored SOUP parsers.
   # These TUs used to carry a blanket -w, which switched OFF the ENTIRE
   # -Wall/-Wextra/-Werror profile -- including -Warray-bounds,
   # -Wstringop-overflow/-overread, and -Wmaybe-uninitialized, the cheapest

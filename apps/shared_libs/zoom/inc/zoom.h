@@ -5,7 +5,7 @@
  *
  * @details
  * The reader half of the "keep the pixels, magnify into them" decision: `.rabook`
- * import deliberately does NOT downscale (#210-213), so the reader must be able to
+ * import deliberately does NOT downscale, so the reader must be able to
  * magnify a retained full-resolution figure or manga panel instead. This module is
  * that magnifier -- one viewport engine serving both presentations the reader needs:
  *

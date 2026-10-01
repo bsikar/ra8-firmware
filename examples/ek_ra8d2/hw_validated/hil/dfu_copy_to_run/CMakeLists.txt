@@ -8,7 +8,7 @@
 # and hands it to the shared libs/ra8_dfu ra8_dfu_launch_unverified --
 # the same launcher the dfu_bootloader uses -- which copies it to the SRAM run
 # base (k_ra8_dfu_run_base) and branches there. The HIL alive gate then sees the
-# PC in the SRAM run window, proving copy-to-run executed (issue #97).
+# PC in the SRAM run window, proving copy-to-run executed.
 #
 #
 cmake_minimum_required(VERSION 3.20)

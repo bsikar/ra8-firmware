@@ -42,7 +42,7 @@ add_library(
   ${RA8_WEBP_SOURCES}
   ${RA8_BOARD_EK_RA8D2_SOURCES}
   ${RA8_DFU_SOURCES}
-  # ThreadX SysTick retune (issue #287). Lives under port/threadx (not
+  # ThreadX SysTick retune. Lives under port/threadx (not
   # libs/), so it is not caught by the libs/ globs above -- add it by
   # hand. Its SYST_RVR/CVR writes compile out under RA8_OFF_TARGET,
   # so the host build exercises only the clock-query + reload arithmetic.
@@ -326,7 +326,7 @@ enable_language(CXX)
 # constructor maps a peripheral backing window at 0xE0000000. Under
 # AddressSanitizer (the Linux fuzz config) that address is inside ASan's
 # reserved shadow gap, so the constructor aborts every harness before
-# main() (issue #193). This object library is exactly ra8_core_hal MINUS
+# main(). This object library is exactly ra8_core_hal MINUS
 # ra8_fake_mmap.c: the pure-computation harnesses link it and never run that
 # constructor. The two harnesses that genuinely poke peripheral registers
 # (fuzz_ra8_canfd, fuzz_ra8_usb_pal) add ra8_fake_mmap.c back on their own link
