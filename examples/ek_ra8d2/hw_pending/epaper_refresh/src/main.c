@@ -62,6 +62,7 @@
 #include "ra8_isr.h"
 #include "ra8_mstp.h"
 #include "ra8_panel.h"
+#include "ra8_pin_interface.h"
 #include "ra8_port_constants.h"
 #include "ra8_port_utils.h"
 #include "ra8_spi.h"
@@ -481,10 +482,11 @@ static void ep_bringup_core(uint32_t* out_pclka_hz)
  */
 static void ep_bringup_panel_bus(uint32_t pclka_hz)
 {
-  if (ra8_gpio_output_init((ra8_port_pin_t)k_ep_reset_pin, k_ra8_level_high) != k_ra8_ok) {
+  const ra8_pin_interface_t* const pins = ra8_pin_interface_default();
+  if (pins->output_init(pins->ctx, (ra8_port_pin_t)k_ep_reset_pin, k_ra8_level_high) != k_ra8_ok) {
     ep_panic_halt();
   }
-  if (ra8_gpio_input_init((ra8_port_pin_t)k_ep_hrdy_pin, k_ra8_pull_up) != k_ra8_ok) {
+  if (pins->input_init(pins->ctx, (ra8_port_pin_t)k_ep_hrdy_pin, k_ra8_pull_up) != k_ra8_ok) {
     ep_panic_halt();
   }
 
