@@ -71,32 +71,6 @@ typedef enum : int32_t {
                                       "impose no minimum".                  */
 } ra8_c6link_sta_wire_t;
 
-/**
- * @brief Measure a NUL-terminated string without trusting it to be terminated.
- * @details Bounded by the destination rather than by the string, so a caller
- *        that hands over an unterminated buffer gets a refusal instead of a
- *        read past its end.
- * @param[in] text String to measure; must be non-null.
- * @param[in] cap Octets that may be examined, including the terminator.
- * @return The length in octets, or @p cap when no terminator was found.
- * @retval 0 The string is empty.
- * @pre @p cap octets are readable at @p text.
- * @pre The caller treats a result equal to @p cap as "too long".
- * @post No buffer is modified.
- * @post The result is at most @p cap.
- * @note The loop is bounded by @p cap (NASA Rule 2), which is why `strnlen` is
- *       not used: its bound is the same but its availability is not.
- * @since 0.1.0
- */
-RA8_INTERNAL static uint8_t internal_c6link_sta_len(const char* text, uint8_t cap)
-{
-  uint8_t n = 0U;
-  while ((n < cap) && (text[n] != '\0')) {
-    n++;
-  }
-  return n;
-}
-
 ra8_err_t ra8_c6link_sta_cfg_set(ra8_c6link_sta_cfg_t* cfg, const char* ssid, const char* pass)
 {
   if ((cfg == nullptr) || (ssid == nullptr)) {
@@ -107,13 +81,10 @@ ra8_err_t ra8_c6link_sta_cfg_set(ra8_c6link_sta_cfg_t* cfg, const char* ssid, co
   }
   ra8_secure_memzero(cfg, sizeof(*cfg));
 
-  const uint8_t ssid_len = internal_c6link_sta_len(ssid, (uint8_t)sizeof cfg->ssid);
-  if ((ssid_len == 0U) || (ssid_len > (uint8_t)k_ra8_c6link_ssid_max)) {
-    return k_ra8_err_invalid_size;
-  }
+  const uint8_t ssid_len = priv_c6link_sta_len(ssid, (uint8_t)sizeof cfg->ssid);
   const uint8_t pass_len =
-    (pass == nullptr) ? 0U : internal_c6link_sta_len(pass, (uint8_t)sizeof cfg->pass);
-  if (pass_len > (uint8_t)k_ra8_c6link_pass_max) {
+    (pass == nullptr) ? 0U : priv_c6link_sta_len(pass, (uint8_t)sizeof cfg->pass);
+  if (!priv_c6link_sta_credentials_valid(ssid_len, pass_len)) {
     return k_ra8_err_invalid_size;
   }
 
@@ -275,8 +246,7 @@ ra8_err_t ra8_c6link_wifi_join(ra8_c6link_t* link, const ra8_c6link_sta_cfg_t* c
   if (!ra8_c6link_is_open(link)) {
     return k_ra8_err_not_initialized;
   }
-  if ((cfg->ssid_len == 0U) || (cfg->ssid_len > (uint8_t)k_ra8_c6link_ssid_max) ||
-      (cfg->pass_len > (uint8_t)k_ra8_c6link_pass_max)) {
+  if (!priv_c6link_sta_credentials_valid(cfg->ssid_len, cfg->pass_len)) {
     return k_ra8_err_invalid_size;
   }
 
