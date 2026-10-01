@@ -36,7 +36,8 @@
 #include "c6_probe.h"
 #include "ra8_board_ek_ra8d2.h"
 #include "ra8_err.h"
-#include "ra8_port_utils.h"
+#include "ra8_pin_interface.h"
+#include "ra8_port_constants.h"
 #include "ra8_time.h"
 
 /**
@@ -109,8 +110,9 @@ static const char* const k_c6_wire_label[k_c6_wire_count + 1U] = {
 
 ra8_err_t c6_probe_sideband_init(void)
 {
+  const ra8_pin_interface_t* const pins = ra8_pin_interface_default();
   for (uint8_t i = 0U; i < (uint8_t)k_c6_sb_count; i++) {
-    const ra8_err_t err = ra8_gpio_input_init(k_c6_sideband_pin[i], k_ra8_pull_none);
+    const ra8_err_t err = pins->input_init(pins->ctx, k_c6_sideband_pin[i], k_ra8_pull_none);
     if (err != k_ra8_ok) {
       return err;
     }
@@ -123,9 +125,10 @@ void c6_probe_sample_sideband(c6_sideband_sample_t* out)
   if (out == nullptr) {
     return;
   }
+  const ra8_pin_interface_t* const pins = ra8_pin_interface_default();
   for (uint8_t i = 0U; i < (uint8_t)k_c6_sb_count; i++) {
     ra8_level_t level = k_ra8_level_low;
-    if (ra8_gpio_read(k_c6_sideband_pin[i], &level) != k_ra8_ok) {
+    if (pins->read(pins->ctx, k_c6_sideband_pin[i], &level) != k_ra8_ok) {
       level = k_ra8_level_low;
     }
     out->level[i] = (level == k_ra8_level_high) ? 1U : 0U;
@@ -228,14 +231,15 @@ uint8_t c6_probe_best(const uint32_t* votes, uint8_t ignore, uint32_t min_votes)
  * @note Not thread-safe; boot-time diagnostic only.
  * @since 0.1.0
  */
-static ra8_err_t internal_pull_read(ra8_port_pin_t pin, uint8_t* out_low)
+static ra8_err_t
+internal_pull_read(const ra8_pin_interface_t* pins, ra8_port_pin_t pin, uint8_t* out_low)
 {
   if (out_low == nullptr) {
     return k_ra8_err_null_ptr;
   }
-  ra8_err_t err = ra8_gpio_release(pin);
+  ra8_err_t err = pins->release(pins->ctx, pin);
   if (err == k_ra8_ok) {
-    err = ra8_gpio_input_init(pin, k_ra8_pull_up);
+    err = pins->input_init(pins->ctx, pin, k_ra8_pull_up);
   }
   uint8_t low = 0U;
   if (err == k_ra8_ok) {
@@ -246,7 +250,7 @@ static ra8_err_t internal_pull_read(ra8_port_pin_t pin, uint8_t* out_low)
        * returning a partial count would report "not sunk" for a pin that was
        * never fully measured -- the same read-silence-as-absence mistake this
        * whole mechanism exists to correct. */
-      err = ra8_gpio_read(pin, &level);
+      err = pins->read(pins->ctx, pin, &level);
       if (err != k_ra8_ok) {
         break;
       }
@@ -257,8 +261,8 @@ static ra8_err_t internal_pull_read(ra8_port_pin_t pin, uint8_t* out_low)
     }
   }
 
-  const ra8_err_t released = ra8_gpio_release(pin);
-  const ra8_err_t restored = ra8_gpio_input_init(pin, k_ra8_pull_none);
+  const ra8_err_t released = pins->release(pins->ctx, pin);
+  const ra8_err_t restored = pins->input_init(pins->ctx, pin, k_ra8_pull_none);
   if (err == k_ra8_ok) {
     err = (released != k_ra8_ok) ? released : restored;
   }
@@ -271,9 +275,10 @@ ra8_err_t c6_probe_pull_contest(c6_probe_stats_t* st)
   if (st == nullptr) {
     return k_ra8_err_null_ptr;
   }
+  const ra8_pin_interface_t* const pins = ra8_pin_interface_default();
   for (uint8_t i = 0U; i < (uint8_t)k_c6_sb_count; i++) {
     uint8_t         low = 0U;
-    const ra8_err_t err = internal_pull_read(k_c6_sideband_pin[i], &low);
+    const ra8_err_t err = internal_pull_read(pins, k_c6_sideband_pin[i], &low);
     if (err != k_ra8_ok) {
       return err;
     }
@@ -352,33 +357,34 @@ void c6_probe_resolve_map(const c6_probe_stats_t* st, uint8_t* hs_idx, uint8_t* 
  * @note Not thread-safe; boot-time diagnostic only.
  * @since 0.1.0
  */
-static ra8_err_t internal_kick_net(ra8_port_pin_t pin, ra8_level_t level, uint8_t* out_level)
+static ra8_err_t internal_kick_net(const ra8_pin_interface_t* pins, ra8_port_pin_t pin,
+                                   ra8_level_t level, uint8_t* out_level)
 {
   if (out_level == nullptr) {
     return k_ra8_err_null_ptr;
   }
-  ra8_err_t err = ra8_gpio_output_init(pin, level);
+  ra8_err_t err = pins->output_init(pins->ctx, pin, level);
   if (err != k_ra8_ok) {
     return err;
   }
   ra8_delay_ms((uint32_t)k_c6_probe_cs_hold_ms);
-  err = ra8_gpio_release(pin);
+  err = pins->release(pins->ctx, pin);
   if (err != k_ra8_ok) {
     return err;
   }
-  err = ra8_gpio_input_init(pin, k_ra8_pull_none);
+  err = pins->input_init(pins->ctx, pin, k_ra8_pull_none);
   if (err != k_ra8_ok) {
     return err;
   }
   ra8_delay_ms((uint32_t)k_c6_probe_cs_hold_ms);
   ra8_level_t sampled = k_ra8_level_low;
-  err                 = ra8_gpio_read(pin, &sampled);
+  err                 = pins->read(pins->ctx, pin, &sampled);
   if (err != k_ra8_ok) {
-    (void)ra8_gpio_release(pin);
+    (void)pins->release(pins->ctx, pin);
     return err;
   }
   *out_level = (sampled == k_ra8_level_high) ? 1U : 0U;
-  return ra8_gpio_release(pin);
+  return pins->release(pins->ctx, pin);
 }
 
 c6_wire_kind_t c6_probe_wire_kind(uint8_t after_high, uint8_t after_low)
@@ -403,11 +409,13 @@ void c6_probe_wire_test(void)
     "high-side(pull-up or driven high)",
     "inconsistent",
   };
+  const ra8_pin_interface_t* const pins = ra8_pin_interface_default();
   for (uint8_t i = 0U; i < (uint8_t)k_c6_wire_count; i++) {
     uint8_t         after_high = 0U;
     uint8_t         after_low  = 0U;
-    const ra8_err_t e_high     = internal_kick_net(k_c6_wire_pin[i], k_ra8_level_high, &after_high);
-    const ra8_err_t e_low      = internal_kick_net(k_c6_wire_pin[i], k_ra8_level_low, &after_low);
+    const ra8_err_t e_high =
+      internal_kick_net(pins, k_c6_wire_pin[i], k_ra8_level_high, &after_high);
+    const ra8_err_t e_low = internal_kick_net(pins, k_c6_wire_pin[i], k_ra8_level_low, &after_low);
     c6_probe_puts("c6_probe: wire ");
     c6_probe_puts(k_c6_wire_label[i]);
     if (e_high != k_ra8_ok || e_low != k_ra8_ok) {
@@ -452,22 +460,23 @@ void c6_probe_wire_test(void)
  */
 static bool internal_cs_try(uint8_t idx, c6_probe_stats_t* st)
 {
-  const ra8_port_pin_t pin = k_c6_wire_pin[idx];
-  if (ra8_gpio_output_init(pin, k_ra8_level_high) != k_ra8_ok) {
+  const ra8_pin_interface_t* const pins = ra8_pin_interface_default();
+  const ra8_port_pin_t             pin  = k_c6_wire_pin[idx];
+  if (pins->output_init(pins->ctx, pin, k_ra8_level_high) != k_ra8_ok) {
     return false;
   }
   ra8_delay_ms((uint32_t)k_c6_probe_settle_ms);
   c6_sideband_sample_t idle = {};
   c6_probe_sample_sideband(&idle);
 
-  (void)ra8_gpio_write(pin, k_ra8_level_low);
+  (void)pins->write(pins->ctx, pin, k_ra8_level_low);
   ra8_delay_ms((uint32_t)k_c6_probe_cs_hold_ms);
   c6_sideband_sample_t asserted = {};
   c6_probe_sample_sideband(&asserted);
 
-  (void)ra8_gpio_write(pin, k_ra8_level_high);
+  (void)pins->write(pins->ctx, pin, k_ra8_level_high);
   ra8_delay_ms((uint32_t)k_c6_probe_settle_ms);
-  (void)ra8_gpio_release(pin);
+  (void)pins->release(pins->ctx, pin);
 
   bool answered = false;
   for (uint8_t i = 0U; i < (uint8_t)k_c6_sb_count; i++) {
