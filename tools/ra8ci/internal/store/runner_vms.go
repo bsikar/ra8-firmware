@@ -744,7 +744,10 @@ func validateVMResolution(now time.Time, op RunnerVMOperation, proof RunnerVMRes
 			return ErrDenied
 		}
 	case "operator":
-		if !ValidID(proof.OperatorApprovalID) {
+		// An operator vouches for the outcome, not for a Terraform state
+		// snapshot, so the approval must not arrive carrying a digest that
+		// would read as a reconciliation nobody performed.
+		if !ValidID(proof.OperatorApprovalID) || proof.ReconciliationSHA256 != "" {
 			return ErrDenied
 		}
 	case "terraform_state":
