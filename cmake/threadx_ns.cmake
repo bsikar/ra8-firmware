@@ -73,6 +73,12 @@ target_include_directories(
 target_include_directories(threadx_ns PUBLIC "${RA8_THREADX_PORT_DIR}/inc")
 target_include_directories(threadx_ns PRIVATE "${RA8_REPO_ROOT}/libs/ra8_core/inc")
 
+# fw_os_threadx.c binds the libs/if `fw_os` port contract onto ThreadX, the
+# same unit cmake/threadx.cmake compiles for the Secure world, so this target
+# needs the seam's headers too. PUBLIC for the same reason as there: an NS app
+# TU that includes "ra8_threadx.h" resolves fw_if_clock.h without restating it.
+target_include_directories(threadx_ns PUBLIC "${RA8_REPO_ROOT}/libs/if/inc")
+
 # RA8_THREADX_NON_SECURE flips tx_user.h to TX_SINGLE_MODE_NON_SECURE. PUBLIC so
 # the consuming app's TUs (ns_main.c) see the same kernel-option view.
 target_compile_definitions(threadx_ns PUBLIC TX_INCLUDE_USER_DEFINE_FILE RA8_THREADX_NON_SECURE)
