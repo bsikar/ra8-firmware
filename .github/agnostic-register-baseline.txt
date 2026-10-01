@@ -7,7 +7,7 @@
 # HAL implementations, named backend translation units, board composition
 # libraries, tests, vendored code, and generated code are outside this ratchet.
 #
-# clock: 384 reference(s)
+# clock: 369 reference(s)
 # display: 9 reference(s)
 # gpio: 78 reference(s)
 # timer: 51 reference(s)
@@ -161,22 +161,22 @@ examples/ek_ra8d2/hw_validated/hil/dtc_coherency_hil/src/main.c	clock	1
 examples/ek_ra8d2/hw_validated/hil/dtc_transfer_demo/src/main.c	clock	1
 examples/ek_ra8d2/hw_validated/hil/dualcore_background_m33/src/main.c	clock	1
 examples/ek_ra8d2/hw_validated/hil/dualcore_mailbox/src/main.c	clock	1
-examples/ek_ra8d2/hw_validated/hil/ecc_monitor_demo/src/main.c	clock	2
-examples/ek_ra8d2/hw_validated/hil/elc_event_demo/src/main.c	clock	2
-examples/ek_ra8d2/hw_validated/hil/ereader_align/src/main.c	clock	2
-examples/ek_ra8d2/hw_validated/hil/ereader_chrome/src/main.c	clock	2
-examples/ek_ra8d2/hw_validated/hil/ereader_image/src/main.c	clock	2
-examples/ek_ra8d2/hw_validated/hil/ereader_imgfmt/src/main.c	clock	2
-examples/ek_ra8d2/hw_validated/hil/ereader_input/src/main.c	clock	2
-examples/ek_ra8d2/hw_validated/hil/ereader_jpeg/src/main.c	clock	2
-examples/ek_ra8d2/hw_validated/hil/ereader_link/src/main.c	clock	2
-examples/ek_ra8d2/hw_validated/hil/ereader_rabook/src/main.c	clock	2
-examples/ek_ra8d2/hw_validated/hil/ereader_svg/src/main.c	clock	2
-examples/ek_ra8d2/hw_validated/hil/ereader_table/src/main.c	clock	2
+examples/ek_ra8d2/hw_validated/hil/ecc_monitor_demo/src/main.c	clock	1
+examples/ek_ra8d2/hw_validated/hil/elc_event_demo/src/main.c	clock	1
+examples/ek_ra8d2/hw_validated/hil/ereader_align/src/main.c	clock	1
+examples/ek_ra8d2/hw_validated/hil/ereader_chrome/src/main.c	clock	1
+examples/ek_ra8d2/hw_validated/hil/ereader_image/src/main.c	clock	1
+examples/ek_ra8d2/hw_validated/hil/ereader_imgfmt/src/main.c	clock	1
+examples/ek_ra8d2/hw_validated/hil/ereader_input/src/main.c	clock	1
+examples/ek_ra8d2/hw_validated/hil/ereader_jpeg/src/main.c	clock	1
+examples/ek_ra8d2/hw_validated/hil/ereader_link/src/main.c	clock	1
+examples/ek_ra8d2/hw_validated/hil/ereader_rabook/src/main.c	clock	1
+examples/ek_ra8d2/hw_validated/hil/ereader_svg/src/main.c	clock	1
+examples/ek_ra8d2/hw_validated/hil/ereader_table/src/main.c	clock	1
 examples/ek_ra8d2/hw_validated/hil/ereader_ui/src/ereader_ui_input.c	gpio	1
-examples/ek_ra8d2/hw_validated/hil/ereader_ui/src/main.c	clock	3
-examples/ek_ra8d2/hw_validated/hil/eth_loopback/src/main.c	clock	2
-examples/ek_ra8d2/hw_validated/hil/eth_open_probe/src/main.c	clock	2
+examples/ek_ra8d2/hw_validated/hil/ereader_ui/src/main.c	clock	2
+examples/ek_ra8d2/hw_validated/hil/eth_loopback/src/main.c	clock	1
+examples/ek_ra8d2/hw_validated/hil/eth_open_probe/src/main.c	clock	1
 examples/ek_ra8d2/hw_validated/hil/fault_crashlog_hil/src/main.c	clock	1
 examples/ek_ra8d2/hw_validated/hil/fault_div0_hil/src/main.c	clock	1
 examples/ek_ra8d2/hw_validated/hil/flash_journal/src/main.c	clock	2
