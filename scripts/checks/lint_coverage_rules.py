@@ -90,6 +90,12 @@ CLASSES: dict[str, ClassSpec] = {
     "python": _spec("python", CODE, "the gate suite and host tooling"),
     "golang": _spec("golang", CODE, "host CLI and conversion policy"),
     "zig": _spec("zig", CODE, "Zig host applications and tools"),
+    "zig-manifest": _spec(
+        "zig-manifest",
+        CONF,
+        "build.zig.zon package manifests; the pinned zig build parses and "
+        "validates them, hashes included, on every invocation",
+    ),
     "rust": _spec("rust", CODE, "Rust examples and C-ABI verification"),
     "shell": _spec("shell", CODE, "gate drivers, HIL scripts, git hooks"),
     "cmake": _spec("cmake", CODE, "decides what compiles with which flags"),
@@ -208,6 +214,7 @@ EXT_CLASS: dict[str, str] = {
     ".py": "python",
     ".go": "golang",
     ".zig": "zig",
+    ".zon": "zig-manifest",
     ".rs": "rust",
     ".sh": "shell",
     ".bash": "shell",
