@@ -34,6 +34,8 @@ typedef enum : uint32_t {
   k_ra8_gpt_test_gtstp1   = 0x00000001UL, /**< RA8 GPT test gtstp1.   */
   k_ra8_gpt_test_gtstr1   = 0x00000001UL, /**< RA8 GPT test gtstr1.   */
   k_ra8_gpt_test_gtcr_saw = 0x00000001UL, /**< RA8 GPT test gtcr saw. */
+  k_ra8_gpt_test_ch7_bit  = 0x00000080UL, /**< CSTRT7 / CSTOP7 bit.   */
+  k_ra8_gpt_test_gtcr_cst = 0x00000001UL, /**< GTCR.CST running bit.  */
 } ra8_gpt_test_const_t;
 
 /**
@@ -537,6 +539,124 @@ static void test_gpt_power_transition(void)
 }
 
 /**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
+static void test_start_free_run_uses_own_channel_bit(void)
+{
+  TEST_BEGIN("gpt start_free_run on channel 7 writes CSTOP7 / CSTRT7, not bit 0");
+  ra8_fake_mmap_reset();
+
+  const uint8_t ch = (uint8_t)k_ra8_gpt_test_channel_middle;
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_gpt_start_free_run(ch, (uint32_t)k_ra8_gpt_test_period));
+  volatile r_gpt_channel_regs_t* reg = ra8_gpt(ch);
+  TEST_ASSERT_EQ(k_ra8_gpt_test_ch7_bit, reg->GTSTP);
+  TEST_ASSERT_EQ(k_ra8_gpt_test_ch7_bit, reg->GTSTR);
+  TEST_END("gpt start_free_run on channel 7 writes CSTOP7 / CSTRT7, not bit 0");
+}
+
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
+static void test_stop_uses_own_channel_bit(void)
+{
+  TEST_BEGIN("gpt stop on channel 7 writes CSTOP7");
+  ra8_fake_mmap_reset();
+
+  const uint8_t ch = (uint8_t)k_ra8_gpt_test_channel_middle;
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_gpt_stop(ch));
+  TEST_ASSERT_EQ(k_ra8_gpt_test_ch7_bit, ra8_gpt(ch)->GTSTP);
+  TEST_END("gpt stop on channel 7 writes CSTOP7");
+}
+
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
+static void test_gpt_init_uses_own_channel_bit(void)
+{
+  TEST_BEGIN("gpt init with auto_start on channel 7 writes CSTRT7");
+  ra8_fake_mmap_reset();
+
+  const uint8_t       ch  = (uint8_t)k_ra8_gpt_test_channel_middle;
+  const ra8_gpt_cfg_t cfg = make_gpt_cfg();
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_gpt_init(ch, &cfg));
+  volatile r_gpt_channel_regs_t* reg = ra8_gpt(ch);
+  TEST_ASSERT_EQ(k_ra8_gpt_test_ch7_bit, reg->GTSTP);
+  TEST_ASSERT_EQ(k_ra8_gpt_test_ch7_bit, reg->GTSTR);
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_gpt_deinit(ch));
+  TEST_ASSERT_EQ(k_ra8_gpt_test_ch7_bit, reg->GTSTP);
+  TEST_END("gpt init with auto_start on channel 7 writes CSTRT7");
+}
+
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
+static void test_gpt_start_requires_init(void)
+{
+  TEST_BEGIN("gpt start refuses a channel init never configured");
+  ra8_fake_mmap_reset();
+
+  const uint8_t ch = (uint8_t)k_ra8_gpt_test_channel_middle;
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_gpt_deinit(ch));
+  TEST_ASSERT_EQ(k_ra8_err_invalid_state, ra8_gpt_start(ch));
+  TEST_ASSERT_EQ(0U, ra8_gpt(ch)->GTSTR);
+  TEST_END("gpt start refuses a channel init never configured");
+}
+
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
+static void test_gpt_start_resumes_without_reprogramming(void)
+{
+  TEST_BEGIN("gpt start resumes a configured channel and leaves its setup alone");
+  ra8_fake_mmap_reset();
+
+  const uint8_t ch  = (uint8_t)k_ra8_gpt_test_channel_middle;
+  ra8_gpt_cfg_t cfg = make_gpt_cfg();
+  cfg.auto_start    = false;
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_gpt_init(ch, &cfg));
+
+  volatile r_gpt_channel_regs_t* reg = ra8_gpt(ch);
+  reg->GTCNT                         = (uint32_t)k_ra8_gpt_test_count;
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_gpt_start(ch));
+  TEST_ASSERT_EQ(k_ra8_gpt_test_ch7_bit, reg->GTSTR);
+  TEST_ASSERT_EQ(k_ra8_gpt_test_gtcr_cst, reg->GTCR & k_ra8_gpt_test_gtcr_cst);
+  TEST_ASSERT_EQ(k_ra8_gpt_test_count, reg->GTCNT);
+  TEST_ASSERT_EQ(k_ra8_gpt_test_period, reg->GTPR);
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_gpt_deinit(ch));
+  TEST_END("gpt start resumes a configured channel and leaves its setup alone");
+}
+
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
+static void test_gpt_start_bad_channel(void)
+{
+  TEST_BEGIN("gpt start bad channel");
+  ra8_fake_mmap_reset();
+
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_gpt_start((uint8_t)k_ra8_gpt_test_channel_bad));
+  TEST_END("gpt start bad channel");
+}
+
+/**
  * @var s_test_roster
  * @brief Fixed-order roster of every test case in this translation unit.
  *
@@ -571,6 +691,12 @@ static void (*const s_test_roster[])(void) = {
   test_gpt_dispatch_no_handler,
   test_gpt_attach_bad_channel,
   test_gpt_power_transition,
+  test_start_free_run_uses_own_channel_bit,
+  test_stop_uses_own_channel_bit,
+  test_gpt_init_uses_own_channel_bit,
+  test_gpt_start_requires_init,
+  test_gpt_start_resumes_without_reprogramming,
+  test_gpt_start_bad_channel,
 };
 
 int main(void)

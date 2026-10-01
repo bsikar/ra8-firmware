@@ -18,6 +18,7 @@
  * - ``ra8_gpt_deinit(channel)`` -- stop + MSTP release
  * - ``ra8_gpt_start_free_run`` -- legacy shim
  * - ``ra8_gpt_stop`` -- legacy
+ * - ``ra8_gpt_start`` -- resume a channel ``ra8_gpt_init`` configured
  * - ``ra8_gpt_read`` -- legacy
  * - ``ra8_gpt_set_period`` -- runtime GTPR/GTPBR change
  * - ``ra8_gpt_set_duty`` -- runtime GTCCR[A/B] change
@@ -300,6 +301,25 @@ typedef struct {
  * @since 0.1.0
  */
 [[nodiscard]] ra8_err_t ra8_gpt_stop(uint8_t channel);
+
+/**
+ * @brief Start counting on a channel ``ra8_gpt_init`` already configured.
+ *
+ * @details
+ * Sets only this channel's GTSTR.CSTRTn bit, so the period, compare values,
+ * mode and current count programmed earlier are left as they are; a channel
+ * halted with ``ra8_gpt_stop`` resumes from where it stopped. Unlike
+ * ``ra8_gpt_start_free_run`` it reprograms nothing and takes no extra
+ * module-stop reference, which is what a caller that opens once and then
+ * starts and stops many times needs.
+ *
+ * @param[in] channel GPT channel (0..13).
+ * @return ``k_ra8_ok``, ``k_ra8_err_null_ptr`` for a channel out of range, or
+ *         ``k_ra8_err_invalid_state`` when the channel has not been through
+ *         ``ra8_gpt_init`` (or has been through ``ra8_gpt_deinit`` since).
+ * @since 0.1.0
+ */
+[[nodiscard]] ra8_err_t ra8_gpt_start(uint8_t channel);
 
 /**
  * @brief Read the current counter value.
