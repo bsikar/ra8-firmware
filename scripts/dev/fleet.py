@@ -4,9 +4,9 @@
 """Drive the CI fleet from ``infra/fleet.yml``.
 
 Commands name a declared host, derive its reachability, and expose read-only
-inspection, inventory generation, guarded convergence, registration, removal,
-and capacity control. Mutating convergence drains runner capacity and binds
-bench-affecting work to the repository's authenticated whole-bench hold.
+inspection, inventory generation, guarded convergence and HIL registration.
+Bench-affecting convergence binds to the repository's authenticated
+whole-bench hold.
 """
 
 from __future__ import annotations
@@ -25,7 +25,6 @@ from typing import Any, Protocol
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 import fleet_bench as fb
-import fleet_capacity_client as fcc
 import fleet_model as fm
 import fleet_mutation_lock as fml
 import fleet_reach as fr
@@ -38,9 +37,6 @@ MUTATING_COMMANDS = frozenset(
     {
         "register-hil",
         "apply",
-        "capacity-quarantine",
-        "capacity-restore",
-        "scale",
     }
 )
 
@@ -123,7 +119,7 @@ def _run(
 
 
 def cmd_list(data: dict[str, Any], _args: argparse.Namespace) -> int:
-    """Print every declared host with its class, capacity and schedule.
+    """Print every declared host with its class and plays.
 
     Args:
         data: The parsed declaration.
@@ -132,26 +128,14 @@ def cmd_list(data: dict[str, Any], _args: argparse.Namespace) -> int:
     Returns:
         0.
     """
-    print(
-        f"{'HOST':<10} {'CLASS':<14} {'INSTANCES':<10} "
-        f"{'PER INSTANCE':<18} {'QUIET HOURS':<32} PLAYS"
-    )
+    print(f"{'HOST':<10} {'CLASS':<14} PLAYS")
     for name, host in data["hosts"].items():
-        run = host.get("runners") or {}
-        quiet = host.get("quiet_hours") or {}
-        count = str(run.get("instances", "-"))
-        per = f"{run['cpus']} cpu / {run['memory_gb']} GB" if run else "-"
-        window = f"{quiet['window']} {quiet['days']} -> {quiet['instances']}" if quiet else "-"
-        print(
-            f"{name:<10} {host['class']:<14} {count:<10} {per:<18} {window:<32} "
-            f"{','.join(host['provisions'])}"
-        )
+        print(f"{name:<10} {host['class']:<14} {','.join(host['provisions'])}")
     print()
     print("just infra::check <host>           dry run (changes nothing)")
     print("just infra::apply <host>           converge to the declaration")
-    print("just infra::scale <host> <count>   live capacity change; shrinking DRAINS")
     print("just infra::ssh_config             name these machines in your ~/.ssh/config")
-    print("docs/CI_FLEET.md                   add a host, retune one, quiet hours")
+    print("docs/CI_FLEET.md                   add a host or retune one")
     return 0
 
 
@@ -175,9 +159,6 @@ def cmd_show(data: dict[str, Any], args: argparse.Namespace) -> int:
     if hops:
         print(f"  via            {' -> '.join(hops)}")
     print(f"  provisions     {', '.join(host['provisions'])}")
-    if cls.capacity_runner:
-        want = fm.recommended_instances(data["sizing"], host["budget"])
-        print(f"  instances      {host['runners']['instances']} (formula gives {want})")
     hil = host.get("hil_runner")
     if hil:
         print(f"  HIL listener   {hil['name']} ({','.join(hil['labels'])})")
@@ -205,12 +186,8 @@ def cmd_validate(data: dict[str, Any], _args: argparse.Namespace) -> int:
             print(f"  {problem}", file=sys.stderr)
         return 1
     hosts = data["hosts"]
-    runners = sum(int((h.get("runners") or {}).get("instances", 0)) for h in hosts.values())
     native_hil = sum(1 for host in hosts.values() if host.get("hil_runner"))
-    print(
-        f"infra/fleet.yml OK: {len(hosts)} host(s), {runners} capacity-managed "
-        f"runner instance(s), {native_hil} native HIL listener(s)"
-    )
+    print(f"infra/fleet.yml OK: {len(hosts)} host(s), {native_hil} native HIL listener(s)")
     return 0
 
 
@@ -349,14 +326,6 @@ def _converge_refusal(args: argparse.Namespace, host: dict[str, Any], plays: lis
     return ""
 
 
-def _restore_after_converge(data: dict[str, Any], args: argparse.Namespace, rc: int) -> int:
-    """Restore declared capacity after a drained converge, preserving failure."""
-    if rc:
-        quarantine = fcc.run(data, args.host, ["quarantine"], _run)
-        return rc or quarantine
-    return fcc.run(data, args.host, ["restore"], _run)
-
-
 def _converge_extra(host: dict[str, Any], args: argparse.Namespace) -> list[str]:
     """Build Ansible flags without weakening credential handling."""
     del host
@@ -367,7 +336,7 @@ def _converge_extra(host: dict[str, Any], args: argparse.Namespace) -> list[str]
     # ansible-playbook's, where `ps` on the control node can read it. That is
     # tolerable only for non-secret compatibility variables. Credentials use
     # the typed commands below, which validate and snapshot mode-0600 files
-    # before any inventory write, drain, staging, or remote command.
+    # before any inventory write, staging, or remote command.
     for pair in args.extra_var:
         extra += ["-e", pair]
     if args.tags:
@@ -388,7 +357,6 @@ def _registration_args(
         mode="apply",
         host=host,
         play=play,
-        no_drain=False,
         extra_var=[],
         tags=tags,
         vars_file="",
@@ -415,7 +383,7 @@ def cmd_register_hil(data: dict[str, Any], args: argparse.Namespace) -> int:
 def _typed_vars_for_converge(
     args: argparse.Namespace, host: dict[str, Any]
 ) -> ftv.TypedVars | None:
-    """Validate typed vars before inventory writes, draining, or remote work."""
+    """Validate typed vars before inventory writes or remote work."""
     del host
     typed_vars = getattr(args, "typed_vars", None)
     if any(value.startswith("@") for value in args.extra_var):
@@ -437,7 +405,6 @@ class _ConvergeTransport:
     plays: list[str]
     extra: list[str]
     typed_vars: ftv.TypedVars | None
-    no_drain_tags: bool
 
 
 def _bench_guard_argv(
@@ -549,8 +516,8 @@ def _bench_guard_inheritance_selftest() -> list[str]:
 def cmd_converge(data: dict[str, Any], args: argparse.Namespace) -> int:
     """Run a dry check or a guarded real converge of one host's plays.
 
-    Container-host applies drain first. Bench-host applies re-enter
-    under the physical bench lock before inventory generation or remote work.
+    Bench-host applies re-enter under the physical bench lock before inventory
+    generation or remote work.
     """
     host = _host(data, args.host)
     plays = _plays_for(host, args.play)
@@ -565,38 +532,13 @@ def cmd_converge(data: dict[str, Any], args: argparse.Namespace) -> int:
     rc = cmd_inventory(data, argparse.Namespace(stdout=False))
     if rc:
         return rc
-    # Some tag sets cannot stop, start or recreate a container -- `capacity`
-    # refreshes the drain script and the quiet-hours timer. Draining the host
-    # for it would cost it every
-    # running job's worth of runner time to protect against a change that
-    # cannot touch them. The whitelist lives in fleet_model.NO_DRAIN_TAGS so
-    # adding a tag is a deliberate act with the rule in front of you.
-    no_drain_tags = args.tags in fm.NO_DRAIN_TAGS
     extra = _converge_extra(host, args)
     extra += _bench_ansible_extra(host, plays, args)
-    request = _ConvergeTransport(data, args, host, plays, extra, typed_vars, no_drain_tags)
+    request = _ConvergeTransport(data, args, host, plays, extra, typed_vars)
     maintenance = _prepare_native_runner(request)
     if not maintenance.proceed:
         return maintenance.status
-    drain = (
-        args.mode == "apply"
-        and not args.no_drain
-        and not no_drain_tags
-        and fm.container_names(host)
-    )
-    if drain:
-        print(f"==> parking {args.host} before converging (a converge changes admission)")
-        # Persistent containers use drain-all because a 1 <-> N declaration
-        # change renames them. ARC admission is a direct zero scale; its
-        # ephemeral controller deletes only runners that hold no job.
-        rc = fcc.run(data, args.host, ["maintenance-enter"], _run)
-        if rc:
-            return _fail("could not drain the host; refusing to converge over running jobs")
-    rc = _run_converge_transport(request)
-    if drain:
-        # Convergence restores the declared service after either outcome.
-        rc = _restore_after_converge(data, args, rc)
-    return rc
+    return _run_converge_transport(request)
 
 
 def _converge_ssh(data: dict[str, Any], name: str, plays: list[str], extra: list[str]) -> int:
@@ -622,34 +564,6 @@ def _converge_ssh(data: dict[str, Any], name: str, plays: list[str], extra: list
         )
         if rc:
             return rc
-    return 0
-
-
-def cmd_status(data: dict[str, Any], args: argparse.Namespace) -> int:
-    """Report what each runner host is actually running.
-
-    Read-only, and deliberately free of GitHub API calls: every probe is a
-    local one over ssh, so any number of agents can run it without touching the
-    shared REST quota.
-
-    Args:
-        data: The parsed declaration.
-        args: Parsed command line; uses ``args.host``.
-
-    Returns:
-        0 even when a host is unreachable -- an unreachable machine is
-        information, not a failure of the question.
-    """
-    names = [args.host] if args.host else list(data["hosts"])
-    for name in names:
-        host = _host(data, name)
-        if fm.CLASSES[host["class"]].capacity_kind == "none":
-            continue
-        print(f"{name} ({host['class']}, declared {host['runners']['instances']} instance(s)):")
-        # Flushed before handing the terminal to ssh, or Python's buffer holds
-        # the heading until after the rows it introduces have already printed.
-        sys.stdout.flush()
-        fcc.run(data, name, ["status"], _run)
     return 0
 
 
@@ -691,21 +605,6 @@ def cmd_reach(data: dict[str, Any], _args: argparse.Namespace) -> int:
     return rc
 
 
-def cmd_capacity_quarantine(data: dict[str, Any], args: argparse.Namespace) -> int:
-    """Retain durable maintenance and drive one host to zero admission."""
-    return fcc.run(data, args.host, ["quarantine"], _run)
-
-
-def cmd_capacity_restore(data: dict[str, Any], args: argparse.Namespace) -> int:
-    """Restore the current quiet-hours target and clear durable maintenance."""
-    return fcc.run(data, args.host, ["restore"], _run)
-
-
-def cmd_scale(data: dict[str, Any], args: argparse.Namespace) -> int:
-    """Change live capacity, draining idle runners during shrink."""
-    return fcc.run(data, args.host, ["scale", str(args.count)], _run)
-
-
 def cmd_selftest(data: dict[str, Any], _args: argparse.Namespace) -> int:
     """Run transport and typed-operation tests without contacting any host."""
     failures = (
@@ -713,7 +612,6 @@ def cmd_selftest(data: dict[str, Any], _args: argparse.Namespace) -> int:
         + fb.run_selftest()
         + frm.run_selftest()
         + fml.run_selftest()
-        + fcc.run_selftest(data)
         + _bench_guard_inheritance_selftest()
         + _inventory_publication_selftest()
         + fm.controller_inventory_selftest(data)
@@ -733,7 +631,6 @@ def _add_converge_parsers(subs: _SubparserGroup) -> None:
         sub = subs.add_parser(mode, help=f"{mode} a host against the declaration")
         sub.add_argument("host")
         sub.add_argument("play", nargs="?", help="one play instead of all of them")
-        sub.add_argument("--no-drain", action="store_true", help="do not drain before converging")
         sub.add_argument(
             "-e",
             "--extra-var",
@@ -745,24 +642,7 @@ def _add_converge_parsers(subs: _SubparserGroup) -> None:
                 "credentials require register-hil"
             ),
         )
-        sub.add_argument(
-            "--tags",
-            default="",
-            help="ansible tags; "
-            + "/".join(sorted(fm.NO_DRAIN_TAGS))
-            + " touch no container and so need no drain",
-        )
-
-
-def _add_capacity_parsers(subs: _SubparserGroup) -> None:
-    """Add live status and capacity-control commands."""
-    status = subs.add_parser("status", help="what each host is running, right now")
-    status.add_argument("host", nargs="?")
-    for command in ("capacity-quarantine", "capacity-restore"):
-        subs.add_parser(command, help=argparse.SUPPRESS).add_argument("host")
-    scale = subs.add_parser("scale", help="live capacity change; shrinking drains")
-    scale.add_argument("host")
-    scale.add_argument("count", type=int)
+        sub.add_argument("--tags", default="", help="ansible tags to limit the run to")
 
 
 def _parser() -> argparse.ArgumentParser:
@@ -770,7 +650,7 @@ def _parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="fleet.py", description=__doc__.splitlines()[0])
     subs = parser.add_subparsers(dest="command", required=True)
     subs.add_parser("selftest", help="exercise typed vars and transports offline")
-    subs.add_parser("list", help="what is declared, and how it is sized")
+    subs.add_parser("list", help="what is declared, and what each host runs")
     subs.add_parser("show", help="one host in full").add_argument("host")
     subs.add_parser("validate", help="the fleet-declaration gate's check")
     subs.add_parser("reach", help="probe every machine over its declared transport")
@@ -797,7 +677,6 @@ def _parser() -> argparse.ArgumentParser:
         "register-hil", help="first-register the one declared native HIL listener"
     ).add_argument("vars_file")
     _add_converge_parsers(subs)
-    _add_capacity_parsers(subs)
     return parser
 
 
@@ -826,10 +705,6 @@ def main(argv: list[str] | None = None) -> int:
         "register-hil": cmd_register_hil,
         "check": cmd_converge,
         "apply": cmd_converge,
-        "status": cmd_status,
-        "capacity-quarantine": cmd_capacity_quarantine,
-        "capacity-restore": cmd_capacity_restore,
-        "scale": cmd_scale,
     }
     if not hasattr(args, "mode"):
         args.mode = args.command

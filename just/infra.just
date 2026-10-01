@@ -36,7 +36,6 @@ default:
     @echo "  just infra::check <host> [play] [tags]             Dry-run all or one play/tag slice"
     @echo "  just infra::apply <host> [play] [tags]             Apply all or one play/tag slice"
     @echo "  just infra::register_hil <vars-file>               First-register the declared HIL listener"
-    @echo "  just infra::scale <host> <count>                   Scale CI runner count on host"
     @echo ""
 
 # First-run onboarding for fresh clone: inventory + credentials
@@ -162,7 +161,3 @@ register_hil vars_file:
     set -euo pipefail
     vars_file={{ quote(vars_file) }}
     exec {{ infra }} register-hil "$vars_file"
-
-# Scale how many runners a host is running right now
-scale host count:
-    {{ infra }} scale "{{ host }}" "{{ count }}"

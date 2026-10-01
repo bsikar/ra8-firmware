@@ -6,8 +6,8 @@
 #
 # WHY THIS ROLE EXISTS
 # --------------------
-# OpenBao is a hard dependency of the rig: `ci_runner` pulls the GitHub PAT
-# from it, the HIL tooling reads the Tapo smart-plug
+# OpenBao is a hard dependency of the rig: tools/ra8ci logs in to it with an
+# AppRole for its Terraform runs, the HIL tooling reads the Tapo smart-plug
 # credentials from it, and infra/network/ reads the entire bench-LAN credential
 # set from it. Its DEPLOYMENT existed only as a values.yaml and a handful of
 # shell scripts in one user's home directory on one node.

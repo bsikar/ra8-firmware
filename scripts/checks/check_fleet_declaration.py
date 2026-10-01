@@ -3,17 +3,14 @@
 # Copyright (c) 2026 Brighton Sikarskie
 """Gate: ``infra/fleet.yml`` describes a fleet that could actually be built.
 
-The declaration is the single registry of what machines this project runs on
-and how much of each one CI may use, so an error in it is an error in the
-estate. This checks three things a green Ansible run would not:
+The declaration is the single registry of what machines this project runs on,
+so an error in it is an error in the estate. This checks three things a green Ansible run would not:
 
 1. **The declaration is internally sound.** Every rule in
    :func:`fleet_model.validate` -- classes and plays that exist, an address any
-   machine could reach the host at, capacity that fits the declared budget,
-   per-instance floors, a parseable quiet-hours window, and an instance count
-   that is either the sizing formula's or comes with a written reason. A number
-   nobody can re-derive is folklore, and a host addressed by an ssh alias is
-   reachable only from whichever laptop defines it.
+   machine could reach the host at, a sound HIL listener and bench, and no
+   leftover runner capacity (the fleet has no runner pool). A host addressed
+   by an ssh alias is reachable only from whichever laptop defines it.
 
 2. **Nothing tunes a host twice.** A committed ``host_vars`` file may not
    re-declare a variable the declaration owns. Extra-vars beat ``host_vars``,
@@ -21,8 +18,8 @@ estate. This checks three things a green Ansible run would not:
    tree that looks authoritative, that somebody will edit, and that will have
    no effect.
 
-3. **The derived variables land somewhere real.** Every ``fleet_capacity_*``
-   name the mapping emits must exist in that role's defaults. A mapping keyed
+3. **The derived variables land somewhere real.** Every ``dev_box_hil_runner_*``
+   and ``hil_bench_*`` name the mapping emits must exist in that role's defaults. A mapping keyed
    on a spelling no role reads is the same defect as a checker rule keyed on a
    string no macro produces: it matches nothing and reports success forever.
 
@@ -67,7 +64,6 @@ import hil_cache_repair_rules as hctr  # noqa: E402 -- checker helper beside thi
 # under. Every emitted name must exist in the role's defaults, or the role
 # would never read it and whatever it configures would silently not happen.
 DERIVED_ROLES = {
-    "fleet_capacity_": "fleet_capacity",
     "dev_box_hil_runner_": "dev_box",
     "hil_bench_": "hil_bench",
 }
@@ -240,18 +236,9 @@ def _good_hosts() -> dict[str, Any]:
     """Return the minimal legal host mapping used by the selftest."""
     return {
         "builder": {
-            "class": "arc_k8s",
+            "class": "k8s_node",
             "connect": {"address": "10.0.0.3", "user": "builder"},
-            "provisions": ["ci-runner"],
-            "runners": {
-                "instances": 1,
-                "cpus": 4,
-                "memory_gb": 8,
-                "cpu_request": 1,
-                "memory_request_gb": 2,
-                "labels": ["ra8-ci"],
-            },
-            "budget": {"mode": "burst", "threads": 4, "memory_gb": 8},
+            "provisions": ["k3s-node"],
         },
         "dev": {
             "class": "dev_box",
@@ -284,15 +271,7 @@ def _good_declaration() -> dict[str, Any]:
     Returns:
         A one-host fleet that satisfies every rule.
     """
-    return {
-        "sizing": {"build_parallelism": 4, "memory_per_instance_gb": 8},
-        "runner_image": {
-            "source_host": "builder",
-            "image": "localhost/ra8-ci-runner:v2",
-            "archive": "/var/lib/runner/ra8-ci-runner.tar",
-        },
-        "hosts": _good_hosts(),
-    }
+    return {"hosts": _good_hosts()}
 
 
 # name -> a mutation that must produce at least one problem. Each is a rule
@@ -308,27 +287,8 @@ def _mutations() -> dict[str, Any]:
     return {
         **_reach_mutations(),
         **_capacity_mutations(),
-        **_runner_image_mutations(),
         **_hil_listener_mutations(),
         **_hil_interface_mutations(),
-    }
-
-
-def _runner_image_mutations() -> dict[str, Any]:
-    """Breakages in the canonical image producer declaration.
-
-    Returns:
-        Rule name to a function that damages a good declaration.
-    """
-    return {
-        "runner image source is not declared": lambda d: d["runner_image"].update(
-            source_host="missing"
-        ),
-        "runner image source does not build it": lambda d: d["runner_image"].update(
-            source_host="dev"
-        ),
-        "runner image ref is empty": lambda d: d["runner_image"].update(image=""),
-        "runner image archive is empty": lambda d: d["runner_image"].update(archive=""),
     }
 
 
@@ -436,42 +396,19 @@ def _reach_mutations() -> dict[str, Any]:
 
 
 def _capacity_mutations() -> dict[str, Any]:
-    """Breakages in what a host promises its runners, and when.
+    """Runner capacity on any host: the fleet has no runner pool left.
 
     Returns:
         Rule name to a function that damages a good declaration.
     """
     return {
-        "wrong budget mode": lambda d: d["hosts"]["builder"]["budget"].update(mode="reserved"),
-        "capacity over budget": lambda d: d["hosts"]["builder"]["runners"].update(instances=4),
-        "instance under the CPU floor": lambda d: d["hosts"]["builder"]["runners"].update(cpus=2),
-        "instance under the memory floor": lambda d: d["hosts"]["builder"]["runners"].update(
-            memory_gb=4
+        "runners on the k3s node": lambda d: d["hosts"]["builder"].update(runners={"instances": 1}),
+        "budget on the dev box": lambda d: d["hosts"]["dev"].update(
+            budget={"threads": 4, "memory_gb": 8}
         ),
-        "unexplained instance count": lambda d: d["hosts"]["builder"]["runners"].update(
-            instances=2
+        "quiet hours on the k3s node": lambda d: d["hosts"]["builder"].update(
+            quiet_hours={"window": "18:00-23:00", "days": "Fri", "instances": 0}
         ),
-        "no labels": lambda d: d["hosts"]["builder"]["runners"].update(labels=[]),
-        "bad quiet window": lambda d: d["hosts"]["builder"].update(
-            quiet_hours={"window": "evening", "days": "Fri", "instances": 0}
-        ),
-        "bad quiet day": lambda d: d["hosts"]["builder"].update(
-            quiet_hours={"window": "18:00-23:00", "days": "Funday", "instances": 0}
-        ),
-        "quiet target is not a reduction": lambda d: d["hosts"]["builder"].update(
-            quiet_hours={"window": "18:00-23:00", "days": "Fri", "instances": 1}
-        ),
-        "capacity on a non-runner class": lambda d: d["hosts"].update(
-            {
-                "box": {
-                    "class": "dev_box",
-                    "connect": {"address": "10.0.0.3"},
-                    "provisions": ["dev-box"],
-                    "runners": {"instances": 1},
-                }
-            }
-        ),
-        "bad sizing constant": lambda d: d["sizing"].update(build_parallelism=0),
     }
 
 
@@ -576,7 +513,7 @@ def _selftest() -> int:
             if not fm.validate(broken, host_vars_dir=empty):
                 failures.append(f"  rule not enforced: {rule}")
         good = _good_declaration()
-        (empty / "builder.yml").write_text("ci_runner_max: 9\n", encoding="utf-8")
+        (empty / "dev.yml").write_text("hil_bench_eth_iface: eth9\n", encoding="utf-8")
         if not fm.validate(good, host_vars_dir=empty):
             failures.append("  a host_vars file re-declaring a fleet-owned knob was accepted")
     failures.extend(_selftest_authority_errors())
@@ -638,12 +575,8 @@ def main(argv: list[str] | None = None) -> int:
         for problem in problems:
             print(f"  {problem}", file=sys.stderr)
         return 1
-    runners = sum(int((h.get("runners") or {}).get("instances", 0)) for h in data["hosts"].values())
     native_hil = sum(1 for host in data["hosts"].values() if host.get("hil_runner"))
-    print(
-        f"infra/fleet.yml OK: {len(data['hosts'])} host(s), {runners} capacity-managed "
-        f"runner instance(s), {native_hil} native HIL listener(s)"
-    )
+    print(f"infra/fleet.yml OK: {len(data['hosts'])} host(s), {native_hil} native HIL listener(s)")
     return 0
 
 

@@ -85,7 +85,7 @@ target; the "status" column flags the known skews.
 | `arm-none-eabi-gcc` (ship binaries) | **13.3.rel1** (`/opt/arm-gnu-toolchain-13.3`: runner + devcontainer, latter by URL+sha256) | **13.3.1** (`~/opt/arm-gnu-toolchain-13.3`) | **13.3.1** (`/opt/arm-gnu-toolchain-13.3`) | **CONVERGED** -- pinned 13.3.rel1, enforced; see 3.1 |
 | host `gcc` (coverage / host tests) | **gcc-14** (Ubuntu 24.04 devcontainer) | n/a (host tests SIGKILL) | **gcc-14.2.0** (built from source, `/usr/local/bin`) | CONVERGED -- Std-A, see the `dev-gcc14-coverage-parity` memory |
 | `just` | **1.40.0** (`JUST_VERSION`, devcontainer) | 1.58.0 | 1.40.0 (`/usr/local/bin`) | Mac may run recipes, but CI formatting/reference checks use the pinned devcontainer release |
-| GitHub Actions runner | **2.336.0** (ARC image, linux/amd64 manifest digest pinned) | n/a | **2.336.0** (native HIL listener, release archive SHA-256 pinned) | CONVERGED -- both Ansible-managed runner paths use the same reviewed release |
+| GitHub Actions runner | n/a (no runner pool) | n/a | **2.336.0** (native HIL listener, release archive SHA-256 pinned) | SINGLE PATH -- only the HIL listener runs it |
 | `clang-format` | **22.1.8** (`clang-format-22`) | 22.1.8 (Homebrew LLVM) | 22.1.8 (`clang-format-22`) | CONVERGED -- see 3.2 |
 | `clang-tidy` | **18.1.8** (`clang-tidy-18`, from `clang-tools-18`) | 22.1.8 (Homebrew LLVM) | 18.1.8 (`clang-tidy-18`) | Mac is on a DIFFERENT MAJOR -- not the same LLVM as clang-format; see 3.2 |
 | `ruff` | **0.15.19** (`pyproject.toml` / `uv.lock`) | 0.15.19 (`.venv`) | 0.15.19 (`/opt/ra8-python-tools`) | CONVERGED -- see 3.4 |
@@ -312,10 +312,9 @@ line size is safe for Unicorn's JIT.
 **No longer an out-of-repo residual.** This used to be a manual step on the
 bare-metal `k3s-runner-*` services on `k3s-pve`, whose `/usr/local` Unicorn was
 hand-provisioned and would have needed re-running by hand after any re-image.
-That pool is retired: every runner answering `ra8-ci` -- the ARC pods -- boots `localhost/ra8-ci-runner:v2`, which builds
-Unicorn **2.1.4** from source by URL + sha256 in `.devcontainer/Dockerfile`. The
-pin is therefore provisioned by the same file that declares it, and a re-image
-reproduces it rather than losing it. The fail-loud check above is unchanged and
+That pool and its ARC successor are both retired. `.devcontainer/Dockerfile`
+builds Unicorn **2.1.4** from source by URL + sha256, so the pin is provisioned
+by the same file that declares it. The fail-loud check above is unchanged and
 is still what guarantees a skew cannot pass silently; `install_unicorn.sh`
 remains the recipe for a bare box (a dev box, or a new runner shape).
 

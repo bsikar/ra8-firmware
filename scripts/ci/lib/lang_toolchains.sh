@@ -14,12 +14,8 @@
 # rustc, rustfmt and clippy-driver -- hard dependencies of ordinary gates.
 # unit-tests, ubsan, scan-build, mcdc, coverage, format and the whole
 # pre-commit suite all configure a tree whose cmake/zig_abi_contract.cmake
-# requires zig on PATH. .devcontainer/Dockerfile carries both pins, but the
-# deployed ARC runner image was built before those layers existed, so on that
-# image every one of those gates died with a provisioning error instead of a
-# verdict. Rebuilding the image is the durable fix and is an Ansible converge
-# (infra/images/README.md); this makes the gates work on the image the fleet is
-# actually running, the same way scripts/builders/provision_doxygen.sh makes
+# requires zig on PATH. .devcontainer/Dockerfile carries both pins; this makes
+# the gates work on an image built before those layers existed, the same way scripts/builders/provision_doxygen.sh makes
 # the docs gate work without a system doxygen.
 #
 # The pins are READ FROM .devcontainer/Dockerfile rather than copied here, so

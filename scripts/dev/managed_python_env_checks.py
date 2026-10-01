@@ -118,8 +118,8 @@ def _dockerfile_instructions(source: str) -> tuple[tuple[str, str], ...]:
     return tuple(instructions)
 
 
-def _dockerfile_receipt_contract() -> tuple[str, str, str]:
-    """Return lock cleanup, receipt seal, and inherited-image verification."""
+def _dockerfile_receipt_contract() -> tuple[str, str]:
+    """Return the lock cleanup and the receipt seal."""
     cleanup = 'rm -f -- "${PYTHON_TOOL_VENV}/.lock"'
     authority = "/usr/bin/python3 -I /opt/ra8-uv-bootstrap/managed_python_env.py"
     devcontainer_inputs = (
@@ -127,17 +127,10 @@ def _dockerfile_receipt_contract() -> tuple[str, str, str]:
         "--pyproject /opt/ra8-python-project/pyproject.toml "
         "--lock /opt/ra8-python-project/uv.lock --group ci"
     )
-    runner_inputs = (
-        '--env "${RA8_TOOL_VENV}" '
-        "--pyproject /opt/ra8-python-project/pyproject.toml "
-        "--lock /opt/ra8-python-project/uv.lock --group ci"
-    )
     verify = f"{authority} verify {devcontainer_inputs}"
     runtime_probe = '"${PYTHON_TOOL_VENV}/bin/python3" -c "import PIL.Image"'
     receipt = f"{authority} write {devcontainer_inputs} && {verify} && {runtime_probe} && {verify}"
-    marker = "printf '%s\\n' 'localhost/ra8-ci-runner (infra/images/runner/Dockerfile)'"
-    runner_verify = f"{marker} > /etc/ra8-ci-runner && {authority} verify {runner_inputs}"
-    return cleanup, receipt, runner_verify
+    return cleanup, receipt
 
 
 def _receipt_root_user(instructions: tuple[tuple[str, str], ...], end: int) -> str:
@@ -153,7 +146,7 @@ def _receipt_root_user(instructions: tuple[tuple[str, str], ...], end: int) -> s
 
 def dockerfile_receipt_findings(source: str) -> list[str]:
     """Require one root-owned receipt seal after lock cleanup and Python use."""
-    cleanup, receipt, _ = _dockerfile_receipt_contract()
+    cleanup, receipt = _dockerfile_receipt_contract()
     instructions = _dockerfile_instructions(source)
     managed_environment = (
         'PYTHONDONTWRITEBYTECODE="1" '
@@ -195,46 +188,12 @@ def dockerfile_receipt_findings(source: str) -> list[str]:
     return findings
 
 
-def runner_dockerfile_receipt_findings(source: str) -> list[str]:
-    """Require the final ARC image to authenticate the inherited receipt."""
-    _, _, verify = _dockerfile_receipt_contract()
-    instructions = _dockerfile_instructions(source)
-    verify_indices = [
-        index
-        for index, (keyword, body) in enumerate(instructions)
-        if keyword == "RUN" and body == verify
-    ]
-    findings: list[str] = []
-    if len(verify_indices) != 1:
-        findings.append("runner Dockerfile must own one active exact receipt verification RUN")
-        return findings
-    verify_index = verify_indices[0]
-    if _receipt_root_user(instructions, verify_index) not in {"0", "0:0", "root"}:
-        findings.append("runner Dockerfile must verify the managed receipt as root")
-    expected_tail = (
-        ("ENV", "RUNNER_MANUALLY_TRAP_SIG=1 ACTIONS_RUNNER_PRINT_LOG_TO_STDOUT=1"),
-        ("WORKDIR", "/home/runner"),
-        ("USER", "runner"),
-        ("ENTRYPOINT", "[]"),
-        ("CMD", '["/bin/bash"]'),
-    )
-    if instructions[verify_index + 1 :] != expected_tail:
-        findings.append("runner receipt verification must precede only its exact runtime metadata")
-    if any(
-        keyword == "ENV" and "RA8_TOOL_VENV" in body
-        for keyword, body in instructions[:verify_index]
-    ):
-        findings.append("runner Dockerfile must not redirect the inherited RA8_TOOL_VENV authority")
-    return findings
-
-
 def consumer_findings(root: Path) -> list[str]:
     """Return source-contract drift between all managed-environment consumers."""
     paths = {
         "setup_python.sh": root / "scripts/dev/setup_python.sh",
         "tool_env.sh": root / "scripts/ci/lib/tool_env.sh",
         "Dockerfile": root / ".devcontainer/Dockerfile",
-        "runner Dockerfile": root / "infra/images/runner/Dockerfile",
         "provision_dev_box_toolchain.sh": root / "scripts/dev/provision_dev_box_toolchain.sh",
     }
     sources = {label: path.read_text(encoding="ascii") for label, path in paths.items()}
@@ -247,7 +206,6 @@ def consumer_findings(root: Path) -> list[str]:
         if flattened[label].count(invocation) != 1
     ]
     findings.extend(dockerfile_receipt_findings(sources["Dockerfile"]))
-    findings.extend(runner_dockerfile_receipt_findings(sources["runner Dockerfile"]))
     weak_patterns = (
         r"RA8_TOOL_VENV[^\n]{0,160}bin/python3[^\n]{0,40}-x",
         r"\[\[?\s+-x\s+[^\n]*RA8_TOOL_VENV",
@@ -297,7 +255,7 @@ def consumer_runtime_findings(root: Path, run_command: CommandRunner) -> list[st
 
 def _dockerfile_receipt_contract_selftest(dockerfile: Path, good: str) -> list[str]:
     """Return failures from independent hostile Docker receipt mutations."""
-    cleanup, receipt, _ = _dockerfile_receipt_contract()
+    cleanup, receipt = _dockerfile_receipt_contract()
     managed_environment = next(
         line for line in good.splitlines() if line.startswith("ENV PYTHONDONTWRITEBYTECODE=")
     )
@@ -352,54 +310,6 @@ def _dockerfile_receipt_contract_selftest(dockerfile: Path, good: str) -> list[s
     return failures
 
 
-def _runner_receipt_contract_selftest(dockerfile: Path, good: str) -> list[str]:
-    """Return failures from hostile final ARC-image receipt mutations."""
-    _, _, verify = _dockerfile_receipt_contract()
-    mutations = (
-        (f"RUN {verify}\n", "RUN true\n", "a deleted runner receipt verification"),
-        (f"RUN {verify}", f"# RUN {verify}", "runner verify tokens only in a comment"),
-        ("--group ci", "--group dev", "a weakened runner dependency-group binding"),
-        (
-            '--env "${RA8_TOOL_VENV}"',
-            '--env "${PYTHON_TOOL_VENV}"',
-            "a parent-only ARG used instead of the inherited environment authority",
-        ),
-        (
-            "USER root\nRUN true\nRUN " + verify,
-            "USER root\nRUN true\nUSER runner\nRUN " + verify,
-            "a non-root runner receipt verifier",
-        ),
-        (
-            f"RUN {verify}\nENV RUNNER_MANUALLY_TRAP_SIG=1",
-            f"RUN {verify}\nRUN printf later\nENV RUNNER_MANUALLY_TRAP_SIG=1",
-            "a later runner-image RUN",
-        ),
-        (
-            f"RUN {verify}\nENV RUNNER_MANUALLY_TRAP_SIG=1",
-            f"RUN {verify}\nCOPY uv.lock /opt/ra8-python-project/uv.lock\n"
-            "ENV RUNNER_MANUALLY_TRAP_SIG=1",
-            "a later runner-image COPY",
-        ),
-        (
-            f"RUN {verify}\nENV RUNNER_MANUALLY_TRAP_SIG=1",
-            f"RUN {verify}\nONBUILD RUN true\nENV RUNNER_MANUALLY_TRAP_SIG=1",
-            "a deferred runner-image mutation",
-        ),
-        (
-            "USER root\nRUN true\nRUN " + verify,
-            'USER root\nENV RA8_TOOL_VENV="/tmp/forged"\nRUN ' + verify,
-            "a redirected inherited environment authority before verification",
-        ),
-        ("\nUSER runner\nENTRYPOINT", "\nUSER root\nENTRYPOINT", "a root ARC image user"),
-    )
-    failures: list[str] = []
-    for old, new, label in mutations:
-        dockerfile.write_text(good.replace(old, new, 1), encoding="ascii")
-        if not consumer_findings(dockerfile.parents[3]):
-            failures.append(f"consumer selftest missed {label}")
-    return failures
-
-
 def consumer_contract_selftest() -> list[str]:
     """Return failures from positive and hostile static-consumer fixtures."""
     with tempfile.TemporaryDirectory(prefix="ra8-managed-consumers-") as tmp:
@@ -408,7 +318,6 @@ def consumer_contract_selftest() -> list[str]:
             "setup_python.sh": "scripts/dev/setup_python.sh",
             "tool_env.sh": "scripts/ci/lib/tool_env.sh",
             "Dockerfile": ".devcontainer/Dockerfile",
-            "runner Dockerfile": "infra/images/runner/Dockerfile",
             "provision_dev_box_toolchain.sh": "scripts/dev/provision_dev_box_toolchain.sh",
         }
         grouped = {label: [] for label in paths}
@@ -418,7 +327,7 @@ def consumer_contract_selftest() -> list[str]:
             path = root / relative
             path.parent.mkdir(parents=True, exist_ok=True)
             path.write_text("\n".join(grouped[label]) + "\n", encoding="ascii")
-        cleanup, receipt, verify = _dockerfile_receipt_contract()
+        cleanup, receipt = _dockerfile_receipt_contract()
         managed_environment = (
             'ENV PYTHONDONTWRITEBYTECODE="1" '
             'PYTHONNOUSERSITE="1" '
@@ -434,14 +343,6 @@ def consumer_contract_selftest() -> list[str]:
         )
         dockerfile = root / ".devcontainer/Dockerfile"
         dockerfile.write_text(good_dockerfile, encoding="ascii")
-        good_runner = (
-            f"FROM base\nUSER root\nRUN true\nRUN {verify}\n"
-            "ENV RUNNER_MANUALLY_TRAP_SIG=1 \\\n"
-            "    ACTIONS_RUNNER_PRINT_LOG_TO_STDOUT=1\n"
-            'WORKDIR /home/runner\nUSER runner\nENTRYPOINT []\nCMD ["/bin/bash"]\n'
-        )
-        runner_dockerfile = root / "infra/images/runner/Dockerfile"
-        runner_dockerfile.write_text(good_runner, encoding="ascii")
         findings = consumer_findings(root)
         (root / "scripts/dev/setup_python.sh").write_text(
             '[[ -x "$RA8_TOOL_VENV/bin/python3" ]]\n', encoding="ascii"
@@ -453,8 +354,6 @@ def consumer_contract_selftest() -> list[str]:
         )
         findings.extend(_dockerfile_receipt_contract_selftest(dockerfile, good_dockerfile))
         dockerfile.write_text(good_dockerfile, encoding="ascii")
-        runner_dockerfile.write_text(good_runner, encoding="ascii")
-        findings.extend(_runner_receipt_contract_selftest(runner_dockerfile, good_runner))
         return findings
 
 

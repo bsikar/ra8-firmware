@@ -11,7 +11,6 @@ from pathlib import Path
 DEPLOYMENT_CLOSURE_PATHS = (
     Path(".devcontainer/Dockerfile"),
     Path(".dockerignore"),
-    Path("infra/ansible/roles/ci_runner/tasks/main.yml"),
     Path("infra/ansible/roles/dev_box/tasks/transaction.yml"),
     Path("infra/ansible/roles/hil_bench/tasks/transaction.yml"),
     Path("scripts/ci/devcontainer_image.sh"),

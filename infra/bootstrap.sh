@@ -6,9 +6,8 @@
 # infra/bootstrap.sh -- one-command setup for a fresh clone.
 #
 # Walks you from "git clone" to a deployable rig: checks prerequisites, writes
-# your (git-ignored) inventory, and stores your GitHub token locally so nothing
-# secret ever touches the repo. At the end it offers to converge the declared
-# runner-image source host through the fleet dispatcher.
+# your (git-ignored) inventory and installs the fleet's ssh aliases. At the end
+# it prints the converge command for every declared host.
 #
 #   /bin/bash -p infra/bootstrap.sh    # or:  just infra::setup
 #
@@ -81,7 +80,6 @@ if [[ "$-" == *p* ]]; then
   ANSIBLE_DIR="${ROOT}/infra/ansible"
   PRIVATE_DIR="${ANSIBLE_DIR}/private"
   INVENTORY="${ANSIBLE_DIR}/inventory/hosts.ini"
-  SECRETS="${PRIVATE_DIR}/secrets.yml"
 
   say() { printf '\n== %s ==\n' "$1"; }
 
@@ -132,54 +130,12 @@ if [[ "$-" == *p* ]]; then
   say "SSH aliases"
   python3 "${ROOT}/scripts/dev/fleet.py" ssh-config --install
 
-  # 4. Secrets (git-ignored, never committed) ----------------------------------
-  say "Secrets"
-  if [ -f "${SECRETS}" ]; then
-    echo "  ${SECRETS#"${ROOT}"/} already exists -- leaving it."
-  else
-    echo "  ARC needs a GitHub token to register runners."
-    echo "  Create a fine-grained PAT with 'Administration: read/write' on the repo:"
-    echo "    https://github.com/settings/personal-access-tokens"
-    read -r -s -p "  Paste PAT (input hidden): " pat
-    echo
-    if [ -z "${pat}" ]; then
-      echo "  No PAT entered -- skipping. Add it later to ${SECRETS#"${ROOT}"/}"
-    else
-      (
-        umask 077
-        printf 'ci_runner_github_pat: "%s"\n' "${pat}" >"${SECRETS}"
-      )
-      unset pat
-      echo "  wrote ${SECRETS#"${ROOT}"/} (git-ignored, 0600)"
-      echo "  (Prefer OpenBao? Put the token there and set ci_runner_github_pat"
-      echo "   via a vault lookup in group_vars/all.yml -- see all.example.yml.)"
-    fi
-  fi
-
-  # 5. Converge through the declared fleet path --------------------------------
+  # 4. Converge through the declared fleet path --------------------------------
   say "Ready"
-  # The runner-image producer is a declaration fact, not a bootstrap-script
-  # constant. Resolve it through the same model the operator-facing infra
-  # commands use, then let fleet.py derive the play order, inventory group, role
-  # variables and transport. Calling ansible-playbook here directly used to
-  # bypass all of those contracts and provision only the ARC half of the host.
-  runner_image_source="$(
-    PYTHONPATH="${ROOT}/scripts/dev" python3 -c \
-      'import fleet_model as fm; print(fm.load()["runner_image"]["source_host"])'
-  )"
-  deploy_cmd=(python3 "${ROOT}/scripts/dev/fleet.py" apply "${runner_image_source}")
-  echo "  Converge the declared runner-image source host (${runner_image_source}) with:"
-  echo "    ${deploy_cmd[*]}"
-  echo
-  read -r -p "  Run it now? [y/N] " go
-  case "${go}" in
-    [yY]*)
-      exec "${deploy_cmd[@]}"
-      ;;
-    *)
-      echo "  Skipped. Run the command above when you are ready."
-      ;;
-  esac
+  # fleet.py derives the play order, inventory group, role variables and
+  # transport for each host from infra/fleet.yml; nothing here assembles them.
+  echo "  Converge a declared host with:"
+  python3 "${ROOT}/scripts/dev/fleet.py" list | awk 'NR > 1 && NF >= 3 && $1 != "just" && $1 != "docs/CI_FLEET.md" { print "    just infra::apply " $1 }'
 else
   [[ "$-" == *p* ]]
 fi

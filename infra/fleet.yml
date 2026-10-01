@@ -3,74 +3,26 @@
 ---
 # THE fleet declaration. One block per machine; everything else is derived.
 #
-# This file is the single registry of what hardware this project runs on and
-# how much of each machine it is allowed to use. Adding a machine means adding
-# a block here -- not writing a role, not editing an inventory, not touching a
-# playbook. Retuning one means changing a number here and re-converging.
+# This file is the single registry of what hardware this project runs on.
+# Adding a machine means adding a block here -- not writing a role, not editing
+# an inventory, not touching a playbook. Retuning one means changing it here
+# and re-converging.
 #
-#   just infra::list                  what is declared, and how it is sized
+#   just infra::list                  what is declared, and what each host runs
 #   just infra::check <name>          dry run: what would change
 #   just infra::apply <name>          converge that host to this file
-#   just infra::scale <name> <n>      live capacity change, drains first
 #
 # Everything downstream reads this file:
 #   - scripts/dev/fleet.py           loader, validator, renderer, dispatcher
 #   - infra/ansible/inventory/hosts.ini   GENERATED (git-ignored)
 #   - ~/.ssh/ra8-fleet.config             GENERATED (`just infra::ssh_config`)
-#   - the role variables each play runs with (see CLASSES in fleet.py)
+#   - the role variables each play runs with (see scripts/dev/fleet_model.py)
 #
-# The full narrative -- add a host, retune a host, quiet hours, remove a host,
-# and how the numbers below were arrived at -- is docs/CI_FLEET.md.
+# The full narrative -- add a host, retune a host, remove a host -- is
+# docs/CI_FLEET.md.
 #
 # Copyright (c) 2026 Brighton Sikarskie
 # SPDX-License-Identifier: MIT
-
-# --- How instance counts are decided ----------------------------------------
-#
-# Runner count per host is DERIVED, not guessed:
-#
-#     instances = min( budget.threads   / build_parallelism ,
-#                      budget.memory_gb / memory_per_instance_gb )
-#
-# Both constants are measured properties of this tree, not preferences, and
-# both are named here so a new machine is sized by plugging in two numbers
-# rather than re-deriving anything:
-#
-#   build_parallelism      -- every heavy workflow pins its own fan-out with
-#                             CMAKE_BUILD_PARALLEL_LEVEL (see
-#                             scripts/ci/lib/parallelism.sh). A job therefore
-#                             cannot use more than this many CPUs no matter
-#                             how many it is given, so CPU beyond it per
-#                             instance is bought and never spent.
-#
-#   memory_per_instance_gb -- clang-tidy is the memory ceiling in this tree and
-#                             has been OOM-killed on an 8 GB machine. An
-#                             instance that OOMs mid-job is worse than one that
-#                             never existed: it presents as a flaky gate.
-#
-# The memory divisor is deliberately CONSERVATIVE. Container memory caps are
-# ceilings, not reservations, so this protects the case where several heavy
-# jobs coincide on one host rather than describing one job's typical draw --
-# a full cross-build was measured peaking at 4.06 GiB RSS, well inside it. If per-job peak RSS is ever measured properly and stays under the
-# divisor across the whole gate set, drop the divisor and every host's
-# recommended count rises with it. That is a measurement away, not a redesign.
-#
-# scripts/checks/check_fleet_declaration.py recomputes the formula for every
-# host and FAILS when a declared count differs from it without a written
-# `sizing_note:` saying why. A number nobody can re-derive is folklore.
-sizing:
-  build_parallelism: 4
-  memory_per_instance_gb: 8
-
-# --- The canonical runner image --------------------------------------------
-#
-# The ARC role builds this image once on the k3s node and atomically publishes
-# its docker archive there. `fleet.py apply` derives both the producer and
-# artifact path from this block.
-runner_image:
-  source_host: k3s-pve
-  image: "localhost/ra8-ci-runner:v2"
-  archive: "/var/lib/rancher/k3s/agent/images/ra8-ci-runner.tar"
 
 # --- The machines -----------------------------------------------------------
 #
@@ -81,7 +33,7 @@ runner_image:
 #            alias. Bare aliases are what this block used to carry, and they
 #            resolved on exactly one laptop -- which had no ansible, while the
 #            box that had ansible could not resolve a single fleet host. Nothing
-#            was a working control node and a drained runner sat unconvergeable.
+#            was a working control node.
 # check_fleet_declaration.py now rejects a bare label here.
 #   user     the login account, if it is not the caller's own.
 #   jump     an optional ProxyJump through ANOTHER HOST IN THIS FILE, named by
@@ -93,60 +45,31 @@ runner_image:
 # any machine a control node in one command instead of by hand-copying somebody
 # else's private config.
 #
-# `class` selects the arithmetic, the plays and the variable mapping; the
-# classes themselves live in CLASSES in scripts/dev/fleet.py.
+# `class` selects the plays and the variable mapping; the classes themselves
+# live in CLASSES in scripts/dev/fleet_runner_model.py.
 #
-#   arc_k8s       an ARC (Actions Runner Controller) scale set on a k8s cluster
+#   k8s_node      the single-node k3s cluster that hosts the OpenBao vault
 #   dev_box       the shared verification box + dedicated HIL listener
-#   hil_bench     the hardware-in-the-loop bench Pi (NOT a runner)
+#   hil_bench     the hardware-in-the-loop bench Pi
 #
-# A `dev_box` carrying `hil_runner:` declares its one repo-scoped native
-# listener separately from scalable `runners:` capacity. The listener names
-# its workflow and its `hil_bench` host so its registration labels, repository
-# and remote instrument endpoint are derived rather than repeated in a role.
-#
-# `budget` is what CI may use of the machine, not what the machine has. Its
-# `mode` picks which arithmetic applies:
-#
-#   reserved  the caps are real reservations the kernel enforces, so
-#             instances * cpus and instances * memory_gb must FIT the budget.
-#   burst     the caps are ceilings a scheduler may oversubscribe, so the
-#             REQUESTS are what must fit. Only arc_k8s is honest as `burst`.
+# There is no runner pool: no host may declare `runners:`, `budget:` or
+# `quiet_hours:`. A `dev_box` carrying `hil_runner:` declares its one
+# repo-scoped native listener and names its `hil_bench` host, so its
+# registration labels, repository and remote instrument endpoint are derived
+# rather than repeated in a role.
+
 hosts:
 
-  # --- VM 300 on pve1: the k3s cluster, the vault, and the ARC runner pool ---
+  # --- VM 300 on pve1: the k3s cluster and the vault -------------------------
   k3s-pve:
-    class: arc_k8s
-    summary: "k3s single node: ARC scale set + the OpenBao vault"
+    class: k8s_node
+    summary: "k3s single node: the OpenBao vault"
     connect:
       # Routable control-plane endpoint; do not duplicate alternate private
       # endpoints in repository documentation.
       address: 100.64.0.1
       user: ubuntu
-    # Two plays, in order: the cluster and vault first, the runner pool into
-    # it. `just infra::apply HOST=k3s-pve` runs both; PLAY=<name> runs one.
-    provisions: [k3s-node, ci-runner]
-    runners:
-      instances: 6
-      cpus: 4
-      memory_gb: 12
-      cpu_request: 1
-      memory_request_gb: 2
-      labels: [ra8-ci]
-    budget:
-      mode: burst
-      # Leave capacity for workloads outside this project's namespaces.
-      threads: 9
-      memory_gb: 40
-    sizing_note: >-
-      The formula sizes an INSTANCE, and here an instance is a pod: 4 CPU and
-      12 GiB per pod is exactly min(4/4, 12/8) = 1 job's worth, which is the
-      shape the formula asks for. The COUNT is bounded by the node instead --
-      6 pods request 6 of the ~9 schedulable cores. It is deliberately not
-      raised toward the node's full 16: this is a guest on a 10-core/16-thread
-      i5-12600K it shares with the dev box (28 vCPU committed on a 16-thread
-      part before anything runs), so extra pods add contention rather than
-      throughput. Real capacity comes from hosts that are not pve1.
+    provisions: [k3s-node]
 
   # --- CT 107 on pve1: verification box + dedicated HIL listener -------------
   dev:
