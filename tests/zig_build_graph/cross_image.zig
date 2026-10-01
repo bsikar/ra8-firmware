@@ -438,6 +438,7 @@ fn addCrossApp(
         ctx.middleware_archive = middleware.add(b, ctx.middleware, cross_build.middlewareToolchain(tools, globals, &arm_global_defines));
         ctx.implib = implib;
         ctx.secure_elf = elf;
+        ctx.merge_tool = ns_image.mergeTool(b);
         ns_image.add(b, arm_step, ctx);
     }
 
