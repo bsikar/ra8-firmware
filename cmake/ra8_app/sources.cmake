@@ -245,19 +245,32 @@ macro(_ra8_app_collect_sources)
   # static archive, linked separately. Left unglobbed and deliberately outside
   # the #908 guard, for the same reason as ra8_net_pal above.
   file(GLOB_RECURSE _ra8_lib_board CONFIGURE_DEPENDS ${_ra8_board_dir}/src/*.c)
-  # A board layer that has finished its flip (build.zig, and no
-  # src/ra8_board_<board>.c) contributes its objects through the Zig archive,
-  # exactly as the two LIBS loops below do for any other ported library. The
-  # glob above can still be non-empty for such a board because src/boot/ is
-  # globbed with it and filtered out a few lines down, so without this the #908
-  # guard would see a compilable library and let the archive fall out of the
-  # link. ra8_board_ra8p1 is the first board in that state (#2984).
+  # A board layer with a build.zig contributes its objects through the Zig
+  # archive, exactly as the two LIBS loops below do for any other ported
+  # library. Register it whenever the build.zig is there, whether the flip is
+  # finished or only partway:
+  #
+  #   FINISHED (build.zig, no src/ra8_board_<board>.c): every object comes from
+  #   the archive. The glob above can still be non-empty for such a board
+  #   because src/boot/ is globbed with it and filtered out a few lines down,
+  #   so _ra8_board_zig tells the #908 guard the library has a link path --
+  #   without it the guard would see a compilable library and let the archive
+  #   fall out of the link. ra8_board_ra8p1 is the first board in that state
+  #   (#2984).
+  #
+  #   PARTIAL (build.zig AND src/ra8_board_<board>.c): the archive links BESIDE
+  #   the remaining C objects. _ra8_board_zig stays off, because the glob is
+  #   genuinely non-empty and the #908 guard should keep checking it on the C
+  #   side. Registering the archive is still required, and gating it on the
+  #   absence of the board .c -- as this did before -- silently dropped the
+  #   ported half of such a board out of the link. ra8_board_ek_ra8d2 is the
+  #   first board in that state (#2998).
   set(_ra8_board_zig "")
-  if(EXISTS "${_ra8_board_dir}/build.zig"
-     AND NOT EXISTS "${_ra8_board_dir}/src/ra8_board_${_RA8_APP_BOARD}.c"
-  )
+  if(EXISTS "${_ra8_board_dir}/build.zig")
     list(APPEND _ra8_lib_zig "ra8_board_${_RA8_APP_BOARD}|${_ra8_board_dir}")
-    set(_ra8_board_zig ON)
+    if(NOT EXISTS "${_ra8_board_dir}/src/ra8_board_${_RA8_APP_BOARD}.c")
+      set(_ra8_board_zig ON)
+    endif()
   endif()
   _ra8_app_require_compilable_lib(
     "ra8_board_${_RA8_APP_BOARD}"

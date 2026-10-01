@@ -1,0 +1,63 @@
+//! SPDX-License-Identifier: MIT
+//! Copyright (c) 2026 Brighton Sikarskie
+//!
+//! The seam between this board layer and everything it calls: the HAL, the
+//! chip clock binding, the io-stream sink, and the board's own remaining C
+//! translation units. Declared in one place so a host suite can stand a fake
+//! behind any of them by defining the symbol.
+
+const stream = @import("stream.zig");
+const clock = @import("clock_types.zig");
+
+/// `ra8_board_clock_rates_t`.
+pub const ClockRates = extern struct {
+    cpuclk0_hz: u32,
+    pclka_hz: u32,
+};
+
+pub extern fn ra8_mstp_init() u32;
+pub extern fn ra8_time_init(cpu_hz: u32) u32;
+pub extern fn ra8_cgc_get_clock_hz(id: u32, out_hz: *u32) u32;
+pub extern fn ra8_isr_globals_enable() void;
+
+pub extern fn ra8_board_clocks_init(out_rates: *ClockRates) u32;
+pub extern fn ra8_board_uart_console_init(baud: u32) u32;
+pub extern fn ra8_board_led_init(led: u32) u32;
+
+pub extern fn ra8_pfs_route_peripheral(pin: u16, psel: u32, owner: [*:0]const u8) u32;
+pub extern fn ra8_gpio_output_init(pin: u16, init_level: u32) u32;
+
+pub extern fn ra8_board_usbhs_device_init() u32;
+pub extern fn ra8_board_usbhs_host_init() u32;
+
+/// Lives in the board's `ra8_board_ek_ra8d2_comms.c`, which is still C.
+pub extern fn priv_ra8_board_uart_console_is_up() bool;
+
+/// `ra8_io_stream_uart_init`, the one symbol in this seam that an app may
+/// legitimately not link.
+///
+/// The C build dropped `..._console_stream.c` from the board glob unless the
+/// app named `ra8_io` in LIBS, because the sink lives in that library. A Zig
+/// static archive is a single compilation unit, so there is no per-file gate
+/// left to apply: the console code is in the archive whether the app asked for
+/// it or not. Declaring the sink weak keeps the link honest instead -- an app
+/// without `ra8_io` resolves it to null and `console_stream.bind` refuses,
+/// rather than failing to link over a facility it never asked for. Same shape
+/// `src/boot/vector_table.c` already uses for the optional anti-rollback hook.
+pub const UartStreamInit = fn (
+    s: *stream.IoStream,
+    state: *stream.UartState,
+    channel: u8,
+) callconv(.c) u32;
+
+pub const ra8_io_stream_uart_init: ?*const UartStreamInit = @extern(
+    ?*const UartStreamInit,
+    .{ .name = "ra8_io_stream_uart_init", .linkage = .weak },
+);
+
+pub extern fn fw_clock_bind(
+    clk: *clock.FwClock,
+    iface: *const clock.FwClockIface,
+    ctx: ?*anyopaque,
+) u32;
+pub extern fn fw_clock_ra8_iface() *const clock.FwClockIface;
