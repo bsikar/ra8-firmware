@@ -310,11 +310,11 @@ file(GLOB RA8_BOARD_EK_RA8D2_SOURCES CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra8_board
 # Zig now, linked via tests/cmake/zig_libraries.cmake. The NS-side
 # ns/ra8_ns_rot_header.c is a different artifact: it is data compiled into the
 # Non-Secure image by ra8_add_ns_image.cmake, never into this library.
-# ra8_dfu is partially migrated. The polled host-side DFU driver is Zig
-# (#2809) and this glob no longer matches it, but the boot decision, the
-# MRAM program/verify path, the USBX device class, the launch gate, the
-# anti-rollback counter and the root-of-trust reader are all still C, so the
-# glob stays non-empty and issue #908 does not bite here. The Zig archive is
+# ra8_dfu is partially migrated. The polled host-side DFU driver (#2809) and
+# the pure boot logic (#2918) are Zig and this glob no longer matches them,
+# but the MRAM program/verify path, the USBX device class, the launch gate,
+# the anti-rollback counter and the root-of-trust reader are all still C, so
+# the glob stays non-empty and issue #908 does not bite here. The Zig archive is
 # deliberately NOT linked into ra8_core_hal: the C it replaces was firmware-only
 # (#ifndef RA8_OFF_TARGET), so it contributed nothing to this host build, and its
 # ra8_usb_host_* seam has no host-side implementation to bind to. The ARM side
