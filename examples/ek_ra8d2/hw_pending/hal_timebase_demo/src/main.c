@@ -18,7 +18,8 @@
  *
  * Sequence:
  *   1. `ra8_cgc_init()` -- XTAL + PLL1 up, CPUCLK0 = 1 GHz, PCLKA = 125 MHz.
- *   2. `ra8_cgc_get_clock_hz(k_ra8_clock_id_cpuclk0, ...)` -- the live core clock.
+ *   2. `fw_clock_rate_for(ra8_board_clock(), {core, 0}, ...)` -- the live core
+ *      clock, read through the board clock profile.
  *   3. `ra8_time_init(cpuclk0_hz)` -- the raw-poke path arms SysTick + DWT and
  *      backs `ra8_delay_ms()`.
  *   4. `ra8_board_uart_console_init(115200)` -- SCI8 J-Link OB console.
@@ -47,8 +48,10 @@
 #include <stdint.h>
 
 #include "ra8_board_ek_ra8d2.h"
+#include "ra8_board_ek_ra8d2_clock_profile.h"
 #include "ra8_boot_entry.h"
 #include "ra8_cgc.h"
+#include "fw_if_clock.h"
 #include "ra8_err.h"
 #include "ra8_isr.h"
 #include "ra8_systick.h"
@@ -194,7 +197,8 @@ static ra8_err_t demo_setup_or_halt(uint32_t* out_cpuclk_hz)
   if (ra8_cgc_init() != k_ra8_ok) {
     demo_panic_halt();
   }
-  if (ra8_cgc_get_clock_hz(k_ra8_clock_id_cpuclk0, &cpuclk0_hz) != k_ra8_ok) {
+  const fw_clock_module_t clk_core = {.kind = k_fw_clock_module_core, .index = 0U};
+  if (fw_clock_rate_for(ra8_board_clock(), clk_core, &cpuclk0_hz) != k_ra8_ok) {
     demo_panic_halt();
   }
   if (ra8_time_init(cpuclk0_hz) != k_ra8_ok) {

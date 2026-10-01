@@ -7,7 +7,7 @@
 # HAL implementations, named backend translation units, board composition
 # libraries, tests, vendored code, and generated code are outside this ratchet.
 #
-# clock: 307 reference(s)
+# clock: 299 reference(s)
 # display: 9 reference(s)
 # gpio: 74 reference(s)
 # timer: 51 reference(s)
@@ -87,14 +87,14 @@ examples/ek_ra8d2/hw_pending/eth_gptp_timestamp_demo/src/main.c	clock	3
 examples/ek_ra8d2/hw_pending/eth_hal_bringup/src/main.c	clock	2
 examples/ek_ra8d2/hw_pending/eth_l3switch_forward_demo/src/main.c	clock	1
 examples/ek_ra8d2/hw_pending/eth_tsn_tas_demo/src/main.c	clock	3
-examples/ek_ra8d2/hw_pending/gpt_edge_capture_count/src/main.c	clock	2
+examples/ek_ra8d2/hw_pending/gpt_edge_capture_count/src/main.c	clock	1
 examples/ek_ra8d2/hw_pending/gpt_edge_capture_count/src/main.c	timer	10
-examples/ek_ra8d2/hw_pending/hal_timebase_demo/src/main.c	clock	2
-examples/ek_ra8d2/hw_pending/i2c_peripheral_responder/src/main.c	clock	2
-examples/ek_ra8d2/hw_pending/i3c_i2c_peripheral_demo/src/main.c	clock	2
-examples/ek_ra8d2/hw_pending/import_reader/src/main.c	clock	3
-examples/ek_ra8d2/hw_pending/imu_lsm6dso_demo/src/main.c	clock	3
-examples/ek_ra8d2/hw_pending/lin_commander_hil/src/main.c	clock	2
+examples/ek_ra8d2/hw_pending/hal_timebase_demo/src/main.c	clock	1
+examples/ek_ra8d2/hw_pending/i2c_peripheral_responder/src/main.c	clock	1
+examples/ek_ra8d2/hw_pending/i3c_i2c_peripheral_demo/src/main.c	clock	1
+examples/ek_ra8d2/hw_pending/import_reader/src/main.c	clock	1
+examples/ek_ra8d2/hw_pending/imu_lsm6dso_demo/src/main.c	clock	2
+examples/ek_ra8d2/hw_pending/lin_commander_hil/src/main.c	clock	1
 examples/ek_ra8d2/hw_pending/manual/usb_msc_sdcard/src/main.c	clock	4
 examples/ek_ra8d2/hw_pending/manual/usb_msc_sdcard/src/main.c	gpio	1
 examples/ek_ra8d2/hw_pending/manual/usb_printer_vendor/src/main.c	clock	3
