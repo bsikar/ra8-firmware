@@ -61,6 +61,7 @@
 #include "ra8_cgc.h"
 #include "ra8_err.h"
 #include "ra8_gpio_constants.h"
+#include "ra8_pin_interface.h"
 #include "ra8_pin_validator.h"
 #include "ra8_port_constants.h"
 #include "ra8_port_utils.h"
@@ -424,12 +425,14 @@ static ra8_err_t tz_usb_route_pins(void)
    * would make the USB-pin claims spuriously conflict. Reset it first. */
   ra8_pin_validator_reset();
 
+  const ra8_pin_interface_t* const pins = ra8_pin_interface_default();
+
   /* Route the USB-FS pins as the DEVICE (Secure owns PFS). P5_00 LOW = dev. */
   ra8_err_t err = ra8_pfs_route_peripheral((ra8_port_pin_t)k_tz_usb_pin_vbus,
                                            k_ra8_psel_usb_fs,
                                            "tz_usb.fs_vbus");
   if (err == k_ra8_ok) {
-    err = ra8_gpio_output_init((ra8_port_pin_t)k_tz_usb_pin_vbusen, k_ra8_level_low);
+    err = pins->output_init(pins->ctx, (ra8_port_pin_t)k_tz_usb_pin_vbusen, k_ra8_level_low);
   }
   if (err == k_ra8_ok) {
     err =
@@ -443,7 +446,7 @@ static ra8_err_t tz_usb_route_pins(void)
   /* USBHS host pins: PD07 HIGH (U18 supplies J7 VBUS), route P4_08
    * USBHS_VBUS. (The host-mode mux is the U15 expander -- handled later.) */
   if (err == k_ra8_ok) {
-    err = ra8_gpio_output_init((ra8_port_pin_t)k_tz_usb_pin_hs_pwr, k_ra8_level_high);
+    err = pins->output_init(pins->ctx, (ra8_port_pin_t)k_tz_usb_pin_hs_pwr, k_ra8_level_high);
   }
   if (err == k_ra8_ok) {
     err = ra8_pfs_route_peripheral((ra8_port_pin_t)k_tz_usb_pin_hs_vbus,
