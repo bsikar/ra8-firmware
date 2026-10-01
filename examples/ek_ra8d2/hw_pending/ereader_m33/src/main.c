@@ -7,7 +7,7 @@
  *
  * @details
  * This is the firmware that runs on the RA8D2's *primary* core, the Cortex-M85,
- * out of reset. It demonstrates the #150 power-saving model: an e-reader spends
+ * out of reset. It demonstrates the RA8FW-250 power-saving model: an e-reader spends
  * almost all its time idle on a rendered page, so handing that held page to the
  * M33 @ 250 MHz -- while the M85 @ 1 GHz sleeps -- is the high-leverage battery
  * win. "Power saving = drop to the slow core."
@@ -24,7 +24,7 @@
  *      rendered pixels -- validates it, and logs a single deterministic banner
  *      "ereader_m33: rgb565 256x64 sdram crc=<8 hex> PASS". ra8_emulator echoes only
  *      the primary core's ITM, so the M85 speaks for the M33.
- *   4. Runs the #150 MODE-SWITCH cycle ::k_erm33_max_turns times: it PARKS --
+ *   4. Runs the RA8FW-250 MODE-SWITCH cycle ::k_erm33_max_turns times: it PARKS --
  *      writes the CGC clock-gate (an LPM clock-stop) and drops into Sleep-mode
  *      WFI -- handing the live core to the slow M33, which holds the page and
  *      polls a (fake) touch. On a page turn the M33 pokes IPC0 and the M85
@@ -586,7 +586,7 @@ static void m85_lpm_configure(void)
  * high-speed on-chip oscillator while it is parked, so the park writes
  * HOCOCR.HCSTP through `ra8_lpm_set_clock_stop` to model the power drop, and the
  * wake clears it again. This is the "CGC clock-gate / down-clock" register write
- * the #150 model calls for: real on silicon, routed to ra8_emulator's catch-all in
+ * the RA8FW-250 model calls for: real on silicon, routed to ra8_emulator's catch-all in
  * the emulator so it neither faults nor changes the run.
  *
  * @param[in] stop true -- gate the HOCO (park); false -- restore it (wake).
@@ -714,7 +714,7 @@ static bool m85_wait_turn_done(const volatile erm33_mailbox_t* mb, uint32_t turn
 }
 
 /**
- * @brief Run the #150 mode-switch cycle: park, wake on a page turn, repeat.
+ * @brief Run the RA8FW-250 mode-switch cycle: park, wake on a page turn, repeat.
  *
  * @details For each of ::k_erm33_max_turns turns the M85 gates the HOCO and parks
  * in Sleep-mode WFI (::m85_wait_turn), wakes on the M33's IPC poke, restores the
@@ -797,7 +797,7 @@ static void emit_cycle_verdict(const volatile erm33_mailbox_t* mb, bool pass)
 }
 
 /**
- * @brief Run the #150 mode-switch and log its verdict.
+ * @brief Run the RA8FW-250 mode-switch and log its verdict.
  *
  * @details Drives the park / wake / re-render cycle (::run_handoff_cycle), waits
  * for the M33's final re-render (::m85_wait_turn_done), and emits the handoff
@@ -822,7 +822,7 @@ static void run_mode_switch(volatile erm33_mailbox_t* mb)
   if (mb == nullptr) {
     return;
   }
-  ra8_log_info("M85", "entering #150 mode-switch cycle; M33 holds the page + polls touch");
+  ra8_log_info("M85", "entering RA8FW-250 mode-switch cycle; M33 holds the page + polls touch");
   const bool cycled  = run_handoff_cycle(mb);
   bool       done_ok = false;
   if (cycled) {
@@ -886,7 +886,7 @@ static void run_mode_switch(volatile erm33_mailbox_t* mb)
  *
  * @details Publishes the mailbox, arms the IPC0 wake and configures the LPM
  * block, releases the Cortex-M33 into the reader, waits for the first held page,
- * logs the page-0 verdict, then runs the #150 mode-switch cycle -- parking in
+ * logs the page-0 verdict, then runs the RA8FW-250 mode-switch cycle -- parking in
  * low-power WFI and waking on the M33's page-turn pokes -- before logging the
  * handoff verdict and parking for good. See the file header for the narrative.
  *
@@ -901,7 +901,7 @@ static void run_mode_switch(volatile erm33_mailbox_t* mb)
 void main(void)
 {
   ra8_log_init();
-  ra8_log_info("M85", "==== RA8D2 ereader_m33 demo (#150 M85-park / M33-hold) ====");
+  ra8_log_info("M85", "==== RA8D2 ereader_m33 demo (RA8FW-250 M85-park / M33-hold) ====");
   ra8_log_info("M85", "Cortex-M85 primary core online");
   ra8_log_info("M85", "M33 renders a held page into external SDRAM (0x68000000)");
 
@@ -945,7 +945,7 @@ void main(void)
   ra8_log_info_val("M85", "M33 held-page pixels CRC32 (decimal)", mb->fb_crc);
   emit_verdict(mb->fb_crc, verify_page(mb));
 
-  /* #150 mode-switch: hand the live core to the slow M33, park, and wake on each
+  /* RA8FW-250 mode-switch: hand the live core to the slow M33, park, and wake on each
    * scripted page turn to do the heavy next-page work, then park for good. */
   run_mode_switch(mb);
   park_low_power();

@@ -22,7 +22,7 @@ On the bench `epub_open` fails outright on the real part, against the same
 baked in-memory fixture the host tests use. The UART reader was attached before
 the reset, so the #390 print-once race cannot explain it, and there is no SD
 card, external hardware or provisioning anywhere in this path -- so it is a
-firmware defect, not a rig gap (#170). `ra8_emulator` cannot arbitrate it
+firmware defect, not a rig gap (RA8FW-251). `ra8_emulator` cannot arbitrate it
 either: it stops on an Armv8.1-M encoding the Unicorn M33 model has no seam for.
 `hil.conf` holds the capture. Re-promote only from a bench capture showing the
 PASS banner and its CRC.

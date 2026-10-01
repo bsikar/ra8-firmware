@@ -1,7 +1,7 @@
 //! SPDX-License-Identifier: MIT
 //! Copyright (c) 2026 Brighton Sikarskie
 //!
-//! Behavioural regression tests for the redundant-cast detector (#858).
+//! Behavioural regression tests for the redundant-cast detector (RA8FW-335).
 //! These pin what the gate DECIDES: which casts fire, which stay quiet, how a
 //! finding is rendered, and the text handling the reported rows depend on.
 

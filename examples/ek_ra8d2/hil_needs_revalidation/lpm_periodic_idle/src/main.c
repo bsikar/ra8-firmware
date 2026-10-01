@@ -7,7 +7,7 @@
  *
  * @details
  * The "periodic apps" increment of the deep-idle foundation (roadmap
- * issue #153). Where ``lpm_ulpt_standby`` proves the bare wake path,
+ * issue RA8FW-249). Where ``lpm_ulpt_standby`` proves the bare wake path,
  * this app wraps it into the shape a real periodic application takes:
  * each period it does a small unit of work, then sleeps the CPU in
  * Software Standby until the on-chip Ultra-Low-Power Timer wakes it,

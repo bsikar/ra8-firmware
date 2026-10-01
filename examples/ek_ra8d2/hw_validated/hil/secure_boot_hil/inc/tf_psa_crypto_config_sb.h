@@ -12,7 +12,7 @@
  * RSA, FFDH, J-PAKE, MD5, RIPEMD-160, SHA-1, SHA-512, all four SHA-3
  * variants, SHAKE, ARIA, Camellia, ChaCha20-Poly1305 and nine ECC curves,
  * none of which this image can reach. This is the same trim already applied
- * to `dfu_bootloader` in #2502, for the same reason and against the same
+ * to `dfu_bootloader` in RA8FW-353, for the same reason and against the same
  * vendored tree.
  *
  * What this image verifies with, taken from its own sources plus the

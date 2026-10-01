@@ -2,7 +2,7 @@
 //! Copyright (c) 2026 Brighton Sikarskie
 //!
 //! ===========================================================================
-//! The third slice of #857: a vendored third-party C tree compiled by the root
+//! The third slice of RA8FW-339: a vendored third-party C tree compiled by the root
 //! build graph, with no CMake in the loop, and held to the SAME per-TU flag
 //! discipline CMake applies to it.
 //!
@@ -63,7 +63,7 @@ pub const first_party_sources = [_][]const u8{
     "apps/shared_libs/unarch/src/unarch_xz.c",
     "apps/shared_libs/unarch/src/unarch_xz_pool.c",
     "apps/shared_libs/unarch/src/unarch_io.c",
-    // The pool stopped being its own bump arena in #768: it draws blocks from
+    // The pool stopped being its own bump arena in RA8FW-308: it draws blocks from
     // the shared decoder scratch now, so the arena under it belongs to this
     // slice rather than to something CMake links from elsewhere. Both the
     // scratch and the arena are Zig now, so they arrive as archives below
@@ -81,7 +81,7 @@ pub const include_paths = [_][]const u8{
     "apps/shared_libs/unarch/tests/inc",
     "libs/ra8_core/inc",
     // unarch_xz_pool.c includes "ra8_imgdec_scratch.h", which in turn includes
-    // "ra8_arena.h" (#768), so both headers have to be reachable here.
+    // "ra8_arena.h" (RA8FW-308), so both headers have to be reachable here.
     "libs/ra8_imgdec/inc",
     "libs/ra8_mem/inc",
     "tests/support/inc",

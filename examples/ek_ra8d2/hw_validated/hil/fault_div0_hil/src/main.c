@@ -33,7 +33,7 @@
  * (`exception=6`, `cfsr =33554432`). The `survived divide` branch below is
  * therefore the on-silicon negative fallback -- reached only if the trap
  * ever fails to fire -- not the fake's normal path. The bench has captured
- * the real fault dump on silicon (tracker issue #191), so the app lives in
+ * the real fault dump on silicon (tracker issue RA8FW-255), so the app lives in
  * `hw_validated/hil/`.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie

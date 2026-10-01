@@ -1,7 +1,7 @@
 //! SPDX-License-Identifier: MIT
 //! Copyright (c) 2026 Brighton Sikarskie
 //!
-//! Build graph for the `check_pointer_boilerplate` host gate (#858). One
+//! Build graph for the `check_pointer_boilerplate` host gate (RA8FW-335). One
 //! executable, plus the test step `scripts/checks/check_zig.py --test` runs:
 //! the detector and scope algebra, and the exit-status contract
 //! `scripts/builders/check_pointer_boilerplate.sh` passes through.

@@ -3,7 +3,7 @@
 """Shared build-root discovery and ownership helpers for the Zig gate.
 
 A Zig build root is a directory holding a ``build.zig``. Roots nest: the
-repository now carries a root graph (#857, the parity work #859 depends on)
+repository now carries a root graph (RA8FW-339, the parity work RA8FW-332 depends on)
 above the per-library graphs that were already there, so "which sources does
 this root own" stopped being "everything beneath it" and became "everything
 beneath it that no nearer ``build.zig`` already owns".

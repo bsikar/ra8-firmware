@@ -1,6 +1,6 @@
 /**
  * @file test_ra8_imgdec_probe.c
- * @brief Host tests for asking a bound backend about an image before decoding it (#768).
+ * @brief Host tests for asking a bound backend about an image before decoding it (RA8FW-308).
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT

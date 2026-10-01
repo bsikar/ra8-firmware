@@ -4,7 +4,7 @@ The EK-RA8D2 gains Wi-Fi by pairing the RA8D2 host with an **ESP32-C6** running
 Espressif's **esp-hosted-mcu** `network_adapter` application over a SPI
 transport; the RA8 is the host that drives it. Bluetooth over the same link is
 planned, not delivered -- the host `drivers/bt/` bridge is excluded from the
-build and the BLE HCI seam is still on loopback (#493).
+build and the BLE HCI seam is still on loopback (RA8FW-270).
 
 The C6 image is the stock pinned Espressif esp-hosted-mcu `network_adapter`,
 with no patches and no first-party components. The RA8-side host driver lives
@@ -69,14 +69,14 @@ switches, each owning a different thing:
   Table 3 p 16).
 - **SW4-4** owns the **Arduino / mikroBUS connectors** and has nothing to do
   with the mux. SW4-3 ON together with SW4-4 ON is not a valid combination
-  (#555).
+  (RA8FW-278).
 
 Getting the bank wrong is invisible. With **SW4-3 OFF** the on-board Octo-SPI
 flash keeps the Pmod1 SPI pins and the bus switches stay open, so J26 never
 reaches the MCU while every part involved looks perfectly healthy: the host
 clocks transactions into `0xff` and each app reports a protocol or timeout
 failure of its own flavour. Nothing says "the bus is not connected", so it reads
-as a firmware red and is not one (#555 tracks making the bench run detect and
+as a firmware red and is not one (RA8FW-278 tracks making the bench run detect and
 abort on it).
 
 **SW4-4 OFF** also takes the Arduino and mikroBUS connectors offline, so the

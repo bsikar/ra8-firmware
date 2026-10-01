@@ -1,7 +1,7 @@
 //! SPDX-License-Identifier: MIT
 //! Copyright (c) 2026 Brighton Sikarskie
 //!
-//! Build graph for the `check_final_newline` host gate (#858). One
+//! Build graph for the `check_final_newline` host gate (RA8FW-335). One
 //! executable, plus the test step `scripts/checks/check_zig.py --test` runs:
 //! the scope and detector algebra, and the exit-status contract
 //! `scripts/builders/check_final_newline.sh` passes through.

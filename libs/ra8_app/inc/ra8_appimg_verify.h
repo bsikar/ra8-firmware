@@ -1,10 +1,10 @@
 /**
  * @file ra8_appimg_verify.h
- * @brief Default-deny admission decision for a `.ra8app` module image (#663).
+ * @brief Default-deny admission decision for a `.ra8app` module image (RA8FW-291).
  * @ingroup grp_board
  *
  * @details
- * `ra8_appimg.h` (#662) answers *what an image claims*. This file answers the
+ * `ra8_appimg.h` (RA8FW-293) answers *what an image claims*. This file answers the
  * only question the loader may act on: **may these bytes be loaded?** It is the
  * gate that sits in front of `txm_module_manager_memory_load`, and it refuses
  * by default -- an image reaches the Module Manager only when every one of the

@@ -1,6 +1,6 @@
 /**
  * @file test_ra8_usb_desc.c
- * @brief Host tests for the synthesised USB device frameworks (#766).
+ * @brief Host tests for the synthesised USB device frameworks (RA8FW-317).
  *
  * @par Tag
  * [Ring 4 / PAL] {World: NS}

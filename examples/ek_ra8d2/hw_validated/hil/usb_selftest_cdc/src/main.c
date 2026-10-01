@@ -213,7 +213,7 @@ static volatile uint32_t s_dbg_dev_err;
 /* -------------------------------------------------------------------------- */
 
 /* The three frameworks below are synthesised at start-up from the config
- * structs by libs/ra8_usb_pal (#766) rather than typed out as raw byte
+ * structs by libs/ra8_usb_pal (RA8FW-317) rather than typed out as raw byte
  * arrays. The layout is byte-identical to the proven usb_cdc_echo device,
  * retagged PID 0x0017 for the CDC self-test identity: one CDC ACM
  * communications interface + one CDC data interface joined by an IAD, with

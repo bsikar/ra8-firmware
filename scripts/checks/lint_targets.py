@@ -484,7 +484,7 @@ _IMAGE_MARKER_SUFFIX = ".ld"
 #: Proof that a directory owns a reset path.
 _IMAGE_MARKER_NAME = "vector_table.c"
 
-#: The second, now primary, proof. #742 and #759 moved the linker scripts and
+#: The second, now primary, proof. RA8FW-309 and #759 moved the linker scripts and
 #: the reset path OUT of the app directories and into the board libraries: one
 #: generated NS template per target, one shared vector table. That left every
 #: app directory without the marker pair, so the pair rule alone derives the

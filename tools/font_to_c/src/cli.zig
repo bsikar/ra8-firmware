@@ -1,7 +1,7 @@
 //! SPDX-License-Identifier: MIT
 //! Copyright (c) 2026 Brighton Sikarskie
 //!
-//! Command-line membrane for `font_to_c` (#858), replacing the Python
+//! Command-line membrane for `font_to_c` (RA8FW-335), replacing the Python
 //! implementation this change deletes.
 //!
 //! The exit-status contract is what the three CMake callers depend on and is

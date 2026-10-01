@@ -1,7 +1,7 @@
 //! SPDX-License-Identifier: MIT
 //! Copyright (c) 2026 Brighton Sikarskie
 //!
-//! Detector algebra for the commit-message terminology gate (#858).
+//! Detector algebra for the commit-message terminology gate (RA8FW-335).
 //!
 //! Nothing here reads a file, looks at argv or touches a stream: text goes in,
 //! findings come out, so every rule below is provable with no process and no

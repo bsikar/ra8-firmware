@@ -30,7 +30,7 @@
  * can never reach. The CMAC itself is computed through the
  * ``ra8_sec_cmac_*`` seam. That seam resolves to the KAT-pinned in-tree
  * AES-CMAC reference in EVERY build, firmware and host alike; its
- * TF-PSA-Crypto ``psa_mac_*`` backend is compiled by nothing (#619).
+ * TF-PSA-Crypto ``psa_mac_*`` backend is compiled by nothing (RA8FW-283).
  * A forged blob
  * therefore requires recovering the KAK, not merely replaying a
  * trivial fold.

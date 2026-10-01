@@ -33,7 +33,7 @@ A cold power-on randomises SRAM; the record's magic and CRC then fail validation
 and the log reads empty. That is the intended fail-safe, so garbage SRAM can
 never be mistaken for a post-mortem. Surviving a full power loss is out of
 scope -- VBATT-backed or MRAM persistence via `ra8_bkup` is the named follow-up
-and is silicon-blocked (#131).
+and is silicon-blocked (RA8FW-254).
 
 Two legs are proven outside this app. The fill / validate / claim / loop-counter
 / threshold / corrupted-magic lifecycle lives in `tests/misc/src/test_ra8_crashlog.c`.

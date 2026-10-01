@@ -51,7 +51,7 @@ static const char* const s_tag = "comic_tiles";
 
 /**
  * @enum comic_tiles_probe_t
- * @brief The container set a tiled page may be, as a format mask (#768).
+ * @brief The container set a tiled page may be, as a format mask (RA8FW-308).
  * @details ::ra8_imgdec_dims reads geometry out of six containers; the JOF
  *          producer this module transcodes through accepts three. Reporting a
  *          footprint for a GIF or a BMP would promise a page
@@ -72,7 +72,7 @@ static_assert((uint32_t)k_ra8_imgdec_dim_max <= (uint32_t)UINT16_MAX,
 
 /**
  * @brief Read the encoded page's declared geometry, without decoding it.
- * @details Calls ::ra8_imgdec_dims, the one in-tree geometry probe (#768), so
+ * @details Calls ::ra8_imgdec_dims, the one in-tree geometry probe (RA8FW-308), so
  *          this module no longer reaches up into the JOF producer for
  *          `jof_probe_dims()` while producing no JOF. Anything outside
  *          ::k_comic_tiles_formats is refused here; everything else the probe

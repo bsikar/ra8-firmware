@@ -7,7 +7,7 @@
  * [Ring 2 / Interface] {World: Any}
  *
  * @details
- * The OSAL seam of #693, child (c) of epic #692. Portable libraries state what
+ * The OSAL seam of RA8FW-299, child (c) of epic RA8FW-298. Portable libraries state what
  * they need of an operating system here; a binding chosen by the composition
  * root supplies it. Nothing above this header names ThreadX.
  *

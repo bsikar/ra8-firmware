@@ -158,7 +158,7 @@ static ra8_err_t worker_pull(void* ctx, uint8_t* buf, size_t cap, size_t* got)
 
 /**
  * @brief Test whether source bytes carry the WebP RIFF container head.
- * @details Forwards to the shared container sniff (#768) rather than carrying
+ * @details Forwards to the shared container sniff (RA8FW-308) rather than carrying
  *          a private copy of the two fourCC tables. The sniff requires both
  *          the "RIFF" container tag and the "WEBP" form tag, so a non-WebP
  *          RIFF (WAVE, AVI) is not mistaken for WebP and charged the

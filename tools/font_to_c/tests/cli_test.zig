@@ -1,7 +1,7 @@
 //! SPDX-License-Identifier: MIT
 //! Copyright (c) 2026 Brighton Sikarskie
 //!
-//! Exit-status contract of `font_to_c` (#858). The three CMake callers
+//! Exit-status contract of `font_to_c` (RA8FW-335). The three CMake callers
 //! (`ereader_ui`, `sd_font_render`, `pagecache`) treat a non-zero status as a
 //! failed bake, so these cases pin 0 / 1 / 2 and the stream each message lands
 //! on.

@@ -55,7 +55,7 @@ protocol version 2.12.11, which is what makes them wire-compatible.
   `hw_validated/c6/`). Bluetooth is planned, not delivered: `cmake/esp_hosted.cmake`
   excludes the host `drivers/bt/` bridge, `coprocessor/esp32c6/sdkconfig.defaults`
   says nothing about the BT stack so what the C6 image contains is
-  undetermined, and the RA8-side BLE work is still open (#493).
+  undetermined, and the RA8-side BLE work is still open (RA8FW-270).
 - The C6 image is mixed: pinned esp-hosted-mcu SOUP plus the first-party
   `mdl_service` component. A small checked patch exposes a synchronous,
   bounded CustomRpc response hook; the first-party component implements a
@@ -124,7 +124,7 @@ OSV.dev alongside the vendored SOUP.
 ## Last review date
 
 - Reviewed: 2026-07-26 (build recipe codified from the bench-proven build)
-- Use case + mitigation tense corrected against the tree (#612): 2026-08-04.
+- Use case + mitigation tense corrected against the tree (RA8FW-285): 2026-08-04.
   The RA8-side driver is no longer a "follow-on", and the Bluetooth half is
   now stated as planned rather than provided.
 - Mixed-image trust boundary and media-service patch recorded: 2026-08-13.

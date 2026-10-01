@@ -3,7 +3,7 @@
  * @brief MC/DC vectors for the release guard behind the stb_image arena hooks.
  *
  * @details
- * `ra8_img_arena_free()` no longer holds a decision of its own: since #768 it
+ * `ra8_img_arena_free()` no longer holds a decision of its own: since RA8FW-308 it
  * forwards to ra8_imgdec_scratch_free(), passing the file-static bound arena
  * as the context. The compound guard that decides whether a release does
  * anything now lives in libs/ra8_imgdec/src/ra8_imgdec_scratch.c, and this

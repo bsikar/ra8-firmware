@@ -2,7 +2,7 @@
 //! Copyright (c) 2026 Brighton Sikarskie
 //!
 //! argv membrane, repository discovery and exit contract for the
-//! host-build-entrypoint gate (#858), replacing the argparse `main` of
+//! host-build-entrypoint gate (RA8FW-335), replacing the argparse `main` of
 //! scripts/checks/check_host_build_entrypoints.py.
 
 const std = @import("std");

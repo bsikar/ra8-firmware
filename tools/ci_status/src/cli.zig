@@ -2,7 +2,7 @@
 //! Copyright (c) 2026 Brighton Sikarskie
 //!
 //! The argv membrane and exit contract of the ci-monitor status reader
-//! (#858, #1144).
+//! (RA8FW-335, #1144).
 //!
 //! `run` is parameterised on the directory the state file is resolved
 //! against and on both output streams, so every status below is provable in a

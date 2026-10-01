@@ -18,7 +18,7 @@ divider back board timer 0 belongs to
 ## Bench status
 
 The `hw_validated/hil/` tier records a bench run of the app as it was before
-it moved onto the timer port (#693). This version has not been run on the
+it moved onto the timer port (RA8FW-299). This version has not been run on the
 bench yet. Two things differ on the wire: the counter is now clocked at
 PCLKD/1 rather than PCLKD/4, so each one-shot is a quarter as long; and the
 earlier version restarted through `ra8_gpt_start_free_run`, which rewrites

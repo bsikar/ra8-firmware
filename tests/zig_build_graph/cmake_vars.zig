@@ -3,7 +3,7 @@
 //! Read `set(NAME value)` out of a board memory-map .cmake at configure time.
 //!
 //! The CPU1 image window is defined once, in
-//! libs/ra8_board_ek_ra8d2/ld/cpu1_memory_map.cmake, because #742 pulled those
+//! libs/ra8_board_ek_ra8d2/ld/cpu1_memory_map.cmake, because RA8FW-309 pulled those
 //! two addresses out of nine hand-maintained linker scripts. ra8_add_app()
 //! reaches them with include(); this reads the same file rather than copying
 //! the numbers into Zig, so the board layer stays the one definition and a

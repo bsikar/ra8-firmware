@@ -42,7 +42,7 @@ which is exactly the shape of protobuf-c's own unwind on a failed decode.
 - **`ESP_PRIV_IF`'s `ESP_PRIV_EVENT_INIT` is unusable on this build** and
   nothing here depends on it: it is transmitted with a non-zero `if_num` but
   checksummed as if that nibble were zero, so every conformant host drops it
-  ([#529](https://github.com/bsikar/ra8-firmware/issues/529)). Frames on that
+  (RA8FW-276). Frames on that
   interface are counted as unrouted and ignored.
 
 Also: the co-processor's idle filler frame legitimately carries `offset = 0`.

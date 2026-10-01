@@ -2,7 +2,7 @@
 //! Copyright (c) 2026 Brighton Sikarskie
 //!
 //! Behavioural regression tests for the trailing-newline gate's scope and
-//! detector algebra (#858). Every case pins behaviour inherited from the
+//! detector algebra (RA8FW-335). Every case pins behaviour inherited from the
 //! Python this replaced, not behaviour invented here.
 
 const std = @import("std");

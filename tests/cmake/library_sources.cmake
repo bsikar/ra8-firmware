@@ -46,7 +46,7 @@ file(GLOB_RECURSE RA8_HAL_SOURCES CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra8_hal/src/
 # libs/ra8_tls/src is no longer any C: the Mbed TLS facade behind
 # inc/ra8_tls.h is Zig, linked as ra8_zig::ra8_tls (tests/cmake/zig_libraries.cmake).
 # libs/ra8_usb_pal is fully migrated to Zig: the PAL core, the four descriptor
-# builders and the one-call compose facade (#766) all live in
+# builders and the one-call compose facade (RA8FW-317) all live in
 # libs/ra8_usb_pal/src/*.zig, built by libs/ra8_usb_pal/build.zig behind the
 # unchanged inc/ra8_usb_pal.h, inc/ra8_usb_desc.h and inc/ra8_usb_compose.h;
 # see tests/cmake/zig_libraries.cmake. There is no RA8_USB_PAL_SOURCES glob
@@ -54,7 +54,7 @@ file(GLOB_RECURSE RA8_HAL_SOURCES CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra8_hal/src/
 # the promoted priv_usb_pal_* predicates.
 file(GLOB_RECURSE RA8_FS_SOURCES CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra8_fs/src/*.c)
 # libs/if is fully migrated to Zig: the portable filesystem interface, the
-# untrusted-name containment policy (#749) and the clock-intent facade (#2791)
+# untrusted-name containment policy (#749) and the clock-intent facade (RA8FW-362)
 # all live in libs/if/src/*.zig,
 # built by libs/if/build.zig behind the unchanged inc/fw_if_fs.h,
 # inc/fw_if_fs_types.h, inc/fw_if_fs_backend.h and inc/ra8_path.h; see
@@ -79,7 +79,7 @@ file(GLOB_RECURSE RA8_FS_SOURCES CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra8_fs/src/*.
 # if_ra8_cgc is fully migrated to Zig: the RA8 module-to-clock table and the
 # three ops behind inc/fw_if_clock_ra8.h live in libs/if_ra8_cgc/src/*.zig,
 # built by libs/if_ra8_cgc/build.zig; see tests/cmake/zig_libraries.cmake.
-# It arrived from dev in a43342038 (#693) as C; both translation units are
+# It arrived from dev in a43342038 (RA8FW-299) as C; both translation units are
 # gone, so there is no RA8_IF_RA8_CGC_SOURCES glob left and
 # libs/if_ra8_cgc/src is no longer an include directory anywhere.
 # if_ra8_gpt is fully migrated too: the timer and PWM adapters behind
@@ -299,7 +299,7 @@ ra8_webp_facade_sources(RA8_WEBP_SOURCES ${FW_ROOT})
 # ra8_mpu has no C sources left: the descriptor validation, the RBAR/RLAR
 # encoding and the canonical boot attribute map are Zig now, linked via
 # tests/cmake/zig_libraries.cmake.
-# ra8_board_ek_ra8d2 is PARTLY migrated (#2998): the board identity, LEDs,
+# ra8_board_ek_ra8d2 is PARTLY migrated (RA8FW-365): the board identity, LEDs,
 # switches, GLCDC pin tables, panel straps, xSPI and SDHI routing and the
 # Arduino header (#3033), plus the dual-core shared-RAM descriptor, the USB
 # port routing, bringup, the VCOM console stream handle, the clock profile,

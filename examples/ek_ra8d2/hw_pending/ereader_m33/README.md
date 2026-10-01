@@ -1,6 +1,6 @@
 # ereader_m33
 
-The #150 power-saving model: an e-reader spends almost all its time idle on a
+The RA8FW-250 power-saving model: an e-reader spends almost all its time idle on a
 rendered page, so holding that page on the M85 @ 1 GHz is waste. This app hands
 the reader to the Cortex-M33 @ 250 MHz and parks the M85, then runs the full
 mode-switch cycle -- the M85 clock-gates and drops into WFI, the M33 holds the
@@ -39,6 +39,6 @@ The control flow is fully exercisable off-target -- the M85 really parks and is
 really woken out of WFI by the M33's poke. What no emulator can show is the
 **power delta** of the park (the clock-gate and WFI are functionally exercised,
 but current draw is not modelled) and **real touch input** (an emulated
-page-dwell stands in for a GT911 poll). Both need the bench (#30). The remaining
-#150 display work -- pointing the GLCDC scan-out plane at the M33's framebuffer
+page-dwell stands in for a GT911 poll). Both need the bench (RA8FW-248). The remaining
+RA8FW-250 display work -- pointing the GLCDC scan-out plane at the M33's framebuffer
 for a true display-plane handoff -- is HIL-bound for the same reason.

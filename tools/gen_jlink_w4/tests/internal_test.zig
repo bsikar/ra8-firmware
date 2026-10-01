@@ -1,7 +1,7 @@
 //! SPDX-License-Identifier: MIT
 //! Copyright (c) 2026 Brighton Sikarskie
 //!
-//! Behavioural regression tests for the pure half of `gen_jlink_w4` (#858).
+//! Behavioural regression tests for the pure half of `gen_jlink_w4` (RA8FW-335).
 //! Every expectation here was established by running the deleted CPython
 //! predecessor, not by reading its source: the base-address parser reproduces
 //! `int(text, 16)` including its Unicode transform, and the address renderer

@@ -11,17 +11,17 @@
 #     if (cd apps/host/image_pyramid && zig build -Dmacos-libsystem=sdk); then
 #       printf 'informational: the SDK stub linked cleanly on this runner image\n'
 #     else
-#       printf 'informational: the SDK stub did NOT link here -- expected ... (#899)\n'
+#       printf 'informational: the SDK stub did NOT link here -- expected ... (RA8FW-330)\n'
 #     fi
 #
 # That leg is the ONE channel through which a real arm64 Mac reports the state
 # of Apple's own libSystem stub back to this repository. Every other step in the
 # gate builds against the pinned bundled stub, which is the workaround; this is
-# the only step that still touches the thing #899 is about.
+# the only step that still touches the thing RA8FW-330 is about.
 #
 # And it was a boolean. `zig build -Dmacos-libsystem=sdk` exits non-zero for
 # many reasons, and the else-branch above reports every one of them as the
-# expected #899 failure:
+# expected RA8FW-330 failure:
 #
 #   - the SDK stub omits arm64-macos, so the link ends in an
 #     `error: undefined symbol: _abort` wall. This is the finding. Expected.
@@ -31,7 +31,7 @@
 #   - `-Dmacos-libsystem` no longer exists, because the option was renamed or
 #     dropped in tools/zig_build. zig answers `error: invalid option:
 #     -Dmacos-libsystem` and exits non-zero, the else-branch calls that an
-#     affected SDK, and the leg is DEAD: it will report the #899 shape every
+#     affected SDK, and the leg is DEAD: it will report the RA8FW-330 shape every
 #     night forever while measuring nothing at all. That is the same
 #     green-gate-that-never-asked-its-question defect this lane keeps finding,
 #     one layer out.
@@ -103,7 +103,7 @@ if [ -z "${_RA8_MACOS_SDK_LINK_SH:-}" ]; then
       return 0
     fi
 
-    # The #899 finding: the stub was read, it does not declare arm64-macos, so
+    # The RA8FW-330 finding: the stub was read, it does not declare arm64-macos, so
     # the libc symbols never resolve.
     if grep -q "undefined symbol: _" "${_rmsl_log}"; then
       echo "symbols_unresolved"
@@ -160,10 +160,10 @@ if [ -z "${_RA8_MACOS_SDK_LINK_SH:-}" ]; then
     case "$1" in
       linked)
         printf 'note: news, not a problem. If arm64 Macs generally link the SDK stub again,\n'
-        printf 'note: the #899 workaround (the pinned aarch64-macos query) can be revisited.\n'
+        printf 'note: the RA8FW-330 workaround (the pinned aarch64-macos query) can be revisited.\n'
         ;;
       symbols_unresolved)
-        printf 'note: this is the #899 finding itself, on this runner image. The gate verdict\n'
+        printf 'note: this is the RA8FW-330 finding itself, on this runner image. The gate verdict\n'
         printf 'note: comes from the pinned-target legs above, which is why this one is only\n'
         printf 'note: informational.\n'
         ;;
@@ -272,7 +272,7 @@ if [ -z "${_RA8_MACOS_SDK_LINK_SH:-}" ]; then
     _ra8_macos_sdk_link_case "exit 0 beats wall-shaped text" linked 0 "${_rmsl_scratch}/noise.log" ||
       _rmsl_fails=$((_rmsl_fails + 1))
 
-    # --- the #899 finding ----------------------------------------------------
+    # --- the RA8FW-330 finding ----------------------------------------------------
     printf 'error: undefined symbol: _abort\n    note: referenced by ...\n' \
       >"${_rmsl_scratch}/wall.log"
     _ra8_macos_sdk_link_case "undefined symbol is the finding" symbols_unresolved 1 \

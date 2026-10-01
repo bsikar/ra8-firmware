@@ -30,7 +30,7 @@
  * version in ``esp_hosted_host_fw_ver.h``, and the co-processor image was
  * built from the same pinned upstream commit, so the two must agree exactly.
  * The verdict is therefore the host/co-processor version lock -- the hazard
- * #316 exists to police -- rather than "some bytes came back".
+ * RA8FW-265 exists to police -- rather than "some bytes came back".
  *
  * @par Allocation
  * ``rpc__unpack()`` needs an allocator. This image has no heap, so it is

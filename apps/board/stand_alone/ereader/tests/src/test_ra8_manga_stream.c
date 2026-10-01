@@ -1,6 +1,6 @@
 /**
  * @file test_ra8_manga_stream.c
- * @brief #232 manga-scale streaming gate (part 1): bounded residency + byte
+ * @brief RA8FW-257 manga-scale streaming gate (part 1): bounded residency + byte
  *        correctness paging a 612 MB and a 2.75 GB book through a fixed budget.
  *
  * @details
@@ -8,7 +8,7 @@
  * ra8_tile_cache + ra8_vmem stack over a synthetic volume-of-JOF-atlases) under
  * a manga access pattern -- a cover scroll flood, forward multi-page scroll,
  * cross-volume chapter jumps, a scroll-up back-flip, a far-boundary read, and
- * repeated cover revisits -- and asserts the two load-bearing #232 properties:
+ * repeated cover revisits -- and asserts the two load-bearing RA8FW-257 properties:
  *
  *   1. **Bounded residency.** Both caches (decoded tile cells + raw page frames)
  *      saturate at -- and never exceed -- their fixed budgets, whatever the
@@ -321,7 +321,7 @@ static void t_mg_gate_size(uint32_t atlas_count, uint64_t target)
 /**
  * @test manga_stream_bounded_and_correct
  * @brief The two-tier stack streams a 612 MB and a 2.75 GB manga volume through
- *        a fixed RAM budget with byte-correct bands and bounded residency (#232).
+ *        a fixed RAM budget with byte-correct bands and bounded residency (RA8FW-257).
  *
  * @par MC/DC:
  * (integration gate: the compound decisions inside the JOF reader, page cache,

@@ -22,7 +22,7 @@
  * - ``RA8_KEY_IMPORT_PSA_CMAC`` defined -- routes to the vendored
  *   TF-PSA-Crypto (``psa_mac_compute`` / ``psa_mac_verify`` with
  *   ``PSA_ALG_CMAC`` over ``PSA_KEY_TYPE_AES``). **No build defines this
- *   flag**, so this backend is not compiled anywhere today (#619).
+ *   flag**, so this backend is not compiled anywhere today (RA8FW-283).
  * - otherwise -- the path every build actually takes, host and firmware
  *   alike: a self-contained in-tree AES-128 / AES-256 +
  *   CMAC reference (FIPS 197 + SP 800-38B). It is *real* cryptography, not a

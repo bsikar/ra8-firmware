@@ -1,6 +1,6 @@
 /**
  * @file test_ra8_imgdec_dims.c
- * @brief Host tests for the shared container geometry probe (#768).
+ * @brief Host tests for the shared container geometry probe (RA8FW-308).
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT

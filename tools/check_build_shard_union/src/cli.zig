@@ -2,7 +2,7 @@
 //! Copyright (c) 2026 Brighton Sikarskie
 //!
 //! The argv membrane, the tree walk and the exit contract of the cross-build
-//! shard-union gate (#858, #1159).
+//! shard-union gate (RA8FW-335, #1159).
 //!
 //! `run` is parameterised on the directory paths are resolved against, on the
 //! scratch directory the selftest materialises its fake trees in, on the

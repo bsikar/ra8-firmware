@@ -11,7 +11,7 @@
  * is NOT hardware validation (there is no RA8P1 board yet) but to prove the
  * multi-chip foundation: built with ``cmake/toolchain-ra8p1.cmake`` it compiles
  * with ``-DRA8_DEVICE_RA8P1``, and the ENTIRE ``ra8_core`` + ``ra8_hal`` plus the
- * dedicated ``ra8_board_ra8p1`` layer (issue #226) compile and link for the
+ * dedicated ``ra8_board_ra8p1`` layer (issue RA8FW-260) compile and link for the
  * R7KA8P1KFLCAC. The peripheral register bases and the memory map are
  * byte-identical to the RA8D2 -- see the difference-analysis issue and
  * ``libs/ra8_core/inc/ra8_device.h`` -- so the HAL sources serve both chips

@@ -59,7 +59,7 @@
 # a single-precision FPU takes as UNDEFINED, i.e. a HardFault on first silicon.
 #
 # THE DP BUILD IS STILL REACHABLE, as an explicit opt-in for the on-silicon
-# benchmark issue #229 asks for, and never by default:
+# benchmark issue RA8FW-261 asks for, and never by default:
 #
 #   cmake -DCMAKE_TOOLCHAIN_FILE=cmake/toolchain-ra8p1.cmake -DRA8P1_DP_FPU=ON ..
 #
@@ -71,7 +71,7 @@
 # thumb/v8-m.main+dp/hard, fpv5-sp-d16 to thumb/v8-m.main+fp/hard.
 #
 # An opt-in DP image is UNVALIDATED on hardware. Whether this silicon executes
-# .f64 at all is exactly what #229 has to measure on an RA8P1 EK; until then the
+# .f64 at all is exactly what RA8FW-261 has to measure on an RA8P1 EK; until then the
 # opt-in is a bench switch, not a supported configuration.
 #
 # -----------------------------------------------------------------------------
@@ -83,7 +83,7 @@
 
 include(${CMAKE_CURRENT_LIST_DIR}/toolchain-ra8d2.cmake)
 
-# Opt-in DP-FPU build for the #229 on-silicon benchmark (see the FPU section
+# Opt-in DP-FPU build for the RA8FW-261 on-silicon benchmark (see the FPU section
 # above). OFF by default, so the RA8P1 inherits the RA8D2's fpv5-sp-d16. When ON,
 # fpv5-d16 (FPv5 double-precision, 16 D-registers) is appended LAST so it beats
 # the inherited flag on every group that feeds an -mfpu-sensitive step, compile
@@ -95,7 +95,7 @@ if(RA8P1_DP_FPU)
   set(CMAKE_CXX_FLAGS_INIT "${CMAKE_CXX_FLAGS_INIT} ${RA8P1_FPU_FLAG} -DRA8_FPU_DP_ENABLED")
   set(CMAKE_ASM_FLAGS_INIT "${CMAKE_ASM_FLAGS_INIT} ${RA8P1_FPU_FLAG}")
   set(CMAKE_EXE_LINKER_FLAGS_INIT "${CMAKE_EXE_LINKER_FLAGS_INIT} ${RA8P1_FPU_FLAG}")
-  message(STATUS "toolchain-ra8p1: RA8P1_DP_FPU=ON -- fpv5-d16, UNVALIDATED on silicon (#229)")
+  message(STATUS "toolchain-ra8p1: RA8P1_DP_FPU=ON -- fpv5-d16, UNVALIDATED on silicon (RA8FW-261)")
 endif()
 
 # Device-selection define -- consumed by libs/ra8_core/inc/ra8_device.h to pick

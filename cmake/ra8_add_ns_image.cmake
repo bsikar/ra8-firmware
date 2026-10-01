@@ -202,7 +202,7 @@ function(ra8_add_ns_image)
   # in every dual-image app.
   if(_NS_MERGED_HEX)
     # merge_ihex is a first-party build tool whose implementation now lives in
-    # Zig (epic #858); scripts/gen/merge_ihex.py is gone. ra8_use_merge_ihex()
+    # Zig (epic RA8FW-335); scripts/gen/merge_ihex.py is gone. ra8_use_merge_ihex()
     # builds it for the host and orders it ahead of this target.
     include("${RA8_REPO_ROOT}/cmake/ra8_zig_tool.cmake")
     ra8_use_merge_ihex(${_ns_elf})

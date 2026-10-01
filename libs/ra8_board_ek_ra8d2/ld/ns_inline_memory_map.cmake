@@ -2,7 +2,7 @@
 # Copyright (c) 2026 Brighton Sikarskie
 #
 # The EK-RA8D2 in-image Non-Secure window: where the .ns_* sections of a
-# SINGLE-IMAGE TrustZone app land (#742).
+# SINGLE-IMAGE TrustZone app land (RA8FW-309).
 #
 # Not to be confused with libs/ra8_board_ek_ra8d2/ld/ns_memory_map.cmake, which
 # sizes the SEPARATE NS ELF that ra8_add_ns_image() links. The two schemes are

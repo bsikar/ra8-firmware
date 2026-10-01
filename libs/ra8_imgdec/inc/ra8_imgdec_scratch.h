@@ -1,6 +1,6 @@
 /**
  * @file ra8_imgdec_scratch.h
- * @brief The one bump-scratch contract the decoder shims should share (#768).
+ * @brief The one bump-scratch contract the decoder shims should share (RA8FW-308).
  * @ingroup grp_io
  *
  * @par Tag
@@ -227,7 +227,7 @@ void ra8_imgdec_scratch_free(ra8_imgdec_scratch_t* scratch, void* ptr);
  * the request and publishes a `scratch_bytes` / `scratch_align` budget in its
  * capabilities. This is the one place those two meet: carve the published
  * budget out of the arena and bind the block as a scratch. Without it each
- * backend would write the same carve again, which is the duplication #768
+ * backend would write the same carve again, which is the duplication RA8FW-308
  * exists to remove, one layer up from the shims.
  *
  * The carve is a *binding-time* act, not a per-decode one. ::ra8_arena_carve

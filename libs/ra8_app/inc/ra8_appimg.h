@@ -1,6 +1,6 @@
 /**
  * @file ra8_appimg.h
- * @brief The `.ra8app` container header: identity, capabilities, signed span (#662).
+ * @brief The `.ra8app` container header: identity, capabilities, signed span (RA8FW-293).
  * @ingroup grp_board
  *
  * @par Tag
@@ -22,8 +22,8 @@
  *
  * This header is the *format*, not the loader. It parses and validates; it
  * performs no cryptography and reads no filesystem. Signature verification
- * over the span this file defines is issue #663, and the Module Manager hook
- * that refuses a failing header is gated on the Cortex-M85 module port (#659).
+ * over the span this file defines is issue RA8FW-291, and the Module Manager hook
+ * that refuses a failing header is gated on the Cortex-M85 module port (RA8FW-295).
  *
  * @code
  * ra8_appimg_header_t app = {0};
@@ -42,7 +42,7 @@
  *       newer app cannot silently lose a permission on older firmware.
  *
  * @see ra8_rot.h -- the image-level root of trust this container defers to for
- *      the algorithm choice (Ed25519 here, per #663).
+ *      the algorithm choice (Ed25519 here, per RA8FW-291).
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -243,7 +243,7 @@ ra8_appimg_parse(const uint8_t* bytes, size_t len, ra8_appimg_header_t* out);
  * hashes the payload run after it; ::ra8_appimg_payload_span names the second.
  *
  * Defining both here is the point of the call: the signer in
- * `scripts/secrets/rot_sign.py` and the verifier of #663 read one definition
+ * `scripts/secrets/rot_sign.py` and the verifier of RA8FW-291 read one definition
  * rather than two implementations that agree until they do not.
  *
  * @param[in]  header Validated header; non-NULL.

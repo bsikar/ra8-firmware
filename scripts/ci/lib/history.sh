@@ -12,7 +12,7 @@
 #
 # It lives here rather than in scripts/ci.sh because ci.sh is the GATE REGISTRY
 # and had grown two lines past the 1000-line cap that scripts/checks/
-# check_file_size.py enforces (#2791). This family is the largest block in that
+# check_file_size.py enforces (RA8FW-362). This family is the largest block in that
 # file that is neither the registry, the single entry point, nor the gate-dir
 # sourcing loop, and it has one subject, so it moved whole and unedited: the
 # six function bodies below are byte-identical to the ones ci.sh carried, and

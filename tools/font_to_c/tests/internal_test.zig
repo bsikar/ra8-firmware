@@ -1,7 +1,7 @@
 //! SPDX-License-Identifier: MIT
 //! Copyright (c) 2026 Brighton Sikarskie
 //!
-//! Rendering algebra of `font_to_c` (#858). The generated translation unit is
+//! Rendering algebra of `font_to_c` (RA8FW-335). The generated translation unit is
 //! compiled straight into three firmware images, so these cases pin the shape
 //! the per-font header is declared against: the two symbols, the 16-byte row,
 //! uppercase zero-padded literals, and the `U` suffix on the length.

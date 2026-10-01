@@ -1,7 +1,7 @@
 //! SPDX-License-Identifier: MIT
 //! Copyright (c) 2026 Brighton Sikarskie
 //!
-//! Vendored middleware (`USES`) for the root build graph (#1054, part of #857).
+//! Vendored middleware (`USES`) for the root build graph (#1054, part of RA8FW-339).
 //!
 //! An app names a middleware in `USES` and `ra8_add_app()` does four separate
 //! things with it, none of which the graph could see until this slice: it
@@ -225,7 +225,7 @@ pub const threadx_ns = Middleware{
 };
 
 /// Eclipse USBX device stack, from cmake/usbx.cmake and port/usbx/CMakeLists.txt.
-/// Measured from usb_selftest_cdc's own cross configure (#766): 247 vendored
+/// Measured from usb_selftest_cdc's own cross configure (RA8FW-317): 247 vendored
 /// TUs in usbx_objs, 10 port TUs compiled into the app.
 pub const usbx = Middleware{
     .name = "usbx",

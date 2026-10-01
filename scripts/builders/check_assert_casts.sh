@@ -6,7 +6,7 @@
 # casts in leading position inside TEST_ASSERT_EQ arguments.
 #
 # This is a minimal trusted launcher, not an implementation: the detector is
-# the Zig host tool tools/check_assert_casts (#858), which replaced the Python
+# the Zig host tool tools/check_assert_casts (RA8FW-335), which replaced the Python
 # scripts/checks/check_assert_casts.py, now deleted. PATHREF-OK: history, not a live path.
 # All this does is resolve zig, build the tool once, and hand over argv and the
 # exit status unchanged.

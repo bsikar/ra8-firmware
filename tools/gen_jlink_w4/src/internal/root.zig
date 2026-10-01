@@ -1,7 +1,7 @@
 //! SPDX-License-Identifier: MIT
 //! Copyright (c) 2026 Brighton Sikarskie
 //!
-//! Pure computation behind the J-Link w4 script generator (#858). Nothing here
+//! Pure computation behind the J-Link w4 script generator (RA8FW-335). Nothing here
 //! opens a file, reads the environment or looks at argv: this module turns an
 //! argument string into the integer CPython's `int(text, 16)` would have
 //! produced, turns that integer plus a word offset into the exact text

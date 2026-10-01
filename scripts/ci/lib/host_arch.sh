@@ -12,7 +12,7 @@
 # `bash` are themselves x86_64. Rosetta 2 translates the whole process tree, so
 # every `uname -m` inside it prints x86_64 on a machine that is arm64.
 #
-# Why this matters here (#899): gate_macos_host_build refuses anything that is
+# Why this matters here (RA8FW-330): gate_macos_host_build refuses anything that is
 # not Darwin/arm64, because a translated toolchain links the x86_64 path and
 # cannot observe the missing arm64-macos slice in the SDK's libSystem stub at
 # all. Refusing is right. Refusing with "this host is Darwin/x86_64 -- run it

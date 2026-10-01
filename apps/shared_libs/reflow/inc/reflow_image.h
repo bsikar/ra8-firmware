@@ -32,7 +32,7 @@
  * @typedef ra8_img_arena_t
  * @brief Caller-owned bump arena backing a single image decode.
  *
- * @details One spelling of ::ra8_imgdec_scratch_t (#768): a linear bump
+ * @details One spelling of ::ra8_imgdec_scratch_t (RA8FW-308): a linear bump
  * allocator over `base[0..cap)` with a live-block count, so `stb_image`'s
  * allocations bump `offset`, each free decrements `live`, and the arena
  * auto-resets to empty when `live` reaches 0. It fully drains after each

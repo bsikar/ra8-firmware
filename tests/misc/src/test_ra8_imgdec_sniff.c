@@ -1,6 +1,6 @@
 /**
  * @file test_ra8_imgdec_sniff.c
- * @brief Host tests for the shared container sniff and the fabric that uses it (#768).
+ * @brief Host tests for the shared container sniff and the fabric that uses it (RA8FW-308).
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT

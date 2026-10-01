@@ -1,7 +1,7 @@
 //! SPDX-License-Identifier: MIT
 //! Copyright (c) 2026 Brighton Sikarskie
 //!
-//! Process shell for the example board-pin gate (#858).  Resolves the
+//! Process shell for the example board-pin gate (RA8FW-335).  Resolves the
 //! repository root (RA8_REPO_ROOT, else the working directory), hands argv and
 //! both streams to `cli.run`, and exits with its status.
 

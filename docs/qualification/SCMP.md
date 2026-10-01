@@ -66,7 +66,7 @@ a local file only when it intentionally overrides that default:
 
 `ra8_add_app()` also honours a root-level `linker_script.ld` in an app
 directory, ahead of the board default. No app currently ships one: the
-last four forks were deleted in `a4dc46e32` (#742) once they had gone
+last four forks were deleted in `a4dc46e32` (RA8FW-309) once they had gone
 stale against the board map, so every app links
 `libs/ra8_board_ek_ra8d2/ld/linker_script.ld`.
 

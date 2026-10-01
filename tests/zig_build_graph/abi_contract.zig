@@ -1,7 +1,7 @@
 //! SPDX-License-Identifier: MIT
 //! Copyright (c) 2026 Brighton Sikarskie
 //!
-//! The ABI-contract slice of the root build graph (#857), and the first slice
+//! The ABI-contract slice of the root build graph (RA8FW-339), and the first slice
 //! of it that carries negative controls.
 //!
 //! Every step the graph had before this one can only fail by something that

@@ -3,7 +3,7 @@
 The host-side Zig programs in this repository build and run natively on an
 arm64 Mac. This page records why a plain `zig build` used to fail there, what
 the build graph does about it now, and how to reproduce and check the result on
-a real machine. Issue #899 tracks the work.
+a real machine. Issue RA8FW-330 tracks the work.
 
 ## Why the native link used to fail
 
@@ -81,7 +81,7 @@ who exported `SDKROOT=iphoneos` for cross work.
 With the bare form, such a shell had the graph read
 `iPhoneOS.sdk/usr/lib/libSystem.tbd`. Its targets are `arm64-ios` and friends,
 so `arm64-macos` came back absent and the finding printed was *the SDK stub
-lists its targets and `arm64-macos` is not among them (#899)*: a report about a
+lists its targets and `arm64-macos` is not among them (RA8FW-330)*: a report about a
 file no macOS link would ever have opened, in the exact words of the bug this
 whole document is about. The pin that followed was harmless; the diagnosis was
 not.
@@ -107,13 +107,13 @@ two cannot drift apart quietly.
 
 ```console
 $ cd tools/zig_build && zig build explain-host-target
-ra8 host target (#899)
+ra8 host target (RA8FW-330)
   host:      aarch64-macos
   macos:     26.0.1
   selection: -Dmacos-libsystem=auto
   sdk:       /Library/Developer/CommandLineTools/SDKs/MacOSX.sdk
   stub:      /Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/lib/libSystem.tbd
-  finding:   the SDK stub lists its targets and arm64-macos is not among them (#899)
+  finding:   the SDK stub lists its targets and arm64-macos is not among them (RA8FW-330)
   decision:  pinned aarch64-macos, linking Zig's bundled libSystem stub
   deployment target: 26.0.1 (carried from the host)
 ```
@@ -125,7 +125,7 @@ Five different findings all end in a pinned target, and they need different
 fixes, so the graph names which one it saw rather than reporting them as one
 state:
 
-* the stub lists its targets and `arm64-macos` is absent -- this is #899 itself;
+* the stub lists its targets and `arm64-macos` is absent -- this is RA8FW-330 itself;
 * the stub lists targets and none of them is a macOS target at all, so what was
   read is another Apple platform's stub (see below);
 * the stub was read but declares no target list in a spelling the parser knows;
@@ -146,7 +146,7 @@ the probe still runs, so `zig build explain-host-target` prints both:
     selection: -Dmacos-libsystem=sdk
     sdk:       /Library/Developer/CommandLineTools/SDKs/MacOSX.sdk
     stub:      /Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/lib/libSystem.tbd
-    finding:   the SDK stub lists its targets and arm64-macos is not among them (#899)
+    finding:   the SDK stub lists its targets and arm64-macos is not among them (RA8FW-330)
     override:  -Dmacos-libsystem=sdk forced the native query, whatever the SDK stub says
     note:      this overrides the probe, which would have chosen the pinned aarch64-macos target
     decision:  native target, linking whatever stub the host resolves
@@ -311,7 +311,7 @@ discovered build root, either
 
       {"rule": "exempt", "reason": "cross-compiles for ARM targets only"}
 
-Anything else is a finding that names #899. Comments are stripped before the
+Anything else is a finding that names RA8FW-330. Comments are stripped before the
 wiring is read, so a mention of the helper in prose cannot satisfy the rule.
 A root that declares `{"rule": "host_default"}` must really carry the wiring;
 the declaration on its own is not accepted. `--selftest-test` proves both
@@ -401,7 +401,7 @@ under an undefined-symbol wall from three build roots at once.
 ## Checking what the link produced, not just that it succeeded
 
 `zig build` exiting zero says the link succeeded. It says nothing about what
-came out of it, and the #899 rule is entirely a claim about what comes out: a
+came out of it, and the RA8FW-330 rule is entirely a claim about what comes out: a
 native arm64 Mach-O, stamped with the deployment target the build was
 configured for, linked against the system `libSystem`. A build that quietly
 took Zig's default macOS floor instead of the host's version exits zero too.
@@ -440,7 +440,7 @@ command.
 ### An arm64 image has to be signed or it cannot run
 
 Apple silicon will not execute an unsigned Mach-O. The kernel kills the process
-at exec, the shell reports `Killed: 9`, and nothing says why. That is the #899
+at exec, the shell reports `Killed: 9`, and nothing says why. That is the RA8FW-330
 failure shape exactly: the link succeeds, the artifact looks right, and the host
 test step dies with no diagnostic to read. Zig's own Mach-O linker writes an
 ad-hoc signature, so the check is that what came out still carries one.
@@ -514,7 +514,7 @@ architecture, so the mismatch is named before any link is attempted:
     error: .../libra8_rust_abi_fixture.a holds ELF aarch64 objects, but test is
     linked for aarch64-macos, which needs Mach-O aarch64 objects. The archive
     was built for a different host than this build targets; build it for
-    aarch64-macos, or point -Drust-lib-dir= at one that is (#899).
+    aarch64-macos, or point -Drust-lib-dir= at one that is (RA8FW-330).
 
 A missing archive is its own message rather than a `FileNotFound` out of the
 linker. An archive that does match prints what it found and gets out of the
@@ -617,7 +617,7 @@ The gate ends with a leg that is allowed to fail:
 
     === apps/host/image_pyramid: -Dmacos-libsystem=sdk (informational) ===
 
-Failing is the point. Forcing the SDK stub is the thing #899 reports, so the
+Failing is the point. Forcing the SDK stub is the thing RA8FW-330 reports, so the
 verdict comes from the pinned-target legs above it and this one only reports.
 It is also the *only* step anywhere in this repository that still touches
 Apple's own `libSystem` stub: every other step, on every other machine, builds
@@ -625,7 +625,7 @@ against the bundled stub the workaround pins.
 
 It used to be a boolean, and that was the defect. `zig build
 -Dmacos-libsystem=sdk` exits non-zero for reasons that have nothing to do with
-the SDK, and the old else-branch called every one of them the expected #899
+the SDK, and the old else-branch called every one of them the expected RA8FW-330
 failure. The worst of them is a rename: drop or rename the option in
 `tools/zig_build` and zig answers
 
@@ -641,7 +641,7 @@ rather than the exit status alone. Six states, and the verdict is part of the
 state, not a guess made later:
 
     linked               informational  the SDK stub linked cleanly here
-    symbols_unresolved   informational  the undefined-symbol wall, i.e. #899
+    symbols_unresolved   informational  the undefined-symbol wall, i.e. RA8FW-330
     stub_unusable        informational  the stub could not be resolved at all
     option_gone          REFUSES        zig rejected -Dmacos-libsystem
     unrelated_failure    REFUSES        a failure that says nothing about the SDK

@@ -7,7 +7,7 @@
  *
  * @details
  * This is the firmware that runs on the RA8D2's *primary* core, the Cortex-M85,
- * out of reset. It demonstrates the #150 power-saving model: for a static
+ * out of reset. It demonstrates the RA8FW-250 power-saving model: for a static
  * e-reader page (text shown, waiting for a tap or a page-turn) the M85 @ 1 GHz
  * is wasted, so the M85 hands the page to the M33 @ 250 MHz and PARKS. The slow
  * core is plenty to hold a rendered page and service the user switch, at a
@@ -23,7 +23,7 @@
  *
  * The wake path -- the M33 signalling the M85 to spin back up for a heavy
  * re-render (opening or compiling a book, see #149) -- is the remaining piece
- * tracked in #150; this example lands the M85-parks / M33-holds foundation.
+ * tracked in RA8FW-250; this example lands the M85-parks / M33-holds foundation.
  *
  * @note `ra8_log_info` is compiled to a no-op unless the build defines INFO-level
  *       logging (a Debug build). The M33 cannot print in the emulator (ra8_emulator

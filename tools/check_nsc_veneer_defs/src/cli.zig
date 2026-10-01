@@ -1,7 +1,7 @@
 //! SPDX-License-Identifier: MIT
 //! Copyright (c) 2026 Brighton Sikarskie
 //!
-//! Argv membrane and exit-status contract for the NSC veneer gate (#858).
+//! Argv membrane and exit-status contract for the NSC veneer gate (RA8FW-335).
 //!
 //! Exit 0 when every `RA8_NSC_VENEER` declared in the public header has a
 //! definition in the `ra8_nsc` sources, 1 on a phantom veneer, a missing or

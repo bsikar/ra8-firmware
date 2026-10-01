@@ -1,6 +1,6 @@
 # lowpower_holdpage
 
-The #150 power-saving model in its simplest demonstrable form: for a static
+The RA8FW-250 power-saving model in its simplest demonstrable form: for a static
 e-reader page -- text shown, waiting for a tap -- the Cortex-M85 @ 1 GHz is
 wasted, so it hands the page to the Cortex-M33 @ 250 MHz and parks. Power saving
 means dropping to the slow core.
@@ -23,6 +23,6 @@ M85 sleeps.
 
 What is landed here is the handoff, the slow-core hold loop, the LED indicator
 and the SW1 page-turn. What no emulator can supply is the real on-bench battery
-delta of the park (#30), which is the entire point of the exercise. The real
+delta of the park (RA8FW-248), which is the entire point of the exercise. The real
 GLCDC display-plane and framebuffer handoff to the M33, in place of the page
-marker, is the other open half of #150.
+marker, is the other open half of RA8FW-250.

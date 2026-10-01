@@ -57,7 +57,7 @@
  * | Power-on reset / LVD brown-out      | no        | no (fail-safe)  |
  *
  * VBATT-backed / MRAM persistence across power loss is out of scope here
- * (VBATT `ra8_bkup` is silicon-blocked -- see issue #131) and is the named
+ * (VBATT `ra8_bkup` is silicon-blocked -- see issue RA8FW-254) and is the named
  * follow-up for surviving a cold power cycle.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie

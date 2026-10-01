@@ -1,7 +1,7 @@
 //! SPDX-License-Identifier: MIT
 //! Copyright (c) 2026 Brighton Sikarskie
 //!
-//! argv membrane and exit contract of the `roadmap_stats` host tool (#858),
+//! argv membrane and exit contract of the `roadmap_stats` host tool (RA8FW-335),
 //! the half that touches argv, the environment and the file system. The
 //! parser, the renderer and the marker substitution live in
 //! `internal/root.zig` and never see any of those.

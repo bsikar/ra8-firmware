@@ -220,7 +220,7 @@ typedef enum : uintptr_t {
  * @details
  * These are the SUPPORTED SOFTWARE ALLOCATION, not the silicon capacity. The
  * silicon capacity of every bank now lives in `ra8_device_mem_capacity_t`
- * (issue #850); keep the two apart, because expanding what software is allowed
+ * (issue RA8FW-336); keep the two apart, because expanding what software is allowed
  * to allocate is a separate, audited change from correcting a capacity table.
  *
  * MRAM and user SRAM allocate their full capacity (1024 KiB and 1664 KiB,
@@ -228,7 +228,7 @@ typedef enum : uintptr_t {
  * the 64 KiB per-bank floor every app's `MEMORY { }` block declares today, even
  * though the M85 banks are 128 KiB each on BOTH parts.
  *
- * WHY THE FLOOR IS RETAINED (issue #850). An earlier revision of this comment
+ * WHY THE FLOOR IS RETAINED (issue RA8FW-336). An earlier revision of this comment
  * said the RA8P1 M85 TCM split was "not yet confirmed"; it is confirmed and it
  * is not an RA8P1 delta (see ra8_device_mem_capacity_t for the citations). The
  * floor stays anyway, because raising it is not a table correction: the ITCM
@@ -237,7 +237,7 @@ typedef enum : uintptr_t {
  * read, and the 64 KiB windows are what the emulator maps
  * (`k_dtcm_end == 0x20010000`) and what the HIL-validated images were linked
  * against. Raise it only behind that startup/ECC audit plus a silicon run on an
- * RA8P1 EK (issues #226 / #229), never because this enum learned a bigger
+ * RA8P1 EK (issues RA8FW-260 / RA8FW-261), never because this enum learned a bigger
  * number.
  *
  * @invariant Each size is a whole number of KiB.
@@ -261,7 +261,7 @@ typedef enum : uint32_t {
  *        selected SKU, as distinct from what software is allowed to allocate.
  *
  * @details
- * Issue #850 exists because two different facts were being stored in one place:
+ * Issue RA8FW-336 exists because two different facts were being stored in one place:
  * how big a bank IS, and how much of it this firmware declares. This enum is
  * the first; `ra8_device_mem_size_t` is the second. Nothing here is a
  * permission to allocate, and adding a value here must never move a linker
@@ -291,7 +291,7 @@ typedef enum : uint32_t {
  * datasheets' function-comparison tables (RA8P1 Table 1.15 p 11, RA8D2
  * Table 1.14 p 11) carry IDENTICAL CPU0/CPU1 TCM and cache rows, and the RA8D2
  * per-bank split multiplies out to exactly those shared totals (see the
- * accounting note below). Issue #850 cites RA8P1 HUM R01UH1064EJ0130 2.1.1
+ * accounting note below). Issue RA8FW-336 cites RA8P1 HUM R01UH1064EJ0130 2.1.1
  * pp 111-112 and 2.16.1.1 Table 2.34 p 160 for the same numbers.
  *
  * ## Core-integrated vs bus cache

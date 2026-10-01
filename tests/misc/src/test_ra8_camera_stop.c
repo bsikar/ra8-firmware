@@ -134,7 +134,7 @@ static const ra8_camera_source_iface_t s_stop_iface = {
   .stop     = test_stop_stop,
 };
 
-/** @brief Source vtable with no stop row, the pre-#751 backend shape. */
+/** @brief Source vtable with no stop row, the pre-RA8FW-320 backend shape. */
 static const ra8_camera_source_iface_t s_no_stop_iface = {
   .get_info = test_stop_get_info,
   .capture  = test_stop_capture,

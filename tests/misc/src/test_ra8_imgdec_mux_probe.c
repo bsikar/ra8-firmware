@@ -1,6 +1,6 @@
 /**
  * @file test_ra8_imgdec_mux_probe.c
- * @brief Host tests for asking a set of backends about an image (#768).
+ * @brief Host tests for asking a set of backends about an image (RA8FW-308).
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT

@@ -1,7 +1,7 @@
 //! SPDX-License-Identifier: MIT
 //! Copyright (c) 2026 Brighton Sikarskie
 //!
-//! Pure C-source rendering for the `font_to_c` build tool (#858).
+//! Pure C-source rendering for the `font_to_c` build tool (RA8FW-335).
 //!
 //! No file system and no process state: a byte blob in, the text of a C
 //! translation unit out. The emitted unit defines the two symbols the

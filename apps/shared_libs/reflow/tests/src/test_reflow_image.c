@@ -18,7 +18,7 @@
  *    documented source pattern, and the routing decision is driven from both
  *    sides (a non-RIFF buffer, and a RIFF buffer whose form tag is not WEBP --
  *    which must fall through to stb_image and be rejected there, not
- *    mis-routed into the WebP facade). Since #768 the signature test itself
+ *    mis-routed into the WebP facade). Since RA8FW-308 the signature test itself
  *    lives in libs/ra8_imgdec/src/ra8_imgdec_sniff.c, so these vectors assert
  *    the routing this module still owns, not the tag comparison it forwards.
  *
@@ -519,7 +519,7 @@ RA8_INTERNAL static void internal_test_decode_fail_real_paths_mcdc(void)
  * Routing decision `internal_is_webp(bytes, len)` in reflow_image.c: this
  * vector takes its true arm, and internal_test_webp_signature_falls_through
  * takes the false arm from both sides. The compound tag comparison behind it
- * moved to libs/ra8_imgdec/src/ra8_imgdec_sniff.c@internal_is_webp under #768
+ * moved to libs/ra8_imgdec/src/ra8_imgdec_sniff.c@internal_is_webp under RA8FW-308
  * and carries its own vectors in tests/misc/src/test_ra8_imgdec_sniff.c; what
  * is asserted here is that this module routes on the sniff's answer.
  *

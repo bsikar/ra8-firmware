@@ -8,7 +8,7 @@
 //! This is the wiring, not the data. The source-set rules live in
 //! cross_sources.zig, the flag sets in arm_flags.zig, the toolchain and
 //! per-sub-target contexts in cross_build.zig, and the configuration globals
-//! in build_type.zig. Split out of the root build.zig for #2791, which had
+//! in build_type.zig. Split out of the root build.zig for RA8FW-362, which had
 //! reached the file-size ceiling with this block as its largest tenant.
 //!
 //! Every entry point takes the configuration it is building at as a
@@ -140,7 +140,7 @@ fn addCrossApp(
 
     // ra8_usb_pal, universal in the same way: libs/ra8_usb_pal/src is in the
     // universal glob every app compiles, and once that directory holds no C
-    // (#766) the archive is the only place ra8_usb_device_compose lives. All
+    // (RA8FW-317) the archive is the only place ra8_usb_device_compose lives. All
     // 22 USBX-on-ThreadX apps call it without naming the library in LIBS.
     // sources.cmake registers it beside ra8_net_pal. An app that never calls
     // it pulls no member, so linking it everywhere changes no other image.
@@ -161,7 +161,7 @@ fn addCrossApp(
     // has a build.zig, deliberately NOT gated on the board being fully
     // ported: a partly-ported board links the archive beside its remaining C
     // objects, and gating on the absence of board .c "silently dropped the
-    // ported half of such a board out of the link" (#2998). This graph globs
+    // ported half of such a board out of the link" (RA8FW-365). This graph globs
     // the board's src/*.c but linked no archive, so every board symbol
     // already moved to Zig -- ra8_board_uart_console_write, the four
     // ra8_board_led_* entries, ra8_board_clock and the rest of the board ABI
@@ -206,7 +206,7 @@ fn addCrossApp(
     // for the same reason. `fw_clock_bind` and `fw_clock_rate_for` are called
     // from around twenty-five example main.c files; both are defined in
     // `libs/if`, which no cross app names in LIBS, so the sweep below cannot
-    // reach it. Before #2791 the definitions were in
+    // reach it. Before RA8FW-362 the definitions were in
     // `libs/if/src/fw_if_clock.c`, which nothing in the tree compiles --
     // library_sources.cmake:60 records the RA8_IF_SOURCES glob being removed
     // when libs/if was declared fully migrated -- so the symbols had no

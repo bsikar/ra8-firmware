@@ -3,7 +3,7 @@
 #
 # Host-test wiring for the architecture seams in libs/if: the OSAL contract
 # (fw_os) and the intent ports the chip HAL hides behind (fw_if_clock,
-# fw_if_timer, #693). Each of these needs per-target include paths rather than
+# fw_if_timer, RA8FW-299). Each of these needs per-target include paths rather than
 # sources, and the rule is the same in every case: a *port's* own vectors get
 # only ${FW_ROOT}/libs/if/inc, so they cannot reach a ra8_cgc_* / ra8_gpt_* /
 # tx_* header, while an *adapter's* vectors are allowed the chip headers,
@@ -19,7 +19,7 @@
 # The OSAL conformance test drives the fw_os contract through its first real
 # binding. The binding is a host-only, single-threaded implementation kept in
 # tests/support so no firmware object library picks it up.
-# libs/ra8_wdt_supervisor speaks `fw_os` rather than tx_* since #693, so its
+# libs/ra8_wdt_supervisor speaks `fw_os` rather than tx_* since RA8FW-299, so its
 # host tests link the same binding test_fw_os uses. test_..._rtos_err also
 # arms one-shot failures through fw_os_host_test_fail_next, which replaced the
 # supervisor's own ThreadX shim.
@@ -38,7 +38,7 @@ if(TARGET test_fw_os)
   target_include_directories(test_fw_os PRIVATE ${FW_ROOT}/libs/if/inc)
 endif()
 
-# The clock-intent port has no chip adapter yet (#693 step 1), so its vectors
+# The clock-intent port has no chip adapter yet (RA8FW-299 step 1), so its vectors
 # drive the facade through a fake binding declared in the test itself. Only the
 # interface include directory is added: these vectors must not reach a
 # ra8_cgc_* header, which is the whole point of the seam.
@@ -48,12 +48,12 @@ if(TARGET test_fw_if_clock)
   # and core_hal.cmake carries no libs/if sources -- there is no RA8_IF_SOURCES
   # glob and every library glob in library_sources.cmake is named explicitly --
   # so these vectors had no definition of fw_clock_bind to link against. The
-  # six fw_clock_* exports ride in this archive since #2791, the same way
+  # six fw_clock_* exports ride in this archive since RA8FW-362, the same way
   # test_ra8_devcfg and test_ra8_num_decimal reach theirs.
   target_link_libraries(test_fw_if_clock PRIVATE ra8_zig::fw_if_fs)
 endif()
 
-# The timer port, the first half of the timer/PWM split (#693 step 5). Same
+# The timer port, the first half of the timer/PWM split (RA8FW-299 step 5). Same
 # deal as the clock port above: no chip adapter yet, so the vectors drive the
 # facade through a fake binding they declare themselves, and only the interface
 # include directory is added so they cannot reach a ra8_gpt_* header.

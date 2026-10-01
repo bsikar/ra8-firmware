@@ -11,7 +11,7 @@ and elapsed time are summed across iterations for a throughput figure that is
 stable enough to compare between builds.
 
 The read-only `WRITE(10)` rejection is confirmed **once at the end**: the write
-STALLs the bulk-OUT pipe, so it has to run last (#92).
+STALLs the bulk-OUT pipe, so it has to run last (RA8FW-253).
 
 `hs_host` proves one clean pass; this proves the transport stays byte-perfect
 under sustained load. `k_selftest_soak_iters` sets the soak length -- bump it

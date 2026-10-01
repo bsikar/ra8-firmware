@@ -31,7 +31,7 @@
  * skip the usual ``ra8_mstp_enable`` step that other drivers run in
  * their ``init``.
  *
- * @par PRCR write protection (issue #131)
+ * @par PRCR write protection (issue RA8FW-254)
  * Every register this driver writes is listed in HUM Ch 13.1 Table 13.1
  * "Association between PRCR bits and use of registers to be protected"
  * p 520-521, split across three protection groups:

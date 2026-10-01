@@ -1,7 +1,7 @@
 //! SPDX-License-Identifier: MIT
 //! Copyright (c) 2026 Brighton Sikarskie
 //!
-//! Unicode word-character table for the HAL driver asm-guard gate (#858).
+//! Unicode word-character table for the HAL driver asm-guard gate (RA8FW-335).
 //!
 //! The gate this replaces ended each preprocessor keyword with the
 //! regular-expression word boundary `\b`, and Python's `\b` is Unicode-aware:

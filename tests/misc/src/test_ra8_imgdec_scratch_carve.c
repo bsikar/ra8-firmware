@@ -1,6 +1,6 @@
 /**
  * @file test_ra8_imgdec_scratch_carve.c
- * @brief Host tests for carving a decode scratch out of an arena (#768).
+ * @brief Host tests for carving a decode scratch out of an arena (RA8FW-308).
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT

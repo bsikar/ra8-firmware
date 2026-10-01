@@ -1,7 +1,7 @@
 //! SPDX-License-Identifier: MIT
 //! Copyright (c) 2026 Brighton Sikarskie
 //!
-//! Build graph for the `check_host_build_entrypoints` host tool (#858). One
+//! Build graph for the `check_host_build_entrypoints` host tool (RA8FW-335). One
 //! executable, plus the test step `scripts/checks/check_zig.py --test` runs:
 //! the detector behaviour the CI gate depends on and the exit-status contract
 //! `scripts/builders/check_host_build_entrypoints.sh` passes through.

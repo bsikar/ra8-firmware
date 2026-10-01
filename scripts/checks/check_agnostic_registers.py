@@ -3,11 +3,11 @@
 # Copyright (c) 2026 Brighton Sikarskie
 """Ratchet concrete RA8 driver reach-ins outside HAL and board composition.
 
-The platform-architecture migration (#692) introduces neutral ``fw_if_*``
+The platform-architecture migration (RA8FW-298) introduces neutral ``fw_if_*``
 ports between portable logic and silicon-specific drivers.  Today that seam is
 incomplete: first-party production code directly names ``ra8_cgc_*``,
 ``ra8_glcdc_*``, ``ra8_gpio_*`` and ``ra8_gpt_*`` symbols.  Removing every
-reach-in is incremental work under #693, so a zero-debt gate would be a cliff.
+reach-in is incremental work under RA8FW-299, so a zero-debt gate would be a cliff.
 
 This checker freezes the existing debt per ``(file, family)`` in
 ``.github/agnostic-register-baseline.txt``.  A new or increased bucket fails;
@@ -22,8 +22,8 @@ may exercise a concrete driver directly.  Vendored and generated sources
 inherit ``lint_targets`` exclusions.
 
 This is invariant 5 from #698.  The prefix-based neutral-code invariants 1 and
-2 become enforceable with the final rename (#697).  The no-RTOS-symbol and
-architecture-capability invariants belong to #695 and #694 respectively; they
+2 become enforceable with the final rename (RA8FW-301).  The no-RTOS-symbol and
+architecture-capability invariants belong to #695 and RA8FW-300 respectively; they
 are deliberately not duplicated here.
 
 Usage::

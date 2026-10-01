@@ -5,7 +5,7 @@
 # scripts/builders/check_example_board_pins.sh -- the example board-pin gate.
 #
 # This is a minimal trusted launcher, not an implementation: the gate is the
-# Zig host tool tools/check_example_board_pins (#858), which replaced the
+# Zig host tool tools/check_example_board_pins (RA8FW-335), which replaced the
 # Python scripts/checks/check_example_board_pins.py  PATHREF-OK: the
 # predecessor this names was deleted in the same change.
 #

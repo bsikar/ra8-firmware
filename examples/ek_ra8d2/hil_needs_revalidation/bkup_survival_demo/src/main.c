@@ -27,7 +27,7 @@
  *
  * Bare EK-RA8D2 only -- no shields or external transceivers.
  *
- * @note **Silicon status (issue #131).** The dominant precondition for a live
+ * @note **Silicon status (issue RA8FW-254).** The dominant precondition for a live
  * VBTBKRn window is that voltage monitor 0 (LVD0) reset is enabled via the
  * ``OFS1.PVDAS`` option byte (HUM Ch 12.1.3 p 499, Ch 12.3.2 p 514); this app
  * sets ``OFS1 = 0xFFFFFFF0`` in ``CMakeLists.txt``. Bench debugger reads with
@@ -242,7 +242,7 @@ RA8_INTERNAL static void internal_bkup_demo_setup_or_halt(void)
    *      is an option byte set in CMakeLists.txt (OFS1 = 0xFFFFFFF0); without
    *      it the VBATT area stays held in VBATT_POR reset (VBPORF = 1) and the
    *      whole block -- VBTBPCR1, VBTBKRn -- rejects writes. This is the
-   *      dominant #131 root cause, verified on the bench by debugger reads.
+   *      dominant RA8FW-254 root cause, verified on the bench by debugger reads.
    *   2. VBTBER.VBAE must be 1 before access -- HUM Ch 12.2.6 p 504 ("You
    *      must write 1 to VBAE before accessing VBTBKR", then "wait for at
    *      least 500 ns"). VBAE resets to 1, but ra8_bkup_init writes it and

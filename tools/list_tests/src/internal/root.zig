@@ -1,7 +1,7 @@
 //! SPDX-License-Identifier: MIT
 //! Copyright (c) 2026 Brighton Sikarskie
 //!
-//! Pure transforms behind the `list_tests` host tool (#858), replacing the
+//! Pure transforms behind the `list_tests` host tool (RA8FW-335), replacing the
 //! Python implementation the migrating commit deletes.
 //!
 //! Nothing here opens a file or reads the process environment: glob matching,

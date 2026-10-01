@@ -6,7 +6,7 @@
   </linearGradient>
   <clipPath id="r"><rect width="48" height="20" rx="3" fill="#fff"/></clipPath>
   <g clip-path="url(#r)">
-    <rect width="31" height="20" fill="#555"/>
+    <rect width="31" height="20" fill="RA8FW-278"/>
     <rect x="31" width="17" height="20" fill="#9f9f9f"/>
     <rect width="48" height="20" fill="url(#s)"/>
   </g>

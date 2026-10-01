@@ -33,7 +33,7 @@ include("${_d}/cmake/ra8_add_app.cmake")
 # map's NS_MRAM / NS_SRAM placeholders are simply unused regions here and
 # its `.gnu.sgstubs` placement links empty. Neither costs this image
 # anything, which leaves the ThreadX unused-memory sentinel as the only
-# thing the old 299-line linker fork was actually carrying (#742).
+# thing the old 299-line linker fork was actually carrying (RA8FW-309).
 ra8_add_app(
   NAME tz_secure_only_usb_hs BOOT_PROFILE secure_only
   STACK_BYTES 2200

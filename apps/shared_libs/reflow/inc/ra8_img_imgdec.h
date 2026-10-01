@@ -1,13 +1,13 @@
 /**
  * @file ra8_img_imgdec.h
- * @brief `ra8_imgdec` backend over the vendored stb_image residue (#768).
+ * @brief `ra8_imgdec` backend over the vendored stb_image residue (RA8FW-308).
  * @ingroup grp_ereader
  *
  * @par Tag
  * [Ring 4 / Reflow] {World: NS}
  *
  * @details
- * #768 names four binders, one per decoder the tree already carries, and this
+ * RA8FW-308 names four binders, one per decoder the tree already carries, and this
  * is the one over the vendored stb_image residue: the decoder that reaches a
  * reader today only because `reflow_image.c` calls `stbi_load_from_memory()`
  * directly.
@@ -16,9 +16,9 @@
  * `stb_image_impl.c` compiles with `STBI_ONLY_JPEG`, `STBI_ONLY_PNG`,
  * `STBI_ONLY_GIF` and `STBI_ONLY_BMP`. There is no `STBI_ONLY_TGA`, so **TGA
  * is not in the firmware image** and this binder must not claim it, whatever
- * #768's prose says. The advertised matrix is therefore PNG, GIF and BMP.
+ * RA8FW-308's prose says. The advertised matrix is therefore PNG, GIF and BMP.
  *
- * PNG is on that list for a reason worth stating, because #768 proposes a
+ * PNG is on that list for a reason worth stating, because RA8FW-308 proposes a
  * separate `ra8_imgdec_bind_png()` promoting `jof_png.c` to a public
  * `libs/ra8_png`. That promotion has not happened and is not a small job:
  * `priv_jof_png_rows()` is a pull-based streaming decoder declared `RA8_PRIV`

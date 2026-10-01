@@ -6,7 +6,7 @@
 # message on a push or PR spells the banned legacy SPI/I2C terminology.
 #
 # This is a minimal trusted launcher, not an implementation: the detector is
-# the Zig host tool tools/check_inclusive_terminology_commits (#858), which
+# the Zig host tool tools/check_inclusive_terminology_commits (RA8FW-335), which
 # replaced scripts/checks/check_inclusive_terminology_commits.py  PATHREF-OK:
 # the Python predecessor this names was deleted in the same change.
 #

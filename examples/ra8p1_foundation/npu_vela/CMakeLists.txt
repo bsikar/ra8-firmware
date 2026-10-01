@@ -16,7 +16,7 @@
 # The shared cmake/ra8_add_app.cmake recipe compiles the full ra8_core + ra8_hal
 # (including the RA8P1-only ra8_npu.c + ra8_npu_loader.c, live under
 # -DRA8_DEVICE_RA8P1) + the board layer BOARD names. BOARD ra8p1 selects the
-# dedicated libs/ra8_board_ra8p1 layer (issue #226), the same selector npu_smoke
+# dedicated libs/ra8_board_ra8p1 layer (issue RA8FW-260), the same selector npu_smoke
 # and blink_ra8p1 pass. Until issue #773 this app named no BOARD, so it took the
 # ek_ra8d2 default and compiled against the RA8D2 board's pin map; that only
 # worked because the app touches nothing outside the console subset the two

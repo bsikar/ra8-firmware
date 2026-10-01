@@ -1,7 +1,7 @@
 //! SPDX-License-Identifier: MIT
 //! Copyright (c) 2026 Brighton Sikarskie
 //!
-//! Exit-status contract of `merge_ihex` (#858). The build callers in
+//! Exit-status contract of `merge_ihex` (RA8FW-335). The build callers in
 //! `apps/board/stand_alone/ereader`, `tz_nsc_cgc_usb`, `tz_threadx_demo` and
 //! `secure_boot_ns_hil` treat a non-zero status as a failed image, so these
 //! cases pin 0 / 1 / 2 and the stream each message lands on.

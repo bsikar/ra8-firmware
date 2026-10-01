@@ -6,7 +6,7 @@
 # driver shall not guard bare CPU asm on RA8_OFF_TARGET.
 #
 # This is a minimal trusted launcher, not an implementation: the detector is
-# the Zig host tool tools/check_no_driver_asm_guard (#858), which replaced the
+# the Zig host tool tools/check_no_driver_asm_guard (RA8FW-335), which replaced the
 # Python scripts/checks/check_no_driver_asm_guard.py  PATHREF-OK: the
 # predecessor this names was deleted in the same change.
 #

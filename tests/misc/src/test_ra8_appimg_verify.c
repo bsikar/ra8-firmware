@@ -1,6 +1,6 @@
 /**
  * @file test_ra8_appimg_verify.c
- * @brief Unit tests for the `.ra8app` admission gate (#663).
+ * @brief Unit tests for the `.ra8app` admission gate (RA8FW-291).
  *
  * @details
  * Proves the policy, not the primitive. A recording stand-in stands in for the
@@ -9,7 +9,7 @@
  * claims ("a refused manifest never spends a signature", "an unsigned image is
  * refused without a backend") are actually tested rather than asserted in prose.
  *
- * Covers the three acceptance criteria of #663 directly: an unsigned module is
+ * Covers the three acceptance criteria of RA8FW-291 directly: an unsigned module is
  * rejected, a module modified after signing is rejected, and a validly signed
  * module is admitted.
  *

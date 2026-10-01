@@ -2,7 +2,7 @@
  * @file libs/ra8_board_ra8p1/src/boot/system_init.c
  * @brief Cortex-M85 / RA8D2/RA8P1 core bring-up (called from Reset_Handler)
  *
- * @note RA8P1 board layer (issue #226): this chip-boot TU started as a copy of
+ * @note RA8P1 board layer (issue RA8FW-260): this chip-boot TU started as a copy of
  *       the EK-RA8D2 one. The RA8P1 (R7KA8P1KFLCAC) shares the RA8D2 Cortex-M85
  *       core, cache/MPU, and CGC-reset state (see libs/ra8_core/inc/ra8_device.h),
  *       so the core bring-up is common; HUM citations reference the RA8D2 manual

@@ -216,7 +216,7 @@ static volatile uint32_t s_dbg_dev_err;
 /* -------------------------------------------------------------------------- */
 
 /* The three frameworks below are synthesised at start-up from the config
- * structs by libs/ra8_usb_pal (#766) rather than typed out as raw byte
+ * structs by libs/ra8_usb_pal (RA8FW-317) rather than typed out as raw byte
  * arrays. Single-interface MSC: bulk-only transport over the SCSI transparent
  * command set, class 0x08 / subclass 0x06 / protocol 0x50, EP1 IN and EP2 OUT
  * at a 64-byte MPS, per BBB rev 1.0 sec 4 + USB 2.0 sec 9.6. The device

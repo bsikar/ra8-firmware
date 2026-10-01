@@ -1,7 +1,7 @@
 //! SPDX-License-Identifier: MIT
 //! Copyright (c) 2026 Brighton Sikarskie
 //!
-//! Pure Intel HEX record algebra for the `merge_ihex` tool (#858).
+//! Pure Intel HEX record algebra for the `merge_ihex` tool (RA8FW-335).
 //!
 //! No file system, no process state: text in, merged text out. The merge is
 //! defined on RECORDS rather than on file text. Every record of both inputs is

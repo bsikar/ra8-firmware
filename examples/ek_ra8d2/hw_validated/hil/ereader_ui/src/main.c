@@ -469,7 +469,7 @@ static void app_bringup_touch(void)
  */
 static void er_try_load_font(void)
 {
-  /* Reads the clock driver directly on purpose (issue #693): k_er_spi_chan is
+  /* Reads the clock driver directly on purpose (issue RA8FW-299): k_er_spi_chan is
    * a dedicated SPI block, and the board clock profile's wiring table has no
    * spi slot, so asking it would name a peripheral it does not describe. */
   if (ra8_cgc_get_clock_hz(k_ra8_clock_id_pclka, &s_pclka_hz) != k_ra8_ok) {

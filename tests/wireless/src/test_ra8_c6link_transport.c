@@ -86,7 +86,7 @@ RA8_INTERNAL static void internal_test_eth_data_plane(void)
   /* A frame on an interface this link does not use is counted, not delivered.
      `ESP_PRIV_IF` is the real case: upstream reads peripheral-side capabilities from it,
      but this co-processor build's only privileged frame fails its own
-     checksum (#529), so nothing here may depend on one. */
+     checksum (RA8FW-276), so nothing here may depend on one. */
   priv_c6link_test_bringup();
   uint8_t* slot = ra8_c6_model_slot();
   TEST_ASSERT_NOT_NULL(slot);

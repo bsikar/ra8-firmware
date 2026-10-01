@@ -70,7 +70,7 @@ typedef enum : uint8_t {
  * @brief Report whether @p bytes opens with a WebP container signature.
  *
  * @details
- * Forwards to ::ra8_imgdec_sniff(), the one container sniff in the tree (#768).
+ * Forwards to ::ra8_imgdec_sniff(), the one container sniff in the tree (RA8FW-308).
  * This module used to carry its own copy of the RIFF/WEBP test -- the `RIFF`
  * tag at offset 0, the `WEBP` form type at offset 8, and the twelve-byte length
  * floor that makes both readable. That copy is gone: the offsets, the tags and

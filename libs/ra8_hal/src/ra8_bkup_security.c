@@ -17,7 +17,7 @@
  * VBRPABARS and VBRPABARNS -- and its validators exist only to keep
  * those four in range, so it shares nothing with the tamper path.
  *
- * @par PRCR write protection (issue #131)
+ * @par PRCR write protection (issue RA8FW-254)
  * These four are attribution registers and sit behind **PRC4**, not the
  * PRC1 that guards the rest of the block (HUM Ch 13.1 Table 13.1
  * "Association between PRCR bits and use of registers to be protected"

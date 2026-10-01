@@ -1,6 +1,6 @@
 /**
  * @file examples/ek_ra8d2/hw_validated/hil/fault_crashlog_hil/src/main.c
- * @brief Prove the cross-reset crash-log + reset-loop guard (T2-03, #191).
+ * @brief Prove the cross-reset crash-log + reset-loop guard (T2-03, RA8FW-255).
  *
  * @par Tag
  * [Ring 6 / APP] {World: S}

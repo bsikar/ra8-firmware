@@ -1,6 +1,6 @@
 /**
  * @file test_ra8_imgdec.c
- * @brief Host tests for the ra8_imgdec fabric (#768).
+ * @brief Host tests for the ra8_imgdec fabric (RA8FW-308).
  *
  * @par Tag
  * [Ring 3 / Imaging] {World: NS}

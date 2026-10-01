@@ -6,7 +6,7 @@
 # build entry points.
 #
 # This is a minimal trusted launcher, not an implementation: the audit is
-# performed by the Zig host tool tools/check_host_build_entrypoints (#858),
+# performed by the Zig host tool tools/check_host_build_entrypoints (RA8FW-335),
 # which replaced the Python
 # scripts/checks/check_host_build_entrypoints.py  PATHREF-OK: the predecessor
 # this names was deleted in the same change.

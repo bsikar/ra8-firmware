@@ -316,7 +316,7 @@ void ra8_isr_dispatch(uint16_t slot);
  * event-select field written by ::ra8_isr_register is preserved, and the
  * write-0-to-clear ``IR`` status flag is left untouched -- its own read
  * value is written back, which retains it (see ::ra8_isr_dispatch and issue
- * #170). The DTC clears ``DTCE`` itself when a block completes (HUM Figure
+ * RA8FW-251). The DTC clears ``DTCE`` itself when a block completes (HUM Figure
  * 18.5 p 801), so a repeating transfer re-arms with ``enable = true``
  * before each activation.
  *

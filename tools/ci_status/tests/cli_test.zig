@@ -2,7 +2,7 @@
 //! Copyright (c) 2026 Brighton Sikarskie
 //!
 //! Exit-status and read-mode regression tests for the ci-monitor status
-//! reader's argv membrane (#858, #1144). `monitor.sh` reads these exact bytes
+//! reader's argv membrane (RA8FW-335, #1144). `monitor.sh` reads these exact bytes
 //! and branches on these exact statuses, so each mode's output and each
 //! failure's status is pinned here rather than left to the caller to discover.
 

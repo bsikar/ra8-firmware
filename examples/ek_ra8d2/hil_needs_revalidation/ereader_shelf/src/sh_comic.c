@@ -24,7 +24,7 @@
  *     reader keeps the whole-page decode deliberately -- the shelf's baked
  *     fixtures fit the cap -- so adopting ::comic_tiles here is an open
  *     product choice, not a tracked defect. Manga-scale streaming budgets and
- *     eviction tuning remain #232.
+ *     eviction tuning remain RA8FW-257.
  *
  * @par Right-to-left (manga) reading
  * Raw CBZ/CBR carry no reading-direction metadata, so direction is an app-level

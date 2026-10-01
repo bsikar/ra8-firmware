@@ -1,7 +1,7 @@
 //! SPDX-License-Identifier: MIT
 //! Copyright (c) 2026 Brighton Sikarskie
 //!
-//! Scope and detector algebra for the trailing-newline gate (#858).
+//! Scope and detector algebra for the trailing-newline gate (RA8FW-335).
 //!
 //! Everything here is pure: it takes a census of repository-relative paths
 //! and byte slices and answers questions about them. No file system, no

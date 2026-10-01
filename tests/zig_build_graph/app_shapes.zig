@@ -673,17 +673,17 @@ pub const uncovered = [_]Uncovered{
     .{
         .representative = "ereader_m33",
         .shape = .{ .aux_srcs = true, .cpu1_image = true, .mram_length = true },
-        .note = "1 declaration: the last app-local linker_script.ld in the tree, retired by #742. It now composes the same way the other dual-core apps do, CPU1_IMAGE for the M33 window plus MRAM_LENGTH 768K to stop the M85's own bank at 0x020C0000, and names an extra source of its own on top. cpu1_pingpong_ipc cross-builds CPU1_IMAGE but without AUX_SRCS or MRAM_LENGTH, so this combination is still one declaration",
+        .note = "1 declaration: the last app-local linker_script.ld in the tree, retired by RA8FW-309. It now composes the same way the other dual-core apps do, CPU1_IMAGE for the M33 window plus MRAM_LENGTH 768K to stop the M85's own bank at 0x020C0000, and names an extra source of its own on top. cpu1_pingpong_ipc cross-builds CPU1_IMAGE but without AUX_SRCS or MRAM_LENGTH, so this combination is still one declaration",
     },
     .{
         .representative = "dfu_copy_to_run",
         .shape = .{ .aux_srcs = true, .sram_text = true, .mram_length = true },
-        .note = "1 declaration: the copy-to-run HIL proof, and the first app to name MRAM_LENGTH. #742 traded its 377-line linker_script.ld fork for the 128K bootloader bank plus a linker_append.ld, so the bank size and the SRAM-resident flash driver are both link shape now",
+        .note = "1 declaration: the copy-to-run HIL proof, and the first app to name MRAM_LENGTH. RA8FW-309 traded its 377-line linker_script.ld fork for the 128K bootloader bank plus a linker_append.ld, so the bank size and the SRAM-resident flash driver are both link shape now",
     },
     .{
         .representative = "tz_threadx_demo",
         .shape = .{ .aux_srcs = true, .mram_length = true },
-        .note = "3 declarations: Secure images that name their own Non-Secure sources as AUX_SRCS. #742 dropped each one's 418-line script fork for the board's own plus a 512K secure bank, which split them off the plain AUX_SRCS kind; ra8d2-ereader joined when its fork went the same way, and secure_boot_ns_hil joined on #2943 when its EXTRA_SRCS pair became the ra8_rot archive, retiring the EXTRA_SRCS+AUX_SRCS kind entirely",
+        .note = "3 declarations: Secure images that name their own Non-Secure sources as AUX_SRCS. RA8FW-309 dropped each one's 418-line script fork for the board's own plus a 512K secure bank, which split them off the plain AUX_SRCS kind; ra8d2-ereader joined when its fork went the same way, and secure_boot_ns_hil joined on #2943 when its EXTRA_SRCS pair became the ra8_rot archive, retiring the EXTRA_SRCS+AUX_SRCS kind entirely",
     },
     .{
         .representative = "c6_fw_version",
@@ -708,7 +708,7 @@ pub const uncovered = [_]Uncovered{
     .{
         .representative = "dfu_selftest_boot",
         .shape = .{ .uses = &.{ "threadx", "usbx" }, .threadx_heap = true, .sram_text = true },
-        .note = "3 declarations: the dfu_selftest trio. #742 dropped their three forked linker scripts for the board's own plus a pre-.text injection point, so they now name SRAM_TEXT and compose a heap fragment; the SRAM_TEXT sources are what make this a different link shape from the 20 USBX-on-ThreadX apps",
+        .note = "3 declarations: the dfu_selftest trio. RA8FW-309 dropped their three forked linker scripts for the board's own plus a pre-.text injection point, so they now name SRAM_TEXT and compose a heap fragment; the SRAM_TEXT sources are what make this a different link shape from the 20 USBX-on-ThreadX apps",
     },
     .{
         .representative = "usb_printer_vendor",
@@ -743,7 +743,7 @@ pub const uncovered = [_]Uncovered{
             .sram_text = true,
             .mram_length = true,
         },
-        .note = "1 declaration: USBX plus a heap fragment, running its flash driver from SRAM out of a 128K bootloader bank. #742 traded its 361-line linker_script.ld fork for three keywords at once; #1114 then took EXTRA_SRCS away again, because the one path it named was ra8_psa_crypto.c and that library is a Zig archive now, reached through LIBS",
+        .note = "1 declaration: USBX plus a heap fragment, running its flash driver from SRAM out of a 128K bootloader bank. RA8FW-309 traded its 361-line linker_script.ld fork for three keywords at once; #1114 then took EXTRA_SRCS away again, because the one path it named was ra8_psa_crypto.c and that library is a Zig archive now, reached through LIBS",
     },
 };
 

@@ -379,7 +379,7 @@ def _selftest_host_target_rule(failures: list[str]) -> None:
         build_zig = root / "build.zig"
         plain_text = build_zig.read_text(encoding="utf-8")
 
-        if not any("#899" in error for error in _host_target_errors(root)):
+        if not any("RA8FW-330" in error for error in _host_target_errors(root)):
             failures.append("  must-fire: build root with a plain native default was accepted")
 
         commented = plain_text.replace(
@@ -421,7 +421,7 @@ def _selftest_host_target_rule(failures: list[str]) -> None:
             failures.append("  must-fire: malformed host-target declaration was accepted")
 
         contract.write_text(json.dumps({"rule": "host_default"}) + "\n", encoding="utf-8")
-        if not any("#899" in error for error in _host_target_errors(root)):
+        if not any("RA8FW-330" in error for error in _host_target_errors(root)):
             failures.append('  must-fire: declared "host_default" without the wiring was accepted')
 
 

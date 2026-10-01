@@ -244,7 +244,7 @@ Two protocol facts from that bring-up that the layers above should be built on:
 - The `ESP_PRIV_IF` `ESP_PRIV_EVENT_INIT` event -- upstream's usual source for
   co-processor capabilities, chip id and firmware version -- **fails its own
   checksum** on this co-processor build and is dropped by any conformant host,
-  upstream's included (#529). Do not depend on `process_init_event()`'s TLVs.
+  upstream's included (RA8FW-276). Do not depend on `process_init_event()`'s TLVs.
 
 ### The one file to edit when the harness is rebuilt
 

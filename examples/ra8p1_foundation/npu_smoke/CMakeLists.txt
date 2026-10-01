@@ -14,7 +14,7 @@
 #
 # All build logic lives in the shared cmake/ra8_add_app.cmake recipe; this file
 # only names the app. BOARD ra8p1 selects the dedicated libs/ra8_board_ra8p1
-# layer (issue #226); the recipe compiles the full ra8_core + ra8_hal (including
+# layer (issue RA8FW-260); the recipe compiles the full ra8_core + ra8_hal (including
 # the RA8P1-only ra8_npu.c, which is live under -DRA8_DEVICE_RA8P1) + that board
 # layer, so this app doubles as the "does the NPU driver compile + link for
 # R7KA8P1KFLCAC" proof.

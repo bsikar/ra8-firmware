@@ -1,7 +1,7 @@
 //! SPDX-License-Identifier: MIT
 //! Copyright (c) 2026 Brighton Sikarskie
 //!
-//! Exit-status and enumeration tests for the example board-pin gate (#858).
+//! Exit-status and enumeration tests for the example board-pin gate (RA8FW-335).
 //! These drive `cli.run` over a real temporary tree, so the contract
 //! `scripts/builders/check_example_board_pins.sh` passes through is pinned
 //! end to end: the argv branch, the whole-tree sweep, the floor collapse, the

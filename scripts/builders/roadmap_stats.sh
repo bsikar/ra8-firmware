@@ -8,7 +8,7 @@
 #
 # This is a minimal trusted launcher, not an implementation: the parser, the
 # renderer and the marker substitution are the Zig host tool
-# tools/roadmap_stats (#858), which replaced the Python
+# tools/roadmap_stats (RA8FW-335), which replaced the Python
 # scripts/report/roadmap_stats.py.  PATHREF-OK: deleted in the same change.
 # All this does is resolve zig, build the tool once, and hand over argv and
 # the exit status unchanged.

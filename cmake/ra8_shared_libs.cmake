@@ -45,7 +45,7 @@ include(${CMAKE_CURRENT_LIST_DIR}/ra8_production_build.cmake)
 function(ra8_shared_lib_sources out_var repo_root board_dir)
   file(GLOB_RECURSE _core CONFIGURE_DEPENDS ${repo_root}/libs/ra8_core/src/*.c)
   file(GLOB_RECURSE _hal CONFIGURE_DEPENDS ${repo_root}/libs/ra8_hal/src/*.c)
-  # No ra8_usb_pal glob: that library is fully Zig (#766) and its objects come
+  # No ra8_usb_pal glob: that library is fully Zig (RA8FW-317) and its objects come
   # from the Zig static archive, linked separately, as ra8_net_pal's do.
   # Boot composition sources live in src/boot and are selected per image by
   # ra8_app/sources.cmake. The shared archive owns only host-neutral board

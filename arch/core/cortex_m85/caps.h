@@ -6,7 +6,7 @@
  * Every optional capability in `arch/arch.h` is answered here, for this core,
  * with a value AND a reason. A flag set to 1 owes a backend translation unit; a
  * flag cleared to 0 owes the decline note beside it. The port-completeness gate
- * (epic invariant #4, #694) reads both halves, which is why a bare `0` with no
+ * (epic invariant #4, RA8FW-300) reads both halves, which is why a bare `0` with no
  * comment is a defect rather than a default.
  *
  * This is the RA8D2 CPU0 core. It is the reason the capability flags live per
@@ -40,7 +40,7 @@
  * MIGRATION: implemented today by `port/threadx/src/cortex_m85`, the
  * project-tuned half of the vendored Cortex-M85 GNU port that
  * `cmake/threadx.cmake` selects. Moves behind ::arch_context_init,
- * ::arch_context_switch and ::arch_tick_configure in a later slice of #694.
+ * ::arch_context_switch and ::arch_tick_configure in a later slice of RA8FW-300.
  */
 #define ARCH_HAS_RTOS_CONTEXT (1)
 /**
@@ -49,7 +49,7 @@
  * @details
  * MIGRATION: implemented today by `libs/ra8_mpu/src/ra8_mpu_abi.zig`, a Ring-1
  * library rather than an arch backend. Moves to `arch/armv8m/` in a later
- * slice of #694.
+ * slice of RA8FW-300.
  */
 #define ARCH_HAS_MEM_PROTECT (1)
 /** @brief Protection flavour, as `arch.h` documents the term. */
@@ -64,7 +64,7 @@
  * MIGRATION: implemented today by `libs/ra8_hal/src/ra8_cache.c`, filed under
  * the HAL as though L1 maintenance were a peripheral. It is a core block, and
  * one CPU1 does not have, so it moves to `arch/armv8m/` with the cache flag in
- * a later slice of #694.
+ * a later slice of RA8FW-300.
  */
 #define ARCH_HAS_CACHE (1)
 /** @brief Cache line size in bytes, the granularity of every maintenance call. */
@@ -76,7 +76,7 @@
  *
  * @details
  * MIGRATION: implemented today by `libs/ra8_hal/src/ra8_sau.c`. Moves to
- * `arch/armv8m/trustzone/` in a later slice of #694, where it stays gated by
+ * `arch/armv8m/trustzone/` in a later slice of RA8FW-300, where it stays gated by
  * this flag because no other ISA has an analogue.
  */
 #define ARCH_HAS_TRUSTZONE_M (1)

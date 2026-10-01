@@ -1,7 +1,7 @@
 //! SPDX-License-Identifier: MIT
 //! Copyright (c) 2026 Brighton Sikarskie
 //!
-//! Process shell for the stub-crypto gate (#858): resolve the repository
+//! Process shell for the stub-crypto gate (RA8FW-335): resolve the repository
 //! root, hand argv, the live tree and the real streams to `cli.run`, return
 //! its status.
 

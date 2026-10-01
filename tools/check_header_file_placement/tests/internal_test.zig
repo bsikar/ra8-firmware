@@ -1,7 +1,7 @@
 //! SPDX-License-Identifier: MIT
 //! Copyright (c) 2026 Brighton Sikarskie
 //!
-//! Behavioural regression tests for the placement rules (#858, #1219). Every
+//! Behavioural regression tests for the placement rules (RA8FW-335, #1219). Every
 //! expectation here was established by probing the predecessor's CPython
 //! before the Zig was written, so the asymmetries are PINNED, not tidied.
 

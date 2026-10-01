@@ -8,7 +8,7 @@
  * ::book_image_t. Every byte of working storage is supplied by the caller;
  * both codec adapters draw from ::ra8_imgdec_scratch_t rather than the C heap,
  * so this header names the shared imaging scratch contract and not either
- * decoder's own spelling of it (#768). The API has no filesystem dependency, so
+ * decoder's own spelling of it (RA8FW-308). The API has no filesystem dependency, so
  * host tools and firmware composition roots can share the same normalization
  * path.
  *

@@ -1,7 +1,7 @@
 //! SPDX-License-Identifier: MIT
 //! Copyright (c) 2026 Brighton Sikarskie
 //!
-//! Input capture on GTCCRA for the timer adapter (#693, dev f00c0bbb0).
+//! Input capture on GTCCRA for the timer adapter (RA8FW-299, dev f00c0bbb0).
 //!
 //! A channel opened through `fw_timer_ra8_open_capture` is armed: GTCCRA
 //! latches GTCNT on the routed edge sources instead of comparing. GTST.TCFA

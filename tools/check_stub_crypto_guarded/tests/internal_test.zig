@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 // Copyright (c) 2026 Brighton Sikarskie
 //
-// Behavioural regression tests for the stub-crypto guard detector (#858).
+// Behavioural regression tests for the stub-crypto guard detector (RA8FW-335).
 //
 // Every case here pins a decision the predecessor made, so a later tidy-up
 // cannot quietly widen or narrow what this gate fails on. The expectations

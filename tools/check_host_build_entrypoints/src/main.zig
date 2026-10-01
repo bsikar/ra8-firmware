@@ -1,7 +1,7 @@
 //! SPDX-License-Identifier: MIT
 //! Copyright (c) 2026 Brighton Sikarskie
 //!
-//! Process shell for the host-build-entrypoint gate (#858). The repository root
+//! Process shell for the host-build-entrypoint gate (RA8FW-335). The repository root
 //! comes from RA8_REPO_ROOT when the trusted launcher sets it, otherwise the
 //! working directory, mirroring the predecessor's parents[2] resolution.
 

@@ -6,7 +6,7 @@
 # placeholder-crypto body shall be guarded fail-closed.
 #
 # This is a minimal trusted launcher, not an implementation: the detector is
-# the Zig host tool tools/check_stub_crypto_guarded (#858), which replaced the
+# the Zig host tool tools/check_stub_crypto_guarded (RA8FW-335), which replaced the
 # Python scripts/checks/check_stub_crypto_guarded.py  PATHREF-OK: the
 # predecessor this names was deleted in the same change.
 #

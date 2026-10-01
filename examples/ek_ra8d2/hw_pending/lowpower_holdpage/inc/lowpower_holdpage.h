@@ -6,7 +6,7 @@
  * [Ring 6 / APP] {World: S}
  *
  * @details
- * This header pins the cross-core message block for the #150 low-power-mode
+ * This header pins the cross-core message block for the RA8FW-250 low-power-mode
  * demo at one fixed shared-SRAM address both core images agree on. The
  * Cortex-M85 (primary, "CPU0") renders a page, hands the workload to the
  * Cortex-M33 (secondary, "CPU1"), and parks; the M33 then HOLDS the page and
@@ -33,7 +33,7 @@
  *      "active core = M33" LED, and on a SW1 (P009) press edge bumps
  *      `sw1_events` and advances `page_num` (a held-page page-turn the slow
  *      core can do without waking the M85).
- * Waking the M85 for a heavy re-render is the remaining piece tracked in #150.
+ * Waking the M85 for a heavy re-render is the remaining piece tracked in RA8FW-250.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT

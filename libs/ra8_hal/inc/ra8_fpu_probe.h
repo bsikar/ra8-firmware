@@ -18,7 +18,7 @@
  * library calls (`__aeabi_dmul`, `__aeabi_dadd`, ...).
  *
  * A double-precision image is still reachable, as the bench switch the
- * on-silicon benchmark (#229) needs and never by default:
+ * on-silicon benchmark (RA8FW-261) needs and never by default:
  * `cmake -DCMAKE_TOOLCHAIN_FILE=cmake/toolchain-ra8p1.cmake -DRA8P1_DP_FPU=ON`
  * appends `-mfpu=fpv5-d16` and defines `RA8_FPU_DP_ENABLED`, and the same
  * `double` arithmetic then compiles to hardware `.f64` opcodes (`vmul.f64`,

@@ -1,7 +1,7 @@
 //! SPDX-License-Identifier: MIT
 //! Copyright (c) 2026 Brighton Sikarskie
 //!
-//! Host-target selection tests (#899). These live here, not inline in
+//! Host-target selection tests (RA8FW-330). These live here, not inline in
 //! `macos_host.zig`, because the repo's Zig test contract keeps production
 //! sources free of inline tests and discovers them through `tests/root.zig`.
 
@@ -114,7 +114,7 @@ const v3_ios_tbd =
 /// A TAPI v4 iPhoneOS stub. This is the file the probe reads when `xcrun` is
 /// asked for the *active* SDK in a shell carrying `SDKROOT=iphoneos`: every
 /// target is an iOS one, so the macOS triple is absent for a reason that has
-/// nothing to do with #899.
+/// nothing to do with RA8FW-330.
 const v4_ios_tbd =
     \\--- !tapi-tbd
     \\tbd-version: 4
@@ -184,14 +184,14 @@ test "a tbd-v3 stub is read through archs plus platform, not targets" {
     try testing.expectEqual(TbdVerdict.omits, classifyTbd(v3_intel_only_tbd, required_target));
 
     // Right arch, wrong platform: the two halves have to agree, and the
-    // disagreement is named for what it is rather than folded into #899.
+    // disagreement is named for what it is rather than folded into RA8FW-330.
     try testing.expectEqual(TbdVerdict.foreign_platform, classifyTbd(v3_ios_tbd, required_target));
     try testing.expectEqual(@as(?bool, true), archsFieldDeclares(v3_ios_tbd, "arm64", "ios"));
 }
 
 test "an iOS stub is not read as a macOS SDK that omits us" {
     // The distinction this draws: both files lack arm64-macos, and only one of
-    // them is #899. Reporting the iOS stub as `sdk_omits_target` sends the
+    // them is RA8FW-330. Reporting the iOS stub as `sdk_omits_target` sends the
     // reader after Apple's macOS stub when the fault is in which SDK was read.
     try testing.expectEqual(TbdVerdict.omits, classifyTbd(broken_clt_tbd, required_target));
     try testing.expectEqual(TbdVerdict.foreign_platform, classifyTbd(v4_ios_tbd, required_target));
@@ -205,7 +205,7 @@ test "maccatalyst is not a macOS target" {
     try testing.expectEqual(@as(?bool, false), targetsFieldMentionsOs(v4_catalyst_only_tbd, "macos"));
 
     // The broken CLT stub carries maccatalyst too, but it also carries real
-    // macos targets, so it stays #899 rather than being excused as foreign.
+    // macos targets, so it stays RA8FW-330 rather than being excused as foreign.
     try testing.expectEqual(@as(?bool, true), targetsFieldMentionsOs(broken_clt_tbd, "macos"));
 }
 
@@ -241,7 +241,7 @@ test "the v3 halves can be asked separately" {
     try testing.expectEqual(@as(?bool, true), platformFieldDeclares(v3_ios_tbd, "ios"));
     try testing.expect(platformFieldDeclares(healthy_tbd, "macos") == null);
 
-    // A v3 macOS stub that genuinely lacks arm64 is still #899, not foreign.
+    // A v3 macOS stub that genuinely lacks arm64 is still RA8FW-330, not foreign.
     try testing.expectEqual(TbdVerdict.omits, classifyTbd(v3_intel_only_tbd, required_target));
 }
 
@@ -487,7 +487,7 @@ test "Rosetta is not assumed while deciding to forgive a missing run" {
     try testing.expect(!targetRunsOnBuildHost(.x86_64, .macos, .aarch64, .macos));
 }
 
-test "the pinned #899 target is the host on the machine the rule is for" {
+test "the pinned RA8FW-330 target is the host on the machine the rule is for" {
     // The selection rule and the run excuse have to agree: the choice the rule
     // makes on an affected Mac must be one that machine can execute, or the
     // gate measures nothing.
@@ -503,7 +503,7 @@ test "the pinned #899 target is the host on the machine the rule is for" {
     ));
 }
 
-// --- Zig's own bundled libSystem stub (#899) -------------------------------
+// --- Zig's own bundled libSystem stub (RA8FW-330) -------------------------------
 //
 // The workaround is "pin an explicit aarch64-macos query so Zig links its own
 // stub instead of the SDK one". That is a fix only while Zig's own stub
@@ -527,7 +527,7 @@ test "the bundled stub zig ships declares the pinned target" {
 test "a bundled stub that dropped arm64-macos is caught, not assumed away" {
     // The regression this step exists for: a toolchain bump ships a stub
     // without our slice, the pinned query links nothing, and the failure is
-    // the same `undefined symbol` #899 reports -- now caused by the fix.
+    // the same `undefined symbol` RA8FW-330 reports -- now caused by the fix.
     const dropped =
         \\--- !tapi-tbd
         \\tbd-version:     4

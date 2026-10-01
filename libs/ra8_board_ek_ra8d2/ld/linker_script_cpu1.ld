@@ -2,7 +2,7 @@
  * GNU ld linker script for the CPU1 (Cortex-M33) image of an EK-RA8D2 app.
  *
  * THE shared M33 map. Eight apps carried a byte-identical copy of this file,
- * differing only in the app name on the line above (#742); ra8_add_cpu1_image()
+ * differing only in the app name on the line above (RA8FW-309); ra8_add_cpu1_image()
  * now falls back here when an app has no linker_script_cpu1.ld of its own, so a
  * window change touches one file instead of eight. The two apps whose M33 image
  * needs external SDRAM (compile_on_m33, ereader_m33) keep a local script and

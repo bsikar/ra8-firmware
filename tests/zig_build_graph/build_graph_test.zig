@@ -1,7 +1,7 @@
 //! SPDX-License-Identifier: MIT
 //! Copyright (c) 2026 Brighton Sikarskie
 //!
-//! Unit tests for the root build graph's own rules (#857).
+//! Unit tests for the root build graph's own rules (RA8FW-339).
 //!
 //! The graph encodes parity facts that a directory listing cannot tell you:
 //! which board translation units are opt-in rather than universal, which

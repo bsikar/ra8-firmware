@@ -300,7 +300,7 @@ DO-178C Section 12.1.4 (previously developed software):
   warrants a fuzz harness, and every precondition for one is now met: the code
   is buildable, host-tested (`tests/cmake/tests_c6link.cmake` compiles the
   codec) and parsing remote frames on silicon. No harness covers it -- an open
-  gap tracked by #612, which is the one part of this component's audit that
+  gap tracked by RA8FW-285, which is the one part of this component's audit that
   is not a documentation fix.
 - **Fully pinned and reproducible.** A commit pin plus a per-file upstream
   manifest for both the esp-hosted tree and the nested protobuf-c tree -- see
@@ -330,7 +330,7 @@ alongside the rest of the vendored SOUP.
 
 - Reviewed: 2026-07-26 (host driver vendored at `949bb30`)
 - Build status, compiled-TU list, integration boundary and integrity clause
-  re-verified against the tree and corrected (#612): 2026-08-04. The document
+  re-verified against the tree and corrected (RA8FW-285): 2026-08-04. The document
   still said this port had never run on silicon, listed nine compiled TUs
   including one the build excludes, and taught the premise #490 disproved.
 - Expected re-review by: 2027-07-26

@@ -116,7 +116,7 @@ add_library(
 # ra8_log.h). PRIVATE: only this library's own TUs need them; the symbols it
 # references (ra8_log_*) resolve at final-app link time against ra8_hal /
 # ra8_core, which every ThreadX app already links. It no longer names the
-# chip's clock tree at all (issue #693).
+# chip's clock tree at all (issue RA8FW-299).
 target_include_directories(
   threadx PRIVATE "${RA8_REPO_ROOT}/libs/ra8_core/inc" "${RA8_REPO_ROOT}/libs/ra8_hal/inc"
 )

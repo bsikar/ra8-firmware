@@ -22,7 +22,7 @@
  * returns nullptr; stb_image propagates that as a decode failure rather than
  * corrupting memory.
  *
- * That policy is not written here any more (#768). ::ra8_img_arena_t is
+ * That policy is not written here any more (RA8FW-308). ::ra8_img_arena_t is
  * ::ra8_imgdec_scratch_t and every hook below forwards to
  * `ra8_imgdec_scratch_*`; what stays in this module is the file-static bound-
  * arena slot, which the shared contract cannot take because `STBI_MALLOC` and

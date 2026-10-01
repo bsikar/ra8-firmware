@@ -1,7 +1,7 @@
 /**
  * @file ra8_jpeg_imgdec.h
  * @brief Bind the first-party software JPEG codec as an `ra8_imgdec` backend
- *        (#768).
+ *        (RA8FW-308).
  * @ingroup grp_ereader
  *
  * @par Tag
@@ -9,7 +9,7 @@
  *
  * @details
  * The `ra8_imgdec` seam has carried a fabric, a container sniff, a geometry
- * probe, a scratch contract and a mux since #768 opened, and no decoder at
+ * probe, a scratch contract and a mux since RA8FW-308 opened, and no decoder at
  * all: every consumer still calls its own decoder directly, which is the
  * duplication the issue is about. This is the first real backend, and it binds
  * the one decoder the tree already owns outright.

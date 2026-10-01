@@ -1,7 +1,7 @@
 //! SPDX-License-Identifier: MIT
 //! Copyright (c) 2026 Brighton Sikarskie
 //!
-//! Build graph for the `check_header_file_placement` host tool (#858, #1219).
+//! Build graph for the `check_header_file_placement` host tool (RA8FW-335, #1219).
 //! One executable, plus the test step `scripts/checks/check_zig.py --test`
 //! runs: the pathlib suffix/stem split, the nearest inc/src ancestor walk, the
 //! build-output and vendored exclusions and the renderers in the internal

@@ -105,7 +105,7 @@ RA8_INTERNAL static void internal_clocks_or_halt(uint32_t* out_pclka)
   if (fw_clock_rate_for(ra8_board_clock(), clk_core, &cpuclk0_hz) != k_ra8_ok) {
     internal_panic_halt();
   }
-  /* Direct driver read on purpose (issue #693): this drives the real SPI0
+  /* Direct driver read on purpose (issue RA8FW-299): this drives the real SPI0
    * block, and the board clock profile's wiring table has no spi slot. */
   if (ra8_cgc_get_clock_hz(k_ra8_clock_id_pclka, out_pclka) != k_ra8_ok) {
     internal_panic_halt();

@@ -145,7 +145,7 @@ RA8_INTERNAL static void internal_demo_print(const char* msg)
  * @pre Peripheral register mappings for clocks, pins, and the console are
  *      accessible.
  * @note The clock tree itself is the board's: this helper never names a
- *       concrete clock-generator symbol (#693).
+ *       concrete clock-generator symbol (RA8FW-299).
  * @post On return, the board console is configured for the requested
  *       diagnostic baud and bound into ::s_uart.
  * @post Any required setup failure parks the application before returning.

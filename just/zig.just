@@ -1,8 +1,8 @@
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2026 Brighton Sikarskie
 #
-# Command surface for the root Zig build graph (#857), the prerequisite for
-# retiring CMake (#859). Every recipe here dispatches to a step `build.zig`
+# Command surface for the root Zig build graph (RA8FW-339), the prerequisite for
+# retiring CMake (RA8FW-332). Every recipe here dispatches to a step `build.zig`
 # already owns: no compiler flags, include paths or warning suppressions live
 # in this file, because a command layer that starts assembling compiler
 # arguments has re-created the problem this migration is trying to retire.

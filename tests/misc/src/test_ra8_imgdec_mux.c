@@ -1,6 +1,6 @@
 /**
  * @file test_ra8_imgdec_mux.c
- * @brief Host tests for routing a decode across a set of backends (#768).
+ * @brief Host tests for routing a decode across a set of backends (RA8FW-308).
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT

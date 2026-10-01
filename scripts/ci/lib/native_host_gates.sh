@@ -11,7 +11,7 @@
 # devcontainer: the CI toolchain lives in that image and the low-address host
 # tests need Linux, so for almost every gate that is exactly right. It is
 # wrong for a gate whose subject IS the host. `macos-host-build` exists to
-# observe the native arm64 macOS SDK stub and Mach-O link path (#899); inside
+# observe the native arm64 macOS SDK stub and Mach-O link path (RA8FW-330); inside
 # a Linux container it sees Linux/aarch64, refuses, and returns non-zero, so
 # the one gate a Mac owner most needs to run was unreachable through the
 # documented entry point. The nightly workflow calls
@@ -27,7 +27,7 @@
 
 # name|required os (uname -s)|required arch (uname -m)|why a container cannot answer it
 RA8_NATIVE_HOST_GATES=(
-  "macos-host-build|Darwin|arm64|it measures the active macOS SDK's libSystem stub and the native Mach-O link path (#899)"
+  "macos-host-build|Darwin|arm64|it measures the active macOS SDK's libSystem stub and the native Mach-O link path (RA8FW-330)"
 )
 
 _ra8_native_host_row() {

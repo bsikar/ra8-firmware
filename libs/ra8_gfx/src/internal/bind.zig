@@ -8,7 +8,7 @@
 //! `../ra8_gfx_abi.zig`.
 //!
 //! Two bind forms exist. The positional one assumes a densely packed buffer,
-//! which is what every caller before #737 had; the surface one carries the row
+//! which is what every caller before RA8FW-304 had; the surface one carries the row
 //! pitch, so a backend that padded its rows hands the binding over intact.
 //! Both produce the same `core.State`, and a packed surface is bit-for-bit
 //! what the positional form gives.

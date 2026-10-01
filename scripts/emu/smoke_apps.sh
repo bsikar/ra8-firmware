@@ -145,7 +145,7 @@ sd_io_apps="ra8_io_sd_demo ra8_io_sdhi_demo ra8_sdhi_card_demo"
 # idles forever after its PASS banner, so STOP_ON ends the run the moment it
 # prints. Asserts via uart_expect().
 #
-# ra8_io_mram_demo was here and has been REMOVED (#170). It targets a
+# ra8_io_mram_demo was here and has been REMOVED (RA8FW-251). It targets a
 # general-purpose data-flash at 0x2700_0000 that this silicon does not have:
 # HUM Ch 5 Figure 5.2 p 237 labels the region "Extra MRAM (option-setting
 # memory)", HUM Ch 59.7.4.5 Table 59.15 p 3592 lists every legal MACI Program
@@ -372,7 +372,7 @@ uart_banner_apps="
   mem_ecc_fault_demo wdt_reset_recovery_demo lpm_idle_demo lpm_periodic_idle
   import_reader
 "
-# ra8_io_mram_demo is deliberately absent (#170): the extra-MRAM data region it
+# ra8_io_mram_demo is deliberately absent (RA8FW-251): the extra-MRAM data region it
 # targets does not exist on this silicon, so it prints no PASS banner in the
 # emulator or on the bench and is run by no gate.
 

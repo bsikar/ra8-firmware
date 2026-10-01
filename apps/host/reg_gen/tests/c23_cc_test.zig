@@ -1,6 +1,6 @@
 //! SPDX-License-Identifier: MIT
 //! Copyright (c) 2026 Brighton Sikarskie
-//! Unit tests for the C23 front-end resolution order (#899).
+//! Unit tests for the C23 front-end resolution order (RA8FW-330).
 
 const std = @import("std");
 const c23_cc = @import("c23_cc.zig");

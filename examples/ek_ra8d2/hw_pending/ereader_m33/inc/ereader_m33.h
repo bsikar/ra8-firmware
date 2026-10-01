@@ -6,7 +6,7 @@
  * [Ring 6 / APP] {World: S}
  *
  * @details
- * This header pins the cross-core contract for the #150 power-saving model: the
+ * This header pins the cross-core contract for the RA8FW-250 power-saving model: the
  * Cortex-M85 (primary, "CPU0") does the one-time heavy work -- it owns the baked
  * book and could open / compile it at 1 GHz -- then hands the *reader* to the
  * Cortex-M33 (secondary, "CPU1") and PARKS. The slow core renders one held
@@ -49,7 +49,7 @@
  * buffer; no cache clean / invalidate dance is needed. The mailbox fields are
  * `volatile` so the compiler emits a real load / store on every access.
  *
- * Protocol (the reader handoff + the held-page handshake + the #150 mode-switch):
+ * Protocol (the reader handoff + the held-page handshake + the RA8FW-250 mode-switch):
  *   1. M85 zeros the mailbox, stamps ::k_erm33_magic, `dsb`.
  *   2. M85 arms the IPC0 receive IRQ (its wake-from-WFI source), configures the
  *      LPM block, releases the M33, and waits for the first held page.
@@ -178,7 +178,7 @@ typedef enum : uint32_t {
 
 /**
  * @enum erm33_cycle_t
- * @brief Bounds for the #150 park / wake / re-render mode-switch cycle.
+ * @brief Bounds for the RA8FW-250 park / wake / re-render mode-switch cycle.
  *
  * @details The M85 parks and the M33 holds the page; ::k_erm33_max_turns is the
  * deterministic number of page-turn handoffs the demo exercises before both

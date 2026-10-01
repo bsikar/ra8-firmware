@@ -2,7 +2,7 @@
 # Copyright (c) 2026 Brighton Sikarskie
 #
 # Build-time consumption of a first-party build tool whose implementation has
-# moved to Zig (epic #858). The tool is built for the HOST with the pinned Zig
+# moved to Zig (epic RA8FW-335). The tool is built for the HOST with the pinned Zig
 # toolchain even inside an Arm cross build, because it runs on the build
 # machine, not on the target.
 #
