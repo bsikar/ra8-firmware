@@ -105,15 +105,6 @@ void SysTick_Handler(void)
 /** @brief USBHS_VBUS sense pin (P4_08, PSEL = 0x14). */
 static const ra8_port_pin_t k_microsd_pin_hs_vbus = (ra8_port_pin_t)k_ra8_board_usbhs_pin_vbus;
 
-/** @brief Pmod2 microSD SPI clock (SCI0, Simple-SPI). */
-static const ra8_port_pin_t k_microsd_pin_sd_sck = (ra8_port_pin_t)k_ra8_board_pmod2_spi_sck;
-/** @brief Pmod2 microSD SPI CIPO (card -> MCU). */
-static const ra8_port_pin_t k_microsd_pin_sd_cipo = (ra8_port_pin_t)k_ra8_board_pmod2_spi_cipo;
-/** @brief Pmod2 microSD SPI COPI (MCU -> card). */
-static const ra8_port_pin_t k_microsd_pin_sd_copi = (ra8_port_pin_t)k_ra8_board_pmod2_spi_copi;
-/** @brief Pmod2 microSD chip-select (GPIO, idle high). */
-static const ra8_port_pin_t k_microsd_pin_sd_cs = (ra8_port_pin_t)k_ra8_board_pmod2_spi_cs;
-
 /* -------------------------------------------------------------------------- */
 /* Tunables */
 /* -------------------------------------------------------------------------- */
@@ -236,7 +227,7 @@ static ra8_err_t microsd_spi_set_clock(void* ctx, uint32_t hz)
  * @param[in] ctx Unused.
  * @param[in] asserted true = select (CS low), false = deselect (CS high).
  *
- * @return ra8_err_t from ::ra8_gpio_write.
+ * @return ra8_err_t from ::ra8_board_pmod2_spi_cs_set.
  * @retval k_ra8_ok CS level updated.
  *
  * @pre CS was configured as a GPIO output.
@@ -250,7 +241,7 @@ static ra8_err_t microsd_spi_set_clock(void* ctx, uint32_t hz)
 static ra8_err_t microsd_spi_cs(void* ctx, bool asserted)
 {
   (void)ctx;
-  return ra8_gpio_write(k_microsd_pin_sd_cs, asserted ? k_ra8_level_low : k_ra8_level_high);
+  return ra8_board_pmod2_spi_cs_set(asserted);
 }
 
 /**
@@ -301,20 +292,7 @@ static ra8_err_t microsd_spi_xfer(void* ctx, const uint8_t* tx, uint8_t* rx, uin
  */
 [[nodiscard]] static ra8_err_t microsd_sd_spi_open(void)
 {
-  ra8_err_t err =
-    ra8_pfs_route_peripheral(k_microsd_pin_sd_sck, k_ra8_psel_sci_async, "microsd.sck");
-  if (err != k_ra8_ok) {
-    return err;
-  }
-  err = ra8_pfs_route_peripheral(k_microsd_pin_sd_cipo, k_ra8_psel_sci_async, "microsd.cipo");
-  if (err != k_ra8_ok) {
-    return err;
-  }
-  err = ra8_pfs_route_peripheral(k_microsd_pin_sd_copi, k_ra8_psel_sci_async, "microsd.copi");
-  if (err != k_ra8_ok) {
-    return err;
-  }
-  err = ra8_gpio_output_init(k_microsd_pin_sd_cs, k_ra8_level_high);
+  ra8_err_t err = ra8_board_pmod2_spi_bus_init();
   if (err != k_ra8_ok) {
     return err;
   }

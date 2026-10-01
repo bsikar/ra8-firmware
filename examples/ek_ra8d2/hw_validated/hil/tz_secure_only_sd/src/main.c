@@ -97,21 +97,6 @@ typedef enum : uint32_t {
  * =============================================================================
  */
 
-/**
- * @brief Pmod2 SPI pins (J25) -- SCI0 Simple-SPI per HUM Table 20.13.
- *
- * @details
- * P604 is left as a *GPIO* output because SD SPI-mode framing
- * requires CS to stay asserted across the 6-byte command + payload +
- * CRC trailer (SD spec PHY v9 section 7.2.4). The SCI hardware CS
- * controller pulses CS between every word, which the SD protocol does
- * not tolerate. Driving CS by hand is the standard workaround.
- */
-static const ra8_port_pin_t k_sd_demo_pin_sck  = (ra8_port_pin_t)k_ra8_board_pmod2_spi_sck;
-static const ra8_port_pin_t k_sd_demo_pin_cipo = (ra8_port_pin_t)k_ra8_board_pmod2_spi_cipo;
-static const ra8_port_pin_t k_sd_demo_pin_copi = (ra8_port_pin_t)k_ra8_board_pmod2_spi_copi;
-static const ra8_port_pin_t k_sd_demo_pin_cs   = (ra8_port_pin_t)k_ra8_board_pmod2_spi_cs;
-
 /* =============================================================================
  * UART output helpers
  * =============================================================================
@@ -197,7 +182,7 @@ static ra8_err_t sd_demo_spi_set_clock(void* ctx, uint32_t hz)
 static ra8_err_t sd_demo_spi_cs(void* ctx, bool asserted)
 {
   (void)ctx;
-  return ra8_gpio_write(k_sd_demo_pin_cs, asserted ? k_ra8_level_low : k_ra8_level_high);
+  return ra8_board_pmod2_spi_cs_set(asserted);
 }
 
 /**
@@ -227,20 +212,7 @@ static ra8_err_t sd_demo_spi_xfer(void* ctx, const uint8_t* tx, uint8_t* rx, uin
  */
 [[nodiscard]] static ra8_err_t sd_demo_spi_pins_init(void)
 {
-  ra8_err_t err = ra8_pfs_route_peripheral(k_sd_demo_pin_sck, k_ra8_psel_sci_async, "tz_sd.sck");
-  if (err != k_ra8_ok) {
-    return err;
-  }
-  err = ra8_pfs_route_peripheral(k_sd_demo_pin_cipo, k_ra8_psel_sci_async, "tz_sd.cipo");
-  if (err != k_ra8_ok) {
-    return err;
-  }
-  err = ra8_pfs_route_peripheral(k_sd_demo_pin_copi, k_ra8_psel_sci_async, "tz_sd.copi");
-  if (err != k_ra8_ok) {
-    return err;
-  }
-  /* CS as GPIO output, idle high (deasserted). */
-  return ra8_gpio_output_init(k_sd_demo_pin_cs, k_ra8_level_high);
+  return ra8_board_pmod2_spi_bus_init();
 }
 
 /**
