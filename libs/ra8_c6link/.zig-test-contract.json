@@ -5,6 +5,7 @@
     "tests/frame_test.zig",
     "tests/caps_test.zig",
     "tests/storage_ram_test.zig",
+    "tests/mdl_service_rules_test.zig",
     "tests/mdl_chunk_test.zig",
     "tests/mdl_transfer_test.zig",
     "tests/mdl_request_test.zig"
@@ -14,6 +15,7 @@
     "src/internal/frame.zig",
     "src/internal/mdl_chunk.zig",
     "src/internal/mdl_request.zig",
+    "src/internal/mdl_service_rules.zig",
     "src/internal/mdl_transfer.zig",
     "src/internal/mdl_types.zig",
     "src/internal/root.zig",
@@ -30,5 +32,5 @@
     "tests/mdl_transfer_test.zig",
     "tests/storage_ram_test.zig"
   ],
-  "minimum_tests": 122
+  "minimum_tests": 140
 }
