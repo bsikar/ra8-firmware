@@ -106,22 +106,6 @@
  */
 static const ra8_port_pin_t k_demo_pin_hs_vbus = (ra8_port_pin_t)k_ra8_board_usbhs_pin_vbus;
 
-/**
- * @brief J7 USB-HS role-select strap (PD07), packed ``ra8_port_pin_t``.
- *
- * @details
- * EK-RA8D2 v1 UM Rev 1.01 Section 6.2 p 34: PD07 (port 13 / pin 7) is
- * the J7 USB-HS role select line. Driving it LOW selects Device mode;
- * driving it HIGH selects Host mode. The board does not pull this pin
- * to any default level by hardware -- the firmware MUST own it.
- *
- * Built as a runtime cast so clang-tidy's enum-range check is happy
- * with the otherwise out-of-enum value.
- *
- * @since 0.1.0
- */
-static const ra8_port_pin_t k_demo_pin_pd07_role = (ra8_port_pin_t)k_ra8_board_usbhs_pin_pwr;
-
 /* -------------------------------------------------------------------------- */
 /* Startup helpers */
 /* -------------------------------------------------------------------------- */
@@ -177,7 +161,7 @@ static void demo_panic_halt(void)
    * the most plausible reason the host enumerates FS but never sends
    * SETUP on HS. Owning PD07 here lets the worker drop the redundant
    * board init call entirely. */
-  return ra8_gpio_output_init(k_demo_pin_pd07_role, k_ra8_level_low);
+  return ra8_board_usbhs_pwr_set(false);
 }
 
 /**

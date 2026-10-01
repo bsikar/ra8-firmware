@@ -105,9 +105,6 @@ void SysTick_Handler(void)
 /** @brief USBHS_VBUS sense pin (P4_08, PSEL = 0x14). */
 static const ra8_port_pin_t k_microsd_pin_hs_vbus = (ra8_port_pin_t)k_ra8_board_usbhs_pin_vbus;
 
-/** @brief J7 host-power switch (PD07): HIGH = U18 supplies VBUS (UM 6.2). */
-static const ra8_port_pin_t k_microsd_pin_hs_pwr = (ra8_port_pin_t)k_ra8_board_usbhs_pin_pwr;
-
 /** @brief Pmod2 microSD SPI clock (SCI0, Simple-SPI). */
 static const ra8_port_pin_t k_microsd_pin_sd_sck = (ra8_port_pin_t)k_ra8_board_pmod2_spi_sck;
 /** @brief Pmod2 microSD SPI CIPO (card -> MCU). */
@@ -488,7 +485,7 @@ static void microsd_route_usb_or_halt(void)
   if (ra8_board_io_expander_set_usbhs_host_mode() != k_ra8_ok) {
     microsd_panic_halt();
   }
-  if (ra8_gpio_output_init(k_microsd_pin_hs_pwr, k_ra8_level_high) != k_ra8_ok) {
+  if (ra8_board_usbhs_pwr_set(true) != k_ra8_ok) {
     microsd_panic_halt();
   }
   if (ra8_pfs_route_peripheral(k_microsd_pin_hs_vbus, k_ra8_psel_usb_hs, "microsd.hs_vbus") !=

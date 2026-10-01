@@ -185,6 +185,10 @@ export fn ra8_board_io_expander_set_octospi_active() u32 {
     return io_expander.setOctospiActive();
 }
 
+export fn ra8_board_usbhs_pwr_set(on: bool) u32 {
+    return usbhs.pwrSet(on);
+}
+
 export fn ra8_board_usbhs_device_init() u32 {
     return usbhs.deviceInit();
 }
