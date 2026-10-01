@@ -263,56 +263,108 @@ def _c_retained_findings(
     it, and that source has to still define it, so a retired or renamed
     symbol cannot sit here unnoticed.
     """
-    findings: list[str] = []
-    retained: set[str] = set()
     rows = library.get("c_retained_exports", [])
     if not isinstance(rows, list):
-        return [f"{name}: c_retained_exports is not a list"], retained
+        return [f"{name}: c_retained_exports is not a list"], set()
+    findings: list[str] = []
+    retained: set[str] = set()
     for row in rows:
-        if not isinstance(row, dict):
-            findings.append(f"{name}: c_retained_exports row is not an object")
-            continue
-        symbol = row.get("name")
-        source = row.get("source")
-        reason = row.get("reason")
-        sibling_header = row.get("header")
-        if not isinstance(symbol, str) or not symbol:
-            findings.append(f"{name}: c_retained_exports row lacks a name")
-            continue
-        if not isinstance(reason, str) or len(reason.strip()) < MIN_OWNERSHIP_LENGTH:
-            findings.append(f"{name}: undocumented C retention: {symbol}")
-        if sibling_header is not None:
-            if not isinstance(sibling_header, str) or not sibling_header:
-                findings.append(f"{name}: c_retained_exports header is not a path: {symbol}")
-                continue
-            header_path = repository_root / sibling_header
-            if not header_path.exists():
-                findings.append(f"{name}: missing C retention header: {sibling_header}")
-                continue
-            declared_here = _header_exports(
-                header_path.read_text(encoding="utf-8"), _symbol_root(symbol)
-            )
-            if symbol not in declared_here:
-                findings.append(
-                    f"{name}: stale C retention, absent from {sibling_header}: {symbol}"
-                )
-                continue
-        elif symbol not in header_names:
-            findings.append(f"{name}: stale C retention, absent from the public header: {symbol}")
-            continue
-        if not isinstance(source, str) or not source:
-            findings.append(f"{name}: c_retained_exports lacks a source: {symbol}")
-            continue
-        path = repository_root / source
-        if not path.exists():
-            findings.append(f"{name}: missing C retention source: {source}")
-            continue
-        retention_text = _strip_comments(path.read_text(encoding="utf-8"))
-        if not re.search(rf"\b{re.escape(symbol)}\s*\(", retention_text):
-            findings.append(f"{name}: C retention source does not define {symbol}: {source}")
-            continue
-        retained.add(symbol)
+        row_findings, accepted = _c_retention_row_findings(name, row, header_names, repository_root)
+        findings.extend(row_findings)
+        if accepted is not None:
+            retained.add(accepted)
     return findings, retained
+
+
+def _c_retention_declaration_finding(
+    name: str,
+    symbol: str,
+    sibling_header: object,
+    header_names: set[str],
+    repository_root: Path,
+) -> str | None:
+    """Return why a retained symbol is not declared where the row says it is.
+
+    A row either names its own sibling header or leans on the library's public
+    header. Both spellings have to still declare the symbol, so a renamed or
+    retired declaration cannot sit here unnoticed.
+
+    ``sibling_header`` is typed ``object`` because it arrives straight from the
+    policy file: proving it is a usable path is this function's job, so it
+    cannot be annotated as one on the way in.
+    """
+    if sibling_header is None:
+        if symbol not in header_names:
+            return f"{name}: stale C retention, absent from the public header: {symbol}"
+        return None
+    if not isinstance(sibling_header, str) or not sibling_header:
+        return f"{name}: c_retained_exports header is not a path: {symbol}"
+    header_path = repository_root / sibling_header
+    if not header_path.exists():
+        return f"{name}: missing C retention header: {sibling_header}"
+    declared_here = _header_exports(header_path.read_text(encoding="utf-8"), _symbol_root(symbol))
+    if symbol not in declared_here:
+        return f"{name}: stale C retention, absent from {sibling_header}: {symbol}"
+    return None
+
+
+def _c_retention_source_finding(
+    name: str,
+    symbol: str,
+    source: object,
+    repository_root: Path,
+) -> str | None:
+    """Return why the C source a retained symbol names does not define it.
+
+    ``source`` is typed ``object`` for the same reason as ``sibling_header``
+    above: it arrives unvalidated from the policy file. A file that no longer
+    defines the symbol is the case this exists to catch, because that is how a
+    retention silently outlives the code it describes.
+    """
+    if not isinstance(source, str) or not source:
+        return f"{name}: c_retained_exports lacks a source: {symbol}"
+    path = repository_root / source
+    if not path.exists():
+        return f"{name}: missing C retention source: {source}"
+    retention_text = _strip_comments(path.read_text(encoding="utf-8"))
+    if not re.search(rf"\b{re.escape(symbol)}\s*\(", retention_text):
+        return f"{name}: C retention source does not define {symbol}: {source}"
+    return None
+
+
+def _c_retention_row_findings(
+    name: str,
+    row: object,
+    header_names: set[str],
+    repository_root: Path,
+) -> tuple[list[str], str | None]:
+    """Validate one c_retained_exports row, returning the symbol it accepts.
+
+    The second element is the symbol to treat as C-owned, or None when the row
+    did not survive validation. An undocumented reason is reported but does not
+    on its own disqualify the row, which is why it is not an early return.
+    ``row`` is typed ``object`` because it is raw policy input.
+    """
+    if not isinstance(row, dict):
+        return [f"{name}: c_retained_exports row is not an object"], None
+    symbol = row.get("name")
+    reason = row.get("reason")
+    if not isinstance(symbol, str) or not symbol:
+        return [f"{name}: c_retained_exports row lacks a name"], None
+    findings: list[str] = []
+    if not isinstance(reason, str) or len(reason.strip()) < MIN_OWNERSHIP_LENGTH:
+        findings.append(f"{name}: undocumented C retention: {symbol}")
+    declaration = _c_retention_declaration_finding(
+        name, symbol, row.get("header"), header_names, repository_root
+    )
+    if declaration is not None:
+        findings.append(declaration)
+        return findings, None
+    source_finding = _c_retention_source_finding(name, symbol, row.get("source"), repository_root)
+    if source_finding is not None:
+        findings.append(source_finding)
+        return findings, None
+    return findings, symbol
 
 
 def _additional_header_findings(
@@ -363,17 +415,31 @@ def _additional_header_findings(
     return findings, declared
 
 
+class _ExportSets(NamedTuple):
+    """The three views of one library's exports that have to agree.
+
+    ``declared`` is what the policy metadata pins, ``header_names`` what the
+    public header declares, and ``zig_names``/``zig_heads`` what the adapter
+    actually exports and the source line each export is declared on. They are
+    carried together because no caller has a reason to compare a subset.
+    """
+
+    declared: set[str]
+    header_names: set[str]
+    zig_names: set[str]
+    zig_heads: dict[str, str]
+
+
 def _inventory_findings(
     name: str,
-    declared: set[str],
-    header_names: set[str],
-    zig_names: set[str],
-    zig_heads: dict[str, str],
+    exports: _ExportSets,
     allow_c_bool: set[str] | None = None,
 ) -> list[str]:
     """Compare metadata, header, and Zig declarations and reject native-only types."""
+    declared = exports.declared
+    zig_names = exports.zig_names
     findings: list[str] = []
-    for label, actual in (("header", header_names), ("Zig adapter", zig_names)):
+    for label, actual in (("header", exports.header_names), ("Zig adapter", zig_names)):
         missing = sorted(declared - actual)
         unexpected = sorted(actual - declared)
         if missing:
@@ -381,7 +447,7 @@ def _inventory_findings(
         if unexpected:
             findings.append(f"{name}: {label} unexpected export(s): {', '.join(unexpected)}")
     for symbol in sorted(declared & zig_names):
-        head = zig_heads[symbol]
+        head = exports.zig_heads[symbol]
         if "callconv(.c)" not in re.sub(r"\s+", "", head):
             findings.append(f"{name}: export lacks callconv(.c): {symbol}")
         findings.extend(
@@ -1025,7 +1091,9 @@ def _library_findings(
     findings.extend(retention_findings)
     findings.extend(
         _inventory_findings(
-            name, declared, header_names - retained, zig_names, zig_heads, allow_c_bool
+            name,
+            _ExportSets(declared, header_names - retained, zig_names, zig_heads),
+            allow_c_bool,
         )
     )
     declared_sources = _source_inventory_for_library(
@@ -1734,6 +1802,17 @@ def _selftest_source_inventory(root: Path, base: dict[str, Any]) -> str | None:
         for item in _repository_inventory_findings([], [], root)
     ):
         return "must-fire fixture was accepted: unregistered exported source"
+    return None
+
+
+def _selftest_archive_symbols() -> str | None:
+    """Prove every nm archive-member spelling parses and runtime filtering is exact.
+
+    nm prints an archive member three ways depending on build and platform:
+    ``lib.a(member.o):``, ``lib.a[member.o]:`` and a bare colon form carrying
+    the member's cache path. All three have to yield the same symbol set, and
+    a runtime-named symbol defined outside a runtime member must still be seen.
+    """
     parsed = _archive_symbol_names(
         "libdemo.a(adapter.o): 00000000 T demo_run\n"
         "libdemo.a(compiler_rt.o): 00000000 T __zig_probe_stack\n",
@@ -1786,25 +1865,20 @@ static_assert(sizeof(demo_config_t) == 4U, "layout");
         root = Path(tmp).resolve()
 
         base = _selftest_fixture(root, header, adapter)
-        for check in (_selftest_target_policy, _selftest_mode_policy):
-            if error := check(base, root):
+        checks = (
+            lambda: _selftest_target_policy(base, root),
+            lambda: _selftest_mode_policy(base, root),
+            lambda: _selftest_source_policy(base, root, adapter),
+            lambda: _selftest_metadata_policy(base, root),
+            lambda: _selftest_compiled_policy(base, root),
+            _selftest_layout_assertions,
+            lambda: _selftest_source_inventory(root, base),
+            _selftest_archive_symbols,
+        )
+        for check in checks:
+            if error := check():
                 print(error, file=sys.stderr)
                 return 1
-        if error := _selftest_source_policy(base, root, adapter):
-            print(error, file=sys.stderr)
-            return 1
-        if error := _selftest_metadata_policy(base, root):
-            print(error, file=sys.stderr)
-            return 1
-        if error := _selftest_compiled_policy(base, root):
-            print(error, file=sys.stderr)
-            return 1
-        if error := _selftest_layout_assertions():
-            print(error, file=sys.stderr)
-            return 1
-        if error := _selftest_source_inventory(root, base):
-            print(error, file=sys.stderr)
-            return 1
     print("check_zig_abi_policy.py --selftest: OK (quiet + all named failure classes).")
     return 0
 
