@@ -861,9 +861,9 @@ EOF
   # The ssh argv that reaches a runner box.
   #
   # A fleet host is dialled through infra/fleet.yml -- its declared address, user
-  # and jump -- NOT by the bare name. `truenas` is an ~/.ssh/config alias on
-  # exactly one laptop, so this command (the one CLAUDE.md sends you to when the
-  # GitHub quota is gone) died on "Could not resolve hostname truenas" from the
+  # and jump -- NOT by the bare name. A bare ~/.ssh/config alias exists on one
+  # machine only, and this command (the one CLAUDE.md sends you to when the
+  # GitHub quota is gone) once died on "Could not resolve hostname" from the
   # dev box while the machine answered fine on its address. Anything that
   # is not a declared host is passed through as a raw ssh destination, so
   # --host user@1.2.3.4 still works for a box outside the fleet.
