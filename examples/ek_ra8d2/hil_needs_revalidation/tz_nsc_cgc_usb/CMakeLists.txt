@@ -181,6 +181,17 @@ set(_ns_usb_srcs
     ${RA8_REPO_ROOT}/libs/ra8_hal/src/ra8_mstp.c
 )
 target_sources(tz_nsc_cgc_usb_ns.elf PRIVATE ${_ns_usb_srcs})
+# ra8_usb_device_compose (ns_usb.c) is Zig in ra8_usb_pal's archive since the
+# compose facade port retired ra8_usb_compose.c from the list above. A raw
+# target gets no LIBS sweep, so it is linked here by hand, BEFORE ra8_core:
+# the archive calls into ra8_core (logger, mem* shims) and ld reads each
+# archive once.
+ra8_link_zig_library_for_cpu(
+  TARGET tz_nsc_cgc_usb_ns.elf
+  LIB ra8_usb_pal
+  CPU cortex_m85
+  FLOAT hard
+)
 # ra8_log is Zig now (#2836) and ra8_scb followed with the fault block
 # (#2868), so the NS image takes both from ra8_core's archive instead of
 # compiling libs/ra8_core/src/*.c by path. The NS world runs
