@@ -2,7 +2,7 @@
 
 Enables full ECC ("with-check") SECDED on a spare SRAM bank, round-trips a
 deterministic pattern through an ECC-protected buffer at the bank base, and
-reports the ECC error-status register (#130). LED1 toggles while healthy and
+reports the ECC error-status register. LED1 toggles while healthy and
 LED2 on a round-trip fault; `g_ecc_ok`, `g_ecc_rw_ok`, `g_ecc_esr`,
 `g_ecc_1bit`, `g_ecc_2bit` and `g_ecc_heartbeat` mirror the result for headless
 probing. Needs no external hardware.

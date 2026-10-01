@@ -137,7 +137,7 @@ def _selftest_option_completeness() -> int:
 
     with tempfile.TemporaryDirectory() as td:
         cases = [
-            ("partial.ld", _synth_option_script(omit=OFS3_FAMILY), True, "OFS3 family cut (#223)"),
+            ("partial.ld", _synth_option_script(omit=OFS3_FAMILY), True, "OFS3 family cut"),
             ("complete.ld", _synth_option_script(), False, "complete family"),
             ("stray.ld", _synth_option_script(stray=".option_setting_ofs4"), True, "phantom ofs4"),
         ]
@@ -279,7 +279,7 @@ def _selftest_worktree_inventory() -> int:
 def _selftest_template_scope() -> int:
     """LD006 sees a .ld.in template; the per-file scan scope still does not.
 
-    The bug this pins (#2524): `ra8_add_ns_image()` configures `ns_image.ld.in`
+    The bug this pins: `ra8_add_ns_image()` configures `ns_image.ld.in`
     and links the result, so its symbols are real, but the closure globbed
     `*.ld` alone and reported every one of them as defined by nothing. The two
     scopes must stay different -- a template is judged on the symbols it

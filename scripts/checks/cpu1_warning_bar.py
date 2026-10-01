@@ -3,7 +3,7 @@
 """Read the Cortex-M33 (CPU1) warning bar itself, not just who is attached to it.
 
 ``check_cpu1_warning_profile.py`` answers WHICH translation units the CPU1
-first-party profile is attached to (#843).  On its own that is worth nothing:
+first-party profile is attached to.  On its own that is worth nothing:
 an emptied or quietly narrowed profile would still report every CPU1 source as
 "profile-covered", and the gate would stay green over a bar that no longer
 holds ``-Werror``.  This module is the other half.  It reads

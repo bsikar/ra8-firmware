@@ -22,7 +22,7 @@ protocol Vela targets stays matched to the vendored TFLite-micro `ethosu`
 operator. Moving either one is a re-qualification against the other, not a
 version bump.
 
-## The `.npub` container and its loader (#227)
+## The `.npub` container and its loader
 
 A bare-metal target does not parse a TFLite flatbuffer at run time. An offline
 build step distils a model into a lean, linkable container -- an Ethos-U55

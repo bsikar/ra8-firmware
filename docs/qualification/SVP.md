@@ -230,7 +230,7 @@ as possible.
 
 | Property              | Value                                                                  |
 |-----------------------|------------------------------------------------------------------------|
-| Cross compiler        | Arm GNU Toolchain 13.3.rel1 (gcc 13.3.1); pinned + enforced (#178)     |
+| Cross compiler        | Arm GNU Toolchain 13.3.rel1 (gcc 13.3.1); pinned + enforced     |
 | Cross libc            | newlib bundled in the Arm GNU Toolchain 13.3.rel1 release              |
 | Build configuration   | `cmake/toolchain-ra8d2.cmake`                                          |
 | Build matrix          | Live inventory from `scripts/dev/ra8_apps.py`                           |

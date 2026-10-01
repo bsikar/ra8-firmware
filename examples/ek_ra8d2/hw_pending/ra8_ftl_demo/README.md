@@ -2,7 +2,7 @@
 
 Demonstrates the Flash Translation Layer (`libs/ra8_ftl`) end to end over the
 RA8D2's on-chip extra MRAM -- a non-volatile, erase-before-write medium
-programmed through the MACI command sequencer (#258). The FTL turns that into a
+programmed through the MACI command sequencer. The FTL turns that into a
 clean free-overwrite block device and spreads wear by relocating every
 logical-block write to a fresh, least-worn physical block (copy-on-write).
 
@@ -13,7 +13,7 @@ the tail back for the mapping checkpoint, and hands the FTL the blocks below it
 so the remainder is relocation headroom. The reserved block is outside the FTL's
 physical range by construction, and the checkpoint is written by `ra8_ftl_sync()`
 rather than by the app driving raw erases and programs at an LBA it worked out
-itself (#763).
+itself.
 
 ## The three acts
 

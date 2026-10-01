@@ -35,7 +35,7 @@ ra8_add_app(
   NAME mpu_boot_map_hal
   STACK_BYTES 2200
   LIBS ra8_board_ek_ra8d2 ra8_mpu
-  DESCRIPTION "MPU boot map brought up through the ra8_mpu HAL (#576)"
+  DESCRIPTION "MPU boot map brought up through the ra8_mpu HAL"
 )
 
 # Turn on the cache + MPU boot path for THIS app only. The per-app

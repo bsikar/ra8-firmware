@@ -1,7 +1,7 @@
 //! SPDX-License-Identifier: MIT
 //! Copyright (c) 2026 Brighton Sikarskie
 //!
-//! Tests for the stack-canary sentinel (#2884).
+//! Tests for the stack-canary sentinel.
 //!
 //! These run on the host, where `region()` is empty by construction, so the
 //! host contract is what `seed()` and `intact()` do over no words at all.

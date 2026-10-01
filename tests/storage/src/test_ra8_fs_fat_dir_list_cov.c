@@ -90,7 +90,7 @@ RA8_INTERNAL static void internal_test_listdir_not_mounted(void)
  *
  * @details This used to be a `k_ra8_err_not_supported` guard: exFAT listing was
  *          root-only, so anything that was not exactly `"/"` was declined before
- *          a lookup happened. With the namespace no longer flat (#605) a path is
+ *          a lookup happened. With the namespace no longer flat a path is
  *          RESOLVED, and a name that is not there is a lookup failure like it
  *          always was on FAT -- the two filesystems no longer disagree about
  *          what "list this path" means.
@@ -214,7 +214,7 @@ RA8_INTERNAL static void internal_test_listdir_walk_fail(void)
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_backend, &h));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mkdir(h, "/SUB"));
   internal_create_empty_files(h, "/SUB", (uint32_t)k_fill_subdir_files);
-  /* Remount so the FAT sector cache is cold (#607): creating those files
+  /* Remount so the FAT sector cache is cold: creating those files
    * walked the FAT, and a cached sector never reaches the backend, so read 3
    * below would be served from memory and the walk would not fail. */
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
@@ -375,7 +375,7 @@ RA8_INTERNAL static void internal_test_mkdir_not_mounted(void)
  *
  * @details The dispatch vector for `priv_mkdir_locked`: this used to answer
  *          `k_ra8_err_not_supported` before touching the volume, and now takes
- *          the exFAT branch and creates a directory (#605). The behaviour of
+ *          the exFAT branch and creates a directory. The behaviour of
  *          that creator is exercised in `test_ra8_fs_exfat_dirs.c`; what this
  *          asserts is that the exFAT arm is TAKEN.
  *

@@ -17,7 +17,7 @@ recv, plus cipher-suite, verify-result and MSS-clamp queries.
 
 ## MSS clamp under the #21 MTU=128 limitation
 
-The RA8D2 ESWM has a documented large-frame egress defect (#21), so the whole
+The RA8D2 ESWM has a documented large-frame egress defect, so the whole
 networking stack is pinned to a 128-byte MTU. `ra8_tls_mss_clamp()` subtracts the
 fixed IPv4 and TCP header overhead to yield an MSS that keeps every TCP segment
 -- TLS record bytes included -- inside one in-spec frame. NetX IP fragmentation is

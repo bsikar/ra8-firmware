@@ -29,7 +29,7 @@ libraries into this firmware as Software Of Unknown Provenance (SOUP).
   from the upstream stb repository. stb publishes no release tags, so the
   base is pinned to upstream commit
   `31c1ad37456438565541f4919958214b6e762fb4` (2026-04-15), the newest
-  upstream revision at vendor-in (#548). `stb_image.h` is byte-identical to
+  upstream revision at vendor-in. `stb_image.h` is byte-identical to
   that base; `stb_truetype.h` deliberately is not, because it carries the
   bounds-hardening enumerated below. It is therefore pinned by a recorded
   upstream base hash PLUS a recorded local content hash, so an edit on top of
@@ -41,7 +41,7 @@ libraries into this firmware as Software Of Unknown Provenance (SOUP).
 - `stb_image`: raster decoding on the reader's image path. The compiled format
   set is JPEG, PNG, **GIF and BMP** (`STBI_ONLY_JPEG` / `_PNG` / `_GIF` /
   `_BMP` in `stb_image_impl.c`); GIF and BMP are silicon-validated by
-  `ereader_imgfmt` (#143). GIF in particular is the historically CVE-dense
+  `ereader_imgfmt`. GIF in particular is the historically CVE-dense
   loader in this set and is in the hazard scope accordingly. The call sites are
   `apps/shared_libs/reflow/src/reflow_image.c` (with
   `reflow_layout_image.c`) and
@@ -86,7 +86,7 @@ Accepted as-is per IEC 61508-3 Section 7.4.2.12 and DO-178C Section
 
 The exact set is declared in `scripts/gen/sbom_registry.py` and pinned by
 content in `docs/sbom/upstream/stb.manifest`, which the `soup-upstream` gate
-re-checks on every CI run (#548): one patched file, one byte-identical file,
+re-checks on every CI run: one patched file, one byte-identical file,
 two first-party files. The ready-to-build header equals the pinned upstream
 bytes plus the single focused
 `docs/sbom/patches/stb/0001-harden-font-parser-bounds.patch`; the offline patch
@@ -176,7 +176,7 @@ AddressSanitizer.
 
 - Reviewed: 2026-05-02
 - File list, use case and decode bounds re-verified against the tree and
-  corrected (#623): 2026-08-04. `stb_image_impl.c` was missing from the file
+  corrected: 2026-08-04. `stb_image_impl.c` was missing from the file
   list, the call sites named two libraries that call nothing, and the compiled
   GIF/BMP loaders were unstated.
 - stb_truetype.h memory-safety hardening: 2026-07-15

@@ -4,7 +4,7 @@ Exposes the Pmod2 SD-over-SPI card as a real, **writable** USB Mass-Storage driv
 at its full CSD-derived capacity. Plug the board's USB-FS receptacle (J11) into a
 computer and the card mounts with whatever filesystem it already carries -- copy
 a `.epub` or `.rabook` straight onto the device, eject, done. This is the
-e-reader ingestion transport (#206): no card pulling, no snapshot window, no
+e-reader ingestion transport: no card pulling, no snapshot window, no
 synthesized FAT volume anywhere.
 
 At boot the card is enumerated over SCI0 Simple-SPI and its CSD capacity sizes

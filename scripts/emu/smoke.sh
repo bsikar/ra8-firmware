@@ -31,19 +31,19 @@ ROOT="$(git rev-parse --show-toplevel)"
 cd "$ROOT"
 emu_dir="$ROOT/tools/ra8_emulator"
 
-# ra8_max_jobs -- the ONE canonical bounded-parallelism width (#328); the
+# ra8_max_jobs -- the ONE canonical bounded-parallelism width; the
 # emulator build below derives from it instead of an unbounded -j.
 # shellcheck source=scripts/ci/lib/parallelism.sh
 . "$ROOT/scripts/ci/lib/parallelism.sh"
 
 # ra8_emulator is C23 (typed enums, nullptr) and links C++ TUs, so its build must
 # pin a C23-capable C/C++ pair -- the ambient "cc" on the Debian 12 dev box is
-# gcc 12 and rejects the syntax outright (#467). Reuse the ONE shared selector
+# gcc 12 and rejects the syntax outright. Reuse the ONE shared selector
 # the host-test and coverage builds use rather than hand-rolling a second probe.
 # shellcheck source=scripts/builders/select_host_compiler.sh
 . "$ROOT/scripts/builders/select_host_compiler.sh"
 
-# The gate is assembled from three sourced fragments beside this file (#359).
+# The gate is assembled from three sourced fragments beside this file.
 # Split by responsibility, not size: what a run must satisfy, what each app is,
 # and how one app is run. This file owns the app list, the build phase, the
 # loop and the summary -- the things that only make sense once.
@@ -85,7 +85,7 @@ smoke_abort_guard() {
 # is dropped stops being asserted entirely -- the app still builds, still runs,
 # still prints OK from the generic path, and the class-specific check it
 # actually exists for silently never happens. Splitting this file into
-# fragments (#359) did exactly that to selfpark_banner_apps in an intermediate
+# fragments did exactly that to selfpark_banner_apps in an intermediate
 # revision, which is why the check exists.
 #
 # Both directions: every verdict function must be reachable AND every class it
@@ -233,7 +233,7 @@ if [ "${1:-}" = "--selftest" ]; then
       ;;
   esac
 
-  # --- an emulator override that has CONVERGED with hil.conf is stale (#398) ------
+  # --- an emulator override that has CONVERGED with hil.conf is stale ------
   #
   # uart_expect() reads each app's banner from its hil.conf (EIL == HIL, the ONE
   # source of truth). uart_expect_override() is the only sanctioned exception --
@@ -266,7 +266,7 @@ if [ "${1:-}" = "--selftest" ]; then
     elif uart_override_is_stale "$sov" "$she"; then
       echo "  FAIL override '$sapp' has CONVERGED with hil.conf (emulator=hil='$sov')."
       echo "       Delete it from uart_expect_override -- the app should read its"
-      echo "       banner from hil.conf like every other banner app (#398)."
+      echo "       banner from hil.conf like every other banner app."
       sel_fail=1
     fi
   done
@@ -281,7 +281,7 @@ if [ "${1:-}" = "--selftest" ]; then
     sel_fail=1
   fi
 
-  # --- every banner app must resolve to a hil.conf HIL_EXPECT (#398) --------
+  # --- every banner app must resolve to a hil.conf HIL_EXPECT --------
   #
   # A name in uart_banner_apps with no hil.conf HIL_EXPECT would assert the
   # empty string -- i.e. pass on ANY output, the check that checks nothing. Make
@@ -430,7 +430,7 @@ case " ${apps[*]} " in
       fail=1
     fi
 
-    # Keyboard path (#39): --keys pushes a scripted string through the SAME
+    # Keyboard path: --keys pushes a scripted string through the SAME
     # board_input FIFO the live --view window's keyDown feeds; the run loop drains
     # it to the console UART RX. uart_irq_echo echoes RX back, so the typed marker
     # must reappear on its UART line -- a headless, deterministic test of the

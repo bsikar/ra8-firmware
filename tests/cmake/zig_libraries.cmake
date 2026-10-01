@@ -97,7 +97,7 @@ ra8_add_zig_library(
 
 # Fully migrated: the registry, the focus lifecycle, input / tick / render
 # routing, the navigation back-stack and the .ra8app container and admission
-# gate (#2668) are Zig now, so libs/ra8_app/src has no .c left and the
+# gate are Zig now, so libs/ra8_app/src has no .c left and the
 # RA8_APP_SOURCES glob is gone from library_sources.cmake and core_hal.cmake.
 ra8_add_zig_library(
   NAME
@@ -149,7 +149,7 @@ ra8_add_zig_library(
   ra8_net_pal
 )
 
-# Fully migrated (#1109, #2682): the CTRL1_XL / CTRL2_G bit-field encoders, the
+# Fully migrated: the CTRL1_XL / CTRL2_G bit-field encoders, the
 # little-endian sample decoders, the temperature conversion, the FIFO drain AND
 # the house-I2C binder from #760 are all Zig now, so libs/ra8_lsm6dso/src has
 # no .c left, the RA8_LSM6DSO_SOURCES glob is gone from library_sources.cmake
@@ -258,7 +258,7 @@ ra8_add_zig_library(
 # targets in tests_wifi.cmake consume ra8_core_hal through
 # $<TARGET_OBJECTS:>, which carries no link dependencies, so they link this
 # archive by name there rather than through the list below.
-# Fully migrated (#1115, #2679): the OV5640 register protocol, the
+# Fully migrated: the OV5640 register protocol, the
 # board-qualified VGA DVP scene table, the JPEG overlay writes, the JPEG status
 # decode AND the house-I2C binder from #760 are all Zig, so libs/ra8_ov5640/src
 # has no .c left, the RA8_OV5640_SOURCES glob is gone from
@@ -366,7 +366,7 @@ ra8_add_zig_library(
 )
 
 # Fully migrated: the portable filesystem facade AND the untrusted-name
-# containment policy (#749) are both Zig now, so src/ra8_path.c is gone, the
+# containment policy are both Zig now, so src/ra8_path.c is gone, the
 # RA8_IF_SOURCES glob is gone from library_sources.cmake and core_hal.cmake,
 # and libs/if/src is no longer an include directory anywhere. The three
 # ra8_path_* symbols ride in this same archive behind the unchanged
@@ -439,7 +439,7 @@ set_property(
 # bind forms, the teardown, the packed-gray4 loupe zoom blit and both text
 # calls among them, the three inc/ra8_gfx_tone.h calls with their committed
 # nominal curve, and the six inc/ra8_gfx_dither.h calls over the committed
-# blue-noise mask. Fully migrated (#1466, #2689): the bundled 8x16 font table
+# blue-noise mask. Fully migrated: the bundled 8x16 font table
 # came over last, so the exported descriptor ra8_gfx_font_8x16 that
 # inc/ra8_gfx_font.h declares is in this archive too and the library has no C
 # translation unit at all. src/ra8_gfx_internal.h stays as the written record
@@ -572,7 +572,7 @@ ra8_add_zig_library(
 
 # Fully migrated: the bounded XML emitter behind inc/ra8_xml_writer.h is Zig,
 # so libs/ra8_xml/src has no .c left. This library sat in BOTH wiring worlds:
-# RA8_XML_WRITER_SOURCES was globbed in library_sources.cmake (#908) and by-path
+# RA8_XML_WRITER_SOURCES was globbed in library_sources.cmake and by-path
 # references compiled the TU directly into other builds. The archive replaces
 # the glob entry and every by-path reference. It resolves every symbol it names:
 # the emitter is pure string construction over caller-owned storage with no
@@ -664,7 +664,7 @@ ra8_add_zig_library(
   ra8_imgdec
 )
 
-# Fully migrated (#2591, #2659, #2670): the key vault behind inc/key_vault.h,
+# Fully migrated: the key vault behind inc/key_vault.h,
 # the entropy read behind src/secure_trng_internal.h, the OTA bank commit
 # behind inc/ota_commit.h, the AES-CMAC behind src/sec_cmac_internal.h and the
 # sealed-key import behind src/key_import_internal.h are Zig now, so
@@ -685,7 +685,7 @@ ra8_add_zig_library(
   ra8_secure_app
 )
 
-# Fully migrated (#2601): the fixed-cell slab allocator, the byte-stream adapter
+# Fully migrated: the fixed-cell slab allocator, the byte-stream adapter
 # over the page cache, the page cache itself, the glyph atlas, the image-tile
 # cache and the object-source registry are Zig now, so
 # libs/ra8_mem/src/ra8_slab.c, src/ra8_vmem.c, src/ra8_vmem_stream.c,
@@ -860,8 +860,8 @@ link_libraries(
 )
 
 # Fully migrated: the `ra8_imgdec` backend (inc/ra8_jpeg_imgdec.h) moved
-# first, then the encoder (#2798), then the marker walk, the whole-buffer
-# decoder and the streaming driver (#2799). libs/ra8_jpeg/src holds no .c at
+# first, then the encoder, then the marker walk, the whole-buffer
+# decoder and the streaming driver. libs/ra8_jpeg/src holds no .c at
 # all now, so the RA8_JPEG_SOURCES glob in library_sources.cmake matches
 # nothing and ra8_core_hal gets the codec only from this archive. The
 # hand-authored C23 headers under libs/ra8_jpeg/inc are unchanged, so every C
@@ -886,7 +886,7 @@ link_libraries(ra8_zig::ra8_jpeg)
 # suites reach the Zig object code with no test edit. New ra8_core slices
 # belong in this archive.
 #
-# The freestanding runtime primitives (#2820) are the exception and stay in
+# The freestanding runtime primitives are the exception and stay in
 # their own archive (libra8_core.a), which is deliberately NOT registered
 # here. Its exported names are the bare standard ones an image needs (memcpy,
 # memset, strlen, abs), and a host test binary already has a real libc
@@ -935,7 +935,7 @@ set_target_properties(
 add_dependencies(ra8_zig::ra8_core_freestanding_prefixed ra8_core_freestanding_prefixed_zig_library)
 
 # Fully migrated: libs/ra8_board_ra8p1/src holds no .c for the board layer, only
-# src/boot/, which ra8_add_app's boot fallback still compiles as C (#2984).
+# src/boot/, which ra8_add_app's boot fallback still compiles as C.
 #
 # This archive is NOT added to the global link_libraries() set below. The RA8P1
 # BSP exports the same substitutable names as the EK-RA8D2 layer that every

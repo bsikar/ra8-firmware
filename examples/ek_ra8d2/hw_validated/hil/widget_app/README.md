@@ -1,7 +1,7 @@
 # widget_app
 
-Headless gate proving the `ra8_widget` compositor (#145) and the `ra8_app`
-framework (#146) work end to end on the M85.
+Headless gate proving the `ra8_widget` compositor and the `ra8_app`
+framework work end to end on the M85.
 
 Two apps register into an `ra8_app` registry. Each is a widget tree -- a
 fixed-height status bar over a flex content widget -- laid out by

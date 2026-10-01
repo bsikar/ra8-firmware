@@ -1,6 +1,6 @@
 /**
  * @file reflow_svg_internal.h
- * @brief Cross-TU surface for the split minimal-SVG subset (#112).
+ * @brief Cross-TU surface for the split minimal-SVG subset.
  * @ingroup grp_ereader
  *
  * @details

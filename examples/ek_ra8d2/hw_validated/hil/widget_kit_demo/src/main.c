@@ -1,6 +1,6 @@
 /**
  * @file examples/ek_ra8d2/hw_validated/hil/widget_kit_demo/src/main.c
- * @brief Concrete ra8_widget leaf widgets composited on the GLCDC panel (#145).
+ * @brief Concrete ra8_widget leaf widgets composited on the GLCDC panel.
  *
  * @details
  * `widget_compose_demo` proved the ::ra8_widget_panel compositor with anonymous

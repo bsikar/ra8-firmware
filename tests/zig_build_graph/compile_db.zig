@@ -1,7 +1,7 @@
 //! SPDX-License-Identifier: MIT
 //! Copyright (c) 2026 Brighton Sikarskie
 //!
-//! JSON compilation-database emitter for the root build graph (#959).
+//! JSON compilation-database emitter for the root build graph.
 //!
 //! Extracted from build.zig unchanged in behaviour. The root build file is at
 //! the 1000-line ceiling scripts/checks/check_file_size.py holds every Zig

@@ -1,6 +1,6 @@
 /**
  * @file ra8_c6_model.c
- * @brief Implementation of the modelled ESP32-C6 (#490).
+ * @brief Implementation of the modelled ESP32-C6.
  *
  * @details
  * See `ra8_c6_model.h` for what the model is and why it decodes rather than
@@ -675,7 +675,7 @@ RA8_INTERNAL static bool internal_c6m_handshake(void* ctx)
 {
   (void)ctx;
   /* A scripted quiet spell comes first, so a test can model a co-processor that
-     is momentarily busy rather than absent (#594). It is consumed one sample at
+     is momentarily busy rather than absent. It is consumed one sample at
      a time, which is how the host polls it. */
   if (s_c6.hs_quiet_polls != 0U) {
     s_c6.hs_quiet_polls = (uint16_t)(s_c6.hs_quiet_polls - 1U);

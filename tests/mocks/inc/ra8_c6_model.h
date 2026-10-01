@@ -1,6 +1,6 @@
 /**
  * @file ra8_c6_model.h
- * @brief A modelled ESP32-C6 behind the `ra8_c6link` transport seam (#490).
+ * @brief A modelled ESP32-C6 behind the `ra8_c6link` transport seam.
  *
  * @details
  * Not a recorded byte stream. The model *decodes* what the host transmits with

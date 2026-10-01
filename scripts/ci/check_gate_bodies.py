@@ -53,7 +53,7 @@ like CI" means.  ``$REPO_ROOT`` is something else entirely: the HOST checkout
 the runner was invoked from.  A gate body that reaches for it measures a
 different tree than the one the suite claims to be gating.
 
-``tools-build`` did, and both consequences were real (#546).  It configured and
+``tools-build`` did, and both consequences were real.  It configured and
 compiled the WORKING TREE's ``tools/`` -- whatever happened to be dirty in it --
 and left its build output there, while the snapshot beside it went unbuilt.
 And on the containerised path it could not run at all: the host repo is
@@ -280,7 +280,7 @@ def check_fragment_scope(text: str, path: Path) -> list[str]:
             f"    clean snapshot of HEAD, so this measures a different tree than\n"
             f"    the run reports on -- and on the containerised path it cannot\n"
             f"    write under it at all, because the host repo is mounted\n"
-            f"    read-only at /workspace (#546).\n"
+            f"    read-only at /workspace.\n"
             f"    Use $PWD, which is the tree under test on every path."
         )
     return errors

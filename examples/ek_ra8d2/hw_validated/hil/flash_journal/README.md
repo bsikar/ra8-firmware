@@ -8,7 +8,7 @@ makes this a proof that the flash round-tripped data, not just that the firmware
 looped. `g_fj_last_step`, `g_fj_last_counter`, `g_fj_last_echoed` and
 `g_fj_expander_err` are there for bench sessions.
 
-## The flash was never dead -- it was a chip-select bug (#44)
+## The flash was never dead -- it was a chip-select bug
 
 `g_fj_jedec_id` used to read `0x00FFFFFF`. The cause was in `ra8_xspi`, not the
 board: the on-board flash's chip select (`OSPI_FLASH_S_L`, P104) is wired to the

@@ -1,6 +1,6 @@
 /**
  * @file reflow_css_cascade.c
- * @brief Content-CSS stylesheet scanner, cascade, and face lookup (#111).
+ * @brief Content-CSS stylesheet scanner, cascade, and face lookup.
  *
  * @details
  * The top-level stylesheet scanner (::ra8_css_parse, comment + block skipping),

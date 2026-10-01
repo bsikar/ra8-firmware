@@ -1,6 +1,6 @@
 /**
  * @file epub_entry.c
- * @brief Bounded-RAM streaming + windowed extraction of a single ZIP entry (#231).
+ * @brief Bounded-RAM streaming + windowed extraction of a single ZIP entry.
  *
  * @details
  * The whole-entry accessors (`epub_load_chapter`, `epub_get_resource`,

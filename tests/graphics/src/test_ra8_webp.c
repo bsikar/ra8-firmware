@@ -1,6 +1,6 @@
 /**
  * @file test_ra8_webp.c
- * @brief Host unit + MC/DC tests for the ra8_webp decode facade (#290).
+ * @brief Host unit + MC/DC tests for the ra8_webp decode facade.
  *
  * @details
  * Exercises `ra8_webp_get_info()` / `ra8_webp_decode_rgba()`

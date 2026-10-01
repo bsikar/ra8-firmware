@@ -42,6 +42,6 @@ add_compile_definitions(APP_LAUNCH_SETTINGS=${APP_LAUNCH_SETTINGS})
 ra8_add_app(
   NAME app_launch_demo
   STACK_BYTES 4096
-  DESCRIPTION "ra8_app registry + launch + back-stack chrome stub, headless on ITM (#146)"
+  DESCRIPTION "ra8_app registry + launch + back-stack chrome stub, headless on ITM"
   LIBS ra8_app ra8_widget ra8_box ra8_ui
 )

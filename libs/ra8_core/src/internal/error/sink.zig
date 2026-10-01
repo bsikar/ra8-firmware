@@ -1,7 +1,7 @@
 //! SPDX-License-Identifier: MIT
 //! Copyright (c) 2026 Brighton Sikarskie
 //!
-//! What a non-fatal error report carries when the caller left it out (#2875).
+//! What a non-fatal error report carries when the caller left it out.
 //!
 //! A report describing a failure must not itself become a NULL dereference
 //! inside the formatter, so the sink substitutes house strings rather than

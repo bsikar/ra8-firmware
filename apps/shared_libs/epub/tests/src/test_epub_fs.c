@@ -1,6 +1,6 @@
 /**
  * @file test_epub_fs.c
- * @brief End-to-end host test for the ra8_fs -> epub bridge (#71).
+ * @brief End-to-end host test for the ra8_fs -> epub bridge.
  *
  * @details
  * Proves the storage-stack acceptance for #71/#151/#230 on the host: a real
@@ -274,7 +274,7 @@ RA8_INTERNAL static void internal_test_epub_fs_read_error_corrupt_fat(void)
   internal_write_epub(mount, "BOOK.EPB");
   /* Unmount before corrupting, and mount again after. Corruption arrives on
    * real media between sessions, not under a live mount, and the driver caches
-   * one FAT sector (#607) -- so poking the FAT behind a mounted volume would
+   * one FAT sector -- so poking the FAT behind a mounted volume would
    * be masked by the copy already in memory and prove nothing. */
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(mount));
   mount = nullptr;
@@ -385,7 +385,7 @@ RA8_INTERNAL static void internal_test_epub_fs_stream_read_mcdc(void)
 /**
  * @test internal_test_epub_fs_streamed_roundtrip
  * @brief A .epub on ra8_fs opens end to end through epub_open_streamed_fs with
- *        no whole-file buffer (#151): the spine count and both chapter bodies come
+ *        no whole-file buffer: the spine count and both chapter bodies come
  *        back intact, the source file stays open for on-demand reads, and close
  *        releases it.
  *

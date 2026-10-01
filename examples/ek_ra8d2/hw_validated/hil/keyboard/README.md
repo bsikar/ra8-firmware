@@ -1,6 +1,6 @@
 # keyboard
 
-On-silicon gate for the on-screen keyboard model `ra8_keyboard` (#105), the
+On-silicon gate for the on-screen keyboard model `ra8_keyboard`, the
 text-entry logic behind the e-reader Library search.
 
 The widget is pure and rendering-free: a letters layer and a numbers layer
@@ -9,7 +9,7 @@ to a key and applied to a text buffer plus a one-shot SHIFT and the active
 layer. The caller owns drawing and tap routing.
 
 This app drives that model with synthetic key-centre taps -- the same
-input-injection pattern `ereader_input` (#118) uses -- typing a short string
+input-injection pattern `ereader_input` uses -- typing a short string
 chosen to force one-shot SHIFT, SPACE and the layer toggle to reach a digit,
 then committing with RETURN and asserting the result. A mismatch halts on a
 BKPT before the PASS line can print.

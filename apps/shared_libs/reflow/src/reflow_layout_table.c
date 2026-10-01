@@ -1,6 +1,6 @@
 /**
  * @file reflow_layout_table.c
- * @brief `<table>` equal-column grid layout for the reflow engine (#107).
+ * @brief `<table>` equal-column grid layout for the reflow engine.
  *
  * @details
  * Splits the table-layout sub-responsibility out of `reflow_layout.c` so
@@ -34,7 +34,7 @@
 #include "stb_truetype.h"
 
 /* ===========================================================================
- * Table layout (#107): equal-column grid, per-cell text flow, row page-break
+ * Table layout: equal-column grid, per-cell text flow, row page-break
  * ===========================================================================
  */
 

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2026 Brighton Sikarskie
-"""Gate: a thread-safety claim must be backed by the unit's own state (#893).
+"""Gate: a thread-safety claim must be backed by the unit's own state.
 
 ``libs/ra8_jpeg/inc/ra8_jpeg_sw.h`` advertised ``ra8_jpeg_sw_decode()`` as
 "Thread-safe (re-entrant): all state lives on the caller's stack" and

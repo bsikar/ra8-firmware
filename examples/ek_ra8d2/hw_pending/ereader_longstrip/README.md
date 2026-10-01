@@ -1,6 +1,6 @@
 # ereader_longstrip
 
-The third e-reader reading mode (#289), beside reflowable EPUB text and paged
+The third e-reader reading mode, beside reflowable EPUB text and paged
 CBZ/manga: a chapter is one **continuous vertical strip** -- tall image slices
 stacked seamlessly and read by scrolling, with no page boundaries. This app makes
 the `apps/shared_libs/longstrip` scroll engine viewable by binding its band-composite
@@ -17,7 +17,7 @@ a captured frame shows the actual reader screen.
   buffer is ever needed.
 - **Bounded-memory streaming.** The `ra8_tile_cache` has fewer cells than the
   strip has bands, so the resident decoded-pixel set stays constant regardless of
-  scroll distance; the LRU evicts and re-decodes as the viewport moves (#147).
+  scroll distance; the LRU evicts and re-decodes as the viewport moves.
 - **Tap-zone navigation and chrome.** Bottom third pages down, top third pages
   up, centre toggles the chrome (a status bar with band, scroll percent and skip
   count, plus a right-edge scroll rail whose thumb tracks position). SW1/SW2 are

@@ -8,7 +8,7 @@ project publishes for it**.  A git blob id is a content hash
 (``sha1("blob <len>\0" + bytes)``), so recording it pins the bytes exactly --
 and because the same digest can be derived directly from every worktree file,
 verifying the claim offline is a comparison of two hashes computed by two
-different projects, never a value compared against itself (#548). Worktree
+different projects, never a value compared against itself. Worktree
 enumeration also makes the gate accurate before a vendor move is staged.
 
 Why the hashes come from upstream and not from us

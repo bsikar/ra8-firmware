@@ -1,6 +1,6 @@
 /**
  * @file ra8_imgdec_name.h
- * @brief Canonical extension and MIME names for a sniffed container (#748).
+ * @brief Canonical extension and MIME names for a sniffed container.
  * @ingroup grp_io
  *
  * @par Tag

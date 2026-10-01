@@ -27,7 +27,7 @@
  * TrustZone veneer that exposes Ethernet to the Non-Secure world) and the
  * host tests. NetX Duo is NOT one of them: its driver
  * (``port/netxduo/src/nx_ether_driver_ra8_eth.c``) includes ``ra8_eth.h``
- * and calls ``ra8_eth_*`` directly, never this API (#621).
+ * and calls ``ra8_eth_*`` directly, never this API.
  *
  * ## Layering
  *

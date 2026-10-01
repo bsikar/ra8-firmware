@@ -714,7 +714,7 @@ RA8_INTERNAL static void internal_test_streamed_compile_corrupt_fat(void)
     internal_fresh_volume_seeded("SRC.EPB", s_parity_epub, (uint32_t)k_parity_epub_len);
   /* Unmount before corrupting and mount again after. Corruption arrives on
    * real media between sessions, not under a live mount, and the driver caches
-   * one FAT sector (#607) -- poking the FAT behind a mounted volume would be
+   * one FAT sector -- poking the FAT behind a mounted volume would be
    * masked by the copy already in memory. */
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(mount));
   mount = nullptr;

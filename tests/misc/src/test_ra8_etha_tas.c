@@ -11,7 +11,7 @@
  * carries, which is the point: the previous driver put gate states into
  * EATASGL0 (the entry ADDRESS register) and a cut-through flag into
  * EATASGL1.TASGSL (the gate STATE bit), and every call still returned
- * k_ra8_ok (#539).
+ * k_ra8_ok.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT

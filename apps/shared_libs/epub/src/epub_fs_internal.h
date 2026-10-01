@@ -36,7 +36,7 @@ extern "C" {
  * @retval k_ra8_ok The read succeeded; `*out_read` is @p len, or less at end of file.
  * @retval k_ra8_err_null_ptr An argument guard rejected the request.
  * @retval k_ra8_err_out_of_range The offset is past the 32-bit filesystem range.
- * @retval other The filesystem's own seek or read error (#764).
+ * @retval other The filesystem's own seek or read error.
  * @pre When non-null, @p ctx points to a live ::epub_stream_fs_ctx_t.
  * @pre When non-null, @p buf is writable for @p len bytes.
  * @pre @p out_read is non-null.

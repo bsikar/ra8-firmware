@@ -193,7 +193,7 @@ def build_configs(app: AppRecord) -> list[BuildConfig]:
         )
     if rel_dir == EREADER_UI_REL_DIR:
         # RA8_APP_SETTINGS guards the optional Settings app in the e-reader
-        # chrome (#146). Without this row nothing in the tree ever defines the
+        # chrome. Without this row nothing in the tree ever defines the
         # macro, so the guarded registration, screen and nav target compile in
         # no configuration at all.
         configs.append(

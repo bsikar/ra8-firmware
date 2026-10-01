@@ -1,6 +1,6 @@
 /**
  * @file test_rabook_import.c
- * @brief Host test for the on-import EPUB -> .rabook cache manager (#151).
+ * @brief Host test for the on-import EPUB -> .rabook cache manager.
  *
  * @details
  * Proves the import-and-cache acceptance for #151 on the host without the real

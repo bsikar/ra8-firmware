@@ -1,6 +1,6 @@
 /**
  * @file examples/ek_ra8d2/hw_pending/mpu_boot_map_hal/src/main.c
- * @brief "MPU boot map brought up through the ra8_mpu HAL" self-test (#576)
+ * @brief "MPU boot map brought up through the ra8_mpu HAL" self-test
  *
  * @par Tag
  * [Ring 6 / APP] {World: S}

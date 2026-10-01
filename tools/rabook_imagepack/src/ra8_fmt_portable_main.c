@@ -238,7 +238,7 @@ static void internal_workspace_error(const ra8_fmt_sink_t*           sink,
 }
 
 /**
- * @brief Carve the JOF inspect workspace out of the shared CLI block (#757).
+ * @brief Carve the JOF inspect workspace out of the shared CLI block.
  * @details Declares one slot per workspace member and lets the platform arena
  * place them, replacing a hand-written offset chain. The carve is all-or-none,
  * so a block too small for the last slot fails before any pointer is published
@@ -281,7 +281,7 @@ static ra8_err_t internal_carve_jof(ra8_fmt_cli_workspace_t* workspace,
 }
 
 /**
- * @brief Carve the RBKC inspect workspace out of the shared CLI block (#757).
+ * @brief Carve the RBKC inspect workspace out of the shared CLI block.
  * @details The RBKC partition is the one the issue records as unbounded: its
  * four spans were chained by hand and nothing compared the last one against
  * the end of the array. Declaring the slots moves that question to the arena,

@@ -75,7 +75,7 @@ EXPECTED_FENCE_POISON_FINDINGS = 4
 
 EXCLUDE_PREFIXES = ("libs/third_party/", "apps/shared_libs/third_party/")
 # Vendored / generated doc trees. Not first-party prose, so out of scope --
-# named and reasoned rather than left to a positive root allowlist (#358).
+# named and reasoned rather than left to a positive root allowlist.
 DOC_EXCLUDE_PREFIXES = ("docs/doxygen_theme/", "libs/ra8_fonts/")
 DOC_EXTS = (".md", ".txt")
 TOOL_OUTPUT_TOKENS = (
@@ -120,7 +120,7 @@ def is_in_scope(path: str) -> bool:
 def is_doc_in_scope(path: str) -> bool:
     """Any first-party Markdown / plain-text doc, derived from the tree.
 
-    Widened from the old "docs/ or repo-root only" rule (#358): tools/mcp,
+    Widened from the old "docs/ or repo-root only" rule: tools/mcp,
     examples/**/README.md, .claude/ agent prompts and every other tracked doc
     are now scanned, so a stale ``file.c:99`` citation cannot hide in one.
     Vendored SOUP, generated doc trees and build output are the only
@@ -239,7 +239,7 @@ def scan_file(path: Path) -> list[tuple[int, str, str]]:
     # RA8_MCDC_DEACTIVATED(...) annotation. The reason is a string literal that
     # find_comment_spans skips, but docs/ANNOTATIONS.md promises this gate scans
     # it -- a deactivation reason anchored to a line number is DO-178C evidence
-    # that rots silently (#547). Both regions share one exemption cascade, so a
+    # that rots silently. Both regions share one exemption cascade, so a
     # CITES-OK on the line excuses either; dedup keeps a reason that happens to
     # sit inside a doc comment from being reported twice.
     spans = find_comment_spans(text) + find_mcdc_reason_spans(text)
@@ -308,7 +308,7 @@ def _report_violations(
 
 
 def _selftest_scope(failures: list[str]) -> None:
-    """Assert derived scope: tools source/docs in, both SOUP roots out (#358)."""
+    """Assert derived scope: tools source/docs in, both SOUP roots out."""
     expect(
         is_in_scope("tools/ra8_emulator/src/main.c"),
         "tools/ C is in scope (SCAN_ROOTS omitted it before #358)",
@@ -329,7 +329,7 @@ def _selftest_scope(failures: list[str]) -> None:
 # tools/ (source and docs), silently omitted until #358.
 # ---------------------------------------------------------------------------
 def _selftest_mcdc_reason_cases(tmp: Path, failures: list[str]) -> None:
-    """Assert both directions of the RA8_MCDC_DEACTIVATED reason scan (#547).
+    """Assert both directions of the RA8_MCDC_DEACTIVATED reason scan.
 
     Extracted from :func:`selftest` so that function stays under the NASA Rule 4
     line cap; the assertions are unchanged. The macro's reason is a string
@@ -349,7 +349,7 @@ def _selftest_mcdc_reason_cases(tmp: Path, failures: list[str]) -> None:
     )
     expect(
         bool(scan_file(bad_mcdc)),
-        "a file:line inside an RA8_MCDC_DEACTIVATED reason fires (#547)",
+        "a file:line inside an RA8_MCDC_DEACTIVATED reason fires",
         failures,
     )
     good_mcdc = tmp / "good_mcdc.c"

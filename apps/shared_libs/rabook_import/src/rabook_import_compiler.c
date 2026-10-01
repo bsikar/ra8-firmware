@@ -1,6 +1,6 @@
 /**
  * @file rabook_import_compiler.c
- * @brief Production adapter binding the import seam to the real compiler (#151).
+ * @brief Production adapter binding the import seam to the real compiler.
  * @details Connects import-manager requests to the bounded EPUB/RABOOK
  * compiler while preserving the caller's storage and workspace lifetimes.
  * @since Version 0.1.0
@@ -287,7 +287,7 @@ RA8_INTERNAL static ra8_err_t internal_read_whole_file(ra8_fs_mount_t* mount,
   if (size > cap) {
     /* Transport overflow: the source cannot fit the cross-core buffer. Report
      * no_mem (an offload-failure class) so the streamed in-core fallback --
-     * which has no size ceiling (#230) -- can still import the book. */
+     * which has no size ceiling -- can still import the book. */
     (void)ra8_fs_close(file);
     return k_ra8_err_no_mem;
   }

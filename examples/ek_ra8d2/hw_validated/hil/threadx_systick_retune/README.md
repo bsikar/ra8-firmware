@@ -1,7 +1,7 @@
 # threadx_systick_retune
 
 Proves the ThreadX kernel tick stays 1 ms whatever CPUCLK0 the app happened to
-boot at (#287).
+boot at.
 
 `tx_initialize_low_level.S` programs SysTick.LOAD from a compile-time clock
 assumption -- the post-CGC CPUCLK0 target. That is only correct if the app

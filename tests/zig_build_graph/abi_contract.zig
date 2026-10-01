@@ -263,7 +263,7 @@ pub fn add(
     parity_step.dependOn(&print.step);
 }
 
-/// Append this slice's compile-database rows to `candidates` (#959).
+/// Append this slice's compile-database rows to `candidates`.
 ///
 /// Only the positive consumer is described. The two negative fixtures are
 /// deliberately absent: a compilation database is a list of commands that are

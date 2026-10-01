@@ -1,6 +1,6 @@
 /**
  * @file test_epub_tile_prefetch.c
- * @brief Pan-direction tile prefetch through the EPUB tile binder (#341).
+ * @brief Pan-direction tile prefetch through the EPUB tile binder.
  *
  * @details
  * Registers a hand-built raw gray8 JOF atlas (a 3x2 tile grid) as an external
@@ -192,7 +192,7 @@ RA8_INTERNAL static void internal_tp_fetch_ok(epub_tile_binder_t* b, uint16_t tx
  * @test internal_test_binder_prefetch_pan
  * @brief A pan-right prefetch through the binder warms the lead column of the
  *        3x2 atlas; the warmed tiles are then resident (a fetch hits, no
- *        re-decode) and the not-found / NULL / off-grid guards hold (#341).
+ *        re-decode) and the not-found / NULL / off-grid guards hold.
  *
  * @par MC/DC:
  * (no compound decisions authored under test: the binder forwards to

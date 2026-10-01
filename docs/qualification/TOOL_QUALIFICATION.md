@@ -46,7 +46,7 @@ hand-traced decisions, and so on.
 |---------------------------------|--------------------------------------------------------------------|
 | Vendor                          | Arm Ltd. (GNU Arm Embedded Toolchain)                              |
 | Tool version pinned             | Arm GNU Toolchain **13.3.rel1** (gcc `13.3.1`), pinned +           |
-|                                 | enforced on every host (#178). `cmake/toolchain-ra8d2.cmake`       |
+|                                 | enforced on every host. `cmake/toolchain-ra8d2.cmake`       |
 |                                 | asserts `arm-none-eabi-gcc -dumpfullversion` major.minor           |
 |                                 | `13.3` and is a FATAL configure error on a mismatch by             |
 |                                 | default (`RA8_STRICT_TOOLCHAIN`, ON); the devcontainer fetches      |

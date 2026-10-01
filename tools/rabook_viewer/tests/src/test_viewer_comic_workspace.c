@@ -95,7 +95,7 @@ RA8_INTERNAL static bool internal_has_content(const uint16_t* pixels, size_t pix
 }
 
 /**
- * @brief Prove the reader names the container a page actually holds (#748).
+ * @brief Prove the reader names the container a page actually holds.
  * @details Every page of the committed fixture is a PNG, so the naming call
  * must answer `png` / `image/png` for one, refuse an out-of-range index, and
  * refuse a closed reader. Naming is asserted separately from decoding: this

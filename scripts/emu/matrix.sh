@@ -32,9 +32,9 @@
 #     state, never folded into OK or FAULT. See the determinism note below.
 #   * The _unsupported tier is listed as SKIPPED, never built or run, and each
 #     app's own UNSUPPORTED.toml reason is printed rather than one blanket
-#     external-hardware line that is untrue for some of them (#401).
+#     external-hardware line that is untrue for some of them.
 #
-# DETERMINISM (#394). This matrix is a RATCHETED GATE, so the same ELF must
+# DETERMINISM. This matrix is a RATCHETED GATE, so the same ELF must
 # yield the same verdict on an idle box and on a loaded one. Two wall-clock
 # bounds used to leak host load into the verdict:
 #
@@ -87,14 +87,14 @@ export LC_ALL=C
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 cd "$ROOT" || exit 1
-# ra8_max_jobs -- the ONE canonical bounded-parallelism width (#328); the sweep
+# ra8_max_jobs -- the ONE canonical bounded-parallelism width; the sweep
 # worker pool and the emulator build derive from it so ~200 images do not
 # saturate a shared box.
 # shellcheck source=scripts/ci/lib/parallelism.sh
 . "$ROOT/scripts/ci/lib/parallelism.sh"
 # ra8_emulator is C23 (typed enums, nullptr) and links C++ TUs, so its build must
 # pin a C23-capable C/C++ pair -- the ambient "cc" on the Debian 12 dev box is
-# gcc 12 and rejects the syntax outright (#467). Reuse the ONE shared selector
+# gcc 12 and rejects the syntax outright. Reuse the ONE shared selector
 # the host-test and coverage builds use rather than hand-rolling a second probe.
 # shellcheck source=scripts/builders/select_host_compiler.sh
 . "$ROOT/scripts/builders/select_host_compiler.sh"
@@ -398,7 +398,7 @@ fi
 # -- --selftest: prove the CLASSIFIER is wired before trusting a sweep. -------
 #
 # This gate's failure mode is a wrong verdict, and the specific wrong verdict
-# that cost real work is a wall-clock truncation reported as FAULT (#394): the
+# that cost real work is a wall-clock truncation reported as FAULT: the
 # run was cut short by host load, the app was never judged, and the matrix
 # called it broken. The inverse mislabel -- truncation reported as OK -- is the
 # #168 bug in its original form. Both directions are asserted here, against the
@@ -597,7 +597,7 @@ done
 for app in "${skipped_apps[@]}"; do
   [ -z "$app" ] && continue
   n_skipped=$((n_skipped + 1))
-  # The per-app reason, read from its machine-readable marker (#401). The blanket
+  # The per-app reason, read from its machine-readable marker. The blanket
   # "needs external hardware" line this used to print is false for at least two of
   # the tier, so the reason comes from the app rather than from this script. An
   # unmarked app still prints -- check_unsupported_exclusions.py is what fails it,

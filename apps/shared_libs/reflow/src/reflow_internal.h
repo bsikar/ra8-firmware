@@ -296,7 +296,7 @@ RA8_PRIV bool priv_reflow_render_tofu_rect(int32_t                  advance_px,
 typedef bool (*priv_reflow_face_has_glyph_fn)(const void* ctx, uint8_t face_idx, int32_t cp);
 
 /**
- * @brief Resolve which face draws @p cp, falling back by coverage (#687).
+ * @brief Resolve which face draws @p cp, falling back by coverage.
  *
  * @details
  * A run's face comes from CSS ``@font-face`` selection, which knows family,

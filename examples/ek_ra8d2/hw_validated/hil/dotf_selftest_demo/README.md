@@ -1,7 +1,7 @@
 # dotf_selftest_demo
 
 Brings up the DOTF (Decryption On The Fly) block and runs its built-in AES
-self-test on both channels without ever arming one (#127). LED1 toggles while
+self-test on both channels without ever arming one. LED1 toggles while
 healthy and LED2 on a fault; `g_dotf_ok`, `g_dotf_init_err`, `g_dotf_reg00` and
 the two post-trigger `REG00` snapshots (`g_dotf_st0_snap` / `g_dotf_st1_snap`)
 mirror the result for a headless probe. No external hardware.

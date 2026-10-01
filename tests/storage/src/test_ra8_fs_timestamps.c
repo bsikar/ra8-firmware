@@ -1,6 +1,6 @@
 /**
  * @file test_ra8_fs_timestamps.c
- * @brief FAT file timestamps: the injected clock, and the bytes on the disk (#601).
+ * @brief FAT file timestamps: the injected clock, and the bytes on the disk.
  *
  * @details
  * Every date `ra8_fs` used to write was zero, and a zero FAT date is not a
@@ -327,7 +327,7 @@ RA8_INTERNAL static void internal_clear_fake_clock(void)
  * @post No state modified.
  * @post The result addresses the root region.
  *
- * @note Partition-adjusted, like every other direct RAM-disk probe (#568).
+ * @note Partition-adjusted, like every other direct RAM-disk probe.
  * @since 0.1.0 @details Implements the bounded root dir byte fixture step using caller-owned state.
  */
 RA8_INTERNAL static uint32_t internal_root_dir_byte(const ra8_fs_mount_t* h)
@@ -349,7 +349,7 @@ RA8_INTERNAL static uint32_t internal_root_dir_byte(const ra8_fs_mount_t* h)
  * @post No state modified.
  * @post The result addresses the data region.
  *
- * @note Partition-adjusted, like every other direct RAM-disk probe (#568).
+ * @note Partition-adjusted, like every other direct RAM-disk probe.
  * @since 0.1.0 @details Implements the bounded cluster byte fixture step using caller-owned state.
  */
 RA8_INTERNAL static uint32_t internal_cluster_byte(const ra8_fs_mount_t* h, uint32_t cluster)

@@ -1,6 +1,6 @@
 /**
  * @file examples/ek_ra8d2/hw_pending/secure_boot_ns_hil/src/ns_main.c
- * @brief Non-Secure image: liveness beacon proving the BLXNS RoT gate passed (#172).
+ * @brief Non-Secure image: liveness beacon proving the BLXNS RoT gate passed.
  *
  * @par Tag
  * [Ring 6 / APP] {World: NS}

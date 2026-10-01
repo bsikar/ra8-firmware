@@ -41,7 +41,7 @@ RA8_PRIV uint8_t g_fs_scratch[k_ra8_fs_sector_max] = {};
 
 /**
  * @var s_sec_arena
- * @brief The four fixed-role sector bounce buffers (#683).
+ * @brief The four fixed-role sector bounce buffers.
  * @details Backing storage for ::priv_sec_walk / ::priv_sec_fat /
  *          ::priv_sec_fat2 / ::priv_sec_io -- see the arena discipline in
  *          `ra8_fs_fat_bytes_internal.h`. Static because 4 KiB frames do not
@@ -507,7 +507,7 @@ static ra8_err_t internal_read_boot_sector(ra8_fs_mount_t* m, uint8_t index)
  * @brief Probe the backend's block size into a claimed mount slot.
  *
  * @details The sector size is the DEVICE's block size, probed before the
- *          boot-sector parse so the parse can hold the volume to it (#683). A
+ *          boot-sector parse so the parse can hold the volume to it. A
  *          backend reporting a size outside 512..4096, or one that is not a
  *          power of two, is not mountable. Split out of ::priv_mount_locked
  *          so that function stays inside the function-size gate.
@@ -639,7 +639,7 @@ internal_mount_locked(const ra8_fs_backend_t* backend, uint8_t index, ra8_fs_mou
   if (m == nullptr) {
     return k_ra8_err_no_mem;
   }
-  /* Zero the whole slot on claim (#684). The mount table is a fixed array, so
+  /* Zero the whole slot on claim. The mount table is a fixed array, so
    * this ra8_fs_mount_t address has very likely served another volume already,
    * and the FAT and exFAT parse paths each populate a DIFFERENT subset of the
    * struct. Clearing every field here makes "repopulate everything" a structural
@@ -658,7 +658,7 @@ internal_mount_locked(const ra8_fs_backend_t* backend, uint8_t index, ra8_fs_mou
    * allocator's own state is (see ra8_fs_fat_alloc_internal.h): a slot handed
    * out again carrying the last volume's answers hands them to this one.
    * `exfat_upcase_ok` says "this build's up-case table is the one this VOLUME
-   * carries", and a fresh mount vouches for nothing until it has looked (#606). */
+   * carries", and a fresh mount vouches for nothing until it has looked. */
   m->exfat_upcase_ok = 0U;
   ra8_err_t err      = internal_read_boot_sector(m, index);
   if (err != k_ra8_ok) {
@@ -723,7 +723,7 @@ static ra8_err_t internal_unmount_locked(ra8_fs_mount_t* handle)
   if (handle->in_use == 0U) {
     return k_ra8_err_invalid_state;
   }
-  /* Last chance to make the on-disk free count true (#607). Reported, not
+  /* Last chance to make the on-disk free count true. Reported, not
    * swallowed: a card whose FSInfo could not be updated is a card a desktop
    * will report the wrong free space for, and the caller is the only one who
    * can decide whether that matters. The slot is released either way, so a

@@ -32,7 +32,7 @@ include("${_d}/cmake/ra8_add_app.cmake")
 ra8_add_app(
   NAME ra8_io_sdhi_demo
   STACK_BYTES 4096
-  DESCRIPTION "ra8_io swappable native-SDHI backend (#155/#156/#123): VFS round-trip on microSD"
+  DESCRIPTION "ra8_io swappable native-SDHI backend: VFS round-trip on microSD"
   LIBS ra8_io
        ra8_fs
        ra8_sdmmc_spi

@@ -1,7 +1,7 @@
 # eth_hal_bringup
 
 Drives the two chip-generic ETH HAL primitives extracted from the EK-RA8D2 board
-Ethernet bring-up (#581) directly, instead of through
+Ethernet bring-up directly, instead of through
 `ra8_board_ethernet_init`, logging each step's status. Before #581 the ESWM/COMA
 media bring-up was open-coded inside the board library; it is chip-generic, so it
 now lives in the HAL.

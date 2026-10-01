@@ -31,7 +31,7 @@ ra8_add_app(
   NAME compress_demo
   STACK_BYTES 4096
   DESCRIPTION
-    "ra8_io fabric + DEFLATE: RAM disk -> FAT -> compress -> store -> inflate -> verify (#161)"
+    "ra8_io fabric + DEFLATE: RAM disk -> FAT -> compress -> store -> inflate -> verify"
   LIBS ra8_io
        compress
        miniz

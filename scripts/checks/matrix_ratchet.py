@@ -38,7 +38,7 @@ before the deterministic chunk budget -- the app produced NO verdict. Counting
 a non-verdict as a pass is the #168 mislabel; counting it as a fault invents a
 failure. It is its own bucket so the burn-down can see it.
 
-SELF-ATTESTATION (#712). The ratchet reads the baseline's ROWS; until now
+SELF-ATTESTATION. The ratchet reads the baseline's ROWS; until now
 nothing asserted the FILE is one this tool wrote. A hand edit that kept the
 rows parseable -- a whole-file `sort`, a typed row, an adjusted `# total:` --
 went around the ratchet's own refusal and survived ten days. `--attest`
@@ -332,7 +332,7 @@ def report_attestation(problems: list[str], baseline_file: Path = BASELINE_FILE)
     sys.stderr.write(
         "\n  A generated baseline is machine-written. Editing it by hand goes\n"
         "  around the ratchet's own refusal, and a parseable hand edit used to\n"
-        "  survive indefinitely (#712). Regenerate it instead:\n"
+        "  survive indefinitely. Regenerate it instead:\n"
         "      bash scripts/emu/matrix.sh\n"
         "      python3 scripts/checks/matrix_ratchet.py --update\n"
         "  Causes are carried forward, so re-baselining does not lose them.\n"
@@ -371,7 +371,7 @@ def report_growth(grown: dict[str, str], baseline: dict[str, str]) -> None:
     if len(grown) > MAX_DETAIL_LINES:
         sys.stderr.write(f"  ... and {len(grown) - MAX_DETAIL_LINES} more\n")
     sys.stderr.write(
-        "\n  This gate ratchets the ra8_emulator example matrix DOWNWARD (#394): the\n"
+        "\n  This gate ratchets the ra8_emulator example matrix DOWNWARD: the\n"
         "  count may shrink freely and may never grow. Either fix the example /\n"
         "  the ra8_emulator model gap, or -- if this is a verdict CHANGE rather than\n"
         "  a regression -- explain it in the commit and re-baseline with:\n"
@@ -490,7 +490,7 @@ def _selftest_classification() -> list[str]:
             failures.append(f"{names} classes overlap on {sorted(overlap)}")
     # The specific mislabels this gate exists to prevent.
     if "TRUNCATED" not in DEBT_VERDICTS:
-        failures.append("TRUNCATED is not debt -- a non-verdict would read as a pass (#168)")
+        failures.append("TRUNCATED is not debt -- a non-verdict would read as a pass")
     if "OK" in DEBT_VERDICTS:
         failures.append("OK is classified as debt")
     sample = parse_report("blink                      OK\nusb_x                      FAULT\n")

@@ -1,6 +1,6 @@
 # ereader_cover
 
-The headline "show the book cover" pipeline, end to end (#143): pull the cover
+The headline "show the book cover" pipeline, end to end: pull the cover
 image out of an `.epub`, decode it, scale it to fit, and render it. The EPUB is
 opened in memory from a baked fixture (vendored miniz plus the bounded XML
 reader, zero-heap through a static arena); `epub_get_cover_image` resolves
@@ -29,7 +29,7 @@ PASS banner and its CRC.
 
 ## Why it exists separately
 
-`ereader_image` (#106) and `ereader_jpeg` (#143) prove the bare decode + scale +
+`ereader_image` and `ereader_jpeg` prove the bare decode + scale +
 blit pipeline for PNG and JPEG. This app adds the piece in front that the cover
 use case actually needs -- pulling the image out of an EPUB manifest before
 decoding it. Any drift in EPUB cover resolution, the PNG decoder, the scale math

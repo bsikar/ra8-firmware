@@ -11,11 +11,11 @@
 # runs it) resolve the SAME arm-none-eabi-gcc. Sourced the same way as
 # parallelism.sh / tool_env.sh.
 #
-# Why this is no longer left to each caller (#570): clang_tidy.sh's firmware
+# Why this is no longer left to each caller: clang_tidy.sh's firmware
 # pass needs a compiler that understands -mcpu=cortex-m85 (12.3+), and it fails
 # LOUDLY with RC_INFRA when it does not (require_arm_system_includes). gate_tidy
 # set that compiler up by calling use_pinned_arm_toolchain before clang_tidy.sh;
-# the pre-commit hook (#569) did not, so on any box whose default
+# the pre-commit hook did not, so on any box whose default
 # arm-none-eabi-gcc is the distro 12.2 the hook's clang_tidy.sh aborted with
 # exit 2 and -- correctly -- refused to ratchet, blocking every C commit.
 # clang_tidy.sh now calls this itself, so whoever runs it gets the pinned
@@ -152,7 +152,7 @@ if [ -z "${_RA8_ARM_TOOLCHAIN_SH:-}" ]; then
 
   # Fail with the real reason when the arm-gcc on PATH predates Cortex-M85.
   #
-  # Lives here with the other require_arm_* guards (#570): the policy for
+  # Lives here with the other require_arm_* guards: the policy for
   # "which arm-gcc is acceptable" belongs to this fragment, not to ci.sh.
   #
   # -mcpu=cortex-m85 needs arm-gcc 12.3+. An older distro package does not say

@@ -1,6 +1,6 @@
 /**
  * @file test_ra8_shelf_classify.c
- * @brief Host test: the ereader_shelf finds long-named books on the card (#633).
+ * @brief Host test: the ereader_shelf finds long-named books on the card.
  *
  * @details
  * Before #600 gave `ra8_fs` VFAT long-name write, the shelf classified 8.3

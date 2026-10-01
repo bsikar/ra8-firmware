@@ -298,7 +298,7 @@ priv_dir_reserve(const ra8_fs_mount_t* m, const dir_loc_t* loc, const char* leaf
     out->ntres = 0U; /* the chain carries the case; the alias is upper-case */
     /* Groups of THIRTEEN CODE UNITS -- the slot's capacity. Deriving this from
      * a byte count put a 2-byte character's worth of slots on a 1-unit
-     * character, and the chain then disagreed with its own contents (#606). */
+     * character, and the chain then disagreed with its own contents. */
     out->lfn_entries = (uint8_t)(((out->nunits + (uint32_t)k_lfn_chars_per_ent) - 1U) /
                                  (uint32_t)k_lfn_chars_per_ent);
     need             = (uint32_t)out->lfn_entries + 1U;

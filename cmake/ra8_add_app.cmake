@@ -15,7 +15,7 @@
 #
 # The bare include(ra8_add_app) works from any depth because
 # cmake/ra8_bootstrap.cmake -- included by the toolchain file and by the repo
-# root -- puts <repo>/cmake on CMAKE_MODULE_PATH (#779). Apps still carrying the
+# root -- puts <repo>/cmake on CMAKE_MODULE_PATH. Apps still carrying the
 # old open-coded walk up the directory tree keep working unchanged; both forms
 # resolve to this file.
 #
@@ -44,7 +44,7 @@
 #                       fragment that PROVIDEs g_ra8_threadx_unused_memory_start
 #                       at ORIGIN(<r>), e.g. THREADX_HEAP SDRAM. Lets a ThreadX
 #                       app add that one symbol without forking the whole board
-#                       memory map (#761). Rejected if the app also ships its
+#                       memory map. Rejected if the app also ships its
 #                       own linker_script.ld, which already has full control.
 #   CPU1_IMAGE          compose the board linker script with a generated
 #                       fragment that places .cpu1_image at the board's CPU1
@@ -108,7 +108,7 @@
 set(_RA8_ADD_APP_DIR "${CMAKE_CURRENT_LIST_DIR}")
 
 # The two largest phases of ra8_add_app() live beside this file, one per
-# question they answer (#359). Included once here; both define a macro that
+# question they answer. Included once here; both define a macro that
 # ra8_add_app() calls, so the expanded result is the code that was inline.
 include(${_RA8_ADD_APP_DIR}/ra8_app/sources.cmake)
 include(${_RA8_ADD_APP_DIR}/ra8_app/vendored.cmake)
@@ -383,7 +383,7 @@ macro(ra8_add_app)
   # that. The M33 CPU1 image below has always been built this way; the M85 lane
   # was not, which is why 208 app files used to carry a local
   # `#pragma GCC diagnostic ignored "-Wmain"` to silence the contradiction
-  # instead of resolving it (#707).
+  # instead of resolving it.
   #
   # The flag and the `void` entry point travel together: drop it and every
   # firmware main.c stops compiling.
@@ -532,7 +532,7 @@ function(ra8_cpu1_warning_profile _out_var)
       -Wextra
       -Werror
       # Was the one flag the M85 first-party set carried and this list did not,
-      # while the comment above claimed the two were kept in step (#843). Every
+      # while the comment above claimed the two were kept in step. Every
       # profiled CPU1 translation unit on both dual-core images compiles clean
       # under it, so the bar moved up to the claim rather than the claim down.
       -Wconversion
@@ -569,7 +569,7 @@ endfunction()
 #     ${RA8_REPO_ROOT}/libs/ra8_gfx/src/ra8_gfx_text.c
 #   )
 #
-# This is the T1-09 (#843) opt-in. A plain target_sources() on a CPU1 image
+# This is the T1-09 opt-in. A plain target_sources() on a CPU1 image
 # compiles the source at -mcpu=cortex-m33 ... -Os with NO warning flags and no
 # .su stack data; this call adds the same sources AND puts the per-source
 # profile on them, so an app-added first-party TU is held to exactly the bar
@@ -645,7 +645,7 @@ function(ra8_add_cpu1_image)
   add_executable(${C1_NAME}.elf ${_c1_srcs})
   target_compile_definitions(${C1_NAME}.elf PRIVATE RA8_BUILD_FOR_CPU1 RA8_FREESTANDING)
   # The freestanding runtime primitives (memcpy / memset / str* / abs) are Zig
-  # now (#2820). The M33 image links ra8_core's archive built for its own core
+  # now. The M33 image links ra8_core's archive built for its own core
   # rather than the M85 one the main expansion registers, because the compiler
   # emits calls to these names from ordinary struct assignment and they have
   # to be present in this image's own instruction set.
@@ -695,7 +695,7 @@ function(ra8_add_cpu1_image)
   # .github/cpu1-warning-profile-baseline.txt, judged by
   # scripts/checks/check_cpu1_warning_profile.py: a new first-party M33 source
   # outside this profile fails the gate, and a row that stops escaping must be
-  # deleted, so the list can only shrink toward T1-09 (#843). Vendored SOUP is
+  # deleted, so the list can only shrink toward T1-09. Vendored SOUP is
   # classified separately and stays outside the first-party bar on purpose.
   # The checker also scans CPU1 images an app hand-rolls with its own
   # add_executable() + -mcpu=cortex-m33 instead of this helper (cpu1_pingpong,

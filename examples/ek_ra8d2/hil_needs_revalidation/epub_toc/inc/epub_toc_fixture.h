@@ -1,6 +1,6 @@
 /**
  * @file epub_toc_fixture.h
- * @brief Baked EPUB TOC fixtures for epub_toc (#116). Pure ASCII.
+ * @brief Baked EPUB TOC fixtures for epub_toc. Pure ASCII.
  *
  * @details Three minimal .epub archives, byte-identical on host and target:
  *  - ncx: EPUB2 with a toc.ncx navMap (2 navPoints: "Intro", "Body").

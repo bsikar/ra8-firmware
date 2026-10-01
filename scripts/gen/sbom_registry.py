@@ -24,7 +24,7 @@ Editing rules:
   * There is NO integrity-hash field, deliberately.  ``aggregate_sha256`` used
     to live here as a hand-transcribed literal on four of the twenty-three
     entries, which meant ``gen_sbom.py --check`` compared a constant against
-    itself and a mutated vendored byte reported clean (#538).  The digest is
+    itself and a mutated vendored byte reported clean.  The digest is
     now DERIVED from the tree on every run by ``gen_sbom.tree_digest()``.  Do
     not re-introduce a stored copy: a transcribed value never disagrees with
     itself.
@@ -34,7 +34,7 @@ Editing rules:
     departs from it.  ``scripts/checks/check_soup_upstream.py`` compares the
     tree against upstream blob hashes fetched from the upstream project, so a
     subset rule or a patch that lives only in prose is not enough -- an
-    undeclared deviation fails the gate (#548).
+    undeclared deviation fails the gate.
 """
 
 from __future__ import annotations
@@ -354,7 +354,7 @@ REGISTRY: tuple[Component, ...] = (
             "RELEASE_NOTES.md.",
             "Bumped from 1.9.0+git.8b6f3e81, which OSV resolved into "
             "CVE-2026-45811 / -45815 / -45816 / -46452. All four are fixed in "
-            "1.10.0 and OSV resolves this commit clean (#508). Moving to a "
+            "1.10.0 and OSV resolves this commit clean. Moving to a "
             "tagged release also closes the NimBLE half of SOUP-4.",
             "1.10.0 removes the bundled ext/tinycrypt sub-component, dropping "
             "its BSD-2-Clause / BSD-3-Clause text from our redistribution "
@@ -538,7 +538,7 @@ REGISTRY: tuple[Component, ...] = (
         upstream_commit="a4d7a715337ded4451fec90ff8ce79728e04126c",
         modified=True,
         extra_notes=(
-            "DECODE-ONLY subset (#290): upstream's libwebpdecoder source set "
+            "DECODE-ONLY subset: upstream's libwebpdecoder source set "
             "(src/dec + the decode subset of src/dsp + src/utils COMMON) plus the "
             "headers those TUs include; the encoder, mux/demux, sharpyuv and CLI "
             "tools are not vendored. Byte-identical to release tag v1.5.0.",
@@ -570,7 +570,7 @@ REGISTRY: tuple[Component, ...] = (
         upstream_commit="fddd3707a3c5733af4cb866f18650441e6712504",
         upstream_ref="fddd3707a3c5733af4cb866f18650441e6712504",
         extra_notes=(
-            "LEAN subset (#228): MicroInterpreter / MicroAllocator / op-resolver "
+            "LEAN subset: MicroInterpreter / MicroAllocator / op-resolver "
             "core + reference kernels CONV_2D, DEPTHWISE_CONV_2D, "
             "FULLY_CONNECTED, ADD, MUL, RESHAPE, SOFTMAX, AVERAGE_POOL_2D + the "
             "Ethos-U custom-op stub. Audio/FFT (signal/, kissfft), the "
@@ -578,7 +578,7 @@ REGISTRY: tuple[Component, ...] = (
             "examples are omitted.",
             "Build deps FlatBuffers, gemmlowp and ruy are vendored as sibling "
             "libs/third_party components (not nested).",
-            "Phase 2 (#228) replaces the Ethos-U op stub with an ra8_npu adapter; "
+            "Phase 2 replaces the Ethos-U op stub with an ra8_npu adapter; "
             "see docs/SOUP/tflite-micro.md.",
         ),
     ),

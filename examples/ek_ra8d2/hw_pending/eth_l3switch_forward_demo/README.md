@@ -24,9 +24,9 @@ links**. The RA8D2 has two ETHA/RMAC ports, but the EK-RA8D2 breaks out a single
 RJ45 with one populated PHY, so there is no second port to observe an egress on.
 That is a board limitation, not a bench-configuration one: no cabling, peer or
 instrument can make end-to-end forwarding assertable here. It needs the carrier
-PCB (#318) that breaks out the second port, or a second board. (An earlier
+PCB that breaks out the second port, or a second board. (An earlier
 revision blamed bench wiring #89 and sent the work to the wrong queue -- #89 is a
 bench task and would never have unblocked this.)
 
 There is also no Ethernet or MFWD peripheral model off-target, and the EK-RA8D2
-Ethernet wire is marginal (#21).
+Ethernet wire is marginal.

@@ -1,7 +1,7 @@
 //! SPDX-License-Identifier: MIT
 //! Copyright (c) 2026 Brighton Sikarskie
 //!
-//! C ABI membrane for `libs/ra8_core/inc/ra8_systick.h` (#2830).
+//! C ABI membrane for `libs/ra8_core/inc/ra8_systick.h`.
 //!
 //! The arithmetic behind this file deals in Zig errors and the register
 //! window deals in named registers. This one maps them onto the `ra8_err_t`
@@ -9,8 +9,8 @@
 //! through `ra8_log_emit_error` in ra8_log.c, which is still C.
 //!
 //! `ra8_dwt_cyccnt_enable` delegates the DEMCR.TRCENA unlock to ra8_scb
-//! rather than poking DEMCR a second time (#588); ra8_scb is Zig too as of
-//! the fault block (#2868).
+//! rather than poking DEMCR a second time; ra8_scb is Zig too as of
+//! the fault block.
 
 const regs = @import("systick_regs");
 const reload_math = @import("systick_reload");
@@ -106,7 +106,7 @@ pub export fn ra8_systick_current_value() callconv(.c) u32 {
 
 pub export fn ra8_dwt_cyccnt_enable() callconv(.c) void {
     // DEMCR.TRCENA unlocks the DWT unit and has exactly one writer in the
-    // tree, ra8_scb, which owns the debug and trace gate (#588).
+    // tree, ra8_scb, which owns the debug and trace gate.
     ra8_scb_trace_enable();
     regs.setBits(regs.addr.dwt_ctrl, regs.bits.dwt_cyccntena);
 }

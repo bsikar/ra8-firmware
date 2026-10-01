@@ -1,6 +1,6 @@
 /**
  * @file reflow_svg_xform.c
- * @brief Coordinate transform + 2x3 affine `transform=` parsing for SVG (#112).
+ * @brief Coordinate transform + 2x3 affine `transform=` parsing for SVG.
  *
  * @details The viewBox->box coordinate map plus the full 2x3 affine
  * `transform=` machinery (translate / scale / rotate / skewX / skewY / matrix,

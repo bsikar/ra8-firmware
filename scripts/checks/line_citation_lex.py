@@ -55,7 +55,7 @@ THIRD_PARTY_RE = re.compile(r"\b(?:libs|apps/shared_libs)/third_party/")
 #: evidence. Its argument is a string LITERAL, so find_comment_spans -- which
 #: deliberately skips string literals -- never reaches it; find_mcdc_reason_spans
 #: does, so the in-tree line-citation ban covers a deactivation reason as
-#: docs/ANNOTATIONS.md says it does (#547).
+#: docs/ANNOTATIONS.md says it does.
 MCDC_REASON_MACRO = "RA8_MCDC_DEACTIVATED"
 
 

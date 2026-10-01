@@ -1,13 +1,13 @@
 # epub_toc
 
-Runs the `epub` table-of-contents path on silicon (#116) against real
+Runs the `epub` table-of-contents path on silicon against real
 `.epub` files staged on a microSD card. #74 added titled TOC parsing -- EPUB2
 NCX `<navMap>` and EPUB3 `nav.xhtml` `<nav epub:type="toc">` -- but it had only
 ever run on the x86 host. Building on `epub_open`, this exercises both forms
 plus the malformed-TOC fallback.
 
 Three baked books are self-provisioned onto the card if absent, opened through
-`ra8_fs` and the streamed open (#230), and asserted:
+`ra8_fs` and the streamed open, and asserted:
 
 - an NCX book resolves to the NCX kind with the right entry count, a byte-exact
   CRC over the first entry label, and entry 0 pointing at spine 0;
@@ -26,4 +26,4 @@ failed.
 
 Needs a microSD in Pmod2 (J25); an unseated card is the first thing to rule out
 when this fails. The fixtures are flat, so nested multi-level TOC trees are not
-covered, and neither is pagination (#117) or rendering (#78).
+covered, and neither is pagination or rendering.

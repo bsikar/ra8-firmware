@@ -1,6 +1,6 @@
 /**
  * @file ra8_num.h
- * @brief Exact, locale-free decimal to IEEE-754 binary64 conversion (#747).
+ * @brief Exact, locale-free decimal to IEEE-754 binary64 conversion.
  * @ingroup grp_core
  *
  * @par Tag

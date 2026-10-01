@@ -209,7 +209,7 @@ fn collectTree(
 
 /// Prove the detector fires on a missing newline and stays quiet on a good
 /// file and an empty one, then prove the derived scope is real: it clears the
-/// floor and it reaches the roots a hardcoded root list had dropped (#549).
+/// floor and it reaches the roots a hardcoded root list had dropped.
 fn selftest(
     allocator: std.mem.Allocator,
     dir: std.fs.Dir,

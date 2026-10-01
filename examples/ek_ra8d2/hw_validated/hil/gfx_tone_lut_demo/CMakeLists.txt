@@ -17,7 +17,7 @@ include("${_d}/cmake/ra8_add_app.cmake")
 ra8_add_app(
   NAME gfx_tone_lut_demo
   STACK_BYTES 4096
-  DESCRIPTION "Demonstrate per-panel gray-level tone LUT calibration (#479)"
+  DESCRIPTION "Demonstrate per-panel gray-level tone LUT calibration"
   LIBS ra8_gfx
        ra8_display_pal
 )

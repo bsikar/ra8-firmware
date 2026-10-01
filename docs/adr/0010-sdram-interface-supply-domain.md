@@ -12,7 +12,7 @@ decision stays `Proposed` until the bench items in
 
 ## Context
 
-The e-reader's proposed LTC3119 main rail (#825) reaches a complete
+The e-reader's proposed LTC3119 main rail reaches a complete
 upper envelope of 3.584411411 V once the static feedback error and
 the +/-75 mV rail allowance are stacked. #846 records that this
 invalidates the guaranteed SDRAM read-high margin. The purpose of

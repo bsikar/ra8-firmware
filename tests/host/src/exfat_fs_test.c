@@ -1,7 +1,7 @@
 /**
  * @file tests/host/src/exfat_fs_test.c
- * @brief Standalone host test for ra8_fs exFAT read (#85), the leading-slash
- *        open regression (#93), and the exFAT write path (#104: create /
+ * @brief Standalone host test for ra8_fs exFAT read, the leading-slash
+ *        open regression, and the exFAT write path (#104: create /
  *        multi-cluster write + read-back / rename / unlink).
  *
  * @details
@@ -507,7 +507,7 @@ RA8_INTERNAL static void internal_check_multicluster_path(ra8_fs_mount_t* mnt)
  * one wrong name of the SAME length (the byte-compare fails) and one of a
  * DIFFERENT length (the length pre-filter fails). Both must report not_found. */
 /**
- * @brief exFAT `stat` on the fixture's real directory, file, and a missing name (#609).
+ * @brief exFAT `stat` on the fixture's real directory, file, and a missing name.
  *
  * @details The fixture was written by a real exFAT formatter and carries
  * `.fseventsd` -- a genuine DIRECTORY entry (FileAttributes 0x12: hidden |
@@ -515,7 +515,7 @@ RA8_INTERNAL static void internal_check_multicluster_path(ra8_fs_mount_t* mnt)
  * VFS `stat` got wrong and could not have got right: it opened the path and
  * reported `is_directory = false` unconditionally, so a folder came back as an
  * existing zero-byte file. Nothing else in the suite can assert it, because
- * exFAT directory CREATION is out of scope here (#611), so this image is the
+ * exFAT directory CREATION is out of scope here, so this image is the
  * only real exFAT directory the tests have.
  *
  * @param[in] mnt The mounted fixture volume.

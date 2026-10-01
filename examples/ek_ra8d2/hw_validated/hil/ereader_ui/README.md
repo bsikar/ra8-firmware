@@ -1,6 +1,6 @@
 # ereader_ui
 
-The e-reader device chrome on the live GLCDC panel (#80). The application shell
+The e-reader device chrome on the live GLCDC panel. The application shell
 is laid out by the bounded box-model engine `ra8_box`, painted through `ra8_gfx`
 into the GLCDC framebuffer, and navigated through the `ra8_ui` screen stack, in
 the flat 16-level-grayscale visual language of the browser proof-of-concept.
@@ -39,4 +39,4 @@ the app booted, brought SDRAM and the GLCDC up, and is not faulting, and nothing
 more.
 
 A Latin-1 face larger than the baked subset, or full Unicode coverage, would
-need external OSPI (#44).
+need external OSPI.

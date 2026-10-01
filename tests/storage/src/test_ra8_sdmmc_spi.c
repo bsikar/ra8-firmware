@@ -700,7 +700,7 @@ RA8_INTERNAL static void internal_test_capacity_type_query_guards(void)
  * @par MC/DC:
  * Decision: `(lba > UINT32_MAX) || (count > UINT32_MAX)` (2 conditions) in
  * `internal_fs_erase_block` (Zig, libs/ra8_sdmmc_spi) -- SD
- * block numbers are 32-bit, so the 64-bit `ra8_fs` coordinates (#683) are
+ * block numbers are 32-bit, so the 64-bit `ra8_fs` coordinates are
  * range-checked, never truncated.
  * - V1: lba small, count small (the count == 0 passthrough below) -> F,F ->
  *   the guard falls through to the class layer.

@@ -561,7 +561,7 @@ static ra8_err_t internal_write_locked(ra8_fs_file_t* file, const uint8_t* buf, 
    * rather than whatever a PC wrote when it created the file. */
   priv_fat_entry_stamp_write(&dirsec[file->dir_entry_idx]);
   /* Same reason the archive attribute rides along: the file was modified, which
-   * is exactly what the bit records (#681). */
+   * is exactly what the bit records. */
   priv_fat_entry_apply_attr(&dirsec[file->dir_entry_idx], (uint8_t)k_ra8_fs_attr_archive, 0U);
   file->dirty = 1U;
   return priv_write_sector(m, file->dir_entry_lba, dirsec);
@@ -578,7 +578,7 @@ static ra8_err_t internal_write_locked(ra8_fs_file_t* file, const uint8_t* buf, 
  *
  *          There is no longer a second, exFAT-only path here: exFAT streams
  *          through the same three calls now that ::ra8_fs_open accepts a
- *          writing mode on it (#602), which is the point -- two
+ *          writing mode on it, which is the point -- two
  *          implementations of one verb are two places for it to mean
  *          different things.
  *

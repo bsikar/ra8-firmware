@@ -1,6 +1,6 @@
 /**
  * @file test_ra8_fs_mkdir.c
- * @brief Tests for ra8_fs directory creation + nested path resolution (#158).
+ * @brief Tests for ra8_fs directory creation + nested path resolution.
  *
  * @details
  * Exercises `ra8_fs_mkdir` and the multi-component path walk that now backs

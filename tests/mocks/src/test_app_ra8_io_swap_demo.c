@@ -1,6 +1,6 @@
 /**
  * @file test_app_ra8_io_swap_demo.c
- * @brief Host unit + integration test for the ra8_io_swap_demo capstone (#264).
+ * @brief Host unit + integration test for the ra8_io_swap_demo capstone.
  *
  * @details
  * Mirrors examples/ek_ra8d2/hw_pending/ra8_io_swap_demo/src/main.c and proves its

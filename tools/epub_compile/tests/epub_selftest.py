@@ -108,7 +108,7 @@ def _fl_build_equivalent_cbz(page_images: dict[str, bytes]) -> io.BytesIO:
 def _check_page_tables(bb: BlobBuilder, meta: dict[str, str]) -> None:
     """The one-image-per-page SHAPE: spine order, manifest ids, cover."""
     want_pages = ["text/page1.xhtml", "text/page2.xhtml", "text/page3.xhtml"]
-    _fl_require(meta["title"] == "Fixed Layout Spike (#196)", "title interned")
+    _fl_require(meta["title"] == "Fixed Layout Spike", "title interned")
     _fl_require(bb.flags == 0, "no stray header flags on a fixed-layout book")
     _fl_require(len(bb.chapters) == len(want_pages), "one chapter per spine page")
     _fl_require(len(bb.images) == len(want_pages), "one manifest raster per page")
@@ -197,7 +197,7 @@ def selftest() -> int:
     page_names = [posixpath.basename(_fl_str(bb, img[0])) for img in bb.images]
     raw_pngs = {name: (fixture / "OEBPS" / "images" / name).read_bytes() for name in page_names}
     _blob_cbz, _meta_cbz, bb_cbz = compile_cbz(
-        _fl_build_equivalent_cbz(raw_pngs), title="Fixed Layout Spike (#196)"
+        _fl_build_equivalent_cbz(raw_pngs), title="Fixed Layout Spike"
     )
     cbz_payload = {posixpath.basename(_fl_str(bb_cbz, img[0])): img for img in bb_cbz.images}
     for img in bb.images:

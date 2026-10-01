@@ -10,7 +10,7 @@
  * no ``apps/`` or ``examples/`` composition root included ``key_vault.h`` or
  * ``ota_commit.h``, so nothing proved the public C API is usable from a real
  * firmware image and nothing caught an ABI or wiring regression that the host
- * tests' own fakes paper over (#922). This app is that consumer.
+ * tests' own fakes paper over. This app is that consumer.
  *
  * It drives every published entry point of both headers once, from a
  * secure-world composition root on real silicon, and checks each return
@@ -166,7 +166,7 @@ static const uint8_t k_kat_verdict_fail[]  = "kat: secure_app FAIL\r\n";
  * Expected returns for the key-vault group. The placeholder vault body in
  * libs/ra8_secure_app/src/key_vault.c is compiled only under
  * RA8_INSECURE_STUB_CRYPTO (or off-target); its #else fails every entry point
- * closed (#180). This app checks whichever half it was built against, so the
+ * closed. This app checks whichever half it was built against, so the
  * same source proves the dev/eval answer AND the production refusal.
  */
 #if defined(RA8_INSECURE_STUB_CRYPTO)

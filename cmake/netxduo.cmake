@@ -77,7 +77,7 @@ endif()
 # The core TCP/IP stack only. `crypto_libraries/src` is deliberately NOT
 # compiled and neither is `nx_secure/`: TLS in this tree is Mbed TLS behind
 # `libs/ra8_tls`, and nothing first-party calls a single `nx_crypto_*` or
-# `nx_secure_*` symbol (#621). Compiling all 56 crypto TUs bought nothing --
+# `nx_secure_*` symbol. Compiling all 56 crypto TUs bought nothing --
 # only `--gc-sections` kept them out of every image -- while presenting a
 # second, unqualified crypto implementation inside a component whose SOUP
 # record has to state what it contains.

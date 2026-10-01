@@ -70,7 +70,7 @@ target-version = "py311"
 # ad-hoc `ruff check .`. The gated path never relies on these: check_ruff.py
 # derives its file list from scripts/checks/lint_targets.py, whose
 # is_build_output() is the single definition of "this is build output" shared
-# with the other checkers and with .gitignore (#377).
+# with the other checkers and with .gitignore.
 #
 # Note what is NOT here: a bare `build`. Ruff matches a slashless pattern
 # against every path COMPONENT, so `build` excluded any directory of that name
@@ -318,8 +318,8 @@ max-complexity = 15
 # over from the previous pass -- a stale number is how a dropped family stops
 # being a decision and becomes an omission.
 #
-# Two families have LEFT this list rather than being re-justified: D (#365) and
-# ANN (#372) are both selected above, with their measurements recorded there.
+# Two families have LEFT this list rather than being re-justified: D and
+# ANN are both selected above, with their measurements recorded there.
 # D401 is the one rule that arrived with them and was dropped; its reasoning
 # lives in [tool.ruff.lint.pydocstyle], because it is a consequence of the
 # convention choice rather than an independent decision.

@@ -10,7 +10,7 @@
  * use, so the rest of the app is source-agnostic. The opened book's file handle
  * stays held (::sh_sd_book_open) and ::sh_sd_book_read seeks + reads single
  * compressed chunks on demand -- the whole container is never resident. `.epub`
- * books use the same discipline (#230): ::sh_sd_open_epub holds the source file
+ * books use the same discipline: ::sh_sd_open_epub holds the source file
  * open and `epub` seeks + reads each ZIP entry on demand, so no whole-file
  * buffer exists for EPUBs either. Mounting is best-effort: with no card (ra8_emulator
  * run without `--sd`) ra8_sdmmc_spi_init() times out and the shelf stays
@@ -52,7 +52,7 @@ static ra8_fs_mount_t*  s_mount;            /**< Mounted FAT volume, or NULL.   
 static ra8_fs_file_t*   s_book;             /**< Held-open .RBK backing paged reads.    */
 static const char*      s_sd_tag = "sh_sd"; /**< Log tag for SD-read diagnostics.       */
 
-/** @brief Held-open streamed `.epub` source (#230); valid while an EPUB is open. */
+/** @brief Held-open streamed `.epub` source; valid while an EPUB is open. */
 static epub_stream_fs_ctx_t s_epub_io;
 
 /* cppcheck-suppress constParameterCallback -- bound to ra8_sdmmc_spi_transport_t::set_clock; the void* ctx signature is fixed by the seam. */
@@ -120,7 +120,7 @@ static void sh_sd_listdir_cb(const char* name, uint8_t attr, uint64_t size, void
   (void)ctx;
   const uint8_t skip = (uint8_t)k_ra8_fs_attr_directory | (uint8_t)k_ra8_fs_attr_volume_id;
   sh_book_fmt_t fmt  = k_sh_fmt_rabook;
-  /* An exFAT entry may exceed 4 GiB (#676); a book that large is not loadable
+  /* An exFAT entry may exceed 4 GiB; a book that large is not loadable
    * on this device, so it is skipped rather than filed with a wrapped size. */
   if (((attr & skip) != 0U) || (size > (uint64_t)UINT32_MAX) || !sh_book_classify(name, &fmt) ||
       (strlen(name) >= (size_t)k_sh_name_cap) || (g_sh.book_count >= (uint16_t)k_sh_max_books)) {

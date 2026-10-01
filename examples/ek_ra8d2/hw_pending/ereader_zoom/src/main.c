@@ -1,6 +1,6 @@
 /**
  * @file examples/ek_ra8d2/hw_pending/ereader_zoom/src/main.c
- * @brief Viewable tap-to-zoom image viewer: full-screen zoom + panel loupe (#478).
+ * @brief Viewable tap-to-zoom image viewer: full-screen zoom + panel loupe.
  *
  * @par Tag
  * [Ring 7 / App] {World: NS}

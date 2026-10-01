@@ -32,7 +32,7 @@
  * @enum cbs_block_size_t
  * @brief The swept block / frame / chunk sizes, in bytes.
  * @details Powers of two from one SD sector up to a quarter MiB, bracketing
- *          the 64 KiB `.rabook` chunk default (#204) by two octaves on each
+ *          the 64 KiB `.rabook` chunk default by two octaves on each
  *          side so the knee is visible whichever way it falls.
  * @since 0.1.0
  */

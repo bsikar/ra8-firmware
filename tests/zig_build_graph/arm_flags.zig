@@ -2,7 +2,7 @@
 //! Copyright (c) 2026 Brighton Sikarskie
 //!
 //! What a cross configure hands each kind of translation unit, and what
-//! TrustZone adds on top (#936, #1054, #1096).
+//! TrustZone adds on top.
 //!
 //! Extracted from build.zig because the root build file sits at the 1000-line
 //! ceiling scripts/checks/check_file_size.py holds every Zig source to, and
@@ -50,7 +50,7 @@ pub const asm_flags = cpu_select_flags ++ [_][]const u8{"-g3"};
 /// Definitions cmake/toolchain-ra8d2.cmake adds at directory scope, so they
 /// reach every target in a cross configure and not just the app. The app's own
 /// bar repeats RA8_FREESTANDING through dialect_flags, which is where it
-/// was first spelled (#936); this is the same define reaching a target that
+/// was first spelled; this is the same define reaching a target that
 /// has no first-party profile at all.
 pub const global_defines = [_][]const u8{"-DRA8_FREESTANDING"};
 
@@ -66,7 +66,7 @@ pub const dialect_flags = [_][]const u8{
 
 /// The bare-metal half, which ra8_add_app() sets as target options and which
 /// therefore lands AFTER the warning profile on the real compile line.
-/// Position is the only thing that changed here (#1084): both flags are
+/// Position is the only thing that changed here: both flags are
 /// order-insensitive against a -W list, but this list is also what
 /// `zig build compile-db` writes, and a row whose argv is a permutation of the
 /// compiler's is a row no consumer can diff against a real configure's.

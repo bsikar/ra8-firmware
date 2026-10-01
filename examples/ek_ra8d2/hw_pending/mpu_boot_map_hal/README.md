@@ -3,7 +3,7 @@
 
 Brings the boot MPU memory-attribute map up through `ra8_mpu_apply_boot_map()`
 instead of the hand-rolled MAIR / RBAR / RLAR / CTRL register pokes the shared
-board boot uses (#576). It is the HAL-path twin of `cache_mpu_hil`: every
+board boot uses. It is the HAL-path twin of `cache_mpu_hil`: every
 core-bring-up step is identical, and roughly ninety lines of raw region
 programming collapse to a single call.
 

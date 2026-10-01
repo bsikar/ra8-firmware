@@ -681,7 +681,7 @@ RA8_INTERNAL static void internal_test_lfn_cov_walk_fail_long(void)
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mkdir(h, "/SUB"));
   /* 14 files + dot + dotdot = 16 entries; fills the first (only) cluster. */
   internal_create_files_in(h, "/SUB", k_lcov_files_per_sub);
-  /* Remount so the FAT sector cache is cold (#607): creating those files
+  /* Remount so the FAT sector cache is cold: creating those files
    * walked the FAT, and a cached sector is served without touching the
    * backend, so read 3 below would succeed and the failure path would never
    * be entered. */
@@ -756,7 +756,7 @@ RA8_INTERNAL static void internal_test_lfn_cov_walk_fail_free(void)
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mkdir(h, "/SUB"));
   /* dot + dotdot + 14 files = 16 entries; fills cluster 2 entirely. */
   internal_create_files_in(h, "/SUB", k_lcov_files_per_sub);
-  /* Remount so the FAT sector cache is cold (#607): a cached sector never
+  /* Remount so the FAT sector cache is cold: a cached sector never
    * reaches the backend, so read 2 below would succeed and the walk would not
    * fail. */
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));

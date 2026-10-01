@@ -28,7 +28,7 @@ include("${_d}/cmake/ra8_add_app.cmake")
 ra8_add_app(
   NAME net_pal_frame_demo
   STACK_BYTES 4096
-  DESCRIPTION "Stack-facing ethernet PAL contract: MAC, frame ring, events, unwind (#621)"
+  DESCRIPTION "Stack-facing ethernet PAL contract: MAC, frame ring, events, unwind"
   LIBS ra8_net_pal
        ra8_io
        ra8_fs

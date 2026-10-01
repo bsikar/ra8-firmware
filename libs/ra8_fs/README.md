@@ -30,7 +30,7 @@ that is the whole design: repairing a volume already known to be inconsistent,
 in a firmware with no journal, is how a recoverable card becomes an empty one.
 
 **Malformed UTF-8 is refused, not patched.** The API is UTF-8 and the disk is
-UTF-16LE, converted in exactly one place (#606), so all of Unicode is storable,
+UTF-16LE, converted in exactly one place, so all of Unicode is storable,
 supplementary planes included. Lookup folds case through the canonical
 Microsoft up-case table -- the same table exFAT's `NameHash` is computed over,
 so the two cannot disagree.
@@ -48,7 +48,7 @@ named instead.
 their own 4 GiB ceiling and enforce it at the boundary rather than wrapping.
 
 **Two capabilities are simulation-verified only.** Sector sizes above 512, and
-volumes living past 2 TiB (#683), are exercised against fakes in the host
+volumes living past 2 TiB, are exercised against fakes in the host
 tests. No 4Kn medium and no multi-terabyte volume has ever been on the bench.
 
 Journaling is absent, and therefore so is repair. The header carries the

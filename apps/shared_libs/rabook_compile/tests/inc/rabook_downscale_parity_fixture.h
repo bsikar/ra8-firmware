@@ -1,6 +1,6 @@
 /**
  * @file rabook_downscale_parity_fixture.h
- * @brief Downscale-kernel byte-identity fixture for ra8_rabook_gray4 (#213).
+ * @brief Downscale-kernel byte-identity fixture for ra8_rabook_gray4.
  * @details Pins a synthetic grayscale source against the desktop integer
  *          downscale kernel's packed output for firmware parity checks.
  *

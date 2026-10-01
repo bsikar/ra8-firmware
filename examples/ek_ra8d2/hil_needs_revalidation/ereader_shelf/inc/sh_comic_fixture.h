@@ -6,7 +6,7 @@
  * miniz ZIP (one STORE, one DEFLATE), the CBR a RAR5 STORE archive. Pure 7-bit
  * ASCII byte arrays, like the bundled font/cover blobs. These are the same bytes
  * the standalone `ereader_comic` gate bakes, so `sh_comic.c`'s boot self-check
- * reproduces that gate's page-0 decode digest inside the full shelf app (#236).
+ * reproduces that gate's page-0 decode digest inside the full shelf app.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT

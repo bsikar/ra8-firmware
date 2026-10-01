@@ -10,7 +10,7 @@ it, so a harness cannot be added and then silently skipped.
 not run by that recipe. It is an ordinary ctest case, picked up by the
 `ra8_add_test()` auto-glob in `tests/cmake/unit_tests.cmake`, so it runs in the
 normal `just quality::local::test` flow with `RA8_BENCH=OFF`; the bench build
-reuses that target rather than declaring its own (#1415).
+reuses that target rather than declaring its own.
 
 It has no third-party benchmark dependency on purpose -- no Google Benchmark, no
 JSON writer, no plotting. A bench that needs a package installed before it will

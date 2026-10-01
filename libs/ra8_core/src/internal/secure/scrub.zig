@@ -1,7 +1,7 @@
 //! SPDX-License-Identifier: MIT
 //! Copyright (c) 2026 Brighton Sikarskie
 //!
-//! Erasure of secret material that the optimiser may not delete (#2908).
+//! Erasure of secret material that the optimiser may not delete.
 //!
 //! A plain `@memset` just before a buffer leaves scope is a dead store: the
 //! compiler is free to drop it, and the key, MAC or digest stays in stack or

@@ -3,7 +3,7 @@
  * @brief ra8_fs_truncate: shrink or grow an open file to an arbitrary length.
  *
  * @details
- * The `ftruncate()` verb, in both directions, on both filesystems (#680). Until
+ * The `ftruncate()` verb, in both directions, on both filesystems. Until
  * now the only truncation was truncate-to-zero on `open(write)`, and a file
  * could not be given a length between "zero" and "everything a writer streamed
  * into it": `ra8_fs_seek()` clamps to the current size, so a cursor cannot be
@@ -22,7 +22,7 @@
  *     gap is a valid unwritten PREFIX suffix the read path already serves as
  *     zero -- no bytes are written for it. A grow that runs past the volume's
  *     contiguous space converts the run from `NoFatChain` to a real FAT chain,
- *     reusing the identical streaming-write machinery (#602).
+ *     reusing the identical streaming-write machinery.
  *
  * References (every shorthand citation in this file):
  *   - "exFAT spec" = Microsoft Corp., "exFAT file system specification",
@@ -58,7 +58,7 @@
  * @details Ceiling division, and 0 for a zero-length file -- an empty file owns
  *          no clusters on either filesystem, so the caller frees the whole
  *          allocation rather than keeping one. 64-bit in and out because an
- *          exFAT length may exceed 4 GiB (#676); the FAT callers pass lengths
+ *          exFAT length may exceed 4 GiB; the FAT callers pass lengths
  *          already capped at ::k_ra8_fs_fat_max_file_bytes.
  *
  * @param[in] bytes  Byte length to size.

@@ -1,6 +1,6 @@
 /**
  * @file test_cache_store_demo.c
- * @brief Host unit test for the ra8_cache_store_demo example core (#257).
+ * @brief Host unit test for the ra8_cache_store_demo example core.
  *
  * @details
  * Drives the exact `cache_store_demo_run` core the ARM example runs, bound to

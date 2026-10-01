@@ -1,6 +1,6 @@
 /**
  * @file zoom.h
- * @brief Tap-to-zoom image viewer: viewport state machine + tiled magnifying render (#478).
+ * @brief Tap-to-zoom image viewer: viewport state machine + tiled magnifying render.
  * @ingroup grp_ereader
  *
  * @details
@@ -35,7 +35,7 @@
  *  1. **Pan granularity stays one destination pixel at every zoom.** An anchor held
  *     in source pixels would quantise panning to @c scale destination pixels, so a
  *     4x view could only pan in 4-pixel jumps.
- *  2. **The blue-noise dither phase is stable under pan.** The mask (#477) is indexed
+ *  2. **The blue-noise dither phase is stable under pan.** The mask is indexed
  *     at plane coordinates, so a given image pixel gets the same threshold no matter
  *     where the viewport sits. Phasing on *panel* coordinates -- what
  *     ::ra8_gfx_blit_gray8_dither does, correctly, for static chrome -- would re-roll

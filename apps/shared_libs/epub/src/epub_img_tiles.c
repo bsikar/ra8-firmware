@@ -1,6 +1,6 @@
 /**
  * @file epub_img_tiles.c
- * @brief Tile-cache paging of JOF atlases + a real reflow img loader (#231).
+ * @brief Tile-cache paging of JOF atlases + a real reflow img loader.
  *
  * @details
  * Implements ::epub_tile_binder (pages JOF tile atlases through

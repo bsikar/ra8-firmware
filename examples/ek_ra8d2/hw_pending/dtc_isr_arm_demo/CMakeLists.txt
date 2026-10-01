@@ -24,7 +24,7 @@ endif()
 # The recipe is found by name: cmake/ra8_bootstrap.cmake (included by the
 # toolchain file above via project(), and by the repo root in the aggregate
 # build) has put <repo>/cmake on CMAKE_MODULE_PATH. No per-app walk up the
-# directory tree (#779).
+# directory tree.
 include(ra8_add_app)
 
 ra8_add_app(

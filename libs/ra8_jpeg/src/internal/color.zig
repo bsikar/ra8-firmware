@@ -1,7 +1,7 @@
 //! SPDX-License-Identifier: MIT
 //! Copyright (c) 2026 Brighton Sikarskie
 //!
-//! BT.601 RGB to YCbCr conversion for the baseline encoder (#2795), in the
+//! BT.601 RGB to YCbCr conversion for the baseline encoder, in the
 //! same Q16 fixed point as the decoder's inverse transform.
 
 const spec = @import("spec");

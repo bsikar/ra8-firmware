@@ -1,7 +1,7 @@
 //! SPDX-License-Identifier: MIT
 //! Copyright (c) 2026 Brighton Sikarskie
 //!
-//! Build graph for the `ci_status` host tool (RA8FW-335, #1144). One executable,
+//! Build graph for the `ci_status` host tool (RA8FW-335). One executable,
 //! plus the test step `scripts/checks/check_zig.py --test` runs: the verdict
 //! rules and value rendering in the internal module, and the read modes and
 //! exit-status contract `scripts/builders/ci_status.sh` passes through.

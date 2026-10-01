@@ -1,10 +1,10 @@
 /**
  * @file examples/ek_ra8d2/hw_validated/hil/keyboard/src/main.c
- * @brief On-silicon HIL for the on-screen keyboard widget `ra8_keyboard` (#105).
+ * @brief On-silicon HIL for the on-screen keyboard widget `ra8_keyboard`.
  *
  * @details
  * Drives the real `ra8_keyboard` model with synthetic taps -- the same
- * input-injection pattern as `ereader_input` (#118), but for text entry.
+ * input-injection pattern as `ereader_input`, but for text entry.
  * It lays the iOS-style key grid into a frame, then "taps" key centres to type
  * the string `Hi 9` -- exercising one-shot SHIFT (the capital `H`), SPACE, and
  * the 123 layer toggle to reach a digit (`9`) -- routing every tap through

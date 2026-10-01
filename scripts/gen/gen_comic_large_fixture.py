@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2026 Brighton Sikarskie
-"""Generate the baked oversized single-page CBZ fixture for ereader_comic (#344).
+"""Generate the baked oversized single-page CBZ fixture for ereader_comic.
 
 Emits a pure 7-bit-ASCII C header (comic_large_fixture.h) holding one CBZ with a
 single deliberately-large grayscale PNG page. Decoded at full resolution the page

@@ -1,6 +1,6 @@
 /**
  * @file test_svg.c
- * @brief Host unit tests for the minimal SVG subset (#112).
+ * @brief Host unit tests for the minimal SVG subset.
  *
  * @details Exercises the SVG sniff, the cover-wrapper `<image>` href
  * extraction, and the `<rect>`/`<circle>`/`<line>`/`<polygon>`/`<path>`

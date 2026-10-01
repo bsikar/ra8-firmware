@@ -21,7 +21,7 @@
  * is decoded whole-frame here and banded into the one normalized band-tile
  * format, so render time touches a single codec regardless of source. The
  * small-image (non-tiled) `reflow` / `ra8_img` inline raster dispatch calls
- * ra8_webp_get_info() / ra8_webp_decode_rgba() directly instead (#637), so an
+ * ra8_webp_get_info() / ra8_webp_decode_rgba() directly instead, so an
  * inline EPUB illustration takes the same decoder a comic tile does. (#637 feat(reflow): decode inline WebP through the libwebp facade)
  *
  *

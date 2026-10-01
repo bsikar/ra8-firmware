@@ -34,7 +34,7 @@ include("${_d}/cmake/ra8_add_app.cmake")
 ra8_add_app(
   NAME epub_toc
   STACK_BYTES 16384
-  DESCRIPTION "EPUB TOC navigation (NCX + nav.xhtml) from SD via ra8_fs (#116)"
+  DESCRIPTION "EPUB TOC navigation (NCX + nav.xhtml) from SD via ra8_fs"
   LIBS epub
        reflow
        ra8_gfx

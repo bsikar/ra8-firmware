@@ -261,7 +261,7 @@ list(REMOVE_ITEM RA8_TEST_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/misc/src/test_psa_
 # than through the ra8_add_test() auto-glob.
 list(REMOVE_ITEM RA8_TEST_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/misc/src/test_ra8_cache_store.c)
 
-# test_lx_fs_backend.c (#611) compiles the vendored LevelX NOR sources + the
+# test_lx_fs_backend.c compiles the vendored LevelX NOR sources + the
 # RAM NOR fake + the port/levelx ra8_fs backend shim with LX_STANDALONE_ENABLE,
 # so it is registered by hand (tests/cmake/tests_storage.cmake) rather than
 # through the ra8_add_test() auto-glob.
@@ -332,7 +332,7 @@ list(REMOVE_ITEM RA8_TEST_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/misc/src/test_ra8_
 # it for the RA8D2 and fail to resolve the ra8_npu_* API.
 list(REMOVE_ITEM RA8_TEST_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/misc/src/test_ra8_npu_loader.c)
 
-# test_ra8_c6link.c / test_ra8_c6link_wire.c (#490) drive libs/ra8_c6link, which
+# test_ra8_c6link.c / test_ra8_c6link_wire.c drive libs/ra8_c6link, which
 # speaks the vendored esp-hosted protobuf wire format. They therefore need the
 # generated codec + the protobuf-c runtime compiled alongside them and the
 # esp-hosted include path, neither of which ra8_core_hal carries, so both are
@@ -402,7 +402,7 @@ endforeach()
 # EK-RA8D2 host object library can stay linked without duplicate definitions
 # while the RA8P1 console path still contributes real coverage.
 #
-# The implementation is Zig now (#2984), so the renaming moved from a wall of
+# The implementation is Zig now, so the renaming moved from a wall of
 # per-symbol -D defines to the archive's own -Dabi-prefix=ra8p1_test_ build,
 # registered as ra8_zig::ra8_board_ra8p1_prefixed in zig_libraries.cmake. Same
 # mechanism ra8_zig::ra8_core_freestanding_prefixed already uses, and the same
@@ -569,7 +569,7 @@ if(TARGET test_ra8_host)
 endif()
 
 # The exact decimal -> binary64 conversion promoted out of the downloader's
-# state codec (#747). The glob builds the case file alone, so the implementation
+# state codec. The glob builds the case file alone, so the implementation
 # joins it here (RA8FW-302). It is Zig now, so the archive is linked rather than a
 # library TU compiled in by path.
 if(TARGET test_ra8_num_decimal)
@@ -676,7 +676,7 @@ endforeach()
 
 # test_ra8_freestanding: standalone executable linking the project-owned
 # freestanding runtime primitives, proving execution of project primitives
-# without host libc substitution. The implementations are Zig now (#2820), so
+# without host libc substitution. The implementations are Zig now, so
 # the three .c files this used to compile are gone and the suite links the
 # ra8_ prefixed copy of ra8_core's archive instead (see
 # ra8_zig::ra8_core_freestanding_prefixed in zig_libraries.cmake). The suite
@@ -696,7 +696,7 @@ target_include_directories(
 )
 add_test(NAME test_ra8_freestanding COMMAND test_ra8_freestanding)
 
-# test_ra8_rand_stub: the same standalone shape for the same reason (#2890).
+# test_ra8_rand_stub: the same standalone shape for the same reason.
 # rand() and srand() are libc-named primitives, so they live in the
 # freestanding archive beside memset and abs rather than in ra8_core_zig, and a
 # host binary that link_libraries()'d the bare-name archive would collide with

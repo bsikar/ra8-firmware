@@ -18,7 +18,7 @@
  *
  * The option-setting addresses these instances latch from are asserted
  * against their HUM literals in test_ra8_ofs.c, not here: they are no longer
- * reachable through a WDT-header accessor (#545).
+ * reachable through a WDT-header accessor.
  *
  * @par MC/DC:
  * ra8_wdt_for() contains no compound boolean decision (it is a plain

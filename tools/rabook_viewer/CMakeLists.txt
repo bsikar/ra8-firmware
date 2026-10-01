@@ -135,7 +135,7 @@ endfunction()
 file(GLOB LONGSTRIP_SRC CONFIGURE_DEPENDS ${FW_ROOT}/apps/shared_libs/longstrip/src/*.c)
 file(GLOB COMIC_SRC CONFIGURE_DEPENDS ${FW_ROOT}/apps/shared_libs/comic/src/*.c)
 
-# ra8_gfx is Zig now, the bundled 8x16 font table included (#2689), so
+# ra8_gfx is Zig now, the bundled 8x16 font table included, so
 # libs/ra8_gfx/src holds no .c for this build to glob. ra8_viewer_comic.c calls
 # ra8_gfx_init / ra8_gfx_clear, so the viewer links the archive the way it
 # already links ra8_imgdec and ra8_mem.
@@ -257,7 +257,7 @@ ra8_viewer_read_path(
   DROP ra8_vfs_compress.c
 )
 
-# libs/ra8_mem has no C left (#2601): the arena was its last translation unit,
+# libs/ra8_mem has no C left: the arena was its last translation unit,
 # so the read-path partition that used to KEEP ra8_arena.c is retired with the
 # sources it partitioned, and every ra8_mem symbol the viewer needs -- the
 # arena, the tile cache, the keycache engine under it -- comes out of the
@@ -272,16 +272,16 @@ if(NOT TARGET ra8_zig::ra8_mem)
 endif()
 link_libraries(ra8_zig::ra8_mem)
 
-# ra8_core's log backend is Zig now (#2836), so the viewer takes the
+# ra8_core's log backend is Zig now, so the viewer takes the
 # ra8_log_emit_* surface and ra8_err_to_str out of the general ra8_core archive
 # instead of compiling ra8_log.c. The fatal sink went the same way with the
-# error pair (#2875), which is why there is no KEEP list left. Bring-up and the
-# stack canary followed (#2884), so that file is off the DROP list too: it is
-# gone, not excluded. The rand()/srand() override went the same way (#2890),
+# error pair, which is why there is no KEEP list left. Bring-up and the
+# stack canary followed, so that file is off the DROP list too: it is
+# gone, not excluded. The rand()/srand() override went the same way,
 # into the freestanding archive rather than this one, so it drops off the list
-# for the same reason. The newlib _sbrk trap followed (#2895), into this
+# for the same reason. The newlib _sbrk trap followed, into this
 # archive rather than that one, because it calls ra8_fatal_error. The startup
-# SDRAM zero-fill followed (#2901), and the secure-comparison primitives
+# SDRAM zero-fill followed, and the secure-comparison primitives
 # (#2908) were the last C in the library. libs/ra8_core/src now holds no .c at
 # all, so there is no partition left to prove and the ra8_viewer_read_path()
 # call for it is gone: the archive above supplies the whole read path.
@@ -325,7 +325,7 @@ target_compile_definitions(
 target_compile_options(ra8_reader PRIVATE -Wall -Wextra -Werror)
 
 # reflow_image.c (KEEP, above) dispatches a RIFF/WEBP buffer to the ra8_webp
-# facade over the vendored libwebp (#637) -- stb_image cannot decode WebP. Those
+# facade over the vendored libwebp -- stb_image cannot decode WebP. Those
 # calls are unconditional, so the viewer needs the decode stack compiled in, not
 # just declared: without it ra8_reader does not even reach the link, because
 # reflow_image.c:40 cannot find ra8_webp.h. The recipe (vendored TUs, facade,

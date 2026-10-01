@@ -34,7 +34,7 @@
  *   8. ::ra8_audio_source_stop unbinds the handle, after which the facade
  *      reports the source as uninitialized.
  *
- * `ra8_audio` is mid-migration to Zig behind an unchanged C ABI (#1087), so an
+ * `ra8_audio` is mid-migration to Zig behind an unchanged C ABI, so an
  * app that links the C API and self-checks its own results is also the ABI
  * regression check that port wants.
  *

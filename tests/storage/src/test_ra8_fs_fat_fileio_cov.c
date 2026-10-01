@@ -563,7 +563,7 @@ RA8_INTERNAL static void internal_test_read_walk_fat_get_error(void)
   ra8_fs_mount_t* h = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_backend, &h));
   internal_seed_file(h, "RWALK.BIN", k_fio_two_clusters);
-  /* Remount so the FAT sector cache is cold (#607). Seeding the file walked
+  /* Remount so the FAT sector cache is cold. Seeding the file walked
    * the FAT, and a cached sector is served without touching the backend -- so
    * the injected read failure below would never fire and this test would pass
    * while proving nothing. */
@@ -617,7 +617,7 @@ RA8_INTERNAL static void internal_test_read_walk_hits_eoc(void)
   f = nullptr;
 
   /* Corrupt FAT copy 0 entry for the first cluster to a FAT16 EOC marker,
-   * while unmounted. The driver caches one FAT sector (#607), so a poke under
+   * while unmounted. The driver caches one FAT sector, so a poke under
    * a live mount would be masked by the copy already in memory -- and a card
    * whose FAT went bad between sessions is the case this models anyway. */
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
@@ -796,7 +796,7 @@ RA8_INTERNAL static void internal_test_write_dir_entry_read_error(void)
  * @brief A FAT read failing inside priv_walk_grow propagates out (line 255).
  *
  * @details Seeds a two-cluster file, then REMOUNTS so the FAT sector cache is
- *          cold (#607) -- with a warm cache the chain-head FAT-get is served
+ *          cold -- with a warm cache the chain-head FAT-get is served
  *          from memory and no injected read failure can reach it. Reopening in
  *          append mode puts the offset at cluster index 2, so the very first
  *          backend read the write issues is priv_walk_grow's FAT-get for the

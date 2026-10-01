@@ -22,7 +22,7 @@
 #                     flash, scrape the VCOM, then classify the capture with
 #                     lib/sleep_verdict.py. Silence after HIL_SLEEP_ENTER is
 #                     reported as SLEEPING_UNPROBED (rc 3), not as a failure,
-#                     because a UART cannot tell asleep from hung (#517).
+#                     because a UART cannot tell asleep from hung.
 #   jlink_memprobe -- flash, double-halt mem32 read of HIL_PROBE_SYMBOL
 #                     (and optional HIL_PROBE_FAILURE_SYMBOL) across a
 #                     HIL_PROBE_SECONDS window; assert the advance bounds.
@@ -401,7 +401,7 @@ EOF
   }
 
   # ===========================================================================
-  # Mode: uart_sleep_scrape (#517)
+  # Mode: uart_sleep_scrape
   #
   # Same capture as uart_scrape; a different question asked of it. uart_scrape
   # asks "did the banner appear", and for an app whose success condition is

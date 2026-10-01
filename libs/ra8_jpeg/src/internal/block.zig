@@ -1,7 +1,7 @@
 //! SPDX-License-Identifier: MIT
 //! Copyright (c) 2026 Brighton Sikarskie
 //!
-//! One-block entropy decode for the baseline decoder (#2799).
+//! One-block entropy decode for the baseline decoder.
 //!
 //! Turns the entropy stream into 64 dequantised coefficients, then hands them
 //! to the inverse transform. The DC predictor lives on the component, so a

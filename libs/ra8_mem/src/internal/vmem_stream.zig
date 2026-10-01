@@ -1,14 +1,14 @@
 //! SPDX-License-Identifier: MIT
 //! Copyright (c) 2026 Brighton Sikarskie
 //!
-//! The byte-stream adapter over a page-cached object (#147/#151). A read of an
+//! The byte-stream adapter over a page-cached object. A read of an
 //! arbitrary `(offset, len)` span walks the covering cache frames one at a
 //! time: page the frame holding the cursor in, copy the in-frame slice, release
 //! the pin, advance. At most one frame is pinned at any instant, so the
 //! resident set is the caller's fixed pool plus O(1), never the object size.
 //!
 //! The reason this file exists rather than the caller just calling the cache is
-//! the short-read distinction (#764). A span can come back short for two
+//! the short-read distinction. A span can come back short for two
 //! unrelated reasons, and a consumer that confuses them compiles a truncated
 //! book off a dying card and calls it a success. So a read returns a `Read`,
 //! carrying the byte count AND the verdict together, and there is no way to

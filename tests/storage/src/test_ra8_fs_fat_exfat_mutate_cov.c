@@ -14,7 +14,7 @@
  * The rename SUCCESS paths (short<->long resize, entry-set relocation, the data
  * surviving the move) and the `fsck.exfat` evidence live in
  * `test_ra8_fs_exfat_rename_long.c`, which is the functional companion to the
- * long-name rename work (#603).
+ * long-name rename work.
  *
  * Every exercised corruption is built through the real sector backend; no
  * production coverage marker substitutes for an error-path test.

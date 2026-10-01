@@ -25,7 +25,7 @@ Software Of Unknown Provenance (SOUP).
 - **How it entered our tree**: Vendored amalgamation drop-in (`miniz.c`
   + `miniz.h`). The amalgamation is published only as a RELEASE ARTIFACT
   and never existed in the upstream git tree, so it is pinned by artifact
-  rather than by commit (#548): `miniz-3.0.2.zip`, SHA-256
+  rather than by commit: `miniz-3.0.2.zip`, SHA-256
   `ada38db0b703a56d3dd6d57bf84a9c5d664921d870d8fea4db153979fb5332c5`.
   `miniz.c` and `LICENSE` are byte-identical to members of that archive;
   `miniz.h` carries the one reviewed target-runtime patch below.

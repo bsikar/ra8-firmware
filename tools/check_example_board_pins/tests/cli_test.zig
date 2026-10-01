@@ -146,7 +146,7 @@ test "an argv directory is swept recursively" {
     try testing.expect(std.mem.indexOf(u8, harness.stderr.items, "examples/tree/b/deep/other.cpp:1") != null);
 }
 
-test "an in-source build tree under examples is excluded from an argv list (#549)" {
+test "an in-source build tree under examples is excluded from an argv list" {
     var harness = try Harness.init();
     defer harness.deinit();
     try harness.write("examples/x/build/gen.c", idiom);

@@ -122,7 +122,7 @@ EXCLUDED_PREFIXES = ("libs/third_party/", "apps/shared_libs/third_party/", "libs
 # total. Measured 2026-08-17 (tracked + untracked-not-ignored, SOUP and fonts
 # excluded): libs 948, port 98, tools 214 C-family files; 73 platform
 # listfiles; 143 C-family files and 52 headers under apps/. The libs/ figure
-# absorbed the 10 files of the dissolved src/ root (#724), so the platform
+# absorbed the 10 files of the dissolved src/ root, so the platform
 # total is unchanged at 1260 and the per-root floors below still sum to 1070.
 #
 # Deliberately NOT floored: apps/shared_libs/ and the individual form categories. A

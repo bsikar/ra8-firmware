@@ -201,7 +201,7 @@ typedef struct {
 jof_work_bytes(uint16_t max_width, uint16_t max_height, uint16_t tile_w, uint16_t tile_h);
 
 /**
- * @brief Compute the whole-frame `webp_work` arena a WebP source needs (#290).
+ * @brief Compute the whole-frame `webp_work` arena a WebP source needs.
  *
  * @details
  * A WebP transcode cannot stream (its lossless mode back-references the whole

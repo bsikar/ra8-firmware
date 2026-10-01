@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2026 Brighton Sikarskie
-"""Produce the rig probe report ``sleep_verdict.py`` consumes (#517).
+"""Produce the rig probe report ``sleep_verdict.py`` consumes.
 
 The half that was missing
 -------------------------

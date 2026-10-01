@@ -1,7 +1,7 @@
 //! SPDX-License-Identifier: MIT
 //! Copyright (c) 2026 Brighton Sikarskie
 //!
-//! Whole-buffer driver for the baseline decoder (#2799).
+//! Whole-buffer driver for the baseline decoder.
 //!
 //! Decodes a complete JPEG held in memory into one RGB888 buffer the caller
 //! sized up front. The striped driver in `stream.zig` solves the same problem

@@ -15,7 +15,7 @@
  * Reserved window, and every assertion still passed: the address helper was
  * compared against the very constant it returned, and each stub reader began
  * `(void)addr`, so the dereference never ran and no test could observe a wrong
- * address (#545).
+ * address.
  *
  * The stub below is therefore address-KEYED. It records every address the
  * driver asks for and raises ::s_ofs_saw_unknown for any address it was not
@@ -48,7 +48,7 @@
  * The stub is deliberately address-KEYED. The previous stubs discarded the
  * address (`(void)addr`), which is why `ra8_wdt_regs.h` could name
  * `0x03001E04` / `0x03001E20` -- addresses in a Reserved window that appear in
- * neither manual -- and still pass every test (#545). A reader that ignores
+ * neither manual -- and still pass every test. A reader that ignores
  * the address cannot detect a wrong address.
  *
  * @invariant `addr` is one of the `ra8_ofs_addr_t` constants.

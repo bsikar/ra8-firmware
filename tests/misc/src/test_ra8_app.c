@@ -1,6 +1,6 @@
 /**
  * @file test_ra8_app.c
- * @brief Unit tests for the ra8_app app framework (#146).
+ * @brief Unit tests for the ra8_app app framework.
  *
  * @details
  * Pure logic -- registration (duplicate / capacity / init failure), the focus

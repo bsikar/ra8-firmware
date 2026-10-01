@@ -3,7 +3,7 @@
 # Copyright (c) 2026 Brighton Sikarskie
 """Sign the secure_boot_ns_hil Non-Secure image and merge it with the Secure hex.
 
-The BLXNS root-of-trust proof (#172) needs the NS image SIGNED: the Secure verifier
+The BLXNS root-of-trust proof needs the NS image SIGNED: the Secure verifier
 reads the NS image's ``.ns_rot_header`` for the body length, locates the appended
 ``ra8_rot_trailer_t`` at ns_base + body_len, and checks the ECDSA-P256 signature
 before BLXNS. This build step produces TWO flashable merged hexes from the Secure

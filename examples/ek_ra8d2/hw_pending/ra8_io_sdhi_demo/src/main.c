@@ -1,6 +1,6 @@
 /**
  * @file examples/ek_ra8d2/hw_pending/ra8_io_sdhi_demo/src/main.c
- * @brief Prove the ra8_io fabric's swappable backend (#155/#156) over native SDHI.
+ * @brief Prove the ra8_io fabric's swappable backend over native SDHI.
  *
  * @par Tag
  * [Ring 6 / APP] {World: S}

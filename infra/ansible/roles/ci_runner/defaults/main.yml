@@ -122,7 +122,7 @@ ci_runner_image_archive: "{{ ci_runner_image_dir }}/ra8-ci-runner.tar"
 ci_runner_image_stage_dir: "/var/lib/rancher/k3s/agent/ra8-image-staging"
 ci_runner_image_stage: "{{ ci_runner_image_stage_dir }}/ra8-ci-runner.tar"
 
-# Persistent, writable pinned-tool cache (#486). scripts/ci.sh's
+# Persistent, writable pinned-tool cache. scripts/ci.sh's
 # RA8_TOOLS_CACHE_DIR defaults to /var/cache/ra8-tools INSIDE the pod, which
 # provision_doxygen.sh then caches a version-pinned doxygen under so the docs
 # gate does not download it on every run. That path's parent (/var/cache) is
@@ -155,7 +155,7 @@ ci_runner_github_secret_name: "ra8-arc-github"
 # could not run, every image the fleet has ever booted was built by hand from
 # whatever tree happened to be lying around, and that is precisely how the
 # deployed image came to predate .devcontainer/Dockerfile by two pinned-tool
-# changes (#513). A build input the tooling does not control is not a build
+# changes. A build input the tooling does not control is not a build
 # input, it is a rumour.
 #
 # The context now comes from the checkout the operator ran the command in --

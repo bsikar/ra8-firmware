@@ -53,7 +53,7 @@ uint16_t priv_exfat_name_hash(const uint16_t* name, uint32_t nlen)
     /* The spec's definition exactly: fold the UP-CASED name, little-endian, one
      * byte at a time. Up-casing with an ASCII-only rule -- which is what this
      * did -- stored a hash no compliant reader recomputes for any name outside
-     * ASCII, so a host could list the file and then not find it (#606). */
+     * ASCII, so a host could list the file and then not find it. */
     const uint16_t u = priv_exfat_upcase_unit(name[i]);
     h = internal_exfat_csum_add(h, (uint8_t)((uint32_t)u & (uint32_t)k_utf_byte_mask));
     h = internal_exfat_csum_add(h, (uint8_t)((uint32_t)u >> (uint32_t)k_utf_byte_shift));
@@ -81,7 +81,7 @@ uint16_t priv_exfat_set_checksum(const uint8_t* set, uint32_t bytes)
 ra8_err_t priv_exfat_find_bitmap(const ra8_fs_mount_t* m, uint32_t* out_clus, uint32_t* out_len)
 {
   /* The bitmap entry lives in the ROOT directory by definition, so this is the
-   * one exFAT scan that is not parameterised by a directory (#605). */
+   * one exFAT scan that is not parameterised by a directory. */
   exfat_dir_t root = {};
   priv_exfat_dir_root(m, &root);
   exfat_cursor_t cur = {};
@@ -488,7 +488,7 @@ static uint32_t internal_exfat_build_set(uint8_t* set, const uint16_t* name, uin
   /* Before the SetChecksum below, which covers these bytes. exFAT's stamps are
    * zero-is-illegal for the same reason FAT's are -- month and day are 1-based
    * -- and it has three fields FAT does not: the 10 ms increments and the
-   * UtcOffset bytes (#601). */
+   * UtcOffset bytes. */
   priv_exfat_file_stamp_create(set);
   uint8_t* strm                = &set[k_exfat_entry_bytes];
   strm[0]                      = (uint8_t)k_exfat_entry_stream;
@@ -504,7 +504,7 @@ static uint32_t internal_exfat_build_set(uint8_t* set, const uint16_t* name, uin
         /* A whole UTF-16 unit, not the low byte of one: writing one unit per
          * INPUT BYTE turned every multi-byte character into that many garbage
          * characters and made NameLength count bytes where the format counts
-         * units (#606). */
+         * units. */
         priv_wr16(&ne[k_exfat_name_off + (c * 2U)], name[pos]);
       }
     }

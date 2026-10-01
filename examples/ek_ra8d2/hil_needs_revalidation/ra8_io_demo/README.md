@@ -1,10 +1,10 @@
 # ra8_io_demo
 
-The reference end-to-end run through the whole `ra8_io` I/O fabric (#155), with
+The reference end-to-end run through the whole `ra8_io` I/O fabric, with
 no external hardware:
 
-1. a RAM block device over an in-SRAM buffer (#156);
-2. that block device bridged to `ra8_fs` (#158), formatted and mounted as FAT12
+1. a RAM block device over an in-SRAM buffer;
+2. that block device bridged to `ra8_fs`, formatted and mounted as FAT12
    and registered in the VFS under a name;
 3. a file written and then read back through its `"ram:/..."` VFS path and
    byte-compared;

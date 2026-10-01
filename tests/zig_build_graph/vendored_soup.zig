@@ -142,7 +142,7 @@ pub fn addSuite(
         .optimize = optimize,
     }).artifact("ra8_imgdec"));
     // The suite's bound checks (ra8_decomp_*) and the log backend under them
-    // are both Zig now (#2862, #2836), so they arrive as this archive.
+    // are both Zig now, so they arrive as this archive.
     suite.linkLibrary(b.dependency("ra8_core", .{
         .target = target,
         .optimize = optimize,

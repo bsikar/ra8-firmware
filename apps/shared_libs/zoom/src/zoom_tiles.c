@@ -1,6 +1,6 @@
 /**
  * @file zoom_tiles.c
- * @brief Tiled-atlas source adapter for the tap-to-zoom viewer (#478).
+ * @brief Tiled-atlas source adapter for the tap-to-zoom viewer.
  *
  * @details Implements zoom_tiles.h: pixel rectangle -> covering tiles ->
  *          per-tile acquire, copy the overlap, release. The acquire/release pair
@@ -184,7 +184,7 @@ static void internal_tile_copy(const ra8_tile_t*       tile,
  *          cross-checked against the geometry declared at bind time before a
  *          single byte is read: a decoder that produced RGB tiles, or a
  *          different tile edge, shows up here as a size mismatch rather than as
- *          a wrong picture (#339). The cell is released on every return path.
+ *          a wrong picture. The cell is released on every return path.
  *
  * @param[in,out] ts   Bound tiled source.
  * @param[in]     tx   Tile column index.

@@ -257,7 +257,7 @@ def parse_set() -> list[str]:
     seeds += sorted(
         p.relative_to(REPO_ROOT).as_posix() for p in (REPO_ROOT / GATE_DIR).glob("*.sh")
     )
-    # `just quality::local::gate` is the documented Mac entry point (#1073).
+    # `just quality::local::gate` is the documented Mac entry point.
     if (REPO_ROOT / JUST_ENTRY).is_file():
         seeds += _sourced_by(JUST_ENTRY)
 
@@ -273,7 +273,7 @@ def parse_set() -> list[str]:
 
 
 def native_host_gates() -> list[str]:
-    """Gate names declared native-host-only in RA8_NATIVE_HOST_GATES (#1073)."""
+    """Gate names declared native-host-only in RA8_NATIVE_HOST_GATES."""
     if not (REPO_ROOT / NATIVE_HOST_LIB).is_file():
         return []
     names: list[str] = []

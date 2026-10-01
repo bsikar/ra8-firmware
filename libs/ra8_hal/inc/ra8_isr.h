@@ -85,7 +85,7 @@ extern "C" {
  * registers, each routing one ELC event to an NVIC line. The allocator keeps a
  * pool of exactly that many slots: a larger pool would let a slot be allocated
  * and its NVIC line enabled while ``ra8_icu_ielsr()`` returns NULL for it, so the
- * interrupt would be NVIC-enabled with no ICU event route (#237). A
+ * interrupt would be NVIC-enabled with no ICU event route. A
  * ``static_assert`` in ra8_isr.c pins this count to ``k_ra8_icu_num_ielsr`` so the
  * two capacity constants cannot silently diverge.
  */

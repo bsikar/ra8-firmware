@@ -2,7 +2,7 @@
 
 Lays a baked chapter out through `reflow` with one paragraph each of
 `text-align` right, center, justify and the default left, then folds an
-FNV-1a-32 hash over every laid-out glyph's `(x, y)` (#108). The alignment
+FNV-1a-32 hash over every laid-out glyph's `(x, y)`. The alignment
 offsets and the justification slack live in those x positions, so drift in the
 centre/right shift, the justify distribution or last-line handling changes the
 hash. Headless -- no panel, SD or touch.

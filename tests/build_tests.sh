@@ -32,7 +32,7 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-# ra8_max_jobs -- the ONE canonical bounded-parallelism width (#328). The host
+# ra8_max_jobs -- the ONE canonical bounded-parallelism width. The host
 # suite links 500+ test executables; capping the build here is what keeps this
 # gate from spawning `ld` per core when it shares the box with other jobs.
 # shellcheck source=scripts/ci/lib/parallelism.sh
@@ -96,7 +96,7 @@ CMAKE_ARGS+=("-DCMAKE_CXX_COMPILER=$CXX")
 
 # Parallelism is the bounded canonical width (RA8_MAX_JOBS /
 # CMAKE_BUILD_PARALLEL_LEVEL / host core count), not a raw nproc, so N gate
-# jobs sharing one box do not each link across every core (#328).
+# jobs sharing one box do not each link across every core.
 JOBS="$(ra8_max_jobs)"
 
 echo "==> ra8-firmware tests: building ($LABEL)"

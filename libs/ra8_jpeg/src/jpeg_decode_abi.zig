@@ -1,7 +1,7 @@
 //! SPDX-License-Identifier: MIT
 //! Copyright (c) 2026 Brighton Sikarskie
 //!
-//! C ABI membrane for the baseline decoder (#2799).
+//! C ABI membrane for the baseline decoder.
 //!
 //! The decoder is Zig throughout; this is the only place its C callers see.
 //! Three entry points carry the public API (`inc/ra8_jpeg_sw.h`), and three

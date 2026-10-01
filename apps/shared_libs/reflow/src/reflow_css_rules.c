@@ -1,6 +1,6 @@
 /**
  * @file reflow_css_rules.c
- * @brief Content-CSS selector + `@font-face` rule parsing (#111).
+ * @brief Content-CSS selector + `@font-face` rule parsing.
  *
  * @details
  * The selector grammar (type / class / id / descendant compounds) and the

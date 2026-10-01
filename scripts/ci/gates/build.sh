@@ -40,7 +40,7 @@
 # enums and `nullptr`, which the Debian gcc-12 a developer box may default to
 # rejects outright.
 #
-# gcc-14 is the SECOND arm (#356). clang-18 and gcc-14 catch different warning
+# gcc-14 is the SECOND arm. clang-18 and gcc-14 catch different warning
 # families, and a gate that holds the bar with one compiler holds only that
 # compiler's bar: gcc-14's -Wformat-truncation caught a silent PATH_MAX
 # path-join truncation in apps/host/mdl that clang-18 did not flag. Both arms
@@ -199,7 +199,7 @@ gate_tools_build() (
   set -e
   require_cmd clang-18 "the tools-build gate pins clang-18 to match CI"
   require_cmd clang++-18 "the tools-build gate pairs clang C and C++ drivers"
-  require_cmd gcc-14 "the tools-build gate's second warning arm pins gcc-14 (#356)"
+  require_cmd gcc-14 "the tools-build gate's second warning arm pins gcc-14"
   require_cmd g++-14 "the tools-build gate pairs gcc C and C++ drivers"
   require_cmd cmake
   require_cmd ctest
@@ -305,7 +305,7 @@ gate_build_cross_union() (
 # to be hand-transcribed literals in sbom_registry.py -- present on 4 of 23
 # components, absent from the one that had actually drifted -- so --check
 # compared a constant with itself and appending a line to a vendored source
-# still printed "SBOM matches the tree" with status 0 (#538). --selftest runs
+# still printed "SBOM matches the tree" with status 0. --selftest runs
 # FIRST and proves the digest fires on a mutated byte and stays quiet on an
 # unchanged tree, so a detector that stopped detecting cannot pass as clean.
 gate_sbom() (
@@ -316,7 +316,7 @@ gate_sbom() (
   # The two markdown inventories (THIRD_PARTY_LICENSES.md, docs/SOUP/README.md)
   # are hand-maintained, yet both claimed to be generated from the registry, so
   # nothing noticed a component catalogued in one and missing from the other,
-  # an orphan inventory row, or a dangling docs/SOUP link (#631). This checker
+  # an orphan inventory row, or a dangling docs/SOUP link. This checker
   # compares the registry against those two files -- two independently
   # maintained artifacts, never a value with itself -- and refuses to pass a
   # collapsed scan. --selftest runs FIRST and proves it fires on seeded drift
@@ -326,7 +326,7 @@ gate_sbom() (
 )
 
 # --- soup-upstream --------------------------------------------------------
-# The other half of the provenance claim (#548). The sbom gate above re-derives
+# The other half of the provenance claim. The sbom gate above re-derives
 # a digest over each vendored tree, which proves only that the tree has not
 # changed since the SBOM was regenerated -- a tree that was already wrong at
 # vendor-in hashes faithfully and reports clean forever. This gate compares
@@ -361,7 +361,7 @@ gate_roadmap_stats() (
   # missing ROADMAP.md is a failure, not a skip. This gate used to `echo "no
   # docs/ROADMAP.md -- skipping"` and return 0, so a `git mv` of that one
   # file would have turned the gate green forever while checking nothing --
-  # the same shape as every other finding under the gate-honesty epic (#190).
+  # the same shape as every other finding under the gate-honesty epic.
   if [[ ! -f docs/ROADMAP.md ]]; then
     echo "ERROR: docs/ROADMAP.md is missing; the roadmap-stats gate has" >&2
     echo "       nothing to check and must not report success." >&2

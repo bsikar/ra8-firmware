@@ -1,7 +1,7 @@
 //! SPDX-License-Identifier: MIT
 //! Copyright (c) 2026 Brighton Sikarskie
 //!
-//! The heap policy this firmware answers `_sbrk` with (#2895).
+//! The heap policy this firmware answers `_sbrk` with.
 //!
 //! There is no heap. Target firmware links `-nostdlib` with neither newlib
 //! nor libnosys, so `malloc` and friends already fail closed at link time.

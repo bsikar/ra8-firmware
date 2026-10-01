@@ -1,7 +1,7 @@
 //! SPDX-License-Identifier: MIT
 //! Copyright (c) 2026 Brighton Sikarskie
 //!
-//! Tests for the millisecond timebase units (#2851).
+//! Tests for the millisecond timebase units.
 
 const std = @import("std");
 const reload_math = @import("time_reload");

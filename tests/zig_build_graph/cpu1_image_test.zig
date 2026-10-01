@@ -13,7 +13,7 @@
 //! Two dual-core apps are in the table and they disagree about one directory
 //! on this path, which is the whole reason it is per-app data rather than a
 //! constant here: cpu1_pingpong keeps the board layer, cpu1_pingpong_ipc
-//! stops before it (#1146).
+//! stops before it.
 
 const std = @import("std");
 const graph = @import("build_graph");

@@ -11,7 +11,7 @@ the aliases and no ansible, the dev box had ansible and could resolve none of
 them, so ``fleet.py status truenas`` from the dev box died on
 *Could not resolve hostname truenas* while the machine answered fine on
 ``10.10.10.1``. A naming gap, not a routing one -- and it cost a NAS running at
-half its declared capacity with nothing able to converge it back (#526).
+half its declared capacity with nothing able to converge it back.
 
 So a host declares an ADDRESS (an IP or a name a resolver can answer), a login
 ``user``, and an optional ``jump`` naming another host in the same file. This
@@ -187,7 +187,7 @@ def render_ssh_config(data: dict[str, Any]) -> str:
 def check_connect(name: str, host: dict[str, Any], hosts: dict[str, Any]) -> list[str]:
     """Rule: a host declares an address any machine could reach it at.
 
-    This is the rule the fleet was missing, and it cost real work (#526). An
+    This is the rule the fleet was missing, and it cost real work. An
     address is required to be a LITERAL: an IP, or a name with a dot in it that
     a resolver can answer. A bare label is exactly the defect and is rejected
     by name, so it cannot come back the next time a machine is added. The login
@@ -220,7 +220,7 @@ def check_connect(name: str, host: dict[str, Any], hosts: dict[str, Any]) -> lis
         bad.append(
             f"{name}: connect.address '{address}' is a bare label, which is an "
             "~/.ssh/config alias rather than an address -- it resolves on whichever "
-            "machine happens to define it and nowhere else (#526). Declare the IP or a "
+            "machine happens to define it and nowhere else. Declare the IP or a "
             "fully qualified name; `fleet.py ssh-config` generates the alias FROM it."
         )
     bad += [

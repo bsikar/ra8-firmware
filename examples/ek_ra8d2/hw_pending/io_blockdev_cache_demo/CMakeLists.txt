@@ -29,6 +29,6 @@ ra8_add_app(
   NAME io_blockdev_cache_demo
   STACK_BYTES 4096
   DESCRIPTION
-    "ra8_io caching block device: write-through, LRU eviction order, erase drop (#983)"
+    "ra8_io caching block device: write-through, LRU eviction order, erase drop"
   LIBS ra8_io ra8_fs ra8_sdmmc_spi ra8_usb_pal
 )

@@ -19,7 +19,7 @@ firmware as Software Of Unknown Provenance (SOUP).
 - **License**: MIT (`LICENSE.txt`, "Copyright (c) 2024 - present Microsoft
   Corporation").
 - **How it entered our tree**: Vendored snapshot of the upstream Eclipse
-  LevelX repository. Resolved (#548) to release tag
+  LevelX repository. Resolved to release tag
   `v6.5.0.202601_rel`, commit `a46b74fb8aa133796ccbc13e7902cb8bb818e12f`:
   89 of the 90 vendored files are byte-identical to it, the exception
   being the `.gitattributes` edit recorded under "Deviations / patches".
@@ -37,7 +37,7 @@ firmware as Software Of Unknown Provenance (SOUP).
     mounted the vendored FileX here instead; FileX is retired.)
   - **Standalone** (`cmake/levelx_standalone.cmake`, built with
     `LX_STANDALONE_ENABLE`): no ThreadX in the graph at all. The
-    first-party `libs/ra8_cache_store/` (#201) is built on this mode, and
+    first-party `libs/ra8_cache_store/` is built on this mode, and
     `examples/ek_ra8d2/hil_needs_revalidation/ra8_cache_store_demo` exercises
     it against a RAM-backed NOR driver.
 - The board-facing driver shim is `port/levelx/src/lx_nor_driver_ra8_xspi.c`.

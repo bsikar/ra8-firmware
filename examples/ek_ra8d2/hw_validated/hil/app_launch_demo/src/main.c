@@ -1,9 +1,9 @@
 /**
  * @file examples/ek_ra8d2/hw_validated/hil/app_launch_demo/src/main.c
- * @brief Minimal chrome stub: register apps + launch + back-stack (#146).
+ * @brief Minimal chrome stub: register apps + launch + back-stack.
  *
  * @details
- * The first runnable increment of the app framework (#146). It proves the
+ * The first runnable increment of the app framework. It proves the
  * `ra8_app` registry + launcher + the navigation back-stack (`ra8_app_nav_t`)
  * end-to-end on the real Cortex-M85 image -- no display, no widgets, just the
  * lifecycle and routing so the path is observable headlessly on `ra8_emulator`

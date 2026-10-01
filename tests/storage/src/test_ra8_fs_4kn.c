@@ -1,6 +1,6 @@
 /**
  * @file test_ra8_fs_4kn.c
- * @brief 4096-byte-native sectors: format, mount, read/write on FAT and exFAT (#683).
+ * @brief 4096-byte-native sectors: format, mount, read/write on FAT and exFAT.
  *
  * @details
  * The simulation evidence for 4Kn media, on flat RAM devices whose backend

@@ -28,7 +28,7 @@ while(NOT EXISTS "${_d}/cmake/ra8_add_app.cmake" AND NOT "${_d}" STREQUAL "/")
 endwhile()
 include("${_d}/cmake/ra8_add_app.cmake")
 
-# rabook_import is the on-import compile-and-cache manager (#151) plus its
+# rabook_import is the on-import compile-and-cache manager plus its
 # production compile adapter (rabook_import_compile_adapter). The adapter
 # streams the source into rabook_compile (the EPUB -> RABOOK1 pipeline), so
 # both libraries are listed. book reads the resulting flat .rabook back. The
@@ -39,7 +39,7 @@ include("${_d}/cmake/ra8_add_app.cmake")
 ra8_add_app(
   NAME import_reader
   STACK_BYTES 16384
-  DESCRIPTION "On-import EPUB->.rabook compile+cache on SD, then read the cached book (#151)"
+  DESCRIPTION "On-import EPUB->.rabook compile+cache on SD, then read the cached book"
   LIBS rabook_import
        rabook_compile
        epub

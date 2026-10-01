@@ -1,6 +1,6 @@
 /**
  * @file epub_entry.h
- * @brief Iterative, bounded-RAM ZIP-entry extraction for the EPUB reader (#231).
+ * @brief Iterative, bounded-RAM ZIP-entry extraction for the EPUB reader.
  * @ingroup grp_ereader
  *
  * @details
@@ -13,7 +13,7 @@
  * read for *stored* (uncompressed) entries. The implementation lives in
  * `epub_entry.c`.
  *
- * ## The entry name is untrusted (#749)
+ * ## The entry name is untrusted
  *
  * `epub_entry_open()` and `epub_entry_pread()` match @p path against names
  * taken from the ZIP central directory, which a producer chooses. A caller
@@ -49,7 +49,7 @@ extern "C" {
 #endif
 
 /* ===========================================================================
- * Public API -- iterative (bounded-RAM) ZIP-entry extraction (#231)
+ * Public API -- iterative (bounded-RAM) ZIP-entry extraction
  * ===========================================================================
  */
 
@@ -75,7 +75,7 @@ typedef enum : uint8_t {
 
 /**
  * @struct epub_entry_reader_t
- * @brief Forward streaming cursor over one ZIP entry -- inflate in bounded RAM (#231).
+ * @brief Forward streaming cursor over one ZIP entry -- inflate in bounded RAM.
  *
  * @details
  * `epub_get_resource()` (and the cover / chapter / font accessors) extract a
@@ -113,7 +113,7 @@ typedef struct {
 } epub_entry_reader_t;
 
 /**
- * @brief Begin a bounded-RAM streaming extraction of one archive entry (#231).
+ * @brief Begin a bounded-RAM streaming extraction of one archive entry.
  *
  * @details
  * Resolves @p path the same way `epub_get_resource()` does -- first joined onto
@@ -150,7 +150,7 @@ typedef struct {
                                         uint64_t*            out_size);
 
 /**
- * @brief Pull the next chunk of a streaming entry into a bounded caller buffer (#231).
+ * @brief Pull the next chunk of a streaming entry into a bounded caller buffer.
  *
  * @details
  * Inflates up to @p cap more bytes of the entry into @p buf. A short read
@@ -183,7 +183,7 @@ typedef struct {
 epub_entry_read(epub_entry_reader_t* reader, uint8_t* buf, size_t cap, size_t* got);
 
 /**
- * @brief Tear down a streaming-entry cursor and release its inflate state (#231).
+ * @brief Tear down a streaming-entry cursor and release its inflate state.
  *
  * @details
  * Frees the miniz iterator (returning its LZ dictionary + read buffer to the
@@ -209,7 +209,7 @@ epub_entry_read(epub_entry_reader_t* reader, uint8_t* buf, size_t cap, size_t* g
 
 /**
  * @brief Positioned read of a *stored* (uncompressed) archive entry -- windowed
- *        random access in bounded RAM (#231).
+ *        random access in bounded RAM.
  *
  * @details
  * For an entry stored with no compression (ZIP method 0 -- the natural choice for

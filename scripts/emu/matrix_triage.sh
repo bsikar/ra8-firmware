@@ -58,7 +58,7 @@ report="$ROOT/build/ra8_emulator_matrix.txt"
 #     real output shapes rather than strings invented to match the rules.
 triage_rules() {
   cat <<'EOF'
-MVE/Helium store (#396)	INVALID INSN.*bytes 80 ED 31 7F
+MVE/Helium store	INVALID INSN.*bytes 80 ED 31 7F
 ThreadX scheduler entry	Unhandled CPU exception \(UC_ERR_EXCEPTION\)
 other invalid instruction	INVALID INSN
 unmapped access	UNMAPPED|mmio_map failed
@@ -128,7 +128,7 @@ REAL
       sel_fail=1
     fi
   done <<EOF
-mve_app	FAULT	MVE/Helium store (#396)
+mve_app	FAULT	MVE/Helium store
 threadx_app	FAULT	ThreadX scheduler entry
 unmapped_app	FAULT	unmapped access
 weird_app	FAULT	unclassified

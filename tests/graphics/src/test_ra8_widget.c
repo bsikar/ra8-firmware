@@ -1,6 +1,6 @@
 /**
  * @file test_ra8_widget.c
- * @brief Unit tests for the ra8_widget composable-UI layer (#145).
+ * @brief Unit tests for the ra8_widget composable-UI layer.
  *
  * @details
  * Pure logic -- layout (via ra8_box), input routing (via ra8_ui hit-test),

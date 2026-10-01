@@ -2,7 +2,7 @@
 // Copyright (c) 2026 Brighton Sikarskie
 //
 // Behavioural regression tests for the pure rules of the cross-build
-// shard-union gate (RA8FW-335, #1159). Every expectation here was taken from the
+// shard-union gate (RA8FW-335). Every expectation here was taken from the
 // Python this replaced, not from what the rules ought to be: the manifest
 // reader's ASCII contract, Python's line-break and strip sets, `sorted()`
 // ordering over names the filesystem handed back, and the exact problem

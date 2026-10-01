@@ -1,6 +1,6 @@
 /**
  * @file test_app_ereader_zoom.c
- * @brief Host twin of the `ereader_zoom` tap-to-zoom demo: its golden (#478).
+ * @brief Host twin of the `ereader_zoom` tap-to-zoom demo: its golden.
  *
  * @details
  * Compiles the app's own `ez_scene.c` -- the production presentation model, not
@@ -19,7 +19,7 @@
  *
  * Beyond the golden this asserts the two claims the app exists to make:
  *   - **bounded residency** -- the whole four-state sequence decodes far fewer
- *     tiles than the page holds, and evicts none (#338);
+ *     tiles than the page holds, and evicts none;
  *   - **partial update** -- a loupe-only change asks for a flush of the lens box
  *     rather than the content area.
  *

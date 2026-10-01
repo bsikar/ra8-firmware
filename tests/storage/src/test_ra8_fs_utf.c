@@ -1,6 +1,6 @@
 /**
  * @file test_ra8_fs_utf.c
- * @brief The UTF-8 <-> UTF-16LE seam, and what it refuses (#606).
+ * @brief The UTF-8 <-> UTF-16LE seam, and what it refuses.
  *
  * @details
  * `ra8_fs` used to mangle a non-ASCII name three different ways depending on
@@ -699,7 +699,7 @@ RA8_INTERNAL static void internal_test_utf16_all_ascii(void)
  * @details Lives here rather than in the exFAT read-path coverage suite because
  *          what it asks about is the FOLD: `priv_exfat_name_chunk_eq()` used to
  *          reject any unit whose high byte was set, so an accented name matched
- *          nothing and could not be opened (#606). It folds like every other
+ *          nothing and could not be opened. It folds like every other
  *          unit now, so U+0100 matches U+0100, does NOT match 0x0041 -- which
  *          shares only its low byte, the old comparison's exact failure -- and
  *          U+00E9 matches U+00C9.

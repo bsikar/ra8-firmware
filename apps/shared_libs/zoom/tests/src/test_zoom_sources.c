@@ -1,6 +1,6 @@
 /**
  * @file test_zoom_sources.c
- * @brief Host unit tests for the two zoom source adapters (#478).
+ * @brief Host unit tests for the two zoom source adapters.
  *
  * @details
  * The zoom engine sees pixels only through ::zoom_read_fn, and this file

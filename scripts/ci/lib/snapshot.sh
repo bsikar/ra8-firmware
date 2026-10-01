@@ -15,7 +15,7 @@
 #
 # It pairs with scripts/ci/lib/abort.sh, which owns that snapshot's LIFECYCLE:
 # who may delete it, what happens when the run is signalled, and the guard that
-# refuses to dispatch a gate into a tree that is no longer there (#542).
+# refuses to dispatch a gate into a tree that is no longer there.
 #
 # Unlike container.sh this file does reach back for ci.sh's globals and
 # functions -- REPO_ROOT, run_suite, run_one_gate. That is deliberate: this is
@@ -53,7 +53,7 @@
 #
 # Neither is visible: the snapshot looks complete, and every gate that
 # enumerates with `git ls-files` silently scanned a smaller tree than CI does.
-# Surfaced by the SBOM integrity digest (#538) -- the first gate whose verdict
+# Surfaced by the SBOM integrity digest -- the first gate whose verdict
 # depends on the file set being COMPLETE rather than merely large.
 #
 # A fresh private repository reads HEAD's objects through a read-only alternate.
@@ -194,7 +194,7 @@ _snapshot_report_paths() {
 # A handler that does not exit returns to where the shell was interrupted, so a
 # signalled run deleted the snapshot and CARRIED ON inside it, inventing a FAIL
 # for every gate that came after. scripts/ci/lib/abort.sh is the whole story; do
-# not collapse cleanup and abort back into one handler (#542).
+# not collapse cleanup and abort back into one handler.
 prepare_head_snapshot() {
   local work="$1"
   ci_snapshot_own "$work"

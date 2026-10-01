@@ -133,7 +133,7 @@ def read_meta(path: Path) -> dict[str, object]:
 #: The member comments are emitted pre-aligned on the widest member
 #: (`inflated_size`), which is what `check_comment_format.py` demands of a
 #: trailing-comment block: one `/**<` column and one `*/` column for the whole
-#: block. Emitting them unaligned made a regeneration UN-COMMITTABLE (#782):
+#: block. Emitting them unaligned made a regeneration UN-COMMITTABLE:
 #: clang-format then opens the block at two different columns, and
 #: `check_comment_format.py --fix` -- the second half of `format_generated()`
 #: in scripts/builders/books.sh -- cannot repair that, because repairing it

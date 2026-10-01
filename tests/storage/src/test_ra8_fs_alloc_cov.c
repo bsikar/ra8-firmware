@@ -1,6 +1,6 @@
 /**
  * @file test_ra8_fs_alloc_cov.c
- * @brief The allocator state's fallbacks and its I/O failure legs (#607).
+ * @brief The allocator state's fallbacks and its I/O failure legs.
  *
  * @details
  * `test_ra8_fs_alloc_perf.c` proves what the next-free hint, the FAT sector

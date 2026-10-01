@@ -35,21 +35,21 @@ min_render_colors=6
 
 # Apps driven with an injected user-button press (ra8_emulator --button 1 holds
 # SW1/P009 low). gpio_input_demo mirrors SW1 -> LED1, so with the button held
-# its LED1 must read ON -- this gates the GPIO input-injection path (#39).
+# its LED1 must read ON -- this gates the GPIO input-injection path.
 button_apps="gpio_input_demo"
 
 # Apps driven with an injected panel tap (ra8_emulator --click X Y arms one GT911
 # contact, re-armed each chunk until the firmware's real ra8_touch_read drains
 # it). touch_demo brings up the GT911 and decodes that tap, so the injected
 # coordinate must come back in its banner -- this gates the GT911 touch path
-# end to end (#122). 250,250 maps 1:1 on the default panel (no rotation).
+# end to end. 250,250 maps 1:1 on the default panel (no rotation).
 touch_click_apps="touch_demo"
 
 # Apps whose rendered chrome is pinned to a checked-in golden image (exact
 # pixel match of the panel framebuffer, a strictly stronger check than the
 # distinct-color floor above). ra8_emulator renders deterministically, so any
 # unintended chrome change fails here. Regenerate after an intentional change
-# with `just apps::emulator::golden_update`. See scripts/gen/ereader_golden.py (#84).
+# with `just apps::emulator::golden_update`. See scripts/gen/ereader_golden.py.
 golden_apps="ereader_ui"
 golden_dir="$ROOT/tests/golden/ereader_chrome"
 
@@ -108,7 +108,7 @@ usb_enum_apps="usb_cdc_echo threadx_usbx_cdc_demo usb_hid_device usb_msc_device 
 # explicitly, e.g. `scripts/emu/smoke.sh usb_host_keyboard`.
 usb_host_apps="usb_host_keyboard usb_host_msc_browse usb_host_file_ops"
 
-# Live-SD USB MSC device app (#206): the MSC LUN serves the ACTUAL modelled
+# Live-SD USB MSC device app: the MSC LUN serves the ACTUAL modelled
 # card (--sd), not a snapshot -- media-read/media-write forward to
 # ra8_sdmmc_spi_read_blocks / ra8_sdmmc_spi_write_blocks and the LUN geometry is
 # the card's CSD capacity. ra8_emulator's virtual USB host enumerates the device
@@ -158,7 +158,7 @@ sd_io_apps="ra8_io_sd_demo ra8_io_sdhi_demo ra8_sdhi_card_demo"
 # decision; re-add here only if it is ever repointed at real storage.
 xspi_io_apps="ra8_io_xspi_demo"
 
-# IT8951 e-paper apps (#256): ra8_emulator attaches a modelled IT8951 controller on
+# IT8951 e-paper apps: ra8_emulator attaches a modelled IT8951 controller on
 # SPI_B with --eink (board_periph_eink.c), which answers HRDY, the GET_DEV_INFO
 # drain and the LUTAFSR "LUT idle" poll, so epaper_refresh drives the full
 # ra8_epaper -> display-PAL e-ink -> ra8_io_spi_bus path to its PASS banner with
@@ -168,7 +168,7 @@ xspi_io_apps="ra8_io_xspi_demo"
 # load-bearing (EIL == HIL). Asserts via uart_expect().
 eink_apps="epaper_refresh"
 
-# Cellular AT-modem app (#259): ra8_emulator attaches a modelled 3GPP AT modem on
+# Cellular AT-modem app: ra8_emulator attaches a modelled 3GPP AT modem on
 # the MikroBUS UART (SCI7) with --modem (board_periph_modem.c), which answers
 # the demo's AT script -- AT / ATE0 / CMEE / CPIN? / CSQ / CREG=1 (+ a +CREG
 # URC) / CREG? / CGATT? -- and rejects an unsupported command with +CME ERROR,
@@ -191,7 +191,7 @@ modem_apps="modem_at_demo"
 # untouched). Asserts via uart_expect().
 selfpark_banner_apps="lpm_periodic_idle"
 
-# Dual-core ITM-verdict apps (#67 / #152). Unlike the UART-banner apps, these
+# Dual-core ITM-verdict apps. Unlike the UART-banner apps, these
 # narrate their run over ra8_log, which the firmware writes to the Cortex-M ITM
 # stimulus port; ra8_emulator surfaces those bytes as `[itm] ...` lines (the SWO
 # analog of the `[uart]` console echo). The M85 narrates the M33's replies too
@@ -243,7 +243,7 @@ build_sd_image() {
 }
 
 # Apps that import a `.epub` off the SD card and compile it to a cached `.rabook`
-# on first open (#151). import_reader mounts the card, finds BOOK.EPB, compiles
+# on first open. import_reader mounts the card, finds BOOK.EPB, compiles
 # it once (cache MISS), reopens it (cache HIT, no recompile), then reads the
 # cached book back -- printing "import_reader: miss->compile->cache->hit->read
 # PASS". A BLANK card has no BOOK.EPB, so it fails at the source open; this gate
@@ -251,7 +251,7 @@ build_sd_image() {
 # import + compile + cache + read path runs end to end in ra8_emulator with no
 # hardware. The seed book carries a `text/css` stylesheet (style.css) so the run
 # exercises the runtime ra8_rabook stylesheet-compile stage end to end, not just
-# text (#169). This was previously gated text-only on the belief it tripped a
+# text. This was previously gated text-only on the belief it tripped a
 # ra8_emulator emulation gap; the real cause was a firmware bug -- import_reader's
 # pipeline scratch never wired a `.css` source buffer (css_cap == 0), so any
 # `text/css` item failed the compile on every target, not just in the emulator.
@@ -323,7 +323,7 @@ emu_extra_args() { # app -> extra args on stdout
   esac
 }
 
-# Expected UART banner per app -- ONE source of truth (#398).
+# Expected UART banner per app -- ONE source of truth.
 #
 # The banner an app must print lives in exactly ONE place: HIL_EXPECT in the
 # app's hil.conf. The owner's EIL == HIL rule makes hil.conf authoritative, so
@@ -386,7 +386,7 @@ uart_expect_override() { # app -> emulator-only expected substring, or empty
   case "$1" in
     # ra8_emulator injects a fixed --click 250 250 tap, so the GT911 decode returns
     # that exact coordinate and the emulator gates the touch-injection path end to
-    # end (#122). A bench tap lands wherever the operator presses, so hil.conf
+    # end. A bench tap lands wherever the operator presses, so hil.conf
     # asserts only "touch: open=OK" (HIL_EXPECT_SHORT_OK: a no-touch read is
     # also OK) -- the coordinate cannot be pinned on hardware.
     touch_demo) printf 'touch: open=OK pts=1 x=250 y=250' ;;

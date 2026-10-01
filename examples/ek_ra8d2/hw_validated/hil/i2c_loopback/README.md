@@ -6,7 +6,7 @@ LED1 on each ACK.
 
 U15 sits on RIIC ch1 (P512 SCL1 / P511 SDA1), *not* on the I3C bus. An earlier
 version of this app drove the I3C peripheral on channel 0 out to J27, where U15
-is absent -- which is why it used to fail (#46). Bring-up now reuses the board
+is absent -- which is why it used to fail. Bring-up now reuses the board
 layer's validated U15 sequence
 (`ra8_board_io_expander_apply_project_sw4_defaults`): bus recover, P109/P311
 pull-ups, P512/P511 route plus NCODR, then init and scan.

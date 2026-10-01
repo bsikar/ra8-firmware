@@ -1,6 +1,6 @@
 /**
  * @file examples/ek_ra8d2/hw_pending/secure_boot_ns_hil/src/main.c
- * @brief Secure side: authenticate the NS image, then BLXNS -- the TrustZone RoT proof (#172).
+ * @brief Secure side: authenticate the NS image, then BLXNS -- the TrustZone RoT proof.
  *
  * @par Tag
  * [Ring 6 / APP] {World: S}

@@ -5,7 +5,7 @@
 # scripts/checks/check_unicorn_version.sh -- FAIL a ra8_emulator gate when the
 # Unicorn the emulator will link is not the pinned version (scripts/ci/unicorn_pin.sh).
 #
-# WHY (#354): ra8_emulator boots the real firmware .elf on Unicorn, and different
+# WHY: ra8_emulator boots the real firmware .elf on Unicorn, and different
 # Unicorn versions decode Armv8.1-M (Helium/MVE) differently, so an unpinned
 # Unicorn makes "same commit, different verdict" structural. The provisioning
 # guard that created the skew (`if ! ldconfig | grep libunicorn; then apt ...`)
@@ -194,7 +194,7 @@ fi
   while IFS= read -r r; do echo "  - $r"; done <<<"$reasons"
   echo ""
   echo "ra8_emulator decodes Armv8.1-M (Helium/MVE) differently across Unicorn"
-  echo "versions, so this gate refuses to run on an unpinned emulator (#354)."
+  echo "versions, so this gate refuses to run on an unpinned emulator."
   echo ""
   echo "Fix it by installing the pinned build:"
   echo "  /bin/bash -p scripts/ci/install_unicorn.sh   # -> $RA8_UNICORN_PREFIX"

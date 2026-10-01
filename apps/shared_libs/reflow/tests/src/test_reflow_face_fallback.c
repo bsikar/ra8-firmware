@@ -1,6 +1,6 @@
 /**
  * @file test_reflow_face_fallback.c
- * @brief Coverage-based fallback-face vectors for reflow_render.c (#687).
+ * @brief Coverage-based fallback-face vectors for reflow_render.c.
  *
  * @details
  * Drives ::priv_reflow_render_pick_face, the resolver the render pass runs

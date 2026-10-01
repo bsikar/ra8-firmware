@@ -1,7 +1,7 @@
 /**
  * @file longstrip.h
  * @brief Continuous vertical-scroll (longstrip / manhwa) reading mode over an
- *        JOF band-tile atlas (#289).
+ *        JOF band-tile atlas.
  * @ingroup grp_ereader
  *
  * @par Tag

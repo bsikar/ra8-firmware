@@ -91,7 +91,7 @@ extern "C" {
  * @brief Host-seam model of a "set condition: reading this register" bit.
  *
  * @details
- * Register-behaviour model (#238) for read side effects dumb host RAM
+ * Register-behaviour model for read side effects dumb host RAM
  * cannot express. The driver routes the SAME 32-bit read it performs on
  * silicon through this; the seam then latches ``set_mask`` into the
  * RAM-backed register (e.g. IPCSEMn.LOCK, HUM Ch 3.2.3) so composed host
@@ -123,7 +123,7 @@ extern "C" {
  * @brief Host-seam model of a write-1-to-clear register write.
  *
  * @details
- * Register-behaviour model (#238) for W1C semantics dumb host RAM cannot
+ * Register-behaviour model for W1C semantics dumb host RAM cannot
  * express. The driver routes the SAME 32-bit write command it issues on
  * silicon through this; bits covered by ``w1c_mask`` clear where ``value``
  * wrote 1 and hold otherwise, while bits outside the mask store ``value``

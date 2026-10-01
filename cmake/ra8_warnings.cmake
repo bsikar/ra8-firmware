@@ -34,7 +34,7 @@ function(ra8_target_enable_project_warnings target)
     PRIVATE -Wall
             -Wextra
             -Werror
-            # Implicit-conversion discipline (#240). For C, -Wconversion also
+            # Implicit-conversion discipline. For C, -Wconversion also
             # enables -Wsign-conversion and flags float narrowing, so every
             # implicit narrowing / sign-changing / value-changing conversion in
             # first-party code is a hard -Werror. Vendored SOUP translation units

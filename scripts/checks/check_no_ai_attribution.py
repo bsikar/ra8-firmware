@@ -40,7 +40,7 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 # silently exempted every other tracked file -- tools/ (ra8_emulator, mdl,
 # ra8_viewer, ra8_fmt), .github/, .devcontainer/, cmake/ and the whole
 # repo root -- from a ban CLAUDE.md and docs/AI_ATTRIBUTION_POLICY.md apply to
-# "any tracked file" (#358). Enumeration now comes from git ls-files via
+# "any tracked file". Enumeration now comes from git ls-files via
 # first_party_paths, so a new top-level directory is policed the day it lands.
 
 # File extensions we inspect. Anything else (binaries, PDFs) is skipped.

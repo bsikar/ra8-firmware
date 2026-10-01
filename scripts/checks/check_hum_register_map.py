@@ -13,10 +13,10 @@ carrying a citation naming a REAL chapter and a REAL page:
   publish -- that chapter is six pages long and describes no registers at all;
 * ``ra8_ptp_regs.h`` declared a thirteen-register window at ``0x403E_0100``,
   a reserved hole in the GPTP aperture. The demo printed ``gptp: clock PASS``
-  because a reserved aperture echoed its own writes back (#498);
+  because a reserved aperture echoed its own writes back;
 * ``ra8_etha_regs.h`` declared ``EASCR`` at ``0x0580``, a symbol absent from
   the whole of Ch 32, and ~26 ETHA citations pointed at real pages describing
-  other registers (#539).
+  other registers.
 
 This gate closes that gap by connecting a register SYMBOL in our source to the
 symbol table the manual publishes. Four rules, all reported per file:

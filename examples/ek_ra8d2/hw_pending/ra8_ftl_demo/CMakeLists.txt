@@ -29,7 +29,7 @@ include("${_d}/cmake/ra8_add_app.cmake")
 ra8_add_app(
   NAME ra8_ftl_demo
   STACK_BYTES 4096
-  DESCRIPTION "FTL wear-levelling + checkpoint power-cycle survival over on-chip extra MRAM (#258)"
+  DESCRIPTION "FTL wear-levelling + checkpoint power-cycle survival over on-chip extra MRAM"
   LIBS ra8_io
        ra8_ftl
        ra8_fs

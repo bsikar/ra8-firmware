@@ -36,6 +36,6 @@ include("${_d}/cmake/ra8_add_app.cmake")
 ra8_add_app(
   NAME mem_subsystem
   STACK_BYTES 4096
-  DESCRIPTION "Drives each ra8_mem layer: slab reset, tile eviction, vmem windows (#263)"
+  DESCRIPTION "Drives each ra8_mem layer: slab reset, tile eviction, vmem windows"
   LIBS ra8_mem ra8_board_ek_ra8d2
 )

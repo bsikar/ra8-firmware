@@ -57,7 +57,7 @@
  * ``EATASGR*``, HUM Ch 32) and the CBS state are indirect-RAM registers the
  * emulator leaves to config-reflect, so ``ra8_etha_read_tas_entry`` reads back
  * zero and the entry-match check fails -- modelling that RAM is #539 / #292
- * territory. The EK-RA8D2 Ethernet wire is also marginal (#21). So the whole-app
+ * territory. The EK-RA8D2 Ethernet wire is also marginal. So the whole-app
  * verdict is compile-gated in CI and asserted on the bench, while
  * ``eth_gptp_timestamp_demo`` carries the emulator-gated counter-advance check.
  *
@@ -401,7 +401,7 @@ static bool tsn_tas_entry_matches(uint8_t index, const ra8_etha_tas_entry_t* wan
  * ``ra8_etha_read_tas_entry`` and compared against what was programmed.
  * That read-back is the only part of this function that is evidence: the
  * programming calls returned ``k_ra8_ok`` even when the driver was writing
- * gate states into the entry-address register (#539).
+ * gate states into the entry-address register.
  *
  * @return True iff the schedule was committed AND read back byte-identical.
  *

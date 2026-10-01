@@ -1,6 +1,6 @@
 /**
  * @file examples/ek_ra8d2/hw_validated/hil/ereader_imgfmt/src/main.c
- * @brief On-silicon HIL: BMP + GIF decode format-coverage gate (#143).
+ * @brief On-silicon HIL: BMP + GIF decode format-coverage gate.
  *
  * @details
  * Closes the stb_image format-coverage gap: the firmware links four decoders

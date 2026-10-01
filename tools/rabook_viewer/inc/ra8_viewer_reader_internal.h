@@ -162,7 +162,7 @@ RA8_PRIV [[nodiscard]] ra8_err_t priv_viewer_tile_comic(ra8_viewer_reader_t* rea
                                                         uint32_t*            height);
 
 /**
- * @brief Name the container one comic page holds (#748).
+ * @brief Name the container one comic page holds.
  * @details Re-extracts the page into the resident slice and answers from
  * ::ra8_imgdec_identify, the one naming table in the tree. It makes no claim
  * about whether the bound decoder can open what it names.

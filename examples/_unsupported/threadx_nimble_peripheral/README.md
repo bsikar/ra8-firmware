@@ -16,7 +16,7 @@ over the `ra8_ble` HCI transport seam. What is wired here is the *software*
 path only -- transport bridge, porting layer and GATT skeleton -- so that it
 links and is host-tested. It is not emulator-gated either: `ra8_emulator`
 models no HCI link, and the `ra8_ble` transport underneath is itself unproven
-on this board (#86, #91, #286).
+on this board.
 
 Read it as a compile-and-link reference. Do not read it as one blocker away
 from working.

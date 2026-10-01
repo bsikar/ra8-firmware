@@ -1,6 +1,6 @@
 /**
  * @file reflow_svg_shape.c
- * @brief SVG shape rasterisers: rect / circle / line / polygon + fill + arc (#112).
+ * @brief SVG shape rasterisers: rect / circle / line / polygon + fill + arc.
  *
  * @details The `<rect>`, `<circle>`, `<line>`, `<polygon>`, and `<polyline>`
  * rasterisers, the even-odd scanline polygon fill (solid and per-pixel

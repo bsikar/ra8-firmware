@@ -2,7 +2,7 @@
 # Copyright (c) 2026 Brighton Sikarskie
 #
 # Per-app CMake for `secure_boot_ns_hil` -- the TrustZone BLXNS root-of-trust
-# proof (#172). A TWO-PROJECT TrustZone build:
+# proof. A TWO-PROJECT TrustZone build:
 #
 #   * Secure ELF (ra8_add_app): SAU + SRAM-NS boundary + NS-image copy
 #     (trustzone_init.c), then main() runs the RA8_ENABLE_ROOT_OF_TRUST verify
@@ -122,7 +122,7 @@ target_include_directories(
 # NS image. This app has no veneers to hand over. Its Secure ELF carries a
 # .gnu.sgstubs section of size 0 and the build produces no import library at
 # all, because the Secure/NS boundary here is not a veneer call at all: the
-# Secure boot verifies a signed NS image and BLXNSes into it (#172), so the
+# Secure boot verifies a signed NS image and BLXNSes into it, so the
 # only thing crossing is the image itself. Calling ra8_add_ns_image() here
 # would ask the Secure link for an import library with no cmse entry
 # functions behind it, which fails the link outright.
@@ -158,7 +158,7 @@ add_executable(
   ${_d}/libs/ra8_tz_secure_boot/ns/ra8_ns_rot_header.c
 )
 # The freestanding runtime primitives (memcpy / memset / str* / abs) are Zig
-# now (#2820), so the NS image takes them from ra8_core's archive built for
+# now, so the NS image takes them from ra8_core's archive built for
 # this core instead of compiling the three deleted .c files. This image is a
 # raw add_executable(), outside the ra8_add_app() expansion that registers a
 # migrated library's archive automatically, so it asks for the archive here.

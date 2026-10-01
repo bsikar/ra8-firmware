@@ -64,7 +64,7 @@ if(RA8_MCDC)
 
   # Probe: does the active C compiler accept the MC/DC flag trio?
   #
-  # Drop any cached answer first (#346). check_c_compiler_flag stores its
+  # Drop any cached answer first. check_c_compiler_flag stores its
   # result in the CACHE and skips the check entirely when that entry already
   # exists -- but the answer is a property of the COMPILER, not of the build
   # dir. Re-configuring an existing tree with a different compiler therefore
@@ -106,7 +106,7 @@ if(RA8_MCDC)
     unset(CMAKE_REQUIRED_FLAGS)
 
     # Degrading here is what turned a one-line configure problem into a
-    # misleading failure four steps downstream (#346): the build came out
+    # misleading failure four steps downstream: the build came out
     # uninstrumented, every test passed, and the gate then blamed the tests
     # for "crashing" because no .profraw existed. RA8_MCDC=ON is an explicit
     # request to measure MC/DC; a toolchain that cannot must say so HERE.

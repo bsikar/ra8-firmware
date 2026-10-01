@@ -3,11 +3,11 @@
 Drives the real GPT edge-latching hardware, where `gpt_capture_input`
 approximates capture in software by polling SW1:
 
-- **GPT0 -- input capture (#185).** A free-running 32-bit counter;
+- **GPT0 -- input capture.** A free-running 32-bit counter;
   `ra8_gpt_capture_configure` arms GTICASR so each rising edge on GTIOC0A latches
   GTCNT into GTCCRA. The loop reads the latch and reports the tick delta between
   edges, which is the measured signal period.
-- **GPT1 -- event counting (#186).** `ra8_gpt_event_count_configure` sets GTUPSR
+- **GPT1 -- event counting.** `ra8_gpt_event_count_configure` sets GTUPSR
   so GTCNT increments once per GTIOC1A rising edge -- a pure external-pulse
   counter. A commented variant routes the falling edge to GTDNSR for quadrature
   encoder up/down counting.

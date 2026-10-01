@@ -1,7 +1,7 @@
 //! SPDX-License-Identifier: MIT
 //! Copyright (c) 2026 Brighton Sikarskie
 //!
-//! The stack-overflow sentinel (#2884).
+//! The stack-overflow sentinel.
 //!
 //! The linker reserves 32 bytes just below the stack top and names both ends
 //! (`.stack_canary` in each board's `ld/linker_script.ld`). Boot fills that

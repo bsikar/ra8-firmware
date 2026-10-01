@@ -29,6 +29,6 @@ include("${_d}/cmake/ra8_add_app.cmake")
 ra8_add_app(
   NAME camera_io_stream_demo
   STACK_BYTES 4096
-  DESCRIPTION "ra8_camera_io: encoded frame -> ra8_io_stream sink, self-checked (#917)"
+  DESCRIPTION "ra8_camera_io: encoded frame -> ra8_io_stream sink, self-checked"
   LIBS ra8_camera_io ra8_camera ra8_io ra8_fs ra8_sdmmc_spi ra8_usb_pal ra8_board_ek_ra8d2
 )

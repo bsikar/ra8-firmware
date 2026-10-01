@@ -3,7 +3,7 @@
 # Copyright (c) 2026 Brighton Sikarskie
 """Decide what a UART capture proves about a core that was supposed to sleep.
 
-The defect this exists for (#517)
+The defect this exists for
 ---------------------------------
 The HIL harness gates on UART banner output. A sleeping core emits nothing by
 definition, so to ``run_direct.sh`` / ``run_local.sh`` "asleep" and "hung" are

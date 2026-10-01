@@ -22,7 +22,7 @@ written down anywhere moves with the next build.
 
 ---
 
-## Octo-SPI flash (#44)
+## Octo-SPI flash
 
 The single longest bring-up in the tree, and the most instructive: a
 firmware bug that produced a perfect impersonation of a dead board, and

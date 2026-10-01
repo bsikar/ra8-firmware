@@ -1,6 +1,6 @@
 /**
  * @file examples/ek_ra8d2/hw_pending/import_reader/src/main.c
- * @brief End-to-end on-import EPUB -> .rabook compile + cache + read (#151).
+ * @brief End-to-end on-import EPUB -> .rabook compile + cache + read.
  *
  * @par Tag
  * [Ring 6 / APP] {World: S}
@@ -34,7 +34,7 @@
  * (and a future HIL runner) scrape for that PASS line.
  *
  * @note The cache lives in the FAT root, named after the source (`BOOK.rabook`
- *       for `BOOK.EPB`) now that `ra8_fs` writes VFAT long names (#600/#633). A
+ *       for `BOOK.EPB`) now that `ra8_fs` writes VFAT long names. A
  *       dedicated `/RABOOK/` subdirectory layout is a possible future increment
  *       -- do not attempt it here.
  * @note The compile working arenas live in external SDRAM (the issue's
@@ -140,7 +140,7 @@ static const char k_imp_epub_path[] = "BOOK.EPB";
 /** @brief Streaming CRC chunk for the source-key pass. */
 [[gnu::section(".sdram_data"), gnu::aligned(8)]] static uint8_t s_imp_scratch[k_imp_scratch_cap];
 
-/** @brief Fixed frame pool the streamed source is paged through (#230). */
+/** @brief Fixed frame pool the streamed source is paged through. */
 [[gnu::section(".sdram_data"),
   gnu::aligned(8)]] static uint8_t s_imp_cache_frames[k_imp_cache_frames * k_imp_cache_frame_bytes];
 
@@ -407,7 +407,7 @@ static rabook_import_compiler_ctx_t  s_imp_cookie;
  * @details Binds every caller-owned SDRAM arena into the views the real
  *          compiler needs and the cookie the import adapter forwards --
  *          including the fixed source page-cache storage the adapter streams
- *          the `.epub` through (#230). No buffer is aliased: @p image_raw is
+ *          the `.epub` through. No buffer is aliased: @p image_raw is
  *          distinct from the @p img_arena / @p gray source the transcode stage
  *          reads (a contract @warning of the scratch struct).
  * @return Nothing.

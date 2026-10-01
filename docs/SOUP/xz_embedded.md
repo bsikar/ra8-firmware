@@ -110,7 +110,7 @@ None. The vendored tree is unmodified (byte-identical to upstream commit
 ## Last review date
 
 - Reviewed: 2026-07-16
-- Integrity sentence corrected (#627): 2026-08-04. It cited a transcribed
+- Integrity sentence corrected: 2026-08-04. It cited a transcribed
   aggregate hash "recorded in `sbom_registry.py`" -- the field #538 removed,
   and a value no gate parsed.
 - Expected re-review by: 2027-07-16

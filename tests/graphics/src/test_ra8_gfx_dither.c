@@ -1,6 +1,6 @@
 /**
  * @file test_ra8_gfx_dither.c
- * @brief Unit tests for ra8_gfx_dither -- void-and-cluster blue-noise dithering (#477).
+ * @brief Unit tests for ra8_gfx_dither -- void-and-cluster blue-noise dithering.
  *
  * @details
  * Exercises the three dither entry points against the committed blue-noise mask:

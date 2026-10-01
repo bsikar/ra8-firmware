@@ -23,4 +23,4 @@ does not model cannot simply be dropped in.
 `c6/` is separate for a bench reason, not a maturity one: C6 apps need SW4-4
 OFF, which takes the Arduino and mikroBUS connectors off the board for every
 app in the default pass, so one run cannot serve both -- and `ra8_emulator`
-models no C6 (#494), so the parity obligation above cannot be met yet.
+models no C6, so the parity obligation above cannot be met yet.

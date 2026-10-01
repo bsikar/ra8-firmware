@@ -1,7 +1,7 @@
 //! SPDX-License-Identifier: MIT
 //! Copyright (c) 2026 Brighton Sikarskie
 //!
-//! C ABI membrane for `libs/ra8_core/inc/ra8_sbrk_trap.h` (#2895): the
+//! C ABI membrane for `libs/ra8_core/inc/ra8_sbrk_trap.h`: the
 //! newlib heap syscall, replaced by a halting trap.
 //!
 //! The exported name is bare `_sbrk`, unprefixed, in every build. It is not
@@ -20,7 +20,7 @@
 //!      self-contained libc subset with no `ra8_*` dependency, and the two
 //!      suites that link its prefixed half alone would stop linking the
 //!      moment it acquired one. `ra8_fatal_error` already lives in this
-//!      archive (#2875), so the call stays inside one artifact.
+//!      archive, so the call stays inside one artifact.
 //!
 //! On a correctly built image this is unreachable: with zero heap callers
 //! `--gc-sections` discards it, and the linker scripts define no `end`

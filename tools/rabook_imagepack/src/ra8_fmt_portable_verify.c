@@ -215,7 +215,7 @@ internal_slot(ra8_arena_slot_t* slots, uint32_t count, uint32_t bytes, void** ou
 }
 
 /**
- * @brief Carve both overlaid verify phases out of the shared CLI block (#757).
+ * @brief Carve both overlaid verify phases out of the shared CLI block.
  * @details Declares one slot per workspace member and lets the platform arena
  * place them, replacing a hand-written offset chain and the struct that held
  * it. The producer and comparison phases are mutually exclusive, so they are

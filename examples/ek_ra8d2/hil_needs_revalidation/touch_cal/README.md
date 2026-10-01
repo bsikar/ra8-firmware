@@ -1,6 +1,6 @@
 # touch_cal
 
-Interactive N-point affine touch calibration (#262), wiring the weighted
+Interactive N-point affine touch calibration, wiring the weighted
 least-squares solver in `libs/ra8_touch_cal` end to end over the **real** GoodIX
 GT911 driver (`ra8_touch` on IIC_B) and the **real** GLCDC display path
 (`ra8_display_pal` on `ra8_glcdc`): present targets, collect raw samples, solve

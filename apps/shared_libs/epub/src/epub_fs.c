@@ -6,7 +6,7 @@
  * [Ring 4 / EPUB] {World: S}
  *
  * @details
- * Opens a `.epub` living on a mounted `ra8_fs` volume by streaming it (#151/#230):
+ * Opens a `.epub` living on a mounted `ra8_fs` volume by streaming it:
  * the file stays open for the book's lifetime and every ZIP read seeks+reads on
  * demand, so no whole-file buffer ever exists. Guarded on
  * `__has_include("ra8_fs.h")` so the pure `epub` core still links into

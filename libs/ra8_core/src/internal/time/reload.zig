@@ -3,7 +3,7 @@
 //!
 //! The 1 kHz reload arithmetic, and nothing else.
 //!
-//! One deliberate difference from the C this replaces (#2851). The C computed
+//! One deliberate difference from the C this replaces. The C computed
 //! `cpu_hz / 1000 - 1` and then rejected a zero reload, which caught a clock
 //! in [1000, 1999]. A clock in [1, 999] divided to zero and the subtraction
 //! wrapped to 0xFFFFFFFF, so the check passed and the caller got `k_ra8_ok`

@@ -57,7 +57,7 @@
 #                the snapshot it was gating vanished under it. It prints
 #                RESULT: ABORTED and no per-gate FAIL row, because a killed run
 #                has no verdict. Never read it as a pass OR as a failure;
-#                re-run. scripts/ci/lib/abort.sh has the whole story (#542).
+#                re-run. scripts/ci/lib/abort.sh has the whole story.
 #
 # On Linux the native path IS the CI environment, so `--native` is the
 # supported local run and needs no container runtime. The container exists to
@@ -133,7 +133,7 @@ if [[ "$-" == *p* ]]; then
   REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
   # The tag the containerised path boots. Where it comes from, and what stops it
   # going stale, is scripts/ci/devcontainer_image.sh -- the one place that knows
-  # how to build it and how to tell a current image from an old one (#521).
+  # how to build it and how to tell a current image from an old one.
   IMAGE_TAG="ra8-ci:latest"
   # Exit status of the most recent run_gate_capture call. Pre-declared so `set -u`
   # cannot abort a reader before the first gate has run.
@@ -263,7 +263,7 @@ if [[ "$-" == *p* ]]; then
   # edge cases and produce diffs CI rejects. Absence is a hard failure, not a
   # fallback -- a run under clang-format-18 proves nothing about the gate.
   # cpu_count() and ra8_max_jobs() -- the ONE canonical bounded-parallelism
-  # source (#328). Gate bodies derive every `-j` / `-P` width from ra8_max_jobs,
+  # source. Gate bodies derive every `-j` / `-P` width from ra8_max_jobs,
   # never a raw nproc, so N gate jobs on one shared box do not each grab all
   # cores. The standalone builders / checks / emulator drivers a gate shells out to
   # source the same file, so there is a single home for the policy.
@@ -271,7 +271,7 @@ if [[ "$-" == *p* ]]; then
   . "${SCRIPT_DIR}/ci/lib/parallelism.sh"
 
   # use_pinned_tool_path() + require_tool_versions() -- deterministic tool
-  # resolution (#333). run_one_gate calls use_pinned_tool_path so every gate,
+  # resolution. run_one_gate calls use_pinned_tool_path so every gate,
   # however the shell was entered (a login shell, a non-interactive `ssh dev`, a
   # GitHub Actions step), resolves the SAME pinned binaries; require_tool_versions
   # then makes the wrong version fail loudly. One home for the policy, sourced the
@@ -283,7 +283,7 @@ if [[ "$-" == *p* ]]; then
   # shellcheck source=scripts/ci/lib/tool_env.sh
   . "${SCRIPT_DIR}/ci/lib/tool_env.sh"
 
-  # The abort machinery (#542): a run that was KILLED, or whose snapshot vanished
+  # The abort machinery: a run that was KILLED, or whose snapshot vanished
   # under it, reports UNKNOWN and stops -- it never invents gate failures against
   # a tree that is no longer there. Exit 3, the same "no verdict" code
   # scripts/ci/monitor.sh uses. Read that file's header before changing any of
@@ -312,7 +312,7 @@ if [[ "$-" == *p* ]]; then
   #
   # ra8_emulator boots the real firmware .elf on Unicorn, and different Unicorn
   # versions decode Armv8.1-M (Helium/MVE) differently, so an unpinned emulator
-  # makes "same commit, different verdict" structural (#354). This is the
+  # makes "same commit, different verdict" structural. This is the
   # fail-loud counterpart to require_cmd: the check binds the ACTUAL libunicorn
   # ra8_emulator will link and exits non-zero -- with remediation -- when it is not
   # the pin, rather than letting a fossil produce an unreproducible green run.
@@ -443,13 +443,13 @@ if [[ "$-" == *p* ]]; then
 
   run_one_gate() {
     local name="$1" fn
-    # The tree under test must still be there (#542). This is the ONE choke point
+    # The tree under test must still be there. This is the ONE choke point
     # every dispatch passes through -- the --gate CLI path and run_suite via
     # run_gate_capture both land here -- so no gate has to remember to check, and
     # a vanished snapshot is refused with a named reason instead of being
     # discovered by each remaining gate as a content failure.
     ci_require_tree_intact "$name" || return "$RA8_CI_EXIT_ABORTED"
-    # Deterministic tool resolution BEFORE any gate body runs (#333): normalise
+    # Deterministic tool resolution BEFORE any gate body runs: normalise
     # PATH so a non-login shell resolves the same pinned binaries a login shell
     # does. This is the single choke point every gate passes through -- the
     # --gate CLI path and run_suite (via run_gate_capture) both land here -- so no
@@ -508,7 +508,7 @@ if [[ "$-" == *p* ]]; then
   # any row whose gate_*() function is missing, such a gate vanished from the
   # suite while the run still printed RESULT: PASS. Only the ci-parity gate
   # re-reading the registry stood between that and a false green; the runner has
-  # to be honest on its own (#190). suite_registry_selftest asserts it every run.
+  # to be honest on its own. suite_registry_selftest asserts it every run.
   registry_dump_or_die() {
     local dump rc=0
     dump="$(list_gates)" || rc=$?
@@ -524,7 +524,7 @@ if [[ "$-" == *p* ]]; then
   # Print the per-gate PASS/FAIL table and return the suite's verdict. An EMPTY
   # selection is never a pass: this loop is bounded by the gate array, so with
   # zero gates it never set `failed` and the run printed RESULT: PASS having
-  # executed nothing -- the shape every gate-honesty defect takes (#190).
+  # executed nothing -- the shape every gate-honesty defect takes.
   print_suite_summary() {
     local fast="$1"
     shift
@@ -549,7 +549,7 @@ if [[ "$-" == *p* ]]; then
       idx=$((idx + 1))
     done
     echo "-------------------------------------------------------------------"
-    # An abort outranks everything below it (#542). The rows above it were real
+    # An abort outranks everything below it. The rows above it were real
     # measurements and are shown as such, but the RUN has no verdict: it stopped
     # early, and the gates it never reached are unmeasured rather than green.
     # UNKNOWN is a real answer here -- do not read it as either a pass or a fail.
@@ -599,7 +599,7 @@ if [[ "$-" == *p* ]]; then
       # Dispatch via run_gate_capture -- see the ERREXIT warning on it. Never
       # inline this as `if run_one_gate "$name"; then`.
       run_gate_capture "$name"
-      # An abort is not a verdict (#542). A signalled run never reaches here at
+      # An abort is not a verdict. A signalled run never reaches here at
       # all -- ci_abort_on_signal exits -- so this arm is the other way a run
       # stops being a measurement: the snapshot went away under it. Record it as
       # ABORTED and STOP, because every gate after this one would be reporting on
@@ -648,7 +648,7 @@ usage: /bin/bash -p scripts/ci.sh [--fast] [--native] [--rebuild]
   --selftest-abort <mode>
                  INTERNAL. Runs the real suite runner over fixture gates so
                  suite_abort_selftest can prove a killed run reports no gate
-                 verdict (#542). Modes: hang | destroy | fail. Its output is a
+                 verdict. Modes: hang | destroy | fail. Its output is a
                  probe, never a suite verdict.
 
 With no flags: containerised on macOS; native on Linux when no container
@@ -731,7 +731,7 @@ EOF
     # No snapshot on this path -- the checkout IS the tree under test, so there
     # is nothing to delete under the run. The abort traps still go on, so a
     # killed single-gate run says it was killed and exits UNKNOWN rather than
-    # handing its caller a gate's 143 to read as a content failure (#542).
+    # handing its caller a gate's 143 to read as a content failure.
     ci_install_abort_traps
     run_gate_capture "$gate"
     gate_rc="$RA8_GATE_RC"

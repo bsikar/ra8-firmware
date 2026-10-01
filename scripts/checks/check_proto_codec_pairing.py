@@ -10,7 +10,7 @@ committed beside it (``libs/ra8_c6link/inc/ra8_media_download.pb-c.h`` and
 it needs the exact pinned generator pair (protobuf-c 1.5.2 / libprotoc 35.1), which is
 absent from the dev box and the CI image.  So the repository documented a freshness
 check that nothing ran, and 777 generated lines of the wire codec both ends of the media
-path depend on could drift with nothing failing (#715).
+path depend on could drift with nothing failing.
 
 This checker closes the drift half of that hole WITHOUT the generator.  ``.github
 /proto-codec-pairing.txt`` records the SHA-256 of the schema and of both generated

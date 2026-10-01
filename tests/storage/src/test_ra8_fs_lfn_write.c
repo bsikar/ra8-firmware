@@ -1,6 +1,6 @@
 /**
  * @file test_ra8_fs_lfn_write.c
- * @brief Creating a VFAT long name on FAT12/16/32 (#600).
+ * @brief Creating a VFAT long name on FAT12/16/32.
  *
  * @details
  * Creating a name that is not 8.3-representable used to return

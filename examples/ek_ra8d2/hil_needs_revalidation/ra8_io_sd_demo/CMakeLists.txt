@@ -34,7 +34,7 @@ include("${_d}/cmake/ra8_add_app.cmake")
 ra8_add_app(
   NAME ra8_io_sd_demo
   STACK_BYTES 4096
-  DESCRIPTION "ra8_io swappable SD-over-SPI backend (#155/#156): VFS round-trip on microSD"
+  DESCRIPTION "ra8_io swappable SD-over-SPI backend: VFS round-trip on microSD"
   LIBS ra8_io
        ra8_fs
        ra8_sdmmc_spi

@@ -1,7 +1,7 @@
 //! SPDX-License-Identifier: MIT
 //! Copyright (c) 2026 Brighton Sikarskie
 //!
-//! Huffman tables for the baseline encoder (#2795): the four T.81 Annex K.3.3
+//! Huffman tables for the baseline encoder: the four T.81 Annex K.3.3
 //! reference specifications and the Annex C canonical code build that turns a
 //! BITS/VALUES pair into the code and length look-ups the entropy coder
 //! indexes by symbol.

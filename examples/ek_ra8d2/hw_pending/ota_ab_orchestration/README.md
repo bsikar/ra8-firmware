@@ -2,7 +2,7 @@
 
 Exercises the `libs/ra8_ota` A/B slot state machine end to end over the on-chip
 extra-MRAM bank, and shows **both** terminal outcomes -- a successful commit and
-a safe rollback -- in a single boot (#260). This is the OTA *orchestration*
+a safe rollback -- in a single boot. This is the OTA *orchestration*
 layer, distinct from the `dfu_bootloader` apps that own the USB-DFU transport and
 the reset-time boot decision.
 

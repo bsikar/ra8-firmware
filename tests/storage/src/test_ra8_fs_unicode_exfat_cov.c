@@ -1,6 +1,6 @@
 /**
  * @file test_ra8_fs_unicode_exfat_cov.c
- * @brief The out-of-band `fsck.exfat` image family for the exFAT unicode work (#606).
+ * @brief The out-of-band `fsck.exfat` image family for the exFAT unicode work.
  *
  * @details
  * Split from `test_ra8_fs_unicode_exfat.c` to keep both under the 1000-line

@@ -1,6 +1,6 @@
 /**
  * @file book_paged.h
- * @brief Paged (demand-fetched) accessor mode for book over ra8_vmem (#163).
+ * @brief Paged (demand-fetched) accessor mode for book over ra8_vmem.
  * @ingroup grp_ereader
  *
  * @details
@@ -219,9 +219,9 @@ typedef struct {
  *            packed spans (a fixed pixel budget per ::book_src_read).
  *          - @ref k_book_pixfmt_gray8: 1 byte per pixel at flat index
  *            `py * width + px`; the row is the retained full-resolution
- *            continuous-tone source (#476) and is copied straight out with no
+ *            continuous-tone source and is copied straight out with no
  *            unpack. This is the representation the zoom loupe magnifies and the
- *            e-ink dither (#477) re-quantises from -- gray4 quantisation is not
+ *            e-ink dither re-quantises from -- gray4 quantisation is not
  *            reversible, gray8 is not quantised at all.
  *
  *          The per-call read stays bounded by the rectangle regardless of the image

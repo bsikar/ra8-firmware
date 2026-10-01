@@ -3,7 +3,7 @@
  * @brief exFAT streaming write: grow the allocation, keep the entry set true.
  *
  * @details
- * The engine behind `ra8_fs_open(write|append)` on an exFAT volume (#602).
+ * The engine behind `ra8_fs_open(write|append)` on an exFAT volume.
  * Three mechanisms live here and nothing else does:
  *
  * 1. **Growth.** A file takes one cluster at a time out of the allocation
@@ -286,7 +286,7 @@ ra8_err_t priv_exfat_ensure_clusters(ra8_fs_file_t* file, uint32_t need)
 }
 
 /* =============================================================================
- * Directory growth: the same allocation, one directory-specific rewrite (#677)
+ * Directory growth: the same allocation, one directory-specific rewrite
  * =============================================================================
  *
  * A directory's on-disk allocation is structurally a file's: a run of clusters
@@ -507,7 +507,7 @@ static ra8_err_t internal_exfat_dir_relen(const ra8_fs_mount_t* m,
  *          one must never be reachable -- marks it used, links it (converting the
  *          run to a FAT chain if contiguity broke, which clears @p nofat), and
  *          retires the old tail cluster's trailing end-of-directory markers so the
- *          walk crosses into the fresh cluster (#677).
+ *          walk crosses into the fresh cluster.
  *
  * @param[in]     m     Mounted exFAT volume.
  * @param[in]     dir   Directory being grown (its `cluster` is the run head).
@@ -581,7 +581,7 @@ ra8_err_t priv_exfat_grow_dir(const ra8_fs_mount_t* m, exfat_dir_t* dir)
   /* The volume root has no entry set to patch -- its extent is the boot-sector
    * FAT chain, which ::priv_exfat_dir_link just extended. A subdirectory carries
    * the location of its own set and must update it, or the next mount reads the
-   * old length and cannot see the cluster this call added (#677). */
+   * old length and cannot see the cluster this call added. */
   if (dir->self_cluster >= (uint32_t)k_cluster_first_data) {
     e = internal_exfat_dir_relen(m, dir, (uint64_t)new_alloc * cbytes, nofat);
     if (e != k_ra8_ok) {
@@ -813,7 +813,7 @@ ra8_err_t priv_exfat_write_stream(ra8_fs_file_t* file, const uint8_t* buf, uint3
  * @details Writes the four fields a stream changes -- `GeneralSecondaryFlags`,
  *          `FirstCluster`, `ValidDataLength` and `DataLength` -- as the full
  *          64-bit lengths the format defines, so a file past 4 GiB records its
- *          real size (#676). `NoFatChain`
+ *          real size. `NoFatChain`
  *          is asserted only for a file that actually owns clusters: exFAT spec
  *          sec 7.4.4 requires `FirstCluster` 0 on an empty file, and a flag
  *          claiming a contiguous run of nothing is a claim `fsck` checks.
@@ -917,9 +917,9 @@ ra8_err_t priv_exfat_flush_set(ra8_fs_file_t* file)
     return e;
   }
   /* Stamp and patch BEFORE the checksum: it covers every byte both touch, so
-   * the other order writes a set a host `fsck` rejects (#601). */
+   * the other order writes a set a host `fsck` rejects. */
   priv_exfat_file_stamp_write(set);
-  /* A write also sets the archive attribute (#681): the convention a backup tool
+  /* A write also sets the archive attribute: the convention a backup tool
    * clears and the OS re-sets on modification. The low byte of the 16-bit
    * FileAttributes field carries it; the other bits (read-only can never be set
    * on a handle that reached a write) are preserved. */

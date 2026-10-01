@@ -264,7 +264,7 @@
 # check mode also skipped -- so `just infra::check dev` could not run to
 # completion at all. Probing for real keeps the guards accurate, the build
 # blocks are correctly not entered, and the read-backs the final asserts
-# consume have real output instead of a skip dict (#527).
+# consume have real output instead of a skip dict.
 
 # --- gcc 14 from source (the slow step) -------------------------------------
 
@@ -442,7 +442,7 @@
   # Not reimplemented here. install_unicorn.sh reads scripts/ci/unicorn_pin.sh,
   # is idempotent by design, and is the same script the devcontainer runs -- so
   # the emulator decodes Armv8.1-M identically on this box, in the container and
-  # on the runners (#354). A second copy of the recipe in YAML would be a second
+  # on the runners. A second copy of the recipe in YAML would be a second
   # thing to drift.
   become: true
   ansible.builtin.command:
@@ -615,7 +615,7 @@
 # --- The image `just ci` boots ----------------------------------------------
 #
 # See dev_box_ci_image in defaults/main.yml for the four gates that failed in a
-# stale container while passing natively on this box (#521). The build itself is
+# stale container while passing natively on this box. The build itself is
 # NOT reimplemented here: scripts/ci/devcontainer_image.sh is the one definition
 # of how the image is built and of what makes a cached one current, and it is
 # the same script `just ci` calls. A second `podman build` in YAML would be a

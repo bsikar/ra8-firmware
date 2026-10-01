@@ -1,7 +1,7 @@
 //! SPDX-License-Identifier: MIT
 //! Copyright (c) 2026 Brighton Sikarskie
 //!
-//! Marker dispatch for the baseline decoder (#2799).
+//! Marker dispatch for the baseline decoder.
 //!
 //! The one place that decides what a marker code means. Both drivers share it,
 //! so the whole-buffer and striped paths cannot disagree about which frame

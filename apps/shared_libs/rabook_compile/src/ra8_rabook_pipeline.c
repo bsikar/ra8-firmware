@@ -1,6 +1,6 @@
 /**
  * @file ra8_rabook_pipeline.c
- * @brief End-to-end EPUB -> RABOOK1 compile pipeline (#149).
+ * @brief End-to-end EPUB -> RABOOK1 compile pipeline.
  * @details Coordinates EPUB parsing, chapter compilation, image conversion,
  * and final RABOOK publication through explicit caller-owned workspaces.
  * @since Version 0.1.0

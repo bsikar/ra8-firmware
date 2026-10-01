@@ -378,7 +378,7 @@ priv_exfat_bitmap_clear(const ra8_fs_mount_t* m, uint64_t bmp_lba, uint32_t clus
  *          first entry's type byte is 0x00, which is the end-of-directory
  *          marker. There are no "." / ".." entries to stamp -- exFAT has none.
  *          Used both to initialise a directory's first cluster (`mkdir`) and to
- *          initialise each cluster growth appends to it (#677).
+ *          initialise each cluster growth appends to it.
  *
  * @param[in] m    Mounted exFAT volume.
  * @param[in] clus Cluster to clear.
@@ -415,7 +415,7 @@ ra8_err_t priv_exfat_zero_cluster(const ra8_fs_mount_t* m, uint32_t clus);
  *          which the walk steps over and the free-slot scan still calls free --
  *          while moving the one real EndOfDirectory to the trailing zeros of the
  *          freshly appended cluster, where the format requires it to be. Paired
- *          with ::priv_exfat_zero_cluster on the directory grow path (#677).
+ *          with ::priv_exfat_zero_cluster on the directory grow path.
  *
  * @param[in] m    Mounted exFAT volume.
  * @param[in] clus Cluster whose end-of-directory markers are to be retired.
@@ -446,7 +446,7 @@ ra8_err_t priv_exfat_seal_cluster(const ra8_fs_mount_t* m, uint32_t clus);
  *          one. When no existing cluster has room, the directory is GROWN one
  *          zeroed cluster at a time (::priv_exfat_grow_dir) and rescanned, so
  *          ::k_ra8_err_no_mem now means the VOLUME is full, not merely that the
- *          directory was (#677). One grow always yields at least
+ *          directory was. One grow always yields at least
  *          ::k_exfat_set_writable free slots -- a fresh cluster holds far more
  *          than any set needs -- so the retry is bounded by ::k_exfat_dir_grow_max.
  *
@@ -518,7 +518,7 @@ ra8_err_t priv_exfat_drop_set(const ra8_fs_mount_t* m, const exfat_setpos_t* pos
  *          set, refuses one carrying ::k_exfat_attr_directory, retires it and
  *          frees its clusters. ::priv_exfat_create calls it directly, having
  *          already resolved the parent, so a create-over-an-existing-name
- *          replaces rather than duplicates (#603).
+ *          replaces rather than duplicates.
  *
  * @param[in] m    Mounted exFAT volume.
  * @param[in] dir  Directory holding the name.

@@ -1,6 +1,6 @@
 /**
  * @file examples/ek_ra8d2/hw_validated/hil/ereader_jpeg/src/main.c
- * @brief Headless on-silicon HIL gate for the raster image decode pipeline (#143).
+ * @brief Headless on-silicon HIL gate for the raster image decode pipeline.
  *
  * @details
  * Closes the *real-hardware* gap for the zero-heap `<img>` / cover-image

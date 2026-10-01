@@ -164,7 +164,7 @@ typedef struct {
  *
  * The previous shape of this struct modelled an entry as an eight-bit
  * per-class gate vector plus a "cut-through" flag, which is the 802.1Qbv
- * textbook layout but not this silicon's (#539).
+ * textbook layout but not this silicon's.
  *
  * @invariant ``gate_time_ns`` fits in 28 bits (<= 0x0FFFFFFF).
  *

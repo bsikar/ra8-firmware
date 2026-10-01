@@ -22,7 +22,7 @@
  * consumer can drive it. In particular it is call-compatible with
  * `epub_open_streamed()`'s `epub_stream_read_fn`,
  * which is how a large `.epub` on the SD card is opened without whole-file
- * residency (#151): register the file as a ::ra8_vsource paged object, front it
+ * residency: register the file as a ::ra8_vsource paged object, front it
  * with a fixed ::ra8_vmem pool (the asserted RAM budget), and hand the resulting
  * ::ra8_vmem_stream_read to the EPUB reader.
  *
@@ -107,7 +107,7 @@ ra8_vmem_stream_init(ra8_vmem_stream_t* st, ra8_vmem_t* vm, uint32_t object_id, 
  *            the span is not readable right now.
  *
  *          A consumer that treats the second case as the first compiles a
- *          truncated object out of a failing card and reports success (#764).
+ *          truncated object out of a failing card and reports success.
  *
  * @param[in]  st       Bound stream (::ra8_vmem_stream_init).
  * @param[in]  offset   Absolute byte offset within the object.
@@ -151,7 +151,7 @@ ra8_vmem_stream_init(ra8_vmem_stream_t* st, ra8_vmem_t* vm, uint32_t object_id, 
  *
  *          It used to return a bare `size_t`, which is what made a dead card
  *          indistinguishable from a clean end of file all the way up into the
- *          book importer (#764). Nothing is discarded here any more.
+ *          book importer. Nothing is discarded here any more.
  *
  * @param[in]  ctx      The ::ra8_vmem_stream_t binding (as a void cookie).
  * @param[in]  offset   Absolute byte offset within the object.

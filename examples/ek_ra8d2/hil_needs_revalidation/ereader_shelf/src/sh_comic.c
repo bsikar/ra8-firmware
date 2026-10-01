@@ -1,6 +1,6 @@
 /**
  * @file examples/ek_ra8d2/hil_needs_revalidation/ereader_shelf/src/sh_comic.c
- * @brief Full-page image reader for CBZ / CBR comic archives (#236).
+ * @brief Full-page image reader for CBZ / CBR comic archives.
  *
  * @details
  * The shelf's fourth reader surface. A comic archive is a container of page

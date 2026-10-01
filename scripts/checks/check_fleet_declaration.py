@@ -13,7 +13,7 @@ estate. This checks three things a green Ansible run would not:
    per-instance floors, a parseable quiet-hours window, and an instance count
    that is either the sizing formula's or comes with a written reason. A number
    nobody can re-derive is folklore, and a host addressed by an ssh alias is
-   reachable only from whichever laptop defines it (#526).
+   reachable only from whichever laptop defines it.
 
 2. **Nothing tunes a host twice.** A committed ``host_vars`` file may not
    re-declare a variable the declaration owns. Extra-vars beat ``host_vars``,
@@ -444,7 +444,7 @@ def _duplicate_hil(data: dict[str, Any], **override: str) -> None:
 
 
 def _reach_mutations() -> dict[str, Any]:
-    """Breakages in how a machine is declared and reached (#526).
+    """Breakages in how a machine is declared and reached.
 
     Returns:
         Rule name to a function that damages a good declaration.

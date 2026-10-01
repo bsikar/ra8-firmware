@@ -1,6 +1,6 @@
 /**
  * @file main.c
- * @brief Demonstration of missing-glyph Tofu box fallback in the reflow layout engine (#686/#687).
+ * @brief Demonstration of missing-glyph Tofu box fallback in the reflow layout engine.
  *
  * @details
  * The baked Literata font carries only 198 codepoints (ASCII + Latin-1 subset).
@@ -75,7 +75,7 @@ static reflow_t          s_engine;
 /** @brief Demonstration chapter text containing both supported Latin-1 and unmapped characters. */
 static const char k_demo_xhtml[] =
   "<html><body>"
-  "<h1>Tofu Box Fallback (#686/#687)</h1>"
+  "<h1>Tofu Box Fallback</h1>"
   "<p>Latin-1: Cafe</p>"
   "<p>Missing Kanji: [&#x6F22;&#x5B57;]</p>"
   "<p>Missing Greek: [&Omega; &alpha;]</p>"

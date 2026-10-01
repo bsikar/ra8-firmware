@@ -1,6 +1,6 @@
 /**
  * @file test_longstrip.c
- * @brief Host unit tests for the continuous vertical-scroll longstrip engine (#289).
+ * @brief Host unit tests for the continuous vertical-scroll longstrip engine.
  *
  * @details
  * Drives longstrip over a hand-built raw JOF1 band-tile atlas (a synthetic

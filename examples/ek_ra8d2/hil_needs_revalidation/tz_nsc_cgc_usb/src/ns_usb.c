@@ -1,6 +1,6 @@
 /**
  * @file examples/ek_ra8d2/hil_needs_revalidation/tz_nsc_cgc_usb/src/ns_usb.c
- * @brief Non-Secure image: full ThreadX + USBX CDC self-loop inside TrustZone NS (#96).
+ * @brief Non-Secure image: full ThreadX + USBX CDC self-loop inside TrustZone NS.
  *
  * @par Tag
  * [Ring 6 / APP] {World: NS}

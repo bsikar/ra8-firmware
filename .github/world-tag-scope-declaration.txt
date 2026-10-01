@@ -6,7 +6,7 @@
 # were host tooling and vendored code. They were not: apps/, port/ and 38
 # first-party libs/ roots sat outside the requirement, undocumented, and most
 # of them carry Ring/World tags the gate never reads. A whole library root was
-# a quieter exemption than any row of the legacy inventory (#842).
+# a quieter exemption than any row of the legacy inventory.
 #
 # One row per first-party root the sweep enumerates:
 #

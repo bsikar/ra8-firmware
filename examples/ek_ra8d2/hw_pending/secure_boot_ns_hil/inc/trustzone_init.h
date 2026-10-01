@@ -1,6 +1,6 @@
 /**
  * @file examples/ek_ra8d2/hw_pending/secure_boot_ns_hil/inc/trustzone_init.h
- * @brief Secure TrustZone bring-up contract for the BLXNS RoT proof (#172).
+ * @brief Secure TrustZone bring-up contract for the BLXNS RoT proof.
  *
  * @par Tag
  * [Ring 1 / Boot] {World: S}

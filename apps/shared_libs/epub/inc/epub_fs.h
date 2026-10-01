@@ -9,7 +9,7 @@
  * @details
  * The target-side adapter that opens a book living on a mounted `ra8_fs` volume
  * (FAT12/16/32 over an SD card via `ra8_sdmmc_spi`, or any other
- * `ra8_fs_backend_t`) by STREAMING it (#151/#230): `epub_open_streamed_fs()`
+ * `ra8_fs_backend_t`) by STREAMING it: `epub_open_streamed_fs()`
  * hands `epub_open_streamed()` a seek+read backing over the open file, so
  * only the ZIP tail and one entry at a time are ever resident -- no whole-file
  * buffer, no book-size ceiling below the `ra8_fs` 4 GiB offset limit, and no
@@ -38,7 +38,7 @@ extern "C" {
 
 /**
  * @struct epub_stream_fs_ctx_t
- * @brief Backing state for a streamed `ra8_fs` EPUB open (#151).
+ * @brief Backing state for a streamed `ra8_fs` EPUB open.
  *
  * @details
  * Holds the open source-file handle for a book opened via
@@ -57,11 +57,11 @@ typedef struct {
 } epub_stream_fs_ctx_t;
 
 /**
- * @brief Stream-open an EPUB directly off a mounted `ra8_fs` volume, no residency (#151).
+ * @brief Stream-open an EPUB directly off a mounted `ra8_fs` volume, no residency.
  *
  * @details
  * Opens @p path for reading and hands `epub_open_streamed()` a seek+read
- * backing over the open file instead of reading the whole book into RAM (#151):
+ * backing over the open file instead of reading the whole book into RAM:
  * only the ZIP tail and one entry at a time
  * are ever read from the card, so an arbitrarily large book (bounded by `ra8_fs`'s
  * 32-bit file offsets, i.e. < 4 GiB) opens inside a small fixed RAM budget. The

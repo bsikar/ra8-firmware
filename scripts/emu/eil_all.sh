@@ -159,7 +159,7 @@ if [[ "$-" == *p* ]]; then
   EIL_RA8P1_DIR="${REPO_ROOT}/examples/ra8p1_foundation"
   EMU_DIR="${REPO_ROOT}/tools/ra8_emulator"
 
-  # ra8_max_jobs -- the ONE canonical bounded-parallelism width (#328). The
+  # ra8_max_jobs -- the ONE canonical bounded-parallelism width. The
   # ra8_emulator worker pool and the emulator build below derive from it so this
   # sweep does not saturate a shared box (the contention that timed out a
   # emulator gate and read as a regression).
@@ -168,7 +168,7 @@ if [[ "$-" == *p* ]]; then
 
   # ra8_emulator is C23 (typed enums, nullptr) and links C++ TUs, so its build must
   # pin a C23-capable C/C++ pair -- the ambient "cc" on the Debian 12 dev box is
-  # gcc 12 and rejects the syntax outright (#467). Reuse the ONE shared selector
+  # gcc 12 and rejects the syntax outright. Reuse the ONE shared selector
   # the host-test and coverage builds use rather than hand-rolling a second probe.
   # shellcheck source=scripts/builders/select_host_compiler.sh
   source "${REPO_ROOT}/scripts/builders/select_host_compiler.sh"

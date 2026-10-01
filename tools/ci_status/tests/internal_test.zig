@@ -345,7 +345,7 @@ test "a timed-out run fails its workflow like a failure does" {
     );
 }
 
-test "a cancelled-only workflow is a non-result, not a failure (#561)" {
+test "a cancelled-only workflow is a non-result, not a failure" {
     var parsed = try parse("[{\"status\":\"completed\",\"conclusion\":\"cancelled\"}]");
     defer parsed.deinit();
     try std.testing.expectEqual(
@@ -354,7 +354,7 @@ test "a cancelled-only workflow is a non-result, not a failure (#561)" {
     );
 }
 
-test "a skipped-only workflow is a non-result, never a pass (#530)" {
+test "a skipped-only workflow is a non-result, never a pass" {
     var parsed = try parse("[{\"status\":\"completed\",\"conclusion\":\"skipped\"}]");
     defer parsed.deinit();
     try std.testing.expectEqual(
@@ -500,7 +500,7 @@ test "no run for the sha is UNKNOWN, never a vacuous pass" {
     try expectVerdict("{\"runs\":[{\"sha\":\"aa1\",\"conclusion\":\"success\",\"status\":\"completed\"}]}", "deadbeef", "UNKNOWN");
 }
 
-test "an all-skipped sha is UNKNOWN, not PASS (#530)" {
+test "an all-skipped sha is UNKNOWN, not PASS" {
     try expectVerdict(
         \\{"runs":[{"name":"firmware","status":"completed","conclusion":"skipped","sha":"dd4"},
         \\{"name":"docs","status":"completed","conclusion":"skipped","sha":"dd4"}]}
@@ -514,7 +514,7 @@ test "a partially skipped sha still passes" {
     , "ee5", "PASS");
 }
 
-test "an all-cancelled sha is UNKNOWN, not FAIL (#561)" {
+test "an all-cancelled sha is UNKNOWN, not FAIL" {
     try expectVerdict(
         \\{"runs":[{"name":"firmware","status":"completed","conclusion":"cancelled","sha":"gg2"},
         \\{"name":"docs","status":"completed","conclusion":"cancelled","sha":"gg2"}]}

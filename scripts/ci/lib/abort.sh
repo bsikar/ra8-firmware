@@ -9,7 +9,7 @@
 # holds the machinery that decides when a run has stopped being a measurement.
 #
 # ===========================================================================
-# WHAT THIS EXISTS FOR (#542)
+# WHAT THIS EXISTS FOR
 # ===========================================================================
 # run_suite_on_snapshot used to install ONE trap for four events:
 #
@@ -146,7 +146,7 @@ if [ -z "${_RA8_ABORT_SH:-}" ]; then
     echo "This run did not fail: it was killed. No gate after this point was" >&2
     echo "measured, and the snapshot the gates run in is being removed now," >&2
     echo "so no verdict is being reported for anything -- a FAIL table here" >&2
-    echo "would describe nothing about the tree under test (#542)." >&2
+    echo "would describe nothing about the tree under test." >&2
     echo "" >&2
     echo "Exit $RA8_CI_EXIT_ABORTED is UNKNOWN: neither a pass nor a fail," >&2
     echo "the same contract 'just workspace::status' uses. Re-run the suite" >&2
@@ -221,7 +221,7 @@ if [ -z "${_RA8_ABORT_SH:-}" ]; then
     echo "Refusing to run this gate. The directory the suite was gating is" >&2
     echo "gone, so whatever this gate reported would be about nothing: every" >&2
     echo "check would 'fail' on missing files and the table would blame" >&2
-    echo "whichever gates happened to come last (#542)." >&2
+    echo "whichever gates happened to come last." >&2
     echo "" >&2
     echo "Exit $RA8_CI_EXIT_ABORTED is UNKNOWN -- neither a pass nor a fail." >&2
   }

@@ -1,6 +1,6 @@
 /**
  * @file examples/ek_ra8d2/hw_validated/hil/widget_app/src/main.c
- * @brief On-silicon HIL: ra8_widget compositor + ra8_app framework (#145/#146).
+ * @brief On-silicon HIL: ra8_widget compositor + ra8_app framework.
  *
  * @details
  * End-to-end on the M85, proving the widget/app foundation works on-target:
@@ -16,7 +16,7 @@
  *   4. `ra8_app_launch(reader)` fires `library.on_leave` + `reader.on_enter`
  *      (the focus lifecycle), then `ra8_app_render` composites the reader tree
  *      -> `rdr_crc`. The two CRCs differ (different content widget).
- *   5. **Damage/partial-flush** (#145): invalidate only the status bar with the
+ *   5. **Damage/partial-flush**: invalidate only the status bar with the
  *      fast hint -> `ra8_widget_damage` returns just the status-bar rect + the
  *      fast refresh hint -- the minimal e-ink flush.
  *

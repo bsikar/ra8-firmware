@@ -1,6 +1,6 @@
 /**
  * @file test_ra8_fs_exfat_write_file.c
- * @brief exFAT `ra8_fs_write_file()` replace semantics (#603) + directory guards (#604).
+ * @brief exFAT `ra8_fs_write_file()` replace semantics + directory guards.
  *
  * @details
  * `priv_exfat_create()` never looked for the name it was about to create, so a

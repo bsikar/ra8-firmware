@@ -26,7 +26,7 @@ include("${_d}/cmake/ra8_add_app.cmake")
 # so those libs are listed only to satisfy their includes; this app's medium is a
 # RAM blockdev it owns, which needs nothing extra. The whole demo body lives in
 # src/main.c, so no EXTRA_SRCS are needed. Boot files come from the shared
-# libs/ra8_board_ek_ra8d2/src/boot copy (no local vector_table.c). (#155/#264)
+# libs/ra8_board_ek_ra8d2/src/boot copy (no local vector_table.c).
 ra8_add_app(
   NAME vfs_port_demo
   STACK_BYTES 4096

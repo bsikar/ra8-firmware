@@ -12,10 +12,10 @@ carrying a citation naming a REAL chapter and a REAL page:
   publish -- that chapter is six pages long and describes no registers at all;
 * ``ra8_ptp_regs.h`` declared a thirteen-register window at ``0x403E_0100``,
   a reserved hole in the GPTP aperture, and the demo printed ``clock PASS``
-  because a reserved aperture echoed back its own writes (#498);
+  because a reserved aperture echoed back its own writes;
 * ``ra8_etha_regs.h`` declared ``EASCR`` at ``0x0580``, which appears nowhere
   in HUM Ch 32, and ~26 ETHA citations pointed at real pages describing other
-  registers (#539).
+  registers.
 
 Nothing mechanically connected a register SYMBOL in our headers to the symbol
 table the manual publishes. This module is that connection: it parses the

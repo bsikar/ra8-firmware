@@ -1,6 +1,6 @@
 /**
  * @file ra8_dual_core_job.h
- * @brief Cross-core compile-job dispatch seam + status contract (#149)
+ * @brief Cross-core compile-job dispatch seam + status contract
  * @ingroup grp_hal_system
  *
  * @par Tag

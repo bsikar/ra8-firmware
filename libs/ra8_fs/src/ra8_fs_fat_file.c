@@ -98,10 +98,10 @@ static ra8_err_t internal_truncate_existing(const ra8_fs_mount_t* handle,
   /* Truncation IS a content change -- the file went from N bytes to zero -- so
    * the modification time has to move even if the caller never writes a byte
    * afterwards. Without this, `open(write)` + `close()` left a PC-authored
-   * mtime describing contents that no longer exist (#601). */
+   * mtime describing contents that no longer exist. */
   priv_fat_entry_stamp_write(&buf[off]);
   /* A content change also sets the archive attribute, the FAT/exFAT convention a
-   * backup tool clears and the OS re-sets on every modification (#681). */
+   * backup tool clears and the OS re-sets on every modification. */
   priv_fat_entry_apply_attr(&buf[off], (uint8_t)k_ra8_fs_attr_archive, 0U);
   return priv_write_sector(handle, lba, buf);
 }
@@ -144,7 +144,7 @@ static ra8_err_t internal_open_existing(ra8_fs_mount_t* handle,
                                         ra8_fs_mode_t   mode,
                                         ra8_fs_file_t** out_file)
 {
-  /* A directory is not a file (#604). Without this the write path ran
+  /* A directory is not a file. Without this the write path ran
    * priv_truncate_existing() on it -- freeing the chain that held every child
    * and stamping cluster 0 / size 0 into an entry still flagged ATTR_DIRECTORY
    * -- and the read path handed back a zero-byte handle, because a directory's
@@ -153,7 +153,7 @@ static ra8_err_t internal_open_existing(ra8_fs_mount_t* handle,
   if ((entry[k_dir_off_attr] & (uint8_t)k_ra8_fs_attr_directory) != 0U) {
     return k_ra8_err_invalid_arg;
   }
-  /* Honor the read-only attribute (#681). A writing open truncates or appends,
+  /* Honor the read-only attribute. A writing open truncates or appends,
    * so a file a host marked read-only must be refused BEFORE the slot is taken
    * and BEFORE priv_truncate_existing() frees its chain -- the DOS/Windows
    * semantics say `open(read-only, write)` is denied, not silently obeyed. A
@@ -284,7 +284,7 @@ static ra8_err_t internal_enter_subdir(const ra8_fs_mount_t* m,
   /* A BYTE bound, because the component is UTF-8 here: the unit-count limit is
    * ::k_lfn_write_max and lands in priv_name_classify(). Bounding the bytes by
    * the unit cap would refuse a perfectly storable name three characters into
-   * a Cyrillic directory (#606). */
+   * a Cyrillic directory. */
   if (len >= (uint32_t)k_lfn_utf8_cap) {
     return k_ra8_err_invalid_arg;
   }
@@ -436,7 +436,7 @@ static ra8_err_t internal_create_new(ra8_fs_mount_t*  handle,
   priv_entry_set_cluster_size(tmpl, 0U, 0U);
   /* The template is zero-filled above, and a zero FAT date is not a date: month
    * and day are both 1-based, so 0x0000 claims month 0 of day 0 and every host
-   * decodes it differently (#601). Stamped here rather than inside
+   * decodes it differently. Stamped here rather than inside
    * `priv_dir_commit()` because that same commit re-files an EXISTING entry for
    * `rename`, which must keep the creation date it already has. */
   priv_fat_entry_stamp_create(tmpl);
@@ -486,7 +486,7 @@ ra8_err_t priv_open_locked(ra8_fs_mount_t* handle,
     return k_ra8_err_not_found;
   }
   /* Creation no longer needs an 8.3-representable name: `priv_dir_reserve()`
-   * generates the alias and reserves the chain's slots (#600). */
+   * generates the alias and reserves the chain's slots. */
   return internal_create_new(handle, &parent, leaf, mode, out_file);
 }
 
@@ -499,7 +499,7 @@ ra8_err_t priv_open_locked(ra8_fs_mount_t* handle,
  *          when the file was FINISHED, which is the one a host displays and a
  *          sync tool compares. Also flushes the volume's FSInfo free count,
  *          because a file that has just stopped growing is exactly when the
- *          count is worth committing (#607).
+ *          count is worth committing.
  *
  * @param[in] file Handle being closed, still marked in use.
  *
@@ -522,7 +522,7 @@ static ra8_err_t internal_close_stamp(ra8_fs_file_t* file)
   const ra8_fs_mount_t* m = file->mount;
   /* exFAT keeps its metadata in a checksummed entry set, not one 32-byte
    * directory entry, so the close flush is the same commit every write already
-   * performs -- stamp, patch, checksum, write (#602). */
+   * performs -- stamp, patch, checksum, write. */
   if (m->type == k_ra8_fs_type_exfat) {
     return priv_exfat_flush_set(file);
   }

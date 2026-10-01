@@ -1,6 +1,6 @@
 /**
  * @file examples/ek_ra8d2/hil_needs_revalidation/compress_demo/src/main.c
- * @brief Transparent compress-on-write / decompress-on-read over the VFS (#161).
+ * @brief Transparent compress-on-write / decompress-on-read over the VFS.
  *
  * @par Tag
  * [Ring 6 / APP] {World: S}

@@ -5,7 +5,7 @@
 # `/* HUM Ch X.Y "..." p NNNN */` citation above them. CLAUDE.md, the style
 # guide and docs/CITATION_POLICY.md all call that citation MANDATORY, but the
 # detector for it (cite_check.py --require-cites) ran in no gate at all, so
-# the rule was aspirational and the debt went unmeasured (#534).
+# the rule was aspirational and the debt went unmeasured.
 #
 # Total at this baseline: 2830 uncited access(es)
 # across 245 file(s).

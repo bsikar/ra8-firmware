@@ -1,6 +1,6 @@
 /**
  * @file test_ra8_fs_exfat_dir_growth.c
- * @brief exFAT directories grow past their first cluster (#677).
+ * @brief exFAT directories grow past their first cluster.
  *
  * @details
  * Before #677 an exFAT directory was born owning exactly ONE cluster and never

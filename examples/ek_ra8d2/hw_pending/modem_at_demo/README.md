@@ -2,7 +2,7 @@
 
 Drives the `libs/ra8_modem_at` cellular AT command/response driver against a 3GPP
 AT-command modem (SIM7600 / Quectel BG95 class) over the MikroBUS UART on SCI
-channel 7 (#259) -- a MikroE cellular Click presents its modem UART on exactly
+channel 7 -- a MikroE cellular Click presents its modem UART on exactly
 those pads.
 
 It brings SCI7 up, registers a `+CREG` URC handler, and walks a small state

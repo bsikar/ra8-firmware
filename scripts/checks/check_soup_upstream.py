@@ -6,7 +6,7 @@
 ``docs/SOUP/*.md``, ``THIRD_PARTY_LICENSES.md`` and the SBOM's
 ``commit-pinned-sha256`` provenance class all assert the same strong claim --
 the vendored tree is byte-identical to a named upstream revision -- and until
-this gate nothing checked it.  ``gen_sbom.py``'s digest (#538) proves only that
+this gate nothing checked it.  ``gen_sbom.py``'s digest proves only that
 the tree has not changed since the SBOM was last regenerated: a tree that was
 already wrong at vendor-in hashes faithfully and reports clean forever.
 
@@ -100,7 +100,7 @@ EXIT_VACUOUS = 2
 # would prove nothing about upstream at all -- it would record our opinion of
 # our own tree, which is exactly the defect this gate exists to remove.  All
 # three are MEASURED against the live tree. Re-measured 2026-09-17 after the
-# NimBLE prune (#622) dropped 212 never-buildable vendored files: 19 components,
+# NimBLE prune dropped 212 never-buildable vendored files: 19 components,
 # 8938 vendored files, 8918 of them byte-identical to their pinned upstream
 # revision. The previous measurement, 2026-08-22 after the unused XML vendor was
 # removed, read 19 / 9150 / 9133 against floors of 9000 / 8900, and the prune put
@@ -283,7 +283,7 @@ def _component_errors(comp: Component, root: Path) -> tuple[list[str], int, int]
 # actually 4.1.0 plus 72 unreleased development commits.  The probe in
 # gen_sbom.py ties the registry version to the vendored version MACRO, which is
 # the snapshot's own claim about itself; nothing tied either to upstream's tag
-# graph, and nothing could tell a tag pin from a post-tag snapshot (#804).
+# graph, and nothing could tell a tag pin from a post-tag snapshot.
 #
 # So a component may DECLARE its release basis, and these rules hold the
 # declaration to the rest of the record.  What they cannot do offline is prove

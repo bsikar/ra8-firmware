@@ -2,7 +2,7 @@
 //! Copyright (c) 2026 Brighton Sikarskie
 //!
 //! Root of the FREESTANDING archive: the libc subset the firmware provides
-//! for itself (#2820), and nothing else.
+//! for itself, and nothing else.
 //!
 //! It is its own archive because its exported names are the bare standard
 //! ones (`memcpy`, `memset`, `strlen`, `abs`) that an image needs and that a

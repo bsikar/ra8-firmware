@@ -6,7 +6,7 @@
 # gate.
 #
 # This is a minimal trusted launcher, not an implementation: the gate is the
-# Zig host tool tools/check_build_shard_union (RA8FW-335, #1159), which replaced
+# Zig host tool tools/check_build_shard_union (RA8FW-335), which replaced
 # the Python scripts/checks/check_build_shard_union.py  PATHREF-OK: the
 # predecessor this names was deleted in the same change.
 #

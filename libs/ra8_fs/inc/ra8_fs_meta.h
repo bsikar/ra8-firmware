@@ -264,7 +264,7 @@ typedef struct {
 /**
  * @brief Set an open file's length to @p new_size, shrinking or growing it.
  *
- * @details The `ftruncate()` verb in both directions (#680), for a handle open
+ * @details The `ftruncate()` verb in both directions, for a handle open
  * in a writing mode. It is the only way to give a file an arbitrary length:
  * writing extends only where bytes land, and ::ra8_fs_seek clamps to the current
  * size, so neither can pre-size a file or trim it to N > 0 bytes. A shrink frees

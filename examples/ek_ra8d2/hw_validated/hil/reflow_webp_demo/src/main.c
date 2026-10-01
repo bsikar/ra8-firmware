@@ -1,6 +1,6 @@
 /**
  * @file main.c
- * @brief Demonstration of inline WebP image decoding in reflow text layout (#637).
+ * @brief Demonstration of inline WebP image decoding in reflow text layout.
  *
  * @details
  * Shows zero-heap WebP image decoding and scaling within the reflow engine
@@ -130,7 +130,7 @@ static ra8_err_t demo_image_loader(void*           ctx,
 /** @brief Demonstration chapter text containing an inline WebP graphic. */
 static const char k_demo_xhtml[] =
   "<html><body>"
-  "<h1>Inline WebP Decoder (#637)</h1>"
+  "<h1>Inline WebP Decoder</h1>"
   "<p>Reflow layout with zero-heap WebP raster decoding:</p>"
   "<img src=\"illustration.webp\"/>"
   "<p>Figure 1: Embedded 96x96 lossless WebP illustration.</p>"

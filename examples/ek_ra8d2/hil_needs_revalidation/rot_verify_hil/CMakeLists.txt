@@ -21,7 +21,7 @@ while(NOT EXISTS "${_d}/cmake/ra8_add_app.cmake" AND NOT "${_d}" STREQUAL "/")
 endwhile()
 include("${_d}/cmake/ra8_add_app.cmake")
 
-# ra8_rot is the Zig root-of-trust archive (#2943), linked via LIBS like
+# ra8_rot is the Zig root-of-trust archive, linked via LIBS like
 # ra8_psa_crypto; linking it IS the opt-in that RA8_ENABLE_ROOT_OF_TRUST used
 # to be, and the define below still gates the C callers. ra8_rsip (software
 # SHA-256) is auto-globbed from ra8_hal.

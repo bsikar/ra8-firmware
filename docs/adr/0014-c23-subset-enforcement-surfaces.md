@@ -113,7 +113,7 @@ that it is a description rather than a mechanism. Cheap, honest about
 being prose, and it goes stale exactly the way the #711 naming
 inventory did (see ADR-0006 in the open pull request #1238).
 
-**C. Settle the MISRA edition first (#805), then derive.** Rejected as
+**C. Settle the MISRA edition first, then derive.** Rejected as
 a sequencing choice, not on merit: #805's own analysis puts a current
 edition behind a commercial checker and a budget decision, and the
 empty-initializer patch shows the project already handles C23-vs-2012

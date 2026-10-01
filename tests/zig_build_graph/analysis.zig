@@ -1,7 +1,7 @@
 //! SPDX-License-Identifier: MIT
 //! Copyright (c) 2026 Brighton Sikarskie
 //!
-//! Verification for the analysis inputs the root build graph emits (#1157).
+//! Verification for the analysis inputs the root build graph emits.
 //!
 //! The graph has written `zig-out/analysis/compile_commands.json` since #959,
 //! and it now carries a command for every translation unit the graph compiles.

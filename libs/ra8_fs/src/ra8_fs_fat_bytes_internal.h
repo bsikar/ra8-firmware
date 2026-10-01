@@ -5,7 +5,7 @@
  *
  * @details
  * Two small vocabularies every FAT/exFAT translation unit shares, split out of
- * the alphabetical prototype headers when the 64-bit widening (#676, #683)
+ * the alphabetical prototype headers when the 64-bit widening
  * pushed those against the source-size cap:
  *
  *   - the little-endian field codec (`priv_rd16/32/64`, `priv_wr16/32/64`) the
@@ -30,7 +30,7 @@
 #include "ra8_fs_fat_types_internal.h"
 
 /* =============================================================================
- * The sector arena -- four fixed-role bounce buffers (#683)
+ * The sector arena -- four fixed-role bounce buffers
  * =============================================================================
  *
  * Sector buffers grew from 512 bytes to ::k_ra8_fs_sector_max (4 KiB) when the

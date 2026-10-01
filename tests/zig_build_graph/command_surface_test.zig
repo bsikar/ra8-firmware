@@ -109,7 +109,7 @@ test "the two steps #1165 found unreachable are both on the surface now" {
     const recipes = try command_surface.parseRecipes(allocator, just_zig_source);
     defer allocator.free(recipes);
 
-    // analysis (#1157) and abi (#1007) are the two that were declared and
+    // analysis and abi are the two that were declared and
     // unreachable. Named directly so a slice that drops either recipe fails
     // here as well as in the mapping test above.
     for ([_][]const u8{ "analysis", "abi" }) |step| {

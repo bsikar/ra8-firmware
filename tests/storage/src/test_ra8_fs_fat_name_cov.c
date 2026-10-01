@@ -517,7 +517,7 @@ RA8_INTERNAL static void internal_test_ncov_path_to_83_leading_slash(void)
  *          rewritten to the 0x05 kanji escape. That mattered when a name was a
  *          bag of OEM bytes. It cannot happen now: names cross this API as
  *          UTF-8, 0xE5 is a lead byte rather than a character, and an 8.3 field
- *          in this driver holds ASCII (#606). Both packers therefore refuse
+ *          in this driver holds ASCII. Both packers therefore refuse
  *          anything above DEL, and the escape on the way IN was deleted rather
  *          than left as a branch no input reaches.
  *

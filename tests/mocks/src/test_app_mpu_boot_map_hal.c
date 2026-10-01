@@ -1,6 +1,6 @@
 /**
  * @file test_app_mpu_boot_map_hal.c
- * @brief Integration test: MPU boot map brought up via the ra8_mpu HAL (#576)
+ * @brief Integration test: MPU boot map brought up via the ra8_mpu HAL
  *
  * @details
  * Host twin of

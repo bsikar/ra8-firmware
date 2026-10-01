@@ -1,6 +1,6 @@
 /**
  * @file book_paged.c
- * @brief Paged book-source layer: copy-out reads over ra8_vmem (#163).
+ * @brief Paged book-source layer: copy-out reads over ra8_vmem.
  *
  * @details
  * Implements the @ref book_src_t seam from book_paged.h. A source is
@@ -159,7 +159,7 @@ ra8_err_t book_src_read(const book_src_t* src, uint32_t off, void* dst, uint32_t
 }
 
 /* ===========================================================================
- * Image sub-rect reads (#342): the image-pool addressing contract -- descriptor
+ * Image sub-rect reads: the image-pool addressing contract -- descriptor
  * stride, pool base, 4bpp nibble packing, and odd-width parity -- lives here in
  * the library that owns the format, not open-coded in every image renderer. The
  * loupe / tile / thumbnail consumers keep only their geometry and blit and call
@@ -364,7 +364,7 @@ ra8_err_t book_src_image_rect(const book_src_t*   src,
 }
 
 /* ===========================================================================
- * Paged plain-text extraction (#163): same output as book_chapter_text but
+ * Paged plain-text extraction: same output as book_chapter_text but
  * the DOM is read frame-by-frame through an book_src_t / ra8_vmem cache, so a
  * book that exceeds the resident budget is walked with a bounded working set.
  * The resident path above is untouched; these helpers reuse the shared,

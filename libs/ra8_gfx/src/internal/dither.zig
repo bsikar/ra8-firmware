@@ -1,7 +1,7 @@
 //! SPDX-License-Identifier: MIT
 //! Copyright (c) 2026 Brighton Sikarskie
 //!
-//! Blue-noise ordered dither for the e-ink panel (#477): the toroidal mask
+//! Blue-noise ordered dither for the e-ink panel: the toroidal mask
 //! lookup, the quantise rules (flat and per-panel tone curve alike), the gray4
 //! nibble packer and the level-to-color expansion. Pure integer arithmetic
 //! over caller memory, so a tile quantises identically on host, emulator and
@@ -64,7 +64,7 @@ pub fn quantise(gray8: u8, thr: u8) u8 {
     return if (rounds_up) base + 1 else base;
 }
 
-/// The same rule against a prepared per-panel curve (#479), falling back to
+/// The same rule against a prepared per-panel curve, falling back to
 /// the flat palette when the caller has no calibration data.
 pub fn quantiseAny(map: ?*const tone_impl.Map, gray8: u8, thr: u8) u8 {
     const curve = map orelse return quantise(gray8, thr);
