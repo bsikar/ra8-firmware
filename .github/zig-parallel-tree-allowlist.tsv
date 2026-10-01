@@ -46,7 +46,6 @@ ra8_c6link	src/ra8_c6link.c	Facade and link lifecycle. First slice into this lib
 ra8_c6link	src/ra8_c6link_arena.c	Bump allocator the protobuf codec draws from; reaches into ra8_c6link_t, so it ports with that struct in a later slice of #858.
 ra8_c6link	src/ra8_c6link_mdl.c	Media-download facade over the protobuf service. Ports with its service and transfer halves in a later slice of #858.
 ra8_c6link	src/ra8_c6link_mdl_service.c	Media-download request/response service. Ports with ra8_c6link_mdl.c in a later slice of #858.
-ra8_c6link	src/ra8_c6link_mdl_transfer.c	Media-download chunk transfer and resume. Ports with ra8_c6link_mdl.c in a later slice of #858.
 ra8_c6link	src/ra8_c6link_pump.c	Poll pump that drains the transport into the event fan-out. Ports in a later slice of #858.
 ra8_c6link	src/ra8_c6link_rpc.c	Request/response correlation; the first caller of the Zig priv_c6link_tlv_* symbols this slice lands. Ports in a later slice of #858.
 ra8_c6link	src/ra8_c6link_wifi.c	Wi-Fi control surface over the RPC layer. Ports after the RPC layer in a later slice of #858.

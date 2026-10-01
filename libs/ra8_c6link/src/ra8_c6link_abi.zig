@@ -13,6 +13,8 @@ const std = @import("std");
 
 const caps = @import("internal/caps.zig");
 const frame = @import("internal/frame.zig");
+const mdl_transfer = @import("internal/mdl_transfer.zig");
+pub const mdl_types = @import("internal/mdl_types.zig");
 const storage_ram = @import("internal/storage_ram.zig");
 const tlv = @import("internal/tlv.zig");
 
@@ -135,20 +137,6 @@ pub export fn priv_c6link_caps(out: ?[*]u8, cap: u8) callconv(.c) u8 {
     return caps.write(buf[0..cap]) orelse 0;
 }
 
-/// `ra8_mdl_storage_iface_t`: the coordinator's view of one storage backend.
-///
-/// `validate` stays null for this backend: the transfer layer verifies the
-/// byte count and digest itself, and a RAM sink has nothing of its own to
-/// check.
-const StorageIface = extern struct {
-    begin: ?*const fn (?*anyopaque, ?[*:0]const u8) callconv(.c) u16,
-    write: ?*const fn (?*anyopaque, ?[*]const u8, u16, ?*u16) callconv(.c) u16,
-    validate: ?*const anyopaque,
-    commit: ?*const fn (?*anyopaque) callconv(.c) u16,
-    abort: ?*const fn (?*anyopaque) callconv(.c) u16,
-    ctx: ?*anyopaque,
-};
-
 fn storageOf(context: ?*anyopaque) ?*storage_ram.Ram {
     return @ptrCast(@alignCast(context orelse return null));
 }
@@ -197,7 +185,7 @@ fn ramAbort(context: ?*anyopaque) callconv(.c) u16 {
 /// over `capacity` bytes the caller owns.
 pub export fn ra8_mdl_storage_ram_init(
     storage: ?*storage_ram.Ram,
-    output: ?*StorageIface,
+    output: ?*mdl_types.StorageIface,
     data: ?[*]u8,
     capacity: usize,
 ) callconv(.c) u16 {
@@ -232,4 +220,42 @@ pub export fn ra8_mdl_storage_ram_view(
     out_data.* = bytes.ptr;
     out_len.* = bytes.len;
     return Err.ok;
+}
+
+/// `ra8_c6link_mdl_transfer`: run one complete media transfer.
+///
+/// The link handle crosses as an opaque pointer: the coordinator hands it
+/// straight back to the C media RPC and never reads a field of it, so this
+/// slice needs no mirror of `ra8_c6link_t`.
+pub export fn ra8_c6link_mdl_transfer(
+    link: ?*anyopaque,
+    url: ?[*:0]const u8,
+    destination: ?[*:0]const u8,
+    config: ?*const mdl_types.Config,
+    result: ?*mdl_types.Result,
+) callconv(.c) u16 {
+    if (link == null) return Err.null_ptr;
+    const source = url orelse return Err.null_ptr;
+    const sink = destination orelse return Err.null_ptr;
+    const settings = config orelse return Err.null_ptr;
+    const out = result orelse return Err.null_ptr;
+
+    return mdl_transfer.transfer(link, source, sink, settings, out);
+}
+
+/// `ra8_c6link_mdl_transfer_commit_test`: the commit half on its own, for the
+/// host suites that drive terminal metadata without a transport.
+pub export fn ra8_c6link_mdl_transfer_commit_test(
+    config: ?*const mdl_types.Config,
+    chunk: ?*const mdl_types.Chunk,
+    bytes_stored: u64,
+    chunks_received: u32,
+    result: ?*mdl_types.Result,
+) callconv(.c) u16 {
+    const settings = config orelse return Err.null_ptr;
+    const terminal = chunk orelse return Err.null_ptr;
+    const out = result orelse return Err.null_ptr;
+
+    var state = mdl_transfer.State{ .config = settings, .storage_active = true };
+    return mdl_transfer.commit(&state, terminal, bytes_stored, chunks_received, out);
 }
