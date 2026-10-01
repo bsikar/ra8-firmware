@@ -40,8 +40,8 @@ fleet.yml    THE declaration: one block per machine -- its ADDRESS (an IP or a
              many runner instances, its CPU and memory per instance, its labels,
              its quiet-hours window. Everything below is derived from it, as is
              the ~/.ssh fragment `just infra::ssh_config` installs.
-ansible/     configures machines (dev_box, ci_runner, ci_runner_docker,
-             fleet_capacity, hil_bench, c6_toolchain, ad2_tools)
+ansible/     configures machines (dev_box, ci_runner, fleet_capacity,
+             hil_bench, c6_toolchain, ad2_tools)
 images/      the CI runner container image (devcontainer toolchain + runner)
 network/     the isolated ESP32-C6 bench LAN (FortiGate + OpenWrt AP)
 ```
@@ -75,7 +75,6 @@ the documentation, not a footnote:
 | `k3s_node` (cluster + `helm`) | codified |
 | `openbao` (vault deployment) | codified |
 | `ci_runner` (ARC runner pool) | codified |
-| `ci_runner_docker` (Docker build host) | codified |
 | `hil_bench`, `c6_toolchain`, `ad2_tools` (bench Pi) | codified |
 | `network/` (bench LAN: FortiGate + AP) | codified |
 | vault init / unseal / secrets (`scripts/secrets/`) | manual **by design** |
@@ -258,7 +257,6 @@ differ only in shape and in where they run:
 | Role | Host kind | Shape |
 |---|---|---|
 | `ci_runner` | k3s node | ARC scale set, pods, autoscaling from zero |
-| `ci_runner_docker` | any Docker host | N long-lived containers |
 
 Instance counts, CPU and memory allocations, and the labels each host carries
 are **not** properties of the roles: every one of them comes from that host's
@@ -280,116 +278,6 @@ the fix is more machines, not more pods on the first. Measured against the same
 gate and the same commit, an otherwise-idle host runs the heavy cross-build
 several times faster than a pod on the saturated node -- and that gap is
 contention, not CPU.
-
-**`ra8-ci` as a plain label is verified, not assumed.** `ra8-ci` is the ARC
-runner *scale-set name*, and a scale-set name and a runner label are resolved
-from the same `runs-on:` string -- so whether a plain runner carrying that
-label joins the scale set's pool, shadows it, or is ignored is not something to
-guess at. The first runner deployed under `ci_runner_docker` was registered
-with the label and watched: it picked up an `ra8-ci` job within seconds of
-coming online and has taken that work since. A plain runner carrying the label
-therefore joins the existing pool with **no workflow edit at all**. If a future
-GitHub change breaks that, the fallback is already in place -- each host also
-carries a per-host label, so heavy jobs can be pinned to it.
-
-### Storage: CI I/O is kept off a named pool, by assertion
-
-The NAS `ci_runner_docker` was first deployed to has a **DEGRADED** `raid-z2`
-pool: a known backplane fault flagging "too many slow I/Os" on most members,
-with zero read/write/checksum errors and no data errors. It is accepted and is
-not this role's to repair -- but no build traffic belongs on it.
-
-So the role does not *document* the carve-out, it *enforces* it. Before writing
-anything it resolves the filesystem actually backing each path CI touches --
-the runner root and the Docker daemon's data root, read from the daemon rather
-than assumed -- and fails the play if either lands on a pool in
-`ci_runner_docker_forbidden_pools` or under a mount in
-`ci_runner_docker_forbidden_mounts`. A moved mountpoint or a re-pointed data
-root is a failed deploy, not a silent relocation onto degraded spindles.
-
-Everything the runner writes lands in exactly two places, both on the healthy
-pool: `ci_runner_docker_root` (a dataset holding the image archive, the runner
-distribution, its registration credentials, and the `_work` checkout where
-builds actually happen) and the Docker data root (image layers and the
-container's writable layer).
-
-### What survives a TrueNAS SCALE upgrade
-
-SCALE is an appliance: it rewrites its root filesystem on upgrade, so anything
-under `/etc`, `/usr` or `/root` is temporary storage. This role writes **none**
-of it -- no systemd unit, no package install, no file outside the pool. What
-that buys:
-
-- **Survives.** The dataset and everything in it: the runner binaries, the
-  `.runner`/`.credentials` registration (so no re-registration and no
-  credential is needed after an upgrade or a reboot), the `_work` tree, the
-  image archive, and the rendered compose file. Also the dataset itself, which
-  is created through the TrueNAS middleware (`midclt`) rather than behind its
-  back, so the appliance knows it owns it.
-- **Probably survives, not guaranteed.** The loaded Docker image and the
-  container object. Both live in the Docker data root on a pool dataset, which
-  a routine upgrade does not touch -- but a major migration of the Apps
-  subsystem has reinitialised that dataset before. This is why the canonical
-  image archive is distributed to the runner home: the fleet apply verifies
-  its digest and reloads it when necessary.
-- **Does not survive, and does not need to.** Nothing. The role installs
-  nothing on the appliance root by design.
-
-So the recovery from any upgrade damage is the same single command as the
-initial deploy, `just infra::apply truenas`. The fleet dispatcher supplies
-the canonical image metadata and the role is idempotent -- it re-loads nothing
-it already has and re-registers nothing already registered. Do not run a
-manual `docker load`; that bypasses the declared producer/archive/digest
-relationship the fleet checker enforces.
-
-One dependency is worth stating because it is easy to get wrong: on SCALE
-`docker.service` is **not** systemd-enabled. The middleware starts it as part
-of bringing the Apps subsystem up, which happens only while an apps pool is
-configured. The container's `restart: unless-stopped` then brings the runner
-back by itself. So "the runner returns after a reboot" is true *because* Apps
-is enabled on a pool -- unset the apps pool and Docker never starts, and the
-runner never comes back no matter what its restart policy says.
-
-### Deploy and remove
-
-```sh
-# deploy (and converge an existing deployment). Drains the host first: a
-# converge recreates containers, which would cancel the jobs they hold.
-just infra::apply truenas
-
-# just the drain script and the quiet-hours timer -- touches no container
-just infra::apply truenas "" capacity
-
-# remove: containers down, runners deregistered from GitHub, image dropped,
-# dataset destroyed. One command, nothing left behind.
-just infra::remove truenas
-```
-
-Removal is a role path rather than a README snippet on purpose: a hand-written
-teardown recipe drifts from the deploy it is supposed to undo, and the only
-way to be sure a removal is complete is for the same file to own both halves.
-To keep the image archive for a later redeploy, put
-`ci_runner_docker_destroy_dataset: false` in the mode-0600 vars file accepted
-as the optional second argument to `just infra::remove`.
-
-### Resource caps
-
-The runner is capped so the host stays useful for its actual job, and both caps
-come from the host's `fleet.yml` block rather than from this file. The
-reasoning behind them does not change when the numbers do:
-
-- **CPU** is capped below the host's thread count so heavy gates stay genuinely
-  parallel while enough threads remain for the file services, ZFS transaction
-  groups and the middleware. An uncapped runner wins every scheduling contest
-  against SMB during a build, which turns a CI job into a NAS outage.
-- **Memory** is sized to hold a whole job in one container, with headroom over
-  what the ARC scale-set pods pass on. It cannot starve the ZFS ARC: Linux ZFS
-  shrinks the ARC under memory pressure down to `arc_min` and grows it back
-  afterwards.
-
-The play reads the caps back out of the container's cgroup and **asserts** them
-rather than trusting the compose file, because a cap that was silently ignored
-is worse than one that was never set.
 
 ## The legacy `k3s-runner-*` pool is retired
 

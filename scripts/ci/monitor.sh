@@ -832,13 +832,10 @@ EOF
   #
   # This needs a LONG-LIVED runner: an ARC pod is ephemeral (one pod per job) and
   # its _diag tree dies with it, so the ra8-ci scale set on the k3s node can never
-  # serve this. The defaults therefore point at the truenas container runner
-  # (infra/ansible/roles/ci_runner_docker), whose _work / _diag live on a dataset
-  # outside the container and survive it. That is also a strict improvement on
-  # where these defaults used to point -- /home/ubuntu/actions-runner*/ on the
-  # k3s node, the bare-metal `k3s-runner-*` pool, which by the end only ever
-  # served docs-publish / fuzz-nightly / osv-scan and so could not show a
-  # `firmware` result at all. That pool is retired.
+  # serve this. There is no default host any more: the long-lived container
+  # runner that used to be the default was removed with the rest of the Docker
+  # runner fleet, so name the box with --host (or RA8_CI_RUNNER_HOST) and its
+  # _diag glob with RA8_CI_RUNNER_GLOB.
   #
   # The log format is version-specific and was established empirically against
   # runner 2.335.1 (an earlier attempt failed because the widely-cited
@@ -930,8 +927,8 @@ EOF
   }
 
   cmd_runner_status() {
-    local host="${RA8_CI_RUNNER_HOST:-truenas}"
-    local glob="${RA8_CI_RUNNER_GLOB:-/mnt/stripe/ci-runner/home/_diag/Worker_*.log}"
+    local host="${RA8_CI_RUNNER_HOST:-}"
+    local glob="${RA8_CI_RUNNER_GLOB:-}"
     local want_sha="" limit=10
     while [[ $# -gt 0 ]]; do
       case "$1" in
@@ -950,6 +947,13 @@ EOF
         *) shift ;;
       esac
     done
+
+    if [[ -z "$host" || -z "$glob" ]]; then
+      echo "overall: UNKNOWN"
+      echo "  reason: name the runner box with --host (or RA8_CI_RUNNER_HOST) and"
+      echo "          its _diag/Worker_*.log glob with RA8_CI_RUNNER_GLOB"
+      exit "$RA8_CI_EXIT_UNKNOWN"
+    fi
 
     local out
     out="$(_runner_status_fetch "$host" "$glob" "$limit")"

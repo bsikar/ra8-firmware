@@ -22,17 +22,11 @@ estate. This checks three things a green Ansible run would not:
    no effect.
 
 3. **The derived variables land somewhere real.** Every ``fleet_capacity_*``
-   and ``dev_slice_*`` name the mapping emits must exist in that role's
-   defaults. A mapping keyed on a spelling no role reads is the same defect as
-   a checker rule keyed on a string no macro produces: it matches nothing and
-   reports success forever.
+   name the mapping emits must exist in that role's defaults. A mapping keyed
+   on a spelling no role reads is the same defect as a checker rule keyed on a
+   string no macro produces: it matches nothing and reports success forever.
 
-4. **The names both halves must agree on do agree.** The model predicts the dev
-   slice's unit name (``fleet.py`` passes it to the capacity script) and the
-   role creates it. Two spellings would give the host a quiet-hours window that
-   freezes a slice nothing ever made -- a schedule that stands nothing down.
-
-5. **No command the tooling builds needs an ssh alias.** Rule 1 checks the
+4. **No command the tooling builds needs an ssh alias.** Rule 1 checks the
    INPUT; this checks the derivation, by walking the real ssh argv and the real
    inventory line for every host and failing on any destination or ProxyJump
    hop that is a bare label. A future ``-J <fleet name>`` would pass every
@@ -74,7 +68,6 @@ import hil_cache_repair_rules as hctr  # noqa: E402 -- checker helper beside thi
 # would never read it and whatever it configures would silently not happen.
 DERIVED_ROLES = {
     "fleet_capacity_": "fleet_capacity",
-    "dev_slice_": "dev_slice",
     "dev_box_hil_runner_": "dev_box",
     "hil_bench_": "hil_bench",
 }
@@ -143,28 +136,6 @@ def _check_derived_vars() -> list[str]:
             for key in sorted({k for k in emitted if k.startswith(prefix)} - declared)
         ]
     return problems
-
-
-def _check_shared_constants() -> list[str]:
-    """The names the model and a role BOTH have to know are the same name.
-
-    ``fleet_model`` predicts the dev slice's unit name so ``fleet.py`` can pass
-    it to the capacity script, and the ``dev_slice`` role creates it. Two
-    spellings would produce a quiet-hours timer that freezes a slice nothing
-    ever made -- a window that silently stands nothing down.
-
-    Returns:
-        One message per disagreement.
-    """
-    role_unit = _role_defaults("dev_slice").get("dev_slice_unit")
-    if role_unit == fm.DEV_SLICE_UNIT:
-        return []
-    return [
-        f"fleet_model.DEV_SLICE_UNIT is '{fm.DEV_SLICE_UNIT}' but the dev_slice role "
-        f"creates '{role_unit}'. fleet.py passes the first to the capacity script and "
-        "the role creates the second, so quiet hours would freeze a slice that does "
-        "not exist and dev work would keep the machine through the owner's window."
-    ]
 
 
 def _check_hil_service_template(
@@ -282,18 +253,6 @@ def _good_hosts() -> dict[str, Any]:
             },
             "budget": {"mode": "burst", "threads": 4, "memory_gb": 8},
         },
-        "nas": {
-            "class": "docker_linux",
-            "connect": {"address": "10.0.0.2", "user": "deploy"},
-            "provisions": ["ci-runner-docker"],
-            "runners": {
-                "instances": 2,
-                "cpus": 4,
-                "memory_gb": 8,
-                "labels": ["ra8-ci"],
-            },
-            "budget": {"mode": "reserved", "threads": 8, "memory_gb": 16},
-        },
         "dev": {
             "class": "dev_box",
             "connect": {"address": "10.0.0.4", "user": "developer"},
@@ -350,7 +309,6 @@ def _mutations() -> dict[str, Any]:
         **_reach_mutations(),
         **_capacity_mutations(),
         **_runner_image_mutations(),
-        **_dev_slice_mutations(),
         **_hil_listener_mutations(),
         **_hil_interface_mutations(),
     }
@@ -367,7 +325,7 @@ def _runner_image_mutations() -> dict[str, Any]:
             source_host="missing"
         ),
         "runner image source does not build it": lambda d: d["runner_image"].update(
-            source_host="nas"
+            source_host="dev"
         ),
         "runner image ref is empty": lambda d: d["runner_image"].update(image=""),
         "runner image archive is empty": lambda d: d["runner_image"].update(archive=""),
@@ -394,7 +352,7 @@ def _hil_listener_mutations() -> dict[str, Any]:
         ].update(host="missing"),
         "HIL listener targeting non-bench host": lambda d: d["hosts"]["dev"]["hil_runner"][
             "bench"
-        ].update(host="nas"),
+        ].update(host="builder"),
         "HIL listener with malformed bench aliases": lambda d: d["hosts"]["dev"]["hil_runner"][
             "bench"
         ].update(aliases="bench.local"),
@@ -450,24 +408,30 @@ def _reach_mutations() -> dict[str, Any]:
         Rule name to a function that damages a good declaration.
     """
     return {
-        "unknown class": lambda d: d["hosts"]["nas"].update(class_="x") or _set(d, "class", "nope"),
-        "unknown play": lambda d: d["hosts"]["nas"].update(provisions=["not-a-play"]),
-        "no connect.address": lambda d: d["hosts"]["nas"]["connect"].clear(),
+        "unknown class": lambda d: (
+            d["hosts"]["builder"].update(class_="x") or _set(d, "class", "nope")
+        ),
+        "unknown play": lambda d: d["hosts"]["builder"].update(provisions=["not-a-play"]),
+        "no connect.address": lambda d: d["hosts"]["builder"]["connect"].clear(),
         # THE regression guard. A bare label is an ~/.ssh/config alias, and a
         # fleet addressed by aliases is drivable only from whichever machine
-        # defines them -- which is how truenas sat at half capacity with nothing
-        # able to converge it back.
-        "address is an ssh alias": lambda d: d["hosts"]["nas"]["connect"].update(address="nas"),
-        "address carries the login user": lambda d: d["hosts"]["nas"]["connect"].update(
-            address="deploy@10.0.0.2"
+        # defines them -- which is how a runner host once sat at half capacity with
+        # nothing able to converge it back.
+        "address is an ssh alias": lambda d: d["hosts"]["builder"]["connect"].update(
+            address="builder"
         ),
-        "address with whitespace in it": lambda d: d["hosts"]["nas"]["connect"].update(
-            address="10.0.0.2 "
+        "address carries the login user": lambda d: d["hosts"]["builder"]["connect"].update(
+            address="builder@10.0.0.3"
         ),
-        "jump is not a declared host": lambda d: d["hosts"]["nas"]["connect"].update(
+        "address with whitespace in it": lambda d: d["hosts"]["builder"]["connect"].update(
+            address="10.0.0.3 "
+        ),
+        "jump is not a declared host": lambda d: d["hosts"]["builder"]["connect"].update(
             jump="bastion"
         ),
-        "jump chain revisits a host": lambda d: d["hosts"]["nas"]["connect"].update(jump="nas"),
+        "jump chain revisits a host": lambda d: d["hosts"]["builder"]["connect"].update(
+            jump="builder"
+        ),
     }
 
 
@@ -478,22 +442,24 @@ def _capacity_mutations() -> dict[str, Any]:
         Rule name to a function that damages a good declaration.
     """
     return {
-        "wrong budget mode": lambda d: d["hosts"]["nas"]["budget"].update(mode="burst"),
-        "capacity over budget": lambda d: d["hosts"]["nas"]["runners"].update(instances=4),
-        "instance under the CPU floor": lambda d: d["hosts"]["nas"]["runners"].update(cpus=2),
-        "instance under the memory floor": lambda d: d["hosts"]["nas"]["runners"].update(
+        "wrong budget mode": lambda d: d["hosts"]["builder"]["budget"].update(mode="reserved"),
+        "capacity over budget": lambda d: d["hosts"]["builder"]["runners"].update(instances=4),
+        "instance under the CPU floor": lambda d: d["hosts"]["builder"]["runners"].update(cpus=2),
+        "instance under the memory floor": lambda d: d["hosts"]["builder"]["runners"].update(
             memory_gb=4
         ),
-        "unexplained instance count": lambda d: d["hosts"]["nas"]["runners"].update(instances=1),
-        "no labels": lambda d: d["hosts"]["nas"]["runners"].update(labels=[]),
-        "bad quiet window": lambda d: d["hosts"]["nas"].update(
+        "unexplained instance count": lambda d: d["hosts"]["builder"]["runners"].update(
+            instances=2
+        ),
+        "no labels": lambda d: d["hosts"]["builder"]["runners"].update(labels=[]),
+        "bad quiet window": lambda d: d["hosts"]["builder"].update(
             quiet_hours={"window": "evening", "days": "Fri", "instances": 0}
         ),
-        "bad quiet day": lambda d: d["hosts"]["nas"].update(
+        "bad quiet day": lambda d: d["hosts"]["builder"].update(
             quiet_hours={"window": "18:00-23:00", "days": "Funday", "instances": 0}
         ),
-        "quiet target is not a reduction": lambda d: d["hosts"]["nas"].update(
-            quiet_hours={"window": "18:00-23:00", "days": "Fri", "instances": 2}
+        "quiet target is not a reduction": lambda d: d["hosts"]["builder"].update(
+            quiet_hours={"window": "18:00-23:00", "days": "Fri", "instances": 1}
         ),
         "capacity on a non-runner class": lambda d: d["hosts"].update(
             {
@@ -509,59 +475,6 @@ def _capacity_mutations() -> dict[str, Any]:
     }
 
 
-def _dev_slice_mutations() -> dict[str, Any]:
-    """Breakages in the slice a runner host lends back to agents.
-
-    Returns:
-        Rule name to a function that damages a good declaration.
-    """
-    return {
-        "dev slice not weighted below CI": lambda d: _lend(d, cpu_weight=100),
-        "dev slice weight out of range": lambda d: _lend(d, cpu_weight=0),
-        "dev slice memory over what the runners leave": lambda d: _lend(d, memory_gb=8),
-        "dev slice swap the host does not have": lambda d: _lend(d, swap_gb=4),
-        "dev slice with no parallel bound": lambda d: _lend(d, max_jobs=0),
-        "dev slice missing a required key": lambda d: d["hosts"]["nas"].update(
-            dev_slice={"cpu_weight": 10, "memory_gb": 4}
-        ),
-        "dev slice on a class that runs none": lambda d: d["hosts"].update(
-            {
-                "box": {
-                    "class": "dev_box",
-                    "connect": {"address": "10.0.0.3"},
-                    "provisions": ["dev-box"],
-                    "dev_slice": {"cpu_weight": 10, "memory_gb": 4, "max_jobs": 4},
-                }
-            }
-        ),
-    }
-
-
-def _lend(data: dict[str, Any], **override: int) -> None:
-    """Give the selftest's host a dev slice, with one field made wrong.
-
-    The base block is legal on the fixture host -- 2 runners x 8 GB of a 16 GB
-    budget leaves nothing, so the memory field is what has to give: the fixture
-    lends 0 GB is not legal either, hence the budget bump. Each caller then
-    breaks exactly one field, so a rule that stopped firing is attributable.
-
-    Args:
-        data: The declaration being damaged.
-        override: The one field to set to an illegal value.
-    """
-    data["hosts"]["nas"]["budget"]["memory_gb"] = 20
-    data["hosts"]["nas"]["budget"]["swap_gb"] = 2
-    data["hosts"]["nas"]["sizing_note"] = "fixture: budget raised to leave room to lend"
-    slice_: dict[str, int] = {
-        "cpu_weight": 10,
-        "memory_gb": 4,
-        "swap_gb": 2,
-        "max_jobs": 4,
-    }
-    slice_.update(override)
-    data["hosts"]["nas"]["dev_slice"] = slice_
-
-
 def _set(data: dict[str, Any], key: str, value: object) -> None:
     """Set a key on the selftest's single host.
 
@@ -571,17 +484,17 @@ def _set(data: dict[str, Any], key: str, value: object) -> None:
         value: Value to set it to. Deliberately ``object``: the point of a
             mutation is to write something the schema does not expect.
     """
-    data["hosts"]["nas"][key] = value
+    data["hosts"]["builder"][key] = value
 
 
 def _jumped_declaration() -> dict[str, Any]:
     """A legal two-host fleet where one machine is reached through the other.
 
     Returns:
-        The good declaration plus a bench the NAS is reached through.
+        The good declaration plus a bench the builder is reached through.
     """
     data = _good_declaration()
-    data["hosts"]["nas"]["connect"]["jump"] = "bench"
+    data["hosts"]["builder"]["connect"]["jump"] = "bench"
     return data
 
 
@@ -601,13 +514,13 @@ def _check_jump_resolves(host_vars_dir: Path) -> list[str]:
     """
     data = _jumped_declaration()
     problems = [f"  a legal ProxyJump was rejected: {p}" for p in fm.validate(data, host_vars_dir)]
-    argv = fr.ssh_target(data, "nas")
+    argv = fr.ssh_target(data, "builder")
     if "-J" not in argv:
         problems.append("  a declared connect.jump produced no -J on the ssh command line")
     elif argv[argv.index("-J") + 1] != "pi@10.0.0.9":
         hop = argv[argv.index("-J") + 1]
         problems.append(f"  the ProxyJump hop is '{hop}', not the hop host's address")
-    if "ProxyJump=pi@10.0.0.9" not in fm.inventory_entry(data, "nas"):
+    if "ProxyJump=pi@10.0.0.9" not in fm.inventory_entry(data, "builder"):
         problems.append("  the generated inventory does not hand Ansible the ProxyJump hop")
     if "ProxyJump bench" not in fr.render_ssh_config(data):
         problems.append("  the generated ssh config does not carry the hop")
@@ -647,13 +560,6 @@ def _selftest() -> int:
             failures.append("  a legal declaration was rejected")
         failures += _check_hil_service_selftest(empty)
         failures += hctr.selftest(REPO_ROOT)
-        # A validator that rejected EVERY dev slice would pass every mutation
-        # below while making the feature unusable, so the legal shape is
-        # asserted too -- the same reason the legal declaration above is.
-        legal_lend = _good_declaration()
-        _lend(legal_lend)
-        if fm.validate(legal_lend, host_vars_dir=empty):
-            failures.append("  a legal dev_slice was rejected")
         failures += _check_jump_resolves(empty)
         if _check_derived_reach(_jumped_declaration()):
             failures.append("  a fleet reachable only by address was reported unreachable")
@@ -670,7 +576,7 @@ def _selftest() -> int:
             if not fm.validate(broken, host_vars_dir=empty):
                 failures.append(f"  rule not enforced: {rule}")
         good = _good_declaration()
-        (empty / "nas.yml").write_text("ci_runner_docker_cpus: '9'\n", encoding="utf-8")
+        (empty / "builder.yml").write_text("ci_runner_max: 9\n", encoding="utf-8")
         if not fm.validate(good, host_vars_dir=empty):
             failures.append("  a host_vars file re-declaring a fleet-owned knob was accepted")
     failures.extend(_selftest_authority_errors())
@@ -723,7 +629,6 @@ def main(argv: list[str] | None = None) -> int:
     problems = (
         fm.validate(data)
         + _check_derived_vars()
-        + _check_shared_constants()
         + _check_hil_service_template()
         + hctr.check(REPO_ROOT, data)
         + _check_derived_reach(data)

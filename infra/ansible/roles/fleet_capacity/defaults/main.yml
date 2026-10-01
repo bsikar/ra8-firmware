@@ -23,13 +23,9 @@ fleet_capacity_src: "{{ playbook_dir }}/../../../scripts/ci/fleet_capacity.sh"
 
 # Where it lands on the host.
 #
-# NOT /usr/local/bin, and that is not a preference. TrueNAS SCALE mounts its
-# appliance root READ-ONLY (`findmnt -no OPTIONS /` reports `ro`), so a role
-# that installed there would fail on the NAS -- or, worse, be given a
-# `failed_when: false` and silently install nothing. Under the runner root the
-# script sits on the same pool dataset as the runner homes, which is both
-# writable and survives a SCALE upgrade.
-fleet_capacity_dir: "{{ ci_runner_docker_root | default('/etc/ra8-fleet') }}/capacity"
+# Kept out of /usr/local/bin so a host with a read-only appliance root can
+# still take it.
+fleet_capacity_dir: "/etc/ra8-fleet/capacity"
 fleet_capacity_bin: "{{ fleet_capacity_dir }}/ra8-fleet-capacity"
 fleet_capacity_env: "{{ fleet_capacity_dir }}/capacity.env"
 fleet_capacity_state_dir: "/var/lib/ra8-fleet"
@@ -45,19 +41,8 @@ fleet_capacity_kind: "docker"
 fleet_capacity_docker: "docker"
 
 # The instance containers, in instance order, space separated. This is the list
-# the drain walks, so it has to match what ci_runner_docker actually created --
-# fleet.py derives both from the same declaration.
+# the drain walks; fleet.py derives it from the declaration.
 fleet_capacity_containers: ""
-
-# The low-priority dev slice this host lends its idle capacity to, if any.
-#
-# Quiet hours have to reach it as well as the runners, or standing CI down buys
-# the owner nothing: three parked containers while an agent's gate suite goes
-# on using the machine is exactly the outcome the window exists to prevent. The
-# capacity script FREEZES it -- suspend, never kill -- for the same reason the
-# runner drain never signals a busy instance. Empty on a host that lends none,
-# and every dev-slice path in the script is then a no-op.
-fleet_capacity_dev_slice: ""
 
 # ARC scale set to move, for the k8s kind.
 fleet_capacity_kubectl: "k3s kubectl"

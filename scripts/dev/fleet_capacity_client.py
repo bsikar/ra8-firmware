@@ -69,12 +69,13 @@ def state_group(host: dict[str, Any]) -> str:
 def run_selftest(data: dict[str, Any]) -> list[str]:
     """Prove exact streamed capacity argv and refuse malformed quiet hours."""
     failures: list[str] = []
-    expected_nas = ["--full-instances", "1"]
-    if policy_flags(data["hosts"]["truenas"]) != expected_nas:
-        failures.append("ordinary Docker restore argv lost its declared capacity")
-    if state_group(data["hosts"]["truenas"]) != "truenas_admin":
+    arc = data["hosts"]["k3s-pve"]
+    expected = ["--full-instances", str(arc["runners"]["instances"])]
+    if policy_flags(arc)[:2] != expected:
+        failures.append("ARC restore argv lost its declared capacity")
+    if state_group(arc) != arc["connect"]["user"]:
         failures.append("SSH capacity state lost its connecting account group")
-    malformed = {**data["hosts"]["truenas"], "quiet_hours": {"window": "18:00"}}
+    malformed = {**arc, "quiet_hours": {"window": "18:00"}}
     try:
         policy_flags(malformed)
     except fm.FleetError:
@@ -113,19 +114,7 @@ def run(data: dict[str, Any], name: str, args: list[str], command_runner: Comman
         state_group_name,
         *policy_flags(host),
     ]
-    if cls.capacity_kind == "docker":
-        if fm.docker_command(host) != "docker":
-            flags.append("--sudo")
-        for container in fm.container_names(host):
-            flags += ["--container", container]
-        # An operator scale-down must reach the dev slice for the same reason
-        # the timer's does: `just infra::scale HOST=win-ci N=0` is the "I want
-        # to play a game for an hour" command, and it buys the owner nothing
-        # while a gate suite in the slice still has the machine.
-        if host.get("dev_slice"):
-            flags += ["--dev-slice", fm.DEV_SLICE_UNIT]
-    else:
-        flags += ["--scale-set", host["runners"]["labels"][0]]
+    flags += ["--scale-set", host["runners"]["labels"][0]]
     # The capacity script's flags are shaped so none ever needs quoting.
     remote = f"{fm.remote_shell(host)} -- {' '.join(flags)} {' '.join(args)}"
     return command_runner(
