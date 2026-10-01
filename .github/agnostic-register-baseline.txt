@@ -9,7 +9,7 @@
 #
 # clock: 369 reference(s)
 # display: 9 reference(s)
-# gpio: 78 reference(s)
+# gpio: 74 reference(s)
 # timer: 51 reference(s)
 #
 # path<TAB>family<TAB>count
@@ -284,8 +284,6 @@ libs/ra8_nsc/inc/ra8_nsc_io.h	timer	1
 libs/ra8_nsc/src/ra8_nsc_cgc.c	clock	3
 libs/ra8_nsc/src/ra8_nsc_io.c	display	2
 libs/ra8_nsc/src/ra8_nsc_io.c	timer	3
-libs/ra8_sdfont/src/ra8_sdfont.c	gpio	2
-libs/ra8_sdmmc_spi/src/ra8_sdmmc_spi_io.c	gpio	2
 port/esp-hosted/src/ra8_esp_hosted_gpio.c	gpio	6
 port/esp-hosted/src/ra8_esp_hosted_gpio_edge.c	gpio	3
 port/esp-hosted/src/ra8_esp_hosted_spi.c	gpio	4
