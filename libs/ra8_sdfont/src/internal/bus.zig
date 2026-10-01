@@ -36,8 +36,21 @@ const Transport = extern struct {
 };
 
 extern fn ra8_pfs_route_peripheral(pin: u16, psel: Psel, owner: [*:0]const u8) u16;
-extern fn ra8_gpio_output_init(pin: u16, init_level: Level) u16;
-extern fn ra8_gpio_write(pin: u16, level: Level) u16;
+
+/// `ra8_pin_interface_t` (libs/ra8_core/inc/ra8_pin_interface.h). The whole
+/// vtable, in declaration order, because the layout has to be exact: this
+/// struct is read through a pointer the C side owns.
+const PinInterface = extern struct {
+    output_init: *const fn (ctx: ?*anyopaque, pin: u16, init_level: Level) callconv(.c) u16,
+    input_init: *const fn (ctx: ?*anyopaque, pin: u16, pull: u8) callconv(.c) u16,
+    write: *const fn (ctx: ?*anyopaque, pin: u16, level: Level) callconv(.c) u16,
+    read: *const fn (ctx: ?*anyopaque, pin: u16, out_level: ?*Level) callconv(.c) u16,
+    toggle: *const fn (ctx: ?*anyopaque, pin: u16) callconv(.c) u16,
+    release: *const fn (ctx: ?*anyopaque, pin: u16) callconv(.c) u16,
+    ctx: ?*anyopaque,
+};
+
+extern fn ra8_pin_interface_default() *const PinInterface;
 extern fn ra8_sci_spi_init(channel: u8, cfg: *const SciSpiCfg) u16;
 extern fn ra8_sci_spi_set_clock(channel: u8, baud_hz: u32, pclk_hz: u32) u16;
 extern fn ra8_sci_spi_xfer(channel: u8, tx: ?[*]const u8, rx: ?[*]u8, len: u32) u16;
@@ -77,7 +90,8 @@ fn setClock(ctx: ?*anyopaque, hz: u32) callconv(.c) u16 {
 
 fn chipSelect(ctx: ?*anyopaque, asserted: bool) callconv(.c) u16 {
     const self: *const Context = @ptrCast(@alignCast(ctx orelse return err.null_ptr));
-    return ra8_gpio_write(self.cs, if (asserted) .low else .high);
+    const pins = ra8_pin_interface_default();
+    return pins.write(pins.ctx, self.cs, if (asserted) .low else .high);
 }
 
 fn transfer(ctx: ?*anyopaque, tx: ?[*]const u8, rx: ?[*]u8, len: u32) callconv(.c) u16 {
@@ -110,7 +124,8 @@ pub fn bringUpSpi(channel: u8, pclka_hz: u32, pins: Pins) u16 {
         }
     }
 
-    const parked = ra8_gpio_output_init(pins.cs, .high);
+    const pin_if = ra8_pin_interface_default();
+    const parked = pin_if.output_init(pin_if.ctx, pins.cs, .high);
     if (parked != err.ok) {
         return parked;
     }
