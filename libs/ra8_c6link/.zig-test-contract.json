@@ -1,7 +1,9 @@
 {
   "test_roots": [
     "tests/internal_test.zig",
-    "tests/abi_test.zig"
+    "tests/abi_test.zig",
+    "tests/frame_test.zig",
+    "tests/caps_test.zig"
   ],
   "covered_sources": [
     "src/internal/root.zig",
@@ -9,7 +11,11 @@
     "src/internal/tlv.zig",
     "src/ra8_c6link_abi.zig",
     "tests/internal_test.zig",
-    "tests/abi_test.zig"
+    "tests/abi_test.zig",
+    "src/internal/frame.zig",
+    "src/internal/caps.zig",
+    "tests/frame_test.zig",
+    "tests/caps_test.zig"
   ],
-  "minimum_tests": 22
+  "minimum_tests": 51
 }
