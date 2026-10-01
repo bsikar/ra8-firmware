@@ -8,20 +8,20 @@
 //! only half of the choice: the other half is the CMake TOOLCHAIN FILE the app
 //! is configured with, which is what actually carries the device's CPU
 //! differences. cmake/toolchain-ra8p1.cmake includes toolchain-ra8d2.cmake
-//! verbatim and then appends two things to the *_INIT flag groups, so the RA8P1
-//! command line is the RA8D2 one plus a tail.
+//! verbatim and then appends ONE thing to the *_INIT flag groups by default, so
+//! the RA8P1 command line is the RA8D2 one plus a one-flag tail.
 //!
-//! Both are silent when missed, in the direction that matters:
+//! What it does NOT append matters as much. The toolchain file used to override
+//! -mfpu to fpv5-d16 unconditionally; #225 settled that the RA8P1 primary M85
+//! declares `__FPU_DP 0` in FSP's own CMSIS header, byte-identical to the RA8D2,
+//! so both parts build fpv5-sp-d16 and fpv5-d16 is reachable only through the
+//! opt-in `-DRA8P1_DP_FPU=ON` bench switch for #229 (which also defines
+//! `RA8_FPU_DP_ENABLED`). Emitting fpv5-d16 by default is not a harmless
+//! surplus: `libs/ra8_hal/inc/ra8_fpu_probe.h` refuses a double-precision
+//! -mfpu without that define, and on silicon the .f64 opcodes would be
+//! UNDEFINED instructions. The opt-in configuration is not modelled here.
 //!
-//!   -mfpu=fpv5-d16      the RA8P1 primary M85 has a DOUBLE-precision FPU; the
-//!                       RA8D2's is single-precision. GCC honours the LAST
-//!                       -mfpu, so this flag has to be emitted AFTER the
-//!                       fpv5-sp-d16 the shared toolchain body set, not instead
-//!                       of it. Drop it and every `double` becomes soft-float
-//!                       library calls instead of .f64 opcodes: the image still
-//!                       builds, still links, and is a different image. It also
-//!                       rides on the LINK line, because the link picks its
-//!                       newlib multilib from the effective -mfpu.
+//! The one flag is silent when missed:
 //!
 //!   -DRA8_DEVICE_RA8P1  libs/ra8_core/inc/ra8_device.h reads it to switch
 //!                       register bases, memory-map sizes and feature flags.
@@ -52,8 +52,9 @@ pub const Device = struct {
     /// where CMake's *_INIT append puts it.
     compile_flags: []const []const u8 = &.{},
     /// The subset of the above that also reaches the LINK line. The device
-    /// define does not (CMAKE_EXE_LINKER_FLAGS_INIT never gets it), and the
-    /// FPU selection does, because the multilib choice depends on it.
+    /// define does not (CMAKE_EXE_LINKER_FLAGS_INIT never gets it). An -mfpu
+    /// override would, because the link picks its newlib multilib from the
+    /// effective -mfpu; no default device carries one today.
     link_flags: []const []const u8 = &.{},
 };
 
@@ -71,8 +72,9 @@ pub const devices = [_]Device{
         .name = "ra8p1",
         .board = "libs/ra8_board_ra8p1",
         .toolchain_file = "cmake/toolchain-ra8p1.cmake",
-        .compile_flags = &.{ "-mfpu=fpv5-d16", "-DRA8_DEVICE_RA8P1" },
-        .link_flags = &.{"-mfpu=fpv5-d16"},
+        // toolchain-ra8p1.cmake appends the define to C, CXX and ASM but not
+        // to CMAKE_EXE_LINKER_FLAGS_INIT, so the link line gets nothing.
+        .compile_flags = &.{"-DRA8_DEVICE_RA8P1"},
     },
 };
 
@@ -103,24 +105,22 @@ test "the RA8D2 is the base and adds nothing" {
     try std.testing.expectEqual(@as(usize, 0), d2.link_flags.len);
 }
 
-test "the RA8P1 adds the DP-FPU override and the device define, in that order" {
+test "the RA8P1 adds only the device define, never a DP -mfpu" {
     const p1 = forBoard("libs/ra8_board_ra8p1");
-    try std.testing.expectEqual(@as(usize, 2), p1.compile_flags.len);
-    // Order is the assertion, not decoration: GCC takes the LAST -mfpu, so
-    // this flag is only an override because it trails the shared body's
-    // fpv5-sp-d16. A set-equal check would pass on a reordering that silently
-    // builds single-precision code.
-    try std.testing.expectEqualStrings("-mfpu=fpv5-d16", p1.compile_flags[0]);
-    try std.testing.expectEqualStrings("-DRA8_DEVICE_RA8P1", p1.compile_flags[1]);
+    try std.testing.expectEqual(@as(usize, 1), p1.compile_flags.len);
+    try std.testing.expectEqualStrings("-DRA8_DEVICE_RA8P1", p1.compile_flags[0]);
+    // #225: a default fpv5-d16 trips ra8_fpu_probe.h's #error and would emit
+    // .f64 opcodes the part's single-precision FPU takes as UNDEFINED.
+    for (devices) |device| {
+        for (device.compile_flags) |flag| {
+            try std.testing.expect(!std.mem.eql(u8, flag, "-mfpu=fpv5-d16"));
+        }
+    }
 }
 
-test "the device define does not reach the link line, the FPU selection does" {
+test "the device define does not reach the link line" {
     const p1 = forBoard("libs/ra8_board_ra8p1");
-    try std.testing.expectEqual(@as(usize, 1), p1.link_flags.len);
-    try std.testing.expectEqualStrings("-mfpu=fpv5-d16", p1.link_flags[0]);
-    for (p1.link_flags) |flag| {
-        try std.testing.expect(!std.mem.startsWith(u8, flag, "-DRA8_DEVICE"));
-    }
+    try std.testing.expectEqual(@as(usize, 0), p1.link_flags.len);
 }
 
 test "every device in the table names a board layer and a toolchain file" {
