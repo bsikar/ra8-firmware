@@ -125,13 +125,6 @@ PLAYS: dict[str, Play] = {
         removable=True,
         summary="long-lived runner containers on a Docker host",
     ),
-    "wsl-ci-host": Play(
-        playbook="wsl-ci-host.yml",
-        group="wsl_ci_hosts",
-        roles=("wsl_ci_host", "ci_runner_docker", "dev_slice", "fleet_capacity"),
-        removable=True,
-        summary="a Windows machine's WSL2 distro, then the runners into it",
-    ),
     "hil-bench": Play(
         playbook="hil-bench.yml",
         group="hil_bench",
@@ -269,10 +262,8 @@ def container_names(host: dict[str, Any]) -> list[str]:
 def remote_shell(host: dict[str, Any]) -> str:
     """The remote command that reads a shell script on stdin and runs it.
 
-    A WSL host has no SSH daemon of its own, so the play and every capacity
-    command reach the distro through the Windows side's ssh and ``wsl -e``.
     Feeding the script on stdin rather than quoting it into the command line
-    keeps it clear of both the Windows shell's parsing and the distro's.
+    keeps it clear of the remote shell's parsing.
 
     Args:
         host: One host's declaration.
@@ -331,8 +322,6 @@ def _runner_vars(name: str, host: dict[str, Any]) -> dict[str, Any]:
         "ci_runner_docker_pin_cpus": bool(run.get("pin_cpus", False)),
         "ci_runner_docker_labels": ",".join(run["labels"]),
     }
-    if host["class"] == "docker_wsl":
-        out.update(_wsl_vars(host))
     return out
 
 
@@ -361,26 +350,6 @@ def _runner_image_vars(data: dict[str, Any], host: dict[str, Any]) -> dict[str, 
             "ci_runner_docker_image_source_ssh": fr.ssh_target(data, image["source_host"]),
         }
     return {}
-
-
-def _wsl_vars(host: dict[str, Any]) -> dict[str, Any]:
-    """The WSL2 VM caps, which are this host's CI budget stated to Windows.
-
-    Args:
-        host: One ``docker_wsl`` host's declaration.
-
-    Returns:
-        The ``wsl_ci_host`` role variables written into ``.wslconfig``.
-    """
-    budget = host["budget"]
-    connect = host["connect"]
-    return {
-        "wsl_ci_host_windows_user": connect["windows_user"],
-        "wsl_ci_host_distro": connect["distro"],
-        "wsl_ci_host_processors": int(budget["threads"]),
-        "wsl_ci_host_memory": f"{budget['memory_gb']}GB",
-        "wsl_ci_host_swap": f"{budget['swap_gb']}GB",
-    }
 
 
 def _dev_slice_vars(host: dict[str, Any]) -> dict[str, Any]:
@@ -498,13 +467,9 @@ def inventory_entry(data: dict[str, Any], name: str) -> str:
         name: Fleet host name.
 
     Returns:
-        The ``<name> ansible_host=... ansible_user=...`` line, or a
-        ``connection=local`` line for a WSL host, whose play runs inside the
-        distro because WSL has no SSH daemon of its own.
+        The ``<name> ansible_host=... ansible_user=...`` line.
     """
     host = data["hosts"][name]
-    if CLASSES[host["class"]].transport == "wsl":
-        return f"{name} ansible_connection=local"
     connect = host["connect"]
     entry = f"{name} ansible_host={connect['address']}"
     if connect.get("user"):
@@ -626,9 +591,6 @@ def _check_shape(name: str, host: dict[str, Any]) -> list[str]:
         for p in provisions
         if p not in PLAYS
     ]
-    if CLASSES[host["class"]].transport == "wsl":
-        missing = [k for k in ("distro", "windows_user") if not (host.get("connect") or {}).get(k)]
-        bad += [f"{name}: a docker_wsl host needs connect.{k}" for k in missing]
     return bad
 
 
@@ -662,8 +624,6 @@ def _check_runner_block(name: str, host: dict[str, Any]) -> list[str]:
             f"{name}: budget.mode is '{budget.get('mode')}' but class {host['class']} is "
             f"only honest as '{cls.budget_mode}' -- see the mode note in infra/fleet.yml"
         )
-    if cls.transport == "wsl" and budget and "swap_gb" not in budget:
-        bad.append(f"{name}: a docker_wsl budget must set swap_gb (the VM's swap file)")
     if run and cls.budget_mode == "burst":
         # A burst host is packed by what it REQUESTS, so the requests are not
         # optional extras -- without them there is no arithmetic to check.

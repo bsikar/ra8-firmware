@@ -454,11 +454,9 @@ def _capacity_k8s_missing_selftest(repo_root: Path, failures: list[str]) -> None
 
 
 def _source_contract_selftest(repo_root: Path, failures: list[str]) -> None:
-    """Require parked roles, candidate rollback, and read-only WSL checks."""
+    """Require parked roles and candidate rollback."""
     paths = {
         "fleet": repo_root / "scripts/dev/fleet.py",
-        "wsl": repo_root / "scripts/dev/fleet_wsl.py",
-        "stage": repo_root / "scripts/dev/fleet_wsl_stage.py",
         "docker": repo_root / "infra/ansible/roles/ci_runner_docker/tasks/deploy.yml",
         "arc": repo_root / "infra/ansible/roles/ci_runner/tasks/main.yml",
         "role": repo_root / "infra/ansible/roles/dev_box/tasks/fleet_reconcile.yml",
@@ -475,9 +473,6 @@ def _source_contract_selftest(repo_root: Path, failures: list[str]) -> None:
         ("arc", "post_renderer: >-", 1),
         ("arc", 'spec["maxRunners"] = 0', 1),
         ("arc", "if matches != 1:", 1),
-        ("stage", 'mode == "apply" and not installed else "--verify-cache"', 1),
-        ("wsl", 'if spec.mode == "check":', 3),
-        ("wsl", 'fws.transaction_lock_lines(spec.mode != "check")', 1),
         ("fleet", 'sync_image=request.args.mode == "apply"', 1),
         ("capacity-role", 'path: "{{ fleet_capacity_state_dir }}/capacity.lock"', 1),
         ("capacity-role", 'group: "{{ fleet_capacity_state_group }}"', 2),
@@ -486,7 +481,7 @@ def _source_contract_selftest(repo_root: Path, failures: list[str]) -> None:
     )
     for name, value, expected in required:
         if texts[name].count(value) != expected:
-            failures.append("parked role or WSL read-only contract count drifted")
+            failures.append("parked role or rollback contract count drifted")
         weakened = texts[name].replace(value, "", 1)
         if weakened.count(value) == expected:
             failures.append("source contract mutation unexpectedly stayed invisible")

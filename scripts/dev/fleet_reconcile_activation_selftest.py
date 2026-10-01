@@ -3,7 +3,7 @@
 """Selftests for reading the ARC activation check's apply-required status.
 
 The activation check is a ``--check`` run, so the verifier reports work still
-outstanding by exit status: ``fw.APPLY_REQUIRED_STATUS`` means the check RAN
+outstanding by exit status: ``frp.APPLY_REQUIRED_STATUS`` means the check RAN
 and found one change, which is why ``inspect_host`` counts it as a clean read
 of one drifted task.  The activation check read it as a failed check instead,
 which made the sole ARC capacity opener unusable on exactly the host that
@@ -42,7 +42,6 @@ from types import ModuleType
 from typing import Any
 
 import fleet_reconcile_process as frp
-import fleet_wsl as fw
 
 DIGEST = "c" * 64
 FIRST_PASS = 6000
@@ -226,7 +225,7 @@ def _drive(
     controller: ModuleType,
     *,
     arc_producer: bool = True,
-    activation_status: int = fw.APPLY_REQUIRED_STATUS,
+    activation_status: int = frp.APPLY_REQUIRED_STATUS,
     apply_fails: bool = False,
     passes: int = 1,
 ) -> tuple[list[int], _Fleet, dict[str, Any]]:
@@ -385,7 +384,7 @@ def _status_mapping_is_pinned(controller: ModuleType, failures: list[str]) -> No
         with contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()):
             return controller.inspect_activation_host(data, "producer", lambda _argv: result)
 
-    apply_required = frp.CommandResult(fw.APPLY_REQUIRED_STATUS, "", "")
+    apply_required = frp.CommandResult(frp.APPLY_REQUIRED_STATUS, "", "")
     if answer(apply_required) != (True, 1):
         failures.append(
             "an activation check reporting work outstanding was not read as a clean "

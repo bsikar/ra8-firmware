@@ -25,8 +25,7 @@ it: your machine joins as a CI runner pool.
 - **CI runner** -- point a spare machine (or a friend's server) at the repo and
   it joins the runner pool: more hardware, more parallel CI. Two shapes are
   supported and can run side by side -- an autoscaling ARC pool on a k8s
-  cluster, and long-lived containers on any plain Docker host (including a
-  Windows machine's WSL2 distro).
+  cluster, and long-lived containers on any plain Docker host.
 - **HIL bench** -- configures the bench Pi's J-Link, `rfp-cli`, serial console,
   smart-plug control, the ESP32-C6 build toolchain, and the Digilent Analog
   Discovery 2 logic analyzer used to probe the RA8 <-> C6 SPI lines.
@@ -42,7 +41,7 @@ fleet.yml    THE declaration: one block per machine -- its ADDRESS (an IP or a
              its quiet-hours window. Everything below is derived from it, as is
              the ~/.ssh fragment `just infra::ssh_config` installs.
 ansible/     configures machines (dev_box, ci_runner, ci_runner_docker,
-             wsl_ci_host, fleet_capacity, hil_bench, c6_toolchain, ad2_tools)
+             fleet_capacity, hil_bench, c6_toolchain, ad2_tools)
 images/      the CI runner container image (devcontainer toolchain + runner)
 network/     the isolated ESP32-C6 bench LAN (FortiGate + OpenWrt AP)
 ```
@@ -77,7 +76,6 @@ the documentation, not a footnote:
 | `openbao` (vault deployment) | codified |
 | `ci_runner` (ARC runner pool) | codified |
 | `ci_runner_docker` (Docker build host) | codified |
-| `wsl_ci_host` + `ci_runner_docker` (Windows/WSL2 build host) | codified |
 | `hil_bench`, `c6_toolchain`, `ad2_tools` (bench Pi) | codified |
 | `network/` (bench LAN: FortiGate + AP) | codified |
 | vault init / unseal / secrets (`scripts/secrets/`) | manual **by design** |
@@ -261,7 +259,6 @@ differ only in shape and in where they run:
 |---|---|---|
 | `ci_runner` | k3s node | ARC scale set, pods, autoscaling from zero |
 | `ci_runner_docker` | any Docker host | N long-lived containers |
-| `wsl_ci_host` + `ci_runner_docker` | Windows machine, in WSL2 | N long-lived containers |
 
 Instance counts, CPU and memory allocations, and the labels each host carries
 are **not** properties of the roles: every one of them comes from that host's
@@ -294,131 +291,6 @@ coming online and has taken that work since. A plain runner carrying the label
 therefore joins the existing pool with **no workflow edit at all**. If a future
 GitHub change breaks that, the fallback is already in place -- each host also
 carries a per-host label, so heavy jobs can be pinned to it.
-
-### The Windows host runs several runners inside WSL2
-
-`wsl_ci_host` prepares the distro; `ci_runner_docker` then deploys into it
-**unmodified**. Keeping the platform-specific work in a separate role is what
-stops the shared role growing a second personality per host.
-
-The runner runs in WSL2 rather than on Windows because the toolchain image is
-the toolchain: every pinned tool lives in the runner image, and the
-`toolchain-parity` gate exists to fail a runner that drifts from those pins. A
-native Windows runner would need a separately assembled toolchain -- exactly
-the drift the gate is there to catch.
-
-**The instance count is a memory result, not a core count.** Queue depth is the
-fleet's bottleneck, not per-job latency, so a host with cores to spare runs
-several independent runners rather than one runner with a very wide `-j`. The
-bound is clang-tidy, which has been OOM-killed on a too-small share: cores
-would divide further, memory is what says stop. Each instance gets its own
-registration, home and `_work` tree, and is pinned to its own cpuset so `nproc`
-inside it reports its real share and Just exports the matching CMake job limit,
-so a repository build cannot oversubscribe the
-box. If clang-tidy is ever sharded, per-shard memory drops and another instance
-becomes viable; re-measure then rather than assuming.
-
-Some of the VM is left uncommitted on purpose: this machine has a discrete GPU
-and will later host the GPU side of the Ethos-U55 / NPU workstream (#228) in
-this same distro. GPU work and CI do not contend for an execution resource, but
-they do contend for system RAM.
-
-**Docker Engine in the distro, not Docker Desktop.** Docker Desktop is
-installed on this machine and is left completely alone, but it cannot host this
-runner: its daemon sits behind a Windows application that needs a logged-in
-interactive session, so the runner would stop being able to start containers
-the moment the owner logged out. That is not an unattended runner. Native
-`docker-ce` runs under the distro's own systemd. Because the Desktop
-integration also puts a `docker` shim on `PATH` from `/mnt/c`, the role
-*asserts* that the binary in use is the distro's own -- a silent switch back
-would reintroduce the GUI dependency with no other symptom.
-
-**The build tree stays off `/mnt/c`.** The runner root is on the distro's ext4
-root. `/mnt/c` is drvfs, a translation layer onto NTFS, and roughly an order of
-magnitude slower for the many-small-files work a checkout and a build are;
-putting `_work` there would hand back most of the CPU advantage this host was
-added for.
-
-**Mirrored networking needs a route fix here, and that is not optional.** The
-machine is multi-homed: an isolated bench LAN with **no uplink**, and the
-workstation's ordinary Wi-Fi. Mirrored networking copies the Windows routing table into the
-distro, and the bench LAN's DHCP-supplied default gateway arrives with the
-*lower* metric -- so out of the box every packet the runner sends goes into a
-black hole. Windows itself is unaffected because it fails over, which is why
-this reads as a working machine right up until a job runs. Two things fix it,
-both inside the distro, and neither touches the owner's network:
-
-- `ra8-wsl-route-pin` finds the default gateway that actually carries traffic
-  (probed by IP, before DNS can be trusted) and pins it below every mirrored
-  route. A **timer** re-asserts it, because mirrored networking re-syncs the
-  Windows routing table on every host network change -- a boot-only fix would
-  let a Wi-Fi roam break a job already in flight.
-- `generateResolvConf=false` plus a resolv.conf the role owns. WSL's DNS
-  tunnelling endpoint does **not** answer on this host: a raw UDP/53 query to
-  it times out while a public resolver answers in milliseconds over the same
-  interface. Left generated, every name lookup in a job stalls for the full
-  resolver timeout.
-
-**The VM must be told not to die.** WSL reaps an unattended VM regardless of
-what is running inside it, and this host was seen going `offline` with
-`busy=true` -- GitHub still had a job assigned to a VM that had been shut down
-underneath it. `vmIdleTimeout=-1` plus a blocking keep-alive in the autostart
-task fixes it. The keep-alive matters: a task running `wsl -e true` starts the
-VM and exits, and the VM is reaped moments later, which is an autostart that
-reliably leaves the runner offline while looking configured.
-
-**The clock may be wrong; it may not be non-monotonic.** A WSL2 VM does not
-boot with a trustworthy clock. Observed here: the VM came up minutes fast, the
-runner checked the tree out with those timestamps, `timesyncd` then stepped the
-clock back, and the build system spent the rest of the job rejecting the skew.
-That is not cosmetic -- incremental-build decisions compare timestamps. Docker
-is therefore ordered after the
-clock has synchronised, and since the containers are `restart: unless-stopped`,
-the daemon's start time is exactly when this host begins accepting jobs.
-
-Ordering was necessary and **not sufficient** (#509). It fixes the step that
-happens at boot and says nothing about one hours later -- which is what this
-host was measured doing. Scanning recent completed workflow runs for a step
-whose recorded `completed_at` precedes its own `started_at` found several, every
-one of them on this machine's runners and none anywhere else in the fleet.
-Every full-size event is a backward step of the same magnitude, and the size
-does *not* grow with the gap between events -- so it is not drift, it is two
-time sources disagreeing by a fixed offset and taking turns: the Windows host,
-whose clock a WSL2 guest takes and which WSL re-asserts periodically, against
-NTP inside the distro.
-
-So the role does two things. `chrony` replaces `timesyncd`, configured to step
-only while starting up and to **slew** every correction after that -- a build
-farm wants a clock that is briefly wrong but monotonic, because every gate
-whose contract is a duration (libFuzzer's `-max_total_time`, `timeout-minutes`,
-any benchmark) is measured on it. And the Windows clock is **asserted** rather
-than assumed: correcting it needs an elevated Windows action that WSL interop
-cannot perform, so the play fails with the exact `w32tm` commands instead of
-converging on a host that will resume stepping. `just quality::local::gate runner-clock`
-re-reads the fleet from the Actions API and is what proves it converged.
-
-**What survives a reboot, stated precisely.** WSL does not start distros on
-boot, so a Windows Scheduled Task (`ra8-wsl-ci-runner-autostart`) starts it;
-that starts systemd, which starts docker, which starts the runner containers.
-
-*Proven.* Running that task against a stopped distro brings the entire chain
-back -- distro, systemd, docker, every container -- in seconds. Verified by
-`wsl --shutdown` followed by `schtasks /Run` and nothing else touching the
-machine.
-
-*Not proven, and cannot be as configured.* That the trigger fires after an
-actual power cycle. A WSL distro is registered under the owning account's HKCU,
-so a boot-time task running as SYSTEM cannot start this distro at all -- `wsl
--d <distro>` in SYSTEM's context does not find it. Running a boot-triggered
-task as the owning user instead requires "run whether user is logged on or
-not", which stores that user's Windows password, and this is a personal
-machine. This host also has `AutoAdminLogon` disabled, so after a reboot it
-sits at the login screen with its runners offline until somebody logs in.
-
-Closing that gap needs an **owner decision, not more code**: either enable
-automatic logon for the account, or supply a credential so the task can be
-recreated as `ONSTART` with `/RU` + `/RP`. Until then reboot recovery here is
-manual, and the pool degrades onto its other hosts rather than breaking.
 
 ### Storage: CI I/O is kept off a named pool, by assertion
 
