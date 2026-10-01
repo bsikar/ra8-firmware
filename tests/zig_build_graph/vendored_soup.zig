@@ -147,7 +147,7 @@ pub fn addSuite(
         .target = target,
         .optimize = optimize,
     }).artifact("ra8_core_zig"));
-    // And the bump arena the pool carves from: ra8_mem's last C went in #2601
+    // And the bump arena the pool carves from: ra8_mem's last C went
     // (ra8_arena.c), so the seven ra8_arena_* entry points this suite resolves
     // are ra8_mem_abi.zig's exports now.
     suite.linkLibrary(b.dependency("ra8_mem", .{

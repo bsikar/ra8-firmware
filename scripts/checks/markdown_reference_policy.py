@@ -171,7 +171,7 @@ SOUP_RECORD_EXEMPT = frozenset({"docs/SOUP/README.md"})
 # A SOUP record's job is to state the boundary of the vendored subset, so it
 # names upstream files we deliberately do not carry. Such a name is sound only
 # inside a paragraph that says so in as many words, and only when it is not a
-# path into our own tree (which must stay checked hard: see #2334).
+# path into our own tree (which must stay checked hard).
 VENDORING_ABSENCE_RE = re.compile(
     r"(?:never|not)\s+vendored"
     r"|\bpruned\b"
@@ -188,7 +188,7 @@ VENDORING_ABSENCE_RE = re.compile(
 # absence grammar, which has to take the record's word for an upstream tree it
 # cannot see), and the same grammar runs in the other direction: a sentence that
 # says a path is absent while the path exists is reported as a contradicted
-# claim. See #2334.
+# claim.
 # The claim has to be ABOUT the named path, not merely in the same sentence as
 # one. A sentence may say "there is no public header" and then name five headers
 # that do exist, or "no standalone LICENSE file in `stb/`" where the absent thing

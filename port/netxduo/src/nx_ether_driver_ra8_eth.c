@@ -73,7 +73,7 @@ typedef enum : uint16_t {
                                        *   IP fragments larger packets and TCP
                                        *   clamps its MSS. RX is unaffected.
                                        *   Silicon-level limitation, not a
-                                       *   driver bug -- see issue #21
+                                       *   driver bug
                                        *   (accepted; needs a logic analyzer to
                                        *   pursue further). */
   k_nx_ra8_eth_phys_msw_shift = 8U,    /**< Bytes-per-byte shift for MAC msw. */

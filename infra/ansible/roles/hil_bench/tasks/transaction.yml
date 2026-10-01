@@ -665,7 +665,7 @@
   ansible.builtin.copy:
     dest: /etc/ssh/sshd_config.d/60-ra8-bench-clientalive.conf
     content: |
-      # Managed by the hil_bench ansible role -- see issue #497.
+      # Managed by the hil_bench ansible role.
       # Bounds how long a bench hold survives a client that vanished without
       # closing its socket. 15s x 4 = ~60s, against hours of TCP keepalive.
       ClientAliveInterval 15

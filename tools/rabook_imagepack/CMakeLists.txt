@@ -102,7 +102,7 @@ set(RA8_FMT_FW_SRC
     ${FW_ROOT}/apps/shared_libs/compress/src/ra8_compress.c
 )
 # The JPEG codec is Zig now: the encoder moved in #2798 and the decoder plus
-# its stripe driver in #2799, so libs/ra8_jpeg/src holds no .c at all. The
+# its stripe driver, so libs/ra8_jpeg/src holds no .c at all. The
 # hand-authored C23 header under libs/ra8_jpeg/inc is unchanged, so the
 # targets below that used to name the three decoder sources by path link the
 # archive instead. RA8_FMT_JPEG_SRC stays defined and empty: it is still

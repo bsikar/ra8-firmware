@@ -81,7 +81,7 @@ endfunction()
 # identical absolute source paths within a target. That is the same property
 # the scratch entry has relied on since RA8FW-308.
 #
-# The arena the scratch carves from left this list in #2601: it is Zig now, so
+# The arena the scratch carves from left this list: it is Zig now, so
 # the closure is completed by a LINK rather than by a source, through
 # ra8_webp_link_deps() below. Linking the same imported target twice is
 # harmless in a way that compiling the same .c twice is not, so the dedupe

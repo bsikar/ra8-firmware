@@ -213,7 +213,7 @@ def _report(lint: dict[str, dict[str, int]]) -> None:
 # ---------------------------------------------------------------------------
 
 # A generated 60-statement body: PLR0915 (too-many-statements) is called out by
-# name in #360, and a fixture that only *looks* long would not reach the limit.
+# name, and a fixture that only *looks* long would not reach the limit.
 _MANY_STATEMENTS = "\n".join(f"    v{i} = {i}" for i in range(60))
 
 BAD_FIXTURE = f'''"""Module docstring so the fixture fails on the rules under test only."""

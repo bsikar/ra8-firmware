@@ -22,7 +22,7 @@
  *      the M33 owns the page.
  *
  * The wake path -- the M33 signalling the M85 to spin back up for a heavy
- * re-render (opening or compiling a book, see #149) -- is the remaining piece
+ * re-render (opening or compiling a book) -- is the remaining piece
  * tracked in RA8FW-250; this example lands the M85-parks / M33-holds foundation.
  *
  * @note `ra8_log_info` is compiled to a no-op unless the build defines INFO-level

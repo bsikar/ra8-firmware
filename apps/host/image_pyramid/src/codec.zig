@@ -6,7 +6,7 @@ const degrade = @import("degrade.zig");
 
 // The ra8_jpeg software implementations currently use shared static working
 // state, despite stale thread-safe declarations in the public header. This
-// single-threaded application never calls the codec concurrently. See #893.
+// single-threaded application never calls the codec concurrently.
 const c = @cImport({
     @cInclude("stdbool.h");
     @cInclude("ra8_jpeg_sw.h");

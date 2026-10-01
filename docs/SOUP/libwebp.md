@@ -108,7 +108,7 @@ restructure the parser), and without the define the unmodified libc path is
 used (for host tooling with no arena bound). This mirrors how `stb_image` is fronted by
 `ra8_img_arena` (`apps/shared_libs/third_party/stb/stb_image_impl.c`); a **separate**
 sibling arena is used rather than reusing `ra8_img_arena` to keep the WebP
-decoder decoupled from `apps/shared_libs/reflow` (still true: see #637), and because
+decoder decoupled from `apps/shared_libs/reflow` (still true), and because
 the WebP path additionally needs a zeroing `ra8_webp_arena_calloc`. The arena is a
 reference-counted bump allocator that fully drains after each decode; on
 exhaustion the hook returns `NULL` and libwebp propagates a clean decode

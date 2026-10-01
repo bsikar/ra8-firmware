@@ -226,7 +226,7 @@ def render_baseline(debt: dict[str, str], causes: dict[str, str] | None = None) 
         "# still owed. The cause column is not decoration: a number nobody can",
         "# explain is indistinguishable from one nobody has looked at.",
         "#",
-        "# MEASURE THIS ON THE CI RUNNER, NEVER ON A DEVELOPER BOX -- see #400.",
+        "# MEASURE THIS ON THE CI RUNNER, NEVER ON A DEVELOPER BOX.",
         "#",
         "# Re-baseline after burning debt down (causes are carried forward):",
         "#   bash scripts/emu/matrix.sh; python3 scripts/checks/matrix_ratchet.py --update",

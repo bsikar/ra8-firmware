@@ -2,7 +2,7 @@
 
 Drives the whole `ra8_secure_app` public API (`key_vault.h` + `ota_commit.h`)
 once from a real firmware composition root and self-checks every return against
-what that function's own header promises. Closes the consumer gap in #922:
+what that function's own header promises. Closes the consumer gap:
 before this app, nothing under `apps/` or `examples/` included either header,
 so the only callers were `tests/security/`, and nothing proved the API is
 usable from an application or caught an ABI or wiring regression the host

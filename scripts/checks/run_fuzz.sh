@@ -246,7 +246,7 @@ fuzz_verdict_explain() {
       echo "           The HOST WALL CLOCK STEPPED during the run. libFuzzer derives" >&2
       echo "           -max_total_time from system_clock, so the ${budget}s budget was" >&2
       echo "           neither honoured nor measurable and this sweep proves nothing." >&2
-      echo "           Fix the runner's clock discipline (slew, not step) -- see #509." >&2
+      echo "           Fix the runner's clock discipline (slew, not step)." >&2
       ;;
     short-run)
       echo "FUZZ FAIL: ${target} was given ${budget}s but ran only ${elapsed}s, with no" >&2
@@ -444,7 +444,7 @@ run_one() {
 # Drive every branch of fuzz_run_verdict() with synthetic inputs, in both
 # directions: each case asserts the verdict AND the exit status, and the suite
 # fails if a rule stops matching OR starts matching something it should not.
-# Cases 3 and 4 are the real numbers observed on win-ci in #509.
+# Cases 3 and 4 are the real numbers observed on win-ci.
 verdict_case() {
   local want_verdict="$1" want_rc="$2" what="$3"
   shift 3

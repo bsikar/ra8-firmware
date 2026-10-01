@@ -29,7 +29,7 @@
  * original NS app (preserved in ``ns_app_phase_c.c.disabled``) once
  * the linker can place vendored ThreadX + USBX object files inside
  * ``NS_MRAM`` and the USB-FS peripheral has been NS-attributed via an
- * extra SAU region. See issue #55.
+ * extra SAU region.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
