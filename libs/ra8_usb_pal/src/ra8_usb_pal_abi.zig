@@ -9,9 +9,13 @@
 const std = @import("std");
 const core = @import("internal/root.zig");
 
-// The descriptor builders of `inc/ra8_usb_desc.h` ship in the same archive.
+// The descriptor builders of `inc/ra8_usb_desc.h` and the compose facade of
+// `inc/ra8_usb_compose.h` ship in the same archive. Each export is reached only
+// through this block: a file no root imports is never analyzed, so its
+// `export fn` never reaches the archive however many tests cover it.
 comptime {
     _ = @import("ra8_usb_desc_abi.zig");
+    _ = @import("ra8_usb_compose_abi.zig");
 }
 
 const tag: [*:0]const u8 = "USBPAL";

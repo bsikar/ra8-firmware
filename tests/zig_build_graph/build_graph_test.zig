@@ -780,6 +780,9 @@ test "the NS image's own sources are exactly the AUX_SRCS the secure image exclu
     // come off the board map, and the configured script carries no leftover
     // @RA8_NS_*@ placeholder.
     try std.testing.expect(ns_image_of.linker_script == null);
+    // The compose facade is Zig, so the NS image must name its archive.
+    try std.testing.expectEqual(@as(usize, 1), ns_image_of.zig_libraries.len);
+    try std.testing.expectEqualStrings("ra8_usb_pal", ns_image_of.zig_libraries[0]);
     try std.testing.expect(!ns_image_of.xip);
     try std.testing.expectEqualStrings("-nostartfiles", ns_image_of.link_flags[0]);
 }
