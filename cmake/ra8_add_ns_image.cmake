@@ -173,6 +173,11 @@ function(ra8_add_ns_image)
   if(_NS_LINK_LIBS)
     target_link_libraries(${_ns_elf} PRIVATE ${_NS_LINK_LIBS})
   endif()
+  # libgcc last, as ra8_add_app() does for the Secure image (ra8_add_app.cmake)
+  # and the CPU1 image: the link is -nostdlib, so a 64-bit divide anywhere in
+  # the NS world (fw_os_threadx.h's tick/ms conversions) is an undefined
+  # __aeabi_uldivmod without it.
+  target_link_libraries(${_ns_elf} PRIVATE gcc)
 
   # The warning profile the raw add_executable does not get. This is the whole
   # reason the helper applies it rather than documenting it.
