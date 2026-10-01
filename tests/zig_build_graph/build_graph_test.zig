@@ -485,22 +485,17 @@ fn indexOf(haystack: []const []const u8, needle: []const u8) ?usize {
 }
 
 test "EXTRA_SRCS helpers are compiled in, in the order the app names them" {
-    // One helper out of a library the app does NOT name in LIBS. The graph has
-    // to take it from the app's own declaration; nothing about libs/ra8_dfu/src
-    // says this unit belongs to the image and the rest do not.
+    // This app named five helpers out of two libraries it does NOT name in
+    // LIBS. The ports took all five into Zig archives it reaches through LIBS
+    // instead, the last of them the launch gate (#2932), so the declaration is
+    // empty and no app in the table uses the keyword any more.
     //
-    // It was five until the ports took the other four into Zig archives the app
-    // reaches through LIBS. The ordering this case is named for is therefore no
-    // longer observable here, and no other app in the table uses the keyword;
-    // what is still worth holding is that a named unit arrives without its
-    // library arriving with it, which is the pair of expectations below.
-    const expected = [_][]const u8{
-        "libs/ra8_dfu/src/ra8_dfu_launch.c",
-    };
-    try std.testing.expectEqual(expected.len, extra_srcs_app.extra_srcs.len);
-    for (expected, extra_srcs_app.extra_srcs) |want, got| {
-        try std.testing.expectEqualStrings(want, got);
-    }
+    // The case stays, pinned to empty, because the keyword is still live in
+    // cmake and in 8 app CMakeLists outside the table: an app that starts
+    // naming EXTRA_SRCS again has to come back through here. What it still
+    // holds either way is the rule the app was added for, below: naming a
+    // library's units is not naming the library.
+    try std.testing.expectEqual(@as(usize, 0), extra_srcs_app.extra_srcs.len);
 
     // And the rest of libs/ra8_dfu/src stays out: naming five units is not
     // naming the library.

@@ -219,6 +219,14 @@ export fn ra8_rot_trailer_after(image_base: ?*const anyopaque, body_len: u32) ?*
     return @alignCast(@ptrCast(bytes + offset));
 }
 
+/// The version an authenticated trailer records, for the anti-rollback gate.
+/// The trailer's layout stays inside this library: callers across an archive
+/// boundary hold it as an opaque pointer.
+export fn ra8_rot_trailer_image_version(trailer: ?*const rot.Trailer) u32 {
+    const record = trailer orelse return 0;
+    return record.img_version;
+}
+
 export fn ra8_rot_root_public_key(out_key: ?*?[*]const u8, out_len: ?*u32) u16 {
     const key_out = out_key orelse {
         ra8_log_emit_error(tag, "rot: out_key is NULL");

@@ -14,6 +14,7 @@
 //!   ra8_power_profile  tests/misc/src/test_ra8_power_profile.c
 //!   ra8_epd_cal        tests/misc/src/test_ra8_epd_cal.c
 //!   ra8_dfu            tests/misc/src/test_ra8_dfu_boot.c
+//!   ra8_dfu            tests/misc/src/test_ra8_dfu_launch.c
 //!   ra8_rot            tests/misc/src/test_ra8_dfu_antirollback.c
 //!
 //! Under CMake the same three archives are produced by
@@ -95,6 +96,12 @@ const slice = [_]SliceMember{
         .artifact_name = "ra8_dfu_boot",
         .include_path = "libs/ra8_dfu/inc",
         .c_suite_path = "tests/misc/src/test_ra8_dfu_boot.c",
+    },
+    .{
+        .dependency_name = "ra8_dfu",
+        .artifact_name = "ra8_dfu_boot",
+        .include_path = "libs/ra8_dfu/inc",
+        .c_suite_path = "tests/misc/src/test_ra8_dfu_launch.c",
     },
     .{
         .dependency_name = "ra8_rot",

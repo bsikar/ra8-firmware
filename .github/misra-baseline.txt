@@ -1095,10 +1095,6 @@ libs/ra8_dfu/src/ra8_dfu_boot.c	misra-c2012-15.5	6
 libs/ra8_dfu/src/ra8_dfu_host.c	misra-c2012-15.4	1
 libs/ra8_dfu/src/ra8_dfu_host.c	misra-c2012-15.5	27
 libs/ra8_dfu/src/ra8_dfu_host.c	misra-c2012-8.4	2
-libs/ra8_dfu/src/ra8_dfu_launch.c	misra-c2012-11.4	3
-libs/ra8_dfu/src/ra8_dfu_launch.c	misra-c2012-11.6	1
-libs/ra8_dfu/src/ra8_dfu_launch.c	misra-c2012-15.5	5
-libs/ra8_dfu/src/ra8_dfu_launch.c	misra-c2012-17.3	2
 libs/ra8_dfu/src/ra8_dfu_program.c	misra-c2012-11.4	2
 libs/ra8_dfu/src/ra8_dfu_program.c	misra-c2012-15.5	17
 libs/ra8_dfu/src/ra8_dfu_program.c	misra-c2012-8.4	6

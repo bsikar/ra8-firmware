@@ -20,25 +20,24 @@ while(NOT EXISTS "${_d}/cmake/ra8_add_app.cmake" AND NOT "${_d}" STREQUAL "/")
 endwhile()
 include("${_d}/cmake/ra8_add_app.cmake")
 
-# The RoT launch closure compiled straight in with RA8_ENABLE_ROOT_OF_TRUST:
-# ra8_dfu_launch + anti-rollback + ra8_rot + ra8_psa_crypto, which is the Zig
-# archive. ra8_rsip (software SHA) auto-globbed. The run-target check the launch
-# gate calls is Zig now (#2918) and arrives through ra8_dfu's archive below,
-# which this app asks for by hand: it picks translation units out of ra8_dfu
-# rather than naming the library in LIBS, so the ra8_add_app() expansion that
-# registers a migrated library's archive never sees it.
+# The whole RoT launch closure is Zig archives now (#2932): ra8_rot_launch is
+# the copy-to-run gate (ra8_dfu_launch), ra8_rot the verifier and anti-rollback
+# counter (#2943, #2947), ra8_psa_crypto the crypto. ra8_rsip (software SHA) is
+# auto-globbed. The gate calls ra8_dfu_run_target_valid and the unauthenticated
+# hand-off it wraps, both in ra8_dfu's archive, which this app asks for by hand
+# below: it picks translation units out of ra8_dfu rather than naming the
+# library in LIBS, so the ra8_add_app() expansion that registers a migrated
+# library's archive never sees it.
 ra8_add_app(
   NAME secure_boot_hil
   STACK_BYTES 32768
   DESCRIPTION "On-silicon enforcing secure boot (verify + anti-rollback via ra8_dfu_launch)"
-  LIBS ra8_board_ek_ra8d2 ra8_psa_crypto ra8_rot
+  LIBS ra8_board_ek_ra8d2 ra8_psa_crypto ra8_rot ra8_rot_launch
        MRAM_LENGTH
        128K
        SRAM_TEXT
        ra8_flash.c
        ra8_dfu_program.c
-  EXTRA_SRCS
-             ${_d}/libs/ra8_dfu/src/ra8_dfu_launch.c
 )
 
 ra8_link_zig_library_for_cpu(
