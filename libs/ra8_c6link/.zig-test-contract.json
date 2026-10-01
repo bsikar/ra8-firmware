@@ -1,0 +1,15 @@
+{
+  "test_roots": [
+    "tests/internal_test.zig",
+    "tests/abi_test.zig"
+  ],
+  "covered_sources": [
+    "src/internal/root.zig",
+    "src/internal/vocab.zig",
+    "src/internal/tlv.zig",
+    "src/ra8_c6link_abi.zig",
+    "tests/internal_test.zig",
+    "tests/abi_test.zig"
+  ],
+  "minimum_tests": 22
+}

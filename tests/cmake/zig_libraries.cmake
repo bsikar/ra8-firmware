@@ -744,6 +744,22 @@ ra8_add_zig_library(
   ra8_widget
 )
 
+# Partially migrated: the TLV envelope the co-processor's serial endpoint
+# speaks is Zig now and libs/ra8_c6link/src/ra8_c6link_tlv.c is gone. The rest
+# of the library is still C and keeps calling the two priv_c6link_tlv_*
+# symbols through the unchanged src/ra8_c6link_internal.h declarations, so the
+# RA8_C6LINK_SOURCES glob in tests_c6link.cmake stays and simply stops seeing
+# the deleted file. Every C file left behind carries a row in
+# .github/zig-parallel-tree-allowlist.tsv.
+ra8_add_zig_library(
+  NAME
+  ra8_c6link
+  ZIG_ROOT
+  ${FW_ROOT}/libs/ra8_c6link
+  LIBRARY_NAME
+  ra8_c6link
+)
+
 target_link_libraries(
   ra8_core_hal
   PUBLIC ra8_zig::ra8_box
@@ -756,6 +772,7 @@ target_link_libraries(
          ra8_zig::ra8_app
          ra8_zig::ra8_wdt_supervisor
          ra8_zig::ra8_mpu
+         ra8_zig::ra8_c6link
          ra8_zig::ra8_net_pal
          ra8_zig::ra8_lsm6dso
          ra8_zig::ra8_board_ek_ra8d2
@@ -800,6 +817,7 @@ link_libraries(
   ra8_zig::ra8_app
   ra8_zig::ra8_wdt_supervisor
   ra8_zig::ra8_mpu
+  ra8_zig::ra8_c6link
   ra8_zig::ra8_net_pal
   ra8_zig::ra8_lsm6dso
   ra8_zig::ra8_board_ek_ra8d2

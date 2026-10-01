@@ -311,7 +311,7 @@ RA8_INTERNAL static void internal_test_frame_classify(void)
  * @par MC/DC:
  * (no compound decision under test -- the envelope is written and read back,
  * and an insufficient capacity is refused by a single size guard)
- * Decisions: libs/ra8_c6link/src/ra8_c6link_tlv.c@priv_c6link_tlv_open @brief Verify tlv roundtrip behavior. @details Executes the tlv roundtrip scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+ * Decisions: libs/ra8_c6link/src/ra8_c6link_abi.zig@priv_c6link_tlv_open @brief Verify tlv roundtrip behavior. @details Executes the tlv roundtrip scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
 RA8_INTERNAL static void internal_test_tlv_roundtrip(void)
 {
   TEST_BEGIN("c6link TLV round trip");
@@ -354,8 +354,8 @@ RA8_INTERNAL static void internal_test_tlv_roundtrip(void)
  * - Vector 4: second tag corrupted         -> true  (varies tag two only)
  * Vector 1 paired with each of 2, 3 and 4 proves the corresponding condition
  * independently decides. N+1 = 4 vectors for N=3: minimal MC/DC.
- * Decisions: libs/ra8_c6link/src/ra8_c6link_tlv.c@priv_c6link_tlv_body
- * Decisions: libs/ra8_c6link/src/ra8_c6link_tlv.c@internal_c6link_tlv_named @brief Verify tlv rejects behavior. @details Executes the tlv rejects scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+ * Decisions: libs/ra8_c6link/src/ra8_c6link_abi.zig@priv_c6link_tlv_body
+ * Decisions: libs/ra8_c6link/src/internal/tlv.zig@named @brief Verify tlv rejects behavior. @details Executes the tlv rejects scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
 RA8_INTERNAL static void internal_test_tlv_rejects(void)
 {
   TEST_BEGIN("c6link TLV rejection");
@@ -535,7 +535,7 @@ RA8_INTERNAL static void internal_test_wire_literals(void)
  * independently decides. N+1 vectors per decision: minimal MC/DC.
  * Decisions: libs/ra8_c6link/src/ra8_c6link_frame.c@priv_c6link_frame_seal
  * Decisions: libs/ra8_c6link/src/ra8_c6link_frame.c@priv_c6link_frame_classify
- * Decisions: libs/ra8_c6link/src/ra8_c6link_tlv.c@internal_c6link_tlv_named
+ * Decisions: libs/ra8_c6link/src/internal/tlv.zig@named
  * Decisions: libs/ra8_c6link/src/ra8_c6link.c@priv_c6link_copy_str @brief Verify mcdc wire guards behavior. @details Executes the mcdc wire guards scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
 RA8_INTERNAL static void internal_test_mcdc_wire_guards(void)
 {
