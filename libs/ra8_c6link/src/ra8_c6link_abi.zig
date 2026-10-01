@@ -20,6 +20,7 @@ const mdl_service_rules = @import("internal/mdl_service_rules.zig");
 const mdl_session = @import("internal/mdl_session.zig");
 const mdl_pull = @import("internal/mdl_pull.zig");
 const mdl_envelope = @import("internal/mdl_envelope.zig");
+const mdl_issue = @import("internal/mdl_issue.zig");
 pub const mdl_types = @import("internal/mdl_types.zig");
 const storage_ram = @import("internal/storage_ram.zig");
 const tlv = @import("internal/tlv.zig");
@@ -355,6 +356,35 @@ pub export fn priv_c6link_mdl_cancelled_valid(
 /// `priv_c6link_mdl_session_deactivate`: close a session a cancellation acknowledged.
 pub export fn priv_c6link_mdl_session_deactivate(session: *mdl_types.Session) callconv(.c) void {
     mdl_session.deactivate(session);
+}
+
+/// `priv_c6link_mdl_cancel_allowed`: may a cancel be issued for this session?
+pub export fn priv_c6link_mdl_cancel_allowed(
+    session: *const mdl_types.Session,
+) callconv(.c) u16 {
+    mdl_issue.cancelAllowed(session) catch return Err.invalid_state;
+    return Err.ok;
+}
+
+/// `priv_c6link_mdl_next_allowed`: may a next request ask for `max_bytes`?
+pub export fn priv_c6link_mdl_next_allowed(
+    session: *const mdl_types.Session,
+    max_bytes: u16,
+) callconv(.c) u16 {
+    mdl_issue.nextAllowed(session, max_bytes) catch |err| return switch (err) {
+        error.InvalidState => Err.invalid_state,
+        error.InvalidSize => Err.invalid_size,
+    };
+    return Err.ok;
+}
+
+/// `priv_c6link_mdl_packed_coherent`: did the codec agree with itself?
+pub export fn priv_c6link_mdl_packed_coherent(
+    sized: usize,
+    written: usize,
+    capacity: usize,
+) callconv(.c) bool {
+    return mdl_issue.packedCoherent(sized, written, capacity);
 }
 
 /// `priv_c6link_mdl_accept_chunk`: copy a validated chunk, advance the session.
