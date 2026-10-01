@@ -375,16 +375,66 @@ export fn ra8_pfs_route_peripheral(pin: u16, sel: u8, owner: ?[*:0]const u8) u16
     return err_ok;
 }
 
-export fn ra8_gpio_output_init(pin: u16, init_level: u8) u16 {
+/// The pin vtable the factory resolves. Its rows record exactly what the
+/// GPIO fakes used to, so the driver suite still asserts on `output_init`
+/// and `gpio_writes`.
+const PinInterface = extern struct {
+    output_init: *const fn (ctx: ?*anyopaque, pin: u16, init_level: u8) callconv(.c) u16,
+    input_init: *const fn (ctx: ?*anyopaque, pin: u16, pull: u8) callconv(.c) u16,
+    write: *const fn (ctx: ?*anyopaque, pin: u16, lvl: u8) callconv(.c) u16,
+    read: *const fn (ctx: ?*anyopaque, pin: u16, out_lvl: *u8) callconv(.c) u16,
+    toggle: *const fn (ctx: ?*anyopaque, pin: u16) callconv(.c) u16,
+    release: *const fn (ctx: ?*anyopaque, pin: u16) callconv(.c) u16,
+    ctx: ?*anyopaque,
+};
+
+fn pinOutputInit(ctx: ?*anyopaque, pin: u16, init_level: u8) callconv(.c) u16 {
+    _ = ctx;
     if (g_hal.output_init_fail) return err_hal;
     g_hal.output_init = .{ pin, init_level };
     return err_ok;
 }
 
-export fn ra8_gpio_write(pin: u16, lvl: u8) u16 {
+fn pinWrite(ctx: ?*anyopaque, pin: u16, lvl: u8) callconv(.c) u16 {
+    _ = ctx;
     g_hal.gpio_writes[g_hal.gpio_writes_len] = .{ pin, lvl };
     g_hal.gpio_writes_len += 1;
     return err_ok;
+}
+
+fn pinInputInit(ctx: ?*anyopaque, pin: u16, pull: u8) callconv(.c) u16 {
+    _ = .{ ctx, pin, pull };
+    return err_ok;
+}
+
+fn pinRead(ctx: ?*anyopaque, pin: u16, out_lvl: *u8) callconv(.c) u16 {
+    _ = .{ ctx, pin };
+    out_lvl.* = 0;
+    return err_ok;
+}
+
+fn pinToggle(ctx: ?*anyopaque, pin: u16) callconv(.c) u16 {
+    _ = .{ ctx, pin };
+    return err_ok;
+}
+
+fn pinRelease(ctx: ?*anyopaque, pin: u16) callconv(.c) u16 {
+    _ = .{ ctx, pin };
+    return err_ok;
+}
+
+const g_pin_interface: PinInterface = .{
+    .output_init = pinOutputInit,
+    .input_init = pinInputInit,
+    .write = pinWrite,
+    .read = pinRead,
+    .toggle = pinToggle,
+    .release = pinRelease,
+    .ctx = null,
+};
+
+export fn ra8_pin_interface_default() *const PinInterface {
+    return &g_pin_interface;
 }
 
 export fn ra8_sci_spi_init(channel: u8, cfg: ?*const abi.SciSpiCfg) u16 {
