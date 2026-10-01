@@ -28,6 +28,7 @@ const rx_route = @import("internal/rx_route.zig");
 const field_copy = @import("internal/field_copy.zig");
 const tx_admit = @import("internal/tx_admit.zig");
 const wifi_init = @import("internal/wifi_init.zig");
+const bare_rpc = @import("internal/bare_rpc.zig");
 pub const mdl_types = @import("internal/mdl_types.zig");
 const storage_ram = @import("internal/storage_ram.zig");
 const tlv = @import("internal/tlv.zig");
@@ -621,4 +622,17 @@ pub export fn priv_c6link_tx_admit(open: bool, len: u16, tx_len: u16) callconv(.
 pub export fn priv_c6link_wifi_init_cfg(out: ?*wifi_init.Cfg) callconv(.c) void {
     const dst = out orelse return;
     dst.* = wifi_init.cfg();
+}
+
+/// `priv_c6link_bare_resp`: which answer id pairs with this bare request?
+///
+/// Writes the `RPC_ID__Resp_*` that answers @p req_id into @p out and returns
+/// true. Returns false, leaving @p out at zero, when @p req_id is not one of
+/// the requests whose body is empty.
+pub export fn priv_c6link_bare_resp(req_id: u32, out: ?*u32) callconv(.c) bool {
+    const dst = out orelse return false;
+    dst.* = 0;
+    const resp = bare_rpc.respFor(req_id) orelse return false;
+    dst.* = resp;
+    return true;
 }
