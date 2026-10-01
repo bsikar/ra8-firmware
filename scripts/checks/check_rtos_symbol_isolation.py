@@ -497,7 +497,7 @@ def main(argv: list[str]) -> int:
             "\nNEW_LEAK: reach the middleware through a seam bound under port/, or, while "
             "#695 is still design-only, declare the site in DECLARED_SITES with the reason "
             "it cannot wait.\nSTALE_LEDGER: the leak is gone -- drop its entry in the same "
-            "change, so the ledger keeps measuring the real distance to the #695 invariant.",
+            "change, so the ledger keeps measuring the real distance to the invariant.",
             file=sys.stderr,
         )
         return 1

@@ -1,7 +1,7 @@
 /**
  * @file epub_img_import.c
  * @brief Import-time transcode wiring: manifest href -> JOF atlas -> binder
- *        (#231's open-path integration).
+ *        (the open-path integration).
  *
  * @details
  * Implements `epub_tile_binder_import()`: resolve a manifest image href,
@@ -10,7 +10,7 @@
  * (`jof_produce`) into the caller's atlas store and register the
  * result. Every source codec normalizes to the one JOF container on import.
  * Either way the binder afterwards serves the image's full-resolution
- * tiles decode-on-demand -- the #231 goal for pages larger than SDRAM.
+ * tiles decode-on-demand -- the goal for pages larger than SDRAM.
  *
  * Guarded on `__has_include` exactly like the binder unit so epub-only apps
  * still link with this TU empty.

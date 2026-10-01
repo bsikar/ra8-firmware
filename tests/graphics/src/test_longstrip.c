@@ -638,7 +638,7 @@ RA8_INTERNAL static void internal_expect_all_rows_covered(void)
 /**
  * @test scroll_zero_skip_full_traversal
  *
- * @details The #289 contract. Scrolls the whole strip top -> bottom in 40-px
+ * @details The contract. Scrolls the whole strip top -> bottom in 40-px
  *          steps; at every step `longstrip_render` must report `skipped == 0`
  *          and `covered_rows == min(view_h, canvas_h - scroll_y)`, and the
  *          recording blit verifies every composited pixel equals the strip

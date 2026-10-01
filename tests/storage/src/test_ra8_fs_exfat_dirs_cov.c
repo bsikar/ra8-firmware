@@ -527,7 +527,7 @@ RA8_INTERNAL static void internal_test_mkdir_fills_a_directory(void)
  *          NoFatChain -- its bytes are patched to entry types, and the
  *          Directory attribute is set on its File entry. Nothing in the lookup
  *          path verifies the SetChecksum, so the patched set resolves exactly
- *          like a real one, which is the same technique #604's guards were
+ *          like a real one, which is the same technique the guards were
  *          proved with.
  *
  *          @p tail_type is the type byte written at the start of the SECOND

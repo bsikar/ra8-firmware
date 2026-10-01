@@ -9,7 +9,7 @@ both of them:
   Configuration" p 1697 */``. The symbol is right there in the quoted section
   name, together with the chapter and page the author believed it lived on.
 * a **register window** in a ``*_regs.h`` -- the struct members and the
-  ``k_..._off_...`` offset enum. #498's ``ra8_ptp_regs.h`` declared thirteen
+  ``k_..._off_...`` offset enum. The ``ra8_ptp_regs.h`` declared thirteen
   registers this way while its citations named no symbol at all, so a
   citation-only scan would have missed it entirely.
 
@@ -163,7 +163,7 @@ def cited_chapters(text: str) -> set[int]:
     """Every HUM chapter number `text` names anywhere.
 
     A register window is attributed to the chapters its own file names. That
-    is the attribution the #540 issue proposed, and it needs no new
+    is the attribution the issue proposed, and it needs no new
     annotation: a header that declares an MMIO window and names no chapter at
     all cannot be checked, and is skipped rather than guessed at.
 

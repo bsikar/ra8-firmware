@@ -203,7 +203,7 @@ RA8_INTERNAL static void internal_test_stream_append_extends(void)
  *          300-byte file there instead. Three things have to be true and only
  *          one of them is visible from the API: the contents are the new ones,
  *          the directory still holds ONE entry for the name (a create that
- *          appended a second set was the #603 defect), and the allocation
+ *          appended a second set was the defect), and the allocation
  *          bitmap has given back every cluster the old contents held. The
  *          bitmap is measured directly, because leaked clusters are by
  *          definition the ones no directory entry points at.

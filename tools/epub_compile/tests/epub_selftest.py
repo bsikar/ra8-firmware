@@ -153,7 +153,7 @@ def _check_page_elements(bb: BlobBuilder) -> None:
 
 
 def selftest() -> int:
-    """Compile the committed fixed-layout fixture and check the #196 contract.
+    """Compile the committed fixed-layout fixture and check the contract.
 
     Zips tests/fixtures/rabook_fixed_layout/ in memory, compiles it, then:
       * asserts the one-image-per-page shape (one spine chapter per page, each a

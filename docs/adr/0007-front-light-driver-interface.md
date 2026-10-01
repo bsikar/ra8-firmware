@@ -152,7 +152,7 @@ disturbance on the cell and out of VCC/VCC2. If #825 later insists the
 front light hang off a regulated rail, that rail is a separate regulator
 from VCC/VCC2, and ADR-0010's envelope stands unchanged.
 
-Sleep leakage, for the #831 acceptance criterion: 4 uA maximum with HWEN
+Sleep leakage, for the acceptance criterion: 4 uA maximum with HWEN
 low, plus the part's true shutdown isolation on the LED strings, so the
 light guide contributes no separate leakage path. Against a 2000 mAh cell
 that is under 0.2% of capacity a year. That is a datasheet limit, not a
@@ -193,7 +193,7 @@ Board side, as schematic deliverables for #834 and layout constraints for
 * `IN` from VBAT, 2.2 uF minimum ceramic to GND at the pin (pin table).
 * `SW` to the boost inductor. The datasheet's typical characteristics are
   taken at 10 uH and 22 uH; the final value waits on the real string and
-  #836's PI review.
+  the PI review.
 * Schottky to the output node, output capacitor, and `OVP` sensed at the
   output node's positive terminal.
 * `ILED1` as the warm sink and `ILED2` as the cool sink, one string each,
@@ -230,11 +230,11 @@ Firmware side, not implemented here, recorded so it is not discovered late:
   parallel strings per colour, or more than 28.5 mA, invalidates the
   baseline part, and the LM3697 at 30 mA only marginally relieves it. That
   is a vendor conversation, not something to discover at ERC.
-* #825's power tree gains a VBAT-fed branch that can pull several hundred
+* The power tree gains a VBAT-fed branch that can pull several hundred
   milliamps at the ceiling, and does not gain a front-light load on
   VCC/VCC2. ADR-0010's 3.00..3.35 V envelope is unaffected by this
   decision, which is the point of it.
-* #830's touch design inherits the 0x36 / 0x38 address constraint and a
+* The touch design inherits the 0x36 / 0x38 address constraint and a
   45 V-capable island near the FPC and sense lines.
 * Rev 1 carries no hardware dimming path. If bench work finds DC dimming
   insufficient (an LED whose spectrum shifts with current, say), the PWM
@@ -264,7 +264,7 @@ Firmware side, not implemented here, recorded so it is not discovered late:
    ramps. The switcher itself is at 500 kHz or 1 MHz, well clear of the
    audible band; the risk is the envelope, not the carrier.
 6. Colour temperature versus channel ratio. Photometric, not electrical.
-   The warm/cool mixing target in #831's acceptance criteria cannot be
+   The warm/cool mixing target in the acceptance criteria cannot be
    stated in Kelvin until the guide and LEDs are measured.
 7. Channel matching at the bottom of the range. The LM3630A specifies
    matching only at ILED = 10 mA. Below roughly 1 mA, expect visible colour

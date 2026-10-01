@@ -190,7 +190,7 @@ static size_t farc_read(void* ctx, uint64_t off, void* dst, size_t len)
 /**
  * @test test_cbr_compressed_parity
  * @brief A `.cbr` whose page is RAR5-compressed opens by magic and decodes to the
- *        exact bytes of the equivalent STORE page (the #235 CBZ-parity acceptance).
+ *        exact bytes of the equivalent STORE page (the CBZ-parity acceptance).
  *
  * @par MC/DC:
  * Decision apps/shared_libs/comic/src/comic_cbr.c@internal_add_member:

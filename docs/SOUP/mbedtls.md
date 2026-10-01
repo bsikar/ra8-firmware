@@ -46,7 +46,7 @@ as Software Of Unknown Provenance (SOUP).
 
 ## Upstream currency (measured 2026-09-17)
 
-Recorded here because #804's table reads as though this tree were behind
+Recorded here because the table reads as though this tree were behind
 4.1.0. It is not: it is 72 commits past it, and the 3.x to 4.x breaking
 migration that issue sizes as the risk has already happened. What is actually
 open is a move within the 4.x line, measured against upstream's tag graph on

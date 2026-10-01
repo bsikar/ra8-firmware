@@ -19,7 +19,7 @@ delete the tags under ``libs/ra8_io/`` and the gate stays green. Three roots
 (``libs/ra8_fs/``, ``libs/ra8_gfx/``, ``libs/ra8_mpu/``) carry no tag at all,
 and nothing in the gate can say so.
 
-That is the #842 shape one level up from the legacy inventory: the exemption
+That is the shape one level up from the legacy inventory: the exemption
 LIST is finite and shrinking, while the SCOPE it sits inside was never
 measured, so a whole library root is a quieter exemption than any row in it.
 

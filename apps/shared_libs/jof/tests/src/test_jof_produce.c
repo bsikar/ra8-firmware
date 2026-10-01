@@ -114,7 +114,7 @@ enum : uint32_t {
   k_t_cell_cap    = 256U * 1024U,        /**< Tile page-back buffer.          */
   k_t_scratch_cap = 300U * 1024U,        /**< Stored-tile staging.            */
   k_t_stb_px_cap  = 512U * 1024U,        /**< stb cross-check arena.          */
-  k_t_ram_budget  = 10U * 1024U * 1024U, /**< The #231 working-set budget.    */
+  k_t_ram_budget  = 10U * 1024U * 1024U, /**< The working-set budget.    */
 };
 
 /** @brief Synthesized encoded source (PNG or JPEG). */
@@ -806,7 +806,7 @@ RA8_INTERNAL static void internal_produce_bounded_check_corners(const jof_info_t
 /**
  * @test internal_test_produce_bounded_ram
  * @brief A source whose decoded size (8 MiB+) dwarfs the fixed working set
- *        transcodes inside it: the #231 bounded high-water proof.
+ *        transcodes inside it: the bounded high-water proof.
  *
  * @details The producer's entire resident state is, by construction, the
  *          caller work arena (every internal buffer is a bump carve out of

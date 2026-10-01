@@ -482,7 +482,7 @@ def _selftest_roster(parsed: list[str]) -> list[str]:
 
 
 def _selftest_registry(gates: list[str]) -> list[str]:
-    """The native-host gate list is read from #1073's registry, not assumed."""
+    """The native-host gate list is read from the registry, not assumed."""
     failures: list[str] = []
     if "macos-host-build" not in gates:
         failures.append("registry: macos-host-build not read from RA8_NATIVE_HOST_GATES")

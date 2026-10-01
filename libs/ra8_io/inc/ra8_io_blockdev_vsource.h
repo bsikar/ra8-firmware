@@ -7,7 +7,7 @@
  * [Ring 4 / PAL] {World: NS}
  *
  * @details
- * The #147 page cache (Layer 2, `ra8_vmem`) pages objects in through a Layer-1
+ * The page cache (Layer 2, `ra8_vmem`) pages objects in through a Layer-1
  * object-source registry (`ra8_vsource`, Ring 2 / Core). That registry binds each
  * paged object to a generic byte-offset read callback of type
  * ::ra8_vsource_read_fn so the cache stays free of any storage dependency. A

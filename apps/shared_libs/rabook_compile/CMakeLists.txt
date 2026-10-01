@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2026 Brighton Sikarskie
 #
-# apps/shared_libs/rabook_compile -- zero-heap RABOOK1 emitter (the #149 compiler back-end).
+# apps/shared_libs/rabook_compile -- zero-heap RABOOK1 emitter (the compiler back-end).
 #
 # Takes an in-memory book model (a DOM of element/text nodes with attributes,
 # spine chapters, a string pool, transcoded images and preserved stylesheets,

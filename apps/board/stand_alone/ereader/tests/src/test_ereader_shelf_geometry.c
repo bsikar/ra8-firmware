@@ -25,7 +25,7 @@
  *   1. The exact card geometry the shelf produces for 3 baked books
  *      (the rects ra8_emulator measured at -Og: x=24/274/524, y=80, w=226, h=248).
  *   2. The rendered header bar and card fills land where they should
- *      (px(0,0) is the bar colour, NOT the background -- the #233 symptom),
+ *      (px(0,0) is the bar colour, NOT the background -- the symptom),
  *      and the render is deterministic (opt-stability is proven separately on
  *      the host; a single-opt-level ctest pins the byte result here).
  *

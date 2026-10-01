@@ -1,6 +1,6 @@
 /**
  * @file rabook_compile.h
- * @brief Zero-heap builder that emits a RABOOK1 blob (the #149 compiler back-end).
+ * @brief Zero-heap builder that emits a RABOOK1 blob (the compiler back-end).
  * @ingroup grp_ereader
  *
  * @details

@@ -7,7 +7,7 @@
 # Where ra8_emulator_smoke.sh is a curated CI gate (deep per-app assertions on a
 # hand-picked set), this is the breadth gate: it builds and boots EVERY example
 # under examples/ek_ra8d2/ on the board emulator and reports, per app, whether
-# it builds, boots, and runs to the budget without faulting -- the #67 success
+# it builds, boots, and runs to the budget without faulting -- the success
 # criterion "every example boots + exercises its peripheral in the emulator".
 #
 # It is intentionally a BASIC boot/exercise classifier (build / fault / halt /
@@ -57,7 +57,7 @@
 # hits one is reported TRUNCATED rather than guessed at. An app that did not
 # reach its budget has produced NO VERDICT, and saying so is the honest output;
 # folding it into FAULT invents a failure, and folding it into OK invents a
-# pass. That is the touch_demo empty-verdict lesson and the #168 lesson both.
+# pass. That is the touch_demo empty-verdict lesson and the lesson both.
 #
 # Usage:
 #   scripts/emu/matrix.sh                 # every ek_ra8d2 example, -j = ra8_max_jobs
@@ -435,7 +435,7 @@ EOF
   # Must-fire direction: assert the harness itself can detect a wrong answer,
   # so a table that silently stopped being compared cannot report success.
   if [ "$(classify_run 'EXECUTED to the run budget' 3)" = "OK" ]; then
-    echo "  FAIL a truncated run classified OK -- the #168 mislabel is back"
+    echo "  FAIL a truncated run classified OK -- the mislabel is back"
     sel_fail=1
   fi
   probe="$(classify_run 'nothing here' 99)"

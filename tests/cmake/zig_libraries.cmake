@@ -726,7 +726,7 @@ ra8_add_zig_library(
 # alongside the Zig unit suite in src/arena_test.zig.
 #
 # The ra8_mem *.c glob in cmake/ra8_app/sources.cmake is empty from here on,
-# which is the #908 shape: its transitive reflow/book path already registers
+# which is the shape: its transitive reflow/book path already registers
 # this archive explicitly and judges the flip on build.zig rather than on the
 # glob, so an empty glob is correct there rather than a missing library.
 ra8_add_zig_library(

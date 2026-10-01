@@ -280,7 +280,7 @@ static void test_backend_ops(void)
 /**
  * @test a quiet HANDSHAKE line is what `service` reports as a timeout
  *
- * The premise of #586's fix. While the co-processor is busy on the air it arms
+ * The premise of the fix. While the co-processor is busy on the air it arms
  * nothing, the pump clocks no transaction, and this backend's `service` reports
  * ::k_ra8_err_hw_timeout -- an entirely routine reading mid-association. The
  * facade must therefore never treat one as the end of its wait, and the

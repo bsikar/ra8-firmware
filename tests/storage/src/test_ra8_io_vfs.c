@@ -301,7 +301,7 @@ RA8_INTERNAL static void internal_test_listdir_mkdir_unmount(void)
   TEST_ASSERT_EQ(k_ra8_ok, ra8_io_vfs_listdir("sd:/", internal_count_cb, &n));
   TEST_ASSERT(n >= 1U);
 
-  /* mkdir now creates a real subdirectory (the #158 ra8_fs mkdir work); a fresh
+  /* mkdir now creates a real subdirectory (the ra8_fs mkdir work); a fresh
    * empty subdir lists with zero visible entries ("." / ".." are hidden), and a
    * duplicate create is rejected. */
   TEST_ASSERT_EQ(k_ra8_ok, ra8_io_vfs_mkdir("sd:/SUB"));

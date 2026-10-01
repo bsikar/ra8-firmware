@@ -7,7 +7,7 @@
  *
  * @details
  * The two checks that bind the pre-existing ZIP-store / DEFLATE paths
- * (EPUB open, chapter / cover / resource extraction, the #231 iterative
+ * (EPUB open, chapter / cover / resource extraction, the iterative
  * entry reader, and the comic CBZ backend via `epub_miniz_alloc`'s
  * shared pool) to the unified decompression-limits policy
  * (`ra8_decomp_limits.h`):

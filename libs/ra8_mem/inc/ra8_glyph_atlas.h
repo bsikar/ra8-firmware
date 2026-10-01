@@ -7,7 +7,7 @@
  * [Ring 2 / Core] {World: NS}
  *
  * @details
- * The original ask behind the #147 memory hierarchy: a glyph cache with a fixed
+ * The original ask behind the memory hierarchy: a glyph cache with a fixed
  * RAM budget so the text renderer never re-rasterises a glyph it drew recently,
  * while resident glyph memory stays bounded regardless of how many glyphs a book
  * touches. A glyph is keyed by (face, pixel size, glyph id, render mode), and the

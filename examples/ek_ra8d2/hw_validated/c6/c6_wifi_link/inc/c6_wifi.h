@@ -10,7 +10,7 @@
  * request inside the application. This application proves the same wire through
  * ``libs/ra8_c6link``, the facade every consumer is meant to use, and then goes
  * one step further: it brings the co-processor's Wi-Fi station up and reads back
- * its MAC address. That is the first thing #492's NetX Duo glue will do, and it
+ * its MAC address. That is the first thing the NetX Duo glue will do, and it
  * is the part of the control plane a host test cannot settle -- whether the
  * `Req_WifiInit` configuration this host transmits is one the co-processor's own
  * build accepts.

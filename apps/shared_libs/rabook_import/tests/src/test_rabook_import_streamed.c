@@ -13,12 +13,12 @@
  * backend, the mem-disk pattern of
  * apps/shared_libs/rabook_import/tests/src/test_rabook_import_m33.c):
  *
- *  - **Byte parity** (the #230 lock-step proof): the parity fixture `.epub` is
+ *  - **Byte parity** (the lock-step proof): the parity fixture `.epub` is
  *    compiled through the STREAMED adapter and the emitted `.rabook` is
  *    byte-identical to the desktop `tools/epub_compile/src/epub_compile.py` golden
  *    (`s_parity_golden`) and `book_validate`-clean. The legacy whole-file
  *    open produced this exact blob, so the migration is proven lossless.
- *  - **Bounded RAM high-water** (the #230 acceptance): a fixture EPUB far
+ *  - **Bounded RAM high-water** (the acceptance): a fixture EPUB far
  *    LARGER than the retired whole-file load buffer (the import_reader app
  *    carried a 128 KiB `epub_load_buf`; this fixture is ~390 KiB) is compiled
  *    through a deliberately tiny 4 KiB frame pool. The mem-subsystem stats
@@ -100,7 +100,7 @@ typedef enum : uint32_t {
  * @enum streamed_cache_t
  * @brief Source page-cache geometry -- the asserted RAM high-water mark.
  * @details 4 frames x 1 KiB = 4 KiB, roughly 100x smaller than the big
- *          fixture: the #230 bounded-residency regime.
+ *          fixture: the bounded-residency regime.
  */
 typedef enum : uint32_t {
   k_st_cache_frame_bytes = 1024U, /**< Cache frame size (bytes).    */
@@ -502,7 +502,7 @@ RA8_INTERNAL static uint32_t internal_count_valid_frames(void)
  * @test internal_test_streamed_compile_matches_desktop_golden
  * @brief The STREAMED adapter compiles the parity fixture to a `.rabook` that
  *        is byte-identical to the desktop `tools/epub_compile/src/epub_compile.py` golden --
- *        the #230 proof that retiring the whole-file open changed no output bit.
+ *        the proof that retiring the whole-file open changed no output bit.
  *
  * @par MC/DC:
  * (no compound decisions under test -- a byte-equality oracle over the output;

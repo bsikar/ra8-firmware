@@ -15,7 +15,7 @@
  * caller-owned pointer array. Nothing is allocated; the registry is a fixed
  * table of `ra8_app_t*`.
  *
- * **Core uninstallable.** Issue #146's headline rule -- "core functionality
+ * **Core uninstallable.** The headline rule -- "core functionality
  * should be able to be uninstalled" -- is enforced two ways:
  *   - **Build time:** a Kconfig-style guard around the registration call (e.g.
  *     `#if RA8_APP_SETTINGS`) excludes an app from the registry, so the firmware

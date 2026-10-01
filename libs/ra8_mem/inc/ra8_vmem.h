@@ -7,7 +7,7 @@
  * [Ring 2 / Core] {World: NS}
  *
  * @details
- * The heart of the #147 memory hierarchy: a software page cache that lets the
+ * The heart of the memory hierarchy: a software page cache that lets the
  * reader touch objects far larger than RAM (GB-class EPUB/CBZ) while the
  * resident set stays bounded by a fixed frame budget, independent of file size.
  * There is no MMU, so access is **handle-based** -- `ra8_vmem_get(object_id,

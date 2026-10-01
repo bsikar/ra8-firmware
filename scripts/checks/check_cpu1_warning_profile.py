@@ -104,7 +104,7 @@ This gate judges CMake INTENT: which sources the profile is attached to, and
 what that profile contains.  It still reads no ``compile_commands.json`` and
 no ``.su`` file, so it cannot prove the flags survive to the compiler on a
 real build; that evidence is produced per change by an ARM cross-build and
-recorded in review, so #843's compile-commands and stack-usage-census criteria
+recorded in review, so the compile-commands and stack-usage-census criteria
 are ticked on that basis and not on this checker's.  What this buys is an
 escape that is enumerated, bounded and shrink-only, measured against a bar
 that cannot be narrowed without a finding.
@@ -319,7 +319,7 @@ class Image:
         self.opt_in_call = False
 
     def escapes(self) -> list[str]:
-        """App-added first-party translation units, i.e. the #843 hole."""
+        """App-added first-party translation units, i.e. the hole."""
         covered = set(self.covered)
         return sorted({rel for rel in self.added if rel not in covered and not is_soup(rel)})
 
@@ -921,7 +921,7 @@ def selftest() -> int:
     )
     if "does not resolve" not in " ".join([error, *findings]):
         failures.append("opt-in unresolved token: expected a finding, not silent coverage")
-    # The #843 end state: every first-party source on the profile, the
+    # The end state: every first-party source on the profile, the
     # inventory intact and declaring zero rows.  This must be SILENT, and a
     # missing file must not reach the same silence.
     error, findings = run_case("#! rows: 0\n" + DEMO_HELPER, OPT_IN_LISTFILE)

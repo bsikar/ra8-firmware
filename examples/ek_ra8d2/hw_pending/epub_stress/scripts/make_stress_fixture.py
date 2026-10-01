@@ -203,7 +203,7 @@ def bake_header(epub: bytes) -> str:
     return (
         "/**\n"
         " * @file epub_stress_fixture.h\n"
-        " * @brief Baked synthetic large-structure EPUB3 for the #144 pool-stress gate.\n"
+        " * @brief Baked synthetic large-structure EPUB3 for the pool-stress gate.\n"
         " *\n"
         f" * @details {N_CHAPTERS} chapters + {N_RESOURCES} manifest resources + an NCX\n"
         f" * with {N_CHAPTERS} navPoints + a cover -- ~{N_CHAPTERS + N_RESOURCES + 5} archive\n"

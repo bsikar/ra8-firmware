@@ -80,7 +80,7 @@ if [ -z "${_RA8_HISTORY_SH:-}" ]; then
 
   # Refuse to scan a repository that has no real history to scan.
   #
-  # This is the #348 guard. A commit-message gate pointed at the synthetic
+  # This is the guard. A commit-message gate pointed at the synthetic
   # one-commit snapshot reports PASS having read nothing but "ci.sh snapshot of
   # HEAD" -- the exact "gate that cannot see the thing it audits and says PASS"
   # CLAUDE.md bans. Fail loudly instead, the same way require_cmd does for an
@@ -101,7 +101,7 @@ if [ -z "${_RA8_HISTORY_SH:-}" ]; then
       echo "ERROR: this gate reads commit messages, but the repository at" >&2
       echo "       '$repo' contains $depth commit(s) -- there is no real" >&2
       echo "       history here to scan." >&2
-      echo "       This is the #348 false-green: a synthetic 'git init'" >&2
+      echo "       This is the false-green: a synthetic 'git init'" >&2
       echo "       snapshot has one commit, so the gate would report PASS" >&2
       echo "       having read no real commit message at all." >&2
       echo "       Under the suite runner, RA8_CI_HISTORY_REPO must point at" >&2

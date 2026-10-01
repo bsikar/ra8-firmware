@@ -425,7 +425,7 @@ static void t_selftest_matches_the_golden(void)
   TEST_ASSERT(st.crc_2x != st.crc_lens);
 
   /* Residency: the whole sequence decodes a small fraction of the page's tiles
-   * and evicts none, which is the #338 no-thrash property. */
+   * and evicts none, which is the no-thrash property. */
   const uint32_t page_tiles = ((uint32_t)k_ez_page_w / (uint32_t)k_ez_tile_edge) *
                               ((uint32_t)k_ez_page_h / (uint32_t)k_ez_tile_edge);
   TEST_ASSERT(st.misses < page_tiles);

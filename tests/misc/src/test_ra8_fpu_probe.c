@@ -127,7 +127,7 @@ static void test_ra8_fpu_dp_madd_wide_magnitude(void)
  * the header's own `#error` guard fails the build if the macro and the
  * `RA8_FPU_DP_ENABLED` switch disagree.
  *
- * Pins two things the #225 resolution turns on. First, an off-target
+ * Pins two things the resolution turns on. First, an off-target
  * build claims no RA8 FPU selection at all, so nothing can read a host
  * run as evidence about silicon. Second, the numeric contract is
  * independent of that selection: the same source, compiled soft-float or

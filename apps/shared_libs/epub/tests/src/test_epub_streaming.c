@@ -66,7 +66,7 @@ typedef enum : uint8_t {
  * @brief Archive + page-cache geometry for the streaming invariant.
  * @details The frame pool (`k_frames * k_frame_bytes` = 16 KiB) is deliberately
  *          tiny relative to the ~0.5 MiB archive, so residency is bounded far
- *          below the file size -- the #151 regime.
+ *          below the file size -- the regime.
  * @since 0.1.0
  */
 typedef enum : uint32_t {

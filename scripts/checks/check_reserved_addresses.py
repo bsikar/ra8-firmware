@@ -65,7 +65,7 @@ from lint_targets import repo_files  # sibling import needs the path above
 # reserved on every supported part, because a hit is a hard failure.
 RESERVED_WINDOWS: list[tuple[int, int, str]] = [
     # Between the Extra MRAM option-setting region and the SiP-Flash area.
-    # This is the window #545's invented OFS addresses landed in.
+    # This is the window the invented OFS addresses landed in.
     (0x03000000, 0x07FFFFFF, "Reserved area between Extra MRAM and SiP-Flash (HUM Ch 3 map)"),
     # The same window through the non-secure alias (BASE_MC 0x1200_0000). The
     # option-setting words have a full non-secure mirror -- OFS3 is genuinely
@@ -269,7 +269,7 @@ def selftest() -> int:
 
     hits, seen = check_text(fake, _MUST_FIRE)
     if len(hits) != 1 or hits[0].value != _FIXTURE_BAD_OFS0:
-        print("SELFTEST FAIL: RA001 did not fire on the #545 reserved address", file=sys.stderr)
+        print("SELFTEST FAIL: RA001 did not fire on the reserved address", file=sys.stderr)
         rc = 1
     if seen != 1:
         print(f"SELFTEST FAIL: expected 1 enumerator, counted {seen}", file=sys.stderr)

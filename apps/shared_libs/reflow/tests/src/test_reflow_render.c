@@ -608,7 +608,7 @@ RA8_INTERNAL static void internal_test_render_images_loader_both_arms(void)
  * @test internal_test_render_glyph_atlas_equivalence
  *
  * @par Purpose:
- * Validates the #164 glyph-atlas wiring in reflow_render.c on two axes that
+ * Validates the glyph-atlas wiring in reflow_render.c on two axes that
  * the issue makes the acceptance bar:
  *  1. **Byte-identity** -- a page rendered through the bound atlas is
  *     byte-for-byte identical to the same page rendered through the direct

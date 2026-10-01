@@ -63,7 +63,7 @@ typedef struct {
 } cb_sweep_config_t;
 
 /**
- * @brief Run the #208 block/frame-size sweep and print the report.
+ * @brief Run the block/frame-size sweep and print the report.
  *
  * @details
  * For every registered backend and every swept block size (512 B .. 256 KiB),

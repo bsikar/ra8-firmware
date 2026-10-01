@@ -4,7 +4,7 @@
  * @ingroup grp_ereader
  *
  * @details
- * Layer 1 of the #147 memory hierarchy. ::ra8_vmem (Layer 2) pages objects in
+ * Layer 1 of the memory hierarchy. ::ra8_vmem (Layer 2) pages objects in
  * through a single loader callback keyed by an `object_id`; a source registry
  * maps each `object_id` to its backing so one cache can serve many objects of
  * two kinds:

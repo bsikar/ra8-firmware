@@ -197,7 +197,7 @@ if [[ "$-" == *p* ]]; then
   # chunk burns more CPU-seconds). A ThreadX/USBX app that reaches its banner at a
   # low chunk count can therefore breach a finite CPU-time budget under -j but not
   # serially -- flipping its verdict with the parallelism, which must NOT happen
-  # (the #168 lesson, sharpened). Bounding purely by the instruction-counted
+  # (the lesson, sharpened). Bounding purely by the instruction-counted
   # MAX_CHUNKS makes every verdict a function of the deterministic instruction
   # stream alone -- identical serial or at any -j. Set EIL_*_WALL_S>0 to re-arm the
   # guard (useful only to cap a pathological run locally; it forfeits -j

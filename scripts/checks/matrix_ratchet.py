@@ -35,7 +35,7 @@ at all, so they are neither credit nor debt.
 
 TRUNCATED is debt on purpose. It means a wall-clock bound cut the run short
 before the deterministic chunk budget -- the app produced NO verdict. Counting
-a non-verdict as a pass is the #168 mislabel; counting it as a fault invents a
+a non-verdict as a pass is the mislabel; counting it as a fault invents a
 failure. It is its own bucket so the burn-down can see it.
 
 SELF-ATTESTATION. The ratchet reads the baseline's ROWS; until now

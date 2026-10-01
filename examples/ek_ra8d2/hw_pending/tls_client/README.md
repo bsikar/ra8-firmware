@@ -15,7 +15,7 @@ result -- **reported, not fatal**, so a self-signed server certificate is fine.
 That covers the whole surface added for #261: session open, handshake, send,
 recv, plus cipher-suite, verify-result and MSS-clamp queries.
 
-## MSS clamp under the #21 MTU=128 limitation
+## MSS clamp under the MTU=128 limitation
 
 The RA8D2 ESWM has a documented large-frame egress defect, so the whole
 networking stack is pinned to a 128-byte MTU. `ra8_tls_mss_clamp()` subtracts the

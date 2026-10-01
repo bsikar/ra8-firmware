@@ -753,7 +753,7 @@ enum : size_t {
 };
 
 /**
- * @brief Demonstration `reflow_css_loader_fn`: the #140 consumer glue.
+ * @brief Demonstration `reflow_css_loader_fn`: the consumer glue.
  *
  * @details Extracts a chapter's `<link href>` stylesheet bytes from the open
  * EPUB via ::epub_get_resource. An app wires this once with
@@ -801,7 +801,7 @@ RA8_INTERNAL static ra8_err_t internal_epub_css_loader(void*           ctx,
  * normal (short href) path plus `epub_get_resource`'s own guards. @details Executes the get resource scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
 RA8_INTERNAL static void internal_test_get_resource(void)
 {
-  TEST_BEGIN("epub get_resource + the #140 external-stylesheet css-loader");
+  TEST_BEGIN("epub get_resource + the external-stylesheet css-loader");
   epub_book_t            book  = {};
   const epub_mem_media_t media = {.data = s_epub_buf, .size = s_epub_size};
   TEST_ASSERT_EQ(k_ra8_ok, epub_open(&media, nullptr, &book));
@@ -830,7 +830,7 @@ RA8_INTERNAL static void internal_test_get_resource(void)
   TEST_ASSERT(internal_bytes_equal(css, s_synth.css, css_len));
 
   TEST_ASSERT_EQ(k_ra8_ok, epub_close(&book));
-  TEST_END("epub get_resource + the #140 external-stylesheet css-loader");
+  TEST_END("epub get_resource + the external-stylesheet css-loader");
 }
 
 /**

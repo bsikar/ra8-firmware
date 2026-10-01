@@ -4,7 +4,7 @@
  *        through a tiny fixed page-cache budget (Layer 1 + Layer 2).
  *
  * @details
- * The whole premise of the #147 memory hierarchy is: "open *massive* EPUB/CBZ
+ * The whole premise of the memory hierarchy is: "open *massive* EPUB/CBZ
  * files (GB-class) whose size far exceeds physical RAM ... the resident set
  * must be bounded by a fixed RAM budget we pick, independent of file size." The
  * other tests cover the page cache at toy scale; this file turns that design

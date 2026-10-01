@@ -3,7 +3,7 @@
  * @brief Drives each ra8_mem memory-hierarchy layer in isolation.
  *
  * @details
- * The #147 memory primitives (ra8_slab, ra8_arena, ra8_tile_cache, and the
+ * The memory primitives (ra8_slab, ra8_arena, ra8_tile_cache, and the
  * ra8_vmem / ra8_vsource / ra8_vmem_stream page cache) are exercised inside the
  * e-reader but had no direct example. This app drives each one on its own so the
  * behaviour is observable without the whole reader stack:

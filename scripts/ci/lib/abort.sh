@@ -301,7 +301,7 @@ if [ -z "${_RA8_ABORT_SH:-}" ]; then
     # shellcheck disable=SC2329  # dispatched indirectly, by registry name.
     gate_ra8_probe_destroy() (
       set -e
-      # Exactly what the #542 trap did: delete the tree the suite is standing
+      # Exactly what the trap did: delete the tree the suite is standing
       # in, from under the still-running runner.
       rm -rf "${RA8_CI_SNAPSHOT_DIR:?the destroy probe needs an armed snapshot}"
     )
