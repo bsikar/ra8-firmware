@@ -16,7 +16,8 @@
     "tests/rpc_wait_test.zig",
     "tests/rx_route_test.zig",
     "tests/sta_cfg_test.zig",
-    "tests/storage_ram_test.zig"
+    "tests/storage_ram_test.zig",
+    "tests/tx_admit_test.zig"
   ],
   "covered_sources": [
     "src/internal/caps.zig",
@@ -37,6 +38,7 @@
     "src/internal/sta_cfg.zig",
     "src/internal/storage_ram.zig",
     "src/internal/tlv.zig",
+    "src/internal/tx_admit.zig",
     "src/internal/vocab.zig",
     "src/ra8_c6link_abi.zig",
     "tests/abi_test.zig",
@@ -48,5 +50,5 @@
     "tests/mdl_transfer_test.zig",
     "tests/storage_ram_test.zig"
   ],
-  "minimum_tests": 283
+  "minimum_tests": 295
 }

@@ -366,14 +366,9 @@ ra8_err_t ra8_c6link_eth_send(ra8_c6link_t* link, const uint8_t* frame, uint16_t
   if ((link == nullptr) || (frame == nullptr)) {
     return k_ra8_err_null_ptr;
   }
-  if (!link->open) {
-    return k_ra8_err_not_initialized;
-  }
-  if ((len == 0U) || (len > (uint16_t)k_ra8_c6link_max_payload)) {
-    return k_ra8_err_invalid_size;
-  }
-  if (link->tx_len != 0U) {
-    return k_ra8_err_busy;
+  const uint16_t admitted = priv_c6link_tx_admit(link->open, len, link->tx_len);
+  if (admitted != (uint16_t)k_ra8_ok) {
+    return (ra8_err_t)admitted;
   }
 
   for (uint16_t i = 0U; i < len; i++) {
