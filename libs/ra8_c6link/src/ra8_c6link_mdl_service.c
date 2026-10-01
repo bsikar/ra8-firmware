@@ -590,7 +590,6 @@ RA8_INTERNAL static ra8_err_t internal_mdl_dispatch_next(ra8_mdl_service_t*  ser
  * @details Packs the acknowledgement before asking the backend to release
  * state.
  * @param[in,out] service Active portable service.
- * @param[in,out] alloc Bounded per-dispatch protobuf allocator.
  * @param[in] request Packed CancelRequest.
  * @param[in] request_len Valid request bytes.
  * @param[out] response Caller-owned Cancelled bytes.
@@ -602,53 +601,29 @@ RA8_INTERNAL static ra8_err_t internal_mdl_dispatch_next(ra8_mdl_service_t*  ser
  * present.
  * @retval k_ra8_err_invalid_state Job correlation is invalid.
  * @retval k_ra8_err_invalid_size Acknowledgement does not fit.
- * @retval k_ra8_err_validation_failed Codec length and write disagree.
  * @pre All pointers are non-null and one job is active.
- * @pre @p alloc owns a fresh bounded arena.
  * @post Success deactivates the service.
  * @post Backend failure leaves response length zero.
  * @note Not thread-safe for a shared service/backend.
  * @since 0.1.0
  */
-RA8_INTERNAL static ra8_err_t internal_mdl_dispatch_cancel(ra8_mdl_service_t*  service,
-                                                           ProtobufCAllocator* alloc,
-                                                           const uint8_t*      request,
-                                                           size_t              request_len,
-                                                           uint8_t*            response,
-                                                           size_t              response_cap,
-                                                           size_t*             response_len)
+RA8_INTERNAL static ra8_err_t internal_mdl_dispatch_cancel(ra8_mdl_service_t* service,
+                                                           const uint8_t*     request,
+                                                           size_t             request_len,
+                                                           uint8_t*           response,
+                                                           size_t             response_cap,
+                                                           size_t*            response_len)
 {
-  const Ra8__Mdl__CancelRequest* req =
-    ra8__mdl__cancel_request__unpack(alloc, request_len, request);
-  if (req == nullptr) {
-    return k_ra8_err_protocol_error;
-  }
-  if (req->base.n_unknown_fields != 0U) {
-    return k_ra8_err_protocol_error;
-  }
-  const mdl_cancel_request_view_t cancel_view = {
-    .protocol_version = req->protocol_version,
-    .job_id           = req->job_id,
-  };
-  const mdl_job_view_t cancel_job = {
+  const mdl_job_view_t job = {
     .next_offset   = service->next_offset,
     .active_job_id = service->active_job_id,
     .active        = service->active,
   };
-  if (!priv_c6link_mdl_pull_cancel_correlates(&cancel_view, &cancel_job)) {
-    return k_ra8_err_invalid_state;
-  }
-  Ra8__Mdl__Cancelled out  = RA8__MDL__CANCELLED__INIT;
-  out.protocol_version     = k_ra8_mdl_protocol_version;
-  out.job_id               = req->job_id;
-  out.status               = 0;
-  const size_t    len      = ra8__mdl__cancelled__get_packed_size(&out);
-  const ra8_err_t capacity = internal_mdl_check_response_size(len, response_cap);
-  if (capacity != k_ra8_ok) {
-    return capacity;
-  }
-  if (ra8__mdl__cancelled__pack(&out, response) != len) {
-    return k_ra8_err_validation_failed;
+  size_t          len     = 0U;
+  const ra8_err_t replied =
+    priv_c6link_mdl_service_cancel(request, request_len, &job, response, response_cap, &len);
+  if (replied != k_ra8_ok) {
+    return replied;
   }
   const ra8_err_t cancelled = service->backend.cancel(service->backend.ctx);
   if (cancelled != k_ra8_ok) {
@@ -724,7 +699,6 @@ ra8_err_t ra8_mdl_service_dispatch(void*          ctx,
                                         response_len);
     case k_ra8_mdl_rpc_cancel:
       return internal_mdl_dispatch_cancel(service,
-                                          &alloc,
                                           request,
                                           request_len,
                                           response,

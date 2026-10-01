@@ -25,6 +25,7 @@ const mdl_decode = @import("internal/mdl_decode.zig");
 const mdl_chunk_decode = @import("internal/mdl_chunk_decode.zig");
 const mdl_encode = @import("internal/mdl_encode.zig");
 const mdl_issue = @import("internal/mdl_issue.zig");
+const mdl_service_cancel = @import("internal/mdl_service_cancel.zig");
 const rpc_wait = @import("internal/rpc_wait.zig");
 const sta_cfg = @import("internal/sta_cfg.zig");
 const rx_route = @import("internal/rx_route.zig");
@@ -508,12 +509,31 @@ pub export fn priv_c6link_mdl_pull_next_correlates(
     return mdl_pull.nextCorrelates(request, job);
 }
 
-/// `priv_c6link_mdl_pull_cancel_correlates`: a CancelRequest against the job.
-pub export fn priv_c6link_mdl_pull_cancel_correlates(
-    request: *const mdl_pull.CancelRequestView,
-    job: *const mdl_pull.JobView,
-) bool {
-    return mdl_pull.cancelCorrelates(request, job);
+/// `priv_c6link_mdl_service_cancel`: answer one CancelRequest for the job.
+///
+/// Decodes the request, checks it names the active job, and writes the
+/// Cancelled acknowledgement. `response_len` is zero on every refusal and the
+/// response buffer is untouched.
+pub export fn priv_c6link_mdl_service_cancel(
+    request: ?[*]const u8,
+    request_len: usize,
+    job: ?*const mdl_pull.JobView,
+    response: ?[*]u8,
+    response_cap: usize,
+    response_len: ?*usize,
+) callconv(.c) u16 {
+    const out_len = response_len orelse return Err.null_ptr;
+    out_len.* = 0;
+    const in = request orelse return Err.null_ptr;
+    const live = job orelse return Err.null_ptr;
+    const out = response orelse return Err.null_ptr;
+    const bytes = mdl_service_cancel.reply(in[0..request_len], live, out[0..response_cap]) catch |e| return switch (e) {
+        error.Malformed => Err.protocol_error,
+        error.Uncorrelated => Err.invalid_state,
+        error.NoSpace => Err.invalid_size,
+    };
+    out_len.* = bytes.len;
+    return Err.ok;
 }
 
 /// `priv_c6link_mdl_pull_end_offset`: offset past the body, 0 on overflow.
